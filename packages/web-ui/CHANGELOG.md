@@ -1,5 +1,454 @@
 # @greypan/web-ui
 
+## 9.0.0
+
+### Major Changes
+
+- 3c81816: **Semantic change to a public custom property.** `--wui-dialog-max-height` now caps the dialog's **content area** (`.desc`), not the whole card. A host that sets it to `560px` and changes nothing else will now render a card up to `560px` plus its own chrome tall. A host that keeps subtracting chrome from its own inner `height` does not break — the content area's own cap catches the overflow — but it does not get the fix either, because that inner height expression stays the binding constraint and the card keeps rendering taller than the height it declares. Both cases want the same one-time conversion.
+  
+  **What moved.** The cap used to sit on the `<dialog>` element, and `.desc` carried neither a cap nor `overflow`. Content that exceeded the cap pushed the card out of the dialog box instead of scrolling, so the only element that could scroll was an inner box the host sized itself. The cap now sits on `.desc`, which is a scroll container, while the `<dialog>` element keeps a literal `100vh` / `100dvh` backstop that only catches the case where the viewport is too short for chrome plus the cap. The title row and the footer are again sized purely by their content, so chrome can vary without dragging the content area's geometry along with it.
+  
+  **How to convert.** Subtract your own measured chrome from the token: card padding, title row, gaps, footer. That number is a property of your dialog's own content, not of the component, so no single value is right for every host — the three dialogs in the Interweave frontend measure `141.59`, `141.59` and `105.59`. The subtracted value is a **content-area budget, not a fixed whole-card height**: the card still grows with its own chrome. When `--wui-control-size` grows on coarse pointers, the content area stays exactly at the token while the card grows with the footer (measured: content area 270 → 270, card 412 → 416). Once converted, an inner element can use the token directly as its `height` and no longer needs its own chrome arithmetic.
+  
+  Measured effect on the Interweave frontend, converted in this same release: `AddDialog` and `RestoreDialog` become roughly 34px shorter than they were. Their old constant of `108` was simply wrong — the real chrome is `141.59` — so those two dialogs had been rendering about 34px taller than the height they declared, and now match it. `SettingsDialog` is visually unchanged: its constant of `106` was already correct.
+  
+  The token's own default still has two fallback tiers, now stated as such in both READMEs: the base `.desc` rule falls back to `90vh`, and the `@supports (height: 100dvh)` enhancement falls back to `min(90vh, 90dvh)`. An engine without `dvh` support only ever gets `90vh`. Note that headless Chromium reports `vh` and `dvh` as equal, so no computed-style assertion in the test suite can tell the two tiers apart.
+  
+  `--wui-dialog-desc-focus-padding` is new and defaults to `6px`. `.desc` is now a scroll container and, because one axis must be non-`visible`, a clip box as well — so a control flush against any of its four edges would have its focus ring clipped by the padding box. The margin covers all four axes, and paired negative margins on the other three sides take the same amount back out of the surrounding spacing, so introducing the token moves neither the chrome height, the card height, nor the width available to the host's inner content. `--wui-dialog-desc-gap` is now floored: the bottom margin clamps at `0` rather than going negative when a host sets the gap below this token.
+  
+  **Body mode** (`slot="body"`, no `.desc`) keeps its **card size** unchanged. Its position is not guaranteed: the `<dialog>` box backstop tightened from `min(90vh, 90dvh)` to a literal `100vh`, and a modal dialog is centred on its own box with the card drawn from the box top, so a taller box moves the card up within the viewport. Measured on Chromium and WebKit: 0px when the content is far shorter than the viewport — which is what both demos happen to do, and which is a coincidence rather than a guarantee — up to 52px / 102px as the content approaches the viewport height, and around 25–27px in the mid-range — the exact figure there moves with the fractional viewport height, so treat it as a range rather than a constant.
+- 3c81816: Close `web-ui-autocomplete` when filtering produces no matching options, and reopen it when matches return. `allow-custom-value` still submits an unmatched value with Enter.
+  
+  **Breaking removal:** the public `empty` slot and its empty-state UI have been removed. Remove `<div slot="empty">…</div>` from consumers; zero matches now leave the dropdown closed without rendering a panel.
+- 3c81816: Change `web-ui-empty`'s `size` from the `'small' | 'medium' | 'large'` enum to a `number` in px, defaulting to `56`. Like `<web-ui-button>`'s `size` it is a px length, but where button keeps a `string` property, `web-ui-empty` now takes a plain `number`. It is the one knob for the whole placeholder: it drives the icon container, `min-height`, padding, and the title/description font size, so a large icon no longer sits in medium-sized whitespace. The default glyph is `round(size * 3 / 7)` and the internal `--wui-internal-empty-icon-radius` default moves from `16px` to `18px`.
+  
+  **Breaking changes:**
+  
+  - The exported `EmptySize` type is removed; the attribute is a plain number. Values that are not finite positive numbers (`NaN`, `±Infinity`, `0`, negatives) fall back to the default `56` instead of the old `'medium'`.
+  - The `:host([size='small'])` and `:host([size='large'])` rules are gone; `size` is now the single source. The derived values are `min-height: round(size * 30 / 7)`, `padding-block: round(size * 4 / 7)`, and `padding-inline: round(size * 3 / 7)`, which keeps the default `56` on exactly the former `medium` metrics (`240px`, `32px 24px`) while `40` and `72` get `171px` / `23px 17px` and `309px` / `41px 31px`. Font size is one step rather than a scale: below `56` it is `14px` / `13px`, and from `56` up it is `16px` / `14px`, so a bigger placeholder reads through its whitespace rather than through bigger text.
+  - Every `--wui-empty-*` custom property still overrides what `size` derives, including the two font sizes, which are now overridable per instance without giving up the scale. Section margins and content width never followed the old tiers and still do not follow `size`.
+  
+  **Migration:** `small` → `40`, `medium` → `56`, `large` → `72`. The old tiers were hand-tuned, so the ratios land near them rather than reproducing them — `small` used to be `160px` tall with `20px 16px` padding and `large` used to be `320px` with `48px 32px`. An invalid `size` now falls back to `56` for the whole metric set, not just for the icon box.
+  
+  ```html
+  <!-- before -->
+  <web-ui-empty size="large" title="No results"></web-ui-empty>
+  <!-- after -->
+  <web-ui-empty size="72" title="No results"></web-ui-empty>
+  ```
+  
+  The generated React and Vue types declare `size` as `number`, so pass a number rather than a string attribute in those frameworks — a static `size="72"` fails type checking.
+  
+  ```tsx
+  <web-ui-empty size={72} title="No results"></web-ui-empty>
+  ```
+  
+  ```vue
+  <web-ui-empty :size="72" title="No results"></web-ui-empty>
+  ```
+- 3c81816: Group the glass tokens by the layer that paints them, and give the light scheme a real base tint for the 1px glass ring.
+  
+  **Breaking renames:** three public custom properties on `<web-ui-theme>` are renamed. No compatibility aliases are kept.
+  
+  | Before                     | After                          | Layer                             |
+  | -------------------------- | ------------------------------ | --------------------------------- |
+  | `--wui-color-glass-border` | `--wui-color-glass-ring`       | base tint of the 1px ring         |
+  | `--wui-color-glass-corner` | `--wui-color-glass-ring-sheen` | corner sheen, painted on the ring |
+  | `--wui-color-glass-shade`  | `--wui-color-glass-ring-shade` | corner shade, painted on the ring |
+  
+  `--wui-color-glass-highlight` is unchanged and stays out of the `ring` group: it is an inset `box-shadow` on the element itself, not part of the ring that `.wui-glass::before` masks out.
+  
+  **Visual change, light scheme only:** `--wui-color-glass-ring` was `transparent` and is now `rgb(0 0 0 / 0.05)`, so every glass surface in the light scheme gains a subtle but real 1px outline. This is a restyle, not an invisible gap fix. Measured against a ring-free baseline of the same box, the maximum delta of the light-scheme ring goes from 4–7/255 to 13–17/255; the exact figures move with each surface's size and corner radius. The part that was genuinely missing is the edge midpoint: with the old transparent base, any edge longer than about `3R` (`R` being that surface's `--wui-glass-corner-radius`) had a stretch that matched the ring-free baseline pixel for pixel — a delta of exactly 0 — and it now reads 13/255. The dark scheme already used `rgb(255 255 255 / 0.05)` and is unchanged, as are `--wui-color-glass-ring-sheen` and `--wui-color-glass-ring-shade` in both schemes.
+  
+  The base layer is load-bearing rather than decorative. The ring is a `background-color` base with four corner-anchored `radial-gradient`s on top; the radials use a fixed radius (`2R` for sheen, `R` for shade, where `R` is `--wui-glass-corner-radius`), so any edge longer than about `3R` leaves a stretch that no radial covers. With a transparent base nothing painted that stretch. How much of the ring this affects depends on the surface's aspect ratio, since `R` is driven by each component's own radius.
+  
+  The same value is now also the literal fallback in `glass.css`, so a `<web-ui-theme>` without `appearance` — or no theme at all — keeps the ring closed. Every other glass token in that file already falls back to its light-scheme value; this one was the sole exception.
+  
+  To make the light ring lighter, lower `--wui-color-glass-ring` rather than setting it back to `transparent`, and keep it above the shade alpha (`0.03`) so the edge midpoint does not fall below the corner shading.
+  
+  Consumers that read or override the three old names must update them before upgrading. No workspace in this repository overrides any of the four tokens.
+- 3c81816: **Breaking:** a component no longer registers its siblings. Ten imports that only pulled in
+  child elements are gone, so importing a parent on its own no longer registers the children a
+  consumer writes inside it.
+  
+  A component imported a sibling only when its own template rendered that tag. `web-ui-select`
+  and `web-ui-autocomplete` render just a trigger and a slot, `web-ui-button-group` and
+  `web-ui-dialog` render only slots, and `web-ui-dropdown` and `web-ui-context-menu` query the
+  `web-ui-dropdown-*` children a consumer writes into them but never create one. The child
+  elements were always the consumer's to provide, so these imports were dead weight that also
+  carried a misleading note about tree-shaking. The build sets `preserveModules: true` and lists
+  `./src/components/**` and `./dist/components/**` in `sideEffects`, so the module graph is never
+  tree-shaken in the first place.
+  
+  Migration — import the children alongside the parent:
+  
+  ```diff
+   import '@greypan/web-ui/components/dropdown'
+  +import '@greypan/web-ui/components/dropdown-item'
+  +import '@greypan/web-ui/components/dropdown-header'
+  +import '@greypan/web-ui/components/dropdown-divider'
+  ```
+  
+  The same applies to `web-ui-select` and `web-ui-autocomplete`, which need
+  `@greypan/web-ui/components/option`, and to `web-ui-button-group` and `web-ui-dialog`, which need
+  `@greypan/web-ui/components/button`. A subpath import registers only the component it names.
+  
+  Both documented consumption paths are unaffected: the `@greypan/web-ui` barrel still registers
+  every component, and `unplugin-web-components` still emits one import per literal `<web-ui-*>`
+  tag it finds, so a template that writes `<web-ui-option>` keeps resolving it on its own.
+
+### Minor Changes
+
+- 3c81816: Add `commit-on-unmount` to `web-ui-editable-text` so an open editing session can end by committing when the element is unmounted.
+  
+  Measured on Chromium and WebKit while scoping this, and the two engines **disagree** — which is the reason the property is worth having:
+  
+  - Chromium dispatches `blur` on the editing layer when a component being edited is removed, so a plain commit already happens today. `blur` and the `change` it triggers land synchronously _after_ the unmount callback has run, so the commit arrives after whatever state the caller updates in response to the removal.
+  - WebKit (Safari, iOS) dispatches no `blur` at all: with the default `false` nothing is committed and the draft is dropped along with the element.
+  - Gecko (Firefox) is unverified — no Firefox build would start on the machine this was measured on, so nothing is claimed for it. Treat it as unknown rather than as matching either engine above.
+  
+  With `commit-on-unmount` set, the unmount itself ends an open session by committing — the draft becomes the new value, edit mode exits, and `change` is dispatched exactly once, reusing the same `_commitEditing` path as `Enter` and `blur` rather than introducing a third commit semantic. On Safari and iOS this is the only thing that preserves the draft; in Chromium it moves the commit ahead of the removal-driven `blur`, which then early-exits because edit mode is already off, so the two sources still yield exactly one `change`.
+  
+  Two deliberate differences from the `blur` path: an unmount carries no user intent, so the commit only fires when the draft really differs from the baseline captured when editing began (no empty `change`); and a `disabled` or `readonly` element dispatches no commit, matching `_onBlur`. An existing draft is treated differently in those two states — under `disabled` it stays on the element, while under `readonly` it is genuinely lost, because `readonly` does not retract earlier input and no `blur` remains at unmount to commit it. That path is reachable (enter editing while editable, type, flip to `readonly`, unmount) and is not treated as a cancel, since cancelling means restoring the baseline and there is no focus or host to hand a result to at unmount; the user sees their typing disappear with neither `change` nor `cancel`.
+  
+  The commit fires from the unmount callback, so `change` travels the composed path and reaches listeners on the component or any ancestor, including ancestors being unmounted in the same turn: dispatching does not require an ancestor to still be in the document. Listeners must not assume the component is still connected. This reach does not extend to an unmount React drives from its own render, which never reaches React's delegated event root — the same caveat that already applies to `cancel`. Setting `display: none` on an ancestor is not a removal and is not covered.
+  
+  No new event type is introduced and the existing `change` / `cancel` signatures are untouched.
+- 3c81816: Add `--wui-button-group-divider-length` to `<web-ui-button-group>`. The divider between adjacent grouped buttons was a fixed 24px line with no way for a consumer to reach it — it lives in the child button's shadow root and that span is not exposed as a part — so the only alternative was dropping the group entirely and losing the shared glass pill.
+  
+  The token sets the divider's long edge and defaults to 20px, so every grouped button pair gets a shorter rule than the 24px line it drew before; its cross axis stays 1px. Because it drives the long edge rather than a fixed axis, one value works for both `direction="horizontal"` and `direction="vertical"`.
+- 3c81816: feat(web-ui): draw the checkbox checkmark from akar-icons:check
+  
+  `<web-ui-checkbox>` now strokes `akar-icons:check` where it drew `tabler:check`. Both are
+  round-capped 24-unit glyphs with `stroke-width="2"`, so the render path is untouched; what
+  changes is the geometry — `m4 12l6 6L20 6` starts its tail a unit further left and lifts the
+  tip a unit higher than `m5 12l5 5L20 7`, which reads as a longer, more open tick inside the
+  18px indicator.
+  
+  The swap keeps the precondition the draw animation depends on: the asset stays `fill: none` +
+  `stroke: currentColor`, so `<web-ui-svg-draw-lines>` animates a stroke instead of revealing a
+  solid mark. `checkbox.motion.browser.spec.ts`, which pins that, still passes.
+  
+  `@greypan/web-ui/icons` loses `tablerCheck` and gains `akarIconsCheck`. `tablerCheck` was added
+  on this unreleased line and never shipped, so no published consumer sees a removal, and
+  `@iconify-json/tabler` stays a devDependency for `tabler:sort-ascending-letters`. The new
+  devDependency `@iconify-json/akar-icons` (catalog `^1.2.7`) is only read by the generator at
+  build time — icon bodies are inlined into the emitted modules, so nothing extra lands in the
+  published bundle.
+- 3c81816: feat(web-ui): render the checkbox checkmark as an icon asset
+  
+  `<web-ui-checkbox>` drew its checkmark from a path the component carried itself. It now renders a stroked check from `@/icons` through a nested `<web-ui-icon>`, inside the same `<web-ui-svg-draw-lines>` wrapper, so the indicator is an asset like every other glyph in the library rather than a hand-held exception. The draw-in and retract, the `--wui-duration-trigger` timing and the `motion="reduced"` bypass all keep working: `<web-ui-svg-draw-lines>` reaches geometry inside nested open shadow roots, and the check's color arrives through `<web-ui-icon>`'s `--wui-icon-color`, set to `--wui-color-on-control` — the token radio's dot and switch's thumb use — so it stays legible on the accent-filled indicator.
+  
+  Two visible consequences. The stroke weight follows the asset (`stroke-width="2"` on a 24-unit canvas, previously 3), so the check is a step thinner. And it renders at `<web-ui-icon>`'s own default 18px: the host cannot reach the `<svg>` inside the icon's shadow root, so enlarging `--wui-selection-control-size` now grows the indicator box without scaling the check inside it.
+  
+  The asset has to stay stroked (`fill: none` + `stroke: currentColor`). A solid icon is a silent failure here — `<web-ui-svg-draw-lines>` animates `stroke-dashoffset`, which affects only stroke painting, so the animation runs to completion while the check simply appears. `checkbox.motion.browser.spec.ts` now pins `fill: none` and the on-control stroke to keep that precondition from regressing, and both checkbox motion specs observe the icon's nested shadow root, since `ShadowRoot.getAnimations()` does not cross into it.
+- 3c81816: Add an opt-in `long-press` attribute to `<web-ui-context-menu>` so touch users can open the menu without a right-click. It is touch-only by design: a pointer with `pointerType === 'touch'` held for `long-press-delay` (default `500` ms, matching the platform long press) opens the menu at the press point, through the same `_openAt` path a right-click uses. Holding while moving more than 10px cancels it, so a scroll never opens a menu. Without the attribute nothing changes.
+  
+  Absorbing the browser's follow-up events is the part that is easy to get wrong. Once the long press opens the menu, the engine still reports that same hold as a native gesture and emits a `contextmenu` (which would reopen) and, after `touchend`, a synthesised `click` (which would immediately light-dismiss the menu the long press just opened). Both are swallowed inside a short window that closes on the next `pointerdown`, so a genuine later right-click or click is unaffected.
+  
+  Verified against Chromium's real touch pipeline via CDP `Input.dispatchTouchEvent` rather than synthetic events: synthetic pointer events produce none of the gesture recognition, and `touchscreen.tap()` releases immediately so it can never hold long enough to trigger a long press. That harness is what surfaced the trailing-`click` dismissal — synthetic-event tests had the menu opening and staying open, which was wrong.
+- 3c81816: Add a `closable` attribute to `<web-ui-dialog>`. It renders a built-in close button in both content modes, and the button takes the same close path as Escape and backdrop clicks — so `controlled` applies to it identically: it only emits `open-change` with `open: false` and leaves `open` to the consumer.
+  
+  The two content modes place the button differently, because the title row only exists when there is no `body` slot. Without a `body` slot the button sits in a `.title-row` flex line beside the title, leaving `.title`'s own bottom margin semantics untouched. With a `body` slot there is no title row, so the button becomes a direct child of the glass card and is absolutely positioned at its top-right corner, offset by the new `--wui-dialog-close-top` and `--wui-dialog-close-right` custom properties.
+  
+  The button reuses the `ooui:close` icon already shipped for the drawer close button, so no new icon enters the package's generated icon set. Escape, backdrop click, and the new button now share one `_closeFromUser` path instead of three copies of the same controlled/uncontrolled branch; their behaviour is unchanged.
+  
+  Omitting `closable` renders exactly what it did before: no button, and no extra wrapper element.
+- 3c81816: fix(web-ui): size a size-less Iconify icon on the spec's 16×16 canvas
+  
+  `<web-ui-icon>` derived its `viewBox` from `icon.width`/`icon.height` and fell back to `24` when the data object declared neither. Iconify's own default canvas is 16×16 (`@iconify/types` README), so the fallback was the one value the spec does not allow: a size-less 16-unit icon was squashed into the top-left quarter of a 24-unit box instead of filling it. The fallback is now `16`, and generated assets no longer rely on it — `scripts/generate-icons.ts` resolves the merge chain (icon → icon set → spec default) before writing, so `@iconify-json/bi`, which publishes no root canvas for any of its 2084 icons, now emits `width: 16, height: 16` rather than leaving the size to the renderer.
+  
+  The published behavior difference is for consumers who hand a raw `IconifyIcon` object to `.icon` and declare no canvas on it: such an icon renders at a different scale than before. Every icon object that declares its `width`/`height` renders as it did, which covers all assets exported from `@greypan/web-ui/icons` in the previous release — `biCheck` is new on this branch and had never rendered at the right scale.
+- 3c81816: fix(web-ui): stop `<web-ui-radio>` and `<web-ui-checkbox>` from reserving space for a label they do not have
+  
+  The trigger row is an `inline-flex` with `gap: 10px`, and the host is sized by its content, so a control with nothing renderable in its default slot measured 28px for an 18px indicator: a gap only knows there is a flex item there, not that the item has no width. Every standalone control hit that, and so did the usual accessible-name workaround of slotting one visually hidden (`.sr-only`) span — that content is assigned to the slot but paints no box.
+  
+  The row now collapses the gap when the label's rendered width is 0, tracked through one `ResizeObserver` shared by all selection controls rather than one per instance. Emptiness is deliberately measured instead of asked of the slot: `slot:empty` reads the slot's own child nodes, and assigned nodes are not its children, so an assigned-but-invisible label would have looked non-empty. The other candidate — hiding the label — is the wrong one, since `display: none` takes the slotted accessible name out of the accessibility tree along with the space.
+  
+  A control whose label paints is unaffected: the 10px between indicator and text stays, as does hovering that gap to tint the indicator. A standalone or hidden-name-only control is now exactly `--wui-selection-control-size` wide, so it lines up with the content around it instead of trailing 10px of dead space. `shared/label-emptiness/__tests__/selection-label.browser.spec.ts` pins the host width for empty, `.sr-only`-only and labeled controls, the collapse when a label is removed at runtime, and the convergence for a control that mounts inside a `display: none` subtree.
+- 3c81816: Add a public `select()` to `<web-ui-input>` so callers can select the full current value through the component API instead of reaching into its shadow root or using deprecated `document.execCommand`. `<web-ui-textarea>` already exposed the same method; both now share an explicit `disabled` no-op and remain safe when the native control has not rendered.
+  
+  The consistency review also adds `readonly` to `<web-ui-editable-text>`: it keeps focus, selection, and copying available while rejecting input and leaving edit mode without a `change`, matching the read-only contract of `<web-ui-input>` and `<web-ui-textarea>`. Existing `value` read/write, `input`/`change` paths, form association, and the documented non-reflected `value` attribute on `<web-ui-editable-text>` remain backward compatible.
+- 3c81816: fix(web-ui): recompute `<web-ui-textarea>` autosize height when the value or `rows` changes
+  
+  An autosizing textarea only resized itself from its own `input` handler, so a value that arrived any other way — an attribute set by a parent, a property set from outside, a reset — left the box at the height it had for the old text. The height is now recomputed in `updated()` whenever the value changes, and the duplicate call in `handleInput` is gone. `rows` joins the same recompute: it sets the natural height that `height: auto` produces, but the inline pixel height overrode it, so a reactive `rows` binding had no effect at all. The autosize path also sets `resize: none`, because a native corner grip and script-owned height fight each other: the grip reasserts a height the next measurement immediately overwrites.
+  
+  `rows` continues to act as a floor that longer content grows past, so `rows="2"` renders a two-line box that expands for longer text.
+  
+  Two changes here alter published defaults rather than only adding capability, which is why this is a `minor`:
+  
+  - `<web-ui-textarea>` with `autosize` now sets `resize: none`. The native corner grip and a script-owned height fight each other — the grip reasserts a height that the next measurement immediately overwrites. Consumers who want a resizable autosizing box should drop `autosize`. Textareas without `autosize` keep `resize: vertical`.
+  - The `<web-ui-layout>` desktop sidebar collapse button renders as a `secondary` variant rather than `glass`. This is visible to every consumer of the component, not only to apps that opt in.
+  
+  Also here: the `<web-ui-layout>` sidebar resize handle takes the same 3px focus ring at `--wui-color-focus-ring` with a 2px offset that the rest of the library uses, shown alongside the accent bar that hover and dragging already had. The bar answers "where is the hit area", the ring answers "where did the keyboard land": the handle is 12px wide and full height, so a 3px bar on its own did not say enough.
+- 3c81816: Expose `<web-ui-theme>`'s resolved color scheme as the read-only reflected `resolved-appearance` attribute and `resolvedAppearance` property. The value is always `light` or `dark`: explicit appearances pass through, `system` follows `prefers-color-scheme` and updates live on OS flips, and a missing `appearance` reports the default `light`. The component owns and restores the attribute, so consumers can bind CSS selectors or Tailwind custom variants to it without maintaining a second theme state; existing View Transition behavior is unchanged.
+- 3c81816: Expose the nested drawer stack's reveal step as `--wui-drawer-nested-peek-base`, and grow the stack logarithmically instead of by a constant step.
+  
+  The stack used to shift each layer inward by a hardcoded `12px`, so four drawers produced three identical 12px steps and a 36px total. Depth `d` now shifts by `A · ln(d + 1)`, so the total stack width is `A · ln(n)`: the first reveal is wide, each layer above it adds less, and the total no longer inflates linearly with depth. With the shipped defaults a four-layer stack of `320px` drawers reveals `37.43px` / `21.90px` / `15.53px` for a `74.86px` total on desktop, and `24.95px` / `14.60px` / `10.36px` for a `49.91px` total at `width <= 640px`. A single layer is unaffected, since `ln(1)` is `0`.
+  
+  `A` is a registered `<length>` custom property, so the desktop default is the `initialValue` the component passes to `CSS.registerProperty` and narrow viewports override the same token from a media query. Set it on the host (or any ancestor) to retune the whole stack, or to `0` to turn the reveal off; a consumer's unitless `0` is normalized to `0px` at computed-value time. The component also recomputes an open stack when the viewport crosses the breakpoint, so a stack that is already on screen does not keep offsets from the other base.
+  
+  The scaling and width compensation that position the cards are unchanged, as are drag-to-close, reduced motion, headless, and inset.
+- 3c81816: Expose the desktop sidebar collapse toggle's width as `--wui-layout-sidebar-toggle-width` (default `44px`).
+  
+  `.sidebar-toggle` sets `--wui-button-width` on itself, and a declaration on the element beats an inherited value of the same name, so consumers could not resize it from the outside. Apps that shrink `collapsedWidth` were left with a toggle that no longer matched their collapsed panel. This routes the width through the variable so those apps can size it themselves: set the toggle width so that it plus its own `8px` horizontal margins fills `collapsedWidth` minus the `aside`'s `8px` left padding, which is the width of the collapsed panel. Values below `36px` are clamped by the button's own `--wui-control-size` floor.
+  
+  The default is unchanged: with the variable unset the toggle is still `44px` wide.
+- 3c81816: Add two scale families to `<web-ui-theme>` and route component styles through them.
+  
+  **Typography tokens** are named by the role the text plays, not by scale position, matching
+  the radius decision in ADR-0006 §6.3: `--wui-font-size-caption` (12px), `--wui-font-size-readout`
+  (13px), `--wui-font-size` (14px), `--wui-font-size-title` (18px), `--wui-font-weight-medium`
+  (500), `--wui-font-weight-semibold` (600), and `--wui-line-height-tight/snug/normal/relaxed`
+  (1.2 / 1.4 / 1.5 / 1.6). Every `font-size`, `font-weight` and typographic `line-height` in the
+  component layer now resolves through a family token with a literal fallback, so the fallback path
+  still renders correctly with no theme present. `line-height: 1` and `0` and `font-size: 0` are
+  deliberately left as literals: they are single-line centering and inline-gap-collapse techniques,
+  not typographic values.
+  
+  **Spacing tokens** are a six-step 4px scale, `--wui-space-1` through `--wui-space-6`
+  (4/8/12/16/20/24px). This is a documented departure from ADR-0006 §6.3's "no numeric scale"
+  rule: radius has a handful of strong role names, but spacing appears at more than fifty call
+  sites where one 8px serves as control gap, group gap and inline padding at once — role naming
+  there would duplicate a single number into several mutually drifting tokens. The family
+  does not replace the per-component override tokens (`--wui-button-px`, `--wui-dialog-padding`,
+  and the rest); it supplies their fallback default, so each component still owns its own padding
+  while the scale states where that value sits in the overall rhythm. Overriding a step therefore
+  acts as a density lever across every migrated call site. It is a lever over rhythm only: offsets
+  that align to the viewport edge or to the host's content edge are excluded by meaning even when
+  they land on the 4px grid, and the override has to sit inside the `<web-ui-theme>` scope for the
+  theme host to declare the step to its own subtree. The scale deliberately omits 1px, 2px, 6px,
+  7.5px, 10px and negative values: those are hairline widths, optical corrections, an off-grid half
+  step, and flex-gap cancellation respectively.
+  
+  **One behavior change beyond pure addition:** `--wui-radio-group-gap` and
+  `--wui-checkbox-group-gap` now default to `var(--wui-space-2)` instead of the literal `8px`, so
+  they are coupled to that step — overriding `--wui-space-2` on the theme host now also moves the
+  gap between group members. Embedders are not broken: an explicit
+  `--wui-radio-group-gap: 12px` still wins, exactly as before. The release is minor rather than
+  patch because the new tokens widen the public surface; the retarget is a small, documented
+  coupling change on top of that.
+  
+  **No rendered change.** Every migrated declaration keeps its original literal as the inner
+  fallback, so computed values are identical with or without a theme ancestor; only the token
+  reference is new.
+  
+  Both families are appearance-independent and are declared in the theme's base `:host` block
+  rather than the light or dark blocks, so switching appearance never alters type metrics or
+  spacing.
+  
+  `theme/__tests__/typography-spacing-scale.spec.ts` guards against drift from both directions:
+  component CSS may not reintroduce bare typography literals, and every token defined in either
+  family must have at least one consumer, so adding a step nobody uses fails the build instead of
+  silently becoming dead public API.
+
+### Patch Changes
+
+- 3c81816: Fix `web-ui-context-menu` so closing it no longer steals focus back from a target the caller has already focused.
+  
+  On close the menu unconditionally called `focus()` on whatever was focused when it opened, after the exit transition had finished. When a menu item's action opened something that takes focus — an inline rename editor, for example — the caller focused it in a microtask, while the unconditional restore ran later in a macro task and pulled focus back to the pre-open element. That blurred the new editor, and because `web-ui-editable-text` commits on blur, the still-unchanged value was submitted as a fresh edit.
+  
+  The restore is now conditional: it runs only while the menu still holds focus. If focus has moved to a live element outside the menu, the menu leaves it alone. Ownership is read with `:focus-within` rather than `Node.contains(document.activeElement)` — the panel is mounted inside the overlay container's shadow root and menu items focus a control inside their own shadow root, so browsers report the shadow host and `contains` never matches.
+  
+  Normal restore is unchanged: Escape, keyboard navigation and outside clicks that leave nothing focused all still return focus to the element that had it when the menu opened. No public API is added; the behaviour is now documented in the README.
+- 3c81816: Reconcile `header` and `footer` slot presence when a `<web-ui-drawer>` is reconnected.
+  
+  The drawer recomputed which of its two end sections have slotted content in `connectedCallback`, but never asked for a render afterwards. Lit's `connectedCallback` only calls `enableUpdating(true)` and `setConnected(true)` — it does not schedule an update — and the section visibility is decided during render, so the recomputed value was never put to use. The two `slotchange` handlers could not cover for it either: `slotchange` fires when a slot's _assigned set_ changes, and emptying the slot content between disconnect and reconnect leaves the assigned set where it was, so the event never arrives.
+  
+  The result was silent. A drawer whose `footer` content was removed while it was detached from the document came back with an empty footer section still laid out. The section keeps a real height from its own padding (32px by default), so the panel grew a dead strip along its end that swallows presses without doing anything, and the drag-to-close hit zone kept yielding to it — `--wui-drawer-drag-zone-inset` staying non-zero on a drawer that, per its own documentation, has nothing left to yield to.
+  
+  `connectedCallback` now requests an update whenever the reconciled presence differs from what it had, matching the discipline the `slotchange` handlers already use. The section collapses as soon as the drawer is back in the document and the drag zone returns to the panel edge.
+- 3c81816: Fix `web-ui-layout`'s `header-glow` so its feather no longer ends in a hard band in Safari.
+  
+  `header` sets `isolation: isolate`, which makes it a local stacking context and a clipping boundary for its own `z-index: -1` pseudo-elements. The glow necessarily overflows that box, and `filter: blur()` extended the feather further outside the box still, where WebKit cuts it off. The result was a visible step at the bottom edge: the ramp reached a non-zero alpha and dropped straight to zero inside a single device row.
+  
+  Nothing now depends on drawing outside the box, so no cut exists. The colour is painted inside the box by a `linear-gradient`, and the real blur moved to a second pseudo-element whose `backdrop-filter` is faded to zero alpha by a `mask` before it reaches any clip line. Both layers expand with a negative `margin` rather than `transform: scale`, and the mask's alpha is already zero where the blur would have spilled out. The transparent endpoint is the bare `transparent` keyword rather than `color-mix(in srgb, var(--wui-color-page) 100%, transparent)`: colour mixing is premultiplied, so that expression resolves to the fully opaque colour and leaves no fade at all.
+  
+  Horizontal clipping, sticky behaviour and the glow's colour are unchanged, and the glow still follows the header's measured box, so it adapts to slot height as before.
+- 3c81816: Fix `web-ui-dialog`, `web-ui-drawer` and `web-ui-image-preview` so opening one with a double click no longer leaves a document selection behind.
+  
+  `showModal()` promotes the panel into the top layer, and the browser re-resolves the still-live double-click selection against the new layout. The selection therefore landed on the dialog's or drawer's own just-mounted body text, leaving it visibly highlighted. The selection is created by the browser inside the `showModal()` call: no Selection API is invoked by script, and `preventDefault()` on `dblclick` does not stop it.
+  
+  Each component now clears the document selection right after the panel is promoted. Only the selection is cleared — no `user-select` is changed — so text inside an open panel is still selectable by dragging, and the existing `user-select: none` areas are unaffected. Opening an overlay also discards a selection that existed before the open, which the modal backdrop had already made unusable.
+- 3c81816: Fix image preview staying invisible for relative image sources. Loaded images were tracked by
+  their resolved absolute URL while the rendered `is-loaded` state was looked up by the
+  caller-supplied source string, so the two never matched for a relative `src` and the image
+  remained at `opacity: 0` even though it had loaded. Images that fail to load now also fade in
+  so their alt text fallback is shown.
+- 3c81816: Remove the unused `--wui-layer-base` custom property from `<web-ui-theme>`.
+  
+  **Breaking removal:** `--wui-layer-base` was a public custom property. It has no consumers in this repository, and no compatibility alias is kept. External consumers that read or override the old property must remove those references before upgrading.
+- 3c81816: fix(web-ui): let a form-associated control actually leave the disabled state
+  
+  Re-enabling a control left it looking and behaving disabled: `<web-ui-button disabled>` with `disabled` set back to `false` kept the shadow `<button>` disabled, dimmed at 40% opacity and unclickable, while the host property, the host attribute and the component's own disabled getter all read `false`. Only a forced re-render cleared it. Lit reflects `disabled` _after_ it renders, and the browser delivers `formDisabledCallback` synchronously inside that reflection, so the follow-up `requestUpdate()` landed while `isUpdatePending` was still true and Lit dropped it — no second render ever came. `defineFormAssociation.setDisabled` now recognises that window and re-requests the update once the cycle ends, which covers every control that composes it (`web-ui-input`, `web-ui-textarea`, `web-ui-select`, the group controls and the rest), not just the button.
+  
+  `web-ui-button` also stops mirroring the state on its own: it composes the same shared form-association lifecycle instead of holding a private `ElementInternals` and `_formDisabled` copy, so the timing rule lives in one place. Its form behaviour is unchanged — it still owns an outer form for `submit`/`reset` forwarding and contributes no value to `FormData`.
+- 3c81816: fix(web-ui): let `web-ui-button` drive its outer native form
+  
+  `type="submit"` and `type="reset"` now forward through the component host's form owner after the composed `click` event finishes (on the next task), so an unprevented activation submits or resets the owning `<form>` while a `preventDefault()` on the click still cancels it. The host declares `static formAssociated = true` and reads its live owner from `ElementInternals`; the rendered button remains in Shadow DOM without a form owner of its own, so `SubmitEvent.submitter` is `null` and the button contributes no value to `FormData`.
+- 3c81816: Stop a tall context menu from spilling past the bottom of the viewport when it is opened near that edge. Clamping used `panel.getBoundingClientRect()`, which includes transforms, and the panel is mid-way through its enter animation `transform: scale(var(--wui-scale-enter, 0.95))` at exactly that moment. The clamp therefore sized the menu 5% smaller than it turns out to be: a 456px menu was positioned as if it were 433.2px tall, and once the animation settled back to `scale(1)` its bottom edge sat 14.8px below the viewport. The panel clips overflow and does not scroll, so the last item — often the destructive one — was cut off and could not be clicked or scrolled to.
+  
+  The arithmetic clamp has since given way to Floating UI. Positioning now runs `computePosition` with the trigger point as a zero-size reference: `flip` picks between opening below the trigger point and flipping above it when there is not enough room, and `shift` clamps both axes into the viewport, clearing `--wui-context-menu-safe-area-bottom` along the bottom edge. A tall menu opened near the bottom edge therefore flips above the trigger point with its bottom edge aligned to it, and is clamped into the viewport either way, so the last item stays reachable instead of being cut off.
+  
+  Sizing is still taken from untransformed dimensions. The panel is mid-way through its enter animation at exactly the moment it is positioned, and Floating UI's `getDimensions` falls back to `offsetWidth` / `offsetHeight` whenever a measured rect disagrees with them — the same protection the offset-based arithmetic gave, and still load-bearing: measuring the 95%-scaled rect would make the menu reserve less room than it ends up needing.
+  
+  This corrects both axes. The same inflated rect was feeding the horizontal clamp, so a menu opened near the right edge overflowed it by the same proportion (measured at 1.2px on a 414px-wide viewport, and scaling with menu width); both axes have their own regression guards, and the horizontal guard checks that the clamp was computed from the untransformed width rather than pinning an exact distance from the viewport edge.
+- 3c81816: Fix `web-ui-context-menu` so its initial programmatic focus remains available for keyboard navigation without showing the accent focus highlight, while explicit keyboard navigation keeps the normal focus indicator.
+- 3c81816: Fix `web-ui-context-menu` so clicks on interactive page content within its host, including list rows and checkboxes, light-dismiss the open menu while preserving the underlying interaction.
+- 3c81816: Make `<web-ui-context-menu>` modal while it is open, and anchor its touch menu to the bottom of the viewport.
+  
+  The menu used to be an ordinary positioned element with a document-level click-outside listener. That arrangement cannot decide "outside" correctly when the host has its own interactive content: every row of light DOM sits outside the menu panel, so the check and the row activation were two consequences of the same `click` with nothing arbitrating between them, and the row underneath won. Right-clicking a resource row and then clicking elsewhere activated whatever was under the click — including a checkbox or a link — instead of only dismissing the menu.
+  
+  The menu now opens inside a transparent `<dialog>` put into the top layer with `showModal()`. Modal dialogs sit above every stacking context, so the "who has the higher z-index" constraint disappears rather than being re-tuned, and nothing below can be hit-tested while the menu is open. A click therefore lands either on the scrim (dismiss) or on the panel (activate); a click on the page underneath does not reach it at all. The scrim stays fully transparent on purpose — it exists to absorb hits, not to dim the page, and a dimming context menu is easily confused with the dialog and drawer scrims, which are visible bordered cards. Escape still goes through the shared overlay arbiter so one keypress closes exactly one layer; the native `cancel` is swallowed so the UA cannot close the scrim behind the component's back. A modal `<dialog>` also restores focus to the element that had it when `showModal()` ran, so focus return is now the platform's behaviour rather than something the component reimplements.
+  
+  Activating a menu item is the one case that cannot keep the scrim modal until the exit transition finishes. Item actions commonly hand focus onward — renaming a resource swaps the row for an inline editor and focuses its textarea — and a restore that lands afterwards pulls focus straight back out of that editor. Since `web-ui-editable-text` commits on blur, the still-unchanged title was submitted as a fresh edit. So an item activation releases the scrim's modality at the moment of the click, while focus is still inside the menu and the restore still lands on the opener; the action then takes focus and keeps it. Outside clicks, Escape and programmatic `close()` keep the dialog's default effect, which is the behaviour users expect there.
+  
+  The scrim's `::backdrop` has to be cleared explicitly as well. `::backdrop` is an independent pseudo-element that does not inherit the element's `background`, so `background: transparent` on the scrim left the UA default `dialog::backdrop` — `rgba(0, 0, 0, 0.1)` — painting a 10% black layer over the whole page the moment `showModal()` ran. Every element-level check still read transparent, because that layer is not on the element at all. Clearing it keeps the scrim invisible while it stays in the top layer. The dialog and drawer backdrops are left alone: those are deliberate visible card scrims.
+  
+  Touch long-press now opens the menu downward from the press point: its top edge sits at the press `y` and it is centred horizontally on the press `x`, matching how native iOS and Android long-press menus appear. When there is not enough room below, the panel flips above the press point instead of running off the screen, and both axes are clamped into the viewport while clearing the safe area. The safe-area inset reads `--wui-context-menu-safe-area-bottom` (default `env(safe-area-inset-bottom, 0px)`), which is overridable for notched-screen simulation.
+  
+  Placement is decided by Floating UI's `flip` and `shift` middleware rather than hand-rolled arithmetic, and touch and mouse now share a single `computePosition` pass. The two inputs differ only in horizontal alignment: touch centres on the press point, while a right-click keeps the menu's top-left corner at the cursor. Centring a right-click would drop the cursor inside the panel's top edge, which both contradicts the desktop convention and leaves an item permanently under the pointer, so the split is kept — by input, not by viewport width. Near an edge the panel stays fully visible and gives up the centring; a clipped menu is worse than a non-centred one.
+  
+  One visible consequence: during the ~160ms exit transition after an item activation the scrim is out of the top layer, so the page underneath becomes hit-testable again and the menu's stacking level is that of the normal flow. It is only reachable in that short tail, and only when the menu was opened over a drawer or dialog.
+- 3c81816: Make the documented `--wui-dialog-max-height` custom property actually control `<web-ui-dialog>`. It has been listed in both READMEs as public API, but the dialog stylesheet never referenced it and hardcoded `max-height: min(90vh, 90dvh)` instead, so every consumer override was silently discarded. Consumers currently overriding it — the `AddDialog` and `RestoreDialog` in the Interweave frontend, which declare `min(82vh, 560px)` and `min(90vh, 640px)` — will now see those dialogs render at their declared height instead of the hardcoded viewport height.
+  
+  Consumers that do not set the token are unaffected: the fallback resolves to the same value as before. The `dvh` enhancement moved into an `@supports (height: 100dvh)` block rather than staying a second plain declaration. That matters because a `var()` fallback is substituted at computed-value time: on an engine without `dvh` support the substituted value would be invalid at computed-value time and `max-height` would fall back to `none`, which is worse than not having a token at all. The plain two-declaration form discarded the unsupported declaration at parse time instead.
+  
+  Both READMEs also now state the real default, `min(90vh, 90dvh)`, rather than `90vh`.
+- 3c81816: Keep the drawer's drag capsule against the panel edge instead of letting the header/footer yield drag it along — and keep it grabbable while it sits there.
+  
+  The capsule was a child of the drag-to-close hit zone, and the zone yields to the header (`placement=bottom`) or the footer (`placement=top`) so it does not cover that section's buttons. Because the capsule was positioned against the zone, it inherited the whole yield: with a 56px header it sat 68px below the panel edge instead of the 8px its own midline calls for — pushed away from the edge it was meant to mark, and onto the panel's content. This was a side effect of the change that taught the zone to yield; that fix was correct, but the capsule travelled with it.
+  
+  The capsule and the zone are now siblings, both direct children of the dialog, so the yield stays the zone's business: the capsule is always placed against the panel edge and the zone still clears the section. The two constraints pull in opposite directions — returning the zone to `top: 0` does put the capsule back at the edge, but immediately puts the header back under the hit zone — so they are separated structurally rather than by tuning a number. The capsule keeps `position: absolute` inside the dialog's transform containing block, so it still travels with the panel during a drag.
+  
+  Moving the capsule to the edge does leave it outside the zone: the two bands cannot overlap, because "against the edge" and "clear of the header" are the same axis. On its own that makes the capsule a marker you cannot grab — precisely the configuration this change targets. So `top` / `bottom` now also render a thin edge band along the grab edge (12px tall by default), whose height is derived from the capsule's own midline token. That derivation is what makes the containment structural rather than conventional: the midline is floored at half the bar thickness plus 4px, so the capsule's band can never fall outside the edge band's. Pressing the capsule starts a drag and hovering it lights it up, on every placement. The left and right placements render no edge band and are untouched — the capsule already sat inside the zone there.
+  
+  The trade is explicit: the top strip of the header or footer becomes draggable rather than inert. That strip is only as wide as the capsule and centred with it — never the panel's full width — and that footprint ceiling is what keeps the built-in close button and header controls clear. The clearance follows from the band never covering more than the capsule does, measured across combinations of `--wui-drawer-drag-bar-thickness` and `--wui-space-4`, not from the close button happening to sit below the band's default height; an earlier draft of this change claimed it on that basis, and the claim did not survive a thicker handle. The close button's stacking level also moved above the band, which covers the remaining case where `--wui-drawer-drag-bar-length` is long enough for the handle to reach it. One boundary is inherent: a control placed inside the capsule's own span, whose top edge falls within the band's height, is covered by the band, because the band has to cover the capsule. `z-index` does not lift such a control clear — Chromium keeps the band above slotted content — and `--wui-drawer-drag-bar-length` is the lever, since it sets the capsule length and the band width together. The capsule stays `pointer-events: none`, so it itself never intercepts a press; that is also what keeps the hover/active and drag-close-confirm colours working, since a pointer over the capsule still hovers the surface underneath. Those three rules moved to general-sibling selectors to match the new structure — adjacent-sibling would silently stop matching the edge band — and the confirm state keeps the zone in its selector so it still outranks hover/active on specificity rather than source order.
+  
+  The public tokens are unchanged, and when the drawer is nested as a lower layer both the capsule and the edge band fade out with the zone.
+- 3c81816: Stop the draw-to-close hit zone of a top or bottom drawer from covering its header or footer. The zone is an absolutely positioned sibling of the panel body, and `placement=bottom` pinned it at `top: 0` — exactly where the header starts, with a higher stacking order than the panel itself. Buttons under the header were neither clickable nor able to start a drag, and the whole header sat under a 20px transparent strip. `placement=top` was the mirror image, covering the footer rather than the header.
+  
+  Both zones now yield to the section they would otherwise cover: `bottom` clears the header, `top` clears the footer. The yield is measured from that section's border-box height with a `ResizeObserver`, written to `--wui-internal-drawer-header-inset` / `--wui-internal-drawer-footer-inset`, and consumed by the two placement rules — so a header whose height is dynamic (a narrow-viewport breakpoint rewriting it, consumer padding, slotted content wrapping) is followed rather than sampled once. With no header or footer present the yield is `0` and the zone sits exactly where it did before; the left and right placements are untouched, since they hug a vertical edge where neither section lives.
+  
+  The breathing gap between the zone and the section is exposed as `--wui-drawer-drag-zone-inset` (defaulting to `var(--wui-space-1, 4px)`) so it can be tuned on a device without rolling anything back.
+- 3c81816: Fix native dialog presence so closing immediately after opening still plays the exit transition instead of removing the dialog abruptly.
+- 3c81816: Make the whole header of a bottom drawer — and the whole footer of a top one — a drag-to-close starting area, and thicken the capsule's hit band.
+  
+  Yielding the drag zone to the header kept the header's controls clear, but it also left that section inert: with `placement=bottom` the only draggable strips were a 12px band along the grab edge and the zone below the header, so the 48px between them could not start a drag at all. On a touch device the handle was reported as far too small to hit.
+  
+  The section on the grab edge now takes the gesture itself. A press anywhere in it starts a drag, title text included. Controls are kept clear one at a time, at the event layer: a press whose composed path contains an interactive element — native `button` / `input` / `select` / `textarea` / `label` / `a[href]` / `summary`, anything `contenteditable`, an interactive ARIA `role`, or any explicit `tabindex` other than `-1` — reaches the control and starts no drag. Geometric cutting was rejected deliberately: it would have to measure each control's position, so it breaks as soon as a control moves, and it relocates the previous defect instead of removing it. A custom control that is not natively interactive needs a `role` or `tabindex` to be recognised, which is the right call for accessibility regardless.
+  
+  The capsule's hit band is now at least `--wui-drawer-drag-edge-size` (default `20px`, matching the drag zone's own default, so the handle is never harder to hit than the strip beside it), floored by the capsule's own outer edge so the capsule band stays fully covered by construction. The band was 12px before, derived from the capsule's midline alone.
+  
+  The drag zone still yields to the header or footer, the left and right placements are untouched, and with no header or footer present the geometry is exactly what it was. The built-in close button sits outside the capsule's span and stays clickable.
+- 3c81816: Remove the hairline dividers between a drawer's header, content, and footer. `.wui-drawer-header` carried a `border-bottom` and `.wui-drawer-footer` a `border-top`, both the hard-coded literal `rgb(0 0 0 / 0.06)` — the only two occurrences of that colour left in the package. The panel body already carries the `.wui-glass` ring and shadow, and the sections read as separate through padding and typographic hierarchy; on a translucent glass surface the extra 6% black line read as a hard seam. It also followed no token, so it was a leftover that no appearance override could move.
+  
+  This is a visible change to how an open drawer looks: the two lines are gone, and header/content/footer now meet without a rule between them. Nothing about layout, sizing, or behaviour changes — the sections occupy exactly the same boxes, and the header's and footer's padding tokens are untouched.
+- 3c81816: Make dropdown hover states use the neutral border background without changing text color, keep selected and active styling unchanged, and lower the shared menu panel background opacity in light and dark themes while preserving standalone fallback parity.
+- 3c81816: Derive the focus indicator colour from the accent colour instead of hard-coding it. `--wui-color-focus-ring` was the literal expansion of the default accent (`rgb(0 136 255 / 0.4)` is `#08f` at 40% alpha), kept in sync by hand, so a consumer that overrode `--wui-color-accent` — which is the documented way to theme this package — got a focus ring that stayed the original light blue. The ring is now `color-mix()` of whatever `--wui-color-accent` currently resolves to, at 40% in light and 62% in dark; those two alphas are a tuning result and are kept distinct.
+  
+  The sixteen component-level fallbacks were rewritten as a chained `var(--wui-color-focus-ring, color-mix(...))` rather than as `color-mix` literals. The value of the chained form is that the fallback derives from the same accent instead of restating one, so a literal and a theme token can no longer drift apart. Note that this is not what the token-parity guard asks for: it skips fallbacks containing `var(` (the chained form is deliberately outside its literal comparison, since a chained fallback resolves differently per theme context), so these sixteen sites are now covered by `focus-ring-accent.browser.spec.ts`, which reads the real computed style off a mounted component instead of comparing expressions. With the default accent every one of these resolves to exactly the colour it did before, so nothing changes visually until an accent is overridden — including with no `web-ui-theme` at all, where the fallback's `#08f` + 40% is the same colour as the literal it replaces. `--wui-color-glass-ring` is untouched: it is an achromatic glass-lighting token that was never meant to follow the accent. The selected-state glow on `web-ui-radio` (previously `0 0 4px rgb(0 136 255 / 0.3)`, which had no custom property at all and so was not covered by the parity guard) now derives from the accent at 30%; it is a decorative glow rather than the focus ring, which is why its alpha differs.
+- 3c81816: feat(web-ui): add three icons to `@greypan/web-ui/icons`
+  
+  `biCheckLg`, `akarIconsCircleCheck` and `fluentTagSearch24Regular` join the generated icon
+  set. All three are additive exports — nothing is renamed or removed, so existing consumers
+  are unaffected.
+  
+  They are the icon bodies the Interweave library surface needs: a roomier check mark for
+  confirm actions, a filled circle-check for the same action in the add dialog, and a
+  tag-search glyph to prefix the tag filter input.
+  
+  The new devDependency `@iconify-json/fluent` (catalog `^1.2.58`) is read only by the
+  generator at build time. Icon bodies are inlined into the emitted modules, so no extra
+  dependency reaches the published bundle.
+- 3c81816: Darken light-mode surface tokens (sidebar and dropdown panels) one step for better layering.
+- 3c81816: Stop `<web-ui-dialog>` and the other scroll-locking overlays from zeroing the page scroll position while they are open. `lockScroll()` pinned the body with `position: fixed` and `top: -scrollY` to suppress iOS rubber-band scrolling, which pulled the body out of the document flow: `documentElement.scrollHeight` collapsed and `window.scrollY` was reported as `0`. Anything positioning itself from the window scroll offset — a `@tanstack/virtual-core` list, for instance — then rendered the wrong rows while keeping its old offset, so a long list showed a blank screen whenever an overlay opened over it.
+  
+  The lock now only sets `overflow` and `overscroll-behavior` on the document element and leaves the body in flow. `scrollY` and `scrollHeight` stay intact for the whole time an overlay is open, so scroll-positioned content keeps rendering correctly. The restored scroll offset is no longer saved and replayed with `scrollTo`, because the position is never disturbed in the first place.
+  
+  This changes an observable side effect of the scroll lock: the body no longer gets `position`, `top`, or `width` written to it. Nothing in the package relied on it. It also adds `overscroll-behavior: none` while locked, which additionally suppresses pull-to-refresh and overscroll chaining — expected for a modal, but new. Refcounted nesting, the public signatures, and the non-overridden default rendering are unchanged.
+- 3c81816: Make the segmented control's indicator land on the final value instead of lagging behind rapid taps. The indicator's `left` and `width` carry a 160ms transition, so tapping through several options restarted that transition each time — the second leg began from wherever the first leg had interpolated to, and the indicator stayed half a beat behind the selection, needing another full round to come to rest after the taps stopped.
+  
+  A value that now arrives while a move is still in flight lands immediately instead of queueing or restarting the interpolation. The flight window is one full `--wui-duration-trigger` from the latest change (rather than the remainder of the previous one, which would shrink with each successive landing and hand the last tap a full transition), and a request generation number discards stale expiry callbacks so an earlier window cannot clear a later landing state. A drag is not a tap sequence, so it does not open the window.
+  
+  Under reduced motion this needs no separate branch: the window is derived from `--wui-duration-trigger`, which is already zeroed there, so the gate degrades to "land every step" — the same appearance a 0ms transition has on its own. The window is not opened by the initial positioning, which is initialization rather than a move; opening it there would make the first tap after mount land instantly instead of showing the user the indicator's first animation.
+  
+  The gate turns off only the `left` and `width` transitions. It is a separate rule placed after the existing ready rule rather than a `:not(.is-settling)` added to it, because that would raise specificity from (0,3,0) to (0,4,0) and outrank the pressed-state rule that currently wins on source order — turning the press feedback's background-color from an instant switch back into an interpolated one.
+- 3c81816: Assign stable instance ids to native inputs inside form component shadows so Chrome form-field audits stop flagging them.
+- 3c81816: Keep theme view-transition direction based on the resolved appearance. `appearance="system"` now reveals with the dark direction when `prefers-color-scheme` resolves dark, while equal resolved appearances still skip the transition; explicit light/dark reveal directions are unchanged.
+- 3c81816: Keep theme view-transition reveals running through pointer movement: only `pointerdown` and wheel call `skipTransition()`, while `pointermove` and `pointerup` no longer end the reveal. This removes the source-box and pointer-id exemptions and preserves prompt hit-test recovery for deliberate press or scroll input.
+- 3c81816: Keep theme view-transition reveals stable when the initiating pointer emits follow-up events during the first 100ms: ignore only same-pointer movement or release inside the pointer-down target, while any genuinely new pointer or wheel input still skips the active transition and restores hit-testing promptly.
+- 3c81816: Skip the active view transition on first pointer interaction so hit-testing stops targeting the document element during theme switch.
+- 3c81816: fix(web-ui): stop `web-ui-context-menu` from dimming slotted content while disabled
+  
+  Setting `disabled` on `<web-ui-context-menu>` dropped everything a consumer put in the default slot to 40% opacity and switched the cursor to `not-allowed`. In `apps/interweave` that turned an empty library list into unreadable grey: the heading, its description and the icon wells all faded together.
+  
+  `disabled` only suppresses menu behaviour — `contextmenu`, `openAt()` and the ContextMenu key all return early, so no menu is ever rendered. There is no menu surface of its own to dim, and the only thing a host-level `opacity` could reach was the consumer's own trigger content. Disabling the right-click menu is not the same as disabling the trigger, so the host rule is gone. Consumers that want a visibly disabled state now render it themselves, which both demo apps already did.
+- 3c81816: Give the drawer drag bar breathing room at the panel edge. The drag bar's visual center is still floored at half the bar thickness so it can never cross the panel's inner edge, but that floor now adds a further 4px: consumers that zero `--wui-drawer-content-padding` to fill the panel edge-to-edge previously ended up with the capsule sitting flush against the edge, which read as the handle being squeezed outside the border's shadow line. With the extra inset the capsule keeps a visible gap from the edge. The default 20px padding is unaffected, and the hit zone thickness is unchanged.
+- 3c81816: Keep the drawer drag bar inside the panel when content padding is zero. The drag bar's visual center follows half of `--wui-drawer-content-padding`, now floored at half the bar thickness, so consumers that zero the padding to fill the panel edge-to-edge no longer push half the capsule past the panel's inner edge (where it stayed visible over the backdrop, since the dialog is `overflow: visible`). The default 20px padding is unaffected.
+- 3c81816: fix(web-ui): widen the nested drawer reveal base at both breakpoints
+  
+  `--wui-drawer-nested-peek-base` ships at `54px` on desktop instead of `36px`, and at `36px` instead of `24px` where the viewport is `640px` or narrower. A four-layer stack of `320px` drawers now reveals `37.43px` / `21.90px` / `15.53px` per step for a `74.86px` total on desktop, and `24.95px` / `14.60px` / `10.36px` for a `49.91px` total on narrow viewports.
+  
+  The log curve compresses its deepest step hardest, because the fourth layer reveals only `A · ln(4/3)`, which is `0.288A`. At `A = 28`, a value tried during the visual pass, that step was `8.06px`, and at the `A = 36` this change starts from it was `10.36px`. Both sit in the same range as the hardcoded `12px` step the token replaced, so the innermost card of a four-layer stack did not read as a layer of its own. `A = 54` lifts that step to `15.53px`, where each card's edge and shadow stay distinguishable.
+  
+  Narrow viewports scale by the same `1.5x` instead of adopting the desktop value. A `320px` drawer on a `390px` viewport has only `390 - 8 - 320 = 62px` of room to its left, so a `74.86px` total stack would push the innermost layer off screen. The `49.91px` total leaves its left edge at about `12px`, on screen.
+  
+  The token name, the `A · ln(d + 1)` formula, the `640px` breakpoint, the scaling and width compensation, drag-to-close, reduced motion, headless, and inset are all unchanged. Setting the token on the host or any ancestor still overrides both defaults, and `0` still turns the reveal off.
+- 3c81816: feat(web-ui): 收窄嵌套抽屉层间露边并把拖拽确认态改为中性灰
+  
+  - `--wui-drawer-nested-peek-base` 桌面基准 `54px` → `43.2px`，窄视口（`width <= 640px`）`36px` → `28.8px`，桌面:窄屏 3:2 比例不变。三处字面量（`CSS.registerProperty` 的 `initialValue`、媒体查询覆盖、JS 侧 jsdom 兜底常量）同步更新。
+  - 拖拽手柄越过关闭阈值时的确认底色从 `--wui-color-accent` 改为实心中性灰，与 hover/active 的灰阶对齐。
+- 3c81816: Flush the drawer's current layout before switching to the exit transition so WebKit reliably starts the transition when closing immediately after opening.
+- 3c81816: Stop `web-ui-dropdown` from painting the accent `:focus-visible` highlight on its first item when opened by pointer, matching the existing context-menu behavior in WebKit. Keyboard-activated opens keep the highlight, and the first arrow keypress always restores it.
+- 3c81816: feat(web-ui): add `mdiTagSearchOutline` to `@greypan/web-ui/icons`
+  
+  `mdiTagSearchOutline` is the Material Design Icons tag-search glyph, added for the
+  Interweave library tag filter prefix. It is a new export: nothing is renamed or removed.
+  
+  `fluentTagSearch24Regular` stays in the generated set. It arrived in the same unreleased
+  batch as `biCheckLg` and `akarIconsCircleCheck`, and this change leaves it without an
+  in-repo consumer, so it is kept only so both tag-search glyphs stay available to choose
+  from. Neither icon has shipped in a published version, so keeping it is not a
+  compatibility constraint.
+  
+  The new devDependency `@iconify-json/mdi` (catalog `^1.2.3`) is read only by the icon
+  generator at build time. Icon bodies are inlined into the emitted modules, so no extra
+  dependency reaches the published bundle.
+- 3c81816: fix(web-ui): move the header glow's horizontal clip off the header
+  
+  `web-ui-layout` with `header-glow` showed a hard seam at the header's bottom edge in Safari: content scrolled underneath the sticky header met a sharp cut instead of a fade.
+  
+  The glow is a `::before` pseudo-element with `inset: 0` and `transform: translateY(-50%) scale(1.05, 2)`, so it deliberately extends half a header height past the header box — that overhang is what feathers into the content below. `header` carried `overflow-x: clip` to stop the glow's horizontal scale from pushing out a page scrollbar, but WebKit applies that clip to both axes, cutting the vertical overhang and with it the fade. Chrome only clips the declared axis, which is why the seam was Safari-only.
+  
+  The clip now lives on `.layout-content`, which already has `min-width: 0` and is the box that actually contains the horizontal overflow; `header` keeps `overflow: visible`. `clip` does not create a scroll container, so the sticky behaviour of the header and tabbar is unchanged.
+  
+  Because the clip box is now the content column rather than the header, horizontal overflow from `main` or `tabbar` slot content is clipped instead of producing a page-level horizontal scrollbar. Consumers that need wide content to stay reachable should keep it inside their own `overflow-x: auto` container.
+- 3c81816: Remove the `--wui-layout-header-glow-color` custom property from `<web-ui-layout>`'s `header-glow`; the glow now reads `--wui-color-page` directly.
+  
+  **Breaking removal:** `--wui-layout-header-glow-color` was a public custom property, and no compatibility alias is kept. External consumers that set it must override `--wui-color-page` on `web-ui-layout` instead.
+  
+  The property was declared on the layout's own `:host`, so it shadowed any value set on an ancestor — including `<web-ui-theme>`. A theme could therefore never change the glow's colour, and the only place an override worked was on the `web-ui-layout` element itself. Reading the theme token directly makes the glow follow light and dark appearance like every other semantic colour, and lets an override set at the theme, the page or the layout take effect.
+  
+  Two pseudo-elements back the glow: `::before` paints the colour as a `linear-gradient` inside the header box, and `::after` adds a real `backdrop-filter: blur(4px)` layer masked to zero alpha before it reaches any clip line. Separating them means blur strength and colour strength no longer pull on each other.
+- 3c81816: Lighten the menu-family panel surface from `rgb(254 254 254 / 0.76)` to `rgb(250 250 250 / 0.76)` so select, dropdown, context-menu, popover, tooltip and autocomplete panels match the rest of the light surfaces.
+- 3c81816: Make the overlay surface more opaque and drop the glass ring base color on menu panels
+  
+  `--wui-color-surface-overlay` (shared by dialog, drawer and toast) moves to
+  `rgb(248 248 248 / 0.92)` in light and `rgb(32 34 34 / 0.92)` in dark, so the
+  content behind an open overlay reads less through it.
+  
+  `--wui-color-glass-ring` is now overridden to `transparent` locally on the menu
+  popover surfaces (popover, tooltip, select, autocomplete, dropdown and context
+  menu panels) and on the pressed/dragging state of the switch, slider and
+  segmented handles. The token definition itself is unchanged. The border ring
+  falls back to the four corner arcs drawn by its sheen and shade layers, which
+  means wide menu panels no longer carry a straight border segment along the
+  middle of their long edges.
+- Updated dependencies [3c81816]
+  - @greypan/js-kit@3.0.1
+  - @greypan/browser-kit@3.0.1
+
 ## 8.1.0
 
 ### Minor Changes
