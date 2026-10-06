@@ -47,7 +47,7 @@ T0 必须 review 的要求不变，形态改变：编排层为 review 开一条�
 
 编排层的实现、角色契约与派发协议留在 herdr-projects 侧，不进本仓版本控制。仓库文档只写它承担的职责与它交付到仓库边界上的那几个值（worktree 路径、base SHA、owner 标识），不复制它的实现。
 
-同时明确不复活的清单：角色契约（Manager/Supervisor/Reviewer 等）、Handoff 模板、pane 时序、执行体启动参数，以及已删除 ADR 的编号。ADR 编号不复用——0010/0011/0015/0016/0017/0019/0020 永久空缺，下一个可用编号是 0021。列这份清单是为了不让它们被当成待办重新写回来，指向它们的内容仍然只留在 `6d7e1694` 的 diff 与 changeset 里。
+同时明确不复活的清单：角色契约（Manager/Supervisor/Reviewer 等）、Handoff 模板、pane 时序、执行体启动参数，以及已删除 ADR 的编号。ADR 编号不复用——0010/0011/0015/0016/0017/0019/0020 永久空缺，此后 0021 与 0022 被依次使用，其中 0022（发布通道形态）已于 2026-10-06 整篇删除、编号一并永久空缺，下一个可用编号是 0023。列这份清单是为了不让它们被当成待办重新写回来，指向它们的内容仍然只留在 `6d7e1694` 的 diff 与 changeset 里，0022 则留在删除它的那次 commit 里。
 
 ## 为什么不让仓库继续自己拆分
 
@@ -57,7 +57,7 @@ T0 必须 review 的要求不变，形态改变：编排层为 review 开一条�
 
 ## 行为变化
 
-- **仓库文档不再教手工编排**。`worktrees.md` 的路径约定、`git switch -C`、`--unset-upstream`、package worktree 复用规则删除；`AGENTS.md` 的手工路径约定删除；`release.md` 的 Manager 角色表述改为聚合 task 的 owner。
+- **仓库文档不再教手工编排**。`worktrees.md` 的路径约定、`git switch -C`、`--unset-upstream`、package worktree 复用规则删除；`AGENTS.md` 的手工路径约定删除；`release.md` 的 Manager 角色表述改为聚合 task 的 owner。（2026-10-06 注记：最后这一条随之作废——「聚合 task」这一层本身没有了，交付单元是任务，一条 task 的 PR 直接合进 `main`，`release.md` 已按这个形态重写。）
 - **一个 worktree 的初始化责任人明确为执行者**，不是编排层。
 - **T0 判据表少一项**，其余单元格、表头结构与「多级同时命中时取最高级」一条不变。级别对应的 freeze/review/approval/验证/commit gate 一项不减。
 - **review 拓扑的 T0 一条改写**，T1/T2 的表述原样保留；「同一会话禁止自审」与 id 形状规则不变。

@@ -57,6 +57,6 @@ Task 级别、状态机、冻结 diff、review、approval 和验证证据见 [`d
 | 代码 review                                       | [`docs/agents/workflow.md`](docs/agents/workflow.md)「review 拓扑」                                                                                                                                          |
 | 全局替换 / 重命名 / API 迁移 / 文件迁移           | [`docs/agents/global-rename.md`](docs/agents/global-rename.md)                                                                                                                                               |
 | Git commit                                        | [`.agents/rules/commit.md`](.agents/rules/commit.md)、[`docs/agents/commit.md`](docs/agents/commit.md)（AI 协作署名）和 [`CONTRIBUTING.md`](CONTRIBUTING.md)                                                 |
-| 开发流程、worktree 布局或 release 分支            | [`docs/agents/workflow.md`](docs/agents/workflow.md) 和 [`docs/agents/task-packet.md`](docs/agents/task-packet.md)；需求拆分与 task 派发由编排层（herdr-projects）决定，仓库只保留 task 级门禁               |
+| 开发流程或 worktree 布局                          | [`docs/agents/workflow.md`](docs/agents/workflow.md) 和 [`docs/agents/task-packet.md`](docs/agents/task-packet.md)；需求拆分与 task 派发由编排层（herdr-projects）决定，仓库只保留 task 级门禁               |
 
 涉及 UI、UX、交互、响应式或浏览器运行时的改动，必须按 [`browser-verification.md`](docs/agents/browser-verification.md) 在真实浏览器验证；构建成功或 jsdom 测试不能替代该验证。实现不熟悉或跨浏览器语义不明确的 Web Platform API 时，使用 MDN MCP 验证语义和兼容性。
