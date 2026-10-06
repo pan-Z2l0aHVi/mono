@@ -306,6 +306,7 @@ All form controls participate in native `FormData`, constraint validation, `form
 | **Data Display**       | [`<web-ui-avatar>`](#web-ui-avatar)                       |
 |                        | [`<web-ui-badge>`](#web-ui-badge)                         |
 |                        | [`<web-ui-empty>`](#web-ui-empty)                         |
+|                        | [`<web-ui-middle-ellipsis>`](#web-ui-middle-ellipsis)     |
 |                        | [`<web-ui-icon>`](#web-ui-icon)                           |
 |                        | [`<web-ui-spinner>`](#web-ui-spinner)                     |
 | **Layout & Utility**   | [`<web-ui-layout>`](#web-ui-layout)                       |
@@ -1301,6 +1302,30 @@ Each one overrides the value `size` derives, so all eight stay authoritative —
 | `--wui-empty-title-font-size`       | `16px`      | Title font size                             |
 | `--wui-empty-description-font-size` | `14px`      | Description font size                       |
 | `--wui-empty-action-margin-top`     | `20px`      | Space above the action slot                 |
+
+#### `<web-ui-middle-ellipsis>`
+
+Single-line middle truncation: keeps both ends and drops the middle — `very-long-file-…-abcdefghij.txt` — where `text-overflow: ellipsis` can only keep the head.
+
+| Attribute         | Type     | Default | Description                                                                                                                                                |
+| ----------------- | -------- | ------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `text`            | `string` | `''`    | Full text. Read-only from the component's side.                                                                                                            |
+| `marker`          | `string` | `'…'`   | Marker inserted between the two ends. An empty string truncates without any visible signal.                                                                |
+| `marker-position` | `number` | `50`    | Where the marker sits, 0–100. `0` puts it at the line-end (head only), `100` at the line-start (tail only). Out-of-range clamps, `NaN` falls back to `50`. |
+
+It needs what `text-overflow: ellipsis` needs: **one line with a definite inline size**. A block-level box, `flex: 1; min-width: 0` in a flex row, or a grid track all work. A host that sizes itself to its own content has no available space to truncate against, so the component settles on the width it measured and stops shrinking instead of collapsing to the marker.
+
+`marker-position` is the knob for file names, where the head is path noise and the tail carries the extension. The rows below are illustrative, not reproducible — exact cut points depend on the font; they were taken at 16px `system-ui` in a 240px box:
+
+| `marker-position` | In a 240px box                    |
+| ----------------- | --------------------------------- |
+| `0`               | `very-long-file-name-abcdefghi…`  |
+| `50` _(default)_  | `very-long-file-…-abcdefghij.txt` |
+| `80`              | `very-l…file-name-abcdefghij.txt` |
+
+Cut points always fall on **grapheme cluster** boundaries: surrogate pairs, combining marks and ZWJ emoji sequences are never split. While truncated, the full string is exposed as the `title` of the text element and removed again once everything fits. The host must be `direction: ltr`; under `direction: rtl` the composed string is reordered by the bidi algorithm.
+
+**Known limitation — copy and assistive tech.** The element holds the string you can see, so selecting and copying yields the truncated text rather than the original, and screen readers and in-page find match the truncated string too. CSS `text-overflow` has neither problem because it never touches the text node; this is the structural price of computing the split in JavaScript. `title` carries the original for hover. See `docs/research/web-ui-middle-ellipsis-261007.md` for the alternatives that keep the full string in the DOM and what they cost.
 
 #### `<web-ui-icon>`
 
