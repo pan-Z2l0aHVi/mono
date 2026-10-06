@@ -131,7 +131,6 @@ function toTagView(tag: ResourceDTO['tags'][number]): TagView {
   return { id: tag.id, name: tag.name, color: tag.color }
 }
 
-/** 过滤 + 排序。 */
 export function filterAndSort(resources: ResourceView[], criteria: ListCriteria): ResourceView[] {
   const query = criteria.searchQuery.trim().toLowerCase()
 
