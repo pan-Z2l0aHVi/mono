@@ -395,3 +395,16 @@ export async function pollUntil(check: () => boolean, message: string, timeoutMs
   }
   throw new Error(message)
 }
+
+export { hostAnimations } from './animations'
+
+/**
+ * 组件内部滚动容器上**真正滚动**的那个元素。
+ *
+ * 内容区被 OverlayScrollbars 接管后，宿主自己变成 `overflow: hidden` 的外壳，滚动发生在它
+ * 内部生成的 viewport 上；断言「内容区自己滚」时问的应当是后者。未被接管时返回宿主本身，
+ * 所以同一条断言在接管前后都成立。
+ */
+export function scrollElementOf(host: Element): Element {
+  return host.querySelector('[data-overlayscrollbars-viewport]') ?? host
+}

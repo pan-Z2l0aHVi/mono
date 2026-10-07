@@ -25,8 +25,10 @@ OverlayScrollbars.plugin(ClickScrollPlugin)
  * import '@greypan/web-ui/scrollbars.css'
  * ```
  *
- * - `autoHide: 'move'` 而不是 `'leave'`：`'leave'` 是「指针在容器里就一直显示」，
- *   `'move'` 才是「hover 时短暂显示」——指针移动唤出，`autoHideDelay` 之后自动隐去。
+ * - `autoHide: 'scroll'`：滚动条只在滚动时出现，停下 `autoHideDelay` 之后自动隐去。用户明确选了
+ *   这一档而不是 `'move'`——`'move'` 会让指针在滚动区域内移动就唤出，比 macOS 原生积极得多。
+ *   代价写清楚：**hover 本身不再唤出滚动条**（隐藏态的元素不可命中，指针根本落不到它上面），
+ *   所以 issue 里「hover 的时候短暂显示」那条只以「滚动时短暂显示」的形式满足。
  * - `autoHideSuspend` 保持关闭：打开会让滚动条在首次滚动前一直可见，与「自动隐藏」相反。
  * - `clickScroll` 走函数形态：`true` 只是「按一个视口步进」，跳到的是当前位置的下/上一屏，
  *   与点击处的距离无关。`clickScrollDistance: 0` 才是「以点击处为目标」——库把 0 定义为
@@ -36,7 +38,7 @@ OverlayScrollbars.plugin(ClickScrollPlugin)
 export const webUiScrollbarsOptions: PartialOptions = {
   scrollbars: {
     theme: WEB_UI_SCROLLBARS_THEME,
-    autoHide: 'move',
+    autoHide: 'scroll',
     autoHideDelay: 1000,
     clickScroll: () => ({ clickScrollDistance: 0 })
   }

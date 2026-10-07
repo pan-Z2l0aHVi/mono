@@ -39,7 +39,7 @@ describe('scrollbars 公共面', () => {
   it('默认行为对齐产品要求', () => {
     const { scrollbars } = webUiScrollbarsOptions
     expect(scrollbars?.theme).toBe(WEB_UI_SCROLLBARS_THEME)
-    expect(scrollbars?.autoHide).toBe('move')
+    expect(scrollbars?.autoHide).toBe('scroll')
     expect(scrollbars?.autoHideDelay).toBeGreaterThan(0)
   })
 

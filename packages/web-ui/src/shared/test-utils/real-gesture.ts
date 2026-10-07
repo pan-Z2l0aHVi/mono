@@ -11,6 +11,8 @@
  */
 import { cdp } from 'vite-plus/test/browser-playwright/context'
 
+import { hostAnimations } from './animations'
+
 /**
  * `cdp()` 返回值的导出类型是压缩过的（`send` 没被声明出来），这里只按实际用到的
  * 最小结构描述。playwright provider 下它就是一个带 `send` 的 CDP session。
@@ -153,7 +155,8 @@ export async function realDragSelectText(node: Node): Promise<void> {
 export async function waitForOpenTransition(el: Element): Promise<void> {
   await new Promise(resolve => requestAnimationFrame(resolve))
   const dialog = el.shadowRoot?.querySelector('dialog')
-  await Promise.all((dialog?.getAnimations({ subtree: true }) ?? []).map(animation => animation.finished))
+  if (!dialog) return
+  await Promise.all(hostAnimations(dialog).map(animation => animation.finished))
 }
 
 export interface RealTouchPressOptions {

@@ -930,6 +930,9 @@ importers:
       '@lit/context':
         specifier: 'catalog:'
         version: 1.1.6
+      overlayscrollbars:
+        specifier: 'catalog:'
+        version: 2.16.0
     devDependencies:
       '@greypan/tsconfig':
         specifier: workspace:*
@@ -979,9 +982,6 @@ importers:
       lit:
         specifier: 'catalog:'
         version: 3.3.3
-      overlayscrollbars:
-        specifier: 'catalog:'
-        version: 2.16.0
       react:
         specifier: 'catalog:'
         version: 19.2.8

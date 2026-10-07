@@ -1,8 +1,10 @@
 import { afterEach, describe, expect, it } from 'vite-plus/test'
 import { page } from 'vite-plus/test/browser'
 
-import '..'
 import { NESTED_PEEK_BASE_FALLBACK, PEEK_BASE_VARIABLE } from '@/shared/overlay/nested-drawer-layers'
+
+import '..'
+import { documentHostAnimations } from '@/shared/test-utils/animations'
 
 import type { WebUiDrawer } from '..'
 
@@ -122,10 +124,10 @@ async function stabilize(drawers: WebUiDrawer[], budget: Budget) {
   let previous = readLefts(drawers)
   while (!budget.expired()) {
     await new Promise(resolve => requestAnimationFrame(resolve))
-    await Promise.allSettled(document.getAnimations().map(animation => animation.finished))
+    await Promise.allSettled(documentHostAnimations().map(animation => animation.finished))
     await new Promise(resolve => requestAnimationFrame(resolve))
     const current = readLefts(drawers)
-    const settled = !document.getAnimations().length && current.join() === previous.join()
+    const settled = !documentHostAnimations().length && current.join() === previous.join()
     previous = current
     if (settled) return
   }

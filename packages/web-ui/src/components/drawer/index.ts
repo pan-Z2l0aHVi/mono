@@ -14,6 +14,7 @@ import { defineNativeDialogPresence } from '@/shared/overlay/native-dialog-prese
 import { defineNestedDrawerLayers } from '@/shared/overlay/nested-drawer-layers'
 import { defineOpenOverlay, type OpenOverlayHandle } from '@/shared/overlay/open-overlay'
 import { defineScrollLockLease } from '@/shared/scroll-lock/scroll-lock'
+import { defineScrollbarHost, overlayScrollbarShadowStyles, ScrollbarHostController } from '@/shared/scrollbars'
 import { prefersReducedMotion } from '@/shared/theme/reduced-motion'
 
 import style from './style.css?inline'
@@ -200,7 +201,7 @@ if (typeof CSS !== 'undefined' && 'registerProperty' in CSS) {
 
 @customElement('web-ui-drawer')
 export class WebUiDrawer extends LitElement {
-  static override styles = [unsafeCSS(glass), unsafeCSS(style)]
+  static override styles = [unsafeCSS(glass), unsafeCSS(style), overlayScrollbarShadowStyles]
 
   @property({ type: Boolean, reflect: true }) open = false
   @property({ type: Boolean, reflect: true, attribute: 'no-scroll-lock' }) noScrollLock = false
@@ -287,6 +288,8 @@ export class WebUiDrawer extends LitElement {
     )
   }
   private readonly _scrollLock = defineScrollLockLease().make()
+  private readonly _scrollbars = defineScrollbarHost().make()
+  private readonly _scrollbarsController = new ScrollbarHostController(this, this._scrollbars)
   private readonly _presence = defineNativeDialogPresence().make({
     getDialog: () => this.dialog,
     isConnected: () => this.isConnected,
@@ -850,6 +853,8 @@ export class WebUiDrawer extends LitElement {
 
   protected override updated(props: PropertyValues) {
     super.updated(props)
+    // 正文滚动区随抽屉的渲染存在/消失，每次更新后重取一次目标（同目标为幂等）
+    this._scrollbars.setTarget(this.renderRoot.querySelector<HTMLElement>('.wui-drawer-content'))
     if (!this.isConnected) return
 
     if (props.has('open')) {

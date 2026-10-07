@@ -1,6 +1,8 @@
 import { afterEach, describe, expect, it } from 'vite-plus/test'
 
 import '..'
+import { scrollElementOf } from '@/shared/test-utils'
+
 import type { WebUiDialog } from '..'
 
 const CONTENT_HEIGHT = 2000
@@ -84,12 +86,13 @@ describe('--wui-dialog-max-height', () => {
     component.style.setProperty('--wui-dialog-max-height', '200px')
     const dialog = await openDialog(component)
     const desc = query<HTMLElement>(component, '.desc')
+    const scroller = scrollElementOf(desc)
 
-    expect(desc.scrollHeight).toBeGreaterThan(desc.clientHeight)
+    expect(scroller.scrollHeight).toBeGreaterThan(scroller.clientHeight)
     // scrollTop > 0 才区分 auto 与 hidden：两者都让 scrollHeight 大于 clientHeight。
-    desc.scrollTop = 9999
+    scroller.scrollTop = 9999
     await new Promise(resolve => requestAnimationFrame(resolve))
-    expect(desc.scrollTop).toBeGreaterThan(0)
+    expect(scroller.scrollTop).toBeGreaterThan(0)
 
     const card = query<HTMLElement>(component, '.wui-dialog-body')
     expect(card.offsetHeight).toBeLessThanOrEqual(dialog.offsetHeight)
@@ -107,7 +110,8 @@ describe('--wui-dialog-max-height', () => {
     expect(dialog.offsetHeight).toBeLessThanOrEqual(window.innerHeight)
     expect(card.offsetHeight).toBeLessThanOrEqual(dialog.offsetHeight)
     expect(descContentHeight(component)).toBeLessThan(5000)
-    expect(desc.scrollHeight).toBeGreaterThan(desc.clientHeight)
+    const stage = scrollElementOf(desc)
+    expect(stage.scrollHeight).toBeGreaterThan(stage.clientHeight)
   })
 
   it('宽内容不产生横向滚动条', async () => {

@@ -15,6 +15,8 @@ import {
   lucideTrash2,
   lucideUpload
 } from '@greypan/web-ui/icons'
+import { webUiScrollbarsOptions } from '@greypan/web-ui/scrollbars'
+import { OverlayScrollbarsComponent } from 'overlayscrollbars-vue'
 import { nextTick, onMounted, onScopeDispose, ref, watch, type ComponentPublicInstance } from 'vue'
 
 import type { LibraryQueueItem } from '@/services/library'
@@ -332,104 +334,112 @@ function handleRenameChange(item: LibraryQueueItem, event: WebUiEvent<WebUiEdita
           </span>
         </div>
 
-        <ol
+        <OverlayScrollbarsComponent
           v-if="queue.length"
-          class="m-0 h-full min-h-0 list-none overflow-y-auto rounded-[18px] border border-black/6 bg-white p-0 [scrollbar-gutter:auto] [scrollbar-width:auto] dark:border-white/8 dark:bg-(--wui-color-surface-raised)"
+          :options="webUiScrollbarsOptions"
+          class="h-full min-h-0 overflow-y-auto rounded-[18px] border border-black/6 bg-white dark:border-white/8 dark:bg-(--wui-color-surface-raised)"
         >
-          <li
-            v-for="(item, itemIndex) in queue"
-            :key="item.id"
-            :class="[
-              metadataRowClass,
-              'items-start transition-colors duration-100 hover:bg-black/3 dark:hover:bg-[color-mix(in_srgb,var(--wui-color-text,#1b1b1b)_5%,transparent)]'
-            ]"
-          >
-            <button
-              v-if="isImagePreviewItem(item)"
-              data-queue-thumbnail
-              type="button"
-              class="grid size-10 shrink-0 cursor-zoom-in place-items-center overflow-hidden rounded-lg p-0 focus-visible:outline-3 focus-visible:outline-offset-2 focus-visible:outline-(--wui-color-focus-ring,rgb(0_136_255/0.4))"
-              :aria-label="`预览 ${item.title}`"
-              aria-haspopup="dialog"
-              @click="openImagePreview(item, $event)"
+          <!--
+            滚动条接在宿主 div 上，列表本身留在它里面：OverlayScrollbars 会把宿主的子节点搬进
+            自己生成的 viewport，而 <ol> 的内容模型只容得下 <li>——宿主若还是这个 <ol>，
+            搬进去的 viewport div 就落进列表里了。卡片装饰与 overflow 一并上移到宿主。
+          -->
+          <ol class="m-0 list-none p-0">
+            <li
+              v-for="(item, itemIndex) in queue"
+              :key="item.id"
+              :class="[
+                metadataRowClass,
+                'items-start transition-colors duration-100 hover:bg-black/3 dark:hover:bg-[color-mix(in_srgb,var(--wui-color-text,#1b1b1b)_5%,transparent)]'
+              ]"
             >
-              <ResourceThumbnail :kind="item.resourceKind" :source="queueSource(item)" :media-url="item.mediaUrl" />
-            </button>
-            <ResourceThumbnail
-              v-else
-              data-queue-thumbnail
-              :kind="item.resourceKind"
-              :source="queueSource(item)"
-              :media-url="item.mediaUrl"
-            />
-            <span class="grid min-w-0 flex-[1_1_auto] gap-[5px]">
-              <div class="flex h-8 items-center gap-2">
-                <span class="flex h-8 min-w-0 flex-[1_1_auto] items-center gap-1.5">
-                  <web-ui-editable-text
-                    v-if="editingItemId === item.id"
-                    :ref="setNameEditorRef(item.id)"
-                    :value="queueItemTitle(item)"
-                    :class="queueNameClass"
-                    class="caret-(--wui-color-accent,#08f) select-text"
-                    :aria-label="`修改 ${queueItemTitle(item)} 的名称`"
-                    @click.stop
-                    @change="handleRenameChange(item, $event)"
-                    @cancel="stopRename"
-                  />
-                  <span v-else :class="queueNameClass">
-                    {{ queueItemTitle(item) }}
+              <button
+                v-if="isImagePreviewItem(item)"
+                data-queue-thumbnail
+                type="button"
+                class="grid size-10 shrink-0 cursor-zoom-in place-items-center overflow-hidden rounded-lg p-0 focus-visible:outline-3 focus-visible:outline-offset-2 focus-visible:outline-(--wui-color-focus-ring,rgb(0_136_255/0.4))"
+                :aria-label="`预览 ${item.title}`"
+                aria-haspopup="dialog"
+                @click="openImagePreview(item, $event)"
+              >
+                <ResourceThumbnail :kind="item.resourceKind" :source="queueSource(item)" :media-url="item.mediaUrl" />
+              </button>
+              <ResourceThumbnail
+                v-else
+                data-queue-thumbnail
+                :kind="item.resourceKind"
+                :source="queueSource(item)"
+                :media-url="item.mediaUrl"
+              />
+              <span class="grid min-w-0 flex-[1_1_auto] gap-[5px]">
+                <div class="flex h-8 items-center gap-2">
+                  <span class="flex h-8 min-w-0 flex-[1_1_auto] items-center gap-1.5">
+                    <web-ui-editable-text
+                      v-if="editingItemId === item.id"
+                      :ref="setNameEditorRef(item.id)"
+                      :value="queueItemTitle(item)"
+                      :class="queueNameClass"
+                      class="caret-(--wui-color-accent,#08f) select-text"
+                      :aria-label="`修改 ${queueItemTitle(item)} 的名称`"
+                      @click.stop
+                      @change="handleRenameChange(item, $event)"
+                      @cancel="stopRename"
+                    />
+                    <span v-else :class="queueNameClass">
+                      {{ queueItemTitle(item) }}
+                    </span>
+                    <web-ui-tooltip
+                      v-if="editingItemId !== item.id"
+                      content="编辑名称"
+                      :placement="itemIndex < 5 ? 'bottom' : 'top'"
+                    >
+                      <web-ui-button icon variant="ghost" size="28" aria-label="编辑名称" @click="startRename(item)">
+                        <web-ui-icon :icon="lucidePenLine" :size="14" />
+                      </web-ui-button>
+                    </web-ui-tooltip>
                   </span>
-                  <web-ui-tooltip
-                    v-if="editingItemId !== item.id"
-                    content="编辑名称"
-                    :placement="itemIndex < 5 ? 'bottom' : 'top'"
-                  >
-                    <web-ui-button icon variant="ghost" size="28" aria-label="编辑名称" @click="startRename(item)">
-                      <web-ui-icon :icon="lucidePenLine" :size="14" />
-                    </web-ui-button>
-                  </web-ui-tooltip>
-                </span>
-                <span class="ml-auto flex shrink-0 items-center gap-1">
-                  <web-ui-button
-                    class="[--wui-button-color:var(--wui-color-danger,#dc2626)]"
-                    icon
-                    variant="ghost"
-                    size="28"
-                    aria-label="移除待添加资源"
-                    @click="emit('remove', item.id)"
-                  >
-                    <web-ui-icon :icon="lucideTrash2" :size="14" />
-                  </web-ui-button>
-                </span>
-              </div>
-              <div class="flex min-w-0 flex-wrap items-center gap-1.5">
-                <span
-                  class="shrink-0 text-xs leading-5 whitespace-nowrap text-[#6a6a6a] dark:text-(--wui-color-text-secondary)"
-                  :title="item.location"
-                >
-                  {{ item.location }}
-                </span>
-                <div class="flex min-w-0 flex-[0_0_100%] flex-wrap items-center gap-[5px]">
-                  <span v-for="tag in item.tags" :key="tag" :class="[tagChipClass, tagClass(props.tagColors[tag])]">
-                    {{ tag }}
-                  </span>
-                  <web-ui-tooltip content="编辑标签" :placement="itemIndex < 5 ? 'bottom' : 'top'">
+                  <span class="ml-auto flex shrink-0 items-center gap-1">
                     <web-ui-button
-                      class="shrink-0 [--wui-button-color:var(--wui-color-accent,#08f)]"
+                      class="[--wui-button-color:var(--wui-color-danger,#dc2626)]"
                       icon
                       variant="ghost"
-                      size="20"
-                      aria-label="编辑标签"
-                      @click="emit('editTags', item)"
+                      size="28"
+                      aria-label="移除待添加资源"
+                      @click="emit('remove', item.id)"
                     >
-                      <web-ui-icon :icon="lucideTags" :size="12" />
+                      <web-ui-icon :icon="lucideTrash2" :size="14" />
                     </web-ui-button>
-                  </web-ui-tooltip>
+                  </span>
                 </div>
-              </div>
-            </span>
-          </li>
-        </ol>
+                <div class="flex min-w-0 flex-wrap items-center gap-1.5">
+                  <span
+                    class="shrink-0 text-xs leading-5 whitespace-nowrap text-[#6a6a6a] dark:text-(--wui-color-text-secondary)"
+                    :title="item.location"
+                  >
+                    {{ item.location }}
+                  </span>
+                  <div class="flex min-w-0 flex-[0_0_100%] flex-wrap items-center gap-[5px]">
+                    <span v-for="tag in item.tags" :key="tag" :class="[tagChipClass, tagClass(props.tagColors[tag])]">
+                      {{ tag }}
+                    </span>
+                    <web-ui-tooltip content="编辑标签" :placement="itemIndex < 5 ? 'bottom' : 'top'">
+                      <web-ui-button
+                        class="shrink-0 [--wui-button-color:var(--wui-color-accent,#08f)]"
+                        icon
+                        variant="ghost"
+                        size="20"
+                        aria-label="编辑标签"
+                        @click="emit('editTags', item)"
+                      >
+                        <web-ui-icon :icon="lucideTags" :size="12" />
+                      </web-ui-button>
+                    </web-ui-tooltip>
+                  </div>
+                </div>
+              </span>
+            </li>
+          </ol>
+        </OverlayScrollbarsComponent>
 
         <div
           v-else
