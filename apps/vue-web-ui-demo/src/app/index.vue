@@ -146,6 +146,7 @@ const navItems: NavItem[] = [
   { path: '/components/drawer', label: 'Drawer 抽屉' },
   { path: '/components/image-preview', label: 'ImagePreview 图片预览' },
   { path: '/components/empty', label: 'Empty 空状态' },
+  { path: '/components/middle-ellipsis', label: 'MiddleEllipsis 中间省略' },
   { path: '/components/tooltip', label: 'Tooltip 工具提示' },
   { path: '/components/switch', label: 'Switch 开关' },
   { path: '/components/slider', label: 'Slider 滑块' },
