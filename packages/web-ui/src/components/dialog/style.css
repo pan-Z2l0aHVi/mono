@@ -170,6 +170,43 @@ dialog[open].is-visible::backdrop {
   min-height: 0;
 }
 
+/* ===== body 模式：内容区是卡片内部的滚动层 =====
+
+   body 模式没有 title / footer，卡片就是内容区，所以这里要同时守住两件事：
+   内容不高时卡片贴合内容（与基础规则一致），内容高过视口时把上限交给视口、把溢出交给
+   滚动。少了后半件，卡片会一路长到内容高度并溢出 dialog 盒子；dialog 是 overflow:
+   visible（阴影与关闭按钮不能由同尺寸的原生 dialog 裁），溢出的那截落在视口之下，
+   既看不到也够不着。
+
+   上限取与整卡兜底相同的字面量，而不是 `--wui-dialog-max-height`：后者的公开语义是
+   `.desc` 的高度（README 有记录），body 模式根本没有 `.desc`，套上去会凭空改掉
+   这档的既有尺寸语义。
+
+   滚动单独成层而不是让卡片自己滚：关闭按钮是卡片的绝对定位直接子元素，卡片一旦自己
+   滚动，按钮会跟着内容一起滚走。padding 也跟着挪进内层，让内容与滚动容器的裁剪边
+   （padding 外沿）留出余量——贴边的控件焦点环才不会被裁成残条；内层没有滚动条槽的
+   引擎里，这圈余量与卡片直接持 padding 时逐像素相同。 */
+.wui-dialog-body:has(> .wui-dialog-content) {
+  overflow: hidden;
+  display: grid;
+  grid-template-rows: minmax(0, 1fr);
+
+  max-height: 100vh;
+  padding: 0;
+}
+
+@supports (height: 100dvh) {
+  .wui-dialog-body:has(> .wui-dialog-content) {
+    max-height: 100dvh;
+  }
+}
+
+.wui-dialog-content {
+  overflow-y: auto;
+  min-height: 0;
+  padding: var(--wui-dialog-padding, var(--wui-space-5, 20px) var(--wui-space-6, 24px) var(--wui-space-6, 24px));
+}
+
 dialog.is-closing .wui-dialog-body {
   transition-duration: var(--wui-duration-dialog-exit, 260ms);
 }
