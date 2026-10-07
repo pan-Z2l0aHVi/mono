@@ -305,24 +305,40 @@ export function getThemedPortalPanel(
  * 枚举浮层容器。浮层面板可能挂在两种地方，必须一起枚举，否则模态化的 context-menu
  * 会「查不到面板」：
  *
- * 1. overlay root 的 `[data-wui-overlay-container]`（dropdown 与未模态化的 context-menu）。
- *    嵌套 theme 各自带一个 root，只查第一个会让内层 theme 的浮层整体漏掉。
+ * 1. document 上 fallback overlay root（`[data-wui-overlay-root]`）的
+ *    `[data-wui-overlay-container]`（无主题时的 dropdown 与未模态化的 context-menu）。
+ *    它自己的内容在其 shadow root 里，所以要进 shadow 查。
+ *    theme-owned root **不进这份清单**：它由 `getThemedPortalPanel(theme, role)` 按主题查，
+ *    而它与 (2) 的 scrim 互为祖先/后代 —— 两边都收会让同一个菜单面板被 `getMenuPanels()`
+ *    数两次，而那份重复会伪装成「多开了一层菜单」。
  * 2. 菜单 scrim `<dialog data-wui-menu-scrim>`：模态化的 context-menu 把面板挂进自己
- *    `showModal()` 的 scrim（top layer），它不在任何 overlay root 里。菜单**内部**再嵌套的
- *    anchored 浮层（popover 等）同样落进 scrim —— `findEnclosingOpenDialog` 把最近的已打开
- *    dialog 当容器，而菜单打开期间那就是 scrim。
+ *    `showModal()` 的 scrim（top layer）。scrim 挂在**最近主题的 overlay root 里**，
+ *    也就是落在 `<web-ui-theme>` 的 shadow root 内（只有无主题时才回落 `document.body`）；
+ *    `document.querySelectorAll` **穿不过 shadow 边界**，所以带主题的 scrim 要按宿主逐个
+ *    进 shadow 里查 —— 嵌套 theme 各带一个 root，只查第一个会让内层 theme 里的 scrim 漏掉。
+ *    菜单**内部**再嵌套的 anchored 浮层（popover 等）同样落进 scrim ——
+ *    `findEnclosingOpenDialog` 把最近的已打开 dialog 当容器，而菜单打开期间那就是 scrim。
  *
- * 只留 (1) 的后果不是「测试报错」而是**静默退化**：面板搬进 scrim 后查找恒返回空，于是
+ * 漏掉 (2) 的后果不是「测试报错」而是**静默退化**：带主题的菜单查找恒返回空，于是
  * `toHaveLength(0)` 永远绿、`expect(panel).toBeTruthy()` 永远红。前者更危险 —— 它把一批
- * 有效断言换成了永不失败的空断言。
+ * 有效断言换成了永不失败的空断言。守护这条的是
+ * `shared/test-utils/__tests__/overlay-locators-theme.browser.spec.ts`。
  */
 function getOverlayContainers(): HTMLElement[] {
-  return [
-    ...Array.from(document.querySelectorAll<HTMLElement>('[data-wui-overlay-root]')).flatMap(root =>
-      Array.from(root.shadowRoot?.querySelectorAll<HTMLElement>('[data-wui-overlay-container]') ?? [])
-    ),
-    ...Array.from(document.querySelectorAll<HTMLElement>('dialog[data-wui-menu-scrim]'))
+  const rootContainers = Array.from(document.querySelectorAll<HTMLElement>('[data-wui-overlay-root]')).flatMap(root =>
+    Array.from(root.shadowRoot?.querySelectorAll<HTMLElement>('[data-wui-overlay-container]') ?? [])
+  )
+
+  // 无主题（或主题出现前就已打开）的 scrim 在 light DOM；带主题的在各 theme host 的 shadow
+  // root 内。两条都要收，否则模态菜单会按挂载点不同时灵时不灵。
+  const scrims = [
+    ...Array.from(document.querySelectorAll<HTMLElement>('dialog[data-wui-menu-scrim]')),
+    ...Array.from(document.querySelectorAll<HTMLElement>('web-ui-theme')).flatMap(theme =>
+      Array.from(theme.shadowRoot?.querySelectorAll<HTMLElement>('dialog[data-wui-menu-scrim]') ?? [])
+    )
   ]
+
+  return [...rootContainers, ...scrims]
 }
 
 /**
