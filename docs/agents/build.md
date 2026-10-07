@@ -100,7 +100,7 @@ turbo 本地缓存由 `.mise.toml` 的 `TURBO_CACHE_DIR` 指向 worktree 族共�
 
 ## 应用
 
-- `react-web-ui-demo` 使用 `@vitejs/plugin-react` v6（workspace catalog 当前版本）配合 React Compiler（`babel-plugin-react-compiler`，目标 19），加上 `@vitejs/plugin-legacy` 支持旧版浏览器。React 和 Vue demo 应用目前依赖浏览器验证而非维护的单元测试套件。
+- `react-web-ui-demo` 使用 `@vitejs/plugin-react` v6（workspace catalog 当前版本）配合 React Compiler（`babel-plugin-react-compiler`，目标 19），加上 `@vitejs/plugin-legacy` 支持旧版浏览器。两个 demo 各有 jsdom 与 Chromium 两层测试面（`vp test run`），差异与配置约束见 [`testing.md`](testing.md)；组件契约与浏览器运行时行为仍由 `web-ui` 的测试面与浏览器验证承担。
 - demo 应用和 `web-ui` 共享相同的 browserslist 目标（Chrome/Edge >=111、Safari/iOS >=16.4、Firefox >=128、非 dead），这与 Tailwind v4 的支持矩阵一致。`web-ui` 是唯一在构建时输出 CSS 的包；其静态 `color-mix()` 调用由 lightningcss 评估，而包含 `var()` 的 `color-mix()` 作为运行时 CSS 保留并依赖上述目标。
 - 库包（`js-kit`、`browser-kit`、`test-kit`、`deps-reload`、`unplugin-web-components`）仅包含 JavaScript，不输出 CSS，因此没有 `browserslist` 字段；它们统一声明 `engines.node >=20.11.0`。该下限覆盖了 `deps-reload` 中的 `import.meta.dirname`（Node 20.11+），与 vite/vitest 的 peer 版本范围（^20.19 / ^20）对齐，并排除了已停止维护的 Node 18 和 20 版本。
 - 两个 demo 应用都使用 `basicSsl()` 进行 HTTPS 开发服务器配置。
