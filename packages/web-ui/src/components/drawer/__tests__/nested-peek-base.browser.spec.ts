@@ -1,9 +1,9 @@
 import { afterEach, describe, expect, it } from 'vite-plus/test'
 import { page } from 'vite-plus/test/browser'
 
+import '..'
 import { NESTED_PEEK_BASE_FALLBACK, PEEK_BASE_VARIABLE } from '@/shared/overlay/nested-drawer-layers'
 
-import '..'
 import type { WebUiDrawer } from '..'
 
 /*
