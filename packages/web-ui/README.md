@@ -34,13 +34,8 @@ A subpath import registers only the component it names, so import every tag the 
 ## Scrollbars
 
 `@greypan/web-ui/scrollbars` carries the repo-wide scrollbar behavior for [OverlayScrollbars](https://github.com/KingSora/OverlayScrollbars)
-hosts: a macOS-aligned theme, auto-hide that reveals the bar while scrolling, and clicking the track scrolling to
-that spot.
-
-The components that own a scroll area inside their shadow root — `select`, `autocomplete`, `dialog`, `drawer` —
-already run it, so their scrollbars match macOS without any setup. To extend the same behavior to scroll containers
-in your own markup, import the stylesheet once per document and pass the options to whichever adapter you
-initialize with:
+hosts: a macOS-aligned theme, auto-hide that reveals the bar while scrolling, and clicking the track scrolling to that spot.
+Import the stylesheet once per document and pass the options to whichever adapter you initialize with.
 
 ```js
 import '@greypan/web-ui/scrollbars.css'
@@ -50,18 +45,13 @@ import { OverlayScrollbarsComponent } from 'overlayscrollbars-react' // or overl
 ;<OverlayScrollbarsComponent options={webUiScrollbarsOptions}>{children}</OverlayScrollbarsComponent>
 ```
 
-- `overlayscrollbars` is a runtime dependency of this package, so there is nothing extra to install. Keep it on a
-  single version in your app: the options object and the components share one plugin registry, and a second copy of
-  the library would leave it without the click-to-scroll plugin.
-- The stylesheet already contains the library's structural styles, so it replaces
-  `import 'overlayscrollbars/overlayscrollbars.css'`.
+- `overlayscrollbars` is an optional peer dependency and is only needed by this subpath. The stylesheet already
+  contains the library's structural styles, so it replaces `import 'overlayscrollbars/overlayscrollbars.css'`.
 - Keep the container's own `overflow` declaration (`overflow-y-auto`, …). OverlayScrollbars overrides it once it
   takes over, but it is what keeps the container scrollable until then.
-- **The target must be a plain scroll container.** OverlayScrollbars makes the host itself a flex row and moves its
-  children into a generated viewport, and that viewport is a block box — so a host whose own layout arranges those
-  children (a grid with `gap`, a `place-items: center` box) stops arranging them, and a list element (`ul`/`ol`)
-  would receive non-`li` children. Wrap such a container: put the scroll container _around_ the list or the layout
-  box instead of on it.
+- The target must be a plain scroll container. OverlayScrollbars turns the host into a flex row and moves its
+  children into a generated viewport, so a host whose own layout carries meaning — a grid, a centred box, a `ul`/`ol`
+  — loses it.
 - OverlayScrollbars only changes the element it is initialized on; children keep their native scrollbars. To cover
   the document scroller, initialize `document.body` — `window.scrollY` / `window.scrollTo` keep their native
   semantics there.

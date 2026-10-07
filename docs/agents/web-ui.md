@@ -20,7 +20,7 @@
 - **主题 token 或图标**：读 ADR-0006/0005 以及对应源码；`src/components/theme/style.css` 是 token 值的权威来源。
 - **React/Vue 类型或事件**：读 ADR-0005 和对应的 `src/types/` 源码；不要新增运行时 framework wrapper 或全局 Vue 类型污染。
 - **仅 CSS/视觉微调**：优先读取组件源码和相关 token；不因任务名称加载 overlay、框架适配或完整事件模型。
-- **滚动条 / OverlayScrollbars 接入**：组件自带的滚动区走 `src/shared/scrollbars/`（`defineScrollbarHost` + 共享 shadow 样式），主题与共享选项在 `src/scrollbars/`，经 `./scrollbars` 与 `./scrollbars.css` 导出；apps 侧用官方适配包挂载。
+- **滚动条 / OverlayScrollbars 接入**：`src/scrollbars/`（macOS 主题 + 共享选项，经 `./scrollbars` 与 `./scrollbars.css` 导出），apps 侧用官方适配包挂载。
 
 ## 局部不可绕过约束
 

@@ -25,12 +25,6 @@ import {
   type OverlayPortal
 } from '@/shared/overlay/portal'
 import { defineScrollLockLease } from '@/shared/scroll-lock/scroll-lock'
-import {
-  defineScrollbarHost,
-  overlayScrollbarShadowStyles,
-  overlayScrollbarStylesText,
-  ScrollbarHostController
-} from '@/shared/scrollbars'
 
 import style from './style.css?inline'
 
@@ -38,7 +32,7 @@ installPointerFocusSuppression()
 
 @customElement('web-ui-select')
 export class WebUiSelect extends FormAssociated(LitElement) {
-  static override styles = [unsafeCSS(glass), unsafeCSS(overlayMotion), unsafeCSS(style), overlayScrollbarShadowStyles]
+  static override styles = [unsafeCSS(glass), unsafeCSS(overlayMotion), unsafeCSS(style)]
 
   @property({ type: String, reflect: true }) placeholder = ''
   @property({ type: Boolean, reflect: true }) disabled = false
@@ -100,9 +94,6 @@ export class WebUiSelect extends FormAssociated(LitElement) {
   private _portal?: OverlayPortal
   private _portalContent?: HTMLElement
   private readonly _scrollLock = defineScrollLockLease().make()
-
-  private readonly _scrollbars = defineScrollbarHost().make()
-  private readonly _scrollbarsController = new ScrollbarHostController(this, this._scrollbars)
 
   private static _nextInstanceId = 0
 
@@ -201,20 +192,6 @@ export class WebUiSelect extends FormAssociated(LitElement) {
     this._scrollLock.release()
   }
 
-  /**
-   * 两条渲染路径共用一套滚动条：非 portal 时是 shadow 里的 `.select-scroll`，portal 时是面板
-   * shadow root 里的同名元素——shadow 里那个此时被 `:host([portal]) .select-overlay` 隐藏，
-   * 接管它只会量到一个 `display:none` 的盒子。同一时刻只接管当前生效的那一个，关闭后回到 null。
-   */
-  private _syncScrollbarTarget() {
-    const portalScroll =
-      this._portal?.panel.getRootNode() instanceof ShadowRoot
-        ? (this._portal.panel.getRootNode() as ShadowRoot).querySelector<HTMLElement>('.select-scroll')
-        : null
-    const shadowScroll = this.portal ? null : this.renderRoot.querySelector<HTMLElement>('.select-scroll')
-    this._scrollbars.setTarget(portalScroll ?? shadowScroll)
-  }
-
   override firstUpdated() {
     requestAnimationFrame(() => {
       if (this.isConnected) this._optionPortal.scheduleRefresh()
@@ -230,7 +207,6 @@ export class WebUiSelect extends FormAssociated(LitElement) {
     if (changed.has('portal') || changed.has('overlayContainer'))
       requestAnimationFrame(() => this._reconfigureOverlay())
     if (changed.has('noScrollLock')) this._syncScrollLock()
-    this._syncScrollbarTarget()
     this._syncOpenAttribute()
     this._syncOverlayInert()
     this._syncValidity()
@@ -467,8 +443,7 @@ export class WebUiSelect extends FormAssociated(LitElement) {
     const portal = defineOverlayPortal().make({
       container: this.overlayContainer,
       target: this,
-      // portal 面板是独立 shadow root，结构样式要通过它的 <style> 一起带进去
-      style: `${glass}\n${overlayMotion}\n${style}\n${overlayScrollbarStylesText}`,
+      style: `${glass}\n${overlayMotion}\n${style}`,
       className: 'wui-glass select-overlay portal wui-floating-panel',
       onContentChange: () => this._optionPortal.scheduleRefresh()
     })
@@ -486,8 +461,6 @@ export class WebUiSelect extends FormAssociated(LitElement) {
     this._portalContent = content
     scroll.append(content)
     portal.panel.append(scroll)
-    // 面板不经渲染周期就建好了，这一步不能只等 updated()
-    this._scrollbars.setTarget(scroll)
     // 自定义 trigger 必须留在宿主内，不能随 options 迁入 portal 面板
     portal.moveContent(
       Array.from(this.children).filter(child => child.slot !== 'trigger'),

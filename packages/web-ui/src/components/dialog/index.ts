@@ -10,13 +10,12 @@ import { dispatchOpenChangeEvent } from '@/shared/open-state'
 import { defineNativeDialogPresence } from '@/shared/overlay/native-dialog-presence'
 import { defineOpenOverlay, type OpenOverlayHandle } from '@/shared/overlay/open-overlay'
 import { defineScrollLockLease } from '@/shared/scroll-lock/scroll-lock'
-import { defineScrollbarHost, overlayScrollbarShadowStyles, ScrollbarHostController } from '@/shared/scrollbars'
 
 import style from './style.css?inline'
 
 @customElement('web-ui-dialog')
 export class WebUiDialog extends LitElement {
-  static override styles = [unsafeCSS(glass), unsafeCSS(style), overlayScrollbarShadowStyles]
+  static override styles = [unsafeCSS(glass), unsafeCSS(style)]
 
   @property({ type: Boolean, reflect: true }) open = false
   @property({ type: Boolean, reflect: true }) closable = false
@@ -46,8 +45,6 @@ export class WebUiDialog extends LitElement {
   /** 当前开启会话的句柄；未开启时为 null。查询与惰性同步走它。 */
   private _handle: OpenOverlayHandle | null = null
   private readonly _scrollLock = defineScrollLockLease().make()
-  private readonly _scrollbars = defineScrollbarHost().make()
-  private readonly _scrollbarsController = new ScrollbarHostController(this, this._scrollbars)
   private readonly _presence = defineNativeDialogPresence().make({
     getDialog: () => this.dialog,
     isConnected: () => this.isConnected,
@@ -60,9 +57,6 @@ export class WebUiDialog extends LitElement {
 
   protected override updated(props: PropertyValues) {
     super.updated(props)
-    // 正文滚动区随 dialog 的渲染存在/消失，每次更新后重取一次目标（同目标为幂等）；
-    // 放在 isConnected 早退之前，与 drawer 同形，也让目标在断开重连后仍然有效
-    this._scrollbars.setTarget(this.renderRoot.querySelector<HTMLElement>('.desc'))
     if (!this.isConnected) return
 
     if (props.has('open')) {

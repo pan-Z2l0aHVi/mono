@@ -468,14 +468,6 @@ dialog.is-dragging .wui-drawer-drag-zone {
   color: var(--wui-color-text, #1b1b1b);
 }
 
-/*
- * 接管后滚动发生在 OverlayScrollbars 生成的 viewport 上，不是 .wui-drawer-content 自己，
- * overscroll-behavior 要跟着滚动的那个盒子走——留在宿主上时滚动链会重新穿透到页面。
- */
-.wui-drawer-content [data-overlayscrollbars-viewport] {
-  overscroll-behavior: contain;
-}
-
 .wui-drawer-footer {
   flex-shrink: 0;
   padding: var(--wui-drawer-footer-padding, var(--wui-space-4, 16px) var(--wui-space-5, 20px));

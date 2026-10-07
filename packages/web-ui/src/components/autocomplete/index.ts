@@ -26,12 +26,6 @@ import {
   type OverlayPortal
 } from '@/shared/overlay/portal'
 import { defineScrollLockLease } from '@/shared/scroll-lock/scroll-lock'
-import {
-  defineScrollbarHost,
-  overlayScrollbarShadowStyles,
-  overlayScrollbarStylesText,
-  ScrollbarHostController
-} from '@/shared/scrollbars'
 
 import style from './style.css?inline'
 
@@ -64,7 +58,7 @@ function isEmptySlotNode(node: Node): node is Element {
  */
 @customElement('web-ui-autocomplete')
 export class WebUiAutocomplete extends FormAssociated(LitElement) {
-  static override styles = [unsafeCSS(glass), unsafeCSS(overlayMotion), unsafeCSS(style), overlayScrollbarShadowStyles]
+  static override styles = [unsafeCSS(glass), unsafeCSS(overlayMotion), unsafeCSS(style)]
 
   @property({ type: String, reflect: true }) placeholder = ''
   @property({ type: Boolean, reflect: true }) borderless = false
@@ -160,9 +154,6 @@ export class WebUiAutocomplete extends FormAssociated(LitElement) {
   private _portal?: OverlayPortal
   private _portalContent?: HTMLElement
   private readonly _scrollLock = defineScrollLockLease().make()
-
-  private readonly _scrollbars = defineScrollbarHost().make()
-  private readonly _scrollbarsController = new ScrollbarHostController(this, this._scrollbars)
 
   // option 注册表 / portal 同步 / 微任务调度收敛到 shared 模块（select 同款）
   private readonly _optionPortal = defineOptionPortal().make({
@@ -341,25 +332,11 @@ export class WebUiAutocomplete extends FormAssociated(LitElement) {
     if (changed.has('portal') || changed.has('overlayContainer'))
       requestAnimationFrame(() => this._reconfigureOverlay())
     if (changed.has('noScrollLock')) this._syncScrollLock()
-    this._syncScrollbarTarget()
     this.toggleAttribute('focused', this._focused)
     this._syncOpenAttribute()
     this._syncOverlayInert()
     this._syncValidity()
     this._syncOpenWithMatches()
-  }
-
-  /**
-   * 两条渲染路径共用一套滚动条：非 portal 时是 shadow 里的 `.autocomplete-scroll`，portal 时是
-   * 面板 shadow root 里的同名元素——shadow 里那个此时被 `:host([portal]) .autocomplete-overlay`
-   * 隐藏，接管它只会量到一个 `display:none` 的盒子。同一时刻只接管当前生效的那一个。
-   */
-  private _syncScrollbarTarget() {
-    const portalRoot = this._portal?.panel.getRootNode()
-    const portalScroll =
-      portalRoot instanceof ShadowRoot ? portalRoot.querySelector<HTMLElement>('.autocomplete-scroll') : null
-    const shadowScroll = this.portal ? null : this.renderRoot.querySelector<HTMLElement>('.autocomplete-scroll')
-    this._scrollbars.setTarget(portalScroll ?? shadowScroll)
   }
 
   override formDisabledCallback(disabled: boolean) {
@@ -712,8 +689,7 @@ export class WebUiAutocomplete extends FormAssociated(LitElement) {
     const portal = defineOverlayPortal().make({
       container: this.overlayContainer,
       target: this,
-      // portal 面板是独立 shadow root，结构样式要通过它的 <style> 一起带进去
-      style: `${glass}\n${overlayMotion}\n${style}\n${overlayScrollbarStylesText}`,
+      style: `${glass}\n${overlayMotion}\n${style}`,
       className: 'wui-glass autocomplete-overlay portal wui-floating-panel',
       onContentChange: () => {
         this._optionPortal.scheduleRefresh()
@@ -734,8 +710,6 @@ export class WebUiAutocomplete extends FormAssociated(LitElement) {
     this._portalContent = content
     scroll.append(content)
     portal.panel.append(scroll)
-    // 面板不经渲染周期就建好了，这一步不能只等 updated()
-    this._scrollbars.setTarget(scroll)
     for (const node of Array.from(this.childNodes)) {
       // 框架注释锚点（v-if/v-for 占位）必须留在宿主：锚点进面板后 Vue 下次翻转
       // 会以面板内节点为插入基准；portal 的 marker 注释同理不参与迁移。
