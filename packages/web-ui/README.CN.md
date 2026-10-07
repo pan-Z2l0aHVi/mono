@@ -34,7 +34,7 @@ subpath 导入只注册它点名的那个组件，页面用到的每个标签都
 ## 滚动条
 
 `@greypan/web-ui/scrollbars` 承载全仓统一的 [OverlayScrollbars](https://github.com/KingSora/OverlayScrollbars)
-滚动条行为：对齐 macOS 的主题、自动隐藏且 hover 时短暂显示、点击轨道滚动到该位置。样式表每份文档导入一次，
+滚动条行为：对齐 macOS 的主题、滚动时出现并自动隐去、点击轨道滚动到该位置。样式表每份文档导入一次，
 选项传给所用的适配包。
 
 ```js

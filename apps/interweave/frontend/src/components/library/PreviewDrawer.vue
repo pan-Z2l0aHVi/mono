@@ -1,5 +1,7 @@
 <script setup lang="ts">
 import type { WebUiDrawer, WebUiEvent } from '@greypan/web-ui'
+import { webUiScrollbarsOptions } from '@greypan/web-ui/scrollbars'
+import { OverlayScrollbarsComponent } from 'overlayscrollbars-vue'
 import { computed, onBeforeUnmount, ref, watch } from 'vue'
 
 import type { ResourceView } from '@/stores/library'
@@ -145,28 +147,44 @@ function handleOpenChange(event: WebUiEvent<WebUiDrawer, 'open-change'>) {
       v-if="open && resource"
       class="grid h-full min-h-0 grid-rows-[minmax(0,1fr)] overflow-hidden mobile:h-[calc(var(--wui-drawer-height)-56px)]"
     >
-      <div v-if="emptyState" class="grid min-h-0 place-items-center overflow-y-auto p-5">
-        <web-ui-empty :size="72" :title="emptyState.title" :description="emptyState.description">
-          <web-ui-icon slot="icon" :icon="resourceIcon(resource.kind)" :size="40" />
-        </web-ui-empty>
-      </div>
+      <!--
+        滚动接在外层宿主上，grid 留在它里面：OverlayScrollbars 会把宿主的子节点搬进自己生成的
+        块盒 viewport，`place-items-center` 的居中就不再作用于内容（见 library/host-layout-probe.png
+        的实测对照）。里层用 min-h-full / h-full 把「至少和滚动口一样高」这条接回来——viewport
+        的高度是确定的，百分比因此能解析。
+      -->
+      <OverlayScrollbarsComponent v-if="emptyState" :options="webUiScrollbarsOptions" class="min-h-0 overflow-y-auto">
+        <div class="grid min-h-full place-items-center p-5">
+          <web-ui-empty :size="72" :title="emptyState.title" :description="emptyState.description">
+            <web-ui-icon slot="icon" :icon="resourceIcon(resource.kind)" :size="40" />
+          </web-ui-empty>
+        </div>
+      </OverlayScrollbarsComponent>
 
-      <div
+      <OverlayScrollbarsComponent
         v-else-if="target.mode === 'image'"
-        class="grid min-h-0 grid-rows-[minmax(0,1fr)] place-items-center overflow-auto p-3"
+        :options="webUiScrollbarsOptions"
+        class="min-h-0 overflow-auto"
       >
-        <web-ui-empty v-if="imageFailed" :size="72" title="无法显示这张图片" description="文件可能已被移动或删除。">
-          <web-ui-icon slot="icon" :icon="resourceIcon(resource.kind)" :size="40" />
-        </web-ui-empty>
-        <img
-          v-else
-          :key="mediaKey"
-          :src="target.mediaUrl ?? undefined"
-          class="max-h-full max-w-full object-contain"
-          :alt="resource.title"
-          @error="imageFailed = true"
-        />
-      </div>
+        <!--
+          `grid-rows-[minmax(0,1fr)]` 不能省：没有显式轨道时行高由图片撑出，而图片的 `max-h-full`
+          又要向这一行取值，两边互相依赖，百分比会退化成 none——图片不再被收进格子，溢出且偏离居中。
+          显式轨道把格子的高度定下来，百分比才解析得回去。
+        -->
+        <div class="grid h-full grid-rows-[minmax(0,1fr)] place-items-center p-3">
+          <web-ui-empty v-if="imageFailed" :size="72" title="无法显示这张图片" description="文件可能已被移动或删除。">
+            <web-ui-icon slot="icon" :icon="resourceIcon(resource.kind)" :size="40" />
+          </web-ui-empty>
+          <img
+            v-else
+            :key="mediaKey"
+            :src="target.mediaUrl ?? undefined"
+            class="max-h-full max-w-full object-contain"
+            :alt="resource.title"
+            @error="imageFailed = true"
+          />
+        </div>
+      </OverlayScrollbarsComponent>
 
       <div
         v-else-if="target.mode === 'video'"
@@ -205,9 +223,15 @@ function handleOpenChange(event: WebUiEvent<WebUiDrawer, 'open-change'>) {
           >
             {{ textNotice }}
           </p>
-          <pre class="m-0 overflow-auto p-4 font-mono text-xs leading-5 whitespace-pre-wrap wrap-break-word">{{
-            textPreview.text
-          }}</pre>
+          <OverlayScrollbarsComponent :options="webUiScrollbarsOptions" class="overflow-auto">
+            <!--
+              滚动接在外层宿主上、`pre` 留在里面：适配包会在宿主里插一层内容 div，宿主若就是
+              `pre`，那层 div 会成为它的直接子节点——与 <ul>/<ol> 那条同一个形状。
+            -->
+            <pre class="m-0 p-4 font-mono text-xs leading-5 whitespace-pre-wrap wrap-break-word">{{
+              textPreview.text
+            }}</pre>
+          </OverlayScrollbarsComponent>
         </div>
       </div>
 

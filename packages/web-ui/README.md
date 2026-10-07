@@ -34,7 +34,7 @@ A subpath import registers only the component it names, so import every tag the 
 ## Scrollbars
 
 `@greypan/web-ui/scrollbars` carries the repo-wide scrollbar behavior for [OverlayScrollbars](https://github.com/KingSora/OverlayScrollbars)
-hosts: a macOS-aligned theme, auto-hide with a brief reveal on hover, and clicking the track scrolling to that spot.
+hosts: a macOS-aligned theme, auto-hide that reveals the bar while scrolling, and clicking the track scrolling to that spot.
 Import the stylesheet once per document and pass the options to whichever adapter you initialize with.
 
 ```js
