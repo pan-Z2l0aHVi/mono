@@ -127,7 +127,17 @@ async function stabilize(drawers: WebUiDrawer[], budget: Budget) {
     await Promise.allSettled(documentHostAnimations().map(animation => animation.finished))
     await new Promise(resolve => requestAnimationFrame(resolve))
     const current = readLefts(drawers)
-    const settled = !documentHostAnimations().length && current.join() === previous.join()
+    /*
+     * 「已进入视口」是第四条条件，补的是上面第 2 条剩下的那个洞：过渡诞生之前没有任何
+     * 动画可等，而归位前 dialog 整块停在视口外——于是「连续两帧几何相同」在开位之前
+     * 就成立，稳定判据提前返回，量到出屏位置（CI 实测左缘 1280 = 完全出屏，断言拿它
+     * 当基准）。
+     *
+     * 判据用几何：这几个用例的抽屉都是默认的右侧 placement，打开位必然落在视口内，
+     * 所以「左缘 < innerWidth」就是「已经进来」。仍然是公开几何，不读内部状态。
+     */
+    const entered = current.every(left => left < window.innerWidth - 1)
+    const settled = entered && !documentHostAnimations().length && current.join() === previous.join()
     previous = current
     if (settled) return
   }
