@@ -88,7 +88,7 @@ function pickAccent(value: string) {
     的抽屉）是 web-ui-layout 内部的子树，原生 dialog 提升进 top layer 后不受其 overflow、
     transform 与 aside 的 display:none 影响。
 
-    closable：关闭按钮由组件渲染（绝对定位到卡片右上角的 26px icon 按钮，偏移 16/16）。此前这里是
+    closable：关闭按钮由组件渲染（绝对定位到卡片右上角的 26px icon 按钮，偏移 20/20）。此前这里是
     宿主自绘的一枚 ghost 按钮加一条 footer「关闭」按钮，两条关闭入口各画一遍——自绘那枚还
     得自己跟窄屏挤不挤、图标尺寸对齐，现在整套几何归组件，宿主只留标题文字。
   -->
