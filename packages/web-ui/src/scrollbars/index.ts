@@ -15,7 +15,7 @@ export const WEB_UI_SCROLLBARS_THEME = 'os-theme-macos'
 OverlayScrollbars.plugin(ClickScrollPlugin)
 
 /**
- * 全仓统一的滚动条行为：外观对齐 macOS、自动隐藏、hover 短暂显示、track 点击跳转。
+ * 全仓统一的滚动条行为：外观对齐 macOS、自动隐藏、滚动时短暂显示、track 点击跳转。
  *
  * 内容尺寸或平台变化都不需要改这里，只有三条产品要求本身变了才改。覆盖层要实现的是
  * 同一套手势语言，所以用法是把它整个传给 OverlayScrollbars 初始化，而不是逐项拼接：
