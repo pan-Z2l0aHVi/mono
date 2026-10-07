@@ -59,7 +59,7 @@ function Home() {
           常用组件快速预览
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+        <div data-testid="home-quick-links-grid" className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
           {quickLinks.map(link => (
             <Link
               key={link.path}
