@@ -40,7 +40,11 @@ describe('scrollbars 公共面', () => {
     const { scrollbars } = webUiScrollbarsOptions
     expect(scrollbars?.theme).toBe(WEB_UI_SCROLLBARS_THEME)
     expect(scrollbars?.autoHide).toBe('scroll')
-    expect(scrollbars?.autoHideDelay).toBeGreaterThan(0)
+    // 这个延迟同时是「track 点击跳转」的可用窗口：滚动条隐去后它就不可命中。指针从滚动位置
+    // 移到轨道再点下去要 1s 上下，所以窗口必须明显长于它——库默认的 1300ms 就贴边了。
+    // 上界同样要钉：几十秒等于把自动隐藏关掉，「自动隐藏」那条要求在另一头被破坏。
+    expect(scrollbars?.autoHideDelay).toBeGreaterThanOrEqual(2000)
+    expect(scrollbars?.autoHideDelay).toBeLessThanOrEqual(4000)
   })
 
   it('track 点击以点击处为目标，而不是步进一个视口', () => {
