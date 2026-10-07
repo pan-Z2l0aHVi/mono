@@ -253,7 +253,9 @@ export class WebUiDialog extends LitElement {
           ${
             this._hasBody
               ? html`
-                  <slot name="body" @slotchange=${this._onBodySlotChange}></slot>
+                  <div class="wui-dialog-content">
+                    <slot name="body" @slotchange=${this._onBodySlotChange}></slot>
+                  </div>
                   ${this.closable ? this._renderCloseButton('floating') : nothing}
                 `
               : html`

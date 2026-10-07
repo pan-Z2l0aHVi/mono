@@ -253,4 +253,101 @@ describe('dialog 内容区高度约束（浏览器）', () => {
       }
     })
   })
+
+  describe('body 模式：高内容在卡片内部的滚动层里滚', () => {
+    it('内容滚到最后一块，卡片不溢出 dialog 盒子', async () => {
+      const component = document.createElement('web-ui-dialog')
+      const block = document.createElement('div')
+      block.slot = 'body'
+      block.style.cssText = 'height: 3000px;'
+      component.append(block)
+      document.body.append(component)
+      await openAndSettle(component)
+
+      const card = query<HTMLElement>(component, '.wui-dialog-body')
+      const content = query<HTMLElement>(component, '.wui-dialog-content')
+
+      // 用户后果一：卡片不许溢出 dialog 盒子。dialog 是 overflow: visible（阴影与关闭
+      // 按钮不能由同尺寸的原生 dialog 裁），溢出的那截落在视口之下，够不着也滚不动。
+      expect(card.offsetHeight).toBeLessThanOrEqual(dialogOf(component).offsetHeight)
+
+      // 用户后果二：内容自己能滚到最后一块。
+      expect(content.scrollHeight).toBeGreaterThan(content.clientHeight)
+      content.scrollTop = 99999
+      await new Promise(resolve => requestAnimationFrame(resolve))
+      expect(content.scrollTop).toBeGreaterThan(0)
+
+      /*
+       * 上一行区分不出 overflow: hidden —— hidden 下内容照样溢出、scrollTop 照样能被
+       * 程序化写动。只有 auto / scroll 才是用户真的滚得动的，所以补读一次计算值。
+       */
+      expect(['auto', 'scroll']).toContain(getComputedStyle(content).overflowY)
+    })
+
+    it('对照组：内容装得下时卡片贴合内容且不产生滚动', async () => {
+      const component = document.createElement('web-ui-dialog')
+      const block = document.createElement('div')
+      block.slot = 'body'
+      block.style.cssText = 'height: 120px;'
+      component.append(block)
+      document.body.append(component)
+      await openAndSettle(component)
+
+      const card = query<HTMLElement>(component, '.wui-dialog-body')
+      const content = query<HTMLElement>(component, '.wui-dialog-content')
+      const dialog = dialogOf(component)
+
+      /*
+       * 卡片贴合内容，而不是被固定成视口高。只写下界（> 120）区分不出这两种形态：把上限
+       * 写成 `height: 100vh` 的变异同样满足下界，也照样不产生滚动（短内容在固定高度里
+       * 不溢出），整条用例会全绿——而「内容装得下时贴合内容」正是 README 与 changeset
+       * 写下的承诺，必须自己拦得住。上界给到「卡片高度 = 内容 + 内边距」；内边距随主题
+       * 走，所以从元素上读回来，不写死数字。
+       */
+      const contentStyles = getComputedStyle(content)
+      const contentBox =
+        block.offsetHeight + parseFloat(contentStyles.paddingTop) + parseFloat(contentStyles.paddingBottom)
+      expect(card.offsetHeight).toBeCloseTo(contentBox, 0)
+
+      // 与 title 模式的兄弟用例同口径：内容不足时卡片与容器同高。
+      expect(card.offsetHeight).toBe(dialog.offsetHeight)
+
+      expect(content.scrollHeight).toBe(content.clientHeight)
+      content.scrollTop = 99999
+      await new Promise(resolve => requestAnimationFrame(resolve))
+      expect(content.scrollTop).toBe(0)
+    })
+
+    it('关闭按钮不跟随内容滚动', async () => {
+      const component = document.createElement('web-ui-dialog')
+      component.setAttribute('closable', '')
+      const block = document.createElement('div')
+      block.slot = 'body'
+      block.style.cssText = 'height: 3000px;'
+      component.append(block)
+      document.body.append(component)
+      await openAndSettle(component)
+
+      const card = query<HTMLElement>(component, '.wui-dialog-body')
+      const content = query<HTMLElement>(component, '.wui-dialog-content')
+      const close = query<HTMLElement>(component, '.wui-dialog-close')
+
+      // 浮在右上角的关闭按钮是卡片的绝对定位子元素；滚动层若错做成卡片自己，
+      // 按钮会跟着内容一起滚出视野。量相对卡片的实时几何，不用 offsetTop
+      // （offsetTop 是布局值，不随滚动变化，没有区分力）。
+      const offset = () => {
+        const cardRect = card.getBoundingClientRect()
+        const closeRect = close.getBoundingClientRect()
+        return {
+          top: Math.round(closeRect.top - cardRect.top),
+          right: Math.round(cardRect.right - closeRect.right)
+        }
+      }
+      const before = offset()
+      content.scrollTop = 99999
+      await new Promise(resolve => requestAnimationFrame(resolve))
+      expect(content.scrollTop).toBeGreaterThan(0)
+      expect(offset()).toEqual(before)
+    })
+  })
 })

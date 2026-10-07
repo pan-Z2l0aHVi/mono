@@ -839,6 +839,8 @@ web-ui-radio-group {
 | `--wui-dialog-scale-enter`        | `1.1`                                      | 进场缩放起点：由 `1.1` 收缩到 `1`，退场反向                                                                                                                                                                                                                                                                                                                           |
 
 > **高度语义**：本 token 限制的是内容区，不是整卡。标题行与 footer 仍由内容撑开，超出上限的部分在 `.desc` 内部滚动；整卡本身只由字面量 `100vh` / `100dvh` 兜底，接住「视口太矮、chrome 加内容区上限也放不下」的情况。要给**整卡**定上限的宿主仍需自行量出 chrome（卡片内边距 + 标题行 + 间距 + footer）并从 token 里减掉——Interweave 前端三个 dialog 分别减 142、142、106。不再需要这个数的是「让内容区滚起来」：改动前 `.desc` 既没有上限也没有 `overflow`，唯一能滚的是宿主自己撑出来的内层盒子，宿主想让它滚就必须自己算这个高度。
+>
+> **`body` 模式没有 `.desc`**，所以该 token 在这一档不生效。`body` 插槽被包进 `.wui-dialog-content`，滚动发生在这一层；卡片在内容装得下时仍贴合内容，装不下时由同一条字面量 `100vh` / `100dvh` 兜底。内置关闭按钮在内容滚动时保持 `--wui-dialog-close-top` / `--wui-dialog-close-right` 给出的位置不变。
 
 #### `<web-ui-drawer>`
 
