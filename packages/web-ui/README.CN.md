@@ -1391,7 +1391,7 @@ WebUiSpinner.hide() // 隐藏
 
 在 `640px` 及以下，侧边栏会切换为使用内置 glass body、可滚动 content 和 drag zone 的 `web-ui-drawer`。Layout 会将 `sidebar-width` 映射为 `--wui-drawer-width`，将 `--wui-layout-sidebar-radius` 映射为 `--wui-drawer-radius`。移动端 Toggle 以 glass 变体位于 header 行内。其左缩进默认 `8px`，可通过 `--wui-layout-mobile-toggle-inset` 与 Consumer 自身的 header 内边距对齐。
 
-`header-glow` 会在 header 插槽内容和移动端 Toggle 的背后添加 `pointer-events: none` 的装饰性晕染。它属于 Header 背景而非前景层，因此插槽内容始终位于其上方。晕染颜色取自 `--wui-color-page`，因此浅色/暗色模式自动跟随；要改颜色，在 `web-ui-layout`、theme 或其上层任意位置覆盖该属性即可。晕染由两层伪元素合成：`::before` 在 header 盒内用 `linear-gradient` 绘制底色并渐变到全透明，`::after` 再叠一层真实的 `backdrop-filter: blur(4px)`，并用 `mask` 让这层模糊的 alpha 沿高度衰减、到底缘附近归零。两层职责分开后，模糊强度与颜色浓度互不牵制。两层都用负 `margin` 而不是 `transform` 向外撑开。横向裁剪归属 `.layout-content`，glow 因此不会撑出横向滚动条。布局层级顺序为 Header（`10`）< Auxiliary（`20`）< Banner（`30`）< Tabbar（`40`）< Sidebar（`50`）。
+`header-glow` 会在 header 插槽内容和移动端 Toggle 的背后添加 `pointer-events: none` 的装饰性晕染。它属于 Header 背景而非前景层，因此插槽内容始终位于其上方。晕染颜色取自 `--wui-color-page`，因此浅色/暗色模式自动跟随；要改颜色，在 `web-ui-layout`、theme 或其上层任意位置覆盖该属性即可。晕染由两层伪元素合成：`::before` 在 header 盒内用 `linear-gradient` 绘制底色并渐变到全透明，`::after` 再叠一层真实的 `backdrop-filter: blur(4px)`，并用 `mask` 让这层模糊的 alpha 沿高度衰减、到底缘附近归零。两层职责分开后，模糊强度与颜色浓度互不牵制。两层都用负 `margin` 而不是 `transform` 撑开；模糊层止于 header 上缘，只向下与向两侧延伸。横向裁剪归属 `.layout-content`，glow 因此不会撑出横向滚动条。布局层级顺序为 Header（`10`）< Auxiliary（`20`）< Banner（`30`）< Tabbar（`40`）< Sidebar（`50`）。
 
 侧边栏卡片表面使用 `--wui-color-surface-sidebar`：浅色保持半透明中性分层，深色比 `--wui-color-page` 浅一档、与 `--wui-color-surface` 同级。它独立成 token，是因为 dialog、drawer 和 toast 共用 `--wui-color-surface-overlay`，可以采用不同表面。
 

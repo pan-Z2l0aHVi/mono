@@ -218,18 +218,29 @@ header {
  * 高度与位置，无需单独维护一层 DOM。::before 是晕染色本身，::after 在更外一圈叠一层
  * 真实模糊（backdrop-filter）。职责分开后，模糊强度与晕染浓度互不牵制。
  *
- * 两层都用负 margin 向外撑开，而不是 transform: scale。渐变完全画在盒内，底缘在
+ * 两层都用负 margin 撑开，而不是 transform: scale。渐变完全画在盒内，底缘在
  * 触及 header 盒之前就归零，盒外那一段不带可见不透明度。
+ *
+ * ::after 只向下、向两侧撑开，**不向上越出 header 盒上缘**（横向 -30px 由祖先
+ * .layout-content 的 overflow-x: clip 裁掉）。原因是 WebKit 会把元素盒在视口之外
+ * 那一段的**视口外画面**也采进 backdrop：sticky header 贴住视口顶端时它上缘就是
+ * 视口上缘，向上越出的 30px 正落在视口外，Safari 于是把那条的颜色——文档顶端以上
+ * 的浏览器/窗口底色，或滚动上去的页面内容——模糊后晕染进 header 顶缘。系统暗色 +
+ * 页面浅色时那条底色是黑的，页顶就出现一条黑色阴影（#197）。Chrome 不采样视口外，
+ * 所以只在 Safari 复现；`clip-path` 也拦不住（裁的是绘制范围，不是采样范围），
+ * 必须让盒子本身不越界。::before 是纯渐变、没有 backdrop-filter，不采样，保留
+ * 原有的 -10px。
  *
  * ::after 的 backdrop-filter 按规范会把模糊延伸到盒外，而 `isolation: isolate` 让
  * header 成为 z-index: -1 伪元素的裁剪边界，WebKit 在这条边界上会切掉盒外那段
  * （真 Safari 实测 11 级台阶）。mask 把模糊沿高度收到 0，但**残余不为 0**：它的盒
- * 比 header 高 60px（两侧各 -30px），mask 在盒高 60% 之前保持不透明、之后线性归零，
- * header 底缘正落在衰减段上——header 高 52px 时该处 alpha 约 0.67，100px 时约 0.47。
- * #184 是否因此在真 Safari 上复现，取决于这段残余被切出来是否可读；Chrome 不复现
- * （盒外那段根本没被裁，本地量不到），判据仍需真 Safari 逐像素取证；当时的取证报告
- * 曾见于一份临时取证报告 ui-polish-260929-glow-clip-ownership.md（临时目录可丢失，
- * 取证结论以上述量值为准）。
+ * 比 header 高 30px，mask 在盒高 45% 之前保持不透明、之后线性归零。45% 是折算来的：
+ * 旧盒高 H+60、截止 60%，衰减起点在 header 顶下 0.6H+6；新盒高 H+30，同一绝对起点
+ * 换算成 (0.6H+6)/(H+30)，header 高 40px 时 43%、110px 时 51%，故取中段的 45%。实测
+ * 衰减段（header 底缘以下）在 header 高 52px（demo 的取值）与改动前逐像素一致，
+ * 40~110px 全区间衰减段差异 ≤1/255；header 盒内因衰减起点上移有几级差别（≤9/255）。
+ * 改回 60% 会把 header 底缘推到衰减段起点（H=52 时该处 alpha 由 0.67 升到 0.91），
+ * header 正下方的模糊明显加重。
  *
  * 端点用裸 `transparent`（即 rgb(0 0 0 / 0)）而不是
  * `color-mix(in srgb, var(--wui-color-page) 100%, transparent)`：混色按预乘 alpha
@@ -258,11 +269,11 @@ header {
   z-index: -1;
   inset: 0;
 
-  margin: -30px;
+  margin: 0 -30px -30px;
 
   backdrop-filter: blur(4px);
 
-  mask-image: linear-gradient(to bottom, black 0%, black 60%, transparent 100%);
+  mask-image: linear-gradient(to bottom, black 0%, black 45%, transparent 100%);
   mask-repeat: no-repeat;
   mask-size: 100% 100%;
 }
