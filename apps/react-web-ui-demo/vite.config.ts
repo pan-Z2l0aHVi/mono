@@ -60,6 +60,9 @@ export default {
           // 断点与折叠态都是真实浏览器才成立的东西：jsdom 里 media query 是替身、
           // 工具类是一串不生效的字符串。这一档在 Chromium 里读回渲染结果。
           include: ['src/**/*.browser.spec.ts', 'src/**/*.browser.spec.tsx'],
+          // 这一档同样要 act 开关（spec 直接 import react 的 `act`）；但 test-helper.ts 里的
+          // 滚动替身绝不能进真实浏览器——那会掩盖真实滚动行为，所以只挂 act-setup。
+          setupFiles: ['./act-setup.ts'],
           browser: {
             enabled: true,
             headless: true,
