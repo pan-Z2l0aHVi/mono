@@ -25,7 +25,7 @@ function handleOpenChange(event: WebUiEvent<WebUiDialog, 'open-change'>) {
     :open="open"
     controlled
     no-backdrop-close
-    class="max-[640px]:[--wui-dialog-width:90vw] [--wui-dialog-width:420px]"
+    class="mobile:[--wui-dialog-width:90vw] [--wui-dialog-width:420px]"
     @open-change="handleOpenChange"
   >
     <span slot="title" class="flex items-center gap-2">

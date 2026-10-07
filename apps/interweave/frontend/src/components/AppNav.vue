@@ -73,7 +73,7 @@ function selectNav(item: (typeof navItems)[number]) {
     底部留白改由折叠 toggle 自带的 8px margin 承担，pb 再留一份会把两者推散。nav 的 mb-1 是
     兜底：h-full 万一没解析出来，mt-auto 不生效，没有这 4px 两块就会贴成一片。
   -->
-  <div class="relative z-20 flex h-full flex-col pt-2 pb-0 px-3 max-[640px]:px-0" aria-label="应用导航">
+  <div class="relative z-20 flex h-full flex-col pt-2 pb-0 px-3 mobile:px-0" aria-label="应用导航">
     <nav class="grid gap-1 mb-1" aria-label="主导航">
       <button
         v-for="item in navItems"

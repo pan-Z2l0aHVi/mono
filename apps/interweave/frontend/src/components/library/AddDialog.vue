@@ -243,7 +243,7 @@ function handleRenameChange(item: LibraryQueueItem, event: WebUiEvent<WebUiEdita
       正是「chrome 由内容撑开」要的结果。
     -->
     <div
-      class="grid min-h-0 grid-cols-2 gap-5 max-[640px]:gap-4 max-[900px]:grid-cols-1 max-[900px]:grid-rows-2"
+      class="grid min-h-0 grid-cols-2 gap-5 mobile:gap-4 max-[900px]:grid-cols-1 max-[900px]:grid-rows-2"
       style="height: var(--wui-dialog-max-height)"
     >
       <!--
@@ -280,7 +280,7 @@ function handleRenameChange(item: LibraryQueueItem, event: WebUiEvent<WebUiEdita
         -->
         <button
           type="button"
-          class="grid h-full place-content-center justify-items-center gap-3 rounded-[18px] border border-black/6 bg-[#f0f0f4] px-6 py-7 text-center transition-[background-color] duration-[160ms] hover:bg-[#e9e9ee] file-drop-target-active:scale-[1.005] file-drop-target-active:bg-[color-mix(in_srgb,var(--wui-color-accent,#08f)_9%,transparent)] dark:border-white/8 dark:bg-[color-mix(in_srgb,var(--wui-color-text,#1b1b1b)_4%,transparent)] dark:hover:bg-[color-mix(in_srgb,var(--wui-color-text,#1b1b1b)_7%,transparent)] dark:file-drop-target-active:bg-[color-mix(in_srgb,var(--wui-color-text,#1b1b1b)_7%,transparent)] max-[640px]:gap-2 max-[640px]:px-4 max-[640px]:py-2 max-[900px]:p-5"
+          class="grid h-full place-content-center justify-items-center gap-3 rounded-[18px] border border-black/6 bg-[#f0f0f4] px-6 py-7 text-center transition-[background-color] duration-[160ms] hover:bg-[#e9e9ee] file-drop-target-active:scale-[1.005] file-drop-target-active:bg-[color-mix(in_srgb,var(--wui-color-accent,#08f)_9%,transparent)] dark:border-white/8 dark:bg-[color-mix(in_srgb,var(--wui-color-text,#1b1b1b)_4%,transparent)] dark:hover:bg-[color-mix(in_srgb,var(--wui-color-text,#1b1b1b)_7%,transparent)] dark:file-drop-target-active:bg-[color-mix(in_srgb,var(--wui-color-text,#1b1b1b)_7%,transparent)] mobile:gap-2 mobile:px-4 mobile:py-2 max-[900px]:p-5"
           data-file-drop-target="library-add-files"
           :class="dragActive ? 'scale-[1.005] bg-[color-mix(in_srgb,var(--wui-color-accent,#08f)_9%,transparent)]' : ''"
           @click="emit('pickFiles')"
@@ -290,12 +290,12 @@ function handleRenameChange(item: LibraryQueueItem, event: WebUiEvent<WebUiEdita
           @drop.prevent="handleDrop"
         >
           <span
-            class="grid size-13 place-items-center rounded-[18px] bg-[color-mix(in_srgb,var(--wui-color-accent,#08f)_10%,transparent)] text-(--wui-color-accent,#08f) transition-[background-color] duration-[160ms] dark:bg-[color-mix(in_srgb,var(--wui-color-text,#1b1b1b)_8%,transparent)] dark:text-(--wui-color-text-secondary) max-[640px]:size-10 max-[640px]:rounded-xl"
+            class="grid size-13 place-items-center rounded-[18px] bg-[color-mix(in_srgb,var(--wui-color-accent,#08f)_10%,transparent)] text-(--wui-color-accent,#08f) transition-[background-color] duration-[160ms] dark:bg-[color-mix(in_srgb,var(--wui-color-text,#1b1b1b)_8%,transparent)] dark:text-(--wui-color-text-secondary) mobile:size-10 mobile:rounded-xl"
           >
             <web-ui-icon :icon="lucideUpload" :size="23" />
           </span>
           <span
-            class="text-[16px] font-semibold leading-[1.4] text-[#22212a] dark:text-(--wui-color-text) max-[640px]:text-[13px]"
+            class="text-[16px] font-semibold leading-[1.4] text-[#22212a] dark:text-(--wui-color-text) mobile:text-[13px]"
           >
             拖入文件，或点按选择
           </span>
@@ -305,7 +305,7 @@ function handleRenameChange(item: LibraryQueueItem, event: WebUiEvent<WebUiEdita
             独立成行，容器变窄时它整体下移而枚举行内部再折。
           -->
           <span
-            class="grid gap-0.5 text-xs leading-[1.4] text-[#6a6a6a] dark:text-(--wui-color-text-secondary) max-[640px]:text-[11px]"
+            class="grid gap-0.5 text-xs leading-[1.4] text-[#6a6a6a] dark:text-(--wui-color-text-secondary) mobile:text-[11px]"
           >
             <span>支持图片、视频、音频、文档、网页、代码等文件</span>
             <span>可批量添加</span>
@@ -440,7 +440,7 @@ function handleRenameChange(item: LibraryQueueItem, event: WebUiEvent<WebUiEdita
             水平线上——不靠单侧 padding 补偿：
             icon 盒 52px/圆角 18px/字形 23px、icon 到文案 12px、标题 16px/600/行高 1.4、
             标题到说明 12px、说明两行 12px/1.4 行内距 2px，与左侧逐一对应，
-            桌面与 max-[640px] 各断点同样成对。
+            桌面与 mobile: 各断点同样成对。
             高度相等的关键是说明同为两行：两行时两侧都是
             52 + 12 + 22.4 + 12 + (16.8 + 2 + 16.8) = 134px。说明只写一行时右侧会短
             18.8px、整块被顶高，此前用 pb-[16.8px] 补平；两侧都两行后补偿即失效并已删除。
@@ -450,23 +450,23 @@ function handleRenameChange(item: LibraryQueueItem, event: WebUiEvent<WebUiEdita
             关键一项是 --wui-empty-min-height: 0：web-ui-empty 的 `.empty` 默认把内容顶端对齐在
             240px min-block-size 盒内，置 0 后内容才随外层 place-items-center 真正垂直居中。
             图标到文案的 6px 基础间距来自组件内部写死的 `.empty-description` margin-top（未开放
-            token），mt-1.5 把它补到左侧 gap-3 的 12px，max-[640px]:mt-0.5 配 gap-2 同理。
+            token），mt-1.5 把它补到左侧 gap-3 的 12px，mobile:mt-0.5 配 gap-2 同理。
             图标底色与色板仍沿用 web-ui-empty 的中性 token：右侧是不可点的空态占位，染成左侧
             drop 区的强调色会读成可点击目标。
           -->
           <web-ui-empty
             :size="40"
-            class="[--wui-empty-min-height:0] [--wui-empty-padding:0] [--wui-empty-icon-size:52px] [--wui-internal-empty-icon-radius:18px] max-[640px]:[--wui-empty-icon-size:40px] max-[640px]:[--wui-internal-empty-icon-radius:12px]"
+            class="[--wui-empty-min-height:0] [--wui-empty-padding:0] [--wui-empty-icon-size:52px] [--wui-internal-empty-icon-radius:18px] mobile:[--wui-empty-icon-size:40px] mobile:[--wui-internal-empty-icon-radius:12px]"
           >
             <web-ui-icon slot="icon" :icon="lucideInbox" :size="23" />
-            <span slot="description" class="mt-1.5 grid gap-3 max-[640px]:mt-0.5 max-[640px]:gap-2">
+            <span slot="description" class="mt-1.5 grid gap-3 mobile:mt-0.5 mobile:gap-2">
               <span
-                class="text-[16px] font-semibold leading-[1.4] text-[#22212a] dark:text-(--wui-color-text) max-[640px]:text-[13px]"
+                class="text-[16px] font-semibold leading-[1.4] text-[#22212a] dark:text-(--wui-color-text) mobile:text-[13px]"
               >
                 暂无待添加资源
               </span>
               <span
-                class="grid gap-0.5 text-xs leading-[1.4] text-[#6a6a6a] dark:text-(--wui-color-text-secondary) max-[640px]:text-[11px]"
+                class="grid gap-0.5 text-xs leading-[1.4] text-[#6a6a6a] dark:text-(--wui-color-text-secondary) mobile:text-[11px]"
               >
                 <!-- 与左侧 drop 区的支持类型说明同理，各自成行而不是靠自动折行。 -->
                 <span>添加的资源将显示在此处</span>

@@ -9,7 +9,7 @@ import {
   useOverlayScrollbars,
   type OverlayScrollbarsComponentRef
 } from 'overlayscrollbars-vue'
-import { computed, onMounted, onScopeDispose, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { RouterLink, useRoute, useRouter } from 'vue-router'
 
 type ThemeAppearance = 'light' | 'dark' | 'system'
@@ -51,8 +51,8 @@ const bannerVisible = ref(true)
 const sidebarCollapsed = ref(false)
 const sidebarOpen = ref(false)
 const mobileSidebarWidth = 'min(320px, 80vw)'
-const mobileSidebarQuery = window.matchMedia('(max-width: 640px)')
-const isMobileSidebarViewport = ref(mobileSidebarQuery.matches)
+// 移动端判定由 web-ui-layout 给出（它同时决定渲染桌面树还是 drawer）：demo 不自己写断点。
+const isMobileSidebarViewport = ref(false)
 const desktopSidebarWidth = ref(getInitialSidebarWidth())
 const sidebarWidth = computed(() => (isMobileSidebarViewport.value ? mobileSidebarWidth : desktopSidebarWidth.value))
 
@@ -63,12 +63,11 @@ const sidebarWidth = computed(() => (isMobileSidebarViewport.value ? mobileSideb
  * Consumer 决定 slot 内容怎么渲染，所以闸门留在这里。
  */
 const navCollapsed = computed(() => sidebarCollapsed.value && !isMobileSidebarViewport.value)
-function syncMobileSidebarViewport() {
-  isMobileSidebarViewport.value = mobileSidebarQuery.matches
+// 挂载即移动端时，layout 会在连接那一刻派发一次 mobile-change，模板监听挂在其之前，
+// 因此首帧拿到的就是 layout 自己的判定。
+function updateMobileSidebarViewport(event: WebUiEvent<WebUiLayout, 'mobile-change'>) {
+  isMobileSidebarViewport.value = event.detail.mobile
 }
-syncMobileSidebarViewport()
-mobileSidebarQuery.addEventListener('change', syncMobileSidebarViewport)
-onScopeDispose(() => mobileSidebarQuery.removeEventListener('change', syncMobileSidebarViewport))
 
 function commitThemeAppearance(appearance: ThemeAppearance) {
   themeAppearance.value = appearance
@@ -186,6 +185,7 @@ function isNavActive(path: string) {
         @sidebar-collapsed-change="updateSidebarCollapsed"
         @sidebar-open-change="updateSidebarOpen"
         @sidebar-width-change="updateSidebarWidth"
+        @mobile-change="updateMobileSidebarViewport"
       >
         <div
           v-if="bannerVisible"
@@ -197,7 +197,7 @@ function isNavActive(path: string) {
             <web-ui-icon class="text-white" :icon="lucideX" :size="16"></web-ui-icon>
           </web-ui-button>
         </div>
-        <div slot="header" class="flex h-full w-full items-center justify-end gap-4 px-4 py-2 max-[640px]:w-screen">
+        <div slot="header" class="flex h-full w-full items-center justify-end gap-4 px-4 py-2 mobile:w-screen">
           <web-ui-select
             :value="themeMotion"
             class="[--wui-input-width:120px]"
@@ -223,7 +223,7 @@ function isNavActive(path: string) {
           slot="sidebar"
           ref="navSidebar"
           :options="webUiScrollbarsOptions"
-          class="relative z-20 h-full min-h-0 overflow-y-auto p-2 max-[640px]:px-0"
+          class="relative z-20 h-full min-h-0 overflow-y-auto p-2 mobile:px-0"
           aria-label="应用导航"
         >
           <nav class="grid gap-1" aria-label="主导航">

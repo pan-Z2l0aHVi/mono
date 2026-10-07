@@ -19,6 +19,26 @@
 /* stylelint-disable-next-line at-rule-no-unknown -- Tailwind v4 指令 */
 @custom-variant dark (&:where(web-ui-theme[resolved-appearance='dark'], web-ui-theme[resolved-appearance='dark'] *));
 
+/*
+ * `mobile:` 跟随 `web-ui-layout` 的移动端判定，不再自己写一遍 640px。
+ *
+ * layout 的判定（`matchMedia('(width <= 640px)')`）与它自己的 CSS 是同一条条件，并由
+ * `mobile` 属性反射出来（见 packages/web-ui 的 ADR-0023），所以 app 侧只需要一个选择器：
+ * 断点在哪、什么时候翻，都由 layout 一处决定。写成属性选择器而不是媒体查询**有代价**：
+ * 它只对 layout 子树内的节点生效，被 overlay 的 portal 搬到 `document.body` 的内容够不到
+ * （菜单/选项、popover、tooltip、select、autocomplete、image-preview、toast 都走那条路径）。
+ * 当前这三个 app 里没有这类节点，新增时要么留在 layout 子树里，要么用媒体查询。
+ *
+ * 也只该用来表达 max-width（移动端那一侧）。Tailwind v4 把 `@custom-variant` 生成的规则排在
+ * 主题断点之后，`:where()` 又不抬特异性，于是同属性同权、后出现者胜——一条 `desktop:grid-cols-4`
+ * 会在 ≥768 全段压掉 `md:grid-cols-4` 与 `lg:grid-cols-5`（在两个 demo 上实测：home 页三档全变
+ * 2 列、svg 示例页全变 3 列）。640 以上那一侧继续用 `sm:` / `md:` / `lg:` 这些主题断点。
+ *
+ * 写成 :where() 是为了不抬高特异性：变体带来的权重仍只有工具类本身，与被替换前同级。
+ */
+/* stylelint-disable-next-line at-rule-no-unknown -- Tailwind v4 指令 */
+@custom-variant mobile (&:where(web-ui-layout[mobile], web-ui-layout[mobile] *));
+
 html,
 body,
 #app,

@@ -58,7 +58,7 @@ const emit = defineEmits<{
 const source = computed(() => primarySource(props.resource))
 const size = computed(() => formatSize(props.resource.sizeBytes))
 const resourceNameClass = computed(() => [
-  'text-sm font-medium leading-snug wrap-break-word line-clamp-2 max-w-[75%] max-[640px]:max-w-full',
+  'text-sm font-medium leading-snug wrap-break-word line-clamp-2 max-w-[75%] mobile:max-w-full',
   props.resource.available
     ? 'text-[#22212a] dark:text-(--wui-color-text)'
     : 'text-[#b0b0b8] line-through dark:text-(--wui-color-text-disabled)'
@@ -98,7 +98,7 @@ function handleNameChange(event: WebUiEvent<WebUiEditableText, 'change'>) {
     （W3C APG 要求动态加载的集合补这两个属性）。
   -->
   <div
-    class="group relative flex items-center gap-3 px-4 max-[640px]:px-2 py-3 transition-[background-color] duration-100"
+    class="group relative flex items-center gap-3 px-4 mobile:px-2 py-3 transition-[background-color] duration-100"
     :class="[
       rowRadiusClass,
       checked
