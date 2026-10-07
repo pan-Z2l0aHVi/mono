@@ -41,18 +41,20 @@ describe('scrollbars 公共面', () => {
     expect(scrollbars?.theme).toBe(WEB_UI_SCROLLBARS_THEME)
     expect(scrollbars?.autoHide).toBe('scroll')
     // 这个延迟同时是「track 点击跳转」的可用窗口：滚动条隐去后它就不可命中。指针从滚动位置
-    // 移到轨道再点下去要 1s 上下，所以窗口必须明显长于它——库默认的 1300ms 就贴边了。
+    // 移到轨道再点下去要 1s 上下，所以窗口必须明显长于它——库默认的 1300ms 就贴边了，当前取 2000ms。
     // 上界同样要钉：几十秒等于把自动隐藏关掉，「自动隐藏」那条要求在另一头被破坏。
     expect(scrollbars?.autoHideDelay).toBeGreaterThanOrEqual(2000)
     expect(scrollbars?.autoHideDelay).toBeLessThanOrEqual(4000)
   })
 
-  it('track 点击以点击处为目标，而不是步进一个视口', () => {
+  it('track 点击以点击处为目标，且即时落位', () => {
     const clickScroll = webUiScrollbarsOptions.scrollbars?.clickScroll
     // 库只在 `isFunction` 分支里读这个选项，直接给对象会被静默忽略；`true` 则是「按一个视口
     // 步进」，与点击位置无关。距离为 0 才是「目标即点击处」——三种写法都长得像能用，这条钉住。
     expect(typeof clickScroll).toBe('function')
     const resolved = typeof clickScroll === 'function' ? clickScroll(false) : null
-    expect(resolved).toMatchObject({ clickScrollDistance: 0 })
+    // 时长 0 让库跳过默认的 200ms 缓动：`animateNumber` 用 `Math.max(0, ms)` 得到时长 0，
+    // 首帧就落到终点。少写这一项不会报错，只会退回「平滑滚过去」，所以这里和距离一起钉住。
+    expect(resolved).toMatchObject({ clickScrollDistance: 0, clickScrollDuration: 0 })
   })
 })
