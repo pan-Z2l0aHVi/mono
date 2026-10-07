@@ -101,8 +101,12 @@ async function requestCollapse(collapsed: boolean) {
  *
  * 等待必须用 testing-library 的 `waitFor` 而不是 `vi.waitFor`：跨断点时 React 的回写有两条
  * 异步链路（Root 的 `matchMedia` change 监听、layout 那 100ms 去抖的 resize 处理），实测有
- * 一部分落在「换视口」这个动作返回之后。`vi.waitFor` 的轮询不是 act 边界，那段回写会裸奔；
- * testing-library 的 `waitFor` 把轮询包在 act 里，回写才落在边界内。
+ * 一部分落在「换视口」这个动作返回之后。`vi.waitFor` 的轮询期间 act 记账照开，那段回写会
+ * 触发 `not wrapped in act`；testing-library 的 `waitFor` 则在这段等待里把
+ * `IS_REACT_ACT_ENVIRONMENT` 置为 `false`（RTL `asyncWrapper` 原话：「We just want to run
+ * `waitFor` without IS_REACT_ACT_ENVIRONMENT」），即**暂停** act 记账——落在轮询窗口里的异步
+ * 回写因此不再被记账、告警消失。它靠的是「临时关掉记账」，不是「把轮询包进 act」；这与
+ * `changeViewport` / `openDrawer` 用真 `act()` 包住触发动作是两回事。
  */
 async function settleViewport(drawerMode: boolean) {
   await waitFor(() => {
@@ -115,7 +119,8 @@ async function settleViewport(drawerMode: boolean) {
 
 /**
  * 换真实视口的触发动作本身包进 act：跨断点时同步落下的那次回写靠它覆盖（实测是切回桌面那
- * 一跳），异步落下的那次由上面的 `waitFor` 覆盖。两个边界缺一都会复现 `not wrapped in act`。
+ * 一跳）；异步落下的那次在动作返回后才写，恰好落在 `settleViewport` 的 `waitFor` 窗口里
+ * （那段时间 act 记账被 RTL 暂停，所以不会报 `not wrapped in act`）。两者缺一都会复现告警。
  */
 async function changeViewport(size: { width: number; height: number }) {
   await act(async () => {
