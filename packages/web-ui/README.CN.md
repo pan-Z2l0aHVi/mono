@@ -1386,15 +1386,24 @@ WebUiSpinner.hide() // 隐藏
 | `sidebar-collapsed` | `boolean` | `false`   | 桌面端侧边栏受控折叠状态                                       |
 | `sidebar-open`      | `boolean` | `false`   | 移动端侧边栏 Drawer 受控打开状态                               |
 | `header-glow`       | `boolean` | `false`   | 在 header 插槽内容背后显示装饰性晕染                           |
+| `mobile`            | `boolean` | `false`   | 只读派生值：当前视口是否处于移动端断点及以下                   |
 | `sidebar-width`     | `string`  | `'240px'` | 桌面端和移动端展开时的侧边栏宽度                               |
 | `collapsed-width`   | `string`  | `'72px'`  | 桌面端折叠时的侧边栏宽度                                       |
 | `sidebar-resizable` | `boolean` | `false`   | 启用桌面端侧边栏右边缘拖拽调整宽度                             |
 | `sidebar-min-width` | `string`  | —         | 拖拽调整的下限（px）；默认回退到 `collapsed-width`             |
 | `sidebar-max-width` | `string`  | —         | 拖拽调整的上限（px）；钳制在视口一半以内，内置上限优先于配置值 |
 
-**事件：** `sidebar-collapsed-change`（`CustomEvent<{ collapsed: boolean }>`）用于请求更新桌面端折叠状态；`sidebar-open-change`（`CustomEvent<{ open: boolean }>`）用于请求更新移动端 Drawer 打开状态；`sidebar-width-change`（`CustomEvent<{ width: string }>`）用于请求在拖拽调整结束后更新侧边栏宽度。Consumer 必须将请求值回写到对应的受控属性。
+**事件：** `sidebar-collapsed-change`（`CustomEvent<{ collapsed: boolean }>`）用于请求更新桌面端折叠状态；`sidebar-open-change`（`CustomEvent<{ open: boolean }>`）用于请求更新移动端 Drawer 打开状态；`sidebar-width-change`（`CustomEvent<{ width: string }>`）用于请求在拖拽调整结束后更新侧边栏宽度。Consumer 必须将请求值回写到对应的受控属性。`mobile-change`（`CustomEvent<{ mobile: boolean }>`）不是请求，它报告的是 layout 自己的派生视口状态。
 
-**折叠只作用于桌面端：** `sidebar-collapsed` 只收窄桌面端侧边栏，布局不对移动端 Drawer 施加任何折叠几何。两条分支承载的是同一份 `sidebar` 插槽内容，所以侧边栏内容密度跟着该属性变的 Consumer 必须按视口收窄这个条件（例如 `collapsed && !isMobile`），否则桌面的折叠偏好会一路渲染进 Drawer。见 issue #195。
+**移动端视口状态：** `mobile` 是派生输出而不是第二个输入——由 layout 独占写入；property 只读（赋值不生效，严格模式下抛错），写 attribute 会在同一次 reaction 内被恢复、连值一起归位，两种写法都不派发事件。它与 layout 的渲染分支、以及 layout CSS 用来隐藏桌面 aside 的媒体查询（`@media (width <= 640px)`）是同一条条件，三者不可能互相错开；翻转不再经 resize 去抖，就发生在媒体查询变化的那一刻。`mobile-change` 每次跨断点只派发一次，元素在窄视口挂载时连接那一刻的那次求值也算一次。Consumer 用 `layout.mobile` 读当前值、用 `mobile-change` 收更新即可，CSS 侧可以写 `web-ui-layout[mobile]`。
+
+**框架侧的消费方式：** layout 自身在 microtask 里重渲染，因此**在宏任务上响应的消费者会读到旧值，而新树已经在屏幕上了**：
+
+- **Vue**：模板里绑 `@mobile-change`，用 `ref` 存值。Vue 在元素插入前就挂上模板监听（因此也能收到连接期那一次），且它的 flush 在 microtask，早于 layout 自己的更新。
+- **React**：用 ref 拿到元素，在 `useLayoutEffect` 里**先读 `layout.mobile` 再订阅**，并用 `flushSync` 回写。先读是为了拿到「挂在插入之后的监听收不到」的挂载初值；`flushSync` 是为了让运行时跨断点抢在 layout 重渲染之前——React 对 DOM 监听里的 setState 走宏任务 flush，否则会出现一帧「drawer 已按新状态渲染、consumer 的值还是旧的」（本仓 React demo 修复前实测 2/221 帧）。
+- **CSS**：直接按 `web-ui-layout[mobile]` 写样式，或把它包成一个变体。Tailwind v4 的 app 可以只写一次这条边界的**移动端那一侧**、而不是每个工具类各写一遍：`@custom-variant mobile (&:where(web-ui-layout[mobile], web-ui-layout[mobile] *));`。两条限制：属性选择器只够得到 layout 子树内的节点，被 overlay portal 到 `document.body` 的内容仍需媒体查询；**不要拿自定义变体做 min-width 那一侧**——Tailwind 把 `@custom-variant` 规则排在主题断点之后，同属性的 `desktop:` 变体会在它之上的每个宽度静默压掉 `md:`/`lg:`。
+
+**折叠只作用于桌面端：** `sidebar-collapsed` 只收窄桌面端侧边栏，布局不对移动端 Drawer 施加任何折叠几何。两条分支承载的是同一份 `sidebar` 插槽内容，所以侧边栏内容密度跟着该属性变的 Consumer 必须按 `mobile` 收窄这个条件（例如 `collapsed && !layout.mobile`，或 CSS 的 `web-ui-layout[mobile]`），否则桌面的折叠偏好会一路渲染进 Drawer。见 issue #195。
 
 **侧边栏调整宽度：** 启用 `sidebar-resizable` 后，桌面端侧边栏右边缘会出现调整手柄（折叠状态下隐藏）；悬停或拖拽时显示 3px 宽的强调色垂直线和 `col-resize` 光标。
 
@@ -1439,7 +1448,7 @@ WebUiSpinner.hide() // 隐藏
 }
 ```
 
-在 `640px` 及以下，侧边栏会切换为使用内置 glass body、可滚动 content 和 drag zone 的 `web-ui-drawer`。Layout 会将 `sidebar-width` 映射为 `--wui-drawer-width`，将 `--wui-layout-sidebar-radius` 映射为 `--wui-drawer-radius`。移动端 Toggle 以 glass 变体位于 header 行内。其左缩进默认 `8px`，可通过 `--wui-layout-mobile-toggle-inset` 与 Consumer 自身的 header 内边距对齐。
+在 `640px` 及以下——与 `mobile` 报告的正是同一条条件——侧边栏会切换为使用内置 glass body、可滚动 content 和 drag zone 的 `web-ui-drawer`。Layout 会将 `sidebar-width` 映射为 `--wui-drawer-width`，将 `--wui-layout-sidebar-radius` 映射为 `--wui-drawer-radius`。移动端 Toggle 以 glass 变体位于 header 行内。其左缩进默认 `8px`，可通过 `--wui-layout-mobile-toggle-inset` 与 Consumer 自身的 header 内边距对齐。
 
 `header-glow` 会在 header 插槽内容和移动端 Toggle 的背后添加 `pointer-events: none` 的装饰性晕染。它属于 Header 背景而非前景层，因此插槽内容始终位于其上方。晕染颜色取自 `--wui-color-page`，因此浅色/暗色模式自动跟随；要改颜色，在 `web-ui-layout`、theme 或其上层任意位置覆盖该属性即可。晕染由两层伪元素合成：`::before` 在 header 盒内用 `linear-gradient` 绘制底色并渐变到全透明，`::after` 再叠一层真实的 `backdrop-filter: blur(4px)`，并用 `mask` 让这层模糊的 alpha 沿高度衰减、到底缘附近归零。两层职责分开后，模糊强度与颜色浓度互不牵制。两层都用负 `margin` 而不是 `transform` 撑开；模糊层止于 header 上缘，只向下与向两侧延伸。横向裁剪归属 `.layout-content`，glow 因此不会撑出横向滚动条。布局层级顺序为 Header（`10`）< Auxiliary（`20`）< Banner（`30`）< Tabbar（`40`）< Sidebar（`50`）。
 

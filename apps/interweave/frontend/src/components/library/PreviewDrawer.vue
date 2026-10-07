@@ -121,10 +121,10 @@ function handleOpenChange(event: WebUiEvent<WebUiDrawer, 'open-change'>) {
     dialog-label="资源预览"
     draggable
     controlled
-    class="max-[640px]:[--wui-drawer-height:80vh] max-[640px]:[--wui-drawer-inset:0px] max-[640px]:[--wui-drawer-radius:28px_28px_0_0] max-[640px]:[--wui-drawer-header-padding:0px] [--wui-drawer-width:max(60vw,320px)] [--wui-drawer-content-padding:20px] [--wui-drawer-drag-zone-size:32px]"
+    class="mobile:[--wui-drawer-height:80vh] mobile:[--wui-drawer-inset:0px] mobile:[--wui-drawer-radius:28px_28px_0_0] mobile:[--wui-drawer-header-padding:0px] [--wui-drawer-width:max(60vw,320px)] [--wui-drawer-content-padding:20px] [--wui-drawer-drag-zone-size:32px]"
     @open-change="handleOpenChange"
   >
-    <div v-if="resource" slot="header" class="flex w-full min-w-0 items-center gap-2 px-4 max-[640px]:h-14">
+    <div v-if="resource" slot="header" class="flex w-full min-w-0 items-center gap-2 px-4 mobile:h-14">
       <h2
         class="m-0 min-w-0 flex-1 truncate text-center text-[17px] font-semibold leading-snug text-[#22212a] dark:text-(--wui-color-text)"
       >
@@ -143,7 +143,7 @@ function handleOpenChange(event: WebUiEvent<WebUiDrawer, 'open-change'>) {
     -->
     <div
       v-if="open && resource"
-      class="grid h-full min-h-0 grid-rows-[minmax(0,1fr)] overflow-hidden max-[640px]:h-[calc(var(--wui-drawer-height)-56px)]"
+      class="grid h-full min-h-0 grid-rows-[minmax(0,1fr)] overflow-hidden mobile:h-[calc(var(--wui-drawer-height)-56px)]"
     >
       <div v-if="emptyState" class="grid min-h-0 place-items-center overflow-y-auto p-5">
         <web-ui-empty :size="72" :title="emptyState.title" :description="emptyState.description">

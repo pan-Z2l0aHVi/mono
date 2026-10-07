@@ -217,13 +217,10 @@ onScopeDispose(() => clearTimeout(copiedRevertTimer))
     dialog-label="资源详情"
     draggable
     controlled
-    class="max-[640px]:[--wui-drawer-height:80vh] max-[640px]:[--wui-drawer-inset:0px] max-[640px]:[--wui-drawer-radius:28px_28px_0_0] max-[640px]:[--wui-drawer-content-padding:0px] [--wui-drawer-width:360px]"
+    class="mobile:[--wui-drawer-height:80vh] mobile:[--wui-drawer-inset:0px] mobile:[--wui-drawer-radius:28px_28px_0_0] mobile:[--wui-drawer-content-padding:0px] [--wui-drawer-width:360px]"
     @open-change="handleOpenChange"
   >
-    <div
-      v-if="resource"
-      class="grid gap-4 max-[640px]:h-(--wui-drawer-height) max-[640px]:overflow-y-auto max-[640px]:p-5"
-    >
+    <div v-if="resource" class="grid gap-4 mobile:h-(--wui-drawer-height) mobile:overflow-y-auto mobile:p-5">
       <!--
         标题与标签收进第一张白卡：iOS 设置详情页顶部是「名字 + 若干属性」的分组，
         不是浮在分组之上的裸标题。标签行与标题行之间用发丝线分隔，与组内行分隔同源。

@@ -125,7 +125,7 @@ function submit() {
       **内容区预算**，不是整卡定值：整卡高度仍随 --wui-control-size 一起长。
     -->
     <div
-      class="grid min-h-0 grid-cols-2 gap-5 max-[640px]:gap-4 max-[900px]:grid-cols-1 max-[900px]:grid-rows-2"
+      class="grid min-h-0 grid-cols-2 gap-5 mobile:gap-4 max-[900px]:grid-cols-1 max-[900px]:grid-rows-2"
       style="height: var(--wui-dialog-max-height)"
     >
       <section class="grid min-h-0 min-w-0 grid-rows-[auto_minmax(0,1fr)] gap-2.5 overflow-hidden">
@@ -133,21 +133,19 @@ function submit() {
           为失效资源指定新的位置；文件会按队列顺序选择，链接可直接编辑。
         </p>
         <div
-          class="grid h-full min-h-0 place-content-center justify-items-center gap-3 rounded-3xl bg-[#f0f0f4] px-6 py-7 text-center dark:bg-[color-mix(in_srgb,var(--wui-color-text,#1b1b1b)_4%,transparent)] max-[640px]:gap-2 max-[640px]:px-4 max-[640px]:py-2 max-[900px]:p-5"
+          class="grid h-full min-h-0 place-content-center justify-items-center gap-3 rounded-3xl bg-[#f0f0f4] px-6 py-7 text-center dark:bg-[color-mix(in_srgb,var(--wui-color-text,#1b1b1b)_4%,transparent)] mobile:gap-2 mobile:px-4 mobile:py-2 max-[900px]:p-5"
         >
           <span
-            class="grid size-13 place-items-center rounded-[18px] bg-[color-mix(in_srgb,var(--wui-color-accent,#08f)_10%,transparent)] text-(--wui-color-accent,#08f) dark:bg-[color-mix(in_srgb,var(--wui-color-text,#1b1b1b)_8%,transparent)] dark:text-(--wui-color-text-secondary) max-[640px]:size-10 max-[640px]:rounded-xl"
+            class="grid size-13 place-items-center rounded-[18px] bg-[color-mix(in_srgb,var(--wui-color-accent,#08f)_10%,transparent)] text-(--wui-color-accent,#08f) dark:bg-[color-mix(in_srgb,var(--wui-color-text,#1b1b1b)_8%,transparent)] dark:text-(--wui-color-text-secondary) mobile:size-10 mobile:rounded-xl"
           >
             <web-ui-icon :icon="lucideFolderOpen" :size="23" />
           </span>
           <span
-            class="text-[15px] font-semibold leading-[1.4] text-[#22212a] dark:text-(--wui-color-text) max-[640px]:text-[13px]"
+            class="text-[15px] font-semibold leading-[1.4] text-[#22212a] dark:text-(--wui-color-text) mobile:text-[13px]"
           >
             {{ queue.length }} 个资源待找回
           </span>
-          <span
-            class="text-xs leading-[1.4] text-[#6a6a6a] dark:text-(--wui-color-text-secondary) max-[640px]:text-[11px]"
-          >
+          <span class="text-xs leading-[1.4] text-[#6a6a6a] dark:text-(--wui-color-text-secondary) mobile:text-[11px]">
             取消选择不会中断其他项目
           </span>
         </div>

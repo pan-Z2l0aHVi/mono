@@ -14,11 +14,21 @@ import { defineVisibleAreaTracker, VisibleAreaController } from '@/shared/visibl
 import style from './style.css?inline'
 
 /**
+ * 移动端断点的媒体查询。
+ *
+ * 必须与 `style.css` 里那份 `@media (width <= 640px)` 是同一条条件：CSS 用它在窄视口隐藏桌面
+ * aside，TS 用同一条件决定渲染哪一套树，两者错开就会出现「树还在桌面、aside 已经被藏起来」
+ * 的空档。两份字面量的相等由 `components/drawer/__tests__/breakpoint-parity.spec.ts` 守着。
+ */
+const MOBILE_VIEWPORT_QUERY = '(width <= 640px)'
+
+/**
  * Layout 组件 - 提供页面布局框架，支持可折叠侧边栏
  *
  * @fires sidebar-collapsed-change - 桌面端侧边栏折叠状态变更请求时触发
  * @fires sidebar-open-change - 移动端侧边栏 Drawer 开关请求时触发
  * @fires sidebar-width-change - 桌面端侧边栏拖拽调宽结束时触发，携带最终宽度（受控请求）
+ * @fires mobile-change - 视口跨越移动端断点、`mobile` 翻转时触发（派生状态通知）
  * @slot banner - 顶部 Banner 区域（全宽，随页面滚动，可选）
  * @slot header - 内容区顶部 header（sticky）
  * @slot sidebar - 侧边栏内容；Consumer 决定其内部固定区域与滚动容器
@@ -36,7 +46,8 @@ export class WebUiLayout extends LitElement {
    * 它不与 `sidebarOpen` 合并：前者是跨视口保留的密度选择，后者是移动端瞬时的 modal 可见性。
    *
    * 两处渲染的是同一份 `sidebar` slot 内容，所以本属性只负责桌面 aside 的几何：Consumer
-   * 若让自己的 slot 内容跟着它变形态（隐藏标签、改排布），必须自行按视口收窄那个条件，
+   * 若让自己的 slot 内容跟着它变形态（隐藏标签、改排布），必须按 `mobile` 收窄那个条件
+   * （例如 `collapsed && !layout.mobile`，或 CSS 的 `web-ui-layout[mobile]`），
    * 否则折叠态会一路渲染进移动端 Drawer（issue #195）。
    */
   @property({ type: Boolean, attribute: 'sidebar-collapsed', reflect: true })
@@ -75,7 +86,65 @@ export class WebUiLayout extends LitElement {
   @property({ type: Boolean, attribute: 'header-glow', reflect: true })
   headerGlow = false
 
-  @state() private _isMobile = false
+  /*
+   * `mobile` 是派生输出，不是第二个输入：像 `web-ui-theme` 的 `resolved-appearance` 一样由组件
+   * 独占写入，读取取 `MOBILE_VIEWPORT_QUERY`。外部写 attribute 会在同一次 reaction 内被恢复，
+   * 写 property 不生效（只读 accessor，严格模式下抛错）——两种写法都不构成本属性之外的
+   * 第三个视口来源。
+   */
+  @property({ type: Boolean, attribute: 'mobile', reflect: true })
+  private _mobile = false
+
+  /**
+   * 当前视口是否落在移动端分支（即 `MOBILE_VIEWPORT_QUERY` 命中）。
+   *
+   * 与组件渲染哪一套树、以及 `mobile-change` 的派发是同一个值：翻转瞬间三者一起变，
+   * Consumer 不必自己写断点判断，也不会与 layout 内部的树切换错开半拍。派生状态只读。
+   */
+  get mobile(): boolean {
+    return this._mobile
+  }
+
+  private _mobileQuery: MediaQueryList | null = null
+
+  private readonly _onMobileQueryChange = (event: MediaQueryListEvent) => {
+    this._syncMobile(event.matches)
+  }
+
+  /*
+   * 本方法由媒体查询翻转驱动，也被连接时的初次求值调用；attribute 的恢复路径见
+   * `attributeChangedCallback`，那里不改判、也不派发通知，所以 `mobile-change` 只在
+   * 视口真正跨断点时出现一次（窄视口挂载时那次算第一次）。
+   */
+  private _syncMobile(next: boolean) {
+    if (next === this._mobile) return
+    this._mobile = next
+    // 跨断点会卸载桌面 layout（resize handle 随之消失）；必须先终结进行中的拖拽，
+    // 否则手势悬挂，切回桌面后所有新拖拽都在入口被 `_isResizing()` 拦下。
+    if (this._isResizing()) this._resetActiveResize()
+    this.toggleAttribute('mobile', next)
+    this.dispatchEvent(new CustomEvent('mobile-change', { detail: { mobile: next }, bubbles: true, composed: true }))
+  }
+
+  override attributeChangedCallback(name: string, oldValue: string | null, newValue: string | null) {
+    super.attributeChangedCallback(name, oldValue, newValue)
+    // super 已把外部值写进 backing field，所以这里要按媒体查询重算，不能拿字段当真相。
+    if (name !== 'mobile') return
+    // 无 matchMedia 的环境没有视口可判，`mobile` 恒为 false（见 connectedCallback）。
+    const derived = this._mobileQuery?.matches ?? false
+    if (this._mobile !== derived) this._mobile = derived
+    /*
+     * 布尔 attribute 只论存在性，但值本身也要归位：`setAttribute('mobile', 'false')` 在移动端
+     * 会让 backing field 与 attribute 的**存在性**一致、值却留在宿主上（`getAttribute` 会回读
+     * 到 consumer 写的那串）。组件写的形态是空串，这里按同一形态恢复，主题的
+     * `resolved-appearance` 先例同理。
+     */
+    if (derived) {
+      if (this.getAttribute('mobile') !== '') this.setAttribute('mobile', '')
+      return
+    }
+    if (this.hasAttribute('mobile')) this.removeAttribute('mobile')
+  }
 
   private readonly _visibleBanner = defineVisibleAreaTracker({
     onVisibleAreaChange: area => {
@@ -86,7 +155,7 @@ export class WebUiLayout extends LitElement {
   private readonly _visibleBannerController = new VisibleAreaController(this, this._visibleBanner)
 
   private _toggleSidebar() {
-    if (this._isMobile) {
+    if (this._mobile) {
       this._emitSidebarOpenChange(!this.sidebarOpen)
       return
     }
@@ -149,7 +218,7 @@ export class WebUiLayout extends LitElement {
   }
 
   private _handleResizePointerDown(e: PointerEvent) {
-    if (!this.sidebarResizable || this.sidebarCollapsed || this._isMobile || this._isResizing()) return
+    if (!this.sidebarResizable || this.sidebarCollapsed || this._mobile || this._isResizing()) return
     // jsdom 等环境的 PointerEvent 可能缺失 isPrimary，仅在明确为 false（多点触控副指针）时拒绝。
     if (e.isPrimary === false) return
 
@@ -206,7 +275,7 @@ export class WebUiLayout extends LitElement {
   // 临时宽度，Enter 以受控请求派发 `sidebar-width-change`（与指针松手同语义），
   // Escape 撤回临时宽度交还 prop 管辖，Home/End 直接到 min/max。
   private _handleResizeKeydown(e: KeyboardEvent) {
-    if (!this.sidebarResizable || this.sidebarCollapsed || this._isMobile || this._isResizing()) return
+    if (!this.sidebarResizable || this.sidebarCollapsed || this._mobile || this._isResizing()) return
 
     const min = this._resolveSidebarMinWidth()
     const max = this._resolveSidebarMaxWidth()
@@ -252,28 +321,22 @@ export class WebUiLayout extends LitElement {
     this._resizeWidth = `${Math.round(next)}px`
   }
 
-  private _checkMobile() {
-    const nextMobile = window.innerWidth <= 640
-    // 视口跨越移动端断点会卸载桌面 layout（handle 随之消失）；必须先终结进行中的
-    // 拖拽，否则 _resizePointerId 悬挂，切回桌面后所有新的拖拽在入口被拦截。
-    if (nextMobile !== this._isMobile && this._isResizing()) this._resetActiveResize()
-    this._isMobile = nextMobile
-  }
-
-  private _resizeTimeout: ReturnType<typeof setTimeout> | null = null
-
-  private _handleResize = () => {
-    if (this._resizeTimeout !== null) clearTimeout(this._resizeTimeout)
-    this._resizeTimeout = setTimeout(() => {
-      this._checkMobile()
-      this._resizeTimeout = null
-    }, 100)
+  /*
+   * 视口判定订阅媒体查询，而不是监听 window resize：跨断点每次只派发一次 change，没有
+   * resize 事件流要挡。判定、CSS 的 `@media (width <= 640px)` 与对外暴露的 `mobile` 因此
+   * 在同一时刻翻转，不会留下「树还在桌面、aside 已被 CSS 藏起来」的空档。
+   */
+  private _syncMobileViewportSubscription() {
+    this._mobileQuery?.removeEventListener('change', this._onMobileQueryChange)
+    // jsdom 等没有 matchMedia 的环境没有视口可判：`mobile` 停在 false，订阅与渲染照常。
+    this._mobileQuery = typeof window.matchMedia === 'function' ? window.matchMedia(MOBILE_VIEWPORT_QUERY) : null
+    this._mobileQuery?.addEventListener('change', this._onMobileQueryChange)
+    this._syncMobile(this._mobileQuery?.matches ?? false)
   }
 
   override connectedCallback() {
     super.connectedCallback()
-    this._checkMobile()
-    window.addEventListener('resize', this._handleResize)
+    this._syncMobileViewportSubscription()
     void this.updateComplete.then(() => {
       if (this.isConnected) this._syncBannerPresence()
     })
@@ -282,9 +345,8 @@ export class WebUiLayout extends LitElement {
   override disconnectedCallback() {
     super.disconnectedCallback()
     this._resetActiveResize()
-    window.removeEventListener('resize', this._handleResize)
-    if (this._resizeTimeout !== null) clearTimeout(this._resizeTimeout)
-    this._resizeTimeout = null
+    this._mobileQuery?.removeEventListener('change', this._onMobileQueryChange)
+    this._mobileQuery = null
   }
 
   override firstUpdated() {
@@ -311,7 +373,7 @@ export class WebUiLayout extends LitElement {
   override render() {
     const isSidebarOpen = !this.sidebarCollapsed
     // 拖拽中的临时宽度优先于 prop 宽度；移动端宽度由 Drawer 内部变量管理。
-    const sidebarStyle = this._isMobile
+    const sidebarStyle = this._mobile
       ? {}
       : { width: this._resizeWidth ?? (this.sidebarCollapsed ? this.collapsedWidth : this.sidebarWidth) }
 
@@ -414,7 +476,7 @@ export class WebUiLayout extends LitElement {
         <div class="layout-banner">
           <slot name="banner" @slotchange="${this._onBannerSlotChange}"></slot>
         </div>
-        ${this._isMobile ? mobileLayout : desktopLayout}
+        ${this._mobile ? mobileLayout : desktopLayout}
       </div>
     `
   }
@@ -423,6 +485,7 @@ export class WebUiLayout extends LitElement {
     'sidebar-collapsed-change': CustomEvent<{ collapsed: boolean }>
     'sidebar-open-change': CustomEvent<{ open: boolean }>
     'sidebar-width-change': CustomEvent<{ width: string }>
+    'mobile-change': CustomEvent<{ mobile: boolean }>
   }
 }
 

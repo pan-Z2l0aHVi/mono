@@ -113,13 +113,13 @@ function handleSortChange(event: WebUiEvent<WebUiSelect, 'change'>) {
 }
 
 const filterLabelClass =
-  'flex items-center gap-1.5 text-[#8a8a94] max-sm:basis-full dark:text-(--wui-color-text-secondary)'
+  'flex items-center gap-1.5 text-[#8a8a94] mobile:basis-full dark:text-(--wui-color-text-secondary)'
 </script>
 
 <template>
   <div class="w-full">
-    <div class="flex gap-4 items-center px-6 py-2 max-[640px]:px-3 max-[640px]:pl-0">
-      <web-ui-button-group aria-label="页面导航" class="max-[640px]:hidden">
+    <div class="flex gap-4 items-center px-6 py-2 mobile:px-3 mobile:pl-0">
+      <web-ui-button-group aria-label="页面导航" class="mobile:hidden">
         <web-ui-button icon variant="glass" aria-label="后退" :disabled="!canGoBack" @click="emit('back')">
           <web-ui-icon :icon="lucideChevronLeft" />
         </web-ui-button>
@@ -223,7 +223,7 @@ const filterLabelClass =
       <div
         id="library-filter-panel"
         slot="content"
-        class="flex flex-wrap gap-3 items-center px-6 max-[640px]:px-3 py-2.5 text-sm text-[#5b5b66] dark:text-(--wui-color-text-secondary)"
+        class="flex flex-wrap gap-3 items-center px-6 mobile:px-3 py-2.5 text-sm text-[#5b5b66] dark:text-(--wui-color-text-secondary)"
       >
         <label :class="filterLabelClass">
           <web-ui-select portal :value="filterSource" class="[--wui-input-width:128px]" @change="handleSourceChange">

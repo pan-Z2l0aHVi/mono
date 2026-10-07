@@ -5,15 +5,16 @@ import { RouterView } from 'vue-router'
 
 import AppNav from '@/components/AppNav.vue'
 import SettingsDialog from '@/components/SettingsDialog.vue'
-import { useMediaQuery } from '@/composables/useMediaQuery'
+import { useLayoutMobileProvider } from '@/composables/useLayoutMobile'
 
 const sidebarCollapsed = ref(false)
 const sidebarOpen = ref(false)
 const settingsOpen = ref(false)
 const desktopSidebarWidth = ref('240px')
 
-// 断点与 web-ui-layout 内部判定一致：drawer 宽度要跟着 viewport 一起换。
-const mobile = useMediaQuery('(max-width: 640px)')
+// 移动端判定由 layout 独占（它同时决定渲染哪一套树）：drawer 宽度跟着同一个值换，
+// 壳里不必再写断点，也不会与 layout 的树切换错开半拍。
+const { mobile, onMobileChange } = useLayoutMobileProvider()
 const sidebarWidth = computed(() => (mobile.value ? 'min(320px, 80vw)' : desktopSidebarWidth.value))
 
 /*
@@ -68,6 +69,7 @@ function closeSidebar() {
     @sidebar-collapsed-change="updateSidebarCollapsed"
     @sidebar-open-change="updateSidebarOpen"
     @sidebar-width-change="updateSidebarWidth"
+    @mobile-change="onMobileChange"
   >
     <AppNav slot="sidebar" :collapsed="navCollapsed" @navigate="closeSidebar" @open-settings="settingsOpen = true" />
 
