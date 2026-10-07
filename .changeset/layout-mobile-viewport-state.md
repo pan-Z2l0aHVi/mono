@@ -1,6 +1,5 @@
 ---
 '@greypan/web-ui': minor
-'@greypan/interweave': patch
 ---
 
 `<web-ui-layout>` exposes the mobile-viewport state it renders by, so consumers no longer keep a breakpoint of their own.
