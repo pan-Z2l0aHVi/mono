@@ -10,7 +10,7 @@ import type { WebUiDialog } from '..'
  *
  * 用户实测报的缺陷：设置对话框里按钮离卡片上沿近、离右沿远。根因是标题模式把按钮当
  * `.title-row` 的 flex 子项，偏移由卡片 padding 决定（默认上 20 / 右 24），而 body 模式
- * 用 --wui-dialog-close-top / --wui-dialog-close-right 绝对定位（默认 16/16）。修法是把两种
+ * 用 --wui-dialog-close-top / --wui-dialog-close-right 绝对定位（默认 20/20）。修法是把两种
  * 模式收敛到同一套绝对定位规则。
  *
  * 这里只钉**用户可感知的几何**：两种模式的偏移都等于公开 token 的值、默认相等，以及
@@ -81,18 +81,18 @@ function intersectionArea(a: DOMRect, b: DOMRect): number {
 }
 
 describe('WebUiDialog 关闭按钮偏移（浏览器几何）', () => {
-  it('title 模式：默认 top / right 相等，都是 16px', async () => {
+  it('title 模式：默认 top / right 相等，都是 20px', async () => {
     const el = mount('<span slot="title">设置</span>')
     await openAndSettle(el)
 
-    expect(closeOffsets(el)).toEqual({ top: 16, right: 16 })
+    expect(closeOffsets(el)).toEqual({ top: 20, right: 20 })
   })
 
-  it('body 模式：默认 top / right 仍是 16px，与改动前逐字一致', async () => {
+  it('body 模式：默认 top / right 仍是 20px', async () => {
     const el = mount('<section slot="body">自定义主体</section>')
     await openAndSettle(el)
 
-    expect(closeOffsets(el)).toEqual({ top: 16, right: 16 })
+    expect(closeOffsets(el)).toEqual({ top: 20, right: 20 })
   })
 
   it('两种模式都跟随 --wui-dialog-close-top / --wui-dialog-close-right（可不等）', async () => {

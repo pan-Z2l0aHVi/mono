@@ -135,6 +135,8 @@ dialog[open].is-visible::backdrop {
    （none↔blur 不可插值才是当年生硬跳变的根因），own opacity 过渡不禁用自身 blur，
    因此卡片直接 opacity + backdrop-filter 同步过渡即可，无需双层。 */
 .wui-dialog-body {
+  --wui-internal-dialog-close-top: var(--wui-dialog-close-top, 20px);
+  --wui-internal-dialog-close-right: var(--wui-dialog-close-right, 20px);
   --wui-internal-glass-shadow: var(--wui-shadow-overlay, 2px 16px 40px rgb(0 0 0 / 0.4));
   --wui-glass-corner-radius: var(--wui-radius-overlay, 28px);
   padding: var(--wui-dialog-padding, var(--wui-space-5, 20px) var(--wui-space-6, 24px) var(--wui-space-6, 24px));
@@ -232,8 +234,13 @@ dialog[open].is-visible .wui-dialog-body {
 
 /* ===== 关闭按钮（绝对定位，两种内容模式同一套规则）=====
 
-   偏移由公开 token --wui-dialog-close-top / --wui-dialog-close-right 控制，默认都是 16px，
-   与 drawer 的 .wui-drawer-close 对齐（同样恒为绝对定位、同样默认 16/16）。
+   偏移由公开 token --wui-dialog-close-top / --wui-dialog-close-right 控制，默认都是字面量
+   20px。默认值不再经过 --wui-space-*：这两个 token 的参照系是卡片边缘，而不是相邻元素
+   之间的间距节奏，消费方调整主题间距时不应意外移动关闭按钮。dialog 本轮也不再与 drawer
+   的 16/16 对齐；--wui-drawer-close-* 保持不变。
+
+   两个公开 token 先在正文容器上解析成同一份内部变量，按钮定位和标题避让都读这份结果，
+   避免只改一个兜底字面量后按钮与标题各自按不同默认值计算。
 
    标题模式此前是 .title-row 里的 flex 子项（flex: none），偏移由卡片 padding 决定——默认
    上 20 / 右 24，二者不等，正是「设置」对话框里按钮离上沿近、离右沿远的来源。改成绝对
@@ -245,8 +252,8 @@ dialog[open].is-visible .wui-dialog-body {
 .wui-dialog-close {
   position: absolute;
   z-index: 3;
-  top: var(--wui-dialog-close-top, var(--wui-space-4, 16px));
-  right: var(--wui-dialog-close-right, 16px);
+  top: var(--wui-internal-dialog-close-top);
+  right: var(--wui-internal-dialog-close-right);
 }
 
 /*
@@ -281,10 +288,11 @@ dialog[open].is-visible .wui-dialog-body {
 /* 标题避让：关闭按钮绝对定位后不再占 .title-row 的位，长标题会一直排到按钮下面。
    预留量取「按钮右偏移 + 按钮宽 + 呼吸间距」，而不是只减掉卡片 padding——这样即便消费者把
    --wui-dialog-padding 的 inline 分量调到 0，标题文字右缘也不会越过按钮左缘；跟随
-   --wui-dialog-close-right 变化。26px 对应 index.ts 里按钮的 size="26"，改按钮尺寸时一并改这里。
+   --wui-dialog-close-right 变化；这里复用正文容器上已解析的内部右侧偏移，与按钮定位同源。
+   26px 对应 index.ts 里按钮的 size="26"，改按钮尺寸时一并改这里。
    只在 closable 时生效：没有按钮就不必留白。 */
 :host([closable]) .title {
-  padding-inline-end: calc(var(--wui-dialog-close-right, 16px) + 26px + var(--wui-space-3, 12px));
+  padding-inline-end: calc(var(--wui-internal-dialog-close-right) + 26px + var(--wui-space-3, 12px));
 }
 
 .desc {
