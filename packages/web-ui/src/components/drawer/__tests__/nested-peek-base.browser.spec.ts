@@ -4,8 +4,6 @@ import { page } from 'vite-plus/test/browser'
 import { NESTED_PEEK_BASE_FALLBACK, PEEK_BASE_VARIABLE } from '@/shared/overlay/nested-drawer-layers'
 
 import '..'
-import { documentHostAnimations } from '@/shared/test-utils/animations'
-
 import type { WebUiDrawer } from '..'
 
 /*
@@ -124,7 +122,7 @@ async function stabilize(drawers: WebUiDrawer[], budget: Budget) {
   let previous = readLefts(drawers)
   while (!budget.expired()) {
     await new Promise(resolve => requestAnimationFrame(resolve))
-    await Promise.allSettled(documentHostAnimations().map(animation => animation.finished))
+    await Promise.allSettled(document.getAnimations().map(animation => animation.finished))
     await new Promise(resolve => requestAnimationFrame(resolve))
     const current = readLefts(drawers)
     /*
@@ -137,7 +135,7 @@ async function stabilize(drawers: WebUiDrawer[], budget: Budget) {
      * 所以「左缘 < innerWidth」就是「已经进来」。仍然是公开几何，不读内部状态。
      */
     const entered = current.every(left => left < window.innerWidth - 1)
-    const settled = entered && !documentHostAnimations().length && current.join() === previous.join()
+    const settled = entered && !document.getAnimations().length && current.join() === previous.join()
     previous = current
     if (settled) return
   }

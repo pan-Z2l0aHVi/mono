@@ -3,7 +3,6 @@ import { afterEach, describe, expect, it } from 'vite-plus/test'
 import '..'
 import '@/components/theme'
 import { queryA11y } from '@/shared/test-utils'
-import { hostAnimations } from '@/shared/test-utils/animations'
 
 import type { WebUiDrawer } from '..'
 
@@ -14,7 +13,11 @@ async function nextFrame() {
 // 等待打开过渡完成；固定 sleep 在 CI 高负载下会把未收敛的位移抓进拖拽起点。
 async function waitForOpenTransition(el: WebUiDrawer) {
   await nextFrame()
-  await Promise.all(hostAnimations(getDialog(el)).map(animation => animation.finished))
+  await Promise.all(
+    getDialog(el)
+      .getAnimations({ subtree: true })
+      .map(animation => animation.finished)
+  )
 }
 
 // 轮询条件直至满足：弹簧等 WAAPI 动画在并行负载下完成时间不可预测，
@@ -29,7 +32,7 @@ async function waitFor(condition: () => boolean, timeoutMs = 3000): Promise<void
 
 /** 等 dialog 上的动画全部收敛（替代原先「读位移是否归零」的几何轮询）。 */
 function settled(el: WebUiDrawer): Promise<void> {
-  return waitFor(() => hostAnimations(getDialog(el)).length === 0, 5000)
+  return waitFor(() => getDialog(el).getAnimations({ subtree: true }).length === 0, 5000)
 }
 
 /**

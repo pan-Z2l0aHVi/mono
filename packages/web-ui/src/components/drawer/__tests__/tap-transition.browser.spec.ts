@@ -1,8 +1,6 @@
 import { afterEach, describe, expect, it } from 'vite-plus/test'
 
 import '..'
-import { hostAnimations } from '@/shared/test-utils/animations'
-
 import type { WebUiDrawer } from '..'
 
 async function nextFrame() {
@@ -50,8 +48,8 @@ function waitFor(condition: () => boolean, message: string, timeoutMs = 5000): P
 async function waitForOpenSettled(el: WebUiDrawer) {
   const dialog = getDialog(el)
   await waitFor(() => dialog.open, 'drawer did not open')
-  await waitFor(() => hostAnimations(dialog).length > 0, 'drawer open transition did not start')
-  await waitFor(() => hostAnimations(dialog).length === 0, 'drawer open transition did not settle')
+  await waitFor(() => dialog.getAnimations({ subtree: true }).length > 0, 'drawer open transition did not start')
+  await waitFor(() => dialog.getAnimations({ subtree: true }).length === 0, 'drawer open transition did not settle')
 }
 
 function createDrawer(): WebUiDrawer {

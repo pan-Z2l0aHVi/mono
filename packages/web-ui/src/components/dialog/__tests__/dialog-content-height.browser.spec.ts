@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it } from 'vite-plus/test'
 
-import { pollUntil, scrollElementOf } from '@/shared/test-utils'
+import { pollUntil } from '@/shared/test-utils'
 
 import '..'
 import type { WebUiDialog } from '..'
@@ -131,13 +131,12 @@ describe('dialog 内容区高度约束（浏览器）', () => {
       await openAndSettle(component)
 
       const desc = query<HTMLElement>(component, '.desc')
-      const scroller = scrollElementOf(desc)
-      expect(scroller.scrollHeight).toBeGreaterThan(scroller.clientHeight)
+      expect(desc.scrollHeight).toBeGreaterThan(desc.clientHeight)
       // 只断言上一条的话，overflow 写成 hidden 也能过（hidden 同样让
       // scrollHeight 大于 clientHeight），必须写 scrollTop 才能区分 auto 与 hidden。
-      scroller.scrollTop = 9999
+      desc.scrollTop = 9999
       await new Promise(resolve => requestAnimationFrame(resolve))
-      expect(scroller.scrollTop).toBeGreaterThan(0)
+      expect(desc.scrollTop).toBeGreaterThan(0)
 
       // 滚下去之后卡片几何不变：滚动发生在内容区内部，没有把内容顶出 dialog 盒子。
       const card = query<HTMLElement>(component, '.wui-dialog-body')

@@ -1,8 +1,6 @@
 import { afterEach, describe, expect, it } from 'vite-plus/test'
 
 import '../../../components/drawer'
-import { hostAnimations } from '@/shared/test-utils/animations'
-
 import type { WebUiDrawer } from '../../../components/drawer'
 
 function createDrawer(): WebUiDrawer {
@@ -36,8 +34,8 @@ describe('native dialog presence close path', () => {
     await drawer.updateComplete
 
     const dialog = getDialog(drawer)
-    await waitFor(() => hostAnimations(dialog).length > 0, 'drawer enter transition did not start')
-    await waitFor(() => hostAnimations(dialog).length === 0, 'drawer enter transition did not settle')
+    await waitFor(() => dialog.getAnimations({ subtree: true }).length > 0, 'drawer enter transition did not start')
+    await waitFor(() => dialog.getAnimations({ subtree: true }).length === 0, 'drawer enter transition did not settle')
 
     drawer.open = false
     await drawer.updateComplete

@@ -1,7 +1,5 @@
 import { afterEach, describe, expect, it } from 'vite-plus/test'
 
-import { documentHostAnimations } from '@/shared/test-utils/animations'
-
 import '..'
 import '@/components/theme'
 
@@ -21,7 +19,7 @@ async function waitForOpenTransition(el: WebUiDrawer) {
     await new Promise(resolve => requestAnimationFrame(resolve))
   }
   await el.updateComplete
-  await Promise.allSettled(documentHostAnimations().map(animation => animation.finished))
+  await Promise.allSettled(document.getAnimations().map(animation => animation.finished))
   await el.updateComplete
 }
 

@@ -12,16 +12,15 @@
 import { afterEach, describe, expect, it } from 'vite-plus/test'
 import { userEvent } from 'vite-plus/test/browser'
 
-import type { WebUiDrawer } from '@/components/drawer'
 import '@/components/drawer'
-import { imagePreview } from '@/components/image-preview'
+import type { WebUiDrawer } from '@/components/drawer'
 import '@/components/option'
 import '@/components/popover'
 import '@/components/select'
+import { imagePreview } from '@/components/image-preview'
 import type { WebUiPopover } from '@/components/popover'
 import type { WebUiSelect } from '@/components/select'
 import { pollUntil, waitForFrame } from '@/shared/test-utils'
-import { documentHostAnimations } from '@/shared/test-utils/animations'
 
 afterEach(() => document.body.replaceChildren())
 
@@ -39,7 +38,7 @@ async function waitForDrawerOpen(el: WebUiDrawer) {
     await new Promise(resolve => requestAnimationFrame(resolve))
   }
   await el.updateComplete
-  await Promise.allSettled(documentHostAnimations().map(animation => animation.finished))
+  await Promise.allSettled(document.getAnimations().map(animation => animation.finished))
   await el.updateComplete
 }
 
