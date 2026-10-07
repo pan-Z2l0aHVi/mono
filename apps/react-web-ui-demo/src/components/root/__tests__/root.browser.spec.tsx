@@ -98,13 +98,28 @@ async function requestCollapse(collapsed: boolean) {
 /**
  * 换的是真实视口（`page.viewport`），app 的 media query 与 layout 的 `innerWidth` 判定都
  * 由引擎自己给出结论；等的是抽屉形态真的换了，而不是一段固定时长。
+ *
+ * 等待必须用 testing-library 的 `waitFor` 而不是 `vi.waitFor`：跨断点时 React 的回写有两条
+ * 异步链路（Root 的 `matchMedia` change 监听、layout 那 100ms 去抖的 resize 处理），实测有
+ * 一部分落在「换视口」这个动作返回之后。`vi.waitFor` 的轮询不是 act 边界，那段回写会裸奔；
+ * testing-library 的 `waitFor` 把轮询包在 act 里，回写才落在边界内。
  */
 async function settleViewport(drawerMode: boolean) {
-  await vi.waitFor(() => {
+  await waitFor(() => {
     if (isDrawerMode() !== drawerMode) throw new Error(`抽屉形态没有变成 ${drawerMode}`)
   })
   await act(async () => {
     await layoutRoot().updateComplete
+  })
+}
+
+/**
+ * 换真实视口的触发动作本身包进 act：跨断点时同步落下的那次回写靠它覆盖（实测是切回桌面那
+ * 一跳），异步落下的那次由上面的 `waitFor` 覆盖。两个边界缺一都会复现 `not wrapped in act`。
+ */
+async function changeViewport(size: { width: number; height: number }) {
+  await act(async () => {
+    await page.viewport(size.width, size.height)
   })
 }
 
@@ -113,7 +128,12 @@ async function openDrawer() {
   const toggle = layoutRoot().shadowRoot?.querySelector<HTMLElement>('.mobile-toggle')
   if (!toggle) throw new Error('mobile toggle not found')
 
-  await userEvent.click(toggle)
+  // 触发动作是「点击」本身：Lit 的 mobile-toggle 同步派发 `sidebar-open-change`，Root 的
+  // onsidebar-open-change 就地 `setSidebarOpen(...)`，所以 act 边界要落在点击上；事后补一个
+  // waitFor 只是让 React 闭嘴，回写已经在边界外发生过了。
+  await act(async () => {
+    await userEvent.click(toggle)
+  })
   await vi.waitFor(() => {
     if (navRoot().getBoundingClientRect().width === 0) throw new Error('抽屉没有打开')
   })
@@ -124,12 +144,12 @@ async function openDrawer() {
 
 describe('应用外壳（浏览器）：导航折叠态不跨视口泄漏', () => {
   beforeEach(async () => {
-    await page.viewport(DESKTOP_VIEWPORT.width, DESKTOP_VIEWPORT.height)
+    await changeViewport(DESKTOP_VIEWPORT)
   })
 
   afterEach(async () => {
     cleanup()
-    await page.viewport(DESKTOP_VIEWPORT.width, DESKTOP_VIEWPORT.height)
+    await changeViewport(DESKTOP_VIEWPORT)
   })
 
   it('桌面端折叠后导航文字居中，展开态左对齐', async () => {
@@ -156,7 +176,7 @@ describe('应用外壳（浏览器）：导航折叠态不跨视口泄漏', () =
     // 对照：折叠确实换了一套渲染，否则下面那条「与展开态一致」可能只是因为折叠从未生效。
     expect(collapsed).not.toEqual(expanded)
 
-    await page.viewport(MOBILE_VIEWPORT.width, MOBILE_VIEWPORT.height)
+    await changeViewport(MOBILE_VIEWPORT)
     await settleViewport(true)
     await openDrawer()
 
@@ -172,12 +192,12 @@ describe('应用外壳（浏览器）：导航折叠态不跨视口泄漏', () =
     await requestCollapse(true)
     const collapsed = navItemShape()
 
-    await page.viewport(MOBILE_VIEWPORT.width, MOBILE_VIEWPORT.height)
+    await changeViewport(MOBILE_VIEWPORT)
     await settleViewport(true)
     await openDrawer()
     expect(navItemShape()).toEqual(expanded)
 
-    await page.viewport(DESKTOP_VIEWPORT.width, DESKTOP_VIEWPORT.height)
+    await changeViewport(DESKTOP_VIEWPORT)
     await settleViewport(false)
 
     expect(navItemShape()).toEqual(collapsed)

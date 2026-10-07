@@ -53,7 +53,11 @@ function columnCount(testId: string) {
 async function columnsAcrossBreakpoints(testId: string) {
   const measured: number[] = []
   for (const width of BREAKPOINTS) {
-    await page.viewport(width, VIEWPORT_HEIGHT)
+    // 换视口会经 media query 监听回写 React 状态，所以把「换视口」这个触发动作本身放进 act
+    // 边界，让那次回写落在 act 里；事后再补一个空 act 只是让 React 闭嘴，更新仍在边界外。
+    await act(async () => {
+      await page.viewport(width, VIEWPORT_HEIGHT)
+    })
     measured.push(columnCount(testId))
   }
   return measured
