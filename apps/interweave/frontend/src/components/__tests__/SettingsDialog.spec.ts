@@ -89,7 +89,7 @@ describe('SettingsDialog', () => {
     try {
       await nextTick()
 
-      expect(mounted.host.querySelector('[slot="title"]')?.textContent).toContain('设置')
+      expect(mounted.host.querySelector('[slot="header"]')?.textContent).toContain('设置')
       expect(dialogElement(mounted.host).closable).toBe(true)
       // 宿主不再自绘标题栏关闭按钮，也没有 footer「关闭」——标题行那一枚由 web-ui-dialog
       // 自己渲染（在其 shadow 内），宿主拿不到那个节点。
@@ -111,7 +111,7 @@ describe('SettingsDialog', () => {
     try {
       await nextTick()
       const dialog = dialogElement(mounted.host)
-      const titleChrome = mounted.host.querySelector('[slot="title"]')
+      const titleChrome = mounted.host.querySelector('[slot="header"]')
       const segmented = segmentedByLabel(mounted.host, '设置分区')
 
       expect(titleChrome, 'title slot 应渲染标题 chrome').toBeTruthy()

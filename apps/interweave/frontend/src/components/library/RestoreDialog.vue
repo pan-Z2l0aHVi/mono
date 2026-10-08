@@ -88,7 +88,7 @@ function submit() {
     class="[--wui-dialog-width:min(90vw,880px)] [--wui-dialog-max-height:calc(min(90vh,640px)_-_142px)]"
     @open-change="handleOpenChange"
   >
-    <span slot="title">找回资源</span>
+    <span slot="header">找回资源</span>
 
     <p
       v-if="validationError || error"
@@ -110,7 +110,7 @@ function submit() {
 
       token 里减掉的 142 是本 dialog 的 chrome 实测值（Chrome/Chromium，1017×503）：
         卡片上 padding        20（上）+ 24（下）
-        .title 外高           37.59（title 21.59 + margin-bottom 16）
+        .header 带外高         37.59（标题 21.59 + 带下 margin 16）
         .desc margin-top       −6（focus-ring 上余量的成对负 margin，扣回 title 下方间距）
         .desc padding-block   12（focus-ring 余量）
         .desc margin-bottom   18
@@ -119,7 +119,7 @@ function submit() {
         chrome                 141.59 → 142（向上取整，留亚像素余量）
 
       与 AddDialog 相同纯属巧合：两者标题都是单行四字，footer 都是两枚按钮。
-      SettingsDialog 没有 footer 按钮、标题两字，实测 chrome 是 105.59 → 106，三处不能互相照抄。
+      SettingsDialog 没有 footer 按钮、标题两字，实测 chrome 是 157.59 → 158，三处不能互相照抄。
 
       触摸端 `@media (pointer: coarse)` 把 --wui-control-size 抬到 40，chrome 变 145.59。
       这 4px 由**卡片**吸收：内容区仍等于 token 本身，一像素不缩，长高的是卡片本身。

@@ -30,7 +30,30 @@ export class WebUiDialog extends LitElement {
    */
   @property({ type: Boolean, reflect: true }) controlled = false
 
-  @state() private _hasBody = false
+  /**
+   * `header` 槽为空时的标题文案。槽优先：一旦有元素分配到 `header`，槽内容整条接管，
+   * 属性被忽略。默认空串且槽也为空时不渲染 chrome 带。`headless` 模式不渲染 chrome 带，
+   * `heading` 一并失效。
+   */
+  @property({ type: String }) heading = ''
+
+  /**
+   * Headless 模式：只保留 overlay 基础设施（backdrop、动画、scroll lock、`<dialog>` 语义），
+   * 移除内置 UI（chrome 带、正文区、footer），默认槽的内容渲染进卡片内的滚动层
+   * `.wui-dialog-content`，视觉交给 Consumer。形态与 `<web-ui-drawer>` 的 `headless` 一致。
+   *
+   * 该模式没有可自动关联的内置标题，内部原生 dialog 的 accessible name 必须由 Consumer
+   * 用 `dialog-label`（或自绘标题 + 自己的 `aria-labelledby`）提供。
+   */
+  @property({ type: Boolean, reflect: true }) headless = false
+
+  /**
+   * 内部原生 dialog 的 accessible name。`headless` 模式必须由 Consumer 提供，
+   * 因为该模式不会渲染可自动关联的内置 chrome 带。
+   */
+  @property({ type: String, attribute: 'dialog-label' }) dialogLabel = ''
+
+  @state() private _hasHeader = false
   private readonly _userOpenChange = new UserChangeController()
 
   /*
@@ -216,15 +239,24 @@ export class WebUiDialog extends LitElement {
     this._scrollLock.sync(isOpen && !this.noScrollLock)
   }
 
-  private _onBodySlotChange(e: Event) {
+  /**
+   * 只在「有/无」翻转时写 state：slotchange 在每次分配变化时都会触发，逐次赋值会让
+   * Lit 无谓重渲染。`heading` 与槽共同决定 chrome 带的存在，见 `_showHeader`。
+   */
+  private _onHeaderSlotChange(e: Event) {
     if (!(e.target instanceof HTMLSlotElement)) return
-    this._hasBody = e.target.assignedElements().length > 0
+    const has = e.target.assignedElements().length > 0
+    if (has !== this._hasHeader) this._hasHeader = has
+  }
+
+  private get _showHeader(): boolean {
+    return this._hasHeader || this.heading !== ''
   }
 
   /**
-   * 两种内容模式共用同一枚关闭按钮：都绝对定位到卡片右上角，偏移由
+   * 默认模式与 `headless` 模式共用同一枚关闭按钮：都绝对定位到卡片右上角，偏移由
    * `--wui-dialog-close-top` / `--wui-dialog-close-right` 控制（见 style.css）。
-   * 标题模式只是把它放在 `.title-row` 的 DOM 位置，定位参照仍是卡片本身。
+   * 它在两种模式下都是卡片的直接子元素，定位参照是卡片本身（.wui-dialog-body）。
    */
   private _renderCloseButton() {
     return html`
@@ -242,8 +274,19 @@ export class WebUiDialog extends LitElement {
   }
 
   override render() {
+    const showHeader = this._showHeader
+    /*
+     * accessible name：显式 `dialog-label` 优先；否则（非 headless 且带可见时）把原生 dialog
+     * 的 `aria-labelledby` 指向 chrome 带——与 drawer 同形。headless 模式没有可自动关联的
+     * 内置标题，名字留给 Consumer。
+     */
+    const dialogLabel = this.dialogLabel.trim()
+    const dialogLabelledBy = !dialogLabel && !this.headless && showHeader ? 'wui-dialog-heading' : nothing
+
     return html`
       <dialog
+        aria-label=${dialogLabel || nothing}
+        aria-labelledby=${dialogLabelledBy}
         @cancel=${this.handleCancel}
         @close=${this._onNativeClose}
         @click=${this.handleBackdropClick}
@@ -251,27 +294,22 @@ export class WebUiDialog extends LitElement {
       >
         <div class="wui-dialog-body wui-glass">
           ${
-            this._hasBody
+            this.headless
               ? html`
                   <div class="wui-dialog-content">
-                    <slot name="body" @slotchange=${this._onBodySlotChange}></slot>
+                    <slot></slot>
                   </div>
                   ${this.closable ? this._renderCloseButton() : nothing}
                 `
               : html`
-                  <slot name="body" @slotchange=${this._onBodySlotChange} hidden></slot>
-                  ${
-                    this.closable
-                      ? html`
-                          <div class="title-row">
-                            <div class="title"><slot name="title"></slot></div>
-                            ${this._renderCloseButton()}
-                          </div>
-                        `
-                      : html`<div class="title"><slot name="title"></slot></div>`
-                  }
+                  <div class="header" id="wui-dialog-heading" ?hidden=${!showHeader}>
+                    <slot name="header" @slotchange=${this._onHeaderSlotChange}>
+                      ${this.heading ? html`<span class="wui-dialog-heading">${this.heading}</span>` : nothing}
+                    </slot>
+                  </div>
                   <div class="desc"><slot></slot></div>
                   <div class="wui-dialog-footer"><slot name="footer"></slot></div>
+                  ${this.closable ? this._renderCloseButton() : nothing}
                 `
           }
         </div>
