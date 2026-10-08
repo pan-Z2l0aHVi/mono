@@ -147,7 +147,7 @@ async function mountInContainer(padding: number): Promise<Harness> {
 }
 
 /** 按住最左那颗：走组件自己的 pointerdown 路径，与真实按压同一入口。 */
-async function pressFirst({ segmented, trigger, indicator }: Harness): Promise<void> {
+async function pressFirst({ segmented, trigger, indicator }: Harness): Promise<number> {
   const surface = queryA11y(trigger, '[role="option"]')
   if (!(surface instanceof HTMLElement)) throw new Error('未找到 role="option" 的可交互面')
   const rect = surface.getBoundingClientRect()
@@ -165,20 +165,28 @@ async function pressFirst({ segmented, trigger, indicator }: Harness): Promise<v
     })
   )
   await waitForUpdate(segmented)
-  // 放大是过渡而非瞬变：等它铺满 scale(1.5)（指示器可视盒同步放大 1.5 倍）再量。
-  await pollUntil(() => {
-    const width = indicator.getBoundingClientRect().width
-    return width > restWidth * 1.45 && width < restWidth * 1.55
-  }, '指示器未进入按住的放大态')
+  // 放大是过渡而非瞬变：等它**落定**到 scale(1.5)（指示器可视盒同步放大 1.5 倍）再量。
+  // 判据卡在 1.4999 倍而不是一个宽松区间，是为了让「按住态」= 过渡终值这件事对断言可见：
+  // 采样到过渡中途，下面的越界量会随采样时刻漂移、与几何期望值差出一帧的量。
+  await pollUntil(() => indicator.getBoundingClientRect().width >= restWidth * 1.4999, '指示器未进入按住的放大态')
+  return restWidth
 }
 
 describe('WebUiSegmented 按压越界守卫（浏览器）', () => {
   it('零余量滚动容器：按住最左的胶囊越出容器 padding box（同一条断言在此真红）', async () => {
     const harness = await mountInContainer(0)
-    await pressFirst(harness)
+    const restWidth = await pressFirst(harness)
 
     const pressed = rectOf(harness.indicator)
-    expect(overshootOf(harness.container, pressed).left, '胶囊左沿应越出零 padding 容器').toBeGreaterThan(8)
+    // 与字形无关的精确期望：胶囊在轨道里横向内缩一个轨道 padding，`scale(1.5)` 绕中心放大后
+    // 左沿相对静止位外移「宽增的一半」= `0.25 × 胶囊宽`，越出零 padding 容器的量因此是
+    // `0.25 × 胶囊宽 − 轨道内缩`。两个因子都取实测/计算值：字体度量让胶囊变宽变窄时，
+    // 等号两边同步移动，所以这条在任何字体下都成立，不需要按平台调阈值。
+    const trackInset = Number.parseFloat(getComputedStyle(harness.track).paddingLeft)
+    expect(
+      overshootOf(harness.container, pressed).left,
+      '胶囊左沿越出零 padding 容器的量应为 0.25×胶囊宽 − 轨道内缩'
+    ).toBeCloseTo(0.25 * restWidth - trackInset, 1)
 
     // 守卫本体在此为红——与下一档用的是同一条断言（clipOffenders 非空 = 断言失败）。
     expect(clipOffenders(harness.indicator, pressed), '守卫应报出越界祖先').not.toEqual([])
