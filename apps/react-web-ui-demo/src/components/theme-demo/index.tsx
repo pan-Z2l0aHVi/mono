@@ -131,7 +131,7 @@ function ThemeDemo() {
           </div>
 
           <web-ui-dialog open={scopedDialogOpen} onopen-change={event => setScopedDialogOpen(event.detail.open)}>
-            <span slot="title">Scoped dialog</span>
+            <span slot="header">Scoped dialog</span>
             Dialog 位于原生 top layer，仍继承当前 theme scope 的颜色与动效 token。
             <web-ui-button slot="footer" variant="primary" full onClick={() => setScopedDialogOpen(false)}>
               关闭

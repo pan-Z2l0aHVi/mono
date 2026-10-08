@@ -85,14 +85,15 @@ dialog {
    上限原样写进 token，卡片会比预期高出一个 chrome。
 
    实测（Chromium + WebKit，见 __tests__/dialog-content-height.browser.spec.ts）：本组 CSS
-   只对 **title 模式**生效——body 模式（走 slot="body"、没有 .desc）的**卡片尺寸**不变。
+   只对 **默认模式**生效——headless 模式（默认槽渲染进 .wui-dialog-content、没有 .desc）的**卡片尺寸**不变。
    但位置不保证：`dialog` 的整卡兜底从 min(90vh, 90dvh) 收紧到字面量 100vh，modal dialog
    按自身盒子在视口里居中、卡片从盒子顶部起画，盒子更高 → 卡片在视口内上移。内容接近视口
    高度时位移可观测（reviewer 实测 52px / 102px / 25.16px），只有内容远矮于视口时位移为 0
    （两个 demo 正是落在这一档，巧合而非保证）。 */
 
 /* dialog 不是 flex 容器时 .desc 的 height:100% 拿不到确定高度（:host 是 display:contents，
-   dialog 自身默认 block），宿主的内层 grid 因此撑不满、两栏不等高。 */
+   dialog 自身默认 block），宿主的内层 grid 因此撑不满、两栏不等高。模式判定按 DOM 形状
+   而不是 attribute，理由见下方 grid 规则上的注释。 */
 dialog:has(.desc) {
   display: flex;
   flex-direction: column;
@@ -135,7 +136,12 @@ dialog[open].is-visible::backdrop {
   --wui-internal-dialog-close-right: var(--wui-dialog-close-right, 20px);
   --wui-internal-glass-shadow: var(--wui-shadow-overlay, 2px 16px 40px rgb(0 0 0 / 0.4));
   --wui-glass-corner-radius: var(--wui-radius-overlay, 28px);
+
+  /* 卡片只吃 --wui-dialog-padding 的 block 分量；inline 分量让给各分区
+     （.header / .desc / .wui-dialog-footer，由 --wui-dialog-inline-padding 控制），
+     .desc 这个滚动容器的边因此与卡片内沿重合，滚动条贴边（详见 .desc）。 */
   padding: var(--wui-dialog-padding, var(--wui-space-5, 20px) var(--wui-space-6, 24px) var(--wui-space-6, 24px));
+  padding-inline: 0;
   border-radius: var(--wui-radius-overlay, 28px);
 
   opacity: 0;
@@ -150,14 +156,22 @@ dialog[open].is-visible::backdrop {
     backdrop-filter var(--wui-duration-dialog-enter, 320ms) var(--wui-ease-dialog, cubic-bezier(0.2, 0, 0, 1));
 }
 
-/* 卡片改 grid 容器：title 与 footer 走 auto（内容撑开），.desc 走 minmax(0,1fr)。
+/* 卡片改 grid 容器：header 与 footer 走 auto（内容撑开），.desc 走 minmax(0,1fr)。
    minmax 的 0 是 .desc 能收缩的前提；配合 .desc 的 min-height:0 与 overflow-y:auto，
    内容超高时滚动发生在内容区内部，而不是把卡片顶出 dialog 盒子。
 
-   单列而非与基础 .wui-dialog-body 合并：`:has()` 的特异度高于类选择器，合并会让
-   「仅 title 模式变 grid」变成「所有模式都变 grid」，那会改掉 body 模式的几何
-   （实测高内容 body 的卡片会从 3044 被夹到 896）。位置也受 stylelint
-   no-descending-specificity 约束：须排在基础规则之后、dialog.is-closing 之前。 */
+   单列而非与基础 .wui-dialog-body 合并：`:has(.desc)` 与类选择器叠加的特异度高于单个类
+   选择器，合并会让「仅默认模式变 grid」变成「所有模式都变 grid」，那会改掉 headless
+   模式的几何（实测高内容 headless 的卡片会从 3044 被夹到 896）。位置也受 stylelint
+   no-descending-specificity 约束：须排在基础规则之后、dialog.is-closing 之前。
+
+   模式判定按 **DOM 形状**（`:has(.desc)`）而不是 attribute（`:host(:not([headless]))`）：
+   外部直接 `setAttribute('headless', '')` 时 attribute 立刻翻转，Lit 要等下一次 update 才
+   换模板——那个窗口里 DOM 仍是默认形状。`:has(.desc)` 描述的就是当下的 DOM，与它自洽；
+   `:host([headless])` 会按 attribute 提前把卡片按 headless 几何渲染，而 DOM 里还带着
+   `.desc`。改成 drawer 那种 attribute 形式还要把承重规则上移（`dialog.is-closing
+   .wui-dialog-body`；焦点环抑制那条已挪去 `assets/modal-surface.css`）来满足
+   no-descending-specificity，收益不抵风险。 */
 .wui-dialog-body:has(.desc) {
   display: grid;
   grid-template-rows: auto minmax(0, 1fr) auto;
@@ -168,22 +182,26 @@ dialog[open].is-visible::backdrop {
   min-height: 0;
 }
 
-/* ===== body 模式：内容区是卡片内部的滚动层 =====
+/* ===== headless 模式：内容区是卡片内部的滚动层 =====
 
-   body 模式没有 title / footer，卡片就是内容区，所以这里要同时守住两件事：
+   headless 模式没有 header / .desc / footer，卡片就是那个滚动层，所以这里要同时守住两件事：
    内容不高时卡片贴合内容（与基础规则一致），内容高过视口时把上限交给视口、把溢出交给
    滚动。少了后半件，卡片会一路长到内容高度并溢出 dialog 盒子；dialog 是 overflow:
    visible（阴影与关闭按钮不能由同尺寸的原生 dialog 裁），溢出的那截落在视口之下，
    既看不到也够不着。
 
    上限取与整卡兜底相同的字面量，而不是 `--wui-dialog-max-height`：后者的公开语义是
-   `.desc` 的高度（README 有记录），body 模式根本没有 `.desc`，套上去会凭空改掉
+   `.desc` 的高度（README 有记录），headless 模式根本没有 `.desc`，套上去会凭空改掉
    这档的既有尺寸语义。
 
    滚动单独成层而不是让卡片自己滚：关闭按钮是卡片的绝对定位直接子元素，卡片一旦自己
    滚动，按钮会跟着内容一起滚走。padding 也跟着挪进内层，让内容与滚动容器的裁剪边
    （padding 外沿）留出余量——贴边的控件焦点环才不会被裁成残条；内层没有滚动条槽的
-   引擎里，这圈余量与卡片直接持 padding 时逐像素相同。 */
+   引擎里，这圈余量与卡片直接持 padding 时逐像素相同。
+
+   headless 的收窄也取结构（`:has(> .wui-dialog-content)`）而不是 `:host([headless])`，与上方
+   grid 规则同一条理由：判定跟 DOM 形状走。attribute 与 DOM 在直接 setAttribute 的那个
+   窗口里会短暂分叉，结构选择器始终与 DOM 自洽。 */
 .wui-dialog-body:has(> .wui-dialog-content) {
   overflow: hidden;
   display: grid;
@@ -211,7 +229,7 @@ dialog.is-closing .wui-dialog-body {
 
 :host([closable]) .wui-dialog-body {
   /*
-   * body 模式的关闭按钮浮在卡片右上角，需要一个定位参照，所以显式重述一次
+   * headless 模式的关闭按钮浮在卡片右上角，需要一个定位参照，所以显式重述一次
    * position: relative。
    *
    * 实际提供这个上下文的是卡片自带的 .wui-glass（glass.css 的 .wui-glass 已有
@@ -238,13 +256,9 @@ dialog[open].is-visible .wui-dialog-body {
    两个公开 token 先在正文容器上解析成同一份内部变量，按钮定位和标题避让都读这份结果，
    避免只改一个兜底字面量后按钮与标题各自按不同默认值计算。
 
-   标题模式此前是 .title-row 里的 flex 子项（flex: none），偏移由卡片 padding 决定——默认
-   上 20 / 右 24，二者不等，正是「设置」对话框里按钮离上沿近、离右沿远的来源。改成绝对
-   定位后两种模式同源，几何只由本条规则决定。
-
-   绝对定位的包含块是 .wui-dialog-body（:host([closable]) 给了它 position: relative），
-   不是 .title-row：后者是 static，按钮只是它名义上的孩子；top/right 因此量到卡片 padding
-   box 的右上角。 */
+   两种模式下它都是卡片的直接子元素：绝对定位的包含块是 .wui-dialog-body
+   （:host([closable]) 给了它 position: relative），top/right 因此量到卡片 padding box
+   的右上角，与 chrome 带的 padding 无关。 */
 .wui-dialog-close {
   position: absolute;
   z-index: 3;
@@ -253,15 +267,30 @@ dialog[open].is-visible .wui-dialog-body {
 }
 
 /*
- * 标题行只在 closable 时出现，因此 .title 自身的 margin-bottom 语义不变：
- * 它仍由 .title-row 的行高承担，行高 = 标题外高（含 16px 下边距）。
- * 关闭按钮已是绝对定位、不再是这一行的占位项（见上），所以这里的 flex/gap 只剩排版作用。
+ * chrome 带：`header` 槽 + `heading` 属性 fallback，与 drawer 的 header 同形。
+ * 卡片把 inline padding 让给各分区后（见 .wui-dialog-body），这条带自带水平 padding，
+ * 否则内容会贴到卡片内沿。带里装的不一定是标题——消费方可以放整条工具条
+ * （SettingsDialog 就是），所以用 flex / space-between 让多个子项排布；fallback 的
+ * .wui-dialog-heading 与带共用 title 级排版，与 drawer 的 .wui-drawer-heading 对齐。
+ * 带为空（槽无分配元素且 heading 为空）时隐藏，由 index.ts 的 _showHeader 决定。
  */
-.title-row {
+.header {
   display: flex;
   gap: var(--wui-space-3, 12px);
-  align-items: flex-start;
+  align-items: center;
   justify-content: space-between;
+
+  margin: 0 0 var(--wui-dialog-title-gap, var(--wui-space-4, 16px));
+  padding-inline: var(--wui-dialog-inline-padding, var(--wui-space-6, 24px));
+
+  font-size: var(--wui-font-size-title, 18px);
+  font-weight: var(--wui-font-weight-semibold, 600);
+  line-height: var(--wui-line-height-tight, 1.2);
+  color: var(--wui-color-text, #1b1b1b);
+}
+
+.header[hidden] {
+  display: none;
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -271,23 +300,13 @@ dialog[open].is-visible .wui-dialog-body {
   }
 }
 
-.title {
-  margin: 0 0 var(--wui-dialog-title-gap, var(--wui-space-4, 16px));
-  padding: 0;
-
-  font-size: var(--wui-font-size-title, 18px);
-  font-weight: var(--wui-font-weight-semibold, 600);
-  line-height: var(--wui-line-height-tight, 1.2);
-  color: var(--wui-color-text, #1b1b1b);
-}
-
-/* 标题避让：关闭按钮绝对定位后不再占 .title-row 的位，长标题会一直排到按钮下面。
-   预留量取「按钮右偏移 + 按钮宽 + 呼吸间距」，而不是只减掉卡片 padding——这样即便消费者把
-   --wui-dialog-padding 的 inline 分量调到 0，标题文字右缘也不会越过按钮左缘；跟随
+/* 标题避让：关闭按钮绝对定位、不占 chrome 带的位，长标题会一直排到按钮下面。
+   预留量取「按钮右偏移 + 按钮宽 + 呼吸间距」，而不是只减掉带自身的 padding——这样即便
+   消费者把 --wui-dialog-inline-padding 调到 0，内容右缘也不会越过按钮左缘；跟随
    --wui-dialog-close-right 变化；这里复用正文容器上已解析的内部右侧偏移，与按钮定位同源。
    26px 对应 index.ts 里按钮的 size="26"，改按钮尺寸时一并改这里。
    只在 closable 时生效：没有按钮就不必留白。 */
-:host([closable]) .title {
+:host([closable]) .header {
   padding-inline-end: calc(var(--wui-internal-dialog-close-right) + 26px + var(--wui-space-3, 12px));
 }
 
@@ -312,41 +331,37 @@ dialog[open].is-visible .wui-dialog-body {
      token 只挂在这里，不与 dialog 的 max-height 共用——共用时外层（整卡）必然先触发。 */
   max-height: calc(var(--wui-dialog-max-height, 90vh) + var(--wui-dialog-desc-focus-padding, 6px) * 2);
 
-  /* ===== focus-ring 余量：四个轴一视同仁，成对负 margin 原样扣回 =====
+  /* ===== focus-ring 余量（block 轴）=====
 
      .desc 既是滚动容器又是裁剪盒（clip），贴在内容区任一沿的控件，其 ring
-     （offset 2 + width 3 = 5px）会被 padding box 裁掉；留 6px 余 1px。少补任何一条轴，
-     那一侧的 ring 就会退化成 1px 残条——只补 `padding-block` 的那版，全宽控件的左右环
-     就是这样被裁掉的（改动前 `.desc` 没有 overflow，最近裁剪祖先是 NONE，所以这是本轮
-     新引入的裁剪，不是既有限制）。
+     （offset 2 + width 3 = 5px）会被 padding box 裁掉；block 轴留 6px 余 1px，配一条
+     等量负 margin 把这 6px 从外部间距里扣回去——标题带→内容、内容→footer 的视觉间距
+     与改动前逐像素相同。
 
-     四条 padding 各配一条等量负 margin，把这 12px×2 从外部间距里扣回去，border box
-     回到改动前的样子，content box 的宽/高也不变（负 margin 让盒子外扩，padding 原样
-     吃回去）。所以 title→内容、内容→footer、内容与卡片左右沿的视觉间距与改动前逐像素
-     相同，宿主内层 grid 的可用尺寸也不变——后者是横向余量最该守住的不变量，否则
-     AddDialog 那种两栏 grid 的 drop zone 会换行（实测见
-     __tests__/dialog-content-height.browser.spec.ts 的「focus-ring 余量覆盖四条轴」）。
+     inline 轴不再走 focus 余量：卡片的 inline padding 整段移进了本容器（padding-inline
+     取 --wui-dialog-inline-padding，卡片的 inline 分量归零，见 .wui-dialog-body），
+     滚动口因此与卡片内沿重合（滚动条贴边，与 headless 模式 / drawer 一致）。24px 的 inline
+     padding 远大于 5px ring，左右焦点环不再被裁；也无需再配负 margin——content box 的
+     可用宽度与改动前相同（卡片原本也是同一档 inline padding），否则 AddDialog 那种两栏
+     grid 的 drop zone 会换行（实测见 __tests__/dialog-content-height.browser.spec.ts 的
+     「全宽控件的 focus ring 不被内容区裁掉，且宿主拿到的可用宽度不被改窄」）。
 
-     取舍，是取舍不是疏漏：负 margin 让 `.desc` 的 border box 溢出滚动内容区，所以
-     底部那圈 ring 余量不随内容滚动——滚到最底时 footer 那一侧仍留得住 padding，而
+     取舍，是取舍不是疏漏：负 margin 让 `.desc` 的 border box 在 block 轴溢出滚动内容区，
+     所以底部那圈 ring 余量不随内容滚动——滚到最底时 footer 那一侧仍留得住 padding，而
      内容末端到 `.desc` 下沿的 desc-gap 恒定，不跟着内容走。 */
   margin-top: calc(-1 * var(--wui-dialog-desc-focus-padding, 6px));
 
   /* margin-bottom 是「desc-gap 减去那对 padding-block」，两个都是公开 token：宿主把
      desc-gap 调到 focus-padding 以下就会算出负 margin（24/8 安全，4/2/0 会算出
      -2/-4/-6）。max() 兜住下界 0——那条路径下内容末端与 footer 会贴在一起，但盒模型
-     与 grid 行分配不进负值区间。
-
-     横向不需要同样的兜底：margin-inline 恒为 -focus-padding，没有第二个公开 token 参与
-     减法。它与卡片 inline padding（默认 24px）的关系是「focus-padding 不应超过该
-     padding，否则 .desc 会横向溢出卡片」，由上面那段注释交代。 */
+     与 grid 行分配不进负值区间。 */
   margin-bottom: max(
     0px,
     calc(var(--wui-dialog-desc-gap, var(--wui-space-6, 24px)) - var(--wui-dialog-desc-focus-padding, 6px))
   );
-  margin-inline: calc(-1 * var(--wui-dialog-desc-focus-padding, 6px));
+  margin-inline: 0;
   padding-block: var(--wui-dialog-desc-focus-padding, 6px);
-  padding-inline: var(--wui-dialog-desc-focus-padding, 6px);
+  padding-inline: var(--wui-dialog-inline-padding, var(--wui-space-6, 24px));
 
   font-size: var(--wui-font-size, 14px);
   line-height: var(--wui-line-height-normal, 1.5);
@@ -370,6 +385,9 @@ dialog[open].is-visible .wui-dialog-body {
   flex-direction: column;
   gap: var(--wui-dialog-footer-gap, 10px);
   justify-content: var(--wui-dialog-footer-justify, flex-end);
+
+  /* 卡片 inline padding 归零后由本区自带水平 padding，与 .header / .desc 同源。 */
+  padding-inline: var(--wui-dialog-inline-padding, var(--wui-space-6, 24px));
 
   & ::slotted(web-ui-button) {
     display: flex;

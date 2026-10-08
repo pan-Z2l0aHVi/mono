@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it } from 'vite-plus/test'
 
 import '..'
-import { cleanupElement, queryA11y, spyEvents, waitForUpdate } from '@/shared/test-utils'
+import { cleanupElement, spyEvents, waitForUpdate } from '@/shared/test-utils'
 
 import type { WebUiDialog } from '..'
 
@@ -33,7 +33,7 @@ const flush = () => new Promise<void>(resolve => setTimeout(resolve, 0))
 
 describe('WebUiDialog closable', () => {
   it('默认不渲染关闭按钮', async () => {
-    const el = createDialog('<span slot="title">标题</span>')
+    const el = createDialog('<span slot="header">标题</span>')
     await waitForUpdate(el)
 
     expect(el.closable).toBe(false)
@@ -42,7 +42,7 @@ describe('WebUiDialog closable', () => {
   })
 
   it('closable 渲染带可访问名的关闭按钮', async () => {
-    const el = createDialog('<span slot="title">标题</span>')
+    const el = createDialog('<span slot="header">标题</span>')
     el.closable = true
     await waitForUpdate(el)
 
@@ -50,13 +50,15 @@ describe('WebUiDialog closable', () => {
     cleanupElement(el)
   })
 
-  it('body 模式下同样受 closable 控制', async () => {
-    const closed = createDialog('<section slot="body">自定义主体</section>')
+  it('headless 模式下同样受 closable 控制', async () => {
+    const closed = createDialog('<section>自定义主体</section>')
+    closed.headless = true
     await waitForUpdate(closed)
     expect(closeButton(closed)).toBeNull()
     cleanupElement(closed)
 
-    const open = createDialog('<section slot="body">自定义主体</section>')
+    const open = createDialog('<section>自定义主体</section>')
+    open.headless = true
     open.closable = true
     await waitForUpdate(open)
     expect(closeButton(open)).toBeTruthy()
@@ -111,75 +113,71 @@ describe('WebUiDialog closable', () => {
 })
 
 /*
- * body slot 的存在性契约：body slot 有内容 → 默认的 title/desc/footer 三段不投影
- * （消费者接管整个主体）；body slot 空 → 回到默认三段。
- *
- * 观察面用「哪些 slot 实际投影出了元素」而不是「shadow 里有没有某个 slot 元素」：
- * 模板里那个 hidden 的 body slot 恒在，用户看不见它的存在。
+ * headless 模式的契约：默认槽的内容渲染进卡片内的滚动层 `.wui-dialog-content`，内置的
+ * header / .desc / footer 三段一律不渲染。开关是 `headless` 布尔属性（reflect），与
+ * `<web-ui-drawer>` 同形——不再是「往某个具名 slot 里塞元素」。
  */
-function projectedSlots(el: WebUiDialog): string[] {
-  return ['title', 'body', 'footer']
-    .map(name => {
-      const slot = queryA11y(el, `slot[name="${name}"]`) as HTMLSlotElement | null
-      return (slot?.assignedElements().length ?? 0) > 0 ? name : ''
-    })
-    .filter(Boolean)
+function shadowQuery<T extends Element>(el: WebUiDialog, selector: string): T | null {
+  return el.shadowRoot?.querySelector<T>(selector) ?? null
 }
 
-describe('WebUiDialog body slot presence', () => {
-  it('body 后续插入时切换到自定义主体模式', async () => {
-    const el = createDialog('<p id="description">Default description</p>')
-    await waitForUpdate(el)
-    expect(projectedSlots(el)).toEqual([])
-
-    el.insertAdjacentHTML('afterbegin', '<section id="body" slot="body">Custom body</section>')
-    await waitForUpdate(el)
-
-    expect(projectedSlots(el)).toEqual(['body'])
-    cleanupElement(el)
-  })
-
-  it('body 移除后恢复默认主体组合', async () => {
-    const el = createDialog('<section id="body" slot="body">Custom body</section>')
-    await waitForUpdate(el)
-    expect(projectedSlots(el)).toEqual(['body'])
-
-    el.querySelector('#body')!.remove()
-    await waitForUpdate(el)
-
-    expect(projectedSlots(el)).toEqual([])
-    cleanupElement(el)
-  })
-
-  it('插入后替换 body 条件包装内容仍分配新主体', async () => {
-    const el = createDialog('<section id="first" slot="body">First</section>')
-    await waitForUpdate(el)
-
-    const first = el.querySelector('#first')!
-    const second = document.createElement('section')
-    second.id = 'second'
-    second.setAttribute('slot', 'body')
-    second.textContent = 'Second'
-    first.replaceWith(second)
-    await waitForUpdate(el)
-
-    const slot = queryA11y(el, 'slot[name="body"]') as HTMLSlotElement
-    expect(slot.assignedElements()[0]?.id).toBe('second')
-    cleanupElement(el)
-  })
-
-  it('断开期间替换 body，重连后仍使用自定义主体模式', async () => {
-    const el = createDialog('<section id="first" slot="body">First</section>')
-    await waitForUpdate(el)
-
-    el.remove()
-    el.querySelector('#first')!.setAttribute('id', 'second')
-    el.querySelector('#second')!.textContent = 'Second'
-
-    document.body.append(el)
+describe('WebUiDialog headless', () => {
+  it('headless 让默认槽渲染进 .wui-dialog-content，且 header / .desc / footer 都不渲染', async () => {
+    const el = createDialog('<section id="body">自定义主体</section>')
+    el.headless = true
     await flush()
+    await waitForUpdate(el)
 
-    expect(projectedSlots(el)).toEqual(['body'])
+    expect(el.headless).toBe(true)
+    // CSS 的 :host([headless]) scoping 依赖 attribute，所以这个属性必须 reflect。
+    expect(el.hasAttribute('headless')).toBe(true)
+
+    expect(shadowQuery(el, '.wui-dialog-content'), '默认槽应落在这个滚动层里').toBeTruthy()
+    expect(shadowQuery(el, '.header'), 'headless 不渲染 chrome 带').toBeNull()
+    expect(shadowQuery(el, '.desc'), 'headless 不渲染 .desc').toBeNull()
+    expect(shadowQuery(el, '.wui-dialog-footer'), 'headless 不渲染 footer').toBeNull()
+
+    const slot = shadowQuery<HTMLSlotElement>(el, '.wui-dialog-content slot')
+    expect(slot?.assignedElements()[0]?.id).toBe('body')
+    cleanupElement(el)
+  })
+
+  it('headless 关掉后默认槽回到 .desc，chrome 带重新渲染', async () => {
+    const el = createDialog('<section id="body">自定义主体</section>')
+    el.headless = true
+    await flush()
+    await waitForUpdate(el)
+
+    el.headless = false
+    await flush()
+    await waitForUpdate(el)
+
+    expect(el.hasAttribute('headless')).toBe(false)
+    expect(shadowQuery(el, '.wui-dialog-content')).toBeNull()
+    expect(shadowQuery(el, '.desc')).toBeTruthy()
+    expect(shadowQuery(el, '.header')).toBeTruthy()
+
+    const slot = shadowQuery<HTMLSlotElement>(el, '.desc slot')
+    expect(slot?.assignedElements()[0]?.id).toBe('body')
+    cleanupElement(el)
+  })
+
+  it('默认槽同一时刻只渲染一次（.desc 与 .wui-dialog-content 二选一）', async () => {
+    const el = createDialog('<section id="body">自定义主体</section>')
+    await waitForUpdate(el)
+    const defaultSlotCount = () => el.shadowRoot!.querySelectorAll('slot:not([name])').length
+
+    expect(defaultSlotCount()).toBe(1)
+
+    el.headless = true
+    await flush()
+    await waitForUpdate(el)
+    expect(defaultSlotCount()).toBe(1)
+
+    el.headless = false
+    await flush()
+    await waitForUpdate(el)
+    expect(defaultSlotCount()).toBe(1)
     cleanupElement(el)
   })
 })

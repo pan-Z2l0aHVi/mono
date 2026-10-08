@@ -21,7 +21,7 @@ function createTrigger(text: string): HTMLElement {
 
 function createDialog(): WebUiDialog {
   const component = document.createElement('web-ui-dialog') as WebUiDialog
-  component.innerHTML = '<span slot="title">对话框标题</span>对话框正文里的可读文本'
+  component.innerHTML = '<span slot="header">对话框标题</span>对话框正文里的可读文本'
   document.body.append(component)
   return component
 }
@@ -59,7 +59,7 @@ describe('WebUiDialog 双击打开的选区（浏览器）', () => {
     // 不用一刀切 user-select: none 换「打开没选区」：面板内文本照旧可选。
     // 必须是真实拖拽：程序化 addRange 绕开 user-select，面板被改成
     // `user-select: none` 时那种写法照样绿，守不住这里要守的东西。
-    const title = component.querySelector('span[slot="title"]')!.firstChild!
+    const title = component.querySelector('span[slot="header"]')!.firstChild!
     await realDragSelectText(title)
     expect(document.getSelection()?.toString()).toBe('对话框标题')
   })

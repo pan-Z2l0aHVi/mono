@@ -70,8 +70,9 @@ function cardRectOf(el: WebUiDialog): DOMRect {
 describe('WebUiDialog closable（浏览器几何）', () => {
   // 按钮的位置契约只钉**用户可感知的边界关系**（在卡片内、与标题同行），不钉偏移像素：
   // 日后调主题 spacing 令牌不该变成改测试。
-  it('body 模式下按钮浮在卡片内，不压出卡片边界', async () => {
-    const el = createDialog('<section slot="body">自定义主体</section>')
+  it('headless 模式下按钮浮在卡片内，不压出卡片边界', async () => {
+    const el = createDialog('<section>自定义主体</section>')
+    el.headless = true
     el.closable = true
     await openDialog(el)
 
@@ -84,13 +85,12 @@ describe('WebUiDialog closable（浏览器几何）', () => {
     expect(close.bottom).toBeLessThanOrEqual(card.bottom)
   })
 
-  it('title-row 模式下按钮与标题同行，且在标题右侧', async () => {
-    const el = createDialog('<span slot="title">标题</span>')
+  it('header 带里按钮与标题同行，且在标题右侧', async () => {
+    const el = createDialog('<span slot="header">标题</span>')
     el.closable = true
     await openDialog(el)
 
-    const title = el.shadowRoot?.querySelector('.title')
-    if (!title) throw new Error('Expected the title to exist')
+    const title = el.querySelector('[slot="header"]') as HTMLElement
     const titleRect = title.getBoundingClientRect()
     const close = closeRectOf(el)
 
@@ -115,7 +115,7 @@ describe('WebUiDialog closable（浏览器几何）', () => {
   })
 
   it('不启用 closable 时不产生关闭按钮', async () => {
-    const el = createDialog('<span slot="title">标题</span>')
+    const el = createDialog('<span slot="header">标题</span>')
     await openDialog(el)
 
     expect(closeButtonOf(el)).toBeNull()
