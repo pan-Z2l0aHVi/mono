@@ -68,6 +68,20 @@ async function mountPage(path: string, waitingForTestId: string) {
     routeTree,
     history: createMemoryHistory({ initialEntries: [path] })
   })
+  /*
+   * 先 `await router.load()` 再把已解析的路由交给 RouterProvider。
+   *
+   * 本文件用的是真实 `routeTree`（懒加载路由），匹配项里的组件要等一次动态 import 才有；
+   * 直接 render 会让「内容什么时候出现」变成一次竞速——下面的 `waitFor` 用的是
+   * testing-library 默认 1000ms 预算，机器一被挤爆（CI 4 核并发、或本机加压）第二层的
+   * svg 示例页就会在预算内挂不上，报 `page not mounted`（CI run 37726205609 attempt 2 与
+   * 本机 14/60 个忙循环下的加压复现都是这一条，逐字相同）。
+   *
+   * `load()` 走的是路由自己的加载完成信号，与调度延迟无关：加载完再 render，首帧即有内容，
+   * 下面的 `waitFor` 只作为「确实渲染了」的兜底与守卫——真的挂不上（例如路由/组件坏掉）
+   * 仍然会在预算内报 `page not mounted`，判据没有被放宽。
+   */
+  await router.load()
   render(<RouterProvider router={router} />)
   await waitFor(() => {
     if (!document.querySelector(`[data-testid="${waitingForTestId}"]`)) throw new Error('page not mounted')

@@ -77,8 +77,25 @@ async function mountPage(component: object, testId: string) {
   })
   wrapper = mount(component, { attachTo: document.body, global: { plugins: [router] } })
   await nextTick()
-  await new Promise(resolve => requestAnimationFrame(() => resolve(null)))
-  if (!document.querySelector(`[data-testid="${testId}"]`)) throw new Error('page not mounted')
+  await waitForMounted(testId)
+}
+
+/*
+ * 有界轮询「页面已挂上」。
+ *
+ * 与 react demo 的 `mountPage` 不同，这里 `mount()` 直接渲染被测组件（路由只是给
+ * RouterLink 提供上下文，不经过懒加载路由），挂载是同步的——所以这不是同一个成因，
+ * 也不以「消除竞速」自居。但原来的写法是「`nextTick` + 一帧后单点判空就抛」，把一次
+ * 调度抖动直接当失败：这里改成有界重试，判据不变（始终是 data-testid 存在），超预算
+ * 仍然抛 `page not mounted`，只是不再因为某一帧的调度延迟而假红。
+ */
+async function waitForMounted(testId: string): Promise<void> {
+  const deadline = performance.now() + 1000
+  while (performance.now() < deadline) {
+    if (document.querySelector(`[data-testid="${testId}"]`)) return
+    await new Promise(resolve => requestAnimationFrame(() => resolve(null)))
+  }
+  throw new Error('page not mounted')
 }
 
 describe('网格列数基线（浏览器）', () => {
