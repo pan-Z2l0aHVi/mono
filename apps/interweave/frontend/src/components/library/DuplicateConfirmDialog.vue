@@ -30,7 +30,7 @@ function handleOpenChange(event: WebUiEvent<WebUiDialog, 'open-change'>) {
     class="mobile:[--wui-dialog-width:90vw] [--wui-dialog-width:420px]"
     @open-change="handleOpenChange"
   >
-    <span slot="title" class="flex items-center gap-2">
+    <span slot="header" class="flex items-center gap-2">
       <web-ui-icon :icon="lucideTriangleAlert" :size="16" class="text-[#b45309] dark:text-[#fcd34d]" />
       资源库中已有这个文件
     </span>

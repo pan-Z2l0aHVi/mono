@@ -106,7 +106,7 @@ function pickAccent(value: string) {
       滚动宿主，这 9px 就被切平（t-0081 实测左沿被切 9px，t-0084 复测 9.9px）。
       卡片 chrome 的侧向 padding 是 24px，容得下这 9px，搬进来就没有裁剪边了。
     -->
-    <div slot="title" class="flex flex-col gap-4 font-normal">
+    <div slot="header" class="flex flex-col gap-4 font-normal">
       <span>设置</span>
       <web-ui-segmented class="w-full" :value="activeTab" aria-label="设置分区" @change="handleTabChange">
         <web-ui-segmented-trigger v-for="tab in TABS" :key="tab.value" :value="tab.value">
@@ -123,11 +123,11 @@ function pickAccent(value: string) {
       上限由组件的 `.desc` 承担；这里给面板一个 min-height 顶住 token，`.desc` 就不会在
       内容不足时收缩到内容高——不是 height，也不是把上限交回内容，「切 tab 不跳」才成立。
       token 声明在外层 web-ui-dialog 上，内层作为后代继承得到，两个数不会走散。
-      token 里减掉的 158 是本 dialog 的 chrome 实测值（title 模式 + closable），
+      token 里减掉的 158 是本 dialog 的 chrome 实测值（默认 header 模式 + closable），
       量自 web-ui-dialog shadow 内各段：
 
         卡片上 padding        20（上）+ 24（下）
-        .title-row 外高       89.59（title 21.59 + 标题下 16 + segmented 36 + margin-bottom 16）
+        .header 带外高         89.59（标题 21.59 + 标题下 gap 16 + segmented 36 + 带下 margin 16）
         .desc margin-top       −6（focus-ring 上余量的成对负 margin，扣回 title 下方间距）
         .desc padding-block   12（focus-ring 余量）
         .desc margin-bottom   18
