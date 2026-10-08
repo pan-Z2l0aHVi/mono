@@ -22,6 +22,8 @@ worktree 是任务隔离边界，不是包名的别名。本文件只描述**仓
 
 根 [`AGENTS.md`](../../AGENTS.md) 的共享工作区 Git 改写禁令是权威边界。任何重切分支、清理、重置或删除 worktree 前，先确认没有未提交变更、没有未合并独有提交，并把结果写入交接记录。
 
+上面那条是**破坏性 git 操作之前**的前置检查，这一条是**轮次末**的终态要求，两者不相反：都为了让别人读这个 worktree 时不被无关改动干扰。实施轮以提交为终点——提交之后 worktree 必须干净，`git status --porcelain --untracked-files=all` 不留下任何 tracked 改动，也不留下未跟踪文件；冻结中（`frozen` 相位、尚未提交）的 task worktree 带着本任务自己的 diff 躺在工作区里，是它的正常形态，不算残留。残留本身不改变任何分支或 `main` 的树，对别人没有直接危害，但下一个读它的人分不清这是实验残渣还是没做完的成果，收尾时只能逐个抽查「这个文件是不是等于基线版本」才敢清理；它还会被卷进提交——`freeze` 的归一化是 `git add -A` → `fix-code` → `git add -A`（`scripts/task.mjs` 的 `normalizeWorktree`），快照覆盖 tracked 与未跟踪，而**起点方向**的干净检查只有 T0/T1 的 `new` 与 `start`（`open → active` 这一次）和 T2 的 `freeze`：T0/T1 的起点由这两道守住，此后到 `freeze` 之间新出现的无关文件没人再查，会被 `git add -A` 吸进冻结快照、跟着这笔提交出去；T2 的 `start` 不查，且快速通道通常根本不 `freeze`，所以 T2 没有起点检查，残留只要被 `git add` 进来就会跟提交一起出去（提交内容 = 当时的 index），T2 若为留痕主动 `freeze`，反倒会因不干净被 `freeze` 直接挡住，而不是被吸进快照。提交之后的 `verify --result pass` 与 T0/T1 的 `done` 另要求工作区干净，但它们发生在提交之后，挡不住已经随快照进了提交的残留。这条约束的是一轮操作的**结束状态**，不是过程中不许改文件：变异实验、对照实验、临时接线都允许，只要收尾还原；探针与临时脚本写 `/tmp`，不落在 worktree 里。
+
 ## Review 边界
 
-Reviewer 只审冻结的 task diff，不在自己的临时副本上审查，也不复用变化后的旧结论。diff 变化后，原 review 和 approval 自动失效。T0 的 reviewer 由编排层另起独立线程提供，形态见 [`workflow.md`](workflow.md)「review 拓扑」。
+Reviewer 只审冻结的 task diff，不在自己的临时副本上审查，也不复用变化后的旧结论。diff 变化后，原 review 和 approval 自动失效。T0 的 reviewer 由编排层另起独立线程提供，形态见 [`workflow.md`](workflow.md)「review 拓扑」。Review 轮的终态判据是**相对**的，不是 `git status` 全空：本任务自己的改动原样保留（等于冻结快照），本轮自己搭的脚手架清空——把被审文件从「红」还原回冻结内容，删掉实验期新增的对照用 spec、changeset 等未跟踪文件，这些在判词落库之前清掉（清的是实验脚手架，读数、判词与冻结快照这些证据不动；通则见上面「Git 边界」）。`pnpm agent:task status --task <id>` 的 `live` 按 task 的 `worktree` 字段计算，指向**实施者的** worktree，只能证明被审对象自 freeze 以来没变、非 stale，证明不了 reviewer 自己那份副本的状态。
