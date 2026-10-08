@@ -738,6 +738,9 @@ try {
   fs.chmodSync(formatStub, 0o755)
   fs.copyFileSync(path.join(repoRoot, '.agents', 'checks', 'format-clean'), formatCheck)
   fs.chmodSync(formatCheck, 0o755)
+  const turboCheck = path.join(fixture, '.agents', 'checks', 'turbo-cache-invariant')
+  fs.writeFileSync(turboCheck, '#!/bin/sh\nexit 0\n')
+  fs.chmodSync(turboCheck, 0o755)
   const formatLog = path.join(fixture, 'format-tool-calls.log')
   const failMarker = path.join(fixture, 'format-stub-fail')
   const dirtyGoMarker = path.join(fixture, 'format-stub-dirty-go')
@@ -759,7 +762,7 @@ try {
   git('add', 'demo 目录/a b.mjs', 'probe.css', 'probe.go')
   const noTaskFormatGuard = spawn('guard')
   assert.equal(noTaskFormatGuard.status, 0)
-  assert.deepEqual(JSON.parse(noTaskFormatGuard.stdout).checks, ['format-clean'])
+  assert.deepEqual(JSON.parse(noTaskFormatGuard.stdout).checks, ['format-clean', 'turbo-cache-invariant'])
   const formatCalls = fs.readFileSync(formatLog, 'utf8')
   // 空格 + 非 ASCII 路径必须作为**一个** arg 到达工具，承重的是「正例 + 条数」这一对：日志只收磁盘
   // 上真存在的路径，所以一旦参数被空白劈开（`demo`、`目录/a`、`b.mjs` 都不是文件），那条路径就一条
@@ -781,6 +784,10 @@ try {
   fs.chmodSync(formatCheck, 0o644)
   assert.match(failMessage('guard'), /always-on checks did not run: format-clean/)
   fs.chmodSync(formatCheck, 0o755)
+  fs.chmodSync(turboCheck, 0o644)
+  assert.match(failMessage('guard'), /always-on checks did not run: turbo-cache-invariant/)
+  fs.chmodSync(turboCheck, 0o755)
+  fs.rmSync(formatLog, { force: true })
 
   // 以 - 开头的暂存路径必须 fail-closed：调用形状是「flag 在前、路径在后」，仓库根一个真名叫
   // --fix 的文件会变成一个真的 fixer 开关，那正是本检查承诺不做的事（commit 期改写文件）。
@@ -806,7 +813,7 @@ try {
   // 只有它装着、fixture 里又没有 .changeset 时，「无 task 只跑白名单」才是被证明的结论。
   fs.copyFileSync(path.join(repoRoot, '.agents', 'checks', 'changeset-required'), changesetCheck)
   fs.chmodSync(changesetCheck, 0o755)
-  assert.deepEqual(JSON.parse(spawn('guard').stdout).checks, ['format-clean'])
+  assert.deepEqual(JSON.parse(spawn('guard').stdout).checks, ['format-clean', 'turbo-cache-invariant'])
 
   // 无 task 时格式问题照样拦住提交，但不得顺带要求 changeset：政策检查核对的是 task 的交代物。
   fs.writeFileSync(failMarker, 'stub fails\n')
@@ -835,7 +842,8 @@ try {
   assert.deepEqual(JSON.parse(run('guard', '--task', 'format-t2')).checks, [
     'changeset-required',
     'format-clean',
-    'policy-check.sh'
+    'policy-check.sh',
+    'turbo-cache-invariant'
   ])
   // T2 的干净豁免只到 start：工作区还有别人的在制品时 freeze 必须拒绝——`git add -A` 会把它们
   // 一起吸进快照（见 freeze）。反过来，起点干净的 T2 允许 freeze，否则「为留痕而 freeze」这条路
@@ -878,6 +886,7 @@ try {
   // 对**无 task 的 guard** 是硬失败的。后来新增这类用例时会撞上「always-on checks did not run」，
   // 那是预期行为，不是 bug——要跑得先把 format-clean 装回来。
   fs.rmSync(formatCheck)
+  fs.rmSync(turboCheck)
   fs.rmSync(formatStub)
   fs.rmSync(formatLog, { force: true })
   for (const key of [

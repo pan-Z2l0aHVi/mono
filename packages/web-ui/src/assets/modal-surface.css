@@ -1,0 +1,24 @@
+/*
+ * 模态表面（dialog / drawer / image-preview 的 <dialog> 面板）的焦点环策略，集中一处。
+ *
+ * 1. `<dialog>` 壳不是可聚焦控件：面板里没有更优候选时，`showModal()` 会把焦点交给
+ *    dialog 本身，UA 会为它画一枚默认 ring。它是模态表面，内部控件各自保留 focus ring。
+ *
+ * 2. 面板的滚动区（`.desc` / `.wui-dialog-content` / `.wui-drawer-content`）同样不是
+ *    可聚焦控件。Chromium 会把「可滚动的滚动容器」变成键盘可聚焦项
+ *    （keyboard-focusable scrollers），于是 dialog 的 focusing steps 会选中面板滚动区，
+ *    UA 为它画一枚默认蓝环（`outline: auto` + `-webkit-focus-ring-color`）。这一枚环
+ *    与库的统一 ring（`outline: var(--wui-focus-ring-width) solid var(--wui-color-focus-ring)`）
+ *    形态/颜色都不一致，是「dialog / drawer 打开后卡片上多出一圈蓝框」的来源：滚动区若是
+ *    铺满卡片的（body 模式）且卡片自带 `overflow: hidden` + 圆角，这枚直角的 UA 环会被
+ *    卡片裁成圆角矩形，看起来正贴着卡片外缘。
+ *
+ * 逐组件各抄一份正是「新增一个基于 `<dialog>` 的组件就漏掉抑制规则」的成因；新组件把本
+ * 文件加进 `static styles` 即可。文档级 scrim（context-menu）不在这条链上——它自己注入
+ * 样式表，按同样策略在 `scrim.css` 里就地收口。
+ */
+dialog:focus,
+dialog:focus-visible,
+dialog :where(.desc, .wui-dialog-content, .wui-drawer-content):focus-visible {
+  outline: none;
+}

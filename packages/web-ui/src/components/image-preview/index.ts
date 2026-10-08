@@ -6,6 +6,7 @@ import { styleMap } from 'lit/directives/style-map.js'
 import '@/components/button'
 import '@/components/icon'
 import glass from '@/assets/glass.css?inline'
+import modalSurface from '@/assets/modal-surface.css?inline'
 import { lucideChevronLeft, lucideChevronRight, lucideMinus, lucidePlus, oouiClose, radixIconsReset } from '@/icons'
 import { attachDragGesture, type DragGestureHandle } from '@/shared/gesture/drag-gesture'
 import { clamp } from '@/shared/gesture/physics'
@@ -112,7 +113,7 @@ const SWIPE_SETTLE_MS = 320
  */
 @customElement('web-ui-image-preview')
 class WebUiImagePreview extends LitElement {
-  static override styles = [unsafeCSS(glass), unsafeCSS(style)]
+  static override styles = [unsafeCSS(glass), unsafeCSS(modalSurface), unsafeCSS(style)]
 
   @property({ attribute: false }) images: ImagePreviewItem[] = []
   @property({ attribute: false }) loop = true

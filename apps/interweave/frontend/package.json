@@ -6,8 +6,8 @@
   "scripts": {
     "test": "vp test run",
     "dev": "vp dev",
-    "build:dev": "cd .. && wails3 generate bindings -ts -clean=true && cd frontend && vue-tsc --build && vp build --minify false --mode development",
-    "build": "cd .. && wails3 generate bindings -ts -clean=true && cd frontend && vue-tsc --build && vp build --mode production",
+    "build:dev": "node ../scripts/generate-bindings.mjs && vue-tsc --build && vp build --minify false --mode development",
+    "build": "node ../scripts/generate-bindings.mjs && vue-tsc --build && vp build --mode production",
     "preview": "vp preview"
   },
   "dependencies": {

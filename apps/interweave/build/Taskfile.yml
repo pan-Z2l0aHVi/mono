@@ -15,9 +15,8 @@ tasks:
     summary: Build the frontend project
     # darwin:build:universal runs its per-arch builds as parallel deps, each of
     # which depends on this task. Without run:once the two executions race:
-    # one regenerates frontend/bindings (-clean deletes it first) while the
-    # other's bundler is reading it, failing intermittently with
-    # 'Could not resolve "./bindings/<pkg>"' (#4637).
+    # one regenerates frontend/bindings while the other's bundler is reading it,
+    # failing intermittently with 'Could not resolve "./bindings/<pkg>"' (#4637).
     run: once
     dir: frontend
     sources:
@@ -52,7 +51,7 @@ tasks:
     generates:
       - frontend/bindings/**/*
     cmds:
-      - wails3 generate bindings -f '{{.BUILD_FLAGS}}' -clean=true{{if eq .OBFUSCATED "true"}} -obfuscated{{end}} -ts
+      - node scripts/generate-bindings.mjs -f '{{.BUILD_FLAGS}}'{{if eq .OBFUSCATED "true"}} -obfuscated{{end}}
 
   generate:icons:
     summary: |-
