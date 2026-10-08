@@ -1,5 +1,64 @@
 # @greypan/web-ui
 
+## 9.1.0
+
+### Minor Changes
+
+- 617457a: `<web-ui-layout>` exposes the mobile-viewport state it renders by, so consumers no longer keep a breakpoint of their own.
+  
+  **New API.** `mobile` is a **derived, read-only** member: a getter-backed property, a reflected `mobile` attribute, and a `mobile-change` (`CustomEvent<{ mobile: boolean }>`) notification that fires once per crossing, including the connect-time evaluation when the element mounts on a narrow viewport. It is not an input — the property is read-only (assignments take no effect and throw for strict-mode callers) and setting the attribute is reverted in the same reaction, value included, with no event for either. Read `layout.mobile` for the current value and subscribe to `mobile-change` for updates; CSS can target `web-ui-layout[mobile]`.
+  
+  **Consuming it.** The layout re-renders in a microtask, so a consumer that reacts on a scheduler macrotask reads the old value while the new tree is already on screen. Vue is fine with a template `@mobile-change` binding (listeners are attached before insertion and flush in a microtask); React needs the element through a ref, the value read and subscribed inside `useLayoutEffect`, and the write-back wrapped in `flushSync`. Without that, the layout's React demo rendered the drawer with a stale consumer width for a frame on every crossing into mobile — measured at 2 of 221 sampled frames, zero after the fix.
+  
+  **Timing change.** The judgement moved from `window.innerWidth <= 640` plus a 100 ms `resize` debounce to `matchMedia('(width <= 640px)')` — the same condition as the layout's own `@media (width <= 640px)`. The tree switch, that CSS rule and `mobile` now flip at the same instant. Previously the layout could keep rendering the desktop tree for up to 100 ms after the CSS had hidden the aside, during which the sidebar disappeared entirely, and crossing back showed the drawer alone for the same window. Same-side viewport changes no longer recompute anything.
+  
+  The breakpoint literal still appears four times (layout and drawer, TS and CSS): a media query cannot read a custom property, so it cannot be single-sourced. `components/drawer/__tests__/breakpoint-parity.spec.ts` guards their equality.
+  
+  **App CSS follows the same attribute.** The three apps declare a Tailwind v4 custom variant on `web-ui-layout[mobile]`, so the mobile side of the 640 boundary is written once instead of once per breakpoint utility:
+  
+  ```css
+  @custom-variant mobile (&:where(web-ui-layout[mobile], web-ui-layout[mobile] *));
+  ```
+  
+  Every `max-[640px]:` (plus Interweave's single `max-sm:`) becomes `mobile:`. The min-width side does **not** follow, and that is a measured result rather than an omission: replacing the demos' `sm:` with a `desktop:` variant (and even with the media form `@media (width > 640px)`) silently overrode `md:` and `lg:`, because Tailwind v4 emits `@custom-variant` rules after the theme breakpoints and `:where()` keeps the specificity tied — so the later rule wins, and `desktop:grid-cols-4` flattened the home page to 2 columns at every width (baseline 3) and the svg demo to 3 (baseline 5). `sm:` and the demos' `--breakpoint-sm` token therefore stay, and the trap is documented in all three `global.css` files with those numbers. Two further costs: the variant only reaches nodes inside the layout subtree (overlay content portaled to `document.body` — menus, popover, tooltip, select, autocomplete, image-preview, toast — must keep using media queries; no such node uses it today), and breakpoints the layout does not model (`md:`, `lg:`, `xl:`, `max-[900px]:`) stay media queries.
+  
+  In the Interweave frontend the shell consumes the new event, provides the value to the page, and the page's drawers and dialogs read it from there; the local `useMediaQuery` composable is gone. Decision record: `docs/adr/0023-layout-exposes-derived-mobile-viewport-state.md`.
+- 617457a: 新增 `<web-ui-middle-ellipsis>`：单行中间省略，保留首尾、丢掉中间（`very-long-file-…-abcdefghij.txt`），补上 `text-overflow: ellipsis` 只能保住头部的那块缺口。
+  
+  属性 `text` / `marker` / `marker-position`。`marker-position` 与 CSSWG css-overflow-5 的 `text-overflow: ellipsis <length-percentage>` 同向（`0` 贴行末、`100` 贴行首、默认 `50` 居中），将来该特性落地时消费方的取值可以直接搬过去。切点只落在字素簇边界上，代理对、组合符序列与 ZWJ emoji 不会被劈开；容器尺寸变化后重算。
+  
+  使用条件与 `text-overflow: ellipsis` 相同：单行，且有确定行内尺寸。
+  
+  已知限制：元素里装的是屏幕上那串，因此选中复制拿到的是截断后的文本（原文经 `title` 提供）；宿主需为 `direction: ltr`。可行性与方案对比见 `docs/research/web-ui-middle-ellipsis-261007.md`。
+- 617457a: Add the `@greypan/web-ui/scrollbars` subpath. It exports `webUiScrollbarsOptions` (macOS-aligned OverlayScrollbars options: auto-hide while scrolling, track click-to-scroll) and `WEB_UI_SCROLLBARS_THEME`, and registers the `ClickScrollPlugin` the options depend on. `@greypan/web-ui/scrollbars.css` carries the theme together with the library's structural styles in one stylesheet.
+  
+  Minor rather than major: the two new export entries and the widened `sideEffects` list are additive, and the new `overlayscrollbars` peer is optional (`peerDependenciesMeta.optional`), so no existing consumer's install or import changes.
+
+### Patch Changes
+
+- 617457a: Fix the `<web-ui-context-menu>` modal panel rendering with light fallback colors under a dark appearance.
+  
+  The scrim `<dialog>` was appended to `document.body`, but `<web-ui-theme>` writes `--wui-color-*` on its own `:host` and `document.body` is that host's **parent** — custom properties only inherit downwards, so the scrim and the panel mounted inside it both fell back to the light literals baked into `var(--wui-color-*, …)`. The scrim now mounts into the nearest theme's overlay root, the same path dropdown / select / popover already resolve, so the menu picks up the theme-scoped tokens and follows appearance changes while it is open. Without a theme scope the scrim still mounts on `document.body`, exactly as before.
+- 617457a: Fix two ways short and tall content could be lost inside `<web-ui-dialog>` / `<web-ui-drawer>`:
+  
+  - **`<web-ui-dialog>` `body` mode scrolls.** With a `slot="body"` child the card sized itself to its content and spilled out of the `dialog` box, which stays `overflow: visible` so the glass shadow is not clipped — everything past the fold ended up off-screen and unreachable, because no element was a scroll container. The `body` slot is now wrapped in `.wui-dialog-content`, the card keeps sizing to its content when the content fits and is otherwise bounded by the same literal `100vh` / `100dvh` backstop it already had, and the body content scrolls inside it. The built-in close button keeps its `--wui-dialog-close-top` / `--wui-dialog-close-right` offset while that content scrolls. `--wui-dialog-max-height` still caps `.desc` only, as documented.
+  - **`<web-ui-drawer placement="top|bottom">` honours `--wui-drawer-height`.** A later `height: auto` in the floating-card block overrode the placement's height, so a vertical drawer collapsed to its content height instead of the documented `300px` and `.wui-drawer-content` never got the bounded box `flex: 1` needs to shrink into — tall content overflowed the panel and could not be scrolled to. The placement height is declared again where it belongs; side placements and headless drawers behave exactly as before.
+- 617457a: Adjust the default offsets of the built-in close button of `<web-ui-dialog closable>`, and fix its unequal distances from the card's top and right edges in title mode.
+  
+  The published `--wui-dialog-close-top` / `--wui-dialog-close-right` tokens now default to `20px` instead of `16px` in both content modes. The defaults are literals rather than `--wui-space-*` fallbacks, so a themed spacing change no longer moves the dialog close button; consumers that relied on that coupling should set either close token explicitly. The drawer close offsets remain at `16px`.
+  
+  In title mode the button was previously a `flex` item inside `.title-row`, so its offsets came from the card's padding — `20px` from the top, `24px` from the right by default. Both content modes now share one absolutely-positioned rule, so the tokens apply in either mode and the defaults are equal. The title reserves room from the same resolved right offset, so a long title no longer runs under the button.
+- 617457a: Fix `web-ui-layout`'s `header-glow` bleeding the colour above the top of the page into the header's top edge in Safari. The blur layer no longer extends above the header box (WebKit samples the backdrop outside the viewport, so that overhang pulled the browser's own dark chrome — or content scrolled above the viewport — into the header), and its mask stop is adjusted so the feather below the header stays equivalent.
+- b407aeb: Stop `<web-ui-dialog>` and `<web-ui-drawer>` from painting a stray focus ring around the panel.
+  
+  Chromium treats a scrollable container as keyboard-focusable, so a dialog / drawer whose content area overflows and holds nothing focusable makes the browser's dialog-focusing steps land on that scroll container. The UA then paints its default blue ring (`outline: auto`, `-webkit-focus-ring-color`) on it, which does not match the library's `--wui-focus-ring-*` ring. The modal-surface focus policy now lives in one shared stylesheet (`assets/modal-surface.css`) that suppresses the ring on the `<dialog>` shell and on the panel scroll containers (`.desc`, `.wui-dialog-content`, `.wui-drawer-content`); the context-menu scrim applies the same policy in its own injected stylesheet.
+- 617457a: Shorten the shared scrollbar auto-hide delay and make track clicks land instantly. `webUiScrollbarsOptions` now hides the scrollbars 2000ms after scrolling stops (was 2500ms), and its `clickScroll` resolution gains `clickScrollDuration: 0`, dropping OverlayScrollbars' default 200ms ease so a track click jumps straight to the clicked position instead of animating there (the animation stuttered on the virtualized resource list).
+- 617457a: Text controls pin their placeholder typography to the control itself instead of leaving it to engine inheritance, so placeholder text cannot drift from the control it belongs to:
+  
+  - `<web-ui-input>`, `<web-ui-textarea>`, `<web-ui-input-number>` and `<web-ui-autocomplete>` keep their placeholder in step with `--wui-font-size`, including the `max(16px, …)` clamp that coarse pointers apply to the control — declaring a separate `font-size` on the placeholder would have bypassed that clamp.
+  - `<input>`'s placeholder line height now matches the control instead of resolving to `normal`. `<textarea>`'s already did.
+  - `<web-ui-input-number>`'s placeholder consumes `--wui-color-text-secondary` like the rest of the family; it previously fell back to the user-agent colour.
+
 ## 9.0.0
 
 ### Major Changes
