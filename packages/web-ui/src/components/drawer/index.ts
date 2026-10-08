@@ -4,6 +4,7 @@ import { customElement, property } from 'lit/decorators.js'
 import '@/components/icon'
 import '@/components/button'
 import glass from '@/assets/glass.css?inline'
+import modalSurface from '@/assets/modal-surface.css?inline'
 import { oouiClose } from '@/icons'
 import { ElementHeightController } from '@/shared/element-height'
 import { UserChangeController } from '@/shared/events/user-change'
@@ -200,7 +201,7 @@ if (typeof CSS !== 'undefined' && 'registerProperty' in CSS) {
 
 @customElement('web-ui-drawer')
 export class WebUiDrawer extends LitElement {
-  static override styles = [unsafeCSS(glass), unsafeCSS(style)]
+  static override styles = [unsafeCSS(glass), unsafeCSS(modalSurface), unsafeCSS(style)]
 
   @property({ type: Boolean, reflect: true }) open = false
   @property({ type: Boolean, reflect: true, attribute: 'no-scroll-lock' }) noScrollLock = false

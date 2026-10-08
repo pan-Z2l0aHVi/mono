@@ -10,3 +10,19 @@ go = "1.26.4"
 # （含 ad-hoc 命令），跨 checkout 复用构建产物（内容寻址，共享安全）。CI 在 ci.yml 显式
 # 覆盖回 workspace 内路径，防止 mise 环境泄漏导致 actions/cache 静默丢失。
 TURBO_CACHE_DIR = "{{ exec(command='git -C ' ~ config_root ~ ' rev-parse --path-format=absolute --git-common-dir') | trim }}/turbo-cache"
+
+# Go 默认的 GOCACHE（~/Library/Caches/go-build）在 herdr 的 seatbelt 沙箱里不可写，agent 线程里
+# 任何 go build 都会以 `open …/go-build/…: operation not permitted` 抬不起。这里只在 herdr 注入
+# HERDR_ENV=1 时把 GOCACHE 挪到 $TMPDIR 下。注意 HERDR_ENV 是 herdr 的 pane 会话通用变量（与
+# HERDR_PANE_ID 等同组），**不是 agent 专有标记**：被圈进来的是「任何 herdr pane 里跑的 shell」，
+# 含用户自己的交互 pane 与协调者 pane，不只是 agent 线程。判定为可接受的过度覆盖，代价是这些
+# pane 丢掉默认那份满热缓存（本机 ~/Library/Caches/go-build 实测 1.1G），改用
+# $TMPDIR/greypan/go-build（满构建后约 200M）。$TMPDIR 跨 worktree 共享但重启即清，重启后首次
+# Go 构建变冷，量级约十秒（`go build ./backend/...`），之后复热。herdr 的 agent 身份是 pane 属性
+# 而非 env（见 `herdr pane current`），做不到更窄的环境条件化。CI 没有 HERDR_ENV，模板求值为空，
+# Go 回落默认路径，ci.yml 的 actions/cache 不受影响，无需像 TURBO_CACHE_DIR 那样显式覆盖。
+# GOMODCACHE（~/go/pkg/mod）保持默认只读。只读够用**仅当模块缓存已完整**（本机已满热）；agent
+# 若要新增/更新依赖，Go 仍需写 GOMODCACHE，沙箱下会失败——这是本改动之外的已知残余。
+# 条件里同时判 env.TMPDIR：HERDR_ENV 在场而 TMPDIR 未定义会让 Tera 渲染报 undefined 并带塌整个
+# .mise.toml；TMPDIR 为空串会渲染成 `/greypan/go-build`（根目录不可建）。
+GOCACHE = '{% if env.HERDR_ENV and env.TMPDIR %}{{ env.TMPDIR }}/greypan/go-build{% endif %}'

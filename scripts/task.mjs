@@ -335,7 +335,7 @@ function normalizeWorktree(worktree) {
 // 这个 Set 是内核里唯一出现检查名的地方，也是它唯一与本仓绑定的旋钮：换仓复用内核时，登记的
 // 要么改成随仓声明，要么就把集合清空——挂着 `.agents/checks/` 而不登记任何检查，等于承诺了
 // 「无 task 也有的保证」却什么都没有。
-const alwaysOnChecks = new Set(['format-clean'])
+const alwaysOnChecks = new Set(['format-clean', 'turbo-cache-invariant'])
 
 function runChecks(worktree, state, phase) {
   const directory = path.join(worktree, '.agents', 'checks')
