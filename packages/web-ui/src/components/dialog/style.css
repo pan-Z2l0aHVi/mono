@@ -169,8 +169,9 @@ dialog[open].is-visible::backdrop {
    外部直接 `setAttribute('headless', '')` 时 attribute 立刻翻转，Lit 要等下一次 update 才
    换模板——那个窗口里 DOM 仍是默认形状。`:has(.desc)` 描述的就是当下的 DOM，与它自洽；
    `:host([headless])` 会按 attribute 提前把卡片按 headless 几何渲染，而 DOM 里还带着
-   `.desc`。改成 drawer 那种 attribute 形式还要把两条承重规则上移（`dialog:focus`、
-   `dialog.is-closing .wui-dialog-body`）来满足 no-descending-specificity，收益不抵风险。 */
+   `.desc`。改成 drawer 那种 attribute 形式还要把承重规则上移（`dialog.is-closing
+   .wui-dialog-body`；焦点环抑制那条已挪去 `assets/modal-surface.css`）来满足
+   no-descending-specificity，收益不抵风险。 */
 .wui-dialog-body:has(.desc) {
   display: grid;
   grid-template-rows: auto minmax(0, 1fr) auto;
