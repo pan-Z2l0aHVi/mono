@@ -58,7 +58,7 @@ async function openAndSettle(component: WebUiDialog): Promise<void> {
 function buildTitleMode(contentHeight: number): WebUiDialog {
   const component = document.createElement('web-ui-dialog')
   const title = document.createElement('span')
-  title.slot = 'title'
+  title.slot = 'header'
   title.textContent = '添加资源'
   const grid = document.createElement('div')
   grid.style.cssText = 'display: grid; grid-template-columns: 1fr 1fr; height: 100%; min-height: 0;'
@@ -144,30 +144,30 @@ describe('dialog 内容区高度约束（浏览器）', () => {
     })
   })
 
-  describe('作用域：body 模式不受影响', () => {
-    it('body 模式下卡片的行分配仍是内容撑开：块高等于各自的 height', async () => {
+  describe('作用域：headless 模式不受影响', () => {
+    it('headless 模式下卡片的行分配仍是内容撑开：块高等于各自的 height', async () => {
       const component = document.createElement('web-ui-dialog')
+      component.headless = true
       const heights = [40, 60, 30]
       for (const height of heights) {
         const block = document.createElement('div')
-        block.slot = 'body'
         block.style.cssText = `height: ${height}px;`
         component.append(block)
       }
       document.body.append(component)
       await openAndSettle(component)
 
-      // 若 title 模式的 grid 行分配（minmax(0,1fr)）误生效到 body 模式，
+      // 若默认模式的 grid 行分配（minmax(0,1fr)）误生效到 headless 模式，
       // 多个子元素会被拆成三行均分，块高不再等于各自的 height。
       const blocks = Array.from(component.children) as HTMLElement[]
       expect(blocks.map(block => block.offsetHeight)).toEqual(heights)
     })
 
-    it('body 模式下 card 高度等于内容加内边距，不由 grid 行分配改写', async () => {
+    it('headless 模式下 card 高度等于内容加内边距，不由 grid 行分配改写', async () => {
       const component = document.createElement('web-ui-dialog')
       component.setAttribute('closable', '')
+      component.headless = true
       const body = document.createElement('section')
-      body.slot = 'body'
       body.style.cssText = 'height: 120px;'
       component.append(body)
       document.body.append(component)
@@ -198,27 +198,27 @@ describe('dialog 内容区高度约束（浏览器）', () => {
       expect(grid.offsetHeight).toBeLessThanOrEqual(query<HTMLElement>(component, '.desc').clientHeight)
     })
 
-    it('全宽控件的 focus ring 不被内容区裁掉，且宿主拿到的可用宽度不被改窄', async () => {
+    it('全宽控件的 focus ring 不被裁，滚动口与卡片内沿重合', async () => {
       const component = buildTitleMode(120)
       component.style.setProperty('--wui-dialog-max-height', '560px')
-      // 显式设成 8px 而非用默认 6px：这样 padding 断言是真的在跟 token 走，
+      // 显式设成 8px / 30px 而非用默认值：这样两条 padding 断言是真的在跟 token 走，
       // 默认值恰好相同时会退化成恒真。
       component.style.setProperty('--wui-dialog-desc-focus-padding', '8px')
+      component.style.setProperty('--wui-dialog-inline-padding', '30px')
       await openAndSettle(component)
 
       const card = query<HTMLElement>(component, '.wui-dialog-body')
       const desc = query<HTMLElement>(component, '.desc')
       const grid = component.querySelector('div') as HTMLElement
-      const cardStyles = getComputedStyle(card)
+      const descStyles = getComputedStyle(desc)
+      const cardRect = card.getBoundingClientRect()
       const descRect = desc.getBoundingClientRect()
       const gridRect = grid.getBoundingClientRect()
 
       /*
        * ring 画在 border box 之外 5px（offset 2 + width 3），而内容区既是滚动容器、
        * 又因为有一条轴必须非 visible 而成了裁剪盒。裁掉的是 **padding box**：overflow
-       * 的裁剪边在 padding 外沿。只补 `padding-block` 的那版左右 padding 为 0，grid 与
-       * padding box 左右沿重合 → 横向余量 0 → 全宽控件的两侧环被裁成 1px 残条。
-       * 本用例是那条回归的护栏。
+       * 的裁剪边在 padding 外沿。本用例是「横向余量被改窄到 0」那条回归的护栏。
        *
        * 参照系必须朝内：grid 是内容区的内容，落在 padding box 内侧，所以右边与下边
        * 要用内容区减 grid，反过来写会拿到负数。
@@ -230,12 +230,20 @@ describe('dialog 内容区高度约束（浏览器）', () => {
       expect(descRect.bottom - gridRect.bottom).toBeGreaterThanOrEqual(RING)
 
       /*
-       * 负 margin-inline 把 padding-inline 原样扣回去，所以宿主内层拿到的仍是卡片
-       * content box 的全宽——补横向余量不能缩小宿主的可用宽度，否则 AddDialog 那种
+       * Q2-2：卡片的 inline padding 移进了 .desc，滚动口（.desc 的 border box，也是
+       * overflow 的裁剪边）与卡片内沿重合——右侧不再有落在外面的 padding。横向余量
+       * 由 .desc 自带的 padding-inline 承担，且跟随 --wui-dialog-inline-padding。
+       */
+      expect(descRect.left - cardRect.left).toBeCloseTo(0, 0)
+      expect(cardRect.right - descRect.right).toBeCloseTo(0, 0)
+      expect(gridRect.left - descRect.left).toBeCloseTo(30, 0)
+
+      /*
+       * 可用宽度仍是内容区的 content box（与改动前逐像素相同），否则 AddDialog 那种
        * 两栏 grid 的 drop zone 会换行。
        */
-      const cardContent = card.clientWidth - parseFloat(cardStyles.paddingLeft) - parseFloat(cardStyles.paddingRight)
-      expect(gridRect.width).toBeCloseTo(cardContent, 1)
+      const descContent = desc.clientWidth - parseFloat(descStyles.paddingLeft) - parseFloat(descStyles.paddingRight)
+      expect(gridRect.width).toBeCloseTo(descContent, 1)
     })
 
     it('desc-gap 调到 focus-padding 以下时 margin-bottom 夹在 0，不进负值区间', async () => {
@@ -254,11 +262,11 @@ describe('dialog 内容区高度约束（浏览器）', () => {
     })
   })
 
-  describe('body 模式：高内容在卡片内部的滚动层里滚', () => {
+  describe('headless 模式：高内容在卡片内部的滚动层里滚', () => {
     it('内容滚到最后一块，卡片不溢出 dialog 盒子', async () => {
       const component = document.createElement('web-ui-dialog')
+      component.headless = true
       const block = document.createElement('div')
-      block.slot = 'body'
       block.style.cssText = 'height: 3000px;'
       component.append(block)
       document.body.append(component)
@@ -266,6 +274,10 @@ describe('dialog 内容区高度约束（浏览器）', () => {
 
       const card = query<HTMLElement>(component, '.wui-dialog-body')
       const content = query<HTMLElement>(component, '.wui-dialog-content')
+
+      // 滚动口贴边：headless 下卡片 padding 归零，滚动容器（.wui-dialog-content）的
+      // 右沿因此与卡片右沿重合——滚动条落在卡片内沿，不留一圈 padding。
+      expect(content.getBoundingClientRect().right).toBeCloseTo(card.getBoundingClientRect().right, 1)
 
       // 用户后果一：卡片不许溢出 dialog 盒子。dialog 是 overflow: visible（阴影与关闭
       // 按钮不能由同尺寸的原生 dialog 裁），溢出的那截落在视口之下，够不着也滚不动。
@@ -286,8 +298,8 @@ describe('dialog 内容区高度约束（浏览器）', () => {
 
     it('对照组：内容装得下时卡片贴合内容且不产生滚动', async () => {
       const component = document.createElement('web-ui-dialog')
+      component.headless = true
       const block = document.createElement('div')
-      block.slot = 'body'
       block.style.cssText = 'height: 120px;'
       component.append(block)
       document.body.append(component)
@@ -321,8 +333,8 @@ describe('dialog 内容区高度约束（浏览器）', () => {
     it('关闭按钮不跟随内容滚动', async () => {
       const component = document.createElement('web-ui-dialog')
       component.setAttribute('closable', '')
+      component.headless = true
       const block = document.createElement('div')
-      block.slot = 'body'
       block.style.cssText = 'height: 3000px;'
       component.append(block)
       document.body.append(component)

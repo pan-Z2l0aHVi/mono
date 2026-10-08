@@ -204,7 +204,7 @@ function handleRenameChange(item: LibraryQueueItem, event: WebUiEvent<WebUiEdita
     class="[--wui-dialog-width:min(90vw,880px)] [--wui-dialog-max-height:calc(min(82vh,560px)_-_142px)]"
     @open-change="handleOpenChange"
   >
-    <span slot="title">添加资源</span>
+    <span slot="header">添加资源</span>
 
     <p
       v-if="error"
@@ -226,7 +226,7 @@ function handleRenameChange(item: LibraryQueueItem, event: WebUiEvent<WebUiEdita
 
       token 里减掉的 142 是本 dialog 的 chrome 实测值（Chrome/Chromium，1017×503）：
         卡片上 padding        20（上）+ 24（下）
-        .title 外高           37.59（title 21.59 + margin-bottom 16）
+        .header 带外高         37.59（标题 21.59 + 带下 margin 16）
         .desc margin-top       −6（focus-ring 上余量的成对负 margin，扣回 title 下方间距）
         .desc padding-block   12（focus-ring 余量）
         .desc margin-bottom   18

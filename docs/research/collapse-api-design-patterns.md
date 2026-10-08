@@ -35,7 +35,7 @@
 
 web-ui 现有组件有两种 slot 惯例，collapse 的选型处在两者交汇点：
 
-- **覆盖层组件用具名 slot**（模式 B 风格）：`popover` 用 `slot="trigger"` + 默认 slot（`popover/index.ts:337,348`，面板 DOM 由组件 portal 移动）；`dialog` 用 `slot="title"/"body"/"footer"`（`dialog/index.ts:143-148`）；`drawer` 用 `slot="header"/"footer"`（`drawer/index.ts:605-617`）；`tooltip` 会把 `[slot="content"]` 节点 move 进 portal（`tooltip/index.ts:210`）。这些场景的共同点是**面板脱离文档流**（portal/floating），内容归属由组件托管。
+- **覆盖层组件用具名 slot**（模式 B 风格）：`popover` 用 `slot="trigger"` + 默认 slot（`popover/index.ts:337,348`，面板 DOM 由组件 portal 移动）；`dialog` 用 `slot="header"` + 默认 slot + `slot="footer"`（`dialog/index.ts:300-311`）；`drawer` 用 `slot="header"/"footer"`（`drawer/index.ts:605-617`）；`tooltip` 会把 `[slot="content"]` 节点 move 进 portal（`tooltip/index.ts:210`）。这些场景的共同点是**面板脱离文档流**（portal/floating），内容归属由组件托管。
 - **受管子元素组合用独立 custom element**：`select` + `option`（option 在 `connectedCallback` 派发 `option-register` 向根注册，`option/index.ts:20-37`）、`segmented` + `segmented-trigger`、`radio-group` + `radio`、`checkbox-group` + `checkbox`、`button-group`——后四者与 collapse 共用 `defineGroupPresentation`/`defineGroupCoordinator` 基础设施。
 - collapse 的内容是**文档流内**的消费者布局（ADR-0030 背景节），不需要 portal，因此选择了与文档流内组合一致的第二种惯例。
 

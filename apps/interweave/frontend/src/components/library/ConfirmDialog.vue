@@ -31,7 +31,7 @@ function handleOpenChange(event: WebUiEvent<WebUiDialog, 'open-change'>) {
     :class="compact ? 'mobile:[--wui-dialog-width:90vw] [--wui-dialog-width:320px]' : undefined"
     @open-change="handleOpenChange"
   >
-    <div slot="title">{{ title }}</div>
+    <div slot="header">{{ title }}</div>
     <p
       v-if="error"
       class="m-0 rounded-md bg-red-50 px-3 py-2 text-sm leading-5 text-red-700 dark:bg-red-400/12 dark:text-red-200"
