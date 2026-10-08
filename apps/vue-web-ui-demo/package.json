@@ -6,7 +6,8 @@
   "scripts": {
     "build": "vue-tsc --build && vp build",
     "dev": "vp dev",
-    "preview": "vp preview"
+    "preview": "vp preview",
+    "test": "vp test run"
   },
   "dependencies": {
     "@greypan/browser-kit": "workspace:*",
@@ -15,6 +16,8 @@
     "@unhead/vue": "catalog:",
     "@vue/devtools-api": "catalog:",
     "@vueuse/core": "catalog:",
+    "overlayscrollbars": "catalog:",
+    "overlayscrollbars-vue": "catalog:",
     "pinia": "catalog:",
     "vee-validate": "catalog:",
     "vue": "catalog:",

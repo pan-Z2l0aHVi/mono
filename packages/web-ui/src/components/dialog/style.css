@@ -135,6 +135,8 @@ dialog[open].is-visible::backdrop {
    （none↔blur 不可插值才是当年生硬跳变的根因），own opacity 过渡不禁用自身 blur，
    因此卡片直接 opacity + backdrop-filter 同步过渡即可，无需双层。 */
 .wui-dialog-body {
+  --wui-internal-dialog-close-top: var(--wui-dialog-close-top, 20px);
+  --wui-internal-dialog-close-right: var(--wui-dialog-close-right, 20px);
   --wui-internal-glass-shadow: var(--wui-shadow-overlay, 2px 16px 40px rgb(0 0 0 / 0.4));
   --wui-glass-corner-radius: var(--wui-radius-overlay, 28px);
   padding: var(--wui-dialog-padding, var(--wui-space-5, 20px) var(--wui-space-6, 24px) var(--wui-space-6, 24px));
@@ -170,6 +172,43 @@ dialog[open].is-visible::backdrop {
   min-height: 0;
 }
 
+/* ===== body 模式：内容区是卡片内部的滚动层 =====
+
+   body 模式没有 title / footer，卡片就是内容区，所以这里要同时守住两件事：
+   内容不高时卡片贴合内容（与基础规则一致），内容高过视口时把上限交给视口、把溢出交给
+   滚动。少了后半件，卡片会一路长到内容高度并溢出 dialog 盒子；dialog 是 overflow:
+   visible（阴影与关闭按钮不能由同尺寸的原生 dialog 裁），溢出的那截落在视口之下，
+   既看不到也够不着。
+
+   上限取与整卡兜底相同的字面量，而不是 `--wui-dialog-max-height`：后者的公开语义是
+   `.desc` 的高度（README 有记录），body 模式根本没有 `.desc`，套上去会凭空改掉
+   这档的既有尺寸语义。
+
+   滚动单独成层而不是让卡片自己滚：关闭按钮是卡片的绝对定位直接子元素，卡片一旦自己
+   滚动，按钮会跟着内容一起滚走。padding 也跟着挪进内层，让内容与滚动容器的裁剪边
+   （padding 外沿）留出余量——贴边的控件焦点环才不会被裁成残条；内层没有滚动条槽的
+   引擎里，这圈余量与卡片直接持 padding 时逐像素相同。 */
+.wui-dialog-body:has(> .wui-dialog-content) {
+  overflow: hidden;
+  display: grid;
+  grid-template-rows: minmax(0, 1fr);
+
+  max-height: 100vh;
+  padding: 0;
+}
+
+@supports (height: 100dvh) {
+  .wui-dialog-body:has(> .wui-dialog-content) {
+    max-height: 100dvh;
+  }
+}
+
+.wui-dialog-content {
+  overflow-y: auto;
+  min-height: 0;
+  padding: var(--wui-dialog-padding, var(--wui-space-5, 20px) var(--wui-space-6, 24px) var(--wui-space-6, 24px));
+}
+
 dialog.is-closing .wui-dialog-body {
   transition-duration: var(--wui-duration-dialog-exit, 260ms);
 }
@@ -193,22 +232,34 @@ dialog[open].is-visible .wui-dialog-body {
   backdrop-filter: blur(4px) saturate(160%) brightness(var(--wui-glass-brightness, 1.06));
 }
 
-/* inline：.title-row 的 flex 子项，与标题同行。 */
-.wui-dialog-close-inline {
-  flex: none;
-}
+/* ===== 关闭按钮（绝对定位，两种内容模式同一套规则）=====
 
-/* floating：body 模式下浮在卡片右上角。 */
-.wui-dialog-close-floating {
+   偏移由公开 token --wui-dialog-close-top / --wui-dialog-close-right 控制，默认都是字面量
+   20px。默认值不再经过 --wui-space-*：这两个 token 的参照系是卡片边缘，而不是相邻元素
+   之间的间距节奏，消费方调整主题间距时不应意外移动关闭按钮。dialog 本轮也不再与 drawer
+   的 16/16 对齐；--wui-drawer-close-* 保持不变。
+
+   两个公开 token 先在正文容器上解析成同一份内部变量，按钮定位和标题避让都读这份结果，
+   避免只改一个兜底字面量后按钮与标题各自按不同默认值计算。
+
+   标题模式此前是 .title-row 里的 flex 子项（flex: none），偏移由卡片 padding 决定——默认
+   上 20 / 右 24，二者不等，正是「设置」对话框里按钮离上沿近、离右沿远的来源。改成绝对
+   定位后两种模式同源，几何只由本条规则决定。
+
+   绝对定位的包含块是 .wui-dialog-body（:host([closable]) 给了它 position: relative），
+   不是 .title-row：后者是 static，按钮只是它名义上的孩子；top/right 因此量到卡片 padding
+   box 的右上角。 */
+.wui-dialog-close {
   position: absolute;
   z-index: 3;
-  top: var(--wui-dialog-close-top, var(--wui-space-4, 16px));
-  right: var(--wui-dialog-close-right, 16px);
+  top: var(--wui-internal-dialog-close-top);
+  right: var(--wui-internal-dialog-close-right);
 }
 
 /*
  * 标题行只在 closable 时出现，因此 .title 自身的 margin-bottom 语义不变：
  * 它仍由 .title-row 的行高承担，行高 = 标题外高（含 16px 下边距）。
+ * 关闭按钮已是绝对定位、不再是这一行的占位项（见上），所以这里的 flex/gap 只剩排版作用。
  */
 .title-row {
   display: flex;
@@ -232,6 +283,16 @@ dialog[open].is-visible .wui-dialog-body {
   font-weight: var(--wui-font-weight-semibold, 600);
   line-height: var(--wui-line-height-tight, 1.2);
   color: var(--wui-color-text, #1b1b1b);
+}
+
+/* 标题避让：关闭按钮绝对定位后不再占 .title-row 的位，长标题会一直排到按钮下面。
+   预留量取「按钮右偏移 + 按钮宽 + 呼吸间距」，而不是只减掉卡片 padding——这样即便消费者把
+   --wui-dialog-padding 的 inline 分量调到 0，标题文字右缘也不会越过按钮左缘；跟随
+   --wui-dialog-close-right 变化；这里复用正文容器上已解析的内部右侧偏移，与按钮定位同源。
+   26px 对应 index.ts 里按钮的 size="26"，改按钮尺寸时一并改这里。
+   只在 closable 时生效：没有按钮就不必留白。 */
+:host([closable]) .title {
+  padding-inline-end: calc(var(--wui-internal-dialog-close-right) + 26px + var(--wui-space-3, 12px));
 }
 
 .desc {

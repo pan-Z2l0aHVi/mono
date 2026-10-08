@@ -1,7 +1,14 @@
-import type { WebUiSelect } from '@greypan/web-ui'
+import type { WebUiLayout, WebUiSelect } from '@greypan/web-ui'
 import { lucideX } from '@greypan/web-ui/icons'
+import { webUiScrollbarsOptions } from '@greypan/web-ui/scrollbars'
 import { Link, Outlet, useRouter, useRouterState } from '@tanstack/react-router'
-import { useEffect, useRef, useState } from 'react'
+import {
+  OverlayScrollbarsComponent,
+  useOverlayScrollbars,
+  type OverlayScrollbarsComponentRef
+} from 'overlayscrollbars-react'
+import { useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { flushSync } from 'react-dom'
 import { ErrorBoundary } from 'react-error-boundary'
 
 import { RootErrorFallback } from './root-error-fallback'
@@ -83,6 +90,7 @@ const navItems: NavItem[] = [
   { path: '/components/drawer', label: 'Drawer 抽屉' },
   { path: '/components/image-preview', label: 'ImagePreview 图片预览' },
   { path: '/components/empty', label: 'Empty 空状态' },
+  { path: '/components/middle-ellipsis', label: 'MiddleEllipsis 中间省略' },
   { path: '/components/tooltip', label: 'Tooltip 工具提示' },
   { path: '/components/switch', label: 'Switch 开关' },
   { path: '/components/slider', label: 'Slider 滑块' },
@@ -111,22 +119,51 @@ export function Root() {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [desktopSidebarWidth, setDesktopSidebarWidth] = useState<string>(getInitialSidebarWidth)
-  const navSidebarRef = useRef<HTMLDivElement>(null)
-  const [isMobileSidebar, setIsMobileSidebar] = useState(() => window.matchMedia('(max-width: 640px)').matches)
-  useEffect(() => {
-    const mq = window.matchMedia('(max-width: 640px)')
-    const handler = (e: MediaQueryListEvent) => setIsMobileSidebar(e.matches)
-    mq.addEventListener('change', handler)
-    return () => mq.removeEventListener('change', handler)
+  const navSidebarRef = useRef<OverlayScrollbarsComponentRef<'div'> | null>(null)
+  // 移动端判定由 web-ui-layout 给出（它同时决定渲染桌面树还是 drawer）：demo 不自己写断点。
+  const layoutRef = useRef<WebUiLayout | null>(null)
+  const [isMobileSidebar, setIsMobileSidebar] = useState(false)
+  /*
+   * 先读后订阅：连接那一刻 layout 就可能已经派发过 mobile-change，而 useLayoutEffect 的监听是在
+   * 插入之后才挂上的，接不到那一次，所以初值必须自己读。运行时跨断点则要 flushSync 同步回写——
+   * layout 在媒体查询变化的那一刻派发事件，React 从 DOM 事件里 setState 走的是 scheduler 的宏任务，
+   * 会晚于 layout 自己的 microtask 渲染，实测留下 2/221 帧「drawer 已渲染、sidebar-width 仍是桌面值」。
+   * 这里的监听只接运行时事件，不在 React 生命周期内，flushSync 的告警条件不成立。
+   */
+  useLayoutEffect(() => {
+    const layout = layoutRef.current
+    if (!layout) return
+
+    setIsMobileSidebar(layout.mobile)
+    const syncMobileSidebarViewport = (event: Event) => {
+      const next = (event as CustomEvent<{ mobile: boolean }>).detail.mobile
+      flushSync(() => setIsMobileSidebar(next))
+    }
+    layout.addEventListener('mobile-change', syncMobileSidebarViewport)
+    return () => layout.removeEventListener('mobile-change', syncMobileSidebarViewport)
   }, [])
   const sidebarWidth = isMobileSidebar ? 'min(320px, 80vw)' : desktopSidebarWidth
+  /*
+   * 折叠是桌面端的密度偏好，移动端 drawer 恒以展开态呈现同一份导航：drawer 宽
+   * min(320px, 80vw)，套用折叠态会把标签挤成居中截断。web-ui-layout 的
+   * `sidebar-collapsed` 契约同样写明它「不会影响移动端 Drawer」，它只是无从替
+   * Consumer 决定 slot 内容怎么渲染，所以闸门留在这里。
+   */
+  const navCollapsed = sidebarCollapsed && !isMobileSidebar
   const router = useRouter()
   const pathname = useRouterState({ select: s => s.location.pathname })
+
+  // 整页滚动条接管的是 document 的滚动元素，不是某个 DOM 容器，所以没有可渲染的宿主元素，
+  // 只能直接初始化 body。
+  const [initPageScrollbars] = useOverlayScrollbars({ options: webUiScrollbarsOptions })
+  useEffect(() => {
+    initPageScrollbars(document.body)
+  }, [initPageScrollbars])
 
   useEffect(() => {
     void router.load().then(() => {
       requestAnimationFrame(() => {
-        const link = navSidebarRef.current?.querySelector('.active')
+        const link = navSidebarRef.current?.getElement()?.querySelector('.active')
         link?.scrollIntoView({ block: 'center' })
       })
     })
@@ -174,6 +211,7 @@ export function Root() {
         <div className="min-h-screen bg-(--wui-color-page) text-(--wui-color-text)">
           {routeTitle ? <title>{routeTitle}</title> : null}
           <web-ui-layout
+            ref={layoutRef}
             header-glow
             sidebarCollapsed={sidebarCollapsed}
             sidebarOpen={sidebarOpen}
@@ -202,10 +240,7 @@ export function Root() {
                 </web-ui-button>
               </div>
             ) : null}
-            <div
-              slot="header"
-              className="flex h-full w-full items-center justify-end gap-4 px-4 py-2 max-[640px]:w-screen"
-            >
+            <div slot="header" className="flex h-full w-full items-center justify-end gap-4 px-4 py-2 mobile:w-screen">
               <web-ui-select
                 value={themeMotion}
                 className="[--wui-input-width:120px]"
@@ -239,10 +274,11 @@ export function Root() {
                 </web-ui-option>
               </web-ui-select>
             </div>
-            <div
+            <OverlayScrollbarsComponent
               slot="sidebar"
               ref={navSidebarRef}
-              className="relative z-20 h-full min-h-0 overflow-y-auto p-2 max-[640px]:px-0"
+              options={webUiScrollbarsOptions}
+              className="relative z-20 h-full min-h-0 overflow-y-auto p-2 mobile:px-0"
               aria-label="应用导航"
             >
               <nav className="grid gap-1" aria-label="主导航">
@@ -255,7 +291,7 @@ export function Root() {
                       className={
                         navItemClass +
                         (active ? '' : ' hover:bg-black/4 dark:hover:bg-white/6') +
-                        (sidebarCollapsed ? ' justify-center' : '')
+                        (navCollapsed ? ' justify-center' : '')
                       }
                       data-active={active}
                       aria-current={active ? 'page' : undefined}
@@ -263,7 +299,7 @@ export function Root() {
                     >
                       <span
                         className={
-                          sidebarCollapsed ? 'w-full truncate text-center text-sm' : 'min-w-0 flex-1 truncate text-sm'
+                          navCollapsed ? 'w-full truncate text-center text-sm' : 'min-w-0 flex-1 truncate text-sm'
                         }
                       >
                         {item.label}
@@ -272,7 +308,7 @@ export function Root() {
                   )
                 })}
               </nav>
-            </div>
+            </OverlayScrollbarsComponent>
             {/* 正文 gutter 归 shell 所有：`web-ui-layout` 的 main 不带 padding，逐页加会漏页。 */}
             <div className="p-3">
               <Outlet />

@@ -222,14 +222,14 @@ export class WebUiDialog extends LitElement {
   }
 
   /**
-   * 两种内容模式的关闭按钮位置不同：`inline` 参与 `.title-row` 的 flex 布局，
-   * `floating` 绝对定位到卡片右上角。分开命名而不是靠 CSS 就近覆盖，
-   * 是为了让每种模式的几何只由一个 class 决定。
+   * 两种内容模式共用同一枚关闭按钮：都绝对定位到卡片右上角，偏移由
+   * `--wui-dialog-close-top` / `--wui-dialog-close-right` 控制（见 style.css）。
+   * 标题模式只是把它放在 `.title-row` 的 DOM 位置，定位参照仍是卡片本身。
    */
-  private _renderCloseButton(modifier: 'inline' | 'floating') {
+  private _renderCloseButton() {
     return html`
       <web-ui-button
-        class="wui-dialog-close wui-dialog-close-${modifier}"
+        class="wui-dialog-close"
         @click=${this._closeFromUser}
         aria-label="关闭"
         variant="secondary"
@@ -253,8 +253,10 @@ export class WebUiDialog extends LitElement {
           ${
             this._hasBody
               ? html`
-                  <slot name="body" @slotchange=${this._onBodySlotChange}></slot>
-                  ${this.closable ? this._renderCloseButton('floating') : nothing}
+                  <div class="wui-dialog-content">
+                    <slot name="body" @slotchange=${this._onBodySlotChange}></slot>
+                  </div>
+                  ${this.closable ? this._renderCloseButton() : nothing}
                 `
               : html`
                   <slot name="body" @slotchange=${this._onBodySlotChange} hidden></slot>
@@ -263,7 +265,7 @@ export class WebUiDialog extends LitElement {
                       ? html`
                           <div class="title-row">
                             <div class="title"><slot name="title"></slot></div>
-                            ${this._renderCloseButton('inline')}
+                            ${this._renderCloseButton()}
                           </div>
                         `
                       : html`<div class="title"><slot name="title"></slot></div>`

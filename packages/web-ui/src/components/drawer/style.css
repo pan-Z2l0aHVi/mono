@@ -600,6 +600,20 @@ dialog.is-dragging .wui-drawer-drag-zone {
   height: auto;
 }
 
+/*
+ * 上下 placement 的高度在这里再声明一次，且不能省。
+ *
+ * 上面 `:host(:not([headless])) dialog` 的 `height: auto` 与基础 placement 块里那条挂
+ * `--wui-drawer-height`（默认 300px）的 height 声明特异性相同（都是 (0,2,1)）、位置更靠后，
+ * 会把那条整条压掉。左右不受影响——它们的 auto 有 top / bottom 双边同时约束，仍算得出
+ * 确定高度；上下只有单边贴边，dialog 于是变成内容高度。后果有两层：
+ *
+ *   - `--wui-drawer-height` 失效（README 记录它是上下抽屉的高度，demo 的自定义高按钮
+ *     直接指向它）；
+ *   - `.wui-drawer-body` 的 `height: 100%` 解析成 auto，`.wui-drawer-content` 拿到的是
+ *     内容高度而不是面板高度，`flex: 1` 收缩不了自己，长内容直接溢出 dialog 盒子
+ *     （overflow: visible）落到视口之下——够不着，也滚不动。
+ */
 :host(:not([headless])[placement='top']) dialog {
   top: var(--wui-internal-drawer-inset);
   right: var(--wui-internal-drawer-inset);
@@ -609,6 +623,7 @@ dialog.is-dragging .wui-drawer-drag-zone {
 
   width: auto;
   max-width: none;
+  height: var(--wui-drawer-height, 300px);
 }
 
 :host(:not([headless])[placement='bottom']) dialog {
@@ -620,6 +635,7 @@ dialog.is-dragging .wui-drawer-drag-zone {
 
   width: auto;
   max-width: none;
+  height: var(--wui-drawer-height, 300px);
 }
 
 /*

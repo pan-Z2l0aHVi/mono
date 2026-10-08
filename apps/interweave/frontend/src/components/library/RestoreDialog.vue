@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import type { WebUiDialog, WebUiEvent, WebUiInput } from '@greypan/web-ui'
 import { lucideFile, lucideFolderOpen, lucideGlobe, lucideUndo2 } from '@greypan/web-ui/icons'
+import { webUiScrollbarsOptions } from '@greypan/web-ui/scrollbars'
+import { OverlayScrollbarsComponent } from 'overlayscrollbars-vue'
 import { ref, watch } from 'vue'
 
 import { metadataRowClass } from './presentation'
@@ -125,7 +127,7 @@ function submit() {
       **内容区预算**，不是整卡定值：整卡高度仍随 --wui-control-size 一起长。
     -->
     <div
-      class="grid min-h-0 grid-cols-2 gap-5 max-[640px]:gap-4 max-[900px]:grid-cols-1 max-[900px]:grid-rows-2"
+      class="grid min-h-0 grid-cols-2 gap-5 mobile:gap-4 max-[900px]:grid-cols-1 max-[900px]:grid-rows-2"
       style="height: var(--wui-dialog-max-height)"
     >
       <section class="grid min-h-0 min-w-0 grid-rows-[auto_minmax(0,1fr)] gap-2.5 overflow-hidden">
@@ -133,21 +135,19 @@ function submit() {
           为失效资源指定新的位置；文件会按队列顺序选择，链接可直接编辑。
         </p>
         <div
-          class="grid h-full min-h-0 place-content-center justify-items-center gap-3 rounded-3xl bg-[#f0f0f4] px-6 py-7 text-center dark:bg-[color-mix(in_srgb,var(--wui-color-text,#1b1b1b)_4%,transparent)] max-[640px]:gap-2 max-[640px]:px-4 max-[640px]:py-2 max-[900px]:p-5"
+          class="grid h-full min-h-0 place-content-center justify-items-center gap-3 rounded-3xl bg-[#f0f0f4] px-6 py-7 text-center dark:bg-[color-mix(in_srgb,var(--wui-color-text,#1b1b1b)_4%,transparent)] mobile:gap-2 mobile:px-4 mobile:py-2 max-[900px]:p-5"
         >
           <span
-            class="grid size-13 place-items-center rounded-[18px] bg-[color-mix(in_srgb,var(--wui-color-accent,#08f)_10%,transparent)] text-(--wui-color-accent,#08f) dark:bg-[color-mix(in_srgb,var(--wui-color-text,#1b1b1b)_8%,transparent)] dark:text-(--wui-color-text-secondary) max-[640px]:size-10 max-[640px]:rounded-xl"
+            class="grid size-13 place-items-center rounded-[18px] bg-[color-mix(in_srgb,var(--wui-color-accent,#08f)_10%,transparent)] text-(--wui-color-accent,#08f) dark:bg-[color-mix(in_srgb,var(--wui-color-text,#1b1b1b)_8%,transparent)] dark:text-(--wui-color-text-secondary) mobile:size-10 mobile:rounded-xl"
           >
             <web-ui-icon :icon="lucideFolderOpen" :size="23" />
           </span>
           <span
-            class="text-[15px] font-semibold leading-[1.4] text-[#22212a] dark:text-(--wui-color-text) max-[640px]:text-[13px]"
+            class="text-[15px] font-semibold leading-[1.4] text-[#22212a] dark:text-(--wui-color-text) mobile:text-[13px]"
           >
             {{ queue.length }} 个资源待找回
           </span>
-          <span
-            class="text-xs leading-[1.4] text-[#6a6a6a] dark:text-(--wui-color-text-secondary) max-[640px]:text-[11px]"
-          >
+          <span class="text-xs leading-[1.4] text-[#6a6a6a] dark:text-(--wui-color-text-secondary) mobile:text-[11px]">
             取消选择不会中断其他项目
           </span>
         </div>
@@ -171,70 +171,78 @@ function submit() {
           </span>
         </div>
 
-        <ol
+        <OverlayScrollbarsComponent
           v-if="queue.length"
-          class="m-0 h-full min-h-0 list-none overflow-y-auto rounded-3xl bg-white p-0 [scrollbar-gutter:auto] [scrollbar-width:auto] dark:bg-(--wui-color-surface-raised)"
+          :options="webUiScrollbarsOptions"
+          class="h-full min-h-0 overflow-y-auto rounded-3xl bg-white dark:bg-(--wui-color-surface-raised)"
         >
-          <li
-            v-for="item in queue"
-            :key="item.id"
-            :class="[
-              metadataRowClass,
-              'items-start transition-colors duration-100',
-              activeItemId === item.id
-                ? 'bg-black/3 dark:bg-white/6'
-                : 'hover:bg-black/3 dark:hover:bg-[color-mix(in_srgb,var(--wui-color-text,#1b1b1b)_5%,transparent)]'
-            ]"
-          >
-            <span
-              class="grid size-8 shrink-0 place-items-center rounded-[10px]"
-              :class="
-                item.kind === 'file'
-                  ? 'bg-[rgb(124_58_237/0.1)] text-[#7c3aed]'
-                  : 'bg-[rgb(5_150_105/0.1)] text-[#059669]'
-              "
+          <!--
+            滚动条接在宿主 div 上，列表留在它里面：OverlayScrollbars 会把宿主的子节点搬进自己
+            生成的 viewport，而 <ol> 的内容模型只容得下 <li>——宿主若还是这个 <ol>，搬进去的
+            viewport div 就落进列表里了。
+          -->
+          <ol class="m-0 list-none p-0">
+            <li
+              v-for="item in queue"
+              :key="item.id"
+              :class="[
+                metadataRowClass,
+                'items-start transition-colors duration-100',
+                activeItemId === item.id
+                  ? 'bg-black/3 dark:bg-white/6'
+                  : 'hover:bg-black/3 dark:hover:bg-[color-mix(in_srgb,var(--wui-color-text,#1b1b1b)_5%,transparent)]'
+              ]"
             >
-              <web-ui-icon :icon="item.kind === 'file' ? lucideFile : lucideGlobe" :size="16" />
-            </span>
-            <span class="grid min-w-0 flex-[1_1_auto] gap-[5px]">
-              <div class="flex min-h-8 items-center gap-2">
-                <span
-                  class="min-w-0 flex-[1_1_auto] truncate text-[14px] font-medium leading-[1.35] text-[#22212a] dark:text-(--wui-color-text)"
-                >
-                  {{ item.resourceTitle }}
-                </span>
-                <span
-                  v-if="activeItemId === item.id"
-                  class="flex shrink-0 items-center gap-1 text-[11px] leading-4 text-[#6a6a6a] dark:text-(--wui-color-text-secondary)"
-                >
-                  <web-ui-spinner :size="12" />
-                  处理中
-                </span>
-              </div>
               <span
-                class="block min-w-0 truncate text-xs leading-5 text-[#6a6a6a] dark:text-(--wui-color-text-secondary)"
-                :title="item.location"
+                class="grid size-8 shrink-0 place-items-center rounded-[10px]"
+                :class="
+                  item.kind === 'file'
+                    ? 'bg-[rgb(124_58_237/0.1)] text-[#7c3aed]'
+                    : 'bg-[rgb(5_150_105/0.1)] text-[#059669]'
+                "
               >
-                {{ item.kind === 'file' ? '原文件' : '原链接' }}：{{ item.location }}
+                <web-ui-icon :icon="item.kind === 'file' ? lucideFile : lucideGlobe" :size="16" />
               </span>
-              <web-ui-input
-                v-if="item.kind === 'url'"
-                :value="replacementLocations[item.id] ?? item.replacementLocation"
-                type="url"
-                full
-                :disabled="busy"
-                placeholder="https://example.com/page"
-                :aria-label="`${item.resourceTitle} 的新链接`"
-                :aria-invalid="validationError ? 'true' : undefined"
-                @input="handleInput(item.id, $event)"
-                @keydown.enter="submit"
-              />
-              <span v-else class="text-xs leading-5 text-[#6a6a6a] dark:text-(--wui-color-text-secondary)">
-                提交时选择新文件
+              <span class="grid min-w-0 flex-[1_1_auto] gap-[5px]">
+                <div class="flex min-h-8 items-center gap-2">
+                  <span
+                    class="min-w-0 flex-[1_1_auto] truncate text-[14px] font-medium leading-[1.35] text-[#22212a] dark:text-(--wui-color-text)"
+                  >
+                    {{ item.resourceTitle }}
+                  </span>
+                  <span
+                    v-if="activeItemId === item.id"
+                    class="flex shrink-0 items-center gap-1 text-[11px] leading-4 text-[#6a6a6a] dark:text-(--wui-color-text-secondary)"
+                  >
+                    <web-ui-spinner :size="12" />
+                    处理中
+                  </span>
+                </div>
+                <span
+                  class="block min-w-0 truncate text-xs leading-5 text-[#6a6a6a] dark:text-(--wui-color-text-secondary)"
+                  :title="item.location"
+                >
+                  {{ item.kind === 'file' ? '原文件' : '原链接' }}：{{ item.location }}
+                </span>
+                <web-ui-input
+                  v-if="item.kind === 'url'"
+                  :value="replacementLocations[item.id] ?? item.replacementLocation"
+                  type="url"
+                  full
+                  :disabled="busy"
+                  placeholder="https://example.com/page"
+                  :aria-label="`${item.resourceTitle} 的新链接`"
+                  :aria-invalid="validationError ? 'true' : undefined"
+                  @input="handleInput(item.id, $event)"
+                  @keydown.enter="submit"
+                />
+                <span v-else class="text-xs leading-5 text-[#6a6a6a] dark:text-(--wui-color-text-secondary)">
+                  提交时选择新文件
+                </span>
               </span>
-            </span>
-          </li>
-        </ol>
+            </li>
+          </ol>
+        </OverlayScrollbarsComponent>
 
         <div
           v-else

@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import type { WebUiDialog, WebUiEvent } from '@greypan/web-ui'
 import { lucideCopy, lucideTriangleAlert } from '@greypan/web-ui/icons'
+import { webUiScrollbarsOptions } from '@greypan/web-ui/scrollbars'
+import { OverlayScrollbarsComponent } from 'overlayscrollbars-vue'
 
 import type { LibraryDuplicatePrompt } from './addQueue'
 
@@ -25,7 +27,7 @@ function handleOpenChange(event: WebUiEvent<WebUiDialog, 'open-change'>) {
     :open="open"
     controlled
     no-backdrop-close
-    class="max-[640px]:[--wui-dialog-width:90vw] [--wui-dialog-width:420px]"
+    class="mobile:[--wui-dialog-width:90vw] [--wui-dialog-width:420px]"
     @open-change="handleOpenChange"
   >
     <span slot="title" class="flex items-center gap-2">
@@ -39,30 +41,39 @@ function handleOpenChange(event: WebUiEvent<WebUiDialog, 'open-change'>) {
 
     <!--
       命中项多到需要滚动时，Chrome 会把滚动容器算作可聚焦元素，showModal() 的初始焦点
-      就落在它上面。保留这个焦点（键盘用户要靠它 + 方向键滚动列表），但把 UA 默认的
-      蓝色实心环换成 web-ui 统一的 focus ring——默认环看着像「整块列表被选中」。
+      就落在它上面——接管后那个元素是 OverlayScrollbars 生成的 viewport，不是外面这个宿主
+      （宿主自己 overflow: hidden，不可聚焦）。焦点环因此画在 viewport 上，UA 默认的蓝色
+      实心环换成 web-ui 统一的 focus ring。键盘用户仍可以靠这个焦点 + 方向键滚列表。
     -->
-    <ul
+    <OverlayScrollbarsComponent
       v-if="prompt"
-      class="m-0 mt-3 max-h-56 list-none overflow-y-auto rounded-xl bg-black/3 p-0 focus-visible:outline-3 focus-visible:outline-offset-2 focus-visible:outline-(--wui-color-focus-ring,rgb(0_136_255/0.4)) dark:bg-white/5"
+      :options="webUiScrollbarsOptions"
+      class="mt-3 max-h-56 overflow-y-auto rounded-xl bg-black/3 [&_[data-overlayscrollbars-viewport]:focus-visible]:outline-3 [&_[data-overlayscrollbars-viewport]:focus-visible]:outline-offset-2 [&_[data-overlayscrollbars-viewport]:focus-visible]:outline-(--wui-color-focus-ring,rgb(0_136_255/0.4)) dark:bg-white/5"
     >
-      <li
-        v-for="match in prompt.matches"
-        :key="match.resource_id"
-        class="grid min-w-0 gap-[2px] px-3 py-2 not-last:border-b not-last:border-black/6 not-last:dark:border-white/8"
-      >
-        <span class="min-w-0 truncate text-[14px] leading-5 font-medium text-[#22212a] dark:text-(--wui-color-text)">
-          {{ match.title }}
-        </span>
-        <span
-          class="flex min-w-0 items-center gap-1.5 text-xs leading-5 text-[#6a6a6a] dark:text-(--wui-color-text-secondary)"
-          :title="match.location"
+      <!--
+        滚动条接在宿主 div 上，列表留在它里面：OverlayScrollbars 会把宿主的子节点搬进自己
+        生成的 viewport，而 <ul> 的内容模型只容得下 <li>——宿主若还是这个 <ul>，搬进去的
+        viewport div 就落进列表里了。
+      -->
+      <ul class="m-0 list-none p-0">
+        <li
+          v-for="match in prompt.matches"
+          :key="match.resource_id"
+          class="grid min-w-0 gap-[2px] px-3 py-2 not-last:border-b not-last:border-black/6 not-last:dark:border-white/8"
         >
-          <web-ui-icon :icon="lucideCopy" :size="12" class="shrink-0" />
-          <span class="min-w-0 truncate">{{ match.location }}</span>
-        </span>
-      </li>
-    </ul>
+          <span class="min-w-0 truncate text-[14px] leading-5 font-medium text-[#22212a] dark:text-(--wui-color-text)">
+            {{ match.title }}
+          </span>
+          <span
+            class="flex min-w-0 items-center gap-1.5 text-xs leading-5 text-[#6a6a6a] dark:text-(--wui-color-text-secondary)"
+            :title="match.location"
+          >
+            <web-ui-icon :icon="lucideCopy" :size="12" class="shrink-0" />
+            <span class="min-w-0 truncate">{{ match.location }}</span>
+          </span>
+        </li>
+      </ul>
+    </OverlayScrollbarsComponent>
 
     <div slot="footer" class="flex gap-3">
       <web-ui-button full variant="secondary" @click="emit('cancel')">取消</web-ui-button>

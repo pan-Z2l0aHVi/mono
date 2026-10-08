@@ -10,6 +10,8 @@ import {
   lucideRefreshCw,
   lucideTags
 } from '@greypan/web-ui/icons'
+import { webUiScrollbarsOptions } from '@greypan/web-ui/scrollbars'
+import { OverlayScrollbarsComponent } from 'overlayscrollbars-vue'
 import { computed, onScopeDispose, ref, watch } from 'vue'
 
 import type { ResourceSourceView, ResourceView } from '@/stores/library'
@@ -217,182 +219,194 @@ onScopeDispose(() => clearTimeout(copiedRevertTimer))
     dialog-label="资源详情"
     draggable
     controlled
-    class="max-[640px]:[--wui-drawer-height:80vh] max-[640px]:[--wui-drawer-inset:0px] max-[640px]:[--wui-drawer-radius:28px_28px_0_0] max-[640px]:[--wui-drawer-content-padding:0px] [--wui-drawer-width:360px]"
+    class="mobile:[--wui-drawer-height:80vh] mobile:[--wui-drawer-inset:0px] mobile:[--wui-drawer-radius:28px_28px_0_0] mobile:[--wui-drawer-content-padding:0px] [--wui-drawer-width:360px]"
     @open-change="handleOpenChange"
   >
-    <div
+    <OverlayScrollbarsComponent
       v-if="resource"
-      class="grid gap-4 max-[640px]:h-(--wui-drawer-height) max-[640px]:overflow-y-auto max-[640px]:p-5"
+      :options="webUiScrollbarsOptions"
+      class="mobile:h-(--wui-drawer-height) mobile:overflow-y-auto"
     >
       <!--
+        滚动接在外层宿主上，grid 留在它里面：OverlayScrollbars 会把宿主的子节点搬进自己生成的
+        块盒 viewport，卡片之间的间距来自 grid 的 `gap`——宿主若就是这个 grid，搬走之后 gap
+        不再作用于卡片，整栏会塌掉（见 library/host-layout-probe.png 的实测对照）。
+      -->
+      <div class="grid gap-4 mobile:p-5">
+        <!--
         标题与标签收进第一张白卡：iOS 设置详情页顶部是「名字 + 若干属性」的分组，
         不是浮在分组之上的裸标题。标签行与标题行之间用发丝线分隔，与组内行分隔同源。
       -->
-      <div :class="GROUP_CLASS">
-        <h2 class="group/title flex items-center gap-2 m-0 px-4 py-3">
-          <web-ui-editable-text
-            v-if="editingTitle"
-            :ref="editorRef"
-            :value="resource.title"
-            :class="DRAWER_TITLE_NAME_CLASS"
-            class="caret-(--wui-color-accent,#08f)"
-            :aria-label="`修改 ${resource.title} 的标题`"
-            @click.stop
-            @change="handleTitleChange"
-            @cancel="emit('cancelRename')"
-          />
-          <span v-else :class="DRAWER_TITLE_NAME_CLASS">
-            {{ resource.title }}
-          </span>
-          <web-ui-button
-            v-if="!editingTitle"
-            class="shrink-0"
-            icon
-            variant="ghost"
-            size="22"
-            aria-label="重命名"
-            @click="emit('startRename', resource)"
-          >
-            <web-ui-icon :icon="lucidePenLine" :size="13" />
-          </web-ui-button>
-        </h2>
-
-        <!--
-          标签自己换行，编辑按钮常驻行尾：外层不换行，内层 tags 容器 flex-1 min-w-0
-          承担换行，按钮作为其后唯一的 flex item 被推到最右。直接让整行 flex-wrap
-          的话，标签铺满一行时按钮会被挤到下一行左侧。
-        -->
-        <div class="flex items-center gap-1.5 border-t border-black/6 px-4 py-3 dark:border-white/8">
-          <div class="flex min-w-0 flex-1 flex-wrap items-center gap-1.5">
-            <span v-for="tag in resource.tags" :key="tag.id" :class="[tagChipClass, tagClass(tag.color)]">
-              {{ tag.name }}
+        <div :class="GROUP_CLASS">
+          <h2 class="group/title flex items-center gap-2 m-0 px-4 py-3">
+            <web-ui-editable-text
+              v-if="editingTitle"
+              :ref="editorRef"
+              :value="resource.title"
+              :class="DRAWER_TITLE_NAME_CLASS"
+              class="caret-(--wui-color-accent,#08f)"
+              :aria-label="`修改 ${resource.title} 的标题`"
+              @click.stop
+              @change="handleTitleChange"
+              @cancel="emit('cancelRename')"
+            />
+            <span v-else :class="DRAWER_TITLE_NAME_CLASS">
+              {{ resource.title }}
             </span>
-          </div>
-          <web-ui-tooltip content="编辑标签" placement="top">
             <web-ui-button
+              v-if="!editingTitle"
               class="shrink-0"
               icon
               variant="ghost"
               size="22"
-              aria-label="编辑标签"
-              @click="emit('editTags', resource)"
+              aria-label="重命名"
+              @click="emit('startRename', resource)"
             >
-              <web-ui-icon :icon="lucideTags" :size="13" />
+              <web-ui-icon :icon="lucidePenLine" :size="13" />
             </web-ui-button>
-          </web-ui-tooltip>
-        </div>
-      </div>
+          </h2>
 
-      <div :class="GROUP_CLASS">
-        <template v-if="resource.available">
-          <web-ui-button
-            full
-            variant="ghost"
-            :class="[ROW_BUTTON_CLASS, ROW_SEPARATOR_CLASS]"
-            @click="emit('preview', resource)"
-          >
-            <web-ui-icon slot="prefix" :icon="lucideEye" :size="18" />
-            预览
-            <span slot="suffix" class="flex-1" aria-hidden="true" />
-            <web-ui-icon slot="suffix" :icon="lucideChevronRight" :size="14" :class="CHEVRON_ICON_CLASS" />
-          </web-ui-button>
-          <web-ui-dropdown class="relative block w-full" placement="bottom-start">
-            <web-ui-button slot="trigger" full variant="ghost" :class="ROW_BUTTON_CLASS">
-              <web-ui-icon slot="prefix" :icon="lucideExternalLink" :size="18" />
-              打开方式
+          <!--
+          标签自己换行，编辑按钮常驻行尾：外层不换行，内层 tags 容器 flex-1 min-w-0
+          承担换行，按钮作为其后唯一的 flex item 被推到最右。直接让整行 flex-wrap
+          的话，标签铺满一行时按钮会被挤到下一行左侧。
+        -->
+          <div class="flex items-center gap-1.5 border-t border-black/6 px-4 py-3 dark:border-white/8">
+            <div class="flex min-w-0 flex-1 flex-wrap items-center gap-1.5">
+              <span v-for="tag in resource.tags" :key="tag.id" :class="[tagChipClass, tagClass(tag.color)]">
+                {{ tag.name }}
+              </span>
+            </div>
+            <web-ui-tooltip content="编辑标签" placement="top">
+              <web-ui-button
+                class="shrink-0"
+                icon
+                variant="ghost"
+                size="22"
+                aria-label="编辑标签"
+                @click="emit('editTags', resource)"
+              >
+                <web-ui-icon :icon="lucideTags" :size="13" />
+              </web-ui-button>
+            </web-ui-tooltip>
+          </div>
+        </div>
+
+        <div :class="GROUP_CLASS">
+          <template v-if="resource.available">
+            <web-ui-button
+              full
+              variant="ghost"
+              :class="[ROW_BUTTON_CLASS, ROW_SEPARATOR_CLASS]"
+              @click="emit('preview', resource)"
+            >
+              <web-ui-icon slot="prefix" :icon="lucideEye" :size="18" />
+              预览
               <span slot="suffix" class="flex-1" aria-hidden="true" />
               <web-ui-icon slot="suffix" :icon="lucideChevronRight" :size="14" :class="CHEVRON_ICON_CLASS" />
             </web-ui-button>
-            <web-ui-dropdown-item>
-              <web-ui-icon slot="prefix" :icon="lucideExternalLink" :size="14" />
-              系统默认应用
-            </web-ui-dropdown-item>
-            <web-ui-dropdown-item>
-              <web-ui-icon slot="prefix" :icon="lucideEye" :size="14" />
-              预览
-            </web-ui-dropdown-item>
-          </web-ui-dropdown>
-        </template>
-        <web-ui-button
-          v-else
-          full
-          variant="ghost"
-          :class="ROW_BUTTON_CLASS"
-          :disabled="!unavailableSource"
-          :loading="replacingSourceIds.includes(unavailableSource?.id ?? '')"
-          @click="restoreResource"
-        >
-          <web-ui-icon slot="prefix" :icon="lucideRefreshCw" :size="18" />
-          找回资源
-          <span slot="suffix" class="flex-1" aria-hidden="true" />
-          <web-ui-icon slot="suffix" :icon="lucideChevronRight" :size="14" :class="CHEVRON_ICON_CLASS" />
-        </web-ui-button>
-      </div>
-
-      <div :class="GROUP_CLASS">
-        <div v-for="itemSource in resource.sources" :key="itemSource.id" :class="metadataRowClass" class="items-start">
-          <span class="flex min-w-0 flex-[1_1_auto] items-start gap-2.5">
-            <web-ui-icon
-              :icon="sourceTypeIcon(itemSource)"
-              :size="15"
-              class="mt-0.5 shrink-0 text-[#8a8a94] dark:text-(--wui-color-text-secondary)"
-            />
-            <span class="grid min-w-0 flex-[1_1_auto] gap-0.5">
-              <span class="text-[14px] leading-5 text-(--wui-color-text)">
-                {{ sourceTypeDisplayLabel(itemSource) }}
-              </span>
-              <web-ui-button
-                v-if="itemSource.location"
-                full
-                variant="ghost"
-                :class="[LOCATION_BUTTON_CLASS, locationButtonColor(itemSource)]"
-                :aria-label="
-                  copiedLocation === itemSource.location
-                    ? `已复制 ${itemSource.location}`
-                    : `复制 ${itemSource.location}`
-                "
-                :title="copiedLocation === itemSource.location ? '已复制' : '点击复制'"
-                @click="copyLocation(itemSource.location)"
-              >
-                <web-ui-icon v-if="copiedLocation === itemSource.location" :icon="lucideCheck" :size="14" />
-                <template v-else>{{ itemSource.location }}</template>
+            <web-ui-dropdown class="relative block w-full" placement="bottom-start">
+              <web-ui-button slot="trigger" full variant="ghost" :class="ROW_BUTTON_CLASS">
+                <web-ui-icon slot="prefix" :icon="lucideExternalLink" :size="18" />
+                打开方式
                 <span slot="suffix" class="flex-1" aria-hidden="true" />
+                <web-ui-icon slot="suffix" :icon="lucideChevronRight" :size="14" :class="CHEVRON_ICON_CLASS" />
               </web-ui-button>
-            </span>
-          </span>
-          <span class="flex shrink-0 items-center gap-1.5">
-            <span
-              class="shrink-0 rounded-full px-2 py-0.5 text-xs leading-none"
-              :class="
-                itemSource.available
-                  ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-400/15 dark:text-emerald-200'
-                  : 'bg-red-100 text-red-700 dark:bg-red-400/15 dark:text-red-200'
-              "
-            >
-              {{ itemSource.available ? '正常' : '已失效' }}
-            </span>
-          </span>
+              <web-ui-dropdown-item>
+                <web-ui-icon slot="prefix" :icon="lucideExternalLink" :size="14" />
+                系统默认应用
+              </web-ui-dropdown-item>
+              <web-ui-dropdown-item>
+                <web-ui-icon slot="prefix" :icon="lucideEye" :size="14" />
+                预览
+              </web-ui-dropdown-item>
+            </web-ui-dropdown>
+          </template>
+          <web-ui-button
+            v-else
+            full
+            variant="ghost"
+            :class="ROW_BUTTON_CLASS"
+            :disabled="!unavailableSource"
+            :loading="replacingSourceIds.includes(unavailableSource?.id ?? '')"
+            @click="restoreResource"
+          >
+            <web-ui-icon slot="prefix" :icon="lucideRefreshCw" :size="18" />
+            找回资源
+            <span slot="suffix" class="flex-1" aria-hidden="true" />
+            <web-ui-icon slot="suffix" :icon="lucideChevronRight" :size="14" :class="CHEVRON_ICON_CLASS" />
+          </web-ui-button>
         </div>
 
-        <div :class="metadataRowClass">
-          <span :class="DRAWER_LABEL_CLASS">类型</span>
-          <span :class="DRAWER_VALUE_CLASS">{{ resourceKindLabel(resource.kind) }}</span>
-        </div>
-        <div v-if="resource.sizeBytes !== null" :class="metadataRowClass">
-          <span :class="DRAWER_LABEL_CLASS">大小</span>
-          <span :class="[DRAWER_VALUE_CLASS, 'tabular-nums']">{{ formatSize(resource.sizeBytes) }}</span>
-        </div>
-        <div :class="metadataRowClass">
-          <span :class="DRAWER_LABEL_CLASS">创建于</span>
-          <time :class="[DRAWER_VALUE_CLASS, 'tabular-nums']">{{ formatTimestamp(resource.createdAt) }}</time>
-        </div>
-        <div :class="metadataRowClass">
-          <span :class="DRAWER_LABEL_CLASS">最后修改于</span>
-          <time :class="[DRAWER_VALUE_CLASS, 'tabular-nums']">{{ formatTimestamp(resource.updatedAt) }}</time>
-        </div>
-      </div>
+        <div :class="GROUP_CLASS">
+          <div
+            v-for="itemSource in resource.sources"
+            :key="itemSource.id"
+            :class="metadataRowClass"
+            class="items-start"
+          >
+            <span class="flex min-w-0 flex-[1_1_auto] items-start gap-2.5">
+              <web-ui-icon
+                :icon="sourceTypeIcon(itemSource)"
+                :size="15"
+                class="mt-0.5 shrink-0 text-[#8a8a94] dark:text-(--wui-color-text-secondary)"
+              />
+              <span class="grid min-w-0 flex-[1_1_auto] gap-0.5">
+                <span class="text-[14px] leading-5 text-(--wui-color-text)">
+                  {{ sourceTypeDisplayLabel(itemSource) }}
+                </span>
+                <web-ui-button
+                  v-if="itemSource.location"
+                  full
+                  variant="ghost"
+                  :class="[LOCATION_BUTTON_CLASS, locationButtonColor(itemSource)]"
+                  :aria-label="
+                    copiedLocation === itemSource.location
+                      ? `已复制 ${itemSource.location}`
+                      : `复制 ${itemSource.location}`
+                  "
+                  :title="copiedLocation === itemSource.location ? '已复制' : '点击复制'"
+                  @click="copyLocation(itemSource.location)"
+                >
+                  <web-ui-icon v-if="copiedLocation === itemSource.location" :icon="lucideCheck" :size="14" />
+                  <template v-else>{{ itemSource.location }}</template>
+                  <span slot="suffix" class="flex-1" aria-hidden="true" />
+                </web-ui-button>
+              </span>
+            </span>
+            <span class="flex shrink-0 items-center gap-1.5">
+              <span
+                class="shrink-0 rounded-full px-2 py-0.5 text-xs leading-none"
+                :class="
+                  itemSource.available
+                    ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-400/15 dark:text-emerald-200'
+                    : 'bg-red-100 text-red-700 dark:bg-red-400/15 dark:text-red-200'
+                "
+              >
+                {{ itemSource.available ? '正常' : '已失效' }}
+              </span>
+            </span>
+          </div>
 
-      <!--
+          <div :class="metadataRowClass">
+            <span :class="DRAWER_LABEL_CLASS">类型</span>
+            <span :class="DRAWER_VALUE_CLASS">{{ resourceKindLabel(resource.kind) }}</span>
+          </div>
+          <div v-if="resource.sizeBytes !== null" :class="metadataRowClass">
+            <span :class="DRAWER_LABEL_CLASS">大小</span>
+            <span :class="[DRAWER_VALUE_CLASS, 'tabular-nums']">{{ formatSize(resource.sizeBytes) }}</span>
+          </div>
+          <div :class="metadataRowClass">
+            <span :class="DRAWER_LABEL_CLASS">创建于</span>
+            <time :class="[DRAWER_VALUE_CLASS, 'tabular-nums']">{{ formatTimestamp(resource.createdAt) }}</time>
+          </div>
+          <div :class="metadataRowClass">
+            <span :class="DRAWER_LABEL_CLASS">最后修改于</span>
+            <time :class="[DRAWER_VALUE_CLASS, 'tabular-nums']">{{ formatTimestamp(resource.updatedAt) }}</time>
+          </div>
+        </div>
+
+        <!--
         空备注同样渲染输入框：原先的 v-if="resource.note" 只在已有备注时挂载，字段一旦
         可编辑就必须常驻，否则没有备注的资源永远没有入口去写。换行、滚动与 autosize
         高度仍由组件统一管，Drawer 不自己算 line-height。borderless 让输入区直接坐在
@@ -400,28 +414,29 @@ onScopeDispose(() => clearTimeout(copiedRevertTimer))
         只占一行，autosize 在用户真正输入后才把行数顶上去。可见标题已移除，字段身份
         交给 placeholder（有值时靠上方内容自明），aria-label 仍留着给读屏。
       -->
-      <div :class="GROUP_CLASS">
-        <div class="px-1 pt-2 pb-2">
-          <web-ui-textarea
-            :value="resource.note"
-            :rows="1"
-            autosize
-            full
-            borderless
-            placeholder="添加备注"
-            aria-label="备注"
-            @input="handleNoteInput($event)"
-            @change="handleNoteChange($event)"
-          />
+        <div :class="GROUP_CLASS">
+          <div class="px-1 pt-2 pb-2">
+            <web-ui-textarea
+              :value="resource.note"
+              :rows="1"
+              autosize
+              full
+              borderless
+              placeholder="添加备注"
+              aria-label="备注"
+              @input="handleNoteInput($event)"
+              @change="handleNoteChange($event)"
+            />
+          </div>
+        </div>
+
+        <div :class="GROUP_CLASS">
+          <web-ui-button full variant="ghost" :class="DESTRUCTIVE_BUTTON_CLASS" @click="emit('delete', resource)">
+            删除资源
+            <span slot="suffix" class="flex-1" aria-hidden="true" />
+          </web-ui-button>
         </div>
       </div>
-
-      <div :class="GROUP_CLASS">
-        <web-ui-button full variant="ghost" :class="DESTRUCTIVE_BUTTON_CLASS" @click="emit('delete', resource)">
-          删除资源
-          <span slot="suffix" class="flex-1" aria-hidden="true" />
-        </web-ui-button>
-      </div>
-    </div>
+    </OverlayScrollbarsComponent>
   </web-ui-drawer>
 </template>

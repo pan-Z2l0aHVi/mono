@@ -225,7 +225,10 @@ function SvgDrawLinesDemo() {
       </div>
 
       <h2>图标示例（Shadow DOM — web-ui-icon）</h2>
-      <div className="mb-6 grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
+      <div
+        data-testid="svg-icon-grid"
+        className="mb-6 grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5"
+      >
         {[
           { id: 'search', label: 'Search 搜索', icon: lucideSearch },
           { id: 'star', label: 'Star 星标', icon: lucideStar },

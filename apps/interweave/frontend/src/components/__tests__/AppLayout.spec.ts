@@ -23,7 +23,7 @@ const MapPageStub = defineComponent({
   template: '<div data-testid="page-body">关系图谱</div>'
 })
 
-/** jsdom 不实现 matchMedia；AppLayout 的侧边栏宽度用它切移动端分支。 */
+/** jsdom 不实现 matchMedia；`web-ui-layout` 用它订阅移动端断点，没有桩就退成桌面分支。 */
 function matchMediaStub() {
   return {
     matches: false,
@@ -124,6 +124,127 @@ describe('AppLayout：应用外壳', () => {
    * 页面与壳的接合由 LibraryPage.spec 的「根节点带 slot="header"」一条守住。
    * 这里保留它，是因为设置对话框的挂载位置是本组件自有的接线（见下方用例）。
    */
+})
+
+/*
+ * issue #195：`sidebar-collapsed` 是桌面端的密度偏好，而 slot 内容同时服务桌面 aside
+ * 与移动端 drawer。若把折叠态直接透传给 AppNav，移动端抽屉里的导航会以折叠态渲染
+ * （collapsed 为真时不渲染文字标签）。闸门因此必须按 viewport 收窄。
+ *
+ * 如今只剩一个视口信号：`web-ui-layout` 自己订阅媒体查询，并通过 `mobile-change` 把判定
+ * 交给壳。所以拨一次 matchMedia 就同时移动了 layout 的树与壳的折叠闸门——#195 那轮
+ * 「两个来源各拨一边」的双信号写法已不再需要，也不再需要等 100ms 去抖。
+ */
+describe('AppLayout：折叠偏好不跨视口泄漏', () => {
+  /**
+   * 可控 matchMedia：所有订阅者共享一个 matches 值，翻转时统一派发 change。
+   * layout 在 connected 时读一次 `matches` 并订阅，因此 setMatches 既能在挂载前设初值，
+   * 也能在挂载后驱动一次真实翻转。
+   */
+  function installMatchMedia() {
+    const listeners = new Set<(event: MediaQueryListEvent) => void>()
+    let matches = false
+
+    vi.stubGlobal('matchMedia', () => {
+      const list: MediaQueryList = {
+        get matches() {
+          return matches
+        },
+        media: '',
+        onchange: null,
+        addEventListener: ((type: string, callback: (event: MediaQueryListEvent) => void) => {
+          if (type === 'change') listeners.add(callback)
+        }) as MediaQueryList['addEventListener'],
+        removeEventListener: ((type: string, callback: (event: MediaQueryListEvent) => void) => {
+          if (type === 'change') listeners.delete(callback)
+        }) as MediaQueryList['removeEventListener'],
+        addListener() {},
+        removeListener() {},
+        dispatchEvent: () => false
+      } as unknown as MediaQueryList
+      return list
+    })
+
+    return {
+      setMatches(next: boolean) {
+        matches = next
+        for (const listener of listeners) listener({ matches: next } as MediaQueryListEvent)
+      }
+    }
+  }
+
+  let viewport: ReturnType<typeof installMatchMedia>
+
+  /** 复刻 Toggle 的请求链路：layout 只派发请求，宿主回写受控属性。 */
+  function requestCollapse(collapsed: boolean) {
+    layoutRoot().dispatchEvent(new CustomEvent('sidebar-collapsed-change', { detail: { collapsed } }))
+  }
+
+  function isDrawerMode() {
+    return !!layoutRoot().shadowRoot?.querySelector('web-ui-drawer')
+  }
+
+  beforeEach(() => {
+    viewport = installMatchMedia()
+    router = createRouter({
+      history: createMemoryHistory(),
+      routes: [
+        { path: '/', redirect: '/library' },
+        { path: '/library', component: LibraryPageStub },
+        { path: '/map', component: MapPageStub }
+      ]
+    })
+  })
+
+  afterEach(() => {
+    app?.unmount()
+    host?.remove()
+    vi.restoreAllMocks()
+  })
+
+  it('桌面端维持折叠态：导航只剩图标', async () => {
+    await mountLayout()
+    requestCollapse(true)
+    await nextTick()
+
+    expect(isDrawerMode()).toBe(false)
+    expect(layoutRoot().sidebarCollapsed).toBe(true)
+    expect(navRoot().textContent).not.toContain('资料库')
+    expect(navRoot().querySelector('button[aria-label="资料库"]')).toBeTruthy()
+  })
+
+  it('移动端断点下同一个折叠偏好不把抽屉导航压成折叠态', async () => {
+    viewport.setMatches(true)
+    await mountLayout()
+    requestCollapse(true)
+    await nextTick()
+
+    expect(isDrawerMode()).toBe(true)
+    expect(layoutRoot().sidebarCollapsed).toBe(true)
+    expect(navRoot().textContent).toContain('资料库')
+  })
+
+  it('跨断点往返后折叠态在桌面端恢复生效', async () => {
+    await mountLayout()
+    requestCollapse(true)
+    await nextTick()
+    expect(navRoot().textContent).not.toContain('资料库')
+
+    // 换成移动端：layout 切到 drawer，壳的闸门跟着同一次 mobile-change 打开。
+    viewport.setMatches(true)
+    await nextTick()
+    expect(isDrawerMode()).toBe(true)
+    expect(layoutRoot().mobile).toBe(true)
+    expect(layoutRoot().sidebarCollapsed).toBe(true)
+    expect(navRoot().textContent).toContain('资料库')
+
+    // 切回桌面：折叠偏好原样恢复，不因为一次移动端往返被改写。
+    viewport.setMatches(false)
+    await nextTick()
+    expect(isDrawerMode()).toBe(false)
+    expect(layoutRoot().mobile).toBe(false)
+    expect(navRoot().textContent).not.toContain('资料库')
+  })
 })
 
 describe('AppLayout：设置对话框接线', () => {

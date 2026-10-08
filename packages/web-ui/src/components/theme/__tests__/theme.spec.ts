@@ -602,7 +602,7 @@ describe('WebUiTheme 组件', () => {
   })
 
   describe('Context Menu 集成', () => {
-    it('模态化后面板不进 theme overlay root，改挂进 scrim', async () => {
+    it('模态化后 scrim 与面板落进最近主题的 overlay root，面板挂在 scrim 里', async () => {
       const theme = createTheme('dark')
       const menu = document.createElement('web-ui-context-menu')
       menu.innerHTML = '<web-ui-dropdown-item>编辑</web-ui-dropdown-item>'
@@ -614,19 +614,25 @@ describe('WebUiTheme 组件', () => {
       await new Promise(resolve => requestAnimationFrame(resolve))
 
       /*
-       * 契约已反转。面板必须与 scrim 同处 top layer 才在模态期间可点，而 scrim 挂在
-       * document.body 上、不是 theme 宿主的子孙 —— nearest-theme 归属就此丢失。
-       * 这份丢失是既定取舍（context-menu 独有；dropdown / select / popover 仍解析进
-       * 最近主题的 overlay root），连带后果是 scrim 拿不到 theme 作用域里的设计 token。
+       * 两条契约同时成立，缺一不可：
        *
-       * 两侧都断言：只断言「在 scrim 里」会让「又掉回 overlay root」伪装成通过，
-       * 只断言「不在 overlay root 里」则无法证明它去了该去的地方。
+       * 1. **scrim 在最近主题的 overlay root 里。** `--wui-color-*` 写在 `<web-ui-theme>` 的
+       *    `:host` 上、只沿 DOM 树向下继承；scrim 若落在 `document.body`（theme 宿主的**父**
+       *    节点），继承链就断，面板与 scrim 一起退回浅色字面量 fallback —— 深色外观下的
+       *    实测症状。挂在 `document.body` 是这次修复前的行为，这里改钉它必须在 overlay root。
+       * 2. **面板在 scrim 里。** 面板必须与 scrim 同处 top layer 才在模态期间可点；只满足
+       *    第 1 条而把面板留在 overlay root，模态期间它自己就不可点。
+       *
+       * jsdom 算不出 token 的计算色值，深浅两档的取色回归落在
+       * `context-menu/__tests__/scrim-theme.browser.spec.ts`。
        */
-      expect(theme.getOverlayRoot()?.querySelector('[role="menu"]')).toBeNull()
+      const overlayRoot = theme.getOverlayRoot()
+      expect(overlayRoot).toBeTruthy()
 
-      const scrim = document.querySelector<HTMLDialogElement>('dialog[data-wui-menu-scrim]')
+      const scrim = overlayRoot?.querySelector<HTMLDialogElement>('dialog[data-wui-menu-scrim]')
       expect(scrim).toBeTruthy()
       expect(scrim?.open).toBe(true)
+
       const panel = scrim?.querySelector('[role="menu"]')
       expect(panel).toBeTruthy()
       expect(panel?.textContent).toContain('编辑')

@@ -6,12 +6,15 @@
   "scripts": {
     "build": "vp build",
     "dev": "vp dev",
-    "preview": "vp preview"
+    "preview": "vp preview",
+    "test": "vp test run"
   },
   "dependencies": {
     "@greypan/js-kit": "workspace:*",
     "@greypan/web-ui": "workspace:*",
     "@tanstack/react-router": "catalog:",
+    "overlayscrollbars": "catalog:",
+    "overlayscrollbars-react": "catalog:",
     "react": "catalog:",
     "react-dom": "catalog:",
     "react-error-boundary": "catalog:",

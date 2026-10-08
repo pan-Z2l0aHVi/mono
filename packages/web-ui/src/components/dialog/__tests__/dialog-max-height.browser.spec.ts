@@ -86,7 +86,8 @@ describe('--wui-dialog-max-height', () => {
     const desc = query<HTMLElement>(component, '.desc')
 
     expect(desc.scrollHeight).toBeGreaterThan(desc.clientHeight)
-    // scrollTop > 0 才区分 auto 与 hidden：两者都让 scrollHeight 大于 clientHeight。
+    // auto 与 hidden 都让下述两条成立：内容同样溢出，scrollTop 也同样能被程序化写动，
+    // 所以这两条区分不出 hidden（见下方：Chromium 会把 clip 与 auto 降级成 hidden）。
     desc.scrollTop = 9999
     await new Promise(resolve => requestAnimationFrame(resolve))
     expect(desc.scrollTop).toBeGreaterThan(0)

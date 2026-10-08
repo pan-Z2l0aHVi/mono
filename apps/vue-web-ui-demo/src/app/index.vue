@@ -2,8 +2,14 @@
 import { local } from '@greypan/browser-kit'
 import type { WebUiEvent, WebUiLayout, WebUiSelect } from '@greypan/web-ui'
 import { lucideX } from '@greypan/web-ui/icons'
+import { webUiScrollbarsOptions } from '@greypan/web-ui/scrollbars'
 import { useHead } from '@unhead/vue'
-import { computed, onMounted, onScopeDispose, ref } from 'vue'
+import {
+  OverlayScrollbarsComponent,
+  useOverlayScrollbars,
+  type OverlayScrollbarsComponentRef
+} from 'overlayscrollbars-vue'
+import { computed, onMounted, ref } from 'vue'
 import { RouterLink, useRoute, useRouter } from 'vue-router'
 
 type ThemeAppearance = 'light' | 'dark' | 'system'
@@ -45,16 +51,23 @@ const bannerVisible = ref(true)
 const sidebarCollapsed = ref(false)
 const sidebarOpen = ref(false)
 const mobileSidebarWidth = 'min(320px, 80vw)'
-const mobileSidebarQuery = window.matchMedia('(max-width: 640px)')
-const isMobileSidebarViewport = ref(mobileSidebarQuery.matches)
+// 移动端判定由 web-ui-layout 给出（它同时决定渲染桌面树还是 drawer）：demo 不自己写断点。
+const isMobileSidebarViewport = ref(false)
 const desktopSidebarWidth = ref(getInitialSidebarWidth())
 const sidebarWidth = computed(() => (isMobileSidebarViewport.value ? mobileSidebarWidth : desktopSidebarWidth.value))
-function syncMobileSidebarViewport() {
-  isMobileSidebarViewport.value = mobileSidebarQuery.matches
+
+/*
+ * 折叠是桌面端的密度偏好，移动端 drawer 恒以展开态呈现同一份导航：drawer 宽
+ * min(320px, 80vw)，套用折叠态会把标签挤成居中截断。web-ui-layout 的
+ * `sidebar-collapsed` 契约同样写明它「不会影响移动端 Drawer」，它只是无从替
+ * Consumer 决定 slot 内容怎么渲染，所以闸门留在这里。
+ */
+const navCollapsed = computed(() => sidebarCollapsed.value && !isMobileSidebarViewport.value)
+// 挂载即移动端时，layout 会在连接那一刻派发一次 mobile-change，模板监听挂在其之前，
+// 因此首帧拿到的就是 layout 自己的判定。
+function updateMobileSidebarViewport(event: WebUiEvent<WebUiLayout, 'mobile-change'>) {
+  isMobileSidebarViewport.value = event.detail.mobile
 }
-syncMobileSidebarViewport()
-mobileSidebarQuery.addEventListener('change', syncMobileSidebarViewport)
-onScopeDispose(() => mobileSidebarQuery.removeEventListener('change', syncMobileSidebarViewport))
 
 function commitThemeAppearance(appearance: ThemeAppearance) {
   themeAppearance.value = appearance
@@ -93,12 +106,17 @@ const route = useRoute()
 const router = useRouter()
 
 useHead({ title: () => route.meta.title })
-const navSidebar = ref<HTMLElement>()
+const navSidebar = ref<OverlayScrollbarsComponentRef>()
+
+// 整页滚动条接管的是 document 的滚动元素，不是某个 DOM 容器，所以没有可渲染的宿主元素，
+// 只能直接初始化 body。
+const [initPageScrollbars] = useOverlayScrollbars({ options: webUiScrollbarsOptions })
 
 onMounted(async () => {
+  initPageScrollbars(document.body)
   await router.isReady()
   requestAnimationFrame(() => {
-    const link = navSidebar.value?.querySelector('[data-active="true"]')
+    const link = navSidebar.value?.getElement()?.querySelector('[data-active="true"]')
     link?.scrollIntoView({ block: 'center' })
   })
 })
@@ -127,6 +145,7 @@ const navItems: NavItem[] = [
   { path: '/components/drawer', label: 'Drawer 抽屉' },
   { path: '/components/image-preview', label: 'ImagePreview 图片预览' },
   { path: '/components/empty', label: 'Empty 空状态' },
+  { path: '/components/middle-ellipsis', label: 'MiddleEllipsis 中间省略' },
   { path: '/components/tooltip', label: 'Tooltip 工具提示' },
   { path: '/components/switch', label: 'Switch 开关' },
   { path: '/components/slider', label: 'Slider 滑块' },
@@ -167,6 +186,7 @@ function isNavActive(path: string) {
         @sidebar-collapsed-change="updateSidebarCollapsed"
         @sidebar-open-change="updateSidebarOpen"
         @sidebar-width-change="updateSidebarWidth"
+        @mobile-change="updateMobileSidebarViewport"
       >
         <div
           v-if="bannerVisible"
@@ -178,7 +198,7 @@ function isNavActive(path: string) {
             <web-ui-icon class="text-white" :icon="lucideX" :size="16"></web-ui-icon>
           </web-ui-button>
         </div>
-        <div slot="header" class="flex h-full w-full items-center justify-end gap-4 px-4 py-2 max-[640px]:w-screen">
+        <div slot="header" class="flex h-full w-full items-center justify-end gap-4 px-4 py-2 mobile:w-screen">
           <web-ui-select
             :value="themeMotion"
             class="[--wui-input-width:120px]"
@@ -200,10 +220,11 @@ function isNavActive(path: string) {
             <web-ui-option value="system" label="跟随系统">跟随系统</web-ui-option>
           </web-ui-select>
         </div>
-        <div
+        <OverlayScrollbarsComponent
           slot="sidebar"
           ref="navSidebar"
-          class="relative z-20 h-full min-h-0 overflow-y-auto p-2 max-[640px]:px-0"
+          :options="webUiScrollbarsOptions"
+          class="relative z-20 h-full min-h-0 overflow-y-auto p-2 mobile:px-0"
           aria-label="应用导航"
         >
           <nav class="grid gap-1" aria-label="主导航">
@@ -214,20 +235,18 @@ function isNavActive(path: string) {
               :class="[
                 navItemClass,
                 isNavActive(item.path) ? '' : 'hover:bg-black/4 dark:hover:bg-white/6',
-                sidebarCollapsed ? 'justify-center' : ''
+                navCollapsed ? 'justify-center' : ''
               ]"
               :data-active="isNavActive(item.path)"
               :aria-current="isNavActive(item.path) ? 'page' : undefined"
               :aria-label="item.label"
             >
-              <span
-                :class="sidebarCollapsed ? 'w-full truncate text-center text-sm' : 'min-w-0 flex-1 truncate text-sm'"
-              >
+              <span :class="navCollapsed ? 'w-full truncate text-center text-sm' : 'min-w-0 flex-1 truncate text-sm'">
                 {{ item.label }}
               </span>
             </RouterLink>
           </nav>
-        </div>
+        </OverlayScrollbarsComponent>
         <div class="p-3">
           <!-- 正文 gutter 归 shell 所有：web-ui-layout 的 main 不带 padding，逐页加会漏页。 -->
           <RouterView />
