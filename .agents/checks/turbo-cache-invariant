@@ -1,0 +1,113 @@
+#!/bin/sh
+# Turbo cache 的正确性依赖三件事：test 先跑依赖包的 build，build 缓存恢复 dist/**，
+# 以及 test inputs 不显式把 gitignored 的 dist 拉进 key。任何一项被改掉，缓存命中就可能
+# 复现一份被污染的 dist，而测试仍然是绿；本检查只在提交边界核对这条形状，不执行构建。
+set -eu
+
+exec node - <<'NODE'
+'use strict'
+
+const fs = require('node:fs')
+const path = require('node:path')
+
+const root = process.cwd()
+
+function fail(key, reason) {
+  const message = `turbo-cache-invariant failed: ${key}: ${reason}`
+  // 内核会同时回显 stdout 与 stderr；两边都写，手工运行和 gate 都拿得到同一条原因。
+  console.log(message)
+  console.error(message)
+  process.exit(1)
+}
+
+function readConfig() {
+  try {
+    return JSON.parse(fs.readFileSync(path.join(root, 'turbo.json'), 'utf8'))
+  } catch (error) {
+    fail('turbo.json', `cannot read or parse: ${error.message}`)
+  }
+}
+
+function taskConfig(tasks, name) {
+  const task = tasks[name]
+  if (!task || typeof task !== 'object' || Array.isArray(task)) fail(`tasks.${name}`, 'must be an object')
+  return task
+}
+
+function assertDependsOn(task, name) {
+  if (!Array.isArray(task.dependsOn) || task.dependsOn.some(rule => typeof rule !== 'string')) {
+    fail(`tasks.${name}.dependsOn`, 'must be an array of strings containing "^build"')
+  }
+  if (!task.dependsOn.includes('^build')) {
+    fail(
+      `tasks.${name}.dependsOn`,
+      'must include "^build" so cached upstream build outputs are restored before the dependent task runs'
+    )
+  }
+}
+
+function ruleMayMatchDist(rule) {
+  if (typeof rule !== 'string' || rule.length === 0) return false
+  if (rule === '$TURBO_DEFAULT$' || rule.startsWith('!')) return false
+
+  const normalized = rule.replace(/\\/g, '/').replace(/^\.\//, '')
+  if (normalized.startsWith('/')) return true
+
+  // Turbo inputs are package-relative. To put dist/** in the input set, the first path
+  // segment must be able to match the literal directory name `dist`; `**` can do that too.
+  // Known boundary: this only strips one leading ./, so paths with repeated ./ or .. segments
+  // (for example src/../dist/**) are outside the shape guard's supported subset.
+  const firstSegment = normalized.split('/')[0]
+  if (!firstSegment) return false
+  try {
+    return path.matchesGlob('dist', firstSegment)
+  } catch {
+    // If the platform cannot parse a glob, fail closed rather than silently weakening the guard.
+    return true
+  }
+}
+
+function assertBuildOutputs(build) {
+  if (!Array.isArray(build.outputs) || build.outputs.some(rule => typeof rule !== 'string')) {
+    fail('tasks.build.outputs', 'must be an array of strings containing "dist/**"')
+  }
+  if (!build.outputs.includes('dist/**')) {
+    fail('tasks.build.outputs', 'must include "dist/**" so a cached build restores the web-ui dist tree')
+  }
+  const exclusion = build.outputs.find(rule => typeof rule === 'string' && rule.startsWith('!') && ruleMayMatchDist(rule.slice(1)))
+  if (exclusion) {
+    fail(
+      'tasks.build.outputs',
+      `negative pattern "${exclusion}" may exclude dist/** after the output was declared; dist must remain recoverable`
+    )
+  }
+}
+
+function assertTestInputs(test) {
+  if (test.inputs === undefined) return
+  if (!Array.isArray(test.inputs) || test.inputs.some(rule => typeof rule !== 'string')) {
+    fail('tasks.test.inputs', 'must be an array of glob strings')
+  }
+  const offending = test.inputs.find(ruleMayMatchDist)
+  if (offending) {
+    fail(
+      'tasks.test.inputs',
+      `positive pattern "${offending}" may include dist/**; dist is gitignored and must stay out of the test input key`
+    )
+  }
+}
+
+const config = readConfig()
+if (!config || typeof config !== 'object' || Array.isArray(config)) {
+  fail('turbo.json', 'must contain a JSON object with a tasks object')
+}
+const tasks = config.tasks
+if (!tasks || typeof tasks !== 'object' || Array.isArray(tasks)) fail('tasks', 'must be an object')
+
+const build = taskConfig(tasks, 'build')
+const test = taskConfig(tasks, 'test')
+
+assertDependsOn(test, 'test')
+assertBuildOutputs(build)
+assertTestInputs(test)
+NODE

@@ -98,11 +98,7 @@ dialog:has(.desc) {
   flex-direction: column;
 }
 
-/* 面板本身是模态表面，不作为可聚焦控件；Safari showModal() 会把焦点放到 dialog，不应画 UA ring。内部控件保留 focus ring。 */
-dialog:focus,
-dialog:focus-visible {
-  outline: none;
-}
+/* 模态表面的焦点环抑制（<dialog> 壳 + 面板滚动区）集中在 assets/modal-surface.css，见组件 index.ts 的 static styles。 */
 
 dialog[open].is-visible {
   transform: scale(1);
