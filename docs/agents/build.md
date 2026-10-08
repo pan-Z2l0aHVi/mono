@@ -35,7 +35,7 @@ Interweave 由 Wails 宿主管理嵌套前端，因此其 alias 只启动 Wails 
 
 `check-pack` 使用 `pnpm pack --dry-run` 验证实际发布文件与 manifest export targets；它不判断 API 语义或版本级别。
 
-turbo 本地缓存由 `.mise.toml` 的 `TURBO_CACHE_DIR` 指向 worktree 族共享目录（机制与手动回收见 [`worktrees.md`](worktrees.md)）。`pnpm run clean` 的默认档会连这份共享缓存一起清掉（脚本用 `git rev-parse --path-format=absolute --git-common-dir` 解析，与 `.mise.toml` 同一套逻辑），因此它影响整个 worktree 族而不只是当前工作区；只想回收单个工作区的产物时直接删该工作区的 `.turbo/`。默认档**不**删除 `pnpm-lock.yaml`（tracked 文件，属需逐次授权的 lockfile 改动，需显式加 `--locks`）。构建或验证前怀疑 dist 产物异常（如被 watch 进程清空 d.ts）时，先跑 `pnpm run agent:env-doctor` 体检，再用 `pnpm run agent:env-doctor --fix`（自动 `turbo build --force` 重建 dist）或手动 `turbo build --force` 重建。
+turbo 本地缓存由 `.mise.toml` 的 `TURBO_CACHE_DIR` 指向 worktree 族共享目录（机制与手动回收见 [`worktrees.md`](worktrees.md)）。这条缓存可信链由 `.agents/checks/turbo-cache-invariant` 守着：它要求 `test.dependsOn` 含 `^build`、`build.outputs` 含 `dist/**` 且没有可能排除 `dist` 的负模式，并且 `test.inputs` 不含会显式收进 `dist` 的正模式；不能靠把 `dist/**` 加进 `inputs` 解决缓存问题，因为 `dist` 是 gitignored，`$TURBO_DEFAULT$` 本来不会收它，显式正模式反而让尚无 `dist` 的新 worktree 全部 miss，却不增加产出恢复的正确性。`pnpm run clean` 的默认档会连这份共享缓存一起清掉（脚本用 `git rev-parse --path-format=absolute --git-common-dir` 解析，与 `.mise.toml` 同一套逻辑），因此它影响整个 worktree 族而不只是当前工作区；只想回收单个工作区的产物时直接删该工作区的 `.turbo/`。默认档**不**删除 `pnpm-lock.yaml`（tracked 文件，属需逐次授权的 lockfile 改动，需显式加 `--locks`）。构建或验证前怀疑 dist 产物异常（如被 watch 进程清空 d.ts）时，先跑 `pnpm run agent:env-doctor` 体检，再用 `pnpm run agent:env-doctor --fix`（自动 `turbo build --force` 重建 dist）或手动 `turbo build --force` 重建。
 
 变更影响与验证命令选择使用仓库内查询工具 `agent:find-usages` / `agent:inspect-contract` / `agent:diff-contract`；工具语义、参数与输出说明见 [`context.md`](context.md)，此处不复述。
 
