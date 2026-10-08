@@ -329,6 +329,15 @@ catalogs:
     nanoid:
       specifier: ^6.0.0
       version: 6.0.1
+    overlayscrollbars:
+      specifier: ^2.16.0
+      version: 2.16.0
+    overlayscrollbars-react:
+      specifier: ^0.5.6
+      version: 0.5.6
+    overlayscrollbars-vue:
+      specifier: ^0.5.10
+      version: 0.5.10
     pinia:
       specifier: ^4.0.2
       version: 4.0.3
@@ -544,6 +553,12 @@ importers:
       '@wailsio/runtime':
         specifier: 'catalog:'
         version: 3.0.0-beta.25
+      overlayscrollbars:
+        specifier: 'catalog:'
+        version: 2.16.0
+      overlayscrollbars-vue:
+        specifier: 'catalog:'
+        version: 0.5.10(overlayscrollbars@2.16.0)(vue@3.5.42(typescript@6.0.3))
       pinia:
         specifier: 'catalog:'
         version: 4.0.3(@vue/devtools-api@8.2.1)(typescript@6.0.3)(vue@3.5.42(typescript@6.0.3))
@@ -611,6 +626,12 @@ importers:
       '@tanstack/react-router':
         specifier: 'catalog:'
         version: 1.170.32(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
+      overlayscrollbars:
+        specifier: 'catalog:'
+        version: 2.16.0
+      overlayscrollbars-react:
+        specifier: 'catalog:'
+        version: 0.5.6(overlayscrollbars@2.16.0)(react@19.2.8)
       react:
         specifier: 'catalog:'
         version: 19.2.8
@@ -699,6 +720,12 @@ importers:
       '@vueuse/core':
         specifier: 'catalog:'
         version: 15.0.0(vue@3.5.42(typescript@6.0.3))
+      overlayscrollbars:
+        specifier: 'catalog:'
+        version: 2.16.0
+      overlayscrollbars-vue:
+        specifier: 'catalog:'
+        version: 0.5.10(overlayscrollbars@2.16.0)(vue@3.5.42(typescript@6.0.3))
       pinia:
         specifier: 'catalog:'
         version: 4.0.3(@vue/devtools-api@8.2.1)(typescript@6.0.3)(vue@3.5.42(typescript@6.0.3))
@@ -952,6 +979,9 @@ importers:
       lit:
         specifier: 'catalog:'
         version: 3.3.3
+      overlayscrollbars:
+        specifier: 'catalog:'
+        version: 2.16.0
       react:
         specifier: 'catalog:'
         version: 19.2.8
@@ -5677,6 +5707,21 @@ packages:
 
   outvariant@1.4.3:
     resolution: {integrity: sha512-+Sl2UErvtsoajRDKCE5/dBz4DIvHXQQnAxtQTF04OJxY0+DyZXSo5P5Bb7XYWOh81syohlYL24hbDwxedPUJCA==}
+
+  overlayscrollbars-react@0.5.6:
+    resolution: {integrity: sha512-E5To04bL5brn9GVCZ36SnfGanxa2I2MDkWoa4Cjo5wol7l+diAgi4DBc983V7l2nOk/OLJ6Feg4kySspQEGDBw==}
+    peerDependencies:
+      overlayscrollbars: ^2.0.0
+      react: '>=16.8.0'
+
+  overlayscrollbars-vue@0.5.10:
+    resolution: {integrity: sha512-vu35CJj/kzGBgkxsQyXCCCRRBz/3AvXhkDckuiRHphRE6CwXjbWATY0PVbn2KRy30NbaZhHqueH5yqPo8ItqTA==}
+    peerDependencies:
+      overlayscrollbars: ^2.0.0
+      vue: ^3.2.25
+
+  overlayscrollbars@2.16.0:
+    resolution: {integrity: sha512-N03oje/q7j93D0aLZtoCdsDSYLmhheSsv8H7oSLE7HhdV9P/bmCURtLV/KbPye7P/bpfyt/obSfDpGUYoJ0OWg==}
 
   own-keys@1.0.2:
     resolution: {integrity: sha512-19YVAg7T+WTrxggPukVq7DjTv6+PJ867TmhCvBsYwmbFCsZd344rq2Ld1p0wo8f8Qrrhgp82c6FJRqdXWtSEhg==}
@@ -11730,6 +11775,18 @@ snapshots:
       wcwidth: 1.0.1
 
   outvariant@1.4.3: {}
+
+  overlayscrollbars-react@0.5.6(overlayscrollbars@2.16.0)(react@19.2.8):
+    dependencies:
+      overlayscrollbars: 2.16.0
+      react: 19.2.8
+
+  overlayscrollbars-vue@0.5.10(overlayscrollbars@2.16.0)(vue@3.5.42(typescript@6.0.3)):
+    dependencies:
+      overlayscrollbars: 2.16.0
+      vue: 3.5.42(typescript@6.0.3)
+
+  overlayscrollbars@2.16.0: {}
 
   own-keys@1.0.2:
     dependencies:

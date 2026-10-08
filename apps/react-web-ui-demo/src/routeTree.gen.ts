@@ -28,6 +28,7 @@ import { Route as ComponentsIconRouteImport } from './routes/components/icon'
 import { Route as ComponentsImagePreviewRouteImport } from './routes/components/image-preview'
 import { Route as ComponentsInputRouteImport } from './routes/components/input'
 import { Route as ComponentsInputNumberRouteImport } from './routes/components/input-number'
+import { Route as ComponentsMiddleEllipsisRouteImport } from './routes/components/middle-ellipsis'
 import { Route as ComponentsPopoverRouteImport } from './routes/components/popover'
 import { Route as ComponentsRadioRouteImport } from './routes/components/radio'
 import { Route as ComponentsSegmentedRouteImport } from './routes/components/segmented'
@@ -137,6 +138,12 @@ const ComponentsInputNumberRoute = ComponentsInputNumberRouteImport.update({
   path: '/components/input-number',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ComponentsMiddleEllipsisRoute =
+  ComponentsMiddleEllipsisRouteImport.update({
+    id: '/components/middle-ellipsis',
+    path: '/components/middle-ellipsis',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ComponentsPopoverRoute = ComponentsPopoverRouteImport.update({
   id: '/components/popover',
   path: '/components/popover',
@@ -223,6 +230,7 @@ export interface FileRoutesByFullPath {
   '/components/image-preview': typeof ComponentsImagePreviewRoute
   '/components/input': typeof ComponentsInputRoute
   '/components/input-number': typeof ComponentsInputNumberRoute
+  '/components/middle-ellipsis': typeof ComponentsMiddleEllipsisRoute
   '/components/popover': typeof ComponentsPopoverRoute
   '/components/radio': typeof ComponentsRadioRoute
   '/components/segmented': typeof ComponentsSegmentedRoute
@@ -257,6 +265,7 @@ export interface FileRoutesByTo {
   '/components/image-preview': typeof ComponentsImagePreviewRoute
   '/components/input': typeof ComponentsInputRoute
   '/components/input-number': typeof ComponentsInputNumberRoute
+  '/components/middle-ellipsis': typeof ComponentsMiddleEllipsisRoute
   '/components/popover': typeof ComponentsPopoverRoute
   '/components/radio': typeof ComponentsRadioRoute
   '/components/segmented': typeof ComponentsSegmentedRoute
@@ -292,6 +301,7 @@ export interface FileRoutesById {
   '/components/image-preview': typeof ComponentsImagePreviewRoute
   '/components/input': typeof ComponentsInputRoute
   '/components/input-number': typeof ComponentsInputNumberRoute
+  '/components/middle-ellipsis': typeof ComponentsMiddleEllipsisRoute
   '/components/popover': typeof ComponentsPopoverRoute
   '/components/radio': typeof ComponentsRadioRoute
   '/components/segmented': typeof ComponentsSegmentedRoute
@@ -328,6 +338,7 @@ export interface FileRouteTypes {
     | '/components/image-preview'
     | '/components/input'
     | '/components/input-number'
+    | '/components/middle-ellipsis'
     | '/components/popover'
     | '/components/radio'
     | '/components/segmented'
@@ -362,6 +373,7 @@ export interface FileRouteTypes {
     | '/components/image-preview'
     | '/components/input'
     | '/components/input-number'
+    | '/components/middle-ellipsis'
     | '/components/popover'
     | '/components/radio'
     | '/components/segmented'
@@ -396,6 +408,7 @@ export interface FileRouteTypes {
     | '/components/image-preview'
     | '/components/input'
     | '/components/input-number'
+    | '/components/middle-ellipsis'
     | '/components/popover'
     | '/components/radio'
     | '/components/segmented'
@@ -431,6 +444,7 @@ export interface RootRouteChildren {
   ComponentsImagePreviewRoute: typeof ComponentsImagePreviewRoute
   ComponentsInputRoute: typeof ComponentsInputRoute
   ComponentsInputNumberRoute: typeof ComponentsInputNumberRoute
+  ComponentsMiddleEllipsisRoute: typeof ComponentsMiddleEllipsisRoute
   ComponentsPopoverRoute: typeof ComponentsPopoverRoute
   ComponentsRadioRoute: typeof ComponentsRadioRoute
   ComponentsSegmentedRoute: typeof ComponentsSegmentedRoute
@@ -581,6 +595,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ComponentsInputNumberRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/components/middle-ellipsis': {
+      id: '/components/middle-ellipsis'
+      path: '/components/middle-ellipsis'
+      fullPath: '/components/middle-ellipsis'
+      preLoaderRoute: typeof ComponentsMiddleEllipsisRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/components/popover': {
       id: '/components/popover'
       path: '/components/popover'
@@ -695,6 +716,7 @@ const rootRouteChildren: RootRouteChildren = {
   ComponentsImagePreviewRoute: ComponentsImagePreviewRoute,
   ComponentsInputRoute: ComponentsInputRoute,
   ComponentsInputNumberRoute: ComponentsInputNumberRoute,
+  ComponentsMiddleEllipsisRoute: ComponentsMiddleEllipsisRoute,
   ComponentsPopoverRoute: ComponentsPopoverRoute,
   ComponentsRadioRoute: ComponentsRadioRoute,
   ComponentsSegmentedRoute: ComponentsSegmentedRoute,

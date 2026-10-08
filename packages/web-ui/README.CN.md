@@ -31,6 +31,29 @@ subpath 导入只注册它点名的那个组件，页面用到的每个标签都
 <web-ui-button variant="primary">点击我</web-ui-button> <web-ui-icon .icon="${lucidePlus}"></web-ui-icon>
 ```
 
+## 滚动条
+
+`@greypan/web-ui/scrollbars` 承载全仓统一的 [OverlayScrollbars](https://github.com/KingSora/OverlayScrollbars)
+滚动条行为：对齐 macOS 的主题、滚动时出现并自动隐去、点击轨道滚动到该位置。样式表每份文档导入一次，
+选项传给所用的适配包。
+
+```js
+import '@greypan/web-ui/scrollbars.css'
+import { webUiScrollbarsOptions } from '@greypan/web-ui/scrollbars'
+import { OverlayScrollbarsComponent } from 'overlayscrollbars-vue' // 或 overlayscrollbars-react
+
+<OverlayScrollbarsComponent :options="webUiScrollbarsOptions">{children}</OverlayScrollbarsComponent>
+```
+
+- `overlayscrollbars` 是可选 peer dependency，只有这个 subpath 需要它。样式表里已经包含库自己的结构样式，
+  它替代 `import 'overlayscrollbars/overlayscrollbars.css'`。
+- 容器自己的 `overflow` 声明（`overflow-y-auto` 等）要保留：OverlayScrollbars 接管后会覆盖它，但接管之前
+  靠它维持可滚动。
+- 目标必须是「纯粹的滚动容器」。OverlayScrollbars 会把宿主变成 flex 行、把子节点搬进它生成的 viewport，
+  所以宿主自身的布局一旦承重（grid、居中盒子、`ul`/`ol`）就会坏。
+- OverlayScrollbars 只改变它被初始化到的那个元素，子元素保持原生滚动条。要覆盖文档滚动条就初始化
+  `document.body`——在那里 `window.scrollY` / `window.scrollTo` 保持原生语义。
+
 ## 框架集成
 
 ### 跨框架 API 约定
@@ -276,6 +299,7 @@ dropdown、tooltip）不需要它。
 | **数据展示**          | [`<web-ui-avatar>`](#web-ui-avatar)                       |
 |                       | [`<web-ui-badge>`](#web-ui-badge)                         |
 |                       | [`<web-ui-empty>`](#web-ui-empty)                         |
+|                       | [`<web-ui-middle-ellipsis>`](#web-ui-middle-ellipsis)     |
 |                       | [`<web-ui-icon>`](#web-ui-icon)                           |
 |                       | [`<web-ui-spinner>`](#web-ui-spinner)                     |
 | **布局与工具**        | [`<web-ui-layout>`](#web-ui-layout)                       |
@@ -792,7 +816,7 @@ web-ui-radio-group {
 
 使用原生 `<dialog>`，`@cancel` 阻止默认关闭行为。除非存在 `no-escape-close`，否则 Escape 调用 `close()`；除非存在 `no-backdrop-close`，否则点击遮罩关闭。启用 `controlled` 后，两者都只派发关闭请求而不自关闭。
 
-启用 `closable` 后，两种内容模式都会渲染内置关闭按钮，且与 Escape、遮罩点击走同一条关闭路径（`controlled` 对它同样生效）。两种模式的位置不同：没有 `body` 插槽时按钮位于 `.title-row` 这条 flex 行里、与标题同行；有 `body` 插槽时不存在标题行，按钮作为玻璃卡片的直接子元素绝对定位到卡片右上角（偏移由 `--wui-dialog-close-top` / `--wui-dialog-close-right` 控制）。图标与 drawer 关闭按钮同为 `ooui:close`。不启用 `closable` 时什么都不渲染——既没有按钮，也没有多余的包裹层。
+启用 `closable` 后，两种内容模式都会渲染内置关闭按钮，且与 Escape、遮罩点击走同一条关闭路径（`controlled` 对它同样生效）。两种模式的位置已统一：按钮都绝对定位到卡片右上角，距卡片两沿的偏移由 `--wui-dialog-close-top` / `--wui-dialog-close-right` 控制（默认都是 `20px`；drawer 关闭按钮仍为 `16px`）。只有 `body` 插槽会让标题行消失；标题模式下标题会为按钮留出避让，长标题不会钻到按钮下面。图标与 drawer 关闭按钮同为 `ooui:close`。不启用 `closable` 时什么都不渲染——既没有按钮，也没有多余的包裹层。
 
 > **Escape 归属**：Escape 由共享仲裁者统一判定，一次按键只关闭**最内层**的已打开浮层（popover、select、autocomplete、dropdown、context-menu、drawer、dialog 都参与）。例如在 drawer 内打开 select，第一次 Escape 只关 select，第二次才关 drawer。互不嵌套的并列浮层按打开顺序关闭最上层。正在播退场过渡的面板仍在场上，也仍由它接住 Escape——但只要还有别的浮层开着，那一次按键仍然归该层，「一次按键关一层」不因此改变。`image-preview` 同样参与：它的原生 `<dialog>` 会登记进同一个仲裁者，Escape 按层级判定；组件的 `cancel` handler 只是拦掉原生的瞬时关闭，把 top layer 保留到退场过渡结束。
 
@@ -802,8 +826,8 @@ web-ui-radio-group {
 | --------------------------------- | ------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `--wui-dialog-width`              | `360px`                                    | 对话框宽度                                                                                                                                                                                                                                                                                                                                                            |
 | `--wui-dialog-max-height`         | `90vh` / `min(90vh, 90dvh)`（dvh 引擎）    | 内容区（`.desc`）的最大高度，不是整卡高度。两套 fallback：基础规则 `90vh`，`@supports (height: 100dvh)` 内 `min(90vh, 90dvh)`——不支持 dvh 的引擎只拿到 `90vh`。整卡换算见下方说明                                                                                                                                                                                     |
-| `--wui-dialog-close-top`          | `16px`                                     | `closable` 按钮距卡片顶部的偏移（body 模式）                                                                                                                                                                                                                                                                                                                          |
-| `--wui-dialog-close-right`        | `16px`                                     | `closable` 按钮距卡片右沿的偏移（body 模式）                                                                                                                                                                                                                                                                                                                          |
+| `--wui-dialog-close-top`          | `20px`                                     | `closable` 按钮距卡片顶部的偏移                                                                                                                                                                                                                                                                                                                                       |
+| `--wui-dialog-close-right`        | `20px`                                     | `closable` 按钮距卡片右沿的偏移                                                                                                                                                                                                                                                                                                                                       |
 | `--wui-dialog-overlay-bg`         | `var(--wui-color-backdrop)`                | 遮罩背景色                                                                                                                                                                                                                                                                                                                                                            |
 | `--wui-dialog-bg`                 | `var(--wui-color-surface-overlay)`         | 玻璃卡片背景色，回退到 `rgb(248 248 248 / 0.92)`                                                                                                                                                                                                                                                                                                                      |
 | `--wui-dialog-padding`            | `20px 24px 24px`                           | 对话框表面内边距                                                                                                                                                                                                                                                                                                                                                      |
@@ -815,6 +839,8 @@ web-ui-radio-group {
 | `--wui-dialog-scale-enter`        | `1.1`                                      | 进场缩放起点：由 `1.1` 收缩到 `1`，退场反向                                                                                                                                                                                                                                                                                                                           |
 
 > **高度语义**：本 token 限制的是内容区，不是整卡。标题行与 footer 仍由内容撑开，超出上限的部分在 `.desc` 内部滚动；整卡本身只由字面量 `100vh` / `100dvh` 兜底，接住「视口太矮、chrome 加内容区上限也放不下」的情况。要给**整卡**定上限的宿主仍需自行量出 chrome（卡片内边距 + 标题行 + 间距 + footer）并从 token 里减掉——Interweave 前端三个 dialog 分别减 142、142、106。不再需要这个数的是「让内容区滚起来」：改动前 `.desc` 既没有上限也没有 `overflow`，唯一能滚的是宿主自己撑出来的内层盒子，宿主想让它滚就必须自己算这个高度。
+>
+> **`body` 模式没有 `.desc`**，所以该 token 在这一档不生效。`body` 插槽被包进 `.wui-dialog-content`，滚动发生在这一层；卡片在内容装得下时仍贴合内容，装不下时由同一条字面量 `100vh` / `100dvh` 兜底。内置关闭按钮在内容滚动时保持 `--wui-dialog-close-top` / `--wui-dialog-close-right` 给出的位置不变。
 
 #### `<web-ui-drawer>`
 
@@ -1265,6 +1291,30 @@ Hover 模式使用 `pointerenter`/`pointerleave` 加延迟控制。Click 模式�
 | `--wui-empty-description-font-size` | `14px`      | 描述字号                    |
 | `--wui-empty-action-margin-top`     | `20px`      | 操作区上方的间距            |
 
+#### `<web-ui-middle-ellipsis>`
+
+单行中间省略：保留首尾、丢掉中间——`very-long-file-…-abcdefghij.txt`——而 `text-overflow: ellipsis` 只能保住头部。
+
+| 属性              | 类型     | 默认值 | 说明                                                                                                     |
+| ----------------- | -------- | ------ | -------------------------------------------------------------------------------------------------------- |
+| `text`            | `string` | `''`   | 完整文本。组件只读它，不回写。                                                                           |
+| `marker`          | `string` | `'…'`  | 插在两端之间的标记。空串即截断但不给任何可见信号。                                                       |
+| `marker-position` | `number` | `50`   | 标记所在的横向比例，0–100。`0` 贴行末（只剩头部），`100` 贴行首（只剩尾部）。越界夹紧，`NaN` 回退 `50`。 |
+
+使用条件与 `text-overflow: ellipsis` 相同：**单行、且有确定行内尺寸**。块级盒子、flex 行里的 `flex: 1; min-width: 0`、grid 轨道都可以。宿主按自身内容撑宽时不存在可用空间，组件按量到的宽度切一次就停止继续收缩，而不是一路塌到只剩标记。
+
+文件名场景靠 `marker-position` 调节，头部是路径噪声、尾部才是扩展名时取大值。下表是示意而非可复现的取值——确切切点取决于字体——取自 16px `system-ui`、240px 盒子：
+
+| `marker-position` | 240px 盒子里                      |
+| ----------------- | --------------------------------- |
+| `0`               | `very-long-file-name-abcdefghi…`  |
+| `50`（默认）      | `very-long-file-…-abcdefghij.txt` |
+| `80`              | `very-l…file-name-abcdefghij.txt` |
+
+切点一律落在**字素簇**边界上：代理对、组合符序列、ZWJ emoji 都不会被从中间劈开。截断期间完整原文写在文本元素的 `title` 上，放得下之后移除。宿主需为 `direction: ltr`；`direction: rtl` 下合串会被双向算法重排。
+
+**已知限制——复制与辅助技术。** 元素里装的是屏幕上那串，因此选中复制拿到的是截断后的文本，读屏与页内查找命中的也是截断后的串。CSS 的 `text-overflow` 没有这两个问题（它从不改动文本节点），这是用 JS 算切点绕不开的代价；原文经 `title` 提供。保持全文留在 DOM 里的替代方案及其代价见 `docs/research/web-ui-middle-ellipsis-261007.md`。
+
 #### `<web-ui-icon>`
 
 图标渲染组件。接受 Iconify 数据对象。
@@ -1338,13 +1388,24 @@ WebUiSpinner.hide() // 隐藏
 | `sidebar-collapsed` | `boolean` | `false`   | 桌面端侧边栏受控折叠状态                                       |
 | `sidebar-open`      | `boolean` | `false`   | 移动端侧边栏 Drawer 受控打开状态                               |
 | `header-glow`       | `boolean` | `false`   | 在 header 插槽内容背后显示装饰性晕染                           |
+| `mobile`            | `boolean` | `false`   | 只读派生值：当前视口是否处于移动端断点及以下                   |
 | `sidebar-width`     | `string`  | `'240px'` | 桌面端和移动端展开时的侧边栏宽度                               |
 | `collapsed-width`   | `string`  | `'72px'`  | 桌面端折叠时的侧边栏宽度                                       |
 | `sidebar-resizable` | `boolean` | `false`   | 启用桌面端侧边栏右边缘拖拽调整宽度                             |
 | `sidebar-min-width` | `string`  | —         | 拖拽调整的下限（px）；默认回退到 `collapsed-width`             |
 | `sidebar-max-width` | `string`  | —         | 拖拽调整的上限（px）；钳制在视口一半以内，内置上限优先于配置值 |
 
-**事件：** `sidebar-collapsed-change`（`CustomEvent<{ collapsed: boolean }>`）用于请求更新桌面端折叠状态；`sidebar-open-change`（`CustomEvent<{ open: boolean }>`）用于请求更新移动端 Drawer 打开状态；`sidebar-width-change`（`CustomEvent<{ width: string }>`）用于请求在拖拽调整结束后更新侧边栏宽度。Consumer 必须将请求值回写到对应的受控属性。
+**事件：** `sidebar-collapsed-change`（`CustomEvent<{ collapsed: boolean }>`）用于请求更新桌面端折叠状态；`sidebar-open-change`（`CustomEvent<{ open: boolean }>`）用于请求更新移动端 Drawer 打开状态；`sidebar-width-change`（`CustomEvent<{ width: string }>`）用于请求在拖拽调整结束后更新侧边栏宽度。Consumer 必须将请求值回写到对应的受控属性。`mobile-change`（`CustomEvent<{ mobile: boolean }>`）不是请求，它报告的是 layout 自己的派生视口状态。
+
+**移动端视口状态：** `mobile` 是派生输出而不是第二个输入——由 layout 独占写入；property 只读（赋值不生效，严格模式下抛错），写 attribute 会在同一次 reaction 内被恢复、连值一起归位，两种写法都不派发事件。它与 layout 的渲染分支、以及 layout CSS 用来隐藏桌面 aside 的媒体查询（`@media (width <= 640px)`）是同一条条件，三者不可能互相错开；翻转不再经 resize 去抖，就发生在媒体查询变化的那一刻。`mobile-change` 每次跨断点只派发一次，元素在窄视口挂载时连接那一刻的那次求值也算一次。Consumer 用 `layout.mobile` 读当前值、用 `mobile-change` 收更新即可，CSS 侧可以写 `web-ui-layout[mobile]`。
+
+**框架侧的消费方式：** layout 自身在 microtask 里重渲染，因此**在宏任务上响应的消费者会读到旧值，而新树已经在屏幕上了**：
+
+- **Vue**：模板里绑 `@mobile-change`，用 `ref` 存值。Vue 在元素插入前就挂上模板监听（因此也能收到连接期那一次），且它的 flush 在 microtask，早于 layout 自己的更新。
+- **React**：用 ref 拿到元素，在 `useLayoutEffect` 里**先读 `layout.mobile` 再订阅**，并用 `flushSync` 回写。先读是为了拿到「挂在插入之后的监听收不到」的挂载初值；`flushSync` 是为了让运行时跨断点抢在 layout 重渲染之前——React 对 DOM 监听里的 setState 走宏任务 flush，否则会出现一帧「drawer 已按新状态渲染、consumer 的值还是旧的」（本仓 React demo 修复前实测 2/221 帧）。
+- **CSS**：直接按 `web-ui-layout[mobile]` 写样式，或把它包成一个变体。Tailwind v4 的 app 可以只写一次这条边界的**移动端那一侧**、而不是每个工具类各写一遍：`@custom-variant mobile (&:where(web-ui-layout[mobile], web-ui-layout[mobile] *));`。两条限制：属性选择器只够得到 layout 子树内的节点，被 overlay portal 到 `document.body` 的内容仍需媒体查询；**不要拿自定义变体做 min-width 那一侧**——Tailwind 把 `@custom-variant` 规则排在主题断点之后，同属性的 `desktop:` 变体会在它之上的每个宽度静默压掉 `md:`/`lg:`。
+
+**折叠只作用于桌面端：** `sidebar-collapsed` 只收窄桌面端侧边栏，布局不对移动端 Drawer 施加任何折叠几何。两条分支承载的是同一份 `sidebar` 插槽内容，所以侧边栏内容密度跟着该属性变的 Consumer 必须按 `mobile` 收窄这个条件（例如 `collapsed && !layout.mobile`，或 CSS 的 `web-ui-layout[mobile]`），否则桌面的折叠偏好会一路渲染进 Drawer。见 issue #195。
 
 **侧边栏调整宽度：** 启用 `sidebar-resizable` 后，桌面端侧边栏右边缘会出现调整手柄（折叠状态下隐藏）；悬停或拖拽时显示 3px 宽的强调色垂直线和 `col-resize` 光标。
 
@@ -1389,9 +1450,9 @@ WebUiSpinner.hide() // 隐藏
 }
 ```
 
-在 `640px` 及以下，侧边栏会切换为使用内置 glass body、可滚动 content 和 drag zone 的 `web-ui-drawer`。Layout 会将 `sidebar-width` 映射为 `--wui-drawer-width`，将 `--wui-layout-sidebar-radius` 映射为 `--wui-drawer-radius`。移动端 Toggle 以 glass 变体位于 header 行内。其左缩进默认 `8px`，可通过 `--wui-layout-mobile-toggle-inset` 与 Consumer 自身的 header 内边距对齐。
+在 `640px` 及以下——与 `mobile` 报告的正是同一条条件——侧边栏会切换为使用内置 glass body、可滚动 content 和 drag zone 的 `web-ui-drawer`。Layout 会将 `sidebar-width` 映射为 `--wui-drawer-width`，将 `--wui-layout-sidebar-radius` 映射为 `--wui-drawer-radius`。移动端 Toggle 以 glass 变体位于 header 行内。其左缩进默认 `8px`，可通过 `--wui-layout-mobile-toggle-inset` 与 Consumer 自身的 header 内边距对齐。
 
-`header-glow` 会在 header 插槽内容和移动端 Toggle 的背后添加 `pointer-events: none` 的装饰性晕染。它属于 Header 背景而非前景层，因此插槽内容始终位于其上方。晕染颜色取自 `--wui-color-page`，因此浅色/暗色模式自动跟随；要改颜色，在 `web-ui-layout`、theme 或其上层任意位置覆盖该属性即可。晕染由两层伪元素合成：`::before` 在 header 盒内用 `linear-gradient` 绘制底色并渐变到全透明，`::after` 再叠一层真实的 `backdrop-filter: blur(4px)`，并用 `mask` 让这层模糊的 alpha 沿高度衰减、到底缘附近归零。两层职责分开后，模糊强度与颜色浓度互不牵制。两层都用负 `margin` 而不是 `transform` 向外撑开。横向裁剪归属 `.layout-content`，glow 因此不会撑出横向滚动条。布局层级顺序为 Header（`10`）< Auxiliary（`20`）< Banner（`30`）< Tabbar（`40`）< Sidebar（`50`）。
+`header-glow` 会在 header 插槽内容和移动端 Toggle 的背后添加 `pointer-events: none` 的装饰性晕染。它属于 Header 背景而非前景层，因此插槽内容始终位于其上方。晕染颜色取自 `--wui-color-page`，因此浅色/暗色模式自动跟随；要改颜色，在 `web-ui-layout`、theme 或其上层任意位置覆盖该属性即可。晕染由两层伪元素合成：`::before` 在 header 盒内用 `linear-gradient` 绘制底色并渐变到全透明，`::after` 再叠一层真实的 `backdrop-filter: blur(4px)`，并用 `mask` 让这层模糊的 alpha 沿高度衰减、到底缘附近归零。两层职责分开后，模糊强度与颜色浓度互不牵制。两层都用负 `margin` 而不是 `transform` 撑开；模糊层止于 header 上缘，只向下与向两侧延伸。横向裁剪归属 `.layout-content`，glow 因此不会撑出横向滚动条。布局层级顺序为 Header（`10`）< Auxiliary（`20`）< Banner（`30`）< Tabbar（`40`）< Sidebar（`50`）。
 
 侧边栏卡片表面使用 `--wui-color-surface-sidebar`：浅色保持半透明中性分层，深色比 `--wui-color-page` 浅一档、与 `--wui-color-surface` 同级。它独立成 token，是因为 dialog、drawer 和 toast 共用 `--wui-color-surface-overlay`，可以采用不同表面。
 
@@ -1498,7 +1559,7 @@ SVG 线条绘制动画，基于 `stroke-dashoffset`。直接在原元素上动�
 | ---------------------------- | ------ | -------------------------------------------------- |
 | `--wui-font-size-caption`    | `12px` | 密集 chrome 标签（徽标、toast 时间戳、菜单分组头） |
 | `--wui-font-size-readout`    | `13px` | 数字读数（图片预览的计数与缩放比）                 |
-| `--wui-font-size`            | `14px` | 正文与控件的基础字号                               |
+| `--wui-font-size`            | `14px` | 正文与控件的基础字号（含控件的占位文本）           |
 | `--wui-font-size-title`      | `18px` | 有界卡片标题（dialog、drawer）                     |
 | `--wui-font-weight-medium`   | `500`  | 强调行内文字的中等字重                             |
 | `--wui-font-weight-semibold` | `600`  | 标题的半粗字重                                     |

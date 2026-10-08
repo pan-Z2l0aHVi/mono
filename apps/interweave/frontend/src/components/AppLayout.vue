@@ -5,16 +5,25 @@ import { RouterView } from 'vue-router'
 
 import AppNav from '@/components/AppNav.vue'
 import SettingsDialog from '@/components/SettingsDialog.vue'
-import { useMediaQuery } from '@/composables/useMediaQuery'
+import { useLayoutMobileProvider } from '@/composables/useLayoutMobile'
 
 const sidebarCollapsed = ref(false)
 const sidebarOpen = ref(false)
 const settingsOpen = ref(false)
 const desktopSidebarWidth = ref('240px')
 
-// 断点与 web-ui-layout 内部判定一致：drawer 宽度要跟着 viewport 一起换。
-const mobile = useMediaQuery('(max-width: 640px)')
+// 移动端判定由 layout 独占（它同时决定渲染哪一套树）：drawer 宽度跟着同一个值换，
+// 壳里不必再写断点，也不会与 layout 的树切换错开半拍。
+const { mobile, onMobileChange } = useLayoutMobileProvider()
 const sidebarWidth = computed(() => (mobile.value ? 'min(320px, 80vw)' : desktopSidebarWidth.value))
+
+/*
+ * 折叠是**桌面端**的密度偏好，移动端 drawer 恒以展开态呈现同一份导航：drawer 宽
+ * min(320px, 80vw)，套用折叠态会把标签挤掉（collapsed 为真时 AppNav 不渲染文字）。
+ * web-ui-layout 的 `sidebar-collapsed` 契约同样写明它「不会影响移动端 Drawer」，
+ * 它只是无从替 Consumer 决定 slot 内容怎么渲染，所以闸门留在这里。
+ */
+const navCollapsed = computed(() => sidebarCollapsed.value && !mobile.value)
 
 function updateSidebarCollapsed(event: WebUiEvent<WebUiLayout, 'sidebar-collapsed-change'>) {
   sidebarCollapsed.value = event.detail.collapsed
@@ -60,13 +69,9 @@ function closeSidebar() {
     @sidebar-collapsed-change="updateSidebarCollapsed"
     @sidebar-open-change="updateSidebarOpen"
     @sidebar-width-change="updateSidebarWidth"
+    @mobile-change="onMobileChange"
   >
-    <AppNav
-      slot="sidebar"
-      :collapsed="sidebarCollapsed"
-      @navigate="closeSidebar"
-      @open-settings="settingsOpen = true"
-    />
+    <AppNav slot="sidebar" :collapsed="navCollapsed" @navigate="closeSidebar" @open-settings="settingsOpen = true" />
 
     <RouterView />
   </web-ui-layout>

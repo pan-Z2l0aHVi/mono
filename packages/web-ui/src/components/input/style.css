@@ -93,6 +93,11 @@ input {
   outline: none;
 
   &::placeholder {
+    /* 占位文本的排版属于控件，不在这里另写一份：控件字号来自 `--wui-font-size`
+       （粗指针下还有 max(16px, …) 的钳制），在这里写死 font-size 会绕过那条钳制。
+       三引擎的 UA 样式表目前都没给 ::placeholder 设字体，所以这行是声明而不是补丁——
+       契约由 shared/theme/__tests__/text-control-placeholder-typography.browser.spec.ts 守着。 */
+    font: inherit;
     color: var(--wui-color-text-secondary, #6a6a6a);
   }
 

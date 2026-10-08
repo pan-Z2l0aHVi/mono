@@ -13,7 +13,9 @@
   ],
   "sideEffects": [
     "./src/components/**",
-    "./dist/components/**"
+    "./dist/components/**",
+    "./src/scrollbars/**",
+    "./dist/scrollbars/**"
   ],
   "exports": {
     ".": {
@@ -28,6 +30,11 @@
       "types": "./dist/icons/index.d.ts",
       "import": "./dist/icons/index.js"
     },
+    "./scrollbars": {
+      "types": "./dist/scrollbars/index.d.ts",
+      "import": "./dist/scrollbars/index.js"
+    },
+    "./scrollbars.css": "./dist/scrollbars/style.css",
     "./types/*": "./dist/types/*.d.ts",
     "./package.json": "./package.json"
   },
@@ -64,6 +71,7 @@
     "@types/react": "catalog:",
     "@types/react-dom": "catalog:",
     "lit": "catalog:",
+    "overlayscrollbars": "catalog:",
     "react": "catalog:",
     "react-dom": "catalog:",
     "vite-plugin-dts": "catalog:",
@@ -74,10 +82,14 @@
   "peerDependencies": {
     "@types/react": ">=19",
     "lit": "catalog:",
+    "overlayscrollbars": "catalog:",
     "vue": ">=3.5"
   },
   "peerDependenciesMeta": {
     "@types/react": {
+      "optional": true
+    },
+    "overlayscrollbars": {
       "optional": true
     },
     "vue": {

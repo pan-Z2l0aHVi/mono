@@ -1,5 +1,7 @@
 <script setup lang="ts">
 import { lucideChevronDown, radixIconsPanelLeftMinimized } from '@greypan/web-ui/icons'
+import { webUiScrollbarsOptions } from '@greypan/web-ui/scrollbars'
+import { OverlayScrollbarsComponent } from 'overlayscrollbars-vue'
 </script>
 
 <template>
@@ -71,9 +73,9 @@ import { lucideChevronDown, radixIconsPanelLeftMinimized } from '@greypan/web-ui
           展开长列表
         </button>
         <div slot="content">
-          <div class="max-h-40 overflow-y-auto p-3">
+          <OverlayScrollbarsComponent :options="webUiScrollbarsOptions" class="max-h-40 overflow-y-auto p-3">
             <p v-for="i in 20" :key="i">列表项 {{ i }}</p>
-          </div>
+          </OverlayScrollbarsComponent>
         </div>
       </web-ui-collapse>
     </div>

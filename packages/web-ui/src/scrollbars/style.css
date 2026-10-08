@@ -1,0 +1,72 @@
+/*
+ * 结构样式（滚动条元素的布局、显隐、热区）由库自带，主题只覆盖它的 CSS 自定义属性。
+ * 两条 import 合成一个文件交给消费方，顺序也就固定了：库的初值在前，主题的覆盖在后——
+ * 两边特异性都是 (0,1,0)，全靠在源顺序上胜出，拆成两个 import 让消费方自己排会排错。
+ */
+@import 'overlayscrollbars/overlayscrollbars.css';
+
+/*
+ * macOS 覆盖式滚动条主题。
+ *
+ * 覆盖式滚动条浮在内容之上：不占布局宽度、无轨道底色、拇指两端全圆角。--os-* 是一组
+ * 由 OverlayScrollbars 在 .os-scrollbar 上读取的自定义属性，这里把库默认主题
+ * （os-theme-dark / os-theme-light）的值整套换成 macOS 的度量。库在 .os-scrollbar 上
+ * 给的初值是 0/none，只在本主题缺项时才会露出来，所以这里每一项都要写全。
+ *
+ * 尺寸：--os-size 是滚动条整条热区宽度，--os-padding-perpendicular 是垂直轴向的内边距，
+ * 拇指实宽 = size - 2 * padding。13 - 2 * 3 = 7px，正好是 macOS 拇指宽度与它离窗口边缘
+ * 的 3px 间隙。--os-padding-axis 是轴向两端留白，macOS 的拇指行程不到最边缘。
+ *
+ * 颜色：macOS 的拇指是半透明中性灰，浮在浅色内容上是深灰、深色内容上是浅灰。取值分两跳：
+ * 这里只**读**一组可继承的 `--wui-scrollbar-*`（回退值就是浅色），由下面的外观分支**写**。
+ * 绕这一跳是因为 shadow root：web-ui 组件内部的滚动容器把库的结构样式带进了自己的 shadow，
+ * 而 shadow 里既匹配不到 `web-ui-theme[...]` 这类后代选择器，也匹配不到 `html:has(...)`——
+ * 自定义属性跨 shadow 边界照常继承，是唯一能穿过去的东西。
+ *
+ * 0.5 这个不透明度是对着 macOS 原生覆盖式滚动条量出来的，不是估的：原生拇指在 #fbfbfc
+ * 底上是 rgb(125,125,126)，在 #2c2c2e 底上是 rgb(150,150,151)，两个底都恰好等于 50%
+ * 的黑/白叠加。hover 与 active 的加深没有原生的对照物（Chrome 不改变原生拇指），按同族
+ * 主题的档距取，只保证「按下去比悬停深、悬停比静止深」这条可读的关系。
+ */
+
+.os-theme-macos {
+  --os-size: 13px;
+  --os-padding-perpendicular: 3px;
+  --os-padding-axis: 2px;
+  --os-track-border-radius: 100px;
+  --os-handle-border-radius: 100px;
+  --os-handle-interactive-area-offset: 4px;
+  --os-track-bg: none;
+  --os-track-bg-hover: none;
+  --os-track-bg-active: none;
+  --os-handle-bg: var(--wui-scrollbar-handle, rgb(0 0 0 / 0.5));
+  --os-handle-bg-hover: var(--wui-scrollbar-handle-hover, rgb(0 0 0 / 0.62));
+  --os-handle-bg-active: var(--wui-scrollbar-handle-active, rgb(0 0 0 / 0.74));
+  box-sizing: border-box;
+}
+
+/*
+ * 外观分支写在 web-ui-theme 输出的 resolved-appearance 上，与各 app 的 `dark:` 变体同源：
+ * 跟随系统只是 appearance="system" 的一种解析结果，用户显式选择的外观才是权威。
+ *
+ * 两档都要显式写。只写深色档的话，深色页面里嵌一个浅色主题时，那个子树会继续继承外层的
+ * 深色值——自定义属性是继承来的，「没写」不等于「回到浅色」。
+ *
+ * 三条规则分别覆盖三类消费面：主题子树内的 light DOM 滚动容器、主题子树内的 shadow 滚动容器
+ * （靠继承穿边界），以及挂在 <body> 下、位于主题元素之外的文档级滚动条——后者只有 `html:has()`
+ * 够得到。`html:has()` 那条带 `:not(web-ui-theme *)`，问的是「**最外层**主题是不是深色」：
+ * 少了它，浅色页面里嵌一个深色面板就会把整页的文档级滚动条也染成浅色拇指（本文件早先那版正是
+ * 如此，对照页里一眼可见）。嵌套在别的主题里的深色主题不参与这个判断，它的影响止于自己那棵子树。
+ */
+web-ui-theme[resolved-appearance='light'] {
+  --wui-scrollbar-handle: rgb(0 0 0 / 0.5);
+  --wui-scrollbar-handle-hover: rgb(0 0 0 / 0.62);
+  --wui-scrollbar-handle-active: rgb(0 0 0 / 0.74);
+}
+
+web-ui-theme[resolved-appearance='dark'],
+html:has(web-ui-theme[resolved-appearance='dark']:not(web-ui-theme *)) {
+  --wui-scrollbar-handle: rgb(255 255 255 / 0.5);
+  --wui-scrollbar-handle-hover: rgb(255 255 255 / 0.62);
+  --wui-scrollbar-handle-active: rgb(255 255 255 / 0.74);
+}

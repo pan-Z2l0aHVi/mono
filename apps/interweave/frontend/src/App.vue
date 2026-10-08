@@ -1,10 +1,21 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { webUiScrollbarsOptions } from '@greypan/web-ui/scrollbars'
+import { useOverlayScrollbars } from 'overlayscrollbars-vue'
+import { computed, onMounted } from 'vue'
 
 import AppLayout from '@/components/AppLayout.vue'
 import { useSettingsStore } from '@/stores/settings'
 
 const settings = useSettingsStore()
+
+// 整页滚动条接管的是 document 的滚动元素，不是某个 DOM 容器，所以没有可渲染的宿主元素，
+// 只能直接初始化 body。资源库列表的 useWindowVirtualizer 读的 window.scrollY 不受影响：
+// 这个模式下 html 仍是 documentElement，窗口滚动 API 保持原生语义。
+const [initPageScrollbars] = useOverlayScrollbars({ options: webUiScrollbarsOptions })
+
+onMounted(() => {
+  initPageScrollbars(document.body)
+})
 
 /*
  * appearance 必须始终作为 attribute 存在，不能在无值时整个省掉：web-ui-theme 靠它选 token

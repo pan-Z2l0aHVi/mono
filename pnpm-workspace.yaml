@@ -65,6 +65,9 @@ catalog:
   lit: ^3.3.3
   msw: ^2.15.0
   nanoid: ^6.0.0
+  overlayscrollbars: ^2.16.0
+  overlayscrollbars-react: ^0.5.6
+  overlayscrollbars-vue: ^0.5.10
   pinia: ^4.0.2
   playwright: ^1.61.1
   postcss-html: ^2.0.0

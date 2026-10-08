@@ -22,6 +22,23 @@ function getPortalPanel(theme: HTMLElement): HTMLElement | null {
   return portalHost?.shadowRoot?.querySelector<HTMLElement>('.autocomplete-overlay') ?? null
 }
 
+/*
+ * 等到 portal 面板真的出现再取。
+ *
+ * 面板不是同一步渲染出来的：`updated()` 里 `requestAnimationFrame(() => this._reconfigureOverlay())`
+ * 才把 `.autocomplete-overlay` 建进 theme 的 overlay root，而同一轮渲染里的无障碍镜像
+ * （shadow 内的 role=listbox）是同步的。于是同一个场景里 `page.getByRole('listbox')` 会重试、
+ * 裸取 `getPortalPanel()` 不会 —— CI run 37726205609 上就报
+ * `TypeError: Cannot read properties of null (reading 'querySelectorAll')`。
+ *
+ * 这里把「读」换成「等到出现再读」：判据不变（面板存在且内容逐项相等），面板始终不出现时
+ * 仍然在 pollUntil 的预算内抛错 —— 只是不再因为晚一帧而假红。
+ */
+async function waitForPortalPanel(theme: HTMLElement): Promise<HTMLElement> {
+  await pollUntil(() => getPortalPanel(theme) !== null, 'Expected the autocomplete portal panel to be created')
+  return getPortalPanel(theme)!
+}
+
 function getAllPortalPanels(selector: string): HTMLElement[] {
   return Array.from(document.querySelectorAll<HTMLElement>('[data-wui-overlay-root]'))
     .flatMap(root =>
@@ -88,12 +105,12 @@ describe('WebUiAutocomplete 组件（浏览器）', () => {
     await new Promise(resolve => requestAnimationFrame(resolve))
     await el.updateComplete
 
-    const panel = getPortalPanel(theme)
+    const panel = await waitForPortalPanel(theme)
     expect(el.open).toBe(true)
-    expect(panel?.getAttribute('aria-hidden')).toBe('true')
-    expect(panel?.querySelector(':scope web-ui-option')).not.toBeNull()
+    expect(panel.getAttribute('aria-hidden')).toBe('true')
+    expect(panel.querySelector(':scope web-ui-option')).not.toBeNull()
 
-    const option = panel!.querySelector('web-ui-option') as HTMLElement
+    const option = panel.querySelector('web-ui-option') as HTMLElement
     option.click()
     await el.updateComplete
 
@@ -129,7 +146,7 @@ describe('WebUiAutocomplete 组件（浏览器）', () => {
     // 激活项只通过公开通道（aria-activedescendant → shadow 内 role=option 镜像）暴露，
     // 据此在面板里找到同 label 的那一项并移除，验证激活态被清理。
     // 断言候选唯一：避免 label 重名时静默选到错误的节点（fixture 的 label 本就唯一）。
-    const panel = getPortalPanel(theme)!
+    const panel = await waitForPortalPanel(theme)
     const active = [...panel.querySelectorAll<WebUiOption>('web-ui-option')].filter(
       option => option.label === activeLabel
     )
@@ -156,7 +173,7 @@ describe('WebUiAutocomplete 组件（浏览器）', () => {
     focusTrigger(el)
     clickTrigger(el)
     await new Promise(resolve => requestAnimationFrame(resolve))
-    const panel = getPortalPanel(theme)!
+    const panel = await waitForPortalPanel(theme)
     panel.dispatchEvent(new MouseEvent('click', { bubbles: true, composed: true }))
     await el.updateComplete
 
@@ -496,7 +513,7 @@ describe('WebUiAutocomplete 组件（浏览器）', () => {
     await waitForFrame()
     await el.updateComplete
 
-    const panel = getPortalPanel(theme)!
+    const panel = await waitForPortalPanel(theme)
     expect(panel.querySelector('web-ui-option[value="cherry"]')).toBe(appended)
     expect(page.getByRole('option', { name: 'Cherry' }).length).toBe(1)
 
@@ -540,7 +557,7 @@ describe('WebUiAutocomplete 组件（浏览器）', () => {
 
     await userEvent.keyboard('{ArrowDown}')
     expect(page.getByRole('listbox').length).toBe(1)
-    const reopenedPanel = getPortalPanel(theme)!
+    const reopenedPanel = await waitForPortalPanel(theme)
     expect([...reopenedPanel.querySelectorAll<WebUiOption>('web-ui-option')].map(option => option.value)).toEqual([
       'cherry',
       'apple'
@@ -616,7 +633,7 @@ describe('WebUiAutocomplete 组件（浏览器）', () => {
     await waitForFrame()
     await el.updateComplete
 
-    const panel = getPortalPanel(theme)!
+    const panel = await waitForPortalPanel(theme)
     expect(panel.textContent).not.toContain('legacy empty content')
     expect(panel.querySelector('[slot="empty"]')).toBeNull()
     expect(el.querySelector('[slot="empty"]')?.textContent).toBe('legacy empty content')

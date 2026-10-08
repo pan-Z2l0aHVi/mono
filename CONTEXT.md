@@ -92,6 +92,7 @@ workspace 清单、依赖草图与模块关系图见 [`ARCHITECTURE.md`](ARCHITE
 | [0014](docs/adr/0014-task-system-v2.md)                                         | Task 体系 v2（level 状态机、guard、checks、playbook） | 修改 `scripts/task.mjs`、任务级别 gate、pre-commit 门禁或 task state 布局 |
 | [0018](docs/adr/0018-task-state-in-tmpdir.md)                                   | Task state 落在系统临时目录                           | 修改 task state 落点、跨仓库列举范围或重启后的恢复规则                    |
 | [0021](docs/adr/0021-orchestration-layer-moved-to-herdr-projects.md)            | 编排层承接需求拆分与 task 派发                        | 修改 worktree 分工、T0 判据或 T0 的 review 形态                           |
+| [0023](docs/adr/0023-layout-exposes-derived-mobile-viewport-state.md)           | Layout 暴露派生视口状态（`mobile` / `mobile-change`） | 修改 layout 的断点判定、给组件加派生状态，或让 app 消费移动端判定         |
 
 ## Interweave 产品与领域词汇
 

@@ -72,6 +72,8 @@ textarea {
   outline: none;
 
   &::placeholder {
+    /* 同 input：占位文本的排版属于控件，不在这里另写一份 */
+    font: inherit;
     color: var(--wui-color-text-secondary, #6a6a6a);
   }
 

@@ -100,6 +100,34 @@ describe('SettingsDialog', () => {
     }
   })
 
+  /*
+   * 结构守卫：「设置分区」必须挂在 dialog 的固定 chrome（title slot）里，内容区不套
+   * 应用自己的滚动宿主。按住时胶囊会横向越出轨道 9px，任何 overflow 非 visible 的祖先
+   * 都会在 padding box 上把它切平——把 tab 行放回滚动区就是把这个缺陷请回来。
+   */
+  it('设置分区挂在标题 chrome，内容区不再套滚动宿主', async () => {
+    const mounted = mountDialog(() => {})
+
+    try {
+      await nextTick()
+      const dialog = dialogElement(mounted.host)
+      const titleChrome = mounted.host.querySelector('[slot="title"]')
+      const segmented = segmentedByLabel(mounted.host, '设置分区')
+
+      expect(titleChrome, 'title slot 应渲染标题 chrome').toBeTruthy()
+      expect(titleChrome?.contains(segmented), '设置分区应落在 title chrome 内').toBe(true)
+
+      // 内容区（默认 slot）里只剩面板：不再有 OverlayScrollbars / overflow-y-auto 宿主。
+      const panel = dialog.querySelector(':scope > div:not([slot])')
+      expect(panel, '面板应是 dialog 的直系子节点').toBeTruthy()
+      expect(panel?.contains(segmented), '面板不应再包住 tab 行').toBe(false)
+      expect(dialog.querySelector('.overflow-y-auto'), '内容区不应再有应用自套的滚动宿主').toBeNull()
+      expect(dialog.querySelector('[data-overlayscrollbars-viewport]'), '内容区不应再有 OS 视口').toBeNull()
+    } finally {
+      mounted.close()
+    }
+  })
+
   it('默认落在通用分区，MCP 开关是 disabled 的占位', async () => {
     const mounted = mountDialog(() => {})
 

@@ -711,6 +711,152 @@ describe('WebUiLayout 组件（浏览器）', () => {
     })
   })
 
+  describe('移动端状态对外暴露', () => {
+    const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms))
+
+    // property、反射 attribute、派发的事件与渲染的树是同一个判定：任何一处落后半拍，
+    // 消费者（三处 app 外壳）就会与组件错开，而 #195 那类问题正是这么来的。
+    it('跨断点时 mobile、反射 attribute 与渲染的树一起翻转', async () => {
+      await page.viewport(DESKTOP_VIEWPORT.width, DESKTOP_VIEWPORT.height)
+      const layout = createLayout()
+      await layout.updateComplete
+
+      expect(layout.mobile).toBe(false)
+      expect(layout.hasAttribute('mobile')).toBe(false)
+
+      const changes: boolean[] = []
+      layout.addEventListener('mobile-change', event => {
+        changes.push((event as CustomEvent<{ mobile: boolean }>).detail.mobile)
+      })
+
+      await page.viewport(MOBILE_VIEWPORT.width, MOBILE_VIEWPORT.height)
+      await pollUntil(() => layout.mobile, 'Expected mobile to flip on the narrow viewport')
+
+      expect(layout.hasAttribute('mobile')).toBe(true)
+      expect(changes).toEqual([true])
+      expect(queryA11y(layout, 'web-ui-drawer')).toBeTruthy()
+      expect(queryA11y(layout, 'aside')).toBeFalsy()
+
+      await page.viewport(DESKTOP_VIEWPORT.width, DESKTOP_VIEWPORT.height)
+      await pollUntil(() => !layout.mobile, 'Expected mobile to flip back on the wide viewport')
+
+      expect(layout.hasAttribute('mobile')).toBe(false)
+      expect(changes).toEqual([true, false])
+      expect(queryA11y(layout, 'aside')).toBeTruthy()
+      expect(queryA11y(layout, 'web-ui-drawer')).toBeFalsy()
+    })
+
+    /*
+     * 直接订阅媒体查询之后，翻转不再经 window resize：旧实现有 100ms 去抖，跨断点的那
+     * ≤100ms 里 TS 还渲染着桌面树、CSS 却已经藏起 aside（layout/style.css 的
+     * `@media (width <= 640px)`），侧栏会整块消失。这条用例造出「innerWidth 说移动端、
+     * 媒体查询说桌面」的分裂输入，翻转只应来自媒体查询，且要落在去抖窗口之内。
+     */
+    it('翻转只由媒体查询驱动，且不等 100ms 去抖窗口', async () => {
+      await page.viewport(DESKTOP_VIEWPORT.width, DESKTOP_VIEWPORT.height)
+      const layout = createLayout()
+      await layout.updateComplete
+
+      const changes: boolean[] = []
+      layout.addEventListener('mobile-change', () => changes.push(true))
+
+      const innerWidthDescriptor = Object.getOwnPropertyDescriptor(window, 'innerWidth')
+      Object.defineProperty(window, 'innerWidth', {
+        configurable: true,
+        get: () => MOBILE_VIEWPORT.width
+      })
+      try {
+        window.dispatchEvent(new Event('resize'))
+        await delay(150)
+
+        expect(layout.mobile).toBe(false)
+        expect(changes).toEqual([])
+      } finally {
+        if (innerWidthDescriptor) Object.defineProperty(window, 'innerWidth', innerWidthDescriptor)
+      }
+
+      // 同一个判定在真实跨断点时立刻翻转：给 80ms 预算，低于旧实现的 100ms 去抖。
+      await page.viewport(MOBILE_VIEWPORT.width, MOBILE_VIEWPORT.height)
+      await pollUntil(() => layout.mobile, 'Expected the flip within the debounce window', 80)
+      expect(changes).toEqual([true])
+    })
+
+    // 同一侧内的宽度变化不是断点跨越，不该给消费者发通知（否则外壳会做无谓的重渲染）。
+    it('同侧视口变化不派发 mobile-change', async () => {
+      await page.viewport(DESKTOP_VIEWPORT.width, DESKTOP_VIEWPORT.height)
+      const layout = createLayout()
+      await layout.updateComplete
+
+      const changes: boolean[] = []
+      layout.addEventListener('mobile-change', () => changes.push(true))
+
+      await page.viewport(900, 720)
+      await waitForFrame()
+
+      expect(layout.mobile).toBe(false)
+      expect(changes).toEqual([])
+    })
+
+    // 派生输出不是第二个输入：写 attribute 不改变状态，也不该派发通知。
+    it('外部写 mobile attribute 会被恢复，且不派发 mobile-change', async () => {
+      await page.viewport(DESKTOP_VIEWPORT.width, DESKTOP_VIEWPORT.height)
+      const layout = createLayout()
+      await layout.updateComplete
+
+      const changes: boolean[] = []
+      layout.addEventListener('mobile-change', () => changes.push(true))
+
+      layout.setAttribute('mobile', '')
+      await layout.updateComplete
+
+      expect(layout.mobile).toBe(false)
+      expect(layout.hasAttribute('mobile')).toBe(false)
+      expect(changes).toEqual([])
+      expect(queryA11y(layout, 'aside')).toBeTruthy()
+    })
+
+    /*
+     * 移动端一侧的恢复不能只看存在性：`mobile="false"` 写进来时存在性本来就对（存在即 true），
+     * 只有值留在宿主上——`getAttribute` 会回读到 consumer 写的那串，而组件自己写的形态是空串。
+     */
+    it('移动端写 mobile attribute：值归位为空串，状态与树不动', async () => {
+      await page.viewport(MOBILE_VIEWPORT.width, MOBILE_VIEWPORT.height)
+      const layout = createLayout()
+      await layout.updateComplete
+
+      const changes: boolean[] = []
+      layout.addEventListener('mobile-change', () => changes.push(true))
+
+      layout.setAttribute('mobile', 'false')
+      await layout.updateComplete
+
+      expect(layout.mobile).toBe(true)
+      expect(layout.getAttribute('mobile')).toBe('')
+      expect(changes).toEqual([])
+      expect(queryA11y(layout, 'web-ui-drawer')).toBeTruthy()
+      expect(queryA11y(layout, 'aside')).toBeFalsy()
+    })
+
+    /*
+     * 消费者要在挂载期拿到初值：Vue 的模板监听在元素插入前就挂上，因此连接那一刻的翻转
+     * 必须对外可见，而不是只等下一次跨越（挂得晚的消费者则自己读一次属性，见 README）。
+     */
+    it('挂载时已在移动端：连接即派发一次 mobile-change', async () => {
+      await page.viewport(MOBILE_VIEWPORT.width, MOBILE_VIEWPORT.height)
+      const layout = document.createElement('web-ui-layout')
+      const changes: boolean[] = []
+      layout.addEventListener('mobile-change', event => {
+        changes.push((event as CustomEvent<{ mobile: boolean }>).detail.mobile)
+      })
+      document.body.append(layout)
+      await layout.updateComplete
+
+      expect(changes).toEqual([true])
+      expect(layout.mobile).toBe(true)
+      expect(layout.hasAttribute('mobile')).toBe(true)
+    })
+  })
+
   describe('banner 可见高度', () => {
     // banner 高度驱动 header 的晕染渐变起点。banner 滚出视口后必须收敛到 0，
     // 否则渐变会停在一个已经不可见的偏移上。

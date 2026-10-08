@@ -244,7 +244,7 @@ const iconItems = [
     </div>
 
     <h2>图标示例（Shadow DOM — web-ui-icon）</h2>
-    <div class="mb-6 grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
+    <div data-testid="svg-icon-grid" class="mb-6 grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
       <div
         v-for="item in iconItems"
         :key="item.id"

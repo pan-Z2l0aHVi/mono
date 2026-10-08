@@ -235,20 +235,6 @@ async function openDetailFromMenu(host: HTMLElement) {
   await nextTick()
 }
 
-/** jsdom 不实现 matchMedia；页面只在启动时读一次 matches 并订阅 change。 */
-function matchMediaStub() {
-  return {
-    matches: false,
-    media: '',
-    onchange: null,
-    addEventListener() {},
-    removeEventListener() {},
-    addListener() {},
-    removeListener() {},
-    dispatchEvent: () => false
-  } as unknown as MediaQueryList
-}
-
 /** 入队链和确认动作都是多段 await：nextTick 只排一次渲染，这里把微任务队列排空。 */
 async function flush() {
   for (let index = 0; index < 20; index += 1) await Promise.resolve()
@@ -263,7 +249,6 @@ describe('LibraryPage：可用性感知接线', () => {
     runtimeStub.availabilityListener = null
     runtimeStub.availabilityDisposer = null
     runtimeStub.current = createRuntime()
-    window.matchMedia = vi.fn<() => MediaQueryList>(matchMediaStub)
   })
 
   afterEach(() => {
@@ -360,7 +345,6 @@ describe('LibraryPage：确认弹窗退场', () => {
     runtimeStub.availabilityListener = null
     runtimeStub.availabilityDisposer = null
     runtimeStub.current = createRuntime()
-    window.matchMedia = vi.fn<() => MediaQueryList>(matchMediaStub)
   })
 
   afterEach(() => {
@@ -465,7 +449,6 @@ describe('LibraryPage：粘贴链接', () => {
     runtimeStub.availabilityListener = null
     runtimeStub.availabilityDisposer = null
     runtimeStub.current = createRuntime()
-    window.matchMedia = vi.fn<() => MediaQueryList>(matchMediaStub)
   })
 
   afterEach(() => {
@@ -590,7 +573,6 @@ describe('LibraryPage：备注失败回写', () => {
     route.value = { path: '/library' }
     runtimeStub.availabilityListener = null
     runtimeStub.availabilityDisposer = null
-    window.matchMedia = vi.fn<() => MediaQueryList>(matchMediaStub)
   })
 
   afterEach(() => {

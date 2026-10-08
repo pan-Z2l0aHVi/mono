@@ -32,6 +32,7 @@ import { dispatchOpenChangeEvent } from '@/shared/open-state'
 import { defineOpenOverlay, type OpenOverlayHandle } from '@/shared/overlay/open-overlay'
 import { defineOverlayPositioningGeneration } from '@/shared/overlay/positioning-generation'
 import { hideOverlayPresence, showOverlayPresence } from '@/shared/overlay/presence'
+import { findNearestTheme } from '@/shared/overlay/theme-overlay-scope'
 import { defineScrollLockLease } from '@/shared/scroll-lock/scroll-lock'
 
 import scrimStyle from './scrim.css?inline'
@@ -284,8 +285,9 @@ export class WebUiContextMenu extends LitElement {
     this._closeSubmenusFrom(0, true)
     this._closingSubmenus.restoreAll()
     /*
-     * scrim 挂在 document.body 上，不随宿主一起脱离文档。不在这里收掉就会留下一张
-     * 仍然 `showModal()` 的全屏 dialog：top layer 不受宿主移除影响，整个页面就此锁死。
+     * scrim 挂在宿主以外的容器里（theme overlay root，无主题时 document.body），不随宿主一起
+     * 脱离文档。不在这里收掉就会留下一张仍然 `showModal()` 的全屏 dialog：top layer 不受宿主
+     * 移除影响，整个页面就此锁死。
      */
     this._closeScrim()
     // 脱离文档即视为关闭：否则重连后 _isOpen 仍为 true 而 _menu 已清空，
@@ -704,8 +706,8 @@ export class WebUiContextMenu extends LitElement {
     /*
      * scrim 的样式必须**显式挂到 scrim 元素上**。
      *
-     * `static styles`（style.css）只进宿主的 shadow root，而 scrim 是 `document.body` 下的
-     * light DOM 节点，拿不到那份样式；`scrim.css` 若只躺在文件里而不注入，就是死代码。
+     * `static styles`（style.css）只进宿主的 shadow root，scrim 又是本组件自己造的节点、不进
+     * 宿主 shadow root，拿不到那份样式；`scrim.css` 若只躺在文件里而不注入，就是死代码。
      * 实测未注入时 scrim 完全是 UA 默认 `dialog:modal` 的样子：`margin: auto` +
      * `width/height: fit-content` 让它在 414x896 视口里缩成 **38x38 的白盒子**正中，
      * `background` 还是不透明白 —— 菜单一开就在屏幕中间糊一块白色方块。
@@ -720,10 +722,28 @@ export class WebUiContextMenu extends LitElement {
     scrim.addEventListener('click', this._onScrimClick)
     scrim.addEventListener('cancel', this._onScrimCancel)
     // showModal() 要求元素已在文档中。
-    document.body.append(scrim)
+    this._scrimParent().append(scrim)
     scrim.showModal()
     this._scrim = scrim
     return scrim
+  }
+
+  /**
+   * scrim 的挂载点：**与面板在没有 scrim 时会落到的容器同源** —— 最近主题的 theme-owned
+   * overlay root。scrim 就是那个容器的替身（面板必须挂进 scrim，见 `updated()` 的顺序注释），
+   * 所以它得站在容器该站的位置上。
+   *
+   * 为什么不能在整棵 DOM 里随便挑位置：`--wui-color-*` 由 `<web-ui-theme>` 写在自己的 `:host`
+   * 上，只沿 DOM 树向下继承。scrim 若挂到 `document.body`，而 `<web-ui-theme>` 是 body 的**子节点**，
+   * 这条继承链就断了 —— 面板与 scrim 双双落回 `var(--wui-color-*, <浅色字面量>)` 的 fallback，
+   * 深色外观下菜单是一块浅色玻璃（app 侧的 `dark:` 变体也够不到它）。挂进 theme overlay root
+   * 之后，面板与 scrim 跟 dropdown / select 一样吃同一份 token。
+   *
+   * 无主题时保持历史行为挂在 `document.body`：那条路径本来就没有 token 作用域可继承，改用
+   * fallback overlay root 只会改变既有测试与消费者的观察面，不换来任何东西。
+   */
+  private _scrimParent(): HTMLElement {
+    return findNearestTheme(this)?.getOverlayRoot() ?? document.body
   }
 
   /**

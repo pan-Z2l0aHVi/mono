@@ -31,6 +31,31 @@ A subpath import registers only the component it names, so import every tag the 
 <web-ui-button variant="primary">Click me</web-ui-button> <web-ui-icon .icon="${lucidePlus}"></web-ui-icon>
 ```
 
+## Scrollbars
+
+`@greypan/web-ui/scrollbars` carries the repo-wide scrollbar behavior for [OverlayScrollbars](https://github.com/KingSora/OverlayScrollbars)
+hosts: a macOS-aligned theme, auto-hide that reveals the bar while scrolling, and clicking the track scrolling to that spot.
+Import the stylesheet once per document and pass the options to whichever adapter you initialize with.
+
+```js
+import '@greypan/web-ui/scrollbars.css'
+import { webUiScrollbarsOptions } from '@greypan/web-ui/scrollbars'
+import { OverlayScrollbarsComponent } from 'overlayscrollbars-react' // or overlayscrollbars-vue
+
+;<OverlayScrollbarsComponent options={webUiScrollbarsOptions}>{children}</OverlayScrollbarsComponent>
+```
+
+- `overlayscrollbars` is an optional peer dependency and is only needed by this subpath. The stylesheet already
+  contains the library's structural styles, so it replaces `import 'overlayscrollbars/overlayscrollbars.css'`.
+- Keep the container's own `overflow` declaration (`overflow-y-auto`, …). OverlayScrollbars overrides it once it
+  takes over, but it is what keeps the container scrollable until then.
+- The target must be a plain scroll container. OverlayScrollbars turns the host into a flex row and moves its
+  children into a generated viewport, so a host whose own layout carries meaning — a grid, a centred box, a `ul`/`ol`
+  — loses it.
+- OverlayScrollbars only changes the element it is initialized on; children keep their native scrollbars. To cover
+  the document scroller, initialize `document.body` — `window.scrollY` / `window.scrollTo` keep their native
+  semantics there.
+
 ## Framework Setup
 
 ### Cross-framework API conventions
@@ -306,6 +331,7 @@ All form controls participate in native `FormData`, constraint validation, `form
 | **Data Display**       | [`<web-ui-avatar>`](#web-ui-avatar)                       |
 |                        | [`<web-ui-badge>`](#web-ui-badge)                         |
 |                        | [`<web-ui-empty>`](#web-ui-empty)                         |
+|                        | [`<web-ui-middle-ellipsis>`](#web-ui-middle-ellipsis)     |
 |                        | [`<web-ui-icon>`](#web-ui-icon)                           |
 |                        | [`<web-ui-spinner>`](#web-ui-spinner)                     |
 | **Layout & Utility**   | [`<web-ui-layout>`](#web-ui-layout)                       |
@@ -829,7 +855,7 @@ Modal dialog using native `<dialog>` with `showModal()`.
 
 Uses native `<dialog>` with `@cancel` prevention. Escape calls `close()` unless `no-escape-close` is present. Click on backdrop closes dialog unless `no-backdrop-close` is present. With `controlled`, both only emit the close request instead.
 
-With `closable`, a built-in close button is rendered in both content modes, and it follows the same close path as Escape and backdrop clicks (so `controlled` applies to it identically). The two modes place it differently: without a `body` slot the button sits in a `.title-row` flex line next to the title; with a `body` slot the title row does not exist, so the button is a direct child of the glass card and is absolutely positioned at its top-right corner (offset by `--wui-dialog-close-top` / `--wui-dialog-close-right`). It uses the same `ooui:close` icon as the drawer close button. Omitting `closable` renders nothing at all — no button and no extra wrapper.
+With `closable`, a built-in close button is rendered in both content modes, and it follows the same close path as Escape and backdrop clicks (so `controlled` applies to it identically). Both modes place it the same way: it is absolutely positioned at the card's top-right corner, offset from the card edges by `--wui-dialog-close-top` / `--wui-dialog-close-right` (both default to `20px`; the drawer close button remains at `16px`). Only a `body` slot makes the title row disappear; the title-mode title reserves room for the button so a long title never runs under it. It uses the same `ooui:close` icon as the drawer close button. Omitting `closable` renders nothing at all — no button and no extra wrapper.
 
 > **Escape ownership:** Escape is arbitrated by a single shared owner, so one keypress closes only the **innermost** open overlay (popover, select, autocomplete, dropdown, context-menu, drawer and dialog all take part). With a select open inside a drawer, the first Escape closes the select and only the second closes the drawer. Sibling overlays that do not nest fall back to open order, closing the most recently opened one. A panel that is still playing its exit transition stays on screen and still catches the Escape, but any overlay that is still open outranks it, so one keypress still closes exactly one layer. `image-preview` takes part as well: its native `<dialog>` is registered with the same arbiter, so Escape is decided by layer order; the component's `cancel` handler only vetoes the native instant close, keeping the top layer until the exit transition finishes.
 
@@ -839,8 +865,8 @@ With `closable`, a built-in close button is rendered in both content modes, and 
 | --------------------------------- | -------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | `--wui-dialog-width`              | `360px`                                      | Dialog width                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         |
 | `--wui-dialog-max-height`         | `90vh` / `min(90vh, 90dvh)` (dvh engines)    | Max height of the content area (`.desc`), not of the card. Two fallback tiers: `90vh` on the base rule, `min(90vh, 90dvh)` inside `@supports (height: 100dvh)` — an engine without `dvh` support only ever gets `90vh`. See the note below for the chrome conversion                                                                                                                                                                                                                                                                 |
-| `--wui-dialog-close-top`          | `16px`                                       | `closable` button offset from the card top (body mode)                                                                                                                                                                                                                                                                                                                                                                                                                                                                               |
-| `--wui-dialog-close-right`        | `16px`                                       | `closable` button offset from the card right edge (body mode)                                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
+| `--wui-dialog-close-top`          | `20px`                                       | `closable` button offset from the card top                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           |
+| `--wui-dialog-close-right`        | `20px`                                       | `closable` button offset from the card right edge                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
 | `--wui-dialog-overlay-bg`         | `var(--wui-color-backdrop)`                  | Backdrop background                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
 | `--wui-dialog-bg`                 | `var(--wui-color-surface-overlay)`           | Glass card background, falls back to `rgb(248 248 248 / 0.92)`                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
 | `--wui-dialog-padding`            | `20px 24px 24px`                             | Dialog surface padding                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               |
@@ -852,6 +878,8 @@ With `closable`, a built-in close button is rendered in both content modes, and 
 | `--wui-dialog-scale-enter`        | `1.1`                                        | Enter scale start: the panel shrinks in from `1.1` to `1`, and exit reverses it                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
 
 > **Height semantics:** the token caps the content area, not the card. The title row and the footer stay sized by their content, and anything past the cap scrolls inside `.desc`; the card itself is bounded only by a literal `100vh` / `100dvh` backstop, which catches the case where the viewport is too short to fit chrome plus the cap. A host that wants to bound the **whole card** must still measure its own chrome (card padding + title row + gaps + footer) and subtract it from the token — the three dialogs in the Interweave frontend subtract 142, 142 and 106 respectively. What no longer needs that number is making the content area scroll: before, `.desc` had neither a cap nor `overflow`, so the only element that could scroll was a host-sized inner box, and a host that wanted overflow to scroll had to compute that height itself.
+>
+> **`body` mode has no `.desc`**, so the token does not apply there. The `body` slot is wrapped in `.wui-dialog-content`, which is the scroll area, and the card stays content-sized until the same literal `100vh` / `100dvh` backstop kicks in; the built-in close button keeps its `--wui-dialog-close-top` / `--wui-dialog-close-right` offset while that content scrolls.
 
 #### `<web-ui-drawer>`
 
@@ -1302,6 +1330,30 @@ Each one overrides the value `size` derives, so all eight stay authoritative —
 | `--wui-empty-description-font-size` | `14px`      | Description font size                       |
 | `--wui-empty-action-margin-top`     | `20px`      | Space above the action slot                 |
 
+#### `<web-ui-middle-ellipsis>`
+
+Single-line middle truncation: keeps both ends and drops the middle — `very-long-file-…-abcdefghij.txt` — where `text-overflow: ellipsis` can only keep the head.
+
+| Attribute         | Type     | Default | Description                                                                                                                                                |
+| ----------------- | -------- | ------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `text`            | `string` | `''`    | Full text. Read-only from the component's side.                                                                                                            |
+| `marker`          | `string` | `'…'`   | Marker inserted between the two ends. An empty string truncates without any visible signal.                                                                |
+| `marker-position` | `number` | `50`    | Where the marker sits, 0–100. `0` puts it at the line-end (head only), `100` at the line-start (tail only). Out-of-range clamps, `NaN` falls back to `50`. |
+
+It needs what `text-overflow: ellipsis` needs: **one line with a definite inline size**. A block-level box, `flex: 1; min-width: 0` in a flex row, or a grid track all work. A host that sizes itself to its own content has no available space to truncate against, so the component settles on the width it measured and stops shrinking instead of collapsing to the marker.
+
+`marker-position` is the knob for file names, where the head is path noise and the tail carries the extension. The rows below are illustrative, not reproducible — exact cut points depend on the font; they were taken at 16px `system-ui` in a 240px box:
+
+| `marker-position` | In a 240px box                    |
+| ----------------- | --------------------------------- |
+| `0`               | `very-long-file-name-abcdefghi…`  |
+| `50` _(default)_  | `very-long-file-…-abcdefghij.txt` |
+| `80`              | `very-l…file-name-abcdefghij.txt` |
+
+Cut points always fall on **grapheme cluster** boundaries: surrogate pairs, combining marks and ZWJ emoji sequences are never split. While truncated, the full string is exposed as the `title` of the text element and removed again once everything fits. The host must be `direction: ltr`; under `direction: rtl` the composed string is reordered by the bidi algorithm.
+
+**Known limitation — copy and assistive tech.** The element holds the string you can see, so selecting and copying yields the truncated text rather than the original, and screen readers and in-page find match the truncated string too. CSS `text-overflow` has neither problem because it never touches the text node; this is the structural price of computing the split in JavaScript. `title` carries the original for hover. See `docs/research/web-ui-middle-ellipsis-261007.md` for the alternatives that keep the full string in the DOM and what they cost.
+
 #### `<web-ui-icon>`
 
 Icon renderer using Iconify data objects.
@@ -1375,13 +1427,24 @@ Responsive page layout with an optional full-width banner, a collapsible desktop
 | `sidebar-collapsed` | `boolean` | `false`   | Controlled desktop sidebar collapsed state                                                         |
 | `sidebar-open`      | `boolean` | `false`   | Controlled mobile sidebar drawer open state                                                        |
 | `header-glow`       | `boolean` | `false`   | Decorative Header background glow behind slot content                                              |
+| `mobile`            | `boolean` | `false`   | Read-only, derived: whether the viewport is at or below the mobile breakpoint                      |
 | `sidebar-width`     | `string`  | `'240px'` | Expanded desktop and mobile sidebar width                                                          |
 | `collapsed-width`   | `string`  | `'72px'`  | Collapsed desktop sidebar width                                                                    |
 | `sidebar-resizable` | `boolean` | `false`   | Enable drag-to-resize on the desktop sidebar edge                                                  |
 | `sidebar-min-width` | `string`  | —         | Resize lower bound (px); falls back to `collapsed-width`                                           |
 | `sidebar-max-width` | `string`  | —         | Resize upper bound (px); clamped to half the viewport, which always wins over the configured value |
 
-**Events:** `sidebar-collapsed-change` (`CustomEvent<{ collapsed: boolean }>`) requests a desktop collapse-state update. `sidebar-open-change` (`CustomEvent<{ open: boolean }>`) requests a mobile drawer open-state update. `sidebar-width-change` (`CustomEvent<{ width: string }>`) requests a sidebar width update after a resize drag ends. Consumers must write the requested value back to the corresponding controlled property.
+**Events:** `sidebar-collapsed-change` (`CustomEvent<{ collapsed: boolean }>`) requests a desktop collapse-state update. `sidebar-open-change` (`CustomEvent<{ open: boolean }>`) requests a mobile drawer open-state update. `sidebar-width-change` (`CustomEvent<{ width: string }>`) requests a sidebar width update after a resize drag ends. Consumers must write the requested value back to the corresponding controlled property. `mobile-change` (`CustomEvent<{ mobile: boolean }>`) is not a request: it reports the layout's own derived viewport state.
+
+**Mobile viewport state:** `mobile` is derived, not a second input — the layout writes it, the property is read-only (assignments take no effect and throw for strict-mode callers), and setting the attribute is reverted in the same reaction, value included, with no event for either. It flips with the media query the layout renders by (`@media (width <= 640px)`) and the same condition the layout CSS uses to hide the desktop sidebar, so the tree, the layout's own CSS and what consumers read can never disagree; there is no resize debounce, the flip lands on the media-query change itself. `mobile-change` fires once per crossing, including the connect-time evaluation when the element mounts on a narrow viewport. Read `layout.mobile` for the current value and subscribe to `mobile-change` for updates; CSS can target `web-ui-layout[mobile]`.
+
+**Consuming it in a framework.** The layout re-renders in a microtask, so a consumer that reacts on a scheduler macrotask still reads the old value while the new tree is already on screen:
+
+- **Vue** — bind `@mobile-change` in the template and hold the value in a `ref`. Vue attaches template listeners before the element is inserted (so they receive the connect-time event too) and flushes in a microtask, which lands ahead of the layout's own update.
+- **React** — take the element through a ref, then read `layout.mobile` and subscribe inside `useLayoutEffect`, and write the value back with `flushSync`. Reading gives you the mount-time value that a later-attached listener misses, and `flushSync` keeps a runtime crossing ahead of the layout's re-render: React flushes updates from DOM listeners on a macrotask, which otherwise leaves the drawer rendered with a stale consumer value for a frame (measured at 2 of 221 frames in this repository's React demo before the fix).
+- **CSS** — style off `web-ui-layout[mobile]`, either directly or through a variant. A Tailwind v4 app can write the mobile side of the boundary once instead of per utility: `@custom-variant mobile (&:where(web-ui-layout[mobile], web-ui-layout[mobile] *));`. Two limits: the attribute only reaches nodes inside the layout subtree, so content an overlay portals to `document.body` still needs a media query; and do not use a custom variant for the min-width side — Tailwind emits `@custom-variant` rules after the theme breakpoints, so a `desktop:` variant on the same property silently overrides `md:`/`lg:` at every width above them.
+
+**Desktop-only collapse:** `sidebar-collapsed` only narrows the desktop sidebar; the layout applies no collapsed geometry to the mobile drawer. Both branches host the same `sidebar` slot content, so a consumer whose sidebar content changes density with that property must gate it on `mobile` (for example `collapsed && !layout.mobile`, or CSS under `web-ui-layout[mobile]`) — otherwise a collapsed desktop preference renders inside the drawer. See issue #195.
 
 **Sidebar resize:** With `sidebar-resizable`, a resize handle appears on the desktop sidebar's right edge (hidden while collapsed); hovering or dragging shows a 3px accent vertical line with a `col-resize` cursor.
 
@@ -1426,9 +1489,9 @@ Responsive page layout with an optional full-width banner, a collapsible desktop
 }
 ```
 
-At `640px` and below, the sidebar becomes a `web-ui-drawer` with its built-in glass body, scrollable content, and drag zone. The layout maps `sidebar-width` to `--wui-drawer-width` and `--wui-layout-sidebar-radius` to `--wui-drawer-radius`. The mobile toggle appears in the header row as a glass button. Its left inset defaults to `8px`; align it with your own header padding via `--wui-layout-mobile-toggle-inset`.
+At `640px` and below — the same condition `mobile` reports — the sidebar becomes a `web-ui-drawer` with its built-in glass body, scrollable content, and drag zone. The layout maps `sidebar-width` to `--wui-drawer-width` and `--wui-layout-sidebar-radius` to `--wui-drawer-radius`. The mobile toggle appears in the header row as a glass button. Its left inset defaults to `8px`; align it with your own header padding via `--wui-layout-mobile-toggle-inset`.
 
-`header-glow` adds a pointer-transparent decorative glow behind header-slot content and the mobile toggle. It is a Header background rather than a foreground layer, so slotted content remains above it. The glow takes its colour from `--wui-color-page`, so it follows light and dark appearance on its own; override that property on `web-ui-layout`, on the theme, or anywhere above it to change it. Two pseudo-elements build it. `::before` paints the colour as a `linear-gradient` inside the header box, fading to fully transparent, and `::after` adds a real `backdrop-filter: blur(4px)` layer whose `mask` fades that blur toward zero alpha at the bottom edge. Keeping the two apart means blur strength and colour strength do not pull on each other. Both expand with a negative `margin` rather than a `transform`. Horizontal clipping is owned by `.layout-content`, so the glow never produces a horizontal scrollbar. Layout layers are ordered as Header (`10`) < Auxiliary (`20`) < Banner (`30`) < Tabbar (`40`) < Sidebar (`50`).
+`header-glow` adds a pointer-transparent decorative glow behind header-slot content and the mobile toggle. It is a Header background rather than a foreground layer, so slotted content remains above it. The glow takes its colour from `--wui-color-page`, so it follows light and dark appearance on its own; override that property on `web-ui-layout`, on the theme, or anywhere above it to change it. Two pseudo-elements build it. `::before` paints the colour as a `linear-gradient` inside the header box, fading to fully transparent, and `::after` adds a real `backdrop-filter: blur(4px)` layer whose `mask` fades that blur toward zero alpha at the bottom edge. Keeping the two apart means blur strength and colour strength do not pull on each other. Both expand with a negative `margin` rather than a `transform`, and the blur layer stops at the header's top edge — it only extends downward and to the sides. Horizontal clipping is owned by `.layout-content`, so the glow never produces a horizontal scrollbar. Layout layers are ordered as Header (`10`) < Auxiliary (`20`) < Banner (`30`) < Tabbar (`40`) < Sidebar (`50`).
 
 The sidebar card surface is `--wui-color-surface-sidebar`. In light mode it keeps its translucent neutral layer; in dark mode it sits one notch above `--wui-color-page`, level with `--wui-color-surface`. It is a separate token because dialog, drawer and toast share `--wui-color-surface-overlay` and may use a different surface.
 
@@ -1531,18 +1594,18 @@ The host uses `display: contents` and does not paint any background: the library
 
 **Typography tokens:** font sizes are named by the role the text plays, not by scale position — `caption` for dense chrome labels, `readout` for numeric readouts, the unsuffixed base for body copy, and `title` for bounded card headings. Weights are named by weight, and line heights by how much vertical air the text needs. These are appearance-independent: they stay the same under both light and dark.
 
-| Property                     | Default | Description                                                     |
-| ---------------------------- | ------- | --------------------------------------------------------------- |
-| `--wui-font-size-caption`    | `12px`  | Dense chrome labels (badge, toast timestamp, menu section head) |
-| `--wui-font-size-readout`    | `13px`  | Numeric readouts (image preview count and zoom ratio)           |
-| `--wui-font-size`            | `14px`  | Base font size for body copy and controls                       |
-| `--wui-font-size-title`      | `18px`  | Bounded card headings (dialog, drawer)                          |
-| `--wui-font-weight-medium`   | `500`   | Medium weight for emphasized inline text                        |
-| `--wui-font-weight-semibold` | `600`   | Semibold weight for headings                                    |
-| `--wui-line-height-tight`    | `1.2`   | Tight leading for large headings                                |
-| `--wui-line-height-snug`     | `1.4`   | Snug leading for mid-size headings                              |
-| `--wui-line-height-normal`   | `1.5`   | Normal leading for body copy                                    |
-| `--wui-line-height-relaxed`  | `1.6`   | Relaxed leading for long-form reading                           |
+| Property                     | Default | Description                                                                 |
+| ---------------------------- | ------- | --------------------------------------------------------------------------- |
+| `--wui-font-size-caption`    | `12px`  | Dense chrome labels (badge, toast timestamp, menu section head)             |
+| `--wui-font-size-readout`    | `13px`  | Numeric readouts (image preview count and zoom ratio)                       |
+| `--wui-font-size`            | `14px`  | Base font size for body copy and controls, including their placeholder text |
+| `--wui-font-size-title`      | `18px`  | Bounded card headings (dialog, drawer)                                      |
+| `--wui-font-weight-medium`   | `500`   | Medium weight for emphasized inline text                                    |
+| `--wui-font-weight-semibold` | `600`   | Semibold weight for headings                                                |
+| `--wui-line-height-tight`    | `1.2`   | Tight leading for large headings                                            |
+| `--wui-line-height-snug`     | `1.4`   | Snug leading for mid-size headings                                          |
+| `--wui-line-height-normal`   | `1.5`   | Normal leading for body copy                                                |
+| `--wui-line-height-relaxed`  | `1.6`   | Relaxed leading for long-form reading                                       |
 
 `line-height: 1` and `line-height: 0` inside components are intentionally not tokenized: the former vertically centers a single-line control label, the latter collapses a wrapper box onto its content. Neither is typographic leading, and tokenizing them would invite callers to retune them as if they were.
 

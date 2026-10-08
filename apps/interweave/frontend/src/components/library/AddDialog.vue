@@ -15,6 +15,8 @@ import {
   lucideTrash2,
   lucideUpload
 } from '@greypan/web-ui/icons'
+import { webUiScrollbarsOptions } from '@greypan/web-ui/scrollbars'
+import { OverlayScrollbarsComponent } from 'overlayscrollbars-vue'
 import { nextTick, onMounted, onScopeDispose, ref, watch, type ComponentPublicInstance } from 'vue'
 
 import type { LibraryQueueItem } from '@/services/library'
@@ -243,7 +245,7 @@ function handleRenameChange(item: LibraryQueueItem, event: WebUiEvent<WebUiEdita
       正是「chrome 由内容撑开」要的结果。
     -->
     <div
-      class="grid min-h-0 grid-cols-2 gap-5 max-[640px]:gap-4 max-[900px]:grid-cols-1 max-[900px]:grid-rows-2"
+      class="grid min-h-0 grid-cols-2 gap-5 mobile:gap-4 max-[900px]:grid-cols-1 max-[900px]:grid-rows-2"
       style="height: var(--wui-dialog-max-height)"
     >
       <!--
@@ -280,7 +282,7 @@ function handleRenameChange(item: LibraryQueueItem, event: WebUiEvent<WebUiEdita
         -->
         <button
           type="button"
-          class="grid h-full place-content-center justify-items-center gap-3 rounded-[18px] border border-black/6 bg-[#f0f0f4] px-6 py-7 text-center transition-[background-color] duration-[160ms] hover:bg-[#e9e9ee] file-drop-target-active:scale-[1.005] file-drop-target-active:bg-[color-mix(in_srgb,var(--wui-color-accent,#08f)_9%,transparent)] dark:border-white/8 dark:bg-[color-mix(in_srgb,var(--wui-color-text,#1b1b1b)_4%,transparent)] dark:hover:bg-[color-mix(in_srgb,var(--wui-color-text,#1b1b1b)_7%,transparent)] dark:file-drop-target-active:bg-[color-mix(in_srgb,var(--wui-color-text,#1b1b1b)_7%,transparent)] max-[640px]:gap-2 max-[640px]:px-4 max-[640px]:py-2 max-[900px]:p-5"
+          class="grid h-full place-content-center justify-items-center gap-3 rounded-[18px] border border-black/6 bg-[#f0f0f4] px-6 py-7 text-center transition-[background-color] duration-[160ms] hover:bg-[#e9e9ee] file-drop-target-active:scale-[1.005] file-drop-target-active:bg-[color-mix(in_srgb,var(--wui-color-accent,#08f)_9%,transparent)] dark:border-white/8 dark:bg-[color-mix(in_srgb,var(--wui-color-text,#1b1b1b)_4%,transparent)] dark:hover:bg-[color-mix(in_srgb,var(--wui-color-text,#1b1b1b)_7%,transparent)] dark:file-drop-target-active:bg-[color-mix(in_srgb,var(--wui-color-text,#1b1b1b)_7%,transparent)] mobile:gap-2 mobile:px-4 mobile:py-2 max-[900px]:p-5"
           data-file-drop-target="library-add-files"
           :class="dragActive ? 'scale-[1.005] bg-[color-mix(in_srgb,var(--wui-color-accent,#08f)_9%,transparent)]' : ''"
           @click="emit('pickFiles')"
@@ -290,12 +292,12 @@ function handleRenameChange(item: LibraryQueueItem, event: WebUiEvent<WebUiEdita
           @drop.prevent="handleDrop"
         >
           <span
-            class="grid size-13 place-items-center rounded-[18px] bg-[color-mix(in_srgb,var(--wui-color-accent,#08f)_10%,transparent)] text-(--wui-color-accent,#08f) transition-[background-color] duration-[160ms] dark:bg-[color-mix(in_srgb,var(--wui-color-text,#1b1b1b)_8%,transparent)] dark:text-(--wui-color-text-secondary) max-[640px]:size-10 max-[640px]:rounded-xl"
+            class="grid size-13 place-items-center rounded-[18px] bg-[color-mix(in_srgb,var(--wui-color-accent,#08f)_10%,transparent)] text-(--wui-color-accent,#08f) transition-[background-color] duration-[160ms] dark:bg-[color-mix(in_srgb,var(--wui-color-text,#1b1b1b)_8%,transparent)] dark:text-(--wui-color-text-secondary) mobile:size-10 mobile:rounded-xl"
           >
             <web-ui-icon :icon="lucideUpload" :size="23" />
           </span>
           <span
-            class="text-[16px] font-semibold leading-[1.4] text-[#22212a] dark:text-(--wui-color-text) max-[640px]:text-[13px]"
+            class="text-[16px] font-semibold leading-[1.4] text-[#22212a] dark:text-(--wui-color-text) mobile:text-[13px]"
           >
             拖入文件，或点按选择
           </span>
@@ -305,7 +307,7 @@ function handleRenameChange(item: LibraryQueueItem, event: WebUiEvent<WebUiEdita
             独立成行，容器变窄时它整体下移而枚举行内部再折。
           -->
           <span
-            class="grid gap-0.5 text-xs leading-[1.4] text-[#6a6a6a] dark:text-(--wui-color-text-secondary) max-[640px]:text-[11px]"
+            class="grid gap-0.5 text-xs leading-[1.4] text-[#6a6a6a] dark:text-(--wui-color-text-secondary) mobile:text-[11px]"
           >
             <span>支持图片、视频、音频、文档、网页、代码等文件</span>
             <span>可批量添加</span>
@@ -332,104 +334,112 @@ function handleRenameChange(item: LibraryQueueItem, event: WebUiEvent<WebUiEdita
           </span>
         </div>
 
-        <ol
+        <OverlayScrollbarsComponent
           v-if="queue.length"
-          class="m-0 h-full min-h-0 list-none overflow-y-auto rounded-[18px] border border-black/6 bg-white p-0 [scrollbar-gutter:auto] [scrollbar-width:auto] dark:border-white/8 dark:bg-(--wui-color-surface-raised)"
+          :options="webUiScrollbarsOptions"
+          class="h-full min-h-0 overflow-y-auto rounded-[18px] border border-black/6 bg-white dark:border-white/8 dark:bg-(--wui-color-surface-raised)"
         >
-          <li
-            v-for="(item, itemIndex) in queue"
-            :key="item.id"
-            :class="[
-              metadataRowClass,
-              'items-start transition-colors duration-100 hover:bg-black/3 dark:hover:bg-[color-mix(in_srgb,var(--wui-color-text,#1b1b1b)_5%,transparent)]'
-            ]"
-          >
-            <button
-              v-if="isImagePreviewItem(item)"
-              data-queue-thumbnail
-              type="button"
-              class="grid size-10 shrink-0 cursor-zoom-in place-items-center overflow-hidden rounded-lg p-0 focus-visible:outline-3 focus-visible:outline-offset-2 focus-visible:outline-(--wui-color-focus-ring,rgb(0_136_255/0.4))"
-              :aria-label="`预览 ${item.title}`"
-              aria-haspopup="dialog"
-              @click="openImagePreview(item, $event)"
+          <!--
+            滚动条接在宿主 div 上，列表本身留在它里面：OverlayScrollbars 会把宿主的子节点搬进
+            自己生成的 viewport，而 <ol> 的内容模型只容得下 <li>——宿主若还是这个 <ol>，
+            搬进去的 viewport div 就落进列表里了。卡片装饰与 overflow 一并上移到宿主。
+          -->
+          <ol class="m-0 list-none p-0">
+            <li
+              v-for="(item, itemIndex) in queue"
+              :key="item.id"
+              :class="[
+                metadataRowClass,
+                'items-start transition-colors duration-100 hover:bg-black/3 dark:hover:bg-[color-mix(in_srgb,var(--wui-color-text,#1b1b1b)_5%,transparent)]'
+              ]"
             >
-              <ResourceThumbnail :kind="item.resourceKind" :source="queueSource(item)" :media-url="item.mediaUrl" />
-            </button>
-            <ResourceThumbnail
-              v-else
-              data-queue-thumbnail
-              :kind="item.resourceKind"
-              :source="queueSource(item)"
-              :media-url="item.mediaUrl"
-            />
-            <span class="grid min-w-0 flex-[1_1_auto] gap-[5px]">
-              <div class="flex h-8 items-center gap-2">
-                <span class="flex h-8 min-w-0 flex-[1_1_auto] items-center gap-1.5">
-                  <web-ui-editable-text
-                    v-if="editingItemId === item.id"
-                    :ref="setNameEditorRef(item.id)"
-                    :value="queueItemTitle(item)"
-                    :class="queueNameClass"
-                    class="caret-(--wui-color-accent,#08f) select-text"
-                    :aria-label="`修改 ${queueItemTitle(item)} 的名称`"
-                    @click.stop
-                    @change="handleRenameChange(item, $event)"
-                    @cancel="stopRename"
-                  />
-                  <span v-else :class="queueNameClass">
-                    {{ queueItemTitle(item) }}
+              <button
+                v-if="isImagePreviewItem(item)"
+                data-queue-thumbnail
+                type="button"
+                class="grid size-10 shrink-0 cursor-zoom-in place-items-center overflow-hidden rounded-lg p-0 focus-visible:outline-3 focus-visible:outline-offset-2 focus-visible:outline-(--wui-color-focus-ring,rgb(0_136_255/0.4))"
+                :aria-label="`预览 ${item.title}`"
+                aria-haspopup="dialog"
+                @click="openImagePreview(item, $event)"
+              >
+                <ResourceThumbnail :kind="item.resourceKind" :source="queueSource(item)" :media-url="item.mediaUrl" />
+              </button>
+              <ResourceThumbnail
+                v-else
+                data-queue-thumbnail
+                :kind="item.resourceKind"
+                :source="queueSource(item)"
+                :media-url="item.mediaUrl"
+              />
+              <span class="grid min-w-0 flex-[1_1_auto] gap-[5px]">
+                <div class="flex h-8 items-center gap-2">
+                  <span class="flex h-8 min-w-0 flex-[1_1_auto] items-center gap-1.5">
+                    <web-ui-editable-text
+                      v-if="editingItemId === item.id"
+                      :ref="setNameEditorRef(item.id)"
+                      :value="queueItemTitle(item)"
+                      :class="queueNameClass"
+                      class="caret-(--wui-color-accent,#08f) select-text"
+                      :aria-label="`修改 ${queueItemTitle(item)} 的名称`"
+                      @click.stop
+                      @change="handleRenameChange(item, $event)"
+                      @cancel="stopRename"
+                    />
+                    <span v-else :class="queueNameClass">
+                      {{ queueItemTitle(item) }}
+                    </span>
+                    <web-ui-tooltip
+                      v-if="editingItemId !== item.id"
+                      content="编辑名称"
+                      :placement="itemIndex < 5 ? 'bottom' : 'top'"
+                    >
+                      <web-ui-button icon variant="ghost" size="28" aria-label="编辑名称" @click="startRename(item)">
+                        <web-ui-icon :icon="lucidePenLine" :size="14" />
+                      </web-ui-button>
+                    </web-ui-tooltip>
                   </span>
-                  <web-ui-tooltip
-                    v-if="editingItemId !== item.id"
-                    content="编辑名称"
-                    :placement="itemIndex < 5 ? 'bottom' : 'top'"
-                  >
-                    <web-ui-button icon variant="ghost" size="28" aria-label="编辑名称" @click="startRename(item)">
-                      <web-ui-icon :icon="lucidePenLine" :size="14" />
-                    </web-ui-button>
-                  </web-ui-tooltip>
-                </span>
-                <span class="ml-auto flex shrink-0 items-center gap-1">
-                  <web-ui-button
-                    class="[--wui-button-color:var(--wui-color-danger,#dc2626)]"
-                    icon
-                    variant="ghost"
-                    size="28"
-                    aria-label="移除待添加资源"
-                    @click="emit('remove', item.id)"
-                  >
-                    <web-ui-icon :icon="lucideTrash2" :size="14" />
-                  </web-ui-button>
-                </span>
-              </div>
-              <div class="flex min-w-0 flex-wrap items-center gap-1.5">
-                <span
-                  class="shrink-0 text-xs leading-5 whitespace-nowrap text-[#6a6a6a] dark:text-(--wui-color-text-secondary)"
-                  :title="item.location"
-                >
-                  {{ item.location }}
-                </span>
-                <div class="flex min-w-0 flex-[0_0_100%] flex-wrap items-center gap-[5px]">
-                  <span v-for="tag in item.tags" :key="tag" :class="[tagChipClass, tagClass(props.tagColors[tag])]">
-                    {{ tag }}
-                  </span>
-                  <web-ui-tooltip content="编辑标签" :placement="itemIndex < 5 ? 'bottom' : 'top'">
+                  <span class="ml-auto flex shrink-0 items-center gap-1">
                     <web-ui-button
-                      class="shrink-0 [--wui-button-color:var(--wui-color-accent,#08f)]"
+                      class="[--wui-button-color:var(--wui-color-danger,#dc2626)]"
                       icon
                       variant="ghost"
-                      size="20"
-                      aria-label="编辑标签"
-                      @click="emit('editTags', item)"
+                      size="28"
+                      aria-label="移除待添加资源"
+                      @click="emit('remove', item.id)"
                     >
-                      <web-ui-icon :icon="lucideTags" :size="12" />
+                      <web-ui-icon :icon="lucideTrash2" :size="14" />
                     </web-ui-button>
-                  </web-ui-tooltip>
+                  </span>
                 </div>
-              </div>
-            </span>
-          </li>
-        </ol>
+                <div class="flex min-w-0 flex-wrap items-center gap-1.5">
+                  <span
+                    class="shrink-0 text-xs leading-5 whitespace-nowrap text-[#6a6a6a] dark:text-(--wui-color-text-secondary)"
+                    :title="item.location"
+                  >
+                    {{ item.location }}
+                  </span>
+                  <div class="flex min-w-0 flex-[0_0_100%] flex-wrap items-center gap-[5px]">
+                    <span v-for="tag in item.tags" :key="tag" :class="[tagChipClass, tagClass(props.tagColors[tag])]">
+                      {{ tag }}
+                    </span>
+                    <web-ui-tooltip content="编辑标签" :placement="itemIndex < 5 ? 'bottom' : 'top'">
+                      <web-ui-button
+                        class="shrink-0 [--wui-button-color:var(--wui-color-accent,#08f)]"
+                        icon
+                        variant="ghost"
+                        size="20"
+                        aria-label="编辑标签"
+                        @click="emit('editTags', item)"
+                      >
+                        <web-ui-icon :icon="lucideTags" :size="12" />
+                      </web-ui-button>
+                    </web-ui-tooltip>
+                  </div>
+                </div>
+              </span>
+            </li>
+          </ol>
+        </OverlayScrollbarsComponent>
 
         <div
           v-else
@@ -440,7 +450,7 @@ function handleRenameChange(item: LibraryQueueItem, event: WebUiEvent<WebUiEdita
             水平线上——不靠单侧 padding 补偿：
             icon 盒 52px/圆角 18px/字形 23px、icon 到文案 12px、标题 16px/600/行高 1.4、
             标题到说明 12px、说明两行 12px/1.4 行内距 2px，与左侧逐一对应，
-            桌面与 max-[640px] 各断点同样成对。
+            桌面与 mobile: 各断点同样成对。
             高度相等的关键是说明同为两行：两行时两侧都是
             52 + 12 + 22.4 + 12 + (16.8 + 2 + 16.8) = 134px。说明只写一行时右侧会短
             18.8px、整块被顶高，此前用 pb-[16.8px] 补平；两侧都两行后补偿即失效并已删除。
@@ -450,23 +460,23 @@ function handleRenameChange(item: LibraryQueueItem, event: WebUiEvent<WebUiEdita
             关键一项是 --wui-empty-min-height: 0：web-ui-empty 的 `.empty` 默认把内容顶端对齐在
             240px min-block-size 盒内，置 0 后内容才随外层 place-items-center 真正垂直居中。
             图标到文案的 6px 基础间距来自组件内部写死的 `.empty-description` margin-top（未开放
-            token），mt-1.5 把它补到左侧 gap-3 的 12px，max-[640px]:mt-0.5 配 gap-2 同理。
+            token），mt-1.5 把它补到左侧 gap-3 的 12px，mobile:mt-0.5 配 gap-2 同理。
             图标底色与色板仍沿用 web-ui-empty 的中性 token：右侧是不可点的空态占位，染成左侧
             drop 区的强调色会读成可点击目标。
           -->
           <web-ui-empty
             :size="40"
-            class="[--wui-empty-min-height:0] [--wui-empty-padding:0] [--wui-empty-icon-size:52px] [--wui-internal-empty-icon-radius:18px] max-[640px]:[--wui-empty-icon-size:40px] max-[640px]:[--wui-internal-empty-icon-radius:12px]"
+            class="[--wui-empty-min-height:0] [--wui-empty-padding:0] [--wui-empty-icon-size:52px] [--wui-internal-empty-icon-radius:18px] mobile:[--wui-empty-icon-size:40px] mobile:[--wui-internal-empty-icon-radius:12px]"
           >
             <web-ui-icon slot="icon" :icon="lucideInbox" :size="23" />
-            <span slot="description" class="mt-1.5 grid gap-3 max-[640px]:mt-0.5 max-[640px]:gap-2">
+            <span slot="description" class="mt-1.5 grid gap-3 mobile:mt-0.5 mobile:gap-2">
               <span
-                class="text-[16px] font-semibold leading-[1.4] text-[#22212a] dark:text-(--wui-color-text) max-[640px]:text-[13px]"
+                class="text-[16px] font-semibold leading-[1.4] text-[#22212a] dark:text-(--wui-color-text) mobile:text-[13px]"
               >
                 暂无待添加资源
               </span>
               <span
-                class="grid gap-0.5 text-xs leading-[1.4] text-[#6a6a6a] dark:text-(--wui-color-text-secondary) max-[640px]:text-[11px]"
+                class="grid gap-0.5 text-xs leading-[1.4] text-[#6a6a6a] dark:text-(--wui-color-text-secondary) mobile:text-[11px]"
               >
                 <!-- 与左侧 drop 区的支持类型说明同理，各自成行而不是靠自动折行。 -->
                 <span>添加的资源将显示在此处</span>

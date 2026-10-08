@@ -22,8 +22,8 @@ import {
 import RestoreDialog from '@/components/library/RestoreDialog.vue'
 import Toolbar from '@/components/library/Toolbar.vue'
 import { canGoBack, canGoForward } from '@/composables/useHistoryNav'
+import { useLayoutMobile } from '@/composables/useLayoutMobile'
 import { useLibraryRuntime } from '@/composables/useLibraryRuntime'
-import { useMediaQuery } from '@/composables/useMediaQuery'
 import type { LibraryQueueItem } from '@/services/library'
 import { useLibraryStore } from '@/stores/library'
 import type { ResourceSourceView, ResourceView } from '@/stores/library'
@@ -64,7 +64,8 @@ const {
   probeURLSourceOnOpen
 } = useLibraryRuntime()
 
-const mobile = useMediaQuery('(max-width: 640px)')
+// 页面级浮层（详情/预览抽屉、各类对话框）跟着壳的移动端判定走，不自己写断点。
+const mobile = useLayoutMobile()
 const filterOpen = ref(false)
 const searchOpen = ref(false)
 const selectionMode = ref(false)
@@ -578,7 +579,7 @@ onMounted(() => {
       虚拟滚动在整页滚动下用 useWindowVirtualizer，行的文档坐标由 ResourceList 侧的
       scrollMargin 负责换算，本页不参与。
     -->
-    <main class="flex-1 min-w-0 px-6 max-[640px]:px-3 pb-[max(4rem,env(safe-area-inset-bottom))] pt-2">
+    <main class="flex-1 min-w-0 px-6 mobile:px-3 pb-[max(4rem,env(safe-area-inset-bottom))] pt-2">
       <div
         v-if="runtimeError"
         class="mb-3 flex min-h-10 items-center justify-between gap-3 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700 dark:bg-red-400/12 dark:text-red-200"
