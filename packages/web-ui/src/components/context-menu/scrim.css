@@ -72,3 +72,14 @@ dialog.wui-context-menu-scrim::backdrop {
 dialog.wui-context-menu-scrim:not([open]) {
   display: block;
 }
+
+/*
+ * scrim 是模态表面，不是可聚焦控件：`showModal()` 的 focusing steps 在面板还没挂进去时
+ * 会把焦点交给 scrim 本身，键盘路径下 UA 会给它画一枚默认 ring（整屏一圈蓝框）。
+ * 与 dialog / drawer 同一条策略（见 assets/modal-surface.css）；这里就地收口，因为
+ * scrim 的样式是注入到 theme overlay root / body 的独立样式表，够不到组件 shadow 内的共享层。
+ */
+dialog.wui-context-menu-scrim:focus,
+dialog.wui-context-menu-scrim:focus-visible {
+  outline: none;
+}
