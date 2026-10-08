@@ -51,16 +51,14 @@ async function openAndWaitForScrollerRing(host: WebUiDialog | WebUiDrawer, scrol
 }
 
 describe('模态表面的焦点环（浏览器）', () => {
-  it('dialog body 模式的滚动区拿到焦点时，计算 outline 是 none 而不是 UA ring', async () => {
+  it('dialog headless 模式的滚动区拿到焦点时，计算 outline 是 none 而不是 UA ring', async () => {
     const dialog = document.createElement('web-ui-dialog') as WebUiDialog
-    const body = document.createElement('div')
-    body.slot = 'body'
-    fillTall(body)
-    dialog.append(body)
+    dialog.headless = true
+    fillTall(dialog)
     document.body.append(dialog)
     await dialog.updateComplete
-    // body slot 的 _hasBody 由 slotchange 异步置位，等 body 模式真正渲染出来。
-    await pollUntil(() => !!dialog.shadowRoot?.querySelector('.wui-dialog-content'), 'body mode not rendered')
+    // headless 模式把默认槽渲染进 .wui-dialog-content，等它真正出现。
+    await pollUntil(() => !!dialog.shadowRoot?.querySelector('.wui-dialog-content'), 'headless mode not rendered')
 
     const scroller = shadow<HTMLElement>(dialog, '.wui-dialog-content')
     await openAndWaitForScrollerRing(dialog, scroller)
