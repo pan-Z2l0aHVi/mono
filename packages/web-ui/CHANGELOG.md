@@ -1,5 +1,19 @@
 # @greypan/web-ui
 
+## 10.0.0
+
+### Major Changes
+
+- 3adfd77: `<web-ui-dialog>` gets a real chrome band named `header`, aligned with `<web-ui-drawer>`, its escape hatch becomes the same `headless` mechanism the drawer already uses, and its content area no longer reserves padding outside the scroll container.
+  
+  - **Breaking: the `title` slot is now `header`.** Migration: `slot="title"` → `slot="header"`. There is no alias.
+  - **Breaking: the `body` mode-switch slot is gone; the escape hatch is now the `headless` boolean attribute.** `slot="body"` used to replace the whole card with a single scroll layer. Dialog now matches `<web-ui-drawer>`: add `headless` to the element and leave your content in the **default slot**. Migration: drop `slot="body"`, add `headless` to `<web-ui-dialog>`, keep the content (no slot attribute). There is no `content` slot and no alias. `<web-ui-dialog headless><section>…</section></web-ui-dialog>` renders `.wui-dialog-content` as the card's only scroll layer, with just the close button beside it — the `header` band, `.desc` and `footer` are not rendered. The `default` slot is rendered exactly once: inside `.desc` in the default mode, inside `.wui-dialog-content` under `headless`.
+  - **New `header` slot + `heading` attribute.** The band carries the title typography (`18px` / semibold), wraps with flex / `space-between` (so it can hold a whole toolbar, not just a title) and hides when neither the slot nor `heading` is present. The `heading` attribute is the fallback: the slot wins whenever it has assigned elements, otherwise a non-empty `heading` renders `.wui-dialog-heading`. `headless` renders no band and ignores `heading`.
+  - **New `dialog-label` attribute, plus an accessible-name contract.** The internal native `<dialog>` now takes `aria-label` from `dialog-label` when set, and otherwise — in the default mode with a visible `header` band — `aria-labelledby="wui-dialog-heading"` pointing at that band. Because `headless` renders no built-in title, **`headless` consumers must supply the accessible name** (`dialog-label`, or their own labelled element), exactly as `<web-ui-drawer>` requires.
+  - **Breaking: the content area's scroll port is flush with the card edge.** The card's inline padding moved into the regions, so the scroll container's edge (and therefore the scrollbar) coincides with the card's inner edge, matching `headless` mode and the drawer. Two public tokens change semantics accordingly:
+    - `--wui-dialog-padding` now only sets the card's **block** padding; its inline component no longer applies. Use the new `--wui-dialog-inline-padding` (default `24px`) for the horizontal padding of the `header` band, the content area and the footer.
+    - `--wui-dialog-desc-focus-padding` now only reserves focus-ring room on the **block** axis; the horizontal ring room comes from `--wui-dialog-inline-padding` (which is far larger than the `5px` ring).
+
 ## 9.1.0
 
 ### Minor Changes
