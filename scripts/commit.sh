@@ -20,7 +20,7 @@
 #   apps: interweave | react-web-ui-demo | vue-web-ui-demo
 #   支持逗号分隔多 scope: "browser-kit,web-ui"
 #
-# emoji 前缀（自动添加，与 git-cz 风格一致）:
+# cz-git 交互 prompt 的 emoji（仅供本文件与 commitlint.config.js 保持同步，**不进提交信息**）:
 #   feat: ✨  fix: 🐛  docs: 📚  style: 💎  refactor: 📦
 #   perf: 🚀  test: 🚨  build: 🛠  ci: ⚙️  chore: ♻️  revert: 🗑
 
@@ -100,13 +100,13 @@ fi
 EMOJI=$(get_emoji "$TYPE")
 HEADER="${TYPE}(${SCOPE}): ${SUBJECT}"
 
+# 预览必须与真正提交的那一条逐字相同：--dry 的用途就是「看要提交什么」，而 commitlint 不接受
+# emoji 前缀（`📚 docs(web-ui): x` 会被判 subject-empty + type-empty）。所以下面打印的就是下面
+# `git commit -m` 收到的 HEADER——曾经这里多打一个 emoji，于是预览给的是一条过不了 commitlint 的
+# message，照文档走 `--dry` 的人看到坏形状，转而绕开脚本改用 `git commit -F`。
 echo "" >&2
 echo "📝 Commit message:" >&2
-if [ -n "$EMOJI" ]; then
-  echo "   ${EMOJI} ${HEADER}" >&2
-else
-  echo "   ${HEADER}" >&2
-fi
+echo "   ${HEADER}" >&2
 
 if [ ${#BODY_LINES[@]} -gt 0 ]; then
   echo "" >&2

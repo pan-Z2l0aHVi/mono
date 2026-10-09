@@ -6,7 +6,9 @@
 # frontmatter 里声明了包就必须写正文，否则版本 PR 会把一条空描述写进公共包的 CHANGELOG。
 # 只含两行 `---` 的空壳仍然合法——docs/agents/commit.md 用它表达「纯 docs/chore，无版本影响」。
 # 比 changesets 自身严一点：分隔线之前不允许散落内容（它的正则是非锚定的，那种文件它照收）。
-# 每个 PR 的 diff 对 base（origin/main）天然包含这个 task 自己的 changeset 文件。
+# 每个 PR 的 diff 对 base（origin/main）天然包含这个 task 自己的 changeset 文件。base 落在一条
+# **合并提交**上时（先合并 main、后建 task 的常见次序，见下面的 fallback）这份名单会是空的，
+# 那不是「没带 changeset」，所以才有第二条判据。
 #
 # 内核以 POSIX sh 执行本文件（无扩展名、需要 +x），所以只写 sh 与 awk 的可移植子集。
 set -e
@@ -33,12 +35,74 @@ fi
 # 只有 README 不区分大小写，另外三个是大小写敏感的字符串比较。`.changeset/claude.md` 会被真的读进
 # 发布流程，把它连同大写一起 `-i` 滤掉，等于让一份会进版本 PR 的声明躲开下面的内容核对。
 # 真正不参与发布的名字滤在这里而不是留到内容检查，否则改一行 .changeset/README.md 就能过关。
+name_filter() {
+  grep -E '^\.changeset/(pre/)?[^/.][^/]*\.md$' |
+    grep -vE '/(AGENTS|CLAUDE|GEMINI)\.md$' |
+    grep -viE '/readme\.md$'
+}
+
 files=$(
   git -c core.quotePath=false diff --cached --name-only --diff-filter=d "$base" -- .changeset |
-    grep -E '^\.changeset/(pre/)?[^/.][^/]*\.md$' |
-    grep -vE '/(AGENTS|CLAUDE|GEMINI)\.md$' |
-    grep -viE '/readme\.md$' || true
+    name_filter || true
 )
+
+# ── fallback：base 之前本分支带进来的 changeset 也算数 ──
+# `scripts/task.mjs` 的 newTask 把 baseSha 钉在建 task 那一刻的 HEAD，没有可传的 base 参数。于是在
+# 一条自带 changeset 的分支上「先合并 main、后建 task」时，base 落在那个合并提交上，该分支自己的
+# changeset 全在 base **之前**：上面那条名单按定义只看 base 之后的 index，于是报 missing——把人挡在
+# freeze 门口，而实际上这个 PR 带着 changeset。2026-10-08 在 integration/2601008-dialog-headless 上
+# 连撞两次（t-0103、t-0104），两次的出路都是补一个只含两行 `---` 的空 changeset。
+#
+# **fail-closed 是这里最重要的约束**：「base 之前存在 changeset」不能无条件算数，否则任何人在空
+# PR 里都能靠 base 自带的 changeset 过关。判据是「这份 changeset 由**本分支**带进来」：
+#   git log --diff-filter=A --name-only origin/main..base -- .changeset
+# `origin/main..base` 是「在 base 里但不在 main 上」的提交区间——被 main 消费的 changeset 与 main
+# 自带的 changeset 都落在区间外，只有本分支新增的那些提交在里面。再要求文件仍留在 base 的树里，
+# 才排掉「本分支加进来、后来又在 base 之前删掉」的形状（git log 按提交列文件，diff 按净效果，
+# 两者只在这一个情形上不同；这里要净效果，删掉的不该算数）。
+# 三种「不承重」的情形都实测为空，于是仍被拦：base 就在 main 上（区间为空）；main 自带的
+# changeset 被合并进 base（它的提交在 main 上）；origin/main 解析不了（先判存在再算区间）。
+#
+# 但区间本身依赖 origin/main 是**新鲜的**，这一点必须自己核，否则 fail-closed 就漏了：origin/main
+# 落后时，「合并进来的 main 侧提交」看上去就像本分支的提交，于是 main 自带的 changeset 混进名单，
+# 空 PR 就能靠它过关（实测：origin/main 钉在分叉点、main 之后新增 changeset 再被合并进 base，
+# 那份 main 的 changeset 会落进区间）。所以只在「base 的每个合并侧都已是 origin/main 的祖先」时
+# 才认定 origin/main 够新——那正是「main 已 fetch 过并被合进来」的形状。base 不是合并提交时没有
+# 合并侧，这条自然成立。判不出来就当不够新：不走 fallback，仍然报 missing（方向是把人拦下）。
+main_is_current=false
+if git rev-parse --verify --quiet 'refs/remotes/origin/main^{commit}' >/dev/null; then
+  main_is_current=true
+  # cut -f3- 取的是除 commit 与第一父之外的那些父，也就是「合并进来的那一侧」；没有合并提交时
+  # 它是空串，循环不执行，下面保持 true。
+  for side in $(git rev-list --parents -n 1 "$base" | cut -d ' ' -f 3-); do
+    if ! git merge-base --is-ancestor "$side" refs/remotes/origin/main 2>/dev/null; then
+      main_is_current=false
+    fi
+  done
+fi
+if [ -z "$files" ] && [ "$main_is_current" = true ]; then
+  carried=$(
+    git -c core.quotePath=false log --diff-filter=A --name-only --format= \
+      "refs/remotes/origin/main..$base" -- .changeset |
+      name_filter | sort -u || true
+  )
+  files=$(
+    printf '%s\n' "$carried" | while IFS= read -r file; do
+      [ -n "$file" ] || continue
+      # 内容仍取自 index（与主判据同一口径），所以它也必须真在 index 里：留在 base 树里却被本次
+      # 提交删掉的文件不算「这个 PR 带了一份声明」，放进来只会让下面的内容核对报一句
+      # 「listed by git diff but has no staged blob」——那句在主判据里是对的，在这里是误导。
+      if git cat-file -e "$base:$file" 2>/dev/null && git cat-file -e ":$file" 2>/dev/null; then
+        printf '%s\n' "$file"
+      fi
+      # 循环体最后一条命令的退出码就是整个 while 的退出码，而 `files=$(…)` 在它非零时会连同
+      # `set -e` 把脚本打死：退出码非零、stdout 与 stderr 全空，调用者只拿到一句无法归因的
+      # 「check changeset-required failed」。所以循环体必须恒以成功收尾（上面用 `if` 而非 `&&` 链）。
+      :
+    done
+  )
+fi
+
 if [ -z "$files" ]; then
   echo "changeset missing: no staged .changeset/*.md vs $base" >&2
   echo "add a changeset describing the version impact (see docs/agents/commit.md) and stage it, then retry" >&2

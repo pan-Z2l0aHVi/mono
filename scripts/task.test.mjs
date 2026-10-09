@@ -692,6 +692,110 @@ try {
     }).stderr
   assert.match(runCheckDirectly('0'.repeat(40)), /changeset check cannot run: base '0{40}' is not a commit/)
   assert.match(runCheckDirectly(git('rev-parse', 'HEAD')), /changeset missing: no staged \.changeset/)
+
+  // base 落在合并提交上时（#214）：newTask 把 baseSha 钉在建 task 那一刻的 HEAD，先合并 main、
+  // 后建 task 的次序就让本分支自己的 changeset 全落在 base 之前，上面那条只看 base 之后 index 的
+  // 判据于是误报 missing。这两条用真实的两父合并提交把 fallback 的两个方向都钉住。
+  // fixture 是裸 git 仓，没有 remote ref；fallback 以 `refs/remotes/origin/main` 为「main 侧」的
+  // 锚点，所以先在分叉点立一个。用完删掉，免得后面的用例看见一个假的 main。
+  git('update-ref', 'refs/remotes/origin/main', git('rev-parse', 'HEAD'))
+  // main 自己带一份 changeset：反向用例要靠它证明「base 里躺着的那份是 main 自带的」，所以它必须
+  // 真的在 main 的历史里，不能只存在于某个分支。
+  fs.writeFileSync(path.join(fixture, '.changeset', 'main-side.md'), '---\n---\n')
+  git('add', '-A')
+  git('commit', '-m', 'main brings its own changeset')
+  git('update-ref', 'refs/remotes/origin/main', git('rev-parse', 'HEAD'))
+  // 正向：分支带自己的 changeset，base 是含它的合并提交 → 必须放行。先确认主判据单独看是空的，
+  // 否则这条用例可能在 fallback 完全失效时也绿（那时改动 staged 就能过，测不到新判据）。
+  git('checkout', '-q', '-b', 'carried-changeset-branch')
+  fs.writeFileSync(path.join(fixture, '.changeset', 'carried.md'), '---\n---\n')
+  git('add', '-A')
+  git('commit', '-m', 'branch carries its own changeset')
+  git('checkout', '-q', 'main')
+  fs.writeFileSync(path.join(fixture, 'main-moved.txt'), 'main moved on\n')
+  git('add', '-A')
+  git('commit', '-m', 'main advances past the fork point')
+  // main 被合并进来之前必须 fetch 过：fallback 用「base 的每个合并侧都已是 origin/main 的祖先」
+  // 来判断 main 侧够不够新，origin/main 落后时它拒绝走 fallback（见下面 stale 那条）。
+  git('update-ref', 'refs/remotes/origin/main', git('rev-parse', 'HEAD'))
+  git('checkout', '-q', 'carried-changeset-branch')
+  git('merge', '--no-edit', 'main')
+  const carriedBase = git('rev-parse', 'HEAD')
+  // 两父合并提交才是 #214 的真实形状；断言它确实是 merge，否则下面那条「主判据为空」可能是因为
+  // 历史压根没分叉，测的就不是合并提交这条路径。
+  assert.equal(git('rev-list', '--parents', '-n', '1', carriedBase).split(' ').length, 3)
+  // base 已含这份 changeset，所以 `git diff --cached <base>` 对 .changeset 是空的：放行只能来自
+  // 「base 之前本分支带进来的 changeset 也算数」这条 fallback。
+  assert.equal(git('diff', '--cached', '--name-only', '--diff-filter=d', carriedBase, '--', '.changeset'), '')
+  assert.equal(
+    spawnSync('/bin/sh', [changesetCheck], {
+      cwd: fixture,
+      env: { ...process.env, AGENT_TASK_BASE_SHA: carriedBase },
+      encoding: 'utf8'
+    }).status,
+    0
+  )
+  git('checkout', '-q', 'main')
+  git('branch', '-D', 'carried-changeset-branch')
+  // 反向（fail-closed 的底线）：空 PR 靠在 main 上已有的 changeset 过关，绝不能成立。这里分支不带
+  // 任何 changeset，base 树里那份来自 main——它的提交在 main 上，不在 `origin/main..base` 里。
+  git('checkout', '-q', '-b', 'empty-pr-branch')
+  fs.writeFileSync(path.join(fixture, 'empty-pr.txt'), 'work without a changeset\n')
+  git('add', '-A')
+  git('commit', '-m', 'branch work with no changeset')
+  git('merge', '--no-edit', 'main')
+  const emptyPrBase = git('rev-parse', 'HEAD')
+  // base 树里确实躺着 main 那份 changeset：拦住它的必须是「那是 main 自带的」这条理由，而不是
+  // 「base 里恰好没有 changeset」——后者会让这条用例在判据写错时也绿。
+  assert.match(git('ls-tree', '-r', '--name-only', emptyPrBase, '--', '.changeset'), /\.changeset\/main-side\.md/)
+  assert.match(
+    spawnSync('/bin/sh', [changesetCheck], {
+      cwd: fixture,
+      env: { ...process.env, AGENT_TASK_BASE_SHA: emptyPrBase },
+      encoding: 'utf8'
+    }).stderr,
+    /changeset missing: no staged \.changeset/
+  )
+  git('checkout', '-q', 'main')
+  git('branch', '-D', 'empty-pr-branch')
+
+  // 第三条：origin/main 落后时必须**整体拒绝** fallback。这条钉的是 fail-closed 最容易被漏掉的那
+  // 个方向——main 自己新增的 changeset 被合并进 base 后，它的提交「不在 origin/main 上」，于是
+  // 区间判据会把它当成本分支带来的。main 侧一旦不够新，本分支带来的那份也就无法与之区分，所以
+  // 正确做法是整条 fallback 不走（报 missing，把人拦下），而不是放行一个说不清归属的名单。
+  git('checkout', '-q', '-b', 'stale-main-branch')
+  fs.writeFileSync(path.join(fixture, '.changeset', 'branch-own.md'), '---\n---\n')
+  fs.writeFileSync(path.join(fixture, 'stale-work.txt'), 'work\n')
+  git('add', '-A')
+  git('commit', '-m', 'branch carries its own changeset')
+  git('checkout', '-q', 'main')
+  fs.writeFileSync(path.join(fixture, '.changeset', 'main-side-late.md'), '---\n---\n')
+  fs.writeFileSync(path.join(fixture, 'main-late.txt'), 'main moved\n')
+  git('add', '-A')
+  git('commit', '-m', 'main moves and brings its own changeset')
+  // 故意**不**更新 origin/main：它还停在分叉点，main 的新提交对它是未知的。
+  git('checkout', '-q', 'stale-main-branch')
+  git('merge', '--no-edit', 'main')
+  const staleBase = git('rev-parse', 'HEAD')
+  fs.writeFileSync(path.join(fixture, 'stale-work.txt'), 'work, staged\n')
+  git('add', '--', 'stale-work.txt')
+  // 断言前提：main 那份 changeset 确实躺在 base 的树里（否则这条用例可能只是因为「base 里没有
+  // changeset」而绿，测不到 origin/main 新鲜度这一层）。
+  assert.match(git('ls-tree', '-r', '--name-only', staleBase, '--', '.changeset'), /main-side-late\.md/)
+  assert.match(
+    spawnSync('/bin/sh', [changesetCheck], {
+      cwd: fixture,
+      env: { ...process.env, AGENT_TASK_BASE_SHA: staleBase },
+      encoding: 'utf8'
+    }).stderr,
+    /changeset missing: no staged \.changeset/
+  )
+  // 从 HEAD 恢复，index 与工作区一起复位：只 `git checkout -- <file>` 会把 index 里那份 staged
+  // 内容写回工作区，切分支时照样撞上「local changes would be overwritten」。
+  git('checkout', 'HEAD', '--', 'stale-work.txt')
+  git('checkout', '-q', 'main')
+  git('branch', '-D', 'stale-main-branch')
+  git('update-ref', '-d', 'refs/remotes/origin/main')
   run('drop', '--task', 'changeset-fixture', '--reason', 'changeset policy covered', '--by', 'fixture-sweeper-1')
   // 卸载政策检查并清掉 fixture 里的 changeset：后续用例不再携带 changeset，留着这道
   // 政策会让它们的 guard 失败。
