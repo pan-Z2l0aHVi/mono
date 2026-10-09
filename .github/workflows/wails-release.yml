@@ -147,6 +147,42 @@ jobs:
           cd release-assets/publish
           shasum -a 256 interweave-* > checksums.txt
 
+      - name: Create annotated tag
+        env:
+          MERGE_SHA: ${{ needs.prepare.outputs.merge-sha }}
+          VERSION: ${{ needs.prepare.outputs.version }}
+        shell: bash
+        run: |
+          tag="interweave-v${VERSION}"
+
+          # gh release create 默认建 lightweight tag。显式建 annotated tag 并推上去，
+          # 再让 gh 复用它（--verify-tag 要求 tag 已存在于远端，本地 tag 不算）。
+          # 上一轮可能已推 tag 但 Release 建失败（prepare 的 gh release view 只看
+          # Release，不存在则重跑），所以先查远端。annotated tag 的 ^{} 会剥到 commit，
+          # lightweight tag 没有 ^{} 条目——两种形态都要判，且都不改写已发布的 tag。
+          existing="$(git ls-remote --tags origin "refs/tags/${tag}" | cut -f1)"
+          if [ -n "$existing" ]; then
+            peeled="$(git ls-remote --tags origin "refs/tags/${tag}^{}" | cut -f1)"
+            if [ -n "$peeled" ] && [ "$peeled" = "$MERGE_SHA" ]; then
+              echo "${tag} already annotated at ${MERGE_SHA}; reusing it"
+              exit 0
+            fi
+            if [ -z "$peeled" ] && [ "$existing" = "$MERGE_SHA" ]; then
+              echo "::error::${tag} already exists as a lightweight tag at ${MERGE_SHA}"
+              echo "::error::convert it by hand (git tag -a -f) or delete it; this step will not rewrite it"
+              exit 1
+            fi
+            echo "::error::${tag} already exists and does not point at ${MERGE_SHA}; refusing to rewrite it"
+            exit 1
+          fi
+
+          # git 会从 runner 的 OS 账号自动推出 tagger（形如 runner@fv-az-...），
+          # 命令照样成功，但那个身份逐次不同；固定成 bot 让 tag 的作者稳定可读。
+          git -c user.name='github-actions[bot]' \
+              -c user.email='41898282+github-actions[bot]@users.noreply.github.com' \
+              tag -a "$tag" -m "Interweave v${VERSION}" "$MERGE_SHA"
+          git push origin "refs/tags/${tag}:refs/tags/${tag}"
+
       - name: Create GitHub Release
         env:
           GH_TOKEN: ${{ github.token }}
@@ -156,6 +192,7 @@ jobs:
         run: |
           gh release create "interweave-v${VERSION}" \
             --target "$MERGE_SHA" \
+            --verify-tag \
             --title "Interweave v${VERSION}" \
             --generate-notes \
             --notes 'The macOS and Windows artifacts are not yet signed for public distribution.' \
