@@ -61,8 +61,7 @@ describe('checkRepoLayout against the real repo state', () => {
     })
     assert.deepEqual(repoAuthored, ['contract-change-review'])
     assert.deepEqual(mirrored, [])
-    assert.equal(vendored.length, 17)
-    assert.ok(vendored.includes('herdr'))
+    assert.deepEqual(vendored, ['apple-design', 'emil-design-eng', 'review-animations', 'wizard'])
   })
 
   it('ships a README.md install doc at the skills/ root', () => {

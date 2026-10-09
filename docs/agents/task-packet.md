@@ -40,4 +40,4 @@ Handoff: <what is returned and when>
 
 在本机同用户的会话续作里，读取顺序是：先读 Task Packet，再读 `$TMPDIR/greypan/tasks/<task-id>.json`，最后按 [`workflow.md`](workflow.md) 判断当前 phase 和下一步；重启用 `pnpm agent:task status --task <task-id>` 的 `live` 核对，不靠记忆推断。state 已被清空时按 `workflow.md`「失败和恢复」重建，不靠重建 packet 蒙混过关。
 
-第三方 [`handoff` skill](../../.agents/skills/handoff/SKILL.md) 只用于压缩会话上下文，不改变本文件的任务主合同。
+第三方 `handoff` skill 只用于压缩会话上下文，不改变本文件的任务主合同。它由 CC Switch 在 user 级全局提供，不在本仓。
