@@ -1,6 +1,6 @@
 # 仓库自编写 agent skills
 
-本目录是仓库自编写 agent skills 的 GitHub 发现面，遵循 agent skills 工具链共享的 `skills/<name>/SKILL.md` 打包约定。GitHub 是唯一的分发通道。
+本目录是仓库专属 agent skills 的 GitHub 发现面，遵循 agent skills 工具链共享的 `skills/<name>/SKILL.md` 打包约定。GitHub 是唯一的分发通道。
 
 ## 安装与接入
 
@@ -15,7 +15,8 @@ npx skills add pan-Z2l0aHVi/mono
 ## 各表面暴露什么
 
 - **GitHub 源**（`npx skills add pan-Z2l0aHVi/mono`）：自撰 skill + 它们依赖的第三方镜像。仅此而已。
-- 对 mono 仓库只是本地工具的第三方 skill，vendor 在 `.agents/skills-vendored/`（skills CLI 不扫描），永不分发。
+- 仓库专属的第三方 skill 仍 vendor 在 `.agents/skills-vendored/`（skills CLI 不扫描），永不分发；它们靠 `skills-lock.json` 跟踪与刷新。
+- 其余第三方 skill 不在本仓：通用流程类 skill 由 CC Switch 在 user 级全局管理（主副本在 `~/.cc-switch/skills/<name>`，各客户端侧是 symlink），任何会话任何仓库都可用，仓库再自带一份只是重复。
 
 ## skill 依赖
 
