@@ -6,13 +6,13 @@
 
 ## Context 层级
 
-| 层级               | 权威来源                                                         | 何时加载                               | 内容边界                             |
-| ------------------ | ---------------------------------------------------------------- | -------------------------------------- | ------------------------------------ |
-| Always available   | 根 `AGENTS.md`                                                   | 每次任务                               | 项目身份、不可绕过边界、任务路由     |
-| Repository map     | 根 `ARCHITECTURE.md`                                             | 需要全局拓扑、workspace 定位或热点概览 | 稳定目录地图、依赖草图、影响热点     |
-| Project context    | `CONTEXT.md`                                                     | 架构、跨包、术语、长期设计             | 包边界、工程原则、领域词汇、ADR 索引 |
-| Task-specific      | `docs/agents/*.md`、`.agents/rules/*.md`、最近的包级 `AGENTS.md` | 任务命中对应领域                       | 可执行流程、质量门槛、局部约束       |
-| On-demand evidence | ADR、README、manifest、配置、源码、测试                          | 已确认受影响区域后                     | 历史取舍、公共契约、当前实现         |
+| 层级               | 权威来源                                                         | 何时加载                               | 内容边界                                       |
+| ------------------ | ---------------------------------------------------------------- | -------------------------------------- | ---------------------------------------------- |
+| Always available   | 根 `AGENTS.md`                                                   | 每次任务                               | 项目身份、不可绕过边界、任务路由               |
+| Repository map     | 根 `ARCHITECTURE.md`                                             | 需要全局拓扑、workspace 定位或热点概览 | 稳定目录地图、包角色与边界、依赖草图、影响热点 |
+| Project context    | `CONTEXT.md`                                                     | 架构、跨包、术语、长期设计             | 工程原则、领域词汇、ADR 索引                   |
+| Task-specific      | `docs/agents/*.md`、`.agents/rules/*.md`、最近的包级 `AGENTS.md` | 任务命中对应领域                       | 可执行流程、质量门槛、局部约束                 |
+| On-demand evidence | ADR、README、manifest、配置、源码、测试                          | 已确认受影响区域后                     | 历史取舍、公共契约、当前实现                   |
 
 不要为「可能有用」批量加载文档。规则只保留无法由代码、类型、测试或工具配置可靠推导的约束；可自动验证的约束优先交给相应工具。
 
@@ -62,7 +62,7 @@
 
 - **当前实现优先**：源码、测试、`package.json`、workspace 配置和构建配置是当前行为的证据；地图或 README 与它们冲突时，以实现为准，并记录是否需要同步文档。
 - **局部约束优先**：目标目录最近的 `AGENTS.md` 负责局部不可绕过约束；根 `AGENTS.md` 负责仓库级边界和路由。
-- **流程与背景分离**：`docs/agents/*` 和 `.agents/rules/*` 描述按任务加载的流程；`CONTEXT.md` 和 ADR 描述架构、术语和长期取舍；`ARCHITECTURE.md` 只做快速地图。
+- **流程与背景分离**：`docs/agents/*` 和 `.agents/rules/*` 描述按任务加载的流程；`CONTEXT.md` 和 ADR 描述工程原则、术语和长期取舍；`ARCHITECTURE.md` 只做快速地图。
 - **入口文件不复制规则**：根目录只有 `AGENTS.md` 一份项目入口，不为单个客户端另建适配文件；`.claude/{rules,skills}` 通过 symlink 复用 `.agents/`，不建立第二套规范。
 - **术语沿用权威 context**：命名领域概念时使用当前任务已加载 context 里已有的术语（跨包看根 `CONTEXT.md` 的 vocabulary 章节，其他看对应 `CONTEXT.md`、task guide 或 ADR），不改用文档明确避开的同义词。需要命名的概念不存在时，要么是在发明项目不用的措辞，要么是确有空白——后者留给 `/domain-modeling` 在决策真正确定时补。
 - **与 ADR 冲突要显式标记**：输出与既有 ADR 矛盾时明确指出并说明为什么值得重新讨论，不静默覆盖。
@@ -76,7 +76,7 @@
 | 变更类别                                            | 必须同步的文档                                                                    | 事实来源                                           |
 | --------------------------------------------------- | --------------------------------------------------------------------------------- | -------------------------------------------------- |
 | 构建脚本、Vite/Turbo、CI/CD                         | `docs/agents/build.md`；根命令还更新 `AGENTS.md`                                  | `package.json`、`turbo.json`、`.github/workflows/` |
-| 包新增、移除或重命名                                | `CONTEXT.md`                                                                      | `packages/`、`apps/` 目录与 manifest               |
+| 包新增、移除或重命名                                | `ARCHITECTURE.md`                                                                 | `packages/`、`apps/` 目录与 manifest               |
 | lint、formatter、stylelint、cspell                  | `docs/agents/linting.md`                                                          | 对应配置                                           |
 | workspace catalog 或 Changesets 策略                | `docs/agents/dependencies.md`                                                     | `pnpm-workspace.yaml`、Changesets 配置             |
 | 测试框架或 Vite 测试配置                            | `docs/agents/test-execution.md`                                                   | 测试配置                                           |

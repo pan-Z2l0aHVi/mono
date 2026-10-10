@@ -2,7 +2,7 @@
 
 修改包脚本、Vite/Turbo 配置、外部化或 CI/发布流程前，先阅读本指南。当这些细节发生变化时，应在同一变更中更新本文档。
 
-包清单和依赖边界以 [`CONTEXT.md`](../../CONTEXT.md) 为权威来源；release terminology 以 [ADR-0003](../adr/0003-release-planes.md) 为权威来源，本指南只描述构建、验证和发布流程。
+包清单、依赖边界与发布边界以 [`ARCHITECTURE.md`](../../ARCHITECTURE.md) 为权威来源；release terminology 以 [ADR-0003](../adr/0003-release-planes.md) 为权威来源，本指南只描述构建、验证和发布流程。
 
 ## 各包命令
 

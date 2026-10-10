@@ -4,7 +4,7 @@
 
 ## 1. 一分钟概览
 
-依赖方向是单向的：应用只消费公共包，公共运行时代码保持无环，不反向依赖应用实现。项目身份见根 [`AGENTS.md`](AGENTS.md)。
+项目身份见根 [`AGENTS.md`](AGENTS.md)；各 workspace 的角色与边界见下一节。
 
 ```text
 @greypan/tsconfig       TypeScript 配置 profiles（构建时配置）
@@ -18,12 +18,6 @@
    ├──────────────┬──────────────┬────────────────┐
  React demo      Vue demo       interweave-frontend    interweave (Go/Wails host)
 ```
-
-### 发布 / 私有边界
-
-- `packages/*`：当前 manifests 中均为非 `private` workspace；除 `@greypan/tsconfig` 外通常发布运行时代码，`tsconfig` 发布 JSON profiles。自撰 agent skills 不走 npm，以 GitHub 为唯一分发通道（实体在仓库根 `skills/`，`npx skills add pan-Z2l0aHVi/mono` 的发现面，见 `skills/README.md`）。最终发布范围以各 package 的 `files`、`exports` 和 `publishConfig` 为准。
-- `apps/*`：当前 manifests 中均为 `private` 集成或交付应用，不是公共 API 的权威来源。
-- `apps/interweave/frontend`：独立 private workspace，属于 Wails 前端集成面；Go host 位于 `apps/interweave`。
 
 ## 2. Workspace 目录索引
 
@@ -41,12 +35,14 @@
 | `apps/interweave` (`@greypan/interweave`)                               | Go/Wails 桌面 host、后端能力边界                 | `README.md`、`AGENTS.md`、ADR-0008/0009                         |
 | `apps/interweave/frontend` (`@greypan/interweave-frontend`)             | Interweave Vue WebView                           | `src/pages/`、`src/stores/`、`apps/interweave/AGENTS.md`        |
 
-## 3. 依赖和构建事实
+## 3. 依赖、构建与发布边界
 
 - workspace 范围由 `pnpm-workspace.yaml` 的 `apps/**`、`packages/**` 决定；版本优先使用 workspace `catalog`。
 - `turbo.json` 定义 `build` 的 `^build` 上游依赖、`test` 的 `^build` 依赖以及不可缓存的持久 `dev`。
 - package 构建入口以各自 `package.json` 为准：常见为 `vp build` 或 `vp pack`；不要从 README 推断不存在的 script。
-- 发布边界以 package manifest 的 `files`、`exports`、`peerDependencies` 和 `publishConfig` 为准；README 不能替代这些字段。
+- `packages/*`：当前 manifests 中均为非 `private` workspace；除 `@greypan/tsconfig` 外通常发布运行时代码，`tsconfig` 发布 JSON profiles。自撰 agent skills 不走 npm，以 GitHub 为唯一分发通道（实体在仓库根 `skills/`，`npx skills add pan-Z2l0aHVi/mono` 的发现面，见 `skills/README.md`）。最终发布范围以各 package 的 `files`、`exports`、`peerDependencies` 和 `publishConfig` 为准，README 不能替代这些字段。
+- `apps/*`：当前 manifests 中均为 `private` 集成或交付应用，不是公共 API 的权威来源。
+- `apps/interweave/frontend`：独立 private workspace，属于 Wails 前端集成面；Go host 位于 `apps/interweave`。
 
 ## 4. 高频改动热点和影响面
 

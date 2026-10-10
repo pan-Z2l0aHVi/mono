@@ -1,26 +1,22 @@
 # Mono 项目架构 Context
 
-本文件是 repository-level project context：记录项目边界、跨包架构、依赖方向、领域术语入口和 ADR 索引。仅在架构、跨包依赖、仓库拓扑、项目术语或长期设计取舍相关任务中阅读；不要把它当作逐项操作手册。
+本文件是 repository-level project context：记录核心工程原则、领域术语和 ADR 索引。仅在架构、术语或长期设计取舍相关任务中阅读；不要把它当作逐项操作手册。
 
 - **Domain vocabulary**：项目中需要保持一致的术语和概念边界。
-- **Repository architecture context**：包边界、依赖方向、集成表面和长期工程原则。
+- **Engineering principles**：跨包工程原则与长期设计取舍。
 - **Implementation details**：源码、manifest、配置、测试以及按需加载的 task guide；不在此文件中复制。
 
 ## 快速入口
 
-- 全局拓扑、workspace 清单、依赖草图和高频热点：[`ARCHITECTURE.md`](ARCHITECTURE.md)。
+- 全局拓扑、workspace 清单、包边界、依赖草图和高频热点：[`ARCHITECTURE.md`](ARCHITECTURE.md)。
 - 贡献者指南：[`CONTRIBUTING.md`](CONTRIBUTING.md)。
-
-## 项目身份
-
-Mono 是一个 pnpm + Turborepo monorepo。它向 npm 发布 `@greypan/*` 工具包和基于 Lit 的 `@greypan/web-ui`，同时维护 React、Vue 与 Wails 私有应用，以验证共享包在真实框架和桌面交付中的契约。
 
 ## 核心工程原则
 
 - **Plugin over inheritance**：扩展性通过 `packages/js-kit/src/plugin-system/` 的函数组合实现，不以 class 层级承载内部状态或行为。
 - **Shadow DOM encapsulation**：`web-ui` 组件使用 Shadow DOM；应用 CSS reset 无法进入组件内部，组件通过 `:host` 和 CSS custom properties 提供受控边界。
 - **Framework-agnostic public contract**：一个 Lit 运行时实现服务 React、Vue 与 vanilla JS；框架类型适配位于 `packages/web-ui/src/types/`，不引入运行时 wrapper。
-- **Acyclic workspace graph**：工作区依赖保持有向无环；`js-kit` 是运行时代码的基础包，Turbo 的 `build` 与 `test` 先构建上游依赖。
+- **Acyclic workspace graph**：工作区依赖保持有向无环；`js-kit` 是运行时代码的基础包。
 
 ## Runtime queue vocabulary
 
@@ -56,21 +52,6 @@ _Avoid_: 历史记录点、页面快照、浏览记录
 **同文档导航（Same-document Navigation）**:
 不离开当前页面、仅通过 URL 片段变化或 history API 产生的导航（含浏览器前进/后退）；history-nav 只跟踪这一类，整页加载或跨文档跳转不在其职责内。
 _Avoid_: 页面跳转、路由切换（避免与 router 概念混淆）
-
-## 模块关系与依赖方向
-
-workspace 清单、依赖草图与模块关系图见 [`ARCHITECTURE.md`](ARCHITECTURE.md)，本文件不复制；此处只保留包的「负责/不负责」契约边界。
-
-| 边界                      | 负责内容                                            | 不负责内容                        |
-| ------------------------- | --------------------------------------------------- | --------------------------------- |
-| `js-kit`                  | 平台无关的 type、utility、plugin system             | DOM、UI 或框架绑定                |
-| `browser-kit`             | DOM、storage、环境、网络和浏览器工具                | Node runtime 或 UI 组件           |
-| `test-kit`                | Vitest browser mode、MSW 复用基础设施               | 产品组件或应用测试逻辑            |
-| `web-ui`                  | Lit components、主题、icons、公共组件契约、框架类型 | 框架运行时 wrapper 或全局应用样式 |
-| `unplugin-web-components` | Vite/Webpack 的 Web Components auto-import 转换     | Web Components 实现               |
-| `deps-reload`             | 本地开发时 workspace 产物重载                       | 生产构建行为                      |
-| `tsconfig`                | 可发布的 TypeScript profile JSON                    | 编译或运行时代码                  |
-| `apps/*`                  | 私有集成、展示和桌面交付表面                        | npm 公共包发布                    |
 
 ## 关键 ADR
 
@@ -163,6 +144,6 @@ _Avoid_: 用 context 承载成员追踪或上行写回、在子项上用公开�
 
 ## 已知边界
 
-发布/私有边界、registry/mirror 与工作区构建事实见 [`ARCHITECTURE.md`](ARCHITECTURE.md) 的「发布 / 私有边界」与「依赖和构建事实」节，以及根 `AGENTS.md` 的「不可绕过的仓库边界」；本文件不复制。
+发布/私有边界、registry/mirror 与工作区构建事实见 [`ARCHITECTURE.md`](ARCHITECTURE.md) 的「依赖、构建与发布边界」节，以及根 `AGENTS.md` 的「不可绕过的仓库边界」；本文件不复制。
 
 组件、token、overlay 与事件语义按需读取 `docs/agents/web-ui.md` 及其指向的 ADR；公共 package 或跨 workspace 契约审查按需读取 `contract-change-review` skill，并以 manifest、消费者和测试为事实；构建、部署与 release workflow 按需读取 `docs/agents/build.md` 和 ADR-0003。

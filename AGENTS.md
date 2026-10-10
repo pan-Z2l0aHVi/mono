@@ -21,7 +21,7 @@
 
 ## 项目身份
 
-这是一个 pnpm + Turborepo monorepo：发布 `@greypan/*` 工具包和 Lit Web Components（`@greypan/web-ui`），并维护 React、Vue 与私有集成应用作为真实集成表面；长期架构方向、跨包边界与 ADR 索引见 [`CONTEXT.md`](CONTEXT.md)。
+这是一个 pnpm + Turborepo monorepo：发布 `@greypan/*` 工具包和 Lit Web Components（`@greypan/web-ui`），并维护 React、Vue 与私有集成应用作为真实集成表面；仓库拓扑与包边界见 [`ARCHITECTURE.md`](ARCHITECTURE.md)，工程原则、领域术语与 ADR 索引见 [`CONTEXT.md`](CONTEXT.md)。
 
 Task 级别、状态机、冻结 diff、review、approval 和验证证据见 [`docs/agents/workflow.md`](docs/agents/workflow.md)。任务主合同见 [`docs/agents/task-packet.md`](docs/agents/task-packet.md)。需求拆分与 task 派发的归属见 [`ADR-0021`](docs/adr/0021-orchestration-layer-moved-to-herdr-projects.md)。
 
