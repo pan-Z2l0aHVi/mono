@@ -1,7 +1,8 @@
+import '..'
+
 import { afterEach, describe, expect, it } from 'vite-plus/test'
 import { userEvent } from 'vite-plus/test/browser'
 
-import '..'
 import { flush, queryA11y } from '@/shared/test-utils'
 
 import type { WebUiInput } from '..'

@@ -1,9 +1,10 @@
+import '..'
+
 import { afterEach, describe, expect, it } from 'vite-plus/test'
 import { createApp, nextTick, ref } from 'vue/dist/vue.esm-bundler.js'
 
 import { getPortalPanel, pollUntil, waitForFrame } from '@/shared/test-utils'
 
-import '..'
 import type { WebUiTooltip } from '..'
 
 afterEach(() => document.body.replaceChildren())

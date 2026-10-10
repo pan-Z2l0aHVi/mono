@@ -1,8 +1,9 @@
+import '..'
+
 import { afterEach, describe, expect, it } from 'vite-plus/test'
 
 import { realDoubleClick, realDragSelectText, waitForOpenTransition } from '@/shared/test-utils/real-gesture'
 
-import '..'
 import type { WebUiDialog } from '..'
 
 afterEach(() => {

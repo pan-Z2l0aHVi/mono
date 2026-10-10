@@ -1,12 +1,12 @@
-import { afterEach, describe, expect, it, vi } from 'vite-plus/test'
-import { userEvent } from 'vite-plus/test/browser'
-
+import '..'
 import '@/components/drawer'
 import '@/components/dropdown-item'
 import '@/components/popover'
-import type { WebUiPopover } from '@/components/popover'
 
-import '..'
+import { afterEach, describe, expect, it, vi } from 'vite-plus/test'
+import { userEvent } from 'vite-plus/test/browser'
+
+import type { WebUiPopover } from '@/components/popover'
 import { getMenuPanels, getPortalPanels, queryA11y } from '@/shared/test-utils'
 
 import type { WebUiDropdown } from '..'

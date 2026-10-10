@@ -16,7 +16,6 @@
  *
  * 写成 :where() 是为了不抬高特异性：变体带来的权重仍只有工具类本身，与被替换前同级。
  */
-/* stylelint-disable-next-line at-rule-no-unknown -- Tailwind v4 指令 */
 @custom-variant dark (&:where(web-ui-theme[resolved-appearance='dark'], web-ui-theme[resolved-appearance='dark'] *));
 
 /*
@@ -36,7 +35,6 @@
  *
  * 写成 :where() 是为了不抬高特异性：变体带来的权重仍只有工具类本身，与被替换前同级。
  */
-/* stylelint-disable-next-line at-rule-no-unknown -- Tailwind v4 指令 */
 @custom-variant mobile (&:where(web-ui-layout[mobile], web-ui-layout[mobile] *));
 
 html,

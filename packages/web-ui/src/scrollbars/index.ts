@@ -1,6 +1,6 @@
-import { ClickScrollPlugin, OverlayScrollbars, type PartialOptions } from 'overlayscrollbars'
-
 import './style.css'
+
+import { ClickScrollPlugin, OverlayScrollbars, type PartialOptions } from 'overlayscrollbars'
 
 /**
  * `scrollbars.theme` 的取值，同时也是 `@greypan/web-ui/scrollbars.css` 里主题类的名字。

@@ -1,8 +1,9 @@
+import '..'
+
 import { afterEach, describe, expect, it } from 'vite-plus/test'
 
 import { getPortalPanel, getPortalPanels, waitForFrame } from '@/shared/test-utils'
 
-import '..'
 import type { WebUiPopover } from '..'
 
 afterEach(() => document.body.replaceChildren())

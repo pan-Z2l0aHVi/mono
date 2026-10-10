@@ -1,10 +1,10 @@
+import '..'
+import '@/components/option'
+
 import { afterEach, describe, expect, it } from 'vite-plus/test'
 import { createApp, nextTick, ref } from 'vue/dist/vue.esm-bundler.js'
 
 import type { WebUiOption } from '@/components/option'
-
-import '..'
-import '@/components/option'
 import { getPortalPanel, pollUntil, waitForFrame } from '@/shared/test-utils'
 
 import type { WebUiSelect } from '..'

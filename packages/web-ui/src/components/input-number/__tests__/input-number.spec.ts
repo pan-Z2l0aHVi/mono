@@ -1,6 +1,7 @@
+import '..'
+
 import { afterEach, describe, expect, it } from 'vite-plus/test'
 
-import '..'
 import { cleanupElement, mountElement, queryA11y, spyEvents, waitForUpdate } from '@/shared/test-utils'
 
 import type { WebUiInputNumber } from '..'

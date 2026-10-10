@@ -1,7 +1,8 @@
-import { afterEach, describe, expect, it } from 'vite-plus/test'
-
 import '..'
 import '@/components/theme'
+
+import { afterEach, describe, expect, it } from 'vite-plus/test'
+
 import { cleanupElement, mountElement, waitForFrame, waitForUpdate } from '@/shared/test-utils'
 
 import type { WebUiCheckbox } from '..'

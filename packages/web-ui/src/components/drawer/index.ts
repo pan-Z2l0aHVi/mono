@@ -1,8 +1,9 @@
+import '@/components/button'
+import '@/components/icon'
+
 import { html, LitElement, nothing, type PropertyValues, unsafeCSS } from 'lit'
 import { customElement, property } from 'lit/decorators.js'
 
-import '@/components/icon'
-import '@/components/button'
 import glass from '@/assets/glass.css?inline'
 import modalSurface from '@/assets/modal-surface.css?inline'
 import { oouiClose } from '@/icons'

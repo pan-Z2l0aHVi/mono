@@ -1,6 +1,7 @@
+import '..'
+
 import { afterEach, describe, expect, it } from 'vite-plus/test'
 
-import '..'
 import { cleanupElement, pollUntil, queryA11y } from '@/shared/test-utils'
 
 afterEach(() => document.body.replaceChildren())

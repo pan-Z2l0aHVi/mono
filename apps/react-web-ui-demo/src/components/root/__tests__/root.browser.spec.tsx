@@ -1,4 +1,5 @@
 import '@/assets/global.css'
+
 import type { WebUiLayout } from '@greypan/web-ui'
 import { createMemoryHistory, createRootRoute, createRoute, createRouter, RouterProvider } from '@tanstack/react-router'
 import { cleanup, render, waitFor } from '@testing-library/react'

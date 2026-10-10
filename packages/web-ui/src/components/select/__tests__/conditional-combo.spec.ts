@@ -1,7 +1,8 @@
-import { afterEach, describe, expect, it } from 'vite-plus/test'
-
 import '..'
 import '@/components/option'
+
+import { afterEach, describe, expect, it } from 'vite-plus/test'
+
 import type { WebUiOption } from '@/components/option'
 import { cleanupElement, pollUntil, queryA11y, spyEvents, waitForUpdate } from '@/shared/test-utils'
 

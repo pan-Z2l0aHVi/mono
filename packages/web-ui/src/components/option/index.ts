@@ -1,7 +1,8 @@
+import '@/components/icon'
+
 import { html, LitElement, type PropertyValues, unsafeCSS } from 'lit'
 import { customElement, property } from 'lit/decorators.js'
 
-import '@/components/icon'
 import { heroiconsCheck16Solid } from '@/icons'
 
 import style from './style.css?inline'

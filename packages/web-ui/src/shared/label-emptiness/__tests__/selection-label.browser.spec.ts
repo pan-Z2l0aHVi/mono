@@ -1,7 +1,8 @@
-import { afterEach, describe, expect, it } from 'vite-plus/test'
-
 import '@/components/checkbox'
 import '@/components/radio'
+
+import { afterEach, describe, expect, it } from 'vite-plus/test'
+
 import type { WebUiCheckbox } from '@/components/checkbox'
 import type { WebUiRadio } from '@/components/radio'
 import { cleanupElement, mountElement, waitForFrame, waitForUpdate } from '@/shared/test-utils'

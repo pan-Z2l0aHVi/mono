@@ -1,7 +1,7 @@
-import { afterEach, describe, expect, it } from 'vite-plus/test'
-
 import '..'
 import '@/components/theme'
+
+import { afterEach, describe, expect, it } from 'vite-plus/test'
 
 import type { WebUiDrawer } from '..'
 

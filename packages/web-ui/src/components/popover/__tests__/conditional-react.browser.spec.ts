@@ -1,3 +1,5 @@
+import '..'
+
 import { createElement, type ReactNode } from 'react'
 import { act } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
@@ -5,7 +7,6 @@ import { afterEach, describe, expect, it } from 'vite-plus/test'
 
 import { getPortalPanel, pollUntil, waitForFrame } from '@/shared/test-utils'
 
-import '..'
 import type { WebUiPopover } from '..'
 
 // React act 要求测试环境显式声明，否则每次 commit 输出告警并可能掩盖真实告警。

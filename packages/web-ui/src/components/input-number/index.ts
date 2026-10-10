@@ -1,7 +1,8 @@
+import '@/components/icon'
+
 import { html, LitElement, unsafeCSS } from 'lit'
 import { customElement, property, state } from 'lit/decorators.js'
 
-import '@/components/icon'
 import glass from '@/assets/glass.css?inline'
 import { lucideMinus, lucidePlus } from '@/icons'
 import {

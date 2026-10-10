@@ -1,7 +1,8 @@
+import '@/components/switch'
+
 import { afterEach, describe, expect, it } from 'vite-plus/test'
 import { userEvent } from 'vite-plus/test/browser'
 
-import '@/components/switch'
 import { cleanupElement, mountElement, queryA11y, spyEvents, waitForUpdate } from '@/shared/test-utils'
 
 afterEach(() => document.body.replaceChildren())

@@ -1,8 +1,9 @@
+import '@/components/popover'
+
 import type { LitElement } from 'lit'
 import { afterEach, describe, expect, it } from 'vite-plus/test'
 import { userEvent } from 'vite-plus/test/browser'
 
-import '@/components/popover'
 import type { WebUiPopover } from '@/components/popover'
 import { pollUntil, waitForFrame } from '@/shared/test-utils'
 

@@ -1,4 +1,5 @@
 import '@/assets/global.css'
+
 import { createHead } from '@unhead/vue/client'
 import { createPinia } from 'pinia'
 import { createApp } from 'vue'

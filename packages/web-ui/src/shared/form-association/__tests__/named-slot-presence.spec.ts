@@ -1,7 +1,8 @@
-import { afterEach, describe, expect, it } from 'vite-plus/test'
-
 import '@/components/input'
 import '@/components/textarea'
+
+import { afterEach, describe, expect, it } from 'vite-plus/test'
+
 import { cleanupElement, flushSlotChange, mountElement, queryA11y } from '@/shared/test-utils'
 
 afterEach(() => document.body.replaceChildren())

@@ -1,9 +1,10 @@
-import { afterEach, describe, expect, it } from 'vite-plus/test'
-import { userEvent } from 'vite-plus/test/browser'
-
 import '@/components/button'
 import '@/components/input'
 import '@/components/theme'
+
+import { afterEach, describe, expect, it } from 'vite-plus/test'
+import { userEvent } from 'vite-plus/test/browser'
+
 import type { WebUiInput } from '@/components/input'
 import { cleanupElement, queryA11y, waitForUpdate } from '@/shared/test-utils'
 

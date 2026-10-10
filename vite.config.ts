@@ -1,6 +1,6 @@
-import { defineConfig } from 'vite-plus'
+import type { UserConfig } from 'vite-plus'
 
-export default defineConfig({
+export default {
   lint: {
     jsPlugins: [
       { name: 'vite-plus', specifier: 'vite-plus/oxlint-plugin' },
@@ -13,10 +13,6 @@ export default defineConfig({
       'shadcn/require-static-classes': 'error'
     },
     ignorePatterns: [
-      '**/node_modules/**',
-      '**/dist/**',
-      '**/dist-ssr/**',
-      '**/.turbo/**',
       '**/scripts/**',
       '**/routeTree.gen.ts',
       '**/auto-imports.d.ts',
@@ -24,52 +20,6 @@ export default defineConfig({
       'apps/interweave/frontend/bindings/**'
     ],
     overrides: [
-      {
-        files: ['**/*.{ts,tsx,vue}'],
-        rules: {
-          '@typescript-eslint/no-explicit-any': 'warn',
-          '@typescript-eslint/no-unsafe-declaration-merging': 'warn',
-
-          'no-unused-vars': 'warn',
-          'no-redeclare': 'error',
-          'constructor-super': 'off',
-          'getter-return': 'off',
-          'no-class-assign': 'off',
-          'no-const-assign': 'off',
-          'no-dupe-class-members': 'off',
-          'no-dupe-keys': 'off',
-          'no-func-assign': 'off',
-          'no-import-assign': 'off',
-          'no-new-native-nonconstructor': 'off',
-          'no-obj-calls': 'off',
-          'no-setter-return': 'off',
-          'no-this-before-super': 'off',
-          'no-undef': 'off',
-          'no-unreachable': 'off',
-          'no-unsafe-negation': 'off',
-          'no-var': 'error',
-          'no-with': 'off',
-          'prefer-const': 'error',
-          'prefer-rest-params': 'error',
-          'prefer-spread': 'error',
-          '@typescript-eslint/ban-ts-comment': 'error',
-          'no-array-constructor': 'error',
-          '@typescript-eslint/no-duplicate-enum-values': 'error',
-          '@typescript-eslint/no-empty-object-type': 'error',
-          '@typescript-eslint/no-extra-non-null-assertion': 'error',
-          '@typescript-eslint/no-misused-new': 'error',
-          '@typescript-eslint/no-namespace': 'error',
-          '@typescript-eslint/no-non-null-asserted-optional-chain': 'warn',
-          '@typescript-eslint/no-require-imports': 'error',
-          '@typescript-eslint/no-this-alias': 'error',
-          '@typescript-eslint/no-unnecessary-type-constraint': 'error',
-          '@typescript-eslint/no-unsafe-function-type': 'error',
-          'no-unused-expressions': 'error',
-          '@typescript-eslint/no-wrapper-object-types': 'error',
-          '@typescript-eslint/prefer-as-const': 'error',
-          '@typescript-eslint/prefer-namespace-keyword': 'error'
-        }
-      },
       {
         files: ['**/*.{js,mjs,cjs,jsx,ts,tsx,vue}'],
         rules: {
@@ -141,6 +91,52 @@ export default defineConfig({
         }
       },
       {
+        files: ['**/*.{ts,tsx,vue}'],
+        rules: {
+          '@typescript-eslint/no-explicit-any': 'warn',
+          '@typescript-eslint/no-unsafe-declaration-merging': 'warn',
+
+          'no-unused-vars': 'off',
+          'no-redeclare': 'error',
+          'constructor-super': 'off',
+          'getter-return': 'off',
+          'no-class-assign': 'off',
+          'no-const-assign': 'off',
+          'no-dupe-class-members': 'off',
+          'no-dupe-keys': 'off',
+          'no-func-assign': 'off',
+          'no-import-assign': 'off',
+          'no-new-native-nonconstructor': 'off',
+          'no-obj-calls': 'off',
+          'no-setter-return': 'off',
+          'no-this-before-super': 'off',
+          'no-undef': 'off',
+          'no-unreachable': 'off',
+          'no-unsafe-negation': 'off',
+          'no-var': 'error',
+          'no-with': 'off',
+          'prefer-const': 'error',
+          'prefer-rest-params': 'error',
+          'prefer-spread': 'error',
+          '@typescript-eslint/ban-ts-comment': 'error',
+          'no-array-constructor': 'error',
+          '@typescript-eslint/no-duplicate-enum-values': 'error',
+          '@typescript-eslint/no-empty-object-type': 'error',
+          '@typescript-eslint/no-extra-non-null-assertion': 'error',
+          '@typescript-eslint/no-misused-new': 'error',
+          '@typescript-eslint/no-namespace': 'error',
+          '@typescript-eslint/no-non-null-asserted-optional-chain': 'warn',
+          '@typescript-eslint/no-require-imports': 'error',
+          '@typescript-eslint/no-this-alias': 'error',
+          '@typescript-eslint/no-unnecessary-type-constraint': 'error',
+          '@typescript-eslint/no-unsafe-function-type': 'error',
+          'no-unused-expressions': 'error',
+          '@typescript-eslint/no-wrapper-object-types': 'error',
+          '@typescript-eslint/prefer-as-const': 'error',
+          '@typescript-eslint/prefer-namespace-keyword': 'error'
+        }
+      },
+      {
         files: ['**/*.vue'],
         plugins: ['vue'],
         rules: {
@@ -153,11 +149,6 @@ export default defineConfig({
           'vue/valid-define-props': 'error',
           'vue/no-multiple-slot-args': 'warn',
           'vue/no-required-prop-with-default': 'warn'
-        },
-        env: {
-          browser: true,
-          es2026: true,
-          node: true
         },
         globals: {
           Component: 'writable',
@@ -280,21 +271,16 @@ export default defineConfig({
           'vitest/no-unneeded-async-expect-function': 'error',
           'vitest/require-local-test-context-for-concurrent-snapshots': 'error',
           'vitest/valid-describe-callback': 'error',
-          'vitest/valid-expect': 'error'
+          'vitest/valid-expect': 'error',
+          'no-console': 'off',
+          '@typescript-eslint/no-explicit-any': 'off',
+          '@typescript-eslint/unbound-method': 'off'
         },
         plugins: ['vitest'],
         env: {
           browser: true,
           node: true,
           vitest: true
-        }
-      },
-      {
-        files: ['**/*.{test,spec}.{js,ts,jsx,tsx}'],
-        rules: {
-          'no-console': 'off',
-          '@typescript-eslint/no-explicit-any': 'off',
-          '@typescript-eslint/unbound-method': 'off'
         }
       },
       {
@@ -320,10 +306,6 @@ export default defineConfig({
     arrowParens: 'avoid',
     sortPackageJson: false,
     ignorePatterns: [
-      '**/node_modules/**',
-      '**/dist/**',
-      '**/dist-ssr/**',
-      '**/.turbo/**',
       '**/routeTree.gen.ts',
       '**/auto-imports.d.ts',
       '**/typed-router.d.ts',
@@ -333,9 +315,9 @@ export default defineConfig({
       '.agents/skills-vendored/**', // 非依赖第三方 skill 的实体目录，同上
       '**/CHANGELOG.md' // changesets 生成的 changelog，不参与格式检查
     ],
-    experimentalSortImports: {
-      enabled: true,
-      groups: ['builtin', 'external', 'internal', 'parent', 'sibling', 'index']
+    sortImports: {
+      groups: ['side_effect', 'builtin', 'external', 'internal', 'parent', 'sibling', 'index'],
+      sortSideEffects: true
     }
   }
-})
+} satisfies UserConfig

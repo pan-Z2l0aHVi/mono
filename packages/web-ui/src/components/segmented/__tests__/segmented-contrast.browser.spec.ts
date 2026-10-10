@@ -1,8 +1,9 @@
-import { afterEach, describe, expect, it } from 'vite-plus/test'
-
 import '@/components/segmented'
 import '@/components/segmented-trigger'
 import '@/components/theme'
+
+import { afterEach, describe, expect, it } from 'vite-plus/test'
+
 import type { WebUiSegmented } from '@/components/segmented'
 import type { WebUiSegmentedTrigger } from '@/components/segmented-trigger'
 import type { WebUiTheme } from '@/components/theme'

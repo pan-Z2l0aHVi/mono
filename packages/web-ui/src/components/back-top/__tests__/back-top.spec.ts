@@ -1,6 +1,7 @@
+import '..'
+
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 
-import '..'
 import { mountElement, queryA11y, waitForUpdate } from '@/shared/test-utils'
 
 import type { WebUiBackTop } from '..'

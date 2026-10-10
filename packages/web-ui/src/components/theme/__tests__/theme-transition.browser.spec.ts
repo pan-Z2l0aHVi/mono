@@ -1,8 +1,9 @@
+import '..'
+
 import { afterEach, describe, expect, it, vi } from 'vite-plus/test'
 import { cdp } from 'vite-plus/test/browser'
 
 import type { ThemeMotion, WebUiTheme } from '..'
-import '..'
 
 interface CdpSession {
   send: (method: string, params?: Record<string, unknown>) => Promise<unknown>
