@@ -2,6 +2,7 @@ import { spawnSync } from 'node:child_process'
 import crypto from 'node:crypto'
 import fs from 'node:fs'
 import path from 'node:path'
+import { pathToFileURL } from 'node:url'
 
 import { listPnpmWorkspaceManifests, readPnpmWorkspacePatterns } from './workspace-manifests.mjs'
 
@@ -60,9 +61,6 @@ if (exists('AGENTS.md')) {
 
 if (exists('.vite-hooks/pre-commit') && !read('.vite-hooks/pre-commit').includes('pnpm agent:task guard'))
   addError('.vite-hooks/pre-commit is missing the task commit guard')
-
-if (exists('CONTRIBUTING.md') && !read('CONTRIBUTING.md').includes('pnpm agent:task start --task <task-id>'))
-  addError('CONTRIBUTING.md is missing the workflow edit gate')
 
 // 根目录不再有客户端适配文件。实测 Claude Code 2.1.283 已原生发现 AGENTS.md，但只要根目录存在 CLAUDE.md，
 // 它的原生发现就整条不生效：默认的 claude-md-or-agents-md 只在项目没有 CLAUDE.md 时才读 AGENTS.md，显式声明
@@ -208,6 +206,32 @@ for (const manifestFile of workspaceManifests) {
     addError(`${relativeRoot}: published workspace is missing README.md`)
   if (relativeRoot.startsWith('apps/') && !fs.existsSync(path.join(workspaceRoot, 'README.md')))
     addError(`${relativeRoot}: app workspace is missing README.md`)
+}
+
+// commitlint 的 prompt.scopes 是交互式提交的 scope 权威清单，必须与 workspace manifests 的包名一致：
+// 少一个名字，该 workspace 的改动在 `pnpm commit` 里选不到；多一个已删除的包名，会留下选了也无所指的假选项。
+// 清单在 commitlint.config.js 里是硬编码的，所以只能靠这道检查防漂移。判据是集合相等且无重复，
+// 顺序不参与比较：prompt 里的顺序只是展示顺序，调整它不该让检查变红。
+if (exists('commitlint.config.js')) {
+  let declaredScopes = []
+  try {
+    const { default: commitlintConfig } = await import(pathToFileURL(path.join(root, 'commitlint.config.js')).href)
+    declaredScopes = commitlintConfig.prompt?.scopes ?? []
+  } catch (error) {
+    addError(`commitlint.config.js cannot be imported: ${error instanceof Error ? error.message : String(error)}`)
+  }
+
+  const expectedScopes = new Set(['root'])
+  for (const manifestFile of workspaceManifests) {
+    const { name } = JSON.parse(fs.readFileSync(manifestFile, 'utf8'))
+    expectedScopes.add(name.replace(/^@[^/]+\//, ''))
+  }
+  const declared = new Set(declaredScopes)
+  if (declared.size !== declaredScopes.length) addError('commitlint.config.js prompt.scopes has duplicate entries')
+  for (const scope of [...expectedScopes].filter(item => !declared.has(item)).sort())
+    addError(`commitlint.config.js prompt.scopes is missing workspace scope: ${scope}`)
+  for (const scope of [...declared].filter(item => !expectedScopes.has(item)).sort())
+    addError(`commitlint.config.js prompt.scopes lists an unknown scope: ${scope}`)
 }
 
 const symlinks = {

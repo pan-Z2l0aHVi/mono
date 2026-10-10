@@ -2,7 +2,11 @@
 
 仅在用户明确授权提交后才阅读本指南。当前的 `commitlint.config.js` 是权威依据。
 
-使用 Conventional Commits 格式，commit message 必须使用英文，允许的类型包括 `feat`、`fix`、`docs`、`style`、`refactor`、`perf`、`test`、`build`、`ci`、`chore` 或 `revert`。仓库级别的变更使用 `root`；包相关的变更使用包作为 scope，协调多个包的变更使用逗号分隔的 scope。`pnpm commit` 的交互 prompt 只提供 `root`/`apps`/`packages` 三个 scope（`allowCustomScopes: false`）；包名 scope 通过 `bash scripts/commit.sh` 或非交互提交使用。
+使用 Conventional Commits 格式，commit message 必须使用英文，允许的类型包括 `feat`、`fix`、`docs`、`style`、`refactor`、`perf`、`test`、`build`、`ci`、`chore` 或 `revert`。仓库级别的变更使用 `root`；包相关的变更使用包作为 scope，协调多个包的变更使用逗号分隔的 scope。
+
+scope 只标识受影响的 workspace，不表示领域，类别信息由 `type` 承载。历史提交里的 `docs(agents)`、`fix(ci)`、`feat(lint)` 是旧写法，不要照抄。CI 配置的改动用 `ci` 类型；指令系统文档（`AGENTS.md`、`docs/agents/`）的改动用 `docs` 类型；仓库根的非包改动（如 `scripts/`、根配置）用 `root` scope。
+
+`pnpm commit` 的交互 prompt 的 scope 清单是 `root` 加各包名，清单外的名字通过它的「自定义输入 scope」项输入，或走非交互的 `bash scripts/commit.sh`；这份清单的权威是 [`commitlint.config.js`](../../commitlint.config.js) 的 `prompt.scopes`。
 
 标题使用祈使句式，小写，不超过 200 个字符，末尾不加句号。仅当标题无法清晰表达理由时才添加正文。
 
@@ -16,7 +20,7 @@ bash scripts/commit.sh <type> <scope> "<subject>" --dry
 
 ## AI 署名与身份
 
-署名规则的权威是本节（不再依赖 `CONTRIBUTING.md`，它是纯路由层）。仅当 AI agent 对某次变更有实质贡献时才记录署名；不要为展示署名创建空提交或伪造身份：
+署名规则的权威是本节。仅当 AI agent 对某次变更有实质贡献时才记录署名；不要为展示署名创建空提交或伪造身份：
 
 - Agent 直接创建提交时，author 与 committer 使用该 agent 的官方身份，不再叠加同名 `Co-authored-by` 尾注。
 - AI agent 参与人类 author 的提交时，通过 Git trailers 机制追加共同作者尾注：
