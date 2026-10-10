@@ -31,7 +31,6 @@
     "vite-plugin-pwa": "catalog:",
     "@vitejs/plugin-basic-ssl": "catalog:",
     "@vitejs/plugin-legacy": "catalog:",
-    "@vitejs/plugin-vue-jsx": "catalog:",
     "@vitejs/plugin-vue": "catalog:",
     "@tailwindcss/vite": "catalog:",
     "tailwindcss": "catalog:",

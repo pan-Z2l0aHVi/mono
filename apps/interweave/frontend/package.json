@@ -32,7 +32,6 @@
     "@greypan/unplugin-web-components": "workspace:*",
     "@vitejs/plugin-legacy": "catalog:",
     "@vitejs/plugin-vue": "catalog:",
-    "@vitejs/plugin-vue-jsx": "catalog:",
     "@tailwindcss/vite": "catalog:",
     "unplugin-auto-import": "catalog:",
     "vite-plugin-pwa": "catalog:",

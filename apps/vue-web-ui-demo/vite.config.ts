@@ -5,7 +5,6 @@ import tailwindcss from '@tailwindcss/vite'
 import basicSsl from '@vitejs/plugin-basic-ssl'
 import legacy from '@vitejs/plugin-legacy'
 import vue from '@vitejs/plugin-vue'
-import vueJsx from '@vitejs/plugin-vue-jsx'
 import autoImport from 'unplugin-auto-import/vite'
 import { searchForWorkspaceRoot, type UserConfig } from 'vite-plus'
 import { playwright } from 'vite-plus/test/browser-playwright'
@@ -70,7 +69,6 @@ export default {
         }
       }
     }),
-    vueJsx(),
     autoImport({
       dts: true,
       imports: ['vue', VueRouterAutoImports],
