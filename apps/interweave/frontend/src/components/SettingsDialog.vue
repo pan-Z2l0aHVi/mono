@@ -220,7 +220,7 @@ function pickAccent(value: string) {
         </div>
       </div>
 
-      <!-- 资源库设置尚未实现，与 pages/SettingsPage.vue 一样先占位。 -->
+      <!-- 资源库设置尚未实现，与 pages/settings/index.vue 一样先占位。 -->
       <web-ui-empty
         v-else
         description="资源库设置尚未实现"

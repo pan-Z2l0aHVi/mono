@@ -6,7 +6,7 @@
 
 - Go Wails host：`main.go`；后端能力边界：`backend/`；前端集成：`frontend/src/`。
 - `backend/library/` 拥有 Resource、Source、语义标签、Map 与其本地持久化；`backend/native/` 拥有受控的 OS 能力；`backend/remote/` 仅供 Go 发起出站 HTTP；`backend/internal/` 仅放跨后端模块复用的工具。
-- 前端（`frontend/src/` 的 `components/`、`pages/`、`stores/`、`composables/`、`services/` 与 `router.ts`）保留其模块边界。应用壳只有一套：`components/AppLayout.vue` 独占 `web-ui-layout` 与 `components/AppNav.vue`，`RouterView` 只往默认 slot 换页面内容。页面需要顶部工具条时，在多根 fragment 的根节点上写 `slot="header"`，不要自带 `web-ui-layout`，也不要在模板里按 route meta 分叉壳——分叉会让切路由重建 sidebar，掐断正在播放的图标画线动画。`pages/LibraryPage.vue` 是已实现的资源库页；`pages/TagsPage.vue`、`pages/MapPage.vue`、`pages/SettingsPage.vue` 仍是 `web-ui-empty` 占位（尚未实现）。
+- 前端（`frontend/src/` 的 `components/`、`pages/`、`stores/`、`composables/`、`services/`，以及由 `vue-router/vite` 从 `src/pages/**` 生成的 file-based 路由表）保留其模块边界。应用壳只有一套：`components/AppLayout.vue` 独占 `web-ui-layout` 与 `components/AppNav.vue`，`RouterView` 只往默认 slot 换页面内容。页面需要顶部工具条时，在多根 fragment 的根节点上写 `slot="header"`，不要自带 `web-ui-layout`，也不要在模板里按 route meta 分叉壳——分叉会让切路由重建 sidebar，掐断正在播放的图标画线动画。`pages/library/index.vue` 是已实现的资源库页；`pages/tags/index.vue`、`pages/map/index.vue`、`pages/settings/index.vue` 仍是 `web-ui-empty` 占位（尚未实现）。
 - 不保留泛化的 `@api/*` 或 `@bindings/*` alias；第一个公开 Service 生成后，再按实际生成路径只为 `library` 或 `native` 建立显式 alias。
 
 ## 领域与产品边界
@@ -19,7 +19,7 @@
 ## Wails Service 与 bindings allowlist
 
 - 仅 `library` 与 `native` 可注册 Wails Service 并生成/消费 Interweave Go Service bindings；`remote` 与 `internal` 禁止注册 Wails Service，也不得被前端直接调用或消费其 bindings；Wails runtime bindings 不属于此业务 allowlist。
-- `frontend/bindings/**` 为生成文件，不手工编辑。公开 Go API 变更后运行 `pnpm --filter @greypan/interweave-frontend build` 生成 bindings，并核对生成 diff 与前端类型检查。
+- `frontend/bindings/**` 为生成文件，不手工编辑。公开 Go API 变更后运行 `pnpm exec turbo build --filter=@greypan/interweave-frontend` 生成 bindings，并核对生成 diff 与前端类型检查。
 
 ## 修改指南
 

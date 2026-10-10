@@ -9,7 +9,7 @@
 - `src/composables/`：历史导航、媒体查询与资源库运行时组合式函数。
 - `src/services/library/`：资源库 Wails API adapter；普通浏览器没有 Wails bridge，因此不加载业务数据。
 - `src/stores/`：Pinia 注入与资源库展示状态。
-- `src/router.ts`：前端路由。
+- `src/main.ts`：应用入口，装配 hash 路由、Pinia 与 `App.vue`；路由表由 `vue-router/vite` 从 `src/pages/**` 生成。
 - `src/assets/`：前端全局基础样式。
 - `bindings/`：Wails 生成的 TypeScript bindings，不手工修改；应用只消费 `backend/library` 与 `backend/native` 暴露的 Interweave Go Service bindings，Wails runtime bindings 不受此业务边界限制。
 
