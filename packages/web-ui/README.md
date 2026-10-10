@@ -56,6 +56,37 @@ import { OverlayScrollbarsComponent } from 'overlayscrollbars-react' // or overl
   the document scroller, initialize `document.body` — `window.scrollY` / `window.scrollTo` keep their native
   semantics there.
 
+## Vite
+
+`@greypan/web-ui/vite` exports `webUiOptimizeDeps`, the list of web-ui runtime dependencies an app has to merge
+into `optimizeDeps.include`.
+
+web-ui components pull `lit`, `@lit/context` and `@floating-ui/dom` out of web-ui's own dist. Those packages are
+not in the app's dependencies, so Vite cannot resolve them from the app, and a bare name is skipped in silence.
+The scanner then finds them mid-request, prints `optimized dependencies changed. reloading`, and that module load
+fails with `Failed to fetch dynamically imported module`.
+
+The list is needed when the scanner cannot follow the component graph: routes or pages loaded through a virtual
+module, such as file-based routing (`vue-router/vite`) or `import.meta.glob`. An app whose entry statically
+imports every component module already pulls the graph into the startup scan and does not need it.
+
+```js
+import { webUiOptimizeDeps } from '@greypan/web-ui/vite'
+
+export default {
+  optimizeDeps: {
+    include: [...webUiOptimizeDeps]
+  }
+}
+```
+
+- The entries use Vite's `<pkg> > <dep>` resolution form, so they resolve through web-ui's dependency tree
+  rather than the app's.
+- Reference the export instead of copying entries. It tracks web-ui's runtime dependencies.
+- It only affects dev-time pre-bundling. Builds are unaffected.
+- After changing a config that carries the list, remove `node_modules/.vite` once and restart. A warm cache
+  hides a missing entry until CI, which has no cache.
+
 ## Framework Setup
 
 ### Cross-framework API conventions

@@ -54,6 +54,35 @@ import { OverlayScrollbarsComponent } from 'overlayscrollbars-vue' // 或 overla
 - OverlayScrollbars 只改变它被初始化到的那个元素，子元素保持原生滚动条。要覆盖文档滚动条就初始化
   `document.body`——在那里 `window.scrollY` / `window.scrollTo` 保持原生语义。
 
+## Vite
+
+`@greypan/web-ui/vite` 导出 `webUiOptimizeDeps`，即需要并进应用 `optimizeDeps.include` 的 web-ui 运行时
+依赖清单。
+
+web-ui 的组件从自己的 dist 里带出 `lit`、`@lit/context`、`@floating-ui/dom`。这些包不在应用的
+dependencies 里，Vite 从应用侧解析不到，写裸名会被静默跳过；扫描器直到请求模块时才发现它们，打印
+`optimized dependencies changed. reloading`，那次模块加载随之失败，报 `Failed to fetch dynamically
+imported module`。
+
+扫描器跟不进组件图时才需要这份清单，典型场景是路由或页面由虚拟模块加载，比如 file-based routing
+（`vue-router/vite`）或 `import.meta.glob`。启动入口静态 import 到每个组件模块的应用，组件图本来就在启动
+扫描里，不必列出。
+
+```js
+import { webUiOptimizeDeps } from '@greypan/web-ui/vite'
+
+export default {
+  optimizeDeps: {
+    include: [...webUiOptimizeDeps]
+  }
+}
+```
+
+- 条目用 Vite 的 `<pkg> > <dep>` 解析写法，按 web-ui 的依赖树解析，而不是应用的。
+- 直接引用这个导出，不要抄条目，它跟随 web-ui 的运行时依赖。
+- 它只影响 dev 期的依赖预打包，构建不受影响。
+- 改过带清单的配置后清一次 `node_modules/.vite` 再启动。热缓存会把缺失的条目一直藏到 CI，而 CI 没有缓存。
+
 ## 框架集成
 
 ### 跨框架 API 约定

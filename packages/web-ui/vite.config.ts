@@ -31,7 +31,7 @@ export default {
     iconsPlugin(),
     dts({
       tsconfigPath: './tsconfig.app.json',
-      include: ['src/components/**/*', 'src/icons/**/*', 'src/scrollbars/**/*', 'src/types/**/*']
+      include: ['src/components/**/*', 'src/icons/**/*', 'src/scrollbars/**/*', 'src/types/**/*', 'src/vite/**/*']
     })
   ],
   test: {
@@ -98,13 +98,18 @@ export default {
       entry: {
         'components/index': resolve(import.meta.dirname, 'src/components/index.ts'),
         'icons/index': resolve(import.meta.dirname, 'src/icons/index.ts'),
-        'scrollbars/index': resolve(import.meta.dirname, 'src/scrollbars/index.ts')
+        'scrollbars/index': resolve(import.meta.dirname, 'src/scrollbars/index.ts'),
+        'vite/index': resolve(import.meta.dirname, 'src/vite/index.ts')
       },
       formats: ['es']
     },
     rollupOptions: {
       external: [
         /^@greypan\//,
+
+        // 运行时依赖全部外部化：与 js-kit / browser-kit 一致，消费方从 web-ui 的依赖树
+        // 解析到同一份实例，避免打包副本。
+        /^@floating-ui\/dom($|\/)/,
 
         /^lit($|\/)/,
         /^@lit($|\/)/,
