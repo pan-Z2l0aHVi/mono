@@ -2,7 +2,7 @@
 
 本指南定义仓库如何为 agent 提供 context。它用于 instruction system、仓库拓扑、领域术语和架构 context 维护；普通 coding task 只按根入口加载命中的 task-specific 文档。
 
-**快速入口**：全局拓扑先看 [`ARCHITECTURE.md`](../../ARCHITECTURE.md)；协作流程先看 [`CONTRIBUTING.md`](../../CONTRIBUTING.md)。本指南是 context system 的维护规范，不是所有任务的必读手册。
+**快速入口**：全局拓扑先看 [`ARCHITECTURE.md`](../../ARCHITECTURE.md)；协作流程先看 [`AGENTS.md`](../../AGENTS.md)，流程权威见 [`workflow.md`](./workflow.md)。本指南是 context system 的维护规范，不是所有任务的必读手册。
 
 ## Context 层级
 
@@ -34,7 +34,7 @@
 - `AGENTS.md`、`CONTEXT.md`、`docs/agents/`、`.agents/rules/` 与 `.agents/skills/` 是 Codex、Claude Code 等共用的规范。
 - Codex 与 Claude Code 都通过层级 `AGENTS.md` 获得目录约束与 skill 路由，根目录不设客户端专属入口文件，也不复制共享规则正文。task 状态机见 [`workflow.md`](workflow.md)。
 - 实测 Claude Code 2.1.283 已原生发现 `AGENTS.md`：根入口直接加载，包级 `AGENTS.md` 在 Read 命中该子目录时按需注入（注入内容与项目指令块可区分，它不带 project instructions 标记）。前提是根目录没有 `CLAUDE.md`——该客户端的默认模式 `claude-md-or-agents-md` 只在项目没有 `CLAUDE.md` 时才读 `AGENTS.md`，而把 `instructionFiles` 显式声明成 `claude-md-and-agents-md` 也救不回来（两种模式下包级注入都不发生）。所以根目录一旦出现 `CLAUDE.md`，全部包级指令会静默退回到靠模型自觉 Read，源码检查无任何反应；`scripts/validate-context.mjs` 因此断言根 `CLAUDE.md` 不存在。这条结论只在实测过的客户端版本上成立，注入某天失效时先核对客户端版本与该行为是否仍然存在，不要从本文件推断更早或更晚版本的形态。
-- ACP plan 是当前会话的临时进度 UI；多阶段任务的创建、阶段同步和结束前收敛以 [`CONTRIBUTING.md`](../../CONTRIBUTING.md) 为权威。它不持久化为 `agent-state`，也不能替代源码、Git 或验证证据。
+- ACP plan 是当前会话的临时进度 UI；多阶段任务的创建、阶段同步和结束前收敛以 [`workflow.md`](workflow.md) 为权威。它不持久化为 `agent-state`，也不能替代源码、Git 或验证证据。
 - `.claude/rules` 和 `.claude/skills` 必须通过 symlink 指向 `.agents/` 中的共享内容。仓库内没有证据表明 Claude Code 会无条件加载 `.claude/rules`：本文件把它归为 Task-specific（见上文「Context 层级」），只把根 `AGENTS.md` 列为 Always available。若后续确认客户端把 `.claude/rules` 当常驻层加载，靠控制单文件规模而不是拆分更多文件来控制总量。
 - `scripts/validate-context.mjs` 只检查这套共享 context 的可加载性，不能替代对规则语义、代码行为或 agent 输出质量的评审。
 - `scripts/repo-query.mjs` 是面向 Agent 的按需查询接口：`pnpm agent:find-usages -- <paths...>` 一次输出受影响 workspace、最小读取 context、传递依赖、所需证据和最小充分验证建议；`pnpm agent:inspect-contract -- <published-package>` 输出当前 exports、直接消费者和最小验证；`pnpm agent:diff-contract -- --base <git-ref>` 输出 manifest-level semver 审阅候选。`agent:find-usages` 支持 `--base <git-ref>`、`--staged` 与 `--worktree` 从 Git 变更集读取路径。它从 `pnpm-workspace.yaml` 的 `packages` patterns、当前 manifest 和路径规则派生结论，不把影响面复制成静态文档。

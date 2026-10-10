@@ -9,7 +9,7 @@
 ## 快速入口
 
 - 全局拓扑、workspace 清单、依赖草图和高频热点：[`ARCHITECTURE.md`](ARCHITECTURE.md)。
-- 协作与 Agent 交付流程：[`CONTRIBUTING.md`](CONTRIBUTING.md)。
+- 贡献者指南：[`CONTRIBUTING.md`](CONTRIBUTING.md)。
 
 ## 项目身份
 
