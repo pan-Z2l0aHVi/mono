@@ -13,7 +13,7 @@ worktree 和任务主合同分别见 [`worktrees.md`](worktrees.md) 与 [`task-p
 1. 查看 `git status --short --branch`，确认编排层交付的 worktree 是干净的：没有别人的在制品，也没有上一轮留下的未提交变更。
 2. 读取根 `AGENTS.md`、本文件和命中的 rule/guide；进入 workspace 后读取最近的包级 `AGENTS.md`。
 3. 为任务选择唯一、不可变的 task id 和级别（T0/T1/T2，T0 最严格）。
-4. 在目标 worktree 执行（新 worktree 先跑一次 `pnpm install && pnpm run build`，判据见 [`worktrees.md`](worktrees.md)「编排层交付之后」）：
+4. 在目标 worktree 执行（新 worktree 先跑一次 `mise install`、`pnpm install` 和 `pnpm run build`，判据见 [`worktrees.md`](worktrees.md)「编排层交付之后」）：
 
    ```sh
    pnpm agent:task new --task <task-id> --level t0|t1|t2 --issue <issue-url|N/A>

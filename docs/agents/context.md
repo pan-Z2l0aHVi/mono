@@ -51,7 +51,7 @@
 | --------------------- | ----------------------------------------------------------------------------------------------------- | --------------------------------------------------------- |
 | 局部工具函数          | 根 `AGENTS.md` + 目标包 `AGENTS.md` + 目标源码/测试                                                   | `.agents/rules/code-style.md`、包 README                  |
 | `web-ui` 组件或类型   | 根/包级 `AGENTS.md` + `docs/agents/web-ui.md` + 组件源码/测试                                         | 对应 ADR、React/Vue demo type fixtures                    |
-| 跨包公共 API          | `contract-change-review` skill + `agent:find-usages`/`agent:inspect-contract` 输出 + 受影响包 context | `docs/agents/testing.md`、相关消费者和 ADR                |
+| 跨包公共 API          | `contract-change-review` skill + `agent:find-usages`/`agent:inspect-contract` 输出 + 受影响包 context | `docs/agents/test-execution.md`、相关消费者和 ADR         |
 | 构建/依赖/发布        | `ARCHITECTURE.md` + `docs/agents/build.md` 或 `dependencies.md` + manifests                           | CI workflow、ADR-0001/0002/0003                           |
 | Interweave/Wails/领域 | `apps/interweave/AGENTS.md` + 产品基线 + 相关源码                                                     | ADR-0008、Wails 3 官方文档、Go tests、frontend consumer   |
 | context system        | `ARCHITECTURE.md` + `CONTEXT.md` + 本文件 + ADR-0004                                                  | `scripts/validate-context.mjs`、共享 symlinks 和当前 diff |
@@ -79,7 +79,7 @@
 | 包新增、移除或重命名                                | `CONTEXT.md`                                                                      | `packages/`、`apps/` 目录与 manifest               |
 | lint、formatter、stylelint、cspell                  | `docs/agents/linting.md`                                                          | 对应配置                                           |
 | workspace catalog 或 Changesets 策略                | `docs/agents/dependencies.md`                                                     | `pnpm-workspace.yaml`、Changesets 配置             |
-| 测试框架或 Vite 测试配置                            | `docs/agents/testing.md`                                                          | 测试配置                                           |
+| 测试框架或 Vite 测试配置                            | `docs/agents/test-execution.md`                                                   | 测试配置                                           |
 | `packages/web-ui` 组件、图标或公共契约              | `packages/web-ui/AGENTS.md`、`docs/agents/web-ui.md` 与受影响 ADR                 | 组件源码、类型、测试                               |
 | commitlint 或提交流程                               | `docs/agents/commit.md`                                                           | commit 配置或工作流                                |
 | 影响未来工程取舍的架构决定                          | 对应 ADR，并更新 `CONTEXT.md` ADR 索引                                            | 可行替代方案之间的长期选择                         |

@@ -4,7 +4,7 @@ worktree 是任务隔离边界，不是包名的别名。本文件只描述**仓
 
 ## 编排层交付之后
 
-编排层把一个新 worktree 交给执行者之后，**收到它的执行者**（而不是编排层代劳）必须在实施或 freeze 之前先跑一次 `pnpm install && pnpm run build`，两步都不能省：freeze 的 guard 只看 `node_modules` 是否存在，装完依赖就通过，缺的其实是 workspace 包的 `dist` 类型产物；没有它，`vp check`（`fix-code` 与 `check-code` 都调用它）会把每个跨包 import 报成假 `TS2307`，实测只 `pnpm install` 的新 worktree 报出 1696 个错误，全部类型感知验证随之不可用。判据见 [`workflow.md`](workflow.md)「先建立任务」的 preflight 第 4 步。
+编排层把一个新 worktree 交给执行者之后，**收到它的执行者**（而不是编排层代劳）必须在实施或 freeze 之前先跑一次 `mise install`、`pnpm install` 和 `pnpm run build`，三步都不能省。`mise install` 排在第一位，是因为工具链版本由 `.mise.toml` 钉住而不同分支可能钉的版本不同；它本身幂等，装过就是一次快速 no-op，所以不必先判断工具缺不缺。后两步各有各的判据：freeze 的 guard 只看 `node_modules` 是否存在，装完依赖就通过，缺的其实是 workspace 包的 `dist` 类型产物；没有它，`vp check`（`fix-code` 与 `check-code` 都调用它）会把每个跨包 import 报成假 `TS2307`，实测只 `pnpm install` 的新 worktree 报出 1696 个错误，全部类型感知验证随之不可用。判据见 [`workflow.md`](workflow.md)「先建立任务」的 preflight 第 4 步。
 
 编排层交接 task 时会带上 worktree 路径、base SHA 和 owner 标识。执行者按它们填 [`task-packet.md`](task-packet.md) 的 `Worktree`、`Base`、`Owner` 并执行 `pnpm agent:task assign` 记录归属，不自行推导、也不改写；交接后归属有变更是编排层的动作，重新 assign 即可。禁止依靠 pane 名称或目录名推断归属。
 

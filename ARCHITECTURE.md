@@ -31,7 +31,7 @@
 | ----------------------------------------------------------------------- | ------------------------------------------------ | --------------------------------------------------------------- |
 | `packages/js-kit` (`@greypan/js-kit`)                                   | 运行时基础工具和 plugin system                   | `src/plugin-system/`、`README.md`、包级 `AGENTS.md`             |
 | `packages/browser-kit` (`@greypan/browser-kit`)                         | 浏览器能力：DOM、storage、file、tracker          | 「包级约束」表的 `browser-kit`、`src/` 对应模块 README          |
-| `packages/test-kit` (`@greypan/test-kit`)                               | Vitest browser mode + MSW 基础设施               | `docs/agents/testing.md`、「包级约束」表的 `test-kit`           |
+| `packages/test-kit` (`@greypan/test-kit`)                               | Vitest browser mode + MSW 基础设施               | `docs/agents/test-execution.md`、「包级约束」表的 `test-kit`    |
 | `packages/unplugin-web-components` (`@greypan/unplugin-web-components`) | Vite/Webpack 模块转换和 Vite HTML 注入           | 「包级约束」表的 `unplugin-web-components`、两种 adapter        |
 | `packages/deps-reload` (`@greypan/deps-reload`)                         | 开发期 workspace `dist` watcher                  | 「包级约束」表的 `deps-reload`、`src/vite.ts`、`src/webpack.ts` |
 | `packages/web-ui` (`@greypan/web-ui`)                                   | Lit components、tokens、icons、overlay、框架类型 | `docs/agents/web-ui.md`、组件 README、相关 ADR                  |
@@ -46,7 +46,6 @@
 - workspace 范围由 `pnpm-workspace.yaml` 的 `apps/**`、`packages/**` 决定；版本优先使用 workspace `catalog`。
 - `turbo.json` 定义 `build` 的 `^build` 上游依赖、`test` 的 `^build` 依赖以及不可缓存的持久 `dev`。
 - package 构建入口以各自 `package.json` 为准：常见为 `vp build` 或 `vp pack`；不要从 README 推断不存在的 script。
-- 根 `tsconfig.json` 只声明 TypeScript project references；实际继承关系以 `packages/tsconfig/*.json` 和各 workspace tsconfig 为准。
 - 发布边界以 package manifest 的 `files`、`exports`、`peerDependencies` 和 `publishConfig` 为准；README 不能替代这些字段。
 
 ## 4. 高频改动热点和影响面
@@ -67,7 +66,7 @@
 | ---------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `@greypan/browser-kit`             | 仅面向浏览器运行时；不得引入 Node-only API 或 UI/framework 运行时。                                                                                                                                                                                                                                                                          |
 | `@greypan/unplugin-web-components` | 模块转换支持 `.vue`/`.jsx`/`.tsx`，Vite 另经 `transformIndexHtml` 处理 Vite 构建入口 HTML；不扩展到 vanilla `.js`/`.ts` 或 `public/` 等非构建 HTML，除非先更新该边界的设计决策。HTML 注入只在 Vite；Webpack 只做源码转换。标签按 kebab-case 识别，大小写归一化，不支持驼峰/帕斯卡。公共行为经公共 API 加聚焦测试并核对两种 bundler adapter。 |
-| `@greypan/test-kit`                | 供其他包复用的 Vitest browser mode + MSW 基础设施；改 MSW 生命周期或 browser-mode 前先读 `docs/agents/testing.md`。tracker spec 共享浏览器全局变量和一个 service worker，保持文件串行；除非移除共享状态，不要重新启用文件并行。公共行为通过公共 API 添加聚焦测试，不把这些基础设施约束复制到消费包指令中。                                   |
+| `@greypan/test-kit`                | 供其他包复用的 Vitest browser mode + MSW 基础设施；改 MSW 生命周期或 browser-mode 前先读 `docs/agents/test-execution.md`。tracker spec 共享浏览器全局变量和一个 service worker，保持文件串行；除非移除共享状态，不要重新启用文件并行。公共行为通过公共 API 添加聚焦测试，不把这些基础设施约束复制到消费包指令中。                            |
 | `@greypan/deps-reload`             | 只用于开发期：监听本地 workspace 包 `dist/` 变化并整页刷新，不得当作生产构建行为。依赖 Node >=20.11 的 `import.meta.dirname`；修改目录定位或 watcher 生命周期时先核对源码与相关测试。                                                                                                                                                        |
 | `@greypan/tsconfig`                | 经 TypeScript `extends` 消费的 profile 配置包；改 profile 时检查所有继承者仍过根 `pnpm run check-code`。profile 层级与使用边界以 `packages/tsconfig/*.json` 为准。                                                                                                                                                                           |
 

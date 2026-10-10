@@ -6,7 +6,7 @@
 
 ## 各包命令
 
-每个包暴露其所需的命令：所有可构建的包都有 `build`，大多数有 `dev`（监听模式），只有包含维护的自动化测试覆盖率的包才暴露 `test`。使用 `pnpm --filter @greypan/<name> <script>` 运行它们；例如，`pnpm --filter @greypan/js-kit test`。根目录提供全局编排的 `pnpm run build`、`pnpm run test`。受影响范围的迭代定位用 `pnpm agent:find-usages -- <paths...>`（见 `context.md`）随后对目标包运行 filter 命令；已移除独立的 `build:affected` / `test:affected` 根命令，避免重复 `agent:find-usages` 的影响面权威。全量根命令由 CI 在 pull request 上执行，本地只在需要复现全仓范围问题时运行。
+每个包暴露其所需的命令：所有可构建的包都有 `build`，大多数有 `dev`（监听模式），只有包含维护的自动化测试覆盖率的包才暴露 `test`。非 turbo 任务用 `pnpm --filter @greypan/<name> <script>` 运行，例如 `pnpm --filter @greypan/web-ui generate-icons`。`build`、`test` 与 `dev` 是 turbo 任务，用 `pnpm exec turbo <task> --filter=@greypan/<name>` 运行，turbo 按 `^build` 先建好上游依赖；裸 `pnpm --filter` 绕过这一层，会用到陈旧或缺失的 `dist`。根目录提供全局编排的 `pnpm run build`、`pnpm run test`。受影响范围的迭代定位用 `pnpm agent:find-usages -- <paths...>`（见 `context.md`）随后对目标包运行 filter 命令；已移除独立的 `build:affected` / `test:affected` 根命令，避免重复 `agent:find-usages` 的影响面权威。全量根命令由 CI 在 pull request 上执行，本地只在需要复现全仓范围问题时运行。
 
 ## Demo 开发
 
@@ -45,12 +45,12 @@ turbo 本地缓存由 `.mise.toml` 的 `TURBO_CACHE_DIR` 指向 worktree 族共�
 
 生成文件不是 source of truth，禁止手动编辑；但这不等于禁止使用仓库配置的 generator。若源码或配置的变更会影响受版本控制的代码生成物，必须运行所属 generator，让工具产生 diff，再验证生成结果和消费者。不要通过复制、补丁或格式化工具直接改写输出。
 
-| 场景                           | source of truth                                            | 受控生成入口                                                                                                                               | 完成证据                                                                                                 |
-| ------------------------------ | ---------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------- |
-| React 文件路由                 | `apps/react-web-ui-demo/src/routes/**` 与 `vite.config.ts` | `pnpm --filter @greypan/react-web-ui-demo build`（TanStack Router Vite plugin）                                                            | `src/routeTree.gen.ts` 仅由 generator 更新；`check-code` 通过，并在真实浏览器访问新增/修改的路由。       |
-| Vue auto import / typed router | Vue 源码与 `apps/vue-web-ui-demo/vite.config.ts`           | `pnpm --filter @greypan/vue-web-ui-demo build`（Vite plugins）                                                                             | `auto-imports.d.ts`、`typed-router.d.ts` 仅由 plugin 更新；`vue-tsc --build` 与受影响路由/页面验证通过。 |
-| Wails frontend bindings        | 公开 Go API、`apps/interweave/frontend/package.json`       | `pnpm --filter @greypan/interweave-frontend build`（内部经 `apps/interweave/scripts/generate-bindings.mjs` 调 `wails3 generate bindings`） | 核对 `frontend/bindings/**` 的 generator diff，并运行 frontend 类型检查/构建和受影响调用点验证。         |
-| web-ui icons                   | `packages/web-ui/icons.used.json`                          | `pnpm --filter @greypan/web-ui generate-icons` 或 `vp build`                                                                               | 图标模块只由 generator 更新，并完成 package build 与公开契约验证。                                       |
+| 场景                           | source of truth                                            | 受控生成入口                                                                                                                                          | 完成证据                                                                                                 |
+| ------------------------------ | ---------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------- |
+| React 文件路由                 | `apps/react-web-ui-demo/src/routes/**` 与 `vite.config.ts` | `pnpm exec turbo build --filter=@greypan/react-web-ui-demo`（TanStack Router Vite plugin）                                                            | `src/routeTree.gen.ts` 仅由 generator 更新；`check-code` 通过，并在真实浏览器访问新增/修改的路由。       |
+| Vue auto import / typed router | Vue 源码与 `apps/vue-web-ui-demo/vite.config.ts`           | `pnpm exec turbo build --filter=@greypan/vue-web-ui-demo`（Vite plugins）                                                                             | `auto-imports.d.ts`、`typed-router.d.ts` 仅由 plugin 更新；`vue-tsc --build` 与受影响路由/页面验证通过。 |
+| Wails frontend bindings        | 公开 Go API、`apps/interweave/frontend/package.json`       | `pnpm exec turbo build --filter=@greypan/interweave-frontend`（内部经 `apps/interweave/scripts/generate-bindings.mjs` 调 `wails3 generate bindings`） | 核对 `frontend/bindings/**` 的 generator diff，并运行 frontend 类型检查/构建和受影响调用点验证。         |
+| web-ui icons                   | `packages/web-ui/icons.used.json`                          | `pnpm --filter @greypan/web-ui generate-icons` 或 `pnpm exec turbo build --filter=@greypan/web-ui`                                                    | 图标模块只由 generator 更新，并完成 package build 与公开契约验证。                                       |
 
 `apps/interweave/frontend/bindings/**` 的生成只走一个入口 `node apps/interweave/scripts/generate-bindings.mjs`：`apps/interweave/build/Taskfile.yml` 的 `generate:bindings` 与 `apps/interweave/frontend` 的 `build` / `build:dev` 都指向它，不再各自手抄 `wails3 generate bindings` 的开关。该入口做两件事：
 
@@ -94,21 +94,21 @@ turbo 本地缓存由 `.mise.toml` 的 `TURBO_CACHE_DIR` 指向 worktree 族共�
 - `web-ui` 外部化其框架依赖，因此消费端必须安装 `lit` 作为依赖。
 - 对于包含外层宿主工作区和嵌套前端工作区的应用，宿主任务、构建目标、生成绑定与资源目录均以目标应用的 manifest、包级 `AGENTS.md`、任务配置和 CI workflow 为准；通用指南不复制应用专属的筛选器、平台矩阵或发布产物名称。生成绑定、前端产物、缓存和依赖通常是一次性产物；任务配置、平台模板、图标和打包资源是否保留必须以目标应用的清理脚本为准。
 
-| 包                        | 外部化                                                                   | 打包的第三方依赖 |
-| ------------------------- | ------------------------------------------------------------------------ | ---------------- |
-| `js-kit`                  | `@greypan/*`、`remeda`                                                   | 无               |
-| `browser-kit`             | `@greypan/*`、`nanoid`、`remeda`、`copy-to-clipboard`、`msw`             | 无               |
-| `test-kit`                | 通过 tsdown 自动处理：`@greypan/js-kit`、`msw`、`vite-plus`              | 无               |
-| `web-ui`                  | `@greypan/*` 加框架正则匹配 `lit`、`@lit`、`react`、`react-dom` 和 `vue` | 无               |
-| `unplugin-web-components` | 通过 tsdown 自动处理：`@greypan/js-kit`、`change-case`、`unplugin`       | 无               |
-| `deps-reload`             | 通过 tsdown 自动处理：`node:*`、`@greypan/js-kit`、`unplugin`            | 无               |
+| 包                        | 外部化                                                                                       | 打包的第三方依赖 |
+| ------------------------- | -------------------------------------------------------------------------------------------- | ---------------- |
+| `js-kit`                  | `@greypan/*`、`remeda`                                                                       | 无               |
+| `browser-kit`             | `@greypan/*`、`nanoid`、`remeda`、`copy-to-clipboard`、`msw`                                 | 无               |
+| `test-kit`                | 通过 tsdown 自动处理：`@greypan/js-kit`、`msw`、`vite-plus`                                  | 无               |
+| `web-ui`                  | `@greypan/*`、`@floating-ui/dom` 加框架正则匹配 `lit`、`@lit`、`react`、`react-dom` 和 `vue` | 无               |
+| `unplugin-web-components` | 通过 tsdown 自动处理：`@greypan/js-kit`、`change-case`、`unplugin`                           | 无               |
+| `deps-reload`             | 通过 tsdown 自动处理：`node:*`、`@greypan/js-kit`、`unplugin`                                | 无               |
 
 ## 应用
 
-- `react-web-ui-demo` 使用 `@vitejs/plugin-react` v6（workspace catalog 当前版本）配合 React Compiler（`babel-plugin-react-compiler`，目标 19），加上 `@vitejs/plugin-legacy` 支持旧版浏览器。两个 demo 各有 jsdom 与 Chromium 两层测试面（`vp test run`），差异与配置约束见 [`testing.md`](testing.md)；组件契约与浏览器运行时行为仍由 `web-ui` 的测试面与浏览器验证承担。
+- `react-web-ui-demo` 使用 `@vitejs/plugin-react` v6（workspace catalog 当前版本）配合 React Compiler（`babel-plugin-react-compiler`，目标 19），加上 `@vitejs/plugin-legacy` 支持旧版浏览器。两个 demo 各有 jsdom 与 Chromium 两层测试面（`vp test run`），差异与配置约束见 [`test-execution.md`](test-execution.md)；组件契约与浏览器运行时行为仍由 `web-ui` 的测试面与浏览器验证承担。
 - demo 应用和 `web-ui` 共享相同的 browserslist 目标（Chrome/Edge >=111、Safari/iOS >=16.4、Firefox >=128、非 dead），这与 Tailwind v4 的支持矩阵一致。`web-ui` 是唯一在构建时输出 CSS 的包；其静态 `color-mix()` 调用由 lightningcss 评估，而包含 `var()` 的 `color-mix()` 作为运行时 CSS 保留并依赖上述目标。
 - 库包（`js-kit`、`browser-kit`、`test-kit`、`deps-reload`、`unplugin-web-components`）仅包含 JavaScript，不输出 CSS，因此没有 `browserslist` 字段；它们统一声明 `engines.node >=20.11.0`。该下限覆盖了 `deps-reload` 中的 `import.meta.dirname`（Node 20.11+），与 vite/vitest 的 peer 版本范围（^20.19 / ^20）对齐，并排除了已停止维护的 Node 18 和 20 版本。
-- 两个 demo 应用都使用 `basicSsl()` 进行 HTTPS 开发服务器配置。
+- 两个 demo 应用用 `basicSsl()` 给 dev server 开 HTTPS，目的是拿到安全上下文：Service Worker 与 `navigator.clipboard` 只在安全上下文可用，而 demo 设了 `server.host: true`，从非 localhost 地址访问时 http 不满足这个条件。该插件只作用于 dev server，生产构建不受影响。
 - `depsReload` 监听库的 `dist/` 目录，当本地依赖发生变化时触发整页刷新。
 - 使用嵌套 WebView 前端的集成应用遵循相应框架 demo 的 Vite 插件和本地包约定；宿主运行时的插件负责生成其绑定。
 
