@@ -1,12 +1,28 @@
 # 构建与发布架构
 
-修改包脚本、Vite/Turbo 配置、外部化或 CI/发布流程前，先阅读本指南。当这些细节发生变化时，应在同一变更中更新本文档。
+修改包脚本、Vite/Turbo 配置、外部化或 CI/发布流程，或初始化新 worktree 前，先阅读本指南。当这些细节发生变化时，应在同一变更中更新本文档。
 
 包清单、依赖边界与发布边界以 [`ARCHITECTURE.md`](../../ARCHITECTURE.md) 为权威来源；release terminology 以 [ADR-0003](../adr/0003-release-planes.md) 为权威来源，本指南只描述构建、验证和发布流程。
 
 ## 各包命令
 
 每个包暴露其所需的命令：所有可构建的包都有 `build`，大多数有 `dev`（监听模式），只有包含维护的自动化测试覆盖率的包才暴露 `test`。非 turbo 任务用 `pnpm --filter @greypan/<name> <script>` 运行，例如 `pnpm --filter @greypan/web-ui generate-icons`。`build`、`test` 与 `dev` 是 turbo 任务，用 `pnpm exec turbo <task> --filter=@greypan/<name>` 运行，turbo 按 `^build` 先建好上游依赖；裸 `pnpm --filter` 绕过这一层，会用到陈旧或缺失的 `dist`。根目录提供全局编排的 `pnpm run build`、`pnpm run test`。受影响范围的迭代定位用 `pnpm agent:find-usages -- <paths...>`（见 `context.md`）随后对目标包运行 filter 命令；已移除独立的 `build:affected` / `test:affected` 根命令，避免重复 `agent:find-usages` 的影响面权威。全量根命令由 CI 在 pull request 上执行，本地只在需要复现全仓范围问题时运行。
+
+## Worktree 与共享缓存
+
+worktree 是任务隔离边界，不是包名的别名。一个可变 task 只能有一个 owner 和一个实施 worktree；worktree 怎么创建、放在哪个路径、用什么命令建、由谁清理，由编排层（herdr-projects）决定，仓库不规定。共享主工作区只用于只读调查与状态查询；合并是通过 PR 在远端完成的动作，不在共享工作区里做。并行实施时 owner 与 worktree 的唯一性边界见根 [`AGENTS.md`](../../AGENTS.md)。
+
+编排层交付一个新 worktree 后，收到它的执行者（而不是编排层代劳）必须在实施或 freeze 之前跑一次 `mise install`、`pnpm install` 和 `pnpm run build`，三步都不能省。`mise install` 排第一，因为工具链版本由 `.mise.toml` 钉住，不同分支可能钉的版本不同；它幂等，装过就是一次快速 no-op，不必先判断工具缺不缺。freeze 的 guard 只看 `node_modules` 是否存在，装完依赖就通过，真正缺的是 workspace 包的 `dist` 类型产物；没有它，`vp check`（`fix-code` 与 `check-code` 都调用它）会把每个跨包 import 报成假 `TS2307`，全部类型感知验证随之不可用。判据见 [`workflow.md`](workflow.md)「先建立任务」的 preflight 第 4 步。
+
+编排层交接 task 时会带上 worktree 路径、base SHA 和 owner 标识；执行者按它们填 Task Packet 的 `Worktree`、`Base`、`Owner`，并执行 `pnpm agent:task assign` 记录归属，不自行推导、也不改写。交接后归属有变更是编排层的动作，重新 assign 即可。禁止依靠 pane 名称或目录名推断归属。
+
+### turbo 缓存共享
+
+`.mise.toml` 的 `[env]` 用 `git rev-parse --path-format=absolute --git-common-dir` 把 `TURBO_CACHE_DIR` 锚定到 git common dir（`mono/.git/turbo-cache`），主仓与全部 task worktree 共享同一份本地 turbo 缓存。缓存内容含 `dist` 与 d.ts，跨 checkout 复用安全（turbo 内容寻址），所以新 worktree 不必冷缓存全量重建。
+
+这份缓存也可能被清掉。`pnpm run clean` 的默认档会连它一起清（命令口径见上文命令表），清后主仓与全部 worktree 都会冷缓存全量重建。在 A worktree 干活的 agent 可能被 B worktree 或主仓的一次 `pnpm run clean` 打中，且无从预知，判断要不要预留冷重建时间时要把这条算进去。
+
+手动回收时直接删除 `mono/.git/turbo-cache`，turbo 下次运行自动重建。CI 在 `ci.yml` 显式覆盖回 workspace 内路径，mise 注入不影响 CI 缓存键；git common dir 不受 `git gc` 与 worktree 清理影响。
 
 ## Demo 开发
 
@@ -22,7 +38,7 @@
 
 Interweave 由 Wails 宿主管理嵌套前端，因此其 alias 只启动 Wails host，并构建/监听 WebView frontend 的上游依赖；不要额外启动重复的前端进程。在修改 Vite 插件、TypeScript 配置或工作区依赖图后，需要重启宿主开发进程。
 
-代码质量检查与修复的命令矩阵（`check-code` 聚合与 `fix-code` 一键修复）以 [`linting.md`](linting.md) 为权威；`pre-commit` 只跑 task gate 与 `.agents/checks/` 政策检查，不改写文件；提交边界的清洁度保证（格式、lint 与类型）来自 `format-clean` 这条只检不改的检查，口径与已登记的旁路见 [`workflow.md`](workflow.md)。包构建命令不能替代这些命令；Wails 的 macOS/Windows 原生构建仍负责验证 host package 与平台集成。
+代码质量检查与修复的命令矩阵（`check-code` 聚合与 `fix-code` 一键修复）以 [`linting.md`](linting.md) 为权威；`pre-commit` 只跑 task gate 与 `.agents/checks/` 政策检查，不改写文件；提交边界的清洁度保证（格式、lint 与类型）来自 `format-clean` 这条只检不改的检查，口径与已登记的旁路见 [`.agents/checks/`](../../.agents/checks/)。包构建命令不能替代这些命令；Wails 的 macOS/Windows 原生构建仍负责验证 host package 与平台集成。
 
 | 命令                           | 用途                                          | 说明                                                                                                                                |
 | ------------------------------ | --------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
@@ -35,7 +51,7 @@ Interweave 由 Wails 宿主管理嵌套前端，因此其 alias 只启动 Wails 
 
 `check-pack` 使用 `pnpm pack --dry-run` 验证实际发布文件与 manifest export targets；它不判断 API 语义或版本级别。
 
-turbo 本地缓存由 `.mise.toml` 的 `TURBO_CACHE_DIR` 指向 worktree 族共享目录（机制与手动回收见 [`worktrees.md`](worktrees.md)）。这条缓存可信链由 `.agents/checks/turbo-cache-invariant` 守着：它要求 `test.dependsOn` 含 `^build`、`build.outputs` 含 `dist/**` 且没有可能排除 `dist` 的负模式，并且 `test.inputs` 不含会显式收进 `dist` 的正模式；不能靠把 `dist/**` 加进 `inputs` 解决缓存问题，因为 `dist` 是 gitignored，`$TURBO_DEFAULT$` 本来不会收它，显式正模式反而让尚无 `dist` 的新 worktree 全部 miss，却不增加产出恢复的正确性。`pnpm run clean` 的默认档会连这份共享缓存一起清掉（脚本用 `git rev-parse --path-format=absolute --git-common-dir` 解析，与 `.mise.toml` 同一套逻辑），因此它影响整个 worktree 族而不只是当前工作区；只想回收单个工作区的产物时直接删该工作区的 `.turbo/`。默认档**不**删除 `pnpm-lock.yaml`（tracked 文件，属需逐次授权的 lockfile 改动，需显式加 `--locks`）。构建或验证前怀疑 dist 产物异常（如被 watch 进程清空 d.ts）时，先跑 `pnpm run agent:env-doctor` 体检，再用 `pnpm run agent:env-doctor --fix`（自动 `turbo build --force` 重建 dist）或手动 `turbo build --force` 重建。
+这条缓存可信链由 `.agents/checks/turbo-cache-invariant` 守着：它要求 `test.dependsOn` 含 `^build`、`build.outputs` 含 `dist/**` 且没有可能排除 `dist` 的负模式，并且 `test.inputs` 不含会显式收进 `dist` 的正模式；不能靠把 `dist/**` 加进 `inputs` 解决缓存问题，因为 `dist` 是 gitignored，`$TURBO_DEFAULT$` 本来不会收它，显式正模式反而让尚无 `dist` 的新 worktree 全部 miss，却不增加产出恢复的正确性。`pnpm run clean` 的默认档会连这份共享缓存一起清掉，因此它影响整个 worktree 族而不只是当前工作区（共享机制与回收见本文「Worktree 与共享缓存」）；只想回收单个工作区的产物时直接删该工作区的 `.turbo/`。默认档**不**删除 `pnpm-lock.yaml`（tracked 文件，属需逐次授权的 lockfile 改动，需显式加 `--locks`）。构建或验证前怀疑 dist 产物异常（如被 watch 进程清空 d.ts）时，先跑 `pnpm run agent:env-doctor` 体检，再用 `pnpm run agent:env-doctor --fix`（自动 `turbo build --force` 重建 dist）或手动 `turbo build --force` 重建。
 
 变更影响与验证命令选择使用仓库内查询工具 `agent:find-usages` / `agent:inspect-contract` / `agent:diff-contract`；工具语义、参数与输出说明见 [`context.md`](context.md)，此处不复述。
 
@@ -127,8 +143,8 @@ turbo 本地缓存由 `.mise.toml` 的 `TURBO_CACHE_DIR` 指向 worktree 族共�
 - 表表达不了的两句保留散文，因为判据要人工读运行结果：一次运行是「等审批」还是「排队」，看 `gh api repos/<owner>/<repo>/actions/runs/<id> --jq '{status,jobs:.jobs.total_count,run_started_at,created_at}'`，`jobs.total_count == 0` 且 `run_started_at == created_at` 才是挂起等批准；某个 step 的定义是否真的换掉了，看它在运行里整条消失（`gh api repos/<owner>/<repo>/actions/runs/<id>/jobs --jq '.jobs[].steps[].name'`）——`if` 为假的 step 仍然显示 `skipped`，与「step 还在、只是没跑」无法区分。
 - 触发面值不值、哪个 workflow 最贵，用 `pnpm run ci:measure --days=14` 现算，不要把数字抄进文档：它按 workflow 报 runs、墙钟分钟、按事件分的来源和同 `head_sha` 的重复验证。两个口径不能混用——本仓是 squash-only 合并，main 上 `push` 那一次落在**新 sha** 上、树却与已经验过的 PR head 相同，所以删掉一条触发省下的量读 `events` 里的 `push` 栏，读不出 `redundant`。
 - flake 台账只有写端在 CI 里（`Test` 红时把 `test-output.log` 与 `test-failures.json` 存成保留 1 天的 `ci-test-output-<run-id>-<attempt>` artifact），读端是本地命令：先 `gh run download <run-id> --pattern 'ci-test-output-*'`，再 `pnpm run ci:flakes <目录>`。它按「红过几个不同的 run」排序、同一 run 的多个 attempt 只算 retry 痕迹，因为后者只证明红过两次；刻意不判断「重跑之后是否变绿」——留痕只在失败时写，缺席本身携带不了信息，所以这份榜单不回答「谁已经修好」，也别拿它的为空当作没有 flake。
-- 这条链路的写端在 2026-09-23 之前从来没有真的写过：`aa8be940` 把守卫换成 `steps.test.outcome == 'failure'` 之后，GitHub 对不含 status check 函数的 `if` 仍套默认 `success()`，于是留痕两步恰好在 `Test` 变红那一刻被跳过。两次真实红（run 35715564947、35800643887）都是同一签名 —— step 16 `Test` failure、step 17/18 skipped、artifact 为空 —— 而后者当时被读成了「守卫生效的证据」。现在的守卫是 `failure() && steps.test.outcome == 'failure'`：前半截是入场券，后半截才是判据，所以 lint 失败、`Test` 被 skip 时仍然不会产出假记录。四处仍是 fixture-only：守卫真会触发、artifact 的上传与下载、真实 `FAIL` 行进榜单、跨 run 计数。闭环判据是现成的 —— 下一次 `Test` 自然红之后按上条命令跑一遍，`pnpm run ci:flakes` 能列出那个测试即算验通。恒假的守卫不会让 job 变红，所以它由 `scripts/ci-topology.test.mjs` 的 status-function 规则钉住，不再等下一次红。
-- `ci.yml` 的 PR 运行与手动触发运行共享一个 `concurrency` 组（`${{ github.workflow }}-${{ github.head_ref || github.ref_name }}`，即 workflow 名加分支），但 `cancel-in-progress` 只能取消仍在飞行的那一次：先启动的运行如果已经结束，后启动的那次仍会完整跑一遍，两次运行不会被合并成一次。`workflow_dispatch` 只用于人工重跑：版本 PR 由 `GITHUB_TOKEN` 创建，它的 `pull_request` 运行要等有人点「批准并运行」（2026-09-23 那次等了 5 分 22 秒），批准后同一 run id 以 `run_attempt=2` 起跑——所以版本 PR 上的 attempt 大于 1 是批准痕迹，不是 flake 重试；从未批准的运行停在 `attempt=1` 且 `jobs.total_count == 0`，历史挂起见下节。原生应用所需的系统前置条件以当前 workflow 和工具配置为准。
+- 留痕的守卫必须是 `failure() && steps.test.outcome == 'failure'`：GitHub 对不含 status check 函数的 `if` 仍套默认 `success()`，只写 `steps.test.outcome == 'failure'` 会让留痕两步恰好在 `Test` 变红那一刻被跳过，产出「检察看起来正常、artifact 却是空」的假记录。前半截是入场券，后半截才是判据，所以 lint 失败或 `Test` 被 skip 时也不会产出假记录。恒假的守卫不会让 job 变红，所以它由 `scripts/ci-topology.test.mjs` 的 status-function 规则钉住，不再等下一次红。四处仍是 fixture-only：守卫真会触发、artifact 的上传与下载、真实 `FAIL` 行进榜单、跨 run 计数；闭环判据是现成的，下一次 `Test` 自然红之后按上条命令跑一遍，`pnpm run ci:flakes` 能列出那个测试即算验通。
+- `ci.yml` 的 PR 运行与手动触发运行共享一个 `concurrency` 组（`${{ github.workflow }}-${{ github.head_ref || github.ref_name }}`，即 workflow 名加分支），但 `cancel-in-progress` 只能取消仍在飞行的那一次：先启动的运行如果已经结束，后启动的那次仍会完整跑一遍，两次运行不会被合并成一次。`workflow_dispatch` 只用于人工重跑：版本 PR 由 `GITHUB_TOKEN` 创建，它的 `pull_request` 运行要等有人点「批准并运行」，批准后同一 run id 以 `run_attempt=2` 起跑，所以版本 PR 上的 attempt 大于 1 是批准痕迹，不是 flake 重试；从未批准的运行停在 `attempt=1` 且 `jobs.total_count == 0`，处理办法见下节。原生应用所需的系统前置条件以当前 workflow 和工具配置为准。
 - 包专属的版本同步由 `release-version` 对应脚本负责；默认更新与 `--check` 验证的语义以该脚本为准。版本 workflow 不直接发布包或安装程序。
 - `npm-publish.yml` 仅发布公共 npm 包。发布成功后，一个独立的最小权限作业为每个包版本创建幂等的 GitHub Release 和标签，附带 npm 和包 changelog 的链接。它不使用私有原生应用的工具链或长期 npm token。
 - 私有原生应用的验证保持路径触发而非全局必需检查，不相关的 PR 无需等待原生运行环境；`main` 分支保护只要求 `check` 上下文通过，产品变更必须经 pull request 合入。
@@ -140,11 +156,7 @@ turbo 本地缓存由 `.mise.toml` 的 `TURBO_CACHE_DIR` 指向 worktree 族共�
 
 合并门控来自 `main` 的规则集 `main protection`：要求 `check` 上下文，且 `strict_required_status_checks_policy` 为真；正常情形下这个上下文由版本 PR 自己那次 `ci.yml` 运行产出。
 
-`changeset-version.yml` 曾额外 dispatch `ci.yml`（`has-changesets` 为真时）与 `wails-verify.yml`（`has-wails-release` 为真时），要防的是 GitHub 的 `action_required`：由 `GITHUB_TOKEN` 创建的版本 PR，其 `pull_request` 运行可能被判定为待批准而不执行。这条防护自身的记录很薄，但计数得说清规则：截至 2026-09-21 保留的 788 次运行历史（最早 2026-07-05）里，版本分支上 46 次 `pull_request` CI 运行有 5 次从未执行过任何 job（`runs/<id>/jobs` 的 `total_count` 为 0、`run_started_at` 等于 `created_at`），分属 4 个版本 PR——3 次至今仍标 `action_required`（08-25 一次、09-07 两次），2 次在创建后约 30 天才收敛为 `failure`（08-01 与 08-07 各一次，挂起过期的形态）。其中几个 head SHA（`92e8a2ab`、`13090291`）已被版本分支后续的 force-push 脱链，`git cat-file` 查不到，只能按 run number 在 Actions 里看。只有 08-25 与 09-07 那 3 次落在 dispatch 上线（`1253ff15`，2026-08-07T05:16Z；当时文件还叫 `version.yml`）之后。这 3 次里 2 次的 dispatch 自身就是 failure；唯一成功的那次（run 305）确实给当时还挂着的 PR head 变出了规则集要求的 `check` 绿 —— 严格说那一刻合并门控已经满足，只是这份绿只活了约 10 秒：`check` 在 `2026-09-07T23:08:39Z` 判成功（用 job 的 `completed_at`；本例 run 自己的 `updated_at` 晚了 1 秒），新 commit `7b0f9361` 就在 `23:08:49Z` 提交（挂起开始后 4 分钟），PR 最终是靠它自己的 PR 运行合入的。另两次挂起早于 dispatch 上线，谈不上覆盖面。2026-09-07 之后再创建的 6 个版本 PR 未出现挂起。
-
-重复则是确定的：并发组没有把两次运行合并成一次，胜负取决于 PR 运行真正开跑（`run_started_at`）时 dispatch 是否还在飞行。25 次 dispatch 运行里 2 次是人工重跑（`b3068ab6` 上的 run 180、181；判据是同一 commit 上已有过一次自动 dispatch，不能改用 `triggering_actor`——挂起配对的 run 297 那个字段也显示人工，但它与挂起的 PR run 298 只差 2 秒、且是该 commit 上唯一一次 dispatch），其余 23 次自动 dispatch 中：6 次因仍在飞行中被随后的 PR 运行取消（该分支上 CI 的 PR 运行从未被取消），3 次对应上面那 3 个挂起的 PR 运行，剩下 14 个版本 PR commit 上 dispatch 已经在 PR 运行启动前 17 到 1671 秒结束（其中 13 次在 17–660 秒），同一份 CI 完整执行了两遍（12 次双方都成功，1 次双方都失败，1 次 dispatch 失败、PR 运行成功）。这 14 个间隔是 PR 运行的 `run_started_at` 减去 dispatch 的 `updated_at`。重算配方：`gh api --paginate 'repos/<owner>/<repo>/actions/runs?branch=changeset-release/main&event=workflow_dispatch'` 与 `event=pull_request` 各拉一次，本地只留 `.name == "CI"` 的项，得到 25 与 46；`name=` 查询参数会被 GitHub 静默忽略（`name=CI` 和 `name=NoSuchWorkflowAtAll` 返回同一个 `total_count`），不能用来过滤；`total_count` 自身在同一条查询上也可能瞬时给出不同值，一切以 paginate 之后的本地计数为准，且要先按 `.id` 去重——新运行插到队首会把已有行推到更大的 offset，同一运行可能在两页各出现一次，因此未去重的计数只会偏大，去重即可消除。以上计数同为 2026-09-21 时点，版本分支还会继续长。
-
-现在只保留 PR 事件这一条路径，挂起回归为人工一步：在 Actions 运行页批准该次运行，或执行 `gh api repos/<owner>/<repo>/actions/runs/<id>/approve`。若挂起重新成为常态，正确的修法不是补回 dispatch（它只是把同一轮验证再跑一遍，被挂起的 PR 运行仍留着等人批准），而是让版本 PR 由具有写权限的身份创建：给 `changesets/action` 换用机器用户 PAT 或 GitHub App 令牌，使 PR 作者本身即是被批准的贡献者。那条已删除的条件 dispatch 同样不解决问题：`has-wails-release` 当时为真就意味着版本 PR 必然改到 `apps/interweave/package.json`，而这个路径至今仍在 `wails-verify.yml` 的 `pull_request` 过滤器里，补回它也不会多出一次有效验证。历史上它一共只在 4 个版本 PR commit 上触发过，其中 3 个 commit 的 `pull_request` 运行本来就在跑，dispatch 只是把同一次验证又做了一遍；唯一没有 PR 运行的那次（7be57d84）不是路径没覆盖——当时过滤器写作 `apps/wails-starter/**`（`b9faa2c2` 才改名），而该 commit 改的正是这个目录，且同一 commit 的 `ci.yml` PR 运行照常到达，只有 `wails-verify.yml` 没有 `pull_request` 运行：该 SHA 上它总共只有一次运行，就是这次删掉的 dispatch 本身（run 19，完整跑完并成功）。也不是挂起待批准——挂起的运行对象仍在，只是 job 数为 0，而这里根本没有产生过那条运行。除此之外原因未能确定。那一次 dispatch 因而是该 commit 上唯一的 `wails-verify` 验证，但那个 commit 本身就是一次探针（它消费的 changeset 写着 `trigger version-pr rerun to verify concurrency dedup`，包名还是改名前的 `@greypan/wails-starter`），不能拿来为现行条件下的取舍背书。
+`action_required` 挂起（判据见上文的「等审批」）是 GitHub 对 `GITHUB_TOKEN` 创建的版本 PR 的既有行为。仓库曾用条件 dispatch 缓解它，该机制已删除：dispatch 只是把同一轮验证再跑一遍，被挂起的 PR 运行仍留着等人批准，所以它治不了挂起本身。现在挂起回归为人工一步，在 Actions 运行页批准该次运行，或执行 `gh api repos/<owner>/<repo>/actions/runs/<id>/approve`。若挂起重新成为常态，修法是让版本 PR 由具有写权限的身份创建，也就是给 `changesets/action` 换用机器用户 PAT 或 GitHub App 令牌，使 PR 作者本身即是被批准的贡献者，而不是补回那条 dispatch。
 
 ## Release context
 

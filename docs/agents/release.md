@@ -17,7 +17,7 @@ release 是发布场景下的操作程序，不是独立的 task 类型。**流�
 
 ## 步骤
 
-1. 确认这条 task 的 gate 已满足（T0 与记了 review 的 T1 是 `approved`，未记 review 的 T1 是 `frozen` 加一条通过的验证），记录 task id、base SHA、diff hash 和 changeset。
+1. 确认这条 task 的 gate 已满足（T0 与 T1 都是 `approved`），记录 task id、base SHA、diff hash 和 changeset。
 2. 确认本 PR 会带入的 changesets 里，changesets 会读的**每一个**声明（`.changeset` 顶层与 `pre/` 下的非点 `.md`；`README.md`、`AGENTS.md`、`CLAUDE.md`、`GEMINI.md` 不参与发布，也不算声明——排除按 changesets 忽略表的原样大小写，只有 `README.md` 不区分大小写，所以 `.changeset/claude.md` 是一份真声明）都是 `changeset-required` 认可的形态（以成对 `---` 开头、分隔线前没有散落内容；frontmatter 里声明了包的还必须带正文），而不是「整批里至少有一个」——`changeset-required` 逐个核对，任何一条畸形或空描述的 changeset 都会拦住提交。
 3. 运行影响范围内测试、构建、契约和必要的浏览器验证，记录到 task state。
 4. 创建 PR（base = `main`），等待 CI 和用户 approval。合并本身要用户明确授权。跨包集成正确性由 CI 与 `main` 分支验证兜底（task 体系不再有 post-merge gate）。

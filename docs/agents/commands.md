@@ -21,20 +21,10 @@
 | `ci`      | CI 与仓库自检 | 改动后先让流水线变红或让自检失真：context 校验、脚本测试、CI 成本台账  |
 | `dev`     | 本地开发      | 改动后先影响开发者起服务                                               |
 
-`agent:*` 与 `ci:*` 的分界最容易含糊：一条命令被 CI 跑，不代表它归 `ci`。下面两个例子看似用了两套说法，其实是同一条规则问了两次，先问「谁先失效」定归属，再按归属决定要不要加前缀。
+`agent:*` 与 `ci:*` 的分界最容易含糊：一条命令被 CI 跑，不代表它归 `ci`。判定顺序是先问「谁先失效」定归属，再按归属决定要不要加前缀。
 
 - `fix-code`：先失效的是 agent 自己的流程（它被 task `freeze` 归一化调用），归属是 `agent`，所以有 `agent:` 的邻居却不带 `ci:` 前缀。
 - `check-code`：先受影响的既不是 agent 也不是 CI，而是本地任何一条改动路径，归属中立，于是连 namespace 都不进，归入无前缀的基础命令。
-
-所以「属于 agent 工作流」和「无 namespace 的基础命令」不是两类归属，只是同一次判定给出的两个结果，`agent` 和无前缀。
-
-### 为什么需要这条约定
-
-重命名的动机是让命令名直接读出受众。旧的 `check:xxx`、`fix:xxx`、`test:xxx`、`validate:xxx` 只说明它是个动作，不说明它属于谁、什么时候该用。冒号还一度被两种无关含义同时占用，动作和宾语之间也用冒号，所以 `ci:test-scripts` 里的冒号是 namespace，`ci:validate-context` 之后那个连字符才是动作与宾语的边界。定稿后的效果：
-
-- 前缀读出来就是受众，agent 不必先查文档才知道一条命令是不是自己的工具。
-- 冒号只剩一种含义，`-` 只出现在 namespace 之后，形状可以正则化。
-- 形状可以机检，于是有了下面两条守卫，名字改错会在提交前失败，不会等到别人的 agent 会话里报 `command not found`。
 
 ### 机检
 
@@ -53,7 +43,7 @@
 
 | 命令                     | 用途                                                                                       | 引用位置                                                                                                                           |
 | ------------------------ | ------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------- |
-| `agent:task`             | task 生命周期：new/assign/start/freeze/review/approve/verify/done/drop/status/issue/guard  | 根 `AGENTS.md`、`workflow.md`、`commit.md`、`release.md`、`task-packet.md`、`worktrees.md`、`linting.md`、`.vite-hooks/pre-commit` |
+| `agent:task`             | task 生命周期：new/assign/start/freeze/review/approve/verify/done/drop/status/issue/guard  | 根 `AGENTS.md`、`workflow.md`、`build.md`、`commit.md`、`release.md`、`linting.md`、`.vite-hooks/pre-commit`                       |
 | `agent:find-usages`      | 按路径推导受影响 workspace、最小 context 与最小充分验证                                    | 根 `AGENTS.md`、`context.md`、`build.md`、`test-execution.md`、`workflow.md`、两个包级 `AGENTS.md`、`contract-change-review` skill |
 | `agent:inspect-contract` | 输出可发布 package 的 exports、直接消费者与最小验证                                        | 根 `AGENTS.md`、`context.md`、`build.md`、`workflow.md`、`packages/web-ui/AGENTS.md`、`contract-change-review` skill               |
 | `agent:diff-contract`    | 输出 manifest-level semver 审阅候选（`--base <git-ref>`）                                  | 根 `AGENTS.md`、`context.md`、`build.md`、`workflow.md`、`contract-change-review` skill                                            |
@@ -76,21 +66,21 @@
 
 ### 基础命令（无 namespace）
 
-| 命令               | 用途                                                                                        | 引用位置                                                                                                                          |
-| ------------------ | ------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
-| `build` / `test`   | 经 Turbo 编排全仓构建与测试                                                                 | 根 `AGENTS.md`、`build.md`、全部 workflow                                                                                         |
-| `check-code`       | 聚合 `check-cspell` + `vp check` + `check-go` + `check-stylelint`                           | `linting.md`、`build.md`、`commit.md`、`worktrees.md`、`context.md`、`workflow.md`、`ARCHITECTURE.md`、`.github/workflows/ci.yml` |
-| `fix-code`         | 上述聚合的一键修复（`vp check --fix` + `fix-go` + `fix-stylelint`）                         | `linting.md`、`build.md`、`worktrees.md`、`workflow.md`、task `freeze` 归一化                                                     |
-| `check-cspell`     | 拼写检查                                                                                    | `linting.md`、`workflow.md`、`context.md`                                                                                         |
-| `check-go`         | `gofmt -l` 断言 + 逐 `go.mod` 跑 `go vet`                                                   | `linting.md`                                                                                                                      |
-| `check-stylelint`  | CSS lint                                                                                    | `linting.md`                                                                                                                      |
-| `fix-go`           | `gofmt -w` + 同一批 `go vet`                                                                | `linting.md`                                                                                                                      |
-| `fix-stylelint`    | stylelint 自动修复                                                                          | `linting.md`                                                                                                                      |
-| `check-pack`       | 用 `pnpm pack --dry-run` 验证发布文件与 export targets                                      | `build.md`、`context.md`、`contract-change-review` skill、`.github/workflows/ci.yml`                                              |
-| `release-version`  | 版本同步（Changesets 版本 PR 与包版本同步）                                                 | `build.md`、`linting.md`、`workflow.md`、`.github/workflows/changeset-version.yml`                                                |
-| `publish-new-pack` | 首次发布新包                                                                                | `build.md`                                                                                                                        |
-| `clean`            | 默认全量清理：构建产物、`node_modules`、缓存（含共享 turbo cache）；`--locks` 为显式 opt-in | `build.md`                                                                                                                        |
-| `commit`           | `git-cz` 交互式提交                                                                         | `commit.md`                                                                                                                       |
-| `prepare`          | `vp config`，设置 hooks 路径                                                                | 由 `pnpm install` 自动触发                                                                                                        |
+| 命令               | 用途                                                                                        | 引用位置                                                                                                          |
+| ------------------ | ------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------- |
+| `build` / `test`   | 经 Turbo 编排全仓构建与测试                                                                 | 根 `AGENTS.md`、`build.md`、全部 workflow                                                                         |
+| `check-code`       | 全仓代码质量检查（聚合项见 [`linting.md`](linting.md)）                                     | `linting.md`、`build.md`、`commit.md`、`context.md`、`workflow.md`、`ARCHITECTURE.md`、`.github/workflows/ci.yml` |
+| `fix-code`         | 上述检查的一键修复（聚合项见 [`linting.md`](linting.md)）                                   | `linting.md`、`build.md`、`workflow.md`、task `freeze` 归一化                                                     |
+| `check-cspell`     | 拼写检查                                                                                    | `linting.md`、`workflow.md`、`context.md`                                                                         |
+| `check-go`         | `gofmt -l` 断言 + 逐 `go.mod` 跑 `go vet`                                                   | `linting.md`                                                                                                      |
+| `check-stylelint`  | CSS lint                                                                                    | `linting.md`                                                                                                      |
+| `fix-go`           | `gofmt -w` + 同一批 `go vet`                                                                | `linting.md`                                                                                                      |
+| `fix-stylelint`    | stylelint 自动修复                                                                          | `linting.md`                                                                                                      |
+| `check-pack`       | 用 `pnpm pack --dry-run` 验证发布文件与 export targets                                      | `build.md`、`context.md`、`contract-change-review` skill、`.github/workflows/ci.yml`                              |
+| `release-version`  | 版本同步（Changesets 版本 PR 与包版本同步）                                                 | `build.md`、`linting.md`、`workflow.md`、`.github/workflows/changeset-version.yml`                                |
+| `publish-new-pack` | 首次发布新包                                                                                | `build.md`                                                                                                        |
+| `clean`            | 默认全量清理：构建产物、`node_modules`、缓存（含共享 turbo cache）；`--locks` 为显式 opt-in | `build.md`                                                                                                        |
+| `commit`           | `git-cz` 交互式提交                                                                         | `commit.md`                                                                                                       |
+| `prepare`          | `vp config`，设置 hooks 路径                                                                | 由 `pnpm install` 自动触发                                                                                        |
 
-`dev:react-web-ui-demo`、`dev:vue-web-ui-demo`、`dev:interweave` 三条归入 `dev` namespace，作用面见 [`build.md`](build.md)「Demo 开发」。`check-code` 和 `fix-code` 的聚合项以 [`linting.md`](linting.md) 为准，`check-pack` 和生成物生命周期以 [`build.md`](build.md) 为准；本表只索引命令名与引用位置。
+`dev:react-web-ui-demo`、`dev:vue-web-ui-demo`、`dev:interweave` 三条归入 `dev` namespace，作用面见 [`build.md`](build.md)「Demo 开发」。`check-pack` 与生成物生命周期以 [`build.md`](build.md) 为准；本表只索引命令名与引用位置。

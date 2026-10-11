@@ -2,17 +2,15 @@
 
 本指南定义仓库如何为 agent 提供 context。它用于 instruction system、仓库拓扑、领域术语和架构 context 维护；普通 coding task 只按根入口加载命中的 task-specific 文档。
 
-**快速入口**：全局拓扑先看 [`ARCHITECTURE.md`](../../ARCHITECTURE.md)；协作流程先看 [`AGENTS.md`](../../AGENTS.md)，流程权威见 [`workflow.md`](./workflow.md)。本指南是 context system 的维护规范，不是所有任务的必读手册。
-
 ## Context 层级
 
-| 层级               | 权威来源                                                         | 何时加载                               | 内容边界                                       |
-| ------------------ | ---------------------------------------------------------------- | -------------------------------------- | ---------------------------------------------- |
-| Always available   | 根 `AGENTS.md`                                                   | 每次任务                               | 项目身份、不可绕过边界、任务路由               |
-| Repository map     | 根 `ARCHITECTURE.md`                                             | 需要全局拓扑、workspace 定位或热点概览 | 稳定目录地图、包角色与边界、依赖草图、影响热点 |
-| Project context    | `CONTEXT.md`                                                     | 架构、跨包、术语、长期设计             | 工程原则、领域词汇、ADR 索引                   |
-| Task-specific      | `docs/agents/*.md`、`.agents/rules/*.md`、最近的包级 `AGENTS.md` | 任务命中对应领域                       | 可执行流程、质量门槛、局部约束                 |
-| On-demand evidence | ADR、README、manifest、配置、源码、测试                          | 已确认受影响区域后                     | 历史取舍、公共契约、当前实现                   |
+| 层级               | 权威来源                                                         | 何时加载                      | 内容边界                             |
+| ------------------ | ---------------------------------------------------------------- | ----------------------------- | ------------------------------------ |
+| Always available   | 根 `AGENTS.md`                                                   | 每次任务                      | 项目身份、不可绕过边界、任务路由     |
+| Repository map     | 根 `ARCHITECTURE.md`                                             | 需要全局拓扑或 workspace 定位 | 稳定目录地图、包角色与边界、依赖草图 |
+| Project context    | `CONTEXT.md`                                                     | 架构、跨包、术语、长期设计    | 工程原则、领域词汇、ADR 索引         |
+| Task-specific      | `docs/agents/*.md`、`.agents/rules/*.md`、最近的包级 `AGENTS.md` | 任务命中对应领域              | 可执行流程、质量门槛、局部约束       |
+| On-demand evidence | ADR、README、manifest、配置、源码、测试                          | 已确认受影响区域后            | 历史取舍、公共契约、当前实现         |
 
 不要为「可能有用」批量加载文档。规则只保留无法由代码、类型、测试或工具配置可靠推导的约束；可自动验证的约束优先交给相应工具。
 
@@ -40,10 +38,7 @@
 - `scripts/repo-query.mjs` 是面向 Agent 的按需查询接口：`pnpm agent:find-usages -- <paths...>` 一次输出受影响 workspace、最小读取 context、传递依赖、所需证据和最小充分验证建议；`pnpm agent:inspect-contract -- <published-package>` 输出当前 exports、直接消费者和最小验证；`pnpm agent:diff-contract -- --base <git-ref>` 输出 manifest-level semver 审阅候选。`agent:find-usages` 支持 `--base <git-ref>`、`--staged` 与 `--worktree` 从 Git 变更集读取路径。它从 `pnpm-workspace.yaml` 的 `packages` patterns、当前 manifest 和路径规则派生结论，不把影响面复制成静态文档。
 - `scripts/check-pack.mjs` 在构建后校验发布 package 的 `files` 与 `exports` 目标可从 `pnpm pack --dry-run` 产物解析；它是发布产物边界的可执行证据，不替代 API 语义或 semver 评审。
 - `.claude/settings.local.json` 不得显式放行根 `AGENTS.md` 禁止的共享 worktree Git 改写操作（`stash`、`switch`、`checkout`、`reset`、`clean`）；`validate-context` 负责检测这一类显式权限冲突。
-
-## 评测与审计
-
-- `audit:instructions` 与其预算基线（`instruction-budget.json`、`tool-enforced-rules.json`）已删除（ADR-0014）：约束密度与重复在 diff review 中人工把关。`<!-- invariant:... -->` 锚点保留为惰性注释，供人工检索，没有机器校验。
+- instruction 约束密度与重复没有机器基线：`audit:instructions` 与预算文件（`instruction-budget.json`、`tool-enforced-rules.json`）随 ADR-0014 退役，改由 diff review 人工把关。`<!-- invariant:... -->` 锚点是惰性注释，只供人工检索。
 
 ## 最小 context 组合
 
@@ -89,6 +84,8 @@
 ## 维护 instruction system
 
 新增 instruction、rule、skill 或 profile 前，先证明现有源码设计、类型、测试、lint 或脚本无法表达该约束。新增内容必须说明：何时加载、哪个事实是权威、违反后有什么工程风险。不能回答时，不新增文档或规则。
+
+落笔只写特殊设定、复杂机制和多处关联的事实；能从工具链、配置或行业惯例一眼看出的内容不写。
 
 ### Context Engineering 与 Token 治理准则
 

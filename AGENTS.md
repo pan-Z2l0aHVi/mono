@@ -1,62 +1,40 @@
 # Mono Agent Entry
 
-本文件是所有 agent 的轻量入口，提供项目身份、不可绕过的边界和任务路由。实现以当前源码、`package.json`、配置和测试为准。文档只解释意图，不能替代验证。
-
-## 先确定所需 context
-
-- 全局拓扑和快速定位：[`ARCHITECTURE.md`](ARCHITECTURE.md)。
-- 贡献者指南：[`CONTRIBUTING.md`](CONTRIBUTING.md)。
+本文件是所有 agent 的入口，说明项目身份、不可绕过的边界和任务路由。实现以源码、`package.json`、配置和测试为准；文档只解释意图，替代不了验证。
 
 ## Mutation Gate
 
-<!-- invariant:task-state-trigger -->
-
-所有实施变更**在第一次文件变更前必须读取 [`docs/agents/workflow.md`](docs/agents/workflow.md)，并按级别建 task：`pnpm agent:task new --task <task-id> --level t0|t1|t2`**。级别 T0/T1/T2（T0 最严格）只表达 workflow 严格程度；判定判据、每级的 review/approval 要求与预授权操作清单，以 workflow.md 为权威，本节不复制。
-
-级别判定不靠感觉：`pnpm agent:find-usages -- <paths>` 输出的受影响 workspace 只有一个时，T2 的「单 workspace」条件成立。只读调查不需要 task，一旦转为实施就回到这个 gate。task state 落 `$TMPDIR/greypan/tasks/<task-id>.json`，是**本地工作记忆，可丢失**：不跨重启存续，恢复规则限定在本机本用户的会话续作；换机换用户从 commit 历史重建，state 在 task 进行中被清则用同一个 task-id 重新 `agent:task new`（三个后果见 [`ADR-0018`](docs/adr/0018-task-state-in-tmpdir.md) 与 `workflow.md`「失败和恢复」）。持久审计由 commit message、changeset 与 git 历史承担。冻结 diff、review 与 approval 的判据以 `pnpm agent:task status` 的 `live` 为准。
-
-1. 先查看工作区状态、目标文件和最近的 `AGENTS.md`；只有进入某个 `apps/` 或 `packages/` 时才加载其包级指令。
-2. 只按任务加载命中的 rule、guide 和包级指令；不要为普通局部任务预读 `CONTEXT.md`、ADR 或无关领域指南。
-3. 需要全局拓扑时先阅读 [`ARCHITECTURE.md`](ARCHITECTURE.md)；只有架构、跨包、仓库拓扑、术语、长期设计或 instruction system 维护时，才继续阅读 [`CONTEXT.md`](CONTEXT.md)、[`docs/agents/context.md`](docs/agents/context.md) 和相关 ADR。
+改动任何文件前，先读 [`docs/agents/workflow.md`](docs/agents/workflow.md)，再按变更级别建 task：`pnpm agent:task new --task <task-id> --level t0|t1|t2`。级别怎么判、要哪些 review 和 approval，都写在那份文件里。只做只读调查不用建 task。
 
 ## 项目身份
 
-这是一个 pnpm + Turborepo monorepo：发布 `@greypan/*` 工具包和 Lit Web Components（`@greypan/web-ui`），并维护 React、Vue 与私有集成应用作为真实集成表面；仓库拓扑与包边界见 [`ARCHITECTURE.md`](ARCHITECTURE.md)，工程原则、领域术语与 ADR 索引见 [`CONTEXT.md`](CONTEXT.md)。
-
-Task 级别、状态机、冻结 diff、review、approval 和验证证据见 [`docs/agents/workflow.md`](docs/agents/workflow.md)。任务主合同见 [`docs/agents/task-packet.md`](docs/agents/task-packet.md)。需求拆分与 task 派发的归属见 [`ADR-0021`](docs/adr/0021-orchestration-layer-moved-to-herdr-projects.md)。
-
-并行实施仍要遵守 worktree 和 owner 边界。编排层为每条 task 分配独立的 branch、worktree 和 owner，一个可变 task 只能有一个实施 worktree 和 owner；仓库侧的责任是守住这个唯一性，不去改动或复用别人 task 的 worktree。需求怎么拆成多个 task、并行度多大、谁分到哪条 task，由编排层决定；task 之间靠 [`docs/agents/task-packet.md`](docs/agents/task-packet.md) 的主合同传递契约，仓库不要求 agent 自己拆分。
+这是一个 pnpm + Turborepo monorepo：发布 `@greypan/*` 工具包和 Lit Web Components（`@greypan/web-ui`），并维护 React、Vue 与私有集成应用作为真实集成表面。
 
 ## 不可绕过的仓库边界
 
 - 不得改写 `.npmrc` 或 `.mise.toml` 的 registry/mirror，或任何 Git 配置。
-- 不手动编辑生成文件：`**/routeTree.gen.ts`、`**/typed-router.d.ts`、`**/auto-imports.d.ts`、`apps/*/frontend/bindings/**`、`**/__screenshots__/`、`**/.vitest-attachments/`。当源码或配置变更要求更新受版本控制的代码生成物时，必须运行其所属 generator，并核对生成 diff 与消费者；不得复制、伪造或手改输出。精确入口见 [`docs/agents/build.md`](docs/agents/build.md)。
-- `**/__screenshots__/` 和 `**/.vitest-attachments/` 是测试证据，不是常规源码产物；除非任务明确要求更新已验证的视觉基线，否则不创建、编辑或提交它们。
-- `AGENTS.md`（含包级）、`docs/adr/`、`docs/agents/`、`.agents/rules/`、根 `skills/` 下仓库自撰写 skill 的文档使用中文；自撰与第三方的判定以 `skills-lock.json` 为准，未登记的即自撰。第三方引入的 skill（根 `skills/` 下的依赖镜像与 `.agents/skills-vendored/` 下的 vendor）必须保持上游原文的语言与内容，更新时不得翻译或本地改写；其通用流程若与仓库规则、task guide 或实现事实冲突，以后者为准。技术术语、命令、路径和包名保留英文。
-- 工具链用 `mise install` 安装，版本由 `.mise.toml` 钉住；包级依赖的版本见 `package.json` 与目标包 manifest。
-- 编排层为每个并行 task 分配独立的 branch 和 worktree。不得在共享工作区执行 `git switch`、`git checkout`、`git stash`、`git reset` 或 `git clean`。worktree 的路径与创建方式由编排层决定，仓库不规定。
-- worktree 布局见 [`docs/agents/worktrees.md`](docs/agents/worktrees.md)。
-- 预授权操作（本地测试与校验命令、包级构建、`agent:find-usages` / `agent:inspect-contract` / `agent:diff-contract` 等只读查询、在目标 worktree 内读文件）直接执行，不必逐步请示；需要逐次授权的是 commit/push/merge/publish、依赖与 lockfile、`.npmrc` / `.mise.toml` / Git 配置、凭证读写和破坏性 git 操作。清单见 [`docs/agents/workflow.md`](docs/agents/workflow.md) 的「预授权操作」。
+- 不手动编辑生成文件：`**/routeTree.gen.ts`、`**/typed-router.d.ts`、`**/auto-imports.d.ts`、`apps/*/frontend/bindings/**`、`**/__screenshots__/`、`**/.vitest-attachments/`。要更新受版本控制的生成物就运行它的 generator，不要复制、伪造或手改。入口见 [`docs/agents/build.md`](docs/agents/build.md)。
+- `**/__screenshots__/` 与 `**/.vitest-attachments/` 是测试证据，不是源码产物。除非任务明确要求更新已验证的视觉基线，否则不创建、不编辑、不提交。
+- `AGENTS.md`（含包级）、`docs/adr/`、`docs/agents/`、`.agents/rules/` 和仓库自撰 skill 的文档用中文。`skills-lock.json` 登记的第三方 skill 与 `.agents/skills-vendored/` 保持上游原文，和仓库规则冲突时以仓库规则为准。技术术语、命令、路径和包名保留英文。
+- 一个可变 task 只有一个实施 worktree 和 owner，由外部编排层分配。不在共享工作区执行 `git switch`、`git checkout`、`git stash`、`git reset` 或 `git clean`。
+- 预授权操作与需逐次授权的操作见 [`docs/agents/workflow.md`](docs/agents/workflow.md) 的「预授权操作」。
 
 ## 按任务加载
 
-| 任务或变更                                        | 先读                                                                                                                                                                                                                                |
-| ------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| TypeScript、CSS 或一般源码                        | [`.agents/rules/code-style.md`](.agents/rules/code-style.md)                                                                                                                                                                        |
-| 公共 API、exports、事件、类型适配或跨包运行时契约 | [`.agents/skills/contract-change-review/SKILL.md`](.agents/skills/contract-change-review/SKILL.md)、[`.agents/rules/testing.md`](.agents/rules/testing.md) 和 [`docs/agents/build.md`](docs/agents/build.md)                        |
-| npm dependency / workspace catalog                | [`docs/agents/dependencies.md`](docs/agents/dependencies.md)                                                                                                                                                                        |
-| 测试、公共行为、导出或构建产物                    | [`.agents/rules/testing.md`](.agents/rules/testing.md)、[`docs/agents/test-execution.md`](docs/agents/test-execution.md)（环境、命令与验证选择）和 [`docs/agents/test-authoring.md`](docs/agents/test-authoring.md)（用例编写策略） |
-| UI、UX、交互或浏览器运行时                        | [`docs/agents/browser-verification.md`](docs/agents/browser-verification.md)；`web-ui` 任务再读 [`docs/agents/web-ui.md`](docs/agents/web-ui.md)                                                                                    |
-| 构建脚本、Vite/Turbo、包图、外部化、CI 或发布     | [`docs/agents/build.md`](docs/agents/build.md)                                                                                                                                                                                      |
-| 格式化、lint、拼写或类型检查配置                  | [`docs/agents/linting.md`](docs/agents/linting.md)                                                                                                                                                                                  |
-| 新增或重命名根 `package.json` 命令                | [`docs/agents/commands.md`](docs/agents/commands.md)（命名形状、namespace 归属与全量索引）和 [`.agents/rules/commands.md`](.agents/rules/commands.md)（增删改名的补充约束）                                                         |
-| 变更影响或验证命令选择                            | [`docs/agents/context.md`](docs/agents/context.md)（仓库内查询工具 `agent:find-usages` / `agent:inspect-contract` / `agent:diff-contract` 的语义与参数）                                                                            |
-| 全局拓扑和快速导航                                | [`ARCHITECTURE.md`](ARCHITECTURE.md)；实现事实仍以源码、manifest、配置和测试为准                                                                                                                                                    |
-| 架构探索、术语或 ADR                              | [`CONTEXT.md`](CONTEXT.md) 和相关 ADR；context 分层与冲突处理见 [`docs/agents/context.md`](docs/agents/context.md)                                                                                                                  |
-| instruction system / context 维护                 | [`docs/agents/context.md`](docs/agents/context.md)、[`CONTEXT.md`](CONTEXT.md) 和 ADR-0004                                                                                                                                          |
-| 代码 review                                       | [`docs/agents/workflow.md`](docs/agents/workflow.md)「review 拓扑」                                                                                                                                                                 |
-| 全局替换 / 重命名 / API 迁移 / 文件迁移           | [`docs/agents/global-rename.md`](docs/agents/global-rename.md)                                                                                                                                                                      |
-| Git commit                                        | [`.agents/rules/commit.md`](.agents/rules/commit.md)、[`docs/agents/commit.md`](docs/agents/commit.md)（AI 协作署名）                                                                                                               |
-| 开发流程或 worktree 布局                          | [`docs/agents/workflow.md`](docs/agents/workflow.md) 和 [`docs/agents/task-packet.md`](docs/agents/task-packet.md)；需求拆分与 task 派发由编排层（herdr-projects）决定，仓库只保留 task 级门禁                                      |
-
-涉及 UI、UX、交互、响应式或浏览器运行时的改动，必须按 [`browser-verification.md`](docs/agents/browser-verification.md) 在真实浏览器验证；构建成功或 jsdom 测试不能替代该验证。实现不熟悉或跨浏览器语义不明确的 Web Platform API 时，使用 MDN MCP 验证语义和兼容性。
+| 任务或变更                                        | 先读                                                                                                                                                                                                         |
+| ------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| TypeScript、CSS 或一般源码                        | [`.agents/rules/code-style.md`](.agents/rules/code-style.md)                                                                                                                                                 |
+| 公共 API、exports、事件、类型适配或跨包运行时契约 | [`.agents/skills/contract-change-review/SKILL.md`](.agents/skills/contract-change-review/SKILL.md)、[`.agents/rules/testing.md`](.agents/rules/testing.md) 和 [`docs/agents/build.md`](docs/agents/build.md) |
+| npm dependency / workspace catalog                | [`docs/agents/dependencies.md`](docs/agents/dependencies.md)                                                                                                                                                 |
+| 测试、公共行为、导出或构建产物                    | [`.agents/rules/testing.md`](.agents/rules/testing.md)                                                                                                                                                       |
+| UI、UX、交互、响应式或浏览器运行时                | [`docs/agents/browser-verification.md`](docs/agents/browser-verification.md)；`web-ui` 任务再读 [`docs/agents/web-ui.md`](docs/agents/web-ui.md)                                                             |
+| 构建脚本、Vite/Turbo、包图、外部化、CI 或发布     | [`docs/agents/build.md`](docs/agents/build.md)                                                                                                                                                               |
+| 格式化、lint、拼写或类型检查配置                  | [`docs/agents/linting.md`](docs/agents/linting.md)                                                                                                                                                           |
+| 新增或重命名根 `package.json` 命令                | [`.agents/rules/commands.md`](.agents/rules/commands.md)                                                                                                                                                     |
+| 变更影响或验证命令选择                            | [`docs/agents/context.md`](docs/agents/context.md)（`agent:find-usages` / `agent:inspect-contract` / `agent:diff-contract` 的语义与参数）                                                                    |
+| 全局拓扑和快速导航                                | [`ARCHITECTURE.md`](ARCHITECTURE.md)                                                                                                                                                                         |
+| 架构探索、术语或 ADR                              | [`CONTEXT.md`](CONTEXT.md) 和相关 ADR；context 分层与冲突处理见 [`docs/agents/context.md`](docs/agents/context.md)                                                                                           |
+| instruction system / context 维护                 | [`docs/agents/context.md`](docs/agents/context.md)、[`CONTEXT.md`](CONTEXT.md) 和 ADR-0004                                                                                                                   |
+| 代码 review                                       | [`docs/agents/workflow.md`](docs/agents/workflow.md)「review 拓扑」                                                                                                                                          |
+| Git commit                                        | [`.agents/rules/commit.md`](.agents/rules/commit.md)                                                                                                                                                         |
+| 开发流程或 worktree 布局                          | [`docs/agents/workflow.md`](docs/agents/workflow.md) 和 [`docs/agents/build.md`](docs/agents/build.md)                                                                                                       |

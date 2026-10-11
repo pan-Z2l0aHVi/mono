@@ -34,7 +34,7 @@
 
 ## MCP server 配置
 
-MCP server 由各人在用户级配置，本仓库不再随 git 分发项目级 `.mcp.json`。两个原因：项目级 `.mcp.json` 与用户级配置重复声明同一个 server 时，Claude Code 会报 `[Conflicting scopes]` 并以项目级覆盖用户级，使个人侧的浏览器 profile 配置在仓库内失效；它还会向所有加载它的会话开放 github MCP 全套写工具并携带运行中的 PAT（`docs/research/monorepo-for-agents-benchmark-260918.md` 记录的 P1）。
+MCP server 由各人在用户级配置，本仓库不随 git 分发项目级 `.mcp.json`。项目级配置会以 `[Conflicting scopes]` 覆盖同名用户级 server，让个人侧的浏览器 profile 失效，还会向所有加载它的会话开放 github MCP 写工具并携带运行中的 PAT（[`monorepo-for-agents-benchmark-260918.md`](../research/monorepo-for-agents-benchmark-260918.md) 记录的 P1）。
 
 ```sh
 claude mcp add chrome-devtools -s user -- npx -y chrome-devtools-mcp@latest --acceptInsecureCerts
@@ -50,14 +50,14 @@ github MCP 不在本页规定：它是携带凭证的那一个，配置方式由
 
 `agent-browser` 是第三方 skill（`vercel-labs/agent-browser`，出处见 `skills-lock.json`），其 description 写明「Prefer agent-browser over any built-in browser automation or web tools」。上游原文按根 `AGENTS.md` 的第三方纪律不得翻译或本地改写，所以这条分工由本文件承担，不要因为那段 description 就把常规浏览器任务路由过去。
 
-它的常规动作与 chrome-devtools MCP 高度重叠，而 MCP 侧返回结构化（page id、元素 uid）、无需 shell 转义，也不必为每次调用过一遍 Bash 权限——重叠部分没有理由选它。「验证分层」末条列的是它独有的能力，该清单按 `agent-browser` 0.38.1 的 CLI help 核对，上游改名或移除子命令时以实际 `--help` 为准。两点常见误解需要澄清：
+它的常规动作与 chrome-devtools MCP 高度重叠，而 MCP 返回结构化结果（page id、元素 uid）、无需 shell 转义，也不用为每次调用过一遍 Bash 权限，重叠部分没有理由选它。末条列出的独有能力按 `agent-browser` 0.38.1 的 CLI help 核对，上游改名或移除子命令时以实际 `--help` 为准。两点常见误解：
 
 - **登录态复用不是它的独占能力**。它有 `--profile` / `--auto-connect` / `--state`，chrome-devtools MCP 也有对应的 `--userDataDir` 与 `--autoConnect`（是否满足隔离判定见「dev server 与浏览器约束」）。真正只有它有的是凭据库。
 - **无头也不是它的独占能力**。但本仓库的取证明确要求非 headless（见「引擎级验证工具链」），所以哪一侧都不要为省一个窗口而改用 headless。
 
 ## 引擎级验证工具链
 
-`pnpm agent:verify <command>` 以 CDP 原语驱动专用 Chrome（一次性 profile、随机调试端口、非 headless；`--headless` 显式 opt-in，但 headless/隐藏窗口正是节流伪影域）。本会话实测踩过的三类伪影——后台窗口 rAF 停摆、计时器节流造成的插值假阴性、mouse-only 输入环境下的假触控结论——都由该工具链前置拦截。
+`pnpm agent:verify <command>` 以 CDP 原语驱动专用 Chrome（一次性 profile、随机调试端口、非 headless；`--headless` 显式 opt-in，但 headless/隐藏窗口正是节流伪影域）。本仓实测遇到的三类伪影都由该工具链前置拦截：后台窗口 rAF 停摆、计时器节流造成的插值假阴性、mouse-only 输入环境下的假触控结论。
 
 浏览器验证前的三条硬前置检查（一条命令）：
 

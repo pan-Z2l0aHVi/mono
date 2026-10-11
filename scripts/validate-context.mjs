@@ -146,18 +146,11 @@ for (const directory of ['packages', 'apps']) {
   const absolute = path.join(root, directory)
   if (!fs.existsSync(absolute)) continue
 
-  // 「包级约束」区域：路由到该 workspace 的权威要么是它自己的 AGENTS.md，要么是 ARCHITECTURE.md「包级约束」表中的一行。
-  // 薄约束包（无独立 AGENTS.md 的 workspace）必须出现在该表中才能被 agent 定位，否则视为路由缺口。
+  // workspace 的局部约束必须有家：它自己的 AGENTS.md，或最近一个含 AGENTS.md 的祖先目录。
+  // 包级约束不再集中收进 ARCHITECTURE.md 的表，所以这里没有「表格豁免」退路——缺文件就是路由缺口。
   // 用递归而非直接子目录：嵌套 workspace（如 apps/interweave/frontend）同样必须可定位。
-  const constraintsArea = (() => {
-    const architecture = exists('ARCHITECTURE.md') ? read('ARCHITECTURE.md') : ''
-    const heading = /#{1,6}[ \t]+5\.[ \t]*包级约束/.exec(architecture)
-    return heading ? architecture.slice(heading.index) : ''
-  })()
-
-  // 嵌套 workspace 的约束可并回最近的有 AGENTS.md 的祖先（如 apps/interweave/frontend 并入 apps/interweave/AGENTS.md），
-  // 此时不强制它单列入约束表；只有最近含 AGENTS.md 的祖先存在才视为已可定位。
-  // 根目录 AGENTS.md 是全部 workspace 的公共入口，不能算「最近祖先」，否则所有包都会走此豁免、包级约束表校验被静默关闭。
+  // 嵌套 workspace 的约束可并回最近的有 AGENTS.md 的祖先（如 apps/interweave/frontend 并入 apps/interweave/AGENTS.md）。
+  // 根目录 AGENTS.md 是全部 workspace 的公共入口，不能算「最近祖先」，否则所有包都会走此豁免、这道校验被静默关闭。
   function coveredByAncestorAgents(workspaceRoot) {
     let parent = path.dirname(workspaceRoot)
     while (parent !== root && parent.startsWith(root)) {
@@ -176,19 +169,10 @@ for (const directory of ['packages', 'apps']) {
       const candidate = path.join(dir, entry.name)
       if (fs.existsSync(path.join(candidate, 'package.json'))) {
         const workspaceRoot = candidate
-        const hasOwnAgents = fs.existsSync(path.join(workspaceRoot, 'AGENTS.md'))
-        let tracked = hasOwnAgents || coveredByAncestorAgents(workspaceRoot)
-        if (!tracked) {
-          try {
-            const manifest = JSON.parse(fs.readFileSync(path.join(workspaceRoot, 'package.json'), 'utf8'))
-            if (manifest.name && constraintsArea.includes(`\`${manifest.name}\``)) tracked = true
-          } catch {
-            // 不可解析的 manifest 由下方 workspace manifest 校验统一报错，这里不重复。
-          }
-        }
+        const tracked = fs.existsSync(path.join(workspaceRoot, 'AGENTS.md')) || coveredByAncestorAgents(workspaceRoot)
         if (!tracked)
           addError(
-            `${relative(workspaceRoot)}: workspace without its own AGENTS.md must be tracked in ARCHITECTURE.md「包级约束」表 or have an AGENTS.md ancestor`
+            `${relative(workspaceRoot)}: workspace needs its own AGENTS.md, or an ancestor directory that has one`
           )
       }
       // 无论自身是否有 AGENTS.md，都必须递归进入子目录，才能覆盖嵌套 workspace（如 apps/interweave/frontend）。
