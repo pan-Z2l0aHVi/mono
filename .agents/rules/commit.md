@@ -1,6 +1,6 @@
 # Commit 约束
 
-提交格式、AI 署名和 changeset 的完整规则以 [`docs/agents/commit.md`](../../docs/agents/commit.md) 为权威，本文件只列提交边界上的硬约束。
+提交格式与 AI 署名的完整规则以 [`docs/agents/commit.md`](../../docs/agents/commit.md) 为权威，本文件只列提交边界上的硬约束。
 
 - 未经用户明确授权，不得提交；完成实施和验证后保持工作区变更可供用户 review。
 - 不得绕过 Git hooks 或签名检查，禁止清单见 [`docs/agents/commit.md`](../../docs/agents/commit.md)。
