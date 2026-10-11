@@ -1,11 +1,12 @@
-import { afterEach, describe, expect, it } from 'vite-plus/test'
-import { page, userEvent } from 'vite-plus/test/browser'
-
 import '..'
 import '../../theme'
 import '@/components/option'
 import '@/components/popover'
 import '@/components/textarea'
+
+import { afterEach, describe, expect, it } from 'vite-plus/test'
+import { page, userEvent } from 'vite-plus/test/browser'
+
 import type { WebUiInput } from '@/components/input'
 import type { WebUiOption } from '@/components/option'
 import { pollUntil, waitForFrame } from '@/shared/test-utils'

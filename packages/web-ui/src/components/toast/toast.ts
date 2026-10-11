@@ -1,9 +1,9 @@
-import type { IconifyIcon } from '@iconify/types'
-import { html, LitElement, nothing, type PropertyValues, unsafeCSS } from 'lit'
-
-import '@/components/icon'
 // web-ui-button 复用 icon 变体的焦点环与统一样式（secondary 变体，浅灰底贴合 toast 角落）
 import '@/components/button'
+import '@/components/icon'
+
+import type { IconifyIcon } from '@iconify/types'
+import { html, LitElement, nothing, type PropertyValues, unsafeCSS } from 'lit'
 import { customElement, property } from 'lit/decorators.js'
 
 import glass from '@/assets/glass.css?inline'

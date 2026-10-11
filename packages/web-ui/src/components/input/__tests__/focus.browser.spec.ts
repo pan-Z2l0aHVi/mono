@@ -1,9 +1,10 @@
-import { afterEach, describe, expect, it } from 'vite-plus/test'
-import { userEvent } from 'vite-plus/test/browser'
-
 import '@/components/button'
 import '@/components/input'
 import '@/components/theme'
+
+import { afterEach, describe, expect, it } from 'vite-plus/test'
+import { userEvent } from 'vite-plus/test/browser'
+
 import type { WebUiInput } from '@/components/input'
 import { cleanupElement, queryA11y, waitForUpdate } from '@/shared/test-utils'
 
@@ -17,7 +18,7 @@ type Updatable = HTMLElement & { updateComplete: Promise<unknown> }
  *
  * focus ring 的视觉呈现（outline / box-shadow / halo 展开值 / ::before 描边盒 /
  * padding 度量）属 CSS 实现细节，按 ADR-0005 §5 不在契约 spec 断言，
- * 由 docs/agents/browser-verification.md 的真实浏览器验证与真机验收覆盖。
+ * 由 docs/agents/runtime-verification.md 的真实浏览器验证与真机验收覆盖。
  */
 function mountTheme(): HTMLElement {
   const theme = document.createElement('web-ui-theme')

@@ -1,7 +1,8 @@
-import { afterEach, describe, expect, it } from 'vite-plus/test'
-
 import '@/components/option'
 import '@/components/select'
+
+import { afterEach, describe, expect, it } from 'vite-plus/test'
+
 import type { WebUiOption } from '@/components/option'
 import type { WebUiSelect } from '@/components/select'
 import { waitForUpdate } from '@/shared/test-utils'

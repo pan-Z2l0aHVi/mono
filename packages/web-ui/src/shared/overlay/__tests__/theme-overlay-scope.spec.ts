@@ -1,6 +1,7 @@
+import '@/components/theme'
+
 import { afterEach, describe, expect, it } from 'vite-plus/test'
 
-import '@/components/theme'
 import type { WebUiTheme } from '@/components/theme'
 
 import { findNearestTheme, findRootTheme } from '../theme-overlay-scope'

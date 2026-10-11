@@ -1,7 +1,8 @@
-import { describe, expect, it } from 'vite-plus/test'
-
 import '..'
 import '@/components/option'
+
+import { describe, expect, it } from 'vite-plus/test'
+
 import { cleanupElement, spyEvents, waitForUpdate } from '@/shared/test-utils'
 
 import type { WebUiAutocomplete } from '..'

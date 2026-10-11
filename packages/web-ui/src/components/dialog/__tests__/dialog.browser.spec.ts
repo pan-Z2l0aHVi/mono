@@ -1,10 +1,11 @@
+import '..'
+
 import { afterEach, describe, expect, it } from 'vite-plus/test'
 import { page } from 'vite-plus/test/browser'
 import { userEvent } from 'vite-plus/test/browser'
 
 import { pollUntil } from '@/shared/test-utils'
 
-import '..'
 import type { WebUiDialog } from '..'
 
 afterEach(() => document.body.replaceChildren())

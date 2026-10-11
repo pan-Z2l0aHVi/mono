@@ -287,6 +287,22 @@ try {
     failMessage('verify', '--task', 't0-fixture', '--name', 'fixture test', '--result', 'maybe'),
     /invalid verification result: maybe/
   )
+  // kind 只有 test 与 acceptance 两种，其余一律拒；漏值的 --kind 被 parseArgs 记成布尔 true，也
+  // 不能静默回落到默认的 test。
+  assert.match(
+    failMessage('verify', '--task', 't0-fixture', '--name', 'fixture test', '--kind', 'smoke', '--result', 'pass'),
+    /invalid verification kind: smoke/
+  )
+  assert.match(
+    failMessage('verify', '--task', 't0-fixture', '--name', 'fixture test', '--kind', '--result', 'pass'),
+    /invalid verification kind: true/
+  )
+  // 等号形式 --kind=acceptance 会被 parseArgs 存成独立键，不能让 options.kind 落空后静默套用
+  // 默认的 test。
+  assert.match(
+    failMessage('verify', '--task', 't0-fixture', '--name', 'fixture test', '--kind=acceptance', '--result', 'pass'),
+    /does not accept --kind=<value>/
+  )
   // 显式 pass 也不够：验证必须覆盖已提交内容，脏工作区照样拦。
   assert.match(
     failMessage('verify', '--task', 't0-fixture', '--name', 'fixture test', '--result', 'pass'),
@@ -312,8 +328,11 @@ try {
   run('verify', '--task', 't0-fixture', '--name', 'fixture test v2', '--result', 'pass')
   // done 只看最后一条验证：一次失败的复跑会顶掉之前的 pass 记录。
   run('verify', '--task', 't0-fixture', '--name', 'fixture test v2 rerun', '--result', 'fail')
-  assert.match(failMessage('done', '--task', 't0-fixture'), /does not have a passing latest verification/)
+  assert.match(failMessage('done', '--task', 't0-fixture'), /does not have a passing test verification/)
   run('verify', '--task', 't0-fixture', '--name', 'fixture test v2', '--result', 'pass')
+  // T0 还要一条 acceptance 验收：只有 test pass 时 done 仍被拦。
+  assert.match(failMessage('done', '--task', 't0-fixture'), /needs a passing acceptance verification/)
+  run('verify', '--task', 't0-fixture', '--name', 'fixture acceptance', '--kind', 'acceptance', '--result', 'pass')
   const finished = JSON.parse(run('done', '--task', 't0-fixture'))
   assert.equal(finished.phase, 'done')
   assert.ok(finished.events.some(event => event.event === 'done'))
@@ -338,11 +357,11 @@ try {
   git('add', '-A')
   git('commit', '-m', 't0 review gate covered')
 
-  // T1 的 review 可选，两条路径各走一遍。记了 review 的这条：subagent 风格的 reviewer id 照记，
-  // approval 与 review 成对（由 owner coder-1 自己批，这正是单 agent 工作流的最小身份组合），
-  // 所以缺 approve 时 guard 与 done 都要拦。
+  // T1 的 review 由可选改为强制：subagent 风格的 reviewer id 照记，approval 与 review 成对（由
+  // owner coder-1 自己批，这正是单 agent 工作流的最小身份组合），所以缺 approve 时 guard 与 done
+  // 都要拦。review.required 跟着 level 走，T1 现在是 true。
   const t1Created = JSON.parse(run('new', '--task', 't1-fixture', '--level', 't1', '--owner', 'coder-1'))
-  assert.equal(t1Created.review.required, false)
+  assert.equal(t1Created.review.required, true)
   run('start', '--task', 't1-fixture')
   fs.writeFileSync(path.join(fixture, 't1.txt'), 't1\n')
   run('freeze', '--task', 't1-fixture')
@@ -361,48 +380,48 @@ try {
   run('review', '--task', 't1-fixture', '--result', 'pass', '--reviewer', 'subagent-review-1')
   run('approve', '--task', 't1-fixture', '--approver', 'user-approver')
   git('commit', '-am', 't1 change v2')
-  assert.match(
-    failMessage('done', '--task', 't1-fixture'),
-    /does not have a passing latest verification|changed after verification/
-  )
+  assert.match(failMessage('done', '--task', 't1-fixture'), /does not have a passing test verification/)
   run('verify', '--task', 't1-fixture', '--name', 't1 test v2', '--result', 'pass')
   const t1Done = JSON.parse(run('done', '--task', 't1-fixture'))
   assert.equal(t1Done.phase, 'done')
 
-  // T1 没记 review 的那条：approval 与 review 成对，所以 approval 也不产生，路径收窄成
-  // freeze → verify → done，guard 只要求冻结快照一致。专属 worktree 与 ≥1 条 pass 验证一项不减。
-  run('new', '--task', 't1-no-review', '--level', 't1', '--owner', 'single-agent-owner')
-  run('start', '--task', 't1-no-review')
-  fs.writeFileSync(path.join(fixture, 't1-no-review.txt'), 'no review needed\n')
-  // 未 freeze 就到不了提交与收尾：这一档的 commit gate 与 done 都要求 frozen 相位，那是规则表
-  // 「T1 freeze 必须」在机器上唯一剩下的落点（专属 worktree 由 new/start 的干净检查守着，验证由
-  // done 的 pass 记录把着，都不由这两行负责）。记了 review 的 T1 走不到这条分支——review 一旦记录，
-  // pass 或 fail 都让 approvalRequired 为真、改走要求 approved 的那条，所以只覆盖无 review 路径
-  // 就是这个分支的完整覆盖，而不是少测了另一种 T1。
-  assert.match(failMessage('guard', '--task', 't1-no-review'), /in phase active; expected frozen/)
-  assert.match(failMessage('done', '--task', 't1-no-review'), /in phase active; expected frozen/)
-  run('freeze', '--task', 't1-no-review')
-  // 验证仍是硬 gate：快照齐了、也没有 review 挡着，没有 pass 记录照样不许收尾。
-  assert.match(failMessage('done', '--task', 't1-no-review'), /does not have a passing latest verification/)
-  // 快照一致是这条路径唯一的 diff 边界：冻结后动一个字节，guard 当场拦下。
-  fs.appendFileSync(path.join(fixture, 't1-no-review.txt'), 'edited after freeze\n')
-  assert.match(failMessage('guard', '--task', 't1-no-review'), /has changes after its last freeze/)
-  run('freeze', '--task', 't1-no-review')
-  const noReviewGuard = JSON.parse(run('guard', '--task', 't1-no-review'))
-  assert.equal(noReviewGuard.enforced, true)
-  assert.equal(noReviewGuard.live.stale, false)
-  git('commit', '-m', 't1 change without review')
-  run('verify', '--task', 't1-no-review', '--name', 't1 no-review test', '--result', 'pass')
+  // T1 的 review 由可选改为强制之后，原先那条 freeze → verify → done 的免审捷径不再存在：缺 review
+  // 时 approve 走不到 reviewed，guard 与 done 都停在要求 approved 的那条。专属 worktree 与 ≥1 条
+  // test pass 验证一项不减。
+  run('new', '--task', 't1-needs-review', '--level', 't1', '--owner', 'single-agent-owner')
+  run('start', '--task', 't1-needs-review')
+  fs.writeFileSync(path.join(fixture, 't1-needs-review.txt'), 'review is mandatory\n')
+  // 未 freeze 就到不了提交与收尾：这一档的 commit gate 与 done 都要求 approved。
+  assert.match(failMessage('guard', '--task', 't1-needs-review'), /in phase active; expected approved/)
+  assert.match(failMessage('done', '--task', 't1-needs-review'), /in phase active; expected approved/)
+  run('freeze', '--task', 't1-needs-review')
+  // freeze 之后、review 之前：approve 被相位挡住，guard 与 done 同样要求 approved。
+  assert.match(
+    failMessage('approve', '--task', 't1-needs-review', '--approver', 'single-agent-owner'),
+    /in phase frozen; expected reviewed/
+  )
+  assert.match(failMessage('guard', '--task', 't1-needs-review'), /in phase frozen; expected approved/)
+  assert.match(failMessage('done', '--task', 't1-needs-review'), /in phase frozen; expected approved/)
+  // 快照一致是这条路径的 diff 边界：冻结后动一个字节，guard 当场拦下。
+  fs.appendFileSync(path.join(fixture, 't1-needs-review.txt'), 'edited after freeze\n')
+  assert.match(failMessage('guard', '--task', 't1-needs-review'), /has changes after its last freeze/)
+  run('freeze', '--task', 't1-needs-review')
+  run('review', '--task', 't1-needs-review', '--result', 'pass', '--reviewer', 'subagent-review-3')
+  run('approve', '--task', 't1-needs-review', '--approver', 'single-agent-owner')
+  git('commit', '-m', 't1 review is mandatory')
+  // 验证仍是硬 gate：approval 齐了，没有 test pass 记录照样不许收尾。
+  assert.match(failMessage('done', '--task', 't1-needs-review'), /does not have a passing test verification/)
+  run('verify', '--task', 't1-needs-review', '--name', 't1 review-mandatory test', '--result', 'pass')
   // hash 一致这条校验横跨 commit 边界继续生效：提交之后再动一个字节，done 照样被拦。
-  fs.appendFileSync(path.join(fixture, 't1-no-review.txt'), 'edited after commit\n')
-  assert.match(failMessage('done', '--task', 't1-no-review'), /is stale for task t1-no-review/)
-  run('freeze', '--task', 't1-no-review')
-  git('commit', '-am', 't1 change without review v2')
-  run('verify', '--task', 't1-no-review', '--name', 't1 no-review test v2', '--result', 'pass')
-  const noReviewDone = JSON.parse(run('done', '--task', 't1-no-review'))
-  assert.equal(noReviewDone.phase, 'done')
-  assert.equal(noReviewDone.review.result, null)
-  assert.equal(noReviewDone.approval.granted, false)
+  fs.appendFileSync(path.join(fixture, 't1-needs-review.txt'), 'edited after commit\n')
+  assert.match(failMessage('done', '--task', 't1-needs-review'), /is stale for task t1-needs-review/)
+  run('freeze', '--task', 't1-needs-review')
+  run('review', '--task', 't1-needs-review', '--result', 'pass', '--reviewer', 'subagent-review-3')
+  run('approve', '--task', 't1-needs-review', '--approver', 'user-approver')
+  git('commit', '-am', 't1 review is mandatory v2')
+  run('verify', '--task', 't1-needs-review', '--name', 't1 review-mandatory test v2', '--result', 'pass')
+  const t1NeedsReviewDone = JSON.parse(run('done', '--task', 't1-needs-review'))
+  assert.equal(t1NeedsReviewDone.phase, 'done')
 
   // T2 快速通道：start 后即可提交，无需 freeze/review/approve/verify。
   const t2Created = JSON.parse(run('new', '--task', 't2-fixture', '--level', 't2'))

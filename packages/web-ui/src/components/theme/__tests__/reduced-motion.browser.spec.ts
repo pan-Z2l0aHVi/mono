@@ -1,8 +1,9 @@
-import { afterEach, describe, expect, it } from 'vite-plus/test'
-
 import '@/components/icon'
 import '@/components/spinner'
 import '@/components/theme'
+
+import { afterEach, describe, expect, it } from 'vite-plus/test'
+
 import type { WebUiIcon } from '@/components/icon'
 import type { WebUiSpinner } from '@/components/spinner'
 import type { WebUiTheme } from '@/components/theme'

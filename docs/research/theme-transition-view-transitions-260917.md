@@ -103,7 +103,7 @@ issue #105 记录的三条挂起理由，在当前 Chrome 上**都不成立**：
 2. 半径/圆心只在 `startViewTransition` 前一次性写死，`to-*` class 与自定义属性在 `transition.finished` 后清理——分支现有逻辑已满足，保留。
 3. 明确接受「transition 期间整页不可点」这条规范约束：时长压到 500ms 后它不再是可感问题，但不要在 transition 中排队等待第二次切换；如需连点，走 `skipTransition()`。
 4. 删除两个未引用的 `theme-transition.css`，或改为真正单一来源并让 `index.vue` 引用它——现状是「看起来有实现文件、实际生效在 `<style>` 块」。
-5. 浏览器验证按 [`docs/agents/browser-verification.md`](../agents/browser-verification.md) 补齐 react/vue 两个 demo 的双向切换与 reduced-motion 分支。
+5. 浏览器验证按 [`docs/agents/runtime-verification.md`](../agents/runtime-verification.md) 补齐 react/vue 两个 demo 的双向切换与 reduced-motion 分支。
 
 ## 复现方法
 

@@ -1,9 +1,10 @@
+import '..'
+import '@/components/button'
+
 import { describe, expect, it } from 'vite-plus/test'
 
 import { cleanupElement, expectReflected, mountElement, waitForUpdate } from '@/shared/test-utils'
-import '@/components/button'
 
-import '..'
 import type { WebUiButtonGroup } from '..'
 import type { WebUiButton } from '../../button'
 

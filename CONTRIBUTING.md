@@ -1,25 +1,55 @@
-# 贡献与 Agent 工作流
+# 贡献指南
 
-本文件只负责把读者带到对应文档，不在这里重复实现细节。代码事实以源码、manifest、配置和测试为准。
+本文件面向贡献者，覆盖安装、构建、测试与提交。Agent 的任务流程以 [`AGENTS.md`](AGENTS.md) 为入口，不在此重复。代码事实以源码、manifest、配置和测试为准。
 
-## 先看什么
+## 起步
 
-- **任务路由与不可绕过的边界**：[`AGENTS.md`](AGENTS.md)
-- **全局拓扑、workspace 清单、依赖草图、热点与包级约束**：[`ARCHITECTURE.md`](ARCHITECTURE.md)
-- **跨包原则、领域术语与 ADR 索引**：[`CONTEXT.md`](CONTEXT.md)
-- **开发与协作工作流（任务级别、状态机、预授权操作、review）**：[`docs/agents/workflow.md`](docs/agents/workflow.md)
-- **按需加载 context 的原则与最小 context 组合**：[`docs/agents/context.md`](docs/agents/context.md)
-- **提交与 AI 协作署名**：[`docs/agents/commit.md`](docs/agents/commit.md)
+需要 Node.js（>=24.18.0）和 pnpm（>=12.4.0）。工具链版本由 `.mise.toml` 钉住：
 
-进入 `apps/` 或 `packages/` 后，读取最近的包级 `AGENTS.md`（若存在）；如果没有，就看 `ARCHITECTURE.md`「包级约束」表中的对应行。
+```sh
+mise install
+pnpm install
+pnpm run build
+```
 
-## 关键约定
+三步都不能省。`mise install` 排在第一位，因为不同分支可能钉的工具链版本不同；它本身幂等，装过就是一次快速 no-op。`pnpm run build` 生成 workspace 包的 `dist` 类型产物，没有它 `vp check` 会把每个跨包 import 报成假 `TS2307`。
 
-- 只读调查可以按需加载 rule/guide；所有实施变更必须先按 [`docs/agents/workflow.md`](docs/agents/workflow.md) 的「任务级别」判定并建立 task，再实施。任务 gate 命令统一为 `pnpm agent:task new --task <task-id> --level t0|t1|t2` 与 `pnpm agent:task start --task <task-id>`；状态机与 review 要求以 workflow.md 为准，此处不复制。
-- 对源码任务只加载命中的 rule/guide，避免把整个 instruction system 预加载进上下文。
-- 变更影响分析使用仓库内查询工具（`agent:find-usages` / `agent:inspect-contract` / `agent:diff-contract`）；语义与参数见 [`docs/agents/context.md`](docs/agents/context.md)，不要把这些工具的用法复制进本文件。
-- UI、UX 或浏览器运行时改动须在真实浏览器验证，见 [`docs/agents/browser-verification.md`](docs/agents/browser-verification.md)。
+## 开发
 
-## 交付前
+根 `package.json` 提供三个 dev 入口：
 
-交付说明要写清改动文件、影响的 workspace、验证命令及结果、workflow task id、当前 phase、未验证的风险，以及需要用户决定的事项。未经授权不要提交、暂存或重写 Git 历史。关闭任务前必须留下通过的验证记录。
+| 命令                         | 启动                         |
+| ---------------------------- | ---------------------------- |
+| `pnpm dev:react-web-ui-demo` | React demo                   |
+| `pnpm dev:vue-web-ui-demo`   | Vue demo                     |
+| `pnpm dev:interweave`        | Interweave（Wails 桌面应用） |
+
+各包的 dev 命令见包级 README。
+
+## 测试
+
+```sh
+pnpm run test                                # 全仓测试
+pnpm exec turbo test --filter=@greypan/<name> # 单包测试
+```
+
+测试环境与命令选择见 [`docs/agents/test-execution.md`](docs/agents/test-execution.md)。
+
+## 代码质量
+
+```sh
+pnpm run check-code    # 检查：拼写 + lint + 类型 + Go + stylelint
+pnpm run fix-code      # 修复：自动修复 lint 与格式
+```
+
+## 提交
+
+使用 Conventional Commits 格式，英文 message：
+
+```sh
+pnpm commit
+```
+
+prompt 的 scope 列出 `root` 与各包名（`web-ui`、`js-kit` 等），支持多选。需要清单外的名字时选「自定义输入 scope」再输入。
+
+每个 PR 至少带一个 changeset。涉及发布包行为的变更写明 patch/minor/major；纯 docs/test/chore 的变更创建空 changeset（只含两行 `---`）。细则见 [`docs/agents/commit.md`](docs/agents/commit.md)。

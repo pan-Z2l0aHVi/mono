@@ -1,12 +1,32 @@
-# 构建与发布架构
+# 构建与 CI
 
-修改包脚本、Vite/Turbo 配置、外部化或 CI/发布流程前，先阅读本指南。当这些细节发生变化时，应在同一变更中更新本文档。
-
-包清单和依赖边界以 [`CONTEXT.md`](../../CONTEXT.md) 为权威来源；release terminology 以 [ADR-0003](../adr/0003-release-planes.md) 为权威来源，本指南只描述构建、验证和发布流程。
+修改包脚本、Vite/Turbo 配置、外部化或 CI 流程，或初始化新 worktree 前，先读本指南；这些细节变化时，在同一变更里更新本文档。包清单、依赖边界与发布边界以 [`ARCHITECTURE.md`](../../ARCHITECTURE.md) 为权威，发布操作程序见 [`release.md`](release.md)，本指南只描述构建、验证与 CI 流程。
 
 ## 各包命令
 
-每个包暴露其所需的命令：所有可构建的包都有 `build`，大多数有 `dev`（监听模式），只有包含维护的自动化测试覆盖率的包才暴露 `test`。使用 `pnpm --filter @greypan/<name> <script>` 运行它们；例如，`pnpm --filter @greypan/js-kit test`。根目录提供全局编排的 `pnpm run build`、`pnpm run test`。受影响范围的迭代定位用 `pnpm agent:find-usages -- <paths...>`（见 `context.md`）随后对目标包运行 filter 命令；已移除独立的 `build:affected` / `test:affected` 根命令，避免重复 `agent:find-usages` 的影响面权威。全量根命令由 CI 在 pull request 上执行，本地只在需要复现全仓范围问题时运行。
+可构建的包都有 `build`，多数有持久监听的 `dev`。`build`、`test`、`dev` 是 turbo 任务，用 `pnpm exec turbo <task> --filter=@greypan/<name>` 运行，turbo 按 `^build` 先建好上游依赖；裸 `pnpm --filter` 绕过这一层，会用到陈旧或缺失的 `dist`。其余脚本（例如 `generate-icons`）用 `pnpm --filter @greypan/<name> <script>` 直接跑。影响面定位用 `pnpm agent:find-usages -- <paths...>`，语义见 [`agent-context.md`](agent-context.md)。全量根命令由 CI 在 pull request 上执行，本地只在复现全仓范围问题时运行。
+
+`check-pack` 在构建可发布 package 或修改其 `exports`、`files`、Vite 输出时，于根构建成功后运行。它用 `pnpm pack --dry-run` 验证实际发布文件与 manifest export targets，不判断 API 语义或版本级别。
+
+## Worktree 与共享缓存
+
+worktree 是任务隔离边界，不是包名的别名。一个可变 task 只能有一个 owner 和一个实施 worktree；怎么创建、放在哪、用什么命令建、由谁清理，都由编排层（herdr-projects）决定，仓库不规定。共享主工作区只用于只读调查与状态查询，合并通过远端 PR 完成，不在共享工作区里做。owner 与 worktree 的唯一性边界见根 [`AGENTS.md`](../../AGENTS.md)。
+
+编排层交付一个新 worktree 后，收到它的执行者必须在实施或 freeze 之前依次跑 `mise install`、`pnpm install`、`pnpm run build`，三步都不能省。`mise install` 排第一，因为工具链版本由 `.mise.toml` 钉住，不同分支可能钉不同版本；它幂等，装过就是一次快速 no-op。freeze 的 guard 只看 `node_modules` 是否存在，装完依赖就通过，真正缺的是 workspace 包的 `dist` 类型产物：没有它，`vp check`（`fix-code` 与 `check-code` 都调用）会把每个跨包 import 报成假 `TS2307`，全部类型感知验证随之不可用。判据见 [`workflow.md`](workflow.md)「先建立任务」的 preflight 第 4 步。
+
+编排层交接 task 时会带上 worktree 路径、base SHA 和 owner 标识，执行者按它们填 Task Packet 的 `Worktree`、`Base`、`Owner`，并执行 `pnpm agent:task assign` 记录归属，不自行推导或改写。交接后归属变更属编排层的动作，重新 assign 即可。禁止靠 pane 名称或目录名推断归属。
+
+### turbo 缓存共享
+
+`.mise.toml` 的 `[env]` 用 `git rev-parse --path-format=absolute --git-common-dir` 把 `TURBO_CACHE_DIR` 锚定到 git common dir（`mono/.git/turbo-cache`），主仓与全部 task worktree 共享同一份本地 turbo 缓存。缓存内容含 `dist` 与 d.ts，跨 checkout 复用安全（turbo 内容寻址），新 worktree 不必冷缓存全量重建。
+
+`pnpm run clean` 的默认档会连这份缓存一起清掉，清后主仓与全部 worktree 都会冷缓存全量重建。在 A worktree 干活的 agent 可能被 B worktree 或主仓的一次 `pnpm run clean` 打中，且无从预知。它不删 `pnpm-lock.yaml`（tracked 文件，属需逐次授权的 lockfile 改动，要显式加 `--locks`）。手动回收直接删 `mono/.git/turbo-cache`，turbo 下次运行自动重建。CI 在 `ci.yml` 显式覆盖回 workspace 内路径，mise 注入不影响 CI 缓存键。
+
+构建或验证前怀疑 `dist` 产物异常（例如被 watch 进程清空 d.ts）时，先跑 `pnpm run agent:env-doctor` 体检，再用 `pnpm run agent:env-doctor --fix`（自动 `turbo build --force`）或手动 `turbo build --force` 重建。
+
+### 缓存可信链
+
+`.agents/checks/turbo-cache-invariant` 要求 `test.dependsOn` 含 `^build`、`build.outputs` 含 `dist/**` 且没有可能排除 `dist` 的负模式，并且 `test.inputs` 不含会显式收进 `dist` 的正模式。不能靠把 `dist/**` 加进 `inputs` 解决缓存问题：`dist` 是 gitignored，`$TURBO_DEFAULT$` 本来不会收它，显式正模式反而让尚无 `dist` 的新 worktree 全部 miss，却不增加产出恢复的正确性。只想回收单个工作区的产物时直接删该工作区的 `.turbo/`。
 
 ## Demo 开发
 
@@ -16,136 +36,60 @@
 | Vue Web UI demo      | `pnpm dev:vue-web-ui-demo`   |
 | Interweave Wails app | `pnpm dev:interweave`        |
 
-根目录 aliases 通过 Turbo `dev` task 构建上游工作区包，并启动每个包的持久 `dev` 进程。不要对这些命令改用 `turbo watch`：包级别的 Vite 和 tsdown 监听器已经会重建源文件变更，而 `turbo watch` 还会监控 Git 控制文件，当编辑器或 agent 工具更新 Git 工作树时可能会重启所有 dev 进程。
+根目录 aliases 通过 Turbo `dev` task 构建上游工作区包，并启动每个包的持久 `dev` 进程。不要改用 `turbo watch`：包级 Vite 与 tsdown 监听器已经会重建源文件变更，`turbo watch` 还会监控 Git 控制文件，编辑器或 agent 工具更新工作树时可能重启全部 dev 进程。修改包图、lockfile 或 Turbo 配置后需重启开发命令；普通源文件变更由运行中的包级监听器继续处理。
 
-在修改包图、lockfile 或 Turbo 配置后，需要重启开发命令。普通的源文件变更会由运行中的包级监听器继续处理。
-
-Interweave 由 Wails 宿主管理嵌套前端，因此其 alias 只启动 Wails host，并构建/监听 WebView frontend 的上游依赖；不要额外启动重复的前端进程。在修改 Vite 插件、TypeScript 配置或工作区依赖图后，需要重启宿主开发进程。
-
-代码质量检查与修复的命令矩阵（`check-code` 聚合与 `fix-code` 一键修复）以 [`linting.md`](linting.md) 为权威；`pre-commit` 只跑 task gate 与 `.agents/checks/` 政策检查，不改写文件；提交边界的清洁度保证（格式、lint 与类型）来自 `format-clean` 这条只检不改的检查，口径与已登记的旁路见 [`workflow.md`](workflow.md)。包构建命令不能替代这些命令；Wails 的 macOS/Windows 原生构建仍负责验证 host package 与平台集成。
-
-| 命令                           | 用途                                          | 说明                                                                                                                                |
-| ------------------------------ | --------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
-| `pnpm run clean`               | 清理构建产物、依赖与缓存                      | 执行 `scripts/clean.sh`，默认即全量：各工作区的 `dist/`、`.turbo/`、全部 `node_modules` 与共享 turbo cache；`--locks` 为显式 opt-in |
-| `pnpm run ci:test-scripts`     | 验证仓库内部工具脚本                          | 含 `ci-topology`、`ci-flakes` 与 `ci-measure` 的断言，是 CI 拓扑表的执行端                                                          |
-| `pnpm run ci:measure`          | 只读统计 CI 成本                              | 需 `gh` 已登录；口径与「两栏不能混用」的原因见「CI 与发布」节                                                                       |
-| `pnpm run ci:flakes`           | 汇总 flake 榜                                 | 读 `ci-test-output-*` artifact 目录；口径见「CI 与发布」节                                                                          |
-| `pnpm run ci:validate-context` | 验证 Agent context 路由、软链、链接与出处约束 | 修改 `AGENTS.md`、rules、skills、roles 或 `docs/agents/**` 时必须通过                                                               |
-| `pnpm run check-pack`          | 发布产物边界检查                              | 构建可发布 package 或修改其 `exports`、`files`、Vite 输出时，在根构建成功后运行                                                     |
-
-`check-pack` 使用 `pnpm pack --dry-run` 验证实际发布文件与 manifest export targets；它不判断 API 语义或版本级别。
-
-turbo 本地缓存由 `.mise.toml` 的 `TURBO_CACHE_DIR` 指向 worktree 族共享目录（机制与手动回收见 [`worktrees.md`](worktrees.md)）。这条缓存可信链由 `.agents/checks/turbo-cache-invariant` 守着：它要求 `test.dependsOn` 含 `^build`、`build.outputs` 含 `dist/**` 且没有可能排除 `dist` 的负模式，并且 `test.inputs` 不含会显式收进 `dist` 的正模式；不能靠把 `dist/**` 加进 `inputs` 解决缓存问题，因为 `dist` 是 gitignored，`$TURBO_DEFAULT$` 本来不会收它，显式正模式反而让尚无 `dist` 的新 worktree 全部 miss，却不增加产出恢复的正确性。`pnpm run clean` 的默认档会连这份共享缓存一起清掉（脚本用 `git rev-parse --path-format=absolute --git-common-dir` 解析，与 `.mise.toml` 同一套逻辑），因此它影响整个 worktree 族而不只是当前工作区；只想回收单个工作区的产物时直接删该工作区的 `.turbo/`。默认档**不**删除 `pnpm-lock.yaml`（tracked 文件，属需逐次授权的 lockfile 改动，需显式加 `--locks`）。构建或验证前怀疑 dist 产物异常（如被 watch 进程清空 d.ts）时，先跑 `pnpm run agent:env-doctor` 体检，再用 `pnpm run agent:env-doctor --fix`（自动 `turbo build --force` 重建 dist）或手动 `turbo build --force` 重建。
-
-变更影响与验证命令选择使用仓库内查询工具 `agent:find-usages` / `agent:inspect-contract` / `agent:diff-contract`；工具语义、参数与输出说明见 [`context.md`](context.md)，此处不复述。
-
-对于 `web-ui`，`pnpm --filter @greypan/web-ui generate-icons` 从 `icons.used.json` 重新生成图标模块。Vite 插件也会在 `vp build` 期间自动运行它。
+Interweave 由 Wails 宿主管理嵌套前端，其 alias 只启动 Wails host，并构建/监听 WebView frontend 的上游依赖，不要额外启动重复的前端进程。修改 Vite 插件、TypeScript 配置或工作区依赖图后需重启宿主进程。
 
 ## 生成物生命周期
 
-生成文件不是 source of truth，禁止手动编辑；但这不等于禁止使用仓库配置的 generator。若源码或配置的变更会影响受版本控制的代码生成物，必须运行所属 generator，让工具产生 diff，再验证生成结果和消费者。不要通过复制、补丁或格式化工具直接改写输出。
+生成文件不是 source of truth，禁止手动编辑，但这不等于禁止使用仓库配置的 generator。本仓的 `build` 不止编译一步：`vp build` 期间会有插件或前置脚本产出受版本控制的生成物。若源码或配置的变更会影响这些生成物，必须运行所属 generator 让工具产生 diff，再验证生成结果与消费者。不要用复制、补丁或格式化工具直接改写输出。
 
-| 场景                           | source of truth                                            | 受控生成入口                                                                                                                               | 完成证据                                                                                                 |
-| ------------------------------ | ---------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------- |
-| React 文件路由                 | `apps/react-web-ui-demo/src/routes/**` 与 `vite.config.ts` | `pnpm --filter @greypan/react-web-ui-demo build`（TanStack Router Vite plugin）                                                            | `src/routeTree.gen.ts` 仅由 generator 更新；`check-code` 通过，并在真实浏览器访问新增/修改的路由。       |
-| Vue auto import / typed router | Vue 源码与 `apps/vue-web-ui-demo/vite.config.ts`           | `pnpm --filter @greypan/vue-web-ui-demo build`（Vite plugins）                                                                             | `auto-imports.d.ts`、`typed-router.d.ts` 仅由 plugin 更新；`vue-tsc --build` 与受影响路由/页面验证通过。 |
-| Wails frontend bindings        | 公开 Go API、`apps/interweave/frontend/package.json`       | `pnpm --filter @greypan/interweave-frontend build`（内部经 `apps/interweave/scripts/generate-bindings.mjs` 调 `wails3 generate bindings`） | 核对 `frontend/bindings/**` 的 generator diff，并运行 frontend 类型检查/构建和受影响调用点验证。         |
-| web-ui icons                   | `packages/web-ui/icons.used.json`                          | `pnpm --filter @greypan/web-ui generate-icons` 或 `vp build`                                                                               | 图标模块只由 generator 更新，并完成 package build 与公开契约验证。                                       |
+构建期自动生成的有四类：`web-ui` 的图标模块由 `buildStart` 钩子生成；React demo 的路由树由 TanStack Router 插件生成；Vue demo 与 interweave frontend 的路由类型与 auto-import d.ts 由 `vue-router/vite` 与 `unplugin-auto-import` 生成；interweave frontend 的 TS bindings 由构建前置的 `generate-bindings.mjs` 生成。
 
-`apps/interweave/frontend/bindings/**` 的生成只走一个入口 `node apps/interweave/scripts/generate-bindings.mjs`：`apps/interweave/build/Taskfile.yml` 的 `generate:bindings` 与 `apps/interweave/frontend` 的 `build` / `build:dev` 都指向它，不再各自手抄 `wails3 generate bindings` 的开关。该入口做两件事：
+| 场景                       | source of truth                                            | 受控生成入口                                                                                                                                              | 完成证据                                                                                                 |
+| -------------------------- | ---------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------- |
+| React 文件路由             | `apps/react-web-ui-demo/src/routes/**` 与 `vite.config.ts` | `pnpm exec turbo build --filter=@greypan/react-web-ui-demo`（TanStack Router Vite plugin）                                                                | `src/routeTree.gen.ts` 仅由 generator 更新；`check-code` 通过，并在真实浏览器访问新增/修改的路由。       |
+| Vue 文件路由与 auto import | Vue 源码与两个 Vue 应用的 `vite.config.ts`                 | `pnpm exec turbo build --filter=@greypan/vue-web-ui-demo` 或 `--filter=@greypan/interweave-frontend`（`vue-router/vite` 与 `unplugin-auto-import`）       | `auto-imports.d.ts`、`typed-router.d.ts` 仅由 plugin 更新；`vue-tsc --build` 与受影响路由/页面验证通过。 |
+| Wails frontend bindings    | 公开 Go API、`apps/interweave/frontend/package.json`       | `pnpm exec turbo build --filter=@greypan/interweave-frontend`（构建前置经 `apps/interweave/scripts/generate-bindings.mjs` 调 `wails3 generate bindings`） | 核对 `frontend/bindings/**` 的 generator diff，并运行 frontend 类型检查/构建和受影响调用点验证。         |
+| web-ui icons               | `packages/web-ui/icons.used.json`                          | `pnpm --filter @greypan/web-ui generate-icons` 或 `pnpm exec turbo build --filter=@greypan/web-ui`（`buildStart` 钩子）                                   | 图标模块只由 generator 更新，并完成 package build 与公开契约验证。                                       |
 
-- 以 **`-clean=false`** 生成。`wails3` 的 `-clean` 不是「先删目录再重建」，而是先生成到临时目录、再逐文件同步；同步的**删除阶段**会删掉「这一次没产出的文件」，而包加载 / 类型检查问题只记 Warning、命令仍 exit 0，于是危险形状是 **exit 0 的静默少产出**，会删掉受版本控制的 bindings。`-clean=false` 让写入阶段完全没有删除。代价是**不再清理陈旧生成物**：改名或删掉一个 Service 后旧文件会留在 `bindings/` 里，需要人工 `git rm`；同时直接写 `bindings/`（而不是临时目录 + 同步）在 dev server 开着时会产生 HMR 事件，但没有 delete + recreate 环，不触发 chokidar 的重命名循环。
-- 生成前后对 `bindings/**` 做**「产出集合收缩」守卫**：生成前快照（相对路径 + 内容），生成后只要少了文件就把目录精确还原到快照并以非零退出。它按**产出集合**判定、不看退出码——这正是「失败就恢复」挡不住的那一类。守卫挡的是**工具删文件**这一形状：在 `-clean=false` 下 wails3 不再有删除阶段，所以这条分支基本不会被触发，它更像一个「wails3 若改了语义就报警」的哨兵，而不是会误报的闸门。陈旧生成物不由守卫处理——改名 / 删 Service 后旧文件会留下，需要人工 `git rm`（守卫只因「少了文件」报警，不因「多了陈旧文件」报警）。
+`apps/interweave/frontend/bindings/**` 的生成只走一个入口 `node apps/interweave/scripts/generate-bindings.mjs`：`apps/interweave/build/Taskfile.yml` 的 `generate:bindings` 与 `apps/interweave/frontend` 的 `build` / `build:dev` 都指向它。该入口做两件事：
 
-`**/__screenshots__/` 与 `**/.vitest-attachments/` 属于测试证据，而不是应用代码生成物。除非任务明确要求并已经完成对应的视觉/浏览器验证，不要创建、手改或提交这些文件。根 `AGENTS.md`「不可绕过的仓库边界」在入口层声明同一约束，本节承载处方。
+- 以 `-clean=false` 生成。`wails3` 的 `-clean` 不是先删目录再重建，而是先生成到临时目录、再逐文件同步；同步的删除阶段会删掉这一次没产出的文件，而包加载或类型检查问题只记 Warning、命令仍 exit 0。危险形状是 exit 0 的静默少产出，会删掉受版本控制的 bindings，`-clean=false` 让写入阶段完全没有删除。代价是不再清理陈旧生成物：改名或删掉一个 Service 后旧文件会留在 `bindings/` 里，需要人工 `git rm`。直接写 `bindings/`（而非临时目录加同步）在 dev server 开着时会产生 HMR 事件，但没有 delete 加 recreate 环，不触发 chokidar 的重命名循环。
+- 生成前后对 `bindings/**` 做产出集合收缩守卫：生成前快照（相对路径加内容），生成后只要少了文件就把目录精确还原到快照并以非零退出。它按产出集合判定、不看退出码，挡的是工具删文件这一形状。在 `-clean=false` 下 wails3 不再有删除阶段，这条分支基本不会被触发，它更像一个「wails3 若改了语义就报警」的哨兵。陈旧生成物不由守卫处理，守卫只因少了文件报警，不因多了陈旧文件报警。
+
+`**/__screenshots__/` 与 `**/.vitest-attachments/` 是测试证据，不是应用代码生成物。除非任务明确要求并已完成对应的视觉或浏览器验证，不要创建、手改或提交。根 [`AGENTS.md`](../../AGENTS.md)「不可绕过的仓库边界」在入口层声明同一约束，本节承载处方。
 
 ## TypeScript 配置
 
-共享配置文件位于 `packages/tsconfig/`，通过 `"extends": "@greypan/tsconfig/<profile>.json"` 引用。
-
-| 配置文件     | 层级     | 使用者                                  | 继承自                              |
-| ------------ | -------- | --------------------------------------- | ----------------------------------- |
-| `core.json`  | 1：纯 JS | `js-kit`                                | `./base.json`                       |
-| `node.json`  | 2：Node  | Node 包和所有 `tsconfig.node.json` 文件 | `@tsconfig/node24` 加 `./base.json` |
-| `dom.json`   | 3：DOM   | `browser-kit`、`web-ui`                 | `./base.json`                       |
-| `react.json` | 4：框架  | `react-web-ui-demo`                     | `./dom.json`                        |
-| `vue.json`   | 4：框架  | `vue-web-ui-demo`                       | `@vue/tsconfig` 加 `./dom.json`     |
-
-每个包添加自己的 `include`、`paths` 和 `tsBuildInfoFile`。面向 DOM 和 Node 的包将其配置拆分为 `tsconfig.node.json`、`tsconfig.app.json` 和 `tsconfig.vitest.json`；纯 Node 包只使用一个 `tsconfig.json`。
+共享配置在 `packages/tsconfig/`，通过 `"extends": "@greypan/tsconfig/<profile>.json"` 引用，各 profile 与使用者以该目录为准。面向 DOM 与 Node 的包把配置拆成 `tsconfig.node.json`、`tsconfig.app.json` 和 `tsconfig.vitest.json`，纯 Node 包只用单个 `tsconfig.json`。每个包添加自己的 `include`、`paths` 与 `tsBuildInfoFile`。
 
 ## 库构建模式
 
-不同包类型的构建脚本不同：
-
-- **单入口包**（`test-kit`、`unplugin-web-components`、`deps-reload`）：`vp pack`，基于 tsdown，输出 `.mjs` 和 `.d.mts`。
-- **子路径导出包**（`js-kit`、`browser-kit`、`web-ui`）：`vp build`，使用 Vite library 模式配合 `preserveModules`，输出 `.js` 和 `.d.ts`。
-- **React 应用**：`vp build`。
-- **Vue 应用**：`vue-tsc --build && vp build`。
-- **tsconfig**：无构建步骤；它提供通过 TypeScript `extends` 消费的 JSON 文件。
-
-`vp pack` 通过 `pack` 块配置，无需 `vite-plugin-dts` 即可生成声明文件，并自动外部化依赖。`vp build` 通过 `build.lib` 和 `preserveModules: true` 配置，使用 `vite-plugin-dts` 生成声明文件。
+单入口包用 `vp pack`（基于 tsdown，输出 `.mjs` 与 `.d.mts`，无需 `vite-plugin-dts` 即生成声明文件，并从依赖中自动外部化）。子路径导出包用 `vp build`（Vite library 模式配 `preserveModules`，输出 `.js` 与 `.d.ts`，用 `vite-plugin-dts` 生成声明文件，需要手动配置外部化）。`packages/tsconfig` 无构建步骤，它提供通过 TypeScript `extends` 消费的 JSON 文件。
 
 ## 外部化规则
 
-- 匹配 `@greypan/*` 的**工作区依赖**必须被外部化。Vite library 包通过 `rollupOptions.external` 实现；tsdown 从依赖中自动处理。这确保了监听模式的可解析性并避免重复的消费端代码。
-- **Node 内置模块**如 `node:path` 必须被外部化。
-- **第三方依赖**在设计意图为零配置消费时可以被打包；当期望消费端自行提供时应外部化。
-- 优先使用正则表达式而非工作区包列表。同时匹配子路径导入，例如 Lit 模式 `/^lit($|\/)/`。
-- `web-ui` 外部化其框架依赖，因此消费端必须安装 `lit` 作为依赖。
-- 对于包含外层宿主工作区和嵌套前端工作区的应用，宿主任务、构建目标、生成绑定与资源目录均以目标应用的 manifest、包级 `AGENTS.md`、任务配置和 CI workflow 为准；通用指南不复制应用专属的筛选器、平台矩阵或发布产物名称。生成绑定、前端产物、缓存和依赖通常是一次性产物；任务配置、平台模板、图标和打包资源是否保留必须以目标应用的清理脚本为准。
-
-| 包                        | 外部化                                                                   | 打包的第三方依赖 |
-| ------------------------- | ------------------------------------------------------------------------ | ---------------- |
-| `js-kit`                  | `@greypan/*`、`remeda`                                                   | 无               |
-| `browser-kit`             | `@greypan/*`、`nanoid`、`remeda`、`copy-to-clipboard`、`msw`             | 无               |
-| `test-kit`                | 通过 tsdown 自动处理：`@greypan/js-kit`、`msw`、`vite-plus`              | 无               |
-| `web-ui`                  | `@greypan/*` 加框架正则匹配 `lit`、`@lit`、`react`、`react-dom` 和 `vue` | 无               |
-| `unplugin-web-components` | 通过 tsdown 自动处理：`@greypan/js-kit`、`change-case`、`unplugin`       | 无               |
-| `deps-reload`             | 通过 tsdown 自动处理：`node:*`、`@greypan/js-kit`、`unplugin`            | 无               |
+匹配 `@greypan/*` 的工作区依赖与 Node 内置模块（例如 `node:path`）必须外部化，这保证监听模式可解析，并避免重复的消费端代码。第三方依赖在设计意图为零配置消费时可以打包，期望消费端自行提供时外部化。优先用正则而非工作区包列表，并让它同时匹配子路径导入（例如 `/^lit($|\/)/`）。逐包的外部化清单以各包 `vite.config.ts` 为准。
 
 ## 应用
 
-- `react-web-ui-demo` 使用 `@vitejs/plugin-react` v6（workspace catalog 当前版本）配合 React Compiler（`babel-plugin-react-compiler`，目标 19），加上 `@vitejs/plugin-legacy` 支持旧版浏览器。两个 demo 各有 jsdom 与 Chromium 两层测试面（`vp test run`），差异与配置约束见 [`testing.md`](testing.md)；组件契约与浏览器运行时行为仍由 `web-ui` 的测试面与浏览器验证承担。
-- demo 应用和 `web-ui` 共享相同的 browserslist 目标（Chrome/Edge >=111、Safari/iOS >=16.4、Firefox >=128、非 dead），这与 Tailwind v4 的支持矩阵一致。`web-ui` 是唯一在构建时输出 CSS 的包；其静态 `color-mix()` 调用由 lightningcss 评估，而包含 `var()` 的 `color-mix()` 作为运行时 CSS 保留并依赖上述目标。
-- 库包（`js-kit`、`browser-kit`、`test-kit`、`deps-reload`、`unplugin-web-components`）仅包含 JavaScript，不输出 CSS，因此没有 `browserslist` 字段；它们统一声明 `engines.node >=20.11.0`。该下限覆盖了 `deps-reload` 中的 `import.meta.dirname`（Node 20.11+），与 vite/vitest 的 peer 版本范围（^20.19 / ^20）对齐，并排除了已停止维护的 Node 18 和 20 版本。
-- 两个 demo 应用都使用 `basicSsl()` 进行 HTTPS 开发服务器配置。
-- `depsReload` 监听库的 `dist/` 目录，当本地依赖发生变化时触发整页刷新。
-- 使用嵌套 WebView 前端的集成应用遵循相应框架 demo 的 Vite 插件和本地包约定；宿主运行时的插件负责生成其绑定。
+两个 demo 与 `web-ui` 共享同一 browserslist 目标（Chrome/Edge >=111、Safari/iOS >=16.4、Firefox >=128、非 dead），与 Tailwind v4 的支持矩阵一致。`web-ui` 是唯一在构建时输出 CSS 的包，其静态 `color-mix()` 由 lightningcss 求值，含 `var()` 的 `color-mix()` 作为运行时 CSS 保留并依赖上述目标。库包（`js-kit`、`browser-kit`、`test-kit`、`deps-reload`、`unplugin-web-components`）只含 JavaScript、不输出 CSS，因此没有 `browserslist` 字段，统一声明 `engines.node >=20.11.0`：该下限覆盖 `deps-reload` 的 `import.meta.dirname`（Node 20.11+），并与 vite/vitest 的 peer 范围（^20.19 / ^20）对齐。
+
+两个 demo 用 `basicSsl()` 给 dev server 开 HTTPS 是为拿到安全上下文：Service Worker 与 `navigator.clipboard` 只在安全上下文可用，而 demo 设了 `server.host: true`，从非 localhost 地址访问时 http 不满足条件。该插件只作用于 dev server，生产构建不受影响。各 demo 的插件、测试面与构建差异以各应用 `vite.config.ts` 与 [`test-execution.md`](test-execution.md) 为准；组件契约与浏览器运行时行为由 `web-ui` 的测试面与浏览器验证承担。`depsReload` 监听库的 `dist/` 目录，本地依赖变化时触发整页刷新。嵌套 WebView 前端的集成应用遵循对应框架 demo 的 Vite 插件与本地包约定，宿主运行时的插件负责生成其绑定。
 
 ## CI 与发布
 
-| Workflow                | 触发                                                               | 职责                                                                                                  |
-| ----------------------- | ------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------- |
-| `ci.yml`                | `pull_request`、`workflow_dispatch`（无 push 触发）                | 共享 agent context、changeset 状态、构建、格式化/lint/类型检查和测试                                  |
-| `changeset-version.yml` | push 到 `main`                                                     | 创建/更新 Changesets 版本 PR，`changesets/action` 的 `version-script` 调用 `pnpm run release-version` |
-| `npm-publish.yml`       | `pull_request.closed`，限定 `changeset-release/main` 合并到 `main` | 检测公共包版本变更，在合并 SHA 上重建 `packages/*` Turbo 图并通过 npm Trusted Publishing 发布         |
-| 应用验证 workflow       | 目标应用路径、其 WebView frontend 的直接 workspace 依赖或手动触发  | 校验同步元数据并在对应的原生目标上构建验证产物                                                        |
-| 应用发布 workflow       | 目标应用版本变更后的受控合并                                       | 创建带校验和的安装程序 Release；私有应用永不发布到 npm                                                |
-| `deploy-pages.yml`      | 手动触发                                                           | 通过 `actions/deploy-pages` 产物部署作业级 `DEMO_APPS` 列表中的每个可部署 Demo                        |
+真实的触发面、`permissions`、job `needs`/`if`、step `id`、发布分支字面量、桌面构建矩阵与安装面只写在 `.github/scripts/ci-topology.mjs`，`scripts/ci-topology.test.mjs` 把每个 workflow 的真实 YAML 读回来逐字段比对，由 `ci:test-scripts` 与 CI 的 `check` 强制。改任何一项而不改那份声明，`check` 就红；守卫里引用了不存在的 step `id` 也会红，因为这类引用在 Actions 里不报错，只会让那一步永远静默跳过。
 
-- 这张表是投影，不是权威：真实的触发面、`permissions`、job `needs`/`if`、step `if`、step `id`、发布分支字面量、桌面构建矩阵和声明的安装面只写在 `.github/scripts/ci-topology.mjs` 里，`scripts/ci-topology.test.mjs` 把每个 workflow 的真实 YAML 读回来逐字段比对，由 `pnpm run ci:test-scripts` 和 CI 的 `check` 强制。改任何一项而不改那张表，`check` 就红；守卫里引用了不存在的 step `id` 也会红，因为这种引用在 Actions 里不报错，只会让那一步永远静默跳过。
-- 表表达不了的两句保留散文，因为判据要人工读运行结果：一次运行是「等审批」还是「排队」，看 `gh api repos/<owner>/<repo>/actions/runs/<id> --jq '{status,jobs:.jobs.total_count,run_started_at,created_at}'`，`jobs.total_count == 0` 且 `run_started_at == created_at` 才是挂起等批准；某个 step 的定义是否真的换掉了，看它在运行里整条消失（`gh api repos/<owner>/<repo>/actions/runs/<id>/jobs --jq '.jobs[].steps[].name'`）——`if` 为假的 step 仍然显示 `skipped`，与「step 还在、只是没跑」无法区分。
-- 触发面值不值、哪个 workflow 最贵，用 `pnpm run ci:measure --days=14` 现算，不要把数字抄进文档：它按 workflow 报 runs、墙钟分钟、按事件分的来源和同 `head_sha` 的重复验证。两个口径不能混用——本仓是 squash-only 合并，main 上 `push` 那一次落在**新 sha** 上、树却与已经验过的 PR head 相同，所以删掉一条触发省下的量读 `events` 里的 `push` 栏，读不出 `redundant`。
-- flake 台账只有写端在 CI 里（`Test` 红时把 `test-output.log` 与 `test-failures.json` 存成保留 1 天的 `ci-test-output-<run-id>-<attempt>` artifact），读端是本地命令：先 `gh run download <run-id> --pattern 'ci-test-output-*'`，再 `pnpm run ci:flakes <目录>`。它按「红过几个不同的 run」排序、同一 run 的多个 attempt 只算 retry 痕迹，因为后者只证明红过两次；刻意不判断「重跑之后是否变绿」——留痕只在失败时写，缺席本身携带不了信息，所以这份榜单不回答「谁已经修好」，也别拿它的为空当作没有 flake。
-- 这条链路的写端在 2026-09-23 之前从来没有真的写过：`aa8be940` 把守卫换成 `steps.test.outcome == 'failure'` 之后，GitHub 对不含 status check 函数的 `if` 仍套默认 `success()`，于是留痕两步恰好在 `Test` 变红那一刻被跳过。两次真实红（run 35715564947、35800643887）都是同一签名 —— step 16 `Test` failure、step 17/18 skipped、artifact 为空 —— 而后者当时被读成了「守卫生效的证据」。现在的守卫是 `failure() && steps.test.outcome == 'failure'`：前半截是入场券，后半截才是判据，所以 lint 失败、`Test` 被 skip 时仍然不会产出假记录。四处仍是 fixture-only：守卫真会触发、artifact 的上传与下载、真实 `FAIL` 行进榜单、跨 run 计数。闭环判据是现成的 —— 下一次 `Test` 自然红之后按上条命令跑一遍，`pnpm run ci:flakes` 能列出那个测试即算验通。恒假的守卫不会让 job 变红，所以它由 `scripts/ci-topology.test.mjs` 的 status-function 规则钉住，不再等下一次红。
-- `ci.yml` 的 PR 运行与手动触发运行共享一个 `concurrency` 组（`${{ github.workflow }}-${{ github.head_ref || github.ref_name }}`，即 workflow 名加分支），但 `cancel-in-progress` 只能取消仍在飞行的那一次：先启动的运行如果已经结束，后启动的那次仍会完整跑一遍，两次运行不会被合并成一次。`workflow_dispatch` 只用于人工重跑：版本 PR 由 `GITHUB_TOKEN` 创建，它的 `pull_request` 运行要等有人点「批准并运行」（2026-09-23 那次等了 5 分 22 秒），批准后同一 run id 以 `run_attempt=2` 起跑——所以版本 PR 上的 attempt 大于 1 是批准痕迹，不是 flake 重试；从未批准的运行停在 `attempt=1` 且 `jobs.total_count == 0`，历史挂起见下节。原生应用所需的系统前置条件以当前 workflow 和工具配置为准。
-- 包专属的版本同步由 `release-version` 对应脚本负责；默认更新与 `--check` 验证的语义以该脚本为准。版本 workflow 不直接发布包或安装程序。
-- `npm-publish.yml` 仅发布公共 npm 包。发布成功后，一个独立的最小权限作业为每个包版本创建幂等的 GitHub Release 和标签，附带 npm 和包 changelog 的链接。它不使用私有原生应用的工具链或长期 npm token。
-- 私有原生应用的验证保持路径触发而非全局必需检查，不相关的 PR 无需等待原生运行环境；`main` 分支保护只要求 `check` 上下文通过，产品变更必须经 pull request 合入。
-- `deploy-pages.yml` 每个条目是 `apps/<name>` 目录，服务路径为 `/mono/<name>/`；构建命令使用 pnpm 的 `{./apps/<name>}...` 目录选择器而非 npm 包名。它仅安装 Node 和 pnpm，因为 Pages 不需要私有原生应用的工具链。站点没有根落地页。
-- 每个 Demo 的 History 路由深层链接依赖 GitHub Pages 的 404 回退：未匹配请求路由到根 `404.html`，它按 `DEMO_APPS` 验证应用名、把请求路由保存在 `redirect` 并加载应用根目录；应用必须在创建路由器之前恢复 `redirect`，未知路径保持 404。
-- npm Trusted Publishing 通过 OIDC `job_workflow_ref` 声明绑定到工作流文件路径。重命名或移动 `npm-publish.yml` 会使现有的 trusted-publisher 注册失效：即使设置了 `id-token: write`，`pnpm changeset publish` 也会因 `ENEEDAUTH` 失败。在重命名工作流的同一变更中更新 npmjs.com 上对应的 trusted publisher。
+- 一次运行是「等审批」还是「排队」，看 `gh api repos/<owner>/<repo>/actions/runs/<id> --jq '{status,jobs:.jobs.total_count,run_started_at,created_at}'`：`jobs.total_count == 0` 且 `run_started_at == created_at` 才是挂起等批准。某个 step 是否真的换掉了，看它在运行里整条消失（`gh api repos/<owner>/<repo>/actions/runs/<id>/jobs --jq '.jobs[].steps[].name'`），`if` 为假的 step 仍显示 `skipped`。
+- 触发面值不值、哪个 workflow 最贵，用 `pnpm run ci:measure --days=14` 现算，不要把数字抄进文档。本仓 squash-only 合并，`main` 上的 `push` 落在新 sha 上而树与已验过的 PR head 相同，所以省下的量读 `events` 的 `push` 栏，读不出 `redundant`。
+- flake 台账的写端在 CI：`Test` 红时把 `test-output.log` 与 `test-failures.json` 存成保留 1 天的 `ci-test-output-<run-id>-<attempt>` artifact；读端是本地 `gh run download <run-id> --pattern 'ci-test-output-*'` 加 `pnpm run ci:flakes <目录>`。它按红过几个不同 run 排序，同一 run 的多个 attempt 只算 retry 痕迹，也不判断重跑后是否变绿，所以榜单为空不代表没有 flake。
+- 留痕的守卫必须是 `failure() && steps.test.outcome == 'failure'`：GitHub 对不含 status check 函数的 `if` 仍套默认 `success()`，只写 `steps.test.outcome == 'failure'` 会让留痕两步恰好在 `Test` 变红那刻被跳过，产出「检查看似正常、artifact 却是空」的假记录。恒假的守卫不会让 job 变红，由 `scripts/ci-topology.test.mjs` 的 status-function 规则钉住。四处仍是 fixture-only：守卫真会触发、artifact 的上传与下载、真实 `FAIL` 行进榜单、跨 run 计数。
+- `ci.yml` 的 PR 运行与手动触发运行共享一个 `concurrency` 组（workflow 名加分支），但 `cancel-in-progress` 只能取消仍在飞行的那一次：先启动的运行若已结束，后启动的那次仍会完整跑一遍。`workflow_dispatch` 只用于人工重跑：版本 PR 由 `GITHUB_TOKEN` 创建，其 `pull_request` 运行要等有人点「批准并运行」，批准后同一 run id 以 `run_attempt=2` 起跑，所以版本 PR 上 attempt 大于 1 是批准痕迹，不是 flake 重试；从未批准的运行停在 `attempt=1` 且 `jobs.total_count == 0`。
+- `npm-publish.yml` 仅发布公共 npm 包，发布成功后一个独立的最小权限作业为每个包版本创建幂等的 GitHub Release 与标签。npm Trusted Publishing 通过 OIDC `job_workflow_ref` 绑定到工作流文件路径，重命名或移动 `npm-publish.yml` 会使注册失效，即使设了 `id-token: write`，`pnpm changeset publish` 也会因 `ENEEDAUTH` 失败；重命名要在同一变更里更新 npmjs.com 上的 trusted publisher。
+- `deploy-pages.yml` 每个条目是 `apps/<name>` 目录，服务路径为 `/mono/<name>/`，构建用 pnpm 的 `{./apps/<name>}...` 目录选择器而非包名。站点没有根落地页。每个 demo 的 History 路由深层链接依赖 GitHub Pages 的 404 回退：未匹配请求路由到根 `404.html`，它按 `DEMO_APPS` 验证应用名、把请求路由保存在 `redirect` 并加载应用根目录；应用必须在创建路由器之前恢复 `redirect`，未知路径保持 404。
+- 私有原生应用的验证保持路径触发而非全局必需检查；`main` 的分支保护只要求 `check` 上下文通过，产品变更必须经 pull request 合入。私有原生应用的版本同步由 `release-version` 负责，默认更新与 `--check` 验证的语义以该脚本为准；版本 workflow 不直接发布包或安装程序。
+- 合并门控来自 `main` 的规则集 `main protection`：要求 `check` 上下文，且 `strict_required_status_checks_policy` 为真。`action_required` 挂起是 GitHub 对 `GITHUB_TOKEN` 创建的版本 PR 的既有行为，仓库曾用条件 dispatch 缓解，该机制已删除，因为 dispatch 只是把同一轮验证再跑一遍，治不了挂起。现在挂起回归为人工一步，在 Actions 运行页批准，或执行 `gh api repos/<owner>/<repo>/actions/runs/<id>/approve`。若挂起重新成为常态，修法是让版本 PR 由有写权限的身份创建，也就是给 `changesets/action` 换用机器用户 PAT 或 GitHub App 令牌，而不是补回 dispatch。
 
-### 版本 PR 的 CI 门控
-
-合并门控来自 `main` 的规则集 `main protection`：要求 `check` 上下文，且 `strict_required_status_checks_policy` 为真；正常情形下这个上下文由版本 PR 自己那次 `ci.yml` 运行产出。
-
-`changeset-version.yml` 曾额外 dispatch `ci.yml`（`has-changesets` 为真时）与 `wails-verify.yml`（`has-wails-release` 为真时），要防的是 GitHub 的 `action_required`：由 `GITHUB_TOKEN` 创建的版本 PR，其 `pull_request` 运行可能被判定为待批准而不执行。这条防护自身的记录很薄，但计数得说清规则：截至 2026-09-21 保留的 788 次运行历史（最早 2026-07-05）里，版本分支上 46 次 `pull_request` CI 运行有 5 次从未执行过任何 job（`runs/<id>/jobs` 的 `total_count` 为 0、`run_started_at` 等于 `created_at`），分属 4 个版本 PR——3 次至今仍标 `action_required`（08-25 一次、09-07 两次），2 次在创建后约 30 天才收敛为 `failure`（08-01 与 08-07 各一次，挂起过期的形态）。其中几个 head SHA（`92e8a2ab`、`13090291`）已被版本分支后续的 force-push 脱链，`git cat-file` 查不到，只能按 run number 在 Actions 里看。只有 08-25 与 09-07 那 3 次落在 dispatch 上线（`1253ff15`，2026-08-07T05:16Z；当时文件还叫 `version.yml`）之后。这 3 次里 2 次的 dispatch 自身就是 failure；唯一成功的那次（run 305）确实给当时还挂着的 PR head 变出了规则集要求的 `check` 绿 —— 严格说那一刻合并门控已经满足，只是这份绿只活了约 10 秒：`check` 在 `2026-09-07T23:08:39Z` 判成功（用 job 的 `completed_at`；本例 run 自己的 `updated_at` 晚了 1 秒），新 commit `7b0f9361` 就在 `23:08:49Z` 提交（挂起开始后 4 分钟），PR 最终是靠它自己的 PR 运行合入的。另两次挂起早于 dispatch 上线，谈不上覆盖面。2026-09-07 之后再创建的 6 个版本 PR 未出现挂起。
-
-重复则是确定的：并发组没有把两次运行合并成一次，胜负取决于 PR 运行真正开跑（`run_started_at`）时 dispatch 是否还在飞行。25 次 dispatch 运行里 2 次是人工重跑（`b3068ab6` 上的 run 180、181；判据是同一 commit 上已有过一次自动 dispatch，不能改用 `triggering_actor`——挂起配对的 run 297 那个字段也显示人工，但它与挂起的 PR run 298 只差 2 秒、且是该 commit 上唯一一次 dispatch），其余 23 次自动 dispatch 中：6 次因仍在飞行中被随后的 PR 运行取消（该分支上 CI 的 PR 运行从未被取消），3 次对应上面那 3 个挂起的 PR 运行，剩下 14 个版本 PR commit 上 dispatch 已经在 PR 运行启动前 17 到 1671 秒结束（其中 13 次在 17–660 秒），同一份 CI 完整执行了两遍（12 次双方都成功，1 次双方都失败，1 次 dispatch 失败、PR 运行成功）。这 14 个间隔是 PR 运行的 `run_started_at` 减去 dispatch 的 `updated_at`。重算配方：`gh api --paginate 'repos/<owner>/<repo>/actions/runs?branch=changeset-release/main&event=workflow_dispatch'` 与 `event=pull_request` 各拉一次，本地只留 `.name == "CI"` 的项，得到 25 与 46；`name=` 查询参数会被 GitHub 静默忽略（`name=CI` 和 `name=NoSuchWorkflowAtAll` 返回同一个 `total_count`），不能用来过滤；`total_count` 自身在同一条查询上也可能瞬时给出不同值，一切以 paginate 之后的本地计数为准，且要先按 `.id` 去重——新运行插到队首会把已有行推到更大的 offset，同一运行可能在两页各出现一次，因此未去重的计数只会偏大，去重即可消除。以上计数同为 2026-09-21 时点，版本分支还会继续长。
-
-现在只保留 PR 事件这一条路径，挂起回归为人工一步：在 Actions 运行页批准该次运行，或执行 `gh api repos/<owner>/<repo>/actions/runs/<id>/approve`。若挂起重新成为常态，正确的修法不是补回 dispatch（它只是把同一轮验证再跑一遍，被挂起的 PR 运行仍留着等人批准），而是让版本 PR 由具有写权限的身份创建：给 `changesets/action` 换用机器用户 PAT 或 GitHub App 令牌，使 PR 作者本身即是被批准的贡献者。那条已删除的条件 dispatch 同样不解决问题：`has-wails-release` 当时为真就意味着版本 PR 必然改到 `apps/interweave/package.json`，而这个路径至今仍在 `wails-verify.yml` 的 `pull_request` 过滤器里，补回它也不会多出一次有效验证。历史上它一共只在 4 个版本 PR commit 上触发过，其中 3 个 commit 的 `pull_request` 运行本来就在跑，dispatch 只是把同一次验证又做了一遍；唯一没有 PR 运行的那次（7be57d84）不是路径没覆盖——当时过滤器写作 `apps/wails-starter/**`（`b9faa2c2` 才改名），而该 commit 改的正是这个目录，且同一 commit 的 `ci.yml` PR 运行照常到达，只有 `wails-verify.yml` 没有 `pull_request` 运行：该 SHA 上它总共只有一次运行，就是这次删掉的 dispatch 本身（run 19，完整跑完并成功）。也不是挂起待批准——挂起的运行对象仍在，只是 job 数为 0，而这里根本没有产生过那条运行。除此之外原因未能确定。那一次 dispatch 因而是该 commit 上唯一的 `wails-verify` 验证，但那个 commit 本身就是一次探针（它消费的 changeset 写着 `trigger version-pr rerun to verify concurrency dedup`，包名还是改名前的 `@greypan/wails-starter`），不能拿来为现行条件下的取舍背书。
-
-## Release context
-
-发布流程和 release plane 的术语、边界与授权模型见 [ADR-0003](../adr/0003-release-planes.md)。本指南只保留执行流程和 release safety boundary：未经用户授权不执行发布；不得直接运行 `npm publish`，首次发布使用 `pnpm publish-new-pack <package-dir>`；Git 检查的绕过禁令见 [`commit.md`](./commit.md)。后续公共包和私有原生应用安装程序按对应 workflow 与 Changesets 配置执行。修改 `.github/workflows/`、Changesets 或发布脚本时，先阅读本指南和相关 ADR，并以当前 workflow、manifest 与脚本为事实来源。
+未经用户授权不执行发布。不得直接运行 `npm publish`，首次发布用 `pnpm publish-new-pack <package-dir>`。Git 检查的绕过禁令见 [`commit.md`](commit.md)。

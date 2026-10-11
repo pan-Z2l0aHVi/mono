@@ -1,3 +1,5 @@
+import '..'
+
 import { describe, expect, it, vi } from 'vite-plus/test'
 
 import {
@@ -9,7 +11,6 @@ import {
   waitForUpdate
 } from '@/shared/test-utils'
 
-import '..'
 import type { WebUiSlider } from '..'
 
 describe('WebUiSlider 组件', () => {

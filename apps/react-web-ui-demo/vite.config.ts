@@ -16,30 +16,13 @@ export default {
   optimizeDeps: {
     // browser mode 下浏览器直接加载裸 CJS 时会报 "does not provide an export named
     // 'expectTypeOf'" 并挂起；expect-type 是该运行时已知唯一的 CJS 依赖，必须显式预打包。
+    // vitest 仅由 vite-plus 间接提供，需要从 vite-plus 上下文逐级解析。
     //
-    // `>` 是 vite 的「从某个包的角度解析」写法。这一整串都是 workspace 依赖 dist 里带出来的
-    // 裸依赖：从 app 自己解析不到（app 没有这些直接依赖），写裸名会被静默跳过，随后 vite 在
-    // 测试模块加载途中才发现它们并「optimized dependencies changed. reloading」，浏览器那次
-    // fetch 就失败了——连带的症状是测试模块自己报 Failed to fetch dynamically imported module。
-    // workspace 包新增裸依赖时要同步这条清单。
-    //
-    // 启动时还会打印 "Failed to resolve dependency: vitest > expect-type" 一类：那不是这条
-    // 清单，是 vitest 自己注入的条目在本 pnpm 布局下解析不到，无害。
-    include: [
-      'vite-plus > vitest > expect-type',
-      '@greypan/web-ui > lit',
-      '@greypan/web-ui > @lit/context',
-      '@greypan/web-ui > @floating-ui/dom',
-      '@greypan/web-ui > lit/decorators.js',
-      '@greypan/web-ui > lit/directives/class-map.js',
-      '@greypan/web-ui > lit/directives/if-defined.js',
-      '@greypan/web-ui > lit/directives/style-map.js',
-      '@greypan/web-ui > lit/directives/unsafe-svg.js',
-      '@greypan/js-kit > remeda',
-      '@greypan/web-ui > @greypan/browser-kit > nanoid',
-      '@greypan/web-ui > @greypan/browser-kit > remeda',
-      '@greypan/web-ui > @greypan/browser-kit > copy-to-clipboard'
-    ]
+    // 这里不必并 `webUiOptimizeDeps`：本 app 的扫描入口 `routeTree.gen.ts` 静态 import 了每个路由
+    // 模块，而路由模块对 `@greypan/web-ui` 根 barrel 的值导入（spinner / image-preview / toast 等）
+    // 会把 web-ui 的组件图连同它的裸依赖一并带进启动扫描，扫描器自己就能发现。路由或页面改由虚拟
+    // 模块加载（file-based routing、`import.meta.glob`）时扫描器跟不进去，那时才需要这份清单。
+    include: ['vite-plus > vitest > expect-type']
   },
   test: {
     projects: [
@@ -119,7 +102,6 @@ export default {
     })
   ],
   base: process.env.GITHUB_BASE_PATH || '/',
-  build: {},
   css: {
     transformer: 'lightningcss'
   },

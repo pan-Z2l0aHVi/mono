@@ -1,6 +1,7 @@
+import '..'
+
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 
-import '..'
 import { cleanupElement, contractReflection, getPortalPanel, queryA11y, waitForUpdate } from '@/shared/test-utils'
 
 import type { WebUiTooltip } from '..'

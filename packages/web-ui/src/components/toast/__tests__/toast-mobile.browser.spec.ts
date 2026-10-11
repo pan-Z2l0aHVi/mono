@@ -1,7 +1,7 @@
+import '..'
+
 import { afterEach, describe, expect, it } from 'vite-plus/test'
 import { page } from 'vite-plus/test/browser'
-
-import '..'
 
 afterEach(async () => {
   document.body.replaceChildren()

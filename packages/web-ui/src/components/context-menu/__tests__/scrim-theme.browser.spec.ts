@@ -1,8 +1,8 @@
-import { afterEach, describe, expect, it } from 'vite-plus/test'
-
 import '@/components/context-menu'
 import '@/components/dropdown-item'
 import '@/components/theme'
+
+import { afterEach, describe, expect, it } from 'vite-plus/test'
 
 import type { WebUiContextMenu } from '..'
 

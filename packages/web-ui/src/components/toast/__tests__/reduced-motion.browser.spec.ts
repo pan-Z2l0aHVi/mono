@@ -1,8 +1,8 @@
-import { afterEach, describe, expect, it } from 'vite-plus/test'
-
+import '..'
 import '@/components/theme'
 
-import '..'
+import { afterEach, describe, expect, it } from 'vite-plus/test'
+
 import type { WebUiToast } from '..'
 
 async function nextFrame() {

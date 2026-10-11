@@ -1,11 +1,12 @@
-import { afterEach, describe, expect, it } from 'vite-plus/test'
-import { userEvent } from 'vite-plus/test/browser'
-
 import '..'
 import '@/components/checkbox'
 import '@/components/dropdown-item'
 import '@/components/editable-text'
 import '@/components/popover'
+
+import { afterEach, describe, expect, it } from 'vite-plus/test'
+import { userEvent } from 'vite-plus/test/browser'
+
 import type { WebUiPopover } from '@/components/popover'
 import { getMenuChildren } from '@/shared/menu-portal/menu-tree'
 import { getMenuPanels, getPortalPanels } from '@/shared/test-utils'

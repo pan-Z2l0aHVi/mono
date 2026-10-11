@@ -1,8 +1,9 @@
-import { afterEach, describe, expect, it } from 'vite-plus/test'
-
 import '@/components/checkbox'
 import '@/components/radio'
 import '@/components/switch'
+
+import { afterEach, describe, expect, it } from 'vite-plus/test'
+
 import {
   cleanupElement,
   contractEvent,

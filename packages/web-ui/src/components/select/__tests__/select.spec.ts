@@ -1,9 +1,9 @@
+import '..'
+import '@/components/option'
+
 import { describe, expect, it } from 'vite-plus/test'
 
 import type { WebUiOption } from '@/components/option'
-
-import '..'
-import '@/components/option'
 import { waitForUpdate, spyEvents, cleanupElement, queryA11y } from '@/shared/test-utils'
 
 import type { WebUiSelect } from '..'

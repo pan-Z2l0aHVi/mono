@@ -1,6 +1,7 @@
+import '..'
+
 import { describe, expect, it, vi } from 'vite-plus/test'
 
-import '..'
 import { cleanupElement, contractReflection, queryA11y, waitForUpdate } from '@/shared/test-utils'
 
 import type { WebUiOption } from '..'

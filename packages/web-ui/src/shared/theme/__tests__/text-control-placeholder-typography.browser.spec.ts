@@ -1,10 +1,11 @@
-import { afterEach, describe, expect, it } from 'vite-plus/test'
-
 import '@/components/autocomplete'
 import '@/components/input'
 import '@/components/input-number'
 import '@/components/textarea'
 import '@/components/theme'
+
+import { afterEach, describe, expect, it } from 'vite-plus/test'
+
 import type { WebUiTheme } from '@/components/theme'
 import type { TestableElement } from '@/shared/test-utils'
 import { waitForUpdate } from '@/shared/test-utils'

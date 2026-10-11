@@ -1,9 +1,10 @@
+import '..'
+
 import { html, nothing, render } from 'lit'
 import { afterEach, describe, expect, it } from 'vite-plus/test'
 
 import { getPortalPanel, pollUntil, waitForFrame } from '@/shared/test-utils'
 
-import '..'
 import type { WebUiPopover } from '..'
 
 afterEach(() => document.body.replaceChildren())

@@ -21,7 +21,7 @@ const SCHEMA_VERSION = 1
 // 比对的 id。字段之间仍有「彼此不相等」的约束（如今只剩 approver ≠ reviewer），比的是字符串，
 // 所以四个字段都落在同一字符集里，「coder-1」与「coder-1␠」（␠ = 空格）这种看着是两个身份、
 // 实际是同一个人的写法才不会被放过。owner 不再参与任何比对（单 agent 工作流要求 owner 自己
-// approve，见 approvalRequired），但显式申报的 `--owner` 仍走这条形状校验，四条记录因此仍可
+// approve），但显式申报的 `--owner` 仍走这条形状校验，四条记录因此仍可
 // 直接比对。形状只写一份：同一条规则喂四个命令，把字面量抄进四条报错里迟早会漂。
 const AGENT_ID_PATTERN = '[A-Za-z0-9][A-Za-z0-9._-]{3,39}'
 const AGENT_ID = new RegExp(`^${AGENT_ID_PATTERN}$`)
@@ -422,7 +422,7 @@ function newTask(options) {
     issue: options.issue ? normalizeIssue(options.issue) : null,
     playbook: options.playbook || null,
     diffHash: null,
-    review: { required: level === 't0', result: null, diffHash: null, reviewer: null, at: null },
+    review: { required: level !== 't2', result: null, diffHash: null, reviewer: null, at: null },
     approval: { granted: false, diffHash: null, approver: null, at: null },
     verification: [],
     events: []
@@ -498,7 +498,7 @@ function freeze(options) {
   state.diffHash = snapshot.hash
   // required 跟着 level 重算，而不是原样带回旧值：它记的是当前档位的 review 政策，建 task
   // 时写下的快照会与后来的规则修订错位。
-  state.review = { required: state.level === 't0', result: null, diffHash: null, reviewer: null, at: null }
+  state.review = { required: state.level !== 't2', result: null, diffHash: null, reviewer: null, at: null }
   state.approval = { granted: false, diffHash: null, approver: null, at: null }
   state.phase = 'frozen'
   appendEvent(state, 'freeze', {
@@ -512,17 +512,9 @@ function freeze(options) {
   print({ ...state, live: { ...liveState(state), current: snapshot } })
 }
 
-// 这一档的 approval 是否必需。T0 恒需要。T1 的 review 可选，于是 approval 与之成对：记了
-// review 就必须对同一 diffHash 批，否则「审过」和「批了」两个槽位各说各话，review 会退化成一条
-// 无人负责的记录；没记 review 就不产生、也不要求 approval，那条路径在 guard 与 done 上只留
-// 「冻结快照一致 + 验证」。取 level 而不是 state 里的 review.required——后者是建 task 时写下的
-// 历史快照，既有 T1 state 里还是 true，读它会让旧 task 继续按已废止的口径被拦。
-function approvalRequired(state) {
-  if (state.level === 't0') return true
-  if (state.level === 't1') return state.review.result !== null
-  return false
-}
-
+// review 的级别政策：T0 与 T1 都强制（T1 从可选项改成必经项），T2 没有这一相位，在下面被挡开。
+// 判定一律取 level 而不是 state 里的 review.required——后者是建 task 时写下的历史快照，既有 T1
+// state 里还是 false，读它会让旧 task 继续按已废止的免审口径被放行。
 function review(options) {
   const taskId = validateTaskId(requireOption(options, 'task'))
   const result = requireOption(options, 'result')
@@ -570,23 +562,37 @@ function verify(options) {
   // 使用者宣布通过，这正是它最容易被误用成留痕工具的地方。
   const result = requireOption(options, 'result')
   if (!['pass', 'fail'].includes(result)) fail(`invalid verification result: ${result}`)
+  // 等号形式 --kind=<value> 会被 parseArgs 存成独立的 `kind=<value>` 键，options.kind 仍是 undefined。
+  // 若不拦截，它会静默套用默认值 test，把一条本意是 acceptance 的证据记成 test。与 assign 拒 `--roles=`
+  // 同一形状，直接拒绝未知写法而不是回落。
+  if (Object.keys(options).some(key => key.startsWith('kind=')))
+    fail('verify does not accept --kind=<value>; write --kind <value>')
+  // kind 对应流程后半段的两个环节：test 是实施阶段自证的功能测试，acceptance 是以测试工程师视角
+  // 做的真机验收。默认 test 让绝大多数调用不必写它，只有 T0 需要额外补一条 acceptance。验证是证据
+  // 记录而非相位（ADR-0014），所以 kind 也只落在记录里，不改变状态机。漏值的 --kind 会被 parseArgs
+  // 记成布尔 true，逐项比对直接拒掉，不会静默回落到默认值。
+  const kind = options.kind === undefined ? 'test' : options.kind
+  if (!['test', 'acceptance'].includes(kind)) fail(`invalid verification kind: ${String(kind)}`)
   const { file, state } = loadState(taskId)
   assertPhase(state, ['frozen', 'reviewed', 'approved'])
   const live = liveState(state)
   assertCurrentHash(state, live, 'verification')
   if (result === 'pass' && !live.clean)
     fail(`task ${taskId} has uncommitted changes; verification must cover a committed diff`)
-  state.verification.push({ name, result, at: now(), headSha: live.headSha, diffHash: state.diffHash })
-  appendEvent(state, 'verify', { name, result })
+  state.verification.push({ kind, name, result, at: now(), headSha: live.headSha, diffHash: state.diffHash })
+  appendEvent(state, 'verify', { kind, name, result })
   state.updatedAt = now()
   saveState(file, state)
   print(state)
 }
 
-// done 的级别差异：t0 要求 review pass、approval 与至少一条最新 pass 验证；t1 的 review
-// 可选，于是收尾相位由 approvalRequired 决定——记了 review 就与 approval 成对，停在
-// approved，没记 review 就在 frozen 直接收尾。两档都要求快照一致、工作区干净与最新一条
-// pass 验证；t2 是快速通道，只要求分支一致——验证与 review 是推荐实践，不作为硬 gate。
+// done 的级别差异：t0 与 t1 都要求 review pass 与 approval，差别只在验证
+// 覆盖——t1 要一条 kind=test 的最新 pass，t0 还要一条 kind=acceptance 的最新 pass。两档都要求快照
+// 一致与工作区干净；t2 是快速通道，只要求分支一致，验证与 review 都不作硬 gate。
+//
+// 验证按 kind 分别取「最新一条」而不是「存在一条 pass」：同一 diff 上后跑的一次 fail 必须能推翻
+// 先前的 pass，否则失败证据会被历史 pass 静默盖过。记录与 diffHash 绑定，freeze 之后旧记录不再是
+// 「当前 diff 的验证」，所以逐条比对 diffHash。
 function done(options) {
   const taskId = validateTaskId(requireOption(options, 'task'))
   const { file, state } = loadState(taskId)
@@ -595,17 +601,20 @@ function done(options) {
     const live = liveState(state)
     assertTaskBranch(state, live, 'done')
   } else {
-    const needsApproval = approvalRequired(state)
-    assertPhase(state, needsApproval ? ['approved'] : ['frozen'])
-    if (needsApproval && state.review.result !== 'pass') fail(`task ${taskId} requires a passing review before done`)
-    const lastVerification = state.verification.at(-1)
-    if (!lastVerification || lastVerification.result !== 'pass')
-      fail(`task ${taskId} does not have a passing latest verification result`)
+    assertPhase(state, ['approved'])
+    if (state.review.result !== 'pass') fail(`task ${taskId} requires a passing review before done`)
     const live = liveState(state)
     assertCurrentHash(state, live, 'done')
     if (!live.clean) fail(`task ${taskId} has uncommitted changes and cannot be done`)
-    if (live.current.hash !== lastVerification.diffHash)
-      fail(`task ${taskId} changed after verification; re-run verification`)
+    const latestOf = kind => state.verification.filter(record => record.kind === kind).at(-1)
+    const test = latestOf('test')
+    if (!test || test.result !== 'pass' || test.diffHash !== state.diffHash)
+      fail(`task ${taskId} does not have a passing test verification for the current diff`)
+    if (state.level === 't0') {
+      const acceptance = latestOf('acceptance')
+      if (!acceptance || acceptance.result !== 'pass' || acceptance.diffHash !== state.diffHash)
+        fail(`task ${taskId} is level t0 and needs a passing acceptance verification for the current diff`)
+    }
   }
   state.phase = 'done'
   appendEvent(state, 'done')
@@ -709,13 +718,11 @@ function guard(options) {
     fail(
       `task ${state.taskId} has changes after its last freeze/review/approval; commit is blocked — re-run freeze (it stages the diff and normalizes formatting) and repeat review/approval`
     )
-  // 快照一致是 T0/T1 两条路径共同的底座，差别只在 approval：T0 与记了 review 的 T1 要
-  // approved，没记 review 的 T1 停在 frozen 就够（见 approvalRequired）。
-  if (approvalRequired(state)) {
-    assertPhase(state, ['approved'])
-    if (!state.approval.granted || state.approval.diffHash !== state.diffHash)
-      fail(`task ${state.taskId} is not approved for commit`)
-  } else assertPhase(state, ['frozen'])
+  // 快照一致与 approval 是 T0/T1 两条路径共同的底座：review 是两档共同的强制环节（T1 从可选项
+  // 改成必经项），approval 与它成对，不再有停在 frozen 的免审路径。
+  assertPhase(state, ['approved'])
+  if (!state.approval.granted || state.approval.diffHash !== state.diffHash)
+    fail(`task ${state.taskId} is not approved for commit`)
   allowCommit()
 }
 

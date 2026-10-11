@@ -1,6 +1,7 @@
+import '..'
+
 import { describe, expect, it } from 'vite-plus/test'
 
-import '..'
 import { cleanupElement, queryA11y, waitForUpdate } from '@/shared/test-utils'
 
 import type { WebUiDropdownDivider } from '..'

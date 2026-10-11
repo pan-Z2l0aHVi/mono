@@ -1,7 +1,8 @@
 // @vitest-environment jsdom
 
-import { local } from '@greypan/browser-kit'
 import '@greypan/web-ui'
+
+import { local } from '@greypan/browser-kit'
 import type { WebUiDialog, WebUiRadio, WebUiRadioGroup, WebUiSegmented } from '@greypan/web-ui'
 import { createPinia, setActivePinia } from 'pinia'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
@@ -158,7 +159,7 @@ describe('SettingsDialog', () => {
       await nextTick()
 
       expect(mounted.host.querySelector('web-ui-segmented[aria-label="主题模式"]')).toBeTruthy()
-      // 色板值列表是纯 CSS 事实（具体 hex 属于 test-policy 不鼓励的断言），由浏览器取证；
+      // 色板值列表是纯 CSS 事实（具体 hex 属于 test-authoring 不鼓励的断言），由浏览器取证；
       // 这里只守「六格色板都在」，值的正确性由「点按钮 → store 写入」的用例背书。
       expect(mounted.host.querySelectorAll('web-ui-radio')).toHaveLength(6)
     } finally {
@@ -318,5 +319,5 @@ describe('SettingsDialog', () => {
   })
 
   // 高度契约（--wui-dialog-max-height 语义）不再在 jsdom 里钉 CSS 值：具体高度由浏览器
-  // 验证与 packages/web-ui 的 dialog-content-height.browser.spec.ts 覆盖（test-policy §4）。
+  // 验证与 packages/web-ui 的 dialog-content-height.browser.spec.ts 覆盖（test-authoring §4）。
 })

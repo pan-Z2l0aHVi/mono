@@ -1,7 +1,8 @@
-import { afterEach, describe, expect, it } from 'vite-plus/test'
-
 import '..'
 import '@/components/dropdown-item'
+
+import { afterEach, describe, expect, it } from 'vite-plus/test'
+
 import { getMenuPanels, waitForUpdate } from '@/shared/test-utils'
 
 import type { WebUiContextMenu } from '..'

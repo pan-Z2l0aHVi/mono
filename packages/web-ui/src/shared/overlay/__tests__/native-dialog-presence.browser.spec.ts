@@ -1,6 +1,7 @@
+import '../../../components/drawer'
+
 import { afterEach, describe, expect, it } from 'vite-plus/test'
 
-import '../../../components/drawer'
 import type { WebUiDrawer } from '../../../components/drawer'
 
 function createDrawer(): WebUiDrawer {

@@ -1,7 +1,8 @@
-import { afterEach, describe, expect, it } from 'vite-plus/test'
-
 import '..'
 import '@/components/theme'
+
+import { afterEach, describe, expect, it } from 'vite-plus/test'
+
 import type { WebUiTheme } from '@/components/theme'
 import { mountElement, waitForFrame } from '@/shared/test-utils'
 

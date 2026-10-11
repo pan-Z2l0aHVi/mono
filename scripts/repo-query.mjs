@@ -304,7 +304,7 @@ if (command === 'contract') {
       `${workspace.root}/AGENTS.md`,
       `${workspace.root}/README.md`,
       'docs/agents/build.md',
-      'docs/agents/testing.md'
+      'docs/agents/test-execution.md'
     ].filter(file => fs.existsSync(path.join(root, file))),
     verification: [
       'pnpm run build',
@@ -470,7 +470,7 @@ if (normalizedPaths.length > 0) addContext(context, 'AGENTS.md')
 for (const workspace of directlyChanged) addContext(context, `${workspace.root}/AGENTS.md`)
 if (hasCodeChange) addContext(context, '.agents/rules/code-style.md')
 if (hasContextChange) {
-  addContext(context, 'docs/agents/context.md')
+  addContext(context, 'docs/agents/agent-context.md')
   addContext(context, 'CONTEXT.md')
   addContext(context, 'docs/adr/0004-progressive-agent-context-architecture.md')
 }
@@ -484,10 +484,10 @@ if (
   addContext(context, 'docs/agents/build.md')
 if (hasPackageContractChange || hasBrowserRuntimeChange) {
   addContext(context, '.agents/rules/testing.md')
-  addContext(context, 'docs/agents/testing.md')
+  addContext(context, 'docs/agents/test-execution.md')
 }
 if (hasBrowserRuntimeChange) {
-  addContext(context, 'docs/agents/browser-verification.md')
+  addContext(context, 'docs/agents/runtime-verification.md')
   if (normalizedPaths.some(file => file.startsWith('packages/web-ui/'))) addContext(context, 'docs/agents/web-ui.md')
 }
 

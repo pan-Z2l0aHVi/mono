@@ -1,5 +1,3 @@
-import { afterEach, describe, expect, it, vi } from 'vite-plus/test'
-
 import '@/components/autocomplete'
 import '@/components/context-menu'
 import '@/components/dialog'
@@ -9,6 +7,9 @@ import '@/components/option'
 import '@/components/popover'
 import '@/components/select'
 import '@/components/tooltip'
+
+import { afterEach, describe, expect, it, vi } from 'vite-plus/test'
+
 import type { WebUiAutocomplete } from '@/components/autocomplete'
 import type { WebUiContextMenu } from '@/components/context-menu'
 import type { WebUiDialog } from '@/components/dialog'

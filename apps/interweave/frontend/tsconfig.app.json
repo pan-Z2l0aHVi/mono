@@ -1,7 +1,7 @@
 {
   "extends": "@greypan/tsconfig/vue.json",
   "exclude": ["src/**/__tests__/*"],
-  "include": ["src/**/*", "src/**/*.vue", "env.d.ts", "bindings"],
+  "include": ["src/**/*", "src/**/*.vue", "env.d.ts", "bindings", "auto-imports.d.ts", "typed-router.d.ts"],
   "compilerOptions": {
     "paths": {
       "@/*": ["./src/*"]

@@ -19,9 +19,27 @@ export default {
     ]
   },
   prompt: {
-    scopes: ['root', 'apps', 'packages'],
+    // 与 workspace 的包名去 `@greypan/` 前缀后一致；新增或删除包时同步这份清单，
+    // scripts/validate-context.mjs 会用 workspace manifests 比对，漂移会让 ci:validate-context 失败。
+    scopes: [
+      'root',
+      'interweave',
+      'interweave-frontend',
+      'react-web-ui-demo',
+      'vue-web-ui-demo',
+      'browser-kit',
+      'deps-reload',
+      'js-kit',
+      'test-kit',
+      'tsconfig',
+      'unplugin-web-components',
+      'web-ui'
+    ],
     enableMultipleScopes: true,
-    allowCustomScopes: false,
+    // 清单外的名字（跨包协调的临时 scope、尚未登记的目录）走「自定义输入 scope」。
+    // 注意多选模式下选自定义项会替换掉已勾选项。
+    allowCustomScopes: true,
+    customScopesAlias: '自定义输入 scope',
     skipQuestions: ['body', 'footer', 'footerPrefix', 'breaking'],
     questions: {
       type: {

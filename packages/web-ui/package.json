@@ -36,6 +36,10 @@
     },
     "./scrollbars.css": "./dist/scrollbars/style.css",
     "./types/*": "./dist/types/*.d.ts",
+    "./vite": {
+      "types": "./dist/vite/index.d.ts",
+      "import": "./dist/vite/index.js"
+    },
     "./package.json": "./package.json"
   },
   "publishConfig": {

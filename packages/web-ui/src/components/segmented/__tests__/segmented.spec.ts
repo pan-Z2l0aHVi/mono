@@ -1,7 +1,8 @@
-import { describe, expect, it } from 'vite-plus/test'
-
 import '..'
 import '@/components/segmented-trigger'
+
+import { describe, expect, it } from 'vite-plus/test'
+
 import {
   waitForUpdate,
   spyEvents,

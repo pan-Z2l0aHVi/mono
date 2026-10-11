@@ -10,10 +10,9 @@
     "at-rule-no-unknown": [
       true,
       {
-        "ignoreAtRules": ["theme", "source", "utility", "variant", "plugin", "tailwind", "apply", "config"]
+        "ignoreAtRules": ["theme", "utility", "custom-variant"]
       }
     ],
-    "color-function-notation": "modern",
     "declaration-block-no-redundant-longhand-properties": null,
     "no-empty-source": null,
     "declaration-empty-line-before": null,
