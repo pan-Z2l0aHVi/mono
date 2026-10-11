@@ -153,7 +153,7 @@ freeze 会强制重写工作区：先全量 staging，跑 `CI=true pnpm run fix-
 
 ## 测试验收
 
-测试验收是流程收尾的功能验证环节，以测试工程师的视角独立执行功能层验证，例如真机操作、浏览器交互或压测，证据记在 `pnpm agent:task verify --kind acceptance` 上。它不改状态机相位：验证是证据记录而非相位（[ADR-0014](../adr/0014-task-system-v2.md)）。`test` 与 `acceptance` 的分工是实施阶段自证对照脱离实施叙述的独立验收，后者关注实际功能、浏览器行为与边界情况；浏览器证据按 [`browser-verification.md`](browser-verification.md) 采集。
+测试验收是流程收尾的功能验证环节，以测试工程师的视角独立执行功能层验证，例如真机操作、浏览器交互或压测，证据记在 `pnpm agent:task verify --kind acceptance` 上。它不改状态机相位：验证是证据记录而非相位（[ADR-0014](../adr/0014-task-system-v2.md)）。`test` 与 `acceptance` 的分工是实施阶段自证对照脱离实施叙述的独立验收，后者关注实际功能、浏览器行为与边界情况；浏览器证据按 [`runtime-verification.md`](runtime-verification.md) 采集。
 
 ## Playbook
 

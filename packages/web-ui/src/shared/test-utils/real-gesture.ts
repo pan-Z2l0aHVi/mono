@@ -210,7 +210,7 @@ export async function realTouchPress(target: Element, options: RealTouchPressOpt
     if (!sawTouchStart) {
       throw new Error(
         'Real touch press received no touchstart: this is a mouse-only input environment, ' +
-          'so any conclusion drawn from it would be void (see docs/agents/browser-verification.md).'
+          'so any conclusion drawn from it would be void (see docs/agents/runtime-verification.md).'
       )
     }
 

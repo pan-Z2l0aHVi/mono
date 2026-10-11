@@ -21,7 +21,7 @@
 | 主题               | 规则边界                                                                | 流程权威来源                          | 自动证据                                               |
 | ------------------ | ----------------------------------------------------------------------- | ------------------------------------- | ------------------------------------------------------ |
 | 生成物             | 根/包级 `AGENTS.md` 说明「不可手改」与局部 source of truth              | `docs/agents/build.md`                | generator diff、build、消费者类型检查                  |
-| 真实浏览器         | 根/包级 `AGENTS.md` 仅声明需要浏览器层                                  | `docs/agents/browser-verification.md` | `pnpm run test` 中的 `*.browser.spec.ts`、MCP 操作记录 |
+| 真实浏览器         | 根/包级 `AGENTS.md` 仅声明需要浏览器层                                  | `docs/agents/runtime-verification.md` | `pnpm run test` 中的 `*.browser.spec.ts`、MCP 操作记录 |
 | `agent:*` 查询工具 | 根入口只提供命令路由；命名约定与全量索引见 [`commands.md`](commands.md) | 本文件的工具接口说明（语义与参数）    | `scripts/*.test.mjs`（glob 约定）                      |
 | 任务级别           | 根 `AGENTS.md`「Mutation Gate」只给判定入口，不复制级别表               | `docs/agents/workflow.md`             | `tasks/<task-id>.json` 的 level 与 events              |
 | 预授权操作         | 根 `AGENTS.md` 只列被允许与需授权的类别                                 | `docs/agents/workflow.md`             | `docs/agents/workflow.md` 的「预授权操作」清单         |

@@ -1,12 +1,14 @@
-# 浏览器验证指南
+# 运行时验证指南
 
-涉及 UI、UX、交互、响应式行为或浏览器运行时行为的变更，必须在真实浏览器中验证。验证分两层：chrome-devtools MCP 是默认的 Agent 真实浏览器交互层（导航、交互、console/network、截图）；`pnpm agent:verify` 是引擎级取证补充层，覆盖 MCP 做不到的能力（真实 touch 管线、rAF/时钟推进检查、逐帧插值采样），用法见下节「引擎级验证工具链」。`agent-browser` 不属于自动 fallback；只有用户显式调用 `/agent-browser` 时才可使用，且只限它独有的能力（见「验证分层」末条与「为什么这样分工」）。
+涉及 UI、UX、交互、响应式或运行时行为的变更，必须在真实运行环境中验证：Web 表面在真实浏览器里验证，原生应用表面（如 interweave 的 Wails 桌面壳）在真实运行的应用里验证。两个表面各有一套 Agent 取证工具，按变更触及的表面选取，不能互相替代。
+
+Web 表面分两层：chrome-devtools MCP 是默认的 Agent 真实浏览器交互层（导航、交互、console/network、截图）；`pnpm agent:verify` 是引擎级取证补充层，覆盖 MCP 做不到的能力（真实 touch 管线、rAF/时钟推进检查、逐帧插值采样），用法见「引擎级验证工具链」。原生应用表面默认用 Peekaboo，`computer-use` 类能力在环境提供时可用（见「原生应用验证」）。`agent-browser` 不属于自动 fallback；只有用户显式调用 `/agent-browser` 时才可使用，且只限它独有的能力（见「验证分层」与「为什么这样分工」）。
 
 ## 验证要点
 
 各变更类型的验证要点：
 
-- **交互**：主要指针交互、键盘操作、焦点管理、禁用状态、关闭/取消路径
+- **交互**：主要指针交互、键盘操作、焦点管理、禁用状态、关闭/取消路径；移动端拖拽、滑动、长按、pinch 等手势
 - **布局**：空白渲染、溢出、遮挡、错位、意外布局偏移（检查桌面和移动端视口）
 - **无障碍**：语义化、accessible name、键盘可达性
 - **运行时**：console 错误、页面异常、依赖浏览器特性的行为（jsdom 不是替代品）
@@ -25,26 +27,44 @@
 
 ## 验证分层
 
+同一变更按它触及的表面选层，同一表面内的层不能互相替代。
+
+Web 表面：
+
 - `pnpm run test`：运行 Turbo 编排的 package 测试；其中包含已配置的 Vitest Browser Mode / Playwright Chromium `*.browser.spec.ts` 回归。
 - chrome-devtools MCP：验证 demo 集成、真实交互、键盘和焦点、布局、console、network 与桌面/移动视口。
 - `pnpm agent:verify`：引擎级取证（真实 touch 管线、环境前置检查、插值采样），与 MCP 互补而非替代。
 - `agent-browser`：不属于上面三层，只有用户显式调用 `/agent-browser` 时才进入，且只用于 chrome-devtools MCP 没有的能力——凭据库（上游称 Auth Vault，`auth save` / `auth login` 与 credential provider）、一条命令完成的分析（`a11y` 的 axe-core 审计、`vitals` 的核心网页指标、React DevTools 的 fiber 级检查与重渲染记录）、HAR 与录像、与 baseline 的 diff、`network route` 请求拦截、云浏览器（Vercel Sandbox、Bedrock AgentCore）和 Electron 应用。常规导航、交互、截图、console/network 一律走 chrome-devtools MCP。
 
-这三层分别提供可重复回归、Agent 的真实端到端证据与引擎级取证，不能互相替代。没有自动 fallback：若 chrome-devtools MCP 在任务环境中不可用，必须报告环境阻塞，不得将构建、jsdom 或自定义浏览器脚本表述为完成了真实交互验证。
+原生应用表面：
 
-## MCP server 配置
+- Peekaboo：默认的应用交互与取证层，`app` 启动/聚焦、`see` 识别元素并截图、`verify` 不交互核验状态、`click`/`type`/`press`/`scroll`/`drag`/`action`/`set-value` 驱动控件、`permissions` 前置核对授权。用法见「原生应用验证」。
+- `computer-use`：环境提供该能力时可用于端到端的应用级操作，判定与取证口径仍按「原生应用验证」。
 
-MCP server 由各人在用户级配置，本仓库不随 git 分发项目级 `.mcp.json`。项目级配置会以 `[Conflicting scopes]` 覆盖同名用户级 server，让个人侧的浏览器 profile 失效，还会向所有加载它的会话开放 github MCP 写工具并携带运行中的 PAT（[`monorepo-for-agents-benchmark-260918.md`](../research/monorepo-for-agents-benchmark-260918.md) 记录的 P1）。
+这些层分别提供可重复回归、Agent 的真实端到端证据与引擎级取证，不能互相替代。没有自动 fallback：某层在任务环境中不可用时必须报告环境阻塞，不得将构建、jsdom、自定义浏览器脚本或无障碍树快照表述为完成了真实交互验证。
 
-```sh
-claude mcp add chrome-devtools -s user -- npx -y chrome-devtools-mcp@latest --acceptInsecureCerts
-```
+## 原生应用验证
 
-省略 `--userDataDir` 时 chrome-devtools-mcp 使用 `~/.cache/chrome-devtools-mcp/` 下的默认 profile 目录，本身就是专用 profile，满足上文的隔离判定。需要跨会话保留登录态时，登录一次即可，不要改成 `--autoConnect`。
+原生应用表面（当前是 interweave 的 Wails 桌面壳）在真实运行的应用里验证，不把构建成功或前端浏览器层通过当作应用可用。
 
-github MCP 不在本页规定：它是携带凭证的那一个，配置方式由各人自决，不要写进受版本控制的文件。
+前置：
 
-`.agents/skills/browser-testing-with-devtools/SKILL.md` 是锁定的第三方 skill，其安装片段把 `.mcp.json` 列在第一个选项，措辞与本页冲突且无法本地改写。验证环境缺 chrome-devtools MCP 时按上文报告环境阻塞，不要为了让那个片段成立而重新创建项目级 `.mcp.json`——那会退回本页记录的两个问题。
+- 用应用包文档给出的 dev 或打包路径拉起真实应用窗口（Wails 应用壳，不是只在浏览器里打开前端）。启动方式的权威见 [`build.md`](build.md) 与该应用包的 `AGENTS.md`。
+- Peekaboo 依赖 macOS 辅助功能与屏幕录制授权。先跑 `peekaboo permissions` 核对，缺权限时由用户授权后再取证；无授权的结论不可采信。
+
+取证与驱动：
+
+- `peekaboo see` 读取目标窗口/元素的 accessibility 信息并截图，作为「应用处于该状态」的证据，报告里附截图路径。
+- `peekaboo verify` 在不交互的前提下核验窗口标题、元素存在/可见/启用等状态，用于回归判定。
+- 需要交互时先用 `peekaboo app`（focus / launch）聚焦被测应用，再用 `click` / `type` / `press` / `scroll` / `drag` / `set-value` 驱动控件；能用元素的 accessibility action（`action`）就不要用坐标点击。
+- OS 集成行为（文件选择、对话框、剪贴板、菜单、Dock）用 `dialog`、`clipboard`、`menu`、`dock` 子命令取证，不要拿浏览器层的等价物替代。
+
+隔离：
+
+- 只驱动被测应用与为验证启动的进程。Peekaboo 面向整个 macOS 桌面，操作前用 `peekaboo app list` 确认目标，前后都不要动用户的其它窗口与前台应用。
+- 记录拉起方式与 PID，验证结束后退出本次启动的实例。
+
+`computer-use`：环境提供该能力时可用于端到端的应用级操作，判定与证据口径仍按本节，报告注明实际用的是哪一层。
 
 ## 为什么这样分工
 
@@ -54,6 +74,8 @@ github MCP 不在本页规定：它是携带凭证的那一个，配置方式由
 
 - **登录态复用不是它的独占能力**。它有 `--profile` / `--auto-connect` / `--state`，chrome-devtools MCP 也有对应的 `--userDataDir` 与 `--autoConnect`（是否满足隔离判定见「dev server 与浏览器约束」）。真正只有它有的是凭据库。
 - **无头也不是它的独占能力**。但本仓库的取证明确要求非 headless（见「引擎级验证工具链」），所以哪一侧都不要为省一个窗口而改用 headless。
+
+两个表面分开：chrome-devtools MCP 只驱动 Chrome，够不到桌面应用窗口；Peekaboo 走 macOS 无障碍层，能操作真实应用但只覆盖 macOS，也进不了浏览器页面内部。按表面分工——不要用 Peekaboo 做网页交互，也不要指望浏览器层验证应用壳。`computer-use` 若可用，归原生应用表面的一层。
 
 ## 引擎级验证工具链
 
@@ -79,12 +101,12 @@ pnpm agent:verify check-env --url https://127.0.0.1:5173/
 
 ### 证据词汇三档
 
-验证报告中的浏览器证据必须标注档位，不得混用：
+验证报告中的运行时证据必须标注档位，不得混用：
 
-1. **仿真无回归**：chrome-devtools MCP 桌面/移动视口下未发现问题——最弱一档，不能证明真实触控行为。
+1. **仿真无回归**：chrome-devtools MCP 桌面/移动视口，或 Peekaboo 截图与元素观察下未发现问题——最弱一档，不能证明真实触控或手势行为。
 2. **引擎级复现**：`agent:verify` 在真实 touch 管线/插值采样上复现或排除——可定位根因，仍是桌面 Chrome。
-3. **真机验收**：用户在真实设备上的验收结论——最高档，交互类变更的最终验收依据。
+3. **真机验收**：用户在真实设备或真实应用上的验收结论——最高档，交互类变更的最终验收依据。
 
 ## 报告
 
-最终报告必须声明验证 URL、检查内容和任何缺口。不得将构建成功或 jsdom 测试通过描述为浏览器交互验证。
+最终报告必须声明验证 URL（原生应用则为应用与窗口）、检查内容和任何缺口。不得将构建成功、jsdom 测试通过或无障碍树快照描述为浏览器交互验证。

@@ -47,7 +47,7 @@
 | `agent:find-usages`      | 按路径推导受影响 workspace、最小 context 与最小充分验证                                    | 根 `AGENTS.md`、`context.md`、`build.md`、`test-execution.md`、`workflow.md`、两个包级 `AGENTS.md`、`contract-change-review` skill |
 | `agent:inspect-contract` | 输出可发布 package 的 exports、直接消费者与最小验证                                        | 根 `AGENTS.md`、`context.md`、`build.md`、`workflow.md`、`packages/web-ui/AGENTS.md`、`contract-change-review` skill               |
 | `agent:diff-contract`    | 输出 manifest-level semver 审阅候选（`--base <git-ref>`）                                  | 根 `AGENTS.md`、`context.md`、`build.md`、`workflow.md`、`contract-change-review` skill                                            |
-| `agent:verify`           | 引擎级浏览器取证：check-env / touch-flow / interpolate                                     | `browser-verification.md`、`test-execution.md`                                                                                     |
+| `agent:verify`           | 引擎级浏览器取证：check-env / touch-flow / interpolate                                     | `runtime-verification.md`、`test-execution.md`                                                                                     |
 | `agent:env-doctor`       | 体检 worktree 环境（dist 截断、watch 污染、缓存、残留）                                    | `build.md`                                                                                                                         |
 | `agent:update-skills`    | 经官方 `skills update` 引擎更新第三方 skill 并收割回真实家（临时目录隔离，不破坏软链布局） | `linting.md`、`skills/README.md`                                                                                                   |
 

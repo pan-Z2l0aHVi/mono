@@ -19,4 +19,4 @@ Interweave 前端只使用桌面 Wails API 作为业务数据源。普通浏览�
 
 ## Agent 入口
 
-修改前端集成或交互前先读同目录 `AGENTS.md`、`apps/interweave/AGENTS.md` 和 `docs/agents/browser-verification.md`。修改公共 Web UI 时回到 `packages/web-ui` 的 README、类型、测试和相关 ADR；修改 Wails API 时先查 Wails 3 官方文档，并同时核对 Go host、生成 bindings 和消费端。
+修改前端集成或交互前先读同目录 `AGENTS.md`、`apps/interweave/AGENTS.md` 和 `docs/agents/runtime-verification.md`。修改公共 Web UI 时回到 `packages/web-ui` 的 README、类型、测试和相关 ADR；修改 Wails API 时先查 Wails 3 官方文档，并同时核对 Go host、生成 bindings 和消费端。

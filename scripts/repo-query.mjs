@@ -487,7 +487,7 @@ if (hasPackageContractChange || hasBrowserRuntimeChange) {
   addContext(context, 'docs/agents/test-execution.md')
 }
 if (hasBrowserRuntimeChange) {
-  addContext(context, 'docs/agents/browser-verification.md')
+  addContext(context, 'docs/agents/runtime-verification.md')
   if (normalizedPaths.some(file => file.startsWith('packages/web-ui/'))) addContext(context, 'docs/agents/web-ui.md')
 }
 

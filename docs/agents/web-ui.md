@@ -27,5 +27,5 @@
 - 保持 Public Component Contract；公共 API 变更时同步 `README.md`、`README.CN.md` 和聚焦契约测试。
 - Shadow DOM 样式留在组件内部；不要把组件样式注入 `document.head`。使用公共 `--wui-*` semantic token。
 - 共享状态和行为沿用 `definePlugin` factory 的 `defineXxx(...).make(...)` 组合方式，不用继承承载共享状态。
-- 组件或交互改动完成后，按影响范围运行聚焦测试，并按 [`browser-verification.md`](browser-verification.md) 在 React/Vue demo 集成表面进行真实浏览器验证。
+- 组件或交互改动完成后，按影响范围运行聚焦测试，并按 [`runtime-verification.md`](runtime-verification.md) 在 React/Vue demo 集成表面进行真实浏览器验证。
 - 框架动态绑定布尔属性必须使用 camelCase Property；不要在组件内引入 attribute 字符串解析兜底，保持原生 HTML 布尔存在语义（存在即 true）。
