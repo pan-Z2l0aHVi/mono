@@ -113,6 +113,7 @@ T0 与 T1 都必须走完 `reviewed` 与 `approved` 两格：review 是两档共
 
 - 未 `new` 不得实施；未 freeze 不得 review；review 和 approval 必须绑定同一个 `diffHash`。
 - `new` 与 `start`（仅 `open → active` 这一次）对 T0/T1 要求 worktree 干净，T2 豁免：freeze 用 `git add -A` 归一化整个 worktree，实施起点没有别人的在制品，冻结 diff 才只含本 task 的改动。豁免只到 start：T2 若主动 freeze，freeze 自己要求干净起点（`live.clean` 把未跟踪文件也算在内，所以实际上要先把改动 commit 掉再 freeze）。review `fail` 回到 active 后不复查干净度。
+- 变异实验、对照实验和临时接线都可以留在工作区，但收尾必须还原；探针与临时脚本写 `/tmp`，不落在 worktree 里，否则会被 freeze 的 `git add -A` 卷进冻结快照。
 - 冻结 `diffHash` 的 canonical 口径是 [`scripts/task.mjs`](../../scripts/task.mjs) 的快照哈希，覆盖 tracked+untracked，不是 git diff 的摘要；reviewer 核验冻结一致性以 `pnpm agent:task status --task <id>` 的 `live` 比对（hash 一致 + 非 stale）为准，不要自制 `git diff | shasum` 配方复算。
 - freeze、review 或 approval 后任何文件变化都会使证据 stale；必须重新 freeze（重算 hash 并重置 review/approval），再重复 review、approve。
 - owner、reviewer、approver、drop 署名人共用同一套 id 形状；内核强制的「互不相等」约束与比对对象以「review 拓扑」节为权威。
