@@ -16,7 +16,7 @@
 - **受管组合（select+option、segmented、radio-group、checkbox-group、button-group）**：成员追踪、下行广播与上行写回的通道读 ADR-0006。
 - **覆盖层内容迁移或消费者节点写入**：打开时 portal 迁移、关闭态隐藏（menu 族隐藏 slot）与消费者 light DOM 写入边界见 ADR-0006。
 - **slot-trigger 组件的 ARIA**：popover/dropdown/collapse 的 trigger 状态回写读 ADR-0005。
-- **Overlay、portal、焦点、滚动锁定或层叠**：读 ADR-0006 中受影响的决策；涉及定位引擎归属或新浮层定位路径时再读 ADR-0006，不加载无关组件语义。
+- **Overlay、portal、焦点、滚动锁定或层叠**：读 ADR-0006 中受影响的决策；定位引擎归属或新浮层定位路径也在其覆盖内，不加载无关组件语义。
 - **主题 token 或图标**：读 ADR-0006/0005 以及对应源码。
 - **React/Vue 类型或事件**：读 ADR-0005 和对应的 `src/types/` 源码。
 - **仅 CSS/视觉微调**：优先读取组件源码和相关 token；不因任务名称加载 overlay、框架适配或完整事件模型。

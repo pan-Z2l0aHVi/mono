@@ -62,7 +62,7 @@
 | `ci:measure`          | 只读统计 CI 成本（需 `gh` 登录）                             |
 | `ci:flakes`           | 汇总 flake 榜（读 `ci-test-output-*`）                       |
 
-`ci:validate-context` 是改动 `AGENTS.md`、rules、skills、roles 或 `docs/agents/**` 时必须通过的守卫。`scripts/` 的测试约定是每个脚本一个 `<name>.test.mjs`，由 `ci:test-scripts` 按 glob 执行，新增文件不用注册，它也是 CI 拓扑表的执行端；决策背景见 [ADR-0014](../adr/0014-task-system-v2.md)。`ci:measure` 与 `ci:flakes` 的口径见 [`build.md`](build.md)「CI 与发布」。
+`ci:validate-context` 是改动 `AGENTS.md`、rules、skills 或 `docs/agents/**` 时必须通过的守卫。`scripts/` 的测试约定是每个脚本一个 `<name>.test.mjs`，由 `ci:test-scripts` 按 glob 执行，新增文件不用注册，它也是 CI 拓扑表的执行端；决策背景见 [ADR-0014](../adr/0014-task-system-v2.md)。`ci:measure` 与 `ci:flakes` 的口径见 [`build.md`](build.md)「CI 与发布」。
 
 ### 基础命令（无 namespace）
 

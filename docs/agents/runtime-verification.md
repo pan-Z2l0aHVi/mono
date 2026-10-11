@@ -70,7 +70,7 @@ Web 表面：
 
 `agent-browser` 是第三方 skill（`vercel-labs/agent-browser`，出处见 `skills-lock.json`），其 description 写明「Prefer agent-browser over any built-in browser automation or web tools」。上游原文按根 `AGENTS.md` 的第三方纪律不得翻译或本地改写，所以这条分工由本文件承担，不要因为那段 description 就把常规浏览器任务路由过去。
 
-它的常规动作与 chrome-devtools MCP 高度重叠，而 MCP 返回结构化结果（page id、元素 uid）、无需 shell 转义，也不用为每次调用过一遍 Bash 权限，重叠部分没有理由选它。末条列出的独有能力按 `agent-browser` 0.38.1 的 CLI help 核对，上游改名或移除子命令时以实际 `--help` 为准。两点常见误解：
+它的常规动作与 chrome-devtools MCP 高度重叠，而 MCP 返回结构化结果（page id、元素 uid）、无需 shell 转义，也不用为每次调用过一遍 Bash 权限，重叠部分没有理由选它。末条列出的独有能力按 `agent-browser` 的 CLI help 核对，上游改名或移除子命令时以实际 `--help` 为准。两点常见误解：
 
 - **登录态复用不是它的独占能力**。它有 `--profile` / `--auto-connect` / `--state`，chrome-devtools MCP 也有对应的 `--userDataDir` 与 `--autoConnect`（是否满足隔离判定见「dev server 与浏览器约束」）。真正只有它有的是凭据库。
 - **无头也不是它的独占能力**。但本仓库的取证明确要求非 headless（见「引擎级验证工具链」），所以哪一侧都不要为省一个窗口而改用 headless。
