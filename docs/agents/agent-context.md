@@ -1,6 +1,6 @@
 # Agent Context 架构
 
-本文件规定如何维护本仓的 agent context（instruction system）：层级、权威归属、客户端适配与新增门槛。它只管「context 自己怎么改」；领域语义与工程原则以 [`CONTEXT.md`](../../CONTEXT.md) 为准，仓库拓扑以 [`ARCHITECTURE.md`](../../ARCHITECTURE.md) 为准，任务该读什么以根 [`AGENTS.md`](../../AGENTS.md) 的 task routing 为准。
+本文件规定如何维护本仓的 agent context（instruction system）：层级、权威归属、客户端适配与新增门槛。它只管「context 自己怎么改」；领域语义与工程原则以 [`CONTEXT.md`](../../CONTEXT.md) 为准，仓库拓扑以 [`ARCHITECTURE.md`](../../ARCHITECTURE.md) 为准，任务该读什么以根 [`AGENTS.md`](../../AGENTS.md) 的 task routing 为准。硬约束短层见 [`.agents/rules/agent-context.md`](../../.agents/rules/agent-context.md)。
 
 ## Context 层级
 
@@ -50,18 +50,18 @@
 
 普通源码任务不需要阅读本表。修改以下工程资产时，在同一变更中同步对应权威文档；范围不明确时先查本表和相邻包 `AGENTS.md`。
 
-| 变更类别                                                        | 必须同步的文档                                                         | 事实来源                                                            |
-| --------------------------------------------------------------- | ---------------------------------------------------------------------- | ------------------------------------------------------------------- |
-| 构建脚本、Vite/Turbo、CI/CD                                     | `docs/agents/build.md`；根命令还更新 `AGENTS.md`                       | `package.json`、`turbo.json`、`.github/workflows/`                  |
-| 包新增、移除或重命名                                            | `ARCHITECTURE.md`                                                      | `packages/`、`apps/` 目录与 manifest                                |
-| lint、formatter、stylelint、cspell                              | `docs/agents/lint-format.md`                                           | 对应配置                                                            |
-| workspace catalog 与依赖放置策略                                | `docs/agents/dependencies.md`                                          | `pnpm-workspace.yaml`                                               |
-| Changesets 版本与发布策略                                       | `docs/agents/release.md`                                               | `.changeset/config.json`、`.github/workflows/changeset-version.yml` |
-| 测试框架或 Vite 测试配置                                        | `docs/agents/test-execution.md`                                        | 测试配置                                                            |
-| `packages/web-ui` 组件、图标或公共契约                          | `packages/web-ui/AGENTS.md`、`docs/agents/web-ui.md` 与受影响 ADR      | 组件源码、类型、测试                                                |
-| commitlint 或提交流程                                           | `docs/agents/commit.md`                                                | commit 配置或工作流                                                 |
-| 影响未来工程取舍的架构决定                                      | 对应 ADR，并更新 `CONTEXT.md` ADR 索引                                 | 可行替代方案之间的长期选择                                          |
-| client adapter、共享 rules/skills 或 instruction 体系布局与锚点 | `context.md`、`CONTEXT.md`、ADR-0004 与 `scripts/validate-context.mjs` | 根 `AGENTS.md`、`.agents/`、root scripts、diff review               |
+| 变更类别                                                        | 必须同步的文档                                                               | 事实来源                                                            |
+| --------------------------------------------------------------- | ---------------------------------------------------------------------------- | ------------------------------------------------------------------- |
+| 构建脚本、Vite/Turbo、CI/CD                                     | `docs/agents/build.md`；根命令还更新 `AGENTS.md`                             | `package.json`、`turbo.json`、`.github/workflows/`                  |
+| 包新增、移除或重命名                                            | `ARCHITECTURE.md`                                                            | `packages/`、`apps/` 目录与 manifest                                |
+| lint、formatter、stylelint、cspell                              | `docs/agents/lint-format.md`                                                 | 对应配置                                                            |
+| workspace catalog 与依赖放置策略                                | `docs/agents/dependencies.md`                                                | `pnpm-workspace.yaml`                                               |
+| Changesets 版本与发布策略                                       | `docs/agents/release.md`                                                     | `.changeset/config.json`、`.github/workflows/changeset-version.yml` |
+| 测试框架或 Vite 测试配置                                        | `docs/agents/test-execution.md`                                              | 测试配置                                                            |
+| `packages/web-ui` 组件、图标或公共契约                          | `packages/web-ui/AGENTS.md`、`docs/agents/web-ui.md` 与受影响 ADR            | 组件源码、类型、测试                                                |
+| commitlint 或提交流程                                           | `docs/agents/commit.md`                                                      | commit 配置或工作流                                                 |
+| 影响未来工程取舍的架构决定                                      | 对应 ADR，并更新 `CONTEXT.md` ADR 索引                                       | 可行替代方案之间的长期选择                                          |
+| client adapter、共享 rules/skills 或 instruction 体系布局与锚点 | `agent-context.md`、`CONTEXT.md`、ADR-0004 与 `scripts/validate-context.mjs` | 根 `AGENTS.md`、`.agents/`、root scripts、diff review               |
 
 ## 维护 instruction system
 

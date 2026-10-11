@@ -470,7 +470,7 @@ if (normalizedPaths.length > 0) addContext(context, 'AGENTS.md')
 for (const workspace of directlyChanged) addContext(context, `${workspace.root}/AGENTS.md`)
 if (hasCodeChange) addContext(context, '.agents/rules/code-style.md')
 if (hasContextChange) {
-  addContext(context, 'docs/agents/context.md')
+  addContext(context, 'docs/agents/agent-context.md')
   addContext(context, 'CONTEXT.md')
   addContext(context, 'docs/adr/0004-progressive-agent-context-architecture.md')
 }

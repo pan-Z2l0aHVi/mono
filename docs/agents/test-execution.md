@@ -25,7 +25,7 @@
 
 ## 验证选择与证据
 
-对变更路径运行 `pnpm agent:find-usages -- <paths...>`（review 或基线对比按范围加 `--base <git-ref>`、`--staged` 或 `--worktree`）。输出是验证计划的起点，不替代对实际 diff、公共行为和浏览器语义的判断；工具语义见 [`context.md`](context.md)。
+对变更路径运行 `pnpm agent:find-usages -- <paths...>`（review 或基线对比按范围加 `--base <git-ref>`、`--staged` 或 `--worktree`）。输出是验证计划的起点，不替代对实际 diff、公共行为和浏览器语义的判断；工具语义见 [`agent-context.md`](agent-context.md)。
 
 根据受影响的契约选择验证方式：
 

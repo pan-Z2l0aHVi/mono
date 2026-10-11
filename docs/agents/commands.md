@@ -1,6 +1,6 @@
 # 根命令面
 
-本文件是根 `package.json` 命令面的权威来源：有哪些命令、叫什么、谁用，以及为什么这么叫。短约束层见 [`.agents/rules/commands.md`](../../.agents/rules/commands.md)。查询工具（`agent:find-usages` 等）的语义与参数见 [`context.md`](context.md)，不在这里。
+本文件是根 `package.json` 命令面的权威来源：有哪些命令、叫什么、谁用，以及为什么这么叫。短约束层见 [`.agents/rules/commands.md`](../../.agents/rules/commands.md)。查询工具（`agent:find-usages` 等）的语义与参数见 [`agent-context.md`](agent-context.md)，不在这里。
 
 ## 命名约定
 

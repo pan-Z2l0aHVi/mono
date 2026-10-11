@@ -4,7 +4,7 @@
 
 ## 各包命令
 
-可构建的包都有 `build`，多数有持久监听的 `dev`。`build`、`test`、`dev` 是 turbo 任务，用 `pnpm exec turbo <task> --filter=@greypan/<name>` 运行，turbo 按 `^build` 先建好上游依赖；裸 `pnpm --filter` 绕过这一层，会用到陈旧或缺失的 `dist`。其余脚本（例如 `generate-icons`）用 `pnpm --filter @greypan/<name> <script>` 直接跑。影响面定位用 `pnpm agent:find-usages -- <paths...>`，语义见 [`context.md`](context.md)。全量根命令由 CI 在 pull request 上执行，本地只在复现全仓范围问题时运行。
+可构建的包都有 `build`，多数有持久监听的 `dev`。`build`、`test`、`dev` 是 turbo 任务，用 `pnpm exec turbo <task> --filter=@greypan/<name>` 运行，turbo 按 `^build` 先建好上游依赖；裸 `pnpm --filter` 绕过这一层，会用到陈旧或缺失的 `dist`。其余脚本（例如 `generate-icons`）用 `pnpm --filter @greypan/<name> <script>` 直接跑。影响面定位用 `pnpm agent:find-usages -- <paths...>`，语义见 [`agent-context.md`](agent-context.md)。全量根命令由 CI 在 pull request 上执行，本地只在复现全仓范围问题时运行。
 
 `check-pack` 在构建可发布 package 或修改其 `exports`、`files`、Vite 输出时，于根构建成功后运行。它用 `pnpm pack --dry-run` 验证实际发布文件与 manifest export targets，不判断 API 语义或版本级别。
 
