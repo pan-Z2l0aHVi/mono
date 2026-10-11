@@ -314,7 +314,13 @@ function anchoredTargets(file) {
 }
 // 只有编号 ADR 需要被发现；docs/adr 下的其他 Markdown（如索引 README）算指令面，它的链接可以提供入站。
 const adrDocuments = new Set(walk('docs/adr', file => file.endsWith('.md') && /^\d{4}-/.test(path.basename(file))))
+// `.agents/rules/*.md` 是 Task-specific 层，只有被路由（根 AGENTS.md 的 task routing）或权威文档指针命中才会加载。
+// 被另一个 rules 文件引用不算加载路径——rules 文件自身也不常驻加载，互相引用只是两个孤岛。代价：靠「已路由的
+// rules 文件链式引出另一个规则」的写法不被承认为加载路径，需要时改为直接路由或挂到权威文档。
+const rulesDir = path.join(root, '.agents', 'rules')
+const isRulesFile = file => file.startsWith(`${rulesDir}${path.sep}`)
 const inboundTargets = new Set()
+const rulesLoadPaths = new Set()
 for (const file of markdownFiles) {
   const source = fs.readFileSync(file, 'utf8')
   const isAdr = adrDocuments.has(file)
@@ -327,6 +333,9 @@ for (const file of markdownFiles) {
     const resolved = path.resolve(path.dirname(file), location)
     if (!fs.existsSync(resolved)) addError(`${relative(file)}: broken local link ${target}`)
     if (!isAdr) inboundTargets.add(resolved)
+    // 链接可能经客户端消费面（`.claude/rules` 软链）写成，或用 `..`/软链绕路；realpath 归一后再比对。
+    // 只计真实存在的目标：断链已由上面的 `broken local link` 报过。
+    if (!isRulesFile(file) && fs.existsSync(resolved)) rulesLoadPaths.add(fs.realpathSync(resolved))
     if (fragment && fs.existsSync(resolved) && !anchoredTargets(resolved).has(ghAnchor(fragment.trim())))
       addError(`${relative(file)}: broken local anchor ${target}`)
   }
@@ -335,6 +344,12 @@ for (const file of markdownFiles) {
 // 后者把 CONTEXT.md 的体积变成契约，阻止精简这份文档。
 for (const file of [...adrDocuments].sort()) {
   if (!inboundTargets.has(file)) addError(`${relative(file)}: no inbound link from the instruction surface`)
+}
+// rules 文件的加载路径同样钉在「必须有入站链接」上：路由那一行被删掉后，断链、锚点、出处检查都不会变红，
+// 文件会静默变成孤岛，所以单列一条断言。
+for (const file of walk('.agents/rules', candidate => candidate.endsWith('.md')).sort()) {
+  if (!rulesLoadPaths.has(fs.realpathSync(file)))
+    addError(`${relative(file)}: no inbound link from the instruction surface`)
 }
 
 // 根命令存在性：文档里写的根命令必须在 package.json scripts 里真的存在，否则读者照抄必然失败。
