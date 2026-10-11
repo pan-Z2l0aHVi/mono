@@ -9,13 +9,13 @@
 
 ## task 流程词汇
 
-**测试证据（verification）**: `pnpm agent:task verify` 记录的一条结果，含 `kind`（`test` 或 `acceptance`）与绑定的 `diffHash`；它只描述发生过什么，不执行命令、不改变状态机相位。
+**测试证据（verification）**: `pnpm agent:task verify` 记录的一条结果，含 `kind`（`test` 或 `acceptance`）与绑定的 `diffHash`；它只描述发生过什么，不执行命令、不改变状态机相位。各级别所需的证据种类见 [`docs/agents/workflow.md`](docs/agents/workflow.md)。
 _Avoid_: 测试通过、CI 绿
 
-**测试验收（acceptance）**: 以测试工程师视角对功能层做的独立验收，与实施阶段自证的 `test` 分开记为 `--kind acceptance`；T0 在 `test` 之外另需一条 `acceptance` pass。它是证据类别，不是状态机相位。
+**测试验收（acceptance）**: 以测试工程师视角对功能层做的独立验收，与实施阶段自证的 `test` 分开记为 `--kind acceptance`。它是证据类别，不是状态机相位。
 _Avoid_: 单元测试、把内核 `verify` 本身当成测试验收
 
-**review**: 独立于实施者的执行体只审冻结 diff 与证据后给出的结论；T0 与 T1 都必须有，与 approval 成对绑定同一个 `diffHash`。
+**review**: 独立于实施者的执行体只审冻结 diff 与证据后给出的结论，与 approval 成对绑定同一个 `diffHash`。各级别的 review 要求见 [`docs/agents/workflow.md`](docs/agents/workflow.md)。
 _Avoid_: 自审、approval
 
 ## js-kit 队列词汇
