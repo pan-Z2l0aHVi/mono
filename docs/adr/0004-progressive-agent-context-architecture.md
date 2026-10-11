@@ -19,7 +19,7 @@
 3. **Task-specific context**：`docs/agents/*.md`、`.agents/rules/*.md` 和最近的包级 `AGENTS.md` 承载按领域执行的流程与局部约束。包级文件不复制根规则。
 4. **On-demand evidence**：相关 ADR、README、manifest、配置、源码和测试在影响范围确定后加载；当前实现和可执行验证优先于文字说明。
 
-`docs/agents/context.md` 负责 context 路由、文档同步映射和维护准则，也列出各阶段所需的最小入口。
+`docs/agents/context.md` 负责 context 层级、权威归属、客户端适配、文档同步映射和维护准则。（2026-10-11 修订：原先由它承载的「最小 context 组合」路由表并入根 `AGENTS.md` 的 task routing——路由只保留一处，避免两处漂移。）
 
 新增 instruction、rule、skill 提示或 hook 之前，必须先判断代码边界、类型、测试、lint 或脚本能否更可靠地表达该约束。只有无法自动验证、且确实影响工程选择的约束才写入 instruction system。
 
@@ -40,7 +40,7 @@ Role 不注册为 Claude Code subagent，也不通过 `.claude/agents` symlink �
 ## 后果
 
 - 根入口从详细操作手册收敛为稳定导航层，局部任务的初始 context 更小。
-- `docs/agents/web-ui.md` 只负责把 `web-ui` 任务路由到对应 ADR；组件契约和框架事件边界仍以 ADR-0005 为准。`docs/agents/build.md` 只承载部署与 release workflow，release plane 术语以 ADR-0003 为准，避免污染通用 project context。
+- `docs/agents/web-ui.md` 只负责把 `web-ui` 任务路由到对应 ADR；组件契约和框架事件边界仍以 ADR-0005 为准。`docs/agents/build.md` 承载构建与 CI，发布操作以 `docs/agents/release.md` 为准，release plane 术语以 ADR-0003 为准，避免污染通用 project context。
 - 文档同步要求集中在 `docs/agents/context.md`，减少根入口与 task guide 的重复；影响未来取舍的变更仍需 ADR，并更新 `CONTEXT.md` 索引。
 - Agent 需要遵循路由选择 context，而不是把「读完所有文档」视为完成探索。缺少所需证据时，应回到 manifest、配置、源码、测试或相关 ADR。
 - Codex、Claude Code 通过共享入口、规则和 skills 复用同一套规范；客户端专属配置只承担工具适配。公共契约 review skill 以窄触发条件将任务路由到 `agent:find-usages`、`agent:inspect-contract*` 与发布产物验证，不把这类流程加入所有任务的常驻 context。
