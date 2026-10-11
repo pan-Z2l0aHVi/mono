@@ -2,7 +2,7 @@
 
 > 一切，尽在一处。
 
-- [架构地图](./ARCHITECTURE.md) · [贡献与 Agent 工作流](./CONTRIBUTING.md)
+- [架构地图](./ARCHITECTURE.md) · [贡献指南](./CONTRIBUTING.md)
 
 [English](./README.md) | 简体中文
 

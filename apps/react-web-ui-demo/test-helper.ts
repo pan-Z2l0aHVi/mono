@@ -1,6 +1,6 @@
-import { vi } from 'vite-plus/test'
-
 import './act-setup'
+
+import { vi } from 'vite-plus/test'
 
 // jsdom 不实现 window.scrollTo（调用会打印 “Not implemented”）与 Element#scrollIntoView
 // （整个方法不存在，调用直接抛 TypeError）。页面级滚动条接管层在初始化时会调用前者，

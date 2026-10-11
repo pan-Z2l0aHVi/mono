@@ -1,8 +1,9 @@
+import '..'
+
 import { afterEach, describe, expect, it } from 'vite-plus/test'
 import { cdp } from 'vite-plus/test/browser'
 
 import type { ThemeAppearance, ThemeMotion } from '..'
-import '..'
 
 /*
  * 真实 Chromium 上的 documentElement 实测：token 字面值来自组件自身 CSS（:host 块），

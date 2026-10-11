@@ -9,7 +9,7 @@
 - `src/composables/`：历史导航、媒体查询与资源库运行时组合式函数。
 - `src/services/library/`：资源库 Wails API adapter；普通浏览器没有 Wails bridge，因此不加载业务数据。
 - `src/stores/`：Pinia 注入与资源库展示状态。
-- `src/router.ts`：前端路由。
+- `src/main.ts`：应用入口，装配 hash 路由、Pinia 与 `App.vue`；路由表由 `vue-router/vite` 从 `src/pages/**` 生成。
 - `src/assets/`：前端全局基础样式。
 - `bindings/`：Wails 生成的 TypeScript bindings，不手工修改；应用只消费 `backend/library` 与 `backend/native` 暴露的 Interweave Go Service bindings，Wails runtime bindings 不受此业务边界限制。
 
@@ -19,4 +19,4 @@ Interweave 前端只使用桌面 Wails API 作为业务数据源。普通浏览�
 
 ## Agent 入口
 
-修改前端集成或交互前先读同目录 `AGENTS.md`、`apps/interweave/AGENTS.md` 和 `docs/agents/browser-verification.md`。修改公共 Web UI 时回到 `packages/web-ui` 的 README、类型、测试和相关 ADR；修改 Wails API 时先查 Wails 3 官方文档，并同时核对 Go host、生成 bindings 和消费端。
+修改前端集成或交互前先读同目录 `AGENTS.md`、`apps/interweave/AGENTS.md` 和 `docs/agents/runtime-verification.md`。修改公共 Web UI 时回到 `packages/web-ui` 的 README、类型、测试和相关 ADR；修改 Wails API 时先查 Wails 3 官方文档，并同时核对 Go host、生成 bindings 和消费端。

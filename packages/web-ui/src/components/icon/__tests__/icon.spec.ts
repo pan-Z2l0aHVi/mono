@@ -1,9 +1,10 @@
+import '..'
+
 import type { IconifyIcon } from '@iconify/types'
 import { afterEach, describe, expect, it } from 'vite-plus/test'
 
 import { cleanupElement, mountElement, queryA11y, waitForUpdate } from '@/shared/test-utils'
 
-import '..'
 import type { WebUiIcon } from '..'
 
 const aIcon: IconifyIcon = { body: '<path d="M3 2h18v20H3z"/>' }

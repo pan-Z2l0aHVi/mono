@@ -1,7 +1,8 @@
-import { afterEach, describe, expect, it } from 'vite-plus/test'
-
 import '..'
 import '@/components/checkbox'
+
+import { afterEach, describe, expect, it } from 'vite-plus/test'
+
 import type { WebUiCheckbox } from '@/components/checkbox'
 
 import type { WebUiCheckboxGroup } from '..'

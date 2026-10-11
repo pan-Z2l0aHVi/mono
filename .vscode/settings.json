@@ -1,36 +1,20 @@
 {
   "editor.codeActionsOnSave": {
     "source.fixAll": "explicit",
-    "source.fixAll.eslint": "explicit",
     "source.fixAll.stylelint": "explicit",
     "source.organizeImports": "explicit",
     "source.fixAll.oxc": "explicit"
   },
   "oxc.fmt.configPath": "./vite.config.ts",
   "editor.defaultFormatter": "oxc.oxc-vscode",
+  "[javascript]": { "editor.defaultFormatter": "oxc.oxc-vscode" },
+  "[javascriptreact]": { "editor.defaultFormatter": "oxc.oxc-vscode" },
+  "[typescript]": { "editor.defaultFormatter": "oxc.oxc-vscode" },
+  "[typescriptreact]": { "editor.defaultFormatter": "oxc.oxc-vscode" },
+  "[vue]": { "editor.defaultFormatter": "oxc.oxc-vscode" },
+  "prettier.enable": false,
   "editor.formatOnSave": true,
   "editor.formatOnSaveMode": "file",
-
-  "eslint.codeAction.showDocumentation": { "enable": true },
-  "eslint.format.enable": true,
-  "eslint.lintTask.enable": true,
-  "eslint.useFlatConfig": true,
-  "eslint.validate": [
-    "javascript",
-    "javascriptreact",
-    "typescript",
-    "typescriptreact",
-    "vue",
-    "markdown",
-    "mdx",
-    "json",
-    "jsonc"
-  ],
-  "eslint.workingDirectories": [
-    {
-      "mode": "auto"
-    }
-  ],
 
   "files.associations": {
     "cspell.json": "jsonc",
@@ -41,7 +25,6 @@
 
   "files.exclude": {
     "**/.pnpm-lock.yaml": false,
-    "**/build": true,
     "**/coverage": true,
     "**/dist": true,
     "**/node_modules": true,
@@ -49,19 +32,26 @@
     "**/yarn.lock": false
   },
   "files.readonlyInclude": {
-    "**/routeTree.gen.ts": true
+    "**/routeTree.gen.ts": true,
+    "**/auto-imports.d.ts": true,
+    "**/typed-router.d.ts": true,
+    "apps/*/frontend/bindings/**": true
   },
   "files.watcherExclude": {
-    "**/build/**": true,
     "**/dist/**": true,
     "**/node_modules/**": true,
-    "**/routeTree.gen.ts": true
+    "**/routeTree.gen.ts": true,
+    "**/auto-imports.d.ts": true,
+    "**/typed-router.d.ts": true,
+    "apps/*/frontend/bindings/**": true
   },
 
   "search.exclude": {
-    "**/routeTree.gen.ts": true
+    "**/routeTree.gen.ts": true,
+    "**/auto-imports.d.ts": true,
+    "**/typed-router.d.ts": true
   },
-  "stylelint.validate": ["css", "scss", "less", "vue"],
+  "stylelint.validate": ["css", "scss", "less", "html", "vue"],
 
   "typescript.enablePromptUseWorkspaceTsdk": true,
   "typescript.preferences.importModuleSpecifier": "non-relative",

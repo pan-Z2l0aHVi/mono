@@ -1,7 +1,8 @@
-import { afterEach, describe, expect, it } from 'vite-plus/test'
-
 import '..'
 import '@/components/dropdown-item'
+
+import { afterEach, describe, expect, it } from 'vite-plus/test'
+
 import { cleanupElement, getMenuPanels, pollUntil } from '@/shared/test-utils'
 import { realTouchPress } from '@/shared/test-utils/real-gesture'
 

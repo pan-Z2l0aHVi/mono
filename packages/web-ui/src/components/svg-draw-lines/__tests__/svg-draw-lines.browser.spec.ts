@@ -1,8 +1,9 @@
+import '..'
+
 import { afterEach, describe, expect, it } from 'vite-plus/test'
 
 import { mountElement, waitForFrame, waitForUpdate } from '@/shared/test-utils'
 
-import '..'
 import type { WebUiSvgDrawLines } from '..'
 
 const createEl = (): WebUiSvgDrawLines => mountElement<WebUiSvgDrawLines>('web-ui-svg-draw-lines')

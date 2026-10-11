@@ -17,7 +17,7 @@ function EditableTextDemo() {
     return () => el.removeEventListener('cancel', handleCancel)
   }, [])
 
-  const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
+  const handleSubmit = (event: React.SubmitEvent<HTMLFormElement>) => {
     event.preventDefault()
     const data = new FormData(event.currentTarget)
     const entries: [string, string][] = []

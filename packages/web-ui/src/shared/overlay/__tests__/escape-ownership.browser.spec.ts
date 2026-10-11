@@ -1,3 +1,8 @@
+import '@/components/drawer'
+import '@/components/option'
+import '@/components/popover'
+import '@/components/select'
+
 /*
  * Escape 归属仲裁（浏览器）。
  *
@@ -12,11 +17,7 @@
 import { afterEach, describe, expect, it } from 'vite-plus/test'
 import { userEvent } from 'vite-plus/test/browser'
 
-import '@/components/drawer'
 import type { WebUiDrawer } from '@/components/drawer'
-import '@/components/option'
-import '@/components/popover'
-import '@/components/select'
 import { imagePreview } from '@/components/image-preview'
 import type { WebUiPopover } from '@/components/popover'
 import type { WebUiSelect } from '@/components/select'

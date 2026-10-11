@@ -1,6 +1,7 @@
+import '..'
+
 import { describe, expect, it } from 'vite-plus/test'
 
-import '..'
 import { cleanupElement, contractEvent, queryA11y, waitForUpdate } from '@/shared/test-utils'
 
 import type { WebUiSegmentedTrigger } from '..'

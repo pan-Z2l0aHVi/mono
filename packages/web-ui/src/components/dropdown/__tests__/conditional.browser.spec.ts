@@ -1,10 +1,10 @@
+import '..'
+import '@/components/dropdown-item'
+
 import { afterEach, describe, expect, it } from 'vite-plus/test'
 import { createApp, nextTick, ref } from 'vue/dist/vue.esm-bundler.js'
 
 import { getMenuPanels, pollUntil } from '@/shared/test-utils'
-
-import '..'
-import '@/components/dropdown-item'
 
 import type { WebUiDropdown } from '..'
 

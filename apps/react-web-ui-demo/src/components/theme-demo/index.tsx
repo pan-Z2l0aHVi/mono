@@ -24,27 +24,27 @@ function ThemeDemo() {
   const [scopedSelectValue, setScopedSelectValue] = useState('portal')
   const [scopedDialogOpen, setScopedDialogOpen] = useState(false)
 
-  const updateAppearance = (event: React.FormEvent<WebUiSegmented>) => {
+  const updateAppearance = (event: React.InputEvent<WebUiSegmented>) => {
     const value = event.currentTarget.value
     if (isAppearance(value)) setAppearance(value)
   }
-  const updateMotion = (event: React.FormEvent<WebUiSegmented>) => {
+  const updateMotion = (event: React.InputEvent<WebUiSegmented>) => {
     const value = event.currentTarget.value
     if (isMotion(value)) setMotion(value)
   }
-  const updateInnerAppearance = (event: React.FormEvent<WebUiSegmented>) => {
+  const updateInnerAppearance = (event: React.InputEvent<WebUiSegmented>) => {
     const value = event.currentTarget.value
     if (isAppearance(value) && value !== 'system') setInnerAppearance(value)
   }
-  const updateInnermostAppearance = (event: React.FormEvent<WebUiSegmented>) => {
+  const updateInnermostAppearance = (event: React.InputEvent<WebUiSegmented>) => {
     const value = event.currentTarget.value
     if (isAppearance(value) && value !== 'system') setInnermostAppearance(value)
   }
-  const updateInnerMotion = (event: React.FormEvent<WebUiSegmented>) => {
+  const updateInnerMotion = (event: React.InputEvent<WebUiSegmented>) => {
     const value = event.currentTarget.value
     if (isMotion(value)) setInnerMotion(value)
   }
-  const updateInnermostMotion = (event: React.FormEvent<WebUiSegmented>) => {
+  const updateInnermostMotion = (event: React.InputEvent<WebUiSegmented>) => {
     const value = event.currentTarget.value
     if (isMotion(value)) setInnermostMotion(value)
   }

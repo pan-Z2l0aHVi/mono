@@ -2,7 +2,7 @@
 
 > Everything, one repo.
 
-- [Architecture map](./ARCHITECTURE.md) · [Contribution workflow](./CONTRIBUTING.md)
+- [Architecture map](./ARCHITECTURE.md) · [Contributing](./CONTRIBUTING.md)
 
 English | [简体中文](./README.CN.md)
 

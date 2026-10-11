@@ -1,7 +1,8 @@
+import '..'
+
 import { afterEach, beforeAll, describe, expect, it } from 'vite-plus/test'
 import { page, userEvent } from 'vite-plus/test/browser'
 
-import '..'
 import { cleanupElement, mountElement, queryA11y, spyEvents, waitForUpdate } from '@/shared/test-utils'
 
 import type { WebUiEditableText } from '..'

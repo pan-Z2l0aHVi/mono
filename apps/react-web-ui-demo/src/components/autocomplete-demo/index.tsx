@@ -24,7 +24,7 @@ function AutocompleteDemo() {
   const [multilineCommit, setMultilineCommit] = useState({ value: '', selectedValue: '' })
   const multilineTriggerRef = useRef<WebUiAutocomplete>(null)
 
-  function handleMultilineInput(event: React.FormEvent<WebUiAutocomplete>) {
+  function handleMultilineInput(event: React.InputEvent<WebUiAutocomplete>) {
     setMultilineText(event.currentTarget.value)
   }
 
@@ -43,7 +43,7 @@ function AutocompleteDemo() {
   // 单行自定义触发器保持默认 Enter 语义：面板打开时 Enter 选择高亮项
   const [singleLineText, setSingleLineText] = useState('')
 
-  function handleSingleLineInput(event: React.FormEvent<WebUiAutocomplete>) {
+  function handleSingleLineInput(event: React.InputEvent<WebUiAutocomplete>) {
     setSingleLineText(event.currentTarget.value)
   }
 
@@ -51,7 +51,7 @@ function AutocompleteDemo() {
   const [liveInput, setLiveInput] = useState('')
   const [liveSelectedValue, setLiveSelectedValue] = useState('')
 
-  function handleInput(event: React.FormEvent<WebUiAutocomplete>) {
+  function handleInput(event: React.InputEvent<WebUiAutocomplete>) {
     const host = event.currentTarget
     setLiveInput(host.value)
     // selected-value 在组件的 update cycle 中派生，延迟一拍读取最终值

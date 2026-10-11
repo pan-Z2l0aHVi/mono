@@ -1,8 +1,9 @@
 // @vitest-environment jsdom
 
+import '..'
+
 import { afterEach, describe, expect, it } from 'vite-plus/test'
 
-import '..'
 import { cleanupElement, flushSlotChange, waitForUpdate } from '@/shared/test-utils'
 
 import type { WebUiDialog } from '..'

@@ -430,5 +430,5 @@ describe('AddDialog', () => {
   })
 
   // 高度契约（--wui-dialog-max-height 语义）不再在 jsdom 里钉 CSS 值：具体高度由浏览器
-  // 验证与 packages/web-ui 的 dialog-content-height.browser.spec.ts 覆盖（test-policy §4）。
+  // 验证与 packages/web-ui 的 dialog-content-height.browser.spec.ts 覆盖（test-authoring §4）。
 })

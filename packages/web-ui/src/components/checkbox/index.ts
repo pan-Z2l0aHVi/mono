@@ -1,8 +1,9 @@
+import '@/components/icon'
+
 import { html, LitElement, type PropertyValues, unsafeCSS } from 'lit'
 import { customElement, property, query, state } from 'lit/decorators.js'
 import { classMap } from 'lit/directives/class-map.js'
 
-import '@/components/icon'
 import selectionControl from '@/assets/selection-control.css?inline'
 import { WebUiSvgDrawLines } from '@/components/svg-draw-lines'
 import { akarIconsCheck } from '@/icons'

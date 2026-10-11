@@ -1,7 +1,8 @@
+import '..'
+
 import { afterEach, describe, expect, it } from 'vite-plus/test'
 
 import type { WebUiEmpty } from '..'
-import '..'
 
 /**
  * `size` 非法输入的**用户可见后果**：JS 调用方与 framework 绑定都能写出

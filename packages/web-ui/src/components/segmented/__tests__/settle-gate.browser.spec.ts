@@ -1,7 +1,8 @@
-import { afterEach, describe, expect, it } from 'vite-plus/test'
-
 import '..'
 import '@/components/segmented-trigger'
+
+import { afterEach, describe, expect, it } from 'vite-plus/test'
+
 import type { WebUiSegmentedTrigger } from '@/components/segmented-trigger'
 import { pollUntil, queryA11y, waitForUpdate } from '@/shared/test-utils'
 

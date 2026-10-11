@@ -1,8 +1,9 @@
+import '..'
+
 import { afterEach, describe, expect, it } from 'vite-plus/test'
 
 import { mountElement } from '@/shared/test-utils'
 
-import '..'
 import type { WebUiMiddleEllipsis } from '..'
 
 /**

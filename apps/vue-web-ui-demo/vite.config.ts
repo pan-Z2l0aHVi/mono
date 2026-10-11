@@ -1,12 +1,11 @@
 import depsReload from '@greypan/deps-reload/vite'
 import unpluginWebComponents from '@greypan/unplugin-web-components/vite'
+import { webUiOptimizeDeps } from '@greypan/web-ui/vite'
 import tailwindcss from '@tailwindcss/vite'
 import basicSsl from '@vitejs/plugin-basic-ssl'
 import legacy from '@vitejs/plugin-legacy'
 import vue from '@vitejs/plugin-vue'
-import vueJsx from '@vitejs/plugin-vue-jsx'
 import autoImport from 'unplugin-auto-import/vite'
-import vueDevTools from 'vite-plugin-vue-devtools'
 import { searchForWorkspaceRoot, type UserConfig } from 'vite-plus'
 import { playwright } from 'vite-plus/test/browser-playwright'
 import { VueRouterAutoImports } from 'vue-router/unplugin'
@@ -19,25 +18,13 @@ export default {
   optimizeDeps: {
     // browser mode 下浏览器直接加载裸 CJS 时会报 "does not provide an export named
     // 'expectTypeOf'" 并挂起；expect-type 是该运行时已知唯一的 CJS 依赖，必须显式预打包。
-    //
-    // `>` 是 vite 的「从某个包的角度解析」写法。这一整串都是 workspace 依赖 dist 里带出来的
-    // 裸依赖：从 app 自己解析不到（app 没有这些直接依赖），写裸名会被静默跳过，随后 vite 在
-    // 测试模块加载途中才发现它们并「optimized dependencies changed. reloading」，浏览器那次
-    // fetch 就失败了——连带的症状是测试模块自己报 Failed to fetch dynamically imported module。
-    // workspace 包新增裸依赖时要同步这条清单。
+    // vitest 仅由 vite-plus 间接提供，需要从 vite-plus 上下文逐级解析。
     //
     // 启动时还会打印 "Failed to resolve dependency: vitest > expect-type" 一类：那不是这条
     // 清单，是 vitest 自己注入的条目在本 pnpm 布局下解析不到，无害。
-    include: [
-      'vite-plus > vitest > expect-type',
-      '@greypan/web-ui > lit',
-      '@greypan/web-ui > @lit/context',
-      '@greypan/web-ui > lit/decorators.js',
-      '@greypan/web-ui > lit/directives/class-map.js',
-      '@greypan/web-ui > lit/directives/if-defined.js',
-      '@greypan/web-ui > lit/directives/style-map.js',
-      '@greypan/web-ui > lit/directives/unsafe-svg.js'
-    ]
+    //
+    // web-ui 那一半由 `@greypan/web-ui/vite` 提供，跟随组件库自己的运行时依赖，不要在这里抄一份。
+    include: ['vite-plus > vitest > expect-type', ...webUiOptimizeDeps]
   },
   test: {
     projects: [
@@ -74,9 +61,6 @@ export default {
     ]
   },
   plugins: [
-    // devtools 客户端只在 dev server 里有后端可连；测试页里它连不上，会在每次用例后
-    // 甩出一条 `Cannot read properties of undefined (reading 'app')` 的 unhandled rejection。
-    ...(process.env.VITEST ? [] : [vueDevTools()]),
     vueRouter(),
     vue({
       template: {
@@ -85,7 +69,6 @@ export default {
         }
       }
     }),
-    vueJsx(),
     autoImport({
       dts: true,
       imports: ['vue', VueRouterAutoImports],
@@ -124,7 +107,6 @@ export default {
     })
   ],
   base: process.env.GITHUB_BASE_PATH || '/',
-  build: {},
   css: {
     transformer: 'lightningcss'
   },

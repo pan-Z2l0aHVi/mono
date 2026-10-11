@@ -1,9 +1,9 @@
+import '..'
+
 import { afterEach, describe, expect, it } from 'vite-plus/test'
 import { userEvent } from 'vite-plus/test/browser'
 
 import { resetPointerFocusState } from '@/shared/focus/pointer-focus'
-
-import '..'
 import { flush, mountElement, waitForUpdate } from '@/shared/test-utils'
 
 import type { WebUiButton } from '..'

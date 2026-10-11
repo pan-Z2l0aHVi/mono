@@ -1,8 +1,9 @@
-import { describe, expect, it } from 'vite-plus/test'
-
 import '..'
 import '@/components/option'
 import '@/components/textarea'
+
+import { describe, expect, it } from 'vite-plus/test'
+
 import type { WebUiInput } from '@/components/input'
 import type { WebUiOption } from '@/components/option'
 import {

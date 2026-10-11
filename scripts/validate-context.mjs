@@ -2,6 +2,7 @@ import { spawnSync } from 'node:child_process'
 import crypto from 'node:crypto'
 import fs from 'node:fs'
 import path from 'node:path'
+import { pathToFileURL } from 'node:url'
 
 import { listPnpmWorkspaceManifests, readPnpmWorkspacePatterns } from './workspace-manifests.mjs'
 
@@ -60,9 +61,6 @@ if (exists('AGENTS.md')) {
 
 if (exists('.vite-hooks/pre-commit') && !read('.vite-hooks/pre-commit').includes('pnpm agent:task guard'))
   addError('.vite-hooks/pre-commit is missing the task commit guard')
-
-if (exists('CONTRIBUTING.md') && !read('CONTRIBUTING.md').includes('pnpm agent:task start --task <task-id>'))
-  addError('CONTRIBUTING.md is missing the workflow edit gate')
 
 // 根目录不再有客户端适配文件。实测 Claude Code 2.1.283 已原生发现 AGENTS.md，但只要根目录存在 CLAUDE.md，
 // 它的原生发现就整条不生效：默认的 claude-md-or-agents-md 只在项目没有 CLAUDE.md 时才读 AGENTS.md，显式声明
@@ -148,18 +146,11 @@ for (const directory of ['packages', 'apps']) {
   const absolute = path.join(root, directory)
   if (!fs.existsSync(absolute)) continue
 
-  // 「包级约束」区域：路由到该 workspace 的权威要么是它自己的 AGENTS.md，要么是 ARCHITECTURE.md「包级约束」表中的一行。
-  // 薄约束包（无独立 AGENTS.md 的 workspace）必须出现在该表中才能被 agent 定位，否则视为路由缺口。
+  // workspace 的局部约束必须有家：它自己的 AGENTS.md，或最近一个含 AGENTS.md 的祖先目录。
+  // 包级约束不再集中收进 ARCHITECTURE.md 的表，所以这里没有「表格豁免」退路——缺文件就是路由缺口。
   // 用递归而非直接子目录：嵌套 workspace（如 apps/interweave/frontend）同样必须可定位。
-  const constraintsArea = (() => {
-    const architecture = exists('ARCHITECTURE.md') ? read('ARCHITECTURE.md') : ''
-    const heading = /#{1,6}[ \t]+5\.[ \t]*包级约束/.exec(architecture)
-    return heading ? architecture.slice(heading.index) : ''
-  })()
-
-  // 嵌套 workspace 的约束可并回最近的有 AGENTS.md 的祖先（如 apps/interweave/frontend 并入 apps/interweave/AGENTS.md），
-  // 此时不强制它单列入约束表；只有最近含 AGENTS.md 的祖先存在才视为已可定位。
-  // 根目录 AGENTS.md 是全部 workspace 的公共入口，不能算「最近祖先」，否则所有包都会走此豁免、包级约束表校验被静默关闭。
+  // 嵌套 workspace 的约束可并回最近的有 AGENTS.md 的祖先（如 apps/interweave/frontend 并入 apps/interweave/AGENTS.md）。
+  // 根目录 AGENTS.md 是全部 workspace 的公共入口，不能算「最近祖先」，否则所有包都会走此豁免、这道校验被静默关闭。
   function coveredByAncestorAgents(workspaceRoot) {
     let parent = path.dirname(workspaceRoot)
     while (parent !== root && parent.startsWith(root)) {
@@ -178,19 +169,10 @@ for (const directory of ['packages', 'apps']) {
       const candidate = path.join(dir, entry.name)
       if (fs.existsSync(path.join(candidate, 'package.json'))) {
         const workspaceRoot = candidate
-        const hasOwnAgents = fs.existsSync(path.join(workspaceRoot, 'AGENTS.md'))
-        let tracked = hasOwnAgents || coveredByAncestorAgents(workspaceRoot)
-        if (!tracked) {
-          try {
-            const manifest = JSON.parse(fs.readFileSync(path.join(workspaceRoot, 'package.json'), 'utf8'))
-            if (manifest.name && constraintsArea.includes(`\`${manifest.name}\``)) tracked = true
-          } catch {
-            // 不可解析的 manifest 由下方 workspace manifest 校验统一报错，这里不重复。
-          }
-        }
+        const tracked = fs.existsSync(path.join(workspaceRoot, 'AGENTS.md')) || coveredByAncestorAgents(workspaceRoot)
         if (!tracked)
           addError(
-            `${relative(workspaceRoot)}: workspace without its own AGENTS.md must be tracked in ARCHITECTURE.md「包级约束」表 or have an AGENTS.md ancestor`
+            `${relative(workspaceRoot)}: workspace needs its own AGENTS.md, or an ancestor directory that has one`
           )
       }
       // 无论自身是否有 AGENTS.md，都必须递归进入子目录，才能覆盖嵌套 workspace（如 apps/interweave/frontend）。
@@ -208,6 +190,32 @@ for (const manifestFile of workspaceManifests) {
     addError(`${relativeRoot}: published workspace is missing README.md`)
   if (relativeRoot.startsWith('apps/') && !fs.existsSync(path.join(workspaceRoot, 'README.md')))
     addError(`${relativeRoot}: app workspace is missing README.md`)
+}
+
+// commitlint 的 prompt.scopes 是交互式提交的 scope 权威清单，必须与 workspace manifests 的包名一致：
+// 少一个名字，该 workspace 的改动在 `pnpm commit` 里选不到；多一个已删除的包名，会留下选了也无所指的假选项。
+// 清单在 commitlint.config.js 里是硬编码的，所以只能靠这道检查防漂移。判据是集合相等且无重复，
+// 顺序不参与比较：prompt 里的顺序只是展示顺序，调整它不该让检查变红。
+if (exists('commitlint.config.js')) {
+  let declaredScopes = []
+  try {
+    const { default: commitlintConfig } = await import(pathToFileURL(path.join(root, 'commitlint.config.js')).href)
+    declaredScopes = commitlintConfig.prompt?.scopes ?? []
+  } catch (error) {
+    addError(`commitlint.config.js cannot be imported: ${error instanceof Error ? error.message : String(error)}`)
+  }
+
+  const expectedScopes = new Set(['root'])
+  for (const manifestFile of workspaceManifests) {
+    const { name } = JSON.parse(fs.readFileSync(manifestFile, 'utf8'))
+    expectedScopes.add(name.replace(/^@[^/]+\//, ''))
+  }
+  const declared = new Set(declaredScopes)
+  if (declared.size !== declaredScopes.length) addError('commitlint.config.js prompt.scopes has duplicate entries')
+  for (const scope of [...expectedScopes].filter(item => !declared.has(item)).sort())
+    addError(`commitlint.config.js prompt.scopes is missing workspace scope: ${scope}`)
+  for (const scope of [...declared].filter(item => !expectedScopes.has(item)).sort())
+    addError(`commitlint.config.js prompt.scopes lists an unknown scope: ${scope}`)
 }
 
 const symlinks = {
@@ -306,7 +314,13 @@ function anchoredTargets(file) {
 }
 // 只有编号 ADR 需要被发现；docs/adr 下的其他 Markdown（如索引 README）算指令面，它的链接可以提供入站。
 const adrDocuments = new Set(walk('docs/adr', file => file.endsWith('.md') && /^\d{4}-/.test(path.basename(file))))
+// `.agents/rules/*.md` 是 Task-specific 层，只有被路由（根 AGENTS.md 的 task routing）或权威文档指针命中才会加载。
+// 被另一个 rules 文件引用不算加载路径——rules 文件自身也不常驻加载，互相引用只是两个孤岛。代价：靠「已路由的
+// rules 文件链式引出另一个规则」的写法不被承认为加载路径，需要时改为直接路由或挂到权威文档。
+const rulesDir = path.join(root, '.agents', 'rules')
+const isRulesFile = file => file.startsWith(`${rulesDir}${path.sep}`)
 const inboundTargets = new Set()
+const rulesLoadPaths = new Set()
 for (const file of markdownFiles) {
   const source = fs.readFileSync(file, 'utf8')
   const isAdr = adrDocuments.has(file)
@@ -319,6 +333,9 @@ for (const file of markdownFiles) {
     const resolved = path.resolve(path.dirname(file), location)
     if (!fs.existsSync(resolved)) addError(`${relative(file)}: broken local link ${target}`)
     if (!isAdr) inboundTargets.add(resolved)
+    // 链接可能经客户端消费面（`.claude/rules` 软链）写成，或用 `..`/软链绕路；realpath 归一后再比对。
+    // 只计真实存在的目标：断链已由上面的 `broken local link` 报过。
+    if (!isRulesFile(file) && fs.existsSync(resolved)) rulesLoadPaths.add(fs.realpathSync(resolved))
     if (fragment && fs.existsSync(resolved) && !anchoredTargets(resolved).has(ghAnchor(fragment.trim())))
       addError(`${relative(file)}: broken local anchor ${target}`)
   }
@@ -327,6 +344,12 @@ for (const file of markdownFiles) {
 // 后者把 CONTEXT.md 的体积变成契约，阻止精简这份文档。
 for (const file of [...adrDocuments].sort()) {
   if (!inboundTargets.has(file)) addError(`${relative(file)}: no inbound link from the instruction surface`)
+}
+// rules 文件的加载路径同样钉在「必须有入站链接」上：路由那一行被删掉后，断链、锚点、出处检查都不会变红，
+// 文件会静默变成孤岛，所以单列一条断言。
+for (const file of walk('.agents/rules', candidate => candidate.endsWith('.md')).sort()) {
+  if (!rulesLoadPaths.has(fs.realpathSync(file)))
+    addError(`${relative(file)}: no inbound link from the instruction surface`)
 }
 
 // 根命令存在性：文档里写的根命令必须在 package.json scripts 里真的存在，否则读者照抄必然失败。

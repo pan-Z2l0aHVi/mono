@@ -38,7 +38,7 @@ description: 审查公共 API、exports、事件、类型适配和跨包运行�
    - 跨包导出、引用或运行时契约：运行 `pnpm run test`。
    - 可发布 package 的源码入口、构建产物、`exports`、`files`、类型入口或 `sideEffects`：先运行 `pnpm run build`，再运行 `pnpm run check-pack`。
    - 需要比较 Git 基线中的 manifest-level semver 候选，或进行 PR/release 审查：运行 `pnpm agent:diff-contract -- --base <git-ref>`。
-   - UI、交互或浏览器运行时：按 `docs/agents/browser-verification.md` 在 chrome-devtools MCP 中验证；`pnpm run test` 中的 browser-mode 测试不能替代真实集成验证。
+   - UI、交互或浏览器运行时：按 `docs/agents/runtime-verification.md` 在 chrome-devtools MCP 中验证；`pnpm run test` 中的 browser-mode 测试不能替代真实集成验证。
 
 6. 输出影响面、消费者兼容结论、必须同步的资料、实际执行的验证及未覆盖风险。发现破坏性候选时先提出兼容方案或明确升级路径，不擅自扩大实现范围。
 

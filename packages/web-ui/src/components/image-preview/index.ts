@@ -1,10 +1,11 @@
+import '@/components/button'
+import '@/components/icon'
+
 import { html, LitElement, nothing, type PropertyValues, unsafeCSS } from 'lit'
 import { customElement, property, state } from 'lit/decorators.js'
 import { classMap } from 'lit/directives/class-map.js'
 import { styleMap } from 'lit/directives/style-map.js'
 
-import '@/components/button'
-import '@/components/icon'
 import glass from '@/assets/glass.css?inline'
 import modalSurface from '@/assets/modal-surface.css?inline'
 import { lucideChevronLeft, lucideChevronRight, lucideMinus, lucidePlus, oouiClose, radixIconsReset } from '@/icons'

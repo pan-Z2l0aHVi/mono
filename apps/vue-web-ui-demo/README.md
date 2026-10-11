@@ -23,4 +23,4 @@ pnpm dev:vue-web-ui-demo
 
 ## Agent 入口
 
-修改 Vue 集成或交互前先读同目录 `AGENTS.md`，再按任务读取 `docs/agents/browser-verification.md` 和 `packages/web-ui/AGENTS.md`。命名 handler 的事件类型应沿用 `WebUiEvent`，不要手写 host 类型；修改公共契约时回到 `packages/web-ui` 的文档、类型和测试。
+修改 Vue 集成或交互前先读同目录 `AGENTS.md`，再按任务读取 `docs/agents/runtime-verification.md` 和 `packages/web-ui/AGENTS.md`。命名 handler 的事件类型应沿用 `WebUiEvent`，不要手写 host 类型；修改公共契约时回到 `packages/web-ui` 的文档、类型和测试。

@@ -1,9 +1,10 @@
+import '@/components/button'
+import '@/components/icon'
+
 import { getRootScrollTop } from '@greypan/browser-kit'
 import { html, LitElement, type PropertyValues, unsafeCSS } from 'lit'
 import { customElement, property, state } from 'lit/decorators.js'
 
-import '@/components/icon'
-import '@/components/button'
 import { lucideArrowUpToLine } from '@/icons'
 import { normalizeLiteral, normalizeNumber } from '@/shared/normalize'
 

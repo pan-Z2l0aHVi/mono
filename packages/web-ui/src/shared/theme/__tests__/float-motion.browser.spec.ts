@@ -1,8 +1,9 @@
-import { afterEach, describe, expect, it } from 'vite-plus/test'
-
 import '@/components/popover'
 import '@/components/theme'
 import '@/components/tooltip'
+
+import { afterEach, describe, expect, it } from 'vite-plus/test'
+
 import { getThemedPortalPanel, pollUntil, waitForFrame } from '@/shared/test-utils'
 
 type PanelTag = 'web-ui-popover' | 'web-ui-tooltip'

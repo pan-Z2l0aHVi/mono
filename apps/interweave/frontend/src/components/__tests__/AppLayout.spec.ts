@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 
 import '@greypan/web-ui'
+
 import type { WebUiDialog } from '@greypan/web-ui'
 import { createPinia, setActivePinia } from 'pinia'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'

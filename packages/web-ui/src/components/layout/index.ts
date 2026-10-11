@@ -1,12 +1,13 @@
+import '@/components/button'
+import '@/components/drawer'
+import '@/components/icon'
+
 import { html, LitElement, nothing, unsafeCSS } from 'lit'
 import { customElement, property, state } from 'lit/decorators.js'
 import { classMap } from 'lit/directives/class-map.js'
 import { styleMap } from 'lit/directives/style-map.js'
 
 import glass from '@/assets/glass.css?inline'
-import '@/components/icon'
-import '@/components/button'
-import '@/components/drawer'
 import { radixIconsPanelLeftMinimized } from '@/icons'
 import { attachDragGesture, clamp, type DragGestureHandle } from '@/shared/gesture'
 import { defineVisibleAreaTracker, VisibleAreaController } from '@/shared/visible-area'

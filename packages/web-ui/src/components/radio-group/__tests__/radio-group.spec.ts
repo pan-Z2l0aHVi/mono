@@ -1,7 +1,8 @@
-import { describe, expect, it } from 'vite-plus/test'
-
 import '..'
 import '@/components/radio'
+
+import { describe, expect, it } from 'vite-plus/test'
+
 import { waitForUpdate, spyEvents, spyHostEvents, cleanupElement, queryA11y } from '@/shared/test-utils'
 
 import type { WebUiRadioGroup } from '..'

@@ -1,6 +1,7 @@
+import '@/components/input'
+
 import { afterEach, describe, expect, it } from 'vite-plus/test'
 
-import '@/components/input'
 import type { WebUiInput } from '@/components/input'
 import { queryA11y, waitForUpdate } from '@/shared/test-utils'
 

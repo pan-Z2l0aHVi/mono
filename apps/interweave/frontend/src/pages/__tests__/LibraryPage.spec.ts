@@ -18,7 +18,7 @@ import {
 import { stubLayout } from '../../components/library/__tests__/virtualLayout'
 import type { LibraryRuntime, SourceAvailabilityEventDTO } from '../../services/library'
 import { useLibraryStore } from '../../stores/library'
-import LibraryPage from '../LibraryPage.vue'
+import LibraryPage from '../library/index.vue'
 
 // 右键菜单由 web-ui 自己接管渲染，单测只需要它有这两个接口
 if (!customElements.get('web-ui-context-menu')) {

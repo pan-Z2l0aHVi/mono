@@ -1,7 +1,8 @@
+import '@/components/icon'
+
 import { html, LitElement, unsafeCSS } from 'lit'
 import { customElement, property } from 'lit/decorators.js'
 
-import '@/components/icon'
 import { lucideChevronRight } from '@/icons'
 
 import style from './style.css?inline'

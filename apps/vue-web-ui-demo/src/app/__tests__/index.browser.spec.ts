@@ -1,4 +1,5 @@
 import '@/assets/global.css'
+
 import type { WebUiLayout } from '@greypan/web-ui'
 import { createHead } from '@unhead/vue/client'
 import { mount, type VueWrapper } from '@vue/test-utils'

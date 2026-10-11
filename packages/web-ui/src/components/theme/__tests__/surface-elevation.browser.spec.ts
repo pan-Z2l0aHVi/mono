@@ -1,10 +1,11 @@
-import { afterEach, describe, expect, it } from 'vite-plus/test'
-import { page } from 'vite-plus/test/browser'
-
 import '@/components/layout'
 import '@/components/option'
 import '@/components/select'
 import '@/components/theme'
+
+import { afterEach, describe, expect, it } from 'vite-plus/test'
+import { page } from 'vite-plus/test/browser'
+
 import type { WebUiLayout } from '@/components/layout'
 import type { WebUiOption } from '@/components/option'
 import type { WebUiSelect } from '@/components/select'

@@ -5,20 +5,12 @@
   },
   "format_on_save": "on",
   "lsp": {
-    "eslint": {
-      "settings": {
-        "workingDirectories": [
-          {
-            "mode": "auto"
-          }
-        ]
-      }
-    },
     "oxlint": {
       "initialization_options": {
         "settings": {
           "configPath": null,
           "run": "onType",
+          "typeAware": true,
           "disableNestedConfig": false,
           "fixKind": "safe_fix",
           "unusedDisableDirectives": "deny"
@@ -28,7 +20,7 @@
     "oxfmt": {
       "initialization_options": {
         "settings": {
-          "fmt.configPath": null,
+          "fmt.configPath": "./vite.config.ts",
           "run": "onSave"
         }
       }

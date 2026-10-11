@@ -1,5 +1,3 @@
-import { afterEach, describe, expect, it } from 'vite-plus/test'
-
 import '@/components/autocomplete'
 import '@/components/checkbox'
 import '@/components/checkbox-group'
@@ -14,6 +12,9 @@ import '@/components/select'
 import '@/components/slider'
 import '@/components/switch'
 import '@/components/textarea'
+
+import { afterEach, describe, expect, it } from 'vite-plus/test'
+
 import type { WebUiCheckbox } from '@/components/checkbox'
 import type { WebUiInput } from '@/components/input'
 import type { WebUiInputNumber } from '@/components/input-number'

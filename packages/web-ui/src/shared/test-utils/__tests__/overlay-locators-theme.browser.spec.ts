@@ -1,9 +1,10 @@
-import { afterEach, describe, expect, it } from 'vite-plus/test'
-
 import '@/components/context-menu'
 import '@/components/dropdown-item'
 import '@/components/popover'
 import '@/components/theme'
+
+import { afterEach, describe, expect, it } from 'vite-plus/test'
+
 import type { WebUiContextMenu } from '@/components/context-menu'
 import type { WebUiPopover } from '@/components/popover'
 import { getMenuPanels, getPortalPanels } from '@/shared/test-utils'

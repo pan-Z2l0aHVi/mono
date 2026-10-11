@@ -1,6 +1,7 @@
+import '..'
+
 import { afterEach, beforeEach, describe, expect, it } from 'vite-plus/test'
 
-import '..'
 import { mountElement, waitForUpdate } from '@/shared/test-utils'
 
 import type { WebUiSvgDrawLines } from '..'

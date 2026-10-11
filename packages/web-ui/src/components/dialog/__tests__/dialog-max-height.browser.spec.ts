@@ -1,6 +1,7 @@
+import '..'
+
 import { afterEach, describe, expect, it } from 'vite-plus/test'
 
-import '..'
 import type { WebUiDialog } from '..'
 
 const CONTENT_HEIGHT = 2000

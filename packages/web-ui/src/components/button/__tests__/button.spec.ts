@@ -1,9 +1,10 @@
+import '..'
+import '@/components/button-group'
+
 import { describe, expect, it } from 'vite-plus/test'
 
 import { cleanupElement, expectReflected, mountElement, spyEvents, waitForUpdate } from '@/shared/test-utils'
-import '@/components/button-group'
 
-import '..'
 import type { WebUiButton } from '..'
 
 const createButton = (text = ''): WebUiButton => {

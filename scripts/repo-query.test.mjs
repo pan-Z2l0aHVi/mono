@@ -147,7 +147,7 @@ assert.ok(webUiPlan.verification.some(item => item.command === 'pnpm run check-p
 assert.ok(webUiPlan.verification.some(item => item.command === 'chrome-devtools MCP 真实浏览器验证'))
 assert.match(run('verify', 'packages/web-ui/src/components/select/index.ts'), /evidence:/)
 
-const contextPlan = JSON.parse(run('verify', '--json', 'docs/agents/context.md'))
+const contextPlan = JSON.parse(run('verify', '--json', 'docs/agents/agent-context.md'))
 assert.equal(contextPlan.risk.context, true)
 assert.ok(contextPlan.context.includes('docs/adr/0004-progressive-agent-context-architecture.md'))
 assert.ok(contextPlan.verification.some(item => item.command === 'pnpm run ci:validate-context'))
@@ -164,7 +164,7 @@ const toolPlan = JSON.parse(run('verify', '--json', 'scripts/repo-query.mjs'))
 assert.ok(toolPlan.verification.some(item => item.command === 'pnpm run ci:test-scripts'))
 
 const workflowToolPlan = JSON.parse(run('verify', '--json', 'scripts/task.mjs'))
-assert.ok(workflowToolPlan.context.includes('docs/agents/context.md'))
+assert.ok(workflowToolPlan.context.includes('docs/agents/agent-context.md'))
 assert.ok(workflowToolPlan.verification.some(item => item.command === 'pnpm run ci:test-scripts'))
 
 const workspaceConfigPlan = JSON.parse(run('verify', '--json', 'pnpm-workspace.yaml'))
