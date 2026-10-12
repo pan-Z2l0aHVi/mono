@@ -1,6 +1,7 @@
 import glass from '@/assets/glass.css?inline'
 import menuPortalStyle from '@/assets/menu-portal.css?inline'
 import overlayMotion from '@/assets/overlay-motion.css?inline'
+import internalScrollbars from '@/scrollbars/internal.css?inline'
 import { resolveOverlayContainer } from '@/shared/overlay/portal'
 
 export interface MenuPortalOverlay {
@@ -13,7 +14,8 @@ export interface MenuPortalOverlay {
 // shadow root 并不包含这些样式。故面板自携带一份，保证在任何容器下都能正确渲染。
 const MENU_PANEL_STYLES = `${glass}
 ${menuPortalStyle}
-${overlayMotion}`
+${overlayMotion}
+${internalScrollbars}`
 
 /**
  * 菜单浮层面板：面板直接挂到 overlay 容器（与普通 Overlay Portal 共用容器解析），
@@ -39,7 +41,7 @@ export function createMenuPortalOverlay(className: string, target?: Element, scr
   panel.className = `wui-menu-portal-overlay wui-floating-panel wui-glass ${className}`
   panel.dataset.wuiPresence = 'entering'
   const scroll = document.createElement('div')
-  scroll.className = 'wui-menu-scroll'
+  scroll.className = 'wui-menu-scroll wui-scroll'
   const content = document.createElement('div')
   content.className = 'wui-menu-content'
   scroll.append(content)

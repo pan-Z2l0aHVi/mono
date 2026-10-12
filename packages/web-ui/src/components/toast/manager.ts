@@ -33,7 +33,7 @@ function ensureContainer(position: ToastPosition, root: HTMLElement): HTMLElemen
   if (existing) return existing
 
   const container = document.createElement('div')
-  container.className = `wui-toast-container wui-toast-${position}`
+  container.className = `wui-toast-container wui-toast-${position} wui-scroll`
   container.dataset.wuiToastPosition = position
   container.setAttribute('role', 'log')
   container.setAttribute('aria-live', 'polite')

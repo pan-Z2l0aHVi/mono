@@ -9,6 +9,12 @@ import { WEB_UI_SCROLLBARS_THEME, webUiScrollbarsOptions } from '..'
 // 路径以包根为基准，与 vitest 的 root 一致。
 const style = readFileSync('src/scrollbars/style.css', 'utf8')
 
+// 组件内部滚动容器的主题。跟上面那份不同：它被各组件 `?inline` 进自己的 shadow，
+// 不经过文档层，所以只能断言它的源码形状，运行期几何在 browser 档里量。
+const internalStyle = readFileSync('src/scrollbars/internal.css', 'utf8')
+// 断言只看声明：注释里为了讲清楚会提到这些属性名，不能被当成声明命中。
+const internalDecls = internalStyle.replace(/\/\*[\s\S]*?\*\//g, '')
+
 /**
  * 取主题规则块里的一个自定义属性值。主题类与库初值都写在 .os-scrollbar 上、特异性相同，
  * 靠源顺序取胜，所以这里只认主题块自己声明了什么。行首锚定让深色分支里那几个同名选择器
@@ -201,5 +207,32 @@ describe('滚动条拇指的深浅', () => {
     expect(alphaOf(branchVar(DARK_BRANCH, 'wui-scrollbar-handle'))).toBe(0.5)
     expect(alphaOf(branchVar(DARK_BRANCH, 'wui-scrollbar-handle-hover'))).toBe(0.62)
     expect(alphaOf(branchVar(DARK_BRANCH, 'wui-scrollbar-handle-active'))).toBe(0.74)
+  })
+})
+
+describe('组件内部滚动条主题', () => {
+  /** 取一份自定义属性的值。 */
+  function varValue(source: string, name: string): string {
+    return new RegExp(`${name}\\s*:\\s*([^;]+)`).exec(source)?.[1]?.trim() ?? ''
+  }
+
+  it('走 var() 读主题 token，而不是写死颜色', () => {
+    // `--wui-scrollbar-*` 由 web-ui-theme 的外观分支写、.os-theme-macos 的回退值兜底；
+    // 组件 shadow 里只有继承的自定义属性穿得过去，写成字面量会让组件内部滚动条
+    // 不再跟随外观切换（与上面主题块同一条机制）。
+    expect(varValue(internalDecls, 'scrollbar-color')).toMatch(/^var\(--wui-scrollbar-handle/)
+  })
+
+  it('不声明 ::-webkit-scrollbar：它会让引擎改用占宽度的经典滚动条', () => {
+    // 实测（macOS Chromium）：给容器一条 `::-webkit-scrollbar { width: 7px }` 后，
+    // 同尺寸容器的 `offsetWidth - clientWidth` 从 0 变成 7——而 issue #225 的第 (1) 条
+    // 要求滚动条不占布局宽度。这条钉住「不要为了圆角/尺寸 reintroduce webkit 伪元素」。
+    // 运行期几何的守卫在 internal-scrollbars.browser.spec.ts。
+    expect(internalDecls).not.toContain('::-webkit-scrollbar')
+  })
+
+  it('用 scrollbar-width: thin 收窄经典滚动条', () => {
+    // 覆盖式平台不看它（仍零宽）；经典平台的滚动条据此收窄，尽量靠近 macOS 的细拇指。
+    expect(varValue(internalDecls, 'scrollbar-width')).toBe('thin')
   })
 })
