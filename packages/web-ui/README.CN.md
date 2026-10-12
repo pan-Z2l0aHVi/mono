@@ -1087,6 +1087,9 @@ await preview.closed
 | `--wui-collapse-peek-edge-max`   | `112px`       | 长度上限，避免大 `peek` 算出过长的虚化带       |
 | `--wui-collapse-peek-edge`       | —             | 显式指定长度，优先于推导值                     |
 | `--wui-collapse-peek-edge-color` | `transparent` | 渐变末端颜色（需带 alpha，mask 按 alpha 解析） |
+| `--wui-collapse-peek-edge-blur`  | `4px`         | 同一条渐变带上背景模糊的半径                   |
+
+渐变带由两层组成，配对方式与 layout header 的晕染一致：上面那条 alpha 渐隐之外，同一条带上再叠一层真实的 `backdrop-filter` 模糊，被裁掉的内容因此是被**糊掉**的，而不只是被调成半透明。模糊强度由本盒自己的 `mask-image` 调制——从带子起点为 0 升到后半段满强度、再在裁剪边缘前回到 0：起点不为 0 会在「突然开始模糊」处留一条接缝，末端不为 0 则会一路糊到裁剪边界。展开态活动长度为 0，各色标塌缩到 100% 而末位色标是全透明，于是这一层什么都不画。
 
 比例设为 `0` 即关闭渐隐。推导是纯 CSS 的 `calc(peek * ratio)`：`peek` 用 rem 时渐变长度自动跟随根字号缩放，JS 侧不需要做任何单位解析。已知限制：`peek` 取百分比时推导结果不是长度、无法被注册属性插值，会静默回落为「无渐隐」，此时请用 `--wui-collapse-peek-edge` 显式指定长度。
 
