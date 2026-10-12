@@ -363,6 +363,75 @@ describe('WebUiContextMenu 组件（浏览器）', () => {
   })
 
   /*
+   * 上一条覆盖的是「回调不自己关菜单」的形状。消费方在自己的菜单项回调里直接调
+   * `close()` 是同样常见的一种（interweave 的右键重命名就是 `emit` 之后自己关），
+   * 而这条路径曾经拿不到提前出顶层：
+   *
+   * `close()` 的出顶层判定只看 `_closeSource`，那个标志由面板上的 `_onMenuClick` 置位，
+   * 可它在**冒泡**阶段；而消费方的回调挂在条目上，先跑，于是在它调 `close()` 的那一刻
+   * `_closeSource` 仍是 `'default'`。scrim 因此留在 top layer 里不退，模态期间整份文档
+   * 是 inert 的 —— 紧接着送进编辑器的焦点被浏览器静默丢弃，编辑器停在「有 editing 属性
+   * 但没有焦点」的状态。实测（issue #220）症状正是「重命名后焦点停在列表项上，编辑器
+   * 根本没进编辑态」。
+   *
+   * 判据用 `document.activeElement` 而不是 editable-text 的内部状态：`_editing` 在两种
+   * 形状下都为 true，区分不出「进了编辑态」与「进了编辑态且真的拿到了焦点」——后者才是
+   * 这条要守的东西。
+   */
+  it('菜单项回调里自己 close() 时，编辑器仍拿到焦点且不被提交', async () => {
+    const menu = document.createElement('web-ui-context-menu')
+    const editable = document.createElement('web-ui-editable-text')
+    editable.value = '原始标题'
+
+    const row = document.createElement('div')
+    row.tabIndex = 0
+    const changes: string[] = []
+    editable.addEventListener('change', () => changes.push(editable.value))
+
+    const render = (editing: boolean) => {
+      row.replaceChildren(...(editing ? [editable] : [document.createTextNode('原始标题')]))
+    }
+    render(false)
+    const item = document.createElement('web-ui-dropdown-item')
+    item.textContent = '重命名'
+    menu.append(row, item)
+    document.body.append(menu, editable)
+    await menu.updateComplete
+
+    row.focus()
+    row.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, composed: true, clientX: 60, clientY: 60 }))
+    await menu.updateComplete
+    await nextFrame()
+    await nextFrame()
+    expect(menu.isOpen).toBe(true)
+
+    // 与 interweave 的 handleStartRename 同构：先建编辑态、微任务里 select()，再自己 close()。
+    item.addEventListener('click', () => {
+      render(true)
+      void Promise.resolve().then(() => editable.select())
+      menu.close()
+    })
+    item.click()
+    await nextFrame()
+    await nextFrame()
+
+    const scrim = document.querySelector<HTMLDialogElement>('dialog[data-wui-menu-scrim]')
+    // 焦点仍要在菜单里、编辑态刚建起的那一刻就已经落到 textarea 上：出顶层必须早于退场结束。
+    expect(document.activeElement, '菜单项激活后 scrim 应立刻出顶层').toBe(editable)
+    expect(editable.shadowRoot?.activeElement?.tagName).toBe('TEXTAREA')
+    expect(scrim?.matches(':modal')).toBe(false)
+
+    await waitForItemsReturned(menu, 1)
+    await nextFrame()
+
+    // 退场结束也不能把焦点拽回去：那会把编辑器 blur 掉，触发未改动标题的提交。
+    expect(document.activeElement).toBe(editable)
+    expect(editable.shadowRoot?.activeElement?.tagName).toBe('TEXTAREA')
+    expect(changes).toEqual([])
+    expect(editable.value).toBe('原始标题')
+  })
+
+  /*
    * 关闭来源决定 scrim 何时出顶层，这层区分必须有测试守着。
    *
    * 菜单项激活：立刻出顶层（`close()` 里的 `_releaseScrimModality`）。理由见 index.ts
