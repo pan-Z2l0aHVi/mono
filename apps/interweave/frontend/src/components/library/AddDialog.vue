@@ -461,12 +461,12 @@ function handleRenameChange(item: LibraryQueueItem, event: WebUiEvent<WebUiEdita
             240px min-block-size 盒内，置 0 后内容才随外层 place-items-center 真正垂直居中。
             图标到文案的 6px 基础间距来自组件内部写死的 `.empty-description` margin-top（未开放
             token），mt-1.5 把它补到左侧 gap-3 的 12px，mobile:mt-0.5 配 gap-2 同理。
-            图标底色与色板仍沿用 web-ui-empty 的中性 token：右侧是不可点的空态占位，染成左侧
+            图标字形色仍沿用 web-ui-empty 的中性 token：右侧是不可点的空态占位，染成左侧
             drop 区的强调色会读成可点击目标。
           -->
           <web-ui-empty
             :size="40"
-            class="[--wui-empty-min-height:0] [--wui-empty-padding:0] [--wui-empty-icon-size:52px] [--wui-internal-empty-icon-radius:18px] mobile:[--wui-empty-icon-size:40px] mobile:[--wui-internal-empty-icon-radius:12px]"
+            class="[--wui-empty-min-height:0] [--wui-empty-padding:0] [--wui-empty-icon-size:52px] mobile:[--wui-empty-icon-size:40px]"
           >
             <web-ui-icon slot="icon" :icon="lucideInbox" :size="23" />
             <span slot="description" class="mt-1.5 grid gap-3 mobile:mt-0.5 mobile:gap-2">
