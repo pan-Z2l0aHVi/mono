@@ -31,12 +31,15 @@
 
   width: var(--wui-empty-icon-size, var(--wui-internal-empty-size, 56px));
   height: var(--wui-empty-icon-size, var(--wui-internal-empty-size, 56px));
-  border-radius: var(--wui-internal-empty-icon-radius, 18px);
 
+  /*
+   * 纯图形，不绘制底面：盒只负责占位与居中，图形直接坐在它背后那张表面上，
+   * 因此这里既不画背景也不画阴影，圆角随之无对象可作用。
+   *
+   * 图形色取 secondary 而非 tertiary：无底面时字形就是这一区唯一的图形元素，
+   * tertiary 在浅色 page 上对比度不足 3:1。
+   */
   color: var(--wui-color-text-secondary, #6a6a6a);
-
-  background-color: var(--wui-color-surface-track, #e5e5ea);
-  box-shadow: none;
 }
 
 .empty-title,
