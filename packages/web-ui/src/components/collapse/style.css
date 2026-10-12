@@ -135,8 +135,13 @@
  * 跟随裁剪边缘移动（实测：mask 字符串恒定，容器高度变化时渐变带跟着走）。
  * 渐变长度由活动长度变量控制，其过渡见上方说明。
  * 末端颜色由 `--wui-collapse-peek-edge-color` 覆盖（需带 alpha，mask 按 alpha 解析）。
+ *
+ * 这条 mask 管的是「内容的可见度」；同一条渐变带上还叠了一层真实的背景模糊，
+ * 见下方 ::after。
  */
 .wui-collapse-track[data-wui-peek] .wui-collapse-inner {
+  /* 晕染伪元素以本盒为定位基准，见下方 ::after 的说明。 */
+  position: relative;
   mask-image: linear-gradient(
     to bottom,
     black 0%,
@@ -144,6 +149,48 @@
     rgb(0 0 0 / 0.6) calc(100% - var(--wui-collapse-peek-edge-active, 0px) * 0.7),
     rgb(0 0 0 / 0.26) calc(100% - var(--wui-collapse-peek-edge-active, 0px) * 0.35),
     var(--wui-collapse-peek-edge-color, transparent) 100%
+  );
+}
+
+/*
+ * peek 边缘晕染：叠一层真实的背景模糊（#221）
+ * ==========================================
+ *
+ * mask 只把内容按 alpha 变透明，边缘仍是**锐的**——被裁掉一半的字与图标看得见轮廓，
+ * 读起来像「贴了张半透明胶片」，不像 macOS 那种磨砂。header 的晕染（见
+ * layout/style.css「Header 的装饰性背景晕染」）用 backdrop-filter 把背后的画面真的糊掉，
+ * 这里对同一段渐变带补上同一层模糊，两处观感因此一致。
+ *
+ * 模糊强度用 mask 沿渐变带调制：`backdrop-filter` 只有一个全局半径，逐像素的强弱只能
+ * 由本盒的 mask alpha 给。曲线两端都归 0——起点不归 0 的话，渐变带的上沿会出现一条
+ * 「突然开始模糊」的接缝；末端不归 0 则会在裁剪边缘糊到盒外（本盒 overflow: hidden，
+ * 盒外那段本就不可见，但模糊会在盒边界留下一圈亮边）。
+ *
+ * 活动长度为 0（展开态）时整条 mask 的各色标塌缩到 100%，取末位色标即全透明，
+ * 伪元素自然什么都不画——不需要额外的开关规则，也不会在展开态留下一层灰纱。
+ * 这也是**不**改用「页面色渐变盖住内容」那层的原因：那层在长度为 0 时塌缩成不透明页面色，
+ * 会把展开后的内容整片盖住，要防住就得再加一个可过渡的开关量。
+ *
+ * 位置相对 inner（`position: relative`）：本盒就是被裁剪到 peek 长度的那一个，
+ * 伪元素随它一起被裁剪，不需要第二层定位。z-index 让它压在 slot 内容之上。
+ * --wui-collapse-peek-edge-active 必须以 inherits: true 注册（见 index.ts）：
+ * 继承为 false 时伪元素读到的是 initialValue 0px，整条 mask 塌缩、模糊静默消失。
+ */
+.wui-collapse-track[data-wui-peek] .wui-collapse-inner::after {
+  pointer-events: none;
+  content: '';
+
+  position: absolute;
+  z-index: 1;
+  inset: 0;
+
+  backdrop-filter: blur(var(--wui-collapse-peek-edge-blur, 4px));
+
+  mask-image: linear-gradient(
+    to bottom,
+    transparent calc(100% - var(--wui-collapse-peek-edge-active, 0px)),
+    black calc(100% - var(--wui-collapse-peek-edge-active, 0px) * 0.35),
+    transparent 100%
   );
 }
 
@@ -155,6 +202,15 @@
     rgb(0 0 0 / 0.6) calc(100% - var(--wui-collapse-peek-edge-active, 0px) * 0.7),
     rgb(0 0 0 / 0.26) calc(100% - var(--wui-collapse-peek-edge-active, 0px) * 0.35),
     var(--wui-collapse-peek-edge-color, transparent) 100%
+  );
+}
+
+.wui-collapse-track[data-wui-peek].is-horizontal .wui-collapse-inner::after {
+  mask-image: linear-gradient(
+    to right,
+    transparent calc(100% - var(--wui-collapse-peek-edge-active, 0px)),
+    black calc(100% - var(--wui-collapse-peek-edge-active, 0px) * 0.35),
+    transparent 100%
   );
 }
 

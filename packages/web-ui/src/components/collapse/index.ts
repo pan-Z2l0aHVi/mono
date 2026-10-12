@@ -21,6 +21,10 @@ const PEEK_EDGE_ACTIVE = '--wui-collapse-peek-edge-active'
  * initial-value），而自定义属性的注册本质上是 document 级的。
  * 注册失败（jsdom、旧浏览器、重复注册）时降级为离散过渡——渐变带长度瞬变，
  * 但位置百分比仍跟随裁剪边缘，行为依旧正确。
+ *
+ * `inherits` 必须是 true：晕染伪元素（style.css 的 ::after）读同一个值来调制模糊，
+ * 继承为 false 时伪元素读到的是 initialValue 0px——mask 的各色标随之塌缩到 100%，
+ * 模糊层静默消失且其余渲染一切照旧，只少一层效果。
  */
 function registerPeekEdgeActive() {
   // jsdom 与不支持的环境直接跳过；样式里的 var() fallback 保证声明仍然有效。
@@ -29,7 +33,7 @@ function registerPeekEdgeActive() {
     CSS.registerProperty({
       name: PEEK_EDGE_ACTIVE,
       syntax: '<length>',
-      inherits: false,
+      inherits: true,
       initialValue: '0px'
     })
   } catch {

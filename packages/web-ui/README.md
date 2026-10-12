@@ -1128,6 +1128,9 @@ The initial `open` attribute settles instantly without playing the animation. Ne
 | `--wui-collapse-peek-edge-max`   | `112px`       | Upper bound, so a large `peek` cannot produce an oversized fade band  |
 | `--wui-collapse-peek-edge`       | —             | Explicit fade length; wins over the derived value                     |
 | `--wui-collapse-peek-edge-color` | `transparent` | Fade-stop color (must carry alpha - `mask-image` reads alpha channel) |
+| `--wui-collapse-peek-edge-blur`  | `4px`         | Blur radius of the frost layer over the same band                     |
+
+The band carries two layers, the same pairing the layout header's glow uses: the alpha fade above, plus a real `backdrop-filter` blur over the same band, so the clipped content is blurred out rather than merely made translucent. The blur is modulated by the band's own `mask-image`, ramping from 0 at the band's start to full in its second half and back to 0 at the cut edge - a non-zero start would draw a visible seam where the blur abruptly begins, and a non-zero end would blur right up to the clip boundary. When `open`, the band length is `0`, every mask stop collapses onto 100% and the last stop is fully transparent, so the layer paints nothing.
 
 Set the ratio to `0` to turn the fade off. The derivation is pure CSS `calc(peek * ratio)`, so a `rem`-based `peek` scales the fade with the root font size and nothing has to be measured in JS. Known limitation: a percentage `peek` does not derive to a length, so the fade silently falls back to "none". Set `--wui-collapse-peek-edge` explicitly in that case.
 

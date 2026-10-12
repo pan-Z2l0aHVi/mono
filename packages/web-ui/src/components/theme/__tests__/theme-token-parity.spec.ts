@@ -434,9 +434,10 @@ describe('注释不是 fallback 站点', () => {
   })
 
   it('剥注释后组件 CSS 的站点总数少 2（剥掉的两处正是注释内的 var()）', () => {
-    // 覆盖面口径：原样扫出 687 处，剥掉 collapse:176 与 dialog:72 两处注释站点后剩 685
-    // （较上一版各少 2 处，来自 empty 去掉的圆角与底面两条声明——见 #230）
-    expect(allFallbackSites).toHaveLength(685)
+    // 覆盖面口径：原样扫出 692 处，剥掉 collapse:232 与 dialog:72 两处注释站点后剩 690
+    // （较上一版少 2 处，来自 empty 去掉的圆角与底面两条声明——见 #230；
+    //  多于上一版 5 处，来自 collapse peek 晕染伪元素新增的 var() 站点）
+    expect(allFallbackSites).toHaveLength(690)
   })
 
   it('原样扫描与剥注释扫描的差集恰好是这两处，其余站点逐字不动', () => {
@@ -448,7 +449,7 @@ describe('注释不是 fallback 站点', () => {
       return raw.filter(site => !kept.has(site.index))
     })
     expect(inComments.map(site => `${site.file}:${site.line} ${site.token}`)).toEqual([
-      'components/collapse/style.css:176 --wui-collapse-peek-edge',
+      'components/collapse/style.css:232 --wui-collapse-peek-edge',
       'components/dialog/style.css:72 --wui-dialog-max-height'
     ])
   })
