@@ -7,6 +7,7 @@ import { ifDefined } from 'lit/directives/if-defined.js'
 import glass from '@/assets/glass.css?inline'
 import overlayMotion from '@/assets/overlay-motion.css?inline'
 import type { WebUiOption } from '@/components/option'
+import internalScrollbars from '@/scrollbars/internal.css?inline'
 import { FormAssociated, defineFormAssociation, FormAssociationController } from '@/shared/form-association'
 import { normalizeLiteral } from '@/shared/normalize'
 import { dispatchOpenChangeEvent } from '@/shared/open-state'
@@ -59,7 +60,7 @@ function isEmptySlotNode(node: Node): node is Element {
  */
 @customElement('web-ui-autocomplete')
 export class WebUiAutocomplete extends FormAssociated(LitElement) {
-  static override styles = [unsafeCSS(glass), unsafeCSS(overlayMotion), unsafeCSS(style)]
+  static override styles = [unsafeCSS(glass), unsafeCSS(overlayMotion), unsafeCSS(internalScrollbars), unsafeCSS(style)]
 
   @property({ type: String, reflect: true }) placeholder = ''
   @property({ type: Boolean, reflect: true }) borderless = false
@@ -705,7 +706,7 @@ export class WebUiAutocomplete extends FormAssociated(LitElement) {
     portal.panel.setAttribute('aria-hidden', 'true')
     portal.panel.addEventListener('pointerdown', this._handlePanelPointerDown)
     const scroll = document.createElement('div')
-    scroll.className = 'autocomplete-scroll'
+    scroll.className = 'autocomplete-scroll wui-scroll'
     const content = document.createElement('div')
     content.className = 'autocomplete-content'
     this._portalContent = content
@@ -810,7 +811,7 @@ export class WebUiAutocomplete extends FormAssociated(LitElement) {
           aria-hidden="true"
           @pointerdown=${this._handlePanelPointerDown}
         >
-          <div class="autocomplete-scroll">
+          <div class="autocomplete-scroll wui-scroll">
             <div class="autocomplete-content">
               <slot @slotchange=${this._onSlotChange}></slot>
             </div>

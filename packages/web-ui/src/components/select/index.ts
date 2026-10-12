@@ -7,6 +7,7 @@ import glass from '@/assets/glass.css?inline'
 import overlayMotion from '@/assets/overlay-motion.css?inline'
 import type { WebUiOption } from '@/components/option'
 import { lucideChevronDown } from '@/icons'
+import internalScrollbars from '@/scrollbars/internal.css?inline'
 import { installPointerFocusSuppression } from '@/shared/focus/pointer-focus'
 import { FormAssociated, defineFormAssociation, FormAssociationController } from '@/shared/form-association'
 import { dispatchOpenChangeEvent } from '@/shared/open-state'
@@ -33,7 +34,7 @@ installPointerFocusSuppression()
 
 @customElement('web-ui-select')
 export class WebUiSelect extends FormAssociated(LitElement) {
-  static override styles = [unsafeCSS(glass), unsafeCSS(overlayMotion), unsafeCSS(style)]
+  static override styles = [unsafeCSS(glass), unsafeCSS(overlayMotion), unsafeCSS(internalScrollbars), unsafeCSS(style)]
 
   @property({ type: String, reflect: true }) placeholder = ''
   @property({ type: Boolean, reflect: true }) disabled = false
@@ -456,7 +457,7 @@ export class WebUiSelect extends FormAssociated(LitElement) {
     ])
     portal.panel.setAttribute('role', 'listbox')
     const scroll = document.createElement('div')
-    scroll.className = 'select-scroll'
+    scroll.className = 'select-scroll wui-scroll'
     const content = document.createElement('div')
     content.className = 'select-content'
     this._portalContent = content
@@ -520,7 +521,7 @@ export class WebUiSelect extends FormAssociated(LitElement) {
           <web-ui-icon class="arrow" .icon=${lucideChevronDown}></web-ui-icon>
         </div>
         <div class="select-overlay wui-floating-panel wui-glass" hidden role="listbox" id=${listboxId}>
-          <div class="select-scroll">
+          <div class="select-scroll wui-scroll">
             <div class="select-content">
               <slot @slotchange=${this._onSlotChange}></slot>
             </div>

@@ -55,6 +55,14 @@ import { OverlayScrollbarsComponent } from 'overlayscrollbars-react' // or overl
 - OverlayScrollbars only changes the element it is initialized on; children keep their native scrollbars. To cover
   the document scroller, initialize `document.body` — `window.scrollY` / `window.scrollTo` keep their native
   semantics there.
+- Components that own a scroll container (`select`, `autocomplete`, the dropdown / context-menu panels,
+  `dialog`, `drawer`, `toast`) theme that container's **internal** scrollbar inside their own shadow root.
+  OverlayScrollbars cannot reach a shadow root — its structural styles and theme classes are document-level
+  selectors — so the components read the same inherited `--wui-scrollbar-*` colours through `scrollbar-color`
+  / `scrollbar-width` on the native scrollbar instead. `::-webkit-scrollbar` is deliberately not used: styling
+  it opts out of the platform's overlay scrollbar and reserves a layout gutter, which these scrollbars must
+  not do. Import this stylesheet for the internal scrollbars to follow the appearance, just like the
+  page-level ones.
 
 ## Vite
 
