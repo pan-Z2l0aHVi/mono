@@ -1,5 +1,158 @@
 # @greypan/web-ui
 
+## 10.1.1
+
+### Patch Changes
+
+- f083706: feat(collapse): peek 的裁剪边缘改用与 layout header 同一套晕染——渐隐之外叠一层真实的背景模糊
+  
+  peek 的裁剪边缘此前只有一条 `mask-image` alpha 渐变：被裁掉一半的内容是**变透明**而不是被拿掉，
+  轮廓仍然锐利，读起来像贴了张半透明胶片。layout header 的晕染（`layout/style.css` 的
+  `header::before` / `::after`）用的是 `backdrop-filter` 把背后的画面真的糊掉，两处观感不一致
+  （issue #221）。
+  
+  改法是给同一条渐变带补一层伪元素晕染：`backdrop-filter: blur()` 叠在 inner 上，由本盒自己的
+  `mask-image` 沿带子调制强度（带子起点 0 → 后半段满强度 → 裁剪边缘前回到 0；起点不为 0 会留下一条
+  「突然开始模糊」的接缝，末端不为 0 会一路糊到裁剪边界）。渐变本身与各项 `--wui-collapse-peek-edge-*`
+  调优口径一律不动，展开态活动长度为 0 时色标塌缩、末位色标全透明，这一层自然什么都不画。
+  
+  新增 `--wui-collapse-peek-edge-blur`（默认 `4px`，与 header 一致）调半径。
+  
+  `--wui-collapse-peek-edge-active` 的注册由 `inherits: false` 改为 `true`：伪元素读同一个值，
+  继承为 false 时它读到的是 `initialValue` 0px，mask 塌缩、模糊层静默消失而其余渲染一切照旧。
+- 56a2290: 组件内部的滚动条接上整页同一套 macOS 滚动条主题，且不额外引入滚动条依赖（#225）。
+  
+  `web-ui-theme` 的外观分支、`.os-theme-macos` 主题都活在文档层：`.os-scrollbar` 的结构样式是
+  文档级选择器，shadow root 永远匹配不到，所以组件内部的滚动容器此前一直是浏览器默认滚动条。
+  本次给这些容器加一个 `.wui-scroll` 工具类，在组件自己的 shadow 里 adopted 一份只读继承 token 的
+  样式：`scrollbar-color: var(--wui-scrollbar-handle, rgb(0 0 0 / 0.39)) transparent` +
+  `scrollbar-width: thin`。自定义属性跨 shadow 边界继承，颜色因此与整页的覆盖式滚动条同源；
+  样式只 adopted 进各组件的 shadow，不落文档层。覆盖 select、autocomplete、菜单浮层
+  （dropdown / context-menu，含 portal 与 top layer 两种容器）、dialog 的 `.desc` 与 headless 内容区、
+  drawer 内容区、toast 容器。
+  
+  **结论：用纯 CSS，不引入 OverlayScrollbars，也不删除既有依赖。** 库继续服务文档/应用级滚动条
+  （它是唯一能做出「可见 + 自动隐藏 + 零布局宽度」覆盖式滚动条的东西），但把库初始化进每个
+  shadow root 需要用 JS 重建每一条滚动条，超出 issue「组件不必引入第三方依赖」的范围。
+  
+  **为什么不用 `::-webkit-scrollbar`：** 它是纯 CSS 里唯一能拿到 macOS 几何（细拇指、圆角）的手段，
+  但一旦声明，引擎就会放弃平台自带的覆盖式滚动条，改用经典滚动条并固定占一条布局宽度。实测
+  （macOS Chromium，`width: 7px`）：同尺寸容器的 `offsetWidth - clientWidth` 从 0 变成 7，直接违反
+  issue 的第 (1) 条「不占用宽度」。`scrollbar-color` / `scrollbar-width` 不触发这个切换——覆盖式
+  平台上滚动条保持零宽覆盖，经典平台上才按它们上色、收窄。
+  
+  **未覆盖的既有缺口（沿用 #233 已记录的两条，本次不扩大也不修复）：** (a) `var()` 回退值恒为黑拇指，
+  无任何 `web-ui-theme` 的深色页面在组件内部同样拿到黑拇指——与整页 `.os-theme-macos` 一致，属同
+  一条既有缺口；正确的修法是在主题 token 层给出跟随外观的回退，会改变文档级 `scrollbars.css` 对库
+  路径的既有行为，超出本 issue 的组件内部范围。(b) 只覆写 `--wui-scrollbar-handle` 的消费方在**
+  库路径**上悬停档只 +0.01：本条只涉及 `.os-theme-macos` 的 hover/active 字面量，`scrollbar-color`
+  没有悬停态，组件内部路径不受影响，故一并保持原样。
+  
+  新增 `src/scrollbars/__tests__/internal-scrollbars.browser.spec.ts`：在真实浏览器里量 dialog
+  内容区的计算 `scrollbar-color` 随 `web-ui-theme` 的浅/深外观切换，并断言滚动条不占布局宽度
+  （`offsetWidth - clientWidth === 0`）。`scrollbars.spec.ts` 追加源码形状断言：走 `var()` 读 token、
+  `scrollbar-width: thin`、且**不出现** `::-webkit-scrollbar`（这条是承重的，变异已验证）。
+- fe86e28: fix(context-menu): 菜单项回调里自行 close() 时也让 scrim 提前出顶层，保住消费方的焦点转移
+  
+  `close()` 判定「要不要立刻让 scrim 退出 top layer」时只读 `_closeSource`，而那个标志由面板上的
+  `_onMenuClick` 在**冒泡**阶段置位。消费方在自己的菜单项回调里直接调 `close()` 时，回调挂在条目上、
+  先跑，`close()` 看到的仍是 `'default'`：scrim 留在 top layer 里不退，模态期间整份文档是 inert 的，
+  消费方紧接着送进编辑器的焦点被浏览器静默丢弃。
+  
+  现象是「触发重命名后焦点停在菜单项上，编辑器根本没进编辑态」（interweave 资源列表 issue #220）。
+  本仓已有一条用例守着同一根因的另一种落点（回调不自己关菜单时，UA 归还焦点会 blur 掉编辑器并提交
+  未改动的标题），但它盖不到这条路径。
+  
+  改法是新增一次性标志 `_menuItemActivated`：面板在**捕获阶段**记下「可激活的菜单项被点了」，
+  `close()` 的判定把它与 `_closeSource` 并列。判据复用 `getMenuItemFromEvent` 并排除 disabled 与
+  submenu 项，与 `_onMenuClick` 同源。
+  
+  标志的作用域是**一次事件派发**，在微任务检查点复位：捕获阶段与冒泡阶段（关闭动作发生在那里）
+  都在同一个任务内跑完，需要它判定的两条路径都赶得上；而「点了菜单项但菜单没关」（消费方在自己
+  的条目回调里 `stopPropagation()`）必然跨过检查点，标志已被清掉，不会让后续的 Escape / 点外面 /
+  程序式关闭被误判成菜单项激活。那三种关闭的语义不变，仍保留 dialog 默认效果。
+- ac5e2e4: feat(empty): 空态图标改为纯图形，去掉身后的圆角矩形底面
+  
+  图标区原本把 `--wui-color-surface-track` 画成一个 `border-radius: 18px` 的圆角矩形托底，
+  图形浮在上面。issue #230 要求去掉那层底面：盒只留占位与居中，图形直接坐在它背后那张
+  表面上，浅色与深色皆然。
+  
+  盒本身、`--wui-empty-icon-size` 与 `size` 的度量派生、slot 与 property 一概未动——本次只
+  删了 `.empty-icon` 的 `background-color`、`box-shadow` 与 `border-radius` 三条声明。圆角随
+  底面一同失去作用对象，所以 `--wui-internal-empty-icon-radius`（内部 token，未在 README 的
+  公开表里）不再被消费；`apps/interweave` 的 `AddDialog.vue` 仍在覆写它，那条覆写从此无效但
+  无害，留给那条链按自己的取舍清理。
+  
+  图形色沿用 `--wui-color-text-secondary`：无底面时字形是这一区唯一的图形元素，
+  `--wui-color-text-tertiary` 在浅色 page 上对比度不足 3:1。新增浏览器用例钉住「图标盒背景
+  透明」与「图形与其背后表面 WCAG 对比度 ≥ 3:1」两条关系，两种 appearance 各跑一遍。
+- ad38525: Lighten the resting scrollbar thumb in light appearance so it matches the measured macOS overlay
+  scrollbar, and stop the page-level scrollbars from ignoring that lightness (#216).
+  
+  The resting thumb was 50% black, which renders `rgb(128,128,128)` over the `#fff` page surface. A
+  native macOS overlay scrollbar sampled at full opacity reads `rgb(155,155,155)` on white. The light
+  branch now derives its alpha from that measurement, `(255 - 155) / 255 ≈ 0.39`, so it renders
+  `rgb(156,156,156)` — one 8-bit step from the platform, where it used to be 27 steps darker.
+  
+  The value had to change in **both** places it is written, and that is not redundancy. A
+  `.os-scrollbar` mounted on `document.body` — the page-level scrollbars of interweave and both demo
+  sites, the ones the issue is about — sits outside `web-ui-theme`, so
+  `web-ui-theme[resolved-appearance='light']` never matches it and `html:has()` only covers the dark
+  side. Such a scrollbar resolves the fallback literal inside `var()` on `.os-theme-macos`. Writing the
+  new value in the theme branch alone would have left exactly those scrollbars at 0.5.
+  
+  The dark branch is deliberately untouched. To be precise about its direction: it is **darker** than
+  the platform, not lighter. Measured the same way, a native dark-mode knob on a dark surface reads
+  `rgb(154,154,154)`, which is `(154 - 30) / (255 - 30) ≈ 0.55` in alpha terms, and the 0.5 used here
+  renders about `rgb(146,147,148)` over the current dark page token `#242628`. Bringing the dark thumb
+  up to the platform is a separate request that #216 does not make, so it is left as it was and called
+  out as follow-up work rather than described as already being on the safe side.
+  
+  One gap is worth stating plainly because this change touches it: the `var()` fallback only ever
+  produces a **black** thumb. A document with no `web-ui-theme` at all therefore gets a black thumb on
+  a dark page — about `rgb(22,23,24)` over `#242628` — because the dark side has no fallback of its
+  own and relies on `html:has()` inheritance. That is pre-existing and not a regression, and the new
+  byte-identity assertion now pins the fallback to the light branch permanently, so it is recorded here
+  rather than left implicit.
+  
+  `hover` and `active` keep the same absolute ladder steps (+0.12 / +0.24) above the new resting value,
+  so "pressed is darker than hovered is darker than at rest" still holds in both appearances.
+  
+  New assertions in `src/scrollbars/__tests__/scrollbars.spec.ts` cover the six things that could break
+  silently: that the light thumb is a _black_ thumb and the dark thumb a _white_ one (a white light-mode
+  thumb renders as pure white and makes the whole scrollbar vanish on a `#fff` page); that the theme
+  block reads its colours through `var()` rather than literals, which is the only mechanism that crosses
+  a shadow-root boundary; that the resting light thumb is not deeper than the measured platform value;
+  that the three states stay _distinguishable on the rendered surface_ in both appearances, not merely
+  ordered in alpha; that the dark branch's three values are untouched; and that the `.os-theme-macos`
+  fallbacks stay byte-identical to the light branch. Every one of those was proven load-bearing by
+  mutation before landing.
+  
+  Consumers that import `@greypan/web-ui/scrollbars.css` and do not set `--wui-scrollbar-*` themselves
+  see only the lighter light-mode thumb. A consumer that sets only `--wui-scrollbar-handle` should note
+  that hover and active fall back to the ladder `+0.12 / +0.24` above whatever it sets, so a consumer
+  still overriding just the resting value at `0.5` now gets a hover only `+0.01` above it instead of
+  `+0.12` — set the other two explicitly if the wider ladder matters. Nothing about the scrollbar
+  geometry, auto-hide timing, or click behavior changed.
+- 1446561: fix(segmented): 拖拽时指示器宽度跟随当前 hover 的 trigger
+  
+  #222：`handlePointerDown` 的 `onMove` 把 `--indicator-width` 钉在按下那一项的宽度上，
+  拖完整段都写同一个 `initialWidth`。trigger 宽度不等是常态（interweave 设置 dialog 顶部
+  即此形——截图里三项宽度明显不同），于是拇指滑过更宽的那项时仍然保持窄宽，与它滑过的那项
+  始终对不齐，松手才在 `_updateIndicator` 里一次性跳到新宽度。
+  
+  改法是把拖拽的几何收进一个 `frameAt(deltaX)`：拇指**中心**跟手（`initialCenter + deltaX`），
+  宽度取「离拇指中心最近的可用 trigger」的宽度，left 由中心减半宽反推。宽度跟着变之后
+  `maxLeft` 必须换成 `trackRight − width`，否则更宽的拇指会被钳在按初始宽度算出的位置上、
+  从轨道右端探出去。
+  
+  取「离拇指中心最近」而不是「离指针最近」，是为了与松手吸附用同一个判据：拖拽中预览到的
+  宽度就是松手会落到的那一项，不会在松手时二次变形；抓在边缘时宽度按抓取偏移滞后，与位置
+  的滞后同源。
+  
+  等宽 trigger 下 `width` 恒为 `initialWidth`，`initialCenter + deltaX − initialWidth/2`
+  恒等于原来的 `initialLeft + deltaX`，行为逐字不变。
+
 ## 10.1.0
 
 ### Minor Changes
