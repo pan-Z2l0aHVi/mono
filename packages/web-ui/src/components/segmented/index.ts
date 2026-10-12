@@ -240,16 +240,42 @@ export class WebUiSegmented extends FormAssociated(LitElement) {
     const initialTriggerRect = activeTrigger.getBoundingClientRect()
     const initialLeft = initialTriggerRect.left - groupRect.left
     const initialWidth = initialTriggerRect.width
+    // 拇指中心跟手：left 与宽度分开写（宽度取 hover 项的），中心才是稳定的那个量——
+    // 宽度一变，center = left + width/2 就会漂，用它去选吸附目标会跟着抖。
+    const initialCenter = initialLeft + initialWidth / 2
 
     const firstTriggerRect = triggers[0].getBoundingClientRect()
     const lastTriggerRect = triggers[triggers.length - 1].getBoundingClientRect()
     const minLeft = firstTriggerRect.left - groupRect.left
-    const maxLeft = lastTriggerRect.right - groupRect.left - initialWidth
+    const trackRight = lastTriggerRect.right - groupRect.left
 
-    const enabledCenters = enabledTriggers.map(t => {
+    const enabledSlots = enabledTriggers.map(t => {
       const r = t.getBoundingClientRect()
-      return r.left - groupRect.left + r.width / 2
+      return { center: r.left - groupRect.left + r.width / 2, width: r.width }
     })
+    const enabledCenters = enabledSlots.map(slot => slot.center)
+
+    /*
+     * 某一帧的拇指几何。
+     *
+     * 宽度跟随当前 hover 的可用项（#222）：trigger 宽度不等是常态（interweave 设置
+     * dialog 顶部即此形），宽度恒等于按下那一项会让拇指与它滑过的那项始终对不齐。
+     * 取「离拇指中心最近的可用项」而不是「离指针最近的项」：松手吸附用的是同一个判据，
+     * 于是拖拽中预览到的宽度就是松手会落到的那一项，不会在松手时二次变形。
+     *
+     * 宽度变了之后 maxLeft 必须跟着换算（`trackRight − width`），否则更宽的拇指会被
+     * 钳在按初始宽度算出的位置上，从轨道右端探出去。
+     *
+     * 等宽时 width 恒为 initialWidth，`initialCenter + deltaX − initialWidth/2` 恒等于
+     * `initialLeft + deltaX`，这一整套与改动前的逐字行为一致。
+     */
+    const frameAt = (deltaX: number) => {
+      const center = initialCenter + deltaX
+      const nearest = snapToNearest(center, enabledCenters)
+      const width = nearest === -1 ? initialWidth : (enabledSlots[nearest]?.width ?? initialWidth)
+      const left = clamp(center - width / 2, minLeft, trackRight - width)
+      return { left, width, center: left + width / 2 }
+    }
 
     this._dragGestureHandle?.destroy()
     this._dragGestureHandle = attachDragGesture(e, {
@@ -257,9 +283,9 @@ export class WebUiSegmented extends FormAssociated(LitElement) {
       threshold: 6,
       onMove: info => {
         this._isDragging = true
-        const currentLeft = clamp(initialLeft + info.deltaX, minLeft, maxLeft)
-        this.style.setProperty('--indicator-left', `${currentLeft}px`)
-        this.style.setProperty('--indicator-width', `${initialWidth}px`)
+        const { left, width } = frameAt(info.deltaX)
+        this.style.setProperty('--indicator-left', `${left}px`)
+        this.style.setProperty('--indicator-width', `${width}px`)
       },
       onEnd: info => {
         const wasDragging = this._isDragging
@@ -267,8 +293,7 @@ export class WebUiSegmented extends FormAssociated(LitElement) {
         this._pressed = false
 
         if (wasDragging) {
-          const currentLeft = clamp(initialLeft + info.deltaX, minLeft, maxLeft)
-          const currentCenter = currentLeft + initialWidth / 2
+          const currentCenter = frameAt(info.deltaX).center
 
           let targetTrigger = activeTrigger
           if (info.velocityX > 300) {
