@@ -7,7 +7,11 @@
 </route>
 
 <script setup lang="ts">
+import ExampleDoc from '@/components/example-doc/index.vue'
 import MiddleEllipsisDemo from '@/components/middle-ellipsis-demo/index.vue'
 </script>
 
-<template><MiddleEllipsisDemo /></template>
+<template>
+  <MiddleEllipsisDemo />
+  <ExampleDoc component="middle-ellipsis" />
+</template>

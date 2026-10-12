@@ -1,11 +1,13 @@
 import { createFileRoute } from '@tanstack/react-router'
 
 import DemoComponent from '@/components/collapse-demo'
+import ExampleDoc from '@/components/example-doc'
 
 function Component() {
   return (
     <>
       <DemoComponent />
+      <ExampleDoc component="collapse" />
     </>
   )
 }
