@@ -7,9 +7,11 @@
 </route>
 
 <script setup lang="ts">
+import ExampleDoc from '@/components/example-doc/index.vue'
 import InputNumberDemo from '@/components/input-number-demo/index.vue'
 </script>
 
 <template>
   <InputNumberDemo />
+  <ExampleDoc component="input-number" />
 </template>
