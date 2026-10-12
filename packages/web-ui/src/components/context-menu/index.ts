@@ -161,6 +161,21 @@ export class WebUiContextMenu extends LitElement {
    * 保留 dialog 默认效果 —— 那正是用户「回到原处」的期望。
    */
   private _closeSource: CloseSource = 'default'
+  /**
+   * 「可激活菜单项被点了」这件事是否发生在**当前这一次事件派发里**，且关闭尚未被组件接管。
+   *
+   * 由面板上的**捕获阶段**监听器置位，早于菜单项自己的监听器；作用域与理由（尤其是为什么
+   * 不能留到会话结束）见 `_onMenuItemActivation`。
+   *
+   * 存在的理由是 `close()` 的出顶层判定不能只看 `_closeSource`：消费方完全可以在自己的
+   * 菜单项回调里直接调 `close()`（interweave 的右键重命名就是 `emit` 之后自己关），
+   * 那时 `_closeSource` 还是 `'default'`，scrim 就一直留在 top layer 里没退出，
+   * 消费方随后把焦点送进编辑器的动作落在 inert 文档上被浏览器静默丢弃。
+   *
+   * 消费方先关、组件后关的路径（`_onMenuClick` 的 `_closeFromUser('menu-item')`）随后看到的是
+   * `'menu-item'`，两条判定同向，不会互相抵消。
+   */
+  private _menuItemActivated = false
   /** 根面板的开启会话句柄；未开启时为 null。查询走它。 */
   private _menuHandle: OpenOverlayHandle | null = null
   /**
@@ -322,6 +337,7 @@ export class WebUiContextMenu extends LitElement {
           this._menu.panel.setAttribute('role', 'menu')
           this._menu.panel.setAttribute('aria-label', '上下文菜单')
           this._menu.panel.addEventListener('click', this._onMenuClick)
+          this._menu.panel.addEventListener('click', this._onMenuItemActivation, true)
         }
         /*
          * 登记与面板建立解耦。退场动画被打断时（`_closeMenuAfterPresence` 在
@@ -444,11 +460,19 @@ export class WebUiContextMenu extends LitElement {
      * 拽回那一行，blur 掉编辑器，而 editable-text 的 blur 契约会**提交未改动的标题**。
      * 那是 interweave 上真实存在的 bug，不能放回来。
      *
+     * **判定不能只看 `_closeSource`。** 消费方可以在自己的菜单项回调里直接调 `close()`：
+     * 那时 `_onMenuClick` 还没跑到（它在面板上是冒泡阶段，而回调挂在条目上、先跑），
+     * `_closeSource` 仍是 `'default'`，scrim 就留在 top layer 里不退，模态期间整份文档
+     * 是 inert 的 —— 消费方紧接着送进编辑器的焦点被浏览器静默丢弃，症状是「重命名后焦点
+     * 停在菜单项上、编辑器根本没进编辑态」，与本段要防的 blur 是同一个根因的两种落点。
+     * `_menuItemActivated`（捕获阶段置位）把那一条路径也纳入判定，理由见它的注释。
+     *
      * 此刻焦点还在菜单里，UA 的归还正好落在 opener 上——那本来就是用户期望的落点，
      * 应用随后的焦点转移不会被覆盖。元素本身要留到面板真正移除（见 `_releaseScrimModality`）。
      */
-    if (this._closeSource === 'menu-item') this._releaseScrimModality()
+    if (this._closeSource === 'menu-item' || this._menuItemActivated) this._releaseScrimModality()
     this._closeSource = 'default'
+    this._menuItemActivated = false
   }
 
   private readonly _closeFromUser = (source: CloseSource = 'default') => {
@@ -888,6 +912,7 @@ export class WebUiContextMenu extends LitElement {
     submenu.panel.setAttribute('aria-label', '子菜单')
     submenu.panel.style.visibility = 'hidden'
     submenu.panel.addEventListener('click', this._onMenuClick)
+    submenu.panel.addEventListener('click', this._onMenuItemActivation, true)
     moveMenuChildren(item, submenu.content)
 
     this._activeSubmenus[level] = submenu
@@ -1079,6 +1104,35 @@ export class WebUiContextMenu extends LitElement {
       }
       return
     }
+  }
+
+  /*
+   * 捕获阶段记「可激活的菜单项被点了」，早于条目自己的监听器。
+   *
+   * 判据与 `_onMenuClick` 同源（同一个 `getMenuItemFromEvent` + 同样的 disabled /
+   * submenu 排除），但只置标志、不做关闭。子菜单父项与禁用项在这一层就被排除，
+   * 它们不触发关闭，不该让后续关闭提前出顶层。
+   *
+   * 挂在面板上而不是条目上：条目在开菜单期间被搬进面板，面板是它们此刻共同的祖先。
+   *
+   * **标志的作用域是这一次点击，不是整个会话。** 菜单项被点并不必然导致关闭：消费方在
+   * 自己的条目回调里 `stopPropagation()` 是常见写法（勾选型条目要让菜单留着），此时面板上
+   * 的冒泡监听收不到，菜单不关。若标志一直留到会话结束，那一次点击之后的**每一次**关闭——
+   * Escape、点外面、程序式 `close()`——都会被误判成菜单项激活而提前出顶层，把 README 承诺的
+   * 「点外面 / Escape / 程序式关闭不抢焦点」整个破坏掉。
+   *
+   * 复位用微任务而不是「会话结束」：捕获阶段（含本监听器）与冒泡阶段（`_onMenuClick`
+   * 所在的阶段，关闭动作就发生在这里）都在同一个任务里跑完，微任务检查点在它们之后。
+   * 于是需要这个标志的两条路径都赶得上——消费方同步调 `close()`、组件自己在冒泡阶段关——
+   * 而「点了但没关」的那一条必然跨过微任务检查点，标志已被清掉。
+   */
+  private _onMenuItemActivation = (e: Event) => {
+    const item = getMenuItemFromEvent(e)
+    if (!item || item.hasAttribute('disabled') || item.hasAttribute('submenu')) return
+    this._menuItemActivated = true
+    queueMicrotask(() => {
+      this._menuItemActivated = false
+    })
   }
 
   private _onMenuClick = (e: MouseEvent) => {
