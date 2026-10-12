@@ -8,6 +8,10 @@
 
 <script setup lang="ts">
 import CheckboxDemo from '@/components/checkbox-demo/index.vue'
+import ExampleDoc from '@/components/example-doc/index.vue'
 </script>
 
-<template><CheckboxDemo /></template>
+<template>
+  <CheckboxDemo />
+  <ExampleDoc component="checkbox" />
+</template>

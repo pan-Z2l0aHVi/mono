@@ -8,6 +8,10 @@
 
 <script setup lang="ts">
 import EmptyDemo from '@/components/empty-demo/index.vue'
+import ExampleDoc from '@/components/example-doc/index.vue'
 </script>
 
-<template><EmptyDemo /></template>
+<template>
+  <EmptyDemo />
+  <ExampleDoc component="empty" />
+</template>

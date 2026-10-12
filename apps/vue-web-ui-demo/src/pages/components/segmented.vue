@@ -7,7 +7,11 @@
 </route>
 
 <script setup lang="ts">
+import ExampleDoc from '@/components/example-doc/index.vue'
 import SegmentedDemo from '@/components/segmented-demo/index.vue'
 </script>
 
-<template><SegmentedDemo /></template>
+<template>
+  <SegmentedDemo />
+  <ExampleDoc component="segmented" />
+</template>

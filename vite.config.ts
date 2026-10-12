@@ -310,6 +310,7 @@ export default {
       '**/auto-imports.d.ts',
       '**/typed-router.d.ts',
       'apps/interweave/frontend/bindings/**',
+      'apps/*/src/generated/**', // demo 示例文档生成物：由 scripts/generate-web-ui-examples.mjs 产出，格式由生成器决定
       '**/.agents/skills/**', // skill 软链面（第三方与仓库自编写）不参与格式检查
       'skills/**', // 自撰写 skill 与依赖镜像的实体目录（GitHub 发现面），同上
       '.agents/skills-vendored/**', // 非依赖第三方 skill 的实体目录，同上
