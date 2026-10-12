@@ -7,6 +7,7 @@ import { customElement, property, state } from 'lit/decorators.js'
 import glass from '@/assets/glass.css?inline'
 import modalSurface from '@/assets/modal-surface.css?inline'
 import { oouiClose } from '@/icons'
+import internalScrollbars from '@/scrollbars/internal.css?inline'
 import { UserChangeController } from '@/shared/events/user-change'
 import { dispatchOpenChangeEvent } from '@/shared/open-state'
 import { defineNativeDialogPresence } from '@/shared/overlay/native-dialog-presence'
@@ -17,7 +18,7 @@ import style from './style.css?inline'
 
 @customElement('web-ui-dialog')
 export class WebUiDialog extends LitElement {
-  static override styles = [unsafeCSS(glass), unsafeCSS(modalSurface), unsafeCSS(style)]
+  static override styles = [unsafeCSS(glass), unsafeCSS(modalSurface), unsafeCSS(internalScrollbars), unsafeCSS(style)]
 
   @property({ type: Boolean, reflect: true }) open = false
   @property({ type: Boolean, reflect: true }) closable = false
@@ -298,7 +299,7 @@ export class WebUiDialog extends LitElement {
           ${
             this.headless
               ? html`
-                  <div class="wui-dialog-content">
+                  <div class="wui-dialog-content wui-scroll">
                     <slot></slot>
                   </div>
                   ${this.closable ? this._renderCloseButton() : nothing}
@@ -309,7 +310,7 @@ export class WebUiDialog extends LitElement {
                       ${this.heading ? html`<span class="wui-dialog-heading">${this.heading}</span>` : nothing}
                     </slot>
                   </div>
-                  <div class="desc"><slot></slot></div>
+                  <div class="desc wui-scroll"><slot></slot></div>
                   <div class="wui-dialog-footer"><slot name="footer"></slot></div>
                   ${this.closable ? this._renderCloseButton() : nothing}
                 `

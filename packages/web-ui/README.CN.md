@@ -53,6 +53,12 @@ import { OverlayScrollbarsComponent } from 'overlayscrollbars-vue' // 或 overla
   所以宿主自身的布局一旦承重（grid、居中盒子、`ul`/`ol`）就会坏。
 - OverlayScrollbars 只改变它被初始化到的那个元素，子元素保持原生滚动条。要覆盖文档滚动条就初始化
   `document.body`——在那里 `window.scrollY` / `window.scrollTo` 保持原生语义。
+- 自带滚动容器的组件（`select`、`autocomplete`、dropdown / context-menu 面板、`dialog`、`drawer`、
+  `toast`）在各自的 shadow root 内给**组件内部**滚动条上主题。OverlayScrollbars 进不了 shadow
+  root——它的结构样式与主题类都是文档级选择器——所以组件改为在原生滚动条上读同一组继承的
+  `--wui-scrollbar-*` 颜色（`scrollbar-color` / `scrollbar-width`），并刻意不用 `::-webkit-scrollbar`：
+  声明它会让引擎放弃平台的覆盖式滚动条、固定占一条布局宽度，而组件内部滚动条正是不能占宽度。
+  导入本样式表，组件内部滚动条才会跟随外观，与整页滚动条同一机制。
 
 ## Vite
 
