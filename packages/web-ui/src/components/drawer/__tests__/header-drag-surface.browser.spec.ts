@@ -3,7 +3,7 @@ import '..'
 import { afterEach, describe, expect, it } from 'vite-plus/test'
 import { cdp } from 'vite-plus/test/browser-playwright/context'
 
-import { pollUntil } from '@/shared/test-utils'
+import { pollUntil, waitForSettledLayout } from '@/shared/test-utils'
 
 import type { DrawerPlacement, WebUiDrawer } from '..'
 
@@ -122,38 +122,20 @@ async function mountDrawer(options: {
   return { el, log }
 }
 
-/** 等打开过渡收敛到终态几何（进场动画中量到的是中间帧）。 */
-async function settleGeometry(el: WebUiDrawer, timeoutMs = 5000) {
-  const dialog = getDialog(el)
-  const start = performance.now()
-  let previous = dialog.getBoundingClientRect()
-  let stable = 0
-  while (stable < 2) {
-    await new Promise(resolve => requestAnimationFrame(resolve))
-    await new Promise(resolve => setTimeout(resolve, 32))
-    const current = dialog.getBoundingClientRect()
-    stable =
-      Math.abs(current.top - previous.top) < 0.01 &&
-      Math.abs(current.bottom - previous.bottom) < 0.01 &&
-      Math.abs(current.left - previous.left) < 0.01 &&
-      Math.abs(current.right - previous.right) < 0.01
-        ? stable + 1
-        : 0
-    previous = current
-    if (performance.now() - start > timeoutMs) throw new Error('drawer geometry did not settle')
-  }
-}
-
 /**
- * 再等 n 帧。
+ * 等拖拽面的几何定版再取样——命中测试的前提。
  *
- * 让位量不来自布局本身，而来自 ResizeObserver 回调写回的自定义属性：那一节被重新隐藏后，
- * 观察者要等一次尺寸回调才把让位量归零。`settleGeometry` 量的是 dialog 矩形，收敛时那一节
- * 可能刚好已隐藏、属性却还没回写，所以这里再跨几帧把这条链路走完。按帧等而不是 sleep：
- * 高负载下帧变慢，等待随之拉长而不是提前落空。
+ * 旧写法只等比 dialog 矩形两次相等，两个方向都不够：
+ * - 进场过渡的进度只在渲染步进里推进，`getBoundingClientRect()` 的强制重算不推它，
+ *   于是「相等」也可以意味着过渡还没起跑：量到的是过渡前那一帧的矩形。
+ * - 让位量由 ResizeObserver 写回宿主样式，移动的是热区/热边而不是 dialog 矩形，
+ *   等 dialog 矩形稳定推不出热区已到位。
+ * 共享 helper 把这两件事都变成因果条件（过渡跑完 + RO 抽干），收尾再验矩形真的定版。
+ * 这也取代了原先手写的 `settleFrames(3)`：那条是按帧数等，本质是赌让位量在几帧内
+ * 落定；抽干 ResizeObserver 等的是尺寸回调真的派发过。
  */
-async function settleFrames(frames: number) {
-  for (let i = 0; i < frames; i++) await new Promise(resolve => requestAnimationFrame(resolve))
+async function settleGeometry(el: WebUiDrawer) {
+  await waitForSettledLayout([getDialog(el), query(el, '.wui-drawer-drag-zone'), query(el, '.wui-drawer-body')])
 }
 
 async function realPressAt(x: number, y: number): Promise<void> {
@@ -488,7 +470,6 @@ describe('WebUiDrawer header / footer 整块可拖（浏览器）', () => {
     await el.updateComplete
     await pollUntil(() => getDialog(el).classList.contains('is-visible'), 'drawer did not become visible after remount')
     await settleGeometry(el)
-    await settleFrames(3)
 
     /*
      * 判据是**关系**：重连后的让位量与「从来没有 footer」是同一几何（同本文件 R2

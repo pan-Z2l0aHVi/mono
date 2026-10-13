@@ -163,6 +163,18 @@ export interface RealTouchPressOptions {
   moveBy?: number
   /** 位移发生在按下后的多少毫秒，默认取按住时长的一半。 */
   moveAfterMs?: number
+  /**
+   * 用 touchCancel 而不是 touchend 结束手势。
+   *
+   * 只为「量长按打开后的浮层几何」的用例准备：浏览器会为 touchend 补发一次
+   * compat click，它落在模态 scrim 上就会把**同一次长按刚打开**的菜单关掉。
+   * 补发 click 的生成时刻由主线程的任务队列决定（实测负载下比菜单打开晚
+   * 1300ms 以上），而组件的吸收窗口是 1000ms 兜底上限、不是时序保证——
+   * 那一晚到窗口之外的 click 就会在断言之前把面板收掉。被测的是面板几何，
+   * 补发 click 的吸收由专用用例覆盖，所以这里把手势结束成取消：Touch Events
+   * 规范里取消的触摸不补发 click，面板于是没有任何能提前收掉它的事件。
+   */
+  endWithCancel?: boolean
 }
 
 /**
@@ -184,7 +196,7 @@ export interface RealTouchPressOptions {
  */
 export async function realTouchPress(target: Element, options: RealTouchPressOptions = {}): Promise<void> {
   const client = cdp() as unknown as CdpSession
-  const { holdMs = 600, moveBy = 0, moveAfterMs } = options
+  const { holdMs = 600, moveBy = 0, moveAfterMs, endWithCancel = false } = options
   const rect = target.getBoundingClientRect()
   const origin = toViewportPoint(rect.left + rect.width / 2, rect.top + rect.height / 2)
   const point = (x: number, y: number) => ({
@@ -227,7 +239,10 @@ export async function realTouchPress(target: Element, options: RealTouchPressOpt
     // 真的被取消」——提前抬手只会同时满足两种实现。
     const remaining = holdMs - (performance.now() - pressedAt)
     if (remaining > 0) await new Promise(resolve => setTimeout(resolve, remaining))
-    await client.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] })
+    await client.send('Input.dispatchTouchEvent', {
+      type: endWithCancel ? 'touchCancel' : 'touchEnd',
+      touchPoints: []
+    })
   } finally {
     window.removeEventListener('touchstart', record, { capture: true })
     await client.send('Emulation.setTouchEmulationEnabled', { enabled: false })
