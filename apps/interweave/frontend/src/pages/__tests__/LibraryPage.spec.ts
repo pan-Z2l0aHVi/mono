@@ -621,3 +621,46 @@ describe('LibraryPage：备注失败回写', () => {
     }
   })
 })
+
+describe('LibraryPage：重命名后的激活行', () => {
+  beforeEach(() => {
+    setActivePinia(createPinia())
+    route.value = { path: '/library' }
+    runtimeStub.current = createRuntime()
+  })
+
+  afterEach(() => {
+    runtimeStub.current = null
+  })
+
+  /*
+   * 右键「重命名」只进 startResourceRename，那条路不碰 activeResourceId（左键预览、
+   * 详情、标签都会置它）。于是刚改名的那一行不成为激活行：底色仍旧留在上一次激活的
+   * 行上，或者干脆一行都没有——用户看到的就是「激活底色没有跟着切过来」。
+   *
+   * 断言按「被改名那一行自己带上激活底色」写，不按别的行为代理：底色由
+   * ResourceRow 的 active 渲染，它是 activeResourceId 唯一的外显出口。
+   */
+  it('右键「重命名」后激活底色落在被改名的那一行上', async () => {
+    const mounted = await mountPage()
+    try {
+      await openContextMenuAction(mounted.host, 'resource-1', '重命名')
+      await nextTick()
+      await nextTick()
+
+      const renamed = row(mounted.host, 'resource-1')
+      expect(renamed.className, '被改名的一行应成为激活行').toContain('bg-black/5')
+
+      const others = [...mounted.host.querySelectorAll<HTMLElement>('[data-resource-row]')].filter(
+        node => node !== renamed
+      )
+      for (const node of others) {
+        expect(node.className, `第 ${node.getAttribute('data-resource-index')} 行不该是激活态`).not.toContain(
+          'bg-black/5'
+        )
+      }
+    } finally {
+      await mounted.close()
+    }
+  })
+})

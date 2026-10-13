@@ -185,7 +185,18 @@ function previewResource(resource: ResourceView) {
   previewOpen.value = true
 }
 
+/*
+ * 右键「重命名」要把目标行置成激活行。
+ *
+ * activeResourceId 只有左键预览、详情、标签这三条入口会写（selectResource / openResourceDetail /
+ * editResourceTags），改名这条路上没有人碰它。于是从右键菜单改名后，底色仍旧停在上一次激活的
+ * 那一行上（没人激活过时则一行都没有）——用户看到的就是「激活底色没有跟着切过来」。
+ *
+ * 与另两条入口同一个理由：被操作的那一条就是当前工作对象。名字编辑器还占着焦点、
+ * 且会被 clampEditingRowIntoView 钉在视口里，那一行也正是用户此刻看着的一行。
+ */
 function renameResourceFromMenu(resource: ResourceView) {
+  activeResourceId.value = resource.id
   startResourceRename(resource)
 }
 
