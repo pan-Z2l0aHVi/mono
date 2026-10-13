@@ -498,6 +498,11 @@ function handleRowKeydown(event: KeyboardEvent, row: HTMLElement) {
     const resource = resourceForRow(row)
     if (!resource) return
     event.preventDefault()
+    // 空格：像 ArrowDown 一样把焦点和当前行一起移到下一行
+    const index = indexOfRow(row)
+    const last = props.resources.length - 1
+    const nextIndex = Math.min(index + 1, last)
+    if (nextIndex >= 0) void navigateToIndex(nextIndex)
     emit('select', resource)
     return
   }
