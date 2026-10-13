@@ -411,7 +411,7 @@ describe('WebUiContextMenu 组件（浏览器）', () => {
       void Promise.resolve().then(() => editable.select())
       menu.close()
     })
-    item.click()
+    await userEvent.click(item)
     await nextFrame()
     await nextFrame()
 
@@ -480,6 +480,46 @@ describe('WebUiContextMenu 组件（浏览器）', () => {
     expect(escScrim?.matches(':modal'), 'Escape 关闭应保留 dialog 默认效果，撑到退场结束').toBe(true)
     await waitForItemsReturned(escMenu, 1)
     expect(escScrim?.isConnected).toBe(false)
+  })
+
+  /*
+   * 「菜单项激活」的作用域必须精确等于那一次派发。
+   *
+   * 勾选型条目（README 的 `stopPropagation()` 用法）点了之后菜单留着，于是「这一次的激活」
+   * 没有被任何关闭消费掉。若实现把它记成一个留到会话结束的布尔标志，接下来每一次关闭——
+   * 这里的 Escape——都会被误判成菜单项激活而提前出顶层，「点外面 / Escape / 程序式关闭不抢
+   * 焦点、撑到退场结束」的承诺整个失效。所以这条守的是**划界**，与上一条守的**判定**是两件事。
+   *
+   * 变异验证：把划界放宽成「只要记过就算」（`_isDispatchingMenuItemActivation` 恒为 true），
+   * 本条红；把划界收得太紧（标志在捕获阶段就作废），上面那条「编辑器仍拿到焦点」红。
+   * 两条一起才夹住这个实现。
+   */
+  it('勾选项 stopPropagation 之后菜单仍开着，随后的 Escape 仍撑到退场结束', async () => {
+    const menu = document.createElement('web-ui-context-menu')
+    menu.innerHTML = '<web-ui-dropdown-item>选择资源</web-ui-dropdown-item>'
+    document.body.append(menu)
+    await menu.updateComplete
+
+    menu.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, composed: true, clientX: 60, clientY: 60 }))
+    await menu.updateComplete
+    await waitForMenuFocus()
+
+    // 与 interweave 的勾选型条目同构：条目自己吞掉冒泡，面板收不到，菜单不关。
+    const item = getMenuPanels('上下文菜单')[0]!.querySelector('web-ui-dropdown-item')!
+    item.addEventListener('click', event => event.stopPropagation())
+    await userEvent.click(item)
+    await nextFrame()
+    expect(menu.isOpen, 'stopPropagation 的条目不该关闭菜单').toBe(true)
+
+    const scrim = document.querySelector<HTMLDialogElement>('dialog[data-wui-menu-scrim]')
+    expect(scrim?.matches(':modal'), '菜单还开着，scrim 仍在 top layer').toBe(true)
+
+    dispatchEscape()
+    await nextFrame()
+    expect(menu.isOpen).toBe(false)
+    expect(scrim?.matches(':modal'), '那一次点击不得让随后的 Escape 也提前出顶层').toBe(true)
+    await waitForItemsReturned(menu, 1)
+    expect(scrim?.isConnected).toBe(false)
   })
 
   /*
