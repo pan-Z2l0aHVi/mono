@@ -545,6 +545,7 @@ async function navigateToIndex(index: number) {
   const resource = props.resources[index]
   if (!resource) return
   emit('activate', resource)
+  await nextTick() // 等待 roving tabindex 更新（activeResourceId -> activeIndex -> 模板 tabindex）
   virtualizer.value.scrollToIndex(index, { align: 'auto' })
   await focusRowWhenMounted(index)
 }
@@ -562,6 +563,9 @@ async function focusIndex(index: number) {
  * 每一轮 focusIndex/navigateToIndex 领一个递增的号，轮询每醒来一次先核对号是不是自己的。不是自己的就
  * 直接收工——方向键连按时，先发的那一轮可能在后一轮落焦之后才等到目标行，不作废就会把
  * 焦点从用户已经移开的那行拽回去，表现为焦点闪回上一目标行。
+ *
+ * navigateToIndex 在 emit activate 后已 await nextTick() 等待 roving tabindex 更新，
+ * 所以此处只需等行挂载即可；jsdom 与真实浏览器均适用。
  */
 let focusRequestId = 0
 
