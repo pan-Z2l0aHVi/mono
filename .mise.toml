@@ -10,11 +10,14 @@ go = "1.26.4"
 # 否则 mise 注入的共享路径会让 actions/cache 静默失效。
 TURBO_CACHE_DIR = "{{ exec(command='git -C ' ~ config_root ~ ' rev-parse --path-format=absolute --git-common-dir') | trim }}/turbo-cache"
 
-# Go 默认 GOCACHE（~/Library/Caches/go-build）在 herdr 的 seatbelt 沙箱里不可写，
-# go build 会报 operation not permitted；HERDR_ENV=1 时改指 $TMPDIR 下的可写目录。
-# HERDR_ENV 是 pane 级变量而非 agent 专属，任何 herdr pane（含交互与协调者 pane）都会命中，
-# 代价是丢掉默认那份热缓存；herdr 的 agent 身份是 pane 属性（herdr pane current）而非 env，
-# 做不到更窄的条件。CI 无 HERDR_ENV，回落默认路径，ci.yml 的 Go 缓存不受影响。
-# 同时判 env.TMPDIR 是 Tera 的限制：HERDR_ENV 在场而 TMPDIR 未定义会渲染报 undefined
-# 并带塌整个 .mise.toml；TMPDIR 为空串会渲染成根路径 /greypan/go-build。
-GOCACHE = '{% if env.HERDR_ENV and env.TMPDIR %}{{ env.TMPDIR }}/greypan/go-build{% endif %}'
+# Go 缓存探测：在 HERDR_ENV=1 的上下文里（herdr pane、claude/opencode 线程 pane、手工 shell），
+# 实测写入 Go 默认缓存目录（macOS ~/Library/Caches/go-build，Linux ~/.cache/go-build）；
+# 能写就用它，不能写才回落 $TMPDIR/greypan/go-build。
+# 实测结论：claude/opencode pane 与手工 shell 均可写默认路径，因此**共享同一份持久缓存**；
+# codex 线程受限于 sandbox（仅 worktree 与 /tmp 可写），实测探测写入失败、命中回落支，
+# 仍拿 $TMPDIR/greypan/go-build，**行为不退化**。
+# CI 无 HERDR_ENV，模板渲染为空，Go 自行使用平台默认路径，ci.yml 的 actions/cache 读取
+# `go env GOCACHE` 不受影响。
+# Tera 要求：exec 命令永远 exit 0、永远仅输出一行；HERDR_ENV 在场而 TMPDIR 为空时条件判假、
+# 避免渲染成根路径 /greypan/go-build。
+GOCACHE = "{% if env.HERDR_ENV and env.TMPDIR %}{{ exec(command='DM1=$HOME/Library/Caches/go-build; DM2=$HOME/.cache/go-build; FB=$TMPDIR/greypan/go-build; P=$$; if (mkdir -p $DM1 && touch $DM1/.herdr-gocache-probe.$P) 2>/dev/null; then echo $DM1; rm -f $DM1/.herdr-gocache-probe.$P; elif (mkdir -p $DM2 && touch $DM2/.herdr-gocache-probe.$P) 2>/dev/null; then echo $DM2; rm -f $DM2/.herdr-gocache-probe.$P; else echo $FB; fi') | trim }}{% endif %}"
