@@ -411,7 +411,10 @@ describe('WebUiContextMenu 组件（浏览器）', () => {
       void Promise.resolve().then(() => editable.select())
       menu.close()
     })
-    item.click()
+    // **必须走真实输入（userEvent / CDP），不能用 `item.click()`。** 浏览器只在**可信**事件
+    // 派发里、每个监听器之后做微任务检查点；合成 `element.click()` 不插检查点，于是捕获阶段
+    // 置的标志能一路活到消费方回调——用合成点击测这条路径会给出假绿，掩盖标志复位过早的缺陷。
+    await userEvent.click(item)
     await nextFrame()
     await nextFrame()
 
