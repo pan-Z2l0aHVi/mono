@@ -400,6 +400,117 @@ export async function waitForFrame(): Promise<void> {
 }
 
 /**
+ * 两个矩形是否逐边相等（精度与既有 spec 的 settleGeometry 同口径）。
+ */
+function rectsEqual(a: DOMRect, b: DOMRect): boolean {
+  return (
+    Math.abs(a.top - b.top) < 0.01 &&
+    Math.abs(a.bottom - b.bottom) < 0.01 &&
+    Math.abs(a.left - b.left) < 0.01 &&
+    Math.abs(a.right - b.right) < 0.01
+  )
+}
+
+/**
+ * 等元素上正在跑的过渡 / 动画真的结束。
+ *
+ * 为什么不能只等「矩形两次取样相等」：过渡进度只在渲染步进（update the rendering）里
+ * 推进，而 `getBoundingClientRect()` 触发的强制样式重算**不**推进它。于是负载下
+ * 「连续两次取样相等」既可能表示已经定版，也可能表示过渡还没起跑——后者量到的是
+ * 过渡前那一帧的矩形，元素可能整个还在视口外。CI 上 drawer 的那几条 flaky 正是
+ * 这个形态：胶囊坐标落在视口上方，`elementFromPoint` 返回 null。
+ *
+ * 所以这里取因果条件：先等一帧让已排下的 class 变更提交（过渡对象此刻才被创建），
+ * 再取 `getAnimations()` 等它们全部 `finished`。集合为空（从没起跑、或已经跑完）
+ * 时直接返回——那本来就是无事可等。
+ */
+export async function waitForAnimationsToFinish(el: Element, timeoutMs = 5000): Promise<void> {
+  const deadline = performance.now() + timeoutMs
+  // 一帧：让尚未提交的样式变更进入计算，过渡对象才会存在。
+  await waitForFrame()
+  for (let running = el.getAnimations({ subtree: true }); running.length > 0;) {
+    const remaining = deadline - performance.now()
+    if (remaining <= 0) return
+    await Promise.race([
+      Promise.all(running.map(animation => animation.finished.catch(() => undefined))),
+      new Promise(resolve => setTimeout(resolve, remaining))
+    ])
+    if (performance.now() >= deadline) return
+    // finished 之后它们通常已从集合里消失；再等一帧确认一轮，避免「取消后立刻又起一个」漏掉。
+    await waitForFrame()
+    running = el.getAnimations({ subtree: true })
+  }
+}
+
+/**
+ * 抽干一次 ResizeObserver 批次。
+ *
+ * 组件把尺寸写回宿主样式走的是 ResizeObserver（如 drawer 的 header / footer 让位量）。
+ * 那一步移动的是**另一个盒子**：量 dialog 矩形量不到它，所以「dialog 矩形稳定了」
+ * 推不出让位量已生效。用一个新观察者观察这些目标并等一次回调即可——更早注册的
+ * 观察者（组件的共享实例）在同一批次里先派发，本回调触发时它已经跑完。
+ * 等这一次回调等于等「一次渲染步进已发生 + 该批尺寸回调已派发」。
+ */
+export async function drainResizeObserver(
+  targets: ReadonlyArray<Element | null | undefined>,
+  timeoutMs = 5000
+): Promise<void> {
+  const observed = targets.filter((target): target is Element => !!target && target.isConnected)
+  if (observed.length === 0) return
+  await new Promise<void>(resolve => {
+    let done = false
+    const finish = () => {
+      if (done) return
+      done = true
+      observer.disconnect()
+      resolve()
+    }
+    const observer = new ResizeObserver(finish)
+    for (const target of observed) observer.observe(target, { box: 'border-box' })
+    // 观察者只在渲染步进里派发；页面完全不再渲染时不能死等。
+    setTimeout(finish, timeoutMs)
+  })
+}
+
+/**
+ * 等矩定版：命中测试 / 几何断言取样前的前提。
+ *
+ * 顺序是因果链，不是「多睡几帧」：
+ *   1. 等过渡跑完（否则量到的是动画中途、甚至动画尚未起跑那一帧的盒子）；
+ *   2. 抽干 ResizeObserver（否则由尺寸写回的让位量还没生效）；
+ *   3. 再等一帧，让写回的样式真正进入布局；
+ *   4. 连续 `stableFrames` 帧里所有 targets 的矩形逐边相等才算定版。
+ *
+ * 第 4 步单独并不够（它正是既有 flaky 的来源：相等也可以意味着「还没开始变」），
+ * 但作为收尾仍然必要——前两步保证「不会再变」，它保证「已经变了的那一次也量到了」。
+ */
+export async function waitForSettledLayout(
+  targets: ReadonlyArray<Element | null | undefined>,
+  options: { stableFrames?: number; timeoutMs?: number } = {}
+): Promise<void> {
+  const { stableFrames = 2, timeoutMs = 5000 } = options
+  const observed = targets.filter((target): target is Element => !!target && target.isConnected)
+  if (observed.length === 0) return
+  const deadline = performance.now() + timeoutMs
+
+  await waitForAnimationsToFinish(observed[0], timeoutMs)
+  await drainResizeObserver(observed, timeoutMs)
+  await waitForFrame()
+
+  let previous = observed.map(target => target.getBoundingClientRect())
+  let stable = 0
+  while (stable < stableFrames) {
+    if (performance.now() >= deadline) {
+      throw new Error(`waitForSettledLayout: layout did not settle within ${timeoutMs}ms`)
+    }
+    await waitForFrame()
+    const current = observed.map(target => target.getBoundingClientRect())
+    stable = current.every((rect, index) => rectsEqual(rect, previous[index])) ? stable + 1 : 0
+    previous = current
+  }
+}
+
+/**
  * 轮询到条件满足为止（默认 2s），用于消费 MutationObserver / presence 过渡的异步链路。
  * 等待对象本身带较长延迟（如 spec 自定义的 SHOW_DELAY）时显式传入更大预算。
  */

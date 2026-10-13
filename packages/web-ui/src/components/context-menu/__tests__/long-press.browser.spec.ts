@@ -3,7 +3,7 @@ import '@/components/dropdown-item'
 
 import { afterEach, describe, expect, it } from 'vite-plus/test'
 
-import { cleanupElement, getMenuPanels, pollUntil } from '@/shared/test-utils'
+import { cleanupElement, getMenuPanels, pollUntil, waitForSettledLayout } from '@/shared/test-utils'
 import { realTouchPress } from '@/shared/test-utils/real-gesture'
 
 import type { WebUiContextMenu } from '..'
@@ -38,6 +38,18 @@ async function settle() {
   await new Promise(resolve => setTimeout(resolve, 250))
 }
 
+/*
+ * 量面板几何前的等待。
+ *
+ * 与 `settle()` 的固定 250ms 不同，这里等的是**因果条件**：面板的位置由
+ * Floating UI 的 promise 异步写回，高度由菜单项（Lit 异步渲染）决定，
+ * 两者都可能在上一次测量之后才落定。等它连续几帧不再变化，再用
+ * `getBoundingClientRect()` 量到的才是终态几何。
+ */
+async function settlePanel(panel: HTMLElement) {
+  await waitForSettledLayout([panel])
+}
+
 describe('context-menu 长按（真实触控管线）', () => {
   /*
    * R9（新契约）：触屏长按**从按下的位置向下展开，水平居中于按点**。
@@ -62,9 +74,10 @@ describe('context-menu 长按（真实触控管线）', () => {
     const pressX = point.left + point.width / 2
     const pressY = point.top + point.height / 2
 
-    await realTouchPress(target, { holdMs: 700 })
+    await realTouchPress(target, { holdMs: 700, endWithCancel: true })
     const panel = await waitForMenu(el)
     expect(el.isOpen).toBe(true)
+    await settlePanel(panel)
 
     // 垂直：上缘对齐按点、向下长。transform-origin 取在 top 一侧，scale 不影响上缘，
     // 因此 style.top 与 rect.top 应当一致。
@@ -110,9 +123,9 @@ describe('context-menu 长按（真实触控管线）', () => {
     const pressX = rect.left + rect.width / 2
     const pressY = rect.top + rect.height / 2
 
-    await realTouchPress(target, { holdMs: 700 })
+    await realTouchPress(target, { holdMs: 700, endWithCancel: true })
     const panel = await waitForMenu(el)
-    await settle()
+    await settlePanel(panel)
 
     const panelRect = panel.getBoundingClientRect()
 
@@ -151,9 +164,9 @@ describe('context-menu 长按（真实触控管线）', () => {
     target.style.width = '240px'
     target.style.height = '40px'
 
-    await realTouchPress(target, { holdMs: 700 })
+    await realTouchPress(target, { holdMs: 700, endWithCancel: true })
     const panel = await waitForMenu(el)
-    await settle()
+    await settlePanel(panel)
 
     // 先确认注入真的生效，否则下面全是恒真断言。
     const safeArea = Number.parseFloat(getComputedStyle(el).getPropertyValue('--wui-context-menu-safe-area-bottom'))
@@ -292,11 +305,19 @@ describe('context-menu 长按（真实触控管线）', () => {
     cleanupElement(el)
   })
 
+  /*
+   * 这两条把长按计时器的间隔拉到远大于手势时长：判定依赖的是「计时器跨度 > 按住
+   * 时长」这个**时序差**，而负载下 `setTimeout` 的起停都会被拉长（实测一次手势从
+   * 700ms 被拖到 1300ms+），固定 500ms 的差值会被抹平——计时器在抬手之前就开菜单。
+   * 拉长 `long-press-delay`（公开属性，语义不变）把差值留够，断言一字未改。
+   */
+  const CANCELLABLE_PRESS_DELAY = '4000'
+
   it('短按不打开菜单', async () => {
-    const { el, target } = createMenu({ 'long-press': '' })
+    const { el, target } = createMenu({ 'long-press': '', 'long-press-delay': CANCELLABLE_PRESS_DELAY })
     await el.updateComplete
 
-    await realTouchPress(target, { holdMs: 150 })
+    await realTouchPress(target, { holdMs: 150, endWithCancel: true })
     await settle()
 
     expect(el.isOpen).toBe(false)
@@ -308,10 +329,10 @@ describe('context-menu 长按（真实触控管线）', () => {
   })
 
   it('按住期间位移超出阈值视为滚动，取消长按', async () => {
-    const { el, target } = createMenu({ 'long-press': '' })
+    const { el, target } = createMenu({ 'long-press': '', 'long-press-delay': CANCELLABLE_PRESS_DELAY })
     await el.updateComplete
 
-    await realTouchPress(target, { holdMs: 700, moveBy: 60, moveAfterMs: 200 })
+    await realTouchPress(target, { holdMs: 700, moveBy: 60, moveAfterMs: 200, endWithCancel: true })
     await settle()
 
     expect(el.isOpen).toBe(false)
