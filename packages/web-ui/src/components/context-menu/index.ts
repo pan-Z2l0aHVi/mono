@@ -162,10 +162,11 @@ export class WebUiContextMenu extends LitElement {
    */
   private _closeSource: CloseSource = 'default'
   /**
-   * 「可激活菜单项被点了」这件事是否发生在**当前这一次事件派发里**，且关闭尚未被组件接管。
+   * 触发「菜单项激活」的那次事件对象；作用域与理由见 `_onMenuItemActivation`。
    *
-   * 由面板上的**捕获阶段**监听器置位，早于菜单项自己的监听器；作用域与理由（尤其是为什么
-   * 不能留到会话结束）见 `_onMenuItemActivation`。
+   * 存**事件**而不是布尔标志：判定「这次 `close()` 是不是发生在这一次派发里」可以问事件自己
+   * （`eventPhase !== 0`），不必用定时器去近似。布尔标志只能靠「派发结束时清掉」来划界，
+   * 而划界的那一步必须与派发末尾落在同一个任务、同一个微任务检查点之后——那是个会错的假设。
    *
    * 存在的理由是 `close()` 的出顶层判定不能只看 `_closeSource`：消费方完全可以在自己的
    * 菜单项回调里直接调 `close()`（interweave 的右键重命名就是 `emit` 之后自己关），
@@ -175,7 +176,7 @@ export class WebUiContextMenu extends LitElement {
    * 消费方先关、组件后关的路径（`_onMenuClick` 的 `_closeFromUser('menu-item')`）随后看到的是
    * `'menu-item'`，两条判定同向，不会互相抵消。
    */
-  private _menuItemActivated = false
+  private _menuItemActivationEvent: Event | null = null
   /** 根面板的开启会话句柄；未开启时为 null。查询走它。 */
   private _menuHandle: OpenOverlayHandle | null = null
   /**
@@ -440,6 +441,9 @@ export class WebUiContextMenu extends LitElement {
       return false
     }
     this._isOpen = true
+    // 新会话：上一次派发留下的事件对象（若 `disconnectedCallback` 那条路径绕过了 `close()`）
+    // 一并丢掉。它那时 `eventPhase` 已是 0、判定为假，但不该跨会话留着。
+    this._menuItemActivationEvent = null
     return true
   }
 
@@ -465,14 +469,33 @@ export class WebUiContextMenu extends LitElement {
      * `_closeSource` 仍是 `'default'`，scrim 就留在 top layer 里不退，模态期间整份文档
      * 是 inert 的 —— 消费方紧接着送进编辑器的焦点被浏览器静默丢弃，症状是「重命名后焦点
      * 停在菜单项上、编辑器根本没进编辑态」，与本段要防的 blur 是同一个根因的两种落点。
-     * `_menuItemActivated`（捕获阶段置位）把那一条路径也纳入判定，理由见它的注释。
+     * `_menuItemActivationEvent`（捕获阶段记下的那次派发）把那一条路径也纳入判定，
+     * 理由见它的注释。
      *
      * 此刻焦点还在菜单里，UA 的归还正好落在 opener 上——那本来就是用户期望的落点，
      * 应用随后的焦点转移不会被覆盖。元素本身要留到面板真正移除（见 `_releaseScrimModality`）。
      */
-    if (this._closeSource === 'menu-item' || this._menuItemActivated) this._releaseScrimModality()
+    if (this._closeSource === 'menu-item' || this._isDispatchingMenuItemActivation()) {
+      this._releaseScrimModality()
+    }
     this._closeSource = 'default'
-    this._menuItemActivated = false
+    this._menuItemActivationEvent = null
+  }
+
+  /**
+   * 「当前是否正处在一次可激活菜单项的点击派发里」。
+   *
+   * 判据是 `eventPhase !== 0`（DOM 规范：派发开始前置 CAPTURING_PHASE，结束后由派发算法的
+   * terminating 步骤置回 NONE），即**事件自己知道它此刻有没有在派发中**。于是作用域精确等于
+   * 「这一次派发」，既不需要定时器也不需要猜微任务检查点的位置：
+   *
+   * - 消费方在条目自己的监听器里同步调 `close()` → 派发未结束 → 判定为真（要的就是这个）。
+   * - 消费方 `stopPropagation()` 让菜单留着 → 派发照样结束 → 之后的 Escape / 点外面 / 程序式
+   *   `close()` 一律判定为假，README 承诺的「那三条关闭不抢焦点」不会被这一次点击污染。
+   * - 消费方把 `close()` 推到下一个任务 → 判定为假，退回不提前出顶层（与没有这个标记时一致）。
+   */
+  private _isDispatchingMenuItemActivation(): boolean {
+    return this._menuItemActivationEvent !== null && this._menuItemActivationEvent.eventPhase !== 0
   }
 
   private readonly _closeFromUser = (source: CloseSource = 'default') => {
@@ -1115,24 +1138,23 @@ export class WebUiContextMenu extends LitElement {
    *
    * 挂在面板上而不是条目上：条目在开菜单期间被搬进面板，面板是它们此刻共同的祖先。
    *
-   * **标志的作用域是这一次点击，不是整个会话。** 菜单项被点并不必然导致关闭：消费方在
+   * **作用域是「这一次事件派发」，不是整个会话。** 菜单项被点并不必然导致关闭：消费方在
    * 自己的条目回调里 `stopPropagation()` 是常见写法（勾选型条目要让菜单留着），此时面板上
    * 的冒泡监听收不到，菜单不关。若标志一直留到会话结束，那一次点击之后的**每一次**关闭——
    * Escape、点外面、程序式 `close()`——都会被误判成菜单项激活而提前出顶层，把 README 承诺的
    * 「点外面 / Escape / 程序式关闭不抢焦点」整个破坏掉。
    *
-   * 复位用微任务而不是「会话结束」：捕获阶段（含本监听器）与冒泡阶段（`_onMenuClick`
-   * 所在的阶段，关闭动作就发生在这里）都在同一个任务里跑完，微任务检查点在它们之后。
-   * 于是需要这个标志的两条路径都赶得上——消费方同步调 `close()`、组件自己在冒泡阶段关——
-   * 而「点了但没关」的那一条必然跨过微任务检查点，标志已被清掉。
+   * 划界不靠定时器，靠事件自己：`close()` 判的是 `eventPhase !== 0`（见 `_isDispatchingMenuItemActivation`）。
+   * **不能用微任务复位**——真实输入下事件由浏览器任务派发，每个监听器返回后都做一次微任务检查点，
+   * 于是捕获阶段排的微任务会在条目自己的监听器（消费方同步调 `close()` 的地方）**之前**跑掉，
+   * 标志到 `close()` 时已是 false，scrim 留在 top layer，消费方送进编辑器的焦点被 inert 文档丢弃。
+   * 从脚本里合成 `dispatchEvent` 时调用栈非空、检查点被推迟，所以那种驱动方式会给这条缺陷
+   * 盖上假绿——一条能红的回归用例必须走 `userEvent`（真实输入）而不能用 `element.click()`。
    */
   private _onMenuItemActivation = (e: Event) => {
     const item = getMenuItemFromEvent(e)
     if (!item || item.hasAttribute('disabled') || item.hasAttribute('submenu')) return
-    this._menuItemActivated = true
-    queueMicrotask(() => {
-      this._menuItemActivated = false
-    })
+    this._menuItemActivationEvent = e
   }
 
   private _onMenuClick = (e: MouseEvent) => {
