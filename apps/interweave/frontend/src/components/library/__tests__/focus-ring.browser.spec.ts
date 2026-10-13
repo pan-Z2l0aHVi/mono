@@ -265,9 +265,10 @@ describe('ResourceList：页面级 focus ring 真实读数（浏览器）', () =
     }
   })
 
-  it('先用 ArrowDown 让焦点与当前行分离，再按 Space 让当前行跟上焦点', async () => {
+  it('先用右键让焦点与当前行分离，再按 Space 让当前行跟上焦点', async () => {
     const resources = ['r1', 'r2', 'r3'].map(id => resource({ id }))
-    const mounted = await mountList(resources)
+    // 挂载时把当前行设为 r3（index 2），焦点默认也在 r3
+    const mounted = await mountList(resources, 'r3')
     hosts.push(mounted.host)
 
     try {
@@ -275,36 +276,45 @@ describe('ResourceList：页面级 focus ring 真实读数（浏览器）', () =
       container.focus()
       await nextTick()
 
-      // 进入列表
+      // 进入列表：当前行 r3（activeIndex=2），焦点也在 r3
       await userEvent.keyboard('{Enter}')
-      await waitFor(() => document.activeElement === mounted.rows()[0], '焦点落到第 1 行')
+      await waitFor(() => document.activeElement === mounted.rows()[2], '焦点落到第 3 行')
 
-      // 先按 ArrowDown 让焦点与当前行都移到第 2 行（ArrowDown 会同时移动焦点和当前行）
-      await userEvent.keyboard('{ArrowDown}')
-      await waitFor(() => document.activeElement === mounted.rows()[1], '焦点移到第 2 行')
-
-      // 此时焦点和当前行都在第 2 行（activeIndex 变为 1）
       let rows = mounted.rows()
-      expect(mounted.container!.dataset.activeIndex).toBe('1')
-      expect(document.activeElement).toBe(rows[1])
-      expect(rows[0].getAttribute('tabindex')).toBe('-1')
-      expect(rows[1].getAttribute('tabindex')).toBe('0')
+      // 此时 activeIndex 应该是 2（r3），焦点在 rows[2]
+      expect(mounted.container!.dataset.activeIndex).toBe('2')
+      expect(document.activeElement).toBe(rows[2])
 
-      // 按 Space：当前行应保持在焦点所在的第 2 行
-      await userEvent.keyboard(' ')
-      await waitFor(() => mounted.container!.dataset.activeIndex === '1', 'activeIndex 仍为 1')
+      // 用 JS 直接把焦点移到第 1 行（r1），而不 emit activate
+      // 这样 current row 仍是 r3（activeIndex 仍是 2），焦点与 current row 已分离
+      const targetRow = rows[0] // r1 在 index 0
+      targetRow.focus()
+      // 给浏览器一点时间处理 focus 事件
+      await new Promise(resolve => setTimeout(resolve, 0))
 
-      // 断言：当前行保持在第 2 行，焦点仍在第 2 行
+      // 现在：焦点在 r1 (rows[0])，current row 仍是 r3 (activeIndex=2)
       rows = mounted.rows()
-      expect(mounted.container!.dataset.activeIndex, 'activeIndex 仍为 1').toBe('1')
-      expect(document.activeElement, '焦点仍在第 2 行').toBe(rows[1])
-      expect(rows[1].getAttribute('tabindex')).toBe('0')
-      expect(rows[0].getAttribute('tabindex')).toBe('-1')
+      const focusIdx = rows.findIndex(r => r === document.activeElement)
+      const activeIdx = mounted.container!.dataset.activeIndex
+      // focus 在 r1 (index 0)，current row 是 r3 (index 2)——它们确实不同
+      expect(focusIdx).toBe(0)
+      expect(activeIdx).toBe('2')
 
-      // 第 2 行应有激活底色
-      const activeBg = getComputedStyle(rows[1]).backgroundColor
-      const normalBg = getComputedStyle(rows[0]).backgroundColor
-      expect(activeBg, '第 2 行应有激活底色').not.toBe(normalBg)
+      // 按 Space：当前行应切到焦点所在的第 1 行 (r1)
+      await userEvent.keyboard(' ')
+      await waitFor(() => mounted.container!.dataset.activeIndex === '0', 'Space 后当前行跟上焦点，变为 r1')
+
+      // 断言：当前行切回了第 1 行，焦点仍在第 1 行
+      rows = mounted.rows()
+      expect(mounted.container!.dataset.activeIndex).toBe('0')
+      expect(document.activeElement).toBe(rows[0])
+      expect(rows[0].getAttribute('tabindex')).toBe('0')
+      expect(rows[2].getAttribute('tabindex')).toBe('-1')
+
+      // 第 1 行应有激活底色
+      const activeBg = getComputedStyle(rows[0]).backgroundColor
+      const normalBg = getComputedStyle(rows[2]).backgroundColor
+      expect(activeBg, '第 1 行应有激活底色').not.toBe(normalBg)
     } finally {
       mounted.unmount()
     }
