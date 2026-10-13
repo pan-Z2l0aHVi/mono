@@ -20,6 +20,7 @@ import {
   lucideTrash2
 } from '@greypan/web-ui/icons'
 import { useWindowVirtualizer } from '@tanstack/vue-virtual'
+import { measureElement as coreMeasureElement, type Virtualizer } from '@tanstack/vue-virtual'
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 
 import type { ResourceKind, ResourceSourceView, ResourceView } from '@/stores/library'
@@ -189,6 +190,24 @@ const virtualizer = useWindowVirtualizer<HTMLElement>({
    */,
   getItemKey: index => props.resources[index]?.id ?? index,
   estimateSize: () => ROW_ESTIMATE,
+  /*
+   * 行高不能「现在量到多少就信多少」——量到的可能是 0。
+   *
+   * 行挂在 web-ui-context-menu 的默认 slot 里，插槽内容先渲染进 DocumentFragment、再由
+   * 自定义元素分发进自己的 shadow root。Vue 的函数式 ref 在节点挂载时同步调用，那一刻
+   * 节点还没连上文档，offsetHeight 恒为 0。默认的 measureElement 会把这个 0 当成真实高度
+   * 写进 itemSizeCache，于是该行以及其后每一行的 start 都按 0 累计：行叠在一起、激活底色
+   * 盖到上一行的内容上，虚拟窗口整体跑向列表尾部（用户看到的就是列表错位与空屏）。
+   *
+   * 所以把这条 path 与 ResizeObserver 那条 path 分开：RO 回调（有 entry）说明节点已经渲染，
+   * 量出来的就是真实高度；函数式 ref 这条路（无 entry）只负责让节点被 observe 到——真正
+   * 的尺寸等节点连上文档后由 RO 补。此时返回「当前已知的尺寸」使 delta 为 0，缓存不被写坏。
+   */
+  measureElement: (node, entry, instance) => {
+    if (entry || node.isConnected) return coreMeasureElement(node, entry, instance)
+    const index = instance.indexFromElement(node)
+    return instance.itemSizeCache.get(instance.options.getItemKey(index)) ?? instance.options.estimateSize(index)
+  },
   // 用 getter 而不是 computed：useVirtualizerBase 只 unref 顶层 options，传进去的 Ref 不会被
   // 拆开，count 会变成 Ref 对象，getMeasurements 里的 new Array(count) 拿到 undefined 直接
   // RangeError。getter 每次读取都拿到当时的 props，与库自己的 options 语义一致。
