@@ -622,6 +622,7 @@ onMounted(() => {
         @set-checked="setResourceChecked"
         @rename-change="handleResourceNameChange"
         @cancel-rename="stopResourceRename"
+        @activate="activeResourceId = $event.id"
       />
     </main>
 
