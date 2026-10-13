@@ -54,7 +54,7 @@ function resource(overrides: Partial<ResourceView> = {}): ResourceView {
 
 /** 长标题：会把标题挤成两行，行高因此与单行行不同——被测的正是这个差值。 */
 const LONG_TITLE =
-  '屏幕截图 2025-08-20 183810123123123123123123213132323331231232132131231231231231231231sfasdfsafsdfdsafadsfafdsfas...'
+  '屏幕截图 2025-08-20 183810123123123123123123213132323331231232132131231231231231231231更多更多更多更多更多更多更多更多...'
 
 /** 有界轮询：条件成立即刻通过，帧预算耗尽才失败（对齐 rename-focus.browser.spec.ts）。 */
 async function waitFor(condition: () => boolean, label: string, maxFrames = 180): Promise<void> {
