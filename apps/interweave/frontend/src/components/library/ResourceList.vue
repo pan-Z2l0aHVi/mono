@@ -990,9 +990,10 @@ async function openContextMenu(resource: ResourceView, event: MouseEvent) {
   }
   event.preventDefault()
   event.stopPropagation()
-  // 坐标先取出来再跨 tick。openAt 是异步的（nextTick 之后才调用），而事件的
-  // clientX/clientY 属于「这一次右键」——菜单该出现在手指/鼠标当时的位置，不是等到下一帧
-  // 那一刻的位置。中间还夹着 contextResource 的写入与随之而来的重渲染。
+  // 右键呼出菜单本身也写当前行（决策 4 后半句）：emit activate 让父级把 activeResourceId
+  // 置为该行资源 id。不调用 focusIndex()——它会 scrollToIndex + row.focus()，会抢走焦点
+  //（右键改名时焦点在名字编辑器里）。
+  emit('activate', resource)
   const { clientX, clientY } = event
   contextResource.value = resource
   await nextTick()
