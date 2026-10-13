@@ -448,7 +448,7 @@ function handleRenameChange(item: LibraryQueueItem, event: WebUiEvent<WebUiEdita
           <!--
             空态以左侧 drop 区为基准对齐，两块内容同构、等高，各自居中后自然落在同一
             水平线上——不靠单侧 padding 补偿：
-            icon 盒 52px/圆角 18px/字形 23px、icon 到文案 12px、标题 16px/600/行高 1.4、
+            icon 盒 52px/字形 23px、icon 到文案 12px、标题 16px/600/行高 1.4、
             标题到说明 12px、说明两行 12px/1.4 行内距 2px，与左侧逐一对应，
             桌面与 mobile: 各断点同样成对。
             高度相等的关键是说明同为两行：两行时两侧都是
