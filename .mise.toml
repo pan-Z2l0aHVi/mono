@@ -20,4 +20,4 @@ TURBO_CACHE_DIR = "{{ exec(command='git -C ' ~ config_root ~ ' rev-parse --path-
 # `go env GOCACHE` 不受影响。
 # Tera 要求：exec 命令永远 exit 0、永远仅输出一行；HERDR_ENV 在场而 TMPDIR 为空时条件判假、
 # 避免渲染成根路径 /greypan/go-build。
-GOCACHE = "{% if env.HERDR_ENV and env.TMPDIR %}{{ exec(command='DM1=$HOME/Library/Caches/go-build; DM2=$HOME/.cache/go-build; FB=$TMPDIR/greypan/go-build; if (mkdir -p $DM1 && touch $DM1/testprobe && rm $DM1/testprobe) 2>/dev/null; then echo $DM1; elif (mkdir -p $DM2 && touch $DM2/testprobe && rm $DM2/testprobe) 2>/dev/null; then echo $DM2; else echo $FB; fi') | trim }}{% endif %}"
+GOCACHE = "{% if env.HERDR_ENV and env.TMPDIR %}{{ exec(command='DM1=$HOME/Library/Caches/go-build; DM2=$HOME/.cache/go-build; FB=$TMPDIR/greypan/go-build; P=$$; if (mkdir -p $DM1 && touch $DM1/.herdr-gocache-probe.$P) 2>/dev/null; then echo $DM1; rm -f $DM1/.herdr-gocache-probe.$P; elif (mkdir -p $DM2 && touch $DM2/.herdr-gocache-probe.$P) 2>/dev/null; then echo $DM2; rm -f $DM2/.herdr-gocache-probe.$P; else echo $FB; fi') | trim }}{% endif %}"
