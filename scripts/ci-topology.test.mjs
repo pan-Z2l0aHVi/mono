@@ -180,40 +180,111 @@ function unquoteValue(value) {
   return value.startsWith("'") && value.endsWith("'") ? value.slice(1, -1) : value
 }
 
-// 不变量 1 的可静态判定部分：job 声明的安装面必须覆盖它自己调用的 mise 管理命令。P0 的事故就是这个
-// job 只装 node+pnpm 却要跑链接桌面库的 wails3 —— 那是运行期 spawn，这里查不到，由
-// scripts/version-sync.test.mjs 用「PATH 里没有 wails3」的实跑钉住。
-const miseManagedCommands = new Set(['node', 'pnpm', 'wails3', 'go', 'playwright'])
-
-// 单行 `run: cmd` 与 `run: |` 块体都要看：只扫单行会漏掉多行脚本，而重工具链调用恰恰最容易藏在那里。
-function invokedCommands(block) {
-  const commands = []
+// 一个 workflow 里全部 run 步骤的文本：单行 `run: cmd` 与 `run: |` 块体都要收，否则多行脚本
+// 会从缝里漏过去。块体内以 `\` 结尾的行先接成一条——同一句调用拆成两行时，正则必须看得到
+// 接起来之后的样子。
+function runTexts(text) {
+  const lines = []
   let inScalar = false
 
-  for (const line of block.split('\n')) {
-    const inline = line.match(/^ {8}run:\s*(\S.*)$/)
+  for (const line of text.split('\n')) {
+    // `scalar` 必须先判：`run: |` 同样匹配下面那条 inline 正则（`\S.*` 会把 `|` 当成命令正文），
+    // 先判 inline 会把块体整个跳过，`inScalar` 永远起不来。
     const scalar = line.match(/^ {8}run:\s*[|>][-+]?\s*$/)
+    const inline = line.match(/^ {8}run:\s*(\S.*)$/)
 
-    if (inline) {
-      inScalar = false
-      commands.push(inline[1])
-      continue
-    }
     if (scalar) {
       inScalar = true
+      continue
+    }
+    if (inline) {
+      inScalar = false
+      lines.push(inline[1])
       continue
     }
     if (inScalar && line.trim() !== '') {
       inScalar = /^ {10,}\S/.test(line)
       if (inScalar) {
-        commands.push(line.trim())
+        lines.push(line.trim())
       }
     }
   }
 
-  // `FOO=bar pnpm …` 的命令名在赋值之后；`if [[ … ]]`、`for X in …` 这类 shell 关键字不在白名单里，
-  // 自然被忽略。
-  return commands.map(entry => entry.split(' ').filter(token => !/^[A-Za-z_][A-Za-z0-9_]*=/.test(token))[0])
+  return lines
+    .join('\n')
+    .replace(/\\\n\s*/g, ' ')
+    .split('\n')
+    .filter(Boolean)
+}
+
+// 桌面产物的验证面是 `build:macos` / `build:windows` 两个子脚本，不是聚合的 `build`。这条不变量是
+// `apps/interweave/scripts/build.mjs` 把 darwin 默认路径裁成「只做宿主平台、不打 DMG」的承重前提：
+// 聚合脚本是宿主相关的（darwin 上不再交叉编译 Windows、不再打 `.dmg`），矩阵一旦改调它，
+// `macos-14` 那一格就不再产出 `.dmg`，只会红在 `if-no-files-found: error` 上；`windows-latest`
+// 那一格不受影响（win32 分支仍然打 `.exe`）。所以矩阵改调聚合脚本不会静默通过——这两条断言不是
+// 兜底那道网，它们把「桌面验证面由矩阵的子脚本构成」这个前提写成可执行的形式，让下一次再有人
+// 收窄聚合脚本时，改动能立刻看见自己动了哪条前提。
+// 两条断言分开写，因为它们要挡的两种改法形状不同：矩阵里改的是**表**（表与 YAML 一起漂移，
+// 不变量 5 的 deepEqual 看不见），workflow 里改的是**字面量**。
+// 覆盖面到此为止，不再往「穷举所有拼法」的方向长。(b) 是对裸 YAML 的正则启发式，不是解析器；
+// 它的作用是让下一次再收窄聚合脚本的人**看见自己动了哪条前提**，真正的闸门是矩阵里
+// `if-no-files-found: error`：矩阵那一格少产出 `.dmg` 会当场红，不会静默通过。
+// 已知的、故意不覆盖的形状：跑在 macOS runner 上的根 `pnpm run build`（turbo 扇出到聚合脚本）。
+// 拦它要往 parseWorkflow 里加 `runs-on`，那是另一件事。
+const interweaveScripts = JSON.parse(
+  fs.readFileSync(path.join(repoRoot, 'apps/interweave/package.json'), 'utf8')
+).scripts
+
+// (a) 矩阵声明的每个 command 必须是本包真实存在的脚本，且不是聚合 `build`。
+// 注意断言的是「不是 build」而不是「等于 build:macos/build:windows」：把某一格改成别的已声明脚本
+// （例如 `build:macos:app`）今天会放行，那是有意的——它由上面那句 `if-no-files-found: error` 兜底，
+// 而且会响。
+for (const entry of desktopMatrix) {
+  assert.ok(
+    Object.hasOwn(interweaveScripts, entry.command),
+    `desktop matrix entry ${entry.name} runs ${entry.command}, which apps/interweave declares no script for`
+  )
+  assert.notEqual(
+    entry.command,
+    'build',
+    'a desktop matrix entry must not run the aggregate `build` script of @greypan/interweave; the matrices invoke a per-platform sub-script (build:macos / build:windows)'
+  )
+}
+
+// (b) workflow 不得直接点名执行聚合脚本。`run:` 单行与 `|` 块体都要扫，行尾 `\` 续行先接成一条
+// ——只扫单行会让「拆成两行的同一句调用」从缝里漏过去。包名两侧的引号也要吃掉：`--filter "…"`
+// 是 pnpm 文档里的写法。`turbo … --filter=@greypan/interweave` 也在列：turbo 扇出是本仓自己的写法，
+// 同样会执行聚合脚本（`@greypan/interweave#build` 的 command 就是它）。
+const aggregateBuildInvocations = [
+  /@greypan\/interweave["']?\s+run\s+["']?build["']?(?![:\w-])/,
+  /@greypan\/interweave["']?\s+build(?![:\w-])/,
+  /(?:--dir|-C)\s+\S*apps\/interweave["']?\s+run\s+["']?build["']?(?![:\w-])/,
+  /(?:--dir|-C)\s+\S*apps\/interweave["']?\s+build(?![:\w-])/,
+  /turbo\s+[^\n]*--filter[=\s]+["']?[^\s"']*@greypan\/interweave(?![-\w])/
+]
+
+for (const file of onDisk) {
+  for (const run of runTexts(fs.readFileSync(path.join(workflowDir, file), 'utf8'))) {
+    if (!/@greypan\/interweave|apps\/interweave/.test(run)) continue
+    for (const pattern of aggregateBuildInvocations) {
+      assert.ok(
+        !pattern.test(run),
+        `${file}: a run step invokes the aggregate \`build\` script of @greypan/interweave (${run.trim()}); the desktop matrices invoke build:macos / build:windows directly`
+      )
+    }
+  }
+}
+
+// 不变量 1 的可静态判定部分：job 声明的安装面必须覆盖它自己调用的 mise 管理命令。P0 的事故就是这个
+// job 只装 node+pnpm 却要跑链接桌面库的 wails3 —— 那是运行期 spawn，这里查不到，由
+// scripts/version-sync.test.mjs 用「PATH 里没有 wails3」的实跑钉住。
+const miseManagedCommands = new Set(['node', 'pnpm', 'wails3', 'go', 'playwright'])
+
+// 命令名取每条 run 的第一个非赋值 token：`FOO=bar pnpm …` 的命令名在赋值之后；`if [[ … ]]`、
+// `for X in …` 这类 shell 关键字不在白名单里，自然被忽略。与 runTexts 共用解析器——两份解析器
+// 早晚会各自漂移，那正是它要防的形状。
+function invokedCommands(block) {
+  return runTexts(block).map(entry => entry.split(' ').filter(token => !/^[A-Za-z_][A-Za-z0-9_]*=/.test(token))[0])
 }
 
 for (const [file, wf] of Object.entries(parsed)) {
@@ -228,8 +299,12 @@ for (const [file, wf] of Object.entries(parsed)) {
     const blockStart = text.indexOf(`\n  ${id}:\n`)
     assert.notEqual(blockStart, -1, `${file}: job ${id} block not found`)
     const rest = text.slice(blockStart)
-    const blockEnd = rest.search(/\n {2}[a-z0-9-]+:\n/)
-    const block = blockEnd === -1 ? rest : rest.slice(0, blockEnd)
+    // 结束位置必须**跳过 job 自己的头部行**再找：`rest` 就是以 `\n  ${id}:\n` 开头的，
+    // 直接 search 会命中位置 0，block 变成空串，下面那个循环一次都不执行——这条断言会静默
+    // 变成永不触发的样子（它本来就这样，已经放行过一个在块体里调 `go` 的 job）。
+    const afterHeader = rest.indexOf('\n') + 1
+    const nextJob = /\n {2}[a-z0-9-]+:\n/.exec(rest.slice(afterHeader))
+    const block = nextJob ? rest.slice(0, afterHeader + nextJob.index) : rest
 
     for (const command of invokedCommands(block)) {
       if (miseManagedCommands.has(command)) {
