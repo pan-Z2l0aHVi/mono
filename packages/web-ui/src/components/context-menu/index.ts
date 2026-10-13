@@ -53,6 +53,12 @@ const LONG_PRESS_MOVE_TOLERANCE = 10
  * 1000ms 远大于实际需要，只是一个陈旧兜底上限。真正的边界是下一次 `pointerdown`
  * （`_onPointerDown` 无条件清零，含鼠标）与菜单关闭，两条硬边界都在窗口判定之外，
  * 所以窗口只负责兜住「补发事件既没等到下一次按下、菜单也没关闭」这种不该发生的路径。
+ *
+ * **窗口的起点是手势结束而不是菜单打开**（见 `_longPressGestureEndedAt`）：补发事件由
+ * 引擎在 touchend 处理时生成，主线程被长任务占住时这一步能比菜单打开晚 1s 以上
+ * （实测 click 比打开晚 1325ms）。以打开时刻为起点，这个上限会被那段延迟挤爆——
+ * 补发 click 落到窗口外，被当成用户真实点击把**同一次长按刚打开**的菜单关掉。
+ * 以手势结束为起点，补发事件相对它只有几毫秒，窗口才真的覆盖「同一次手势的补发」。
  */
 const LONG_PRESS_FOLLOW_UP_WINDOW_MS = 1000
 
@@ -121,6 +127,13 @@ export class WebUiContextMenu extends LitElement {
    * 因此在窗口内吸收这两个补发事件；窗口由下一次 `pointerdown` 关闭。
    */
   private _longPressOpenedAt: number | null = null
+  /**
+   * 长按手势结束（pointerup）的时刻，补发事件窗口的起点。
+   *
+   * 为 null 表示「这次长按的手势还没结束」——窗口退回以菜单打开时刻为起点。手势被
+   * pointercancel 打断、或组件在抬手前就被卸载时都会走到这条兜底，行为与此前一致。
+   */
+  private _longPressGestureEndedAt: number | null = null
   // 子菜单 dialog 定位的唯一写者代数（按 panel 键控）：同帧关闭→重开复用同一 panel
   // 时只允许最新一次定位写入；不同层级子菜单各有 panel，互不作废。
   private readonly _submenuPositionEpochs = new WeakMap<HTMLElement, number>()
@@ -311,6 +324,7 @@ export class WebUiContextMenu extends LitElement {
     this._isOpen = false
     this._cancelLongPress()
     this._longPressOpenedAt = null
+    this._longPressGestureEndedAt = null
   }
 
   protected override updated(changed: Map<string, unknown>) {
@@ -395,6 +409,7 @@ export class WebUiContextMenu extends LitElement {
         // 吸收窗口只覆盖「长按之后浏览器补发的那几个事件」。菜单已关，
         // 之后任何一次真实右键或点击都必须走正常路径，不能被这个窗口吞掉。
         this._longPressOpenedAt = null
+        this._longPressGestureEndedAt = null
         // release ⟺ 关闭：登记与仲裁归属同时撤销，退场动画只是视觉收尾。
         this._menuHandle?.release()
         this._menuHandle = null
@@ -1038,7 +1053,7 @@ export class WebUiContextMenu extends LitElement {
     // 任何一次新的按下都结束「上一次长按的补发事件」窗口：抬手后浏览器合成的
     // click 一定早于下一次 pointerdown，所以这个边界既能吸收补发，又不会误吞
     // 用户之后真正的点击。
-    this._longPressOpenedAt = null
+    this._clearLongPressFollowUp()
     // 鼠标走原生 contextmenu，无需长按；只认触屏指针。
     if (!this.longPress || this.disabled || e.pointerType !== 'touch') return
     this._cancelLongPress()
@@ -1070,7 +1085,17 @@ export class WebUiContextMenu extends LitElement {
   }
 
   private _onPointerUp = (e: PointerEvent) => {
-    if (e.pointerType === 'touch') this._cancelLongPress()
+    if (e.pointerType !== 'touch') return
+    // 补发事件窗口改以手势结束为起点：引擎的补发 contextmenu / click 与这次 pointerup
+    // 同一个输入批处理生成（实测 click 的 timeStamp 与 pointerup 处理时刻相差 ≤3ms），
+    // 所以相对它窗口覆盖得到；相对「菜单打开时刻」则覆盖不到（负载下能差出 1300ms+）。
+    // 只认**开菜单那一次**手势的抬手：之后用户又按了一次时，它的 click 属于新手势，
+    // 把窗口重新锚过去会让本该 dismiss 的点击被吞（「窗口过期后点击照常 dismiss」
+    // 钉的正是这条）。所以只在还没锚过时记一次。
+    if (this._longPressOpenedAt !== null && this._longPressGestureEndedAt === null) {
+      this._longPressGestureEndedAt = performance.now()
+    }
+    this._cancelLongPress()
   }
 
   private _onPointerCancel = () => {
@@ -1089,12 +1114,20 @@ export class WebUiContextMenu extends LitElement {
   private _isLongPressFollowUp(): boolean {
     const openedAt = this._longPressOpenedAt
     if (openedAt === null) return false
+    // 起点取手势结束（补发事件与它同批生成），拿不到时才退回打开时刻。
+    const anchor = this._longPressGestureEndedAt ?? openedAt
     // 超期只说明「这次长按的补发没来」，不代表窗口承担时序保证；见常量注释。
-    if (performance.now() - openedAt > LONG_PRESS_FOLLOW_UP_WINDOW_MS) {
-      this._longPressOpenedAt = null
+    if (performance.now() - anchor > LONG_PRESS_FOLLOW_UP_WINDOW_MS) {
+      this._clearLongPressFollowUp()
       return false
     }
     return true
+  }
+
+  /** 结束「同一次手势的补发事件」窗口。与 _longPressOpenedAt 的清零同源，两处都要清。 */
+  private _clearLongPressFollowUp() {
+    this._longPressOpenedAt = null
+    this._longPressGestureEndedAt = null
   }
 
   private _onContextMenu = (e: MouseEvent) => {

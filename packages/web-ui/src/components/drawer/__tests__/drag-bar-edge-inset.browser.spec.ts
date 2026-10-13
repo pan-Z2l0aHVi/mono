@@ -3,7 +3,7 @@ import '..'
 import { afterEach, describe, expect, it } from 'vite-plus/test'
 import { userEvent } from 'vite-plus/test/browser'
 
-import { pollUntil } from '@/shared/test-utils'
+import { pollUntil, waitForSettledLayout } from '@/shared/test-utils'
 
 import type { DrawerPlacement, WebUiDrawer } from '..'
 
@@ -63,25 +63,19 @@ function isDragSurface(el: WebUiDrawer, node: HTMLElement | null): boolean {
   return !!node && (node === getDragEdge(el) || node === getDragZone(el))
 }
 
-async function settleGeometry(el: WebUiDrawer, timeoutMs = 5000) {
-  const dialog = getDialog(el)
-  const start = performance.now()
-  let previous = dialog.getBoundingClientRect()
-  let stable = 0
-  while (stable < 2) {
-    await new Promise(resolve => requestAnimationFrame(resolve))
-    await new Promise(resolve => setTimeout(resolve, 32))
-    const current = dialog.getBoundingClientRect()
-    stable =
-      Math.abs(current.top - previous.top) < 0.01 &&
-      Math.abs(current.bottom - previous.bottom) < 0.01 &&
-      Math.abs(current.left - previous.left) < 0.01 &&
-      Math.abs(current.right - previous.right) < 0.01
-        ? stable + 1
-        : 0
-    previous = current
-    if (performance.now() - start > timeoutMs) throw new Error('drawer geometry did not settle')
-  }
+/**
+ * 等拖拽面的几何定版再取样——命中测试的前提。
+ *
+ * 旧写法只等比 dialog 矩形两次相等，两个方向都不够：
+ * - 进场过渡的进度只在渲染步进里推进，`getBoundingClientRect()` 的强制重算不推它，
+ *   于是「相等」也可以意味着过渡还没起跑：量到的是闭合位矩形，胶囊整个在视口外，
+ *   `elementFromPoint` 返回 null（CI 上 `把手加厚…仍可起手` 的 flaky 正是如此）。
+ * - 让位量由 ResizeObserver 写回宿主样式，移动的是热区/热边而不是 dialog 矩形，
+ *   等 dialog 矩形稳定推不出热区已到位。
+ * 共享 helper 把这两件事都变成因果条件（过渡跑完 + RO 抽干），收尾再验矩形真的定版。
+ */
+async function settleGeometry(el: WebUiDrawer) {
+  await waitForSettledLayout([getDialog(el), getDragZone(el), getDragEdge(el), getDragBar(el)])
 }
 
 /**
