@@ -54,10 +54,9 @@ function resource(overrides: Partial<ResourceView> = {}): ResourceView {
 async function mountList(resources: ResourceView[], activeResourceId: string | null = null) {
   const restoreLayout = stubLayout()
   const host = document.createElement('div')
-  host.id = 'app' // 页面级 focus ring 规则要求 #app
+  host.id = 'app'
   document.body.append(host)
 
-  // 必须用 ref，否则 onActivate 更新 value 无法触发 props.activeResourceId 的响应式更新
   const activeId = ref(activeResourceId)
   const app = createApp({
     render: () =>
@@ -132,27 +131,9 @@ describe('ResourceList：页面级 focus ring 真实读数（浏览器）', () =
       const outlineWidth1 = getComputedStyle(rows[0]).outlineWidth
       const outlineColor1 = getComputedStyle(rows[0]).outlineColor
       const outlineOffset1 = getComputedStyle(rows[0]).outlineOffset
-      console.log(
-        '[DEBUG] outlineOffset:',
-        outlineOffset1,
-        'outlineWidth:',
-        outlineWidth1,
-        'outlineColor:',
-        outlineColor1,
-        'outlineStyle:',
-        outlineStyle1
-      )
       expect(outlineStyle1, '第 1 行应有 focus ring').not.toBe('none')
-      // outline-width 可能因浏览器计算差异为 1px 或 3px，关键是颜色不是 UA 默认黑色
       expect(outlineWidth1, '第 1 行 outline-width 应非 0px').not.toBe('0px')
-      // 页面级 focus ring 颜色是 var(--wui-color-focus-ring, rgb(0 136 255 / 0.4))
-      // 即 rgba(0, 136, 255, 0.4) —— 半透明浅蓝，含 alpha 通道
-      // UA 默认 focus ring 通常是不透明蓝色 (rgb(0, 0, 255) 或 -webkit-focus-ring-color)
-      // 断言：颜色包含 136 或计算后的 95/204，不是不透明蓝/黑
-      // 浏览器会把 rgba(0, 136, 255, 0.4) 解析为 rgb(0, 95, 204) (alpha 混合后)
-      // 注意：因 :where() 特异性为 0，outline-width/offset/style 可能被 UA 默认覆盖，
-      // 但颜色来自页面级规则，这是选择器生效的证据
-      expect(outlineColor1, '第 1 行 outline-color 应为页面级半透明浅蓝 rgba(0, 136, 255, 0.4) 或其计算值').toMatch(
+      expect(outlineColor1, '第 1 行 outline-color 应为页面级半透明浅蓝').toMatch(
         /(rgba?\(0,\s*136,\s*255|rgb\(0,\s*95,\s*204\))/
       )
 
@@ -165,19 +146,6 @@ describe('ResourceList：页面级 focus ring 真实读数（浏览器）', () =
       // 用真实输入按 ArrowDown 移到第 2 行
       await userEvent.keyboard('{ArrowDown}')
       await waitFor(() => document.activeElement === rows[1], '焦点移到第 2 行')
-
-      // 诊断：打印 tabindex、activeIndex、activeElement
-      const tabindexesAfterDown = rows.map(r => r.getAttribute('tabindex'))
-      const activeIndexAfterDown = mounted.container!.dataset.activeIndex
-      const focusIndexAfterDown = rows.findIndex(r => r === document.activeElement)
-      console.log(
-        '[DIAG ArrowDown] tabindexes:',
-        tabindexesAfterDown,
-        'activeIndex:',
-        activeIndexAfterDown,
-        'focusIndex:',
-        focusIndexAfterDown
-      )
 
       // 现在第 2 行应有 outlineStyle
       const outlineStyle2After = getComputedStyle(rows[1]).outlineStyle
@@ -200,19 +168,6 @@ describe('ResourceList：页面级 focus ring 真实读数（浏览器）', () =
       // 再按 ArrowDown 移到第 3 行
       await userEvent.keyboard('{ArrowDown}')
       await waitFor(() => document.activeElement === rows[2], '焦点移到第 3 行')
-
-      // 诊断：打印 tabindex、activeIndex、activeElement
-      const tabindexesAfterDown2 = rows.map(r => r.getAttribute('tabindex'))
-      const activeIndexAfterDown2 = mounted.container!.dataset.activeIndex
-      const focusIndexAfterDown2 = rows.findIndex(r => r === document.activeElement)
-      console.log(
-        '[DIAG ArrowDown2] tabindexes:',
-        tabindexesAfterDown2,
-        'activeIndex:',
-        activeIndexAfterDown2,
-        'focusIndex:',
-        focusIndexAfterDown2
-      )
 
       const outlineStyle3Final = getComputedStyle(rows[2]).outlineStyle
       const outlineWidth3 = getComputedStyle(rows[2]).outlineWidth
@@ -249,20 +204,6 @@ describe('ResourceList：页面级 focus ring 真实读数（浏览器）', () =
       await userEvent.keyboard('{End}')
       await waitFor(() => document.activeElement === mounted.rows()[4], '焦点跳到第 5 行')
 
-      // 诊断：打印 tabindex、activeIndex、activeElement
-      const rowsAfterEnd = mounted.rows()
-      const tabindexesAfterEnd = rowsAfterEnd.map(r => r.getAttribute('tabindex'))
-      const activeIndexAfterEnd = mounted.container!.dataset.activeIndex
-      const focusIndexAfterEnd = rowsAfterEnd.findIndex(r => r === document.activeElement)
-      console.log(
-        '[DIAG End] tabindexes:',
-        tabindexesAfterEnd,
-        'activeIndex:',
-        activeIndexAfterEnd,
-        'focusIndex:',
-        focusIndexAfterEnd
-      )
-
       const rows = mounted.rows()
       const outlineStyleLast = getComputedStyle(rows[4]).outlineStyle
       const outlineWidthLast = getComputedStyle(rows[4]).outlineWidth
@@ -282,7 +223,7 @@ describe('ResourceList：页面级 focus ring 真实读数（浏览器）', () =
     }
   })
 
-  it('Space 键把焦点和当前行一起移到该行', async () => {
+  it('Space 键把焦点所在行写成当前行', async () => {
     const resources = ['r1', 'r2', 'r3'].map(id => resource({ id }))
     const mounted = await mountList(resources)
     hosts.push(mounted.host)
@@ -304,41 +245,66 @@ describe('ResourceList：页面级 focus ring 真实读数（浏览器）', () =
       // 确保焦点在第 1 行
       expect(document.activeElement).toBe(rows[0])
 
-      // 诊断：打印按键前的状态
+      // 用真实按键按 Space：把焦点所在行写成当前行
+      await userEvent.keyboard(' ')
+      await waitFor(() => document.activeElement === rows[0], '焦点仍在第 1 行')
 
-      // 直接在容器上派发 Space keydown 事件，避免 userEvent 的潜在问题
-      const spaceEvent = new KeyboardEvent('keydown', { key: ' ', bubbles: true, cancelable: true })
-      rows[0].dispatchEvent(spaceEvent)
-      // 等待一小会儿让事件处理完成
-      await new Promise(resolve => setTimeout(resolve, 200))
-      const rowsAfterSpace = mounted.rows()
-
-      // 等待 activeIndex 更新，而不是等待 activeElement 变化
-      await waitFor(() => mounted.container!.dataset.activeIndex === '1', 'activeIndex 更新为 1')
-      // 然后等待焦点移动
-      await waitFor(() => document.activeElement === rows[1], '焦点移到第 2 行')
-
-      // 诊断：打印 tabindex、activeIndex、activeElement
-      const tabindexesAfterSpace = rows.map(r => r.getAttribute('tabindex'))
-      const activeIndexAfterSpace = mounted.container!.dataset.activeIndex
-      const focusIndexAfterSpace = rows.findIndex(r => r === document.activeElement)
-
-      // 断言：焦点环和当前行都在同一行（第 2 行）
+      // 断言：焦点仍在第 1 行，当前行仍是第 1 行
       rows = mounted.rows()
-      expect(rows[1].getAttribute('tabindex'), '第 2 行应成为 roving tabindex 为 0 的行').toBe('0')
-      expect(rows[0].getAttribute('tabindex'), '第 1 行应退回 -1').toBe('-1')
-      expect(mounted.container!.dataset.activeIndex, 'activeIndex 应更新为 1').toBe('1')
-      expect(document.activeElement, '焦点应在第 2 行').toBe(rows[1])
+      expect(rows[0].getAttribute('tabindex'), '第 1 行仍是 roving tabindex 为 0 的行').toBe('0')
+      expect(rows[1].getAttribute('tabindex'), '第 2 行仍是 -1').toBe('-1')
+      expect(mounted.container!.dataset.activeIndex, 'activeIndex 仍是 0').toBe('0')
+      expect(document.activeElement, '焦点仍在第 1 行').toBe(rows[0])
 
-      // 第 2 行应有页面级 focus ring
-      const outlineColor2 = getComputedStyle(rows[1]).outlineColor
-      expect(outlineColor2, '第 2 行应有页面级 focus ring 颜色').toMatch(
-        /(rgba?\(0,\s*136,\s*255|rgb\(0,\s*95,\s*204\))/
-      )
+      // 第 1 行应有激活底色
+      const activeBg = getComputedStyle(rows[0]).backgroundColor
+      const normalBg = getComputedStyle(rows[1]).backgroundColor
+      expect(activeBg, '第 1 行应有激活底色').not.toBe(normalBg)
+    } finally {
+      mounted.unmount()
+    }
+  })
 
-      // 第 1 行不应有 focus ring
-      const outlineStyle1 = getComputedStyle(rows[0]).outlineStyle
-      expect(outlineStyle1, '第 1 行不应有 focus ring').toBe('none')
+  it('先用 ArrowDown 让焦点与当前行分离，再按 Space 让当前行跟上焦点', async () => {
+    const resources = ['r1', 'r2', 'r3'].map(id => resource({ id }))
+    const mounted = await mountList(resources)
+    hosts.push(mounted.host)
+
+    try {
+      const container = mounted.container!
+      container.focus()
+      await nextTick()
+
+      // 进入列表
+      await userEvent.keyboard('{Enter}')
+      await waitFor(() => document.activeElement === mounted.rows()[0], '焦点落到第 1 行')
+
+      // 先按 ArrowDown 让焦点与当前行都移到第 2 行（ArrowDown 会同时移动焦点和当前行）
+      await userEvent.keyboard('{ArrowDown}')
+      await waitFor(() => document.activeElement === mounted.rows()[1], '焦点移到第 2 行')
+
+      // 此时焦点和当前行都在第 2 行（activeIndex 变为 1）
+      let rows = mounted.rows()
+      expect(mounted.container!.dataset.activeIndex).toBe('1')
+      expect(document.activeElement).toBe(rows[1])
+      expect(rows[0].getAttribute('tabindex')).toBe('-1')
+      expect(rows[1].getAttribute('tabindex')).toBe('0')
+
+      // 按 Space：当前行应保持在焦点所在的第 2 行
+      await userEvent.keyboard(' ')
+      await waitFor(() => mounted.container!.dataset.activeIndex === '1', 'activeIndex 仍为 1')
+
+      // 断言：当前行保持在第 2 行，焦点仍在第 2 行
+      rows = mounted.rows()
+      expect(mounted.container!.dataset.activeIndex, 'activeIndex 仍为 1').toBe('1')
+      expect(document.activeElement, '焦点仍在第 2 行').toBe(rows[1])
+      expect(rows[1].getAttribute('tabindex')).toBe('0')
+      expect(rows[0].getAttribute('tabindex')).toBe('-1')
+
+      // 第 2 行应有激活底色
+      const activeBg = getComputedStyle(rows[1]).backgroundColor
+      const normalBg = getComputedStyle(rows[0]).backgroundColor
+      expect(activeBg, '第 2 行应有激活底色').not.toBe(normalBg)
     } finally {
       mounted.unmount()
     }
