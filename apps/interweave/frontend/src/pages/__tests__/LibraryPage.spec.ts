@@ -649,14 +649,14 @@ describe('LibraryPage：重命名后的激活行', () => {
       await nextTick()
 
       const renamed = row(mounted.host, 'resource-1')
-      expect(renamed.className, '被改名的一行应成为激活行').toContain('bg-black/5')
+      expect(renamed.className, '被改名的一行应成为激活行').toContain('bg-black/8')
 
       const others = [...mounted.host.querySelectorAll<HTMLElement>('[data-resource-row]')].filter(
         node => node !== renamed
       )
       for (const node of others) {
         expect(node.className, `第 ${node.getAttribute('data-resource-index')} 行不该是激活态`).not.toContain(
-          'bg-black/5'
+          'bg-black/8'
         )
       }
     } finally {

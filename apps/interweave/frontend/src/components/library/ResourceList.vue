@@ -53,6 +53,8 @@ const emit = defineEmits<{
   setChecked: [resourceId: string, checked: boolean]
   renameChange: [resource: ResourceView, event: WebUiEvent<WebUiEditableText, 'change'>]
   cancelRename: []
+  /** 键盘导航/右键菜单请求激活某一行：由父级把 activeResourceId 置为该行资源的 id。 */
+  activate: [resource: ResourceView]
 }>()
 
 const contextMenuRef = ref<WebUiContextMenu>()
@@ -69,12 +71,16 @@ const checkedSet = computed(() => new Set(props.checkedIds))
 const ROW_ESTIMATE = 64
 
 /*
- * activeIndex 是 roving tabindex 与方向键导航的唯一真相，它记的是**数据下标**而不是某个
- * DOM 元素。虚拟化之前键盘导航可以直接 querySelectorAll 拿已渲染行、在其上 indexOf；
- * 虚拟化之后那个 DOM 数组只有窗口内的十几行，ArrowDown 走到窗口底就撞墙、End 只会跳到
- * 最后一个已渲染行而不是最后一条资源。按下标算则与渲染窗口无关。
+ * activeIndex 是 roving tabindex 与方向键导航的派生下标：由 activeResourceId 在 props.resources
+ * 里查出。若 activeResourceId 为 null 或不在列表中，回退到下标 0——这与 enterList 的
+ *「没有活动行则给首行」分支一致，也让 fixture（activeResourceId: null）的 tabindex 期望
+ *['0','-1','-1'] 成立。不再维护独立 ref，也就不需要那条夹范围的 watch(length) 了。
  */
-const activeIndex = ref(0)
+const activeIndex = computed(() => {
+  if (!props.activeResourceId) return 0
+  const found = props.resources.findIndex(resource => resource.id === props.activeResourceId)
+  return found >= 0 ? found : 0
+})
 
 /*
  * 列表包裹层距文档顶部的距离，作为 scrollMargin 交给 virtualizer。
@@ -296,20 +302,10 @@ function measureRow(node: unknown) {
 }
 
 /*
- * 过滤或删除让 resources 变短时，activeIndex 可能落到列表之外，方向键就会从越界下标开始
- * 算。夹回范围内即可，不必重置到 0——用户刚删掉的是列表尾部之外的条目，焦点留在原处
- * 比跳回顶部更符合预期。
+ * activeIndex 现为派生值，随 activeResourceId 与 resources 自动同步，无需手动夹取。
+ * 当前资源被筛选/搜索筛掉时，activeResourceId 由父级置 null（见决策 8），派生会自动回退到 0。
+ * 列表内容变化时当前行按 id 跟随（决策 7）——派生天然满足：activeResourceId 不变则下标随顺序变化而变化。
  */
-watch(
-  () => props.resources.length,
-  length => {
-    if (!length) {
-      activeIndex.value = 0
-      return
-    }
-    activeIndex.value = Math.min(activeIndex.value, length - 1)
-  }
-)
 
 /*
  * 焦点成为 contextResource 的第二个来源。键盘呼出右键菜单（ContextMenu 键 / Shift+F10）
@@ -530,30 +526,40 @@ function moveRowFocus(event: KeyboardEvent, row: HTMLElement) {
           : Math.max(index - 1, 0)
   if (next === index) return
   event.preventDefault()
-  void focusIndex(next)
+  void navigateToIndex(next)
 }
 
 /*
- * 把焦点交给某一行。
+ * 键盘导航到某一行：发出 activate 事件请求父级更新 activeResourceId，再滚动并落焦。
  *
- * 落焦必须等目标行真的挂载，而「等一个 tick」不够。scrollToIndex 改的是滚动位置，
- * 库的滚动回调与随之而来的虚拟窗口重算是异步的：End 从第 0 行跳到第 999 行要滚 63000px，
- * 新窗口的行要在两三轮渲染之后才出现（实测只等一个 nextTick 时焦点仍停在 BODY）。
- * 所以这里轮询到目标行出现为止，并给一个上限，避免目标行始终不存在时把调用方挂死。
+ * 与旧 focusIndex 的区别：不直接写 activeIndex（现为派生值），改为 emit activate 让父级把
+ * activeResourceId 置为目标资源 id。派生后的 activeIndex 会自动变为目标下标，roving tabindex
+ * 与 data-active-index 随之更新。随后 scrollToIndex 滚动到位、focusRowWhenMounted 等行挂载后落焦。
  *
- * align: 'auto' 只在目标不在视口内时才滚动，方向键连续按住时不会每按一次就重置视口。
+ * 右键改名那条路上焦点在名字编辑器里，不走这里——父级已把 activeResourceId 置好，不再二次 emit。
  */
 const FOCUS_WAIT_TIMEOUT_MS = 1000
 const FOCUS_POLL_INTERVAL_MS = 16
 
-function focusIndex(index: number) {
-  activeIndex.value = index
+async function navigateToIndex(index: number) {
+  const resource = props.resources[index]
+  if (!resource) return
+  emit('activate', resource)
   virtualizer.value.scrollToIndex(index, { align: 'auto' })
-  return focusRowWhenMounted(index)
+  await focusRowWhenMounted(index)
 }
 
 /*
- * 每一轮 focusIndex 领一个递增的号，轮询每醒来一次先核对号是不是自己的。不是自己的就
+ * 仅落焦不 emit activate：用于 enterList 等「已有 activeResourceId、只需把焦点交给对应行」的场景。
+ * 此时 activeIndex 已由派生得到正确值，只需滚动并落焦。
+ */
+async function focusIndex(index: number) {
+  virtualizer.value.scrollToIndex(index, { align: 'auto' })
+  await focusRowWhenMounted(index)
+}
+
+/*
+ * 每一轮 focusIndex/navigateToIndex 领一个递增的号，轮询每醒来一次先核对号是不是自己的。不是自己的就
  * 直接收工——方向键连按时，先发的那一轮可能在后一轮落焦之后才等到目标行，不作废就会把
  * 焦点从用户已经移开的那行拽回去，表现为焦点闪回上一目标行。
  */

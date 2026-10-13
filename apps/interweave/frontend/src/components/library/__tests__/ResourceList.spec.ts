@@ -61,11 +61,13 @@ async function mountList(
   const restoreLayout = stubLayout()
   const host = document.createElement('div')
   document.body.append(host)
+  // activeResourceId 需要响应式更新：navigateToIndex 会 emit activate，测试需模拟父级更新该 prop。
+  const activeResourceId = ref<string | null>((overrides.activeResourceId as string | null) ?? null)
   const app = createApp({
     render: () =>
       h(ResourceList, {
         resources,
-        activeResourceId: null,
+        activeResourceId: activeResourceId.value,
         checkedIds,
         selectionMode: checkedIds.length > 0,
         editingNameKey: null,
@@ -74,6 +76,9 @@ async function mountList(
         runtimeAvailable: true,
         emptyDescription: '没有符合条件的资源',
         mediaUrlFor: () => null,
+        onActivate: (resource: ResourceView) => {
+          activeResourceId.value = resource.id
+        },
         ...overrides,
         ...handlers
       })
