@@ -44,10 +44,26 @@ build, CI or release pipeline.
 
 Native artifacts are emitted to `apps/interweave/bin/`:
 
-- On macOS, `build` creates both release artifacts below.
+- `build` is the developer default and only builds for the host platform:
+  - On macOS it creates `interweave.app` for the host architecture (native
+    binary, `.app` bundle, ad-hoc signature) and does **not** package a `.dmg`.
+  - On Windows it creates `interweave.exe`; on Linux it runs the WebView
+    frontend build for CI validation without producing a desktop artifact.
+- `build:macos:app` creates `interweave.app` for the host architecture —
+  identical to what `build` does on macOS.
 - `build:macos` creates `interweave.dmg` for macOS arm64.
 - `build:windows` creates `interweave.exe` for Windows x64.
-- On Windows, `build` creates `interweave.exe`; on Linux, it runs the WebView frontend build for CI validation without producing a desktop release artifact.
+
+`build:macos` and `build:windows` are the release shapes: the `macos-14` and
+`windows-latest` entries of the `wails-verify.yml` and `wails-release.yml`
+matrices invoke exactly these two scripts, each on its own native runner. The
+developer default skips the cross-platform and `.dmg` packaging work because no
+CI job runs the **macOS branch** of the aggregate script: `ci.yml` does run the
+aggregate `build` on `ubuntu-latest`, where it takes the `build:frontend` branch
+and compiles no Go. `scripts/ci-topology.test.mjs` asserts that premise, so a
+future change that breaks it says so instead of quietly shipping. Run
+`build:macos` or `build:windows` explicitly when you need the artifact CI would
+ship.
 
 The WebView uses workspace dependencies from `packages/` through
 `apps/interweave/frontend/`.

@@ -7,6 +7,7 @@
     "build": "node scripts/build.mjs",
     "build:frontend": "pnpm --dir frontend run build",
     "build:macos": "wails3 task darwin:package:dmg ARCH=arm64",
+    "build:macos:app": "wails3 task darwin:package",
     "build:windows": "wails3 build GOOS=windows GOARCH=amd64",
     "dev": "wails3 dev",
     "sync:version": "node scripts/sync-version.mjs"
