@@ -61,11 +61,13 @@ async function mountList(
   const restoreLayout = stubLayout()
   const host = document.createElement('div')
   document.body.append(host)
+  // activeResourceId 需要响应式更新：navigateToIndex 会 emit activate，测试需模拟父级更新该 prop。
+  const activeResourceId = ref<string | null>((overrides.activeResourceId as string | null) ?? null)
   const app = createApp({
     render: () =>
       h(ResourceList, {
         resources,
-        activeResourceId: null,
+        activeResourceId: activeResourceId.value,
         checkedIds,
         selectionMode: checkedIds.length > 0,
         editingNameKey: null,
@@ -74,6 +76,9 @@ async function mountList(
         runtimeAvailable: true,
         emptyDescription: '没有符合条件的资源',
         mediaUrlFor: () => null,
+        onActivate: (resource: ResourceView) => {
+          activeResourceId.value = resource.id
+        },
         ...overrides,
         ...handlers
       })
@@ -1283,6 +1288,41 @@ describe('ResourceList：键盘呼出右键菜单', () => {
       const labels = labelsOf(mounted.host)
       expect(labels).not.toContain('预览')
       expect(labels).toContain('找回资源')
+    } finally {
+      mounted.unmount()
+    }
+  })
+
+  /*
+   * 右键呼出菜单本身也写当前行（决策 4 后半句）：emit activate，父级把 activeResourceId
+   * 置为被右键的那一行。不调用 focusIndex()——那会 scrollToIndex + row.focus()，会抢走焦点
+   * （右键改名时焦点在名字编辑器里）。
+   *
+   * 这里的断言是：右键 r2 后，activeResourceId 变为 r2，对应的行获得激活底色（bg-black/8）。
+   * 因为派生 activeIndex 会跟着变，roving tabindex 也会跟着换到 r2。
+   */
+  it('右键呼出菜单、不点任何菜单项，被右键的那一行成为当前行', async () => {
+    const mounted = await mountList([resource({ id: 'r1' }), resource({ id: 'r2' })])
+    try {
+      // 初始无 activeResourceId，activeIndex = 0
+      expect(mounted.container!.dataset.activeIndex).toBe('0')
+
+      // 右键第 2 行
+      mounted.rows[1]!.dispatchEvent(
+        new MouseEvent('contextmenu', { bubbles: true, cancelable: true, clientX: 4, clientY: 4 })
+      )
+      await nextTick()
+
+      // activeIndex 应变为 1（r2 的下标）
+      expect(mounted.container!.dataset.activeIndex).toBe('1')
+
+      // 第 2 行应获得激活底色类
+      const row2 = mounted.rows[1] as HTMLElement
+      expect(row2.className).toContain('bg-black/8')
+
+      // 第 1 行不应有激活底色
+      const row1 = mounted.rows[0] as HTMLElement
+      expect(row1.className).not.toContain('bg-black/8')
     } finally {
       mounted.unmount()
     }

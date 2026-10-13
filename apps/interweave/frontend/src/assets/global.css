@@ -65,8 +65,12 @@ body {
  * 放在 document 样式表而不是 layout 的 shadow 里：::slotted() 只能命中 slot 的
  * 直接子元素，而 AppNav 的 <button> 嵌在自己的根 div 内，从组件侧根本够不着。
  * 元素选择器本身包在 :where() 里（0 特异性），只剩 :focus-visible 的伪类权重
- * (0,1,0)：既压得住 UA 默认蓝环，又让页面自己的 focus 工具类
- * （如 focus:outline-none 的 (0,2,0)）照旧能单点覆盖。
+ * (0,1,0)：既压得住 UA 默认蓝环。
+ *
+ * 注意：这条规则写在 `@import 'tailwindcss'` 之后、不属于任何 @layer；Tailwind 工具类在
+ * @layer utilities 里。层外样式优先级高于层内，与特异性无关，所以页面自己的
+ * focus 工具类（如 focus:outline-none）无法覆盖此规则（实测：outline-offset 写了 -2px，
+ * 读出来仍是页面的 2px）。如需覆盖，请在同层外（或更高优先级的非层样式）重写。
  */
 :where(#app)
   :where(
