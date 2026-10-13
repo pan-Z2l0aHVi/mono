@@ -24,6 +24,25 @@ worktree 是任务隔离边界，不是包名的别名。一个可变 task 只�
 
 构建或验证前怀疑 `dist` 产物异常（例如被 watch 进程清空 d.ts）时，先跑 `pnpm run agent:env-doctor` 体检，再用 `pnpm run agent:env-doctor --fix`（自动 `turbo build --force`）或手动 `turbo build --force` 重建。
 
+### Go 缓存探测与共享
+
+`.mise.toml` 的 `[env]` 里 `GOCACHE` 通过 `exec` 模板在 `HERDR_ENV=1` 时运行探测命令：
+
+1. 尝试写入 macOS 默认路径 `~/Library/Caches/go-build`（`mkdir -p && touch && rm`，真写入，`2>/dev/null` 抑制 stderr）
+2. 不可写则尝试 Linux 默认路径 `~/.cache/go-build`
+3. 仍不可写则回落 `$TMPDIR/greypan/go-build`
+
+探测命令**永远 exit 0、仅输出一行**，满足 Tera 渲染不崩溃的要求；`HERDR_ENV` 在场而 `TMPDIR` 为空时条件判假，避免渲染成根路径 `/greypan/go-build`。
+
+**实测共享矩阵**：
+
+- **herdr pane / claude 线程 / opencode 线程**（`HERDR_ENV=1`）：默认路径可写，探测命中，全部共享 `~/Library/Caches/go-build`（持久、约 800 MB）。
+- **手工 shell**（无 `HERDR_ENV`）：模板渲染为空，Go 自行使用平台默认路径，同上共享同一份缓存。
+- **codex 线程**（`codex-auto` profile，`HERDR_ENV=1`）：sandbox 仅允许 worktree 与 `/tmp` 写入，探测写入失败、回落 `$TMPDIR/greypan/go-build`，**行为不退化**。
+- **CI（GitHub Actions）**：无 `HERDR_ENV`，模板渲染为空，Go 使用平台默认路径，`ci.yml` 的 `actions/cache` 读取 `go env GOCACHE`（默认值）不受影响。
+
+两份历史缓存（`~/Library/Caches/go-build` 约 759 MB、`$TMPDIR/greypan/go-build` 约 1.0 GB）保留不动，旧的 `$TMPDIR` 那份由系统定期回收。
+
 ### 缓存可信链
 
 `.agents/checks/turbo-cache-invariant` 要求 `test.dependsOn` 含 `^build`、`build.outputs` 含 `dist/**` 且没有可能排除 `dist` 的负模式，并且 `test.inputs` 不含会显式收进 `dist` 的正模式。不能靠把 `dist/**` 加进 `inputs` 解决缓存问题：`dist` 是 gitignored，`$TURBO_DEFAULT$` 本来不会收它，显式正模式反而让尚无 `dist` 的新 worktree 全部 miss，却不增加产出恢复的正确性。只想回收单个工作区的产物时直接删该工作区的 `.turbo/`。
