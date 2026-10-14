@@ -5,7 +5,9 @@ import { createMemoryHistory, createRootRoute, createRoute, createRouter, Router
 import { cleanup, render, waitFor } from '@testing-library/react'
 import { act } from 'react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
-import { page, userEvent } from 'vite-plus/test/browser'
+import { userEvent } from 'vite-plus/test/browser'
+
+import { setViewport } from '@/__tests__/viewport'
 
 import { Root } from '..'
 
@@ -97,7 +99,7 @@ async function requestCollapse(collapsed: boolean) {
 }
 
 /**
- * 换的是真实视口（`page.viewport`），app 的 media query 与 layout 的 `innerWidth` 判定都
+ * 换的是真实视口（`setViewport`），app 的 media query 与 layout 的 `innerWidth` 判定都
  * 由引擎自己给出结论；等的是抽屉形态真的换了，而不是一段固定时长。
  *
  * 等待必须用 testing-library 的 `waitFor` 而不是 `vi.waitFor`：跨断点时 React 的回写有两条
@@ -125,7 +127,7 @@ async function settleViewport(drawerMode: boolean) {
  */
 async function changeViewport(size: { width: number; height: number }) {
   await act(async () => {
-    await page.viewport(size.width, size.height)
+    await setViewport(size.width, size.height)
   })
 }
 

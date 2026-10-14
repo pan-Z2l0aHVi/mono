@@ -400,7 +400,27 @@ export async function waitForFrame(): Promise<void> {
 }
 
 /**
+ * 等「一个渲染步进真的过去了」，而不只是等 rAF 回调被调用。
+ *
+ * 差别是 ResizeObserver：它在渲染步进里、**rAF 回调之后**投递通知。
+ * 因此 `await waitForFrame()` 返回时，那一批尺寸回调可能一个都还没派发，
+ * 组件按尺寸写回的让位量此刻还没进布局——这正是「连续两帧读数相同」证明不了
+ * 「已经就位」的机制来源：两帧读到的都是**旧**值。
+ *
+ * rAF 之后再让出一个宏任务，该宏任务只可能在步进（含 ResizeObserver 投递）
+ * 结束后才被调度，于是它返回时样式计算、布局与本批尺寸回调都已落地。
+ * 这是 settle / poll 系 helper 的统一底座。
+ */
+export async function afterRenderStep(): Promise<void> {
+  await new Promise<void>(resolve => requestAnimationFrame(() => setTimeout(resolve, 0)))
+}
+
+/**
  * 两个矩形是否逐边相等（精度与既有 spec 的 settleGeometry 同口径）。
+ *
+ * 容差 0.01px 不是随手取的：`getBoundingClientRect()` 返回的是 LayoutUnit 量化值，
+ * 同一几何在不同引擎/不同缩放下能差一个 1/64 px。零容差会把「同一个盒子」判成
+ * 「还在动」。
  */
 function rectsEqual(a: DOMRect, b: DOMRect): boolean {
   return (
@@ -420,25 +440,66 @@ function rectsEqual(a: DOMRect, b: DOMRect): boolean {
  * 过渡前那一帧的矩形，元素可能整个还在视口外。CI 上 drawer 的那几条 flaky 正是
  * 这个形态：胶囊坐标落在视口上方，`elementFromPoint` 返回 null。
  *
- * 所以这里取因果条件：先等一帧让已排下的 class 变更提交（过渡对象此刻才被创建），
- * 再取 `getAnimations()` 等它们全部 `finished`。集合为空（从没起跑、或已经跑完）
- * 时直接返回——那本来就是无事可等。
+ * 为什么这里**不在第一次读到空集合时直接返回**：空集合有三种来源——已跑完、从未起跑、
+ * 以及「这一帧还没跑到」。第三种与第一种在读数上无法区分，所以「读到空」不等于
+ * 「已稳定」。本实现要求**连续两个渲染步进**都读到空才返回：
+ * - 第一次取样之前先让出一个完整渲染步进，已排下但尚未提交的 class 变更此刻才被计算，
+ *   过渡对象也才存在（处在 `delay` 中的过渡同样在集合里）；
+ * - 若某个 ResizeObserver 回调或另一段脚本在第一个空步进之后又起了一个过渡，
+ *   第二个步进会读到它，计数器归零重来。
+ *
+ * 于是「确实没动画、不必等」这条快路径在**本函数里根本不存在**——每次调用至少花掉两个
+ * 渲染步进。之前它是隐形的：读到空集合立刻返回。调用方自己确知没有动画、想省掉这两个
+ * 步进的话，直接跳过本函数即可（不要拿「第一次读到空」当跳过的判据）。
+ *
+ * 取多个根而不是单个元素：旧实现只查调用方给的**第一个** target，其余 target 上的动画
+ * 一概看不到（`getAnimations({subtree:true})` 覆盖自身与后代，但不覆盖祖先，也不覆盖
+ * 与第一个 target 互不为祖先/后代的兄弟节点）。`finished` 在动画被取消时会 reject，
+ * 这里吞掉——取消意味着「它不再跑了」，正是本函数要等到的状态，不该变成一次未处理的
+ * rejection。
+ *
+ * 预算耗尽时**静默返回**而不是抛错——这是一个等待原语，它不知道调用方的判据是什么。
+ * 直接调用方（如 `real-gesture` 的 `waitForOpenTransition`）拿不到「没等到」这个信号，
+ * 需要信号的调用方应把它放进自己带判据的等待里（`waitForSettledLayout` 的稳定帧
+ * 循环就会在这种情况下带着读数抛错）。这条与 `pollUntil` 的取向相反，后者是
+ * 「轮询一个明确的期待值」，所以那里超时必须抛。
+ *
+ * `Array.isArray` 的判据是刻意的：类型签名只收 `Element` 或真数组。但 NodeList /
+ * HTMLCollection / `arguments` 同样不是 Element，`Array.isArray` 对它们为 false，
+ * 于是会被包成 `[roots]` 再被过滤成空数组、直接返回——正是本函数要消灭的那种
+ * 「什么都没读到就宣布稳定」。真要防住，调用点必须传元素而不是类数组。
  */
-export async function waitForAnimationsToFinish(el: Element, timeoutMs = 5000): Promise<void> {
+export async function waitForAnimationsToFinish(
+  roots: Element | ReadonlyArray<Element | null | undefined>,
+  timeoutMs = 5000
+): Promise<void> {
+  const observed = (Array.isArray(roots) ? roots : [roots]).filter(
+    (root): root is Element => !!root && root.isConnected
+  )
+  if (observed.length === 0) return
+
   const deadline = performance.now() + timeoutMs
-  // 一帧：让尚未提交的样式变更进入计算，过渡对象才会存在。
-  await waitForFrame()
-  for (let running = el.getAnimations({ subtree: true }); running.length > 0;) {
+  const idleFramesRequired = 2
+  let idleFrames = 0
+
+  while (performance.now() < deadline) {
+    // 完整渲染步进：样式计算 + 布局 + ResizeObserver 投递都过去了才取样。
+    await afterRenderStep()
+
+    const running = new Set<Animation>()
+    for (const root of observed) for (const animation of root.getAnimations({ subtree: true })) running.add(animation)
+
+    if (running.size === 0) {
+      if (++idleFrames >= idleFramesRequired) return
+      continue
+    }
+
+    idleFrames = 0
     const remaining = deadline - performance.now()
-    if (remaining <= 0) return
     await Promise.race([
-      Promise.all(running.map(animation => animation.finished.catch(() => undefined))),
-      new Promise(resolve => setTimeout(resolve, remaining))
+      Promise.all([...running].map(animation => animation.finished.catch(() => undefined))),
+      new Promise(resolve => setTimeout(resolve, Math.max(remaining, 0)))
     ])
-    if (performance.now() >= deadline) return
-    // finished 之后它们通常已从集合里消失；再等一帧确认一轮，避免「取消后立刻又起一个」漏掉。
-    await waitForFrame()
-    running = el.getAnimations({ subtree: true })
   }
 }
 
@@ -449,7 +510,16 @@ export async function waitForAnimationsToFinish(el: Element, timeoutMs = 5000): 
  * 那一步移动的是**另一个盒子**：量 dialog 矩形量不到它，所以「dialog 矩形稳定了」
  * 推不出让位量已生效。用一个新观察者观察这些目标并等一次回调即可——更早注册的
  * 观察者（组件的共享实例）在同一批次里先派发，本回调触发时它已经跑完。
- * 等这一次回调等于等「一次渲染步进已发生 + 该批尺寸回调已派发」。
+ * ResizeObserver 在开始观察时必定投递一次初始观测，所以这条等待不会因为
+ * 「之后没有尺寸变化」而空转到超时。
+ *
+ * `timeoutMs` 必须是**本函数自己那份预算**，不能是调用方 deadline 的余量：那个
+ * `setTimeout(finish, timeoutMs)` 兜底是「页面不再渲染时不能死等」的唯一出口，
+ * 余量很小的话它会先于 RO 的初始投递触发，于是本函数假装排干了就返回——把这次
+ * 改动要消灭的「超时即通过」原样搬到下一层。调用方的总预算由它自己的 deadline 管。
+ *
+ * 末尾那一步让写回的样式进布局，它同样在兜底之内：隐藏 / 被遮挡的文档里 rAF 不
+ * 触发，所以它与 `timeoutMs` 对跑，而不是无条件等待。
  */
 export async function drainResizeObserver(
   targets: ReadonlyArray<Element | null | undefined>,
@@ -457,6 +527,7 @@ export async function drainResizeObserver(
 ): Promise<void> {
   const observed = targets.filter((target): target is Element => !!target && target.isConnected)
   if (observed.length === 0) return
+  const deadline = performance.now() + timeoutMs
   await new Promise<void>(resolve => {
     let done = false
     const finish = () => {
@@ -470,40 +541,85 @@ export async function drainResizeObserver(
     // 观察者只在渲染步进里派发；页面完全不再渲染时不能死等。
     setTimeout(finish, timeoutMs)
   })
+  // 观察者回调里写回的样式要再过一个渲染步进才进布局；rAF 在隐藏文档里不触发，
+  // 所以同样与 deadline 对跑。
+  await Promise.race([
+    afterRenderStep(),
+    new Promise(resolve => setTimeout(resolve, Math.max(deadline - performance.now(), 0)))
+  ])
+}
+
+/** `waitForSettledLayout` / `pollUntil` 的期待条件与诊断。 */
+export interface SettleExpectation {
+  /** 期待值是否已到位。到位之前不进入帧驱动收尾。 */
+  readonly check: () => boolean
+  /** 期待值的当前读数，写进超时诊断——「读数停在 X」比「超时了」有用得多。 */
+  readonly describe?: () => string
 }
 
 /**
  * 等矩定版：命中测试 / 几何断言取样前的前提。
  *
- * 顺序是因果链，不是「多睡几帧」：
- *   1. 等过渡跑完（否则量到的是动画中途、甚至动画尚未起跑那一帧的盒子）；
- *   2. 抽干 ResizeObserver（否则由尺寸写回的让位量还没生效）；
- *   3. 再等一帧，让写回的样式真正进入布局；
- *   4. 连续 `stableFrames` 帧里所有 targets 的矩形逐边相等才算定版。
+ * **期待驱动为主，帧驱动兜底。** 两段各管一件不同的事：
  *
- * 第 4 步单独并不够（它正是既有 flaky 的来源：相等也可以意味着「还没开始变」），
- * 但作为收尾仍然必要——前两步保证「不会再变」，它保证「已经变了的那一次也量到了」。
+ * 1. 期待驱动：给了 `expect` 就先等它成立。这是唯一能区分「已经就位」与
+ *    「还没开始动」的信号——「连续两帧读数相同」在视口没生效、滚动没落定、
+ *    定位还没写回时同样成立，两帧读到的都是同一个**旧**值。
+ * 2. 帧驱动兜底：过渡确实结束（`waitForAnimationsToFinish`，内部要求连续两个
+ *    渲染步进都没有动画）、ResizeObserver 批次已投递、随后连续 `stableFrames`
+ *    个渲染步进里所有 targets 的矩形逐边相等。
+ *
+ * 顺序是因果链，不是「多睡几帧」：
+ *   1. 等期待值到位（可选）；
+ *   2. 等过渡跑完（否则量到的是动画中途、甚至动画尚未起跑那一帧的盒子）；
+ *   3. 抽干 ResizeObserver（否则由尺寸写回的让位量还没生效）；
+ *   4. 连续 `stableFrames` 个渲染步进里矩形逐边相等才算定版。
+ *
+ * 第 4 步单独不够（它正是既有 flaky 的来源），但作为收尾仍然必要——前两步保证
+ * 「不会再变」，它保证「已经变了的那一次也量到了」。
  */
 export async function waitForSettledLayout(
   targets: ReadonlyArray<Element | null | undefined>,
-  options: { stableFrames?: number; timeoutMs?: number } = {}
+  options: { stableFrames?: number; timeoutMs?: number; expect?: SettleExpectation } = {}
 ): Promise<void> {
-  const { stableFrames = 2, timeoutMs = 5000 } = options
+  const { stableFrames = 2, timeoutMs = 5000, expect } = options
   const observed = targets.filter((target): target is Element => !!target && target.isConnected)
   if (observed.length === 0) return
   const deadline = performance.now() + timeoutMs
+  const startedAt = performance.now()
 
-  await waitForAnimationsToFinish(observed[0], timeoutMs)
+  const diagnose = (stage: string) => {
+    const reading = expect?.describe?.() ?? 'n/a'
+    return (
+      `waitForSettledLayout: ${stage} after ${Math.round(performance.now() - startedAt)}ms ` +
+      `(budget ${timeoutMs}ms, expectation=${reading})`
+    )
+  }
+
+  if (expect) {
+    while (!expect.check()) {
+      if (performance.now() >= deadline) throw new Error(diagnose('expectation never became true'))
+      await afterRenderStep()
+    }
+  }
+
+  // 各步拿的是**总预算**，不是 deadline 的余量：期待条件若吃光了预算，后面两步会拿到 0
+  // 而各自静默返回，等于把「什么都没等到」伪装成「已经排干」。余量只用来决定何时抛错——
+  // 那是下面稳定帧循环的职责，它带着读数诊断。
+  await waitForAnimationsToFinish(observed, timeoutMs)
   await drainResizeObserver(observed, timeoutMs)
-  await waitForFrame()
 
+  await Promise.race([
+    afterRenderStep(),
+    new Promise(resolve => setTimeout(resolve, Math.max(deadline - performance.now(), 0)))
+  ])
   let previous = observed.map(target => target.getBoundingClientRect())
   let stable = 0
   while (stable < stableFrames) {
     if (performance.now() >= deadline) {
-      throw new Error(`waitForSettledLayout: layout did not settle within ${timeoutMs}ms`)
+      throw new Error(diagnose(`layout did not settle within ${timeoutMs}ms`))
     }
-    await waitForFrame()
+    await afterRenderStep()
     const current = observed.map(target => target.getBoundingClientRect())
     stable = current.every((rect, index) => rectsEqual(rect, previous[index])) ? stable + 1 : 0
     previous = current
@@ -511,14 +627,38 @@ export async function waitForSettledLayout(
 }
 
 /**
- * 轮询到条件满足为止（默认 2s），用于消费 MutationObserver / presence 过渡的异步链路。
- * 等待对象本身带较长延迟（如 spec 自定义的 SHOW_DELAY）时显式传入更大预算。
+ * 轮询到期待值成立为止，用于消费 MutationObserver / presence 过渡的异步链路。
+ *
+ * 每轮让出的是**一个完整渲染步进**而不是裸 rAF：ResizeObserver 与
+ * MutationObserver 都在渲染步进里投递，裸 rAF 只保证回调被调用过，
+ * 不保证这一批通知已经送到。
+ *
+ * 预算默认 5s（原 2s）。轮询的进度单位是**帧**，而帧在负载下会被拉长：
+ * 2s 的墙钟预算在繁忙的 CI 上只够跑十几帧，期待值需要的帧数一旦超过它，
+ * 「等到了但被判超时」就会以随机的方式红。放宽的是等待预算，不是断言——
+ * 条件不成立时仍然会红，只是红得更晚一点、诊断里带着帧数与最终读数。
+ * 等待对象本身带较长延迟（如 spec 自定义的 SHOW_DELAY）时可显式传入更大预算。
+ *
+ * `message` 收函数是有意的：诊断里带上期待值的**当前读数**，
+ * 「读数停在 952」比「超时了」有用得多。
  */
-export async function pollUntil(check: () => boolean, message: string, timeoutMs = 2000): Promise<void> {
+export async function pollUntil(
+  check: () => boolean,
+  message: string | (() => string),
+  timeoutMs = 5000
+): Promise<void> {
+  const describe = typeof message === 'function' ? message : () => message
   const deadline = performance.now() + timeoutMs
+  const startedAt = performance.now()
+  let frames = 0
   while (performance.now() < deadline) {
     if (check()) return
-    await new Promise(resolve => requestAnimationFrame(resolve))
+    await afterRenderStep()
+    frames += 1
   }
-  throw new Error(message)
+  // 最后一轮：预算正好在条件成立的那一步耗尽时不该误报。
+  if (check()) return
+  throw new Error(
+    `${describe()} (waited ${Math.round(performance.now() - startedAt)}ms / ${frames} render steps, budget ${timeoutMs}ms)`
+  )
 }

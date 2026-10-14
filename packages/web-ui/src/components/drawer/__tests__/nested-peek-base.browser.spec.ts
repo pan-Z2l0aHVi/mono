@@ -1,9 +1,9 @@
 import '..'
 
 import { afterEach, describe, expect, it } from 'vite-plus/test'
-import { page } from 'vite-plus/test/browser'
 
 import { NESTED_PEEK_BASE_FALLBACK, PEEK_BASE_VARIABLE } from '@/shared/overlay/nested-drawer-layers'
+import { setViewport } from '@/shared/test-utils/viewport'
 
 import type { WebUiDrawer } from '..'
 
@@ -208,12 +208,12 @@ async function closeTop(drawers: WebUiDrawer[], budget: Budget) {
 
 afterEach(async () => {
   document.body.replaceChildren()
-  await page.viewport(1280, 720)
+  await setViewport(1280, 720)
 })
 
 describe('WebUiDrawer 嵌套层叠对数基准（浏览器）', () => {
   it('模块兜底常量与注册项 initialValue 同源', async () => {
-    await page.viewport(1280, 720)
+    await setViewport(1280, 720)
     const [drawer] = [createDrawer('base')]
     await openStack(createBudget(PAIR_BUDGET_MS), drawer)
 
@@ -226,7 +226,7 @@ describe('WebUiDrawer 嵌套层叠对数基准（浏览器）', () => {
   })
 
   it('窄断点用更小的基准，跨断点后已打开的堆叠按新基准重算', { timeout: PAIR_TEST_TIMEOUT_MS }, async () => {
-    await page.viewport(1280, 720)
+    await setViewport(1280, 720)
     const budget = createBudget(PAIR_BUDGET_MS)
     const lower = createDrawer('lower')
     const top = createDrawer('top')
@@ -236,7 +236,7 @@ describe('WebUiDrawer 嵌套层叠对数基准（浏览器）', () => {
     const desktopStep = steps(leftEdges([lower, top]))[0]
     expect(desktopStep).toBeGreaterThan(0)
 
-    await page.viewport(390, 844)
+    await setViewport(390, 844)
 
     const mobileBase = readBase(lower)
     expect(mobileBase).toBeLessThan(desktopBase)
@@ -264,7 +264,7 @@ describe('WebUiDrawer 嵌套层叠对数基准（浏览器）', () => {
   })
 
   it('单层偏移恒为 0：基准改成极端值也不动顶层', { timeout: PAIR_TEST_TIMEOUT_MS }, async () => {
-    await page.viewport(1280, 720)
+    await setViewport(1280, 720)
     // 整条用例共用一份预算：跨断点往返、settle、再叠第二层都在同一个上限内。
     const budget = createBudget(PAIR_BUDGET_MS)
     const drawer = createDrawer('single')
@@ -281,8 +281,8 @@ describe('WebUiDrawer 嵌套层叠对数基准（浏览器）', () => {
      * 基准保持 200px 不变，但 applyLayers 确实重跑了一遍——这正是要验的场景。
      */
     drawer.style.setProperty(PEEK_BASE_VARIABLE, '200px')
-    await page.viewport(390, 844)
-    await page.viewport(1280, 720)
+    await setViewport(390, 844)
+    await setViewport(1280, 720)
     await settle([drawer], budget)
     expect(readBase(drawer)).toBe(200)
     expect(leftEdges([drawer])[0]).toBeCloseTo(singleLeft, 1)
@@ -296,7 +296,7 @@ describe('WebUiDrawer 嵌套层叠对数基准（浏览器）', () => {
   })
 
   it('四层等宽：步进随层数递减，总堆叠宽度次线性增长', { timeout: STACK_TEST_TIMEOUT_MS }, async () => {
-    await page.viewport(1280, 720)
+    await setViewport(1280, 720)
     const budget = createBudget(STACK_BUDGET_MS)
     const drawers = [createDrawer('d0'), createDrawer('d1'), createDrawer('d2'), createDrawer('d3')]
     await openStack(budget, ...drawers)
@@ -313,7 +313,7 @@ describe('WebUiDrawer 嵌套层叠对数基准（浏览器）', () => {
   })
 
   it('基准置 0：四层左缘重合，露边完全塌缩（token → 几何的因果性）', { timeout: STACK_TEST_TIMEOUT_MS }, async () => {
-    await page.viewport(1280, 720)
+    await setViewport(1280, 720)
     const budget = createBudget(STACK_BUDGET_MS)
     const drawers = [createDrawer('d0'), createDrawer('d1'), createDrawer('d2'), createDrawer('d3')]
     // 在打开前写：层序计算在 register 时读基准，写在之后不会触发重算。
@@ -326,7 +326,7 @@ describe('WebUiDrawer 嵌套层叠对数基准（浏览器）', () => {
   })
 
   it('关闭顶层后下层逐级回弹到全尺寸', { timeout: STACK_TEST_TIMEOUT_MS }, async () => {
-    await page.viewport(1280, 720)
+    await setViewport(1280, 720)
     // 开 4 层 + 关 3 层全程共用一份预算，见 createBudget 上方的说明。
     const budget = createBudget(STACK_BUDGET_MS)
     const single = createDrawer('single')

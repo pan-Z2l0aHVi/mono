@@ -3,6 +3,7 @@ import '..'
 import { afterEach, describe, expect, it } from 'vite-plus/test'
 
 import { pollUntil } from '@/shared/test-utils'
+import { scrollElementToEnd } from '@/shared/test-utils/viewport'
 
 import type { WebUiDialog } from '..'
 
@@ -68,8 +69,7 @@ describe('WebUiDialog chrome 带（浏览器几何）', () => {
     const desc = query<HTMLElement>(component, '.desc')
     const before = band.getBoundingClientRect().top
 
-    desc.scrollTop = 9999
-    await new Promise(resolve => requestAnimationFrame(resolve))
+    await scrollElementToEnd(desc)
 
     expect(desc.scrollTop).toBeGreaterThan(0)
     expect(band.getBoundingClientRect().top).toBeCloseTo(before, 1)

@@ -87,7 +87,8 @@ describe('WebUiTooltip 相邻触发不等 showDelay（浏览器）', () => {
     )
 
     // 收尾对照：它最终确实会显示。缺了这一步，上一条断言在面板永远不显示时也会「通过」。
-    // pollUntil 默认预算 2000ms 与 SHOW_DELAY 相同，等满延迟再渲染必然超时，显式放宽。
+    // 等满 SHOW_DELAY 再渲染需要超出默认预算，显式放宽（默认已是 5000ms，这里按
+    // SHOW_DELAY 再加一段余量，判据不变）。
     await pollUntil(
       () => visiblePanel('单独') !== undefined,
       '对照组：等待 showDelay 后 tooltip 仍未显示',

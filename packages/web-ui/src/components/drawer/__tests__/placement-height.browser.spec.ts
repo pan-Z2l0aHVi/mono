@@ -2,6 +2,8 @@ import '..'
 
 import { afterEach, describe, expect, it } from 'vite-plus/test'
 
+import { scrollElementToEnd } from '@/shared/test-utils/viewport'
+
 import type { WebUiDrawer } from '..'
 
 /*
@@ -64,8 +66,7 @@ describe('WebUiDrawer 上下 placement 的面板高度（浏览器）', () => {
 
     expect(card.offsetHeight).toBeLessThanOrEqual(dialog.offsetHeight)
     expect(content.scrollHeight).toBeGreaterThan(content.clientHeight)
-    content.scrollTop = 99999
-    await new Promise(resolve => requestAnimationFrame(resolve))
+    await scrollElementToEnd(content)
     expect(content.scrollTop).toBeGreaterThan(0)
 
     // 与 dialog 那条同理：hidden 也满足上一条，只有 auto / scroll 是用户滚得动的。
@@ -78,8 +79,7 @@ describe('WebUiDrawer 上下 placement 的面板高度（浏览器）', () => {
 
     const content = getContent(el)
     expect(content.scrollHeight).toBe(content.clientHeight)
-    content.scrollTop = 99999
-    await new Promise(resolve => requestAnimationFrame(resolve))
+    await scrollElementToEnd(content)
     expect(content.scrollTop).toBe(0)
   })
 })
