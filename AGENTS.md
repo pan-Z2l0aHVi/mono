@@ -18,6 +18,7 @@
 - `AGENTS.md`（含包级）、`docs/adr/`、`docs/agents/`、`.agents/rules/` 和仓库自撰 skill 的文档用中文。`skills-lock.json` 登记的第三方 skill 与 `.agents/skills-vendored/` 保持上游原文，和仓库规则冲突时以仓库规则为准。技术术语、命令、路径和包名保留英文。
 - 一个可变 task 只有一个实施 worktree 和 owner，由外部编排层分配。不在共享工作区执行 `git switch`、`git checkout`、`git stash`、`git reset` 或 `git clean`。
 - 预授权操作与需逐次授权的操作见 [`docs/agents/workflow.md`](docs/agents/workflow.md) 的「预授权操作」。
+- 在未激活 mise 的 shell（agent 工具宿主、`git hook`、`bash -c`、外部脚本）里，经 turbo 或调用被钉工具（node / pnpm / go）的命令必须写成 `mise exec -- <command>`；`agent:env-doctor` 例外，它靠裸跑暴露「当前 shell 没激活 mise」。自检 `echo "${TURBO_CACHE_DIR:-<unset>}"` 非空只说明 env 已被注入。判据与理由见 [`docs/agents/build.md`](docs/agents/build.md)「mise exec 与命令外壳」。
 
 ## 按任务加载
 

@@ -3,6 +3,7 @@
 // 各检查项返回 ok/warn/fail 与可观察 detail。默认只读；--fix 与 --kill-watchers
 // 是显式 opt-in 的写操作。覆盖本会话实测踩过的环境坑：
 // dist 截断（vp build --watch 清空 d.ts）、watch 进程污染、turbo 缓存未生效、
+// mise env 未激活（TURBO_CACHE_DIR 未注入、node 版本不符）、
 // node_modules 链接失效、git worktree 残留。
 //
 // 用法：pnpm run agent:env-doctor [--json] [--fix] [--kill-watchers]
@@ -135,23 +136,38 @@ function watcherDetection() {
   )
 }
 
-// ===== turbo 缓存解析 =====
-// TURBO_CACHE_DIR 由 .mise.toml [env] 注入（worktree 族共享缓存）；声明存在但
-// 环境未注入说明当前 shell 未激活 mise，turbo 会退回 per-worktree 冷缓存。
+// ===== mise env：turbo 缓存位置 =====
+// TURBO_CACHE_DIR 由 .mise.toml [env] 注入，值锚定 git common dir（主仓与全部 worktree 共享缓存）。
+// 期望值不靠复刻 Tera 模板得到，而是按同一推导自己算一遍：判据刻意写死「git common dir + /turbo-cache」
+// 这一条，.mise.toml 若换推导方式，这里必须同步改，否则断言会静默失守。
+// 不相等就是当前 shell 没激活 mise（agent 工具宿主、git hook、bash -c、外部脚本都不激活），
+// turbo 会落到默认缓存位置：既命中不了共享缓存，也可能在同一 hash 下写入工具链不符的产物。
 function turboCacheCheck() {
   const miseConfig = fs.readFileSync(path.join(root, '.mise.toml'), 'utf8')
-  const declared = /^\s*TURBO_CACHE_DIR\s*=\s*"([^"]+)"/m.exec(miseConfig)
-  if (!declared) {
+  if (!/^\s*TURBO_CACHE_DIR\s*=\s*".*"\s*$/m.test(miseConfig)) {
     record('turbo-cache', 'warn', '.mise.toml does not declare TURBO_CACHE_DIR; each worktree keeps a cold cache')
     return
   }
-  const resolved = declared[1].replace('{{ config_root }}', root)
+  const commonDir = sh('git', ['rev-parse', '--path-format=absolute', '--git-common-dir'])
+  if (commonDir.status !== 0) {
+    record('turbo-cache', 'fail', `cannot resolve the git common dir: ${commonDir.stderr}`)
+    return
+  }
+  const expected = path.join(commonDir.stdout, 'turbo-cache')
   const injected = process.env.TURBO_CACHE_DIR
   if (!injected) {
     record(
       'turbo-cache',
-      'warn',
-      `TURBO_CACHE_DIR declared in .mise.toml but not injected; activate mise (expected ${resolved})`
+      'fail',
+      `TURBO_CACHE_DIR is not injected (expected ${expected}): this shell did not activate mise, so turbo cannot reach the shared cache; prefix turbo-bound commands with \`mise exec --\``
+    )
+    return
+  }
+  if (path.resolve(injected) !== path.resolve(expected)) {
+    record(
+      'turbo-cache',
+      'fail',
+      `TURBO_CACHE_DIR=${injected} is not the shared cache (${expected}): turbo would miss it and write a divergent entry`
     )
     return
   }
@@ -161,6 +177,27 @@ function turboCacheCheck() {
   }
   const entries = fs.readdirSync(injected).length
   record('turbo-cache', 'ok', `TURBO_CACHE_DIR=${injected} (${entries} cache entries)`)
+}
+
+// ===== mise env：node 版本 =====
+// .mise.toml [tools] 把 node 钉在精确版本。turbo 的 hash 只记录 package.json 里 engines 的版本范围、
+// 不记录真实工具链，所以宿主 PATH 上另一版 node 跑出的构建与钉住版本落进同一个 hash——这正是必须用
+// `mise exec --` 硬约束的理由，这里把「当前 node 就是被钉住的那一版」变成可检测断言。
+function nodeVersionCheck() {
+  const miseConfig = fs.readFileSync(path.join(root, '.mise.toml'), 'utf8')
+  const pinned = /^\s*node\s*=\s*"([^"]+)"\s*$/m.exec(miseConfig)?.[1]
+  if (!pinned) {
+    record('node-version', 'warn', '.mise.toml does not pin a node version under [tools]')
+    return
+  }
+  const running = process.version.replace(/^v/, '')
+  if (running === pinned) record('node-version', 'ok', `node ${process.version} matches .mise.toml (${pinned})`)
+  else
+    record(
+      'node-version',
+      'fail',
+      `running node ${process.version} but .mise.toml pins ${pinned}: turbo hashes do not encode the toolchain, so the build would poison the shared cache under the same key; prefix toolchain-bound commands with \`mise exec --\``
+    )
 }
 
 // ===== node_modules 链接有效性 =====
@@ -214,6 +251,7 @@ function worktreeResidueCheck() {
 distAudit()
 watcherDetection()
 turboCacheCheck()
+nodeVersionCheck()
 nodeModulesCheck()
 worktreeResidueCheck()
 
