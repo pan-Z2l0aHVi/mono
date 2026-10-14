@@ -106,6 +106,7 @@
     "browserv",
     "WCAG",
     "CSSWG",
-    "vdom"
+    "vdom",
+    "Tera"
   ]
 }
