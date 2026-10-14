@@ -28,14 +28,49 @@ async function nextFrame() {
 }
 
 // drawer/dialog 的入场由多帧 rAF + presence 驱动，时钟时长不可依赖；
-// 轮询到确定性信号（面板挂载）为止，避免固定 sleep 的竞态。
-async function waitFor(predicate: () => boolean, message: string): Promise<void> {
+// 轮询到确定性信号（面板挂载 / 拆卸到位）为止，避免固定 sleep 的竞态。
+// `message` 收函数是有意的：诊断里带上期待值的**当前读数**，比只说「超时了」有用。
+async function waitFor(predicate: () => boolean, message: string | (() => string)): Promise<void> {
   const deadline = performance.now() + 1000
   while (performance.now() < deadline) {
     if (predicate()) return
     await nextFrame()
   }
-  throw new Error(message)
+  throw new Error(typeof message === 'function' ? message() : message)
+}
+
+/**
+ * 等菜单面板数量到达期待值，返回那批面板；**断言留给用例体**。
+ *
+ * 为什么不能只 `await nextFrame()` 若干次再断言：面板的挂载与拆卸都经由 presence 链
+ * （进场 rAF + 退出过渡 + `transitionend`）落定，**帧数是赌的**。赌输了的形态是
+ * 「断言读到的是上一状态」——CI 上「上一个面板还没卸」正是这一条：
+ * `expected [ <div …> ] to have a length of 1 but got 2`。
+ * 「两帧读数相同」证明不了「已经就位」，同一个道理。
+ *
+ * 条件到不了就带读数抛错，不会静默通过。
+ *
+ * **它只在「数量会变」的场合比原来的固定帧数等待更强。** `waitFor` 在第一次
+ * `await nextFrame()` **之前**就检查条件，所以条件在 t0 已成立时本函数只让出一帧——
+ * 比原先那两帧（或四帧）**少**。因此适用面是「等数量到达 N」，不是「给后续断言多留
+ * 沉降时间」：数量在 t0 就已经等于 N 的地方，轮询是空转，应当保留原来的固定帧数等待。
+ * 三处这样的点已按此还原，见本文件里带「同帧卸载」「收尾栈」注释的那几条。
+ *
+ * **断言不放在这里**是刻意的：本仓门禁 `vitest/expect-expect` 只看**语法上有无
+ * `expect(...)`**（见 `shared/test-utils/index.ts` 里 `contractEvent` 那段说明），
+ * 断言若只存在于 helper 内部，那条用例会变成门禁眼里的「零断言空过」。所以每个调用点
+ * 仍然逐字保留 `expect(panels).toHaveLength(n)`。
+ *
+ * 只用于「等它变成 N」的正向与过渡性断言。**否定断言不适用**——见本文件末尾 dialog 用例
+ * 里那条：面板「本就不该」出现在普通 overlay 容器里，等它只会把快速失败变成 1s 超时。
+ */
+async function waitForMenuPanels(count: number): Promise<HTMLElement[]> {
+  await waitFor(
+    () => getMenuPanels().length === count,
+    () => `菜单面板数量未到达 ${count}（最新读到 ${getMenuPanels().length} 个）`
+  )
+  await nextFrame()
+  return getMenuPanels()
 }
 
 /** 焦点落点：面板挂在 overlay root 的 shadow 里，文档级 activeElement 会重定位到那个 root。 */
@@ -78,8 +113,8 @@ describe('WebUiDropdown 组件（浏览器）', () => {
     await nextFrame()
     await nextFrame()
 
-    const panels = getMenuPanels()
     expect(menu.open).toBe(true)
+    const panels = await waitForMenuPanels(1)
     expect(panels).toHaveLength(1)
     expect(panels[0]?.getAttribute('role')).toBe('menu')
     expect(panels[0]?.textContent).toContain('Open')
@@ -165,16 +200,14 @@ describe('WebUiDropdown 组件（浏览器）', () => {
 
       menu.querySelector<HTMLButtonElement>('button')?.dispatchEvent(clickEvent(1))
       await menu.updateComplete
-      await nextFrame()
-      expect(getMenuPanels()).toHaveLength(1)
+      expect(await waitForMenuPanels(1)).toHaveLength(1)
 
       await nextFrame()
       getMenuPanels()[0]?.querySelector<HTMLElement>('web-ui-dropdown-item')?.click()
-      await nextFrame()
-      await nextFrame()
 
-      expect(getMenuPanels()).toHaveLength(2)
-      expect(getMenuPanels()[1]?.textContent).toContain('PDF')
+      const opened = await waitForMenuPanels(2)
+      expect(opened).toHaveLength(2)
+      expect(opened[1]?.textContent).toContain('PDF')
       expect(warn).not.toHaveBeenCalledWith(expect.stringContaining('Element web-ui-dropdown scheduled an update'))
     } finally {
       warn.mockRestore()
@@ -186,6 +219,9 @@ describe('WebUiDropdown 组件（浏览器）', () => {
     const menu = createDropdown(SIMPLE)
     await menu.updateComplete
 
+    // 同帧卸载：`suspend()` 取消了待执行的建面板帧，面板从未被建出来，
+    // `toHaveLength(0)` 从一开始就成立。这是**否定断言**（它「本就不该」出现），
+    // 轮询只会把快速失败变成 1s 超时，所以保留原来的固定帧数等待。
     menu.open = true
     await menu.updateComplete
     menu.remove()
@@ -209,8 +245,11 @@ describe('WebUiDropdown 组件（浏览器）', () => {
     await menu.updateComplete
     await waitFor(() => getMenuPanels().length === 1, '根菜单面板应挂载')
 
+    // `disconnectedCallback` → `_disposeAll` → `overlay.remove()` 是同步的，数量在 t0
+    // 就已是 0，轮询它是空转。与下面两处「同帧卸载」同理，保留原来的固定帧数等待。
     menu.remove()
     await nextFrame()
+
     expect(getMenuPanels()).toHaveLength(0)
 
     document.body.append(menu)
@@ -239,6 +278,7 @@ describe('WebUiDropdown 组件（浏览器）', () => {
 
     getMenuPanels()[0]?.querySelector<HTMLElement>('web-ui-dropdown-item')?.click()
     await menu.updateComplete
+    // 同帧卸载：子菜单那一帧同样被 `suspend()` 取消，拆卸是同步的，数量在 t0 就已是 0。
     menu.remove()
     await nextFrame()
     await nextFrame()
@@ -302,25 +342,21 @@ describe('WebUiDropdown 组件（浏览器）', () => {
     expect(parentItem.shadowRoot?.activeElement, '父项内部的 menuitem 应取得焦点').toBe(parentControl)
 
     parentItem.click()
-    for (let frame = 0; frame < 4; frame++) await nextFrame()
 
-    expect(getMenuPanels()).toHaveLength(2)
-    expect(getMenuPanels()[1]?.textContent).toContain('PDF')
+    const opened = await waitForMenuPanels(2)
+    expect(opened).toHaveLength(2)
+    expect(opened[1]?.textContent).toContain('PDF')
 
-    const submenuControl = focusedControl(requireItemIn(getMenuPanels()[1], '子菜单'))!
+    const submenuControl = focusedControl(requireItemIn(opened[1], '子菜单'))!
     submenuControl.focus()
     submenuControl.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowLeft', bubbles: true, composed: true }))
     getMenuPanels()[1]?.dispatchEvent(new TransitionEvent('transitionend', { propertyName: 'opacity', bubbles: true }))
-    await nextFrame()
-    await nextFrame()
 
-    expect(getMenuPanels()).toHaveLength(1)
+    expect(await waitForMenuPanels(1)).toHaveLength(1)
 
     parentControl.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true, composed: true }))
-    await nextFrame()
-    await nextFrame()
 
-    const reopened = getMenuPanels()
+    const reopened = await waitForMenuPanels(2)
     expect(reopened).toHaveLength(2)
     expect(reopened[1]?.hasAttribute('hidden')).toBe(false)
     expect(reopened[1]?.textContent).toContain('PDF')
@@ -350,9 +386,14 @@ describe('WebUiDropdown 组件（浏览器）', () => {
     parentControl.focus()
     parentControl.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true, composed: true }))
     submenu?.dispatchEvent(new TransitionEvent('transitionend', { propertyName: 'opacity', bubbles: true }))
-    await nextFrame()
-    await nextFrame()
 
+    // 退场中的子菜单面板在整个退出过渡里**都在 DOM 上**，所以「数量变成 2」在 t0 就成立，
+    // 等它是空转。真正要等的是下面那条断言的主角：面板不再被 `hidden`。
+    await waitFor(
+      () => getMenuPanels()[1]?.hasAttribute('hidden') === false,
+      () => `子菜单面板未就位（当前读到 ${getMenuPanels().length} 个面板，仍 hidden 或已被移除）`
+    )
+    await nextFrame()
     const panels = getMenuPanels()
     expect(panels).toHaveLength(2)
     expect(panels[1]?.hasAttribute('hidden')).toBe(false)
@@ -380,10 +421,8 @@ describe('WebUiDropdown 组件（浏览器）', () => {
 
     // 用 requireRootItem 而非可选链：面板没到位时要响亮失败，而不是静默跳过点击。
     requireRootItem().click()
-    await nextFrame()
-    await nextFrame()
-    expect(getMenuPanels()).toHaveLength(2)
-    const submenuPanel = getMenuPanels()[1]
+    const submenuPanel = (await waitForMenuPanels(2))[1]
+    expect(submenuPanel, '子菜单面板应已挂载').toBeDefined()
 
     menu.closeAll()
     await menu.updateComplete
@@ -471,6 +510,8 @@ describe('WebUiDropdown 组件（浏览器）', () => {
     // ArrowLeft 走非即时关闭路径：子菜单面板进收尾栈。
     const submenuControl = focusedControl(requireItemIn(submenuPanel, '子菜单'))!
     submenuControl.focus()
+    // 收尾栈里的 ArrowLeft：断的是「面板**仍在场**」，数量从头到尾就是 2，
+    // 等它变成 2 是空转。保留原来的固定帧数等待。
     submenuControl.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowLeft', bubbles: true, composed: true }))
     await nextFrame()
     await nextFrame()
