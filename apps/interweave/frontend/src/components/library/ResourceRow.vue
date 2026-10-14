@@ -85,9 +85,8 @@ function handleNameChange(event: WebUiEvent<WebUiEditableText, 'change'>) {
 
 <template>
   <!--
-    行根元素不挂 measureElement：被量的是 ResourceList 里那层带 data-index 的定位包裹，
-    TanStack 靠 indexAttribute 从元素上反查下标。包裹层与本元素盒高一致，量哪一个都一样，
-    两处都挂只是让 ResizeObserver 多收一份重复回调，还会打出 indexAttribute 缺失的告警。
+    行根元素不必挂测量钩子：virtua 会把每个插槽条目包进它自建的定位包裹层并由 ResizeObserver
+    量高，行盒与那层包裹一致。这里再挂一份只是多收一次重复回调。
 
     tabindex 由 roving 决定（见 props.tabbable），非活动行是 -1：它们仍然可以被 .focus()
     程序化聚焦，只是不再出现在 Tab 序列里。data-resource-index 让父级能从 focusin 反查
@@ -148,8 +147,20 @@ function handleNameChange(event: WebUiEvent<WebUiEditableText, 'change'>) {
         <span v-if="editingNameKey !== resource.id" :class="resourceNameClass">
           {{ resource.title }}
         </span>
+        <!--
+          开启 commit-on-unmount：这一行随时会被虚拟列表回收——离开渲染窗口就整行卸载，行内的
+          editable-text 走 disconnectedCallback。它默认的提交只有 Enter / blur 两条：Chromium
+          移除会补派 blur、change 照常派发，草稿不丢；WebKit（Safari / iOS）移除**不派发 blur**，
+          默认路径什么都不提交，用户打的字随行一起静默消失。
+
+          virtua 的窗口模式没有 keepMounted（只有自建滚动容器的 <Virtualizer> 有），无法强制挂载
+          窗口外的下标，所以「行不被回收」这条防线在迁移时没有了。兜底只剩这里：开启后卸载复用
+          _commitEditing，与 Enter／blur 是同一份实现，判据是「草稿与进入编辑时的值确实不同」——
+          回收一个没改过的编辑行不会凭空产生一次改名。
+        -->
         <web-ui-editable-text
           v-else
+          commit-on-unmount
           :ref="editorRef"
           :value="resource.title"
           :class="resourceNameClass"

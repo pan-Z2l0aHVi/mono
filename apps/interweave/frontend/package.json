@@ -14,7 +14,6 @@
     "@greypan/browser-kit": "workspace:*",
     "@greypan/js-kit": "workspace:*",
     "@greypan/web-ui": "workspace:*",
-    "@tanstack/vue-virtual": "catalog:",
     "@unhead/vue": "catalog:",
     "@vue/devtools-api": "catalog:",
     "@vueuse/core": "catalog:",
@@ -23,6 +22,7 @@
     "overlayscrollbars-vue": "catalog:",
     "pinia": "catalog:",
     "vee-validate": "catalog:",
+    "virtua": "catalog:",
     "vue": "catalog:",
     "vue-router": "catalog:"
   },
