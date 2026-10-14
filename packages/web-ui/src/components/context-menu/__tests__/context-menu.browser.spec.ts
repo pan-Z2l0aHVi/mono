@@ -734,15 +734,20 @@ describe('WebUiContextMenu 组件（浏览器）', () => {
     await nextFrame()
     await nextFrame()
 
-    const observer = new MutationObserver(() => {})
+    // 记录必须累加在回调里：`takeRecords()` 取的是「已排队但还没派发」的那份，
+    // 而回调在微任务检查点就被调用、队列随即排空——回调体为空时它**恒返回空数组**，
+    // 于是「无 childList 变更」这条守卫永远成立，看着完整却量不到任何东西。
+    // 实测：往被观察子树里真的插拔一个节点，旧写法照样绿。
+    const records: MutationRecord[] = []
+    const observer = new MutationObserver(mutations => records.push(...mutations))
     observer.observe(getMenus()[0]!, { childList: true, subtree: true })
     await waitForObserverRefresh()
-    expect(observer.takeRecords()).toHaveLength(0)
+    expect(records).toHaveLength(0)
 
     await nextFrame()
     await nextFrame()
     await nextFrame()
-    expect(observer.takeRecords()).toHaveLength(0)
+    expect(records).toHaveLength(0)
     observer.disconnect()
   })
 
