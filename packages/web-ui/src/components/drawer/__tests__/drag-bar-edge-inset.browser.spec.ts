@@ -4,6 +4,7 @@ import { afterEach, describe, expect, it } from 'vite-plus/test'
 import { userEvent } from 'vite-plus/test/browser'
 
 import { pollUntil, waitForSettledLayout } from '@/shared/test-utils'
+import { expectInsideViewport } from '@/shared/test-utils/viewport'
 
 import type { DrawerPlacement, WebUiDrawer } from '..'
 
@@ -75,7 +76,11 @@ function isDragSurface(el: WebUiDrawer, node: HTMLElement | null): boolean {
  * 共享 helper 把这两件事都变成因果条件（过渡跑完 + RO 抽干），收尾再验矩形真的定版。
  */
 async function settleGeometry(el: WebUiDrawer) {
-  await waitForSettledLayout([getDialog(el), getDragZone(el), getDragEdge(el), getDragBar(el)])
+  const targets = [getDialog(el), getDragZone(el), getDragEdge(el), getDragBar(el)]
+  // 期待驱动：命中测试的前提是「胶囊中心那个坐标落在视口内」。少了这条，
+  // `elementFromPoint` 返回 null 与「热边没盖住胶囊」在读数上完全一样，
+  // 而前者只是进场过渡尚未落定。带上读数后两者在等待阶段就分开了。
+  await waitForSettledLayout(targets, { expect: expectInsideViewport(targets) })
 }
 
 /**

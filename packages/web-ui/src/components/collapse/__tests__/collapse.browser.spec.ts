@@ -3,6 +3,8 @@ import '@/components/theme'
 
 import { afterEach, describe, expect, it } from 'vite-plus/test'
 
+import { scrollElementTo } from '@/shared/test-utils/viewport'
+
 import type { WebUiCollapse } from '..'
 
 function createCollapse(
@@ -105,7 +107,7 @@ describe('WebUiCollapse 组件（浏览器）', () => {
     await settle(el)
 
     const innerContent = el.querySelector('div[style]') as HTMLElement
-    innerContent.scrollTop = 42
+    await scrollElementTo(innerContent, 42)
 
     el.open = false
     await el.updateComplete

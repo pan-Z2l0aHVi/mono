@@ -4,9 +4,11 @@ import type { WebUiLayout } from '@greypan/web-ui'
 import { createHead } from '@unhead/vue/client'
 import { mount, type VueWrapper } from '@vue/test-utils'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
-import { page, userEvent } from 'vite-plus/test/browser'
+import { userEvent } from 'vite-plus/test/browser'
 import { defineComponent, nextTick } from 'vue'
 import { createMemoryHistory, createRouter, type Router } from 'vue-router'
+
+import { setViewport } from '@/__tests__/viewport'
 
 import AppShell from '../index.vue'
 
@@ -103,7 +105,7 @@ async function requestCollapse(collapsed: boolean) {
 }
 
 /**
- * 换的是真实视口（`page.viewport`），app 的 media query 与 layout 的 `innerWidth` 判定都
+ * 换的是真实视口（`setViewport`），app 的 media query 与 layout 的 `innerWidth` 判定都
  * 由引擎自己给出结论；等的是抽屉形态真的换了，而不是一段固定时长。
  */
 async function settleViewport(drawerMode: boolean) {
@@ -129,13 +131,13 @@ async function openDrawer() {
 
 describe('应用外壳（浏览器）：导航折叠态不跨视口泄漏', () => {
   beforeEach(async () => {
-    await page.viewport(DESKTOP_VIEWPORT.width, DESKTOP_VIEWPORT.height)
+    await setViewport(DESKTOP_VIEWPORT.width, DESKTOP_VIEWPORT.height)
   })
 
   afterEach(async () => {
     wrapper?.unmount()
     wrapper = null
-    await page.viewport(DESKTOP_VIEWPORT.width, DESKTOP_VIEWPORT.height)
+    await setViewport(DESKTOP_VIEWPORT.width, DESKTOP_VIEWPORT.height)
   })
 
   it('桌面端折叠后导航文字居中，展开态左对齐', async () => {
@@ -162,7 +164,7 @@ describe('应用外壳（浏览器）：导航折叠态不跨视口泄漏', () =
     // 对照：折叠确实换了一套渲染，否则下面那条「与展开态一致」可能只是因为折叠从未生效。
     expect(collapsed).not.toEqual(expanded)
 
-    await page.viewport(MOBILE_VIEWPORT.width, MOBILE_VIEWPORT.height)
+    await setViewport(MOBILE_VIEWPORT.width, MOBILE_VIEWPORT.height)
     await settleViewport(true)
     await openDrawer()
 
@@ -178,12 +180,12 @@ describe('应用外壳（浏览器）：导航折叠态不跨视口泄漏', () =
     await requestCollapse(true)
     const collapsed = navItemShape()
 
-    await page.viewport(MOBILE_VIEWPORT.width, MOBILE_VIEWPORT.height)
+    await setViewport(MOBILE_VIEWPORT.width, MOBILE_VIEWPORT.height)
     await settleViewport(true)
     await openDrawer()
     expect(navItemShape()).toEqual(expanded)
 
-    await page.viewport(DESKTOP_VIEWPORT.width, DESKTOP_VIEWPORT.height)
+    await setViewport(DESKTOP_VIEWPORT.width, DESKTOP_VIEWPORT.height)
     await settleViewport(false)
 
     expect(navItemShape()).toEqual(collapsed)

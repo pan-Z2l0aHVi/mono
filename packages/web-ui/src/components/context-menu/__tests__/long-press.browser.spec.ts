@@ -5,6 +5,7 @@ import { afterEach, describe, expect, it } from 'vite-plus/test'
 
 import { cleanupElement, getMenuPanels, pollUntil, waitForSettledLayout } from '@/shared/test-utils'
 import { realTouchPress } from '@/shared/test-utils/real-gesture'
+import { expectInsideViewport } from '@/shared/test-utils/viewport'
 
 import type { WebUiContextMenu } from '..'
 
@@ -47,7 +48,9 @@ async function settle() {
  * `getBoundingClientRect()` 量到的才是终态几何。
  */
 async function settlePanel(panel: HTMLElement) {
-  await waitForSettledLayout([panel])
+  // 期待驱动：量出来的坐标要落在视口内才算数。少了这条，「按点上方 / 视口外」
+  // 与「面板还没落位」在读数上完全一样，而后者只是进场过渡尚未落定。
+  await waitForSettledLayout([panel], { expect: expectInsideViewport([panel]) })
 }
 
 describe('context-menu 长按（真实触控管线）', () => {

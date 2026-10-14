@@ -4,8 +4,8 @@ import { createMemoryHistory, createRouter, RouterProvider } from '@tanstack/rea
 import { cleanup, render, waitFor } from '@testing-library/react'
 import { act } from 'react'
 import { afterEach, describe, expect, it } from 'vite-plus/test'
-import { page } from 'vite-plus/test/browser'
 
+import { setViewport } from '@/__tests__/viewport'
 import { routeTree } from '@/routeTree.gen'
 
 /*
@@ -57,7 +57,7 @@ async function columnsAcrossBreakpoints(testId: string) {
     // 换视口会经 media query 监听回写 React 状态，所以把「换视口」这个触发动作本身放进 act
     // 边界，让那次回写落在 act 里；事后再补一个空 act 只是让 React 闭嘴，更新仍在边界外。
     await act(async () => {
-      await page.viewport(width, VIEWPORT_HEIGHT)
+      await setViewport(width, VIEWPORT_HEIGHT)
     })
     measured.push(columnCount(testId))
   }
@@ -95,7 +95,7 @@ async function mountPage(path: string, waitingForTestId: string) {
 describe('网格列数基线（浏览器）', () => {
   afterEach(async () => {
     cleanup()
-    await page.viewport(BREAKPOINTS[0]!, VIEWPORT_HEIGHT)
+    await setViewport(BREAKPOINTS[0]!, VIEWPORT_HEIGHT)
   })
 
   it('home 页快速预览网格在九档视口下保持 1/2/2/3/3/3/3/3/3 列', async () => {

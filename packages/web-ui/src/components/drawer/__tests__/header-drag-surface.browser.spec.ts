@@ -4,6 +4,7 @@ import { afterEach, describe, expect, it } from 'vite-plus/test'
 import { cdp } from 'vite-plus/test/browser-playwright/context'
 
 import { pollUntil, waitForSettledLayout } from '@/shared/test-utils'
+import { expectInsideViewport } from '@/shared/test-utils/viewport'
 
 import type { DrawerPlacement, WebUiDrawer } from '..'
 
@@ -135,7 +136,10 @@ async function mountDrawer(options: {
  * 落定；抽干 ResizeObserver 等的是尺寸回调真的派发过。
  */
 async function settleGeometry(el: WebUiDrawer) {
-  await waitForSettledLayout([getDialog(el), query(el, '.wui-drawer-drag-zone'), query(el, '.wui-drawer-body')])
+  const targets = [getDialog(el), query(el, '.wui-drawer-drag-zone'), query(el, '.wui-drawer-body')]
+  // 期待驱动：命中测试的前提是「这些盒子已经落在视口内」。少了这条，
+  // `elementFromPoint` 返回 null 与「热区没盖住 header」在读数上完全一样。
+  await waitForSettledLayout(targets, { expect: expectInsideViewport(targets) })
 }
 
 async function realPressAt(x: number, y: number): Promise<void> {

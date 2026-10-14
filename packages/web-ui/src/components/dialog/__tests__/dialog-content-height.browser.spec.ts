@@ -3,6 +3,7 @@ import '..'
 import { afterEach, describe, expect, it } from 'vite-plus/test'
 
 import { pollUntil } from '@/shared/test-utils'
+import { scrollElementToEnd } from '@/shared/test-utils/viewport'
 
 import type { WebUiDialog } from '..'
 
@@ -135,8 +136,7 @@ describe('dialog 内容区高度约束（浏览器）', () => {
       expect(desc.scrollHeight).toBeGreaterThan(desc.clientHeight)
       // 只断言上一条的话，overflow 写成 hidden 也能过（hidden 同样让
       // scrollHeight 大于 clientHeight），必须写 scrollTop 才能区分 auto 与 hidden。
-      desc.scrollTop = 9999
-      await new Promise(resolve => requestAnimationFrame(resolve))
+      await scrollElementToEnd(desc)
       expect(desc.scrollTop).toBeGreaterThan(0)
 
       // 滚下去之后卡片几何不变：滚动发生在内容区内部，没有把内容顶出 dialog 盒子。
@@ -286,8 +286,7 @@ describe('dialog 内容区高度约束（浏览器）', () => {
 
       // 用户后果二：内容自己能滚到最后一块。
       expect(content.scrollHeight).toBeGreaterThan(content.clientHeight)
-      content.scrollTop = 99999
-      await new Promise(resolve => requestAnimationFrame(resolve))
+      await scrollElementToEnd(content)
       expect(content.scrollTop).toBeGreaterThan(0)
 
       /*
@@ -326,8 +325,7 @@ describe('dialog 内容区高度约束（浏览器）', () => {
       expect(card.offsetHeight).toBe(dialog.offsetHeight)
 
       expect(content.scrollHeight).toBe(content.clientHeight)
-      content.scrollTop = 99999
-      await new Promise(resolve => requestAnimationFrame(resolve))
+      await scrollElementToEnd(content)
       expect(content.scrollTop).toBe(0)
     })
 
@@ -357,8 +355,7 @@ describe('dialog 内容区高度约束（浏览器）', () => {
         }
       }
       const before = offset()
-      content.scrollTop = 99999
-      await new Promise(resolve => requestAnimationFrame(resolve))
+      await scrollElementToEnd(content)
       expect(content.scrollTop).toBeGreaterThan(0)
       expect(offset()).toEqual(before)
     })

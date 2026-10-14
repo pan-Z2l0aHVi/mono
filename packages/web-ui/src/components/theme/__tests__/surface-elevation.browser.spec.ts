@@ -4,13 +4,13 @@ import '@/components/select'
 import '@/components/theme'
 
 import { afterEach, describe, expect, it } from 'vite-plus/test'
-import { page } from 'vite-plus/test/browser'
 
 import type { WebUiLayout } from '@/components/layout'
 import type { WebUiOption } from '@/components/option'
 import type { WebUiSelect } from '@/components/select'
 import type { WebUiTheme } from '@/components/theme'
 import { queryA11y, waitForUpdate } from '@/shared/test-utils'
+import { setViewport } from '@/shared/test-utils/viewport'
 
 /**
  * 表面 token 的归属与 elevation 关系守卫。
@@ -28,7 +28,7 @@ import { queryA11y, waitForUpdate } from '@/shared/test-utils'
  */
 afterEach(async () => {
   document.body.replaceChildren()
-  await page.viewport(DESKTOP_VIEWPORT.width, DESKTOP_VIEWPORT.height)
+  await setViewport(DESKTOP_VIEWPORT.width, DESKTOP_VIEWPORT.height)
 })
 
 /** 把 theme token 解析成计算色值：探针挂在 theme 作用域内，与组件走同一条继承链。 */
@@ -101,7 +101,7 @@ async function createTheme(appearance: 'light' | 'dark'): Promise<WebUiTheme> {
 const DESKTOP_VIEWPORT = { width: 1280, height: 720 }
 
 async function createLayoutIn(theme: WebUiTheme): Promise<WebUiLayout> {
-  await page.viewport(DESKTOP_VIEWPORT.width, DESKTOP_VIEWPORT.height)
+  await setViewport(DESKTOP_VIEWPORT.width, DESKTOP_VIEWPORT.height)
   const layout = document.createElement('web-ui-layout')
   layout.innerHTML = `
     <div slot="sidebar" style="height: 100%">Sidebar</div>

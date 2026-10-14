@@ -1,10 +1,10 @@
 import '..'
 
 import { afterEach, describe, expect, it } from 'vite-plus/test'
-import { page } from 'vite-plus/test/browser'
 import { userEvent } from 'vite-plus/test/browser'
 
 import { pollUntil } from '@/shared/test-utils'
+import { scrollWindowTo, setViewport } from '@/shared/test-utils/viewport'
 
 import type { WebUiDialog } from '..'
 
@@ -187,7 +187,7 @@ describe('WebUiDialog 组件（浏览器）', () => {
     // 回到文档流——出现在页面顶部且跟随页面滚动，用户看到「残影」与「没有固定居中」。
     //
     // 判据只取行为约束「滚动后不离开视口」与平台语义 `:modal`，不锁任何像素或计算样式。
-    await page.viewport(800, 600)
+    await setViewport(800, 600)
     const spacer = document.createElement('div')
     spacer.style.height = '2000px'
     document.body.append(spacer)
@@ -204,10 +204,9 @@ describe('WebUiDialog 组件（浏览器）', () => {
 
       expect(dialog.matches(':modal')).toBe(true)
 
-      const scrolled = new Promise<void>(resolve => window.addEventListener('scroll', () => resolve(), { once: true }))
-      window.scrollTo(0, 500)
-      await scrolled
-      await new Promise(resolve => requestAnimationFrame(resolve))
+      // `scrollWindowTo` 已经等 `window.scrollY` 落定并让出一个完整渲染步进，
+      // 滚动事件必然在那之前就派发过了，所以不必再等事件、也不必再补一帧。
+      await scrollWindowTo(500)
       expect(window.scrollY).toBeGreaterThan(0)
 
       const after = dialog.getBoundingClientRect()
@@ -215,8 +214,8 @@ describe('WebUiDialog 组件（浏览器）', () => {
       expect(after.bottom).toBeLessThanOrEqual(window.innerHeight)
     } finally {
       document.body.replaceChildren()
-      window.scrollTo(0, 0)
-      await page.viewport(1280, 720)
+      await scrollWindowTo(0)
+      await setViewport(1280, 720)
     }
   })
 })

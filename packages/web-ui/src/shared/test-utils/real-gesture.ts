@@ -11,6 +11,8 @@
  */
 import { cdp } from 'vite-plus/test/browser-playwright/context'
 
+import { waitForAnimationsToFinish } from './index'
+
 /**
  * `cdp()` 返回值的导出类型是压缩过的（`send` 没被声明出来），这里只按实际用到的
  * 最小结构描述。playwright provider 下它就是一个带 `send` 的 CDP session。
@@ -149,11 +151,20 @@ export async function realDragSelectText(node: Node): Promise<void> {
  * 另一段文字上（一度表现为「按下落进正文里、拖不动」）。
  *
  * 用动画本身收敛作为信号，不用固定 sleep：WAAPI 动画在并行负载下完成时间不可预测。
+ *
+ * 收敛判据交给共享 helper `waitForAnimationsToFinish`，而不是就地取一次
+ * `getAnimations()`：那里要求**连续两个渲染步进**都没有动画，且取样覆盖传入的
+ * 全部根。就地写法在本文件里长成了两个真实缺陷——
+ *   - 只查 `shadowRoot` 里的那一个 `dialog`：挂在宿主或更外层上的过渡查不到；
+ *   - `Promise.all` 对空数组直接 resolve，等于「读到空就宣布稳定」；
+ *     进场过渡尚未创建时量到的正是过渡前那一帧的盒子（胶囊落在视口外、
+ *     `elementFromPoint` 返回 null 那一类 flaky）。
  */
 export async function waitForOpenTransition(el: Element): Promise<void> {
-  await new Promise(resolve => requestAnimationFrame(resolve))
+  // 宿主与内层 dialog 都在观察范围内：过渡既可能挂在 dialog 上（进场 transform），
+  // 也可能挂在宿主上（open 属性引发的外层动画），只传 dialog 会漏掉后者。
   const dialog = el.shadowRoot?.querySelector('dialog')
-  await Promise.all((dialog?.getAnimations({ subtree: true }) ?? []).map(animation => animation.finished))
+  await waitForAnimationsToFinish(dialog ? [el, dialog] : el)
 }
 
 export interface RealTouchPressOptions {
