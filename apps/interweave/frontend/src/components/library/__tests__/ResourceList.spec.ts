@@ -84,7 +84,9 @@ async function mountList(
       })
   })
   app.mount(host)
-  await nextTick()
+  // virtua 的窗口尺寸由 ResizeObserver 首帧交付后才算得出来（见 virtualLayout 的桩），
+  // 单次 nextTick 时行还没渲染，要等这一帧走完再收集。
+  await flushRenders()
   return {
     host,
     rows: [...host.querySelectorAll('[data-resource-row]')],
@@ -1243,7 +1245,7 @@ describe('ResourceList：键盘呼出右键菜单', () => {
       expect(document.activeElement).toBe(container)
 
       keydown(container, { key: 'F10', shiftKey: true })
-      // 焦点交接跨一个 tick：scrollToIndex 触发的渲染完成后才落焦，见 focusIndex
+      // 焦点交接跨一个 tick：scrollIndexIntoView 触发的渲染完成后才落焦，见 focusIndex
       await flushRenders()
 
       expect(document.activeElement).toBe(mounted.rows[0])
@@ -1295,7 +1297,7 @@ describe('ResourceList：键盘呼出右键菜单', () => {
 
   /*
    * 右键呼出菜单本身也写当前行（决策 4 后半句）：emit activate，父级把 activeResourceId
-   * 置为被右键的那一行。不调用 focusIndex()——那会 scrollToIndex + row.focus()，会抢走焦点
+   * 置为被右键的那一行。不调用 focusIndex()——那会 scrollIndexIntoView + row.focus()，会抢走焦点
    * （右键改名时焦点在名字编辑器里）。
    *
    * 这里的断言是：右键 r2 后，activeResourceId 变为 r2，对应的行获得激活底色（bg-black/8）。
@@ -1374,7 +1376,7 @@ function keydown(target: Element, init: KeyboardEventInit) {
 }
 
 /*
- * 一次键盘导航要跨两轮渲染：focusIndex 先改 activeIndex 并 scrollToIndex，滚动的回调再触发
+ * 一次键盘导航要跨两轮渲染：navigateToIndex 先 emit activate、再 scrollIndexIntoView，滚动的回调再触发
  * 虚拟窗口重算、新行挂载，所以单次 nextTick 之后 DOM 仍可能停在上一帧。断言涉及行元素时
  * 多冲一帧，避免把「还没渲染完」误读成「行为不对」。
  */
@@ -1382,6 +1384,21 @@ async function flushRenders() {
   await nextTick()
   await nextTick()
   await nextTick()
+}
+
+/*
+ * 行在文档里的纵向落点。virtua 给每个条目各建一层绝对定位包裹，落点是包裹层的行内 top；
+ * 该 top 相对列表容器，容器自己落在文档的 listOffset 处，所以文档落点 = listOffset + top。
+ *
+ * listOffset 停在 0：jsdom 不做布局（rect 恒为 0），挂载时同步量到的就是 0；之后的重算走
+ * rAF，而 flushRenders 不跑 rAF，所以滚动之后也不会把它抬起来。于是这个 top 直接就是文档
+ * 落点——「编辑行夹回视野」那条用例里滚动最终停在恰好与 top 相等的值上，也是这个意思。
+ * 读的是包裹层的 style.top，不是行自己的：行上没有任何定位样式。
+ */
+function rowTop(row: HTMLElement) {
+  let node: HTMLElement | null = row.parentElement
+  while (node && node.style.top === '') node = node.parentElement
+  return node ? Number.parseFloat(node.style.top) : 0
 }
 
 /*
@@ -1399,11 +1416,11 @@ describe('ResourceList：键盘导航与预览入口', () => {
   /*
    * 虚拟化本体：1000 条资源在 DOM 里只留下窗口内的十几行。
    *
-   * 撑总高的内层 div 按 getTotalSize 给高度，整页据此产生滚动条，所以「列表有多长」与
-   * 「DOM 里有多少行」从此解耦。
+   * 撑总高的外层是 virtua 自建的容器（内含全部列表语义与定位），整页据此产生滚动条，
+   * 所以「列表有多长」与「DOM 里有多少行」从此解耦。
    *
-   * window 模式（滚动元素是 window）下行位按 row.start - scrollMargin 落点，而不是
-   * row.start；容器自身不承担滚动职责。
+   * window 模式（滚动元素是 window）下每个条目各自落在一层绝对定位包裹里；容器自身
+   * 不承担滚动职责。
    *
    * jsdom 里行高由 __tests__/virtualLayout 的桩给（真实高 40、估值 64），所以总高是
    * 「已量行 × 40 + 未量行 × 64」的混合值，不是纯估值。真实浏览器里同样是这个混合形态。
@@ -1418,20 +1435,21 @@ describe('ResourceList：键盘导航与预览入口', () => {
       const container = mounted.container!
 
       // 撑总高的内层 = 已量到的行按真实高度 + 还没量到的行按估值。
-      // 不去数「量到了几行」：overscan 让窗口外几行也已挂载并被量到，DOM 行数与已量行数
+      // 不去数「量到了几行」：bufferSize 让窗口外几行也已挂载并被量到，DOM 行数与已量行数
       // 不是一回事，数错会得到一个看起来合理但对不上的期望值。改为直接读包裹层高度，
       // 断言它落在「全估值」与「全真实」之间——真实行高确实进来了，且没有把未量到的行
       // 误算成真实高度。
-      const sizer = container.firstElementChild as HTMLElement
+      // 撑总高的是 virtua 自建的外层容器（height = 总高、position: relative）。本组件在它外面
+      // 还套了一层不带高度的定位壳（listSizerRef，只为量列表起点），所以不能按 firstElementChild
+      // 顺推，要按「带行内高度的那一层」认。
+      const sizer = container.querySelector<HTMLElement>('[style*="height"]')!
       const total = Number(sizer.style.height.replace('px', ''))
       const allEstimate = 1000 * ROW_ESTIMATE
       const allMeasured = 1000 * ROW_HEIGHT
       expect(total).toBeLessThan(allEstimate)
       expect(total).toBeGreaterThan(allMeasured)
 
-      // 行按 row.start - scrollMargin 定位。jsdom 的 rect 恒为 0，listOffset 也就是 0，
-      // 于是这一项等于 row.start——但减法必须在模板里，写错了这里也看不出来。样式字符串
-      // 的具体形状由浏览器取证负责，这里不钉 transform 字面值。
+      // virtua 给每个条目各建一层绝对定位包裹（top = 条目偏移），行不再共用一个容器。
       expect(mounted.rows[0]!.parentElement).not.toBe(mounted.rows[1]!.parentElement)
     } finally {
       mounted.unmount()
@@ -1731,11 +1749,11 @@ describe('ResourceList：键盘导航与预览入口', () => {
    * 资源就继续往下。
    *
    * 判据是「下标持续递增直到列表末尾」，因为 jsdom 里的 window.scrollTo 是真实现
-   * （见 __tests__/virtualLayout），窗口会跟着 scrollToIndex 滚动并渲染出后续行。
+   * （见 __tests__/virtualLayout），窗口会跟着 scrollIndexIntoView 滚动并渲染出后续行。
    * 旧实现在这个场景下会停在首个越界的窗口底，第二个循环体就取不到元素而抛错。
    *
-   * 按 End 而不是逐格按到底：End 内部同样走 focusIndex + scrollToIndex，是同一条路径，
-   * 但把 998 次按键与渲染压成一次。并用 ArrowDown 单独验「越界那一次仍推进、仍吃掉按键」，
+   * 按 End 而不是逐格按到底：End 内部同样走 navigateToIndex（emit activate + scrollIndexIntoView），
+   * 是同一条路径，但把 998 次按键与渲染压成一次。并用 ArrowDown 单独验「越界那一次仍推进、仍吃掉按键」，
    * 那是旧实现会 return 的地方。
    */
   it('方向键穿过虚拟窗口边界继续移动，不在窗口底卡住', async () => {
@@ -1901,50 +1919,41 @@ describe('ResourceList：编辑态与虚拟窗口的关系', () => {
   })
 
   /*
-   * B1 的核心。编辑中的行被滚出窗口 → 行卸载 → editable-text 走 disconnectedCallback，
-   * 而它只释放按键与 autosize，不提交也不取消；提交只有 _onBlur 与 Enter/Escape 两条，
-   * 都要求焦点还在那个 textarea 上。DOM 被摘掉时两条都不走，草稿就此静默丢失，
-   * editingNameKey 还留在一个没有行的下标上，滚回来只会渲染出一个空编辑器。
-   */
-  /*
-   * 第一道防线单独的可观测场景：视口为 0 时夹取放弃，并入是唯一防线。
+   * 编辑中的行被回收后草稿不丢，靠的是 ResourceRow 显式开启的 commit-on-unmount。
    *
-   * 正常情况下两道防线互相掩盖——夹取把编辑行拉进视口，虚拟窗口就自然会渲染它，所以
-   * 「行还在 DOM 里」单靠夹取也成立，删掉并入照样绿。要单独验并入，得让夹取确实动不了：
-   * 页面被隐藏（innerHeight 0，抽屉/标签页切走、或浏览器最小化）时 clampEditingRowIntoView
-   * 在 !viewport 处直接 return，这时编辑行若不在渲染窗口内就会被卸载，草稿丢失。
+   * editable-text 默认的提交只有 Enter 与 blur 两条：Chromium 移除会补派 blur、change 照常
+   * 派发、草稿不丢；WebKit（Safari / iOS）移除**不派发 blur**，默认路径什么都不提交，用户
+   * 打的字随行一起静默消失。旧实现靠 keepMounted 把编辑行并入渲染窗口回避回收；virtua 的
+   * 窗口模式没有 keepMounted（只有自建滚动容器的 <Virtualizer> 有），兜底改落在卸载提交上。
    *
-   * 这不是构造出来的边角：editable-text 的 disconnectedCallback 不提交也不取消，
-   * 行一被摘掉，用户输入的草稿就没了。
+   * jsdom 的 web-ui-editable-text 没有升级成真正的自定义元素，disconnectedCallback 根本不
+   * 执行，卸载提交在 jsdom 里无从观察——这里只验「编辑行的编辑器确实带着 commit-on-unmount
+   * 这个交接点」。行为侧（行被回收时草稿被提交）由 rename-focus.browser.spec.ts 在真实浏览器
+   * 里验，属性语义由 web-ui 的 commit-on-unmount 浏览器用例覆盖。
    */
-  it('视口为 0、夹取动不了时，编辑行仍靠并入留在 DOM 里', async () => {
-    const resources = Array.from({ length: 1000 }, (_, i) => resource({ id: `r${i}`, title: `资源 ${i}` }))
-    const mounted = await mountList(resources, [], { editingNameKey: 'r900' })
-    const setViewport = (height: number) =>
-      Object.defineProperty(window, 'innerHeight', { configurable: true, get: () => height })
+  it('编辑行的名称编辑器开启 commit-on-unmount（卸载时草稿的兜底交接点）', async () => {
+    const resources = Array.from({ length: 5 }, (_, i) => resource({ id: `r${i}`, title: `资源 ${i}` }))
+    const mounted = await mountList(resources, [], { editingNameKey: 'r2' })
     try {
       await flushRenders()
-      // 视口归零：夹取在 !viewport 处 return，不会把编辑行拉回来
-      setViewport(0)
-      window.scrollTo({ top: 20_000 })
-      await flushRenders()
-
-      // 视口为 0 时「在不在视口内」已无意义，判据落回 DOM：行与编辑器都还在
-      const editingRow = mounted.host.querySelector('[data-resource-id="r900"]')
+      const editingRow = mounted.host.querySelector('[data-resource-id="r2"]')
       expect(editingRow).not.toBeNull()
-      expect(editingRow!.querySelector('web-ui-editable-text')).not.toBeNull()
+      const editor = editingRow!.querySelector('web-ui-editable-text')
+      expect(editor, '编辑行换成了名称编辑器').not.toBeNull()
+      expect(editor!.hasAttribute('commit-on-unmount'), '开启卸载提交').toBe(true)
 
-      // 对照组：同样远离窗口、没进编辑态的行不在 DOM。并排才能说明「编辑行在」是因为
-      // 并入，而不是因为它恰好被渲染出来。
-      expect(mounted.host.querySelector('[data-resource-id="r950"]')).toBeNull()
+      // 对照组：没进编辑态的行没有编辑器，属性也就无从谈起。
+      const idleRow = mounted.host.querySelector('[data-resource-id="r3"]')
+      expect(idleRow).not.toBeNull()
+      expect(idleRow!.querySelector('web-ui-editable-text')).toBeNull()
     } finally {
       mounted.unmount()
     }
   })
 
   /*
-   * pin 走的是夹取而不是 scrollToIndex：越界时只把边界收到刚好装得下这一行，窗口内的
-   * 滚动一个字节都不动。用 scrollToIndex 会把人从当前看的位置拽到行首。
+   * pin 走的是夹取而不是「把行对齐到行首」：越界时只把边界收到刚好装得下这一行，窗口内的
+   * 滚动一个字节都不动。行首对齐会把人从当前看的位置拽到行首。
    * 目标行取 r900——它在 1000 行的尾部，mount 时远在视口之外，只有夹取会把它拉进来。
    * window 模式下滚动位置读 window.scrollY。
    */
@@ -1962,11 +1971,11 @@ describe('ResourceList：编辑态与虚拟窗口的关系', () => {
   })
 
   /*
-   * 夹取而不是 scrollToIndex——两者在「越界时」的表现不同，要分两处验。
+   * 夹取与「把行对齐到行首」在「越界时」的表现不同，要分两处验。
    *
    * 这里验「视口内时一个字节都不动」：编辑行取 r500，进入编辑态时夹取已把它拉到能看见
    * 的高度。此刻再往下滚一点点（不越出视口），滚动位置必须原样保留。
-   * scrollToIndex 在这里会把位置重置到行首——那是它与夹取的分界。
+   * 行首对齐在这里会把位置重置到行首——那是它与夹取的分界。
    *
    * 注意不能滚太远：滚出行高之外视口，pin 的第二道防线会把它夹回来（那是「越界时」的
    * 行为，由下面两条用例负责），这里只管视口内。
@@ -1985,7 +1994,7 @@ describe('ResourceList：编辑态与虚拟窗口的关系', () => {
       await flushRenders()
 
       expect(currentScrollY()).toBe(clamped + 200)
-      // 不该被重置到行首附近（scrollToIndex 的行为）
+      // 不该被重置到行首附近（行首对齐会这么干）
       expect(currentScrollY()).not.toBeLessThan(1000)
     } finally {
       mounted.unmount()
@@ -2027,11 +2036,10 @@ describe('ResourceList：编辑态与虚拟窗口的关系', () => {
       window.scrollTo({ top: 20_000 })
       await flushRenders()
 
-      const editingRow = host.querySelector('[data-resource-id="r2"]')
+      const editingRow = host.querySelector<HTMLElement>('[data-resource-id="r2"]')
       expect(editingRow).not.toBeNull()
       // 夹回之后编辑行仍在视口内：它的起点不小于 scrollY，底也不超出视口下沿。
-      // 行的 transform 是 row.start - listOffset，jsdom 里 rect 恒为 0 故 listOffset 为 0。
-      const offsetTop = Number(editingRow!.parentElement!.style.transform.match(/translateY\((-?\d+)px\)/)?.[1] ?? 0)
+      const offsetTop = rowTop(editingRow!)
       expect(currentScrollY()).toBeLessThanOrEqual(offsetTop)
       expect(offsetTop + ROW_HEIGHT).toBeLessThanOrEqual(currentScrollY() + VIEWPORT_HEIGHT)
     } finally {
@@ -2043,8 +2051,8 @@ describe('ResourceList：编辑态与虚拟窗口的关系', () => {
 })
 
 /*
- * S1：getItemKey 用资源 id，itemSizeCache 按 key 持久，setOptions 只在 anchorTo === 'end'
- * 时做 key 变化检测。顺序变了之后每条资源的缓存高度跟着 id 走，行位必须跟着资源走。
+ * S1：virtua 用插槽根 vnode 的 key（资源 id）做行身份，条目尺寸按身份记。顺序变了之后
+ * 每条资源的尺寸跟着它自己的 id 走，行位也必须跟着资源走——拿下标当身份会错到别的行上。
  */
 describe('ResourceList：顺序变化后的行位', () => {
   afterEach(() => {

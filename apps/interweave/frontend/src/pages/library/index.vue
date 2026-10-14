@@ -587,8 +587,8 @@ onMounted(() => {
       没有真正避开安全区（用户已确认接受由此产生的视觉差异）。
       桌面 Chromium 下 env() 解析为 0，两种写法都是 64px，视觉无差异；差异只在真机出现。
 
-      虚拟滚动在整页滚动下用 useWindowVirtualizer，行的文档坐标由 ResourceList 侧的
-      scrollMargin 负责换算，本页不参与。
+      虚拟滚动在整页滚动下由 ResourceList 内的 virtua WindowVirtualizer 负责：它自己沿
+      offsetParent 链量出列表到文档顶的距离，本页只提供整页滚动的布局，不参与行定位。
     -->
     <main class="flex-1 min-w-0 px-6 mobile:px-3 pb-[max(4rem,env(safe-area-inset-bottom))] pt-2">
       <div
