@@ -182,19 +182,42 @@ const virtualizer = useWindowVirtualizer<HTMLElement>({
    */
   get scrollMargin() {
     return listOffset.value
-  } /*
+  },
+  /*
    * key 跟着资源 id 走，行高才不会在排序或过滤后错位到别的行——同一条资源的行高由它自己的
    * 内容决定，跨顺序是不变量。
    *
    * 代价是 itemSizeCache 按 key 持久（virtual-core 的 resizeItem 直接
    * itemSizeCache.set(key, size)），而 setOptions 只在 anchorTo === 'end' 时做 key 变化
-   * 检测，本组件用默认的 'start'。所以排序或过滤改变顺序后，缓存里每条资源的高度会跟着
-   * id 走到新下标——这正是要的行为；真正会短暂不准的是**没量过**的那些行：它们按估值计入
-   * 总高，等滚进窗口、被 ResizeObserver 量过之后总高才会收敛。表现为切排序时滚动条长度
-   * 有一次跳变，不是错位。切回 'end' 也不解决问题：那条路径的 key 变化检测会把滚动锚到
-   * 首行，反而把用户的位置拽走。
-   */,
-  getItemKey: index => props.resources[index]?.id ?? index,
+   * 检测，本组件用默认的 'start'。切回 'end' 也不解决问题：那条路径的 key 变化检测会把滚动
+   * 锚到首行，反而把用户的位置拽走。
+   *
+   * 「按 id 持久」只解决一半：virtual-core 把**下标 -> key/尺寸**的整块映射
+   * （getMeasurements）memo 在 getItemKey 的引用上（getMeasurementOptions 的依赖列表里有
+   * 它），引用没变就整块复用上一次的结果。顺序一变但引用不变，映射就停在上一次顺序上——
+   * 第 0 项仍记着旧第 0 条资源的高度，而按 id 存的真实高度明明还在缓存里。
+   *
+   * 这个不一致不会自愈，因为两侧判据不同：被移动的那一行自身高度没变，ResizeObserver 报上来的
+   * 尺寸与 itemSizeCache 里该 id 的缓存完全相同，resizeItem 的 delta 为 0——既不写缓存也不
+   * 递增 itemSizeCacheVersion，measurements 永远等不到那次重算。用户看到的是「改名把标题撑成
+   * 多行（同时按 'latest' 排到列表最前）之后，这一行与下一行重叠」。
+   *
+   * 所以 key 提取函数必须是「顺序一变就换引用」的：用 getter 让 useWindowVirtualizer 的每次
+   * 展开（unref(options) 的 watch 里做 spread）都拿到一个新闭包，闭包读的是当时的
+   * props.resources，顺序变化必然带来新引用，measurements 随之从 itemSizeCache 重算，按 id
+   * 存的高度就落到新下标上。
+   *
+   * 这条成立的前提是调用方**替换** props.resources 的引用（stores/library 的 filterAndSort
+   * 每次都返回新数组）。原地改同一个数组——例如对 props 指向的数组直接 sort——不会让 options
+   * 对象重新展开，getItemKey 的引用不变，上面那份陈旧映射会原样复发。
+   *
+   * 仍未覆盖的是「顺序变了但没量过」的那些行：它们按估值计入总高，等滚进窗口、被 ResizeObserver
+   * 量过之后总高才收敛。表现为切排序时滚动条长度有一次跳变，不是错位。
+   */
+  get getItemKey() {
+    const resources = props.resources
+    return (index: number) => resources[index]?.id ?? index
+  },
   estimateSize: () => ROW_ESTIMATE,
   /*
    * 行高不能「现在量到多少就信多少」——量到的可能是 0。
