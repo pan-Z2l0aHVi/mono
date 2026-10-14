@@ -1,6 +1,6 @@
-// 行的定位依赖 Tailwind 的 absolute/top-0（定位包裹层）与行内边距（行高）。不引入全局
-// 样式的话这些类都不生效，包裹层会退回文档流，行会被「自然堆叠 + transform」画成双倍间距，
-// 断言量到的就不是被测的几何了。
+// 行的几何一靠行内边距（决定行高），二靠 virtua 自建的定位包裹层——它用行内
+// absolute / top 摆放每一行，不依赖任何外部样式。不引入全局样式的话行高会塌成无内边距的
+// 一行，断言量到的就不是被测的几何了。
 import '@/assets/global.css'
 import '@greypan/web-ui'
 
@@ -179,16 +179,19 @@ interface RowGeometry {
   titleTop: number
 }
 
+/*
+ * 行下标读 data-resource-index（ResourceRow 的生产属性，roving tabindex 与 a11y 都在用它），
+ * 枚举因此走 [data-resource-row] 而不是虚拟列表内部的包裹层——那是 virtua 的实现细节，
+ * 不在契约里。定位包裹层取行的 parentElement（虚拟器自己建的那一层），用来核对它与行等高。
+ */
 function rowGeometries(host: HTMLElement): RowGeometry[] {
-  return [...host.querySelectorAll<HTMLElement>('[data-index]')].map(node => {
-    const start = Number((node.style.transform ?? '').replace('translateY(', '').replace('px)', '') || 'NaN')
-    const wrapper = node.getBoundingClientRect()
-    const row = node.querySelector<HTMLElement>('[data-resource-row]')!
+  return [...host.querySelectorAll<HTMLElement>('[data-resource-row]')].map(row => {
+    const wrapper = row.parentElement!.getBoundingClientRect()
     const rect = row.getBoundingClientRect()
     const title = row.querySelector('span')
     const titleRect = title?.getBoundingClientRect()
     return {
-      index: Number(node.getAttribute('data-index')),
+      index: Number(row.getAttribute('data-resource-index')),
       top: rect.top,
       bottom: rect.bottom,
       height: rect.height,
@@ -229,7 +232,7 @@ describe('ResourceList：行高测量（真实浏览器）', () => {
     expect(Math.abs(sorted[0]!.top - sizerTop), '第 0 行要贴着列表顶').toBeLessThan(1)
 
     for (const row of rows) {
-      // 定位包裹层与行根元素盒高一致（模板里 transform 用的是 row.start）。
+      // 定位包裹层与行根元素盒高一致（virtua 只把这一层放到累计偏移上，高度由行内容撑）。
       // 若某一行被测成 0，这一条立刻红——那正是「后面所有行都挤在一起」的起点。
       expect(row.wrapperHeight, `第 ${row.index} 行的定位包裹层高度`).toBeGreaterThan(0)
       expect(Math.abs(row.wrapperHeight - row.height), `第 ${row.index} 行：包裹层高度与行真实高度不符`).toBeLessThan(1)
@@ -262,9 +265,9 @@ describe('ResourceList：行高测量（真实浏览器）', () => {
    *   2. 提交（editingNameKey 同步置空，随后 store 落库——标题变长，且 updatedAt 被顶到
    *      最新，按 stores/library 的 'latest' 排序 r2 会排到第一位）。
    *
-   * 第 2 步同时改了「行高」与「行的下标」，若测量与下标对不齐，写入 itemSizeCache 的
-   * 高度就会挂到别的资源上：被改名的行停在旧的一行高度上，它之后的每一行按旧累计值
-   * 定位，于是那一行叠到下一行身上——用户看到的重叠。
+   * 第 2 步同时改了「行高」与「行的下标」，若测量与下标对不齐，写进 virtua 尺寸表的高度
+   * 就会挂到别的资源上：被改名的行停在旧的一行高度上，它之后的每一行按旧累计值定位，
+   * 于是那一行叠到下一行身上——用户看到的重叠。
    */
   it('改名把标题撑成多行后行高重算：被改名行与其后各行不错位、不重叠', async () => {
     // updatedAt 递减，r0 最新排在最前——与 stores/library 的 'latest' 排序一致。
@@ -314,9 +317,9 @@ describe('ResourceList：行高测量（真实浏览器）', () => {
 
     // 被改名的行现在排在第 0 位，且确实被长标题撑成了多行。
     const renamed = sorted[0]!
-    const neighbour = sorted.find(row => row.index === 1)
-    expect(neighbour, '第 1 行在窗口里').toBeDefined()
-    expect(renamed.height, '长标题把被改名的行撑高').toBeGreaterThan(neighbour!.height + 8)
+    const neighbor = sorted.find(row => row.index === 1)
+    expect(neighbor, '第 1 行在窗口里').toBeDefined()
+    expect(renamed.height, '长标题把被改名的行撑高').toBeGreaterThan(neighbor!.height + 8)
 
     // 相邻行必须首尾相接：上一行的底就是下一行的顶。行高没被重算时，这里量到的是
     // 重叠（current.top < previous.bottom），即用户看到的现象。

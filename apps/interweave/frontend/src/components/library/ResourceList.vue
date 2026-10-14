@@ -19,8 +19,7 @@ import {
   lucideTags,
   lucideTrash2
 } from '@greypan/web-ui/icons'
-import { useWindowVirtualizer } from '@tanstack/vue-virtual'
-import { measureElement as coreMeasureElement, type Virtualizer } from '@tanstack/vue-virtual'
+import { WindowVirtualizer } from 'virtua/vue'
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 
 import type { ResourceKind, ResourceSourceView, ResourceView } from '@/stores/library'
@@ -65,10 +64,16 @@ const checkedSet = computed(() => new Set(props.checkedIds))
 
 /*
  * 行高没有写死。ResourceRow 的标题会 line-clamp-2 换行、标签区会 flex-wrap 换行、进入改名
- * 编辑态还会从文字换成表单控件，三种情况高度都不同。estimateSize 只是「还没量到之前先用
- * 多少」的一阶猜测，真正的值由挂在行上的 measureElement 经 ResizeObserver 覆盖回去。
+ * 编辑态还会从文字换成表单控件，三种情况高度都不同。这个 item-size 只是「还没量到之前先用
+ * 多少」的一阶猜测，真正的值由 virtua 挂在每个条目上的 ResizeObserver 量出来覆盖回去。
  */
 const ROW_ESTIMATE = 64
+
+/*
+ * 渲染窗在视口前后各留的像素。与旧实现的 overscan 4 等价（4 × 64px 估值）：留够滚动时
+ * 下一个条目已经量好，又能让窗口外的行尽快卸载。
+ */
+const VIRTUAL_BUFFER = 256
 
 /*
  * activeIndex 是 roving tabindex 与方向键导航的派生下标：由 activeResourceId 在 props.resources
@@ -83,7 +88,9 @@ const activeIndex = computed(() => {
 })
 
 /*
- * 列表包裹层距文档顶部的距离，作为 scrollMargin 交给 virtualizer。
+ * 列表包裹层距文档顶部的距离。virtua 的 WindowVirtualizer 自己沿 offsetParent 链量出它到
+ * 文档顶的 baseOffset，内部换算不需要外喂；这一份是给本组件自己的 scrollIndexIntoView
+ * 把「列表内偏移」换算成文档坐标用的。
  *
  * 量的是 getBoundingClientRect().top 加当前 window.scrollY——rect.top 是视口坐标，
  * 文档坐标要加上已经滚过的那一段。这个值随上方 sticky header 高度变化（工具条展开/收起、
@@ -139,189 +146,62 @@ onBeforeUnmount(() => {
 })
 
 /*
- * 容器与撑总高的内层 div 不参与 v-if，始终挂载。虚拟化之后行若落进 v-if 分支，Vue 会先
- * unmount 整棵子树再重建，重建出的新节点在函数式 ref 收到它时尚未 attach，detached 节点
- * 的 offsetHeight 是 0，这个 0 会被当成真实尺寸写进 itemSizeCache。危害有限：pendingMin
- * 把重排限制在该行及其之后，实测总高只短暂少一行（40000→39960）、下一帧由 ResizeObserver
- * 自愈，不是整表崩坏。规避本身仍然必要——固定挂载容器、只切内部内容就不必依赖这个自愈
- * （TanStack/virtual#1292）。
- *
- * 首次挂载本身不受这条影响：Vue 3.5.42 的 patch 在 mountElement 走完 hostInsert 之后才
- * 调 setRef，节点那时已经 attach。真正要避开的是 v-if 切换时的 unmount 路径。
- *
- * 这里刻意**不开** useCachedMeasurements。它看起来正好治「列表被抽屉开合隐藏时
- * ResizeObserver 把所有项报 0」，但 virtual-core@3.17.11 的默认 measureElement 在这个
- * 选项下第一分支就返回 `itemSizeCache.get(key) ?? estimateSize(index)`，永远读不到真实
- * DOM 高度：首次测量返回估值、与估值相同就没有 delta、itemSizeCache 永远为空，于是每次
- * 都回落到估值，真实行高一次也进不去。
- * 实测（20 行、真实高 40、估值 64）：开着时 itemSizeCache 恒为 0、getTotalSize() 恒为
- * 1280；关掉后 19 个可见行全部入缓存、总高收敛到 824。行高不固定正是本列表的既有事实，
- * 让它可测比防一次隐藏期的抖动重要得多。这条推理只取决于该选项自身的实现，与用 window
- * 还是 element 滚动无关，window 模式走的是同一份 measureElement。
- * 版本升级后要重新核这条结论，判据是 measureElement 的首分支与 resizeItem 写入
- * itemSizeCache 的那道 delta 判断，不是这里的行号。
- */
-/*
  * 滚动元素是 window 本身，整页滚动（#188 用户裁决：body 滚动，不做内部滚动容器）。
- * 所以下面 6 处都不能再读列表容器的 scrollTop / clientHeight——那些在 window 模式下要么
- * 恒为 0、要么量到整页高度，读出来的数全是错的。
+ *
+ * virtua 的 WindowVirtualizer 自己处理「列表不在文档顶」这件事：它沿 offsetParent 链量出
+ * 容器到文档顶的距离（baseOffset），scrollToIndex / findItemIndex 都在文档坐标里换算，
+ * 不需要像 TanStack 那样外喂一个 scrollMargin。
+ *
+ * 但 baseOffset 只在库内部用；本组件把「键盘导航到某一行」与「让编辑中的行留在视口」都收在
+ * 自己的 scrollIndexIntoView 里（见下），那条路径要把 virtua 的列表内偏移用 listOffset
+ * 换算成文档坐标。
+ *
+ * 行高不固定（标题换行、标签换行、改名编辑态），由 virtua 挂在每个条目上的 ResizeObserver
+ * 自动测量，不需要函数式 ref 与自定义 measureElement：
+ *   - virtua 只认「元素 -> 下标」的对应（mount 时注册，条目下标变化时重新注册），高度按
+ *     下标写进它自己的尺寸表；
+ *   - 重排之后每个条目的下标变了，ListItem 的 watch 会用新下标重新 observe 同一元素，
+ *     ResizeObserver.observe() 规范上会立刻投递一次初始回调，真实高度因此落到新下标上——
+ *     「改名撑成多行 + 排到列表最前」这条重排路径由库自己兜住，不需要外部触发重算。
+ *   - 条目高度只在内容变化时才会变，DOM 摘除/重建（挂载时尚未 attach 的函数式 ref 那条
+ *     时序）不构成问题：virtua 是在挂载后由 ResizeObserver 量，不是挂载瞬间同步读 offsetHeight。
  */
-const virtualizer = useWindowVirtualizer<HTMLElement>({
-  /*
-   * scrollMargin 是「列表包裹层距文档顶部的距离」。它必须存在，缺了键盘导航就会把行滚到
-   * 视口外：window 模式下 scrollOffset 从文档顶算，而 item.start 是从包裹层顶算
-   * （virtual-core 的 runningStart = paddingStart + scrollMargin），两者差的就是这个值。
-   * getOffsetForIndex 的 align:'auto' 判定拿 scrollOffset + size 与 item.end 比，滚完的
-   * 落点是文档坐标；行若还按 start 摆放，两者坐标系对不上。
-   *
-   * 配套改模板：translateY(row.start - scrollMargin)。两处缺一不可。
-   * getTotalSize() 已经减掉 scrollMargin，撑高项不要再减一次。
-   *
-   * 它是运行时量：上方 sticky header 高度随工具条展开/收起而变，所以订阅而不是写死。
-   * 用 getter 同理——options 只被 unref 顶层，传 Ref 进去不会被拆开。
-   */
-  get scrollMargin() {
-    return listOffset.value
-  },
-  /*
-   * key 跟着资源 id 走，行高才不会在排序或过滤后错位到别的行——同一条资源的行高由它自己的
-   * 内容决定，跨顺序是不变量。
-   *
-   * 代价是 itemSizeCache 按 key 持久（virtual-core 的 resizeItem 直接
-   * itemSizeCache.set(key, size)），而 setOptions 只在 anchorTo === 'end' 时做 key 变化
-   * 检测，本组件用默认的 'start'。切回 'end' 也不解决问题：那条路径的 key 变化检测会把滚动
-   * 锚到首行，反而把用户的位置拽走。
-   *
-   * 「按 id 持久」只解决一半：virtual-core 把**下标 -> key/尺寸**的整块映射
-   * （getMeasurements）memo 在 getItemKey 的引用上（getMeasurementOptions 的依赖列表里有
-   * 它），引用没变就整块复用上一次的结果。顺序一变但引用不变，映射就停在上一次顺序上——
-   * 第 0 项仍记着旧第 0 条资源的高度，而按 id 存的真实高度明明还在缓存里。
-   *
-   * 这个不一致不会自愈，因为两侧判据不同：被移动的那一行自身高度没变，ResizeObserver 报上来的
-   * 尺寸与 itemSizeCache 里该 id 的缓存完全相同，resizeItem 的 delta 为 0——既不写缓存也不
-   * 递增 itemSizeCacheVersion，measurements 永远等不到那次重算。用户看到的是「改名把标题撑成
-   * 多行（同时按 'latest' 排到列表最前）之后，这一行与下一行重叠」。
-   *
-   * 所以 key 提取函数必须是「顺序一变就换引用」的：用 getter 让 useWindowVirtualizer 的每次
-   * 展开（unref(options) 的 watch 里做 spread）都拿到一个新闭包，闭包读的是当时的
-   * props.resources，顺序变化必然带来新引用，measurements 随之从 itemSizeCache 重算，按 id
-   * 存的高度就落到新下标上。
-   *
-   * 这条成立的前提是调用方**替换** props.resources 的引用（stores/library 的 filterAndSort
-   * 每次都返回新数组）。原地改同一个数组——例如对 props 指向的数组直接 sort——不会让 options
-   * 对象重新展开，getItemKey 的引用不变，上面那份陈旧映射会原样复发。
-   *
-   * 仍未覆盖的是「顺序变了但没量过」的那些行：它们按估值计入总高，等滚进窗口、被 ResizeObserver
-   * 量过之后总高才收敛。表现为切排序时滚动条长度有一次跳变，不是错位。
-   */
-  get getItemKey() {
-    const resources = props.resources
-    return (index: number) => resources[index]?.id ?? index
-  },
-  estimateSize: () => ROW_ESTIMATE,
-  /*
-   * 行高不能「现在量到多少就信多少」——量到的可能是 0。
-   *
-   * 行挂在 web-ui-context-menu 的默认 slot 里，插槽内容先渲染进 DocumentFragment、再由
-   * 自定义元素分发进自己的 shadow root。Vue 的函数式 ref 在节点挂载时同步调用，那一刻
-   * 节点还没连上文档，offsetHeight 恒为 0。默认的 measureElement 会把这个 0 当成真实高度
-   * 写进 itemSizeCache，于是该行以及其后每一行的 start 都按 0 累计：行叠在一起、激活底色
-   * 盖到上一行的内容上，虚拟窗口整体跑向列表尾部（用户看到的就是列表错位与空屏）。
-   *
-   * 所以把这条 path 与 ResizeObserver 那条 path 分开：RO 回调（有 entry）说明节点已经渲染，
-   * 量出来的就是真实高度；函数式 ref 这条路（无 entry）只负责让节点被 observe 到——真正
-   * 的尺寸等节点连上文档后由 RO 补。此时返回「当前已知的尺寸」使 delta 为 0，缓存不被写坏。
-   */
-  measureElement: (node, entry, instance) => {
-    if (entry || node.isConnected) return coreMeasureElement(node, entry, instance)
-    const index = instance.indexFromElement(node)
-    return instance.itemSizeCache.get(instance.options.getItemKey(index)) ?? instance.options.estimateSize(index)
-  },
-  // 用 getter 而不是 computed：useVirtualizerBase 只 unref 顶层 options，传进去的 Ref 不会被
-  // 拆开，count 会变成 Ref 对象，getMeasurements 里的 new Array(count) 拿到 undefined 直接
-  // RangeError。getter 每次读取都拿到当时的 props，与库自己的 options 语义一致。
-  get count() {
-    return props.resources.length
-  },
-  overscan: 4
-})
-
-const virtualRows = computed(() => virtualizer.value.getVirtualItems())
+const virtualizerRef = ref<InstanceType<typeof WindowVirtualizer> | null>(null)
 
 /*
- * Chrome 把元素高度截在 33,554,428px（2^25），超出的部分静默丢失：CSS 声明值不变，
- * 但布局值已经是上限，documentElement.scrollHeight 跟着截断。virtualizer 不管这件事——
- * 它读到什么就算什么，于是 scrollToIndex(超大下标) 会被 getMaxScrollOffset 静默 clamp
- * 到浏览器能到的最大位置，跳到列表尾部会停在一个不是尾部的位置且不报错。
- *
- * 行高 64px 估值时这个上限约合 52 万条资源，远超 Interweave 的实际规模，所以这里只做
- * 夹取不做分段渲染：夹了至少不会错到不可恢复，命中上限时在控制台留一条可查的痕迹。
- *
- * 有意未覆盖单测：触发条件是 1000 行以上、总高超过 3355 万 px，在 jsdom 里造这个规模
- * 要么改 stub 的行高、要么让 count 变成 52 万条，都会把「虚拟窗口算得对不对」这条主线
- * 淹没。判据是常量本身与 clamp 的比较运算，夹取分支一旦被改坏（比如写成 <），
- * 现有的总高断言不会变红——这一条留给浏览器验证与 code review。
- */
-const MAX_RENDERED_HEIGHT = 33_554_400
-
-const totalSize = computed(() => {
-  const size = virtualizer.value.getTotalSize()
-  if (size <= MAX_RENDERED_HEIGHT) return size
-  if (import.meta.env.DEV) {
-    console.warn(
-      `[ResourceList] 列表总高 ${size}px 超过浏览器元素高度上限 ${MAX_RENDERED_HEIGHT}px，已夹取。` +
-        '滚动到底部的定位会不准确，需要分段渲染才能彻底解决。'
-    )
-  }
-  return MAX_RENDERED_HEIGHT
-})
-
-/*
- * 编辑中的行 pin 在虚拟窗口里（见下方 clampEditingRowIntoView）。
+ * 编辑中的行要被钉在视口里（见下方 clampEditingRowIntoView）。
  */
 const editingIndex = computed(() =>
   props.editingNameKey ? props.resources.findIndex(resource => resource.id === props.editingNameKey) : -1
 )
 
 /*
- * 虚拟窗口里的行与它对应的资源配成对再进模板：行数据只带下标，模板里 resources[i]!
- * 要重复六次，虚拟化下标与资源数组短暂不同步时还会各自读到不同的一份。在这一层配对，
- * 模板里就只有 row 与 resource 两个名字，越界的那一次非空断言也省掉了。
+ * 把一个下标滚动到视口里，只在越界时把边界收到刚好装得下这一行；已在视口内则一个字节都不动。
  *
- * 编辑中的行无条件并进来，即便它已经滚出窗口：它是唯一还在接收用户输入的行，卸载即
- * 丢草稿（clampEditingRowIntoView）。窗口不因此变高——它本来就在总高里，重复计入会让总高虚增。
+ * 这条替代了库的 scrollToIndex：
+ *   - 键盘导航原来用 TanStack 的 align:'auto'（滚到能看见为止）。virtua 的等价物是
+ *     align:'nearest'，但它的可见性判定拿「列表内偏移」去比「原始滚动偏移」，不含 baseOffset；
+ *     本列表上方有 sticky header（baseOffset > 0），那套判定会把「其实已经可见、只是靠近顶部」
+ *     的行误判成「在上方」，转成 align:'start' 把页面从当前位置拽到行首。所以自己算。
+ *   - 编辑行夹取原本就自己算（避免 scrollToIndex 把位置重置到行首），同一份逻辑两处共用。
+ *
+ * 坐标：virtua 的 getItemOffset(index) 是相对列表起点的偏移，加上 listOffset（列表起点在
+ * 文档里的位置）才是文档坐标；window.scrollY 与 window.innerHeight 同为文档/视口坐标，
+ * 可直接求交。可滚上限取文档高度减视口，与浏览器可达的最大滚动位置一致。
  */
-const renderedRows = computed(() => {
-  const rows = virtualRows.value.flatMap(row => {
-    const resource = props.resources[row.index]
-    return resource ? [{ row, resource }] : []
-  })
-  const index = editingIndex.value
-  if (index < 0 || rows.some(entry => entry.row.index === index)) return rows
-  const resource = props.resources[index]
-  if (!resource) return rows
-  // measurementsCache 是公开成员，但只有 getMeasurements() 跑过之后才填得满，而它是私有的。
-  // totalSize 会强制那一次计算，缓存没就绪时读到的下标拿不到行——那就不画编辑行，
-  // 交给 clampEditingRowIntoView 把它滚回窗口，而不是编一个 start 出来盖在别的行上。
-  void totalSize.value
-  const row = virtualizer.value.measurementsCache[index]
-  if (!row) return rows
-  return [...rows, { row, resource }].sort((a, b) => a.row.index - b.row.index)
-})
-
-/*
- * 把每个渲染窗口里的行交给 ResizeObserver 量真实高度。行高不固定（标题换行、标签换行、
- * 改名编辑态），只给 estimateSize 的话后续行会重叠或留缝。
- *
- * 传给模板的是 v-for 里的稳定函数，不是在 onMounted 里手动遍历：v-for 每次重渲染都会重新
- * 调一遍函数式 ref，虚拟窗口滑动时新挂载的行因此能自动接上测量。
- *
- * 类型收成 unknown 再收窄，是为了不把模板 ref 的入参类型写死在一个断言上。这里绑的是
- * 原生 div，Vue 的 setRef 对原生元素走 vnode.el 分支（runtime-core.cjs.js:1770），实际
- * 只会收到 HTMLElement；instanceof 那道检查是防御，不是这个绑定在防的场景。
- */
-function measureRow(node: unknown) {
-  if (node instanceof HTMLElement) virtualizer.value.measureElement(node)
+function scrollIndexIntoView(index: number) {
+  const virtualizer = virtualizerRef.value
+  if (!virtualizer || index < 0) return
+  const viewport = window.innerHeight
+  if (!viewport) return
+  const top = listOffset.value + virtualizer.getItemOffset(index)
+  const bottom = top + virtualizer.getItemSize(index)
+  const maxScrollY = Math.max(document.documentElement.scrollHeight - viewport, 0)
+  if (window.scrollY > top) {
+    window.scrollTo({ top: Math.min(top, maxScrollY) })
+  } else if (window.scrollY + viewport < bottom) {
+    window.scrollTo({ top: Math.min(bottom - viewport, maxScrollY) })
+  }
 }
 
 /*
@@ -560,7 +440,7 @@ function moveRowFocus(event: KeyboardEvent, row: HTMLElement) {
  *
  * 与旧 focusIndex 的区别：不直接写 activeIndex（现为派生值），改为 emit activate 让父级把
  * activeResourceId 置为目标资源 id。派生后的 activeIndex 会自动变为目标下标，roving tabindex
- * 与 data-active-index 随之更新。随后 scrollToIndex 滚动到位、focusRowWhenMounted 等行挂载后落焦。
+ * 与 data-active-index 随之更新。随后 scrollIndexIntoView 滚动到位、focusRowWhenMounted 等行挂载后落焦。
  *
  * 右键改名那条路上焦点在名字编辑器里，不走这里——父级已把 activeResourceId 置好，不再二次 emit。
  */
@@ -572,7 +452,7 @@ async function navigateToIndex(index: number) {
   if (!resource) return
   emit('activate', resource)
   await nextTick() // 等待 roving tabindex 更新（activeResourceId -> activeIndex -> 模板 tabindex）
-  virtualizer.value.scrollToIndex(index, { align: 'auto' })
+  scrollIndexIntoView(index)
   await focusRowWhenMounted(index)
 }
 
@@ -581,7 +461,7 @@ async function navigateToIndex(index: number) {
  * 此时 activeIndex 已由派生得到正确值，只需滚动并落焦。
  */
 async function focusIndex(index: number) {
-  virtualizer.value.scrollToIndex(index, { align: 'auto' })
+  scrollIndexIntoView(index)
   await focusRowWhenMounted(index)
 }
 
@@ -619,40 +499,17 @@ function rowElementAt(index: number) {
 /*
  * 让编辑中的行始终留在视口内。
  *
- * 虚拟化之前全部行常驻，改名编辑态不可能丢失；虚拟化之后行随窗口卸载，而 editable-text
- * 在 disconnectedCallback 里只释放按键与 autosize，不提交也不取消（index.ts:157-161）。
- * 提交只有 _onBlur 与 Enter/Escape 两条路，都要求焦点还在那个 textarea 上，DOM 被摘掉的
- * 时候两条都不走，于是用户输入的草稿无声消失，editingNameKey 还留在一个没有行的下标上，
- * 滚回来只会渲染出一个空编辑器。
+ * 草稿不丢这件事分两层：行被卸载时草稿由 ResourceRow 开启的 editable-text `commit-on-unmount`
+ * 兜底（卸载复用 _commitEditing，与 Enter／blur 同源，见 ResourceRow.vue）；但用户仍不该对着
+ * 一个看不见的编辑器继续打字。所以还要把视口夹回编辑行身上——这正是本条职责。
  *
- * 两道防线，缺一不可：
- *   1. renderedRows 无条件把编辑行并进渲染结果——它永远不被卸载，草稿永远不丢；
- *   2. 这里把视口夹回它身上——行不会被滚出视野，用户不会对着一个看不见的编辑器继续打字。
- * 只有第 1 条时行仍在 DOM 里但可能在屏幕外；只有第 2 条时滚动与夹取会互相拉扯。
- *
- * window 模式下的坐标：item.start 是文档坐标（含 scrollMargin），window.scrollY 与
- * window.innerHeight 同为文档/视口坐标，两者可直接求交——不需要像 element 模式那样再换算
- * 容器偏移。可滚上限取文档高度减视口，与库自己的 getMaxScrollOffset 一致。
- *
- * 夹取而不是 scrollToIndex：scrollToIndex 会把滚动位置重置到行首，把人从当前看的位置
- * 拽走。夹取只在越界时把边界收到刚好装得下这一行，视口内的滚动完全不受影响。
+ * virtua 的 WindowVirtualizer 没有 keepMounted / itemProps，无法强制挂载渲染窗外的下标，
+ * 于是「编辑行不被卸载」这条只能靠这里把视口夹回去：行只要在视口里就必然在渲染窗内（窗口带
+ * bufferSize 余量），也就不会被卸载。夹取用 scrollIndexIntoView（见上），只在越界时把边界
+ * 收到刚好装得下这一行，视口内的滚动一个字节都不动。
  */
 function clampEditingRowIntoView() {
-  const index = editingIndex.value
-  if (index < 0) return
-  // measurementsCache 是公开成员，但只有私有的 getMeasurements 跑过之后才填得满；
-  // totalSize 会强制那一次计算。缓存没就绪就等下一帧，夹取只在数据齐了之后才动手。
-  void totalSize.value
-  const row = virtualizer.value.measurementsCache[index]
-  if (!row) return
-  const viewport = window.innerHeight
-  if (!viewport) return
-  const maxScrollY = Math.max(document.documentElement.scrollHeight - viewport, 0)
-  if (window.scrollY > row.start) {
-    window.scrollTo({ top: row.start })
-  } else if (window.scrollY + viewport < row.end) {
-    window.scrollTo({ top: Math.min(row.end - viewport, maxScrollY) })
-  }
+  scrollIndexIntoView(editingIndex.value)
 }
 
 /*
@@ -661,9 +518,9 @@ function clampEditingRowIntoView() {
  *   - editingIndex 变化：进入/退出改名编辑态。immediate 覆盖「挂载时已在编辑态」——
  *     那种情况下 editingIndex 不会再变，没有 immediate 这次就一次都不会跑。
  *   - rowsRef 挂上：immediate 那一轮跑在 rowsRef 赋值之前，量不到视口与行位置。
- *   - window 的 scroll：编辑期间用户可能只是随手把页面滚走，不改编辑态。行虽然还在
- *     DOM 里（草稿没丢，第一道防线），但滚出视野之后用户就对着一个看不见的编辑器
- *     继续打字了。window 模式下滚动事件在 window 上，不在列表容器上。
+ *   - window 的 scroll：编辑期间用户可能只是随手把页面滚走，不改编辑态。行会被卷出渲染窗
+ *     而卸载（草稿由 commit-on-unmount 兜底提交，但用户仍会对着一个看不见的编辑器继续打字）。
+ *     两者都靠这一手夹回来。window 模式下滚动事件在 window 上，不在列表容器上。
  */
 watch(editingIndex, clampEditingRowIntoView, { immediate: true })
 watch(rowsRef, () => clampEditingRowIntoView(), { immediate: true })
@@ -1021,7 +878,7 @@ async function openContextMenu(resource: ResourceView, event: MouseEvent) {
   event.preventDefault()
   event.stopPropagation()
   // 右键呼出菜单本身也写当前行（决策 4 后半句）：emit activate 让父级把 activeResourceId
-  // 置为该行资源 id。不调用 focusIndex()——它会 scrollToIndex + row.focus()，会抢走焦点
+  // 置为该行资源 id。不调用 focusIndex()——它会 scrollIndexIntoView + row.focus()，会抢走焦点
   //（右键改名时焦点在名字编辑器里）。
   emit('activate', resource)
   const { clientX, clientY } = event
@@ -1110,11 +967,11 @@ function handleRenameChange(resource: ResourceView, event: WebUiEvent<WebUiEdita
     class="block w-full h-full min-h-0"
   >
     <!--
-      容器不参与 v-if，始终挂载，状态只在它内部切换。这是虚拟化的硬前提：TanStack 的
-      measureElement 靠 Vue 的函数式 ref 调用，若行挂在 v-if 分支里，重建出的新节点在
-      ref 收到它时尚未 attach，offsetHeight 读到 0 并被当成真实尺寸缓存。危害有限——
-      pendingMin 把重排限制在该行及其之后，实测总高短暂少一行、下一帧自愈——但固定挂载
-      容器就不必依赖这个自愈（TanStack/virtual#1292）。空态与载入态切到同一容器内即可绕开。
+      容器不参与 v-if，始终挂载，状态只在它内部切换。这是虚拟化的硬前提：载入态与空态若
+      各占一个 v-if 分支、与列表互斥，切换到列表时虚拟器组件是新建的，它要等挂载与首帧
+      布局之后才量得出视口与条目尺寸，那一帧会先渲染成空的（或按估值错位的）窗口再自愈。
+      固定在容器内切状态，虚拟器实例始终在场，尺寸表也就连续。空态与载入态切到同一容器内
+      即可绕开。
 
       这里**不再**是滚动容器：滚动元素是 window，整页滚动（用户裁决）。所以去掉
       overflow-y-auto / h-full / min-h-0 / overscroll-contain，保留 tabindex、role 与
@@ -1159,51 +1016,60 @@ function handleRenameChange(resource: ResourceView, event: WebUiEvent<WebUiEdita
         唯一可观测出口：目标行可能还在虚拟窗口之外、DOM 里根本没有元素，roving tabindex
         也就无从体现，只有这个属性能说清。
 
-        撑总高的内层 div 承载全部列表语义，不能标 aria-hidden：行就在它内部，遮住这层等于
-        把 role="listitem" 与 aria-setsize / aria-posinset 一起对读屏隐去，外层的 role="list"
-        会变成一个「0 项的列表」。它自己只是撑高度与定位的盒子，没有 role 也没有可读文本，
-        留在无障碍树里不会多念任何东西。
+        撑总高与条目定位都交给 virtua 的 WindowVirtualizer。它渲染两层：外层容器是列表的
+        语义与高度载体（height = 总高、position: relative），每个条目是它自建的绝对定位
+        包裹（width: 100%、top = 条目偏移、contain: layout style）。本组件只负责往默认插槽
+        里吐 ResourceRow，不再自己算总高、也不再自己写 translateY。
 
-        被量的元素是这一层定位包裹，不是 ResourceRow 的根元素：TanStack 的 measureElement
-        靠 indexAttribute（默认 data-index）从元素上反查下标，data-resource-index 是本组件
-        自己的命名，库读不到。包裹层与行根元素盒高一致，量哪一个都一样。
+        这一层不能标 aria-hidden：行就在它内部，遮住这层等于把 role="listitem" 与
+        aria-setsize / aria-posinset 一起对读屏隐去，外层的 role="list" 会变成一个「0 项的
+        列表」。它自己只是撑高度与定位的盒子，没有 role 也没有可读文本，留在无障碍树里
+        不会多念任何东西。
 
-        撑高的是这一层：window 模式下它不被任何 overflow 容器裁剪，自由长高，整页随之
-        滚动。高度直接用 getTotalSize()，它已经减掉 scrollMargin，不要再减一次。
+        插槽根元素必须带稳定的 :key（资源 id）：virtua 用插槽根 vnode 的 key 做行身份，
+        重排（改名把行顶到最前）时据此复用同一个 DOM 节点而不是重建——节点被复用，挂在它
+        上面的 ResizeObserver 就是同一个观察对象，尺寸写入才落得准。key 缺失会退回
+        `_<index>`，重排时节点整个换掉，测量随之中断。
 
-        行的落点是 row.start - scrollMargin：row.start 是文档坐标（virtual-core 的
-        runningStart = paddingStart + scrollMargin），而这层包裹层自身在文档里有 top 偏移，
-        两者减掉才落在正确位置。少了这个减法，键盘导航会把行滚到视口外。
+        包裹层额外挂 pointer-events-auto：virtua 在滚动进行中把外层容器设成
+        pointer-events: none（避免滚动时误触行内控件）。本列表的扫选手势要在拖动中用
+        elementFromPoint 现查划过哪一行，命中一旦被容器吃掉，自动滚到视口边缘时扫选就断。
+        后代显式声明 auto 能覆盖继承来的 none，所以在这一层开回来。
+
+        listSizerRef 挂在虚拟器外面这一层，只为量「列表起点在文档里的位置」（listOffset），
+        供键盘导航与编辑行夹取换算文档坐标；它自己不带高度，高度由 virtua 的容器撑。
       -->
-      <div ref="listSizerRef" v-else class="relative w-full" :style="{ height: `${totalSize}px` }">
-        <div
-          v-for="{ row, resource } in renderedRows"
-          :key="String(row.key)"
-          :ref="measureRow"
-          class="absolute top-0 left-0 w-full"
-          :data-index="row.index"
-          :style="{ transform: `translateY(${row.start - listOffset}px)` }"
+      <div ref="listSizerRef" v-else class="w-full">
+        <WindowVirtualizer
+          ref="virtualizerRef"
+          :data="resources"
+          :item-size="ROW_ESTIMATE"
+          :buffer-size="VIRTUAL_BUFFER"
         >
-          <ResourceRow
-            :resource="resource"
-            :media-url="resource.preferred ? mediaUrlFor(resource.preferred.id) : null"
-            :index="row.index"
-            :total="resources.length"
-            :active="!selectionMode && activeResourceId === resource.id"
-            :checked="checkedIds.includes(resource.id)"
-            :checked-above="checkedAbove(row.index)"
-            :checked-below="checkedBelow(row.index)"
-            :selection-mode="selectionMode"
-            :editing-name-key="editingNameKey"
-            :editor-ref="editorRefFor(resource.id)"
-            :tabbable="row.index === activeIndex"
-            @select="onRowSelect"
-            @contextmenu="openContextMenu"
-            @toggle="emit('toggle', $event)"
-            @rename-change="handleRenameChange"
-            @cancel-rename="emit('cancelRename')"
-          />
-        </div>
+          <template #default="{ item: resource, index }">
+            <div :key="resource.id" class="pointer-events-auto">
+              <ResourceRow
+                :resource="resource"
+                :media-url="resource.preferred ? mediaUrlFor(resource.preferred.id) : null"
+                :index="index"
+                :total="resources.length"
+                :active="!selectionMode && activeResourceId === resource.id"
+                :checked="checkedIds.includes(resource.id)"
+                :checked-above="checkedAbove(index)"
+                :checked-below="checkedBelow(index)"
+                :selection-mode="selectionMode"
+                :editing-name-key="editingNameKey"
+                :editor-ref="editorRefFor(resource.id)"
+                :tabbable="index === activeIndex"
+                @select="onRowSelect"
+                @contextmenu="openContextMenu"
+                @toggle="emit('toggle', $event)"
+                @rename-change="handleRenameChange"
+                @cancel-rename="emit('cancelRename')"
+              />
+            </div>
+          </template>
+        </WindowVirtualizer>
       </div>
     </div>
 

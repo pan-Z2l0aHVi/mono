@@ -9,8 +9,8 @@ import { useSettingsStore } from '@/stores/settings'
 const settings = useSettingsStore()
 
 // 整页滚动条接管的是 document 的滚动元素，不是某个 DOM 容器，所以没有可渲染的宿主元素，
-// 只能直接初始化 body。资源库列表的 useWindowVirtualizer 读的 window.scrollY 不受影响：
-// 这个模式下 html 仍是 documentElement，窗口滚动 API 保持原生语义。
+// 只能直接初始化 body。资源库列表的 virtua WindowVirtualizer 读的是 document.scrollingElement
+// 的滚动位置，这个模式下它仍是 html（documentElement），窗口滚动语义保持原生，不受影响。
 const [initPageScrollbars] = useOverlayScrollbars({ options: webUiScrollbarsOptions })
 
 onMounted(() => {

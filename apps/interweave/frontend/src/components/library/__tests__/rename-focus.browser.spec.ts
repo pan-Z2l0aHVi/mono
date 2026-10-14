@@ -1,9 +1,13 @@
+// 列表根是 web-ui-context-menu（:host 默认 display: inline-block），靠页面的 `block w-full`
+// 才拿到确定宽度。virtua 的容器带 contain: size，内禀宽度归零——不引入全局样式，整条链会缩成
+// 0 宽，Playwright 认为行不可见、点击超时。全局样式也是「真实输入」这条前提的一部分。
+import '@/assets/global.css'
 import '@greypan/web-ui'
 
-import type { WebUiEditableText } from '@greypan/web-ui'
+import type { WebUiEditableText, WebUiEvent } from '@greypan/web-ui'
 import { afterEach, describe, expect, it } from 'vite-plus/test'
 import { userEvent } from 'vite-plus/test/browser'
-import { createApp, h, nextTick, ref } from 'vue'
+import { createApp, h, nextTick, ref, type Ref } from 'vue'
 
 import type { ResourceView } from '@/stores/library'
 
@@ -106,9 +110,10 @@ describe('ResourceList 右键重命名的焦点落点（真实输入）', () => 
     app.mount(host)
     await nextTick()
 
-    const row = host.querySelector<HTMLElement>('[data-resource-row]')
-    expect(row, '列表渲染出了一行').not.toBeNull()
-    row!.focus()
+    // virtua 的窗口尺寸由 ResizeObserver 首帧交付后才算得出来，单次 nextTick 时行还没渲染。
+    await waitFor(() => host.querySelector('[data-resource-row]') !== null, '列表渲染出一行')
+    const row = host.querySelector<HTMLElement>('[data-resource-row]')!
+    row.focus()
     expect(document.activeElement, '右键前焦点在行上').toBe(row)
 
     await userEvent.click(row!, { button: 'right' })
@@ -141,5 +146,92 @@ describe('ResourceList 右键重命名的焦点落点（真实输入）', () => 
     // 全选是「可直接输入覆盖」的那一半：只落焦点不选中，用户仍得自己全选。
     expect(textarea.selectionStart, '全选起点').toBe(0)
     expect(textarea.selectionEnd, '全选末端').toBe('一条资源'.length)
+  })
+})
+
+/** 与 pages/library 同构的可变宿主：resources 与 editingNameKey 都是 ref，改名按 id 收口。 */
+function mountRenameList(
+  resources: Ref<ResourceView[]>,
+  editingNameKey: Ref<string | null>,
+  onRenameChange: (resource: ResourceView, event: WebUiEvent<WebUiEditableText, 'change'>) => void
+) {
+  const host = document.createElement('div')
+  host.style.cssText = 'width:900px'
+  document.body.append(host)
+  hosts.push(host)
+
+  const editors = new Map<string, WebUiEditableText | null>()
+  /** 与 pages/library/index.vue 的 setNameEditorRef 同构：回调按 id 记下编辑器实例。 */
+  const editorRef =
+    (id: string): NameEditorRef =>
+    element => {
+      editors.set(id, element instanceof Element ? (element as WebUiEditableText) : null)
+    }
+
+  const app = createApp({
+    render: () =>
+      h(ResourceList, {
+        resources: resources.value,
+        activeResourceId: null,
+        checkedIds: [],
+        selectionMode: false,
+        editingNameKey: editingNameKey.value,
+        editorRef,
+        loading: false,
+        runtimeAvailable: true,
+        emptyDescription: '',
+        mediaUrlFor: () => null,
+        onRenameChange
+      })
+  })
+  apps.push(app)
+  app.mount(host)
+  return host
+}
+
+describe('ResourceList 改名草稿在编辑行被回收时不丢（真实输入）', () => {
+  /*
+   * 虚拟列表的行会被回收：编辑中的行一旦离开渲染窗口就整行卸载，行内的 editable-text 走
+   * disconnectedCallback。默认提交只有 Enter 与 blur 两条——Chromium 移除会补派 blur、
+   * change 照常派发；WebKit（Safari / iOS）移除**不派发 blur**，默认路径什么都不提交。
+   *
+   * 旧实现靠 keepMounted 把编辑行「并入」渲染窗口回避这件事；virtua 的窗口模式没有
+   * keepMounted，兜底改落在 ResourceRow 显式开启的 commit-on-unmount 上。
+   *
+   * 只能在真实浏览器跑：jsdom 的 web-ui-editable-text 没有升级成真正的自定义元素，
+   * disconnectedCallback 根本不执行。
+   *
+   * 浏览器 project 只跑 Chromium，而 Chromium 自带 blur 兜底——所以这条用例证明的是
+   * 「整条提交链在行被回收时仍然通」，分不出属性是否在起作用；属性由 ResourceList.spec.ts
+   * 断言，属性语义由 web-ui 的 commit-on-unmount 浏览器用例覆盖。
+   */
+  it('编辑中的行被回收（从列表里筛掉）时，草稿被提交而不是静默丢失', async () => {
+    const base = Array.from({ length: 3 }, (_, index) => resource({ id: `r${index}`, title: `资源 ${index}` }))
+    const resources = ref(base)
+    const editingNameKey = ref<string | null>('r1')
+    const commits: { id: string; title: string }[] = []
+    const host = mountRenameList(resources, editingNameKey, (target, event) => {
+      commits.push({ id: target.id, title: event.currentTarget.value.trim() })
+    })
+
+    await waitFor(
+      () => host.querySelector<WebUiEditableText>('[data-resource-id="r1"] web-ui-editable-text') !== null,
+      'r1 那一行换成了名称编辑器'
+    )
+    const editor = host.querySelector<WebUiEditableText>('[data-resource-id="r1"] web-ui-editable-text')!
+    expect(editor.hasAttribute('commit-on-unmount'), 'ResourceRow 已开启卸载提交').toBe(true)
+
+    // 进入编辑态（select 全选），打出草稿：ASCII 输入避开 IME，改的只是值本身。
+    editor.select()
+    await userEvent.keyboard('renamed')
+    await waitFor(() => editor.value === 'renamed', '草稿已写进编辑器')
+
+    // 视口正常时夹取总会把编辑行拉回窗口，页面隐藏那一种在真实浏览器里改不动 innerHeight，
+    // 所以用「从列表里筛掉」复现同一件事：编辑中的节点被 virtua 回收。
+    resources.value = base.filter(item => item.id !== 'r1')
+    await waitFor(() => commits.length > 0, '卸载时草稿被提交')
+
+    expect(commits, '卸载提交恰好一次').toHaveLength(1)
+    expect(commits[0]).toEqual({ id: 'r1', title: 'renamed' })
   })
 })
