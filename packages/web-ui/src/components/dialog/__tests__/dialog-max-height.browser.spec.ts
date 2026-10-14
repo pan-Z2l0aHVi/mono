@@ -2,6 +2,7 @@ import '..'
 
 import { afterEach, describe, expect, it } from 'vite-plus/test'
 
+import { pollUntil } from '@/shared/test-utils'
 import { scrollElementToEnd } from '@/shared/test-utils/viewport'
 
 import type { WebUiDialog } from '..'
@@ -25,8 +26,14 @@ function createTallDialog(): WebUiDialog {
 async function openDialog(component: WebUiDialog): Promise<HTMLDialogElement> {
   component.open = true
   await component.updateComplete
-  await new Promise(resolve => requestAnimationFrame(resolve))
-  return component.shadowRoot?.querySelector('dialog') as HTMLDialogElement
+  const dialog = component.shadowRoot?.querySelector('dialog') as HTMLDialogElement
+  // 进场带 scale(1.1)：transform 未落定前 getBoundingClientRect() 的读数虚高约 10%，
+  // 「宽内容不产生横向滚动条」那条量的就是它。与 dialog-content-height 的 openAndSettle 同口径。
+  await pollUntil(() => {
+    const transform = getComputedStyle(dialog).transform
+    return transform === 'none' || transform === 'matrix(1, 0, 0, 1, 0, 0)'
+  }, 'enter transform not settled')
+  return dialog
 }
 
 function query<T extends HTMLElement>(component: WebUiDialog, selector: string): T {
