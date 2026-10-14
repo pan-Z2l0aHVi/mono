@@ -274,6 +274,13 @@ describe('ResourceList：行高测量（真实浏览器）', () => {
     const base = Array.from({ length: 40 }, (_, index) =>
       resource({ id: `r${index}`, title: `资源 ${index}`, updatedAt: 1_700_000_000_000 - index })
     )
+    // 让 r1 带上会被 line-clamp-2 撑成两行的长标题。宿主重建的是 [r2, ...其余]，所以重排时
+    // 只有 r0（0→1）与 r1（1→2）真的移位——后移行的高度必须跟着身份一起挪。若库按旧下标摆放
+    // 尺寸（身份映射串号），下标 0 会拿到 r0 的旧单行高度、而该处的元素 r2 实为两行，接缝立刻
+    // 量到重叠；若后移的这几行等高，这个差值在数值上不存在，接缝判据会白白放过。
+    // 只让 r1 变高而不是 r0、r1 都变高：两行都高时新旧尺寸表在下标 0/1 上恰好同为两行高度，
+    // 串号在数值上重合，又会退化成测不出来。
+    base[1] = resource({ id: 'r1', title: LONG_TITLE, updatedAt: 1_700_000_000_000 - 1 })
     const resources = ref(base)
     const editingNameKey = ref<string | null>(null)
     // 与 pages/library 的 handleResourceNameChange 同序：先同步退出编辑态（stopResourceRename），
@@ -332,5 +339,11 @@ describe('ResourceList：行高测量（真实浏览器）', () => {
         `第 ${previous.index} 与 ${current.index} 行之间的接缝`
       ).toBeLessThan(1)
     }
+
+    // r1（后移的两行行）必须与它前后的单行行同时出现在窗口里，上面那条接缝判据才有分辨力：
+    // 尺寸若按旧下标摆放，两行行会拿到单行高度、单行行拿到两行高度，接缝立刻量到重叠或留缝。
+    // 全等高的话这个差值在数值上不存在，用例会退化成「换个写法也照样通过」。
+    const wrappedCount = rows.filter(row => row.height > neighbor!.height + 8).length
+    expect(wrappedCount, '重排后窗口里仍有被撑成两行的行').toBeGreaterThanOrEqual(2)
   })
 })
