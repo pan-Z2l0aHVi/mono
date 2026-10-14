@@ -1,5 +1,54 @@
 # @greypan/web-ui
 
+## 10.1.2
+
+### Patch Changes
+
+- 450e918: fix(context-menu): 「菜单项激活」的作用域改用事件自身的 `eventPhase` 判定，让菜单项回调里的 `close()` 稳定提前出顶层
+  
+  `close()` 要提前把 scrim 撤出 top layer 的条件有两个：`_closeSource === 'menu-item'`（组件自己在冒泡阶段关），
+  以及「消费方在自己的菜单项回调里同步调了 `close()`」——后者 `_closeSource` 还是 `'default'`。后者原先用一个
+  布尔标志在面板的**捕获阶段**置位，再用**微任务**复位，理由是「捕获与冒泡在同一个任务里跑完，微任务检查点在它们之后」。
+  
+  这个前提在真实输入下不成立：可信事件由浏览器任务派发，**每个监听器返回后**都做一次微任务检查点，
+  于是捕获阶段排的微任务在条目自己的监听器（消费方调 `close()` 的地方）**之前**就跑掉了。标志到 `close()` 时
+  已是 false，scrim 留在 top layer 里不退，模态期间整份文档是 inert 的，消费方紧接着送进编辑器的焦点被浏览器
+  静默丢弃。合成 `element.click()` 的派发发生在脚本调用栈里、检查点被推迟，所以旧用例用合成点击拿不到这条缺陷。
+  
+  改法是不再近似「派发什么时候结束」：捕获阶段记下**那次事件对象**，`close()` 判 `eventPhase !== 0`
+  （DOM 规范：派发结束后由 terminating 步骤置回 NONE）。作用域精确等于那一次派发，既不需要定时器，
+  也不依赖微任务检查点的位置。副作用面不变：勾选型条目 `stopPropagation()` 之后菜单留着，
+  随后的 Escape / 点外面 / 程序式 `close()` 仍判定为「非菜单项激活」，保留 dialog 默认的焦点归还。
+- 9ea3c49: chore: add Go cache probe to share persistent cache across contexts
+  
+  - .mise.toml: GOCACHE now probes default cache directories (macOS ~/Library/Caches/go-build, Linux ~/.cache/go-build) at runtime; falls back to $TMPDIR/greypan/go-build only when write fails
+  - herdr pane, claude/opencode threads, and manual shell now share the same persistent Go build cache (~800 MB)
+  - codex threads hit fallback as designed (sandbox only allows worktree + /tmp writes), no regression
+  - CI unaffected: no HERDR_ENV means template renders empty, Go uses platform default
+- 1e2a277: fix(web-ui): 长按补发事件窗口改以手势结束为起点，并让 hit-test 类 spec 等布局定版
+  
+  两件事都只影响「负载下量到的几何不是终态」这一类 flaky：
+  
+  1. `context-menu` 长按开菜单后吸收引擎补发 `contextmenu` / `click` 的窗口，起点从
+     **菜单打开时刻**改到**手势结束（pointerup）时刻**。补发事件由引擎在 touchend 处理时
+     生成，与那次 pointerup 同属一个输入批处理（实测 click 的 `timeStamp` 与 pointerup 的
+     处理时刻相差 ≤3ms）；而主线程被长任务占住时，touchend 的处理能比菜单打开晚 1s 以上
+     （实测 1325ms）。以打开时刻为起点，1000ms 的兜底上限会被那段延迟挤爆——补发 click
+     落到窗口外，被当成用户真实点击把**同一次长按刚打开**的菜单关掉。窗口的两条硬边界
+     （下一次 `pointerdown`、菜单关闭）不变，只把起点换成与补发事件同源的那个时刻。
+  
+  2. 指向 shadow DOM 的命中测试 spec 原先只等比 dialog 矩形两次相等，两个方向都不够：
+     进场过渡的进度只在渲染步进里推进，`getBoundingClientRect()` 的强制重算不推它，于是
+     「相等」也可以意味着过渡还没起跑（量到的是闭合位矩形，胶囊整个在视口外，
+     `elementFromPoint` 返回 null）；而 header / footer 的让位量由 `ResizeObserver` 写回
+     宿主样式，移动的是热区 / 热边而不是 dialog 矩形。`drag-bar-edge-inset`、
+     `header-drag-surface` 与 `long-press` 三个 spec 改用共享的
+     `waitForSettledLayout()`：等过渡跑完 → 抽干一次 ResizeObserver 批次 → 再等一帧让
+     写回的样式进入布局 → 连续若干帧矩形真的不再变化。断言一字未改，改的只是取样前的等待。
+  
+  负载下的复现率（两个 web-ui browser suite 并发 + CPU 满载）：修前 12 次聚焦运行里
+  6 条失败（涉及 4 个用例），修后 24 次聚焦运行与 16 次全量 suite 运行 0 失败。
+
 ## 10.1.1
 
 ### Patch Changes
