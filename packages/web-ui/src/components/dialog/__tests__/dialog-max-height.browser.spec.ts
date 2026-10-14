@@ -2,6 +2,9 @@ import '..'
 
 import { afterEach, describe, expect, it } from 'vite-plus/test'
 
+import { pollUntil } from '@/shared/test-utils'
+import { scrollElementToEnd } from '@/shared/test-utils/viewport'
+
 import type { WebUiDialog } from '..'
 
 const CONTENT_HEIGHT = 2000
@@ -23,8 +26,14 @@ function createTallDialog(): WebUiDialog {
 async function openDialog(component: WebUiDialog): Promise<HTMLDialogElement> {
   component.open = true
   await component.updateComplete
-  await new Promise(resolve => requestAnimationFrame(resolve))
-  return component.shadowRoot?.querySelector('dialog') as HTMLDialogElement
+  const dialog = component.shadowRoot?.querySelector('dialog') as HTMLDialogElement
+  // 进场带 scale(1.1)：transform 未落定前 getBoundingClientRect() 的读数虚高约 10%，
+  // 「宽内容不产生横向滚动条」那条量的就是它。与 dialog-content-height 的 openAndSettle 同口径。
+  await pollUntil(() => {
+    const transform = getComputedStyle(dialog).transform
+    return transform === 'none' || transform === 'matrix(1, 0, 0, 1, 0, 0)'
+  }, 'enter transform not settled')
+  return dialog
 }
 
 function query<T extends HTMLElement>(component: WebUiDialog, selector: string): T {
@@ -89,8 +98,7 @@ describe('--wui-dialog-max-height', () => {
     expect(desc.scrollHeight).toBeGreaterThan(desc.clientHeight)
     // auto 与 hidden 都让下述两条成立：内容同样溢出，scrollTop 也同样能被程序化写动，
     // 所以这两条区分不出 hidden（见下方：Chromium 会把 clip 与 auto 降级成 hidden）。
-    desc.scrollTop = 9999
-    await new Promise(resolve => requestAnimationFrame(resolve))
+    await scrollElementToEnd(desc)
     expect(desc.scrollTop).toBeGreaterThan(0)
 
     const card = query<HTMLElement>(component, '.wui-dialog-body')

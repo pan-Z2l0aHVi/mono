@@ -2,9 +2,10 @@ import '..'
 import '../../theme'
 
 import { afterEach, describe, expect, it } from 'vite-plus/test'
-import { page, userEvent } from 'vite-plus/test/browser'
+import { userEvent } from 'vite-plus/test/browser'
 
 import { pollUntil, queryA11y, waitForFrame } from '@/shared/test-utils'
+import { scrollWindowTo, setViewport } from '@/shared/test-utils/viewport'
 
 import type { WebUiLayout } from '..'
 
@@ -39,15 +40,15 @@ const byLabel = (layout: WebUiLayout, label: string): HTMLElement => {
 }
 
 afterEach(async () => {
-  window.scrollTo(0, 0)
+  await scrollWindowTo(0)
   document.body.replaceChildren()
-  await page.viewport(DESKTOP_VIEWPORT.width, DESKTOP_VIEWPORT.height)
+  await setViewport(DESKTOP_VIEWPORT.width, DESKTOP_VIEWPORT.height)
 })
 
 describe('WebUiLayout 组件（浏览器）', () => {
   describe('桌面端 sidebar 折叠', () => {
     it('Toggle 请求受控折叠，回写后 aria-label 反映新状态', async () => {
-      await page.viewport(DESKTOP_VIEWPORT.width, DESKTOP_VIEWPORT.height)
+      await setViewport(DESKTOP_VIEWPORT.width, DESKTOP_VIEWPORT.height)
       const layout = createLayout()
       await layout.updateComplete
 
@@ -69,7 +70,7 @@ describe('WebUiLayout 组件（浏览器）', () => {
 
     // 受控语义：属性面变更不是用户请求，不该回派事件，否则消费者的回写会形成回环。
     it('外部受控属性更新会渲染，但不派发请求事件', async () => {
-      await page.viewport(DESKTOP_VIEWPORT.width, DESKTOP_VIEWPORT.height)
+      await setViewport(DESKTOP_VIEWPORT.width, DESKTOP_VIEWPORT.height)
       const layout = createLayout()
       await layout.updateComplete
 
@@ -86,7 +87,7 @@ describe('WebUiLayout 组件（浏览器）', () => {
     // Vue 的 `:sidebar-collapsed="false"` 会写入字符串 attribute "false"。Lit 布尔属性按
     // 存在语义解析，因此 kebab-case 绑定表达不了 false，只能走 camelCase property 绑定。
     it('kebab-case attribute 遵循存在语义，camelCase property 绑定才能表达 false', async () => {
-      await page.viewport(DESKTOP_VIEWPORT.width, DESKTOP_VIEWPORT.height)
+      await setViewport(DESKTOP_VIEWPORT.width, DESKTOP_VIEWPORT.height)
       const layout = createLayout()
       await layout.updateComplete
 
@@ -104,7 +105,7 @@ describe('WebUiLayout 组件（浏览器）', () => {
   describe('移动端 drawer', () => {
     // 640px 两侧切换两套 DOM：桌面渲染 aside + 常驻侧栏，移动端渲染受控 drawer。
     it('移动端改用受控 drawer，不再渲染桌面 aside', async () => {
-      await page.viewport(MOBILE_VIEWPORT.width, MOBILE_VIEWPORT.height)
+      await setViewport(MOBILE_VIEWPORT.width, MOBILE_VIEWPORT.height)
       const layout = createLayout()
       await layout.updateComplete
 
@@ -116,7 +117,7 @@ describe('WebUiLayout 组件（浏览器）', () => {
     })
 
     it('Toggle 请求打开 drawer，回写后与 sidebarOpen 一致', async () => {
-      await page.viewport(MOBILE_VIEWPORT.width, MOBILE_VIEWPORT.height)
+      await setViewport(MOBILE_VIEWPORT.width, MOBILE_VIEWPORT.height)
       const layout = createLayout()
       syncControlledSidebarState(layout)
       await layout.updateComplete
@@ -137,7 +138,7 @@ describe('WebUiLayout 组件（浏览器）', () => {
     })
 
     it('drawer 的关闭请求冒泡为 sidebar-open-change，组件自身不吞', async () => {
-      await page.viewport(MOBILE_VIEWPORT.width, MOBILE_VIEWPORT.height)
+      await setViewport(MOBILE_VIEWPORT.width, MOBILE_VIEWPORT.height)
       const layout = createLayout()
       syncControlledSidebarState(layout)
       await layout.updateComplete
@@ -164,7 +165,7 @@ describe('WebUiLayout 组件（浏览器）', () => {
 
   describe('桌面端 sidebar 拖拽与键盘调宽', () => {
     async function resizableLayout(): Promise<WebUiLayout> {
-      await page.viewport(DESKTOP_VIEWPORT.width, DESKTOP_VIEWPORT.height)
+      await setViewport(DESKTOP_VIEWPORT.width, DESKTOP_VIEWPORT.height)
       const layout = createLayout()
       layout.setAttribute('sidebar-resizable', '')
       await layout.updateComplete
@@ -182,7 +183,7 @@ describe('WebUiLayout 组件（浏览器）', () => {
       new PointerEvent(type, { bubbles: true, pointerId: 1, isPrimary: true, ...init })
 
     it('未启用 sidebar-resizable 时不渲染 handle', async () => {
-      await page.viewport(DESKTOP_VIEWPORT.width, DESKTOP_VIEWPORT.height)
+      await setViewport(DESKTOP_VIEWPORT.width, DESKTOP_VIEWPORT.height)
       const layout = createLayout()
       await layout.updateComplete
 
@@ -247,7 +248,7 @@ describe('WebUiLayout 组件（浏览器）', () => {
      * 把钳制整段删掉改成原样透传也能过。
      */
     it('拖拽越界时请求值被钳制到 min / max，而不是越界目标值', async () => {
-      await page.viewport(DESKTOP_VIEWPORT.width, DESKTOP_VIEWPORT.height)
+      await setViewport(DESKTOP_VIEWPORT.width, DESKTOP_VIEWPORT.height)
       const layout = createLayout()
       layout.setAttribute('sidebar-resizable', '')
       layout.setAttribute('sidebar-min-width', '200px')
@@ -294,7 +295,7 @@ describe('WebUiLayout 组件（浏览器）', () => {
      * 不钉具体数值：collapsedWidth 是公开属性，测试自己从它取值。
      */
     it('未设 min-width 时下限回退为 collapsed-width', async () => {
-      await page.viewport(DESKTOP_VIEWPORT.width, DESKTOP_VIEWPORT.height)
+      await setViewport(DESKTOP_VIEWPORT.width, DESKTOP_VIEWPORT.height)
       const layout = createLayout()
       layout.setAttribute('sidebar-resizable', '')
       layout.collapsedWidth = '90px'
@@ -323,7 +324,7 @@ describe('WebUiLayout 组件（浏览器）', () => {
      * 配一个远超半屏的值，判别力来自「不等于配置值」——去掉硬上限就转红。
      */
     it('max-width 超过半屏时被内置上限接管', async () => {
-      await page.viewport(DESKTOP_VIEWPORT.width, DESKTOP_VIEWPORT.height)
+      await setViewport(DESKTOP_VIEWPORT.width, DESKTOP_VIEWPORT.height)
       const layout = createLayout()
       layout.setAttribute('sidebar-resizable', '')
       layout.setAttribute('sidebar-max-width', '5000px')
@@ -518,7 +519,7 @@ describe('WebUiLayout 组件（浏览器）', () => {
      * 不钉具体像素——resolver 改掉即红，整段钳制删掉也红（未钳制值与边界差几百像素）。
      */
     it('键盘 Home/End 提交到 min / max 边界，而不是越界目标值', async () => {
-      await page.viewport(DESKTOP_VIEWPORT.width, DESKTOP_VIEWPORT.height)
+      await setViewport(DESKTOP_VIEWPORT.width, DESKTOP_VIEWPORT.height)
       const layout = createLayout()
       layout.setAttribute('sidebar-resizable', '')
       layout.setAttribute('sidebar-min-width', '200px')
@@ -554,7 +555,7 @@ describe('WebUiLayout 组件（浏览器）', () => {
     })
 
     it('键盘方向键步进被 min / max 钳住，不越过边界', async () => {
-      await page.viewport(DESKTOP_VIEWPORT.width, DESKTOP_VIEWPORT.height)
+      await setViewport(DESKTOP_VIEWPORT.width, DESKTOP_VIEWPORT.height)
       const layout = createLayout()
       layout.setAttribute('sidebar-resizable', '')
       layout.setAttribute('sidebar-min-width', '200px')
@@ -600,7 +601,7 @@ describe('WebUiLayout 组件（浏览器）', () => {
      * `collapsed-width` 而不是别处。判别力与拖拽那条一致——resolver 改掉即红。
      */
     it('键盘 Home 在未设 min-width 时回退到 collapsed-width', async () => {
-      await page.viewport(DESKTOP_VIEWPORT.width, DESKTOP_VIEWPORT.height)
+      await setViewport(DESKTOP_VIEWPORT.width, DESKTOP_VIEWPORT.height)
       const layout = createLayout()
       layout.setAttribute('sidebar-resizable', '')
       layout.collapsedWidth = '90px'
@@ -626,7 +627,7 @@ describe('WebUiLayout 组件（浏览器）', () => {
 
     // 键盘入口同样受内置半屏硬上限约束，绕过它键盘用户能把侧栏撑满整个视口。
     it('键盘 End 在 max-width 超过半屏时被内置上限接管', async () => {
-      await page.viewport(DESKTOP_VIEWPORT.width, DESKTOP_VIEWPORT.height)
+      await setViewport(DESKTOP_VIEWPORT.width, DESKTOP_VIEWPORT.height)
       const layout = createLayout()
       layout.setAttribute('sidebar-resizable', '')
       layout.setAttribute('sidebar-max-width', '5000px')
@@ -693,10 +694,10 @@ describe('WebUiLayout 组件（浏览器）', () => {
       handleOf(layout).dispatchEvent(pointer('pointerdown', { clientX: 0 }))
       await layout.updateComplete
 
-      await page.viewport(MOBILE_VIEWPORT.width, MOBILE_VIEWPORT.height)
+      await setViewport(MOBILE_VIEWPORT.width, MOBILE_VIEWPORT.height)
       await pollUntil(() => !queryA11y(layout, '[role="separator"]'), 'Expected handle to unmount on mobile')
 
-      await page.viewport(DESKTOP_VIEWPORT.width, DESKTOP_VIEWPORT.height)
+      await setViewport(DESKTOP_VIEWPORT.width, DESKTOP_VIEWPORT.height)
       await pollUntil(() => Boolean(queryA11y(layout, '[role="separator"]')), 'Expected handle to remount on desktop')
       expect(widthRequests).toHaveLength(0)
 
@@ -718,7 +719,7 @@ describe('WebUiLayout 组件（浏览器）', () => {
     // property、反射 attribute、派发的事件与渲染的树是同一个判定：任何一处落后半拍，
     // 消费者（三处 app 外壳）就会与组件错开，而 #195 那类问题正是这么来的。
     it('跨断点时 mobile、反射 attribute 与渲染的树一起翻转', async () => {
-      await page.viewport(DESKTOP_VIEWPORT.width, DESKTOP_VIEWPORT.height)
+      await setViewport(DESKTOP_VIEWPORT.width, DESKTOP_VIEWPORT.height)
       const layout = createLayout()
       await layout.updateComplete
 
@@ -730,7 +731,7 @@ describe('WebUiLayout 组件（浏览器）', () => {
         changes.push((event as CustomEvent<{ mobile: boolean }>).detail.mobile)
       })
 
-      await page.viewport(MOBILE_VIEWPORT.width, MOBILE_VIEWPORT.height)
+      await setViewport(MOBILE_VIEWPORT.width, MOBILE_VIEWPORT.height)
       await pollUntil(() => layout.mobile, 'Expected mobile to flip on the narrow viewport')
 
       expect(layout.hasAttribute('mobile')).toBe(true)
@@ -738,7 +739,7 @@ describe('WebUiLayout 组件（浏览器）', () => {
       expect(queryA11y(layout, 'web-ui-drawer')).toBeTruthy()
       expect(queryA11y(layout, 'aside')).toBeFalsy()
 
-      await page.viewport(DESKTOP_VIEWPORT.width, DESKTOP_VIEWPORT.height)
+      await setViewport(DESKTOP_VIEWPORT.width, DESKTOP_VIEWPORT.height)
       await pollUntil(() => !layout.mobile, 'Expected mobile to flip back on the wide viewport')
 
       expect(layout.hasAttribute('mobile')).toBe(false)
@@ -754,7 +755,7 @@ describe('WebUiLayout 组件（浏览器）', () => {
      * 媒体查询说桌面」的分裂输入，翻转只应来自媒体查询，且要落在去抖窗口之内。
      */
     it('翻转只由媒体查询驱动，且不等 100ms 去抖窗口', async () => {
-      await page.viewport(DESKTOP_VIEWPORT.width, DESKTOP_VIEWPORT.height)
+      await setViewport(DESKTOP_VIEWPORT.width, DESKTOP_VIEWPORT.height)
       const layout = createLayout()
       await layout.updateComplete
 
@@ -777,21 +778,67 @@ describe('WebUiLayout 组件（浏览器）', () => {
       }
 
       // 同一个判定在真实跨断点时立刻翻转：给 80ms 预算，低于旧实现的 100ms 去抖。
-      await page.viewport(MOBILE_VIEWPORT.width, MOBILE_VIEWPORT.height)
-      await pollUntil(() => layout.mobile, 'Expected the flip within the debounce window', 80)
+      //
+      // 预算从**视口真正生效**（resize 事件）起算，而不是从换视口的调用起算。
+      // `setViewport` 要等 iframe 按新尺寸重排完才返回，那时 matchMedia 的 change 已经
+      // 派发、组件已经翻过 `mobile`——此时再开一个 80ms 的窗等于什么都没断，而且那段
+      // 窗还会被 `setViewport` 自己的渲染步进吃掉，负载一拉长这条守卫就名存实亡。
+      // 在 resize 事件上起算，量的才是「去抖」本身，与等待 helper 的开销无关。
+      let resizedAt = 0
+      let flippedAt = 0
+      const markResize = () => {
+        resizedAt = performance.now()
+      }
+      const markFlip = () => {
+        flippedAt = performance.now()
+      }
+      window.addEventListener('resize', markResize)
+      layout.addEventListener('mobile-change', markFlip)
+      try {
+        await setViewport(MOBILE_VIEWPORT.width, MOBILE_VIEWPORT.height)
+      } finally {
+        window.removeEventListener('resize', markResize)
+        layout.removeEventListener('mobile-change', markFlip)
+      }
+      expect(resizedAt, '换视口没有触发 resize，视口根本没生效').toBeGreaterThan(0)
+      // 80ms 的窗从 resize 起算：`setViewport` 自己已经花掉的那段要从预算里扣掉，
+      // 否则「视口生效」到「helper 返回」之间的时间会被白算进守卫，而那段时间里
+      // matchMedia 的 change 早已派发、组件早已翻过——窗里其实什么都没发生。
+      const flipBudgetMs = Math.max(resizedAt + 80 - performance.now(), 0)
+      await pollUntil(
+        () => layout.mobile,
+        () =>
+          `跨断点后 80ms 内没有翻转（resize 起已过 ${Math.round(performance.now() - resizedAt)}ms）：` +
+          '100ms 去抖被重新引入了',
+        flipBudgetMs
+      )
+      expect(flippedAt, '换视口后没有发生 mobile-change，判定没有翻转').toBeGreaterThan(0)
+      // Chromium 里 `resize` 先于 matchMedia 的 `change` 派发，所以翻转不可能早于 resize。
+      // 一旦读到反序（例如之后又来了一次 resize 覆盖了起点），`Math.max(…, 0)` 会把它
+      // 抹成 0 并静默通过——所以反序本身要在这里变成一条可读的失败。
+      expect(flippedAt, '翻转时刻早于 resize 时刻，起点被覆盖了').toBeGreaterThanOrEqual(resizedAt)
+      // 断言的是 **flip 时刻 - resize 时刻**，不是「断言时刻 - resize 时刻」。
+      // 后者会把 `setViewport` 在 resize 之后那段的延迟也算进来，而那段时间与去抖无关
+      // ——本机实测它能超过 84ms，于是即使去抖是零也会误报。
+      // Chromium 把 `performance.now()` 的分辨率钳到 100µs，零延迟翻转时两个时间戳会
+      // 落在同一个桶里逐字相等，所以用 `Math.max(…, 0)` 而不是断言 `>`。
+      expect(
+        Math.max(flippedAt - resizedAt, 0),
+        `resize 到 mobile-change 用了 ${Math.round(flippedAt - resizedAt)}ms，100ms 去抖被重新引入了`
+      ).toBeLessThanOrEqual(80)
       expect(changes).toEqual([true])
     })
 
     // 同一侧内的宽度变化不是断点跨越，不该给消费者发通知（否则外壳会做无谓的重渲染）。
     it('同侧视口变化不派发 mobile-change', async () => {
-      await page.viewport(DESKTOP_VIEWPORT.width, DESKTOP_VIEWPORT.height)
+      await setViewport(DESKTOP_VIEWPORT.width, DESKTOP_VIEWPORT.height)
       const layout = createLayout()
       await layout.updateComplete
 
       const changes: boolean[] = []
       layout.addEventListener('mobile-change', () => changes.push(true))
 
-      await page.viewport(900, 720)
+      await setViewport(900, 720)
       await waitForFrame()
 
       expect(layout.mobile).toBe(false)
@@ -800,7 +847,7 @@ describe('WebUiLayout 组件（浏览器）', () => {
 
     // 派生输出不是第二个输入：写 attribute 不改变状态，也不该派发通知。
     it('外部写 mobile attribute 会被恢复，且不派发 mobile-change', async () => {
-      await page.viewport(DESKTOP_VIEWPORT.width, DESKTOP_VIEWPORT.height)
+      await setViewport(DESKTOP_VIEWPORT.width, DESKTOP_VIEWPORT.height)
       const layout = createLayout()
       await layout.updateComplete
 
@@ -821,7 +868,7 @@ describe('WebUiLayout 组件（浏览器）', () => {
      * 只有值留在宿主上——`getAttribute` 会回读到 consumer 写的那串，而组件自己写的形态是空串。
      */
     it('移动端写 mobile attribute：值归位为空串，状态与树不动', async () => {
-      await page.viewport(MOBILE_VIEWPORT.width, MOBILE_VIEWPORT.height)
+      await setViewport(MOBILE_VIEWPORT.width, MOBILE_VIEWPORT.height)
       const layout = createLayout()
       await layout.updateComplete
 
@@ -843,7 +890,7 @@ describe('WebUiLayout 组件（浏览器）', () => {
      * 必须对外可见，而不是只等下一次跨越（挂得晚的消费者则自己读一次属性，见 README）。
      */
     it('挂载时已在移动端：连接即派发一次 mobile-change', async () => {
-      await page.viewport(MOBILE_VIEWPORT.width, MOBILE_VIEWPORT.height)
+      await setViewport(MOBILE_VIEWPORT.width, MOBILE_VIEWPORT.height)
       const layout = document.createElement('web-ui-layout')
       const changes: boolean[] = []
       layout.addEventListener('mobile-change', event => {
@@ -862,7 +909,7 @@ describe('WebUiLayout 组件（浏览器）', () => {
     // banner 高度驱动 header 的晕染渐变起点。banner 滚出视口后必须收敛到 0，
     // 否则渐变会停在一个已经不可见的偏移上。
     it('banner 在场时报告可见高度，滚出视口后归零', async () => {
-      await page.viewport(DESKTOP_VIEWPORT.width, DESKTOP_VIEWPORT.height)
+      await setViewport(DESKTOP_VIEWPORT.width, DESKTOP_VIEWPORT.height)
       const layout = document.createElement('web-ui-layout')
       layout.innerHTML = `
         <div slot="banner" style="height: 120px">Banner</div>
@@ -878,7 +925,7 @@ describe('WebUiLayout 组件（浏览器）', () => {
       // 顶部视口内的 banner 按自身高度计入，不做逐像素比对。
       expect(Number.parseFloat(visibleHeight())).toBeGreaterThan(0)
 
-      window.scrollTo(0, 400)
+      await scrollWindowTo(400)
       await pollUntil(() => visibleHeight() === '0px', 'Expected the visible banner height to settle at zero')
       expect(visibleHeight()).toBe('0px')
     })
@@ -889,7 +936,7 @@ describe('WebUiLayout 组件（浏览器）', () => {
     // 否则键盘用户既到不了它、到了也看不出焦点在哪。合成 focus() 不带键盘模态，
     // 先用真键盘 Tab 建立模态——与 focus-ring 用例同一手法。
     it('键盘 Tab 可聚焦桌面 toggle 并显示 focus ring', async () => {
-      await page.viewport(DESKTOP_VIEWPORT.width, DESKTOP_VIEWPORT.height)
+      await setViewport(DESKTOP_VIEWPORT.width, DESKTOP_VIEWPORT.height)
       const layout = createLayout()
       await layout.updateComplete
       await waitForFrame()

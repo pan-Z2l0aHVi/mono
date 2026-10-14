@@ -2,10 +2,10 @@ import '@/assets/global.css'
 
 import { mount, type VueWrapper } from '@vue/test-utils'
 import { afterEach, describe, expect, it } from 'vite-plus/test'
-import { page } from 'vite-plus/test/browser'
 import { defineComponent, nextTick } from 'vue'
 import { createMemoryHistory, createRouter } from 'vue-router'
 
+import { setViewport } from '@/__tests__/viewport'
 import SvgDrawLinesDemo from '@/components/svg-draw-lines-demo/index.vue'
 import Home from '@/pages/home/index.vue'
 
@@ -57,7 +57,7 @@ function columnCount(testId: string) {
 async function columnsAcrossBreakpoints(testId: string) {
   const measured: number[] = []
   for (const width of BREAKPOINTS) {
-    await page.viewport(width, VIEWPORT_HEIGHT)
+    await setViewport(width, VIEWPORT_HEIGHT)
     measured.push(columnCount(testId))
   }
   return measured
@@ -103,7 +103,7 @@ describe('网格列数基线（浏览器）', () => {
   afterEach(async () => {
     wrapper?.unmount()
     wrapper = null
-    await page.viewport(BREAKPOINTS[0]!, VIEWPORT_HEIGHT)
+    await setViewport(BREAKPOINTS[0]!, VIEWPORT_HEIGHT)
   })
 
   it('home 页快速预览网格在九档视口下保持 1/2/2/3/3/3/3/3/3 列', async () => {

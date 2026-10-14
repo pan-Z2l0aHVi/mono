@@ -52,12 +52,19 @@ export default {
           browser: {
             enabled: true,
             headless: true,
-            // vitest 的默认端口 63315 会被同机并行的其他 worktree、同一轮 turbo test 里的
-            // web-ui browser project、以及两个 demo 的 browser project 占住，而它的端口可用性
-            // 检查不区分地址族：拿到冲突端口时页面会被导到别人的服务器上（症状是 import 失败 /
-            // ERR_EMPTY_RESPONSE / browser runtime 永不连回），用例根本没跑却报红。固定到本包
-            // 专用端口，两个 demo 分别占 63411 / 63412。
-            api: { port: 63413 },
+            // vitest 的 browser server 独占一个端口：默认的 63315 会被同机并行的其他 worktree、
+            // 同一轮 turbo test 里的 web-ui browser project、以及两个 demo 的 browser project
+            // 占住，所以固定到本包专用端口（两个 demo 分别占 63411 / 63412）。
+            //
+            // strictPort: false 必须在这里显式写出来：vitest browser 插件的 `vitest:browser:config`
+            // 钩子构造测试服务器时是 `viteConfig.server = { ...viteConfig.server, port: defaultPort,
+            // ...api, middlewareMode: false, open: false }`——把顶层 `server` 整块铺开、只覆盖
+            // `port`，于是下面那个给 Wails dev server 定的 `strictPort: true` 会被测试服务器一并继承。
+            // dev server 需要它——端口被占就硬失败，否则 Wails 的 webview 会被指向空气；测试服务器
+            // 不需要：vitest 自己起它、再按 `resolvedUrls?.local[0] ?? resolvedUrls?.network[0]`（服务器
+            // 实际监听的地址）把浏览器指过去，端口漂移零代价，被继承的 strictPort 却会让整包 browser
+            // 用例在开跑之前直接判红。
+            api: { port: 63413, strictPort: false },
             provider: playwright(),
             instances: [{ browser: 'chromium' }]
           }
