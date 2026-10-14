@@ -1,5 +1,7 @@
 import { afterEach, describe, expect, it } from 'vite-plus/test'
 
+import { scrollWindowTo } from '@/shared/test-utils/viewport'
+
 import { lockScroll, unlockScroll } from '../scroll-lock'
 
 const SCROLL_Y = 3000
@@ -31,7 +33,7 @@ async function nextFrame() {
 afterEach(async () => {
   for (let index = 0; index < heldLocks; index++) unlockScroll()
   heldLocks = 0
-  window.scrollTo(0, 0)
+  await scrollWindowTo(0)
   document.body.replaceChildren()
   document.body.removeAttribute('style')
   await nextFrame()
@@ -41,7 +43,7 @@ describe('scroll lock（浏览器）', () => {
   it('锁定期间 window.scrollY 不归零、文档高度不塌缩', async () => {
     // 视口约 896px，内容需高于 SCROLL_Y + 视口高才能滚到 SCROLL_Y。
     createSpacer(6000)
-    window.scrollTo(0, SCROLL_Y)
+    await scrollWindowTo(SCROLL_Y)
     await nextFrame()
 
     const before = {
@@ -64,7 +66,7 @@ describe('scroll lock（浏览器）', () => {
     row.style.cssText = 'height: 20px;'
     document.body.append(row)
     createSpacer(2000)
-    window.scrollTo(0, SCROLL_Y)
+    await scrollWindowTo(SCROLL_Y)
     await nextFrame()
 
     const documentTop = row.getBoundingClientRect().top + window.scrollY

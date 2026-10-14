@@ -1,8 +1,9 @@
 import type { LitElement } from 'lit'
 import { afterEach, describe, expect, it } from 'vite-plus/test'
-import { page, userEvent } from 'vite-plus/test/browser'
+import { userEvent } from 'vite-plus/test/browser'
 
 import { pollUntil, queryA11y, waitForFrame } from '@/shared/test-utils'
+import { setViewport } from '@/shared/test-utils/viewport'
 
 import { imagePreview, type ImagePreviewOptions } from '..'
 
@@ -626,7 +627,7 @@ describe('imagePreview 命令式 API（浏览器）', () => {
 
   it('swipe 距离阈值随舞台宽度按 15% 缩放：不同宽度下越阈提交、未达弹回', async () => {
     for (const width of [320, 800]) {
-      await page.viewport(width, 600)
+      await setViewport(width, 600)
       const { handle, host } = await openPreview({ swipe: true })
       const image = currentImage(host)
       await pollUntil(() => image.complete && image.offsetWidth > 0, 'image did not load')
@@ -652,7 +653,7 @@ describe('imagePreview 命令式 API（浏览器）', () => {
       handle.close()
       await handle.closed
     }
-    await page.viewport(1280, 720)
+    await setViewport(1280, 720)
   })
 })
 

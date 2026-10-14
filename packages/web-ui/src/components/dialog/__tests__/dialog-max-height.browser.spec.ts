@@ -2,6 +2,8 @@ import '..'
 
 import { afterEach, describe, expect, it } from 'vite-plus/test'
 
+import { scrollElementToEnd } from '@/shared/test-utils/viewport'
+
 import type { WebUiDialog } from '..'
 
 const CONTENT_HEIGHT = 2000
@@ -89,8 +91,7 @@ describe('--wui-dialog-max-height', () => {
     expect(desc.scrollHeight).toBeGreaterThan(desc.clientHeight)
     // auto 与 hidden 都让下述两条成立：内容同样溢出，scrollTop 也同样能被程序化写动，
     // 所以这两条区分不出 hidden（见下方：Chromium 会把 clip 与 auto 降级成 hidden）。
-    desc.scrollTop = 9999
-    await new Promise(resolve => requestAnimationFrame(resolve))
+    await scrollElementToEnd(desc)
     expect(desc.scrollTop).toBeGreaterThan(0)
 
     const card = query<HTMLElement>(component, '.wui-dialog-body')
