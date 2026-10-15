@@ -24,6 +24,8 @@ worktree 是任务隔离边界，不是包名的别名。一个可变 task 只�
 
 构建或验证前怀疑 `dist` 产物异常（例如被 watch 进程清空 d.ts）时，先跑 `pnpm run agent:env-doctor` 体检，再用 `pnpm run agent:env-doctor --fix`（自动 `turbo build --force`）或手动 `turbo build --force` 重建。
 
+Codex 沙箱对共享 Turbo 缓存的限制见下文「Codex 沙箱边界与提权」。
+
 ### mise exec 与命令外壳
 
 `.mise.toml` 钉住工具链版本，并在 `[env]` 注入 `TURBO_CACHE_DIR`。这套注入只对 **mise 激活过的 shell** 生效：交互式终端与 herdr pane 由 mise 自动激活，agent 的工具宿主、`git hook`、`bash -c` 与外部脚本通常没有。判定要不要加 `mise exec --` 只看一条：**这条命令是否依赖 mise 注入的 env，或 PATH 上被钉住的工具**——经 turbo 的命令两者都依赖，调用 node / pnpm / go 的命令依赖后者；纯粹读写文件、或工具全部由 `node_modules` 提供的命令可以直接跑，拿不准就加。一个例外是 `pnpm run agent:env-doctor`：它存在的意义就是暴露「当前 shell 没激活 mise」，加了前缀会让它用来暴露这件事的两条断言恒报 ok，所以必须裸跑。
@@ -35,6 +37,28 @@ echo "${TURBO_CACHE_DIR:-<unset>}"
 ```
 
 为什么不能靠 turbo 兜底：它的 hash 只记录 `package.json` 里 `engines` 的版本**范围**，不记录真实工具链，所以宿主 PATH 上另一版 node 跑出的构建与钉住版本跑出的构建落在同一个 hash 上。由此有两种各自成立的失效，正是要分开防的两件事——env 没注入时 turbo 落到默认缓存位置，命中不了共享缓存；env 指向共享缓存而 node 不是钉住那一版时，会在同一 hash 下写进工具链不符的产物，之后的命中把它当有效缓存恢复出来。`pnpm run agent:env-doctor` 把这两条事实变成可检测断言：`TURBO_CACHE_DIR` 必须等于共享缓存路径（git common dir 加 `/turbo-cache`），当前 node 必须等于 `[tools]` 钉住的版本，不符即 fail。
+
+### Codex 沙箱边界与提权
+
+Codex 沙箱由仓库外的机器级 `~/.codex/config.toml` 配置，不属于仓库政策。配置在 Codex 会话启动时读取；修改后要新开或重启会话。本节记录本机本会话的实测结果，其他环境应重新探测。
+
+当前 `[sandbox_workspace_write]` 开启网络，并把以下位置列入 `writable_roots`：
+
+- `~/.local/state/mise`、`~/.local/share/mise`
+- `~/Library/pnpm`、`~/.npm`
+- `~/go`、`~/Library/Caches`、`~/.cache`
+
+本 worktree 和 `/tmp` 也可写。`~/Documents` 与 home 目录本身不可写。用 `sh -c 'touch <probe> && echo OK || echo DENIED'` 可直接检查目标路径；探测后删除临时文件。网络探测可用 `curl`，本机的 `curl https://registry.npmmirror.com` 与 `pnpm view @changesets/cli version` 均有响应。
+
+`.agents/` 在 worktree 内，但沙箱 shell 仍拒绝写入。编辑或还原其中的文件时使用宿主侧编辑工具，例如 `apply_patch`；不要用 shell 写入。
+
+linked worktree 的 Git 元数据位于主仓库的 `.git/worktrees/<worktree>`，不在 worktree 目录里。本线程实测，沙箱中的 `git add`、`git rm --cached` 和 freeze 使用的 `git add -A` 都因创建 `index.lock` 被拒。`git commit` 也会写这份 Git 元数据；执行这些操作前通过 Codex approval request 请求提权，并让工具重跑原命令。本机的 `codex exec --approve-for-me` 会把请求交给 auto-review，获批后在沙箱外执行。不要反复在沙箱内重试同一写操作。
+
+`TURBO_CACHE_DIR` 同样指向主仓库 `.git/turbo-cache`，沙箱写入探针被拒，Turbo 构建输出 `IO error: Operation not permitted` 警告。这个线程的 Turbo 任务在警告后继续运行包构建；不要把该警告当作共享缓存可用。下文的构建 A/B 使用包级命令，不依赖 Turbo 缓存。
+
+浏览器也受进程沙箱限制。本线程的 Playwright `chromium.launch()` 在沙箱内因 Mach 服务权限失败，通过 approval request 提权后启动成功。需要真实浏览器的验证应对启动浏览器的命令请求提权。
+
+当前 `[shell_environment_policy.set]` 由仓库外的 Codex 配置注入 `CHOKIDAR_USEPOLLING=1`。对 `apps/interweave/frontend` 直接运行 `pnpm run build` 时，unset 该变量会在 Chokidar watch 阶段报 `EMFILE`；设为 `1` 后同一构建成功。这个 A/B 用包级命令执行，确保变量传入构建进程。
 
 ### Go 缓存探测与共享
 
@@ -48,12 +72,12 @@ echo "${TURBO_CACHE_DIR:-<unset>}"
 
 **实测共享矩阵**：
 
-- **herdr pane / claude 线程 / opencode 线程**（`HERDR_ENV=1`）：默认路径可写，探测命中，全部共享 `~/Library/Caches/go-build`（持久、约 800 MB）。
+- **herdr pane / claude 线程 / opencode 线程**（`HERDR_ENV=1`）：默认路径可写，探测命中，全部共享 `~/Library/Caches/go-build`。
 - **手工 shell**（无 `HERDR_ENV`）：模板渲染为空，Go 自行使用平台默认路径，同上共享同一份缓存。
-- **codex 线程**（`codex-auto` profile，`HERDR_ENV=1`）：sandbox 仅允许 worktree 与 `/tmp` 写入，探测写入失败、回落 `$TMPDIR/greypan/go-build`，**行为不退化**。
+- **Codex 线程**（`HERDR_ENV=1`）：本 worktree 的 `mise exec -- go env GOCACHE` 返回 `~/Library/Caches/go-build`，路径探测命中默认缓存；当前环境没有回落到临时目录。
 - **CI（GitHub Actions）**：无 `HERDR_ENV`，模板渲染为空，Go 使用平台默认路径，`ci.yml` 的 `actions/cache` 读取 `go env GOCACHE`（默认值）不受影响。
 
-两份历史缓存（`~/Library/Caches/go-build` 约 759 MB、`$TMPDIR/greypan/go-build` 约 1.0 GB）保留不动，旧的 `$TMPDIR` 那份由系统定期回收。
+如果 macOS 与 Linux 默认路径都不可写，`.mise.toml` 仍会回落到 `$TMPDIR/greypan/go-build`；本线程的 Codex 沙箱没有触发该分支。沙箱配置与可写路径见上文「Codex 沙箱边界与提权」。
 
 ### 缓存可信链
 
