@@ -162,7 +162,7 @@ release playbook（[`release.md`](release.md)）说明如何在 release 场景�
 
 ## 失败和恢复
 
-- 命令失败时保留 task state 和工作树，先用 `pnpm agent:task status --task <task-id>` 判断当前 phase，不要重建或覆盖状态文件。
+- 命令失败时保留 task state 和工作树，先用 `pnpm agent:task status --task <task-id>` 判断当前 phase，不要重建或覆盖状态文件。Codex 沙箱权限拒绝时的处理方法见 [`build.md`](build.md)「Codex 沙箱边界与提权」。
 - 需要终止或清理残留 task（agent 结束后遗留的 active task、快照无法物化的 task）时用 `pnpm agent:task drop --task <task-id> --reason <why> --by <your-agent-id>`；`--by` 与 reviewer/approver 同一套 id 形状。drop 是唯一合法的强制终态，不手工编辑 state JSON。
 - session、客户端或 harness 在同一台机器、同一个用户内续作时（含客户端重启，只要没有重启机器），读取顺序是先 Task Packet、再 `$TMPDIR/greypan/tasks/<task-id>.json`，然后按 `phase`、`worktree`、`baseSha`、`events[]` 与 live stale 结果恢复，不从聊天记忆猜测进度。换机、换用户或重启机器都不承诺恢复，那些情况从 commit 历史重建。
 - task state 在 task 进行中被清空（机器重启即清，见 [ADR-0018](../adr/0018-task-state-in-tmpdir.md)）时，用同一个 task-id 重新 `agent:task new`，重走 freeze / review / approve；此时 commit 还没发生，重建的证据链与新建 task 等价。重建 Task Packet、聊天消息或过程报告都不能替代这一步。`new` 对 T0/T1 的干净起点要求不变：先恢复干净工作区再重建。
