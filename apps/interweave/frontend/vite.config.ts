@@ -64,7 +64,15 @@ export default {
             // 不需要：vitest 自己起它、再按 `resolvedUrls?.local[0] ?? resolvedUrls?.network[0]`（服务器
             // 实际监听的地址）把浏览器指过去，端口漂移零代价，被继承的 strictPort 却会让整包 browser
             // 用例在开跑之前直接判红。
-            api: { port: 63413, strictPort: false },
+            // host 必须显式钉回 loopback：`vitest:browser:config` 把顶层 `server` 整块铺开给测试服务器，
+            // 于是给 Wails dev server 用的 `host: true` 会被继承下来，测试服务器绑到所有网卡——任何能
+            // 连到这台机器的人都能经 `/@fs` 读走整个 workspace（含 `.herdr-project` 的内部文档）。
+            // 写在 `api.host` 而不是顶层 `server.host`：vitest 只按 `api.host` 决定测试服务器绑哪里，
+            // 并且只有这一支会走 `resolveApiServerConfig` 里「暴露到网络就默认关掉写/执行」的判据——
+            // 只改顶层 `server.host` 会连带动到 dev server，而完全不写 `api.host` 时那条安全网永远
+            // 不触发（实测日志里没有它的警告）。`allowWrite` / `allowExec` 保持不设：loopback 下
+            // 默认 true 是要的，截图与附件要走它们。
+            api: { host: '127.0.0.1', port: 63413, strictPort: false },
             provider: playwright(),
             instances: [{ browser: 'chromium' }]
           }
