@@ -52,4 +52,4 @@ pnpm commit
 
 prompt 的 scope 列出 `root` 与各包名（`web-ui`、`js-kit` 等），支持多选。需要清单外的名字时选「自定义输入 scope」再输入。
 
-每个 PR 至少带一个 changeset。涉及发布包行为的变更写明 patch/minor/major；纯 docs/test/chore 的变更创建空 changeset（只含两行 `---`）。细则见 [`docs/agents/commit.md`](docs/agents/commit.md)。
+每个 PR 至少带一个 changeset。按 [`docs/agents/release.md` 的 Changesets 对照表](docs/agents/release.md#changesets) 判断应声明哪个包及版本，或是否写空壳；不要声明 `.changeset/config.json` 的 `ignore` 表中的包。纯 docs/test/chore 的变更创建空 changeset（只含两行 `---`）。
