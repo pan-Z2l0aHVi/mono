@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vite-plus/test'
 
+import { pollUntil } from '@/shared/test-utils'
+
 import { defineOverlay } from '../overlay'
 
 function createTrigger(): HTMLElement {
@@ -100,8 +102,7 @@ describe('defineOverlay 定位器', () => {
     const ctx = defineOverlay().make({ anchor: trigger, overlay, minAnchorWidth: true })
 
     ctx.open()
-    await nextFrame()
-
+    await pollUntil(() => overlay.style.minWidth !== '', 'Expected minWidth to be set')
     // jsdom 中 anchor 无布局，参考宽度为 0，因此取 floor；写成「≥ floor」而不是
     // 钉死 floor —— 真实浏览器里 trigger 更宽时该值更大，这里锁的是下限这一侧。
     expect(Number.parseFloat(overlay.style.minWidth)).toBeGreaterThanOrEqual(120)
@@ -118,8 +119,7 @@ describe('defineOverlay 定位器', () => {
     const ctx = defineOverlay().make({ anchor: trigger, overlay, minAnchorWidth: true })
 
     ctx.open()
-    await nextFrame()
-
+    await pollUntil(() => overlay.style.minWidth !== '', 'Expected minWidth to be set')
     expect(Number.parseFloat(overlay.style.minWidth)).toBeGreaterThanOrEqual(200)
 
     ctx.dispose()
