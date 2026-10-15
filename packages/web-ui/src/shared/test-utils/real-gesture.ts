@@ -11,7 +11,7 @@
  */
 import { cdp } from 'vite-plus/test/browser-playwright/context'
 
-import { waitForAnimationsToFinish } from './index'
+import { pollUntil, waitForAnimationsToFinish } from './index'
 
 /**
  * `cdp()` 返回值的导出类型是压缩过的（`send` 没被声明出来），这里只按实际用到的
@@ -159,12 +159,25 @@ export async function realDragSelectText(node: Node): Promise<void> {
  *   - `Promise.all` 对空数组直接 resolve，等于「读到空就宣布稳定」；
  *     进场过渡尚未创建时量到的正是过渡前那一帧的盒子（胶囊落在视口外、
  *     `elementFromPoint` 返回 null 那一类 flaky）。
+ *
+ * **面板本身还没渲染出来时要先等它出现**，不能拿宿主顶上去。旧的
+ * `dialog ? [el, dialog] : el` 在 `dialog` 为 null 时只观察宿主，于是
+ * 「面板尚未渲染」被当成「面板没有动画」——这个 helper 的用途正是等**面板**的进场
+ * 过渡收敛，那种情况下它返回的时刻不代表任何东西落定。轮询条件只问「shadow root
+ * 里有 `dialog` 吗」，与调用方随后要量的东西无关。
  */
 export async function waitForOpenTransition(el: Element): Promise<void> {
-  // 宿主与内层 dialog 都在观察范围内：过渡既可能挂在 dialog 上（进场 transform），
-  // 也可能挂在宿主上（open 属性引发的外层动画），只传 dialog 会漏掉后者。
-  const dialog = el.shadowRoot?.querySelector('dialog')
-  await waitForAnimationsToFinish(dialog ? [el, dialog] : el)
+  const readDialog = () => el.shadowRoot?.querySelector('dialog') ?? null
+  await pollUntil(
+    () => readDialog() !== null,
+    () => `${el.tagName.toLowerCase()} shadow root has no <dialog> panel yet`,
+    5000
+  )
+  // 上面的轮询已经保证面板在场，所以这里不必再为「面板缺失」留一条回落分支：
+  // 宿主与内层 dialog 都在观察范围内，两个根都带上（过渡既可能挂在 dialog 上做进场
+  // transform，也可能挂在宿主上由 open 属性引发外层动画，只传一个会漏掉另一个）。
+  const dialog = readDialog() as Element
+  await waitForAnimationsToFinish([el, dialog])
 }
 
 export interface RealTouchPressOptions {

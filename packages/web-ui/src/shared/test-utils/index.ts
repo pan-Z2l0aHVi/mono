@@ -458,25 +458,32 @@ function rectsEqual(a: DOMRect, b: DOMRect): boolean {
  * 这里吞掉——取消意味着「它不再跑了」，正是本函数要等到的状态，不该变成一次未处理的
  * rejection。
  *
- * 预算耗尽时**静默返回**而不是抛错——这是一个等待原语，它不知道调用方的判据是什么。
- * 直接调用方（如 `real-gesture` 的 `waitForOpenTransition`）拿不到「没等到」这个信号，
- * 需要信号的调用方应把它放进自己带判据的等待里（`waitForSettledLayout` 的稳定帧
- * 循环就会在这种情况下带着读数抛错）。这条与 `pollUntil` 的取向相反，后者是
- * 「轮询一个明确的期待值」，所以那里超时必须抛。
+ * 返回值是**是否真的收敛**：预算耗尽时仍有动画在跑会返回 `false`，而不是把
+ * 「没等到」说成「已稳定」。低层调用方可以自己决定拿这个信号怎么办，但必须拿得到
+ * ——`waitForSettledLayout` 就是靠它拒绝在过渡中途取样的。与 `pollUntil` 的取向
+ * 也一致：后者是「轮询一个明确的期待值」，那里超时必须抛。
  *
- * `Array.isArray` 的判据是刻意的：类型签名只收 `Element` 或真数组。但 NodeList /
- * HTMLCollection / `arguments` 同样不是 Element，`Array.isArray` 对它们为 false，
- * 于是会被包成 `[roots]` 再被过滤成空数组、直接返回——正是本函数要消灭的那种
- * 「什么都没读到就宣布稳定」。真要防住，调用点必须传元素而不是类数组。
+ * **一个可观察的根都没有时抛错**，不静默返回。这正是本函数要消灭的形态：
+ * 「什么都没读到」与「已经稳定」在读数上无法区分，而调用方写下这行时想的是
+ * 「等这些元素上的动画收敛」。`Array.isArray` 的判据是刻意的（类型签名只收
+ * `Element` 或真数组），所以 NodeList / HTMLCollection / `arguments` 会被包成
+ * `[roots]` 再被过滤成空——过去那正是「误传类数组 ⇒ 安静宣布稳定」的入口，
+ * 现在它会带着可读的报错停下来，调用点必须传元素而不是类数组。
  */
 export async function waitForAnimationsToFinish(
   roots: Element | ReadonlyArray<Element | null | undefined>,
   timeoutMs = 5000
-): Promise<void> {
+): Promise<boolean> {
   const observed = (Array.isArray(roots) ? roots : [roots]).filter(
     (root): root is Element => !!root && root.isConnected
   )
-  if (observed.length === 0) return
+  if (observed.length === 0) {
+    const passed = Array.isArray(roots) ? roots.length : 1
+    throw new Error(
+      `waitForAnimationsToFinish: no connected root to observe (${passed} passed, 0 connected). ` +
+        'Pass Elements rather than a NodeList/HTMLCollection, and make sure the target is mounted.'
+    )
+  }
 
   const deadline = performance.now() + timeoutMs
   const idleFramesRequired = 2
@@ -490,7 +497,7 @@ export async function waitForAnimationsToFinish(
     for (const root of observed) for (const animation of root.getAnimations({ subtree: true })) running.add(animation)
 
     if (running.size === 0) {
-      if (++idleFrames >= idleFramesRequired) return
+      if (++idleFrames >= idleFramesRequired) return true
       continue
     }
 
@@ -501,6 +508,14 @@ export async function waitForAnimationsToFinish(
       new Promise(resolve => setTimeout(resolve, Math.max(remaining, 0)))
     ])
   }
+
+  // 走到这里说明预算先耗尽了——循环从未攒够 `idleFramesRequired` 个空闲步进。
+  // 最后取一次样只为区分两件事：此刻仍有动画在跑（没等到，返回 false），还是
+  // 只是没来得及凑满两帧（此时动画确实已经不在，取样足够支撑调用方的判断）。
+  for (const root of observed) {
+    if (root.getAnimations({ subtree: true }).length > 0) return false
+  }
+  return true
 }
 
 /**
@@ -577,14 +592,20 @@ export interface SettleExpectation {
  *
  * 第 4 步单独不够（它正是既有 flaky 的来源），但作为收尾仍然必要——前两步保证
  * 「不会再变」，它保证「已经变了的那一次也量到了」。
+ *
+ * **期待值先于「没有可量的目标」这条快路径。** 目标没挂上 / 被换掉时，「没有可量的
+ * 目标」与「已经定版」在读数上完全一样，而前者会直接毁掉本函数的用途：调用方写下
+ * `expect: expectInsideViewport(targets)` 恰恰是在说「这些东西到位之前不许往下走」。
+ * 所以顺序固定为：先等期待值 → 再取一次已连接目标 → 取不到就抛错。
+ *
+ * 目标清单因此在期待值之后**重新取一次**而不是复用进入函数时那份快照：期待值本身
+ * 就可能在等挂载，而快照会把「等待期间才连上的元素」永远算成缺失。
  */
 export async function waitForSettledLayout(
   targets: ReadonlyArray<Element | null | undefined>,
   options: { stableFrames?: number; timeoutMs?: number; expect?: SettleExpectation } = {}
 ): Promise<void> {
   const { stableFrames = 2, timeoutMs = 5000, expect } = options
-  const observed = targets.filter((target): target is Element => !!target && target.isConnected)
-  if (observed.length === 0) return
   const deadline = performance.now() + timeoutMs
   const startedAt = performance.now()
 
@@ -603,10 +624,27 @@ export async function waitForSettledLayout(
     }
   }
 
+  // 期待值之后重取：挂载可能就发生在刚才那段等待里。
+  const observed = targets.filter((target): target is Element => !!target && target.isConnected)
+  if (observed.length === 0) {
+    throw new Error(
+      diagnose(
+        `no connected target to settle (${targets.length} passed, 0 connected — ` +
+          'a target that is not mounted yet is not a settled target)'
+      )
+    )
+  }
+
   // 各步拿的是**总预算**，不是 deadline 的余量：期待条件若吃光了预算，后面两步会拿到 0
   // 而各自静默返回，等于把「什么都没等到」伪装成「已经排干」。余量只用来决定何时抛错——
   // 那是下面稳定帧循环的职责，它带着读数诊断。
-  await waitForAnimationsToFinish(observed, timeoutMs)
+  //
+  // 动画那一步的返回值在这里是承重的：false 表示预算耗尽时过渡仍在跑，此时继续往下
+  // 量到的就是动画中途的盒子——「超时即通过」正是本模块要消灭的形态。
+  const animationsSettled = await waitForAnimationsToFinish(observed, timeoutMs)
+  if (!animationsSettled) {
+    throw new Error(diagnose(`animations were still running when the ${timeoutMs}ms budget ran out`))
+  }
   await drainResizeObserver(observed, timeoutMs)
 
   await Promise.race([
