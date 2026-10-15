@@ -5,6 +5,8 @@
 # 只证明「有个 .md」不够，还要核到内容：分隔线不足两处的文件根本不会被 changesets 解析；
 # frontmatter 里声明了包就必须写正文，否则版本 PR 会把一条空描述写进公共包的 CHANGELOG。
 # 只含两行 `---` 的空壳仍然合法——docs/agents/commit.md 用它表达「纯 docs/chore，无版本影响」。
+# changesets config 的 `ignore` 包不能作为 changeset 声明：它们不会 bump，也不会被版本 PR 删除，
+# 最终永久滞留。读不到有效 ignore 表时 fail-closed，因为检查无法判断声明是否会被忽略。
 # 比 changesets 自身严一点：分隔线之前不允许散落内容（它的正则是非锚定的，那种文件它照收）。
 # 每个 PR 的 diff 对 base（origin/main）天然包含这个 task 自己的 changeset 文件。base 落在一条
 # **合并提交**上时（先合并 main、后建 task 的常见次序，见下面的 fallback）这份名单会是空的，
@@ -109,6 +111,28 @@ if [ -z "$files" ]; then
   exit 1
 fi
 
+# 不能把被 ignore 的包当成有效 changeset：它不产生 release，版本 PR 的删除循环也不会删它，
+# 因而既不计入 has-changesets，也会永久留在仓库里。ignore 表读不到或结构无效时 fail-closed，
+# 否则本检查无法判断 changeset 是否会被跳过。node 是仓库既有运行时，负责解析 JSON，不引入新依赖。
+ignored_packages=$(
+  node --input-type=module -e '
+    import fs from "node:fs";
+    try {
+      const config = JSON.parse(fs.readFileSync(".changeset/config.json", "utf8"));
+      if (!Array.isArray(config.ignore) || config.ignore.some((name) => typeof name !== "string")) {
+        process.exit(1);
+      }
+      for (const name of config.ignore) console.log(name);
+    } catch {
+      process.exit(1);
+    }
+  ' 2>/dev/null
+) || {
+  echo "changeset check cannot run: .changeset/config.json has no readable ignore array" >&2
+  echo "restore a valid string array, or add \"ignore\": [] when no packages are ignored" >&2
+  exit 1
+}
+
 # 用 read 逐行取文件名：for file in $files 会按空白切词，`.changeset/has space.md` 这种
 # 合法路径会被切成两个不存在的文件，把该放行的提交以一句读不到文件的话拦死。
 # 换行仍是边界：git 会把含换行的路径引号化，那种名字匹配不上上面的模式，不被本检查支持。
@@ -125,9 +149,8 @@ while IFS= read -r file; do
   # pkg=frontmatter 内命中版本声明的**行数**（不是包数：一行写两个包仍算 1，报错措辞按行数说），
   # body=分隔线之后的非空正文行数。
   # pkg 容忍缩进、引号包住的值和行尾注释：changesets 的解析器接受缩进的 `key: patch` 并照样 bump。
-  # 只认非缩进行会让缩进写法的声明躲过正文要求。这仍是行形态判据、不是 YAML 解析器：把版本类型写成
-  # 行里没有 `: …major|minor|patch…` 的形态（例如折叠成多行的标量）识别不了，那种文件由 changesets
-  # 自己与 CI 的版本流程兜底。宁可多算一个 pkg：多算只会多要求一条正文。
+  # 正文检查仍按行形态识别 `key: version`；ignore 检查另扫完整 frontmatter，不依赖这条判据。
+  # 宁可多算一个 pkg：多算只会多要求一条正文。
   stats=$(printf '%s\n' "$blob" | awk '
     /^---[[:space:]]*$/ { fence += 1; next }
     fence == 0 { if ($0 ~ /[^[:space:]]/) pre += 1; next }
@@ -152,6 +175,27 @@ while IFS= read -r file; do
     echo "the version PR would emit an empty CHANGELOG entry; state what changed for consumers" >&2
     exit 1
   fi
+
+  # 只扫描前两条 --- 之间的 frontmatter 文本，不解析 YAML 行形态；flow mapping 与下一行写值
+  # 都会包含包名。被 ignore 的包名命中 frontmatter 就拒绝，避免 Changesets 静默跳过这条声明。
+  frontmatter=$(printf '%s\n' "$blob" | awk '
+    /^---[[:space:]]*$/ {
+      fence += 1
+      if (fence == 2) exit
+      next
+    }
+    fence == 1 { print }
+  ')
+  while IFS= read -r package; do
+    [ -n "$package" ] || continue
+    if printf '%s\n' "$frontmatter" | grep -F -q "$package"; then
+      echo "changeset declares ignored package: $file declares '$package', which will be skipped by Changesets" >&2
+      echo "declare the corresponding non-ignored app package instead, or use an empty changeset (two --- lines)" >&2
+      exit 1
+    fi
+  done <<PACKAGES
+$ignored_packages
+PACKAGES
 done <<FILES
 $files
 FILES
