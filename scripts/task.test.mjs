@@ -551,6 +551,23 @@ try {
   const changesetCheck = path.join(fixture, '.agents', 'checks', 'changeset-required')
   fs.copyFileSync(path.join(repoRoot, '.agents', 'checks', 'changeset-required'), changesetCheck)
   fs.chmodSync(changesetCheck, 0o755)
+  fs.mkdirSync(path.join(fixture, '.changeset'), { recursive: true })
+  const changesetsConfig = path.join(fixture, '.changeset', 'config.json')
+  const repositoryChangesetsConfig = JSON.parse(
+    fs.readFileSync(path.join(repoRoot, '.changeset', 'config.json'), 'utf8')
+  )
+  const fixtureIgnoredPackages = [
+    '@greypan/react-web-ui-demo',
+    '@greypan/vue-web-ui-demo',
+    '@greypan/interweave-frontend'
+  ]
+  assert.deepEqual(
+    fixtureIgnoredPackages,
+    repositoryChangesetsConfig.ignore,
+    'fixture ignore list must match repo config'
+  )
+  const fixtureChangesetsConfig = JSON.stringify({ ignore: fixtureIgnoredPackages })
+  fs.writeFileSync(changesetsConfig, `${fixtureChangesetsConfig}\n`)
   git('add', '-A')
   git('commit', '-m', 'install changeset policy check')
   run('new', '--task', 'no-changeset-fixture', '--level', 't2')
@@ -562,7 +579,6 @@ try {
   git('commit', '-m', 'note without changeset')
   run('new', '--task', 'changeset-fixture', '--level', 't2')
   run('start', '--task', 'changeset-fixture')
-  fs.mkdirSync(path.join(fixture, '.changeset'), { recursive: true })
   // commit.md 允许纯 docs/chore 用只含两行 --- 的空壳声明「无版本影响」，检查必须放行。
   fs.writeFileSync(path.join(fixture, '.changeset', 'docs-only.md'), '---\n---\n')
   // 但留在盘上没 add 的 changeset 不算数：guard 放行的那次提交内容就是 index，changeset
@@ -570,6 +586,75 @@ try {
   assert.match(failMessage('guard', '--task', 'changeset-fixture'), /changeset missing: no staged \.changeset/)
   git('add', '--', '.changeset/docs-only.md')
   assert.equal(JSON.parse(run('guard', '--task', 'changeset-fixture')).enforced, true)
+  // 找不到 ignore 表时不能假设没有被忽略的包；检查必须 fail-closed 并给出可操作诊断。
+  fs.rmSync(changesetsConfig)
+  assert.match(
+    failMessage('guard', '--task', 'changeset-fixture'),
+    /changeset check cannot run: \.changeset\/config\.json has no readable ignore array/
+  )
+  const configWithoutIgnore = { ...repositoryChangesetsConfig }
+  delete configWithoutIgnore.ignore
+  fs.writeFileSync(changesetsConfig, `${JSON.stringify(configWithoutIgnore)}\n`)
+  assert.match(failMessage('guard', '--task', 'changeset-fixture'), /add "ignore": \[\] when no packages are ignored/)
+  fs.writeFileSync(
+    changesetsConfig,
+    `${JSON.stringify({ ...repositoryChangesetsConfig, ignore: ['@greypan/interweave-frontend', 7] })}\n`
+  )
+  assert.match(
+    failMessage('guard', '--task', 'changeset-fixture'),
+    /changeset check cannot run: \.changeset\/config\.json has no readable ignore array/
+  )
+  fs.writeFileSync(changesetsConfig, `${fixtureChangesetsConfig}\n`)
+  // 被 ignore 的 frontend 包不会 bump，也不会被版本 PR 清走，必须拦住并提示改写到 app 包或空壳。
+  const ignoredPackage = path.join(fixture, '.changeset', 'ignored-frontend.md')
+  fs.writeFileSync(ignoredPackage, "---\n'@greypan/interweave-frontend': patch\n---\n\nFrontend behavior changed.\n")
+  git('add', '--', '.changeset/ignored-frontend.md')
+  assert.match(
+    failMessage('guard', '--task', 'changeset-fixture'),
+    /changeset declares ignored package: \.changeset\/ignored-frontend\.md declares '@greypan\/interweave-frontend'/
+  )
+  fs.rmSync(ignoredPackage)
+  git('add', '-A')
+  // YAML flow mapping 也是 Changesets 接受的声明；单行匹配不能假定每个声明都用 key: value 形式。
+  const ignoredFlowMapping = path.join(fixture, '.changeset', 'ignored-frontend-flow.md')
+  fs.writeFileSync(
+    ignoredFlowMapping,
+    "---\n{ '@greypan/interweave-frontend': patch }\n---\n\nFrontend behavior changed.\n"
+  )
+  git('add', '--', '.changeset/ignored-frontend-flow.md')
+  assert.match(
+    failMessage('guard', '--task', 'changeset-fixture'),
+    /changeset declares ignored package: \.changeset\/ignored-frontend-flow\.md declares '@greypan\/interweave-frontend'/
+  )
+  fs.rmSync(ignoredFlowMapping)
+  git('add', '-A')
+  // YAML 允许把版本值放在下一行；也必须按完整 frontmatter 检查包名。
+  const ignoredMultilineValue = path.join(fixture, '.changeset', 'ignored-frontend-multiline.md')
+  fs.writeFileSync(
+    ignoredMultilineValue,
+    "---\n'@greypan/interweave-frontend':\n  patch\n---\n\nFrontend behavior changed.\n"
+  )
+  git('add', '--', '.changeset/ignored-frontend-multiline.md')
+  assert.match(
+    failMessage('guard', '--task', 'changeset-fixture'),
+    /changeset declares ignored package: \.changeset\/ignored-frontend-multiline\.md declares '@greypan\/interweave-frontend'/
+  )
+  fs.rmSync(ignoredMultilineValue)
+  git('add', '-A')
+  // interweave app 包不在 ignore 表中；frontend 产品行为通过它驱动桌面版本时应放行。
+  const interweavePackage = path.join(fixture, '.changeset', 'interweave.md')
+  fs.writeFileSync(interweavePackage, "---\n'@greypan/interweave': patch\n---\n\nInterweave behavior changed.\n")
+  git('add', '--', '.changeset/interweave.md')
+  assert.equal(JSON.parse(run('guard', '--task', 'changeset-fixture')).enforced, true)
+  fs.rmSync(interweavePackage)
+  git('add', '-A')
+  // 空壳没有包声明，不会被 ignore 表拦截；纯测试或测试助手仍可表达无 app 版本影响。
+  const ignoreSafeEmptyShell = path.join(fixture, '.changeset', 'ignore-safe-empty.md')
+  fs.writeFileSync(ignoreSafeEmptyShell, '---\n---\n')
+  git('add', '--', '.changeset/ignore-safe-empty.md')
+  assert.equal(JSON.parse(run('guard', '--task', 'changeset-fixture')).enforced, true)
+  fs.rmSync(ignoreSafeEmptyShell)
+  git('add', '-A')
   // 声明了包却不写正文：版本 PR 会往公共包的 CHANGELOG 里塞一条空描述。空格与非 ASCII 文件名
   // 各占一条：前者钉住 `for file in $files` 的切词，后者钉住 core.quotePath 的转义（转义后的
   // "\344\275\240.md" 匹配不上路径规则，畸形文件会静默漏检）。缩进、引号包住的值、行尾注释各占
@@ -647,7 +732,9 @@ try {
   // 参与不了发布，滤在「有没有 changeset」这一步之前，否则改一行 .changeset/AGENTS.md 就能拿一
   // 个永远不会发布的东西过关。`nested/` 那一条钉住路径规则只放过 pre/：写成 `.*` 的话，子目录
   // 文件会被当成顶层文件读，报错里出现一个 changesets 根本不看的路径。
-  fs.rmSync(path.join(fixture, '.changeset'), { recursive: true, force: true })
+  for (const name of fs.readdirSync(path.join(fixture, '.changeset'))) {
+    if (name !== 'config.json') fs.rmSync(path.join(fixture, '.changeset', name), { recursive: true, force: true })
+  }
   git('add', '-A')
   for (const name of [
     'README.md',
@@ -950,7 +1037,8 @@ try {
   assert.doesNotMatch(blockedNoTask, /task gate: not enforced/)
 
   // T2 边界：这道 gate 与 changeset 政策同时在。
-  fs.mkdirSync(path.join(fixture, '.changeset'))
+  fs.mkdirSync(path.join(fixture, '.changeset'), { recursive: true })
+  fs.writeFileSync(changesetsConfig, `${fixtureChangesetsConfig}\n`)
   fs.writeFileSync(
     path.join(fixture, '.changeset', 'format-t2.md'),
     "---\n'@greypan/js-kit': patch\n---\n\nFormat gate coverage.\n"
