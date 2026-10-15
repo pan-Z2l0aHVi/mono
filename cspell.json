@@ -107,6 +107,8 @@
     "WCAG",
     "CSSWG",
     "vdom",
-    "Tera"
+    "Tera",
+    "shiki",
+    "SHIKI"
   ]
 }

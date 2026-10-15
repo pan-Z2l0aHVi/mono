@@ -8,8 +8,8 @@ const root = path.resolve(import.meta.dirname, '..')
 const generator = path.join(root, 'scripts', 'generate-web-ui-examples.mjs')
 const docsDir = path.join(root, 'docs', 'examples', 'web-ui')
 const outputs = [
-  path.join(root, 'apps', 'react-web-ui-demo', 'src', 'generated'),
-  path.join(root, 'apps', 'vue-web-ui-demo', 'src', 'generated')
+  { dir: path.join(root, 'apps', 'react-web-ui-demo', 'src', 'generated'), flavor: 'react', ext: 'tsx' },
+  { dir: path.join(root, 'apps', 'vue-web-ui-demo', 'src', 'generated'), flavor: 'vue', ext: 'vue' }
 ]
 
 function runGenerator(args, cwd = root) {
@@ -21,13 +21,54 @@ function runGenerator(args, cwd = root) {
 const check = runGenerator(['--check'])
 assert.equal(check.status, 0, `generated files are stale:\n${check.stderr}`)
 
-const modules = outputs.map(dir => readFileSync(path.join(dir, 'web-ui-examples.ts'), 'utf8'))
-const styles = outputs.map(dir => readFileSync(path.join(dir, 'web-ui-examples.css'), 'utf8'))
+const modules = outputs.map(output => readFileSync(path.join(output.dir, 'web-ui-examples.ts'), 'utf8'))
+const styles = outputs.map(output => readFileSync(path.join(output.dir, 'web-ui-examples.css'), 'utf8'))
 
 // 两个 demo 拿到的必须是逐字节相同的数据与样式：issue 的「视觉一致」由此变成结构保证，
 // 而不是靠人肉同步两份文件。
 assert.equal(modules[0], modules[1], 'react 与 vue demo 的生成数据必须逐字节一致')
 assert.equal(styles[0], styles[1], 'react 与 vue demo 的生成样式必须逐字节一致')
+
+// 生成物是 TS（带 interface 声明），node 不能直接 import，所以取那段 JSON 字面量自己解析。
+// 这是测试里刻意重复的一次「读」，不是引擎的一部分。
+function payloadOf(module) {
+  const match = /= (\[[\s\S]*\])\s*$/.exec(module)
+  if (!match) throw new Error('生成物里找不到 exampleDocs 的数组字面量')
+  return JSON.parse(match[1])
+}
+
+const docs = payloadOf(modules[0])
+const docsByName = new Map(docs.map(doc => [doc.component, doc]))
+
+/**
+ * 高亮 HTML 的可见文本。
+ *
+ * 先剥标签再解实体：shiki 把正文里的 `<` 与 `&` 写成 `&#x3C;` / `&#x26;`，所以剩下的尖括号
+ * 一律是标记本身，剥标签不会把代码里的标签当成标记。顺序反了就会把 `<web-ui-button>` 吃掉。
+ * 实体必须一趟解完（一个 alternation 正则），分几趟解会把源码里字面写着的 `&quot;` 解两遍变成 `"`。
+ */
+function visibleText(html) {
+  return html.replace(/<[^>]*>/g, '').replace(/&#x([\da-f]+);|&#(\d+);|&([a-z]+);/gi, (whole, hex, dec, name) => {
+    if (hex) return String.fromCodePoint(Number.parseInt(hex, 16))
+    if (dec) return String.fromCodePoint(Number.parseInt(dec, 10))
+    return { amp: '&', quot: '"' }[name?.toLowerCase()] || whole
+  })
+}
+
+// 给上面这个解码器自己的一条判据：`&#x26;quot;` 是源码里字面写着 `&quot;` 时 shiki 的写法。
+assert.equal(visibleText('<span>&#x26;quot; &#x3C;b></span>'), '&quot; <b>')
+
+function fencesOf(markdown, lang) {
+  return [...markdown.matchAll(new RegExp(`\`\`\`${lang}\\n([\\s\\S]*?)\\n\`\`\``, 'g'))].map(match => match[1])
+}
+
+// `### 受控值 {#controlled}`：锚点存在即代表这条示例被落成了组件文件。
+function anchoredSamples(markdown) {
+  return [...markdown.matchAll(/^###\s+(.+?)\s+\{#([a-z0-9-]+)\}\s*$/gm)].map(match => ({
+    title: match[1],
+    id: match[2]
+  }))
+}
 
 // 断言的是「值来自组件源码」这件事本身：这些类型与默认值只写在 packages/web-ui 的
 // `@property` 装饰器与常量数组里，markdown 只提供中文描述。
@@ -46,20 +87,75 @@ assert.ok(!button.includes('"key": "events"'), 'button 没有 $events，不应�
 assert.match(modules[0], /"name": "open-change",\n\s*"type": "CustomEvent<\{ open: boolean \}>"/)
 assert.match(modules[0], /"name": "content",/)
 
-// Vue SFC 的 <template> 必须真的被着色：曾有一条「锚定缺失的分支把整段标签吞掉」的缺陷，
-// 表现就是模板内容原样漏过、只剩 {{ }} 插值被着色。这里钉住标签与属性两种 token。
-const vueSamples = [...modules[0].matchAll(/"(?:react|vue)": "((?:[^"\\]|\\.)*)"/g)].map(m => JSON.parse(`"${m[1]}"`))
-const templateSample = vueSamples.find(html => html.includes('hl-tag'))
-assert.ok(templateSample, 'Vue 示例里必须存在被着色的标签 token')
-assert.ok(templateSample.includes('class="hl-attr"'), 'Vue 模板属性必须被着色')
-assert.ok(
-  vueSamples.some(html => html.includes('v-for')),
-  'Vue 模板正文不能整段漏过——标签属性与文本都要出现在高亮结果里'
-)
-assert.ok(
-  vueSamples.some(html => html.includes('"hl-tag">script') && html.includes('"hl-keyword">import')),
-  'Vue SFC 的 <script> 段必须按 TS 着色'
-)
+// ── 不变式一：页面显示的那份源码，逐字就是 markdown 里的那一段围栏 ──
+// 这条同时替掉了旧实现里「钉 `.hl-tag` 类名与某个颜色值」的两个断言：那些是在证明自制着色器
+// 没吞掉 Vue 模板，而 shiki 换掉着色器后类名不复存在。直接量「可见文本 == 围栏原文」比它强，
+// 且与主题、类名、token 结构都无关。引擎里另有一条同口径的自证：`src/highlight.ts` 对最终 HTML
+// 剥掉标记、解掉实体后必须逐字等于输入，所以这条断言不是唯一的一道闸。
+for (const name of readdirSync(docsDir).filter(file => file.endsWith('.md'))) {
+  const component = name.replace(/\.md$/, '')
+  const doc = docsByName.get(component)
+  assert.ok(doc, `${name}：生成数据里没有这个 component`)
+  const markdown = readFileSync(path.join(docsDir, name), 'utf8')
+  for (const lang of ['react', 'vue']) {
+    const fences = fencesOf(markdown, lang)
+    assert.equal(
+      fences.length,
+      doc.samples.length,
+      `${name}：${lang} 围栏数 ${fences.length} 与示例数 ${doc.samples.length} 不一致`
+    )
+    fences.forEach((fence, index) => {
+      const html = doc.samples[index].html[lang]
+      assert.match(
+        html,
+        /^<pre class="shiki shiki-themes github-light github-dark wui-example-code"/,
+        `${name}/${doc.samples[index].title}/${lang}：高亮外框形状变了，Tailwind 那层边框与这里的取色会对不上`
+      )
+      assert.equal(
+        visibleText(html),
+        fence,
+        `${name}/${doc.samples[index].title}/${lang}：显示出来的代码与 markdown 围栏不是同一份字节`
+      )
+    })
+  }
+}
+
+// ── 不变式二：带锚点的示例被落成组件文件，文件内容就是围栏 + 一个行尾换行 ──
+// 落盘文件是 app 真正编译执行的那份源码，所以这里比的不是「渲染得像」，而是字节相同。
+// 行尾换行是唯一的差别：mdast 的 code 节点值不含它，而文本文件与格式化器都要它有。
+let liveCount = 0
+for (const name of readdirSync(docsDir).filter(file => file.endsWith('.md'))) {
+  const component = name.replace(/\.md$/, '')
+  const markdown = readFileSync(path.join(docsDir, name), 'utf8')
+  const anchors = anchoredSamples(markdown)
+  liveCount += anchors.length
+  for (const anchor of anchors) {
+    const doc = docsByName.get(component)
+    const sample = doc.samples.find(candidate => candidate.title === anchor.title)
+    assert.ok(sample, `${name}：带锚点的示例「${anchor.title}」没进生成数据`)
+    assert.equal(sample.liveKey, anchor.id, `${name}/${anchor.title}：生成数据里的 liveKey 不是锚点`)
+    for (const output of outputs) {
+      const fence = fencesOf(markdown, output.flavor)[doc.samples.indexOf(sample)]
+      const file = path.join(output.dir, 'demos', `${component}--${anchor.id}.${output.ext}`)
+      assert.ok(existsFile(file), `${file} 不存在：带 \`### ${anchor.title} {#${anchor.id}}\` 的示例必须落成组件文件`)
+      assert.equal(
+        readFileSync(file, 'utf8'),
+        `${fence}\n`,
+        `${file} 与 markdown 围栏不是同一份源码：显示的那份和被执行的那份漂移了`
+      )
+    }
+  }
+}
+assert.ok(liveCount > 0, '一篇带锚点的示例都没有：live 通道等于没被任何断言覆盖')
+
+function existsFile(file) {
+  try {
+    readFileSync(file)
+    return true
+  } catch {
+    return false
+  }
+}
 
 // ── 覆盖守卫：路由 ↔ markdown ↔ ExampleDoc 三方必须同名同量 ──
 // 生成器只能保证「写了 markdown 的组件与源码一致」；整条路由漏写 markdown、或路由没有渲染
@@ -173,8 +269,33 @@ try {
   const fence = runGenerator(['--docs-dir', scratchDocs, '--out-dir', scratchOut])
   assert.notEqual(fence.status, 0, '示例代码块语言不是 react / vue 时生成器必须失败')
   assert.match(fence.stderr, /语言必须是 react 或 vue/)
+
+  // 反向：给一个「片段形态」的示例加锚点开 live，必须被拦下。
+  // live 的围栏就是会被编译执行的源文件，button.md 的围栏是裸 JSX 片段，发出去等于发出一个
+  // 语法都不合法的模块；这条守卫是「未迁移的 29 篇不会被顺手开成 live」的机械判据。
+  const liveFragment = source.replace(/^### 变体/mu, '### 变体 {#variants}')
+  assert.notEqual(liveFragment, source, '测试 fixture 没加上锚点，这条负例不承重')
+  writeFileSync(path.join(scratchDocs, fixtureName), liveFragment)
+  const fragment = runGenerator(['--docs-dir', scratchDocs, '--out-dir', scratchOut])
+  assert.notEqual(fragment.status, 0, '片段形态的 react 围栏带锚点时生成器必须失败')
+  assert.match(fragment.stderr, /export default function Demo/)
+
+  // 反向：改了 `{#id}` 或删掉一条示例后，上一轮那份组件文件必须跟着走。孤儿不被任何 markdown
+  // 引用，所以「围栏 == 落盘」那组断言盖不到它，但它照样被 app 的 import.meta.glob 编进构建。
+  writeFileSync(path.join(scratchDocs, fixtureName), source)
+  const orphans = ['button--ghost.tsx', 'button--other-flavor.vue'].map(name => path.join(scratchOut, 'demos', name))
+  mkdirSync(path.dirname(orphans[0]), { recursive: true })
+  for (const orphan of orphans) writeFileSync(orphan, 'export default function Demo() {\n  return null\n}\n')
+  const stale = runGenerator(['--check', '--docs-dir', scratchDocs, '--out-dir', scratchOut])
+  assert.notEqual(stale.status, 0, '生成目录里留着 markdown 已不引用的组件文件时 --check 必须失败')
+  for (const orphan of orphans) assert.match(stale.stderr, new RegExp(path.basename(orphan)))
+  const pruned = runGenerator(['--docs-dir', scratchDocs, '--out-dir', scratchOut])
+  assert.equal(pruned.status, 0, `清理上一轮遗留的组件文件时生成器必须成功：\n${pruned.stderr}`)
+  // 清扫按「本轮没写出」判定，不看扩展名：`--out-dir` 这条 seam 只有 react flavor，所以这里那份
+  // `.vue` 孤儿是被同一个判据带走的，不是被扩展名过滤漏掉的。
+  for (const orphan of orphans) assert.ok(!existsFile(orphan), `生成器没删掉上一轮遗留的 ${path.basename(orphan)}`)
 } finally {
   rmSync(scratch, { recursive: true, force: true })
 }
 
-console.log('generate-web-ui-examples tests passed')
+console.log(`generate-web-ui-examples tests passed（live 示例 ${liveCount} 条）`)

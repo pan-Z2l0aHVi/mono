@@ -1,22 +1,44 @@
 <script setup lang="ts">
+import type { Component } from 'vue'
+import { computed, defineAsyncComponent } from 'vue'
+
 import { exampleDocs } from '@/generated/web-ui-examples'
 
 /**
- * 由 markdown 与组件源码生成的示例文档：示例代码（语法高亮）+ API 表。
+ * 由 markdown 与组件源码生成的示例文档：可交互示例（live）+ 示例代码（语法高亮）+ API 表。
  *
  * 数据全部来自 `docs/examples/web-ui/<name>.md` 与 `packages/web-ui/src/components/<name>/index.ts`，
  * 生成物由 `node scripts/generate-web-ui-examples.mjs` 维护。这里只负责渲染，不写死任何字段。
+ *
+ * markdown 里带 `{#id}` 锚点的示例会被生成器原样落成 `src/generated/demos/<component>--<id>.vue`，
+ * 也就是下面 glob 到的这份 SFC——`<pre>` 里显示的字节和屏幕上被执行的字节是同一份。
+ * 没有锚点的示例只有代码块，等其余 29 篇的围栏改写成完整 SFC 形态后再逐个开。
  */
+const demoModules = import.meta.glob<{ default: Component }>('../../generated/demos/*.vue')
+const DEMO_PREFIX = '../../generated/demos/'
+
+// 异步组件在模块作用域建一次：setup 里每次新建会让示例被反复卸载重建，拖到一半的滑块状态当场丢失。
+const demoComponents = new Map(
+  Object.entries(demoModules).map(([file, load]) => [
+    file.slice(DEMO_PREFIX.length, -'.vue'.length),
+    defineAsyncComponent(load)
+  ])
+)
+
 const props = defineProps<{ component: string; flavor?: 'react' | 'vue' }>()
 
 const flavor = computed(() => props.flavor ?? 'vue')
 const doc = computed(() => exampleDocs.find(candidate => candidate.component === props.component))
+
+function liveComponent(liveKey: string | null) {
+  return liveKey ? demoComponents.get(`${props.component}--${liveKey}`) : undefined
+}
 </script>
 
 <template>
-  <!-- v-html 的内容是生成器产出的高亮 HTML（纯文本已在生成时转义），不是运行时拼的用户输入。 -->
   <section v-if="doc" class="mt-8 flex flex-col gap-4" :data-example-doc="doc.component">
-    <p class="m-0 text-(--wui-color-text)" data-example-intro>{{ doc.intro }}</p>
+    <!-- 生成器把 markdown 渲染成 HTML 片段（纯文本已在生成时转义），不是运行时拼的用户输入。 -->
+    <p class="m-0 text-(--wui-color-text)" data-example-intro v-html="doc.introHtml"></p>
 
     <h2>示例代码</h2>
     <div
@@ -26,10 +48,18 @@ const doc = computed(() => exampleDocs.find(candidate => candidate.component ===
       :data-example-sample="sample.title"
     >
       <h3 class="m-0">{{ sample.title }}</h3>
-      <p class="m-0 text-gray-500">{{ sample.description }}</p>
-      <pre
-        class="m-0 overflow-x-auto rounded-lg border border-(--wui-color-border) bg-(--wui-color-surface-raised) p-3 font-mono text-sm leading-5"
-      ><code v-html="sample.html[flavor]"></code></pre>
+      <p class="m-0 text-gray-500" v-html="sample.descriptionHtml"></p>
+      <div
+        v-if="liveComponent(sample.liveKey)"
+        class="flex flex-wrap items-center gap-4 rounded-lg border border-(--wui-color-border) bg-(--wui-color-surface) p-4"
+        :data-example-preview="sample.liveKey ?? undefined"
+      >
+        <component :is="liveComponent(sample.liveKey)" />
+      </div>
+      <div
+        class="overflow-x-auto rounded-lg border border-(--wui-color-border) bg-(--wui-color-surface-raised) p-3 font-mono text-sm leading-5"
+        v-html="sample.html[flavor]"
+      ></div>
     </div>
 
     <h2>API</h2>
@@ -75,7 +105,7 @@ const doc = computed(() => exampleDocs.find(candidate => candidate.component ===
                 {{ row.default }}
               </td>
             </template>
-            <td class="border-b border-(--wui-color-border) px-3 py-2 align-top">{{ row.description }}</td>
+            <td class="border-b border-(--wui-color-border) px-3 py-2 align-top" v-html="row.descriptionHtml"></td>
           </tr>
         </tbody>
       </table>

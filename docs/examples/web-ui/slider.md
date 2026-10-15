@@ -7,12 +7,14 @@ tag: web-ui-slider
 
 ## 示例
 
-### 基础
+### 基础 {#basic}
 
 `min` / `max` / `step` 约束取值范围与步进幅度。
 
 ```react
-<web-ui-slider min={0} max={100} step={5} value={40}></web-ui-slider>
+export default function Demo() {
+  return <web-ui-slider min={0} max={100} step={5} value={40}></web-ui-slider>
+}
 ```
 
 ```vue
@@ -21,12 +23,14 @@ tag: web-ui-slider
 </template>
 ```
 
-### 刻度与垂直方向
+### 刻度与垂直方向 {#marks-vertical}
 
 `marks` 显示刻度标记，`vertical` 让滑块沿垂直方向排列。
 
 ```react
-<web-ui-slider marks vertical min={0} max={10} value={3}></web-ui-slider>
+export default function Demo() {
+  return <web-ui-slider marks vertical min={0} max={10} value={3}></web-ui-slider>
+}
 ```
 
 ```vue
@@ -35,32 +39,41 @@ tag: web-ui-slider
 </template>
 ```
 
-### 受控值
+### 受控值 {#controlled}
 
 拖拽过程中 `input` 连续触发，松手或键盘确认时派发一次 `change`。
 
 ```react
-const [volume, setVolume] = useState(30)
+import { useState } from 'react'
 
-return (
-  <web-ui-slider
-    value={volume}
-    min={0}
-    max={100}
-    onInput={event => setVolume(event.currentTarget.value)}
-  ></web-ui-slider>
-)
+export default function Demo() {
+  const [volume, setVolume] = useState(30)
+
+  return (
+    <web-ui-slider
+      value={volume}
+      min={0}
+      max={100}
+      onInput={event => setVolume(event.currentTarget.value)}
+    ></web-ui-slider>
+  )
+}
 ```
 
 ```vue
 <template>
-  <web-ui-slider :value="volume" :min="0" :max="100" @input="volume = $event.currentTarget.value"></web-ui-slider>
+  <web-ui-slider :value="volume" :min="0" :max="100" @input="onInput"></web-ui-slider>
 </template>
 
 <script setup lang="ts">
+import type { WebUiEvent, WebUiSlider } from '@greypan/web-ui'
 import { ref } from 'vue'
 
 const volume = ref(30)
+
+function onInput(event: WebUiEvent<WebUiSlider, 'input'>) {
+  volume.value = event.currentTarget.value
+}
 </script>
 ```
 

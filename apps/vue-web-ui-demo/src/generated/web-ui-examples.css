@@ -1,87 +1,27 @@
-/* 本文件由 scripts/generate-web-ui-examples.mjs 生成，请勿手动编辑。 */
+/* 本文件由 @greypan/web-ui-docs 生成，请勿手动编辑。 */
 
 /*
- * 只放代码高亮的 token 颜色。文档外框（间距、表格、<pre>）用 Tailwind 工具类写在两个 demo 的
- * example-doc 组件里，不在这里重复一份布局：那部分归仓级 Tailwind 主题管，搬进来反而会绕开
- * @theme 与 dark 变体。
+ * shiki 的 defaultColor: false 把颜色输出成 CSS 变量，浅色取 --shiki-light、深色取 --shiki-dark。
+ * 深色判定跟着 web-ui-theme 的 resolved-appearance 走，和组件其余表面用同一个外观源，
+ * 所以切换外观不需要重新生成高亮 HTML。
  */
-
-.hl-comment {
-  font-style: italic;
-  color: #7a8194;
+.shiki,
+.shiki span {
+  color: var(--shiki-light);
 }
 
-.hl-string {
-  color: #2f7d4f;
+web-ui-theme[resolved-appearance='dark'] .shiki,
+web-ui-theme[resolved-appearance='dark'] .shiki span {
+  color: var(--shiki-dark);
 }
 
-.hl-number {
-  color: #a05cc7;
-}
-
-.hl-keyword {
-  color: #c0455e;
-}
-
-.hl-literal {
-  color: #a05cc7;
-}
-
-.hl-builtin {
-  color: #2f6fb0;
-}
-
-.hl-operator {
-  color: #8a5a2b;
-}
-
-.hl-tag {
-  color: #c0455e;
-}
-
-.hl-attr {
-  color: #2f6fb0;
-}
-
-.hl-type {
-  color: #2f6fb0;
-}
-
-.hl-fn {
-  color: #8a5a2b;
-}
-
-.hl-prop {
-  color: #2f7d4f;
-}
-
-.hl-selector {
-  color: #c0455e;
-}
-
-.hl-value {
-  color: #2f6fb0;
-}
-
-.hl-at {
-  color: #8a5a2b;
-}
-
-/* 深色档跟随 web-ui-theme 的 resolved-appearance（与 global.css 的 dark 变体同一口径），
-   不用 prefers-color-scheme：用户可以在系统浅色下显式选深色。 */
-web-ui-theme[resolved-appearance='dark'] .hl-string {
-  color: #7fce9c;
-}
-
-web-ui-theme[resolved-appearance='dark'] .hl-keyword,
-web-ui-theme[resolved-appearance='dark'] .hl-tag,
-web-ui-theme[resolved-appearance='dark'] .hl-selector {
-  color: #f08a9d;
-}
-
-web-ui-theme[resolved-appearance='dark'] .hl-attr,
-web-ui-theme[resolved-appearance='dark'] .hl-type,
-web-ui-theme[resolved-appearance='dark'] .hl-builtin,
-web-ui-theme[resolved-appearance='dark'] .hl-value {
-  color: #8ab8f5;
+/*
+ * shiki 产出的是自带版式的 <pre>（等宽、margin、背景都在它自己的 style 里），
+ * 而示例代码块的外框由两个 demo 用 Tailwind 工具类提供。这里把前者复位成继承，
+ * 否则同一块代码会出现两层边框与两套字号。
+ */
+.wui-example-code {
+  margin: 0;
+  font: inherit;
+  background: transparent;
 }
