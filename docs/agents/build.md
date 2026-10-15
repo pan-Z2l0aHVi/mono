@@ -47,7 +47,7 @@ Codex 沙箱由仓库外的机器级 `~/.codex/config.toml` 配置，不属于�
 - `~/.local/state/mise`、`~/.local/share/mise`
 - `~/Library/pnpm`、`~/.npm`
 - `~/go`、`~/Library/Caches`、`~/.cache`
-- `/Users/bopan/VibeCoding/mono/.git`
+- 主仓库的 `.git`（即 `R/.git`，路径因人而异；用 `git rev-parse --path-format=absolute --git-common-dir` 取）
 
 本 worktree 和 `/tmp` 也可写。`~/Documents` 与 home 目录本身不可写。用 `sh -c 'touch <probe> && echo OK || echo DENIED'` 可直接检查目标路径；探测后删除临时文件。网络探测可用 `curl`，本机的 `curl https://registry.npmmirror.com` 与 `pnpm view @changesets/cli version` 均有响应。
 
@@ -55,7 +55,7 @@ Codex 沙箱由仓库外的机器级 `~/.codex/config.toml` 配置，不属于�
 
 `.agents/` 在 worktree 内，但沙箱 shell 仍拒绝写入。编辑或还原其中的文件时使用宿主侧编辑工具，例如 `apply_patch`；不要用 shell 写入。
 
-2026-10-15 实测（真实 `codex exec --approve-for-me`）：Codex 按名称而非路径位置保护 `.git`。即使把整个仓库根 `/Users/bopan/VibeCoding/mono` 列入 `writable_roots`，`R/.git/**` 仍被拒；将 `/Users/bopan/VibeCoding/mono/.git` 本身列入后，`<main>/.git/config` 和 `.git` 下的普通文件可写，无需提权。
+2026-10-15 实测（真实 `codex exec --approve-for-me`）：Codex 按名称而非路径位置保护 `.git`。即使把整个仓库根 `R`（= 主仓库根，即 `git rev-parse --path-format=absolute --git-common-dir` 的父目录；注意 `git rev-parse --show-toplevel` 在 linked worktree 里给的是该 worktree 的根，不是 `R`）列入 `writable_roots`，`R/.git/**` 仍被拒；将 `R/.git` 本身列入后，`<main>/.git/config` 和 `.git` 下的普通文件可写，无需提权。
 
 2026-10-15 实测，仍需提权的是 linked worktree 自己的 admin dir：`<main>/.git/worktrees/<slug>/index.lock`。被列入可写根的 worktree，其自身 admin dir 仍保持关闭；Herdr 线程的工作区就是这个 worktree。`git add`、`git rm --cached`、freeze 中的 `git add -A` 和 `git commit` 会写该目录。执行前通过 Codex approval request 请求提权，获批后重跑原命令。不要在沙箱内反复重试，也不要用 `--no-verify` 或修改 hook 绕过限制。
 
