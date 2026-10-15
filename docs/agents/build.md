@@ -47,14 +47,21 @@ Codex 沙箱由仓库外的机器级 `~/.codex/config.toml` 配置，不属于�
 - `~/.local/state/mise`、`~/.local/share/mise`
 - `~/Library/pnpm`、`~/.npm`
 - `~/go`、`~/Library/Caches`、`~/.cache`
+- `/Users/bopan/VibeCoding/mono/.git`
 
 本 worktree 和 `/tmp` 也可写。`~/Documents` 与 home 目录本身不可写。用 `sh -c 'touch <probe> && echo OK || echo DENIED'` 可直接检查目标路径；探测后删除临时文件。网络探测可用 `curl`，本机的 `curl https://registry.npmmirror.com` 与 `pnpm view @changesets/cli version` 均有响应。
 
+2026-10-15 实测，在 linked worktree 执行 `mise exec -- pnpm exec node -p 'X'`，加入该路径前退出码为 1，末行是 `could not lock config file …/.git/config`；加入后退出码为 0。`pnpm` 依赖流水线会执行根 `prepare`（`vp config` 写入主仓库 `.git/config`），列出该 `.git` 后这部分不再需要提权。
+
 `.agents/` 在 worktree 内，但沙箱 shell 仍拒绝写入。编辑或还原其中的文件时使用宿主侧编辑工具，例如 `apply_patch`；不要用 shell 写入。
 
-linked worktree 的 Git 元数据位于主仓库的 `.git/worktrees/<worktree>`，不在 worktree 目录里。本线程实测，沙箱中的 `git add`、`git rm --cached` 和 freeze 使用的 `git add -A` 都因创建 `index.lock` 被拒。`git commit` 也会写这份 Git 元数据；执行这些操作前通过 Codex approval request 请求提权，并让工具重跑原命令。本机的 `codex exec --approve-for-me` 会把请求交给 auto-review，获批后在沙箱外执行。不要反复在沙箱内重试同一写操作。
+2026-10-15 实测（真实 `codex exec --approve-for-me`）：Codex 按名称而非路径位置保护 `.git`。即使把整个仓库根 `/Users/bopan/VibeCoding/mono` 列入 `writable_roots`，`R/.git/**` 仍被拒；将 `/Users/bopan/VibeCoding/mono/.git` 本身列入后，`<main>/.git/config` 和 `.git` 下的普通文件可写，无需提权。
 
-`TURBO_CACHE_DIR` 同样指向主仓库 `.git/turbo-cache`，沙箱写入探针被拒，Turbo 构建输出 `IO error: Operation not permitted` 警告。这个线程的 Turbo 任务在警告后继续运行包构建；不要把该警告当作共享缓存可用。下文的构建 A/B 使用包级命令，不依赖 Turbo 缓存。
+2026-10-15 实测，仍需提权的是 linked worktree 自己的 admin dir：`<main>/.git/worktrees/<slug>/index.lock`。被列入可写根的 worktree，其自身 admin dir 仍保持关闭；Herdr 线程的工作区就是这个 worktree。`git add`、`git rm --cached`、freeze 中的 `git add -A` 和 `git commit` 会写该目录。执行前通过 Codex approval request 请求提权，获批后重跑原命令。不要在沙箱内反复重试，也不要用 `--no-verify` 或修改 hook 绕过限制。
+
+2026-10-15 推断：`git push` 先前被拒的 upstream 配置写入和 `refs/remotes/origin/<branch>` 目录创建都位于 `mono/.git` 下，因此现在应不再需要提权；这两步本次未实测。
+
+2026-10-15 实测，`TURBO_CACHE_DIR` 位于 `mono/.git/turbo-cache` 下，沙箱写入探针成功。本次未重测 Turbo 构建行为。下文的构建 A/B 使用包级命令，不依赖 Turbo 缓存。
 
 浏览器也受进程沙箱限制。本线程的 Playwright `chromium.launch()` 在沙箱内因 Mach 服务权限失败，通过 approval request 提权后启动成功。需要真实浏览器的验证应对启动浏览器的命令请求提权。
 
