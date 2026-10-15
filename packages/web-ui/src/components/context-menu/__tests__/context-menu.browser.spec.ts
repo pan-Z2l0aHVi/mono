@@ -435,15 +435,38 @@ describe('WebUiContextMenu 组件（浏览器）', () => {
       void Promise.resolve().then(() => editable.select())
       menu.close()
     })
-    await userEvent.click(item)
-    await nextFrame()
-    await nextFrame()
-
+    // MutationObserver：观测 scrim 的 open 属性变化（出顶层的可观测瞬间）
+    let recordedState: { modal: boolean; isConnected: boolean } | undefined
     const scrim = document.querySelector<HTMLDialogElement>('dialog[data-wui-menu-scrim]')
+    if (scrim) {
+      const observer = new MutationObserver(mutations => {
+        // 属性变化触发时，无条件记录当前状态，不判断谓词
+        recordedState = {
+          modal: scrim.matches(':modal'),
+          isConnected: scrim.isConnected
+        }
+        observer.disconnect()
+      })
+      observer.observe(scrim, {
+        attributes: true,
+        attributeFilter: ['open'],
+        subtree: true
+        // 只观察 open 属性：子树里的增删不是本用例的信号，观察它会让无关 DOM 变更提前触发记录
+      })
+    }
+    await userEvent.click(item)
+    // 等待 observer 记录到状态（出顶层瞬间），而不是等固定帧数
+    await pollUntil(() => recordedState !== undefined, 'Expected the menu scrim to leave the top layer')
+
+    // 断言使用记录在出顶层瞬间的 recordedState，而不是即时的 querySelector
+    // recordedState.modal 在 observer 触发的时刻：出顶层后应为 false
+    expect(recordedState!.modal).toBe(false)
+    // recordedState.isConnected 在 observer 触发的时刻：出顶层后 scrim 仍在 DOM 里
+    expect(recordedState!.isConnected).toBe(true)
     // 焦点仍要在菜单里、编辑态刚建起的那一刻就已经落到 textarea 上：出顶层必须早于退场结束。
+    // 这是持续状态，等 observer 记录完成后直接查活值即可
     expect(document.activeElement, '菜单项激活后 scrim 应立刻出顶层').toBe(editable)
     expect(editable.shadowRoot?.activeElement?.tagName).toBe('TEXTAREA')
-    expect(scrim?.matches(':modal')).toBe(false)
 
     await waitForItemsReturned(menu, 1)
     await nextFrame()
