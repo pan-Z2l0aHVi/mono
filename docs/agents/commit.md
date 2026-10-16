@@ -2,8 +2,6 @@
 
 仅在用户明确授权提交后才阅读本指南。commitlint 的规则（类型、scope、字数与大小写）以 [`commitlint.config.js`](../../commitlint.config.js) 为准，这里只写它没覆盖的约定。
 
-Codex 沙箱对 Git 元数据的写入限制及 approval request 提权规则见 [`build.md`](build.md)「Codex 沙箱边界与提权」。
-
 - commit message 使用英文。
 - scope 只标识受影响的 workspace，不表示领域，类别信息由 `type` 承载；跨包协调用逗号分隔多个 scope。历史提交里的 `docs(agents)`、`fix(ci)`、`feat(lint)` 是旧写法，不要照抄：CI 配置改动归类为 `ci`，指令系统文档（`AGENTS.md`、`docs/agents/`）归类为 `docs`，仓库根的非包改动（`scripts/`、根配置）用 `root` scope。
 

@@ -19,7 +19,7 @@
 
 编排层负责：需求拆分、线程（= task）派发、并行度、worktree 与 branch 的分配与创建、reviewer 线程的开立、PR 跟进与失败回灌、worktree 的清理。
 
-仓库保留：级别判定（T0/T1/T2）、状态机、冻结证据（`diffHash` 与 stale 判定）、review/approval 的独立性要求、验证门禁、`.agents/checks/` 的政策检查、Playbook。判据见 [`docs/agents/workflow.md`](../../docs/agents/workflow.md)「任务级别」与「状态机」，本文不复制。
+仓库保留：级别判定（T0/T1/T2）、状态机、冻结证据（`diffHash` 与 stale 判定）、review/approval 的独立性要求、验证门禁、`.agents/checks/` 的政策检查、Playbook。判据见 `docs/agents/workflow.md`「任务级别」与「状态机」，本文不复制。
 
 分界线是「谁因它失效」：拆分错了、派发重了，是编排层的流程失效；一条 task 的级别判错、证据不完整、review 缺位，是仓库门禁失效。前者不再写进仓库文档。
 
@@ -31,7 +31,7 @@
 
 理由是这一项描述的是**编排形态**，不是变更的影响半径，而表头自己写明判据「描述的是变更的影响半径，不是任务的价值排序」。把「有 N 条 task 并行跑」当作升 T0 的条件，等于让一次编排决定绕过整张风险表：三条互不相干的 T2 文档改动并行，就变 T0；同样三条改动串行跑，就是 T2。同一份 diff 的严格程度取决于它被排在哪一档，与它本身的风险无关。
 
-删掉之后 T0 由纯粹的契约面定义：跨 workspace 的公共 API/exports/事件/类型契约，依赖、catalog、lockfile、构建配置或 CI。这五类都有可机械查证的判据。聚合发布仍然按 T0 建 task——但依据是它聚合的 task 里至少有一条 T0，而不是「它是一次聚合」。（2026-10-11 注记：T0 判据面由 [ADR-0024](0024-task-tiering-v3.md) §1 重新表述为「可执行内容」×「路径在根 / 跨 workspace 公共契约 / 含依赖变更」，本节「删除编排形态判据、只留影响面判据」的结论不变。）
+删掉之后 T0 由纯粹的契约面定义：跨 workspace 的公共 API/exports/事件/类型契约，依赖、catalog、lockfile、构建配置或 CI。这五类都有可机械查证的判据。聚合发布仍然按 T0 建 task——但依据是它聚合的 task 里至少有一条 T0，而不是「它是一次聚合」。（2026-10-11 注记：T0 判据面由 ADR-0024 §1 重新表述为「可执行内容」×「路径在根 / 跨 workspace 公共契约 / 含依赖变更」，本节「删除编排形态判据、只留影响面判据」的结论不变。）
 
 ### 3. T0 的 reviewer 由编排层另起独立线程，不进入 owner 的 worktree
 
@@ -60,7 +60,7 @@ T0 必须 review 的要求不变，形态改变：编排层为 review 开一条�
 - **仓库文档不再教手工编排**。`worktrees.md` 的路径约定、`git switch -C`、`--unset-upstream`、package worktree 复用规则删除；`AGENTS.md` 的手工路径约定删除；`release.md` 的 Manager 角色表述改为聚合 task 的 owner。（2026-10-06 注记：最后这一条随之作废——「聚合 task」这一层本身没有了，交付单元是任务，一条 task 的 PR 直接合进 `main`，`release.md` 已按这个形态重写。）
 - **一个 worktree 的初始化责任人明确为执行者**，不是编排层。
 - **T0 判据表少一项**，其余单元格、表头结构与「多级同时命中时取最高级」一条不变。级别对应的 freeze/review/approval/验证/commit gate 一项不减。
-- **review 拓扑的 T0 一条改写**，T1/T2 的表述原样保留；「同一会话禁止自审」与 id 形状规则不变。（2026-10-11 注记：T0 一条进一步改为只写不变量——必须 review，reviewer 独立于实施者、只审冻结 diff 与证据，不再规定这份独立性由编排层另起线程提供，fresh subagent 明确算数；「同一会话禁止自审」改为「同一执行体禁止自审」。id 形状规则不变。）（2026-10-11 注记：T1 的 review 由可选改为强制并与 approval 成对（见 [ADR-0024](0024-task-tiering-v3.md) §2），本条「T1/T2 的表述原样保留」对 T1 不再成立，T2 不变。）
+- **review 拓扑的 T0 一条改写**，T1/T2 的表述原样保留；「同一会话禁止自审」与 id 形状规则不变。（2026-10-11 注记：T0 一条进一步改为只写不变量——必须 review，reviewer 独立于实施者、只审冻结 diff 与证据，不再规定这份独立性由编排层另起线程提供，fresh subagent 明确算数；「同一会话禁止自审」改为「同一执行体禁止自审」。id 形状规则不变。）（2026-10-11 注记：T1 的 review 由可选改为强制并与 approval 成对（见 ADR-0024 §2），本条「T1/T2 的表述原样保留」对 T1 不再成立，T2 不变。）
 - **`task-packet.md` 增加一条字段来源说明**：`Owner`、`Worktree`、`Base` 由编排层提供，packet 只如实记录。
 - **预授权操作清单、状态机、`diffHash` 口径、`alwaysOnChecks` 白名单、`.agents/checks/` 的两条检查、Playbook 与 hotfix 规则全部未动**。（2026-10-11 注记：`.agents/checks/` 现为三条，`turbo-cache-invariant` 随 #210 加入并登记进 `alwaysOnChecks`；检查清单与各自口径的权威改为 `.agents/checks/` 下脚本自身的注释；`Playbook` 中的 hotfix 部分于同日删除（从未触发过），release playbook 保留。）
 - **（2026-10-10 修订）`worktrees.md` 与 `task-packet.md` 删除并入相邻文档**：worktree 隔离、编排层交付后初始化与 turbo 共享缓存归入 `docs/agents/build.md`；提交后 worktree 干净的收尾约束归入 `docs/agents/commit.md`；Task Packet 主合同与恢复规则归入 `docs/agents/workflow.md`。理由：三份文档的加载集重合（每个实施 task 都要读），拆分只换来交叉引用，换不到按需加载收益；worktree 与 task 的绑定是既定事实，不再单列边界文档。
