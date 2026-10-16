@@ -26,7 +26,9 @@ import ExampleDoc from '..'
 const slider = exampleDocs.find(doc => doc.component === 'slider')
 const button = exampleDocs.find(doc => doc.component === 'button')
 const imagePreview = exampleDocs.find(doc => doc.component === 'image-preview')
-if (!slider || !button || !imagePreview) throw new Error('生成数据里缺少 slider / button / image-preview')
+const collapse = exampleDocs.find(doc => doc.component === 'collapse')
+if (!slider || !button || !imagePreview || !collapse)
+  throw new Error('生成数据里缺少 slider / button / image-preview / collapse')
 
 /** demoKey → 落盘文件字节；少一条就在断言里直接报出来，不留「这条没被覆盖」的静默缺口。 */
 const demoSources: Record<string, string> = {
@@ -249,5 +251,22 @@ describe('example-doc（React 面 / 真实浏览器）', () => {
     const { container: buttonContainer } = render(<ExampleDoc component="button" />)
     // button.md 没写 ### Events 小节，就不该凭空多出一张 Events 表。
     expect(buttonContainer.querySelector('[data-example-api="events"]')).toBeNull()
+  })
+
+  it('methods 表列出手写的方法，没写方法的组件不留空表', () => {
+    const { container } = render(<ExampleDoc component="collapse" />)
+    const methods = apiSection(collapse, 'methods')
+    const rows = sectionRows(container, 'methods')
+
+    // 名称单元格写成调用形态（`show()` / `replay(options?)`），与 Props / Events 的裸属性名不同：
+    // 这一节记的是挂在元素上的方法，不是声明式契约。
+    expect(rows.map(cells => cells[0])).toEqual(methods.rows.map(row => row.name))
+    expect(rows.map(cells => cells[0])).toEqual(['show()', 'close()', 'toggle()'])
+    // 两列小节不会被多渲染出类型与默认值两格。
+    expect(rows.map(cells => cells.length)).toEqual([2, 2, 2])
+
+    const { container: buttonContainer } = render(<ExampleDoc component="button" />)
+    // button.md 没有方法可写，就不该凭空多出一张 Methods 表。
+    expect(buttonContainer.querySelector('[data-example-api="methods"]')).toBeNull()
   })
 })

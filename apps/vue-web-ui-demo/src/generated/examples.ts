@@ -166,6 +166,20 @@ export const exampleDocs: ExampleDoc[] = [
             "descriptionHtml": "<p>投影 <code>&lt;web-ui-option></code> 候选。</p>"
           }
         ]
+      },
+      {
+        "key": "methods",
+        "title": "Methods",
+        "rows": [
+          {
+            "name": "focus()",
+            "descriptionHtml": "<p>聚焦当前触发器的可聚焦元素；自定义触发器不支持时聚焦宿主自身。</p>"
+          },
+          {
+            "name": "blur()",
+            "descriptionHtml": "<p>让当前触发器失焦。</p>"
+          }
+        ]
       }
     ],
     "samples": [
@@ -328,6 +342,16 @@ export const exampleDocs: ExampleDoc[] = [
           {
             "name": "default",
             "descriptionHtml": "<p>自定义按钮内容。</p>"
+          }
+        ]
+      },
+      {
+        "key": "methods",
+        "title": "Methods",
+        "rows": [
+          {
+            "name": "toTop()",
+            "descriptionHtml": "<p>滚动回顶部，行为由 <code>scroll-behavior</code> 决定。</p>"
           }
         ]
       }
@@ -912,6 +936,24 @@ export const exampleDocs: ExampleDoc[] = [
             "descriptionHtml": "<p>折叠内容。关闭态按 <code>keep-mounted</code> / <code>peek</code> 决定是 <code>hidden</code> 还是 <code>inert</code>。</p>"
           }
         ]
+      },
+      {
+        "key": "methods",
+        "title": "Methods",
+        "rows": [
+          {
+            "name": "show()",
+            "descriptionHtml": "<p>展开：把 <code>open</code> 置为 <code>true</code>；程序式变更不派发 <code>open-change</code>。</p>"
+          },
+          {
+            "name": "close()",
+            "descriptionHtml": "<p>收起：把 <code>open</code> 置为 <code>false</code>；程序式变更不派发 <code>open-change</code>。</p>"
+          },
+          {
+            "name": "toggle()",
+            "descriptionHtml": "<p>按当前 <code>open</code> 切换展开 / 收起。</p>"
+          }
+        ]
       }
     ],
     "samples": [
@@ -999,6 +1041,20 @@ export const exampleDocs: ExampleDoc[] = [
           {
             "name": "default",
             "descriptionHtml": "<p>第一个元素是触发区域，其余元素是菜单项。</p>"
+          }
+        ]
+      },
+      {
+        "key": "methods",
+        "title": "Methods",
+        "rows": [
+          {
+            "name": "openAt(x, y)",
+            "descriptionHtml": "<p>在视口坐标 <code>(x, y)</code> 处打开菜单；命令式打开不派发 <code>open-change</code>。</p>"
+          },
+          {
+            "name": "close()",
+            "descriptionHtml": "<p>关闭菜单；命令式关闭不派发 <code>open-change</code>。</p>"
           }
         ]
       }
@@ -1126,6 +1182,20 @@ export const exampleDocs: ExampleDoc[] = [
           {
             "name": "footer",
             "descriptionHtml": "<p>底部操作区。</p>"
+          }
+        ]
+      },
+      {
+        "key": "methods",
+        "title": "Methods",
+        "rows": [
+          {
+            "name": "showModal()",
+            "descriptionHtml": "<p>打开对话框，等价于把 <code>open</code> 置为 <code>true</code>。</p>"
+          },
+          {
+            "name": "close()",
+            "descriptionHtml": "<p>关闭对话框，等价于把 <code>open</code> 置为 <code>false</code>。</p>"
           }
         ]
       }
@@ -1259,6 +1329,20 @@ export const exampleDocs: ExampleDoc[] = [
           {
             "name": "footer",
             "descriptionHtml": "<p>底部操作区。</p>"
+          }
+        ]
+      },
+      {
+        "key": "methods",
+        "title": "Methods",
+        "rows": [
+          {
+            "name": "show()",
+            "descriptionHtml": "<p>打开抽屉；已打开时为 no-op。</p>"
+          },
+          {
+            "name": "close()",
+            "descriptionHtml": "<p>关闭抽屉；已关闭时为 no-op。</p>"
           }
         ]
       }
@@ -1395,6 +1479,16 @@ export const exampleDocs: ExampleDoc[] = [
             "descriptionHtml": "<p>文本右侧的快捷键提示等；<code>submenu</code> 为真时这一位被展开箭头占用。</p>"
           }
         ]
+      },
+      {
+        "key": "methods",
+        "title": "Methods",
+        "rows": [
+          {
+            "name": "focusItem()",
+            "descriptionHtml": "<p>聚焦菜单项：通过可见元素聚焦，跨 Shadow DOM 时不丢焦点。</p>"
+          }
+        ]
       }
     ],
     "samples": [
@@ -1494,6 +1588,20 @@ export const exampleDocs: ExampleDoc[] = [
           {
             "name": "trigger",
             "descriptionHtml": "<p>触发器，请放入可交互元素。</p>"
+          }
+        ]
+      },
+      {
+        "key": "methods",
+        "title": "Methods",
+        "rows": [
+          {
+            "name": "openMenu()",
+            "descriptionHtml": "<p>打开菜单；命令式打开不派发 <code>open-change</code>，并抑制首项的 accent 高亮。</p>"
+          },
+          {
+            "name": "closeAll()",
+            "descriptionHtml": "<p>关闭全部层级；命令式关闭不派发 <code>open-change</code>。</p>"
           }
         ]
       }
@@ -1599,6 +1707,24 @@ export const exampleDocs: ExampleDoc[] = [
           {
             "name": "cancel",
             "descriptionHtml": "<p>Escape 取消时触发，不冒泡不组合。</p>"
+          }
+        ]
+      },
+      {
+        "key": "methods",
+        "title": "Methods",
+        "rows": [
+          {
+            "name": "focus()",
+            "descriptionHtml": "<p>聚焦宿主；启用时宿主带 <code>tabindex=\"0\"</code>，可直接接受键盘输入。</p>"
+          },
+          {
+            "name": "blur()",
+            "descriptionHtml": "<p>让宿主失焦。</p>"
+          },
+          {
+            "name": "select()",
+            "descriptionHtml": "<p>进入编辑态并全选内容；已在编辑态时只重新全选。<code>disabled</code> 时不进入编辑。</p>"
           }
         ]
       }
@@ -2138,6 +2264,24 @@ export const exampleDocs: ExampleDoc[] = [
             "descriptionHtml": "<p>输入区右侧的图标或文字。</p>"
           }
         ]
+      },
+      {
+        "key": "methods",
+        "title": "Methods",
+        "rows": [
+          {
+            "name": "focus(options?)",
+            "descriptionHtml": "<p>聚焦 shadow 内的原生 input；<code>disabled</code> 时不产生效果。</p>"
+          },
+          {
+            "name": "blur()",
+            "descriptionHtml": "<p>让 shadow 内的原生 input 失焦。</p>"
+          },
+          {
+            "name": "select()",
+            "descriptionHtml": "<p>全选当前值；<code>disabled</code> 时不产生效果。</p>"
+          }
+        ]
       }
     ],
     "samples": [
@@ -2407,6 +2551,24 @@ export const exampleDocs: ExampleDoc[] = [
           {
             "name": "default",
             "descriptionHtml": "<p>弹出层内容。</p>"
+          }
+        ]
+      },
+      {
+        "key": "methods",
+        "title": "Methods",
+        "rows": [
+          {
+            "name": "show()",
+            "descriptionHtml": "<p>打开弹出层；<code>disabled</code> 或已打开时不产生效果。</p>"
+          },
+          {
+            "name": "close()",
+            "descriptionHtml": "<p>关闭弹出层；已关闭时不产生效果。</p>"
+          },
+          {
+            "name": "toggle()",
+            "descriptionHtml": "<p>按当前 <code>open</code> 切换。</p>"
           }
         ]
       }
@@ -2944,6 +3106,20 @@ export const exampleDocs: ExampleDoc[] = [
             "descriptionHtml": "<p>松手或键盘确认时触发。</p>"
           }
         ]
+      },
+      {
+        "key": "methods",
+        "title": "Methods",
+        "rows": [
+          {
+            "name": "focus()",
+            "descriptionHtml": "<p>聚焦 <code>role=\"slider\"</code> 的轨道元素。</p>"
+          },
+          {
+            "name": "blur()",
+            "descriptionHtml": "<p>让轨道元素失焦。</p>"
+          }
+        ]
       }
     ],
     "samples": [
@@ -3082,6 +3258,16 @@ export const exampleDocs: ExampleDoc[] = [
           {
             "name": "default",
             "descriptionHtml": "<p>需要动画的 SVG 内容。</p>"
+          }
+        ]
+      },
+      {
+        "key": "methods",
+        "title": "Methods",
+        "rows": [
+          {
+            "name": "replay(options?)",
+            "descriptionHtml": "<p>停止当前播放并重新开始，每次调用重新收集子树里的几何元素；<code>options.reverse</code> 为 <code>true</code> 时沿原路径收回。返回的 Promise 在动画全部结束后兑现，无目标或当前主题范围启用 reduced motion 时立即兑现。</p>"
           }
         ]
       }
@@ -3356,6 +3542,24 @@ export const exampleDocs: ExampleDoc[] = [
             "descriptionHtml": "<p>文本域右侧的图标或文字。</p>"
           }
         ]
+      },
+      {
+        "key": "methods",
+        "title": "Methods",
+        "rows": [
+          {
+            "name": "focus(options?)",
+            "descriptionHtml": "<p>聚焦 shadow 内的原生 textarea；<code>disabled</code> 时不产生效果。</p>"
+          },
+          {
+            "name": "blur()",
+            "descriptionHtml": "<p>让 shadow 内的原生 textarea 失焦。</p>"
+          },
+          {
+            "name": "select()",
+            "descriptionHtml": "<p>全选当前值；<code>disabled</code> 时不产生效果。</p>"
+          }
+        ]
       }
     ],
     "samples": [
@@ -3427,6 +3631,16 @@ export const exampleDocs: ExampleDoc[] = [
           {
             "name": "default",
             "descriptionHtml": "<p>主题作用域内的内容。</p>"
+          }
+        ]
+      },
+      {
+        "key": "methods",
+        "title": "Methods",
+        "rows": [
+          {
+            "name": "getOverlayRoot()",
+            "descriptionHtml": "<p>返回该主题拥有的 theme-owned overlay root；未设置 <code>appearance</code> 时返回 <code>undefined</code>。</p>"
           }
         ]
       }

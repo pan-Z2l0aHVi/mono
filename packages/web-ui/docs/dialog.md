@@ -122,3 +122,10 @@ function onOpenChange(event: CustomEvent<{ open: boolean }>) {
 | `default` | 正文内容。                                     |
 | `header`  | 卡片顶部的 chrome 带，有内容时接管 `heading`。 |
 | `footer`  | 底部操作区。                                   |
+
+### Methods
+
+| 名称          | 说明                                       |
+| ------------- | ------------------------------------------ |
+| `showModal()` | 打开对话框，等价于把 `open` 置为 `true`。  |
+| `close()`     | 关闭对话框，等价于把 `open` 置为 `false`。 |

@@ -99,3 +99,10 @@ function onInput(event: WebUiEvent<WebUiSlider, 'input'>) {
 | -------- | ----------------------- |
 | `input`  | 拖拽 / 输入过程中触发。 |
 | `change` | 松手或键盘确认时触发。  |
+
+### Methods
+
+| 名称      | 说明                              |
+| --------- | --------------------------------- |
+| `focus()` | 聚焦 `role="slider"` 的轨道元素。 |
+| `blur()`  | 让轨道元素失焦。                  |

@@ -254,4 +254,18 @@ describe('example-doc（Vue 面 / 真实浏览器）', () => {
     // button.md 没写 ### Events 小节，就不该凭空多出一张 Events 表。
     expect(mountDoc('button').querySelector('[data-example-api="events"]')).toBeNull()
   })
+
+  it('methods 表列出手写的方法，没写方法的组件不留空表', () => {
+    const rows = rowsOf(mountDoc('collapse'), 'methods')
+
+    // 名称单元格写成调用形态（`show()` / `replay(options?)`），与 Props / Events 的裸属性名不同：
+    // 这一节记的是挂在元素上的方法，不是声明式契约。
+    expect(rows.map(cells => cells[0])).toEqual(apiSection(collapse, 'methods').rows.map(row => row.name))
+    expect(rows.map(cells => cells[0])).toEqual(['show()', 'close()', 'toggle()'])
+    // 两列小节不会被多渲染出类型与默认值两格。
+    expect(rows.map(cells => cells.length)).toEqual([2, 2, 2])
+
+    // button.md 没有方法可写，就不该凭空多出一张 Methods 表。
+    expect(mountDoc('button').querySelector('[data-example-api="methods"]')).toBeNull()
+  })
 })

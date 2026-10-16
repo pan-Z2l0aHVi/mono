@@ -72,13 +72,15 @@ export default {
       anchor: braceAnchor,
       flavors: ['react', 'vue'],
       apiTables: {
-        // 列序是引擎约定：名称、说明、类型、默认值。Events / Slots 只有前两列。
+        // 列序是引擎约定：名称、说明、类型、默认值。Events / Slots / Methods 只有前两列。
         // Props 记元素属性，Options 记命令式 API 的选项（`imagePreview()` / `toast()` 这类没有声明式契约的入口）。
+        // Methods 记调用在元素上的公开方法。
         columns: {
           Props: ['名称', '说明', '类型', '默认值'],
           Options: ['名称', '说明', '类型', '默认值'],
           Events: ['名称', '说明'],
-          Slots: ['名称', '说明']
+          Slots: ['名称', '说明'],
+          Methods: ['名称', '说明']
         }
       },
       // 深浅外观源是 web-ui-theme 的派生属性；切外观不需要重新生成高亮 HTML。

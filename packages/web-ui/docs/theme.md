@@ -84,3 +84,9 @@ const appearance = ref<'light' | 'dark' | 'system'>('system')
 | 名称      | 说明                 |
 | --------- | -------------------- |
 | `default` | 主题作用域内的内容。 |
+
+### Methods
+
+| 名称               | 说明                                                                                |
+| ------------------ | ----------------------------------------------------------------------------------- |
+| `getOverlayRoot()` | 返回该主题拥有的 theme-owned overlay root；未设置 `appearance` 时返回 `undefined`。 |
