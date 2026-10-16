@@ -66,7 +66,7 @@ export default {
     // 示例文档：markdown 是唯一来源，dev 与 build 都由这个插件生成 `src/generated/**`。
     // 生成物同样受版本控制，测试档只判不改（不一致就让这次的测试红），所以 CI 不需要另跑生成命令。
     mdToCompVue({
-      input: '../../docs/examples/web-ui',
+      input: '../../packages/web-ui/docs',
       output: 'src/generated',
       dir: 'demos',
       anchor: braceAnchor,

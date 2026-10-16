@@ -7,7 +7,7 @@ import { exampleDocs } from '@/generated/examples'
 /**
  * 由示例文档 markdown 生成的示例文档：可交互示例 + 示例代码（语法高亮）+ API 表。
  *
- * 数据全部来自 `docs/examples/web-ui/<name>.md`：示例代码、以及 API 表的名称 / 说明 / 类型 / 默认值都
+ * 数据全部来自 `packages/web-ui/docs/<name>.md`：示例代码、以及 API 表的名称 / 说明 / 类型 / 默认值都
  * 手写在那份 markdown 里，组件源码不参与生成。`src/generated/**` 由 `@greypan/md-to-comp` 的 Vite
  * 插件在 dev 与 build 时生成，这里只负责渲染，不写死任何字段。
  *

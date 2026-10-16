@@ -1,25 +1,18 @@
 import assert from 'node:assert/strict'
-import { spawnSync } from 'node:child_process'
-import { mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs'
-import { tmpdir } from 'node:os'
+import { readFileSync, readdirSync } from 'node:fs'
 import path from 'node:path'
 
+// 这份语料 join 只判「跨包的四方是否同名同量同字节」：markdown 语料、两个 app 落盘的产物、
+// 页面路由与 `ExampleDoc` 的使用。生成器自己那侧的判据（篡改 / 孤儿 / 表格形状）在
+// `@greypan/md-to-comp` 的单测里，对着 `generate()` 直接跑，不再经 CLI。
+// 「产物是不是新鲜的」由两个 app 自己的 `turbo test` 判：插件在 VITEST 下只判不改，
+// 跑的就是 `checkArtifacts`（见 `docs/agents/build.md`）。
 const root = path.resolve(import.meta.dirname, '..')
-const generator = path.join(root, 'scripts', 'generate-web-ui-examples.mjs')
-const docsDir = path.join(root, 'docs', 'examples', 'web-ui')
+const docsDir = path.join(root, 'packages', 'web-ui', 'docs')
 const outputs = [
   { dir: path.join(root, 'apps', 'react-web-ui-demo', 'src', 'generated'), flavor: 'react', ext: 'tsx' },
   { dir: path.join(root, 'apps', 'vue-web-ui-demo', 'src', 'generated'), flavor: 'vue', ext: 'vue' }
 ]
-
-function runGenerator(args, cwd = root) {
-  return spawnSync(process.execPath, [generator, ...args], { cwd, encoding: 'utf8' })
-}
-
-// 受版本控制的生成物必须等于生成器此刻的输出——这是「文档不与产物漂移」在 CI 里的落点，
-// 因为改 markdown 而不重新生成，会在 `ci:test-scripts` 上直接红。
-const check = runGenerator(['--check'])
-assert.equal(check.status, 0, `generated files are stale:\n${check.stderr}`)
 
 const modules = outputs.map(output => readFileSync(path.join(output.dir, 'examples.ts'), 'utf8'))
 const styles = outputs.map(output => readFileSync(path.join(output.dir, 'examples.css'), 'utf8'))
@@ -200,126 +193,4 @@ for (const name of docNames) {
   )
 }
 
-// ── fail-closed：两侧任何一边漂移都必须让生成器非零退出 ──
-const scratch = mkdtempSync(path.join(tmpdir(), 'web-ui-examples-'))
-try {
-  const scratchDocs = path.join(scratch, 'docs')
-  const scratchOut = path.join(scratch, 'out')
-  // 固定用 button.md，不取「排序第一个」：按字母序下一个是 badge.md 之类，一旦那个组件
-  // 没有 Props 表，这条负例就会因为与本改动无关的原因失败。文件存在性先自己核一遍。
-  const fixtureName = 'button.md'
-  assert.ok(readdirSync(docsDir).includes(fixtureName), `fixture：${docsDir} 里找不到 ${fixtureName}，这条负例不承重`)
-  const source = readFileSync(path.join(docsDir, fixtureName), 'utf8')
-  // 按行定位 Props 表，不写死表格对齐方式：oxfmt 会给 markdown 表格补空格，
-  // 任何「照抄表头字面量」的 fixture 都会在格式化后失效。
-  const lines = source.split('\n')
-  const propsIndex = lines.findIndex(line => line.trim() === '### Props')
-  assert.notEqual(propsIndex, -1, `fixture：${fixtureName} 里找不到 ### Props`)
-  const separatorIndex = lines.findIndex((line, index) => index > propsIndex && /^\|\s*:?-{2,}/.test(line))
-  assert.notEqual(separatorIndex, -1, `fixture：${fixtureName} 的 Props 表没有分隔行`)
-  // 表头形状：把四列的表头与分隔行退回旧的「| 名称 | 说明 |」，数据行仍是四格。
-  const oldHeader = [
-    ...lines.slice(0, separatorIndex - 1),
-    '| 名称 | 说明 |',
-    '| ---- | ---- |',
-    ...lines.slice(separatorIndex + 1)
-  ].join('\n')
-  // 空的类型单元格：新插一行，不去改动已有行——button 的 variant 类型里带 `\|`，
-  // 按裸 `|` 切开会把它拆成两格。
-  const emptyType = [
-    ...lines.slice(0, separatorIndex + 1),
-    '| `no-type` | 类型那一格是空的。 |  | `false` |',
-    ...lines.slice(separatorIndex + 1)
-  ].join('\n')
-  // 多写一节：表头四列，这一行有五个单元格，第五节会被静默丢掉。
-  const raggedRow = [
-    ...lines.slice(0, separatorIndex + 1),
-    '| `too-many` | 多写的一节。 | `boolean` | `false` | 第五节 |',
-    ...lines.slice(separatorIndex + 1)
-  ].join('\n')
-
-  // 主线：正常副本必须能生成，证明这个 seam 可用，失败不是因为路径写错。
-  mkdirSync(scratchDocs, { recursive: true })
-  writeFileSync(path.join(scratchDocs, fixtureName), source)
-  const okRun = runGenerator(['--docs-dir', scratchDocs, '--out-dir', scratchOut])
-  assert.equal(okRun.status, 0, `干净的 markdown 副本必须能通过：\n${okRun.stderr}`)
-
-  // 反向：Props 表少了类型与默认值两列，必须被拦下（表格现在是这份数据的唯一来源，
-  // 列形状一旦松动，产物里就会出现一个永远为空白的列）。
-  assert.notEqual(oldHeader, source, '测试 fixture 没改到 Props 表头，这条负例不承重')
-  writeFileSync(path.join(scratchDocs, fixtureName), oldHeader)
-  const narrowed = runGenerator(['--docs-dir', scratchDocs, '--out-dir', scratchOut])
-  assert.notEqual(narrowed.status, 0, 'Props 表头不是四列时生成器必须失败')
-  assert.match(narrowed.stderr, /### Props 的表头必须是/)
-
-  // 反向：类型单元格留空，必须被拦下而不是产出一个空白列。
-  assert.notEqual(emptyType, source, '测试 fixture 没插进空类型行，这条负例不承重')
-  writeFileSync(path.join(scratchDocs, fixtureName), emptyType)
-  const blank = runGenerator(['--docs-dir', scratchDocs, '--out-dir', scratchOut])
-  assert.notEqual(blank.status, 0, '类型单元格为空时生成器必须失败')
-  assert.match(blank.stderr, /类型单元格是空的/)
-
-  // 反向：某一行的列数与表头不符，多余那节必须报错而不是被丢掉。
-  assert.notEqual(raggedRow, source, '测试 fixture 没插进多一节行，这条负例不承重')
-  writeFileSync(path.join(scratchDocs, fixtureName), raggedRow)
-  const ragged = runGenerator(['--docs-dir', scratchDocs, '--out-dir', scratchOut])
-  assert.notEqual(ragged.status, 0, '行列数与表头不一致时生成器必须失败')
-  assert.match(ragged.stderr, /有一行是 5 列，表头是 4 列/)
-
-  // 反向：文件名与 frontmatter 的 component 不一致（生成器新增的守卫）。
-  writeFileSync(path.join(scratchDocs, fixtureName), source)
-  writeFileSync(path.join(scratchDocs, 'button-renamed.md'), source)
-  const renamed = runGenerator(['--docs-dir', scratchDocs, '--out-dir', scratchOut])
-  assert.notEqual(renamed.status, 0, 'frontmatter 的 component 与文件名不一致时必须失败')
-  assert.match(renamed.stderr, /与文件名不一致/)
-  rmSync(path.join(scratchDocs, 'button-renamed.md'))
-
-  // 反向：同一张表里出现重名字段（生成器新增的守卫，重名会被 Map 静默吞掉一行）。
-  const duplicated = [
-    ...lines.slice(0, separatorIndex + 1),
-    lines[separatorIndex + 1],
-    ...lines.slice(separatorIndex + 1)
-  ].join('\n')
-  assert.notEqual(duplicated, source, '测试 fixture 没复制出重名行，这条负例不承重')
-  writeFileSync(path.join(scratchDocs, fixtureName), duplicated)
-  const duplicate = runGenerator(['--docs-dir', scratchDocs, '--out-dir', scratchOut])
-  assert.notEqual(duplicate.status, 0, 'markdown 表里出现重名字段时生成器必须失败')
-  assert.match(duplicate.stderr, /重复的字段名/)
-
-  // 反向：示例代码块用了 react / vue 之外的语言（生成器新增的守卫，否则会被静默丢掉）。
-  const wrongFence = source.replace('```react', '```html')
-  assert.notEqual(wrongFence, source, '测试 fixture 没换掉任何代码块语言，这条负例不承重')
-  writeFileSync(path.join(scratchDocs, fixtureName), wrongFence)
-  const fence = runGenerator(['--docs-dir', scratchDocs, '--out-dir', scratchOut])
-  assert.notEqual(fence.status, 0, '示例代码块语言不是 react / vue 时生成器必须失败')
-  assert.match(fence.stderr, /代码块语言必须是 react \/ vue/)
-
-  // 反向：给一个「片段形态」的示例加锚点开热通道，必须被拦下。
-  // 带锚点的围栏就是会被编译执行的源文件，button.md 的围栏是裸 JSX 片段，发出去等于发出一个
-  // 语法都不合法的模块；这条守卫是「未迁移的 29 篇不会被顺手落成组件文件」的机械判据。
-  const anchoredFragment = source.replace(/^### 变体/mu, '### 变体 {#variants}')
-  assert.notEqual(anchoredFragment, source, '测试 fixture 没加上锚点，这条负例不承重')
-  writeFileSync(path.join(scratchDocs, fixtureName), anchoredFragment)
-  const fragment = runGenerator(['--docs-dir', scratchDocs, '--out-dir', scratchOut])
-  assert.notEqual(fragment.status, 0, '片段形态的 react 围栏带锚点时生成器必须失败')
-  assert.match(fragment.stderr, /export default function Demo/)
-
-  // 反向：改了 `{#id}` 或删掉一条示例后，上一轮那份组件文件必须跟着走。孤儿不被任何 markdown
-  // 引用，所以「围栏 == 落盘」那组断言盖不到它，但它照样被 app 的 import.meta.glob 编进构建。
-  writeFileSync(path.join(scratchDocs, fixtureName), source)
-  const orphans = ['button--ghost.tsx', 'button--other-flavor.vue'].map(name => path.join(scratchOut, 'demos', name))
-  mkdirSync(path.dirname(orphans[0]), { recursive: true })
-  for (const orphan of orphans) writeFileSync(orphan, 'export default function Demo() {\n  return null\n}\n')
-  const stale = runGenerator(['--check', '--docs-dir', scratchDocs, '--out-dir', scratchOut])
-  assert.notEqual(stale.status, 0, '生成目录里留着 markdown 已不引用的组件文件时 --check 必须失败')
-  for (const orphan of orphans) assert.match(stale.stderr, new RegExp(path.basename(orphan)))
-  const pruned = runGenerator(['--docs-dir', scratchDocs, '--out-dir', scratchOut])
-  assert.equal(pruned.status, 0, `清理上一轮遗留的组件文件时生成器必须成功：\n${pruned.stderr}`)
-  // 清扫按「本轮没写出」判定，不看扩展名：`--out-dir` 这条 seam 只有 react flavor，所以这里那份
-  // `.vue` 孤儿是被同一个判据带走的，不是被扩展名过滤漏掉的。
-  for (const orphan of orphans) assert.ok(!existsFile(orphan), `生成器没删掉上一轮遗留的 ${path.basename(orphan)}`)
-} finally {
-  rmSync(scratch, { recursive: true, force: true })
-}
-
-console.log(`generate-web-ui-examples tests passed（落成组件文件的示例 ${demoCount} 条）`)
+console.log(`example-docs tests passed（落成组件文件的示例 ${demoCount} 条）`)

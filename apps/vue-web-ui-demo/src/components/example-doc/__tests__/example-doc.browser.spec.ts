@@ -20,7 +20,7 @@ import ExampleDoc from '../index.vue'
 
 /*
  * 与 React 面同一组断言，量的是「同一份生成数据在 vue demo 里渲染出同样的东西」。
- * 两侧逐字节相同的生成数据由 `scripts/generate-web-ui-examples.test.mjs` 保证，这里补上
+ * 两侧逐字节相同的生成数据由 `scripts/example-docs.test.mjs` 保证，这里补上
  * 「渲染真的用上了它」：代码块的颜色在真实引擎里落到 DOM 上，带 `{#id}` 锚点的示例真的挂成
  * 了可交互组件。
  *

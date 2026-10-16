@@ -1,0 +1,119 @@
+import assert from 'node:assert/strict'
+import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs'
+import path from 'node:path'
+
+// `packages/web-ui` 是本仓唯一一个「文档语料住在被发布包里」的包：那 30 篇示例 md 是
+// `@greypan/web-ui#build` 与 `#test` 的真输入（改了文档，两个 demo 的构建必须跟着失效）。
+// 代价是它得自己覆写 `inputs` —— 根 `turbo.json` 的 `!**/*.md` 把这批 md 排掉了，而排除项是绝对的，
+// 只能在包内「去掉通配排除 + 按名字排散文 md」。于是这里守两个方向：
+//
+//   1. 包里出现的每一篇 md 都必须在名单里（`docs/` 语料、四个包根散文 md、`__tests__/` 夹具）。
+//      新放一篇散文 md 而不动名单，它会**静默**变成 build 输入：多改一次 README 就多击穿一串下游 task。
+//   2. 覆写后的 `inputs` 里不得有任何排除项会盖回 `docs/` 语料。名字一旦被排除项吃掉，
+//      md 就悄悄退出哈希——构建照绿，但「文档改了产物会跟着重算」这条闭包断了。
+//
+// 这是形状检查，不执行构建：与 `.agents/checks/turbo-cache-invariant` 同一口径。
+const root = path.resolve(import.meta.dirname, '..')
+const pkgDir = path.join(root, 'packages', 'web-ui')
+const pkgRel = path.relative(root, pkgDir).split(path.sep).join('/')
+
+/** 语料目录（包内相对路径），由 web-ui 包接管的那 30 篇示例文档。 */
+const CORPUS = 'docs'
+/** 包根的散文 md：与示例无关，按名字排除，不进 build 输入。 */
+const PROSE_MD = ['README.md', 'README.CN.md', 'AGENTS.md', 'CHANGELOG.md']
+
+const allMarkdown = collectMarkdown(pkgDir).map(file => path.relative(pkgDir, file).split(path.sep).join('/'))
+const corpusFiles = allMarkdown.filter(rel => rel.startsWith(`${CORPUS}/`))
+assert.ok(corpusFiles.length > 0, `${pkgRel}/${CORPUS}/ 里一篇 md 都没有：语料搬走了？这条守卫会空转`)
+
+// ── 方向一：包内 md 的布局必须在名单里 ──
+const strays = allMarkdown.filter(rel => {
+  if (rel.startsWith(`${CORPUS}/`)) return false
+  if (PROSE_MD.includes(rel)) return false
+  // `__tests__/` 下的 md 是测试夹具，只进 test 输入（build 侧由 `!**/__tests__/**` 排掉），是设计内的。
+  return !rel.split('/').includes('__tests__')
+})
+assert.deepEqual(
+  strays,
+  [],
+  `这些 md 不在名单里，会静默变成 \`${pkgRel}\` 的 build 输入：\n  ${strays.join('\n  ')}\n` +
+    `要放散文 md 就加进已排除的名字里（并同步本文件的 PROSE_MD），要放语料就放进 ${pkgRel}/${CORPUS}/`
+)
+// 名单里的名字都得真的存在：否则名单会腐烂成一份「排掉不存在的文件」的空转清单。
+const missing = PROSE_MD.filter(name => !existsSync(path.join(pkgDir, name)))
+assert.deepEqual(missing, [], `名单里的这些 md 不在包里，名单要同步：${missing.join('、')}`)
+
+// ── 方向二：覆写后的 inputs 不许把语料排回来 ──
+const turboPath = path.join(pkgDir, 'turbo.json')
+assert.ok(existsSync(turboPath), `${pkgRel}/turbo.json 不存在：没有它，语料就不在 build 与 test 的输入里`)
+const turbo = JSON.parse(readFileSync(turboPath, 'utf8'))
+assert.deepEqual(
+  turbo.extends,
+  ['//'],
+  `${pkgRel}/turbo.json 的 extends 必须是 ["//"]，不然覆写会连任务定义（dependsOn / outputs）一起丢掉`
+)
+
+// 探针：语料里的每个文件路径，加上目录本身的两种写法（`docs` 与 `docs/` 在 glob 里都可能盖住整棵子树）。
+const probes = corpusFiles.concat([CORPUS, `${CORPUS}/`])
+
+for (const task of ['build', 'test']) {
+  const inputs = turbo.tasks?.[task]?.inputs
+  const where = `${pkgRel}/turbo.json 的 tasks.${task}.inputs`
+  assert.ok(Array.isArray(inputs), `${where} 必须是数组：包级覆写会整表替换根定义，这里得自己写全`)
+  assert.ok(inputs.includes('$TURBO_DEFAULT$'), `${where} 少了 $TURBO_DEFAULT$：不写它，包内的常规文件就都不进哈希了`)
+  for (const name of PROSE_MD) {
+    assert.ok(inputs.includes(`!${name}`), `${where} 少了 !${name}：散文 md 会重新变成这个 task 的输入`)
+  }
+  const cover = inputs.filter(rule => rule.startsWith('!') && coversCorpus(rule.slice(1), probes))
+  assert.deepEqual(
+    cover,
+    [],
+    `${where} 里的这些排除项会盖住 ${CORPUS}/ 语料，md 一旦被排除就不再影响缓存：${cover.join('、')}`
+  )
+}
+
+/**
+ * 一条排除规则会不会把语料盖掉。
+ *
+ * 用 `path.matchesGlob` 对具体路径逐个试，而不是自己解析 glob。但它的语法在「锚定」与「无斜杠」
+ * 两处与 turbo / gitignore 不同，先按 gitignore 的口径归一化再试，否则这两种写法会**静默**绕过守卫：
+ *
+ *   - 前导 `/` 在 gitignore 里是「锚定到包根」，`matchesGlob` 不认：`/docs/**` 这类锚定写法会整条落空，
+ *     给以 `**` 起头的规则补上锚定前缀时同样落空。
+ *   - 不含 `/` 的规则按 gitignore 是「任意深度同名」，`*.md` 连 `docs/x.md` 一起排；`matchesGlob` 只按字面。
+ *
+ * 抛错的规则按命中处理——守卫宁可假红。
+ */
+function coversCorpus(pattern, probes) {
+  const unanchored = pattern.replace(/^\/+/, '')
+  const glob = unanchored.includes('/') ? unanchored : `**/${unanchored}`
+  return probes.some(probe => {
+    try {
+      return path.matchesGlob(probe, glob)
+    } catch {
+      return true
+    }
+  })
+}
+
+function collectMarkdown(dir) {
+  const found = []
+  for (const entry of readdirSync(dir, { withFileTypes: true })) {
+    if (entry.name.startsWith('.') || entry.name === 'node_modules' || entry.name === 'dist') continue
+    const full = path.join(dir, entry.name)
+    if (entry.isDirectory()) found.push(...collectMarkdown(full))
+    else if (entry.name.endsWith('.md') && statSync(full).isFile()) found.push(full)
+  }
+  return found.sort()
+}
+
+// 归一化本身也要有判据：把这几种写法在任何一次「简化」里拿掉，守卫会重新变哑巴。正例是 gitignore
+// 里真会盖住语料、而裸 `matchesGlob` 认不出的锚定 / 无斜杠写法；负例是当前配置里合法的排除项。
+for (const pattern of ['/docs/**', '/**/*.md', '*.md']) {
+  assert.ok(coversCorpus(pattern, probes), `coversCorpus 没认出 ${pattern}：归一化被拿掉了？这条会静默盖住语料`)
+}
+for (const pattern of ['README.md', '**/__tests__/**', '**/*.spec.ts']) {
+  assert.ok(!coversCorpus(pattern, probes), `coversCorpus 把安全的排除项 ${pattern} 判成盖住语料了：守卫会假红`)
+}
+
+console.log(`web-ui-docs-inputs tests passed（${pkgRel}/${CORPUS}/ ${corpusFiles.length} 篇语料在哈希里）`)
