@@ -1,12 +1,12 @@
 import { fail } from './errors'
-import { flavorExtension, type SampleFlavor } from './highlight'
+import { flavorExtension, type FenceFlavor } from './highlight'
 
 /** 只有显式写出了锚点 id 的示例才落成组件文件；没有 id 的仍只出高亮代码。 */
 export function emitsDemoFile(id: string | null): id is string {
   return id !== null
 }
 
-export function demoFileName(component: string, id: string, flavor: SampleFlavor): string {
+export function demoFileName(component: string, id: string, flavor: FenceFlavor): string {
   return `${component}--${id}.${flavorExtension(flavor)}`
 }
 
@@ -24,7 +24,7 @@ export function demoFileContent(code: string): string {
  * 语法与属性类型的最终校验交给宿主的编译器（宿主需自行注册自定义元素的 JSX / 模板类型），
  * 这里只挡「片段被当成文件发出」这一种形状。
  */
-export function assertSelfContained(code: string, flavor: SampleFlavor, sampleTitle: string, file: string): void {
+export function assertSelfContained(code: string, flavor: FenceFlavor, sampleTitle: string, file: string): void {
   if (!code.trim()) fail(`${file}：示例「${sampleTitle}」的 ${flavor} 代码块是空的`)
   if (flavor === 'react') {
     if (!/^export default (?:function|class|async function)/m.test(code.trim()))

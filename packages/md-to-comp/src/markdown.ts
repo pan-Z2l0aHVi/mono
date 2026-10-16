@@ -58,7 +58,7 @@ interface MdNode {
 }
 
 /** 文档骨架：这两节的名字、以及 `###` 是示例小节，都是本引擎的约定，不随宿主改。 */
-const EXAMPLES_SECTION = '示例'
+const SAMPLES_SECTION = '示例'
 const API_SECTION = 'API'
 
 // `mdast-util-frontmatter` 产出的节点类型是格式名本身（`yaml` / `toml`），不是 `frontmatter`。
@@ -262,26 +262,26 @@ export function parseMarkdown(source: string, file: string, config: ParseConfig)
 
   const named = new Map<string, Section>()
   for (const section of sections) {
-    if (section.title !== EXAMPLES_SECTION && section.title !== API_SECTION)
+    if (section.title !== SAMPLES_SECTION && section.title !== API_SECTION)
       // 旧实现是静默丢弃：写一个 `\`## 注意事项\`` 就等于没写。现在直接报，契约只有这两节。
       fail(
-        `${file}：不认识的小节 \`## ${section.title}\`；本引擎只消费 \`## ${EXAMPLES_SECTION}\` 与 \`## ${API_SECTION}\``
+        `${file}：不认识的小节 \`## ${section.title}\`；本引擎只消费 \`## ${SAMPLES_SECTION}\` 与 \`## ${API_SECTION}\``
       )
     if (named.has(section.title)) fail(`${file}：小节 \`## ${section.title}\` 出现多次`)
     named.set(section.title, section)
   }
 
-  const examples = named.get(EXAMPLES_SECTION)
-  const exampleGroups = examples ? groupByHeading(examples.nodes, 3, examples.rawEnd, terse) : null
+  const samplesSection = named.get(SAMPLES_SECTION)
+  const sampleGroups = samplesSection ? groupByHeading(samplesSection.nodes, 3, samplesSection.rawEnd, terse) : null
   // 与旧实现的「静默丢弃」相反：`### 示例` 之前写正文会直接报。那段文字谁都不渲染，
   // 留着只会让人以为它出现在页面上。
-  if (exampleGroups?.lead.length)
-    fail(`${file}：\`## ${EXAMPLES_SECTION}\` 里第一个 \`###\` 之前有正文，这段内容不会被渲染：把它并进某个示例小节`)
+  if (sampleGroups?.lead.length)
+    fail(`${file}：\`## ${SAMPLES_SECTION}\` 里第一个 \`###\` 之前有正文，这段内容不会被渲染：把它并进某个示例小节`)
 
   const samples: SampleBlock[] = []
   const ids = new Set<string>()
-  for (const sub of exampleGroups ? exampleGroups.sections : []) {
-    if (!sub.title) fail(`${file}：\`## ${EXAMPLES_SECTION}\` 里有一个 \`###\` 标题是空的`)
+  for (const sub of sampleGroups ? sampleGroups.sections : []) {
+    if (!sub.title) fail(`${file}：\`## ${SAMPLES_SECTION}\` 里有一个 \`###\` 标题是空的`)
     const id = anchorOf(sub.rawTitle).id
     const fences = sub.nodes.filter(node => node.type === 'code')
     for (const fence of fences) {
@@ -317,7 +317,7 @@ export function parseMarkdown(source: string, file: string, config: ParseConfig)
       fences: fencesByFlavor
     })
   }
-  if (samples.length === 0) fail(`${file}：\`## ${EXAMPLES_SECTION}\` 小节里至少要有一个 \`### 示例\``)
+  if (samples.length === 0) fail(`${file}：\`## ${SAMPLES_SECTION}\` 小节里至少要有一个 \`### 示例\``)
 
   const columns = config.apiTables.columns
   const apiBody = named.get(API_SECTION)

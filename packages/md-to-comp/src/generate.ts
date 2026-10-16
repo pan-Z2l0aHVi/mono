@@ -2,9 +2,9 @@ import { existsSync, readdirSync, readFileSync } from 'node:fs'
 import path from 'node:path'
 
 import { fail } from './errors'
-import { highlight, type SampleFlavor } from './highlight'
+import { highlight, type FenceFlavor } from './highlight'
 import { parseMarkdown, type ParsedDoc } from './markdown'
-import { renderCss, renderModule, type ExampleDocPayload, type ExampleSamplePayload } from './render'
+import { renderCss, renderModule, type ExampleDocPayload, type SamplePayload } from './render'
 import { assertSelfContained, demoFileContent, demoFileName, emitsDemoFile } from './sample'
 import type { GenerateOptions, GeneratedFile, MdToCompConfig } from './types'
 
@@ -38,7 +38,7 @@ function readDocs(config: Pick<MdToCompConfig, 'input' | 'anchor' | 'flavors' | 
   })
 }
 
-async function buildPayloads(docs: ResolvedDoc[], flavors: readonly SampleFlavor[]): Promise<ExampleDocPayload[]> {
+async function buildPayloads(docs: ResolvedDoc[], flavors: readonly FenceFlavor[]): Promise<ExampleDocPayload[]> {
   return Promise.all(
     docs.map(async doc => ({
       component: doc.component,
@@ -46,7 +46,7 @@ async function buildPayloads(docs: ResolvedDoc[], flavors: readonly SampleFlavor
       introHtml: doc.introHtml,
       api: doc.api,
       samples: await Promise.all(
-        doc.samples.map(async (sample): Promise<ExampleSamplePayload> => {
+        doc.samples.map(async (sample): Promise<SamplePayload> => {
           const html: Record<string, string> = {}
           for (const flavor of flavors)
             html[flavor] = await highlight(sample.fences[flavor] ?? '', flavor, doc.sourceFile)

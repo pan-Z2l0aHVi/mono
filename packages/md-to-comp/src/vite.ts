@@ -4,7 +4,7 @@ import type { Plugin, ViteDevServer } from 'vite'
 
 import { checkArtifacts, writeArtifacts } from './emit'
 import { generate } from './generate'
-import type { SampleFlavor } from './highlight'
+import type { FenceFlavor } from './highlight'
 import type { GeneratedFile, MdToCompConfig } from './types'
 
 /**
@@ -23,7 +23,7 @@ const DEFAULT_OUTPUT = 'src/generated'
 /** markdown 常被编辑器连写保存，一次改动会连着来几串事件；合成一次生成就够了。 */
 const REGEN_DEBOUNCE_MS = 50
 
-function resolveOptions(root: string, options: MdToCompViteOptions, flavor: SampleFlavor) {
+function resolveOptions(root: string, options: MdToCompViteOptions, flavor: FenceFlavor) {
   return {
     ...options,
     input: path.resolve(root, options.input),
@@ -47,7 +47,7 @@ function applyArtifacts(files: GeneratedFile[], demosDirs: string[]): void {
  *
  * 测试期只判不改（`checkArtifacts`），理由见 `emit.ts`；dev 与 build 期落盘（`writeArtifacts`）。
  */
-export function createMdToCompVite(options: MdToCompViteOptions, flavor: SampleFlavor): Plugin {
+export function createMdToCompVite(options: MdToCompViteOptions, flavor: FenceFlavor): Plugin {
   let resolved: ReturnType<typeof resolveOptions> | undefined
   const requireResolved = () => {
     if (!resolved) throw new Error('md-to-comp: 插件钩子在 configResolved 之前被调用')

@@ -42,13 +42,13 @@ function ExampleDoc({ component, flavor = 'react' }: { component: string; flavor
       {doc.samples.map(sample => {
         const Demo = sample.demoKey ? demoComponents.get(`${doc.component}--${sample.demoKey}`) : undefined
         return (
-          <div className="flex flex-col gap-2" data-example-sample={sample.title} key={sample.title}>
+          <div className="flex flex-col gap-2" data-sample={sample.title} key={sample.title}>
             <h3 className="m-0">{sample.title}</h3>
             <p className="m-0 text-gray-500" dangerouslySetInnerHTML={{ __html: sample.descriptionHtml }} />
             {Demo ? (
               <div
                 className="flex flex-wrap items-center gap-4 rounded-lg border border-(--wui-color-border) bg-(--wui-color-surface) p-4"
-                data-example-preview={sample.demoKey ?? undefined}
+                data-sample-preview={sample.demoKey ?? undefined}
               >
                 <Suspense fallback={null}>
                   <Demo />

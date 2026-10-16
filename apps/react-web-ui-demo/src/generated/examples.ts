@@ -15,7 +15,7 @@ export interface ExampleApiSection {
   rows: ExampleApiRow[]
 }
 
-export interface ExampleSample {
+export interface Sample {
   id: string | null
   title: string
   descriptionHtml: string
@@ -27,7 +27,7 @@ export interface ExampleDoc {
   component: string
   tag: string
   introHtml: string
-  samples: ExampleSample[]
+  samples: Sample[]
   api: ExampleApiSection[]
 }
 

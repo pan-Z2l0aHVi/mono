@@ -71,7 +71,7 @@ function apiSection(doc: Doc, key: string) {
 }
 
 function sample(element: HTMLElement, title: string) {
-  const node = element.querySelector(`[data-example-sample="${title}"]`)
+  const node = element.querySelector(`[data-sample="${title}"]`)
   if (!node) throw new Error(`示例「${title}」没有渲染`)
   return node as HTMLElement
 }
@@ -84,7 +84,11 @@ function keyword(element: HTMLElement) {
 
 // live 示例是 defineAsyncComponent：先等三份 demo 真的挂上，再等 Lit 自己的更新周期落地。
 async function mountDemos(element: HTMLElement) {
-  await vi.waitFor(() => expect(element.querySelectorAll('[data-example-preview] web-ui-slider')).toHaveLength(3))
+  // 超时给到 8 秒：第一份 demo 的 dynamic import 是冷的，要等 dev server 现转源码，默认 1 秒不够；
+  // 与 React 面同一口径（`example-doc.browser.spec.tsx` 的 `mountDemos`）。
+  await vi.waitFor(() => expect(element.querySelectorAll('[data-sample-preview] web-ui-slider')).toHaveLength(3), {
+    timeout: 8000
+  })
   await nextTick()
   for (const host of element.querySelectorAll<WebUiSlider>('web-ui-slider')) await host.updateComplete
 }
@@ -108,9 +112,9 @@ describe('example-doc（Vue 面 / 真实浏览器）', () => {
     expect(element.querySelector('[data-example-intro]')?.textContent).toBe(
       new DOMParser().parseFromString(button.introHtml, 'text/html').body.textContent?.trim()
     )
-    expect(
-      [...element.querySelectorAll('[data-example-sample]')].map(node => node.getAttribute('data-example-sample'))
-    ).toEqual(button.samples.map(candidate => candidate.title))
+    expect([...element.querySelectorAll('[data-sample]')].map(node => node.getAttribute('data-sample'))).toEqual(
+      button.samples.map(candidate => candidate.title)
+    )
 
     const code = element.querySelector('pre.shiki')
     expect(code, '示例代码必须是 shiki 产出的 <pre>').not.toBeNull()
@@ -167,14 +171,14 @@ describe('example-doc（Vue 面 / 真实浏览器）', () => {
 
   it('带锚点的示例挂成真组件，没锚点的只有代码', async () => {
     const element = mountDoc('slider')
-    const previews = [...element.querySelectorAll('[data-example-preview]')]
-    expect(previews.map(node => node.getAttribute('data-example-preview'))).toEqual(
+    const previews = [...element.querySelectorAll('[data-sample-preview]')]
+    expect(previews.map(node => node.getAttribute('data-sample-preview'))).toEqual(
       slider.samples.map(candidate => candidate.demoKey).filter(Boolean)
     )
     await mountDemos(element)
     expect(sliderIn(element, '基础').value).toBe(40)
 
-    expect(mountDoc('button').querySelector('[data-example-preview]')).toBeNull()
+    expect(mountDoc('button').querySelector('[data-sample-preview]')).toBeNull()
   })
 
   it('页面上写的数字，就是屏幕上跑起来的那个值', async () => {

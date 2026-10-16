@@ -1,4 +1,4 @@
-import type { SampleFlavor } from './highlight'
+import type { FenceFlavor } from './highlight'
 import type { ApiRow } from './markdown'
 
 /** 落进产物模块的一条 API 行；形状与 `markdown.ts` 的 `ApiRow` 一致，序列化后由宿主消费。 */
@@ -13,12 +13,13 @@ export interface ExampleApiSection {
   rows: ExampleApiRow[]
 }
 
-export interface ExampleSamplePayload {
+/** 落进产物模块的一条示例；形状与 `markdown.ts` 的 `SampleBlock` 对应，序列化后由宿主消费。 */
+export interface SamplePayload {
   /** 示例标题里的锚点 id；null 表示这条示例只展示代码。 */
   id: string | null
   title: string
   descriptionHtml: string
-  html: Record<SampleFlavor, string>
+  html: Record<FenceFlavor, string>
   /** 非 null 时 `dir/demoKey` 已被发出，宿主可以直接挂成真组件。 */
   demoKey: string | null
 }
@@ -27,7 +28,7 @@ export interface ExampleDocPayload {
   component: string
   tag: string
   introHtml: string
-  samples: ExampleSamplePayload[]
+  samples: SamplePayload[]
   api: ExampleApiSection[]
 }
 
@@ -48,7 +49,7 @@ export interface ExampleApiSection {
   rows: ExampleApiRow[]
 }
 
-export interface ExampleSample {
+export interface Sample {
   id: string | null
   title: string
   descriptionHtml: string
@@ -60,7 +61,7 @@ export interface ExampleDoc {
   component: string
   tag: string
   introHtml: string
-  samples: ExampleSample[]
+  samples: Sample[]
   api: ExampleApiSection[]
 }
 `

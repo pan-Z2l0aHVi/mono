@@ -55,7 +55,7 @@ function apiSection(doc: NonNullable<typeof button>, key: string) {
 }
 
 function sample(container: HTMLElement, title: string) {
-  const element = container.querySelector(`[data-example-sample="${title}"]`)
+  const element = container.querySelector(`[data-sample="${title}"]`)
   if (!element) throw new Error(`示例「${title}」没有渲染`)
   return element
 }
@@ -78,7 +78,7 @@ async function mountDemos(container: HTMLElement) {
   // 之后同一轮里模块已缓存，等到的就是真实挂载时间。
   await waitFor(
     () => {
-      const mounted = container.querySelectorAll('[data-example-preview] web-ui-slider')
+      const mounted = container.querySelectorAll('[data-sample-preview] web-ui-slider')
       if (mounted.length !== 3) throw new Error(`live 示例只挂载了 ${mounted.length} 个 web-ui-slider`)
     },
     { timeout: 8000 }
@@ -104,9 +104,7 @@ describe('example-doc（React 面 / 真实浏览器）', () => {
 
     expect(container.querySelector('[data-example-intro]')?.innerHTML).toBe(button.introHtml)
     expect(
-      [...container.querySelectorAll('[data-example-sample]')].map(element =>
-        element.getAttribute('data-example-sample')
-      )
+      [...container.querySelectorAll('[data-sample]')].map(element => element.getAttribute('data-sample'))
     ).toEqual(button.samples.map(candidate => candidate.title))
 
     const code = container.querySelector('pre.shiki')
@@ -167,8 +165,8 @@ describe('example-doc（React 面 / 真实浏览器）', () => {
 
   it('带锚点的示例挂成真组件，没锚点的只有代码', async () => {
     const { container } = render(<ExampleDoc component="slider" />)
-    const previews = [...container.querySelectorAll('[data-example-preview]')]
-    expect(previews.map(element => element.getAttribute('data-example-preview'))).toEqual(
+    const previews = [...container.querySelectorAll('[data-sample-preview]')]
+    expect(previews.map(element => element.getAttribute('data-sample-preview'))).toEqual(
       slider.samples.map(candidate => candidate.demoKey).filter(Boolean)
     )
     await mountDemos(container)
@@ -176,7 +174,7 @@ describe('example-doc（React 面 / 真实浏览器）', () => {
 
     const buttonContainer = render(<ExampleDoc component="button" />).container
     expect(
-      buttonContainer.querySelector('[data-example-preview]'),
+      buttonContainer.querySelector('[data-sample-preview]'),
       'button 的示例没有锚点，不该生成 live 预览'
     ).toBeNull()
   })

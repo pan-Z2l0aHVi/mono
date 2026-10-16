@@ -42,18 +42,13 @@ function demoComponent(demoKey: string | null) {
     <p class="m-0 text-(--wui-color-text)" data-example-intro v-html="doc.introHtml"></p>
 
     <h2>示例代码</h2>
-    <div
-      v-for="sample in doc.samples"
-      :key="sample.title"
-      class="flex flex-col gap-2"
-      :data-example-sample="sample.title"
-    >
+    <div v-for="sample in doc.samples" :key="sample.title" class="flex flex-col gap-2" :data-sample="sample.title">
       <h3 class="m-0">{{ sample.title }}</h3>
       <p class="m-0 text-gray-500" v-html="sample.descriptionHtml"></p>
       <div
         v-if="demoComponent(sample.demoKey)"
         class="flex flex-wrap items-center gap-4 rounded-lg border border-(--wui-color-border) bg-(--wui-color-surface) p-4"
-        :data-example-preview="sample.demoKey ?? undefined"
+        :data-sample-preview="sample.demoKey ?? undefined"
       >
         <component :is="demoComponent(sample.demoKey)" />
       </div>
