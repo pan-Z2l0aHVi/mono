@@ -27,14 +27,16 @@
 | `agent:*` 查询工具 | 根入口只提供命令路由；命名约定与全量索引见 [`commands.md`](commands.md)         | 本文件的工具接口说明（语义与参数）                   | `scripts/*.test.mjs`（glob 约定）                      |
 | 任务级别           | 根 `AGENTS.md`「Mutation Gate」只给判定入口，不复制级别表                       | [`workflow.md`](workflow.md)                         | `tasks/<task-id>.json` 的 level 与 events              |
 | 预授权操作         | 根 `AGENTS.md` 只列被允许与需授权的类别                                         | [`workflow.md`](workflow.md)                         | [`workflow.md`](workflow.md) 的「预授权操作」清单      |
+| 客户端权限与环境   | 根 `AGENTS.md` 只给路由，不复制配置                                             | [`environments.md`](environments.md)                 | `~/.codex/config.toml` 与线程的实际行为                |
 | 公共 `web-ui` 契约 | [`packages/web-ui/AGENTS.md`](../../packages/web-ui/AGENTS.md) 指向受影响消费者 | [`web-ui.md`](web-ui.md)                             | fixtures、contracts、browser/integration tests         |
 
 ## 客户端适配
 
-- 客户端差异不改变状态机与 gate。`AGENTS.md`、`CONTEXT.md`、`docs/agents/`、`.agents/rules/` 与 `.agents/skills/` 由 Codex、Claude Code 等共用；根目录不设客户端专属入口，也不复制共享规则正文。
-- 根目录一旦出现 `CLAUDE.md`，Claude Code 会静默停止注入包级 `AGENTS.md`，源码检查毫无反应；`scripts/validate-context.mjs` 因此断言根 `CLAUDE.md` 不存在。该结论只在实测过的客户端版本上成立，注入失效时先核对客户端版本，不要从本文件推断其他版本。
-- `.claude/rules` 与 `.claude/skills` 必须以 symlink 指向 `.agents/` 中的共享内容，不建第二套规范；它们属于 Task-specific 层，不是常驻加载层。
-- `.claude/settings.local.json` 不得显式放行根 `AGENTS.md` 禁止的共享 worktree Git 改写操作（`stash`、`switch`、`checkout`、`reset`、`clean`），`validate-context` 检测这类权限冲突。
+- 客户端差异不改变状态机与 gate，只体现在适配层。`AGENTS.md`、`CONTEXT.md`、`docs/agents/`、`.agents/rules/` 与 `.agents/skills/` 是所有客户端共用的规范，根目录不设客户端专属入口，也不复制共享规则正文。下面几条是当前仓库里**已存在**的适配，不是仓库只支持这些客户端——换客户端时按同样的形状加一层即可，规范正文不动。
+- 为兼容 Claude Code 而存在的适配，由 `scripts/validate-context.mjs` 守着：
+  - `.claude/rules` 与 `.claude/skills` 以 symlink 指向 `.agents/` 中的共享内容，不建第二套规范；它们属于 Task-specific 层，不是常驻加载层。
+  - 根目录不设 `CLAUDE.md`。它一旦出现，Claude Code 会静默停止注入包级 `AGENTS.md`，而源码检查毫无反应。该结论只在实测过的客户端版本上成立，注入失效时先核对客户端版本，不要从本文件推断其他版本。
+  - `.claude/settings.local.json` 不得显式放行根 `AGENTS.md` 禁止的共享 worktree Git 改写操作（`stash`、`switch`、`checkout`、`reset`、`clean`）。
 
 ## 工具接口
 

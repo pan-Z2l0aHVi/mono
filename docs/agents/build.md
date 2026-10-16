@@ -24,11 +24,11 @@ worktree 是任务隔离边界，不是包名的别名。一个可变 task 只�
 
 构建或验证前怀疑 `dist` 产物异常（例如被 watch 进程清空 d.ts）时，先跑 `pnpm run agent:env-doctor` 体检，再用 `pnpm run agent:env-doctor --fix`（自动 `turbo build --force`）或手动 `turbo build --force` 重建。
 
-Codex 线程能不能写共享 Turbo 缓存，见下文「Codex 权限」。
+Codex 线程能不能写共享 Turbo 缓存，取决于客户端的权限配置，见 [`environments.md`](environments.md)。
 
 ### mise exec 与命令外壳
 
-`.mise.toml` 钉住工具链版本，并在 `[env]` 注入 `TURBO_CACHE_DIR`。这套注入只对 **mise 激活过的 shell** 生效：交互式终端与 herdr pane 由 mise 自动激活，agent 的工具宿主、`git hook`、`bash -c` 与外部脚本通常没有。判定要不要加 `mise exec --` 只看一条：**这条命令是否依赖 mise 注入的 env，或 PATH 上被钉住的工具**——经 turbo 的命令两者都依赖，调用 node / pnpm / go 的命令依赖后者；纯粹读写文件、或工具全部由 `node_modules` 提供的命令可以直接跑，拿不准就加。一个例外是 `pnpm run agent:env-doctor`：它存在的意义就是暴露「当前 shell 没激活 mise」，加了前缀会让它用来暴露这件事的两条断言恒报 ok，所以必须裸跑。
+`.mise.toml` 钉住工具链版本，并在 `[env]` 注入 `TURBO_CACHE_DIR`。这套注入只对 **mise 激活过的 shell** 生效：交互式终端（含终端复用器里的 pane）由 mise 自动激活，agent 的工具宿主、`git hook`、`bash -c` 与外部脚本通常没有。判定要不要加 `mise exec --` 只看一条：**这条命令是否依赖 mise 注入的 env，或 PATH 上被钉住的工具**——经 turbo 的命令两者都依赖，调用 node / pnpm / go 的命令依赖后者；纯粹读写文件、或工具全部由 `node_modules` 提供的命令可以直接跑，拿不准就加。一个例外是 `pnpm run agent:env-doctor`：它存在的意义就是暴露「当前 shell 没激活 mise」，加了前缀会让它用来暴露这件事的两条断言恒报 ok，所以必须裸跑。
 
 一行快速自检，输出非空只说明 env 已被注入（CI 在 `ci.yml` 里覆盖过这个变量也会让它非空），所以它只是提示，权威判据是 `pnpm run agent:env-doctor` 的等值断言：
 
@@ -38,53 +38,15 @@ echo "${TURBO_CACHE_DIR:-<unset>}"
 
 为什么不能靠 turbo 兜底：它的 hash 只记录 `package.json` 里 `engines` 的版本**范围**，不记录真实工具链，所以宿主 PATH 上另一版 node 跑出的构建与钉住版本跑出的构建落在同一个 hash 上。由此有两种各自成立的失效，正是要分开防的两件事——env 没注入时 turbo 落到默认缓存位置，命中不了共享缓存；env 指向共享缓存而 node 不是钉住那一版时，会在同一 hash 下写进工具链不符的产物，之后的命中把它当有效缓存恢复出来。`pnpm run agent:env-doctor` 把这两条事实变成可检测断言：`TURBO_CACHE_DIR` 必须等于共享缓存路径（git common dir 加 `/turbo-cache`），当前 node 必须等于 `[tools]` 钉住的版本，不符即 fail。
 
-### Codex 权限
-
-Codex 的权限由机器级 `~/.codex/config.toml` 决定，不属于仓库政策。本仓没有 `.codex/config.toml`：`.gitignore` 把 `.codex/` 排除在版本控制之外，所以这份配置不随仓库分发。配置在会话启动时读取，改完只影响新开的线程。
-
-当前这台机器上写的是：
-
-```toml
-sandbox_mode = "danger-full-access"
-approval_policy = "on-request"
-approvals_reviewer = "auto_review"
-```
-
-命令没有文件系统边界，残余的审批请求交给自动评审而不是人。
-
-**为什么不用沙箱。** 线程的工作区是 git worktree，它自己的 admin 目录（`<主仓库>/.git/worktrees/<slug>/`）被 Codex 按**名字**保护，不按位置。所以无论怎么配可写根，`git add`、`git commit` 和 freeze 的 `git add -A` 都会被拒，每次都要走 approval 提权，线程反复停在等待审批上。沙箱在这里守的是 `.agents/`、home 与 `~/Documents`，收益抵不上代价。
-
-**代价。** 隔离退回到 task gate、Git 禁令和目录纪律这些软机制，没有运行时保证。这是对官方推荐的主动偏离——官方建议可信仓库用 `workspace-write` + `on-request`，全访问只留给受控容器。
-
-**不要用 `--approve-for-me`。** 它在 CLI 层注入 `sandbox_mode="workspace-write"`，而 CLI 层覆盖一切配置层，会把上面的决定顶掉。要自动评审就写 `approvals_reviewer = "auto_review"`：那是审批路由，不是沙箱的配套。
-
-判断线程实际跑在什么权限下，看配置和线程的实际行为，不要凭 profile 名或记忆里的参数——参数值抄进记忆只会在配置没生效时反过来骗人。
-
-#### 改回沙箱时要一起恢复的东西
-
-把 `sandbox_mode` 改回 `workspace-write` 时，下面两项必须同时恢复，否则工具链会在两个地方失败：
-
-- `[sandbox_workspace_write]`：开 `network_access`，并把工具链缓存目录（mise、pnpm、npm、go、`Library/Caches`、`~/.cache`）和主仓库的 `.git` 列进 `writable_roots`。少任何一类，worktree 里的 `pnpm` 会因为无法 lock 主仓库的 `.git/config` 而失败。列的是 `.git` 本身而不是仓库根：Codex 按名字保护 `.git`，把整个根列进去也不生效。
-- `[shell_environment_policy.set] CHOKIDAR_USEPOLLING=1`：沙箱不允许 `mach-lookup com.apple.FSEvents`，Node 的 `fs.watch` 因此不可用，chokidar 回退到轮询时会耗尽文件描述符，monorepo 的构建会死在 watch 阶段。这是沙箱的变通，不是 Codex 的推荐项。
-
 ### Go 缓存探测与共享
 
-`.mise.toml` 的 `[env]` 里 `GOCACHE` 通过 `exec` 模板在 `HERDR_ENV=1` 时运行探测命令：
+`.mise.toml` 的 `[env]` 里 `GOCACHE` 通过 `exec` 模板在 `HERDR_ENV=1` 时运行一段探测：先试 macOS 的默认缓存目录，再试 Linux 的，都不可写才回落到 `$TMPDIR/greypan/go-build`。目的是让各工作区共享同一份 Go 缓存，而不是各自散在临时目录里。
 
-1. 尝试写入 macOS 默认路径 `~/Library/Caches/go-build`（`mkdir -p && touch && rm`，真写入，`2>/dev/null` 抑制 stderr）
-2. 不可写则尝试 Linux 默认路径 `~/.cache/go-build`
-3. 仍不可写则回落 `$TMPDIR/greypan/go-build`
+探测命令**永远 exit 0、仅输出一行**，这是 Tera 渲染的要求；`HERDR_ENV` 在场而 `TMPDIR` 为空时条件判假，避免渲染成根路径 `/greypan/go-build`。
 
-探测命令**永远 exit 0、仅输出一行**，满足 Tera 渲染不崩溃的要求；`HERDR_ENV` 在场而 `TMPDIR` 为空时条件判假，避免渲染成根路径 `/greypan/go-build`。
+没有 `HERDR_ENV` 时模板渲染为空，Go 自行使用平台默认路径——在 macOS 上就是探测会选中的那个目录，所以结果一致，CI 也是如此（`ci.yml` 的 `actions/cache` 读 `go env GOCACHE` 的默认值，不受影响）。**这条链路不挑客户端**：任何 agent 在 mise 激活过的 shell 里都落在同一个缓存上，探测没跑到也只是退回平台默认。
 
-**实测共享矩阵**：
-
-- **herdr pane / claude 线程 / opencode 线程**（`HERDR_ENV=1`）：默认路径可写，探测命中，全部共享 `~/Library/Caches/go-build`。
-- **手工 shell**（无 `HERDR_ENV`）：模板渲染为空，Go 自行使用平台默认路径，同上共享同一份缓存。
-- **Codex 线程**（`HERDR_ENV=1`）：本 worktree 的 `mise exec -- go env GOCACHE` 返回 `~/Library/Caches/go-build`，路径探测命中默认缓存；当前环境没有回落到临时目录。
-- **CI（GitHub Actions）**：无 `HERDR_ENV`，模板渲染为空，Go 使用平台默认路径，`ci.yml` 的 `actions/cache` 读取 `go env GOCACHE`（默认值）不受影响。
-
-如果 macOS 与 Linux 默认路径都不可写，`.mise.toml` 仍会回落到 `$TMPDIR/greypan/go-build`；沙箱的路径限制见上文「Codex 权限」。
+要确认当前拿到的路径，跑 `mise exec -- go env GOCACHE`。
 
 ### 缓存可信链
 
