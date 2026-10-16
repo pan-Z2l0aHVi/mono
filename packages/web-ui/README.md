@@ -1481,7 +1481,7 @@ Responsive page layout with an optional full-width banner, a collapsible desktop
 | `header-glow`       | `boolean` | `false`   | Decorative Header background glow behind slot content                                              |
 | `mobile`            | `boolean` | `false`   | Read-only, derived: whether the viewport is at or below the mobile breakpoint                      |
 | `sidebar-width`     | `string`  | `'240px'` | Expanded desktop and mobile sidebar width                                                          |
-| `collapsed-width`   | `string`  | `'72px'`  | Collapsed desktop sidebar width                                                                    |
+| `collapsed-width`   | `string`  | `'68px'`  | Collapsed desktop sidebar width                                                                    |
 | `sidebar-resizable` | `boolean` | `false`   | Enable drag-to-resize on the desktop sidebar edge                                                  |
 | `sidebar-min-width` | `string`  | —         | Resize lower bound (px); falls back to `collapsed-width`                                           |
 | `sidebar-max-width` | `string`  | —         | Resize upper bound (px); clamped to half the viewport, which always wins over the configured value |

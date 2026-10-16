@@ -1438,7 +1438,7 @@ WebUiSpinner.hide() // 隐藏
 | `header-glow`       | `boolean` | `false`   | 在 header 插槽内容背后显示装饰性晕染                           |
 | `mobile`            | `boolean` | `false`   | 只读派生值：当前视口是否处于移动端断点及以下                   |
 | `sidebar-width`     | `string`  | `'240px'` | 桌面端和移动端展开时的侧边栏宽度                               |
-| `collapsed-width`   | `string`  | `'72px'`  | 桌面端折叠时的侧边栏宽度                                       |
+| `collapsed-width`   | `string`  | `'68px'`  | 桌面端折叠时的侧边栏宽度                                       |
 | `sidebar-resizable` | `boolean` | `false`   | 启用桌面端侧边栏右边缘拖拽调整宽度                             |
 | `sidebar-min-width` | `string`  | —         | 拖拽调整的下限（px）；默认回退到 `collapsed-width`             |
 | `sidebar-max-width` | `string`  | —         | 拖拽调整的上限（px）；钳制在视口一半以内，内置上限优先于配置值 |

@@ -8,6 +8,7 @@ function Component() {
     <>
       <DemoComponent />
       <ExampleDoc component="segmented" />
+      <ExampleDoc component="segmented-trigger" />
     </>
   )
 }

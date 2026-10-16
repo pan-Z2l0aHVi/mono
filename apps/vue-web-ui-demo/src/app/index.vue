@@ -157,7 +157,8 @@ const navItems: NavItem[] = [
   { path: '/components/context-menu', label: 'ContextMenu 右键菜单' },
   { path: '/components/toast', label: 'Toast 通知' },
   { path: '/components/svg-draw-lines', label: 'SVGDrawLines 描边动画' },
-  { path: '/components/back-top', label: 'BackTop 回到顶部' }
+  { path: '/components/back-top', label: 'BackTop 回到顶部' },
+  { path: '/components/layout', label: 'Layout 布局' }
 ]
 
 const navItemClass =

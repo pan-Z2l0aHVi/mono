@@ -1,14 +1,17 @@
 import '@/assets/global.css'
 import '@/generated/examples.css'
+// 同理：layout 的默认值断言直接建元素，得把组件模块拉进来才会升级。
+import '@greypan/web-ui/components/layout'
 // 主题宿主得自己注册：本文件里没有 `<web-ui-theme>` 的模板用法，unplugin 的注入扫不到这个标签。
 import '@greypan/web-ui/components/theme'
 
-import type { WebUiSlider } from '@greypan/web-ui'
+import type { WebUiLayout, WebUiSegmented, WebUiSegmentedTrigger, WebUiSlider } from '@greypan/web-ui'
 import { mount, type VueWrapper } from '@vue/test-utils'
 import { afterEach, describe, expect, it, vi } from 'vite-plus/test'
 import { userEvent } from 'vite-plus/test/browser'
 import { nextTick } from 'vue'
 
+import { setViewport } from '@/__tests__/viewport'
 // `?raw` 读的是 `import.meta.glob` 拿去编译的同一个文件：这条断言把「页面上显示的那份」直接钉到
 // 「被执行的那份」上，中间不经过 payload 与围栏的等价推定。
 import basicSource from '@/generated/demos/slider--basic.vue?raw'
@@ -32,8 +35,10 @@ const slider = exampleDocs.find(doc => doc.component === 'slider')
 const button = exampleDocs.find(doc => doc.component === 'button')
 const collapse = exampleDocs.find(doc => doc.component === 'collapse')
 const imagePreview = exampleDocs.find(doc => doc.component === 'image-preview')
-if (!slider || !button || !collapse || !imagePreview)
-  throw new Error('生成数据里缺少 slider / button / collapse / image-preview')
+const layout = exampleDocs.find(doc => doc.component === 'layout')
+const segmentedTrigger = exampleDocs.find(doc => doc.component === 'segmented-trigger')
+if (!slider || !button || !collapse || !imagePreview || !layout || !segmentedTrigger)
+  throw new Error('生成数据里缺少 slider / button / collapse / image-preview / layout / segmented-trigger')
 
 /** demoKey → 落盘文件字节；少一条就在断言里直接报出来，不留「这条没被覆盖」的静默缺口。 */
 const demoSources: Record<string, string> = {
@@ -101,6 +106,40 @@ function sliderIn(element: HTMLElement, title: string) {
   // 影子树里有 role="slider" = 元素真的被注册升级过，不是留着未知标签的空壳。
   if (!host.shadowRoot?.querySelector('[role="slider"]')) throw new Error(`示例「${title}」的 slider 没有升级`)
   return host
+}
+
+// segmented-trigger 的 live 示例同样是 defineAsyncComponent，等两个宿主与它们的子 trigger 都升级完。
+async function mountSegmented(element: HTMLElement) {
+  await vi.waitFor(() => expect(element.querySelectorAll('[data-sample-preview] web-ui-segmented')).toHaveLength(2), {
+    timeout: 8000
+  })
+  await nextTick()
+  for (const host of element.querySelectorAll<WebUiSegmented>('web-ui-segmented')) await host.updateComplete
+  for (const host of element.querySelectorAll<WebUiSegmentedTrigger>('web-ui-segmented-trigger'))
+    await host.updateComplete
+}
+
+function segmentedIn(element: HTMLElement, title: string) {
+  const host = sample(element, title).querySelector<WebUiSegmented>('web-ui-segmented')
+  if (!host) throw new Error(`示例「${title}」没有渲染出 web-ui-segmented`)
+  return host
+}
+
+function triggersOf(host: WebUiSegmented) {
+  return [...host.querySelectorAll<WebUiSegmentedTrigger>('web-ui-segmented-trigger')]
+}
+
+// 事件源是影子树里的 role="option"：host 上的点击不会进入影子树，直接点 host 打不到 handler。
+function optionOf(trigger: WebUiSegmentedTrigger) {
+  const option = trigger.shadowRoot?.querySelector<HTMLElement>('[role="option"]')
+  if (!option) throw new Error('web-ui-segmented-trigger 的影子树里没有 role="option"')
+  return option
+}
+
+/** markdown 默认值单元格 → 元素侧的比较值：去掉反引号与字面量引号，`—` 表示空串。 */
+function documentedDefault(cell: string | undefined) {
+  const raw = (cell ?? '').replaceAll('`', '')
+  return raw === '—' ? '' : raw.replace(/^'|'$/g, '')
 }
 
 afterEach(() => {
@@ -267,5 +306,86 @@ describe('example-doc（Vue 面 / 真实浏览器）', () => {
 
     // button.md 没有方法可写，就不该凭空多出一张 Methods 表。
     expect(mountDoc('button').querySelector('[data-example-api="methods"]')).toBeNull()
+  })
+
+  it('layout 的三张 API 表来自 markdown，示例只有代码没有 live 预览', () => {
+    const element = mountDoc('layout')
+
+    for (const key of ['props', 'events', 'slots'] as const) {
+      expect(
+        rowsOf(element, key).map(cells => cells[0]),
+        `${key} 表的行名`
+      ).toEqual(apiSection(layout, key).rows.map(row => row.name))
+    }
+    expect(rowsOf(element, 'props').map(cells => cells.length)).toEqual([4, 4, 4, 4, 4, 4, 4, 4, 4])
+
+    expect([...element.querySelectorAll('[data-sample]')].map(node => node.getAttribute('data-sample'))).toEqual(
+      layout.samples.map(candidate => candidate.title)
+    )
+    // layout 的示例是纯展示片段（没有 `{#id}` 锚点）：整页布局嵌进文档页会和外层 shell 抢 sticky
+    // header，真实交互由手写的 layout-demo 页面演示，文档页只出代码。
+    expect(element.querySelector('[data-sample-preview]')).toBeNull()
+  })
+
+  it('layout props 表里手写的默认值，就是元素实际的默认值', async () => {
+    const restored = { width: window.innerWidth, height: window.innerHeight }
+    const host = document.createElement('web-ui-layout')
+    try {
+      // `mobile` 是视口派生的只读输出，而这一档默认跑在 414px 宽的窄视口里（vitest browser
+      // 的默认 viewport）；先钉到桌面宽度，整张表才都按桌面分支的初值比较。
+      await setViewport(1280, 800)
+      document.body.append(host)
+      await host.updateComplete
+
+      // 「默认值」这一列是手写的，与元素 `@property` 的初值之间原本没有任何守卫：`collapsed-width`
+      // 在源码里从 '72px' 改成 '68px' 时 README 就漏改过一次。这里把两处直接钉在一起，
+      // 加属性忘了写进表格也会红。
+      const actual: Record<string, string> = {
+        'sidebar-collapsed': String(host.sidebarCollapsed),
+        'sidebar-open': String(host.sidebarOpen),
+        'header-glow': String(host.headerGlow),
+        mobile: String(host.mobile),
+        'sidebar-width': host.sidebarWidth,
+        'collapsed-width': host.collapsedWidth,
+        'sidebar-resizable': String(host.sidebarResizable),
+        'sidebar-min-width': host.sidebarMinWidth,
+        'sidebar-max-width': host.sidebarMaxWidth
+      }
+      const props = apiSection(layout, 'props')
+      expect(Object.keys(actual).sort()).toEqual(props.rows.map(row => row.name).sort())
+      for (const row of props.rows) {
+        expect(actual[row.name], `${row.name} 的默认值与元素初值不一致`).toBe(documentedDefault(row.default))
+      }
+    } finally {
+      host.remove()
+      await setViewport(restored.width, restored.height)
+    }
+  })
+
+  it('segmented-trigger 的 live 示例挂成真组件，点击推进父级状态、禁用项不动', async () => {
+    const element = mountDoc('segmented-trigger')
+    expect(
+      [...element.querySelectorAll('[data-sample-preview]')].map(node => node.getAttribute('data-sample-preview'))
+    ).toEqual(segmentedTrigger.samples.map(candidate => candidate.demoKey).filter(Boolean))
+    await mountSegmented(element)
+
+    const basic = segmentedIn(element, '基础')
+    const triggers = triggersOf(basic)
+    expect(triggers.map(trigger => trigger.value)).toEqual(['day', 'week', 'month'])
+    expect(triggers.map(trigger => trigger.checked)).toEqual([true, false, false])
+
+    // 点击第 2 项：trigger 只派发一个不冒泡的 change，父级 segmented 的 GroupController 捕获它、改自己
+    // 的 value，再把 checked 铺回各项。这条走的是 trigger → 父级 → 父级派发 input 这条链路；因为父级在
+    // 派发之前就已经写好了自己的 value，这两条断言量的是那条链路本身，量不到围栏里 `@input` 那次回写。
+    optionOf(triggers[1]).click()
+    await vi.waitFor(() => expect(basic.value).toBe('week'))
+    expect(triggers.map(trigger => trigger.checked)).toEqual([false, true, false])
+
+    // 禁用这一半是有区分度的：没有 `_isDisabled` 门，点击会把组值推到 `grid`。
+    const disabled = segmentedIn(element, '单独禁用')
+    const items = triggersOf(disabled)
+    expect(items.map(trigger => trigger.disabled)).toEqual([false, true])
+    optionOf(items[1]).click()
+    expect(disabled.value).toBe('list')
   })
 })
