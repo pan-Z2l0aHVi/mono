@@ -7,7 +7,6 @@ import { generate, type GeneratedFile, type OutputTarget } from './generate'
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..', '..')
 const DOCS_DIR = path.join(root, 'docs', 'examples', 'web-ui')
-const COMPONENTS_DIR = path.join(root, 'packages', 'web-ui', 'src', 'components')
 const OUTPUTS: OutputTarget[] = [
   { dir: path.join(root, 'apps', 'react-web-ui-demo', 'src', 'generated'), flavor: 'react' },
   { dir: path.join(root, 'apps', 'vue-web-ui-demo', 'src', 'generated'), flavor: 'vue' }
@@ -40,20 +39,19 @@ function staleDemoFiles(outputs: OutputTarget[], files: GeneratedFile[]): string
 }
 
 /**
- * `--docs-dir` / `--out-dir` / `--components-dir` 是测试 seam：包内的测试用一份被篡改的 markdown
- * 副本证明 join 是 fail-closed 的，而不去动仓库里的真实源文件。
+ * `--docs-dir` / `--out-dir` 是测试 seam：包内的测试用一份被篡改的 markdown 副本证明表格守卫是
+ * fail-closed 的，而不去动仓库里的真实源文件。
  */
 async function main(): Promise<void> {
   const checkOnly = process.argv.includes('--check')
   const docsDir = flagValue('--docs-dir') ?? DOCS_DIR
-  const componentsDir = flagValue('--components-dir') ?? COMPONENTS_DIR
   const outDir = flagValue('--out-dir')
   const outputs: OutputTarget[] = outDir ? [{ dir: outDir, flavor: 'react' }] : OUTPUTS
 
   let files: GeneratedFile[]
   try {
     // generate() 是异步的（shiki 按需加载语法与主题），所以入口自己持有这一次事件循环。
-    files = await generate({ docsDir, componentsDir, outputs })
+    files = await generate({ docsDir, outputs })
   } catch (error) {
     if (error instanceof DocError) failAndExit(error.message)
     throw error
@@ -78,9 +76,7 @@ async function main(): Promise<void> {
         )
       const actual = readFileSync(file.path, 'utf8')
       if (actual !== file.content)
-        failAndExit(
-          `${file.path} 与生成器输出不一致：改动组件源码或 markdown 后必须跑 node scripts/generate-web-ui-examples.mjs`
-        )
+        failAndExit(`${file.path} 与生成器输出不一致：改动 markdown 后必须跑 node scripts/generate-web-ui-examples.mjs`)
       continue
     }
     mkdirSync(path.dirname(file.path), { recursive: true })

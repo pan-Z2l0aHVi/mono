@@ -76,22 +76,22 @@ function onChange(event: Event) {
 
 ### Props
 
-| 名称                 | 说明                                                           |
-| -------------------- | -------------------------------------------------------------- |
-| `value`              | 当前输入文本，也是表单提交值。                                 |
-| `placeholder`        | 输入框占位文本。                                               |
-| `borderless`         | ghost 形态：移除边框、背景与阴影，保留 padding 与 focus ring。 |
-| `filter`             | 候选过滤模式：`contains`（默认）、`prefix` 或 `none`。         |
-| `name`               | 表单字段名。                                                   |
-| `disabled`           | 禁用态，不可输入、不可展开下拉。                               |
-| `readonly`           | 只读态：不可输入、不可展开下拉。                               |
-| `required`           | 必填校验。                                                     |
-| `allow-custom-value` | 允许 Enter 提交不在候选中的输入原文。                          |
-| `portal`             | 在 theme-owned overlay root 中渲染下拉面板。                   |
-| `no-scroll-lock`     | 打开时不锁定页面滚动。                                         |
-| `overlayContainer`   | 显式 Portal 容器（property，不是 attribute）。                 |
-| `aria-label`         | 无障碍名称。                                                   |
-| `aria-labelledby`    | 无障碍名称引用。                                               |
+| 名称                 | 说明                                                           | 类型                  | 默认值       |
+| -------------------- | -------------------------------------------------------------- | --------------------- | ------------ |
+| `placeholder`        | 输入框占位文本。                                               | `string`              | `''`         |
+| `borderless`         | ghost 形态：移除边框、背景与阴影，保留 padding 与 focus ring。 | `boolean`             | `false`      |
+| `disabled`           | 禁用态，不可输入、不可展开下拉。                               | `boolean`             | `false`      |
+| `readonly`           | 只读态：不可输入、不可展开下拉。                               | `boolean`             | `false`      |
+| `required`           | 必填校验。                                                     | `boolean`             | `false`      |
+| `portal`             | 在 theme-owned overlay root 中渲染下拉面板。                   | `boolean`             | `false`      |
+| `no-scroll-lock`     | 打开时不锁定页面滚动。                                         | `boolean`             | `false`      |
+| `allow-custom-value` | 允许 Enter 提交不在候选中的输入原文。                          | `boolean`             | `false`      |
+| `overlayContainer`   | 显式 Portal 容器（property，不是 attribute）。                 | `OverlayContainer`    | —            |
+| `name`               | 表单字段名。                                                   | `string`              | `''`         |
+| `aria-label`         | 无障碍名称。                                                   | `string \| null`      | `null`       |
+| `aria-labelledby`    | 无障碍名称引用。                                               | `string \| undefined` | —            |
+| `filter`             | 候选过滤模式：`contains`（默认）、`prefix` 或 `none`。         | `FilterMode`          | `'contains'` |
+| `value`              | 当前输入文本，也是表单提交值。                                 | `string`              | `''`         |
 
 ### Events
 
@@ -107,5 +107,5 @@ function onChange(event: Event) {
 
 | 名称      | 说明                                 |
 | --------- | ------------------------------------ |
-| `default` | 投影 `<web-ui-option>` 候选。        |
 | `trigger` | 自定义触发区域内容，替换默认输入框。 |
+| `default` | 投影 `<web-ui-option>` 候选。        |

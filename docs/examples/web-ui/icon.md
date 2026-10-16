@@ -65,9 +65,9 @@ import { lucideLoaderCircle } from '@greypan/web-ui/icons'
 
 ### Props
 
-| 名称    | 说明                           |
-| ------- | ------------------------------ |
-| `icon`  | Iconify 数据对象（property）。 |
-| `spin`  | 旋转动画。                     |
-| `size`  | 尺寸（px）。                   |
-| `color` | 颜色。                         |
+| 名称    | 说明                           | 类型          | 默认值  |
+| ------- | ------------------------------ | ------------- | ------- |
+| `icon`  | Iconify 数据对象（property）。 | `IconifyIcon` | —       |
+| `spin`  | 旋转动画。                     | `boolean`     | `false` |
+| `size`  | 尺寸（px）。                   | `number`      | `18`    |
+| `color` | 颜色。                         | `string`      | —       |

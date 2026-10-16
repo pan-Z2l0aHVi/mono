@@ -1,5 +1,5 @@
 import type { SampleFlavor } from './highlight'
-import type { ApiRow } from './join'
+import type { ApiRow } from './markdown'
 
 export interface ExampleApiSection {
   key: 'props' | 'events' | 'slots'
@@ -26,7 +26,7 @@ export interface ExampleDocPayload {
 }
 
 const MODULE_HEADER = `// 本文件由 @greypan/web-ui-docs 生成，请勿手动编辑。
-// source of truth：docs/examples/web-ui/*.md（示例与文案）+ packages/web-ui/src/components/*/index.ts（API 契约）。
+// source of truth：docs/examples/web-ui/*.md —— 示例代码、API 表的名称/说明/类型/默认值都在这一份里。
 // 重新生成：node scripts/generate-web-ui-examples.mjs`
 
 const MODULE_TYPES = `export interface ExampleApiRow {

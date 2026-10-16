@@ -71,16 +71,16 @@ function upload() {
 
 ### Props
 
-| 名称              | 说明                                          |
-| ----------------- | --------------------------------------------- |
-| `toastId`         | 这条 toast 的合并键（property）。             |
-| `type`            | 类型：`success`、`info`、`warning`、`error`。 |
-| `position`        | 屏幕位置，默认 `top-right`。                  |
-| `heading`         | 粗体标题。                                    |
-| `message`         | 通知文本。                                    |
-| `duration`        | 自动关闭时间（ms），0 表示不自动关闭。        |
-| `no-close-button` | 隐藏关闭按钮。                                |
-| `visible`         | 当前是否可见。                                |
+| 名称              | 说明                                          | 类型            | 默认值        |
+| ----------------- | --------------------------------------------- | --------------- | ------------- |
+| `toastId`         | 这条 toast 的合并键（property）。             | `string`        | `''`          |
+| `type`            | 类型：`success`、`info`、`warning`、`error`。 | `ToastType`     | `'info'`      |
+| `position`        | 屏幕位置，默认 `top-right`。                  | `ToastPosition` | `'top-right'` |
+| `heading`         | 粗体标题。                                    | `string`        | `''`          |
+| `message`         | 通知文本。                                    | `string`        | `''`          |
+| `duration`        | 自动关闭时间（ms），0 表示不自动关闭。        | `number`        | `3000`        |
+| `no-close-button` | 隐藏关闭按钮。                                | `boolean`       | `false`       |
+| `visible`         | 当前是否可见。                                | `boolean`       | `false`       |
 
 ### Events
 

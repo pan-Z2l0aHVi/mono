@@ -69,14 +69,14 @@ const enabled = ref(false)
 
 ### Props
 
-| 名称       | 说明              |
-| ---------- | ----------------- |
-| `checked`  | 打开 / 关闭状态。 |
-| `name`     | 表单字段名。      |
-| `value`    | 表单提交值。      |
-| `disabled` | 禁用状态。        |
-| `required` | 必填校验。        |
-| `loading`  | 加载状态。        |
+| 名称       | 说明              | 类型      | 默认值  |
+| ---------- | ----------------- | --------- | ------- |
+| `checked`  | 打开 / 关闭状态。 | `boolean` | `false` |
+| `name`     | 表单字段名。      | `string`  | `''`    |
+| `value`    | 表单提交值。      | `string`  | `''`    |
+| `disabled` | 禁用状态。        | `boolean` | `false` |
+| `required` | 必填校验。        | `boolean` | `false` |
+| `loading`  | 加载状态。        | `boolean` | `false` |
 
 ### Events
 

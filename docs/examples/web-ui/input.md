@@ -93,19 +93,19 @@ const keyword = ref('')
 
 ### Props
 
-| 名称          | 说明                                                           |
-| ------------- | -------------------------------------------------------------- |
-| `type`        | HTML input 类型。                                              |
-| `placeholder` | 占位文本。                                                     |
-| `name`        | 表单字段名。                                                   |
-| `disabled`    | 禁用状态。                                                     |
-| `readonly`    | 只读状态。                                                     |
-| `required`    | 必填校验。                                                     |
-| `clearable`   | 显示清除按钮。                                                 |
-| `full`        | 占满父容器宽度。                                               |
-| `borderless`  | ghost 形态：移除边框、背景与阴影，保留 padding 与 focus ring。 |
-| `aria-label`  | 无障碍标签。                                                   |
-| `value`       | 输入值。                                                       |
+| 名称          | 说明                                                           | 类型             | 默认值   |
+| ------------- | -------------------------------------------------------------- | ---------------- | -------- |
+| `type`        | HTML input 类型。                                              | `string`         | `'text'` |
+| `placeholder` | 占位文本。                                                     | `string`         | `''`     |
+| `name`        | 表单字段名。                                                   | `string`         | `''`     |
+| `disabled`    | 禁用状态。                                                     | `boolean`        | `false`  |
+| `readonly`    | 只读状态。                                                     | `boolean`        | `false`  |
+| `required`    | 必填校验。                                                     | `boolean`        | `false`  |
+| `clearable`   | 显示清除按钮。                                                 | `boolean`        | `false`  |
+| `full`        | 占满父容器宽度。                                               | `boolean`        | `false`  |
+| `borderless`  | ghost 形态：移除边框、背景与阴影，保留 padding 与 focus ring。 | `boolean`        | `false`  |
+| `aria-label`  | 无障碍标签。                                                   | `string \| null` | `null`   |
+| `value`       | 输入值。                                                       | `string`         | `''`     |
 
 ### Events
 

@@ -16,9 +16,12 @@ export interface SampleBlock {
   vue: string
 }
 
-export interface ApiTable {
-  /** attribute / 事件名 / slot 名 → 中文描述（已渲染成 HTML 片段）。 */
-  rows: { name: string; descriptionHtml: string }[]
+/** API 表的一行。`type` / `default` 只有 Props 表提供，列形状由 `API_COLUMNS` 定。 */
+export interface ApiRow {
+  name: string
+  type?: string
+  default?: string
+  descriptionHtml: string
 }
 
 export interface ParsedDoc {
@@ -26,7 +29,7 @@ export interface ParsedDoc {
   tag: string
   introHtml: string
   samples: SampleBlock[]
-  api: { props: ApiTable; events: ApiTable; slots: ApiTable }
+  api: Record<'props' | 'events' | 'slots', ApiRow[]>
 }
 
 interface MdPosition {
@@ -47,6 +50,17 @@ interface MdNode {
 const EXAMPLES_SECTION = '示例'
 const API_SECTION = 'API'
 const API_SUBSECTIONS = { Props: 'props', Events: 'events', Slots: 'slots' } as const
+
+/**
+ * 每个 API 小节的列契约，表头必须逐字等于它。
+ * 只有 Props 有类型与默认值：那两个字段是「不读实现就没法用」的信息，而事件与插槽在两个 demo
+ * 的表格里没有渲染这两列的位置，写了也没有消费者——列契约跟着渲染面走。
+ */
+const API_COLUMNS: Record<keyof typeof API_SUBSECTIONS, string[]> = {
+  Props: ['名称', '说明', '类型', '默认值'],
+  Events: ['名称', '说明'],
+  Slots: ['名称', '说明']
+}
 
 // `mdast-util-frontmatter` 产出的节点类型是格式名本身（`yaml` / `toml`），不是 `frontmatter`。
 const FRONTMATTER_TYPES = new Set(['frontmatter', 'yaml', 'toml'])
@@ -101,20 +115,16 @@ function splitAnchor(rawTitle: string, file: string): { title: string; id: strin
  * API 表按原文行读取，不走 mdast。
  *
  * 原因不是「remark 读不了表」，而是本仓还没被授权引入 `remark-gfm`：表格是 GFM 扩展，
- * 不在 CommonMark 里，`remark-parse` 会把整张表当成一个段落。这里要的只是 `| 名称 | 说明 |`
- * 这一种两列表，用行读取足够，而且与旧 `scripts/` 实现同口径、不会改变现有 30 篇的解析结果。
- * 拿到授权后把本函数删掉，换成 `.use(remarkGfm)` 读 `table` 节点。
+ * 不在 CommonMark 里，`remark-parse` 会把整张表当成一个段落。这里要的只有 `API_COLUMNS`
+ * 里那两种表，用行读取足够，而且与旧 `scripts/` 实现同口径、不会改变现有 30 篇的解析结果。
+ * 拿到授权后把这两个函数删掉，换成 `.use(remarkGfm)` 读 `table` 节点。
  */
 function readTableLines(body: string): string[][] {
   const rows: string[][] = []
   for (const line of body.split('\n')) {
     const trimmed = line.trim()
     if (!trimmed.startsWith('|')) continue
-    const cells = trimmed
-      .replace(/^\|/, '')
-      .replace(/\|$/, '')
-      .split('|')
-      .map(cell => cell.trim())
+    const cells = splitCells(trimmed)
     // 分隔行 `| --- | --- |` 不是数据。
     if (cells.every(cell => /^:?-{2,}:?$/.test(cell))) continue
     rows.push(cells)
@@ -122,31 +132,82 @@ function readTableLines(body: string): string[][] {
   return rows
 }
 
-// 名字列写成 `` `variant` `` 而源码里是裸名字；join 前去掉这层标记。
+/**
+ * 按未转义的 `|` 切单元格，并把 `\|` 还原成字面竖线——与 GFM 同一条规则。
+ * 手写表格之后类型列要能写出 `'primary' | 'ghost'` 这种联合类型，不转义就会被当成列边界。
+ */
+function splitCells(line: string): string[] {
+  const body = line.replace(/^\|/, '').replace(/\|$/, '')
+  const cells: string[] = []
+  let current = ''
+  for (let index = 0; index < body.length; index++) {
+    const char = body[index]
+    if (char === '\\' && body[index + 1] === '|') {
+      current += '|'
+      index++
+      continue
+    }
+    if (char === '|') {
+      cells.push(current.trim())
+      current = ''
+      continue
+    }
+    current += char
+  }
+  cells.push(current.trim())
+  return cells
+}
+
+// 名称、类型与默认值都写成 `` `value` `` 而产物里是裸字符串；入表前去掉这层标记。
 function stripInlineCode(name: string): string {
   const trimmed = name.trim()
   return trimmed.startsWith('`') && trimmed.endsWith('`') ? trimmed.slice(1, -1).trim() : trimmed
 }
 
-function parseApiTable(section: Section, source: string, file: string): ApiTable {
-  const rows = readTableLines(source.slice(section.rawStart, section.rawEnd))
-  if (rows.length === 0) return { rows: [] }
+function parseApiTable(section: Section, source: string, file: string): ApiRow[] {
+  const columns = API_COLUMNS[section.title as keyof typeof API_COLUMNS]
+  const body = source.slice(section.rawStart, section.rawEnd)
+  // 小节正文只允许表格行：漏了行首 `|` 的那几行既读不成表格、又不会报错，实测能把 14 行截成 2 行。
+  for (const line of body.split('\n')) {
+    const trimmed = line.trim()
+    if (trimmed && !trimmed.startsWith('|'))
+      fail(`${file}：### ${section.title} 的正文里有一行不是表格行（每行的行首要写 \`|\`）：${trimmed.slice(0, 40)}`)
+  }
+  const rows = readTableLines(body)
+  // 只有标题、没有表格行：这一形状从前一路走到「这一节不存在」，而表格现在是这份契约的唯一来源，
+  // 所以它必须是错误，而不是产物里少一张表。
+  if (rows.length < 2)
+    fail(`${file}：### ${section.title} 有标题但没有表格（表头加至少一行数据）；这张表不该存在就删掉这个小节标题`)
   const [head, ...rest] = rows
-  if (head[0] !== '名称' || head[1] !== '说明')
-    fail(`${file}：### ${section.title} 的表头前两列必须是 \`| 名称 | 说明 |\`，收到 ${JSON.stringify(head)}`)
-  const out: ApiTable['rows'] = []
+  if (head.length !== columns.length || head.some((cell, index) => cell !== columns[index]))
+    fail(`${file}：### ${section.title} 的表头必须是 \`| ${columns.join(' | ')} |\`，收到 ${JSON.stringify(head)}`)
+  const out: ApiRow[] = []
   const seen = new Set<string>()
   for (const cells of rest) {
+    // 不核对列数，多出来的一节就会被读成「不存在」——写歪一个未转义的竖线等于那段话没写。
+    if (cells.length !== columns.length)
+      fail(
+        `${file}：### ${section.title} 有一行是 ${cells.length} 列，表头是 ${columns.length} 列：${JSON.stringify(cells)}`
+      )
     const name = stripInlineCode(cells[0] ?? '')
     if (!name) fail(`${file}：### ${section.title} 有一行的名称单元格是空的`)
-    // 重名行会被 join 静默吞掉一条，表格看起来「全」而实际少一行，所以直接拦下。
+    // 重名行会在渲染时撞 key，而且第二行的描述会被当成没写。
     if (seen.has(name)) fail(`${file}：### ${section.title} 里出现重复的字段名 \`${name}\``)
     seen.add(name)
     const descriptionHtml = renderMarkdownInline(cells[1] ?? '')
     if (!descriptionHtml) fail(`${file}：### ${section.title} 里 \`${name}\` 的描述是空的`)
-    out.push({ name, descriptionHtml })
+    if (columns.length === 4) {
+      // 表格是 API 契约的唯一来源，所以空单元格只能报错，不能渲染成一个看起来像内容的空列。
+      const type = stripInlineCode(cells[2] ?? '')
+      if (!type) fail(`${file}：### ${section.title} 里 \`${name}\` 的类型单元格是空的`)
+      const defaultValue = stripInlineCode(cells[3] ?? '')
+      if (!defaultValue) fail(`${file}：### ${section.title} 里 \`${name}\` 的默认值单元格是空的（无默认值写 \`—\`）`)
+      out.push({ name, type, default: defaultValue, descriptionHtml })
+    } else {
+      out.push({ name, descriptionHtml })
+    }
   }
-  return { rows: out }
+  return out
 }
 
 /**
@@ -248,22 +309,30 @@ export function parseMarkdown(source: string, file: string): ParsedDoc {
   if (samples.length === 0) fail(`${file}：\`## ${EXAMPLES_SECTION}\` 小节里至少要有一个 \`### 示例\``)
 
   const apiBody = named.get(API_SECTION)
-  const apiSections = apiBody ? groupByHeading(apiBody.nodes, 3, apiBody.rawEnd, file) : null
-  for (const section of apiSections?.sections ?? []) {
+  // 表格是 API 契约唯一的落点，所以「整节没了」和「表格写歪」一样是删掉了契约，而不是少了一段装饰。
+  if (!apiBody)
+    fail(`${file}：缺 \`## ${API_SECTION}\` 小节：生成器不再读组件源码，整节删掉就等于这个组件没有任何对外契约`)
+  const apiSections = groupByHeading(apiBody.nodes, 3, apiBody.rawEnd, file)
+  for (const section of apiSections.sections) {
     if (!(section.title in API_SUBSECTIONS))
       fail(`${file}：API 小节里出现了不认识的名字 \`### ${section.title}\`，只允许 Props / Events / Slots`)
   }
-  const apiTable = (name: keyof typeof API_SUBSECTIONS): ApiTable => {
-    const section = apiSections?.sections.find(candidate => candidate.title === name)
-    return section ? parseApiTable(section, source, file) : { rows: [] }
+  const apiTable = (name: keyof typeof API_SUBSECTIONS): ApiRow[] => {
+    const section = apiSections.sections.find(candidate => candidate.title === name)
+    return section ? parseApiTable(section, source, file) : []
   }
+  const api: ParsedDoc['api'] = { props: apiTable('Props'), events: apiTable('Events'), slots: apiTable('Slots') }
+  if (api.props.length + api.events.length + api.slots.length === 0)
+    fail(
+      `${file}：\`## ${API_SECTION}\` 里一张表都没有数据行：要么写出表格，要么把这一节连标题一起删掉（留空等于没写）`
+    )
 
   return {
     component,
     tag,
     introHtml,
     samples,
-    api: { props: apiTable('Props'), events: apiTable('Events'), slots: apiTable('Slots') }
+    api
   }
 }
 

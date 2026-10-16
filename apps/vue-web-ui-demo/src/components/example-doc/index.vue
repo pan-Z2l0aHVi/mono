@@ -5,10 +5,11 @@ import { computed, defineAsyncComponent } from 'vue'
 import { exampleDocs } from '@/generated/web-ui-examples'
 
 /**
- * 由 markdown 与组件源码生成的示例文档：可交互示例（live）+ 示例代码（语法高亮）+ API 表。
+ * 由示例文档 markdown 生成的示例文档：可交互示例（live）+ 示例代码（语法高亮）+ API 表。
  *
- * 数据全部来自 `docs/examples/web-ui/<name>.md` 与 `packages/web-ui/src/components/<name>/index.ts`，
- * 生成物由 `node scripts/generate-web-ui-examples.mjs` 维护。这里只负责渲染，不写死任何字段。
+ * 数据全部来自 `docs/examples/web-ui/<name>.md`：示例代码、以及 API 表的名称 / 说明 / 类型 / 默认值都
+ * 手写在那份 markdown 里，组件源码不参与生成。生成物由 `node scripts/generate-web-ui-examples.mjs`
+ * 维护，这里只负责渲染，不写死任何字段。
  *
  * markdown 里带 `{#id}` 锚点的示例会被生成器原样落成 `src/generated/demos/<component>--<id>.vue`，
  * 也就是下面 glob 到的这份 SFC——`<pre>` 里显示的字节和屏幕上被执行的字节是同一份。

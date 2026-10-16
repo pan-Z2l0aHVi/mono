@@ -115,14 +115,14 @@ import { lucideCopy, lucideTrash2 } from '@greypan/web-ui/icons'
 
 ### Props
 
-| 名称             | 说明                                    |
-| ---------------- | --------------------------------------- |
-| `open`           | 菜单可见性。                            |
-| `disabled`       | 禁用状态。                              |
-| `match-width`    | 面板宽度匹配触发器宽度。                |
-| `no-scroll-lock` | 打开时不锁定页面滚动。                  |
-| `placement`      | Floating UI 位置，默认 `bottom-start`。 |
-| `offset`         | 与触发器的距离（px）。                  |
+| 名称             | 说明                                    | 类型        | 默认值           |
+| ---------------- | --------------------------------------- | ----------- | ---------------- |
+| `open`           | 菜单可见性。                            | `boolean`   | `false`          |
+| `disabled`       | 禁用状态。                              | `boolean`   | `false`          |
+| `match-width`    | 面板宽度匹配触发器宽度。                | `boolean`   | `false`          |
+| `no-scroll-lock` | 打开时不锁定页面滚动。                  | `boolean`   | `false`          |
+| `placement`      | Floating UI 位置，默认 `bottom-start`。 | `Placement` | `'bottom-start'` |
+| `offset`         | 与触发器的距离（px）。                  | `number`    | `4`              |
 
 ### Events
 

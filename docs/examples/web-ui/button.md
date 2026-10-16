@@ -112,16 +112,16 @@ import { lucideSearch } from '@greypan/web-ui/icons'
 
 ### Props
 
-| 名称         | 说明                                                                                        |
-| ------------ | ------------------------------------------------------------------------------------------- |
-| `variant`    | 视觉变体：`primary` / `secondary` / `ghost` / `danger` / `glass`。                          |
-| `disabled`   | 禁用态。禁用时不派发 click，也不参与表单提交。                                              |
-| `loading`    | 加载态。与 `disabled` 一样阻断交互，并优先渲染 spinner。                                    |
-| `full`       | 占满父容器宽度。                                                                            |
-| `icon`       | 图标模式：按钮为正方形，默认插槽整体作为图标。                                              |
-| `size`       | 按钮高度（CSS 长度，如 `28`、`32px`）。在 `web-ui-button-group` 内被忽略。                  |
-| `type`       | 原生 button 的 `type`：`button` / `submit` / `reset`。后两者把 activation 转发给宿主 form。 |
-| `aria-label` | 无障碍名称。图标按钮必须提供，否则读屏器只会读出空按钮。                                    |
+| 名称         | 说明                                                                                        | 类型                                                         | 默认值     |
+| ------------ | ------------------------------------------------------------------------------------------- | ------------------------------------------------------------ | ---------- |
+| `variant`    | 视觉变体：`primary` / `secondary` / `ghost` / `danger` / `glass`。                          | `'primary' \| 'secondary' \| 'ghost' \| 'danger' \| 'glass'` | `'glass'`  |
+| `disabled`   | 禁用态。禁用时不派发 click，也不参与表单提交。                                              | `boolean`                                                    | `false`    |
+| `loading`    | 加载态。与 `disabled` 一样阻断交互，并优先渲染 spinner。                                    | `boolean`                                                    | `false`    |
+| `full`       | 占满父容器宽度。                                                                            | `boolean`                                                    | `false`    |
+| `icon`       | 图标模式：按钮为正方形，默认插槽整体作为图标。                                              | `boolean`                                                    | `false`    |
+| `size`       | 按钮高度（CSS 长度，如 `28`、`32px`）。在 `web-ui-button-group` 内被忽略。                  | `string`                                                     | `''`       |
+| `type`       | 原生 button 的 `type`：`button` / `submit` / `reset`。后两者把 activation 转发给宿主 form。 | `button \| submit \| reset`                                  | `'button'` |
+| `aria-label` | 无障碍名称。图标按钮必须提供，否则读屏器只会读出空按钮。                                    | `string \| null`                                             | `null`     |
 
 ### Slots
 

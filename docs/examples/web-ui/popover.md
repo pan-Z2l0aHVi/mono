@@ -81,15 +81,15 @@ const open = ref(false)
 
 ### Props
 
-| 名称               | 说明                                           |
-| ------------------ | ---------------------------------------------- |
-| `open`             | 弹出层可见性。                                 |
-| `disabled`         | 禁用状态。                                     |
-| `placement`        | Floating UI 位置。                             |
-| `offset`           | 与锚点的距离（px）。                           |
-| `trigger`          | 触发方式：`click`（默认）、`hover`、`manual`。 |
-| `portal`           | 在 theme-owned overlay root 中渲染。           |
-| `overlayContainer` | 显式 Portal 容器（property）。                 |
+| 名称               | 说明                                           | 类型                             | 默认值     |
+| ------------------ | ---------------------------------------------- | -------------------------------- | ---------- |
+| `open`             | 弹出层可见性。                                 | `boolean`                        | `false`    |
+| `disabled`         | 禁用状态。                                     | `boolean`                        | `false`    |
+| `placement`        | Floating UI 位置。                             | `Placement`                      | `'bottom'` |
+| `offset`           | 与锚点的距离（px）。                           | `number`                         | `8`        |
+| `trigger`          | 触发方式：`click`（默认）、`hover`、`manual`。 | `'click' \| 'hover' \| 'manual'` | `'click'`  |
+| `portal`           | 在 theme-owned overlay root 中渲染。           | `boolean`                        | `false`    |
+| `overlayContainer` | 显式 Portal 容器（property）。                 | `OverlayContainer`               | —          |
 
 ### Events
 

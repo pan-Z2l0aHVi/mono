@@ -59,24 +59,24 @@ tag: web-ui-textarea
 
 ### Props
 
-| 名称              | 说明                                                           |
-| ----------------- | -------------------------------------------------------------- |
-| `placeholder`     | 占位文本。                                                     |
-| `name`            | 表单字段名。                                                   |
-| `disabled`        | 禁用状态。                                                     |
-| `readonly`        | 只读状态。                                                     |
-| `required`        | 必填校验。                                                     |
-| `full`            | 占满父容器宽度。                                               |
-| `clearable`       | 显示清除按钮。                                                 |
-| `borderless`      | ghost 形态：移除边框、背景与阴影，保留 padding 与 focus ring。 |
-| `rows`            | 显示行数。                                                     |
-| `minlength`       | 最小长度校验。                                                 |
-| `maxlength`       | 最大长度校验。                                                 |
-| `autosize`        | 自动调整高度，同时强制 `resize: none`。                        |
-| `max-height`      | 自动高度上限（px），0 表示不限制。                             |
-| `aria-label`      | 无障碍标签。                                                   |
-| `aria-labelledby` | 无障碍标签引用。                                               |
-| `value`           | 输入值。                                                       |
+| 名称              | 说明                                                           | 类型                  | 默认值  |
+| ----------------- | -------------------------------------------------------------- | --------------------- | ------- |
+| `placeholder`     | 占位文本。                                                     | `string`              | `''`    |
+| `name`            | 表单字段名。                                                   | `string`              | `''`    |
+| `disabled`        | 禁用状态。                                                     | `boolean`             | `false` |
+| `readonly`        | 只读状态。                                                     | `boolean`             | `false` |
+| `required`        | 必填校验。                                                     | `boolean`             | `false` |
+| `full`            | 占满父容器宽度。                                               | `boolean`             | `false` |
+| `clearable`       | 显示清除按钮。                                                 | `boolean`             | `false` |
+| `borderless`      | ghost 形态：移除边框、背景与阴影，保留 padding 与 focus ring。 | `boolean`             | `false` |
+| `rows`            | 显示行数。                                                     | `number`              | `3`     |
+| `minlength`       | 最小长度校验。                                                 | `number \| undefined` | —       |
+| `maxlength`       | 最大长度校验。                                                 | `number \| undefined` | —       |
+| `autosize`        | 自动调整高度，同时强制 `resize: none`。                        | `boolean`             | `false` |
+| `max-height`      | 自动高度上限（px），0 表示不限制。                             | `number`              | `0`     |
+| `aria-label`      | 无障碍标签。                                                   | `string \| null`      | `null`  |
+| `aria-labelledby` | 无障碍标签引用。                                               | `string \| undefined` | —       |
+| `value`           | 输入值。                                                       | `string`              | `''`    |
 
 ### Events
 

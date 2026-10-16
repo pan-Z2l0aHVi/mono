@@ -81,13 +81,13 @@ const view = ref('week')
 
 ### Props
 
-| 名称       | 说明                                   |
-| ---------- | -------------------------------------- |
-| `name`     | 表单字段名。                           |
-| `variant`  | 材质变体：`inset`（默认）或 `raised`。 |
-| `disabled` | 禁用全部 trigger。                     |
-| `required` | 必填校验。                             |
-| `value`    | 当前选中值。                           |
+| 名称       | 说明                                   | 类型                  | 默认值    |
+| ---------- | -------------------------------------- | --------------------- | --------- |
+| `name`     | 表单字段名。                           | `string`              | `''`      |
+| `variant`  | 材质变体：`inset`（默认）或 `raised`。 | `'inset' \| 'raised'` | `'inset'` |
+| `disabled` | 禁用全部 trigger。                     | `boolean`             | `false`   |
+| `required` | 必填校验。                             | `boolean`             | `false`   |
+| `value`    | 当前选中值。                           | `string`              | `''`      |
 
 ### Events
 

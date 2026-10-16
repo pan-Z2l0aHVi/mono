@@ -1,5 +1,5 @@
 // 本文件由 @greypan/web-ui-docs 生成，请勿手动编辑。
-// source of truth：docs/examples/web-ui/*.md（示例与文案）+ packages/web-ui/src/components/*/index.ts（API 契约）。
+// source of truth：docs/examples/web-ui/*.md —— 示例代码、API 表的名称/说明/类型/默认值都在这一份里。
 // 重新生成：node scripts/generate-web-ui-examples.mjs
 
 export interface ExampleApiRow {
@@ -133,27 +133,22 @@ export const exampleDocs: ExampleDoc[] = [
         "rows": [
           {
             "name": "input",
-            "type": "Event",
             "descriptionHtml": "<p>输入时触发，<code>value</code> 为当前文本。</p>"
           },
           {
             "name": "change",
-            "type": "Event",
             "descriptionHtml": "<p>选中候选或提交 custom value 时触发。</p>"
           },
           {
             "name": "focus",
-            "type": "FocusEvent",
             "descriptionHtml": "<p>触发器获得焦点时触发。</p>"
           },
           {
             "name": "blur",
-            "type": "FocusEvent",
             "descriptionHtml": "<p>触发器失去焦点时触发。</p>"
           },
           {
             "name": "open-change",
-            "type": "CustomEvent<{ open: boolean }>",
             "descriptionHtml": "<p>下拉面板开合，<code>detail.open</code> 为当前状态。</p>"
           }
         ]
@@ -651,12 +646,10 @@ export const exampleDocs: ExampleDoc[] = [
         "rows": [
           {
             "name": "input",
-            "type": "Event",
             "descriptionHtml": "<p>选中状态变化时触发。</p>"
           },
           {
             "name": "change",
-            "type": "Event",
             "descriptionHtml": "<p>用户切换选中状态时触发。</p>"
           }
         ]
@@ -752,7 +745,6 @@ export const exampleDocs: ExampleDoc[] = [
         "rows": [
           {
             "name": "open-change",
-            "type": "CustomEvent<{ open: boolean }>",
             "descriptionHtml": "<p>开合请求。<code>detail.open</code> 是请求的目标状态；Consumer 回写 <code>open</code> 才真正生效。</p>"
           }
         ]
@@ -846,7 +838,6 @@ export const exampleDocs: ExampleDoc[] = [
         "rows": [
           {
             "name": "open-change",
-            "type": "CustomEvent<{ open: boolean }>",
             "descriptionHtml": "<p>菜单开合，<code>detail.open</code> 为当前状态。</p>"
           }
         ]
@@ -966,7 +957,6 @@ export const exampleDocs: ExampleDoc[] = [
         "rows": [
           {
             "name": "open-change",
-            "type": "CustomEvent<{ open: boolean }>",
             "descriptionHtml": "<p>开关状态变化，<code>detail.open</code> 为请求的目标状态。</p>"
           }
         ]
@@ -1100,7 +1090,6 @@ export const exampleDocs: ExampleDoc[] = [
         "rows": [
           {
             "name": "open-change",
-            "type": "CustomEvent<{ open: boolean }>",
             "descriptionHtml": "<p>开关状态变化，<code>detail.open</code> 为请求的目标状态。</p>"
           }
         ]
@@ -1210,7 +1199,6 @@ export const exampleDocs: ExampleDoc[] = [
         "rows": [
           {
             "name": "open-change",
-            "type": "CustomEvent<{ open: boolean }>",
             "descriptionHtml": "<p>菜单开合，<code>detail.open</code> 为当前状态。</p>"
           }
         ]
@@ -1318,17 +1306,14 @@ export const exampleDocs: ExampleDoc[] = [
         "rows": [
           {
             "name": "input",
-            "type": "Event",
             "descriptionHtml": "<p>每次输入时触发。</p>"
           },
           {
             "name": "change",
-            "type": "Event",
             "descriptionHtml": "<p>提交草稿时触发（Enter 或 blur）。</p>"
           },
           {
             "name": "cancel",
-            "type": "Event",
             "descriptionHtml": "<p>Escape 取消时触发，不冒泡不组合。</p>"
           }
         ]
@@ -1697,12 +1682,10 @@ export const exampleDocs: ExampleDoc[] = [
         "rows": [
           {
             "name": "input",
-            "type": "Event",
             "descriptionHtml": "<p>值变化时触发。</p>"
           },
           {
             "name": "change",
-            "type": "Event",
             "descriptionHtml": "<p>提交时触发。</p>"
           }
         ]
@@ -1824,22 +1807,18 @@ export const exampleDocs: ExampleDoc[] = [
         "rows": [
           {
             "name": "input",
-            "type": "Event",
             "descriptionHtml": "<p>输入时触发。</p>"
           },
           {
             "name": "change",
-            "type": "Event",
             "descriptionHtml": "<p>提交时触发。</p>"
           },
           {
             "name": "focus",
-            "type": "FocusEvent",
             "descriptionHtml": "<p>获得焦点时触发。</p>"
           },
           {
             "name": "blur",
-            "type": "FocusEvent",
             "descriptionHtml": "<p>失去焦点时触发。</p>"
           }
         ]
@@ -2024,7 +2003,6 @@ export const exampleDocs: ExampleDoc[] = [
         "rows": [
           {
             "name": "open-change",
-            "type": "CustomEvent<{ open: boolean }>",
             "descriptionHtml": "<p>弹出层开合，<code>detail.open</code> 为当前状态。</p>"
           }
         ]
@@ -2124,12 +2102,10 @@ export const exampleDocs: ExampleDoc[] = [
         "rows": [
           {
             "name": "input",
-            "type": "Event",
             "descriptionHtml": "<p>选中状态变化时触发。</p>"
           },
           {
             "name": "change",
-            "type": "Event",
             "descriptionHtml": "<p>用户切换选中状态时触发。</p>"
           }
         ]
@@ -2225,12 +2201,10 @@ export const exampleDocs: ExampleDoc[] = [
         "rows": [
           {
             "name": "input",
-            "type": "Event",
             "descriptionHtml": "<p>选中值变化时触发。</p>"
           },
           {
             "name": "change",
-            "type": "Event",
             "descriptionHtml": "<p>用户切换选中时触发。</p>"
           }
         ]
@@ -2344,17 +2318,14 @@ export const exampleDocs: ExampleDoc[] = [
         "rows": [
           {
             "name": "input",
-            "type": "Event",
             "descriptionHtml": "<p>选中值变化时触发。</p>"
           },
           {
             "name": "change",
-            "type": "Event",
             "descriptionHtml": "<p>用户提交选择时触发。</p>"
           },
           {
             "name": "open-change",
-            "type": "CustomEvent<{ open: boolean }>",
             "descriptionHtml": "<p>下拉面板开合，<code>detail.open</code> 为当前状态。</p>"
           }
         ]
@@ -2478,12 +2449,10 @@ export const exampleDocs: ExampleDoc[] = [
         "rows": [
           {
             "name": "input",
-            "type": "Event",
             "descriptionHtml": "<p>拖拽 / 输入过程中触发。</p>"
           },
           {
             "name": "change",
-            "type": "Event",
             "descriptionHtml": "<p>松手或键盘确认时触发。</p>"
           }
         ]
@@ -2715,12 +2684,10 @@ export const exampleDocs: ExampleDoc[] = [
         "rows": [
           {
             "name": "input",
-            "type": "Event",
             "descriptionHtml": "<p>状态变化时触发。</p>"
           },
           {
             "name": "change",
-            "type": "Event",
             "descriptionHtml": "<p>用户切换开关时触发。</p>"
           }
         ]
@@ -2872,22 +2839,18 @@ export const exampleDocs: ExampleDoc[] = [
         "rows": [
           {
             "name": "input",
-            "type": "Event",
             "descriptionHtml": "<p>输入时触发。</p>"
           },
           {
             "name": "change",
-            "type": "Event",
             "descriptionHtml": "<p>提交时触发。</p>"
           },
           {
             "name": "focus",
-            "type": "FocusEvent",
             "descriptionHtml": "<p>获得焦点时触发。</p>"
           },
           {
             "name": "blur",
-            "type": "FocusEvent",
             "descriptionHtml": "<p>失去焦点时触发。</p>"
           }
         ]
@@ -3078,7 +3041,6 @@ export const exampleDocs: ExampleDoc[] = [
         "rows": [
           {
             "name": "toast-close",
-            "type": "CustomEvent<{ id: string; reason: ToastCloseReason }>",
             "descriptionHtml": "<p>退场结束后派发，<code>detail</code> 含 <code>id</code> 与 <code>reason</code>。</p>"
           }
         ]
@@ -3188,7 +3150,6 @@ export const exampleDocs: ExampleDoc[] = [
         "rows": [
           {
             "name": "open-change",
-            "type": "CustomEvent<{ open: boolean }>",
             "descriptionHtml": "<p>提示开合，<code>detail.open</code> 为当前状态。</p>"
           }
         ]

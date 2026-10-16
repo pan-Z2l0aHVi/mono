@@ -85,12 +85,12 @@ function onOpenChange(event: CustomEvent<{ open: boolean }>) {
 
 ### Props
 
-| 名称               | 说明                                                   |
-| ------------------ | ------------------------------------------------------ |
-| `disabled`         | 右键与 `openAt()` 都不打开菜单，不做视觉置灰。         |
-| `no-scroll-lock`   | 打开时允许背景滚动。                                   |
-| `long-press`       | 触屏长按打开菜单（opt-in；鼠标始终走 `contextmenu`）。 |
-| `long-press-delay` | 长按触发前需按住的时长（ms）。                         |
+| 名称               | 说明                                                   | 类型      | 默认值  |
+| ------------------ | ------------------------------------------------------ | --------- | ------- |
+| `disabled`         | 右键与 `openAt()` 都不打开菜单，不做视觉置灰。         | `boolean` | `false` |
+| `no-scroll-lock`   | 打开时允许背景滚动。                                   | `boolean` | `false` |
+| `long-press`       | 触屏长按打开菜单（opt-in；鼠标始终走 `contextmenu`）。 | `boolean` | `false` |
+| `long-press-delay` | 长按触发前需按住的时长（ms）。                         | `number`  | `500`   |
 
 ### Events
 

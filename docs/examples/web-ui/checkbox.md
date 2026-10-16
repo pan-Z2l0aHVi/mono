@@ -79,13 +79,13 @@ const selected = ref<string[]>([])
 
 ### Props
 
-| 名称       | 说明                 |
-| ---------- | -------------------- |
-| `checked`  | 选中状态。           |
-| `value`    | 选中时提交的表单值。 |
-| `name`     | 表单字段名。         |
-| `disabled` | 禁用状态。           |
-| `required` | 必填校验。           |
+| 名称       | 说明                 | 类型      | 默认值  |
+| ---------- | -------------------- | --------- | ------- |
+| `checked`  | 选中状态。           | `boolean` | `false` |
+| `value`    | 选中时提交的表单值。 | `string`  | `''`    |
+| `name`     | 表单字段名。         | `string`  | `''`    |
+| `disabled` | 禁用状态。           | `boolean` | `false` |
+| `required` | 必填校验。           | `boolean` | `false` |
 
 ### Events
 

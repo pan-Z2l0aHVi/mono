@@ -73,17 +73,17 @@ import { lucideInfo } from '@greypan/web-ui/icons'
 
 ### Props
 
-| 名称               | 说明                                      |
-| ------------------ | ----------------------------------------- |
-| `placement`        | Floating UI 位置，默认 `top`。            |
-| `show-delay`       | 显示延迟（毫秒）。                        |
-| `hide-delay`       | 隐藏延迟（毫秒）。                        |
-| `disabled`         | 禁用状态。                                |
-| `offset`           | 与触发器的距离（px）。                    |
-| `content`          | 提示文本，是 `content` 插槽的纯文本替代。 |
-| `open`             | 可见性。                                  |
-| `portal`           | 在 theme-owned overlay root 中渲染。      |
-| `overlayContainer` | 显式 Portal 容器（property）。            |
+| 名称               | 说明                                      | 类型               | 默认值  |
+| ------------------ | ----------------------------------------- | ------------------ | ------- |
+| `placement`        | Floating UI 位置，默认 `top`。            | `Placement`        | `'top'` |
+| `show-delay`       | 显示延迟（毫秒）。                        | `number`           | `200`   |
+| `hide-delay`       | 隐藏延迟（毫秒）。                        | `number`           | `100`   |
+| `disabled`         | 禁用状态。                                | `boolean`          | `false` |
+| `offset`           | 与触发器的距离（px）。                    | `number`           | `6`     |
+| `content`          | 提示文本，是 `content` 插槽的纯文本替代。 | `string`           | `''`    |
+| `open`             | 可见性。                                  | `boolean`          | `false` |
+| `portal`           | 在 theme-owned overlay root 中渲染。      | `boolean`          | `false` |
+| `overlayContainer` | 显式 Portal 容器（property）。            | `OverlayContainer` | —       |
 
 ### Events
 

@@ -81,17 +81,17 @@ function onInput(event: WebUiEvent<WebUiSlider, 'input'>) {
 
 ### Props
 
-| 名称       | 说明           |
-| ---------- | -------------- |
-| `disabled` | 禁用状态。     |
-| `marks`    | 显示刻度标记。 |
-| `vertical` | 垂直方向。     |
-| `name`     | 表单字段名。   |
-| `required` | 必填校验。     |
-| `value`    | 当前值。       |
-| `min`      | 最小值。       |
-| `max`      | 最大值。       |
-| `step`     | 步进值。       |
+| 名称       | 说明           | 类型      | 默认值  |
+| ---------- | -------------- | --------- | ------- |
+| `disabled` | 禁用状态。     | `boolean` | `false` |
+| `marks`    | 显示刻度标记。 | `boolean` | `false` |
+| `vertical` | 垂直方向。     | `boolean` | `false` |
+| `name`     | 表单字段名。   | `string`  | `''`    |
+| `required` | 必填校验。     | `boolean` | `false` |
+| `value`    | 当前值。       | `number`  | `0`     |
+| `min`      | 最小值。       | `number`  | `0`     |
+| `max`      | 最大值。       | `number`  | `100`   |
+| `step`     | 步进值。       | `number`  | `1`     |
 
 ### Events
 

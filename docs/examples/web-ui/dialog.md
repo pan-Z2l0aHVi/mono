@@ -97,17 +97,17 @@ function onOpenChange(event: CustomEvent<{ open: boolean }>) {
 
 ### Props
 
-| 名称                | 说明                                                       |
-| ------------------- | ---------------------------------------------------------- |
-| `open`              | 对话框可见性。                                             |
-| `closable`          | 显示内置关闭按钮。                                         |
-| `no-scroll-lock`    | 打开时不锁定页面滚动。                                     |
-| `no-backdrop-close` | 禁止点击遮罩关闭。                                         |
-| `no-escape-close`   | 禁止按 Escape 关闭。                                       |
-| `controlled`        | Escape 与遮罩仅请求 `open=false`，由消费方回写。           |
-| `heading`           | 标题文字，`header` 插槽为空时的回落（`headless` 下忽略）。 |
-| `headless`          | 只保留浮层行为，不再渲染内置 header 带、内容区与 footer。  |
-| `dialog-label`      | 内部原生 dialog 的 accessible name；`headless` 下必填。    |
+| 名称                | 说明                                                       | 类型      | 默认值  |
+| ------------------- | ---------------------------------------------------------- | --------- | ------- |
+| `open`              | 对话框可见性。                                             | `boolean` | `false` |
+| `closable`          | 显示内置关闭按钮。                                         | `boolean` | `false` |
+| `no-scroll-lock`    | 打开时不锁定页面滚动。                                     | `boolean` | `false` |
+| `no-backdrop-close` | 禁止点击遮罩关闭。                                         | `boolean` | `false` |
+| `no-escape-close`   | 禁止按 Escape 关闭。                                       | `boolean` | `false` |
+| `controlled`        | Escape 与遮罩仅请求 `open=false`，由消费方回写。           | `boolean` | `false` |
+| `heading`           | 标题文字，`header` 插槽为空时的回落（`headless` 下忽略）。 | `string`  | `''`    |
+| `headless`          | 只保留浮层行为，不再渲染内置 header 带、内容区与 footer。  | `boolean` | `false` |
+| `dialog-label`      | 内部原生 dialog 的 accessible name；`headless` 下必填。    | `string`  | `''`    |
 
 ### Events
 

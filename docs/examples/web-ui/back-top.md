@@ -97,12 +97,12 @@ onMounted(() => {
 
 ### Props
 
-| 名称              | 说明                                                     |
-| ----------------- | -------------------------------------------------------- |
-| `scroll-behavior` | 滚动行为：`smooth`（默认）或 `auto`。                    |
-| `visible`         | 当前可见状态，由滚动位置驱动。                           |
-| `scrollTarget`    | 滚动容器，`window`（默认）或 `HTMLElement`（property）。 |
-| `threshold`       | 显示按钮的滚动阈值（px）。                               |
+| 名称              | 说明                                                     | 类型                    | 默认值     |
+| ----------------- | -------------------------------------------------------- | ----------------------- | ---------- |
+| `scroll-behavior` | 滚动行为：`smooth`（默认）或 `auto`。                    | `'smooth' \| 'auto'`    | `'smooth'` |
+| `visible`         | 当前可见状态，由滚动位置驱动。                           | `boolean`               | `false`    |
+| `scrollTarget`    | 滚动容器，`window`（默认）或 `HTMLElement`（property）。 | `HTMLElement \| Window` | `window`   |
+| `threshold`       | 显示按钮的滚动阈值（px）。                               | `number`                | `200`      |
 
 ### Slots
 

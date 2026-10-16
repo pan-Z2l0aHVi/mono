@@ -85,16 +85,16 @@ import { lucideMail } from '@greypan/web-ui/icons'
 
 ### Props
 
-| 名称           | 说明                                                                       |
-| -------------- | -------------------------------------------------------------------------- |
-| `count`        | 显示数字。                                                                 |
-| `max`          | 数字上限，超过时显示 `max+`。                                              |
-| `dot`          | 点模式，只显示圆点不显示数字。                                             |
-| `show-zero`    | `count` 为 0 时也显示。                                                    |
-| `badge-hidden` | 完全隐藏徽标。                                                             |
-| `offset-x`     | 水平偏移（px）。                                                           |
-| `offset-y`     | 垂直偏移（px）。                                                           |
-| `placement`    | 徽标位置：`top-right`（默认）、`top-left`、`bottom-right`、`bottom-left`。 |
+| 名称           | 说明                                                                       | 类型                                                           | 默认值        |
+| -------------- | -------------------------------------------------------------------------- | -------------------------------------------------------------- | ------------- |
+| `count`        | 显示数字。                                                                 | `number`                                                       | `0`           |
+| `max`          | 数字上限，超过时显示 `max+`。                                              | `number`                                                       | `99`          |
+| `dot`          | 点模式，只显示圆点不显示数字。                                             | `boolean`                                                      | `false`       |
+| `show-zero`    | `count` 为 0 时也显示。                                                    | `boolean`                                                      | `false`       |
+| `badge-hidden` | 完全隐藏徽标。                                                             | `boolean`                                                      | `false`       |
+| `offset-x`     | 水平偏移（px）。                                                           | `number`                                                       | `0`           |
+| `offset-y`     | 垂直偏移（px）。                                                           | `number`                                                       | `0`           |
+| `placement`    | 徽标位置：`top-right`（默认）、`top-left`、`bottom-right`、`bottom-left`。 | `'top-right' \| 'top-left' \| 'bottom-right' \| 'bottom-left'` | `'top-right'` |
 
 ### Slots
 

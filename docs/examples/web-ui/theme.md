@@ -73,11 +73,11 @@ const appearance = ref<'light' | 'dark' | 'system'>('system')
 
 ### Props
 
-| 名称                  | 说明                                                        |
-| --------------------- | ----------------------------------------------------------- |
-| `appearance`          | 配色方案：`light`、`dark` 或 `system`。                     |
-| `resolved-appearance` | 解析后的配色方案，只读反射输出。                            |
-| `motion`              | 当前嵌套主题范围的动效偏好：`full`、`reduced` 或 `system`。 |
+| 名称                  | 说明                                                        | 类型                           | 默认值     |
+| --------------------- | ----------------------------------------------------------- | ------------------------------ | ---------- |
+| `appearance`          | 配色方案：`light`、`dark` 或 `system`。                     | `ThemeAppearance \| undefined` | —          |
+| `resolved-appearance` | 解析后的配色方案，只读反射输出。                            | `ResolvedThemeAppearance`      | `'light'`  |
+| `motion`              | 当前嵌套主题范围的动效偏好：`full`、`reduced` 或 `system`。 | `ThemeMotion`                  | `'system'` |
 
 ### Slots
 

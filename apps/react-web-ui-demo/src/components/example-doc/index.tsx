@@ -3,10 +3,11 @@ import { lazy, Suspense, type ComponentType } from 'react'
 import { exampleDocs } from '@/generated/web-ui-examples'
 
 /**
- * 由 markdown 与组件源码生成的示例文档：可交互示例（live）+ 示例代码（语法高亮）+ API 表。
+ * 由示例文档 markdown 生成的示例文档：可交互示例（live）+ 示例代码（语法高亮）+ API 表。
  *
- * 数据全部来自 `docs/examples/web-ui/<name>.md` 与 `packages/web-ui/src/components/<name>/index.ts`，
- * 生成物由 `node scripts/generate-web-ui-examples.mjs` 维护。这里只负责渲染，不写死任何字段。
+ * 数据全部来自 `docs/examples/web-ui/<name>.md`：示例代码、以及 API 表的名称 / 说明 / 类型 / 默认值都
+ * 手写在那份 markdown 里，组件源码不参与生成。生成物由 `node scripts/generate-web-ui-examples.mjs`
+ * 维护，这里只负责渲染，不写死任何字段。
  *
  * `flavor` 选择渲染哪一份示例代码：同一个示例在 markdown 里同时带 react 与 vue 两个代码块，
  * 两个 demo 各取自己那份，避免为了「视觉一致」把另一端的写法搬错。

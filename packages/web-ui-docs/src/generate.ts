@@ -1,10 +1,8 @@
 import { existsSync, readdirSync, readFileSync } from 'node:fs'
 import path from 'node:path'
 
-import { readComponentSource } from './component-source'
 import { DocError, fail } from './errors'
 import { highlight, type SampleFlavor } from './highlight'
-import { joinApi, type ApiRow } from './join'
 import { assertSelfContained, demoFileName, isLiveSample } from './live'
 import { parseMarkdown, type ParsedDoc } from './markdown'
 import { renderCss, renderModule, type ExampleDocPayload, type ExampleSamplePayload } from './render'
@@ -17,7 +15,6 @@ export interface OutputTarget {
 
 export interface GenerateOptions {
   docsDir: string
-  componentsDir: string
   outputs: OutputTarget[]
 }
 
@@ -26,8 +23,8 @@ export interface GeneratedFile {
   content: string
 }
 
-/** markdown 侧契约 + 组件源码侧契约 join 完的结果。 */
-type ResolvedDoc = Omit<ParsedDoc, 'api'> & { api: Record<'props' | 'events' | 'slots', ApiRow[]>; sourceFile: string }
+/** markdown 侧契约加上报错定位用的文件名。 */
+type ResolvedDoc = ParsedDoc & { sourceFile: string }
 
 /**
  * fence 原文与落盘文件之间只差一个行尾换行：POSIX 文本文件与格式化器都要求它以换行收尾，
@@ -37,7 +34,7 @@ export function demoFileContent(code: string): string {
   return `${code.trimEnd()}\n`
 }
 
-function readDocs(docsDir: string, componentsDir: string): ResolvedDoc[] {
+function readDocs(docsDir: string): ResolvedDoc[] {
   if (!existsSync(docsDir)) fail(`找不到 markdown 源目录：${docsDir}`)
   const names = readdirSync(docsDir)
     .filter(name => name.endsWith('.md'))
@@ -51,18 +48,7 @@ function readDocs(docsDir: string, componentsDir: string): ResolvedDoc[] {
     // 生成一条谁都渲染不到的数据（路由里 ExampleDoc 找的是路由名）。
     if (doc.component !== name.replace(/\.md$/, ''))
       fail(`${file}：frontmatter 的 component=${doc.component} 与文件名不一致，必须同名`)
-    const contract = readComponentSource(componentsDir, doc.component)
-    if (contract.tag !== doc.tag)
-      fail(`${file}：frontmatter 声明 tag=${doc.tag}，但源码里是 @customElement('${contract.tag}')`)
-    return {
-      ...doc,
-      sourceFile: file,
-      api: {
-        props: joinApi('props', contract, doc.api.props, file),
-        events: joinApi('events', contract, doc.api.events, file),
-        slots: joinApi('slots', contract, doc.api.slots, file)
-      }
-    }
+    return { ...doc, sourceFile: file }
   })
 }
 
@@ -99,7 +85,7 @@ async function buildPayloads(docs: ResolvedDoc[]): Promise<ExampleDocPayload[]> 
  * 与「被执行的那份源码」同源；`assertSelfContained` 挡的是片段被当成文件发出这一种形状。
  */
 export async function generate(options: GenerateOptions): Promise<GeneratedFile[]> {
-  const docs = readDocs(options.docsDir, options.componentsDir)
+  const docs = readDocs(options.docsDir)
   const payloads = await buildPayloads(docs)
   const module = renderModule(payloads)
   const files: GeneratedFile[] = []

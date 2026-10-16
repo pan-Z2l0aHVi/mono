@@ -194,23 +194,24 @@ describe('example-doc（React 面 / 真实浏览器）', () => {
     await waitFor(() => expect(host.value).toBe(31))
   })
 
-  it('props 表逐行来自组件源码，不是手写的', () => {
+  it('props 表把 markdown 里手写的类型与默认值原样渲染出来', () => {
     const { container } = render(<ExampleDoc component="slider" />)
     const props = apiSection(slider, 'props')
     const rows = sectionRows(container, 'props')
 
     expect(rows.map(cells => cells[0])).toEqual(props.rows.map(row => row.name))
-    // `boolean` / `false` / `100` 只写在 packages/web-ui 的 @property 装饰器里。
+    // `boolean` / `false` / `100` 写在 slider.md 的 Props 表里：表格是这份数据的唯一来源，
+    // 所以这一条钉的是 markdown → 生成 payload → DOM 这三跳没有走样，不是「源码说了算」。
     expect(rows.find(cells => cells[0] === 'marks')?.slice(1)).toEqual(['boolean', 'false', expect.any(String)])
     expect(rows.find(cells => cells[0] === 'max')?.slice(1)).toEqual(['number', '100', expect.any(String)])
   })
 
-  it('events 表来自源码契约，button 没有就不生成', () => {
+  it('events 表按 markdown 的小节生成，没写就不出现', () => {
     const { container } = render(<ExampleDoc component="slider" />)
     expect(sectionRows(container, 'events').map(cells => cells[0])).toEqual(['input', 'change'])
 
     const { container: buttonContainer } = render(<ExampleDoc component="button" />)
-    // button 没有 $events，就不该凭空多出 Events 小节。
+    // button.md 没写 ### Events 小节，就不该凭空多出一张 Events 表。
     expect(buttonContainer.querySelector('[data-example-api="events"]')).toBeNull()
   })
 })

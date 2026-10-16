@@ -186,20 +186,21 @@ describe('example-doc（Vue 面 / 真实浏览器）', () => {
     await vi.waitFor(() => expect(host.value).toBe(31))
   })
 
-  it('props 表逐行来自组件源码，不是手写的', () => {
+  it('props 表把 markdown 里手写的类型与默认值原样渲染出来', () => {
     const element = mountDoc('collapse')
     const props = apiSection(collapse, 'props')
     const rows = rowsOf(element, 'props')
 
     expect(rows.map(cells => cells[0])).toEqual(props.rows.map(row => row.name))
-    // `boolean` / `false` 只写在 packages/web-ui 的 @property 装饰器里。
+    // `boolean` / `false` 写在 collapse.md 的 Props 表里：表格是这份数据的唯一来源，
+    // 所以这一条钉的是 markdown → 生成 payload → DOM 这三跳没有走样，不是「源码说了算」。
     expect(rows.find(cells => cells[0] === 'open')?.slice(1)).toEqual(['boolean', 'false', expect.any(String)])
 
     const sliderRows = rowsOf(mountDoc('slider'), 'props')
     expect(sliderRows.find(cells => cells[0] === 'max')?.slice(1)).toEqual(['number', '100', expect.any(String)])
   })
 
-  it('events 与 slots 表来自源码契约，button 没有就不生成', () => {
+  it('events 与 slots 表按 markdown 的小节生成，没写就不出现', () => {
     const element = mountDoc('collapse')
     expect(rowsOf(element, 'events').map(cells => cells[0])).toEqual(['open-change'])
     expect(rowsOf(element, 'slots').map(cells => cells[0])).toEqual(
@@ -209,7 +210,7 @@ describe('example-doc（Vue 面 / 真实浏览器）', () => {
     const sliderElement = mountDoc('slider')
     expect(rowsOf(sliderElement, 'events').map(cells => cells[0])).toEqual(['input', 'change'])
 
-    // button 没有 $events，就不该凭空多出 Events 小节。
+    // button.md 没写 ### Events 小节，就不该凭空多出一张 Events 表。
     expect(mountDoc('button').querySelector('[data-example-api="events"]')).toBeNull()
   })
 })

@@ -91,16 +91,16 @@ import { lucideSettings } from '@greypan/web-ui/icons'
 
 ### Props
 
-| 名称               | 说明                                         |
-| ------------------ | -------------------------------------------- |
-| `placeholder`      | 未选中时显示的占位文本。                     |
-| `disabled`         | 禁用状态。                                   |
-| `required`         | 必填校验。                                   |
-| `portal`           | 在 theme-owned overlay root 中渲染下拉面板。 |
-| `no-scroll-lock`   | 打开时不锁定页面滚动。                       |
-| `overlayContainer` | 显式 Portal 容器（property）。               |
-| `name`             | 表单字段名。                                 |
-| `value`            | 选中值。                                     |
+| 名称               | 说明                                         | 类型               | 默认值  |
+| ------------------ | -------------------------------------------- | ------------------ | ------- |
+| `placeholder`      | 未选中时显示的占位文本。                     | `string`           | `''`    |
+| `disabled`         | 禁用状态。                                   | `boolean`          | `false` |
+| `required`         | 必填校验。                                   | `boolean`          | `false` |
+| `portal`           | 在 theme-owned overlay root 中渲染下拉面板。 | `boolean`          | `false` |
+| `no-scroll-lock`   | 打开时不锁定页面滚动。                       | `boolean`          | `false` |
+| `overlayContainer` | 显式 Portal 容器（property）。               | `OverlayContainer` | —       |
+| `name`             | 表单字段名。                                 | `string`           | `''`    |
+| `value`            | 选中值。                                     | `string`           | `''`    |
 
 ### Events
 
