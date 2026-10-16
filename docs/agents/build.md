@@ -24,7 +24,7 @@ worktree 是任务隔离边界，不是包名的别名。一个可变 task 只�
 
 构建或验证前怀疑 `dist` 产物异常（例如被 watch 进程清空 d.ts）时，先跑 `pnpm run agent:env-doctor` 体检，再用 `pnpm run agent:env-doctor --fix`（自动 `turbo build --force`）或手动 `turbo build --force` 重建。
 
-Codex 沙箱对共享 Turbo 缓存的限制见下文「Codex 沙箱边界与提权」。
+Codex 线程能不能写共享 Turbo 缓存，见下文「Codex 权限」。
 
 ### mise exec 与命令外壳
 
@@ -38,34 +38,34 @@ echo "${TURBO_CACHE_DIR:-<unset>}"
 
 为什么不能靠 turbo 兜底：它的 hash 只记录 `package.json` 里 `engines` 的版本**范围**，不记录真实工具链，所以宿主 PATH 上另一版 node 跑出的构建与钉住版本跑出的构建落在同一个 hash 上。由此有两种各自成立的失效，正是要分开防的两件事——env 没注入时 turbo 落到默认缓存位置，命中不了共享缓存；env 指向共享缓存而 node 不是钉住那一版时，会在同一 hash 下写进工具链不符的产物，之后的命中把它当有效缓存恢复出来。`pnpm run agent:env-doctor` 把这两条事实变成可检测断言：`TURBO_CACHE_DIR` 必须等于共享缓存路径（git common dir 加 `/turbo-cache`），当前 node 必须等于 `[tools]` 钉住的版本，不符即 fail。
 
-### Codex 沙箱边界与提权
+### Codex 权限
 
-Codex 沙箱由仓库外的机器级 `~/.codex/config.toml` 配置，不属于仓库政策。配置在 Codex 会话启动时读取；修改后要新开或重启会话。本节记录本机本会话的实测结果，其他环境应重新探测。
+Codex 的权限由机器级 `~/.codex/config.toml` 决定，不属于仓库政策。本仓没有 `.codex/config.toml`：`.gitignore` 把 `.codex/` 排除在版本控制之外，所以这份配置不随仓库分发。配置在会话启动时读取，改完只影响新开的线程。
 
-当前 `[sandbox_workspace_write]` 开启网络，并把以下位置列入 `writable_roots`：
+当前这台机器上写的是：
 
-- `~/.local/state/mise`、`~/.local/share/mise`
-- `~/Library/pnpm`、`~/.npm`
-- `~/go`、`~/Library/Caches`、`~/.cache`
-- 主仓库的 `.git`（即 `R/.git`，路径因人而异；用 `git rev-parse --path-format=absolute --git-common-dir` 取）
+```toml
+sandbox_mode = "danger-full-access"
+approval_policy = "on-request"
+approvals_reviewer = "auto_review"
+```
 
-本 worktree 和 `/tmp` 也可写。`~/Documents` 与 home 目录本身不可写。用 `sh -c 'touch <probe> && echo OK || echo DENIED'` 可直接检查目标路径；探测后删除临时文件。网络探测可用 `curl`，本机的 `curl https://registry.npmmirror.com` 与 `pnpm view @changesets/cli version` 均有响应。
+命令没有文件系统边界，残余的审批请求交给自动评审而不是人。
 
-2026-10-15 实测，在 linked worktree 执行 `mise exec -- pnpm exec node -p 'X'`，加入该路径前退出码为 1，末行是 `could not lock config file …/.git/config`；加入后退出码为 0。`pnpm` 依赖流水线会执行根 `prepare`（`vp config` 写入主仓库 `.git/config`），列出该 `.git` 后这部分不再需要提权。
+**为什么不用沙箱。** 线程的工作区是 git worktree，它自己的 admin 目录（`<主仓库>/.git/worktrees/<slug>/`）被 Codex 按**名字**保护，不按位置。所以无论怎么配可写根，`git add`、`git commit` 和 freeze 的 `git add -A` 都会被拒，每次都要走 approval 提权，线程反复停在等待审批上。沙箱在这里守的是 `.agents/`、home 与 `~/Documents`，收益抵不上代价。
 
-`.agents/` 在 worktree 内，但沙箱 shell 仍拒绝写入。编辑或还原其中的文件时使用宿主侧编辑工具，例如 `apply_patch`；不要用 shell 写入。
+**代价。** 隔离退回到 task gate、Git 禁令和目录纪律这些软机制，没有运行时保证。这是对官方推荐的主动偏离——官方建议可信仓库用 `workspace-write` + `on-request`，全访问只留给受控容器。
 
-2026-10-15 实测（真实 `codex exec --approve-for-me`）：Codex 按名称而非路径位置保护 `.git`。即使把整个仓库根 `R`（= 主仓库根，即 `git rev-parse --path-format=absolute --git-common-dir` 的父目录；注意 `git rev-parse --show-toplevel` 在 linked worktree 里给的是该 worktree 的根，不是 `R`）列入 `writable_roots`，`R/.git/**` 仍被拒；将 `R/.git` 本身列入后，`<main>/.git/config` 和 `.git` 下的普通文件可写，无需提权。
+**不要用 `--approve-for-me`。** 它在 CLI 层注入 `sandbox_mode="workspace-write"`，而 CLI 层覆盖一切配置层，会把上面的决定顶掉。要自动评审就写 `approvals_reviewer = "auto_review"`：那是审批路由，不是沙箱的配套。
 
-2026-10-15 实测，仍需提权的是 linked worktree 自己的 admin dir：`<main>/.git/worktrees/<slug>/index.lock`。被列入可写根的 worktree，其自身 admin dir 仍保持关闭；Herdr 线程的工作区就是这个 worktree。`git add`、`git rm --cached`、freeze 中的 `git add -A` 和 `git commit` 会写该目录。执行前通过 Codex approval request 请求提权，获批后重跑原命令。不要在沙箱内反复重试，也不要用 `--no-verify` 或修改 hook 绕过限制。
+判断线程实际跑在什么权限下，看配置和线程的实际行为，不要凭 profile 名或记忆里的参数——参数值抄进记忆只会在配置没生效时反过来骗人。
 
-2026-10-15 推断：`git push` 先前被拒的 upstream 配置写入和 `refs/remotes/origin/<branch>` 目录创建都位于 `mono/.git` 下，因此现在应不再需要提权；这两步本次未实测。
+#### 改回沙箱时要一起恢复的东西
 
-2026-10-15 实测，`TURBO_CACHE_DIR` 位于 `mono/.git/turbo-cache` 下，沙箱写入探针成功。本次未重测 Turbo 构建行为。下文的构建 A/B 使用包级命令，不依赖 Turbo 缓存。
+把 `sandbox_mode` 改回 `workspace-write` 时，下面两项必须同时恢复，否则工具链会在两个地方失败：
 
-浏览器也受进程沙箱限制。本线程的 Playwright `chromium.launch()` 在沙箱内因 Mach 服务权限失败，通过 approval request 提权后启动成功。需要真实浏览器的验证应对启动浏览器的命令请求提权。
-
-当前 `[shell_environment_policy.set]` 由仓库外的 Codex 配置注入 `CHOKIDAR_USEPOLLING=1`。对 `apps/interweave/frontend` 直接运行 `pnpm run build` 时，unset 该变量会在 Chokidar watch 阶段报 `EMFILE`；设为 `1` 后同一构建成功。这个 A/B 用包级命令执行，确保变量传入构建进程。
+- `[sandbox_workspace_write]`：开 `network_access`，并把工具链缓存目录（mise、pnpm、npm、go、`Library/Caches`、`~/.cache`）和主仓库的 `.git` 列进 `writable_roots`。少任何一类，worktree 里的 `pnpm` 会因为无法 lock 主仓库的 `.git/config` 而失败。列的是 `.git` 本身而不是仓库根：Codex 按名字保护 `.git`，把整个根列进去也不生效。
+- `[shell_environment_policy.set] CHOKIDAR_USEPOLLING=1`：沙箱不允许 `mach-lookup com.apple.FSEvents`，Node 的 `fs.watch` 因此不可用，chokidar 回退到轮询时会耗尽文件描述符，monorepo 的构建会死在 watch 阶段。这是沙箱的变通，不是 Codex 的推荐项。
 
 ### Go 缓存探测与共享
 
@@ -84,7 +84,7 @@ Codex 沙箱由仓库外的机器级 `~/.codex/config.toml` 配置，不属于�
 - **Codex 线程**（`HERDR_ENV=1`）：本 worktree 的 `mise exec -- go env GOCACHE` 返回 `~/Library/Caches/go-build`，路径探测命中默认缓存；当前环境没有回落到临时目录。
 - **CI（GitHub Actions）**：无 `HERDR_ENV`，模板渲染为空，Go 使用平台默认路径，`ci.yml` 的 `actions/cache` 读取 `go env GOCACHE`（默认值）不受影响。
 
-如果 macOS 与 Linux 默认路径都不可写，`.mise.toml` 仍会回落到 `$TMPDIR/greypan/go-build`；本线程的 Codex 沙箱没有触发该分支。沙箱配置与可写路径见上文「Codex 沙箱边界与提权」。
+如果 macOS 与 Linux 默认路径都不可写，`.mise.toml` 仍会回落到 `$TMPDIR/greypan/go-build`；沙箱的路径限制见上文「Codex 权限」。
 
 ### 缓存可信链
 
