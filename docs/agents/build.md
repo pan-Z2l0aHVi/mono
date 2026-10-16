@@ -4,7 +4,7 @@
 
 ## 各包命令
 
-可构建的包都有 `build`，多数有持久监听的 `dev`。`build`、`test`、`dev` 是 turbo 任务，用 `pnpm exec turbo <task> --filter=@greypan/<name>` 运行，turbo 按 `^build` 先建好上游依赖；裸 `pnpm --filter` 绕过这一层，会用到陈旧或缺失的 `dist`。其余脚本（例如 `generate-icons`）用 `pnpm --filter @greypan/<name> <script>` 直接跑。影响面定位用 `pnpm agent:find-usages -- <paths...>`，语义见 [`agent-context.md`](agent-context.md)。全量根命令由 CI 在 pull request 上执行，本地只在复现全仓范围问题时运行。
+可构建的包都有 `build`，多数有持久监听的 `dev`。`build`、`test`、`dev` 是 turbo 任务，用 `pnpm exec turbo <task> --filter=@greypan/<name>` 运行，turbo 按 `^build` 先建好上游依赖；裸 `pnpm --filter` 绕过这一层，会用到陈旧或缺失的 `dist`。其余脚本（例如 `generate-icons`）用 `pnpm --filter @greypan/<name> <script>` 直接跑。影响面定位用 `pnpm agent:find-usages -- <paths...>`，语义见 `agent-context.md`。全量根命令由 CI 在 pull request 上执行，本地只在复现全仓范围问题时运行。
 
 `check-pack` 在构建可发布 package 或修改其 `exports`、`files`、Vite 输出时，于根构建成功后运行。它用 `pnpm pack --dry-run` 验证实际发布文件与 manifest export targets，不判断 API 语义或版本级别。
 
@@ -12,7 +12,7 @@
 
 worktree 是任务隔离边界，不是包名的别名。一个可变 task 只能有一个 owner 和一个实施 worktree；怎么创建、放在哪、用什么命令建、由谁清理，都由编排层（herdr-projects）决定，仓库不规定。共享主工作区只用于只读调查与状态查询，合并通过远端 PR 完成，不在共享工作区里做。owner 与 worktree 的唯一性边界见根 [`AGENTS.md`](../../AGENTS.md)。
 
-编排层交付一个新 worktree 后，收到它的执行者必须在实施或 freeze 之前依次跑 `mise install`、`pnpm install`、`pnpm run build`，三步都不能省。`mise install` 排第一，因为工具链版本由 `.mise.toml` 钉住，不同分支可能钉不同版本；它幂等，装过就是一次快速 no-op。freeze 的 guard 只看 `node_modules` 是否存在，装完依赖就通过，真正缺的是 workspace 包的 `dist` 类型产物：没有它，`vp check`（`fix-code` 与 `check-code` 都调用）会把每个跨包 import 报成假 `TS2307`，全部类型感知验证随之不可用。判据见 [`workflow.md`](workflow.md)「先建立任务」的 preflight 第 4 步。
+编排层交付一个新 worktree 后，收到它的执行者必须在实施或 freeze 之前依次跑 `mise install`、`pnpm install`、`pnpm run build`，三步都不能省。`mise install` 排第一，因为工具链版本由 `.mise.toml` 钉住，不同分支可能钉不同版本；它幂等，装过就是一次快速 no-op。freeze 的 guard 只看 `node_modules` 是否存在，装完依赖就通过，真正缺的是 workspace 包的 `dist` 类型产物：没有它，`vp check`（`fix-code` 与 `check-code` 都调用）会把每个跨包 import 报成假 `TS2307`，全部类型感知验证随之不可用。
 
 编排层交接 task 时会带上 worktree 路径、base SHA 和 owner 标识，执行者按它们填 Task Packet 的 `Worktree`、`Base`、`Owner`，并执行 `pnpm agent:task assign` 记录归属，不自行推导或改写。交接后归属变更属编排层的动作，重新 assign 即可。禁止靠 pane 名称或目录名推断归属。
 
@@ -87,7 +87,7 @@ Interweave 由 Wails 宿主管理嵌套前端，其 alias 只启动 Wails host�
 - 以 `-clean=false` 生成。`wails3` 的 `-clean` 不是先删目录再重建，而是先生成到临时目录、再逐文件同步；同步的删除阶段会删掉这一次没产出的文件，而包加载或类型检查问题只记 Warning、命令仍 exit 0。危险形状是 exit 0 的静默少产出，会删掉受版本控制的 bindings，`-clean=false` 让写入阶段完全没有删除。代价是不再清理陈旧生成物：改名或删掉一个 Service 后旧文件会留在 `bindings/` 里，需要人工 `git rm`。直接写 `bindings/`（而非临时目录加同步）在 dev server 开着时会产生 HMR 事件，但没有 delete 加 recreate 环，不触发 chokidar 的重命名循环。
 - 生成前后对 `bindings/**` 做产出集合收缩守卫：生成前快照（相对路径加内容），生成后只要少了文件就把目录精确还原到快照并以非零退出。它按产出集合判定、不看退出码，挡的是工具删文件这一形状。在 `-clean=false` 下 wails3 不再有删除阶段，这条分支基本不会被触发，它更像一个「wails3 若改了语义就报警」的哨兵。陈旧生成物不由守卫处理，守卫只因少了文件报警，不因多了陈旧文件报警。
 
-`**/__screenshots__/` 与 `**/.vitest-attachments/` 是测试证据，不是应用代码生成物。除非任务明确要求并已完成对应的视觉或浏览器验证，不要创建、手改或提交。根 [`AGENTS.md`](../../AGENTS.md)「不可绕过的仓库边界」在入口层声明同一约束，本节承载处方。
+`**/__screenshots__/` 与 `**/.vitest-attachments/` 是测试证据，不是应用代码生成物。除非任务明确要求并已完成对应的视觉或浏览器验证，不要创建、手改或提交。根 [`AGENTS.md`](../../AGENTS.md#不可绕过的仓库边界)在入口层声明同一约束，本节承载处方。
 
 ## TypeScript 配置
 

@@ -1,6 +1,6 @@
 # Agent Context 架构
 
-本文件规定如何维护本仓的 agent context（instruction system）：层级、权威归属、客户端适配与新增门槛。它只管「context 自己怎么改」；领域语义与工程原则以 [`CONTEXT.md`](../../CONTEXT.md) 为准，仓库拓扑以 [`ARCHITECTURE.md`](../../ARCHITECTURE.md) 为准，任务该读什么以根 [`AGENTS.md`](../../AGENTS.md) 的 task routing 为准。硬约束短层见 [`.agents/rules/agent-context.md`](../../.agents/rules/agent-context.md)。
+本文件规定如何维护本仓的 agent context（instruction system）：层级、权威归属、客户端适配与新增门槛。它只管「context 自己怎么改」；领域语义与工程原则以 [`CONTEXT.md`](../../CONTEXT.md) 为准，仓库拓扑以 [`ARCHITECTURE.md`](../../ARCHITECTURE.md) 为准，任务该读什么以根 [`AGENTS.md`](../../AGENTS.md) 的 task routing 为准。硬约束短层见 `.agents/rules/agent-context.md`。
 
 ## Context 层级
 
@@ -29,6 +29,17 @@
 | 预授权操作         | 根 `AGENTS.md` 只列被允许与需授权的类别                                         | [`workflow.md`](workflow.md)                         | [`workflow.md`](workflow.md) 的「预授权操作」清单      |
 | 客户端权限与环境   | 根 `AGENTS.md` 只给路由，不复制配置                                             | [`environments.md`](environments.md)                 | `~/.codex/config.toml` 与线程的实际行为                |
 | 公共 `web-ui` 契约 | [`packages/web-ui/AGENTS.md`](../../packages/web-ui/AGENTS.md) 指向受影响消费者 | [`web-ui.md`](web-ui.md)                             | fixtures、contracts、browser/integration tests         |
+
+## 链接方向
+
+指令面之间不互指：「A 的细节见 B」允许，「A 与 B 互相链接」不允许——回路让 agent 无法判断该在哪一侧收敛。
+
+- 入口层是文件名全大写的文档（`AGENTS.md`、`CONTEXT.md`、`ARCHITECTURE.md`）。它们天然与每个主题相邻，不参与互指判定。命名即约定：新增入口文档用大写名，正文文档不用。
+- 上面的权威来源表是唯一导航面。topic 文档正文里的回指不承担导航职责——读者已经在那一侧了，改成文字提及。
+- ADR 的取代与修订链只从新 ADR 指向旧 ADR。旧 ADR 里「被什么修订了」的回指，以及 ADR 指向正文落地位置的回指，都写成纯文本，ADR 编号照留。
+- 正文不回指 `.agents/rules/`：短约束层自己指向正文，路由是入口的事。
+
+以上由 `.agents/checks/no-mutual-links` 机检，判据以该脚本注释为准。
 
 ## 客户端适配
 
