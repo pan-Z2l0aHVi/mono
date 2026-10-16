@@ -1574,7 +1574,7 @@ SVG 线条绘制动画，基于 `stroke-dashoffset`。直接在原元素上动�
 | `resolved-appearance` | `'light' \| 'dark'`               | `'light'`  | 解析后的配色方案；只读反射输出 |
 | `motion`              | `'full' \| 'reduced' \| 'system'` | `'system'` | 当前嵌套主题范围的动效偏好     |
 
-**方法：** `getOverlayRoot()` — 返回该主题拥有的 theme-owned overlay root
+**方法：** `getOverlayRoot()` — 返回该主题拥有的 theme-owned overlay root；`isReducedMotion()` — 当前主题范围是否应减少动效（`reduced` / `full` 直接给出结果，`system` 跟随 `prefers-reduced-motion`）。
 
 **Portal 挂载契约：** 每个 active `<web-ui-theme>` 同时是默认的 scoped theme-owned overlay root。Portal 类组件在未显式传入 `overlayContainer` 时，会解析到最近的 active theme 的 `getOverlayRoot()`；无 target 的调用优先使用 root theme 的 theme-owned overlay root。没有 active theme 提供 root 时，回退到全局 fallback overlay root。
 

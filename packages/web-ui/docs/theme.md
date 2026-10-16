@@ -87,6 +87,7 @@ const appearance = ref<'light' | 'dark' | 'system'>('system')
 
 ### Methods
 
-| 名称               | 说明                                                                                |
-| ------------------ | ----------------------------------------------------------------------------------- |
-| `getOverlayRoot()` | 返回该主题拥有的 theme-owned overlay root；未设置 `appearance` 时返回 `undefined`。 |
+| 名称                | 说明                                                                                                              |
+| ------------------- | ----------------------------------------------------------------------------------------------------------------- |
+| `getOverlayRoot()`  | 返回该主题拥有的 theme-owned overlay root；未设置 `appearance` 时返回 `undefined`。                               |
+| `isReducedMotion()` | 当前主题范围是否应减少动效：`motion` 为 `reduced` / `full` 时直接给出 `true` / `false`，`system` 时跟随系统偏好。 |

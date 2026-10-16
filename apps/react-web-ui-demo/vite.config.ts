@@ -75,7 +75,7 @@ export default {
       apiTables: {
         // 列序是引擎约定：名称、说明、类型、默认值。Events / Slots / Methods 只有前两列。
         // Props 记元素属性，Options 记命令式 API 的选项（`imagePreview()` / `toast()` 这类没有声明式契约的入口）。
-        // Methods 记调用在元素上的公开方法。
+        // Methods 记组件对外的公开方法：元素实例方法、静态方法，以及命令式 API 返回句柄上的方法。
         columns: {
           Props: ['名称', '说明', '类型', '默认值'],
           Options: ['名称', '说明', '类型', '默认值'],

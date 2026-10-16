@@ -1617,7 +1617,7 @@ Theme provider defining CSS custom property tokens.
 | `resolved-appearance` | `'light' \| 'dark'`               | `'light'`  | Resolved color scheme; read-only reflected host output |
 | `motion`              | `'full' \| 'reduced' \| 'system'` | `'system'` | Motion preference for this nested theme scope          |
 
-**Methods:** `getOverlayRoot()`. Returns this theme-owned overlay root
+**Methods:** `getOverlayRoot()`, `isReducedMotion()`. `getOverlayRoot()` returns this theme-owned overlay root; `isReducedMotion()` reports whether this theme scope should reduce motion (`reduced` / `full` answer directly, `system` follows `prefers-reduced-motion`).
 
 **Portal mounting contract:** Every active `<web-ui-theme>` is also the default scoped theme-owned overlay root. Portal-based components without an explicit `overlayContainer` resolve to the nearest active theme's `getOverlayRoot()`; target-less portal calls prefer the root theme's theme-owned overlay root. When no active theme provides a root, they fall back to the global fallback overlay root.
 

@@ -1909,7 +1909,7 @@ export const exampleDocs: ExampleDoc[] = [
   {
     "component": "image-preview",
     "tag": "web-ui-image-preview",
-    "introHtml": "<p>命令式图片预览：通过 <code>imagePreview()</code> 打开，用返回的句柄控制；内部使用原生 <code>&lt;dialog></code>，默认挂载到最近的 theme-owned overlay root。下面的表列的是 <code>imagePreview()</code> 的选项。</p>",
+    "introHtml": "<p>命令式图片预览：通过 <code>imagePreview()</code> 打开，用返回的句柄控制；内部使用原生 <code>&lt;dialog></code>，默认挂载到最近的 theme-owned overlay root。下面的表分别列 <code>imagePreview()</code> 的选项与返回句柄的成员。</p>",
     "api": [
       {
         "key": "options",
@@ -1988,6 +1988,40 @@ export const exampleDocs: ExampleDoc[] = [
             "descriptionHtml": "<p>点击图片以外的空白区域不关闭。</p>"
           }
         ]
+      },
+      {
+        "key": "methods",
+        "title": "Methods",
+        "rows": [
+          {
+            "name": "next()",
+            "descriptionHtml": "<p>切到下一张；<code>loop</code> 开启时末张回到首张，关闭时已在末张则不动作。</p>"
+          },
+          {
+            "name": "prev()",
+            "descriptionHtml": "<p>切到上一张；<code>loop</code> 开启时首张回到末张，关闭时已在首张则不动作。</p>"
+          },
+          {
+            "name": "goTo(index)",
+            "descriptionHtml": "<p>跳到指定索引；<code>loop</code> 开启时按图片数取模，关闭时钳制到有效区间，切换后缩放复位。</p>"
+          },
+          {
+            "name": "zoomIn()",
+            "descriptionHtml": "<p>放大一档（0.5），上限 4。</p>"
+          },
+          {
+            "name": "zoomOut()",
+            "descriptionHtml": "<p>缩小一档（0.5），下限 1。</p>"
+          },
+          {
+            "name": "resetZoom()",
+            "descriptionHtml": "<p>缩放与平移复位：回到 1x 并居中。</p>"
+          },
+          {
+            "name": "close()",
+            "descriptionHtml": "<p>关闭预览；句柄的 <code>closed</code> 在退场结束后兑现。</p>"
+          }
+        ]
       }
     ],
     "samples": [
@@ -2024,7 +2058,7 @@ export const exampleDocs: ExampleDoc[] = [
       {
         "id": null,
         "title": "句柄",
-        "descriptionHtml": "<p>句柄暴露 <code>index</code>、<code>scale</code>、<code>images</code>、<code>closed</code> 与全部控制方法，可据此实现自己的触发器与状态面板。</p>",
+        "descriptionHtml": "<p>句柄暴露只读的 <code>index</code>、<code>scale</code>、<code>images</code>、<code>closed</code> 与下表的方法，可据此实现自己的触发器与状态面板。</p>",
         "html": {
           "react": "<pre class=\"shiki shiki-themes github-light github-dark mdc-code\" style=\"--shiki-light:#24292e;--shiki-dark:#e1e4e8;--shiki-light-bg:#fff;--shiki-dark-bg:#24292e\" tabindex=\"0\"><code><span class=\"line\"><span style=\"--shiki-light:#D73A49;--shiki-dark:#F97583\">const</span><span style=\"--shiki-light:#005CC5;--shiki-dark:#79B8FF\"> preview</span><span style=\"--shiki-light:#D73A49;--shiki-dark:#F97583\"> =</span><span style=\"--shiki-light:#6F42C1;--shiki-dark:#B392F0\"> imagePreview</span><span style=\"--shiki-light:#24292E;--shiki-dark:#E1E4E8\">({ images })</span></span>\n<span class=\"line\"><span style=\"--shiki-light:#24292E;--shiki-dark:#E1E4E8\">preview.</span><span style=\"--shiki-light:#6F42C1;--shiki-dark:#B392F0\">goTo</span><span style=\"--shiki-light:#24292E;--shiki-dark:#E1E4E8\">(</span><span style=\"--shiki-light:#005CC5;--shiki-dark:#79B8FF\">2</span><span style=\"--shiki-light:#24292E;--shiki-dark:#E1E4E8\">)</span></span>\n<span class=\"line\"><span style=\"--shiki-light:#24292E;--shiki-dark:#E1E4E8\">preview.</span><span style=\"--shiki-light:#6F42C1;--shiki-dark:#B392F0\">zoomIn</span><span style=\"--shiki-light:#24292E;--shiki-dark:#E1E4E8\">()</span></span>\n<span class=\"line\"><span style=\"--shiki-light:#D73A49;--shiki-dark:#F97583\">await</span><span style=\"--shiki-light:#24292E;--shiki-dark:#E1E4E8\"> preview.closed</span></span>\n<span class=\"line\"><span style=\"--shiki-light:#24292E;--shiki-dark:#E1E4E8\">console.</span><span style=\"--shiki-light:#6F42C1;--shiki-dark:#B392F0\">log</span><span style=\"--shiki-light:#24292E;--shiki-dark:#E1E4E8\">(preview.index, preview.scale)</span></span></code></pre>",
           "vue": "<pre class=\"shiki shiki-themes github-light github-dark mdc-code\" style=\"--shiki-light:#24292e;--shiki-dark:#e1e4e8;--shiki-light-bg:#fff;--shiki-dark-bg:#24292e\" tabindex=\"0\"><code><span class=\"line\"><span style=\"--shiki-light:#24292E;--shiki-dark:#E1E4E8\">&#x3C;</span><span style=\"--shiki-light:#22863A;--shiki-dark:#85E89D\">script</span><span style=\"--shiki-light:#6F42C1;--shiki-dark:#B392F0\"> setup</span><span style=\"--shiki-light:#6F42C1;--shiki-dark:#B392F0\"> lang</span><span style=\"--shiki-light:#24292E;--shiki-dark:#E1E4E8\">=</span><span style=\"--shiki-light:#032F62;--shiki-dark:#9ECBFF\">\"ts\"</span><span style=\"--shiki-light:#24292E;--shiki-dark:#E1E4E8\">></span></span>\n<span class=\"line\"><span style=\"--shiki-light:#D73A49;--shiki-dark:#F97583\">import</span><span style=\"--shiki-light:#24292E;--shiki-dark:#E1E4E8\"> { imagePreview } </span><span style=\"--shiki-light:#D73A49;--shiki-dark:#F97583\">from</span><span style=\"--shiki-light:#032F62;--shiki-dark:#9ECBFF\"> '@greypan/web-ui'</span></span>\n<span class=\"line\"></span>\n<span class=\"line\"><span style=\"--shiki-light:#D73A49;--shiki-dark:#F97583\">async</span><span style=\"--shiki-light:#D73A49;--shiki-dark:#F97583\"> function</span><span style=\"--shiki-light:#6F42C1;--shiki-dark:#B392F0\"> inspect</span><span style=\"--shiki-light:#24292E;--shiki-dark:#E1E4E8\">(</span><span style=\"--shiki-light:#E36209;--shiki-dark:#FFAB70\">images</span><span style=\"--shiki-light:#D73A49;--shiki-dark:#F97583\">:</span><span style=\"--shiki-light:#24292E;--shiki-dark:#E1E4E8\"> { </span><span style=\"--shiki-light:#E36209;--shiki-dark:#FFAB70\">src</span><span style=\"--shiki-light:#D73A49;--shiki-dark:#F97583\">:</span><span style=\"--shiki-light:#005CC5;--shiki-dark:#79B8FF\"> string</span><span style=\"--shiki-light:#24292E;--shiki-dark:#E1E4E8\">; </span><span style=\"--shiki-light:#E36209;--shiki-dark:#FFAB70\">alt</span><span style=\"--shiki-light:#D73A49;--shiki-dark:#F97583\">?:</span><span style=\"--shiki-light:#005CC5;--shiki-dark:#79B8FF\"> string</span><span style=\"--shiki-light:#24292E;--shiki-dark:#E1E4E8\"> }[]) {</span></span>\n<span class=\"line\"><span style=\"--shiki-light:#D73A49;--shiki-dark:#F97583\">  const</span><span style=\"--shiki-light:#005CC5;--shiki-dark:#79B8FF\"> preview</span><span style=\"--shiki-light:#D73A49;--shiki-dark:#F97583\"> =</span><span style=\"--shiki-light:#6F42C1;--shiki-dark:#B392F0\"> imagePreview</span><span style=\"--shiki-light:#24292E;--shiki-dark:#E1E4E8\">({ images })</span></span>\n<span class=\"line\"><span style=\"--shiki-light:#24292E;--shiki-dark:#E1E4E8\">  preview.</span><span style=\"--shiki-light:#6F42C1;--shiki-dark:#B392F0\">goTo</span><span style=\"--shiki-light:#24292E;--shiki-dark:#E1E4E8\">(</span><span style=\"--shiki-light:#005CC5;--shiki-dark:#79B8FF\">2</span><span style=\"--shiki-light:#24292E;--shiki-dark:#E1E4E8\">)</span></span>\n<span class=\"line\"><span style=\"--shiki-light:#24292E;--shiki-dark:#E1E4E8\">  preview.</span><span style=\"--shiki-light:#6F42C1;--shiki-dark:#B392F0\">zoomIn</span><span style=\"--shiki-light:#24292E;--shiki-dark:#E1E4E8\">()</span></span>\n<span class=\"line\"><span style=\"--shiki-light:#D73A49;--shiki-dark:#F97583\">  await</span><span style=\"--shiki-light:#24292E;--shiki-dark:#E1E4E8\"> preview.closed</span></span>\n<span class=\"line\"><span style=\"--shiki-light:#24292E;--shiki-dark:#E1E4E8\">  console.</span><span style=\"--shiki-light:#6F42C1;--shiki-dark:#B392F0\">log</span><span style=\"--shiki-light:#24292E;--shiki-dark:#E1E4E8\">(preview.index, preview.scale)</span></span>\n<span class=\"line\"><span style=\"--shiki-light:#24292E;--shiki-dark:#E1E4E8\">}</span></span>\n<span class=\"line\"><span style=\"--shiki-light:#24292E;--shiki-dark:#E1E4E8\">&#x3C;/</span><span style=\"--shiki-light:#22863A;--shiki-dark:#85E89D\">script</span><span style=\"--shiki-light:#24292E;--shiki-dark:#E1E4E8\">></span></span></code></pre>"
@@ -3417,6 +3451,20 @@ export const exampleDocs: ExampleDoc[] = [
             "descriptionHtml": "<p>描述插槽，替代 <code>description</code> 属性。</p>"
           }
         ]
+      },
+      {
+        "key": "methods",
+        "title": "Methods",
+        "rows": [
+          {
+            "name": "WebUiSpinner.show(options?)",
+            "descriptionHtml": "<p>挂载一个全屏实例并返回它；<code>size</code> / <code>description</code> 覆盖默认外观，<code>duration</code> 大于 0 时到期调用 <code>hide()</code>。</p>"
+          },
+          {
+            "name": "WebUiSpinner.hide()",
+            "descriptionHtml": "<p>拆掉计时器并移除 <code>show()</code> 挂载的实例。</p>"
+          }
+        ]
       }
     ],
     "samples": [
@@ -3871,6 +3919,10 @@ export const exampleDocs: ExampleDoc[] = [
           {
             "name": "getOverlayRoot()",
             "descriptionHtml": "<p>返回该主题拥有的 theme-owned overlay root；未设置 <code>appearance</code> 时返回 <code>undefined</code>。</p>"
+          },
+          {
+            "name": "isReducedMotion()",
+            "descriptionHtml": "<p>当前主题范围是否应减少动效：<code>motion</code> 为 <code>reduced</code> / <code>full</code> 时直接给出 <code>true</code> / <code>false</code>，<code>system</code> 时跟随系统偏好。</p>"
           }
         ]
       }
@@ -3980,6 +4032,36 @@ export const exampleDocs: ExampleDoc[] = [
           {
             "name": "toast-close",
             "descriptionHtml": "<p>退场结束后派发，<code>detail</code> 含 <code>id</code> 与 <code>reason</code>。</p>"
+          }
+        ]
+      },
+      {
+        "key": "methods",
+        "title": "Methods",
+        "rows": [
+          {
+            "name": "startAutoClose()",
+            "descriptionHtml": "<p>按当前 <code>duration</code> 重排自动关闭计时；<code>duration</code> 为 0 时只拆掉已有计时器，不再装新的。</p>"
+          },
+          {
+            "name": "setDuration(ms)",
+            "descriptionHtml": "<p>更新 <code>duration</code> 并按新值重排计时；悬停暂停期间只记新值，指针离开后按新时长计满，<code>ms</code> 为 0 表示不再自动关闭。</p>"
+          },
+          {
+            "name": "pauseAutoClose()",
+            "descriptionHtml": "<p>记下剩余时间并停表，供不支持 <code>moveBefore</code> 的引擎在搬迁节点前调用。</p>"
+          },
+          {
+            "name": "resumeAutoClose()",
+            "descriptionHtml": "<p>与 <code>pauseAutoClose()</code> 成对，按记下的剩余时间续跑；已到期则立即退场，悬停尚未结束时只交还剩余时间。</p>"
+          },
+          {
+            "name": "show()",
+            "descriptionHtml": "<p>播放入场（<code>visible</code> 置真）并在 <code>duration</code> 大于 0 时开始计时；由 toast manager 在挂载后调用。</p>"
+          },
+          {
+            "name": "dismiss(reason?)",
+            "descriptionHtml": "<p>关闭并派发 <code>toast-close</code>：已显示时先播退场动画，未显示（尚未入场或从未显示）时立即派发；<code>reason</code> 取 <code>ToastCloseReason</code>，默认 <code>'programmatic'</code>。</p>"
           }
         ]
       }
