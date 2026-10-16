@@ -1,20 +1,20 @@
 import { lazy, Suspense, type ComponentType } from 'react'
 
-import { exampleDocs } from '@/generated/web-ui-examples'
+import { exampleDocs } from '@/generated/examples'
 
 /**
- * 由示例文档 markdown 生成的示例文档：可交互示例（live）+ 示例代码（语法高亮）+ API 表。
+ * 由示例文档 markdown 生成的示例文档：可交互示例 + 示例代码（语法高亮）+ API 表。
  *
  * 数据全部来自 `docs/examples/web-ui/<name>.md`：示例代码、以及 API 表的名称 / 说明 / 类型 / 默认值都
- * 手写在那份 markdown 里，组件源码不参与生成。生成物由 `node scripts/generate-web-ui-examples.mjs`
- * 维护，这里只负责渲染，不写死任何字段。
+ * 手写在那份 markdown 里，组件源码不参与生成。`src/generated/**` 由 `@greypan/md-to-comp` 的 Vite
+ * 插件在 dev 与 build 时生成，这里只负责渲染，不写死任何字段。
  *
  * `flavor` 选择渲染哪一份示例代码：同一个示例在 markdown 里同时带 react 与 vue 两个代码块，
  * 两个 demo 各取自己那份，避免为了「视觉一致」把另一端的写法搬错。
  *
  * markdown 里带 `{#id}` 锚点的示例会被生成器原样落成 `src/generated/demos/<component>--<id>.tsx`，
  * 也就是下面 glob 到的这份文件——所以 `<pre>` 里显示的字节和屏幕上被执行的字节是同一份。
- * 没有锚点的示例只有代码块，等其余 29 篇的围栏改写成完整组件形态后再逐个开。
+ * 没有锚点的示例只有代码块。
  */
 const demoModules = import.meta.glob<{ default: ComponentType }>('../../generated/demos/*.tsx')
 const DEMO_PREFIX = '../../generated/demos/'
@@ -40,7 +40,7 @@ function ExampleDoc({ component, flavor = 'react' }: { component: string; flavor
 
       <h2>示例代码</h2>
       {doc.samples.map(sample => {
-        const Demo = sample.liveKey ? demoComponents.get(`${doc.component}--${sample.liveKey}`) : undefined
+        const Demo = sample.demoKey ? demoComponents.get(`${doc.component}--${sample.demoKey}`) : undefined
         return (
           <div className="flex flex-col gap-2" data-example-sample={sample.title} key={sample.title}>
             <h3 className="m-0">{sample.title}</h3>
@@ -48,7 +48,7 @@ function ExampleDoc({ component, flavor = 'react' }: { component: string; flavor
             {Demo ? (
               <div
                 className="flex flex-wrap items-center gap-4 rounded-lg border border-(--wui-color-border) bg-(--wui-color-surface) p-4"
-                data-example-preview={sample.liveKey ?? undefined}
+                data-example-preview={sample.demoKey ?? undefined}
               >
                 <Suspense fallback={null}>
                   <Demo />

@@ -1,4 +1,6 @@
 import depsReload from '@greypan/deps-reload/vite'
+import { braceAnchor } from '@greypan/md-to-comp'
+import mdToCompVue from '@greypan/md-to-comp/vue'
 import unpluginWebComponents from '@greypan/unplugin-web-components/vite'
 import { webUiOptimizeDeps } from '@greypan/web-ui/vite'
 import tailwindcss from '@tailwindcss/vite'
@@ -61,6 +63,25 @@ export default {
     ]
   },
   plugins: [
+    // 示例文档：markdown 是唯一来源，dev 与 build 都由这个插件生成 `src/generated/**`。
+    // 生成物同样受版本控制，测试档只判不改（不一致就让这次的测试红），所以 CI 不需要另跑生成命令。
+    mdToCompVue({
+      input: '../../docs/examples/web-ui',
+      output: 'src/generated',
+      dir: 'demos',
+      anchor: braceAnchor,
+      flavors: ['react', 'vue'],
+      apiTables: {
+        // 列序是引擎约定：名称、说明、类型、默认值。Events / Slots 只有前两列。
+        columns: {
+          Props: ['名称', '说明', '类型', '默认值'],
+          Events: ['名称', '说明'],
+          Slots: ['名称', '说明']
+        }
+      },
+      // 深浅外观源是 web-ui-theme 的派生属性；切外观不需要重新生成高亮 HTML。
+      darkSelector: "web-ui-theme[resolved-appearance='dark']"
+    }),
     vueRouter(),
     vue({
       template: {

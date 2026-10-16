@@ -2,24 +2,34 @@ import { codeToHtml } from 'shiki'
 
 import { fail } from './errors'
 
-/** markdown 里的语言标记是「给消费方看的框架名」，shiki 要的是语法 id。 */
-const SHIKI_LANGS = { react: 'tsx', vue: 'vue' } as const
+/**
+ * 围栏语言是「给消费方看的框架名」，它同时决定两件事：shiki 要用哪个语法 id、落盘的组件文件用什么扩展名。
+ * 两张表钉在一处，配置里再写一遍就是可被写歪的第二次机会。
+ */
+const FLAVORS = {
+  react: { shikiLang: 'tsx', extension: 'tsx' },
+  vue: { shikiLang: 'vue', extension: 'vue' }
+} as const
 
-export type SampleFlavor = keyof typeof SHIKI_LANGS
+export type SampleFlavor = keyof typeof FLAVORS
+
+export function flavorExtension(flavor: SampleFlavor): string {
+  return FLAVORS[flavor].extension
+}
 
 /**
  * 双主题输出：`defaultColor: false` 让 shiki 把颜色写成 `--shiki-light` / `--shiki-dark` 变量，
- * 由生成的 CSS 按 `web-ui-theme[resolved-appearance]` 选用，深浅色切换不需要重新生成。
+ * 由生成的 CSS 按宿主的外观源选用，深浅色切换不需要重新生成。
  */
 export async function highlight(code: string, flavor: SampleFlavor, file: string): Promise<string> {
-  const lang = SHIKI_LANGS[flavor]
+  const lang = FLAVORS[flavor].shikiLang
   const html = await codeToHtml(code, {
     lang,
     themes: { light: 'github-light', dark: 'github-dark' },
     defaultColor: false
   })
-  // 外框（圆角、底色、滚动）归仓级 Tailwind 工具类管，这里只把类名并到 shiki 的 <pre> 上。
-  const framed = html.replace(/^<pre class="([^"]*)"/, '<pre class="$1 wui-example-code"')
+  // 外框（圆角、底色、滚动）归宿主自己的样式管，这里只把类名并到 shiki 的 <pre> 上。
+  const framed = html.replace(/^<pre class="([^"]*)"/, '<pre class="$1 mdc-code"')
   if (framed === html) fail(`${file}：shiki 输出的 <pre> 形状变了，类名并不上：${html.slice(0, 80)}`)
   assertHtmlPreservesSource(code, framed, flavor, file)
   return framed

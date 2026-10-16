@@ -30,11 +30,11 @@ export default {
       'browser-kit',
       'deps-reload',
       'js-kit',
+      'md-to-comp',
       'test-kit',
       'tsconfig',
       'unplugin-web-components',
-      'web-ui',
-      'web-ui-docs'
+      'web-ui'
     ],
     enableMultipleScopes: true,
     // 清单外的名字（跨包协调的临时 scope、尚未登记的目录）走「自定义输入 scope」。

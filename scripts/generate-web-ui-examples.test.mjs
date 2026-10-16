@@ -21,8 +21,8 @@ function runGenerator(args, cwd = root) {
 const check = runGenerator(['--check'])
 assert.equal(check.status, 0, `generated files are stale:\n${check.stderr}`)
 
-const modules = outputs.map(output => readFileSync(path.join(output.dir, 'web-ui-examples.ts'), 'utf8'))
-const styles = outputs.map(output => readFileSync(path.join(output.dir, 'web-ui-examples.css'), 'utf8'))
+const modules = outputs.map(output => readFileSync(path.join(output.dir, 'examples.ts'), 'utf8'))
+const styles = outputs.map(output => readFileSync(path.join(output.dir, 'examples.css'), 'utf8'))
 
 // 两个 demo 拿到的必须是逐字节相同的数据与样式：issue 的「视觉一致」由此变成结构保证，
 // 而不是靠人肉同步两份文件。
@@ -110,7 +110,7 @@ for (const name of readdirSync(docsDir).filter(file => file.endsWith('.md'))) {
       const html = doc.samples[index].html[lang]
       assert.match(
         html,
-        /^<pre class="shiki shiki-themes github-light github-dark wui-example-code"/,
+        /^<pre class="shiki shiki-themes github-light github-dark mdc-code"/,
         `${name}/${doc.samples[index].title}/${lang}：高亮外框形状变了，Tailwind 那层边框与这里的取色会对不上`
       )
       assert.equal(
@@ -124,18 +124,18 @@ for (const name of readdirSync(docsDir).filter(file => file.endsWith('.md'))) {
 
 // ── 不变式二：带锚点的示例被落成组件文件，文件内容就是围栏 + 一个行尾换行 ──
 // 落盘文件是 app 真正编译执行的那份源码，所以这里比的不是「渲染得像」，而是字节相同。
-// 行尾换行是唯一的差别：mdast 的 code 节点值不含它，而文本文件与格式化器都要它有。
-let liveCount = 0
+// 行尾换行是唯一的差别：mdast 的 code 值不含它，而文本文件与格式化器都要它有。
+let demoCount = 0
 for (const name of readdirSync(docsDir).filter(file => file.endsWith('.md'))) {
   const component = name.replace(/\.md$/, '')
   const markdown = readFileSync(path.join(docsDir, name), 'utf8')
   const anchors = anchoredSamples(markdown)
-  liveCount += anchors.length
+  demoCount += anchors.length
   for (const anchor of anchors) {
     const doc = docsByName.get(component)
     const sample = doc.samples.find(candidate => candidate.title === anchor.title)
     assert.ok(sample, `${name}：带锚点的示例「${anchor.title}」没进生成数据`)
-    assert.equal(sample.liveKey, anchor.id, `${name}/${anchor.title}：生成数据里的 liveKey 不是锚点`)
+    assert.equal(sample.demoKey, anchor.id, `${name}/${anchor.title}：生成数据里的 demoKey 不是锚点`)
     for (const output of outputs) {
       const fence = fencesOf(markdown, output.flavor)[doc.samples.indexOf(sample)]
       const file = path.join(output.dir, 'demos', `${component}--${anchor.id}.${output.ext}`)
@@ -148,7 +148,7 @@ for (const name of readdirSync(docsDir).filter(file => file.endsWith('.md'))) {
     }
   }
 }
-assert.ok(liveCount > 0, '一篇带锚点的示例都没有：live 通道等于没被任何断言覆盖')
+assert.ok(demoCount > 0, '一篇带锚点的示例都没有：「示例落成可编译文件」这条通道等于没被任何断言覆盖')
 
 function existsFile(file) {
   try {
@@ -292,14 +292,14 @@ try {
   writeFileSync(path.join(scratchDocs, fixtureName), wrongFence)
   const fence = runGenerator(['--docs-dir', scratchDocs, '--out-dir', scratchOut])
   assert.notEqual(fence.status, 0, '示例代码块语言不是 react / vue 时生成器必须失败')
-  assert.match(fence.stderr, /语言必须是 react 或 vue/)
+  assert.match(fence.stderr, /代码块语言必须是 react \/ vue/)
 
-  // 反向：给一个「片段形态」的示例加锚点开 live，必须被拦下。
-  // live 的围栏就是会被编译执行的源文件，button.md 的围栏是裸 JSX 片段，发出去等于发出一个
-  // 语法都不合法的模块；这条守卫是「未迁移的 29 篇不会被顺手开成 live」的机械判据。
-  const liveFragment = source.replace(/^### 变体/mu, '### 变体 {#variants}')
-  assert.notEqual(liveFragment, source, '测试 fixture 没加上锚点，这条负例不承重')
-  writeFileSync(path.join(scratchDocs, fixtureName), liveFragment)
+  // 反向：给一个「片段形态」的示例加锚点开热通道，必须被拦下。
+  // 带锚点的围栏就是会被编译执行的源文件，button.md 的围栏是裸 JSX 片段，发出去等于发出一个
+  // 语法都不合法的模块；这条守卫是「未迁移的 29 篇不会被顺手落成组件文件」的机械判据。
+  const anchoredFragment = source.replace(/^### 变体/mu, '### 变体 {#variants}')
+  assert.notEqual(anchoredFragment, source, '测试 fixture 没加上锚点，这条负例不承重')
+  writeFileSync(path.join(scratchDocs, fixtureName), anchoredFragment)
   const fragment = runGenerator(['--docs-dir', scratchDocs, '--out-dir', scratchOut])
   assert.notEqual(fragment.status, 0, '片段形态的 react 围栏带锚点时生成器必须失败')
   assert.match(fragment.stderr, /export default function Demo/)
@@ -322,4 +322,4 @@ try {
   rmSync(scratch, { recursive: true, force: true })
 }
 
-console.log(`generate-web-ui-examples tests passed（live 示例 ${liveCount} 条）`)
+console.log(`generate-web-ui-examples tests passed（落成组件文件的示例 ${demoCount} 条）`)

@@ -651,6 +651,9 @@ importers:
       '@greypan/deps-reload':
         specifier: workspace:*
         version: link:../../packages/deps-reload
+      '@greypan/md-to-comp':
+        specifier: workspace:*
+        version: link:../../packages/md-to-comp
       '@greypan/tsconfig':
         specifier: workspace:*
         version: link:../../packages/tsconfig
@@ -742,6 +745,9 @@ importers:
       '@greypan/deps-reload':
         specifier: workspace:*
         version: link:../../packages/deps-reload
+      '@greypan/md-to-comp':
+        specifier: workspace:*
+        version: link:../../packages/md-to-comp
       '@greypan/tsconfig':
         specifier: workspace:*
         version: link:../../packages/tsconfig
@@ -853,6 +859,40 @@ importers:
       vite-plugin-dts:
         specifier: 'catalog:'
         version: 5.1.0(@voidzero-dev/vite-plus-core@0.3.2(@types/node@26.4.1)(jiti@2.7.0)(terser@5.51.2)(typescript@6.0.3)(yaml@2.9.0))(@vue/language-core@3.3.11)(rolldown@1.2.7)(rollup@4.63.1)(supports-color@10.2.2)(typescript@6.0.3)(webpack@5.110.3(lightningcss@1.33.0)(postcss@8.5.28))
+      vite-plus:
+        specifier: 'catalog:'
+        version: 0.3.2(@types/node@26.4.1)(@vitest/browser-playwright@4.1.11)(jiti@2.7.0)(jsdom@30.0.1)(msw@2.15.0(@types/node@26.4.1)(typescript@6.0.3))(terser@5.51.2)(typescript@6.0.3)(yaml@2.9.0)
+
+  packages/md-to-comp:
+    dependencies:
+      hast-util-to-html:
+        specifier: 'catalog:'
+        version: 9.0.5
+      js-yaml:
+        specifier: 'catalog:'
+        version: 5.4.3
+      remark-frontmatter:
+        specifier: 'catalog:'
+        version: 5.0.0(supports-color@10.2.2)
+      remark-parse:
+        specifier: 'catalog:'
+        version: 11.0.0(supports-color@10.2.2)
+      remark-rehype:
+        specifier: 'catalog:'
+        version: 11.1.2
+      shiki:
+        specifier: 'catalog:'
+        version: 4.5.0
+      unified:
+        specifier: 'catalog:'
+        version: 11.0.5
+      vite:
+        specifier: npm:@voidzero-dev/vite-plus-core@0.3.2
+        version: '@voidzero-dev/vite-plus-core@0.3.2(@types/node@26.4.1)(jiti@2.7.0)(terser@5.51.2)(typescript@6.0.3)(yaml@2.9.0)'
+    devDependencies:
+      '@greypan/tsconfig':
+        specifier: workspace:*
+        version: link:../tsconfig
       vite-plus:
         specifier: 'catalog:'
         version: 0.3.2(@types/node@26.4.1)(@vitest/browser-playwright@4.1.11)(jiti@2.7.0)(jsdom@30.0.1)(msw@2.15.0(@types/node@26.4.1)(typescript@6.0.3))(terser@5.51.2)(typescript@6.0.3)(yaml@2.9.0)
@@ -994,37 +1034,6 @@ importers:
       vue:
         specifier: 'catalog:'
         version: 3.5.42(typescript@6.0.3)
-
-  packages/web-ui-docs:
-    dependencies:
-      hast-util-to-html:
-        specifier: 'catalog:'
-        version: 9.0.5
-      js-yaml:
-        specifier: 'catalog:'
-        version: 5.4.3
-      remark-frontmatter:
-        specifier: 'catalog:'
-        version: 5.0.0(supports-color@10.2.2)
-      remark-parse:
-        specifier: 'catalog:'
-        version: 11.0.0(supports-color@10.2.2)
-      remark-rehype:
-        specifier: 'catalog:'
-        version: 11.1.2
-      shiki:
-        specifier: 'catalog:'
-        version: 4.5.0
-      unified:
-        specifier: 'catalog:'
-        version: 11.0.5
-    devDependencies:
-      '@greypan/tsconfig':
-        specifier: workspace:*
-        version: link:../tsconfig
-      vite-plus:
-        specifier: 'catalog:'
-        version: 0.3.2(@types/node@26.4.1)(@vitest/browser-playwright@4.1.11)(jiti@2.7.0)(jsdom@30.0.1)(msw@2.15.0(@types/node@26.4.1)(typescript@6.0.3))(terser@5.51.2)(typescript@6.0.3)(yaml@2.9.0)
 
 packages:
 

@@ -2,18 +2,18 @@
 import type { Component } from 'vue'
 import { computed, defineAsyncComponent } from 'vue'
 
-import { exampleDocs } from '@/generated/web-ui-examples'
+import { exampleDocs } from '@/generated/examples'
 
 /**
- * 由示例文档 markdown 生成的示例文档：可交互示例（live）+ 示例代码（语法高亮）+ API 表。
+ * 由示例文档 markdown 生成的示例文档：可交互示例 + 示例代码（语法高亮）+ API 表。
  *
  * 数据全部来自 `docs/examples/web-ui/<name>.md`：示例代码、以及 API 表的名称 / 说明 / 类型 / 默认值都
- * 手写在那份 markdown 里，组件源码不参与生成。生成物由 `node scripts/generate-web-ui-examples.mjs`
- * 维护，这里只负责渲染，不写死任何字段。
+ * 手写在那份 markdown 里，组件源码不参与生成。`src/generated/**` 由 `@greypan/md-to-comp` 的 Vite
+ * 插件在 dev 与 build 时生成，这里只负责渲染，不写死任何字段。
  *
  * markdown 里带 `{#id}` 锚点的示例会被生成器原样落成 `src/generated/demos/<component>--<id>.vue`，
  * 也就是下面 glob 到的这份 SFC——`<pre>` 里显示的字节和屏幕上被执行的字节是同一份。
- * 没有锚点的示例只有代码块，等其余 29 篇的围栏改写成完整 SFC 形态后再逐个开。
+ * 没有锚点的示例只有代码块。
  */
 const demoModules = import.meta.glob<{ default: Component }>('../../generated/demos/*.vue')
 const DEMO_PREFIX = '../../generated/demos/'
@@ -31,8 +31,8 @@ const props = defineProps<{ component: string; flavor?: 'react' | 'vue' }>()
 const flavor = computed(() => props.flavor ?? 'vue')
 const doc = computed(() => exampleDocs.find(candidate => candidate.component === props.component))
 
-function liveComponent(liveKey: string | null) {
-  return liveKey ? demoComponents.get(`${props.component}--${liveKey}`) : undefined
+function demoComponent(demoKey: string | null) {
+  return demoKey ? demoComponents.get(`${props.component}--${demoKey}`) : undefined
 }
 </script>
 
@@ -51,11 +51,11 @@ function liveComponent(liveKey: string | null) {
       <h3 class="m-0">{{ sample.title }}</h3>
       <p class="m-0 text-gray-500" v-html="sample.descriptionHtml"></p>
       <div
-        v-if="liveComponent(sample.liveKey)"
+        v-if="demoComponent(sample.demoKey)"
         class="flex flex-wrap items-center gap-4 rounded-lg border border-(--wui-color-border) bg-(--wui-color-surface) p-4"
-        :data-example-preview="sample.liveKey ?? undefined"
+        :data-example-preview="sample.demoKey ?? undefined"
       >
-        <component :is="liveComponent(sample.liveKey)" />
+        <component :is="demoComponent(sample.demoKey)" />
       </div>
       <div
         class="overflow-x-auto rounded-lg border border-(--wui-color-border) bg-(--wui-color-surface-raised) p-3 font-mono text-sm leading-5"

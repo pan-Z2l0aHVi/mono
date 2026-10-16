@@ -1,5 +1,5 @@
 import '@/assets/global.css'
-import '@/generated/web-ui-examples.css'
+import '@/generated/examples.css'
 // 主题宿主得自己注册：本文件里没有 `<web-ui-theme>` 的模板用法，unplugin 的注入扫不到这个标签。
 import '@greypan/web-ui/components/theme'
 
@@ -11,8 +11,10 @@ import { nextTick } from 'vue'
 
 // `?raw` 读的是 `import.meta.glob` 拿去编译的同一个文件：这条断言把「页面上显示的那份」直接钉到
 // 「被执行的那份」上，中间不经过 payload 与围栏的等价推定。
+import basicSource from '@/generated/demos/slider--basic.vue?raw'
 import controlledSource from '@/generated/demos/slider--controlled.vue?raw'
-import { exampleDocs } from '@/generated/web-ui-examples'
+import marksSource from '@/generated/demos/slider--marks-vertical.vue?raw'
+import { exampleDocs } from '@/generated/examples'
 
 import ExampleDoc from '../index.vue'
 
@@ -30,6 +32,13 @@ const slider = exampleDocs.find(doc => doc.component === 'slider')
 const button = exampleDocs.find(doc => doc.component === 'button')
 const collapse = exampleDocs.find(doc => doc.component === 'collapse')
 if (!slider || !button || !collapse) throw new Error('生成数据里缺少 slider / button / collapse')
+
+/** demoKey → 落盘文件字节；少一条就在断言里直接报出来，不留「这条没被覆盖」的静默缺口。 */
+const demoSources: Record<string, string> = {
+  basic: basicSource,
+  controlled: controlledSource,
+  'marks-vertical': marksSource
+}
 
 // 生成样式让 token 取 shiki 双主题里的浅色那一边。按 span 自己带的 `--shiki-light` 取色，
 // 因为 `<pre>` 上第一个 span 往往是正文色（#24292E），拿它当「被着色的关键字」会稳定测错。
@@ -105,7 +114,7 @@ describe('example-doc（Vue 面 / 真实浏览器）', () => {
 
     const code = element.querySelector('pre.shiki')
     expect(code, '示例代码必须是 shiki 产出的 <pre>').not.toBeNull()
-    expect(code?.classList.contains('wui-example-code')).toBe(true)
+    expect(code?.classList.contains('mdc-code')).toBe(true)
     // token 自己只带 `--shiki-light` 这个变量，落到文字上靠的是生成样式那条 `color: var(...)`。
     expect(getComputedStyle(keyword(element)).color).toBe(KEYWORD_LIGHT)
   })
@@ -123,9 +132,22 @@ describe('example-doc（Vue 面 / 真实浏览器）', () => {
     const parsed = new DOMParser().parseFromString(payload, 'text/html').querySelector('pre')
     expect(code?.innerHTML).toBe(parsed?.innerHTML)
     expect(code?.textContent).toBe(parsed?.textContent)
-    // 反向比：文件字节必须正好是 `<pre>` 的可见文本再加一个行尾换行。写成 `trimEnd()` 会把
-    // 「文件末尾多一个空行」这类形状放掉。
-    expect(`${code?.textContent}\n`).toBe(controlledSource)
+  })
+
+  it('每条带锚点的示例，页面 <pre> 的可见文本就是那份落盘文件', async () => {
+    const element = mountDoc('slider')
+    await mountDemos(element)
+
+    // 逐条比，而不是只比一条：这条契约的覆盖面就是「所有带锚点的示例」，改名或改围栏时
+    // 恰恰是没被断言盖住的那条会漂。文件字节 = 可见文本 + 一个行尾换行（见 `demoFileContent`），
+    // 写成 `trimEnd()` 会把「文件末尾多一个空行」这类形状放掉。
+    for (const candidate of slider.samples) {
+      if (!candidate.demoKey) continue
+      const source = demoSources[candidate.demoKey]
+      if (source === undefined) throw new Error(`生成数据里的 demoKey「${candidate.demoKey}」没有落盘文件`)
+      const text = sample(element, candidate.title).querySelector('pre.shiki')?.textContent ?? ''
+      expect(`${text}\n`).toBe(source)
+    }
   })
 
   it('外观切到深色时，token 换用 --shiki-dark', async () => {
@@ -147,7 +169,7 @@ describe('example-doc（Vue 面 / 真实浏览器）', () => {
     const element = mountDoc('slider')
     const previews = [...element.querySelectorAll('[data-example-preview]')]
     expect(previews.map(node => node.getAttribute('data-example-preview'))).toEqual(
-      slider.samples.map(candidate => candidate.liveKey).filter(Boolean)
+      slider.samples.map(candidate => candidate.demoKey).filter(Boolean)
     )
     await mountDemos(element)
     expect(sliderIn(element, '基础').value).toBe(40)

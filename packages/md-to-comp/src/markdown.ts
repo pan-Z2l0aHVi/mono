@@ -5,18 +5,20 @@ import remarkParse from 'remark-parse'
 import remarkRehype from 'remark-rehype'
 import { unified } from 'unified'
 
+import { braceAnchor } from './anchor'
 import { fail } from './errors'
+import type { MdToCompConfig } from './types'
 
 export interface SampleBlock {
   title: string
-  /** `### 受控值 {#controlled}` 里的显式 id；存在即代表这一条示例要发出可交互组件文件。 */
+  /** 示例标题里的显式锚点 id；存在即代表这一条示例要落成可交互的组件文件。 */
   id: string | null
   descriptionHtml: string
-  react: string
-  vue: string
+  /** 围栏语言 → 围栏原文。键集就是配置的 flavors。 */
+  fences: Record<string, string>
 }
 
-/** API 表的一行。`type` / `default` 只有 Props 表提供，列形状由 `API_COLUMNS` 定。 */
+/** API 表的一行。`type` / `default` 只有四列的小节提供，列形状由配置定。 */
 export interface ApiRow {
   name: string
   type?: string
@@ -24,12 +26,20 @@ export interface ApiRow {
   descriptionHtml: string
 }
 
+export interface ApiSection {
+  /** 小节标题，与配置里的键逐字相同。 */
+  title: string
+  /** 标题转小写，渲染端用它挑表格形状（只有 props 有类型与默认值两列）。 */
+  key: string
+  rows: ApiRow[]
+}
+
 export interface ParsedDoc {
   component: string
   tag: string
   introHtml: string
   samples: SampleBlock[]
-  api: Record<'props' | 'events' | 'slots', ApiRow[]>
+  api: ApiSection[]
 }
 
 interface MdPosition {
@@ -47,20 +57,9 @@ interface MdNode {
   position?: MdPosition
 }
 
+/** 文档骨架：这两节的名字、以及 `###` 是示例小节，都是本引擎的约定，不随宿主改。 */
 const EXAMPLES_SECTION = '示例'
 const API_SECTION = 'API'
-const API_SUBSECTIONS = { Props: 'props', Events: 'events', Slots: 'slots' } as const
-
-/**
- * 每个 API 小节的列契约，表头必须逐字等于它。
- * 只有 Props 有类型与默认值：那两个字段是「不读实现就没法用」的信息，而事件与插槽在两个 demo
- * 的表格里没有渲染这两列的位置，写了也没有消费者——列契约跟着渲染面走。
- */
-const API_COLUMNS: Record<keyof typeof API_SUBSECTIONS, string[]> = {
-  Props: ['名称', '说明', '类型', '默认值'],
-  Events: ['名称', '说明'],
-  Slots: ['名称', '说明']
-}
 
 // `mdast-util-frontmatter` 产出的节点类型是格式名本身（`yaml` / `toml`），不是 `frontmatter`。
 const FRONTMATTER_TYPES = new Set(['frontmatter', 'yaml', 'toml'])
@@ -93,31 +92,29 @@ function textContent(node: MdNode): string {
 }
 
 interface Section {
+  /** 标题原文，`{#id}` 尾巴还在。 */
+  rawTitle: string
+  /** 去锚点、去空白之后的标题。 */
   title: string
-  id: string | null
   nodes: MdNode[]
   /** 本小节正文在源文件里的字节范围（不含 `###` 那一行），表格按它取原文。 */
   rawStart: number
   rawEnd: number
 }
 
-// `### 受控值 {#controlled}`：尾部的花括号锚点既是 live 的开关，也是文件名里的稳定 id。
-function splitAnchor(rawTitle: string, file: string): { title: string; id: string | null } {
-  const match = rawTitle.match(/^(.*?)\s*\{#([^}]+)\}\s*$/)
-  if (!match) return { title: rawTitle.trim(), id: null }
-  const id = match[2].trim()
-  if (!/^[a-z0-9]+(?:-[a-z0-9]+)$|^[a-z0-9]+$/.test(id))
-    fail(`${file}：示例锚点 \`{#${id}}\` 必须是 kebab-case 的小写字母数字加连字符`)
-  return { title: match[1].trim(), id }
+/** 锚点成了落盘文件名，所以合法性是引擎的判据，不归锚点函数管。 */
+function anchorId(raw: string, title: string, file: string): string {
+  const id = raw.trim()
+  if (!id) fail(`${file}：示例「${title}」的锚点 id 是空的`)
+  if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(id))
+    fail(`${file}：示例「${title}」的锚点 id \`${id}\` 必须是 kebab-case 的小写字母数字加连字符`)
+  return id
 }
 
 /**
- * API 表按原文行读取，不走 mdast。
- *
- * 原因不是「remark 读不了表」，而是本仓还没被授权引入 `remark-gfm`：表格是 GFM 扩展，
- * 不在 CommonMark 里，`remark-parse` 会把整张表当成一个段落。这里要的只有 `API_COLUMNS`
- * 里那两种表，用行读取足够，而且与旧 `scripts/` 实现同口径、不会改变现有 30 篇的解析结果。
- * 拿到授权后把这两个函数删掉，换成 `.use(remarkGfm)` 读 `table` 节点。
+ * API 表按原文行读取，不走 mdast。原因不是 remark 读不了表，而是表格是 GFM 扩展、不在 CommonMark 里，
+ * 本仓还没被授权引入 `remark-gfm`：`remark-parse` 会把整张表当成一个段落。这里要的只有配置里那几张表，
+ * 行读取足够。拿到授权后把这两个函数删掉，换成 `.use(remarkGfm)` 读 `table` 节点。
  */
 function readTableLines(body: string): string[][] {
   const rows: string[][] = []
@@ -164,8 +161,7 @@ function stripInlineCode(name: string): string {
   return trimmed.startsWith('`') && trimmed.endsWith('`') ? trimmed.slice(1, -1).trim() : trimmed
 }
 
-function parseApiTable(section: Section, source: string, file: string): ApiRow[] {
-  const columns = API_COLUMNS[section.title as keyof typeof API_COLUMNS]
+function parseApiTable(section: Section, columns: readonly string[], source: string, file: string): ApiRow[] {
   const body = source.slice(section.rawStart, section.rawEnd)
   // 小节正文只允许表格行：漏了行首 `|` 的那几行既读不成表格、又不会报错，实测能把 14 行截成 2 行。
   for (const line of body.split('\n')) {
@@ -212,13 +208,14 @@ function parseApiTable(section: Section, source: string, file: string): ApiRow[]
 
 /**
  * 按 `depth` 级标题把 children 切成小节，并给每节算出正文的源文件字节范围。
+ * `titleOf` 决定标题取哪一部分（顶层小节去掉可能存在的锚点尾巴，示例小节按宿主的锚点函数取）。
  * `end` 是这批 children 覆盖到的最远偏移，用于收尾小节的 rawEnd。
  */
 function groupByHeading(
   children: MdNode[],
   depth: number,
   end: number,
-  file: string
+  titleOf: (raw: string) => string
 ): { lead: MdNode[]; sections: Section[] } {
   const lead: MdNode[] = []
   const sections: Section[] = []
@@ -226,10 +223,10 @@ function groupByHeading(
   for (const node of children) {
     if (node.type === 'heading' && node.depth === depth) {
       if (current) current.rawEnd = node.position?.start.offset ?? current.rawEnd
-      const anchor = splitAnchor(textContent(node), file)
+      const rawTitle = textContent(node)
       current = {
-        title: anchor.title,
-        id: anchor.id,
+        rawTitle,
+        title: titleOf(rawTitle),
         nodes: [],
         rawStart: node.position?.end.offset ?? end,
         rawEnd: end
@@ -249,13 +246,17 @@ function groupByHeading(
   return { lead, sections }
 }
 
-export function parseMarkdown(source: string, file: string): ParsedDoc {
+type ParseConfig = Pick<MdToCompConfig, 'anchor' | 'flavors' | 'apiTables'>
+
+export function parseMarkdown(source: string, file: string, config: ParseConfig): ParsedDoc {
+  const anchorOf = config.anchor ?? braceAnchor
   const tree = parser.parse(source) as unknown as MdNode
   const nodes = (tree.children ?? []).filter(node => !FRONTMATTER_TYPES.has(node.type))
   const { component, tag } = parseFrontmatter(tree.children?.[0], file)
   const bodyEnd = nodes.at(-1)?.position?.end.offset ?? source.length
 
-  const { lead, sections } = groupByHeading(nodes, 2, bodyEnd, file)
+  const terse = (raw: string) => anchorOf(raw).title
+  const { lead, sections } = groupByHeading(nodes, 2, bodyEnd, terse)
   const introHtml = renderInline(lead).trim()
   if (!introHtml) fail(`${file}：第一个 \`##\` 小节之前要有一段中文简介（组件的一句话说明）`)
 
@@ -271,58 +272,74 @@ export function parseMarkdown(source: string, file: string): ParsedDoc {
   }
 
   const examples = named.get(EXAMPLES_SECTION)
-  const exampleGroups = examples ? groupByHeading(examples.nodes, 3, examples.rawEnd, file) : null
+  const exampleGroups = examples ? groupByHeading(examples.nodes, 3, examples.rawEnd, terse) : null
   // 与旧实现的「静默丢弃」相反：`### 示例` 之前写正文会直接报。那段文字谁都不渲染，
   // 留着只会让人以为它出现在页面上。
   if (exampleGroups?.lead.length)
     fail(`${file}：\`## ${EXAMPLES_SECTION}\` 里第一个 \`###\` 之前有正文，这段内容不会被渲染：把它并进某个示例小节`)
+
   const samples: SampleBlock[] = []
   const ids = new Set<string>()
   for (const sub of exampleGroups ? exampleGroups.sections : []) {
+    if (!sub.title) fail(`${file}：\`## ${EXAMPLES_SECTION}\` 里有一个 \`###\` 标题是空的`)
+    const id = anchorOf(sub.rawTitle).id
     const fences = sub.nodes.filter(node => node.type === 'code')
     for (const fence of fences) {
-      if (fence.lang !== 'react' && fence.lang !== 'vue')
-        fail(`${file}：示例「${sub.title}」里的代码块语言必须是 react 或 vue，收到 \`${fence.lang ?? '(无)'}\``)
+      if (!(config.flavors as readonly string[]).includes(fence.lang ?? ''))
+        fail(
+          `${file}：示例「${sub.title}」里的代码块语言必须是 ${config.flavors.join(' / ')}，收到 \`${fence.lang ?? '(无)'}\``
+        )
       if (fence.meta)
         fail(
-          `${file}：示例「${sub.title}」的 \`\`\`${fence.lang} 带了未支持的元信息 \`${fence.meta}\`；示例 id 写在 ### 标题的 {#id} 里`
+          `${file}：示例「${sub.title}」的 \`\`\`${fence.lang} 带了未支持的元信息 \`${fence.meta}\`；示例 id 写在 ### 标题里`
         )
     }
-    const react = fences.filter(fence => fence.lang === 'react')
-    const vue = fences.filter(fence => fence.lang === 'vue')
-    if (react.length !== 1 || vue.length !== 1)
+    const fencesByFlavor: Record<string, string> = {}
+    const counts: Record<string, number> = {}
+    for (const flavor of config.flavors) {
+      const matched = fences.filter(fence => fence.lang === flavor)
+      counts[flavor] = matched.length
+      fencesByFlavor[flavor] = matched[0]?.value ?? ''
+    }
+    if (config.flavors.some(flavor => counts[flavor] !== 1))
       fail(
-        `${file}：示例「${sub.title}」必须各有一个 react 与一个 vue 代码块，收到 react=${react.length} vue=${vue.length}`
+        `${file}：示例「${sub.title}」必须为每个 flavor 各有一个代码块（${config.flavors.join(' / ')}），收到 ${JSON.stringify(counts)}`
       )
-    if (sub.id) {
-      if (ids.has(sub.id)) fail(`${file}：示例 id \`#${sub.id}\` 重复，落盘文件名会撞车`)
-      ids.add(sub.id)
+    if (id !== null) {
+      const checked = anchorId(id, sub.title, file)
+      if (ids.has(checked)) fail(`${file}：示例 id \`#${checked}\` 重复，落盘文件名会撞车`)
+      ids.add(checked)
     }
     samples.push({
       title: sub.title,
-      id: sub.id,
+      id: id === null ? null : id.trim(),
       descriptionHtml: renderInline(sub.nodes.filter(node => node.type !== 'code')).trim(),
-      react: react[0].value ?? '',
-      vue: vue[0].value ?? ''
+      fences: fencesByFlavor
     })
   }
   if (samples.length === 0) fail(`${file}：\`## ${EXAMPLES_SECTION}\` 小节里至少要有一个 \`### 示例\``)
 
+  const columns = config.apiTables.columns
   const apiBody = named.get(API_SECTION)
   // 表格是 API 契约唯一的落点，所以「整节没了」和「表格写歪」一样是删掉了契约，而不是少了一段装饰。
   if (!apiBody)
     fail(`${file}：缺 \`## ${API_SECTION}\` 小节：生成器不再读组件源码，整节删掉就等于这个组件没有任何对外契约`)
-  const apiSections = groupByHeading(apiBody.nodes, 3, apiBody.rawEnd, file)
+  const apiSections = groupByHeading(apiBody.nodes, 3, apiBody.rawEnd, terse)
   for (const section of apiSections.sections) {
-    if (!(section.title in API_SUBSECTIONS))
-      fail(`${file}：API 小节里出现了不认识的名字 \`### ${section.title}\`，只允许 Props / Events / Slots`)
+    if (!Object.hasOwn(columns, section.title))
+      fail(`${file}：API 小节里出现了不认识的名字 \`### ${section.title}\`，只允许 ${Object.keys(columns).join(' / ')}`)
   }
-  const apiTable = (name: keyof typeof API_SUBSECTIONS): ApiRow[] => {
-    const section = apiSections.sections.find(candidate => candidate.title === name)
-    return section ? parseApiTable(section, source, file) : []
-  }
-  const api: ParsedDoc['api'] = { props: apiTable('Props'), events: apiTable('Events'), slots: apiTable('Slots') }
-  if (api.props.length + api.events.length + api.slots.length === 0)
+  const api: ApiSection[] = Object.entries(columns)
+    .map(([title, sectionColumns]) => {
+      const section = apiSections.sections.find(candidate => candidate.title === title)
+      return {
+        key: title.toLowerCase(),
+        title,
+        rows: section ? parseApiTable(section, sectionColumns, source, file) : []
+      }
+    })
+    .filter(section => section.rows.length > 0)
+  if (api.length === 0)
     fail(
       `${file}：\`## ${API_SECTION}\` 里一张表都没有数据行：要么写出表格，要么把这一节连标题一起删掉（留空等于没写）`
     )

@@ -5,7 +5,7 @@ import { highlight } from '../highlight'
 /*
  * `highlight()` 里那条 HTML 往返自证是「页面显示的那份 == 围栏那份」在引擎侧的落点：它一旦解错
  * 实体，合法源码会被判成漂移、整条生成链非零退出，症状比静默错排更糟的是没人能改这类示例。
- * `scripts/generate-web-ui-examples.test.mjs` 有一份独立的同口径解码器，两侧各自被钉。
+ * 仓库根的完整生成断言有一份独立的同口径解码器，两侧各自被钉。
  */
 
 describe('highlight 的原文往返', () => {
@@ -16,7 +16,7 @@ describe('highlight 的原文往返', () => {
       `}`
     ].join('\n')
     const html = await highlight(code, 'react', 'button.md')
-    expect(html).toContain('wui-example-code')
+    expect(html).toContain('mdc-code')
     expect(html).toContain('&#x3C;')
   })
 

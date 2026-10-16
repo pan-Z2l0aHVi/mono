@@ -7,8 +7,12 @@ export default {
       dts: true
     },
     {
-      entry: 'src/cli.ts',
-      dts: false
+      entry: 'src/react.ts',
+      dts: true
+    },
+    {
+      entry: 'src/vue.ts',
+      dts: true
     }
   ]
 } satisfies UserConfig
