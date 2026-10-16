@@ -2,7 +2,7 @@
 import type { Component } from 'vue'
 import { computed, defineAsyncComponent } from 'vue'
 
-import { exampleDocs } from '@/generated/examples'
+import { exampleDocs, type ExampleApiSection } from '@/generated/examples'
 
 /**
  * 由示例文档 markdown 生成的示例文档：可交互示例 + 示例代码（语法高亮）+ API 表。
@@ -33,6 +33,14 @@ const doc = computed(() => exampleDocs.find(candidate => candidate.component ===
 
 function demoComponent(demoKey: string | null) {
   return demoKey ? demoComponents.get(`${props.component}--${demoKey}`) : undefined
+}
+
+/**
+ * 四列小节（Props / Options）的每一行都带类型与默认值——列形状由配置声明，解析器据此给出带 `type`
+ * 的行。渲染端按行的形状决定是否多渲染两列，因此不需要知道哪些小节是四列的。
+ */
+function hasTypeColumns(section: ExampleApiSection) {
+  return section.rows.some(row => row.type !== undefined)
 }
 </script>
 
@@ -68,7 +76,7 @@ function demoComponent(demoKey: string | null) {
             <th class="border-b border-(--wui-color-border) px-3 py-2 text-left align-top font-semibold text-gray-500">
               名称
             </th>
-            <template v-if="section.key === 'props'">
+            <template v-if="hasTypeColumns(section)">
               <th
                 class="border-b border-(--wui-color-border) px-3 py-2 text-left align-top font-semibold text-gray-500"
               >
@@ -90,7 +98,7 @@ function demoComponent(demoKey: string | null) {
             <td class="border-b border-(--wui-color-border) px-3 py-2 align-top font-mono whitespace-nowrap">
               {{ row.name }}
             </td>
-            <template v-if="section.key === 'props'">
+            <template v-if="hasTypeColumns(section)">
               <td
                 class="border-b border-(--wui-color-border) px-3 py-2 align-top font-mono whitespace-nowrap text-gray-500"
               >

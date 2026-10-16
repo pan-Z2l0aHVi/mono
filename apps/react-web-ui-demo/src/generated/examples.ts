@@ -1783,23 +1783,41 @@ export const exampleDocs: ExampleDoc[] = [
   {
     "component": "image-preview",
     "tag": "web-ui-image-preview",
-    "introHtml": "<p>命令式图片预览：通过 <code>imagePreview()</code> 打开，用返回的句柄控制；内部使用原生 <code>&lt;dialog></code>，默认挂载到最近的 theme-owned overlay root。</p>",
+    "introHtml": "<p>命令式图片预览：通过 <code>imagePreview()</code> 打开，用返回的句柄控制；内部使用原生 <code>&lt;dialog></code>，默认挂载到最近的 theme-owned overlay root。下面的表列的是 <code>imagePreview()</code> 的选项。</p>",
     "api": [
       {
-        "key": "props",
-        "title": "Props",
+        "key": "options",
+        "title": "Options",
         "rows": [
           {
             "name": "images",
             "type": "ImagePreviewItem[]",
-            "default": "[]",
+            "default": "—",
             "descriptionHtml": "<p>图片列表，至少一项；每项为 <code>{ src, alt? }</code>。</p>"
+          },
+          {
+            "name": "index",
+            "type": "number",
+            "default": "0",
+            "descriptionHtml": "<p>初始图片索引，越界时钳制到有效区间。</p>"
           },
           {
             "name": "loop",
             "type": "boolean",
             "default": "true",
             "descriptionHtml": "<p>首尾循环切换。</p>"
+          },
+          {
+            "name": "target",
+            "type": "Element",
+            "default": "—",
+            "descriptionHtml": "<p>用于解析最近 theme-owned overlay root 的触发元素。</p>"
+          },
+          {
+            "name": "container",
+            "type": "HTMLElement",
+            "default": "—",
+            "descriptionHtml": "<p>显式挂载容器，优先级高于主题作用域。</p>"
           },
           {
             "name": "nav",
@@ -3452,14 +3470,14 @@ export const exampleDocs: ExampleDoc[] = [
     "introHtml": "<p>Toast 通知。常规用法是命令式 API <code>toast()</code>：同一 <code>id</code> 的再次调用是更新那一条，而不是新建。</p>",
     "api": [
       {
-        "key": "props",
-        "title": "Props",
+        "key": "options",
+        "title": "Options",
         "rows": [
           {
-            "name": "toastId",
+            "name": "message",
             "type": "string",
-            "default": "''",
-            "descriptionHtml": "<p>这条 toast 的合并键（property）。</p>"
+            "default": "—",
+            "descriptionHtml": "<p>通知文本。</p>"
           },
           {
             "name": "type",
@@ -3468,10 +3486,22 @@ export const exampleDocs: ExampleDoc[] = [
             "descriptionHtml": "<p>类型：<code>success</code>、<code>info</code>、<code>warning</code>、<code>error</code>。</p>"
           },
           {
-            "name": "position",
-            "type": "ToastPosition",
-            "default": "'top-right'",
-            "descriptionHtml": "<p>屏幕位置，默认 <code>top-right</code>。</p>"
+            "name": "duration",
+            "type": "number",
+            "default": "3000",
+            "descriptionHtml": "<p>自动关闭时间（ms），0 表示不自动关闭；<code>error</code> 默认 <code>5000</code>。</p>"
+          },
+          {
+            "name": "closable",
+            "type": "boolean",
+            "default": "true",
+            "descriptionHtml": "<p>展示关闭按钮。</p>"
+          },
+          {
+            "name": "id",
+            "type": "string",
+            "default": "自动生成",
+            "descriptionHtml": "<p>合并键：同一个 <code>id</code> 再次调用是更新那一条。</p>"
           },
           {
             "name": "heading",
@@ -3480,28 +3510,22 @@ export const exampleDocs: ExampleDoc[] = [
             "descriptionHtml": "<p>粗体标题。</p>"
           },
           {
-            "name": "message",
-            "type": "string",
-            "default": "''",
-            "descriptionHtml": "<p>通知文本。</p>"
+            "name": "position",
+            "type": "ToastPosition",
+            "default": "'top-right'",
+            "descriptionHtml": "<p>屏幕位置。</p>"
           },
           {
-            "name": "duration",
-            "type": "number",
-            "default": "3000",
-            "descriptionHtml": "<p>自动关闭时间（ms），0 表示不自动关闭。</p>"
+            "name": "target",
+            "type": "Element",
+            "default": "—",
+            "descriptionHtml": "<p>用于查找最近 theme-owned overlay root。</p>"
           },
           {
-            "name": "no-close-button",
-            "type": "boolean",
-            "default": "false",
-            "descriptionHtml": "<p>隐藏关闭按钮。</p>"
-          },
-          {
-            "name": "visible",
-            "type": "boolean",
-            "default": "false",
-            "descriptionHtml": "<p>当前是否可见。</p>"
+            "name": "container",
+            "type": "HTMLElement",
+            "default": "—",
+            "descriptionHtml": "<p>显式挂载容器（最高优先级）。</p>"
           }
         ]
       },
@@ -3540,7 +3564,7 @@ export const exampleDocs: ExampleDoc[] = [
       {
         "id": null,
         "title": "直接使用元素",
-        "descriptionHtml": "<p>单个 Toast 元素可声明式使用，<code>heading</code> 与 <code>message</code> 是两级文案，<code>no-close-button</code> 隐藏关闭按钮。</p>",
+        "descriptionHtml": "<p>单个 Toast 元素可声明式使用，<code>heading</code> 与 <code>message</code> 是两级文案；<code>toastId</code>（合并键）、<code>visible</code>（是否可见）与 <code>no-close-button</code>（隐藏关闭按钮）是元素自身的属性，下表列的是 <code>toast()</code> 的选项。</p>",
         "html": {
           "react": "<pre class=\"shiki shiki-themes github-light github-dark mdc-code\" style=\"--shiki-light:#24292e;--shiki-dark:#e1e4e8;--shiki-light-bg:#fff;--shiki-dark-bg:#24292e\" tabindex=\"0\"><code><span class=\"line\"><span style=\"--shiki-light:#24292E;--shiki-dark:#E1E4E8\">&#x3C;</span><span style=\"--shiki-light:#005CC5;--shiki-dark:#79B8FF\">web-ui-toast</span><span style=\"--shiki-light:#6F42C1;--shiki-dark:#B392F0\"> type</span><span style=\"--shiki-light:#D73A49;--shiki-dark:#F97583\">=</span><span style=\"--shiki-light:#032F62;--shiki-dark:#9ECBFF\">\"success\"</span><span style=\"--shiki-light:#6F42C1;--shiki-dark:#B392F0\"> heading</span><span style=\"--shiki-light:#D73A49;--shiki-dark:#F97583\">=</span><span style=\"--shiki-light:#032F62;--shiki-dark:#9ECBFF\">\"已保存\"</span><span style=\"--shiki-light:#6F42C1;--shiki-dark:#B392F0\"> message</span><span style=\"--shiki-light:#D73A49;--shiki-dark:#F97583\">=</span><span style=\"--shiki-light:#032F62;--shiki-dark:#9ECBFF\">\"更改已写入云端\"</span><span style=\"--shiki-light:#6F42C1;--shiki-dark:#B392F0\"> duration</span><span style=\"--shiki-light:#D73A49;--shiki-dark:#F97583\">=</span><span style=\"--shiki-light:#24292E;--shiki-dark:#E1E4E8\">{</span><span style=\"--shiki-light:#005CC5;--shiki-dark:#79B8FF\">3000</span><span style=\"--shiki-light:#24292E;--shiki-dark:#E1E4E8\">} </span><span style=\"--shiki-light:#6F42C1;--shiki-dark:#B392F0\">visible</span><span style=\"--shiki-light:#24292E;--shiki-dark:#E1E4E8\">>&#x3C;/</span><span style=\"--shiki-light:#005CC5;--shiki-dark:#79B8FF\">web-ui-toast</span><span style=\"--shiki-light:#24292E;--shiki-dark:#E1E4E8\">></span></span></code></pre>",
           "vue": "<pre class=\"shiki shiki-themes github-light github-dark mdc-code\" style=\"--shiki-light:#24292e;--shiki-dark:#e1e4e8;--shiki-light-bg:#fff;--shiki-dark-bg:#24292e\" tabindex=\"0\"><code><span class=\"line\"><span style=\"--shiki-light:#24292E;--shiki-dark:#E1E4E8\">&#x3C;</span><span style=\"--shiki-light:#22863A;--shiki-dark:#85E89D\">template</span><span style=\"--shiki-light:#24292E;--shiki-dark:#E1E4E8\">></span></span>\n<span class=\"line\"><span style=\"--shiki-light:#24292E;--shiki-dark:#E1E4E8\">  &#x3C;</span><span style=\"--shiki-light:#22863A;--shiki-dark:#85E89D\">web-ui-toast</span><span style=\"--shiki-light:#6F42C1;--shiki-dark:#B392F0\"> type</span><span style=\"--shiki-light:#24292E;--shiki-dark:#E1E4E8\">=</span><span style=\"--shiki-light:#032F62;--shiki-dark:#9ECBFF\">\"success\"</span><span style=\"--shiki-light:#6F42C1;--shiki-dark:#B392F0\"> heading</span><span style=\"--shiki-light:#24292E;--shiki-dark:#E1E4E8\">=</span><span style=\"--shiki-light:#032F62;--shiki-dark:#9ECBFF\">\"已保存\"</span><span style=\"--shiki-light:#6F42C1;--shiki-dark:#B392F0\"> message</span><span style=\"--shiki-light:#24292E;--shiki-dark:#E1E4E8\">=</span><span style=\"--shiki-light:#032F62;--shiki-dark:#9ECBFF\">\"更改已写入云端\"</span><span style=\"--shiki-light:#6F42C1;--shiki-dark:#B392F0\"> :duration</span><span style=\"--shiki-light:#24292E;--shiki-dark:#E1E4E8\">=</span><span style=\"--shiki-light:#032F62;--shiki-dark:#9ECBFF\">\"3000\"</span><span style=\"--shiki-light:#6F42C1;--shiki-dark:#B392F0\"> visible</span><span style=\"--shiki-light:#24292E;--shiki-dark:#E1E4E8\">>&#x3C;/</span><span style=\"--shiki-light:#22863A;--shiki-dark:#85E89D\">web-ui-toast</span><span style=\"--shiki-light:#24292E;--shiki-dark:#E1E4E8\">></span></span>\n<span class=\"line\"><span style=\"--shiki-light:#24292E;--shiki-dark:#E1E4E8\">&#x3C;/</span><span style=\"--shiki-light:#22863A;--shiki-dark:#85E89D\">template</span><span style=\"--shiki-light:#24292E;--shiki-dark:#E1E4E8\">></span></span></code></pre>"

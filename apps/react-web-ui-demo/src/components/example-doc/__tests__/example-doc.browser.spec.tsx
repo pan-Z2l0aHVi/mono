@@ -25,7 +25,8 @@ import ExampleDoc from '..'
 
 const slider = exampleDocs.find(doc => doc.component === 'slider')
 const button = exampleDocs.find(doc => doc.component === 'button')
-if (!slider || !button) throw new Error('生成数据里缺少 slider / button')
+const imagePreview = exampleDocs.find(doc => doc.component === 'image-preview')
+if (!slider || !button || !imagePreview) throw new Error('生成数据里缺少 slider / button / image-preview')
 
 /** demoKey → 落盘文件字节；少一条就在断言里直接报出来，不留「这条没被覆盖」的静默缺口。 */
 const demoSources: Record<string, string> = {
@@ -226,9 +227,24 @@ describe('example-doc（React 面 / 真实浏览器）', () => {
     expect(rows.find(cells => cells[0] === 'max')?.slice(1)).toEqual(['number', '100', expect.any(String)])
   })
 
+  it('options 表（命令式 API 的选项）与 props 表一样渲染类型与默认值两列', () => {
+    const { container } = render(<ExampleDoc component="image-preview" />)
+    const options = apiSection(imagePreview, 'options')
+    const rows = sectionRows(container, 'options')
+
+    expect(rows.map(cells => cells[0])).toEqual(options.rows.map(row => row.name))
+    // #360：元素 `@property` 里没有的 `index` / `target` / `container` 也在这一节里，
+    // 所以这三个字段是「表格是手写的唯一来源」这条契约的直接证据。
+    expect(rows.find(cells => cells[0] === 'index')?.slice(1)).toEqual(['number', '0', expect.any(String)])
+    expect(rows.find(cells => cells[0] === 'target')?.slice(1)).toEqual(['Element', '—', expect.any(String)])
+    expect(rows.find(cells => cells[0] === 'container')?.slice(1)).toEqual(['HTMLElement', '—', expect.any(String)])
+  })
+
   it('events 表按 markdown 的小节生成，没写就不出现', () => {
     const { container } = render(<ExampleDoc component="slider" />)
     expect(sectionRows(container, 'events').map(cells => cells[0])).toEqual(['input', 'change'])
+    // 两列小节不会被多渲染出类型与默认值两格：列形状只由行带不带 `type` 决定。
+    expect(sectionRows(container, 'events').map(cells => cells.length)).toEqual([2, 2])
 
     const { container: buttonContainer } = render(<ExampleDoc component="button" />)
     // button.md 没写 ### Events 小节，就不该凭空多出一张 Events 表。

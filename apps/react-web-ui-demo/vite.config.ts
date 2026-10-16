@@ -74,8 +74,10 @@ export default {
       flavors: ['react', 'vue'],
       apiTables: {
         // 列序是引擎约定：名称、说明、类型、默认值。Events / Slots 只有前两列。
+        // Props 记元素属性，Options 记命令式 API 的选项（`imagePreview()` / `toast()` 这类没有声明式契约的入口）。
         columns: {
           Props: ['名称', '说明', '类型', '默认值'],
+          Options: ['名称', '说明', '类型', '默认值'],
           Events: ['名称', '说明'],
           Slots: ['名称', '说明']
         }

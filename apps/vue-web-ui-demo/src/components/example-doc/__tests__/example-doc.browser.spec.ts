@@ -31,7 +31,9 @@ import ExampleDoc from '../index.vue'
 const slider = exampleDocs.find(doc => doc.component === 'slider')
 const button = exampleDocs.find(doc => doc.component === 'button')
 const collapse = exampleDocs.find(doc => doc.component === 'collapse')
-if (!slider || !button || !collapse) throw new Error('生成数据里缺少 slider / button / collapse')
+const imagePreview = exampleDocs.find(doc => doc.component === 'image-preview')
+if (!slider || !button || !collapse || !imagePreview)
+  throw new Error('生成数据里缺少 slider / button / collapse / image-preview')
 
 /** demoKey → 落盘文件字节；少一条就在断言里直接报出来，不留「这条没被覆盖」的静默缺口。 */
 const demoSources: Record<string, string> = {
@@ -226,6 +228,17 @@ describe('example-doc（Vue 面 / 真实浏览器）', () => {
     expect(sliderRows.find(cells => cells[0] === 'max')?.slice(1)).toEqual(['number', '100', expect.any(String)])
   })
 
+  it('options 表（命令式 API 的选项）与 props 表一样渲染类型与默认值两列', () => {
+    const rows = rowsOf(mountDoc('image-preview'), 'options')
+
+    expect(rows.map(cells => cells[0])).toEqual(apiSection(imagePreview, 'options').rows.map(row => row.name))
+    // #360：元素 `@property` 里没有的 `index` / `target` / `container` 也在这一节里，
+    // 所以这三个字段是「表格是手写的唯一来源」这条契约的直接证据。
+    expect(rows.find(cells => cells[0] === 'index')?.slice(1)).toEqual(['number', '0', expect.any(String)])
+    expect(rows.find(cells => cells[0] === 'target')?.slice(1)).toEqual(['Element', '—', expect.any(String)])
+    expect(rows.find(cells => cells[0] === 'container')?.slice(1)).toEqual(['HTMLElement', '—', expect.any(String)])
+  })
+
   it('events 与 slots 表按 markdown 的小节生成，没写就不出现', () => {
     const element = mountDoc('collapse')
     expect(rowsOf(element, 'events').map(cells => cells[0])).toEqual(['open-change'])
@@ -235,6 +248,8 @@ describe('example-doc（Vue 面 / 真实浏览器）', () => {
 
     const sliderElement = mountDoc('slider')
     expect(rowsOf(sliderElement, 'events').map(cells => cells[0])).toEqual(['input', 'change'])
+    // 两列小节不会被多渲染出类型与默认值两格：列形状只由行带不带 `type` 决定。
+    expect(rowsOf(sliderElement, 'events').map(cells => cells.length)).toEqual([2, 2])
 
     // button.md 没写 ### Events 小节，就不该凭空多出一张 Events 表。
     expect(mountDoc('button').querySelector('[data-example-api="events"]')).toBeNull()

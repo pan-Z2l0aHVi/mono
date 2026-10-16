@@ -29,7 +29,7 @@ export interface ApiRow {
 export interface ApiSection {
   /** 小节标题，与配置里的键逐字相同。 */
   title: string
-  /** 标题转小写，渲染端用它挑表格形状（只有 props 有类型与默认值两列）。 */
+  /** 标题转小写；与 `rows` 的形状一起供渲染端挑表格形状（只有四列的小节有类型与默认值两列）。 */
   key: string
   rows: ApiRow[]
 }

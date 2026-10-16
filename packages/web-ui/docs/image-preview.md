@@ -3,7 +3,7 @@ component: image-preview
 tag: web-ui-image-preview
 ---
 
-命令式图片预览：通过 `imagePreview()` 打开，用返回的句柄控制；内部使用原生 `<dialog>`，默认挂载到最近的 theme-owned overlay root。
+命令式图片预览：通过 `imagePreview()` 打开，用返回的句柄控制；内部使用原生 `<dialog>`，默认挂载到最近的 theme-owned overlay root。下面的表列的是 `imagePreview()` 的选项。
 
 ## 示例
 
@@ -116,16 +116,19 @@ async function inspect(images: { src: string; alt?: string }[]) {
 
 ## API
 
-### Props
+### Options
 
-| 名称              | 说明                                         | 类型                 | 默认值  |
-| ----------------- | -------------------------------------------- | -------------------- | ------- |
-| `images`          | 图片列表，至少一项；每项为 `{ src, alt? }`。 | `ImagePreviewItem[]` | `[]`    |
-| `loop`            | 首尾循环切换。                               | `boolean`            | `true`  |
-| `nav`             | 展示上一张 / 下一张按钮。                    | `boolean`            | `false` |
-| `toolbar`         | 展示缩放工具条。                             | `boolean`            | `false` |
-| `closable`        | 展示关闭按钮。                               | `boolean`            | `false` |
-| `indicator`       | 展示「当前 / 总数」指示器。                  | `boolean`            | `false` |
-| `swipe`           | 1x 下允许左右滑动切图。                      | `boolean`            | `false` |
-| `noScrollLock`    | 打开期间不锁定页面滚动。                     | `boolean`            | `false` |
-| `noBackdropClose` | 点击图片以外的空白区域不关闭。               | `boolean`            | `false` |
+| 名称              | 说明                                               | 类型                 | 默认值  |
+| ----------------- | -------------------------------------------------- | -------------------- | ------- |
+| `images`          | 图片列表，至少一项；每项为 `{ src, alt? }`。       | `ImagePreviewItem[]` | `—`     |
+| `index`           | 初始图片索引，越界时钳制到有效区间。               | `number`             | `0`     |
+| `loop`            | 首尾循环切换。                                     | `boolean`            | `true`  |
+| `target`          | 用于解析最近 theme-owned overlay root 的触发元素。 | `Element`            | `—`     |
+| `container`       | 显式挂载容器，优先级高于主题作用域。               | `HTMLElement`        | `—`     |
+| `nav`             | 展示上一张 / 下一张按钮。                          | `boolean`            | `false` |
+| `toolbar`         | 展示缩放工具条。                                   | `boolean`            | `false` |
+| `closable`        | 展示关闭按钮。                                     | `boolean`            | `false` |
+| `indicator`       | 展示「当前 / 总数」指示器。                        | `boolean`            | `false` |
+| `swipe`           | 1x 下允许左右滑动切图。                            | `boolean`            | `false` |
+| `noScrollLock`    | 打开期间不锁定页面滚动。                           | `boolean`            | `false` |
+| `noBackdropClose` | 点击图片以外的空白区域不关闭。                     | `boolean`            | `false` |

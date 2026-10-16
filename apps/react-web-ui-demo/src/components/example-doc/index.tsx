@@ -1,6 +1,6 @@
 import { lazy, Suspense, type ComponentType } from 'react'
 
-import { exampleDocs } from '@/generated/examples'
+import { exampleDocs, type ExampleApiSection } from '@/generated/examples'
 
 /**
  * 由示例文档 markdown 生成的示例文档：可交互示例 + 示例代码（语法高亮）+ API 表。
@@ -24,6 +24,14 @@ const DEMO_PREFIX = '../../generated/demos/'
 const demoComponents = new Map(
   Object.entries(demoModules).map(([file, load]) => [file.slice(DEMO_PREFIX.length, -'.tsx'.length), lazy(load)])
 )
+
+/**
+ * 四列小节（Props / Options）的每一行都带类型与默认值——列形状由配置声明，解析器据此给出带 `type`
+ * 的行。渲染端按行的形状决定是否多渲染两列，因此不需要知道哪些小节是四列的。
+ */
+function hasTypeColumns(section: ExampleApiSection) {
+  return section.rows.some(row => row.type !== undefined)
+}
 
 function ExampleDoc({ component, flavor = 'react' }: { component: string; flavor?: 'react' | 'vue' }) {
   const doc = exampleDocs.find(candidate => candidate.component === component)
@@ -74,7 +82,7 @@ function ExampleDoc({ component, flavor = 'react' }: { component: string; flavor
                 <th className="border-b border-(--wui-color-border) px-3 py-2 text-left align-top font-semibold text-gray-500">
                   名称
                 </th>
-                {section.key === 'props' ? (
+                {hasTypeColumns(section) ? (
                   <>
                     <th className="border-b border-(--wui-color-border) px-3 py-2 text-left align-top font-semibold text-gray-500">
                       类型
@@ -95,7 +103,7 @@ function ExampleDoc({ component, flavor = 'react' }: { component: string; flavor
                   <td className="border-b border-(--wui-color-border) px-3 py-2 align-top font-mono whitespace-nowrap">
                     {row.name}
                   </td>
-                  {section.key === 'props' ? (
+                  {hasTypeColumns(section) ? (
                     <>
                       <td className="border-b border-(--wui-color-border) px-3 py-2 align-top font-mono whitespace-nowrap text-gray-500">
                         {row.type}

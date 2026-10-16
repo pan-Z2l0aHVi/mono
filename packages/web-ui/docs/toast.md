@@ -55,7 +55,7 @@ function upload() {
 
 ### 直接使用元素
 
-单个 Toast 元素可声明式使用，`heading` 与 `message` 是两级文案，`no-close-button` 隐藏关闭按钮。
+单个 Toast 元素可声明式使用，`heading` 与 `message` 是两级文案；`toastId`（合并键）、`visible`（是否可见）与 `no-close-button`（隐藏关闭按钮）是元素自身的属性，下表列的是 `toast()` 的选项。
 
 ```react
 <web-ui-toast type="success" heading="已保存" message="更改已写入云端" duration={3000} visible></web-ui-toast>
@@ -69,18 +69,19 @@ function upload() {
 
 ## API
 
-### Props
+### Options
 
-| 名称              | 说明                                          | 类型            | 默认值        |
-| ----------------- | --------------------------------------------- | --------------- | ------------- |
-| `toastId`         | 这条 toast 的合并键（property）。             | `string`        | `''`          |
-| `type`            | 类型：`success`、`info`、`warning`、`error`。 | `ToastType`     | `'info'`      |
-| `position`        | 屏幕位置，默认 `top-right`。                  | `ToastPosition` | `'top-right'` |
-| `heading`         | 粗体标题。                                    | `string`        | `''`          |
-| `message`         | 通知文本。                                    | `string`        | `''`          |
-| `duration`        | 自动关闭时间（ms），0 表示不自动关闭。        | `number`        | `3000`        |
-| `no-close-button` | 隐藏关闭按钮。                                | `boolean`       | `false`       |
-| `visible`         | 当前是否可见。                                | `boolean`       | `false`       |
+| 名称        | 说明                                                        | 类型            | 默认值        |
+| ----------- | ----------------------------------------------------------- | --------------- | ------------- |
+| `message`   | 通知文本。                                                  | `string`        | `—`           |
+| `type`      | 类型：`success`、`info`、`warning`、`error`。               | `ToastType`     | `'info'`      |
+| `duration`  | 自动关闭时间（ms），0 表示不自动关闭；`error` 默认 `5000`。 | `number`        | `3000`        |
+| `closable`  | 展示关闭按钮。                                              | `boolean`       | `true`        |
+| `id`        | 合并键：同一个 `id` 再次调用是更新那一条。                  | `string`        | 自动生成      |
+| `heading`   | 粗体标题。                                                  | `string`        | `''`          |
+| `position`  | 屏幕位置。                                                  | `ToastPosition` | `'top-right'` |
+| `target`    | 用于查找最近 theme-owned overlay root。                     | `Element`       | `—`           |
+| `container` | 显式挂载容器（最高优先级）。                                | `HTMLElement`   | `—`           |
 
 ### Events
 
