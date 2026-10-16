@@ -173,7 +173,7 @@ export const exampleDocs: ExampleDoc[] = [
         "rows": [
           {
             "name": "focus()",
-            "descriptionHtml": "<p>聚焦当前触发器的可聚焦元素；自定义触发器不支持时聚焦宿主自身。</p>"
+            "descriptionHtml": "<p>聚焦当前触发器：<code>web-ui-input</code> / <code>web-ui-textarea</code> 触发器把焦点交给内部原生控件，没有自己的 focus 重定向的自定义触发器则聚焦触发器元素自身。</p>"
           },
           {
             "name": "blur()",
@@ -1716,11 +1716,11 @@ export const exampleDocs: ExampleDoc[] = [
         "rows": [
           {
             "name": "focus()",
-            "descriptionHtml": "<p>聚焦宿主；启用时宿主带 <code>tabindex=\"0\"</code>，可直接接受键盘输入。</p>"
+            "descriptionHtml": "<p>聚焦宿主并进入编辑态，键盘聚焦把光标放在文本末尾；<code>disabled</code> 时宿主移出 tab 序列，不产生效果。</p>"
           },
           {
             "name": "blur()",
-            "descriptionHtml": "<p>让宿主失焦。</p>"
+            "descriptionHtml": "<p>让宿主失焦；焦点离开编辑层时走 blur 提交语义——草稿成为新值并恰好派发一次 <code>change</code>，<code>readonly</code> 时只退出编辑、不派发。</p>"
           },
           {
             "name": "select()",

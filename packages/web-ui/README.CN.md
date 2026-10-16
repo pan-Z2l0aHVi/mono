@@ -433,7 +433,7 @@ dropdown、tooltip）不需要它。
 
 **事件：** `input`（每次输入）、`change`（提交）、`cancel`（取消；与原生 `<dialog>` 的 `cancel` 同名，不冒泡、不组合，只在组件本身派发）。React 没有覆盖 `cancel` 的合成事件，须用 `addEventListener('cancel', ...)` 监听
 
-**方法：** `focus()`, `blur()`, `select()`
+**方法：** `focus()`, `blur()`, `select()`。`focus()` 进入编辑态并把光标放在文本末尾，`blur()` 与 `Enter` 走同一条提交路径结束编辑，`select()` 进入编辑态并全选内容。
 
 点击时光标落在点击处；键盘聚焦时落在文本末尾。`Enter` 与 `blur` 均提交草稿并恰好派发一次 `change`：`Enter` 不插入换行，并把焦点交还宿主；`blur` 不干预焦点，焦点留在用户移往的位置。只有 `Escape` 取消：值回到进入编辑时的状态，派发 `cancel` 而不派发 `change`，焦点交还宿主，且按键由编辑层消费，外层浮层（抽屉、菜单）不会因同一次按键关闭。`cancel` 不冒泡也不组合，只在组件本身派发：组件被投映在浮层 shadow 内时（如 drawer 标题），它不会触达浮层的原生 `cancel` 关闭管线，监听一律挂在组件本身。值里已有的换行仍按多行渲染，只是不能再靠输入 `Enter` 增加换行。空值继续显示 placeholder；编辑层始终按自身内容撑高，因此空草稿或纯空格草稿在宿主自身塌缩的场合（flex 项 `min-width: 0`、表格单元格）也仍有承接光标的位置。
 
@@ -544,13 +544,13 @@ Portal 面板创建时会镜像 host 上解析后的这些变量；更新 host �
 
 **事件：** `input`, `change`, `focus`, `blur`, `open-change` (`CustomEvent<{ open: boolean }>`)
 
-**方法：** `focus()`, `blur()`
+**方法：** `focus()`, `blur()`，委托到当前生效的触发器（见下文「触发器」）。
 
 **插槽：** `default`（投影 `<web-ui-option>` 元素）、`trigger`（自定义触发器内容——替换默认输入框）
 
 键入时按 label 过滤候选（`contains` 或 `prefix`，`none` 关闭过滤）。没有匹配项时下拉面板保持关闭；删除字符后重新出现匹配项时，面板会再次打开。选择 option 时文本回填为该项 label，`selected-value` 暴露该项的 value；`change` 在选择提交时触发。支持 ArrowDown/ArrowUp/Enter/Escape 键盘导航。
 
-**触发器：** 默认触发器是 shadow 内的 `web-ui-input`。把任意可编辑组件放进 `trigger` slot 即可替换它——包装 div 继续承载 combobox ARIA，并以 `data-custom-trigger` 标记当前使用自定义触发器，浮层始终以触发器元素为锚点。组件的 `focus()` / `blur()` 委托到当前生效的触发器：`web-ui-input` 与 `web-ui-textarea` 会把焦点落到内部原生控件；自定义触发器没有自己的 focus 重定向时，按宿主自身聚焦。
+**触发器：** 默认触发器是 shadow 内的 `web-ui-input`。把任意可编辑组件放进 `trigger` slot 即可替换它——包装 div 继续承载 combobox ARIA，并以 `data-custom-trigger` 标记当前使用自定义触发器，浮层始终以触发器元素为锚点。组件的 `focus()` / `blur()` 委托到当前生效的触发器：`web-ui-input` 与 `web-ui-textarea` 会把焦点落到内部原生控件；自定义触发器没有自己的 focus 重定向时，聚焦触发器元素自身。
 
 ```html
 <web-ui-autocomplete placeholder="描述问题">
@@ -594,7 +594,7 @@ Portal 面板创建时会镜像 host 上解析后的这些变量；更新 host �
 
 **事件：** `input`（拖拽中）、`change`（松开或键盘确认）
 
-**方法：** `focus()`, `blur()`
+**方法：** `focus()`, `blur()`，委托到 `role="slider"` 的轨道元素；宿主自身不可聚焦。
 
 支持 ArrowLeft/Right/Up/Down、Home/End、PageUp/PageDown 键盘导航。使用 pointer capture 处理鼠标、触控笔和触摸交互；组件 host 与触控轨道均声明 `touch-action: none`，拖拽激活期间同时阻止 `touchmove` 默认滚动，避免 iOS Safari 在横/纵拖拽过程中接管手势。
 
@@ -1397,7 +1397,6 @@ html`<web-ui-icon .icon=${lucideLoaderCircle} spin />`
 | 属性          | 类型     | 默认值 | 说明       |
 | ------------- | -------- | ------ | ---------- |
 | `size`        | `number` | `24`   | 尺寸（px） |
-| `color`       | `string` | —      | 颜色       |
 | `description` | `string` | `''`   | 描述文字   |
 
 角色：`status`，`aria-label="加载中"`。
