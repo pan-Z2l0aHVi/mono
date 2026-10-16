@@ -8,6 +8,9 @@ function Component() {
     <>
       <DemoComponent />
       <ExampleDoc component="context-menu" />
+      <ExampleDoc component="dropdown-item" />
+      <ExampleDoc component="dropdown-divider" />
+      <ExampleDoc component="dropdown-header" />
     </>
   )
 }

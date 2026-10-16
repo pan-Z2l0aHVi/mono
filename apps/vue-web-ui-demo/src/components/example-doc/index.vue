@@ -58,7 +58,8 @@ function demoComponent(demoKey: string | null) {
       ></div>
     </div>
 
-    <h2>API</h2>
+    <!-- 没有 `## API` 小节的语料（纯展示的子组件）不留一个空标题。 -->
+    <h2 v-if="doc.api.length > 0">API</h2>
     <div v-for="section in doc.api" :key="section.key" class="flex flex-col gap-3" :data-example-api="section.key">
       <h3 class="m-0">{{ section.title }}</h3>
       <table class="w-full border-collapse text-sm">

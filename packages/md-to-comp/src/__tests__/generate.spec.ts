@@ -16,7 +16,7 @@ import type { GenerateOptions } from '../types'
  *
  * 这一档替掉了仓库根原来那批「喂一份被篡改的 markdown 副本给 CLI」的 fixture：那时 fixture 要通过
  * 一个已构建的 `dist` 才能跑引擎，dist 陈旧就会静默判旧引擎。就地调 `generate()` 之后，判据与实现
- * 同源，语料也自带，不再依赖仓库里那 30 篇真实文档。
+ * 同源，语料也自带，不再依赖仓库里那 37 篇真实文档。
  */
 
 const CONFIG = {

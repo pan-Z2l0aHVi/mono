@@ -14,4 +14,5 @@ import RadioDemo from '@/components/radio-demo/index.vue'
 <template>
   <RadioDemo />
   <ExampleDoc component="radio" />
+  <ExampleDoc component="radio-group" />
 </template>

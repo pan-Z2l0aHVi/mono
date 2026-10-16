@@ -1,0 +1,124 @@
+---
+component: radio-group
+tag: web-ui-radio-group
+---
+
+一组 `<web-ui-radio>` 的容器：把成员的选中状态收敛成单个 `value`，选中变化时统一派发 `input` / `change`，并负责组级禁用与必填校验。成员自己声明的 `name` 在组内不参与提交，表单字段名取组上的 `name`。
+
+## 示例
+
+### 单选组 {#basic}
+
+组持有唯一的值：`value` 决定谁被选中，成员的选中态由组下发，页面只读组的值。
+
+```react
+import { useState } from 'react'
+
+export default function Demo() {
+  const [size, setSize] = useState('m')
+
+  return (
+    <web-ui-radio-group name="size" value={size} onInput={event => setSize(event.currentTarget.value)}>
+      <web-ui-radio value="s">小</web-ui-radio>
+      <web-ui-radio value="m">中</web-ui-radio>
+      <web-ui-radio value="l">大</web-ui-radio>
+    </web-ui-radio-group>
+  )
+}
+```
+
+```vue
+<template>
+  <web-ui-radio-group name="size" :value="size" @input="onInput">
+    <web-ui-radio value="s">小</web-ui-radio>
+    <web-ui-radio value="m">中</web-ui-radio>
+    <web-ui-radio value="l">大</web-ui-radio>
+  </web-ui-radio-group>
+</template>
+
+<script setup lang="ts">
+import type { WebUiEvent, WebUiRadioGroup } from '@greypan/web-ui'
+import { ref } from 'vue'
+
+const size = ref('m')
+
+function onInput(event: WebUiEvent<WebUiRadioGroup, 'input'>) {
+  size.value = event.currentTarget.value
+}
+</script>
+```
+
+### 排列方向 {#direction}
+
+`direction` 决定成员横排还是竖排，默认 `vertical`；成员之间的间距由 `--wui-radio-group-gap` 控制。
+
+```react
+export default function Demo() {
+  return (
+    <web-ui-radio-group direction="horizontal" value="m">
+      <web-ui-radio value="s">小</web-ui-radio>
+      <web-ui-radio value="m">中</web-ui-radio>
+      <web-ui-radio value="l">大</web-ui-radio>
+    </web-ui-radio-group>
+  )
+}
+```
+
+```vue
+<template>
+  <web-ui-radio-group direction="horizontal" value="m">
+    <web-ui-radio value="s">小</web-ui-radio>
+    <web-ui-radio value="m">中</web-ui-radio>
+    <web-ui-radio value="l">大</web-ui-radio>
+  </web-ui-radio-group>
+</template>
+```
+
+### 组级禁用与必填 {#disabled-required}
+
+`disabled` 关掉整组的交互，这个禁用态会下发给成员；`required` 让原生表单校验在组没有值时拦截提交。
+
+```react
+export default function Demo() {
+  return (
+    <web-ui-radio-group name="plan" value="basic" required disabled>
+      <web-ui-radio value="basic">基础版</web-ui-radio>
+      <web-ui-radio value="pro">专业版</web-ui-radio>
+    </web-ui-radio-group>
+  )
+}
+```
+
+```vue
+<template>
+  <web-ui-radio-group name="plan" value="basic" required disabled>
+    <web-ui-radio value="basic">基础版</web-ui-radio>
+    <web-ui-radio value="pro">专业版</web-ui-radio>
+  </web-ui-radio-group>
+</template>
+```
+
+## API
+
+### Props
+
+| 名称        | 说明                                     | 类型                         | 默认值       |
+| ----------- | ---------------------------------------- | ---------------------------- | ------------ |
+| `name`      | 表单字段名。                             | `string`                     | `''`         |
+| `disabled`  | 禁用整组，并把禁用态下发给成员。         | `boolean`                    | `false`      |
+| `required`  | 必填校验：组没有值时拦截原生提交。       | `boolean`                    | `false`      |
+| `direction` | 成员排列方向。                           | `'horizontal' \| 'vertical'` | `'vertical'` |
+| `value`     | 当前选中的值，也是成员选中态的唯一来源。 | `string`                     | `''`         |
+
+### Events
+
+| 名称     | 说明                                           |
+| -------- | ---------------------------------------------- |
+| `input`  | 选中变化时触发，`currentTarget.value` 是新值。 |
+| `change` | 与 `input` 一起派发，语义上表示一次确认。      |
+
+### Slots
+
+| 名称      | 说明                           |
+| --------- | ------------------------------ |
+| `default` | 组内的 `<web-ui-radio>` 成员。 |

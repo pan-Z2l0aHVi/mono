@@ -63,7 +63,8 @@ function ExampleDoc({ component, flavor = 'react' }: { component: string; flavor
         )
       })}
 
-      <h2>API</h2>
+      {/* 没有 `## API` 小节的语料（纯展示的子组件）不留一个空标题。 */}
+      {doc.api.length > 0 ? <h2>API</h2> : null}
       {doc.api.map(section => (
         <div className="flex flex-col gap-3" data-example-api={section.key} key={section.key}>
           <h3 className="m-0">{section.title}</h3>

@@ -1,7 +1,5 @@
 ---
 '@greypan/md-to-comp': patch
-'@greypan/react-web-ui-demo': patch
-'@greypan/vue-web-ui-demo': patch
 ---
 
 chore(md-to-comp,react-web-ui-demo,vue-web-ui-demo): 示例这条链上的命名一个词只表一件事

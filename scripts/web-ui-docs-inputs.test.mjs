@@ -2,7 +2,7 @@ import assert from 'node:assert/strict'
 import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs'
 import path from 'node:path'
 
-// `packages/web-ui` 是本仓唯一一个「文档语料住在被发布包里」的包：那 30 篇示例 md 是
+// `packages/web-ui` 是本仓唯一一个「文档语料住在被发布包里」的包：那 37 篇示例 md 是
 // `@greypan/web-ui#build` 与 `#test` 的真输入（改了文档，两个 demo 的构建必须跟着失效）。
 // 代价是它得自己覆写 `inputs` —— 根 `turbo.json` 的 `!**/*.md` 把这批 md 排掉了，而排除项是绝对的，
 // 只能在包内「去掉通配排除 + 按名字排散文 md」。于是这里守两个方向：
@@ -17,7 +17,7 @@ const root = path.resolve(import.meta.dirname, '..')
 const pkgDir = path.join(root, 'packages', 'web-ui')
 const pkgRel = path.relative(root, pkgDir).split(path.sep).join('/')
 
-/** 语料目录（包内相对路径），由 web-ui 包接管的那 30 篇示例文档。 */
+/** 语料目录（包内相对路径），由 web-ui 包接管的那 37 篇示例文档。 */
 const CORPUS = 'docs'
 /** 包根的散文 md：与示例无关，按名字排除，不进 build 输入。 */
 const PROSE_MD = ['README.md', 'README.CN.md', 'AGENTS.md', 'CHANGELOG.md']

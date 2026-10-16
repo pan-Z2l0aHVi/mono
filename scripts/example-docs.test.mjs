@@ -2,8 +2,8 @@ import assert from 'node:assert/strict'
 import { readFileSync, readdirSync } from 'node:fs'
 import path from 'node:path'
 
-// 这份语料 join 只判「跨包的四方是否同名同量同字节」：markdown 语料、两个 app 落盘的产物、
-// 页面路由与 `ExampleDoc` 的使用。生成器自己那侧的判据（篡改 / 孤儿 / 表格形状）在
+// 这份语料 join 判两件事：两个 app 落盘的产物与 markdown 逐字节同源；路由 / 页面 / markdown 之间
+// 的引用不出现孤儿（四条规则见文末的覆盖守卫）。生成器自己那侧的判据（篡改 / 孤儿 / 表格形状）在
 // `@greypan/md-to-comp` 的单测里，对着 `generate()` 直接跑，不再经 CLI。
 // 「产物是不是新鲜的」由两个 app 自己的 `turbo test` 判：插件在 VITEST 下只判不改，
 // 跑的就是 `checkArtifacts`（见 `docs/agents/build.md`）。
@@ -152,45 +152,93 @@ function existsFile(file) {
   }
 }
 
-// ── 覆盖守卫：路由 ↔ markdown ↔ ExampleDoc 三方必须同名同量 ──
-// 生成器只能保证「写了 markdown 的组件与源码一致」；整条路由漏写 markdown、或路由没有渲染
-// ExampleDoc 时，它一句话都不说。issue #217 要的是「每个组件都有示例」，所以把这条 join 也钉在
-// CI 上：任一边少一条、或多出孤儿，都直接红——上一轮被拒正是「只接了 2 条路由却全绿」。
+// ── 覆盖守卫：四条规则 ──
+// 生成器只能保证「写了 markdown 的组件与产物一致」；整条路由漏写 markdown、或路由没有渲染
+// ExampleDoc 时，它一句话都不说。issue #217 要的是「每个组件都有示例」，所以把这条 join 也钉在 CI 上。
+//
+// 从前这里是「路由 ↔ 页面 ↔ markdown 三方一一同名」。#362 起不再给子组件单开页面（`radio-group`
+// 挂在 radio 页，`dropdown-item` 同时挂在 dropdown 与 context-menu 两页），一一对应就成了一条与
+// 意图相反的门槛：它把「没有自己页面」判成「没有文档」。改判四条——第 2、3 条合起来仍然挡住
+// 「加了 markdown 却没人渲染」与「加了页面却没有文档」两种漂移，只是不再要求 1:1。
 const routesDir = path.join(root, 'apps', 'react-web-ui-demo', 'src', 'routes', 'components')
 const pagesDir = path.join(root, 'apps', 'vue-web-ui-demo', 'src', 'pages', 'components')
-const routeNames = readdirSync(routesDir)
-  .filter(file => file.endsWith('.tsx'))
-  .map(file => file.replace(/\.tsx$/, ''))
-  .sort()
-const pageNames = readdirSync(pagesDir)
-  .filter(file => file.endsWith('.vue'))
-  .map(file => file.replace(/\.vue$/, ''))
-  .sort()
+
+/** 一侧的清单：页面文件名的有序列表 + 「文件名 → 它渲染的 `<ExampleDoc component>` 列表」。 */
+function surfaceOf(dir, ext) {
+  const files = readdirSync(dir).filter(file => file.endsWith(ext))
+  const bare = file => file.slice(0, -ext.length)
+  return {
+    names: files.map(bare).sort(),
+    used: new Map(
+      files.map(file => [
+        bare(file),
+        [...readFileSync(path.join(dir, file), 'utf8').matchAll(/<ExampleDoc\s[^>]*component="([^"]+)"/g)].map(
+          match => match[1]
+        )
+      ])
+    )
+  }
+}
+
+const react = surfaceOf(routesDir, '.tsx')
+const vue = surfaceOf(pagesDir, '.vue')
 const docNames = readdirSync(docsDir)
   .filter(file => file.endsWith('.md'))
   .map(file => file.replace(/\.md$/, ''))
   .sort()
-const sameNames = (a, b) => a.length === b.length && a.every((value, index) => value === b[index])
+
 const only = (a, b) => a.filter(value => !b.includes(value))
-assert.ok(
-  sameNames(routeNames, docNames),
-  `React 路由与 markdown 覆盖不一致；仅路由有：${only(routeNames, docNames)}；仅 markdown 有：${only(docNames, routeNames)}`
-)
-assert.ok(
-  sameNames(pageNames, docNames),
-  `Vue 页面与 markdown 覆盖不一致；仅页面有：${only(pageNames, docNames)}；仅 markdown 有：${only(docNames, pageNames)}`
-)
-for (const name of docNames) {
-  // 用正则而不是字面串：允许 ExampleDoc 带其它属性、属性间空白变化，别让一次换行把守卫变成假红。
-  const usage = new RegExp(`<ExampleDoc\\s[^>]*component="${name}"`)
-  assert.ok(
-    usage.test(readFileSync(path.join(routesDir, `${name}.tsx`), 'utf8')),
-    `React 路由 ${name}.tsx 没有渲染 <ExampleDoc component="${name}" />`
-  )
-  assert.ok(
-    usage.test(readFileSync(path.join(pagesDir, `${name}.vue`), 'utf8')),
-    `Vue 页面 ${name}.vue 没有渲染 <ExampleDoc component="${name}" />`
-  )
+const renderedBy = surfaces => new Set(surfaces.flatMap(surface => [...surface.used.values()].flat()))
+
+// 四条判据写成纯函数，末尾各自用合成输入过一遍正负例：判据自己写错（例如把 `includes` 写成恒真）
+// 会让四条同时变哑巴，而页面照样上线。`web-ui-docs-inputs.test.mjs` 的 `coversCorpus` 是同一口径。
+const sameSet = (a, b) => a.length === b.length && a.every(value => b.includes(value))
+const rendersOwn = (surface, name) => surface.used.get(name)?.includes(name) ?? false
+const unresolvedRefs = (surface, docs) => [...renderedBy([surface])].filter(name => !docs.includes(name))
+const orphanDocs = (docs, surfaces) => {
+  const rendered = renderedBy(surfaces)
+  return docs.filter(name => !rendered.has(name))
 }
 
-console.log(`example-docs tests passed（落成组件文件的示例 ${demoCount} 条）`)
+// 规则一：路由名集合 == 页面名集合：两端不许各自漂移。
+assert.ok(
+  sameSet(react.names, vue.names),
+  `React 路由与 Vue 页面不同步；仅路由有：${only(react.names, vue.names)}；仅页面有：${only(vue.names, react.names)}`
+)
+// 规则二：每个路由 / 页面仍渲染自己那份 `<ExampleDoc component="<自己的名字>" />`（issue #217 的落点）。
+for (const [label, surface] of [
+  ['React 路由', react],
+  ['Vue 页面', vue]
+])
+  for (const name of surface.names)
+    assert.ok(rendersOwn(surface, name), `${label} ${name} 没有渲染 <ExampleDoc component="${name}" />`)
+// 规则三：每份 markdown 至少被一个路由 / 页面渲染，不留孤儿语料。
+const orphaned = orphanDocs(docNames, [react, vue])
+assert.deepEqual(orphaned, [], `这些 markdown 没有任何页面渲染：${orphaned.join('、')}`)
+// 规则四：反向——`<ExampleDoc component="X" />` 引用了不存在的 markdown 也要非零退出。
+for (const [label, surface] of [
+  ['React 路由', react],
+  ['Vue 页面', vue]
+]) {
+  const broken = unresolvedRefs(surface, docNames)
+  assert.deepEqual(broken, [], `${label} 引用了不存在的 markdown：${broken.join('、')}`)
+}
+
+// 四条判据的负例：换一份合成输入，每条都必须能红。
+assert.ok(!sameSet(['a', 'b'], ['a', 'c']), 'sameSet 没认出两侧集合的差异')
+assert.ok(
+  !rendersOwn({ used: new Map([['radio', ['radio-group']]]) }, 'radio'),
+  'rendersOwn 把「渲染了别的文档」当成了「渲染自己那份」'
+)
+assert.deepEqual(
+  orphanDocs(['radio', 'radio-group'], [{ used: new Map([['radio', ['radio']]]) }]),
+  ['radio-group'],
+  'orphanDocs 没认出一份没人渲染的 markdown'
+)
+assert.deepEqual(
+  unresolvedRefs({ used: new Map([['radio', ['radio', 'nope']]]) }, ['radio']),
+  ['nope'],
+  'unresolvedRefs 没认出一条指向不存在的 markdown 的引用'
+)
+
+console.log(`example-docs tests passed（落成组件文件的示例 ${demoCount} 条；语料 ${docNames.length} 篇）`)

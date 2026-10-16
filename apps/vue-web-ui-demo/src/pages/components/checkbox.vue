@@ -14,4 +14,5 @@ import ExampleDoc from '@/components/example-doc/index.vue'
 <template>
   <CheckboxDemo />
   <ExampleDoc component="checkbox" />
+  <ExampleDoc component="checkbox-group" />
 </template>

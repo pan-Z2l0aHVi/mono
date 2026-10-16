@@ -321,28 +321,28 @@ export function parseMarkdown(source: string, file: string, config: ParseConfig)
 
   const columns = config.apiTables.columns
   const apiBody = named.get(API_SECTION)
-  // 表格是 API 契约唯一的落点，所以「整节没了」和「表格写歪」一样是删掉了契约，而不是少了一段装饰。
-  if (!apiBody)
-    fail(`${file}：缺 \`## ${API_SECTION}\` 小节：生成器不再读组件源码，整节删掉就等于这个组件没有任何对外契约`)
-  const apiSections = groupByHeading(apiBody.nodes, 3, apiBody.rawEnd, terse)
-  for (const section of apiSections.sections) {
-    if (!Object.hasOwn(columns, section.title))
-      fail(`${file}：API 小节里出现了不认识的名字 \`### ${section.title}\`，只允许 ${Object.keys(columns).join(' / ')}`)
-  }
-  const api: ApiSection[] = Object.entries(columns)
-    .map(([title, sectionColumns]) => {
+  const api: ApiSection[] = []
+  // `## API` 整段省略 = 这个组件没有对外契约（纯展示的分隔线就是这一型）。整节删掉是一个能 review 的
+  // 明确动作，所以它是合法的声明；而「留着标题却没有表格行」只会在页面上渲染成一个空标题，等于那段话
+  // 没写——小节一旦存在，就必须有数据行。
+  if (apiBody) {
+    const apiSections = groupByHeading(apiBody.nodes, 3, apiBody.rawEnd, terse)
+    for (const section of apiSections.sections) {
+      if (!Object.hasOwn(columns, section.title))
+        fail(
+          `${file}：API 小节里出现了不认识的名字 \`### ${section.title}\`，只允许 ${Object.keys(columns).join(' / ')}`
+        )
+    }
+    for (const [title, sectionColumns] of Object.entries(columns)) {
       const section = apiSections.sections.find(candidate => candidate.title === title)
-      return {
-        key: title.toLowerCase(),
-        title,
-        rows: section ? parseApiTable(section, sectionColumns, source, file) : []
-      }
-    })
-    .filter(section => section.rows.length > 0)
-  if (api.length === 0)
-    fail(
-      `${file}：\`## ${API_SECTION}\` 里一张表都没有数据行：要么写出表格，要么把这一节连标题一起删掉（留空等于没写）`
-    )
+      const rows = section ? parseApiTable(section, sectionColumns, source, file) : []
+      if (rows.length > 0) api.push({ key: title.toLowerCase(), title, rows })
+    }
+    if (api.length === 0)
+      fail(
+        `${file}：\`## ${API_SECTION}\` 里一张表都没有数据行：要是这个组件没有对外契约，就把这一节连标题一起删掉（留空等于没写）`
+      )
+  }
 
   return {
     component,

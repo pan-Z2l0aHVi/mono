@@ -4,7 +4,7 @@ import { parseMarkdown, type ParsedDoc } from '../markdown'
 import type { MdToCompConfig } from '../types'
 
 /*
- * markdown 面的契约：`### 标题 {#id}` 的锚点、`## 示例` / `## API` 两节、围栏与表格的形状。
+ * markdown 面的契约：`### 标题 {#id}` 的锚点、`## 示例` 与可省的 `## API`、围栏与表格的形状。
  * 这里量的是「解析器认不认」——产物落盘对不对由 `emit.spec.ts` 与仓库根的完整生成断言管。
  * 分队的原则是：能在纯函数上判死的规则，别等到跑一遍生成器才知道。
  *
@@ -144,6 +144,14 @@ describe('parseMarkdown', () => {
     expect(doc.samples[0]?.title).toBe('基础')
   })
 
+  it('整段省略 ## API 时，产物里没有任何 API 小节', () => {
+    // 没有对外契约的组件（纯展示的分隔线）用「整节删掉」声明这件事：小节缺省即 `api: []`，
+    // 页面据此整段跳过。与下面的「留着标题却没有表格行」相对，那一型仍然是错误。
+    const doc = parseMarkdown(DOC.slice(0, DOC.indexOf('## API')), 'dropdown-divider.md', CONFIG)
+    expect(doc.api).toEqual([])
+    expect(doc.samples).toHaveLength(1)
+  })
+
   it.each([
     ['锚点不是 kebab-case', parseWith(source => source.replace('{#basic}', '{#Basic}')), /kebab-case/],
     [
@@ -217,7 +225,6 @@ describe('parseMarkdown', () => {
       /### Props 有标题但没有表格/
     ],
     ['表格漏了行首的 |', parseWith(source => source.replace(ROW_VARIANT, '这一行忘了写行首的竖线。')), /不是表格行/],
-    ['整篇没有 ## API', parseWith(source => source.slice(0, source.indexOf('## API'))), /缺 `## API` 小节/],
     [
       '## API 里只有正文',
       parseWith(source => `${source.slice(0, source.indexOf('## API'))}## API\n\n这里什么都没写。\n`),
