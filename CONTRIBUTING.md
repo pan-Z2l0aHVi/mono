@@ -33,7 +33,7 @@ pnpm run test                                # 全仓测试
 pnpm exec turbo test --filter=@greypan/<name> # 单包测试
 ```
 
-测试环境与命令选择见 [`docs/agents/test-execution.md`](docs/agents/test-execution.md)。
+测试环境与命令选择见 [`docs/agents/verification.md`](docs/agents/verification.md)。
 
 ## 代码质量
 

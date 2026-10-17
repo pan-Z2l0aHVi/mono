@@ -691,7 +691,7 @@ function guard(options) {
     // 它失败时上面的提示根本不会出现，拦住提交的理由以检查自己的输出为准。
     const ran = runChecks(resolved.worktree, null, 'commit')
     console.error(
-      `task gate: not enforced — no active task in ${resolved.worktree}; implementation changes start with "pnpm agent:task new --task <id> --level <t0|t1|t2>" (contract in docs/agents/workflow.md)`
+      `task gate: not enforced — no active task in ${resolved.worktree}; implementation changes start with "pnpm agent:task new --task <id> --level <t0|t1|t2>" (contract in docs/agents/task-levels.md)`
     )
     print({ ok: true, enforced: false, checks: ran, worktree: resolved.worktree })
     return

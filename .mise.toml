@@ -6,13 +6,13 @@ go = "1.26.4"
 
 [env]
 # 主仓与全部 worktree 共享同一份 turbo 缓存，故锚定 git common dir 而非 workspace；
-# 机制与手动回收见 docs/agents/build.md。CI 在 ci.yml 覆盖回 workspace 内路径，
+# 机制与手动回收见 docs/agents/worktree.md。CI 在 ci.yml 覆盖回 workspace 内路径，
 # 否则 mise 注入的共享路径会让 actions/cache 静默失效。
 TURBO_CACHE_DIR = "{{ exec(command='git -C ' ~ config_root ~ ' rev-parse --path-format=absolute --git-common-dir') | trim }}/turbo-cache"
 
 # 仅 HERDR_ENV=1 且 TMPDIR 非空时执行探测：优先 macOS 默认路径，再试 Linux 默认路径，
 # 两者都不可写才回落到 $TMPDIR/greypan/go-build。
-# 探测的语义与降级行为见 docs/agents/build.md「Go 缓存探测与共享」，客户端权限边界见
+# 探测的语义与降级行为见 docs/agents/worktree.md「Go 缓存探测与共享」，客户端权限边界见
 # docs/agents/environments.md。
 # CI 无 HERDR_ENV 时模板渲染为空，Go 使用平台默认路径，ci.yml 的 actions/cache 读取
 # `go env GOCACHE` 不受影响。

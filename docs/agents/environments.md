@@ -1,6 +1,6 @@
 # 客户端运行环境
 
-这份文档只回答两个问题：agent 客户端跑在什么权限下，以及它往 shell 里注入了什么环境变量。工具链自身的机制（mise、turbo、Go 缓存、包级构建配置）在 `docs/agents/build.md`，不在这里重复。
+这份文档只回答两个问题：agent 客户端跑在什么权限下，以及它往 shell 里注入了什么环境变量。工具链自身的机制（mise、turbo、Go 缓存）在 `docs/agents/worktree.md`，包级构建配置在 `docs/agents/build.md`，都不在这里重复。
 
 ## 权限
 
