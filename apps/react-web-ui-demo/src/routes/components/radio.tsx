@@ -8,6 +8,7 @@ function Component() {
     <>
       <DemoComponent />
       <ExampleDoc component="radio" />
+      <ExampleDoc component="radio-group" />
     </>
   )
 }

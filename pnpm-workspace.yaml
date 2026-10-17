@@ -58,6 +58,8 @@ catalog:
   dayjs: ^1.11.21
   fake-indexeddb: ^6.2.5
   glob: ^13.0.6
+  hast-util-to-html: ^9.0.5
+  js-yaml: ^5.4.3
   jsdom: ^30.0.1
   lightningcss: ^1.32.0
   lit: ^3.3.3
@@ -74,6 +76,10 @@ catalog:
   react-error-boundary: ^6.1.2
   react-hook-form: ^7.86.0
   remeda: ^2.44.0
+  remark-frontmatter: ^5.0.0
+  remark-parse: ^11.0.0
+  remark-rehype: ^11.1.2
+  shiki: ^4.5.0
   stylelint: ^17.14.0
   stylelint-config-clean-order: ^10.0.0
   stylelint-config-html: ^2.0.0
@@ -83,6 +89,7 @@ catalog:
   tailwindcss: ^4.3.2
   turbo: ^2.10.11
   typescript: ~6.0.3
+  unified: ^11.0.5
   unplugin: ^3.3.0
   unplugin-auto-import: ^21.0.0
   vee-validate: ^4.15.1

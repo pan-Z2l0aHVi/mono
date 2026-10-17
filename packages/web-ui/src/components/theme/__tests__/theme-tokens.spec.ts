@@ -28,7 +28,7 @@ describe('WebUiTheme token contract', () => {
       '--wui-focus-ring-width',
       // 三个语义 radius token：theme-radius.browser.spec.ts 被 D2 删除后，
       // 「theme 定义这三个 token 且它们被文档化」由本文件的两个用例承接
-      //（此处守主题层定义，下面「全局 token 完整同步到双语文档」守文档）。
+      //（此处守主题层定义，下面「全局 token 完整同步到文档」守文档）。
       '--wui-radius-control',
       '--wui-radius-menu',
       '--wui-radius-overlay'
@@ -93,19 +93,16 @@ describe('WebUiTheme token contract', () => {
     expect(glass).toContain(`var(--wui-color-glass-ring, ${defined})`)
   })
 
-  it('全局 token 完整同步到双语文档', () => {
-    const readme = fs.readFileSync(`${packageRoot}README.md`, 'utf8')
-    const readmeCN = fs.readFileSync(`${packageRoot}README.CN.md`, 'utf8')
+  it('全局 token 完整同步到文档', () => {
+    const doc = fs.readFileSync(`${packageRoot}docs/theme.md`, 'utf8')
 
     for (const name of uniqueTokenNames) {
-      expect(readme).toContain(name)
-      expect(readmeCN).toContain(name)
+      expect(doc).toContain(name)
     }
   })
 
-  it('README 不残留已删除的旧 token', () => {
-    const readme = fs.readFileSync(`${packageRoot}README.md`, 'utf8')
-    const readmeCN = fs.readFileSync(`${packageRoot}README.CN.md`, 'utf8')
+  it('文档不残留已删除的旧 token', () => {
+    const doc = fs.readFileSync(`${packageRoot}docs/theme.md`, 'utf8')
 
     for (const name of [
       '--wui-color-text-muted',
@@ -131,8 +128,7 @@ describe('WebUiTheme token contract', () => {
       '--wui-color-glass-corner',
       '--wui-color-glass-shade'
     ]) {
-      expect(readme).not.toContain(name)
-      expect(readmeCN).not.toContain(name)
+      expect(doc).not.toContain(name)
     }
   })
 })

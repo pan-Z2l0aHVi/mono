@@ -8,6 +8,7 @@ function Component() {
     <>
       <DemoComponent />
       <ExampleDoc component="select" />
+      <ExampleDoc component="option" />
     </>
   )
 }

@@ -14,4 +14,5 @@ import ExampleDoc from '@/components/example-doc/index.vue'
 <template>
   <ButtonDemo />
   <ExampleDoc component="button" />
+  <ExampleDoc component="button-group" />
 </template>

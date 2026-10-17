@@ -516,24 +516,22 @@ describe('chainShape 归一化口径', () => {
   })
 })
 
-// README 全局 token 表：描述是手写散文（不守卫），但 Light/Dark 数值必须与 theme 定义一致。
-function parseReadmeTokenRows(md: string): Array<{ token: string; light: string; dark?: string; line: number }> {
+// docs/theme.md 的全局 token 表：说明列是手写散文（不守卫），但默认值两列必须与 theme 定义一致。
+// 列序由语料决定，索引跟着语料走：三列表是 `名称 | 说明 | 默认值`（默认值在 2），
+// 四列表是 `名称 | 说明 | 浅色默认值 | 深色默认值`（浅色 2、深色 3）。
+function parseDocTokenRows(md: string): Array<{ token: string; light: string; dark?: string; line: number }> {
   const rows: Array<{ token: string; light: string; dark?: string; line: number }> = []
   const lines = md.split('\n')
   lines.forEach((line, index) => {
     if (!line.includes('--wui-')) return
-    const cells = line
-      .split('|')
-      .map(cell => cell.trim())
-      .filter((_, i, arr) => arr.length > 2)
     const content = line
       .split('|')
       .slice(1, -1)
       .map(cell => cell.trim())
     if (content.length === 3 && /^`--wui-[a-z0-9-]+`$/.test(content[0])) {
-      rows.push({ token: content[0].slice(1, -1), light: content[1], line: index + 1 })
+      rows.push({ token: content[0].slice(1, -1), light: content[2], line: index + 1 })
     } else if (content.length === 4 && /^`--wui-[a-z0-9-]+`$/.test(content[0])) {
-      rows.push({ token: content[0].slice(1, -1), light: content[1], dark: content[2], line: index + 1 })
+      rows.push({ token: content[0].slice(1, -1), light: content[2], dark: content[3], line: index + 1 })
     }
   })
   return rows
@@ -547,39 +545,42 @@ const themeBlocks = {
   dark: tokenPairs(blockBody(themeCss, ":host\\(\\[appearance='dark'\\]\\) \\{"))
 }
 
-for (const readme of ['README.md', 'README.CN.md']) {
-  describe(`${readme} 全局 token 表数值`, () => {
-    const rows = parseReadmeTokenRows(fs.readFileSync(`${packageRoot}${readme}`, 'utf8'))
+// 全局 token 表随组件章节一起从两份 README 搬进 docs/theme.md，由此只剩一份要守的文档。
+const tokenDoc = 'docs/theme.md'
+describe(`${tokenDoc} 全局 token 表数值`, () => {
+  const rows = parseDocTokenRows(fs.readFileSync(`${packageRoot}${tokenDoc}`, 'utf8'))
 
-    it('数值与 theme 定义一致', () => {
-      const mismatches: string[] = []
-      let checked = 0
-      for (const row of rows) {
-        // 缩写单元格（color-mix(...)）与链式引用不参与比对
-        const isLiteral = (value: string) => value.startsWith('`') && !value.includes('...') && !value.includes('var(')
-        const base = themeBlocks.base.get(row.token)
-        const light = themeBlocks.light.get(row.token)
-        const dark = themeBlocks.dark.get(row.token)
-        if (base !== undefined && isLiteral(row.light) && !row.dark) {
-          checked++
-          if (normalize(row.light.slice(1, -1)) !== base)
-            mismatches.push(`${readme}:${row.line} ${row.token} 值=${row.light} ≠ 基础定义=${base}`)
-          continue
-        }
-        if (light === undefined && dark === undefined) continue
-        if (row.dark === undefined) continue
-        const lightOk = light === undefined || !isLiteral(row.light) || normalize(row.light.slice(1, -1)) === light
-        const darkOk = dark === undefined || !isLiteral(row.dark) || normalize(row.dark.slice(1, -1)) === dark
-        if (!lightOk) mismatches.push(`${readme}:${row.line} ${row.token} light=${row.light} ≠ 定义=${light}`)
-        if (!darkOk) mismatches.push(`${readme}:${row.line} ${row.token} dark=${row.dark} ≠ 定义=${dark}`)
-        if (lightOk && darkOk) checked++
+  it('数值与 theme 定义一致', () => {
+    const mismatches: string[] = []
+    let checked = 0
+    for (const row of rows) {
+      // 缩写单元格（color-mix(...)）与链式引用不参与比对
+      const isLiteral = (value: string) => value.startsWith('`') && !value.includes('...') && !value.includes('var(')
+      const base = themeBlocks.base.get(row.token)
+      const light = themeBlocks.light.get(row.token)
+      const dark = themeBlocks.dark.get(row.token)
+      if (base !== undefined && isLiteral(row.light) && !row.dark) {
+        checked++
+        if (normalize(row.light.slice(1, -1)) !== base)
+          mismatches.push(`${tokenDoc}:${row.line} ${row.token} 值=${row.light} ≠ 基础定义=${base}`)
+        continue
       }
-      // 覆盖面守卫：低于阈值说明解析与表格脱节，守卫失效
-      expect(checked, 'README 数值守卫覆盖的 token 数').toBeGreaterThan(30)
-      expect(mismatches, `\n${mismatches.join('\n')}`).toEqual([])
-    })
+      if (light === undefined && dark === undefined) continue
+      if (row.dark === undefined) continue
+      const lightCompared = light !== undefined && isLiteral(row.light)
+      const darkCompared = dark !== undefined && isLiteral(row.dark)
+      const lightOk = !lightCompared || normalize(row.light.slice(1, -1)) === light
+      const darkOk = !darkCompared || normalize(row.dark.slice(1, -1)) === dark
+      if (!lightOk) mismatches.push(`${tokenDoc}:${row.line} ${row.token} light=${row.light} ≠ 定义=${light}`)
+      if (!darkOk) mismatches.push(`${tokenDoc}:${row.line} ${row.token} dark=${row.dark} ≠ 定义=${dark}`)
+      if (lightOk && darkOk && (lightCompared || darkCompared)) checked++
+    }
+    // 覆盖面守卫：低于阈值说明解析与表格脱节，守卫失效。只数真比过字面量的行——缩写单元格
+    // （`color-mix(...)`）两侧都不参与比对，把它们也算进覆盖数会虚报守卫的实际覆盖范围。
+    expect(checked, '文档数值守卫真比过字面量的 token 行数').toBeGreaterThan(30)
+    expect(mismatches, `\n${mismatches.join('\n')}`).toEqual([])
   })
-}
+})
 
 describe('theme 成对块 parity', () => {
   it('dark 显式块与 prefers-color-scheme 媒体块逐 token 一致', () => {

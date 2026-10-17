@@ -14,4 +14,7 @@ import ExampleDoc from '@/components/example-doc/index.vue'
 <template>
   <ContextMenuDemo />
   <ExampleDoc component="context-menu" />
+  <ExampleDoc component="dropdown-item" />
+  <ExampleDoc component="dropdown-divider" />
+  <ExampleDoc component="dropdown-header" />
 </template>

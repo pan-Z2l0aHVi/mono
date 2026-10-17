@@ -25,6 +25,7 @@
   },
   "devDependencies": {
     "@greypan/deps-reload": "workspace:*",
+    "@greypan/md-to-comp": "workspace:*",
     "@greypan/unplugin-web-components": "workspace:*",
     "@greypan/tsconfig": "workspace:*",
     "@vue/test-utils": "catalog:",

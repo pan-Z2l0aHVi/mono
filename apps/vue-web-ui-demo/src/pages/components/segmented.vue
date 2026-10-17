@@ -14,4 +14,5 @@ import SegmentedDemo from '@/components/segmented-demo/index.vue'
 <template>
   <SegmentedDemo />
   <ExampleDoc component="segmented" />
+  <ExampleDoc component="segmented-trigger" />
 </template>

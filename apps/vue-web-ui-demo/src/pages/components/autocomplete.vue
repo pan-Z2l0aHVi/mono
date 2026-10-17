@@ -14,4 +14,5 @@ import ExampleDoc from '@/components/example-doc/index.vue'
 <template>
   <AutocompleteDemo />
   <ExampleDoc component="autocomplete" />
+  <ExampleDoc component="option" />
 </template>

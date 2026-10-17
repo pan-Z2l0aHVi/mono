@@ -8,6 +8,7 @@ function Component() {
     <>
       <DemoComponent />
       <ExampleDoc component="button" />
+      <ExampleDoc component="button-group" />
     </>
   )
 }
