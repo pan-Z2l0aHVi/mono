@@ -951,6 +951,12 @@ try {
   const turboCheck = path.join(fixture, '.agents', 'checks', 'turbo-cache-invariant')
   fs.writeFileSync(turboCheck, '#!/bin/sh\nexit 0\n')
   fs.chmodSync(turboCheck, 0o755)
+  // 同理 stub no-mutual-links：它在真实仓库里要求 skills-lock.json 与一份完整的指令面，fixture 两样都没有，
+  // 照抄进来只会因为 fail-closed（exit 1）让本组断言根本走不到白名单那一步。这里要证的是内核把登记项排进
+  // 无 task 路径，不是链接图判据本身——后者由 .agents/checks/no-mutual-links 自己的注释和真仓库运行承担。
+  const mutualLinkCheck = path.join(fixture, '.agents', 'checks', 'no-mutual-links')
+  fs.writeFileSync(mutualLinkCheck, '#!/bin/sh\nexit 0\n')
+  fs.chmodSync(mutualLinkCheck, 0o755)
   const formatLog = path.join(fixture, 'format-tool-calls.log')
   const failMarker = path.join(fixture, 'format-stub-fail')
   const dirtyGoMarker = path.join(fixture, 'format-stub-dirty-go')
@@ -972,7 +978,12 @@ try {
   git('add', 'demo 目录/a b.mjs', 'probe.css', 'probe.go')
   const noTaskFormatGuard = spawn('guard')
   assert.equal(noTaskFormatGuard.status, 0)
-  assert.deepEqual(JSON.parse(noTaskFormatGuard.stdout).checks, ['format-clean', 'turbo-cache-invariant'])
+  // checks 来自 .agents/checks/ 的 readdir 排序，所以是字母序，与 alwaysOnChecks 的登记顺序无关。
+  assert.deepEqual(JSON.parse(noTaskFormatGuard.stdout).checks, [
+    'format-clean',
+    'no-mutual-links',
+    'turbo-cache-invariant'
+  ])
   const formatCalls = fs.readFileSync(formatLog, 'utf8')
   // 空格 + 非 ASCII 路径必须作为**一个** arg 到达工具，承重的是「正例 + 条数」这一对：日志只收磁盘
   // 上真存在的路径，所以一旦参数被空白劈开（`demo`、`目录/a`、`b.mjs` 都不是文件），那条路径就一条
@@ -997,6 +1008,9 @@ try {
   fs.chmodSync(turboCheck, 0o644)
   assert.match(failMessage('guard'), /always-on checks did not run: turbo-cache-invariant/)
   fs.chmodSync(turboCheck, 0o755)
+  fs.chmodSync(mutualLinkCheck, 0o644)
+  assert.match(failMessage('guard'), /always-on checks did not run: no-mutual-links/)
+  fs.chmodSync(mutualLinkCheck, 0o755)
   fs.rmSync(formatLog, { force: true })
 
   // 以 - 开头的暂存路径必须 fail-closed：调用形状是「flag 在前、路径在后」，仓库根一个真名叫
@@ -1023,7 +1037,11 @@ try {
   // 只有它装着、fixture 里又没有 .changeset 时，「无 task 只跑白名单」才是被证明的结论。
   fs.copyFileSync(path.join(repoRoot, '.agents', 'checks', 'changeset-required'), changesetCheck)
   fs.chmodSync(changesetCheck, 0o755)
-  assert.deepEqual(JSON.parse(spawn('guard').stdout).checks, ['format-clean', 'turbo-cache-invariant'])
+  assert.deepEqual(JSON.parse(spawn('guard').stdout).checks, [
+    'format-clean',
+    'no-mutual-links',
+    'turbo-cache-invariant'
+  ])
 
   // 无 task 时格式问题照样拦住提交，但不得顺带要求 changeset：政策检查核对的是 task 的交代物。
   fs.writeFileSync(failMarker, 'stub fails\n')
@@ -1049,10 +1067,12 @@ try {
   assert.match(failMessage('guard', '--task', 'format-t2'), /check format-clean failed; commit aborted/)
   fs.rmSync(failMarker)
   // 有 task 时跑全部检查：policy-check.sh 是上面 T2 政策用例留下的 stub（一直装在 fixture 里），
-  // not-executable.sh 因为缺 +x 不参与——那正是上面两条的既有结论。
+  // no-mutual-links 是无 task 白名单那组留下的 stub，not-executable.sh 因为缺 +x 不参与——那正是上面
+  // 两条的既有结论。列表按 .agents/checks/ 的 readdir 排序，逐字对齐。
   assert.deepEqual(JSON.parse(run('guard', '--task', 'format-t2')).checks, [
     'changeset-required',
     'format-clean',
+    'no-mutual-links',
     'policy-check.sh',
     'turbo-cache-invariant'
   ])

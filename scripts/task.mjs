@@ -329,13 +329,20 @@ function normalizeWorktree(worktree) {
 // 无从交代起于哪个 task，硬要它补 changeset 只会变成填一个空壳。所以新增检查默认只对有 task 的
 // 路径生效，要覆盖无 task 提交必须显式登记在这里——忘了登记的后果是少一层保证，而不是拦住一批
 // 本来合法的提交。登记过的则必须真的跑到：白名单是这条路径上唯一的保证，静默跳过等于没有。
+// 登记项与 task 上下文无关，都判的是工作区副本：`format-clean` 看格式，`turbo-cache-invariant` 看
+// turbo.json 里 dist 的缓存口径（`dependsOn`/`outputs`/`inputs`），`no-mutual-links` 扫指令面的链接图。
+// 三者的输入都在磁盘上，不读任何 `AGENT_TASK_*`，所以无 task 提交同样能得到这道保证。两点代价要一起
+// 知道：它们按「整棵工作区」判断而非只看 staged，所以指令面里任何未暂存的 Markdown 改动也会挡住无 task
+// 提交（与有 task 路径同口径，见 format-clean 开头）；`no-mutual-links` 还硬依赖
+// `skills-lock.json` 与一份完整的指令面，缺了就 fail-closed，所以删掉那个文件、或在没有指令面的外来
+// 仓库里保留本文件，会拦住每一次无 task 提交。退出码与判据以各脚本自身注释为准。
 // 核对的边界是「这个 worktree 挂载了 .agents/checks/」——整个目录不存在时（测试 fixture、未挂
 // 任何政策的仓库）没有可核对的对象，此时仍然放行；本地删掉整个目录（不提交）因此是这条保证已知
 // 的旁路，看得见的是 `git status` 里那一串删除，兜底的是 review 与 CI。
 // 这个 Set 是内核里唯一出现检查名的地方，也是它唯一与本仓绑定的旋钮：换仓复用内核时，登记的
 // 要么改成随仓声明，要么就把集合清空——挂着 `.agents/checks/` 而不登记任何检查，等于承诺了
 // 「无 task 也有的保证」却什么都没有。
-const alwaysOnChecks = new Set(['format-clean', 'turbo-cache-invariant'])
+const alwaysOnChecks = new Set(['format-clean', 'turbo-cache-invariant', 'no-mutual-links'])
 
 function runChecks(worktree, state, phase) {
   const directory = path.join(worktree, '.agents', 'checks')
