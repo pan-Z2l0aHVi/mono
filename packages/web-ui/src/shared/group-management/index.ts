@@ -257,6 +257,11 @@ export interface GroupCoordinatorOptions<Item extends HTMLElement, Value> {
   readonly copyValue: (value: Value) => Value
   readonly setItemSelected: (item: Item, selected: boolean) => void
   readonly dispatchValueChange: () => void
+  /**
+   * 交互已发生但值没有变化时的回调（例如单选组成员 value 重复：点击同值成员
+   * 不会改变 value，却必须把选中态收到被点击的那一项）。缺省视为无事可做。
+   */
+  readonly resyncOnUnchangedValue?: (item: Item) => void
 }
 
 const ENABLED_SELECTION_CONTEXT: SelectionGroupContext = { disabled: false }
@@ -331,7 +336,10 @@ export function defineGroupCoordinator<Item extends HTMLElement, Value>(options:
 
         const current = options.getValue()
         const next = options.getNextValue(event.target, current)
-        if (options.valuesEqual(current, next)) return
+        if (options.valuesEqual(current, next)) {
+          options.resyncOnUnchangedValue?.(event.target)
+          return
+        }
 
         options.setValue(next)
         options.dispatchValueChange()
