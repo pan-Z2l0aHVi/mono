@@ -15,9 +15,9 @@ import {
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
-import { checkRepoLayout, reconcileUpdatedSkills } from './update-vendored-skills.mjs'
+import { checkRepoLayout, reconcileUpdatedSkills } from './update-skills.mjs'
 
-const tmpRoot = mkdtempSync(join(tmpdir(), 'update-vendored-'))
+const tmpRoot = mkdtempSync(join(tmpdir(), 'update-skills-'))
 
 // 夹具仓库：skills/ 放自撰 skill 与依赖镜像，skills-vendored/ 放一个普通第三方。
 const repoRoot = join(tmpRoot, 'repo')
@@ -102,4 +102,4 @@ symlinkSync('../skills-vendored/plain', join(agentsSkillsDir, 'plain'))
 checkRepoLayout(layoutOptions())
 
 rmSync(tmpRoot, { recursive: true, force: true })
-console.log('scripts/update-vendored-skills.test.mjs: all assertions passed')
+console.log('scripts/update-skills.test.mjs: all assertions passed')

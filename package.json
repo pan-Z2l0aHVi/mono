@@ -22,7 +22,7 @@
     "ci:test-scripts": "for f in $(git ls-files '*.test.mjs'); do node \"$f\" || exit 1; done",
     "agent:task": "node scripts/task.mjs",
     "agent:env-doctor": "node scripts/env-doctor.mjs",
-    "agent:update-skills": "node scripts/update-vendored-skills.mjs",
+    "agent:update-skills": "node scripts/update-skills.mjs",
     "dev:react-web-ui-demo": "turbo run dev --filter=@greypan/react-web-ui-demo...",
     "dev:vue-web-ui-demo": "turbo run dev --filter=@greypan/vue-web-ui-demo...",
     "dev:interweave": "turbo run dev --filter=@greypan/interweave --filter=\"@greypan/interweave-frontend^...\""

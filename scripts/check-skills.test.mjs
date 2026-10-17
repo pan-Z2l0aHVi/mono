@@ -4,7 +4,7 @@ import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
 import { describe, it } from 'node:test'
 
-import { checkRepoLayout, parseFrontmatter, parseSiblingSkillLinks } from './update-vendored-skills.mjs'
+import { checkRepoLayout, parseFrontmatter, parseSiblingSkillLinks } from './update-skills.mjs'
 
 const repoRoot = resolve(import.meta.dirname, '..')
 const agentsSkillsDir = join(repoRoot, '.agents', 'skills')
