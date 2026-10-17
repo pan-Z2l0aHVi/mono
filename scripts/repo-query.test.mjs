@@ -186,7 +186,7 @@ assert.ok(workflowToolPlan.verification.some(item => item.command === 'pnpm run 
 const workspaceConfigPlan = JSON.parse(run('verify', '--json', 'pnpm-workspace.yaml'))
 assert.ok(workspaceConfigPlan.verification.some(item => item.command === 'pnpm run ci:test-scripts'))
 
-const workspaceManifestToolPlan = JSON.parse(run('verify', '--json', 'scripts/workspace-manifests.mjs'))
+const workspaceManifestToolPlan = JSON.parse(run('verify', '--json', 'scripts/lib/workspace-manifests.mjs'))
 assert.ok(workspaceManifestToolPlan.verification.some(item => item.command === 'pnpm run ci:test-scripts'))
 
 const tsconfigPlan = JSON.parse(run('verify', '--json', 'packages/tsconfig/base.json'))

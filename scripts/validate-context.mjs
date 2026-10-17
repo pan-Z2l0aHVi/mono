@@ -4,7 +4,7 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { pathToFileURL } from 'node:url'
 
-import { listPnpmWorkspaceManifests, readPnpmWorkspacePatterns } from './workspace-manifests.mjs'
+import { listPnpmWorkspaceManifests, readPnpmWorkspacePatterns } from './lib/workspace-manifests.mjs'
 
 const root = path.resolve(import.meta.dirname, '..')
 const errors = []

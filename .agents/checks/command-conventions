@@ -1,12 +1,20 @@
-import assert from 'node:assert/strict'
-import fs from 'node:fs'
-import path from 'node:path'
+#!/bin/sh
+# 根命令面的命名约定：{namespace}:{do}-{something}，动宾用 `-` 连接，无 something 时省略。
+# namespace 表达「谁拥有它」，取值是闭集（见 docs/agents/commands.md 的理由与受众规则）；
+# 无 namespace 同样是合法形状（`build`、`test` 这类基础命令）。形状一旦放宽，命令面会重新
+# 膨胀而不惊动任何人，所以这里逐个钉住被拒类别，而不是只断言当前 manifest 恰好合法。
+# 本检查只读 package.json，不执行任何脚本。归属与命名理由以 docs/agents/commands.md 为权威。
+set -eu
 
-const root = path.resolve(import.meta.dirname, '..')
+exec node - <<'NODE'
+'use strict'
 
-// 根命令面的命名约定：{namespace}:{do}-{something}，动宾用 `-` 连接，无 something 时省略。
-// namespace 表达「谁拥有它」，取值是闭集；无 namespace 同样是合法形状（`build`、`test` 这类基础命令）。
-// 完整理由与受众规则见 docs/agents/commands.md，这里只钉住可机检的形状。
+const assert = require('node:assert/strict')
+const fs = require('node:fs')
+const path = require('node:path')
+
+const root = process.cwd()
+
 const NAMESPACES = new Set(['agent', 'ci', 'dev'])
 const SCRIPT_NAME = /^([a-z]+:)?[a-z]+(-[a-z]+)*$/
 
@@ -27,10 +35,9 @@ assert.deepEqual(
   `root script names must match {namespace}:{do}-{something} with namespace ∈ {[...NAMESPACES].join(', ')}: ${invalidScriptNames(scripts).join(', ')}`
 )
 
-// 约定本身也要有反向断言，否则这个测试只证明「当前 manifest 恰好合法」：形状一旦被放宽，
-// 没有任何东西会失败。逐个钉住被拒的类别，比只钉住正例更能说明边界在哪。
-// 反例用「形状相同但不是任何历史命令名」的写法：这里要验的是被拒的形状，不是那几个具体名字，
-// 顺带让「指令面不留旧命令名」这条 grep 不被本守卫自己的 fixture 命中。
+// 约定本身也要有反向断言，否则上面的断言只证明「当前 manifest 恰好合法」：形状一旦被放宽，
+// 没有任何东西会失败。反例用「形状相同但不是任何历史命令名」的写法：这里要验的是被拒的形状，
+// 不是那几个具体名字，顺带让「指令面不留旧命令名」这条 grep 不被本守卫自己的 fixture 命中。
 const rejected = [
   ['check:Code', '大写'],
   ['check_code', '下划线'],
@@ -49,4 +56,5 @@ for (const [name, reason] of rejected)
 for (const name of ['build', 'agent:task', 'ci:validate-context', 'check-code', 'fix-go', 'dev:react-web-ui-demo'])
   assert.deepEqual(invalidScriptNames({ [name]: '' }), [], `must accept ${JSON.stringify(name)}`)
 
-console.log('command-conventions tests passed')
+console.log('command-conventions check passed')
+NODE

@@ -1,20 +1,26 @@
-import assert from 'node:assert/strict'
-import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs'
-import path from 'node:path'
+#!/bin/sh
+# `packages/web-ui` 是本仓唯一一个「文档语料住在被发布包里」的包：那 39 篇示例 md 是
+# `@greypan/web-ui#build` 与 `#test` 的真输入（改了文档，两个 demo 的构建必须跟着失效）。
+# 代价是它得自己覆写 `inputs` —— 根 `turbo.json` 的 `!**/*.md` 把这批 md 排掉了，而排除项是绝对的，
+# 只能在包内「去掉通配排除 + 按名字排散文 md」。于是这里守两个方向：
+#
+#   1. 包里出现的每一篇 md 都必须在名单里（`docs/` 语料、四个包根散文 md、`__tests__/` 夹具）。
+#      新放一篇散文 md 而不动名单，它会**静默**变成 build 输入：多改一次 README 就多击穿一串下游 task。
+#   2. 覆写后的 `inputs` 里不得有任何排除项会盖回 `docs/` 语料。名字一旦被排除项吃掉，
+#      md 就悄悄退出哈希——构建照绿，但「文档改了产物会跟着重算」这条闭包断了。
+#
+# 这是形状检查，不执行构建：与 `.agents/checks/turbo-cache-invariant` 同一口径。
+# 布局理由与缓存代价的完整论述见 docs/agents/build.md 的「生成物生命周期」。
+set -eu
 
-// `packages/web-ui` 是本仓唯一一个「文档语料住在被发布包里」的包：那 39 篇示例 md 是
-// `@greypan/web-ui#build` 与 `#test` 的真输入（改了文档，两个 demo 的构建必须跟着失效）。
-// 代价是它得自己覆写 `inputs` —— 根 `turbo.json` 的 `!**/*.md` 把这批 md 排掉了，而排除项是绝对的，
-// 只能在包内「去掉通配排除 + 按名字排散文 md」。于是这里守两个方向：
-//
-//   1. 包里出现的每一篇 md 都必须在名单里（`docs/` 语料、四个包根散文 md、`__tests__/` 夹具）。
-//      新放一篇散文 md 而不动名单，它会**静默**变成 build 输入：多改一次 README 就多击穿一串下游 task。
-//   2. 覆写后的 `inputs` 里不得有任何排除项会盖回 `docs/` 语料。名字一旦被排除项吃掉，
-//      md 就悄悄退出哈希——构建照绿，但「文档改了产物会跟着重算」这条闭包断了。
-//
-// 这是形状检查，不执行构建：与 `.agents/checks/turbo-cache-invariant` 同一口径。
-// 测试与被测包同址；执行端是根 `ci:test-scripts` 的全仓递归 glob（`**/scripts/*.test.mjs`）。
-const root = path.resolve(import.meta.dirname, '../../..')
+exec node - <<'NODE'
+'use strict'
+
+const assert = require('node:assert/strict')
+const { existsSync, readFileSync, readdirSync, statSync } = require('node:fs')
+const path = require('node:path')
+
+const root = process.cwd()
 const pkgDir = path.join(root, 'packages', 'web-ui')
 const pkgRel = path.relative(root, pkgDir).split(path.sep).join('/')
 
@@ -117,4 +123,5 @@ for (const pattern of ['README.md', '**/__tests__/**', '**/*.spec.ts']) {
   assert.ok(!coversCorpus(pattern, probes), `coversCorpus 把安全的排除项 ${pattern} 判成盖住语料了：守卫会假红`)
 }
 
-console.log(`web-ui-docs-inputs tests passed（${pkgRel}/${CORPUS}/ ${corpusFiles.length} 篇语料在哈希里）`)
+console.log(`web-ui-docs-inputs check passed（${pkgRel}/${CORPUS}/ ${corpusFiles.length} 篇语料在哈希里）`)
+NODE

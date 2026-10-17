@@ -2,7 +2,7 @@ import { execFileSync } from 'node:child_process'
 import fs from 'node:fs'
 import path from 'node:path'
 
-import { listPnpmWorkspaceManifests } from './workspace-manifests.mjs'
+import { listPnpmWorkspaceManifests } from './lib/workspace-manifests.mjs'
 
 const args = process.argv.slice(2)
 const rootOptionIndex = args.indexOf('--root')

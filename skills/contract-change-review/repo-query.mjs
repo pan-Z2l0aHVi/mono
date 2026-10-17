@@ -92,7 +92,7 @@ function getGitPaths(gitArgs) {
   }
 }
 
-// --- self-contained pnpm workspace loading（等价于宿主仓 scripts/workspace-manifests.mjs，
+// --- self-contained pnpm workspace loading（等价于宿主仓 scripts/lib/workspace-manifests.mjs，
 //     但用内置的正则 glob 匹配替代 glob 依赖，保持零外部依赖） ---
 
 function readPnpmWorkspacePatterns(root) {
@@ -494,7 +494,7 @@ const hasContextChange = normalizedPaths.some(
     file.startsWith('docs/adr/') ||
     file.startsWith('scripts/validate-context') ||
     file.startsWith('scripts/task') ||
-    file.startsWith('scripts/workspace-manifests') ||
+    file.startsWith('scripts/lib/workspace-manifests') ||
     file.startsWith('skills/contract-change-review/')
 )
 const hasAgentToolChange = normalizedPaths.some(
@@ -502,7 +502,7 @@ const hasAgentToolChange = normalizedPaths.some(
     file === 'pnpm-workspace.yaml' ||
     file.startsWith('scripts/validate-context') ||
     file.startsWith('scripts/task') ||
-    file.startsWith('scripts/workspace-manifests') ||
+    file.startsWith('scripts/lib/workspace-manifests') ||
     file.startsWith('skills/contract-change-review/') ||
     (file.startsWith('scripts/') && file.endsWith('.test.mjs'))
 )
