@@ -8,18 +8,18 @@
 {namespace}:{do}-{something}
 ```
 
-- 动宾之间用 `-` 连接；没有宾语时省略（`ci:measure`，不是 `ci:measure-something`）。
+- 动宾之间用 `-` 连接；没有宾语时省略（`clean`，不是 `clean-something`）。
 - namespace 取值闭集：`agent` / `ci` / `dev`。无 namespace 合法，基础命令属于这一类。
 
 ### namespace 按拥有方划分
 
 前缀表达这条命令失效时谁先受影响，与它什么时候被调用、有多重要无关。
 
-| namespace | 拥有方        | 判定                                                                   |
-| --------- | ------------- | ---------------------------------------------------------------------- |
-| `agent`   | agent 自己    | 改动后先打断 agent 自己的工作流：task 生命周期、影响面查询、浏览器取证 |
-| `ci`      | CI 与仓库自检 | 改动后先让流水线变红或让自检失真：context 校验、脚本测试、CI 成本台账  |
-| `dev`     | 本地开发      | 改动后先影响开发者起服务                                               |
+| namespace | 拥有方        | 判定                                                       |
+| --------- | ------------- | ---------------------------------------------------------- |
+| `agent`   | agent 自己    | 改动后先打断 agent 自己的工作流：task 生命周期、影响面查询 |
+| `ci`      | CI 与仓库自检 | 改动后先让流水线变红或让自检失真：context 校验、脚本测试   |
+| `dev`     | 本地开发      | 改动后先影响开发者起服务                                   |
 
 `agent:*` 与 `ci:*` 的分界最容易含糊：一条命令被 CI 跑，不代表它归 `ci`。判定顺序是先问「谁先失效」定归属，再按归属决定要不要加前缀。
 
@@ -47,11 +47,8 @@
 | `agent:find-usages`      | 按路径推导受影响 workspace、最小 context 与最小充分验证                                    |
 | `agent:inspect-contract` | 输出可发布 package 的 exports、直接消费者与最小验证                                        |
 | `agent:diff-contract`    | 输出 manifest-level semver 审阅候选（`--base <git-ref>`）                                  |
-| `agent:verify`           | 引擎级浏览器取证：check-env / touch-flow / interpolate                                     |
 | `agent:env-doctor`       | 体检 worktree 环境（dist 截断、watch 污染、缓存、残留）                                    |
 | `agent:update-skills`    | 经官方 `skills update` 引擎更新第三方 skill 并收割回真实家（临时目录隔离，不破坏软链布局） |
-
-`agent:verify` 目标页连不上时报错会带可行动提示：它的默认 URL 指向本地 devserver，所以「连不上」最可能的解释是服务没起，而不是地址写错。
 
 ### `ci:` — CI 与仓库自检
 
@@ -59,10 +56,8 @@
 | --------------------- | ------------------------------------------------------------ |
 | `ci:validate-context` | 校验 context 路由、断链、软链、出处、命令引用与必存在 script |
 | `ci:test-scripts`     | 以 glob 跑全部 `scripts/*.test.mjs`                          |
-| `ci:measure`          | 只读统计 CI 成本（需 `gh` 登录）                             |
-| `ci:flakes`           | 汇总 flake 榜（读 `ci-test-output-*`）                       |
 
-`ci:validate-context` 是改动 `AGENTS.md`、rules、skills 或 `docs/agents/**` 时必须通过的守卫。`scripts/` 的测试约定是每个脚本一个 `<name>.test.mjs`，由 `ci:test-scripts` 按 glob 执行，新增文件不用注册，它也是 CI 拓扑表的执行端；决策背景见 [ADR-0014](../adr/0014-task-system-v2.md)。`ci:measure` 与 `ci:flakes` 的口径见 [`build.md`](build.md#ci-与发布)。
+`ci:validate-context` 是改动 `AGENTS.md`、rules、skills 或 `docs/agents/**` 时必须通过的守卫。`scripts/` 的测试约定是每个脚本一个 `<name>.test.mjs`，由 `ci:test-scripts` 按 glob 执行，新增文件不用注册，它也是 CI 拓扑表的执行端；决策背景见 [ADR-0014](../adr/0014-task-system-v2.md)。
 
 ### 基础命令（无 namespace）
 

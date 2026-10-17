@@ -35,7 +35,7 @@ const rejected = [
   ['check:Code', '大写'],
   ['check_code', '下划线'],
   ['agent:task!', '非法字符'],
-  ['ci:measure:', '空 action 段'],
+  ['ci:validate:', '空 action 段'],
   [':code', '空 namespace'],
   ['build:all', '未登记的 namespace'],
   ['ci:validate_context', 'namespace 内用下划线'],
@@ -46,7 +46,7 @@ for (const [name, reason] of rejected)
   assert.ok(invalidScriptNames({ [name]: '' }).includes(name), `must reject ${JSON.stringify(name)} (${reason})`)
 
 // 合法形状的正例，防止正则被收得过紧。
-for (const name of ['build', 'agent:task', 'ci:measure', 'check-code', 'fix-go', 'dev:react-web-ui-demo'])
+for (const name of ['build', 'agent:task', 'ci:validate-context', 'check-code', 'fix-go', 'dev:react-web-ui-demo'])
   assert.deepEqual(invalidScriptNames({ [name]: '' }), [], `must accept ${JSON.stringify(name)}`)
 
 console.log('command-conventions tests passed')

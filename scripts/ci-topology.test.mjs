@@ -71,14 +71,6 @@ for (const [file, wf] of Object.entries(parsed)) {
   }
 }
 
-// 引用解析查不出「id 挂到了错误的 step」，而 flake 台账的守卫恰恰依赖 `id: test` 落在真的跑
-// `pnpm run test` 的那一步上 —— 挂错只会让台账静默变空，所以这一对邻接行单独钉住。
-assert.match(
-  fs.readFileSync(path.join(workflowDir, 'ci.yml'), 'utf8'),
-  /^ {6}- name: Test\n {8}id: test$/m,
-  'ci.yml: the id `test` must belong to the step named Test'
-)
-
 // 恒假守卫的第二种成因：GitHub 对不含 status check 函数的 `if` 仍然套默认 `success()`，所以只写
 // `steps.<id>.outcome == 'failure'` 的那一步，会在它的条件唯一可能成立的时刻（前一步刚失败）被跳过。
 // 这类守卫不会报错、也不会让 job 变红，只能靠形状判出来：读 step 结果的条件必须同时调 status 函数。

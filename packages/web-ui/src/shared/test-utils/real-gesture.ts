@@ -215,8 +215,7 @@ export interface RealTouchPressOptions {
  * 打开触控仿真，派完再关掉。
  *
  * 派发前装一个 capture 监听器做前置校验：真的收到 `touchstart` 才继续，
- * 收不到就直接抛错。这与 `pnpm agent:verify touch-flow` 的「零事件 → fail」是同一条
- * 纪律——mouse-only 环境下的「长按没反应」不能当成产品结论。
+ * 收不到就直接抛错——mouse-only 环境下的「长按没反应」不能当成产品结论。
  */
 export async function realTouchPress(target: Element, options: RealTouchPressOptions = {}): Promise<void> {
   const client = cdp() as unknown as CdpSession
