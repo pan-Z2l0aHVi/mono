@@ -18,15 +18,18 @@
 
 ## 重复主题的权威来源
 
-不同层级可以为路由短暂提及同一主题，但只能有一个流程权威来源；其他位置只说明何时加载或链接到它，不复制完整处方。
+不同层级可以为路由短暂提及同一主题，但只能有一个流程权威来源；其他位置只说明何时加载或链接到它，不复制完整处方。`docs/agents/` 内部按 concern 切分，同一个 concern 只由一篇拥有；跨切面概念下沉为独立文档，多个 topic 文档都向下指向它，不由任一篇代管。下表列出与根/包级边界交叉的主题。
 
 | 主题               | 规则边界                                                                        | 流程权威来源                                         | 自动证据                                               |
 | ------------------ | ------------------------------------------------------------------------------- | ---------------------------------------------------- | ------------------------------------------------------ |
 | 生成物             | 根/包级 `AGENTS.md` 说明「不可手改」与局部 source of truth                      | [`build.md`](build.md)                               | generator diff、build、消费者类型检查                  |
-| 真实浏览器         | 根/包级 `AGENTS.md` 仅声明需要浏览器层                                          | [`runtime-verification.md`](runtime-verification.md) | `pnpm run test` 中的 `*.browser.spec.ts`、MCP 操作记录 |
+| 真实浏览器取证     | 根/包级 `AGENTS.md` 仅声明需要浏览器层                                          | [`runtime-verification.md`](runtime-verification.md) | `pnpm run test` 中的 `*.browser.spec.ts`、MCP 操作记录 |
+| 该跑哪些验证       | 根/包级 `AGENTS.md` 只路由，不复制选择矩阵                                      | [`verification.md`](verification.md)                 | `pnpm run test`、聚焦 turbo task                       |
 | `agent:*` 查询工具 | 根入口只提供命令路由；命名约定与全量索引见 [`commands.md`](commands.md)         | 本文件的工具接口说明（语义与参数）                   | `scripts/*.test.mjs`（glob 约定）                      |
-| 任务级别           | 根 `AGENTS.md`「Mutation Gate」只给判定入口，不复制级别表                       | [`workflow.md`](workflow.md)                         | `tasks/<task-id>.json` 的 level 与 events              |
-| 预授权操作         | 根 `AGENTS.md` 只列被允许与需授权的类别                                         | [`workflow.md`](workflow.md)                         | [`workflow.md`](workflow.md) 的「预授权操作」清单      |
+| 任务级别与准入     | 根 `AGENTS.md`「Mutation Gate」只给判定入口，不复制级别表                       | [`task-levels.md`](task-levels.md)                   | `tasks/<task-id>.json` 的 level 与 events              |
+| 预授权操作         | 根 `AGENTS.md` 只列被允许与需授权的类别                                         | [`workflow.md`](workflow.md)                         | `workflow.md` 的「预授权操作」清单                     |
+| 提交边界与署名     | 根 `AGENTS.md` 只说 commit 需逐次授权                                           | [`commit.md`](commit.md)                             | `.vite-hooks/pre-commit` 与 `changeset-required`       |
+| worktree 与缓存    | 根 `AGENTS.md` 说明 owner 与 worktree 唯一性                                    | [`worktree.md`](worktree.md)                         | `.agents/checks/turbo-cache-invariant`                 |
 | 客户端权限与环境   | 根 `AGENTS.md` 只给路由，不复制配置                                             | [`environments.md`](environments.md)                 | `~/.codex/config.toml` 与线程的实际行为                |
 | 公共 `web-ui` 契约 | [`packages/web-ui/AGENTS.md`](../../packages/web-ui/AGENTS.md) 指向受影响消费者 | [`web-ui.md`](web-ui.md)                             | fixtures、contracts、browser/integration tests         |
 
@@ -36,12 +39,22 @@
 
 互指检查按方括号标签直接接圆括号目标的行内 Markdown 链接建图，与 `validate-context.mjs` 的链接提取口径一致；以第二组方括号给出目标的引用式链接不纳入自动判定。
 
-- 入口层是文件名全大写的文档（`AGENTS.md`、`CONTEXT.md`、`ARCHITECTURE.md`）。它们天然与每个主题相邻，不参与互指判定。命名即约定：新增入口文档用大写名，正文文档不用。
-- 上面的权威来源表是唯一导航面。topic 文档正文里的回指不承担导航职责——读者已经在那一侧了，改成文字提及。
-- ADR 的取代与修订链只从新 ADR 指向旧 ADR。旧 ADR 里「被什么修订了」的回指，以及 ADR 指向正文落地位置的回指，都写成纯文本，ADR 编号照留。
-- 正文不回指 `.agents/rules/`：短约束层自己指向正文，路由是入口的事。
+### 机检不变量
 
-以上由 `.agents/checks/no-mutual-links` 机检，判据以该脚本注释为准。
+`.agents/checks/no-mutual-links` 只判两件事，判据以该脚本注释为准：
+
+- `docs/agents/**` 不得链接 `.agents/rules/**`：短约束层自己指向正文，路由是入口的事。
+- 非入口层文档之间不得互指。
+
+### 散文约定
+
+下面几条**没有机检**，靠 review 与人的纪律承担。列出它们是为了让「守卫没报错」不被误读成「结构是对的」：
+
+- 入口层是文件名全大写的文档——`AGENTS.md`、`CONTEXT.md`、`ARCHITECTURE.md`，以及同样命中大写命名规则的 `CONTRIBUTING.md`、各 workspace 的包级 `AGENTS.md`，以及各 workspace 的 `README.md` 与 `skills/README.md`（它们本来就在扫描面里——这个规则是命名形态的副产品，不是「入口层」这个概念本身）。它们天然与每个主题相邻。命名即约定：新增入口文档用大写名，正文文档不用。判定口径是守卫对**任一端点**的 `basename ~ /^[A-Z0-9_-]+[.]md$/`，所以「不参与互指判定」在两端都成立。
+- 根 `AGENTS.md` 的「按任务加载」表是入口层的唯一导航面；本文件的权威来源表是 `docs/agents/` 内部的对应物，它裁定同一主题由哪一篇拥有，不承担入口级导航。topic 文档正文里的回指不承担导航职责——读者已经在那一侧了，改成文字提及。
+- ADR 的取代与修订链只从新 ADR 指向旧 ADR。旧 ADR 里「被什么修订了」的回指，以及 ADR 指向正文落地位置的回指，都写成纯文本，ADR 编号照留。**已记录的偏离**：ADR-0004 的后果节把指向 `web-ui.md`、`build.md`、`release.md` 的三处写成了真链接，理由与其不命中哪条机检不变量，记在它的 2026-10-17 修订注记里。
+
+守卫查不到的反面形状同样要靠人看：它不检查 ADR 的编号方向（一条不互指的前向引用会静默通过），也不检查 concern 归属是否唯一——把两个 concern 塞进同一篇、或让两篇共同拥有同一件事，守卫一声不响。
 
 ## 客户端适配
 
@@ -74,7 +87,7 @@
 | lint、formatter、stylelint、cspell                              | [`lint-format.md`](lint-format.md)                                                                                                                                                                          | 对应配置                                                                                                                           |
 | workspace catalog 与依赖放置策略                                | [`dependencies.md`](dependencies.md)                                                                                                                                                                        | [`pnpm-workspace.yaml`](../../pnpm-workspace.yaml)                                                                                 |
 | Changesets 版本与发布策略                                       | [`release.md`](release.md)                                                                                                                                                                                  | [`.changeset/config.json`](../../.changeset/config.json)、[`changeset-version.yml`](../../.github/workflows/changeset-version.yml) |
-| 测试框架或 Vite 测试配置                                        | [`test-execution.md`](test-execution.md)                                                                                                                                                                    | 测试配置                                                                                                                           |
+| 测试框架或 Vite 测试配置                                        | [`verification.md`](verification.md)                                                                                                                                                                        | 测试配置                                                                                                                           |
 | `packages/web-ui` 组件、图标或公共契约                          | [`packages/web-ui/AGENTS.md`](../../packages/web-ui/AGENTS.md)、[`web-ui.md`](web-ui.md) 与受影响 ADR                                                                                                       | 组件源码、类型、测试                                                                                                               |
 | commitlint 或提交流程                                           | [`commit.md`](commit.md)                                                                                                                                                                                    | commit 配置或工作流                                                                                                                |
 | 影响未来工程取舍的架构决定                                      | 对应 ADR，并更新 [`CONTEXT.md`](../../CONTEXT.md) ADR 索引                                                                                                                                                  | 可行替代方案之间的长期选择                                                                                                         |
