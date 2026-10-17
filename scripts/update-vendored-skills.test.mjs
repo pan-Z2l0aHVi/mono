@@ -15,8 +15,7 @@ import {
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
-import { checkRepoLayout } from './check-skills.mjs'
-import { reconcileUpdatedSkills } from './update-vendored-skills.mjs'
+import { checkRepoLayout, reconcileUpdatedSkills } from './update-vendored-skills.mjs'
 
 const tmpRoot = mkdtempSync(join(tmpdir(), 'update-vendored-'))
 
