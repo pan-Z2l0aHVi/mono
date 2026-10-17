@@ -4,57 +4,91 @@
 # 无 namespace 同样是合法形状（`build`、`test` 这类基础命令）。形状一旦放宽，命令面会重新
 # 膨胀而不惊动任何人，所以这里逐个钉住被拒类别，而不是只断言当前 manifest 恰好合法。
 # 本检查只读 package.json，不执行任何脚本。归属与命名理由以 docs/agents/commands.md 为权威。
+#
+# 纯 sh 实现（曾为 node heredoc）：名字形状用 case 判定——「rest 只含 [a-z-]、以字母开头
+# 结尾、无连续 `-`」与原正则 `^([a-z]+:)?[a-z]+(-[a-z]+)*$` 逐一等价（空串、`a-`、`-a`、
+# `a--b` 都被拒绝）。package.json 的解析按 prettier 2 空格缩进的既定形状逐行提取，scripts
+# 块里任何一行不符合 `"name": <value>` 的 entry 形状都直接 fail（fail-closed）：格式漂移宁可
+# 拦下提交，也不让守卫静默空转。
 set -eu
 
-exec node - <<'NODE'
-'use strict'
-
-const assert = require('node:assert/strict')
-const fs = require('node:fs')
-const path = require('node:path')
-
-const root = process.cwd()
-
-const NAMESPACES = new Set(['agent', 'ci', 'dev'])
-const SCRIPT_NAME = /^([a-z]+:)?[a-z]+(-[a-z]+)*$/
-
-const namespaceOf = name => (name.includes(':') ? name.slice(0, name.indexOf(':')) : undefined)
-
-function invalidScriptNames(scripts) {
-  return Object.keys(scripts).filter(
-    name => !SCRIPT_NAME.test(name) || (namespaceOf(name) !== undefined && !NAMESPACES.has(namespaceOf(name)))
-  )
+fail() {
+  printf 'command-conventions failed: %s\n' "$1"
+  printf 'command-conventions failed: %s\n' "$1" >&2
+  exit 1
 }
 
-const manifest = JSON.parse(fs.readFileSync(path.join(root, 'package.json'), 'utf8'))
-const scripts = manifest.scripts ?? {}
-assert.ok(Object.keys(scripts).length > 0, 'package.json must declare scripts for this check to mean anything')
-assert.deepEqual(
-  invalidScriptNames(scripts),
-  [],
-  `root script names must match {namespace}:{do}-{something} with namespace ∈ {[...NAMESPACES].join(', ')}: ${invalidScriptNames(scripts).join(', ')}`
-)
+[ -f package.json ] || fail 'package.json not found in cwd (run from the repository root)'
 
-// 约定本身也要有反向断言，否则上面的断言只证明「当前 manifest 恰好合法」：形状一旦被放宽，
-// 没有任何东西会失败。反例用「形状相同但不是任何历史命令名」的写法：这里要验的是被拒的形状，
-// 不是那几个具体名字，顺带让「指令面不留旧命令名」这条 grep 不被本守卫自己的 fixture 命中。
-const rejected = [
-  ['check:Code', '大写'],
-  ['check_code', '下划线'],
-  ['agent:task!', '非法字符'],
-  ['ci:validate:', '空 action 段'],
-  [':code', '空 namespace'],
-  ['build:all', '未登记的 namespace'],
-  ['ci:validate_context', 'namespace 内用下划线'],
-  ['dev:react:web', '两个 namespace'],
-  ['', '空名字']
-]
-for (const [name, reason] of rejected)
-  assert.ok(invalidScriptNames({ [name]: '' }).includes(name), `must reject ${JSON.stringify(name)} (${reason})`)
+# 提取 "scripts" 块体：块头是两空格缩进的 `"scripts": {`，块体是四空格缩进的 entry 行，
+# 收尾是同层缩进的 `}`（可带逗号）。
+scripts_body=$(awk '
+  /^  "scripts": \{$/ { inside = 1; next }
+  inside && /^  \},?$/ { found = 1; exit }
+  inside { print }
+  END { if (!found) exit 1 }
+' package.json) || fail 'cannot close the "scripts" block in package.json (malformed or non-prettier shape)'
 
-// 合法形状的正例，防止正则被收得过紧。
-for (const name of ['build', 'agent:task', 'ci:validate-context', 'check-code', 'fix-go', 'dev:react-web-ui-demo'])
-  assert.deepEqual(invalidScriptNames({ [name]: '' }), [], `must accept ${JSON.stringify(name)}`)
+[ -n "$scripts_body" ] ||
+  fail 'cannot locate a non-empty "scripts" block (expected the prettier-formatted 2-space-indent shape)'
 
-console.log('command-conventions check passed')
-NODE
+names=$(printf '%s\n' "$scripts_body" | sed -E -n 's/^    "([^"]+)": .+$/\1/p')
+entry_lines=$(printf '%s\n' "$scripts_body" | grep -c . || true)
+name_count=$(printf '%s\n' "$names" | grep -c . || true)
+
+if [ "$name_count" -ne "$entry_lines" ] || [ "$name_count" -eq 0 ]; then
+  fail "scripts block has $entry_lines non-empty lines but $name_count matched the \"<name>\": <value> entry shape; refusing to guess"
+fi
+
+# is_valid_name <name>：{namespace}:?action(-action)* 的形状判定，namespace ∈ {agent, ci, dev}。
+is_valid_name() {
+  candidate=$1
+  case $candidate in
+    *:*)
+      ns=${candidate%%:*}
+      case $ns in
+        agent | ci | dev) ;;
+        *) return 1 ;;
+      esac
+      candidate=${candidate#*:}
+      ;;
+  esac
+  case $candidate in
+    *[!a-z-]* | -* | *- | *-- | '') return 1 ;;
+  esac
+  case $candidate in
+    *[a-z]*) return 0 ;;
+    *) return 1 ;;
+  esac
+}
+
+invalid_names=''
+while IFS= read -r script_name; do
+  [ -n "$script_name" ] || continue
+  if ! is_valid_name "$script_name"; then
+    invalid_names="$invalid_names '$script_name'"
+  fi
+done <<EOF
+$names
+EOF
+if [ -n "$invalid_names" ]; then
+  fail "root script names must match {namespace}:{do}-{something} with namespace ∈ {agent, ci, dev}:$invalid_names"
+fi
+
+# 约定本身也要有反向断言，否则上面的断言只证明「当前 manifest 恰好合法」：形状一旦被放宽，
+# 没有任何东西会失败。反例用「形状相同但不是任何历史命令名」的写法：这里要验的是被拒的形状，
+# 不是那几个具体名字，顺带让「指令面不留旧命令名」这条 grep 不被本守卫自己的 fixture 命中。
+for rejected_name in 'check:Code' 'check_code' 'agent:task!' 'ci:validate:' ':code' 'build:all' 'ci:validate_context' 'dev:react:web' ''; do
+  if is_valid_name "$rejected_name"; then
+    fail "validator must reject shape: $(printf '%s' "$rejected_name" | cat -v)"
+  fi
+done
+
+# 合法形状的正例，防止判定被收得过紧。
+for accepted_name in build agent:task ci:validate-context check-code fix-go dev:react-web-ui-demo; do
+  if ! is_valid_name "$accepted_name"; then
+    fail "validator must accept $accepted_name"
+  fi
+done
+
+printf 'command-conventions check passed\n'
