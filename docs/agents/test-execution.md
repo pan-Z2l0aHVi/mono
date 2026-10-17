@@ -4,7 +4,7 @@
 
 - 测试框架：Vitest（通过 `vite-plus`）。
 - 运行所有测试：`pnpm run test`。根 `turbo test` 编排所有 workspace 的 `test` 任务；配了 browser-mode 的包会在此命令中跑 Chromium `*.browser.spec.ts`。
-- 运行受影响测试：先用 `pnpm agent:find-usages -- <paths...>` 识别受影响 workspace，再跑 `pnpm exec turbo test --filter=@greypan/<name>`。迭代和调试默认用本命令或包级聚焦测试，全量 `pnpm run test` 留到提交前最终确认。
+- 运行受影响测试：先用 contract-change-review skill 的 `verify` 查询（`node skills/contract-change-review/repo-query.mjs verify -- <paths...>`）识别受影响 workspace，再跑 `pnpm exec turbo test --filter=@greypan/<name>`。迭代和调试默认用本命令或包级聚焦测试，全量 `pnpm run test` 留到提交前最终确认。
 - 运行单个包的测试：`pnpm exec turbo test --filter=@greypan/<name>`（包内执行 `vp test run`）。
 - 测试文件：`*.spec.ts`、`*.test.ts`、`*.spec.tsx`。
 - Demo 应用：`react-web-ui-demo` 与 `vue-web-ui-demo` 各有两个 project，覆盖的契约相同、层级不同。`jsdom` 层（`src/**/*.spec.ts[x]`，`test-helper.ts` 补 jsdom 未实现的滚动 API）在秒级给出接线的快速反馈。`browser` 层（`src/**/*.browser.spec.ts[x]`，Chromium）用 `page.viewport` 换真实视口、点真实的 Toggle、读渲染后的对齐与几何。折叠态在 demo 里只体现为排版，jsdom 里那串工具类是不生效的字符串，只有浏览器能读出「文字居中」这件事。两层都挂载真实的应用外壳与真实的 web-ui 自定义元素。组件契约仍归 `web-ui` 的测试面；UI、UX 与浏览器运行时行为仍按 [`runtime-verification.md`](runtime-verification.md) 在真实浏览器验证。
@@ -25,7 +25,7 @@
 
 ## 验证选择与证据
 
-对变更路径运行 `pnpm agent:find-usages -- <paths...>`（review 或基线对比按范围加 `--base <git-ref>`、`--staged` 或 `--worktree`）。输出是验证计划的起点，不替代对实际 diff、公共行为和浏览器语义的判断；工具语义见 `agent-context.md`。
+对变更路径运行 contract-change-review skill 的 `verify` 查询（review 或基线对比按范围加 `--base <git-ref>`、`--staged` 或 `--worktree`）。输出是验证计划的起点，不替代对实际 diff、公共行为和浏览器语义的判断；工具语义见 `agent-context.md`。
 
 根据受影响的契约选择验证方式：
 

@@ -20,15 +20,15 @@
 
 不同层级可以为路由短暂提及同一主题，但只能有一个流程权威来源；其他位置只说明何时加载或链接到它，不复制完整处方。
 
-| 主题               | 规则边界                                                                        | 流程权威来源                                         | 自动证据                                               |
-| ------------------ | ------------------------------------------------------------------------------- | ---------------------------------------------------- | ------------------------------------------------------ |
-| 生成物             | 根/包级 `AGENTS.md` 说明「不可手改」与局部 source of truth                      | [`build.md`](build.md)                               | generator diff、build、消费者类型检查                  |
-| 真实浏览器         | 根/包级 `AGENTS.md` 仅声明需要浏览器层                                          | [`runtime-verification.md`](runtime-verification.md) | `pnpm run test` 中的 `*.browser.spec.ts`、MCP 操作记录 |
-| `agent:*` 查询工具 | 根入口只提供命令路由；命名约定与全量索引见 [`commands.md`](commands.md)         | 本文件的工具接口说明（语义与参数）                   | `scripts/*.test.mjs`（glob 约定）                      |
-| 任务级别           | 根 `AGENTS.md`「Mutation Gate」只给判定入口，不复制级别表                       | [`workflow.md`](workflow.md)                         | `tasks/<task-id>.json` 的 level 与 events              |
-| 预授权操作         | 根 `AGENTS.md` 只列被允许与需授权的类别                                         | [`workflow.md`](workflow.md)                         | [`workflow.md`](workflow.md) 的「预授权操作」清单      |
-| 客户端权限与环境   | 根 `AGENTS.md` 只给路由，不复制配置                                             | [`environments.md`](environments.md)                 | `~/.codex/config.toml` 与线程的实际行为                |
-| 公共 `web-ui` 契约 | [`packages/web-ui/AGENTS.md`](../../packages/web-ui/AGENTS.md) 指向受影响消费者 | [`web-ui.md`](web-ui.md)                             | fixtures、contracts、browser/integration tests         |
+| 主题               | 规则边界                                                                        | 流程权威来源                                          | 自动证据                                               |
+| ------------------ | ------------------------------------------------------------------------------- | ----------------------------------------------------- | ------------------------------------------------------ |
+| 生成物             | 根/包级 `AGENTS.md` 说明「不可手改」与局部 source of truth                      | [`build.md`](build.md)                                | generator diff、build、消费者类型检查                  |
+| 真实浏览器         | 根/包级 `AGENTS.md` 仅声明需要浏览器层                                          | [`runtime-verification.md`](runtime-verification.md)  | `pnpm run test` 中的 `*.browser.spec.ts`、MCP 操作记录 |
+| 影响面与契约查询   | 根入口不再提供查询命令；命令面索引见 [`commands.md`](commands.md)               | contract-change-review skill（SKILL.md 与其内置脚本） | `scripts/*.test.mjs`（glob 约定）                      |
+| 任务级别           | 根 `AGENTS.md`「Mutation Gate」只给判定入口，不复制级别表                       | [`workflow.md`](workflow.md)                          | `tasks/<task-id>.json` 的 level 与 events              |
+| 预授权操作         | 根 `AGENTS.md` 只列被允许与需授权的类别                                         | [`workflow.md`](workflow.md)                          | [`workflow.md`](workflow.md) 的「预授权操作」清单      |
+| 客户端权限与环境   | 根 `AGENTS.md` 只给路由，不复制配置                                             | [`environments.md`](environments.md)                  | `~/.codex/config.toml` 与线程的实际行为                |
+| 公共 `web-ui` 契约 | [`packages/web-ui/AGENTS.md`](../../packages/web-ui/AGENTS.md) 指向受影响消费者 | [`web-ui.md`](web-ui.md)                              | fixtures、contracts、browser/integration tests         |
 
 ## 链接方向
 
@@ -53,8 +53,7 @@
 
 ## 工具接口
 
-- `scripts/repo-query.mjs` 是面向 agent 的按需查询接口：`pnpm agent:find-usages -- <paths...>` 输出受影响 workspace、最小读取 context、传递依赖、所需证据和最小充分验证建议。它还支持 `--base <git-ref>`、`--staged` 与 `--worktree` 从 Git 变更集读取路径。它从 `pnpm-workspace.yaml` 的 `packages` patterns、当前 manifest 和路径规则派生结论，不把影响面复制成静态文档。
-- 已发布 package 的契约查询不在根命令面，由 contract-change-review skill 提供：skill 内置脚本 `skills/contract-change-review/contract-query.mjs` 支持 `contract [--json] <published-package>`（当前 exports、peerDependencies、sideEffects、直接消费者与最小验证）和 `contract-diff --base <git-ref> [--json]`（manifest-level semver 审阅候选）。加载该 skill 后按其流程调用即可。
+- 影响面与契约查询由 contract-change-review skill 的内置脚本提供（self-contained，只依赖 Node 内置模块）：`node skills/contract-change-review/repo-query.mjs verify [--json] [--base <git-ref> | --staged | --worktree] <paths...>` 输出受影响 workspace、最小读取 context、传递依赖、所需证据和最小充分验证建议；`contract [--json] <published-package>` 输出当前 exports、peerDependencies、sideEffects、直接消费者与最小验证；`contract-diff --base <git-ref> [--json]` 输出 manifest-level semver 审阅候选。workspace 图从 `pnpm-workspace.yaml` 的 `packages` patterns 与各 manifest 派生（内部依赖 = 依赖名命中 workspace 名集合，可发布 = 未标 `private`），不把影响面复制成静态文档。流程与完成定义见该 skill 的 SKILL.md。
 - `scripts/validate-context.mjs` 只检查共享 context 的可加载性，不替代对规则语义、代码行为或 agent 输出质量的评审。
 
 ## 权威性与冲突处理

@@ -70,7 +70,7 @@ Packet 不重复 `pnpm agent:task` 在 state 里维护的机器记录（`diffHas
 | T1   | 触及可执行内容，且路径落在某个 workspace 之下，且未命中 T0                                                             | 专属（编排层分配）                   | 必须   | 必须（独立于实施者） | 必须     | test ≥1 条 pass                  | approved + hash 一致 + checks 通过 |
 | T2   | 只触及非可执行内容（文档、注释、纯格式、二进制产物）                                                                   | 允许当前 worktree 直接改，不要求干净 | 可选   | 不用                 | 不要求   | 不强制                           | active + checks 通过               |
 
-本表是各级严格程度的权威。`pnpm agent:find-usages -- <paths...>` 只用于核实「跨 workspace 的公共契约」这一条，输出只涉及一个 workspace 时该条不成立。`checks` 指 [`.agents/checks/`](../../.agents/checks/) 下的仓库政策检查，三个级别在提交前都要通过；检查清单与各自口径以该目录下脚本自身的注释为权威，本表不枚举。
+本表是各级严格程度的权威。contract-change-review skill 的 `verify` 查询只用于核实「跨 workspace 的公共契约」这一条，输出只涉及一个 workspace 时该条不成立。`checks` 指 [`.agents/checks/`](../../.agents/checks/) 下的仓库政策检查，三个级别在提交前都要通过；检查清单与各自口径以该目录下脚本自身的注释为权威，本表不枚举。
 
 release playbook 是普通 task 在 release 场景下的操作程序（见「Playbook」节），不是 task 体系的概念。
 
@@ -83,7 +83,7 @@ release playbook 是普通 task 在 release 场景下的操作程序（见「Pla
 - 运行仓库既有测试与校验命令：`pnpm test`、`pnpm run ci:test-scripts`、包级 `test`、`pnpm run check-code`、`pnpm run check-cspell`、`pnpm run ci:validate-context`。
 - 修复本次改动导致的失败并重跑受影响的测试。
 - 包级 build 与 `pnpm run build`。
-- 只读查询：`pnpm agent:find-usages`、`pnpm agent:task status`、`git status`、`git diff`、`git log`；公共契约查询走 contract-change-review skill。
+- 只读查询：contract-change-review skill 的 `repo-query.mjs`（`verify` / `contract` / `contract-diff`）、`pnpm agent:task status`、`git status`、`git diff`、`git log`。
 - 在目标 worktree 内读取任意文件。
 
 以下操作仍须逐次获得用户明确授权：commit、push、merge、tag、publish、release；依赖、catalog、lockfile 的任何改动；`.npmrc`、`.mise.toml` 与 Git 配置；凭证、密钥和 `.env` 的读写；破坏性 git 操作（`reset --hard`、`push --force`、`clean`、`stash`）。

@@ -1,20 +1,35 @@
+// contract-change-review skill 的内置查询脚本，self-contained：不 import 本仓任何脚本，
+// 只依赖 Node 内置模块。workspace 图完全从宿主仓库的 pnpm-workspace.yaml 与各
+// package.json 派生（内部依赖 = 依赖名命中 workspace 名集合；可发布 = manifest 未标
+// private），不硬编码 scope 或目录布局。标记为 host policy 的段落是宿主仓库的 context
+// 与验证策略，其他 monorepo 采纳本 skill 时按自己的约定调整这一段。
+//
+// Usage:
+//   node skills/contract-change-review/repo-query.mjs verify [--json] [--base <git-ref> | --staged | --worktree] <changed-path>...
+//   node skills/contract-change-review/repo-query.mjs contract [--json] <workspace-name>
+//   node skills/contract-change-review/repo-query.mjs contract-diff --base <git-ref> [--json]
+
 import { execFileSync } from 'node:child_process'
 import fs from 'node:fs'
 import path from 'node:path'
 
-import { listPnpmWorkspaceManifests } from './workspace-manifests.mjs'
-
-const root = path.resolve(import.meta.dirname, '..')
+const root = path.resolve(import.meta.dirname, '../..')
 const rawArgs = process.argv.slice(2)
 const command = rawArgs.shift() ?? 'verify'
 const options = parseOptions(rawArgs)
+const contractTarget = command === 'contract' ? (options.paths.shift() ?? '') : ''
+
+const VALID_COMMANDS = ['verify', 'contract', 'contract-diff']
 
 if (
-  command !== 'verify' ||
+  !VALID_COMMANDS.includes(command) ||
+  (command === 'contract' &&
+    (options.paths.length > 0 || !contractTarget || options.base || options.staged || options.worktree)) ||
+  (command === 'contract-diff' && (options.paths.length > 0 || !options.base || options.staged || options.worktree)) ||
   (command === 'verify' && options.paths.length === 0 && !options.base && !options.staged && !options.worktree)
 ) {
   console.error(
-    'Usage: node scripts/repo-query.mjs verify [--json] [--base <git-ref> | --staged | --worktree] <changed-path>...'
+    'Usage: node skills/contract-change-review/repo-query.mjs verify [--json] [--base <git-ref> | --staged | --worktree] <changed-path>...\n       node skills/contract-change-review/repo-query.mjs contract [--json] <workspace-name>\n       node skills/contract-change-review/repo-query.mjs contract-diff --base <git-ref> [--json]'
   )
   process.exit(1)
 }
@@ -77,56 +92,106 @@ function getGitPaths(gitArgs) {
   }
 }
 
-function getChangedPaths() {
-  const paths = [...options.paths]
-  if (options.base) paths.push(...getGitPaths(['diff', '--name-only', '--diff-filter=ACMR', `${options.base}...HEAD`]))
-  if (options.staged) paths.push(...getGitPaths(['diff', '--name-only', '--diff-filter=ACMR', '--cached']))
-  if (options.worktree) {
-    paths.push(...getGitPaths(['diff', '--name-only', '--diff-filter=ACMR', 'HEAD']))
-    paths.push(...getGitPaths(['ls-files', '--others', '--exclude-standard']))
+// --- self-contained pnpm workspace loading（等价于宿主仓 scripts/workspace-manifests.mjs，
+//     但用内置的正则 glob 匹配替代 glob 依赖，保持零外部依赖） ---
+
+function readPnpmWorkspacePatterns(root) {
+  const workspaceFile = path.join(root, 'pnpm-workspace.yaml')
+  if (!fs.existsSync(workspaceFile)) throw new Error('missing pnpm-workspace.yaml')
+
+  const lines = fs.readFileSync(workspaceFile, 'utf8').split(/\r?\n/)
+  const start = lines.findIndex(line => /^packages:\s*(?:#.*)?$/.test(line))
+  if (start < 0) throw new Error('pnpm-workspace.yaml is missing a top-level packages list')
+
+  const patterns = []
+  for (let index = start + 1; index < lines.length; index += 1) {
+    const line = lines[index]
+    if (!line.trim() || /^\s*#/.test(line)) continue
+    if (!/^\s/.test(line)) break
+
+    const match = line.match(/^\s+-\s+(?<value>.+)$/)
+    if (!match?.groups?.value) throw new Error(`pnpm-workspace.yaml:${index + 1} must be a packages list entry`)
+    const trimmed = match.groups.value.trim()
+    const quoted = trimmed.match(/^(?:"(?<double>.*)"|'(?<single>.*)')\s*(?:#.*)?$/)
+    const unquoted = trimmed.match(/^(?<value>[^#\s][^#]*?)\s*(?:#.*)?$/)
+    const pattern = (quoted?.groups?.double ?? quoted?.groups?.single ?? unquoted?.groups?.value ?? '').trim()
+    if (!pattern) throw new Error(`pnpm-workspace.yaml:${index + 1} contains an invalid packages pattern`)
+    patterns.push(pattern)
   }
 
-  return [...new Set(paths.map(normalizePath))]
+  if (patterns.length === 0) throw new Error('pnpm-workspace.yaml packages list must not be empty')
+  if (!patterns.some(pattern => !pattern.startsWith('!')))
+    throw new Error('pnpm-workspace.yaml packages list must include a positive pattern')
+
+  return patterns
 }
 
-function getWorkspaceKind(relativeRoot) {
-  if (relativeRoot.startsWith('packages/')) return 'package'
-  if (relativeRoot.startsWith('apps/')) return 'app'
-  return 'root'
+function globToRegExp(pattern) {
+  const source = pattern
+    .split('/')
+    .map(segment => {
+      if (segment === '**') return '(?:(?:[^/]+/)*[^/]+)?'
+      return segment.replace(/[.+^${}()|[\]\\]/g, '\\$&').replace(/\*/g, '[^/]*').replace(/\?/g, '[^/]')
+    })
+    .join('/')
+  return new RegExp(`^${source}$`)
+}
+
+function walkFiles(directory, emit) {
+  for (const entry of fs.readdirSync(directory, { withFileTypes: true })) {
+    if (entry.name === 'node_modules' || entry.name.startsWith('.')) continue
+    const filePath = path.join(directory, entry.name)
+    if (entry.isDirectory()) walkFiles(filePath, emit)
+    else emit(filePath)
+  }
+}
+
+function listWorkspaceManifests(root) {
+  const patterns = readPnpmWorkspacePatterns(root)
+  const ignored = patterns.filter(pattern => pattern.startsWith('!')).map(pattern => globToRegExp(pattern.slice(1)))
+  const matchers = patterns.filter(pattern => !pattern.startsWith('!')).map(globToRegExp)
+  const manifests = new Set()
+  walkFiles(root, filePath => {
+    if (!filePath.endsWith(`${path.sep}package.json`)) return
+    // pattern 约定的是 workspace 目录；把 manifest 路径剥掉 package.json 再按目录匹配
+    const relativePath = path.relative(root, filePath).split(path.sep).join('/')
+    const directoryPath = relativePath.replace(/\/package\.json$/, '')
+    if (ignored.some(regex => regex.test(directoryPath))) return
+    if (matchers.some(regex => regex.test(directoryPath))) manifests.add(filePath)
+  })
+  return [...manifests].sort()
 }
 
 let manifests
 try {
-  manifests = listPnpmWorkspaceManifests(root)
+  manifests = listWorkspaceManifests(root).map(file => ({ file, manifest: readJson(file) }))
 } catch (error) {
   const detail = error instanceof Error ? error.message : String(error)
   console.error(`repo-query: cannot load pnpm workspace manifests: ${detail}`)
   process.exit(1)
 }
-function collectWorkspaceDependencyEdges(manifest) {
-  const sections = [
-    ['dependencies', 'runtime'],
-    ['devDependencies', 'development'],
-    ['peerDependencies', 'peer']
-  ]
 
-  return sections.flatMap(([field, type]) =>
-    Object.keys(manifest[field] ?? {})
-      .filter(name => name.startsWith('@greypan/'))
-      .map(to => ({ to, type }))
-  )
-}
+// --- workspace 图：内部依赖 = 依赖名命中 workspace 名集合，从配置推导，不硬编码 scope ---
+
+const workspaceNames = new Set(manifests.map(({ manifest }) => manifest.name).filter(Boolean))
 
 const workspaces = manifests
-  .map(file => {
-    const manifest = readJson(file)
+  .map(({ file, manifest }) => {
     const relativeRoot = path.relative(root, path.dirname(file)).split(path.sep).join('/')
-    const dependencyEdges = collectWorkspaceDependencyEdges(manifest)
+    const sections = [
+      ['dependencies', 'runtime'],
+      ['devDependencies', 'development'],
+      ['peerDependencies', 'peer']
+    ]
+    const dependencyEdges = sections.flatMap(([field, type]) =>
+      Object.keys(manifest[field] ?? {})
+        .filter(name => workspaceNames.has(name))
+        .map(to => ({ to, type }))
+    )
     return {
       name: manifest.name,
       private: manifest.private === true,
       root: relativeRoot,
-      kind: getWorkspaceKind(relativeRoot),
       scripts: manifest.scripts ?? {},
       dependencyEdges,
       dependencies: [...new Set(dependencyEdges.map(edge => edge.to))]
@@ -142,6 +207,197 @@ for (const workspace of workspaces) {
     dependents.push(workspace.name)
     dependentsByDependency.set(edge.to, dependents)
   }
+}
+
+// --- contract：当前 manifest 契约（可发布 = 未标 private） ---
+
+if (command === 'contract') {
+  const workspace = workspaceByName.get(contractTarget)
+  if (!workspace) {
+    console.error(`repo-query: unknown workspace ${contractTarget}`)
+    process.exit(1)
+  }
+  if (workspace.private) {
+    console.error(`repo-query: ${contractTarget} is not a published package`)
+    process.exit(1)
+  }
+
+  const manifest = manifests.find(({ manifest }) => manifest.name === contractTarget).manifest
+  const directConsumers = [...new Set(dependentsByDependency.get(contractTarget) ?? [])].sort()
+  const rootScripts = readJson(path.join(root, 'package.json')).scripts ?? {}
+  const result = {
+    command,
+    package: {
+      name: workspace.name,
+      root: workspace.root,
+      exports: manifest.exports ?? {},
+      peerDependencies: manifest.peerDependencies ?? {},
+      sideEffects: manifest.sideEffects ?? false
+    },
+    directConsumers,
+    readFirst: [
+      'AGENTS.md',
+      `${workspace.root}/AGENTS.md`,
+      `${workspace.root}/README.md`,
+      'docs/agents/build.md',
+      'docs/agents/test-execution.md'
+    ].filter(file => fs.existsSync(path.join(root, file))),
+    verification: [
+      ...(typeof rootScripts.build === 'string' ? ['pnpm run build'] : []),
+      ...(typeof rootScripts['check-pack'] === 'string' ? ['pnpm run check-pack'] : []),
+      ...(typeof workspace.scripts.test === 'string' ? [`pnpm --filter ${workspace.name} test`] : [])
+    ]
+  }
+
+  if (options.json) console.log(JSON.stringify(result, null, 2))
+  else {
+    console.log(`contract report: ${result.package.name}`)
+    console.log(`root: ${result.package.root}`)
+    console.log(`direct consumers: ${result.directConsumers.join(', ') || '(none)'}`)
+    console.log(`read first: ${result.readFirst.join(', ')}`)
+    console.log('exports:')
+    console.log(JSON.stringify(result.package.exports, null, 2))
+    console.log('verification:')
+    for (const item of result.verification) console.log(`- ${item}`)
+  }
+  process.exit(0)
+}
+
+// --- contract-diff：manifest-level semver 候选（基线扫描全仓 manifest，按 private 过滤） ---
+
+function stableJson(value) {
+  if (Array.isArray(value)) return value.map(stableJson)
+  if (!value || typeof value !== 'object') return value
+  return Object.fromEntries(
+    Object.keys(value)
+      .sort()
+      .map(key => [key, stableJson(value[key])])
+  )
+}
+
+function isEqual(left, right) {
+  return JSON.stringify(stableJson(left)) === JSON.stringify(stableJson(right))
+}
+
+function objectKeys(value) {
+  return value && typeof value === 'object' && !Array.isArray(value) ? Object.keys(value) : []
+}
+
+function classifyContractChange(name, previous = {}, current = {}) {
+  const previousExports = objectKeys(previous.exports)
+  const currentExports = objectKeys(current.exports)
+  const removedExports = previousExports.filter(key => !currentExports.includes(key)).sort()
+  const addedExports = currentExports.filter(key => !previousExports.includes(key)).sort()
+  const changedExports = previousExports
+    .filter(key => currentExports.includes(key) && !isEqual(previous.exports[key], current.exports[key]))
+    .sort()
+  const changedFields = ['files', 'peerDependencies', 'peerDependenciesMeta', 'sideEffects'].filter(
+    field => !isEqual(previous[field], current[field])
+  )
+
+  return {
+    name,
+    added: !previous.name,
+    removed: !current.name,
+    removedExports,
+    addedExports,
+    changedExports,
+    changedFields,
+    semverReview: {
+      breakingCandidates: [
+        ...(current.name ? [] : ['package removed']),
+        ...removedExports.map(key => `export removed: ${key}`),
+        ...changedExports.map(key => `export target changed: ${key}`),
+        ...changedFields.map(field => `public packaging field changed: ${field}`)
+      ],
+      additiveCandidates: [
+        ...(previous.name ? [] : ['package added']),
+        ...addedExports.map(key => `export added: ${key}`)
+      ]
+    }
+  }
+}
+
+function readGitFile(ref, file) {
+  try {
+    return execFileSync('git', ['show', `${ref}:${file}`], { cwd: root, encoding: 'utf8' })
+  } catch {
+    return ''
+  }
+}
+
+function getPublishedPackagesAt(ref) {
+  const files = getGitPaths(['ls-tree', '-r', '--name-only', ref]).filter(
+    file => file.endsWith('/package.json') && !file.includes('/node_modules/')
+  )
+  const packages = new Map()
+  for (const file of files) {
+    const text = readGitFile(ref, file)
+    if (!text) continue
+    const manifest = JSON.parse(text)
+    if (manifest.name && manifest.private !== true) packages.set(manifest.name, manifest)
+  }
+  return packages
+}
+
+function getCurrentPublishedPackages() {
+  const packages = new Map()
+  for (const { manifest } of manifests) {
+    if (manifest.name && manifest.private !== true) packages.set(manifest.name, manifest)
+  }
+  return packages
+}
+
+if (command === 'contract-diff') {
+  const previous = getPublishedPackagesAt(options.base)
+  const current = getCurrentPublishedPackages()
+  const changes = [...new Set([...previous.keys(), ...current.keys()])]
+    .sort()
+    .map(name => classifyContractChange(name, previous.get(name), current.get(name)))
+    .filter(
+      change =>
+        change.added ||
+        change.removed ||
+        change.removedExports.length > 0 ||
+        change.addedExports.length > 0 ||
+        change.changedExports.length > 0 ||
+        change.changedFields.length > 0
+    )
+  const result = {
+    command,
+    base: options.base,
+    changes,
+    requiresSemverReview: changes.some(change => change.semverReview.breakingCandidates.length > 0),
+    guidance:
+      '结果只识别 manifest-level public contract 候选；API 类型和运行时语义仍需结合 diff、测试与 Changeset 人工判断。'
+  }
+
+  if (options.json) console.log(JSON.stringify(result, null, 2))
+  else {
+    console.log(`contract-diff report: ${options.base}...worktree`)
+    if (result.changes.length === 0) console.log('No published package manifest contract changes.')
+    for (const change of result.changes) {
+      console.log(`- ${change.name}`)
+      for (const item of change.semverReview.breakingCandidates) console.log(`  - [semver review] ${item}`)
+      for (const item of change.semverReview.additiveCandidates) console.log(`  - [additive candidate] ${item}`)
+    }
+    console.log(`guidance: ${result.guidance}`)
+  }
+  process.exit(0)
+}
+
+// --- verify：影响面与最小充分验证建议 ---
+
+function getChangedPaths() {
+  const paths = [...options.paths]
+  if (options.base) paths.push(...getGitPaths(['diff', '--name-only', '--diff-filter=ACMR', `${options.base}...HEAD`]))
+  if (options.staged) paths.push(...getGitPaths(['diff', '--name-only', '--diff-filter=ACMR', '--cached']))
+  if (options.worktree) {
+    paths.push(...getGitPaths(['diff', '--name-only', '--diff-filter=ACMR', 'HEAD']))
+    paths.push(...getGitPaths(['ls-files', '--others', '--exclude-standard']))
+  }
+
+  return [...new Set(paths.map(normalizePath))]
 }
 
 const normalizedPaths = getChangedPaths()
@@ -186,7 +442,7 @@ function isSourceChange(file, workspace) {
 }
 
 function isPackageContractChange(file, workspace) {
-  if (workspace.kind !== 'package' || workspace.private) return false
+  if (workspace.private) return false
   return (
     file === `${workspace.root}/package.json` ||
     file === `${workspace.root}/vite.config.ts` ||
@@ -205,7 +461,7 @@ function findFocusedTestDirectories(workspace, files) {
   const directories = new Set()
   for (const file of files.filter(file => belongsToWorkspace(file, workspace))) {
     const absolute = path.join(root, file)
-    let current = file.includes('/__tests__/') ? path.dirname(absolute) : path.dirname(absolute)
+    let current = path.dirname(absolute)
     const workspaceRoot = path.join(root, workspace.root)
 
     while (current.startsWith(workspaceRoot)) {
@@ -226,6 +482,9 @@ const directlyChanged = directWorkspaces.map(name => workspaceByName.get(name))
 const focusedTests = Object.fromEntries(
   directlyChanged.map(workspace => [workspace.name, findFocusedTestDirectories(workspace, normalizedPaths)])
 )
+
+// host policy：context 体系路径（AGENTS.md / docs/agents / .agents 等）。其他仓库按自己的
+// context 布局调整本段与下面的验证目录。
 const hasContextChange = normalizedPaths.some(
   file =>
     ['AGENTS.md', 'CLAUDE.md', 'CONTEXT.md', 'package.json', 'pnpm-workspace.yaml', 'turbo.json'].includes(file) ||
@@ -235,16 +494,16 @@ const hasContextChange = normalizedPaths.some(
     file.startsWith('docs/adr/') ||
     file.startsWith('scripts/validate-context') ||
     file.startsWith('scripts/task') ||
-    file.startsWith('scripts/repo-query') ||
-    file.startsWith('scripts/workspace-manifests')
+    file.startsWith('scripts/workspace-manifests') ||
+    file.startsWith('skills/contract-change-review/')
 )
 const hasAgentToolChange = normalizedPaths.some(
   file =>
     file === 'pnpm-workspace.yaml' ||
-    file.startsWith('scripts/repo-query') ||
     file.startsWith('scripts/validate-context') ||
     file.startsWith('scripts/task') ||
     file.startsWith('scripts/workspace-manifests') ||
+    file.startsWith('skills/contract-change-review/') ||
     (file.startsWith('scripts/') && file.endsWith('.test.mjs'))
 )
 const hasContractToolChange = normalizedPaths.some(file => file.startsWith('scripts/check-pack'))
@@ -267,6 +526,7 @@ const hasBuildArtifactChange =
       )
   )
 const hasCodeChange = normalizedPaths.some(file => /\.(?:[cm]?js|[jt]sx?|vue|css|html|json)$/.test(file))
+// host policy：浏览器运行时与生成物路径。
 const hasBrowserRuntimeChange = normalizedPaths.some(
   file =>
     file.startsWith('packages/web-ui/src/components/') ||
@@ -348,11 +608,11 @@ for (const workspace of directlyChanged) {
       `${workspace.name} 是直接受影响且提供 test 命令的 workspace。`
     )
   }
-  if (workspace.kind === 'app' && typeof workspace.scripts.build === 'string') {
+  if (workspace.private && typeof workspace.scripts.build === 'string') {
     addVerification(
       'recommended',
       `pnpm --filter ${workspace.name} build`,
-      `${workspace.name} 是直接受影响的集成应用。`
+      `${workspace.name} 是直接受影响的集成应用或私有包。`
     )
   }
 }

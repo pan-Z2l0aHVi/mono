@@ -31,4 +31,4 @@
 - [`apps/interweave/frontend`](../../apps/interweave/frontend)（若被公共组件消费）
 - package `exports`、Changeset 和 contract-change-review skill 的契约报告
 
-不要机械同步全部项目，以 `agent:find-usages`、manifest、源码引用和测试确定实际影响。
+不要机械同步全部项目，以 contract-change-review skill 的 `verify` 输出、manifest、源码引用和测试确定实际影响。

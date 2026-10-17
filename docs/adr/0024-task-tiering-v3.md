@@ -28,7 +28,7 @@ ADR-0014 把 task 分档收敛为 `level`（t0/t1/t2），但判据仍是一份�
 | T1   | 触及可执行内容，且路径落在某个 workspace 之下，且未命中 T0                                                             |
 | T2   | 只触及非可执行内容（文档、注释、纯格式、二进制产物）                                                                   |
 
-不把根目录下每个配置文件名登记成一份判据清单：那会在仓库迭代时变成注定漂移的副本，软判断配合 `pnpm agent:find-usages` 足够。`find-usages` 只用于核实「跨 workspace 的公共契约」这一条，输出只涉及一个 workspace 时该条不成立。
+不把根目录下每个配置文件名登记成一份判据清单：那会在仓库迭代时变成注定漂移的副本，软判断配合 contract-change-review skill 的 `verify` 查询足够。`verify` 只用于核实「跨 workspace 的公共契约」这一条，输出只涉及一个 workspace 时该条不成立。
 
 依赖变更一律归 T0，无论单包还是多包：lockfile 的路径归属本身有歧义，按「命中即 T0」避免判据漂移。
 

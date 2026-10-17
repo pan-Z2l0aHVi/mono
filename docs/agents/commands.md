@@ -1,6 +1,6 @@
 # 根命令面
 
-本文件是根 `package.json` 命令面的权威来源：有哪些命令、叫什么、谁用，以及为什么这么叫。短约束层见 `.agents/rules/commands.md`，查询工具（`agent:find-usages` 等）的语义与参数归 `agent-context.md`，都不在这里。
+本文件是根 `package.json` 命令面的权威来源：有哪些命令、叫什么、谁用，以及为什么这么叫。短约束层见 `.agents/rules/commands.md`，影响面与契约查询已收归 contract-change-review skill（内置脚本），语义与参数见 `agent-context.md` 的工具接口，都不在这里。
 
 ## 命名约定
 
@@ -44,11 +44,10 @@
 | 命令                  | 用途                                                                                       |
 | --------------------- | ------------------------------------------------------------------------------------------ |
 | `agent:task`          | task 生命周期：new/assign/start/freeze/review/approve/verify/done/drop/status/issue/guard  |
-| `agent:find-usages`   | 按路径推导受影响 workspace、最小 context 与最小充分验证                                    |
 | `agent:env-doctor`    | 体检 worktree 环境（dist 截断、watch 污染、缓存、残留）                                    |
 | `agent:update-skills` | 经官方 `skills update` 引擎更新第三方 skill 并收割回真实家（临时目录隔离，不破坏软链布局） |
 
-已发布 package 的契约查询（exports、直接消费者、Git 基线 semver 候选）不在根命令面：调用 contract-change-review skill，由 skill 内置脚本提供；语义与参数见 agent-context.md 的工具接口。
+影响面查询（受影响 workspace、最小 context 与最小充分验证）与契约查询（exports、直接消费者、Git 基线 semver 候选）都不在根命令面：调用 contract-change-review skill，由其 self-contained 内置脚本提供；语义与参数见 agent-context.md 的工具接口。
 
 ### `ci:` — CI 与仓库自检
 
