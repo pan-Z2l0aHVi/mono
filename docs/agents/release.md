@@ -27,7 +27,7 @@ changeset 描述统一用英文，它会写进公共包 CHANGELOG，面向 npm �
 
 1. 确认 task 的 gate 已满足（T0 与 T1 都是 `approved`），记录 task id、base SHA、diff hash 与 changeset。
 2. 跑影响范围内的测试、构建、契约与必要的浏览器验证，记入 task state。
-3. 开 PR（base = `main`），等 CI 与用户 approval；合并本身要用户明确授权。
+3. 开 PR（base = `main`），等 CI 与用户 approval；合并本身要用户明确授权。取得授权的机制（弹窗、推荐项与自定义输入）见 `workflow.md` 的「怎么取得这个授权」。
 4. 合并后验证 `main` CI；有版本变更时，再验证 changesets 版本 PR、批准、合并与 npm 发布链。
 5. 两段验证都通过后关闭 task；验证未完成不得清理证据。
 

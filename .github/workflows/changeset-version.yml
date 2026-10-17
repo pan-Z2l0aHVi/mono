@@ -53,4 +53,4 @@ jobs:
       # run inside one concurrency group, which cancelled the dispatch only while it was still
       # in flight; otherwise the whole CI simply ran twice. If GitHub holds a version PR run
       # at `action_required`, approve it instead; the measured history and its limits live in
-      # docs/agents/build.md「版本 PR 的 CI 门控」.
+      # docs/agents/build.md「CI 门控与 workflow 拓扑」.
