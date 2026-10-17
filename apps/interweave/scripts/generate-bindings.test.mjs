@@ -9,7 +9,7 @@ import path from 'node:path'
 // 所以这些平时没人走的分支更要有人钉住：快照/还原、-clean / -ts 剔除、-d/-d= 锚定，都是易回归的自写逻辑。
 // 测试用假的 wails3 驱动真实脚本，不碰真实 frontend/bindings，也不要求装 wails3。
 //
-// 测试与被测脚本同址；执行端是根 `ci:test-scripts` 的全仓递归 glob（`**/scripts/*.test.mjs`）。
+// 测试与被测脚本同址；执行端是根 `ci:test-scripts` 的全仓 glob（`*.test.mjs`）。
 const repoRoot = path.resolve(import.meta.dirname, '../../..')
 const guardScript = path.join(import.meta.dirname, 'generate-bindings.mjs')
 const realBindings = path.join(repoRoot, 'apps', 'interweave', 'frontend', 'bindings')

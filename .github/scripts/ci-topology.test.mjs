@@ -8,7 +8,7 @@ import { RELEASE_BRANCH, REQUIRED_CONTEXT, desktopMatrix, parseWorkflow, workflo
 // 这张测试是 .github/scripts/ci-topology.mjs 那张表的执行端：YAML 不能被 import，所以「拓扑只有一处
 // 定义」只能靠把真实 workflow 逐字段读回来比。它同时钉计划里的不变量 2/3/4/5 与安装面收窄那条，
 // 因为那四条都是「改了没人报错、要到发版当天才炸」的形状。
-// 测试与被测表同址；执行端是根 `ci:test-scripts` 的全仓递归 glob（`**/scripts/*.test.mjs`）。
+// 测试与被测表同址；执行端是根 `ci:test-scripts` 的全仓 glob（`*.test.mjs`）。
 const repoRoot = path.resolve(import.meta.dirname, '../..')
 const workflowDir = path.join(repoRoot, '.github/workflows')
 

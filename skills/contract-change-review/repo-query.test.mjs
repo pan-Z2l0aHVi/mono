@@ -4,8 +4,9 @@ import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 
-// 被测脚本是 contract-change-review skill 的内置查询脚本（self-contained）；
-// 测试文件留在 scripts/ 以便 ci:test-scripts 的 glob 收口。
+// 被测脚本是 contract-change-review skill 的内置查询脚本（self-contained）；测试与它同住 skill
+// 目录，skill 因此连测试一起自包含。执行端是根 `ci:test-scripts` 的全仓 glob（`*.test.mjs`，
+// tracked-only）：`.test.mjs` 的契约是「测脚本本身」，与所在目录无关。两条命令都从仓库根跑。
 const script = 'skills/contract-change-review/repo-query.mjs'
 const run = (...args) => execFileSync(process.execPath, [script, ...args], { encoding: 'utf8' })
 const runFailure = (...args) => execFileSync(process.execPath, [script, ...args], { encoding: 'utf8', stdio: 'pipe' })

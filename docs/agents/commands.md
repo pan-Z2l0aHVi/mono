@@ -51,12 +51,12 @@
 
 ### `ci:` — CI 与仓库自检
 
-| 命令                  | 用途                                                                 |
-| --------------------- | -------------------------------------------------------------------- |
-| `ci:validate-context` | 校验 context 路由、断链、软链、出处、命令引用与必存在 script         |
-| `ci:test-scripts`     | 经 `git ls-files` 递归跑全仓 `**/scripts/*.test.mjs`（tracked-only） |
+| 命令                  | 用途                                                         |
+| --------------------- | ------------------------------------------------------------ |
+| `ci:validate-context` | 校验 context 路由、断链、软链、出处、命令引用与必存在 script |
+| `ci:test-scripts`     | 经 `git ls-files` 跑全仓 `*.test.mjs`（tracked-only）        |
 
-`ci:validate-context` 是改动 `AGENTS.md`、rules、skills 或 `docs/agents/**` 时必须通过的守卫。它也是 CI 拓扑表的执行端。测试契约分三层：**测脚本本身的测试**与被测脚本同住在某个 `scripts/` 目录，命名 `<name>.test.mjs`，由 `ci:test-scripts` 递归执行全仓 `**/scripts/*.test.mjs`，新增文件不用注册；**形状与政策守卫**是 [`.agents/checks/`](../../.agents/checks/) 下的无扩展名可执行文件，由 task 生命周期执行（freeze 取快照前与提交 gate 的 guard 各跑一次，判定口径以脚本自身注释为准）；**包行为测试**是包内 `__tests__/*.spec.ts`，走 `pnpm test`（turbo `test` 任务）。决策背景见 [ADR-0014](../adr/0014-task-system-v2.md)。
+`ci:validate-context` 是改动 `AGENTS.md`、rules、skills 或 `docs/agents/**` 时必须通过的守卫。它也是 CI 拓扑表的执行端。测试契约分三层：**测脚本本身的测试**（`<name>.test.mjs`）与被测脚本同址，由 `ci:test-scripts` 经 `git ls-files` 执行全仓 `*.test.mjs`（tracked-only，`.test.mjs` 的契约是「测脚本本身」，与所在目录无关），新增文件不用注册；**形状与政策守卫**是 [`.agents/checks/`](../../.agents/checks/) 下的无扩展名可执行文件，由 task 生命周期执行（freeze 取快照前与提交 gate 的 guard 各跑一次，判定口径以脚本自身注释为准）；**包行为测试**是包内 `__tests__/*.spec.ts`，走 `pnpm test`（turbo `test` 任务）。决策背景见 [ADR-0014](../adr/0014-task-system-v2.md)。
 
 ### 基础命令（无 namespace）
 

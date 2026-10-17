@@ -7,7 +7,7 @@ import path from 'node:path'
 // 这条测试钉的是「版本写入不再需要桌面工具链」。来自 2026-09-22 的线上事实：版本 job 只装 node+pnpm，
 // 而旧写路径无条件 spawn `wails3 update build-assets`，在缺桌面系统库的 runner 上以 exit 127
 // 断掉整条发版链（run 47/48）。所以判据不是「结果对不对」，而是「在没有 wails3 的环境里能否写完」。
-// 测试与被测脚本同址；执行端是根 `ci:test-scripts` 的全仓递归 glob（`**/scripts/*.test.mjs`）。
+// 测试与被测脚本同址；执行端是根 `ci:test-scripts` 的全仓 glob（`*.test.mjs`）。
 const repoRoot = path.resolve(import.meta.dirname, '../../..')
 const appRoot = path.join(repoRoot, 'apps', 'interweave')
 const syncScript = path.join(appRoot, 'scripts', 'sync-version.mjs')
