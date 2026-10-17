@@ -54,7 +54,7 @@ open -> active -> frozen -> reviewed -> approved -> done
 - 变异实验、对照实验和临时接线都可以留在工作区，但收尾必须还原；探针与临时脚本写 `/tmp`，不落在 worktree 里，否则会被 freeze 的 `git add -A` 卷进冻结快照。
 - 冻结 `diffHash` 的 canonical 口径是 [`scripts/task.mjs`](../../scripts/task.mjs) 的快照哈希，覆盖 tracked+untracked，不是 git diff 的摘要；reviewer 核验冻结一致性以 `pnpm agent:task status --task <id>` 的 `live` 比对（hash 一致 + 非 stale）为准，不要自制 `git diff | shasum` 配方复算。
 - freeze、review 或 approval 后任何文件变化都会使证据 stale；必须重新 freeze（重算 hash 并重置 review/approval），再重复 review、approve。
-- owner、reviewer、approver、drop 署名人共用同一套 id 形状；内核强制的「互不相等」约束与比对对象以 [`review.md`](review.md) 的「身份形状」一节为权威。
+- owner、reviewer、approver、drop 署名人共用同一套 id 形状；内核强制的「互不相等」约束与比对对象以 [`review.md`](review.md#身份形状)一节为权威。
 - `pnpm agent:task verify` 必须显式给出 `--result pass|fail`；它只记录证据、不执行任何命令，省略结果不等于通过。verify 只接受非 stale 的结果，pass 验证还要求工作区干净（验证必须覆盖已提交内容）；`done`（T0/T1）按 kind 各取最新一条 pass，**且该条快照与冻结时一致**，所需 kind 见 `task-levels.md` 的级别表。
 - 上面那个「快照一致」不是 verify 的检查，重复记录也不为过：`verify` 只在**记录那一刻**断言 live 与 `state.diffHash` 一致，然后把 `state.diffHash` 抄进这条记录；`verify` 自己不会再复检这条记录——唯一的复检点是 `done`。而 `verification[]` **不会在重新 freeze 时被清空**——freeze 只重置 review 与 approval。所以「freeze → verify test → 再 freeze（重 review / approve 之后）→ 只补记 acceptance → done」这条路径里，`latestOf('test')` 取到的是重新 freeze 之前的旧记录，只有 `done` 时那次比对能拦住它。判断某条证据是否覆盖当前快照，看它记录的 `diffHash` 与 `agent:task status` 的 `diffHash` 是否相同，不要只看 `live.stale`——那量的是「绑定的证据 vs 当前工作区」，不检查任何一条验证记录。
 - T2 快速通道：`new → start → 修改 → done`，guard 不要求快照证据，也不要求 worktree 干净，但仍跑 `.agents/checks/` 政策检查。代价是这一档的提交内容等于当时的 index，别人的在制品一旦被 `git add` 进来就会一起提交，T2 不提供 diff 边界。什么时候该升档，见 `task-levels.md`。
