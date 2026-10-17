@@ -10,7 +10,6 @@
     "test": "turbo test",
     "commit": "git-cz",
     "publish-new-pack": "bash scripts/publish-new-pack.sh",
-    "release-version": "node scripts/release-version.mjs",
     "check-pack": "node scripts/check-pack.mjs",
     "check-code": "pnpm run check-cspell && vp check && pnpm run check-go && pnpm run check-stylelint",
     "check-go": "! gofmt -l . | grep -q . && find . -name go.mod -not -path \"*/node_modules/*\" -exec dirname {} \\; | sort -u | xargs -I{} sh -c \"cd {} && go vet ./...\"",

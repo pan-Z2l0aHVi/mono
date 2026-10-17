@@ -71,7 +71,6 @@
 | `fix-go`           | `gofmt -w` + 同一批 `go vet`                                                                |
 | `fix-stylelint`    | stylelint 自动修复                                                                          |
 | `check-pack`       | 用 `pnpm pack --dry-run` 验证发布文件与 export targets                                      |
-| `release-version`  | 版本同步（Changesets 版本 PR 与包版本同步）                                                 |
 | `publish-new-pack` | 首次发布新包                                                                                |
 | `clean`            | 默认全量清理：构建产物、`node_modules`、缓存（含共享 turbo cache）；`--locks` 为显式 opt-in |
 | `commit`           | `git-cz` 交互式提交                                                                         |
