@@ -24,7 +24,7 @@ skills 生态本身没有依赖机制，所以依赖是「文档声明 + 机器�
 
 ## 校验方式
 
-三层布局不变量由布局校验器（`checkRepoLayout`，住在 [`scripts/update-skills.mjs`](../scripts/update-skills.mjs)，`agent:update-skills` 收尾时执行，单测 [`scripts/check-skills.test.mjs`](../scripts/check-skills.test.mjs) 持有同套判据）校验：每个 skill 目录都有 frontmatter `name` 与目录同名、`description` 非空的 SKILL.md；GitHub 暴露面恰好是自撰 skill + 被引用的依赖镜像（外加本 README）；`.agents/skills-vendored/` 覆盖其余 lock 条目；`.agents/skills/` 是全软链指令面（出现实体目录说明有人在本仓直接跑了 `skills update`，重跑 `pnpm agent:update-skills` 修复）。
+三层布局不变量由布局校验器（`checkRepoLayout`，住在 [`scripts/update-skills.mjs`](../scripts/update-skills.mjs)，`agent:update-skills` 收尾时执行，单测 [`scripts/update-skills.test.mjs`](../scripts/update-skills.test.mjs) 持有同套判据）校验：每个 skill 目录都有 frontmatter `name` 与目录同名、`description` 非空的 SKILL.md；GitHub 暴露面恰好是自撰 skill + 被引用的依赖镜像（外加本 README）；`.agents/skills-vendored/` 覆盖其余 lock 条目；`.agents/skills/` 是全软链指令面（出现实体目录说明有人在本仓直接跑了 `skills update`，重跑 `pnpm agent:update-skills` 修复）。
 
 ## 许可
 
