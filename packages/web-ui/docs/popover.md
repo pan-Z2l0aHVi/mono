@@ -111,3 +111,11 @@ const open = ref(false)
 | `show()`   | 打开弹出层；`disabled` 或已打开时不产生效果。 |
 | `close()`  | 关闭弹出层；已关闭时不产生效果。              |
 | `toggle()` | 按当前 `open` 切换。                          |
+
+### 行为说明
+
+Hover 模式使用 `pointerenter`/`pointerleave` 加延迟控制。Click 模式点击切换。Manual 模式仅响应命令式调用。
+
+### trigger ARIA
+
+开合状态回写到 trigger 元素：`aria-expanded` 与 `aria-controls`（指向面板）设在 `trigger` slot 的首个 assigned element 上（包装结构上的同名属性保留兼容）。trigger slot 请放入可交互元素（原生 button、`web-ui-button`）。

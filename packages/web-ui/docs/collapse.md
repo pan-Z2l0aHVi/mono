@@ -121,3 +121,67 @@ const open = ref(false)
 | `show()`   | 展开：把 `open` 置为 `true`；程序式变更不派发 `open-change`。  |
 | `close()`  | 收起：把 `open` 置为 `false`；程序式变更不派发 `open-change`。 |
 | `toggle()` | 按当前 `open` 切换展开 / 收起。                                |
+
+### 行为说明
+
+```html
+<web-ui-collapse>
+  <button type="button">点击切换</button>
+  <div slot="content">折叠内容</div>
+</web-ui-collapse>
+```
+
+初始即带 `open` attribute 时直接落稳态，不播动画。支持嵌套 collapse。
+
+### trigger 语义
+
+交互语义完全来自 default slot 放入的元素——原生 `<button>`、`<web-ui-button>` 或其他可交互元素原生提供 Enter/Space 激活与焦点。collapse 把 `aria-expanded` / `aria-controls`（指向内容轨道）与 `aria-disabled` 回写到 trigger slot 的首个 assigned element。trigger 请使用可交互元素：纯 `<span>` 可点击但没有键盘/焦点语义。
+
+### 关闭稳态语义
+
+Consumer的 light DOM 永不移动或卸载。默认关闭稳态在内部内容容器上设 `hidden`；`keep-mounted` 时内部容器标记 `inert`，保留在收起轨道内可测量。
+
+### peek（只露一部分）
+
+设置 `peek` 后关闭稳态不再收拢到 0，而是沿动画轴露出内容的头部 `peek` 长度（`horizontal` 时改为宽度）：轨道保持在内容高度，裁剪长度落在内部容器上。其语义等同 `keep-mounted`——内容保留挂载但被 `inert` 阻断，被裁掉的部分不可聚焦、不可点击。内容本身不足 `peek` 时按内容实际尺寸收起，不留空白。由于固定长度与自适应高度无法由 CSS 插值，`peek` ↔ 展开这两个方向改为读出像素后以显式长度驱动（每次开合测量一次）；其余动画路径仍是零测量的 grid `fr` 过渡。
+
+```html
+<web-ui-collapse peek="120px">
+  <button type="button">点击切换</button>
+  <div slot="content">很长的内容——关闭时只露出前 120px</div>
+</web-ui-collapse>
+```
+
+### 边缘渐隐
+
+露出区域的裁剪边缘自带一段 alpha 渐变（`horizontal` 时改为右边），让被裁掉的部分柔和过渡到背景而不是硬切。渐变长度由 `peek` 推导，不需要也没有第二个属性可调——需要时用 CSS 变量微调：
+
+渐变带由两层组成，配对方式与 layout header 的晕染一致：上面那条 alpha 渐隐之外，同一条带上再叠一层真实的 `backdrop-filter` 模糊，被裁掉的内容因此是被**糊掉**的，而不只是被调成半透明。模糊强度由本盒自己的 `mask-image` 调制——从带子起点为 0 升到后半段满强度、再在裁剪边缘前回到 0：起点不为 0 会在「突然开始模糊」处留一条接缝，末端不为 0 则会一路糊到裁剪边界。展开态活动长度为 0，各色标塌缩到 100% 而末位色标是全透明，于是这一层什么都不画。
+
+比例设为 `0` 即关闭渐隐。推导是纯 CSS 的 `calc(peek * ratio)`：`peek` 用 rem 时渐变长度自动跟随根字号缩放，JS 侧不需要做任何单位解析。已知限制：`peek` 取百分比时推导结果不是长度、无法被注册属性插值，会静默回落为「无渐隐」，此时请用 `--wui-collapse-peek-edge` 显式指定长度。
+
+渐变是四段「先陡后缓」而非线性：主体全黑延伸到渐变带起点后，前 30% 距离就降到 60% alpha，65% 处 26%，末端落到边缘颜色。线性渐变的 alpha 在带子前 40% 几乎贴着 1.0，人眼感知到的虚化远短于声明长度——把下降前置后，带子从起点就明显发虚，同样长度的感知长度接近翻倍。
+
+渐变带位置用百分比声明、相对容器的**当前渲染高度**（即 `max-height` 动画的那个高度），因此收起动画期间渐变带逐帧跟随裁剪边缘移动，`mask-image` 字符串本身无需插值。渐变带长度由注册的 `<length>` 自定义属性驱动，随开合动画平滑淡入淡出，而不是等收起动画落稳态才突然出现。
+
+```html
+<!-- 调强渐隐：比例 0.5 → 120px peek 配 60px 渐隐 -->
+<web-ui-collapse peek="120px" style="--wui-collapse-peek-edge-ratio: 0.5">
+  <button type="button">点击切换</button>
+  <div slot="content">很长的内容——120px 露出区域的底部渐隐更强</div>
+</web-ui-collapse>
+```
+
+### CSS Custom Properties
+
+| 名称                             | 说明                                           | 默认值        |
+| -------------------------------- | ---------------------------------------------- | ------------- |
+| `--wui-collapse-peek-edge-ratio` | 渐变长度占 `peek` 的比例                       | `0.4`         |
+| `--wui-collapse-peek-edge-max`   | 长度上限，避免大 `peek` 算出过长的虚化带       | `112px`       |
+| `--wui-collapse-peek-edge`       | 显式指定长度，优先于推导值                     | —             |
+| `--wui-collapse-peek-edge-color` | 渐变末端颜色（需带 alpha，mask 按 alpha 解析） | `transparent` |
+| `--wui-collapse-peek-edge-blur`  | 同一条渐变带上背景模糊的半径                   | `4px`         |
+
+### 已知限制
+
+`horizontal` 动画期间内容随宽度变化 reflow。

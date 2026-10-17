@@ -130,3 +130,23 @@ import { lucideSearch } from '@greypan/web-ui/icons'
 | `default` | 按钮文字；`icon` 模式下整体作为图标内容。 |
 | `prefix`  | 文字左侧的图标或标识。                    |
 | `suffix`  | 文字右侧的图标或标识。                    |
+
+### 行为说明
+
+`submit` 和 `reset` 在 composed `click` 事件完成派发后，通过宿主的 form owner 转发到其原生 `<form>`；对这次 click 调用 `preventDefault()` 会取消该动作。内部按钮自身仍没有 form owner，因此 `SubmitEvent.submitter` 为 `null`。按钮不向 `FormData` 贡献值。
+
+禁用、加载和 `formDisabled` 状态（包括祖先 `fieldset` 导致的禁用）都会阻止 `click` 事件。
+
+`icon` 与 `loading` 同时开启时，按钮只渲染 spinner，默认插槽图标不投影。默认 icon 几何保持正方形，`full` 或显式 width 除外。
+
+### CSS Custom Properties
+
+| 名称                     | 说明                   | 默认值        |
+| ------------------------ | ---------------------- | ------------- |
+| `--wui-button-width`     | 按钮宽度               | `max-content` |
+| `--wui-button-px`        | 水平内边距             | `12px`        |
+| `--wui-button-gap`       | 前缀/默认/后缀插槽间距 | `8px`         |
+| `--wui-button-color`     | 按钮文字颜色           | 随 variant    |
+| `--wui-button-bg`        | 按钮背景颜色           | 随 variant    |
+| `--wui-button-bg-hover`  | 悬停背景颜色           | 随 variant    |
+| `--wui-button-bg-active` | 按下背景颜色           | 随 variant    |

@@ -2,7 +2,7 @@
 import type { Component } from 'vue'
 import { computed, defineAsyncComponent } from 'vue'
 
-import { exampleDocs, type ExampleApiSection } from '@/generated/examples'
+import { exampleDocs } from '@/generated/examples'
 
 /**
  * 由示例文档 markdown 生成的示例文档：可交互示例 + 示例代码（语法高亮）+ API 表。
@@ -34,14 +34,6 @@ const doc = computed(() => exampleDocs.find(candidate => candidate.component ===
 function demoComponent(demoKey: string | null) {
   return demoKey ? demoComponents.get(`${props.component}--${demoKey}`) : undefined
 }
-
-/**
- * 四列小节（Props / Options）的每一行都带类型与默认值——列形状由配置声明，解析器据此给出带 `type`
- * 的行。渲染端按行的形状决定是否多渲染两列，因此不需要知道哪些小节是四列的。
- */
-function hasTypeColumns(section: ExampleApiSection) {
-  return section.rows.some(row => row.type !== undefined)
-}
 </script>
 
 <template>
@@ -68,49 +60,45 @@ function hasTypeColumns(section: ExampleApiSection) {
 
     <!-- 没有 `## API` 小节的语料（纯展示的子组件）不留一个空标题。 -->
     <h2 v-if="doc.api.length > 0">API</h2>
+    <!-- API 小节有两型：登记过表头的是表（列形状完全由生成的 columns 决定），其余是散文。 -->
     <div v-for="section in doc.api" :key="section.key" class="flex flex-col gap-3" :data-example-api="section.key">
       <h3 class="m-0">{{ section.title }}</h3>
-      <table class="w-full border-collapse text-sm">
+      <!-- 散文正文是生成器渲染好的 HTML 片段，不是运行时拼的用户输入。表格用 flex 间距，
+           列表要显式补回 preflight 清掉的记号与缩进。 -->
+      <div
+        v-if="section.kind === 'prose'"
+        class="flex flex-col gap-3 text-(--wui-color-text) [&_ol]:list-decimal [&_ol]:ps-5 [&_ul]:list-disc [&_ul]:ps-5"
+        v-html="section.html"
+      ></div>
+      <table v-else class="w-full border-collapse text-sm">
         <thead>
           <tr>
-            <th class="border-b border-(--wui-color-border) px-3 py-2 text-left align-top font-semibold text-gray-500">
-              名称
-            </th>
-            <template v-if="hasTypeColumns(section)">
-              <th
-                class="border-b border-(--wui-color-border) px-3 py-2 text-left align-top font-semibold text-gray-500"
-              >
-                类型
-              </th>
-              <th
-                class="border-b border-(--wui-color-border) px-3 py-2 text-left align-top font-semibold text-gray-500"
-              >
-                默认值
-              </th>
-            </template>
-            <th class="border-b border-(--wui-color-border) px-3 py-2 text-left align-top font-semibold text-gray-500">
-              说明
+            <th
+              v-for="column in section.columns"
+              :key="column.title"
+              class="border-b border-(--wui-color-border) px-3 py-2 text-left align-top font-semibold text-gray-500"
+            >
+              {{ column.title }}
             </th>
           </tr>
         </thead>
         <tbody>
-          <tr v-for="row in section.rows" :key="row.name">
-            <td class="border-b border-(--wui-color-border) px-3 py-2 align-top font-mono whitespace-nowrap">
-              {{ row.name }}
-            </td>
-            <template v-if="hasTypeColumns(section)">
+          <tr v-for="row in section.rows" :key="row[0]">
+            <template v-for="(column, index) in section.columns" :key="column.title">
               <td
-                class="border-b border-(--wui-color-border) px-3 py-2 align-top font-mono whitespace-nowrap text-gray-500"
-              >
-                {{ row.type }}
-              </td>
+                v-if="column.kind === 'html'"
+                class="border-b border-(--wui-color-border) px-3 py-2 align-top"
+                v-html="row[index]"
+              ></td>
+              <!-- 名称列是这一行的身份，值列是回填量：后者弱一档，与表格外框的灰阶一致。 -->
               <td
-                class="border-b border-(--wui-color-border) px-3 py-2 align-top font-mono whitespace-nowrap text-gray-500"
+                v-else
+                class="border-b border-(--wui-color-border) px-3 py-2 align-top font-mono whitespace-nowrap"
+                :class="column.kind === 'code' ? 'text-gray-500' : ''"
               >
-                {{ row.default }}
+                {{ row[index] }}
               </td>
             </template>
-            <td class="border-b border-(--wui-color-border) px-3 py-2 align-top" v-html="row.descriptionHtml"></td>
           </tr>
         </tbody>
       </table>

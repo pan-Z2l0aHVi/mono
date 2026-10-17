@@ -4,7 +4,8 @@ import { parseMarkdown, type ParsedDoc } from '../markdown'
 import type { MdToCompConfig } from '../types'
 
 /*
- * markdown 面的契约：`### 标题 {#id}` 的锚点、`## 示例` 与可省的 `## API`、围栏与表格的形状。
+ * markdown 面的契约：`### 标题 {#id}` 的锚点、`## 示例` 与可省的 `## API`、围栏与表格的形状，
+ * 以及 `## API` 下「表头登记在配置里的是表、其余按散文渲染」这条分岔。
  * 这里量的是「解析器认不认」——产物落盘对不对由 `emit.spec.ts` 与仓库根的完整生成断言管。
  * 分队的原则是：能在纯函数上判死的规则，别等到跑一遍生成器才知道。
  *
@@ -18,7 +19,9 @@ const CONFIG: Pick<MdToCompConfig, 'flavors' | 'apiTables'> = {
     columns: {
       Props: ['名称', '说明', '类型', '默认值'],
       Events: ['名称', '说明'],
-      Slots: ['名称', '说明']
+      Slots: ['名称', '说明'],
+      'CSS Custom Properties': ['名称', '说明', '默认值'],
+      'Color tokens': ['名称', '说明', '浅色默认值', '深色默认值']
     }
   }
 }
@@ -73,8 +76,17 @@ function parseWith(patch: (source: string) => string) {
   return () => parseMarkdown(patch(DOC), 'slider.md', CONFIG)
 }
 
-function rowsOf(doc: ParsedDoc, key: string) {
-  return doc.api.find(section => section.key === key)?.rows
+/** 表格小节：`kind` 不匹配时直接抛，免得测试里到处写 `?.`。 */
+function tableOf(doc: ParsedDoc, key: string) {
+  const section = doc.api.find(candidate => candidate.key === key)
+  if (section?.kind !== 'table') throw new Error(`没有表格小节 ${key}`)
+  return section
+}
+
+function proseOf(doc: ParsedDoc, key: string) {
+  const section = doc.api.find(candidate => candidate.key === key)
+  if (section?.kind !== 'prose') throw new Error(`没有散文小节 ${key}`)
+  return section
 }
 
 describe('parseMarkdown', () => {
@@ -96,33 +108,79 @@ describe('parseMarkdown', () => {
     )
     expect(sample?.fences.vue).toBe('<template>\n  <web-ui-slider :min="0"></web-ui-slider>\n</template>')
 
-    // 说明走的是与正文同一条 prose 管线，所以是块级 HTML；类型与默认值是原样字符串
+    // 列形状按位置定：首列是行的身份、次列是富文本、其余是普通值列。渲染端只认 `kind`，
+    // 因此三列（CSS 变量）与四列（Props）走的是同一条渲染路径。
+    const props = tableOf(doc, 'props')
+    expect(props.columns).toEqual([
+      { title: '名称', kind: 'name' },
+      { title: '说明', kind: 'html' },
+      { title: '类型', kind: 'code' },
+      { title: '默认值', kind: 'code' }
+    ])
+    // 说明走的是与正文同一条 prose 管线，所以是块级 HTML；值列是原样字符串
     // （渲染端把它们放进 `font-mono` 的 `<td>`，不包 `<code>`），且 `\|` 已还原成 `|`。
-    expect(rowsOf(doc, 'props')?.[0]).toEqual({
-      name: 'min',
-      descriptionHtml: '<p>最小值。</p>',
-      type: 'number',
-      default: '0'
-    })
-    expect(rowsOf(doc, 'props')?.[1]?.type).toBe("'a' | 'b'")
-    expect(rowsOf(doc, 'props')?.[1]?.default).toBe("'a'")
-    expect(rowsOf(doc, 'props')?.[2]?.type).toBe('string | null')
+    expect(props.rows[0]).toEqual(['min', '<p>最小值。</p>', 'number', '0'])
+    expect(props.rows[1]?.[2]).toBe("'a' | 'b'")
+    expect(props.rows[1]?.[3]).toBe("'a'")
+    expect(props.rows[2]?.[2]).toBe('string | null')
     // 没有默认值就写 `—`，它照原样进产物，页面上是一个破折号而不是空白单元格。
-    expect(rowsOf(doc, 'props')?.[3]).toEqual({
-      name: 'label',
-      descriptionHtml: '<p>标签。</p>',
-      type: '—',
-      default: '—'
-    })
-    // Events / Slots 的列契约只有两列：类型与默认值在那儿没有消费者。
-    expect(rowsOf(doc, 'events')).toEqual([{ name: 'input', descriptionHtml: '<p>拖拽过程中触发。</p>' }])
-    expect(rowsOf(doc, 'slots')).toEqual([{ name: 'default', descriptionHtml: '<p>默认插槽。</p>' }])
-    // API 小节的顺序即配置里 columns 的键序，key 是标题小写。
+    expect(props.rows[3]).toEqual(['label', '<p>标签。</p>', '—', '—'])
+    expect(tableOf(doc, 'events').rows).toEqual([['input', '<p>拖拽过程中触发。</p>']])
+    expect(tableOf(doc, 'slots').rows).toEqual([['default', '<p>默认插槽。</p>']])
+    // API 小节的顺序即正文里 `###` 的顺序，key 是标题小写。
     expect(doc.api.map(section => [section.key, section.title])).toEqual([
       ['props', 'Props'],
       ['events', 'Events'],
       ['slots', 'Slots']
     ])
+  })
+
+  it('三列与四列的表头各按自己的形状解析', () => {
+    const source = `${DOC}\n### CSS Custom Properties\n\n| 名称 | 说明 | 默认值 |\n| ---- | ---- | ---- |\n| \`--wui-input-width\` | 紧凑控件默认宽度。 | \`200px\` |\n\n### Color tokens\n\n| 名称 | 说明 | 浅色默认值 | 深色默认值 |\n| ---- | ---- | ---- | ---- |\n| \`--wui-color-page\` | 页面背景。 | \`#fff\` | \`#242628\` |\n`
+    const doc = parseMarkdown(source, 'slider.md', CONFIG)
+
+    const vars = tableOf(doc, 'css custom properties')
+    expect(vars.columns.map(column => column.kind)).toEqual(['name', 'html', 'code'])
+    expect(vars.rows[0]).toEqual(['--wui-input-width', '<p>紧凑控件默认宽度。</p>', '200px'])
+
+    // 浅色/深色是两根并列的值列——这正是旧的四列形状（类型/默认值）表达不了的那一型。
+    const colors = tableOf(doc, 'color tokens')
+    expect(colors.columns.map(column => column.kind)).toEqual(['name', 'html', 'code', 'code'])
+    expect(colors.rows[0]).toEqual(['--wui-color-page', '<p>页面背景。</p>', '#fff', '#242628'])
+  })
+
+  it('表头没登记过的小节按散文渲染，正文里的 markdown 照渲染', () => {
+    const source = `${DOC}\n### Known limitations\n\n\`peek\` 模式下不支持嵌套。\n`
+    const doc = parseMarkdown(source, 'slider.md', CONFIG)
+
+    const prose = proseOf(doc, 'known limitations')
+    expect(prose.title).toBe('Known limitations')
+    expect(prose.html).toBe('<p><code>peek</code> 模式下不支持嵌套。</p>')
+  })
+
+  it('小节的顺序跟着正文走，与配置里的键序无关', () => {
+    // 配置里 Events 写在 Slots 前面，正文反过来写：产物按正文的顺序出。
+    const source = [
+      FRONTMATTER,
+      INTRO,
+      '',
+      '## 示例',
+      '',
+      SAMPLE,
+      '## API',
+      '',
+      '### Slots',
+      '',
+      '| 名称 | 说明 |',
+      '| ---- | ---- |',
+      '| `default` | 默认插槽。 |',
+      '',
+      '### Events',
+      '',
+      EVENTS_TABLE,
+      ''
+    ].join('\n')
+    expect(parseMarkdown(source, 'slider.md', CONFIG).api.map(section => section.key)).toEqual(['slots', 'events'])
   })
 
   it('没写锚点的示例 id 为 null，仍然正常出内容', () => {
@@ -146,7 +204,7 @@ describe('parseMarkdown', () => {
 
   it('整段省略 ## API 时，产物里没有任何 API 小节', () => {
     // 没有对外契约的组件（纯展示的分隔线）用「整节删掉」声明这件事：小节缺省即 `api: []`，
-    // 页面据此整段跳过。与下面的「留着标题却没有表格行」相对，那一型仍然是错误。
+    // 页面据此整段跳过。与下面的「留着标题却没有小节」相对，那一型仍然是错误。
     const doc = parseMarkdown(DOC.slice(0, DOC.indexOf('## API')), 'dropdown-divider.md', CONFIG)
     expect(doc.api).toEqual([])
     expect(doc.samples).toHaveLength(1)
@@ -213,11 +271,11 @@ describe('parseMarkdown', () => {
       parseWith(source => source.replace(ROW_MIN, '|  | 最小值。 | `number` | `0` |')),
       /名称单元格是空的/
     ],
-    ['类型是空的', parseWith(source => source.replace(ROW_MIN, '| `min` | 最小值。 |  | `0` |')), /类型单元格是空的/],
+    ['类型是空的', parseWith(source => source.replace(ROW_MIN, '| `min` | 最小值。 |  | `0` |')), /「类型」列是空的/],
     [
       '默认值是空的',
       parseWith(source => source.replace(ROW_MIN, '| `min` | 最小值。 | `number` |  |')),
-      /默认值单元格是空的/
+      /「默认值」列是空的/
     ],
     [
       '### Props 有标题却没写表格',
@@ -226,20 +284,31 @@ describe('parseMarkdown', () => {
     ],
     ['表格漏了行首的 |', parseWith(source => source.replace(ROW_VARIANT, '这一行忘了写行首的竖线。')), /不是表格行/],
     [
-      '## API 里只有正文',
-      parseWith(source => `${source.slice(0, source.indexOf('## API'))}## API\n\n这里什么都没写。\n`),
-      /一张表都没有数据行/
+      '## API 里一个小节都没有',
+      parseWith(source => `${source.slice(0, source.indexOf('## API'))}## API\n`),
+      /一个小节都没有/
+    ],
+    [
+      '## API 里第一个 ### 之前有正文',
+      parseWith(source => source.replace('## API\n\n', '## API\n\n这段谁都不渲染。\n\n')),
+      /不会被渲染/
     ],
     ['同一张表里重名', parseWith(source => source.replace(ROW_MIN, `${ROW_MIN}\n${ROW_MIN}`)), /重复的字段名/],
     [
-      'API 里出现不认识的小节',
-      parseWith(source => `${source}\n### Methods\n\n| 名称 | 说明 |\n| ---- | ---- |\n`),
-      /只允许 Props/
+      '表头没登记的小节里写了表格',
+      parseWith(source => `${source}\n### Methods\n\n| 名称 | 说明 |\n| ---- | ---- |\n| \`focus()\` | 聚焦。 |\n`),
+      /是散文小节，正文里却有表格行/
     ],
     [
       '配置里没有的小节被写进 md',
       () => parseMarkdown(DOC.replace('### Slots', '### Methods'), 'slider.md', CONFIG),
-      /只允许 Props \/ Events \/ Slots/
+      /是散文小节，正文里却有表格行/
+    ],
+    ['散文小节是空的', parseWith(source => `${source}\n### Known limitations\n`), /是空的/],
+    [
+      'API 里两个小节撞同一个 key',
+      parseWith(source => `${source}\n### Known limitations\n\n一。\n\n### Known Limitations\n\n二。\n`),
+      /出现多次/
     ]
   ])('%s 时必须失败', (_case, run, message) => {
     expect(run).toThrow(message)

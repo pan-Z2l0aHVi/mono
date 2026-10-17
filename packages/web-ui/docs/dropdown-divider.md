@@ -3,7 +3,7 @@ component: dropdown-divider
 tag: web-ui-dropdown-divider
 ---
 
-菜单里的分隔线，用来切开成组的菜单项。它没有任何属性、事件与插槽，也不参与键盘导航——菜单只会把焦点停在 `<web-ui-dropdown-item>` 上。它出现在 `<web-ui-dropdown>` / `<web-ui-context-menu>` 的子元素里。
+菜单里的分隔线，用来切开成组的菜单项。它没有任何属性、事件与插槽，也不参与键盘导航——菜单只会把焦点停在 `<web-ui-dropdown-item>` 上，它自己只声明 `role="separator"`。它出现在 `<web-ui-dropdown>` / `<web-ui-context-menu>` 的子元素里。
 
 ## 示例
 

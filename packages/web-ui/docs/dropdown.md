@@ -142,3 +142,11 @@ import { lucideCopy, lucideTrash2 } from '@greypan/web-ui/icons'
 | ------------ | -------------------------------------------------------------------- |
 | `openMenu()` | 打开菜单；命令式打开不派发 `open-change`，并抑制首项的 accent 高亮。 |
 | `closeAll()` | 关闭全部层级；命令式关闭不派发 `open-change`。                       |
+
+### 行为说明
+
+菜单项：`web-ui-dropdown-item`、`web-ui-dropdown-divider`、`web-ui-dropdown-header`。子菜单在 `web-ui-dropdown-item` 上通过 `submenu` 属性启用。完整键盘导航支持。
+
+### trigger ARIA
+
+`aria-haspopup="menu"`、`aria-expanded` 与 `aria-controls`（指向根菜单面板）回写到 `trigger` slot 的首个 assigned element。trigger slot 请放入可交互元素。

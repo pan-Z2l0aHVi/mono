@@ -7,9 +7,17 @@ export type { GenerateResult } from './generate'
 export { flavorExtension, highlight } from './highlight'
 export type { FenceFlavor } from './highlight'
 export { parseMarkdown } from './markdown'
-export type { ApiRow, ApiSection, ParsedDoc, SampleBlock } from './markdown'
+export type { ParsedDoc, SampleBlock } from './markdown'
 export { renderCss, renderModule } from './render'
-export type { ExampleApiRow, ExampleApiSection, ExampleDocPayload, SamplePayload } from './render'
+export type {
+  ApiColumnKind,
+  ExampleApiColumn,
+  ExampleApiProseSection,
+  ExampleApiSection,
+  ExampleApiTableSection,
+  ExampleDocPayload,
+  SamplePayload
+} from './render'
 export { assertSelfContained, demoFileContent, demoFileName, emitsDemoFile } from './sample'
 export type { ApiTables, GeneratedFile, GenerateOptions, MdToCompConfig, OutputTarget } from './types'
 export { createMdToCompVite } from './vite'

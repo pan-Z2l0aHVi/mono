@@ -84,3 +84,26 @@ function sync() {
 | ----------------------------- | ------------------------------------------------------------------------------------------------------ |
 | `WebUiSpinner.show(options?)` | 挂载一个全屏实例并返回它；`size` / `description` 覆盖默认外观，`duration` 大于 0 时到期调用 `hide()`。 |
 | `WebUiSpinner.hide()`         | 拆掉计时器并移除 `show()` 挂载的实例。                                                                 |
+
+### 行为说明
+
+角色：`status`，`aria-label="加载中"`。
+
+### 静态 API
+
+```ts
+import { WebUiSpinner } from '@greypan/web-ui'
+
+WebUiSpinner.show() // 显示
+WebUiSpinner.show({ size: 32, duration: 2000 }) // 带选项显示
+WebUiSpinner.hide() // 隐藏
+```
+
+`WebUiSpinner.show(options?: { size?: number; duration?: number; description?: string })`
+
+### CSS Custom Properties
+
+| 名称                     | 说明                                         | 默认值  |
+| ------------------------ | -------------------------------------------- | ------- |
+| `--wui-spinner-size`     | 尺寸，由 `size` 属性写入                     | `24px`  |
+| `--wui-duration-spinner` | 叶片追光周期；reduce 下放慢到 `1600ms`，不停 | `800ms` |

@@ -130,3 +130,9 @@ const keyword = ref('')
 | `focus(options?)` | 聚焦 shadow 内的原生 input；`disabled` 时不产生效果。 |
 | `blur()`          | 让 shadow 内的原生 input 失焦。                       |
 | `select()`        | 全选当前值；`disabled` 时不产生效果。                 |
+
+### CSS Custom Properties
+
+| 名称                      | 说明         | 默认值                           |
+| ------------------------- | ------------ | -------------------------------- |
+| `--wui-input-clear-color` | 清除按钮颜色 | `var(--wui-color-text-tertiary)` |

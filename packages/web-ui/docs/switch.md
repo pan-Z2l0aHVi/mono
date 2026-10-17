@@ -84,3 +84,7 @@ const enabled = ref(false)
 | -------- | -------------------- |
 | `input`  | 状态变化时触发。     |
 | `change` | 用户切换开关时触发。 |
+
+### 行为说明
+
+使用 `role="switch"` 和 `aria-checked`。Pointer 事件管理按下状态。

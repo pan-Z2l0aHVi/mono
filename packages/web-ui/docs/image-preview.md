@@ -144,3 +144,57 @@ async function inspect(images: { src: string; alt?: string }[]) {
 | `zoomOut()`   | 缩小一档（0.5），下限 1。                                                       |
 | `resetZoom()` | 缩放与平移复位：回到 1x 并居中。                                                |
 | `close()`     | 关闭预览；句柄的 `closed` 在退场结束后兑现。                                    |
+
+### 行为说明
+
+它不复用 `<web-ui-dialog>` 组件：预览需要自身铺满视口的 dialog（全视口遮罩由 dialog 内独立遮罩层渲染，dialog 元素自身不做 opacity 过渡，玻璃控件的 backdrop blur 全程连续）与自有指针交互，与 dialog 组件的玻璃卡片 / 插槽契约不同源。两者共享 `native-dialog-presence` 与 `scroll-lock` 两个底层插件，`noScrollLock` / `noBackdropClose` 的命名与语义也对齐同名属性。
+
+```ts
+import { imagePreview } from '@greypan/web-ui'
+
+const preview = imagePreview({
+  images: [{ src: '/a.jpg', alt: '图 A' }, { src: '/b.jpg' }],
+  index: 0,
+  nav: true,
+  toolbar: true,
+  closable: true,
+  indicator: true
+})
+
+preview.next()
+preview.zoomIn()
+
+await preview.closed
+```
+
+`ImagePreviewItem` 为 `{ src: string; alt?: string }`；`alt` 缺省为空字符串。
+
+展示类选项默认全关：不传任何选项时只渲染图片本身，导航、工具条、关闭按钮与指示器都需要显式开启。
+
+### 返回句柄
+
+| 名称     | 说明                             | 类型                          |
+| -------- | -------------------------------- | ----------------------------- |
+| `index`  | 当前索引，关闭后保留最后一次的值 | `number`                      |
+| `scale`  | 当前缩放倍率，区间 `[1, 4]`      | `number`                      |
+| `images` | 归一化后的图片列表               | `readonly ImagePreviewItem[]` |
+| `closed` | 退场结束且宿主移除后兑现         | `Promise<void>`               |
+
+### 交互
+
+方向键始终可切换图片，与 `nav` 无关；`+` / `-` 键和滚轮缩放，`0` 重置。缩放带锚点：滚轮固定光标下的那一点，双指捏合固定两指中点，工具条按钮、键盘快捷键与双击则以视口中心为中心放大。按住鼠标拖拽或单指按住拖拽都能平移图片，方向不限，且与倍率无关：放大后是查看被裁切的边缘，1x 是在视口内移动图片。两种情形共用同一个边界——图片与舞台尺寸差的一半，因此图片永远不会被拖出视口；拖到边界后继续拖是钳制而非回弹。双击图片在 1x 与 2x 之间切换。
+
+双指缩放始终开启且不提供选项：舞台本身就持有指针交互，没有会冲突的手势。第一根手指照常负责平移 / 滑动，第二根手指落下才进入捏合，并中止进行中的平移或滑动。捏合不会关闭浮层；混合输入事后可能补发的兼容 `click` 会被吞掉，而不是当作遮罩点击。
+
+点击图片以外的空白区域或按 Escape 关闭，原生 dialog 始终暴露 `图片预览` 这一可访问名称。`swipe` 开启且图片多于一张时，图片排布在单条轮播轨道上：当前图与相邻图各占等宽等高的 slide，舞台裁切溢出，整条轨道随手指平移；松手时越过距离阈值（舞台宽度的 15%，取整）滑入相邻图，位移未达阈值但快速轻扫的采样速度达到 320px/s 以上、或位移至少 16px 且速度（窗口采样或整段平均）达到 160px/s 以上的轻扫同样提交，否则弹回；`loop` 开启时首尾环绕的相邻图恒在当前图两侧，`loop` 关闭时边界方向回弹不越界。该手势生效期间接管整个拖拽：1x 下横向拖拽用于切图，纵向位移被完全忽略（不驱平移、不跟手）。放大后拖拽一律平移（纵横都跟），不再切换图片。由于 1x 也能平移，`resetZoom()` 在「已放大」和「已位移」两种情况下都可用——工具条里的重置按钮对已平移的 1x 图片同样可点。
+
+关闭请求不会立刻销毁原生 dialog：它保持在 top layer，等退场过渡结束后才调用 `dialog.close()`，随后宿主从 DOM 移除并兑现 `closed`。打开期间锁定页面滚动，除非 `noScrollLock` 为 `true`。
+
+### CSS Custom Properties
+
+| 名称                             | 说明                     | 默认值                           |
+| -------------------------------- | ------------------------ | -------------------------------- |
+| `--wui-image-preview-overlay-bg` | 全视口遮罩背景色         | `rgb(0 0 0 / 0.72)`              |
+| `--wui-image-preview-edge-gap`   | 控件到视口边缘的可见距离 | `20px`                           |
+| `--wui-duration-swipe-settle`    | 轮播滑入/回位的过渡时长  | `220ms`                          |
+| `--wui-ease-swipe`               | 轮播滑入/回位的缓动曲线  | `cubic-bezier(0.32, 0.72, 0, 1)` |

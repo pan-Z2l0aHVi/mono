@@ -29,9 +29,10 @@ const button = exampleDocs.find(doc => doc.component === 'button')
 const imagePreview = exampleDocs.find(doc => doc.component === 'image-preview')
 const collapse = exampleDocs.find(doc => doc.component === 'collapse')
 const layout = exampleDocs.find(doc => doc.component === 'layout')
+const theme = exampleDocs.find(doc => doc.component === 'theme')
 const segmentedTrigger = exampleDocs.find(doc => doc.component === 'segmented-trigger')
-if (!slider || !button || !imagePreview || !collapse || !layout || !segmentedTrigger)
-  throw new Error('生成数据里缺少 slider / button / image-preview / collapse / layout / segmented-trigger')
+if (!slider || !button || !imagePreview || !collapse || !layout || !theme || !segmentedTrigger)
+  throw new Error('生成数据里缺少 slider / button / image-preview / collapse / layout / theme / segmented-trigger')
 
 /** demoKey → 落盘文件字节；少一条就在断言里直接报出来，不留「这条没被覆盖」的静默缺口。 */
 const demoSources: Record<string, string> = {
@@ -57,7 +58,30 @@ function sectionRows(container: HTMLElement, key: string) {
 function apiSection(doc: NonNullable<typeof button>, key: string) {
   const section = doc.api.find(candidate => candidate.key === key)
   if (!section) throw new Error(`生成数据里缺少 ${doc.component} 的 ${key}`)
+  // 断言只对表格小节有意义：散文小节没有 `rows` / `columns`，取错小节要在这里红，
+  // 而不是让 `rows.map` 悄悄对 undefined 求值。
+  if (section.kind !== 'table') throw new Error(`${doc.component} 的 ${key} 不是表格小节`)
   return section
+}
+
+/** 按列标题取该列的下标：列形状由 markdown 的表头定，测试跟着标题找，不写死序号。 */
+function columnOf(section: { columns: { title: string }[] }, title: string) {
+  const index = section.columns.findIndex(column => column.title === title)
+  if (index < 0) throw new Error(`小节里没有「${title}」列`)
+  return index
+}
+
+function sectionHeaders(container: HTMLElement, key: string) {
+  const section = container.querySelector(`[data-example-api="${key}"]`)
+  if (!section) throw new Error(`API 小节 ${key} 没有渲染`)
+  return [...section.querySelectorAll('thead th')].map(th => th.textContent)
+}
+
+/** 按行名与列标题取一格：位置由 markdown 的表头定，所以测试也按标题找值。 */
+function cellOf(rows: (string | null)[][], section: { columns: { title: string }[] }, name: string, title: string) {
+  const row = rows.find(cells => cells[0] === name)
+  if (!row) throw new Error(`表格里没有 \`${name}\` 这一行`)
+  return row[columnOf(section, title)]
 }
 
 function sample(container: HTMLElement, title: string) {
@@ -264,11 +288,14 @@ describe('example-doc（React 面 / 真实浏览器）', () => {
     const props = apiSection(slider, 'props')
     const rows = sectionRows(container, 'props')
 
-    expect(rows.map(cells => cells[0])).toEqual(props.rows.map(row => row.name))
+    expect(rows.map(cells => cells[0])).toEqual(props.rows.map(row => row[0]))
+    // 列序照 markdown 的表头原样渲染：渲染端不认识哪一列是说明，它照 `columns` 逐列铺。
+    expect(sectionHeaders(container, 'props')).toEqual(props.columns.map(column => column.title))
     // `boolean` / `false` / `100` 写在 slider.md 的 Props 表里：表格是这份数据的唯一来源，
     // 所以这一条钉的是 markdown → 生成 payload → DOM 这三跳没有走样，不是「源码说了算」。
-    expect(rows.find(cells => cells[0] === 'marks')?.slice(1)).toEqual(['boolean', 'false', expect.any(String)])
-    expect(rows.find(cells => cells[0] === 'max')?.slice(1)).toEqual(['number', '100', expect.any(String)])
+    expect(cellOf(rows, props, 'marks', '类型')).toBe('boolean')
+    expect(cellOf(rows, props, 'marks', '默认值')).toBe('false')
+    expect(cellOf(rows, props, 'max', '默认值')).toBe('100')
   })
 
   it('options 表（命令式 API 的选项）与 props 表一样渲染类型与默认值两列', () => {
@@ -276,18 +303,19 @@ describe('example-doc（React 面 / 真实浏览器）', () => {
     const options = apiSection(imagePreview, 'options')
     const rows = sectionRows(container, 'options')
 
-    expect(rows.map(cells => cells[0])).toEqual(options.rows.map(row => row.name))
+    expect(rows.map(cells => cells[0])).toEqual(options.rows.map(row => row[0]))
     // #360：元素 `@property` 里没有的 `index` / `target` / `container` 也在这一节里，
     // 所以这三个字段是「表格是手写的唯一来源」这条契约的直接证据。
-    expect(rows.find(cells => cells[0] === 'index')?.slice(1)).toEqual(['number', '0', expect.any(String)])
-    expect(rows.find(cells => cells[0] === 'target')?.slice(1)).toEqual(['Element', '—', expect.any(String)])
-    expect(rows.find(cells => cells[0] === 'container')?.slice(1)).toEqual(['HTMLElement', '—', expect.any(String)])
+    expect(cellOf(rows, options, 'index', '类型')).toBe('number')
+    expect(cellOf(rows, options, 'index', '默认值')).toBe('0')
+    expect(cellOf(rows, options, 'target', '默认值')).toBe('—')
+    expect(cellOf(rows, options, 'container', '默认值')).toBe('—')
   })
 
   it('events 表按 markdown 的小节生成，没写就不出现', () => {
     const { container } = render(<ExampleDoc component="slider" />)
     expect(sectionRows(container, 'events').map(cells => cells[0])).toEqual(['input', 'change'])
-    // 两列小节不会被多渲染出类型与默认值两格：列形状只由行带不带 `type` 决定。
+    // 两列小节的列形状来自 markdown 的表头，渲染端不会再凭空补出类型与默认值两格。
     expect(sectionRows(container, 'events').map(cells => cells.length)).toEqual([2, 2])
 
     const { container: buttonContainer } = render(<ExampleDoc component="button" />)
@@ -302,14 +330,50 @@ describe('example-doc（React 面 / 真实浏览器）', () => {
 
     // 名称单元格写成调用形态（`show()` / `replay(options?)`），与 Props / Events 的裸属性名不同：
     // 这一节记的是挂在元素上的方法，不是声明式契约。
-    expect(rows.map(cells => cells[0])).toEqual(methods.rows.map(row => row.name))
+    expect(rows.map(cells => cells[0])).toEqual(methods.rows.map(row => row[0]))
     expect(rows.map(cells => cells[0])).toEqual(['show()', 'close()', 'toggle()'])
-    // 两列小节不会被多渲染出类型与默认值两格。
+    // 两列小节的列形状来自 markdown 的表头。
     expect(rows.map(cells => cells.length)).toEqual([2, 2, 2])
 
     const { container: buttonContainer } = render(<ExampleDoc component="button" />)
     // button.md 没有方法可写，就不该凭空多出一张 Methods 表。
     expect(buttonContainer.querySelector('[data-example-api="methods"]')).toBeNull()
+  })
+
+  it('散文小节渲染成正文 HTML，不铺成一张表', () => {
+    const { container } = render(<ExampleDoc component="slider" />)
+    const prose = slider.api.find(section => section.key === '行为说明')
+    if (prose?.kind !== 'prose') throw new Error('slider 的 行为说明 不是散文小节')
+
+    const section = container.querySelector(`[data-example-api="${prose.key}"]`)
+    if (!section) throw new Error('slider 的 行为说明 小节没有渲染')
+    // 散文小节没有表头也没有表格：正文就是生成器渲染好的那段 HTML，DOM 里逐字就是 payload 的 html。
+    expect(section.querySelector('table')).toBeNull()
+    expect(section.querySelector('p')?.textContent).toBe(prose.html.replace(/<[^>]*>/g, ''))
+  })
+
+  it('返回句柄表只收只读成员，列形状来自 markdown', () => {
+    const { container } = render(<ExampleDoc component="image-preview" />)
+    const handle = apiSection(imagePreview, '返回句柄')
+    const rows = sectionRows(container, '返回句柄')
+
+    expect(rows.map(cells => cells[0])).toEqual(handle.rows.map(row => row[0]))
+    // 句柄上的方法归 ### Methods，这一节只记只读成员——同一件事不在两节里各写一遍。
+    expect(rows.map(cells => cells[0])).toEqual(['index', 'scale', 'images', 'closed'])
+    expect(sectionHeaders(container, '返回句柄')).toEqual(['名称', '说明', '类型'])
+    expect(cellOf(rows, handle, 'closed', '类型')).toBe('Promise<void>')
+  })
+
+  it('theme 的 token 表按 markdown 的列渲染，颜色与阴影两族是浅色/深色双值列', () => {
+    const { container } = render(<ExampleDoc component="theme" />)
+    const color = apiSection(theme, 'color tokens')
+    const rows = sectionRows(container, 'color tokens')
+
+    // 两族 token 的两个值列是并列的浅色 / 深色，不是「类型 + 默认值」：列数由配置声明，渲染端照铺。
+    expect(sectionHeaders(container, 'color tokens')).toEqual(['名称', '说明', '浅色默认值', '深色默认值'])
+    expect(rows.map(cells => cells[0])).toEqual(color.rows.map(row => row[0]))
+    expect(cellOf(rows, color, '--wui-color-page', '浅色默认值')).toBe('#fff')
+    expect(cellOf(rows, color, '--wui-color-page', '深色默认值')).toBe('#242628')
   })
 
   it('layout 的三张 API 表来自 markdown，示例只有代码没有 live 预览', () => {
@@ -319,7 +383,7 @@ describe('example-doc（React 面 / 真实浏览器）', () => {
       expect(
         sectionRows(container, key).map(cells => cells[0]),
         `${key} 表的行名`
-      ).toEqual(apiSection(layout, key).rows.map(row => row.name))
+      ).toEqual(apiSection(layout, key).rows.map(row => row[0]))
     }
     expect(sectionRows(container, 'props').map(cells => cells.length)).toEqual([4, 4, 4, 4, 4, 4, 4, 4, 4])
 
@@ -359,9 +423,10 @@ describe('example-doc（React 面 / 真实浏览器）', () => {
         'sidebar-max-width': host.sidebarMaxWidth
       }
       const props = apiSection(layout, 'props')
-      expect(Object.keys(actual).sort()).toEqual(props.rows.map(row => row.name).sort())
+      const defaultColumn = columnOf(props, '默认值')
+      expect(Object.keys(actual).sort()).toEqual(props.rows.map(row => row[0]).sort())
       for (const row of props.rows) {
-        expect(actual[row.name], `${row.name} 的默认值与元素初值不一致`).toBe(documentedDefault(row.default))
+        expect(actual[row[0]], `${row[0]} 的默认值与元素初值不一致`).toBe(documentedDefault(row[defaultColumn]))
       }
     } finally {
       await setViewport(restored.width, restored.height)

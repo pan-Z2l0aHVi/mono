@@ -122,3 +122,21 @@ export default function Demo() {
 | 名称      | 说明                              |
 | --------- | --------------------------------- |
 | `default` | 组内的 `<web-ui-checkbox>` 成员。 |
+
+### 行为说明
+
+同步子 checkbox 的 `checked` 状态。`disabled` 提供继承的有效禁用状态，不改写子项自身的 `disabled` 属性。监听子项 `change` 事件。`direction` 传入非法值时回退为 `vertical`。
+
+在 group 元素本身，或同一个 `<web-ui-theme>` 作用域内的祖先元素上设置。theme 宿主会为自己的子树声明该间距阶，写在 `<web-ui-theme>` 元素之外的覆盖到不了 group。它的默认值现在经 `--wui-space-2` 解析，所以在 theme 宿主上覆盖该级会连带改变成员间距；显式设置这个 token 仍然优先于两者。
+
+```css
+web-ui-checkbox-group {
+  --wui-checkbox-group-gap: 16px;
+}
+```
+
+### CSS Custom Properties
+
+| 名称                       | 说明                     | 默认值               |
+| -------------------------- | ------------------------ | -------------------- |
+| `--wui-checkbox-group-gap` | 成员 checkbox 之间的间距 | `var(--wui-space-2)` |

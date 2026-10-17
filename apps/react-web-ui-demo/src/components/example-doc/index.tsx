@@ -1,6 +1,6 @@
 import { lazy, Suspense, type ComponentType } from 'react'
 
-import { exampleDocs, type ExampleApiSection } from '@/generated/examples'
+import { exampleDocs } from '@/generated/examples'
 
 /**
  * 由示例文档 markdown 生成的示例文档：可交互示例 + 示例代码（语法高亮）+ API 表。
@@ -26,13 +26,9 @@ const demoComponents = new Map(
 )
 
 /**
- * 四列小节（Props / Options）的每一行都带类型与默认值——列形状由配置声明，解析器据此给出带 `type`
- * 的行。渲染端按行的形状决定是否多渲染两列，因此不需要知道哪些小节是四列的。
+ * API 小节有两型：登记过表头的是表，列形状完全由生成的 `columns` 决定（渲染端不认识任何一节叫什么，
+ * 只按每列的 `kind` 决定等宽 / 富文本两种单元格）；没登记表头的是散文，正文是一段渲染好的 HTML。
  */
-function hasTypeColumns(section: ExampleApiSection) {
-  return section.rows.some(row => row.type !== undefined)
-}
-
 function ExampleDoc({ component, flavor = 'react' }: { component: string; flavor?: 'react' | 'vue' }) {
   const doc = exampleDocs.find(candidate => candidate.component === component)
   if (!doc) return null
@@ -76,50 +72,54 @@ function ExampleDoc({ component, flavor = 'react' }: { component: string; flavor
       {doc.api.map(section => (
         <div className="flex flex-col gap-3" data-example-api={section.key} key={section.key}>
           <h3 className="m-0">{section.title}</h3>
-          <table className="w-full border-collapse text-sm">
-            <thead>
-              <tr>
-                <th className="border-b border-(--wui-color-border) px-3 py-2 text-left align-top font-semibold text-gray-500">
-                  名称
-                </th>
-                {hasTypeColumns(section) ? (
-                  <>
-                    <th className="border-b border-(--wui-color-border) px-3 py-2 text-left align-top font-semibold text-gray-500">
-                      类型
+          {section.kind === 'prose' ? (
+            // 散文小节也是生成器渲染好的 HTML 片段，不是运行时拼的用户输入。表格用 flex 间距，
+            // 列表要显式补回 preflight 清掉的记号与缩进。
+            <div
+              className="flex flex-col gap-3 text-(--wui-color-text) [&_ol]:list-decimal [&_ol]:ps-5 [&_ul]:list-disc [&_ul]:ps-5"
+              dangerouslySetInnerHTML={{ __html: section.html }}
+            />
+          ) : (
+            <table className="w-full border-collapse text-sm">
+              <thead>
+                <tr>
+                  {section.columns.map(column => (
+                    <th
+                      className="border-b border-(--wui-color-border) px-3 py-2 text-left align-top font-semibold text-gray-500"
+                      key={column.title}
+                    >
+                      {column.title}
                     </th>
-                    <th className="border-b border-(--wui-color-border) px-3 py-2 text-left align-top font-semibold text-gray-500">
-                      默认值
-                    </th>
-                  </>
-                ) : null}
-                <th className="border-b border-(--wui-color-border) px-3 py-2 text-left align-top font-semibold text-gray-500">
-                  说明
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              {section.rows.map(row => (
-                <tr key={row.name}>
-                  <td className="border-b border-(--wui-color-border) px-3 py-2 align-top font-mono whitespace-nowrap">
-                    {row.name}
-                  </td>
-                  {hasTypeColumns(section) ? (
-                    <>
-                      <td className="border-b border-(--wui-color-border) px-3 py-2 align-top font-mono whitespace-nowrap text-gray-500">
-                        {row.type}
-                      </td>
-                      <td className="border-b border-(--wui-color-border) px-3 py-2 align-top font-mono whitespace-nowrap text-gray-500">
-                        {row.default}
-                      </td>
-                    </>
-                  ) : null}
-                  <td className="border-b border-(--wui-color-border) px-3 py-2 align-top">
-                    <span dangerouslySetInnerHTML={{ __html: row.descriptionHtml }} />
-                  </td>
+                  ))}
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {section.rows.map(row => (
+                  <tr key={row[0]}>
+                    {section.columns.map((column, index) =>
+                      column.kind === 'html' ? (
+                        <td className="border-b border-(--wui-color-border) px-3 py-2 align-top" key={column.title}>
+                          <span dangerouslySetInnerHTML={{ __html: row[index] ?? '' }} />
+                        </td>
+                      ) : (
+                        <td
+                          className={
+                            // 名称列是这一行的身份，值列是回填量：后者弱一档，与表格外框的灰阶一致。
+                            `border-b border-(--wui-color-border) px-3 py-2 align-top font-mono whitespace-nowrap${
+                              column.kind === 'code' ? ' text-gray-500' : ''
+                            }`
+                          }
+                          key={column.title}
+                        >
+                          {row[index]}
+                        </td>
+                      )
+                    )}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
         </div>
       ))}
     </section>

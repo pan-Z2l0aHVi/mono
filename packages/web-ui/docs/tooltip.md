@@ -97,3 +97,14 @@ import { lucideInfo } from '@greypan/web-ui/icons'
 | --------- | ----------------------------------- |
 | `default` | 触发器。                            |
 | `content` | 提示面板内容，替代 `content` 属性。 |
+
+### 行为说明
+
+`open` 是自管理的可见性属性。指针/焦点触发会更新它，直接赋值 property 也会同步本地或 Portal 面板；`open-change` 仅用户来源的开关时派发。第一个 Tooltip 显示后，相邻 Tooltip 会立即切换；其余 pointer/focus 触发使用延迟计时器。
+
+### CSS Custom Properties
+
+| 名称                      | 说明         | 默认值  |
+| ------------------------- | ------------ | ------- |
+| `--wui-tooltip-max-width` | 提示最大宽度 | `240px` |
+| `--wui-tooltip-font-size` | 提示字号     | `13px`  |

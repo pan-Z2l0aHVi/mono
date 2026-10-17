@@ -72,15 +72,28 @@ export default {
       anchor: braceAnchor,
       flavors: ['react', 'vue'],
       apiTables: {
-        // 列序是引擎约定：名称、说明、类型、默认值。Events / Slots / Methods 只有前两列。
+        // 列序是引擎约定：首列是名称（行的身份）、次列是说明（富文本），第 3 列起都是普通值列。
+        // 只登记表格小节；标题不在这里的 `###` 按散文渲染（正文整段 markdown）。
         // Props 记元素属性，Options 记命令式 API 的选项（`imagePreview()` / `toast()` 这类没有声明式契约的入口）。
         // Methods 记组件对外的公开方法：元素实例方法、静态方法，以及命令式 API 返回句柄上的方法。
+        // 返回句柄记命令式 API 返回对象上的只读成员，那些成员的方法归 Methods。
+        // CSS Custom Properties 记组件对外暴露的变量；theme 的 token 表按族分节，颜色与阴影两族另有浅色/深色两列。
         columns: {
           Props: ['名称', '说明', '类型', '默认值'],
           Options: ['名称', '说明', '类型', '默认值'],
           Events: ['名称', '说明'],
           Slots: ['名称', '说明'],
-          Methods: ['名称', '说明']
+          Methods: ['名称', '说明'],
+          返回句柄: ['名称', '说明', '类型'],
+          'CSS Custom Properties': ['名称', '说明', '默认值'],
+          'Foundation tokens': ['名称', '说明', '默认值'],
+          'Typography tokens': ['名称', '说明', '默认值'],
+          'Spacing tokens': ['名称', '说明', '默认值'],
+          'Selection control tokens': ['名称', '说明', '默认值'],
+          'Radius tokens': ['名称', '说明', '默认值'],
+          'Layer tokens': ['名称', '说明', '默认值'],
+          'Color tokens': ['名称', '说明', '浅色默认值', '深色默认值'],
+          'Shadow tokens': ['名称', '说明', '浅色默认值', '深色默认值']
         }
       },
       // 深浅外观源是 web-ui-theme 的派生属性；切外观不需要重新生成高亮 HTML。

@@ -100,3 +100,15 @@ const view = ref('list')
 | 名称      | 说明                                                              |
 | --------- | ----------------------------------------------------------------- |
 | `default` | 按钮内容；trigger 没有 label 属性，这段内容就是它的全部显示内容。 |
+
+### 行为说明
+
+非表单关联组件（父级 segmented 统一提交）。
+
+### CSS Custom Properties
+
+| 名称                                | 说明             | 默认值                           |
+| ----------------------------------- | ---------------- | -------------------------------- |
+| `--wui-segmented-trigger-px`        | 水平内边距       | `12px`                           |
+| `--wui-segmented-trigger-bg-hover`  | Trigger 悬停背景 | `--wui-color-state-layer-hover`  |
+| `--wui-segmented-trigger-bg-active` | Trigger 按下背景 | `--wui-color-state-layer-active` |

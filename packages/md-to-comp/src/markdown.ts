@@ -7,6 +7,7 @@ import { unified } from 'unified'
 
 import { braceAnchor } from './anchor'
 import { fail } from './errors'
+import type { ApiColumnKind, ExampleApiColumn, ExampleApiSection } from './render'
 import type { MdToCompConfig } from './types'
 
 export interface SampleBlock {
@@ -18,28 +19,12 @@ export interface SampleBlock {
   fences: Record<string, string>
 }
 
-/** API 表的一行。`type` / `default` 只有四列的小节提供，列形状由配置定。 */
-export interface ApiRow {
-  name: string
-  type?: string
-  default?: string
-  descriptionHtml: string
-}
-
-export interface ApiSection {
-  /** 小节标题，与配置里的键逐字相同。 */
-  title: string
-  /** 标题转小写；与 `rows` 的形状一起供渲染端挑表格形状（只有四列的小节有类型与默认值两列）。 */
-  key: string
-  rows: ApiRow[]
-}
-
 export interface ParsedDoc {
   component: string
   tag: string
   introHtml: string
   samples: SampleBlock[]
-  api: ApiSection[]
+  api: ExampleApiSection[]
 }
 
 interface MdPosition {
@@ -161,7 +146,19 @@ function stripInlineCode(name: string): string {
   return trimmed.startsWith('`') && trimmed.endsWith('`') ? trimmed.slice(1, -1).trim() : trimmed
 }
 
-function parseApiTable(section: Section, columns: readonly string[], source: string, file: string): ApiRow[] {
+/**
+ * 列形状按位置定：首列是行的身份、次列是富文本说明、其余列都是普通值列。标签本身由配置给，
+ * 所以「表头写歪了」逐字比对就能判死；渲染端只按 `kind` 上样式，不用认识任何一节叫什么。
+ */
+function columnsOf(labels: readonly string[], section: string, file: string): ExampleApiColumn[] {
+  if (labels.length < 2) fail(`${file}：### ${section} 的表头至少要两列（名称、说明），收到 ${labels.length} 列`)
+  return labels.map((title, index) => {
+    const kind: ApiColumnKind = index === 0 ? 'name' : index === 1 ? 'html' : 'code'
+    return { title, kind }
+  })
+}
+
+function parseTable(section: Section, labels: readonly string[], source: string, file: string): string[][] {
   const body = source.slice(section.rawStart, section.rawEnd)
   // 小节正文只允许表格行：漏了行首 `|` 的那几行既读不成表格、又不会报错，实测能把 14 行截成 2 行。
   for (const line of body.split('\n')) {
@@ -175,15 +172,15 @@ function parseApiTable(section: Section, columns: readonly string[], source: str
   if (rows.length < 2)
     fail(`${file}：### ${section.title} 有标题但没有表格（表头加至少一行数据）；这张表不该存在就删掉这个小节标题`)
   const [head, ...rest] = rows
-  if (head.length !== columns.length || head.some((cell, index) => cell !== columns[index]))
-    fail(`${file}：### ${section.title} 的表头必须是 \`| ${columns.join(' | ')} |\`，收到 ${JSON.stringify(head)}`)
-  const out: ApiRow[] = []
+  if (head.length !== labels.length || head.some((cell, index) => cell !== labels[index]))
+    fail(`${file}：### ${section.title} 的表头必须是 \`| ${labels.join(' | ')} |\`，收到 ${JSON.stringify(head)}`)
+  const out: string[][] = []
   const seen = new Set<string>()
   for (const cells of rest) {
     // 不核对列数，多出来的一节就会被读成「不存在」——写歪一个未转义的竖线等于那段话没写。
-    if (cells.length !== columns.length)
+    if (cells.length !== labels.length)
       fail(
-        `${file}：### ${section.title} 有一行是 ${cells.length} 列，表头是 ${columns.length} 列：${JSON.stringify(cells)}`
+        `${file}：### ${section.title} 有一行是 ${cells.length} 列，表头是 ${labels.length} 列：${JSON.stringify(cells)}`
       )
     const name = stripInlineCode(cells[0] ?? '')
     if (!name) fail(`${file}：### ${section.title} 有一行的名称单元格是空的`)
@@ -192,18 +189,30 @@ function parseApiTable(section: Section, columns: readonly string[], source: str
     seen.add(name)
     const descriptionHtml = renderMarkdownInline(cells[1] ?? '')
     if (!descriptionHtml) fail(`${file}：### ${section.title} 里 \`${name}\` 的描述是空的`)
-    if (columns.length === 4) {
-      // 表格是 API 契约的唯一来源，所以空单元格只能报错，不能渲染成一个看起来像内容的空列。
-      const type = stripInlineCode(cells[2] ?? '')
-      if (!type) fail(`${file}：### ${section.title} 里 \`${name}\` 的类型单元格是空的`)
-      const defaultValue = stripInlineCode(cells[3] ?? '')
-      if (!defaultValue) fail(`${file}：### ${section.title} 里 \`${name}\` 的默认值单元格是空的（无默认值写 \`—\`）`)
-      out.push({ name, type, default: defaultValue, descriptionHtml })
-    } else {
-      out.push({ name, descriptionHtml })
-    }
+    // 值列（第 3 列起）是表格仅有的来源，空单元格只能报错，不能渲染成一个看起来像内容的空列。
+    const values = cells.slice(2).map((cell, index) => {
+      const value = stripInlineCode(cell)
+      if (!value)
+        fail(`${file}：### ${section.title} 里 \`${name}\` 的「${labels[index + 2]}」列是空的（无值写 \`—\`）`)
+      return value
+    })
+    out.push([name, descriptionHtml, ...values])
   }
   return out
+}
+
+/**
+ * 表头没在配置里登记过的小节按散文处理：正文整段渲染成 HTML。正文里出现表格行说明这一段本该是表，
+ * 只是它的形状没登记——那不是散文，直接报错；否则表头写歪一个小节就会静默退化成一段带竖线的文字。
+ */
+function parseProse(section: Section, source: string, file: string): string {
+  const body = source.slice(section.rawStart, section.rawEnd)
+  for (const line of body.split('\n'))
+    if (line.trim().startsWith('|'))
+      fail(`${file}：### ${section.title} 是散文小节，正文里却有表格行；表格的形状要在 apiTables 里声明`)
+  const html = renderInline(section.nodes).trim()
+  if (!html) fail(`${file}：### ${section.title} 是空的：要么写正文，要么删掉这个小节标题`)
+  return html
 }
 
 /**
@@ -321,26 +330,40 @@ export function parseMarkdown(source: string, file: string, config: ParseConfig)
 
   const columns = config.apiTables.columns
   const apiBody = named.get(API_SECTION)
-  const api: ApiSection[] = []
+  const api: ExampleApiSection[] = []
   // `## API` 整段省略 = 这个组件没有对外契约（纯展示的分隔线就是这一型）。整节删掉是一个能 review 的
-  // 明确动作，所以它是合法的声明；而「留着标题却没有表格行」只会在页面上渲染成一个空标题，等于那段话
-  // 没写——小节一旦存在，就必须有数据行。
+  // 明确动作，所以它是合法的声明；而「留着标题却没有小节」只会在页面上渲染成一个空标题，等于那段话
+  // 没写——小节一旦存在，就必须有内容。
   if (apiBody) {
     const apiSections = groupByHeading(apiBody.nodes, 3, apiBody.rawEnd, terse)
+    // 与 `## 示例` 同一条规矩：`###` 之前那段正文谁都不渲染。
+    if (apiSections.lead.length)
+      fail(`${file}：\`## ${API_SECTION}\` 里第一个 \`###\` 之前有正文，这段内容不会被渲染：把它并进某个小节`)
+    const seen = new Set<string>()
+    // 顺序即正文里 `###` 出现的顺序：小节放在哪是作者的事，配置只管表头与列形状。
     for (const section of apiSections.sections) {
-      if (!Object.hasOwn(columns, section.title))
-        fail(
-          `${file}：API 小节里出现了不认识的名字 \`### ${section.title}\`，只允许 ${Object.keys(columns).join(' / ')}`
-        )
-    }
-    for (const [title, sectionColumns] of Object.entries(columns)) {
-      const section = apiSections.sections.find(candidate => candidate.title === title)
-      const rows = section ? parseApiTable(section, sectionColumns, source, file) : []
-      if (rows.length > 0) api.push({ key: title.toLowerCase(), title, rows })
+      if (!section.title) fail(`${file}：\`## ${API_SECTION}\` 里有一个 \`###\` 标题是空的`)
+      // 标题转小写成了 DOM 上的标记，撞车会让两节在渲染时共用同一个 key。
+      const key = section.title.toLowerCase()
+      if (seen.has(key)) fail(`${file}：\`## ${API_SECTION}\` 里小节 \`### ${section.title}\` 出现多次`)
+      seen.add(key)
+      const labels = Object.hasOwn(columns, section.title) ? columns[section.title] : null
+      // 表头没在配置里登记过的小节按散文处理，正文照渲染；写歪的表头会被「散文里有表格行」拦下。
+      if (!labels) {
+        api.push({ kind: 'prose', key, title: section.title, html: parseProse(section, source, file) })
+        continue
+      }
+      api.push({
+        kind: 'table',
+        key,
+        title: section.title,
+        columns: columnsOf(labels, section.title, file),
+        rows: parseTable(section, labels, source, file)
+      })
     }
     if (api.length === 0)
       fail(
-        `${file}：\`## ${API_SECTION}\` 里一张表都没有数据行：要是这个组件没有对外契约，就把这一节连标题一起删掉（留空等于没写）`
+        `${file}：\`## ${API_SECTION}\` 里一个小节都没有：要是这个组件没有对外契约，就把这一节连标题一起删掉（留空等于没写）`
       )
   }
 

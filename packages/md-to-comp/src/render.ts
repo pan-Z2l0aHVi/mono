@@ -1,17 +1,38 @@
 import type { FenceFlavor } from './highlight'
-import type { ApiRow } from './markdown'
 
-/** 落进产物模块的一条 API 行；形状与 `markdown.ts` 的 `ApiRow` 一致，序列化后由宿主消费。 */
-export interface ExampleApiRow extends ApiRow {
-  name: string
-  descriptionHtml: string
+/**
+ * API 表一列渲染成什么：`name` 是行的身份（首列）、`html` 是富文本说明（次列），其余列都是普通值列。
+ * 形状由列的位置定，标签由配置给，所以渲染端不必认识任何一节叫什么。
+ */
+export type ApiColumnKind = 'name' | 'code' | 'html'
+
+/** 表头文字与它在单元格里怎么渲染。 */
+export interface ExampleApiColumn {
+  title: string
+  kind: ApiColumnKind
 }
 
-export interface ExampleApiSection {
+/** `## API` 里声明过表头的小节：列形状来自配置，行是已切好的单元格原文。 */
+export interface ExampleApiTableSection {
+  kind: 'table'
+  /** 标题小写，即宿主 DOM 上 `data-example-api` 的值。 */
   key: string
   title: string
-  rows: ExampleApiRow[]
+  /** 顺序即渲染顺序，单元格按它逐列取 `kind`。 */
+  columns: ExampleApiColumn[]
+  /** 每行的单元格，长度等于 `columns`；除 `html` 列外都是原样字符串。 */
+  rows: string[][]
 }
+
+/** `## API` 里没声明表头的小节：正文渲染成 HTML 片段，没有表格。 */
+export interface ExampleApiProseSection {
+  kind: 'prose'
+  key: string
+  title: string
+  html: string
+}
+
+export type ExampleApiSection = ExampleApiTableSection | ExampleApiProseSection
 
 /** 落进产物模块的一条示例；形状与 `markdown.ts` 的 `SampleBlock` 对应，序列化后由宿主消费。 */
 export interface SamplePayload {
@@ -36,18 +57,29 @@ const MODULE_HEADER = `// 本文件由 @greypan/md-to-comp 生成，请勿手动
 // source of truth：input 目录下的 markdown —— 示例代码与 API 表的名称/说明/类型/默认值都在那一份里。
 // 重新生成：跑一次宿主构建（生成挂在 md-to-comp 的 Vite 插件上）。`
 
-const MODULE_TYPES = `export interface ExampleApiRow {
-  name: string
-  type?: string
-  default?: string
-  descriptionHtml: string
+const MODULE_TYPES = `export type ExampleApiColumnKind = 'name' | 'code' | 'html'
+
+export interface ExampleApiColumn {
+  title: string
+  kind: ExampleApiColumnKind
 }
 
-export interface ExampleApiSection {
+export interface ExampleApiTableSection {
+  kind: 'table'
   key: string
   title: string
-  rows: ExampleApiRow[]
+  columns: ExampleApiColumn[]
+  rows: string[][]
 }
+
+export interface ExampleApiProseSection {
+  kind: 'prose'
+  key: string
+  title: string
+  html: string
+}
+
+export type ExampleApiSection = ExampleApiTableSection | ExampleApiProseSection
 
 export interface Sample {
   id: string | null

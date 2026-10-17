@@ -116,3 +116,19 @@ import { lucideSettings } from '@greypan/web-ui/icons'
 | --------- | ------------------------------------------- |
 | `trigger` | 自定义触发区域内容，替换默认 label 与箭头。 |
 | `default` | 投影 `<web-ui-option>` 候选。               |
+
+### 行为说明
+
+子 `<web-ui-option>` 通过 `option-register` / `option-unregister` 注册。支持 ArrowDown/ArrowUp/Enter/Escape 键盘导航。
+
+Portal 面板创建时会镜像 host 上解析后的这些变量；更新 host 后需重新打开 Portal 面板才会生效。
+
+### CSS Custom Properties
+
+| 名称                      | 说明                  | 默认值                             |
+| ------------------------- | --------------------- | ---------------------------------- |
+| `--wui-select-max-width`  | 下拉框最大宽度        | `500px`                            |
+| `--wui-select-max-height` | 下拉滚动区域最大高度  | `200px`                            |
+| `--wui-overlay-min-width` | 下拉框最小宽度        | `200px`                            |
+| `--wui-select-bg-hover`   | Trigger 悬停背景      | `--wui-color-surface-glass-hover`  |
+| `--wui-select-bg-active`  | Trigger 按下/打开背景 | `--wui-color-surface-glass-active` |

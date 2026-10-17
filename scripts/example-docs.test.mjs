@@ -63,14 +63,14 @@ function anchoredSamples(markdown) {
   }))
 }
 
-// 断言的是「类型与默认值从 markdown 的四列表格一路走到产物」这件事本身：md 里写的是
+// 断言的是「手写的值列从 markdown 的表格一路走到产物」这件事本身：md 里写的是
 // `` `'primary' \| 'secondary' \| …` ``，产物里必须是解掉转义后的 `'primary' | 'secondary' | …`，
-// 所以这一条同时是 `\|` 往返的判据。
+// 所以这一条同时是 `\|` 往返的判据。行是 `string[][]`，列序按 markdown 原样保留（名称 / 说明 / 类型 / 默认值）。
 assert.match(
   modules[0],
-  /"name": "variant",\n\s*"type": "'primary' \| 'secondary' \| 'ghost' \| 'danger' \| 'glass'",\n\s*"default": "'glass'"/
+  /"variant",\n\s*"<p>视觉变体：[^"]*<\/p>",\n\s*"'primary' \| 'secondary' \| 'ghost' \| 'danger' \| 'glass'",\n\s*"'glass'"/
 )
-assert.match(modules[0], /"type": "button \| submit \| reset"/)
+assert.match(modules[0], /"button \| submit \| reset"/)
 // button.md 没写 ### Events 小节，所以它不该凭空长出一张 Events 表。按「下一个 component 条目」切片，
 // 不写死紧随其后的组件名——文档集增长到全部组件后，button 后面已经不是 collapse 了。
 const buttonStart = modules[0].indexOf('"component": "button"')
@@ -79,8 +79,8 @@ const button = modules[0].slice(buttonStart, nextComponent)
 assert.ok(!button.includes('"key": "events"'), 'button.md 没写 ### Events 小节，不应生成 Events 数据')
 // 这两条把名字与那句中文描述一起钉住：表格是这份数据的唯一来源，所以量的是「手写进 collapse.md 的
 // 一行完整走到产物」。只钉名字不够——dropdown.md 也有一行 `open-change`，那会替它过关。
-assert.match(modules[0], /"name": "open-change",\n\s*"descriptionHtml": "<p>开合请求。/)
-assert.match(modules[0], /"name": "content",\n\s*"descriptionHtml": "<p>折叠内容。/)
+assert.match(modules[0], /"open-change",\n\s*"<p>开合请求。/)
+assert.match(modules[0], /"content",\n\s*"<p>折叠内容。/)
 
 // ── 不变式一：页面显示的那份源码，逐字就是 markdown 里的那一段围栏 ──
 // 这条同时替掉了旧实现里「钉 `.hl-tag` 类名与某个颜色值」的两个断言：那些是在证明自制着色器

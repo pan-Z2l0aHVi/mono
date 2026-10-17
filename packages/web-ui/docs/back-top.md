@@ -115,3 +115,20 @@ onMounted(() => {
 | 名称      | 说明                                        |
 | --------- | ------------------------------------------- |
 | `toTop()` | 滚动回顶部，行为由 `scroll-behavior` 决定。 |
+
+### 定位
+
+`scrollTarget` 为 `window` 时按钮固定在视口角落；为 `HTMLElement` 时需将元素放置在容器内部，按钮通过 `position: sticky` 悬浮于容器底部角落。偏移量沿用 `--wui-back-top-top/right/bottom/left` CSS 变量。
+
+角色：`button`，键盘 Enter 触发回到顶部。
+
+### CSS Custom Properties
+
+| 名称                      | 说明     | 默认值                           |
+| ------------------------- | -------- | -------------------------------- |
+| `--wui-back-top-position` | CSS 定位 | `fixed`                          |
+| `--wui-back-top-z-index`  | 层级     | `var(--wui-layer-auxiliary, 20)` |
+| `--wui-back-top-top`      | 上偏移   | `auto`                           |
+| `--wui-back-top-right`    | 右偏移   | `20px`                           |
+| `--wui-back-top-bottom`   | 下偏移   | `20px`                           |
+| `--wui-back-top-left`     | 左偏移   | `auto`                           |

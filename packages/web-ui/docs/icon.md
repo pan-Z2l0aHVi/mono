@@ -71,3 +71,23 @@ import { lucideLoaderCircle } from '@greypan/web-ui/icons'
 | `spin`  | 旋转动画。                     | `boolean`     | `false` |
 | `size`  | 尺寸（px）。                   | `number`      | `18`    |
 | `color` | 颜色。                         | `string`      | —       |
+
+### 行为说明
+
+内置 `aria-hidden="true"`。
+
+### 画布
+
+SVG 的 `viewBox` 取自 `icon.left`/`icon.top`/`icon.width`/`icon.height`，偏移缺省为 `0`，尺寸缺省为 Iconify 规范默认的 `16`。生成的资产都自带画布，因此尺寸兜底只在直接传入原始 `IconifyIcon` 对象时才会生效。
+
+```js
+import { lucideLoaderCircle } from '@greypan/web-ui/icons'
+html`<web-ui-icon .icon=${lucideLoaderCircle} spin />`
+```
+
+### CSS Custom Properties
+
+| 名称                  | 说明                                            | 默认值    |
+| --------------------- | ----------------------------------------------- | --------- |
+| `--wui-icon-color`    | 图标颜色                                        | `inherit` |
+| `--wui-duration-spin` | `spin` 旋转周期；reduce 下放慢到 `1600ms`，不停 | `600ms`   |

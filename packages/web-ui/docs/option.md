@@ -117,3 +117,13 @@ export default function Demo() {
 | `prefix`  | 文本左侧的图标或标识。                       |
 | `default` | 选项文本；`label` 为空时这段文本就是 label。 |
 | `suffix`  | 文本右侧的图标或标识。                       |
+
+### 行为说明
+
+非表单关联组件（父级 select 统一提交）。
+
+### CSS Custom Properties
+
+| 名称                         | 说明                      | 默认值  |
+| ---------------------------- | ------------------------- | ------- |
+| `--wui-option-check-display` | 选中勾选图标的 display 值 | `block` |
