@@ -53,7 +53,7 @@ open -> active -> frozen -> reviewed -> approved -> done
 
 ### 6. 测试约定
 
-`scripts/` 采用 Go 风格对称约定：每个脚本一个 `<name>.test.mjs`，`ci:test-scripts` 以 glob 执行全部 `scripts/*.test.mjs`，新增测试文件零注册。
+`**/scripts/` 采用 Go 风格对称约定：每个守卫脚本一个同址的 `<name>.test.mjs`，`ci:test-scripts` 经 `git ls-files` 递归执行全仓 `**/scripts/*.test.mjs`，新增测试文件零注册；测试跟随被测对象所在目录，不要求集中在根 `scripts/`。
 
 ### 7. 载体与迭代
 

@@ -51,12 +51,12 @@
 
 ### `ci:` — CI 与仓库自检
 
-| 命令                  | 用途                                                         |
-| --------------------- | ------------------------------------------------------------ |
-| `ci:validate-context` | 校验 context 路由、断链、软链、出处、命令引用与必存在 script |
-| `ci:test-scripts`     | 以 glob 跑全部 `scripts/*.test.mjs`                          |
+| 命令                  | 用途                                                                 |
+| --------------------- | -------------------------------------------------------------------- |
+| `ci:validate-context` | 校验 context 路由、断链、软链、出处、命令引用与必存在 script         |
+| `ci:test-scripts`     | 经 `git ls-files` 递归跑全仓 `**/scripts/*.test.mjs`（tracked-only） |
 
-`ci:validate-context` 是改动 `AGENTS.md`、rules、skills 或 `docs/agents/**` 时必须通过的守卫。`scripts/` 的测试约定是每个脚本一个 `<name>.test.mjs`，由 `ci:test-scripts` 按 glob 执行，新增文件不用注册，它也是 CI 拓扑表的执行端；决策背景见 [ADR-0014](../adr/0014-task-system-v2.md)。
+`ci:validate-context` 是改动 `AGENTS.md`、rules、skills 或 `docs/agents/**` 时必须通过的守卫。测试契约是：守卫测试与被测脚本同住在某个 `scripts/` 目录，命名 `<name>.test.mjs`，由 `ci:test-scripts` 递归执行全仓 `**/scripts/*.test.mjs`，新增文件不用注册；它也是 CI 拓扑表的执行端；决策背景见 [ADR-0014](../adr/0014-task-system-v2.md)。
 
 ### 基础命令（无 namespace）
 

@@ -13,7 +13,8 @@ import path from 'node:path'
 //      md 就悄悄退出哈希——构建照绿，但「文档改了产物会跟着重算」这条闭包断了。
 //
 // 这是形状检查，不执行构建：与 `.agents/checks/turbo-cache-invariant` 同一口径。
-const root = path.resolve(import.meta.dirname, '..')
+// 测试与被测包同址；执行端是根 `ci:test-scripts` 的全仓递归 glob（`**/scripts/*.test.mjs`）。
+const root = path.resolve(import.meta.dirname, '../../..')
 const pkgDir = path.join(root, 'packages', 'web-ui')
 const pkgRel = path.relative(root, pkgDir).split(path.sep).join('/')
 

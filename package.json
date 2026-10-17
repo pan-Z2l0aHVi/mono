@@ -19,7 +19,7 @@
     "fix-go": "gofmt -w . && find . -name go.mod -not -path \"*/node_modules/*\" -exec dirname {} \\; | sort -u | xargs -I{} sh -c \"cd {} && go vet ./...\"",
     "fix-stylelint": "pnpm exec stylelint --fix --allow-empty-input \"**/*.{css,scss,less,html,vue}\"",
     "ci:validate-context": "node scripts/validate-context.mjs",
-    "ci:test-scripts": "for f in scripts/*.test.mjs; do node \"$f\" || exit 1; done",
+    "ci:test-scripts": "for f in $(git ls-files '*scripts/*.test.mjs'); do node \"$f\" || exit 1; done",
     "agent:task": "node scripts/task.mjs",
     "agent:env-doctor": "node scripts/env-doctor.mjs",
     "agent:update-skills": "node scripts/update-vendored-skills.mjs",

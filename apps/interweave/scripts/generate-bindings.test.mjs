@@ -9,10 +9,9 @@ import path from 'node:path'
 // 所以这些平时没人走的分支更要有人钉住：快照/还原、-clean / -ts 剔除、-d/-d= 锚定，都是易回归的自写逻辑。
 // 测试用假的 wails3 驱动真实脚本，不碰真实 frontend/bindings，也不要求装 wails3。
 //
-// 放在根 scripts/ 而不是 apps/interweave/scripts/ 是刻意的：只有根 `pnpm run ci:test-scripts`
-// （`for f in scripts/*.test.mjs; do node "$f" || exit 1; done`）会跑 *.test.mjs，app 目录下没有 runner。
-const repoRoot = path.resolve(import.meta.dirname, '..')
-const guardScript = path.join(repoRoot, 'apps', 'interweave', 'scripts', 'generate-bindings.mjs')
+// 测试与被测脚本同址；执行端是根 `ci:test-scripts` 的全仓递归 glob（`**/scripts/*.test.mjs`）。
+const repoRoot = path.resolve(import.meta.dirname, '../../..')
+const guardScript = path.join(import.meta.dirname, 'generate-bindings.mjs')
 const realBindings = path.join(repoRoot, 'apps', 'interweave', 'frontend', 'bindings')
 
 // 生成树里用的占位路径与文件名：全是 cspell 词典里的常见词，避免给仓库词表添新词。
@@ -196,4 +195,4 @@ try {
   fs.rmSync(fixture, { recursive: true, force: true })
 }
 
-console.log('scripts/generate-bindings.test.mjs: all assertions passed')
+console.log('apps/interweave/scripts/generate-bindings.test.mjs: all assertions passed')

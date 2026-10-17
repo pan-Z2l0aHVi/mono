@@ -24,7 +24,7 @@
 | ------------------ | ------------------------------------------------------------------------------- | ----------------------------------------------------- | ------------------------------------------------------ |
 | 生成物             | 根/包级 `AGENTS.md` 说明「不可手改」与局部 source of truth                      | [`build.md`](build.md)                                | generator diff、build、消费者类型检查                  |
 | 真实浏览器         | 根/包级 `AGENTS.md` 仅声明需要浏览器层                                          | [`runtime-verification.md`](runtime-verification.md)  | `pnpm run test` 中的 `*.browser.spec.ts`、MCP 操作记录 |
-| 影响面与契约查询   | 根入口不再提供查询命令；命令面索引见 [`commands.md`](commands.md)               | contract-change-review skill（SKILL.md 与其内置脚本） | `scripts/*.test.mjs`（glob 约定）                      |
+| 影响面与契约查询   | 根入口不再提供查询命令；命令面索引见 [`commands.md`](commands.md)               | contract-change-review skill（SKILL.md 与其内置脚本） | `**/scripts/*.test.mjs`（递归 glob 约定）              |
 | 任务级别           | 根 `AGENTS.md`「Mutation Gate」只给判定入口，不复制级别表                       | [`workflow.md`](workflow.md)                          | `tasks/<task-id>.json` 的 level 与 events              |
 | 预授权操作         | 根 `AGENTS.md` 只列被允许与需授权的类别                                         | [`workflow.md`](workflow.md)                          | [`workflow.md`](workflow.md) 的「预授权操作」清单      |
 | 客户端权限与环境   | 根 `AGENTS.md` 只给路由，不复制配置                                             | [`environments.md`](environments.md)                  | `~/.codex/config.toml` 与线程的实际行为                |
