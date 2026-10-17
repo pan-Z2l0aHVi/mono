@@ -14,4 +14,5 @@ import SelectDemo from '@/components/select-demo/index.vue'
 <template>
   <SelectDemo />
   <ExampleDoc component="select" />
+  <ExampleDoc component="option" />
 </template>

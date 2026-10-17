@@ -8,6 +8,7 @@ function Component() {
     <>
       <DemoComponent />
       <ExampleDoc component="checkbox" />
+      <ExampleDoc component="checkbox-group" />
     </>
   )
 }

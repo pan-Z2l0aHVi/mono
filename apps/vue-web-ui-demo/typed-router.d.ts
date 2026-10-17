@@ -157,6 +157,13 @@ declare module 'vue-router/auto-routes' {
       Record<never, never>,
       | never
     >,
+    '/components/layout': RouteRecordInfo<
+      '/components/layout',
+      '/components/layout',
+      Record<never, never>,
+      Record<never, never>,
+      | never
+    >,
     '/components/middle-ellipsis': RouteRecordInfo<
       '/components/middle-ellipsis',
       '/components/middle-ellipsis',
@@ -407,6 +414,14 @@ declare module 'vue-router/auto-routes' {
     'src/pages/components/input-number.vue': {
       routes:
         | '/components/input-number'
+      views:
+        | never
+      pathParamNames:
+        | never
+    }
+    'src/pages/components/layout.vue': {
+      routes:
+        | '/components/layout'
       views:
         | never
       pathParamNames:

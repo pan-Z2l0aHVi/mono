@@ -30,6 +30,7 @@ export default {
       'browser-kit',
       'deps-reload',
       'js-kit',
+      'md-to-comp',
       'test-kit',
       'tsconfig',
       'unplugin-web-components',

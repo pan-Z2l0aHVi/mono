@@ -1,0 +1,21 @@
+{
+  "$schema": "https://turbo.build/schema.json",
+  "extends": ["//"],
+  "tasks": {
+    "build": {
+      "inputs": [
+        "$TURBO_DEFAULT$",
+        "!**/*.spec.ts",
+        "!**/*.test.ts",
+        "!**/__tests__/**",
+        "!README.md",
+        "!README.CN.md",
+        "!AGENTS.md",
+        "!CHANGELOG.md"
+      ]
+    },
+    "test": {
+      "inputs": ["$TURBO_DEFAULT$", "!README.md", "!README.CN.md", "!AGENTS.md", "!CHANGELOG.md"]
+    }
+  }
+}

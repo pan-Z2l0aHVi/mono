@@ -1,0 +1,53 @@
+{
+  "name": "@greypan/md-to-comp",
+  "version": "0.0.0",
+  "private": true,
+  "description": "markdown 示例文档引擎：把带围栏与 API 表的 markdown 生成示例数据、可交互组件源码，并提供驱动生成的 Vite 插件",
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.mts",
+      "import": "./dist/index.mjs"
+    },
+    "./react": {
+      "types": "./dist/react.d.mts",
+      "import": "./dist/react.mjs"
+    },
+    "./vue": {
+      "types": "./dist/vue.d.mts",
+      "import": "./dist/vue.mjs"
+    },
+    "./package.json": "./package.json"
+  },
+  "sideEffects": false,
+  "scripts": {
+    "build": "vp pack",
+    "test": "vp test run",
+    "dev": "vp pack --watch --clean=false"
+  },
+  "dependencies": {
+    "hast-util-to-html": "catalog:",
+    "js-yaml": "catalog:",
+    "remark-frontmatter": "catalog:",
+    "remark-parse": "catalog:",
+    "remark-rehype": "catalog:",
+    "shiki": "catalog:",
+    "unified": "catalog:"
+  },
+  "devDependencies": {
+    "@greypan/tsconfig": "workspace:*",
+    "vite": "catalog:",
+    "vite-plus": "catalog:"
+  },
+  "peerDependencies": {
+    "vite": "catalog:"
+  },
+  "peerDependenciesMeta": {
+    "vite": {
+      "optional": true
+    }
+  },
+  "engines": {
+    "node": ">=20.11.0"
+  }
+}
