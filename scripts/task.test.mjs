@@ -216,7 +216,7 @@ try {
 
   // review 身份是机器约束，不是约定：形状不合法的 id 都要给出具体条款。「reviewer 不得是
   // owner」不再是内核约束——单 agent 工作流要求 owner 自己 approve，那条校验会让三个槽位凑不齐；
-  // 实施会话不得自审因此改由 workflow.md「review 拓扑」的文档规则承担。
+  // 实施会话不得自审因此改由 docs/agents/review.md「独立性要求」的文档规则承担。
   assert.match(
     failMessage('review', '--task', 't0-fixture', '--result', 'pass', '--reviewer', 'bad id!'),
     /invalid reviewer id/

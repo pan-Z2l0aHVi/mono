@@ -18,7 +18,7 @@ Web 表面分两层：chrome-devtools MCP 是默认的 Agent 真实浏览器交�
 - 启动本地 dev server 前，检查目标端口是否已有响应的服务器。合适则复用；不要仅因验证任务启动就创建重复服务器。
 - 仅在无合适服务器运行、现有服务器无法提供所需当前状态、或明确需要隔离环境时才启动新服务器。此时使用未占用端口并记录其 PID。
 - 仅停止当前任务启动的服务器。不得终止用户或其他任务拥有的已有服务器。
-- 目标端口上遇到无响应的 dev server 时，先询问用户再终止。仅在会话结束时清理当前任务启动的服务器。
+- 目标端口上遇到无响应的 dev server 时，先问用户再终止。授权机制见 `workflow.md` 的「怎么取得这个授权」。仅在会话结束时清理当前任务启动的服务器。
 - 不得附加或控制用户现有的 Chrome 会话。在 chrome-devtools MCP 或 `agent-browser` 拥有的浏览器上下文中验证，与用户工作的 Chrome 隔离。判定标准是「是否为专用 profile」，与用哪个工具无关：chrome-devtools MCP 用 `--userDataDir` 指向专用路径，`agent-browser` 用 `--profile <目录>`（注意 `--profile <名称>` 复用你自己 Chrome 的 profile，不算隔离）；任一工具需要登录态时，都在专用 profile 内自行登录一次。
 - 接管既有会话的做法一律不满足隔离要求：`--autoConnect`、attach 到已开调试端口的浏览器、`agent-browser --auto-connect` 都属此列。原因是它们连的不是本次验证自己拉起的浏览器，会连带接管该 profile 里已打开的全部窗口。`pnpm agent:verify` 不在此列——它连的是自己拉起的专用 Chrome 上的随机调试端口。
 - 仅对本地自签名 HTTPS demo 忽略证书错误；不得为外部站点放松证书验证。
@@ -50,7 +50,7 @@ Web 表面：
 前置：
 
 - 用应用包文档给出的 dev 或打包路径拉起真实应用窗口（Wails 应用壳，不是只在浏览器里打开前端）。启动方式的权威见 [`build.md`](build.md) 与该应用包的 `AGENTS.md`。
-- Peekaboo 依赖 macOS 辅助功能与屏幕录制授权。先跑 `peekaboo permissions` 核对，缺权限时由用户授权后再取证；无授权的结论不可采信。
+- Peekaboo 依赖 macOS 辅助功能与屏幕录制授权。先跑 `peekaboo permissions` 核对，缺权限时由用户授权后再取证；无授权的结论不可采信。这种授权发生在系统设置里，不走 `workflow.md` 的弹窗机制。
 
 取证与驱动：
 

@@ -9,13 +9,13 @@
 
 ## task 流程词汇
 
-**测试证据（verification）**: `pnpm agent:task verify` 记录的一条结果，含 `kind`（`test` 或 `acceptance`）与绑定的 `diffHash`；它只描述发生过什么，不执行命令、不改变状态机相位。各级别所需的证据种类见 [`docs/agents/workflow.md`](docs/agents/workflow.md)。
+**测试证据（verification）**: `pnpm agent:task verify` 记录的一条结果，含 `kind`（`test` 或 `acceptance`）与绑定的 `diffHash`；它只描述发生过什么，不执行命令、不改变状态机相位。各级别所需的证据种类见 [`docs/agents/task-levels.md`](docs/agents/task-levels.md) 的级别表。
 _Avoid_: 测试通过、CI 绿
 
 **测试验收（acceptance）**: 以测试工程师视角对功能层做的独立验收，与实施阶段自证的 `test` 分开记为 `--kind acceptance`。它是证据类别，不是状态机相位。
 _Avoid_: 单元测试、把内核 `verify` 本身当成测试验收
 
-**review**: 独立于实施者的执行体只审冻结 diff 与证据后给出的结论，与 approval 成对绑定同一个 `diffHash`。各级别的 review 要求见 [`docs/agents/workflow.md`](docs/agents/workflow.md)。
+**review**: 独立于实施者的执行体只审冻结 diff 与证据后给出的结论，与 approval 成对绑定同一个 `diffHash`。各级别的 review 要求见 [`docs/agents/task-levels.md`](docs/agents/task-levels.md) 的级别表与 [`docs/agents/review.md`](docs/agents/review.md) 的「独立性要求」。
 _Avoid_: 自审、approval
 
 ## js-kit 队列词汇
@@ -48,7 +48,7 @@ _Avoid_: 页面跳转、路由切换（避免与 router 概念混淆）
 
 ## 关键 ADR
 
-表内只列仍承载现行决策的 ADR。多 Agent 编排层（Role、执行体选择、Supervisor、编排账本与 handoff）连同其 skill 已整体退役：0010、0011、0015-0017、0019、0020 从索引移除，0022（发布通道形态）因与 herdr-projects「一 task 一 PR 直接合进 `main`」的流程冲突整篇删除。这些历史只留在 git 里。0012 与 0014 行内提到该编排层的修订注记同样不构成现行指引。需求拆分与 task 派发由外部编排层承担，仓库侧只保留 task 级门禁（[`docs/agents/workflow.md`](docs/agents/workflow.md)）、owner 与 worktree 唯一性边界（[`docs/agents/build.md`](docs/agents/build.md)）和发布责任面（[`docs/agents/release.md`](docs/agents/release.md)）。
+表内只列仍承载现行决策的 ADR。多 Agent 编排层（Role、执行体选择、Supervisor、编排账本与 handoff）连同其 skill 已整体退役：0010、0011、0015-0017、0019、0020 从索引移除，0022（发布通道形态）因与 herdr-projects「一 task 一 PR 直接合进 `main`」的流程冲突整篇删除。这些历史只留在 git 里。0012 与 0014 行内提到该编排层的修订注记同样不构成现行指引。需求拆分与 task 派发由外部编排层承担，仓库侧只保留 task 级门禁（[`docs/agents/workflow.md`](docs/agents/workflow.md)）、owner 与 worktree 唯一性边界（[`docs/agents/worktree.md`](docs/agents/worktree.md)）和发布责任面（[`docs/agents/release.md`](docs/agents/release.md)）。
 
 | ADR                                                                             | 决策                                                  | 何时读取                                                                                      |
 | ------------------------------------------------------------------------------- | ----------------------------------------------------- | --------------------------------------------------------------------------------------------- |
