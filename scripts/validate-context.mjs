@@ -93,15 +93,7 @@ if (exists('package.json')) {
   try {
     const packageJson = JSON.parse(read('package.json'))
     rootScripts = new Set(Object.keys(packageJson.scripts ?? {}))
-    for (const script of [
-      'agent:task',
-      'ci:validate-context',
-      'check-pack',
-      'agent:find-usages',
-      'agent:inspect-contract',
-      'agent:diff-contract',
-      'ci:test-scripts'
-    ]) {
+    for (const script of ['agent:task', 'ci:validate-context', 'check-pack', 'agent:find-usages', 'ci:test-scripts']) {
       if (typeof packageJson.scripts?.[script] !== 'string') addError(`package.json is missing scripts.${script}`)
     }
   } catch (error) {

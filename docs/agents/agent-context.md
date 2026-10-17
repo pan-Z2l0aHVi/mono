@@ -53,7 +53,8 @@
 
 ## 工具接口
 
-- `scripts/repo-query.mjs` 是面向 agent 的按需查询接口：`pnpm agent:find-usages -- <paths...>` 输出受影响 workspace、最小读取 context、传递依赖、所需证据和最小充分验证建议；`pnpm agent:inspect-contract -- <published-package>` 输出当前 exports、直接消费者和最小验证；`pnpm agent:diff-contract -- --base <git-ref>` 输出 manifest-level semver 审阅候选。`agent:find-usages` 还支持 `--base <git-ref>`、`--staged` 与 `--worktree` 从 Git 变更集读取路径。它从 `pnpm-workspace.yaml` 的 `packages` patterns、当前 manifest 和路径规则派生结论，不把影响面复制成静态文档。
+- `scripts/repo-query.mjs` 是面向 agent 的按需查询接口：`pnpm agent:find-usages -- <paths...>` 输出受影响 workspace、最小读取 context、传递依赖、所需证据和最小充分验证建议。它还支持 `--base <git-ref>`、`--staged` 与 `--worktree` 从 Git 变更集读取路径。它从 `pnpm-workspace.yaml` 的 `packages` patterns、当前 manifest 和路径规则派生结论，不把影响面复制成静态文档。
+- 已发布 package 的契约查询不在根命令面，由 contract-change-review skill 提供：skill 内置脚本 `skills/contract-change-review/contract-query.mjs` 支持 `contract [--json] <published-package>`（当前 exports、peerDependencies、sideEffects、直接消费者与最小验证）和 `contract-diff --base <git-ref> [--json]`（manifest-level semver 审阅候选）。加载该 skill 后按其流程调用即可。
 - `scripts/validate-context.mjs` 只检查共享 context 的可加载性，不替代对规则语义、代码行为或 agent 输出质量的评审。
 
 ## 权威性与冲突处理

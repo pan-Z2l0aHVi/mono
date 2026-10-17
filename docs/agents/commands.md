@@ -41,14 +41,14 @@
 
 ### `agent:` — agent 自己的工作流
 
-| 命令                     | 用途                                                                                       |
-| ------------------------ | ------------------------------------------------------------------------------------------ |
-| `agent:task`             | task 生命周期：new/assign/start/freeze/review/approve/verify/done/drop/status/issue/guard  |
-| `agent:find-usages`      | 按路径推导受影响 workspace、最小 context 与最小充分验证                                    |
-| `agent:inspect-contract` | 输出可发布 package 的 exports、直接消费者与最小验证                                        |
-| `agent:diff-contract`    | 输出 manifest-level semver 审阅候选（`--base <git-ref>`）                                  |
-| `agent:env-doctor`       | 体检 worktree 环境（dist 截断、watch 污染、缓存、残留）                                    |
-| `agent:update-skills`    | 经官方 `skills update` 引擎更新第三方 skill 并收割回真实家（临时目录隔离，不破坏软链布局） |
+| 命令                  | 用途                                                                                       |
+| --------------------- | ------------------------------------------------------------------------------------------ |
+| `agent:task`          | task 生命周期：new/assign/start/freeze/review/approve/verify/done/drop/status/issue/guard  |
+| `agent:find-usages`   | 按路径推导受影响 workspace、最小 context 与最小充分验证                                    |
+| `agent:env-doctor`    | 体检 worktree 环境（dist 截断、watch 污染、缓存、残留）                                    |
+| `agent:update-skills` | 经官方 `skills update` 引擎更新第三方 skill 并收割回真实家（临时目录隔离，不破坏软链布局） |
+
+已发布 package 的契约查询（exports、直接消费者、Git 基线 semver 候选）不在根命令面：调用 contract-change-review skill，由 skill 内置脚本提供；语义与参数见 agent-context.md 的工具接口。
 
 ### `ci:` — CI 与仓库自检
 

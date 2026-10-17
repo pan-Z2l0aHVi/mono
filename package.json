@@ -25,8 +25,6 @@
     "agent:env-doctor": "node scripts/env-doctor.mjs",
     "agent:update-skills": "node scripts/update-vendored-skills.mjs",
     "agent:find-usages": "node scripts/repo-query.mjs verify",
-    "agent:inspect-contract": "node scripts/repo-query.mjs contract",
-    "agent:diff-contract": "node scripts/repo-query.mjs contract-diff",
     "dev:react-web-ui-demo": "turbo run dev --filter=@greypan/react-web-ui-demo...",
     "dev:vue-web-ui-demo": "turbo run dev --filter=@greypan/vue-web-ui-demo...",
     "dev:interweave": "turbo run dev --filter=@greypan/interweave --filter=\"@greypan/interweave-frontend^...\""

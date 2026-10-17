@@ -8,17 +8,13 @@ const root = path.resolve(import.meta.dirname, '..')
 const rawArgs = process.argv.slice(2)
 const command = rawArgs.shift() ?? 'verify'
 const options = parseOptions(rawArgs)
-const contractTarget = command === 'contract' ? (options.paths.shift() ?? '') : ''
 
 if (
-  !['verify', 'contract', 'contract-diff'].includes(command) ||
-  (command === 'contract' &&
-    (options.paths.length > 0 || !contractTarget || options.base || options.staged || options.worktree)) ||
-  (command === 'contract-diff' && (options.paths.length > 0 || !options.base || options.staged || options.worktree)) ||
+  command !== 'verify' ||
   (command === 'verify' && options.paths.length === 0 && !options.base && !options.staged && !options.worktree)
 ) {
   console.error(
-    'Usage: node scripts/repo-query.mjs verify [--json] [--base <git-ref> | --staged | --worktree] <changed-path>...\n       node scripts/repo-query.mjs contract [--json] <workspace-name>\n       node scripts/repo-query.mjs contract-diff --base <git-ref> [--json]'
+    'Usage: node scripts/repo-query.mjs verify [--json] [--base <git-ref> | --staged | --worktree] <changed-path>...'
   )
   process.exit(1)
 }
@@ -139,12 +135,6 @@ const workspaces = manifests
   .filter(workspace => workspace.name)
 
 const workspaceByName = new Map(workspaces.map(workspace => [workspace.name, workspace]))
-const manifestByName = new Map(
-  manifests.map(file => {
-    const manifest = readJson(file)
-    return [manifest.name, manifest]
-  })
-)
 const dependentsByDependency = new Map()
 for (const workspace of workspaces) {
   for (const edge of workspace.dependencyEdges) {
@@ -152,179 +142,6 @@ for (const workspace of workspaces) {
     dependents.push(workspace.name)
     dependentsByDependency.set(edge.to, dependents)
   }
-}
-
-function readGitFile(ref, file) {
-  try {
-    return execFileSync('git', ['show', `${ref}:${file}`], { cwd: root, encoding: 'utf8' })
-  } catch {
-    return ''
-  }
-}
-
-function stableJson(value) {
-  if (Array.isArray(value)) return value.map(stableJson)
-  if (!value || typeof value !== 'object') return value
-  return Object.fromEntries(
-    Object.keys(value)
-      .sort()
-      .map(key => [key, stableJson(value[key])])
-  )
-}
-
-function isEqual(left, right) {
-  return JSON.stringify(stableJson(left)) === JSON.stringify(stableJson(right))
-}
-
-function objectKeys(value) {
-  return value && typeof value === 'object' && !Array.isArray(value) ? Object.keys(value) : []
-}
-
-function classifyContractChange(name, previous = {}, current = {}) {
-  const previousExports = objectKeys(previous.exports)
-  const currentExports = objectKeys(current.exports)
-  const removedExports = previousExports.filter(key => !currentExports.includes(key)).sort()
-  const addedExports = currentExports.filter(key => !previousExports.includes(key)).sort()
-  const changedExports = previousExports
-    .filter(key => currentExports.includes(key) && !isEqual(previous.exports[key], current.exports[key]))
-    .sort()
-  const changedFields = ['files', 'peerDependencies', 'peerDependenciesMeta', 'sideEffects'].filter(
-    field => !isEqual(previous[field], current[field])
-  )
-
-  return {
-    name,
-    added: !previous.name,
-    removed: !current.name,
-    removedExports,
-    addedExports,
-    changedExports,
-    changedFields,
-    semverReview: {
-      breakingCandidates: [
-        ...(current.name ? [] : ['package removed']),
-        ...removedExports.map(key => `export removed: ${key}`),
-        ...changedExports.map(key => `export target changed: ${key}`),
-        ...changedFields.map(field => `public packaging field changed: ${field}`)
-      ],
-      additiveCandidates: [
-        ...(previous.name ? [] : ['package added']),
-        ...addedExports.map(key => `export added: ${key}`)
-      ]
-    }
-  }
-}
-
-function getPublishedPackagesAt(ref) {
-  const files = getGitPaths(['ls-tree', '-r', '--name-only', ref, '--', 'packages']).filter(file =>
-    /^packages\/[^/]+\/package\.json$/.test(file)
-  )
-  const packages = new Map()
-  for (const file of files) {
-    const text = readGitFile(ref, file)
-    if (!text) continue
-    const manifest = JSON.parse(text)
-    if (manifest.name && manifest.private !== true) packages.set(manifest.name, manifest)
-  }
-  return packages
-}
-
-function getCurrentPublishedPackages() {
-  const packages = new Map()
-  for (const file of manifests) {
-    const manifest = readJson(file)
-    if (manifest.name && manifest.private !== true) packages.set(manifest.name, manifest)
-  }
-  return packages
-}
-
-if (command === 'contract-diff') {
-  const previous = getPublishedPackagesAt(options.base)
-  const current = getCurrentPublishedPackages()
-  const changes = [...new Set([...previous.keys(), ...current.keys()])]
-    .sort()
-    .map(name => classifyContractChange(name, previous.get(name), current.get(name)))
-    .filter(
-      change =>
-        change.added ||
-        change.removed ||
-        change.removedExports.length > 0 ||
-        change.addedExports.length > 0 ||
-        change.changedExports.length > 0 ||
-        change.changedFields.length > 0
-    )
-  const result = {
-    command,
-    base: options.base,
-    changes,
-    requiresSemverReview: changes.some(change => change.semverReview.breakingCandidates.length > 0),
-    guidance:
-      '结果只识别 manifest-level public contract 候选；API 类型和运行时语义仍需结合 diff、测试与 Changeset 人工判断。'
-  }
-
-  if (options.json) console.log(JSON.stringify(result, null, 2))
-  else {
-    console.log(`contract-diff report: ${options.base}...worktree`)
-    if (result.changes.length === 0) console.log('No published package manifest contract changes.')
-    for (const change of result.changes) {
-      console.log(`- ${change.name}`)
-      for (const item of change.semverReview.breakingCandidates) console.log(`  - [semver review] ${item}`)
-      for (const item of change.semverReview.additiveCandidates) console.log(`  - [additive candidate] ${item}`)
-    }
-    console.log(`guidance: ${result.guidance}`)
-  }
-  process.exit(0)
-}
-
-if (command === 'contract') {
-  const workspace = workspaceByName.get(contractTarget)
-  const manifest = manifestByName.get(contractTarget)
-  if (!workspace || !manifest) {
-    console.error(`repo-query: unknown workspace ${contractTarget}`)
-    process.exit(1)
-  }
-  if (workspace.kind !== 'package' || workspace.private) {
-    console.error(`repo-query: ${contractTarget} is not a published package contract`)
-    process.exit(1)
-  }
-
-  const directConsumers = [...new Set(dependentsByDependency.get(contractTarget) ?? [])].sort()
-  const result = {
-    command,
-    package: {
-      name: workspace.name,
-      root: workspace.root,
-      exports: manifest.exports ?? {},
-      peerDependencies: manifest.peerDependencies ?? {},
-      sideEffects: manifest.sideEffects ?? false
-    },
-    directConsumers,
-    readFirst: [
-      'AGENTS.md',
-      `${workspace.root}/AGENTS.md`,
-      `${workspace.root}/README.md`,
-      'docs/agents/build.md',
-      'docs/agents/test-execution.md'
-    ].filter(file => fs.existsSync(path.join(root, file))),
-    verification: [
-      'pnpm run build',
-      'pnpm run check-pack',
-      ...(typeof workspace.scripts.test === 'string' ? [`pnpm --filter ${workspace.name} test`] : [])
-    ]
-  }
-
-  if (options.json) console.log(JSON.stringify(result, null, 2))
-  else {
-    console.log(`contract report: ${result.package.name}`)
-    console.log(`root: ${result.package.root}`)
-    console.log(`direct consumers: ${result.directConsumers.join(', ') || '(none)'}`)
-    console.log(`read first: ${result.readFirst.join(', ')}`)
-    console.log('exports:')
-    console.log(JSON.stringify(result.package.exports, null, 2))
-    console.log('verification:')
-    for (const command of result.verification) console.log(`- ${command}`)
-  }
-  process.exit(0)
 }
 
 const normalizedPaths = getChangedPaths()

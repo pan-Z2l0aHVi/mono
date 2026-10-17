@@ -21,10 +21,10 @@ description: 审查公共 API、exports、事件、类型适配和跨包运行�
 
    在 review 或变更集审查中，按范围改用 `--base <git-ref>`、`--staged` 或 `--worktree`。以输出的 workspace、风险、required evidence 和验证建议作为后续工作的起点。
 
-2. 若直接受影响的是已发布的 `@greypan/*` package，运行：
+2. 若直接受影响的是已发布的 `@greypan/*` package，在仓库根运行本 skill 内置脚本：
 
    ```sh
-   pnpm agent:inspect-contract -- <published-package>
+   node skills/contract-change-review/contract-query.mjs contract --json <published-package>
    ```
 
    用报告确认当前 `exports`、`peerDependencies`、`sideEffects`、直接消费者和最小验证；私有 app 不把它当作 npm package contract。
@@ -37,7 +37,7 @@ description: 审查公共 API、exports、事件、类型适配和跨包运行�
 
    - 跨包导出、引用或运行时契约：运行 `pnpm run test`。
    - 可发布 package 的源码入口、构建产物、`exports`、`files`、类型入口或 `sideEffects`：先运行 `pnpm run build`，再运行 `pnpm run check-pack`。
-   - 需要比较 Git 基线中的 manifest-level semver 候选，或进行 PR/release 审查：运行 `pnpm agent:diff-contract -- --base <git-ref>`。
+   - 需要比较 Git 基线中的 manifest-level semver 候选，或进行 PR/release 审查：运行 `node skills/contract-change-review/contract-query.mjs contract-diff --json --base <git-ref>`。
    - UI、交互或浏览器运行时：按 `docs/agents/runtime-verification.md` 在 chrome-devtools MCP 中验证；`pnpm run test` 中的 browser-mode 测试不能替代真实集成验证。
 
 6. 输出影响面、消费者兼容结论、必须同步的资料、实际执行的验证及未覆盖风险。发现破坏性候选时先提出兼容方案或明确升级路径，不擅自扩大实现范围。
@@ -45,6 +45,6 @@ description: 审查公共 API、exports、事件、类型适配和跨包运行�
 ## 完成定义
 
 - 已运行并审阅 `agent:find-usages`；每个受影响公共表面都有明确的兼容结论。
-- 涉及已发布 package 时，`agent:inspect-contract` 的消费者结论可追溯；涉及 Git 基线 semver 审查时，附上 `agent:diff-contract` 结果或说明其不适用。
+- 涉及已发布 package 时，`contract-query.mjs contract` 的消费者结论可追溯；涉及 Git 基线 semver 审查时，附上 `contract-query.mjs contract-diff` 结果或说明其不适用。
 - 涉及发布产物边界时，`pnpm run build` 与 `pnpm run check-pack` 均有结果，或明确记录无法执行的原因。
 - 导出、类型、README、消费者适配和测试的同步状态可追溯；跨包变更有根级验证结果，或明确记录未验证缺口。
