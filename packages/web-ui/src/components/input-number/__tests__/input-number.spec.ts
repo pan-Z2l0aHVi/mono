@@ -163,7 +163,10 @@ describe('WebUiInputNumber 组件特有契约', () => {
       cleanupElement(el)
     })
 
-    it('precision 变化不恢复设值时已按旧精度舍入的值', async () => {
+    // 原实现断言「precision 变化不恢复设值时已按旧精度舍入的值」，等价于接受
+    // 赋值即销毁原始小数（#340 的同一根因）。现改为：原始值保留，读取时按当前
+    // precision 规整，故精度提上来之后 1.234 应回到 1.23。
+    it('precision 提升后按新精度重新规整原始值', async () => {
       const el = createNumber()
       el.value = 1.234
       await waitForUpdate(el)
@@ -171,7 +174,19 @@ describe('WebUiInputNumber 组件特有契约', () => {
 
       el.precision = 2
       await waitForUpdate(el)
-      expect(el.value).toBe(1)
+      expect(el.value).toBe(1.23)
+      cleanupElement(el)
+    })
+
+    it('precision 调低后截断到新的精度', async () => {
+      const el = createNumber()
+      el.value = 1.234
+      await waitForUpdate(el)
+      el.precision = 2
+      await waitForUpdate(el)
+      el.precision = 1
+      await waitForUpdate(el)
+      expect(el.value).toBe(1.2)
       cleanupElement(el)
     })
   })
@@ -274,6 +289,102 @@ describe('WebUiInputNumber 组件特有契约', () => {
 
       expect(el.value).toBe(5)
       expect(changeEvents).toHaveLength(0)
+      cleanupElement(el)
+    })
+  })
+
+  /**
+   * value 先于 precision 声明是模板里的自然书写顺序（`<web-ui-input-number
+   * value="1.5" precision="2">`）。赋值时若立刻按当时的 precision（默认 0）
+   * 取整，原始小数会被不可逆地抹掉，精度随后声明也无法恢复。
+   */
+  describe('赋值顺序不依赖精度声明顺序', () => {
+    it('value 在 precision 之前声明时保留小数', async () => {
+      const el = createNumber({ value: '1.5', precision: '2' })
+      await waitForUpdate(el)
+
+      expect(el.value).toBe(1.5)
+      cleanupElement(el)
+    })
+
+    it('极小值 0.01 不被取整成 0', async () => {
+      const el = createNumber({ value: '0.01', precision: '2' })
+      await waitForUpdate(el)
+
+      expect(el.value).toBe(0.01)
+      cleanupElement(el)
+    })
+
+    it('precision 在 value 之前声明时结果一致', async () => {
+      const el = createNumber()
+      el.precision = 2
+      el.value = 1.5
+      await waitForUpdate(el)
+
+      expect(el.value).toBe(1.5)
+      cleanupElement(el)
+    })
+  })
+
+  /**
+   * 清空/非法输入是编辑中的临时态：失焦时必须把显示回填成已提交值，
+   * 否则显示与 value、以及 ElementInternals 的 validity 会三方不一致。
+   */
+  describe('非法输入在失焦时回填', () => {
+    const mountWithValue = async (value: number) => {
+      const el = createNumber()
+      el.value = value
+      await waitForUpdate(el)
+      return el
+    }
+
+    it('清空后失焦回填已提交值', async () => {
+      const el = await mountWithValue(5)
+      const input = nativeInput(el)
+
+      input.value = ''
+      input.dispatchEvent(new Event('input', { bubbles: true }))
+      await waitForUpdate(el)
+
+      input.dispatchEvent(new Event('change', { bubbles: true }))
+      input.dispatchEvent(new FocusEvent('blur'))
+      await waitForUpdate(el)
+
+      expect(nativeInput(el).value).toBe('5')
+      expect(el.value).toBe(5)
+      cleanupElement(el)
+    })
+
+    it('非法文本粘贴后失焦回填已提交值', async () => {
+      const el = await mountWithValue(5)
+      const input = nativeInput(el)
+
+      // type=number 对非数字文本的 value 归一为空串
+      input.value = 'abc'
+      input.dispatchEvent(new Event('input', { bubbles: true }))
+      await waitForUpdate(el)
+
+      input.dispatchEvent(new Event('change', { bubbles: true }))
+      input.dispatchEvent(new FocusEvent('blur'))
+      await waitForUpdate(el)
+
+      expect(nativeInput(el).value).toBe('5')
+      expect(el.value).toBe(5)
+      cleanupElement(el)
+    })
+
+    it('输入合法值后失焦提交并规范化显示', async () => {
+      const el = await mountWithValue(5)
+      const input = nativeInput(el)
+
+      input.value = '7'
+      input.dispatchEvent(new Event('input', { bubbles: true }))
+      await waitForUpdate(el)
+      input.dispatchEvent(new Event('change', { bubbles: true }))
+      await waitForUpdate(el)
+
+      expect(el.value).toBe(7)
+      expect(nativeInput(el).value).toBe('7')
       cleanupElement(el)
     })
   })
