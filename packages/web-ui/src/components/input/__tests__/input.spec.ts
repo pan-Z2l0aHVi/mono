@@ -149,4 +149,46 @@ describe('WebUiInput 组件特有契约', () => {
     expect(queryA11y(el, '[aria-label="清除"]')).toBeNull()
     cleanupElement(el)
   })
+
+  /**
+   * 清除是一次「已提交」的离散变更，不是连续输入：只派发 input 会让
+   * `v-model.lazy` 这类只监听 change 的消费者永远收不到清空。
+   */
+  it('点击清除按钮同时派发 input 与 change', async () => {
+    const el = createInput()
+    el.clearable = true
+    el.value = 'hello'
+    await waitForUpdate(el)
+
+    const events: string[] = []
+    el.addEventListener('input', () => events.push('input'))
+    el.addEventListener('change', () => events.push('change'))
+
+    const clear = queryA11y(el, '[aria-label="清除"]') as HTMLElement
+    expect(clear, '应有清除按钮').toBeTruthy()
+    clear.click()
+    await waitForUpdate(el)
+
+    expect(el.value).toBe('')
+    expect(events).toEqual(['input', 'change'])
+    cleanupElement(el)
+  })
+
+  it('清除后失焦不再重复派发 change', async () => {
+    const el = createInput()
+    el.clearable = true
+    el.value = 'hello'
+    await waitForUpdate(el)
+
+    const events: string[] = []
+    el.addEventListener('change', () => events.push('change'))
+
+    ;(queryA11y(el, '[aria-label="清除"]') as HTMLElement).click()
+    await waitForUpdate(el)
+    nativeInput(el).dispatchEvent(new FocusEvent('blur'))
+    await waitForUpdate(el)
+
+    expect(events).toEqual(['change'])
+    cleanupElement(el)
+  })
 })
