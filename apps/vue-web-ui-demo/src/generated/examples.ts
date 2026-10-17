@@ -3732,7 +3732,7 @@ export const exampleDocs: ExampleDoc[] = [
           ],
           [
             "precision",
-            "<p>小数精度。</p>",
+            "<p>小数精度，在读取与提交时规整。</p>",
             "number",
             "0"
           ],
@@ -3808,7 +3808,7 @@ export const exampleDocs: ExampleDoc[] = [
       {
         "id": null,
         "title": "精度",
-        "descriptionHtml": "<p><code>precision</code> 决定小数位数，超出部分会被规整。</p>",
+        "descriptionHtml": "<p><code>precision</code> 决定小数位数，超出部分在<strong>读取与提交</strong>时规整；赋值本身保留原始小数，因此 <code>precision</code> 与 <code>value</code> 的声明顺序不影响结果（<code>value=\"1.5\" precision=\"2\"</code> 与反序都得到 <code>1.5</code>）。</p>\n<p>编辑中清空或输入非法内容不会破坏 <code>value</code>：失焦时显示会回填为已提交值，表单提交的始终是最后那个合法值。</p>",
         "html": {
           "react": "<pre class=\"shiki shiki-themes github-light github-dark mdc-code\" style=\"--shiki-light:#24292e;--shiki-dark:#e1e4e8;--shiki-light-bg:#fff;--shiki-dark-bg:#24292e\" tabindex=\"0\"><code><span class=\"line\"><span style=\"--shiki-light:#24292E;--shiki-dark:#E1E4E8\">&#x3C;</span><span style=\"--shiki-light:#005CC5;--shiki-dark:#79B8FF\">web-ui-input-number</span><span style=\"--shiki-light:#6F42C1;--shiki-dark:#B392F0\"> precision</span><span style=\"--shiki-light:#D73A49;--shiki-dark:#F97583\">=</span><span style=\"--shiki-light:#24292E;--shiki-dark:#E1E4E8\">{</span><span style=\"--shiki-light:#005CC5;--shiki-dark:#79B8FF\">2</span><span style=\"--shiki-light:#24292E;--shiki-dark:#E1E4E8\">} </span><span style=\"--shiki-light:#6F42C1;--shiki-dark:#B392F0\">step</span><span style=\"--shiki-light:#D73A49;--shiki-dark:#F97583\">=</span><span style=\"--shiki-light:#24292E;--shiki-dark:#E1E4E8\">{</span><span style=\"--shiki-light:#005CC5;--shiki-dark:#79B8FF\">0.01</span><span style=\"--shiki-light:#24292E;--shiki-dark:#E1E4E8\">} </span><span style=\"--shiki-light:#6F42C1;--shiki-dark:#B392F0\">value</span><span style=\"--shiki-light:#D73A49;--shiki-dark:#F97583\">=</span><span style=\"--shiki-light:#24292E;--shiki-dark:#E1E4E8\">{</span><span style=\"--shiki-light:#005CC5;--shiki-dark:#79B8FF\">9.99</span><span style=\"--shiki-light:#24292E;--shiki-dark:#E1E4E8\">}>&#x3C;/</span><span style=\"--shiki-light:#005CC5;--shiki-dark:#79B8FF\">web-ui-input-number</span><span style=\"--shiki-light:#24292E;--shiki-dark:#E1E4E8\">></span></span></code></pre>",
           "vue": "<pre class=\"shiki shiki-themes github-light github-dark mdc-code\" style=\"--shiki-light:#24292e;--shiki-dark:#e1e4e8;--shiki-light-bg:#fff;--shiki-dark-bg:#24292e\" tabindex=\"0\"><code><span class=\"line\"><span style=\"--shiki-light:#24292E;--shiki-dark:#E1E4E8\">&#x3C;</span><span style=\"--shiki-light:#22863A;--shiki-dark:#85E89D\">template</span><span style=\"--shiki-light:#24292E;--shiki-dark:#E1E4E8\">></span></span>\n<span class=\"line\"><span style=\"--shiki-light:#24292E;--shiki-dark:#E1E4E8\">  &#x3C;</span><span style=\"--shiki-light:#22863A;--shiki-dark:#85E89D\">web-ui-input-number</span><span style=\"--shiki-light:#6F42C1;--shiki-dark:#B392F0\"> :precision</span><span style=\"--shiki-light:#24292E;--shiki-dark:#E1E4E8\">=</span><span style=\"--shiki-light:#032F62;--shiki-dark:#9ECBFF\">\"2\"</span><span style=\"--shiki-light:#6F42C1;--shiki-dark:#B392F0\"> :step</span><span style=\"--shiki-light:#24292E;--shiki-dark:#E1E4E8\">=</span><span style=\"--shiki-light:#032F62;--shiki-dark:#9ECBFF\">\"0.01\"</span><span style=\"--shiki-light:#6F42C1;--shiki-dark:#B392F0\"> :value</span><span style=\"--shiki-light:#24292E;--shiki-dark:#E1E4E8\">=</span><span style=\"--shiki-light:#032F62;--shiki-dark:#9ECBFF\">\"9.99\"</span><span style=\"--shiki-light:#24292E;--shiki-dark:#E1E4E8\">>&#x3C;/</span><span style=\"--shiki-light:#22863A;--shiki-dark:#85E89D\">web-ui-input-number</span><span style=\"--shiki-light:#24292E;--shiki-dark:#E1E4E8\">></span></span>\n<span class=\"line\"><span style=\"--shiki-light:#24292E;--shiki-dark:#E1E4E8\">&#x3C;/</span><span style=\"--shiki-light:#22863A;--shiki-dark:#85E89D\">template</span><span style=\"--shiki-light:#24292E;--shiki-dark:#E1E4E8\">></span></span></code></pre>"
@@ -3944,7 +3944,7 @@ export const exampleDocs: ExampleDoc[] = [
           ],
           [
             "change",
-            "<p>提交时触发。</p>"
+            "<p>提交时触发（失焦、回车，或点击清除按钮清空）。</p>"
           ],
           [
             "focus",
@@ -4051,7 +4051,7 @@ export const exampleDocs: ExampleDoc[] = [
       {
         "id": null,
         "title": "清除按钮",
-        "descriptionHtml": "<p><code>clearable</code> 在有值时显示清除按钮，<code>full</code> 让输入框占满父容器宽度。</p>",
+        "descriptionHtml": "<p><code>clearable</code> 在有值时显示清除按钮，<code>full</code> 让输入框占满父容器宽度。点击清除按钮会清空值，并<strong>同时派发 <code>input</code> 与 <code>change</code></strong>（清除是一次已提交的离散变更，不是连续输入，只监听 <code>change</code> 的消费者也能收到）。</p>",
         "html": {
           "react": "<pre class=\"shiki shiki-themes github-light github-dark mdc-code\" style=\"--shiki-light:#24292e;--shiki-dark:#e1e4e8;--shiki-light-bg:#fff;--shiki-dark-bg:#24292e\" tabindex=\"0\"><code><span class=\"line\"><span style=\"--shiki-light:#24292E;--shiki-dark:#E1E4E8\">&#x3C;</span><span style=\"--shiki-light:#005CC5;--shiki-dark:#79B8FF\">web-ui-input</span><span style=\"--shiki-light:#6F42C1;--shiki-dark:#B392F0\"> clearable</span><span style=\"--shiki-light:#6F42C1;--shiki-dark:#B392F0\"> full</span><span style=\"--shiki-light:#6F42C1;--shiki-dark:#B392F0\"> placeholder</span><span style=\"--shiki-light:#D73A49;--shiki-dark:#F97583\">=</span><span style=\"--shiki-light:#032F62;--shiki-dark:#9ECBFF\">\"输入关键词\"</span><span style=\"--shiki-light:#24292E;--shiki-dark:#E1E4E8\">>&#x3C;/</span><span style=\"--shiki-light:#005CC5;--shiki-dark:#79B8FF\">web-ui-input</span><span style=\"--shiki-light:#24292E;--shiki-dark:#E1E4E8\">></span></span></code></pre>",
           "vue": "<pre class=\"shiki shiki-themes github-light github-dark mdc-code\" style=\"--shiki-light:#24292e;--shiki-dark:#e1e4e8;--shiki-light-bg:#fff;--shiki-dark-bg:#24292e\" tabindex=\"0\"><code><span class=\"line\"><span style=\"--shiki-light:#24292E;--shiki-dark:#E1E4E8\">&#x3C;</span><span style=\"--shiki-light:#22863A;--shiki-dark:#85E89D\">template</span><span style=\"--shiki-light:#24292E;--shiki-dark:#E1E4E8\">></span></span>\n<span class=\"line\"><span style=\"--shiki-light:#24292E;--shiki-dark:#E1E4E8\">  &#x3C;</span><span style=\"--shiki-light:#22863A;--shiki-dark:#85E89D\">web-ui-input</span><span style=\"--shiki-light:#6F42C1;--shiki-dark:#B392F0\"> clearable</span><span style=\"--shiki-light:#6F42C1;--shiki-dark:#B392F0\"> full</span><span style=\"--shiki-light:#6F42C1;--shiki-dark:#B392F0\"> placeholder</span><span style=\"--shiki-light:#24292E;--shiki-dark:#E1E4E8\">=</span><span style=\"--shiki-light:#032F62;--shiki-dark:#9ECBFF\">\"输入关键词\"</span><span style=\"--shiki-light:#24292E;--shiki-dark:#E1E4E8\">>&#x3C;/</span><span style=\"--shiki-light:#22863A;--shiki-dark:#85E89D\">web-ui-input</span><span style=\"--shiki-light:#24292E;--shiki-dark:#E1E4E8\">></span></span>\n<span class=\"line\"><span style=\"--shiki-light:#24292E;--shiki-dark:#E1E4E8\">&#x3C;/</span><span style=\"--shiki-light:#22863A;--shiki-dark:#85E89D\">template</span><span style=\"--shiki-light:#24292E;--shiki-dark:#E1E4E8\">></span></span></code></pre>"
@@ -6170,7 +6170,7 @@ export const exampleDocs: ExampleDoc[] = [
   {
     "component": "switch",
     "tag": "web-ui-switch",
-    "introHtml": "<p>开关切换，声明 <code>role=\"switch\"</code> 与 <code>aria-checked</code>；<code>loading</code> 期间阻断交互并显示待定状态。</p>",
+    "introHtml": "<p>开关切换，声明 <code>role=\"switch\"</code> 与 <code>aria-checked</code>；<code>loading</code> 期间阻断交互并显示待定状态。键盘焦点落在内层原生 checkbox 上，<strong>空格与 Enter 都能切换</strong>。</p>",
     "api": [
       {
         "kind": "table",
