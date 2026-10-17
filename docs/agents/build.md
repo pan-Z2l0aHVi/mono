@@ -4,7 +4,7 @@
 
 ## 各包命令
 
-可构建的包都有 `build`，多数有持久监听的 `dev`。`build`、`test`、`dev` 是 turbo 任务，用 `pnpm exec turbo <task> --filter=@greypan/<name>` 运行，turbo 按 `^build` 先建好上游依赖；裸 `pnpm --filter` 绕过这一层，会用到陈旧或缺失的 `dist`。其余脚本（例如 `generate-icons`）用 `pnpm --filter @greypan/<name> <script>` 直接跑。影响面定位用 `pnpm agent:find-usages -- <paths...>`，语义见 [`agent-context.md`](agent-context.md)。全量根命令由 CI 在 pull request 上执行，本地只在复现全仓范围问题时运行。
+可构建的包都有 `build`，多数有持久监听的 `dev`。`build`、`test`、`dev` 是 turbo 任务，用 `pnpm exec turbo <task> --filter=@greypan/<name>` 运行，turbo 按 `^build` 先建好上游依赖；裸 `pnpm --filter` 绕过这一层，会用到陈旧或缺失的 `dist`。其余脚本（例如 `generate-icons`）用 `pnpm --filter @greypan/<name> <script>` 直接跑。影响面定位用 `pnpm agent:find-usages -- <paths...>`，语义见 `agent-context.md`。全量根命令由 CI 在 pull request 上执行，本地只在复现全仓范围问题时运行。
 
 `check-pack` 在构建可发布 package 或修改其 `exports`、`files`、Vite 输出时，于根构建成功后运行。它用 `pnpm pack --dry-run` 验证实际发布文件与 manifest export targets，不判断 API 语义或版本级别。
 
@@ -12,7 +12,7 @@
 
 worktree 是任务隔离边界，不是包名的别名。一个可变 task 只能有一个 owner 和一个实施 worktree；怎么创建、放在哪、用什么命令建、由谁清理，都由编排层（herdr-projects）决定，仓库不规定。共享主工作区只用于只读调查与状态查询，合并通过远端 PR 完成，不在共享工作区里做。owner 与 worktree 的唯一性边界见根 [`AGENTS.md`](../../AGENTS.md)。
 
-编排层交付一个新 worktree 后，收到它的执行者必须在实施或 freeze 之前依次跑 `mise install`、`pnpm install`、`pnpm run build`，三步都不能省。`mise install` 排第一，因为工具链版本由 `.mise.toml` 钉住，不同分支可能钉不同版本；它幂等，装过就是一次快速 no-op。freeze 的 guard 只看 `node_modules` 是否存在，装完依赖就通过，真正缺的是 workspace 包的 `dist` 类型产物：没有它，`vp check`（`fix-code` 与 `check-code` 都调用）会把每个跨包 import 报成假 `TS2307`，全部类型感知验证随之不可用。判据见 [`workflow.md`](workflow.md)「先建立任务」的 preflight 第 4 步。
+编排层交付一个新 worktree 后，收到它的执行者必须在实施或 freeze 之前依次跑 `mise install`、`pnpm install`、`pnpm run build`，三步都不能省。`mise install` 排第一，因为工具链版本由 `.mise.toml` 钉住，不同分支可能钉不同版本；它幂等，装过就是一次快速 no-op。freeze 的 guard 只看 `node_modules` 是否存在，装完依赖就通过，真正缺的是 workspace 包的 `dist` 类型产物：没有它，`vp check`（`fix-code` 与 `check-code` 都调用）会把每个跨包 import 报成假 `TS2307`，全部类型感知验证随之不可用。
 
 编排层交接 task 时会带上 worktree 路径、base SHA 和 owner 标识，执行者按它们填 Task Packet 的 `Worktree`、`Base`、`Owner`，并执行 `pnpm agent:task assign` 记录归属，不自行推导或改写。交接后归属变更属编排层的动作，重新 assign 即可。禁止靠 pane 名称或目录名推断归属。
 
@@ -24,9 +24,11 @@ worktree 是任务隔离边界，不是包名的别名。一个可变 task 只�
 
 构建或验证前怀疑 `dist` 产物异常（例如被 watch 进程清空 d.ts）时，先跑 `pnpm run agent:env-doctor` 体检，再用 `pnpm run agent:env-doctor --fix`（自动 `turbo build --force`）或手动 `turbo build --force` 重建。
 
+Codex 线程能不能写共享 Turbo 缓存，取决于客户端的权限配置，见 [`environments.md`](environments.md)。
+
 ### mise exec 与命令外壳
 
-`.mise.toml` 钉住工具链版本，并在 `[env]` 注入 `TURBO_CACHE_DIR`。这套注入只对 **mise 激活过的 shell** 生效：交互式终端与 herdr pane 由 mise 自动激活，agent 的工具宿主、`git hook`、`bash -c` 与外部脚本通常没有。判定要不要加 `mise exec --` 只看一条：**这条命令是否依赖 mise 注入的 env，或 PATH 上被钉住的工具**——经 turbo 的命令两者都依赖，调用 node / pnpm / go 的命令依赖后者；纯粹读写文件、或工具全部由 `node_modules` 提供的命令可以直接跑，拿不准就加。一个例外是 `pnpm run agent:env-doctor`：它存在的意义就是暴露「当前 shell 没激活 mise」，加了前缀会让它用来暴露这件事的两条断言恒报 ok，所以必须裸跑。
+`.mise.toml` 钉住工具链版本，并在 `[env]` 注入 `TURBO_CACHE_DIR`。这套注入只对 **mise 激活过的 shell** 生效：交互式终端（含终端复用器里的 pane）由 mise 自动激活，agent 的工具宿主、`git hook`、`bash -c` 与外部脚本通常没有。判定要不要加 `mise exec --` 只看一条：**这条命令是否依赖 mise 注入的 env，或 PATH 上被钉住的工具**——经 turbo 的命令两者都依赖，调用 node / pnpm / go 的命令依赖后者；纯粹读写文件、或工具全部由 `node_modules` 提供的命令可以直接跑，拿不准就加。一个例外是 `pnpm run agent:env-doctor`：它存在的意义就是暴露「当前 shell 没激活 mise」，加了前缀会让它用来暴露这件事的两条断言恒报 ok，所以必须裸跑。
 
 一行快速自检，输出非空只说明 env 已被注入（CI 在 `ci.yml` 里覆盖过这个变量也会让它非空），所以它只是提示，权威判据是 `pnpm run agent:env-doctor` 的等值断言：
 
@@ -38,22 +40,13 @@ echo "${TURBO_CACHE_DIR:-<unset>}"
 
 ### Go 缓存探测与共享
 
-`.mise.toml` 的 `[env]` 里 `GOCACHE` 通过 `exec` 模板在 `HERDR_ENV=1` 时运行探测命令：
+`.mise.toml` 的 `[env]` 里 `GOCACHE` 通过 `exec` 模板在 `HERDR_ENV=1` 时运行一段探测：先试 macOS 的默认缓存目录，再试 Linux 的，都不可写才回落到 `$TMPDIR/greypan/go-build`。目的是让各工作区共享同一份 Go 缓存，而不是各自散在临时目录里。
 
-1. 尝试写入 macOS 默认路径 `~/Library/Caches/go-build`（`mkdir -p && touch && rm`，真写入，`2>/dev/null` 抑制 stderr）
-2. 不可写则尝试 Linux 默认路径 `~/.cache/go-build`
-3. 仍不可写则回落 `$TMPDIR/greypan/go-build`
+探测命令**永远 exit 0、仅输出一行**，这是 Tera 渲染的要求；`HERDR_ENV` 在场而 `TMPDIR` 为空时条件判假，避免渲染成根路径 `/greypan/go-build`。
 
-探测命令**永远 exit 0、仅输出一行**，满足 Tera 渲染不崩溃的要求；`HERDR_ENV` 在场而 `TMPDIR` 为空时条件判假，避免渲染成根路径 `/greypan/go-build`。
+没有 `HERDR_ENV` 时模板渲染为空，Go 自行使用平台默认路径——在 macOS 上就是探测会选中的那个目录，所以结果一致，CI 也是如此（`ci.yml` 的 `actions/cache` 读 `go env GOCACHE` 的默认值，不受影响）。**这条链路不挑客户端**：任何 agent 在 mise 激活过的 shell 里都落在同一个缓存上，探测没跑到也只是退回平台默认。
 
-**实测共享矩阵**：
-
-- **herdr pane / claude 线程 / opencode 线程**（`HERDR_ENV=1`）：默认路径可写，探测命中，全部共享 `~/Library/Caches/go-build`（持久、约 800 MB）。
-- **手工 shell**（无 `HERDR_ENV`）：模板渲染为空，Go 自行使用平台默认路径，同上共享同一份缓存。
-- **codex 线程**（`codex-auto` profile，`HERDR_ENV=1`）：sandbox 仅允许 worktree 与 `/tmp` 写入，探测写入失败、回落 `$TMPDIR/greypan/go-build`，**行为不退化**。
-- **CI（GitHub Actions）**：无 `HERDR_ENV`，模板渲染为空，Go 使用平台默认路径，`ci.yml` 的 `actions/cache` 读取 `go env GOCACHE`（默认值）不受影响。
-
-两份历史缓存（`~/Library/Caches/go-build` 约 759 MB、`$TMPDIR/greypan/go-build` 约 1.0 GB）保留不动，旧的 `$TMPDIR` 那份由系统定期回收。
+要确认当前拿到的路径，跑 `mise exec -- go env GOCACHE`。
 
 ### 缓存可信链
 
@@ -100,7 +93,7 @@ Interweave 由 Wails 宿主管理嵌套前端，其 alias 只启动 Wails host�
 - 以 `-clean=false` 生成。`wails3` 的 `-clean` 不是先删目录再重建，而是先生成到临时目录、再逐文件同步；同步的删除阶段会删掉这一次没产出的文件，而包加载或类型检查问题只记 Warning、命令仍 exit 0。危险形状是 exit 0 的静默少产出，会删掉受版本控制的 bindings，`-clean=false` 让写入阶段完全没有删除。代价是不再清理陈旧生成物：改名或删掉一个 Service 后旧文件会留在 `bindings/` 里，需要人工 `git rm`。直接写 `bindings/`（而非临时目录加同步）在 dev server 开着时会产生 HMR 事件，但没有 delete 加 recreate 环，不触发 chokidar 的重命名循环。
 - 生成前后对 `bindings/**` 做产出集合收缩守卫：生成前快照（相对路径加内容），生成后只要少了文件就把目录精确还原到快照并以非零退出。它按产出集合判定、不看退出码，挡的是工具删文件这一形状。在 `-clean=false` 下 wails3 不再有删除阶段，这条分支基本不会被触发，它更像一个「wails3 若改了语义就报警」的哨兵。陈旧生成物不由守卫处理，守卫只因少了文件报警，不因多了陈旧文件报警。
 
-`**/__screenshots__/` 与 `**/.vitest-attachments/` 是测试证据，不是应用代码生成物。除非任务明确要求并已完成对应的视觉或浏览器验证，不要创建、手改或提交。根 [`AGENTS.md`](../../AGENTS.md)「不可绕过的仓库边界」在入口层声明同一约束，本节承载处方。
+`**/__screenshots__/` 与 `**/.vitest-attachments/` 是测试证据，不是应用代码生成物。除非任务明确要求并已完成对应的视觉或浏览器验证，不要创建、手改或提交。根 [`AGENTS.md`](../../AGENTS.md#不可绕过的仓库边界)在入口层声明同一约束，本节承载处方。
 
 ## TypeScript 配置
 

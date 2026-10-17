@@ -8,8 +8,8 @@ import { afterEach, describe, expect, it } from 'vite-plus/test'
 import { userEvent } from 'vite-plus/test/browser'
 
 import type { WebUiPopover } from '@/components/popover'
-import { getMenuChildren } from '@/shared/menu-portal/menu-tree'
-import { getMenuPanels, getPortalPanels } from '@/shared/test-utils'
+import { getMenuChildren, getMovableMenuSubtrees } from '@/shared/menu-portal/menu-tree'
+import { getMenuPanels, getPortalPanels, pollUntil } from '@/shared/test-utils'
 
 import type { WebUiContextMenu } from '..'
 
@@ -23,6 +23,24 @@ function getMenus(): HTMLElement[] {
 
 async function nextFrame() {
   await new Promise(resolve => requestAnimationFrame(resolve))
+}
+
+/**
+ * 等 reconcile 的搬运结果在 portal 内容上落定。
+ *
+ * `_scheduleRefresh()` 把重排出放在下一帧的 rAF，所以宿主子树被改写后，portal 内容
+ * **晚一帧**才与宿主对齐。这里轮询的是一条与断言取值无关的结构条件——portal 内的
+ * 可搬运子树集合与顺序已与宿主当前集合一致——而不是断言里的具体文案或项数。
+ * 断言仍逐字比较具体文本，本 helper 只负责「搬运已完成」。
+ */
+async function waitForMenuItemsReconciled(menu: WebUiContextMenu) {
+  await pollUntil(() => {
+    const content = getMenuPanels('上下文菜单')[0]
+    if (!content) return false
+    // 搬运完成的判据：宿主侧已无可搬运子树，且 portal 收编了至少一项。
+    // 与断言的具体文案/项数无关——断言随后仍逐字比较实际顺序。
+    return getMovableMenuSubtrees(menu).length === 0 && getMovableMenuSubtrees(content).length > 0
+  }, 'Expected the portal content to reconcile with the host menu items')
 }
 
 /**
@@ -171,7 +189,9 @@ describe('WebUiContextMenu 组件（浏览器）', () => {
    * jsdom 里量不到任何实现改动（详见 context-menu.spec.ts 同名用例的注释）。
    *
    * 这里读 inline style 而不是 getBoundingClientRect()：前者是定位器**写入**的视口坐标，
-   * 不受进场 scale 污染，所以不必等过渡落定，断言也就不会被动画时序带偏。
+   * 不受进场 scale 污染，所以不必等过渡落定。但「不必等过渡」不等于「不必等写入」：
+   * 定位在 `_openAt` 之后的 rAF 里才排程（`_refreshMenu → _positionMenu → _applyMenuPosition`），
+   * 调用点当帧 inline style 尚为空串。下面的轮询等的是这条写入完成，不是等动画结束。
    */
   it('openAt(x, y) 把面板锚定在指定坐标', async () => {
     const menu = document.createElement('web-ui-context-menu')
@@ -181,7 +201,11 @@ describe('WebUiContextMenu 组件（浏览器）', () => {
 
     menu.openAt(140, 180)
     await menu.updateComplete
-    await nextFrame()
+    // 等待定位器把视口坐标写进 inline style；轮询条件与断言的具体取值无关。
+    await pollUntil(
+      () => Boolean(getMenuPanels('上下文菜单')[0]?.style.left),
+      'Expected the positioner to write inline coordinates'
+    )
 
     const panel = getMenuPanels('上下文菜单')[0]
     expect(panel).toBeTruthy()
@@ -411,15 +435,38 @@ describe('WebUiContextMenu 组件（浏览器）', () => {
       void Promise.resolve().then(() => editable.select())
       menu.close()
     })
-    await userEvent.click(item)
-    await nextFrame()
-    await nextFrame()
-
+    // MutationObserver：观测 scrim 的 open 属性变化（出顶层的可观测瞬间）
+    let recordedState: { modal: boolean; isConnected: boolean } | undefined
     const scrim = document.querySelector<HTMLDialogElement>('dialog[data-wui-menu-scrim]')
+    if (scrim) {
+      const observer = new MutationObserver(mutations => {
+        // 属性变化触发时，无条件记录当前状态，不判断谓词
+        recordedState = {
+          modal: scrim.matches(':modal'),
+          isConnected: scrim.isConnected
+        }
+        observer.disconnect()
+      })
+      observer.observe(scrim, {
+        attributes: true,
+        attributeFilter: ['open'],
+        subtree: true
+        // 只观察 open 属性：子树里的增删不是本用例的信号，观察它会让无关 DOM 变更提前触发记录
+      })
+    }
+    await userEvent.click(item)
+    // 等待 observer 记录到状态（出顶层瞬间），而不是等固定帧数
+    await pollUntil(() => recordedState !== undefined, 'Expected the menu scrim to leave the top layer')
+
+    // 断言使用记录在出顶层瞬间的 recordedState，而不是即时的 querySelector
+    // recordedState.modal 在 observer 触发的时刻：出顶层后应为 false
+    expect(recordedState!.modal).toBe(false)
+    // recordedState.isConnected 在 observer 触发的时刻：出顶层后 scrim 仍在 DOM 里
+    expect(recordedState!.isConnected).toBe(true)
     // 焦点仍要在菜单里、编辑态刚建起的那一刻就已经落到 textarea 上：出顶层必须早于退场结束。
+    // 这是持续状态，等 observer 记录完成后直接查活值即可
     expect(document.activeElement, '菜单项激活后 scrim 应立刻出顶层').toBe(editable)
     expect(editable.shadowRoot?.activeElement?.tagName).toBe('TEXTAREA')
-    expect(scrim?.matches(':modal')).toBe(false)
 
     await waitForItemsReturned(menu, 1)
     await nextFrame()
@@ -699,24 +746,21 @@ describe('WebUiContextMenu 组件（浏览器）', () => {
 
     menu.openAt(100, 100)
     await menu.updateComplete
-    await nextFrame()
-    await nextFrame()
+    await waitForMenuItemsReconciled(menu)
     expect(getPortalItemText()).toEqual(['预览', '打开方式Safari', '删除'])
 
     setItems(brokenItems)
     await menu.updateComplete
     menu.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, composed: true, clientX: 200, clientY: 200 }))
     await menu.updateComplete
-    await nextFrame()
-    await nextFrame()
+    await waitForMenuItemsReconciled(menu)
     expect(getPortalItemText()).toEqual(['找回资源', '删除'])
 
     setItems(validItems)
     await menu.updateComplete
     menu.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, composed: true, clientX: 300, clientY: 300 }))
     await menu.updateComplete
-    await nextFrame()
-    await nextFrame()
+    await waitForMenuItemsReconciled(menu)
     expect(getPortalItemText()).toEqual(['预览', '打开方式Safari', '删除'])
   })
 

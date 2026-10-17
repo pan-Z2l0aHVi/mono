@@ -1,6 +1,6 @@
 # 根命令面
 
-本文件是根 `package.json` 命令面的权威来源：有哪些命令、叫什么、谁用，以及为什么这么叫。短约束层见 [`.agents/rules/commands.md`](../../.agents/rules/commands.md)。查询工具（`agent:find-usages` 等）的语义与参数见 [`agent-context.md`](agent-context.md)，不在这里。
+本文件是根 `package.json` 命令面的权威来源：有哪些命令、叫什么、谁用，以及为什么这么叫。短约束层见 `.agents/rules/commands.md`，查询工具（`agent:find-usages` 等）的语义与参数归 `agent-context.md`，都不在这里。
 
 ## 命名约定
 
@@ -62,7 +62,7 @@
 | `ci:measure`          | 只读统计 CI 成本（需 `gh` 登录）                             |
 | `ci:flakes`           | 汇总 flake 榜（读 `ci-test-output-*`）                       |
 
-`ci:validate-context` 是改动 `AGENTS.md`、rules、skills 或 `docs/agents/**` 时必须通过的守卫。`scripts/` 的测试约定是每个脚本一个 `<name>.test.mjs`，由 `ci:test-scripts` 按 glob 执行，新增文件不用注册，它也是 CI 拓扑表的执行端；决策背景见 [ADR-0014](../adr/0014-task-system-v2.md)。`ci:measure` 与 `ci:flakes` 的口径见 [`build.md`](build.md)「CI 与发布」。
+`ci:validate-context` 是改动 `AGENTS.md`、rules、skills 或 `docs/agents/**` 时必须通过的守卫。`scripts/` 的测试约定是每个脚本一个 `<name>.test.mjs`，由 `ci:test-scripts` 按 glob 执行，新增文件不用注册，它也是 CI 拓扑表的执行端；决策背景见 [ADR-0014](../adr/0014-task-system-v2.md)。`ci:measure` 与 `ci:flakes` 的口径见 [`build.md`](build.md#ci-与发布)。
 
 ### 基础命令（无 namespace）
 
@@ -83,4 +83,4 @@
 | `commit`           | `git-cz` 交互式提交                                                                         |
 | `prepare`          | `vp config`，设置 hooks 路径                                                                |
 
-`dev:react-web-ui-demo`、`dev:vue-web-ui-demo`、`dev:interweave` 三条归入 `dev` namespace，作用面见 [`build.md`](build.md)「Demo 开发」。`check-pack` 与生成物生命周期以 [`build.md`](build.md) 为准；本表只列命令名与用途。
+`dev:react-web-ui-demo`、`dev:vue-web-ui-demo`、`dev:interweave` 三条归入 `dev` namespace，作用面见 [`build.md`](build.md#demo-开发)。`check-pack` 与生成物生命周期以 [`build.md`](build.md) 为准；本表只列命令名与用途。

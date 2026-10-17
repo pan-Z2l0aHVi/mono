@@ -50,6 +50,6 @@ T1 的 review 由可选改回强制，approval 与它成对，两条分叉合一
 
 ## 后果
 
-- [`docs/agents/workflow.md`](../../docs/agents/workflow.md) 的分级表、状态机 gate 与 review 拓扑按本 ADR 重写；`scripts/task.mjs` 的 `review.required` 由 `level === 't0'` 改为 `level !== 't2'`，`done` 按 `kind` 校验验证，`guard` 对 T0/T1 一律要求 `approved`。
+- `docs/agents/workflow.md` 的分级表、状态机 gate 与 review 拓扑按本 ADR 重写；`scripts/task.mjs` 的 `review.required` 由 `level === 't0'` 改为 `level !== 't2'`，`done` 按 `kind` 校验验证，`guard` 对 T0/T1 一律要求 `approved`。
 - T1 的 diff 从「可免审」变为必经 review 与 approval；既有 T1 task state 里 `review.required: false` 是建 task 时的历史快照，内核判定一律读 `level`，不再读它，旧 task 不会按已废止的免审口径被放行。
 - 判据不再随根目录配置文件增删而失效，代价是 T0/T1/T2 的「可执行与否」依赖实施 agent 的判断，不设脚本兜底。这是明确接受的：把它做成清单只会得到一份会漂移的副本。

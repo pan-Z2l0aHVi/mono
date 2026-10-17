@@ -21,7 +21,7 @@
 - state 形状（`newTask`，`scripts/task.mjs:377-396`）：`version / taskId / level / phase / createdAt / updatedAt / commonDir / baseSha / branch / worktree / owner / issue / playbook / diffHash / review / approval / verification[] / events[]`。
 - 文档口径一致：`docs/agents/workflow.md:58`「任务状态保存在 Git common dir 的 `tasks/<task-id>.json`，不进入工作树版本控制」；`docs/adr/0014-task-system-v2.md:35`「状态存 `<git-common-dir>/tasks/<task-id>.json`，跨 worktree 共享，schema 单版本」。
 
-**为什么是 git common dir**：代码注释直接给出理由——「状态存 git common dir 下的 tasks/，跨 worktree 共享」（`scripts/task.mjs:4`）。实测确认这一共享性质：21 个 worktree 的 `git rev-parse --path-format=absolute --git-common-dir` 全部解析到同一个 `/Users/bopan/VibeCoding/mono/.git`，而各自的 `--git-dir` 是 `/Users/bopan/VibeCoding/mono/.git/worktrees/<name>`。所以 `<common>/tasks/` 对所有 worktree 是同一份物理目录，而 `HEAD`、index、`ORIG_HEAD` 这些 per-worktree 状态在 `.git/worktrees/<name>/` 下互不共享。
+**为什么是 git common dir**：代码注释直接给出理由——「状态存 git common dir 下的 tasks/，跨 worktree 共享」（`scripts/task.mjs:4`）。实测确认这一共享性质：21 个 worktree 的 `git rev-parse --path-format=absolute --git-common-dir` 全部解析到同一个 `<git-common-dir>`，而各自的 `--git-dir` 是 `<git-common-dir>/worktrees/<name>`。所以 `<common>/tasks/` 对所有 worktree 是同一份物理目录，而 `HEAD`、index、`ORIG_HEAD` 这些 per-worktree 状态在 `.git/worktrees/<name>/` 下互不共享。
 
 同一设计在仓库里已有先例且被明确记录：`.mise.toml` 的 `TURBO_CACHE_DIR` 也用 `--git-common-dir` 锚定，理由是「主仓与全部 task worktree 共享同一份本地 turbo 缓存……git common dir 不受 `git gc` / worktree 清理影响」（`docs/agents/worktrees.md:15`）。
 
@@ -44,7 +44,7 @@
 
 `saveState()` 是「写临时文件 + rename」的原子替换，**明确不加跨进程锁**，注释把这条边界写了下来：「同一 task 的读-改-写由『单 owner』使用模型串行化，并发执行同一 task 的两条命令仍可能丢事件，这是接受的边界」（`scripts/task.mjs:170-177`）。
 
-实测规模（2026-09-28T20:08:06+0800，`/Users/bopan/VibeCoding/mono/.git/tasks`）：
+实测规模（2026-09-28T20:08:06+0800，`<git-common-dir>/tasks`）：
 
 ```text
 241 个 state 文件；phase: done 211 / dropped 14 / approved 13 / frozen 1 / active 2
@@ -108,7 +108,7 @@ level: t0 18 / t1 102 / t2 121；events[] 合计 1563 条
 
 ## 二、worktree 现实
 
-- 当前 `git worktree list` 有 **21 条**，全部共享 `/Users/bopan/VibeCoding/mono/.git`（`--git-common-dir` 实测三条抽样一致）。这个数字在调研期间还在变：两次采样之间新增了 `clean-default-full` 与 `interweave-list-focus-tab` 两个 worktree 及其 task state——并发实施是常态而非例外。
+- 当前 `git worktree list` 有 **21 条**，全部共享同一个 `<git-common-dir>`（`--git-common-dir` 实测三条抽样一致）。这个数字在调研期间还在变：两次采样之间新增了 `clean-default-full` 与 `interweave-list-focus-tab` 两个 worktree 及其 task state——并发实施是常态而非例外。
 - task state 靠 common dir 跨 worktree 共享的具体机制：`activeStates(commonDir)` 扫整个目录（`scripts/task.mjs:118-134`），`assertWorktreeAvailable()` 据此拒绝「同一 worktree 挂两个 active task」（`:158-161`），`guard` 据此在当前 worktree 找唯一 active task（`:630`）。
 - reviewer/coder 跨 worktree 的形态被明确支持：`docs/agents/task-packet.md:48` 要求重启后读 `<git-common-dir>/tasks/<task-id>.json`；`docs/adr/0017:15` 记录巡检曾以 task state 为数据源；`.agents/skills/herdr-agents/patrol.mjs:83` 仍在只读它。同一个判据在 `0a14f464` 的 commit message 里被再次表述——「repo-local temp/ 目录被拒绝，因为同一相对路径在每个 worktree 里是不同的物理目录，这会打断 reviewer-in-A、coder-in-B 的場景」（原文英文，此处为译文）。
 - **换成 commit 记录后这个性质是否成立？** 分载体回答：notes 的 `refs/notes/*` 存在 object DB 里、由所有 worktree 共享（见 3.1 实测），所以共享性成立；但共享的只是 ref，不是「立即可见的写入」——两个 worktree 同时 append 同一个 ref 会静默丢事件（见 3.1 实测）。
@@ -297,12 +297,12 @@ level: t0 18 / t1 102 / t2 121；events[] 合计 1563 条
 
 ```sh
 # worktree 与 common dir
-git worktree list                                            # 21 条，全部共享 /Users/bopan/VibeCoding/mono/.git
+git worktree list                                            # 21 条，全部共享同一个 git common dir
 git rev-parse --path-format=absolute --git-common-dir         # 各 worktree 一致
 git rev-parse --git-dir                                       # .git/worktrees/<name>（per-worktree）
 
 # task state 规模
-ls /Users/bopan/VibeCoding/mono/.git/tasks/*.json | wc -l     # 241
+ls "$(git rev-parse --path-format=absolute --git-common-dir)"/tasks/*.json | wc -l     # 241
 # events[] 分布与 phase/level 直方图（见 1.2、Q5）
 
 # notes 跨 worktree 可见、不随 push/clone 传播、squash 后孤儿化、并发 append 丢事件
