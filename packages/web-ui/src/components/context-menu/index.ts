@@ -1005,7 +1005,13 @@ export class WebUiContextMenu extends LitElement {
     if (submenu.panel.parentElement instanceof HTMLDialogElement && submenu.panel.parentElement.open) {
       const itemRect = item.getBoundingClientRect()
       const padding = 8
-      const canOpenRight = itemRect.right + submenu.panel.getBoundingClientRect().width + padding <= window.innerWidth
+      // 宽度取 offsetWidth，不能取 rect：本方法在 `showOverlayPresence` **之前**调用，此刻面板要么刚由
+      // `createMenuPortalOverlay` 标成 entering（新面板），要么还带着 closing（复用 closing 缓存重开），
+      // 两种 presence 都施加 `transform: scale(var(--wui-scale-enter, 0.9))`（assets/overlay-motion.css），
+      // rect 因而含缩放，判据偏向「右侧放得下」。
+      // 落位走下面的 computePosition，Floating UI 量的是布局尺寸、transform 不进它的读数；
+      // 这条判据得自己避开同一个坑。代价是 offsetWidth 取整（border-box 到整数），换来与缩放无关。
+      const canOpenRight = itemRect.right + submenu.panel.offsetWidth + padding <= window.innerWidth
       // 同帧关闭→重开会复用同一 panel 产生两个 in-flight 定位 promise，完成序不保证
       // 后者胜出；按 panel 键控的代数 token 只允许最新一次调用写入，迟到旧 promise 丢弃。
       const epoch = (this._submenuPositionEpochs.get(submenu.panel) ?? 0) + 1
@@ -1032,12 +1038,25 @@ export class WebUiContextMenu extends LitElement {
       return
     }
 
+    /*
+     * scrim 不在模态态时的手算分支。
+     *
+     * 这条分支**是活的**，不是历史遗留：菜单项激活走 `_releaseScrimModality()` 把 scrim `close()` 掉，
+     * 但元素留在 DOM、`_scrim` 也没清（摘除只在 `_closeScrim()`）；这次关闭的退场若被重开打断，
+     * `_closeMenuAfterPresence` 提前退出而 `_menu` 存活，`updated()` 的 `if (!this._menu)` 便不再建新
+     * scrim —— 菜单开着、scrim 却 `open === false`，上面那条守卫为假。窗口是一次退场过渡（默认 160ms，
+     * 随 `--wui-duration-float-exit` 拉长），且只有菜单项激活才进得去。
+     *
+     * 尺寸只能取 offsetWidth/offsetHeight：与上面那条判据同因，本方法在面板仍带 entering/closing
+     * 缩放时被调用，rect 含 `transform: scale(...)`，取 rect 会让开合方向与夹取一起算错。
+     */
     const itemRect = item.getBoundingClientRect()
-    const submenuRect = submenu.panel.getBoundingClientRect()
     const padding = 8
-    const canOpenRight = itemRect.right + submenuRect.width + padding <= window.innerWidth
-    const left = canOpenRight ? itemRect.right : Math.max(padding, itemRect.left - submenuRect.width)
-    const top = Math.min(Math.max(padding, itemRect.top), window.innerHeight - submenuRect.height - padding)
+    const submenuWidth = submenu.panel.offsetWidth
+    const submenuHeight = submenu.panel.offsetHeight
+    const canOpenRight = itemRect.right + submenuWidth + padding <= window.innerWidth
+    const left = canOpenRight ? itemRect.right : Math.max(padding, itemRect.left - submenuWidth)
+    const top = Math.min(Math.max(padding, itemRect.top), window.innerHeight - submenuHeight - padding)
 
     submenu.panel.style.left = `${left}px`
     submenu.panel.style.top = `${top}px`
