@@ -86,18 +86,47 @@ export class WebUiSwitch extends FormAssociated(LitElement) {
   }
 
   // 阻止 label 默认行为，避免原生 checkbox 重复触发点击。
+  // 但内层 input 自己触发的 click（空格/辅助技术的原生激活）必须放行：
+  // 它已经完成勾选，再 preventDefault 会把原生激活撤销，造成
+  // 「宿主 checked=true、内层 checkbox=false」的分裂。
   private handleClick(e: Event) {
+    if (e.target instanceof HTMLInputElement) return
     e.preventDefault()
     if (this._dragged) {
       this._dragged = false
       return
     }
     if (this._isDisabled || this.loading) return
+    this._applyChecked(!this._checked)
+  }
+
+  // 原生激活（空格、辅助技术）已完成勾选，这里只把状态同步过来。
+  // 原生 input 事件本身是 composed，已经冒泡到宿主，不能再补一个；
+  // 原生 change 不是 composed，过不了 shadow 边界，需要由组件转发。
+  private handleNativeChange(e: Event) {
+    if (!(e.target instanceof HTMLInputElement)) return
+    if (this._dragged) {
+      this._dragged = false
+      return
+    }
+    this._applyChecked(e.target.checked, false)
+  }
+
+  // 原生 checkbox 不响应 Enter，补上 role="switch" 应有的开合语义
+  private handleKeydown(e: KeyboardEvent) {
+    if (e.key !== 'Enter') return
+    e.preventDefault()
+    if (this._isDisabled || this.loading) return
+    this._applyChecked(!this._checked)
+  }
+
+  private _applyChecked(next: boolean, emitInput = true) {
     const old = this._checked
-    this._checked = !old
+    if (next === old) return
+    this._checked = next
     this._formAssociation.sync()
     this.requestUpdate('checked', old)
-    this.dispatchEvent(new Event('input', { bubbles: true, composed: true }))
+    if (emitInput) this.dispatchEvent(new Event('input', { bubbles: true, composed: true }))
     this.dispatchEvent(new Event('change', { bubbles: true, composed: true }))
   }
 
@@ -211,6 +240,8 @@ export class WebUiSwitch extends FormAssociated(LitElement) {
           .checked=${this._checked}
           ?disabled=${this._isDisabled || this.loading}
           class="sr-only"
+          @change=${this.handleNativeChange}
+          @keydown=${this.handleKeydown}
         />
         <div class=${classMap(thumbCls)}>
           ${

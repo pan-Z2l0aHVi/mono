@@ -2,7 +2,7 @@
 
 本文件拥有提交边界：什么必须逐次授权、message 怎么写、谁承担这次提交的身份、`.agents/checks/` 判定什么口径、提交 hook 在什么强制力上。它不拥有级别判据（见 `task-levels.md`）、相位顺序（见 `workflow.md`）与 review 独立性（见 `review.md`）——那三件事在这里只被引用，不被复述。
 
-仅在用户明确授权提交后才阅读本指南。commitlint 的规则（类型、scope、字数与大小写）以 [`commitlint.config.js`](../../commitlint.config.js) 为准，这里只写它没覆盖的约定。
+仅在用户明确授权提交后才阅读本指南。commitlint 的规则（类型、scope、字数、大小写与语言）以 [`commitlint.config.js`](../../commitlint.config.js) 为准，这里只写它没覆盖的约定。
 
 ## 授权边界
 
@@ -10,7 +10,6 @@ commit、push、merge、tag、publish、release 一律需要用户逐次明确�
 
 ## message 形状
 
-- commit message 使用英文。
 - scope 只标识受影响的 workspace，不表示领域，类别信息由 `type` 承载；跨包协调用逗号分隔多个 scope。历史提交里的 `docs(agents)`、`fix(ci)`、`feat(lint)` 是旧写法，不要照抄：CI 配置改动归类为 `ci`，指令系统文档（`AGENTS.md`、`docs/agents/`）归类为 `docs`，仓库根的非包改动（`scripts/`、根配置）用 `root` scope。
 
 授权后仅暂存预期的文件，先预览再提交，确认无误后去掉 `--dry`：

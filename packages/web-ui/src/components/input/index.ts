@@ -133,6 +133,9 @@ export class WebUiInput extends FormAssociated(LitElement) {
     this._value = ''
     this._formAssociation.sync()
     this.dispatchEvent(new Event('input', { bubbles: true, composed: true }))
+    // 清除是离散的已提交变更（不是连续输入）：只派 input 会让 v-model.lazy
+    // 等只监听 change 的消费者永远收不到清空，故与 input 一并派发。
+    this.dispatchEvent(new Event('change', { bubbles: true, composed: true }))
   }
 
   private preventMouseDownBlur(e: Event) {

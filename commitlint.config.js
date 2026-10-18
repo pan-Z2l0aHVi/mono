@@ -1,7 +1,61 @@
+/**
+ * message 必须英文这条约束的唯一事实来源就在这里：commitlint 自带规则只管结构——type、scope、
+ * 长度、大小写——管不到语言，而 `docs/agents/commit.md` 明说 commitlint 的规则以本文件为准、
+ * 不在正文复述，所以这条本地规则同时承担「机检」和「规定」两个角色。
+ *
+ * 放在这里而不是 `.agents/checks/`：那目录会被 `pnpm agent:task guard` 在每次提交时全部执行，
+ * 而它们拿不到 commit message 文件；`commit-msg` 钩子本来就跑 commitlint，规则挂在这里即生效。
+ *
+ * 判据是 CJK 文字与全角标点，不是「全 ASCII」：
+ * - 全角标点必须算违规，否则 `fix(web-ui)：xxx` 这种半中文形状会漏过；
+ * - emoji 与带重音的拉丁字母不算违规——`🤖 Generated with [Claude Code]` 这类署名尾注是英文，
+ *   只是带了图形字符，按 ASCII 判会把它误伤。
+ *
+ * 反引号里的行内代码先被剔除再判：commit body 引用仓库内容时躲不开中文标识符，例如
+ * `` workflow.md#怎么取得这个授权 ``。引用不是「用中文写 message」。
+ *
+ * 只看 `header` / `body` / `footer`，不看 `raw`：parser 已经把 `#` 注释行剥掉了，而 `raw` 没有，
+ * 用 `raw` 判会把 `git commit` 模板里的中文注释行当成提交内容误报。
+ */
+const CJK =
+  /[\u1100-\u11FF\u2E80-\u2EFF\u3000-\u303F\u3040-\u30FF\u3400-\u4DBF\u4E00-\u9FFF\uAC00-\uD7AF\uF900-\uFAFF\uFE30-\uFE4F\uFF00-\uFFEF]/gu
+
+/**
+ * commitlint 自己的插件类型在 `@commitlint/types`，但它不是本仓的直接依赖（pnpm 不提升），
+ * 从根配置里 `import()` 不到。cz-git 把同一套 `Plugin` / `Rule` / `Commit` 类型重新导出，
+ * 而 cz-git 正是下面 `UserConfig` 注解的来源，所以类型从这里取，不新增依赖。
+ *
+ * @type {import('cz-git').Plugin}
+ */
+const englishOnly = {
+  rules: {
+    'message-english-only': parsed => {
+      const offenders = []
+      // 三段的取法显式列出来，而不是用字段名去索引 parsed：`Commit` 没有索引签名，
+      // 按字符串索引会在类型检查里报隐式 any。
+      const sections = Object.entries({
+        header: parsed.header,
+        body: parsed.body,
+        footer: parsed.footer
+      })
+      for (const [field, text] of sections) {
+        if (!text) continue
+        const prose = text.replace(/`[^`]*`/gu, '')
+        const chars = [...new Set(prose.match(CJK) ?? [])]
+        if (chars.length > 0) offenders.push(`${field}: ${chars.slice(0, 8).join(' ')}`)
+      }
+      if (offenders.length === 0) return [true]
+      return [false, `commit message must be in English; found CJK characters: ${offenders.join('; ')}`]
+    }
+  }
+}
+
 /** @type {import('cz-git').UserConfig} */
 export default {
   extends: ['@commitlint/config-conventional'],
+  plugins: [englishOnly],
   rules: {
+    'message-english-only': [2, 'always'],
     'body-leading-blank': [1, 'always'],
     'body-max-line-length': [2, 'always', 100],
     'footer-leading-blank': [1, 'always'],

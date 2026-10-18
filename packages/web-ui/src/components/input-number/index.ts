@@ -29,19 +29,24 @@ export class WebUiInputNumber extends FormAssociated(LitElement) {
   get precision(): number {
     return this._precision
   }
-  // 精度变化时重算现有值，避免浮点累积误差
+  // 精度只影响读取（get value）/提交时的规整，不在赋值时抹掉原始小数：
+  // `<web-ui-input-number value="1.5" precision="2">` 先跑 value setter、
+  // 后跑 precision setter，若赋值时就按当时的默认精度 0 取整，1.5 会先变 2，
+  // 之后再声明 precision=2 也恢复不了。
   set precision(v: number) {
     const old = this._precision
     this._precision = v
-    const current = this.clamp(this.round(this._value))
-    if (current !== this._value) {
-      this._value = current
-      this._formAssociation.sync()
-    }
     this.requestUpdate('precision', old)
   }
 
+  /** 原始值：只做 min/max 收敛，不按精度取整（取整发生在 get value）。 */
   @state() private _value = 0
+
+  /**
+   * 编辑中的原始文本。null 表示非编辑态，显示由 `value` 派生；
+   * 非 null 时显示原文，避免把用户正在输入的 "1." / "0.10" 立刻改写。
+   */
+  @state() private _draft: string | null = null
   @state() private _min = 0
   @state() private _max = Infinity
   @state() private _step = 1
@@ -51,13 +56,13 @@ export class WebUiInputNumber extends FormAssociated(LitElement) {
 
   @property({ type: Number, reflect: true })
   get value(): number {
-    return this._value
+    return this.clamp(this.round(this._value))
   }
 
   set value(v: number) {
-    const clamped = this.clamp(this.round(v))
+    const next = this.clamp(v)
     const old = this._value
-    this._value = clamped
+    this._value = next
     this._formAssociation.sync()
     this.requestUpdate('value', old)
   }
@@ -99,21 +104,21 @@ export class WebUiInputNumber extends FormAssociated(LitElement) {
   }
 
   private get atMin(): boolean {
-    return this._value <= this._min
+    return this.value <= this._min
   }
 
   private get atMax(): boolean {
-    return this._value >= this._max
+    return this.value >= this._max
   }
 
   private readonly _formAssociation = defineFormAssociation<number>({
     host: this,
-    getState: () => this._value,
+    getState: () => this.value,
     setState: value => {
       this.value = value
     },
-    getFormValue: () => String(this._value),
-    getFormState: () => String(this._value),
+    getFormValue: () => String(this.value),
+    getFormState: () => String(this.value),
     restoreState: state => {
       if (typeof state !== 'string') return
       const value = Number(state)
@@ -151,33 +156,48 @@ export class WebUiInputNumber extends FormAssociated(LitElement) {
   }
 
   private setValueAndNotify(v: number) {
+    this._draft = null
     this.value = this.clamp(this.round(v))
     this.dispatchEvent(new Event('input', { bubbles: true, composed: true }))
   }
 
   private handleStep(direction: 1 | -1) {
     if (this._isDisabled || this.readonly) return
-    this.setValueAndNotify(this._value + direction * this._effectiveStep)
+    this.setValueAndNotify(this.value + direction * this._effectiveStep)
   }
 
+  // 输入过程只更新草稿与可解析的原始值，显示保持在草稿上：
+  // 逐字把 "1." 规整成 "1" 会打断输入（与原生 number 输入框的编辑体验一致）。
   private handleInput(e: Event) {
     if (this.readonly) return
     if (!(e.target instanceof HTMLInputElement)) return
     const raw = e.target.value
-    if (raw === '' || raw === '-') return
-    this._value = this.clamp(this.round(Number(raw)))
-    this._formAssociation.sync()
+    this._draft = raw
+    const parsed = raw === '' || raw === '-' ? Number.NaN : Number(raw)
+    if (Number.isFinite(parsed)) {
+      this._value = this.clamp(parsed)
+      this._formAssociation.sync()
+    }
     this._syncValidity()
   }
 
   // 原生 change 不 composed，被 shadow root 挡住；文本失焦提交时补发 composed 事件，
   // 与 ArrowUp/ArrowDown 的 change 行为对齐。
+  // 提交点上做规整：非法/空草稿回填已提交值（value 不变、不派发 change），
+  // 合法草稿写入 value 后由 get value 按精度规整。
   private handleNativeChange(e: Event) {
     if (this.readonly) return
     if (!(e.target instanceof HTMLInputElement)) return
     const raw = e.target.value
-    if (raw === '' || raw === '-') return
-    this._value = this.clamp(this.round(Number(raw)))
+    this._draft = null
+    const parsed = raw === '' || raw === '-' ? Number.NaN : Number(raw)
+    if (!Number.isFinite(parsed)) {
+      // 回填：草稿清空后显示重新由 value 派生
+      this.requestUpdate()
+      this._syncValidity()
+      return
+    }
+    this._value = this.clamp(parsed)
     this._formAssociation.sync()
     this._syncValidity()
     this.dispatchEvent(new Event('change', { bubbles: true, composed: true }))
@@ -187,11 +207,11 @@ export class WebUiInputNumber extends FormAssociated(LitElement) {
     if (this._isDisabled || this.readonly) return
     if (e.key === 'ArrowUp') {
       e.preventDefault()
-      this.setValueAndNotify(this._value + this._effectiveStep)
+      this.setValueAndNotify(this.value + this._effectiveStep)
       this.dispatchEvent(new Event('change', { bubbles: true, composed: true }))
     } else if (e.key === 'ArrowDown') {
       e.preventDefault()
-      this.setValueAndNotify(this._value - this._effectiveStep)
+      this.setValueAndNotify(this.value - this._effectiveStep)
       this.dispatchEvent(new Event('change', { bubbles: true, composed: true }))
     }
   }
@@ -202,6 +222,12 @@ export class WebUiInputNumber extends FormAssociated(LitElement) {
 
   private handleBlur() {
     this._focused = false
+    // change 的时序在部分平台晚于 blur；草稿仍存在说明还没提交，直接回填，
+    // 避免「显示空、value 仍是旧值」的持久脱同步。
+    if (this._draft !== null) {
+      this._draft = null
+      this.requestUpdate()
+    }
   }
 
   override render() {
@@ -220,7 +246,7 @@ export class WebUiInputNumber extends FormAssociated(LitElement) {
           type="number"
           placeholder=${this.placeholder}
           name=${this.name}
-          .value=${String(this._value)}
+          .value=${this._draft ?? String(this.value)}
           ?disabled=${this._isDisabled}
           ?readonly=${this.readonly}
           ?required=${this.required}
