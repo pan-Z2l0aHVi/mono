@@ -6,7 +6,7 @@ import path from 'node:path'
 // env-doctor 的两条 mise env 断言（TURBO_CACHE_DIR 必须指向共享缓存、当前 node 必须等于
 // .mise.toml 钉住的版本）靠子进程黑盒钉住：只有把它们放在另一个进程里跑，才能自己构造 env。
 // 判据不读调用者所在的 shell——CI 把 TURBO_CACHE_DIR 覆盖回 workspace 内路径也不会让用例变红。
-// 约定见 docs/agents/build.md「mise exec 与命令外壳」。
+// 约定见 docs/agents/worktree.md「mise exec 与命令外壳」。
 const root = path.resolve(import.meta.dirname, '..')
 
 function runDoctor(env) {

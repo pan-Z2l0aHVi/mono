@@ -11,18 +11,21 @@ import type { WebUiContextMenu } from '..'
  * 贴视口边缘打开时，菜单不得越出视口（浏览器）。
  *
  * 缺陷形态（实测，非推理）：定位当时用 `panel.getBoundingClientRect()` 取宽高来算夹取，
- * 但面板此刻正带着进场动画 `transform: scale(var(--wui-scale-enter, 0.95))`
+ * 但面板此刻正带着进场动画 `transform: scale(var(--wui-scale-enter, 0.9))`
  * （assets/overlay-motion.css:40）。
- * rect 含 transform，于是夹取按**缩小 5%** 的尺寸来算：
+ * rect 含 transform，于是夹取按**缩小 10%** 的尺寸来算：
  *
- *   菜单实际高 456px → 夹取时量到 456 × 0.95 = 433.2px
- *   → top = 896 − 433.2 − 8 = 454.8px
- *   → 动画落定 scale 回到 1，真实底部 = 454.8 + 456 = 910.8px
- *   → 越出视口下缘 896px 共 14.8px
+ *   菜单实际高 456px → 夹取时量到 456 × 0.9 = 410.4px
+ *   → top = 896 − 410.4 − 8 = 477.6px
+ *   → 动画落定 scale 回到 1，真实底部 = 477.6 + 456 = 933.6px
+ *   → 越出视口下缘 896px 共 37.6px
+ *
+ * 上列数字按 `--wui-scale-enter: 0.9` 换算得出。实测的是同一组输入（456px 菜单、896px
+ * 视口、8px 边距）与缺陷形态，算式也没变，只是缩放档位从 5% 变成 10%。
  *
  * 面板自身 `overflow-y: hidden`，越出去的那一截不会被滚动救回来——最下面一项直接点不到。
  *
- * **横向是同一个缺陷**：夹取的宽高取自同一个 rect，所以贴右缘打开时横向也少算了 5% 宽度，
+ * **横向是同一个缺陷**：夹取的宽高取自同一个 rect，所以贴右缘打开时横向也少算了 10% 宽度，
  * 右缘同样越界。两个方向各有守卫——只钉纵向的话，改回 getBoundingClientRect 时横向回归
  * 无人发现（而横向确实发生过，见用例）。
  *
@@ -79,8 +82,8 @@ describe('WebUiContextMenu 贴视口边缘的夹取（浏览器）', () => {
     const { rect, anchor } = await openAtEdge(14, 200, window.innerHeight - 10)
 
     // 新契约：面板下缘 == 触发点 y（flip 到 top-start 的直接后果）。
-    // 进场 scale 若被算进夹取，落定后的下缘会落到 `触发点 + 0.05 × 菜单高`——
-    // 实测 456px 高的菜单会偏低 22.8px，正好压在触发点上、盖住用户按的那一行。
+    // 进场 scale 若被算进夹取，落定后的下缘会落到 `触发点 + 0.1 × 菜单高`——
+    // 实测 456px 高的菜单按此偏低 0.1 × 456 = 45.6px，正好压在触发点上、盖住用户按的那一行。
     //
     // 余量只有 2px、容差 1px，但这 2px 是**用例自己写死的**，不是实现抖动：判别的两个解
     // 相差正好是「锚点 y」与「innerHeight − 边距」之差 =（innerHeight − 10）−（innerHeight − 8）
@@ -170,11 +173,11 @@ describe('WebUiContextMenu 贴视口边缘的夹取（浏览器）', () => {
     // 「测量时的宽度」与「落定后的宽度」之间的抖动零容忍：flip 会多跑一轮测量，实测那一刻
     // 面板宽 202px、落定后 200px，左缘因此差 2px。那 2px 与本条要守的性质无关。
     //
-    // 按 0.95 倍进场宽度夹取会得到 `视口右缘 − 边距 − 0.95 × 实际宽`，与正确结果相差
-    // `0.05 × 实际宽`（实测 10px 量级）。下面两条按这个差额区分：
+    // 按 0.9 倍进场宽度夹取会得到 `视口右缘 − 边距 − 0.9 × 实际宽`，与正确结果相差
+    // `0.1 × 实际宽`（按实测宽约 200px 计，20px 量级）。下面两条按这个差额区分：
     // 1. 夹取结果确实不是那个缩减值；
     // 2. 面板完整落在视口内 —— 缩尺寸夹取的直接后果就是落定后右缘越界。
-    const scaledLeft = window.innerWidth - EDGE_PADDING - 0.95 * rect.width
+    const scaledLeft = window.innerWidth - EDGE_PADDING - 0.9 * rect.width
     expect(
       Math.abs(rect.left - scaledLeft),
       `menuLeft=${rect.left}；若按缩小尺寸夹取会是 ${scaledLeft}（menuWidth=${rect.width}）`

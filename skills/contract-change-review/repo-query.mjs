@@ -240,7 +240,7 @@ if (command === 'contract') {
       `${workspace.root}/AGENTS.md`,
       `${workspace.root}/README.md`,
       'docs/agents/build.md',
-      'docs/agents/test-execution.md'
+      'docs/agents/verification.md'
     ].filter(file => fs.existsSync(path.join(root, file))),
     verification: [
       ...(typeof rootScripts.build === 'string' ? ['pnpm run build'] : []),
@@ -561,7 +561,7 @@ if (
   addContext(context, 'docs/agents/build.md')
 if (hasPackageContractChange || hasBrowserRuntimeChange) {
   addContext(context, '.agents/rules/testing.md')
-  addContext(context, 'docs/agents/test-execution.md')
+  addContext(context, 'docs/agents/verification.md')
 }
 if (hasBrowserRuntimeChange) {
   addContext(context, 'docs/agents/runtime-verification.md')

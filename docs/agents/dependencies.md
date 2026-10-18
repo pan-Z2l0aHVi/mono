@@ -1,6 +1,6 @@
 # 依赖变更
 
-仅在用户明确授权新增、移除或变更依赖后，才可改动依赖；核对既有 catalog 归属与供应链设置可直接阅读本指南。
+仅在用户明确授权新增、移除或变更依赖后，才可改动依赖；核对既有 catalog 归属与供应链设置可直接阅读本指南。取得授权的机制（弹窗、推荐项与自定义输入）见 [`workflow.md`](workflow.md#怎么取得这个授权)。
 
 ## 放置规则
 
@@ -18,7 +18,7 @@
 
 ## pnpm 策略
 
-workspace 使用 `catalogMode: prefer`。除非用户明确授权变更依赖管理行为，否则保留现有的 `overrides` 与 `peerDependencyRules` 策略。
+workspace 使用 `catalogMode: prefer`。除非用户明确授权变更依赖管理行为，否则保留现有的 `overrides` 与 `peerDependencyRules` 策略。这条与上面同一套授权机制，见 [`workflow.md`](workflow.md#怎么取得这个授权)。
 
 `@shadcn/lint` 只由根 `devDependencies` 引入、由 `vite.config.ts` 的 `lint.jsPlugins` 消费，不进任何发布产物。它换来 `no-unknown-classes`、`no-inline-styles`、`require-static-classes` 三条规则，代价是把 eslint 与 `@typescript-eslint/parser` 拖进依赖图（前者是它的 optional peer，后者是直接依赖），而全仓没有 manifest 直接声明它们。再引入同类 lint 插件前先核对这笔收支。
 

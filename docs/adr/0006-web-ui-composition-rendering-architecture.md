@@ -63,7 +63,7 @@ Focus token 只定义颜色与宽度：`--wui-color-focus-ring` / `--wui-focus-r
 
 - `--wui-duration-focus: 200ms`；`--wui-duration-trigger`（原 `--wui-duration-fast`）；`--wui-duration-drawer-enter: 280ms` / `--wui-duration-drawer-exit: 240ms`；`--wui-duration-float-enter: 240ms` / `--wui-duration-float-exit: 160ms`
 - `--wui-ease-enter`（原 `--wui-ease-out`）；`--wui-ease-slide`（原 `--wui-ease-standard`）；`--wui-ease-float`（锚定浮动面板专用的无回弹弹簧拟合曲线）
-- `--wui-scale-enter: 0.95`（锚定浮动面板与 image-preview 由小到大展开；image-preview 的缩放只落在图片舞台层，控件层原地淡入）；`--wui-dialog-scale-enter: 1.1`（dialog 由大到小收缩，越界条件为静止宽度 > `(100/s)vw`，零越界上限是 `1/0.9 ≈ 1.111`；260919 由 1.2 下调至 1.1，默认值不再触发越界）
+- `--wui-scale-enter: 0.9`（261017 由 0.95 下调至 0.9；锚定浮动面板与 image-preview 由小到大展开；image-preview 的缩放只落在图片舞台层，控件层原地淡入）；`--wui-dialog-scale-enter: 1.1`（dialog 由大到小收缩，越界条件为静止宽度 > `(100/s)vw`，零越界上限是 `1/0.9 ≈ 1.111`（此 0.9 是 `min(90vw, var(--wui-dialog-width))` 的 `90vw` 分支系数，与 `--wui-scale-enter` 的 0.9 无关）；260919 由 1.2 下调至 1.1，默认值不再触发越界）
 
 ### 6.3 语义 Radius Token
 
