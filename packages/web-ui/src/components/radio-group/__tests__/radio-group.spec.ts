@@ -570,3 +570,106 @@ describe('WebUiRadioGroup 组件', () => {
     cleanupElement(container)
   })
 })
+
+/**
+ * 成员 value 重复是消费者的误用，但单选不变式（同一时刻只能有一个选中）
+ * 不该因此崩塌：选中判定按元素身份，不按 value 相等。
+ */
+describe('WebUiRadioGroup 重复 value', () => {
+  const DUPLICATE_HTML = `
+    <web-ui-radio value="x">X1</web-ui-radio>
+    <web-ui-radio value="x">X2</web-ui-radio>
+    <web-ui-radio value="y">Y</web-ui-radio>
+  `
+
+  const checkedOf = (group: WebUiRadioGroup): boolean[] =>
+    [...group.querySelectorAll<WebUiRadio>('web-ui-radio')].map(radio => radio.checked)
+
+  const ariaCheckedOf = (group: WebUiRadioGroup): string[] =>
+    [...group.querySelectorAll<WebUiRadio>('web-ui-radio')].map(
+      radio => queryA11y(radio, '[role="radio"]')?.getAttribute('aria-checked') ?? ''
+    )
+
+  it('外部赋重复 value 时只选中第一个匹配成员', async () => {
+    const el = createGroup(DUPLICATE_HTML)
+    el.value = 'x'
+    await waitForUpdate(el)
+
+    expect(checkedOf(el)).toEqual([true, false, false])
+    expect(ariaCheckedOf(el)).toEqual(['true', 'false', 'false'])
+    cleanupElement(el)
+  })
+
+  it('点击第二个同值成员后只有它被选中', async () => {
+    const el = createGroup(DUPLICATE_HTML)
+    el.value = 'x'
+    await waitForUpdate(el)
+
+    clickChild(el, 1)
+    await waitForUpdate(el)
+
+    expect(checkedOf(el)).toEqual([false, true, false])
+    expect(ariaCheckedOf(el)).toEqual(['false', 'true', 'false'])
+    expect(el.value).toBe('x')
+    cleanupElement(el)
+  })
+
+  it('点击第三个不同值成员后重复值成员全部取消选中', async () => {
+    const el = createGroup(DUPLICATE_HTML)
+    el.value = 'x'
+    await waitForUpdate(el)
+
+    clickChild(el, 2)
+    await waitForUpdate(el)
+
+    expect(checkedOf(el)).toEqual([false, false, true])
+    expect(el.value).toBe('y')
+    cleanupElement(el)
+  })
+})
+
+/**
+ * 成员被移除后组值必须回落，否则会留下指向不存在选项的幽灵值（表单照旧提交）。
+ * 成员尚未渲染时不得剪：外部预设的初始值要能等到子元素连上。
+ */
+describe('WebUiRadioGroup 成员移除后的值剪枝', () => {
+  const settle = async (el: WebUiRadioGroup) => {
+    await waitForUpdate(el)
+    await new Promise(resolve => setTimeout(resolve, 0))
+    await waitForUpdate(el)
+  }
+
+  it('移除已选成员后 value 归空', async () => {
+    const el = createGroup()
+    el.value = 'b'
+    await waitForUpdate(el)
+
+    el.querySelectorAll<WebUiRadio>('web-ui-radio')[1].remove()
+    await settle(el)
+
+    expect(el.value).toBe('')
+    cleanupElement(el)
+  })
+
+  it('移除未选成员时 value 不变', async () => {
+    const el = createGroup()
+    el.value = 'a'
+    await waitForUpdate(el)
+
+    el.querySelectorAll<WebUiRadio>('web-ui-radio')[1].remove()
+    await settle(el)
+
+    expect(el.value).toBe('a')
+    cleanupElement(el)
+  })
+
+  it('成员全部移除时保留外部预设值（不剪枝）', async () => {
+    const el = createGroup('')
+    el.value = 'b'
+    await waitForUpdate(el)
+    await settle(el)
+
+    expect(el.value).toBe('b')
+    cleanupElement(el)
+  })
+})

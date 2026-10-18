@@ -3,7 +3,7 @@ component: switch
 tag: web-ui-switch
 ---
 
-开关切换，声明 `role="switch"` 与 `aria-checked`；`loading` 期间阻断交互并显示待定状态。
+开关切换，声明 `role="switch"` 与 `aria-checked`；`loading` 期间阻断交互并显示待定状态。键盘焦点落在内层原生 checkbox 上，**空格与 Enter 都能切换**。
 
 ## 示例
 

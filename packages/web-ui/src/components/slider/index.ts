@@ -147,7 +147,11 @@ export class WebUiSlider extends FormAssociated(LitElement) {
     const upper = Math.max(this.min, this.max)
     const clamped = clamp(value, lower, upper)
     const steps = Math.round((clamped - lower) / this._safeStep)
-    return Number((lower + steps * this._safeStep).toFixed(this._precision))
+    // 对齐到 step 网格后必须再收敛一次：`round` 会把值推到网格外侧
+    // （max=100 / step=15 → 7 * 15 = 105），不收敛就会突破 max，
+    // 连带 aria-valuenow 与 --percent 溢出轨道。
+    const snapped = Number((lower + steps * this._safeStep).toFixed(this._precision))
+    return clamp(snapped, lower, upper)
   }
 
   private get _precision(): number {

@@ -97,4 +97,59 @@ describe('WebUiSwitch 键盘契约（浏览器）', () => {
     detachChange()
     cleanupElement(el)
   })
+
+  /**
+   * 内层 sr-only checkbox 是可聚焦的无障碍入口，它自身的 checkedness 必须与
+   * 组件状态一致；否则读屏拿到的是「role=switch[checked=true] 里嵌着
+   * checkbox[checked=false]」这种自相矛盾的树。
+   */
+  it('空格切换后内层原生 checkbox 与宿主状态一致', async () => {
+    const el = mount()
+    await waitForUpdate(el)
+    keyboardEntry(el).focus()
+
+    await userEvent.keyboard(' ')
+    await waitForUpdate(el)
+    expect(el.checked).toBe(true)
+    expect(keyboardEntry(el).checked).toBe(true)
+
+    await userEvent.keyboard(' ')
+    await waitForUpdate(el)
+    expect(el.checked).toBe(false)
+    expect(keyboardEntry(el).checked).toBe(false)
+    cleanupElement(el)
+  })
+
+  it('Enter 也能切换并派发一次 input 与 change', async () => {
+    const el = mount()
+    await waitForUpdate(el)
+    keyboardEntry(el).focus()
+
+    const [inputEvents, detachInput] = spyEvents(el, 'input')
+    const [changeEvents, detachChange] = spyEvents(el, 'change')
+
+    await userEvent.keyboard('{Enter}')
+    await waitForUpdate(el)
+
+    expect(el.checked).toBe(true)
+    expect(keyboardEntry(el).checked).toBe(true)
+    expect(inputEvents).toHaveLength(1)
+    expect(changeEvents).toHaveLength(1)
+
+    detachInput()
+    detachChange()
+    cleanupElement(el)
+  })
+
+  it('disabled 时 Enter 不切换', async () => {
+    const el = mount({ disabled: '' })
+    await waitForUpdate(el)
+    keyboardEntry(el).focus()
+
+    await userEvent.keyboard('{Enter}')
+    await waitForUpdate(el)
+
+    expect(el.checked).toBe(false)
+    cleanupElement(el)
+  })
 })
