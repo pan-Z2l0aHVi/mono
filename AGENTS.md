@@ -2,9 +2,9 @@
 
 本文件是所有 agent 的入口，说明项目身份、不可绕过的边界和任务路由。实现以源码、`package.json`、配置和测试为准；文档只解释意图，替代不了验证。
 
-## Mutation Gate
+## 变更准入与登记
 
-改动任何文件前，先读 [`docs/agents/task-levels.md`](docs/agents/task-levels.md)，再按变更级别建 task：`pnpm agent:task new --task <task-id> --level t0|t1|t2`。级别怎么判、要哪些 review 和 approval，都写在那份文件里；建好 task 之后的状态机与预授权边界见 [`docs/agents/workflow.md`](docs/agents/workflow.md)。只做只读调查不用建 task。
+改动任何文件前，先读 [`docs/agents/task-levels.md`](docs/agents/task-levels.md)，再按变更级别建 task：`pnpm agent:task-ledger new --task <task-id> --level t0|t1|t2`。级别与验证深度见那份文件；PR review 纪律见 [`docs/agents/review.md`](docs/agents/review.md)。本地登记命令与字段见 [`docs/agents/task-ledger.md`](docs/agents/task-ledger.md)，方案到合并的总流程与授权见 [`docs/agents/workflow.md`](docs/agents/workflow.md)。只做只读调查不用建 task。
 
 ## 项目身份
 
@@ -37,8 +37,9 @@
 | 格式化、lint、拼写或类型检查配置                             | [`docs/agents/lint-format.md`](docs/agents/lint-format.md)                                                                                                                                                   |
 | 新增或重命名根 `package.json` 命令                           | [`.agents/rules/commands.md`](.agents/rules/commands.md) 与 [`docs/agents/commands.md`](docs/agents/commands.md)                                                                                             |
 | 任务分级、准入与 preflight                                   | [`docs/agents/task-levels.md`](docs/agents/task-levels.md)                                                                                                                                                   |
-| 开发流程、状态机、Task Packet 与失败恢复                     | [`docs/agents/workflow.md`](docs/agents/workflow.md)                                                                                                                                                         |
-| 代码 review、approval 与测试验收                             | [`docs/agents/review.md`](docs/agents/review.md)                                                                                                                                                             |
+| 方案到合并总流程、用户授权与跨步骤恢复                       | [`docs/agents/workflow.md`](docs/agents/workflow.md)                                                                                                                                                         |
+| 任务登记、归属、进度、schema、Task Packet 与恢复             | [`docs/agents/task-ledger.md`](docs/agents/task-ledger.md)                                                                                                                                                   |
+| PR review、修复复审、合并前 CI 与测试验收                    | [`docs/agents/review.md`](docs/agents/review.md)                                                                                                                                                             |
 | Git commit 与提交边界                                        | [`.agents/rules/commit.md`](.agents/rules/commit.md) 与 [`docs/agents/commit.md`](docs/agents/commit.md)                                                                                                     |
 | 测试、公共行为、导出或构建产物                               | [`.agents/rules/testing.md`](.agents/rules/testing.md) 与 [`docs/agents/verification.md`](docs/agents/verification.md)                                                                                       |
 | 测试用例该写什么、不该写什么                                 | [`docs/agents/test-authoring.md`](docs/agents/test-authoring.md)                                                                                                                                             |

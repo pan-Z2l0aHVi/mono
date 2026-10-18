@@ -8,6 +8,8 @@
 - **Amended by**: ADR-0018 —— §3 的状态落点被取代：`<git-common-dir>/tasks/` 改为 `$TMPDIR/greypan/tasks/`，task state 的定位从「唯一执行真相」改为可丢失的本地工作记忆。状态机、级别、快照口径、guard 与政策检查全部决策不变
 - **2026-10-03 注记**：原「Superseded by」指向的编排解耦 ADR 一并移除，其确立的原则（coordination 独立于 task、元数据落 `$TMPDIR`）随编排层退役；级别、状态机、证据、政策检查与 playbook 决策全部不变
 
+2026-10-18 注记：ADR-0025 以 schema v3 的本地登记簿和独立政策检查器取代本文的质量相位、diffHash、review、approval、verify 与提交 gate；级别判据、T0/T1 干净起点、task 归属和 playbook 原则继续适用。
+
 ## 背景
 
 旧 task 体系（已删除的 ADR-0010 与被取代的 ADR-0012）经 89 个 task state 的量化审计后确认：证据链（baseSha/diffHash/review/approval/verify）与提交门禁零故障，但存在四类残余问题——mode 字段名不副实（`orchestrated` 实际是风险档，27/27 单角色；`release`/`hotfix` 在脚本中零行为分支）、post-merge close gate 与 squash merge 结构性冲突、状态残留与快照丢失只能手写 `forcedClose` JSON、`affectedWorkspaces`/`allowedPaths` 是无写入者的 schema 残留字段。用户决定推翻重来：重建一套脱离具体业务的抽象 task 内核，级别只表达 workflow 严格程度，软件迭代操作（release/hotfix）降级为 playbook 文档。

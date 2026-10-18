@@ -8,23 +8,25 @@
 
 对变更路径运行 contract-change-review skill 的 `verify` 查询（review 或基线对比按范围加 `--base <git-ref>`、`--staged` 或 `--worktree`）。输出是验证计划的起点，不替代对实际 diff、公共行为和浏览器语义的判断；工具语义见 `agent-context.md`。
 
-根据受影响的契约选择验证方式：
+根据受影响的契约选择验证方式，并在实施阶段完成适用的自动化回归与构建：
 
-| 变更类型                   | 所需验证                                                                                                |
-| -------------------------- | ------------------------------------------------------------------------------------------------------- |
-| 本地行为                   | 聚焦的包测试                                                                                            |
-| 跨包导出、引用或运行时契约 | 迭代期用 `pnpm exec turbo test --filter=@greypan/<name>` 定位受影响包；提交确认前运行根目录 `pnpm test` |
-| 构建配置、发布产物或导出   | 迭代期用 `pnpm exec turbo build --filter=@greypan/<name>`；提交确认前运行根目录 `pnpm build`            |
-| 浏览器原生行为             | 相关的 `*.browser.spec.ts` 测试                                                                         |
-| UI、UX 或运行时浏览器行为  | 按 `runtime-verification.md` 的真实浏览器验证                                                           |
+| 验证类别              | 代表命令或证据                                                       | 阶段与边界                                                                                          |
+| --------------------- | -------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------- |
+| 单元与组件回归        | `pnpm exec turbo test --filter=@greypan/<name>`                      | 实施时按改动迭代运行；交付 PR 前通过受影响的包测试。                                                |
+| 全量 workspace 测试   | `pnpm run test`                                                      | 适用时在实施完成、交付 PR 前运行；不把首次全量测试留给 PR CI 或合并前。                             |
+| 仓库脚本测试          | `pnpm ci:test-scripts`                                               | 实施完成、交付 PR 前运行；它是 `pnpm run test` 之外的 tracked-only 套件。                           |
+| 构建                  | `pnpm exec turbo build --filter=@greypan/<name>` 或 `pnpm run build` | 构建、发布产物、导出或构建配置受影响时，在实施完成、交付 PR 前验证。                                |
+| E2E、探索式与真机验收 | `runtime-verification.md` 的真实浏览器或原生应用证据                 | 可在实施时调试，也可安排在 PR 阶段与独立 review 并行；若该变更要求此验收，必须在合并前完成。        |
+| PR CI                 | 当前 PR 的 required checks 与 base/head 证据                         | PR 创建后及 base/head 变化后核对当前提交；它不替代实施阶段已要求的单元、全量 workspace 或脚本测试。 |
 
-先跑最快的聚焦验证，再按跨包或发布风险升级到对应包或其上游依赖的构建/测试。全量根命令只在提交前最终确认时跑，不要无理由扩大验证范围。记录准确命令、结果、浏览器 URL/操作和未验证缺口。失败时保留失败输出，区分环境问题、现有失败和本次回归；不要用删除测试或跳过检查代替修复。
+适用的自动化测试与构建应在实施中持续验证，不能等到 PR 阶段才首次运行；每次小步提交不必重复全量命令，改动后重跑相关验证即可。纯文档等低风险变更按影响选择，不强加全套。根 `pnpm run test` 包含已配置的 Vitest Browser Mode / Chromium 自动回归，这些 spec 不等于真实 E2E、探索式或真机验收。记录准确命令、结果、浏览器 URL/操作和未验证缺口。失败时保留失败输出，区分环境问题、现有失败和本次回归；不要用删除测试或跳过检查代替修复。
 
 ## 测试环境与命令
 
 - 测试框架：Vitest（通过 `vite-plus`）。
-- 运行所有测试：`pnpm run test`。根 `turbo test` 编排所有 workspace 的 `test` 任务；配了 browser-mode 的包会在此命令中跑 Chromium `*.browser.spec.ts`。
-- 运行受影响测试：先用 contract-change-review skill 的 `verify` 查询（`node skills/contract-change-review/repo-query.mjs verify -- <paths...>`）识别受影响 workspace，再跑 `pnpm exec turbo test --filter=@greypan/<name>`。迭代和调试默认用本命令或包级聚焦测试，全量 `pnpm run test` 留到提交前最终确认。
+- 运行所有 workspace 测试：`pnpm run test`。根 `turbo test` 编排所有 workspace 的 `test` 任务；适用改动应在实施完成、交付 PR 前通过。配了 browser-mode 的包会在此命令中跑 Chromium `*.browser.spec.ts` 自动回归。
+- 运行仓库脚本测试：`pnpm ci:test-scripts`。它通过 `git ls-files` 运行 tracked-only 的 `*.test.mjs`，不属于 `pnpm run test`；新增而未跟踪的脚本测试要在实施中显式运行。
+- 运行受影响测试：先用 contract-change-review skill 的 `verify` 查询（`node skills/contract-change-review/repo-query.mjs verify -- <paths...>`）识别受影响 workspace，再跑 `pnpm exec turbo test --filter=@greypan/<name>`。小步迭代和调试使用本命令或包级聚焦测试；按变更影响选择适用的全量 workspace 测试并在实施交付前完成。
 - 运行单个包的测试：`pnpm exec turbo test --filter=@greypan/<name>`（包内执行 `vp test run`）。
 - 测试文件：`*.spec.ts`、`*.test.ts`、`*.spec.tsx`。
 - 测试环境：大多数包用 Node 环境。`browser-kit` 用 Vitest Browser Mode 配 Playwright Chromium 做真实浏览器测试。

@@ -1,9 +1,18 @@
 import assert from 'node:assert/strict'
+import { spawnSync } from 'node:child_process'
 import fs from 'node:fs'
+import os from 'node:os'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 
-import { RELEASE_BRANCH, REQUIRED_CONTEXT, desktopMatrix, parseWorkflow, workflows } from './ci-topology.mjs'
+import {
+  RELEASE_BRANCH,
+  REQUIRED_CONTEXT,
+  desktopMatrix,
+  parseWorkflow,
+  requiredPolicyStep,
+  workflows
+} from './ci-topology.mjs'
 
 // 这张测试是 .github/scripts/ci-topology.mjs 那张表的执行端：YAML 不能被 import，所以「拓扑只有一处
 // 定义」只能靠把真实 workflow 逐字段读回来比。它同时钉计划里的不变量 2/3/4/5 与安装面收窄那条，
@@ -40,6 +49,7 @@ for (const [file, expected] of Object.entries(workflows)) {
     assert.deepEqual(act.needs, job.needs, `${file}: job ${id} needs must match`)
     assert.deepEqual(act.toolchain, job.toolchain, `${file}: job ${id} declared toolchain must match`)
     assert.deepEqual(act.permissions, job.permissions ?? {}, `${file}: job ${id} permission escalation must match`)
+    assert.equal(act.continueOnError, job.continueOnError, `${file}: job ${id} continue-on-error must match`)
 
     if (job.if === undefined) {
       assert.equal(act.if, undefined, `${file}: job ${id} must not grow an if`)
@@ -52,6 +62,36 @@ for (const [file, expected] of Object.entries(workflows)) {
 
   for (const [step, expression] of Object.entries(expected.steps)) {
     assert.equal(actual.steps[step], expression, `${file}: step ${step} if must match the table`)
+  }
+
+  for (const [step, jobId] of Object.entries(expected.stepJobs ?? {})) {
+    assert.equal(actual.stepJobs[step], jobId, `${file}: step ${step} must belong to job ${jobId}`)
+  }
+
+  for (const [step, shell] of Object.entries(expected.stepShells ?? {})) {
+    assert.equal(actual.stepShells[step], shell, `${file}: step ${step} shell must match`)
+  }
+
+  for (const step of Object.keys(expected.stepJobs ?? {})) {
+    assert.equal(actual.stepContinueOnError[step], undefined, `${file}: step ${step} must propagate failures`)
+  }
+
+  if (expected.policyStep) {
+    const policy = expected.policyStep
+    assert.equal(actual.stepJobs[policy.name], policy.job, `${file}: ${policy.name} must belong to job ${policy.job}`)
+    assert.equal(actual.stepShells[policy.name], policy.shell, `${file}: ${policy.name} shell must match`)
+    assert.equal(actual.steps[policy.name], undefined, `${file}: ${policy.name} must not be conditionally skipped`)
+    assert.equal(
+      actual.stepContinueOnError[policy.name],
+      undefined,
+      `${file}: ${policy.name} must fail the job on error`
+    )
+    assert.equal(actual.jobs[policy.job].if, undefined, `${file}: job ${policy.job} must not be conditionally skipped`)
+    assert.equal(
+      actual.jobs[policy.job].continueOnError,
+      undefined,
+      `${file}: job ${policy.job} must propagate failures`
+    )
   }
 }
 
@@ -81,8 +121,8 @@ for (const [file, wf] of Object.entries(parsed)) {
   }
 }
 
-// 不变量 2：只有 changeset-version.yml 监听 push。ci.yml 的 push 触发是纯重复 —— squash-only 加
-// strict required status 已经让 PR head 的树等于合并后 main 的树；trunk 复检走 workflow_dispatch。
+// 不变量 2：只有 changeset-version.yml 监听 push。ci.yml 默认在 pull_request 的合并对象上运行，
+// strict 要求 PR 跟上 base；squash 会创建新 commit，不能据此假设合并提交与已测对象恒等。trunk 复检走 workflow_dispatch。
 assert.deepEqual(
   Object.entries(parsed)
     .filter(([, wf]) => wf.triggers.some(trigger => trigger.on === 'push'))
@@ -202,6 +242,102 @@ function runTexts(text) {
     .replace(/\\\n\s*/g, ' ')
     .split('\n')
     .filter(Boolean)
+}
+
+for (const [file, wf] of Object.entries(workflows)) {
+  if (!wf.stepRuns) continue
+  const text = fs.readFileSync(path.join(workflowDir, file), 'utf8')
+  for (const [step, expectedRuns] of Object.entries(wf.stepRuns)) {
+    const block = namedStepBlock(text, step)
+    assert.deepEqual(runTexts(block), expectedRuns, file + ': step ' + step + ' commands must match the topology table')
+  }
+}
+
+function namedStepBlock(text, name) {
+  const start = text.indexOf(`      - name: ${name}\n`)
+  assert.notEqual(start, -1, `step ${name} block not found`)
+  const rest = text.slice(start)
+  const nextStep = /\n      - /.exec(rest.slice(1))
+  return nextStep ? rest.slice(0, nextStep.index + 1) : rest
+}
+
+// Policy checks belong to the required job and must always run with Bash failure propagation. Exact command
+// comparison prevents removal, replacement, or shell-level masking of any hard constraint.
+function assertPolicyStepContract(text) {
+  const parsedWorkflow = parseWorkflow(text)
+  const policy = requiredPolicyStep
+  assert.equal(parsedWorkflow.stepJobs[policy.name], policy.job, 'policy step must belong to required job check')
+  assert.equal(parsedWorkflow.stepShells[policy.name], policy.shell, 'policy step must use fail-fast Bash')
+  assert.equal(parsedWorkflow.steps[policy.name], undefined, 'policy step must not have an if condition')
+  assert.equal(parsedWorkflow.stepContinueOnError[policy.name], undefined, 'policy step must not ignore errors')
+  assert.equal(parsedWorkflow.jobs[policy.job]?.if, undefined, 'required job must not have an if condition')
+  assert.equal(parsedWorkflow.jobs[policy.job]?.continueOnError, undefined, 'required job must propagate failures')
+  assert.deepEqual(
+    runTexts(namedStepBlock(text, policy.name)),
+    policy.runs,
+    'policy step must execute every required command unchanged'
+  )
+}
+
+const ciWorkflow = fs.readFileSync(path.join(workflowDir, 'ci.yml'), 'utf8')
+assertPolicyStepContract(ciWorkflow)
+for (const command of requiredPolicyStep.runs) {
+  const commandPath = path.join(repoRoot, command)
+  assert.ok(fs.existsSync(commandPath), `required policy command ${command} must exist`)
+  assert.notEqual(fs.statSync(commandPath).mode & 0o111, 0, `required policy command ${command} must be executable`)
+}
+
+function mutateOnce(text, from, to, label) {
+  assert.equal(text.split(from).length - 1, 1, `${label}: mutation anchor must occur once`)
+  return text.replace(from, to)
+}
+
+const policyStepMarker = `      - name: ${requiredPolicyStep.name}\n`
+assert.throws(
+  () =>
+    assertPolicyStepContract(
+      mutateOnce(ciWorkflow, '          .agents/checks/no-mutual-links\n', '', 'removed command')
+    ),
+  /policy step must execute every required command unchanged/
+)
+assert.throws(() =>
+  assertPolicyStepContract(
+    mutateOnce(ciWorkflow, policyStepMarker, `${policyStepMarker}        if: false\n`, 'step if')
+  )
+)
+assert.throws(() =>
+  assertPolicyStepContract(
+    mutateOnce(
+      ciWorkflow,
+      policyStepMarker,
+      `${policyStepMarker}        continue-on-error: true\n`,
+      'step continue-on-error'
+    )
+  )
+)
+assert.throws(() =>
+  assertPolicyStepContract(mutateOnce(ciWorkflow, '  check:\n', '  check:\n    if: false\n', 'job if'))
+)
+assert.throws(() =>
+  assertPolicyStepContract(
+    mutateOnce(ciWorkflow, '  check:\n', '  check:\n    continue-on-error: true\n', 'job continue-on-error')
+  )
+)
+
+// GitHub's explicit Bash shell uses -e -o pipefail. Keep a failure propagation fixture so a future wrapper
+// change cannot leave later policy commands running while the required job reports success.
+const propagationDir = fs.mkdtempSync(path.join(os.tmpdir(), 'ci-policy-fail-fast-'))
+try {
+  const marker = path.join(propagationDir, 'later-command-ran')
+  const result = spawnSync(
+    'bash',
+    ['--noprofile', '--norc', '-e', '-o', 'pipefail', '-c', 'false\nprintf reached > "$1"', 'policy-step', marker],
+    { encoding: 'utf8' }
+  )
+  assert.equal(result.status, 1, `Bash should fail immediately on a policy error: ${result.stderr}`)
+  assert.equal(fs.existsSync(marker), false, 'a later policy command must not run after a failure')
+} finally {
+  fs.rmSync(propagationDir, { recursive: true, force: true })
 }
 
 // 桌面产物的验证面是 `build:macos` / `build:windows` 两个子脚本，不是聚合的 `build`。这条不变量是

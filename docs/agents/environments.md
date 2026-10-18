@@ -4,7 +4,7 @@
 
 ## 权限
 
-Codex 的权限由机器级 `~/.codex/config.toml` 决定，不属于仓库政策。仓库内没有 `.codex/config.toml`：`.gitignore` 把 `.codex/` 排除在版本控制之外，所以这份配置不随仓库分发，`freeze` 与 review 也看不到它。配置在会话启动时读取，改完只影响新开的线程。
+Codex 的权限由机器级 `~/.codex/config.toml` 决定，不属于仓库政策。仓库内没有 `.codex/config.toml`：`.gitignore` 把 `.codex/` 排除在版本控制之外，所以这份配置不随仓库分发，本地 task 台账也无法证明运行时权限配置。配置在会话启动时读取，改完只影响新开的线程。
 
 当前这台机器上写的是：
 
@@ -16,9 +16,9 @@ approvals_reviewer = "auto_review"
 
 命令没有文件系统边界，残余的审批请求交给自动评审而不是人。
 
-**为什么不用沙箱。** 线程的工作区是 git worktree，它自己的 admin 目录（`<主仓库>/.git/worktrees/<slug>/`）被 Codex 按**名字**保护，不按位置。所以无论怎么配可写根，`git add`、`git commit` 和 freeze 的 `git add -A` 都会被拒，每次都要走 approval 提权，线程反复停在等待审批上。沙箱在这里守的是 `.agents/`、home 与 `~/Documents`，收益抵不上代价。
+**为什么不用沙箱。** 线程的工作区是 git worktree，它自己的 admin 目录（`<主仓库>/.git/worktrees/<slug>/`）被 Codex 按**名字**保护，不按位置。所以无论怎么配可写根，`git add` 和 `git commit` 都会被拒，每次都要走 approval 提权，线程反复停在等待审批上。沙箱在这里守的是 `.agents/`、home 与 `~/Documents`，收益抵不上代价。
 
-**代价。** 隔离退回到 task gate、Git 禁令和目录纪律这些软机制，没有运行时保证。这是对官方推荐的主动偏离——官方建议可信仓库用 `workspace-write` + `on-request`，全访问只留给受控容器。
+**代价。** 隔离退回到五项只读 checks、Git 禁令和目录纪律这些仓库机制，没有运行时保证。这是对官方推荐的主动偏离——官方建议可信仓库用 `workspace-write` + `on-request`，全访问只留给受控容器。
 
 **不要用 `--approve-for-me`。** 它在 CLI 层注入 `sandbox_mode="workspace-write"`，而 CLI 层覆盖一切配置层，会把上面的决定顶掉。要自动评审就写 `approvals_reviewer = "auto_review"`：那是审批路由，不是沙箱的配套。
 

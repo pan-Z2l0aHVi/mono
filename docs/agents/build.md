@@ -1,6 +1,6 @@
 # 构建与 CI
 
-修改包脚本、Vite/Turbo 配置、外部化或 CI 流程时，先读本指南；这些细节变化时，在同一变更里更新本文档。包清单、依赖边界与发布边界以 [`ARCHITECTURE.md`](../../ARCHITECTURE.md) 为权威，本指南描述包级构建、生成物生命周期与 CI / workflow 拓扑。发布流程（changesets、PR、审批、合并后验证）在 [`release.md`](release.md)；发布**禁令与首次发布工具**在本文末尾，那几条不归 `release.md`。worktree 的初始化、共享缓存与 shell 激活边界由 [`worktree.md`](worktree.md) 承担。
+修改包脚本、Vite/Turbo 配置、外部化或 CI 流程时，先读本指南；这些细节变化时，在同一变更里更新本文档。包清单、依赖边界与发布边界以 [`ARCHITECTURE.md`](../../ARCHITECTURE.md) 为权威，本指南描述包级构建、生成物生命周期与 CI / workflow 拓扑。发布流程（changesets、PR、review、合并后验证）在 [`release.md`](release.md)；发布**禁令与首次发布工具**在本文末尾，那几条不归 `release.md`。worktree 的初始化、共享缓存与 shell 激活边界由 [`worktree.md`](worktree.md) 承担。
 
 ## 各包命令
 
@@ -71,13 +71,17 @@ Interweave 由 Wails 宿主管理嵌套前端，其 alias 只启动 Wails host�
 
 ## CI 门控与 workflow 拓扑
 
-真实的触发面、`permissions`、job `needs`/`if`、step `id`、发布分支字面量、桌面构建矩阵与安装面只写在 `.github/scripts/ci-topology.mjs`，同目录的 `ci-topology.test.mjs` 把每个 workflow 的真实 YAML 读回来逐字段比对，由 `ci:test-scripts` 与 CI 的 `check` 强制。改任何一项而不改那份声明，`check` 就红；守卫里引用了不存在的 step `id` 也会红，因为这类引用在 Actions 里不报错，只会让那一步永远静默跳过。
+真实的触发面、`permissions`、job `needs`/`if`、step `id`、发布分支字面量、桌面构建矩阵与安装面只写在 `.github/scripts/ci-topology.mjs`，同目录的 `ci-topology.test.mjs` 把每个 workflow 的真实 YAML 读回来逐字段比对，由 `ci:test-scripts` 与 CI 的 `check` 强制。该声明也固定 `check` job 内的 `Check repository policies` step：四条 CI policy 命令由 `scripts/check-policies.mjs` 导出的 `POLICY_CHECKS` 派生，排除由 `check-code` 覆盖的 `format-clean`；真实 workflow 明确顺序执行四项，不能条件跳过或忽略失败。改任何一项而不改那份声明，`check` 就红；守卫里引用了不存在的 step `id` 也会红，因为这类引用在 Actions 里不报错，只会让那一步永远静默跳过。
 
 - 一次运行是「等审批」还是「排队」，看 `gh api repos/<owner>/<repo>/actions/runs/<id> --jq '{status,jobs:.jobs.total_count,run_started_at,created_at}'`：`jobs.total_count == 0` 且 `run_started_at == created_at` 才是挂起等批准。某个 step 是否真的换掉了，看它在运行里整条消失（`gh api repos/<owner>/<repo>/actions/runs/<id>/jobs --jq '.jobs[].steps[].name'`），`if` 为假的 step 仍显示 `skipped`。
 - `ci.yml` 的 PR 运行与手动触发运行共享一个 `concurrency` 组（workflow 名加分支），但 `cancel-in-progress` 只能取消仍在飞行的那一次：先启动的运行若已结束，后启动的那次仍会完整跑一遍。`workflow_dispatch` 只用于人工重跑：版本 PR 由 `GITHUB_TOKEN` 创建，其 `pull_request` 运行要等有人点「批准并运行」，批准后同一 run id 以 `run_attempt=2` 起跑，所以版本 PR 上 attempt 大于 1 是批准痕迹，不是 flake 重试；从未批准的运行停在 `attempt=1` 且 `jobs.total_count == 0`。
 - `npm-publish.yml` 仅发布公共 npm 包，发布成功后一个独立的最小权限作业为每个包版本创建幂等的 GitHub Release 与标签。npm Trusted Publishing 通过 OIDC `job_workflow_ref` 绑定到工作流文件路径，重命名或移动 `npm-publish.yml` 会使注册失效，即使设了 `id-token: write`，`pnpm changeset publish` 也会因 `ENEEDAUTH` 失败；重命名要在同一变更里更新 npmjs.com 上的 trusted publisher。
 - `deploy-pages.yml` 每个条目是 `apps/<name>` 目录，服务路径为 `/mono/<name>/`，构建用 pnpm 的 `{./apps/<name>}...` 目录选择器而非包名。站点没有根落地页。每个 demo 的 History 路由深层链接依赖 GitHub Pages 的 404 回退：未匹配请求路由到根 `404.html`，它按 `DEMO_APPS` 验证应用名、把请求路由保存在 `redirect` 并加载应用根目录；应用必须在创建路由器之前恢复 `redirect`，未知路径保持 404。
 - 私有原生应用的验证保持路径触发而非全局必需检查；`main` 的分支保护只要求 `check` 上下文通过，产品变更必须经 pull request 合入。私有原生应用的版本同步由 [apps/interweave/scripts/](../../apps/interweave/scripts/) 承担：`release-version.mjs` 是版本 workflow 的编排入口，`sync-version.mjs` 提供默认更新与 `--check` 验证语义；版本 workflow 不直接发布包或安装程序。
-- 合并门控来自 `main` 的规则集 `main protection`：要求 `check` 上下文，且 `strict_required_status_checks_policy` 为真。`action_required` 挂起是 GitHub 对 `GITHUB_TOKEN` 创建的版本 PR 的既有行为，仓库曾用条件 dispatch 缓解，该机制已删除，因为 dispatch 只是把同一轮验证再跑一遍，治不了挂起。现在挂起回归为人工一步，在 Actions 运行页批准，或执行 `gh api repos/<owner>/<repo>/actions/runs/<id>/approve`。同一规则集还开着 `require_extra_approval_for_unattributed_changes`，且 `required_approving_review_count` 为 0：不归属到具体用户的改动要多一道人工 approval，bot 创建的版本 PR 正命中这条。放行它是两道人工动作，先批准挂起的 run，再给 PR 本身一个 approval（`gh pr review <pr> --approve`）；只批准 run 时 PR 停在 `BLOCKED`，看起来像配好了其实没放行。若挂起重新成为常态，修法是让版本 PR 由有写权限的身份创建，也就是给 `changesets/action` 换用机器用户 PAT 或 GitHub App 令牌，而不是补回 dispatch。
+- 合并门控来自 `main` 的规则集 `main protection`：要求 `check` 上下文，且 `strict_required_status_checks_policy` 为真。`action_required` 挂起是 GitHub 对 `GITHUB_TOKEN` 创建的版本 PR 的既有行为，仓库曾用条件 dispatch 缓解，该机制已删除，因为 dispatch 只是把同一轮验证再跑一遍，治不了挂起。现在挂起回归为人工一步，在 Actions 运行页批准，或执行 `gh api repos/<owner>/<repo>/actions/runs/<id>/approve`。同一规则集还开着 `require_extra_approval_for_unattributed_changes`，且 `required_approving_review_count` 为 0：不归属到具体用户的改动要多一道人工 approval，bot 创建的版本 PR 正命中这条。放行它是两道不同的门：先批准挂起的 run，再由有权且非 PR 作者的用户批准 PR；PR 作者不能用同一账号批准自己的改动。此 access-control approval 不等于本地独立 reviewer 的审查报告，具体 PR review 过程由 `review.md` 规定。若挂起重新成为常态，修法是让版本 PR 由有写权限的身份创建，也就是给 `changesets/action` 换用机器用户 PAT 或 GitHub App 令牌，而不是补回 dispatch。
 
 未经用户授权不执行发布。取得授权的机制（弹窗、推荐项与自定义输入）见 [`workflow.md`](workflow.md#怎么取得这个授权)。不得直接运行 `npm publish`，首次发布用 `pnpm publish-new-pack <package-dir>`。Git 检查的绕过禁令见 [`commit.md`](commit.md)。
+
+## PR changeset gate
+
+`ci.yml` 的 `Check changesets` step 对普通 PR 保留 `changeset status`，并把 runner 提供的 base/head SHA 传给 `.agents/checks/changeset-required`。后者只检查 PR commit 差集和 PR head tree；本地 `ci:check-policies` 不运行该检查。`changeset-release/main` 版本 PR 由 step 条件豁免，`workflow_dispatch` 没有 PR 基线时不执行 PR 专项 changeset policy。required status context 仍只有 `check`；它覆盖 CI 与仓库硬约束，不等于 PR review。T0/T1 的本地独立 review 与报告回写、复审及合并前核验见 [`review.md`](review.md)，当前没有无人值守自动 reviewer 或 required approving review。

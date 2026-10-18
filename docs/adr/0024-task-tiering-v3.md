@@ -5,6 +5,8 @@
 - **Amends**: [ADR-0014](0014-task-system-v2.md) §1 的分级判据与 §5 的 review 拓扑、[ADR-0021](0021-orchestration-layer-moved-to-herdr-projects.md) §2 的 T0 判据面
 - **Relates to**: [ADR-0018](0018-task-state-in-tmpdir.md)（task state 落点，与本 ADR 无冲突）
 
+2026-10-18 注记：ADR-0025 取代本文的 review、approval、verify 与 task 关闭 gate 决策；T0/T1/T2 的分级判据与 worktree 起点规则继续适用。
+
 ## 背景
 
 ADR-0014 把 task 分档收敛为 `level`（t0/t1/t2），但判据仍是一份按类别枚举的清单：跨 workspace、公共契约、多 worktree、instruction system、构建配置、CI、依赖……ADR-0021 §2 删掉了其中唯一描述编排形态的「聚合发布或多 worktree 并行」，判据面收窄成若干条契约与制度类条目。

@@ -1,26 +1,33 @@
 // CI 拓扑的唯一声明处。workflow 文件不能被 import，所以这张表的强制方式是「被测试比对」：
 // 同目录的 ci-topology.test.mjs 用下面的 parseWorkflow 读真实 YAML，逐字段与表核对，任一漂移即失败。
 // 表里记的是会让发布行为改变的事实（触发面、必需 context、job 依赖、分支常量、声明的安装面、权限提级），
-// 不复制 YAML 里那些改动无害的字段（timeout、cache key、step 命令）。
+// 以及 PR changeset 与仓库 policy step 的命令和执行约束。
 //
 // 为什么自己扫 YAML 而不是加解析器：仓库根解析不到 `yaml` / `js-yaml`，为一个拓扑断言引入依赖是
 // 比这张表更重的决策；本仓 workflow 只用顶格 section + 固定缩进这一小撮形状，parseWorkflow 的每条正则
 // 都对应其中一种 —— YAML 一旦改用别的形状（多行 `branches:`、step 名写在 `id:` 之后），表现是测试红，
 // 不是静默漏检。
+import { POLICY_CHECKS } from '../../scripts/check-policies.mjs'
 
 export const RELEASE_BRANCH = 'changeset-release/main'
 
-// main 保护规则集唯一要求的上下文名；它必须保持单个 job 名，拆多个 context 会让 ruleset 与
-// 「PR head 的树等于合并后 main 的树」这条 squash-only 保证变复杂。
+// main 保护规则集唯一要求的上下文名；它保持单个 job 名，便于 ruleset 稳定绑定。
 export const REQUIRED_CONTEXT = 'check'
+
+export const requiredPolicyStep = {
+  name: 'Check repository policies',
+  job: 'check',
+  shell: 'bash',
+  runs: POLICY_CHECKS.filter(name => name !== 'format-clean').map(name => '.agents/checks/' + name)
+}
 
 const mergedIntoReleaseBranch = `github.event.pull_request.merged == true && github.event.pull_request.head.ref == '${RELEASE_BRANCH}'`
 
 export const workflows = {
   'ci.yml': {
     name: 'CI',
-    // 没有 push 触发：squash-only + strict required status 已经保证 PR head 的树就是合并后 main 的树，
-    // trunk 复检要按需做就用 workflow_dispatch。
+    // 不监听 push；pull_request 默认验证 GitHub 生成的合并对象。strict 只要求 PR 分支跟上 base，
+    // squash 会创建新提交，不能据此断言合并提交与先前测试对象完全相同；trunk 复检走 workflow_dispatch。
     triggers: [{ on: 'pull_request', branches: ['main'] }, { on: 'workflow_dispatch' }],
     permissions: { contents: 'read' },
     jobs: {
@@ -32,7 +39,33 @@ export const workflows = {
     },
     // 版本 PR 自己不带 pending changeset（它删掉的就是 changeset），所以那一步只在非版本分支上跑。
     steps: {
-      'Check changesets': `github.event_name == 'pull_request' && github.head_ref != '${RELEASE_BRANCH}'`
+      'Check changesets': `github.event_name == 'pull_request' && github.head_ref != '${RELEASE_BRANCH}'`,
+      'Record tested PR snapshot': "github.event_name == 'pull_request'"
+    },
+    stepJobs: {
+      [requiredPolicyStep.name]: requiredPolicyStep.job,
+      'Record tested PR snapshot': 'check'
+    },
+    stepShells: {
+      'Record tested PR snapshot': 'bash'
+    },
+    policyStep: requiredPolicyStep,
+    stepRuns: {
+      'Check changesets': [
+        'pnpm exec changeset status --since="$PR_BASE_SHA"',
+        '.agents/checks/changeset-required --base "$PR_BASE_SHA" --head "$PR_HEAD_SHA"'
+      ],
+      [requiredPolicyStep.name]: requiredPolicyStep.runs,
+      'Record tested PR snapshot': [
+        'checkout_sha=$(git rev-parse HEAD)',
+        '{',
+        'echo "## Tested PR snapshot"',
+        'echo "- PR base SHA: ${{ github.event.pull_request.base.sha }}"',
+        'echo "- PR head SHA: ${{ github.event.pull_request.head.sha }}"',
+        'echo "- Event SHA: $GITHUB_SHA"',
+        'echo "- Checkout SHA: $checkout_sha"',
+        '} | tee -a "$GITHUB_STEP_SUMMARY"'
+      ]
     },
     stepIds: ['go-cache']
   },
@@ -196,10 +229,21 @@ function unquote(value) {
 
 // 只认本仓用到的形状：顶格 section、缩进 2 的 trigger/job/permission 键、缩进 4 的 job 字段与
 // trigger 的 `branches`/`types`/`paths`、缩进 6 的 step 与 job 级权限、其 `with:` 下的安装面入参
-// （缩进 10）、缩进 8 的 step `if:` 与 `id:`。run 块里的内容缩进更深或不以 `- `/`key:` 开头，不会误判。
+// （缩进 10）、缩进 8 的 step `if:`、`id:`、`shell:` 与 `continue-on-error:`。run 块里的内容缩进更深
+// 或不以 `- `/`key:` 开头，不会误判。
 export function parseWorkflow(text) {
   const lines = text.split(/\r?\n/)
-  const parsed = { name: '', triggers: [], permissions: {}, jobs: {}, steps: {}, stepIds: [] }
+  const parsed = {
+    name: '',
+    triggers: [],
+    permissions: {},
+    jobs: {},
+    steps: {},
+    stepIds: [],
+    stepJobs: {},
+    stepShells: {},
+    stepContinueOnError: {}
+  }
   let section = null
   let trigger = null
   let triggerPaths = false
@@ -271,7 +315,14 @@ export function parseWorkflow(text) {
       job = jobId[1]
       jobPermissions = false
       step = null
-      parsed.jobs[job] = { name: undefined, needs: [], toolchain: {}, if: undefined, permissions: {} }
+      parsed.jobs[job] = {
+        name: undefined,
+        needs: [],
+        toolchain: {},
+        if: undefined,
+        continueOnError: undefined,
+        permissions: {}
+      }
       continue
     }
     if (job === null) {
@@ -291,10 +342,11 @@ export function parseWorkflow(text) {
       continue
     }
 
-    const jobField = line.match(/^ {4}(name|needs|if):\s*(.*)$/)
+    const jobField = line.match(/^ {4}(name|needs|if|continue-on-error):\s*(.*)$/)
     if (jobField) {
       const [, field, raw] = jobField
       const value = unquote(raw)
+      const parsedField = field === 'continue-on-error' ? 'continueOnError' : field
 
       if (field === 'needs') {
         parsed.jobs[job].needs = value
@@ -303,7 +355,7 @@ export function parseWorkflow(text) {
           .map(entry => unquote(entry.trim()))
           .filter(Boolean)
       } else {
-        parsed.jobs[job][field] = value
+        parsed.jobs[job][parsedField] = value
       }
       continue
     }
@@ -320,12 +372,27 @@ export function parseWorkflow(text) {
       // 本地 action（`./.github/actions/...`）与 `- id:` 开头的步骤没有可用的 step 名，置空：
       // 否则它下面缩进 8 的 `if:` 会被挂到上一个具名步骤上，把「没有守卫」读成「守卫属于别人」。
       step = stepStart && !unquote(stepStart[1]).startsWith('.') ? unquote(stepStart[1]) : null
+      if (step) {
+        parsed.stepJobs[step] = job
+      }
       continue
     }
 
     const stepIf = line.match(/^ {8}if:\s*(.*)$/)
     if (stepIf && step) {
       parsed.steps[step] = unquote(stepIf[1])
+      continue
+    }
+
+    const stepContinueOnError = line.match(/^ {8}continue-on-error:\s*(.*)$/)
+    if (stepContinueOnError && step) {
+      parsed.stepContinueOnError[step] = unquote(stepContinueOnError[1])
+      continue
+    }
+
+    const stepShell = line.match(/^ {8}shell:\s*(.*)$/)
+    if (stepShell && step) {
+      parsed.stepShells[step] = unquote(stepShell[1])
       continue
     }
 

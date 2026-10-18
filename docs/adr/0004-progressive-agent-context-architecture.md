@@ -3,6 +3,7 @@
 - **Date**: 2026-08-09
 - **Status**: 已接受
 - **Amended by**: 2026-10-03 —— Session Role 层整体退役（见下文两节）；四层架构本身不变
+- **Amended by**: 2026-10-18 —— ADR-0025 将 task 登记簿、五项本地政策检查与 PR 流程拆为独立职责；context 职责表和 Task-specific 文档权威同步
 
 ## 背景
 

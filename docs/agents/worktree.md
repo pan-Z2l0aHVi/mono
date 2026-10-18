@@ -8,15 +8,15 @@ worktree 本身是任务隔离边界，不是包名的别名。包清单、依�
 
 一个可变 task 只能有一个 owner 和一个实施 worktree；怎么创建、放在哪、用什么命令建、由谁清理，都由编排层（herdr-projects）决定，仓库不规定。共享主工作区只用于只读调查与状态查询，合并通过远端 PR 完成，不在共享工作区里做。owner 与 worktree 的唯一性边界见根 [`AGENTS.md`](../../AGENTS.md)。
 
-编排层交接 task 时会带上 worktree 路径、base SHA 和 owner 标识，执行者按它们填 Task Packet 的 `Worktree`、`Base`、`Owner`，并执行 `pnpm agent:task assign` 记录归属，不自行推导或改写。交接后归属变更属编排层的动作，重新 assign 即可。禁止靠 pane 名称或目录名推断归属。
+编排层交接 task 时会带上 worktree 路径、base SHA 和 owner 标识，执行者按它们填 Task Packet 的 `Worktree`、`Base`、`Owner`，并执行 `pnpm agent:task-ledger assign` 记录归属，不自行推导或改写。交接后归属变更属编排层的动作，重新 assign 即可。禁止靠 pane 名称或目录名推断归属。
 
 ## 新 worktree 的三步准备
 
-编排层交付一个新 worktree 后，收到它的执行者必须在实施或 freeze 之前依次跑 `mise install`、`pnpm install`、`pnpm run build`，三步都不能省。
+编排层交付一个新 worktree 后，收到它的执行者必须在实施前依次跑 `mise install`、`mise exec -- pnpm install --frozen-lockfile`、`mise exec -- pnpm run build`，三步都不能省。
 
 `mise install` 排第一，因为工具链版本由 `.mise.toml` 钉住，不同分支可能钉不同版本；它幂等，装过就是一次快速 no-op。
 
-freeze 的 guard 只看 `node_modules` 是否存在，装完依赖就通过，真正缺的是 workspace 包的 `dist` 类型产物：没有它，`vp check`（`fix-code` 与 `check-code` 都调用）会把每个跨包 import 报成假 `TS2307`，全部类型感知验证随之不可用。
+显式运行根 `fix-code` 或 `check-code` 前需要 `node_modules`；完整环境还须构建 workspace 包的 `dist` 类型产物。缺少产物时，`vp check` 会把跨包 import 报成假 `TS2307`，类型感知验证随之不可用。`fix-code` 会修改工作树内容，但不会自动暂存；整理后先检查 diff，再选择要暂存的文件。
 
 ## turbo 缓存共享
 

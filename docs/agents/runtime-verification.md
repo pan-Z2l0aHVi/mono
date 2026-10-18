@@ -2,6 +2,8 @@
 
 涉及 UI、UX、交互、响应式或运行时行为的变更，必须在真实运行环境中验证：Web 表面在真实浏览器里验证，原生应用表面（如 interweave 的 Wails 桌面壳）在真实运行的应用里验证。两个表面各有一套 Agent 取证工具，按变更触及的表面选取，不能互相替代。
 
+真实 E2E、探索式或真机验收可在 PR 阶段与独立 review 并行完成，但该变更要求的验收必须在合并前通过。Vitest Browser Mode 自动回归按 `verification.md` 在实施阶段运行，不替代这里的真实运行时证据。
+
 Web 表面由 chrome-devtools MCP 承担 Agent 的真实浏览器交互（导航、交互、console/network、截图）。原生应用表面默认用 Peekaboo，`computer-use` 类能力在环境提供时可用（见「原生应用验证」）。`agent-browser` 不属于自动 fallback；只有用户显式调用 `/agent-browser` 时才可使用，且只限它独有的能力（见「验证分层」与「为什么这样分工」）。
 
 ## 验证要点

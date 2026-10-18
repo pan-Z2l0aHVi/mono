@@ -5,6 +5,8 @@
 - **Amends**: [ADR-0014](0014-task-system-v2.md) §3 的状态落点（「状态存 `<git-common-dir>/tasks/<task-id>.json`，跨 worktree 共享」）与「后果」节「`<git-common-dir>/tasks/` 是唯一执行真相」一句
 - **Relates to**: 已删除的编排层 ADR（编排已与 task 解耦；evidence 不进 task state）——两者均随多 Agent 编排层于 2026-10-03 整体移除
 
+2026-10-18 注记：ADR-0025 保留 `$TMPDIR/greypan/tasks/` 的物理落点，当前 schema、status 与恢复规则见 docs/agents/task-ledger.md。
+
 ## 背景
 
 ADR-0014 把 task state 定在 `<git-common-dir>/tasks/<task-id>.json`。这个位置在多 worktree 并行时是必要的：21 个 worktree 各自持有 `HEAD`、index 与 `ORIG_HEAD`，只有 common dir 里的目录是同一份物理文件，reviewer 在 A worktree 冻结、coder 在 B worktree 读到的必须是同一个 state。实测规模（2026-09-28）也支持「高频写」这件事是真的：241 个 state 文件、1563 条事件，同期全仓 403 个 commit。

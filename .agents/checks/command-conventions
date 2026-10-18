@@ -1,5 +1,6 @@
 #!/bin/sh
-# 根命令面的命名约定：{namespace}:{do}-{something}，动宾用 `-` 连接，无 something 时省略。
+# 根命令面支持分组 CLI（以管理对象命名，动作由子命令提供）和单动作 CLI；单动作命名为
+# {namespace}:{do}-{something}，动宾用 `-` 连接，无 something 时省略。
 # namespace 表达「谁拥有它」，取值是闭集（见 docs/agents/commands.md 的理由与受众规则）；
 # 无 namespace 同样是合法形状（`build`、`test` 这类基础命令）。形状一旦放宽，命令面会重新
 # 膨胀而不惊动任何人，所以这里逐个钉住被拒类别，而不是只断言当前 manifest 恰好合法。
@@ -85,7 +86,7 @@ for rejected_name in 'check:Code' 'check_code' 'agent:task!' 'ci:validate:' ':co
 done
 
 # 合法形状的正例，防止判定被收得过紧。
-for accepted_name in build agent:task ci:validate-context check-code fix-go dev:react-web-ui-demo; do
+for accepted_name in build agent:task-ledger agent:task ci:check-policies ci:validate-context check-code fix-go dev:react-web-ui-demo; do
   if ! is_valid_name "$accepted_name"; then
     fail "validator must accept $accepted_name"
   fi
