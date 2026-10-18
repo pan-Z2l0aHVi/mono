@@ -1,5 +1,5 @@
 // CI 拓扑的唯一声明处。workflow 文件不能被 import，所以这张表的强制方式是「被测试比对」：
-// scripts/ci-topology.test.mjs 用下面的 parseWorkflow 读真实 YAML，逐字段与表核对，任一漂移即失败。
+// 同目录的 ci-topology.test.mjs 用下面的 parseWorkflow 读真实 YAML，逐字段与表核对，任一漂移即失败。
 // 表里记的是会让发布行为改变的事实（触发面、必需 context、job 依赖、分支常量、声明的安装面、权限提级），
 // 不复制 YAML 里那些改动无害的字段（timeout、cache key、step 命令）。
 //
@@ -32,14 +32,9 @@ export const workflows = {
     },
     // 版本 PR 自己不带 pending changeset（它删掉的就是 changeset），所以那一步只在非版本分支上跑。
     steps: {
-      'Check changesets': `github.event_name == 'pull_request' && github.head_ref != '${RELEASE_BRANCH}'`,
-      // flake 台账的留痕两步：`failure()` 让它在前一步失败之后仍然被评估（GitHub 对不含 status check 函数的
-      // `if` 仍套默认 `success()`，只写后半截会得到一个恒假、恒 skip 的守卫），后半截让它只认 Test 自己的
-      // 结果 —— 既不能变成第二个 gate，也不能在 lint 失败、Test 被 skip 时留下一条没有测试日志的假记录。
-      'Record test failures': "failure() && steps.test.outcome == 'failure'",
-      'Upload test output': "failure() && steps.test.outcome == 'failure'"
+      'Check changesets': `github.event_name == 'pull_request' && github.head_ref != '${RELEASE_BRANCH}'`
     },
-    stepIds: ['go-cache', 'test']
+    stepIds: ['go-cache']
   },
   'changeset-version.yml': {
     name: 'Create Version PR',
@@ -50,7 +45,7 @@ export const workflows = {
         name: 'Create or update version pull request',
         needs: [],
         // 收窄的安装面是刻意的：这个 job 的 version-script 会跑 interweave 的 sync:version，
-        // 而它现在必须是纯 node（见 scripts/version-sync.test.mjs）。
+        // 而它现在必须是纯 node（见 apps/interweave/scripts/version-sync.test.mjs）。
         toolchain: { 'mise-install': 'node pnpm' }
       }
     },

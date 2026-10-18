@@ -7,8 +7,9 @@ import path from 'node:path'
 // 这条测试钉的是发布检测的判据：git 默认开启改名检测，所以包目录改名在 `--name-status` 里是 `R`，
 // 只挑 A/M 的旧实现会整笔丢掉它 —— 换了 npm 名字的包永远不会被发布，而 CI 全绿。判据收在
 // (name, version) 身份上：名字变了要发，纯目录搬迁不发。删除与私有包同样要在清单里保持沉默而不是炸。
-const repoRoot = path.resolve(import.meta.dirname, '..')
-const script = path.join(repoRoot, '.github', 'scripts', 'detect-versioned-packages.mjs')
+// 测试与被测脚本同址；执行端是根 `ci:test-scripts` 的全仓 glob（`*.test.mjs`）。
+const repoRoot = path.resolve(import.meta.dirname, '../..')
+const script = path.join(import.meta.dirname, 'detect-versioned-packages.mjs')
 const fixture = fs.mkdtempSync(path.join(os.tmpdir(), 'greypan-detect-versioned-'))
 
 const git = (...args) =>
@@ -127,4 +128,4 @@ try {
   fs.rmSync(fixture, { recursive: true, force: true })
 }
 
-console.log('scripts/detect-versioned-packages.test.mjs: all assertions passed')
+console.log('.github/scripts/detect-versioned-packages.test.mjs: all assertions passed')

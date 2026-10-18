@@ -2,112 +2,162 @@
 # Turbo cache 的正确性依赖三件事：test 先跑依赖包的 build，build 缓存恢复 dist/**，
 # 以及 test inputs 不显式把 gitignored 的 dist 拉进 key。任何一项被改掉，缓存命中就可能
 # 复现一份被污染的 dist，而测试仍然是绿；本检查只在提交边界核对这条形状，不执行构建。
+#
+# 纯 sh 实现（曾为 node heredoc）：turbo.json 按 prettier 2 空格缩进的既定形状做 fail-closed
+# 提取——任务块定位、数组提取任何一步不符合预期形状都直接 fail，绝不静默空转。数组元素限死
+# 在 glob 安全字符集上（`{}`、`|`、`[`、`\` 等扩展语法按违规处理），「规则能否盖住 dist」用
+# case 的变量模式等价原 path.matchesGlob 的 first-segment 判定。
 set -eu
 
-exec node - <<'NODE'
-'use strict'
-
-const fs = require('node:fs')
-const path = require('node:path')
-
-const root = process.cwd()
-
-function fail(key, reason) {
-  const message = `turbo-cache-invariant failed: ${key}: ${reason}`
-  // 内核会同时回显 stdout 与 stderr；两边都写，手工运行和 gate 都拿得到同一条原因。
-  console.log(message)
-  console.error(message)
-  process.exit(1)
+fail() {
+  printf 'turbo-cache-invariant failed: %s\n' "$1"
+  printf 'turbo-cache-invariant failed: %s\n' "$1" >&2
+  exit 1
 }
 
-function readConfig() {
-  try {
-    return JSON.parse(fs.readFileSync(path.join(root, 'turbo.json'), 'utf8'))
-  } catch (error) {
-    fail('turbo.json', `cannot read or parse: ${error.message}`)
-  }
+[ -f turbo.json ] || fail 'turbo.json not found in cwd (run from the repository root)'
+
+# ── 提取工具（fail-closed，与 web-ui-docs-inputs 守卫各自自包含，不互相依赖）──
+
+# block_from <header-line>：从 stdin 取头行之后到同层缩进（4 空格）收尾 `}`（可带逗号）的内容。
+block_from() {
+  awk -v header="$1" '
+    $0 == header { inside = 1; next }
+    inside && /^    \},?$/ { found = 1; exit }
+    inside { print }
+    END { if (!found) exit 1 }
+  '
 }
 
-function taskConfig(tasks, name) {
-  const task = tasks[name]
-  if (!task || typeof task !== 'object' || Array.isArray(task)) fail(`tasks.${name}`, 'must be an object')
-  return task
+# has_key <text> <key>：块内是否出现 "key":（区分「键缺失」与「键存在但值为空」）。
+has_key() {
+  printf '%s\n' "$1" | grep -q "\"$2\":"
 }
 
-function assertDependsOn(task, name) {
-  if (!Array.isArray(task.dependsOn) || task.dependsOn.some(rule => typeof rule !== 'string')) {
-    fail(`tasks.${name}.dependsOn`, 'must be an array of strings containing "^build"')
-  }
-  if (!task.dependsOn.includes('^build')) {
-    fail(
-      `tasks.${name}.dependsOn`,
-      'must include "^build" so cached upstream build outputs are restored before the dependent task runs'
-    )
-  }
+# array_items <key>（stdin：块文本）：提取 "key": [ ... ] 的字符串元素，一行一个、去引号。
+# 支持跨行数组；元素不含 `]`、`,`、`"`（本仓 turbo 配置满足）。开括号缺席（exit 2）与数组
+# 未闭合（exit 3）都按提取失败处理，调用方必须接 || fail。
+array_items() {
+  awk -v key="\"$1\":" '
+    !inside && index($0, key) {
+      rest = substr($0, index($0, key) + length(key))
+      sub(/^[[:space:]]*/, "", rest)
+      if (rest !~ /^\[/) exit 2
+      sub(/^\[/, "", rest)
+      inside = 1
+      $0 = rest
+    }
+    inside {
+      line = $0
+      close_bracket = index(line, "]")
+      if (close_bracket > 0) {
+        line = substr(line, 1, close_bracket - 1)
+        inside = 0
+      }
+      gsub(/"/, "", line)
+      n = split(line, parts, ",")
+      for (i = 1; i <= n; i++) {
+        gsub(/^[[:space:]]+/, "", parts[i])
+        gsub(/[[:space:]]+$/, "", parts[i])
+        if (parts[i] != "") print parts[i]
+      }
+      if (!inside) exit 0
+    }
+    END { if (inside) exit 3 }
+  '
 }
 
-function ruleMayMatchDist(rule) {
-  if (typeof rule !== 'string' || rule.length === 0) return false
-  if (rule === '$TURBO_DEFAULT$' || rule.startsWith('!')) return false
-
-  const normalized = rule.replace(/\\/g, '/').replace(/^\.\//, '')
-  if (normalized.startsWith('/')) return true
-
-  // Turbo inputs are package-relative. To put dist/** in the input set, the first path
-  // segment must be able to match the literal directory name `dist`; `**` can do that too.
-  // Known boundary: this only strips one leading ./, so paths with repeated ./ or .. segments
-  // (for example src/../dist/**) are outside the shape guard's supported subset.
-  const firstSegment = normalized.split('/')[0]
-  if (!firstSegment) return false
-  try {
-    return path.matchesGlob('dist', firstSegment)
-  } catch {
-    // If the platform cannot parse a glob, fail closed rather than silently weakening the guard.
-    return true
-  }
+# validate_item <label> <item>：数组元素限死在 glob 安全字符集（`]`、字母数字与 `_ . $ ^ / * ? ! -`）。
+validate_item() {
+  if ! printf '%s' "$2" | grep -Eq '^[]a-zA-Z0-9_.$^/*?!-]+$'; then
+    fail "$label: unsupported pattern item (extended glob syntax is not interpreted): $2"
+  fi
 }
 
-function assertBuildOutputs(build) {
-  if (!Array.isArray(build.outputs) || build.outputs.some(rule => typeof rule !== 'string')) {
-    fail('tasks.build.outputs', 'must be an array of strings containing "dist/**"')
-  }
-  if (!build.outputs.includes('dist/**')) {
-    fail('tasks.build.outputs', 'must include "dist/**" so a cached build restores the web-ui dist tree')
-  }
-  const exclusion = build.outputs.find(rule => typeof rule === 'string' && rule.startsWith('!') && ruleMayMatchDist(rule.slice(1)))
-  if (exclusion) {
-    fail(
-      'tasks.build.outputs',
-      `negative pattern "${exclusion}" may exclude dist/** after the output was declared; dist must remain recoverable`
-    )
-  }
+# may_match_dist <positive-glob>：一条正模式会不会把包内 dist 拉进 key / 被输出排除项盖掉。
+# 等价原 ruleMayMatchDist：归一化（反斜杠→斜杠、剥一个 `./`）后，锚定绝对路径按「可能」算；
+# 否则看首段能否匹配字面 `dist`——case 的变量模式里 `*`/`?`/`**` 都是通配，与 matchesGlob 一致。
+may_match_dist() {
+  pattern=$1
+  if [ "$pattern" = '$TURBO_DEFAULT$' ]; then
+    return 1
+  fi
+  pattern=$(printf '%s' "$pattern" | sed 's#\\#/#g; s#^\./##')
+  case $pattern in
+    /*) return 0 ;;
+  esac
+  first_segment=${pattern%%/*}
+  case dist in
+    $first_segment) return 0 ;;
+  esac
+  return 1
 }
 
-function assertTestInputs(test) {
-  if (test.inputs === undefined) return
-  if (!Array.isArray(test.inputs) || test.inputs.some(rule => typeof rule !== 'string')) {
-    fail('tasks.test.inputs', 'must be an array of glob strings')
-  }
-  const offending = test.inputs.find(ruleMayMatchDist)
-  if (offending) {
-    fail(
-      'tasks.test.inputs',
-      `positive pattern "${offending}" may include dist/**; dist is gitignored and must stay out of the test input key`
-    )
-  }
-}
+file_text=$(cat turbo.json)
 
-const config = readConfig()
-if (!config || typeof config !== 'object' || Array.isArray(config)) {
-  fail('turbo.json', 'must contain a JSON object with a tasks object')
-}
-const tasks = config.tasks
-if (!tasks || typeof tasks !== 'object' || Array.isArray(tasks)) fail('tasks', 'must be an object')
+test_block=$(printf '%s\n' "$file_text" | block_from '    "test": {') ||
+  fail 'cannot extract tasks.test from turbo.json (expected the prettier-formatted 4-space-indent shape)'
+build_block=$(printf '%s\n' "$file_text" | block_from '    "build": {') ||
+  fail 'cannot extract tasks.build from turbo.json (expected the prettier-formatted 4-space-indent shape)'
 
-const build = taskConfig(tasks, 'build')
-const test = taskConfig(tasks, 'test')
+# ── test.dependsOn 必须含 ^build ──
+if ! has_key "$test_block" dependsOn; then
+  fail 'tasks.test.dependsOn is missing; test must run after upstream builds restore dist'
+fi
+test_depends=$(printf '%s\n' "$test_block" | array_items dependsOn) ||
+  fail 'tasks.test.dependsOn must be a bracketed array of strings containing "^build"'
+if ! printf '%s\n' "$test_depends" | grep -Fxq '^build'; then
+  fail 'tasks.test.dependsOn must include "^build" so cached upstream build outputs are restored before the dependent task runs'
+fi
 
-assertDependsOn(test, 'test')
-assertBuildOutputs(build)
-assertTestInputs(test)
-NODE
+# ── build.outputs：必须含 dist/**，排除项不得可能盖掉 dist ──
+if ! has_key "$build_block" outputs; then
+  fail 'tasks.build.outputs is missing; build must declare its cacheable outputs'
+fi
+build_outputs=$(printf '%s\n' "$build_block" | array_items outputs) ||
+  fail 'tasks.build.outputs must be a bracketed array of strings containing "dist/**"'
+[ -n "$build_outputs" ] ||
+  fail 'tasks.build.outputs must be a non-empty array of strings containing "dist/**"'
+
+has_dist_output=0
+while IFS= read -r item; do
+  [ -n "$item" ] || continue
+  validate_item 'tasks.build.outputs' "$item"
+  if [ "$item" = 'dist/**' ]; then
+    has_dist_output=1
+  fi
+  case $item in
+    '!'*)
+      if may_match_dist "${item#!}"; then
+        fail "tasks.build.outputs: negative pattern \"$item\" may exclude dist/** after the output was declared; dist must remain recoverable"
+      fi
+      ;;
+  esac
+done <<EOF
+$build_outputs
+EOF
+if [ "$has_dist_output" -eq 0 ]; then
+  fail 'tasks.build.outputs must include "dist/**" so a cached build restores the web-ui dist tree'
+fi
+
+# ── test.inputs：正模式不得把 gitignored 的 dist 拉进 key（键缺失是合法的，用根定义）──
+if has_key "$test_block" inputs; then
+  test_inputs=$(printf '%s\n' "$test_block" | array_items inputs) ||
+    fail 'tasks.test.inputs must be a bracketed array of glob strings'
+  while IFS= read -r item; do
+    [ -n "$item" ] || continue
+    validate_item 'tasks.test.inputs' "$item"
+    case $item in
+      '!'*) ;;
+      *)
+        if may_match_dist "$item"; then
+          fail "tasks.test.inputs: positive pattern \"$item\" may include dist/**; dist is gitignored and must stay out of the test input key"
+        fi
+        ;;
+    esac
+  done <<EOF
+$test_inputs
+EOF
+fi
+
+printf 'turbo-cache-invariant check passed\n'

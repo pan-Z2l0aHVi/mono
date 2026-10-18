@@ -1,6 +1,6 @@
 # 根命令面
 
-本文件是根 `package.json` 命令面的权威来源：有哪些命令、叫什么、谁用，以及为什么这么叫。短约束层见 `.agents/rules/commands.md`，查询工具（`agent:find-usages` 等）的语义与参数归 `agent-context.md`，都不在这里。
+本文件是根 `package.json` 命令面的权威来源：有哪些命令、叫什么、谁用，以及为什么这么叫。短约束层见 `.agents/rules/commands.md`，影响面与契约查询已收归 contract-change-review skill（内置脚本），语义与参数见 `agent-context.md` 的工具接口，都不在这里。
 
 ## 命名约定
 
@@ -8,18 +8,18 @@
 {namespace}:{do}-{something}
 ```
 
-- 动宾之间用 `-` 连接；没有宾语时省略（`ci:measure`，不是 `ci:measure-something`）。
+- 动宾之间用 `-` 连接；没有宾语时省略（`clean`，不是 `clean-something`）。
 - namespace 取值闭集：`agent` / `ci` / `dev`。无 namespace 合法，基础命令属于这一类。
 
 ### namespace 按拥有方划分
 
 前缀表达这条命令失效时谁先受影响，与它什么时候被调用、有多重要无关。
 
-| namespace | 拥有方        | 判定                                                                   |
-| --------- | ------------- | ---------------------------------------------------------------------- |
-| `agent`   | agent 自己    | 改动后先打断 agent 自己的工作流：task 生命周期、影响面查询、浏览器取证 |
-| `ci`      | CI 与仓库自检 | 改动后先让流水线变红或让自检失真：context 校验、脚本测试、CI 成本台账  |
-| `dev`     | 本地开发      | 改动后先影响开发者起服务                                               |
+| namespace | 拥有方        | 判定                                                       |
+| --------- | ------------- | ---------------------------------------------------------- |
+| `agent`   | agent 自己    | 改动后先打断 agent 自己的工作流：task 生命周期、影响面查询 |
+| `ci`      | CI 与仓库自检 | 改动后先让流水线变红或让自检失真：context 校验、脚本测试   |
+| `dev`     | 本地开发      | 改动后先影响开发者起服务                                   |
 
 `agent:*` 与 `ci:*` 的分界最容易含糊：一条命令被 CI 跑，不代表它归 `ci`。判定顺序是先问「谁先失效」定归属，再按归属决定要不要加前缀。
 
@@ -28,10 +28,10 @@
 
 ### 机检
 
-| 守卫                                   | 判定什么                                        | 执行端                    |
-| -------------------------------------- | ----------------------------------------------- | ------------------------- |
-| `scripts/command-conventions.test.mjs` | 根 script 名的形状与 namespace 闭集，含反例断言 | `ci:test-scripts`（glob） |
-| `ci:validate-context`                  | 文档里写到的根命令在 `package.json` 里真的存在  | `ci:validate-context`     |
+| 守卫                                 | 判定什么                                        | 执行端                                        |
+| ------------------------------------ | ----------------------------------------------- | --------------------------------------------- |
+| `.agents/checks/command-conventions` | 根 script 名的形状与 namespace 闭集，含反例断言 | freeze 与提交 gate（`agent:task` 的政策检查） |
+| `ci:validate-context`                | 文档里写到的根命令在 `package.json` 里真的存在  | `ci:validate-context`                         |
 
 命令名的改动与文档引用的同步必须在同一变更里完成，否则这两条守卫会在提交前拦下。
 
@@ -41,28 +41,22 @@
 
 ### `agent:` — agent 自己的工作流
 
-| 命令                     | 用途                                                                                       |
-| ------------------------ | ------------------------------------------------------------------------------------------ |
-| `agent:task`             | task 生命周期：new/assign/start/freeze/review/approve/verify/done/drop/status/issue/guard  |
-| `agent:find-usages`      | 按路径推导受影响 workspace、最小 context 与最小充分验证                                    |
-| `agent:inspect-contract` | 输出可发布 package 的 exports、直接消费者与最小验证                                        |
-| `agent:diff-contract`    | 输出 manifest-level semver 审阅候选（`--base <git-ref>`）                                  |
-| `agent:verify`           | 引擎级浏览器取证：check-env / touch-flow / interpolate                                     |
-| `agent:env-doctor`       | 体检 worktree 环境（dist 截断、watch 污染、缓存、残留）                                    |
-| `agent:update-skills`    | 经官方 `skills update` 引擎更新第三方 skill 并收割回真实家（临时目录隔离，不破坏软链布局） |
+| 命令                  | 用途                                                                                       |
+| --------------------- | ------------------------------------------------------------------------------------------ |
+| `agent:task`          | task 生命周期：new/assign/start/freeze/review/approve/verify/done/drop/status/issue/guard  |
+| `agent:env-doctor`    | 体检 worktree 环境（dist 截断、watch 污染、缓存、残留）                                    |
+| `agent:update-skills` | 经官方 `skills update` 引擎更新第三方 skill 并收割回真实家（临时目录隔离，不破坏软链布局） |
 
-`agent:verify` 目标页连不上时报错会带可行动提示：它的默认 URL 指向本地 devserver，所以「连不上」最可能的解释是服务没起，而不是地址写错。
+影响面查询（受影响 workspace、最小 context 与最小充分验证）与契约查询（exports、直接消费者、Git 基线 semver 候选）都不在根命令面：调用 contract-change-review skill，由其 self-contained 内置脚本提供；语义与参数见 agent-context.md 的工具接口。
 
 ### `ci:` — CI 与仓库自检
 
 | 命令                  | 用途                                                         |
 | --------------------- | ------------------------------------------------------------ |
 | `ci:validate-context` | 校验 context 路由、断链、软链、出处、命令引用与必存在 script |
-| `ci:test-scripts`     | 以 glob 跑全部 `scripts/*.test.mjs`                          |
-| `ci:measure`          | 只读统计 CI 成本（需 `gh` 登录）                             |
-| `ci:flakes`           | 汇总 flake 榜（读 `ci-test-output-*`）                       |
+| `ci:test-scripts`     | 经 `git ls-files` 跑全仓 `*.test.mjs`（tracked-only）        |
 
-`ci:validate-context` 是改动 `AGENTS.md`、rules、skills 或 `docs/agents/**` 时必须通过的守卫。`scripts/` 的测试约定是每个脚本一个 `<name>.test.mjs`，由 `ci:test-scripts` 按 glob 执行，新增文件不用注册，它也是 CI 拓扑表的执行端；决策背景见 [ADR-0014](../adr/0014-task-system-v2.md)。`ci:measure` 与 `ci:flakes` 的口径见 [`build.md`](build.md#ci-门控与-workflow-拓扑)。
+`ci:validate-context` 是改动 `AGENTS.md`、rules、skills 或 `docs/agents/**` 时必须通过的守卫。它也是 CI 拓扑表的执行端。测试契约分三层：**测脚本本身的测试**（`<name>.test.mjs`）与被测脚本同址，由 `ci:test-scripts` 经 `git ls-files` 执行全仓 `*.test.mjs`（tracked-only，`.test.mjs` 的契约是「测脚本本身」，与所在目录无关），新增文件不用注册；**形状与政策守卫**是 [`.agents/checks/`](../../.agents/checks/) 下的无扩展名可执行文件，由 task 生命周期执行（freeze 取快照前与提交 gate 的 guard 各跑一次，判定口径以脚本自身注释为准）；**包行为测试**是包内 `__tests__/*.spec.ts`，走 `pnpm test`（turbo `test` 任务）。决策背景见 [ADR-0014](../adr/0014-task-system-v2.md)。
 
 ### 基础命令（无 namespace）
 
@@ -77,7 +71,6 @@
 | `fix-go`           | `gofmt -w` + 同一批 `go vet`                                                                |
 | `fix-stylelint`    | stylelint 自动修复                                                                          |
 | `check-pack`       | 用 `pnpm pack --dry-run` 验证发布文件与 export targets                                      |
-| `release-version`  | 版本同步（Changesets 版本 PR 与包版本同步）                                                 |
 | `publish-new-pack` | 首次发布新包                                                                                |
 | `clean`            | 默认全量清理：构建产物、`node_modules`、缓存（含共享 turbo cache）；`--locks` 为显式 opt-in |
 | `commit`           | `git-cz` 交互式提交                                                                         |

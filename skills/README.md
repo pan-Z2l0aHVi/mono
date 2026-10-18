@@ -20,11 +20,11 @@ npx skills add pan-Z2l0aHVi/mono
 
 ## skill 依赖
 
-skills 生态本身没有依赖机制，所以依赖是「文档声明 + 机器校验」的约定：自撰 SKILL.md 链接到第三方同级（`../<name>/SKILL.md`）时，该 skill 必须镜像在仓库根 `skills/`（`npx skills add` 才会把它连同依赖者一起暴露），并登记在仓库根 `skills-lock.json`。`scripts/check-skills.mjs` 在依赖未镜像或镜像无人引用时直接失败。依赖者的 SKILL.md 还应写明独立安装路径——通常是 `npx skills add <owner/repo>` 装上游，缺位时优雅退化到已安装的 CLI。
+skills 生态本身没有依赖机制，所以依赖是「文档声明 + 机器校验」的约定：自撰 SKILL.md 链接到第三方同级（`../<name>/SKILL.md`）时，该 skill 必须镜像在仓库根 `skills/`（`npx skills add` 才会把它连同依赖者一起暴露），并登记在仓库根 `skills-lock.json`。布局校验器（`checkRepoLayout`，住在 [`scripts/update-skills.mjs`](../scripts/update-skills.mjs)）在依赖未镜像或镜像无人引用时直接失败。依赖者的 SKILL.md 还应写明独立安装路径——通常是 `npx skills add <owner/repo>` 装上游，缺位时优雅退化到已安装的 CLI。
 
 ## 校验方式
 
-`scripts/check-skills.mjs`（由测试强制执行）校验三层布局不变量：每个 skill 目录都有 frontmatter `name` 与目录同名、`description` 非空的 SKILL.md；GitHub 暴露面恰好是自撰 skill + 被引用的依赖镜像（外加本 README）；`.agents/skills-vendored/` 覆盖其余 lock 条目；`.agents/skills/` 是全软链指令面（出现实体目录说明有人在本仓直接跑了 `skills update`，重跑 `pnpm agent:update-skills` 修复）。
+三层布局不变量由布局校验器（`checkRepoLayout`，住在 [`scripts/update-skills.mjs`](../scripts/update-skills.mjs)，`agent:update-skills` 收尾时执行，单测 [`scripts/update-skills.test.mjs`](../scripts/update-skills.test.mjs) 持有同套判据）校验：每个 skill 目录都有 frontmatter `name` 与目录同名、`description` 非空的 SKILL.md；GitHub 暴露面恰好是自撰 skill + 被引用的依赖镜像（外加本 README）；`.agents/skills-vendored/` 覆盖其余 lock 条目；`.agents/skills/` 是全软链指令面（出现实体目录说明有人在本仓直接跑了 `skills update`，重跑 `pnpm agent:update-skills` 修复）。
 
 ## 许可
 

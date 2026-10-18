@@ -27,7 +27,7 @@ ADR-0004 建立了渐进披露的 context 架构，ADR-0010 与 ADR-0011（两�
 
 ### 1. 变更按可查证的风险分级，而不是按变更类别触发
 
-`docs/agents/workflow.md` 的「变更风险分级」是唯一权威分级表：P0 走 `orchestrated`，P1 走 `direct`，P2 免 task state。判据全部可从变更路径、manifest 与 `pnpm agent:find-usages -- <paths...>` 输出查证：受影响 workspace 只有一个时，P2 的「单 workspace」条件成立。根 `AGENTS.md` 的 Mutation Gate 只给判定入口和不可绕过的边界，不复制分级表。
+`docs/agents/workflow.md` 的「变更风险分级」是唯一权威分级表：P0 走 `orchestrated`，P1 走 `direct`，P2 免 task state。判据全部可从变更路径、manifest 与 contract-change-review skill 的 `verify` 查询输出查证：受影响 workspace 只有一个时，P2 的「单 workspace」条件成立。根 `AGENTS.md` 的 Mutation Gate 只给判定入口和不可绕过的边界，不复制分级表。
 
 放宽 gate 不需要改 `scripts/agent-workflow.mjs`：提交 hook 在找不到 active task 时返回 `{ok: true, enforced: false}` 并放行，这是脚本既有行为。
 

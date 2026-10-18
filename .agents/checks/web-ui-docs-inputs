@@ -1,0 +1,251 @@
+#!/bin/sh
+# `packages/web-ui` 是本仓唯一一个「文档语料住在被发布包里」的包：那 39 篇示例 md 是
+# `@greypan/web-ui#build` 与 `#test` 的真输入（改了文档，两个 demo 的构建必须跟着失效）。
+# 代价是它得自己覆写 `inputs` —— 根 `turbo.json` 的 `!**/*.md` 把这批 md 排掉了，而排除项是绝对的，
+# 只能在包内「去掉通配排除 + 按名字排散文 md」。于是这里守两个方向：
+#
+#   1. 包里出现的每一篇 md 都必须在名单里（`docs/` 语料、四个包根散文 md、`__tests__/` 夹具）。
+#      新放一篇散文 md 而不动名单，它会**静默**变成 build 输入：多改一次 README 就多击穿一串下游 task。
+#   2. 覆写后的 `inputs` 里不得有任何排除项会盖回 `docs/` 语料。名字一旦被排除项吃掉，
+#      md 就悄悄退出哈希——构建照绿，但「文档改了产物会跟着重算」这条闭包断了。
+#
+# 这是形状检查，不执行构建。布局理由与缓存代价的完整论述见 docs/agents/build.md 的「生成物生命周期」。
+#
+# 纯 sh 实现（曾为 node heredoc）：文件收集用 find，gitignore 风格的排除规则用 case 的变量
+# 模式匹配——case 的 `*` 本来就跨 `/`，恰好贴合 gitignore 语义；「锚定 `/` 前缀」与「无斜杠
+# 规则按任意深度同名」两条 gitignore 口径先归一化再匹配，与 node 版 coversCorpus 等价。含
+# glob 词表外字符（`{}`、`|`、`[`、`\`、空白）的规则一律按「盖住语料」处理——守卫宁可假红。
+# turbo.json 的提取与 turbo-cache-invariant 同一套 fail-closed 口径（守卫各自自包含）。
+set -eu
+
+fail() {
+  printf 'web-ui-docs-inputs failed: %s\n' "$1"
+  printf 'web-ui-docs-inputs failed: %s\n' "$1" >&2
+  exit 1
+}
+
+pkg_dir=packages/web-ui
+corpus=docs
+
+[ -d "$pkg_dir" ] || fail "$pkg_dir 不存在（请在仓库根运行）"
+[ -d "$pkg_dir/$corpus" ] || fail "$pkg_dir/$corpus/ 不存在：语料搬走了？这条守卫会空转"
+
+# ── 提取工具（与 turbo-cache-invariant 同一套 fail-closed 口径）──
+
+# block_from <header-line>：从 stdin 取头行之后到同层缩进（4 空格）收尾 `}`（可带逗号）的内容。
+block_from() {
+  awk -v header="$1" '
+    $0 == header { inside = 1; next }
+    inside && /^    \},?$/ { found = 1; exit }
+    inside { print }
+    END { if (!found) exit 1 }
+  '
+}
+
+# has_key <text> <key>：块内是否出现 "key":。
+has_key() {
+  printf '%s\n' "$1" | grep -q "\"$2\":"
+}
+
+# array_items <key>（stdin：块文本）：提取 "key": [ ... ] 的字符串元素，一行一个、去引号。
+array_items() {
+  awk -v key="\"$1\":" '
+    !inside && index($0, key) {
+      rest = substr($0, index($0, key) + length(key))
+      sub(/^[[:space:]]*/, "", rest)
+      if (rest !~ /^\[/) exit 2
+      sub(/^\[/, "", rest)
+      inside = 1
+      $0 = rest
+    }
+    inside {
+      line = $0
+      close_bracket = index(line, "]")
+      if (close_bracket > 0) {
+        line = substr(line, 1, close_bracket - 1)
+        inside = 0
+      }
+      gsub(/"/, "", line)
+      n = split(line, parts, ",")
+      for (i = 1; i <= n; i++) {
+        gsub(/^[[:space:]]+/, "", parts[i])
+        gsub(/[[:space:]]+$/, "", parts[i])
+        if (parts[i] != "") print parts[i]
+      }
+      if (!inside) exit 0
+    }
+    END { if (inside) exit 3 }
+  '
+}
+
+# covers_corpus <pattern>：一条排除规则会不会把语料盖掉。语料探针是全局的 $probes
+# （每篇语料文件路径，加上 `docs` 与 `docs/` 两种目录写法）。
+#
+# gitignore 口径的归一化：
+#   - 前导 `/` 是「锚定到包根」，全部剥掉（`/docs/**` 与 `docs/**` 同义）；
+#   - 不含 `/` 的规则按 gitignore 是「任意深度同名」，补 `**/` 前缀；
+#   - `**/` 在 gitignore（与 node path.matchesGlob 同）可匹配**零段**，而 case 模式里的
+#     字面 `/` 必须出现在被匹配串里——所以把主模式的前导 `**/` 循环剥至不动点（`**/**/docs/**`
+#     这类连续前导才不会逃逸），再把 `/**/` 全局折叠成 `/`（`a/**/b` → `a/b`）。多剥只会
+#     更保守（假红方向），不会漏判。
+# 含 glob 词表外字符（`{}`、`|`、`[`、`\`、空白）的规则一律按「盖住语料」处理：node 版对
+# `{docs,x}/**`、`doc[s]/**` 这类写法是确定性匹配（命中即盖住），sh 不展开它们，同样按
+# 盖住处理——解释不了的模式宁可假红也不放过，方向与 node 一致。
+covers_corpus() {
+  pattern=$(printf '%s' "$1" | sed 's#^/*##')
+  if ! printf '%s' "$pattern" | grep -Eq '^[]a-zA-Z0-9_./?*-]+$'; then
+    return 0
+  fi
+  case $pattern in
+    */*) primary=$pattern ;;
+    *) primary='**/'"$pattern" ;;
+  esac
+  globs=$(printf '%s\n' "$primary"
+    printf '%s\n' "$primary" | sed 's#/\*\*/#/#g'
+    stripped=$primary
+    while :; do
+      next=$(printf '%s' "$stripped" | sed 's#^\*\*/##')
+      [ "$next" = "$stripped" ] && break
+      stripped=$next
+      printf '%s\n' "$stripped"
+    done)
+  while IFS= read -r glob; do
+    [ -n "$glob" ] || continue
+    while IFS= read -r probe; do
+      [ -n "$probe" ] || continue
+      case $probe in
+        $glob) return 0 ;;
+      esac
+    done <<EOF
+$probes
+EOF
+  done <<EOF
+$globs
+EOF
+  return 1
+}
+
+# ── 收集包内 md（跳过 dotfile/dotdir、node_modules、dist；`! -name .` 不 prune 起始点自身）──
+all_md=$(cd "$pkg_dir" && find . \( -name node_modules -o -name dist -o \( -name '.*' ! -name . \) \) -prune -o \( -type f -o -type l \) -name '*.md' -print | sed 's#^\./##' | sort)
+[ -n "$all_md" ] || fail "$pkg_dir 里一篇 md 都没有：包被清空了？这条守卫会空转"
+corpus_md=$(printf '%s\n' "$all_md" | grep '^docs/' || true)
+[ -n "$corpus_md" ] || fail "$pkg_dir/$corpus/ 里一篇 md 都没有：语料搬走了？这条守卫会空转"
+
+# 探针：语料里的每个文件路径，加上目录本身的两种写法（`docs` 与 `docs/` 在 glob 里都可能盖住整棵子树）。
+probes=$(printf '%s\n' "$corpus_md"
+  printf 'docs\ndocs/\n')
+
+# ── 方向一：包内 md 的布局必须在名单里 ──
+strays=''
+while IFS= read -r rel; do
+  [ -n "$rel" ] || continue
+  case $rel in
+    docs/*) continue ;;
+  esac
+  is_prose=0
+  for prose_name in README.md README.CN.md AGENTS.md CHANGELOG.md; do
+    if [ "$rel" = "$prose_name" ]; then
+      is_prose=1
+      break
+    fi
+  done
+  if [ "$is_prose" -eq 1 ]; then continue; fi
+  case "/$rel/" in
+    */__tests__/*) continue ;;
+  esac
+  strays="$strays  $rel
+"
+done <<EOF
+$all_md
+EOF
+if [ -n "$strays" ]; then
+  fail "这些 md 不在名单里，会静默变成 \`$pkg_dir\` 的 build 输入：
+$strays
+要放散文 md 就加进已排除的名字里（并同步本守卫的 PROSE_MD 名单），要放语料就放进 $pkg_dir/$corpus/"
+fi
+
+# 名单里的名字都得真的存在：否则名单会腐烂成一份「排掉不存在的文件」的空转清单。
+missing_names=''
+for prose_name in README.md README.CN.md AGENTS.md CHANGELOG.md; do
+  if [ ! -f "$pkg_dir/$prose_name" ]; then
+    missing_names="$missing_names $prose_name"
+  fi
+done
+if [ -n "$missing_names" ]; then
+  fail "名单里的这些 md 不在包里，名单要同步：$missing_names"
+fi
+
+# ── 方向二：覆写后的 inputs 不许把语料排回来 ──
+pkg_turbo=$pkg_dir/turbo.json
+[ -f "$pkg_turbo" ] || fail "$pkg_dir/turbo.json 不存在：没有它，语料就不在 build 与 test 的输入里"
+file_text=$(cat "$pkg_turbo")
+
+# extends 必须恰好是 ["//"]：不然覆写会连任务定义（dependsOn / outputs）一起丢掉。
+extends_items=$(printf '%s\n' "$file_text" | array_items extends) ||
+  fail "$pkg_dir/turbo.json 的 extends 提取失败（须为括号数组）"
+if [ "$(printf '%s\n' "$extends_items" | grep -c . || true)" -ne 1 ] || [ "$extends_items" != '//' ]; then
+  fail "$pkg_dir/turbo.json 的 extends 必须是 [\"//\"]，不然覆写会连任务定义（dependsOn / outputs）一起丢掉"
+fi
+
+for task in build test; do
+  task_block=$(printf '%s\n' "$file_text" | block_from "    \"$task\": {") ||
+    fail "$pkg_dir/turbo.json 缺 tasks.$task 块（或不符合既定的 prettier 4 空格缩进形状）"
+  if ! has_key "$task_block" inputs; then
+    fail "$pkg_dir/turbo.json 的 tasks.$task.inputs 缺失：包级覆写会整表替换根定义，这里得自己写全"
+  fi
+  inputs=$(printf '%s\n' "$task_block" | array_items inputs) ||
+    fail "$pkg_dir/turbo.json 的 tasks.$task.inputs 必须是括号数组（本检查不解析其他形状的值）"
+  [ -n "$inputs" ] ||
+    fail "$pkg_dir/turbo.json 的 tasks.$task.inputs 为空：语料就退出哈希了"
+
+  has_default=0
+  while IFS= read -r rule; do
+    [ -n "$rule" ] || continue
+    case $rule in
+      '$TURBO_DEFAULT$') has_default=1 ;;
+      '!'*)
+        if covers_corpus "${rule#!}"; then
+          fail "$pkg_dir/turbo.json 的 tasks.$task.inputs 里的排除项 !${rule#!} 会盖住 $corpus/ 语料，md 一旦被排除就不再影响缓存"
+        fi
+        ;;
+    esac
+  done <<EOF
+$inputs
+EOF
+  if [ "$has_default" -eq 0 ]; then
+    fail "$pkg_dir/turbo.json 的 tasks.$task.inputs 少了 \$TURBO_DEFAULT\$：不写它，包内的常规文件就都不进哈希了"
+  fi
+  for prose_name in README.md README.CN.md AGENTS.md CHANGELOG.md; do
+    has_prose=0
+    while IFS= read -r rule; do
+      if [ "$rule" = "!$prose_name" ]; then
+        has_prose=1
+        break
+      fi
+    done <<EOF
+$inputs
+EOF
+    if [ "$has_prose" -eq 0 ]; then
+      fail "$pkg_dir/turbo.json 的 tasks.$task.inputs 少了 !${prose_name}：散文 md 会重新变成这个 task 的输入"
+    fi
+  done
+done
+
+# 归一化本身也要有判据：把这几种写法在任何一次「简化」里拿掉，守卫会重新变哑巴。正例是 gitignore
+# 里真会盖住语料、而朴素匹配认不出的写法——锚定 `/` 前缀、无斜杠任意深度、以及 `**/` 零段
+# （`**/docs/**`、`**/docs` 是最自然的「全排 docs」攻击面，`**/**/docs/**` 钉住前导剥离的
+# 不动点循环；review 曾实证 sh 版漏过前两类）；
+# 负例是当前配置里合法的排除项。
+for pattern in '/docs/**' '/**/*.md' '*.md' '**/docs/**' '**/docs' '**/**/docs/**'; do
+  if ! covers_corpus "$pattern"; then
+    fail "covers_corpus 没认出 ${pattern}：归一化被拿掉了？这条会静默盖住语料"
+  fi
+done
+for pattern in 'README.md' '**/__tests__/**' '**/*.spec.ts'; do
+  if covers_corpus "$pattern"; then
+    fail "covers_corpus 把安全的排除项 ${pattern} 判成盖住语料了：守卫会假红"
+  fi
+done
+
+corpus_count=$(printf '%s\n' "$corpus_md" | grep -c . || true)
+printf 'web-ui-docs-inputs check passed（%s/%s/ %s 篇语料在哈希里）\n' "$pkg_dir" "$corpus" "$corpus_count"

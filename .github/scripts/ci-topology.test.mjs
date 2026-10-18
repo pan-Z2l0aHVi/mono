@@ -3,18 +3,13 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 
-import {
-  RELEASE_BRANCH,
-  REQUIRED_CONTEXT,
-  desktopMatrix,
-  parseWorkflow,
-  workflows
-} from '../.github/scripts/ci-topology.mjs'
+import { RELEASE_BRANCH, REQUIRED_CONTEXT, desktopMatrix, parseWorkflow, workflows } from './ci-topology.mjs'
 
 // 这张测试是 .github/scripts/ci-topology.mjs 那张表的执行端：YAML 不能被 import，所以「拓扑只有一处
 // 定义」只能靠把真实 workflow 逐字段读回来比。它同时钉计划里的不变量 2/3/4/5 与安装面收窄那条，
 // 因为那四条都是「改了没人报错、要到发版当天才炸」的形状。
-const repoRoot = path.resolve(import.meta.dirname, '..')
+// 测试与被测表同址；执行端是根 `ci:test-scripts` 的全仓 glob（`*.test.mjs`）。
+const repoRoot = path.resolve(import.meta.dirname, '../..')
 const workflowDir = path.join(repoRoot, '.github/workflows')
 
 const onDisk = fs
@@ -70,14 +65,6 @@ for (const [file, wf] of Object.entries(parsed)) {
     assert.ok(declared.has(reference[1]), `${file}: steps.${reference[1]} is referenced but no step declares that id`)
   }
 }
-
-// 引用解析查不出「id 挂到了错误的 step」，而 flake 台账的守卫恰恰依赖 `id: test` 落在真的跑
-// `pnpm run test` 的那一步上 —— 挂错只会让台账静默变空，所以这一对邻接行单独钉住。
-assert.match(
-  fs.readFileSync(path.join(workflowDir, 'ci.yml'), 'utf8'),
-  /^ {6}- name: Test\n {8}id: test$/m,
-  'ci.yml: the id `test` must belong to the step named Test'
-)
 
 // 恒假守卫的第二种成因：GitHub 对不含 status check 函数的 `if` 仍然套默认 `success()`，所以只写
 // `steps.<id>.outcome == 'failure'` 的那一步，会在它的条件唯一可能成立的时刻（前一步刚失败）被跳过。
@@ -277,7 +264,7 @@ for (const file of onDisk) {
 
 // 不变量 1 的可静态判定部分：job 声明的安装面必须覆盖它自己调用的 mise 管理命令。P0 的事故就是这个
 // job 只装 node+pnpm 却要跑链接桌面库的 wails3 —— 那是运行期 spawn，这里查不到，由
-// scripts/version-sync.test.mjs 用「PATH 里没有 wails3」的实跑钉住。
+// apps/interweave/scripts/version-sync.test.mjs 用「PATH 里没有 wails3」的实跑钉住。
 const miseManagedCommands = new Set(['node', 'pnpm', 'wails3', 'go', 'playwright'])
 
 // 命令名取每条 run 的第一个非赋值 token：`FOO=bar pnpm …` 的命令名在赋值之后；`if [[ … ]]`、
@@ -317,4 +304,4 @@ for (const [file, wf] of Object.entries(parsed)) {
   }
 }
 
-console.log('scripts/ci-topology.test.mjs: all assertions passed')
+console.log('.github/scripts/ci-topology.test.mjs: all assertions passed')

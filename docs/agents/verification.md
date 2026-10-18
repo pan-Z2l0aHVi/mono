@@ -6,7 +6,7 @@
 
 ## 从变更路径到验证计划
 
-对变更路径运行 `pnpm agent:find-usages -- <paths...>`（review 或基线对比按范围加 `--base <git-ref>`、`--staged` 或 `--worktree`）。输出是验证计划的起点，不替代对实际 diff、公共行为和浏览器语义的判断；工具语义见 `agent-context.md`。
+对变更路径运行 contract-change-review skill 的 `verify` 查询（review 或基线对比按范围加 `--base <git-ref>`、`--staged` 或 `--worktree`）。输出是验证计划的起点，不替代对实际 diff、公共行为和浏览器语义的判断；工具语义见 `agent-context.md`。
 
 根据受影响的契约选择验证方式：
 
@@ -24,7 +24,7 @@
 
 - 测试框架：Vitest（通过 `vite-plus`）。
 - 运行所有测试：`pnpm run test`。根 `turbo test` 编排所有 workspace 的 `test` 任务；配了 browser-mode 的包会在此命令中跑 Chromium `*.browser.spec.ts`。
-- 运行受影响测试：先用 `pnpm agent:find-usages -- <paths...>` 识别受影响 workspace，再跑 `pnpm exec turbo test --filter=@greypan/<name>`。迭代和调试默认用本命令或包级聚焦测试，全量 `pnpm run test` 留到提交前最终确认。
+- 运行受影响测试：先用 contract-change-review skill 的 `verify` 查询（`node skills/contract-change-review/repo-query.mjs verify -- <paths...>`）识别受影响 workspace，再跑 `pnpm exec turbo test --filter=@greypan/<name>`。迭代和调试默认用本命令或包级聚焦测试，全量 `pnpm run test` 留到提交前最终确认。
 - 运行单个包的测试：`pnpm exec turbo test --filter=@greypan/<name>`（包内执行 `vp test run`）。
 - 测试文件：`*.spec.ts`、`*.test.ts`、`*.spec.tsx`。
 - 测试环境：大多数包用 Node 环境。`browser-kit` 用 Vitest Browser Mode 配 Playwright Chromium 做真实浏览器测试。
