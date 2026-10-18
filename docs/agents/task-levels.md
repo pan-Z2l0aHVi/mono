@@ -17,7 +17,7 @@
 | T1   | 触及可执行内容，且路径落在某个 workspace 之下，且未命中 T0                                                             | 专属（编排层分配）                   | 必须   | 必须（独立于实施者） | 必须     | test ≥1 条 pass                  | approved + hash 一致 + checks 通过 |
 | T2   | 只触及非可执行内容（文档、注释、纯格式、二进制产物）                                                                   | 允许当前 worktree 直接改，不要求干净 | 可选   | 不用                 | 不要求   | 不强制                           | active + checks 通过               |
 
-本表是各级严格程度的权威。`pnpm agent:find-usages -- <paths...>` 只用于核实「跨 workspace 的公共契约」这一条，输出只涉及一个 workspace 时该条不成立。`checks` 指 [`.agents/checks/`](../../.agents/checks/) 下的仓库政策检查，三个级别在提交前都要通过；检查清单与各自口径以该目录下脚本自身的注释为权威，本表不枚举。
+本表是各级严格程度的权威。contract-change-review skill 的 `verify` 查询（`node skills/contract-change-review/repo-query.mjs verify -- <paths...>`）只用于核实「跨 workspace 的公共契约」这一条，输出只涉及一个 workspace 时该条不成立。`checks` 指 [`.agents/checks/`](../../.agents/checks/) 下的仓库政策检查，三个级别在提交前都要通过；检查清单与各自口径以该目录下脚本自身的注释为权威，本表不枚举。
 
 「可执行与否」是 T0 与 T1 的前置闸门，不是并列的一条：纯文档、纯注释改动不管落在哪个路径都够不到 T0，也够不到 T1，只能落 T2。这一轴由实施者做软判断，不由脚本枚举，所以判断错了级别就错了——需要可整笔回滚的 diff 边界升 T1，需要完整 review 与 approval 证据链的升 T0。
 
@@ -46,4 +46,4 @@ T0 与 T1 的 `new` 与 `start` 要求 worktree 干净，T2 豁免——这条 g
 
 ## 变更影响与验证命令的选择
 
-判定 T0 的「跨 workspace 公共契约」一条时，用 `pnpm agent:find-usages -- <paths...>` 核实，参数与语义见 `agent-context.md`。改动该跑哪些验证不在本文件，由 [`verification.md`](verification.md) 承担。
+判定 T0 的「跨 workspace 公共契约」一条时，用 contract-change-review skill 的 `verify` 查询核实，参数与语义见 `agent-context.md`。改动该跑哪些验证不在本文件，由 [`verification.md`](verification.md) 承担。

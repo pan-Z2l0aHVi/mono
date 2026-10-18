@@ -3,7 +3,7 @@
 // - Windows：仅编译 Windows EXE
 // - Linux：仅构建前端（CI 环境，不编译 Go）
 //
-// 两条事实决定了这个默认形状。两条都由 scripts/ci-topology.test.mjs 的断言钉住，改这里之前先看那份测试：
+// 两条事实决定了这个默认形状。两条都由 .github/scripts/ci-topology.test.mjs 的断言钉住，改这里之前先看那份测试：
 //
 // 1. 只做宿主平台。`build:windows` 在 darwin 上是交叉编译，而它的消费者只有
 //    `wails-verify.yml` / `wails-release.yml` 矩阵里的 `windows-latest` runner——那两边在矩阵里直接调

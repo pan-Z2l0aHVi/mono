@@ -1,30 +1,41 @@
-/**
- * Validate the agent-skill layout across the repo's three surfaces.
- *
- * Surfaces (see skills/README.md):
- * - `<repo>/skills/` — real directories, the GitHub discovery surface for
- *   `npx skills add pan-Z2l0aHVi/mono`. Holds the repo-authored skills plus
- *   "dependency mirrors": third-party skills that a repo-authored skill links
- *   to as a sibling dependency.
- * - `<repo>/.agents/skills-vendored/` — real directories for every other
- *   third-party skill tracked in the repo-root `skills-lock.json`. This dir is
- *   not scanned by the skills CLI, so those skills are never offered to
- *   GitHub-source consumers.
- * - `<repo>/.agents/skills/` — the agent instruction surface: one symlink per
- *   skill pointing at its real home. Agent clients follow symlinks; the skills
- *   CLI skips them, which keeps vendored skills out of discovery. A real
- *   directory appearing here means an in-repo `skills update` clobbered a
- *   symlink and must be reconciled (see skills/README.md).
- *
- * GitHub is the only distribution channel: consumers install from
- * `pan-Z2l0aHVi/mono` with `npx skills add`. The repo-authored subset is
- * exposed directly from `<repo>/skills/` as-is.
- */
-import { existsSync, lstatSync, readFileSync, readdirSync, realpathSync } from 'node:fs'
-import { join } from 'node:path'
+import { spawnSync } from 'node:child_process'
+// 第三方 skill 的自动更新入口：官方 `skills update` 引擎 + 收割式落盘。
+//
+// 为什么不直接在仓库根跑 `npx skills update`：update 会把变更的第三方 skill
+// 重装成实体目录写进 `.agents/skills/<name>`，覆盖指向真实家的软链（本仓的
+// .agents/skills 全部是软链，见 skills/README.md）。这里把 update
+// 隔离在临时目录里跑——lock 复制过去，CLI 照常重解析源、比对 computedHash、
+// 只装变更项、更新 lock——然后由 reconcile 把变更内容搬回真实家：
+//   - 被自撰 skill 依赖而镜像在根 skills/ 的 → 根 skills/<name>
+//   - 其余 → .agents/skills-vendored/<name>
+// 并刷新 .agents/skills 软链、把更新过的 lock 拷回仓库根，最后跑
+// checkRepoLayout 确认三层布局不变量完好。
+import {
+  cpSync,
+  existsSync,
+  lstatSync,
+  mkdirSync,
+  readFileSync,
+  readdirSync,
+  realpathSync,
+  rmSync,
+  symlinkSync,
+  writeFileSync
+} from 'node:fs'
+import { tmpdir } from 'node:os'
+import { join, resolve, dirname } from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 
-const repoRoot = join(fileURLToPath(new URL('.', import.meta.url)), '..')
+const root = resolve(dirname(fileURLToPath(import.meta.url)), '..')
+
+// ── 三层布局契约（校验器自 update 之前独立成文件的时代并入本文件，唯一运行时消费者是下方的 main）──
+// skills 生态的三个表面，完整约定见 skills/README.md：
+// - `skills/` — 真实目录，GitHub 发现面（`npx skills add pan-Z2l0aHVi/mono`）：
+//   自撰 skill 加「依赖镜像」（被自撰 SKILL.md 兄弟链接引用的第三方 skill）。
+// - `.agents/skills-vendored/` — 其余 lock 登记项的真实目录；skills CLI 不扫描
+//   此目录，这些 skill 永不进入 GitHub 发现面。
+// - `.agents/skills/` — agent 指令面：每个 skill 一个软链指回真实家。这里出现
+//   实体目录 = 有人在仓内直接跑了 skills update，必须归一（见 relinkAgentSurface）。
 
 /**
  * Extract `name` and `description` from a SKILL.md YAML frontmatter block.
@@ -205,16 +216,122 @@ export function checkRepoLayout({ rootSkillsDir, agentsSkillsDir, vendoredDir, l
   return { repoAuthored, mirrored, vendored }
 }
 
-export function main() {
-  const { repoAuthored, mirrored } = checkRepoLayout({
-    rootSkillsDir: join(repoRoot, 'skills'),
-    agentsSkillsDir: join(repoRoot, '.agents', 'skills'),
-    vendoredDir: join(repoRoot, '.agents', 'skills-vendored'),
-    lockFile: join(repoRoot, 'skills-lock.json')
+const symlinkTargetFor = (name, repoRoot) =>
+  existsSync(join(repoRoot, 'skills', name)) ? join('..', '..', 'skills', name) : join('..', 'skills-vendored', name)
+
+/**
+ * Normalize the .agents/skills surface: every expected skill must be a symlink
+ * to its real home. Repairs clobbered entries (a bare in-repo `skills update`
+ * leaves real directories behind) and missing links, so re-running this script
+ * is always a valid repair path.
+ */
+function relinkAgentSurface(repoRoot) {
+  const agentsSkillsDir = join(repoRoot, '.agents', 'skills')
+  // skills/ 根的 README.md 是 GitHub 通道的安装说明，不是 skill：它没有 SKILL.md，
+  // 把它链进指令面会让 checkRepoLayout 的「每个软链都要有真实家」不变量失败。
+  const names = new Set([
+    ...readdirSync(join(repoRoot, 'skills'), { withFileTypes: true })
+      .filter(entry => entry.isDirectory())
+      .map(entry => entry.name),
+    ...readdirSync(join(repoRoot, '.agents', 'skills-vendored'), { withFileTypes: true })
+      .filter(entry => entry.isDirectory())
+      .map(entry => entry.name)
+  ])
+  for (const name of names) {
+    const linkPath = join(agentsSkillsDir, name)
+    const expectedTarget = symlinkTargetFor(name, repoRoot)
+    const expectedReal = join(repoRoot, expectedTarget)
+    const isCorrect = (() => {
+      try {
+        return lstatSync(linkPath).isSymbolicLink() && realpathSync(linkPath) === realpathSync(expectedReal)
+      } catch {
+        return false
+      }
+    })()
+    if (!isCorrect) {
+      rmSync(linkPath, { recursive: true, force: true })
+      symlinkSync(expectedTarget, linkPath)
+    }
+  }
+}
+
+/**
+ * Move updated skills from the temp update workspace back to their real homes,
+ * refresh the .agents/skills symlinks, and write the updated lock back to the
+ * repo root. Pure filesystem work over the given directories; the CLI run is
+ * the caller's job (see main).
+ *
+ * @param {{
+ *   repoRoot: string,
+ *   tmpAgentsSkillsDir: string,
+ *   lockBefore: { skills: Record<string, unknown> },
+ *   lockAfter: { skills: Record<string, unknown> },
+ * }} options
+ * @returns {string[]} names of skills whose content changed
+ */
+export function reconcileUpdatedSkills({ repoRoot, tmpAgentsSkillsDir, lockBefore, lockAfter }) {
+  const changed = Object.keys(lockAfter.skills).filter(name => {
+    const before = /** @type {{ computedHash?: string } | undefined} */ (lockBefore.skills[name])
+    const after = /** @type {{ computedHash?: string } | undefined} */ (lockAfter.skills[name])
+    return before?.computedHash !== after?.computedHash
   })
-  console.error(
-    `skills layout ok; ${repoAuthored.length} repo-authored, ${mirrored.length} dependency mirror(s) exposed via GitHub`
-  )
+
+  for (const name of changed) {
+    const updated = join(tmpAgentsSkillsDir, name)
+    if (!existsSync(updated)) {
+      throw new Error(`skills update reported "${name}" as changed but ${updated} is missing; nothing to harvest`)
+    }
+    const home = existsSync(join(repoRoot, 'skills', name))
+      ? join(repoRoot, 'skills', name)
+      : join(repoRoot, '.agents', 'skills-vendored', name)
+    rmSync(home, { recursive: true, force: true })
+    cpSync(updated, home, { recursive: true })
+  }
+  // 无论有没有变更项都整面归一：clobber 过的实体目录、缺失或指向错误的软链在此修复，
+  // 使「误跑 skills update 之后重放本命令」成为有效的修复路径。注意 harvest 非原子：
+  // 先写真实家与软链、最后过 checkRepoLayout，检查失败时仓库处于部分更新状态（git 可回滚）。
+  relinkAgentSurface(repoRoot)
+  writeFileSync(join(repoRoot, 'skills-lock.json'), `${JSON.stringify(lockAfter, null, 2)}\n`)
+  return changed.sort()
+}
+
+export function main() {
+  const lockPath = join(root, 'skills-lock.json')
+  const lockBefore = JSON.parse(readFileSync(lockPath, 'utf8'))
+  const workspace = join(tmpdir(), `skills-update-${process.pid}-${Date.now()}`)
+  mkdirSync(workspace, { recursive: true })
+  try {
+    writeFileSync(join(workspace, 'skills-lock.json'), JSON.stringify(lockBefore, null, 2))
+    // -y：临时目录可自动判定为 project scope，跳过交互确认。
+    const run = spawnSync('pnpm', ['dlx', 'skills@latest', 'update', '-y'], { cwd: workspace, stdio: 'inherit' })
+    if (run.status !== 0) {
+      throw new Error(`pnpm dlx skills update failed with exit code ${run.status}`)
+    }
+    const lockAfter = JSON.parse(readFileSync(join(workspace, 'skills-lock.json'), 'utf8'))
+    const changed = reconcileUpdatedSkills({
+      repoRoot: root,
+      tmpAgentsSkillsDir: join(workspace, '.agents', 'skills'),
+      lockBefore,
+      lockAfter
+    })
+    console.log(`updated ${changed.length ? changed.join(', ') : 'no skills (all up to date)'}`)
+    let layout
+    try {
+      layout = checkRepoLayout({
+        rootSkillsDir: join(root, 'skills'),
+        agentsSkillsDir: join(root, '.agents', 'skills'),
+        vendoredDir: join(root, '.agents', 'skills-vendored'),
+        lockFile: join(root, 'skills-lock.json')
+      })
+    } catch (error) {
+      throw new Error(`layout check failed after harvesting updated skills: ${error.message}`)
+    }
+    console.log(
+      `skills layout ok; ${layout.repoAuthored.length} repo-authored, ${layout.mirrored.length} dependency mirror(s) exposed via GitHub`
+    )
+  } finally {
+    rmSync(workspace, { recursive: true, force: true })
+  }
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {

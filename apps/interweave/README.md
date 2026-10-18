@@ -60,7 +60,7 @@ matrices invoke exactly these two scripts, each on its own native runner. The
 developer default skips the cross-platform and `.dmg` packaging work because no
 CI job runs the **macOS branch** of the aggregate script: `ci.yml` does run the
 aggregate `build` on `ubuntu-latest`, where it takes the `build:frontend` branch
-and compiles no Go. `scripts/ci-topology.test.mjs` asserts that premise, so a
+and compiles no Go. `.github/scripts/ci-topology.test.mjs` asserts that premise, so a
 future change that breaks it says so instead of quietly shipping. Run
 `build:macos` or `build:windows` explicitly when you need the artifact CI would
 ship.

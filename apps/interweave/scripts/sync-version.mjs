@@ -17,7 +17,7 @@
 //
 // CI 调用点：
 //   - wails-verify.yml（--check）：PR 阶段校验版本一致性
-//   - changeset-version.yml → scripts/release-version.mjs：Changesets 升级 package.json 后写入产物
+//   - changeset-version.yml → 同目录 release-version.mjs：Changesets 升级 package.json 后写入产物
 import { readFile, writeFile } from 'node:fs/promises'
 
 const packagePath = new URL('../package.json', import.meta.url)

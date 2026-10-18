@@ -4,9 +4,15 @@ import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 
-const run = (...args) => execFileSync(process.execPath, ['scripts/repo-query.mjs', ...args], { encoding: 'utf8' })
-const runFailure = (...args) =>
-  execFileSync(process.execPath, ['scripts/repo-query.mjs', ...args], { encoding: 'utf8', stdio: 'pipe' })
+// 被测脚本是 contract-change-review skill 的内置查询脚本（self-contained）；测试与它同住 skill
+// 目录，skill 因此连测试一起自包含。执行端是根 `ci:test-scripts` 的全仓 glob（`*.test.mjs`，
+// tracked-only）：`.test.mjs` 的契约是「测脚本本身」，与所在目录无关。两条命令都从仓库根跑。
+const script = 'skills/contract-change-review/repo-query.mjs'
+const run = (...args) => execFileSync(process.execPath, [script, ...args], { encoding: 'utf8' })
+const runFailure = (...args) => execFileSync(process.execPath, [script, ...args], { encoding: 'utf8', stdio: 'pipe' })
+
+// --- contract：当前 manifest 契约 ---
+
 const webUiContract = JSON.parse(run('contract', '--json', '@greypan/web-ui'))
 assert.equal(webUiContract.package.root, 'packages/web-ui')
 assert.ok(webUiContract.directConsumers.includes('@greypan/react-web-ui-demo'))
@@ -15,6 +21,9 @@ assert.ok(Object.hasOwn(webUiContract.package.exports, './components/*'))
 assert.ok(webUiContract.readFirst.includes('packages/web-ui/README.md'))
 assert.ok(webUiContract.verification.includes('pnpm run check-pack'))
 assert.throws(() => runFailure('contract', '--json', '@greypan/react-web-ui-demo'))
+assert.throws(() => runFailure('contract', '--json', '@greypan/unknown-workspace'))
+
+// --- contract-diff：manifest-level semver 候选 ---
 
 const noContractDiff = JSON.parse(run('contract-diff', '--json', '--base', 'HEAD'))
 // contract-diff 只暴露 manifest 级候选；semver 决策记录在 .changeset/。
@@ -113,8 +122,16 @@ try {
 } finally {
   fs.rmSync(tempIndex, { force: true })
 }
+
+// 参数校验：未知子命令、缺少 --base、互斥 flag、contract 多余路径与多余 flag。
 assert.throws(() => runFailure('impact', '--json', 'packages/web-ui/src/components/select/index.ts'))
 assert.throws(() => runFailure('route', '--json', 'packages/web-ui/src/components/select/index.ts'))
+assert.throws(() => runFailure('contract-diff', '--json'))
+assert.throws(() => runFailure('contract-diff', '--base', 'HEAD', '--staged'))
+assert.throws(() => runFailure('contract', '--json', '--base', 'HEAD', '@greypan/web-ui'))
+assert.throws(() => runFailure('contract', '@greypan/web-ui', 'extra-path'))
+
+// --- verify：影响面与最小充分验证 ---
 
 const webUiPlan = JSON.parse(run('verify', '--json', 'packages/web-ui/src/components/select/index.ts'))
 assert.deepEqual(webUiPlan.directWorkspaces, ['@greypan/web-ui'])
@@ -160,7 +177,7 @@ assert.equal(
   false
 )
 
-const toolPlan = JSON.parse(run('verify', '--json', 'scripts/repo-query.mjs'))
+const toolPlan = JSON.parse(run('verify', '--json', script))
 assert.ok(toolPlan.verification.some(item => item.command === 'pnpm run ci:test-scripts'))
 
 const workflowToolPlan = JSON.parse(run('verify', '--json', 'scripts/task.mjs'))
@@ -170,7 +187,7 @@ assert.ok(workflowToolPlan.verification.some(item => item.command === 'pnpm run 
 const workspaceConfigPlan = JSON.parse(run('verify', '--json', 'pnpm-workspace.yaml'))
 assert.ok(workspaceConfigPlan.verification.some(item => item.command === 'pnpm run ci:test-scripts'))
 
-const workspaceManifestToolPlan = JSON.parse(run('verify', '--json', 'scripts/workspace-manifests.mjs'))
+const workspaceManifestToolPlan = JSON.parse(run('verify', '--json', 'scripts/lib/workspace-manifests.mjs'))
 assert.ok(workspaceManifestToolPlan.verification.some(item => item.command === 'pnpm run ci:test-scripts'))
 
 const tsconfigPlan = JSON.parse(run('verify', '--json', 'packages/tsconfig/base.json'))

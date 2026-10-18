@@ -80,10 +80,14 @@ function assertHtmlPreservesSource(code: string, html: string, flavor: FenceFlav
 const NAMED_ENTITIES: Record<string, string> = { amp: '&', quot: '"' }
 
 /**
- * 实体必须一趟解完：分几趟解会把正文里字面写着的 `&quot;`（shiki 编码成 `&#x26;quot;`）解两遍变成
- * `"`，于是合法源码被误判成「着色器改了原文」。
+ * 高亮 HTML 的可见文本：剥掉标记、解掉实体。
+ *
+ * 先剥标签再解实体：shiki 把正文里的 `<` 与 `&` 写成 `&#x3C;` / `&#x26;`，所以剩下的尖括号
+ * 一律是标记本身，剥标签不会把代码里的标签当成标记。顺序反了就会把 `<web-ui-button>` 吃掉。
+ * 实体必须一趟解完（一个 alternation 正则），分几趟解会把源码里字面写着的 `&quot;` 解两遍变成 `"`。
+ * 导出给宿主复用：宿主断言「页面显示的代码 == markdown 围栏」时量的是同一份可见文本。
  */
-function visibleText(html: string): string {
+export function visibleText(html: string): string {
   return html
     .replace(/<[^>]*>/g, '')
     .replace(

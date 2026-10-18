@@ -13,7 +13,7 @@
 - 运行仓库既有测试与校验命令：`pnpm test`、`pnpm run ci:test-scripts`、包级 `test`、`pnpm run check-code`、`pnpm run check-cspell`、`pnpm run ci:validate-context`。
 - 修复本次改动导致的失败并重跑受影响的测试。
 - 包级 build 与 `pnpm run build`。
-- 只读查询：`pnpm agent:find-usages`、`pnpm agent:inspect-contract`、`pnpm agent:diff-contract`、`pnpm agent:task status`、`git status`、`git diff`、`git log`。
+- 只读查询：contract-change-review skill 的 `repo-query.mjs`（`verify` / `contract` / `contract-diff`）、`pnpm agent:task status`、`git status`、`git diff`、`git log`。
 - 在目标 worktree 内读取任意文件。
 
 以下操作仍须逐次获得用户明确授权：commit、push、merge、tag、publish、release；依赖、catalog、lockfile 的任何改动；`.npmrc`、`.mise.toml` 与 Git 配置；凭证、密钥和 `.env` 的读写；破坏性 git 操作（`reset --hard`、`push --force`、`clean`、`stash`）。
