@@ -1,6 +1,6 @@
 {
   "name": "@greypan/test-kit",
-  "version": "0.3.2",
+  "version": "0.0.0",
   "description": "Test infrastructure plugins for Vitest browser mode + MSW",
   "license": "MIT",
   "repository": {
@@ -18,10 +18,6 @@
       "import": "./dist/index.mjs"
     },
     "./package.json": "./package.json"
-  },
-  "publishConfig": {
-    "access": "public",
-    "registry": "https://registry.npmjs.org/"
   },
   "scripts": {
     "build": "vp pack",
@@ -43,5 +39,6 @@
   },
   "engines": {
     "node": ">=20.11.0"
-  }
+  },
+  "private": true
 }

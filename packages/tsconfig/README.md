@@ -36,7 +36,9 @@ This package organizes the libs into a progressive 4-layer hierarchy, matching p
 
 `core.json` enables `noUncheckedIndexedAccess`. An unchecked array or dictionary lookup is typed as possibly `undefined`, so consumers must handle absent values before using them.
 
-## Usage
+## Internal use
+
+This is a private configuration package for the `mono` workspace and is not published by this repository. In repository manifests, add it as a development dependency with the `workspace:*` protocol.
 
 ```json
 // In any package's tsconfig.app.json:
@@ -44,12 +46,6 @@ This package organizes the libs into a progressive 4-layer hierarchy, matching p
   "extends": "@greypan/tsconfig/<profile>.json",
   "include": ["src/**/*"]
 }
-```
-
-Add as devDependency:
-
-```bash
-pnpm add -D @greypan/tsconfig
 ```
 
 ## Inheritance

@@ -21,8 +21,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     env:
-      # mise 配置会把 TURBO_CACHE_DIR 锚定到 git common dir（主仓与 worktree 共享缓存）；
-      # CI 显式固定回 workspace 内，保证 actions/cache 的 .turbo 路径不被绕过。
+      # CI 显式把 artifact cache 放在 workspace 内，供 actions/cache 保存与恢复；mise 保留此覆盖。
       TURBO_CACHE_DIR: ${{ github.workspace }}/.turbo
 
     steps:

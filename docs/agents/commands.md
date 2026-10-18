@@ -61,20 +61,20 @@
 
 ### 基础命令（无 namespace）
 
-| 命令               | 用途                                                                                        |
-| ------------------ | ------------------------------------------------------------------------------------------- |
-| `build` / `test`   | 经 Turbo 编排全仓构建与测试                                                                 |
-| `check-code`       | 全仓代码质量检查（聚合项见根 `package.json`）                                               |
-| `fix-code`         | 全工作树代码检查与整理的显式修复命令；不会自动暂存文件                                      |
-| `check-cspell`     | 拼写检查                                                                                    |
-| `check-go`         | `gofmt -l` 断言 + 逐 `go.mod` 跑 `go vet`                                                   |
-| `check-stylelint`  | CSS lint                                                                                    |
-| `fix-go`           | `gofmt -w` + 同一批 `go vet`                                                                |
-| `fix-stylelint`    | stylelint 自动修复                                                                          |
-| `check-pack`       | 用 `pnpm pack --dry-run` 验证发布文件与 export targets                                      |
-| `publish-new-pack` | 首次发布新包                                                                                |
-| `clean`            | 默认全量清理：构建产物、`node_modules`、缓存（含共享 turbo cache）；`--locks` 为显式 opt-in |
-| `commit`           | `git-cz` 交互式提交                                                                         |
-| `prepare`          | `vp config`，设置 hooks 路径                                                                |
+| 命令               | 用途                                                                                                 |
+| ------------------ | ---------------------------------------------------------------------------------------------------- |
+| `build` / `test`   | 经 Turbo 编排全仓构建与测试                                                                          |
+| `check-code`       | 全仓代码质量检查（聚合项见根 `package.json`）                                                        |
+| `fix-code`         | 全工作树代码检查与整理的显式修复命令；不会自动暂存文件                                               |
+| `check-cspell`     | 拼写检查                                                                                             |
+| `check-go`         | `gofmt -l` 断言 + 逐 `go.mod` 跑 `go vet`                                                            |
+| `check-stylelint`  | CSS lint                                                                                             |
+| `fix-go`           | `gofmt -w` + 同一批 `go vet`                                                                         |
+| `fix-stylelint`    | stylelint 自动修复                                                                                   |
+| `check-pack`       | 用 `pnpm pack --dry-run` 验证发布文件与 export targets                                               |
+| `publish-new-pack` | 首次发布新包                                                                                         |
+| `clean`            | 默认全量清理：构建产物、`node_modules`、本地缓存与共享 Turbo artifact cache；`--locks` 为显式 opt-in |
+| `commit`           | `git-cz` 交互式提交                                                                                  |
+| `prepare`          | `vp config`，设置 hooks 路径                                                                         |
 
 `dev:react-web-ui-demo`、`dev:vue-web-ui-demo`、`dev:interweave` 三条归入 `dev` namespace，作用面见 `build.md`。`check-pack` 与生成物生命周期以 `build.md` 为准；本表只列命令名与用途。

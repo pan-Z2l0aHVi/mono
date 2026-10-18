@@ -30,6 +30,13 @@ fs.writeFileSync(
   })
 )
 assert.match(runContractCheck(fixtureRoot), /check-pack passed/)
+const privatePackageRoot = path.join(fixtureRoot, 'packages', 'private-fixture')
+fs.mkdirSync(privatePackageRoot, { recursive: true })
+fs.writeFileSync(
+  path.join(privatePackageRoot, 'package.json'),
+  JSON.stringify({ name: '@greypan/private-fixture', version: '9.9.9', private: true })
+)
+assert.match(runContractCheck(fixtureRoot), /check-pack passed/)
 fs.writeFileSync(
   path.join(fixturePackageRoot, 'package.json'),
   JSON.stringify({
@@ -70,6 +77,19 @@ fs.writeFileSync(
   })
 )
 assert.throws(() => checkContractFailure(fixtureRoot))
+
+// A package that was public can become private while its version changes. Private metadata must remove it from pack validation.
+fs.writeFileSync(
+  path.join(fixturePackageRoot, 'package.json'),
+  JSON.stringify({
+    name: '@greypan/fixture',
+    version: '0.1.0',
+    private: true,
+    files: ['missing'],
+    exports: { '.': { import: './missing.js' } }
+  })
+)
+assert.match(runContractCheck(fixtureRoot), /check-pack passed/)
 fs.rmSync(fixtureRoot, { recursive: true, force: true })
 
 console.log('check-pack tests passed')

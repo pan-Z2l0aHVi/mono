@@ -32,5 +32,5 @@ approvals_reviewer = "auto_review"
 
 把 `sandbox_mode` 改回 `workspace-write` 时，下面两项必须同时恢复，否则工具链会在两个地方失败：
 
-- `[sandbox_workspace_write]`：开 `network_access`，并把工具链缓存目录（mise、pnpm、npm、go、`Library/Caches`、`~/.cache`）和主仓库的 `.git` 列进 `writable_roots`。主仓库的 `.git` 覆盖共享的 Turbo 缓存目录；少了任何一类，worktree 里的 `pnpm` 会因为无法 lock `.git/config` 而失败。列的是 `.git` 本身而不是仓库根：Codex 按名字保护 `.git`，把整个根列进去也不生效。
+- `[sandbox_workspace_write]`：开 `network_access`，并把工具链缓存目录（mise、pnpm、npm、go、`Library/Caches`、`~/.cache`）、系统临时目录下的 `greypan/turbo-cache` 和主仓库的 `.git` 列进 `writable_roots`。临时目录项允许 Turbo 写入 artifact cache；`.git` 仍需单独列出，因为 worktree 里的 `pnpm` 会锁 `.git/config`。列的是 `.git` 本身而不是仓库根：Codex 按名字保护 `.git`，把整个根列进去也不生效。
 - `[shell_environment_policy.set] CHOKIDAR_USEPOLLING=1`：成因见上一节。

@@ -6,17 +6,18 @@
 
 Changesets 同时管理 npm 包、私有 app 与桌面端 release 驱动版本。按改动位置选择声明：
 
-| 改动位置                                 | 是否发布                                                              | Changeset 写法                                                                                                                |
-| ---------------------------------------- | --------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------- |
-| `packages/*`                             | 发布到 npm                                                            | 声明行为有变化的对应包，选择 `patch`、`minor` 或 `major`。                                                                    |
-| `apps/interweave`（不含下行 `frontend`） | 不发布到 npm；版本驱动桌面端 release                                  | 声明 `@greypan/interweave`，选择版本级别。                                                                                    |
-| `apps/interweave/frontend`               | 不发布到 npm；`@greypan/interweave-frontend` 在 ignore 表中，版本固定 | 对 app 行为或产物有用户可感知影响的改动声明 `@greypan/interweave`；仅测试和测试助手改动写空壳。永不声明被忽略的 frontend 包。 |
-| React/Vue Web UI demo app                | 不发布到 npm；包在 ignore 表中                                        | 一律写空壳，不声明被忽略的 demo 包。                                                                                          |
-| 其他根目录路径                           | 不产生包版本                                                          | 纯 test/docs/chore 改动写空壳。                                                                                               |
+| 改动位置                                                                                   | 是否发布                                                                                 | Changeset 写法                                                                                                                |
+| ------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------- |
+| 公共 npm 包（`browser-kit`、`deps-reload`、`js-kit`、`unplugin-web-components`、`web-ui`） | 发布到 npm                                                                               | 声明行为有变化的对应包，选择 `patch`、`minor` 或 `major`。                                                                    |
+| 私有基础包（`test-kit`、`tsconfig`、`md-to-comp`）                                         | 不发布到 npm；`privatePackages.version` 仍启用版本更新，且不创建 Changesets Git 版本标签 | 需要版本变化时声明对应包；私有包不进入 npm 发布。                                                                             |
+| `apps/interweave`（不含下行 `frontend`）                                                   | 不发布到 npm；版本驱动桌面端 release                                                     | 声明 `@greypan/interweave`，选择版本级别。                                                                                    |
+| `apps/interweave/frontend`                                                                 | 不发布到 npm；`@greypan/interweave-frontend` 在 ignore 表中，版本固定                    | 对 app 行为或产物有用户可感知影响的改动声明 `@greypan/interweave`；仅测试和测试助手改动写空壳。永不声明被忽略的 frontend 包。 |
+| React/Vue Web UI demo app                                                                  | 不发布到 npm；包在 ignore 表中                                                           | 一律写空壳，不声明被忽略的 demo 包。                                                                                          |
+| 其他根目录路径                                                                             | 不产生包版本                                                                             | 纯 test/docs/chore 改动写空壳。                                                                                               |
 
-不要声明 `.changeset/config.json` 的 `ignore` 表中的包。被忽略的声明不会 bump 版本，版本 PR 也不会删除它，文件会永久滞留。私有包不打 npm 发布标签；桌面端二进制的发布标签由 Wails 工作流创建。
+不要声明 `.changeset/config.json` 的 `ignore` 表中的包。被忽略的声明不会 bump 版本，版本 PR 也不会删除它，文件会永久滞留。`private: true` 只关闭 npm 发布，不等于退出 Changesets 版本管理；本仓库的 `privatePackages.version: true` 会继续更新私有包版本，`tag: false` 不为私有包创建 Changesets Git 版本标签。桌面端二进制的发布标签由 Wails 工作流创建。
 
-Changeset 描述使用英文，因为它会进入面向 npm 用户的 CHANGELOG。无包版本影响的改动创建空壳：`.changeset/<kebab-name>.md` 仅含两行 `---`，frontmatter 不写包名或版本号。
+Changeset 描述使用英文，因为它会进入面向 npm 用户的 CHANGELOG。纯 test/docs/chore 等无包版本影响的改动创建空壳：`.changeset/<kebab-name>.md` 仅含两行 `---`，frontmatter 不写包名或版本号。把既有公开包转为私有时也不 bump 版本，但应另用不声明包的 changeset 正文点名退役包，留下发布面变更记录。
 
 PR CI 的 `Check changesets` 保留 `changeset status`，并调用 `.agents/checks/changeset-required --base "$PR_BASE_SHA" --head "$PR_HEAD_SHA"`。该检查验证 PR base/head 都是 commit，以 merge-base..head 的提交差集枚举新增、修改和重命名的 changeset，从 PR head tree 读取声明内容。main 已有的 changeset、PR 删除的文件、staged 或未提交文件都不构成 PR 声明。每条声明都校验文件名、成对 frontmatter、正文和 ignore 包；读取 head 的 changeset 配置失败会 fail closed。`changeset-release/main` 版本分支由 workflow 豁免；workflow_dispatch 没有 PR base/head 时会跳过 PR 专项检查。该政策只在 PR CI 中执行，不由 pre-commit 或本地 `ci:check-policies` 判断。
 
