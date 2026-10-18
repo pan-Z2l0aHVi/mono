@@ -7,4 +7,3 @@
 - 提交前用 `git config user.name` / `user.email` 确认实际 author/committer；不要假定本地 Git 配置与预期一致。
 - workflow task 的提交受 pre-commit 的 `pnpm agent:task guard` 保护；guard 因冻结快照过期拦截提交时，按 [`docs/agents/workflow.md`](../../docs/agents/workflow.md) 重新 freeze 并补齐该级别要求的 review/approve。
 - pre-commit 的检查只判不改：`format-clean` 查格式，`vp check` 连 lint 与类型一起判。提交前自己跑过检查再暂存，光跑 fixer 不够。
-- commit message 必须使用英文。

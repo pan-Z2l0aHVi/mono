@@ -179,3 +179,77 @@ describe('WebUiSlider 指针拖拽（浏览器）', () => {
     cleanupElement(el)
   })
 })
+
+/**
+ * step 不整除 `(max - min)` 时，规整（先 clamp 再按 step 取整）会把值推过 max：
+ * `max=100 / step=15` → `round(100 / 15) = 7` → `7 * 15 = 105`。
+ * 契约是任何输入（含 End 键）都不得越出 `[min, max]`。
+ */
+describe('WebUiSlider 值规整不越界（浏览器）', () => {
+  const press = async (el: Updatable, key: string) => {
+    trackOf(el).dispatchEvent(new KeyboardEvent('keydown', { key, bubbles: true, composed: true }))
+    await el.updateComplete
+  }
+
+  it('End 键在 step 不整除时停在 max', async () => {
+    const el = createSlider() as Updatable & { min: number; max: number; step: number }
+    el.min = 0
+    el.max = 100
+    el.step = 15
+    el.value = 0
+    await el.updateComplete
+
+    await press(el, 'End')
+
+    expect(el.value).toBeLessThanOrEqual(100)
+    expect(el.value).toBe(100)
+    expect(trackOf(el).getAttribute('aria-valuenow')).toBe('100')
+    expect(trackOf(el).getAttribute('aria-valuemax')).toBe('100')
+    cleanupElement(el)
+  })
+
+  it('Home 键在 step 不整除时停在 min', async () => {
+    const el = createSlider() as Updatable & { min: number; max: number; step: number }
+    el.min = 3
+    el.max = 100
+    el.step = 7
+    el.value = 50
+    await el.updateComplete
+
+    await press(el, 'Home')
+
+    expect(el.value).toBe(3)
+    cleanupElement(el)
+  })
+
+  it('ArrowUp 到顶部不越过 max', async () => {
+    const el = createSlider() as Updatable & { min: number; max: number; step: number }
+    el.min = 0
+    el.max = 100
+    el.step = 15
+    el.value = 90
+    await el.updateComplete
+
+    await press(el, 'ArrowUp')
+
+    expect(el.value).toBeLessThanOrEqual(100)
+    cleanupElement(el)
+  })
+
+  it('步进后的值仍是 step 的整数倍（不因收敛破坏网格）', async () => {
+    const el = createSlider() as Updatable & { min: number; max: number; step: number }
+    el.min = 0
+    el.max = 100
+    el.step = 15
+    el.value = 0
+    await el.updateComplete
+
+    await press(el, 'ArrowUp')
+    await press(el, 'ArrowUp')
+    expect(el.value).toBe(30)
+
+    await press(el, 'End')
+    expect(el.value).toBe(100)
+    cleanupElement(el)
+  })
+})

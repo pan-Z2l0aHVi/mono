@@ -54,8 +54,28 @@ export class WebUiCheckboxGroup extends FormAssociated(LitElement) {
         this.dispatchEvent(new Event('input', { bubbles: true, composed: true }))
         this.dispatchEvent(new Event('change', { bubbles: true, composed: true }))
       }
-    }).make()
+    }).make(),
+    // 每次成员集合同步后把组值剪到现存成员范围内
+    { afterSync: () => this._pruneRemovedMembers() }
   )
+
+  /**
+   * 成员被移除后，它的 value 会作为不可见、也取消不掉的幽灵值留在组值里，
+   * 并能继续进 FormData。这里以「曾经出现在成员里、现在消失了」为剪枝条件。
+   *
+   * 不能用「不在现存成员里就剪」：v-if / 异步渲染下组值常常先于成员出现，
+   * 那样会把合法的预设值当成幽灵值清掉。
+   */
+  private _knownMemberValues = new Set<string>()
+
+  private _pruneRemovedMembers() {
+    const items = [...this.querySelectorAll<WebUiCheckbox>('web-ui-checkbox')]
+    if (items.length === 0) return
+    const alive = new Set(items.map(item => item.value))
+    const next = this._value.filter(value => alive.has(value) || !this._knownMemberValues.has(value))
+    this._knownMemberValues = alive
+    if (next.length !== this._value.length) this.value = next
+  }
 
   get value(): string[] {
     return this._value

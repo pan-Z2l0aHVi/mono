@@ -23,7 +23,9 @@ tag: web-ui-input-number
 
 ### 精度
 
-`precision` 决定小数位数，超出部分会被规整。
+`precision` 决定小数位数，超出部分在**读取与提交**时规整；赋值本身保留原始小数，因此 `precision` 与 `value` 的声明顺序不影响结果（`value="1.5" precision="2"` 与反序都得到 `1.5`）。
+
+编辑中清空或输入非法内容不会破坏 `value`：失焦时显示会回填为已提交值，表单提交的始终是最后那个合法值。
 
 ```react
 <web-ui-input-number precision={2} step={0.01} value={9.99}></web-ui-input-number>
@@ -73,18 +75,18 @@ const quantity = ref(1)
 
 ### Props
 
-| 名称          | 说明         | 类型      | 默认值     |
-| ------------- | ------------ | --------- | ---------- |
-| `placeholder` | 占位文本。   | `string`  | `''`       |
-| `name`        | 表单字段名。 | `string`  | `''`       |
-| `disabled`    | 禁用状态。   | `boolean` | `false`    |
-| `readonly`    | 只读状态。   | `boolean` | `false`    |
-| `required`    | 必填校验。   | `boolean` | `false`    |
-| `precision`   | 小数精度。   | `number`  | `0`        |
-| `value`       | 当前值。     | `number`  | `0`        |
-| `min`         | 最小值。     | `number`  | `0`        |
-| `max`         | 最大值。     | `number`  | `Infinity` |
-| `step`        | 步进值。     | `number`  | `1`        |
+| 名称          | 说明                           | 类型      | 默认值     |
+| ------------- | ------------------------------ | --------- | ---------- |
+| `placeholder` | 占位文本。                     | `string`  | `''`       |
+| `name`        | 表单字段名。                   | `string`  | `''`       |
+| `disabled`    | 禁用状态。                     | `boolean` | `false`    |
+| `readonly`    | 只读状态。                     | `boolean` | `false`    |
+| `required`    | 必填校验。                     | `boolean` | `false`    |
+| `precision`   | 小数精度，在读取与提交时规整。 | `number`  | `0`        |
+| `value`       | 当前值。                       | `number`  | `0`        |
+| `min`         | 最小值。                       | `number`  | `0`        |
+| `max`         | 最大值。                       | `number`  | `Infinity` |
+| `step`        | 步进值。                       | `number`  | `1`        |
 
 ### Events
 

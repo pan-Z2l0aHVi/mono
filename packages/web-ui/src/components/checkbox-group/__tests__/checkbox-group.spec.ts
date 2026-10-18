@@ -534,3 +534,51 @@ describe('WebUiCheckboxGroup 组件', () => {
     cleanupElement(container)
   })
 })
+
+/**
+ * 成员被移除后，它的 value 若仍留在组值里，就成了不可见也取消不掉的幽灵值
+ * （表单照样提交）。组值必须以现存成员为边界剪枝；但成员尚未渲染时不得剪，
+ * 否则外部预设的初始值会在子元素连上之前被清空。
+ */
+describe('WebUiCheckboxGroup 成员移除后的值剪枝', () => {
+  const settle = async (el: WebUiCheckboxGroup) => {
+    await waitForUpdate(el)
+    // MutationObserver 回调在微任务里跑，之后还会触发一轮 requestUpdate
+    await new Promise(resolve => setTimeout(resolve, 0))
+    await waitForUpdate(el)
+  }
+
+  it('移除已选成员后剪掉它的值', async () => {
+    const el = createGroup()
+    el.value = ['a', 'b']
+    await waitForUpdate(el)
+
+    el.querySelectorAll<WebUiCheckbox>('web-ui-checkbox')[1].remove()
+    await settle(el)
+
+    expect(el.value).toEqual(['a'])
+    cleanupElement(el)
+  })
+
+  it('移除未选成员不影响值', async () => {
+    const el = createGroup()
+    el.value = ['a']
+    await waitForUpdate(el)
+
+    el.querySelectorAll<WebUiCheckbox>('web-ui-checkbox')[1].remove()
+    await settle(el)
+
+    expect(el.value).toEqual(['a'])
+    cleanupElement(el)
+  })
+
+  it('成员全部移除时保留外部预设值（不剪枝）', async () => {
+    const el = createGroup('')
+    el.value = ['a', 'b']
+    await waitForUpdate(el)
+    await settle(el)
+
+    expect(el.value).toEqual(['a', 'b'])
+    cleanupElement(el)
+  })
+})
