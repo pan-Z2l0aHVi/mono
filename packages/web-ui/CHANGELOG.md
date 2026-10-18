@@ -1,5 +1,17 @@
 # @greypan/web-ui
 
+## 10.2.0
+
+### Minor Changes
+
+- 3f185aa: Lower the enter scale of anchored floating panels (popover, menu, dropdown, select, tooltip, autocomplete), toast, and the image-preview stage from `0.95` to `0.9`.
+  
+  `--wui-scale-enter` now defaults to `0.9`, and every component fallback that references it follows. Reduced motion is unaffected: the token still resolves to `1` there. Dialog enter scale is untouched; it keeps its own `--wui-dialog-scale-enter: 1.1`.
+
+### Patch Changes
+
+- 3f185aa: Fix which side `<web-ui-context-menu>` opens a submenu on. The left/right decision read the panel's `getBoundingClientRect()` width, but the panel is always measured before it has animated into place, while its presence `transform: scale(var(--wui-scale-enter))` is still applied — so the reading was a fraction of the real width, and a submenu that did not fit to the right could be judged as fitting and open on the wrong side. Both the fresh-open path and the reopen-while-closing path were affected.
+
 ## 10.1.2
 
 ### Patch Changes
