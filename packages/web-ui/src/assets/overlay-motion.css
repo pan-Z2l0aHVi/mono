@@ -37,7 +37,7 @@
 
 .wui-floating-panel[data-wui-presence='entering'],
 .wui-floating-panel[data-wui-presence='closing'] {
-  transform: scale(var(--wui-scale-enter, 0.95));
+  transform: scale(var(--wui-scale-enter, 0.9));
   opacity: 0;
   backdrop-filter: blur(0) saturate(160%) brightness(var(--wui-glass-brightness, 1.06));
 }
