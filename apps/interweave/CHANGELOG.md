@@ -1,5 +1,11 @@
 # @greypan/interweave
 
+## 0.1.3
+
+### Patch Changes
+
+- d7073c8: Replaced `@tanstack/vue-virtual` with `virtua` for the resource list. Renaming a resource no longer leaves stale row heights that make adjacent rows overlap. When Safari or iOS recycles an editing row, its rename draft is now committed instead of lost.
+
 ## 0.1.2
 
 ### Patch Changes
