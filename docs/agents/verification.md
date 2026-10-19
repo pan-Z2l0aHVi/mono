@@ -1,56 +1,23 @@
 # 验证选择与测试执行
 
-本文件回答两个问题：这次改动该跑哪些验证，以及那些验证怎么执行。运行时证据本身怎么取——真实浏览器、原生应用、引擎级取证、证据档位——由 [`runtime-verification.md`](runtime-verification.md) 承担，本文件只做选择与调度，不重复那套工具判据。
-
-测试用例的编写策略（什么值得测、什么别测）见 [`test-authoring.md`](test-authoring.md)。受版本控制的生成物与其完成证据见 `build.md`。
+本文件回答两个问题：这次改动该跑哪些验证，以及那些验证怎么执行。运行时证据本身怎么取（真实浏览器、原生应用、引擎级取证、证据档位）由 [`runtime-verification.md`](runtime-verification.md) 承担；测试用例编写策略见 [`test-authoring.md`](test-authoring.md)；受版本控制的生成物与其完成证据见 `build.md`。
 
 ## 从变更路径到验证计划
 
-对变更路径运行 contract-change-review skill 的 `verify` 查询（review 或基线对比按范围加 `--base <git-ref>`、`--staged` 或 `--worktree`）。输出是验证计划的起点，不替代对实际 diff、公共行为和浏览器语义的判断；工具语义见 `agent-context.md`。
+先查实际 diff、公共契约和消费者，再选择验证方式；不要从固定的命令清单出发。适用的自动化回归与构建应在实施阶段完成，不能把首次全量运行留给 PR CI。小步提交按影响重跑相关项，不要求每次重复全量命令。
 
-根据受影响的契约选择验证方式，并在实施阶段完成适用的自动化回归与构建：
+按变更影响选择层级：受影响的包测试、必要的全量 workspace 测试、仓库脚本测试、构建，以及该变更要求的真实 E2E、探索式或真机验收。纯文档等低风险变更按影响选择，不强加全套。根 `pnpm run test` 包含已配置的 Vitest Browser Mode / Chromium 自动回归，这些 spec 不等于真实 E2E、探索式或真机验收。
 
-| 验证类别              | 代表命令或证据                                                       | 阶段与边界                                                                                          |
-| --------------------- | -------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------- |
-| 单元与组件回归        | `pnpm exec turbo test --filter=@greypan/<name>`                      | 实施时按改动迭代运行；交付 PR 前通过受影响的包测试。                                                |
-| 全量 workspace 测试   | `pnpm run test`                                                      | 适用时在实施完成、交付 PR 前运行；不把首次全量测试留给 PR CI 或合并前。                             |
-| 仓库脚本测试          | `pnpm ci:test-scripts`                                               | 实施完成、交付 PR 前运行；它是 `pnpm run test` 之外的 tracked-only 套件。                           |
-| 构建                  | `pnpm exec turbo build --filter=@greypan/<name>` 或 `pnpm run build` | 构建、发布产物、导出或构建配置受影响时，在实施完成、交付 PR 前验证。                                |
-| E2E、探索式与真机验收 | `runtime-verification.md` 的真实浏览器或原生应用证据                 | 可在实施时调试，也可安排在 PR 阶段与独立 review 并行；若该变更要求此验收，必须在合并前完成。        |
-| PR CI                 | 当前 PR 的 required checks 与 base/head 证据                         | PR 创建后及 base/head 变化后核对当前提交；它不替代实施阶段已要求的单元、全量 workspace 或脚本测试。 |
-
-适用的自动化测试与构建应在实施中持续验证，不能等到 PR 阶段才首次运行；每次小步提交不必重复全量命令，改动后重跑相关验证即可。纯文档等低风险变更按影响选择，不强加全套。根 `pnpm run test` 包含已配置的 Vitest Browser Mode / Chromium 自动回归，这些 spec 不等于真实 E2E、探索式或真机验收。记录准确命令、结果、浏览器 URL/操作和未验证缺口。失败时保留失败输出，区分环境问题、现有失败和本次回归；不要用删除测试或跳过检查代替修复。
+PR CI 对当前 base/head 复检 required checks，不替代实施阶段已要求的单元、全量 workspace 或脚本测试。记录准确命令、结果、浏览器 URL / 操作和未验证缺口；失败时保留输出，区分环境问题、现有失败和本次回归，不要用删除测试或跳过检查代替修复。
 
 ## 测试环境与命令
 
-- 测试框架：Vitest（通过 `vite-plus`）。
-- 运行所有 workspace 测试：`pnpm run test`。根 `turbo test` 编排所有 workspace 的 `test` 任务；适用改动应在实施完成、交付 PR 前通过。配了 browser-mode 的包会在此命令中跑 Chromium `*.browser.spec.ts` 自动回归。
-- 运行仓库脚本测试：`pnpm ci:test-scripts`。它通过 `git ls-files` 运行 tracked-only 的 `*.test.mjs`，不属于 `pnpm run test`；新增而未跟踪的脚本测试要在实施中显式运行。
-- 运行受影响测试：先用 contract-change-review skill 的 `verify` 查询（`node skills/contract-change-review/repo-query.mjs verify -- <paths...>`）识别受影响 workspace，再跑 `pnpm exec turbo test --filter=@greypan/<name>`。小步迭代和调试使用本命令或包级聚焦测试；按变更影响选择适用的全量 workspace 测试并在实施交付前完成。
-- 运行单个包的测试：`pnpm exec turbo test --filter=@greypan/<name>`（包内执行 `vp test run`）。
-- 测试文件：`*.spec.ts`、`*.test.ts`、`*.spec.tsx`。
-- 测试环境：大多数包用 Node 环境。`browser-kit` 用 Vitest Browser Mode 配 Playwright Chromium 做真实浏览器测试。
-- `web-ui` 测试环境：用 jsdom，`packages/web-ui/test-helper.ts` 对 jsdom 未实现的浏览器 API 做桩。桩了 `window.scrollTo` 和 `Element#scrollTo`；组件测试断言公共的滚动调用，浏览器验证覆盖原生滚动行为。
-- `web-ui` jsdom 契约测试：默认的 `*.spec.ts` 在独立的 `jsdom` 项目里运行，覆盖宿主 API、属性/属性同步、事件、渲染以及非浏览器 DOM 语义。测试工具不应把 jsdom 当成 ElementInternals 实现。
-- `web-ui` browser mode：仅显式的 `*.browser.spec.ts` 通过 `vite-plus/test/browser-playwright` + `playwright` 在 Chromium 中运行。这层用于 FormData、ElementInternals、Pointer events、焦点、portal、原生 dialog 以及其他 jsdom 无法忠实实现的浏览器原生行为。
-- `web-ui` reduced-motion browser mode：`reduced-motion.browser.spec.ts` 在独立的 Chromium 项目里运行，用 Playwright `reducedMotion: 'reduce'`。这层用于验证 transform 位移被移除的同时，基于 opacity 的状态反馈仍然可用。
-- Browser mode 配置：用 browser mode 的包需要在 `vite.config.ts` 里配置 `browser.provider: playwright()`（来自 `vite-plus/test/browser-playwright`）。
-- 网络模拟：`browser-kit` 通过 `@greypan/test-kit` 用 MSW（Mock Service Worker）拦截网络请求。它的 tracker spec 共享浏览器全局变量和一个 service worker，所以该包禁用了 Vitest 文件并行。除非移除了共享状态，否则保持这些 spec 独立，不要重新启用文件并行。
-- 测试基础设施：`@greypan/test-kit` 用 js-kit 的插件系统提供可组合插件：
-  - `defineMsw(handlers)`：MSW service worker 生命周期管理（start/stop/reset）。
-  - `defineCapturedRequests()`：请求捕获与断言工具。
-  - 使用模式：`defineMsw(handlers).use(defineCapturedRequests()).make()`。
-  - 推荐用 `createMswTestEnv({ handlers })`，返回 `{ worker, start, stop, reset, capturedRequests, clearCapturedRequests, settle }`。它自动捕获请求（内置兜底 recorder，业务 handler 优先），`settle` 提供稳定窗口排空并保留 fake timers。
+测试框架是 Vitest（通过 `vite-plus`）。根 `pnpm run test` 由 Turbo 编排各 workspace 的 `test` 任务；受影响的包用 `pnpm exec turbo test --filter=@greypan/<name>`。仓库脚本测试是 tracked-only 的 `*.test.mjs`，由 `pnpm ci:test-scripts` 执行，不属于 `pnpm run test`；新增而未跟踪的脚本测试要在实施中显式运行。
 
-### Demo 应用的两层测试
+各包的具体测试环境以包配置和测试文件为准：`web-ui` 用 jsdom 覆盖宿主 API、属性/事件、渲染与非浏览器 DOM 语义，用 browser mode 覆盖 jsdom 无法忠实实现的浏览器原生行为；两个 demo 各有 jsdom 接线层与浏览器层，后者用真实视口验证对齐与几何。`browser-kit` 通过 `@greypan/test-kit` 使用 MSW；共享浏览器状态要求相关 spec 保持独立，除非移除了共享状态，否则不要重新启用文件并行。
 
-`react-web-ui-demo` 与 `vue-web-ui-demo` 各有两个 project，覆盖的契约相同、层级不同。`jsdom` 层（`src/**/*.spec.ts[x]`，`test-helper.ts` 补 jsdom 未实现的滚动 API）在秒级给出接线的快速反馈。`browser` 层（`src/**/*.browser.spec.ts[x]`，Chromium）用 `page.viewport` 换真实视口、点真实的 Toggle、读渲染后的对齐与几何。折叠态在 demo 里只体现为排版，jsdom 里那串工具类是不生效的字符串，只有浏览器能读出「文字居中」这件事。两层都挂载真实的应用外壳与真实的 web-ui 自定义元素。组件契约仍归 `web-ui` 的测试面；UI、UX 与浏览器运行时行为仍按 `runtime-verification.md` 在真实浏览器验证。
+Demo 的网格列数基线由各自的 `grid-columns.browser.spec.*` 钉住，守的是 Tailwind v4 自定义变体的排序陷阱；具体视口与列数见 spec。生成物、语料与缓存输入见 `build.md`。
 
-Demo 的网格列数基线：两个 demo 各有一组 `src/__tests__/grid-columns.browser.spec.ts[x]`，把 home 页快速预览网格（`1/2/2/3/3/3/3/3/3` 列）与 svg 示例页图标网格（`2/3/3/4/5/5/5/5/5` 列）在 390/640/641/768/1024/1280/1440/1536/1920 九档视口下的渲染列数钉死。它守的是 Tailwind v4 的变体排序陷阱：`@custom-variant` 生成的规则排在主题断点之后，而 `:where()` 不抬特异性。同属性同权时后出现者胜，一条本意只针对 ≥641 的自定义变体（如 `desktop:grid-cols-4`）会在 ≥768 全段压掉 `md:` 与 `lg:`，且不会让任何别的测试变红。用户指定的六档（390/640/641/768/1024/1280）之外另补 1440/1536/1920，用来覆盖起点大于 xl(1280) 的陷阱：`@theme` 里还有 2xl 1536，只采到 1280 时那段完全采不到。三档分工不同。1440 与 1920 提供覆盖（起点 ≤1440 由 1440 档抓、1441–1920 由 1920 档抓）。1536 不增加覆盖，它钉在最后一个具名断点上，将来出现 `2xl:` 类时那正是生效点。起点比 1920 更靠右的仍采不到，是采样法的固有边界。基线值由类名链条按 `@theme` 断点逐档算出，不是照抄上一档。取不到更高断点的类就沿用前一个胜者，因为 Tailwind 不会在更高断点重置列数。两条网格各挂一个 `data-testid` 供定位。
+## 本地复现与浏览器 spec 隔离
 
-Demo 的 browser project 有几处与 app 配置不同，都在各自的 `vite.config.ts` 里带注释。`basicSsl()` 在 `VITEST` 下不挂：它只把 `server.https` 打开，vitest 的 browser server 不跟着走，浏览器按 https 连明文服务会直接 `ERR_SSL_PROTOCOL_ERROR`。browser project 固定到本包专用端口（vitest 默认的 63315 会被同机其他 worktree 或同一轮 `turbo test` 里 `web-ui` 的 browser project 占住）。`optimizeDeps.include` 用 `@greypan/<pkg> > <dep>` 从 workspace 包的角度解析扫描器够不到的裸依赖。web-ui 那一半由 `@greypan/web-ui/vite` 的 `webUiOptimizeDeps` 提供，各 app 只引用它，组件库增删运行时依赖时不必逐个改 app。扫描器跟不进组件图时才需要这份清单：vue demo 与 interweave/frontend 的路由都由 file-based 插件（`vue-router/vite`）生成在虚拟模块里，路由页里经 `unplugin-web-components` 生成的组件导入（连带 `lit`、`@floating-ui/dom` 等）就不可见，必须引用它；react demo 的 `routeTree.gen.ts` 静态 import 每个路由模块，路由模块对 `@greypan/web-ui` 根 barrel 的值导入会把组件图带进启动扫描，无需引用。`vite-plus > vitest > expect-type` 只出现在配了 browser project 的四份配置里（web-ui、browser-kit 与两个 demo），它守的是 workspace 依赖未构建、扫描失败后只剩裸 CJS 的场景；interweave/frontend 没有 browser project，不列这条。改带清单的配置后必须冷缓存验一次（`rm -rf apps/<pkg>/node_modules/.vite`）。清单不全时 vite 会在测试模块加载途中才发现依赖并 reload，浏览器那次 fetch 失败，测试模块报 `Failed to fetch dynamically imported module`。CI 没有 `.vite` 缓存，本地热缓存跑绿会骗人。日志里出现 `dependencies optimized` 或 `optimized dependencies changed. reloading` 就是没配全。
-
-## 本地复现与浏览器 spec 环境隔离
-
-- 压力/负载进程清理：本地复现慢环境（CPU 忙循环、后台负载等）时，把负载进程 PID 显式写入文件（如 `pgrep -f <pattern> > /tmp/load.pids`），复现结束后 `kill`（必要时 `-9`），并用 `ps` 验证已退出。不要依赖 shell job 控制（`jobs -p`）。命令被会话移入后台或跨 shell 调用时 job 表不可靠，残留的空转循环会占满 CPU 并拖慢后续所有验证。
-- 浏览器 spec 指针隔离：CI 无头浏览器的虚拟光标固定停在视口左上角。overlay 面板隐藏时 Chrome 会在光标下重算 hover 并对命中元素派发 `pointerenter`，配合 `show-delay="0"` 会立即重开浮层，造成仅在 CI 出现的 flaky（案例：tooltip `conditional.browser.spec.ts`）。直接驱动组件 `open` 等状态、不模拟真实指针交互的 `*.browser.spec.ts`，挂载点应设 `pointer-events: none` 隔离真实指针（见该 spec 的 `mountIsolated()`）。诊断此类 CI-only 问题时，在源码加 `console.warn` 埋点（browser mode 只回传 warn，不回传 log），并在超时时 dump DOM 状态，推 CI 读取轨迹。
+本地复现慢环境时，把负载进程 PID 显式写入文件并在结束后 `kill`，用 `ps` 验证退出；不要依赖 shell job 控制。CI 无头浏览器的虚拟光标固定在视口左上角，隐藏 overlay 时可能触发 phantom hover；直接驱动组件状态、不模拟真实指针的 `*.browser.spec.ts` 应隔离 pointer-events，具体做法见相应 spec 的 helper。
