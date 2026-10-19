@@ -5,7 +5,10 @@ import path from 'node:path'
 import { pathToFileURL } from 'node:url'
 
 const removedCommands = new Map([
-  ['guard', 'guard was removed; run `mise exec -- pnpm ci:check-policies` for the task-independent repository checks.'],
+  [
+    'guard',
+    'guard was removed; run the five task-independent policy checks listed in docs/agents/commit.md (pre-commit runs them automatically).'
+  ],
   [
     'freeze',
     'freeze was removed and no longer stages or normalizes files. If needed, run `mise exec -- pnpm fix-code` explicitly, review its changes, then stage only selected files with `git add`.'

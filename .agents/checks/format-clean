@@ -1,6 +1,6 @@
 #!/bin/sh
 # 提交边界的只读格式检查。它是 task 无关的固定 policy checks 之一，每次提交都按暂存路径运行；
-# pre-commit 与 ci:check-policies 只检查，不运行 fixer，也不修改文件。需要整理时由实施者显式运行
+# pre-commit 与 CI 只检查，不运行 fixer，也不修改文件。需要整理时由实施者显式运行
 # fix-code，检查改动后只暂存预期文件。
 #
 # 刻意不代为 fix：commit 期改写文件会让 index 与工作区内容分叉，而且 `vp staged` 那类工具为处理

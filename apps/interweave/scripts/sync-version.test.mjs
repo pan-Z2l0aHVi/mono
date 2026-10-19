@@ -185,4 +185,4 @@ try {
   fs.rmSync(fixture, { recursive: true, force: true })
 }
 
-console.log('apps/interweave/scripts/version-sync.test.mjs: all assertions passed')
+console.log('apps/interweave/scripts/sync-version.test.mjs: all assertions passed')

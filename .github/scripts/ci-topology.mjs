@@ -7,18 +7,19 @@
 // 比这张表更重的决策；本仓 workflow 只用顶格 section + 固定缩进这一小撮形状，parseWorkflow 的每条正则
 // 都对应其中一种 —— YAML 一旦改用别的形状（多行 `branches:`、step 名写在 `id:` 之后），表现是测试红，
 // 不是静默漏检。
-import { POLICY_CHECKS } from '../../scripts/check-policies.mjs'
-
 export const RELEASE_BRANCH = 'changeset-release/main'
 
 // main 保护规则集唯一要求的上下文名；它保持单个 job 名，便于 ruleset 稳定绑定。
 export const REQUIRED_CONTEXT = 'check'
 
+// `format-clean` 由 `check-code` 的 `vp check` 覆盖，不在 required job 里重复执行。
+const ciPolicyChecks = ['command-conventions', 'no-mutual-links', 'turbo-cache-invariant', 'web-ui-docs-inputs']
+
 export const requiredPolicyStep = {
   name: 'Check repository policies',
   job: 'check',
   shell: 'bash',
-  runs: POLICY_CHECKS.filter(name => name !== 'format-clean').map(name => '.agents/checks/' + name)
+  runs: ciPolicyChecks.map(name => '.agents/checks/' + name)
 }
 
 const mergedIntoReleaseBranch = `github.event.pull_request.merged == true && github.event.pull_request.head.ref == '${RELEASE_BRANCH}'`
@@ -84,7 +85,7 @@ export const workflows = {
         name: 'Create or update version pull request',
         needs: [],
         // 收窄的安装面是刻意的：这个 job 的 version-script 会跑 interweave 的 sync:version，
-        // 而它现在必须是纯 node（见 apps/interweave/scripts/version-sync.test.mjs）。
+        // 而它现在必须是纯 node（见 apps/interweave/scripts/sync-version.test.mjs）。
         toolchain: { 'mise-install': 'node pnpm' },
         concurrency: {
           group: '${{ github.workflow }}-${{ github.repository }}-${{ github.ref }}-version',

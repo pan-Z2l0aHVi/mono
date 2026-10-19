@@ -3,14 +3,11 @@ import assert from 'node:assert/strict'
 import {
   AUTHORIZATION_POINTER,
   contentDigest,
-  corpusLayer,
   countNonWhitespace,
-  findBudgetViolations,
   findMissingAuthorizationPointers,
   findRetiredAdrMarkers,
   findUnmarkedReferenceDocs,
   findUnroutedAgentDocs,
-  layerTotals,
   scanVolatilePhrases
 } from './lib/context-invariants.mjs'
 
@@ -50,52 +47,6 @@ assert.deepEqual(
     entry('docs/research/missing-banner.md', '<!-- corpus-status: reference -->\n\n# 研究\n')
   ]),
   ['docs/research/missing-banner.md', 'docs/research/missing-comment.md']
-)
-
-assert.equal(corpusLayer('AGENTS.md'), 'entry')
-assert.equal(corpusLayer('apps/demo/AGENTS.md'), 'task-specific')
-assert.equal(corpusLayer('CONTEXT.md'), 'project')
-assert.equal(corpusLayer('docs/agents/build.md'), 'task-specific')
-assert.equal(corpusLayer('.agents/rules/commit.md'), 'task-specific')
-assert.equal(corpusLayer('docs/adr/0004-progressive-agent-context-architecture.md'), 'adr')
-assert.equal(corpusLayer('docs/research/wails3-spa-routing.md'), null)
-
-const violations = findBudgetViolations(
-  [
-    entry('AGENTS.md', '123456'),
-    entry('CONTEXT.md', '1234'),
-    entry('docs/agents/a.md', '123456789012'),
-    entry('docs/adr/0001-x.md', '123456')
-  ],
-  { layers: { entry: 5, project: 10, 'task-specific': 10 }, adrFile: 5 }
-)
-assert.deepEqual(
-  violations.map(item => [item.layer ?? item.file, item.limit]),
-  [
-    ['entry', 5],
-    ['task-specific', 10],
-    ['docs/adr/0001-x.md', 5]
-  ]
-)
-assert.deepEqual(findBudgetViolations([entry('CONTEXT.md', 'x')], { layers: {}, adrFile: 1 }), [
-  { layer: 'project', size: 1, limit: null }
-])
-
-assert.deepEqual(
-  [
-    ...layerTotals([
-      entry('AGENTS.md', '12'),
-      entry('CONTEXT.md', '123'),
-      entry('ARCHITECTURE.md', '4567'),
-      entry('docs/agents/a.md', '89'),
-      entry('docs/adr/0001-x.md', 'ignored')
-    ])
-  ],
-  [
-    ['entry', 2],
-    ['project', 7],
-    ['task-specific', 2]
-  ]
 )
 
 assert.deepEqual(

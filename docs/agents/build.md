@@ -62,4 +62,4 @@ CI 构建 workspace 包并跳过 Interweave app wrapper；Wails verify / release
 
 ## PR changeset gate
 
-PR changeset gate 由 CI 对 PR base/head 执行 `.agents/checks/changeset-required`；本地 `ci:check-policies` 不运行该检查。版本 PR 按条件豁免。required check 覆盖 CI 与仓库硬约束，不等于 PR review；review 规则见 [`review.md`](review.md)。
+PR changeset gate 由 CI 对 PR base/head 执行 `.agents/checks/changeset-required`；本地 pre-commit 政策检查不运行该检查。版本 PR 按条件豁免。required check 覆盖 CI 与仓库硬约束，不等于 PR review；review 规则见 [`review.md`](review.md)。

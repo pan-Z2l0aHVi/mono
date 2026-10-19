@@ -73,7 +73,7 @@ try {
     assert.equal(git('diff', '--cached', '--raw'), beforeIndex, command + ' must not mutate the index')
     assert.equal(fs.existsSync(marker), false, command + ' must not run checks or fixer')
   }
-  assert.match(run('guard', '--task', 'adapter-task').stderr, /pnpm ci:check-policies/)
+  assert.match(run('guard', '--task', 'adapter-task').stderr, /docs\/agents\/commit\.md/)
   assert.match(run('freeze', '--task', 'adapter-task').stderr, /pnpm fix-code.*git add/s)
 
   // 旧 done 明确映射为新 close，并继续将 JSON 保持在 stdout。

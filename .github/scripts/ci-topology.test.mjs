@@ -427,7 +427,7 @@ for (const file of onDisk) {
 
 // 不变量 1 的可静态判定部分：job 声明的安装面必须覆盖它自己调用的 mise 管理命令。P0 的事故就是这个
 // job 只装 node+pnpm 却要跑链接桌面库的 wails3 —— 那是运行期 spawn，这里查不到，由
-// apps/interweave/scripts/version-sync.test.mjs 用「PATH 里没有 wails3」的实跑钉住。
+// apps/interweave/scripts/sync-version.test.mjs 用「PATH 里没有 wails3」的实跑钉住。
 const miseManagedCommands = new Set(['node', 'pnpm', 'wails3', 'go', 'playwright'])
 
 // 命令名取每条 run 的第一个非赋值 token：`FOO=bar pnpm …` 的命令名在赋值之后；`if [[ … ]]`、

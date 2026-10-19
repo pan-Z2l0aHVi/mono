@@ -86,7 +86,7 @@ for rejected_name in 'check:Code' 'check_code' 'agent:task!' 'ci:validate:' ':co
 done
 
 # 合法形状的正例，防止判定被收得过紧。
-for accepted_name in build agent:task-ledger agent:task ci:check-policies ci:validate-context check-code fix-go dev:react-web-ui-demo; do
+for accepted_name in build agent:task-ledger agent:task ci:validate-context check-code fix-go dev:react-web-ui-demo; do
   if ! is_valid_name "$accepted_name"; then
     fail "validator must accept $accepted_name"
   fi

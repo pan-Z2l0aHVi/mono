@@ -4,6 +4,7 @@
 - **Status**: 已接受
 - **Amends**: [ADR-0014](0014-task-system-v2.md) 与 [ADR-0024](0024-task-tiering-v3.md) 的 task 状态、review、approval、验证和提交 gate
 - **Relates to**: [ADR-0018](0018-task-state-in-tmpdir.md)（临时目录中的本地 task 台账）、[ADR-0021](0021-orchestration-layer-moved-to-herdr-projects.md)（worktree 与编排边界）
+- **Amended by**: 2026-10-19 —— 退役 `ci:check-policies` 包装入口；pre-commit 与 PR CI 直接执行 `.agents/checks/` 下的同一组只读检查，检查集合与失败语义不变
 
 ## 背景与取舍
 
@@ -13,7 +14,7 @@
 
 本地登记由 `agent:task-ledger` 负责，只记录归属、进度、issue 与 PR 引用；schema v3 状态为 `open`、`active`、`closed`、`dropped`，不记录 review、approval、验证阶段或 diff hash。`agent:task` 仅作为临时 deprecated adapter，旧 `done` 映射为 `close`；`guard`、`freeze`、`review`、`approve`、`verify` 已移除。整理由实施者显式运行 `fix-code`，检查改动后只暂存预期文件。
 
-仓库政策检查由独立 `ci:check-policies` 执行固定的五项只读检查，不读取 task 台账；pre-commit 调用同一入口。PR CI 从导出的政策清单派生四项 required check job 内的 policy checks，`format-clean` 由 `check-code` 覆盖；PR changeset 政策仍由 CI 使用 PR base/head commit 比较，release 主分支豁免由 workflow 表达。登记、检查和整理入口彼此独立，不把检查结果写回 task 状态。
+仓库政策检查由 `.agents/checks/` 下的五项固定只读检查组成，不读取 task 台账；pre-commit 在提交时依次执行这组检查。PR CI 的 policy step 直接执行其中四项，`format-clean` 由 `check-code` 覆盖；PR changeset 政策仍由 CI 使用 PR base/head commit 比较，release 主分支豁免由 workflow 表达。登记、检查和整理入口彼此独立，不把检查结果写回 task 状态。
 
 T0/T1 在 PR 阶段由独立的本地 reviewer 检查实际源码、完整差异与验证证据，并将结果和覆盖的 base/head SHA 写入 PR 或持久交付记录。实施者自查、task 台账和 CI 不能替代 review。required check 执行 CI 和仓库硬约束，不等于 review；远端规则集当前要求哪些 context、是否要求 approving review 属于平台状态，以仓库当前规则为准。review 发表及 merge 仍按会话中的授权边界逐次执行。
 

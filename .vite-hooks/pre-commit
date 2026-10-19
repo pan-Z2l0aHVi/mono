@@ -1,1 +1,5 @@
-mise exec -- pnpm ci:check-policies
+mise exec -- sh -c '
+for check in command-conventions format-clean no-mutual-links turbo-cache-invariant web-ui-docs-inputs; do
+  ".agents/checks/$check" || exit 1
+done
+'

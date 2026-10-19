@@ -13,6 +13,9 @@ try {
     execFileSync(process.execPath, [script], { cwd: unrelatedCwd, encoding: 'utf8' }),
     /validate-context passed/
   )
+  const report = execFileSync(process.execPath, [script, '--report'], { cwd: unrelatedCwd, encoding: 'utf8' })
+  assert.match(report, /Context corpus report/)
+  assert.match(report, /largest corpus docs/)
 } finally {
   fs.rmSync(unrelatedCwd, { recursive: true, force: true })
 }

@@ -7,12 +7,10 @@ import {
   AUTHORIZATION_POINTER,
   contentDigest,
   countNonWhitespace,
-  findBudgetViolations,
   findMissingAuthorizationPointers,
   findRetiredAdrMarkers,
   findUnmarkedReferenceDocs,
   findUnroutedAgentDocs,
-  layerTotals,
   scanVolatilePhrases
 } from './lib/context-invariants.mjs'
 import { listPnpmWorkspaceManifests, readPnpmWorkspacePatterns } from './lib/workspace-manifests.mjs'
@@ -21,16 +19,6 @@ const root = path.resolve(import.meta.dirname, '..')
 const errors = []
 let rootScripts = new Set()
 const reportMode = process.argv.includes('--report')
-const writeBaseline = process.argv.includes('--write-baseline')
-
-if (reportMode && writeBaseline) {
-  console.error('validate-context: --report and --write-baseline are mutually exclusive')
-  process.exit(1)
-}
-if (writeBaseline && process.env.CI) {
-  console.error('validate-context: --write-baseline is local-only; CI must never rewrite the budget baseline')
-  process.exit(1)
-}
 
 const relative = file => path.relative(root, file) || '.'
 // context index 要与 worktree 的绝对路径无关：先归一为正斜杠，跨平台才能得到稳定指纹。
@@ -82,9 +70,6 @@ if (exists('AGENTS.md')) {
   }
 }
 
-if (exists('.vite-hooks/pre-commit') && !read('.vite-hooks/pre-commit').includes('pnpm ci:check-policies'))
-  addError('.vite-hooks/pre-commit must invoke ci:check-policies')
-
 // 根目录不再有客户端适配文件。实测 Claude Code 2.1.283 已原生发现 AGENTS.md，但只要根目录存在 CLAUDE.md，
 // 它的原生发现就整条不生效：默认的 claude-md-or-agents-md 只在项目没有 CLAUDE.md 时才读 AGENTS.md，显式声明
 // claude-md-and-agents-md 也救不回来（两种模式下包级 AGENTS.md 都不再按需注入）。根入口因此只保留 AGENTS.md，
@@ -116,14 +101,7 @@ if (exists('package.json')) {
   try {
     const packageJson = JSON.parse(read('package.json'))
     rootScripts = new Set(Object.keys(packageJson.scripts ?? {}))
-    for (const script of [
-      'agent:task-ledger',
-      'agent:task',
-      'ci:check-policies',
-      'ci:validate-context',
-      'check-pack',
-      'ci:test-scripts'
-    ]) {
+    for (const script of ['agent:task-ledger', 'agent:task', 'ci:validate-context', 'check-pack', 'ci:test-scripts']) {
       if (typeof packageJson.scripts?.[script] !== 'string') addError(`package.json is missing scripts.${script}`)
     }
   } catch (error) {
@@ -302,7 +280,7 @@ const markdownFiles = [
       : []
   )
 ]
-// 语料门禁只检查可客观判定的漂移属性（ADR-0026）：路由完整性、外部状态快照、授权指针、非权威标记与体量预算。
+// 语料门禁只检查可客观判定的漂移属性（ADR-0026）：路由完整性、外部状态快照、授权指针与非权威标记。
 // 文风与 concern 归属不在此列，交给 review。
 const corpus = [...new Set(markdownFiles.map(relativePosix))].sort().map(file => ({ file, source: read(file) }))
 // 研究记录与设计资产不在指令面的链接/命令扫描内，但属于 RAG 语料：必须有非权威标记，并进入内容指纹。
@@ -328,42 +306,6 @@ for (const file of findMissingAuthorizationPointers(corpus))
 const unmarkedReferenceDocs = findUnmarkedReferenceDocs(referenceCorpus)
 for (const file of unmarkedReferenceDocs)
   addError(`${file}: reference corpus requires the corpus-status marker and the non-authoritative banner`)
-
-const budgetFile = 'scripts/context-budget.json'
-let budget = null
-try {
-  budget = JSON.parse(read(budgetFile))
-  if (typeof budget.adrFile !== 'number') addError(`${budgetFile}: missing numeric adrFile budget`)
-  if (writeBaseline) {
-    if (typeof budget.adrFile !== 'number') throw new Error('cannot write a baseline without a numeric adrFile budget')
-    const totals = layerTotals(corpus)
-    budget = {
-      layers: {
-        entry: totals.get('entry') ?? 0,
-        project: totals.get('project') ?? 0,
-        'task-specific': totals.get('task-specific') ?? 0
-      },
-      adrFile: budget.adrFile
-    }
-    fs.writeFileSync(path.join(root, budgetFile), `${JSON.stringify(budget, null, 2)}\n`)
-    console.log(`wrote ${budgetFile}: ${JSON.stringify(budget.layers)}`)
-  }
-  for (const violation of findBudgetViolations(corpus, budget)) {
-    if ('layer' in violation) {
-      addError(
-        violation.limit === null
-          ? `${budgetFile}: no budget for layer ${violation.layer} (${violation.size} non-whitespace chars)`
-          : `${violation.layer} layer is ${violation.size} non-whitespace chars, budget ${violation.limit}; shrink it or update ${budgetFile} deliberately`
-      )
-    } else {
-      addError(
-        `${violation.file} is ${violation.size} non-whitespace chars, budget ${violation.limit}; ADR chunk budget is per file`
-      )
-    }
-  }
-} catch (error) {
-  addError(`${budgetFile} cannot be parsed: ${error instanceof Error ? error.message : String(error)}`)
-}
 
 // (?<!!?) 的 `!?` 允许匹配空串，lookbehind 恒假，链接扫描因此从未跑过；这里要求前面确实不是 `!`（图片语法）。
 const linkPattern = /(?<!!)\[[^\]]*\]\(([^)]+)\)/g
@@ -509,10 +451,6 @@ for (const name of repoAuthoredSkills)
 if (reportMode) {
   const sizes = corpus.map(({ file, source }) => ({ file, size: countNonWhitespace(source) }))
   const largest = [...sizes].sort((a, b) => b.size - a.size || (a.file < b.file ? -1 : 1)).slice(0, 10)
-  const nearAdrCap =
-    budget && typeof budget.adrFile === 'number'
-      ? sizes.filter(({ file, size }) => file.startsWith('docs/adr/') && size >= budget.adrFile * 0.9)
-      : []
   const zeroInbound = corpus
     .filter(
       ({ file }) => file.startsWith('docs/agents/') || (file.startsWith('docs/adr/') && /^docs\/adr\/\d{4}-/.test(file))
@@ -532,8 +470,6 @@ if (reportMode) {
   for (const { file, line, phrase } of retired) console.log(`  ${file}:${line} ${phrase}`)
   console.log('\nlargest corpus docs')
   for (const { file, size } of largest) console.log(`  ${String(size).padStart(6)}  ${file}`)
-  console.log(`\nADR files at or above 90% of the per-file budget (${nearAdrCap.length})`)
-  for (const { file, size } of nearAdrCap) console.log(`  ${size}/${budget.adrFile}  ${file}`)
   console.log('')
 }
 

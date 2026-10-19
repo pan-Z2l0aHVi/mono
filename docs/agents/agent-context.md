@@ -52,7 +52,7 @@
 
 ## 语料门禁
 
-`ci:validate-context` 在链接与锚点之外检查可客观判定的漂移属性：task-specific 文档是否有根入口路由、外部状态快照短语、远端写命令是否带授权指针、非权威语料是否带标记，以及 `scripts/context-budget.json` 的体量预算与内容指纹。预算覆盖 entry、project 与 task-specific 三层总量和单个 ADR 的 chunk 体量；研究记录不设预算。判据与取舍见 [ADR-0026](../adr/0026-context-corpus-authority-and-drift-gates.md)。预算上调与 allowlist 变更必须在 diff 中显式发生，不能为让检查变绿而放宽模式。清理后下调预算；上调需在同一 diff 中说明理由，架构级增长需 ADR 或用户明确例外。`--write-baseline` 只供本地显式更新，禁止在 CI 运行；只读 `--report` 列出未路由、零入站、缺标记、活 ADR 退役痕迹与最大文档，不作为门禁。
+`ci:validate-context` 在链接与锚点之外检查可客观判定的漂移属性：task-specific 文档是否有根入口路由、外部状态快照短语、远端写命令是否带授权指针、非权威语料是否带标记，以及内容指纹。体量不设上限，也不维护预算基线；只读 `--report` 列出未路由、零入站、缺标记、活 ADR 退役痕迹与最大文档，不作为门禁。判据与取舍见 [ADR-0026](../adr/0026-context-corpus-authority-and-drift-gates.md)。allowlist 变更必须在 diff 中显式发生，不能为让检查变绿而放宽模式。
 
 ## 客户端适配
 
@@ -96,4 +96,4 @@
 
 落笔按架构层处理：写范围、权威、不变量与取舍；具体命令、文件路径、CI 步骤、版本号和工具子命令属于实现层，交给代码、测试或专门文档。实现层变化不应要求同步指令文档，除非它改变了边界本身。需要举例时用类别，不要复制当前清单。
 
-约束密度由 `scripts/context-budget.json` 的体量预算棘轮兜底；门禁只判定已观测漂移与可客观判定的属性，不做文风或语义质量 linter。治理准则：仓库校验通过时默认精简输出，只在失败时给完整定位；自建 skill 的 frontmatter `description` 精炼为高意图密度触发词，正文承载详细流程，第三方 skill 保持上游原文；根 `AGENTS.md` 与 `.agents/rules/` 保持静态与格式稳定，不混入时间戳或易变状态，以最大化 prefix cache 命中。
+约束密度不设体量门禁，由权威优先、退役清理与 review 承接；门禁只判定已观测漂移与可客观判定的属性，不做文风或语义质量 linter。治理准则：仓库校验通过时默认精简输出，只在失败时给完整定位；自建 skill 的 frontmatter `description` 精炼为高意图密度触发词，正文承载详细流程，第三方 skill 保持上游原文；根 `AGENTS.md` 与 `.agents/rules/` 保持静态与格式稳定，不混入时间戳或易变状态，以最大化 prefix cache 命中。
