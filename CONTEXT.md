@@ -39,6 +39,7 @@ _Avoid_: 本地 review phase、CI 绿即 review 通过
 | [0024](docs/adr/0024-task-tiering-v3.md)                                        | Task 分级 v3 与流程阶梯（台账与 gate 由 ADR-0025 修订） | 修改任务级别判据、worktree 起点或验证深度                                 |
 | [0025](docs/adr/0025-pr-review-flow.md)                                         | Task 台账 v3、政策检查与 PR 流程                        | 修改 task 登记簿、政策检查集合、PR changeset gate 或 review/merge 前核验  |
 | [0026](docs/adr/0026-context-corpus-authority-and-drift-gates.md)               | Context 语料权威与漂移门禁                              | 修改指令文档的权威标记、漂移门禁或 RAG 语料契约                           |
+| [0027](docs/adr/0027-script-execution-surfaces.md)                              | 脚本按执行面分类与统一入口                              | 修改政策检查集合、pre-commit / CI policy 入口或脚本目录布局               |
 
 ## 已知边界
 

@@ -1,11 +1,11 @@
 import assert from 'node:assert/strict'
-import { execFileSync, spawnSync } from 'node:child_process'
+import { execFileSync } from 'node:child_process'
 import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 
-const repoRoot = path.resolve(import.meta.dirname, '..')
-const checker = path.join(repoRoot, '.agents', 'checks', 'format-clean')
+import { run } from './format-clean.mjs'
+
 const root = fs.mkdtempSync(path.join(os.tmpdir(), 'greypan-format-clean-'))
 const env = {
   ...process.env,
@@ -23,21 +23,29 @@ function git(...args) {
   return execFileSync('git', ['-C', root, ...args], { env, encoding: 'utf8' }).trim()
 }
 
-function runCheck(extraEnv = {}) {
-  return spawnSync('/bin/sh', [checker], {
-    cwd: root,
+function check(extraEnv = {}) {
+  return run({
+    root,
     env: {
       ...env,
-      AGENT_VP_CMD: 'sh ' + toolStub + ' vp',
-      AGENT_STYLELINT_CMD: 'sh ' + toolStub + ' stylelint',
-      AGENT_GOFMT_CMD: 'sh ' + toolStub + ' gofmt',
+      AGENT_VP_CMD: `sh ${toolStub} vp`,
+      AGENT_STYLELINT_CMD: `sh ${toolStub} stylelint`,
+      AGENT_GOFMT_CMD: `sh ${toolStub} gofmt`,
       FORMAT_STUB_LOG: log,
       FORMAT_STUB_FAIL: failMarker,
       FORMAT_STUB_DIRTY_GO: dirtyGoMarker,
       ...extraEnv
-    },
-    encoding: 'utf8'
+    }
   })
+}
+
+async function failure(promise) {
+  try {
+    await promise
+  } catch (error) {
+    return error.message
+  }
+  assert.fail('expected format-clean to fail')
 }
 
 try {
@@ -78,8 +86,7 @@ try {
   fs.writeFileSync(path.join(root, 'ghost.mjs'), 'untracked, so never checked\n')
   git('add', 'demo 目录/a b.mjs', 'probe.css', 'probe.go')
 
-  const clean = runCheck()
-  assert.equal(clean.status, 0, clean.stderr || clean.stdout)
+  assert.match(await check(), /3 staged file\(s\) checked/)
   const callLines = fs.readFileSync(log, 'utf8').trim().split('\n')
   assert.ok(callLines.includes('vp|demo 目录/a b.mjs'))
   assert.equal(callLines.filter(line => line.startsWith('vp|')).length, 3)
@@ -93,20 +100,17 @@ try {
 
   fs.rmSync(log)
   fs.writeFileSync(failMarker, 'stub fails\n')
-  const vpFailure = runCheck()
-  assert.notEqual(vpFailure.status, 0)
-  assert.match(vpFailure.stdout, /stub: vp found issues/)
-  assert.match(vpFailure.stderr, /formatting, lint or types/)
-  assert.match(vpFailure.stderr, /never a type error/)
+  const vpMessage = await failure(check())
+  assert.match(vpMessage, /stub: vp found issues/)
+  assert.match(vpMessage, /formatting, lint or types/)
+  assert.match(vpMessage, /never a type error/)
   fs.rmSync(failMarker)
   fs.rmSync(log, { force: true })
 
   // A staged path beginning with a dash must fail before it reaches any tool argument.
   fs.writeFileSync(path.join(root, '--fix'), 'export const fix = 1\n')
   git('add', '--', '--fix')
-  const optionPath = runCheck()
-  assert.notEqual(optionPath.status, 0)
-  assert.match(optionPath.stderr, /staged path '--fix' starts with '-' and would be parsed/)
+  assert.match(await failure(check()), /staged path '--fix' starts with '-'/)
   assert.equal(fs.existsSync(log), false)
   git('rm', '--cached', '--quiet', '--', '--fix')
   fs.rmSync(path.join(root, '--fix'))
@@ -114,9 +118,7 @@ try {
   // Git C-quotes names containing a double quote; the quoted spelling is not a path a formatter can inspect.
   fs.writeFileSync(path.join(root, 'probe".mjs'), 'export const quote = 1\n')
   git('add', '--', 'probe".mjs')
-  const quotedPath = runCheck()
-  assert.notEqual(quotedPath.status, 0)
-  assert.match(quotedPath.stderr, /git C-quoted a staged path/)
+  assert.match(await failure(check()), /git C-quoted a staged path/)
   assert.equal(fs.existsSync(log), false)
   git('rm', '--cached', '--quiet', '--', 'probe".mjs')
   fs.rmSync(path.join(root, 'probe".mjs'))
@@ -125,13 +127,12 @@ try {
   fs.writeFileSync(dirtyGoMarker, 'gofmt reports output\n')
   fs.writeFileSync(path.join(root, 'probe-two.go'), 'package main\n')
   git('add', 'probe-two.go')
-  const goFailure = runCheck()
-  assert.notEqual(goFailure.status, 0)
-  assert.match(goFailure.stderr, /probe-two\.go/)
-  assert.match(goFailure.stderr, /formatting, lint or types/)
-  assert.match(goFailure.stderr, /gofmt -w <files>/)
+  const goMessage = await failure(check())
+  assert.match(goMessage, /probe-two\.go/)
+  assert.match(goMessage, /formatting, lint or types/)
+  assert.match(goMessage, /gofmt -w <files>/)
 
-  process.stdout.write('scripts/format-clean.test.mjs: all assertions passed\n')
+  process.stdout.write('scripts/checks/format-clean.test.mjs: all assertions passed\n')
 } finally {
   fs.rmSync(root, { recursive: true, force: true })
 }
