@@ -1,4 +1,8 @@
+<!-- corpus-status: reference -->
+
 # web-ui 手写 -webkit- 前缀与 lightningcss 自动前缀调研（iOS 16.4+）
+
+> 状态：非权威参考（时点性研究）。结论以现行 ADR、源码与测试为准。
 
 > 回答「vite-plus 的 lightningcss 能否为 `*.css?inline` 导入自动生成 `-webkit-` 前缀，从而删掉 web-ui 里手写的前缀」。调研日期 2026-09-14。所有论断追溯一手来源：`@voidzero-dev/vite-plus-core@0.3.0` 源码（本仓库 `node_modules/vite`）、`lightningcss@1.33.0` 源码/README/类型声明、MDN Browser Compat Data 8.1.1、Vite 官方文档（vite.dev）；关键行为在本机实测。标注：「源码事实 / 官方文档 / 实测 / 推断」。
 

@@ -66,6 +66,7 @@ _Avoid_: 页面跳转、路由切换（避免与 router 概念混淆）
 | [0023](docs/adr/0023-layout-exposes-derived-mobile-viewport-state.md)           | Layout 暴露派生视口状态（`mobile` / `mobile-change`）   | 修改 layout 的断点判定、给组件加派生状态，或让 app 消费移动端判定         |
 | [0024](docs/adr/0024-task-tiering-v3.md)                                        | Task 分级 v3 与流程阶梯（台账与 gate 由 ADR-0025 修订） | 修改任务级别判据、worktree 起点或验证深度                                 |
 | [0025](docs/adr/0025-pr-review-flow.md)                                         | Task 台账 v3、政策检查与 PR 流程                        | 修改 task 登记簿、政策检查集合、PR changeset gate 或 review/merge 前核验  |
+| [0026](docs/adr/0026-context-corpus-authority-and-drift-gates.md)               | Context 语料权威与漂移门禁                              | 修改指令文档的权威标记、门禁、体量预算或 RAG 语料契约                     |
 
 ## Interweave 产品与领域词汇
 

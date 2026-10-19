@@ -2,10 +2,8 @@
 
 - **Date**: 2026-09-14
 - **Status**: 已接受
-- **Amends**: 已删除的 ADR-0011「Agent 模型绑定与思考强度分档」的「后果」中关于角色契约执行体自述参与机械校验的说明（该 ADR 已随多 Agent 编排层于 2026-10-03 整体移除）
 - **Relates to**: [ADR-0004](0004-progressive-agent-context-architecture.md)
 - **Superseded by**: ADR-0014 —— 本 ADR 的风险分级表被 `level`（t0/t1/t2）取代；第 3、4 节的 `scripts/audit-instructions.mjs` 与两个约束预算基线文件已随 ADR-0014 退役，不再维护（仍生效的部分只有预授权操作清单，已并入 `docs/agents/workflow.md`）
-- **2026-10-03 注记**：原「Further amended by」指向的 Role/Supervisor ADR 随多 Agent 编排层整体移除，相关现行权威不复存在
 
 ## 背景
 

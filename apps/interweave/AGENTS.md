@@ -9,7 +9,7 @@
 - 前端保留模块边界，即 [`frontend/src/`](frontend/src/) 下的 [`components/`](frontend/src/components/)、[`pages/`](frontend/src/pages/)、[`stores/`](frontend/src/stores/)、[`composables/`](frontend/src/composables/) 和 [`services/`](frontend/src/services/)，以及由 `vue-router/vite` 从 [`frontend/src/pages/`](frontend/src/pages/) 生成的 file-based 路由表。
 - 应用壳只有一套：[`frontend/src/components/AppLayout.vue`](frontend/src/components/AppLayout.vue) 独占 `web-ui-layout` 与 [`frontend/src/components/AppNav.vue`](frontend/src/components/AppNav.vue)，`RouterView` 只往默认 slot 换页面内容。
 - 页面需要顶部工具条时，在多根 fragment 的根节点上写 `slot="header"`，不要自带 `web-ui-layout`，也不要在模板里按 route meta 分叉壳。分叉会让切路由重建 sidebar，掐断正在播放的图标画线动画。
-- [`frontend/src/pages/library/index.vue`](frontend/src/pages/library/index.vue) 是已实现的资源库页；[`frontend/src/pages/tags/index.vue`](frontend/src/pages/tags/index.vue)、[`frontend/src/pages/map/index.vue`](frontend/src/pages/map/index.vue) 和 [`frontend/src/pages/settings/index.vue`](frontend/src/pages/settings/index.vue) 仍是 `web-ui-empty` 占位，尚未实现。
+- 页面是否已实现以 [`frontend/src/pages/`](frontend/src/pages/) 下的当前代码为准；未实现页面用 `web-ui-empty` 占位。
 - 不保留泛化的 `@api/*` 或 `@bindings/*` alias。第一个公开 Service 生成后，再按实际生成路径只为 `library` 或 `native` 建立显式 alias。
 
 ## 领域与产品边界

@@ -1,4 +1,8 @@
+<!-- corpus-status: reference -->
+
 # web-ui 浮层审计（issue #120 遗留项）
+
+> 状态：非权威参考（时点性研究）。结论以现行 ADR、源码与测试为准。
 
 审计日期 2026-09-16，分支 `release/260917`，范围 `packages/web-ui`。本文件只做风险清单，**不实施**；修复按 Block → Should fix → Watch 拆独立 task。
 

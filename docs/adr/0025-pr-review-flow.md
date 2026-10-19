@@ -15,7 +15,7 @@
 
 仓库政策检查由独立 `ci:check-policies` 执行固定的五项只读检查，不读取 task 台账；pre-commit 调用同一入口。PR CI 从导出的政策清单派生四项 required check job 内的 policy checks，`format-clean` 由 `check-code` 覆盖；PR changeset 政策仍由 CI 使用 PR base/head commit 比较，release 主分支豁免由 workflow 表达。登记、检查和整理入口彼此独立，不把检查结果写回 task 状态。
 
-T0/T1 在 PR 阶段由独立的本地 reviewer 检查实际源码、完整差异与验证证据，并将结果和覆盖的 base/head SHA 写入 PR 或持久交付记录。实施者自查、task 台账和 CI 不能替代 review。当前唯一 required context `check` 执行 CI 和仓库硬约束，不等于 review；当前规则集未配置 required approving review 或自动 reviewer。review 发表及 merge 仍按会话中的授权边界逐次执行。
+T0/T1 在 PR 阶段由独立的本地 reviewer 检查实际源码、完整差异与验证证据，并将结果和覆盖的 base/head SHA 写入 PR 或持久交付记录。实施者自查、task 台账和 CI 不能替代 review。required check 执行 CI 和仓库硬约束，不等于 review；远端规则集当前要求哪些 context、是否要求 approving review 属于平台状态，以仓库当前规则为准。review 发表及 merge 仍按会话中的授权边界逐次执行。
 
 `pull_request` workflow 默认验证 GitHub 生成的 base/head 合并对象；strict required status 要求 PR 分支保持最新 base。Squash 会创建新的提交，因此不据此宣称合并 commit 或 tree 与此前测试对象恒等。按需复检 main CI 使用 `workflow_dispatch`，不改变当前事件拓扑。
 

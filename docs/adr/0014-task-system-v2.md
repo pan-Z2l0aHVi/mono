@@ -2,11 +2,8 @@
 
 - **Date**: 2026-09-18
 - **Status**: 已接受
-- **Supersedes**: 已删除的 ADR-0010「Agent 角色编排」的任务状态机与 mode 词汇、[ADR-0012](0012-instruction-risk-tiering-and-pre-authorized-operations.md) 的风险分级表（前者的 ADR 已随多 Agent 编排层于 2026-10-03 整体移除）
-- **Amends**: 已删除的 ADR-0011「Agent 模型绑定与思考强度分档」（角色默认模型与思考强度分档取消，模型与思考强度由用户会话设置；该 ADR 已随多 Agent 编排层于 2026-10-03 整体移除）
-- **Amended by**: 已删除的 ADR-0016「实施期 Supervisor」（Role、Supervisor 和 coordination 不进入 task state；该 ADR 已随多 Agent 编排层于 2026-10-03 整体移除）
+- **Supersedes**: [ADR-0012](0012-instruction-risk-tiering-and-pre-authorized-operations.md) 的风险分级表，以及已退役编排层 ADR 的任务状态机与 mode 词汇（历史见 git）
 - **Amended by**: ADR-0018 —— §3 的状态落点被取代：`<git-common-dir>/tasks/` 改为 `$TMPDIR/greypan/tasks/`，task state 的定位从「唯一执行真相」改为可丢失的本地工作记忆。状态机、级别、快照口径、guard 与政策检查全部决策不变
-- **2026-10-03 注记**：原「Superseded by」指向的编排解耦 ADR 一并移除，其确立的原则（coordination 独立于 task、元数据落 `$TMPDIR`）随编排层退役；级别、状态机、证据、政策检查与 playbook 决策全部不变
 
 2026-10-18 注记：ADR-0025 以 schema v3 的本地登记簿和独立政策检查器取代本文的质量相位、diffHash、review、approval、verify 与提交 gate；级别判据、T0/T1 干净起点、task 归属和 playbook 原则继续适用。
 

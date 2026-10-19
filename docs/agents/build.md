@@ -54,7 +54,7 @@ Interweave 由 Wails 宿主管理嵌套前端，其 alias 只启动 Wails host�
 
 CI 构建 workspace 包并跳过 Interweave app wrapper；Wails verify / release 在原生 runner 上构建 frontend 依赖闭包并打包应用。workflow 的 path filter 由 frontend package manifests 的传递依赖图校验。npm 发布通过 Trusted Publishing 绑定 workflow 文件路径，重命名 `npm-publish.yml` 需同步更新 npm 注册。
 
-合并门控要求 `check` 上下文通过，并采用 strict 策略。`GITHUB_TOKEN` 创建的版本 PR 可能需要人工批准挂起的 run；不归属到具体用户的改动需要额外 approval，且 PR 作者不能批准自己的改动。此 access-control approval 不等于独立 review，review 规则见 [`review.md`](review.md)；挂起与发布恢复的操作细节见 [`release.md`](release.md)。
+合并门控只放行 required checks 通过的 PR；具体 context 集合与 strict 策略属于远端规则集状态，以仓库当前规则为准。`GITHUB_TOKEN` 创建的版本 PR 可能需要人工批准挂起的 run；不归属到具体用户的改动需要额外 approval，且 PR 作者不能批准自己的改动。此 access-control approval 不等于独立 review，review 规则见 [`review.md`](review.md)；挂起与发布恢复的操作细节见 [`release.md`](release.md)。
 
 `deploy-pages.yml` 为每个 `apps/<name>` 发布到 `/mono/<name>/`，没有根落地页。History 路由的深层链接依赖 404 回退：应用必须在创建路由器之前恢复 `redirect`，未知路径保持 404。
 
@@ -62,4 +62,4 @@ CI 构建 workspace 包并跳过 Interweave app wrapper；Wails verify / release
 
 ## PR changeset gate
 
-PR changeset gate 由 CI 对 PR base/head 执行 `.agents/checks/changeset-required`；本地 `ci:check-policies` 不运行该检查。版本 PR 按条件豁免。required status context 仍只有 `check`，它覆盖 CI 与仓库硬约束，不等于 PR review；review 规则见 [`review.md`](review.md)。
+PR changeset gate 由 CI 对 PR base/head 执行 `.agents/checks/changeset-required`；本地 `ci:check-policies` 不运行该检查。版本 PR 按条件豁免。required check 覆盖 CI 与仓库硬约束，不等于 PR review；review 规则见 [`review.md`](review.md)。

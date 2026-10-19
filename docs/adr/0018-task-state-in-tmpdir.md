@@ -3,7 +3,6 @@
 - **Date**: 2026-09-28
 - **Status**: 已接受
 - **Amends**: [ADR-0014](0014-task-system-v2.md) §3 的状态落点（「状态存 `<git-common-dir>/tasks/<task-id>.json`，跨 worktree 共享」）与「后果」节「`<git-common-dir>/tasks/` 是唯一执行真相」一句
-- **Relates to**: 已删除的编排层 ADR（编排已与 task 解耦；evidence 不进 task state）——两者均随多 Agent 编排层于 2026-10-03 整体移除
 
 2026-10-18 注记：ADR-0025 保留 `$TMPDIR/greypan/tasks/` 的物理落点，当前 schema、status 与恢复规则见 docs/agents/task-ledger.md。
 

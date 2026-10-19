@@ -1,4 +1,8 @@
+<!-- corpus-status: reference -->
+
 # monorepo 根 `tsconfig.json`（solution style）与 TypeScript Project References 调研
+
+> 状态：非权威参考（时点性研究）。结论以现行 ADR、源码与测试为准。
 
 > 回答「根 `tsconfig.json` 用 solution style（`{"files": [], "references": [...]}`）在 monorepo 里是否有真实价值；主流开源 monorepo 实际怎么组织根 tsconfig 与 TypeScript project references」。调研日期 2026-10-09。官方论断追溯 typescriptlang.org / devblogs.microsoft.com；真实仓库论断追溯 GitHub 默认分支（main/master）的原始文件（ref = 抓取时的分支 HEAD）；本仓库行为在 TS 6.0.3 下用受控例程实测。逐条标注「官方文档 / 源码事实 / 实测 / 推断」。
 

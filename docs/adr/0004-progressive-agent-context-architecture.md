@@ -2,8 +2,9 @@
 
 - **Date**: 2026-08-09
 - **Status**: 已接受
-- **Amended by**: 2026-10-03 —— Session Role 层整体退役（见下文两节）；四层架构本身不变
+- **Amended by**: 2026-10-03 —— Session Role 层整体退役（历史见 git）；四层架构本身不变
 - **Amended by**: 2026-10-18 —— ADR-0025 将 task 登记簿、五项本地政策检查与 PR 流程拆为独立职责；context 职责表和 Task-specific 文档权威同步
+- **Amended by**: ADR-0026 —— 增加语料权威标记、漂移门禁与体量棘轮；补充见 ADR-0026，本文不复制其规则
 
 ## 背景
 
@@ -31,20 +32,6 @@
 `docs/agents/agent-context.md`「链接方向」一节已加入指向本条注记的指针，避免只由偏离方记录。
 
 新增 instruction、rule、skill 提示或 hook 之前，必须先判断代码边界、类型、测试、lint 或脚本能否更可靠地表达该约束。只有无法自动验证、且确实影响工程选择的约束才写入 instruction system。
-
-## 角色实施补充（2026-09-01；2026-09-24 修订；2026-10-03 废止）
-
-Session Role 层服务于显式调用的 herdr 编排，契约位于 `herdr-cos` skill 的 `roles/`。Role 描述会话身份、职责和完成条件，可以在同一会话中服务多个 task。Rules 定义约束，Skills 定义专业方法，Task 记录当前需求。
-
-Role 不注册为 Claude Code subagent，也不通过 `.claude/agents` symlink 暴露；普通单会话不承担 Role。Role 文档只描述自己的职责，不复制执行体选择规则、handoff 处方或编排时序。
-
-**2026-10-03 废止**：承载这一层的 `herdr-cos` skill 连同 Role 契约、编排账本与 supervisor 角色一并移除，本节保留为历史记录。当前 context 架构是上面四层：会话身份由客户端与会话本身承担，不再有独立的 Session Role 层。
-
-## 角色执行体绑定补充（2026-09-10；2026-09-24 修订；2026-09-30 废止）
-
-角色到执行体的默认绑定和启动参数曾由 herdr 编排 skill 维护；模型与思考强度由用户会话或 Manager 按任务指定，不设 Role 默认。Role 可以在同一会话中服务多个 task，Rules、Skills、Task 的分层不变。
-
-**2026-09-30 废止**：默认绑定被取消——执行体在建会话前当场选定。**2026-10-03 再次废止**：该问题随 Role 层整体退役，本节不构成现行指引。
 
 ## 后果
 
