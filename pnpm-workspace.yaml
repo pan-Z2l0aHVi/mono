@@ -50,13 +50,10 @@ catalog:
   babel-plugin-react-compiler: ^1.0.0
   browserslist: ^4.28.5
   change-case: ^5.4.4
-  clsx: ^2.1.1
   commitizen: ^4.3.2
   copy-to-clipboard: ^4.0.2
   cspell: ^10.1.1
   cz-git: ^1.14.0
-  dayjs: ^1.11.21
-  fake-indexeddb: ^6.2.5
   glob: ^13.0.6
   hast-util-to-html: ^9.0.5
   js-yaml: ^5.4.3
@@ -102,7 +99,6 @@ catalog:
   vue-router: ^5.1.0
   vue-tsc: ^3.3.11
   webpack: ^5.99.0
-  zod: ^4.4.3
   zustand: ^5.0.14
 
 catalogMode: prefer

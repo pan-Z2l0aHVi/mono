@@ -38,7 +38,7 @@ Codex 线程能不能写共享 Turbo cache，取决于客户端的权限配置�
 
 ## Go 缓存探测与共享
 
-`.mise.toml` 的 `[env]` 里 `GOCACHE` 通过 `exec` 模板在 `HERDR_ENV=1` 时运行一段探测：先试 macOS 的默认缓存目录，再试 Linux 的，都不可写才回落到 `$TMPDIR/greypan/go-build`。目的是让各工作区共享同一份 Go 缓存，而不是各自散在临时目录里。
+`.mise.toml` 的 `[env]` 里 `GOCACHE` 通过 `exec` 模板在 `HERDR_ENV=1` 时运行一段探测：先按平台试默认缓存目录（macOS 为 `~/Library/Caches/go-build`，Linux 为 `~/.cache/go-build`），再试另一平台的路径，都不可写才回落到 `$TMPDIR/greypan/go-build`。探测由 [`scripts/lib/go-cache-dir.sh`](../../scripts/lib/go-cache-dir.sh) 实现，是 `.mise.toml` bootstrap 的明确例外（只有 shell 实现）；[`go-cache-dir.test.mjs`](../../scripts/lib/go-cache-dir.test.mjs) 钉住平台优先、单行输出、exit 0 与探测文件清理。目的是让各工作区共享同一份 Go 缓存，而不是各自散在临时目录里。
 
 探测命令**永远 exit 0、仅输出一行**，这是 Tera 渲染的要求；`HERDR_ENV` 在场而 `TMPDIR` 为空时条件判假，避免渲染成根路径 `/greypan/go-build`。
 

@@ -10,12 +10,14 @@ go = "1.26.4"
 # 机制与回收范围见 docs/agents/worktree.md。
 TURBO_CACHE_DIR = "{% if env.GITHUB_ACTIONS == 'true' and env.TURBO_CACHE_DIR %}{{ env.TURBO_CACHE_DIR }}{% elif env.GITHUB_ACTIONS == 'true' and env.GITHUB_WORKSPACE %}{{ env.GITHUB_WORKSPACE }}/.turbo{% else %}{{ exec(command='sh scripts/lib/turbo-cache-dir.sh') | trim }}{% endif %}"
 
-# 仅 HERDR_ENV=1 且 TMPDIR 非空时执行探测：优先 macOS 默认路径，再试 Linux 默认路径，
-# 两者都不可写才回落到 $TMPDIR/greypan/go-build。
-# 探测的语义与降级行为见 docs/agents/worktree.md「Go 缓存探测与共享」，客户端权限边界见
-# docs/agents/environments.md。
+# 仅 HERDR_ENV=1 且 TMPDIR 非空时执行探测：按平台先试默认路径（macOS 为
+# ~/Library/Caches/go-build，Linux 为 ~/.cache/go-build），另一平台路径作为回退，
+# 两者都不可写才回落到 $TMPDIR/greypan/go-build。不能无条件先试 macOS 路径：Linux 上
+# mkdir 也会成功，会选错目录并创建 ~/Library。
+# 探测实现与测试在 scripts/lib/go-cache-dir.sh；语义与降级行为见 docs/agents/worktree.md
+# 「Go 缓存探测与共享」，客户端权限边界见 docs/agents/environments.md。
 # CI 无 HERDR_ENV 时模板渲染为空，Go 使用平台默认路径，ci.yml 的 actions/cache 读取
 # `go env GOCACHE` 不受影响。
 # Tera 要求：探测 exec 必须 exit 0 且只输出一行；HERDR_ENV 在场而 TMPDIR 为空时条件判假，
 # 避免渲染成根路径 /greypan/go-build。
-GOCACHE = "{% if env.HERDR_ENV and env.TMPDIR %}{{ exec(command='DM1=$HOME/Library/Caches/go-build; DM2=$HOME/.cache/go-build; FB=$TMPDIR/greypan/go-build; P=$$; if (mkdir -p $DM1 && touch $DM1/.herdr-gocache-probe.$P) 2>/dev/null; then echo $DM1; rm -f $DM1/.herdr-gocache-probe.$P; elif (mkdir -p $DM2 && touch $DM2/.herdr-gocache-probe.$P) 2>/dev/null; then echo $DM2; rm -f $DM2/.herdr-gocache-probe.$P; else echo $FB; fi') | trim }}{% endif %}"
+GOCACHE = "{% if env.HERDR_ENV and env.TMPDIR %}{{ exec(command='sh scripts/lib/go-cache-dir.sh') | trim }}{% endif %}"

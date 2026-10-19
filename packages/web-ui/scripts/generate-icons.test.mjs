@@ -68,6 +68,16 @@ try {
   assert.match(index, /export \{ default as testHouse \}/)
   assert.match(index, /export \{ default as bareDot \}/)
 
+  // 输入里移除的图标必须从生成目录消失；非生成文件不归这个脚本清理。
+  const stale = path.join(generatedDir, 'stale-icon.ts')
+  const foreign = path.join(generatedDir, 'keep.txt')
+  fs.writeFileSync(stale, 'stale\n')
+  fs.writeFileSync(foreign, 'keep\n')
+  assert.match(run(), /Generated 3 icons/)
+  assert.equal(fs.existsSync(stale), false)
+  assert.equal(fs.existsSync(foreign), true)
+  fs.rmSync(foreign)
+
   writeUsed(['test:missing'])
   assert.match(runExpectingFailure().stderr, /was not found in icons or aliases/)
 

@@ -11,18 +11,8 @@
 #   -b       - 可选 body（可多次使用，每次一行）
 #   --dry    - 仅显示 commit message，不实际提交
 #
-# type 白名单（与 commitlint.config.js 同步）:
-#   build | chore | ci | docs | feat | fix | perf | refactor | revert | style | test
-#
-# scope 白名单（权威是 commitlint.config.js 的 prompt.scopes，手动维护）:
-#   root
-#   apps: interweave | interweave-frontend | react-web-ui-demo | vue-web-ui-demo
-#   packages: browser-kit | deps-reload | js-kit | test-kit | tsconfig | unplugin-web-components | web-ui
-#   支持逗号分隔多 scope: "browser-kit,web-ui"
-#
-# cz-git 交互 prompt 的 emoji（仅供本文件与 commitlint.config.js 保持同步，**不进提交信息**）:
-#   feat: ✨  fix: 🐛  docs: 📚  style: 💎  refactor: 📦
-#   perf: 🚀  test: 🚨  build: 🛠  ci: ⚙️  chore: ♻️  revert: 🗑
+# type 的校验以 commitlint.config.js 为准；scope 由该文件的 cz-git prompt 提供建议，也允许自定义。
+# scope 支持逗号分隔多 scope: "browser-kit,web-ui"
 
 set -euo pipefail
 
@@ -62,28 +52,9 @@ if [ -z "${TYPE:-}" ] || [ -z "${SCOPE:-}" ] || [ -z "${SUBJECT:-}" ]; then
   echo "  bash scripts/workflow/commit.sh feat js-kit \"add url parser utility\"" >&2
   echo "  bash scripts/workflow/commit.sh fix web-ui,js-kit \"resolve hydration mismatch\" -b \"Fix race condition in SSR\"" >&2
   echo "" >&2
-  echo "type 白名单: build | chore | ci | docs | feat | fix | perf | refactor | revert | style | test" >&2
-  echo "scope 白名单: root | interweave | interweave-frontend | react-web-ui-demo | vue-web-ui-demo | browser-kit | deps-reload | js-kit | test-kit | tsconfig | unplugin-web-components | web-ui" >&2
+  echo "type 以 commitlint.config.js 为准；scope 建议来自其 cz-git prompt，支持逗号分隔多 scope" >&2
   exit 1
 fi
-
-# ── emoji 映射（与 commitlint.config.js 的 prompt.questions.type.enum 同步） ──
-get_emoji() {
-  case "$1" in
-    feat)     echo "✨" ;;
-    fix)      echo "🐛" ;;
-    docs)     echo "📚" ;;
-    style)    echo "💎" ;;
-    refactor) echo "📦" ;;
-    perf)     echo "🚀" ;;
-    test)     echo "🚨" ;;
-    build)    echo "🛠" ;;
-    ci)       echo "⚙️" ;;
-    chore)    echo "♻️" ;;
-    revert)   echo "🗑" ;;
-    *)        echo "" ;;
-  esac
-}
 
 # ── stash 泄漏守卫 ──
 # 任何 stash push/pop（手工或外部工具）都可能把旧的未提交变更残留在工作区。
@@ -97,7 +68,6 @@ if [ -n "$LEAKED" ]; then
   exit 1
 fi
 
-EMOJI=$(get_emoji "$TYPE")
 HEADER="${TYPE}(${SCOPE}): ${SUBJECT}"
 
 # 预览必须与真正提交的那一条逐字相同：--dry 的用途就是「看要提交什么」，而 commitlint 不接受

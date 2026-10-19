@@ -46,9 +46,19 @@ export async function run(context) {
   }
 
   // skill 出处以 skills-lock.json 为权威：登记在册的是第三方上游件，正文由上游维护（见 AGENTS.md 语言纪律），
-  // 其中的示例路径不作为本仓链接；未登记的即本仓自撰，必须列在下面。两边都不在就是出处未定。
-  const repoAuthoredSkills = new Set(['monorepo-change-impact', 'task-ledger', 'test-authoring'])
+  // 其中的示例路径不作为本仓链接；未登记但实体在根 skills/ 的即本仓自撰。两边都不在就是出处未定。
+  // 自撰集合从目录推导，新增 skill 不需要同步任何清单。
   const lockedSkills = new Set(Object.keys(JSON.parse(read('skills-lock.json')).skills))
+  const skillsRoot = path.join(root, 'skills')
+  const repoAuthoredSkills = new Set(
+    fs.existsSync(skillsRoot)
+      ? fs
+          .readdirSync(skillsRoot, { withFileTypes: true })
+          .filter(entry => entry.isDirectory())
+          .map(entry => entry.name)
+          .filter(name => !lockedSkills.has(name))
+      : []
+  )
 
   function fromLockedSkill(file) {
     const [first, second, third] = relative(file).split(path.sep)
@@ -440,6 +450,9 @@ export async function run(context) {
 
   // skill 的实体家是根 skills/（自撰写 + 依赖镜像）与 .agents/skills-vendored/（其余第三方）；
   // .agents/skills/ 里只有逐 skill 软链，walk 不跟随，所以出处检查直接走两个实体目录。
+  for (const name of repoAuthoredSkills)
+    if (!exists(`skills/${name}/SKILL.md`))
+      addError(`repoAuthoredSkills lists a skill without SKILL.md: skills/${name}`)
   for (const file of [
     ...walk('skills', file => path.basename(file) === 'SKILL.md'),
     ...walk('.agents/skills-vendored', file => path.basename(file) === 'SKILL.md')
@@ -449,9 +462,6 @@ export async function run(context) {
     if (repoAuthoredSkills.has(name) === lockedSkills.has(name))
       addError(`skills/${name}: provenance must be either skills-lock.json or repoAuthoredSkills, not both or neither`)
   }
-  for (const name of repoAuthoredSkills)
-    if (!exists(`skills/${name}/SKILL.md`))
-      addError(`repoAuthoredSkills lists a skill without SKILL.md: skills/${name}`)
 
   // 只读报表：把需要人工判断的语料卫生信号集中列出，不作为 CI 门禁。
   if (reportMode) {

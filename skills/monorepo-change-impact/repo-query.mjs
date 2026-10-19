@@ -257,6 +257,9 @@ if (command === 'contract') {
     console.log(`read first: ${result.readFirst.join(', ')}`)
     console.log('exports:')
     console.log(JSON.stringify(result.package.exports, null, 2))
+    console.log('peerDependencies:')
+    console.log(JSON.stringify(result.package.peerDependencies, null, 2))
+    console.log(`sideEffects: ${JSON.stringify(result.package.sideEffects)}`)
     console.log('verification:')
     for (const item of result.verification) console.log(`- ${item}`)
   }
@@ -390,10 +393,14 @@ if (command === 'contract-diff') {
 
 function getChangedPaths() {
   const paths = [...options.paths]
-  if (options.base) paths.push(...getGitPaths(['diff', '--name-only', '--diff-filter=ACMR', `${options.base}...HEAD`]))
-  if (options.staged) paths.push(...getGitPaths(['diff', '--name-only', '--diff-filter=ACMR', '--cached']))
+  // 删除与重命名的旧路径同样是消费者可见的变更；--no-renames 让重命名拆成 D + A，
+  // 避免只报新路径而漏掉旧 import/export 的影响面。
+  const diffFilter = ['--diff-filter=ACMRD', '--no-renames']
+  if (options.base)
+    paths.push(...getGitPaths(['diff', '--name-only', ...diffFilter, `${options.base}...HEAD`]))
+  if (options.staged) paths.push(...getGitPaths(['diff', '--name-only', ...diffFilter, '--cached']))
   if (options.worktree) {
-    paths.push(...getGitPaths(['diff', '--name-only', '--diff-filter=ACMR', 'HEAD']))
+    paths.push(...getGitPaths(['diff', '--name-only', ...diffFilter, 'HEAD']))
     paths.push(...getGitPaths(['ls-files', '--others', '--exclude-standard']))
   }
 
@@ -485,6 +492,20 @@ const focusedTests = Object.fromEntries(
 
 // host policy：context 体系路径（AGENTS.md / docs/agents / .agents 等）。其他仓库按自己的
 // context 布局调整本段与下面的验证目录。
+// 仓自撰 skill（实体在 skills/<name>/）同时承载 agent 指令与配套工具脚本；直接从目录派生，
+// 新增 skill 时无需同步任何前缀清单。skills-lock.json 登记的上游件不算仓自撰。
+const skillsRoot = path.join(root, 'skills')
+const lockPath = path.join(root, 'skills-lock.json')
+const lockedSkills = fs.existsSync(lockPath)
+  ? new Set(Object.keys(JSON.parse(fs.readFileSync(lockPath, 'utf8')).skills))
+  : new Set()
+const selfAuthoredSkillPaths = fs.existsSync(skillsRoot)
+  ? fs
+      .readdirSync(skillsRoot, { withFileTypes: true })
+      .filter(entry => entry.isDirectory() && !lockedSkills.has(entry.name))
+      .filter(entry => fs.existsSync(path.join(skillsRoot, entry.name, 'SKILL.md')))
+      .map(entry => `skills/${entry.name}/`)
+  : []
 const hasContextChange = normalizedPaths.some(
   file =>
     ['AGENTS.md', 'CLAUDE.md', 'CONTEXT.md', 'package.json', 'pnpm-workspace.yaml', 'turbo.json'].includes(file) ||
@@ -494,18 +515,18 @@ const hasContextChange = normalizedPaths.some(
     file.startsWith('docs/adr/') ||
     file.startsWith('scripts/checks/check-context') ||
     file.startsWith('scripts/lib/context-corpus') ||
-    file.startsWith('skills/task-ledger/') ||
     file.startsWith('scripts/lib/workspace-manifests') ||
-    file.startsWith('skills/monorepo-change-impact/')
+    selfAuthoredSkillPaths.some(prefix => file.startsWith(prefix))
 )
 const hasAgentToolChange = normalizedPaths.some(
   file =>
     file === 'pnpm-workspace.yaml' ||
     file.startsWith('scripts/checks/check-context') ||
     file.startsWith('scripts/lib/context-corpus') ||
-    file.startsWith('skills/task-ledger/') ||
     file.startsWith('scripts/lib/workspace-manifests') ||
-    file.startsWith('skills/monorepo-change-impact/') ||
+    file.startsWith('scripts/checks/test-scripts') ||
+    file.startsWith('scripts/lib/script-tests') ||
+    selfAuthoredSkillPaths.some(prefix => file.startsWith(prefix)) ||
     (file.startsWith('scripts/') && file.endsWith('.test.mjs'))
 )
 const hasContractToolChange = normalizedPaths.some(
@@ -542,8 +563,13 @@ const hasBrowserRuntimeChange = normalizedPaths.some(
 const hasReactRouteSourceChange = normalizedPaths.some(
   file => file.startsWith('apps/react-web-ui-demo/src/routes/') && !file.endsWith('/routeTree.gen.ts')
 )
-const hasWailsPublicApiChange = normalizedPaths.some(file =>
-  ['apps/interweave/index.go', 'apps/interweave/types.go'].includes(file)
+// 公开面是 main.go 的 Service 注册与 library/native 的 service 包；core/storage 等内部实现
+// 不直接出现在 bindings 里，测试文件也不改变公开 API。
+const hasWailsPublicApiChange = normalizedPaths.some(
+  file =>
+    file === 'apps/interweave/main.go' ||
+    (/^apps\/interweave\/backend\/(?:library|native)\/service\/[^/]+\.go$/.test(file) &&
+      !file.endsWith('_test.go'))
 )
 
 const context = new Set()
