@@ -33,9 +33,11 @@ PR CI 的机械性修复由对应 task owner 处理；逻辑、测试和契约�
 
 ## npm 发布重跑与 release notes
 
-`npm-publish.yml` 在发布前查询官方 npm registry 的精确包名和版本。receipt 只记录此时尚不存在的本地公共包版本，并绑定仓库、merge SHA 与 workflow run ID。首次尝试把 receipt 上传为该 run 的 artifact，保留 30 天；同一 run 的重试下载并验证原 receipt。receipt 丢失或身份不匹配时发布流程失败，不重新计算候选集合。首次尝试若在 receipt 上传前失败，后续 attempt 也不会重算 receipt；先人工确认缺失记录如何恢复。这样首次尝试发布过的补发包仍留在记录中，已存在的 diff 包不会被错误归到当前 merge。
+`npm-publish.yml` 在发布前查询官方 npm registry 的精确包名和版本。receipt 只记录此时尚不存在的本地公共包版本，并绑定仓库、merge SHA 与 workflow run ID。首次尝试把 receipt 上传为该 run 的 artifact，设置 30 天 retention。
 
-release-notes job 从 PR merge SHA、run ID 与 receipt 独立恢复候选包，因此可以单独重跑。publish 成功后，job 对官方 registry 的精确版本查询做有限重试；仍未出现的版本会让记录 job 失败。publish 明确失败时，job 只为 registry 已确认存在的候选版本创建记录，原发布 job 仍保持失败。包没有出现在本次 receipt 中时，不创建虚假的 GitHub Release。
+一次隔离 probe 中，prepare 首轮成功后，`rerun failed jobs` 复用了原 receipt；`release-notes` 单独重跑也要求原 receipt 仍可读取。同一 probe 的 `rerun all` 中，prepare 无法下载首轮 artifact；不能依赖 30 天 retention 保证全量重跑可恢复。首次上传前失败或重跑后 receipt 下载失败时，流程安全失败、不重新计算候选集合；应停止重试，人工核对原发布日志与官方 registry 状态后审定恢复方式。这样首次尝试发布过的补发包仍留在记录中，已存在的 diff 包不会被错误归到当前 merge。
+
+release-notes job 从 PR merge SHA、run ID 与仍可读取的 receipt 独立恢复候选包，因此可以单独重跑；它不依赖 publish job outputs。若 `rerun all` 后原 receipt 已不可用，该 job 会安全失败，不重算候选集合。publish 成功后，job 对官方 registry 的精确版本查询做有限重试；仍未出现的版本会让记录 job 失败。publish 明确失败时，job 只为 registry 已确认存在的候选版本创建记录，原发布 job 仍保持失败。包没有出现在本次 receipt 中时，不创建虚假的 GitHub Release。
 
 整个 npm publish workflow 按仓库串行运行，等待时不取消旧 run。`queue: max` 最多保留 100 个待运行项，GitHub 不承诺按事件先后顺序执行。
 

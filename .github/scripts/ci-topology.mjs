@@ -275,61 +275,6 @@ export const workflows = {
     },
     steps: {},
     stepIds: ['deployment']
-  },
-  'artifact-rerun-probe.yml': {
-    name: 'Probe artifact rerun recovery',
-    triggers: [{ on: 'pull_request', branches: ['main'], paths: ['.github/workflows/artifact-rerun-probe.yml'] }],
-    permissions: { contents: 'read' },
-    jobs: {
-      prepare: { needs: [], toolchain: {} },
-      consumer: { needs: ['prepare'], toolchain: {} }
-    },
-    steps: {
-      'Create first-attempt receipt fixture': 'github.run_attempt == 1',
-      'Save first-attempt receipt fixture': 'github.run_attempt == 1',
-      'Restore original receipt when prepare reruns': 'github.run_attempt > 1',
-      'Verify receipt identity': undefined,
-      'Verify consumer receipt identity': undefined,
-      'Simulate first-attempt publisher failure without publishing': 'github.run_attempt == 1'
-    },
-    stepJobs: {
-      'Create first-attempt receipt fixture': 'prepare',
-      'Save first-attempt receipt fixture': 'prepare',
-      'Restore original receipt when prepare reruns': 'prepare',
-      'Verify receipt identity': 'prepare',
-      'Verify consumer receipt identity': 'consumer',
-      'Simulate first-attempt publisher failure without publishing': 'consumer'
-    },
-    stepRuns: {
-      'Create first-attempt receipt fixture': [
-        'mkdir -p receipt-probe',
-        'printf \'%s\\n%s\\n\' "$PROBE_RUN_ID" "$PROBE_SHA" > receipt-probe/receipt.txt'
-      ],
-      'Verify receipt identity': [
-        'test "$(sed -n \'1p\' receipt-probe/receipt.txt)" = "$PROBE_RUN_ID"',
-        'test "$(sed -n \'2p\' receipt-probe/receipt.txt)" = "$PROBE_SHA"'
-      ],
-      'Verify consumer receipt identity': [
-        'test "$(sed -n \'1p\' receipt-probe/receipt.txt)" = "$PROBE_RUN_ID"',
-        'test "$(sed -n \'2p\' receipt-probe/receipt.txt)" = "$PROBE_SHA"'
-      ],
-      'Simulate first-attempt publisher failure without publishing': ['exit 1']
-    },
-    stepInputs: {
-      'Save first-attempt receipt fixture': [
-        'uses: actions/upload-artifact@v6',
-        'name: receipt-probe-${{ github.run_id }}',
-        'path: receipt-probe/receipt.txt',
-        'retention-days: 1',
-        'if-no-files-found: error'
-      ],
-      'Restore original receipt when prepare reruns': [
-        'uses: actions/download-artifact@v7',
-        'name: receipt-probe-${{ github.run_id }}',
-        'path: receipt-probe'
-      ]
-    },
-    stepIds: []
   }
 }
 
