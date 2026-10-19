@@ -47,7 +47,7 @@
 | 入口                     | 实现                         | 职责                                                                                                              |
 | ------------------------ | ---------------------------- | ----------------------------------------------------------------------------------------------------------------- |
 | `pnpm agent:task-ledger` | `scripts/task-ledger.mjs`    | 在系统临时目录记录 task 归属、进度与引用；不运行检查或修改工作区。字段与恢复说明见 `docs/agents/task-ledger.md`。 |
-| `pnpm ci:check-policies` | `scripts/check-policies.mjs` | 从当前 Git worktree 执行固定五项只读政策检查；不读取 task 登记。pre-commit 调用它。                               |
+| `pnpm ci:check-policies` | `scripts/check-policies.mjs` | 从当前 Git worktree 执行全部只读政策检查；不读取 task 登记。pre-commit 调用它。                                   |
 | `pnpm agent:task`        | `scripts/task.mjs`           | 旧登记 CLI 的临时迁移 adapter；正式使用 `agent:task-ledger`。                                                     |
 
 CI 拓扑断言从 `POLICY_CHECKS` 派生四条预期命令，required `check` job 在 YAML 中显式执行它们；`format-clean` 由 `check-code` 覆盖。PR changeset 检查仅在 CI 里按 base/head 执行。整理文件由实施者显式运行 `fix-code`，之后检查 diff 并只暂存预期文件。

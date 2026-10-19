@@ -22,15 +22,7 @@ bash scripts/commit.sh <type> <scope> "<subject>" --dry
 
 ## Pre-commit 与本地 checks
 
-受版本控制的 `.vite-hooks/pre-commit` 调用 `mise exec -- pnpm ci:check-policies`。该入口从当前 Git worktree 运行五项只读仓库政策检查，不读取 task state 或 `AGENT_TASK_*`：
-
-1. `command-conventions`
-2. `format-clean`
-3. `no-mutual-links`
-4. `turbo-cache-invariant`
-5. `web-ui-docs-inputs`
-
-缺少整个 `.agents/checks/` 目录、任一检查缺失或不可执行、或任何检查非零退出时，命令失败。成功 stdout 只有 JSON 结果；子检查日志写到 stderr。该门禁不运行 fixer、不改写文件或 index。`changeset-required` 不属于这五项本地政策，由 PR CI 使用 base/head SHA 执行，见 `release.md`。
+受版本控制的 pre-commit hook 调用 `mise exec -- pnpm ci:check-policies`。该入口从当前 Git worktree 运行全部只读仓库政策检查，不读取 task state 或 `AGENT_TASK_*`。缺少检查、任一检查不可执行或非零退出时命令失败；成功 stdout 只有 JSON 结果，子检查日志写到 stderr；该门禁不运行 fixer、不改写文件或 index。PR CI 的 changeset gate 不属于本地政策，见 `release.md`。
 
 `fix-code` 是实施者显式运行的工作树修复命令；它可能改写多个文件，但不会自动暂存。运行后检查 diff，再只暂存预期文件。pre-commit 不调用 `fix-code`。
 

@@ -45,7 +45,7 @@ _Avoid_: 页面跳转、路由切换（避免与 router 概念混淆）
 
 ## 关键 ADR
 
-表内只列仍承载现行决策的 ADR。多 Agent 编排层（Role、执行体选择、Supervisor、编排账本与 handoff）连同其 skill 已整体退役：0010、0011、0015-0017、0019、0020 从索引移除，0022（发布通道形态）因与 herdr-projects「一 task 一 PR 直接合进 `main`」的流程冲突整篇删除。这些历史只留在 git 里。0012 与 0014 行内提到该编排层的修订注记同样不构成现行指引。需求拆分与 task 派发由外部编排层承担，仓库侧由本地 Task 台账记录归属与进度，由独立政策检查器运行五项只读检查；职责分别见 docs/agents/task-ledger.md 与 docs/agents/commit.md、owner 与 worktree 唯一性边界（[`docs/agents/worktree.md`](docs/agents/worktree.md)）和发布责任面（[`docs/agents/release.md`](docs/agents/release.md)）。
+表内只列仍承载现行决策的 ADR。多 Agent 编排层（Role、执行体选择、Supervisor、编排账本与 handoff）连同其 skill 已整体退役：0010、0011、0015-0017、0019、0020 从索引移除，0022（发布通道形态）因与 herdr-projects「一 task 一 PR 直接合进 `main`」的流程冲突整篇删除。这些历史只留在 git 里。0012 与 0014 行内提到该编排层的修订注记同样不构成现行指引。需求拆分与 task 派发由外部编排层承担，仓库侧由本地 Task 台账记录归属与进度，由独立政策检查器运行只读政策检查；职责分别见 docs/agents/task-ledger.md 与 docs/agents/commit.md、owner 与 worktree 唯一性边界（[`docs/agents/worktree.md`](docs/agents/worktree.md)）和发布责任面（[`docs/agents/release.md`](docs/agents/release.md)）。
 
 | ADR                                                                             | 决策                                                    | 何时读取                                                                  |
 | ------------------------------------------------------------------------------- | ------------------------------------------------------- | ------------------------------------------------------------------------- |

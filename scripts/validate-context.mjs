@@ -50,11 +50,12 @@ function fromLockedSkill(file) {
 // 被删掉的是「指令文档语料必须存在」——它会随内容演进膨胀，反而阻止删减；被引用的文档由断链检查负责。
 if (!exists('AGENTS.md')) addError('missing required context file: AGENTS.md')
 
-// AGENTS.md 的章节标题与叙述措辞不再是契约。入口断言只保留「必经链接 + init 命令」两条；
+// AGENTS.md 的章节标题与叙述措辞不再是契约。入口断言只保留必经链接；
+// 具体命令由 task-ledger.md 与 CLI 承担。
 // 结构不变量锚点（<!-- invariant:... -->）是惰性注释，保留供人工检索，不再有机器校验（audit:instructions 已删除，见 ADR-0014）。
 if (exists('AGENTS.md')) {
   const agents = read('AGENTS.md')
-  for (const marker of ['docs/agents/workflow.md', 'docs/agents/task-ledger.md', 'pnpm agent:task-ledger new']) {
+  for (const marker of ['docs/agents/workflow.md', 'docs/agents/task-ledger.md']) {
     if (!agents.includes(marker)) addError(`AGENTS.md is missing mandatory marker: ${marker}`)
   }
 }

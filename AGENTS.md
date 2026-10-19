@@ -4,7 +4,7 @@
 
 ## 变更准入与登记
 
-改动任何文件前，先读 [`docs/agents/task-levels.md`](docs/agents/task-levels.md)，再按变更级别建 task：`pnpm agent:task-ledger new --task <task-id> --level t0|t1|t2`。级别与验证深度见那份文件；PR review 纪律见 [`docs/agents/review.md`](docs/agents/review.md)。本地登记命令与字段见 [`docs/agents/task-ledger.md`](docs/agents/task-ledger.md)，方案到合并的总流程与授权见 [`docs/agents/workflow.md`](docs/agents/workflow.md)。只做只读调查不用建 task。
+改动任何文件前，先读 [`docs/agents/task-levels.md`](docs/agents/task-levels.md)，再按变更级别建立 task。级别与验证深度见那份文件；PR review 纪律见 [`docs/agents/review.md`](docs/agents/review.md)。本地登记的生命周期与边界见 [`docs/agents/task-ledger.md`](docs/agents/task-ledger.md)，命令与字段以 CLI 为准；方案到合并的总流程与授权见 [`docs/agents/workflow.md`](docs/agents/workflow.md)。只做只读调查不用建 task。
 
 ## 项目身份
 
