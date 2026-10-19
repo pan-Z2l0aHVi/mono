@@ -6,11 +6,11 @@
 
 可构建的包使用 turbo 任务：`pnpm exec turbo <task> --filter=@greypan/<name>`。turbo 先完成 `^build`，裸 `pnpm --filter` 会绕过依赖构建，可能用到陈旧或缺失的 `dist`。包内非 turbo 脚本用 `pnpm --filter @greypan/<name> <script>` 直接运行。
 
-影响面查询见 `agent-context.md`，验证时点见 [`verification.md`](verification.md)。`check-pack` 在构建可发布包或修改 exports、files 或 Vite 输出时运行，验证实际发布文件与 manifest export targets。
+影响面与契约查询见 contract-change-review skill 的 SKILL.md，验证时点见 [`verification.md`](verification.md)。`check-pack` 在构建可发布包或修改 exports、files 或 Vite 输出时运行，验证实际发布文件与 manifest export targets。
 
 ## Demo 开发
 
-各 demo 与 Interweave 的开发命令见 [`commands.md`](commands.md) 的 `dev:` namespace。根目录 aliases 通过 Turbo `dev` task 构建上游工作区包，并启动每个包的持久 `dev` 进程。
+各 demo 与 Interweave 的开发命令以根 `package.json` 的 `dev:` namespace 为准。根目录 aliases 通过 Turbo `dev` task 构建上游工作区包，并启动每个包的持久 `dev` 进程。
 
 不要改用 `turbo watch`：包级 Vite 与 tsdown 监听器已经会重建源文件变更，`turbo watch` 还会监控 Git 控制文件，编辑器或 agent 工具更新工作树时可能重启全部 dev 进程。修改包图、lockfile 或 Turbo 配置后需重启开发命令；普通源文件变更由包级监听器继续处理。
 
@@ -20,7 +20,7 @@ Interweave 由 Wails 宿主管理嵌套前端，其 alias 只启动 Wails host�
 
 生成文件不是 source of truth，禁止手动编辑，但应运行仓库配置的 generator 让工具产生 diff，再验证生成结果与消费者。不要用复制、补丁或格式化工具直接改写输出。
 
-构建期自动生成的产物包括：`web-ui` 图标模块、React demo 的路由树、Vue demo 与 Interweave frontend 的路由类型与 auto-import 声明，以及 Interweave frontend 的 TypeScript bindings。每类产物都由同一个 generator 产生；具体命令与完成证据以各包配置、[`commands.md`](commands.md) 和相应测试为准。
+构建期自动生成的产物包括：`web-ui` 图标模块、React demo 的路由树、Vue demo 与 Interweave frontend 的路由类型与 auto-import 声明，以及 Interweave frontend 的 TypeScript bindings。每类产物都由同一个 generator 产生；具体命令与完成证据以各包配置和相应测试为准。
 
 [`packages/web-ui/docs/*.md`](../../packages/web-ui/docs/) 是 demo 示例与 API 表的唯一输入。generator 在 dev 与 build 时写盘，测试期只判不改；两个 demo 与 `web-ui` 的 parity 测试保证产物与 markdown 一致、两端产物逐字节一致。改动组件 API 必须同时改对应 markdown。生成器的输入契约与校验规则以 `@greypan/md-to-comp` 的测试为准。
 
