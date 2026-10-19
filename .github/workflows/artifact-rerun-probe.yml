@@ -1,0 +1,67 @@
+name: Probe artifact rerun recovery
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - '.github/workflows/artifact-rerun-probe.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  prepare:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: Create first-attempt receipt fixture
+        if: github.run_attempt == 1
+        shell: bash
+        env:
+          PROBE_RUN_ID: ${{ github.run_id }}
+          PROBE_SHA: ${{ github.sha }}
+        run: |
+          mkdir -p receipt-probe
+          printf '%s\n%s\n' "$PROBE_RUN_ID" "$PROBE_SHA" > receipt-probe/receipt.txt
+      - name: Save first-attempt receipt fixture
+        if: github.run_attempt == 1
+        uses: actions/upload-artifact@v6
+        with:
+          name: receipt-probe-${{ github.run_id }}
+          path: receipt-probe/receipt.txt
+          retention-days: 1
+          if-no-files-found: error
+      - name: Restore original receipt when prepare reruns
+        if: github.run_attempt > 1
+        uses: actions/download-artifact@v7
+        with:
+          name: receipt-probe-${{ github.run_id }}
+          path: receipt-probe
+      - name: Verify receipt identity
+        shell: bash
+        env:
+          PROBE_RUN_ID: ${{ github.run_id }}
+          PROBE_SHA: ${{ github.sha }}
+        run: |
+          test "$(sed -n '1p' receipt-probe/receipt.txt)" = "$PROBE_RUN_ID"
+          test "$(sed -n '2p' receipt-probe/receipt.txt)" = "$PROBE_SHA"
+  consumer:
+    needs: prepare
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - uses: actions/download-artifact@v7
+        with:
+          name: receipt-probe-${{ github.run_id }}
+          path: receipt-probe
+      - name: Verify consumer receipt identity
+        shell: bash
+        env:
+          PROBE_RUN_ID: ${{ github.run_id }}
+          PROBE_SHA: ${{ github.sha }}
+        run: |
+          test "$(sed -n '1p' receipt-probe/receipt.txt)" = "$PROBE_RUN_ID"
+          test "$(sed -n '2p' receipt-probe/receipt.txt)" = "$PROBE_SHA"
+      - name: Simulate first-attempt publisher failure without publishing
+        if: github.run_attempt == 1
+        run: exit 1
