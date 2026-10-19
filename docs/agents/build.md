@@ -87,7 +87,7 @@ frontend 的 [`turbo.json`](../../apps/interweave/frontend/turbo.json) 为 `buil
 - 私有原生应用的验证保持路径触发而非全局必需检查；`main` 的分支保护只要求 `check` 上下文通过，产品变更必须经 pull request 合入。私有原生应用的版本同步由 [apps/interweave/scripts/](../../apps/interweave/scripts/) 承担：`release-version.mjs` 是版本 workflow 的编排入口，`sync-version.mjs` 提供默认更新与 `--check` 验证语义；版本 workflow 不直接发布包或安装程序。
 - 合并门控来自 `main` 的规则集 `main protection`：要求 `check` 上下文，且 `strict_required_status_checks_policy` 为真。`action_required` 挂起是 GitHub 对 `GITHUB_TOKEN` 创建的版本 PR 的既有行为，仓库曾用条件 dispatch 缓解，该机制已删除，因为 dispatch 只是把同一轮验证再跑一遍，治不了挂起。现在挂起回归为人工一步，在 Actions 运行页批准，或执行 `gh api repos/<owner>/<repo>/actions/runs/<id>/approve`。同一规则集还开着 `require_extra_approval_for_unattributed_changes`，且 `required_approving_review_count` 为 0：不归属到具体用户的改动要多一道人工 approval，bot 创建的版本 PR 正命中这条。放行它是两道不同的门：先批准挂起的 run，再由有权且非 PR 作者的用户批准 PR；PR 作者不能用同一账号批准自己的改动。此 access-control approval 不等于本地独立 reviewer 的审查报告，具体 PR review 过程由 `review.md` 规定。若挂起重新成为常态，修法是让版本 PR 由有写权限的身份创建，也就是给 `changesets/action` 换用机器用户 PAT 或 GitHub App 令牌，而不是补回 dispatch。
 
-未经用户授权不执行发布。取得授权的机制（弹窗、推荐项与自定义输入）见 [`workflow.md`](workflow.md#怎么取得这个授权)。不得直接运行 `npm publish`，首次发布用 `pnpm publish-new-pack <package-dir>`。Git 检查的绕过禁令见 [`commit.md`](commit.md)。
+未经用户授权不执行发布。取得授权的机制见 [`workflow.md`](workflow.md#怎么取得这个授权)。不得直接运行 `npm publish`，首次发布用 `pnpm publish-new-pack <package-dir>`。Git 检查的绕过禁令见 [`commit.md`](commit.md)。
 
 ## PR changeset gate
 
