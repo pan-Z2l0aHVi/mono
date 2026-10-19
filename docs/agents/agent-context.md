@@ -26,8 +26,8 @@
 | 真实浏览器取证           | 根/包级 `AGENTS.md` 仅声明需要浏览器层                                          | [`runtime-verification.md`](runtime-verification.md) | 浏览器用例与 MCP 操作记录                      |
 | 该跑哪些验证             | 根/包级 `AGENTS.md` 只路由，不复制选择矩阵                                      | [`verification.md`](verification.md)                 | 相关测试与聚焦构建                             |
 | 影响面与契约查询         | 根入口不提供查询命令；工具接口见 monorepo-change-impact skill                   | monorepo-change-impact skill 的 SKILL.md             | 契约查询脚本与其测试                           |
-| 任务级别与准入           | 根 `AGENTS.md`「变更准入与登记」只给判定入口，不复制级别表                      | [`task-levels.md`](task-levels.md)                   | 登记 CLI 的级别与干净起点检查                  |
-| 本地登记簿与 Task Packet | 根 `AGENTS.md` 只路由，不复制 schema、命令或恢复处方                            | [`task-ledger.md`](task-ledger.md)                   | schema 迁移 fixture 与 status 查询             |
+| 任务级别与准入           | 根 `AGENTS.md`「变更准入与登记」只给判定入口，不复制级别表                      | task-ledger skill 的 SKILL.md                        | 登记 CLI 的级别校验                            |
+| 本地登记簿与 Task Packet | 根 `AGENTS.md` 只路由，不复制 schema、命令或恢复处方                            | task-ledger skill 的 SKILL.md                        | 记录 fixture 与 status 查询                    |
 | 预授权操作               | 根 `AGENTS.md` 只列被允许与需授权的类别                                         | [`workflow.md`](workflow.md)                         | 四项说明与用户选择记录                         |
 | 提交边界与署名           | 根 `AGENTS.md` 只路由授权边界，不复制操作清单                                   | [`commit.md`](commit.md)                             | pre-commit 政策检查与 PR CI 的 changeset gate  |
 | worktree 与缓存          | 根 `AGENTS.md` 说明 owner 与 worktree 唯一性                                    | [`worktree.md`](worktree.md)                         | 缓存不变量守卫                                 |
@@ -83,7 +83,7 @@
 | lint、formatter、stylelint、cspell                              | [`lint-format.md`](lint-format.md)                                                                                     |
 | workspace catalog 与依赖放置策略                                | [`dependencies.md`](dependencies.md)                                                                                   |
 | Changesets 版本与发布策略                                       | [`release.md`](release.md)                                                                                             |
-| task 登记、政策检查入口与命令面                                 | [`task-ledger.md`](task-ledger.md)、[`commit.md`](commit.md)、[`commands.md`](commands.md)                             |
+| task 登记、政策检查入口与命令面                                 | task-ledger skill 的 SKILL.md、[`commit.md`](commit.md)、[`commands.md`](commands.md)                                  |
 | 测试框架或 Vite 测试配置                                        | [`verification.md`](verification.md)                                                                                   |
 | `packages/web-ui` 组件、图标或公共契约                          | [`packages/web-ui/AGENTS.md`](../../packages/web-ui/AGENTS.md)、[`web-ui.md`](web-ui.md) 与受影响 ADR                  |
 | commitlint 或提交流程                                           | [`commit.md`](commit.md)                                                                                               |

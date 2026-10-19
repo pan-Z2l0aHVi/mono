@@ -1,6 +1,6 @@
 # 验证选择与测试执行
 
-本文件回答两个问题：这次改动该跑哪些验证，以及那些验证怎么执行。运行时证据本身怎么取（真实浏览器、原生应用、引擎级取证、证据档位）由 [`runtime-verification.md`](runtime-verification.md) 承担；测试用例编写策略见 [`test-authoring.md`](test-authoring.md)；受版本控制的生成物与其完成证据见 `build.md`。
+本文件回答两个问题：这次改动该跑哪些验证，以及那些验证怎么执行。运行时证据本身怎么取（真实浏览器、原生应用、引擎级取证、证据档位）由 [`runtime-verification.md`](runtime-verification.md) 承担；测试用例编写策略见 [`.agents/skills/test-authoring/SKILL.md`](../../.agents/skills/test-authoring/SKILL.md)；受版本控制的生成物与其完成证据见 `build.md`。
 
 ## 从变更路径到验证计划
 

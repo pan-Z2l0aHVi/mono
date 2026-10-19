@@ -6,6 +6,8 @@
 
 2026-10-18 注记：ADR-0025 保留 `$TMPDIR/greypan/tasks/` 的物理落点，当前 schema、status 与恢复规则见 docs/agents/task-ledger.md。
 
+2026-10-19 注记：上一条中的物理落点已被 ADR-0028 提取的通用 task-ledger skill 取代；当前 schema、状态目录与恢复规则以该 skill 为准。下文提到的历史命令名与路径仅作决策历史保留。
+
 ## 背景
 
 ADR-0014 把 task state 定在 `<git-common-dir>/tasks/<task-id>.json`。这个位置在多 worktree 并行时是必要的：21 个 worktree 各自持有 `HEAD`、index 与 `ORIG_HEAD`，只有 common dir 里的目录是同一份物理文件，reviewer 在 A worktree 冻结、coder 在 B worktree 读到的必须是同一个 state。实测规模（2026-09-28）也支持「高频写」这件事是真的：241 个 state 文件、1563 条事件，同期全仓 403 个 commit。

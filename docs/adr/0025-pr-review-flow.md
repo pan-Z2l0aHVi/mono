@@ -12,7 +12,7 @@
 
 ## 决策
 
-本地登记由 `agent:task-ledger` 负责，只记录归属、进度、issue 与 PR 引用；schema v3 状态为 `open`、`active`、`closed`、`dropped`，不记录 review、approval、验证阶段或 diff hash。`agent:task` 仅作为临时 deprecated adapter，旧 `done` 映射为 `close`；`guard`、`freeze`、`review`、`approve`、`verify` 已移除。整理由实施者显式运行 `fix-code`，检查改动后只暂存预期文件。
+本地登记由 task-ledger skill 负责，只记录归属、进度、issue 与 PR 引用；状态为 `open`、`active`、`closed`、`dropped`，不记录 review、approval、验证阶段或 diff hash。`agent:task` 临时 adapter 已删除；`guard`、`freeze`、`review`、`approve`、`verify` 已移除。整理由实施者显式运行 `fix-code`，检查改动后只暂存预期文件。（2026-10-19 注记：分级与记账已提取为通用 task-ledger skill，schema 降为 v1、命令收为 `new/start/status/ref/close/drop`，见 ADR-0028（纯文本）；本 ADR 的 review/approval/验证 gate 退役决策不变。）
 
 仓库政策检查由 `.agents/checks/` 下的五项固定只读检查组成，不读取 task 台账；pre-commit 在提交时依次执行这组检查。PR CI 的 policy step 直接执行其中四项，`format-clean` 由 `check-code` 覆盖；PR changeset 政策仍由 CI 使用 PR base/head commit 比较，release 主分支豁免由 workflow 表达。登记、检查和整理入口彼此独立，不把检查结果写回 task 状态。
 
@@ -24,4 +24,4 @@ T0/T1 在 PR 阶段由独立的本地 reviewer 检查实际源码、完整差异
 
 ## 后果
 
-Task state schema v3 以 `open`、`active`、`closed` 和 `dropped` 表达本地登记；旧 v1/v2 读取时只作内存投影，针对记录的定向写入才迁移并保留历史 events。task 登记不触发检查，也不改写工作区或 Git index；本地政策检查可独立运行并 fail closed。PR CI 包含 changeset policy 与四项仓库政策检查；review 报告独立保存并关联具体提交，新的 head 或 base 需要重新确认其覆盖范围。
+Task state schema v3 以 `open`、`active`、`closed` 和 `dropped` 表达本地登记；旧 v1/v2 读取时只作内存投影，针对记录的定向写入才迁移并保留历史 events。（2026-10-19 注记：schema 已随 task-ledger skill 收敛为 v1，不再保留旧版本迁移；见 ADR-0028（纯文本）。）task 登记不触发检查，也不改写工作区或 Git index；本地政策检查可独立运行并 fail closed。PR CI 包含 changeset policy 与四项仓库政策检查；review 报告独立保存并关联具体提交，新的 head 或 base 需要重新确认其覆盖范围。

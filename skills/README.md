@@ -8,7 +8,7 @@
 npx skills add pan-Z2l0aHVi/mono
 ```
 
-跟踪 main，之后可用 `npx skills update` 更新。skill 是纯静态 markdown——没有可 import 的代码，也没有构建步骤。接入后，agent 按 SKILL.md frontmatter 的 `name`/`description` 发现 skill 并按需加载。
+跟踪 main，之后可用 `npx skills update` 更新。skill 以 `SKILL.md` 为入口，可以附带只依赖 Node 内置模块的脚本；没有构建步骤。接入后，agent 按 SKILL.md frontmatter 的 `name`/`description` 发现 skill 并按需加载。
 
 `npx skills add` 只从 Git 源安装，不接受 npm 包名（`@scope/pkg` 会被解析成 GitHub `owner/repo` 简写）。
 

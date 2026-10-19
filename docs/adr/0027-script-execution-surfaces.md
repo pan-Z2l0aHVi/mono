@@ -4,6 +4,8 @@
 - **Status**: 已接受
 - **Relates to**: [ADR-0014](0014-task-system-v2.md)（政策检查挂载点）、[ADR-0025](0025-pr-review-flow.md)（pre-commit 与 PR CI 的检查集合）
 
+2026-10-19 修订：task 分级与记账已提取为通用 task-ledger skill（ADR-0028 为纯文本），`scripts/workflow/` 只保留 commit helper；§1 执行面表与 §5 目录树已同步。
+
 ## 背景与取舍
 
 根 `scripts/` 混放检查、agent 工具、发布与运维脚本；`.agents/checks/` 是 task 系统留下的政策检查挂载点；`.github/scripts/` 存放 workflow 与发布编排。同一组检查还被 pre-commit、PR CI、拓扑测试和文档分别硬编码，新增或改名需要同步多处。
@@ -27,7 +29,7 @@
 | PR CI changeset | `check-changeset`  | `scripts/checks/check-changeset.mjs`  | `changeset status --since` 与 `changeset-policy`                                                                   | 任一检查失败即 job 失败                |
 | CI context      | `check-context`    | `scripts/checks/check-context.mjs`    | context invariants，保留 `--report` 模式                                                                           | 链接、路由、语料漂移失败即非零         |
 | CI package      | `check-pack`       | `scripts/checks/check-pack.mjs`       | 发布包契约                                                                                                         | 发布契约失败即非零                     |
-| 任务工作流      | 现有 `agent:*` 等  | `scripts/workflow/*`                  | 任务登记、提交辅助                                                                                                 | 命令自身退出码                         |
+| 提交辅助        | —                  | `scripts/workflow/commit.sh`          | 提交辅助                                                                                                           | 命令自身退出码                         |
 | 发布            | `publish-new-pack` | `scripts/release/publish-new-pack.sh` | 发布辅助                                                                                                           | 不可逆操作，按发布授权与 workflow 约束 |
 | 运维            | `clean`            | `scripts/maintenance/clean.sh`        | 清理与运维                                                                                                         | 命令自身退出码                         |
 
@@ -82,9 +84,7 @@ scripts/
     check-changeset.mjs    # PR CI changeset 入口
     check-context.mjs      # CI context 入口
     check-pack.mjs         # CI package 入口
-  workflow/                # 任务登记与提交命令
-    task-ledger.mjs
-    task.mjs
+  workflow/                # 提交命令
     commit.sh
   release/                 # 发布辅助
     publish-new-pack.sh

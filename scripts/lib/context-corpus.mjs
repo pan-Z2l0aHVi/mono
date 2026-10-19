@@ -47,7 +47,7 @@ export async function run(context) {
 
   // skill 出处以 skills-lock.json 为权威：登记在册的是第三方上游件，正文由上游维护（见 AGENTS.md 语言纪律），
   // 其中的示例路径不作为本仓链接；未登记的即本仓自撰，必须列在下面。两边都不在就是出处未定。
-  const repoAuthoredSkills = new Set(['monorepo-change-impact'])
+  const repoAuthoredSkills = new Set(['monorepo-change-impact', 'task-ledger', 'test-authoring'])
   const lockedSkills = new Set(Object.keys(JSON.parse(read('skills-lock.json')).skills))
 
   function fromLockedSkill(file) {
@@ -64,11 +64,11 @@ export async function run(context) {
   if (!exists('AGENTS.md')) addError('missing required context file: AGENTS.md')
 
   // AGENTS.md 的章节标题与叙述措辞不再是契约。入口断言只保留必经链接；
-  // 具体命令由 task-ledger.md 与 CLI 承担。
+  // 具体命令由 task-ledger skill 与 CLI 承担。
   // 结构不变量锚点（<!-- invariant:... -->）是惰性注释，保留供人工检索，不再有机器校验（audit:instructions 已删除，见 ADR-0014）。
   if (exists('AGENTS.md')) {
     const agents = read('AGENTS.md')
-    for (const marker of ['docs/agents/workflow.md', 'docs/agents/task-ledger.md']) {
+    for (const marker of ['docs/agents/workflow.md', '.agents/skills/task-ledger/SKILL.md']) {
       if (!agents.includes(marker)) addError(`AGENTS.md is missing mandatory marker: ${marker}`)
     }
   }
@@ -106,7 +106,7 @@ export async function run(context) {
     try {
       const packageJson = JSON.parse(read('package.json'))
       rootScripts = new Set(Object.keys(packageJson.scripts ?? {}))
-      for (const script of ['agent:task-ledger', 'agent:task', 'check-context', 'check-pack', 'ci:test-scripts']) {
+      for (const script of ['check-context', 'check-pack', 'ci:test-scripts']) {
         if (typeof packageJson.scripts?.[script] !== 'string') addError(`package.json is missing scripts.${script}`)
       }
     } catch (error) {

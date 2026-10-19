@@ -4,7 +4,7 @@
 
 ## 变更准入与登记
 
-改动任何文件前，先读 [`docs/agents/task-levels.md`](docs/agents/task-levels.md)，再按变更级别建立 task。级别与验证深度见那份文件；PR review 纪律见 [`docs/agents/review.md`](docs/agents/review.md)。本地登记的生命周期与边界见 [`docs/agents/task-ledger.md`](docs/agents/task-ledger.md)，命令与字段以 CLI 为准；方案到合并的总流程与授权见 [`docs/agents/workflow.md`](docs/agents/workflow.md)。只做只读调查不用建 task。
+改动任何文件前，先读 [`.agents/skills/task-ledger/SKILL.md`](.agents/skills/task-ledger/SKILL.md)，按变更级别建立 task 并记账。分级、准入与恢复见该 skill；PR review 纪律见 [`docs/agents/review.md`](docs/agents/review.md)，方案到合并的总流程与授权见 [`docs/agents/workflow.md`](docs/agents/workflow.md)。只做只读调查不用建 task。
 
 ## 项目身份
 
@@ -36,13 +36,12 @@
 | 格式化、lint、拼写或类型检查配置                     | [`docs/agents/lint-format.md`](docs/agents/lint-format.md)                                                                                                                                                   |
 | 新增或重命名根 `package.json` 命令                   | [`.agents/rules/commands.md`](.agents/rules/commands.md) 与 [`docs/agents/commands.md`](docs/agents/commands.md)                                                                                             |
 | 根或 workspace 脚本、脚本约束或根配置                | [`docs/agents/scripts.md`](docs/agents/scripts.md)、[`docs/agents/workflow.md`](docs/agents/workflow.md#怎么取得这个授权) 与 [`docs/agents/build.md`](docs/agents/build.md)                                  |
-| 任务分级、准入与 preflight                           | [`docs/agents/task-levels.md`](docs/agents/task-levels.md)                                                                                                                                                   |
+| 任务分级、准入、登记、Task Packet 与恢复             | [`.agents/skills/task-ledger/SKILL.md`](.agents/skills/task-ledger/SKILL.md)                                                                                                                                 |
 | 方案到合并总流程、用户授权与跨步骤恢复               | [`docs/agents/workflow.md`](docs/agents/workflow.md)                                                                                                                                                         |
-| 任务登记、归属、进度、schema、Task Packet 与恢复     | [`docs/agents/task-ledger.md`](docs/agents/task-ledger.md)                                                                                                                                                   |
 | PR review、修复复审、合并前 CI 与测试验收            | [`docs/agents/review.md`](docs/agents/review.md)                                                                                                                                                             |
 | Git commit 与提交边界                                | [`.agents/rules/commit.md`](.agents/rules/commit.md) 与 [`docs/agents/commit.md`](docs/agents/commit.md)                                                                                                     |
 | 测试、公共行为、导出或构建产物                       | [`.agents/rules/testing.md`](.agents/rules/testing.md) 与 [`docs/agents/verification.md`](docs/agents/verification.md)                                                                                       |
-| 测试用例该写什么、不该写什么                         | [`docs/agents/test-authoring.md`](docs/agents/test-authoring.md)                                                                                                                                             |
+| 测试用例该写什么、不该写什么                         | [`.agents/skills/test-authoring/SKILL.md`](.agents/skills/test-authoring/SKILL.md)                                                                                                                           |
 | UI、UX、交互、响应式或浏览器运行时                   | [`docs/agents/runtime-verification.md`](docs/agents/runtime-verification.md)；`web-ui` 任务再读 [`docs/agents/web-ui.md`](docs/agents/web-ui.md)                                                             |
 | 变更影响或验证命令选择                               | [`.agents/skills/monorepo-change-impact/SKILL.md`](.agents/skills/monorepo-change-impact/SKILL.md)                                                                                                           |
 | 全局拓扑和快速导航                                   | [`ARCHITECTURE.md`](ARCHITECTURE.md)                                                                                                                                                                         |

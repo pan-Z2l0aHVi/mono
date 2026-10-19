@@ -24,8 +24,7 @@ const REJECTED_SHAPES = [
 ]
 const ACCEPTED_SHAPES = [
   'build',
-  'agent:task-ledger',
-  'agent:task',
+  'agent:env-doctor',
   'ci:validate-context',
   'check-code',
   'check-pre-commit',

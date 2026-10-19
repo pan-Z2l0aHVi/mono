@@ -22,7 +22,7 @@ try {
         build: 'turbo build',
         test: 'turbo test',
         'check-policy': 'node scripts/checks/check-policy.mjs',
-        'agent:task-ledger': 'node scripts/workflow/task-ledger.mjs',
+        'agent:env-doctor': 'node scripts/maintenance/env-doctor.mjs',
         'ci:test-scripts': 'node scripts/test-scripts.mjs',
         'dev:react-web-ui-demo': 'turbo run dev'
       })

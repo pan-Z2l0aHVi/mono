@@ -1,6 +1,6 @@
 # 提交边界与 Git Commit
 
-本文件规定提交授权、commit message、署名、pre-commit hook 与本地检查。任务分级见 `docs/agents/task-levels.md`，任务总流程与授权见 `docs/agents/workflow.md`，本地登记簿见 `docs/agents/task-ledger.md`，PR 阶段 review 见 `review.md`。commitlint 的类型、scope、字数、大小写与语言规则以 `commitlint.config.js` 为准。
+本文件规定提交授权、commit message、署名、pre-commit hook 与本地检查。任务分级与本地登记见 [`.agents/skills/task-ledger/SKILL.md`](../../.agents/skills/task-ledger/SKILL.md)，任务总流程与授权见 `docs/agents/workflow.md`，PR 阶段 review 见 `review.md`。commitlint 的类型、scope、字数、大小写与语言规则以 `commitlint.config.js` 为准。
 
 ## 授权边界
 

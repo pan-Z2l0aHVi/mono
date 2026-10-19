@@ -9,7 +9,7 @@
 
 ## Task 与 PR 流程词汇
 
-**Task 台账**：在系统临时目录维护本地 task 归属与进度；它不承载 review、测试或 CI 结论。字段、状态与恢复边界见 [`docs/agents/task-ledger.md`](docs/agents/task-ledger.md)。
+**Task 台账**：在系统临时目录维护本地 task 归属与进度；它不承载 review、测试或 CI 结论。字段、状态与恢复边界见 [`.agents/skills/task-ledger/SKILL.md`](.agents/skills/task-ledger/SKILL.md)。
 _Avoid_: 证据链、冻结审批状态
 
 **PR review**：PR 阶段由 reviewer 对实际 diff、验收条件和验证结果进行的独立检查。required CI 通过不等于 review 结论，纪律见 [`docs/agents/review.md`](docs/agents/review.md)。
@@ -17,7 +17,7 @@ _Avoid_: 本地 review phase、CI 绿即 review 通过
 
 ## 关键 ADR
 
-表内只列仍承载现行决策的 ADR；被取代、退役或删除的记录只留在 git 里，旧 ADR 的修订注记不构成现行指引。需求拆分与 task 派发由外部编排层承担；仓库侧由本地 Task 台账记录归属与进度，由独立政策检查器运行只读检查。职责分别见 [`docs/agents/task-ledger.md`](docs/agents/task-ledger.md)、[`docs/agents/commit.md`](docs/agents/commit.md)、[`docs/agents/worktree.md`](docs/agents/worktree.md) 与 [`docs/agents/release.md`](docs/agents/release.md)。
+表内只列仍承载现行决策的 ADR；被取代、退役或删除的记录只留在 git 里，旧 ADR 的修订注记不构成现行指引。需求拆分与 task 派发由外部编排层承担；仓库侧由本地 Task 台账记录归属与进度，由独立政策检查器运行只读检查。职责分别见 [`.agents/skills/task-ledger/SKILL.md`](.agents/skills/task-ledger/SKILL.md)、[`docs/agents/commit.md`](docs/agents/commit.md)、[`docs/agents/worktree.md`](docs/agents/worktree.md) 与 [`docs/agents/release.md`](docs/agents/release.md)。
 
 | ADR                                                                             | 决策                                                    | 何时读取                                                                  |
 | ------------------------------------------------------------------------------- | ------------------------------------------------------- | ------------------------------------------------------------------------- |
@@ -40,6 +40,7 @@ _Avoid_: 本地 review phase、CI 绿即 review 通过
 | [0025](docs/adr/0025-pr-review-flow.md)                                         | Task 台账 v3、政策检查与 PR 流程                        | 修改 task 登记簿、政策检查集合、PR changeset gate 或 review/merge 前核验  |
 | [0026](docs/adr/0026-context-corpus-authority-and-drift-gates.md)               | Context 语料权威与漂移门禁                              | 修改指令文档的权威标记、漂移门禁或 RAG 语料契约                           |
 | [0027](docs/adr/0027-script-execution-surfaces.md)                              | 脚本按执行面分类与统一入口                              | 修改政策检查集合、pre-commit / CI policy 入口或脚本目录布局               |
+| [0028](docs/adr/0028-task-ledger-skill.md)                                      | Task 分级与记账提取为通用 skill                         | 修改 task 分级判据、台账命令、状态目录或跨项目复用方式                    |
 
 ## 已知边界
 

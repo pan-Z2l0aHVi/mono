@@ -8,7 +8,7 @@ worktree 本身是任务隔离边界，不是包名的别名。包清单、依�
 
 一个可变 task 只能有一个 owner 和一个实施 worktree；怎么创建、放在哪、用什么命令建、由谁清理，都由编排层（herdr-projects）决定，仓库不规定。共享主工作区只用于只读调查与状态查询，合并通过远端 PR 完成，不在共享工作区里做。owner 与 worktree 的唯一性边界见根 [`AGENTS.md`](../../AGENTS.md)。
 
-编排层交接 task 时会带上 worktree 路径、base SHA 和 owner 标识，执行者按它们填 Task Packet 的 `Worktree`、`Base`、`Owner`，并执行 `pnpm agent:task-ledger assign` 记录归属，不自行推导或改写。交接后归属变更属编排层的动作，重新 assign 即可。禁止靠 pane 名称或目录名推断归属。
+编排层交接 task 时会带上 worktree 路径、base SHA 和 owner 标识，执行者用 task-ledger skill 的 `new` 子命令的 `--owner` 与 `--base` 记录归属与起点，并把 worktree 路径填进 Task Packet 的 `Worktree`，不自行推导或改写。交接后归属变更属编排层的动作，仓库侧不提供重新归属命令。禁止靠 pane 名称或目录名推断归属。
 
 ## 新 worktree 的三步准备
 
