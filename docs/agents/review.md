@@ -1,6 +1,6 @@
 # PR review 纪律
 
-本文件规定 T0/T1 的 PR 独立审查、结果回写、复审和合并前核对。T2 按影响安排。独立性来自 reviewer 的单独执行体、固定提交和直接检查证据；实施者自查不能替代。GitHub 登录身份相同不抹去本地执行独立性，但作者不能在 GitHub 批准自己的 PR。会话选用的模型与推理强度由编排决定，不写入仓库政策。
+本文件规定 T0/T1 的 PR 独立审查、结果回写、复审和合并前核对。T2 按影响安排。独立性来自 reviewer 的单独执行体、固定提交和直接检查证据；实施者自查不能替代。GitHub 登录身份相同不抹去本地执行独立性，但作者不能在 GitHub 批准自己的 PR。会话选用的模型与推理强度由编排决定，不写入仓库政策。本文涉及的远端写操作都需用户逐次明确授权；机制见 `workflow.md` 的「怎么取得这个授权」。
 
 新 reviewer 优先使用独立或新鲜上下文，只接收任务验收条件、PR URL/base/head、相关规则和原始证据；实施者摘要可作待核线索，不能把其自评结论当审查依据。Task 台账不记录 review、approval、verify 或 CI 通过。required context `check` 只证明 CI 中的检查结果，不是 review 结论。当前规则集没有 required approving review；reviewer 完成审查后是否向 GitHub 回写由用户逐次授权。
 
