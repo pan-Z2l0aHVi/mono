@@ -579,8 +579,8 @@ function addVerification(level, command, reason) {
 
 if (hasContextChange)
   addVerification('required', 'pnpm run check-context', '共享 Agent context、路由或其校验脚本发生变化。')
-if (hasAgentToolChange) addVerification('required', 'pnpm run ci:test-scripts', '影响分析或 context 校验工具发生变化。')
-if (hasContractToolChange) addVerification('required', 'pnpm run ci:test-scripts', '发布产物契约检查器发生变化。')
+if (hasAgentToolChange) addVerification('required', 'pnpm run test-scripts', '影响分析或 context 校验工具发生变化。')
+if (hasContractToolChange) addVerification('required', 'pnpm run test-scripts', '发布产物契约检查器发生变化。')
 if (hasCodeChange)
   addVerification('required', 'pnpm run check-code', '代码或配置发生变化，需要执行 lint、类型检查和语言专属静态检查。')
 if (hasReactRouteSourceChange)

@@ -10,7 +10,7 @@ import path from 'node:path'
 // 前半用假的 wails3 驱动真实脚本；后半用 pinned wails3 Task runner 与隔离的 node/pnpm/go 驱动 build modes。
 // 两部分都只写临时 fixture，不碰真实 frontend/bindings。
 //
-// 测试与被测脚本同址；执行端是根 `ci:test-scripts` 的全仓 glob（`*.test.mjs`）。
+// 测试与被测脚本同址；执行端是根 `test-scripts` 的全仓 glob（`*.test.mjs`）。
 const repoRoot = path.resolve(import.meta.dirname, '../../..')
 const guardScript = path.join(import.meta.dirname, 'generate-bindings.mjs')
 const realBindings = path.join(repoRoot, 'apps', 'interweave', 'frontend', 'bindings')

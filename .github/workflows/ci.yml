@@ -82,7 +82,7 @@ jobs:
         run: pnpm exec turbo run build --filter=!@greypan/interweave
 
       - name: Test repository Agent tools
-        run: pnpm run ci:test-scripts
+        run: pnpm run test-scripts
 
       - name: Check published package contracts
         run: pnpm run check-pack

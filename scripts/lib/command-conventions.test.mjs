@@ -23,7 +23,7 @@ try {
         test: 'turbo test',
         'check-policy': 'node scripts/checks/check-policy.mjs',
         'agent:env-doctor': 'node scripts/maintenance/env-doctor.mjs',
-        'ci:test-scripts': 'node scripts/test-scripts.mjs',
+        'test-scripts': 'node scripts/test-scripts.mjs',
         'dev:react-web-ui-demo': 'turbo run dev'
       })
     }),

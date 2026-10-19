@@ -106,7 +106,7 @@ export async function run(context) {
     try {
       const packageJson = JSON.parse(read('package.json'))
       rootScripts = new Set(Object.keys(packageJson.scripts ?? {}))
-      for (const script of ['check-context', 'check-pack', 'ci:test-scripts']) {
+      for (const script of ['check-context', 'check-pack', 'test-scripts']) {
         if (typeof packageJson.scripts?.[script] !== 'string') addError(`package.json is missing scripts.${script}`)
       }
     } catch (error) {

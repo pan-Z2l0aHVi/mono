@@ -128,7 +128,7 @@ scripts/
 
 - 测试改为可选：没有测试文件合法；一旦存在测试文件，必须与被测文件同目录同名（`foo.mjs` / `foo.ts` / `foo.sh` → `foo.test.mjs`）。
 - 测试只覆盖原子函数与共享实现，不覆盖只做聚合的入口。
-- `ci:test-scripts` 的发现规则不变：运行全仓 tracked 的 `*.test.mjs`。
+- `test-scripts` 的发现规则不变：运行全仓 tracked 的 `*.test.mjs`。
 - 每个改写后的原子检查用 fixture 覆盖成功、失败与参数边界；聚合入口靠这些原子测试与一次性的新旧差分跑验证。
 - 一次性的新旧差分跑在 fixture 与当前仓库上执行，结论写入 PR 描述，不把临时 harness 提交进仓库。
 - `docs/agents/scripts.md` 的范围扩展到 `scripts/checks/**` 与 `scripts/lib/**`，并改写同名测试政策；`docs/agents/commands.md` 记录 `check-*` 作为门禁入口的命名约定。
@@ -178,5 +178,5 @@ scripts/
 - hook 只调用 `pnpm run check-pre-commit`；CI 分别调用 `check-policy`、`check-changeset`、`check-context`、`check-pack`。
 - 五个入口都以非零退出表示失败，并指出失败的检查名；`Promise.all` 的首个失败不会产生“部分通过”。
 - `pnpm run check-pre-commit`、`pnpm run check-policy`、`pnpm run check-changeset --base <sha> --head <sha>`、`pnpm run check-context`、`pnpm run check-pack` 通过。
-- `pnpm run ci:test-scripts`、`pnpm run check-code` 与 `workflow-topology` 测试通过。
+- `pnpm run test-scripts`、`pnpm run check-code` 与 `workflow-topology` 测试通过。
 - 存在的测试文件全部与被测文件同目录同名；聚合入口没有专属测试。

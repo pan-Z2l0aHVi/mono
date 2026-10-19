@@ -5,7 +5,7 @@ import os from 'node:os'
 import path from 'node:path'
 
 // 被测脚本是 monorepo-change-impact skill 的内置查询脚本（self-contained）；测试与它同住 skill
-// 目录，skill 因此连测试一起自包含。执行端是根 `ci:test-scripts` 的全仓 glob（`*.test.mjs`，
+// 目录，skill 因此连测试一起自包含。执行端是根 `test-scripts` 的全仓 glob（`*.test.mjs`，
 // tracked-only）：`.test.mjs` 的契约是「测脚本本身」，与所在目录无关。两条命令都从仓库根跑。
 const script = 'skills/monorepo-change-impact/repo-query.mjs'
 const run = (...args) => execFileSync(process.execPath, [script, ...args], { encoding: 'utf8' })
@@ -178,17 +178,17 @@ assert.equal(
 )
 
 const toolPlan = JSON.parse(run('verify', '--json', script))
-assert.ok(toolPlan.verification.some(item => item.command === 'pnpm run ci:test-scripts'))
+assert.ok(toolPlan.verification.some(item => item.command === 'pnpm run test-scripts'))
 
 const taskLedgerPlan = JSON.parse(run('verify', '--json', 'skills/task-ledger/ledger.mjs'))
 assert.ok(taskLedgerPlan.context.includes('docs/agents/agent-context.md'))
-assert.ok(taskLedgerPlan.verification.some(item => item.command === 'pnpm run ci:test-scripts'))
+assert.ok(taskLedgerPlan.verification.some(item => item.command === 'pnpm run test-scripts'))
 
 const workspaceConfigPlan = JSON.parse(run('verify', '--json', 'pnpm-workspace.yaml'))
-assert.ok(workspaceConfigPlan.verification.some(item => item.command === 'pnpm run ci:test-scripts'))
+assert.ok(workspaceConfigPlan.verification.some(item => item.command === 'pnpm run test-scripts'))
 
 const workspaceManifestToolPlan = JSON.parse(run('verify', '--json', 'scripts/lib/workspace-manifests.mjs'))
-assert.ok(workspaceManifestToolPlan.verification.some(item => item.command === 'pnpm run ci:test-scripts'))
+assert.ok(workspaceManifestToolPlan.verification.some(item => item.command === 'pnpm run test-scripts'))
 
 const tsconfigPlan = JSON.parse(run('verify', '--json', 'packages/tsconfig/base.json'))
 assert.equal(tsconfigPlan.directWorkspaces[0], '@greypan/tsconfig')

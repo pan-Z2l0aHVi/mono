@@ -75,4 +75,4 @@ schema 收敛为 v1，状态为 `open`、`active`、`closed`、`dropped`。命�
 - `node skills/task-ledger/ledger.test.mjs` 通过，覆盖分级字段、状态迁移、引用、隔离、损坏记录与非 Git 目录。
 - 从 skill 目录可直接运行 `new/start/status/ref/close/drop`，`assign`、`issue`、`pr` 等旧命令被拒绝；根 `package.json` 没有 task 转发命令。
 - 根 `AGENTS.md`、`workflow.md`、`review.md`、`commit.md`、`release.md` 与 `agent-context.md` 不再链接已删除的 task 文档。
-- `check-context`、`check-policy`、`ci:test-scripts` 与 skill layout 测试通过。
+- `check-context`、`check-policy`、`test-scripts` 与 skill layout 测试通过。
