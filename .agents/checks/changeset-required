@@ -1,3 +1,0 @@
-#!/bin/sh
-# PR changeset policy is evaluated against explicit base/head commits by CI.
-exec node "$(dirname "$0")/../../scripts/changeset-required.mjs" "$@"

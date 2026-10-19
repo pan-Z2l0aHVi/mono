@@ -52,7 +52,7 @@
 
 ## 语料门禁
 
-`ci:validate-context` 在链接与锚点之外检查可客观判定的漂移属性：task-specific 文档是否有根入口路由、外部状态快照短语、远端写命令是否带授权指针、非权威语料是否带标记，以及内容指纹。体量不设上限，也不维护预算基线；只读 `--report` 列出未路由、零入站、缺标记、活 ADR 退役痕迹与最大文档，不作为门禁。判据与取舍见 [ADR-0026](../adr/0026-context-corpus-authority-and-drift-gates.md)。allowlist 变更必须在 diff 中显式发生，不能为让检查变绿而放宽模式。
+`check-context` 在链接与锚点之外检查可客观判定的漂移属性：task-specific 文档是否有根入口路由、外部状态快照短语、远端写命令是否带授权指针、非权威语料是否带标记，以及内容指纹。体量不设上限，也不维护预算基线；只读 `--report` 列出未路由、零入站、缺标记、活 ADR 退役痕迹与最大文档，不作为门禁。判据与取舍见 [ADR-0026](../adr/0026-context-corpus-authority-and-drift-gates.md)。allowlist 变更必须在 diff 中显式发生，不能为让检查变绿而放宽模式。
 
 ## 客户端适配
 

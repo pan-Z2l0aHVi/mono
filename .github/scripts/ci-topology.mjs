@@ -2,13 +2,11 @@ export const RELEASE_BRANCH = 'changeset-release/main'
 export const REQUIRED_CONTEXT = 'check'
 
 // `format-clean` 由 `check-code` 的 `vp check` 覆盖，不在 required job 里重复执行。
-const ciPolicyChecks = ['command-conventions', 'no-mutual-links', 'turbo-cache-invariant', 'web-ui-docs-inputs']
-
 export const requiredPolicyStep = {
   name: 'Check repository policies',
   job: REQUIRED_CONTEXT,
   shell: 'bash',
-  runs: ciPolicyChecks.map(name => `.agents/checks/${name}`)
+  runs: ['pnpm run check-policy']
 }
 
 function unquote(value) {

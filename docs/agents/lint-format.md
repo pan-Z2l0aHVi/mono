@@ -1,6 +1,6 @@
 # Lint 与格式化
 
-格式化与 lint 交给工具链，agent 编写代码时无需手动格式化；检查与修复入口是根 `package.json` 的 `check-code` 与 `fix-code`；`CI=true` 用于避免 vp 的版本更新检查阻塞非交互会话。提交 hook 与 `.agents/checks/` 只判定、不改写文件。
+格式化与 lint 交给工具链，agent 编写代码时无需手动格式化；检查与修复入口是根 `package.json` 的 `check-code` 与 `fix-code`；`CI=true` 用于避免 vp 的版本更新检查阻塞非交互会话。提交 hook 的 `check-pre-commit` 只判定、不改写文件。
 
 以下约束无法从工具与配置推导，需显式记住：
 

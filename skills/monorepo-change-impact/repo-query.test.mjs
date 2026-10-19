@@ -167,7 +167,7 @@ assert.match(run('verify', 'packages/web-ui/src/components/select/index.ts'), /e
 const contextPlan = JSON.parse(run('verify', '--json', 'docs/agents/agent-context.md'))
 assert.equal(contextPlan.risk.context, true)
 assert.ok(contextPlan.context.includes('docs/adr/0004-progressive-agent-context-architecture.md'))
-assert.ok(contextPlan.verification.some(item => item.command === 'pnpm run ci:validate-context'))
+assert.ok(contextPlan.verification.some(item => item.command === 'pnpm run check-context'))
 
 const typePlan = JSON.parse(run('verify', '--json', 'packages/web-ui/src/types/react.ts'))
 assert.equal(typePlan.command, 'verify')

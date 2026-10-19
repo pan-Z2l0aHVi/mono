@@ -57,7 +57,7 @@ function surfaceOf(dir: string, ext: string): Surface & { names: string[] } {
 }
 
 // 四条覆盖判据里归本侧的三条写成纯函数，末尾用合成输入过一遍正负例：判据自己写错（例如把
-// `includes` 写成恒真）会让三条同时变哑巴，而页面照样上线。`.agents/checks/web-ui-docs-inputs`
+// `includes` 写成恒真）会让三条同时变哑巴，而页面照样上线。`scripts/checks/web-ui-docs-inputs.mjs`
 // 的 `coversCorpus` 是同一口径。
 const rendersOwn = (surface: Surface, name: string) => surface.used.get(name)?.includes(name) ?? false
 const unresolvedRefs = (surface: Surface, docs: string[]) =>

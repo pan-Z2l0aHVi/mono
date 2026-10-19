@@ -22,7 +22,7 @@ bash scripts/commit.sh <type> <scope> "<subject>" --dry
 
 ## Pre-commit 与本地 checks
 
-受版本控制的 pre-commit hook 通过 `mise exec` 依次运行 `.agents/checks/` 下的五项只读仓库政策检查：`command-conventions`、`format-clean`、`no-mutual-links`、`turbo-cache-invariant`、`web-ui-docs-inputs`。这些检查从当前 Git worktree 运行，不读取 task state 或 `AGENT_TASK_*`；任一检查缺失、不可执行或非零退出时 hook 失败；它们不运行 fixer、不改写文件或 index。PR CI 的 changeset gate 不属于本地政策，见 `release.md`。
+受版本控制的 pre-commit hook 通过 `mise exec -- pnpm run check-pre-commit` 运行五项只读仓库政策检查：`command-conventions`、`format-clean`、`no-mutual-links`、`turbo-cache-invariant`、`web-ui-docs-inputs`。入口并发执行各原子检查，任一检查抛错即整体失败。这些检查从当前 Git worktree 运行，不读取 task state 或 `AGENT_TASK_*`；它们不运行 fixer、不改写文件或 index。PR CI 的 changeset gate 不属于本地政策，见 `release.md`。
 
 `fix-code` 是实施者显式运行的工作树修复命令；它可能改写多个文件，但不会自动暂存。运行后检查 diff，再只暂存预期文件。pre-commit 不调用 `fix-code`。
 

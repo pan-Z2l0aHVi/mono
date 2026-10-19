@@ -492,7 +492,7 @@ const hasContextChange = normalizedPaths.some(
     file.startsWith('.claude/') ||
     file.startsWith('docs/agents/') ||
     file.startsWith('docs/adr/') ||
-    file.startsWith('scripts/validate-context') ||
+    file.startsWith('scripts/checks/check-context') ||
     file.startsWith('scripts/task') ||
     file.startsWith('scripts/lib/workspace-manifests') ||
     file.startsWith('skills/monorepo-change-impact/')
@@ -500,13 +500,13 @@ const hasContextChange = normalizedPaths.some(
 const hasAgentToolChange = normalizedPaths.some(
   file =>
     file === 'pnpm-workspace.yaml' ||
-    file.startsWith('scripts/validate-context') ||
+    file.startsWith('scripts/checks/check-context') ||
     file.startsWith('scripts/task') ||
     file.startsWith('scripts/lib/workspace-manifests') ||
     file.startsWith('skills/monorepo-change-impact/') ||
     (file.startsWith('scripts/') && file.endsWith('.test.mjs'))
 )
-const hasContractToolChange = normalizedPaths.some(file => file.startsWith('scripts/check-pack'))
+const hasContractToolChange = normalizedPaths.some(file => file.startsWith('scripts/checks/check-pack'))
 const hasPackageContractChange = normalizedPaths.some(file =>
   directlyChanged.some(workspace => isPackageContractChange(file, workspace))
 )
@@ -574,7 +574,7 @@ function addVerification(level, command, reason) {
 }
 
 if (hasContextChange)
-  addVerification('required', 'pnpm run ci:validate-context', '共享 Agent context、路由或其校验脚本发生变化。')
+  addVerification('required', 'pnpm run check-context', '共享 Agent context、路由或其校验脚本发生变化。')
 if (hasAgentToolChange) addVerification('required', 'pnpm run ci:test-scripts', '影响分析或 context 校验工具发生变化。')
 if (hasContractToolChange) addVerification('required', 'pnpm run ci:test-scripts', '发布产物契约检查器发生变化。')
 if (hasCodeChange)
@@ -665,7 +665,7 @@ if (hasWailsPublicApiChange)
 if (hasContextChange)
   addEvidence(
     'context-system',
-    'scripts/validate-context.mjs + current diff',
+    'scripts/checks/check-context.mjs + current diff',
     'context 改动必须检查加载路径、链接、索引和重复风险。'
   )
 

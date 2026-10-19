@@ -86,10 +86,7 @@ function assertChangesetStepContract(text) {
   assert.equal(workflow.stepContinueOnError[name], undefined, 'changeset validation errors must fail the step')
   assert.ok(step.includes('PR_BASE_SHA: ${{ github.event.pull_request.base.sha }}'))
   assert.ok(step.includes('PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}'))
-  assert.deepEqual(runTexts(step), [
-    'pnpm exec changeset status --since="$PR_BASE_SHA"',
-    '.agents/checks/changeset-required --base "$PR_BASE_SHA" --head "$PR_HEAD_SHA"'
-  ])
+  assert.deepEqual(runTexts(step), ['pnpm run check-changeset --base "$PR_BASE_SHA" --head "$PR_HEAD_SHA"'])
 }
 
 function assertPullRequestValidationIsReadOnly(workflow) {
@@ -111,18 +108,13 @@ function assertPullRequestValidationIsReadOnly(workflow) {
   const ci = workflowText['ci.yml']
   assert.ok(parsed['ci.yml'].jobs[REQUIRED_CONTEXT], 'the required context must remain the CI job')
   assertChangesetStepContract(ci)
-  const requiredChangesetCommand = '.agents/checks/changeset-required --base "$PR_BASE_SHA" --head "$PR_HEAD_SHA"'
+  const requiredChangesetCommand = 'pnpm run check-changeset --base "$PR_BASE_SHA" --head "$PR_HEAD_SHA"'
   assert.equal(ci.split(requiredChangesetCommand).length - 1, 1, 'the changeset command mutation anchor must be unique')
   assert.throws(
     () => assertChangesetStepContract(ci.replace(`${requiredChangesetCommand}\n`, '')),
-    'removing the changeset-required command must fail topology validation'
+    'removing the changeset command must fail topology validation'
   )
-  assert.deepEqual(requiredPolicyStep.runs, [
-    '.agents/checks/command-conventions',
-    '.agents/checks/no-mutual-links',
-    '.agents/checks/turbo-cache-invariant',
-    '.agents/checks/web-ui-docs-inputs'
-  ])
+  assert.deepEqual(requiredPolicyStep.runs, ['pnpm run check-policy'])
   assertPolicyStepContract(ci)
   assert.ok(
     parsed['ci.yml'].jobs.check.name === undefined || parsed['ci.yml'].jobs.check.name === REQUIRED_CONTEXT,
@@ -142,10 +134,11 @@ function assertPullRequestValidationIsReadOnly(workflow) {
       {}
     )
   )
+  const rootScripts = JSON.parse(fs.readFileSync(path.join(repoRoot, 'package.json'), 'utf8')).scripts
   for (const command of requiredPolicyStep.runs) {
-    const commandPath = path.join(repoRoot, command)
-    assert.ok(fs.existsSync(commandPath), `${command} must exist`)
-    assert.notEqual(fs.statSync(commandPath).mode & 0o111, 0, `${command} must be executable`)
+    const script = command.match(/^pnpm run ([a-z][a-z0-9:-]*)$/)?.[1]
+    assert.ok(script, `${command} must invoke a root pnpm script`)
+    assert.equal(typeof rootScripts[script], 'string', `${command} must resolve to a package.json script`)
   }
 
   function mutateOnce(text, from, to) {
@@ -153,7 +146,7 @@ function assertPullRequestValidationIsReadOnly(workflow) {
     return text.replace(from, to)
   }
   const marker = `      - name: ${requiredPolicyStep.name}\n`
-  assert.throws(() => assertPolicyStepContract(mutateOnce(ci, '          .agents/checks/no-mutual-links\n', '', '')))
+  assert.throws(() => assertPolicyStepContract(mutateOnce(ci, '          pnpm run check-policy\n', '')))
   assert.throws(() => assertPolicyStepContract(mutateOnce(ci, marker, `${marker}        if: false\n`)))
   assert.throws(() => assertPolicyStepContract(mutateOnce(ci, marker, `${marker}        continue-on-error: true\n`)))
   assert.throws(() =>
