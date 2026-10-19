@@ -262,4 +262,4 @@ symlinkSync('../skills-vendored/plain', join(fixtureAgentsSkillsDir, 'plain'))
 checkRepoLayout(layoutOptions())
 
 rmSync(tmpRoot, { recursive: true, force: true })
-console.log('scripts/tools/update-skills.test.mjs: all assertions passed')
+console.log('scripts/maintenance/update-skills.test.mjs: all assertions passed')

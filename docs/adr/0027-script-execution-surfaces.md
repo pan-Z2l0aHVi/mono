@@ -92,13 +92,13 @@ scripts/
   tools/                   # agent / 人工命令
     task-ledger.mjs
     task.mjs
-    env-doctor.mjs
-    update-skills.mjs
     commit.sh
   release/                 # 发布辅助
     publish-new-pack.sh
   maintenance/             # 清理与运维
     clean.sh
+    env-doctor.mjs
+    update-skills.mjs
   lib/                     # 共享实现，不是入口
     check-runner.mjs
     context-invariants.mjs

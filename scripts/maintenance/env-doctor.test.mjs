@@ -10,7 +10,7 @@ import path from 'node:path'
 const root = path.resolve(import.meta.dirname, '../..')
 
 function runDoctor(env) {
-  const result = spawnSync(process.execPath, [path.join(root, 'scripts', 'tools', 'env-doctor.mjs'), '--json'], {
+  const result = spawnSync(process.execPath, [path.join(root, 'scripts', 'maintenance', 'env-doctor.mjs'), '--json'], {
     cwd: root,
     encoding: 'utf8',
     env: { ...process.env, ...env }
@@ -51,4 +51,4 @@ assert.equal(entry(runDoctor({ TURBO_CACHE_DIR: path.join(root, '.turbo') }), 't
 const expectedNodeLevel = process.version.replace(/^v/, '') === pinnedNode ? 'ok' : 'fail'
 assert.equal(entry(runDoctor({}), 'node-version').level, expectedNodeLevel)
 
-console.log('scripts/tools/env-doctor.test.mjs: all assertions passed')
+console.log('scripts/maintenance/env-doctor.test.mjs: all assertions passed')
