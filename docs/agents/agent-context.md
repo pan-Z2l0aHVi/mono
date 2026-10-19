@@ -1,16 +1,16 @@
 # Agent Context 架构
 
-本文件规定如何维护本仓的 agent context（instruction system）：层级、权威归属、客户端适配与新增门槛。它只管「context 自己怎么改」；领域语义与工程原则以 [`CONTEXT.md`](../../CONTEXT.md) 为准，仓库拓扑以 [`ARCHITECTURE.md`](../../ARCHITECTURE.md) 为准，任务该读什么以根 [`AGENTS.md`](../../AGENTS.md) 的 task routing 为准。硬约束短层见 `.agents/rules/agent-context.md`。
+本文件规定如何维护本仓的 agent context（instruction system）：层级、权威归属、客户端适配与新增门槛。它只管「context 自己怎么改」；工程原则、Task/PR 流程词汇与 ADR 索引以 [`CONTEXT.md`](../../CONTEXT.md) 为准，领域词汇以拥有该领域的包或应用级 `AGENTS.md` 为准，仓库拓扑以 [`ARCHITECTURE.md`](../../ARCHITECTURE.md) 为准，任务该读什么以根 [`AGENTS.md`](../../AGENTS.md) 的 task routing 为准。硬约束短层见 `.agents/rules/agent-context.md`。
 
 ## Context 层级
 
-| 层级               | 权威来源                                                         | 何时加载                      | 内容边界                             |
-| ------------------ | ---------------------------------------------------------------- | ----------------------------- | ------------------------------------ |
-| Always available   | 根 [`AGENTS.md`](../../AGENTS.md)                                | 每次任务                      | 项目身份、不可绕过边界、任务路由     |
-| Repository map     | 根 [`ARCHITECTURE.md`](../../ARCHITECTURE.md)                    | 需要全局拓扑或 workspace 定位 | 稳定目录地图、包角色与边界、依赖草图 |
-| Project context    | [`CONTEXT.md`](../../CONTEXT.md)                                 | 架构、跨包、术语、长期设计    | 工程原则、领域词汇、ADR 索引         |
-| Task-specific      | `docs/agents/*.md`、`.agents/rules/*.md`、最近的包级 `AGENTS.md` | 任务命中对应领域              | 可执行流程、质量门槛、局部约束       |
-| On-demand evidence | ADR、README、manifest、配置、源码、测试                          | 已确认受影响区域后            | 历史取舍、公共契约、当前实现         |
+| 层级               | 权威来源                                                         | 何时加载                      | 内容边界                                 |
+| ------------------ | ---------------------------------------------------------------- | ----------------------------- | ---------------------------------------- |
+| Always available   | 根 [`AGENTS.md`](../../AGENTS.md)                                | 每次任务                      | 项目身份、不可绕过边界、任务路由         |
+| Repository map     | 根 [`ARCHITECTURE.md`](../../ARCHITECTURE.md)                    | 需要全局拓扑或 workspace 定位 | 稳定目录地图、包角色与边界、依赖草图     |
+| Project context    | [`CONTEXT.md`](../../CONTEXT.md)                                 | 架构、跨包、术语、长期设计    | 跨包工程原则、Task/PR 词汇、ADR 索引     |
+| Task-specific      | `docs/agents/*.md`、`.agents/rules/*.md`、最近的包级 `AGENTS.md` | 任务命中对应领域              | 可执行流程、质量门槛、局部约束、领域词汇 |
+| On-demand evidence | ADR、README、manifest、配置、源码、测试                          | 已确认受影响区域后            | 历史取舍、公共契约、当前实现             |
 
 不要为「可能有用」批量加载文档。规则只保留无法由代码、类型、测试或工具配置可靠推导的约束；可自动验证的约束优先交给相应工具。
 
@@ -70,7 +70,7 @@
 - **实现优先**：源码、测试、`package.json`、workspace 与构建配置是当前行为的证据；地图、README 或文档与它们冲突时以实现为准，并判断是否需要同步文档。
 - **就近约束优先**：目标目录最近的 `AGENTS.md` 负责局部约束，根 `AGENTS.md` 负责仓库级边界与路由；与更远的文档冲突时取就近的。
 - **冲突显式暴露**：输出与既有 ADR 或权威文档矛盾时明确指出并说明是否值得重开，不静默覆盖；文档、类型、配置与源码不能共同证明边界时，停在最小受影响范围并报告未决风险。
-- **术语沿用已有 context**：命名领域概念时用当前已加载 context 里的术语（跨包看根 `CONTEXT.md`，其他看对应 `CONTEXT.md`、task guide 或 ADR），不用文档明确避开的同义词。概念或决策确实缺失时留给 `/domain-modeling` 在决策确定时懒创建，不提前建占位文件。
+- **术语沿用已有 context**：命名领域概念时用当前已加载 context 里的术语（跨包工程术语看根 `CONTEXT.md`，领域词汇看对应包或应用级 `AGENTS.md`、task guide 或 ADR），不用文档明确避开的同义词。概念或决策确实缺失时留给 `/domain-modeling` 在决策确定时懒创建，不提前建占位文件。
 
 ## 变更与文档同步
 
