@@ -3,8 +3,10 @@
  * 长度、大小写——管不到语言，而 `docs/agents/commit.md` 明说 commitlint 的规则以本文件为准、
  * 不在正文复述，所以这条本地规则同时承担「机检」和「规定」两个角色。
  *
- * 放在这里而不是 `.agents/checks/`：那目录会被 `pnpm agent:task guard` 在每次提交时全部执行，
- * 而它们拿不到 commit message 文件；`commit-msg` 钩子本来就跑 commitlint，规则挂在这里即生效。
+ * 放在这里而不是 `.agents/checks/`：本地五项固定 policy checks 与 required check job 内四项
+ * policy checks 都拿不到 commit message；`.agents/checks/` 也不是每个文件都会运行，
+ * `changeset-required` 仅由 PR CI 调用。
+ * `commit-msg` 钩子本来就跑 commitlint，规则挂在这里即生效。
  *
  * 判据是 CJK 文字与全角标点，不是「全 ASCII」：
  * - 全角标点必须算违规，否则 `fix(web-ui)：xxx` 这种半中文形状会漏过；

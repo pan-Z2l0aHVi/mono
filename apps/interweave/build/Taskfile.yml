@@ -32,7 +32,7 @@ tasks:
           OBFUSCATED:
             ref: .OBFUSCATED
     cmds:
-      - pnpm run {{if eq .DEV "true"}}build:dev{{else}}build{{end}}
+      - pnpm run {{if eq .DEV "true"}}build:bundle:dev{{else}}build:bundle{{end}}
     env:
       PRODUCTION: '{{if eq .DEV "true"}}false{{else}}true{{end}}'
 
@@ -41,15 +41,6 @@ tasks:
     run: once
     deps:
       - task: go:mod:tidy
-    sources:
-      - '**/*.[jt]s'
-      - exclude: frontend/**/*
-      - frontend/bindings/**/* # Rerun when switching between dev/production mode causes changes in output
-      - '**/*.go'
-      - go.mod
-      - go.sum
-    generates:
-      - frontend/bindings/**/*
     cmds:
       - node scripts/generate-bindings.mjs -f '{{.BUILD_FLAGS}}'{{if eq .OBFUSCATED "true"}} -obfuscated{{end}}
 

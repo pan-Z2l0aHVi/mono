@@ -1,27 +1,23 @@
 #!/bin/sh
-# 提交边界的清洁度 gate：只检不改。范围是 `vp check`（格式 + lint + 类型）、stylelint 与
-# `gofmt -l`。它与 task 无关，所以在「没有 active task」的提交里也照跑（`scripts/task.mjs` 的
-# alwaysOnChecks 把它列进无 task 子集）。这道保证之所以不挂在 task 档位上：T0/T1 必经 freeze 的
-# `fix-code` 归一化，而 T2 的快速通道与无 task 提交不经过 freeze，那一层对它们不存在；把一条
-# check-only 的检查放在 commit 边界，三条路径拿到的就是同一条保证。
+# 提交边界的只读格式检查。它是 task 无关的固定 policy checks 之一，每次提交都按暂存路径运行；
+# pre-commit 与 ci:check-policies 只检查，不运行 fixer，也不修改文件。需要整理时由实施者显式运行
+# fix-code，检查改动后只暂存预期文件。
 #
-# 刻意不代为 fix：commit 期改写文件会与 freeze 的快照不变式打架（内容变了，diffHash 就 stale），
-# 而且 `vp staged` 那类工具为处理部分暂存要动用 stash，会把别人的在制品也卷进来。这里只说「哪些
-# 文件没过检查、该自己跑什么」，改写留给作者。脚本自身的三条调用都不带 fix 开关；工具入口的 env
-# 覆盖（下面三个变量）按可信输入处理、故意不加引号，那是测试 seam，不是用户接口。
+# 刻意不代为 fix：commit 期改写文件会让 index 与工作区内容分叉，而且 `vp staged` 那类工具为处理
+# 部分暂存要动用 stash，会把别人的在制品也卷进来。这里只说「哪些文件没过检查、该自己跑什么」，
+# 改写留给作者。脚本自身的三条调用都不带 fix 开关；工具入口的 env 覆盖（下面三个变量）按可信输入
+# 处理、故意不加引号，那是测试 seam，不是用户接口。
 #
-# 读的是工作区副本，不是 staged blob：与内核快照同口径（`currentSnapshot` 也按工作区字节算
-# hash），代价是同一个文件在 index 与工作区分叉时，本检查判定的是工作区那一份。分叉要自己收敛：
-# 改完重新 `git add`。两条由此漏出去的形状是已接受的残余：只 add 了未归一化的那半个 hunk
-# （工作区已格式化），以及 `git add x && rm x`（清单还列着它，工作区没有，于是跳过）。挡住它们的
-# 是仓级 `pnpm run check-code`（CI 跑的就是它）与 review，不是这里。
+# 文件名来自 index，但工具检查工作区副本，不是 staged blob。index 与工作区分叉时，本检查判定工作区
+# 那一份；分叉要自己收敛，改完重新 `git add`。只 add 了未归一化的部分 hunk、或 staged 后删除工作区文件
+# 这类边界由全仓 `pnpm run check-code` 与 PR review 复核，不由本脚本重写 index。
 #
 # 下面三段 heredoc 循环形状相同而不抽成函数：`set --` 在函数里改的是函数自己的位置参数（POSIX sh
 # 动态作用域），抽出来就把参数留在了函数里。内核以 POSIX sh 执行本文件（无扩展名、需要 +x），
 # 所以只用 sh 的可移植子集；按行传递路径。
 set -e
 
-# 工具入口允许被 env 覆盖，供 scripts/task.test.mjs 的 fixture 使用——那个临时仓库没有
+# 工具入口允许被 env 覆盖，供 scripts/format-clean.test.mjs 的 fixture 使用——那个临时仓库没有
 # node_modules，`pnpm exec` 起不来。覆盖只改「调用哪条命令」，不改检查范围与判定。
 vp_cmd="${AGENT_VP_CMD:-pnpm exec vp}"
 stylelint_cmd="${AGENT_STYLELINT_CMD:-pnpm exec stylelint}"

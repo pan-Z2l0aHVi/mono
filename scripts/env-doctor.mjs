@@ -137,23 +137,36 @@ function watcherDetection() {
 }
 
 // ===== mise env：turbo 缓存位置 =====
-// TURBO_CACHE_DIR 由 .mise.toml [env] 注入，值锚定 git common dir（主仓与全部 worktree 共享缓存）。
-// 期望值不靠复刻 Tera 模板得到，而是按同一推导自己算一遍：判据刻意写死「git common dir + /turbo-cache」
-// 这一条，.mise.toml 若换推导方式，这里必须同步改，否则断言会静默失守。
-// 不相等就是当前 shell 没激活 mise（agent 工具宿主、git hook、bash -c、外部脚本都不激活），
-// turbo 会落到默认缓存位置：既命中不了共享缓存，也可能在同一 hash 下写入工具链不符的产物。
+// 预期值由共用 helper 独立计算；不会读取 TURBO_CACHE_DIR，避免 CI 覆盖值自我满足。
+// 缓存目录可以尚未创建，首次 Turbo 构建会创建它。
 function turboCacheCheck() {
   const miseConfig = fs.readFileSync(path.join(root, '.mise.toml'), 'utf8')
-  if (!/^\s*TURBO_CACHE_DIR\s*=\s*".*"\s*$/m.test(miseConfig)) {
+  if (!/^\s*TURBO_CACHE_DIR\s*=/m.test(miseConfig)) {
     record('turbo-cache', 'warn', '.mise.toml does not declare TURBO_CACHE_DIR; each worktree keeps a cold cache')
     return
   }
-  const commonDir = sh('git', ['rev-parse', '--path-format=absolute', '--git-common-dir'])
-  if (commonDir.status !== 0) {
-    record('turbo-cache', 'fail', `cannot resolve the git common dir: ${commonDir.stderr}`)
+  const resolved = spawnSync('sh', [path.join(root, 'scripts', 'turbo-cache-dir.sh'), '--root', root], {
+    cwd: root,
+    encoding: 'utf8'
+  })
+  if (resolved.error || resolved.status !== 0) {
+    const reason =
+      [
+        resolved.error?.message,
+        resolved.stderr?.trim(),
+        resolved.signal ? `terminated by ${resolved.signal}` : '',
+        resolved.status !== null ? `exit code ${resolved.status}` : ''
+      ]
+        .filter(Boolean)
+        .join('; ') || 'unknown failure'
+    record('turbo-cache', 'fail', `cannot resolve the canonical Turbo cache path: ${reason}`)
     return
   }
-  const expected = path.join(commonDir.stdout, 'turbo-cache')
+  const expected = resolved.stdout.trim()
+  if (!path.isAbsolute(expected)) {
+    record('turbo-cache', 'fail', `cache path helper returned a non-absolute path: ${expected || '(empty)'}`)
+    return
+  }
   const injected = process.env.TURBO_CACHE_DIR
   if (!injected) {
     record(
@@ -167,7 +180,7 @@ function turboCacheCheck() {
     record(
       'turbo-cache',
       'fail',
-      `TURBO_CACHE_DIR=${injected} is not the shared cache (${expected}): turbo would miss it and write a divergent entry`
+      `TURBO_CACHE_DIR=${injected} is not the canonical cache path (${expected}): turbo would miss it and write a divergent entry`
     )
     return
   }

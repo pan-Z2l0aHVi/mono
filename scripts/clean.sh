@@ -3,9 +3,9 @@
 # scripts/clean.sh — 清理本仓库的构建产物、依赖与可再生缓存。
 #
 # 用法:
-#   pnpm clean              默认 = 全量：构建产物 + node_modules + 全部缓存（含 turbo cache）
-#   pnpm clean --locks      额外删除 pnpm-lock.yaml
-#   pnpm clean --dry-run    只打印将要删除的路径，不执行删除
+#   pnpm run clean              默认 = 全量：构建产物 + node_modules + 全部缓存（含本仓共享 Turbo artifact cache）
+#   pnpm run clean --locks      额外删除 pnpm-lock.yaml
+#   pnpm run clean --dry-run    只打印将要删除的路径，不执行删除
 #
 # 为什么默认不含 pnpm-lock.yaml:
 #   它是 tracked 文件，且 AGENTS.md 把「依赖与 lockfile」列为需逐次授权的操作。旧实现在
@@ -19,10 +19,10 @@ set -euo pipefail
 
 usage() {
   cat <<'EOF'
-用法: pnpm clean [--locks] [--dry-run]
+用法: pnpm run clean [--locks] [--dry-run]
 
 两档语义（第二档必须显式 opt-in）:
-  (默认)    构建产物 + node_modules + 全部可再生缓存（含 git common dir 下的 turbo cache）
+  (默认)    构建产物 + node_modules + 全部可再生缓存（含本仓共享 Turbo artifact cache）
   --locks   额外删除 pnpm-lock.yaml（tracked 文件，需逐次授权，默认不做）
 
 选项:
@@ -30,9 +30,9 @@ usage() {
   -h, --help   显示本帮助
 
 示例:
-  pnpm clean                 # 全量清空，保留 pnpm-lock.yaml
-  pnpm clean --dry-run       # 先看会删什么
-  pnpm clean --locks         # 连 pnpm-lock.yaml 一起删
+  pnpm run clean                 # 全量清空，保留 pnpm-lock.yaml
+  pnpm run clean --dry-run       # 先看会删什么
+  pnpm run clean --locks         # 连 pnpm-lock.yaml 一起删
 EOF
 }
 
@@ -75,23 +75,19 @@ if [ ! -f "pnpm-workspace.yaml" ]; then
   exit 1
 fi
 
-# turbo cache 按 .mise.toml 的 TURBO_CACHE_DIR 锚定在 git common dir（主仓与全部 worktree 共享），
-# 不在工作目录里，find 摸不到，必须用同一套 git rev-parse 逻辑解析。
-#
-# 上面那个检查只保证「是 monorepo 根」，不保证「在 git 仓里」：一份 git archive 或一份拷贝出来的
-# 目录树同样带 pnpm-workspace.yaml，而 git rev-parse 在非 git 目录直接失败。默认档承诺清掉 turbo
-# cache，所以这里必须 fail-fast 并说清原因，而不是让 git 的报错漏到后面某一行。
-if ! GIT_COMMON_DIR=$(git rev-parse --path-format=absolute --git-common-dir 2>/dev/null); then
-  echo "❌ 错误: 无法解析 git common dir，当前目录不在 git 仓库/worktree 内。" >&2
-  echo "   turbo cache 锚定在 <git-common-dir>/turbo-cache（见 .mise.toml 的 TURBO_CACHE_DIR），" >&2
-  echo "   没有它就无法定位并清理共享缓存。请在 git 仓库内运行本脚本。" >&2
+# 共享 artifact cache 位于系统临时目录，不在工作目录里，find 摸不到。与 mise 共用路径 helper；
+# 即使外部注入了 TURBO_CACHE_DIR，也只清理当前仓库命名空间。
+SCRIPT_DIR=$(CDPATH= cd -P "$(dirname "$0")" 2>/dev/null && pwd -P) || {
+  echo "❌ 错误: 无法解析 clean.sh 所在目录。" >&2
+  exit 1
+}
+if ! TURBO_CACHE_DIR=$(sh "$SCRIPT_DIR/turbo-cache-dir.sh" --root "$PWD"); then
+  echo "❌ 错误: 无法定位当前仓库的共享 Turbo artifact cache。" >&2
   exit 1
 fi
 
-TURBO_CACHE_DIR="$GIT_COMMON_DIR/turbo-cache"
-
 echo "🧹 开始清理项目..."
-echo "   git common dir: $GIT_COMMON_DIR"
+echo "   Turbo artifact cache: $TURBO_CACHE_DIR"
 if [ "$DO_LOCKS" -eq 1 ]; then
   echo "   附加档: --locks（删除 pnpm-lock.yaml）"
 fi

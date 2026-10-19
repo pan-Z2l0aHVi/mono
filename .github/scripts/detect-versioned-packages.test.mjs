@@ -13,7 +13,7 @@ const script = path.join(import.meta.dirname, 'detect-versioned-packages.mjs')
 const fixture = fs.mkdtempSync(path.join(os.tmpdir(), 'greypan-detect-versioned-'))
 
 const git = (...args) =>
-  execFileSync('git', ['-C', fixture, '-c', 'user.name=fixture', '-c', 'user.email=fixture@example.com', ...args], {
+  execFileSync('git', ['-C', fixture, '-c', 'user.name=Codex', '-c', 'user.email=noreply@openai.com', ...args], {
     encoding: 'utf8'
   }).trim()
 
@@ -71,6 +71,7 @@ try {
   writePackage('packages/quiet', '@greypan/quiet', '1.0.0')
   writePackage('packages/rename-me', '@greypan/rename-me', '1.0.0')
   writePackage('packages/private-pkg', '@greypan/private-pkg', '1.0.0', { isPrivate: true })
+  writePackage('packages/public-to-private', '@greypan/public-to-private', '1.0.0')
   fs.writeFileSync(path.join(fixture, 'README.md'), 'fixture\n')
   commit('base')
 
@@ -108,9 +109,14 @@ try {
   commit('fresh package')
   assert.deepEqual(detect(), [{ name: '@greypan/fresh', version: '0.1.0', directory: 'packages/fresh' }])
 
-  // 6. 私有包 bump：永不进 npm 清单。
+  // 6. 已有私有包 bump：永不进 npm 清单。
   writePackage('packages/private-pkg', '@greypan/private-pkg', '2.0.0', { isPrivate: true })
   commit('private bump')
+  assert.deepEqual(detect(), [])
+
+  // 6b. 已发布的公开包转私有且版本变化：从此退出 npm 发布清单。
+  writePackage('packages/public-to-private', '@greypan/public-to-private', '1.0.1', { isPrivate: true })
+  commit('public to private')
   assert.deepEqual(detect(), [])
 
   // 7. 删除包：跳过而不是把 base 读失败当成错误抛出。

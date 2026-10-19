@@ -7,16 +7,13 @@
 - **Plugin over inheritance。** 扩展性通过 [`packages/js-kit/src/plugin-system/`](packages/js-kit/src/plugin-system/) 的函数组合实现，不以 class 层级承载内部状态或行为。
 - **Acyclic workspace graph。** 工作区依赖保持有向无环，`js-kit` 是运行时代码的基础包。
 
-## task 流程词汇
+## Task 与 PR 流程词汇
 
-**测试证据（verification）**: `pnpm agent:task verify` 记录的一条结果，含 `kind`（`test` 或 `acceptance`）与绑定的 `diffHash`；它只描述发生过什么，不执行命令、不改变状态机相位。各级别所需的证据种类见 [`docs/agents/task-levels.md`](docs/agents/task-levels.md#级别代号)。
-_Avoid_: 测试通过、CI 绿
+**Task 台账**：`pnpm agent:task-ledger` 在系统临时目录维护本地归属与进度记录，包含级别、status、worktree、issue/PR 引用和事件时间线。schema v3 的 status 为 `open`、`active`、`closed` 或 `dropped`；登记簿不记录 review、测试或 CI 通过结论，规范见 [`docs/agents/task-ledger.md`](docs/agents/task-ledger.md)。
+_Avoid_: 证据链、冻结审批状态
 
-**测试验收（acceptance）**: 以测试工程师视角对功能层做的独立验收，与实施阶段自证的 `test` 分开记为 `--kind acceptance`。它是证据类别，不是状态机相位。
-_Avoid_: 单元测试、把内核 `verify` 本身当成测试验收
-
-**review**: 独立于实施者的执行体只审冻结 diff 与证据后给出的结论，与 approval 成对绑定同一个 `diffHash`。各级别的 review 要求见 [`docs/agents/task-levels.md`](docs/agents/task-levels.md) 的级别表与 [`docs/agents/review.md`](docs/agents/review.md#独立性要求)。
-_Avoid_: 自审、approval
+**PR review**：PR 阶段由 reviewer 对实际 diff、验收条件和验证结果进行的独立检查。当前 required context `check` 不等于 review 结论，远端 ruleset 尚未强制 approving review，纪律见 [`docs/agents/review.md`](docs/agents/review.md)。
+_Avoid_: 本地 review phase、CI 绿即 review 通过
 
 ## js-kit 队列词汇
 
@@ -48,26 +45,27 @@ _Avoid_: 页面跳转、路由切换（避免与 router 概念混淆）
 
 ## 关键 ADR
 
-表内只列仍承载现行决策的 ADR。多 Agent 编排层（Role、执行体选择、Supervisor、编排账本与 handoff）连同其 skill 已整体退役：0010、0011、0015-0017、0019、0020 从索引移除，0022（发布通道形态）因与 herdr-projects「一 task 一 PR 直接合进 `main`」的流程冲突整篇删除。这些历史只留在 git 里。0012 与 0014 行内提到该编排层的修订注记同样不构成现行指引。需求拆分与 task 派发由外部编排层承担，仓库侧只保留 task 级门禁（[`docs/agents/workflow.md`](docs/agents/workflow.md)）、owner 与 worktree 唯一性边界（[`docs/agents/worktree.md`](docs/agents/worktree.md)）和发布责任面（[`docs/agents/release.md`](docs/agents/release.md)）。
+表内只列仍承载现行决策的 ADR。多 Agent 编排层（Role、执行体选择、Supervisor、编排账本与 handoff）连同其 skill 已整体退役：0010、0011、0015-0017、0019、0020 从索引移除，0022（发布通道形态）因与 herdr-projects「一 task 一 PR 直接合进 `main`」的流程冲突整篇删除。这些历史只留在 git 里。0012 与 0014 行内提到该编排层的修订注记同样不构成现行指引。需求拆分与 task 派发由外部编排层承担，仓库侧由本地 Task 台账记录归属与进度，由独立政策检查器运行五项只读检查；职责分别见 docs/agents/task-ledger.md 与 docs/agents/commit.md、owner 与 worktree 唯一性边界（[`docs/agents/worktree.md`](docs/agents/worktree.md)）和发布责任面（[`docs/agents/release.md`](docs/agents/release.md)）。
 
-| ADR                                                                             | 决策                                                  | 何时读取                                                                                      |
-| ------------------------------------------------------------------------------- | ----------------------------------------------------- | --------------------------------------------------------------------------------------------- |
-| [0001](docs/adr/0001-ci-pipeline.md)                                            | CI Pipeline                                           | 修改验证、Changesets 或发布门控（`vp staged` 已被 ADR-0014 退役，需连读）                     |
-| [0002](docs/adr/0002-build-toolchain.md)                                        | Build Toolchain                                       | 修改 Vite Plus、构建或测试工具链（暂存修复已被 ADR-0014 退役，需连读）                        |
-| [0003](docs/adr/0003-release-planes.md)                                         | Release Planes                                        | 修改 npm/Wails 发布流程                                                                       |
-| [0004](docs/adr/0004-progressive-agent-context-architecture.md)                 | Agent Context Architecture                            | 修改 agent context、rules、skills 或 instruction system                                       |
-| [0005](docs/adr/0005-web-ui-component-architecture.md)                          | Web UI Component Architecture                         | 修改 web-ui 组件技术选型、公共契约、事件模型、框架类型适配或 icon 系统                        |
-| [0006](docs/adr/0006-web-ui-composition-rendering-architecture.md)              | Web UI Composition & Rendering Architecture           | 修改 overlay 交互/定位、布局层级、design token 或 @lit/context 组合模式                       |
-| [0007](docs/adr/0007-plugin-system.md)                                          | Plugin System                                         | 设计可组合状态或行为模块                                                                      |
-| [0008](docs/adr/0008-interweave-backend-architecture.md)                        | Interweave Backend Architecture                       | 修改 interweave Go 模块、Wails Service 或 frontend bindings                                   |
-| [0009](docs/adr/0009-interweave-sqlite-persistence-wal.md)                      | SQLite Persistence WAL                                | 修改 interweave 持久化层或 SQLite 并发模型                                                    |
-| [0012](docs/adr/0012-instruction-risk-tiering-and-pre-authorized-operations.md) | Instruction Risk Tiering & Pre-authorized Operations  | 修改预授权操作（风险分级表与约束预算基线已被 ADR-0014 取代/退役，需连读）                     |
-| [0013](docs/adr/0013-web-ui-theme-transition.md)                                | Web UI Theme Transition                               | 修改 `web-ui-theme` 过渡 API、View Transition 生命周期或降级语义                              |
-| [0014](docs/adr/0014-task-system-v2.md)                                         | Task 体系 v2（level 状态机、guard、checks、playbook） | 修改 [`scripts/task.mjs`](scripts/task.mjs)、任务级别 gate、pre-commit 门禁或 task state 布局 |
-| [0018](docs/adr/0018-task-state-in-tmpdir.md)                                   | Task state 落在系统临时目录                           | 修改 task state 落点、跨仓库列举范围或重启后的恢复规则                                        |
-| [0021](docs/adr/0021-orchestration-layer-moved-to-herdr-projects.md)            | 编排层承接需求拆分与 task 派发                        | 修改 worktree 分工、T0 判据或 T0 的 review 形态                                               |
-| [0023](docs/adr/0023-layout-exposes-derived-mobile-viewport-state.md)           | Layout 暴露派生视口状态（`mobile` / `mobile-change`） | 修改 layout 的断点判定、给组件加派生状态，或让 app 消费移动端判定                             |
-| [0024](docs/adr/0024-task-tiering-v3.md)                                        | Task 分级 v3 与流程阶梯                               | 修改任务级别判据、T1 的 review 要求或 `done` 前的验证门禁                                     |
+| ADR                                                                             | 决策                                                    | 何时读取                                                                  |
+| ------------------------------------------------------------------------------- | ------------------------------------------------------- | ------------------------------------------------------------------------- |
+| [0001](docs/adr/0001-ci-pipeline.md)                                            | CI Pipeline                                             | 修改验证、Changesets 或发布门控（`vp staged` 已被 ADR-0014 退役，需连读） |
+| [0002](docs/adr/0002-build-toolchain.md)                                        | Build Toolchain                                         | 修改 Vite Plus、构建或测试工具链（暂存修复已被 ADR-0014 退役，需连读）    |
+| [0003](docs/adr/0003-release-planes.md)                                         | Release Planes                                          | 修改 npm/Wails 发布流程                                                   |
+| [0004](docs/adr/0004-progressive-agent-context-architecture.md)                 | Agent Context Architecture                              | 修改 agent context、rules、skills 或 instruction system                   |
+| [0005](docs/adr/0005-web-ui-component-architecture.md)                          | Web UI Component Architecture                           | 修改 web-ui 组件技术选型、公共契约、事件模型、框架类型适配或 icon 系统    |
+| [0006](docs/adr/0006-web-ui-composition-rendering-architecture.md)              | Web UI Composition & Rendering Architecture             | 修改 overlay 交互/定位、布局层级、design token 或 @lit/context 组合模式   |
+| [0007](docs/adr/0007-plugin-system.md)                                          | Plugin System                                           | 设计可组合状态或行为模块                                                  |
+| [0008](docs/adr/0008-interweave-backend-architecture.md)                        | Interweave Backend Architecture                         | 修改 interweave Go 模块、Wails Service 或 frontend bindings               |
+| [0009](docs/adr/0009-interweave-sqlite-persistence-wal.md)                      | SQLite Persistence WAL                                  | 修改 interweave 持久化层或 SQLite 并发模型                                |
+| [0012](docs/adr/0012-instruction-risk-tiering-and-pre-authorized-operations.md) | Instruction Risk Tiering & Pre-authorized Operations    | 修改预授权操作（风险分级表与约束预算基线已被 ADR-0014 取代/退役，需连读） |
+| [0013](docs/adr/0013-web-ui-theme-transition.md)                                | Web UI Theme Transition                                 | 修改 `web-ui-theme` 过渡 API、View Transition 生命周期或降级语义          |
+| [0014](docs/adr/0014-task-system-v2.md)                                         | Task 体系 v2（登记簿与 gate 由 ADR-0025 修订）          | 修改 task 登记、任务级别、政策检查或 task state 布局                      |
+| [0018](docs/adr/0018-task-state-in-tmpdir.md)                                   | Task state 落在系统临时目录                             | 修改 task state 落点、跨仓库列举范围或重启后的恢复规则                    |
+| [0021](docs/adr/0021-orchestration-layer-moved-to-herdr-projects.md)            | 编排层承接需求拆分与 task 派发                          | 修改 worktree 分工、T0 判据或编排层边界                                   |
+| [0023](docs/adr/0023-layout-exposes-derived-mobile-viewport-state.md)           | Layout 暴露派生视口状态（`mobile` / `mobile-change`）   | 修改 layout 的断点判定、给组件加派生状态，或让 app 消费移动端判定         |
+| [0024](docs/adr/0024-task-tiering-v3.md)                                        | Task 分级 v3 与流程阶梯（台账与 gate 由 ADR-0025 修订） | 修改任务级别判据、worktree 起点或验证深度                                 |
+| [0025](docs/adr/0025-pr-review-flow.md)                                         | Task 台账 v3、政策检查与 PR 流程                        | 修改 task 登记簿、政策检查集合、PR changeset gate 或 review/merge 前核验  |
 
 ## Interweave 产品与领域词汇
 

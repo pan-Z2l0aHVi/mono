@@ -1,7 +1,7 @@
 name: CI
 
-# 不监听 push：仓库是 squash-only 且 ruleset 开了 strict required status，PR head 的树就等于合并后
-# main 的树，push 那次只是把同一份验证再跑一遍。trunk 按需复检走 workflow_dispatch。
+# 不监听 push；pull_request 默认验证 GitHub 生成的合并对象。strict 只要求 PR 分支跟上 base，
+# squash 会创建新提交，不能据此断言合并提交与先前测试对象完全相同。trunk 复检走 workflow_dispatch。
 # 触发面、job 依赖与安装面的单一声明在 .github/scripts/ci-topology.mjs，由同目录的 ci-topology.test.mjs
 # 拿真实 YAML 逐字段比对。
 on:
@@ -21,8 +21,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     env:
-      # mise 配置会把 TURBO_CACHE_DIR 锚定到 git common dir（主仓与 worktree 共享缓存）；
-      # CI 显式固定回 workspace 内，保证 actions/cache 的 .turbo 路径不被绕过。
+      # CI 显式把 artifact cache 放在 workspace 内，供 actions/cache 保存与恢复；mise 保留此覆盖。
       TURBO_CACHE_DIR: ${{ github.workspace }}/.turbo
 
     steps:
@@ -30,9 +29,23 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Record tested PR snapshot
+        if: github.event_name == 'pull_request'
+        shell: bash
+        run: |
+          checkout_sha=$(git rev-parse HEAD)
+          {
+            echo "## Tested PR snapshot"
+            echo "- PR base SHA: ${{ github.event.pull_request.base.sha }}"
+            echo "- PR head SHA: ${{ github.event.pull_request.head.sha }}"
+            echo "- Event SHA: $GITHUB_SHA"
+            echo "- Checkout SHA: $checkout_sha"
+          } | tee -a "$GITHUB_STEP_SUMMARY"
+
       - uses: ./.github/actions/setup-deps
         with:
           wails: 'true'
+          go-cache: 'true'
 
       # interweave-frontend 的 build 依赖 wails3，每次 CI 显式验证工具链，
       # 避免 turbo 缓存命中时绕过 wails3 缺失/损坏而静默通过。
@@ -45,36 +58,34 @@ jobs:
         uses: actions/cache@v5
         with:
           path: .turbo
-          key: ${{ runner.os }}-turbo-${{ github.sha }}
+          key: ${{ runner.os }}-${{ runner.arch }}-turbo-${{ hashFiles('.mise.toml') }}-${{ github.sha }}
           restore-keys: |
-            ${{ runner.os }}-turbo-
-
-      - name: Resolve Go cache paths
-        id: go-cache
-        run: |
-          echo "mod=$(go env GOMODCACHE)" >> "$GITHUB_OUTPUT"
-          echo "build=$(go env GOCACHE)" >> "$GITHUB_OUTPUT"
-
-      - name: Cache Go modules and build artifacts
-        uses: actions/cache@v5
-        with:
-          path: |
-            ${{ steps.go-cache.outputs.mod }}
-            ${{ steps.go-cache.outputs.build }}
-          key: ${{ runner.os }}-go-${{ hashFiles('apps/interweave/go.sum') }}-${{ github.sha }}
-          restore-keys: |
-            ${{ runner.os }}-go-${{ hashFiles('apps/interweave/go.sum') }}-
-            ${{ runner.os }}-go-
+            ${{ runner.os }}-${{ runner.arch }}-turbo-${{ hashFiles('.mise.toml') }}-
 
       - name: Check shared agent context
         run: pnpm run ci:validate-context
 
+      # 纳入唯一 required context；显式 bash 使用 fail-fast，任一 policy check 失败都会使 job 失败。
+      - name: Check repository policies
+        shell: bash
+        run: |
+          .agents/checks/command-conventions
+          .agents/checks/no-mutual-links
+          .agents/checks/turbo-cache-invariant
+          .agents/checks/web-ui-docs-inputs
+
       - name: Check changesets
         if: github.event_name == 'pull_request' && github.head_ref != 'changeset-release/main'
-        run: pnpm exec changeset status --since=origin/${{ github.base_ref }}
+        env:
+          PR_BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          pnpm exec changeset status --since="$PR_BASE_SHA"
+          .agents/checks/changeset-required --base "$PR_BASE_SHA" --head "$PR_HEAD_SHA"
 
+      # 保留 workspace package 构建；Wails 原生工作流负责 Interweave app wrapper。
       - name: Build
-        run: pnpm run build
+        run: pnpm exec turbo run build --filter=!@greypan/interweave
 
       - name: Test repository Agent tools
         run: pnpm run ci:test-scripts
