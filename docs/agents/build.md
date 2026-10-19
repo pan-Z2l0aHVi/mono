@@ -32,11 +32,11 @@ Interweave 由 Wails 宿主管理嵌套前端，其 alias 只启动 Wails host�
 
 ## TypeScript 配置
 
-共享配置在 `packages/tsconfig/`，通过 `"extends": "@greypan/tsconfig/<profile>.json"` 引用。面向 DOM 与 Node 的包把配置拆成 `tsconfig.node.json`、`tsconfig.app.json` 和 `tsconfig.vitest.json`，纯 Node 包只用单个 `tsconfig.json`。每个包添加自己的 `include`、`paths` 与 `tsBuildInfoFile`。
+共享配置在 `packages/tsconfig/`，通过 `"extends": "@greypan/tsconfig/<profile>.json"` 引用。面向 DOM 与 Node 的包把配置拆成 `tsconfig.node.json`、`tsconfig.app.json` 和 `tsconfig.vitest.json`，纯 Node 包只用单个 `tsconfig.json`。每个包声明自己的 `include` 与 `tsBuildInfoFile`；需要路径别名时再声明 `paths`，不要为形式统一添加空配置。
 
 ## 库构建模式
 
-单入口包用 `vp pack`（基于 tsdown，输出 `.mjs` 与 `.d.mts`，自动生成声明文件并从依赖中外部化）。子路径导出包用 `vp build`（Vite library 模式配 `preserveModules`，输出 `.js` 与 `.d.ts`，需要手动配置外部化）。`packages/tsconfig` 无构建步骤，只提供通过 TypeScript `extends` 消费的 JSON 文件。
+公共面是固定入口集合的包用 `vp pack`（基于 tsdown，可以多入口，输出 `.mjs` 与 `.d.mts`，自动生成声明文件并从依赖中外部化）。公共面含通配子路径导出或需要 Vite CSS/资源管线的包用 `vp build`（Vite library 模式配 `preserveModules`，输出 `.js` 与 `.d.ts`，需要手动配置外部化）。具体选择以各包 manifest 与 `vite.config.ts` 为准，入口数量本身不是判据。`packages/tsconfig` 无构建步骤，只提供通过 TypeScript `extends` 消费的 JSON 文件。
 
 ## 外部化规则
 
@@ -44,7 +44,7 @@ Interweave 由 Wails 宿主管理嵌套前端，其 alias 只启动 Wails host�
 
 ## 应用
 
-两个 demo 与 `web-ui` 共享同一 browserslist 目标，具体值以根配置为准。`web-ui` 是唯一在构建时输出 CSS 的包；静态 `color-mix()` 由 lightningcss 求值，含 `var()` 的 `color-mix()` 保留为运行时 CSS。纯 JavaScript 库包统一声明 `engines`，具体值以各包 `package.json` 为准。
+消费方在各自的 `package.json` 声明同一份 browserslist 目标，根 `package.json` 没有目标值；改目标时同步所有声明处，具体清单以 manifest 为准。`web-ui` 是唯一在构建时输出 CSS 的包；静态 `color-mix()` 由 lightningcss 求值，含 `var()` 的 `color-mix()` 保留为运行时 CSS。纯 JavaScript 库包统一声明 `engines`，具体值以各包 `package.json` 为准。
 
 两个 demo 用 `basicSsl()` 为 dev server 提供安全上下文：Service Worker 与 `navigator.clipboard` 只在安全上下文可用，而 demo 设了 `server.host: true`。该插件只作用于 dev server，生产构建不受影响。各 demo 的插件、测试面与构建差异以各应用 `vite.config.ts` 与 [`verification.md`](verification.md) 为准。`depsReload` 监听库的 `dist/` 目录，本地依赖变化时触发整页刷新。嵌套 WebView 前端遵循对应框架 demo 的 Vite 插件与本地包约定。
 
@@ -56,7 +56,7 @@ CI 构建 workspace 包并跳过 Interweave app wrapper；Wails verify / release
 
 合并门控只放行 required checks 通过的 PR；具体 context 集合与 strict 策略属于远端规则集状态，以仓库当前规则为准。`GITHUB_TOKEN` 创建的版本 PR 可能需要人工批准挂起的 run；不归属到具体用户的改动需要额外 approval，且 PR 作者不能批准自己的改动。此 access-control approval 不等于独立 review，review 规则见 [`review.md`](review.md)；挂起与发布恢复的操作细节见 [`release.md`](release.md)。
 
-`deploy-pages.yml` 为每个 `apps/<name>` 发布到 `/mono/<name>/`，没有根落地页。History 路由的深层链接依赖 404 回退：应用必须在创建路由器之前恢复 `redirect`，未知路径保持 404。
+`deploy-pages.yml` 只发布 `DEMO_APPS` 列出的 demo 应用到 `/mono/<name>/`，不遍历全部 `apps/<name>`，也没有根落地页。History 路由的深层链接依赖 404 回退：应用必须在创建路由器之前恢复 `redirect`，未知路径保持 404。
 
 未经用户授权不执行发布。取得授权的机制见 [`workflow.md`](workflow.md#怎么取得这个授权)。不得直接运行 `npm publish`，首次发布用 `pnpm publish-new-pack <package-dir>`。Git 检查的绕过禁令见 [`commit.md`](commit.md)。
 

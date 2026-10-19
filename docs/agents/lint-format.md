@@ -5,4 +5,4 @@
 以下约束无法从工具与配置推导，需显式记住：
 
 - **Vue 模板盲区**：oxlint 与 shadcn 规则不解析 `.vue` 模板（oxc 上游限制，见 oxc#15761/#20465），只覆盖 `<script>` 块，模板内的 class 与内联样式没有 JS lint 覆盖。不要用 `lint.ignorePatterns` 排除 `.vue`，那会连 script 块的 lint 一起丢掉。
-- **CSS**：web-ui 组件样式使用 Tailwind 4，CSS 嵌套由 `vp build` 的 LightningCSS 转译，优先使用嵌套写法。
+- **CSS**：`packages/web-ui` 的组件样式是原生 CSS，嵌套由 `vp build` 的 LightningCSS 转译，优先使用嵌套写法。

@@ -11,7 +11,7 @@ Task 分级与本地记账描述的是所有仓库共有的工作方式：先按
 
 实现里还沉积了与「分级 + 记账」无关的宿主策略：强制工作区干净、task 与 worktree 一对一、GitHub URL 校验、`greypan` 命名空间、owner 最小长度，以及 v1/v2 schema 迁移。这些规则在本仓成立，但不是通用契约；把它们带进 skill 会让别的项目继承本仓的编排假设。
 
-本仓的收益同样明确：删掉两份 task 文档和两个 CLI 后，根 `scripts/` 只保留提交辅助，agent context 少一层复制，命令面从 `task` 的全部相位收敛为纯粹的登记动作。
+本仓的收益同样明确：删掉两份 task 文档和两个 CLI 后，根 `scripts/` 不再保留 task 相关入口，agent context 少一层复制，命令面从 `task` 的全部相位收敛为纯粹的登记动作。
 
 ## 决策
 
@@ -35,7 +35,7 @@ skill 以仓库自撰形式存放，实体在 `skills/task-ledger/`，经 `.agen
 
 状态目录为 `<系统临时目录>/agent-task-ledger/<repo-id>/`，`repo-id` 由 Git common directory 的物理路径派生，使同一仓库的 worktree 共享记录、不同仓库互相隔离。`AGENT_TASK_ROOT` 与 `AGENT_TASK_STATE_DIR` 只用于隔离和 fixture。
 
-schema 收敛为 v1，状态为 `open`、`active`、`closed`、`dropped`。命令收为 `new`、`start`、`status`、`ref`、`close`、`drop` 与 `help`；`ref` 接受任意 kind/value，不校验引用类型。删除与通用记录无关的检查：干净工作区前提、worktree 分配唯一性、GitHub URL 格式、命名空间、owner 最小长度和旧 schema 迁移。
+schema 收敛为 v1，状态为 `open`、`active`、`closed`、`dropped`。命令收为 `new`、`start`、`status`、`ref`、`close`、`drop` 与 `help`；`ref` 不校验引用的语义类型（`issue`、`pr` 只是普通 kind），但保留基本结构校验，具体形状以 skill 的 CLI 为准。删除与通用记录无关的检查：干净工作区前提、worktree 分配唯一性、GitHub URL 格式、命名空间、owner 最小长度和旧 schema 迁移。
 
 `new` 记录当前 Git 上下文，不要求工作区干净，也不接管 worktree 分配。`closed` 与 `dropped` 只是本地记录的终态，不表示 review、测试、CI、merge 或发布成功。
 

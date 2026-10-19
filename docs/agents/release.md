@@ -31,6 +31,6 @@ PR CI 的机械性修复由对应 task owner 处理；逻辑、测试和契约�
 
 ## Wails desktop release 恢复
 
-native build 前 `prepare` 只读检查 release 与 tag：release 已存在时直接失败并拒绝修改；tag 已存在时必须为 annotated 且指向当前 merge SHA；都不存在才继续构建。`publish` 组装两平台产物与 checksums，缺 tag 时创建 annotated tag，再以 `--verify-tag` 创建 release，随后核对 draft 状态、tag 类型与 SHA、资产集合、大小，以及 GitHub 提供的 digest 与本次构建产物一致。
+native build 前 `prepare` 只读检查 release 与 tag：release 已存在时直接失败并拒绝修改；release 不存在时，tag 不存在，或 tag 为 annotated 且指向当前 merge SHA，才继续构建。`publish` 组装两平台产物与 checksums，缺 tag 时创建 annotated tag，再以 `--verify-tag` 创建 release，随后核对 draft 状态、tag 类型与 SHA、资产集合、大小，以及 GitHub 提供的 digest 与本次构建产物一致。
 
 流程不创建 draft，也没有 marker 或自动删除/恢复路径。build job 重跑会以 `overwrite` 覆盖同名 artifact；publish 若在 release 已创建后失败，重跑会因「已存在 release」被拒绝，需要人工核对 tag、release 与资产状态后决定处置，不能自动清理后重建。

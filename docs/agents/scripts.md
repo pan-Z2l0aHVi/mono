@@ -28,13 +28,13 @@
 - 不在 `sh` 里拼接执行 Node 源码：不写 `node -e`、`node - <<EOF`，也不把 JS 存进变量再执行。
 - 不在 Node 里用 `sh -c` 或启动 `.sh` 辅助脚本完成本可由 argv 表达的工作；外部 CLI（`git`、`pnpm`、`gh`、`turbo`、`ps` 等）以 argv 调用不在此列。
 - 测试为验证 shell 行为而启动 `sh` 是允许的；禁令针对实现代码，不针对测试夹具。
-- 唯一 bootstrap 例外：`.mise.toml` 在 Node 可用前求值的 `scripts/lib/turbo-cache-dir.sh`。`scripts/lib/turbo-cache-dir.mjs` 是它的 Node 等价实现，测试断言两者结果一致；新增同类场景必须同时提供两边并证明等价。
+- bootstrap 例外只允许来自 `.mise.toml` 在 Node 可用前求值的 `[env]` 模板；每个例外的等价实现、降级行为与测试要求见 `.mise.toml` 与 `docs/agents/worktree.md`。新增同类场景必须同时提供等价实现并证明一致，无法提供时登记为明确例外，不要假装存在等价实现。
 
 ## 根脚本
 
 ### 执行面
 
-根 `scripts/` 按执行面分为 `checks/`（只读门禁入口）、`workflow/`（任务登记与提交命令）、`release/`（发布辅助）、`maintenance/`（清理、环境诊断与依赖维护）与 `lib/`（共享实现与原子检查实现）。门禁入口通过 `check-*` 根命令调用；`checks/` 只放薄入口，同一端点的检查由一个入口聚合，检查逻辑放在 `lib/` 的原子模块里。分类与入口契约见 ADR-0027。
+根 `scripts/` 按执行面分为 `checks/`（只读门禁入口）、`workflow/`（提交命令）、`release/`（发布辅助）、`maintenance/`（清理、环境诊断与依赖维护）与 `lib/`（共享实现与原子检查实现）。门禁入口通过 `check-*` 根命令调用；`checks/` 只放薄入口，同一端点的检查由一个入口聚合，检查逻辑放在 `lib/` 的原子模块里。分类与入口契约见 ADR-0027。
 
 ### 授权
 

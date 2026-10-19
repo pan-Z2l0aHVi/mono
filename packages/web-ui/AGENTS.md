@@ -6,7 +6,7 @@
 - 不承担框架运行时 wrapper 与全局应用样式。
 - 共享状态和行为使用 `defineXxx(...).make(...)` 的 `definePlugin` factory。Lit、Shadow DOM、属性绑定和框架事件类型沿用既有模式。
 - browser-mode 测试覆盖无法由 jsdom 证明的原生行为。UI、UX 和交互改动还必须在真实浏览器验证。
-- 受管组合（select+option、segmented、radio-group、checkbox-group、button-group）的成员追踪、下行广播与上行写回统一走 `GroupController`，不要绕开它手搓成员管理。
+- 受管组合的成员追踪、下行广播与上行写回统一走 `GroupController`，不要绕开它手搓成员管理。`select` 与 `autocomplete` 的 option 成员走 [`src/shared/option-portal`](src/shared/option-portal/)，不要把两者的成员管理混写。
 - slot-trigger 组件（popover/dropdown/collapse）的 ARIA 状态（如 `aria-expanded`）不挂在 trigger 包装结构上，按 [ADR-0005](../../docs/adr/0005-web-ui-component-architecture.md) 回写。
 - 框架动态绑定布尔属性必须用 camelCase Property；组件内不加 attribute 字符串解析兜底，保持原生 HTML 布尔存在语义。
 
@@ -29,17 +29,17 @@ _Avoid_: trigger/content 拆分为独立公开元素（React 式三元素）、�
 _Avoid_: 各组件自持 Escape 监听、以 panel 元素而非句柄为身份、第三个仲裁枚举值、把帧事务压进会话句柄、撤销提前到退场动画之前（面板还在场上却已不在登记表里）
 
 **受管子元素组合（managed child composition）**:
-子项是公开 custom element（option、segmented-trigger、radio、checkbox 等）的组合模式。成员追踪与点击归因由 GroupController 直驱，禁用/展示态经 @lit/context 下行广播（只下行），选中态由根直写子项（上行）；子项被移出组后恢复独立控件语义。
+子项是公开 custom element 的组合模式。成员追踪与点击归因由 GroupController 直驱，禁用/展示态经 @lit/context 下行广播（只下行），选中态由根直写子项（上行）；子项被移出组后恢复独立控件语义。带 portal 的 option 组合走 `option-portal`，不属于这一模式。
 _Avoid_: 用 context 承载成员追踪或上行写回、在子项上用公开属性表达组状态
 
 ## 示例文档
 
 示例文档（[`docs/*.md`](docs/)）的 source of truth 只有那一份 markdown：有哪些示例、每个示例的代码、`## API` 下的每张表（字段的名称 / 类型 / 默认值 / 说明）与每段散文（行为说明、迁移说明这类）都手写在里面，组件源码不参与生成。换来的是组件内部怎么重构都不会让文档隐形变更；代价是组件改了 API 时那张表要人手动跟着改，机器不提醒——从前「frontmatter 的 `tag` 对得上源码的 `@customElement`」「`component` 解析得到真实的组件目录」「表里的名字就是源码声明的那个 attribute」这三道核对已经不存在，只剩人工 review。
 
-- 生成与判据由 [`@greypan/md-to-comp`](../md-to-comp/AGENTS.md) 提供，产物 `src/generated/examples.{ts,css}` 与 `src/generated/demos/**` 受版本控制、进 git。两个 demo 的 Vite 配置里挂着该包对应 flavor 的插件，dev 与 build 都会按 markdown 重新生成，改完 markdown 不用手跑生成器；测试期插件只判不改。
+- 生成与判据由 [`@greypan/md-to-comp`](../md-to-comp/AGENTS.md) 提供，产物落在消费它们的 demo 应用 `src/generated/`，受版本控制、进 git。demo 的 Vite 配置里挂着该包对应 flavor 的插件，dev 与 build 都会按 markdown 重新生成，改完 markdown 不用手跑生成器；测试期插件只判不改。
 - 语料住在被发布的包里，所以本包自带 [`turbo.json`](turbo.json) 覆写 `build` 与 `test` 的 `inputs`：根 `turbo.json` 的 `!**/*.md` 把它们排除在哈希外，而排除项是绝对的，只能在这里反过来「语料进、散文 md 按名字排」。动 `docs/` 的布局或往包根加 md 要同步那份名单——新放的 md 会默认变成 build 输入，名单由仓库守卫 [`scripts/lib/web-ui-docs-inputs.mjs`](../../scripts/lib/web-ui-docs-inputs.mjs) 守。
-- 同一份源码在三处必须一致：markdown 围栏、`src/generated/demos/` 的落盘文件、页面 `<pre>` 的可见文本。落盘文件比围栏多一个行尾换行（落盘前 `trimEnd()` 再补一个，见 `demoFileContent`），除此之外三处逐字相同。改任何一段转义、高亮或落盘路径，都要让这三处一起继续成立。
-- `src/generated/**` 不手改：那几份产物是生成函数的输出，要改就改 `docs/*.md`。
+- 同一份源码在三处必须一致：markdown 围栏、消费方 demo 的 `src/generated/demos/` 落盘文件、页面 `<pre>` 的可见文本。落盘文件比围栏多一个行尾换行（落盘前 `trimEnd()` 再补一个，见 `demoFileContent`），除此之外三处逐字相同。改任何一段转义、高亮或落盘路径，都要让这三处一起继续成立。
+- 消费方 demo 的 `src/generated/**` 不手改：那几份产物是生成函数的输出，要改就改 `docs/*.md`。
 
 ## 公共契约变更清单
 
