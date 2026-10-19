@@ -1,0 +1,31 @@
+{
+  "$schema": "https://turbo.build/schema.json",
+  "extends": ["//"],
+  "tasks": {
+    "build": {
+      "inputs": [
+        "$TURBO_DEFAULT$",
+        "!**/*.md",
+        "!**/*.spec.ts",
+        "!**/*.test.ts",
+        "!**/__tests__/**",
+        "$TURBO_ROOT$/apps/interweave/**/*.go",
+        "!$TURBO_ROOT$/apps/interweave/**/*_test.go",
+        "$TURBO_ROOT$/apps/interweave/go.mod",
+        "$TURBO_ROOT$/apps/interweave/go.sum",
+        "$TURBO_ROOT$/apps/interweave/scripts/generate-bindings.mjs"
+      ]
+    },
+    "test": {
+      "inputs": [
+        "$TURBO_DEFAULT$",
+        "!**/*.md",
+        "$TURBO_ROOT$/apps/interweave/**/*.go",
+        "!$TURBO_ROOT$/apps/interweave/**/*_test.go",
+        "$TURBO_ROOT$/apps/interweave/go.mod",
+        "$TURBO_ROOT$/apps/interweave/go.sum",
+        "$TURBO_ROOT$/apps/interweave/scripts/generate-bindings.mjs"
+      ]
+    }
+  }
+}

@@ -4,13 +4,6 @@ on:
   push:
     branches: [main]
 
-# This job pushes the version branch and opens or updates the pull request, so it
-# has side effects: a newer run waits in the queue rather than cancelling one
-# mid-write, the same way the publish and deploy workflows behave.
-concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: false
-
 permissions:
   contents: write
   pull-requests: write
@@ -20,10 +13,15 @@ jobs:
     name: Create or update version pull request
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    concurrency:
+      group: ${{ github.workflow }}-${{ github.repository }}-${{ github.ref }}-version
+      cancel-in-progress: false
+      queue: max
 
     steps:
       - uses: actions/checkout@v7
         with:
+          ref: main
           fetch-depth: 0
 
       # This job only runs changeset status and a node script; scoping the install
@@ -54,3 +52,35 @@ jobs:
       # in flight; otherwise the whole CI simply ran twice. If GitHub holds a version PR run
       # at `action_required`, approve it instead; the measured history and its limits live in
       # docs/agents/build.md「CI 门控与 workflow 拓扑」.
+
+  cache-seed:
+    name: Seed trusted main Turbo cache
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    concurrency:
+      group: ${{ github.workflow }}-${{ github.repository }}-${{ github.ref }}-main-cache-seed
+      cancel-in-progress: true
+    env:
+      TURBO_CACHE_DIR: ${{ github.workspace }}/.turbo
+
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.sha }}
+
+      - uses: ./.github/actions/setup-deps
+        with:
+          mise-install: 'node pnpm'
+
+      - name: Cache trusted main Turbo artifacts
+        uses: actions/cache@v5
+        with:
+          path: .turbo
+          key: ${{ runner.os }}-${{ runner.arch }}-turbo-${{ hashFiles('.mise.toml') }}-${{ github.sha }}
+          restore-keys: |
+            ${{ runner.os }}-${{ runner.arch }}-turbo-${{ hashFiles('.mise.toml') }}-
+
+      - name: Build workspace packages
+        run: pnpm exec turbo run build --filter='./packages/*'

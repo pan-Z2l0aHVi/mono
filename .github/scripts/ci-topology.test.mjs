@@ -40,6 +40,7 @@ for (const [file, expected] of Object.entries(workflows)) {
   assert.equal(actual.name, expected.name, `${file}: workflow name must match`)
   assert.deepEqual(actual.triggers, expected.triggers, `${file}: triggers must match`)
   assert.deepEqual(actual.permissions, expected.permissions, `${file}: permissions must match`)
+  assert.deepEqual(actual.concurrency, expected.concurrency ?? {}, `${file}: workflow concurrency must match`)
 
   assert.deepEqual(Object.keys(actual.jobs), Object.keys(expected.jobs), `${file}: job ids must match`)
 
@@ -49,6 +50,7 @@ for (const [file, expected] of Object.entries(workflows)) {
     assert.deepEqual(act.needs, job.needs, `${file}: job ${id} needs must match`)
     assert.deepEqual(act.toolchain, job.toolchain, `${file}: job ${id} declared toolchain must match`)
     assert.deepEqual(act.permissions, job.permissions ?? {}, `${file}: job ${id} permission escalation must match`)
+    assert.deepEqual(act.concurrency, job.concurrency ?? {}, `${file}: job ${id} concurrency must match`)
     assert.equal(act.continueOnError, job.continueOnError, `${file}: job ${id} continue-on-error must match`)
 
     if (job.if === undefined) {
@@ -169,6 +171,7 @@ assert.deepEqual(
   releaseBranchUses.sort(),
   [
     'ci.yml:step:Check changesets',
+    'npm-publish.yml:job:Create npm package releases',
     'npm-publish.yml:job:Detect public package release',
     'wails-release.yml:job:Detect desktop application release'
   ],
@@ -259,6 +262,16 @@ function namedStepBlock(text, name) {
   const rest = text.slice(start)
   const nextStep = /\n      - /.exec(rest.slice(1))
   return nextStep ? rest.slice(0, nextStep.index + 1) : rest
+}
+
+for (const [file, workflow] of Object.entries(workflows)) {
+  const text = fs.readFileSync(path.join(workflowDir, file), 'utf8')
+  for (const [step, expectedInputs] of Object.entries(workflow.stepInputs ?? {})) {
+    const block = namedStepBlock(text, step)
+    for (const input of expectedInputs) {
+      assert.ok(block.includes(input), `${file}: step ${step} must retain input ${input}`)
+    }
+  }
 }
 
 // Policy checks belong to the required job and must always run with Bash failure propagation. Exact command
@@ -383,8 +396,22 @@ const aggregateBuildInvocations = [
   /@greypan\/interweave["']?\s+build(?![:\w-])/,
   /(?:--dir|-C)\s+\S*apps\/interweave["']?\s+run\s+["']?build["']?(?![:\w-])/,
   /(?:--dir|-C)\s+\S*apps\/interweave["']?\s+build(?![:\w-])/,
-  /turbo\s+[^\n]*--filter[=\s]+["']?[^\s"']*@greypan\/interweave(?![-\w])/
+  // 负 filter 是 CI 保留 workspace 包构建、跳过 app wrapper 的合法写法；只拦会选中 app 的正 filter。
+  /turbo\s+[^\n]*--filter[=\s]+["']?@greypan\/interweave(?![-\w])/
 ]
+
+const negativeAppFilter = 'pnpm exec turbo run build --filter=!@greypan/interweave'
+const positiveAppFilter = 'pnpm exec turbo run build --filter=@greypan/interweave'
+assert.equal(
+  aggregateBuildInvocations.some(pattern => pattern.test(negativeAppFilter)),
+  false,
+  'a negative app filter must remain legal for package-only CI builds'
+)
+assert.equal(
+  aggregateBuildInvocations.some(pattern => pattern.test(positiveAppFilter)),
+  true,
+  'a positive app filter must remain forbidden in aggregate workflows'
+)
 
 for (const file of onDisk) {
   for (const run of runTexts(fs.readFileSync(path.join(workflowDir, file), 'utf8'))) {
@@ -439,5 +466,188 @@ for (const [file, wf] of Object.entries(parsed)) {
     }
   }
 }
+
+// Wails 的 path filter 必须覆盖 frontend manifest 中每个传递 workspace 依赖，而不是维护第二份手写清单。
+function collectWorkspacePackages(root) {
+  const packages = new Map()
+  for (const area of ['apps', 'packages']) {
+    const areaRoot = path.join(root, area)
+    if (!fs.existsSync(areaRoot)) continue
+    const visit = directory => {
+      for (const entry of fs.readdirSync(directory, { withFileTypes: true })) {
+        if (entry.name === 'node_modules' || entry.name === '.git') continue
+        const absolute = path.join(directory, entry.name)
+        if (entry.isDirectory()) {
+          visit(absolute)
+        } else if (entry.isFile() && entry.name === 'package.json') {
+          const manifest = JSON.parse(fs.readFileSync(absolute, 'utf8'))
+          if (manifest.name)
+            packages.set(manifest.name, {
+              name: manifest.name,
+              directory: path.relative(root, path.dirname(absolute)).split(path.sep).join('/'),
+              manifest
+            })
+        }
+      }
+    }
+    visit(areaRoot)
+  }
+  return packages
+}
+
+function workspaceDependencyNames(manifest) {
+  return [manifest.dependencies, manifest.devDependencies, manifest.optionalDependencies, manifest.peerDependencies]
+    .filter(Boolean)
+    .flatMap(dependencies =>
+      Object.entries(dependencies)
+        .filter(([, version]) => typeof version === 'string' && version.startsWith('workspace:'))
+        .map(([name]) => name)
+    )
+}
+
+const workspacePackages = collectWorkspacePackages(repoRoot)
+const frontend = workspacePackages.get('@greypan/interweave-frontend')
+assert.ok(frontend, 'the Wails frontend package manifest must be present')
+const frontendClosure = new Set()
+const visitFrontendDependency = name => {
+  if (frontendClosure.has(name)) return
+  const workspacePackage = workspacePackages.get(name)
+  assert.ok(workspacePackage, `frontend dependency ${name} must resolve to a workspace package`)
+  frontendClosure.add(name)
+  for (const dependency of workspaceDependencyNames(workspacePackage.manifest)) visitFrontendDependency(dependency)
+}
+for (const dependency of workspaceDependencyNames(frontend.manifest)) visitFrontendDependency(dependency)
+const verifyPaths = parsed['wails-verify.yml'].triggers.find(trigger => trigger.on === 'pull_request')?.paths ?? []
+for (const name of frontendClosure) {
+  const packagePath = workspacePackages.get(name).directory
+  assert.ok(
+    verifyPaths.includes(`${packagePath}/**`),
+    `wails-verify.yml must trigger when transitive frontend workspace dependency ${name} (${packagePath}) changes`
+  )
+}
+
+// Shared Go caching is opt-in, starts only after mise installed Go, and uses one strict per-SHA key with a
+// same-platform/toolchain/module restore prefix. This avoids caching a Go version selected before mise.
+const setupDeps = fs.readFileSync(path.join(repoRoot, '.github/actions/setup-deps/action.yml'), 'utf8')
+assert.match(setupDeps, /  go-cache:\n[\s\S]*?    required: false\n    default: 'false'/)
+const goResolveStart = setupDeps.indexOf('    - name: Resolve Go cache paths\n')
+const goCacheStart = setupDeps.indexOf('    - name: Cache Go modules and build artifacts\n')
+const miseActionStart = setupDeps.indexOf('    - uses: jdx/mise-action@v4\n')
+const miseActionInputEnd = setupDeps.indexOf('\n\n    - name: Resolve Go cache paths', miseActionStart)
+assert.ok(
+  miseActionStart >= 0 && miseActionInputEnd > miseActionStart && goResolveStart > miseActionInputEnd,
+  'Go cache paths must resolve after mise-action installs the selected tools'
+)
+assert.match(setupDeps.slice(miseActionStart, miseActionInputEnd), /install: 'true'[\s\S]*install_args:/)
+assert.ok(setupDeps.slice(miseActionStart, miseActionInputEnd).includes('install_args: ${{ inputs.mise-install }}'))
+assert.doesNotMatch(setupDeps, /run: mise install/)
+assert.ok(goCacheStart > goResolveStart, 'Go cache restore must follow Go cache path resolution')
+const goResolveBlock = setupDeps.slice(goResolveStart, setupDeps.indexOf('\n    - ', goResolveStart + 1))
+const goCacheBlock = setupDeps.slice(goCacheStart, setupDeps.indexOf('\n    - ', goCacheStart + 1))
+assert.match(goResolveBlock, /if: inputs\.go-cache == 'true'/)
+assert.match(goResolveBlock, /go env GOMODCACHE/)
+assert.match(goResolveBlock, /go env GOCACHE/)
+assert.match(goResolveBlock, /go env GOVERSION/)
+assert.match(goResolveBlock, /ImageOS/)
+assert.match(goResolveBlock, /ImageVersion/)
+assert.match(goCacheBlock, /if: inputs\.go-cache == 'true'/)
+assert.match(goCacheBlock, /uses: actions\/cache@v5/)
+assert.match(goCacheBlock, /steps\.go-cache-paths\.outputs\.gomodcache/)
+assert.match(goCacheBlock, /steps\.go-cache-paths\.outputs\.gocache/)
+for (const keyPart of [
+  'runner.os',
+  'runner.arch',
+  'steps.go-cache-paths.outputs.imageos',
+  'steps.go-cache-paths.outputs.imageversion',
+  'steps.go-cache-paths.outputs.goversion',
+  "hashFiles('apps/interweave/go.sum')",
+  'github.sha'
+]) {
+  assert.ok(goCacheBlock.includes(keyPart), `Go cache primary key must include ${keyPart}`)
+}
+const restoreKey = goCacheBlock.split('restore-keys: |')[1]?.split('\n')[1]?.trim() ?? ''
+assert.ok(
+  restoreKey.includes('runner.os') && restoreKey.includes('runner.arch'),
+  'Go restore key must stay platform-specific'
+)
+assert.ok(restoreKey.includes('steps.go-cache-paths.outputs.imageos'), 'Go restore key must stay runner-image-specific')
+assert.ok(
+  restoreKey.includes('steps.go-cache-paths.outputs.imageversion'),
+  'Go restore key must stay runner-image-version-specific'
+)
+assert.ok(restoreKey.includes('steps.go-cache-paths.outputs.goversion'), 'Go restore key must stay Go-version-specific')
+assert.ok(restoreKey.includes("hashFiles('apps/interweave/go.sum')"), 'Go restore key must stay module-specific')
+assert.equal(restoreKey.includes('github.sha'), false, 'Go restore prefix must omit the exact commit SHA')
+
+// Main-only cache seeding uses the same pinned-tool, platform-specific SHA key as CI. The version job
+// serializes against current main; the cache seed stays fixed to its push SHA so the key describes its tree.
+const ciText = fs.readFileSync(path.join(workflowDir, 'ci.yml'), 'utf8')
+const versionText = fs.readFileSync(path.join(workflowDir, 'changeset-version.yml'), 'utf8')
+const sharedTurboKey = "${{ runner.os }}-${{ runner.arch }}-turbo-${{ hashFiles('.mise.toml') }}-${{ github.sha }}"
+const sharedTurboRestore = "${{ runner.os }}-${{ runner.arch }}-turbo-${{ hashFiles('.mise.toml') }}-"
+assert.ok(
+  ciText.includes('key: ' + sharedTurboKey),
+  'CI must key Turbo artifacts by platform, mise pins, and exact SHA'
+)
+assert.ok(versionText.includes('key: ' + sharedTurboKey), 'main cache seed must use the same exact Turbo cache key')
+assert.ok(ciText.includes(sharedTurboRestore), 'CI restore prefix must stay scoped to platform and mise pins')
+assert.ok(
+  versionText.includes(sharedTurboRestore),
+  'main seed restore prefix must stay scoped to platform and mise pins'
+)
+const versionJobStart = versionText.indexOf('\n  version:\n')
+const cacheSeedStart = versionText.indexOf('\n  cache-seed:\n')
+const versionJobText = versionText.slice(versionJobStart, cacheSeedStart)
+const cacheSeedText = versionText.slice(cacheSeedStart)
+assert.ok(
+  versionJobText.includes('ref: main'),
+  'serialized version job must checkout current main after acquiring its job concurrency slot'
+)
+assert.ok(
+  cacheSeedText.includes('ref: ${{ github.sha }}'),
+  'cache seed must checkout the exact push SHA represented by its key'
+)
+assert.ok(
+  cacheSeedText.indexOf('uses: actions/cache@v5') <
+    cacheSeedText.indexOf("pnpm exec turbo run build --filter='./packages/*'")
+)
+assert.ok(cacheSeedText.includes('TURBO_CACHE_DIR: ${{ github.workspace }}/.turbo'))
+assert.equal(parsed['changeset-version.yml'].jobs['cache-seed'].toolchain['go-cache'], undefined)
+assert.equal(parsed['changeset-version.yml'].jobs['cache-seed'].toolchain.wails, undefined)
+assert.ok(!cacheSeedText.includes('go-cache:') && !cacheSeedText.includes('wails:'))
+assert.ok(
+  !cacheSeedText.includes('turbo build --filter=./apps/'),
+  'cache seed must build packages rather than desktop apps'
+)
+
+const npmWorkflowText = fs.readFileSync(path.join(workflowDir, 'npm-publish.yml'), 'utf8')
+assert.ok(npmWorkflowText.includes('queue: max'), 'npm publishing must serialize pending release runs')
+assert.ok(npmWorkflowText.includes('retention-days: 30'), 'receipt must remain available for the rerun window')
+assert.ok(npmWorkflowText.includes('actions/upload-artifact@v6'))
+assert.ok(npmWorkflowText.includes('actions/download-artifact@v7'))
+assert.ok(!npmWorkflowText.includes('overwrite: true'), 'the first attempt must not replace an existing receipt')
+assert.ok(!npmWorkflowText.includes('actions: read'), 'receipt reuse must not require actions:read')
+const notesStart = npmWorkflowText.indexOf('\n  release-notes:\n')
+const notesText = npmWorkflowText.slice(notesStart)
+assert.ok(notesText.includes("needs.publish.result == 'success' || needs.publish.result == 'failure'"))
+assert.ok(!notesText.includes('needs.prepare.outputs') && !notesText.includes('needs.publish.outputs'))
+assert.ok(notesText.includes('github.event.pull_request.merge_commit_sha'))
+assert.ok(notesText.includes('GITHUB_RUN_ID: ${{ github.run_id }}'))
+
+const wailsReleaseText = fs.readFileSync(path.join(workflowDir, 'wails-release.yml'), 'utf8')
+assert.ok(
+  wailsReleaseText.includes(
+    "should-release: ${{ steps.release.outputs.should-release == 'true' && steps.existing.outputs.skip-build != 'true' }}"
+  ),
+  'a verified existing published Wails release must skip native builds'
+)
+assert.ok(
+  wailsReleaseText.includes('retention-days: 30') && wailsReleaseText.includes('overwrite: true'),
+  'Wails build artifacts must remain available across the supported rerun window'
+)
+assert.ok(
+  !wailsReleaseText.includes('artifact-attempt'),
+  'Wails artifact names must not depend on a run-attempt output'
+)
 
 console.log('.github/scripts/ci-topology.test.mjs: all assertions passed')

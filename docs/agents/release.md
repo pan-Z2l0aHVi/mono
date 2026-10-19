@@ -30,3 +30,19 @@ PR CI 的 `Check changesets` 保留 `changeset status`，并调用 `.agents/chec
 5. 完成相应交付后按 `task-ledger.md` 更新本地台账；`close` 不代替 CI、review 或发布证据。
 
 PR CI 的机械性修复由对应 task owner 处理；逻辑、测试和契约问题由原 owner 修复。每次新提交都由 reviewer 按新 head 检查受影响 diff，并更新完整 PR 结论。
+
+## npm 发布重跑与 release notes
+
+`npm-publish.yml` 在发布前查询官方 npm registry 的精确包名和版本。receipt 只记录此时尚不存在的本地公共包版本，并绑定仓库、merge SHA 与 workflow run ID。首次尝试把 receipt 上传为该 run 的 artifact，保留 30 天；同一 run 的重试下载并验证原 receipt。receipt 丢失或身份不匹配时发布流程失败，不重新计算候选集合。首次尝试若在 receipt 上传前失败，后续 attempt 也不会重算 receipt；先人工确认缺失记录如何恢复。这样首次尝试发布过的补发包仍留在记录中，已存在的 diff 包不会被错误归到当前 merge。
+
+release-notes job 从 PR merge SHA、run ID 与 receipt 独立恢复候选包，因此可以单独重跑。publish 成功后，job 对官方 registry 的精确版本查询做有限重试；仍未出现的版本会让记录 job 失败。publish 明确失败时，job 只为 registry 已确认存在的候选版本创建记录，原发布 job 仍保持失败。包没有出现在本次 receipt 中时，不创建虚假的 GitHub Release。
+
+整个 npm publish workflow 按仓库串行运行，等待时不取消旧 run。`queue: max` 最多保留 100 个待运行项，GitHub 不承诺按事件先后顺序执行。
+
+## Wails desktop release 恢复
+
+`wails-release.yml` 在 native build 前读取版本对应的 GitHub Release 与 tag。只有 annotated tag 指向当前 merge SHA，且 Release 恰有预期 DMG、EXE 与 checksums 并通过校验时，prepare 才跳过 native build。已发布资产按 GitHub API digest 校验；缺少 digest 时下载对应二进制计算 SHA-256。published release 不与之后重建的本地文件比较。
+
+新发布先创建包含当前仓库、merge SHA 与 run ID marker 的 draft，使用 GitHub 生成的 release notes 上传本轮两平台产物及 checksums。发布前必须将 API digest 或下载后的 SHA-256 与本轮本地文件逐项核对。重跑只自动删除 marker 完全匹配的本 run draft；删除前重读 Release 与 tag，删除后确认原 annotated tag 仍指向 merge SHA，再用本轮完整产物创建新 draft。缺失或错误 tag、未标记 draft、资产不完整的 published release 与非 404 API 错误都会失败，需人工处理后再运行。
+
+两平台 artifact 使用固定名称并保留 30 天，均来自同一 run 与 merge SHA。失败 job 重跑上传同名 artifact 时会覆盖该平台此前的成功产物；publish 使用各平台最近成功上传的文件，并重新生成 checksums，不要求产物来自相同的 `run_attempt`。只有 draft asset 与本轮实际下载到的文件匹配后才发布。

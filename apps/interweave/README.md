@@ -27,7 +27,8 @@ pnpm install
 # (`dev` dependsOn `^build`) and watches them alongside Wails.
 pnpm dev:interweave
 
-# Build the complete monorepo graph (the CI build entry point).
+# Build the complete local monorepo graph. CI builds workspace packages and leaves
+# the app wrapper to the native Wails workflows.
 pnpm build
 
 # Manually verify a native desktop target with the same preparation used in the
@@ -48,7 +49,7 @@ Native artifacts are emitted to `apps/interweave/bin/`:
   - On macOS it creates `interweave.app` for the host architecture (native
     binary, `.app` bundle, ad-hoc signature) and does **not** package a `.dmg`.
   - On Windows it creates `interweave.exe`; on Linux it runs the WebView
-    frontend build for CI validation without producing a desktop artifact.
+    frontend build for validation without producing a desktop artifact.
 - `build:macos:app` creates `interweave.app` for the host architecture —
   identical to what `build` does on macOS.
 - `build:macos` creates `interweave.dmg` for macOS arm64.
@@ -57,16 +58,17 @@ Native artifacts are emitted to `apps/interweave/bin/`:
 `build:macos` and `build:windows` are the release shapes: the `macos-14` and
 `windows-latest` entries of the `wails-verify.yml` and `wails-release.yml`
 matrices invoke exactly these two scripts, each on its own native runner. The
-developer default skips the cross-platform and `.dmg` packaging work because no
-CI job runs the **macOS branch** of the aggregate script: `ci.yml` does run the
-aggregate `build` on `ubuntu-latest`, where it takes the `build:frontend` branch
-and compiles no Go. `.github/scripts/ci-topology.test.mjs` asserts that premise, so a
-future change that breaks it says so instead of quietly shipping. Run
-`build:macos` or `build:windows` explicitly when you need the artifact CI would
-ship.
+root `ci.yml` build retains workspace package coverage but excludes the
+`@greypan/interweave` app wrapper; the native Wails workflows build that wrapper
+and its frontend dependency closure. `.github/scripts/ci-topology.test.mjs`
+checks the workflow commands and derives the native workflow path filter from
+the frontend workspace dependency graph. Run `build:macos` or `build:windows`
+explicitly when you need the artifact CI would ship.
 
 The WebView uses workspace dependencies from `packages/` through
-`apps/interweave/frontend/`.
+`apps/interweave/frontend/`. Standalone frontend builds generate Wails bindings
+before bundling; the native Taskfile generates them once with its build flags,
+then invokes the bundle-only script.
 
 `pnpm dev:interweave` starts Wails and watches every buildable workspace dependency of the WebView
 frontend. Adding a local workspace dependency does not require changing the command. Restart the
