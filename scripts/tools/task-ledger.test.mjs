@@ -4,8 +4,8 @@ import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 
-const repoRoot = path.resolve(import.meta.dirname, '..')
-const script = path.join(repoRoot, 'scripts', 'task-ledger.mjs')
+const repoRoot = path.resolve(import.meta.dirname, '../..')
+const script = path.join(repoRoot, 'scripts', 'tools', 'task-ledger.mjs')
 const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'greypan-task-ledger-test-'))
 const fixture = path.join(tempRoot, 'repo')
 const secondFixture = path.join(tempRoot, 'second-repo')
@@ -260,7 +260,7 @@ try {
   const repoATask = JSON.parse(run('new', '--task', 'repo-a-task', '--level', 't2', '--owner', 'fixture-owner'))
   assert.equal(repoATask.commonDir, fs.realpathSync(path.join(fixture, '.git')))
 
-  process.stdout.write('scripts/task-ledger.test.mjs: all assertions passed\n')
+  process.stdout.write('scripts/tools/task-ledger.test.mjs: all assertions passed\n')
 } finally {
   fs.rmSync(tempRoot, { recursive: true, force: true })
 }

@@ -7,10 +7,10 @@ import path from 'node:path'
 // .mise.toml 钉住的版本）靠子进程黑盒钉住：只有把它们放在另一个进程里跑，才能自己构造 env。
 // 判据不读调用者所在的 shell——CI 把 TURBO_CACHE_DIR 覆盖回 workspace 内路径也不会让用例变红。
 // 约定见 docs/agents/worktree.md「mise exec 与命令外壳」。
-const root = path.resolve(import.meta.dirname, '..')
+const root = path.resolve(import.meta.dirname, '../..')
 
 function runDoctor(env) {
-  const result = spawnSync(process.execPath, [path.join(root, 'scripts', 'env-doctor.mjs'), '--json'], {
+  const result = spawnSync(process.execPath, [path.join(root, 'scripts', 'tools', 'env-doctor.mjs'), '--json'], {
     cwd: root,
     encoding: 'utf8',
     env: { ...process.env, ...env }
@@ -29,7 +29,7 @@ const miseConfig = fs.readFileSync(path.join(root, '.mise.toml'), 'utf8')
 const pinnedNode = /^\s*node\s*=\s*"([^"]+)"\s*$/m.exec(miseConfig)?.[1]
 assert.ok(pinnedNode, '.mise.toml must pin a node version for the node-version assertion to mean anything')
 
-const resolvedCache = spawnSync('sh', [path.join(root, 'scripts', 'turbo-cache-dir.sh'), '--root', root], {
+const resolvedCache = spawnSync('sh', [path.join(root, 'scripts', 'lib', 'turbo-cache-dir.sh'), '--root', root], {
   cwd: root,
   encoding: 'utf8'
 })
@@ -51,4 +51,4 @@ assert.equal(entry(runDoctor({ TURBO_CACHE_DIR: path.join(root, '.turbo') }), 't
 const expectedNodeLevel = process.version.replace(/^v/, '') === pinnedNode ? 'ok' : 'fail'
 assert.equal(entry(runDoctor({}), 'node-version').level, expectedNodeLevel)
 
-console.log('scripts/env-doctor.test.mjs: all assertions passed')
+console.log('scripts/tools/env-doctor.test.mjs: all assertions passed')

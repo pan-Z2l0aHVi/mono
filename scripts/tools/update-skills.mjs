@@ -26,7 +26,7 @@ import { tmpdir } from 'node:os'
 import { join, resolve, dirname } from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 
-const root = resolve(dirname(fileURLToPath(import.meta.url)), '..')
+const root = resolve(dirname(fileURLToPath(import.meta.url)), '../..')
 
 // ── 三层布局契约（校验器自 update 之前独立成文件的时代并入本文件，唯一运行时消费者是下方的 main）──
 // skills 生态的三个表面，完整约定见 skills/README.md：

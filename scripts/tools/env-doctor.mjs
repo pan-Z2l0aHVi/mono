@@ -17,7 +17,7 @@ import { execFileSync, spawnSync } from 'node:child_process'
 import fs from 'node:fs'
 import path from 'node:path'
 
-const scriptRoot = path.resolve(import.meta.dirname, '..')
+const scriptRoot = path.resolve(import.meta.dirname, '../..')
 // env-doctor 体检的是「当前环境」：优先以调用方 cwd（worktree）为根，
 // 仅当 cwd 不是本仓库 workspace 时才退回脚本所在仓库。
 const root = fs.existsSync(path.join(process.cwd(), 'pnpm-workspace.yaml')) ? process.cwd() : scriptRoot
@@ -145,7 +145,7 @@ function turboCacheCheck() {
     record('turbo-cache', 'warn', '.mise.toml does not declare TURBO_CACHE_DIR; each worktree keeps a cold cache')
     return
   }
-  const resolved = spawnSync('sh', [path.join(root, 'scripts', 'turbo-cache-dir.sh'), '--root', root], {
+  const resolved = spawnSync('sh', [path.join(root, 'scripts', 'lib', 'turbo-cache-dir.sh'), '--root', root], {
     cwd: root,
     encoding: 'utf8'
   })

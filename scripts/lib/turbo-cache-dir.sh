@@ -12,12 +12,12 @@ case $# in
     root_candidate="$script_dir/.."
     ;;
   2)
-    [ "$1" = "--root" ] || fail "usage: sh scripts/turbo-cache-dir.sh [--root <repository-root>]"
+    [ "$1" = "--root" ] || fail "usage: sh scripts/lib/turbo-cache-dir.sh [--root <repository-root>]"
     [ -n "$2" ] || fail "--root requires a repository directory"
     root_candidate=$2
     ;;
   *)
-    fail "usage: sh scripts/turbo-cache-dir.sh [--root <repository-root>]"
+    fail "usage: sh scripts/lib/turbo-cache-dir.sh [--root <repository-root>]"
     ;;
 esac
 

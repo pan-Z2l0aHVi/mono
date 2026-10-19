@@ -493,7 +493,7 @@ const hasContextChange = normalizedPaths.some(
     file.startsWith('docs/agents/') ||
     file.startsWith('docs/adr/') ||
     file.startsWith('scripts/checks/check-context') ||
-    file.startsWith('scripts/task') ||
+    file.startsWith('scripts/tools/task') ||
     file.startsWith('scripts/lib/workspace-manifests') ||
     file.startsWith('skills/monorepo-change-impact/')
 )
@@ -501,7 +501,7 @@ const hasAgentToolChange = normalizedPaths.some(
   file =>
     file === 'pnpm-workspace.yaml' ||
     file.startsWith('scripts/checks/check-context') ||
-    file.startsWith('scripts/task') ||
+    file.startsWith('scripts/tools/task') ||
     file.startsWith('scripts/lib/workspace-manifests') ||
     file.startsWith('skills/monorepo-change-impact/') ||
     (file.startsWith('scripts/') && file.endsWith('.test.mjs'))

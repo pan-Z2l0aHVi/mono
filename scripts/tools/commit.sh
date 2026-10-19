@@ -2,7 +2,7 @@
 # commit.sh — 非交互式 conventional commit，绕过 git-cz 的 TTY 依赖
 #
 # 用法:
-#   bash scripts/commit.sh <type> <scope> <subject> [-b "body line"]
+#   bash scripts/tools/commit.sh <type> <scope> <subject> [-b "body line"]
 #
 # 参数:
 #   type     - 提交类型（必填）
@@ -56,11 +56,11 @@ parse_args() {
 parse_args "$@"
 
 if [ -z "${TYPE:-}" ] || [ -z "${SCOPE:-}" ] || [ -z "${SUBJECT:-}" ]; then
-  echo "用法: bash scripts/commit.sh <type> <scope> <subject> [-b \"body\"] [--dry]" >&2
+  echo "用法: bash scripts/tools/commit.sh <type> <scope> <subject> [-b \"body\"] [--dry]" >&2
   echo "" >&2
   echo "示例:" >&2
-  echo "  bash scripts/commit.sh feat js-kit \"add url parser utility\"" >&2
-  echo "  bash scripts/commit.sh fix web-ui,js-kit \"resolve hydration mismatch\" -b \"Fix race condition in SSR\"" >&2
+  echo "  bash scripts/tools/commit.sh feat js-kit \"add url parser utility\"" >&2
+  echo "  bash scripts/tools/commit.sh fix web-ui,js-kit \"resolve hydration mismatch\" -b \"Fix race condition in SSR\"" >&2
   echo "" >&2
   echo "type 白名单: build | chore | ci | docs | feat | fix | perf | refactor | revert | style | test" >&2
   echo "scope 白名单: root | interweave | interweave-frontend | react-web-ui-demo | vue-web-ui-demo | browser-kit | deps-reload | js-kit | test-kit | tsconfig | unplugin-web-components | web-ui" >&2

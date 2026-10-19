@@ -94,7 +94,7 @@ function gitAt(worktree, ...args) {
 }
 
 function taskRoot() {
-  return path.resolve(process.env.AGENT_TASK_ROOT ?? path.join(import.meta.dirname, '..'))
+  return path.resolve(process.env.AGENT_TASK_ROOT ?? path.join(import.meta.dirname, '../..'))
 }
 
 function resolveWorktree(value = '.', base = taskRoot()) {

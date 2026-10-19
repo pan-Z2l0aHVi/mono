@@ -4,8 +4,8 @@ import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 
-const repoRoot = path.resolve(import.meta.dirname, '..')
-const helper = path.join(repoRoot, 'scripts', 'turbo-cache-dir.sh')
+const repoRoot = path.resolve(import.meta.dirname, '../..')
+const helper = path.join(repoRoot, 'scripts', 'lib', 'turbo-cache-dir.sh')
 const fixtureRoot = fs.mkdtempSync(path.join(os.tmpdir(), "greypan turbo cache 'fixture'-"))
 
 function run(command, args, options = {}) {
@@ -195,4 +195,68 @@ try {
   fs.rmSync(fixtureRoot, { recursive: true, force: true })
 }
 
-console.log('scripts/turbo-cache-dir.test.mjs: all assertions passed')
+// mise 的 env 模板直接 exec helper；这组断言钉住本地、覆盖与 GitHub Actions 三种分支。
+function miseRun(command, args, env) {
+  const result = run(command, args, {
+    cwd: repoRoot,
+    env: { ...env, MISE_TRUSTED_CONFIG_PATHS: repoRoot }
+  })
+  assertSuccess(result, `${command} ${args.join(' ')}`)
+  return result.stdout.trim()
+}
+
+function canonicalCache(env) {
+  return miseRun('/bin/sh', [helper], env)
+}
+
+function miseCache(env) {
+  return miseRun('mise', ['exec', '--', 'printenv', 'TURBO_CACHE_DIR'], env)
+}
+
+{
+  const localEnv = { ...process.env }
+  delete localEnv.GITHUB_ACTIONS
+  delete localEnv.TURBO_CACHE_DIR
+  assert.equal(miseCache(localEnv), canonicalCache(localEnv), 'local mise must use the helper-derived cache')
+
+  const localOverride = {
+    ...localEnv,
+    GITHUB_ACTIONS: '',
+    TURBO_CACHE_DIR: path.join(os.tmpdir(), 'untrusted turbo cache override')
+  }
+  assert.equal(miseCache(localOverride), canonicalCache(localOverride), 'local mise must ignore an inherited override')
+
+  const workspaceWithQuotes = fs.mkdtempSync(path.join(os.tmpdir(), "greypan GHA workspace 'quoted'-"))
+  try {
+    const ghaOverride = path.join(workspaceWithQuotes, "artifact cache 'space'")
+    assert.equal(
+      miseCache({ ...localEnv, GITHUB_ACTIONS: 'true', TURBO_CACHE_DIR: ghaOverride }),
+      ghaOverride,
+      'GitHub Actions mise must preserve the explicit workspace override verbatim'
+    )
+    const ghaWorkspace = 'D:\\a\\mono\\mono'
+    assert.equal(
+      miseCache({
+        ...localEnv,
+        GITHUB_ACTIONS: 'true',
+        GITHUB_WORKSPACE: ghaWorkspace,
+        TURBO_CACHE_DIR: '',
+        TMPDIR: '/__mise_probe_missing_unix_temp__'
+      }),
+      `${ghaWorkspace}/.turbo`,
+      'an empty GitHub Actions override must use its workspace without calling the POSIX helper'
+    )
+
+    const ghaWithoutWorkspace = { ...localEnv, GITHUB_ACTIONS: 'true', TURBO_CACHE_DIR: '' }
+    delete ghaWithoutWorkspace.GITHUB_WORKSPACE
+    assert.equal(
+      miseCache(ghaWithoutWorkspace),
+      canonicalCache(localEnv),
+      'an incomplete GitHub Actions environment must fall back to the local helper'
+    )
+  } finally {
+    fs.rmSync(workspaceWithQuotes, { recursive: true, force: true })
+  }
+}
+
+console.log('scripts/lib/turbo-cache-dir.test.mjs: all assertions passed')

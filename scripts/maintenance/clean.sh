@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-# scripts/clean.sh — 清理本仓库的构建产物、依赖与可再生缓存。
+# scripts/maintenance/clean.sh — 清理本仓库的构建产物、依赖与可再生缓存。
 #
 # 用法:
 #   pnpm run clean              默认 = 全量：构建产物 + node_modules + 全部缓存（含本仓共享 Turbo artifact cache）
@@ -12,7 +12,7 @@
 #   `--full` 下顺手删掉它，等于把「全量清空」悄悄升级成「删锁」这一默认行为升级，不该默认发生。
 #   想要重置 lockfile 必须显式 `--locks`。
 #
-# 兼容性：package.json 用 `bash scripts/clean.sh` 调用，macOS 自带 /bin/bash 是 3.2，因此本脚本
+# 兼容性：package.json 用 `bash scripts/maintenance/clean.sh` 调用，macOS 自带 /bin/bash 是 3.2，因此本脚本
 # 只用 bash 3.2 可用的语法（无 mapfile / declare -A / ${var^^}）。
 
 set -euo pipefail
@@ -81,7 +81,7 @@ SCRIPT_DIR=$(CDPATH= cd -P "$(dirname "$0")" 2>/dev/null && pwd -P) || {
   echo "❌ 错误: 无法解析 clean.sh 所在目录。" >&2
   exit 1
 }
-if ! TURBO_CACHE_DIR=$(sh "$SCRIPT_DIR/turbo-cache-dir.sh" --root "$PWD"); then
+if ! TURBO_CACHE_DIR=$(sh "$SCRIPT_DIR/../lib/turbo-cache-dir.sh" --root "$PWD"); then
   echo "❌ 错误: 无法定位当前仓库的共享 Turbo artifact cache。" >&2
   exit 1
 fi

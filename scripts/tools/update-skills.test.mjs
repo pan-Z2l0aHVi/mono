@@ -18,7 +18,7 @@ import { join, resolve } from 'node:path'
 
 import { checkRepoLayout, parseFrontmatter, parseSiblingSkillLinks, reconcileUpdatedSkills } from './update-skills.mjs'
 
-const repoRoot = resolve(import.meta.dirname, '..')
+const repoRoot = resolve(import.meta.dirname, '../..')
 const agentsSkillsDir = join(repoRoot, '.agents', 'skills')
 const lockFile = join(repoRoot, 'skills-lock.json')
 
@@ -262,4 +262,4 @@ symlinkSync('../skills-vendored/plain', join(fixtureAgentsSkillsDir, 'plain'))
 checkRepoLayout(layoutOptions())
 
 rmSync(tmpRoot, { recursive: true, force: true })
-console.log('scripts/update-skills.test.mjs: all assertions passed')
+console.log('scripts/tools/update-skills.test.mjs: all assertions passed')

@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// 一层迁移兼容：登记业务只由 scripts/task-ledger.mjs 拥有。
+// 一层迁移兼容：登记业务只由 scripts/tools/task-ledger.mjs 拥有。
 import { spawnSync } from 'node:child_process'
 import path from 'node:path'
 import { pathToFileURL } from 'node:url'

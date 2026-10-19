@@ -4,9 +4,9 @@ import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 
-const repoRoot = path.resolve(import.meta.dirname, '..')
-const cleanScript = path.join(repoRoot, 'scripts', 'clean.sh')
-const cacheHelper = path.join(repoRoot, 'scripts', 'turbo-cache-dir.sh')
+const repoRoot = path.resolve(import.meta.dirname, '../..')
+const cleanScript = path.join(repoRoot, 'scripts', 'maintenance', 'clean.sh')
+const cacheHelper = path.join(repoRoot, 'scripts', 'lib', 'turbo-cache-dir.sh')
 const fixtureRoot = fs.mkdtempSync(path.join(os.tmpdir(), "greypan clean fixture 'quoted'-"))
 
 function run(command, args, options = {}) {
@@ -88,4 +88,4 @@ try {
   fs.rmSync(fixtureRoot, { recursive: true, force: true })
 }
 
-console.log('scripts/clean.test.mjs: all assertions passed')
+console.log('scripts/maintenance/clean.test.mjs: all assertions passed')
