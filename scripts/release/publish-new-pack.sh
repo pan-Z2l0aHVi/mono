@@ -37,7 +37,12 @@ if [ ! -f "$PACKAGE_JSON" ]; then
   exit 1
 fi
 
-PKG_VERSION=$(node -e "console.log(require('./$PACKAGE_JSON').version)")
+PKG_VERSION=$(mise x -- pnpm --dir "$PKG_DIR" pkg get version)
+
+if [ -z "$PKG_VERSION" ]; then
+  echo -e "${RED}❌ 无法读取 $PACKAGE_JSON 的 version${NC}" >&2
+  exit 1
+fi
 
 if [ "$PKG_VERSION" != "1.0.0" ]; then
   echo -e "${RED}❌ 版本号必须是 1.0.0，当前: $PKG_VERSION${NC}" >&2

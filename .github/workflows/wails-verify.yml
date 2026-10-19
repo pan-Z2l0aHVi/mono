@@ -49,7 +49,7 @@ jobs:
         run: node apps/interweave/scripts/sync-version.mjs --check
 
       - name: Validate shared build tasks are host-neutral
-        run: node apps/interweave/scripts/check-build-tasks.mjs
+        run: node apps/interweave/scripts/check-taskfile-paths.mjs
 
   build:
     name: ${{ matrix.name }}

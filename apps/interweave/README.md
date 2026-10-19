@@ -59,7 +59,7 @@ Native artifacts are emitted to `apps/interweave/bin/`:
 matrices invoke exactly these two scripts, each on its own native runner. The
 root `ci.yml` build retains workspace package coverage but excludes the
 `@greypan/interweave` app wrapper; the native Wails workflows build that wrapper
-and its frontend dependency closure. `.github/scripts/ci-topology.test.mjs`
+and its frontend dependency closure. `.github/scripts/lib/workflow-topology.test.mjs`
 checks the workflow commands and derives the native workflow path filter from
 the frontend workspace dependency graph. Run `build:macos` or `build:windows`
 explicitly when you need the artifact CI would ship.

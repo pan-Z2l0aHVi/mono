@@ -47,7 +47,7 @@
 
 共享的 `scripts/lib/check-runner.mjs` 负责并发调用、错误包装与统一输出；入口只提供检查清单和参数。`Promise.all` 的语义就是本决策要的语义：第一个失败即整体失败，不会出现“部分通过”。它不会取消已经启动的同级检查，因此所有检查必须满足下面的只读不变量；进程在拒绝后退出，未完成的检查被遗弃是安全的。
 
-`ci-topology.mjs` 只断言 workflow 调用了哪个根命令、传了什么参数，不再硬编码单个检查名；pre-commit 的断言同理。
+`.github/scripts/lib/workflow-topology.mjs` 只断言 workflow 调用了哪个根命令、传了什么参数，不再硬编码单个检查名；pre-commit 的断言同理。
 
 ### 3. 原子检查函数
 
@@ -68,7 +68,7 @@
 - `command-conventions`、`format-clean`、`no-mutual-links`、`turbo-cache-invariant`、`web-ui-docs-inputs` → `scripts/lib/*.mjs`。
 - `changeset-required` 的自定义内容检查 → `scripts/lib/changeset-policy.mjs`，由 `scripts/checks/check-changeset.mjs` 与外部 `changeset status` 一起聚合。
 
-迁移在同一个 PR 内完成，按顺序提交：先落地原子函数、共享库与测试，再切换 `.vite-hooks/pre-commit`、`.github/workflows/ci.yml` 与 `.github/scripts/ci-topology.mjs`（含其测试），最后删除 `.agents/checks/`。不保留软链或兼容 alias，避免两个可执行事实源。活文档、hook、CI 与拓扑测试中的引用同步更新；历史 ADR 与研究记录保留原文。
+迁移在同一个 PR 内完成，按顺序提交：先落地原子函数、共享库与测试，再切换 `.vite-hooks/pre-commit`、`.github/workflows/ci.yml` 与 `.github/scripts/lib/workflow-topology.mjs`（含其测试），最后删除 `.agents/checks/`。不保留软链或兼容 alias，避免两个可执行事实源。活文档、hook、CI 与拓扑测试中的引用同步更新；历史 ADR 与研究记录保留原文。
 
 ### 5. `scripts/` 分类
 
@@ -113,13 +113,16 @@ scripts/
     *.test.mjs             # 与原子模块同名，可选
 ```
 
-`scripts/lib/` 同时承载跨检查复用的 helper 与各原子检查实现；`scripts/checks/` 只保留入口，避免入口目录重新长出实现。单次使用的解析留在所属检查实现内。workspace 内的 `apps/*/scripts` 与 `packages/*/scripts` 保持原位。根 `package.json` 的命令名除 `ci:validate-context` 改为 `check-context` 外不变，只更新目标路径；`.mise.toml`、`clean.sh` 与 `env-doctor` 对 `turbo-cache-dir.sh` 的引用同步改为 `scripts/lib/turbo-cache-dir.sh`。
+`scripts/lib/` 同时承载跨检查复用的 helper 与各原子检查实现；`scripts/checks/` 只保留入口，避免入口目录重新长出实现。单次使用的解析留在所属检查实现内。workspace 内的 `apps/*/scripts` 与 `packages/*/scripts` 保持原位。根 `package.json` 的命令名除 `ci:validate-context` 改为 `check-context` 外不变，只更新目标路径；`.mise.toml` 与 `clean.sh` 对 `turbo-cache-dir.sh` 的引用同步改为 `scripts/lib/turbo-cache-dir.sh`；`env-doctor` 改用等价的 `scripts/lib/turbo-cache-dir.mjs`。
 
 ### 6. 语言与运行时
 
-检查统一使用 Node ESM。理由不是速度，而是可维护性：`JSON.parse` 替代 awk/sed 对 prettier 形状的解析，链接、git 与执行逻辑可以放进 `scripts/lib/` 共享，检查函数可以直接单测。Node 已由 mise 钉住，且在仓库中本来就是必需依赖；入口只启动一次，子进程继承同一工具链。
+2026-10-19 修订：本节的 Node 规则只约束检查门禁。其余脚本默认优先 POSIX `sh`，尤其是系统探测、依赖与环境处理、发布编排；只有结构化解析、代码生成、状态机或跨平台路径处理等复杂逻辑才用 Node。选择细则与跨运行时禁令见 [`docs/agents/scripts.md`](../agents/scripts.md#运行时选择)。
 
-shell 只保留给在 Node 启动之前就要被求值的辅助脚本，例如 `.mise.toml` 在环境求值阶段调用的 `scripts/lib/turbo-cache-dir.sh`。不再新增 sh 检查；已有 sh 检查随迁移改写为 Node。
+- 检查统一使用 Node ESM。理由不是速度，而是可维护性：`JSON.parse` 替代 awk/sed 对 prettier 形状的解析，链接、git 与执行逻辑可以放进 `scripts/lib/` 共享，检查函数可以直接单测。Node 已由 mise 钉住，且在仓库中本来就是必需依赖；入口只启动一次，子进程继承同一工具链。
+- 不在 `sh` 里拼接执行 Node 源码，也不在 Node 里用 `sh -c` 或启动 `.sh` 辅助脚本完成本可由 argv 表达的工作。外部 CLI 以 argv 调用不属于拼接。
+- 唯一 bootstrap 例外是 `.mise.toml` 在 Node 启动前求值的 `scripts/lib/turbo-cache-dir.sh`；`scripts/lib/turbo-cache-dir.mjs` 是等价实现，测试断言两者结果一致。
+- 不再新增 sh 检查；已有 sh 检查随迁移改写为 Node。
 
 ### 7. 测试与验证
 
@@ -136,7 +139,7 @@ shell 只保留给在 Node 启动之前就要被求值的辅助脚本，例如 `
 
 1. **对齐文档**：修订本 ADR、更新 `docs/agents/scripts.md` 的测试政策与 `docs/agents/commands.md` 的 `check-*` 约定；删除旧的 `scripts/validate-context.test.mjs` 与 `scripts/context-invariants.test.mjs`。
 2. **原子实现与入口**：在 `scripts/lib/` 落地各原子检查与共享库，在 `scripts/checks/` 落地五个薄入口，加入 `check-*` 根命令，补 fixture 测试；行为以新契约为准，不承诺旧文案逐字等价。旧入口与旧 `.agents/checks/` 暂留，使该提交可独立回滚。
-3. **切换调用方**：更新 pre-commit、CI、`ci-topology`、`package.json`；删除 `.agents/checks/` 与被替代的旧实现；确认没有双份运行。
+3. **切换调用方**：更新 pre-commit、CI、`workflow-topology`、`package.json`；删除 `.agents/checks/` 与被替代的旧实现；确认没有双份运行。
 4. **分类与收敛**：把 workflow、release、maintenance、lib 搬到目标目录，更新 `.mise.toml`、`clean.sh`、`env-doctor` 与文档路径；收敛重复的 turbo/JSON/Markdown 解析并做一次新旧差分。
 
 每一步都按 [`docs/agents/scripts.md`](../agents/scripts.md) 逐次取得授权。搬家与削减检查必须分开；本次不增减门禁，也不改动 `.github/scripts/**` 与 workspace 脚本。
@@ -175,5 +178,5 @@ shell 只保留给在 Node 启动之前就要被求值的辅助脚本，例如 `
 - hook 只调用 `pnpm run check-pre-commit`；CI 分别调用 `check-policy`、`check-changeset`、`check-context`、`check-pack`。
 - 五个入口都以非零退出表示失败，并指出失败的检查名；`Promise.all` 的首个失败不会产生“部分通过”。
 - `pnpm run check-pre-commit`、`pnpm run check-policy`、`pnpm run check-changeset --base <sha> --head <sha>`、`pnpm run check-context`、`pnpm run check-pack` 通过。
-- `pnpm run ci:test-scripts`、`pnpm run check-code` 与 `ci-topology` 测试通过。
+- `pnpm run ci:test-scripts`、`pnpm run check-code` 与 `workflow-topology` 测试通过。
 - 存在的测试文件全部与被测文件同目录同名；聚合入口没有专属测试。

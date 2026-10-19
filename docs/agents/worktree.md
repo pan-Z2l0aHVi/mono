@@ -20,7 +20,7 @@ worktree 本身是任务隔离边界，不是包名的别名。包清单、依�
 
 ## Turbo artifact cache
 
-`TURBO_CACHE_DIR` 指向系统临时目录下的 `<temp>/greypan/turbo-cache/<repo-id>`。[`scripts/lib/turbo-cache-dir.sh`](../../scripts/lib/turbo-cache-dir.sh) 是 mise、`clean.sh` 与 `env-doctor` 共用的路径解析器：它把 Git common directory 解析为物理路径，再用 `git hash-object --stdin` 计算稳定 ID。主仓及其 linked worktree 因共用 Git common directory 而复用同一缓存；独立 clone 有不同的 common directory 和缓存 ID。helper 不创建目录、不写 Git 对象，也不读取继承的 `TURBO_CACHE_DIR`。
+`TURBO_CACHE_DIR` 指向系统临时目录下的 `<temp>/greypan/turbo-cache/<repo-id>`。[`scripts/lib/turbo-cache-dir.sh`](../../scripts/lib/turbo-cache-dir.sh) 是 mise 与 `clean.sh` 使用的路径解析器，[`scripts/lib/turbo-cache-dir.mjs`](../../scripts/lib/turbo-cache-dir.mjs) 是 `env-doctor` 使用的等价 Node 实现；两者都把 Git common directory 解析为物理路径，再用 `git hash-object --stdin` 计算稳定 ID，测试断言结果一致。主仓及其 linked worktree 因共用 Git common directory 而复用同一缓存；独立 clone 有不同的 common directory 和缓存 ID。helper 不创建目录、不写 Git 对象，也不读取继承的 `TURBO_CACHE_DIR`。
 
 Turbo artifact cache 保存可恢复的构建产物，包括 `dist` 与声明文件。新路径首次构建时是冷缓存，系统回收临时目录后 Turbo 会重新构建产物。
 
@@ -28,7 +28,7 @@ Turbo artifact cache 保存可恢复的构建产物，包括 `dist` 与声明文
 
 CI 在 `ci.yml` 显式把 artifact cache 放到 `${{ github.workspace }}/.turbo`，并由 `actions/cache` 保存和恢复；mise 优先保留该 override。其他 GitHub Actions runner 在没有显式值时用 `GITHUB_WORKSPACE/.turbo`，因此 Windows runner 不会调用 POSIX helper。本地与不完整的 CI 环境由 helper 计算 canonical 临时路径。
 
-构建或验证前怀疑 `dist` 产物异常（例如被 watch 进程清空 d.ts）时，先裸跑 `pnpm run agent:env-doctor` 体检，再用 `pnpm run agent:env-doctor --fix`（自动 `turbo build --force`）或手动 `turbo build --force` 重建。doctor 按 helper 得到的本地 canonical 路径判断注入；CI workspace override 不会作为它自己的预期值。
+构建或验证前怀疑 `dist` 产物异常（例如被 watch 进程清空 d.ts）时，先裸跑 `pnpm run agent:env-doctor` 体检，再用 `pnpm run agent:env-doctor --fix`（自动 `turbo build --force`）或手动 `turbo build --force` 重建。doctor 按同一公式得到的本地 canonical 路径判断注入；CI workspace override 不会作为它自己的预期值。
 
 Codex 线程能不能写共享 Turbo cache，取决于客户端的权限配置，见 [`environments.md`](environments.md)。
 

@@ -1,24 +1,39 @@
 import fs from 'node:fs'
 import path from 'node:path'
 
-import { commandOutput, execShell } from './exec.mjs'
+import { commandOutput, exec } from './exec.mjs'
 
 // 提交边界的只读格式检查：只判定，不运行 fixer，也不改 index。
 // 文件名来自 index，但工具检查工作区副本；index 与工作区分叉时由作者收敛。
 // 环境变量只覆盖「调用哪条命令」，是 fixture 的测试 seam，不是用户接口。
+// argv 以 JSON 数组传入，避免用 shell 词法拆分命令字符串。
 export const name = 'format-clean'
 
 const STYLELINT_FILE = /\.(?:css|scss|less|html|vue)$/
 const GO_FILE = /\.go$/
 
-function tool(prefix, args, root, env) {
-  return execShell(prefix, args, { cwd: root, env })
+function argvFromEnv(value, fallback, name) {
+  if (value === undefined) return fallback
+  let parsed
+  try {
+    parsed = JSON.parse(value)
+  } catch {
+    throw new Error(`${name} must be a JSON array of non-empty strings`)
+  }
+  if (!Array.isArray(parsed) || parsed.length === 0 || parsed.some(item => typeof item !== 'string' || item === '')) {
+    throw new Error(`${name} must be a JSON array of non-empty strings`)
+  }
+  return parsed
 }
 
-function requireTool(prefix, root, env) {
-  if (!tool(prefix, ['--help'], root, env).ok)
+function tool(command, args, root, env) {
+  return exec(command[0], [...command.slice(1), ...args], { cwd: root, env })
+}
+
+function requireTool(command, root, env) {
+  if (!tool(command, ['--help'], root, env).ok)
     throw new Error(
-      `cannot run: '${prefix}' is unavailable\nits launcher is missing from PATH, or the toolchain behind it is not installed (mise install; pnpm install for Node deps)`
+      `cannot run: '${command.join(' ')}' is unavailable\nits launcher is missing from PATH, or the toolchain behind it is not installed (mise install; pnpm install for Node deps)`
     )
 }
 
@@ -30,7 +45,7 @@ function report(reason) {
 }
 
 function stagedFiles(root, env) {
-  const result = execShell('git -c core.quotePath=false diff --cached --name-only --diff-filter=ACMR', [], {
+  const result = exec('git', ['-c', 'core.quotePath=false', 'diff', '--cached', '--name-only', '--diff-filter=ACMR'], {
     cwd: root,
     env
   })
@@ -39,9 +54,9 @@ function stagedFiles(root, env) {
 }
 
 export async function run({ root, env = process.env }) {
-  const vpCommand = env.AGENT_VP_CMD || 'pnpm exec vp'
-  const stylelintCommand = env.AGENT_STYLELINT_CMD || 'pnpm exec stylelint'
-  const gofmtCommand = env.AGENT_GOFMT_CMD || 'gofmt'
+  const vpCommand = argvFromEnv(env.AGENT_VP_ARGV, ['pnpm', 'exec', 'vp'], 'AGENT_VP_ARGV')
+  const stylelintCommand = argvFromEnv(env.AGENT_STYLELINT_ARGV, ['pnpm', 'exec', 'stylelint'], 'AGENT_STYLELINT_ARGV')
+  const gofmtCommand = argvFromEnv(env.AGENT_GOFMT_ARGV, ['gofmt'], 'AGENT_GOFMT_ARGV')
 
   const staged = stagedFiles(root, env)
   if (staged.length === 0) return 'no staged files'

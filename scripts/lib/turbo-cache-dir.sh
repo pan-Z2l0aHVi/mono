@@ -9,7 +9,8 @@ fail() {
 case $# in
   0)
     script_dir=$(CDPATH= cd -P "$(dirname "$0")" 2>/dev/null && pwd -P) || fail "cannot resolve script directory"
-    root_candidate="$script_dir/.."
+    # 脚本位于 scripts/lib/，默认根是仓库根；--root 允许调用方显式覆盖。
+    root_candidate="$script_dir/../.."
     ;;
   2)
     [ "$1" = "--root" ] || fail "usage: sh scripts/lib/turbo-cache-dir.sh [--root <repository-root>]"

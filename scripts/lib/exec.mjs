@@ -18,11 +18,6 @@ export function exec(command, args, options = {}) {
   }
 }
 
-// 测试 seam 只覆盖「调用哪条命令」，不改变检查范围：前缀按 shell 词法拆开，参数原样传进 "$@"。
-export function execShell(prefix, args, options = {}) {
-  return exec('/bin/sh', ['-c', `${prefix} "$@"`, 'sh', ...args], options)
-}
-
 export function commandOutput(result) {
   return [result.stdout, result.stderr].filter(Boolean).join('').trim()
 }

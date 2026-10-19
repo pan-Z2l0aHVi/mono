@@ -8,7 +8,7 @@ import {
   createNpmReleaseAdapter,
   createReleasesForPackages,
   parsePackageReleases
-} from './create-github-releases.mjs'
+} from './create-npm-github-releases.mjs'
 
 const mergeSha = 'a'.repeat(40)
 const repository = 'greypan/mono'
@@ -204,7 +204,7 @@ try {
     assert.ok(args.includes('--verify-tag') === false)
   }
 
-  console.log('.github/scripts/create-github-releases.test.mjs: all assertions passed')
+  console.log('.github/scripts/create-npm-github-releases.test.mjs: all assertions passed')
 } finally {
   fs.rmSync(root, { recursive: true, force: true })
 }

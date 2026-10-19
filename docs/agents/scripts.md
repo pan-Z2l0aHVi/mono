@@ -21,6 +21,15 @@
 
 一次性操作、临时编排和只服务当前改动的逻辑不新增脚本；写成 task 命令、PR 描述或一次性调查记录。
 
+## 运行时选择
+
+默认优先 POSIX `sh`：系统探测、依赖与环境处理、发布编排，以及把外部 CLI 串成流程的脚本。只有复杂逻辑才用 Node ESM：结构化解析（JSON/YAML/Markdown）、代码生成、状态机、跨平台路径处理，或需要复用 `scripts/lib/**` 的原子实现。检查门禁仍统一使用 Node ESM（ADR-0027 §6）；其余脚本在 `sh` 能直接表达时选 `sh`，不要为几行命令串联引入 Node。
+
+- 不在 `sh` 里拼接执行 Node 源码：不写 `node -e`、`node - <<EOF`，也不把 JS 存进变量再执行。
+- 不在 Node 里用 `sh -c` 或启动 `.sh` 辅助脚本完成本可由 argv 表达的工作；外部 CLI（`git`、`pnpm`、`gh`、`turbo`、`ps` 等）以 argv 调用不在此列。
+- 测试为验证 shell 行为而启动 `sh` 是允许的；禁令针对实现代码，不针对测试夹具。
+- 唯一 bootstrap 例外：`.mise.toml` 在 Node 可用前求值的 `scripts/lib/turbo-cache-dir.sh`。`scripts/lib/turbo-cache-dir.mjs` 是它的 Node 等价实现，测试断言两者结果一致；新增同类场景必须同时提供两边并证明等价。
+
 ## 根脚本
 
 ### 执行面

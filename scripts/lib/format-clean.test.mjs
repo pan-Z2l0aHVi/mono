@@ -28,9 +28,9 @@ function check(extraEnv = {}) {
     root,
     env: {
       ...env,
-      AGENT_VP_CMD: `sh ${toolStub} vp`,
-      AGENT_STYLELINT_CMD: `sh ${toolStub} stylelint`,
-      AGENT_GOFMT_CMD: `sh ${toolStub} gofmt`,
+      AGENT_VP_ARGV: JSON.stringify(['sh', toolStub, 'vp']),
+      AGENT_STYLELINT_ARGV: JSON.stringify(['sh', toolStub, 'stylelint']),
+      AGENT_GOFMT_ARGV: JSON.stringify(['sh', toolStub, 'gofmt']),
       FORMAT_STUB_LOG: log,
       FORMAT_STUB_FAIL: failMarker,
       FORMAT_STUB_DIRTY_GO: dirtyGoMarker,
@@ -131,6 +131,9 @@ try {
   assert.match(goMessage, /probe-two\.go/)
   assert.match(goMessage, /formatting, lint or types/)
   assert.match(goMessage, /gofmt -w <files>/)
+
+  // The test seam is a JSON argv array; a command string must fail instead of reaching a shell.
+  assert.match(await failure(check({ AGENT_VP_ARGV: 'pnpm exec vp' })), /AGENT_VP_ARGV must be a JSON array/)
 
   process.stdout.write('scripts/lib/format-clean.test.mjs: all assertions passed\n')
 } finally {

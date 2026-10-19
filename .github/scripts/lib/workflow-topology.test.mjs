@@ -4,9 +4,9 @@ import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 
-import { RELEASE_BRANCH, REQUIRED_CONTEXT, parseWorkflow, requiredPolicyStep } from './ci-topology.mjs'
+import { RELEASE_BRANCH, REQUIRED_CONTEXT, parseWorkflow, requiredPolicyStep } from './workflow-topology.mjs'
 
-const repoRoot = path.resolve(import.meta.dirname, '../..')
+const repoRoot = path.resolve(import.meta.dirname, '../../..')
 const workflowDir = path.join(repoRoot, '.github/workflows')
 const workflowFiles = fs
   .readdirSync(workflowDir)
@@ -485,4 +485,4 @@ function matrixEntries(text) {
   }
 }
 
-console.log('.github/scripts/ci-topology.test.mjs: all assertions passed')
+console.log('.github/scripts/lib/workflow-topology.test.mjs: all assertions passed')

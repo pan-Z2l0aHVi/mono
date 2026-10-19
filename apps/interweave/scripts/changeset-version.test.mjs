@@ -4,34 +4,26 @@ import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 
-const script = path.join(import.meta.dirname, 'release-version.mjs')
-const fixture = fs.mkdtempSync(path.join(os.tmpdir(), 'interweave-release-version-'))
+const script = path.join(import.meta.dirname, 'changeset-version.sh')
+const fixture = fs.mkdtempSync(path.join(os.tmpdir(), 'interweave-changeset-version-'))
 const shim = path.join(fixture, 'shim')
 const calls = path.join(fixture, 'calls')
 fs.mkdirSync(shim, { recursive: true })
 
-function writeShim(name, posix, windowsBody) {
-  const file = path.join(shim, process.platform === 'win32' ? `${name}.cmd` : name)
-  fs.writeFileSync(file, process.platform === 'win32' ? windowsBody : posix)
+function writeShim(name, body) {
+  const file = path.join(shim, name)
+  fs.writeFileSync(file, body)
   fs.chmodSync(file, 0o755)
 }
 
-writeShim(
-  'pnpm',
-  '#!/bin/sh\nprintf \'pnpm %s\\n\' "$*" >> "$CALLS"\nexit 0\n',
-  '@echo off\r\necho pnpm %*>>"%CALLS%"\r\nexit /b 0\r\n'
-)
-writeShim(
-  'git',
-  '#!/bin/sh\nprintf \'git %s\\n\' "$*" >> "$CALLS"\nexit ${GIT_DIFF_STATUS:-0}\n',
-  '@echo off\r\necho git %*>>"%CALLS%"\r\nexit /b %GIT_DIFF_STATUS%\r\n'
-)
+writeShim('pnpm', '#!/bin/sh\nprintf \'pnpm %s\\n\' "$*" >> "$CALLS"\nexit 0\n')
+writeShim('git', '#!/bin/sh\nprintf \'git %s\\n\' "$*" >> "$CALLS"\nexit ${GIT_DIFF_STATUS:-0}\n')
 
 const changed = ['pnpm exec changeset version', 'git diff --quiet -- apps/interweave/package.json']
 const synced = [...changed, 'pnpm --filter @greypan/interweave run sync:version']
 
 function run(diffStatus) {
-  return execFileSync(process.execPath, [script], {
+  return execFileSync('sh', [script], {
     env: {
       ...process.env,
       PATH: `${shim}${path.delimiter}${process.env.PATH ?? ''}`,
@@ -53,7 +45,7 @@ function runExpectingFailure(diffStatus) {
   } catch (error) {
     return error
   }
-  assert.fail(`expected release-version to fail when git exits ${diffStatus}`)
+  assert.fail(`expected changeset-version to fail when git exits ${diffStatus}`)
 }
 
 try {
@@ -72,4 +64,4 @@ try {
   fs.rmSync(fixture, { recursive: true, force: true })
 }
 
-console.log('apps/interweave/scripts/release-version.test.mjs: all assertions passed')
+console.log('apps/interweave/scripts/changeset-version.test.mjs: all assertions passed')

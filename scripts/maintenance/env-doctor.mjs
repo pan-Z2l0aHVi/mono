@@ -17,6 +17,8 @@ import { execFileSync, spawnSync } from 'node:child_process'
 import fs from 'node:fs'
 import path from 'node:path'
 
+import { resolveTurboCacheDir } from '../lib/turbo-cache-dir.mjs'
+
 const scriptRoot = path.resolve(import.meta.dirname, '../..')
 // env-doctor 体检的是「当前环境」：优先以调用方 cwd（worktree）为根，
 // 仅当 cwd 不是本仓库 workspace 时才退回脚本所在仓库。
@@ -137,32 +139,22 @@ function watcherDetection() {
 }
 
 // ===== mise env：turbo 缓存位置 =====
-// 预期值由共用 helper 独立计算；不会读取 TURBO_CACHE_DIR，避免 CI 覆盖值自我满足。
-// 缓存目录可以尚未创建，首次 Turbo 构建会创建它。
+// 预期值由 Node 与 sh 共用的同一公式计算；turbo-cache-dir.test.mjs 断言两者一致。
+// 不会读取 TURBO_CACHE_DIR，避免 CI 覆盖值自我满足。缓存目录可以尚未创建，
+// 首次 Turbo 构建会创建它。
 function turboCacheCheck() {
   const miseConfig = fs.readFileSync(path.join(root, '.mise.toml'), 'utf8')
   if (!/^\s*TURBO_CACHE_DIR\s*=/m.test(miseConfig)) {
     record('turbo-cache', 'warn', '.mise.toml does not declare TURBO_CACHE_DIR; each worktree keeps a cold cache')
     return
   }
-  const resolved = spawnSync('sh', [path.join(root, 'scripts', 'lib', 'turbo-cache-dir.sh'), '--root', root], {
-    cwd: root,
-    encoding: 'utf8'
-  })
-  if (resolved.error || resolved.status !== 0) {
-    const reason =
-      [
-        resolved.error?.message,
-        resolved.stderr?.trim(),
-        resolved.signal ? `terminated by ${resolved.signal}` : '',
-        resolved.status !== null ? `exit code ${resolved.status}` : ''
-      ]
-        .filter(Boolean)
-        .join('; ') || 'unknown failure'
-    record('turbo-cache', 'fail', `cannot resolve the canonical Turbo cache path: ${reason}`)
+  let expected
+  try {
+    expected = resolveTurboCacheDir(root)
+  } catch (error) {
+    record('turbo-cache', 'fail', `cannot resolve the canonical Turbo cache path: ${error.message}`)
     return
   }
-  const expected = resolved.stdout.trim()
   if (!path.isAbsolute(expected)) {
     record('turbo-cache', 'fail', `cache path helper returned a non-absolute path: ${expected || '(empty)'}`)
     return

@@ -4,14 +4,14 @@
 // 因此它的每一条命令都会在 Windows runner 上执行；POSIX 绝对路径在那儿必然失败。
 // 宿主专有的产物（例如 DMG 卷标图标）属于 build/<platform>/Taskfile.yml。
 //
-// 用法：node apps/interweave/scripts/check-build-tasks.mjs
+// 用法：node apps/interweave/scripts/check-taskfile-paths.mjs
 import { readFile } from 'node:fs/promises'
 import { fileURLToPath } from 'node:url'
 
 const sharedTaskfilePath = new URL('../build/Taskfile.yml', import.meta.url)
 
-// cmds 列表项里的绝对路径 token：前一个字符是行首或空白，token 以 `/` 开头并至少含一层路径段
-const absolutePathPattern = /(?:^|\s)\/[\w.@-]+(?:\/[\w.@-]+)*/g
+// cmds 列表项里的绝对路径 token：前一个字符是行首、空白、引号或 `=`，token 以 `/` 开头并至少含一层路径段
+const absolutePathPattern = /(?:^|[\s"'=])(\/[\w.@-]+(?:\/[\w.@-]+)*)/g
 
 function findAbsolutePaths(lines) {
   const findings = []
@@ -39,7 +39,7 @@ function findAbsolutePaths(lines) {
     if (!inCmds || trimmed.startsWith('#')) continue
 
     for (const match of trimmed.matchAll(absolutePathPattern)) {
-      findings.push({ line: index + 1, token: match[0].trim() })
+      findings.push({ line: index + 1, token: match[1] })
     }
   }
 
