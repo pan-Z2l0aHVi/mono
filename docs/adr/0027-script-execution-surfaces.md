@@ -20,16 +20,16 @@
 
 端点按“谁触发、输入是什么、失败意味着什么”划分，而不是只按 `pull_request` 这个触发事件划分。同一端点的多个判断收敛为一个薄入口；不同端点即使都在 CI 里运行，也不强行合并。五个门禁入口全部通过根命令调用：
 
-| 执行面           | 根命令             | 入口                                         | 聚合内容                                                                                                | 失败语义                               |
-| ---------------- | ------------------ | -------------------------------------------- | ------------------------------------------------------------------------------------------------------- | -------------------------------------- |
-| git hook         | `check-pre-commit` | `scripts/checks/check-pre-commit.mjs`        | `command-conventions`、`format-clean`、`no-mutual-links`、`turbo-cache-invariant`、`web-ui-docs-inputs` | 任一检查失败即非零退出，阻止提交       |
-| PR CI policy     | `check-policy`     | `scripts/checks/check-policy.mjs`            | `command-conventions`、`no-mutual-links`、`turbo-cache-invariant`、`web-ui-docs-inputs`                 | 任一检查失败即 job 失败                |
-| PR CI changeset  | `check-changeset`  | `scripts/checks/check-changeset.mjs`         | `changeset status --since` 与 `changeset-policy`                                                        | 任一检查失败即 job 失败                |
-| CI context       | `check-context`    | `scripts/checks/check-context.mjs`           | context invariants，保留 `--report` 模式                                                                | 链接、路由、语料漂移失败即非零         |
-| CI package       | `check-pack`       | `scripts/checks/check-pack.mjs`              | 发布包契约                                                                                              | 发布契约失败即非零                     |
-| agent / 人工命令 | 现有 `agent:*` 等  | `scripts/tools/*`、`scripts/tools/commit.sh` | 命令自身逻辑                                                                                            | 命令自身退出码                         |
-| 发布             | `publish-new-pack` | `scripts/release/publish-new-pack.sh`        | 发布辅助                                                                                                | 不可逆操作，按发布授权与 workflow 约束 |
-| 运维             | `clean`            | `scripts/maintenance/clean.sh`               | 清理与运维                                                                                              | 命令自身退出码                         |
+| 执行面          | 根命令             | 入口                                  | 聚合内容                                                                                                | 失败语义                               |
+| --------------- | ------------------ | ------------------------------------- | ------------------------------------------------------------------------------------------------------- | -------------------------------------- |
+| git hook        | `check-pre-commit` | `scripts/checks/check-pre-commit.mjs` | `command-conventions`、`format-clean`、`no-mutual-links`、`turbo-cache-invariant`、`web-ui-docs-inputs` | 任一检查失败即非零退出，阻止提交       |
+| PR CI policy    | `check-policy`     | `scripts/checks/check-policy.mjs`     | `command-conventions`、`no-mutual-links`、`turbo-cache-invariant`、`web-ui-docs-inputs`                 | 任一检查失败即 job 失败                |
+| PR CI changeset | `check-changeset`  | `scripts/checks/check-changeset.mjs`  | `changeset status --since` 与 `changeset-policy`                                                        | 任一检查失败即 job 失败                |
+| CI context      | `check-context`    | `scripts/checks/check-context.mjs`    | context invariants，保留 `--report` 模式                                                                | 链接、路由、语料漂移失败即非零         |
+| CI package      | `check-pack`       | `scripts/checks/check-pack.mjs`       | 发布包契约                                                                                              | 发布契约失败即非零                     |
+| 任务工作流      | 现有 `agent:*` 等  | `scripts/workflow/*`                  | 任务登记、提交辅助                                                                                      | 命令自身退出码                         |
+| 发布            | `publish-new-pack` | `scripts/release/publish-new-pack.sh` | 发布辅助                                                                                                | 不可逆操作，按发布授权与 workflow 约束 |
+| 运维            | `clean`            | `scripts/maintenance/clean.sh`        | 清理与运维                                                                                              | 命令自身退出码                         |
 
 `check-context` 与 `check-pack` 保持独立入口，不并入 `check-policy`：前者有 `--report` 模式，后者依赖构建产物，它们的输入和生命周期与快速政策检查不同。`check-changeset` 合并原来的外部 `changeset status --since` 与自定义内容检查，使 CI 的 changeset step 只有一个命令。
 
@@ -89,7 +89,7 @@ scripts/
     web-ui-docs-inputs.mjs
     changeset-policy.mjs
     *.test.mjs             # 只覆盖原子模块，可选
-  tools/                   # agent / 人工命令
+  workflow/                # 任务登记与提交命令
     task-ledger.mjs
     task.mjs
     commit.sh
@@ -133,7 +133,7 @@ shell 只保留给在 Node 启动之前就要被求值的辅助脚本，例如 `
 1. **对齐文档**：修订本 ADR、更新 `docs/agents/scripts.md` 的测试政策与 `docs/agents/commands.md` 的 `check-*` 约定；删除旧的 `scripts/validate-context.test.mjs` 与 `scripts/context-invariants.test.mjs`。
 2. **原子实现与入口**：在 `scripts/checks/` 落地各原子检查、五个薄入口、`scripts/lib/check-runner.mjs` 与共享库，加入 `check-*` 根命令，补 fixture 测试；行为以新契约为准，不承诺旧文案逐字等价。旧入口与旧 `.agents/checks/` 暂留，使该提交可独立回滚。
 3. **切换调用方**：更新 pre-commit、CI、`ci-topology`、`package.json`；删除 `.agents/checks/` 与被替代的旧实现；确认没有双份运行。
-4. **分类与收敛**：把 tools、release、maintenance、lib 搬到目标目录，更新 `.mise.toml`、`clean.sh`、`env-doctor` 与文档路径；收敛重复的 turbo/JSON/Markdown 解析并做一次新旧差分。
+4. **分类与收敛**：把 workflow、release、maintenance、lib 搬到目标目录，更新 `.mise.toml`、`clean.sh`、`env-doctor` 与文档路径；收敛重复的 turbo/JSON/Markdown 解析并做一次新旧差分。
 
 每一步都按 [`docs/agents/scripts.md`](../agents/scripts.md) 逐次取得授权。搬家与削减检查必须分开；本次不增减门禁，也不改动 `.github/scripts/**` 与 workspace 脚本。
 

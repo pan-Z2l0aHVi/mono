@@ -13,7 +13,7 @@ scope 标识受影响的 workspace，不表示领域；跨 workspace 协作用�
 授权提交时先暂存预期文件并预览，再运行：
 
 ```bash
-bash scripts/tools/commit.sh <type> <scope> "<subject>" --dry
+bash scripts/workflow/commit.sh <type> <scope> "<subject>" --dry
 ```
 
 确认 message 和文件列表后去掉 `--dry`。`commit.sh` 每一行分别传给 `-m`，正文行间保留空行，不要用 `git commit -F` 绕开脚本。

@@ -5,7 +5,7 @@ import os from 'node:os'
 import path from 'node:path'
 
 const repoRoot = path.resolve(import.meta.dirname, '../..')
-const script = path.join(repoRoot, 'scripts', 'tools', 'task.mjs')
+const script = path.join(repoRoot, 'scripts', 'workflow', 'task.mjs')
 const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'greypan-task-adapter-test-'))
 const fixture = path.join(tempRoot, 'repo')
 const stateDir = path.join(tempRoot, 'state')
@@ -82,7 +82,7 @@ try {
   assert.match(closed.stderr, /`done` maps to `close`/)
   assert.equal(JSON.parse(closed.stdout).status, 'closed')
 
-  process.stdout.write('scripts/tools/task.test.mjs: all assertions passed\n')
+  process.stdout.write('scripts/workflow/task.test.mjs: all assertions passed\n')
 } finally {
   fs.rmSync(tempRoot, { recursive: true, force: true })
 }

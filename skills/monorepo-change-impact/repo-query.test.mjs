@@ -180,7 +180,7 @@ assert.equal(
 const toolPlan = JSON.parse(run('verify', '--json', script))
 assert.ok(toolPlan.verification.some(item => item.command === 'pnpm run ci:test-scripts'))
 
-const workflowToolPlan = JSON.parse(run('verify', '--json', 'scripts/tools/task.mjs'))
+const workflowToolPlan = JSON.parse(run('verify', '--json', 'scripts/workflow/task.mjs'))
 assert.ok(workflowToolPlan.context.includes('docs/agents/agent-context.md'))
 assert.ok(workflowToolPlan.verification.some(item => item.command === 'pnpm run ci:test-scripts'))
 
