@@ -50,7 +50,7 @@ Interweave 由 Wails 宿主管理嵌套前端，其 alias 只启动 Wails host�
 
 ## CI 门控与 workflow 拓扑
 
-真实触发面、`permissions`、job `needs` / `if`、step `id`、发布分支、构建矩阵与安装面只写在 `.github/scripts/ci-topology.mjs`，由同目录的 `ci-topology.test.mjs` 逐字段比对，并通过 `ci:test-scripts` 与 CI 的 `check` 强制执行。改 workflow 而不改声明，`check` 会失败；不要在本文件复制这些细节。
+workflow 的真实触发面、`permissions`、job `needs` / `if`、step `id`、构建矩阵与安装面以 YAML 本身为权威。`.github/scripts/ci-topology.mjs` 只声明跨 workflow 的少量不变量（发布分支、required context 与 policy step），同目录的 `ci-topology.test.mjs` 读取真实 YAML 逐项比对，包括两个 Wails workflow 的原生构建矩阵必须一致，并通过 `ci:test-scripts` 与 CI 的 `check` 强制执行。改 workflow 或该声明而不同步，`check` 会失败；不要在本文件复制这些细节。
 
 CI 构建 workspace 包并跳过 Interweave app wrapper；Wails verify / release 在原生 runner 上构建 frontend 依赖闭包并打包应用。workflow 的 path filter 由 frontend package manifests 的传递依赖图校验。npm 发布通过 Trusted Publishing 绑定 workflow 文件路径，重命名 `npm-publish.yml` 需同步更新 npm 注册。
 

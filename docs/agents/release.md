@@ -27,8 +27,10 @@ PR CI 的机械性修复由对应 task owner 处理；逻辑、测试和契约�
 
 ## npm 发布重跑与 release notes
 
-发布前查询官方 npm registry 的精确包名和版本；receipt 只记录尚不存在的本地公共包版本，并绑定仓库、merge SHA 与 run ID。首次尝试上传 receipt，后续重跑只在 receipt 仍可读取时复用它。receipt 缺失或下载失败时安全失败，不重新计算候选集合；停止重试，人工核对发布日志与 registry 状态后审定恢复方式。release-notes 从 merge SHA、run ID 与 receipt 独立恢复候选包，因此可以单独重跑。publish 成功后对 registry 做有限重试；包没有出现在本次 receipt 中时，不创建 GitHub Release。整个 workflow 按仓库串行运行。
+`prepare` 从 merge commit 检测本次版本化的公共包，把包名、版本与目录作为 job 输出传给后续 job；不产生 receipt 或可复用的中间产物。`publish` 成功后 `release-notes` 才运行，逐个候选包查询官方 npm registry，用有限退避重试；仍查不到版本时整体失败，不创建 GitHub Release，也不把该版本当作已发布。已存在且指向当前 merge SHA 的 published release 直接跳过并记录；指向其它 SHA 或仍为 draft 时失败。新建 release 后重新读取并核对 draft 状态与 tag 指向。重跑按当前 merge commit 重新检测候选包，因此重复执行是幂等的，但不能据此推算历史上是否发布过。workflow 按仓库串行，后一次运行排队而非取消前一次。
 
 ## Wails desktop release 恢复
 
-native build 前先只读检查已发布 release：只有 annotated tag 指向当前 merge SHA，且资产与 checksums 完整并通过校验时，才跳过重建。新发布先创建带当前仓库、merge SHA 与 run ID marker 的 draft，上传本轮两平台产物及 checksums；发布前逐项核对 digest 或下载后的 SHA-256。重跑只自动删除 marker 完全匹配的本 run draft，删除前重读 Release 与 tag，删除后确认原 tag 仍指向 merge SHA。失败 job 重跑上传同名资产会覆盖该平台此前的成功产物；publish 使用各平台最近成功上传的文件并重新生成 checksums。
+native build 前 `prepare` 只读检查 release 与 tag：release 已存在时直接失败并拒绝修改；tag 已存在时必须为 annotated 且指向当前 merge SHA；都不存在才继续构建。`publish` 组装两平台产物与 checksums，缺 tag 时创建 annotated tag，再以 `--verify-tag` 创建 release，随后核对 draft 状态、tag 类型与 SHA、资产集合、大小，以及 GitHub 提供的 digest 与本次构建产物一致。
+
+流程不创建 draft，也没有 marker 或自动删除/恢复路径。build job 重跑会以 `overwrite` 覆盖同名 artifact；publish 若在 release 已创建后失败，重跑会因「已存在 release」被拒绝，需要人工核对 tag、release 与资产状态后决定处置，不能自动清理后重建。

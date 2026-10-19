@@ -42,4 +42,4 @@
 
 ## 3. Agent 工具与仓库政策
 
-根 `scripts/` 中的本地 agent 工具不属于任何 workspace package，也不进入包图；仓库级命令面以根 `package.json` 为准。task 登记只写系统临时目录，政策检查只读，两者都不改写源码或 Git index；职责与恢复边界分别见 [`docs/agents/task-ledger.md`](docs/agents/task-ledger.md) 和 [`docs/agents/commit.md`](docs/agents/commit.md)。CI 拓扑以 `.github/scripts/ci-topology.mjs` 及其测试为权威，本文不复制命令、检查集合或 workflow 细节。
+根 `scripts/` 中的本地 agent 工具不属于任何 workspace package，也不进入包图；仓库级命令面以根 `package.json` 为准。task 登记只写系统临时目录，政策检查只读，两者都不改写源码或 Git index；职责与恢复边界分别见 [`docs/agents/task-ledger.md`](docs/agents/task-ledger.md) 和 [`docs/agents/commit.md`](docs/agents/commit.md)。workflow 的触发面与 job 拓扑以 YAML 为权威，`.github/scripts/ci-topology.mjs` 只保留跨 workflow 的不变量并由其测试读取 YAML 校验；本文不复制命令、检查集合或 workflow 细节。

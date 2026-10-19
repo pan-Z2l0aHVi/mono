@@ -6,9 +6,8 @@ import path from 'node:path'
 
 import {
   createGhWailsAdapter,
-  inspectReleaseDirectory,
   inspectExistingWailsRelease,
-  ownershipMarker,
+  inspectReleaseDirectory,
   publishWailsRelease
 } from './publish-wails-release.mjs'
 
@@ -16,12 +15,10 @@ const root = fs.mkdtempSync(path.join(os.tmpdir(), 'wails-release-test-'))
 const repository = 'greypan/mono'
 const version = '1.2.3'
 const mergeSha = 'a'.repeat(40)
-const runId = '12345'
-const tag = 'interweave-v' + version
-const marker = ownershipMarker({ repository, mergeSha, runId })
+const tag = `interweave-v${version}`
 const expectedNames = [
-  'interweave-' + version + '-macos-arm64.dmg',
-  'interweave-' + version + '-windows-x64.exe',
+  `interweave-${version}-macos-arm64.dmg`,
+  `interweave-${version}-windows-x64.exe`,
   'checksums.txt'
 ]
 
@@ -35,349 +32,214 @@ function makeAssets(directory, contents = ['mac dmg bytes', 'windows exe bytes']
   fs.writeFileSync(path.join(directory, expectedNames[1]), contents[1])
   fs.writeFileSync(
     path.join(directory, 'checksums.txt'),
-    digest(contents[0]) + '  ' + expectedNames[0] + '\n' + digest(contents[1]) + '  ' + expectedNames[1] + '\n'
+    `${digest(contents[0])}  ${expectedNames[0]}\n${digest(contents[1])}  ${expectedNames[1]}\n`
   )
 }
 
-function releaseAssetsFrom(directory, withDigests = false) {
+function releaseAssetsFrom(directory, withDigests = true) {
   return expectedNames.map(name => {
     const contents = fs.readFileSync(path.join(directory, name))
     return {
       name,
       size: contents.length,
       state: 'uploaded',
-      ...(withDigests ? { digest: 'sha256:' + digest(contents) } : {})
+      ...(withDigests ? { digest: `sha256:${digest(contents)}` } : {})
     }
   })
 }
 
-function fakeAdapter({ initialRelease, initialTag, failUpload = false, uploadFromDirectory, onGetRelease } = {}) {
+function fakeAdapter({ initialRelease, initialTag, invalidCreatedRelease = false } = {}) {
   const releases = new Map(initialRelease ? [[tag, structuredClone(initialRelease)]] : [])
   const tags = new Map(initialTag ? [[tag, structuredClone(initialTag)]] : [])
-  const remoteAssets = path.join(root, 'remote-' + Math.random().toString(16).slice(2))
   const calls = []
-  let getCount = 0
   return {
     releases,
     tags,
     calls,
     async getRelease(name) {
       calls.push(['getRelease', name])
-      getCount++
-      if (onGetRelease) onGetRelease({ getCount, releases, tags })
-      return releases.get(name) ? structuredClone(releases.get(name)) : null
+      return releases.has(name) ? structuredClone(releases.get(name)) : null
     },
     async resolveTag(name) {
       calls.push(['resolveTag', name])
-      return tags.get(name) ? structuredClone(tags.get(name)) : null
+      return tags.has(name) ? structuredClone(tags.get(name)) : null
     },
     async createAnnotatedTag(name, sha) {
       calls.push(['createAnnotatedTag', name, sha])
       if (tags.has(name)) throw new Error('tag already exists')
       tags.set(name, { sha, annotated: true })
     },
-    async deleteDraft(name) {
-      calls.push(['deleteDraft', name])
-      if (releases.get(name)?.draft !== true) throw new Error('not a draft')
-      releases.delete(name)
-    },
-    async createDraft(value) {
-      calls.push(['createDraft', value.tag])
-      if (releases.has(value.tag)) throw new Error('release already exists')
-      releases.set(value.tag, { draft: true, body: value.notes, assets: [] })
-    },
-    async uploadAssets(name, directory, names) {
-      calls.push(['uploadAssets', name, [...names]])
-      if (failUpload) throw new Error('simulated upload failure')
-      const sourceDirectory = uploadFromDirectory ?? directory
-      fs.mkdirSync(remoteAssets, { recursive: true })
-      for (const asset of names) fs.copyFileSync(path.join(sourceDirectory, asset), path.join(remoteAssets, asset))
-      releases.get(name).assets = releaseAssetsFrom(remoteAssets, true)
-    },
-    async downloadAssets(name, directory, names) {
-      calls.push(['downloadAssets', name, [...names]])
-      if (!releases.has(name)) throw new Error('release missing')
-      fs.mkdirSync(directory, { recursive: true })
-      for (const asset of names) fs.copyFileSync(path.join(remoteAssets, asset), path.join(directory, asset))
-    },
-    async publishDraft(name) {
-      calls.push(['publishDraft', name])
-      const release = releases.get(name)
-      if (!release?.draft) throw new Error('not a draft')
-      release.draft = false
-    },
-    seedRemote(directory, { withDigests = false } = {}) {
-      fs.rmSync(remoteAssets, { recursive: true, force: true })
-      fs.mkdirSync(remoteAssets, { recursive: true })
-      for (const asset of fs.readdirSync(directory))
-        fs.copyFileSync(path.join(directory, asset), path.join(remoteAssets, asset))
-      if (releases.has(tag)) releases.get(tag).assets = releaseAssetsFrom(remoteAssets, withDigests)
+    async createRelease(value) {
+      calls.push(['createRelease', value])
+      const assets = invalidCreatedRelease
+        ? [{ name: 'unexpected.bin', size: 1, state: 'uploaded' }]
+        : value.names.map(name => {
+            const file = path.join(value.assetsDirectory, name)
+            const contents = fs.readFileSync(file)
+            return { name, size: contents.length, state: 'uploaded', digest: `sha256:${digest(contents)}` }
+          })
+      releases.set(value.tag, { draft: false, assets })
     }
   }
 }
 
 function releaseOptions(assetsDirectory, adapter) {
-  return { repository, version, mergeSha, runId, assetsDirectory, adapter }
+  return { repository, version, mergeSha, assetsDirectory, adapter }
 }
 
 try {
   const localAssets = path.join(root, 'local-assets')
   makeAssets(localAssets)
-  assert.equal((await inspectReleaseDirectory(localAssets, version)).size, 3)
+  const localInfo = await inspectReleaseDirectory(localAssets, version)
+  assert.equal(localInfo.digests.size, 3)
+  assert.equal(localInfo.sizes.size, 3)
 
-  // Prepare can inspect an existing published release without native artifacts; only a complete, correctly
-  // tagged release skips the build.
+  // Local files must have an exact, nonempty asset set and checksums matching both desktop binaries.
+  {
+    const extra = path.join(root, 'extra-assets')
+    makeAssets(extra)
+    fs.writeFileSync(path.join(extra, 'extra.bin'), 'extra')
+    await assert.rejects(inspectReleaseDirectory(extra, version), /must contain exactly/)
+
+    const malformed = path.join(root, 'bad-assets')
+    makeAssets(malformed)
+    fs.writeFileSync(path.join(malformed, 'checksums.txt'), `${'0'.repeat(64)}  ${expectedNames[0]}\n`)
+    await assert.rejects(inspectReleaseDirectory(malformed, version), /checksums.txt must list both|checksum mismatch/)
+
+    const mismatch = path.join(root, 'checksum-mismatch')
+    makeAssets(mismatch)
+    fs.writeFileSync(path.join(mismatch, expectedNames[0]), 'changed after checksums were generated')
+    const gh = fakeAdapter()
+    await assert.rejects(publishWailsRelease(releaseOptions(mismatch, gh)), /checksum mismatch/)
+    assert.deepEqual(gh.calls, [], 'checksum mismatch must fail before any tag or release write')
+  }
+
+  // Preflight is read-only and allows a new version only when neither a release nor a conflicting tag exists.
   {
     const gh = fakeAdapter()
-    const result = await inspectExistingWailsRelease({ repository, version, mergeSha, runId, adapter: gh })
-    assert.deepEqual(result, { tag, skipBuild: false })
+    assert.deepEqual(await inspectExistingWailsRelease({ repository, version, mergeSha, adapter: gh }), { tag })
     assert.deepEqual(
       gh.calls.map(([name]) => name),
       ['getRelease', 'resolveTag']
     )
   }
 
-  // A clean release creates the annotated tag first, creates an owned draft, uploads the complete asset set,
-  // verifies the downloaded assets and checksums, and only then publishes.
+  // Any existing release, including a valid published one, requires human inspection rather than automation.
+  {
+    const gh = fakeAdapter({
+      initialRelease: { draft: false, assets: releaseAssetsFrom(localAssets) },
+      initialTag: { sha: mergeSha, annotated: true }
+    })
+    await assert.rejects(inspectExistingWailsRelease({ repository, version, mergeSha, adapter: gh }), /already exists/)
+    assert.deepEqual(
+      gh.calls.map(([name]) => name),
+      ['getRelease', 'resolveTag']
+    )
+  }
+
+  // A new release uses one normal release-create operation with the verified local files.
   {
     const gh = fakeAdapter()
     const result = await publishWailsRelease(releaseOptions(localAssets, gh))
-    assert.deepEqual(result, { tag, skipped: false, assets: 3 })
+    assert.deepEqual(result, { tag, assets: 3 })
     assert.deepEqual(gh.tags.get(tag), { sha: mergeSha, annotated: true })
     assert.equal(gh.releases.get(tag).draft, false)
-    assert.ok(gh.releases.get(tag).body.split('\n').includes(marker))
-    assert.ok(
-      gh.calls.findIndex(entry => entry[0] === 'createAnnotatedTag') <
-        gh.calls.findIndex(entry => entry[0] === 'createDraft')
-    )
-    assert.ok(
-      gh.calls.findIndex(entry => entry[0] === 'uploadAssets') <
-        gh.calls.findIndex(entry => entry[0] === 'publishDraft')
-    )
+    assert.deepEqual(gh.calls.filter(([name]) => name === 'createAnnotatedTag').length, 1)
+    assert.equal(gh.calls.filter(([name]) => name === 'createRelease').length, 1)
     assert.equal(
-      gh.calls.some(entry => entry[0] === 'deleteDraft'),
+      gh.calls.some(([name]) => ['deleteDraft', 'uploadAssets', 'downloadAssets', 'publishDraft'].includes(name)),
+      false
+    )
+    const create = gh.calls.find(([name]) => name === 'createRelease')[1]
+    assert.deepEqual(create.names, expectedNames)
+  }
+
+  // Publishing never skips or modifies an already published release.
+  {
+    const gh = fakeAdapter({
+      initialRelease: { draft: false, assets: releaseAssetsFrom(localAssets) },
+      initialTag: { sha: mergeSha, annotated: true }
+    })
+    await assert.rejects(publishWailsRelease(releaseOptions(localAssets, gh)), /already exists/)
+    assert.equal(
+      gh.calls.some(([name]) => ['createAnnotatedTag', 'createRelease'].includes(name)),
       false
     )
   }
 
-  // A complete published release at the expected annotated tag is idempotent and remains untouched.
+  // Existing drafts are rejected, regardless of run identity, and are never modified or replaced.
   {
     const gh = fakeAdapter({
-      initialRelease: {
-        draft: false,
-        body: 'previous published run',
-        assets: expectedNames.map(name => ({ name, size: 3, state: 'uploaded' }))
-      },
+      initialRelease: { draft: true, assets: [] },
       initialTag: { sha: mergeSha, annotated: true }
     })
-    gh.seedRemote(localAssets)
-    const result = await publishWailsRelease(releaseOptions(localAssets, gh))
-    assert.equal(result.skipped, true)
+    await assert.rejects(publishWailsRelease(releaseOptions(localAssets, gh)), /release .* already exists/)
     assert.equal(
-      gh.calls.some(entry => ['deleteDraft', 'createDraft', 'publishDraft'].includes(entry[0])),
+      gh.calls.some(([name]) => ['createAnnotatedTag', 'createRelease', 'deleteDraft'].includes(name)),
       false
     )
   }
 
-  // A complete published release is checked against its own API digests and checksums, never against a
-  // nondeterministic local rebuild from a later retry. API digests avoid downloading the desktop binaries.
+  // Existing metadata conflicts fail closed before tag or release writes.
   {
-    const publishedAssets = path.join(root, 'published-assets')
-    makeAssets(publishedAssets, ['published dmg from first run', 'published exe from first run'])
-    const gh = fakeAdapter({
-      initialRelease: { draft: false, body: 'previous published run', assets: [] },
-      initialTag: { sha: mergeSha, annotated: true }
-    })
-    gh.seedRemote(publishedAssets, { withDigests: true })
-    const result = await publishWailsRelease(releaseOptions(localAssets, gh))
-    assert.equal(result.skipped, true)
-    assert.deepEqual(gh.calls.find(entry => entry[0] === 'downloadAssets')?.[2], ['checksums.txt'])
+    const cases = [
+      [fakeAdapter({ initialRelease: { draft: false, assets: [] } }), /release .* exists but its tag is missing/],
+      [fakeAdapter({ initialTag: { sha: 'b'.repeat(40), annotated: true } }), /points to/],
+      [fakeAdapter({ initialTag: { sha: mergeSha, annotated: false } }), /lightweight/],
+      [
+        fakeAdapter({ initialRelease: { draft: false, assets: [] }, initialTag: { sha: mergeSha, annotated: true } }),
+        /already exists/
+      ]
+    ]
+    for (const [gh, error] of cases) {
+      await assert.rejects(inspectExistingWailsRelease({ repository, version, mergeSha, adapter: gh }), error)
+      assert.equal(
+        gh.calls.some(([name]) => ['createAnnotatedTag', 'createRelease', 'deleteDraft'].includes(name)),
+        false
+      )
+    }
+  }
+
+  // A matching orphan annotated tag is safe to use; publication does not overwrite or recreate it.
+  {
+    const gh = fakeAdapter({ initialTag: { sha: mergeSha, annotated: true } })
+    await publishWailsRelease(releaseOptions(localAssets, gh))
     assert.equal(
-      gh.calls.some(entry => ['deleteDraft', 'uploadAssets', 'publishDraft'].includes(entry[0])),
+      gh.calls.some(([name]) => name === 'createAnnotatedTag'),
       false
     )
-  }
-
-  // An API digest must also match the downloaded checksums file itself.
-  {
-    const gh = fakeAdapter({
-      initialRelease: { draft: false, body: 'published', assets: [] },
-      initialTag: { sha: mergeSha, annotated: true }
-    })
-    gh.seedRemote(localAssets, { withDigests: true })
-    gh.releases.get(tag).assets.find(asset => asset.name === 'checksums.txt').digest = 'sha256:' + '0'.repeat(64)
-    await assert.rejects(
-      inspectExistingWailsRelease({ repository, version, mergeSha, runId, adapter: gh }),
-      /checksums\.txt digest does not match/
+    assert.equal(
+      gh.calls.some(([name]) => name === 'createRelease'),
+      true
     )
   }
 
-  // Published assets without a completed upload state are incomplete even when bytes and digests exist.
+  // Post-create API metadata must verify against the same local files before the job can report success.
   {
-    const gh = fakeAdapter({
-      initialRelease: { draft: false, body: 'published', assets: [] },
-      initialTag: { sha: mergeSha, annotated: true }
-    })
-    gh.seedRemote(localAssets, { withDigests: true })
-    delete gh.releases.get(tag).assets.find(asset => asset.name === expectedNames[1]).state
-    await assert.rejects(
-      inspectExistingWailsRelease({ repository, version, mergeSha, runId, adapter: gh }),
-      /is not fully uploaded/
-    )
-  }
-
-  // A published release with incomplete assets is a hard error and is never modified.
-  {
-    const gh = fakeAdapter({
-      initialRelease: { draft: false, body: '', assets: [{ name: expectedNames[0], size: 3, state: 'uploaded' }] },
-      initialTag: { sha: mergeSha, annotated: true }
-    })
+    const gh = fakeAdapter({ invalidCreatedRelease: true })
     await assert.rejects(publishWailsRelease(releaseOptions(localAssets, gh)), /exactly the three expected assets/)
-    assert.equal(
-      gh.calls.some(entry => ['deleteDraft', 'uploadAssets', 'publishDraft'].includes(entry[0])),
-      false
-    )
   }
 
-  // Never create a missing tag to paper over an already existing release.
-  {
-    const gh = fakeAdapter({ initialRelease: { draft: true, body: marker, assets: [] } })
-    await assert.rejects(
-      publishWailsRelease(releaseOptions(localAssets, gh)),
-      /release .* exists but its tag is missing/
-    )
-    assert.equal(
-      gh.calls.some(entry => entry[0] === 'createAnnotatedTag'),
-      false
-    )
-  }
-
-  // A tag pointing elsewhere or a lightweight tag is not safe to reuse.
-  for (const initialTag of [
-    { sha: 'b'.repeat(40), annotated: true },
-    { sha: mergeSha, annotated: false }
-  ]) {
-    const gh = fakeAdapter({ initialTag })
-    await assert.rejects(publishWailsRelease(releaseOptions(localAssets, gh)), /points to|lightweight/)
-    assert.equal(
-      gh.calls.some(entry => entry[0] === 'createDraft'),
-      false
-    )
-  }
-
-  // Only a draft carrying this exact repository/SHA/run marker is automatically recoverable.
-  {
-    const foreign = fakeAdapter({
-      initialRelease: {
-        draft: true,
-        body: '<!-- interweave-release repository=greypan/mono merge-sha=' + 'b'.repeat(40) + ' run-id=9 -->',
-        assets: []
-      },
-      initialTag: { sha: mergeSha, annotated: true }
-    })
-    await assert.rejects(publishWailsRelease(releaseOptions(localAssets, foreign)), /not owned/)
-    assert.equal(
-      foreign.calls.some(entry => entry[0] === 'deleteDraft'),
-      false
-    )
-  }
-
-  // A draft owned by this exact run is deleted without deleting its annotated tag, then rebuilt from only
-  // this run's artifacts and re-verified before publication.
-  {
-    const gh = fakeAdapter({
-      initialRelease: {
-        draft: true,
-        body: 'title\n' + marker,
-        assets: [{ name: 'old-partial.dmg', size: 2, state: 'uploaded' }]
-      },
-      initialTag: { sha: mergeSha, annotated: true }
-    })
-    const result = await publishWailsRelease(releaseOptions(localAssets, gh))
-    assert.equal(result.skipped, false)
-    assert.deepEqual(gh.tags.get(tag), { sha: mergeSha, annotated: true })
-    assert.equal(gh.releases.get(tag).draft, false)
-    assert.equal(gh.calls.filter(entry => entry[0] === 'deleteDraft').length, 1)
-    assert.ok(
-      gh.calls.findIndex(entry => entry[0] === 'deleteDraft') < gh.calls.findIndex(entry => entry[0] === 'createDraft')
-    )
-  }
-
-  // Re-read before deletion catches a release that changed after the first observation.
-  {
-    const gh = fakeAdapter({
-      initialRelease: { draft: true, body: marker, assets: [] },
-      initialTag: { sha: mergeSha, annotated: true },
-      onGetRelease: ({ getCount, releases }) => {
-        if (getCount === 3) releases.get(tag).body = 'changed by another run'
-      }
-    })
-    await assert.rejects(publishWailsRelease(releaseOptions(localAssets, gh)), /changed before recovery/)
-    assert.equal(
-      gh.calls.some(entry => entry[0] === 'deleteDraft'),
-      false
-    )
-  }
-
-  // A self-consistent but different uploaded asset set must fail the current-run digest comparison.
-  {
-    const otherAssets = path.join(root, 'other-assets')
-    makeAssets(otherAssets, ['different self-consistent dmg', 'different self-consistent exe'])
-    const gh = fakeAdapter({ uploadFromDirectory: otherAssets })
-    await assert.rejects(
-      publishWailsRelease(releaseOptions(localAssets, gh)),
-      /uploaded checksums\.txt does not match this run local artifact/
-    )
-    assert.equal(gh.releases.get(tag).draft, true)
-    assert.equal(
-      gh.calls.some(entry => entry[0] === 'publishDraft'),
-      false
-    )
-  }
-
-  // Failed upload leaves a draft for safe same-run recovery and can never publish partial contents.
-  {
-    const gh = fakeAdapter({ failUpload: true })
-    await assert.rejects(publishWailsRelease(releaseOptions(localAssets, gh)), /simulated upload failure/)
-    assert.equal(gh.releases.get(tag).draft, true)
-    assert.equal(
-      gh.calls.some(entry => entry[0] === 'publishDraft'),
-      false
-    )
-  }
-
-  // Checksums are part of the publication boundary.
-  {
-    const malformed = path.join(root, 'bad-assets')
-    makeAssets(malformed)
-    fs.writeFileSync(path.join(malformed, 'checksums.txt'), '0'.repeat(64) + '  ' + expectedNames[0] + '\n')
-    await assert.rejects(
-      publishWailsRelease(releaseOptions(malformed, fakeAdapter())),
-      /checksums.txt must list both|checksum mismatch/
-    )
-  }
-
-  // Non-404 API errors remain fatal; only an explicit missing release can be treated as absent.
+  // The adapter preserves non-404 API failures while treating only an explicit missing tag/release as absent.
   {
     const forbidden = createGhWailsAdapter({
       repository,
       mergeSha,
       spawn: () => ({ status: 1, stdout: '', stderr: 'gh: HTTP 403: Resource not accessible by integration' })
     })
-    await assert.rejects(async () => forbidden.getRelease(tag), /HTTP 403/)
+    assert.throws(() => forbidden.getRelease(tag), /HTTP 403/)
     const absent = createGhWailsAdapter({
       repository,
       mergeSha,
       spawn: () => ({ status: 1, stdout: '', stderr: 'gh: HTTP 404: Not Found' })
     })
-    assert.equal(await absent.getRelease(tag), null)
+    assert.equal(absent.getRelease(tag), null)
   }
 
-  // Keep the existing release creation policy: GitHub generates release notes, and draft recovery never
-  // deletes the protected tag or opts out of the default latest-release behavior.
+  // The CLI uses the normal GH release lifecycle; it does not expose recovery, overwrite, or cleanup operations.
   {
     const calls = []
-    const gh = createGhWailsAdapter({
+    const adapter = createGhWailsAdapter({
       repository,
       mergeSha,
       spawn: (command, args) => {
@@ -385,16 +247,34 @@ try {
         return { status: 0, stdout: '', stderr: '' }
       }
     })
-    gh.createDraft({ tag, title: 'Interweave v' + version, notes: marker + '\n\nRelease note' })
-    gh.uploadAssets(tag, localAssets, expectedNames)
-    gh.deleteDraft(tag)
-    const createArgs = calls[0][1]
-    assert.ok(createArgs.includes('--generate-notes'))
-    assert.ok(createArgs.includes('--draft'))
-    assert.ok(createArgs.includes('--verify-tag'))
-    assert.equal(createArgs.includes('--latest=false'), false)
-    assert.equal(calls[1][1].includes('--clobber'), false)
-    assert.equal(calls[2][1].includes('--cleanup-tag'), false)
+    adapter.createAnnotatedTag(tag)
+    adapter.createRelease({ tag, title: `Interweave v${version}`, assetsDirectory: localAssets, names: expectedNames })
+    assert.deepEqual(calls[0], [
+      'git',
+      [
+        '-c',
+        'user.name=github-actions[bot]',
+        '-c',
+        'user.email=41898282+github-actions[bot]@users.noreply.github.com',
+        'tag',
+        '-a',
+        tag,
+        '-m',
+        `Interweave v${version}`,
+        mergeSha
+      ]
+    ])
+    assert.deepEqual(calls[1], ['git', ['push', 'origin', `refs/tags/${tag}:refs/tags/${tag}`]])
+    const [, args] = calls[2]
+    assert.equal(args[0], 'release')
+    assert.equal(args[1], 'create')
+    assert.ok(args.includes('--target'))
+    assert.ok(args.includes(mergeSha))
+    assert.ok(args.includes('--verify-tag'))
+    assert.ok(args.includes('--generate-notes'))
+    assert.equal(args.includes('--draft'), false)
+    assert.equal(args.includes('--clobber'), false)
+    assert.deepEqual(Object.keys(adapter).sort(), ['createAnnotatedTag', 'createRelease', 'getRelease', 'resolveTag'])
   }
 
   console.log('.github/scripts/publish-wails-release.test.mjs: all assertions passed')
