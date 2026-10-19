@@ -1,9 +1,17 @@
 import { spawnSync } from 'node:child_process'
-import crypto from 'node:crypto'
 import fs from 'node:fs'
 import path from 'node:path'
 import { pathToFileURL } from 'node:url'
 
+import {
+  AUTHORIZATION_POINTER,
+  contentDigest,
+  findBudgetViolations,
+  findMissingAuthorizationPointers,
+  findUnmarkedReferenceDocs,
+  findUnroutedAgentDocs,
+  scanVolatilePhrases
+} from './lib/context-invariants.mjs'
 import { listPnpmWorkspaceManifests, readPnpmWorkspacePatterns } from './lib/workspace-manifests.mjs'
 
 const root = path.resolve(import.meta.dirname, '..')
@@ -280,6 +288,52 @@ const markdownFiles = [
       : []
   )
 ]
+// 语料门禁只检查可客观判定的漂移属性（ADR-0026）：路由完整性、外部状态快照、授权指针、非权威标记与体量预算。
+// 文风与 concern 归属不在此列，交给 review。
+const corpus = [...new Set(markdownFiles.map(relativePosix))].sort().map(file => ({ file, source: read(file) }))
+// 研究记录与设计资产不在指令面的链接/命令扫描内，但属于 RAG 语料：必须有非权威标记，并进入内容指纹。
+const referenceCorpus = [
+  ...walk('docs/research', file => file.endsWith('.md')),
+  ...walk('docs/design', file => file.endsWith('.md'))
+].map(file => ({ file: relativePosix(file), source: read(relativePosix(file)) }))
+
+if (exists('AGENTS.md'))
+  for (const file of findUnroutedAgentDocs(
+    read('AGENTS.md'),
+    corpus.map(entry => entry.file)
+  ))
+    addError(`${file}: no loading path from the AGENTS.md task routing table`)
+
+for (const { file, phrase } of scanVolatilePhrases(corpus))
+  addError(`${file}: volatile snapshot phrase "${phrase}"; write an invariant and point to the authority instead`)
+
+for (const file of findMissingAuthorizationPointers(corpus))
+  addError(`${file}: remote write commands require the authorization pointer ${AUTHORIZATION_POINTER}`)
+
+for (const file of findUnmarkedReferenceDocs(referenceCorpus))
+  addError(`${file}: reference corpus requires the corpus-status marker and the non-authoritative banner`)
+
+const budgetFile = 'scripts/context-budget.json'
+try {
+  const budget = JSON.parse(read(budgetFile))
+  if (typeof budget.adrFile !== 'number') addError(`${budgetFile}: missing numeric adrFile budget`)
+  for (const violation of findBudgetViolations(corpus, budget)) {
+    if ('layer' in violation) {
+      addError(
+        violation.limit === null
+          ? `${budgetFile}: no budget for layer ${violation.layer} (${violation.size} non-whitespace chars)`
+          : `${violation.layer} layer is ${violation.size} non-whitespace chars, budget ${violation.limit}; shrink it or update ${budgetFile} deliberately`
+      )
+    } else {
+      addError(
+        `${violation.file} is ${violation.size} non-whitespace chars, budget ${violation.limit}; ADR chunk budget is per file`
+      )
+    }
+  }
+} catch (error) {
+  addError(`${budgetFile} cannot be parsed: ${error instanceof Error ? error.message : String(error)}`)
+}
+
 // (?<!!?) 的 `!?` 允许匹配空串，lookbehind 恒假，链接扫描因此从未跑过；这里要求前面确实不是 `!`（图片语法）。
 const linkPattern = /(?<!!)\[[^\]]*\]\(([^)]+)\)/g
 // 只校验节级锚点：文件存在性由下方文件存在校验负责；`#fragment` 可能是节锚点（`#title`）或显式锚点（`{#custom}`）。
@@ -426,6 +480,6 @@ if (errors.length) {
   process.exit(1)
 }
 
-const contextIndex = [...new Set(markdownFiles.map(relativePosix))].sort()
-const digest = crypto.createHash('sha256').update(contextIndex.join('\n')).digest('hex').slice(0, 12)
-console.log(`validate-context passed (${contextIndex.length} Markdown files, index ${digest})`)
+// 指纹覆盖内容而不只是路径：只哈希路径时，改写正文不会改变指纹，外部索引无从判断是否需要重建。
+const digest = contentDigest([...corpus, ...referenceCorpus])
+console.log(`validate-context passed (${corpus.length + referenceCorpus.length} Markdown files, corpus ${digest})`)

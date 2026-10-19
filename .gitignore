@@ -67,6 +67,8 @@ dev-dist/
 out/
 site/
 lib/
+# scripts/lib/ 是源码共享模块，不是构建产物
+!scripts/lib/
 esm/
 # turbo.json 的 build.outputs 为 dist/**、bin/**
 bin/
