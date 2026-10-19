@@ -20,20 +20,20 @@
 
 端点按“谁触发、输入是什么、失败意味着什么”划分，而不是只按 `pull_request` 这个触发事件划分。同一端点的多个判断收敛为一个薄入口；不同端点即使都在 CI 里运行，也不强行合并。五个门禁入口全部通过根命令调用：
 
-| 执行面          | 根命令             | 入口                                  | 聚合内容                                                                                                | 失败语义                               |
-| --------------- | ------------------ | ------------------------------------- | ------------------------------------------------------------------------------------------------------- | -------------------------------------- |
-| git hook        | `check-pre-commit` | `scripts/checks/check-pre-commit.mjs` | `command-conventions`、`format-clean`、`no-mutual-links`、`turbo-cache-invariant`、`web-ui-docs-inputs` | 任一检查失败即非零退出，阻止提交       |
-| PR CI policy    | `check-policy`     | `scripts/checks/check-policy.mjs`     | `command-conventions`、`no-mutual-links`、`turbo-cache-invariant`、`web-ui-docs-inputs`                 | 任一检查失败即 job 失败                |
-| PR CI changeset | `check-changeset`  | `scripts/checks/check-changeset.mjs`  | `changeset status --since` 与 `changeset-policy`                                                        | 任一检查失败即 job 失败                |
-| CI context      | `check-context`    | `scripts/checks/check-context.mjs`    | context invariants，保留 `--report` 模式                                                                | 链接、路由、语料漂移失败即非零         |
-| CI package      | `check-pack`       | `scripts/checks/check-pack.mjs`       | 发布包契约                                                                                              | 发布契约失败即非零                     |
-| 任务工作流      | 现有 `agent:*` 等  | `scripts/workflow/*`                  | 任务登记、提交辅助                                                                                      | 命令自身退出码                         |
-| 发布            | `publish-new-pack` | `scripts/release/publish-new-pack.sh` | 发布辅助                                                                                                | 不可逆操作，按发布授权与 workflow 约束 |
-| 运维            | `clean`            | `scripts/maintenance/clean.sh`        | 清理与运维                                                                                              | 命令自身退出码                         |
+| 执行面          | 根命令             | 入口                                  | 聚合内容                                                                                                           | 失败语义                               |
+| --------------- | ------------------ | ------------------------------------- | ------------------------------------------------------------------------------------------------------------------ | -------------------------------------- |
+| git hook        | `check-pre-commit` | `scripts/checks/check-pre-commit.mjs` | `command-conventions`、`format-clean`、`no-mutual-links`、`turbo-cache-invariant`、`web-ui-docs-inputs`            | 任一检查失败即非零退出，阻止提交       |
+| PR CI policy    | `check-policy`     | `scripts/checks/check-policy.mjs`     | `command-conventions`、`interweave-turbo-inputs`、`no-mutual-links`、`turbo-cache-invariant`、`web-ui-docs-inputs` | 任一检查失败即 job 失败                |
+| PR CI changeset | `check-changeset`  | `scripts/checks/check-changeset.mjs`  | `changeset status --since` 与 `changeset-policy`                                                                   | 任一检查失败即 job 失败                |
+| CI context      | `check-context`    | `scripts/checks/check-context.mjs`    | context invariants，保留 `--report` 模式                                                                           | 链接、路由、语料漂移失败即非零         |
+| CI package      | `check-pack`       | `scripts/checks/check-pack.mjs`       | 发布包契约                                                                                                         | 发布契约失败即非零                     |
+| 任务工作流      | 现有 `agent:*` 等  | `scripts/workflow/*`                  | 任务登记、提交辅助                                                                                                 | 命令自身退出码                         |
+| 发布            | `publish-new-pack` | `scripts/release/publish-new-pack.sh` | 发布辅助                                                                                                           | 不可逆操作，按发布授权与 workflow 约束 |
+| 运维            | `clean`            | `scripts/maintenance/clean.sh`        | 清理与运维                                                                                                         | 命令自身退出码                         |
 
 `check-context` 与 `check-pack` 保持独立入口，不并入 `check-policy`：前者有 `--report` 模式，后者依赖构建产物，它们的输入和生命周期与快速政策检查不同。`check-changeset` 合并原来的外部 `changeset status --since` 与自定义内容检查，使 CI 的 changeset step 只有一个命令。
 
-检查集合与位置不变：`format-clean` 只出现在 hook 面，CI 的 `check-code` 已经对全仓做格式、lint、类型与 Go 检查；`changeset` 只出现在 CI 面，它需要 PR base/head，本地提交没有这个输入。
+迁移时检查集合与位置不变：`format-clean` 只出现在 hook 面，CI 的 `check-code` 已经对全仓做格式、lint、类型与 Go 检查；`changeset` 只出现在 CI 面，它需要 PR base/head，本地提交没有这个输入。后续新增的 `interweave-turbo-inputs` 只进入 policy 面：它要跑多次 Turbo dry-run，属于 PR 政策成本，不进入提交边界。
 
 ### 2. 入口与调用方
 
@@ -41,7 +41,7 @@
 
 - hook 调用 `mise exec -- pnpm run check-pre-commit`。
 - CI policy step 调用 `pnpm run check-policy`。
-- CI changeset step 调用 `pnpm run check-changeset -- --base <sha> --head <sha>`。
+- CI changeset step 调用 `pnpm run check-changeset --base <sha> --head <sha>`。
 - CI context step 调用 `pnpm run check-context`。
 - CI package step 调用 `pnpm run check-pack`。
 
@@ -84,6 +84,7 @@ scripts/
     check-pack.mjs         # CI package 入口
     command-conventions.mjs
     format-clean.mjs
+    interweave-turbo-inputs.mjs
     no-mutual-links.mjs
     turbo-cache-invariant.mjs
     web-ui-docs-inputs.mjs
@@ -170,6 +171,6 @@ shell 只保留给在 Node 启动之前就要被求值的辅助脚本，例如 `
 - `.agents/checks/` 不存在；活文档、hook、CI 与拓扑测试中不再引用该路径（历史 ADR 与研究记录除外）。
 - hook 只调用 `pnpm run check-pre-commit`；CI 分别调用 `check-policy`、`check-changeset`、`check-context`、`check-pack`。
 - 五个入口都以非零退出表示失败，并指出失败的检查名；`Promise.all` 的首个失败不会产生“部分通过”。
-- `pnpm run check-pre-commit`、`pnpm run check-policy`、`pnpm run check-changeset -- --base <sha> --head <sha>`、`pnpm run check-context`、`pnpm run check-pack` 通过。
+- `pnpm run check-pre-commit`、`pnpm run check-policy`、`pnpm run check-changeset --base <sha> --head <sha>`、`pnpm run check-context`、`pnpm run check-pack` 通过。
 - `pnpm run ci:test-scripts`、`pnpm run check-code` 与 `ci-topology` 测试通过。
 - 存在的测试文件全部与被测文件同目录同名；聚合入口没有专属测试。
