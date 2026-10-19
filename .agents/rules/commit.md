@@ -2,7 +2,7 @@
 
 提交格式、署名与 pre-commit checks 的完整规则以 [`docs/agents/commit.md`](../../docs/agents/commit.md) 为权威，本文件只列硬约束。
 
-- commit、push、merge、tag、publish、release 都需要用户逐次明确授权；完成实施和验证后保持工作区变更可供 review。授权机制见 [`workflow.md`](../../docs/agents/workflow.md#怎么取得这个授权)。
+- 改变仓库历史、分支、远端或发布状态都需用户逐次明确授权；边界与取得方式见 [`workflow.md`](../../docs/agents/workflow.md#预授权操作)。完成实施和验证后保持工作区变更可供 review。
 - 不得绕过 Git hooks 或签名检查；禁止清单见权威文档。
 - agent 创建的 commit 使用该执行体的官方署名；不得推造邮箱、冒用其他 agent；用户显式指定身份时优先遵循，不得改写 Git 配置来实现署名。
 - pre-commit 只运行 task 无关的只读政策检查，不读取登记簿状态，不修复、不暂存。

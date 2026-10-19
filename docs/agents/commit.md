@@ -4,7 +4,7 @@
 
 ## 授权边界
 
-commit、push、merge、tag、publish、release 都需要用户逐次明确授权。完整清单与授权方式见 `docs/agents/workflow.md` 的「预授权操作」和「怎么取得这个授权」。task status 或本地检查通过都不构成提交授权。
+改变仓库历史、分支、远端或发布状态都需用户逐次明确授权；完整边界与取得方式见 `docs/agents/workflow.md` 的「预授权操作」。task status 或本地检查通过都不构成提交授权。
 
 ## Message 与署名
 

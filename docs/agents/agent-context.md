@@ -29,7 +29,7 @@
 | 任务级别与准入           | 根 `AGENTS.md`「变更准入与登记」只给判定入口，不复制级别表                      | [`task-levels.md`](task-levels.md)                   | 登记 CLI 的级别与干净起点检查                  |
 | 本地登记簿与 Task Packet | 根 `AGENTS.md` 只路由，不复制 schema、命令或恢复处方                            | [`task-ledger.md`](task-ledger.md)                   | schema 迁移 fixture 与 status 查询             |
 | 预授权操作               | 根 `AGENTS.md` 只列被允许与需授权的类别                                         | [`workflow.md`](workflow.md)                         | 四项说明与用户选择记录                         |
-| 提交边界与署名           | 根 `AGENTS.md` 只说 commit 需逐次授权                                           | [`commit.md`](commit.md)                             | pre-commit 政策检查与 PR CI 的 changeset gate  |
+| 提交边界与署名           | 根 `AGENTS.md` 只路由授权边界，不复制操作清单                                   | [`commit.md`](commit.md)                             | pre-commit 政策检查与 PR CI 的 changeset gate  |
 | worktree 与缓存          | 根 `AGENTS.md` 说明 owner 与 worktree 唯一性                                    | [`worktree.md`](worktree.md)                         | 缓存不变量守卫                                 |
 | 客户端权限               | 根 `AGENTS.md` 只给路由，不复制配置                                             | [`environments.md`](environments.md)                 | 客户端配置与线程实际行为                       |
 | 公共 `web-ui` 契约       | [`packages/web-ui/AGENTS.md`](../../packages/web-ui/AGENTS.md) 指向受影响消费者 | [`web-ui.md`](web-ui.md)                             | fixtures、contracts、browser/integration tests |
