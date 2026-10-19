@@ -21,7 +21,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     outputs:
-      should-release: ${{ steps.release.outputs.should-release == 'true' && steps.existing.outputs.skip-build != 'true' }}
+      should-release: ${{ steps.release.outputs.should-release == 'true' }}
       merge-sha: ${{ steps.release.outputs.merge-sha }}
       version: ${{ steps.release.outputs.version }}
 
@@ -62,13 +62,11 @@ jobs:
 
           echo 'should-release=true' >> "$GITHUB_OUTPUT"
 
-      - name: Verify existing desktop release before native build
-        id: existing
+      - name: Reject existing desktop release before native build
         if: steps.release.outputs.should-release == 'true'
         env:
           GH_TOKEN: ${{ github.token }}
           GITHUB_REPOSITORY: ${{ github.repository }}
-          GITHUB_RUN_ID: ${{ github.run_id }}
           MERGE_SHA: ${{ github.event.pull_request.merge_commit_sha }}
           VERSION: ${{ steps.release.outputs.version }}
         run: node .github/scripts/publish-wails-release.mjs inspect
@@ -160,11 +158,10 @@ jobs:
           cd release-assets/publish
           shasum -a 256 interweave-* > checksums.txt
 
-      - name: Create or recover verified GitHub Release
+      - name: Create verified GitHub Release
         env:
           GH_TOKEN: ${{ github.token }}
           GITHUB_REPOSITORY: ${{ github.repository }}
-          GITHUB_RUN_ID: ${{ github.run_id }}
           MERGE_SHA: ${{ needs.prepare.outputs.merge-sha }}
           VERSION: ${{ needs.prepare.outputs.version }}
           ASSETS_DIRECTORY: release-assets/publish
