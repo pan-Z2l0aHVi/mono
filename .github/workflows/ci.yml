@@ -2,8 +2,6 @@ name: CI
 
 # 不监听 push；pull_request 默认验证 GitHub 生成的合并对象。strict 只要求 PR 分支跟上 base，
 # squash 会创建新提交，不能据此断言合并提交与先前测试对象完全相同。trunk 复检走 workflow_dispatch。
-# 触发面、job 依赖与安装面的单一声明在 .github/scripts/ci-topology.mjs，由同目录的 ci-topology.test.mjs
-# 拿真实 YAML 逐字段比对。
 on:
   pull_request:
     branches: [main]
