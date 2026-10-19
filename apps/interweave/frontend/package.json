@@ -6,9 +6,11 @@
   "scripts": {
     "test": "vp test run",
     "dev": "vp dev",
-    "build:dev": "node ../scripts/generate-bindings.mjs && vue-tsc --build && vp build --minify false --mode development",
-    "build": "node ../scripts/generate-bindings.mjs && vue-tsc --build && vp build --mode production",
-    "preview": "vp preview"
+    "build:dev": "node ../scripts/generate-bindings.mjs && pnpm run build:bundle:dev",
+    "build": "node ../scripts/generate-bindings.mjs && pnpm run build:bundle",
+    "preview": "vp preview",
+    "build:bundle:dev": "vue-tsc --build && vp build --minify false --mode development",
+    "build:bundle": "vue-tsc --build && vp build --mode production"
   },
   "dependencies": {
     "@greypan/browser-kit": "workspace:*",

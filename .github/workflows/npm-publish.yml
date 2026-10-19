@@ -12,25 +12,32 @@ permissions:
   id-token: write # npm Trusted Publishing
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.event.pull_request.number }}
+  group: ${{ github.workflow }}-${{ github.repository }}
   cancel-in-progress: false
+  queue: max
 
 jobs:
   prepare:
     name: Detect public package release
     if: github.event.pull_request.merged == true && github.event.pull_request.head.ref == 'changeset-release/main'
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 10
+    permissions:
+      contents: read
     outputs:
       should-publish: ${{ steps.release.outputs.should-publish }}
       merge-sha: ${{ steps.release.outputs.merge-sha }}
-      package-releases: ${{ steps.release.outputs.package-releases }}
 
     steps:
       - uses: actions/checkout@v7
         with:
           ref: ${{ github.event.pull_request.merge_commit_sha }}
           fetch-depth: 2
+
+      - uses: ./.github/actions/setup-deps
+        with:
+          mise-install: 'node'
+          skip-install: 'true'
 
       - id: release
         name: Detect versioned public packages
@@ -39,12 +46,42 @@ jobs:
         run: |
           node .github/scripts/detect-versioned-packages.mjs
 
+      - name: Create the first-attempt npm receipt
+        if: steps.release.outputs.should-publish == 'true' && github.run_attempt == 1
+        env:
+          MERGE_SHA: ${{ github.event.pull_request.merge_commit_sha }}
+        run: |
+          mkdir -p "$RUNNER_TEMP/npm-release-receipt"
+          node .github/scripts/npm-release-receipt.mjs create "$RUNNER_TEMP/npm-release-receipt/receipt.json"
+
+      - name: Save the first-attempt npm receipt
+        if: steps.release.outputs.should-publish == 'true' && github.run_attempt == 1
+        uses: actions/upload-artifact@v6
+        with:
+          name: npm-release-receipt-${{ github.run_id }}
+          path: ${{ runner.temp }}/npm-release-receipt/receipt.json
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Restore the original npm receipt on rerun
+        if: steps.release.outputs.should-publish == 'true' && github.run_attempt > 1
+        uses: actions/download-artifact@v7
+        with:
+          name: npm-release-receipt-${{ github.run_id }}
+          path: ${{ runner.temp }}/npm-release-receipt
+
+      - name: Validate the restored npm receipt
+        if: steps.release.outputs.should-publish == 'true' && github.run_attempt > 1
+        env:
+          MERGE_SHA: ${{ github.event.pull_request.merge_commit_sha }}
+        run: node .github/scripts/npm-release-receipt.mjs validate "$RUNNER_TEMP/npm-release-receipt/receipt.json"
+
   publish:
     name: Build and publish npm packages
     needs: prepare
     if: needs.prepare.outputs.should-publish == 'true'
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 20
     permissions:
       contents: read
       id-token: write
@@ -58,6 +95,17 @@ jobs:
         with:
           mise-install: 'node pnpm'
 
+      - name: Download and validate the npm receipt
+        uses: actions/download-artifact@v7
+        with:
+          name: npm-release-receipt-${{ github.run_id }}
+          path: ${{ runner.temp }}/npm-release-receipt
+
+      - name: Validate npm receipt identity and manifests
+        env:
+          MERGE_SHA: ${{ github.event.pull_request.merge_commit_sha }}
+        run: node .github/scripts/npm-release-receipt.mjs validate "$RUNNER_TEMP/npm-release-receipt/receipt.json"
+
       - name: Build public packages
         run: pnpm exec turbo build --filter='./packages/*'
 
@@ -67,19 +115,34 @@ jobs:
   release-notes:
     name: Create npm package releases
     needs: [prepare, publish]
-    if: needs.prepare.outputs.should-publish == 'true'
+    if: ${{ !cancelled() && github.event.pull_request.merged == true && github.event.pull_request.head.ref == 'changeset-release/main' && (needs.publish.result == 'success' || needs.publish.result == 'failure') }}
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 10
     permissions:
       contents: write
 
     steps:
       - uses: actions/checkout@v7
         with:
-          ref: ${{ needs.prepare.outputs.merge-sha }}
-      - name: Create GitHub releases
+          ref: ${{ github.event.pull_request.merge_commit_sha }}
+
+      - uses: ./.github/actions/setup-deps
+        with:
+          mise-install: 'node'
+          skip-install: 'true'
+
+      - name: Download the original npm receipt
+        uses: actions/download-artifact@v7
+        with:
+          name: npm-release-receipt-${{ github.run_id }}
+          path: ${{ runner.temp }}/npm-release-receipt
+
+      - name: Create or verify package releases
         env:
           GH_TOKEN: ${{ github.token }}
-          MERGE_SHA: ${{ needs.prepare.outputs.merge-sha }}
-          PACKAGE_RELEASES: ${{ needs.prepare.outputs.package-releases }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          GITHUB_RUN_ID: ${{ github.run_id }}
+          MERGE_SHA: ${{ github.event.pull_request.merge_commit_sha }}
+          PUBLISH_RESULT: ${{ needs.publish.result }}
+          RECEIPT_PATH: ${{ runner.temp }}/npm-release-receipt/receipt.json
         run: node .github/scripts/create-github-releases.mjs

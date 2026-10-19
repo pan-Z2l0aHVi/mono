@@ -29,11 +29,13 @@ const miseConfig = fs.readFileSync(path.join(root, '.mise.toml'), 'utf8')
 const pinnedNode = /^\s*node\s*=\s*"([^"]+)"\s*$/m.exec(miseConfig)?.[1]
 assert.ok(pinnedNode, '.mise.toml must pin a node version for the node-version assertion to mean anything')
 
-const commonDir = spawnSync('git', ['rev-parse', '--path-format=absolute', '--git-common-dir'], {
+const resolvedCache = spawnSync('sh', [path.join(root, 'scripts', 'turbo-cache-dir.sh'), '--root', root], {
   cwd: root,
   encoding: 'utf8'
-}).stdout.trim()
-const sharedCache = path.join(commonDir, 'turbo-cache')
+})
+assert.equal(resolvedCache.status, 0, resolvedCache.stderr)
+const sharedCache = resolvedCache.stdout.trim()
+assert.ok(path.isAbsolute(sharedCache), 'cache helper must return an absolute path')
 
 // 注入了正确值 → ok。缓存目录还不存在也是合法的（第一次 turbo 运行时才创建）。
 assert.equal(entry(runDoctor({ TURBO_CACHE_DIR: sharedCache }), 'turbo-cache').level, 'ok')

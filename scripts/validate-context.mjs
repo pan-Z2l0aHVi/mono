@@ -54,13 +54,13 @@ if (!exists('AGENTS.md')) addError('missing required context file: AGENTS.md')
 // 结构不变量锚点（<!-- invariant:... -->）是惰性注释，保留供人工检索，不再有机器校验（audit:instructions 已删除，见 ADR-0014）。
 if (exists('AGENTS.md')) {
   const agents = read('AGENTS.md')
-  for (const marker of ['docs/agents/workflow.md', 'pnpm agent:task new']) {
+  for (const marker of ['docs/agents/workflow.md', 'docs/agents/task-ledger.md', 'pnpm agent:task-ledger new']) {
     if (!agents.includes(marker)) addError(`AGENTS.md is missing mandatory marker: ${marker}`)
   }
 }
 
-if (exists('.vite-hooks/pre-commit') && !read('.vite-hooks/pre-commit').includes('pnpm agent:task guard'))
-  addError('.vite-hooks/pre-commit is missing the task commit guard')
+if (exists('.vite-hooks/pre-commit') && !read('.vite-hooks/pre-commit').includes('pnpm ci:check-policies'))
+  addError('.vite-hooks/pre-commit must invoke ci:check-policies')
 
 // 根目录不再有客户端适配文件。实测 Claude Code 2.1.283 已原生发现 AGENTS.md，但只要根目录存在 CLAUDE.md，
 // 它的原生发现就整条不生效：默认的 claude-md-or-agents-md 只在项目没有 CLAUDE.md 时才读 AGENTS.md，显式声明
@@ -93,7 +93,14 @@ if (exists('package.json')) {
   try {
     const packageJson = JSON.parse(read('package.json'))
     rootScripts = new Set(Object.keys(packageJson.scripts ?? {}))
-    for (const script of ['agent:task', 'ci:validate-context', 'check-pack', 'ci:test-scripts']) {
+    for (const script of [
+      'agent:task-ledger',
+      'agent:task',
+      'ci:check-policies',
+      'ci:validate-context',
+      'check-pack',
+      'ci:test-scripts'
+    ]) {
       if (typeof packageJson.scripts?.[script] !== 'string') addError(`package.json is missing scripts.${script}`)
     }
   } catch (error) {

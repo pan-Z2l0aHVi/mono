@@ -5,10 +5,10 @@ go = "1.26.4"
 "go:github.com/wailsapp/wails/v3/cmd/wails3" = "3.0.0-beta.22"
 
 [env]
-# 主仓与全部 worktree 共享同一份 turbo 缓存，故锚定 git common dir 而非 workspace；
-# 机制与手动回收见 docs/agents/worktree.md。CI 在 ci.yml 覆盖回 workspace 内路径，
-# 否则 mise 注入的共享路径会让 actions/cache 静默失效。
-TURBO_CACHE_DIR = "{{ exec(command='git -C ' ~ config_root ~ ' rev-parse --path-format=absolute --git-common-dir') | trim }}/turbo-cache"
+# 主仓与全部 worktree 共用系统临时目录中的 artifact cache；路径由纯 POSIX helper 计算。
+# GitHub Actions 优先保留显式覆盖，其次使用 runner workspace；本地由 helper 计算 canonical 临时路径。
+# 机制与回收范围见 docs/agents/worktree.md。
+TURBO_CACHE_DIR = "{% if env.GITHUB_ACTIONS == 'true' and env.TURBO_CACHE_DIR %}{{ env.TURBO_CACHE_DIR }}{% elif env.GITHUB_ACTIONS == 'true' and env.GITHUB_WORKSPACE %}{{ env.GITHUB_WORKSPACE }}/.turbo{% else %}{{ exec(command='sh scripts/turbo-cache-dir.sh') | trim }}{% endif %}"
 
 # 仅 HERDR_ENV=1 且 TMPDIR 非空时执行探测：优先 macOS 默认路径，再试 Linux 默认路径，
 # 两者都不可写才回落到 $TMPDIR/greypan/go-build。

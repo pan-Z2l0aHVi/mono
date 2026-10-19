@@ -1,9 +1,18 @@
 import assert from 'node:assert/strict'
+import { spawnSync } from 'node:child_process'
 import fs from 'node:fs'
+import os from 'node:os'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 
-import { RELEASE_BRANCH, REQUIRED_CONTEXT, desktopMatrix, parseWorkflow, workflows } from './ci-topology.mjs'
+import {
+  RELEASE_BRANCH,
+  REQUIRED_CONTEXT,
+  desktopMatrix,
+  parseWorkflow,
+  requiredPolicyStep,
+  workflows
+} from './ci-topology.mjs'
 
 // 这张测试是 .github/scripts/ci-topology.mjs 那张表的执行端：YAML 不能被 import，所以「拓扑只有一处
 // 定义」只能靠把真实 workflow 逐字段读回来比。它同时钉计划里的不变量 2/3/4/5 与安装面收窄那条，
@@ -31,6 +40,7 @@ for (const [file, expected] of Object.entries(workflows)) {
   assert.equal(actual.name, expected.name, `${file}: workflow name must match`)
   assert.deepEqual(actual.triggers, expected.triggers, `${file}: triggers must match`)
   assert.deepEqual(actual.permissions, expected.permissions, `${file}: permissions must match`)
+  assert.deepEqual(actual.concurrency, expected.concurrency ?? {}, `${file}: workflow concurrency must match`)
 
   assert.deepEqual(Object.keys(actual.jobs), Object.keys(expected.jobs), `${file}: job ids must match`)
 
@@ -40,6 +50,8 @@ for (const [file, expected] of Object.entries(workflows)) {
     assert.deepEqual(act.needs, job.needs, `${file}: job ${id} needs must match`)
     assert.deepEqual(act.toolchain, job.toolchain, `${file}: job ${id} declared toolchain must match`)
     assert.deepEqual(act.permissions, job.permissions ?? {}, `${file}: job ${id} permission escalation must match`)
+    assert.deepEqual(act.concurrency, job.concurrency ?? {}, `${file}: job ${id} concurrency must match`)
+    assert.equal(act.continueOnError, job.continueOnError, `${file}: job ${id} continue-on-error must match`)
 
     if (job.if === undefined) {
       assert.equal(act.if, undefined, `${file}: job ${id} must not grow an if`)
@@ -52,6 +64,36 @@ for (const [file, expected] of Object.entries(workflows)) {
 
   for (const [step, expression] of Object.entries(expected.steps)) {
     assert.equal(actual.steps[step], expression, `${file}: step ${step} if must match the table`)
+  }
+
+  for (const [step, jobId] of Object.entries(expected.stepJobs ?? {})) {
+    assert.equal(actual.stepJobs[step], jobId, `${file}: step ${step} must belong to job ${jobId}`)
+  }
+
+  for (const [step, shell] of Object.entries(expected.stepShells ?? {})) {
+    assert.equal(actual.stepShells[step], shell, `${file}: step ${step} shell must match`)
+  }
+
+  for (const step of Object.keys(expected.stepJobs ?? {})) {
+    assert.equal(actual.stepContinueOnError[step], undefined, `${file}: step ${step} must propagate failures`)
+  }
+
+  if (expected.policyStep) {
+    const policy = expected.policyStep
+    assert.equal(actual.stepJobs[policy.name], policy.job, `${file}: ${policy.name} must belong to job ${policy.job}`)
+    assert.equal(actual.stepShells[policy.name], policy.shell, `${file}: ${policy.name} shell must match`)
+    assert.equal(actual.steps[policy.name], undefined, `${file}: ${policy.name} must not be conditionally skipped`)
+    assert.equal(
+      actual.stepContinueOnError[policy.name],
+      undefined,
+      `${file}: ${policy.name} must fail the job on error`
+    )
+    assert.equal(actual.jobs[policy.job].if, undefined, `${file}: job ${policy.job} must not be conditionally skipped`)
+    assert.equal(
+      actual.jobs[policy.job].continueOnError,
+      undefined,
+      `${file}: job ${policy.job} must propagate failures`
+    )
   }
 }
 
@@ -81,8 +123,8 @@ for (const [file, wf] of Object.entries(parsed)) {
   }
 }
 
-// 不变量 2：只有 changeset-version.yml 监听 push。ci.yml 的 push 触发是纯重复 —— squash-only 加
-// strict required status 已经让 PR head 的树等于合并后 main 的树；trunk 复检走 workflow_dispatch。
+// 不变量 2：只有 changeset-version.yml 监听 push。ci.yml 默认在 pull_request 的合并对象上运行，
+// strict 要求 PR 跟上 base；squash 会创建新 commit，不能据此假设合并提交与已测对象恒等。trunk 复检走 workflow_dispatch。
 assert.deepEqual(
   Object.entries(parsed)
     .filter(([, wf]) => wf.triggers.some(trigger => trigger.on === 'push'))
@@ -129,6 +171,7 @@ assert.deepEqual(
   releaseBranchUses.sort(),
   [
     'ci.yml:step:Check changesets',
+    'npm-publish.yml:job:Create npm package releases',
     'npm-publish.yml:job:Detect public package release',
     'wails-release.yml:job:Detect desktop application release'
   ],
@@ -204,6 +247,112 @@ function runTexts(text) {
     .filter(Boolean)
 }
 
+for (const [file, wf] of Object.entries(workflows)) {
+  if (!wf.stepRuns) continue
+  const text = fs.readFileSync(path.join(workflowDir, file), 'utf8')
+  for (const [step, expectedRuns] of Object.entries(wf.stepRuns)) {
+    const block = namedStepBlock(text, step)
+    assert.deepEqual(runTexts(block), expectedRuns, file + ': step ' + step + ' commands must match the topology table')
+  }
+}
+
+function namedStepBlock(text, name) {
+  const start = text.indexOf(`      - name: ${name}\n`)
+  assert.notEqual(start, -1, `step ${name} block not found`)
+  const rest = text.slice(start)
+  const nextStep = /\n      - /.exec(rest.slice(1))
+  return nextStep ? rest.slice(0, nextStep.index + 1) : rest
+}
+
+for (const [file, workflow] of Object.entries(workflows)) {
+  const text = fs.readFileSync(path.join(workflowDir, file), 'utf8')
+  for (const [step, expectedInputs] of Object.entries(workflow.stepInputs ?? {})) {
+    const block = namedStepBlock(text, step)
+    for (const input of expectedInputs) {
+      assert.ok(block.includes(input), `${file}: step ${step} must retain input ${input}`)
+    }
+  }
+}
+
+// Policy checks belong to the required job and must always run with Bash failure propagation. Exact command
+// comparison prevents removal, replacement, or shell-level masking of any hard constraint.
+function assertPolicyStepContract(text) {
+  const parsedWorkflow = parseWorkflow(text)
+  const policy = requiredPolicyStep
+  assert.equal(parsedWorkflow.stepJobs[policy.name], policy.job, 'policy step must belong to required job check')
+  assert.equal(parsedWorkflow.stepShells[policy.name], policy.shell, 'policy step must use fail-fast Bash')
+  assert.equal(parsedWorkflow.steps[policy.name], undefined, 'policy step must not have an if condition')
+  assert.equal(parsedWorkflow.stepContinueOnError[policy.name], undefined, 'policy step must not ignore errors')
+  assert.equal(parsedWorkflow.jobs[policy.job]?.if, undefined, 'required job must not have an if condition')
+  assert.equal(parsedWorkflow.jobs[policy.job]?.continueOnError, undefined, 'required job must propagate failures')
+  assert.deepEqual(
+    runTexts(namedStepBlock(text, policy.name)),
+    policy.runs,
+    'policy step must execute every required command unchanged'
+  )
+}
+
+const ciWorkflow = fs.readFileSync(path.join(workflowDir, 'ci.yml'), 'utf8')
+assertPolicyStepContract(ciWorkflow)
+for (const command of requiredPolicyStep.runs) {
+  const commandPath = path.join(repoRoot, command)
+  assert.ok(fs.existsSync(commandPath), `required policy command ${command} must exist`)
+  assert.notEqual(fs.statSync(commandPath).mode & 0o111, 0, `required policy command ${command} must be executable`)
+}
+
+function mutateOnce(text, from, to, label) {
+  assert.equal(text.split(from).length - 1, 1, `${label}: mutation anchor must occur once`)
+  return text.replace(from, to)
+}
+
+const policyStepMarker = `      - name: ${requiredPolicyStep.name}\n`
+assert.throws(
+  () =>
+    assertPolicyStepContract(
+      mutateOnce(ciWorkflow, '          .agents/checks/no-mutual-links\n', '', 'removed command')
+    ),
+  /policy step must execute every required command unchanged/
+)
+assert.throws(() =>
+  assertPolicyStepContract(
+    mutateOnce(ciWorkflow, policyStepMarker, `${policyStepMarker}        if: false\n`, 'step if')
+  )
+)
+assert.throws(() =>
+  assertPolicyStepContract(
+    mutateOnce(
+      ciWorkflow,
+      policyStepMarker,
+      `${policyStepMarker}        continue-on-error: true\n`,
+      'step continue-on-error'
+    )
+  )
+)
+assert.throws(() =>
+  assertPolicyStepContract(mutateOnce(ciWorkflow, '  check:\n', '  check:\n    if: false\n', 'job if'))
+)
+assert.throws(() =>
+  assertPolicyStepContract(
+    mutateOnce(ciWorkflow, '  check:\n', '  check:\n    continue-on-error: true\n', 'job continue-on-error')
+  )
+)
+
+// GitHub's explicit Bash shell uses -e -o pipefail. Keep a failure propagation fixture so a future wrapper
+// change cannot leave later policy commands running while the required job reports success.
+const propagationDir = fs.mkdtempSync(path.join(os.tmpdir(), 'ci-policy-fail-fast-'))
+try {
+  const marker = path.join(propagationDir, 'later-command-ran')
+  const result = spawnSync(
+    'bash',
+    ['--noprofile', '--norc', '-e', '-o', 'pipefail', '-c', 'false\nprintf reached > "$1"', 'policy-step', marker],
+    { encoding: 'utf8' }
+  )
+  assert.equal(result.status, 1, `Bash should fail immediately on a policy error: ${result.stderr}`)
+  assert.equal(fs.existsSync(marker), false, 'a later policy command must not run after a failure')
+} finally {
+  fs.rmSync(propagationDir, { recursive: true, force: true })
+}
+
 // 桌面产物的验证面是 `build:macos` / `build:windows` 两个子脚本，不是聚合的 `build`。这条不变量是
 // `apps/interweave/scripts/build.mjs` 把 darwin 默认路径裁成「只做宿主平台、不打 DMG」的承重前提：
 // 聚合脚本是宿主相关的（darwin 上不再交叉编译 Windows、不再打 `.dmg`），矩阵一旦改调它，
@@ -247,8 +396,22 @@ const aggregateBuildInvocations = [
   /@greypan\/interweave["']?\s+build(?![:\w-])/,
   /(?:--dir|-C)\s+\S*apps\/interweave["']?\s+run\s+["']?build["']?(?![:\w-])/,
   /(?:--dir|-C)\s+\S*apps\/interweave["']?\s+build(?![:\w-])/,
-  /turbo\s+[^\n]*--filter[=\s]+["']?[^\s"']*@greypan\/interweave(?![-\w])/
+  // 负 filter 是 CI 保留 workspace 包构建、跳过 app wrapper 的合法写法；只拦会选中 app 的正 filter。
+  /turbo\s+[^\n]*--filter[=\s]+["']?@greypan\/interweave(?![-\w])/
 ]
+
+const negativeAppFilter = 'pnpm exec turbo run build --filter=!@greypan/interweave'
+const positiveAppFilter = 'pnpm exec turbo run build --filter=@greypan/interweave'
+assert.equal(
+  aggregateBuildInvocations.some(pattern => pattern.test(negativeAppFilter)),
+  false,
+  'a negative app filter must remain legal for package-only CI builds'
+)
+assert.equal(
+  aggregateBuildInvocations.some(pattern => pattern.test(positiveAppFilter)),
+  true,
+  'a positive app filter must remain forbidden in aggregate workflows'
+)
 
 for (const file of onDisk) {
   for (const run of runTexts(fs.readFileSync(path.join(workflowDir, file), 'utf8'))) {
@@ -303,5 +466,188 @@ for (const [file, wf] of Object.entries(parsed)) {
     }
   }
 }
+
+// Wails 的 path filter 必须覆盖 frontend manifest 中每个传递 workspace 依赖，而不是维护第二份手写清单。
+function collectWorkspacePackages(root) {
+  const packages = new Map()
+  for (const area of ['apps', 'packages']) {
+    const areaRoot = path.join(root, area)
+    if (!fs.existsSync(areaRoot)) continue
+    const visit = directory => {
+      for (const entry of fs.readdirSync(directory, { withFileTypes: true })) {
+        if (entry.name === 'node_modules' || entry.name === '.git') continue
+        const absolute = path.join(directory, entry.name)
+        if (entry.isDirectory()) {
+          visit(absolute)
+        } else if (entry.isFile() && entry.name === 'package.json') {
+          const manifest = JSON.parse(fs.readFileSync(absolute, 'utf8'))
+          if (manifest.name)
+            packages.set(manifest.name, {
+              name: manifest.name,
+              directory: path.relative(root, path.dirname(absolute)).split(path.sep).join('/'),
+              manifest
+            })
+        }
+      }
+    }
+    visit(areaRoot)
+  }
+  return packages
+}
+
+function workspaceDependencyNames(manifest) {
+  return [manifest.dependencies, manifest.devDependencies, manifest.optionalDependencies, manifest.peerDependencies]
+    .filter(Boolean)
+    .flatMap(dependencies =>
+      Object.entries(dependencies)
+        .filter(([, version]) => typeof version === 'string' && version.startsWith('workspace:'))
+        .map(([name]) => name)
+    )
+}
+
+const workspacePackages = collectWorkspacePackages(repoRoot)
+const frontend = workspacePackages.get('@greypan/interweave-frontend')
+assert.ok(frontend, 'the Wails frontend package manifest must be present')
+const frontendClosure = new Set()
+const visitFrontendDependency = name => {
+  if (frontendClosure.has(name)) return
+  const workspacePackage = workspacePackages.get(name)
+  assert.ok(workspacePackage, `frontend dependency ${name} must resolve to a workspace package`)
+  frontendClosure.add(name)
+  for (const dependency of workspaceDependencyNames(workspacePackage.manifest)) visitFrontendDependency(dependency)
+}
+for (const dependency of workspaceDependencyNames(frontend.manifest)) visitFrontendDependency(dependency)
+const verifyPaths = parsed['wails-verify.yml'].triggers.find(trigger => trigger.on === 'pull_request')?.paths ?? []
+for (const name of frontendClosure) {
+  const packagePath = workspacePackages.get(name).directory
+  assert.ok(
+    verifyPaths.includes(`${packagePath}/**`),
+    `wails-verify.yml must trigger when transitive frontend workspace dependency ${name} (${packagePath}) changes`
+  )
+}
+
+// Shared Go caching is opt-in, starts only after mise installed Go, and uses one strict per-SHA key with a
+// same-platform/toolchain/module restore prefix. This avoids caching a Go version selected before mise.
+const setupDeps = fs.readFileSync(path.join(repoRoot, '.github/actions/setup-deps/action.yml'), 'utf8')
+assert.match(setupDeps, /  go-cache:\n[\s\S]*?    required: false\n    default: 'false'/)
+const goResolveStart = setupDeps.indexOf('    - name: Resolve Go cache paths\n')
+const goCacheStart = setupDeps.indexOf('    - name: Cache Go modules and build artifacts\n')
+const miseActionStart = setupDeps.indexOf('    - uses: jdx/mise-action@v4\n')
+const miseActionInputEnd = setupDeps.indexOf('\n\n    - name: Resolve Go cache paths', miseActionStart)
+assert.ok(
+  miseActionStart >= 0 && miseActionInputEnd > miseActionStart && goResolveStart > miseActionInputEnd,
+  'Go cache paths must resolve after mise-action installs the selected tools'
+)
+assert.match(setupDeps.slice(miseActionStart, miseActionInputEnd), /install: 'true'[\s\S]*install_args:/)
+assert.ok(setupDeps.slice(miseActionStart, miseActionInputEnd).includes('install_args: ${{ inputs.mise-install }}'))
+assert.doesNotMatch(setupDeps, /run: mise install/)
+assert.ok(goCacheStart > goResolveStart, 'Go cache restore must follow Go cache path resolution')
+const goResolveBlock = setupDeps.slice(goResolveStart, setupDeps.indexOf('\n    - ', goResolveStart + 1))
+const goCacheBlock = setupDeps.slice(goCacheStart, setupDeps.indexOf('\n    - ', goCacheStart + 1))
+assert.match(goResolveBlock, /if: inputs\.go-cache == 'true'/)
+assert.match(goResolveBlock, /go env GOMODCACHE/)
+assert.match(goResolveBlock, /go env GOCACHE/)
+assert.match(goResolveBlock, /go env GOVERSION/)
+assert.match(goResolveBlock, /ImageOS/)
+assert.match(goResolveBlock, /ImageVersion/)
+assert.match(goCacheBlock, /if: inputs\.go-cache == 'true'/)
+assert.match(goCacheBlock, /uses: actions\/cache@v5/)
+assert.match(goCacheBlock, /steps\.go-cache-paths\.outputs\.gomodcache/)
+assert.match(goCacheBlock, /steps\.go-cache-paths\.outputs\.gocache/)
+for (const keyPart of [
+  'runner.os',
+  'runner.arch',
+  'steps.go-cache-paths.outputs.imageos',
+  'steps.go-cache-paths.outputs.imageversion',
+  'steps.go-cache-paths.outputs.goversion',
+  "hashFiles('apps/interweave/go.sum')",
+  'github.sha'
+]) {
+  assert.ok(goCacheBlock.includes(keyPart), `Go cache primary key must include ${keyPart}`)
+}
+const restoreKey = goCacheBlock.split('restore-keys: |')[1]?.split('\n')[1]?.trim() ?? ''
+assert.ok(
+  restoreKey.includes('runner.os') && restoreKey.includes('runner.arch'),
+  'Go restore key must stay platform-specific'
+)
+assert.ok(restoreKey.includes('steps.go-cache-paths.outputs.imageos'), 'Go restore key must stay runner-image-specific')
+assert.ok(
+  restoreKey.includes('steps.go-cache-paths.outputs.imageversion'),
+  'Go restore key must stay runner-image-version-specific'
+)
+assert.ok(restoreKey.includes('steps.go-cache-paths.outputs.goversion'), 'Go restore key must stay Go-version-specific')
+assert.ok(restoreKey.includes("hashFiles('apps/interweave/go.sum')"), 'Go restore key must stay module-specific')
+assert.equal(restoreKey.includes('github.sha'), false, 'Go restore prefix must omit the exact commit SHA')
+
+// Main-only cache seeding uses the same pinned-tool, platform-specific SHA key as CI. The version job
+// serializes against current main; the cache seed stays fixed to its push SHA so the key describes its tree.
+const ciText = fs.readFileSync(path.join(workflowDir, 'ci.yml'), 'utf8')
+const versionText = fs.readFileSync(path.join(workflowDir, 'changeset-version.yml'), 'utf8')
+const sharedTurboKey = "${{ runner.os }}-${{ runner.arch }}-turbo-${{ hashFiles('.mise.toml') }}-${{ github.sha }}"
+const sharedTurboRestore = "${{ runner.os }}-${{ runner.arch }}-turbo-${{ hashFiles('.mise.toml') }}-"
+assert.ok(
+  ciText.includes('key: ' + sharedTurboKey),
+  'CI must key Turbo artifacts by platform, mise pins, and exact SHA'
+)
+assert.ok(versionText.includes('key: ' + sharedTurboKey), 'main cache seed must use the same exact Turbo cache key')
+assert.ok(ciText.includes(sharedTurboRestore), 'CI restore prefix must stay scoped to platform and mise pins')
+assert.ok(
+  versionText.includes(sharedTurboRestore),
+  'main seed restore prefix must stay scoped to platform and mise pins'
+)
+const versionJobStart = versionText.indexOf('\n  version:\n')
+const cacheSeedStart = versionText.indexOf('\n  cache-seed:\n')
+const versionJobText = versionText.slice(versionJobStart, cacheSeedStart)
+const cacheSeedText = versionText.slice(cacheSeedStart)
+assert.ok(
+  versionJobText.includes('ref: main'),
+  'serialized version job must checkout current main after acquiring its job concurrency slot'
+)
+assert.ok(
+  cacheSeedText.includes('ref: ${{ github.sha }}'),
+  'cache seed must checkout the exact push SHA represented by its key'
+)
+assert.ok(
+  cacheSeedText.indexOf('uses: actions/cache@v5') <
+    cacheSeedText.indexOf("pnpm exec turbo run build --filter='./packages/*'")
+)
+assert.ok(cacheSeedText.includes('TURBO_CACHE_DIR: ${{ github.workspace }}/.turbo'))
+assert.equal(parsed['changeset-version.yml'].jobs['cache-seed'].toolchain['go-cache'], undefined)
+assert.equal(parsed['changeset-version.yml'].jobs['cache-seed'].toolchain.wails, undefined)
+assert.ok(!cacheSeedText.includes('go-cache:') && !cacheSeedText.includes('wails:'))
+assert.ok(
+  !cacheSeedText.includes('turbo build --filter=./apps/'),
+  'cache seed must build packages rather than desktop apps'
+)
+
+const npmWorkflowText = fs.readFileSync(path.join(workflowDir, 'npm-publish.yml'), 'utf8')
+assert.ok(npmWorkflowText.includes('queue: max'), 'npm publishing must serialize pending release runs')
+assert.ok(npmWorkflowText.includes('retention-days: 30'), 'receipt must remain available for the rerun window')
+assert.ok(npmWorkflowText.includes('actions/upload-artifact@v6'))
+assert.ok(npmWorkflowText.includes('actions/download-artifact@v7'))
+assert.ok(!npmWorkflowText.includes('overwrite: true'), 'the first attempt must not replace an existing receipt')
+assert.ok(!npmWorkflowText.includes('actions: read'), 'receipt reuse must not require actions:read')
+const notesStart = npmWorkflowText.indexOf('\n  release-notes:\n')
+const notesText = npmWorkflowText.slice(notesStart)
+assert.ok(notesText.includes("needs.publish.result == 'success' || needs.publish.result == 'failure'"))
+assert.ok(!notesText.includes('needs.prepare.outputs') && !notesText.includes('needs.publish.outputs'))
+assert.ok(notesText.includes('github.event.pull_request.merge_commit_sha'))
+assert.ok(notesText.includes('GITHUB_RUN_ID: ${{ github.run_id }}'))
+
+const wailsReleaseText = fs.readFileSync(path.join(workflowDir, 'wails-release.yml'), 'utf8')
+assert.ok(
+  wailsReleaseText.includes(
+    "should-release: ${{ steps.release.outputs.should-release == 'true' && steps.existing.outputs.skip-build != 'true' }}"
+  ),
+  'a verified existing published Wails release must skip native builds'
+)
+assert.ok(
+  wailsReleaseText.includes('retention-days: 30') && wailsReleaseText.includes('overwrite: true'),
+  'Wails build artifacts must remain available across the supported rerun window'
+)
+assert.ok(
+  !wailsReleaseText.includes('artifact-attempt'),
+  'Wails artifact names must not depend on a run-attempt output'
+)
 
 console.log('.github/scripts/ci-topology.test.mjs: all assertions passed')

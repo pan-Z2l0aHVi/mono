@@ -11,21 +11,9 @@
 - **请求捕获**：记录并断言拦截到的 HTTP 请求
 - **插件组合**：基于 js-kit 插件系统的可组合测试基础设施
 
-## 安装
+## 内部使用
 
-```bash
-# npm
-npm install @greypan/test-kit
-
-# pnpm
-pnpm add @greypan/test-kit
-
-# yarn
-yarn add @greypan/test-kit
-
-# bun
-bun add @greypan/test-kit
-```
+这是 `mono` workspace 的私有测试基础设施，本仓库不会发布它。在仓库内的 package manifest 中使用 `workspace:*` 协议依赖它。
 
 > 需要 `msw` 作为 peer dependency。`settle` 还依赖 `vite-plus/test` 再导出的 Vitest API。
 

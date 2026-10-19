@@ -36,7 +36,9 @@ TypeScript 的 `lib` 选项是按运行环境分组的，而非按项目类型�
 
 `core.json` 启用了 `noUncheckedIndexedAccess`。未经检查的数组或字典索引访问会被推断为可能是 `undefined`，消费者必须先处理值不存在的情况再使用它。
 
-## 使用方式
+## 内部使用
+
+这是 `mono` workspace 的私有配置包，本仓库不会发布它。在仓库内的 manifest 中使用 `workspace:*` 协议将它添加为 development dependency。
 
 ```json
 // 任意包的 tsconfig.app.json：
@@ -44,12 +46,6 @@ TypeScript 的 `lib` 选项是按运行环境分组的，而非按项目类型�
   "extends": "@greypan/tsconfig/<profile>.json",
   "include": ["src/**/*"]
 }
-```
-
-添加为 devDependency：
-
-```bash
-pnpm add -D @greypan/tsconfig
 ```
 
 ## 继承关系

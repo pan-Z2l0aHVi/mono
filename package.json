@@ -20,6 +20,8 @@
     "fix-stylelint": "pnpm exec stylelint --fix --allow-empty-input \"**/*.{css,scss,less,html,vue}\"",
     "ci:validate-context": "node scripts/validate-context.mjs",
     "ci:test-scripts": "for f in $(git ls-files '*.test.mjs'); do node \"$f\" || exit 1; done",
+    "ci:check-policies": "node scripts/check-policies.mjs",
+    "agent:task-ledger": "node scripts/task-ledger.mjs",
     "agent:task": "node scripts/task.mjs",
     "agent:env-doctor": "node scripts/env-doctor.mjs",
     "agent:update-skills": "node scripts/update-skills.mjs",

@@ -11,21 +11,9 @@ English | [简体中文](./README.CN.md)
 - **Request capture**: Record and assert intercepted HTTP requests
 - **Plugin composition**: Built on js-kit's plugin system for composable test infrastructure
 
-## Install
+## Internal use
 
-```bash
-# npm
-npm install @greypan/test-kit
-
-# pnpm
-pnpm add @greypan/test-kit
-
-# yarn
-yarn add @greypan/test-kit
-
-# bun
-bun add @greypan/test-kit
-```
+This is private test infrastructure for the `mono` workspace and is not published by this repository. Add it to an in-repository package with the `workspace:*` protocol.
 
 > Requires `msw` as a peer dependency. `settle` also uses the Vitest APIs re-exported by `vite-plus/test`.
 

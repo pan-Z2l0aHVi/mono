@@ -5,6 +5,7 @@
 #         mise-install: 'node pnpm'  # 仅安装指定工具（默认安装 .mise.toml 全部）
 #         skip-install: 'true'       # 跳过 pnpm install（准备 job 不需要装依赖）
 #         wails: 'true'              # 安装 Wails Linux 系统依赖（libgtk-4-dev, libwebkitgtk-6.0-dev）
+#         go-cache: 'true'           # 用平台/镜像/Go/模块哈希/SHA 键缓存 Go 模块与编译产物
 name: 'Setup Dependencies'
 description: 'Install tools via mise, cache pnpm store, and install dependencies'
 
@@ -19,6 +20,10 @@ inputs:
     default: 'false'
   wails:
     description: 'Install Wails Linux system dependencies (libgtk-4-dev, libwebkitgtk-6.0-dev)'
+    required: false
+    default: 'false'
+  go-cache:
+    description: 'Restore and save Go module/build caches after mise installs Go'
     required: false
     default: 'false'
 
@@ -36,12 +41,31 @@ runs:
 
     - uses: jdx/mise-action@v4
       with:
-        install: ${{ inputs.mise-install == '' }}
+        install: 'true'
+        install_args: ${{ inputs.mise-install }}
 
-    - name: Install tools
-      if: inputs.mise-install != ''
+    - name: Resolve Go cache paths
+      if: inputs.go-cache == 'true'
+      id: go-cache-paths
       shell: bash
-      run: mise install ${{ inputs.mise-install }}
+      run: |
+        set -euo pipefail
+        echo "gomodcache=$(go env GOMODCACHE)" >> "$GITHUB_OUTPUT"
+        echo "gocache=$(go env GOCACHE)" >> "$GITHUB_OUTPUT"
+        echo "goversion=$(go env GOVERSION)" >> "$GITHUB_OUTPUT"
+        echo "imageos=${ImageOS:-unknown}" >> "$GITHUB_OUTPUT"
+        echo "imageversion=${ImageVersion:-unknown}" >> "$GITHUB_OUTPUT"
+
+    - name: Cache Go modules and build artifacts
+      if: inputs.go-cache == 'true'
+      uses: actions/cache@v5
+      with:
+        path: |
+          ${{ steps.go-cache-paths.outputs.gomodcache }}
+          ${{ steps.go-cache-paths.outputs.gocache }}
+        key: ${{ runner.os }}-${{ runner.arch }}-${{ steps.go-cache-paths.outputs.imageos }}-${{ steps.go-cache-paths.outputs.imageversion }}-go-${{ steps.go-cache-paths.outputs.goversion }}-${{ hashFiles('apps/interweave/go.sum') }}-${{ github.sha }}
+        restore-keys: |
+          ${{ runner.os }}-${{ runner.arch }}-${{ steps.go-cache-paths.outputs.imageos }}-${{ steps.go-cache-paths.outputs.imageversion }}-go-${{ steps.go-cache-paths.outputs.goversion }}-${{ hashFiles('apps/interweave/go.sum') }}-
 
     - name: Resolve pnpm store path
       if: inputs.skip-install != 'true'

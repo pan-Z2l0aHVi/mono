@@ -7,7 +7,8 @@ import path from 'node:path'
 // 这条测试钉的是 apps/interweave/scripts/generate-bindings.mjs 的「产出集合收缩」守卫和参数兼容分支。
 // 那些分支在 -clean=false 下不可达（wails3 没有删除阶段），但守卫存在的意义正是「wails3 哪天改了语义」，
 // 所以这些平时没人走的分支更要有人钉住：快照/还原、-clean / -ts 剔除、-d/-d= 锚定，都是易回归的自写逻辑。
-// 测试用假的 wails3 驱动真实脚本，不碰真实 frontend/bindings，也不要求装 wails3。
+// 前半用假的 wails3 驱动真实脚本；后半用 pinned wails3 Task runner 与隔离的 node/pnpm/go 驱动 build modes。
+// 两部分都只写临时 fixture，不碰真实 frontend/bindings。
 //
 // 测试与被测脚本同址；执行端是根 `ci:test-scripts` 的全仓 glob（`*.test.mjs`）。
 const repoRoot = path.resolve(import.meta.dirname, '../../..')
@@ -39,6 +40,43 @@ function sameTree(a, b) {
   for (const [rel, content] of first) if (second.get(rel) !== content) return false
   return true
 }
+
+const frontendManifest = JSON.parse(
+  fs.readFileSync(path.join(repoRoot, 'apps/interweave/frontend/package.json'), 'utf8')
+)
+assert.match(
+  frontendManifest.scripts.build,
+  /^node \.\.\/scripts\/generate-bindings\.mjs && pnpm run build:bundle$/,
+  'standalone production build must generate bindings once before the shared bundle command'
+)
+assert.match(
+  frontendManifest.scripts['build:dev'],
+  /^node \.\.\/scripts\/generate-bindings\.mjs && pnpm run build:bundle:dev$/,
+  'standalone development build must generate bindings once before the shared bundle command'
+)
+assert.doesNotMatch(frontendManifest.scripts['build:bundle'], /generate-bindings/)
+assert.doesNotMatch(frontendManifest.scripts['build:bundle:dev'], /generate-bindings/)
+assert.match(frontendManifest.scripts['build:bundle'], /vue-tsc --build && vp build --mode production/)
+assert.match(
+  frontendManifest.scripts['build:bundle:dev'],
+  /vue-tsc --build && vp build --minify false --mode development/
+)
+
+const taskfile = fs.readFileSync(path.join(repoRoot, 'apps/interweave/build/Taskfile.yml'), 'utf8')
+const frontendTaskStart = taskfile.indexOf('  build:frontend:\n')
+const frontendTaskEnd = taskfile.indexOf('\n  generate:bindings:', frontendTaskStart)
+const frontendTask =
+  frontendTaskStart < 0 || frontendTaskEnd < 0 ? '' : taskfile.slice(frontendTaskStart, frontendTaskEnd)
+
+assert.ok(frontendTask, 'the shared Wails Taskfile must declare build:frontend')
+assert.match(frontendTask, /- task: generate:bindings/)
+assert.match(frontendTask, /pnpm run \{\{if eq \.DEV "true"\}\}build:bundle:dev\{\{else\}\}build:bundle\{\{end\}\}/)
+assert.doesNotMatch(frontendTask, /pnpm run \{\{if eq \.DEV "true"\}\}build:dev\{\{else\}\}build\{\{end\}\}/)
+const bindingTaskStart = taskfile.indexOf('  generate:bindings:\n')
+const bindingTaskEnd = taskfile.indexOf('\n  generate:icons:', bindingTaskStart)
+const bindingTask = bindingTaskStart < 0 || bindingTaskEnd < 0 ? '' : taskfile.slice(bindingTaskStart, bindingTaskEnd)
+assert.match(bindingTask, /\n    run: once\n/)
+assert.doesNotMatch(bindingTask, /\n    (?:sources|generates):/)
 
 const realBefore = hashTree(realBindings)
 
@@ -184,6 +222,143 @@ try {
     assert.equal(fs.readFileSync(dirFile, 'utf8').trim(), dir, `-d ${form}: wails3 must receive the -d target`)
   }
   console.log('  6 -d=<dir> and -d <dir> both anchor the guard to the given directory')
+
+  // Wails 的 source checksum 不含 BUILD_FLAGS / OBFUSCATED，因此 bindings generation 必须在每次 native
+  // invocation 里运行一次。真实 Task runner + 隔离 stub 驱动模式切换，确认 frontend bundle 不会复用旧绑定。
+  {
+    const taskRoot = path.join(fixture, 'wails-task-modes')
+    const tools = path.join(taskRoot, 'tools')
+    const bundleCalls = path.join(taskRoot, 'bundle-calls.txt')
+    const generatorCalls = path.join(taskRoot, 'generator-calls.txt')
+    fs.mkdirSync(path.join(taskRoot, 'build'), { recursive: true })
+    fs.mkdirSync(path.join(taskRoot, 'scripts'), { recursive: true })
+    fs.mkdirSync(path.join(taskRoot, 'frontend', 'bindings'), { recursive: true })
+    fs.mkdirSync(tools, { recursive: true })
+    fs.writeFileSync(
+      path.join(taskRoot, 'Taskfile.yml'),
+      `version: '3'
+includes:
+  common: ./build/Taskfile.yml
+tasks:
+  multi-arch:
+    deps:
+      - task: common:build:frontend
+        vars:
+          ARCH: arm64
+          BUILD_FLAGS: '-tags production'
+          DEV: 'false'
+          OBFUSCATED: 'false'
+      - task: common:build:frontend
+        vars:
+          ARCH: amd64
+          BUILD_FLAGS: '-tags production'
+          DEV: 'false'
+          OBFUSCATED: 'false'
+`
+    )
+    fs.copyFileSync(
+      path.join(repoRoot, 'apps/interweave/build/Taskfile.yml'),
+      path.join(taskRoot, 'build/Taskfile.yml')
+    )
+    fs.writeFileSync(path.join(taskRoot, 'scripts/generate-bindings.mjs'), '// fixture entrypoint\n')
+    fs.writeFileSync(path.join(taskRoot, 'frontend/bindings/service.ts'), 'initial\n')
+    fs.writeFileSync(path.join(taskRoot, 'go.mod'), 'module taskfixture\n')
+    fs.writeFileSync(path.join(taskRoot, 'go.sum'), '')
+    fs.writeFileSync(path.join(taskRoot, 'main.go'), 'package main\n')
+    fs.writeFileSync(path.join(tools, 'go'), '#!/bin/sh\nexit 0\n')
+    fs.writeFileSync(
+      path.join(tools, 'node'),
+      `#!/bin/sh
+printf '%s\\n' "$*" >> "$GENERATOR_CALLS"
+mode=production
+for arg in "$@"; do
+  if printf '%s\\n' "$arg" | grep -q 'wails_obfuscated'; then mode=obfuscated; fi
+  if printf '%s\\n' "$arg" | grep -q 'development'; then mode=development; fi
+  if printf '%s\\n' "$arg" | grep -q 'production'; then mode=production; fi
+done
+if [ "$mode" = obfuscated ] && printf '%s\\n' "$*" | grep -q -- '-obfuscated'; then mode=wails_obfuscated; fi
+printf '%s\\n' "$mode" > frontend/bindings/service.ts
+`
+    )
+    fs.writeFileSync(
+      path.join(tools, 'pnpm'),
+      `#!/bin/sh
+command="$2"
+mode="$(cat bindings/service.ts)"
+mkdir -p dist
+printf '%s|%s\\n' "$command" "$mode" > dist/bundle.txt
+printf '%s|%s\\n' "$command" "$mode" >> "$BUNDLE_CALLS"
+`
+    )
+    for (const tool of ['go', 'node', 'pnpm']) fs.chmodSync(path.join(tools, tool), 0o755)
+
+    const env = {
+      ...process.env,
+      PATH: `${tools}${path.delimiter}${process.env.PATH}`,
+      XDG_CACHE_HOME: path.join(taskRoot, 'cache'),
+      TMPDIR: path.join(taskRoot, 'tmp'),
+      GENERATOR_CALLS: generatorCalls,
+      BUNDLE_CALLS: bundleCalls
+    }
+    fs.mkdirSync(env.XDG_CACHE_HOME, { recursive: true })
+    fs.mkdirSync(env.TMPDIR, { recursive: true })
+
+    const scenarios = [
+      { flags: '-tags production', expectedMode: 'production', bundle: 'build:bundle' },
+      { flags: '-tags production', expectedMode: 'production', bundle: 'build:bundle' },
+      { flags: '-tags development', dev: true, expectedMode: 'development', bundle: 'build:bundle:dev' },
+      { flags: '-tags production', expectedMode: 'production', bundle: 'build:bundle' },
+      { flags: '-tags wails_obfuscated', obfuscated: true, expectedMode: 'wails_obfuscated', bundle: 'build:bundle' }
+    ]
+    try {
+      for (const [index, scenario] of scenarios.entries()) {
+        const args = [
+          'task',
+          'common:build:frontend',
+          `BUILD_FLAGS=${scenario.flags}`,
+          `DEV=${scenario.dev ? 'true' : 'false'}`,
+          `OBFUSCATED=${scenario.obfuscated ? 'true' : 'false'}`
+        ]
+        execFileSync('wails3', args, { cwd: taskRoot, env, encoding: 'utf8', stdio: 'pipe' })
+        const bundle = fs.readFileSync(path.join(taskRoot, 'frontend/dist/bundle.txt'), 'utf8').trim()
+        assert.equal(
+          bundle,
+          `${scenario.bundle}|${scenario.expectedMode}`,
+          `native invocation ${index + 1} must bundle the current generated mode`
+        )
+        const generated = fs.readFileSync(generatorCalls, 'utf8').trim().split('\n')
+        assert.equal(generated.length, index + 1, `bindings generator must run once for native invocation ${index + 1}`)
+        assert.ok(generated.at(-1).includes(scenario.flags), `generator must receive ${scenario.flags}`)
+        assert.equal(
+          generated.at(-1).includes('-obfuscated'),
+          Boolean(scenario.obfuscated),
+          `obfuscation flag must match native invocation ${index + 1}`
+        )
+      }
+      assert.equal(fs.readFileSync(bundleCalls, 'utf8').trim().split('\n').length, scenarios.length)
+
+      const generatorCallsBeforeMultiArch = fs.readFileSync(generatorCalls, 'utf8').trim().split('\n').length
+      const bundleCallsBeforeMultiArch = fs.readFileSync(bundleCalls, 'utf8').trim().split('\n').length
+      execFileSync('wails3', ['task', 'multi-arch'], { cwd: taskRoot, env, encoding: 'utf8', stdio: 'pipe' })
+      assert.equal(
+        fs.readFileSync(generatorCalls, 'utf8').trim().split('\n').length,
+        generatorCallsBeforeMultiArch + 1,
+        'two parallel architecture deps in one aggregate invocation must run bindings generation once'
+      )
+      assert.equal(
+        fs.readFileSync(bundleCalls, 'utf8').trim().split('\n').length,
+        bundleCallsBeforeMultiArch + 1,
+        'two parallel architecture deps in one aggregate invocation must run the frontend bundle once'
+      )
+      assert.equal(
+        fs.readFileSync(path.join(taskRoot, 'frontend/dist/bundle.txt'), 'utf8').trim(),
+        'build:bundle|production',
+        'multi-architecture dependencies must consume the current production bindings'
+      )
+    } finally {
+      fs.rmSync(taskRoot, { recursive: true, force: true })
+    }
+  }
 
   // 真实 bindings 全程不得被碰：没有别的断言能覆盖它，就靠这条守住「测试自身安全」。
   const realAfter = hashTree(realBindings)

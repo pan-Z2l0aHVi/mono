@@ -23,7 +23,7 @@
 
 **为什么是 git common dir**：代码注释直接给出理由——「状态存 git common dir 下的 tasks/，跨 worktree 共享」（`scripts/task.mjs:4`）。实测确认这一共享性质：21 个 worktree 的 `git rev-parse --path-format=absolute --git-common-dir` 全部解析到同一个 `<git-common-dir>`，而各自的 `--git-dir` 是 `<git-common-dir>/worktrees/<name>`。所以 `<common>/tasks/` 对所有 worktree 是同一份物理目录，而 `HEAD`、index、`ORIG_HEAD` 这些 per-worktree 状态在 `.git/worktrees/<name>/` 下互不共享。
 
-同一设计在仓库里已有先例且被明确记录：`.mise.toml` 的 `TURBO_CACHE_DIR` 也用 `--git-common-dir` 锚定，理由是「主仓与全部 task worktree 共享同一份本地 turbo 缓存……git common dir 不受 `git gc` / worktree 清理影响」（`docs/agents/worktrees.md:15`）。
+**更新（261018）**：当时的 Turbo 缓存类比不再代表现行路径。当前 Turbo artifact cache 使用 `<system-temp>/greypan/turbo-cache/<repo-id>`，由 `scripts/turbo-cache-dir.sh` 按 Git common directory 计算；现行规则见 [worktree 指南](../agents/worktree.md#turbo-artifact-cache)。
 
 ### 1.2 一个生命周期里 state 被写多少次、由谁写
 
