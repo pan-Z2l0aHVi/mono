@@ -9,10 +9,10 @@
 
 ## Task 与 PR 流程词汇
 
-**Task 台账**：`pnpm agent:task-ledger` 在系统临时目录维护本地归属与进度记录，包含级别、status、worktree、issue/PR 引用和事件时间线。schema v3 的 status 为 `open`、`active`、`closed` 或 `dropped`；登记簿不记录 review、测试或 CI 通过结论，规范见 [`docs/agents/task-ledger.md`](docs/agents/task-ledger.md)。
+**Task 台账**：在系统临时目录维护本地 task 归属与进度；它不承载 review、测试或 CI 结论。字段、状态与恢复边界见 [`docs/agents/task-ledger.md`](docs/agents/task-ledger.md)。
 _Avoid_: 证据链、冻结审批状态
 
-**PR review**：PR 阶段由 reviewer 对实际 diff、验收条件和验证结果进行的独立检查。当前 required context `check` 不等于 review 结论，远端 ruleset 尚未强制 approving review，纪律见 [`docs/agents/review.md`](docs/agents/review.md)。
+**PR review**：PR 阶段由 reviewer 对实际 diff、验收条件和验证结果进行的独立检查。required CI 通过不等于 review 结论，纪律见 [`docs/agents/review.md`](docs/agents/review.md)。
 _Avoid_: 本地 review phase、CI 绿即 review 通过
 
 ## js-kit 队列词汇
@@ -45,7 +45,7 @@ _Avoid_: 页面跳转、路由切换（避免与 router 概念混淆）
 
 ## 关键 ADR
 
-表内只列仍承载现行决策的 ADR。多 Agent 编排层（Role、执行体选择、Supervisor、编排账本与 handoff）连同其 skill 已整体退役：0010、0011、0015-0017、0019、0020 从索引移除，0022（发布通道形态）因与 herdr-projects「一 task 一 PR 直接合进 `main`」的流程冲突整篇删除。这些历史只留在 git 里。0012 与 0014 行内提到该编排层的修订注记同样不构成现行指引。需求拆分与 task 派发由外部编排层承担，仓库侧由本地 Task 台账记录归属与进度，由独立政策检查器运行只读政策检查；职责分别见 docs/agents/task-ledger.md 与 docs/agents/commit.md、owner 与 worktree 唯一性边界（[`docs/agents/worktree.md`](docs/agents/worktree.md)）和发布责任面（[`docs/agents/release.md`](docs/agents/release.md)）。
+表内只列仍承载现行决策的 ADR；被取代、退役或删除的记录只留在 git 里，旧 ADR 的修订注记不构成现行指引。需求拆分与 task 派发由外部编排层承担；仓库侧由本地 Task 台账记录归属与进度，由独立政策检查器运行只读检查。职责分别见 [`docs/agents/task-ledger.md`](docs/agents/task-ledger.md)、[`docs/agents/commit.md`](docs/agents/commit.md)、[`docs/agents/worktree.md`](docs/agents/worktree.md) 与 [`docs/agents/release.md`](docs/agents/release.md)。
 
 | ADR                                                                             | 决策                                                    | 何时读取                                                                  |
 | ------------------------------------------------------------------------------- | ------------------------------------------------------- | ------------------------------------------------------------------------- |

@@ -35,19 +35,11 @@
 ## 2. 依赖、构建与发布边界
 
 - Workspace 只有 `apps/**` 和 `packages/**` 两类；版本尽量走 workspace `catalog`。
-- `packages/browser-kit`、`deps-reload`、`js-kit`、`unplugin-web-components` 与 `web-ui` 是公开 npm 包。`test-kit`（测试基础设施）、`tsconfig`（配置 profiles）和 `md-to-comp`（构建期 Vite 插件引擎）是 workspace 内部私有包；私有包仍参与 Changesets 版本计算，是否发布由 `private` 字段控制。
+- `packages/browser-kit`、`deps-reload`、`js-kit`、`unplugin-web-components` 与 `web-ui` 是公开 npm 包；`test-kit`（测试基础设施）、`tsconfig`（配置 profiles）和 `md-to-comp`（构建期 Vite 插件引擎）是 workspace 内部私有包。私有包仍参与 Changesets 版本计算，发布边界见 [`docs/agents/release.md`](docs/agents/release.md)。
 - 自撰 agent skills 不走 npm，只在 GitHub 分发；实体在 [`skills/`](skills)，说明见 [`skills/README.md`](skills/README.md)。
 - `apps/*` 都是 `private` 的集成或交付应用，不是公共 API 的权威来源。
 - [`apps/interweave/frontend`](apps/interweave/frontend) 是独立 `private` workspace，属 Wails 前端集成面；Go host 在 [`apps/interweave`](apps/interweave)。
 
 ## 3. Agent 工具与仓库政策
 
-根 `scripts/` 中的本地 agent 工具不属于任何 workspace package，职责通过根命令区分：
-
-| 入口                     | 实现                         | 职责                                                                                                              |
-| ------------------------ | ---------------------------- | ----------------------------------------------------------------------------------------------------------------- |
-| `pnpm agent:task-ledger` | `scripts/task-ledger.mjs`    | 在系统临时目录记录 task 归属、进度与引用；不运行检查或修改工作区。字段与恢复说明见 `docs/agents/task-ledger.md`。 |
-| `pnpm ci:check-policies` | `scripts/check-policies.mjs` | 从当前 Git worktree 执行全部只读政策检查；不读取 task 登记。pre-commit 调用它。                                   |
-| `pnpm agent:task`        | `scripts/task.mjs`           | 旧登记 CLI 的临时迁移 adapter；正式使用 `agent:task-ledger`。                                                     |
-
-CI 拓扑断言从 `POLICY_CHECKS` 派生四条预期命令，required `check` job 在 YAML 中显式执行它们；`format-clean` 由 `check-code` 覆盖。PR changeset 检查仅在 CI 里按 base/head 执行。整理文件由实施者显式运行 `fix-code`，之后检查 diff 并只暂存预期文件。
+根 `scripts/` 中的本地 agent 工具不属于任何 workspace package，也不进入包图；仓库级命令面以根 `package.json` 为准。task 登记只写系统临时目录，政策检查只读，两者都不改写源码或 Git index；职责与恢复边界分别见 [`docs/agents/task-ledger.md`](docs/agents/task-ledger.md) 和 [`docs/agents/commit.md`](docs/agents/commit.md)。CI 拓扑以 `.github/scripts/ci-topology.mjs` 及其测试为权威，本文不复制命令、检查集合或 workflow 细节。

@@ -2,7 +2,7 @@
 
 本文件规定 T0/T1 的 PR 独立审查、结果回写、复审和合并前核对。T2 按影响安排。独立性来自 reviewer 的单独执行体、固定提交和直接检查证据；实施者自查不能替代。GitHub 登录身份相同不抹去本地执行独立性，但作者不能在 GitHub 批准自己的 PR。会话选用的模型与推理强度由编排决定，不写入仓库政策。本文涉及的远端写操作都需用户逐次明确授权；机制见 `workflow.md` 的「怎么取得这个授权」。
 
-新 reviewer 优先使用独立或新鲜上下文，只接收任务验收条件、PR URL/base/head、相关规则和原始证据；实施者摘要可作待核线索，不能把其自评结论当审查依据。Task 台账不记录 review、approval、verify 或 CI 通过。required context `check` 只证明 CI 中的检查结果，不是 review 结论。当前规则集没有 required approving review；reviewer 完成审查后是否向 GitHub 回写由用户逐次授权。
+新 reviewer 优先使用独立或新鲜上下文，只接收任务验收条件、PR URL/base/head、相关规则和原始证据；实施者摘要可作待核线索，不能把其自评结论当审查依据。Task 台账不记录 review、approval、verify 或 CI 通过。required context `check` 只证明 CI 中的检查结果，不是 review 结论。当前规则集没有 required approving review；reviewer 完成审查后是否向 GitHub 回写由用户逐次授权，机制见 `workflow.md` 的「怎么取得这个授权」。
 
 ## 固定输入与范围
 
@@ -20,13 +20,13 @@ GitHub `pull_request` 的 CI 默认 checkout 是 base/head 的临时合并对象
 
 持久报告至少记录 PR URL、base/head SHA、reviewer 执行体、审查范围、发现及处置、验证命令与实际结果、未覆盖风险、结论，以及上一轮报告和本轮修复的对应关系。报告写入 PR review/comment 或编排器明确提供的持久交付记录；不得只留在临时目录，也不要提交到被审分支。
 
-没有用户对 PR 外部写入的明确授权时，只交付本地报告，不调用写 API。获得授权后使用绑定 reviewed head 的 `COMMENT` review，不自动 `APPROVE` 或 `REQUEST_CHANGES`。调用前重新读取 PR base/head，确认仍等于报告覆盖的 SHA；已漂移则先补审。检查 API 响应的 `commit_id`、state 与 `html_url`，并重读远端 base/head；失败或漂移时报告仍为待发布或旧版本。请求超时或中断时，先分页读取现有 reviews 并核对 `commit_id`、正文和 `html_url`，确认没有重复 review 后才重试。
+没有用户对 PR 外部写入的明确授权时，只交付本地报告，不调用写 API；授权机制见 `workflow.md` 的「怎么取得这个授权」。获得授权后使用绑定 reviewed head 的 `COMMENT` review，不自动 `APPROVE` 或 `REQUEST_CHANGES`。调用前重新读取 PR base/head，确认仍等于报告覆盖的 SHA；已漂移则先补审。检查 API 响应的 `commit_id`、state 与 `html_url`，并重读远端 base/head；失败或漂移时报告仍为待发布或旧版本。请求超时或中断时，先分页读取现有 reviews 并核对 `commit_id`、正文和 `html_url`，确认没有重复 review 后才重试。
 
-实施者修复 Block/Should fix 后运行相关验证并推送需另获用户授权。Reviewer 在新 head 上对照前一报告检查修复及受影响行为，更新完整 PR 结论和验证记录；未处理的 Block 不能靠 CI 变绿消除。
+实施者修复 Block/Should fix 后运行相关验证并推送需另获用户授权，机制见 `workflow.md` 的「怎么取得这个授权」。Reviewer 在新 head 上对照前一报告检查修复及受影响行为，更新完整 PR 结论和验证记录；未处理的 Block 不能靠 CI 变绿消除。
 
 ## 合并前与恢复
 
-合并前重新读取当前 PR 状态、draft、base/head、冲突/mergeability、required checks、CI snapshot 记录的实际 checkout SHA、review 报告覆盖的 SHA、未决发现及 changeset 结果。strict 只要求 PR 跟上 base；squash 会产生新 commit，不能推断最终 main commit 与已测试 SHA 或树恒等。只有全部证据对应当前 base/head、没有未处置 Block、required CI 与硬约束成功、PR 非 draft 且可合并后，才向用户报告具体待合并 PR 和 SHA。每次 merge 需用户明确授权。
+合并前重新读取当前 PR 状态、draft、base/head、冲突/mergeability、required checks、CI snapshot 记录的实际 checkout SHA、review 报告覆盖的 SHA、未决发现及 changeset 结果。strict 只要求 PR 跟上 base；squash 会产生新 commit，不能推断最终 main commit 与已测试 SHA 或树恒等。只有全部证据对应当前 base/head、没有未处置 Block、required CI 与硬约束成功、PR 非 draft 且可合并后，才向用户报告具体待合并 PR 和 SHA。每次 merge 需用户明确授权，机制见 `workflow.md` 的「怎么取得这个授权」。
 
 获授权后以 squash 锁定已审查的 head；它不锁定 base，base 变化或 GitHub 拒绝时停止并重新核对。合并后核实 `state`、`mergedAt` 与 `mergeCommit`。不要用 `--admin` 绕过保护，也不要用无条件 `--auto` 代替当前证据。task 台账的 `closed` 不代表 review、CI、merge 或发布成功。
 
