@@ -132,7 +132,7 @@ try {
   assert.match(goMessage, /formatting, lint or types/)
   assert.match(goMessage, /gofmt -w <files>/)
 
-  process.stdout.write('scripts/checks/format-clean.test.mjs: all assertions passed\n')
+  process.stdout.write('scripts/lib/format-clean.test.mjs: all assertions passed\n')
 } finally {
   fs.rmSync(root, { recursive: true, force: true })
 }

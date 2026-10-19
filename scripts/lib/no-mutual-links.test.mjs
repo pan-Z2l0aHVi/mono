@@ -50,7 +50,7 @@ try {
   fs.rmSync(path.join(noLock, 'skills-lock.json'))
   await assert.rejects(run({ root: noLock }), /skills-lock\.json is missing/)
 
-  process.stdout.write('scripts/checks/no-mutual-links.test.mjs: all assertions passed\n')
+  process.stdout.write('scripts/lib/no-mutual-links.test.mjs: all assertions passed\n')
 } finally {
   fs.rmSync(tempRoot, { recursive: true, force: true })
 }

@@ -39,7 +39,7 @@ try {
   fs.writeFileSync(path.join(notObject, 'package.json'), JSON.stringify({ scripts: [] }) + '\n')
   await assert.rejects(run({ root: notObject }), /no scripts object/)
 
-  process.stdout.write('scripts/checks/command-conventions.test.mjs: all assertions passed\n')
+  process.stdout.write('scripts/lib/command-conventions.test.mjs: all assertions passed\n')
 } finally {
   fs.rmSync(tempRoot, { recursive: true, force: true })
 }

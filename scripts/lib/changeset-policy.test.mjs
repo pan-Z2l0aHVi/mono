@@ -177,7 +177,7 @@ try {
   await assert.rejects(check(single, 'deadbeefdeadbeefdeadbeefdeadbeefdeadbeef', singleHead), /base .* is not a commit/)
   await assert.rejects(run({ root: single.root, head: singleHead }), /missing required option --base/)
 
-  process.stdout.write('scripts/checks/changeset-policy.test.mjs: all assertions passed\n')
+  process.stdout.write('scripts/lib/changeset-policy.test.mjs: all assertions passed\n')
 } finally {
   fs.rmSync(tempRoot, { recursive: true, force: true })
 }

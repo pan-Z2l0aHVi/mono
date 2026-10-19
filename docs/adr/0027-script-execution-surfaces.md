@@ -63,10 +63,10 @@
 
 ### 4. 删除 `.agents/checks/`
 
-`.agents/checks/` 下的入口全部迁入 `scripts/checks/`，并改写为上述函数模块：
+`.agents/checks/` 下的入口全部迁入 `scripts/checks/`，检查逻辑改写为 `scripts/lib/` 下的函数模块：
 
-- `command-conventions`、`format-clean`、`no-mutual-links`、`turbo-cache-invariant`、`web-ui-docs-inputs` → `scripts/checks/*.mjs`。
-- `changeset-required` 的自定义内容检查 → `scripts/checks/changeset-policy.mjs`，由 `scripts/checks/check-changeset.mjs` 与外部 `changeset status` 一起聚合。
+- `command-conventions`、`format-clean`、`no-mutual-links`、`turbo-cache-invariant`、`web-ui-docs-inputs` → `scripts/lib/*.mjs`。
+- `changeset-required` 的自定义内容检查 → `scripts/lib/changeset-policy.mjs`，由 `scripts/checks/check-changeset.mjs` 与外部 `changeset status` 一起聚合。
 
 迁移在同一个 PR 内完成，按顺序提交：先落地原子函数、共享库与测试，再切换 `.vite-hooks/pre-commit`、`.github/workflows/ci.yml` 与 `.github/scripts/ci-topology.mjs`（含其测试），最后删除 `.agents/checks/`。不保留软链或兼容 alias，避免两个可执行事实源。活文档、hook、CI 与拓扑测试中的引用同步更新；历史 ADR 与研究记录保留原文。
 
@@ -76,20 +76,12 @@
 
 ```text
 scripts/
-  checks/                  # 只读门禁：hook、policy、changeset、context、package
+  checks/                  # 只读门禁薄入口：hook、policy、changeset、context、package
     check-pre-commit.mjs   # hook 薄入口
     check-policy.mjs       # PR CI policy 薄入口
     check-changeset.mjs    # PR CI changeset 入口
     check-context.mjs      # CI context 入口
     check-pack.mjs         # CI package 入口
-    command-conventions.mjs
-    format-clean.mjs
-    interweave-turbo-inputs.mjs
-    no-mutual-links.mjs
-    turbo-cache-invariant.mjs
-    web-ui-docs-inputs.mjs
-    changeset-policy.mjs
-    *.test.mjs             # 只覆盖原子模块，可选
   workflow/                # 任务登记与提交命令
     task-ledger.mjs
     task.mjs
@@ -100,17 +92,28 @@ scripts/
     clean.sh
     env-doctor.mjs
     update-skills.mjs
-  lib/                     # 共享实现，不是入口
+  lib/                     # 共享实现与原子检查实现，不是入口
     check-runner.mjs
+    changeset-policy.mjs
+    changeset-status.mjs
+    command-conventions.mjs
+    context-corpus.mjs
     context-invariants.mjs
+    format-clean.mjs
+    interweave-turbo-inputs.mjs
+    no-mutual-links.mjs
+    package-contract.mjs
+    turbo-cache-invariant.mjs
+    web-ui-docs-inputs.mjs
     workspace-manifests.mjs
     exec.mjs
     git.mjs
     config.mjs
     turbo-cache-dir.sh
+    *.test.mjs             # 与原子模块同名，可选
 ```
 
-共享库只抽至少两个调用方复用的逻辑；单次使用的解析留在所属检查内。workspace 内的 `apps/*/scripts` 与 `packages/*/scripts` 保持原位。根 `package.json` 的命令名除 `ci:validate-context` 改为 `check-context` 外不变，只更新目标路径；`.mise.toml`、`clean.sh` 与 `env-doctor` 对 `turbo-cache-dir.sh` 的引用同步改为 `scripts/lib/turbo-cache-dir.sh`。
+`scripts/lib/` 同时承载跨检查复用的 helper 与各原子检查实现；`scripts/checks/` 只保留入口，避免入口目录重新长出实现。单次使用的解析留在所属检查实现内。workspace 内的 `apps/*/scripts` 与 `packages/*/scripts` 保持原位。根 `package.json` 的命令名除 `ci:validate-context` 改为 `check-context` 外不变，只更新目标路径；`.mise.toml`、`clean.sh` 与 `env-doctor` 对 `turbo-cache-dir.sh` 的引用同步改为 `scripts/lib/turbo-cache-dir.sh`。
 
 ### 6. 语言与运行时
 
@@ -125,14 +128,14 @@ shell 只保留给在 Node 启动之前就要被求值的辅助脚本，例如 `
 - `ci:test-scripts` 的发现规则不变：运行全仓 tracked 的 `*.test.mjs`。
 - 每个改写后的原子检查用 fixture 覆盖成功、失败与参数边界；聚合入口靠这些原子测试与一次性的新旧差分跑验证。
 - 一次性的新旧差分跑在 fixture 与当前仓库上执行，结论写入 PR 描述，不把临时 harness 提交进仓库。
-- `docs/agents/scripts.md` 的范围扩展到 `scripts/checks/**`，并改写同名测试政策；`docs/agents/commands.md` 记录 `check-*` 作为门禁入口的命名约定。
+- `docs/agents/scripts.md` 的范围扩展到 `scripts/checks/**` 与 `scripts/lib/**`，并改写同名测试政策；`docs/agents/commands.md` 记录 `check-*` 作为门禁入口的命名约定。
 
 ### 8. 交付顺序
 
 一个 PR，四个有序提交：
 
 1. **对齐文档**：修订本 ADR、更新 `docs/agents/scripts.md` 的测试政策与 `docs/agents/commands.md` 的 `check-*` 约定；删除旧的 `scripts/validate-context.test.mjs` 与 `scripts/context-invariants.test.mjs`。
-2. **原子实现与入口**：在 `scripts/checks/` 落地各原子检查、五个薄入口、`scripts/lib/check-runner.mjs` 与共享库，加入 `check-*` 根命令，补 fixture 测试；行为以新契约为准，不承诺旧文案逐字等价。旧入口与旧 `.agents/checks/` 暂留，使该提交可独立回滚。
+2. **原子实现与入口**：在 `scripts/lib/` 落地各原子检查与共享库，在 `scripts/checks/` 落地五个薄入口，加入 `check-*` 根命令，补 fixture 测试；行为以新契约为准，不承诺旧文案逐字等价。旧入口与旧 `.agents/checks/` 暂留，使该提交可独立回滚。
 3. **切换调用方**：更新 pre-commit、CI、`ci-topology`、`package.json`；删除 `.agents/checks/` 与被替代的旧实现；确认没有双份运行。
 4. **分类与收敛**：把 workflow、release、maintenance、lib 搬到目标目录，更新 `.mise.toml`、`clean.sh`、`env-doctor` 与文档路径；收敛重复的 turbo/JSON/Markdown 解析并做一次新旧差分。
 

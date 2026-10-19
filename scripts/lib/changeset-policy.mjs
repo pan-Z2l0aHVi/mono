@@ -1,6 +1,6 @@
 import path from 'node:path'
 
-import { git } from '../lib/git.mjs'
+import { git } from './git.mjs'
 
 // PR changeset policy: compare committed PR head content with the merge base and read every blob
 // from head. Staged or unstaged changes are intentionally invisible to this check.

@@ -1,7 +1,7 @@
 import fs from 'node:fs'
 import path from 'node:path'
 
-import { readJsonFile } from '../lib/config.mjs'
+import { readJsonFile } from './config.mjs'
 
 // `packages/web-ui` 是唯一「文档语料住在被发布包里」的包：那批示例 md 是 build 与 test 的
 // 真输入。根 turbo.json 的 `!**/*.md` 把这批 md 排掉，包级 turbo.json 必须重新纳入，并按名字

@@ -493,6 +493,7 @@ const hasContextChange = normalizedPaths.some(
     file.startsWith('docs/agents/') ||
     file.startsWith('docs/adr/') ||
     file.startsWith('scripts/checks/check-context') ||
+    file.startsWith('scripts/lib/context-corpus') ||
     file.startsWith('scripts/workflow/task') ||
     file.startsWith('scripts/lib/workspace-manifests') ||
     file.startsWith('skills/monorepo-change-impact/')
@@ -501,12 +502,15 @@ const hasAgentToolChange = normalizedPaths.some(
   file =>
     file === 'pnpm-workspace.yaml' ||
     file.startsWith('scripts/checks/check-context') ||
+    file.startsWith('scripts/lib/context-corpus') ||
     file.startsWith('scripts/workflow/task') ||
     file.startsWith('scripts/lib/workspace-manifests') ||
     file.startsWith('skills/monorepo-change-impact/') ||
     (file.startsWith('scripts/') && file.endsWith('.test.mjs'))
 )
-const hasContractToolChange = normalizedPaths.some(file => file.startsWith('scripts/checks/check-pack'))
+const hasContractToolChange = normalizedPaths.some(
+  file => file.startsWith('scripts/checks/check-pack') || file.startsWith('scripts/lib/package-contract')
+)
 const hasPackageContractChange = normalizedPaths.some(file =>
   directlyChanged.some(workspace => isPackageContractChange(file, workspace))
 )
@@ -665,7 +669,7 @@ if (hasWailsPublicApiChange)
 if (hasContextChange)
   addEvidence(
     'context-system',
-    'scripts/checks/check-context.mjs + current diff',
+    'scripts/lib/context-corpus.mjs + current diff',
     'context 改动必须检查加载路径、链接、索引和重复风险。'
   )
 

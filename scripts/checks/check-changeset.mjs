@@ -1,21 +1,8 @@
 import path from 'node:path'
 
+import * as changesetPolicy from '../lib/changeset-policy.mjs'
+import * as changesetStatus from '../lib/changeset-status.mjs'
 import { runEntrypoint } from '../lib/check-runner.mjs'
-import { commandOutput, exec, pnpm } from '../lib/exec.mjs'
-
-import * as changesetPolicy from './changeset-policy.mjs'
-
-const changesetStatus = {
-  name: 'changeset-status',
-  async run({ root, base }) {
-    const result = exec(pnpm, ['exec', 'changeset', 'status', `--since=${base}`], { cwd: root })
-    if (!result.ok) {
-      const output = commandOutput(result)
-      throw new Error(`changeset status --since=${base} failed${output ? `:\n${output}` : ''}`)
-    }
-    return `since ${base}`
-  }
-}
 
 function parseOptions(argv) {
   const options = {}

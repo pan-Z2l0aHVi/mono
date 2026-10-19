@@ -73,7 +73,7 @@ try {
   })
   await assert.rejects(run({ root: unsupported.root }), /covers the docs\/ corpus/)
 
-  process.stdout.write('scripts/checks/web-ui-docs-inputs.test.mjs: all assertions passed\n')
+  process.stdout.write('scripts/lib/web-ui-docs-inputs.test.mjs: all assertions passed\n')
 } finally {
   fs.rmSync(tempRoot, { recursive: true, force: true })
 }
