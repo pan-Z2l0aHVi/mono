@@ -1,17 +1,29 @@
 import assert from 'node:assert/strict'
+import fs from 'node:fs'
+import os from 'node:os'
+import path from 'node:path'
 
-import { createNpmReleaseAdapter, createReleasesForReceipt } from './create-github-releases.mjs'
+import {
+  createNpmRegistryLookup,
+  createNpmReleaseAdapter,
+  createReleasesForPackages,
+  parsePackageReleases
+} from './create-github-releases.mjs'
 
 const mergeSha = 'a'.repeat(40)
-const receipt = {
-  schemaVersion: 1,
-  repository: 'greypan/mono',
-  mergeSha,
-  runId: '123',
-  packages: [
-    { name: '@greypan/carry', version: '0.9.0', directory: 'packages/carry' },
-    { name: '@greypan/alpha', version: '1.2.0', directory: 'packages/alpha' }
-  ]
+const repository = 'greypan/mono'
+const root = fs.mkdtempSync(path.join(os.tmpdir(), 'npm-release-'))
+const packages = [
+  { name: '@greypan/carry', version: '0.9.0', directory: 'packages/carry' },
+  { name: '@greypan/alpha', version: '1.2.0', directory: 'packages/alpha' }
+]
+for (const item of packages) {
+  const directory = path.join(root, item.directory)
+  fs.mkdirSync(directory, { recursive: true })
+  fs.writeFileSync(
+    path.join(directory, 'package.json'),
+    JSON.stringify({ name: item.name, version: item.version }, null, 2)
+  )
 }
 
 function adapter(initial = {}) {
@@ -32,131 +44,167 @@ function adapter(initial = {}) {
   }
 }
 
-const log = { log() {}, warn() {} }
+const log = { log() {} }
 const fastRetry = { retryDelays: [0], wait: async () => {} }
 
-// Alpha may have changed in the release PR, but its exact version already existed. It must not be attributed
-// to this merge SHA. Carry is unchanged by the PR and absent from npm, so the original receipt includes it.
-{
-  const gh = adapter()
-  const result = await createReleasesForReceipt({
-    receipt: { ...receipt, packages: [receipt.packages[0]] },
-    repository: 'greypan/mono',
-    mergeSha,
-    publishResult: 'success',
-    lookupRegistry: async () => true,
-    adapter: gh,
-    log,
-    ...fastRetry
-  })
-  assert.deepEqual(
-    result.map(({ name }) => name),
-    ['@greypan/carry']
-  )
-  assert.deepEqual(
-    gh.created.map(({ tag }) => tag),
-    ['@greypan/carry@0.9.0']
-  )
-}
+try {
+  {
+    assert.deepEqual(await parsePackageReleases(JSON.stringify([packages[1]]), { root }), [packages[1]])
+    await assert.rejects(parsePackageReleases('{broken', { root }), /package-releases is not valid JSON/)
+    await assert.rejects(
+      parsePackageReleases([{ ...packages[1], directory: 'packages/..' }], { root }),
+      /packages\/<directory> path/
+    )
+    await assert.rejects(parsePackageReleases([packages[1], packages[1]], { root }), /duplicate package/)
+    const manifest = path.join(root, packages[1].directory, 'package.json')
+    fs.writeFileSync(manifest, JSON.stringify({ name: packages[1].name, version: '1.2.1' }))
+    await assert.rejects(parsePackageReleases([packages[1]], { root }), /does not match public manifest/)
+    fs.writeFileSync(manifest, JSON.stringify({ name: packages[1].name, version: packages[1].version, private: true }))
+    await assert.rejects(parsePackageReleases([packages[1]], { root }), /does not match public manifest/)
+    fs.writeFileSync(manifest, JSON.stringify({ name: packages[1].name, version: packages[1].version }))
+  }
 
-// Existing release/tag is idempotent only when its commit matches the current merge SHA.
-{
-  const tag = '@greypan/carry@0.9.0'
-  const gh = adapter({ [tag]: { draft: false, targetSha: mergeSha } })
-  await createReleasesForReceipt({
-    receipt: { ...receipt, packages: [receipt.packages[0]] },
-    repository: 'greypan/mono',
-    mergeSha,
-    publishResult: 'success',
-    lookupRegistry: async () => true,
-    adapter: gh,
-    log,
-    ...fastRetry
-  })
-  assert.deepEqual(gh.created, [])
-}
+  {
+    let call
+    const lookup = createNpmRegistryLookup({
+      spawn: (_command, args) => {
+        call = args
+        return { status: 0, stdout: '"1.2.0"', stderr: '' }
+      }
+    })
+    assert.equal(await lookup(packages[1].name, packages[1].version), true)
+    assert.deepEqual(call, [
+      'view',
+      '@greypan/alpha@1.2.0',
+      'version',
+      '--json',
+      '--registry=https://registry.npmjs.org'
+    ])
 
-for (const invalid of [
-  adapter({ '@greypan/carry@0.9.0': { draft: false, targetSha: 'b'.repeat(40) } }),
-  adapter({ '@greypan/carry@0.9.0': { draft: false, targetSha: null } }),
-  adapter({ '@greypan/carry@0.9.0': { draft: true, targetSha: mergeSha } })
-]) {
-  await assert.rejects(
-    createReleasesForReceipt({
-      receipt: { ...receipt, packages: [receipt.packages[0]] },
-      repository: 'greypan/mono',
+    const absent = createNpmRegistryLookup({
+      spawn: () => ({ status: 1, stdout: '', stderr: 'npm ERR! code E404' })
+    })
+    assert.equal(await absent(packages[1].name, packages[1].version), false)
+
+    const unauthorized = createNpmRegistryLookup({
+      spawn: () => ({ status: 1, stdout: '', stderr: 'npm ERR! code E401' })
+    })
+    await assert.rejects(unauthorized(packages[1].name, packages[1].version), /E401/)
+
+    const wrongVersion = createNpmRegistryLookup({
+      spawn: () => ({ status: 0, stdout: '"1.2.1"', stderr: '' })
+    })
+    await assert.rejects(wrongVersion(packages[1].name, packages[1].version), /returned "1.2.1"/)
+  }
+
+  {
+    const gh = adapter()
+    const selectedByVersionDiff = [packages[1]]
+    const result = await createReleasesForPackages({
+      packages: JSON.stringify(selectedByVersionDiff),
+      root,
+      repository,
       mergeSha,
-      publishResult: 'success',
-      lookupRegistry: async () => true,
-      adapter: invalid,
-      log,
-      ...fastRetry
-    }),
-    /points to|tag is missing|not published/
-  )
-}
-
-// An absent release cannot be created on a tag pointing at a different commit.
-{
-  const gh = adapter()
-  gh.tags.set('@greypan/carry@0.9.0', 'b'.repeat(40))
-  await assert.rejects(
-    createReleasesForReceipt({
-      receipt: { ...receipt, packages: [receipt.packages[0]] },
-      repository: 'greypan/mono',
-      mergeSha,
-      publishResult: 'success',
       lookupRegistry: async () => true,
       adapter: gh,
       log,
       ...fastRetry
-    }),
-    /tag .*expected/
-  )
-  assert.deepEqual(gh.created, [])
-}
+    })
+    assert.deepEqual(result, selectedByVersionDiff)
+    assert.deepEqual(
+      gh.created.map(({ tag }) => tag),
+      ['@greypan/alpha@1.2.0']
+    )
+    assert.match(gh.created[0].notes, /packages\/alpha\/CHANGELOG\.md/)
+  }
 
-// A failed publisher may write notes for its confirmed subset. A successful or skipped publisher may not
-// leave a receipt package absent and still report a green release-notes job.
-{
-  const gh = adapter()
-  await createReleasesForReceipt({
-    receipt,
-    repository: 'greypan/mono',
-    mergeSha,
-    publishResult: 'failure',
-    lookupRegistry: async name => name === '@greypan/carry',
-    adapter: gh,
-    log,
-    ...fastRetry
-  })
-  assert.deepEqual(
-    gh.created.map(({ tag }) => tag),
-    ['@greypan/carry@0.9.0']
-  )
-  await assert.rejects(
-    createReleasesForReceipt({
-      receipt,
-      repository: 'greypan/mono',
+  {
+    const gh = adapter()
+    await assert.rejects(
+      createReleasesForPackages({
+        packages: [packages[1]],
+        root,
+        repository,
+        mergeSha,
+        lookupRegistry: async () => false,
+        adapter: gh,
+        log,
+        ...fastRetry
+      }),
+      /still absent after registry retries/
+    )
+    assert.deepEqual(gh.created, [])
+  }
+
+  {
+    const tag = '@greypan/alpha@1.2.0'
+    const gh = adapter({ [tag]: { draft: false, targetSha: mergeSha } })
+    await createReleasesForPackages({
+      packages: [packages[1]],
+      root,
+      repository,
       mergeSha,
-      publishResult: 'success',
-      lookupRegistry: async () => false,
-      adapter: adapter(),
+      lookupRegistry: async () => true,
+      adapter: gh,
       log,
       ...fastRetry
-    }),
-    /still absent after registry retries/
-  )
-}
-
-// The GitHub CLI adapter treats only HTTP 404 as absent. Authentication, network, and server failures stay fatal.
-{
-  const spawn = (_command, args) => {
-    assert.ok(args[0] === 'api')
-    return { status: 1, stdout: '', stderr: 'gh: HTTP 403: Resource not accessible by integration' }
+    })
+    assert.deepEqual(gh.created, [])
   }
-  const gh = createNpmReleaseAdapter({ repository: 'greypan/mono', mergeSha, spawn })
-  await assert.rejects(async () => gh.findRelease('@greypan/carry@0.9.0'), /HTTP 403/)
-}
 
-console.log('.github/scripts/create-github-releases.test.mjs: all assertions passed')
+  {
+    const tag = '@greypan/alpha@1.2.0'
+    const gh = adapter()
+    gh.tags.set(tag, 'b'.repeat(40))
+    await assert.rejects(
+      createReleasesForPackages({
+        packages: [packages[1]],
+        root,
+        repository,
+        mergeSha,
+        lookupRegistry: async () => true,
+        adapter: gh,
+        log,
+        ...fastRetry
+      }),
+      /tag .*expected/
+    )
+    assert.deepEqual(gh.created, [])
+  }
+
+  {
+    const calls = []
+    const spawn = (_command, args) => {
+      calls.push(args)
+      if (args[0] === 'api') {
+        return { status: 1, stdout: '', stderr: 'gh: HTTP 403: Resource not accessible by integration' }
+      }
+      return { status: 0, stdout: '', stderr: '' }
+    }
+    const gh = createNpmReleaseAdapter({ repository, mergeSha, spawn })
+    assert.throws(() => gh.findRelease('@greypan/alpha@1.2.0'), /HTTP 403/)
+    assert.deepEqual(calls[0], ['api', 'repos/greypan/mono/releases/tags/%40greypan%2Falpha%401.2.0'])
+  }
+
+  {
+    const calls = []
+    const spawn = (_command, args) => {
+      calls.push(args)
+      if (args[0] === 'api') {
+        return { status: 1, stdout: '', stderr: 'gh: HTTP 404: Not Found' }
+      }
+      return { status: 0, stdout: '', stderr: '' }
+    }
+    const gh = createNpmReleaseAdapter({ repository, mergeSha, spawn })
+    await gh.createRelease({ tag: '@greypan/alpha@1.2.0', title: 'alpha v1.2.0', notes: 'release' })
+    const args = calls.find(entry => entry[0] === 'release')
+    assert.ok(args.includes('--target'))
+    assert.ok(args.includes(mergeSha))
+    assert.ok(args.includes('--latest=false'))
+    assert.ok(args.includes('--verify-tag') === false)
+  }
+
+  console.log('.github/scripts/create-github-releases.test.mjs: all assertions passed')
+} finally {
+  fs.rmSync(root, { recursive: true, force: true })
+}

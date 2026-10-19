@@ -1,6 +1,8 @@
 import { spawnSync } from 'node:child_process'
+import { readFile } from 'node:fs/promises'
+import path from 'node:path'
 
-import { createNpmRegistryLookup, loadReceipt, resolvePublishedReceiptPackages } from './npm-release-receipt.mjs'
+const npmRegistry = 'https://registry.npmjs.org'
 
 function commandError(command, args, result) {
   if (result.error) return new Error(`could not start ${command}: ${result.error.message}`)
@@ -17,6 +19,69 @@ function run(command, args, { spawn = spawnSync, env = process.env, cwd = proces
 
 function isHttp404(error) {
   return /\bHTTP\s+404\b|\b404\s+Not Found\b/i.test(error.message)
+}
+
+export function createNpmRegistryLookup({ npm = 'npm', env = process.env, spawn = spawnSync } = {}) {
+  return async (name, version) => {
+    const args = ['view', `${name}@${version}`, 'version', '--json', `--registry=${npmRegistry}`]
+    const result = spawn(npm, args, { encoding: 'utf8', env })
+    if (result.error) throw new Error(`could not start npm view for ${name}@${version}: ${result.error.message}`)
+    if (result.status === 0) {
+      const stdout = (result.stdout ?? '').trim()
+      let value
+      try {
+        value = JSON.parse(stdout)
+      } catch {
+        value = stdout.replace(/^['"]|['"]$/g, '')
+      }
+      if (Array.isArray(value) && value.length === 1) value = value[0]
+      if (value !== version) {
+        throw new Error(`npm view returned ${JSON.stringify(value)} for ${name}@${version}`)
+      }
+      return true
+    }
+    const message = `${result.stderr ?? ''}\n${result.stdout ?? ''}`
+    if (/\bE404\b|HTTP\s+404|404\s+Not Found/i.test(message)) return false
+    const reason = result.signal ? `signal ${result.signal}` : `exit ${result.status}`
+    throw new Error(`npm view failed for ${name}@${version} (${reason}): ${message.trim() || 'no diagnostic output'}`)
+  }
+}
+
+export async function parsePackageReleases(value, { root = process.cwd() } = {}) {
+  let packages
+  try {
+    packages = typeof value === 'string' ? JSON.parse(value) : value
+  } catch (error) {
+    throw new Error('package-releases is not valid JSON: ' + error.message)
+  }
+  if (!Array.isArray(packages)) throw new Error('package-releases must be a JSON array')
+
+  const seenNames = new Set()
+  for (const item of packages) {
+    if (
+      !item ||
+      typeof item.name !== 'string' ||
+      typeof item.version !== 'string' ||
+      typeof item.directory !== 'string' ||
+      !/^packages\/[^/]+$/.test(item.directory) ||
+      ['.', '..'].includes(item.directory.slice('packages/'.length))
+    ) {
+      throw new Error('package-releases entries must contain a package name, version, and packages/<directory> path')
+    }
+    if (seenNames.has(item.name)) throw new Error(`package-releases contains duplicate package ${item.name}`)
+    seenNames.add(item.name)
+
+    let manifest
+    try {
+      manifest = JSON.parse(await readFile(path.join(root, item.directory, 'package.json'), 'utf8'))
+    } catch (error) {
+      throw new Error(`cannot validate ${item.directory}/package.json: ${error.message}`)
+    }
+    if (manifest.private === true || manifest.name !== item.name || manifest.version !== item.version) {
+      throw new Error('package-releases entry does not match public manifest ' + item.directory + '/package.json')
+    }
+  }
+  return packages
 }
 
 export function createNpmReleaseAdapter({
@@ -87,49 +152,64 @@ export function createNpmReleaseAdapter({
   return { findRelease, resolveTag, createRelease }
 }
 
-export async function createReleasesForReceipt({
-  receipt,
+export async function createReleasesForPackages({
+  packages,
+  root = process.cwd(),
   repository,
   mergeSha,
-  publishResult,
   lookupRegistry,
   adapter,
   log = console,
   retryDelays = [0, 1000, 2000, 4000],
   wait = delay => new Promise(resolve => setTimeout(resolve, delay))
 }) {
-  if (receipt.repository !== repository || receipt.mergeSha !== mergeSha) {
-    throw new Error('receipt repository or merge SHA does not match the release request')
+  if (typeof repository !== 'string' || !/^[^/]+\/[^/]+$/.test(repository)) {
+    throw new Error('GITHUB_REPOSITORY must be owner/repository')
   }
-  const { present } = await resolvePublishedReceiptPackages(receipt, {
-    lookupRegistry,
-    publishResult,
-    retryDelays,
-    wait,
-    log
-  })
-  for (const { name, version, directory } of present) {
-    const tag = `${name}@${version}`
+  if (typeof mergeSha !== 'string' || !/^[0-9a-f]{40}$/i.test(mergeSha)) {
+    throw new Error('MERGE_SHA must be a 40-character commit SHA')
+  }
+  if (typeof lookupRegistry !== 'function') throw new Error('lookupRegistry must be a function')
+  const candidates = await parsePackageReleases(packages, { root })
+  const published = []
+
+  for (const candidate of candidates) {
+    let foundInRegistry = false
+    for (let attempt = 0; attempt < retryDelays.length; attempt++) {
+      if (retryDelays[attempt] > 0) await wait(retryDelays[attempt])
+      if (await lookupRegistry(candidate.name, candidate.version)) {
+        foundInRegistry = true
+        break
+      }
+    }
+    if (!foundInRegistry) {
+      throw new Error(
+        'npm version ' + candidate.name + '@' + candidate.version + ' is still absent after registry retries'
+      )
+    }
+    published.push(candidate)
+
+    const tag = candidate.name + '@' + candidate.version
     const release = await adapter.findRelease(tag)
     const targetSha = await adapter.resolveTag(tag)
 
     if (release) {
-      if (!targetSha) throw new Error(`GitHub release ${tag} exists but its tag is missing`)
+      if (!targetSha) throw new Error('GitHub release ' + tag + ' exists but its tag is missing')
       if (targetSha !== mergeSha) {
-        throw new Error(`GitHub release ${tag} tag points to ${targetSha}, expected ${mergeSha}`)
+        throw new Error('GitHub release ' + tag + ' tag points to ' + targetSha + ', expected ' + mergeSha)
       }
-      if (release.draft !== false) throw new Error(`GitHub release ${tag} is not published`)
-      log.log(`Release ${tag} already targets ${mergeSha}; skipping.`)
+      if (release.draft !== false) throw new Error('GitHub release ' + tag + ' is not published')
+      log.log('Release ' + tag + ' already targets ' + mergeSha + '; skipping.')
       continue
     }
 
     if (targetSha && targetSha !== mergeSha) {
-      throw new Error(`GitHub tag ${tag} points to ${targetSha}, expected ${mergeSha}`)
+      throw new Error('GitHub tag ' + tag + ' points to ' + targetSha + ', expected ' + mergeSha)
     }
-    const npmUrl = `https://www.npmjs.com/package/${name}/v/${version}`
-    const changelogUrl = `https://github.com/${repository}/blob/${mergeSha}/${directory}/CHANGELOG.md`
-    const notes = `Published to npm: [${name}@${version}](${npmUrl}).\n\nSee [${directory}/CHANGELOG.md](${changelogUrl}) for release notes.`
-    await adapter.createRelease({ tag, title: `${name} v${version}`, notes })
+    const npmUrl = `https://www.npmjs.com/package/${candidate.name}/v/${candidate.version}`
+    const changelogUrl = `https://github.com/${repository}/blob/${mergeSha}/${candidate.directory}/CHANGELOG.md`
+    const notes = `Published to npm: [${candidate.name}@${candidate.version}](${npmUrl}).\n\nSee [${candidate.directory}/CHANGELOG.md](${changelogUrl}) for release notes.`
+    await adapter.createRelease({ tag, title: `${candidate.name} v${candidate.version}`, notes })
 
     const createdRelease = await adapter.findRelease(tag)
     const createdTarget = await adapter.resolveTag(tag)
@@ -138,28 +218,21 @@ export async function createReleasesForReceipt({
     }
     log.log(`Created release ${tag} at ${mergeSha}.`)
   }
-  return present
+  return published
 }
 
 async function main() {
-  const receiptPath = process.env.RECEIPT_PATH
+  const packageReleases = process.env.PACKAGE_RELEASES
   const repository = process.env.GITHUB_REPOSITORY
   const mergeSha = process.env.MERGE_SHA
-  const publishResult = process.env.PUBLISH_RESULT
-  if (!receiptPath || !repository || !mergeSha || !publishResult) {
-    throw new Error('RECEIPT_PATH, GITHUB_REPOSITORY, MERGE_SHA, and PUBLISH_RESULT are required')
+  if (packageReleases === undefined || !repository || !mergeSha) {
+    throw new Error('PACKAGE_RELEASES, GITHUB_REPOSITORY, and MERGE_SHA are required')
   }
-  const receipt = await loadReceipt(receiptPath, {
+  await createReleasesForPackages({
+    packages: packageReleases,
     root: process.cwd(),
     repository,
     mergeSha,
-    runId: process.env.GITHUB_RUN_ID
-  })
-  await createReleasesForReceipt({
-    receipt,
-    repository,
-    mergeSha,
-    publishResult,
     lookupRegistry: createNpmRegistryLookup(),
     adapter: createNpmReleaseAdapter({ repository, mergeSha })
   })
