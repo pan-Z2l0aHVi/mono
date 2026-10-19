@@ -44,4 +44,4 @@ _Avoid_: 本地 review phase、CI 绿即 review 通过
 
 发布/私有边界、registry/mirror 与工作区构建事实见 [`ARCHITECTURE.md`](ARCHITECTURE.md#2-依赖构建与发布边界)节，以及 [`AGENTS.md`](AGENTS.md#不可绕过的仓库边界)节。
 
-组件、token、overlay 与事件语义按需读取 [`docs/agents/web-ui.md`](docs/agents/web-ui.md) 及其指向的 ADR。公共 package 或跨 workspace 契约审查按需读取 [`contract-change-review`](.agents/skills/contract-change-review/SKILL.md)，并以 manifest、消费者和测试为事实。构建、部署与 release workflow 按需读取 [`docs/agents/build.md`](docs/agents/build.md) 和 ADR-0003。
+组件、token、overlay 与事件语义按需读取 [`docs/agents/web-ui.md`](docs/agents/web-ui.md) 及其指向的 ADR。公共 package 或跨 workspace 契约审查按需读取 [`monorepo-change-impact`](.agents/skills/monorepo-change-impact/SKILL.md)，并以 manifest、消费者和测试为事实。构建、部署与 release workflow 按需读取 [`docs/agents/build.md`](docs/agents/build.md) 和 ADR-0003。

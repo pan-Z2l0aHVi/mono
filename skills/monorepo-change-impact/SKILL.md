@@ -1,9 +1,9 @@
 ---
-name: contract-change-review
-description: 审查 monorepo 中公共 API、exports、事件、类型适配和跨包运行时契约的影响面。用于已发布 package 的公共行为或跨 workspace 变更；不用于单包内部实现。
+name: monorepo-change-impact
+description: 计算 monorepo 变更的影响面、消费者与所需验证，审查公共 API、exports、事件、类型适配和跨包运行时契约。用于已发布 package 的公共行为、跨 workspace 变更或验证范围选择；不用于单包内部实现。
 ---
 
-# Contract Change Review
+# Monorepo Change Impact
 
 ## 何时加载与事实来源
 
@@ -18,9 +18,9 @@ description: 审查 monorepo 中公共 API、exports、事件、类型适配和�
 在仓库根运行，三个子命令：
 
 ```sh
-node skills/contract-change-review/repo-query.mjs verify [--json] [--base <git-ref> | --staged | --worktree] <changed-path>...
-node skills/contract-change-review/repo-query.mjs contract [--json] <published-package>
-node skills/contract-change-review/repo-query.mjs contract-diff --json --base <git-ref>
+node skills/monorepo-change-impact/repo-query.mjs verify [--json] [--base <git-ref> | --staged | --worktree] <changed-path>...
+node skills/monorepo-change-impact/repo-query.mjs contract [--json] <published-package>
+node skills/monorepo-change-impact/repo-query.mjs contract-diff --json --base <git-ref>
 ```
 
 ## 流程

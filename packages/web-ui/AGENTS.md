@@ -51,6 +51,6 @@ _Avoid_: 用 context 承载成员追踪或上行写回、在子项上用公开�
 - 聚焦测试和 browser-mode 测试
 - React/Vue demo 的 type fixtures 与集成表面
 - [`apps/interweave/frontend`](../../apps/interweave/frontend)（若被公共组件消费）
-- package `exports`、Changeset 和 contract-change-review skill 的契约报告
+- package `exports`、Changeset 和 monorepo-change-impact skill 的契约报告
 
-不要机械同步全部项目，以 contract-change-review skill 的 `verify` 输出、manifest、源码引用和测试确定实际影响。
+不要机械同步全部项目，以 monorepo-change-impact skill 的 `verify` 输出、manifest、源码引用和测试确定实际影响。

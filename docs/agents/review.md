@@ -2,7 +2,7 @@
 
 本文件规定 T0/T1 的 PR 独立审查、结果回写、复审和合并前核对。T2 按影响安排。独立性来自 reviewer 的单独执行体、固定提交和直接检查证据；实施者自查不能替代。GitHub 登录身份相同不抹去本地执行独立性，但作者不能在 GitHub 批准自己的 PR。会话选用的模型与推理强度由编排决定，不写入仓库政策。本文涉及的远端写操作都需用户逐次明确授权；机制见 `workflow.md` 的「怎么取得这个授权」。
 
-新 reviewer 优先使用独立或新鲜上下文，只接收任务验收条件、PR URL/base/head、相关规则和原始证据；实施者摘要可作待核线索，不能把其自评结论当审查依据。Task 台账不记录 review、approval、verify 或 CI 通过。required context `check` 只证明 CI 中的检查结果，不是 review 结论。远端规则集的 required checks 与是否要求 approving review 属于平台状态，以仓库当前规则为准；平台是否强制 review 不改变本文的审查要求。reviewer 完成审查后是否向 GitHub 回写由用户逐次授权，机制见 `workflow.md` 的「怎么取得这个授权」。
+新 reviewer 优先使用独立或新鲜上下文，只接收任务验收条件、PR URL/base/head、相关规则和原始证据；实施者摘要可作待核线索，不能把其自评结论当审查依据。GitHub MCP 可以替代 `gh` 读取 PR、评论与 reviews，也可以发表绑定 `commit_id` 的 `COMMENT` review；工具选择不改变 SHA、授权和响应核对要求。Task 台账不记录 review、approval、verify 或 CI 通过。required context `check` 只证明 CI 中的检查结果，不是 review 结论。远端规则集的 required checks 与是否要求 approving review 属于平台状态，以仓库当前规则为准；平台是否强制 review 不改变本文的审查要求。reviewer 完成审查后是否向 GitHub 回写由用户逐次授权，机制见 `workflow.md` 的「怎么取得这个授权」。
 
 ## 固定输入与范围
 
@@ -10,7 +10,7 @@
 
 reviewer 不得切换、覆盖或修改实施者 worktree。使用专属 reviewer worktree，核对其 origin 指向 PR base 仓库、HEAD 等于 PR head、base/head 对象存在，并审查 merge-base..head 的完整改动，而不是只看最新 commit。审查开始和提交报告前都要重新读取 PR base/head；head 变化后旧报告只覆盖旧提交。force push、rebase、base 更新或范围变化后，重新求 merge-base 并检查完整受影响面。
 
-GitHub `pull_request` 的 CI 默认 checkout 是 base/head 的临时合并对象，代码 review 固定在 PR head。不能把 Actions run/check 关联用的 PR head SHA 当作 runner 实际测试的 checkout SHA。required `check` 必须关联当前 PR head，并在实际执行快照与政策检查后成功；关联 SHA、base/head 或 step 结果不符时，不能证明当前输入已通过 CI。
+GitHub `pull_request` 的 CI 默认 checkout 是 base/head 的临时合并对象，代码 review 固定在 PR head。不能把 Actions run/check 关联用的 PR head SHA 当作 runner 实际测试的 checkout SHA。`gh pr checks --json` 不提供 head SHA；改用 run/check 对象或 check-runs API 核对关联的 head。required `check` 必须关联当前 PR head，并在实际执行快照与政策检查后成功；关联 SHA、base/head 或 step 结果不符时，不能证明当前输入已通过 CI。
 
 ## 审查内容与发现
 

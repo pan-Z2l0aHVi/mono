@@ -19,7 +19,7 @@ T0、T1、T2 表达变更影响半径与所需验证深度，不代表任务价�
 
 本表决定改动级别与建议验证深度；本地登记簿只记录工作归属和进度，不记录 review 或 approval。T0/T1 的独立 review 应在 PR 阶段完成，并由报告关联当前 base/head SHA；GitHub ruleset 的 required check 与 required review 属于远端状态，以仓库当前规则为准，无论平台是否强制 review，CI 成功都不能替代审查。本地政策检查与 PR CI 的 changeset gate 分别见 [`commit.md`](commit.md) 与 [`release.md`](release.md)。
 
-纯文档、注释、纯格式化或二进制改动无论路径如何都归 T2。需要独立 worktree、完整影响面核查或更深验证时，依据实际影响升到 T1 或 T0。contract-change-review skill 的 `verify` 查询用于核实跨 workspace 公共契约，命令与语义见该 skill 的 SKILL.md；验证命令选择见 [`verification.md`](verification.md)。
+纯文档、注释、纯格式化或二进制改动无论路径如何都归 T2。需要独立 worktree、完整影响面核查或更深验证时，依据实际影响升到 T1 或 T0。monorepo-change-impact skill 的 `verify` 查询用于核实跨 workspace 公共契约，命令与语义见该 skill 的 SKILL.md；验证命令选择见 [`verification.md`](verification.md)。
 
 ## 准入：先建立任务
 

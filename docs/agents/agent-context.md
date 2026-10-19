@@ -25,7 +25,7 @@
 | 生成物                   | 根/包级 `AGENTS.md` 说明「不可手改」与局部 source of truth                      | [`build.md`](build.md)                               | generator diff、构建、消费者类型检查           |
 | 真实浏览器取证           | 根/包级 `AGENTS.md` 仅声明需要浏览器层                                          | [`runtime-verification.md`](runtime-verification.md) | 浏览器用例与 MCP 操作记录                      |
 | 该跑哪些验证             | 根/包级 `AGENTS.md` 只路由，不复制选择矩阵                                      | [`verification.md`](verification.md)                 | 相关测试与聚焦构建                             |
-| 影响面与契约查询         | 根入口不提供查询命令；工具接口见 contract-change-review skill                   | contract-change-review skill 的 SKILL.md             | 契约查询脚本与其测试                           |
+| 影响面与契约查询         | 根入口不提供查询命令；工具接口见 monorepo-change-impact skill                   | monorepo-change-impact skill 的 SKILL.md             | 契约查询脚本与其测试                           |
 | 任务级别与准入           | 根 `AGENTS.md`「变更准入与登记」只给判定入口，不复制级别表                      | [`task-levels.md`](task-levels.md)                   | 登记 CLI 的级别与干净起点检查                  |
 | 本地登记簿与 Task Packet | 根 `AGENTS.md` 只路由，不复制 schema、命令或恢复处方                            | [`task-ledger.md`](task-ledger.md)                   | schema 迁移 fixture 与 status 查询             |
 | 预授权操作               | 根 `AGENTS.md` 只列被允许与需授权的类别                                         | [`workflow.md`](workflow.md)                         | 四项说明与用户选择记录                         |
@@ -62,7 +62,7 @@
 
 ## 工具接口
 
-- 影响面与契约查询由 contract-change-review skill 的内置脚本提供；命令、参数与输出格式见该 skill 的 SKILL.md。workspace 图从 workspace 配置与 manifest 派生，不复制成静态文档。
+- 影响面与契约查询由 monorepo-change-impact skill 的内置脚本提供；命令、参数与输出格式见该 skill 的 SKILL.md。workspace 图从 workspace 配置与 manifest 派生，不复制成静态文档。
 - 仓库校验检查共享 context 的可加载性、语料权威标记与漂移门禁，不替代对规则语义、代码行为或 agent 输出质量的评审。
 
 ## 权威性与冲突处理

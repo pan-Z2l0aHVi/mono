@@ -1,13 +1,13 @@
-// contract-change-review skill 的内置查询脚本，self-contained：不 import 本仓任何脚本，
+// monorepo-change-impact skill 的内置查询脚本，self-contained：不 import 本仓任何脚本，
 // 只依赖 Node 内置模块。workspace 图完全从宿主仓库的 pnpm-workspace.yaml 与各
 // package.json 派生（内部依赖 = 依赖名命中 workspace 名集合；可发布 = manifest 未标
 // private），不硬编码 scope 或目录布局。标记为 host policy 的段落是宿主仓库的 context
 // 与验证策略，其他 monorepo 采纳本 skill 时按自己的约定调整这一段。
 //
 // Usage:
-//   node skills/contract-change-review/repo-query.mjs verify [--json] [--base <git-ref> | --staged | --worktree] <changed-path>...
-//   node skills/contract-change-review/repo-query.mjs contract [--json] <workspace-name>
-//   node skills/contract-change-review/repo-query.mjs contract-diff --base <git-ref> [--json]
+//   node skills/monorepo-change-impact/repo-query.mjs verify [--json] [--base <git-ref> | --staged | --worktree] <changed-path>...
+//   node skills/monorepo-change-impact/repo-query.mjs contract [--json] <workspace-name>
+//   node skills/monorepo-change-impact/repo-query.mjs contract-diff --base <git-ref> [--json]
 
 import { execFileSync } from 'node:child_process'
 import fs from 'node:fs'
@@ -29,7 +29,7 @@ if (
   (command === 'verify' && options.paths.length === 0 && !options.base && !options.staged && !options.worktree)
 ) {
   console.error(
-    'Usage: node skills/contract-change-review/repo-query.mjs verify [--json] [--base <git-ref> | --staged | --worktree] <changed-path>...\n       node skills/contract-change-review/repo-query.mjs contract [--json] <workspace-name>\n       node skills/contract-change-review/repo-query.mjs contract-diff --base <git-ref> [--json]'
+    'Usage: node skills/monorepo-change-impact/repo-query.mjs verify [--json] [--base <git-ref> | --staged | --worktree] <changed-path>...\n       node skills/monorepo-change-impact/repo-query.mjs contract [--json] <workspace-name>\n       node skills/monorepo-change-impact/repo-query.mjs contract-diff --base <git-ref> [--json]'
   )
   process.exit(1)
 }
@@ -495,7 +495,7 @@ const hasContextChange = normalizedPaths.some(
     file.startsWith('scripts/validate-context') ||
     file.startsWith('scripts/task') ||
     file.startsWith('scripts/lib/workspace-manifests') ||
-    file.startsWith('skills/contract-change-review/')
+    file.startsWith('skills/monorepo-change-impact/')
 )
 const hasAgentToolChange = normalizedPaths.some(
   file =>
@@ -503,7 +503,7 @@ const hasAgentToolChange = normalizedPaths.some(
     file.startsWith('scripts/validate-context') ||
     file.startsWith('scripts/task') ||
     file.startsWith('scripts/lib/workspace-manifests') ||
-    file.startsWith('skills/contract-change-review/') ||
+    file.startsWith('skills/monorepo-change-impact/') ||
     (file.startsWith('scripts/') && file.endsWith('.test.mjs'))
 )
 const hasContractToolChange = normalizedPaths.some(file => file.startsWith('scripts/check-pack'))

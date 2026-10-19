@@ -71,7 +71,7 @@ const realLayout = checkRepoLayout({
   vendoredDir: join(repoRoot, '.agents', 'skills-vendored'),
   lockFile
 })
-assert.deepEqual(realLayout.repoAuthored, ['contract-change-review'])
+assert.deepEqual(realLayout.repoAuthored, ['monorepo-change-impact'])
 assert.deepEqual(realLayout.mirrored, [])
 assert.deepEqual(realLayout.vendored, ['apple-design', 'emil-design-eng', 'review-animations', 'wizard'])
 // skills/ 根的 README.md 是 GitHub 通道的安装说明，必须存在且可读。

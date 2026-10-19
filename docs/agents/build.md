@@ -6,7 +6,7 @@
 
 可构建的包使用 turbo 任务：`pnpm exec turbo <task> --filter=@greypan/<name>`。turbo 先完成 `^build`，裸 `pnpm --filter` 会绕过依赖构建，可能用到陈旧或缺失的 `dist`。包内非 turbo 脚本用 `pnpm --filter @greypan/<name> <script>` 直接运行。
 
-影响面与契约查询见 contract-change-review skill 的 SKILL.md，验证时点见 [`verification.md`](verification.md)。`check-pack` 在构建可发布包或修改 exports、files 或 Vite 输出时运行，验证实际发布文件与 manifest export targets。
+影响面与契约查询见 monorepo-change-impact skill 的 SKILL.md，验证时点见 [`verification.md`](verification.md)。`check-pack` 在构建可发布包或修改 exports、files 或 Vite 输出时运行，验证实际发布文件与 manifest export targets。
 
 ## Demo 开发
 
