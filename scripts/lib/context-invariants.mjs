@@ -77,29 +77,48 @@ export function corpusLayer(file) {
   return null
 }
 
-export function findBudgetViolations(entries, budget) {
-  const layerLimits = budget.layers ?? {}
+// ADR 随决策数量增长，按文件设上限只约束 chunk 体量；研究记录是时点性参考，不设预算。
+export function layerTotals(entries) {
   const totals = new Map()
-  const fileViolations = []
   for (const { file, source } of entries) {
     const layer = corpusLayer(file)
-    if (!layer) continue
+    if (!layer || layer === 'adr') continue
+    totals.set(layer, (totals.get(layer) ?? 0) + countNonWhitespace(source))
+  }
+  return totals
+}
+
+export function findBudgetViolations(entries, budget) {
+  const layerLimits = budget.layers ?? {}
+  const fileViolations = []
+  for (const { file, source } of entries) {
+    if (corpusLayer(file) !== 'adr') continue
     const size = countNonWhitespace(source)
-    // ADR 随决策数量增长，按文件设上限只约束 chunk 体量；研究记录是时点性参考，不设预算。
-    if (layer === 'adr') {
-      if (typeof budget.adrFile === 'number' && size > budget.adrFile)
-        fileViolations.push({ file, size, limit: budget.adrFile })
-      continue
-    }
-    totals.set(layer, (totals.get(layer) ?? 0) + size)
+    if (typeof budget.adrFile === 'number' && size > budget.adrFile)
+      fileViolations.push({ file, size, limit: budget.adrFile })
   }
   const violations = []
-  for (const [layer, size] of totals) {
+  for (const [layer, size] of layerTotals(entries)) {
     const limit = layerLimits[layer]
     if (typeof limit !== 'number') violations.push({ layer, size, limit: null })
     else if (size > limit) violations.push({ layer, size, limit })
   }
   return [...violations, ...fileViolations]
+}
+
+// 墓碑式提及（「ADR-0009 已删除」）是合法修订记录；只报标题或本节声明层面的退役痕迹。
+const RETIRED_SECTION = [/^#{1,6}\s+.*(?:已废止|已删除)/, /(?:本节|此节|该节|以下|以上)[^\n]{0,20}(?:已废止|已删除)/]
+
+export function findRetiredAdrMarkers(entries) {
+  const markers = []
+  for (const { file, source } of entries) {
+    if (!file.startsWith('docs/adr/')) continue
+    source.split('\n').forEach((line, index) => {
+      if (!RETIRED_SECTION.some(pattern => pattern.test(line))) return
+      markers.push({ file, line: index + 1, phrase: line.includes('已废止') ? '已废止' : '已删除' })
+    })
+  }
+  return markers
 }
 
 export function contentDigest(entries) {

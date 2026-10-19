@@ -52,7 +52,7 @@
 
 ## 语料门禁
 
-`ci:validate-context` 在链接与锚点之外检查可客观判定的漂移属性：task-specific 文档是否有根入口路由、外部状态快照短语、远端写命令是否带授权指针、非权威语料是否带标记，以及 `scripts/context-budget.json` 的体量预算与内容指纹。预算覆盖 entry、project 与 task-specific 三层总量和单个 ADR 的 chunk 体量；研究记录不设预算。判据与取舍见 [ADR-0026](../adr/0026-context-corpus-authority-and-drift-gates.md)。预算上调与 allowlist 变更必须在 diff 中显式发生，不能为让检查变绿而放宽模式。
+`ci:validate-context` 在链接与锚点之外检查可客观判定的漂移属性：task-specific 文档是否有根入口路由、外部状态快照短语、远端写命令是否带授权指针、非权威语料是否带标记，以及 `scripts/context-budget.json` 的体量预算与内容指纹。预算覆盖 entry、project 与 task-specific 三层总量和单个 ADR 的 chunk 体量；研究记录不设预算。判据与取舍见 [ADR-0026](../adr/0026-context-corpus-authority-and-drift-gates.md)。预算上调与 allowlist 变更必须在 diff 中显式发生，不能为让检查变绿而放宽模式。清理后下调预算；上调需在同一 diff 中说明理由，架构级增长需 ADR 或用户明确例外。`--write-baseline` 只供本地显式更新，禁止在 CI 运行；只读 `--report` 列出未路由、零入站、缺标记、活 ADR 退役痕迹与最大文档，不作为门禁。
 
 ## 客户端适配
 

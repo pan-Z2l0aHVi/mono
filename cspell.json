@@ -69,6 +69,7 @@
     "nsis",
     "pkill",
     "unstub",
+    "unrouted",
     "indexeddb",
     "ooui",
     "wailsio",

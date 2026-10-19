@@ -7,8 +7,10 @@ import {
   countNonWhitespace,
   findBudgetViolations,
   findMissingAuthorizationPointers,
+  findRetiredAdrMarkers,
   findUnmarkedReferenceDocs,
   findUnroutedAgentDocs,
+  layerTotals,
   scanVolatilePhrases
 } from './lib/context-invariants.mjs'
 
@@ -78,6 +80,34 @@ assert.deepEqual(
 assert.deepEqual(findBudgetViolations([entry('CONTEXT.md', 'x')], { layers: {}, adrFile: 1 }), [
   { layer: 'project', size: 1, limit: null }
 ])
+
+assert.deepEqual(
+  [
+    ...layerTotals([
+      entry('AGENTS.md', '12'),
+      entry('CONTEXT.md', '123'),
+      entry('ARCHITECTURE.md', '4567'),
+      entry('docs/agents/a.md', '89'),
+      entry('docs/adr/0001-x.md', 'ignored')
+    ])
+  ],
+  [
+    ['entry', 2],
+    ['project', 7],
+    ['task-specific', 2]
+  ]
+)
+
+assert.deepEqual(
+  findRetiredAdrMarkers([
+    entry('docs/adr/0004-x.md', '# x\n\n## 角色实施补充（已废止）\n\nADR-0009 已删除。\n\n本节已废止。\n\n它已删除。'),
+    entry('docs/agents/build.md', '已废止')
+  ]),
+  [
+    { file: 'docs/adr/0004-x.md', line: 3, phrase: '已废止' },
+    { file: 'docs/adr/0004-x.md', line: 7, phrase: '已废止' }
+  ]
+)
 
 const digest = contentDigest([entry('AGENTS.md', 'a'), entry('CONTEXT.md', 'b')])
 assert.equal(digest, contentDigest([entry('CONTEXT.md', 'b'), entry('AGENTS.md', 'a')]))

@@ -6,10 +6,13 @@ import { pathToFileURL } from 'node:url'
 import {
   AUTHORIZATION_POINTER,
   contentDigest,
+  countNonWhitespace,
   findBudgetViolations,
   findMissingAuthorizationPointers,
+  findRetiredAdrMarkers,
   findUnmarkedReferenceDocs,
   findUnroutedAgentDocs,
+  layerTotals,
   scanVolatilePhrases
 } from './lib/context-invariants.mjs'
 import { listPnpmWorkspaceManifests, readPnpmWorkspacePatterns } from './lib/workspace-manifests.mjs'
@@ -17,6 +20,17 @@ import { listPnpmWorkspaceManifests, readPnpmWorkspacePatterns } from './lib/wor
 const root = path.resolve(import.meta.dirname, '..')
 const errors = []
 let rootScripts = new Set()
+const reportMode = process.argv.includes('--report')
+const writeBaseline = process.argv.includes('--write-baseline')
+
+if (reportMode && writeBaseline) {
+  console.error('validate-context: --report and --write-baseline are mutually exclusive')
+  process.exit(1)
+}
+if (writeBaseline && process.env.CI) {
+  console.error('validate-context: --write-baseline is local-only; CI must never rewrite the budget baseline')
+  process.exit(1)
+}
 
 const relative = file => path.relative(root, file) || '.'
 // context index 要与 worktree 的绝对路径无关：先归一为正斜杠，跨平台才能得到稳定指纹。
@@ -297,12 +311,13 @@ const referenceCorpus = [
   ...walk('docs/design', file => file.endsWith('.md'))
 ].map(file => ({ file: relativePosix(file), source: read(relativePosix(file)) }))
 
-if (exists('AGENTS.md'))
-  for (const file of findUnroutedAgentDocs(
-    read('AGENTS.md'),
-    corpus.map(entry => entry.file)
-  ))
-    addError(`${file}: no loading path from the AGENTS.md task routing table`)
+const unroutedAgentDocs = exists('AGENTS.md')
+  ? findUnroutedAgentDocs(
+      read('AGENTS.md'),
+      corpus.map(entry => entry.file)
+    )
+  : []
+for (const file of unroutedAgentDocs) addError(`${file}: no loading path from the AGENTS.md task routing table`)
 
 for (const { file, phrase } of scanVolatilePhrases(corpus))
   addError(`${file}: volatile snapshot phrase "${phrase}"; write an invariant and point to the authority instead`)
@@ -310,13 +325,29 @@ for (const { file, phrase } of scanVolatilePhrases(corpus))
 for (const file of findMissingAuthorizationPointers(corpus))
   addError(`${file}: remote write commands require the authorization pointer ${AUTHORIZATION_POINTER}`)
 
-for (const file of findUnmarkedReferenceDocs(referenceCorpus))
+const unmarkedReferenceDocs = findUnmarkedReferenceDocs(referenceCorpus)
+for (const file of unmarkedReferenceDocs)
   addError(`${file}: reference corpus requires the corpus-status marker and the non-authoritative banner`)
 
 const budgetFile = 'scripts/context-budget.json'
+let budget = null
 try {
-  const budget = JSON.parse(read(budgetFile))
+  budget = JSON.parse(read(budgetFile))
   if (typeof budget.adrFile !== 'number') addError(`${budgetFile}: missing numeric adrFile budget`)
+  if (writeBaseline) {
+    if (typeof budget.adrFile !== 'number') throw new Error('cannot write a baseline without a numeric adrFile budget')
+    const totals = layerTotals(corpus)
+    budget = {
+      layers: {
+        entry: totals.get('entry') ?? 0,
+        project: totals.get('project') ?? 0,
+        'task-specific': totals.get('task-specific') ?? 0
+      },
+      adrFile: budget.adrFile
+    }
+    fs.writeFileSync(path.join(root, budgetFile), `${JSON.stringify(budget, null, 2)}\n`)
+    console.log(`wrote ${budgetFile}: ${JSON.stringify(budget.layers)}`)
+  }
   for (const violation of findBudgetViolations(corpus, budget)) {
     if ('layer' in violation) {
       addError(
@@ -474,11 +505,44 @@ for (const file of [
 for (const name of repoAuthoredSkills)
   if (!exists(`skills/${name}/SKILL.md`)) addError(`repoAuthoredSkills lists a skill without SKILL.md: skills/${name}`)
 
+// 只读报表：把需要人工判断的语料卫生信号集中列出，不作为 CI 门禁。
+if (reportMode) {
+  const sizes = corpus.map(({ file, source }) => ({ file, size: countNonWhitespace(source) }))
+  const largest = [...sizes].sort((a, b) => b.size - a.size || (a.file < b.file ? -1 : 1)).slice(0, 10)
+  const nearAdrCap =
+    budget && typeof budget.adrFile === 'number'
+      ? sizes.filter(({ file, size }) => file.startsWith('docs/adr/') && size >= budget.adrFile * 0.9)
+      : []
+  const zeroInbound = corpus
+    .filter(
+      ({ file }) => file.startsWith('docs/agents/') || (file.startsWith('docs/adr/') && /^docs\/adr\/\d{4}-/.test(file))
+    )
+    .filter(({ file }) => !inboundTargets.has(path.join(root, file)))
+    .map(({ file }) => file)
+  const retired = findRetiredAdrMarkers(corpus)
+
+  console.log('Context corpus report\n')
+  console.log(`unrouted docs/agents files (${unroutedAgentDocs.length})`)
+  for (const file of unroutedAgentDocs) console.log(`  ${file}`)
+  console.log(`\ninstruction docs with no inbound link (${zeroInbound.length})`)
+  for (const file of zeroInbound) console.log(`  ${file}`)
+  console.log(`\nreference docs missing the non-authoritative marker (${unmarkedReferenceDocs.length})`)
+  for (const file of unmarkedReferenceDocs) console.log(`  ${file}`)
+  console.log(`\nlive ADRs with retired-section markers (${retired.length})`)
+  for (const { file, line, phrase } of retired) console.log(`  ${file}:${line} ${phrase}`)
+  console.log('\nlargest corpus docs')
+  for (const { file, size } of largest) console.log(`  ${String(size).padStart(6)}  ${file}`)
+  console.log(`\nADR files at or above 90% of the per-file budget (${nearAdrCap.length})`)
+  for (const { file, size } of nearAdrCap) console.log(`  ${size}/${budget.adrFile}  ${file}`)
+  console.log('')
+}
+
 if (errors.length) {
   console.error(`validate-context failed with ${errors.length} error(s):`)
   console.error(errors.map(error => `- ${error}`).join('\n'))
   process.exit(1)
 }
+if (reportMode) process.exit(0)
 
 // 指纹覆盖内容而不只是路径：只哈希路径时，改写正文不会改变指纹，外部索引无从判断是否需要重建。
 const digest = contentDigest([...corpus, ...referenceCorpus])
