@@ -146,7 +146,7 @@ el.style.textOverflow // ""（整条声明被判非法丢弃）
 CSSWG 确实在做这件事，但离落地很远，不能作为现在的方案：
 
 - 议题 [w3c/csswg-drafts#3937 `[css-overflow-4] Ellipsizing of text in middle of string`](https://github.com/w3c/csswg-drafts/issues/3937)：
-  2019 年提出、状态 `open`（`state_reason: reopened`）、标签 `Needs Edits`、38 条评论、2026-09-14 仍有更新。
+  2019 年提出、状态 `open`（`state_reason: reopened`）、label `Needs Edits`、38 条评论、2026-09-14 仍有更新。
 - 提案文档 [`css-overflow-5/middle-truncation.md`](https://github.com/w3c/csswg-drafts/blob/main/css-overflow-5/middle-truncation.md)
   由 PR [#14490](https://github.com/w3c/csswg-drafts/pull/14490)（**仍为 open**）引入。语法：
 
@@ -176,7 +176,7 @@ CSSWG 确实在做这件事，但离落地很远，不能作为现在的方案�
 | **Range 读同一文本节点的前缀/后缀宽度** | 准（就是真实排版）                                                                                             | **零写 DOM**；读取之间不失效布局，整次重算只强制一次 | **采用** |
 
 第三种是本仓的实现口径。它不是省了「读」，而是省了「写」——中间省略要二分逼近切点，
-面板里可能有成百上千个这样的单元格，一个单元格多一次强制布局就是一帧多上千次。
+panel 里可能有成百上千个这样的单元格，一个单元格多一次强制布局就是一帧多上千次。
 
 分段宽度**不蕴含**合串宽度：`head|marker` 与 `marker|tail` 两个接缝处的字距与连字是分段量看不见的。
 所以实现里还有一步**对着真实渲染盒子复核**：渲染完读一次文本盒宽度，超出容差（0.5px）就按超出量回收额度

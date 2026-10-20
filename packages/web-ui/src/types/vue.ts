@@ -53,7 +53,7 @@ export type LitVueWrapper<T extends HTMLElement> = DefineComponent<
   T
 >
 
-// Vue 从 WebUiElementMap 派生全部标签，无需手写组件清单。
+// Vue 从 WebUiElementMap 派生全部 tag，无需手写组件清单。
 export type WebUiComponents = {
   [K in keyof WebUiElementMap]: LitVueWrapper<WebUiElementMap[K]>
 }

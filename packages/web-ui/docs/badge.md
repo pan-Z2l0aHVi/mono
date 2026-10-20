@@ -3,7 +3,7 @@ component: badge
 tag: web-ui-badge
 ---
 
-徽标 / 通知计数：把 `count` 角标叠加在默认插槽内容的一角，`dot` 模式只显示一个圆点。
+badge / 通知计数：把 `count` 角标叠加在默认插槽内容的一角，`dot` 模式只显示一个圆点。
 
 ## 示例
 
@@ -85,19 +85,19 @@ import { lucideMail } from '@greypan/web-ui/icons'
 
 ### Props
 
-| 名称           | 说明                                                                       | 类型                                                           | 默认值        |
-| -------------- | -------------------------------------------------------------------------- | -------------------------------------------------------------- | ------------- |
-| `count`        | 显示数字。                                                                 | `number`                                                       | `0`           |
-| `max`          | 数字上限，超过时显示 `max+`。                                              | `number`                                                       | `99`          |
-| `dot`          | 点模式，只显示圆点不显示数字。                                             | `boolean`                                                      | `false`       |
-| `show-zero`    | `count` 为 0 时也显示。                                                    | `boolean`                                                      | `false`       |
-| `badge-hidden` | 完全隐藏徽标。                                                             | `boolean`                                                      | `false`       |
-| `offset-x`     | 水平偏移（px）。                                                           | `number`                                                       | `0`           |
-| `offset-y`     | 垂直偏移（px）。                                                           | `number`                                                       | `0`           |
-| `placement`    | 徽标位置：`top-right`（默认）、`top-left`、`bottom-right`、`bottom-left`。 | `'top-right' \| 'top-left' \| 'bottom-right' \| 'bottom-left'` | `'top-right'` |
+| 名称           | 说明                                                                         | 类型                                                           | 默认值        |
+| -------------- | ---------------------------------------------------------------------------- | -------------------------------------------------------------- | ------------- |
+| `count`        | 显示数字。                                                                   | `number`                                                       | `0`           |
+| `max`          | 数字上限，超过时显示 `max+`。                                                | `number`                                                       | `99`          |
+| `dot`          | 点模式，只显示圆点不显示数字。                                               | `boolean`                                                      | `false`       |
+| `show-zero`    | `count` 为 0 时也显示。                                                      | `boolean`                                                      | `false`       |
+| `badge-hidden` | 完全隐藏 badge。                                                             | `boolean`                                                      | `false`       |
+| `offset-x`     | 水平偏移（px）。                                                             | `number`                                                       | `0`           |
+| `offset-y`     | 垂直偏移（px）。                                                             | `number`                                                       | `0`           |
+| `placement`    | badge 位置：`top-right`（默认）、`top-left`、`bottom-right`、`bottom-left`。 | `'top-right' \| 'top-left' \| 'bottom-right' \| 'bottom-left'` | `'top-right'` |
 
 ### Slots
 
-| 名称      | 说明                               |
-| --------- | ---------------------------------- |
-| `default` | 被装饰的内容，徽标叠加在它的一角。 |
+| 名称      | 说明                                 |
+| --------- | ------------------------------------ |
+| `default` | 被装饰的内容，badge 叠加在它的一角。 |

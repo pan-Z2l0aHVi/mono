@@ -43,7 +43,7 @@ function trackChanges(el: WebUiContextMenu): CustomEvent<{ open: boolean }>[] {
 }
 
 describe('context-menu 长按（jsdom 逻辑）', () => {
-  it('未启用 long-press 时长按不开菜单', async () => {
+  it('未启用 long-press 时长按不开 menu', async () => {
     vi.useFakeTimers()
     const el = createMenu()
     await waitForUpdate(el)
@@ -94,7 +94,7 @@ describe('context-menu 长按（jsdom 逻辑）', () => {
     cleanupElement(el)
   })
 
-  it('长按达到延迟后打开菜单', async () => {
+  it('长按达到延迟后打开 menu', async () => {
     vi.useFakeTimers()
     const el = createMenu({ 'long-press': '' })
     await waitForUpdate(el)
@@ -125,10 +125,10 @@ describe('context-menu 长按（jsdom 逻辑）', () => {
     cleanupElement(el)
   })
 
-  it('long-press-delay 写错时回退到默认值，不退化成同帧开菜单', async () => {
+  it('long-press-delay 写错时回退到默认值，不退化成同帧开 menu', async () => {
     vi.useFakeTimers()
     // "abc" 经 Lit 的 Number converter 得到 NaN；Math.max(0, NaN) === NaN，
-    // 而 setTimeout(fn, NaN) 会立刻触发 —— 那样长按在 pointerdown 同一帧就开菜单，
+    // 而 setTimeout(fn, NaN) 会立刻触发 —— 那样长按在 pointerdown 同一帧就开 menu，
     // 绕过全部时长语义。所以断言「499ms 内不开、到 500ms 才开」，而不是只断言属性值。
     const el = createMenu({ 'long-press': '', 'long-press-delay': 'abc' })
     await waitForUpdate(el)
@@ -207,7 +207,7 @@ describe('context-menu 长按（jsdom 逻辑）', () => {
     cleanupElement(el)
   })
 
-  it('disabled 时长按不开菜单', async () => {
+  it('disabled 时长按不开 menu', async () => {
     vi.useFakeTimers()
     const el = createMenu({ 'long-press': '', disabled: '' })
     await waitForUpdate(el)
@@ -249,7 +249,7 @@ describe('context-menu 长按（jsdom 逻辑）', () => {
     press(el)
     await vi.advanceTimersByTimeAsync(600)
     await waitForUpdate(el)
-    // 菜单已由长按打开：补发的 contextmenu 被吞。
+    // menu 已由长按打开：补发的 contextmenu 被吞。
     el.dispatchEvent(contextMenuEvent())
     await waitForUpdate(el)
 
@@ -267,7 +267,7 @@ describe('context-menu 长按（jsdom 逻辑）', () => {
     cleanupElement(el)
   })
 
-  it('抬手后浏览器合成的 click 不会把刚打开的菜单关掉', async () => {
+  it('抬手后浏览器合成的 click 不会把刚打开的 menu 关掉', async () => {
     vi.useFakeTimers()
     const el = createMenu({ 'long-press': '' })
     await waitForUpdate(el)
@@ -287,13 +287,13 @@ describe('context-menu 长按（jsdom 逻辑）', () => {
 
   /*
    * 原「吸收窗口过期后，真实点击照常 light-dismiss」已删除：它靠
-   * `document.body.dispatchEvent(click)` 触发。菜单打开时 scrim 处于 `showModal()`
+   * `document.body.dispatchEvent(click)` 触发。menu 打开时 scrim 处于 `showModal()`
    * 模态态，真实浏览器里这个 click 到不了 body；jsdom 没有 top layer，合成事件照样派发，
    * 于是它断言的是一条被模态契约关掉的通道。它唯一的实现就是 document 捕获阶段那个
    * 兜底监听器，那段已随之删除。
    *
    * 契约没有丢，迁到了 browser project 的真实触控管线：
-   * `long-press.browser.spec.ts` 的「吸收窗口内的点击被吞，窗口过后同一次菜单上的真实
+   * `long-press.browser.spec.ts` 的「吸收窗口内的点击被吞，窗口过后同一次 menu 上的真实
    * 点击照常 dismiss」。它用 CDP 走完真长按，然后在**同一条用例**里断言两相：窗内点
    * scrim 被吞、越过 `LONG_PRESS_FOLLOW_UP_WINDOW_MS` 后同一次点击生效。合成事件表达不了
    * 「模态下下层收不到命中」，而这正是原用例赖以存在的前提。

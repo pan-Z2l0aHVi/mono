@@ -11,7 +11,7 @@ import { pollUntil } from '@/shared/test-utils'
  * 模态表面（dialog / drawer）与它的滚动区不该画 UA 默认焦点环。
  *
  * 背景：Chromium 会把「可滚动的滚动容器」变成键盘可聚焦项（keyboard-focusable
- * scrollers）。面板内容区一旦可滚动、内部又没有被聚焦的控件，`showModal()` 的
+ * scrollers）。panel 内容区一旦可滚动、内部又没有被聚焦的控件，`showModal()` 的
  * focusing steps 就会选中这个滚动区，UA 为它画一枚默认蓝环
  * （`outline: auto` + `-webkit-focus-ring-color`）——与库的统一 ring
  * （`outline: var(--wui-focus-ring-width) solid var(--wui-color-focus-ring)`）不同形，

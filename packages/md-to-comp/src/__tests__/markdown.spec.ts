@@ -27,7 +27,7 @@ const CONFIG: Pick<MdToCompConfig, 'flavors' | 'apiTables'> = {
 }
 
 const FRONTMATTER = ['---', 'component: slider', 'tag: web-ui-slider', '---', ''].join('\n')
-const INTRO = '范围滑块，支持刻度标记。\n'
+const INTRO = '范围 slider，支持刻度标记。\n'
 const REACT_FENCE = [
   '```react',
   'export default function Demo() {',
@@ -46,7 +46,7 @@ const PROPS_SEP = '| ---- | ---- | ---- | ---- |'
 const ROW_MIN = '| `min` | 最小值。 | `number` | `0` |'
 const ROW_VARIANT = `| \`variant\` | 外观。 | \`'a' \\| 'b'\` | \`'a'\` |`
 const ROW_ARIA = '| `aria-label` | 无障碍。 | `string \\| null` | `null` |'
-const ROW_LABEL = '| `label` | 标签。 | `—` | — |'
+const ROW_LABEL = '| `label` | label。 | `—` | — |'
 const PROPS_TABLE = ['### Props', '', PROPS_HEAD, PROPS_SEP, ROW_MIN, ROW_VARIANT, ROW_ARIA, ROW_LABEL, ''].join('\n')
 
 const EVENTS_TABLE = ['| 名称 | 说明 |', '| ---- | ---- |', '| `input` | 拖拽过程中触发。 |'].join('\n')
@@ -95,7 +95,7 @@ describe('parseMarkdown', () => {
 
     expect(doc.component).toBe('slider')
     expect(doc.tag).toBe('web-ui-slider')
-    expect(doc.introHtml).toBe('<p>范围滑块，支持刻度标记。</p>')
+    expect(doc.introHtml).toBe('<p>范围 slider，支持刻度标记。</p>')
 
     expect(doc.samples).toHaveLength(1)
     const sample = doc.samples[0]
@@ -124,7 +124,7 @@ describe('parseMarkdown', () => {
     expect(props.rows[1]?.[3]).toBe("'a'")
     expect(props.rows[2]?.[2]).toBe('string | null')
     // 没有默认值就写 `—`，它照原样进产物，页面上是一个破折号而不是空白单元格。
-    expect(props.rows[3]).toEqual(['label', '<p>标签。</p>', '—', '—'])
+    expect(props.rows[3]).toEqual(['label', '<p>label。</p>', '—', '—'])
     expect(tableOf(doc, 'events').rows).toEqual([['input', '<p>拖拽过程中触发。</p>']])
     expect(tableOf(doc, 'slots').rows).toEqual([['default', '<p>默认插槽。</p>']])
     // API 小节的顺序即正文里 `###` 的顺序，key 是标题小写。
@@ -203,7 +203,7 @@ describe('parseMarkdown', () => {
   })
 
   it('整段省略 ## API 时，产物里没有任何 API 小节', () => {
-    // 没有对外契约的组件（纯展示的分隔线）用「整节删掉」声明这件事：小节缺省即 `api: []`，
+    // 没有对外契约的组件（纯展示的 divider）用「整节删掉」声明这件事：小节缺省即 `api: []`，
     // 页面据此整段跳过。与下面的「留着标题却没有小节」相对，那一型仍然是错误。
     const doc = parseMarkdown(DOC.slice(0, DOC.indexOf('## API')), 'dropdown-divider.md', CONFIG)
     expect(doc.api).toEqual([])

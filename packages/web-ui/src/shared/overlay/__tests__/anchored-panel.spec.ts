@@ -6,7 +6,7 @@ import { defineOpenOverlay, type OpenOverlay } from '../open-overlay'
 /*
  * 退场第三态「可见但暂缓仲裁」（issue #138）。
  *
- * jsdom 不计算 CSS transition，`hideOverlayPresence` 会立刻 resolve；这里给面板写一条
+ * jsdom 不计算 CSS transition，`hideOverlayPresence` 会立刻 resolve；这里给 panel 写一条
  * inline transition-duration，让退场真的进入等待，再用合成 transitionend 收尾——与
  * native-dialog-presence.spec.ts 同一手法。
  */
@@ -63,7 +63,7 @@ function finishExit(panel: HTMLElement): void {
 }
 
 describe('anchored panel 的退场第三态', () => {
-  it('退场等待期间登记不撤：Escape 由这个看得见的面板接住，且不重复关闭', async () => {
+  it('退场等待期间登记不撤：Escape 由这个看得见的 panel 接住，且不重复关闭', async () => {
     const { api, panel, requestClose } = makePanel()
     api.open()
     const closing = api.close(() => false)
@@ -75,7 +75,7 @@ describe('anchored panel 的退场第三态', () => {
 
     finishExit(panel)
     expect(await closing).toBe(true)
-    // 退场播完且宿主不再认为开着：面板已隐藏、无人可见，Escape 交还出去。
+    // 退场播完且宿主不再认为开着：panel 已隐藏、无人可见，Escape 交还出去。
     expect(pressEscape().defaultPrevented).toBe(false)
   })
 
@@ -91,7 +91,7 @@ describe('anchored panel 的退场第三态', () => {
     expect(requestClose).toHaveBeenCalledTimes(1)
   })
 
-  it('退场被中断后立刻按 Escape：关的是这个面板，不是外层', async () => {
+  it('退场被中断后立刻按 Escape：关的是这个 panel，不是外层', async () => {
     const outer = makePanel()
     const inner = makePanel(outer.panel)
     outer.api.open()
@@ -137,21 +137,21 @@ describe('anchored panel 的退场第三态', () => {
     expect(await closing).toBe(true)
   })
 
-  it('宿主仍认为开着时保留在场会话：不把面板留在未登记状态', async () => {
+  it('宿主仍认为开着时保留在场会话：不把 panel 留在未登记状态', async () => {
     const { api, panel } = makePanel()
     api.open()
     const closing = api.close(() => true)
 
     finishExit(panel)
     expect(await closing).toBe(false)
-    // 句柄没被丢弃：退场被打断时若清掉它，面板就留在屏幕上且没有关闭归属。
+    // handle 没被丢弃：退场被打断时若清掉它，panel 就留在屏幕上且没有关闭归属。
     // 会话仍在场这一点由下一条（Escape 走宿主关闭入口）钉住。
     expect(api.getHandle()).not.toBeNull()
   })
 
   /*
-   * 上一格状态的另一面：退场已播完（面板 hidden）而宿主仍认为开着时，层交还仲裁。
-   * 第三态的前提是「面板可见」；看不见的面板继续暂缓会无限吞掉 Escape，用户再也没有
+   * 上一格状态的另一面：退场已播完（panel hidden）而宿主仍认为开着时，层交还仲裁。
+   * 第三态的前提是「panel 可见」；看不见的 panel 继续暂缓会无限吞掉 Escape，用户再也没有
    * 按键路径把这个不一致的状态收敛掉。交还后 Escape 走宿主的关闭入口。
    */
   it('退场播完但宿主仍认为开着：Escape 走宿主关闭入口，不再被无限吞掉', async () => {

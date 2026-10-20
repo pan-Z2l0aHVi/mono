@@ -85,7 +85,7 @@ await ctx.batchEmit({ id: 2 })
 
 「消费者确认后消费」的通用队列。只有 `onConsume` 返回的 Promise fulfilled 后才移除条目；rejection 只影响当前项，失败项可由 `resume()` 或 `flush()` 再次尝试。
 
-两种队列都提供 `enqueue()`、`pause()`、`resume()` 和异步 `flush()`，并支持 `initialItems`、同步 `onPersist` 快照持久化以及 `onConsumeError`。完整选项表、flush 与 persist-before-commit 语义、以及在消费者内调用 `flush()` 的循环等待约束见 [`src/plugin-system/README.md`](./src/plugin-system/README.md)。
+两种队列都提供 `enqueue()`、`pause()`、`resume()` 和异步 `flush()`，并支持 `initialItems`、同步 `onPersist` 快照持久化以及 `onConsumeError`。完整 option 表、flush 与 persist-before-commit 语义、以及在消费者内调用 `flush()` 的循环等待约束见 [`src/plugin-system/README.md`](./src/plugin-system/README.md)。
 
 ## API
 
@@ -162,7 +162,7 @@ await ctx.batchEmit({ id: 2 })
 | 参数      | 类型                                                                                 | 默认值 | 说明         |
 | --------- | ------------------------------------------------------------------------------------ | ------ | ------------ |
 | `func`    | `Function`                                                                           | -      | 待防抖的函数 |
-| `options` | `{ timing?: 'trailing' \| 'leading' \| 'both'; waitMs: number; maxWaitMs?: number }` | -      | 防抖选项     |
+| `options` | `{ timing?: 'trailing' \| 'leading' \| 'both'; waitMs: number; maxWaitMs?: number }` | -      | 防抖 option  |
 
 ### `safeCall(fn, options?)`
 

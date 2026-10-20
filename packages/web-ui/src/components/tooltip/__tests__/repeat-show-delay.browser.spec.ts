@@ -19,7 +19,7 @@ const FRAME_BUDGET = 3
 /** 把延迟拉长到 2000ms，让帧预算与延迟窗口之间留出两个数量级余量，避免与帧率抖动耦合。 */
 const SHOW_DELAY = 2000
 
-/** 穿透 shadow 边界收集所有 `role="tooltip"` 面板（portal 面板挂在浮层挂载点内）。 */
+/** 穿透 shadow 边界收集所有 `role="tooltip"` panel（portal panel 挂在 overlay 挂载点内）。 */
 function tooltipPanels(node: Node = document.body, found: HTMLElement[] = []): HTMLElement[] {
   if (node instanceof HTMLElement && node.getAttribute('role') === 'tooltip') found.push(node)
   for (const child of node.childNodes) tooltipPanels(child, found)
@@ -28,7 +28,7 @@ function tooltipPanels(node: Node = document.body, found: HTMLElement[] = []): H
 }
 
 /**
- * 公开可观察量：面板 `role="tooltip"` ∧ 非 `hidden` ∧ 内容已投影。
+ * 公开可观察量：panel `role="tooltip"` ∧ 非 `hidden` ∧ 内容已投影。
  *
  * `hidden` 是可见性的公开后果，不是内部状态名。
  */
@@ -50,7 +50,7 @@ function hover(el: WebUiTooltip): void {
   el.dispatchEvent(new PointerEvent('pointerenter', { pointerType: 'mouse' }))
 }
 
-/** 在给定帧预算内面板是否出现过（非 `hidden`）。 */
+/** 在给定帧预算内 panel 是否出现过（非 `hidden`）。 */
 async function visibleWithin(label: string, frames: number): Promise<boolean> {
   for (let i = 0; i < frames; i++) {
     await waitForFrame()
@@ -86,7 +86,7 @@ describe('WebUiTooltip 相邻触发不等 showDelay（浏览器）', () => {
       false
     )
 
-    // 收尾对照：它最终确实会显示。缺了这一步，上一条断言在面板永远不显示时也会「通过」。
+    // 收尾对照：它最终确实会显示。缺了这一步，上一条断言在 panel 永远不显示时也会「通过」。
     // 等满 SHOW_DELAY 再渲染需要超出默认预算，显式放宽（默认已是 5000ms，这里按
     // SHOW_DELAY 再加一段余量，判据不变）。
     await pollUntil(

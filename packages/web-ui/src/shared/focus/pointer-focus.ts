@@ -2,7 +2,7 @@
  * 指针输入期间的 focus ring 抑制。
  *
  * Safari 等浏览器在 pointer 点击后仍可能让 `:focus-visible` 命中新聚焦元素，
- * 导致点击打开 drawer/dialog 时内部按钮自动出现 focus ring。这里记录最近一次
+ * 导致点击打开 drawer/dialog 时内部 button 自动出现 focus ring。这里记录最近一次
  * 指针输入，并在 focusin 时给聚焦元素打 `data-wui-pointer-focus` 标记；组件样式
  * 用该标记将 focus ring 透明化，键盘导航（Tab/方向键等）会清除标记并恢复可见。
  */

@@ -1,7 +1,7 @@
 <route lang="json">
 {
   "meta": {
-    "title": "Checkbox 复选框"
+    "title": "Checkbox"
   }
 }
 </route>

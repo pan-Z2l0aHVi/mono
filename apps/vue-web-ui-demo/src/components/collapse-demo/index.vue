@@ -6,9 +6,9 @@ import { OverlayScrollbarsComponent } from 'overlayscrollbars-vue'
 
 <template>
   <div>
-    <h1>Collapse 折叠面板</h1>
+    <h1>Collapse collapse panel</h1>
 
-    <h2>基础用法</h2>
+    <h2>Basic usage</h2>
     <div class="mb-3">
       <web-ui-collapse>
         <button
@@ -19,16 +19,18 @@ import { OverlayScrollbarsComponent } from 'overlayscrollbars-vue'
         </button>
         <div slot="content">
           <div class="p-3">
-            <p>这是折叠内容。</p>
-            <p>支持任意内容：文本、表单、图片等。</p>
+            <p>This is the collapse content.</p>
+            <p>Any content works: text, forms, images.</p>
           </div>
         </div>
       </web-ui-collapse>
     </div>
 
-    <h2>trigger 类型</h2>
+    <h2>trigger types</h2>
     <div class="mb-3 flex flex-col gap-2">
-      <p class="text-sm text-gray-500">trigger 是 default slot，可放入任意可交互元素（原生 button、web-ui 组件等）。</p>
+      <p class="text-sm text-gray-500">
+        The trigger is the default slot; put any interactive element in it (a native button, a web-ui component, …).
+      </p>
       <web-ui-collapse>
         <button
           type="button"
@@ -37,33 +39,38 @@ import { OverlayScrollbarsComponent } from 'overlayscrollbars-vue'
           原生 button
         </button>
         <div slot="content">
-          <div class="p-3">原生 <code>&lt;button&gt;</code> 作为 trigger，原生提供 Enter/Space 激活与焦点。</div>
+          <div class="p-3">
+            Native<code>&lt;button&gt;</code>As a trigger it keeps the native Enter/Space activation and focus behavior.
+          </div>
         </div>
       </web-ui-collapse>
       <web-ui-collapse>
-        <web-ui-button variant="secondary" full> web-ui-button 触发器 </web-ui-button>
+        <web-ui-button variant="secondary" full> web-ui-button trigger </web-ui-button>
         <div slot="content">
-          <div class="p-3">web-ui 组件同样可以作为 trigger，点击切换开合。</div>
+          <div class="p-3">A web-ui component works as a trigger too; clicking it toggles the panel.</div>
         </div>
       </web-ui-collapse>
       <web-ui-collapse>
         <web-ui-button variant="secondary" full>
           <web-ui-icon slot="prefix" :icon="lucideChevronDown" :size="14"></web-ui-icon>
-          带图标的触发器
+          带 icon 的 trigger
         </web-ui-button>
         <div slot="content">
-          <div class="p-3">trigger 内容任意组合：图标、文本、快捷键标识等。</div>
+          <div class="p-3">The trigger can combine anything: icons, text, keyboard hints.</div>
         </div>
       </web-ui-collapse>
       <web-ui-collapse>
         纯文本 trigger（无键盘语义）
         <div slot="content">
-          <div class="p-3">纯文本可点击但不可聚焦，无 Enter/Space 激活——仅用于演示非交互元素。</div>
+          <div class="p-3">
+            Plain text is clickable but not focusable and has no Enter/Space activation — it only demonstrates a
+            non-interactive element.
+          </div>
         </div>
       </web-ui-collapse>
     </div>
 
-    <h2>keep-mounted（保留滚动位置）</h2>
+    <h2>keep-mounted (keeps the scroll position)</h2>
     <div class="mb-3">
       <web-ui-collapse keep-mounted>
         <button
@@ -80,7 +87,7 @@ import { OverlayScrollbarsComponent } from 'overlayscrollbars-vue'
       </web-ui-collapse>
     </div>
 
-    <h2>peek（只露一部分）</h2>
+    <h2>peek (reveals part of it)</h2>
     <div class="mb-3">
       <web-ui-collapse peek="80px">
         <button
@@ -97,7 +104,7 @@ import { OverlayScrollbarsComponent } from 'overlayscrollbars-vue'
       </web-ui-collapse>
     </div>
 
-    <h2>peek 边缘渐隐（长度随 peek 自动推导）</h2>
+    <h2>peek fades the edge (the length follows peek)</h2>
     <div class="mb-3">
       <web-ui-collapse peek="200px">
         <button
@@ -114,7 +121,7 @@ import { OverlayScrollbarsComponent } from 'overlayscrollbars-vue'
       </web-ui-collapse>
     </div>
 
-    <h2>水平方向（trigger 与内容同行）</h2>
+    <h2>Horizontal (trigger and content share a row)</h2>
     <div class="mb-3">
       <web-ui-collapse horizontal class="flex items-center gap-2">
         <button type="button" class="flex-none cursor-pointer rounded-md bg-(--wui-color-surface-control) px-3 py-2">
@@ -122,32 +129,34 @@ import { OverlayScrollbarsComponent } from 'overlayscrollbars-vue'
           展开侧栏
         </button>
         <div slot="content">
-          <div class="w-64 whitespace-nowrap p-3">水平展开的内容区，宽度过渡，trigger 与内容保持同行。</div>
+          <div class="w-64 whitespace-nowrap p-3">
+            The content area expands horizontally with a width transition; the trigger stays on the same row.
+          </div>
         </div>
       </web-ui-collapse>
     </div>
 
-    <h2>嵌套</h2>
+    <h2>Nested</h2>
     <div class="mb-3">
       <web-ui-collapse>
         <button
           type="button"
           class="block w-full cursor-pointer rounded-md bg-(--wui-color-surface-control) px-3 py-2 text-left"
         >
-          外层折叠
+          外层 collapse
         </button>
         <div slot="content">
           <div class="p-3">
-            <p>外层内容，内部再嵌一层：</p>
+            <p>Outer content with another layer nested inside:</p>
             <web-ui-collapse>
               <button
                 type="button"
                 class="block w-full cursor-pointer rounded-md bg-(--wui-color-surface-raised) px-3 py-2 text-left"
               >
-                内层折叠
+                内层 collapse
               </button>
               <div slot="content">
-                <div class="p-3">内层内容：外层高度会跟随内层展开自动增长。</div>
+                <div class="p-3">Inner content: the outer height grows as the inner panel expands.</div>
               </div>
             </web-ui-collapse>
           </div>
@@ -155,17 +164,17 @@ import { OverlayScrollbarsComponent } from 'overlayscrollbars-vue'
       </web-ui-collapse>
     </div>
 
-    <h2>禁用</h2>
+    <h2>Disabled</h2>
     <div class="mb-3">
       <web-ui-collapse disabled>
         <button
           type="button"
           class="block w-full cursor-pointer rounded-md bg-(--wui-color-surface-control) px-3 py-2 text-left"
         >
-          禁用状态触发器
+          禁用状态 trigger
         </button>
         <div slot="content">
-          <div class="p-3">禁用时不可展开。</div>
+          <div class="p-3">Disabled means it cannot expand.</div>
         </div>
       </web-ui-collapse>
     </div>

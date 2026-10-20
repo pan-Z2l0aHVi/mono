@@ -3,13 +3,13 @@ component: radio
 tag: web-ui-radio
 ---
 
-单个单选按钮，与 `<web-ui-checkbox>` 共用选择控件的盒契约；`<web-ui-radio-group>` 负责在一组选项之间保持单选。
+单个单选 button，与 `<web-ui-checkbox>` 共用选择控件的盒契约；`<web-ui-radio-group>` 负责在一组 option 之间保持单选。
 
 ## 示例
 
 ### 基础
 
-默认插槽是标签文字。
+默认插槽是 label 文字。
 
 ```react
 <web-ui-radio checked={plan === 'basic'} value="basic" onChange={() => setPlan('basic')}>
@@ -94,10 +94,10 @@ const size = ref('m')
 
 ### Slots
 
-| 名称      | 说明                                         |
-| --------- | -------------------------------------------- |
-| `default` | 标签文本；为空时收掉指示器与标签之间的间距。 |
+| 名称      | 说明                                                   |
+| --------- | ------------------------------------------------------ |
+| `default` | label 文本；为空时收掉 indicator 与 label 之间的间距。 |
 
 ### 布局
 
-与 `<web-ui-checkbox>` 共用同一套选择控件盒契约，包括「标签没有画出东西时收起间距」这一条——宿主高度由内容撑开、不继承页面行高，指示器宽高走 `--wui-selection-control-size`，与相邻文字按 `vertical-align: middle` 对齐。
+与 `<web-ui-checkbox>` 共用同一套选择控件盒契约，包括「label 没有画出东西时收起间距」这一条——宿主高度由内容撑开、不继承页面行高，indicator 宽高走 `--wui-selection-control-size`，与相邻文字按 `vertical-align: middle` 对齐。

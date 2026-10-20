@@ -42,7 +42,7 @@ describe('WebUiSvgDrawLines 组件（浏览器）', () => {
     el.duration = 5000
     el.noAutoplay = true
     el.innerHTML = '<svg><path d="M0 0 L100 100"/></svg>'
-    // 同文件对照组：与上面只差 no-autoplay 一项，证明 0 是开关造成的而不是环境本来就没动画。
+    // 同文件对照组：与上面只差 no-autoplay 一项，证明 0 是 toggle 造成的而不是环境本来就没动画。
     const control = createEl()
     control.duration = 5000
     control.innerHTML = '<svg><path d="M0 0 L100 100"/></svg>'
@@ -55,7 +55,7 @@ describe('WebUiSvgDrawLines 组件（浏览器）', () => {
     await waitForFrame()
     expect(path.getAnimations()).toHaveLength(0)
 
-    // 开关只关掉自动播放，不关掉 replay() 本身
+    // toggle 只关掉自动播放，不关掉 replay() 本身
     void el.replay()
     await expect.poll(() => path.getAnimations().length).toBeGreaterThan(0)
 

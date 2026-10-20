@@ -47,7 +47,7 @@ Codex 没有 Claude 的 `permissions.deny` 对应物。`[sandbox_workspace_write
 
 全访问是为本仓库的 monorepo 多 agent 开发设的，不是这台机器的通用策略。写在 `~/.codex/config.toml` 会让所有仓库一起失去文件系统边界；放到仓级后，只有本仓库跑全访问，其他仓库回落机器级（沙箱 + 自动评审）。
 
-机器级不写全访问还有一个副作用值得记住：审批路由（`approvals_reviewer`）与沙箱是两个独立开关。审批可以交给自动 reviewer，但不能用它换取网络或文件系统权限——`workspace-write` 下网络仍是受限的，`pnpm install` 这类需要出网的命令在别的仓库里会失败，且自动评审无法放行，只能靠 `[sandbox_workspace_write] network_access = true` 或仓级全访问。
+机器级不写全访问还有一个副作用值得记住：审批路由（`approvals_reviewer`）与沙箱是两个独立 toggle。审批可以交给自动 reviewer，但不能用它换取网络或文件系统权限——`workspace-write` 下网络仍是受限的，`pnpm install` 这类需要出网的命令在别的仓库里会失败，且自动评审无法放行，只能靠 `[sandbox_workspace_write] network_access = true` 或仓级全访问。
 
 ## 前提：Codex 只加载受信任项目的 `.codex/` 层
 

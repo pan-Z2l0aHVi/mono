@@ -118,14 +118,14 @@ describe('ResourceList 右键重命名的焦点落点（真实输入）', () => 
 
     await userEvent.click(row!, { button: 'right' })
 
-    // 条目开菜单期间被搬进面板（scrim 的子树），所以按「在菜单面板里」认它，不按宿主子树。
+    // 条目开 menu 期间被搬进 panel（scrim 的子树），所以按「在 menu panel 里」认它，不按宿主子树。
     const renameItem = await (async () => {
       await waitFor(
         () =>
           [...document.querySelectorAll('web-ui-dropdown-item')].some(
             node => node.textContent?.trim() === '重命名' && !!node.closest('dialog')
           ),
-        '右键菜单已打开且「重命名」项已搬进面板'
+        'context menu 已打开且「重命名」项已搬进 panel'
       )
       return [...document.querySelectorAll('web-ui-dropdown-item')].find(
         node => node.textContent?.trim() === '重命名' && !!node.closest('dialog')

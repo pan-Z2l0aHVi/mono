@@ -53,7 +53,7 @@ slot-trigger 组件（popover、dropdown、collapse、context-menu）把 `aria-e
 
 ### 3.1 `WebUiElementMap` 单一权威来源
 
-组件 barrel 从各组件 `declare global { interface HTMLElementTagNameMap }` 派生并导出。React/Vue 的 `WebUiComponents` 通过 mapped type 生成全部标签。新增组件只需添加 `HTMLElementTagNameMap` 声明。
+组件 barrel 从各组件 `declare global { interface HTMLElementTagNameMap }` 派生并导出。React/Vue 的 `WebUiComponents` 通过 mapped type 生成全部 tag。新增组件只需添加 `HTMLElementTagNameMap` 声明。
 
 ### 3.2 事件分层
 
@@ -69,12 +69,12 @@ slot-trigger 组件（popover、dropdown、collapse、context-menu）把 `aria-e
 
 ## 4. Icon System
 
-在构建时从 Iconify JSON 包生成带类型的图标数据模块。
+在构建时从 Iconify JSON 包生成带类型的 icon 数据模块。
 
-- `packages/web-ui/icons.used.json` 是内置图标的清单文件
-- `pnpm --filter @greypan/web-ui generate-icons` 在 `src/icons/generated/` 下为每个图标生成一个模块
+- `packages/web-ui/icons.used.json` 是内置 icon 的清单文件
+- `pnpm --filter @greypan/web-ui generate-icons` 在 `src/icons/generated/` 下为每个 icon 生成一个模块
 - Vite 构建自动运行生成流程，生成文件不可手动编辑
-- 图标是带类型的、可 Tree Shaking 的模块，无运行时查找依赖
+- icon 是带类型的、可 Tree Shaking 的模块，无运行时查找依赖
 - `iconify-icon` 不是 `web-ui` 的运行时依赖
 
 ## 5. 公开契约测试
@@ -100,4 +100,4 @@ slot-trigger 组件（popover、dropdown、collapse、context-menu）把 `aria-e
 - 新增组件只需维护 `HTMLElementTagNameMap` 声明；适配层自动覆盖
 - 框架动态布尔必须用 camelCase Property 绑定
 - 新增布尔 `@property` 遵循原生存在语义，不引入自定义 converter
-- 图标是带类型的、可 Tree Shaking 的模块
+- icon 是带类型的、可 Tree Shaking 的模块

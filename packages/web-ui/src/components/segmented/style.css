@@ -25,19 +25,19 @@
   padding: var(--wui-space-1, 4px);
   border-radius: var(--wui-radius-control, calc(infinity * 1px));
 
-  /* inset 变体（默认，「凹」）：轨道是不透明实体面——底色取 --wui-color-surface、
+  /* inset 变体（默认，「凹」）：track 是不透明实体面——底色取 --wui-color-surface、
      backdrop-filter 移除，描边环（::before）与投影由 .wui-glass 提供且静止/按压/拖拽
      全状态同值。
-     为什么不是 surface-raised：#169 追加验收要求浅色下轨道与页面同色——surface-raised
+     为什么不是 surface-raised：#169 追加验收要求浅色下 track 与页面同色——surface-raised
      的 #f2f2f7 在纯白页面上像一颗浅灰药丸凸出来，凹感不足。浅色 surface 与 page 同为
-     #fff，轨道因此与页面同色，深度只由常驻的 1px 描边环与投影承担；深色 surface 与
+     #fff，track 因此与页面同色，深度只由常驻的 1px 描边环与投影承担；深色 surface 与
      surface-raised 同为 #2c2c2e，「比页面高一档」的 elevation 原样保留（theme 里这两个
      token 在深色下同值，选 surface 不改变深色观感）。
-     实体化的取证依据：thumb 的 backdrop 采样面整个落在轨道之内（slider thumb 探出
-     track 外、能采到页面背景，segmented 没有这个条件），玻璃轨道会把背后的条纹/色斑
-     连同自身边缘一起模糊进采样图——均匀深底上全透明 thumb 与相邻 track 仅差 +0.5 阶
-     （42.8 vs 42.3）、本体不可感知，条纹底实测 thumb 内部灰度 std 1.89（背景渗透）。
-     轨道改实色后同一采样 std 归零，弧线与两条横线随磨砂边界一同消失，look3/4/5 为
+     实体化的取证依据：indicator 的 backdrop 采样面整个落在 track 之内（slider thumb 探出
+     track 外、能采到页面背景，segmented 没有这个条件），玻璃 track 会把背后的条纹/色斑
+     连同自身边缘一起模糊进采样图——均匀深底上全透明 indicator 与相邻 track 仅差 +0.5 阶
+     （42.8 vs 42.3）、本体不可感知，条纹底实测 indicator 内部灰度 std 1.89（背景渗透）。
+     track 改实色后同一采样 std 归零，弧线与两条横线随磨砂边界一同消失，look3/4/5 为
      压制这些采样痕迹引入的按压态特判（inset 高光淡出、环半隐、6% tint）全部移除。 */
   background-color: var(--wui-color-surface, #fff);
   backdrop-filter: none;
@@ -52,7 +52,7 @@
   }
 }
 
-/* raised 变体（「凸」）：经典形态的 flat 灰轨道——surface-segmented 实色，无描边环、无投影
+/* raised 变体（「凸」）：经典形态的 flat 灰 track——surface-segmented 实色，无描边环、无投影
    （.wui-glass 的 box-shadow 与 ::before 环整体关掉），三种状态下保持同值。 */
 :host([variant='raised']) .wui-segmented {
   background-color: var(--wui-color-surface-segmented, #e5e5ea);
@@ -69,8 +69,8 @@
 
   position: absolute;
 
-  /* 栈序契约：thumb 恒在 track 之上、文字之下。track 的 ::before 描边环按树序先画，
-     trigger 的 z-index: 1 又压在 thumb 之上，所以 thumb 既不盖字也不被轨道盖住。 */
+  /* 栈序契约：indicator 恒在 track 之上、文字之下。track 的 ::before 描边环按树序先画，
+     trigger 的 z-index: 1 又压在 indicator 之上，所以 indicator 既不盖字也不被 track 盖住。 */
   z-index: 0;
   top: 4px;
   bottom: 4px;
@@ -111,7 +111,7 @@
 }
 
 /*
- * 落定门：上一段指示器移动还在飞行时到达的新值直接落到终值，不排队也不重启插值。
+ * 落定门：上一段 indicator 移动还在飞行时到达的新值直接落到终值，不排队也不重启插值。
  * 做法是把 left / width 从过渡列表里摘掉——位置一变即刻生效，其余过渡（按压玻璃那几条）
  * 原样保留，所以这个门只关位置动画，不会把按压反馈一起关掉。
  *
@@ -129,7 +129,7 @@
     box-shadow var(--wui-duration-press, 80ms) ease;
 }
 
-/* raised 变体静止态：实体白指示器 + 柔投影（经典形态；dark 主题 surface-selected 取
+/* raised 变体静止态：实体白 indicator + 柔投影（经典形态；dark 主题 surface-selected 取
    #5c5c5e 凸起灰，同为实体档）。仅换底与投影，几何与过渡和 inset 变体同源。
    注意源顺序：本规则与下方按压/拖拽规则特异性相同（(0,3,0)），按压态必须排在更后面，
    才能把实体底/柔投影覆盖成透明玻璃配方。 */
@@ -147,11 +147,11 @@
   transition: opacity var(--wui-duration-press, 80ms) ease;
 }
 
-/* 按压/拖拽时 thumb 转为玻璃态：静止态关掉的玻璃输出在这一态全部打开——backdrop blur、
+/* 按压/拖拽时 indicator 转为玻璃态：静止态关掉的玻璃输出在这一态全部打开——backdrop blur、
    ::before 描边环、inset 高光，投影叠加更实一档并放大 1.5x。
-   底色全透明：轨道实体化后 thumb 的采样面拿到的是均匀实色（条纹底实测内部 std 归零），
-   本体可感知性由实色轨道与 1.5x 放大/环/投影共同承担，不再需要 tint 打底，也不需要
-   为采样痕迹去压制轨道的边缘装饰——那些按压态特判已全部移除，轨道装饰全状态恒定。
+   底色全透明：track 实体化后 indicator 的采样面拿到的是均匀实色（条纹底实测内部 std 归零），
+   本体可感知性由实色 track 与 1.5x 放大/环/投影共同承担，不再需要 tint 打底，也不需要
+   为采样痕迹去压制 track 的边缘装饰——那些按压态特判已全部移除，track 装饰全状态恒定。
    transition 不含 background-color：按下即落到全透明，不产生灰→透明的插值中间帧；
    松开回到静止态规则，由那里的 background-color 过渡把透明平滑淡回实体底。
    backdrop-filter 直接写死值（与 drawer/dialog/toast 的玻璃态同法）：静止态是 none，

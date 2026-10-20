@@ -62,7 +62,7 @@ function createDrawer(): WebUiDrawer {
 afterEach(() => document.body.replaceChildren())
 
 /*
- * 连续 tap 拖拽区后，后续开关仍必须走 transform 过渡（回归锁）。
+ * 连续 tap 拖拽区后，后续 toggle 仍必须走 transform 过渡（回归锁）。
  *
  * 原实现把「根因」当断言：读 `dialog.style.transform` 是否为空串、`is-dragging` 是否残留。
  * 两者都是内部实现态（§12 C3：内部 class 名单不得断言；内联样式清理同理）。
@@ -71,11 +71,11 @@ afterEach(() => document.body.replaceChildren())
  * 区分力已实测（b6c）：把 dialog 的 transform 过渡整体关掉后本例会红
  * （`expected [ 'opacity' ] to include 'transform'`）——即它确实在盯 transform 过渡本身，
  * 不是空转。**但**原 bug 的触发条件（tap 收尾残留内联 `translateX(0px)`）无法从测试侧
- * 重新注入：组件会在关闭时清掉内联 transform。所以本例覆盖的是「后续开关必须有 transform
+ * 重新注入：组件会在关闭时清掉内联 transform。所以本例覆盖的是「后续 toggle 必须有 transform
  * 过渡」这一行为，而非「内联样式被清除」这一机制。
  */
 describe('WebUiDrawer 连续 tap 后过渡动画（浏览器）', () => {
-  it('快速 6 次 tap 拖拽区后，后续开关仍触发 transform 过渡（回归锁）', { timeout: 30_000 }, async () => {
+  it('快速 6 次 tap 拖拽区后，后续 toggle 仍触发 transform 过渡（回归锁）', { timeout: 30_000 }, async () => {
     const el = createDrawer()
     el.draggable = true
     el.open = true

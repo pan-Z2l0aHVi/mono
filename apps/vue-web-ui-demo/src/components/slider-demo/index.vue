@@ -36,10 +36,10 @@ function updateVerticalMarkedValue(event: WebUiEvent<WebUiSlider, 'input'>) {
 
 <template>
   <div class="slider-demo">
-    <h1>滑块</h1>
+    <h1>slider</h1>
 
     <section>
-      <h2>基础样式</h2>
+      <h2>Base styles</h2>
       <div class="examples">
         <div class="example"><web-ui-slider :value="standardValue" @input="updateStandardValue" /></div>
         <div class="example"><web-ui-slider :value="42" /></div>
@@ -48,7 +48,7 @@ function updateVerticalMarkedValue(event: WebUiEvent<WebUiSlider, 'input'>) {
     </section>
 
     <section>
-      <h2>刻度</h2>
+      <h2>Marks</h2>
       <div class="examples">
         <div class="example"><web-ui-slider :value="markedValue" :step="10" marks @input="updateMarkedValue" /></div>
         <div class="example"><web-ui-slider :value="70" :step="10" marks /></div>
@@ -57,7 +57,7 @@ function updateVerticalMarkedValue(event: WebUiEvent<WebUiSlider, 'input'>) {
     </section>
 
     <section>
-      <h2>范围与事件</h2>
+      <h2>Range and events</h2>
       <div class="event-example">
         <web-ui-slider
           :value="inputValue"
@@ -73,7 +73,7 @@ function updateVerticalMarkedValue(event: WebUiEvent<WebUiSlider, 'input'>) {
     </section>
 
     <section>
-      <h2>垂直</h2>
+      <h2>Vertical</h2>
       <div class="vertical-examples">
         <div class="example">
           <web-ui-slider vertical :value="verticalValue" @input="updateVerticalValue" />
@@ -85,7 +85,7 @@ function updateVerticalMarkedValue(event: WebUiEvent<WebUiSlider, 'input'>) {
         </div>
         <div class="example">
           <web-ui-slider vertical :value="50" disabled />
-          <span class="label">禁用</span>
+          <span class="label">Disabled</span>
         </div>
       </div>
     </section>

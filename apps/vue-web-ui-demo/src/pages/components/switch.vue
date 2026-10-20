@@ -1,7 +1,7 @@
 <route lang="json">
 {
   "meta": {
-    "title": "Switch 开关"
+    "title": "Switch"
   }
 }
 </route>

@@ -10,17 +10,17 @@ import type { WebUiTheme } from '@/components/theme'
 import { queryA11y, waitForUpdate } from '@/shared/test-utils'
 
 /**
- * segmented 标签文字对轨道底的可辨度守卫。
+ * segmented label 文字对 track 底的可辨度守卫。
  *
- * 这里断言的是**关系**而非色值：WCAG 相对亮度比 `ratio(文字, 轨道底) ≥ 3`。两侧颜色
+ * 这里断言的是**关系**而非色值：WCAG 相对亮度比 `ratio(文字, track 底) ≥ 3`。两侧颜色
  * 都由主题 token 决定，本用例不含任何颜色字面量——主题怎么调色板（连同 media 块与双语文档
- * 一起改，那是一次完全正常的编辑）它都应成立，而只要标签与轨道的明暗关系被破坏，它就会红。
+ * 一起改，那是一次完全正常的编辑）它都应成立，而只要 label 与 track 的明暗关系被破坏，它就会红。
  *
  * 只钉「文字色等于某个 token」不够：README parity 守卫管的是文档与定义同步，管不了
  * 换一组同样合法的色值之后两者是否还看得清。
  *
- * 轨道按公开语义 `role="listbox"` 定位，标签按 `role="option"` 定位——不需要内部 class，
- * 也不需要指示器的几何，故不引入 segmented-look 里那套夹具的其余部分。
+ * track 按公开语义 `role="listbox"` 定位，label 按 `role="option"` 定位——不需要内部 class，
+ * 也不需要 indicator 的几何，故不引入 segmented-look 里那套夹具的其余部分。
  */
 afterEach(() => document.body.replaceChildren())
 
@@ -42,7 +42,7 @@ async function mount(appearance: 'light' | 'dark'): Promise<{ track: HTMLElement
   await waitForUpdate(segmented)
   await Promise.all(triggers.map(trigger => trigger.updateComplete))
   const track = queryA11y(segmented, '[role="listbox"]')
-  if (!(track instanceof HTMLElement)) throw new Error('未找到 role="listbox" 的轨道面')
+  if (!(track instanceof HTMLElement)) throw new Error('未找到 role="listbox" 的 track surface')
   return { track, triggers }
 }
 
@@ -68,16 +68,16 @@ function contrastRatio(a: string, b: string): number {
   return (hi + 0.05) / (lo + 0.05)
 }
 
-describe('WebUiSegmented 标签可辨度（浏览器）', () => {
+describe('WebUiSegmented label 可辨度（浏览器）', () => {
   for (const appearance of ['light', 'dark'] as const) {
-    it(`${appearance} 下每个标签与轨道底的对比度 ≥ 3:1`, async () => {
+    it(`${appearance} 下每个 label 与 track 底的对比度 ≥ 3:1`, async () => {
       const { track, triggers } = await mount(appearance)
       const backdrop = getComputedStyle(track).backgroundColor
 
       for (const trigger of triggers) {
         const label = trigger.textContent ?? ''
         const ratio = contrastRatio(textColorOf(trigger), backdrop)
-        expect(ratio, `「${label}」与轨道底对比度不足：${ratio.toFixed(2)}:1`).toBeGreaterThanOrEqual(3)
+        expect(ratio, `「${label}」与 track 底对比度不足：${ratio.toFixed(2)}:1`).toBeGreaterThanOrEqual(3)
       }
     })
   }

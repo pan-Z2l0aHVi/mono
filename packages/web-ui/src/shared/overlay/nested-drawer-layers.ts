@@ -1,7 +1,7 @@
 /*
  * Nested drawer 层序管理：
  * 每打开一层 modal drawer，其下所有已打开的 drawer 按 0.95^n 缩放并向
- * 屏幕内侧平移，在顶层抽屉后方露出阶梯式卡片边缘（peeking edge）；顶层全尺寸。
+ * 屏幕内侧平移，在顶层 drawer 后方露出阶梯式卡片边缘（peeking edge）；顶层全尺寸。
  *
  * 层序来源是原生 top layer 本身：depth = 在自身 showModal 之前已打开的
  * modal dialog 数。上层关闭通过 document 捕获阶段的 `close` 事件感知
@@ -96,7 +96,7 @@ function applyLayers() {
     const sizeDiff = Math.max(0, aboveMaxSize - size)
     // 逐层读基准：消费方可以给某一层单独换基准，不必所有层共用一个值。
     const peek = readPeekBase(dialog) * Math.log(depth + 1)
-    // depth 0 显式归零：单层抽屉的偏移不依赖 ln(1) 的浮点结果，也不依赖基准是否被改写。
+    // depth 0 显式归零：单层 drawer 的偏移不依赖 ln(1) 的浮点结果，也不依赖基准是否被改写。
     const shift = depth > 0 ? shrink + sizeDiff + peek : 0
 
     dialog.style.setProperty(DEPTH_VARIABLE, String(depth))

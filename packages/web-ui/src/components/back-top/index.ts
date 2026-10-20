@@ -60,7 +60,7 @@ export class WebUiBackTop extends LitElement {
     // 不设 hasUpdated 门控：scrollTarget 可能在首次更新完成前赋值（如框架 onMounted 中），
     // 此时 connectedCallback 已按 window 绑定，必须重绑到新容器；onScrollTarget 幂等，重复调用安全
     if (props.has('scrollTarget')) {
-      // 容器模式：scrollTarget 为元素时按钮通过 sticky 悬浮于容器底部，而非固定视口角落
+      // 容器模式：scrollTarget 为元素时 button 通过 sticky 悬浮于容器底部，而非固定视口角落
       this.toggleAttribute('container-mode', this.target !== window)
       this.onScrollTarget()
     }

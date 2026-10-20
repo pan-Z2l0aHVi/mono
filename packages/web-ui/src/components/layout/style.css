@@ -87,8 +87,8 @@ aside {
   .sidebar-toggle {
     /*
      * 走可覆盖的 var：`.sidebar-toggle` 自身声明的 `--wui-button-width` 优先于从
-     * 祖先继承的同名变量，app 侧无法直接改写它。要让折叠态的 toggle 跟着折叠宽度
-     * 一起变，只能由这里显式接一个出口。取值由 app 决定，本组件不假设折叠宽度。
+     * 祖先继承的同名变量，app 侧无法直接改写它。要让 collapsed state 的 toggle 跟着 collapsed width
+     * 一起变，只能由这里显式接一个出口。取值由 app 决定，本组件不假设 collapsed width。
      * 默认值与历史硬编码一致，不设置时行为不变。
      */
     --wui-button-width: var(--wui-layout-sidebar-toggle-width, 44px);
@@ -168,7 +168,7 @@ aside.is-resizing {
 .layout-content {
   /*
    * glow 的两层伪元素用负 margin 向外扩展（见 header::before / ::after），会溢出内容列
-   * 并撑出页面横向滚动条（移动端约 30px），横向裁剪因此归属本层。它有 min-width: 0，
+   * 并撑出页面横向 scrollbar（移动端约 30px），横向裁剪因此归属本层。它有 min-width: 0，
    * 是容纳横向溢出的位置。
    * clip 不创建滚动容器，因此不影响 header / footer 自身的 sticky；也不用 hidden——
    * 那会把本层变成滚动容器，sticky 随即失效。
@@ -191,7 +191,7 @@ header {
    * （slot 内容自然位于其上），也顺带使本层成为该上下文的裁剪边界：z-index: -1 的
    * glow 伪元素溢出 header 盒的部分会被切掉。横向裁剪上移到 .layout-content。
    *
-   * 「纵向必须 visible 才留得住下拉浮层的溢出空间」仍然成立——overflow-* 一旦生效
+   * 「纵向必须 visible 才留得住下拉 overlay 的溢出空间」仍然成立——overflow-* 一旦生效
    * 就会裁剪该轴，visible 是这些槽位内容唯一的溢出出口。
    */
   isolation: isolate;

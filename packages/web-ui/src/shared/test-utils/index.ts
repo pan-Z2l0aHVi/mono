@@ -263,11 +263,11 @@ export function cleanupElement(el: HTMLElement | null | undefined): void {
 }
 
 /**
- * 查询 fallback overlay root 中的 portal 面板。结构为公开契约：
- * [data-wui-overlay-root]#shadow > [data-wui-overlay-container] > portal host div#shadow > 面板。
+ * 查询 fallback overlay root 中的 portal panel。结构为公开契约：
+ * [data-wui-overlay-root]#shadow > [data-wui-overlay-container] > portal host div#shadow > panel。
  * role 按组件语义传入（popover/tooltip 的 dialog、select 的 listbox 等）。
  *
- * **只在无主题时适用**：挂了 `web-ui-theme` 时面板改挂 theme-owned overlay root
+ * **只在无主题时适用**：挂了 `web-ui-theme` 时 panel 改挂 theme-owned overlay root
  * （`theme.getOverlayRoot()`），那条路径用 `getThemedPortalPanel()`。
  */
 export function getPortalPanel(role = 'dialog'): HTMLElement | null {
@@ -282,7 +282,7 @@ export function getPortalPanel(role = 'dialog'): HTMLElement | null {
 }
 
 /**
- * 查询 **theme-owned** overlay root 中的 portal 面板。
+ * 查询 **theme-owned** overlay root 中的 portal panel。
  *
  * 与 `getPortalPanel()` 的区别只在起点：后者从 document 上的 fallback
  * `[data-wui-overlay-root]` 出发，本函数从 theme 的公开方法 `getOverlayRoot()`
@@ -302,24 +302,24 @@ export function getThemedPortalPanel(
 }
 
 /**
- * 枚举浮层容器。浮层面板可能挂在两种地方，必须一起枚举，否则模态化的 context-menu
- * 会「查不到面板」：
+ * 枚举 overlay 容器。overlay panel 可能挂在两种地方，必须一起枚举，否则模态化的 context-menu
+ * 会「查不到 panel」：
  *
  * 1. document 上 fallback overlay root（`[data-wui-overlay-root]`）的
  *    `[data-wui-overlay-container]`（无主题时的 dropdown 与未模态化的 context-menu）。
  *    它自己的内容在其 shadow root 里，所以要进 shadow 查。
  *    theme-owned root **不进这份清单**：它由 `getThemedPortalPanel(theme, role)` 按主题查，
- *    而它与 (2) 的 scrim 互为祖先/后代 —— 两边都收会让同一个菜单面板被 `getMenuPanels()`
- *    数两次，而那份重复会伪装成「多开了一层菜单」。
- * 2. 菜单 scrim `<dialog data-wui-menu-scrim>`：模态化的 context-menu 把面板挂进自己
+ *    而它与 (2) 的 scrim 互为祖先/后代 —— 两边都收会让同一个 menu panel 被 `getMenuPanels()`
+ *    数两次，而那份重复会伪装成「多开了一层 menu」。
+ * 2. menu scrim `<dialog data-wui-menu-scrim>`：模态化的 context-menu 把 panel 挂进自己
  *    `showModal()` 的 scrim（top layer）。scrim 挂在**最近主题的 overlay root 里**，
  *    也就是落在 `<web-ui-theme>` 的 shadow root 内（只有无主题时才回落 `document.body`）；
  *    `document.querySelectorAll` **穿不过 shadow 边界**，所以带主题的 scrim 要按宿主逐个
  *    进 shadow 里查 —— 嵌套 theme 各带一个 root，只查第一个会让内层 theme 里的 scrim 漏掉。
- *    菜单**内部**再嵌套的 anchored 浮层（popover 等）同样落进 scrim ——
- *    `findEnclosingOpenDialog` 把最近的已打开 dialog 当容器，而菜单打开期间那就是 scrim。
+ *    menu**内部**再嵌套的 anchored overlay（popover 等）同样落进 scrim ——
+ *    `findEnclosingOpenDialog` 把最近的已打开 dialog 当容器，而 menu 打开期间那就是 scrim。
  *
- * 漏掉 (2) 的后果不是「测试报错」而是**静默退化**：带主题的菜单查找恒返回空，于是
+ * 漏掉 (2) 的后果不是「测试报错」而是**静默退化**：带主题的 menu 查找恒返回空，于是
  * `toHaveLength(0)` 永远绿、`expect(panel).toBeTruthy()` 永远红。前者更危险 —— 它把一批
  * 有效断言换成了永不失败的空断言。守护这条的是
  * `shared/test-utils/__tests__/overlay-locators-theme.browser.spec.ts`。
@@ -330,7 +330,7 @@ function getOverlayContainers(): HTMLElement[] {
   )
 
   // 无主题（或主题出现前就已打开）的 scrim 在 light DOM；带主题的在各 theme host 的 shadow
-  // root 内。两条都要收，否则模态菜单会按挂载点不同时灵时不灵。
+  // root 内。两条都要收，否则模态 menu 会按挂载点不同时灵时不灵。
   const scrims = [
     ...Array.from(document.querySelectorAll<HTMLElement>('dialog[data-wui-menu-scrim]')),
     ...Array.from(document.querySelectorAll<HTMLElement>('web-ui-theme')).flatMap(theme =>
@@ -349,10 +349,10 @@ function getOverlayContainers(): HTMLElement[] {
  * - overlay root 路径：`[data-wui-overlay-root]` 的 shadow 内有 `[data-wui-overlay-container]`，
  *   host 是**它的直接子级**。
  * - scrim 路径：容器是 `<dialog>` 本身。`[data-wui-overlay-container]` 只由 theme /
- *   overlay-root 创建，浮层直接挂到 dialog 上时**没有**这一层，host 就是 dialog 的直接子级。
+ *   overlay-root 创建，overlay 直接挂到 dialog 上时**没有**这一层，host 就是 dialog 的直接子级。
  *
  * 宽度必须按容器类型区分：overlay root 路径**不能**把容器的直接子级一并收进来 ——
- * 菜单面板自身就是无 shadow 的直接子级，放宽会改变 dropdown / autocomplete 等既有查找结果。
+ * menu panel 自身就是无 shadow 的直接子级，放宽会改变 dropdown / autocomplete 等既有查找结果。
  */
 function getPortalHosts(container: HTMLElement): HTMLElement[] {
   const overlayContainers = [
@@ -367,8 +367,8 @@ function getPortalHosts(container: HTMLElement): HTMLElement[] {
 }
 
 /**
- * 查询**所有** portal 面板（`getPortalPanel` 的多面板版）。
- * 供嵌套浮层场景使用（祖先与后代面板同时在场时需要全量枚举）。
+ * 查询**所有** portal panel（`getPortalPanel` 的多 panel 版）。
+ * 供嵌套 overlay 场景使用（祖先与后代 panel 同时在场时需要全量枚举）。
  */
 export function getPortalPanels(role = 'dialog'): HTMLElement[] {
   return getOverlayContainers()
@@ -378,12 +378,12 @@ export function getPortalPanels(role = 'dialog'): HTMLElement[] {
 }
 
 /**
- * 查询浮层容器中的菜单面板（dropdown / context-menu 族）。
+ * 查询 overlay 容器中的 menu panel（dropdown / context-menu 族）。
  *
- * 菜单族的面板**直接**挂到 `[data-wui-overlay-container]`（或 scrim）且自身带 `role="menu"`，
+ * menu 族的 panel**直接**挂到 `[data-wui-overlay-container]`（或 scrim）且自身带 `role="menu"`，
  * 不像 anchored panel 那样再包一层带 shadow 的 portal host —— 因此不能复用
- * `getPortalPanel()`（后者要穿过内层 shadow）。`ariaLabel` 用于区分同族面板，
- * 例如 context-menu 的 `'上下文菜单'` 与 `'子菜单'`。
+ * `getPortalPanel()`（后者要穿过内层 shadow）。`ariaLabel` 用于区分同族 panel，
+ * 例如 context-menu 的 `'Context menu'` 与 `'submenu'`。
  */
 export function getMenuPanels(ariaLabel?: string): HTMLElement[] {
   const panels = getOverlayContainers().flatMap(container =>
@@ -393,7 +393,7 @@ export function getMenuPanels(ariaLabel?: string): HTMLElement[] {
 }
 
 /**
- * 等待一帧，供打开浮层的 requestAnimationFrame 生命周期消费。
+ * 等待一帧，供打开 overlay 的 requestAnimationFrame 生命周期消费。
  */
 export async function waitForFrame(): Promise<void> {
   await new Promise(resolve => requestAnimationFrame(resolve))

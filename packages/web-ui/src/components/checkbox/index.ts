@@ -19,7 +19,7 @@ import style from './style.css?inline'
 installPointerFocusSuppression()
 
 /*
- * 描边时长取 `--wui-duration-trigger`，让勾和指示器底色那条 transition 落在同一拍。
+ * 描边时长取 `--wui-duration-trigger`，让勾和 indicator 底色那条 transition 落在同一拍。
  * 读不到 token 或格式不符时兜底 160，负值钳到 0。
  */
 function triggerDuration(el: HTMLElement): number {
@@ -40,7 +40,7 @@ export class WebUiCheckbox extends FormAssociated(LitElement) {
   /** 描边收回期间把勾按在可见档，见 willUpdate。 */
   @state() private _retracting = false
 
-  /** 标签没有可渲染内容（空槽位，或只挂着一个无障碍名）时收掉 gap，见 LabelEmptinessController。 */
+  /** label 没有可渲染内容（空槽位，或只挂着一个无障碍名）时收掉 gap，见 LabelEmptinessController。 */
   @state() private _labelEmpty = false
 
   get checked(): boolean {
@@ -105,7 +105,7 @@ export class WebUiCheckbox extends FormAssociated(LitElement) {
       internals.setValidity({})
       return
     }
-    internals.setValidity({ valueMissing: true }, '请选择此项')
+    internals.setValidity({ valueMissing: true }, 'Select this option')
   }
 
   private handleClick() {

@@ -38,8 +38,8 @@ function updateGapValues(event: WebUiEvent<WebUiCheckboxGroup, 'change'>) {
 
 <template>
   <div>
-    <h1>复选框</h1>
-    <h2>基本用法</h2>
+    <h1>checkbox</h1>
+    <h2>Basic usage</h2>
     <div class="mb-3 flex flex-col gap-3">
       <web-ui-checkbox :checked="fruits.includes('apple')" value="apple" @change="toggleFruit('apple')"
         >Apple</web-ui-checkbox
@@ -63,11 +63,13 @@ function updateGapValues(event: WebUiEvent<WebUiCheckboxGroup, 'change'>) {
     </div>
     <p class="text-sm text-gray-500">选中值：{{ groupVals }}</p>
 
-    <h2>Checkbox Group 布局方向</h2>
-    <p class="mb-3 text-sm text-(--wui-color-text-secondary)">direction 控制组内排布，默认 vertical。</p>
+    <h2>Checkbox group layout direction</h2>
+    <p class="mb-3 text-sm text-(--wui-color-text-secondary)">
+      direction controls the group layout, vertical by default.
+    </p>
     <div class="mb-3 flex flex-wrap gap-8">
       <div>
-        <p class="mb-1 text-sm text-(--wui-color-text-secondary)">direction="vertical"（默认）</p>
+        <p class="mb-1 text-sm text-(--wui-color-text-secondary)">direction=&quot;vertical&quot; (default)</p>
         <web-ui-checkbox-group direction="vertical" :value="verticalVals" @change="updateVerticalValues">
           <web-ui-checkbox value="apple">Apple</web-ui-checkbox>
           <web-ui-checkbox value="banana">Banana</web-ui-checkbox>
@@ -85,8 +87,10 @@ function updateGapValues(event: WebUiEvent<WebUiCheckboxGroup, 'change'>) {
     </div>
     <p class="text-sm text-gray-500">选中值：vertical {{ verticalVals }} / horizontal {{ horizontalVals }}</p>
 
-    <h2>Checkbox Group 间距</h2>
-    <p class="mb-3 text-sm text-(--wui-color-text-secondary)">--wui-checkbox-group-gap 覆盖默认间距 8px。</p>
+    <h2>Checkbox group spacing</h2>
+    <p class="mb-3 text-sm text-(--wui-color-text-secondary)">
+      --wui-checkbox-group-gap overrides the default 8px spacing.
+    </p>
     <div class="mb-3">
       <web-ui-checkbox-group
         class="[--wui-checkbox-group-gap:16px]"
@@ -101,7 +105,7 @@ function updateGapValues(event: WebUiEvent<WebUiCheckboxGroup, 'change'>) {
     </div>
     <p class="text-sm text-gray-500">选中值：{{ gapVals }}</p>
 
-    <h2>Checkbox Group 禁用</h2>
+    <h2>Checkbox group disabled</h2>
     <div class="mb-3 flex flex-col gap-3">
       <web-ui-checkbox-group disabled :value="disabledGroupVals">
         <web-ui-checkbox value="apple">Apple</web-ui-checkbox>
@@ -110,7 +114,7 @@ function updateGapValues(event: WebUiEvent<WebUiCheckboxGroup, 'change'>) {
       </web-ui-checkbox-group>
     </div>
 
-    <h2>禁用状态</h2>
+    <h2>Disabled</h2>
     <div class="mb-3 flex flex-col gap-3">
       <web-ui-checkbox :checked="checkedDisabled.includes('apple')" value="apple" disabled>Apple</web-ui-checkbox>
       <web-ui-checkbox :checked="checkedDisabled.includes('banana')" value="banana" disabled>Banana</web-ui-checkbox>

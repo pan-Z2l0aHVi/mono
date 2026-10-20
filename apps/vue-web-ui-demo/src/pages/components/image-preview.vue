@@ -1,7 +1,7 @@
 <route lang="json">
 {
   "meta": {
-    "title": "ImagePreview 图片预览"
+    "title": "ImagePreview"
   }
 }
 </route>

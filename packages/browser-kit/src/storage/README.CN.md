@@ -1,6 +1,6 @@
 # Storage
 
-带命名空间、TTL 和跨标签页同步的 localStorage/sessionStorage
+带命名空间、TTL 和跨 tab 同步的 localStorage/sessionStorage
 
 [English](./README.md) | 简体中文
 
@@ -10,7 +10,7 @@
 
 - **命名空间隔离**：多个应用共存无键名冲突
 - **TTL 过期**：键在指定时间后自动过期
-- **跨标签页同步**：`watch` 监听其他标签页的 `storage` 事件
+- **跨 tab 同步**：`watch` 监听其他 tab 的 `storage` 事件
 - **配额处理**：存储满时自动清理过期键
 
 ## API
@@ -84,7 +84,7 @@ storage.set('key', undefined) // 删除该键
 
 ### `storage.watch(key, callback)`
 
-监听其他标签页对指定键的变更。返回 unwatch 函数。
+监听其他 tab 对指定键的变更。返回 unwatch 函数。
 
 | 参数       | 类型                                             | 默认值 | 说明         |
 | ---------- | ------------------------------------------------ | ------ | ------------ |

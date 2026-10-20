@@ -25,12 +25,12 @@ async function nextFrame() {
 }
 
 /**
- * 打开期间的框架渲染：菜单项被托管进浮层面板，`v-for` / `v-if` 的更新必须跟着迁移，
- * 否则用户看到的菜单与数据源已经不一致。关闭时它们还要原样回到宿主，
+ * 打开期间的框架渲染：menu item 被托管进 overlay panel，`v-for` / `v-if` 的更新必须跟着迁移，
+ * 否则用户看到的 menu 与数据源已经不一致。关闭时它们还要原样回到宿主，
  * 否则 framework 的下一次 patch 会打在已经搬走的节点上。
  */
 describe('WebUiDropdown 打开期实时渲染（浏览器）', () => {
-  it('打开期新增菜单项实时迁入面板，关闭后回到宿主且可重开', async () => {
+  it('打开期新增 menu item 实时迁入 panel，关闭后回到宿主且可重开', async () => {
     const mountPoint = document.createElement('div')
     document.body.append(mountPoint)
     const items = ref(['cut', 'copy'])
@@ -82,7 +82,7 @@ describe('WebUiDropdown 打开期实时渲染（浏览器）', () => {
     app.unmount()
   })
 
-  it('中段 v-if 插入保序：面板按模板序展示，关闭后宿主序不漂移', async () => {
+  it('中段 v-if 插入保序：panel 按模板序展示，关闭后宿主序不漂移', async () => {
     const mountPoint = document.createElement('div')
     document.body.append(mountPoint)
     const showMiddle = ref(false)

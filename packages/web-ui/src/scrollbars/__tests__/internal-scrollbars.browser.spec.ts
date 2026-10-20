@@ -13,15 +13,15 @@ import type { WebUiTheme } from '@/components/theme'
  * 组件内部的滚动容器（dialog 的 `.desc`、`.wui-dialog-content`，drawer 的
  * `.wui-dialog-content` 等）靠 `src/scrollbars/internal.css` 的 `.wui-scroll` 接上整页
  * 同一组 `--wui-scrollbar-*`。这一档只能在真实浏览器里量：jsdom 既不算布局，也没有
- * 滚动条几何。
+ * scrollbar 几何。
  *
  * 两条判据各自承重：
  * - 颜色断言证明 `.wui-scroll` 的 `scrollbar-color` 真的读到了主题 token；
- * - 宽度断言证明滚动条**不占布局宽度**（覆盖式）。一旦有人改回 `::-webkit-scrollbar`
- *   去拿圆角/尺寸，引擎会切回经典滚动条并固定占一条宽度，这条立刻红。
+ * - 宽度断言证明 scrollbar**不占布局宽度**（覆盖式）。一旦有人改回 `::-webkit-scrollbar`
+ *   去拿圆角/尺寸，引擎会切回经典 scrollbar 并固定占一条宽度，这条立刻红。
  */
 
-/** 取计算后 `scrollbar-color` 的拇指色（第一个颜色）。 */
+/** 取计算后 `scrollbar-color` 的 thumb 色（第一个颜色）。 */
 function thumbColor(el: Element): string {
   const value = getComputedStyle(el).scrollbarColor
   return /rgba?\([^)]*\)|#[0-9a-f]+/i.exec(value)?.[0] ?? value
@@ -72,19 +72,19 @@ afterEach(() => {
   document.body.replaceChildren()
 })
 
-describe('组件内部滚动条（浏览器）', () => {
-  it('浅色主题下读到 token 的拇指色，且滚动条不占布局宽度', async () => {
+describe('组件内部 scrollbar（浏览器）', () => {
+  it('浅色主题下读到 token 的 thumb 色，且 scrollbar 不占布局宽度', async () => {
     const dialog = await openTallDialog('light')
     const el = desc(dialog)
 
-    // 先确认它确实是滚动容器：没有溢出就量不到滚动条槽，后面的宽度断言会空转。
+    // 先确认它确实是滚动容器：没有溢出就量不到 scrollbar 槽，后面的宽度断言会空转。
     expect(el.scrollHeight).toBeGreaterThan(el.clientHeight)
     expect(thumbColor(el)).toBe('rgba(0, 0, 0, 0.39)')
-    // 覆盖式滚动条不占宽度。`::-webkit-scrollbar` 的经典滚动条会把这里顶成 > 0。
+    // 覆盖式 scrollbar 不占宽度。`::-webkit-scrollbar` 的经典 scrollbar 会把这里顶成 > 0。
     expect(el.offsetWidth - el.clientWidth).toBe(0)
   })
 
-  it('深色主题下换成白色拇指', async () => {
+  it('深色主题下换成白色 thumb', async () => {
     const dialog = await openTallDialog('dark')
     const el = desc(dialog)
 
@@ -93,7 +93,7 @@ describe('组件内部滚动条（浏览器）', () => {
     expect(el.offsetWidth - el.clientWidth).toBe(0)
   })
 
-  it('没有主题时回退到浅色的黑拇指，同样不占宽度', async () => {
+  it('没有主题时回退到浅色的黑 thumb，同样不占宽度', async () => {
     const dialog = await openTallDialog()
     const el = desc(dialog)
 

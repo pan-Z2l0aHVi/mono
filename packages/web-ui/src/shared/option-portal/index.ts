@@ -31,8 +31,8 @@ export interface OptionPortalHost {
   /** 微任务末的宿主刷新（requestUpdate）。 */
   requestUpdate(): void
   /**
-   * 打开期即时同步钩子。select 在微任务内立即刷新标签与激活态
-   * （portal 打开时 willUpdate 查不到面板外的新增项），autocomplete 无此需要。
+   * 打开期即时同步钩子。select 在微任务内立即刷新 label 与激活态
+   * （portal 打开时 willUpdate 查不到 panel 外的新增项），autocomplete 无此需要。
    */
   onImmediateSync?(): void
   /**
@@ -44,7 +44,7 @@ export interface OptionPortalHost {
 }
 
 export interface OptionPortalApi {
-  /** 面板优先查询，面板无 option 或关闭时回退 light DOM。 */
+  /** panel 优先查询，panel 无 option 或关闭时回退 light DOM。 */
   queryOptions(): WebUiOption[]
   /**
    * diff 出旧集合解绑、新集合绑定；按 option 身份保持激活索引。
@@ -59,7 +59,7 @@ export interface OptionPortalApi {
   }
   /** 稳定 id 分配（WeakMap 身份 + 冲突循环），跨 remove/reorder 保持不变。 */
   ensureOptionIds(options: readonly WebUiOption[]): void
-  /** pending 真删除清理 + 打开期把滞留 light DOM 的节点迁入面板。 */
+  /** pending 真删除清理 + 打开期把滞留 light DOM 的节点迁入 panel。 */
   syncPortalContent(): void
   /** register/unregister/contentChange 的统一微任务收敛入口（slot 监听由组件模板持有）。 */
   scheduleRefresh(): void
@@ -108,7 +108,7 @@ export const defineOptionPortal = () =>
       queryOptions() {
         const panel = host.getPortal()?.panel ?? host.getPortalContent()
         const panelOptions = panel ? [...panel.querySelectorAll<WebUiOption>(OPTION_TAG)] : []
-        // 面板内容仅在浮层打开、moveContent 之后存在；关闭时回退 light DOM，
+        // panel 内容仅在 overlay 打开、moveContent 之后存在；关闭时回退 light DOM，
         // 否则 portal 组件首次加载时注册表为空。
         return panelOptions.length > 0 ? panelOptions : [...host.element.querySelectorAll<WebUiOption>(OPTION_TAG)]
       },
@@ -150,7 +150,7 @@ export const defineOptionPortal = () =>
         const portalContent = host.getPortalContent()
         if (!portal || !portalContent) return
 
-        // 真删除（既不在面板也不在 light DOM）的 option 从 portal 追踪列表摘除，
+        // 真删除（既不在 panel 也不在 light DOM）的 option 从 portal 追踪列表摘除，
         // 否则关闭时 restoreContent 会把它复活回 light DOM。
         for (const option of pendingUnregistered) {
           if (!portalContent.contains(option) && !host.element.contains(option)) portal.removeContent([option])
@@ -160,7 +160,7 @@ export const defineOptionPortal = () =>
         if (!host.isOpen()) return
 
         // Portal 打开期间框架条件渲染（v-if）可能在 light DOM 插入新节点；
-        // 面板内已有内容时 queryOptions 不会回退 light DOM，必须显式迁入面板。
+        // panel 内已有内容时 queryOptions 不会回退 light DOM，必须显式迁入 panel。
         // 注释（框架锚点与 portal 的 marker）不迁移：锚点留守宿主是实时渲染契约。
         const nodes = host.getMigratableNodes().filter(node => !(node instanceof Comment))
         if (nodes.length) portal.appendContent(nodes, portalContent)
@@ -171,8 +171,8 @@ export const defineOptionPortal = () =>
           if (!host.element.isConnected) return
           api.syncPortalContent()
           host.requestUpdate()
-          // 关闭状态下 willUpdate 查不到 portal 面板内容；打开期的新增/删除
-          // 由宿主在微任务内立即同步标签与激活态。
+          // 关闭状态下 willUpdate 查不到 portal panel 内容；打开期的新增/删除
+          // 由宿主在微任务内立即同步 label 与激活态。
           if (host.isOpen() && host.hasUpdated()) host.onImmediateSync?.()
         })
       },

@@ -13,6 +13,6 @@ function Component() {
 }
 
 export const Route = createFileRoute('/components/editable-text')({
-  staticData: { title: 'EditableText 可编辑文本' },
+  staticData: { title: 'EditableText' },
   component: Component
 })

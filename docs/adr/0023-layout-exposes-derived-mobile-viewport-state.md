@@ -6,10 +6,10 @@
 
 ## 背景
 
-issue #195 修好了「桌面的折叠偏好泄漏进移动端 drawer」，但把机制留成了两份判定：
+issue #195 修好了「桌面的 collapse preference 泄漏进移动端 drawer」，但把机制留成了两份判定：
 
 - `web-ui-layout` 内部用 `window.innerWidth <= 640` 加 100ms 的 `resize` 去抖决定渲染桌面树还是 drawer；
-- 三个 app（`apps/interweave/frontend` 的 `AppLayout.vue`、`apps/vue-web-ui-demo`、`apps/react-web-ui-demo`）各自用 `matchMedia('(max-width: 640px)')` 判断同一个条件，好让 drawer 宽度与折叠闸门跟着换。
+- 三个 app（`apps/interweave/frontend` 的 `AppLayout.vue`、`apps/vue-web-ui-demo`、`apps/react-web-ui-demo`）各自用 `matchMedia('(max-width: 640px)')` 判断同一个条件，好让 drawer 宽度与 collapse gate 跟着换。
 
 两个来源有两个后果。其一，app 侧立即翻转、layout 侧最多晚 100ms，跨进移动端的那段时间里 layout 还渲染着桌面树，而它自己的 CSS 已经按 `@media (width <= 640px)` 把 `aside` 藏了起来——侧栏整块消失；跨回桌面时反过来只剩 drawer。其二，同一条 640 边界被复制进每个 app：JS 侧一份判定，CSS 侧还有一批 `max-[640px]:` / `sm:` 工具类按同一数字各自表述，任何一边改动都要靠人记得去改其余几边。
 
@@ -43,7 +43,7 @@ issue #195 修好了「桌面的折叠偏好泄漏进移动端 drawer」，但�
 
 ### 3. app 侧不再持有断点判断（含 CSS）
 
-三个 app 改为消费 layout 的 `mobile` / `mobile-change`。interweave 的应用壳把它 provide 下去，页面（`LibraryPage.vue` 的抽屉与对话框族）inject 同一个只读值，避免页面再挂一次订阅、也避免页面被绑定在「自己是 layout 的 DOM 后代」这一事实上。app 侧 JS 里不再出现断点字面量，`useMediaQuery` composable 随之删除。
+三个 app 改为消费 layout 的 `mobile` / `mobile-change`。interweave 的应用壳把它 provide 下去，页面（`LibraryPage.vue` 的 drawer 与 dialog 族）inject 同一个只读值，避免页面再挂一次订阅、也避免页面被绑定在「自己是 layout 的 DOM 后代」这一事实上。app 侧 JS 里不再出现断点字面量，`useMediaQuery` composable 随之删除。
 
 **CSS 侧的 max-width 那一半同样收口。** 三个 app 各声明一条 Tailwind v4 自定义变体，把 `max-[640px]:`（以及 interweave 的 `max-sm:`）换成 `mobile:`：
 
@@ -57,7 +57,7 @@ issue #195 修好了「桌面的折叠偏好泄漏进移动端 drawer」，但�
 
 代价与边界，逐条记下：
 
-- **只对 layout 子树内的节点生效。** 被 overlay 的 portal 搬到 `document.body` 的内容够不到这条属性选择器（菜单/选项、popover、tooltip、select、autocomplete、image-preview、toast 都走那条路径）。已逐个核对：当前三个 app 里带 `mobile:` 的节点没有一个是 portal 内容；新增时要么留在 layout 子树内，要么继续用媒体查询。
+- **只对 layout 子树内的节点生效。** 被 overlay 的 portal 搬到 `document.body` 的内容够不到这条属性选择器（menu/option、popover、tooltip、select、autocomplete、image-preview、toast 都走那条路径）。已逐个核对：当前三个 app 里带 `mobile:` 的节点没有一个是 portal 内容；新增时要么留在 layout 子树内，要么继续用媒体查询。
 - **只有 640 这一条边界、且只有 max-width 一侧被这样处理。** `sm:`/`md:`/`lg:`/`xl:` 与 `max-[900px]:` 仍是媒体查询：后三者 layout 不建模，`sm:` 则受上面那条排序限制。
 - 首帧前（layout 未连接、attribute 未写）`mobile:` 不命中。实测三个 app 冷启动逐帧采样：移动端第一帧起这些工具类就已生效，没有桌面样式的空档——layout 由框架在挂载时创建并同步写 attribute，早于首次绘制。
 
@@ -71,7 +71,7 @@ issue #195 修好了「桌面的折叠偏好泄漏进移动端 drawer」，但�
 
 - **跨断点的树切换提前到媒体查询变化的那一刻**，不再等 `resize` 静默 100ms；同一侧内的视口变化不再触发任何重算。
 - **`web-ui-layout` 的公共契约新增一个只读属性与一个事件。** 既有的三个 `*-change` 是受控请求，新的 `mobile-change` 是派生状态通知；两者在同一个元素上并存，靠「请求要求回写、通知只报告组件自己的状态」区分。
-- **三个 app 删除各自的移动端断点判断**，interweave 的 `useMediaQuery` composable 删除；`LibraryPage` 的浮层改从应用壳取该状态。
+- **三个 app 删除各自的移动端断点判断**，interweave 的 `useMediaQuery` composable 删除；`LibraryPage` 的 overlay 改从应用壳取该状态。
 - **三个 app 的 CSS 断点改为属性变体**：`max-[640px]:` 与 interweave 的 `max-sm:` 变成 `mobile:`；min-width 一侧（`sm:` 与 demo 的 `--breakpoint-sm` token）按上文的排序限制保留。app 侧 CSS 里 640 这条断点仍由 Tailwind 主题断点声明一次，不再散落在每个工具类上。
 - 无 `matchMedia` 的环境（jsdom）里 `mobile` 恒为 `false`，与旧实现下 `innerWidth` 取默认值时的桌面分支一致；消费者侧的测试因此仍需自行提供媒体查询桩。
 

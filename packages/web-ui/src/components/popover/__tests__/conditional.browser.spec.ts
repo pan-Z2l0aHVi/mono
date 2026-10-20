@@ -42,7 +42,7 @@ describe('WebUiPopover portal 条件渲染边界（浏览器）', () => {
     await waitForFrame()
     expect(getPortalPanel()?.querySelector('.probe-flag')).not.toBeNull()
 
-    // Vue 在打开期物理删除面板内已迁移节点；等 MutationObserver 回调消费完
+    // Vue 在打开期物理删除 panel 内已迁移节点；等 MutationObserver 回调消费完
     show.value = false
     await nextTick()
     await popover.updateComplete
@@ -80,7 +80,7 @@ describe('WebUiPopover portal 条件渲染边界（浏览器）', () => {
     app.unmount()
   })
 
-  it('打开期 v-if 新增的内容实时迁入面板并在关闭后恢复', async () => {
+  it('打开期 v-if 新增的内容实时迁入 panel 并在关闭后恢复', async () => {
     const { mountPoint, popover, show, app } = mountPopover(false)
     await popover.updateComplete
 
@@ -117,7 +117,7 @@ describe('WebUiPopover portal 条件渲染边界（浏览器）', () => {
     app.unmount()
   })
 
-  it('同 flush 关闭重开容器级 v-if：占位注释归还宿主，重开内容实时迁入面板', async () => {
+  it('同 flush 关闭重开容器级 v-if：占位注释归还宿主，重开内容实时迁入 panel', async () => {
     const mountPoint = document.createElement('div')
     document.body.append(mountPoint)
     const open = ref(false)
@@ -143,9 +143,9 @@ describe('WebUiPopover portal 条件渲染边界（浏览器）', () => {
     await waitForFrame()
     expect(getPortalPanel()?.querySelector('.probe-flag')).not.toBeNull()
 
-    // 打开期 v-if 删除：框架会把 v-if 占位注释插进面板（block patch 以旧 el 的
-    // 实际父节点重定 container）；portal 必须把注释归还宿主，否则它随面板销毁，
-    // 下次翻转 Vue 会以死注释为基准把内容插进已脱离文档的旧面板。
+    // 打开期 v-if 删除：框架会把 v-if 占位注释插进 panel（block patch 以旧 el 的
+    // 实际父节点重定 container）；portal 必须把注释归还宿主，否则它随 panel 销毁，
+    // 下次翻转 Vue 会以死注释为基准把内容插进已脱离文档的旧 panel。
     editing.value = false
     await nextTick()
     await popover.updateComplete
@@ -171,7 +171,7 @@ describe('WebUiPopover portal 条件渲染边界（浏览器）', () => {
     app.unmount()
   })
 
-  it('中段 v-if 插入按宿主邻居定位：面板保模板序，关闭恢复原位', async () => {
+  it('中段 v-if 插入按宿主邻居定位：panel 保模板序，关闭恢复原位', async () => {
     const mountPoint = document.createElement('div')
     document.body.append(mountPoint)
     const show = ref(false)

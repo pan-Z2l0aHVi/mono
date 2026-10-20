@@ -16,7 +16,7 @@ import type { WebUiAvatar } from '..'
 const createAvatar = (attrs?: Record<string, string>): WebUiAvatar =>
   mountElement<WebUiAvatar>('web-ui-avatar', { attrs })
 
-/** 头像的公开语义面：有 label 时是 `role="img"`，纯装饰时是 `role="presentation"`。 */
+/** avatar 的公开语义面：有 label 时是 `role="img"`，纯装饰时是 `role="presentation"`。 */
 const innerOf = (el: WebUiAvatar): HTMLElement | null =>
   queryA11y(el, '[role="img"], [role="presentation"]') as HTMLElement | null
 
@@ -25,7 +25,7 @@ describe('WebUiAvatar 组件', () => {
     ['size', 64, 'size', '64'],
     ['shape', 'square', 'shape', 'square'],
     ['src', '/avatar.png', 'src', '/avatar.png'],
-    ['alt', '用户头像', 'alt', '用户头像'],
+    ['alt', '用户 avatar', 'alt', '用户 avatar'],
     ['name', 'John Doe', 'name', 'John Doe']
   ])
 
@@ -44,7 +44,7 @@ describe('WebUiAvatar 组件', () => {
   describe('无障碍契约', () => {
     // alt 优先于 name：alt 是调用方给的替代文本，name 只是兜底的可读名。
     it.each([
-      ['有 alt', { alt: '用户头像', src: '/a.png' }, 'img', '用户头像'],
+      ['有 alt', { alt: '用户 avatar', src: '/a.png' }, 'img', '用户 avatar'],
       ['只有 name', { name: 'Alice' }, 'img', 'Alice'],
       ['两者都没有', {}, 'presentation', null]
     ])('%s 决定 role 与 label', async (_label, attrs, expectedRole, expectedLabel) => {
@@ -58,10 +58,10 @@ describe('WebUiAvatar 组件', () => {
     })
 
     it('alt 传给内部 img，图片本身也带同样的替代文本', async () => {
-      const el = createAvatar({ src: '/a.png', alt: '用户头像' })
+      const el = createAvatar({ src: '/a.png', alt: '用户 avatar' })
       await waitForUpdate(el)
 
-      expect(innerOf(el)?.querySelector('img')?.getAttribute('alt')).toBe('用户头像')
+      expect(innerOf(el)?.querySelector('img')?.getAttribute('alt')).toBe('用户 avatar')
       cleanupElement(el)
     })
   })
@@ -78,7 +78,7 @@ describe('WebUiAvatar 组件', () => {
       cleanupElement(el)
     })
 
-    // 加载失败必须换掉破图图标，否则用户看到的是浏览器默认的碎图。
+    // 加载失败必须换掉破图 icon，否则用户看到的是浏览器默认的碎图。
     it('图片加载失败时移除 img 并回退到 initials', async () => {
       const el = createAvatar({ src: '/missing.png', name: 'Alice' })
       await waitForUpdate(el)
@@ -124,7 +124,7 @@ describe('WebUiAvatar 组件', () => {
       cleanupElement(el)
     })
 
-    it('与按钮等原生元素组合时仍提供 img 语义', async () => {
+    it('与 button 等原生元素组合时仍提供 img 语义', async () => {
       const wrap = document.createElement('div')
       wrap.innerHTML = '<button><web-ui-avatar alt="用户" src="/a.png"></web-ui-avatar> 资料</button>'
       document.body.appendChild(wrap)

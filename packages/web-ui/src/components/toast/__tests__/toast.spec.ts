@@ -44,7 +44,7 @@ function mountedToasts(): WebUiToast[] {
   return Array.from(getToasts())
 }
 
-/** 面板里第一个带非空可访问名的控件。按「有名字」定位，不钉名字的字面量。 */
+/** panel 里第一个带非空可访问名的控件。按「有名字」定位，不钉名字的字面量。 */
 function namedControl(el: WebUiToast): Element | null {
   return (
     [...(el.shadowRoot?.querySelectorAll<HTMLElement>('[aria-label]') ?? [])].find(
@@ -106,11 +106,11 @@ describe('WebUiToast 组件', () => {
 
   describe('属性：noCloseButton', () => {
     /*
-     * 关闭按钮是「指针可达」的公开控件，按「有可访问名」定位而不是内部 class。
+     * 关闭 button 是「指针可达」的公开控件，按「有可访问名」定位而不是内部 class。
      * 刻意不钉名字的字面量：可访问名必须存在是 AT 契约，叫什么属于本地化内容。
-     * 两条合成一条：要么渲染出可命名的关闭按钮，要么完全不渲染。
+     * 两条合成一条：要么渲染出可命名的关闭 button，要么完全不渲染。
      */
-    it('默认渲染可访问的关闭按钮，no-close-button 时不渲染', async () => {
+    it('默认渲染可访问的关闭 button，no-close-button 时不渲染', async () => {
       const closable = createToastElement()
       await closable.updateComplete
       expect(closable.noCloseButton).toBe(false)

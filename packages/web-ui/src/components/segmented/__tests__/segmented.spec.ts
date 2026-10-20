@@ -67,7 +67,7 @@ describe('WebUiSegmented 组件', () => {
       cleanupElement(el)
     })
 
-    it('设置并切换 value 时子选项 checked 唯一且与 value 一致', async () => {
+    it('设置并切换 value 时子 option checked 唯一且与 value 一致', async () => {
       const el = createSegmented(TRIGGER_HTML)
       await waitForUpdate(el)
 
@@ -127,7 +127,7 @@ describe('WebUiSegmented 组件', () => {
       cleanupElement(el)
     })
 
-    it('disabled 时点击子选项不更新 value 也不触发事件', async () => {
+    it('disabled 时点击子 option 不更新 value 也不触发事件', async () => {
       const el = createSegmented(TRIGGER_HTML)
       el.disabled = true
       await waitForUpdate(el)
@@ -173,7 +173,7 @@ describe('WebUiSegmented 组件', () => {
 
   describe('属性：variant', () => {
     // README 明文承诺「Illegal values fall back to `inset`」。回退链一旦被摘掉，
-    // 非法值会透传进 `:host([variant=...])` 选择器，轨道与 thumb 双双失配样式。
+    // 非法值会透传进 `:host([variant=...])` 选择器，track 与 indicator 双双失配样式。
     it('默认 inset，非法值回退 inset，attribute 驱动 property', async () => {
       const el = createSegmented(TRIGGER_HTML)
       await waitForUpdate(el)
@@ -230,7 +230,7 @@ describe('WebUiSegmented 组件', () => {
       cleanupElement(el)
     })
 
-    it('点击已选中的选项不重复触发事件', async () => {
+    it('点击已选中的 option 不重复触发事件', async () => {
       const el = createSegmented(TRIGGER_HTML)
       await waitForUpdate(el)
 

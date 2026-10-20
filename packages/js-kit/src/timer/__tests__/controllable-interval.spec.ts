@@ -113,8 +113,8 @@ describe('defineControllableInterval 测试', () => {
     timer.stop()
   })
 
-  it('运行中手动 tick 提前触发后，原周期句柄被清理，不双调度', () => {
-    // 泄漏旧句柄会让每个周期回调两次，轮询类定时器上会翻倍请求
+  it('运行中手动 tick 提前触发后，原周期 timer id 被清理，不双调度', () => {
+    // 泄漏旧 timer id 会让每个周期回调两次，轮询类定时器上会翻倍请求
     const cb = vi.fn<() => void>()
     const timer = defineControllableInterval({ callback: cb, interval: 1000 }).make()
 
@@ -136,7 +136,7 @@ describe('defineControllableInterval 测试', () => {
   })
 
   it('pause 中的手动 tick 在 resume 时被清理，不补触发', () => {
-    // 挂起的手动句柄若泄漏到 resume 之后，会在早已过去的时点突然补一次回调
+    // 挂起的手动 timer id 若泄漏到 resume 之后，会在早已过去的时点突然补一次回调
     const cb = vi.fn<() => void>()
     const timer = defineControllableInterval({ callback: cb, interval: 1000 }).make()
 

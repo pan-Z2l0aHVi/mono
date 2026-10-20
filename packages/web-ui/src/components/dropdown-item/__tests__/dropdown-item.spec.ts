@@ -34,7 +34,7 @@ describe('WebUiDropdownItem 组件', () => {
   ] as const)
 
   describe('slot 投影', () => {
-    it('默认 slot 内容投影到标签区', async () => {
+    it('默认 slot 内容投影到 label 区', async () => {
       const el = createItem({}, 'Edit')
       await waitForUpdate(el)
 
@@ -58,7 +58,7 @@ describe('WebUiDropdownItem 组件', () => {
       const el = createItem({ submenu: '' }, 'Sub<span slot="suffix">Ctrl+S</span>')
       await waitForUpdate(el)
 
-      expect(projectedCount(el, 'suffix'), 'submenu 项不投影 suffix，改为展开指示').toBe(0)
+      expect(projectedCount(el, 'suffix'), 'submenu item 不投影 suffix，改为展开指示').toBe(0)
 
       cleanupElement(el)
     })

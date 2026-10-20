@@ -94,11 +94,11 @@ export class WebUiBadge extends LitElement {
     const showBadge = this.badgeHidden ? false : this.dot ? true : this.count > 0 || this.showZero
     const display = this.dot ? '' : this.count > this.max ? `${this.max}+` : String(this.count)
     const ariaLabel = this.dot
-      ? '未读'
+      ? 'Unread'
       : this.count > 0
-        ? `${this.count} 条未读消息`
+        ? `${this.count} unread messages`
         : this.showZero
-          ? '无未读消息'
+          ? 'No unread messages'
           : undefined
     const wrapperClass = { 'badge-wrapper': true, 'badge-wrapper-fixed': this._hasContent }
     const badgeClass = { badge: true, 'badge-dot': this.dot, 'badge-fixed': this._hasContent }

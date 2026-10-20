@@ -60,14 +60,14 @@ const DRAWER_TITLE_NAME_CLASS = 'min-w-0 flex-[1_1_auto] text-[14px] leading-6 w
  * iOS 设置页不靠放大标题、加粗副标题堆层级，一旦掺进字号与字重，卡片就会退回成
  * 常见后台管理界面那种「每行都在喊」的样子。
  *
- * 用 overflow-clip + clip-margin 而非 hidden：组内整行按钮的 focus ring 会向外伸
+ * 用 overflow-clip + clip-margin 而非 hidden：组内整行 button 的 focus ring 会向外伸
  * 3px 描边 + 2px offset，hidden 会把它沿四边切掉（与 AddDialog 的 drop zone 同理）。
  */
 const GROUP_CLASS =
   'overflow-clip [overflow-clip-margin:6px] rounded-[18px] bg-white shadow-[0_0_0_0.5px_rgb(0_0_0/0.08),0_1px_3px_rgb(0_0_0/0.06)] dark:bg-(--wui-color-surface-raised) dark:shadow-[0_0_0_0.5px_rgb(255_255_255/0.12)]'
 
 /*
- * 整行动作按钮。web-ui-button 的内层 button 固定 justify-content: center，所以靠一个
+ * 整行动作 button。web-ui-button 的内层 button 固定 justify-content: center，所以靠一个
  * flex-1 撑杆把 chevron 推到行尾，标签因此贴左。撑杆必须放在 suffix slot 里：内层 button
  * 把默认 slot 包在一个 flex: 0 1 auto 的 span.label 里，放在默认 slot 撑不开；prefix 与
  * suffix 两个 slot 是 display: contents，它们的子元素才是 button 的直接 flex item。
@@ -96,7 +96,7 @@ const DESTRUCTIVE_BUTTON_CLASS =
   '[--wui-button-px:16px] [--wui-control-size:44px] [--wui-radius-control:0px] [--wui-button-color:var(--wui-color-danger,#ef4444)]'
 
 /*
- * 抽屉内的 label / value 字号。
+ * drawer 内的 label / value 字号。
  *
  * presentation.ts 的 metadataLabelClass / metadataValueClass 是 12px 版本，被
  * AddDialog 队列与 RestoreDialog 共用；这里另起 14px 常量而不去改共享定义，
@@ -107,7 +107,7 @@ const DRAWER_LABEL_CLASS = 'shrink-0 text-[14px] leading-5 text-(--wui-color-tex
 const DRAWER_VALUE_CLASS = 'min-w-0 truncate text-right text-[14px] leading-5 text-(--wui-color-text)'
 
 /*
- * 来源位置：ghost 按钮，点按复制。
+ * 来源位置：ghost button，点按复制。
  *
  * web-ui-button 内层 button 写死了 white-space: nowrap 与 height: var(--wui-control-size)，
  * 与「换行全量展示」直接冲突；这两个属性没开 CSS 变量，宿主侧唯一的入口是
@@ -115,7 +115,7 @@ const DRAWER_VALUE_CLASS = 'min-w-0 truncate text-right text-[14px] leading-5 te
  * overflow-wrap: anywhere 再兜住无空格长串（Windows 盘符、深目录），否则
  * flex item 的 min-content 仍会把行撑破。
  *
- * text-align: left 同样要显式压回：抽屉 dialog 把 text-align: center 继承给了
+ * text-align: left 同样要显式压回：drawer dialog 把 text-align: center 继承给了
  * 所有后代文本，撑杆只能把 label 推到左边缘，换行后的每一行仍会在 label 盒内居中。
  *
  * --wui-button-px 归零让文字与上方的来源类型文字同一条左基线，suffix 撑杆把
@@ -147,10 +147,10 @@ function handleTitleChange(event: WebUiEvent<WebUiEditableText, 'change'>) {
 /*
  * 待存备注：null 表示没有未提交的输入。
  *
- * 关闭抽屉时页面同步把 activeResourceId 清空，下一个 patch 就会移除仍在聚焦的
+ * 关闭 drawer 时页面同步把 activeResourceId 清空，下一个 patch 就会移除仍在聚焦的
  * textarea；从文档里摘掉一个聚焦元素不会派发 blur，`@change` 永远不会来。所以这里
  * 在 input 时就把值留下来，卸载前用 watcher 补一次提交——不能用模板 ref，Vue 会在
- * pre-flush watcher 之前就把它清空（实测 hasEditor 已是 false）。鼠标路径（点遮罩、
+ * pre-flush watcher 之前就把它清空（实测 hasEditor 已是 false）。鼠标路径（点 backdrop、
  * 点关闭、点工具栏）都先 blur，所以只有键盘会丢。
  */
 const pendingNote = ref<string | null>(null)
@@ -193,7 +193,7 @@ function restoreResource() {
  * 非 HTTPS / 旧 WebView 回退 document.execCommand('copy')——后者正是 Wails 自定义
  * scheme 下的兜底。
  *
- * 反馈只靠图标形状变化，不引入第三种颜色：这个抽屉的层级只由颜色深浅表达，
+ * 反馈只靠 icon 形状变化，不引入第三种颜色：这个 drawer 的层级只由颜色深浅表达，
  * 凭空加一个绿色等于破例，勾本身已经足够说明「复制过了」。
  */
 const copiedLocation = ref<string | null>(null)
@@ -267,9 +267,9 @@ onScopeDispose(() => clearTimeout(copiedRevertTimer))
           </h2>
 
           <!--
-          标签自己换行，编辑按钮常驻行尾：外层不换行，内层 tags 容器 flex-1 min-w-0
-          承担换行，按钮作为其后唯一的 flex item 被推到最右。直接让整行 flex-wrap
-          的话，标签铺满一行时按钮会被挤到下一行左侧。
+          标签自己换行，编辑 button 常驻行尾：外层不换行，内层 tags 容器 flex-1 min-w-0
+          承担换行，button 作为其后唯一的 flex item 被推到最右。直接让整行 flex-wrap
+          的话，标签铺满一行时 button 会被挤到下一行左侧。
         -->
           <div class="flex items-center gap-1.5 border-t border-black/6 px-4 py-3 dark:border-white/8">
             <div class="flex min-w-0 flex-1 flex-wrap items-center gap-1.5">
@@ -407,7 +407,7 @@ onScopeDispose(() => clearTimeout(copiedRevertTimer))
         </div>
 
         <!--
-        空备注同样渲染输入框：原先的 v-if="resource.note" 只在已有备注时挂载，字段一旦
+        空备注同样渲染 input：原先的 v-if="resource.note" 只在已有备注时挂载，字段一旦
         可编辑就必须常驻，否则没有备注的资源永远没有入口去写。换行、滚动与 autosize
         高度仍由组件统一管，Drawer 不自己算 line-height。borderless 让输入区直接坐在
         分组底色上，不在组内再叠一层自己的边框与圆角。rows=1 是 iOS 备注的常态：空备注

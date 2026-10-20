@@ -15,32 +15,32 @@ function PopoverDemo() {
 
   return (
     <div>
-      <h1>Popover 气泡卡片</h1>
-      <h2>Click 触发</h2>
+      <h1>Popover popover</h1>
+      <h2>Click trigger</h2>
       <div className="mb-3">
         <web-ui-popover placement="bottom">
           <web-ui-button slot="trigger">Click me</web-ui-button>
           <div className="p-1">
-            <p>这是一个 Popover 面板。</p>
-            <p>可以放任意交互内容。</p>
+            <p>This is a popover panel.</p>
+            <p>It can hold any interactive content.</p>
           </div>
         </web-ui-popover>
       </div>
-      <h2>Hover 触发</h2>
+      <h2>Hover trigger</h2>
       <div className="mb-3">
         <web-ui-popover trigger="hover" placement="top">
           <web-ui-button slot="trigger">Hover me</web-ui-button>
-          <div className="p-1">Hover 触发的 Popover</div>
+          <div className="p-1">Hover-triggered popover</div>
         </web-ui-popover>
       </div>
       <h2>Portal</h2>
       <div className="mb-3">
         <web-ui-popover portal placement="bottom">
           <web-ui-button slot="trigger">Portal</web-ui-button>
-          <div className="p-1">Portal 内容</div>
+          <div className="p-1">Portal content</div>
         </web-ui-popover>
       </div>
-      <h2>Manual 触发（受控）</h2>
+      <h2>Manual trigger (controlled)</h2>
       <div className="mb-3">
         <web-ui-popover
           trigger="manual"
@@ -49,14 +49,14 @@ function PopoverDemo() {
         >
           <web-ui-button slot="trigger">Manual</web-ui-button>
           <div className="p-1">
-            <p>受控模式，外部控制开关。</p>
+            <p>Controlled mode: the outside drives the switch.</p>
             <web-ui-button ref={closeBtnRef} variant="secondary" full>
-              关闭
+              Close
             </web-ui-button>
           </div>
         </web-ui-popover>
       </div>
-      <h2>不同位置</h2>
+      <h2>Different positions</h2>
       <div className="mb-3 flex gap-2">
         <web-ui-popover placement="top">
           <web-ui-button slot="trigger">Top</web-ui-button>

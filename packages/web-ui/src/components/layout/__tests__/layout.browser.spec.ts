@@ -46,8 +46,8 @@ afterEach(async () => {
 })
 
 describe('WebUiLayout 组件（浏览器）', () => {
-  describe('桌面端 sidebar 折叠', () => {
-    it('Toggle 请求受控折叠，回写后 aria-label 反映新状态', async () => {
+  describe('桌面端 sidebar collapse', () => {
+    it('Toggle 请求受控 collapse，回写后 aria-label 反映新状态', async () => {
       await setViewport(DESKTOP_VIEWPORT.width, DESKTOP_VIEWPORT.height)
       const layout = createLayout()
       await layout.updateComplete
@@ -59,13 +59,13 @@ describe('WebUiLayout 组件（浏览器）', () => {
       })
       await layout.updateComplete
 
-      byLabel(layout, '折叠侧边栏').click()
+      byLabel(layout, 'Collapse sidebar').click()
       await layout.updateComplete
 
       expect(requested).toEqual([true])
       expect(layout.sidebarCollapsed).toBe(true)
       // byLabel 缺失即抛错，所以这里断的是 label 的**取值**而不是存在性。
-      expect(byLabel(layout, '展开侧边栏').getAttribute('aria-label')).toBe('展开侧边栏')
+      expect(byLabel(layout, 'Expand sidebar').getAttribute('aria-label')).toBe('Expand sidebar')
     })
 
     // 受控语义：属性面变更不是用户请求，不该回派事件，否则消费者的回写会形成回环。
@@ -80,7 +80,7 @@ describe('WebUiLayout 组件（浏览器）', () => {
       layout.sidebarCollapsed = true
       await layout.updateComplete
 
-      expect(byLabel(layout, '展开侧边栏').getAttribute('aria-label')).toBe('展开侧边栏')
+      expect(byLabel(layout, 'Expand sidebar').getAttribute('aria-label')).toBe('Expand sidebar')
       expect(eventCount).toBe(0)
     })
 
@@ -112,7 +112,7 @@ describe('WebUiLayout 组件（浏览器）', () => {
       expect(queryA11y(layout, 'aside')).toBeFalsy()
       const drawer = queryA11y(layout, 'web-ui-drawer')
       expect(drawer).toBeTruthy()
-      expect(drawer?.getAttribute('dialog-label')).toBe('主导航')
+      expect(drawer?.getAttribute('dialog-label')).toBe('Main navigation')
       expect(drawer?.hasAttribute('draggable')).toBe(true)
     })
 
@@ -127,7 +127,7 @@ describe('WebUiLayout 组件（浏览器）', () => {
         requested.push((event as CustomEvent<{ open: boolean }>).detail.open)
       )
 
-      byLabel(layout, '打开导航菜单').click()
+      byLabel(layout, 'Open navigation menu').click()
       await layout.updateComplete
 
       const drawer = queryA11y(layout, 'web-ui-drawer') as HTMLElement
@@ -148,7 +148,7 @@ describe('WebUiLayout 组件（浏览器）', () => {
         requested.push((event as CustomEvent<{ open: boolean }>).detail.open)
       )
 
-      byLabel(layout, '打开导航菜单').click()
+      byLabel(layout, 'Open navigation menu').click()
       await layout.updateComplete
       const drawer = queryA11y(layout, 'web-ui-drawer') as HTMLElement
       await pollUntil(() => drawer.hasAttribute('open'), 'Expected drawer to open')
@@ -369,7 +369,7 @@ describe('WebUiLayout 组件（浏览器）', () => {
       expect(layout.sidebarWidth).toBe('240px')
     })
 
-    // 手写的 role=separator 必须自己补 tabindex，否则键盘用户永远到不了调宽把手。
+    // 手写的 role=separator 必须自己补 tabindex，否则键盘用户永远到不了调宽 resize handle。
     it('handle 是可聚焦的 splitter', async () => {
       const layout = await resizableLayout()
       const handle = handleOf(layout)
@@ -400,7 +400,7 @@ describe('WebUiLayout 组件（浏览器）', () => {
     })
 
     /*
-     * Enter 提交后临时宽度必须清空（`_resizeWidth = null`），焦点仍停在把手上时
+     * Enter 提交后临时宽度必须清空（`_resizeWidth = null`），焦点仍停在 resize handle 上时
      * 再按回车是「无未提交调整」，不该再派发第二次请求——这正是 :233 注释写明的
      * 意图。判别力来自**第二次** Enter：只按一次 Enter 的用例无法区分「提交后清空」
      * 与「提交后原样留着」，删掉清空这行本用例立刻转红。
@@ -422,7 +422,7 @@ describe('WebUiLayout 组件（浏览器）', () => {
       await layout.updateComplete
       expect(widthRequests).toHaveLength(1)
 
-      // 焦点未动，把手上没有新的未提交调整：回车不该产生第二次请求。
+      // 焦点未动，resize handle 上没有新的未提交调整：回车不该产生第二次请求。
       handle.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter' }))
       await layout.updateComplete
       expect(widthRequests).toHaveLength(1)
@@ -668,8 +668,8 @@ describe('WebUiLayout 组件（浏览器）', () => {
       expect(widthRequests).toHaveLength(0)
     })
 
-    // 折叠态没有可调的侧栏，把手必须随折叠一起消失。
-    it('折叠态隐藏 handle，展开后重现', async () => {
+    // collapsed state 没有可调的侧栏，resize handle 必须随 collapse 一起消失。
+    it('collapsed state 隐藏 handle，展开后重现', async () => {
       const layout = await resizableLayout()
       expect(queryA11y(layout, '[role="separator"]')).toBeTruthy()
 
@@ -682,7 +682,7 @@ describe('WebUiLayout 组件（浏览器）', () => {
       expect(queryA11y(layout, '[role="separator"]')).toBeTruthy()
     })
 
-    // 跨越断点会卸载桌面 layout（把手随之消失）。悬挂的手势若不终结，切回桌面后
+    // 跨越断点会卸载桌面 layout（resize handle 随之消失）。悬挂的手势若不终结，切回桌面后
     // 所有新拖拽都会在入口被 `_isResizing()` 拦下。
     it('拖拽中视口跨越移动端断点后，切回桌面仍可再次拖拽', async () => {
       const layout = await resizableLayout()
@@ -942,7 +942,7 @@ describe('WebUiLayout 组件（浏览器）', () => {
       await waitForFrame()
 
       await userEvent.tab()
-      const toggle = byLabel(layout, '折叠侧边栏')
+      const toggle = byLabel(layout, 'Collapse sidebar')
       toggle.focus()
 
       const inner = toggle.shadowRoot?.querySelector('button') as HTMLButtonElement | null

@@ -1,9 +1,9 @@
-/* 菜单面板：wui-glass 玻璃（背景/描边/阴影）由面板自身承担，随面板 opacity 与
+/* menu panel：wui-glass 玻璃（背景/描边/阴影）由 panel 自身承担，随 panel opacity 与
    backdrop-filter 插值一起过渡（单层玻璃，见 overlay-motion.css）。
    选择器用 .wui-menu-portal-overlay.wui-floating-panel（0,2,0）压制 .wui-glass
-   （0,1,0）：面板无自有 shadow root，直接挂在宿主 shadow（overlay root 的 \3c style>
+   （0,1,0）：panel 无自有 shadow root，直接挂在宿主 shadow（overlay root 的 \3c style>
    或 dialog 的 adopted stylesheets）里，若只用单类选择器，dialog 场景下宿主 adopted
-   stylesheets 的 .wui-glass 会在层叠中晚于面板内联 \3c style> 而胜出（position:relative
+   stylesheets 的 .wui-glass 会在层叠中晚于 panel 内联 \3c style> 而胜出（position:relative
    顶掉 fixed、背景/阴影变量回弱默认）。 */
 .wui-menu-portal-overlay.wui-floating-panel {
   --wui-internal-glass-shadow: var(--wui-shadow-panel, 0 3px 9px rgb(0 0 0 / 0.27));
@@ -11,8 +11,8 @@
   --wui-internal-duration-float-exit: var(--wui-duration-float-exit, 160ms);
   --wui-glass-corner-radius: var(--wui-radius-menu, 18px);
 
-  /* 菜单族面板把环底色转 transparent。底色是环里唯一覆盖长边中段的一层（见 glass.css
-     的说明），而菜单面板宽远大于角半径 18px——按几何它只负责很短的一段，读出来却像
+  /* menu 族 panel 把环底色转 transparent。底色是环里唯一覆盖长边中段的一层（见 glass.css
+     的说明），而 menu panel 宽远大于角半径 18px——按几何它只负责很短的一段，读出来却像
      一条比四角更重的直边描边，边界感比四角强。转 transparent 后环只剩四段角弧，
      斜向受光/背光光影（sheen + shade 的两枚对角 radial）完整保留，边界改由这两层
      承担。handle 类玻璃面（switch/slider/segmented thumb）只在按压/拖拽态做同样处理：
@@ -34,7 +34,7 @@
 
   color: var(--wui-color-text, #1b1b1b);
 
-  /* 玻璃背景：面板自身 overflow:hidden 不裁自身的 box-shadow（box-shadow 不受
+  /* 玻璃背景：panel 自身 overflow:hidden 不裁自身的 box-shadow（box-shadow 不受
      元素自身 overflow 影响）。 */
   background-color: var(--wui-color-surface-menu, rgb(250 250 250 / 0.76));
 

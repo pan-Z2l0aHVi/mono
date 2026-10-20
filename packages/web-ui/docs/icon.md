@@ -3,7 +3,7 @@ component: icon
 tag: web-ui-icon
 ---
 
-图标渲染组件，接受 Iconify 数据对象（`@greypan/web-ui/icons` 导出的即为此形态）；宿主默认 `aria-hidden="true"`。
+icon 渲染组件，接受 Iconify 数据对象（`@greypan/web-ui/icons` 导出的即为此形态）；宿主默认 `aria-hidden="true"`。
 
 ## 示例
 
@@ -45,7 +45,7 @@ import { lucideSearch } from '@greypan/web-ui/icons'
 
 ### 旋转动画
 
-`spin` 常用于加载态图标，`reduce` 动效偏好下放慢而不停。
+`spin` 常用于加载态 icon，`reduce` 动效偏好下放慢而不停。
 
 ```react
 <web-ui-icon icon={lucideLoaderCircle} spin></web-ui-icon>
@@ -89,5 +89,5 @@ html`<web-ui-icon .icon=${lucideLoaderCircle} spin />`
 
 | 名称                  | 说明                                            | 默认值    |
 | --------------------- | ----------------------------------------------- | --------- |
-| `--wui-icon-color`    | 图标颜色                                        | `inherit` |
+| `--wui-icon-color`    | icon 颜色                                       | `inherit` |
 | `--wui-duration-spin` | `spin` 旋转周期；reduce 下放慢到 `1600ms`，不停 | `600ms`   |

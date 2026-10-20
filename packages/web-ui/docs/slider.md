@@ -3,7 +3,7 @@ component: slider
 tag: web-ui-slider
 ---
 
-范围滑块，支持刻度标记与垂直方向；拖拽走 pointer capture，键盘支持方向键、Home / End 与 PageUp / PageDown。
+范围 slider，支持刻度标记与垂直方向；拖拽走 pointer capture，键盘支持方向键、Home / End 与 PageUp / PageDown。
 
 ## 示例
 
@@ -25,7 +25,7 @@ export default function Demo() {
 
 ### 刻度与垂直方向 {#marks-vertical}
 
-`marks` 显示刻度标记，`vertical` 让滑块沿垂直方向排列。
+`marks` 显示刻度标记，`vertical` 让 slider 沿垂直方向排列。
 
 ```react
 export default function Demo() {
@@ -102,23 +102,24 @@ function onInput(event: WebUiEvent<WebUiSlider, 'input'>) {
 
 ### Methods
 
-| 名称      | 说明                              |
-| --------- | --------------------------------- |
-| `focus()` | 聚焦 `role="slider"` 的轨道元素。 |
-| `blur()`  | 让轨道元素失焦。                  |
+| 名称      | 说明                                 |
+| --------- | ------------------------------------ |
+| `focus()` | 聚焦 `role="slider"` 的 track 元素。 |
+| `blur()`  | 让 track 元素失焦。                  |
 
 ### 行为说明
 
-支持 ArrowLeft/Right/Up/Down、Home/End、PageUp/PageDown 键盘导航。使用 pointer capture 处理鼠标、触控笔和触摸交互；组件 host 与触控轨道均声明 `touch-action: none`，拖拽激活期间同时阻止 `touchmove` 默认滚动，避免 iOS Safari 在横/纵拖拽过程中接管手势。
+支持 ArrowLeft/Right/Up/Down、Home/End、PageUp/PageDown 键盘导航。使用 pointer capture 处理鼠标、触控笔和触摸交互；组件 host 与触控 track 均声明 `touch-action: none`，拖拽激活期间同时阻止 `touchmove` 默认滚动，避免 iOS Safari 在横/纵拖拽过程中接管手势。
+
+thumb 静止态是正圆，直径取厚度 `--wui-slider-thumb-thickness`；按压或拖拽时沿 track 方向展开成胶囊，厚度不变、长边取 `--wui-slider-thumb-length`。横向 slider 的 thumb 展开为宽度方向，纵向 slider 的 thumb 展开为高度方向，与 switch thumb 同一套配方。形状切换带 `--wui-duration-press` 过渡。
 
 ### CSS Custom Properties
 
-| 名称                           | 说明         | 默认值                              |
-| ------------------------------ | ------------ | ----------------------------------- |
-| `--wui-slider-width`           | 滑块宽度     | `200px`                             |
-| `--wui-slider-vertical-height` | 垂直滑块高度 | `200px`                             |
-| `--wui-slider-height`          | 轨道厚度     | `var(--wui-slider-track-size, 6px)` |
-| `--wui-slider-track-size`      | 轨道尺寸     | `6px`                               |
-| `--wui-slider-thumb-width`     | 滑块宽度     | `24px`                              |
-| `--wui-slider-thumb-height`    | 滑块高度     | `20px`                              |
-| `--wui-slider-marks-inset`     | 刻度内缩     | `0`                                 |
+| 名称                           | 说明                                 | 默认值  |
+| ------------------------------ | ------------------------------------ | ------- |
+| `--wui-slider-width`           | slider 宽度                          | `200px` |
+| `--wui-slider-vertical-height` | 垂直 slider 高度                     | `200px` |
+| `--wui-slider-track-size`      | track 厚度                           | `6px`   |
+| `--wui-slider-thumb-length`    | thumb 按压/拖拽态沿 track 方向的长边 | `24px`  |
+| `--wui-slider-thumb-thickness` | thumb 厚度（静止态为正圆直径）       | `20px`  |
+| `--wui-slider-marks-inset`     | marks 内缩                           | `0`     |

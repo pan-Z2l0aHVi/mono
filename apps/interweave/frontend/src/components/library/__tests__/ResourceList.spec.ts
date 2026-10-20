@@ -11,7 +11,7 @@ import ResourceList from '../ResourceList.vue'
 
 import { currentScrollY, stubLayout, ROW_ESTIMATE, ROW_HEIGHT, VIEWPORT_HEIGHT } from './virtualLayout'
 
-// 右键菜单的渲染由 web-ui 自己接管，单测只需要它有这两个接口。detail 那一项的用例
+// context menu 的渲染由 web-ui 自己接管，单测只需要它有这两个接口。detail 那一项的用例
 // 要真的走一遍「右键唤起 → 点详情」。
 if (!customElements.get('web-ui-context-menu')) {
   customElements.define(
@@ -145,7 +145,7 @@ async function waitForScrollCondition(condition: () => boolean, maxFrames = 60) 
 
 function menuItem(host: HTMLElement, label: string) {
   const found = [...host.querySelectorAll('web-ui-dropdown-item')].find(node => node.textContent?.trim() === label)
-  if (!found) throw new Error(`右键菜单里没有「${label}」项`)
+  if (!found) throw new Error(`context menu 里没有「${label}」项`)
   return found
 }
 
@@ -191,12 +191,12 @@ describe('ResourceList', () => {
   })
 
   /*
-   * 回归：空列表曾能弹出右键菜单。context-menu 监听宿主自己的 contextmenu，而空态区域
+   * 回归：空列表曾能弹出 context menu。context-menu 监听宿主自己的 contextmenu，而空态区域
    * 就在这个宿主里，所以右键照样命中；此时 contextResource 为 null，弹出的只是一张
-   * 空壳菜单。disabled 是 web-ui 侧既有的开关（其 spec 覆盖 disabled 时右键不打开），
+   * 空壳 menu。disabled 是 web-ui 侧既有的 switch（其 spec 覆盖 disabled 时右键不打开），
    * 这里钉住 app 侧绑对了。
    */
-  it('列表为空时禁用右键菜单，有条目时不禁用', async () => {
+  it('列表为空时禁用 context menu，有条目时不禁用', async () => {
     const empty = await mountList([])
     try {
       expect(empty.host.querySelectorAll('[data-resource-row]')).toHaveLength(0)
@@ -612,7 +612,7 @@ describe('ResourceList：按住拖动批量勾选', () => {
     }
   })
 
-  it('右键按下不启动扫选，把手势让给右键菜单', async () => {
+  it('右键按下不启动扫选，把手势让给 context menu', async () => {
     const setChecked = vi.fn<SetChecked>()
     const mounted = await mountList(
       ['a', 'b'].map(id => resource({ id })),
@@ -711,10 +711,10 @@ describe('ResourceList：按住拖动批量勾选', () => {
 })
 
 /*
- * 触屏长按出行菜单（#3）。组件侧契约是 web-ui-context-menu 的 long-press opt-in 属性，
- * 这一组钉的是 app 侧的三件事：属性挂对了、菜单项讲的是长按那一行、扫选之后右键没被吞掉。
+ * 触屏长按出行 menu（#3）。组件侧契约是 web-ui-context-menu 的 long-press opt-in 属性，
+ * 这一组钉的是 app 侧的三件事：属性挂对了、menu item 讲的是长按那一行、扫选之后右键没被吞掉。
  */
-describe('ResourceList：触屏长按菜单', () => {
+describe('ResourceList：触屏长按 menu', () => {
   afterEach(() => {
     document.body.innerHTML = ''
   })
@@ -750,7 +750,7 @@ describe('ResourceList：触屏长按菜单', () => {
    *
    * 这条在真机上验过：进选择模式后 getAttribute('long-press') === "false" 而 longPress === true。
    * 少这条断言的话，写成 `:long-press="!selectionMode"` 会一路绿到用户手上——
-   * 选择模式里长按先勾选、然后菜单照弹。
+   * 选择模式里长按先勾选、然后 menu 照弹。
    */
   it('非选择模式挂 long-press，选择模式让属性整个消失而不是变成 "false"', async () => {
     const normal = await mountList([resource()])
@@ -770,16 +770,16 @@ describe('ResourceList：触屏长按菜单', () => {
   })
 
   /*
-   * 长按菜单的内容必须讲长按的那一行。
+   * 长按 menu 的内容必须讲长按的那一行。
    *
-   * 长按是组件自己在宿主上计时打开的，它不发事件、也不认行——菜单项却全部 gate 在
+   * 长按是组件自己在宿主上计时打开的，它不发事件、也不认行——menu item 却全部 gate 在
    * contextResource 上。所以 contextResource 必须在 pointerdown 那一刻就落定（syncTouchContext），
-   * 否则长按弹出来的是一张位置在某一行的空菜单：只剩两条分隔线和一个删除「null」的空项。
+   * 否则长按弹出来的是一张位置在某一行的空 menu：只剩两条 divider 和一个删除「null」的空项。
    *
-   * 这里断言的是「长按 b 之后菜单项已经是 b 的」，而不是「菜单能打开」——后者在
+   * 这里断言的是「长按 b 之后 menu item 已经是 b 的」，而不是「menu 能打开」——后者在
    * contextResource 为空壳时同样成立。
    */
-  it('触屏按下就把 contextResource 落到那一行，长按菜单项讲的是这一行', async () => {
+  it('触屏按下就把 contextResource 落到那一行，长按 menu item 讲的是这一行', async () => {
     const mounted = await mountList([
       resource({ id: 'r1' }),
       resource({ id: 'r2', available: false, sources: [missingSource()] })
@@ -806,15 +806,15 @@ describe('ResourceList：触屏长按菜单', () => {
   })
 
   /*
-   * 造出「组件的长按到期、菜单被打开」这个状态。
+   * 造出「组件的长按到期、menu 被打开」这个状态。
    *
    * 真实路径是组件自己的长按计时器到期 → _openAt 成功 → _userOpenChange.mark() 派发
-   * open-change。jsdom 里那条计时器不驱动面板，所以这里直接造出同一个可观察结果。
+   * open-change。jsdom 里那条计时器不驱动 panel，所以这里直接造出同一个可观察结果。
    *
    * openAt 单独**不算**长按：它是命令式打开，按组件自己的注释不派发 open-change
    * （context-menu/index.ts 的 openAt：「命令式打开不派发 open-change 事件」）。
    * 只调 openAt 的用例在换掉判据之后仍会一路绿，却已经不再代表真实事件序列——判据依赖
-   * 「菜单此刻开着没有」时测试看不出问题，正是因为它只造了那个瞬间状态。
+   * 「menu 此刻开着没有」时测试看不出问题，正是因为它只造了那个瞬间状态。
    */
   function longPressOpensMenu(menu: WebUiContextMenu, row: Element, pointerType = 'touch') {
     row.dispatchEvent(pointer('pointerdown', { button: 0, clientX: 100, clientY: 100 }, pointerType))
@@ -831,58 +831,58 @@ describe('ResourceList：触屏长按菜单', () => {
   }
 
   /*
-   * 回归（本轮要修的缺陷）：长按抬手时菜单与预览抽屉同时弹出。
+   * 回归（本轮要修的缺陷）：长按抬手时 menu 与预览 drawer 同时弹出。
    *
-   * 组件侧的 _isLongPressFollowUp() 只吸收它自己菜单上的补发事件，管不到宿主的行激活，
+   * 组件侧的 _isLongPressFollowUp() 只吸收它自己 menu 上的补发事件，管不到宿主的行激活，
    * 所以这个抑制必须在宿主这边做。观察点是 onSelect 有没有被调用——补发的 click 被吃掉时
    * 它一次都不该响。
    *
-   * 关键在菜单**已经关掉**：抬手后浏览器补发 click 的那几十毫秒里，菜单很可能因 blur /
-   * 外点先关，于是「菜单此刻开着没有」读到 false，抑制失效，抽屉照弹。判据必须落在
-   * 「刚才那手确实开出了菜单」这个已经发生过的事实上，与菜单此刻的状态无关。
+   * 关键在 menu**已经关掉**：抬手后浏览器补发 click 的那几十毫秒里，menu 很可能因 blur /
+   * 外点先关，于是「menu 此刻开着没有」读到 false，抑制失效，drawer 照弹。判据必须落在
+   * 「刚才那手确实开出了 menu」这个已经发生过的事实上，与 menu 此刻的状态无关。
    *
-   * 关菜单只能调 close()：isOpen 是只读 getter，写 menu.isOpen = false 是空操作，读回来
+   * 关 menu 只能调 close()：isOpen 是只读 getter，写 menu.isOpen = false 是空操作，读回来
    * 还是旧值，会得到「关了却读成 true」的反向结论。
    */
-  it('菜单已关时仍吞掉触屏的补发 click——判据不读菜单当前状态', async () => {
+  it('menu 已关时仍吞掉触屏的补发 click——判据不读 menu 当前状态', async () => {
     const select = vi.fn<(id: string) => void>()
     const mounted = await mountList([resource({ id: 'r1' }), resource({ id: 'r2' })], [], {}, { onSelect: select })
     const menu = mounted.contextMenu as WebUiContextMenu
     try {
       longPressOpensMenu(menu, mounted.rows[0])
-      expect(menu.isOpen, '前置条件：长按确实开出了菜单').toBe(true)
+      expect(menu.isOpen, '前置条件：长按确实开出了 menu').toBe(true)
 
-      // 抬手：菜单先被 blur / 外点关掉，浏览器补发的 click 后到。
+      // 抬手：menu 先被 blur / 外点关掉，浏览器补发的 click 后到。
       menu.close()
       await nextTick()
-      expect(menu.isOpen, '前置条件：此刻菜单确实是关的').toBe(false)
+      expect(menu.isOpen, '前置条件：此刻 menu 确实是关的').toBe(false)
 
       // 真实顺序：touchend → pointerup → 浏览器补发 click。判据锚在抬手，所以必须先抬手。
       touchLift(mounted.rows[0])
       mounted.rows[0].dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }))
       await nextTick()
-      expect(select, '菜单已关时的补发 click 仍不该激活行').not.toHaveBeenCalled()
+      expect(select, 'menu 已关时的补发 click 仍不该激活行').not.toHaveBeenCalled()
     } finally {
       mounted.unmount()
     }
   })
 
   /*
-   * R1 不得回归：菜单还开着时补发的 click 照样被吃掉。两条合起来才是完整判据——
+   * R1 不得回归：menu 还开着时补发的 click 照样被吃掉。两条合起来才是完整判据——
    * 开或关都抑制，说明判据读的是「开过」这个事实而不是某一瞬间的状态。
    */
-  it('菜单开着时吞掉触屏的补发 click', async () => {
+  it('menu 开着时吞掉触屏的补发 click', async () => {
     const select = vi.fn<(id: string) => void>()
     const mounted = await mountList([resource({ id: 'r1' })], [], {}, { onSelect: select })
     const menu = mounted.contextMenu as WebUiContextMenu
     try {
       longPressOpensMenu(menu, mounted.rows[0])
-      expect(menu.isOpen, '前置条件：菜单处于打开态').toBe(true)
+      expect(menu.isOpen, '前置条件：menu 处于打开态').toBe(true)
 
       touchLift(mounted.rows[0])
       mounted.rows[0].dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }))
       await nextTick()
-      expect(select, '菜单开着时的补发 click 不该激活行').not.toHaveBeenCalled()
+      expect(select, 'menu 开着时的补发 click 不该激活行').not.toHaveBeenCalled()
     } finally {
       mounted.unmount()
     }
@@ -890,9 +890,9 @@ describe('ResourceList：触屏长按菜单', () => {
 
   /*
    * R3：轻点必须照常激活行。抑制若写成「触屏按下过就吞 click」，轻点会被一起吞掉。
-   * 这里造的是「按下过、但没有长按开菜单」——全程没有 open-change。
+   * 这里造的是「按下过、但没有长按开 menu」——全程没有 open-change。
    */
-  it('触屏轻点（没有长按开菜单）照常激活行', async () => {
+  it('触屏轻点（没有长按开 menu）照常激活行', async () => {
     const select = vi.fn<(id: string) => void>()
     const mounted = await mountList([resource({ id: 'r1' })], [], {}, { onSelect: select })
     const menu = mounted.contextMenu as WebUiContextMenu
@@ -911,23 +911,23 @@ describe('ResourceList：触屏长按菜单', () => {
   })
 
   /*
-   * R4：鼠标右键开菜单后点行是合法操作，触屏的抑制不能波及它。
-   * 事件序列与长按几乎一致（菜单同样开着、同样派发 open-change），唯一区别是这一手
-   * 是鼠标。所以判据除了「开过菜单」还必须看「这一手是不是触屏」。
+   * R4：鼠标右键开 menu 后点行是合法操作，触屏的抑制不能波及它。
+   * 事件序列与长按几乎一致（menu 同样开着、同样派发 open-change），唯一区别是这一手
+   * 是鼠标。所以判据除了「开过 menu」还必须看「这一手是不是触屏」。
    */
-  it('鼠标右键开菜单后点行照常激活，触屏抑制不波及鼠标路径', async () => {
+  it('鼠标右键开 menu 后点行照常激活，触屏抑制不波及鼠标路径', async () => {
     const select = vi.fn<(id: string) => void>()
     const mounted = await mountList([resource({ id: 'r1' })], [], {}, { onSelect: select })
     const menu = mounted.contextMenu as WebUiContextMenu
     try {
       longPressOpensMenu(menu, mounted.rows[0], 'mouse')
-      expect(menu.isOpen, '前置条件：右键菜单处于打开态').toBe(true)
+      expect(menu.isOpen, '前置条件：context menu 处于打开态').toBe(true)
 
       // 鼠标的抬手同样会发生，但它不该置标志（pointerType 不是 touch）
       mounted.rows[0].dispatchEvent(pointer('pointerup', { clientX: 100, clientY: 100 }))
       mounted.rows[0].dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }))
       await nextTick()
-      expect(select, '鼠标右键菜单开着时点行照常激活').toHaveBeenCalledWith(expect.objectContaining({ id: 'r1' }))
+      expect(select, '鼠标 context menu 开着时点行照常激活').toHaveBeenCalledWith(expect.objectContaining({ id: 'r1' }))
     } finally {
       mounted.unmount()
     }
@@ -952,7 +952,7 @@ describe('ResourceList：触屏长按菜单', () => {
       touchLift(mounted.rows[0])
       // 补发的 click 这次没来（这是要构造的残留场景）
 
-      // 下一手的按下（没有再长按，菜单也不开着）
+      // 下一手的按下（没有再长按，menu 也不开着）
       mounted.rows[1].dispatchEvent(pointer('pointerdown', { button: 0, clientX: 100, clientY: 100 }, 'touch'))
       await nextTick()
       mounted.rows[1].dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }))
@@ -990,7 +990,7 @@ describe('ResourceList：触屏长按菜单', () => {
   })
 
   /*
-   * 选择模式里的长按是扫选，不是看菜单，所以那条路径不能被这条抑制吃掉——扫选要能正常
+   * 选择模式里的长按是扫选，不是看 menu，所以那条路径不能被这条抑制吃掉——扫选要能正常
    * 勾选。这里锁的是「syncTouchContext 里的抑制只在非选择模式生效」。
    */
   it('选择模式下长按仍走扫选，不被行激活抑制吃掉', async () => {
@@ -1024,12 +1024,12 @@ describe('ResourceList：触屏长按菜单', () => {
    *
    * 它由 armTouchSweep 置位，而 armTouchSweep 只在选择模式下发生；endSweep 当时只清
    * suppressRowClick。所以「进过一次选择模式并长按扫选」之后，这个标志一直留着，
-   * openContextMenu 见到它就 preventDefault 直接 return，右键菜单再也弹不出来。
+   * openContextMenu 见到它就 preventDefault 直接 return，context menu 再也弹不出来。
    *
-   * 观察点是菜单项内容而不是「菜单有没有开」：被吞掉时 openContextMenu 提前 return，
-   * contextResource 停在上一手那行，于是菜单讲的是错的行。这正是用户看到的现象。
+   * 观察点是 menu item 内容而不是「menu 有没有开」：被吞掉时 openContextMenu 提前 return，
+   * contextResource 停在上一手那行，于是 menu 讲的是错的行。这正是用户看到的现象。
    */
-  it('触摸扫选收尾后右键菜单照常弹出，且讲的是右键那一行', async () => {
+  it('触摸扫选收尾后 context menu 照常弹出，且讲的是右键那一行', async () => {
     vi.useFakeTimers()
     const setChecked = vi.fn<SetChecked>()
     const mounted = await mountList(
@@ -1047,7 +1047,7 @@ describe('ResourceList：触屏长按菜单', () => {
       // 抬手收尾。endSweep 必须在这里把 suppressContextMenu 清掉。
       window.dispatchEvent(pointer('pointerup', { clientX: 100, clientY: 100 }, 'touch'))
 
-      // 之后右键另一行：菜单项必须换成 r2 的
+      // 之后右键另一行：menu item 必须换成 r2 的
       mounted.rows[1].dispatchEvent(
         new MouseEvent('contextmenu', { bubbles: true, cancelable: true, clientX: 4, clientY: 4 })
       )
@@ -1063,7 +1063,7 @@ describe('ResourceList：触屏长按菜单', () => {
   })
 })
 
-describe('ResourceList：右键菜单的详情入口', () => {
+describe('ResourceList：context menu 的详情入口', () => {
   afterEach(() => {
     document.body.innerHTML = ''
   })
@@ -1079,10 +1079,10 @@ describe('ResourceList：右键菜单的详情入口', () => {
       await nextTick()
 
       const labels = [...mounted.host.querySelectorAll('web-ui-dropdown-item')].map(node => node.textContent?.trim())
-      // 打开方式是子菜单，它的子项在 querySelectorAll 的文档序里也占位，
+      // 打开方式是 submenu，它的子项在 querySelectorAll 的文档序里也占位，
       // 所以详情要排在「打开方式」这棵子树之后，而不是紧邻它。
       expect(labels.indexOf('详情')).toBeGreaterThan(labels.indexOf('打开方式'))
-      // 详情与重命名之间是一道分隔线，所以两者在项序上相邻。
+      // 详情与重命名之间是一道 divider，所以两者在项序上相邻。
       expect(labels.indexOf('重命名')).toBe(labels.indexOf('详情') + 1)
 
       menuItem(mounted.host, '详情').dispatchEvent(new MouseEvent('click', { bubbles: true }))
@@ -1122,17 +1122,17 @@ describe('ResourceList：右键菜单的详情入口', () => {
 })
 
 /*
- * 键盘呼出右键菜单这条路的回归。web-ui-context-menu 自己在宿主元素上听 ContextMenu 键与
- * Shift+F10，并且只按 document.activeElement 的 rect 摆面板——它不看菜单项 gate 的
+ * 键盘呼出 context menu 这条路的回归。web-ui-context-menu 自己在宿主元素上听 ContextMenu 键与
+ * Shift+F10，并且只按 document.activeElement 的 rect 摆 panel——它不看 menu item gate 的
  * contextResource。contextResource 原本只有行上的 contextmenu 事件这一个赋值点，纯键盘
- * 呼出时它是 null，于是弹出一张紧贴该行、内容却只有「删除」和两条分隔线的菜单。行成了
+ * 呼出时它是 null，于是弹出一张紧贴该行、内容却只有「删除」和两条 divider 的 menu。行成了
  * tab stop 之后这条路径才可达，所以焦点必须成为 contextResource 的第二个来源。
  *
  * jsdom 里的 web-ui-context-menu 是个只有 openAt/close 的桩，不实现键盘呼出，所以这里
- * 钉的是本组件该保证的那一半：行获焦时菜单项讲的是那一行。真机上「菜单确实弹出来了、
+ * 钉的是本组件该保证的那一半：行获焦时 menu item 讲的是那一行。真机上「menu 确实弹出来了、
  * 而且锚在该行上」由浏览器验证取证。
  */
-describe('ResourceList：键盘呼出右键菜单', () => {
+describe('ResourceList：键盘呼出 context menu', () => {
   afterEach(() => {
     document.body.innerHTML = ''
   })
@@ -1150,8 +1150,8 @@ describe('ResourceList：键盘呼出右键菜单', () => {
   }
 
   /*
-   * 只读顶层项、且只读项自己的文字。「打开方式」是子菜单，textContent 会把它下面的
-   * 「系统默认应用」「看图」等一起吞进来——那样就既认不出「打开方式」这一项，也会把子菜单
+   * 只读顶层项、且只读项自己的文字。「打开方式」是 submenu，textContent 会把它下面的
+   * 「系统默认应用」「看图」等一起吞进来——那样就既认不出「打开方式」这一项，也会把 submenu
    * 里的「预览 看图」误当成顶层的「预览」。子节点里的文本不算这一项的。
    */
   function labelsOf(host: HTMLElement) {
@@ -1164,7 +1164,7 @@ describe('ResourceList：键盘呼出右键菜单', () => {
     )
   }
 
-  it('行获焦时菜单项讲的是那一行', async () => {
+  it('行获焦时 menu item 讲的是那一行', async () => {
     const mounted = await mountList([resource({ id: 'r1' })])
     try {
       ;(mounted.rows[0] as HTMLElement).focus()
@@ -1180,10 +1180,10 @@ describe('ResourceList：键盘呼出右键菜单', () => {
   })
 
   /*
-   * 要证明的是「跟着焦点走」，不是「有行获焦菜单就不空」：焦点挪到不可用的行上，菜单必须
-   * 跟着换掉。否则 sync 落在容器上、拿第一条糊弄过去，第二条资源的菜单项仍然是错的。
+   * 要证明的是「跟着焦点走」，不是「有行获焦 menu 就不空」：焦点挪到不可用的行上，menu 必须
+   * 跟着换掉。否则 sync 落在容器上、拿第一条糊弄过去，第二条资源的 menu item 仍然是错的。
    */
-  it('焦点挪到另一行时菜单项跟着换', async () => {
+  it('焦点挪到另一行时 menu item 跟着换', async () => {
     const mounted = await mountList([
       resource({ id: 'r1' }),
       resource({ id: 'r2', available: false, sources: [missingSource()] })
@@ -1209,9 +1209,9 @@ describe('ResourceList：键盘呼出右键菜单', () => {
 
   /*
    * 焦点退回容器（Shift+Tab 一步就能到）时，「当前行」这个东西不存在了。此时必须置空，
-   * 不能留着上一行的资源——否则那张菜单的位置在列表上、内容却是某一条具体资源。
+   * 不能留着上一行的资源——否则那张 menu 的位置在列表上、内容却是某一条具体资源。
    */
-  it('焦点在容器上时不残留上一行的菜单项', async () => {
+  it('焦点在容器上时不残留上一行的 menu item', async () => {
     const mounted = await mountList([resource({ id: 'r1' })])
     try {
       const row = mounted.rows[0] as HTMLElement
@@ -1233,9 +1233,9 @@ describe('ResourceList：键盘呼出右键菜单', () => {
   })
 
   /*
-   * 焦点在容器上按 Shift+F10，宿主照样会开菜单并把面板锚到容器上。容器不对应任何一条资源，
+   * 焦点在容器上按 Shift+F10，宿主照样会开 menu 并把 panel 锚到容器上。容器不对应任何一条资源，
    * 所以这里先把焦点交给行：事件继续冒泡，宿主再读 document.activeElement 时读到的已经是
-   * 那一行，菜单于是既锚在行上、也讲这一行的事。
+   * 那一行，menu 于是既锚在行上、也讲这一行的事。
    */
   it('容器上按 Shift+F10 先把焦点交给行', async () => {
     const mounted = await mountList([resource({ id: 'r1' }), resource({ id: 'r2' })])
@@ -1271,9 +1271,9 @@ describe('ResourceList：键盘呼出右键菜单', () => {
 
   /*
    * 鼠标右键是 contextResource 的原有来源，focusin 不能抢它的戏：焦点还停在上一行时右键
-   * 另一行，菜单必须讲右键那一行。
+   * 另一行，menu 必须讲右键那一行。
    */
-  it('焦点在别行时右键，菜单仍然讲右键那一行', async () => {
+  it('焦点在别行时右键，menu 仍然讲右键那一行', async () => {
     const mounted = await mountList([
       resource({ id: 'r1' }),
       resource({ id: 'r2', available: false, sources: [missingSource()] })
@@ -1296,14 +1296,14 @@ describe('ResourceList：键盘呼出右键菜单', () => {
   })
 
   /*
-   * 右键呼出菜单本身也写当前行（决策 4 后半句）：emit activate，父级把 activeResourceId
+   * 右键呼出 menu 本身也写当前行（决策 4 后半句）：emit activate，父级把 activeResourceId
    * 置为被右键的那一行。不调用 focusIndex()——那会 scrollIndexIntoView + row.focus()，会抢走焦点
    * （右键改名时焦点在名字编辑器里）。
    *
    * 这里的断言是：右键 r2 后，activeResourceId 变为 r2，对应的行获得激活底色（bg-black/8）。
    * 因为派生 activeIndex 会跟着变，roving tabindex 也会跟着换到 r2。
    */
-  it('右键呼出菜单、不点任何菜单项，被右键的那一行成为当前行', async () => {
+  it('右键呼出 menu、不点任何 menu item，被右键的那一行成为当前行', async () => {
     const mounted = await mountList([resource({ id: 'r1' }), resource({ id: 'r2' })])
     try {
       // 初始无 activeResourceId，activeIndex = 0
@@ -1331,7 +1331,7 @@ describe('ResourceList：键盘呼出右键菜单', () => {
   })
 })
 
-describe('ResourceList：右键菜单项的搬运包装', () => {
+describe('ResourceList：context menu 项的搬运包装', () => {
   afterEach(() => {
     document.body.innerHTML = ''
   })
@@ -1339,18 +1339,18 @@ describe('ResourceList：右键菜单项的搬运包装', () => {
   /**
    * 回归两件事，都不是结构偏好：
    *
-   * 一，菜单项必须收在同一个 wrapper 里。菜单打开时组件把项搬进自己的 portal 面板，
-   * 关闭时再搬回来，而搬回要等退场动画。这段窗口里再右键另一行，v-if 就会在面板里增删
-   * 节点，和组件自己的锚点搬运撞上，v-if 注释锚点被丢在错位处——实测后果是菜单只剩几项，
-   * 且锚点丢失后无法自愈，菜单从此再也打不开。收进 wrapper 后组件搬的是「整块」，锚点
+   * 一，menu item 必须收在同一个 wrapper 里。menu 打开时组件把项搬进自己的 portal panel，
+   * 关闭时再搬回来，而搬回要等退场动画。这段窗口里再右键另一行，v-if 就会在 panel 里增删
+   * 节点，和组件自己的锚点搬运撞上，v-if 注释锚点被丢在错位处——实测后果是 menu 只剩几项，
+   * 且锚点丢失后无法自愈，menu 从此再也打不开。收进 wrapper 后组件搬的是「整块」，锚点
    * 不可能与项走散。
    *
-   * 二，wrapper 必须带 slot="context-menu-hidden"。组件关闭时靠这个属性隐藏菜单项（宿主
+   * 二，wrapper 必须带 slot="context-menu-hidden"。组件关闭时靠这个属性隐藏 menu item（宿主
    * 模板里只有默认 slot，名字对不上的节点不渲染），而 slot 分配只对**宿主的直接子节点**
    * 生效。项一旦被包进 wrapper 而 wrapper 漏了这个属性，项就成了默认 slot 分配节点的
-   * 内部后代、不再是 slottable，隐藏失效，菜单项会以明文形式漏在列表下面。
+   * 内部后代、不再是 slottable，隐藏失效，menu item 会以明文形式漏在列表下面。
    */
-  it('所有菜单项收在带隐藏属性的 wrapper 里，wrapper 是宿主的直接子节点', async () => {
+  it('所有 menu item 收在带隐藏属性的 wrapper 里，wrapper 是宿主的直接子节点', async () => {
     const mounted = await mountList([resource()])
     try {
       const wrapper = mounted.host.querySelector('web-ui-context-menu > .contents')
@@ -1416,7 +1416,7 @@ describe('ResourceList：键盘导航与预览入口', () => {
   /*
    * 虚拟化本体：1000 条资源在 DOM 里只留下窗口内的十几行。
    *
-   * 撑总高的外层是 virtua 自建的容器（内含全部列表语义与定位），整页据此产生滚动条，
+   * 撑总高的外层是 virtua 自建的容器（内含全部列表语义与定位），整页据此产生 scrollbar，
    * 所以「列表有多长」与「DOM 里有多少行」从此解耦。
    *
    * window 模式（滚动元素是 window）下每个条目各自落在一层绝对定位包裹里；容器自身
@@ -1553,8 +1553,8 @@ describe('ResourceList：键盘导航与预览入口', () => {
   })
 
   /*
-   * 回归：焦点进入行**不**自动开预览。预览抽屉内部是原生 <dialog> 的 showModal()，打开
-   * 时浏览器把焦点拉进 dialog 并让其后的文档 inert——真机上实测过抽屉一开，row.focus()
+   * 回归：焦点进入行**不**自动开预览。预览 drawer 内部是原生 <dialog> 的 showModal()，打开
+   * 时浏览器把焦点拉进 dialog 并让其后的文档 inert——真机上实测过 drawer 一开，row.focus()
    * 就没有响应，Tab 在行间切换这条主路径会当场断掉。预览改由焦点行上的空格触发。
    */
   it('焦点进入行不自动开预览', async () => {

@@ -14,7 +14,7 @@ afterEach(() => {
 })
 
 describe('WebUiButton 组件（浏览器）', () => {
-  it('将规范化后的 type 传给真实原生按钮', async () => {
+  it('将规范化后的 type 传给真实原生 button', async () => {
     const button = mountElement<WebUiButton>('web-ui-button', { attrs: { type: 'invalid' } })
     await waitForUpdate(button)
 
@@ -70,7 +70,7 @@ describe('WebUiButton 组件（浏览器）', () => {
     expect(input.value).toBe('initial')
   })
 
-  it('原生输入框按 Enter 恰好通过 type=submit 宿主触发一次隐式提交', async () => {
+  it('原生 input 按 Enter 恰好通过 type=submit 宿主触发一次隐式提交', async () => {
     const form = document.createElement('form')
     const input = document.createElement('input')
     input.name = 'name'
@@ -205,7 +205,7 @@ describe('WebUiButton 组件（浏览器）', () => {
     expect(submitEvents).toBe(1)
   })
 
-  it('宿主 disabled 解除后真实按钮立即恢复可点', async () => {
+  it('宿主 disabled 解除后真实 button 立即恢复可点', async () => {
     const button = mountElement<WebUiButton>('web-ui-button', { attrs: { disabled: '' } })
     let clicks = 0
     button.addEventListener('click', () => {
@@ -225,7 +225,7 @@ describe('WebUiButton 组件（浏览器）', () => {
     expect(clicks).toBe(1)
   })
 
-  it('宿主 disabled 置为 true 后真实按钮立即不可点', async () => {
+  it('宿主 disabled 置为 true 后真实 button 立即不可点', async () => {
     const button = mountElement<WebUiButton>('web-ui-button')
     let clicks = 0
     button.addEventListener('click', () => {
@@ -267,7 +267,7 @@ describe('WebUiButton 组件（浏览器）', () => {
     const inner = btn.shadowRoot?.querySelector('button') as HTMLButtonElement
     expect(inner).toBeTruthy()
 
-    // 模拟点击打开浮层后的指针自动 focus：pointerdown 后聚焦内部按钮
+    // 模拟点击打开 overlay 后的指针自动 focus：pointerdown 后聚焦内部 button
     inner.dispatchEvent(
       new PointerEvent('pointerdown', { bubbles: true, composed: true, isPrimary: true, pointerId: 1 })
     )

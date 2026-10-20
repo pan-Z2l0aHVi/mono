@@ -70,7 +70,7 @@ describe('native dialog presence', () => {
     setOpen(false)
     presence.sync(false)
 
-    // 退出过渡期间 dialog 必须留在 top layer，否则遮罩先消失、面板还在原地。
+    // 退出过渡期间 dialog 必须留在 top layer，否则 backdrop 先消失、panel 还在原地。
     expect(dialog.open).toBe(true)
 
     settleCloseTransition(dialog, presence)
@@ -87,7 +87,7 @@ describe('native dialog presence', () => {
     presence.sync(false)
 
     // 尚未建立可见态就进入关闭：这里最容易出的真实回归是「直接跳过退出过渡」，
-    // 面板会瞬间消失而不是滑出。判据是 open ——它在收尾前必须仍然为 true。
+    // panel 会瞬间消失而不是滑出。判据是 open ——它在收尾前必须仍然为 true。
     expect(dialog.open).toBe(true)
 
     await nextFrame()

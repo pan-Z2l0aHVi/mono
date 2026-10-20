@@ -127,9 +127,9 @@ slot.empty {
   display: none;
 }
 
-/* 复用 web-ui-button icon ghost：仅覆盖颜色为 faint，保持弱意图清除图标观感；
-   负 margin-left 抵消容器 flex gap，让清除按钮紧贴输入文本
-   负 margin-right 抵消 button padding，让清除按钮右侧 spacing 视觉上协调 */
+/* 复用 web-ui-button icon ghost：仅覆盖颜色为 faint，保持弱意图清除 icon 观感；
+   负 margin-left 抵消容器 flex gap，让清除 button 紧贴输入文本
+   负 margin-right 抵消 button padding，让清除 button 右侧 spacing 视觉上协调 */
 .wui-input-inner web-ui-button[variant='ghost'] {
   --wui-button-color: var(--wui-input-clear-color);
   margin-right: -4px;

@@ -32,7 +32,7 @@ async function nextFrame() {
   await new Promise(resolve => requestAnimationFrame(resolve))
 }
 
-/** 面板以公开语义 role="menu" 挂载于 overlay 容器（见 @/shared/test-utils 的 getMenuPanels）。 */
+/** panel 以公开语义 role="menu" 挂载于 overlay 容器（见 @/shared/test-utils 的 getMenuPanels）。 */
 const menuItems = (): HTMLElement[] => {
   const panel = getMenuPanels()[0]
   return panel ? [...panel.querySelectorAll<HTMLElement>('web-ui-dropdown-item')] : []
@@ -40,7 +40,7 @@ const menuItems = (): HTMLElement[] => {
 
 const itemTexts = (): string[] => menuItems().map(item => item.textContent?.trim() ?? '')
 
-/** 子菜单面板：与根面板同为 role="menu"，用层级区分。 */
+/** submenu panel：与根 panel 同为 role="menu"，用层级区分。 */
 const submenuPanels = (): HTMLElement[] =>
   getMenuPanels().filter(panel => panel.dataset.level && panel.dataset.level !== '0')
 
@@ -54,7 +54,7 @@ afterEach(() => {
 
 describe('WebUiDropdown 组件', () => {
   describe('trigger 的 ARIA 契约', () => {
-    // 菜单型 trigger 必须自报 haspopup 与展开态；漏掉任何一个，AT 都读不出这是个菜单按钮。
+    // menu 型 trigger 必须自报 haspopup 与展开态；漏掉任何一个，AT 都读不出这是个 menu button。
     it('aria-haspopup 常驻，aria-expanded 跟随开合', async () => {
       const el = createDropdown({}, SIMPLE)
       await waitForUpdate(el)
@@ -117,7 +117,7 @@ describe('WebUiDropdown 组件', () => {
       expect(el.isOpen).toBe(false)
     })
 
-    // 打开菜单会锁住页面滚动；元素被卸载时若不释放，页面就永久滚不动。
+    // 打开 menu 会锁住页面滚动；元素被卸载时若不释放，页面就永久滚不动。
     it('打开时锁定页面滚动，卸载后恢复', async () => {
       const el = createDropdown({}, SIMPLE)
       await waitForUpdate(el)
@@ -140,7 +140,7 @@ describe('WebUiDropdown 组件', () => {
       expect(document.documentElement.style.overflow).toBe('')
     })
 
-    it('打开后修改定位属性保持菜单可用', async () => {
+    it('打开后修改定位属性保持 menu 可用', async () => {
       const el = createDropdown({}, SIMPLE)
       el.openMenu()
       await waitForUpdate(el)
@@ -157,7 +157,7 @@ describe('WebUiDropdown 组件', () => {
   })
 
   describe('外部点击关闭', () => {
-    it('点击面板外部关闭', async () => {
+    it('点击 panel 外部关闭', async () => {
       const el = createDropdown({}, SIMPLE)
       await waitForUpdate(el)
       el.openMenu()
@@ -170,7 +170,7 @@ describe('WebUiDropdown 组件', () => {
       expect(el.isOpen).toBe(false)
     })
 
-    it('点击菜单项不关闭', async () => {
+    it('点击 menu item 不关闭', async () => {
       const el = createDropdown({}, SIMPLE)
       await waitForUpdate(el)
       el.openMenu()
@@ -182,8 +182,8 @@ describe('WebUiDropdown 组件', () => {
       expect(el.isOpen).toBe(true)
     })
 
-    // 打开面板的那次点击若被当成外部点击，菜单会「开了又关」，用户根本看不到它。
-    it('打开菜单的同一次外部点击不关闭', async () => {
+    // 打开 panel 的那次点击若被当成外部点击，menu 会「开了又关」，用户根本看不到它。
+    it('打开 menu 的同一次外部点击不关闭', async () => {
       const el = createDropdown({}, SIMPLE)
       await waitForUpdate(el)
 
@@ -194,7 +194,7 @@ describe('WebUiDropdown 组件', () => {
       expect(el.isOpen).toBe(true)
     })
 
-    it('外部设置 open=true 的同一点击周期不关闭菜单', async () => {
+    it('外部设置 open=true 的同一点击周期不关闭 menu', async () => {
       const el = createDropdown({}, SIMPLE)
       await waitForUpdate(el)
 
@@ -207,7 +207,7 @@ describe('WebUiDropdown 组件', () => {
   })
 
   describe('键盘', () => {
-    it('Escape 关闭菜单', async () => {
+    it('Escape 关闭 menu', async () => {
       const el = createDropdown({}, SIMPLE)
       await waitForUpdate(el)
       el.openMenu()
@@ -220,7 +220,7 @@ describe('WebUiDropdown 组件', () => {
     })
 
     // 占位层没被释放的话，宿主重挂载后它会重新成为候选并吞掉按键。
-    it('面板未建好就卸载时不留下占位层：重挂载后 Escape 不被吞掉', async () => {
+    it('panel 未建好就卸载时不留下占位层：重挂载后 Escape 不被吞掉', async () => {
       const el = createDropdown({}, SIMPLE)
       await waitForUpdate(el)
       el.openMenu()
@@ -243,10 +243,10 @@ describe('WebUiDropdown 组件', () => {
   /*
    * 重挂载对账：`open` 是公开 prop，卸载不改写它；Lit 又在 detach 期间不记
    * changedProperties，重连后 `updated()` 不再命中 open 分支。锁的是重连后
-   * 「open 与真实打开态重新一致」这个不变量，只认公开面板与焦点落点。
+   * 「open 与真实打开态重新一致」这个不变量，只认公开 panel 与焦点落点。
    */
   describe('重挂载对账', () => {
-    it('打开状态下重挂载会重建根面板与菜单项', async () => {
+    it('打开状态下重挂载会重建根 panel 与 menu item', async () => {
       const el = createDropdown({}, SIMPLE)
       await waitForUpdate(el)
       el.openMenu()
@@ -287,7 +287,7 @@ describe('WebUiDropdown 组件', () => {
     })
 
     // 重挂载后抢焦点会把用户正在用的地方顶掉，焦点已在别处时必须保持不动。
-    it('detach 期间焦点已被别处持有时，重挂载重建面板但不抢焦点', async () => {
+    it('detach 期间焦点已被别处持有时，重挂载重建 panel 但不抢焦点', async () => {
       const other = document.createElement('button')
       document.body.append(other)
       const el = createDropdown({}, SIMPLE)
@@ -309,7 +309,7 @@ describe('WebUiDropdown 组件', () => {
       expect(document.activeElement).toBe(other)
     })
 
-    it('关闭状态重挂载不会凭空打开面板', async () => {
+    it('关闭状态重挂载不会凭空打开 panel', async () => {
       const el = createDropdown({}, SIMPLE)
       await waitForUpdate(el)
 
@@ -323,9 +323,9 @@ describe('WebUiDropdown 组件', () => {
     })
   })
 
-  describe('子菜单', () => {
-    // 触屏上 hover 是指针划过时的假象；按它开子菜单会让点击子项永远打不开。
-    it('touch pointerenter 不打开子菜单', async () => {
+  describe('submenu', () => {
+    // 触屏上 hover 是指针划过时的假象；按它开 submenu 会让点击子项永远打不开。
+    it('touch pointerenter 不打开 submenu', async () => {
       const el = createDropdown(
         {},
         '<button slot="trigger">M</button><web-ui-dropdown-item submenu>导出<web-ui-dropdown-item>PDF</web-ui-dropdown-item></web-ui-dropdown-item>'
@@ -341,7 +341,7 @@ describe('WebUiDropdown 组件', () => {
         await vi.advanceTimersByTimeAsync(200)
         await el.updateComplete
 
-        // 公开可观察后果是只有一级（根）面板，没有第二级子菜单面板。
+        // 公开可观察后果是只有一级（根）panel，没有第二级 submenu panel。
         expect(getMenuPanels()).toHaveLength(1)
       } finally {
         vi.useRealTimers()
@@ -351,11 +351,11 @@ describe('WebUiDropdown 组件', () => {
   })
 
   /*
-   * 条件渲染边界：framework 的 v-if 会随时增删菜单项。面板里的条目是托管出去的，
-   * 源侧的变化必须同步到面板，否则用户点得到一个已经不在数据里的项。
+   * 条件渲染边界：framework 的 v-if 会随时增删 menu item。panel 里的条目是托管出去的，
+   * 源侧的变化必须同步到 panel，否则用户点得到一个已经不在数据里的项。
    */
   describe('条件渲染边界', () => {
-    it('关闭状态把注释锚点替换为 wrapper 后，新成员进入菜单', async () => {
+    it('关闭状态把注释锚点替换为 wrapper 后，新成员进入 menu', async () => {
       const el = createDropdown(
         {},
         '<button slot="trigger">M</button><!--items--><web-ui-dropdown-item>a</web-ui-dropdown-item>'
@@ -375,7 +375,7 @@ describe('WebUiDropdown 组件', () => {
       expect(itemTexts()).toEqual(['b', 'a'])
     })
 
-    it('打开时删除 wrapper 后立即从菜单移除成员并保持键盘导航有效', async () => {
+    it('打开时删除 wrapper 后立即从 menu 移除成员并保持键盘导航有效', async () => {
       const el = createDropdown(
         {},
         '<button slot="trigger">M</button><web-ui-dropdown-item>a</web-ui-dropdown-item><div><web-ui-dropdown-item>b</web-ui-dropdown-item></div>'
@@ -399,7 +399,7 @@ describe('WebUiDropdown 组件', () => {
       expect(items[0]?.shadowRoot?.activeElement, '剩余首项应接住键盘焦点').toBeTruthy()
     })
 
-    it('打开时删除嵌套子菜单 wrapper 后同步移除子成员', async () => {
+    it('打开时删除嵌套 submenu wrapper 后同步移除子成员', async () => {
       const el = createDropdown(
         {},
         '<button slot="trigger">M</button><web-ui-dropdown-item submenu>导出<div><web-ui-dropdown-item>PDF</web-ui-dropdown-item></div></web-ui-dropdown-item>'
@@ -419,7 +419,7 @@ describe('WebUiDropdown 组件', () => {
       await waitForUpdate(el)
       await nextFrame()
 
-      // 子层面板里不应残留任何已经不在源侧的条目。
+      // 子层 panel 里不应残留任何已经不在源侧的条目。
       expect(submenuPanels().flatMap(panel => [...panel.querySelectorAll('web-ui-dropdown-item')])).toEqual([])
     })
   })

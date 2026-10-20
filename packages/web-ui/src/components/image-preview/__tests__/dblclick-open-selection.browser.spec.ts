@@ -52,7 +52,7 @@ describe('web-ui-image-preview 打开时的选区清理（浏览器）', () => {
    * 再打开预览」时那条选区会原样留在预览层后面的页面上。
    */
   it('打开前就存在的选区在打开时被清掉', async () => {
-    const trigger = createTrigger('双击这里打开图片预览的触发卡片文本 alpha')
+    const trigger = createTrigger('双击这里打开 image preview 的触发卡片文本 alpha')
     // showModal() 不会动打开前就已存在的选区：用户先选中页面文本再打开预览，
     // 这条选区会原样留在预览层后面的页面上（实测 rangeCount 仍为 1）。
     selectTriggerPrefix(trigger, 5)

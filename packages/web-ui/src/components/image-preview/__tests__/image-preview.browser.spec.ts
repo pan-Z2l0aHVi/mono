@@ -52,7 +52,7 @@ function isMounted(): boolean {
   return overlayRoot()?.querySelector('[data-wui-overlay-container] web-ui-image-preview') != null
 }
 
-/** 图片所在的舞台：单轨道结构下图片的父元素是 slide，舞台上溯一层。 */
+/** 图片所在的舞台：单 track 结构下图片的父元素是 slide，舞台上溯一层。 */
 function stageOf(image: HTMLImageElement): HTMLElement {
   return (image.closest('.wui-image-preview-stage') as HTMLElement) ?? image.parentElement!
 }
@@ -64,7 +64,7 @@ function currentImage(host: HTMLElement): HTMLImageElement {
   ) as HTMLImageElement
 }
 
-/** 轨道元素：同样只作定位器，用于读取 WAAPI 过渡（不读 transform 取值）。 */
+/** track 元素：同样只作定位器，用于读取 WAAPI 过渡（不读 transform 取值）。 */
 function trackOf(host: HTMLElement): HTMLElement {
   return host.shadowRoot?.querySelector('.wui-image-preview-track') as HTMLElement
 }
@@ -115,7 +115,7 @@ function stageCenter(stage: HTMLElement): { x: number; y: number } {
 }
 
 describe('imagePreview 命令式 API（浏览器）', () => {
-  it('内部关闭按钮可获得焦点', async () => {
+  it('内部关闭 button 可获得焦点', async () => {
     const { handle, host } = await openPreview({ closable: true, nav: true, toolbar: true })
 
     // class 只作定位器；断言对象是「关闭控件可聚焦」这一 a11y 后果。
@@ -239,7 +239,7 @@ describe('imagePreview 命令式 API（浏览器）', () => {
     const stage = stageOf(image)
     await waitForStageSettled(stage)
 
-    const reset = () => queryA11y(host, '[aria-label="重置缩放"]') as HTMLElement
+    const reset = () => queryA11y(host, '[aria-label="Reset zoom"]') as HTMLElement
     expect(reset().hasAttribute('disabled')).toBe(true)
 
     stage.dispatchEvent(pointer('pointerdown', { pointerType: 'mouse', clientX: 100, clientY: 100 }))
@@ -263,7 +263,7 @@ describe('imagePreview 命令式 API（浏览器）', () => {
     await handle.closed
   })
 
-  it('放大后连续点击图片不关闭浮层', async () => {
+  it('放大后连续点击图片不关闭 overlay', async () => {
     const { handle, host } = await openPreview()
     const image = currentImage(host)
 
@@ -298,14 +298,14 @@ describe('imagePreview 命令式 API（浏览器）', () => {
     await handle.closed
   })
 
-  it('toolbar 重置按钮真实点击后回到 1x', async () => {
+  it('toolbar 重置 button 真实点击后回到 1x', async () => {
     const { handle, host } = await openPreview({ toolbar: true })
 
     handle.zoomIn()
     await host.updateComplete
     expect(handle.scale).toBeGreaterThan(1)
 
-    await userEvent.click(queryA11y(host, '[aria-label="重置缩放"]') as HTMLElement)
+    await userEvent.click(queryA11y(host, '[aria-label="Reset zoom"]') as HTMLElement)
     await host.updateComplete
     expect(handle.scale).toBe(1)
 
@@ -313,7 +313,7 @@ describe('imagePreview 命令式 API（浏览器）', () => {
     await handle.closed
   })
 
-  it('放大后拖拽平移并释放不关闭浮层', async () => {
+  it('放大后拖拽平移并释放不关闭 overlay', async () => {
     const { handle, host } = await openPreview()
     const image = currentImage(host)
 
@@ -328,7 +328,7 @@ describe('imagePreview 命令式 API（浏览器）', () => {
     stage.dispatchEvent(pointer('pointerup', { clientX: 300, clientY: 300 }))
     await host.updateComplete
 
-    // 真实浏览器在指针起止于同一元素时会补发 click，拖拽产生的这次不得被当作遮罩点击。
+    // 真实浏览器在指针起止于同一元素时会补发 click，拖拽产生的这次不得被当作 backdrop 点击。
     stage.dispatchEvent(new MouseEvent('click', { bubbles: true, detail: 1 }))
     await host.updateComplete
     expect(isMounted()).toBe(true)
@@ -409,9 +409,9 @@ describe('imagePreview 命令式 API（浏览器）', () => {
     await handle.closed
   })
 
-  it('noBackdropClose 时关闭按钮仍可关闭', async () => {
+  it('noBackdropClose 时关闭 button 仍可关闭', async () => {
     const { handle, host } = await openPreview({ noBackdropClose: true, closable: true })
-    const closeButton = queryA11y(host, '[aria-label="关闭"]') as HTMLElement
+    const closeButton = queryA11y(host, '[aria-label="Close"]') as HTMLElement
     expect(closeButton).not.toBeNull()
 
     await userEvent.click(closeButton)

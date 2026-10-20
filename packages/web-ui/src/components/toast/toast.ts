@@ -317,7 +317,7 @@ export class WebUiToast extends LitElement {
                   icon
                   variant="secondary"
                   size="24"
-                  aria-label="关闭"
+                  aria-label="Close"
                   @click=${this._onCloseClick}
                 >
                   <web-ui-icon .icon=${heroiconsXMark16Solid} size="16"></web-ui-icon>

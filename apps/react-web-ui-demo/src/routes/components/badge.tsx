@@ -13,6 +13,6 @@ function Component() {
 }
 
 export const Route = createFileRoute('/components/badge')({
-  staticData: { title: 'Badge 徽标' },
+  staticData: { title: 'Badge' },
   component: Component
 })

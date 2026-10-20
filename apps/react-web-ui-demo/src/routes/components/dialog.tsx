@@ -13,6 +13,6 @@ function Component() {
 }
 
 export const Route = createFileRoute('/components/dialog')({
-  staticData: { title: 'Dialog 对话框' },
+  staticData: { title: 'Dialog' },
   component: Component
 })

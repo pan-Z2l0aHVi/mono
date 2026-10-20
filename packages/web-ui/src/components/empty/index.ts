@@ -9,7 +9,7 @@ import { lucideInbox } from '@/icons'
 import style from './style.css?inline'
 
 /**
- * 图标容器边长默认值（px），也是非法输入的回退目标。
+ * icon 容器边长默认值（px），也是非法输入的回退目标。
  */
 const DEFAULT_SIZE = 56
 
@@ -40,7 +40,7 @@ const DEFAULT_DESCRIPTION_FONT_SIZE = 14
  *
  * 这一层是必要的：`size` 会同时写进 `--wui-internal-empty-size`，未守卫时
  * `size="abc"` 会产出失效的 `NaNpx`（盒退回 unset 而涨成 300×300），
- * `size=""` 会产出 `0px`（图标不可见）。回退的是边长本身，整套派生度量因此一起回到默认档
+ * `size=""` 会产出 `0px`（icon 不可见）。回退的是边长本身，整套派生度量因此一起回到默认档
  * 56，而不是按 `NaN` 算出垃圾值。
  */
 const normalizeSize = (value: number): number => (Number.isFinite(value) && value > 0 ? value : DEFAULT_SIZE)
@@ -54,10 +54,10 @@ export class WebUiEmpty extends LitElement {
   @property({ type: String, reflect: true }) description = ''
 
   /**
-   * 版面缩放基准，单位 px，默认 56。驱动图标盒、min-height、padding 与标题/描述字号，
-   * 使大图标不再配 medium 留白。
+   * 版面缩放基准，单位 px，默认 56。驱动 icon 盒、min-height、padding 与标题/描述字号，
+   * 使大 icon 不再配 medium 留白。
    *
-   * 派生规则：图标容器边长即 `size`，默认字形边长 `round(size * 3 / 7)`，min-height
+   * 派生规则：icon 容器边长即 `size`，默认字形边长 `round(size * 3 / 7)`，min-height
    * `round(size * 30 / 7)`，padding 块 `round(size * 4 / 7)`、行 `round(size * 3 / 7)`；
    * 字号在 56 处分两档，低于 56 为 14px / 13px，56 及以上为 16px / 14px。段间距与内容宽度
    * 不随它变化。

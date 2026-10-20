@@ -47,7 +47,7 @@ const SVG_ICON_COLUMNS = [2, 3, 3, 4, 5, 5, 5, 5, 5]
 
 const PageStub = defineComponent({ template: '<div />' })
 
-/** 渲染出来的轨道数就是列数；`grid-template-columns` 的 computed 值即用后的轨道列表。 */
+/** 渲染出来的 track 数就是列数；`grid-template-columns` 的 computed 值即用后的 track 列表。 */
 function columnCount(testId: string) {
   const element = document.querySelector(`[data-testid="${testId}"]`)
   if (!element) throw new Error(`grid ${testId} not found`)
@@ -112,7 +112,7 @@ describe('网格列数基线（浏览器）', () => {
     expect(await columnsAcrossBreakpoints('home-quick-links-grid')).toEqual(HOME_QUICK_LINKS_COLUMNS)
   })
 
-  it('svg 示例页图标网格在九档视口下保持 2/3/3/4/5/5/5/5/5 列', async () => {
+  it('svg 示例页 icon 网格在九档视口下保持 2/3/3/4/5/5/5/5/5 列', async () => {
     await mountPage(SvgDrawLinesDemo, 'svg-icon-grid')
 
     expect(await columnsAcrossBreakpoints('svg-icon-grid')).toEqual(SVG_ICON_COLUMNS)

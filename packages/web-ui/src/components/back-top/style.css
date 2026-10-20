@@ -8,7 +8,7 @@
   display: block;
 }
 
-/* 容器模式：scrollTarget 为元素时按钮悬浮于容器底部（元素需置于容器内部），
+/* 容器模式：scrollTarget 为元素时 button 悬浮于容器底部（元素需置于容器内部），
    横向偏移沿用 --wui-back-top-left/right，纵向沿用 --wui-back-top-bottom */
 :host([container-mode]) {
   position: sticky;

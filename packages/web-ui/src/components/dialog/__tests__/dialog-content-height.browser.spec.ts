@@ -277,11 +277,11 @@ describe('dialog 内容区高度约束（浏览器）', () => {
       const content = query<HTMLElement>(component, '.wui-dialog-content')
 
       // 滚动口贴边：headless 下卡片 padding 归零，滚动容器（.wui-dialog-content）的
-      // 右沿因此与卡片右沿重合——滚动条落在卡片内沿，不留一圈 padding。
+      // 右沿因此与卡片右沿重合——scrollbar 落在卡片内沿，不留一圈 padding。
       expect(content.getBoundingClientRect().right).toBeCloseTo(card.getBoundingClientRect().right, 1)
 
       // 用户后果一：卡片不许溢出 dialog 盒子。dialog 是 overflow: visible（阴影与关闭
-      // 按钮不能由同尺寸的原生 dialog 裁），溢出的那截落在视口之下，够不着也滚不动。
+      // button 不能由同尺寸的原生 dialog 裁），溢出的那截落在视口之下，够不着也滚不动。
       expect(card.offsetHeight).toBeLessThanOrEqual(dialogOf(component).offsetHeight)
 
       // 用户后果二：内容自己能滚到最后一块。
@@ -329,7 +329,7 @@ describe('dialog 内容区高度约束（浏览器）', () => {
       expect(content.scrollTop).toBe(0)
     })
 
-    it('关闭按钮不跟随内容滚动', async () => {
+    it('关闭 button 不跟随内容滚动', async () => {
       const component = document.createElement('web-ui-dialog')
       component.setAttribute('closable', '')
       component.headless = true
@@ -343,8 +343,8 @@ describe('dialog 内容区高度约束（浏览器）', () => {
       const content = query<HTMLElement>(component, '.wui-dialog-content')
       const close = query<HTMLElement>(component, '.wui-dialog-close')
 
-      // 浮在右上角的关闭按钮是卡片的绝对定位子元素；滚动层若错做成卡片自己，
-      // 按钮会跟着内容一起滚出视野。量相对卡片的实时几何，不用 offsetTop
+      // 浮在右上角的关闭 button 是卡片的绝对定位子元素；滚动层若错做成卡片自己，
+      // button 会跟着内容一起滚出视野。量相对卡片的实时几何，不用 offsetTop
       // （offsetTop 是布局值，不随滚动变化，没有区分力）。
       const offset = () => {
         const cardRect = card.getBoundingClientRect()

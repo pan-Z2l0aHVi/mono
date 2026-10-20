@@ -19,7 +19,7 @@ describe('WebUiToast 移动端适配（浏览器）', () => {
     await el.updateComplete
 
     // 判据取用户后果「窄视口下不出现横向滚动」——这正是原始缺陷的形态（toast 撑出
-    // 横向滚动条），且不锁死任何像素宽度。
+    // 横向 scrollbar），且不锁死任何像素宽度。
     expect(document.documentElement.scrollWidth).toBeLessThanOrEqual(320)
   })
 })

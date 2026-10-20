@@ -6,7 +6,7 @@ import { installPointerFocusSuppression, resetPointerFocusState } from '../point
  * 指针输入后的 focus ring 抑制（政策第 3 条「可访问性契约」）。
  *
  * Safari 等引擎在指针点击后仍让 `:focus-visible` 命中新聚焦元素，于是点击打开
- * drawer/dialog 时内部按钮会冒出 focus ring；键盘导航则必须看得见。断言全部落在
+ * drawer/dialog 时内部 button 会冒出 focus ring；键盘导航则必须看得见。断言全部落在
  * `data-wui-pointer-focus` 这一**公开标记**上——组件样式（button / switch / slider）
  * 就是消费它来透明化 focus ring 的，删掉任一分支都会让对应样式失效。
  */

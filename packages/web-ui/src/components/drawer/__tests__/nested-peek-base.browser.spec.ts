@@ -132,7 +132,7 @@ async function stabilize(drawers: WebUiDrawer[], budget: Budget) {
      * 就成立，稳定判据提前返回，量到出屏位置（CI 实测左缘 1280 = 完全出屏，断言拿它
      * 当基准）。
      *
-     * 判据用几何：这几个用例的抽屉都是默认的右侧 placement，打开位必然落在视口内，
+     * 判据用几何：这几个用例的 drawer 都是默认的右侧 placement，打开位必然落在视口内，
      * 所以「左缘 < innerWidth」就是「已经进来」。仍然是公开几何，不读内部状态。
      */
     const entered = current.every(left => left < window.innerWidth - 1)

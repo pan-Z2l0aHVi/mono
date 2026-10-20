@@ -95,7 +95,7 @@ describe('storage 测试', () => {
       expect(sessionStorage.getItem('session-ns:key')).toContain('_pkg')
       expect(session.get('key')).toEqual({ a: 1 })
 
-      // 隔离是会话存储的意义：关掉标签页后 localStorage 里的东西不该留下
+      // 隔离是会话存储的意义：关掉 tab 后 localStorage 里的东西不该留下
       expect(localStorage.getItem('session-ns:key')).toBeNull()
     })
 

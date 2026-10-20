@@ -3,7 +3,7 @@ component: input
 tag: web-ui-input
 ---
 
-文本输入框，支持清除按钮与前后缀插槽，并与原生 `<form>` 集成；宿主自身不可聚焦，焦点委托到 shadow 内的原生 input。
+文本 input，支持清除 button 与前后缀插槽，并与原生 `<form>` 集成；宿主自身不可聚焦，焦点委托到 shadow 内的原生 input。
 
 ## 示例
 
@@ -21,9 +21,9 @@ tag: web-ui-input
 </template>
 ```
 
-### 清除按钮
+### 清除 button
 
-`clearable` 在有值时显示清除按钮，`full` 让输入框占满父容器宽度。点击清除按钮会清空值，并**同时派发 `input` 与 `change`**（清除是一次已提交的离散变更，不是连续输入，只监听 `change` 的消费者也能收到）。
+`clearable` 在有值时显示清除 button，`full` 让 input 占满父容器宽度。点击清除 button 会清空值，并**同时派发 `input` 与 `change`**（清除是一次已提交的离散变更，不是连续输入，只监听 `change` 的消费者也能收到）。
 
 ```react
 <web-ui-input clearable full placeholder="输入关键词"></web-ui-input>
@@ -37,7 +37,7 @@ tag: web-ui-input
 
 ### 前后缀
 
-`prefix` / `suffix` 插槽在输入区两侧放图标或文字，`aria-label` 为无可见标签的输入提供无障碍名称。
+`prefix` / `suffix` 插槽在输入区两侧放 icon 或文字，`aria-label` 为无可见 label 的输入提供无障碍名称。
 
 ```react
 <web-ui-input aria-label="搜索" clearable placeholder="搜索组件">
@@ -101,27 +101,27 @@ const keyword = ref('')
 | `disabled`    | 禁用状态。                                                     | `boolean`        | `false`  |
 | `readonly`    | 只读状态。                                                     | `boolean`        | `false`  |
 | `required`    | 必填校验。                                                     | `boolean`        | `false`  |
-| `clearable`   | 显示清除按钮。                                                 | `boolean`        | `false`  |
+| `clearable`   | 显示清除 button。                                              | `boolean`        | `false`  |
 | `full`        | 占满父容器宽度。                                               | `boolean`        | `false`  |
 | `borderless`  | ghost 形态：移除边框、背景与阴影，保留 padding 与 focus ring。 | `boolean`        | `false`  |
-| `aria-label`  | 无障碍标签。                                                   | `string \| null` | `null`   |
+| `aria-label`  | 无障碍 label。                                                 | `string \| null` | `null`   |
 | `value`       | 输入值。                                                       | `string`         | `''`     |
 
 ### Events
 
-| 名称     | 说明                                           |
-| -------- | ---------------------------------------------- |
-| `input`  | 输入时触发。                                   |
-| `change` | 提交时触发（失焦、回车，或点击清除按钮清空）。 |
-| `focus`  | 获得焦点时触发。                               |
-| `blur`   | 失去焦点时触发。                               |
+| 名称     | 说明                                               |
+| -------- | -------------------------------------------------- |
+| `input`  | 输入时触发。                                       |
+| `change` | 提交时触发（失焦、回车，或点击清除 button 清空）。 |
+| `focus`  | 获得焦点时触发。                                   |
+| `blur`   | 失去焦点时触发。                                   |
 
 ### Slots
 
-| 名称     | 说明                     |
-| -------- | ------------------------ |
-| `prefix` | 输入区左侧的图标或文字。 |
-| `suffix` | 输入区右侧的图标或文字。 |
+| 名称     | 说明                       |
+| -------- | -------------------------- |
+| `prefix` | 输入区左侧的 icon 或文字。 |
+| `suffix` | 输入区右侧的 icon 或文字。 |
 
 ### Methods
 
@@ -133,6 +133,6 @@ const keyword = ref('')
 
 ### CSS Custom Properties
 
-| 名称                      | 说明         | 默认值                           |
-| ------------------------- | ------------ | -------------------------------- |
-| `--wui-input-clear-color` | 清除按钮颜色 | `var(--wui-color-text-tertiary)` |
+| 名称                      | 说明             | 默认值                           |
+| ------------------------- | ---------------- | -------------------------------- |
+| `--wui-input-clear-color` | 清除 button 颜色 | `var(--wui-color-text-tertiary)` |

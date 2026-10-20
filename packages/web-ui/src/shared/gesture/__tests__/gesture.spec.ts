@@ -207,7 +207,7 @@ describe('shared/gesture attachDragGesture', () => {
     el.remove()
   })
 
-  // 守护必须随手势结束卸载，否则浮层关掉之后页面再也滚不动。
+  // 守护必须随手势结束卸载，否则 overlay 关掉之后页面再也滚不动。
   it('触摸守护：松手与 pointercancel 后全部卸载', () => {
     const el = document.createElement('div')
     document.body.append(el)

@@ -18,7 +18,7 @@ function createPortalTooltip(content: string): WebUiTooltip {
 }
 
 describe('WebUiTooltip 组件（浏览器）', () => {
-  it('直接设置 open 时同步 Portal 面板', async () => {
+  it('直接设置 open 时同步 Portal panel', async () => {
     const tooltip = createPortalTooltip('Portal tooltip')
     await tooltip.updateComplete
 
@@ -35,7 +35,7 @@ describe('WebUiTooltip 组件（浏览器）', () => {
     expect(tooltip.open).toBe(false)
   })
 
-  it('退出过渡中重新打开时保持 Portal 面板可见', async () => {
+  it('退出过渡中重新打开时保持 Portal panel 可见', async () => {
     const tooltip = createPortalTooltip('可中断提示')
     await tooltip.updateComplete
 
@@ -52,7 +52,7 @@ describe('WebUiTooltip 组件（浏览器）', () => {
     expect(panel?.hasAttribute('hidden')).toBe(false)
   })
 
-  it('reconfigure 帧回调前卸载不重建 portal 面板', async () => {
+  it('reconfigure 帧回调前卸载不重建 portal panel', async () => {
     const tooltip = document.createElement('web-ui-tooltip')
     tooltip.content = 'Portal tooltip'
     tooltip.innerHTML = '<button>Trigger</button>'
@@ -67,7 +67,7 @@ describe('WebUiTooltip 组件（浏览器）', () => {
     await waitForFrame()
     await waitForFrame()
 
-    // 宿主卸载后不得留下孤儿面板。
+    // 宿主卸载后不得留下孤儿 panel。
     expect(getPortalPanel('tooltip')).toBeNull()
   })
 })

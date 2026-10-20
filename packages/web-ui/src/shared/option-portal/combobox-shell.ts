@@ -80,36 +80,36 @@ export interface OptionListenerHandlers {
 export interface ComboboxTriggerSource {
   /** 持 ARIA 与委托监听的 trigger 包装 div（shadow 内）。 */
   getWrapper(): HTMLElement | null
-  /** `slot[name="trigger"]` 的首个 assigned 元素；无自定义触发器时为 null。 */
+  /** `slot[name="trigger"]` 的首个 assigned 元素；无自定义 trigger 时为 null。 */
   getCustomTrigger(): HTMLElement | null
-  /** 默认触发器（shadow 内的 web-ui-input）；未渲染时为 null。 */
+  /** 默认 trigger（shadow 内的 web-ui-input）；未渲染时为 null。 */
   getFallbackTrigger(): HTMLElement | null
 }
 
 export interface ComboboxTriggerHandlers {
-  /** 触发器文本变化；value 取自触发器 host 的字符串 value 属性。 */
+  /** trigger 文本变化；value 取自 trigger host 的字符串 value 属性。 */
   onInput(value: string): void
-  /** 点击触发器区域（含包装 div 自身留白）。 */
+  /** 点击 trigger 区域（含包装 div 自身留白）。 */
   onClick(): void
   onFocusIn(event: FocusEvent): void
   onFocusOut(event: FocusEvent): void
 }
 
 export interface ComboboxTriggerApi {
-  /** 当前生效的触发器 host：自定义 trigger slot 首个 assigned 元素，否则默认触发器。 */
+  /** 当前生效的 trigger host：自定义 trigger slot 首个 assigned 元素，否则默认 trigger。 */
   getTrigger(): HTMLElement | null
-  /** 触发器当前文本；触发器不暴露字符串 value 时返回 null。 */
+  /** trigger 当前文本；trigger 不暴露字符串 value 时返回 null。 */
   getValue(): string | null
-  /** 回写文本；仅在文本触发器且值确实变化时写入，避免无谓重渲染。 */
+  /** 回写文本；仅在文本 trigger 且值确实变化时写入，避免无谓重渲染。 */
   setValue(value: string): void
   /** 多行可编辑元素判定：Enter 保留换行语义，不接管为「选中高亮项」。 */
   isMultilineEdit(event: KeyboardEvent): boolean
   /**
-   * 程序化聚焦当前触发器。组件自带 focus 重定向（web-ui-input/textarea）时落到
-   * 内部原生控件；自定义触发器没有该能力时，原生 focus() 聚焦 host 自身。
+   * 程序化聚焦当前 trigger。组件自带 focus 重定向（web-ui-input/textarea）时落到
+   * 内部原生控件；自定义 trigger 没有该能力时，原生 focus() 聚焦 host 自身。
    */
   focusTrigger(options?: FocusOptions): void
-  /** 失焦当前触发器，兜底语义同 focusTrigger。 */
+  /** 失焦当前 trigger，兜底语义同 focusTrigger。 */
   blurTrigger(): void
   /** 绑定包装 div 上的委托监听（幂等：包装 div 不变则跳过）。 */
   bind(): void
@@ -117,18 +117,18 @@ export interface ComboboxTriggerApi {
 }
 
 /**
- * combobox 触发器委托层（autocomplete）。
+ * combobox trigger 委托层（autocomplete）。
  *
- * 默认触发器是 shadow 内的 `web-ui-input`，自定义触发器由 `slot[name="trigger"]`
+ * 默认 trigger 是 shadow 内的 `web-ui-input`，自定义 trigger 由 `slot[name="trigger"]`
  * 提供（`web-ui-textarea` 等）。两者对组件暴露同一形状：字符串 value、可聚焦、
  * 派发 composed 的 input / click / focusin / focusout。委托层把这些差异收敛成一份接口：
  * 监听统一挂在包装 div 上（事件委托，覆盖 shadow 内与 light DOM 两条路径），
- * 文本读写只认触发器 host 的 value 属性。
+ * 文本读写只认 trigger host 的 value 属性。
  *
  * 焦点用 focusin/focusout 而非 focus/blur：后两者不冒泡，到不了包装 div
- * （实测：shadow 内默认触发器与 light DOM 自定义触发器都不触发包装 div 的 focus/blur）。
+ * （实测：shadow 内默认 trigger 与 light DOM 自定义 trigger 都不触发包装 div 的 focus/blur）。
  *
- * 触发器自身派发的 change（web-ui-input/textarea 在原生 change 不 composed 时补发）
+ * trigger 自身派发的 change（web-ui-input/textarea 在原生 change 不 composed 时补发）
  * 必须被拦下：组件的 change 只表示「选中提交」，否则失焦即误报一次 change。
  */
 export const defineComboboxTrigger = () =>
@@ -142,8 +142,8 @@ export const defineComboboxTrigger = () =>
       return typeof value === 'string' ? value : null
     }
 
-    // composed 事件在包装 div 上看到的是触发器 host（或其在 light DOM 内的后代）；
-    // 只有来自触发器内部的输入才计入，包装 div 上的其它内容不干扰。
+    // composed 事件在包装 div 上看到的是 trigger host（或其在 light DOM 内的后代）；
+    // 只有来自 trigger 内部的输入才计入，包装 div 上的其它内容不干扰。
     const isWithinTrigger = (event: Event, trigger: HTMLElement | null): boolean => {
       const target = event.target
       return !!trigger && target instanceof Node && (target === trigger || trigger.contains(target))
@@ -179,7 +179,7 @@ export const defineComboboxTrigger = () =>
       },
       focusTrigger(options?: FocusOptions) {
         // web-ui-input/textarea 的公共 focus() 已重定向到内部原生控件；普通元素或
-        // 未实现 focus 的自定义触发器走原生 HTMLElement.focus()，即聚焦 host 自身
+        // 未实现 focus 的自定义 trigger 走原生 HTMLElement.focus()，即聚焦 host 自身
         getTrigger()?.focus(options)
       },
       blurTrigger() {
@@ -226,7 +226,7 @@ export function createOptionListenerBinding(handlers: OptionListenerHandlers) {
 }
 
 /**
- * focusout 关闭复核：焦点是否真的离开了宿主与面板。
+ * focusout 关闭复核：焦点是否真的离开了宿主与 panel。
  * rAF 等待 click/pointerdown 相关的焦点迁移完成后再判定。
  */
 export function handleComboboxFocusOut(

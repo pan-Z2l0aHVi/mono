@@ -3,13 +3,13 @@ component: switch
 tag: web-ui-switch
 ---
 
-开关切换，声明 `role="switch"` 与 `aria-checked`；`loading` 期间阻断交互并显示待定状态。键盘焦点落在内层原生 checkbox 上，**空格与 Enter 都能切换**。
+switch 切换，声明 `role="switch"` 与 `aria-checked`；`loading` 期间阻断交互并显示待定状态。键盘焦点落在内层原生 checkbox 上，**空格与 Enter 都能切换**。
 
 ## 示例
 
 ### 基础
 
-`checked` 是开关状态，`value` 是表单提交值。
+`checked` 是 switch 状态，`value` 是表单提交值。
 
 ```react
 <web-ui-switch checked={enabled} onChange={event => setEnabled(event.currentTarget.checked)}>
@@ -47,7 +47,7 @@ const enabled = ref(false)
 
 ### 表单值
 
-开关自身不渲染标签盒之外的内容，`name` 与 `value` 让它在表单里以选中值参与提交。
+switch 自身不渲染 label 盒之外的内容，`name` 与 `value` 让它在表单里以选中值参与提交。
 
 ```react
 <form>
@@ -80,10 +80,10 @@ const enabled = ref(false)
 
 ### Events
 
-| 名称     | 说明                 |
-| -------- | -------------------- |
-| `input`  | 状态变化时触发。     |
-| `change` | 用户切换开关时触发。 |
+| 名称     | 说明                     |
+| -------- | ------------------------ |
+| `input`  | 状态变化时触发。         |
+| `change` | 用户切换 switch 时触发。 |
 
 ### 行为说明
 

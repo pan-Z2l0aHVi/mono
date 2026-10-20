@@ -6,11 +6,11 @@ import '@/components/select'
 /*
  * Escape 归属仲裁（浏览器）。
  *
- * 承载的是 issue #120 Block 1：一次 Escape 只能关闭最内层浮层。缺陷形态是「内层没关、
+ * 承载的是 issue #120 Block 1：一次 Escape 只能关闭最内层 overlay。缺陷形态是「内层没关、
  * 外层反被关」，且只有在真实按键下才完整——合成 KeyboardEvent 不会触发原生 dialog
  * 的关闭请求，也测不出 drawer 的 keydown 归属守卫。
  *
- * 面板查询不能用 `getPortalPanel()`：它只查 fallback overlay root，而 portal 面板在
+ * panel 查询不能用 `getPortalPanel()`：它只查 fallback overlay root，而 portal panel 在
  * 开启的 <dialog> 上时会挂到 dialog 里（portal.ts 的 findEnclosingOpenDialog），
  * 必须跨 shadow 边界深搜。
  */
@@ -43,7 +43,7 @@ async function waitForDrawerOpen(el: WebUiDrawer) {
   await el.updateComplete
 }
 
-/** 跨 shadow 边界深搜：portal 面板可能挂在开启的 <dialog> 内，不在 fallback overlay root。 */
+/** 跨 shadow 边界深搜：portal panel 可能挂在开启的 <dialog> 内，不在 fallback overlay root。 */
 function deepQuery(root: ParentNode | null, selector: string): HTMLElement | null {
   if (!root) return null
   for (const el of Array.from(root.querySelectorAll('*'))) {
@@ -154,8 +154,8 @@ describe('overlay Escape 归属仲裁（浏览器）', () => {
   })
 
   /*
-   * 兜底分支（并列浮层）的守卫用例：resolve() 的 seq 分支承载 README 已对外承诺的
-   * 「互不嵌套的并列浮层按打开顺序关闭最上层」，此前没有任何用例压住它。
+   * 兜底分支（并列 overlay）的守卫用例：resolve() 的 seq 分支承载 README 已对外承诺的
+   * 「互不嵌套的并列 overlay 按打开顺序关闭最上层」，此前没有任何用例压住它。
    */
   it('互不嵌套的两个 popover 先后打开时，一次 Escape 只关闭后开的那个', async () => {
     const first = document.createElement('web-ui-popover') as WebUiPopover

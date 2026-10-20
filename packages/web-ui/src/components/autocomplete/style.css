@@ -15,16 +15,16 @@
 }
 
 .wui-autocomplete-inner {
-  /* 与 select 的 .wui-select-inner 对齐：为本地绝对定位面板提供包含块，
-     避免面板 offsetParent（BODY）与实际包含块（远端定位祖先，如 layout header）不一致导致定位偏移。 */
+  /* 与 select 的 .wui-select-inner 对齐：为本地绝对定位 panel 提供包含块，
+     避免 panel offsetParent（BODY）与实际包含块（远端定位祖先，如 layout header）不一致导致定位偏移。 */
   position: relative;
 }
 
 /*
  * trigger 包装 div：持 combobox ARIA、slot[name="trigger"] 与事件委托监听。
- * 玻璃胶囊由默认触发器 web-ui-input 自带（与重构前的 .input-wrapper 同一套 token
+ * 玻璃胶囊由默认 trigger web-ui-input 自带（与重构前的 .input-wrapper 同一套 token
  * 与度量：--wui-input-width / --wui-control-size / --wui-radius-control），这里只定义
- * 容器宽度与自定义触发器时的自适应。
+ * 容器宽度与自定义 trigger 时的自适应。
  */
 .autocomplete-trigger {
   display: flex;
@@ -42,7 +42,7 @@
   width: auto;
 }
 
-/* 默认触发器填满容器：高度、内边距、玻璃底与 focus ring 由它自带 */
+/* 默认 trigger 填满容器：高度、内边距、玻璃底与 focus ring 由它自带 */
 .autocomplete-trigger web-ui-input {
   flex: 1;
   min-width: 0;
@@ -52,26 +52,26 @@
   min-width: 0;
 }
 
-/* 自定义触发器场景下包装 div 可能成为 tab 位，补 focus ring（默认触发器自带） */
+/* 自定义 trigger 场景下包装 div 可能成为 tab 位，补 focus ring（默认 trigger 自带） */
 .autocomplete-trigger:focus-visible {
   outline: var(--wui-focus-ring-width, 3px) solid
     var(--wui-color-focus-ring, color-mix(in srgb, var(--wui-color-accent, #08f) 40%, transparent));
   outline-offset: 2px;
 }
 
-/* 禁用态：宿主已整体降透明度，默认触发器自身的 disabled 降透明度在此抵消，
+/* 禁用态：宿主已整体降透明度，默认 trigger 自身的 disabled 降透明度在此抵消，
    保持与重构前（宿主 × 内部 input 两层）一致的观感 */
 :host([disabled]) .autocomplete-trigger web-ui-input {
   opacity: 1;
 }
 
 .autocomplete-overlay {
-  /* autocomplete 不表示选中状态；隐藏共享 option 的勾选图标及其布局占位 */
+  /* autocomplete 不表示选中状态；隐藏共享 option 的勾选 icon 及其布局占位 */
   --wui-option-check-display: none;
   --wui-internal-glass-shadow: var(--wui-shadow-panel, 0 3px 9px rgb(0 0 0 / 0.27));
   --wui-glass-corner-radius: var(--wui-radius-menu, 18px);
 
-  /* 环底色转 transparent，宽面板的长边中段不留铺底，见 menu-portal.css 同处注释。 */
+  /* 环底色转 transparent，宽 panel 的长边中段不留铺底，见 menu-portal.css 同处注释。 */
   --wui-color-glass-ring: transparent;
   --wui-internal-duration-float-enter: var(--wui-duration-float-enter, 240ms);
   --wui-internal-duration-float-exit: var(--wui-duration-float-exit, 160ms);
@@ -85,7 +85,7 @@
   max-width: var(--wui-autocomplete-max-width, 500px);
   border-radius: var(--wui-radius-menu, 18px);
 
-  /* 玻璃背景：wui-glass 在面板自身，这里覆盖其默认玻璃底为菜单表面色 */
+  /* 玻璃背景：wui-glass 在 panel 自身，这里覆盖其默认玻璃底为 menu surface 色 */
   background-color: var(--wui-color-surface-menu, rgb(250 250 250 / 0.76));
 
   &.portal {
@@ -107,7 +107,7 @@
   padding: var(--wui-space-1, 4px);
 }
 
-/* 非匹配候选隐藏：本地模式经 slot 投影，portal 模式为面板直接子元素 */
+/* 非匹配候选隐藏：本地模式经 slot 投影，portal 模式为 panel 直接子元素 */
 ::slotted(web-ui-option[data-filtered]) {
   display: none;
 }

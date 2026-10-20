@@ -13,6 +13,6 @@ function Component() {
 }
 
 export const Route = createFileRoute('/components/input-number')({
-  staticData: { title: 'InputNumber 数字输入框' },
+  staticData: { title: 'InputNumber' },
   component: Component
 })

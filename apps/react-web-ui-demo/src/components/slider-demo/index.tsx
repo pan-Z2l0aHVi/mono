@@ -10,9 +10,9 @@ function SliderDemo() {
 
   return (
     <div className="slider-demo">
-      <h1>滑块</h1>
+      <h1>slider</h1>
       <section>
-        <h2>基础样式</h2>
+        <h2>Base styles</h2>
         <div className="examples">
           <div className="example">
             <web-ui-slider value={standardValue} onInput={event => setStandardValue(event.currentTarget.value)} />
@@ -26,7 +26,7 @@ function SliderDemo() {
         </div>
       </section>
       <section>
-        <h2>刻度</h2>
+        <h2>Marks</h2>
         <div className="examples">
           <div className="example">
             <web-ui-slider
@@ -45,7 +45,7 @@ function SliderDemo() {
         </div>
       </section>
       <section>
-        <h2>范围与事件</h2>
+        <h2>Range and events</h2>
         <div className="event-example">
           <web-ui-slider
             value={inputValue}
@@ -62,7 +62,7 @@ function SliderDemo() {
         </div>
       </section>
       <section>
-        <h2>垂直</h2>
+        <h2>Vertical</h2>
         <div className="vertical-examples">
           <div className="example">
             <web-ui-slider
@@ -84,7 +84,7 @@ function SliderDemo() {
           </div>
           <div className="example">
             <web-ui-slider vertical value={50} disabled />
-            <span className="label">禁用</span>
+            <span className="label">Disabled</span>
           </div>
         </div>
       </section>

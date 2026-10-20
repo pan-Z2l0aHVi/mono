@@ -1,9 +1,9 @@
 /**
  * 跟踪宿主的某个子元素的 border-box 高度。
  *
- * 用途是「元素的高度是动态的，但布局里另有一处要按它让位」——例如 drawer 的拖拽热区必须
+ * 用途是「元素的高度是动态的，但布局里另有一处要按它让位」——例如 drawer 的拖拽 drag zone 必须
  * 避开 header，而 header 的高度由 slotted 内容与 consumer 的 padding 决定（窄屏下还可能
- * 被 `max-[640px]:h-14` 改写）。这种让位关系在 CSS 里没有纯表达：热区是 dialog 的绝对
+ * 被 `max-[640px]:h-14` 改写）。这种让位关系在 CSS 里没有纯表达：drag zone 是 dialog 的绝对
  * 定位兄弟节点，拿不到 header 的盒子尺寸；写成 `top: 100%` 之类又会把内容区一起算进去。
  *
  * 观察的是 border-box 而不是默认的 content-box：这里的判据是「这块区域在布局里占了多高」，
@@ -21,7 +21,7 @@ let observer: ResizeObserver | undefined
 
 /**
  * 全模块共用一个 ResizeObserver：逐实例建观察者意味着每个目标各排一次尺寸回调，而同一屏里
- * 可能同时有几十个浮层。没有 ResizeObserver 的环境（jsdom）没有布局可测，直接不接。
+ * 可能同时有几十个 overlay。没有 ResizeObserver 的环境（jsdom）没有布局可测，直接不接。
  */
 function getObserver(): ResizeObserver | null {
   if (typeof ResizeObserver === 'undefined') return null

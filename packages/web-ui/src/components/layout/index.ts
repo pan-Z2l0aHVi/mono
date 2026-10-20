@@ -24,10 +24,10 @@ import style from './style.css?inline'
 const MOBILE_VIEWPORT_QUERY = '(width <= 640px)'
 
 /**
- * Layout 组件 - 提供页面布局框架，支持可折叠侧边栏
+ * Layout 组件 - 提供页面布局框架，支持 collapsible sidebar
  *
- * @fires sidebar-collapsed-change - 桌面端侧边栏折叠状态变更请求时触发
- * @fires sidebar-open-change - 移动端侧边栏 Drawer 开关请求时触发
+ * @fires sidebar-collapsed-change - 桌面端侧边栏 collapse 状态变更请求时触发
+ * @fires sidebar-open-change - 移动端侧边栏 Drawer toggle 请求时触发
  * @fires sidebar-width-change - 桌面端侧边栏拖拽调宽结束时触发，携带最终宽度（受控请求）
  * @fires mobile-change - 视口跨越移动端断点、`mobile` 翻转时触发（派生状态通知）
  * @slot banner - 顶部 Banner 区域（全宽，随页面滚动，可选）
@@ -47,9 +47,9 @@ export class WebUiLayout extends LitElement {
    * 它不与 `sidebarOpen` 合并：前者是跨视口保留的密度选择，后者是移动端瞬时的 modal 可见性。
    *
    * 两处渲染的是同一份 `sidebar` slot 内容，所以本属性只负责桌面 aside 的几何：Consumer
-   * 若让自己的 slot 内容跟着它变形态（隐藏标签、改排布），必须按 `mobile` 收窄那个条件
+   * 若让自己的 slot 内容跟着它变形态（隐藏 label、改排布），必须按 `mobile` 收窄那个条件
    * （例如 `collapsed && !layout.mobile`，或 CSS 的 `web-ui-layout[mobile]`），
-   * 否则折叠态会一路渲染进移动端 Drawer（issue #195）。
+   * 否则 collapsed state 会一路渲染进移动端 Drawer（issue #195）。
    */
   @property({ type: Boolean, attribute: 'sidebar-collapsed', reflect: true })
   sidebarCollapsed = false
@@ -60,7 +60,7 @@ export class WebUiLayout extends LitElement {
   @property({ type: String, attribute: 'collapsed-width', reflect: true })
   collapsedWidth = '68px'
 
-  /** 启用桌面端 Sidebar 拖拽调宽（折叠态隐藏 handle）。 */
+  /** 启用桌面端 Sidebar 拖拽调宽（collapsed state 隐藏 handle）。 */
   @property({ type: Boolean, attribute: 'sidebar-resizable', reflect: true })
   sidebarResizable = false
 
@@ -78,7 +78,7 @@ export class WebUiLayout extends LitElement {
   /**
    * 移动端 web-ui-drawer 的瞬时可见性。
    *
-   * Drawer Toggle、Escape 和遮罩关闭都通过 `sidebar-open-change` 请求更新它；它不会改变桌面端的折叠偏好。
+   * Drawer Toggle、Escape 和 backdrop 关闭都通过 `sidebar-open-change` 请求更新它；它不会改变桌面端的 collapse preference。
    * 因而不与 `sidebarCollapsed` 合并，避免响应式切换时将一次移动端交互误写为桌面端布局选择。
    */
   @property({ type: Boolean, attribute: 'sidebar-open', reflect: true })
@@ -378,7 +378,7 @@ export class WebUiLayout extends LitElement {
       ? {}
       : { width: this._resizeWidth ?? (this.sidebarCollapsed ? this.collapsedWidth : this.sidebarWidth) }
 
-    const toggleLabel = isSidebarOpen ? '折叠侧边栏' : '展开侧边栏'
+    const toggleLabel = isSidebarOpen ? 'Collapse sidebar' : 'Expand sidebar'
 
     const desktopToggle = html`
       <web-ui-button
@@ -419,7 +419,7 @@ export class WebUiLayout extends LitElement {
                       role="separator"
                       tabindex="0"
                       aria-orientation="vertical"
-                      aria-label="调整侧边栏宽度"
+                      aria-label="Resize sidebar"
                       @pointerdown=${this._handleResizePointerDown}
                       @keydown=${this._handleResizeKeydown}
                     ></div>
@@ -446,7 +446,7 @@ export class WebUiLayout extends LitElement {
             icon
             variant="glass"
             @click="${this._toggleSidebar}"
-            aria-label="打开导航菜单"
+            aria-label="Open navigation menu"
           >
             <web-ui-icon .icon=${radixIconsPanelLeftMinimized}></web-ui-icon>
           </web-ui-button>
@@ -461,7 +461,7 @@ export class WebUiLayout extends LitElement {
         ?open="${this.sidebarOpen}"
         controlled
         draggable
-        dialog-label="主导航"
+        dialog-label="Main navigation"
         @open-change="${this._onDrawerChange}"
         style="${styleMap({
           '--wui-drawer-width': this.sidebarWidth,

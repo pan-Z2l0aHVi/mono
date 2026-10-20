@@ -18,7 +18,7 @@ export type LitReactWrapper<T extends HTMLElement> = DetailedHTMLProps<
   T
 >
 
-// React 从 WebUiElementMap 派生全部标签，无需手写组件清单。
+// React 从 WebUiElementMap 派生全部 tag，无需手写组件清单。
 export type WebUiComponents = {
   [K in keyof WebUiElementMap]: LitReactWrapper<WebUiElementMap[K]>
 }

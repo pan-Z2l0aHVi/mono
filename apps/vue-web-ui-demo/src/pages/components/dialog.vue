@@ -1,7 +1,7 @@
 <route lang="json">
 {
   "meta": {
-    "title": "Dialog 对话框"
+    "title": "Dialog"
   }
 }
 </route>

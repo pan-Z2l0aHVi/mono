@@ -2,7 +2,7 @@
 //
 // apps/interweave/build/Taskfile.yml 会以 `common` 被 Windows 与 macOS 两侧 include，
 // 因此它的每一条命令都会在 Windows runner 上执行；POSIX 绝对路径在那儿必然失败。
-// 宿主专有的产物（例如 DMG 卷标图标）属于 build/<platform>/Taskfile.yml。
+// 宿主专有的产物（例如 DMG 卷标 icon）属于 build/<platform>/Taskfile.yml。
 //
 // 用法：node apps/interweave/scripts/check-taskfile-paths.mjs
 import { readFile } from 'node:fs/promises'

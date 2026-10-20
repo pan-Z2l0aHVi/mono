@@ -1,6 +1,6 @@
 /**
  * Tracker 的默认单条传输适配器：sendBeacon 优先，浏览器拒绝排队时降级到 fetch。
- * 自定义 `transport` 选项会整体替换该适配器；默认行为之外不应有第二个副本。
+ * 自定义 `transport` option 会整体替换该适配器；默认行为之外不应有第二个副本。
  */
 export async function beaconTransport(url: string, data: object): Promise<void> {
   const body = JSON.stringify(data)

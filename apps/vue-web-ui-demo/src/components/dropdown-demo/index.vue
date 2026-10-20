@@ -18,51 +18,57 @@ const controlledOpen = ref(false)
 
 <template>
   <div>
-    <h1>下拉菜单</h1>
-    <h2>基础</h2>
+    <h1>dropdown menu</h1>
+    <h2>Basic</h2>
     <div class="mb-6">
       <web-ui-dropdown>
-        <web-ui-button slot="trigger">操作</web-ui-button>
-        <web-ui-dropdown-item>编辑</web-ui-dropdown-item>
-        <web-ui-dropdown-item>复制</web-ui-dropdown-item>
-        <web-ui-dropdown-item>粘贴</web-ui-dropdown-item>
+        <web-ui-button slot="trigger">Action</web-ui-button>
+        <web-ui-dropdown-item>Edit</web-ui-dropdown-item>
+        <web-ui-dropdown-item>Copy</web-ui-dropdown-item>
+        <web-ui-dropdown-item>Paste</web-ui-dropdown-item>
         <web-ui-dropdown-divider></web-ui-dropdown-divider>
-        <web-ui-dropdown-item disabled>删除</web-ui-dropdown-item>
+        <web-ui-dropdown-item disabled>Delete</web-ui-dropdown-item>
       </web-ui-dropdown>
     </div>
 
-    <h2>带图标和快捷键</h2>
+    <h2>With icon and shortcut</h2>
     <div class="mb-6">
       <web-ui-dropdown>
-        <web-ui-button slot="trigger">文件</web-ui-button>
+        <web-ui-button slot="trigger">File</web-ui-button>
         <web-ui-dropdown-item>
           <web-ui-icon slot="prefix" :size="14" :icon="lucideFile"></web-ui-icon>
           新建
           <span class="opacity-40" slot="suffix">⌘N</span>
         </web-ui-dropdown-item>
         <web-ui-dropdown-item>
-          <web-ui-icon slot="prefix" :size="14" :icon="lucideCopy"></web-ui-icon>
-          复制
-          <span class="opacity-40" slot="suffix">⌘C</span>
+          <web-ui-icon slot="prefix" :size="14" :icon="lucideCopy"></web-ui-icon>Copy<span
+            class="opacity-40"
+            slot="suffix"
+            >⌘C</span
+          >
         </web-ui-dropdown-item>
         <web-ui-dropdown-item>
-          <web-ui-icon slot="prefix" :size="14" :icon="lucideClipboardPaste"></web-ui-icon>
-          粘贴
-          <span class="opacity-40" slot="suffix">⌘V</span>
+          <web-ui-icon slot="prefix" :size="14" :icon="lucideClipboardPaste"></web-ui-icon>Paste<span
+            class="opacity-40"
+            slot="suffix"
+            >⌘V</span
+          >
         </web-ui-dropdown-item>
         <web-ui-dropdown-divider></web-ui-dropdown-divider>
         <web-ui-dropdown-item disabled>
-          <web-ui-icon slot="prefix" :size="14" :icon="lucideTrash2"></web-ui-icon>
-          删除
-          <span class="opacity-40" slot="suffix">⌘⌫</span>
+          <web-ui-icon slot="prefix" :size="14" :icon="lucideTrash2"></web-ui-icon>Delete<span
+            class="opacity-40"
+            slot="suffix"
+            >⌘⌫</span
+          >
         </web-ui-dropdown-item>
       </web-ui-dropdown>
     </div>
 
-    <h2>嵌套菜单</h2>
+    <h2>Nested menu</h2>
     <div class="mb-6">
       <web-ui-dropdown>
-        <web-ui-button slot="trigger">更多</web-ui-button>
+        <web-ui-button slot="trigger">More</web-ui-button>
         <web-ui-dropdown-item>
           <web-ui-icon slot="prefix" :size="14" :icon="lucideUndo2"></web-ui-icon>
           撤销
@@ -77,15 +83,15 @@ const controlledOpen = ref(false)
         <web-ui-dropdown-item submenu>
           <web-ui-icon slot="prefix" :size="14" :icon="lucidePrinter"></web-ui-icon>
           导出为
-          <web-ui-dropdown-item>导出为 PDF</web-ui-dropdown-item>
-          <web-ui-dropdown-item>导出为 PNG</web-ui-dropdown-item>
-          <web-ui-dropdown-item>导出为 SVG</web-ui-dropdown-item>
+          <web-ui-dropdown-item>Export as PDF</web-ui-dropdown-item>
+          <web-ui-dropdown-item>Export as PNG</web-ui-dropdown-item>
+          <web-ui-dropdown-item>Export as SVG</web-ui-dropdown-item>
         </web-ui-dropdown-item>
         <web-ui-dropdown-item submenu>
           <web-ui-icon slot="prefix" :size="14" :icon="lucideDownload"></web-ui-icon>
           导入
-          <web-ui-dropdown-item>从文件导入</web-ui-dropdown-item>
-          <web-ui-dropdown-item>从剪贴板导入</web-ui-dropdown-item>
+          <web-ui-dropdown-item>Import from a file</web-ui-dropdown-item>
+          <web-ui-dropdown-item>Import from the clipboard</web-ui-dropdown-item>
         </web-ui-dropdown-item>
         <web-ui-dropdown-divider></web-ui-dropdown-divider>
         <web-ui-dropdown-item>
@@ -96,21 +102,19 @@ const controlledOpen = ref(false)
       </web-ui-dropdown>
     </div>
 
-    <h2>深层嵌套（4 层）</h2>
+    <h2>Deep nesting (4 levels)</h2>
     <div class="mb-6">
       <web-ui-dropdown>
-        <web-ui-button slot="trigger">深层导航</web-ui-button>
+        <web-ui-button slot="trigger">Deep navigation</web-ui-button>
 
         <web-ui-dropdown-item submenu>
-          <web-ui-icon slot="prefix" :size="14" :icon="lucideFile"></web-ui-icon>
-          文件
-          <web-ui-dropdown-item submenu>
+          <web-ui-icon slot="prefix" :size="14" :icon="lucideFile"></web-ui-icon>File<web-ui-dropdown-item submenu>
             <web-ui-icon slot="prefix" :size="14" :icon="lucideFile"></web-ui-icon>
             新建
             <web-ui-dropdown-item submenu>
               办公文档
-              <web-ui-dropdown-item>Word 文档</web-ui-dropdown-item>
-              <web-ui-dropdown-item>Excel 表格</web-ui-dropdown-item>
+              <web-ui-dropdown-item>Word document</web-ui-dropdown-item>
+              <web-ui-dropdown-item>Excel sheet</web-ui-dropdown-item>
             </web-ui-dropdown-item>
             <web-ui-dropdown-item submenu>
               代码文件
@@ -126,7 +130,7 @@ const controlledOpen = ref(false)
 
         <web-ui-dropdown-item submenu>
           <web-ui-icon slot="prefix" :size="14" :icon="lucideSettings"></web-ui-icon>
-          编辑
+          Edit
           <web-ui-dropdown-item>
             <web-ui-icon slot="prefix" :size="14" :icon="lucideUndo2"></web-ui-icon>
             撤销
@@ -141,7 +145,7 @@ const controlledOpen = ref(false)
       </web-ui-dropdown>
     </div>
 
-    <h2>macOS 风格菜单</h2>
+    <h2>macOS-style menu</h2>
     <div class="mb-6">
       <web-ui-dropdown>
         <web-ui-button slot="trigger">Menu</web-ui-button>
@@ -157,9 +161,11 @@ const controlledOpen = ref(false)
         </web-ui-dropdown-item>
         <web-ui-dropdown-divider></web-ui-dropdown-divider>
         <web-ui-dropdown-item>
-          <web-ui-icon slot="prefix" :size="14" :icon="lucideClipboardPaste"></web-ui-icon>
-          粘贴
-          <span slot="suffix" class="opacity-40">⌘V</span>
+          <web-ui-icon slot="prefix" :size="14" :icon="lucideClipboardPaste"></web-ui-icon>Paste<span
+            slot="suffix"
+            class="opacity-40"
+            >⌘V</span
+          >
         </web-ui-dropdown-item>
         <web-ui-dropdown-item>
           <web-ui-icon slot="prefix" :size="14" :icon="lucideClipboardPaste"></web-ui-icon>
@@ -167,27 +173,31 @@ const controlledOpen = ref(false)
           <span slot="suffix" class="opacity-40">⌥⇧⌘V</span>
         </web-ui-dropdown-item>
         <web-ui-dropdown-item>
-          <web-ui-icon slot="prefix" :size="14" :icon="lucideTrash2"></web-ui-icon>
-          删除
-          <span slot="suffix" class="opacity-40">⌫</span>
+          <web-ui-icon slot="prefix" :size="14" :icon="lucideTrash2"></web-ui-icon>Delete<span
+            slot="suffix"
+            class="opacity-40"
+            >⌫</span
+          >
         </web-ui-dropdown-item>
-        <web-ui-dropdown-item pl="30px">全选<span slot="suffix" class="opacity-40">⌘A</span></web-ui-dropdown-item>
         <web-ui-dropdown-item pl="30px"
-          >粘贴为引用<span slot="suffix" class="opacity-40">⇧⌘V</span></web-ui-dropdown-item
+          >Select all<span slot="suffix" class="opacity-40">⌘A</span></web-ui-dropdown-item
+        >
+        <web-ui-dropdown-item pl="30px"
+          >Paste as a reference<span slot="suffix" class="opacity-40">⇧⌘V</span></web-ui-dropdown-item
         >
         <web-ui-dropdown-item pl="30px" disabled
-          >添加链接<span slot="suffix" class="opacity-40">⌘K</span></web-ui-dropdown-item
+          >Add a link<span slot="suffix" class="opacity-40">⌘K</span></web-ui-dropdown-item
         >
         <web-ui-dropdown-divider></web-ui-dropdown-divider>
         <web-ui-dropdown-item submenu>
           <web-ui-icon slot="prefix" :size="14" :icon="lucideSearch"></web-ui-icon>
           查找
-          <web-ui-dropdown-item>查找下一个</web-ui-dropdown-item>
-          <web-ui-dropdown-item>查找上一个</web-ui-dropdown-item>
+          <web-ui-dropdown-item>Find next</web-ui-dropdown-item>
+          <web-ui-dropdown-item>Find previous</web-ui-dropdown-item>
         </web-ui-dropdown-item>
         <web-ui-dropdown-divider></web-ui-dropdown-divider>
-        <web-ui-dropdown-header>更多选项</web-ui-dropdown-header>
-        <web-ui-dropdown-item pl="30px">听写<span slot="suffix" class="opacity-40">D</span></web-ui-dropdown-item>
+        <web-ui-dropdown-header>More options</web-ui-dropdown-header>
+        <web-ui-dropdown-item pl="30px">Dictation<span slot="suffix" class="opacity-40">D</span></web-ui-dropdown-item>
         <web-ui-dropdown-item>
           <web-ui-icon slot="prefix" :size="14" :icon="lucideSettings"></web-ui-icon>
           表情
@@ -196,56 +206,56 @@ const controlledOpen = ref(false)
       </web-ui-dropdown>
     </div>
 
-    <h2>不同位置</h2>
+    <h2>Different positions</h2>
     <div class="mb-6 flex gap-2">
       <web-ui-dropdown placement="bottom-end">
-        <web-ui-button slot="trigger">右下</web-ui-button>
+        <web-ui-button slot="trigger">Bottom right</web-ui-button>
         <web-ui-dropdown-item>Item 1</web-ui-dropdown-item>
         <web-ui-dropdown-item>Item 2</web-ui-dropdown-item>
       </web-ui-dropdown>
       <web-ui-dropdown placement="top-start">
-        <web-ui-button slot="trigger">上方</web-ui-button>
+        <web-ui-button slot="trigger">Top</web-ui-button>
         <web-ui-dropdown-item>Item 1</web-ui-dropdown-item>
         <web-ui-dropdown-item>Item 2</web-ui-dropdown-item>
       </web-ui-dropdown>
       <web-ui-dropdown placement="top-end">
-        <web-ui-button slot="trigger">右上</web-ui-button>
+        <web-ui-button slot="trigger">Top right</web-ui-button>
         <web-ui-dropdown-item>Item 1</web-ui-dropdown-item>
         <web-ui-dropdown-item>Item 2</web-ui-dropdown-item>
       </web-ui-dropdown>
     </div>
 
-    <h2>禁用</h2>
+    <h2>Disabled</h2>
     <div class="mb-6">
       <web-ui-dropdown disabled>
-        <web-ui-button slot="trigger">禁用菜单</web-ui-button>
+        <web-ui-button slot="trigger">Disable menu</web-ui-button>
         <web-ui-dropdown-item>Item 1</web-ui-dropdown-item>
         <web-ui-dropdown-item>Item 2</web-ui-dropdown-item>
       </web-ui-dropdown>
     </div>
 
-    <h2>滚动锁定</h2>
+    <h2>Scroll lock</h2>
     <div class="mb-6">
       <web-ui-dropdown no-scroll-lock>
-        <web-ui-button slot="trigger">不锁定滚动</web-ui-button>
-        <web-ui-dropdown-item>编辑</web-ui-dropdown-item>
-        <web-ui-dropdown-item>复制</web-ui-dropdown-item>
+        <web-ui-button slot="trigger">No scroll lock</web-ui-button>
+        <web-ui-dropdown-item>Edit</web-ui-dropdown-item>
+        <web-ui-dropdown-item>Copy</web-ui-dropdown-item>
       </web-ui-dropdown>
     </div>
 
-    <h2>受控组件</h2>
+    <h2>Controlled component</h2>
     <div class="mb-6">
       <div class="mb-2 flex gap-2">
         <web-ui-button variant="secondary" @click="controlledOpen = !controlledOpen">
-          {{ controlledOpen ? '由外部关闭菜单' : '由外部打开菜单' }}
+          {{ controlledOpen ? 'Close menu externally' : 'Open menu externally' }}
         </web-ui-button>
-        <span class="text-sm leading-10 text-gray-500">状态：{{ controlledOpen ? '打开' : '关闭' }}</span>
+        <span class="text-sm leading-10 text-gray-500">状态：{{ controlledOpen ? 'Open' : 'Close' }}</span>
       </div>
       <web-ui-dropdown :open="controlledOpen" @open-change="controlledOpen = $event.detail.open">
-        <web-ui-button variant="ghost" slot="trigger">受控菜单</web-ui-button>
-        <web-ui-dropdown-item>编辑</web-ui-dropdown-item>
-        <web-ui-dropdown-item>复制</web-ui-dropdown-item>
-        <web-ui-dropdown-item @click="controlledOpen = false">粘贴并关闭</web-ui-dropdown-item>
+        <web-ui-button variant="ghost" slot="trigger">Controlled menu</web-ui-button>
+        <web-ui-dropdown-item>Edit</web-ui-dropdown-item>
+        <web-ui-dropdown-item>Copy</web-ui-dropdown-item>
+        <web-ui-dropdown-item @click="controlledOpen = false">Paste and close</web-ui-dropdown-item>
       </web-ui-dropdown>
     </div>
   </div>

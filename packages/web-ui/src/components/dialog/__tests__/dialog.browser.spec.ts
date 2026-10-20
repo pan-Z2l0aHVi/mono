@@ -18,7 +18,7 @@ function createDialog(): WebUiDialog {
 }
 
 describe('WebUiDialog 组件（浏览器）', () => {
-  it('面板自身不夺焦，内部按钮可聚焦', async () => {
+  it('panel 自身不夺焦，内部 button 可聚焦', async () => {
     const component = createDialog()
     const button = document.createElement('button')
     button.textContent = '打开'
@@ -52,7 +52,7 @@ describe('WebUiDialog 组件（浏览器）', () => {
     expect(dialog?.open).toBe(false)
   })
 
-  it('no-escape-close 存在时 Escape/cancel 不关闭对话框', async () => {
+  it('no-escape-close 存在时 Escape/cancel 不关闭 dialog', async () => {
     const component = createDialog()
     component.noEscapeClose = true
     component.open = true
@@ -71,7 +71,7 @@ describe('WebUiDialog 组件（浏览器）', () => {
     expect(component.open).toBe(true)
   })
 
-  it('子控件冒泡的 cancel 不关闭对话框，例如取消文件选择器', async () => {
+  it('子控件冒泡的 cancel 不关闭 dialog，例如取消文件选择器', async () => {
     const component = createDialog()
     const input = document.createElement('input')
     input.type = 'file'
@@ -91,7 +91,7 @@ describe('WebUiDialog 组件（浏览器）', () => {
     expect(component.open).toBe(false)
   })
 
-  it('no-backdrop-close 只阻止遮罩 click，不阻止 Escape 触发的 cancel', async () => {
+  it('no-backdrop-close 只阻止 backdrop click，不阻止 Escape 触发的 cancel', async () => {
     const component = createDialog()
     component.noBackdropClose = true
     component.open = true
@@ -111,7 +111,7 @@ describe('WebUiDialog 组件（浏览器）', () => {
     expect(component.open).toBe(false)
   })
 
-  it('controlled 下 Escape 与遮罩只派发 open-change(false) 请求，回写 open=false 后才真正关闭', async () => {
+  it('controlled 下 Escape 与 backdrop 只派发 open-change(false) 请求，回写 open=false 后才真正关闭', async () => {
     const component = createDialog()
     component.controlled = true
     component.open = true

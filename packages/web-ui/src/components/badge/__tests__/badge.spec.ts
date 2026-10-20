@@ -66,7 +66,7 @@ describe('WebUiBadge 组件', () => {
 
       const status = statusOf(el)
       expect(status?.textContent?.trim()).toBe('')
-      expect(status?.getAttribute('aria-label')).toBe('未读')
+      expect(status?.getAttribute('aria-label')).toBe('Unread')
       cleanupElement(el)
     })
 
@@ -84,7 +84,7 @@ describe('WebUiBadge 组件', () => {
 
       const status = statusOf(el)
       expect(status?.textContent?.trim()).toBe('0')
-      expect(status?.getAttribute('aria-label')).toBe('无未读消息')
+      expect(status?.getAttribute('aria-label')).toBe('No unread messages')
       cleanupElement(el)
     })
 
@@ -130,11 +130,11 @@ describe('WebUiBadge 组件', () => {
       child.textContent = '消息'
       el.append(child)
       await flushSlotChange(el)
-      expect(statusOf(el)?.getAttribute('aria-label')).toBe('3 条未读消息')
+      expect(statusOf(el)?.getAttribute('aria-label')).toBe('3 unread messages')
 
       child.remove()
       await flushSlotChange(el)
-      expect(statusOf(el)?.getAttribute('aria-label')).toBe('3 条未读消息')
+      expect(statusOf(el)?.getAttribute('aria-label')).toBe('3 unread messages')
       cleanupElement(el)
     })
   })

@@ -59,19 +59,19 @@ function channelsOf(value: string): [number, number, number] | null {
 }
 
 /**
- * 拇指落在某个表面底色上时渲染出的三通道 8-bit 值。浅色 app 的页面底色是 #fff，深色是
+ * thumb 落在某个表面底色上时渲染出的三通道 8-bit 值。浅色 app 的页面底色是 #fff，深色是
  * #242628（theme 的 --wui-color-page，见 src/components/theme/style.css）。
  */
 function greyOn(value: string, surface: [number, number, number]): [number, number, number] {
   const base = channelsOf(value)
   if (!base) return [Number.NaN, Number.NaN, Number.NaN]
   const a = alphaOf(value)
-  // 合成方向是「底色在底层、拇指叠在上面」：result = surface * (1 - a) + base * a。
-  // 黑拇指 + 白底 + a = 0.39 → 255 * 0.61 = 155.55；写反两项会得到 99，看起来像个合法灰阶。
+  // 合成方向是「底色在底层、thumb 叠在上面」：result = surface * (1 - a) + base * a。
+  // 黑 thumb + 白底 + a = 0.39 → 255 * 0.61 = 155.55；写反两项会得到 99，看起来像个合法灰阶。
   return base.map((channel, index) => Math.round(surface[index] * (1 - a) + channel * a)) as [number, number, number]
 }
 
-/** 黑拇指落在纯白表面上时渲染出的 8-bit 灰阶。浅色 app 的页面底色就是 #fff。 */
+/** 黑 thumb 落在纯白表面上时渲染出的 8-bit 灰阶。浅色 app 的页面底色就是 #fff。 */
 function greyOnWhite(value: string): number {
   return greyOn(value, [255, 255, 255])[0]
 }
@@ -84,21 +84,21 @@ const DARK_BRANCH = "web-ui-theme[resolved-appearance='dark']"
 
 describe('scrollbars 公共面', () => {
   it('主题类名在 style.css 里有对应规则块', () => {
-    // 类名由 options.scrollbars.theme 挂到滚动条元素上，CSS 里改了名字就会静默退回库初值：
-    // 滚动条还在，只是变成无色无宽度的默认皮肤。这条把两边钉在一起。
+    // 类名由 options.scrollbars.theme 挂到 scrollbar 元素上，CSS 里改了名字就会静默退回库初值：
+    // scrollbar 还在，只是变成无色无宽度的默认皮肤。这条把两边钉在一起。
     expect(themeVar('os-handle-border-radius')).not.toBe('')
   })
 
   it('主题自带的度量覆盖库初值里的零值', () => {
     // 库在 .os-scrollbar 上给的初值是 --os-size: 0 与 --os-handle-bg: none；漏掉任一项不会报错，
-    // 只会让滚动条整条不可见。
+    // 只会让 scrollbar 整条不可见。
     expect(Number.parseFloat(themeVar('os-size'))).toBeGreaterThan(0)
     // 三个态都要写全：库对 hover / active 的初值同样是 none，只钉 bg 一项的话另两个态会静默退回无色。
     for (const name of ['os-handle-bg', 'os-handle-bg-hover', 'os-handle-bg-active']) {
       expect(themeVar(name), `${name} 没有覆盖库初值`).not.toBe('')
       expect(themeVar(name), `${name} 覆盖后仍是 none`).not.toBe('none')
     }
-    // 覆盖式滚动条没有轨道底色，这条是 macOS 观感的判据，回退到库初值就会画出轨道。
+    // 覆盖式 scrollbar 没有 track 底色，这条是 macOS 观感的判据，回退到库初值就会画出 track。
     expect(themeVar('os-track-bg')).toBe('none')
   })
 
@@ -106,8 +106,8 @@ describe('scrollbars 公共面', () => {
     const { scrollbars } = webUiScrollbarsOptions
     expect(scrollbars?.theme).toBe(WEB_UI_SCROLLBARS_THEME)
     expect(scrollbars?.autoHide).toBe('scroll')
-    // 这个延迟同时是「track 点击跳转」的可用窗口：滚动条隐去后它就不可命中。指针从滚动位置
-    // 移到轨道再点下去要 1s 上下，所以窗口必须明显长于它——库默认的 1300ms 就贴边了，当前取 2000ms。
+    // 这个延迟同时是「track 点击跳转」的可用窗口：scrollbar 隐去后它就不可命中。指针从滚动位置
+    // 移到 track 再点下去要 1s 上下，所以窗口必须明显长于它——库默认的 1300ms 就贴边了，当前取 2000ms。
     // 上界同样要钉：几十秒等于把自动隐藏关掉，「自动隐藏」那条要求在另一头被破坏。
     expect(scrollbars?.autoHideDelay).toBeGreaterThanOrEqual(2000)
     expect(scrollbars?.autoHideDelay).toBeLessThanOrEqual(4000)
@@ -115,7 +115,7 @@ describe('scrollbars 公共面', () => {
 
   it('track 点击以点击处为目标，且即时落位', () => {
     const clickScroll = webUiScrollbarsOptions.scrollbars?.clickScroll
-    // 库只在 `isFunction` 分支里读这个选项，直接给对象会被静默忽略；`true` 则是「按一个视口
+    // 库只在 `isFunction` 分支里读这个 option，直接给对象会被静默忽略；`true` 则是「按一个视口
     // 步进」，与点击位置无关。距离为 0 才是「目标即点击处」——三种写法都长得像能用，这条钉住。
     expect(typeof clickScroll).toBe('function')
     const resolved = typeof clickScroll === 'function' ? clickScroll(false) : null
@@ -125,11 +125,11 @@ describe('scrollbars 公共面', () => {
   })
 })
 
-describe('滚动条拇指的深浅', () => {
-  it('浅色档是黑拇指，深色档是白拇指', () => {
-    // 下面那条亮度断言的模型是「黑拇指落在白底上」，可没有任何东西钉住色相。变异实证过：
-    // 把浅色分支和回退两处都写成 rgb(255 255 255 / 0.39)，白底上渲染出的拇指是纯白——整条
-    // 滚动条在白页面上消失——而下面每一条断言仍然全绿。极性是「拇指能被看见」的前提，单独钉。
+describe('scrollbar thumb 的深浅', () => {
+  it('浅色档是黑 thumb，深色档是白 thumb', () => {
+    // 下面那条亮度断言的模型是「黑 thumb 落在白底上」，可没有任何东西钉住色相。变异实证过：
+    // 把浅色分支和回退两处都写成 rgb(255 255 255 / 0.39)，白底上渲染出的 thumb 是纯白——整条
+    // scrollbar 在白页面上消失——而下面每一条断言仍然全绿。极性是「thumb 能被看见」的前提，单独钉。
     expect(channelsOf(branchVar(LIGHT_BRANCH, 'wui-scrollbar-handle'))).toEqual([0, 0, 0])
     expect(channelsOf(branchVar(DARK_BRANCH, 'wui-scrollbar-handle'))).toEqual([255, 255, 255])
   })
@@ -137,14 +137,14 @@ describe('滚动条拇指的深浅', () => {
   it('主题块的三个值都走 var() 间接', () => {
     // shadow 里匹配不到 web-ui-theme[...] 这类后代选择器，也匹配不到 html:has()，自定义属性
     // 跨 shadow 边界继承是唯一能穿过去的东西。写成字面量等于把 shadow 内的滚动容器钉死在外层
-    // 可见值上——组件内部滚动条会整体失去响应外观切换的能力（变异实证：去掉 var() 后全绿）。
+    // 可见值上——组件内部 scrollbar 会整体失去响应外观切换的能力（变异实证：去掉 var() 后全绿）。
     for (const name of ['os-handle-bg', 'os-handle-bg-hover', 'os-handle-bg-active']) {
       expect(themeVar(name), `${name} 没有走 var() 间接`).toMatch(/^var\(--wui-scrollbar-handle/)
     }
   })
 
-  it('浅色档静止拇指不深于 macOS 原生覆盖式滚动条', () => {
-    // issue #216：浅色模式下拇指颜色太深、没有 hover 时尤其明显。原生覆盖式滚动条在白底（255）
+  it('浅色档静止 thumb 不深于 macOS 原生覆盖式 scrollbar', () => {
+    // issue #216：浅色模式下 thumb 颜色太深、没有 hover 时尤其明显。原生覆盖式 scrollbar 在白底（255）
     // 上渲染成 rgb(155,155,155)（AppKit 探针钉死 aqua + flashScrollers() 逼到全亮后逐列采样），
     // 反推成白底上的黑色不透明度是 (255 - 155) / 255 ≈ 0.392。取值 0.39 是**刻意偏亮 1 阶**：
     // 255 × (1 - 0.39) = 155.55 → 156，比原生亮 1；上一版 0.5 渲染成 128，比原生深 27。
@@ -154,10 +154,10 @@ describe('滚动条拇指的深浅', () => {
   })
 
   it('主题块里的回退值与浅色分支一致', () => {
-    // 回退值不是死代码。挂在 <body> 下的 .os-scrollbar——interweave 与两个 demo 的整页滚动条
+    // 回退值不是死代码。挂在 <body> 下的 .os-scrollbar——interweave 与两个 demo 的整页 scrollbar
     // 正是它——在主题元素之外，浅色档里 web-ui-theme[...] 匹配不到它、html:has() 又只管深色，
     // 于是它解析到的就是 .os-theme-macos 里 var() 的回退字面量。两边一旦漂移，改浅色分支只会
-    // 改到主题子树里的滚动容器，三个 app 的整页滚动条一动不动。
+    // 改到主题子树里的滚动容器，三个 app 的整页 scrollbar 一动不动。
     // 按**字节**钉，不是按语义钉：`#00000063` 与 `rgb(0 0 0 / 0.39)` 在这里会被判为不一致，
     // 那是刻意的——两条路线最终都要过 lightningcss，字节相同就让「编译后仍是同一个值」这件
     // 事在每次改动时都重验一遍，而不是只靠作者记得。
@@ -175,8 +175,8 @@ describe('滚动条拇指的深浅', () => {
     // 「按下去比悬停深、悬停比静止深」最终是给人眼看的，所以判据要落在渲染出的灰阶差上，
     // 不是 α 差：α 有界 0–1，0.39 / 0.40 / 0.41 这种写法在 α 上每档都「更深」，落到白底上
     // 却是 156 / 153 / 150——三档挤在 6 个 8-bit 阶里，hover 与 active 等于没有反馈。
-    // 阈值 8 是下限不是目标：当前浅色档三档相距 31 / 31，深色档相距 26 / 26。浅色档是黑拇指
-    // 落在 #fff 上，深色档是白拇指落在 #242628（theme 的 --wui-color-page）上。
+    // 阈值 8 是下限不是目标：当前浅色档三档相距 31 / 31，深色档相距 26 / 26。浅色档是黑 thumb
+    // 落在 #fff 上，深色档是白 thumb 落在 #242628（theme 的 --wui-color-page）上。
     const surfaces: Array<[string, [number, number, number]]> = [
       [LIGHT_BRANCH, WHITE_SURFACE],
       [DARK_BRANCH, DARK_SURFACE]
@@ -187,7 +187,7 @@ describe('滚动条拇指的深浅', () => {
       )
       for (const value of values) expect(Number.isNaN(value)).toBe(false)
       const [rest, hover, active] = values
-      // 深浅的方向取决于拇指颜色：黑拇指 α 越大越深（灰阶越小），白拇指越大越浅。用一个极性
+      // 深浅的方向取决于 thumb 颜色：黑 thumb α 越大越深（灰阶越小），白 thumb 越大越浅。用一个极性
       // 把两个外观折成同一条判据，顺带把顺序也钉住——顺序反了会得到负值，同样过不了下限。
       const polarity = selector === LIGHT_BRANCH ? 1 : -1
       const gapRestToHover = polarity * (rest - hover)
@@ -210,7 +210,7 @@ describe('滚动条拇指的深浅', () => {
   })
 })
 
-describe('组件内部滚动条主题', () => {
+describe('组件内部 scrollbar 主题', () => {
   /** 取一份自定义属性的值。 */
   function varValue(source: string, name: string): string {
     return new RegExp(`${name}\\s*:\\s*([^;]+)`).exec(source)?.[1]?.trim() ?? ''
@@ -218,21 +218,21 @@ describe('组件内部滚动条主题', () => {
 
   it('走 var() 读主题 token，而不是写死颜色', () => {
     // `--wui-scrollbar-*` 由 web-ui-theme 的外观分支写、.os-theme-macos 的回退值兜底；
-    // 组件 shadow 里只有继承的自定义属性穿得过去，写成字面量会让组件内部滚动条
+    // 组件 shadow 里只有继承的自定义属性穿得过去，写成字面量会让组件内部 scrollbar
     // 不再跟随外观切换（与上面主题块同一条机制）。
     expect(varValue(internalDecls, 'scrollbar-color')).toMatch(/^var\(--wui-scrollbar-handle/)
   })
 
-  it('不声明 ::-webkit-scrollbar：它会让引擎改用占宽度的经典滚动条', () => {
+  it('不声明 ::-webkit-scrollbar：它会让引擎改用占宽度的经典 scrollbar', () => {
     // 实测（macOS Chromium）：给容器一条 `::-webkit-scrollbar { width: 7px }` 后，
     // 同尺寸容器的 `offsetWidth - clientWidth` 从 0 变成 7——而 issue #225 的第 (1) 条
-    // 要求滚动条不占布局宽度。这条钉住「不要为了圆角/尺寸 reintroduce webkit 伪元素」。
+    // 要求 scrollbar 不占布局宽度。这条钉住「不要为了圆角/尺寸 reintroduce webkit 伪元素」。
     // 运行期几何的守卫在 internal-scrollbars.browser.spec.ts。
     expect(internalDecls).not.toContain('::-webkit-scrollbar')
   })
 
-  it('用 scrollbar-width: thin 收窄经典滚动条', () => {
-    // 覆盖式平台不看它（仍零宽）；经典平台的滚动条据此收窄，尽量靠近 macOS 的细拇指。
+  it('用 scrollbar-width: thin 收窄经典 scrollbar', () => {
+    // 覆盖式平台不看它（仍零宽）；经典平台的 scrollbar 据此收窄，尽量靠近 macOS 的细 thumb。
     expect(varValue(internalDecls, 'scrollbar-width')).toBe('thin')
   })
 })

@@ -22,7 +22,7 @@ export function getTransitionDuration(panel: HTMLElement, fallback = DEFAULT_EXI
   return longest || fallback
 }
 
-// 以可中断的方式显示浮层，避免快速切换时重启动画。
+// 以可中断的方式显示 overlay，避免快速切换时重启动画。
 export function showOverlayPresence(panel: HTMLElement, options: OverlayPresenceOptions = {}) {
   pendingExits.get(panel)?.()
   panel.hidden = false
@@ -32,7 +32,7 @@ export function showOverlayPresence(panel: HTMLElement, options: OverlayPresence
   }
   panel.dataset.wuiPresence = 'entering'
 
-  // 提交初始状态，让新挂载的面板拥有过渡起点。
+  // 提交初始状态，让新挂载的 panel 拥有过渡起点。
   void panel.offsetWidth
 
   requestAnimationFrame(() => {

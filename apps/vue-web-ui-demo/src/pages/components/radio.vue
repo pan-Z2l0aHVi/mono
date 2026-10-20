@@ -1,7 +1,7 @@
 <route lang="json">
 {
   "meta": {
-    "title": "Radio 单选框"
+    "title": "Radio"
   }
 }
 </route>

@@ -16,11 +16,11 @@ function createDrawer(initialHTML = ''): WebUiDrawer {
 }
 
 /**
- * named slot 的内容是否**呈现**在面板里。
+ * named slot 的内容是否**呈现**在 panel 里。
  *
  * jsdom 不做布局，因此不能量高度；改用 slot 的 assigned 节点 + 该节自身的 `hidden`
  * 语义判据 —— 判的是「这一节会不会占位」这个用户可见后果，而不是内部 class 名或
- * DOM 层级。空节若不隐藏，就会在面板顶部/底部留下一条空白带，并让相邻内容的
+ * DOM 层级。空节若不隐藏，就会在 panel 顶部/底部留下一条空白带，并让相邻内容的
  * 可拖让位量算错。
  */
 function sectionState(el: WebUiDrawer, name: 'header' | 'footer'): { assigned: number; hidden: boolean } {
@@ -50,7 +50,7 @@ describe('WebUiDrawer named-slot presence（jsdom）', () => {
     el.insertAdjacentHTML('afterbegin', '<h2 id="title" slot="header">Details</h2>')
     await waitForUpdate(el)
 
-    // 插入了内容却不解除隐藏：标题看不见，面板顶部留一条空白。
+    // 插入了内容却不解除隐藏：标题看不见，panel 顶部留一条空白。
     expect(sectionState(el, 'header')).toEqual({ assigned: 1, hidden: false })
     cleanupElement(el)
   })
@@ -122,7 +122,7 @@ describe('WebUiDrawer named-slot presence（jsdom）', () => {
    * `?hidden` 因此停在断连前的取值。
    *
    * 判据只钉用户后果——那一节重新 `hidden`：空节在 style.css 的 padding 下仍有真实高度，
-   * 成为一条点不动的死带，拖拽热区的让位量也按它算。
+   * 成为一条点不动的死带，拖拽 drag zone 的让位量也按它算。
    *
    * assigned 只作前置观察、不能单独承重：分配是浏览器直给的，与组件要不要请求更新
    * 无关，只断言它时本缺陷下照样绿。

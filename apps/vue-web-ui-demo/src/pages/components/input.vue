@@ -1,7 +1,7 @@
 <route lang="json">
 {
   "meta": {
-    "title": "Input 输入框"
+    "title": "Input"
   }
 }
 </route>

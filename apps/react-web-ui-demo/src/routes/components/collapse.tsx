@@ -13,6 +13,6 @@ function Component() {
 }
 
 export const Route = createFileRoute('/components/collapse')({
-  staticData: { title: 'Collapse 折叠面板' },
+  staticData: { title: 'Collapse' },
   component: Component
 })

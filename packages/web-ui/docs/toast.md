@@ -3,7 +3,7 @@ component: toast
 tag: web-ui-toast
 ---
 
-Toast 通知。常规用法是命令式 API `toast()`：同一 `id` 的再次调用是更新那一条，而不是新建。
+命令式 toast：通过 `toast()` 创建一条并拿到它的 id，用 `toast.close(id)` 关闭；同一个 `id` 再次调用是更新那一条，而不是新建。下面的表分别列 `toast()` 的 option、命令式入口，以及 `<web-ui-toast>` 元素自身的属性、事件与方法。
 
 ## 示例
 
@@ -26,6 +26,38 @@ import { toast } from '@greypan/web-ui'
 
 toast.success('操作成功')
 toast.error('出错了', { duration: 5000 })
+</script>
+```
+
+### 完整 option
+
+`toast()` 接受完整 option：`heading` 是粗体标题，`position` 决定落点，`duration` 为 0 表示不自动关闭。
+
+```react
+import { toast } from '@greypan/web-ui'
+
+const id = toast({
+  heading: '已保存',
+  message: '更改已写入云端',
+  type: 'info',
+  position: 'bottom-right',
+  duration: 4000,
+  closable: true
+})
+```
+
+```vue
+<script setup lang="ts">
+import { toast } from '@greypan/web-ui'
+
+function notify() {
+  return toast({
+    heading: '已保存',
+    message: '更改已写入云端',
+    type: 'info',
+    position: 'bottom-right'
+  })
+}
 </script>
 ```
 
@@ -53,18 +85,28 @@ function upload() {
 </script>
 ```
 
-### 直接使用元素
+### 关闭
 
-单个 Toast 元素可声明式使用，`heading` 与 `message` 是两级文案；`toastId`（合并键）、`visible`（是否可见）与 `no-close-button`（隐藏关闭按钮）是元素自身的属性，下表列的是 `toast()` 的选项。
+每次调用都返回这条 toast 的最终 id；`toast.close(id)` 关掉单条，`toast.clear()` 一次收走全部。
 
 ```react
-<web-ui-toast type="success" heading="已保存" message="更改已写入云端" duration={3000} visible></web-ui-toast>
+import { toast } from '@greypan/web-ui'
+
+const id = toast.info('提示信息')
+toast.close(id)
+toast.clear()
 ```
 
 ```vue
-<template>
-  <web-ui-toast type="success" heading="已保存" message="更改已写入云端" :duration="3000" visible></web-ui-toast>
-</template>
+<script setup lang="ts">
+import { toast } from '@greypan/web-ui'
+
+function dismiss() {
+  const id = toast.info('提示信息')
+  toast.close(id)
+  toast.clear()
+}
+</script>
 ```
 
 ## API
@@ -76,37 +118,30 @@ function upload() {
 | `message`   | 通知文本。                                                  | `string`        | `—`           |
 | `type`      | 类型：`success`、`info`、`warning`、`error`。               | `ToastType`     | `'info'`      |
 | `duration`  | 自动关闭时间（ms），0 表示不自动关闭；`error` 默认 `5000`。 | `number`        | `3000`        |
-| `closable`  | 展示关闭按钮。                                              | `boolean`       | `true`        |
+| `closable`  | 展示关闭 button。                                           | `boolean`       | `true`        |
 | `id`        | 合并键：同一个 `id` 再次调用是更新那一条。                  | `string`        | 自动生成      |
 | `heading`   | 粗体标题。                                                  | `string`        | `''`          |
 | `position`  | 屏幕位置。                                                  | `ToastPosition` | `'top-right'` |
 | `target`    | 用于查找最近 theme-owned overlay root。                     | `Element`       | `—`           |
 | `container` | 显式挂载容器（最高优先级）。                                | `HTMLElement`   | `—`           |
 
-### Events
-
-| 名称          | 说明                                           |
-| ------------- | ---------------------------------------------- |
-| `toast-close` | 退场结束后派发，`detail` 含 `id` 与 `reason`。 |
-
 ### Methods
 
-| 名称                | 说明                                                                                                                                            |
-| ------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
-| `startAutoClose()`  | 按当前 `duration` 重排自动关闭计时；`duration` 为 0 时只拆掉已有计时器，不再装新的。                                                            |
-| `setDuration(ms)`   | 更新 `duration` 并按新值重排计时；悬停暂停期间只记新值，指针离开后按新时长计满，`ms` 为 0 表示不再自动关闭。                                    |
-| `pauseAutoClose()`  | 记下剩余时间并停表，供不支持 `moveBefore` 的引擎在搬迁节点前调用。                                                                              |
-| `resumeAutoClose()` | 与 `pauseAutoClose()` 成对，按记下的剩余时间续跑；已到期则立即退场，悬停尚未结束时只交还剩余时间。                                              |
-| `show()`            | 播放入场（`visible` 置真）并在 `duration` 大于 0 时开始计时；由 toast manager 在挂载后调用。                                                    |
-| `dismiss(reason?)`  | 关闭并派发 `toast-close`：已显示时先播退场动画，未显示（尚未入场或从未显示）时立即派发；`reason` 取 `ToastCloseReason`，默认 `'programmatic'`。 |
+| 名称                               | 说明                                                                   |
+| ---------------------------------- | ---------------------------------------------------------------------- |
+| `toast(options)`                   | 创建或更新一条 toast，返回这条 toast 的最终 id。                       |
+| `toast.success(message, options?)` | 创建一条 `success` 类型的 toast。                                      |
+| `toast.info(message, options?)`    | 创建一条 `info` 类型的 toast。                                         |
+| `toast.warning(message, options?)` | 创建一条 `warning` 类型的 toast。                                      |
+| `toast.error(message, options?)`   | 创建一条 `error` 类型的 toast；它的默认时长是 `5000`，比其余类型更长。 |
+| `toast.close(id)`                  | 关闭指定 id 的那条 toast，覆盖它出现的每个阶段。                       |
+| `toast.clear()`                    | 一次关闭当前全部 toast。                                               |
 
 ### 行为说明
 
-直接使用元素时，`no-close-button` 是标准布尔属性，用于隐藏关闭按钮。
+命令式入口之下没有别的必经步骤：`toast()` 自行把 toast 元素挂到最近的 theme-owned overlay root（没有主题作用域时回退到全局 fallback root），`target` 用来解析最近的主题作用域，`container` 显式指定挂载容器并优先于主题作用域。同一个微任务里的多条 toast 先入队、再一次性挂载，因此待挂载的条目在落地前还能被同 id 的调用改写。
 
-悬停暂停自动关闭计时器（使用 `pointerenter`/`pointerleave`），指针离开后**续跑剩余时间**，而不是重新计满。暂停期间漏掉 `pointerleave`（指针拖出窗口、元素在悬停中被搬迁或摘出）时，由 document 级 `pointerover`/`pointerout`/`pointerleave` 兜底恢复，不会永久停在屏幕上。同一微任务中批量挂载 Toast。
-
-### 命令式 API
+悬停暂停自动关闭计时器（使用 `pointerenter`/`pointerleave`），指针离开后**续跑剩余时间**，而不是重新计满。暂停期间漏掉 `pointerleave`（指针拖出窗口、元素在悬停中被搬迁或摘出）时，由 document 级 `pointerover`/`pointerout`/`pointerleave` 兜底恢复，不会永久停在屏幕上。
 
 ```ts
 import { toast } from '@greypan/web-ui'
@@ -117,7 +152,7 @@ toast.error('出错了', { duration: 5000 })
 toast.info('提示信息')
 toast.warning('请注意')
 
-// 带选项
+// 带 option
 const id = toast({ message: '自定义', type: 'info', position: 'bottom-right', duration: 4000, closable: true })
 
 // 关闭
@@ -160,6 +195,29 @@ toast.success('上传完成', { id: 'upload', duration: 3000 }) // 换 type，�
 - 已在退场 / 空操作，由那条 toast 自己走完退场
 
 `toast.clear()` 的口径相同：队列条目一并取消，已挂载的全部关闭。
+
+### Props
+
+| 名称              | 说明                                                                     | 类型            | 默认值        |
+| ----------------- | ------------------------------------------------------------------------ | --------------- | ------------- |
+| `type`            | 类型：`success`、`info`、`warning`、`error`。                            | `ToastType`     | `'info'`      |
+| `position`        | 屏幕位置。                                                               | `ToastPosition` | `'top-right'` |
+| `heading`         | 粗体标题。                                                               | `string`        | `''`          |
+| `message`         | 通知文本。                                                               | `string`        | `''`          |
+| `duration`        | 自动关闭时间（ms），0 表示不自动关闭；`error` 由 manager 兜底为 `5000`。 | `number`        | `3000`        |
+| `no-close-button` | 隐藏关闭 button。                                                        | `boolean`       | `false`       |
+| `visible`         | 是否可见。                                                               | `boolean`       | `false`       |
+| `toastId`         | 合并键；只作为属性存在（`attribute: false`），由 manager 写入。          | `string`        | `''`          |
+
+### Events
+
+| 名称          | 说明                                           |
+| ------------- | ---------------------------------------------- |
+| `toast-close` | 退场结束后派发，`detail` 含 `id` 与 `reason`。 |
+
+### 元素属性与方法
+
+命令式入口下，`<web-ui-toast>` 的属性由 manager 写入：合并键落在 `toastId` 上（只作为属性存在，`attribute: false`），其余属性与上面的 Props 表一一对应。元素自身还公开一组实例方法：`show()` 播放入场（`visible` 置真）并在 `duration` 大于 0 时开始计时；`dismiss(reason?)` 关闭并派发 `toast-close`，已显示时先播退场动画，未显示时立即派发，`reason` 取 `ToastCloseReason`，默认 `'programmatic'`；`setDuration(ms)` 更新 `duration` 并按新值重排计时，`ms` 为 0 表示不再自动关闭；`pauseAutoClose()` 记下剩余时间并停表，与 `resumeAutoClose()` 成对续跑；`startAutoClose()` 按当前 `duration` 重排自动关闭计时。
 
 ### CSS Custom Properties
 

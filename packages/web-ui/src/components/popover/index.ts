@@ -69,7 +69,7 @@ export class WebUiPopover extends LitElement {
   private _panelId = `wui-popover-panel-${++popoverIdCounter}`
   private _portal?: OverlayPortal
   /**
-   * 开启态浮层（issue #120 Block 1）：本组件不再自行监听 keydown，只声明「我开着」，
+   * 开启态 overlay（issue #120 Block 1）：本组件不再自行监听 keydown，只声明「我开着」，
    * 由唯一仲裁者决定一次 Escape 关谁。实例作用域的帧事务入口也在这里（合并了原
    * lifecycle）—— 它的 lifetime 长于一次开合（跨 `suspend()`/`resume()`），
    * 但不长于实例本身。
@@ -114,7 +114,7 @@ export class WebUiPopover extends LitElement {
       ?.addEventListener('slotchange', () => this.requestUpdate())
 
     if (this.open) {
-      // 建立会话的那一帧没有句柄可作 liveness 凭据：关闭路径会 invalidate()（见 updated），
+      // 建立会话的那一帧没有 handle 可作 liveness 凭据：关闭路径会 invalidate()（见 updated），
       // 微任务先于 rAF 排空，因此该帧不可能跨过一次关闭执行。
       this._overlay.scheduleFrame(() => {
         this._openOverlay(this._shouldOpenInstantly)
@@ -129,7 +129,7 @@ export class WebUiPopover extends LitElement {
     this.removeEventListener('focusout', this._onFocusOut)
     this.removeEventListener('pointerenter', this._onPointerEnter)
     this.removeEventListener('pointerleave', this._onPointerLeave)
-    // 停止帧调度；撤销登记由 _panel.dispose() 完成（句柄归它持有）。
+    // 停止帧调度；撤销登记由 _panel.dispose() 完成（handle 归它持有）。
     this._overlay.suspend()
     clearTimeout(this._showTimer)
     clearTimeout(this._hideTimer)
@@ -204,9 +204,9 @@ export class WebUiPopover extends LitElement {
   }
 
   /*
-   * `manual` 触发器的 popover 不由用户关闭，但仍是候选：Escape 被它吞掉（同时压掉
+   * `manual` trigger 的 popover 不由用户关闭，但仍是候选：Escape 被它吞掉（同时压掉
    * 原生 cancel），只是不走关闭入口。与旧的「跳过候选」语义不同 —— 旧语义放任 Escape
-   * 落到下层浮层，把外层一起关掉。trigger 可在开启期间改写，所以走动态通道同步。
+   * 落到下层 overlay，把外层一起关掉。trigger 可在开启期间改写，所以走动态通道同步。
    */
   private _syncOverlayInert() {
     this._panel.getHandle()?.setInert(this.trigger === 'manual')
@@ -217,15 +217,15 @@ export class WebUiPopover extends LitElement {
      * 登记与仲裁归属由 anchored panel 完成（claim 要求 panel 已就位，祖先链才判得对）。
      * 原实现在这里额外以宿主为 owner 再登记一次：anchor 是宿主 shadow 内的
      * `.popover-trigger` 包装 div（不是会被 slot 重定向的 trigger 内容），其祖先链上
-     * 首个已开启浮层与从宿主上溯结果一致，因此那一次是冗余的。
+     * 首个已开启 overlay 与从宿主上溯结果一致，因此那一次是冗余的。
      */
     this._panel.open(isInstant)
     this._syncOverlayInert()
   }
 
   private _migratableContentNodes(nodes: Node[]): Node[] {
-    // 框架注释锚点（v-if/v-for 占位）必须留在宿主：面板内容是实时渲染契约，
-    // 框架后续 patch 以宿主内锚点为插入基准，锚点进面板会让插入落空。
+    // 框架注释锚点（v-if/v-for 占位）必须留在宿主：panel 内容是实时渲染契约，
+    // 框架后续 patch 以宿主内锚点为插入基准，锚点进 panel 会让插入落空。
     return nodes.filter(node => !(node instanceof Comment) && !(node instanceof HTMLElement && node.slot === 'trigger'))
   }
 
@@ -253,7 +253,7 @@ export class WebUiPopover extends LitElement {
   }
 
   private _reconfigureOverlay() {
-    // portal 变更也会登记 rAF；宿主卸载后不得再通过 reconfigure 重建面板。
+    // portal 变更也会登记 rAF；宿主卸载后不得再通过 reconfigure 重建 panel。
     if (!this.isConnected) return
     this._panel.reconfigure(this.open)
     /*

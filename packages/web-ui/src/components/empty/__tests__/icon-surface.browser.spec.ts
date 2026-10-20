@@ -8,9 +8,9 @@ import type { WebUiTheme } from '@/components/theme'
 import { waitForUpdate } from '@/shared/test-utils'
 
 /**
- * 空态图标区**不绘制任何底面**（#230）。
+ * 空态 icon 区**不绘制任何底面**（#230）。
  *
- * 这里断言的是关系而非色值：图标盒的 `background-color` 必须透明，图形因此直接坐在
+ * 这里断言的是关系而非色值：icon 盒的 `background-color` 必须透明，图形因此直接坐在
  * 它背后那张表面上。钉一个具体色值只能证明「不是那一档灰」，钉「透明」才证明没有底面
  * ——底面若换成任何一档中性色（包括半透明），这个用例都会红。
  *
@@ -58,9 +58,9 @@ function contrastRatio(a: string, b: string): number {
 /** 全透明在两种序列化下都写作这四种形式之一。 */
 const TRANSPARENT = new Set(['transparent', 'rgba(0, 0, 0, 0)', 'rgba(0,0,0,0)'])
 
-describe('web-ui-empty 图标区不绘制底面（浏览器）', () => {
+describe('web-ui-empty icon 区不绘制底面（浏览器）', () => {
   for (const appearance of ['light', 'dark'] as const) {
-    it(`${appearance} 下图标盒背景透明`, async () => {
+    it(`${appearance} 下 icon 盒背景透明`, async () => {
       const { icon } = await mountEmpty(appearance)
       expect(TRANSPARENT.has(getComputedStyle(icon).backgroundColor)).toBe(true)
     })

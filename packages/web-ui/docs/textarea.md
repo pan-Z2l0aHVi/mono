@@ -3,7 +3,7 @@ component: textarea
 tag: web-ui-textarea
 ---
 
-多行文本输入框，支持清除按钮、自动高度与前后缀插槽；焦点委托到 shadow 内的原生 textarea。
+多行文本 input，支持清除 button、自动高度与前后缀插槽；焦点委托到 shadow 内的原生 textarea。
 
 ## 示例
 
@@ -37,7 +37,7 @@ tag: web-ui-textarea
 
 ### 前后缀
 
-`prefix` / `suffix` 插槽在文本域两侧放图标或计数。
+`prefix` / `suffix` 插槽在 textarea 两侧放 icon 或计数。
 
 ```react
 <web-ui-textarea clearable aria-label="备注">
@@ -67,15 +67,15 @@ tag: web-ui-textarea
 | `readonly`        | 只读状态。                                                     | `boolean`             | `false` |
 | `required`        | 必填校验。                                                     | `boolean`             | `false` |
 | `full`            | 占满父容器宽度。                                               | `boolean`             | `false` |
-| `clearable`       | 显示清除按钮。                                                 | `boolean`             | `false` |
+| `clearable`       | 显示清除 button。                                              | `boolean`             | `false` |
 | `borderless`      | ghost 形态：移除边框、背景与阴影，保留 padding 与 focus ring。 | `boolean`             | `false` |
 | `rows`            | 显示行数。                                                     | `number`              | `3`     |
 | `minlength`       | 最小长度校验。                                                 | `number \| undefined` | —       |
 | `maxlength`       | 最大长度校验。                                                 | `number \| undefined` | —       |
 | `autosize`        | 自动调整高度，同时强制 `resize: none`。                        | `boolean`             | `false` |
 | `max-height`      | 自动高度上限（px），0 表示不限制。                             | `number`              | `0`     |
-| `aria-label`      | 无障碍标签。                                                   | `string \| null`      | `null`  |
-| `aria-labelledby` | 无障碍标签引用。                                               | `string \| undefined` | —       |
+| `aria-label`      | 无障碍 label。                                                 | `string \| null`      | `null`  |
+| `aria-labelledby` | 无障碍 label 引用。                                            | `string \| undefined` | —       |
 | `value`           | 输入值。                                                       | `string`              | `''`    |
 
 ### Events
@@ -89,10 +89,10 @@ tag: web-ui-textarea
 
 ### Slots
 
-| 名称     | 说明                     |
-| -------- | ------------------------ |
-| `prefix` | 文本域左侧的图标或文字。 |
-| `suffix` | 文本域右侧的图标或文字。 |
+| 名称     | 说明                          |
+| -------- | ----------------------------- |
+| `prefix` | textarea 左侧的 icon 或文字。 |
+| `suffix` | textarea 右侧的 icon 或文字。 |
 
 ### Methods
 
@@ -104,7 +104,7 @@ tag: web-ui-textarea
 
 ### CSS Custom Properties
 
-| 名称                         | 说明         | 默认值                           |
-| ---------------------------- | ------------ | -------------------------------- |
-| `--wui-textarea-width`       | 文本域宽度   | `200px`                          |
-| `--wui-textarea-clear-color` | 清除按钮颜色 | `var(--wui-color-text-tertiary)` |
+| 名称                         | 说明             | 默认值                           |
+| ---------------------------- | ---------------- | -------------------------------- |
+| `--wui-textarea-width`       | textarea 宽度    | `200px`                          |
+| `--wui-textarea-clear-color` | 清除 button 颜色 | `var(--wui-color-text-tertiary)` |

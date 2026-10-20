@@ -18,9 +18,9 @@ export interface OverlayOptions {
   offset?: number
   flip?: boolean
   shift?: boolean
-  /** 面板宽度与锚点宽度保持一致。 */
+  /** panel 宽度与锚点宽度保持一致。 */
   matchWidth?: boolean
-  /** 面板至少与锚点同宽，同时允许内容将面板撑宽。 */
+  /** panel 至少与锚点同宽，同时允许内容将 panel 撑宽。 */
   minAnchorWidth?: boolean
   strategy?: Strategy
 }
@@ -179,7 +179,7 @@ export const defineOverlay = () =>
         })
       }
 
-      // 立即定位一次，避免浮层首帧出现在左上角；autoUpdate 负责后续滚动/尺寸变化。
+      // 立即定位一次，避免 overlay 首帧出现在左上角；autoUpdate 负责后续滚动/尺寸变化。
       applyPosition()
       cleanupAutoUpdate?.()
       cleanupAutoUpdate = autoUpdate(currentAnchor, overlay, applyPosition)

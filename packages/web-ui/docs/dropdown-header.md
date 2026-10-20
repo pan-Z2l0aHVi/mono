@@ -3,13 +3,13 @@ component: dropdown-header
 tag: web-ui-dropdown-header
 ---
 
-菜单里的分组标题：一段不参与交互的小字，给紧随其后的几个菜单项起名。它没有属性与事件，也不参与键盘导航——菜单只会把焦点停在 `<web-ui-dropdown-item>` 上。分组标题常与 `<web-ui-dropdown-divider>` 一起用。
+menu 里的分组标题：一段不参与交互的小字，给紧随其后的几个 menu item 起名。它没有属性与事件，也不参与键盘导航——menu 只会把焦点停在 `<web-ui-dropdown-item>` 上。分组标题常与 `<web-ui-dropdown-divider>` 一起用。
 
 ## 示例
 
 ### 分组标题 {#basic}
 
-标题让一组菜单项有名字；它不可聚焦、不可点击，键盘上下键会直接跳过。
+标题让一组 menu item 有名字；它不可聚焦、不可点击，键盘上下键会直接跳过。
 
 ```react
 export default function Demo() {

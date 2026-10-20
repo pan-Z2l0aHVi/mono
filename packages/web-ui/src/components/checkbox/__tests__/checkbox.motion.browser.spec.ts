@@ -159,7 +159,7 @@ describe('WebUiCheckbox 勾画线（浏览器）', () => {
 
   /*
    * 画线只作用于 stroke，所以这条钉的是上面全部用例的前提：勾必须是描边资产，且描边取 on-control 档。
-   * 换成实心（fill="currentColor"）资产时 dash 动画照跑、勾却全程满显，收回也看不见；勾选后指示器底是
+   * 换成实心（fill="currentColor"）资产时 dash 动画照跑、勾却全程满显，收回也看不见；勾选后 indicator 底是
    * accent，勾留在继承的文字色就是深灰压深蓝。两者都是实测发生过的回归，这里一次钉死。
    * 没有 web-ui-theme 时 on-control 走 style.css 的 #fff 兜底，断言因此不依赖主题档。
    */

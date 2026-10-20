@@ -20,7 +20,7 @@ installPointerFocusSuppression()
 const ALLOWED_VARIANTS = ['inset', 'raised'] as const
 
 /*
- * 指示器移动时长取 `--wui-duration-trigger`，与 CSS 里 left / width 那两条 transition 同一个值。
+ * indicator 移动时长取 `--wui-duration-trigger`，与 CSS 里 left / width 那两条 transition 同一个值。
  * 读不到 token 或格式不符时兜底 160（CSS 的 fallback 同值），负值钳到 0。
  *
  * reduced-motion 下不需要额外分支：theme 已把该 token 归零，settle 窗口随之变成 0，
@@ -33,12 +33,12 @@ function triggerDuration(el: HTMLElement): number {
 
 @customElement('web-ui-segmented')
 export class WebUiSegmented extends FormAssociated(LitElement) {
-  // 轨道是不透明实体面：底色取 surface（浅色即 page，深色即 surface-raised 档）、无
+  // track 是不透明实体面：底色取 surface（浅色即 page，深色即 surface-raised 档）、无
   // backdrop blur，描边环与投影仍由
-  // .wui-glass 提供且全状态同值；指示器恒挂同一配方，静止态由 surface-segmented 实色
+  // .wui-glass 提供且全状态同值；indicator 恒挂同一配方，静止态由 surface-segmented 实色
   // 盖住玻璃输出，按压与拖拽态才透出玻璃。
-  // variant="raised" 切回经典形态：flat 灰轨道（surface-segmented、无环无投影）+
-  // 实体白指示器（surface-selected + 柔投影），按压/拖拽态两变体同为透明玻璃；
+  // variant="raised" 切回经典形态：flat 灰 track（surface-segmented、无环无投影）+
+  // 实体白 indicator（surface-selected + 柔投影），按压/拖拽态两变体同为透明玻璃；
   // 视觉差异全部由 :host([variant=...]) 规则承载，见 style.css。
   static override styles = [unsafeCSS(glass), unsafeCSS(style)]
   @property({ type: String, reflect: true }) name = ''
@@ -67,8 +67,8 @@ export class WebUiSegmented extends FormAssociated(LitElement) {
   /*
    * 飞行令牌 + 世代号（与 web-ui-theme 的 View Transition 飞行门同构）。
    *
-   * 缺陷形态：指示器的 left / width 带着 160ms 过渡，而快速连点会连着改 value。若每次改值
-   * 都照常起一段过渡，第二段过渡要从**第一段的插值中途**重新起步——指示器于是永远慢半拍，
+   * 缺陷形态：indicator 的 left / width 带着 160ms 过渡，而快速连点会连着改 value。若每次改值
+   * 都照常起一段过渡，第二段过渡要从**第一段的插值中途**重新起步——indicator 于是永远慢半拍，
    * 连点结束时还要再等一整轮才停到终值，与「已经选到第几项」对不上。
    *
    * 门的作用：上一段移动还在飞行时到达的新值**直接落定**——不排队、不重启插值。
@@ -166,7 +166,7 @@ export class WebUiSegmented extends FormAssociated(LitElement) {
     this.style.setProperty('--indicator-width', `${width}px`)
 
     // 首帧只完成定位：先把当前定位以「未启用 left/width transition」状态提交为 before 值，
-    // 再打开移动动画。若同一趟里 set 定位与启用 transition，浏览器会把 0→选项 当作一次过渡。
+    // 再打开移动动画。若同一趟里 set 定位与启用 transition，浏览器会把 0→option 当作一次过渡。
     if (!this._indicatorReady) {
       const indicator = this.renderRoot.querySelector<HTMLElement>('.wui-segmented-indicator')
       void indicator?.offsetWidth
@@ -240,7 +240,7 @@ export class WebUiSegmented extends FormAssociated(LitElement) {
     const initialTriggerRect = activeTrigger.getBoundingClientRect()
     const initialLeft = initialTriggerRect.left - groupRect.left
     const initialWidth = initialTriggerRect.width
-    // 拇指中心跟手：left 与宽度分开写（宽度取 hover 项的），中心才是稳定的那个量——
+    // indicator 中心跟手：left 与宽度分开写（宽度取 hover 项的），中心才是稳定的那个量——
     // 宽度一变，center = left + width/2 就会漂，用它去选吸附目标会跟着抖。
     const initialCenter = initialLeft + initialWidth / 2
 
@@ -256,15 +256,15 @@ export class WebUiSegmented extends FormAssociated(LitElement) {
     const enabledCenters = enabledSlots.map(slot => slot.center)
 
     /*
-     * 某一帧的拇指几何。
+     * 某一帧的 indicator 几何。
      *
      * 宽度跟随当前 hover 的可用项（#222）：trigger 宽度不等是常态（interweave 设置
-     * dialog 顶部即此形），宽度恒等于按下那一项会让拇指与它滑过的那项始终对不齐。
-     * 取「离拇指中心最近的可用项」而不是「离指针最近的项」：松手吸附用的是同一个判据，
+     * dialog 顶部即此形），宽度恒等于按下那一项会让 indicator 与它滑过的那项始终对不齐。
+     * 取「离 indicator 中心最近的可用项」而不是「离指针最近的项」：松手吸附用的是同一个判据，
      * 于是拖拽中预览到的宽度就是松手会落到的那一项，不会在松手时二次变形。
      *
-     * 宽度变了之后 maxLeft 必须跟着换算（`trackRight − width`），否则更宽的拇指会被
-     * 钳在按初始宽度算出的位置上，从轨道右端探出去。
+     * 宽度变了之后 maxLeft 必须跟着换算（`trackRight − width`），否则更宽的 indicator 会被
+     * 钳在按初始宽度算出的位置上，从 track 右端探出去。
      *
      * 等宽时 width 恒为 initialWidth，`initialCenter + deltaX − initialWidth/2` 恒等于
      * `initialLeft + deltaX`，这一整套与改动前的逐字行为一致。

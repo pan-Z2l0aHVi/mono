@@ -2,7 +2,7 @@
  * 真实指针手势（仅 browser mode）。
  *
  * browser mode 的测试跑在 iframe 里，而 `userEvent.dblClick` 走 Playwright locator：
- * overlay 打开后遮罩盖住触发点，locator 的 actionability 检查会一直等到超时。
+ * overlay 打开后 backdrop 盖住触发点，locator 的 actionability 检查会一直等到超时。
  * 这里直接用 CDP `Input.dispatchMouseEvent` 派发真实鼠标事件——不经过 locator 的
  * 命中检查，因此能在 overlay 打开后照样把双击打到触发点上。
  *
@@ -33,7 +33,7 @@ interface Point {
  * 所以要经过「iframe 在主 frame 中的位置 + 缩放」这一步。缩放不能省：browser
  * runner 会给测试 iframe 的父节点套一层 `transform: scale(...)`（实测 720/896 ≈
  * 0.8036），只加偏移不乘缩放的话，真实落点会整体偏出约 24%。偏出的量与目标盒子
- * 的大小成正比，所以大靶子（如整块触发卡片）看起来还正常，小靶子（面板里一行标题）
+ * 的大小成正比，所以大靶子（如整块触发卡片）看起来还正常，小靶子（panel 里一行标题）
  * 就会静默打到别处。
  *
  * 反推依据：实测 `Input.dispatchMouseEvent(20,20)` 在 iframe 内收到的
@@ -85,11 +85,11 @@ export async function realDoubleClick(target: Element): Promise<void> {
  * 用真实鼠标拖拽把一个节点的全部文字选起来。
  *
  * 用真实拖拽而不是 `Range` + `addRange()` 来断言「这段文字仍可选」：程序化选区
- * **绕开** `user-select`，所以一旦有人把面板一刀切成 `user-select: none`，
+ * **绕开** `user-select`，所以一旦有人把 panel 一刀切成 `user-select: none`，
  * 程序化写法照样绿，守不住它声称要守的那件事。真实拖拽走的是浏览器自己的命中与
  * 选择判定，`user-select: none` 会真的选不出东西。
  *
- * 前提：节点此时必须有非空布局盒（面板已显示、打开动画已收敛），否则
+ * 前提：节点此时必须有非空布局盒（panel 已显示、打开动画已收敛），否则
  * `getClientRects()` 为空并直接抛错，而不是静默通过。
  */
 export async function realDragSelectText(node: Node): Promise<void> {
@@ -145,7 +145,7 @@ export async function realDragSelectText(node: Node): Promise<void> {
 /**
  * 等 overlay 的打开过渡收敛，再去量它的布局盒。
  *
- * 必须在测量**之前**等：dialog / drawer 打开时面板带着 `transform: scale(...)`
+ * 必须在测量**之前**等：dialog / drawer 打开时 panel 带着 `transform: scale(...)`
  * 进场，`getClientRects()` 量到的是动画当刻的盒子，而 CDP 事件真正落下去还要再过
  * 几毫秒——这中间盒子还在缩，坐标就偏了。实测偏出去的量足以让 press 落到相邻的
  * 另一段文字上（一度表现为「按下落进正文里、拖不动」）。
@@ -160,9 +160,9 @@ export async function realDragSelectText(node: Node): Promise<void> {
  *     进场过渡尚未创建时量到的正是过渡前那一帧的盒子（胶囊落在视口外、
  *     `elementFromPoint` 返回 null 那一类 flaky）。
  *
- * **面板本身还没渲染出来时要先等它出现**，不能拿宿主顶上去。旧的
+ * **panel 本身还没渲染出来时要先等它出现**，不能拿宿主顶上去。旧的
  * `dialog ? [el, dialog] : el` 在 `dialog` 为 null 时只观察宿主，于是
- * 「面板尚未渲染」被当成「面板没有动画」——这个 helper 的用途正是等**面板**的进场
+ * 「panel 尚未渲染」被当成「panel 没有动画」——这个 helper 的用途正是等**panel**的进场
  * 过渡收敛，那种情况下它返回的时刻不代表任何东西落定。轮询条件只问「shadow root
  * 里有 `dialog` 吗」，与调用方随后要量的东西无关。
  */
@@ -173,7 +173,7 @@ export async function waitForOpenTransition(el: Element): Promise<void> {
     () => `${el.tagName.toLowerCase()} shadow root has no <dialog> panel yet`,
     5000
   )
-  // 上面的轮询已经保证面板在场，所以这里不必再为「面板缺失」留一条回落分支：
+  // 上面的轮询已经保证 panel 在场，所以这里不必再为「panel 缺失」留一条回落分支：
   // 宿主与内层 dialog 都在观察范围内，两个根都带上（过渡既可能挂在 dialog 上做进场
   // transform，也可能挂在宿主上由 open 属性引发外层动画，只传一个会漏掉另一个）。
   const dialog = readDialog() as Element
@@ -190,13 +190,13 @@ export interface RealTouchPressOptions {
   /**
    * 用 touchCancel 而不是 touchend 结束手势。
    *
-   * 只为「量长按打开后的浮层几何」的用例准备：浏览器会为 touchend 补发一次
-   * compat click，它落在模态 scrim 上就会把**同一次长按刚打开**的菜单关掉。
-   * 补发 click 的生成时刻由主线程的任务队列决定（实测负载下比菜单打开晚
+   * 只为「量长按打开后的 overlay 几何」的用例准备：浏览器会为 touchend 补发一次
+   * compat click，它落在模态 scrim 上就会把**同一次长按刚打开**的 menu 关掉。
+   * 补发 click 的生成时刻由主线程的任务队列决定（实测负载下比 menu 打开晚
    * 1300ms 以上），而组件的吸收窗口是 1000ms 兜底上限、不是时序保证——
-   * 那一晚到窗口之外的 click 就会在断言之前把面板收掉。被测的是面板几何，
+   * 那一晚到窗口之外的 click 就会在断言之前把 panel 收掉。被测的是 panel 几何，
    * 补发 click 的吸收由专用用例覆盖，所以这里把手势结束成取消：Touch Events
-   * 规范里取消的触摸不补发 click，面板于是没有任何能提前收掉它的事件。
+   * 规范里取消的触摸不补发 click，panel 于是没有任何能提前收掉它的事件。
    */
   endWithCancel?: boolean
 }

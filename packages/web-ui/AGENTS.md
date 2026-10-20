@@ -13,7 +13,7 @@
 ## 组件组合词汇
 
 **语义色源 token（semantic hue token）**:
-表示 accent、success、warning、danger、info 等模式适配后的基础含义色；它不是某个组件的按钮背景或 hover/active 状态色。
+表示 accent、success、warning、danger、info 等模式适配后的基础含义色；它不是某个组件的 button 背景或 hover/active 状态色。
 _Avoid_: primary 背景、variant 背景、状态色
 
 **Variant 状态色（variant state color）**:
@@ -21,12 +21,12 @@ _Avoid_: primary 背景、variant 背景、状态色
 _Avoid_: 直接改写语义色源 token、用主题文本作为按压加深锚点
 
 **覆盖层 slot 组合（overlay slot composition）**:
-trigger 经命名 slot 提供、内容/面板由组件托管的组合模式；面板常脱离文档流（portal）。组件把 trigger 状态 ARIA（aria-expanded 等）回写到 trigger slot 的首个 assigned element，交互语义由 slot 内的可交互元素原生提供。
+trigger 经命名 slot 提供、内容/panel 由组件托管的组合模式；panel 常脱离文档流（portal）。组件把 trigger 状态 ARIA（aria-expanded 等）回写到 trigger slot 的首个 assigned element，交互语义由 slot 内的可交互元素原生提供。
 _Avoid_: trigger/content 拆分为独立公开元素（React 式三元素）、在 trigger 包装结构上承载 ARIA
 
-**开启态浮层（open overlay）**:
-「哪一层浮层正开着」的唯一拥有者，也是 Escape 归属的唯一仲裁者。组件用 `claim(panel)` 声明一次开启并取得会话句柄，`release()` 幂等撤销；开启状态是声明而非询问，仲裁不再回调组件查 `isOpen()`。会话作用域（一次开启）与实例作用域（跨开合与断连的帧事务）分离；「暂时不可关闭」经 `setInert(boolean)` 表达，与静态策略共用同一通道；撤销跟随退场动画。`close()` 先把会话切到「可见但暂缓仲裁」（仍是候选，但只在没有别的开启层时兜底接住 Escape），动画播完或被重新 `open()` 以新会话取代才撤销。登记表另有惰性兜底回收：panel 与宿主同时失联的层在遍历入口被摘掉（claim 路径的回收跑在建层之前，「先 claim 再挂载」的新层不会被误判成死层），漏 `release()` 不会再永久拖住注册表与 document 监听。
-_Avoid_: 各组件自持 Escape 监听、以 panel 元素而非句柄为身份、第三个仲裁枚举值、把帧事务压进会话句柄、撤销提前到退场动画之前（面板还在场上却已不在登记表里）
+**开启态 overlay（open overlay）**:
+「哪一层 overlay 正开着」的唯一拥有者，也是 Escape 归属的唯一仲裁者。组件用 `claim(panel)` 声明一次开启并取得会话 handle，`release()` 幂等撤销；开启状态是声明而非询问，仲裁不再回调组件查 `isOpen()`。会话作用域（一次开启）与实例作用域（跨开合与断连的帧事务）分离；「暂时不可关闭」经 `setInert(boolean)` 表达，与静态策略共用同一通道；撤销跟随退场动画。`close()` 先把会话切到「可见但暂缓仲裁」（仍是候选，但只在没有别的开启层时兜底接住 Escape），动画播完或被重新 `open()` 以新会话取代才撤销。登记表另有惰性兜底回收：panel 与宿主同时失联的层在遍历入口被摘掉（claim 路径的回收跑在建层之前，「先 claim 再挂载」的新层不会被误判成死层），漏 `release()` 不会再永久拖住注册表与 document 监听。
+_Avoid_: 各组件自持 Escape 监听、以 panel 元素而非 handle 为身份、第三个仲裁枚举值、把帧事务压进会话 handle、撤销提前到退场动画之前（panel 还在场上却已不在登记表里）
 
 **受管子元素组合（managed child composition）**:
 子项是公开 custom element 的组合模式。成员追踪与点击归因由 GroupController 直驱，禁用/展示态经 @lit/context 下行广播（只下行），选中态由根直写子项（上行）；子项被移出组后恢复独立控件语义。带 portal 的 option 组合走 `option-portal`，不属于这一模式。

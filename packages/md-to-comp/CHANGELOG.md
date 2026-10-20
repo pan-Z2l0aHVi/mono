@@ -4,10 +4,10 @@
 
 ### Patch Changes
 
-- 9816fbd: feat(web-ui,md-to-comp): 命令式 API 的表格改用 `### Options` 小节，image-preview 的选项表补全
+- 9816fbd: feat(web-ui,md-to-comp): 命令式 API 的表格改用 `### Options` 小节，image-preview 的 option 表补全
   
   引擎的小节名来自宿主配置（`apiTables.columns` 的键），这次在两个 demo 各加一条 `Options`，列形状与
-  `Props` 一样是四列。区别是语义：`Props` 记元素属性，`Options` 记命令式 API 的选项——`imagePreview()`
+  `Props` 一样是四列。区别是语义：`Props` 记元素属性，`Options` 记命令式 API 的 option——`imagePreview()`
   与 `toast()` 都没有声明式契约，把它们的参数摆在 `Props` 标题下会让人以为那是元素属性。
   
   `packages/web-ui/docs/image-preview.md` 的这张表原本只有元素上的 9 个 `@property`，漏了
@@ -36,11 +36,11 @@
   
   同一件事在 README 与 `docs/*.md` 两处各写一遍是这轮要拆掉的重复。`packages/web-ui/README.md` 与
   `README.CN.md` 里只存在于 README 的内容——24 张 CSS 自定义属性表、theme 的 8 张 token 表（颜色与阴影两族
-  各带浅色/深色两列）与 `### 返回句柄`、以及 72 段散文小节（行为说明、迁移说明、已知限制这类）——全部搬进
+  各带浅色/深色两列）与 `### 返回 handle`、以及 72 段散文小节（行为说明、迁移说明、已知限制这类）——全部搬进
   对应的 `docs/*.md`，`docs/` 下因此多出 105 个小节。`## API 参考` / `## API Reference` 整段删除，两份 README 收成一张指向
   `docs/*.md` 的索引表。
   
-  `### 返回句柄` 只收命令式 API 返回对象上的只读成员（`index` / `scale` / `images` / `closed`），
+  `### 返回 handle` 只收命令式 API 返回对象上的只读成员（`index` / `scale` / `images` / `closed`），
   同名的方法仍归 `### Methods`，避免同一件事在两节里各写一遍。
 - 9816fbd: feat(md-to-comp): 示例文档换成 remark/shiki 引擎，带 `{#id}` 锚点的示例变成真组件
   
@@ -145,6 +145,6 @@
   写成恒真）时会当场红。
   
   引擎侧跟着放宽一条：`## API` 小节由必填改为可省。整段省略是「这个组件没有对外契约」的明确声明
-  （`web-ui-dropdown-divider` 只有一条分隔线，没有属性、事件与插槽），页面在 `api` 为空时整段跳过、不留
+  （`web-ui-dropdown-divider` 只有一条 divider，没有属性、事件与插槽），页面在 `api` 为空时整段跳过、不留
   一个空标题。小节一旦存在就仍须有数据行——「留着标题却没有表格行」只会在页面上渲染成一个空标题，照旧
   非零退出。

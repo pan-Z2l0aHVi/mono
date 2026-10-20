@@ -10,7 +10,7 @@ import { inject, provide, readonly, ref, type DeepReadonly, type InjectionKey, t
 const layoutMobileKey: InjectionKey<DeepReadonly<Ref<boolean>>> = Symbol('layout-mobile')
 
 export interface LayoutMobileProvider {
-  /** 壳自己也要用（sidebar 宽度、折叠闸门），与页面拿到的是同一个只读来源。 */
+  /** 壳自己也要用（sidebar 宽度、collapse gate），与页面拿到的是同一个只读来源。 */
   mobile: DeepReadonly<Ref<boolean>>
   /** 绑到 `<web-ui-layout @mobile-change>`：初值与每次跨断点都由 layout 给出。 */
   onMobileChange: (event: WebUiEvent<WebUiLayout, 'mobile-change'>) => void

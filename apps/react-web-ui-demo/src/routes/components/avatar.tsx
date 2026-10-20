@@ -13,6 +13,6 @@ function Component() {
 }
 
 export const Route = createFileRoute('/components/avatar')({
-  staticData: { title: 'Avatar 头像' },
+  staticData: { title: 'Avatar' },
   component: Component
 })

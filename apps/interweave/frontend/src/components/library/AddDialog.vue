@@ -45,7 +45,7 @@ const props = defineProps<{
 const emit = defineEmits<{
   'update:open': [value: boolean]
   pickFiles: []
-  /** 剪贴板文本一并带上：文件接口对链接返回空数组，页面要靠它兜底（#188）。粘贴按钮没有文本。 */
+  /** 剪贴板文本一并带上：文件接口对链接返回空数组，页面要靠它兜底（#188）。粘贴 button 没有文本。 */
   requestFilePaths: [clipboardText?: string]
   remove: [itemId: string]
   rename: [itemId: string, title: string]
@@ -133,7 +133,7 @@ function closePendingImagePreview() {
 
 function openImagePreview(item: LibraryQueueItem, event: Event) {
   if (!isImagePreviewItem(item)) return
-  // imagePreview 在打开时复制 images 且句柄不支持替换；预览作为顶层模态阻止底层队列操作，
+  // imagePreview 在打开时复制 images 且 handle 不支持替换；预览作为顶层模态阻止底层队列操作，
   // 因此本次使用快照，关闭后的下一次打开再从最新队列重建集合。
   const entries = props.queue.flatMap(candidate =>
     isImagePreviewItem(candidate) ? [{ item: candidate, image: { src: candidate.mediaUrl, alt: candidate.title } }] : []
@@ -230,7 +230,7 @@ function handleRenameChange(item: LibraryQueueItem, event: WebUiEvent<WebUiEdita
         .desc margin-top       −6（focus-ring 上余量的成对负 margin，扣回 title 下方间距）
         .desc padding-block   12（focus-ring 余量）
         .desc margin-bottom   18
-        .wui-dialog-footer    36（--wui-control-size，两枚按钮）
+        .wui-dialog-footer    36（--wui-control-size，两枚 button）
         ------------------------------------------
         chrome                 141.59 → 142（向上取整，留亚像素余量）
 
@@ -249,7 +249,7 @@ function handleRenameChange(item: LibraryQueueItem, event: WebUiEvent<WebUiEdita
       style="height: var(--wui-dialog-max-height)"
     >
       <!--
-        clip + clip-margin 而非 hidden：drop zone 与标题行按钮都紧贴栏边，而 focus ring
+        clip + clip-margin 而非 hidden：drop zone 与标题行 button 都紧贴栏边，而 focus ring
         画在 border box 之外共 5px（offset 2 + width 3），hidden 会把 ring 裁成缺角的形状。
         6px 留出 ring 再余 1px。clip 不创建滚动容器，本栏也不需要滚动。
       -->
@@ -340,7 +340,7 @@ function handleRenameChange(item: LibraryQueueItem, event: WebUiEvent<WebUiEdita
           class="h-full min-h-0 overflow-y-auto rounded-[18px] border border-black/6 bg-white dark:border-white/8 dark:bg-(--wui-color-surface-raised)"
         >
           <!--
-            滚动条接在宿主 div 上，列表本身留在它里面：OverlayScrollbars 会把宿主的子节点搬进
+            scrollbar 接在宿主 div 上，列表本身留在它里面：OverlayScrollbars 会把宿主的子节点搬进
             自己生成的 viewport，而 <ol> 的内容模型只容得下 <li>——宿主若还是这个 <ol>，
             搬进去的 viewport div 就落进列表里了。卡片装饰与 overflow 一并上移到宿主。
           -->
@@ -459,9 +459,9 @@ function handleRenameChange(item: LibraryQueueItem, event: WebUiEvent<WebUiEdita
 
             关键一项是 --wui-empty-min-height: 0：web-ui-empty 的 `.empty` 默认把内容顶端对齐在
             240px min-block-size 盒内，置 0 后内容才随外层 place-items-center 真正垂直居中。
-            图标到文案的 6px 基础间距来自组件内部写死的 `.empty-description` margin-top（未开放
+            icon 到文案的 6px 基础间距来自组件内部写死的 `.empty-description` margin-top（未开放
             token），mt-1.5 把它补到左侧 gap-3 的 12px，mobile:mt-0.5 配 gap-2 同理。
-            图标字形色仍沿用 web-ui-empty 的中性 token：右侧是不可点的空态占位，染成左侧
+            icon 字形色仍沿用 web-ui-empty 的中性 token：右侧是不可点的空态占位，染成左侧
             drop 区的强调色会读成可点击目标。
           -->
           <web-ui-empty

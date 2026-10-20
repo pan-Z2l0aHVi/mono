@@ -10,7 +10,7 @@ import type { WebUiPopover } from '..'
 afterEach(() => document.body.replaceChildren())
 
 // Lit 条件渲染经 render() 直写 popover light DOM：ChildPart 的 marker 注释留在宿主，
-// 已提交内容位于两个 marker 之间；portal 迁移后内容物理位置在面板。
+// 已提交内容位于两个 marker 之间；portal 迁移后内容物理位置在 panel。
 function mountLitPopover(template: ReturnType<typeof html>) {
   const mountPoint = document.createElement('div')
   document.body.append(mountPoint)
@@ -23,7 +23,7 @@ function mountLitPopover(template: ReturnType<typeof html>) {
 }
 
 describe('WebUiPopover portal 条件渲染边界（Lit，浏览器）', () => {
-  it('打开期 lit 条件内容实时迁入面板并在关闭后恢复', async () => {
+  it('打开期 lit 条件内容实时迁入 panel 并在关闭后恢复', async () => {
     const show = true
     const popover = mountLitPopover(
       html`<button slot="trigger">t</button>${show ? html`<p class="probe-flag">flag</p>` : nothing}`
@@ -44,7 +44,7 @@ describe('WebUiPopover portal 条件渲染边界（Lit，浏览器）', () => {
     )
   })
 
-  it('打开期 lit 条件翻 false：内容从面板移除且关闭后不复活', async () => {
+  it('打开期 lit 条件翻 false：内容从 panel 移除且关闭后不复活', async () => {
     let show = true
     const popover = mountLitPopover(
       html`<button slot="trigger">t</button>${show ? html`<p class="probe-flag">flag</p>` : nothing}`
@@ -57,7 +57,7 @@ describe('WebUiPopover portal 条件渲染边界（Lit，浏览器）', () => {
     expect(getPortalPanel()?.querySelector('.probe-flag')).not.toBeNull()
 
     // lit _$clear 以宿主 marker 邻位遍历：已迁移元素不在宿主，portal 必须把
-    // 「marker 被框架摘除」识别为框架删除语义，清掉滞留面板的内容
+    // 「marker 被框架摘除」识别为框架删除语义，清掉滞留 panel 的内容
     show = false
     render(html`<button slot="trigger">t</button>${show ? html`<p class="probe-flag">flag</p>` : nothing}`, popover)
     await popover.updateComplete
@@ -68,7 +68,7 @@ describe('WebUiPopover portal 条件渲染边界（Lit，浏览器）', () => {
     await pollUntil(() => document.querySelectorAll('.probe-flag').length === 0, 'Expected removed flag not to revive')
   })
 
-  it('打开期 lit 三元换元素：旧元素不滞留面板，新元素实时迁入', async () => {
+  it('打开期 lit 三元换元素：旧元素不滞留 panel，新元素实时迁入', async () => {
     let show = true
     const template = () =>
       html`<button slot="trigger">t</button>${show ? html`<p class="probe-a">a</p>` : html`<p class="probe-b">b</p>`}`
