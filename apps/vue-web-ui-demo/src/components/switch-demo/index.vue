@@ -13,22 +13,24 @@ function checkedFromEvent(event: WebUiEvent<WebUiSwitch, 'change'>): boolean {
 
 <template>
   <div>
-    <h1>开关</h1>
-    <h2>基本用法</h2>
+    <h1>switch</h1>
+    <h2>Basic usage</h2>
     <div class="mb-3 flex items-center gap-3">
       <web-ui-switch :checked="enabled" @change="enabled = checkedFromEvent($event)" />
-      <span class="text-sm text-gray-600">{{ enabled ? '开启' : '关闭' }}</span>
+      <span class="text-sm text-gray-600">{{ enabled ? 'On' : 'Close' }}</span>
     </div>
-    <p class="text-xs text-gray-400">💡 支持轻点即时切换、全轨道平滑拖拽与抛掷（Flick）切换</p>
-    <h2>禁用状态</h2>
+    <p class="text-xs text-gray-400">
+      💡 Tap to switch instantly, drag across the whole track to track smoothly, or flick to throw
+    </p>
+    <h2>Disabled</h2>
     <div class="mb-3 flex items-center gap-3">
       <web-ui-switch :checked="disabledState" disabled />
-      <span class="text-sm text-gray-500">禁用</span>
+      <span class="text-sm text-gray-500">Disabled</span>
     </div>
-    <h2>加载中</h2>
+    <h2>Loading</h2>
     <div class="mb-3 flex items-center gap-3">
       <web-ui-switch :checked="loadingState" loading @change="loadingState = checkedFromEvent($event)" />
-      <span class="text-sm text-gray-500">加载中</span>
+      <span class="text-sm text-gray-500">Loading</span>
     </div>
   </div>
 </template>

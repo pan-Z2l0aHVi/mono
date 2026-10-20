@@ -56,7 +56,7 @@
   transition-duration: var(--wui-duration-toast-exit, 200ms);
 }
 
-/* ===== 关闭按钮（放在 hover 规则之前，避免 specificity 降序） ===== */
+/* ===== 关闭 button（放在 hover 规则之前，避免 specificity 降序） ===== */
 
 web-ui-button.toast-close-btn {
   pointer-events: none;
@@ -70,7 +70,7 @@ web-ui-button.toast-close-btn {
 
   transition: opacity var(--wui-duration-trigger, 160ms) ease;
 
-  /* 内层原生按钮获得键盘焦点时宿主同样可见 */
+  /* 内层原生 button 获得键盘焦点时宿主同样可见 */
   &:focus-within {
     pointer-events: auto;
     opacity: 1;
@@ -85,7 +85,7 @@ web-ui-button.toast-close-btn {
   }
 }
 
-/* secondary 变体默认用文本色，恢复原关闭按钮的 muted 观感 */
+/* secondary 变体默认用文本色，恢复原关闭 button 的 muted 观感 */
 .toast web-ui-button[icon] {
   --wui-button-color: var(--wui-color-text-secondary, #6a6a6a);
 }

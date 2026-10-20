@@ -15,7 +15,7 @@ import { setViewport } from '@/shared/test-utils/viewport'
 /**
  * 表面 token 的归属与 elevation 关系守卫。
  *
- * 断言的全是**关系**，不含颜色字面量：某个面板消费哪一枚表面 token、合成后比 page 亮多少档、
+ * 断言的全是**关系**，不含颜色字面量：某个 panel 消费哪一枚表面 token、合成后比 page 亮多少档、
  * 激活行落在 accent 上。主题改调色板（连同 media 块与双语文档一起改）这些都应成立。
  *
  * 为什么必须是关系而不是值：`theme-token-parity.spec.ts` 只在 fallback 字面量与 theme 定义
@@ -49,7 +49,7 @@ interface Rgb {
 /**
  * 解析计算色值。Chromium 对半透明色可能回读成 `rgba(r, g, b, a)`，也可能回读成
  * `color(srgb …)`——`color-mix()` 解析出来的就是后者，两种写法同色但字符串不同，故两种都收。
- * 无法解析时返回 null 交调用方断言，不抛：拿一个空串去断言「这是半透明面板」只会得到
+ * 无法解析时返回 null 交调用方断言，不抛：拿一个空串去断言「这是半透明 panel」只会得到
  * 一条看不懂的失败信息。
  */
 function tryParseColor(value: string): Rgb | null {
@@ -70,7 +70,7 @@ function tryParseColor(value: string): Rgb | null {
   return null
 }
 
-/** 半透明面板叠在 page 上的实际观感——面板多为玻璃底，裸 token 值不是用户看到的颜色。 */
+/** 半透明 panel 叠在 page 上的实际观感——panel 多为玻璃底，裸 token 值不是用户看到的颜色。 */
 function compositeOn(panel: string, backdrop: string): [number, number, number] {
   const front = tryParseColor(panel)
   const back = tryParseColor(backdrop)
@@ -121,14 +121,14 @@ async function createOpenSelectIn(theme: WebUiTheme): Promise<WebUiSelect> {
   theme.append(select)
   await waitForUpdate(select)
   const combobox = queryA11y(select, '[role="combobox"]')
-  if (!(combobox instanceof HTMLElement)) throw new Error('未找到 role="combobox" 的触发器')
+  if (!(combobox instanceof HTMLElement)) throw new Error('未找到 role="combobox" 的 trigger')
   combobox.click()
   await waitForUpdate(select)
   await new Promise(resolve => requestAnimationFrame(resolve))
   return select
 }
 
-/** shadow 内部元素：面板没有公开 role，只能按其稳定类名定位（用法同 settle-gate / segmented 各 spec）。 */
+/** shadow 内部元素：panel 没有公开 role，只能按其稳定类名定位（用法同 settle-gate / segmented 各 spec）。 */
 function panelOf(host: HTMLElement, selector: string): HTMLElement {
   const found = host.shadowRoot?.querySelector<HTMLElement>(selector)
   if (!found) throw new Error(`${host.tagName} shadow root 缺少 ${selector}`)
@@ -136,7 +136,7 @@ function panelOf(host: HTMLElement, selector: string): HTMLElement {
 }
 
 describe('表面 token 归属与 elevation（浏览器）', () => {
-  it('sidebar 面板消费 sidebar 专用 token，不与 dialog/drawer/toast 的 overlay token 混用', async () => {
+  it('sidebar panel 消费 sidebar 专用 token，不与 dialog/drawer/toast 的 overlay token 混用', async () => {
     for (const appearance of ['light', 'dark'] as const) {
       const theme = await createTheme(appearance)
       const layout = await createLayoutIn(theme)
@@ -151,28 +151,28 @@ describe('表面 token 归属与 elevation（浏览器）', () => {
     }
   })
 
-  it('下拉面板消费 menu 专用 token', async () => {
+  it('下拉 panel 消费 menu 专用 token', async () => {
     for (const appearance of ['light', 'dark'] as const) {
       const theme = await createTheme(appearance)
       const select = await createOpenSelectIn(theme)
       const background = getComputedStyle(panelOf(select, '.select-overlay')).backgroundColor
 
-      expect(background, `${appearance} 下拉面板应消费 surface-menu`).toBe(
+      expect(background, `${appearance} 下拉 panel 应消费 surface-menu`).toBe(
         resolveToken(theme, '--wui-color-surface-menu')
       )
-      expect(background, `${appearance} 下拉面板不得退到 overlay token`).not.toBe(
+      expect(background, `${appearance} 下拉 panel 不得退到 overlay token`).not.toBe(
         resolveToken(theme, '--wui-color-surface-overlay')
       )
     }
   })
 
   /*
-   * elevation 关系：面板是半透明玻璃底，合成后必须比 page 浅一档。
+   * elevation 关系：panel 是半透明玻璃底，合成后必须比 page 浅一档。
    * 上下界都留了余量——低于 3/255 读不出层级，越过 12/255 就不止「一档」——但都不是具体色值，
    * 调色板整体位移不改变这条关系。改成与 page 同层的 token（sidebar→overlay）会让合成色
    * 塌到下界之外，这里即红。
    */
-  it('sidebar 与下拉面板合成后都比 page 浅一档', async () => {
+  it('sidebar 与下拉 panel 合成后都比 page 浅一档', async () => {
     const theme = await createTheme('dark')
     const pageColor = tryParseColor(resolveToken(theme, '--wui-color-page'))
     const layout = await createLayoutIn(theme)
@@ -180,7 +180,7 @@ describe('表面 token 归属与 elevation（浏览器）', () => {
 
     const panels: Array<[string, string]> = [
       ['sidebar', getComputedStyle(panelOf(layout, '.aside-panel')).backgroundColor],
-      ['下拉面板', getComputedStyle(panelOf(select, '.select-overlay')).backgroundColor]
+      ['下拉 panel', getComputedStyle(panelOf(select, '.select-overlay')).backgroundColor]
     ]
 
     expect(pageColor, 'page 色应解析为具体颜色').not.toBeNull()

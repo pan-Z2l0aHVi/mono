@@ -46,7 +46,7 @@ registerPeekEdgeActive()
 let collapseIdCounter = 0
 
 /**
- * 文档流内折叠面板：trigger 经默认 slot 提供，内容经 `slot="content"` 提供。
+ * 文档流内 collapse panel：trigger 经默认 slot 提供，内容经 `slot="content"` 提供。
  *
  * trigger 语义完全来自 slot 进来的交互元素（原生 button / web-ui-button 等）：
  * Enter/Space 激活走该元素的原生 click，不做 role="button" 补齐；组件把
@@ -58,12 +58,12 @@ let collapseIdCounter = 0
  * 选型保留）。关闭稳态三态（消费者 light DOM 永不移动，hidden 全部命令式管理，
  * 避免渲染绑定在关闭动画起点抢先 display:none）：
  * - 默认：content 容器 `hidden`（display:none，脱离渲染与可访问性树）；
- * - `keep-mounted`：inner `inert`（保留在 0fr 轨道内，滚动位置与布局可测量）；
- * - `peek`：inner `inert`，轨道停在固定长度的裁剪窗口，只露出内容头部；
+ * - `keep-mounted`：inner `inert`（保留在 0fr track 内，滚动位置与布局可测量）；
+ * - `peek`：inner `inert`，track 停在固定长度的裁剪窗口，只露出内容头部；
  * - 动画进行中：inner `inert` + track pointer-events 禁用，结束后进入对应稳态。
  *
  * `peek` 与展开态之间是固定长度与内容自适应高度的过渡，CSS 无法插值；这两个
- * 方向的动画改为读出像素后以显式长度写入轨道，落稳态时清除内联值交回 CSS 规则。
+ * 方向的动画改为读出像素后以显式长度写入 track，落稳态时清除内联值交回 CSS 规则。
  */
 @customElement('web-ui-collapse')
 export class WebUiCollapse extends LitElement {
@@ -85,7 +85,7 @@ export class WebUiCollapse extends LitElement {
    * 关闭稳态露出的尺寸（CSS 长度，如 `120px`、`6rem`），沿动画轴生效：默认是高度，
    * `horizontal` 时为宽度；未设置时保持完全收起。
    *
-   * 设置后关闭稳态语义等同 `keep-mounted`（内容留在轨道内、`inert` 阻断交互），
+   * 设置后关闭稳态语义等同 `keep-mounted`（内容留在 track 内、`inert` 阻断交互），
    * 只露出 `peek` 范围内的部分；内容本身不足 `peek` 时按内容实际尺寸收起。
    * 注意 `peek` 是固定长度与内容自适应高度之间的过渡：CSS 无法在两者之间插值，
    * 因此这两个方向的动画由本组件读出内容尺寸后以显式长度驱动（其余路径仍是
@@ -132,7 +132,7 @@ export class WebUiCollapse extends LitElement {
   protected override updated(changed: Map<string, unknown>) {
     // ARIA 回写不依赖 open 分支，任何渲染后都保持与宿主状态同步。
     this._syncTriggerAria()
-    // peek 的稳态长度与动画写入共用轨道内联样式，先同步再落稳态，避免被稳态清除。
+    // peek 的稳态长度与动画写入共用 track 内联样式，先同步再落稳态，避免被稳态清除。
     this._syncPeek()
 
     // 首次同步（含 open 为默认值的场景，changed map 不含默认值属性）：
@@ -329,7 +329,7 @@ export class WebUiCollapse extends LitElement {
     this._awaitTransition(track, generation, () => this._settle(false))
   }
 
-  // 关闭稳态：keep-mounted → 内容保留在 0fr 轨道内并 inert；peek → 保留在裁剪
+  // 关闭稳态：keep-mounted → 内容保留在 0fr track 内并 inert；peek → 保留在裁剪
   // 窗口内并 inert；默认 → 容器 hidden。
   private _settle(open: boolean) {
     this._clearExitTimer()
@@ -350,7 +350,7 @@ export class WebUiCollapse extends LitElement {
   }
 
   // 等待动画属性过渡结束；时长为 0（reduced motion、jsdom）直接稳态，
-  // transitionend 不触发时按时长 + 缓冲兜底。默认等待 grid 轨道过渡；peek 的
+  // transitionend 不触发时按时长 + 缓冲兜底。默认等待 grid track 过渡；peek 的
   // 过渡落在 inner 的裁剪长度上，由调用方传入对应属性。
   private _awaitTransition(
     animated: HTMLElement,
@@ -390,7 +390,7 @@ export class WebUiCollapse extends LitElement {
     }
   }
 
-  // ===== peek 尺寸读写（裁剪长度落在 inner 上，轨道只负责 1fr 与裁剪窗口） =====
+  // ===== peek 尺寸读写（裁剪长度落在 inner 上，track 只负责 1fr 与裁剪窗口） =====
 
   /*
    * peek 长度经自定义属性下发给 shadow 样式规则，而不是直接写 inner 的裁剪长度：

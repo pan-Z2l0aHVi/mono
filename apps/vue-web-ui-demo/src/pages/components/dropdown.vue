@@ -1,7 +1,7 @@
 <route lang="json">
 {
   "meta": {
-    "title": "Dropdown 下拉菜单"
+    "title": "Dropdown"
   }
 }
 </route>

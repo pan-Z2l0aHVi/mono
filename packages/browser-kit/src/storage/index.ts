@@ -194,7 +194,7 @@ function defineStorage(type: StorageType, options: StorageOptions = {}) {
       )
     }
 
-    // 当前标签页的 storage 事件不会触发，需要其他方式通知（如 BroadcastChannel）
+    // 当前 tab 的 storage 事件不会触发，需要其他方式通知（如 BroadcastChannel）
     function watch<T>(key: string, callback: (newValue: T | null, oldValue: T | null) => void): () => void {
       const controller = new AbortController()
       on(

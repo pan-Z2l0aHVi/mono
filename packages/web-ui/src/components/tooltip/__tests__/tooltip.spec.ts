@@ -57,7 +57,7 @@ describe('WebUiTooltip 组件', () => {
       const el = createTooltip({ content: '提示文字' })
       await waitForUpdate(el)
 
-      // 先打开 tooltip 以显示面板（保留当前行为：由 pointerenter 触发）
+      // 先打开 tooltip 以显示 panel（保留当前行为：由 pointerenter 触发）
       el.dispatchEvent(new PointerEvent('pointerenter'))
       vi.advanceTimersByTime(200)
       await waitForUpdate(el)
@@ -111,7 +111,7 @@ describe('WebUiTooltip 组件', () => {
   })
 
   describe('属性：open', () => {
-    it('open=true 显示本地面板并反射到 host attribute', async () => {
+    it('open=true 显示本地 panel 并反射到 host attribute', async () => {
       const el = createTooltip({ content: '提示' })
 
       el.open = true
@@ -124,7 +124,7 @@ describe('WebUiTooltip 组件', () => {
       cleanupElement(el)
     })
 
-    it('open=false 隐藏面板', async () => {
+    it('open=false 隐藏 panel', async () => {
       const el = createTooltip({ content: '提示' })
       el.open = true
       await waitForUpdate(el)
@@ -168,9 +168,9 @@ describe('WebUiTooltip 组件', () => {
   })
 
   describe('属性：offset', () => {
-    // 打开态改 offset 属于状态转换（政策 §3）：面板必须仍然可见，不能因为重定位
-    // 被重新隐藏。判据取面板的公开 `hidden` 后果，不读定位器的内部状态。
-    it('打开态修改 offset 后面板仍可见', async () => {
+    // 打开态改 offset 属于状态转换（政策 §3）：panel 必须仍然可见，不能因为重定位
+    // 被重新隐藏。判据取 panel 的公开 `hidden` 后果，不读定位器的内部状态。
+    it('打开态修改 offset 后 panel 仍可见', async () => {
       const el = createTooltip({ content: '提示' })
       el.open = true
       await waitForUpdate(el)
@@ -308,7 +308,7 @@ describe('WebUiTooltip 组件', () => {
   })
 
   describe('可访问性', () => {
-    it('面板有 role="tooltip"', async () => {
+    it('panel 有 role="tooltip"', async () => {
       const el = createTooltip()
       await waitForUpdate(el)
 

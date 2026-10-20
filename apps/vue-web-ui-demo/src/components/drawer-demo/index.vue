@@ -7,10 +7,10 @@ const drawerRef = ref()
 const visible = ref(false)
 const placement = ref<DrawerPlacement>('right')
 const allPlacements: { label: string; value: DrawerPlacement }[] = [
-  { label: '右侧', value: 'right' },
-  { label: '左侧', value: 'left' },
-  { label: '上方', value: 'top' },
-  { label: '下方', value: 'bottom' }
+  { label: 'Right', value: 'right' },
+  { label: 'Left', value: 'left' },
+  { label: 'Top', value: 'top' },
+  { label: 'Bottom', value: 'bottom' }
 ]
 
 const openDrawer = (p: DrawerPlacement) => {
@@ -44,7 +44,7 @@ const draggableVisible = ref(false)
 const draggableTopVisible = ref(false)
 const draggableHeadlessVisible = ref(false)
 
-// Nested 抽屉：声明式嵌套，无额外 API。后打开的是顶层，先打开的按 0.95^depth
+// Nested drawer：声明式嵌套，无额外 API。后打开的是顶层，先打开的按 0.95^depth
 // 缩放并向内侧平移露出阶梯式卡片边缘；露边量按 A·ln(n) 递减。
 const nestedL1 = ref(false)
 const nestedL2 = ref(false)
@@ -67,17 +67,17 @@ const siblingL3 = ref(false)
 
 <template>
   <div>
-    <h1>抽屉</h1>
+    <h1>drawer</h1>
 
-    <h2>命令式</h2>
+    <h2>Imperative</h2>
     <div class="mb-3 flex gap-2">
-      <web-ui-button @click="drawerRef?.show()">打开</web-ui-button>
+      <web-ui-button @click="drawerRef?.show()">Open</web-ui-button>
     </div>
-    <web-ui-drawer ref="drawerRef" heading="命令式抽屉">
-      <p>使用 <code>show()</code> / <code>close()</code> 命令式控制。</p>
+    <web-ui-drawer ref="drawerRef" heading="Imperative drawer">
+      <p>Use<code>show()</code> / <code>close()</code>Imperative control.</p>
     </web-ui-drawer>
 
-    <h2>声明式</h2>
+    <h2>Declarative</h2>
     <div class="mb-3 flex flex-wrap gap-2">
       <web-ui-button v-for="item in allPlacements" :key="item.value" @click="openDrawer(item.value)">
         {{ item.label }}
@@ -86,18 +86,18 @@ const siblingL3 = ref(false)
     <web-ui-drawer
       :open="visible"
       :placement="placement"
-      :heading="placement + ' 抽屉'"
+      :heading="placement + ' drawer'"
       @open-change="visible = $event.detail.open"
     >
-      <p>使用 <code>placement</code> 控制方向。</p>
+      <p>Use<code>placement</code>Controls the direction.</p>
     </web-ui-drawer>
 
-    <h2>自定义宽高</h2>
+    <h2>Custom size</h2>
     <div class="mb-3 flex flex-wrap gap-2">
-      <web-ui-button @click="openCustom('right')">400px 宽</web-ui-button>
-      <web-ui-button @click="openCustom('left')">260px 宽</web-ui-button>
-      <web-ui-button @click="openCustom('top')">400px 高</web-ui-button>
-      <web-ui-button @click="openCustom('bottom')">160px 高</web-ui-button>
+      <web-ui-button @click="openCustom('right')">400px wide</web-ui-button>
+      <web-ui-button @click="openCustom('left')">260px wide</web-ui-button>
+      <web-ui-button @click="openCustom('top')">400px tall</web-ui-button>
+      <web-ui-button @click="openCustom('bottom')">160px tall</web-ui-button>
     </div>
     <web-ui-drawer
       :open="customVisible"
@@ -108,10 +108,10 @@ const siblingL3 = ref(false)
       }"
       @open-change="customVisible = $event.detail.open"
     >
-      <span slot="header">自定义尺寸</span>
+      <span slot="header">Custom size</span>
       <p>
         方向：<strong>{{ customPlacement }}</strong
-        >，{{ isHorizontal ? '高度' : '宽度' }}：<code>{{
+        >，{{ isHorizontal ? 'Height' : 'Width' }}：<code>{{
           customPlacement === 'right'
             ? '400px'
             : customPlacement === 'left'
@@ -123,82 +123,87 @@ const siblingL3 = ref(false)
       </p>
     </web-ui-drawer>
 
-    <h2>无 Header</h2>
+    <h2>No header</h2>
     <div class="mb-3 flex gap-2">
-      <web-ui-button @click="noHeaderVisible = true">打开</web-ui-button>
+      <web-ui-button @click="noHeaderVisible = true">Open</web-ui-button>
     </div>
     <web-ui-drawer :open="noHeaderVisible" @open-change="noHeaderVisible = $event.detail.open">
-      <p>不传 <code>heading</code> 且无 <code>header slot</code> 时自动隐藏 header。</p>
+      <p>Not passed<code>heading</code>and no<code>header slot</code>hides the header automatically.</p>
     </web-ui-drawer>
 
-    <h2>滚动锁定</h2>
+    <h2>Scroll lock</h2>
     <div class="mb-3 flex gap-2">
-      <web-ui-button @click="unlockedVisible = true">打开不锁定滚动的抽屉</web-ui-button>
+      <web-ui-button @click="unlockedVisible = true">Open a drawer without scroll lock</web-ui-button>
     </div>
     <web-ui-drawer :open="unlockedVisible" no-scroll-lock @open-change="unlockedVisible = $event.detail.open">
-      <p>关闭 <code>no-scroll-lock</code> 后，背景页面仍可滚动。</p>
-      <web-ui-button slot="footer" variant="secondary" full @click="unlockedVisible = false">关闭</web-ui-button>
+      <p>Close<code>no-scroll-lock</code>leaves the background page scrollable.</p>
+      <web-ui-button slot="footer" variant="secondary" full @click="unlockedVisible = false">Close</web-ui-button>
     </web-ui-drawer>
 
-    <h2>不可点击遮罩关闭</h2>
+    <h2>Backdrop click does not close</h2>
     <div class="mb-3 flex gap-2">
-      <web-ui-button @click="overlayVisible = true">打开</web-ui-button>
+      <web-ui-button @click="overlayVisible = true">Open</web-ui-button>
     </div>
     <web-ui-drawer
       :open="overlayVisible"
-      heading="不可点击遮罩关闭"
+      heading="Backdrop click does not close"
       no-backdrop-close
       @open-change="overlayVisible = $event.detail.open"
     >
-      <p>点击遮罩不会关闭抽屉，必须通过按钮操作。</p>
-      <web-ui-button slot="footer" variant="secondary" full @click="overlayVisible = false">关闭</web-ui-button>
+      <p>Clicking the backdrop does not close the drawer; use the button instead.</p>
+      <web-ui-button slot="footer" variant="secondary" full @click="overlayVisible = false">Close</web-ui-button>
     </web-ui-drawer>
 
     <h2>Header Slot</h2>
     <div class="mb-3 flex gap-2">
-      <web-ui-button @click="headerSlotVisible = true">打开</web-ui-button>
+      <web-ui-button @click="headerSlotVisible = true">Open</web-ui-button>
     </div>
     <web-ui-drawer :open="headerSlotVisible" @open-change="headerSlotVisible = $event.detail.open">
       <div slot="header" style="display: flex; gap: 8px; align-items: center; padding: 12px 20px">
-        <span style="font-size: 18px; font-weight: 600">自定义</span>
-        <span style="font-size: 12px; color: #999">副标题</span>
+        <span style="font-size: 18px; font-weight: 600">Custom</span>
+        <span style="font-size: 12px; color: #999">Subtitle</span>
       </div>
-      <p>通过 <code>header slot</code> 自定义头部内容。</p>
+      <p>Through<code>header slot</code>Custom header content.</p>
     </web-ui-drawer>
 
-    <h2>关闭按钮</h2>
+    <h2>Close button</h2>
     <div class="mb-3 flex flex-wrap gap-2 items-center">
-      <web-ui-button @click="closableVisible = true">打开</web-ui-button>
+      <web-ui-button @click="closableVisible = true">Open</web-ui-button>
       <label class="flex items-center gap-1 text-sm cursor-pointer select-none">
         <web-ui-checkbox :checked="closableState" @change="closableState = $event.target.checked" />
-        显示关闭按钮
+        显示关闭 button
       </label>
     </div>
     <web-ui-drawer
       :open="closableVisible"
-      heading="关闭按钮"
+      heading="Close button"
       :closable="closableState"
       @open-change="closableVisible = $event.detail.open"
     >
-      <p><code>closable</code> 控制关闭按钮，独立于 header 定位。</p>
+      <p><code>closable</code>Controls the close button, positioned apart from the header.</p>
     </web-ui-drawer>
 
     <h2>Footer Slot</h2>
     <div class="mb-3 flex gap-2">
-      <web-ui-button @click="footerVisible = true">打开</web-ui-button>
+      <web-ui-button @click="footerVisible = true">Open</web-ui-button>
     </div>
-    <web-ui-drawer :open="footerVisible" heading="带 Footer" closable @open-change="footerVisible = $event.detail.open">
-      <p>底部区域通过 <code>footer</code> slot 插入，固定在抽屉底部。</p>
-      <web-ui-button slot="footer" full variant="secondary" @click="footerVisible = false">关闭</web-ui-button>
+    <web-ui-drawer
+      :open="footerVisible"
+      heading="With footer"
+      closable
+      @open-change="footerVisible = $event.detail.open"
+    >
+      <p>The footer area goes through<code>footer</code>the slot and stays pinned to the drawer bottom.</p>
+      <web-ui-button slot="footer" full variant="secondary" @click="footerVisible = false">Close</web-ui-button>
     </web-ui-drawer>
 
     <h2>Custom CSS Vars</h2>
     <div class="mb-3 flex gap-2">
-      <web-ui-button @click="cssVarsVisible = true">打开直角白底抽屉</web-ui-button>
+      <web-ui-button @click="cssVarsVisible = true">Open a square white drawer</web-ui-button>
     </div>
     <web-ui-drawer
       :open="cssVarsVisible"
-      heading="直角白底抽屉"
+      heading="Square white drawer"
       :style="{
         '--wui-drawer-bg': '#fff',
         '--wui-drawer-radius': '0',
@@ -206,97 +211,106 @@ const siblingL3 = ref(false)
       }"
       @open-change="cssVarsVisible = $event.detail.open"
     >
-      <p>通过 CSS 变量自定义背景与几何：白色背景、直角贴边（四周无间隙）。</p>
-    </web-ui-drawer>
-
-    <h2>受控关闭请求</h2>
-    <div class="mb-3 flex gap-2">
-      <web-ui-button @click="controlledVisible = true">打开</web-ui-button>
-    </div>
-    <web-ui-drawer :open="controlledVisible" controlled @open-change="controlledVisible = $event.detail.open">
       <p>
-        <code>controlled</code> 时，Escape、遮罩和关闭按钮只派发 <code>open-change</code> 请求；Consumer 回写
-        <code>open</code> 后才关闭。
+        Customize the background and geometry with CSS variables: white background, square edges flush with the frame.
       </p>
     </web-ui-drawer>
 
-    <h2>Headless 模式</h2>
+    <h2>Controlled close request</h2>
     <div class="mb-3 flex gap-2">
-      <web-ui-button @click="headlessVisible = true">打开</web-ui-button>
+      <web-ui-button @click="controlledVisible = true">Open</web-ui-button>
+    </div>
+    <web-ui-drawer :open="controlledVisible" controlled @open-change="controlledVisible = $event.detail.open">
+      <p>
+        <code>controlled</code>Escape, the backdrop and the close button only dispatch<code>open-change</code>
+        请求；Consumer 回写 <code>open</code> 后才关闭。
+      </p>
+    </web-ui-drawer>
+
+    <h2>Headless mode</h2>
+    <div class="mb-3 flex gap-2">
+      <web-ui-button @click="headlessVisible = true">Open</web-ui-button>
     </div>
     <web-ui-drawer
       :open="headlessVisible"
       placement="left"
       headless
-      dialog-label="Headless 抽屉"
+      dialog-label="Headless drawer"
       @open-change="headlessVisible = $event.detail.open"
     >
       <div style="height: 100%; padding: 16px; border-radius: 0 16px 16px 0; background: white">
-        <h3 style="margin: 0 0 12px">Headless 抽屉</h3>
+        <h3 style="margin: 0 0 12px">Headless drawer</h3>
         <p style="margin: 0; color: #666">
-          使用 <code>headless</code> 属性后，抽屉只保留 overlay 基础设施（backdrop、动画、scroll lock）， 不渲染内置
+          Use<code>headless</code> 属性后，drawer 只保留 overlay 基础设施（backdrop、动画、scroll lock）， 不渲染内置
           UI。Consumer 自定义内容样式。
         </p>
       </div>
     </web-ui-drawer>
 
-    <h2>拖拽关闭（draggable）</h2>
+    <h2>Drag to close (draggable)</h2>
     <div class="mb-3 flex flex-wrap gap-2">
-      <web-ui-button @click="draggableVisible = true">右侧</web-ui-button>
-      <web-ui-button @click="draggableTopVisible = true">上方</web-ui-button>
-      <web-ui-button @click="draggableHeadlessVisible = true">Headless 左侧</web-ui-button>
+      <web-ui-button @click="draggableVisible = true">Right</web-ui-button>
+      <web-ui-button @click="draggableTopVisible = true">Top</web-ui-button>
+      <web-ui-button @click="draggableHeadlessVisible = true">Headless on the left</web-ui-button>
     </div>
     <p class="mb-3 text-sm text-(--wui-color-text-secondary)">
-      <code>draggable</code> 时抽屉内缘显示灰色胶囊 drag bar：拖拽实时跟手，拖出约 1/3 或快速甩动松手即关闭，否则弹回。
+      <code>draggable</code> 时 drawer 内缘显示灰色胶囊 drag bar：拖拽实时跟手，拖出约 1/3
+      或快速甩动松手即关闭，否则弹回。
     </p>
     <web-ui-drawer
       :open="draggableVisible"
-      heading="拖拽关闭"
+      heading="Drag to close"
       closable
       draggable
       @open-change="draggableVisible = $event.detail.open"
     >
-      <p>抓住左缘的胶囊向右拖出即可关闭；未超过 1/3 宽度松手会弹回。</p>
+      <p>
+        Grab the capsule on the left edge and drag it right to close; releasing before a third of the width snaps back.
+      </p>
     </web-ui-drawer>
     <web-ui-drawer
       :open="draggableTopVisible"
       placement="top"
-      heading="上方拖拽关闭"
+      heading="Drag from the top to close"
       draggable
       @open-change="draggableTopVisible = $event.detail.open"
     >
-      <p>抓住下缘的胶囊向上拖出即可关闭。</p>
+      <p>Grab the capsule on the bottom edge and drag it up to close.</p>
     </web-ui-drawer>
     <web-ui-drawer
       :open="draggableHeadlessVisible"
       placement="left"
       headless
       draggable
-      dialog-label="Headless 拖拽抽屉"
+      dialog-label="Headless drag drawer"
       @open-change="draggableHeadlessVisible = $event.detail.open"
     >
       <div style="height: 100%; padding: 16px; border-radius: 0 16px 16px 0; background: white">
-        <h3 style="margin: 0 0 12px">Headless 拖拽抽屉</h3>
-        <p style="margin: 0; color: #666">headless 模式同样支持 drag bar，抓住右缘胶囊向左拖出关闭。</p>
+        <h3 style="margin: 0 0 12px">Headless drag drawer</h3>
+        <p style="margin: 0; color: #666">
+          The headless mode supports the drag bar too: grab the capsule on the right edge and drag it left to close.
+        </p>
       </div>
     </web-ui-drawer>
 
-    <h2>Nested 层叠抽屉</h2>
+    <h2>Nested stacked drawers</h2>
     <div class="mb-3 flex flex-wrap gap-2">
-      <web-ui-button @click="nestedL1 = true">等宽嵌套 (320px)</web-ui-button>
-      <web-ui-button @click="diffWidthL1 = true"> 级联收窄 (500px → 360px → 260px) </web-ui-button>
-      <web-ui-button @click="randomWidthL1 = true"> 乱序宽度交错 (300px → 520px → 240px → 400px) </web-ui-button>
+      <web-ui-button @click="nestedL1 = true">Equal-width nesting (320px)</web-ui-button>
+      <web-ui-button @click="diffWidthL1 = true">Cascading narrowing (500px → 360px → 260px)</web-ui-button>
+      <web-ui-button @click="randomWidthL1 = true"
+        >Mixed widths out of order (300px → 520px → 240px → 400px)</web-ui-button
+      >
     </div>
     <p class="mb-3 text-sm text-(--wui-color-text-secondary)">
       同组件声明式嵌套即 nested：后打开的位于顶层全尺寸，下层按 0.95<sup>n</sup>
       缩放并向内侧平移，露出阶梯式卡片边缘。露边宽度按对数曲线分配：总堆叠宽度
       <code>A·ln(n)</code
-      >，单层不动，每多一层只多露一点，层数增加时不再线性膨胀。多层宽度不同或乱序交错时，自动计算上方最大宽度进行补偿，确保所有底层的左缘均不会被上方更宽的抽屉遮挡；Escape
-      与遮罩点击只作用于最顶层，逐层退出。
+      >，单层不动，每多一层只多露一点，层数增加时不再线性膨胀。多层宽度不同或乱序交错时，自动计算上方最大宽度进行补偿，确保所有底层的左缘均不会被上方更宽的
+      drawer 遮挡；Escape 与 backdrop 点击只作用于最顶层，逐层退出。
     </p>
     <web-ui-drawer
       :open="nestedL1"
-      heading="第一层 (320px)"
+      heading="Level 1 (320px)"
       closable
       draggable
       @open-change="
@@ -305,11 +319,13 @@ const siblingL3 = ref(false)
         }
       "
     >
-      <p>第一层抽屉。子层打开后本层缩小并向左偏移露出边缘卡片。</p>
-      <web-ui-button slot="footer" variant="secondary" full @click="nestedL2 = true">打开第二层</web-ui-button>
+      <p>The first drawer. Opening a child shrinks this one and shifts it left to reveal the edge of the card.</p>
+      <web-ui-button slot="footer" variant="secondary" full @click="nestedL2 = true"
+        >Open the second level</web-ui-button
+      >
       <web-ui-drawer
         :open="nestedL2"
-        heading="第二层 (320px)"
+        heading="Level 2 (320px)"
         closable
         draggable
         @open-change="
@@ -318,11 +334,13 @@ const siblingL3 = ref(false)
           }
         "
       >
-        <p>第二层抽屉。继续叠第三层观察连续缩放。</p>
-        <web-ui-button slot="footer" variant="secondary" full @click="nestedL3 = true">打开第三层</web-ui-button>
+        <p>The second drawer. Stack a third to watch the continuous shrinking.</p>
+        <web-ui-button slot="footer" variant="secondary" full @click="nestedL3 = true"
+          >Open the third level</web-ui-button
+        >
         <web-ui-drawer
           :open="nestedL3"
-          heading="第三层 (320px)"
+          heading="Level 3 (320px)"
           closable
           draggable
           @open-change="
@@ -331,11 +349,13 @@ const siblingL3 = ref(false)
             }
           "
         >
-          <p>第三层抽屉。</p>
-          <web-ui-button slot="footer" variant="secondary" full @click="nestedL4 = true">打开第四层</web-ui-button>
+          <p>The third drawer.</p>
+          <web-ui-button slot="footer" variant="secondary" full @click="nestedL4 = true"
+            >Open the fourth level</web-ui-button
+          >
           <web-ui-drawer
             :open="nestedL4"
-            heading="第四层（顶层 320px）"
+            heading="Level 4 (top level, 320px)"
             closable
             draggable
             @open-change="
@@ -344,7 +364,7 @@ const siblingL3 = ref(false)
               }
             "
           >
-            <p>最顶层抽屉。Escape 或拖拽关闭后逐层回弹。</p>
+            <p>The top drawer. Escape or drag-to-close unwinds the stack layer by layer.</p>
           </web-ui-drawer>
         </web-ui-drawer>
       </web-ui-drawer>
@@ -352,7 +372,7 @@ const siblingL3 = ref(false)
 
     <web-ui-drawer
       :open="diffWidthL1"
-      heading="主信息面板 (500px)"
+      heading="Main info panel (500px)"
       :style="{ '--wui-drawer-width': '500px' }"
       closable
       draggable
@@ -362,13 +382,16 @@ const siblingL3 = ref(false)
         }
       "
     >
-      <p>宽面板（500px）。子层（360px）打开后，本层依然平滑缩放，卡片在左侧优雅露出。</p>
+      <p>
+        A wide panel (500px). When a child (360px) opens, this layer still shrinks smoothly and the card is revealed on
+        the left.
+      </p>
       <web-ui-button slot="footer" variant="secondary" full @click="diffWidthL2 = true">
-        打开详情面板 (360px)
+        打开详情 panel (360px)
       </web-ui-button>
       <web-ui-drawer
         :open="diffWidthL2"
-        heading="详情面板 (360px)"
+        heading="Details panel (360px)"
         :style="{ '--wui-drawer-width': '360px' }"
         closable
         draggable
@@ -378,13 +401,13 @@ const siblingL3 = ref(false)
           }
         "
       >
-        <p>中等面板（360px）。可再打开子层（260px），层层收窄堆叠。</p>
+        <p>A medium panel (360px). Open a child (260px) to narrow the stack further.</p>
         <web-ui-button slot="footer" variant="secondary" full @click="diffWidthL3 = true">
-          打开确认操作面板 (260px)
+          打开确认操作 panel (260px)
         </web-ui-button>
         <web-ui-drawer
           :open="diffWidthL3"
-          heading="确认面板 (260px)"
+          heading="Confirm panel (260px)"
           :style="{ '--wui-drawer-width': '260px' }"
           closable
           draggable
@@ -394,14 +417,14 @@ const siblingL3 = ref(false)
             }
           "
         >
-          <p>最顶层窄面板（260px）。下层多级宽面板依次在左侧形成阶梯堆叠。</p>
+          <p>The narrow top panel (260px). The wider panels below stack in steps on the left.</p>
         </web-ui-drawer>
       </web-ui-drawer>
     </web-ui-drawer>
 
     <web-ui-drawer
       :open="randomWidthL1"
-      heading="侧边基础面板 (300px)"
+      heading="Side base panel (300px)"
       :style="{ '--wui-drawer-width': '300px' }"
       closable
       draggable
@@ -411,13 +434,16 @@ const siblingL3 = ref(false)
         }
       "
     >
-      <p>第 1 层（窄 300px）。子层打开更宽抽屉（520px）时，本层会自动补偿向左平移，左缘依然清晰外露。</p>
+      <p>
+        Level 1 (narrow, 300px). When a wider drawer (520px) opens, this layer shifts left to compensate and its edge
+        stays clearly visible.
+      </p>
       <web-ui-button slot="footer" variant="secondary" full @click="randomWidthL2 = true">
-        打开大预览面板 (520px)
+        打开大预览 panel (520px)
       </web-ui-button>
       <web-ui-drawer
         :open="randomWidthL2"
-        heading="大预览面板 (520px)"
+        heading="Large preview panel (520px)"
         :style="{ '--wui-drawer-width': '520px' }"
         closable
         draggable
@@ -427,13 +453,13 @@ const siblingL3 = ref(false)
           }
         "
       >
-        <p>第 2 层（超宽 520px）。铺展大卡片，可在其上打开更窄的工具栏抽屉（240px）。</p>
+        <p>Level 2 (very wide, 520px). It spreads a large card and can host a narrower toolbar drawer (240px).</p>
         <web-ui-button slot="footer" variant="secondary" full @click="randomWidthL3 = true">
           打开工具配置 (240px)
         </web-ui-button>
         <web-ui-drawer
           :open="randomWidthL3"
-          heading="工具配置 (240px)"
+          heading="Tool settings (240px)"
           :style="{ '--wui-drawer-width': '240px' }"
           closable
           draggable
@@ -443,13 +469,13 @@ const siblingL3 = ref(false)
             }
           "
         >
-          <p>第 3 层（极窄 240px）。在 520px 宽卡片上方，再在其上打开顶层确认表单（400px）。</p>
+          <p>Level 3 (very narrow, 240px). Above the 520px card, it opens the top confirm form (400px).</p>
           <web-ui-button slot="footer" variant="secondary" full @click="randomWidthL4 = true">
             打开确认表单 (400px)
           </web-ui-button>
           <web-ui-drawer
             :open="randomWidthL4"
-            heading="确认表单 (400px 顶层)"
+            heading="Confirm form (400px, top level)"
             :style="{ '--wui-drawer-width': '400px' }"
             closable
             draggable
@@ -459,25 +485,25 @@ const siblingL3 = ref(false)
               }
             "
           >
-            <p>第 4 层（顶层 400px）。所有下层卡片（无论宽于或窄于本层）均在左侧按层次有序排列。</p>
+            <p>Level 4 (top, 400px). Every card below — wider or narrower — lines up on the left in order.</p>
           </web-ui-drawer>
         </web-ui-drawer>
       </web-ui-drawer>
     </web-ui-drawer>
 
-    <h2>同级自动层叠</h2>
+    <h2>Automatic stacking of siblings</h2>
     <p class="mb-3 text-sm text-gray-500">
       多个 drawer 在同级 DOM 挂载，依次打开后由内部 <code>defineNestedDrawerLayers</code> 自动管理层序——先开的按
       0.95^depth 缩放并向内侧偏移（偏移量按 <code>A·ln(n)</code> 对数分配），后开的全尺寸在顶层。
     </p>
     <div class="mb-3 flex gap-2">
-      <web-ui-button @click="siblingL1 = true">打开 Drawer 1</web-ui-button>
-      <web-ui-button @click="siblingL2 = true">打开 Drawer 2</web-ui-button>
-      <web-ui-button @click="siblingL3 = true">打开 Drawer 3</web-ui-button>
+      <web-ui-button @click="siblingL1 = true">Open drawer 1</web-ui-button>
+      <web-ui-button @click="siblingL2 = true">Open drawer 2</web-ui-button>
+      <web-ui-button @click="siblingL3 = true">Open drawer 3</web-ui-button>
     </div>
     <web-ui-drawer
       :open="siblingL1"
-      heading="同级 Drawer 1"
+      heading="Sibling drawer 1"
       closable
       draggable
       @open-change="
@@ -486,11 +512,11 @@ const siblingL3 = ref(false)
         }
       "
     >
-      <p>第 1 层。依次打开 Drawer 2、3，本层会自动缩小并偏移露出卡片边缘。</p>
+      <p>Level 1. Open drawers 2 and 3 in turn: this layer shrinks and shifts to reveal the card edges.</p>
     </web-ui-drawer>
     <web-ui-drawer
       :open="siblingL2"
-      heading="同级 Drawer 2"
+      heading="Sibling drawer 2"
       closable
       draggable
       @open-change="
@@ -499,11 +525,11 @@ const siblingL3 = ref(false)
         }
       "
     >
-      <p>第 2 层。在 Drawer 1 之上、Drawer 3 之下。</p>
+      <p>Level 2. Above drawer 1 and below drawer 3.</p>
     </web-ui-drawer>
     <web-ui-drawer
       :open="siblingL3"
-      heading="同级 Drawer 3"
+      heading="Sibling drawer 3"
       closable
       draggable
       @open-change="
@@ -512,7 +538,7 @@ const siblingL3 = ref(false)
         }
       "
     >
-      <p>最顶层。关闭后下层逐级回弹至全尺寸。</p>
+      <p>The top layer. Closing it unwinds the layers below back to full size.</p>
     </web-ui-drawer>
   </div>
 </template>

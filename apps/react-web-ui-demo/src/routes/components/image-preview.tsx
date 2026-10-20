@@ -13,6 +13,6 @@ function Component() {
 }
 
 export const Route = createFileRoute('/components/image-preview')({
-  staticData: { title: 'ImagePreview 图片预览' },
+  staticData: { title: 'ImagePreview' },
   component: Component
 })

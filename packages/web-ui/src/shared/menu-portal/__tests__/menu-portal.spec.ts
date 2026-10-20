@@ -6,8 +6,8 @@ afterEach(() => {
   document.body.replaceChildren()
 })
 
-describe('菜单 Portal 容器', () => {
-  it('创建 portal 面板并将内容挂载到面板内', () => {
+describe('menu Portal 容器', () => {
+  it('创建 portal panel 并将内容挂载到 panel 内', () => {
     const { panel, content } = createMenuPortalOverlay('context-menu')
 
     expect(panel.isConnected).toBe(true)

@@ -7,13 +7,13 @@ afterEach(() => {
 })
 
 /*
- * Portal 承担两件对用户可见的事：**面板挂到哪里**（决定它能否留在 top layer 内、
- * 是否被下层浮层抢走命中）与**内容在关闭后去哪**（必须回到原组件，否则内容直接消失）。
+ * Portal 承担两件对用户可见的事：**panel 挂到哪里**（决定它能否留在 top layer 内、
+ * 是否被下层 overlay 抢走命中）与**内容在关闭后去哪**（必须回到原组件，否则内容直接消失）。
  *
  * 容器解析的判据是「显式容器优先」这一条规则本身，不锁属性名与 DOM 形状；
- * 迁移的判据是内容最终回到原宿主，不锁面板内部结构。
+ * 迁移的判据是内容最终回到原宿主，不锁 panel 内部结构。
  */
-describe('浮层 Portal', () => {
+describe('overlay Portal', () => {
   it('显式容器优先于主题和 fallback root', () => {
     const target = document.createElement('div')
     const container = document.createElement('div')
@@ -22,7 +22,7 @@ describe('浮层 Portal', () => {
     expect(resolveOverlayContainer(container, target)).toBe(container)
   })
 
-  it('内容迁入面板，销毁前恢复到原组件', () => {
+  it('内容迁入 panel，销毁前恢复到原组件', () => {
     const target = document.createElement('div')
     const content = document.createElement('button')
     const container = document.createElement('div')
@@ -34,7 +34,7 @@ describe('浮层 Portal', () => {
 
     expect(portal.panel.contains(content)).toBe(true)
 
-    // 关闭路径：内容必须回到宿主组件 —— 面板一销毁就把它带走是内容直接消失。
+    // 关闭路径：内容必须回到宿主组件 —— panel 一销毁就把它带走是内容直接消失。
     portal.restoreContent()
     portal.remove()
 
@@ -42,7 +42,7 @@ describe('浮层 Portal', () => {
     expect(portal.panel.isConnected).toBe(false)
   })
 
-  it('可迁移到面板内的指定容器，恢复时同样回到原组件', () => {
+  it('可迁移到 panel 内的指定容器，恢复时同样回到原组件', () => {
     const target = document.createElement('div')
     const content = document.createElement('button')
     const container = document.createElement('div')

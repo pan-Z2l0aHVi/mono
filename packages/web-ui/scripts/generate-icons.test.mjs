@@ -68,7 +68,7 @@ try {
   assert.match(index, /export \{ default as testHouse \}/)
   assert.match(index, /export \{ default as bareDot \}/)
 
-  // 输入里移除的图标必须从生成目录消失；非生成文件不归这个脚本清理。
+  // 输入里移除的 icon 必须从生成目录消失；非生成文件不归这个脚本清理。
   const stale = path.join(generatedDir, 'stale-icon.ts')
   const foreign = path.join(generatedDir, 'keep.txt')
   fs.writeFileSync(stale, 'stale\n')

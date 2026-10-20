@@ -31,16 +31,16 @@ function SvgDrawLinesDemo() {
 
   return (
     <div>
-      <h1>SVG 描边动画</h1>
+      <h1>SVG stroke animation</h1>
       <p className="mb-4 text-(--wui-color-text-secondary)">
         将 SVG 图形的轮廓线以描边动画逐笔绘制。支持 path、rect、circle、line、polyline、polygon、ellipse
         等多种基本图形。
       </p>
 
-      <h2>参数控制</h2>
+      <h2>Parameter control</h2>
       <div className="mb-6 flex flex-col gap-4">
         <label className="flex items-center gap-2 text-sm">
-          <span className="whitespace-nowrap text-(--wui-color-text-secondary)">动画时长:</span>
+          <span className="whitespace-nowrap text-(--wui-color-text-secondary)">Duration:</span>
           <web-ui-slider
             value={duration}
             min={200}
@@ -52,7 +52,7 @@ function SvgDrawLinesDemo() {
           <code className="rounded bg-(--wui-color-surface-raised) px-2 py-0.5 text-xs">{duration}ms</code>
         </label>
         <label className="flex items-center gap-2 text-sm">
-          <span className="text-(--wui-color-text-secondary)">缓动函数:</span>
+          <span className="text-(--wui-color-text-secondary)">Easing:</span>
           <web-ui-select value={easing} className="w-36" onChange={event => setEasing(event.currentTarget.value)}>
             <web-ui-option value="linear">linear</web-ui-option>
             <web-ui-option value="ease">ease</web-ui-option>
@@ -63,14 +63,14 @@ function SvgDrawLinesDemo() {
           </web-ui-select>
         </label>
         <web-ui-button onClick={replayAll} variant="secondary">
-          全部重播
+          Replay all
         </web-ui-button>
       </div>
 
-      <h2>基础形状（light DOM）</h2>
+      <h2>Basic shapes (light DOM)</h2>
       <div className="mb-6 flex flex-wrap items-end gap-6">
         <div>
-          <p className="mb-1 text-sm text-(--wui-color-text-secondary)">简单线条</p>
+          <p className="mb-1 text-sm text-(--wui-color-text-secondary)">Simple lines</p>
           <div className="flex items-center gap-2">
             <web-ui-svg-draw-lines ref={el => setReplay('svg1', el)} duration={duration} easing={easing}>
               <svg
@@ -88,12 +88,12 @@ function SvgDrawLinesDemo() {
               </svg>
             </web-ui-svg-draw-lines>
             <web-ui-button onClick={() => replays.current.svg1?.()} variant="ghost">
-              重播
+              Replay
             </web-ui-button>
           </div>
         </div>
         <div>
-          <p className="mb-1 text-sm text-(--wui-color-text-secondary)">几何图形</p>
+          <p className="mb-1 text-sm text-(--wui-color-text-secondary)">Geometric figures</p>
           <div className="flex items-center gap-2">
             <web-ui-svg-draw-lines ref={el => setReplay('svg2', el)} duration={duration} easing={easing}>
               <svg
@@ -111,12 +111,12 @@ function SvgDrawLinesDemo() {
               </svg>
             </web-ui-svg-draw-lines>
             <web-ui-button onClick={() => replays.current.svg2?.()} variant="ghost">
-              重播
+              Replay
             </web-ui-button>
           </div>
         </div>
         <div>
-          <p className="mb-1 text-sm text-(--wui-color-text-secondary)">波浪曲线</p>
+          <p className="mb-1 text-sm text-(--wui-color-text-secondary)">Wavy curves</p>
           <div className="flex items-center gap-2">
             <web-ui-svg-draw-lines ref={el => setReplay('svg3', el)} duration={duration} easing={easing}>
               <svg
@@ -133,13 +133,13 @@ function SvgDrawLinesDemo() {
               </svg>
             </web-ui-svg-draw-lines>
             <web-ui-button onClick={() => replays.current.svg3?.()} variant="ghost">
-              重播
+              Replay
             </web-ui-button>
           </div>
         </div>
       </div>
 
-      <h2>手动播放与收回</h2>
+      <h2>Manual play and retake</h2>
       <p className="mb-3 text-sm text-(--wui-color-text-secondary)">
         no-autoplay 关闭挂载时的自动播放；replay() 逐笔画入，replay({'{ reverse: true }'}) 沿原路径收回。
       </p>
@@ -155,17 +155,17 @@ function SvgDrawLinesDemo() {
           <web-ui-icon icon={lucideStar} size={48}></web-ui-icon>
         </web-ui-svg-draw-lines>
         <web-ui-button onClick={() => manualRef.current?.replay()} variant="ghost">
-          画入
+          Draw in
         </web-ui-button>
         <web-ui-button onClick={() => manualRef.current?.replay({ reverse: true })} variant="ghost">
-          收回
+          Retake
         </web-ui-button>
       </div>
 
-      <h2>复杂场景</h2>
+      <h2>Complex cases</h2>
       <div className="mb-6 flex flex-wrap items-end gap-8">
         <div>
-          <p className="mb-1 text-sm text-(--wui-color-text-secondary)">多个同级 SVG</p>
+          <p className="mb-1 text-sm text-(--wui-color-text-secondary)">Several sibling SVGs</p>
           <div className="flex items-center gap-2">
             <web-ui-svg-draw-lines ref={el => setReplay('multiRef', el)} duration={duration} easing={easing}>
               <svg viewBox="0 0 50 50" width="50" height="50" fill="none" stroke="currentColor" strokeWidth="2">
@@ -176,12 +176,12 @@ function SvgDrawLinesDemo() {
               </svg>
             </web-ui-svg-draw-lines>
             <web-ui-button onClick={() => replays.current.multiRef?.()} variant="ghost">
-              重播
+              Replay
             </web-ui-button>
           </div>
         </div>
         <div>
-          <p className="mb-1 text-sm text-(--wui-color-text-secondary)">深层嵌套 &lt;g&gt;</p>
+          <p className="mb-1 text-sm text-(--wui-color-text-secondary)">Deeply nested &lt;g&gt;</p>
           <div className="flex items-center gap-2">
             <web-ui-svg-draw-lines ref={el => setReplay('nestedRef', el)} duration={duration} easing={easing}>
               <svg viewBox="0 0 100 100" width="100" height="100" fill="none" stroke="currentColor" strokeWidth="2">
@@ -194,12 +194,12 @@ function SvgDrawLinesDemo() {
               </svg>
             </web-ui-svg-draw-lines>
             <web-ui-button onClick={() => replays.current.nestedRef?.()} variant="ghost">
-              重播
+              Replay
             </web-ui-button>
           </div>
         </div>
         <div>
-          <p className="mb-1 text-sm text-(--wui-color-text-secondary)">light DOM + Shadow DOM 混合</p>
+          <p className="mb-1 text-sm text-(--wui-color-text-secondary)">light DOM + Shadow DOM mixed</p>
           <div className="flex items-center gap-2">
             <web-ui-svg-draw-lines ref={el => setReplay('mixedRef', el)} duration={duration} easing={easing}>
               <svg
@@ -218,28 +218,28 @@ function SvgDrawLinesDemo() {
               <web-ui-icon icon={lucideStar} size={24}></web-ui-icon>
             </web-ui-svg-draw-lines>
             <web-ui-button onClick={() => replays.current.mixedRef?.()} variant="ghost">
-              重播
+              Replay
             </web-ui-button>
           </div>
         </div>
       </div>
 
-      <h2>图标示例（Shadow DOM — web-ui-icon）</h2>
+      <h2>Icon sample (Shadow DOM — web-ui-icon)</h2>
       <div
         data-testid="svg-icon-grid"
         className="mb-6 grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5"
       >
         {[
-          { id: 'search', label: 'Search 搜索', icon: lucideSearch },
-          { id: 'star', label: 'Star 星标', icon: lucideStar },
-          { id: 'heart', label: 'Heart 收藏', icon: lucideHeart },
-          { id: 'bell', label: 'Bell 通知', icon: lucideBell },
-          { id: 'mail', label: 'Mail 邮件', icon: lucideMail },
-          { id: 'user', label: 'User 用户', icon: lucideUser },
-          { id: 'download', label: 'Download 下载', icon: lucideDownload },
-          { id: 'check', label: 'Check 确认', icon: lucideCheck },
-          { id: 'settings', label: 'Settings 设置', icon: lucideSettings },
-          { id: 'inbox', label: 'Inbox 收件箱', icon: lucideInbox }
+          { id: 'search', label: 'Search', icon: lucideSearch },
+          { id: 'star', label: 'Star', icon: lucideStar },
+          { id: 'heart', label: 'Heart', icon: lucideHeart },
+          { id: 'bell', label: 'Bell', icon: lucideBell },
+          { id: 'mail', label: 'Mail', icon: lucideMail },
+          { id: 'user', label: 'User', icon: lucideUser },
+          { id: 'download', label: 'Download', icon: lucideDownload },
+          { id: 'check', label: 'Check', icon: lucideCheck },
+          { id: 'settings', label: 'Settings', icon: lucideSettings },
+          { id: 'inbox', label: 'Inbox', icon: lucideInbox }
         ].map(item => (
           <div
             key={item.id}
@@ -253,7 +253,7 @@ function SvgDrawLinesDemo() {
               <web-ui-icon icon={item.icon} size={32}></web-ui-icon>
             </web-ui-svg-draw-lines>
             <web-ui-button onClick={() => replays.current[item.id]?.()} full variant="ghost">
-              重播
+              Replay
             </web-ui-button>
           </div>
         ))}

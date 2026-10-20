@@ -112,7 +112,7 @@ function find(property: Declaration['property']): Declaration[] {
 const at = (d: Declaration) => `${d.file}:${d.line} ${d.property}: ${d.value}`
 
 // line-height 的合法裸值白名单，每个都有非排版语义：
-//   1        控件内单行标签的垂直居中手段（box 尺寸已知，行高无需参与计算）
+//   1        控件内单行 label 的垂直居中手段（box 尺寸已知，行高无需参与计算）
 //   0        让 inline-flex 包裹盒高收缩到内容的技巧
 //   inherit  editable-text 继承宿主的排版上下文，不引入自己的值
 const LINE_HEIGHT_LITERALS = new Set(['1', '0', 'inherit'])

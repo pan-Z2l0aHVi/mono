@@ -47,7 +47,7 @@ async function mountLayout() {
   document.body.append(host)
   app = createApp(AppLayout)
   app.use(router)
-  // AppLayout 挂着设置对话框，对话框读 settings store；跟 main.ts 一样装 pinia。
+  // AppLayout 挂着设置 dialog，dialog 读 settings store；跟 main.ts 一样装 pinia。
   app.use(createPinia())
   await router.isReady()
   app.mount(host)
@@ -123,20 +123,20 @@ describe('AppLayout：应用外壳', () => {
    * slot 分配矩阵（sidebar/header/default 各落到哪）不再逐条在此复测：jsdom 只能读
    * assignedElements，断言的其实是 web-ui-layout 的 slot 机制本身，组件侧已覆盖；
    * 页面与壳的接合由 LibraryPage.spec 的「根节点带 slot="header"」一条守住。
-   * 这里保留它，是因为设置对话框的挂载位置是本组件自有的接线（见下方用例）。
+   * 这里保留它，是因为设置 dialog 的挂载位置是本组件自有的接线（见下方用例）。
    */
 })
 
 /*
  * issue #195：`sidebar-collapsed` 是桌面端的密度偏好，而 slot 内容同时服务桌面 aside
- * 与移动端 drawer。若把折叠态直接透传给 AppNav，移动端抽屉里的导航会以折叠态渲染
- * （collapsed 为真时不渲染文字标签）。闸门因此必须按 viewport 收窄。
+ * 与移动端 drawer。若把 collapsed state 直接透传给 AppNav，移动端 drawer 里的导航会以 collapsed state 渲染
+ * （collapsed 为真时不渲染文字 label）。闸门因此必须按 viewport 收窄。
  *
  * 如今只剩一个视口信号：`web-ui-layout` 自己订阅媒体查询，并通过 `mobile-change` 把判定
- * 交给壳。所以拨一次 matchMedia 就同时移动了 layout 的树与壳的折叠闸门——#195 那轮
+ * 交给壳。所以拨一次 matchMedia 就同时移动了 layout 的树与壳的 collapse gate——#195 那轮
  * 「两个来源各拨一边」的双信号写法已不再需要，也不再需要等 100ms 去抖。
  */
-describe('AppLayout：折叠偏好不跨视口泄漏', () => {
+describe('AppLayout：collapse preference 不跨视口泄漏', () => {
   /**
    * 可控 matchMedia：所有订阅者共享一个 matches 值，翻转时统一派发 change。
    * layout 在 connected 时读一次 `matches` 并订阅，因此 setMatches 既能在挂载前设初值，
@@ -203,7 +203,7 @@ describe('AppLayout：折叠偏好不跨视口泄漏', () => {
     vi.restoreAllMocks()
   })
 
-  it('桌面端维持折叠态：导航只剩图标', async () => {
+  it('桌面端维持 collapsed state：导航只剩 icon', async () => {
     await mountLayout()
     requestCollapse(true)
     await nextTick()
@@ -214,7 +214,7 @@ describe('AppLayout：折叠偏好不跨视口泄漏', () => {
     expect(navRoot().querySelector('button[aria-label="资料库"]')).toBeTruthy()
   })
 
-  it('移动端断点下同一个折叠偏好不把抽屉导航压成折叠态', async () => {
+  it('移动端断点下同一个 collapse preference 不把 drawer 导航压成 collapsed state', async () => {
     viewport.setMatches(true)
     await mountLayout()
     requestCollapse(true)
@@ -225,7 +225,7 @@ describe('AppLayout：折叠偏好不跨视口泄漏', () => {
     expect(navRoot().textContent).toContain('资料库')
   })
 
-  it('跨断点往返后折叠态在桌面端恢复生效', async () => {
+  it('跨断点往返后 collapsed state 在桌面端恢复生效', async () => {
     await mountLayout()
     requestCollapse(true)
     await nextTick()
@@ -239,7 +239,7 @@ describe('AppLayout：折叠偏好不跨视口泄漏', () => {
     expect(layoutRoot().sidebarCollapsed).toBe(true)
     expect(navRoot().textContent).toContain('资料库')
 
-    // 切回桌面：折叠偏好原样恢复，不因为一次移动端往返被改写。
+    // 切回桌面：collapse preference 原样恢复，不因为一次移动端往返被改写。
     viewport.setMatches(false)
     await nextTick()
     expect(isDrawerMode()).toBe(false)
@@ -248,7 +248,7 @@ describe('AppLayout：折叠偏好不跨视口泄漏', () => {
   })
 })
 
-describe('AppLayout：设置对话框接线', () => {
+describe('AppLayout：设置 dialog 接线', () => {
   beforeEach(() => {
     vi.stubGlobal('matchMedia', matchMediaStub)
     router = createRouter({
@@ -267,7 +267,7 @@ describe('AppLayout：设置对话框接线', () => {
     vi.restoreAllMocks()
   })
 
-  /** 对话框受控于宿主的 ref，Lit 侧属性写入后再等一轮微任务让 shadow 跟上。 */
+  /** dialog 受控于宿主的 ref，Lit 侧属性写入后再等一轮微任务让 shadow 跟上。 */
   async function flush() {
     await nextTick()
     await new Promise(resolve => setTimeout(resolve, 0))
@@ -280,14 +280,14 @@ describe('AppLayout：设置对话框接线', () => {
     return element as WebUiDialog
   }
 
-  it('对话框是 web-ui-layout 的同级节点，不落在 sidebar slot 里', async () => {
+  it('dialog 是 web-ui-layout 的同级节点，不落在 sidebar slot 里', async () => {
     await mountLayout()
 
     expect(settingsDialog().parentElement).toBe(host)
     expect(assignedTo('sidebar')).not.toContain(settingsDialog())
   })
 
-  it('点击侧边栏设置入口打开对话框，关闭请求回落到宿主状态', async () => {
+  it('点击侧边栏设置入口打开 dialog，关闭请求回落到宿主状态', async () => {
     await mountLayout()
     expect(settingsDialog().open).toBe(false)
 
@@ -297,7 +297,7 @@ describe('AppLayout：设置对话框接线', () => {
     await flush()
     expect(settingsDialog().open).toBe(true)
 
-    // Escape 与遮罩点击都走这条 open-change；controlled 下组件不会自行改 open。
+    // Escape 与 backdrop 点击都走这条 open-change；controlled 下组件不会自行改 open。
     settingsDialog().dispatchEvent(new CustomEvent('open-change', { detail: { open: false } }))
     await flush()
     expect(settingsDialog().open).toBe(false)

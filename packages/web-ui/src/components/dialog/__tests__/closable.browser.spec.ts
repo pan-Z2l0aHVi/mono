@@ -18,8 +18,8 @@ function createDialog(innerHTML = ''): WebUiDialog {
 }
 
 /**
- * 关闭按钮是嵌套自定义元素（dialog > web-ui-button > web-ui-icon）。只等 dialog 的
- * updateComplete 时按钮尚未 upgrade，宿主没有 shadow 内容，量到的宽度是 0。
+ * 关闭 button 是嵌套自定义元素（dialog > web-ui-button > web-ui-icon）。只等 dialog 的
+ * updateComplete 时 button 尚未 upgrade，宿主没有 shadow 内容，量到的宽度是 0。
  */
 async function openDialog(el: WebUiDialog) {
   el.open = true
@@ -46,7 +46,7 @@ async function settleEnterTransform(el: WebUiDialog) {
 }
 
 /**
- * 按「有可访问名」定位关闭按钮，不依赖内部 class，也不钉名字的字面量。
+ * 按「有可访问名」定位关闭 button，不依赖内部 class，也不钉名字的字面量。
  * 具体叫什么属于本地化内容，改语言不该让这批几何测试集体变红。
  */
 function closeButtonOf(el: WebUiDialog): HTMLElement | null {
@@ -69,9 +69,9 @@ function cardRectOf(el: WebUiDialog): DOMRect {
 }
 
 describe('WebUiDialog closable（浏览器几何）', () => {
-  // 按钮的位置契约只钉**用户可感知的边界关系**（在卡片内、与标题同行），不钉偏移像素：
+  // button 的位置契约只钉**用户可感知的边界关系**（在卡片内、与标题同行），不钉偏移像素：
   // 日后调主题 spacing 令牌不该变成改测试。
-  it('headless 模式下按钮浮在卡片内，不压出卡片边界', async () => {
+  it('headless 模式下 button 浮在卡片内，不压出卡片边界', async () => {
     const el = createDialog('<section>自定义主体</section>')
     el.headless = true
     el.closable = true
@@ -86,7 +86,7 @@ describe('WebUiDialog closable（浏览器几何）', () => {
     expect(close.bottom).toBeLessThanOrEqual(card.bottom)
   })
 
-  it('header 带里按钮与标题同行，且在标题右侧', async () => {
+  it('header 带里 button 与标题同行，且在标题右侧', async () => {
     const el = createDialog('<span slot="header">标题</span>')
     el.closable = true
     await openDialog(el)
@@ -96,12 +96,12 @@ describe('WebUiDialog closable（浏览器几何）', () => {
     const close = closeRectOf(el)
 
     expect(close.left).toBeGreaterThanOrEqual(titleRect.right)
-    // 同行：按钮纵向落在标题行范围内，而不是被推到标题下方。
+    // 同行：button 纵向落在标题行范围内，而不是被推到标题下方。
     expect(close.top).toBeLessThan(titleRect.bottom)
     expect(close.bottom).toBeGreaterThan(titleRect.top)
   })
 
-  it('点击按钮在真实浏览器里关闭原生 dialog', async () => {
+  it('点击 button 在真实浏览器里关闭原生 dialog', async () => {
     const el = createDialog()
     el.closable = true
     await openDialog(el)
@@ -115,7 +115,7 @@ describe('WebUiDialog closable（浏览器几何）', () => {
     expect(el.open).toBe(false)
   })
 
-  it('不启用 closable 时不产生关闭按钮', async () => {
+  it('不启用 closable 时不产生关闭 button', async () => {
     const el = createDialog('<span slot="header">标题</span>')
     await openDialog(el)
 

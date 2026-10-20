@@ -53,9 +53,9 @@ afterEach(() => document.body.replaceChildren())
  *     settle 拿不到信号，预算耗尽照进度样取样。
  *  3. 一个可观察的根都没有 ⇒ 低层等待也要抛错，不能把「什么都没读到」当「已经稳定」。
  *     反事实（改前红）：旧实现 `if (observed.length === 0) return`。
- *  4. 面板尚未渲染 ⇒ `waitForOpenTransition` 轮询到 `dialog` 出现，不拿宿主顶替。
+ *  4. panel 尚未渲染 ⇒ `waitForOpenTransition` 轮询到 `dialog` 出现，不拿宿主顶替。
  *     反事实（改前红）：旧实现 `dialog ? [el, dialog] : el`，dialog 为 null 时只观察宿主，
- *     两个渲染步进就返回，那时面板还不存在。
+ *     两个渲染步进就返回，那时 panel 还不存在。
  */
 describe('settle 等待原语（浏览器）', () => {
   it('期待值成立前、目标还没挂上时不宣布定版', async () => {
@@ -168,7 +168,7 @@ describe('settle 等待原语（浏览器）', () => {
     expect(converged).toBe(true)
   })
 
-  it('面板还没渲染出来时，waitForOpenTransition 不拿宿主顶替', async () => {
+  it('panel 还没渲染出来时，waitForOpenTransition 不拿宿主顶替', async () => {
     const host = document.createElement('div')
     document.body.append(host)
     const shadow = host.attachShadow({ mode: 'open' })
@@ -178,33 +178,33 @@ describe('settle 等待原语（浏览器）', () => {
       helperResolved = true
     })
 
-    // 两个渲染步进之后面板才出现。
+    // 两个渲染步进之后 panel 才出现。
     await afterRenderStep()
     await afterRenderStep()
     const dialog = document.createElement('dialog')
     shadow.append(dialog)
 
-    // 面板出现之前不得已经返回：旧实现只用宿主观察，两个空闲步进就宣布收敛。
+    // panel 出现之前不得已经返回：旧实现只用宿主观察，两个空闲步进就宣布收敛。
     expect(helperResolved).toBe(false)
 
     await transition
 
-    // 返回时面板必须已在场。
+    // 返回时 panel 必须已在场。
     expect(shadow.querySelector('dialog')).not.toBeNull()
   })
 
-  it('面板上的过渡还没收敛时，waitForOpenTransition 不返回', async () => {
+  it('panel 上的过渡还没收敛时，waitForOpenTransition 不返回', async () => {
     const host = document.createElement('div')
     document.body.append(host)
     const shadow = host.attachShadow({ mode: 'open' })
     const dialog = document.createElement('dialog')
     shadow.append(dialog)
 
-    // 挂在**面板**上的一条长过渡，宿主此刻没有动画。本用例钉住的是
-    // 「跑在面板子树里的过渡要被等掉」这一条：`getAnimations({subtree: true})`
+    // 挂在**panel**上的一条长过渡，宿主此刻没有动画。本用例钉住的是
+    // 「跑在 panel 子树里的过渡要被等掉」这一条：`getAnimations({subtree: true})`
     // 覆盖 shadow 后代，所以**必须**带上两个根 `[el, dialog]` 观察；
-    // 只传宿主 `[el]` 会被本用例挡红——它正是「面板被当作根」与「以为宿主
-    // subtree 覆盖面板」的分界钉子。
+    // 只传宿主 `[el]` 会被本用例挡红——它正是「panel 被当作根」与「以为宿主
+    // subtree 覆盖 panel」的分界钉子。
     const animation = dialog.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 30_000 })
 
     let helperResolved = false
@@ -225,7 +225,7 @@ describe('settle 等待原语（浏览器）', () => {
     await animation.finished.catch(() => undefined)
   })
 
-  it('面板始终不出现时，waitForOpenTransition 带着读数报错', async () => {
+  it('panel 始终不出现时，waitForOpenTransition 带着读数报错', async () => {
     const host = document.createElement('div')
     document.body.append(host)
     host.attachShadow({ mode: 'open' })

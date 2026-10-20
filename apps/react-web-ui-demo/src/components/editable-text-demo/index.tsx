@@ -2,8 +2,8 @@ import type { WebUiEditableText } from '@greypan/web-ui'
 import { useEffect, useRef, useState } from 'react'
 
 function EditableTextDemo() {
-  const [title, setTitle] = useState('点击这行文字即可就地编辑')
-  const [lastEvent, setLastEvent] = useState('（尚未触发）')
+  const [title, setTitle] = useState('Click this line to edit in place')
+  const [lastEvent, setLastEvent] = useState('(not triggered yet)')
   const [submitted, setSubmitted] = useState<[string, string][]>([])
   const titleRef = useRef<WebUiEditableText>(null)
   const formRef = useRef<HTMLFormElement>(null)
@@ -12,7 +12,7 @@ function EditableTextDemo() {
   useEffect(() => {
     const el = titleRef.current
     if (!el) return
-    const handleCancel = () => setLastEvent('cancel（Escape 取消）')
+    const handleCancel = () => setLastEvent('cancel (Escape discards)')
     el.addEventListener('cancel', handleCancel)
     return () => el.removeEventListener('cancel', handleCancel)
   }, [])
@@ -29,58 +29,77 @@ function EditableTextDemo() {
 
   return (
     <div>
-      <h1>可编辑文本</h1>
+      <h1>editable text</h1>
 
-      <h2>就地编辑</h2>
+      <h2>Edit in place</h2>
       <div className="mb-3 flex flex-col gap-3">
         <p className="text-sm leading-6 text-gray-600">
           文档标题：
           <web-ui-editable-text
             ref={titleRef}
             value={title}
-            placeholder="请输入标题"
-            aria-label="文档标题"
+            placeholder="Enter a title"
+            aria-label="Document title"
             onChange={event => {
               setTitle(event.currentTarget.value)
-              setLastEvent('change（Enter/失焦提交）')
+              setLastEvent('change (Enter or blur commits)')
             }}
           />
         </p>
-        <div className="text-sm text-gray-500">已提交的值：{title || '(空)'}</div>
+        <div className="text-sm text-gray-500">已提交的值：{title || '(empty)'}</div>
         <div className="text-sm text-gray-500">最近事件：{lastEvent}</div>
       </div>
       <p className="mb-3 text-xs text-gray-400">
         💡 点击文字进入编辑并落点光标，Enter 或失焦提交；仅 Escape 取消并恢复进入编辑时的值
       </p>
 
-      <h2>占位文本</h2>
+      <h2>Placeholder</h2>
       <div className="mb-3 flex flex-col gap-3">
-        <web-ui-editable-text value="有值时不显示占位文本" placeholder="占位文本" aria-label="有值示例" />
-        <web-ui-editable-text placeholder="空值时显示占位文本" aria-label="空值示例" />
+        <web-ui-editable-text
+          value="Placeholder hidden while a value exists"
+          placeholder="Placeholder"
+          aria-label="With value"
+        />
+        <web-ui-editable-text placeholder="Placeholder shown while empty" aria-label="Empty" />
       </div>
-      <p className="mb-3 text-xs text-gray-400">💡 提交空值即清空（Enter 或失焦均可），文本层回退显示 placeholder</p>
+      <p className="mb-3 text-xs text-gray-400">
+        💡 Submitting an empty value clears it (Enter or blur); the text layer falls back to the placeholder
+      </p>
 
-      <h2>多行</h2>
+      <h2>Multiline</h2>
       <div className="mb-3 flex flex-col gap-3">
         <web-ui-editable-text
           className="w-80 rounded-sm bg-(--wui-color-surface-raised) p-2"
-          value={'值内的换行会照常渲染\n第二行随盒宽自动折行，两态同盒'}
-          placeholder="支持多行的占位文本"
-          aria-label="多行示例"
+          value={
+            'Newlines inside the value render as usual\nThe second line wraps with the box width, both states share one box'
+          }
+          placeholder="Multiline placeholder"
+          aria-label="Multiline"
         />
       </div>
       <p className="mb-3 text-xs text-gray-400">
-        💡 Enter 提交而非插入换行；文本层与编辑层同盒同排版，进入编辑不产生位移
+        💡 Enter submits instead of inserting a newline; the text layer and the editing layer share one box, so entering
+        editing causes no shift
       </p>
 
-      <h2>禁用</h2>
+      <h2>Disabled</h2>
       <div className="mb-3 flex flex-col gap-3">
-        <web-ui-editable-text value="禁用且有值：不聚焦、不进入编辑" disabled aria-label="禁用有值" />
-        <web-ui-editable-text placeholder="禁用且空：显示占位文本" disabled aria-label="禁用空值" />
+        <web-ui-editable-text
+          value="Disabled with a value: not focusable, no editing"
+          disabled
+          aria-label="Disabled with value"
+        />
+        <web-ui-editable-text
+          placeholder="Disabled and empty: shows the placeholder"
+          disabled
+          aria-label="Disabled empty"
+        />
       </div>
-      <p className="mb-3 text-xs text-gray-400">💡 禁用时宿主移出 tab 序列，指针与键盘都不进入编辑</p>
+      <p className="mb-3 text-xs text-gray-400">
+        💡 While disabled the host leaves the tab order, and neither pointer nor keyboard enters editing
+      </p>
 
-      <h2>表单</h2>
+      <h2>Form</h2>
       <form
         ref={formRef}
         className="mb-3 flex flex-col items-start gap-3"
@@ -88,35 +107,35 @@ function EditableTextDemo() {
         onReset={() => setSubmitted([])}
       >
         <div className="flex flex-col gap-1">
-          <span className="text-sm text-gray-600">标题</span>
-          <web-ui-editable-text name="title" value="初始标题" aria-label="表单标题" />
+          <span className="text-sm text-gray-600">Title</span>
+          <web-ui-editable-text name="title" value="Initial title" aria-label="Form title" />
         </div>
         <div className="flex flex-col gap-1">
-          <span className="text-sm text-gray-600">简介（可留空）</span>
+          <span className="text-sm text-gray-600">Summary (optional)</span>
           <web-ui-editable-text
             className="w-80 rounded-sm bg-(--wui-color-surface-raised) p-2"
             name="bio"
-            placeholder="请输入简介"
-            aria-label="表单简介"
+            placeholder="Enter a summary"
+            aria-label="Form summary"
           />
         </div>
         <div className="flex gap-3">
           {/* web-ui-button 的内部 button 位于 shadow root 内，拿不到外层 form 的 form owner；
               提交与重置由 demo 显式驱动，表单关联仍走原生 submit/reset 事件。 */}
-          <web-ui-button onClick={() => formRef.current?.requestSubmit()}>提交</web-ui-button>
+          <web-ui-button onClick={() => formRef.current?.requestSubmit()}>Submit</web-ui-button>
           <web-ui-button variant="secondary" onClick={() => formRef.current?.reset()}>
-            重置
+            Reset
           </web-ui-button>
         </div>
       </form>
       <div className="flex flex-col gap-1">
-        <span className="text-sm text-gray-500">提交结果（FormData）</span>
+        <span className="text-sm text-gray-500">Submitted value (FormData)</span>
         {submitted.length === 0 ? (
-          <span className="text-sm text-gray-500">（尚未提交）</span>
+          <span className="text-sm text-gray-500">(not submitted yet)</span>
         ) : (
           submitted.map(([name, value]) => (
             <span key={name} className="text-sm whitespace-pre-wrap text-gray-500">
-              {name} = {value || '(空)'}
+              {name} = {value || '(empty)'}
             </span>
           ))
         )}

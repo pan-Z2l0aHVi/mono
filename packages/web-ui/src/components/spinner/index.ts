@@ -50,7 +50,7 @@ export class WebUiSpinner extends LitElement {
       this.setAttribute('role', 'status')
     }
     if (!this.hasAttribute('aria-label')) {
-      this.setAttribute('aria-label', '加载中')
+      this.setAttribute('aria-label', 'Loading')
     }
     if (this._imperative) {
       WebUiSpinner._current?.remove()

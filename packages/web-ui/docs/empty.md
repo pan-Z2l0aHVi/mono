@@ -3,7 +3,7 @@ component: empty
 tag: web-ui-empty
 ---
 
-空状态占位：`title` 与 `description` 提供文案，`icon` / `action` 插槽补上图形与操作入口，`size` 是唯一缩放旋钮。
+empty state 占位：`title` 与 `description` 提供文案，`icon` / `action` 插槽补上图形与操作入口，`size` 是唯一缩放旋钮。
 
 ## 示例
 
@@ -21,9 +21,9 @@ tag: web-ui-empty
 </template>
 ```
 
-### 自定义图标与操作
+### 自定义 icon 与操作
 
-`icon` 插槽替换默认图形，`action` 插槽放操作按钮；`size` 驱动图标盒、留白与字号。
+`icon` 插槽替换默认图形，`action` 插槽放操作 button；`size` 驱动 icon 盒、留白与字号。
 
 ```react
 <web-ui-empty title="还没有文件" description="上传或新建一个文件开始" size={72}>
@@ -61,16 +61,16 @@ import { lucideFolderOpen } from '@greypan/web-ui/icons'
 
 | 名称          | 说明                                |
 | ------------- | ----------------------------------- |
-| `icon`        | 图形区内容，替代默认图标。          |
+| `icon`        | 图形区内容，替代默认 icon。         |
 | `default`     | 标题内容，覆盖 `title` 属性。       |
 | `description` | 描述内容，覆盖 `description` 属性。 |
-| `action`      | 操作区内容，例如主按钮。            |
+| `action`      | 操作区内容，例如主 button。         |
 
 ### 行为说明
 
-`size` 是整个空态的单一旋钮：它驱动图标盒、`min-height`、内边距与标题/描述字号，因此大图标不再配 medium 留白：
+`size` 是整个空态的单一旋钮：它驱动 icon 盒、`min-height`、内边距与标题/描述字号，因此大 icon 不再配 medium 留白：
 
-列依次为 size / 图标盒 / 字形 / min-height / 内边距 块/行 / 标题 / 描述：
+列依次为 size / icon 盒 / 字形 / min-height / 内边距 块/行 / 标题 / 描述：
 
 - `40` / `40px` / `17px` / `171px` / `23px/17px` / `14px` / `13px`
 - `56` / `56px` / `24px` / `240px` / `32px/24px` / `16px` / `14px`
@@ -94,13 +94,13 @@ import { lucideFolderOpen } from '@greypan/web-ui/icons'
 
 ### CSS Custom Properties
 
-| 名称                                | 说明                        | 默认值      |
-| ----------------------------------- | --------------------------- | ----------- |
-| `--wui-empty-min-height`            | 最小高度                    | `240px`     |
-| `--wui-empty-padding`               | 内边距                      | `32px 24px` |
-| `--wui-empty-icon-size`             | 图标容器尺寸，优先于 `size` | `56px`      |
-| `--wui-empty-content-width`         | 标题/描述/操作区最大宽度    | `480px`     |
-| `--wui-empty-title-margin-top`      | 图标与标题之间的间距        | `16px`      |
-| `--wui-empty-title-font-size`       | 标题字号                    | `16px`      |
-| `--wui-empty-description-font-size` | 描述字号                    | `14px`      |
-| `--wui-empty-action-margin-top`     | 操作区上方的间距            | `20px`      |
+| 名称                                | 说明                         | 默认值      |
+| ----------------------------------- | ---------------------------- | ----------- |
+| `--wui-empty-min-height`            | 最小高度                     | `240px`     |
+| `--wui-empty-padding`               | 内边距                       | `32px 24px` |
+| `--wui-empty-icon-size`             | icon 容器尺寸，优先于 `size` | `56px`      |
+| `--wui-empty-content-width`         | 标题/描述/操作区最大宽度     | `480px`     |
+| `--wui-empty-title-margin-top`      | icon 与标题之间的间距        | `16px`      |
+| `--wui-empty-title-font-size`       | 标题字号                     | `16px`      |
+| `--wui-empty-description-font-size` | 描述字号                     | `14px`      |
+| `--wui-empty-action-margin-top`     | 操作区上方的间距             | `20px`      |

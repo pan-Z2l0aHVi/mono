@@ -9,21 +9,23 @@ function SegmentedDemo() {
 
   return (
     <div>
-      <h1>分段控制器</h1>
-      <h2>基本用法</h2>
+      <h1>segmented</h1>
+      <h2>Basic usage</h2>
       <div className="mb-3">
         <web-ui-segmented value={basicVal} onInput={event => setBasicVal(event.currentTarget.value)}>
-          <web-ui-segmented-trigger value="mon">周一</web-ui-segmented-trigger>
-          <web-ui-segmented-trigger value="tue">周二</web-ui-segmented-trigger>
-          <web-ui-segmented-trigger value="wed">周三</web-ui-segmented-trigger>
-          <web-ui-segmented-trigger value="thu">周四</web-ui-segmented-trigger>
-          <web-ui-segmented-trigger value="fri">周五</web-ui-segmented-trigger>
+          <web-ui-segmented-trigger value="mon">Monday</web-ui-segmented-trigger>
+          <web-ui-segmented-trigger value="tue">Tuesday</web-ui-segmented-trigger>
+          <web-ui-segmented-trigger value="wed">Wednesday</web-ui-segmented-trigger>
+          <web-ui-segmented-trigger value="thu">Thursday</web-ui-segmented-trigger>
+          <web-ui-segmented-trigger value="fri">Friday</web-ui-segmented-trigger>
         </web-ui-segmented>
       </div>
       <p className="text-sm text-gray-500">选中值：{basicVal}</p>
-      <p className="text-xs text-gray-400">💡 支持按住当前选中项平滑拖拽跟踪、松手吸附至最近选项及抛掷手势</p>
+      <p className="text-xs text-gray-400">
+        💡 Drag the current selection to track it smoothly, release to snap to the nearest option, or flick to throw
+      </p>
 
-      <h2>禁用状态</h2>
+      <h2>Disabled</h2>
       <div className="mb-3">
         <web-ui-segmented disabled value={disabledVal} onInput={event => setDisabledVal(event.currentTarget.value)}>
           <web-ui-segmented-trigger value="apple">Apple</web-ui-segmented-trigger>
@@ -43,11 +45,13 @@ function SegmentedDemo() {
       </div>
       <p className="text-sm text-gray-500">选中值：{groupVal}</p>
 
-      <h2>变体</h2>
-      <p className="mb-3 text-sm text-gray-500">variant 控制轨道与静止指示器材质，默认 inset。</p>
+      <h2>Variants</h2>
+      <p className="mb-3 text-sm text-gray-500">
+        variant controls the track and the resting indicator material, inset by default.
+      </p>
       <div className="mb-3 flex flex-wrap gap-8">
         <div>
-          <p className="mb-1 text-sm text-gray-500">variant=&quot;inset&quot;（默认）</p>
+          <p className="mb-1 text-sm text-gray-500">variant=&quot;inset&quot; (default)</p>
           <web-ui-segmented value={insetVal} onInput={event => setInsetVal(event.currentTarget.value)}>
             <web-ui-segmented-trigger value="apple">Apple</web-ui-segmented-trigger>
             <web-ui-segmented-trigger value="banana">Banana</web-ui-segmented-trigger>
@@ -69,7 +73,9 @@ function SegmentedDemo() {
           <p className="mt-1 text-sm text-gray-500">选中值：{raisedVal}</p>
         </div>
       </div>
-      <p className="text-xs text-gray-400">💡 两种 variant 的按压/拖拽指示器同为透明玻璃（backdrop blur、1.5x 缩放）</p>
+      <p className="text-xs text-gray-400">
+        💡 In both variants the pressed/dragging indicator is transparent glass (backdrop blur, 1.5x scale)
+      </p>
     </div>
   )
 }

@@ -16,7 +16,7 @@ function createPopover(innerHtml = '<button slot="trigger">Trigger</button><div>
 }
 
 describe('WebUiPopover 组件（浏览器）', () => {
-  it('show() 以即时状态打开面板', async () => {
+  it('show() 以即时状态打开 panel', async () => {
     const popover = createPopover()
     await popover.updateComplete
 
@@ -24,14 +24,14 @@ describe('WebUiPopover 组件（浏览器）', () => {
     await popover.updateComplete
     await waitForFrame()
 
-    // 「即时」指 show() 不经过入场过渡；可观察后果是面板已就位且可见。
+    // 「即时」指 show() 不经过入场过渡；可观察后果是 panel 已就位且可见。
     const panel = popover.shadowRoot?.querySelector<HTMLElement>('[role="dialog"]')
     expect(popover.open).toBe(true)
     expect(panel?.getAttribute('role')).toBe('dialog')
     expect(panel?.hasAttribute('hidden')).toBe(false)
   })
 
-  it('退出过渡中重新打开时保持 Portal 面板可见', async () => {
+  it('退出过渡中重新打开时保持 Portal panel 可见', async () => {
     const popover = createPopover()
     popover.portal = true
     await popover.updateComplete
@@ -64,7 +64,7 @@ describe('WebUiPopover 组件（浏览器）', () => {
     expect(panel?.hasAttribute('hidden')).toBe(false)
   })
 
-  it('受控 open 在帧回调前翻回 false 后不遗留空 portal 面板', async () => {
+  it('受控 open 在帧回调前翻回 false 后不遗留空 portal panel', async () => {
     const popover = createPopover()
     popover.portal = true
     await popover.updateComplete
@@ -81,7 +81,7 @@ describe('WebUiPopover 组件（浏览器）', () => {
     expect(popover.querySelector('div')?.textContent).toBe('Content')
   })
 
-  it('初始 open 在帧回调前翻回 false 后不遗留空 portal 面板', async () => {
+  it('初始 open 在帧回调前翻回 false 后不遗留空 portal panel', async () => {
     const popover = createPopover()
     popover.portal = true
     popover.open = true
@@ -97,7 +97,7 @@ describe('WebUiPopover 组件（浏览器）', () => {
     expect(popover.querySelector('div')?.textContent).toBe('Content')
   })
 
-  it('打开帧回调前卸载 popover 不重建 portal 面板', async () => {
+  it('打开帧回调前卸载 popover 不重建 portal panel', async () => {
     const popover = createPopover()
     popover.portal = true
     popover.open = true
@@ -127,7 +127,7 @@ describe('WebUiPopover 组件（浏览器）', () => {
     expect(panel?.hasAttribute('hidden')).toBe(false)
   })
 
-  it('同帧 open + portal reconfigure 只保留一个 portal 面板', async () => {
+  it('同帧 open + portal reconfigure 只保留一个 portal panel', async () => {
     const popover = createPopover()
     await popover.updateComplete
 
@@ -160,7 +160,7 @@ describe('WebUiPopover 组件（浏览器）', () => {
     expect(changes).toHaveLength(0)
   })
 
-  it('嵌套 portal 子 popover 打开时父面板不误判 outside', async () => {
+  it('嵌套 portal 子 popover 打开时父 panel 不误判 outside', async () => {
     const parent = createPopover(`
       <button slot="trigger">Parent</button>
       <web-ui-popover portal>
@@ -208,7 +208,7 @@ describe('WebUiPopover 组件（浏览器）', () => {
     expect(child.open).toBe(false)
   })
 
-  it('focusout 落入嵌套子 portal 面板时不关闭父 popover', async () => {
+  it('focusout 落入嵌套子 portal panel 时不关闭父 popover', async () => {
     const parent = createPopover(`
       <button slot="trigger">Parent</button>
       <web-ui-popover portal trigger="manual">

@@ -1,7 +1,7 @@
 <route lang="json">
 {
   "meta": {
-    "title": "SVGDrawLines 描边动画"
+    "title": "SVGDrawLines"
   }
 }
 </route>

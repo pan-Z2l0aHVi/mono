@@ -22,7 +22,7 @@ function createSelect(optionsHtml = '', attrs?: Record<string, string>): WebUiSe
   return el
 }
 
-// jsdom 中 portal 面板内容在 rAF 后的 _openOverlay 完成时才存在。
+// jsdom 中 portal panel 内容在 rAF 后的 _openOverlay 完成时才存在。
 async function flushFrame(el: WebUiSelect) {
   await new Promise(resolve => requestAnimationFrame(resolve))
   await waitForUpdate(el)
@@ -52,7 +52,7 @@ const OPTIONS_HTML_THREE = `
 `
 
 describe('WebUiSelect 条件组合边界', () => {
-  describe('选项移除（非 portal）', () => {
+  describe('option 移除（非 portal）', () => {
     it('打开时移除键盘激活项后，激活索引按身份保持且 Enter 不误选相邻项', async () => {
       const el = createSelect(OPTIONS_HTML_THREE)
       await waitForUpdate(el)
@@ -82,14 +82,14 @@ describe('WebUiSelect 条件组合边界', () => {
       await waitForUpdate(el)
 
       // Enter 只应选中用户可见的激活项；banana 已移除，不得误选 cherry。
-      // 激活索引重置为 -1 时面板保持打开且无选中（与「无可激活项」的语义一致）。
+      // 激活索引重置为 -1 时 panel 保持打开且无选中（与「无可激活项」的语义一致）。
       expect(events).toHaveLength(0)
       expect(el.value).toBe('')
       expect(resolveActive()).toBeNull()
       cleanupElement(el)
     })
 
-    it('已选 option 被移除后触发器回退 placeholder 且 selected 反映清空', async () => {
+    it('已选 option 被移除后 trigger 回退 placeholder 且 selected 反映清空', async () => {
       const el = createSelect('<web-ui-option value="apple" label="Apple"></web-ui-option>', { placeholder: '请选择' })
       el.value = 'apple'
       await waitForUpdate(el)
@@ -104,7 +104,7 @@ describe('WebUiSelect 条件组合边界', () => {
       cleanupElement(el)
     })
 
-    it('移除 wrapper 内全部 option 后打开面板，Enter 不产生选中', async () => {
+    it('移除 wrapper 内全部 option 后打开 panel，Enter 不产生选中', async () => {
       const el = createSelect(`
         <div class="group">
           <web-ui-option value="apple" label="Apple"></web-ui-option>
@@ -128,8 +128,8 @@ describe('WebUiSelect 条件组合边界', () => {
     })
   })
 
-  describe('选项移除（portal）', () => {
-    it('打开时移除已选项后触发器标签回退 placeholder', async () => {
+  describe('option 移除（portal）', () => {
+    it('打开时移除已 option 后 trigger label 回退 placeholder', async () => {
       const el = createSelect(
         `
         <div>
@@ -147,9 +147,9 @@ describe('WebUiSelect 条件组合边界', () => {
       await flushFrame(el)
       expect(el.open).toBe(true)
 
-      // portal 打开后 option 位于浮层 shadow root 内，从面板中移除
+      // portal 打开后 option 位于 overlay shadow root 内，从 panel 中移除
       const appleInPanel = getPortalPanel(el)?.querySelector('web-ui-option[value="apple"]') as WebUiOption | null
-      expect(appleInPanel, '前置：面板内应有已选项 apple').not.toBeNull()
+      expect(appleInPanel, '前置：panel 内应有已 option apple').not.toBeNull()
       appleInPanel?.remove()
       await new Promise<void>(resolve => queueMicrotask(resolve))
       await waitForUpdate(el)
@@ -169,7 +169,7 @@ describe('WebUiSelect 条件组合边界', () => {
       expect(el.open).toBe(true)
 
       const appleInPanel = getPortalPanel(el)?.querySelector('web-ui-option[value="apple"]') as WebUiOption | null
-      expect(appleInPanel, '前置：面板内应有 apple').not.toBeNull()
+      expect(appleInPanel, '前置：panel 内应有 apple').not.toBeNull()
       appleInPanel?.remove()
       await new Promise<void>(resolve => queueMicrotask(resolve))
       await waitForUpdate(el)
@@ -212,7 +212,7 @@ describe('WebUiSelect 条件组合边界', () => {
       cleanupElement(el)
     })
 
-    it('Escape 关闭后再次点击 trigger 可重新打开且不误触发选项点击', async () => {
+    it('Escape 关闭后再次点击 trigger 可重新打开且不误触发 option 点击', async () => {
       const el = createSelect(OPTIONS_HTML_THREE, { portal: '' })
       await waitForUpdate(el)
 
@@ -239,8 +239,8 @@ describe('WebUiSelect 条件组合边界', () => {
     })
   })
 
-  describe('选项新增（portal）', () => {
-    it('打开期间向 light DOM 插入新 option 后同步进面板并可选择', async () => {
+  describe('option 新增（portal）', () => {
+    it('打开期间向 light DOM 插入新 option 后同步进 panel 并可选择', async () => {
       const el = createSelect(OPTIONS_HTML_THREE, { portal: '' })
       await waitForUpdate(el)
 
@@ -250,7 +250,7 @@ describe('WebUiSelect 条件组合边界', () => {
       expect(el.open).toBe(true)
       expect(getPortalPanel(el)?.querySelectorAll('web-ui-option').length).toBe(3)
 
-      // 模拟框架条件渲染：异步数据到达后插入新选项（含 wrapper 包裹形态）
+      // 模拟框架条件渲染：异步数据到达后插入新 option（含 wrapper 包裹形态）
       const wrapper = document.createElement('div')
       wrapper.innerHTML = '<web-ui-option value="durian" label="Durian"></web-ui-option>'
       el.appendChild(wrapper)
@@ -270,7 +270,7 @@ describe('WebUiSelect 条件组合边界', () => {
       cleanupElement(el)
     })
 
-    it('关闭状态下插入新 option 不迁移，打开时随初始 moveContent 进入面板', async () => {
+    it('关闭状态下插入新 option 不迁移，打开时随初始 moveContent 进入 panel', async () => {
       const el = createSelect(OPTIONS_HTML_THREE, { portal: '' })
       await waitForUpdate(el)
 
@@ -288,7 +288,7 @@ describe('WebUiSelect 条件组合边界', () => {
       cleanupElement(el)
     })
 
-    it('打开期间新增 option 后可被键盘导航选中，且已选标签不丢失', async () => {
+    it('打开期间新增 option 后可被键盘导航选中，且已选 label 不丢失', async () => {
       const el = createSelect('<web-ui-option value="apple" label="Apple"></web-ui-option>', {
         portal: '',
         placeholder: 'Pick'
@@ -305,7 +305,7 @@ describe('WebUiSelect 条件组合边界', () => {
       await waitForUpdate(el)
 
       expect(trigger.textContent?.includes('Apple')).toBe(true)
-      // 从已选 apple 出发 ArrowDown 确定性落到新增的 fig（portal 打开时 option 位于面板内），
+      // 从已选 apple 出发 ArrowDown 确定性落到新增的 fig（portal 打开时 option 位于 panel 内），
       // 选中结果是「激活索引指向新增项」的公开可观察后果。
       el.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true }))
       await waitForUpdate(el)
@@ -317,7 +317,7 @@ describe('WebUiSelect 条件组合边界', () => {
   })
 
   describe('自定义 overlayContainer', () => {
-    it('portal 面板挂载到指定容器并可正常选择', async () => {
+    it('portal panel 挂载到指定容器并可正常选择', async () => {
       const container = document.createElement('div')
       container.id = 'overlay-target'
       document.body.append(container)
@@ -331,7 +331,7 @@ describe('WebUiSelect 条件组合边界', () => {
       trigger.click()
       await flushFrame(el)
 
-      // portal host 是容器内的 div，option 位于其 shadow root 的面板中
+      // portal host 是容器内的 div，option 位于其 shadow root 的 panel 中
       const panelOptions = [...container.children].flatMap(host => [
         ...((host as HTMLElement).shadowRoot?.querySelectorAll<WebUiOption>('web-ui-option') ?? [])
       ])

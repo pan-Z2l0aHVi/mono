@@ -8,7 +8,7 @@
 - 公共组件契约、原生事件、表单行为、跨框架 API 约定和 ARIA 回写：[ADR-0005](../adr/0005-web-ui-component-architecture.md)；面向消费者的 API 文档是 `packages/web-ui/docs/<component>.md`，包根 README 只是索引。
 - Overlay 交互/定位/内容迁移、布局层级、design token 和 @lit/context 组合模式：[ADR-0006](../adr/0006-web-ui-composition-rendering-architecture.md)。
 - React/Vue 类型适配、`$events` 和复合控件事件边界：[ADR-0005](../adr/0005-web-ui-component-architecture.md)。
-- 图标 manifest、生成器和导出：[ADR-0005](../adr/0005-web-ui-component-architecture.md)。
+- icon manifest、生成器和导出：[ADR-0005](../adr/0005-web-ui-component-architecture.md)。
 
 ## 修改前路由
 
@@ -16,8 +16,8 @@
 - **受管组合**：成员追踪、下行广播与上行写回的通道读 ADR-0006；带 portal 的 option 组合走 `src/shared/option-portal`，不按 `GroupController` 处理。
 - **覆盖层内容迁移或消费者节点写入**：打开时 portal 迁移、关闭态隐藏（menu 族隐藏 slot）与消费者 light DOM 写入边界见 ADR-0006。
 - **slot-trigger 组件的 ARIA**：popover/dropdown/collapse 的 trigger 状态回写读 ADR-0005。
-- **Overlay、portal、焦点、滚动锁定或层叠**：读 ADR-0006 中受影响的决策；定位引擎归属或新浮层定位路径也在其覆盖内，不加载无关组件语义。
-- **主题 token 或图标**：读 ADR-0006/0005 以及对应源码。
+- **Overlay、portal、焦点、滚动锁定或层叠**：读 ADR-0006 中受影响的决策；定位引擎归属或新 overlay 定位路径也在其覆盖内，不加载无关组件语义。
+- **主题 token 或 icon**：读 ADR-0006/0005 以及对应源码。
 - **React/Vue 类型或事件**：读 ADR-0005 和对应的 `src/types/` 源码。
 - **仅 CSS/视觉微调**：优先读取组件源码和相关 token；不因任务名称加载 overlay、框架适配或完整事件模型。
-- **滚动条 / OverlayScrollbars 接入**：`src/scrollbars/`（macOS 主题 + 共享选项，经 `./scrollbars` 与 `./scrollbars.css` 导出），apps 侧用官方适配包挂载。
+- **scrollbar / OverlayScrollbars 接入**：`src/scrollbars/`（macOS 主题 + 共享 option，经 `./scrollbars` 与 `./scrollbars.css` 导出），apps 侧用官方适配包挂载。

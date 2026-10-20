@@ -81,7 +81,7 @@ function button(host: HTMLElement, label: string) {
 }
 
 describe('DetailDrawer', () => {
-  it('重命名按钮点击进入重命名流程', async () => {
+  it('重命名 button 点击进入重命名流程', async () => {
     const resource = resourceView()
     const startRename = vi.fn<(target: ResourceView) => void>()
     const mounted = mountDrawer(resource, { onStartRename: startRename })
@@ -96,7 +96,7 @@ describe('DetailDrawer', () => {
     }
   })
 
-  it('编辑态下不渲染重命名按钮', async () => {
+  it('编辑态下不渲染重命名 button', async () => {
     const mounted = mountDrawer(resourceView(), { editingNameKey: '__drawer-title__' })
 
     try {
@@ -151,7 +151,7 @@ describe('DetailDrawer', () => {
     }
   })
 
-  it('抽屉切到另一条资源时，补提交上一条的待存备注', async () => {
+  it('drawer 切到另一条资源时，补提交上一条的待存备注', async () => {
     const resource = resourceView()
     const noteChange = vi.fn<NoteChangeHandler>()
     const mounted = mountDrawer(resource, { onNoteChange: noteChange })

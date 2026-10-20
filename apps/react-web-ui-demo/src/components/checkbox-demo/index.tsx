@@ -14,8 +14,8 @@ function CheckboxDemo() {
 
   return (
     <div>
-      <h1>复选框</h1>
-      <h2>基本用法</h2>
+      <h1>checkbox</h1>
+      <h2>Basic usage</h2>
       <div className="mb-3 flex flex-col gap-3">
         <web-ui-checkbox checked={fruits.includes('apple')} value="apple" onChange={() => toggleFruit('apple')}>
           Apple
@@ -39,11 +39,13 @@ function CheckboxDemo() {
       </div>
       <p className="text-sm text-gray-500">选中值：{[...groupVals].join(', ') || '[]'}</p>
 
-      <h2>Checkbox Group 布局方向</h2>
-      <p className="mb-3 text-sm text-(--wui-color-text-secondary)">direction 控制组内排布，默认 vertical。</p>
+      <h2>Checkbox group layout direction</h2>
+      <p className="mb-3 text-sm text-(--wui-color-text-secondary)">
+        direction controls the group layout, vertical by default.
+      </p>
       <div className="mb-3 flex flex-wrap gap-8">
         <div>
-          <p className="mb-1 text-sm text-(--wui-color-text-secondary)">direction=&quot;vertical&quot;（默认）</p>
+          <p className="mb-1 text-sm text-(--wui-color-text-secondary)">direction=&quot;vertical&quot; (default)</p>
           <web-ui-checkbox-group
             direction="vertical"
             value={verticalVals}
@@ -71,8 +73,10 @@ function CheckboxDemo() {
         选中值：vertical {[...verticalVals].join(', ') || '[]'} / horizontal {[...horizontalVals].join(', ') || '[]'}
       </p>
 
-      <h2>Checkbox Group 间距</h2>
-      <p className="mb-3 text-sm text-(--wui-color-text-secondary)">--wui-checkbox-group-gap 覆盖默认间距 8px。</p>
+      <h2>Checkbox group spacing</h2>
+      <p className="mb-3 text-sm text-(--wui-color-text-secondary)">
+        --wui-checkbox-group-gap overrides the default 8px spacing.
+      </p>
       <div className="mb-3">
         <web-ui-checkbox-group
           className="[--wui-checkbox-group-gap:16px]"
@@ -87,7 +91,7 @@ function CheckboxDemo() {
       </div>
       <p className="text-sm text-gray-500">选中值：{[...gapVals].join(', ') || '[]'}</p>
 
-      <h2>Checkbox Group 禁用</h2>
+      <h2>Checkbox group disabled</h2>
       <div className="mb-3 flex flex-col gap-3">
         <web-ui-checkbox-group disabled value={disabledGroupVals}>
           <web-ui-checkbox value="apple">Apple</web-ui-checkbox>
@@ -96,7 +100,7 @@ function CheckboxDemo() {
         </web-ui-checkbox-group>
       </div>
 
-      <h2>禁用状态</h2>
+      <h2>Disabled</h2>
       <div className="mb-3 flex flex-col gap-3">
         <web-ui-checkbox checked value="apple" disabled>
           Apple

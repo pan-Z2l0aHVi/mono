@@ -225,7 +225,7 @@ describe('AddDialog', () => {
 
   /*
    * 回归（#188）：paste 事件原先只派发 requestFilePaths、不带剪贴板文本，页面拿不到
-   * 链接。工具栏按钮那条路径本来就没有文本（走 OS 剪贴板文件接口），因此只有事件路径
+   * 链接。工具栏 button 那条路径本来就没有文本（走 OS 剪贴板文件接口），因此只有事件路径
    * 需要把文本带上去。
    */
   it('paste 事件把剪贴板文本交给页面，弹窗关闭时不响应', async () => {
@@ -401,7 +401,7 @@ describe('AddDialog', () => {
     }
   })
 
-  it('移动端图片预览启用 swipe、关闭 toolbar，并在添加资源 dialog 关闭时释放句柄', async () => {
+  it('移动端 image preview 启用 swipe、关闭 toolbar，并在添加资源 dialog 关闭时释放 handle', async () => {
     const item = queueItem()
     const handle = previewHandle()
     openPreview.mockReturnValue(handle)

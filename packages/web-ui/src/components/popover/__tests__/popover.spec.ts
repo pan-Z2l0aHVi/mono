@@ -46,7 +46,7 @@ afterEach(() => {
 
 describe('WebUiPopover 组件', () => {
   describe('属性：trigger', () => {
-    // trigger 决定「哪些用户手势能开关面板」，取值回退在下面的三条触发方式分组里
+    // trigger 决定「哪些用户手势能 toggle panel」，取值回退在下面的三条触发方式分组里
     // 由行为本身覆盖（hover 分组全部用 trigger=hover 驱动）。这里只钉「字面量
     // 被原样接受」——非法值回退与 placement 走同一条 normalizeLiteral 路径。
     it('设置为 hover', async () => {
@@ -82,7 +82,7 @@ describe('WebUiPopover 组件', () => {
       ['open', true, 'open', '']
     ])
 
-    it('默认不挂出面板', async () => {
+    it('默认不挂出 panel', async () => {
       const el = createPopover('Btn', 'Content')
       await waitForUpdate(el)
       vi.advanceTimersToNextFrame()
@@ -94,8 +94,8 @@ describe('WebUiPopover 组件', () => {
       cleanupElement(el)
     })
 
-    // 开关面板是 popover 的核心契约：面板真的挂出 / 真的隐藏，且不是把 el.open 自读一遍。
-    it('open 翻转真的挂出与隐藏面板', async () => {
+    // toggle panel 是 popover 的核心契约：panel 真的挂出 / 真的隐藏，且不是把 el.open 自读一遍。
+    it('open 翻转真的挂出与隐藏 panel', async () => {
       const el = createPopover('Btn', 'Content')
 
       el.open = true
@@ -166,13 +166,13 @@ describe('WebUiPopover 组件', () => {
 
   describe('属性：offset / placement', () => {
     /*
-     * 打开态改定位参数属于状态转换（政策 §3）：面板必须仍然可见，不能因为重定位
+     * 打开态改定位参数属于状态转换（政策 §3）：panel 必须仍然可见，不能因为重定位
      * 被重新隐藏。两条各开一个元素——共用一条会让失败时说不清是哪个参数触发的。
      *
      * 顺序是「先开后改」：反过来（先改后开）测的是打开流程读到了新值，与这里要守的
-     * 「已打开的面板被重定位后不消失」不是同一件事，判别力差一层。
+     * 「已打开的 panel 被重定位后不消失」不是同一件事，判别力差一层。
      */
-    it('打开态修改 offset 后面板仍可见', async () => {
+    it('打开态修改 offset 后 panel 仍可见', async () => {
       const el = createPopover('Btn', 'Content')
       el.open = true
       await el.updateComplete
@@ -189,7 +189,7 @@ describe('WebUiPopover 组件', () => {
       cleanupElement(el)
     })
 
-    it('打开态修改 placement 后面板仍可见', async () => {
+    it('打开态修改 placement 后 panel 仍可见', async () => {
       const el = createPopover('Btn', 'Content')
       el.open = true
       await el.updateComplete
@@ -287,7 +287,7 @@ describe('WebUiPopover 组件', () => {
       cleanupElement(el)
     })
 
-    it('点击面板内部不关闭', async () => {
+    it('点击 panel 内部不关闭', async () => {
       const el = createPopover('Btn', 'Content')
       await waitForUpdate(el)
 
@@ -482,7 +482,7 @@ describe('WebUiPopover 组件', () => {
   })
 
   // 注：`open-change` 的 notification 语义（程序式静默、用户手势通知、detail.open 为变更后值）
-  // 已由共享矩阵 `shared/open-state/__tests__/open-change-contract.spec.ts` 在 4 个浮层组件上统一覆盖。
+  // 已由共享矩阵 `shared/open-state/__tests__/open-change-contract.spec.ts` 在 4 个 overlay 组件上统一覆盖。
   // 下方仅保留 popover 特有的「hover 重入」边界，其余等价用例按 D4 删除、存活覆盖指向该矩阵。
   describe('事件：open-change', () => {
     it('hover 重入不让后续命令式关闭派发残留事件', async () => {
@@ -506,8 +506,8 @@ describe('WebUiPopover 组件', () => {
 
   describe('公开 API', () => {
     // 命令式 API 与 open 属性走同一条状态机，唯一独立的东西是「命令序列本身能驱动
-    // 面板挂出与隐藏」。合进一条：三条各开一个元素的重复用例会让同一契约可被整体删除。
-    it('show() / toggle() / close() 驱动面板挂出与隐藏', async () => {
+    // panel 挂出与隐藏」。合进一条：三条各开一个元素的重复用例会让同一契约可被整体删除。
+    it('show() / toggle() / close() 驱动 panel 挂出与隐藏', async () => {
       const el = createPopover('Btn', 'Content')
       await waitForUpdate(el)
       const panel = () => queryA11y(el, '[role="dialog"]')?.hasAttribute('hidden')
@@ -535,9 +535,9 @@ describe('WebUiPopover 组件', () => {
   })
 
   describe('可访问性', () => {
-    // 面板 role 与 trigger 上的 ARIA 回写合并成一条：它们描述的是同一屏里
-    // 「弹层是什么 + 触发器当前指向什么」这一组对外语义，分成三条会让整组可被删掉而不被发现。
-    it('面板暴露 role=dialog，trigger 承载 aria-expanded 与 aria-controls', async () => {
+    // panel role 与 trigger 上的 ARIA 回写合并成一条：它们描述的是同一屏里
+    // 「弹层是什么 + trigger 当前指向什么」这一组对外语义，分成三条会让整组可被删掉而不被发现。
+    it('panel 暴露 role=dialog，trigger 承载 aria-expanded 与 aria-controls', async () => {
       const el = createPopover('Btn', 'Content')
       await waitForUpdate(el)
 

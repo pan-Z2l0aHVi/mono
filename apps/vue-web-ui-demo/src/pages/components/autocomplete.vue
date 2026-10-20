@@ -1,7 +1,7 @@
 <route lang="json">
 {
   "meta": {
-    "title": "Autocomplete 自动补全"
+    "title": "Autocomplete"
   }
 }
 </route>

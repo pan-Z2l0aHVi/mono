@@ -45,10 +45,10 @@ function dispatchEscapeKey(target: EventTarget) {
 }
 
 /*
- * 真实浏览器的「点遮罩关闭」是一条 pointerdown（起点在遮罩上）+ 近静止 click 的
+ * 真实浏览器的「点 backdrop 关闭」是一条 pointerdown（起点在 backdrop 上）+ 近静止 click 的
  * 指针链路。`dialog.click()` 的 detail 为 0、不来自指针，组件会忽略它（对齐
  * image-preview 的守卫，防止程序化 click 消费上一次指针交互的残留记录），所以
- * 测试遮罩关闭语义必须派发完整的指针链路。
+ * 测试 backdrop 关闭语义必须派发完整的指针链路。
  */
 function clickBackdrop(dialog: HTMLDialogElement, clientX = 20, clientY = 20) {
   dialog.dispatchEvent(
@@ -57,7 +57,7 @@ function clickBackdrop(dialog: HTMLDialogElement, clientX = 20, clientY = 20) {
   dialog.dispatchEvent(new MouseEvent('click', { bubbles: true, detail: 1, clientX, clientY }))
 }
 
-/** 定位器（非断言）：拖拽热区没有公开 role/aria，只能用内部 class 拿到它来派发指针事件。 */
+/** 定位器（非断言）：拖拽 drag zone 没有公开 role/aria，只能用内部 class 拿到它来派发指针事件。 */
 function getDragZone(el: WebUiDrawer): HTMLElement {
   return el.shadowRoot?.querySelector('.wui-drawer-drag-zone') as HTMLElement
 }
@@ -97,7 +97,7 @@ describe('WebUiDrawer 属性', () => {
     expect(el.getAttribute('placement')).toBe('right')
     expect(el.placement).toBe('right')
 
-    // 非法值必须落到默认档而不是照单全收 —— 照单全收会让面板停在一个不存在的
+    // 非法值必须落到默认档而不是照单全收 —— 照单全收会让 panel 停在一个不存在的
     // placement 上，样式全部失配且用户无从察觉。
     el.placement = 'invalid' as 'right'
     await waitForUpdate(el)
@@ -123,12 +123,12 @@ describe('WebUiDrawer 属性', () => {
     const el = createDrawer()
     await waitForUpdate(el)
     expect(el.closable).toBe(false)
-    expect(queryA11y(el, '[aria-label="关闭"]')).toBeNull()
+    expect(queryA11y(el, '[aria-label="Close"]')).toBeNull()
 
     el.closable = true
     await waitForUpdate(el)
     expect(el.hasAttribute('closable')).toBe(true)
-    expect(queryA11y(el, '[aria-label="关闭"]')).toBeTruthy()
+    expect(queryA11y(el, '[aria-label="Close"]')).toBeTruthy()
 
     cleanupElement(el)
   })
@@ -157,13 +157,13 @@ describe('WebUiDrawer 属性', () => {
   it('headless：dialog-label 提供可访问名称', async () => {
     const el = createDrawer()
     el.headless = true
-    el.dialogLabel = '主导航'
+    el.dialogLabel = 'Main navigation'
     await waitForUpdate(el)
 
     const dialog = el.shadowRoot?.querySelector('dialog') as HTMLDialogElement
-    // 可访问名称是硬契约（政策第 3 条）：headless 抽屉没有可见标题，
-    // 名称只能来自 dialog-label，丢了它屏幕阅读器只报「对话框」。
-    expect(dialog.getAttribute('aria-label')).toBe('主导航')
+    // 可访问名称是硬契约（政策第 3 条）：headless drawer 没有可见标题，
+    // 名称只能来自 dialog-label，丢了它屏幕阅读器只报「dialog」。
+    expect(dialog.getAttribute('aria-label')).toBe('Main navigation')
     expect(dialog.hasAttribute('aria-labelledby')).toBe(false)
     cleanupElement(el)
   })
@@ -176,7 +176,7 @@ describe('WebUiDrawer 属性', () => {
     const dialog = el.shadowRoot?.querySelector('dialog') as HTMLDialogElement
     expect(dialog.open).toBe(true)
 
-    // 换掉 dialog 元素会让面板退出 top layer：用户看到遮罩与面板分离，
+    // 换掉 dialog 元素会让 panel 退出 top layer：用户看到 backdrop 与 panel 分离，
     // 键盘路由与滚动锁都跟着断。
     el.headless = true
     await waitForUpdate(el)
@@ -190,8 +190,8 @@ describe('WebUiDrawer 属性', () => {
 /*
  * 滚动锁。
  *
- * 锁定期间页面不能被滚走 —— 这正是抽屉打开时用户依赖的行为；两实例时先释放的那个
- * 不能把锁一起解开（抽屉叠抽屉，内层关掉后外层仍开着，页面必须继续锁着）。
+ * 锁定期间页面不能被滚走 —— 这正是 drawer 打开时用户依赖的行为；两实例时先释放的那个
+ * 不能把锁一起解开（drawer 叠 drawer，内层关掉后外层仍开着，页面必须继续锁着）。
  */
 describe('WebUiDrawer 滚动锁', () => {
   it('默认打开时锁定页面滚动', async () => {
@@ -258,14 +258,14 @@ describe('WebUiDrawer 事件：open-change', () => {
     cleanupElement(el)
   })
 
-  it('点击内置关闭按钮：关闭抽屉并派发一次 open-change(false)', async () => {
+  it('点击内置关闭 button：关闭 drawer 并派发一次 open-change(false)', async () => {
     const el = createDrawer()
     el.closable = true
     el.open = true
     await waitForUpdate(el)
 
     const events = openChangeEvents(el)
-    ;(queryA11y(el, '[aria-label="关闭"]') as HTMLElement).click()
+    ;(queryA11y(el, '[aria-label="Close"]') as HTMLElement).click()
     await waitForUpdate(el)
 
     expect(el.open).toBe(false)
@@ -277,11 +277,11 @@ describe('WebUiDrawer 事件：open-change', () => {
 /*
  * controlled 语义：用户动作只**请求**关闭，open 归消费方写回。
  *
- * 抽屉自改 open 会让受控用法彻底失效（消费方拿到的事件与它自己的状态对不上），
+ * drawer 自改 open 会让受控用法彻底失效（消费方拿到的事件与它自己的状态对不上），
  * 而 native dialog 的关闭请求又必须被真正撤销 —— 两头都要断。
  */
 describe('WebUiDrawer controlled', () => {
-  it('Escape 与遮罩点击都只请求 open=false，不自行修改 open', async () => {
+  it('Escape 与 backdrop 点击都只请求 open=false，不自行修改 open', async () => {
     const el = createDrawer()
     el.controlled = true
     el.open = true
@@ -303,7 +303,7 @@ describe('WebUiDrawer controlled', () => {
     cleanupElement(el)
   })
 
-  it('内置关闭按钮仅请求关闭，不自行修改 open', async () => {
+  it('内置关闭 button 仅请求关闭，不自行修改 open', async () => {
     const el = createDrawer()
     el.closable = true
     el.controlled = true
@@ -311,7 +311,7 @@ describe('WebUiDrawer controlled', () => {
     await waitForUpdate(el)
 
     const events = openChangeEvents(el)
-    ;(queryA11y(el, '[aria-label="关闭"]') as HTMLElement).click()
+    ;(queryA11y(el, '[aria-label="Close"]') as HTMLElement).click()
     await waitForUpdate(el)
 
     expect(el.open).toBe(true)
@@ -319,7 +319,7 @@ describe('WebUiDrawer controlled', () => {
     cleanupElement(el)
   })
 
-  it('controlled 消费方回写 open=false 后，抽屉真正关闭', async () => {
+  it('controlled 消费方回写 open=false 后，drawer 真正关闭', async () => {
     const el = createDrawer()
     el.controlled = true
     el.open = true
@@ -344,10 +344,10 @@ describe('WebUiDrawer controlled', () => {
 /*
  * 关闭过渡与 top layer。
  *
- * 抽屉关闭时必须播完退出动画才真正离开 top layer：dialog 提前 `close()` 会让遮罩先
- * 消失而面板还在原地滑出，用户看到的是「遮罩先没了」。`transitionend` 缺失时（用户
- * 在动画播完前就切走标签页、或 reduced motion 下过渡根本没跑）由兜底定时器收尾，
- * 否则抽屉永久卡在打开态。
+ * drawer 关闭时必须播完退出动画才真正离开 top layer：dialog 提前 `close()` 会让 backdrop 先
+ * 消失而 panel 还在原地滑出，用户看到的是「backdrop 先没了」。`transitionend` 缺失时（用户
+ * 在动画播完前就切走 tab、或 reduced motion 下过渡根本没跑）由兜底定时器收尾，
+ * 否则 drawer 永久卡在打开态。
  */
 describe('WebUiDrawer 关闭生命周期', () => {
   it('关闭过渡完成前 dialog 留在 top layer，完成后关闭', async () => {
@@ -382,7 +382,7 @@ describe('WebUiDrawer 关闭生命周期', () => {
     await vi.advanceTimersByTimeAsync(16)
     const dialog = el.shadowRoot?.querySelector('dialog')
 
-    // 不派发 transitionend（reduced motion 下过渡不跑）：抽屉必须仍能收尾，
+    // 不派发 transitionend（reduced motion 下过渡不跑）：drawer 必须仍能收尾，
     // 否则它永远停在「open=false 但 dialog 仍开着」的卡死态。
     el.close()
     await waitForUpdate(el)
@@ -406,8 +406,8 @@ describe('WebUiDrawer 关闭生命周期', () => {
     await waitForUpdate(el)
     expect(dialog?.open).toBe(true)
 
-    // 快速连点：关闭后立刻重开。兜底定时器若没被取消，它会在重开后把抽屉关掉 ——
-    // 表现为「快速连点后抽屉开了又自己消失」。
+    // 快速连点：关闭后立刻重开。兜底定时器若没被取消，它会在重开后把 drawer 关掉 ——
+    // 表现为「快速连点后 drawer 开了又自己消失」。
     el.show()
     await waitForUpdate(el)
     await vi.advanceTimersByTimeAsync(16)
@@ -446,8 +446,8 @@ describe('WebUiDrawer 关闭生命周期', () => {
     expect(dialog.open).toBe(true)
 
     // 模拟上一会话的过期 close 事件此刻才到达：不得把刚重开的 drawer 误关
-    // （否则重开即被误关，表现为连续开关丢失过渡动画——真机「快速连点后后续
-    // drawer 开关丢失过渡」的根因之一）。
+    // （否则重开即被误关，表现为连续 toggle 丢失过渡动画——真机「快速连点后后续
+    // drawer toggle 丢失过渡」的根因之一）。
     dialog.dispatchEvent(new Event('close'))
     await waitForUpdate(el)
     expect(el.open).toBe(true)
@@ -465,13 +465,13 @@ describe('WebUiDrawer 关闭生命周期', () => {
 })
 
 /*
- * Escape 与遮罩的关闭语义。
+ * Escape 与 backdrop 的关闭语义。
  *
- * 两者的默认值相反（Escape 关、遮罩也关），`no-backdrop-close` 只改后者：
- * 带上该属性后用户仍有 Escape 这条键盘出口，同时点遮罩不再误关。
+ * 两者的默认值相反（Escape 关、backdrop 也关），`no-backdrop-close` 只改后者：
+ * 带上该属性后用户仍有 Escape 这条键盘出口，同时点 backdrop 不再误关。
  */
-describe('WebUiDrawer Escape 与遮罩', () => {
-  it('默认点遮罩关闭抽屉', async () => {
+describe('WebUiDrawer Escape 与 backdrop', () => {
+  it('默认点 backdrop 关闭 drawer', async () => {
     const el = createDrawer()
     el.open = true
     await waitForUpdate(el)
@@ -483,7 +483,7 @@ describe('WebUiDrawer Escape 与遮罩', () => {
     cleanupElement(el)
   })
 
-  it('no-backdrop-close：点遮罩不关闭', async () => {
+  it('no-backdrop-close：点 backdrop 不关闭', async () => {
     const el = createDrawer()
     el.setAttribute('no-backdrop-close', '')
     el.open = true
@@ -506,8 +506,8 @@ describe('WebUiDrawer Escape 与遮罩', () => {
     await vi.advanceTimersByTimeAsync(16)
     const dialog = el.shadowRoot?.querySelector('dialog')
 
-    // Escape 不能被 no-backdrop-close 一起挡掉 —— 它只该管遮罩点击。
-    // 若这条被误挡，用户在没有鼠标的场景下就彻底关不掉抽屉。
+    // Escape 不能被 no-backdrop-close 一起挡掉 —— 它只该管 backdrop 点击。
+    // 若这条被误挡，用户在没有鼠标的场景下就彻底关不掉 drawer。
     const event = new Event('cancel', { cancelable: true })
     dialog?.dispatchEvent(event)
     await waitForUpdate(el)
@@ -528,7 +528,7 @@ describe('WebUiDrawer Escape 与遮罩', () => {
  * 原生 dialog 的关闭请求。
  *
  * 表单 `method="dialog"` 与宿主程序化 `dialog.close()` 都会真的把 dialog 关掉。
- * 组件必须把它当成用户关闭处理（同步 open、派发 open-change），否则抽屉的
+ * 组件必须把它当成用户关闭处理（同步 open、派发 open-change），否则 drawer 的
  * `open` 会与真实 dialog 状态脱节，后续 show() 直接失灵。
  */
 describe('WebUiDrawer 原生 dialog 关闭', () => {
@@ -544,7 +544,7 @@ describe('WebUiDrawer 原生 dialog 关闭', () => {
     dialog.dispatchEvent(new Event('close'))
     await waitForUpdate(el)
 
-    // 受控下组件替宿主把 dialog 拉回打开态，面板不会凭空消失。
+    // 受控下组件替宿主把 dialog 拉回打开态，panel 不会凭空消失。
     expect(el.open).toBe(true)
     expect(dialog.open).toBe(true)
     expect(events.map(event => event.detail.open)).toEqual([false])
@@ -579,8 +579,8 @@ describe('WebUiDrawer 原生 dialog 关闭', () => {
  * 拖拽关闭（手势与状态转换）。
  *
  * 判据只留阈值行为（拖过阈值 → open=false + 一次 open-change）与归宿（open、原生
- * dialog、事件次数）。拖动过程中的 transform 位移、遮罩 opacity 与 `is-dragging`
- * 等内部状态类不留 —— 定位热区用内部 class 只是为了派发事件，断言仍落在公开面上。
+ * dialog、事件次数）。拖动过程中的 transform 位移、backdrop opacity 与 `is-dragging`
+ * 等内部状态类不留 —— 定位 drag zone 用内部 class 只是为了派发事件，断言仍落在公开面上。
  */
 describe('WebUiDrawer 拖拽关闭', () => {
   /** 沿闭合方向（默认 right → 向右）拖过阈值后松手。首段 move 只用于校准判定零点。 */
@@ -613,7 +613,7 @@ describe('WebUiDrawer 拖拽关闭', () => {
     const events = openChangeEvents(el)
     await dragToClose(el)
 
-    // 用户手势关闭与点击关闭按钮同语义：派发一次 open-change(false)
+    // 用户手势关闭与点击关闭 button 同语义：派发一次 open-change(false)
     expect(el.open).toBe(false)
     expect(events.map(event => event.detail.open)).toEqual([false])
 
@@ -642,7 +642,7 @@ describe('WebUiDrawer 拖拽关闭', () => {
     dialog.dispatchEvent(new PointerEvent('pointerup', { bubbles: true, pointerId: 1, isPrimary: true, clientX: 520 }))
     await waitForUpdate(el)
 
-    // 面板内容上落手不该触发拖拽关闭：正文可滚动、可选中，只有热区才是起手区。
+    // panel 内容上落手不该触发拖拽关闭：正文可滚动、可选中，只有 drag zone 才是起手区。
     expect(el.open).toBe(true)
     expect(events).toHaveLength(0)
 
@@ -686,7 +686,7 @@ describe('WebUiDrawer 拖拽关闭', () => {
     await waitForUpdate(el)
     const dialog = el.shadowRoot?.querySelector('dialog') as HTMLDialogElement
 
-    // 按住拖拽时按 Escape 会把面板「关一半」——它留在原地，用户无从恢复。
+    // 按住拖拽时按 Escape 会把 panel「关一半」——它留在原地，用户无从恢复。
     dispatchEscapeKey(dialog)
     await waitForUpdate(el)
     expect(events).toHaveLength(0)

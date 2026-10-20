@@ -40,7 +40,7 @@ import style from './style.css?inline'
 export type { Placement }
 
 const SLOT_PREFIX = 'web-ui-menu-level-'
-// 一级菜单项的模板位 marker（机制与 context-menu 共用，见 menu-tree 的托管项锚说明）。
+// 一级 menu item 的模板位 marker（机制与 context-menu 共用，见 menu-tree 的托管项锚说明）。
 const MENU_ITEM_MARKER = 'wui-dropdown-menu-item'
 
 let dropdownIdCounter = 0
@@ -49,7 +49,7 @@ interface MenuOverlay {
   api: OverlayApi
   overlay: HTMLElement
   content: HTMLElement
-  /** 该层为子菜单时的会话句柄；根层句柄由组件单独持有（见 `_handle`）。 */
+  /** 该层为 submenu 时的会话 handle；根层 handle 由组件单独持有（见 `_handle`）。 */
   handle?: OpenOverlayHandle
 }
 
@@ -92,15 +92,15 @@ export class WebUiDropdown extends LitElement {
   })
   private readonly _scrollLock = defineScrollLockLease().make()
   /**
-   * 当前 Escape 候选的会话句柄（level 0）。面板要等一帧才建好，而 Escape 可能在这之前
-   * 到达：先以宿主为 panel claim 一次，面板就绪后 release 旧会话、再以真实面板重新 claim。
-   * 子菜单的句柄存在各自 `MenuOverlay.handle` 上（经 adopt 进本句柄子树）。
+   * 当前 Escape 候选的会话 handle（level 0）。panel 要等一帧才建好，而 Escape 可能在这之前
+   * 到达：先以宿主为 panel claim 一次，panel 就绪后 release 旧会话、再以真实 panel 重新 claim。
+   * submenu 的 handle 存在各自 `MenuOverlay.handle` 上（经 adopt 进本 handle 子树）。
    */
   private _handle: OpenOverlayHandle | null = null
   // 行为层（hover / outside-click / 键盘 / submenu 收尾）由 shared/menu-behavior 驱动
   private readonly _outsideClickGuard = createMenuOutsideClickGuard(
     this,
-    // 根句柄的 contains 递归覆盖全部已 adopt 的子层，一次查询替代逐层判定。
+    // 根 handle 的 contains 递归覆盖全部已 adopt 的子层，一次查询替代逐层判定。
     node => this._handle?.contains(node) ?? false
   )
   private readonly _closingSubmenus = createClosingSubmenuStack<MenuOverlay>({
@@ -168,10 +168,10 @@ export class WebUiDropdown extends LitElement {
   private _suppressInitialFocusVisible = true
   private _menuSyncScheduled = false
   private readonly _level0ItemAnchors: MenuItemAnchors = new Map()
-  // 打开期实时渲染：框架（Vue/React 条件渲染）可能在菜单打开期间持续插入菜单项。
-  // 观察宿主子树（新增项可能被框架 wrapper 包裹）与各层级面板 content 的子树
+  // 打开期实时渲染：框架（Vue/React 条件渲染）可能在 menu 打开期间持续插入 menu item。
+  // 观察宿主子树（新增项可能被框架 wrapper 包裹）与各层级 panel content 的子树
   // （打开中的 submenu 父项已被迁入 content，其新增子项只在这里可见），下一帧统一
-  // 把新子树迁入对应层级面板；面板尺寸变化由 defineOverlay 的 autoUpdate 跟进重定位。
+  // 把新子树迁入对应层级 panel；panel 尺寸变化由 defineOverlay 的 autoUpdate 跟进重定位。
   private readonly _menuContentObserver = new MutationObserver(() => {
     if (this.open) this._scheduleMenuSync()
   })
@@ -187,9 +187,9 @@ export class WebUiDropdown extends LitElement {
     document.addEventListener('click', this._onClickOutside)
     this._menuContentObserver.observe(this, { childList: true, subtree: true })
     /*
-     * 重挂载对账：`disconnectedCallback` 会拆掉面板、把菜单项迁回宿主，但 `open` 是公开
+     * 重挂载对账：`disconnectedCallback` 会拆掉 panel、把 menu item 迁回宿主，但 `open` 是公开
      * prop，不因卸载而改写。Lit 在 detach 期间不记 `changedProperties`，重连后 `updated()`
-     * 不再命中 `changed.has('open')`，面板于是永久缺席：宿主仍反射 `open` 与
+     * 不再命中 `changed.has('open')`，panel 于是永久缺席：宿主仍反射 `open` 与
      * `aria-expanded`，Escape 和 outside click 却无层可关。首连时 `open` 在
      * `changedProperties` 里、由 `updated()` 负责，`hasUpdated` 就是用来只认重连的。
      */
@@ -260,7 +260,7 @@ export class WebUiDropdown extends LitElement {
 
   /**
    * 焦点是否已无归属：被 detach 打掉的焦点会落回 `body`，用户主动点到别处时不会。
-   * 重挂载对账只在前者才把焦点夺回菜单，否则等于从消费者手里抢焦点。
+   * 重挂载对账只在前者才把焦点夺回 menu，否则等于从消费者手里抢焦点。
    */
   private _isFocusOrphaned(): boolean {
     const active = document.activeElement
@@ -268,7 +268,7 @@ export class WebUiDropdown extends LitElement {
   }
 
   /**
-   * 打开态的唯一对账入口：面板、滚动锁、outside click、hover 与菜单焦点都从这里收敛，
+   * 打开态的唯一对账入口：panel、滚动锁、outside click、hover 与 menu 焦点都从这里收敛，
    * `updated()` 的打开分支与重连对账共用它，两条路径必须落到同一个状态。
    */
   private _syncOpenOverlay(takeFocus: boolean) {
@@ -285,7 +285,7 @@ export class WebUiDropdown extends LitElement {
           suppressFocusVisible: this._suppressInitialFocusVisible
         })
       }
-      // 面板 id 在 overlay 构建后才有：回写 aria-controls 指向。
+      // panel id 在 overlay 构建后才有：回写 aria-controls 指向。
       this._syncTriggerAria()
     })
     this._bindHoversAfterUpdate()
@@ -305,8 +305,8 @@ export class WebUiDropdown extends LitElement {
     this._shouldOpenInstantly = isInstant
     this._suppressInitialFocusVisible = suppressFocusVisible
     if (fromUser) this._userOpenChange.mark()
-    // 面板要等一帧才建好，而 Escape 可能在这之前到达：先用宿主当 panel claim 一次；
-    // 面板就绪后 _buildOverlay 会 release 这个占位会话，再以真实面板重新 claim。
+    // panel 要等一帧才建好，而 Escape 可能在这之前到达：先用宿主当 panel claim 一次；
+    // panel 就绪后 _buildOverlay 会 release 这个占位会话，再以真实 panel 重新 claim。
     this._claimRoot(this._overlays.get(0)?.overlay ?? this)
     this.open = true
   }
@@ -430,8 +430,8 @@ export class WebUiDropdown extends LitElement {
     })
   }
 
-  // 打开期的统一内容同步：把打开期间框架新增的菜单子树迁入对应层级面板。
-  // 一级项走 marker 锚 reconcile（保序 + 关闭按模板位归还）；面板尺寸变化由
+  // 打开期的统一内容同步：把打开期间框架新增的 menu 子树迁入对应层级 panel。
+  // 一级项走 marker 锚 reconcile（保序 + 关闭按模板位归还）；panel 尺寸变化由
   // defineOverlay 的 autoUpdate 跟进重定位。
   private _syncOpenMenuContent() {
     const level0Content = this._overlays.get(0)?.content
@@ -440,7 +440,7 @@ export class WebUiDropdown extends LitElement {
     if (level0Content) {
       reconcileManagedMenuItems(this, level0Content, this._level0ItemAnchors, MENU_ITEM_MARKER)
       // 新迁入项的嵌套子项未打 hidden slot，会经 dropdown-item 默认 slot 渲染进
-      // 父项 label 叠到菜单上；面板项在面板内渲染，宿主查询够不到，须对 content 补隐藏。
+      // 父项 label 叠到 menu 上；panel 项在 panel 内渲染，宿主查询够不到，须对 content 补隐藏。
       hideNestedMenuChildren(level0Content, `${SLOT_PREFIX}-hidden`)
       // 框架注释锚点复位独立于元素重排：锚点漂移不收敛会破坏后续翻转的插入点（同 context-menu）。
       const frameworkAnchors = captureFrameworkAnchors(level0Content, MENU_ITEM_MARKER)
@@ -475,21 +475,21 @@ export class WebUiDropdown extends LitElement {
   }
 
   /*
-   * 登记与「面板是否本帧新建」解耦，与 context-menu 的根层修复同构。
+   * 登记与「panel 是否本帧新建」解耦，与 context-menu 的根层修复同构。
    *
    * 退场被打断时（`_closeRootAfterPresence` 在 `hideOverlayPresence` 返回 false 后提前
-   * return）面板仍在 DOM 里，而关闭分支已经把句柄撤了。此时重开走的是 `_ensureOverlay`
+   * return）panel 仍在 DOM 里，而关闭分支已经把 handle 撤了。此时重开走的是 `_ensureOverlay`
    * 的两条复用分支，它们不会重跑 `_buildOverlay`——原先只有 `_buildOverlay` 会 claim/adopt，
-   * 于是出现「面板可见 + `open === true` 却没有任何登记」：Escape 关不掉它（仲裁看不到它），
-   * 守卫里 `contains` 恒 false，点面板内部反被当成外部点击关掉整张菜单。
+   * 于是出现「panel 可见 + `open === true` 却没有任何登记」：Escape 关不掉它（仲裁看不到它），
+   * 守卫里 `contains` 恒 false，点 panel 内部反被当成外部点击关掉整张 menu。
    *
    * `open` 属性路径（`updated()` 里 scheduleFrame 到 `_ensureOverlay(0)`）与 `openMenu()`
    * 都落在复用分支上，因此**所有**根 claim 都必须走这里 —— 只在 `_ensureOverlay` 里补 claim
-   * 是不够的：`openMenu()` 会先把句柄建好，使那次补 claim 变成 no-op，子层照样被漏掉。
+   * 是不够的：`openMenu()` 会先把 handle 建好，使那次补 claim 变成 no-op，子层照样被漏掉。
    *
    * 新 claim 即新会话，旧会话连同其全部 adopt 子树一起作废，因此**仍在场的**子层必须
    * 在这里统一重挂。来源有两个：`_overlays` 里登记的层级，以及本轮已退场、被移出
-   * `_overlays` 却仍在 DOM 里的收尾栈面板 —— 只看前者会漏掉后者（见下）。
+   * `_overlays` 却仍在 DOM 里的收尾栈 panel —— 只看前者会漏掉后者（见下）。
    */
   private _claimRoot(panel: HTMLElement): OpenOverlayHandle {
     this._handle?.release()
@@ -499,11 +499,11 @@ export class WebUiDropdown extends LitElement {
       sub.handle = this._handle.adopt(sub.overlay)
     }
     /*
-     * 收尾栈里的子菜单面板同样「可见但已脱离快照」：`_closeSubmenuFrom` 只把它们移出
-     * `_overlays`，层仍挂在旧句柄下、面板仍在 DOM 里退场。不重挂的话它们会被判成面板外，
-     * 点它内部就关掉整张菜单 —— base 的 `composition.contains` 走登记树、且退场期间不注销，
+     * 收尾栈里的 submenu panel 同样「可见但已脱离快照」：`_closeSubmenuFrom` 只把它们移出
+     * `_overlays`，层仍挂在旧 handle 下、panel 仍在 DOM 里退场。不重挂的话它们会被判成 panel 外，
+     * 点它内部就关掉整张 menu —— base 的 `composition.contains` 走登记树、且退场期间不注销，
      * 所以这条是相对 base 的行为回归，不是 parity。
-     * 新句柄要写回容器：收尾结束时 adapter.dispose 释放的是 `container.handle`。
+     * 新 handle 要写回容器：收尾结束时 adapter.dispose 释放的是 `container.handle`。
      */
     for (const container of this._closingSubmenus.closing()) {
       container.handle = this._handle.adopt(container.overlay)
@@ -511,7 +511,7 @@ export class WebUiDropdown extends LitElement {
     return this._handle
   }
 
-  /** 句柄缺失时补登记；面板还没建好时以宿主代填，与 `_openMenu` 的占位会话同一口径。 */
+  /** handle 缺失时补登记；panel 还没建好时以宿主代填，与 `_openMenu` 的占位会话同一口径。 */
   private _ensureRootHandle(): OpenOverlayHandle {
     return this._handle ?? this._claimRoot(this._overlays.get(0)?.overlay ?? this)
   }
@@ -519,7 +519,7 @@ export class WebUiDropdown extends LitElement {
   private _ensureOverlay(level: number, isInstant = false, submenuItem?: HTMLElement): boolean {
     const closingOverlay = submenuItem ? this._closingSubmenus.take(submenuItem) : undefined
     if (closingOverlay) {
-      // 从 closing 栈取回的面板：登记已在关闭时撤销，这里必须重新挂回根句柄子树。
+      // 从 closing 栈取回的 panel：登记已在关闭时撤销，这里必须重新挂回根 handle 子树。
       closingOverlay.handle = this._ensureRootHandle().adopt(closingOverlay.overlay)
       this._overlays.set(level, closingOverlay)
       closingOverlay.api.open()
@@ -540,7 +540,7 @@ export class WebUiDropdown extends LitElement {
   private _buildOverlay(level: number, isInstant = false) {
     const { panel: overlay, content } = createMenuPortalOverlay('dropdown-overlay', this)
     overlay.setAttribute('role', 'menu')
-    // 根层级面板带 id：trigger 的 aria-controls 指向它（Q9a）。
+    // 根层级 panel 带 id：trigger 的 aria-controls 指向它（Q9a）。
     if (level === 0) overlay.id = `wui-dropdown-menu-${++dropdownIdCounter}`
     overlay.dataset.level = String(level)
     overlay.addEventListener('click', this._onMenuClick)
@@ -554,26 +554,26 @@ export class WebUiDropdown extends LitElement {
         overlay,
         placement: level === 0 ? this.placement : 'right-start',
         offset: level === 0 ? this.offset : 0,
-        // 菜单至少与 trigger/父项同宽，内容可更宽（floor 来自 --wui-overlay-min-width）
+        // menu 至少与 trigger/父项同宽，内容可更宽（floor 来自 --wui-overlay-min-width）
         minAnchorWidth: true,
         matchWidth: level === 0 ? this.matchWidth : false,
         strategy: 'fixed'
       })
       if (level === 0) {
-        // 面板就绪：释放「以宿主代填」的占位会话，换成真实面板。
+        // panel 就绪：释放「以宿主代填」的占位会话，换成真实 panel。
         this._claimRoot(overlay)
         this._overlays.set(level, { api: ctrl, overlay, content })
         this._populateLevel0()
       } else {
         /*
-         * 子层进根句柄子树，默认不是独立候选 —— 「在树里但不是这一层」由此表达；
-         * 原先按 level 找父面板的判断随之消失。用 `_ensureRootHandle()` 而不是 `_handle?.`：
-         * 后者在句柄意外缺失时会静默跳过 adopt，留下一棵无人认领的子树。
+         * 子层进根 handle 子树，默认不是独立候选 —— 「在树里但不是这一层」由此表达；
+         * 原先按 level 找父 panel 的判断随之消失。用 `_ensureRootHandle()` 而不是 `_handle?.`：
+         * 后者在 handle 意外缺失时会静默跳过 adopt，留下一棵无人认领的子树。
          */
         const handle = this._ensureRootHandle().adopt(overlay)
         this._overlays.set(level, { api: ctrl, overlay, content, handle })
       }
-      // submenu 父项在面板 content 内，其新增子项只有观察 content 子树才能看到
+      // submenu 父项在 panel content 内，其新增子项只有观察 content 子树才能看到
       this._menuContentObserver.observe(content, { childList: true, subtree: true })
       ctrl.open()
       showOverlayPresence(overlay, { isInstant })
@@ -583,11 +583,11 @@ export class WebUiDropdown extends LitElement {
   private _disposeOverlay(level: number) {
     const overlay = this._overlays.get(level)
     if (level === 0) {
-      // 根句柄撤销会递归撤销全部已 adopt 的子层。
+      // 根 handle 撤销会递归撤销全部已 adopt 的子层。
       this._handle?.release()
       this._handle = null
     }
-    // 子层句柄随所属 MenuOverlay 释放；已被根层递归撤销时幂等无操作。
+    // 子层 handle 随所属 MenuOverlay 释放；已被根层递归撤销时幂等无操作。
     overlay?.handle?.release()
     overlay?.overlay.removeEventListener('click', this._onMenuClick)
     overlay?.overlay.removeEventListener('keydown', this._onKeydown)
@@ -608,7 +608,7 @@ export class WebUiDropdown extends LitElement {
 
   private _disposeAll() {
     /*
-     * 先无条件撤销根句柄。`_openMenu` 会先用宿主当 panel claim 一次占位会话（真实面板要等
+     * 先无条件撤销根 handle。`_openMenu` 会先用宿主当 panel claim 一次占位会话（真实 panel 要等
      * 一帧才建好），若这段时间内宿主被卸载、`_buildOverlay` 没机会跑，`_overlays` 仍是空的
      * —— 只遍历 `_overlays` 就会漏掉它：该层永久留在模块注册表里强引用整个组件，且宿主
      * 重挂载后 `panel.isConnected` 又为真，占位层重新成为候选、吞掉 Escape。
@@ -688,8 +688,8 @@ export class WebUiDropdown extends LitElement {
   private _onKeydown = (e: KeyboardEvent) => {
     if (this.disabled || !this.open) return
 
-    // overlay 上键盘事件 target 是菜单项而非组件自身，不能限定 e.target === this，
-    // 否则鼠标打开、焦点在菜单项时 Escape 无法关闭
+    // overlay 上键盘事件 target 是 menu item 而非组件自身，不能限定 e.target === this，
+    // 否则鼠标打开、焦点在 menu item 时 Escape 无法关闭
     handleMenuKeyboard(this._keyboardDelegate, e)
   }
 

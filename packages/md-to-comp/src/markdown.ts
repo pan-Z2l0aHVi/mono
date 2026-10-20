@@ -147,7 +147,7 @@ function stripInlineCode(name: string): string {
 }
 
 /**
- * 列形状按位置定：首列是行的身份、次列是富文本说明、其余列都是普通值列。标签本身由配置给，
+ * 列形状按位置定：首列是行的身份、次列是富文本说明、其余列都是普通值列。label 本身由配置给，
  * 所以「表头写歪了」逐字比对就能判死；渲染端只按 `kind` 上样式，不用认识任何一节叫什么。
  */
 function columnsOf(labels: readonly string[], section: string, file: string): ExampleApiColumn[] {
@@ -331,7 +331,7 @@ export function parseMarkdown(source: string, file: string, config: ParseConfig)
   const columns = config.apiTables.columns
   const apiBody = named.get(API_SECTION)
   const api: ExampleApiSection[] = []
-  // `## API` 整段省略 = 这个组件没有对外契约（纯展示的分隔线就是这一型）。整节删掉是一个能 review 的
+  // `## API` 整段省略 = 这个组件没有对外契约（纯展示的 divider 就是这一型）。整节删掉是一个能 review 的
   // 明确动作，所以它是合法的声明；而「留着标题却没有小节」只会在页面上渲染成一个空标题，等于那段话
   // 没写——小节一旦存在，就必须有内容。
   if (apiBody) {

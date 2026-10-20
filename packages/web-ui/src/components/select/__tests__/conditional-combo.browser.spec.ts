@@ -64,7 +64,7 @@ describe('WebUiSelect 条件组合边界（浏览器）', () => {
     expect(select.open).toBe(false)
   })
 
-  it('Escape 关闭后再次点击 trigger 可重新打开且不误触发选项点击', async () => {
+  it('Escape 关闭后再次点击 trigger 可重新打开且不误触发 option 点击', async () => {
     const select = createSelect(OPTIONS_HTML_THREE, { portal: '' })
     await select.updateComplete
 
@@ -117,12 +117,12 @@ describe('WebUiSelect 条件组合边界（浏览器）', () => {
     select.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, composed: true }))
     await select.updateComplete
 
-    // 已断连的 banana 不得被选中；激活项失效时 Enter 仅关闭面板
+    // 已断连的 banana 不得被选中；激活项失效时 Enter 仅关闭 panel
     expect(select.value).toBe('')
     expect(select.open).toBe(false)
   })
 
-  it('已选 option 被移除后触发器回退 placeholder 且面板内 selected 清空', async () => {
+  it('已选 option 被移除后 trigger 回退 placeholder 且 panel 内 selected 清空', async () => {
     const select = createSelect('<div><web-ui-option value="apple" label="Apple"></web-ui-option></div>', {
       portal: '',
       placeholder: 'Pick'
@@ -146,7 +146,7 @@ describe('WebUiSelect 条件组合边界（浏览器）', () => {
     expect(select.querySelectorAll('web-ui-option[selected]').length).toBe(0)
   })
 
-  it('打开期间向 light DOM 插入新 option 后同步进面板并可选择', async () => {
+  it('打开期间向 light DOM 插入新 option 后同步进 panel 并可选择', async () => {
     const select = createSelect(OPTIONS_HTML_THREE, { portal: '' })
     await select.updateComplete
 
@@ -157,7 +157,7 @@ describe('WebUiSelect 条件组合边界（浏览器）', () => {
     expect(select.open).toBe(true)
     expect(getPortalPanel('listbox')?.querySelectorAll('web-ui-option').length).toBe(3)
 
-    // 模拟框架条件渲染：异步数据到达后插入新选项
+    // 模拟框架条件渲染：异步数据到达后插入新 option
     const wrapper = document.createElement('div')
     wrapper.innerHTML = '<web-ui-option value="durian" label="Durian"></web-ui-option>'
     select.appendChild(wrapper)
@@ -177,7 +177,7 @@ describe('WebUiSelect 条件组合边界（浏览器）', () => {
     expect(select.open).toBe(false)
   })
 
-  it('自定义 overlayContainer 时 Portal 面板挂载到指定容器且可选择', async () => {
+  it('自定义 overlayContainer 时 Portal panel 挂载到指定容器且可选择', async () => {
     const container = document.createElement('div')
     container.id = 'overlay-target-browser'
     document.body.append(container)
@@ -227,7 +227,7 @@ describe('WebUiSelect 条件组合边界（浏览器）', () => {
     await select.updateComplete
     const trigger = select.shadowRoot!.querySelector<HTMLElement>('[role="combobox"]')!
 
-    // 打开与 v-if 同 flush：banana 实时迁入面板（option 内容位于面板的嵌套内容容器）
+    // 打开与 v-if 同 flush：banana 实时迁入 panel（option 内容位于 panel 的嵌套内容容器）
     show.value = true
     trigger.click()
     await nextTick()
@@ -236,8 +236,8 @@ describe('WebUiSelect 条件组合边界（浏览器）', () => {
     expect(select.open).toBe(true)
     expect(getPortalPanel('listbox')?.querySelectorAll('web-ui-option').length).toBe(3)
 
-    // 打开期 v-if 删除中段 option：被删项必须离开面板。内部占位注释的归属不是公开契约，
-    // 由「关闭后重开时面板仍按模板序完整恢复」这一可观察后果覆盖。
+    // 打开期 v-if 删除中段 option：被删项必须离开 panel。内部占位注释的归属不是公开契约，
+    // 由「关闭后重开时 panel 仍按模板序完整恢复」这一可观察后果覆盖。
     show.value = false
     await nextTick()
     await select.updateComplete

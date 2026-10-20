@@ -46,7 +46,7 @@ describe('WebUiDialog 重挂载对账（浏览器）', () => {
     expect(component.isConnected).toBe(true)
     expect(component.open).toBe(true)
     expect(dialog.open).toBe(true)
-    // 修复前：open 属性残留但已脱离 top layer，遮罩/模态全部失效
+    // 修复前：open 属性残留但已脱离 top layer，backdrop/模态全部失效
     expect(dialog.matches(':modal')).toBe(true)
     expect(document.documentElement.style.overflow).toBe('hidden')
 

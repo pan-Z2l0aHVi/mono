@@ -45,7 +45,7 @@ export function unlockScroll() {
 
 /**
  * 构建组件实例持有的滚动锁租约。每个租约仅释放自身获得的那一次锁，
- * 因此卸载、属性切换和嵌套浮层不会互相影响。
+ * 因此卸载、属性切换和嵌套 overlay 不会互相影响。
  */
 export const defineScrollLockLease = () =>
   definePlugin<ScrollLockLease, Record<never, never>>(() => {

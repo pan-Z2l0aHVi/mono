@@ -212,7 +212,7 @@ export async function run(context) {
   }
 
   // commitlint 的 prompt.scopes 是交互式提交的 scope 权威清单，必须与 workspace manifests 的包名一致：
-  // 少一个名字，该 workspace 的改动在 `pnpm commit` 里选不到；多一个已删除的包名，会留下选了也无所指的假选项。
+  // 少一个名字，该 workspace 的改动在 `pnpm commit` 里选不到；多一个已删除的包名，会留下选了也无所指的假 option。
   // 清单在 commitlint.config.js 里是硬编码的，所以只能靠这道检查防漂移。判据是集合相等且无重复，
   // 顺序不参与比较：prompt 里的顺序只是展示顺序，调整它不该让检查变红。
   if (exists('commitlint.config.js')) {
@@ -492,7 +492,7 @@ export async function run(context) {
   //   - docs/adr/** 在覆盖范围内：ADR 是承载现行基础设施指引的活文档，命令名陈旧就是陈旧，照判。
   //   - docs/research/** 按构造不在范围内（markdownFiles 不收它）：那是点时性研究记录，保持历史原貌。
   // 指令面没有其他收窄。
-  // 只收 `[a-zA-Z]` 开头的 token：pnpm 的全局开关（`--filter`/`-F`/`--dir`）和 flag 后的值都不是 script 引用。
+  // 只收 `[a-zA-Z]` 开头的 token：pnpm 的全局 flag（`--filter`/`-F`/`--dir`）和 flag 后的值都不是 script 引用。
   const pnpmRunForm = /\bpnpm run ([a-zA-Z][a-zA-Z0-9:._-]*)/g
   const pnpmBareForm = /\bpnpm ([a-zA-Z][a-zA-Z0-9:._-]*)/g
   for (const file of markdownFiles) {

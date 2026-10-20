@@ -1,7 +1,7 @@
 <route lang="json">
 {
   "meta": {
-    "title": "EditableText 可编辑文本"
+    "title": "EditableText"
   }
 }
 </route>

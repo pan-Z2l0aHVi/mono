@@ -1,7 +1,7 @@
 <route lang="json">
 {
   "meta": {
-    "title": "Badge 徽标"
+    "title": "Badge"
   }
 }
 </route>

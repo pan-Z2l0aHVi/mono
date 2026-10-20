@@ -177,7 +177,7 @@ const pixelDiff = async (
   return { exceeding, tolerated, maxDelta, size: `${first.width}x${first.height}` }
 }
 
-/** 真实焦点移出：把焦点交给组件外的一个按钮，触发编辑层 blur 提交。 */
+/** 真实焦点移出：把焦点交给组件外的一个 button，触发编辑层 blur 提交。 */
 const blurByFocusElsewhere = async (): Promise<HTMLButtonElement> => {
   const outside = document.createElement('button')
   document.body.append(outside)
@@ -338,7 +338,7 @@ describe('WebUiEditableText 布局契约（浏览器）', () => {
   })
 
   it('编辑层高度跟随自身内容，不依赖文本层折出的行盒', async () => {
-    // normal 空白处理会把纯空格值在文本层折叠掉，宿主随之塌成 0 高；
+    // normal 空白处理会把纯空格值在文本层 collapse 掉，宿主随之塌成 0 高；
     // 编辑层按自身内容撑高，空草稿才有承接光标的位置
     const el = mount({ value: '   ', style: '--wui-editable-text-white-space: normal; font:16px/1.5 monospace;' })
     await waitForUpdate(el)
@@ -633,7 +633,7 @@ describe('WebUiEditableText 交互契约（浏览器）', () => {
     // spy 编辑层 blur：证明取消路径上真的发生了一次焦点迁移（真实浏览器里
     // _returnFocusToHost 会把焦点从编辑层移回宿主），changes 为 0 才不是恒真
     const [editorBlurs, detachEditorBlurs] = spyEvents(editorOf(el), 'blur')
-    // 浮层仲裁者在 document 捕获阶段收 Escape：它收不到，才证明按键被编辑层消费
+    // overlay 仲裁者在 document 捕获阶段收 Escape：它收不到，才证明按键被编辑层消费
     const documentCapture: string[] = []
     const onDocumentCapture = (e: Event) => {
       if ((e as KeyboardEvent).key === 'Escape') documentCapture.push('escape')
@@ -1163,12 +1163,12 @@ describe('WebUiEditableText 交互契约（浏览器）', () => {
     cleanupElement(el)
   })
 
-  it('Escape 不穿透外层浮层：shadow 内 dialog 收不到关闭请求', async () => {
+  it('Escape 不穿透外层 overlay：shadow 内 dialog 收不到关闭请求', async () => {
     /*
      * issue #159 的实测形态：web-ui-drawer 把 <dialog> 放进自己 shadow 并监听原生
      * cancel，消费者的 editable-text 经 slot 投映其中。Escape 被编辑层消费要求两件事
      * 同时成立：keydown 被 preventDefault（UA 不派发原生 cancel），自定义 cancel 不
-     * 冒泡（进不了 dialog 的 cancel 监听）。任一条失守都会把外层浮层一起关掉。
+     * 冒泡（进不了 dialog 的 cancel 监听）。任一条失守都会把外层 overlay 一起关掉。
      */
     if (!customElements.get('x-dialog-cancel-probe')) {
       customElements.define(

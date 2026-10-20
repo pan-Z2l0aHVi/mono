@@ -41,9 +41,9 @@ function buttonByLabel(host: HTMLElement, label: string) {
 }
 
 /*
- * 关闭**行为**由后面两条覆盖——受控的 Escape/遮罩路径，以及 shadow 内按钮点击派发的
+ * 关闭**行为**由后面两条覆盖——受控的 Escape/backdrop 路径，以及 shadow 内 button 点击派发的
  * `open-change`（组件把两条用户关闭入口收在 `_closeFromUser` 一处，controlled 下都只派发
- * 关闭请求，宿主因此仍拿到同一条 `update:open(false)`）。按钮本身点不点得动归 web-ui 自己测。
+ * 关闭请求，宿主因此仍拿到同一条 `update:open(false)`）。button 本身点不点得动归 web-ui 自己测。
  */
 function segmentedByLabel(host: HTMLElement, label: string) {
   const element = host.querySelector<WebUiSegmented>(`web-ui-segmented[aria-label="${label}"]`)
@@ -84,7 +84,7 @@ describe('SettingsDialog', () => {
     localStorage.clear()
   })
 
-  it('标题栏关闭交给组件的 closable，宿主不另画一套关闭入口', async () => {
+  it('header 关闭交给组件的 closable，宿主不另画一套关闭入口', async () => {
     const mounted = mountDialog(() => {})
 
     try {
@@ -92,7 +92,7 @@ describe('SettingsDialog', () => {
 
       expect(mounted.host.querySelector('[slot="header"]')?.textContent).toContain('设置')
       expect(dialogElement(mounted.host).closable).toBe(true)
-      // 宿主不再自绘标题栏关闭按钮，也没有 footer「关闭」——标题行那一枚由 web-ui-dialog
+      // 宿主不再自绘 header 关闭 button，也没有 footer「关闭」——标题行那一枚由 web-ui-dialog
       // 自己渲染（在其 shadow 内），宿主拿不到那个节点。
       expect(() => buttonByLabel(mounted.host, '关闭设置')).toThrow('button 关闭设置 was not rendered')
       expect(mounted.host.querySelector('[slot="footer"]')).toBeNull()
@@ -103,7 +103,7 @@ describe('SettingsDialog', () => {
 
   /*
    * 结构守卫：「设置分区」必须挂在 dialog 的固定 chrome（title slot）里，内容区不套
-   * 应用自己的滚动宿主。按住时胶囊会横向越出轨道 9px，任何 overflow 非 visible 的祖先
+   * 应用自己的滚动宿主。按住时胶囊会横向越出 track 9px，任何 overflow 非 visible 的祖先
    * 都会在 padding box 上把它切平——把 tab 行放回滚动区就是把这个缺陷请回来。
    */
   it('设置分区挂在标题 chrome，内容区不再套滚动宿主', async () => {
@@ -118,10 +118,10 @@ describe('SettingsDialog', () => {
       expect(titleChrome, 'title slot 应渲染标题 chrome').toBeTruthy()
       expect(titleChrome?.contains(segmented), '设置分区应落在 title chrome 内').toBe(true)
 
-      // 内容区（默认 slot）里只剩面板：不再有 OverlayScrollbars / overflow-y-auto 宿主。
+      // 内容区（默认 slot）里只剩 panel：不再有 OverlayScrollbars / overflow-y-auto 宿主。
       const panel = dialog.querySelector(':scope > div:not([slot])')
-      expect(panel, '面板应是 dialog 的直系子节点').toBeTruthy()
-      expect(panel?.contains(segmented), '面板不应再包住 tab 行').toBe(false)
+      expect(panel, 'panel 应是 dialog 的直系子节点').toBeTruthy()
+      expect(panel?.contains(segmented), 'panel 不应再包住 tab 行').toBe(false)
       expect(dialog.querySelector('.overflow-y-auto'), '内容区不应再有应用自套的滚动宿主').toBeNull()
       expect(dialog.querySelector('[data-overlayscrollbars-viewport]'), '内容区不应再有 OS 视口').toBeNull()
     } finally {
@@ -129,7 +129,7 @@ describe('SettingsDialog', () => {
     }
   })
 
-  it('默认落在通用分区，MCP 开关是 disabled 的占位', async () => {
+  it('默认落在通用分区，MCP switch 是 disabled 的占位', async () => {
     const mounted = mountDialog(() => {})
 
     try {
@@ -143,7 +143,7 @@ describe('SettingsDialog', () => {
       expect(toggle).toBeTruthy()
       expect(toggle?.disabled).toBe(true)
       expect(mounted.host.textContent).toContain('即将推出')
-      // disabled 的开关不该带着 checked 一起出现，那会读成「已开启但不可用」。
+      // disabled 的 switch 不该带着 checked 一起出现，那会读成「已开启但不可用」。
       expect(toggle?.checked).toBe(false)
     } finally {
       mounted.close()
@@ -160,7 +160,7 @@ describe('SettingsDialog', () => {
 
       expect(mounted.host.querySelector('web-ui-segmented[aria-label="主题模式"]')).toBeTruthy()
       // 色板值列表是纯 CSS 事实（具体 hex 属于 test-authoring 不鼓励的断言），由浏览器取证；
-      // 这里只守「六格色板都在」，值的正确性由「点按钮 → store 写入」的用例背书。
+      // 这里只守「六格色板都在」，值的正确性由「点 button → store 写入」的用例背书。
       expect(mounted.host.querySelectorAll('web-ui-radio')).toHaveLength(6)
     } finally {
       mounted.close()
@@ -168,7 +168,7 @@ describe('SettingsDialog', () => {
   })
 
   /*
-   * 回归：accent 的可点区域必须是原生按钮，不能是 web-ui-radio 的 host。
+   * 回归：accent 的可点区域必须是原生 button，不能是 web-ui-radio 的 host。
    *
    * web-ui-radio 的可点区域在 shadow 里那个 <label> 上，而 :host 自身没有尺寸规则——它是个
    * 0×0 的盒子。色板这格又是 flex-wrap 的 <span> 布局，host 中心那一片点下去落在组件之外，
@@ -176,11 +176,11 @@ describe('SettingsDialog', () => {
    * shadow 里的 label 才会切。jsdom 里点 host 无效、点 label 有效，组件自身的测试覆盖不到
    * 「从 light DOM 投影 slot 后 host 中心是否可点」这一层，所以这条断言必须在。
    *
-   * 钉的是「六个色板各自有一个带可访问名与 role 的原生按钮」——也就是用户与辅助技术
+   * 钉的是「六个色板各自有一个带可访问名与 role 的原生 button」——也就是用户与辅助技术
    * 实际命中的目标；radio 本身是不是 pointer-events-none 属于内部实现，另有下面两条
-   * 直接断言「点按钮 → store 写入」的用例守着因果链。
+   * 直接断言「点 button → store 写入」的用例守着因果链。
    */
-  it('accent 色板的可点区域是原生按钮，不是 web-ui-radio 的 host', async () => {
+  it('accent 色板的可点区域是原生 button，不是 web-ui-radio 的 host', async () => {
     const mounted = mountDialog(() => {})
 
     try {
@@ -230,7 +230,7 @@ describe('SettingsDialog', () => {
     }
   })
 
-  it('点 accent 色板按钮经合成 click 写入 store，认不出的值不落库', async () => {
+  it('点 accent 色板 button 经合成 click 写入 store，认不出的值不落库', async () => {
     const mounted = mountDialog(() => {})
     const settings = useSettingsStore()
 
@@ -241,13 +241,13 @@ describe('SettingsDialog', () => {
       expect(settings.accent).toBe('#0a84ff')
 
       const green = mounted.host.querySelector<HTMLButtonElement>('button[aria-label="强调色 绿"]')
-      if (!green) throw new Error('accent 绿按钮未渲染')
+      if (!green) throw new Error('accent 绿 button 未渲染')
       green.click()
       await nextTick()
 
       expect(settings.accent).toBe('#1d8348')
       expect(local.get('theme-accent')).toBe('#1d8348')
-      // 选中态只有一个真相：accent 同时驱动按钮的 aria-checked 与 web-ui-radio 的 checked。
+      // 选中态只有一个真相：accent 同时驱动 button 的 aria-checked 与 web-ui-radio 的 checked。
       const radios = [...mounted.host.querySelectorAll<WebUiRadio>('web-ui-radio')]
       expect(radios.map(radio => radio.checked)).toEqual([false, true, false, false, false, false])
       const buttons = [...mounted.host.querySelectorAll<HTMLButtonElement>('button[role="radio"]')]
@@ -275,9 +275,9 @@ describe('SettingsDialog', () => {
    *
    * 钉住「点击 → store 写入」这条因果链，而不是组件内部怎么派事件：把转发实现换掉时，
    * 下面这个 spy 仍会绿，但它测不到 store 到底有没有被写，所以另有一条
-   * 「点 accent 色板按钮经合成 click 写入 store」同时断言 store 的实际值。
+   * 「点 accent 色板 button 经合成 click 写入 store」同时断言 store 的实际值。
    */
-  it('点色板按钮直接写 store，不转发进 web-ui-radio', async () => {
+  it('点色板 button 直接写 store，不转发进 web-ui-radio', async () => {
     const setAccent = vi.spyOn(useSettingsStore(), 'setAccent')
     const mounted = mountDialog(() => {})
 
@@ -287,7 +287,7 @@ describe('SettingsDialog', () => {
       await nextTick()
 
       const green = mounted.host.querySelector<HTMLButtonElement>('button[aria-label="强调色 绿"]')
-      if (!green) throw new Error('accent 绿按钮未渲染')
+      if (!green) throw new Error('accent 绿 button 未渲染')
       green.click()
       await nextTick()
 
@@ -300,7 +300,7 @@ describe('SettingsDialog', () => {
     }
   })
 
-  it('controlled 下 Escape 与遮罩点击的关闭请求透传成 update:open，不自行改 open', async () => {
+  it('controlled 下 Escape 与 backdrop 点击的关闭请求透传成 update:open，不自行改 open', async () => {
     const onUpdateOpen = vi.fn<(value: boolean) => void>()
     const mounted = mountDialog(onUpdateOpen)
 

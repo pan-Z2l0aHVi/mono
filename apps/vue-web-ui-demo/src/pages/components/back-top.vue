@@ -1,7 +1,7 @@
 <route lang="json">
 {
   "meta": {
-    "title": "BackTop 回到顶部"
+    "title": "BackTop"
   }
 }
 </route>

@@ -54,8 +54,8 @@ function handleInput(event: WebUiEvent<WebUiAutocomplete, 'input'>) {
   inputValue.value = event.target.value
 }
 
-// 面板打开时 Enter 归 autocomplete：只把高亮候选回写输入框。真正的提交发生在面板关闭后
-// 的 Enter 或确认按钮上，所以这里必须早于 autocomplete 内部的 keydown 读到 open。
+// panel 打开时 Enter 归 autocomplete：只把高亮候选回写 input。真正的提交发生在 panel 关闭后
+// 的 Enter 或确认 button 上，所以这里必须早于 autocomplete 内部的 keydown 读到 open。
 function handleKeydown(event: KeyboardEvent) {
   if (event.key !== 'Enter' || event.isComposing) return
   if (autocompleteField.value?.open) return
@@ -116,10 +116,10 @@ function removeTag(tag: string) {
           @keydown="handleKeydown"
         >
           <web-ui-input slot="trigger" class="w-full min-w-0" placeholder="请输入标签" aria-label="添加标签">
-            <!-- stop：委托层在 trigger 包装 div 上监听 click 打开面板，确认添加不该顺带开面板 -->
+            <!-- stop：委托层在 trigger 包装 div 上监听 click 打开 panel，确认添加不该顺带开 panel -->
             <!--
               28px + mr-[-8px] 是算出来的等距，不是随手取值：input 的 .wui-input-inner 高
-              36px、padding 0 12px。按钮 20px 时上下各留 8px、右侧 12px，本来就不等距。
+              36px、padding 0 12px。button 20px 时上下各留 8px、右侧 12px，本来就不等距。
               放大到 28px 后上下收成 (36-28)/2 = 4px，再用 -8px 把右边距从 12px 拉到
               4px，于是上、下、右三边间隙一致。改 input 的高度或 padding 会打破这个等式。
               宽度走 --wui-button-width 而不是 size：size 同时管 height 与 min-width，
@@ -164,7 +164,7 @@ function removeTag(tag: string) {
               :aria-label="`移除标签 ${tag}`"
               @click="removeTag(tag)"
             >
-              <!-- 实心 X：与面板里的实心 check 同一路子，16px 描边图标在这个 22px chip 里太轻。 -->
+              <!-- 实心 X：与 panel 里的实心 check 同一路子，16px 描边 icon 在这个 22px chip 里太轻。 -->
               <web-ui-icon :icon="heroiconsXMark16Solid" :size="10" />
             </web-ui-button>
           </span>

@@ -20,7 +20,7 @@ import type { LibraryRuntime, SourceAvailabilityEventDTO } from '../../services/
 import { useLibraryStore } from '../../stores/library'
 import LibraryPage from '../library/index.vue'
 
-// 右键菜单由 web-ui 自己接管渲染，单测只需要它有这两个接口
+// context menu 由 web-ui 自己接管渲染，单测只需要它有这两个接口
 if (!customElements.get('web-ui-context-menu')) {
   customElements.define(
     'web-ui-context-menu',
@@ -173,7 +173,7 @@ function button(host: HTMLElement, label: string) {
   return element
 }
 
-/** 按确认按钮文案定位确认弹窗：页面上同时存在添加、找回等 dialog，靠按钮文案择出唯一的那个。 */
+/** 按确认 button 文案定位确认弹窗：页面上同时存在添加、找回等 dialog，靠 button 文案择出唯一的那个。 */
 function confirmDialog(host: HTMLElement, confirmLabel: string) {
   const dialog = [...host.querySelectorAll<WebUiDialog>('web-ui-dialog')].find(candidate =>
     [...candidate.querySelectorAll('web-ui-button')].some(item => item.textContent?.trim() === confirmLabel)
@@ -202,7 +202,7 @@ function paste(text: string) {
 
 async function openAddDialog(host: HTMLElement) {
   const trigger = host.querySelector<HTMLElement>('web-ui-button[aria-label="添加资源"]')
-  if (!trigger) throw new Error('添加资源按钮未渲染')
+  if (!trigger) throw new Error('添加资源 button 未渲染')
   trigger.click()
   await nextTick()
 }
@@ -211,17 +211,17 @@ function queueItems(host: HTMLElement) {
   return [...host.querySelectorAll('web-ui-dialog ol > li')]
 }
 
-/** 抽屉的 open 是 reflect 属性，jsdom 里按属性读；没升级成自定义元素时退回读 attribute。 */
+/** drawer 的 open 是 reflect 属性，jsdom 里按属性读；没升级成自定义元素时退回读 attribute。 */
 function drawerOpen(host: HTMLElement, label: string) {
   const drawer = host.querySelector(`web-ui-drawer[dialog-label="${label}"]`) as
     | (HTMLElement & { open?: boolean })
     | null
-  if (!drawer) throw new Error(`没有找到「${label}」抽屉`)
+  if (!drawer) throw new Error(`没有找到「${label}」drawer`)
   return drawer.open ?? drawer.hasAttribute('open')
 }
 
 /*
- * 详情只从右键菜单进（列表左键是预览）。先右键唤起菜单，再点「详情」那一项。
+ * 详情只从 context menu 进（列表左键是预览）。先右键唤起 menu，再点「详情」那一项。
  */
 async function openDetailFromMenu(host: HTMLElement) {
   row(host, 'resource-1').dispatchEvent(
@@ -229,7 +229,7 @@ async function openDetailFromMenu(host: HTMLElement) {
   )
   await nextTick()
   const item = [...host.querySelectorAll('web-ui-dropdown-item')].find(node => node.textContent?.trim() === '详情')
-  if (!item) throw new Error('右键菜单里没有「详情」项')
+  if (!item) throw new Error('context menu 里没有「详情」项')
   item.dispatchEvent(new MouseEvent('click', { bubbles: true }))
   await nextTick()
   await nextTick()
@@ -258,9 +258,9 @@ describe('LibraryPage：可用性感知接线', () => {
   /*
    * 探测的分支判定（只对失效的 URL source 探测、file 不探测等）归 useLibraryRuntime.spec
    * ——composable 层已逐分支覆盖，页面层不再重复。这里只守页面接线：
-   * 左键走预览抽屉、不踩详情那一路的探测。
+   * 左键走预览 drawer、不踩详情那一路的探测。
    */
-  it('左键行进的是预览抽屉，不开详情也不探测', async () => {
+  it('左键行进的是预览 drawer，不开详情也不探测', async () => {
     const probeURLSourceOnOpen = vi.fn<LibraryRuntime['probeURLSourceOnOpen']>()
     runtimeStub.current = createRuntime({ probeURLSourceOnOpen })
     const mounted = await mountPage()
@@ -333,7 +333,7 @@ describe('LibraryPage：可用性感知接线', () => {
  * #189：确认弹窗取消时的退场跳变。
  *
  * 根因是 open 与内容生命周期被绑在同一个 tick：closeConfirmDialog 把 confirmRequest 置空，
- * 标题/说明/按钮文案同时塌成空串，弹窗高度单帧塌掉 61.6px；紧凑变体的宽度还从标题字符串
+ * 标题/说明/button 文案同时塌成空串，弹窗高度单帧塌掉 61.6px；紧凑变体的宽度还从标题字符串
  * 派生，一并从 320px 跳回 360px。dialog 的退场动画有 260ms，期间弹窗一直可见，所以这段
  * 期间的内容与宽度必须原样保留。
  */
@@ -382,7 +382,7 @@ describe('LibraryPage：确认弹窗退场', () => {
       runtimeStub.droppedFilesListener?.(['/tmp/photo.png'])
       await flush()
       const remove = mounted.host.querySelector<HTMLElement>('web-ui-button[aria-label="移除待添加资源"]')
-      if (!remove) throw new Error('移除待添加资源按钮未渲染')
+      if (!remove) throw new Error('移除待添加资源 button 未渲染')
       remove.click()
       await nextTick()
 
@@ -595,7 +595,7 @@ describe('LibraryPage：备注失败回写', () => {
       await openDetailFromMenu(mounted.host)
 
       const editor = mounted.host.querySelector('web-ui-textarea') as HTMLElement & { value: string }
-      if (!editor) throw new Error('备注输入框未渲染')
+      if (!editor) throw new Error('备注 input 未渲染')
 
       // 连续两次失焦提交：A 与 B 捕获的是同一个「编辑前」快照。
       editor.value = 'abc'

@@ -3,13 +3,13 @@ component: popover
 tag: web-ui-popover
 ---
 
-锚定触发元素的弹出层，支持 click / hover / manual 三种触发方式，`trigger` 插槽放触发器、默认插槽放面板内容。
+锚定触发元素的弹出层，支持 click / hover / manual 三种触发方式，`trigger` 插槽放 trigger、默认插槽放 panel 内容。
 
 ## 示例
 
 ### 基础
 
-click 模式点击触发器切换；触发器请放入可交互元素，ARIA 状态会回写到它。
+click 模式点击 trigger 切换；trigger 请放入可交互元素，ARIA 状态会回写到它。
 
 ```react
 <web-ui-popover>
@@ -99,10 +99,10 @@ const open = ref(false)
 
 ### Slots
 
-| 名称      | 说明                       |
-| --------- | -------------------------- |
-| `trigger` | 触发器，请放入可交互元素。 |
-| `default` | 弹出层内容。               |
+| 名称      | 说明                        |
+| --------- | --------------------------- |
+| `trigger` | trigger，请放入可交互元素。 |
+| `default` | 弹出层内容。                |
 
 ### Methods
 
@@ -118,4 +118,4 @@ Hover 模式使用 `pointerenter`/`pointerleave` 加延迟控制。Click 模式�
 
 ### trigger ARIA
 
-开合状态回写到 trigger 元素：`aria-expanded` 与 `aria-controls`（指向面板）设在 `trigger` slot 的首个 assigned element 上（包装结构上的同名属性保留兼容）。trigger slot 请放入可交互元素（原生 button、`web-ui-button`）。
+开合状态回写到 trigger 元素：`aria-expanded` 与 `aria-controls`（指向 panel）设在 `trigger` slot 的首个 assigned element 上（包装结构上的同名属性保留兼容）。trigger slot 请放入可交互元素（原生 button、`web-ui-button`）。

@@ -11,9 +11,9 @@ import type { DrawerPlacement, WebUiDrawer } from '..'
 /*
  * 上下 placement 的 header / footer **整块**是拖拽起手区（A6 的反向修法）。
  *
- * 缺陷形态：A6 把热区让开 header（`top: var(--wui-internal-drawer-header-inset)`）修对了
- * 「热区压住 header 按钮」，代价是整条 header 不再可拖。实测 390×844 / placement=bottom /
- * 56px header：端头热边 [0,12]、热区 [60,92]，**中间 48px 完全不可拖**，用户反馈
+ * 缺陷形态：A6 把 drag zone 让开 header（`top: var(--wui-internal-drawer-header-inset)`）修对了
+ * 「drag zone 压住 header button」，代价是整条 header 不再可拖。实测 390×844 / placement=bottom /
+ * 56px header：端头 drag edge [0,12]、drag zone [60,92]，**中间 48px 完全不可拖**，用户反馈
  * 「header 面积太小，很难拖动到」。
  *
  * 修法形状：header / footer 自己接手势，靠**逐个控件**在事件层让开（不靠几何切割）。
@@ -23,7 +23,7 @@ import type { DrawerPlacement, WebUiDrawer } from '..'
  * - **命中层判据**（几何）：从指针落点反查顶层元素，落在 header 盒内的点必须解析到
  *   一个可拖表面。只断言「元素存在」会漏掉压在上面挡着的透明层——那正是 A6 的病根。
  * - **行为判据**（真实输入）：用 CDP 派真实鼠标事件。合成 PointerEvent 不走命中测试，
- *   在一个「控件被热区盖住」的缺陷下照样绿，是上一轮翻车的写法之一。
+ *   在一个「控件被 drag zone 盖住」的缺陷下照样绿，是上一轮翻车的写法之一。
  *
  * 命中测试一律走 `shadowRoot.elementFromPoint`：`document.elementFromPoint` 穿透
  * shadow root 只返回宿主，会把真实重叠测成 0%。
@@ -129,8 +129,8 @@ async function mountDrawer(options: {
  * 旧写法只等比 dialog 矩形两次相等，两个方向都不够：
  * - 进场过渡的进度只在渲染步进里推进，`getBoundingClientRect()` 的强制重算不推它，
  *   于是「相等」也可以意味着过渡还没起跑：量到的是过渡前那一帧的矩形。
- * - 让位量由 ResizeObserver 写回宿主样式，移动的是热区/热边而不是 dialog 矩形，
- *   等 dialog 矩形稳定推不出热区已到位。
+ * - 让位量由 ResizeObserver 写回宿主样式，移动的是 drag zone/drag edge 而不是 dialog 矩形，
+ *   等 dialog 矩形稳定推不出 drag zone 已到位。
  * 共享 helper 把这两件事都变成因果条件（过渡跑完 + RO 抽干），收尾再验矩形真的定版。
  * 这也取代了原先手写的 `settleFrames(3)`：那条是按帧数等，本质是赌让位量在几帧内
  * 落定；抽干 ResizeObserver 等的是尺寸回调真的派发过。
@@ -138,7 +138,7 @@ async function mountDrawer(options: {
 async function settleGeometry(el: WebUiDrawer) {
   const targets = [getDialog(el), query(el, '.wui-drawer-drag-zone'), query(el, '.wui-drawer-body')]
   // 期待驱动：命中测试的前提是「这些盒子已经落在视口内」。少了这条，
-  // `elementFromPoint` 返回 null 与「热区没盖住 header」在读数上完全一样。
+  // `elementFromPoint` 返回 null 与「drag zone 没盖住 header」在读数上完全一样。
   await waitForSettledLayout(targets, { expect: expectInsideViewport(targets) })
 }
 
@@ -197,8 +197,8 @@ async function realClickAt(x: number, y: number): Promise<void> {
  * 从某点起手做一次**真实拖拽**，拖一小段再原路返回后松手，返回过程中的可观测结果。
  *
  * 原路返回是必要的：CDP 派发的相邻 move 之间几乎无耗时，松手瞬间的净速度会远超
- * `DRAG_FLICK_VELOCITY`（500px/s），几 px 位移就够判成甩动而把抽屉关掉。回到起点让
- * 净位移归零，既能观测到「手势真的活着」，又不会把抽屉误关。
+ * `DRAG_FLICK_VELOCITY`（500px/s），几 px 位移就够判成甩动而把 drawer 关掉。回到起点让
+ * 净位移归零，既能观测到「手势真的活着」，又不会把 drawer 误关。
  *
  * 位移读**按压后第 steps 步**而不是松手时：手势层在首个 pointermove 把零点重置
  * （`calibrateOnFirstMove`），只发一步 move 时净位移恒为 0——那种写法在拖拽确实挂上了
@@ -221,7 +221,7 @@ async function probeDrag(
   return { dragging, displacement }
 }
 
-/** 落点是否被已知的拖拽命中面（热区 / 端头热边）盖住——这两条本身就是拖拽面，不算遮挡。 */
+/** 落点是否被已知的拖拽命中面（drag zone / 端头 drag edge）盖住——这两条本身就是拖拽面，不算遮挡。 */
 function coveredByDragSurface(el: WebUiDrawer, point: { x: number; y: number }): boolean {
   const hit = hitAt(el, point.x, point.y)
   return hit?.matches('.wui-drawer-drag-edge, .wui-drawer-drag-zone') ?? false
@@ -230,8 +230,8 @@ function coveredByDragSurface(el: WebUiDrawer, point: { x: number; y: number }):
 /**
  * 在矩形内找一个真正的空点：不在排除区（控件）里，也不在拖拽面底下。
  *
- * 不能用固定比例取点：header 是 `space-between` 布局，窄面板下控件会一路排到左边，
- * `width * 0.2` 这种「看起来是空白」的位置实测正好落在改名输入框上——那条断言于是
+ * 不能用固定比例取点：header 是 `space-between` 布局，窄 panel 下控件会一路排到左边，
+ * `width * 0.2` 这种「看起来是空白」的位置实测正好落在改名 input 上——那条断言于是
  * 在测「控件让开」，与「空白处可拖」无关。
  */
 function findEmptyPoint(el: WebUiDrawer, rect: DOMRect, excluded: DOMRect[]): { x: number; y: number } {
@@ -257,12 +257,12 @@ describe('WebUiDrawer header / footer 整块可拖（浏览器）', () => {
     const { el } = await mountDrawer({ placement: 'bottom', header: true })
     const close = query(el, '.wui-drawer-close')
     const rect = close.getBoundingClientRect()
-    expect(rect.width, '内置关闭按钮没有布局盒').toBeGreaterThan(0)
+    expect(rect.width, '内置关闭 button 没有布局盒').toBeGreaterThan(0)
 
     // 必然命中的点：读不懂 shadow 内部时这条会红（退化成返回 host），
-    // 后面所有「落点不是热区」类断言都会跟着失去证伪能力。
+    // 后面所有「落点不是 drag zone」类断言都会跟着失去证伪能力。
     const hit = hitAt(el, rect.left + rect.width / 2, rect.top + rect.height / 2)
-    expect(hit, '命中测试没有解析到关闭按钮').not.toBeNull()
+    expect(hit, '命中测试没有解析到关闭 button').not.toBeNull()
     expect(close.contains(hit) || hit === close, `命中的是 ${hit?.tagName ?? 'null'}`).toBe(true)
   })
 
@@ -276,9 +276,9 @@ describe('WebUiDrawer header / footer 整块可拖（浏览器）', () => {
     for (const point of points) {
       const { dragging, displacement } = await probeDrag(el, point.x, point.y, 12)
       expect(dragging, `(${point.x.toFixed(1)},${point.y.toFixed(1)}) 按下未进入拖拽`).toBe(true)
-      expect(Math.abs(displacement), '拖动期间面板没有位移，手势没有真正挂上').toBeGreaterThan(1)
+      expect(Math.abs(displacement), '拖动期间 panel 没有位移，手势没有真正挂上').toBeGreaterThan(1)
     }
-    expect(el.open, '拖拽把抽屉关掉了（净位移应归零）').toBe(true)
+    expect(el.open, '拖拽把 drawer 关掉了（净位移应归零）').toBe(true)
   })
 
   it('R2 top + footer：footer 空白处的真实按下同样进入拖拽', async () => {
@@ -295,16 +295,16 @@ describe('WebUiDrawer header / footer 整块可拖（浏览器）', () => {
   })
 
   /*
-   * 让位量的另一端：没有 header/footer 时，热区必须回到面板端头（让位量为 0）。
+   * 让位量的另一端：没有 header/footer 时，drag zone 必须回到 panel 端头（让位量为 0）。
    *
    * 上面 R1/R2/R3 都在「有那一节」的前提下成立，这一格是它们的补集：让位量是
-   * 「该节高度 + 间距」，那一节不存在时必须整体归零，否则热区会平白往面板里缩一截，
+   * 「该节高度 + 间距」，那一节不存在时必须整体归零，否则 drag zone 会平白往 panel 里缩一截，
    * 端头上那条最好按的带子凭空变窄。
    *
-   * 判据是**关系**（热区端边与面板同边的差 ≤ 容差），不是「让位量等于某个像素值」，
+   * 判据是**关系**（drag zone 端边与 panel 同边的差 ≤ 容差），不是「让位量等于某个像素值」，
    * 也不是读 `--wui-internal-drawer-*-inset` 的计算值。
    */
-  it('R2 没有 header/footer 时热区回到面板端头（让位量为 0）', async () => {
+  it('R2 没有 header/footer 时 drag zone 回到 panel 端头（让位量为 0）', async () => {
     for (const placement of ['bottom', 'top'] as const) {
       const { el } = await mountDrawer({ placement })
       const dialog = getDialog(el).getBoundingClientRect()
@@ -316,7 +316,7 @@ describe('WebUiDrawer header / footer 整块可拖（浏览器）', () => {
     }
   })
 
-  it('R3 header 里的可点控件仍可点（输入框 / 行内按钮 / 勾选框）', async () => {
+  it('R3 header 里的可点控件仍可点（input / 行内 button / 勾选框）', async () => {
     const { el, log } = await mountDrawer({ placement: 'bottom', header: true })
 
     for (const sel of ['#rename', '#act', '#pick']) {
@@ -330,8 +330,8 @@ describe('WebUiDrawer header / footer 整块可拖（浏览器）', () => {
       await realClickAt(rect.left + rect.width / 2, rect.top + rect.height / 2)
     }
 
-    expect(log.rename, '输入框没收到真实点击').toBe(1)
-    expect(log.act, '行内按钮没收到真实点击').toBe(1)
+    expect(log.rename, 'input 没收到真实点击').toBe(1)
+    expect(log.act, '行内 button 没收到真实点击').toBe(1)
     expect(log.pick, '勾选框没收到真实点击').toBe(1)
     expect(el.querySelector('#pick')!.getAttribute('aria-checked')).toBe('true')
     expect(getDialog(el).classList.contains('is-dragging'), '点击控件时误入了拖拽').toBe(false)
@@ -344,19 +344,19 @@ describe('WebUiDrawer header / footer 整块可拖（浏览器）', () => {
       const rect = el.querySelector(sel)!.getBoundingClientRect()
       const { dragging, displacement } = await probeDrag(el, rect.left + rect.width / 2, rect.top + rect.height / 2, 12)
       expect(dragging, `在 ${sel} 上起手进入了拖拽`).toBe(false)
-      expect(Math.abs(displacement), `从 ${sel} 起手把抽屉拖动了 ${displacement}`).toBeLessThanOrEqual(EPS)
+      expect(Math.abs(displacement), `从 ${sel} 起手把 drawer 拖动了 ${displacement}`).toBeLessThanOrEqual(EPS)
     }
     // 原路返回的按压-抬起会派发原生 click（控件让开时这是浏览器的正常行为，
     // 与「控件被拖走」无关），所以这里不拿 click 计数当判据。
     expect(el.open).toBe(true)
   })
 
-  it('R3 内置关闭按钮仍可点并关闭抽屉', async () => {
+  it('R3 内置关闭 button 仍可点并关闭 drawer', async () => {
     const { el, log } = await mountDrawer({ placement: 'bottom', header: true })
     const close = query(el, '.wui-drawer-close')
     const rect = close.getBoundingClientRect()
     const hit = hitAt(el, rect.left + rect.width / 2, rect.top + rect.height / 2)
-    expect(close.contains(hit) || hit === close, `内置关闭按钮顶层落点是 ${hit?.tagName ?? 'null'}，被盖住了`).toBe(
+    expect(close.contains(hit) || hit === close, `内置关闭 button 顶层落点是 ${hit?.tagName ?? 'null'}，被盖住了`).toBe(
       true
     )
 
@@ -370,7 +370,7 @@ describe('WebUiDrawer header / footer 整块可拖（浏览器）', () => {
       const { el } = await mountDrawer({ placement, header: true, footer: true })
 
       // 左右 placement 的拖拽轴是 x，header 不该起手。判据是「按下没进入拖拽」，
-      // 不是热区的宽高 —— 后者是精确几何（政策第 6 条）。
+      // 不是 drag zone 的宽高 —— 后者是精确几何（政策第 6 条）。
       const rect = query(el, '.wui-drawer-header').getBoundingClientRect()
       const point = { x: rect.left + rect.width * 0.2, y: rect.top + rect.height / 2 }
       await realPressAt(point.x, point.y)
@@ -384,7 +384,7 @@ describe('WebUiDrawer header / footer 整块可拖（浏览器）', () => {
   /*
    * 嵌套下层时 header 的手势闸同步退场。
    *
-   * 判据只取事件层：下层抽屉被上层盖住后那里的 header 拖不动，起手必须被拒绝。
+   * 判据只取事件层：下层 drawer 被上层盖住后那里的 header 拖不动，起手必须被拒绝。
    * `cursor` / `touch-action` 的计算值是观感与实现细节，不作断言 —— 但闸门本身
    * 关不关得住，事件层是唯一可判定的那一面（且它才是真正吃手势的地方）。
    */
@@ -437,7 +437,7 @@ describe('WebUiDrawer header / footer 整块可拖（浏览器）', () => {
     await pollUntil(() => getDialog(parent).classList.contains('is-nested-lower'), 'lower layer not marked')
     await new Promise(resolve => setTimeout(resolve, 250))
 
-    // 下层起手不进拖拽：那里拖不动，吞下手势只会让用户以为面板失灵。
+    // 下层起手不进拖拽：那里拖不动，吞下手势只会让用户以为 panel 失灵。
     const lowerHeader = query(parent, '.wui-drawer-header')
     const rect = lowerHeader.getBoundingClientRect()
     lowerHeader.dispatchEvent(
@@ -451,15 +451,15 @@ describe('WebUiDrawer header / footer 整块可拖（浏览器）', () => {
       })
     )
     await parent.updateComplete
-    expect(getDialog(parent).classList.contains('is-dragging'), '下层抽屉的 header 起手仍进入了拖拽').toBe(false)
+    expect(getDialog(parent).classList.contains('is-dragging'), '下层 drawer 的 header 起手仍进入了拖拽').toBe(false)
   })
 
-  it('断开期间清空 footer，重连后热区让位量归零', async () => {
+  it('断开期间清空 footer，重连后 drag zone 让位量归零', async () => {
     // footer 是 `top` placement 的对位：`bottom` 贴顶边让开 header，`top` 贴底边让开 footer。
     const { el } = await mountDrawer({ placement: 'top', footer: true })
     const dialog = getDialog(el)
-    // 让位量相对**面板**量，与本文件既有用例同一口径：bottom placement 是下沿锚定的，
-    // 面板自身长度会变，拿视口绝对坐标会把「让位归零」与「面板动了」混成同一现象。
+    // 让位量相对**panel**量，与本文件既有用例同一口径：bottom placement 是下沿锚定的，
+    // panel 自身长度会变，拿视口绝对坐标会把「让位归零」与「panel 动了」混成同一现象。
     const avoid = () =>
       dialog.getBoundingClientRect().bottom - query(el, '.wui-drawer-drag-zone').getBoundingClientRect().bottom
     // 前置判据同样钉关系：让位量至少要大于 footer 自身的高度（多的那截是间距）。
@@ -477,7 +477,7 @@ describe('WebUiDrawer header / footer 整块可拖（浏览器）', () => {
 
     /*
      * 判据是**关系**：重连后的让位量与「从来没有 footer」是同一几何（同本文件 R2
-     * 「没有 header/footer 时热区回到面板端头」的终点），而不是钉某个像素值。让位量取自
+     * 「没有 header/footer 时 drag zone 回到 panel 端头」的终点），而不是钉某个像素值。让位量取自
      * offsetHeight，浏览器实测 32px 的空节也会让位——正是本缺陷用户可感知的那条死带。
      */
     expect(Math.abs(avoid()), `重连后让位=${avoid()}`).toBeLessThanOrEqual(EPS)

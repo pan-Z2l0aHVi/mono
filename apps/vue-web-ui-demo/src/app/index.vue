@@ -57,8 +57,8 @@ const desktopSidebarWidth = ref(getInitialSidebarWidth())
 const sidebarWidth = computed(() => (isMobileSidebarViewport.value ? mobileSidebarWidth : desktopSidebarWidth.value))
 
 /*
- * 折叠是桌面端的密度偏好，移动端 drawer 恒以展开态呈现同一份导航：drawer 宽
- * min(320px, 80vw)，套用折叠态会把标签挤成居中截断。web-ui-layout 的
+ * collapse 是桌面端的密度偏好，移动端 drawer 恒以展开态呈现同一份导航：drawer 宽
+ * min(320px, 80vw)，套用 collapsed state 会把 label 挤成居中截断。web-ui-layout 的
  * `sidebar-collapsed` 契约同样写明它「不会影响移动端 Drawer」，它只是无从替
  * Consumer 决定 slot 内容怎么渲染，所以闸门留在这里。
  */
@@ -108,7 +108,7 @@ const router = useRouter()
 useHead({ title: () => route.meta.title })
 const navSidebar = ref<OverlayScrollbarsComponentRef>()
 
-// 整页滚动条接管的是 document 的滚动元素，不是某个 DOM 容器，所以没有可渲染的宿主元素，
+// 整页 scrollbar 接管的是 document 的滚动元素，不是某个 DOM 容器，所以没有可渲染的宿主元素，
 // 只能直接初始化 body。
 const [initPageScrollbars] = useOverlayScrollbars({ options: webUiScrollbarsOptions })
 
@@ -127,38 +127,38 @@ interface NavItem {
 }
 
 const navItems: NavItem[] = [
-  { path: '/home', label: '首页' },
-  { path: '/components/avatar', label: 'Avatar 头像' },
-  { path: '/components/badge', label: 'Badge 徽标' },
-  { path: '/components/button', label: 'Button 按钮' },
-  { path: '/components/icon', label: 'Icon 图标' },
-  { path: '/components/input', label: 'Input 输入框' },
-  { path: '/components/textarea', label: 'Textarea 文本域' },
-  { path: '/components/editable-text', label: 'EditableText 可编辑文本' },
-  { path: '/components/theme', label: 'Theme 主题' },
-  { path: '/components/input-number', label: 'InputNumber 数字输入框' },
-  { path: '/components/select', label: 'Select 下拉选择' },
-  { path: '/components/autocomplete', label: 'Autocomplete 自动补全' },
-  { path: '/components/dropdown', label: 'Dropdown 下拉菜单' },
-  { path: '/components/collapse', label: 'Collapse 折叠面板' },
-  { path: '/components/dialog', label: 'Dialog 对话框' },
-  { path: '/components/drawer', label: 'Drawer 抽屉' },
-  { path: '/components/image-preview', label: 'ImagePreview 图片预览' },
-  { path: '/components/empty', label: 'Empty 空状态' },
-  { path: '/components/middle-ellipsis', label: 'MiddleEllipsis 中间省略' },
-  { path: '/components/tooltip', label: 'Tooltip 工具提示' },
-  { path: '/components/switch', label: 'Switch 开关' },
-  { path: '/components/slider', label: 'Slider 滑块' },
-  { path: '/components/radio', label: 'Radio 单选框' },
-  { path: '/components/checkbox', label: 'Checkbox 复选框' },
-  { path: '/components/segmented', label: 'Segmented 分段控制器' },
-  { path: '/components/spinner', label: 'Spinner 加载指示器' },
-  { path: '/components/popover', label: 'Popover 气泡卡片' },
-  { path: '/components/context-menu', label: 'ContextMenu 右键菜单' },
-  { path: '/components/toast', label: 'Toast 通知' },
-  { path: '/components/svg-draw-lines', label: 'SVGDrawLines 描边动画' },
-  { path: '/components/back-top', label: 'BackTop 回到顶部' },
-  { path: '/components/layout', label: 'Layout 布局' }
+  { path: '/home', label: 'Home' },
+  { path: '/components/avatar', label: 'Avatar' },
+  { path: '/components/badge', label: 'Badge' },
+  { path: '/components/button', label: 'Button' },
+  { path: '/components/icon', label: 'Icon' },
+  { path: '/components/input', label: 'Input' },
+  { path: '/components/textarea', label: 'Textarea' },
+  { path: '/components/editable-text', label: 'EditableText' },
+  { path: '/components/theme', label: 'Theme' },
+  { path: '/components/input-number', label: 'InputNumber' },
+  { path: '/components/select', label: 'Select' },
+  { path: '/components/autocomplete', label: 'Autocomplete' },
+  { path: '/components/dropdown', label: 'Dropdown' },
+  { path: '/components/collapse', label: 'Collapse' },
+  { path: '/components/dialog', label: 'Dialog' },
+  { path: '/components/drawer', label: 'Drawer' },
+  { path: '/components/image-preview', label: 'ImagePreview' },
+  { path: '/components/empty', label: 'Empty' },
+  { path: '/components/middle-ellipsis', label: 'MiddleEllipsis' },
+  { path: '/components/tooltip', label: 'Tooltip' },
+  { path: '/components/switch', label: 'Switch' },
+  { path: '/components/slider', label: 'Slider' },
+  { path: '/components/radio', label: 'Radio' },
+  { path: '/components/checkbox', label: 'Checkbox' },
+  { path: '/components/segmented', label: 'Segmented' },
+  { path: '/components/spinner', label: 'Spinner' },
+  { path: '/components/popover', label: 'Popover' },
+  { path: '/components/context-menu', label: 'ContextMenu' },
+  { path: '/components/toast', label: 'Toast' },
+  { path: '/components/svg-draw-lines', label: 'SVGDrawLines' },
+  { path: '/components/back-top', label: 'BackTop' },
+  { path: '/components/layout', label: 'Layout' }
 ]
 
 const navItemClass =
@@ -194,7 +194,7 @@ function isNavActive(path: string) {
           slot="banner"
           class="flex items-center justify-center gap-2 py-2 px-4 bg-(--wui-color-accent) text-(--wui-color-on-accent) text-sm"
         >
-          <span>🎉 欢迎使用 web-ui 组件库！</span>
+          <span>🎉 Welcome to the web-ui component library!</span>
           <web-ui-button class="ml-auto" size="24" icon variant="ghost" @click="bannerVisible = false">
             <web-ui-icon class="text-white" :icon="lucideX" :size="16"></web-ui-icon>
           </web-ui-button>
@@ -203,22 +203,22 @@ function isNavActive(path: string) {
           <web-ui-select
             :value="themeMotion"
             class="[--wui-input-width:120px]"
-            aria-label="全局动效"
+            aria-label="Global motion"
             @change="updateThemeMotion"
           >
-            <web-ui-option value="full" label="完整动效">完整动效</web-ui-option>
-            <web-ui-option value="reduced" label="减少动效">减少动效</web-ui-option>
-            <web-ui-option value="system" label="跟随系统">跟随系统</web-ui-option>
+            <web-ui-option value="full" label="Full motion">Full motion</web-ui-option>
+            <web-ui-option value="reduced" label="Reduced motion">Reduced motion</web-ui-option>
+            <web-ui-option value="system" label="Follow system">Follow system</web-ui-option>
           </web-ui-select>
           <web-ui-select
             :value="themeAppearance"
             class="[--wui-input-width:120px]"
-            aria-label="全局主题"
+            aria-label="Global theme"
             @change="updateThemeAppearance"
           >
-            <web-ui-option value="light" label="浅色">浅色</web-ui-option>
-            <web-ui-option value="dark" label="深色">深色</web-ui-option>
-            <web-ui-option value="system" label="跟随系统">跟随系统</web-ui-option>
+            <web-ui-option value="light" label="Light">Light</web-ui-option>
+            <web-ui-option value="dark" label="Dark">Dark</web-ui-option>
+            <web-ui-option value="system" label="Follow system">Follow system</web-ui-option>
           </web-ui-select>
         </div>
         <OverlayScrollbarsComponent
@@ -226,9 +226,9 @@ function isNavActive(path: string) {
           ref="navSidebar"
           :options="webUiScrollbarsOptions"
           class="relative z-20 h-full min-h-0 overflow-y-auto p-2 mobile:px-0"
-          aria-label="应用导航"
+          aria-label="App navigation"
         >
-          <nav class="grid gap-1" aria-label="主导航">
+          <nav class="grid gap-1" aria-label="Main navigation">
             <RouterLink
               v-for="item in navItems"
               :key="item.path"

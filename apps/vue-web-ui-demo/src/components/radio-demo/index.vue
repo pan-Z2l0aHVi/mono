@@ -33,8 +33,8 @@ function updateGapValue(event: WebUiEvent<WebUiRadioGroup, 'change'>) {
 
 <template>
   <div>
-    <h1>单选框</h1>
-    <h2>基本用法</h2>
+    <h1>radio</h1>
+    <h2>Basic usage</h2>
     <div class="mb-3 flex flex-col gap-3">
       <web-ui-radio :checked="selected === 'apple'" value="apple" name="fruit" @change="updateSelected('apple')"
         >Apple</web-ui-radio
@@ -58,11 +58,13 @@ function updateGapValue(event: WebUiEvent<WebUiRadioGroup, 'change'>) {
     </div>
     <p class="text-sm text-gray-500">选中值：{{ groupVal }}</p>
 
-    <h2>Radio Group 布局方向</h2>
-    <p class="mb-3 text-sm text-(--wui-color-text-secondary)">direction 控制组内排布，默认 vertical。</p>
+    <h2>Radio group layout direction</h2>
+    <p class="mb-3 text-sm text-(--wui-color-text-secondary)">
+      direction controls the group layout, vertical by default.
+    </p>
     <div class="mb-3 flex flex-wrap gap-8">
       <div>
-        <p class="mb-1 text-sm text-(--wui-color-text-secondary)">direction="vertical"（默认）</p>
+        <p class="mb-1 text-sm text-(--wui-color-text-secondary)">direction=&quot;vertical&quot; (default)</p>
         <web-ui-radio-group
           direction="vertical"
           :value="verticalVal"
@@ -90,8 +92,10 @@ function updateGapValue(event: WebUiEvent<WebUiRadioGroup, 'change'>) {
     </div>
     <p class="text-sm text-gray-500">选中值：vertical {{ verticalVal }} / horizontal {{ horizontalVal }}</p>
 
-    <h2>Radio Group 间距</h2>
-    <p class="mb-3 text-sm text-(--wui-color-text-secondary)">--wui-radio-group-gap 覆盖默认间距 8px。</p>
+    <h2>Radio group spacing</h2>
+    <p class="mb-3 text-sm text-(--wui-color-text-secondary)">
+      --wui-radio-group-gap overrides the default 8px spacing.
+    </p>
     <div class="mb-3">
       <web-ui-radio-group
         direction="horizontal"
@@ -107,7 +111,7 @@ function updateGapValue(event: WebUiEvent<WebUiRadioGroup, 'change'>) {
     </div>
     <p class="text-sm text-gray-500">选中值：{{ gapVal }}</p>
 
-    <h2>Radio Group 禁用</h2>
+    <h2>Radio group disabled</h2>
     <div class="mb-3 flex flex-col gap-3">
       <web-ui-radio-group disabled :value="disabledGroupVal" name="group-disabled-demo">
         <web-ui-radio value="apple">Apple</web-ui-radio>
@@ -116,7 +120,7 @@ function updateGapValue(event: WebUiEvent<WebUiRadioGroup, 'change'>) {
       </web-ui-radio-group>
     </div>
 
-    <h2>禁用状态</h2>
+    <h2>Disabled</h2>
     <div class="mb-3 flex flex-col gap-3">
       <web-ui-radio :checked="disabledVal === 'apple'" value="apple" name="disabled-fruit" disabled>Apple</web-ui-radio>
       <web-ui-radio :checked="disabledVal === 'banana'" value="banana" name="disabled-fruit" disabled

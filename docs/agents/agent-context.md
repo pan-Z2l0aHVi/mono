@@ -52,7 +52,7 @@ target 由渲染器按**当前文件所在目录**解析。同目录的兄弟文
 不转成链接的四种情况：
 
 - 泛指的文件类别、层级或目录：`AGENTS.md`（含包级）、`docs/agents/*.md`、`.agents/rules/*.md`。这里说的是「哪一层」，不是「哪一篇」。
-- glob、占位符与模板：`docs/<component>.md`、`**/*.md`。
+- glob、placeholder 与模板：`docs/<component>.md`、`**/*.md`。
 - 命令、配置或输出片段里的文件名：`cat README.md`。
 - 目标路径不存在，或与既有链接会形成回路。回路方向见下条。
 
@@ -111,7 +111,7 @@ ADR 是历史记录，正文不改写；旧 ADR 对现行文档的回指按上�
 | Changesets 版本与发布策略                                       | [`release.md`](./release.md)                                                                                           |
 | task 登记、政策检查入口与命令面                                 | task-ledger skill 的 SKILL.md、[`commit.md`](./commit.md)、[`commands.md`](./commands.md)                              |
 | 测试框架或 Vite 测试配置                                        | [`verification.md`](./verification.md)                                                                                 |
-| `packages/web-ui` 组件、图标或公共契约                          | [`packages/web-ui/AGENTS.md`](../../packages/web-ui/AGENTS.md)、[`web-ui.md`](./web-ui.md) 与受影响 ADR                |
+| `packages/web-ui` 组件、icon 或公共契约                         | [`packages/web-ui/AGENTS.md`](../../packages/web-ui/AGENTS.md)、[`web-ui.md`](./web-ui.md) 与受影响 ADR                |
 | commitlint 或提交流程                                           | [`commit.md`](./commit.md)                                                                                             |
 | 影响未来工程取舍的架构决定                                      | 对应 ADR，并更新 [`CONTEXT.md`](../../CONTEXT.md) ADR 索引                                                             |
 | client adapter、共享 rules/skills 或 instruction 体系布局与锚点 | 本文件、[`CONTEXT.md`](../../CONTEXT.md)、[ADR-0004](../adr/0004-progressive-agent-context-architecture.md) 与仓库校验 |

@@ -6,7 +6,7 @@
  *
  * 持久化走 @greypan/browser-kit 的 local，与两个 demo（react/vue-web-ui-demo）同一套读写，
  * 不再手写第三份裸 localStorage 包装。两个 demo 都在用 `watch` 之外的读 + 写两段式，
- * 这里跟着走：设置是本标签页的即时偏好，跨 tab 联动不是本应用的需求。
+ * 这里跟着走：设置是本 tab 的即时偏好，跨 tab 联动不是本应用的需求。
  */
 import { local } from '@greypan/browser-kit'
 import { defineStore } from 'pinia'

@@ -3,13 +3,13 @@ component: segmented-trigger
 tag: web-ui-segmented-trigger
 ---
 
-`<web-ui-segmented>` 的分段按钮：`value` 是它代表的分段值，选中由父级 segmented 回写 `checked`，表单提交归父级。点击或 Enter / Space 派发 `change`——在组内该事件不冒泡，由父级统一派发一次组级事件；脱离组时才冒泡并穿透 shadow。
+`<web-ui-segmented>` 的分段 button：`value` 是它代表的分段值，选中由父级 segmented 回写 `checked`，表单提交归父级。点击或 Enter / Space 派发 `change`——在组内该事件不冒泡，由父级统一派发一次组级事件；脱离组时才冒泡并穿透 shadow。
 
 ## 示例
 
 ### 基础 {#basic}
 
-`value` 决定哪个 trigger 是当前项，容器按它回写 `checked`；默认插槽里的文本就是按钮内容。
+`value` 决定哪个 trigger 是当前项，容器按它回写 `checked`；默认插槽里的文本就是 button 内容。
 
 ```react
 import { useState } from 'react'
@@ -45,7 +45,7 @@ const view = ref('day')
 
 ### 单独禁用 {#disabled}
 
-`disabled` 加在 trigger 上只禁这一项：它留在轨道里，但不可选中，键盘导航也跳过它。加在 `<web-ui-segmented>` 上则是禁用全部 trigger。
+`disabled` 加在 trigger 上只禁这一项：它留在 track 里，但不可选中，键盘导航也跳过它。加在 `<web-ui-segmented>` 上则是禁用全部 trigger。
 
 ```react
 import { useState } from 'react'
@@ -97,9 +97,9 @@ const view = ref('list')
 
 ### Slots
 
-| 名称      | 说明                                                              |
-| --------- | ----------------------------------------------------------------- |
-| `default` | 按钮内容；trigger 没有 label 属性，这段内容就是它的全部显示内容。 |
+| 名称      | 说明                                                                 |
+| --------- | -------------------------------------------------------------------- |
+| `default` | button 内容；trigger 没有 label 属性，这段内容就是它的全部显示内容。 |
 
 ### 行为说明
 

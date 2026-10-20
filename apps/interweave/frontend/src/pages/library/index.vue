@@ -64,7 +64,7 @@ const {
   probeURLSourceOnOpen
 } = useLibraryRuntime()
 
-// 页面级浮层（详情/预览抽屉、各类对话框）跟着壳的移动端判定走，不自己写断点。
+// 页面级 overlay（详情/预览 drawer、各类 dialog）跟着壳的移动端判定走，不自己写断点。
 const mobile = useLayoutMobile()
 const filterOpen = ref(false)
 const searchOpen = ref(false)
@@ -189,7 +189,7 @@ function previewResource(resource: ResourceView) {
  * 右键「重命名」要把目标行置成激活行。
  *
  * activeResourceId 只有左键预览、详情、标签这三条入口会写（selectResource / openResourceDetail /
- * editResourceTags），改名这条路上没有人碰它。于是从右键菜单改名后，底色仍旧停在上一次激活的
+ * editResourceTags），改名这条路上没有人碰它。于是从 context menu 改名后，底色仍旧停在上一次激活的
  * 那一行上（没人激活过时则一行都没有）——用户看到的就是「激活底色没有跟着切过来」。
  *
  * 与另两条入口同一个理由：被操作的那一条就是当前工作对象。名字编辑器还占着焦点、
@@ -327,7 +327,7 @@ function closeConfirmDialog() {
    * 只翻 open，不清内容（#189）。
    *
    * dialog 关闭后仍有 260ms 退场动画，期间弹窗保持可见。原先这里在同一个 tick 把
-   * confirmRequest 置空，标题、说明、按钮文案一起塌成空串，弹窗高度单帧掉 61.6px；
+   * confirmRequest 置空，标题、说明、button 文案一起塌成空串，弹窗高度单帧掉 61.6px；
    * 紧凑变体还因为宽度从标题字符串派生，从 320px 跳回默认的 360px。内容改到下一次打开时
    * 整体替换，退场期间没有任何一帧的盒子尺寸变化，也不需要在页面侧复述退场时长。
    */
@@ -424,7 +424,7 @@ async function handleRename(resourceId: string, title: string) {
   try {
     await renameResource(resourceId, title)
   } catch {
-    // 错误由 runtimeError 呈现，详情抽屉保持当前 Resource。
+    // 错误由 runtimeError 呈现，详情 drawer 保持当前 Resource。
   }
 }
 
@@ -442,10 +442,10 @@ async function handleResourceNoteChange(resource: ResourceView, note: string, ed
   try {
     await updateResourceNote(resource.id, note)
   } catch {
-    // 错误由 runtimeError 呈现。store 未更新，重新渲染不会把输入框拉回旧值，
+    // 错误由 runtimeError 呈现。store 未更新，重新渲染不会把 input 拉回旧值，
     // 这里显式写回，否则失焦后文本停在未落库的状态上。
-    // 抽屉可能已经切到或关掉了：editor 为空说明字段已卸载，或它已经属于别的资源，
-    // 这两种情况写回都会落到不该落的输入框上。
+    // drawer 可能已经切到或关掉了：editor 为空说明字段已卸载，或它已经属于别的资源，
+    // 这两种情况写回都会落到不该落的 input 上。
     const current = selectedResource.value
     if (!editor || current?.id !== resource.id) return
     // 回滚目标必须是 store 的活值，不是 `resource` 那个 emit 时的快照。备注可以连续
@@ -669,7 +669,7 @@ onMounted(() => {
 
   <!--
     逐项重复确认：入队链每命中一个库内已有位置就挂起一项，由这里裁决。
-    添加对话框关闭时 addQueue.close() 会把挂起的提示按「取消」结算，因此不会留下悬空弹窗。
+    添加 dialog 关闭时 addQueue.close() 会把挂起的提示按「取消」结算，因此不会留下悬空弹窗。
   -->
   <DuplicateConfirmDialog
     :open="duplicatePrompt !== null"

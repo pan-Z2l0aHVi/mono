@@ -85,7 +85,7 @@ describe('WebUiSlider 组件', () => {
   })
 
   describe('事件', () => {
-    it('点击轨道更新 value 并触发 input', async () => {
+    it('点击 track 更新 value 并触发 input', async () => {
       const el = createSlider()
       const [events] = spyEvents(el, 'input')
       await waitForUpdate(el)
@@ -270,7 +270,7 @@ describe('WebUiSlider 组件', () => {
       el.focus()
 
       // shadow 内焦点在文档层会重定位到宿主；组件内活动元素用 ShadowRoot.activeElement 观察。
-      expect(el.shadowRoot!.activeElement, 'focus() 应把焦点移到滑块').toBe(queryA11y(el, '[role="slider"]'))
+      expect(el.shadowRoot!.activeElement, 'focus() 应把焦点移到 slider').toBe(queryA11y(el, '[role="slider"]'))
       expect(document.activeElement, '宿主应成为文档级活动元素').toBe(el)
 
       cleanupElement(el)

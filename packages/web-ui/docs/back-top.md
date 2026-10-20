@@ -3,7 +3,7 @@ component: back-top
 tag: web-ui-back-top
 ---
 
-回到顶部按钮：滚动超过阈值后出现在角落，点击或按 Enter 平滑回到顶部；也可以挂到自定义滚动容器内。
+back top button：滚动超过阈值后出现在角落，点击或按 Enter 平滑 back top；也可以挂到自定义滚动容器内。
 
 ## 示例
 
@@ -37,7 +37,7 @@ tag: web-ui-back-top
 
 ### 自定义滚动容器
 
-把 `scrollTarget` 指向自己的滚动容器后，按钮以 `position: sticky` 悬浮在容器右下角，只随该容器滚动出现。`scrollTarget` 是 element 属性，需要在挂载后赋值。
+把 `scrollTarget` 指向自己的滚动容器后，button 以 `position: sticky` 悬浮在容器右下角，只随该容器滚动出现。`scrollTarget` 是 element 属性，需要在挂载后赋值。
 
 ```react
 const scrollBoxRef = useRef(null)
@@ -77,18 +77,18 @@ onMounted(() => {
 
 ### 自定义内容
 
-默认插槽替换按钮内容，交互语义仍由组件提供。
+默认插槽替换 button 内容，交互语义仍由组件提供。
 
 ```react
 <web-ui-back-top>
-  <web-ui-button variant="primary">回到顶部</web-ui-button>
+  <web-ui-button variant="primary">back top</web-ui-button>
 </web-ui-back-top>
 ```
 
 ```vue
 <template>
   <web-ui-back-top>
-    <web-ui-button variant="primary">回到顶部</web-ui-button>
+    <web-ui-button variant="primary">back top</web-ui-button>
   </web-ui-back-top>
 </template>
 ```
@@ -102,13 +102,13 @@ onMounted(() => {
 | `scroll-behavior` | 滚动行为：`smooth`（默认）或 `auto`。                    | `'smooth' \| 'auto'`    | `'smooth'` |
 | `visible`         | 当前可见状态，由滚动位置驱动。                           | `boolean`               | `false`    |
 | `scrollTarget`    | 滚动容器，`window`（默认）或 `HTMLElement`（property）。 | `HTMLElement \| Window` | `window`   |
-| `threshold`       | 显示按钮的滚动阈值（px）。                               | `number`                | `200`      |
+| `threshold`       | 显示 button 的滚动阈值（px）。                           | `number`                | `200`      |
 
 ### Slots
 
-| 名称      | 说明             |
-| --------- | ---------------- |
-| `default` | 自定义按钮内容。 |
+| 名称      | 说明                 |
+| --------- | -------------------- |
+| `default` | 自定义 button 内容。 |
 
 ### Methods
 
@@ -118,9 +118,9 @@ onMounted(() => {
 
 ### 定位
 
-`scrollTarget` 为 `window` 时按钮固定在视口角落；为 `HTMLElement` 时需将元素放置在容器内部，按钮通过 `position: sticky` 悬浮于容器底部角落。偏移量沿用 `--wui-back-top-top/right/bottom/left` CSS 变量。
+`scrollTarget` 为 `window` 时 button 固定在视口角落；为 `HTMLElement` 时需将元素放置在容器内部，button 通过 `position: sticky` 悬浮于容器底部角落。偏移量沿用 `--wui-back-top-top/right/bottom/left` CSS 变量。
 
-角色：`button`，键盘 Enter 触发回到顶部。
+角色：`button`，键盘 Enter 触发 back top。
 
 ### CSS Custom Properties
 

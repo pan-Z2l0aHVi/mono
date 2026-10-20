@@ -7,15 +7,15 @@ import { pollUntil } from '@/shared/test-utils'
 import type { WebUiDialog } from '..'
 
 /*
- * 关闭按钮的偏移契约（见 style.css「关闭按钮（绝对定位，两种内容模式同一套规则）」）。
+ * 关闭 button 的偏移契约（见 style.css「关闭 button（绝对定位，两种内容模式同一套规则）」）。
  *
- * 用户实测报的缺陷：设置对话框里按钮离卡片上沿近、离右沿远。根因是默认（header）模式把按钮当
+ * 用户实测报的缺陷：设置 dialog 里 button 离卡片上沿近、离右沿远。根因是默认（header）模式把 button 当
  * 标题行的 flex 子项，偏移由卡片 padding 决定（默认上 20 / 右 24），而 headless 模式
  * 用 --wui-dialog-close-top / --wui-dialog-close-right 绝对定位（默认 20/20）。修法是把两种
  * 模式收敛到同一套绝对定位规则。
  *
  * 这里只钉**用户可感知的几何**：两种模式的偏移都等于公开 token 的值、默认相等，以及
- * 标题与按钮矩形不相交。不钉内部 class，也不钉实现细节。
+ * 标题与 button 矩形不相交。不钉内部 class，也不钉实现细节。
  */
 
 afterEach(() => document.body.replaceChildren())
@@ -65,7 +65,7 @@ function shadowQuery<T extends HTMLElement>(component: WebUiDialog, selector: st
   return found
 }
 
-/** 按钮相对卡片 padding box 的偏移：上沿到上沿、右沿到右沿的距离。 */
+/** button 相对卡片 padding box 的偏移：上沿到上沿、右沿到右沿的距离。 */
 function closeOffsets(component: WebUiDialog) {
   const close = closeButtonOf(component).getBoundingClientRect()
   const card = dialogOf(component).getBoundingClientRect()
@@ -81,7 +81,7 @@ function intersectionArea(a: DOMRect, b: DOMRect): number {
   return w > 0 && h > 0 ? w * h : 0
 }
 
-describe('WebUiDialog 关闭按钮偏移（浏览器几何）', () => {
+describe('WebUiDialog 关闭 button 偏移（浏览器几何）', () => {
   it('header 模式：默认 top / right 相等，都是 20px', async () => {
     const el = mount('<span slot="header">设置</span>')
     await openAndSettle(el)
@@ -113,9 +113,9 @@ describe('WebUiDialog 关闭按钮偏移（浏览器几何）', () => {
     expect(closeOffsets(headlessMode)).toEqual({ top: 30, right: 8 })
   })
 
-  it('header 模式：长标题不会钻到关闭按钮下面（矩形不相交）', async () => {
+  it('header 模式：长标题不会钻到关闭 button 下面（矩形不相交）', async () => {
     const el = mount(
-      '<span slot="header">这是一条足够长的标题，长到足以在窄卡片里换行并一直排到按钮所在的那一列去</span>'
+      '<span slot="header">这是一条足够长的标题，长到足以在窄卡片里换行并一直排到 button 所在的那一列去</span>'
     )
     await openAndSettle(el)
 
@@ -124,10 +124,10 @@ describe('WebUiDialog 关闭按钮偏移（浏览器几何）', () => {
     const titleBox = titleText.getBoundingClientRect()
 
     // 先证明这个标题确实够长：它必须换行（高度超过一行），也就是若无避让预留就会一直排到
-    // 按钮那一列去；否则「矩形不相交」可能只是「标题本来就短」的空转。
+    // button 那一列去；否则「矩形不相交」可能只是「标题本来就短」的空转。
     const lineHeight = parseFloat(getComputedStyle(titleText).lineHeight)
     expect(titleBox.height).toBeGreaterThan(lineHeight * 1.5)
-    // 真正的判据：标题内容盒与按钮矩形交集面积为 0。
+    // 真正的判据：标题内容盒与 button 矩形交集面积为 0。
     expect(intersectionArea(titleBox, close)).toBe(0)
   })
 })

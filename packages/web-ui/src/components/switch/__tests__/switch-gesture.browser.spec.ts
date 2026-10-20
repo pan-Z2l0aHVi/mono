@@ -61,7 +61,7 @@ describe('WebUiSwitch 手势拖拽（浏览器）', () => {
     await waitForUpdate(el)
 
     // 向左拖拽 3px（不足半程）。CI 慢环境渲染会跨毫秒，单次合成 move 的负向速度
-    // 会被判 flick（<-300px/s）误翻转开关；用间隔 32ms 的多段 move 模拟真实慢拖。
+    // 会被判 flick（<-300px/s）误翻转 switch；用间隔 32ms 的多段 move 模拟真实慢拖。
     for (const x of [29, 28, 27]) {
       window.dispatchEvent(pointer('pointermove', x, 10))
       await new Promise(resolve => setTimeout(resolve, 32))

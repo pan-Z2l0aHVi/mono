@@ -41,13 +41,13 @@ export interface ImagePreviewOptions {
   target?: Element
   /** 显式挂载容器，优先级高于 target 和主题作用域。 */
   container?: HTMLElement
-  /** 展示上一张 / 下一张按钮；仅在图片多于一张时渲染。默认 false。 */
+  /** 展示上一张 / 下一张 button；仅在图片多于一张时渲染。默认 false。 */
   nav?: boolean
   /** 展示缩放工具条。默认 false。 */
   toolbar?: boolean
-  /** 展示关闭按钮。默认 false。 */
+  /** 展示关闭 button。默认 false。 */
   closable?: boolean
-  /** 展示「当前 / 总数」指示器。默认 false。 */
+  /** 展示「当前 / 总数」indicator。默认 false。 */
   indicator?: boolean
   /**
    * 1x 且图片多于一张时，允许左右滑动切换图片：该手势接管整个拖拽，纵向位移被忽略
@@ -105,11 +105,11 @@ const SWIPE_SETTLE_MS = 320
 
 /**
  * 图像预览的内部宿主。对外只通过 `imagePreview()` 使用，因此不导出类、
- * 不注册 `HTMLElementTagNameMap`，避免形成声明式标签契约。
+ * 不注册 `HTMLElementTagNameMap`，避免形成声明式 tag 契约。
  *
  * 内部使用原生 `<dialog>.showModal()`，与 `<web-ui-dialog>` 共享
  * `native-dialog-presence` 与 `scroll-lock` 两个底层插件，而不是复用该组件：
- * 本组件需要自身铺满视口的 dialog（遮罩即 dialog 背景）与自有指针交互，
+ * 本组件需要自身铺满视口的 dialog（backdrop 即 dialog 背景）与自有指针交互，
  * 与 dialog 组件的玻璃卡片 / 插槽契约不同源。
  */
 @customElement('web-ui-image-preview')
@@ -133,7 +133,7 @@ class WebUiImagePreview extends LitElement {
   @state() private _offsetY = 0
   /** 滑动跟手位移，只作用于左右方向；可叠加在平移位移之上。 */
   @state() private _swipeOffset = 0
-  /** 滑入/回位过渡中：stage 挂 is-settling，启用轨道 transform 过渡。 */
+  /** 滑入/回位过渡中：stage 挂 is-settling，启用 track transform 过渡。 */
   @state() private _swipeSettling = false
   @state() private _dragging = false
 
@@ -150,13 +150,13 @@ class WebUiImagePreview extends LitElement {
 
   private readonly _scrollLock = defineScrollLockLease().make()
   /*
-   * 开启态浮层（issue #120 Block 1）。预览的 Escape 原本只走原生 <dialog> 的 cancel 事件，
+   * 开启态 overlay（issue #120 Block 1）。预览的 Escape 原本只走原生 <dialog> 的 cancel 事件，
    * 自己从不参与登记 —— 于是它既不是仲裁候选、又指望原生 cancel 兜底，而仲裁者一旦命中
    * 别的层就会 preventDefault 压掉那个 cancel：与任何已登记的层同时打开时，一次 Escape
    * 关掉的是下面那层，最上层的预览留在屏幕上。登记之后它与其它层同处一棵逻辑树。
    *
    * 没有惰性通道：预览没有 `no-escape-close` 这类策略，Escape 恒可关闭（与 `closable`
-   * 只管关闭按钮一样，不表达「能否关闭」）。
+   * 只管关闭 button 一样，不表达「能否关闭」）。
    */
   private readonly _overlay = defineOpenOverlay().make({
     requestClose: () => this.close(),
@@ -240,7 +240,7 @@ class WebUiImagePreview extends LitElement {
 
     this._index = next
     this.resetZoom()
-    // 轨道渲染所有图：目标图若已加载直接展示（无淡入闪烁），未加载由图自身 load 淡入。
+    // track 渲染所有图：目标图若已加载直接展示（无淡入闪烁），未加载由图自身 load 淡入。
   }
 
   next(): void {
@@ -321,7 +321,7 @@ class WebUiImagePreview extends LitElement {
       if (this._open) {
         // presence.sync 内的 showModal() 把 dialog 提升进 top layer，和 dialog /
         // drawer 走同一条路径。dialog / drawer 上实测到的机制是：双击手势留下的活选区
-        // 会被浏览器拿去和提升后的新布局重新解析，落进刚挂载的面板正文。脆弱的是
+        // 会被浏览器拿去和提升后的新布局重新解析，落进刚挂载的 panel 正文。脆弱的是
         // 「手势来源的活选区」，不是 dblclick 的判定窗口（把打开推迟 250ms 仍复现）；
         // 选区由浏览器在 showModal() 调用内部生成，脚本没有任何 Selection API 调用，
         // 在 dblclick 上 preventDefault 也拦不住。
@@ -337,11 +337,11 @@ class WebUiImagePreview extends LitElement {
         // 兜底）。这里只清文档选区，不动 user-select。
         window.getSelection()?.removeAllRanges()
       }
-      // 原生 dialog 登记为开启态浮层：Escape 仲裁据此判出最内层（issue #120 Block 1）。
+      // 原生 dialog 登记为开启态 overlay：Escape 仲裁据此判出最内层（issue #120 Block 1）。
       const dialog = this.dialog
       if (dialog) {
         if (this._open) {
-          // 同一面板重新 claim = 新的一次开启：旧会话整体作废。
+          // 同一 panel 重新 claim = 新的一次开启：旧会话整体作废。
           this._handle?.release()
           this._handle = this._overlay.claim(dialog, { ancestryFrom: this })
         } else {
@@ -452,7 +452,7 @@ class WebUiImagePreview extends LitElement {
    *
    * 只能在 pointerdown（指针捕获生效前）判定：一旦舞台通过 setPointerCapture
    * 取得捕获，后续 click 的 target 会被重定向到舞台，用它判断会把「点图片」
-   * 误判成「点空白」而关闭浮层。
+   * 误判成「点空白」而关闭 overlay。
    */
   private _isBlank(target: EventTarget | null): boolean {
     return target === this.dialog || target === this._stage
@@ -553,11 +553,11 @@ class WebUiImagePreview extends LitElement {
     this._blankPointerDown = false
     if (!blank) return
 
-    // detail 为 0 表示这次 click 不来自指针（键盘激活按钮、程序化 .click()），
-    // 此时 pointerdown 起点可能是上一次指针交互的残留，不能据此判定遮罩点击。
+    // detail 为 0 表示这次 click 不来自指针（键盘激活 button、程序化 .click()），
+    // 此时 pointerdown 起点可能是上一次指针交互的残留，不能据此判定 backdrop 点击。
     if (event.detail === 0) return
 
-    // 拖拽（平移或滑动）结束后的 click 不再当作遮罩点击。
+    // 拖拽（平移或滑动）结束后的 click 不再当作 backdrop 点击。
     if (this._dragged) {
       this._dragged = false
       return
@@ -581,7 +581,7 @@ class WebUiImagePreview extends LitElement {
 
     this._endGesture()
     this._dragging = true
-    // 双指操作后浏览器不会补发 click，但混合输入的兼容 click 不应被当作遮罩点击。
+    // 双指操作后浏览器不会补发 click，但混合输入的兼容 click 不应被当作 backdrop 点击。
     this._dragged = true
 
     const origin = this._stageOrigin()
@@ -685,8 +685,8 @@ class WebUiImagePreview extends LitElement {
     this._swipeSettling = true
     this._swipeSettleCommit = commit
     this._swipeSettleDir = dir
-    // 过渡目标：越过阈值 → 轨道再滑一个舞台宽度让相邻图入位（相邻图本就在 ±100% 处，
-    // 提交后新当前图回到轨道原点，视觉位置不变、无跳变）；否则弹回原位。
+    // 过渡目标：越过阈值 → track 再滑一个舞台宽度让相邻图入位（相邻图本就在 ±100% 处，
+    // 提交后新当前图回到 track 原点，视觉位置不变、无跳变）；否则弹回原位。
     this._swipeOffset = commit ? -dir * stageW : 0
     this._swipeSettleTimer = setTimeout(() => this._finishSwipeSettle(), SWIPE_SETTLE_MS)
   }
@@ -724,7 +724,7 @@ class WebUiImagePreview extends LitElement {
     this._swipeOffset = 0
 
     // 只有主指针左键才可能生成 click；副指针或其它键的按下不产生 click，
-    // 若让它们覆盖标记，主指针随后释放时的 click 会拿副指针的命中结果误判遮罩点击。
+    // 若让它们覆盖标记，主指针随后释放时的 click 会拿副指针的命中结果误判 backdrop 点击。
     const primary = event.button === 0 && event.isPrimary !== false
     if (!primary) return
 
@@ -751,8 +751,8 @@ class WebUiImagePreview extends LitElement {
       threshold: PAN_MOVE_THRESHOLD,
       onMove: info => {
         if (this._swipeGesture) {
-          // 横向跟手位移驱动轨道整体平移（单轨道轮播）；方向随拖拽符号更新，
-          // 轨道位移随 _swipeOffset 反转时自然换向。纵向 delta 完全忽略：
+          // 横向跟手位移驱动 track 整体平移（单 track 轮播）；方向随拖拽符号更新，
+          // track 位移随 _swipeOffset 反转时自然换向。纵向 delta 完全忽略：
           // 该手势独占拖拽，不驱平移、不产生纵向跟手（放大态的 pan 不受影响）。
           this._swipeOffset = info.deltaX
           if (info.deltaX !== 0) this._swipeDir = info.deltaX < 0 ? 1 : -1
@@ -779,13 +779,13 @@ class WebUiImagePreview extends LitElement {
   override render() {
     const count = this.images.length
     const zoomed = this._scale > MIN_SCALE
-    // 单轨道轮播（相邻图渲染）：轨道只放当前图与左右相邻，当前图恒在轨道原点。
+    // 单 track 轮播（相邻图渲染）：track 只放当前图与左右相邻，当前图恒在 track 原点。
     // 相邻图用绝对定位放在 ±100%（= 舞台宽度）处，与当前图同尺寸同基线；loop
     // 环绕时首尾相邻恒在两侧，任何索引拖拽（含首尾环绕）相邻图都真实跟手，不会
-    // 出现「越过轨道末端滑空」的空白（全量渲染轨道在 last→first 环绕时相邻图在
+    // 出现「越过 track 末端滑空」的空白（全量渲染 track 在 last→first 环绕时相邻图在
     // 远端，拖拽中间态必然空白）。
-    // 轨道整体随 _swipeOffset 平移：松手越过阈值再滑一个舞台宽度让相邻图入位，
-    // 否则弹回原点。图片自身只负责平移/缩放（swipe 只动轨道、不碰图片 transform，
+    // track 整体随 _swipeOffset 平移：松手越过阈值再滑一个舞台宽度让相邻图入位，
+    // 否则弹回原点。图片自身只负责平移/缩放（swipe 只动 track、不碰图片 transform，
     // 缩放锚点数学不变）。
     const prevIndex = count > 0 ? this._adjacentIndex(-1) : -1
     const nextIndex = count > 0 ? this._adjacentIndex(1) : -1
@@ -801,7 +801,7 @@ class WebUiImagePreview extends LitElement {
 
     return html`
       <dialog
-        aria-label="图片预览"
+        aria-label="Image preview"
         @cancel=${this._handleCancel}
         @close=${this._handleNativeClose}
         @pointerdown=${this._handlePointerDown}
@@ -909,7 +909,7 @@ class WebUiImagePreview extends LitElement {
                       variant="glass"
                       icon
                       size="36"
-                      aria-label="关闭"
+                      aria-label="Close"
                       @click=${this.close}
                     >
                       <web-ui-icon size="16" .icon=${oouiClose}></web-ui-icon>
@@ -925,7 +925,7 @@ class WebUiImagePreview extends LitElement {
                       variant="glass"
                       icon
                       size="44"
-                      aria-label="上一张"
+                      aria-label="Previous image"
                       ?disabled=${!this.loop && this._index === 0}
                       @click=${this.prev}
                     >
@@ -936,7 +936,7 @@ class WebUiImagePreview extends LitElement {
                       variant="glass"
                       icon
                       size="44"
-                      aria-label="下一张"
+                      aria-label="Next image"
                       ?disabled=${!this.loop && this._index === count - 1}
                       @click=${this.next}
                     >
@@ -953,7 +953,7 @@ class WebUiImagePreview extends LitElement {
                         variant="glass"
                         icon
                         size="30"
-                        aria-label="缩小"
+                        aria-label="Zoom out"
                         ?disabled=${this._scale <= MIN_SCALE}
                         @click=${this.zoomOut}
                       >
@@ -964,7 +964,7 @@ class WebUiImagePreview extends LitElement {
                         variant="glass"
                         icon
                         size="30"
-                        aria-label="放大"
+                        aria-label="Zoom in"
                         ?disabled=${this._scale >= MAX_SCALE}
                         @click=${this.zoomIn}
                       >
@@ -974,7 +974,7 @@ class WebUiImagePreview extends LitElement {
                         variant="glass"
                         icon
                         size="30"
-                        aria-label="重置缩放"
+                        aria-label="Reset zoom"
                         ?disabled=${this._scale <= MIN_SCALE && !this._isPanned}
                         @click=${this.resetZoom}
                       >
@@ -992,10 +992,10 @@ class WebUiImagePreview extends LitElement {
 }
 
 /**
- * 打开一个命令式图片预览。
+ * 打开一个命令式 image preview。
  *
  * 组件挂载到目标 `web-ui-theme` 的 overlay 容器（无主题作用域时回退到全局
- * fallback root），返回的句柄是唯一的控制入口。所有展示类选项默认关闭，
+ * fallback root），返回的 handle 是唯一的控制入口。所有展示类 option 默认关闭，
  * 默认只渲染图片本身。
  */
 export function imagePreview(options: ImagePreviewOptions): ImagePreviewHandle {

@@ -43,7 +43,7 @@
 ### 1.2 `composite`：被引用的前提
 
 - 官方文档：**`Referenced projects must have the new composite setting enabled.`**
-- `composite` 官方选项页定义：`Enable constraints that allow a TypeScript project to be used with project references.` 开启后：
+- `composite` 官方 option 页定义：`Enable constraints that allow a TypeScript project to be used with project references.` 开启后：
   - `rootDir` 未显式设置时默认 = 该 tsconfig 所在目录；
   - 所有实现文件必须被 `include`/`files` 匹配（否则报错指出漏掉的文件）；
   - `declaration` 默认变为 `true`（历史文档另一处表述为「必须开启」）。
@@ -51,9 +51,9 @@
 ### 1.3 `tsc -b`（build mode）
 
 - 官方定位：`--build` 是 `tsc` 的**另一个入口**，更像构建编排器：找到所有被引用工程 → 判断是否 up-to-date → 按正确顺序构建过期工程。
-- 常用开关：`--verbose`、`--dry`（只显示、不构建）、`--clean`、`--force`、`--watch`。
+- 常用 flag：`--verbose`、`--dry`（只显示、不构建）、`--clean`、`--force`、`--watch`。
 - 关键语义：**`tsc -b` 对所有工程等价于开启 `noEmitOnError`**（否则过期依赖的错误只会出现一次）。
-- 相关选项（TSConfig Reference「Projects」组）：`disableReferencedProjectLoad`、`disableSolutionSearching`、`disableSourceOfProjectReferenceRedirect`。
+- 相关 option（TSConfig Reference「Projects」组）：`disableReferencedProjectLoad`、`disableSolutionSearching`、`disableSourceOfProjectReferenceRedirect`。
 - `declarationMap`：官方说明它让编辑器能**跨工程边界透明地**「Go to Definition」与 Rename。
 
 ### 1.4 官方推荐的「solution」根 tsconfig（本仓库根文件的写法来源）
@@ -190,7 +190,7 @@
 **TypeScript 官方一手**
 
 - [Project References（handbook）](https://www.typescriptlang.org/docs/handbook/project-references.html)（含 solution 写法、`composite` must、`tsc -b`、`declarationMap` 的原文；Last updated Sep 28, 2026）
-- [`composite` 选项](https://www.typescriptlang.org/tsconfig/composite.html)
+- [`composite` option](https://www.typescriptlang.org/tsconfig/composite.html)
 - [tsc CLI Options（`--composite` / `--build` / `--dry` / `--force` 等）](https://www.typescriptlang.org/docs/handbook/compiler-options.html)
 - [TSConfig Reference（Projects 组：`disableReferencedProjectLoad` / `disableSolutionSearching` / `disableSourceOfProjectReferenceRedirect`）](https://www.typescriptlang.org/tsconfig)
 - [Announcing TypeScript 5.6（`--noCheck`、`Allow --build with Intermediate Errors`、`--stopOnBuildErrors`，2024-09-09）](https://devblogs.microsoft.com/typescript/announcing-typescript-5-6/)

@@ -51,7 +51,7 @@ function handleOpenChange(event: WebUiEvent<WebUiDialog, 'open-change'>) {
       class="mt-3 max-h-56 overflow-y-auto rounded-xl bg-black/3 [&_[data-overlayscrollbars-viewport]:focus-visible]:outline-3 [&_[data-overlayscrollbars-viewport]:focus-visible]:outline-offset-2 [&_[data-overlayscrollbars-viewport]:focus-visible]:outline-(--wui-color-focus-ring,rgb(0_136_255/0.4)) dark:bg-white/5"
     >
       <!--
-        滚动条接在宿主 div 上，列表留在它里面：OverlayScrollbars 会把宿主的子节点搬进自己
+        scrollbar 接在宿主 div 上，列表留在它里面：OverlayScrollbars 会把宿主的子节点搬进自己
         生成的 viewport，而 <ul> 的内容模型只容得下 <li>——宿主若还是这个 <ul>，搬进去的
         viewport div 就落进列表里了。
       -->

@@ -66,7 +66,7 @@ export class WebUiButton extends FormAssociated(LitElement) {
   }
 
   /*
-   * 按钮不贡献表单值，接 shared form-association 只为拿 ElementInternals 与原生禁用回调：
+   * button 不贡献表单值，接 shared form-association 只为拿 ElementInternals 与原生禁用回调：
    * 禁用态由浏览器在宿主 disabled 反射时同步回报，自己镜像一份会漏掉更新时机。
    */
   private readonly _formAssociation = defineFormAssociation<null>({
@@ -85,7 +85,7 @@ export class WebUiButton extends FormAssociated(LitElement) {
   }
 
   private get _sizeStyle(): Record<string, string> {
-    // size 仅控制按钮高度；icon 模式下 min-width 同步为相同值，天然保持正方形。
+    // size 仅控制 button 高度；icon 模式下 min-width 同步为相同值，天然保持正方形。
     const size = this._groupContext ? '30' : this.size
     return size ? { '--wui-control-size': `${size}px` } : {}
   }
@@ -101,7 +101,7 @@ export class WebUiButton extends FormAssociated(LitElement) {
     if (action === 'button') return
 
     /*
-     * Shadow 内按钮没有 form owner；等 composed click 的同步监听器全部完成后，
+     * Shadow 内 button 没有 form owner；等 composed click 的同步监听器全部完成后，
      * 再读取宿主的 live form owner 并转发，调用方仍可用 preventDefault 取消这次原生 activation。
      */
     setTimeout(() => {
@@ -136,7 +136,7 @@ export class WebUiButton extends FormAssociated(LitElement) {
       >
         ${
           this.icon
-            ? // loading 优先于 icon 内容：icon 模式下只展示 spinner，不投影默认 slot，避免双图标叠加
+            ? // loading 优先于 icon 内容：icon 模式下只展示 spinner，不投影默认 slot，避免双 icon 叠加
               this.loading
               ? html`<web-ui-icon .icon=${lucideLoaderCircle} spin></web-ui-icon>`
               : html`<slot></slot>`

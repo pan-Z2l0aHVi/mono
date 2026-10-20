@@ -79,7 +79,7 @@ export class WebUiTooltip extends LitElement {
   private _shouldOpenInstantly = true
   private _portal?: OverlayPortal
   /**
-   * 实例作用域的帧事务入口。`requestClose` 是关闭入口的唯一接线：面板的
+   * 实例作用域的帧事务入口。`requestClose` 是关闭入口的唯一接线：panel 的
    * `arbitration: 'none'` 让 tooltip 在组合树里但永不成候选，因此这条**现在不会被
    * 模块调用**。保留它是不想把「怎么关」藏起来，也让仲裁策略变化时依然成立。
    */
@@ -98,8 +98,8 @@ export class WebUiTooltip extends LitElement {
     isPortal: () => this.portal,
     createPortal: () => this._createPortal(),
     openOverlay: this._overlay,
-    // tooltip 在逻辑组合树里（面板迁移后仍要判对「谁在谁里面」），但从不作为 Escape
-    // 候选：按键穿过它落到下层浮层，与重构前一致。
+    // tooltip 在逻辑组合树里（panel 迁移后仍要判对「谁在谁里面」），但从不作为 Escape
+    // 候选：按键穿过它落到下层 overlay，与重构前一致。
     arbitration: 'none'
   })
 
@@ -124,7 +124,7 @@ export class WebUiTooltip extends LitElement {
     this.removeEventListener('focusout', this._onFocusOut)
     clearTimeout(this._showTimer)
     clearTimeout(this._hideTimer)
-    // 停止帧调度；撤销登记由 _panel.dispose() 完成（句柄归它持有）。
+    // 停止帧调度；撤销登记由 _panel.dispose() 完成（handle 归它持有）。
     this._overlay.suspend()
     this._syncVisibleTooltipCount(false)
     this._panel.dispose()
@@ -213,7 +213,7 @@ export class WebUiTooltip extends LitElement {
       style: `${glass}\n${overlayMotion}\n${style}`,
       className: 'tooltip-panel portal wui-glass wui-floating-panel',
       // 已迁移节点被框架删除后的解除追踪是 portal 内建默认行为，这里无需 onContentChange
-      // 打开期实时渲染：新增的 slot=content 元素实时迁入面板（注释锚点无法携带
+      // 打开期实时渲染：新增的 slot=content 元素实时迁入 panel（注释锚点无法携带
       // slot 属性，天然留在宿主作为框架 patch 的插入基准）。
       migrateAddedNodes: addedNodes =>
         addedNodes.filter(node => node instanceof Element && node.getAttribute('slot') === 'content')

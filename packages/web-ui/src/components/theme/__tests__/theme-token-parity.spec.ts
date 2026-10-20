@@ -197,10 +197,10 @@ const allChainedSites = componentCssFiles.flatMap(file =>
  *
  * 上面的字面量守卫只管「fallback 字面量 == theme 定义值」，两边一起改就自洽通过：把
  * tooltip 的 surface-menu 换成 surface-overlay、fallback 字面量同步换成 overlay 的合法值，
- * parity 全程静默，而无 theme 时该面板落到 overlay 灰（暗色下是可见的错误颜色）。
+ * parity 全程静默，而无 theme 时该 panel 落到 overlay 灰（暗色下是可见的错误颜色）。
  * 那是 token **归属**被改错了，同步断言按定义看不见它。
  *
- * 归属为什么必须手写成清单而不靠注释：注释可以撒谎。dialog 的 CSS 注释写「overlay 面板」
+ * 归属为什么必须手写成清单而不靠注释：注释可以撒谎。dialog 的 CSS 注释写「overlay panel」
  * 而代码消费 surface-menu，任何读注释的守卫都会说「声明过了」而放过。清单对着代码比对，
  * 不一致时必然红——它不是完美的第二来源（会过时），但它不会假装自己成立。
  *
@@ -210,12 +210,12 @@ const allChainedSites = componentCssFiles.flatMap(file =>
  * 静态清单则不需要每个组件各写一套挂载样板（dialog/drawer/toast/tooltip 的打开路径各不相同）。
  */
 const surfaceOwnership = new Map<string, string>([
-  // 菜单族：下拉、浮层气泡与提示条，同一档半透明玻璃底，浮在内容之上。
+  // menu 族：下拉、overlay 气泡与 tooltip，同一档半透明玻璃底，浮在内容之上。
   ['autocomplete', '--wui-color-surface-menu'],
   ['popover', '--wui-color-surface-menu'],
   ['select', '--wui-color-surface-menu'],
   ['tooltip', '--wui-color-surface-menu'],
-  // 浮层族：dialog/drawer/toast 背后是被它遮住的主体内容，透过去会与浮层文字叠出干扰读的
+  // overlay 族：dialog/drawer/toast 背后是被它遮住的主体内容，透过去会与 overlay 文字叠出干扰读的
   // 对比，因此单独抬到更高的 alpha 换取可读性（见 theme/style.css dark 块注释）。
   ['dialog', '--wui-color-surface-overlay'],
   ['drawer', '--wui-color-surface-overlay'],
@@ -225,11 +225,11 @@ const surfaceOwnership = new Map<string, string>([
 ])
 
 /**
- * 提取某组件里「作为面板底色」的浮动表面 token，限 `surface-menu` / `surface-overlay` /
- * `surface-sidebar` 三枚——浮动面板族。`surface-glass` / `-track` / `-control` 等不在本清单
- * 范围：它们是控件表面而非浮层面板，归属规则不同（见 theme token 表的 Description 列）。
+ * 提取某组件里「作为 panel 底色」的浮动表面 token，限 `surface-menu` / `surface-overlay` /
+ * `surface-sidebar` 三枚——浮动 panel 族。`surface-glass` / `-track` / `-control` 等不在本清单
+ * 范围：它们是控件表面而非 overlay panel，归属规则不同（见 theme token 表的 Description 列）。
  *
- * 只认 `background-color` 上的 `var()`：这三枚 token 在组件 CSS 里的全部用法都是面板底色，
+ * 只认 `background-color` 上的 `var()`：这三枚 token 在组件 CSS 里的全部用法都是 panel 底色，
  * 而 `background` 简写与 `--wui-*` 别名赋值里若出现，语义不一定是底色（别名可承载任意值），
  * 按字面位置收会把它们误判成消费者。dialog/drawer 的 `--wui-dialog-bg` / `--wui-drawer-bg`
  * 是可被 app 覆盖的出口，浮动表面 token 只作为它们的**回退默认值**出现——回退链上的最内层
@@ -434,10 +434,12 @@ describe('注释不是 fallback 站点', () => {
   })
 
   it('剥注释后组件 CSS 的站点总数少 2（剥掉的两处正是注释内的 var()）', () => {
-    // 覆盖面口径：原样扫出 692 处，剥掉 collapse:232 与 dialog:72 两处注释站点后剩 690
-    // （较上一版少 2 处，来自 empty 去掉的圆角与底面两条声明——见 #230；
-    //  多于上一版 5 处，来自 collapse peek 晕染伪元素新增的 var() 站点）
-    expect(allFallbackSites).toHaveLength(690)
+    // 覆盖面口径：原样扫出 698 处，剥掉 collapse:232 与 dialog:72 两处注释站点后剩 696
+    // （较上一版多 5 处，来自 slider 公开尺寸 token 改名：thumb 的厚度与长边各自成为公开 token，
+    //  在每个使用点各带一次 fallback（厚度 5 处、长边 4 处）；
+    //  track 那边两处 `var(--wui-slider-height, var(--wui-slider-track-size, 6px))`
+    //  合并成 `var(--wui-slider-track-size, 6px)`，少 2 处）
+    expect(allFallbackSites).toHaveLength(696)
   })
 
   it('原样扫描与剥注释扫描的差集恰好是这两处，其余站点逐字不动', () => {

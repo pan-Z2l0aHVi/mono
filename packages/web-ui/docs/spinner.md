@@ -95,7 +95,7 @@ function sync() {
 import { WebUiSpinner } from '@greypan/web-ui'
 
 WebUiSpinner.show() // 显示
-WebUiSpinner.show({ size: 32, duration: 2000 }) // 带选项显示
+WebUiSpinner.show({ size: 32, duration: 2000 }) // 带 option 显示
 WebUiSpinner.hide() // 隐藏
 ```
 

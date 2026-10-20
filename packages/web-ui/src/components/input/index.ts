@@ -169,7 +169,7 @@ export class WebUiInput extends FormAssociated(LitElement) {
   }
 
   override render() {
-    // readonly 下不可清除：清空按钮会修改值，与只读语义冲突
+    // readonly 下不可清除：清空 button 会修改值，与只读语义冲突
     const showClear = this.clearable && this._value && !this.readonly
 
     return html`
@@ -196,7 +196,7 @@ export class WebUiInput extends FormAssociated(LitElement) {
                 icon
                 variant="ghost"
                 size="20"
-                aria-label="清除"
+                aria-label="Clear"
                 @pointerdown=${this.preventMouseDownBlur}
                 @click=${this.handleClear}
               >

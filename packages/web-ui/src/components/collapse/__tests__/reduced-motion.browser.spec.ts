@@ -112,7 +112,7 @@ describe('减少动效下的 Collapse（浏览器）', () => {
     expect(queryContentContainer(full).hidden).toBe(false)
   })
 
-  // reduce 下 inert 必须照旧生效：减动效的用户同样不该能聚焦到收起的面板里。
+  // reduce 下 inert 必须照旧生效：减动效的用户同样不该能聚焦到收起的 panel 里。
   it('keep-mounted 关闭稳态在 reduce 下仍阻断交互，全程无过渡', async () => {
     const theme = mountInsideTheme(
       null,

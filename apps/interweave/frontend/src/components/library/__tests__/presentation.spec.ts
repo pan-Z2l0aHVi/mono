@@ -20,7 +20,7 @@ describe('library presentation', () => {
     expect(formatSize(Number.POSITIVE_INFINITY)).toBeNull()
   })
 
-  it('生成 kind 使用对应图标与标签，旧 DTO 的 unknown 使用稳定 fallback', () => {
+  it('生成 kind 使用对应 icon 与标签，旧 DTO 的 unknown 使用稳定 fallback', () => {
     expect(resourceKindLabel(ResourceKind.ResourceKindImage)).toBe('图片')
     expect(resourceKindLabel(ResourceKind.ResourceKindVideo)).toBe('视频')
     expect(resourceKindLabel('unknown')).toBe('其他')

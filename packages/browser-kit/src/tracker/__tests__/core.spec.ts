@@ -285,7 +285,7 @@ describe('defineTracker 测试', () => {
       tracker.pause()
       tracker.track({ event: 'click' })
 
-      // 队列只活在内存里，用户一关标签页就没了
+      // 队列只活在内存里，用户一关 tab 就没了
       expect(storage.get('queue:https://example.com')).toEqual([{ event: 'click' }])
     })
 
@@ -363,7 +363,7 @@ describe('defineTracker 测试', () => {
       tracker.pause()
       tracker.track({ event: 'click' })
 
-      // 不持久化是隐私选项：写了就等于违背调用方声明
+      // 不持久化是隐私 option：写了就等于违背调用方声明
       expect(storage.get('queue:https://example.com')).toBeNull()
     })
 

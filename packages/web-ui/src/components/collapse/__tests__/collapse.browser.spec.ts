@@ -73,7 +73,7 @@ describe('WebUiCollapse 组件（浏览器）', () => {
     await waitFor(() => queryContentContainer(el).hidden === true, 'content did not hide again')
   })
 
-  // 过渡被中断时若不续接，面板会卡在中间态：hidden 泄漏或永久 inert。
+  // 过渡被中断时若不续接，panel 会卡在中间态：hidden 泄漏或永久 inert。
   it('关闭过渡中重新打开：中断续接完整展开，无 hidden 泄漏', async () => {
     const el = createCollapse()
     await el.updateComplete
@@ -145,7 +145,7 @@ describe('WebUiCollapse 组件（浏览器）', () => {
     expect(document.activeElement).toBe(inside)
   })
 
-  // 外层收起不该改写内层的 open 状态：否则重新展开时嵌套面板已经莫名开了。
+  // 外层收起不该改写内层的 open 状态：否则重新展开时嵌套 panel 已经莫名开了。
   it('嵌套 collapse：外层收起只裁剪内容，不改写内层 open', async () => {
     const el = createCollapse(
       '<button class="trigger">Outer</button><div slot="content"><web-ui-collapse id="inner"><button class="trigger">Inner</button><div slot="content">InnerContent</div></web-ui-collapse></div>'
@@ -210,7 +210,7 @@ describe('WebUiCollapse 组件（浏览器）', () => {
 
     el.open = true
     await el.updateComplete
-    // peek 展开时轨道自身不产生过渡（两端都是 1fr），渐变带的淡出过渡落在 inner 上，等它跑完。
+    // peek 展开时 track 自身不产生过渡（两端都是 1fr），渐变带的淡出过渡落在 inner 上，等它跑完。
     await waitFor(
       () => getComputedStyle(queryInner(el)).getPropertyValue('--wui-collapse-peek-edge-active') === '0px',
       'peek edge band did not fade out'

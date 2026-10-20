@@ -44,7 +44,7 @@ export default {
         extends: true,
         test: {
           name: 'browser',
-          // 断点与折叠态都是真实浏览器才成立的东西：jsdom 里 media query 是替身、
+          // 断点与 collapsed state 都是真实浏览器才成立的东西：jsdom 里 media query 是替身、
           // 工具类是一串不生效的字符串。这一档在 Chromium 里读回渲染结果。
           include: ['src/**/*.browser.spec.ts'],
           browser: {
@@ -74,9 +74,9 @@ export default {
       apiTables: {
         // 列序是引擎约定：首列是名称（行的身份）、次列是说明（富文本），第 3 列起都是普通值列。
         // 只登记表格小节；标题不在这里的 `###` 按散文渲染（正文整段 markdown）。
-        // Props 记元素属性，Options 记命令式 API 的选项（`imagePreview()` / `toast()` 这类没有声明式契约的入口）。
-        // Methods 记组件对外的公开方法：元素实例方法、静态方法，以及命令式 API 返回句柄上的方法。
-        // 返回句柄记命令式 API 返回对象上的只读成员，那些成员的方法归 Methods。
+        // Props 记元素属性，Options 记命令式 API 的 option（`imagePreview()` / `toast()` 这类没有声明式契约的入口）。
+        // Methods 记组件对外的公开方法：元素实例方法、静态方法，以及命令式 API 返回 handle 上的方法。
+        // 返回 handle 记命令式 API 返回对象上的只读成员，那些成员的方法归 Methods。
         // CSS Custom Properties 记组件对外暴露的变量；theme 的 token 表按族分节，颜色与阴影两族另有浅色/深色两列。
         columns: {
           Props: ['名称', '说明', '类型', '默认值'],
@@ -84,7 +84,7 @@ export default {
           Events: ['名称', '说明'],
           Slots: ['名称', '说明'],
           Methods: ['名称', '说明'],
-          返回句柄: ['名称', '说明', '类型'],
+          '返回 handle': ['名称', '说明', '类型'],
           'CSS Custom Properties': ['名称', '说明', '默认值'],
           'Foundation tokens': ['名称', '说明', '默认值'],
           'Typography tokens': ['名称', '说明', '默认值'],

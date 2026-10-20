@@ -54,17 +54,17 @@ async function waitForMenuItemTexts(expected: string[], read: () => string[]) {
   await pollUntil(() => sameOrder(read(), expected), `Expected menu items to settle to ${expected.join(', ')}`)
 }
 
-// 根面板 / 子菜单面板都以公开语义 role="menu" + aria-label 挂载于 overlay 容器，
+// 根 panel / submenu panel 都以公开语义 role="menu" + aria-label 挂载于 overlay 容器，
 // 用 @/shared/test-utils 的共享定位器按 aria-label 区分（不再自建 root shadow 直查）。
 function getMenu(): HTMLElement | null {
-  return getMenuPanels('上下文菜单')[0] ?? null
+  return getMenuPanels('Context menu')[0] ?? null
 }
 
 function getSubmenu(): HTMLElement | null {
-  return getMenuPanels('子菜单')[0] ?? null
+  return getMenuPanels('submenu')[0] ?? null
 }
 
-// 面板内容容器 = 菜单条目的直接父级（公开 DOM 可查询），不依赖内部 class `.wui-menu-content`。
+// panel 内容容器 = menu item 的直接父级（公开 DOM 可查询），不依赖内部 class `.wui-menu-content`。
 // 通过任一 `web-ui-dropdown-item` 的 parentElement 定位，避免断言实现态的选择器。
 function getPortalContent(): HTMLElement {
   const panel = getMenu()
@@ -126,15 +126,15 @@ describe('WebUiContextMenu 组件', () => {
 
   describe('公开 API：openAt()', () => {
     /*
-     * 精确坐标断言只落在 browser spec（`openAt(x, y) 把面板锚定在指定坐标` 与
-     * `鼠标右键打开时面板锚定在落点`）。
+     * 精确坐标断言只落在 browser spec（`openAt(x, y) 把 panel 锚定在指定坐标` 与
+     * `鼠标右键打开时 panel 锚定在落点`）。
      *
-     * 模态化后面板走 Floating UI（`shift({ padding: 8, crossAxis: true })`），而 jsdom
+     * 模态化后 panel 走 Floating UI（`shift({ padding: 8, crossAxis: true })`），而 jsdom
      * 没有布局：`getBoundingClientRect()` 恒返回全 0，shift 必然把坐标夹到 8px。
      * 在 jsdom 里断言坐标量到的是「jsdom 能不能布局」，不是「openAt 的坐标映射」——
      * 对实现改动零判别力，却会逼着后来者为它调阈值。
      *
-     * 这里保留的是 jsdom 能证的一半：面板真的挂出，且定位器真的写入了坐标。
+     * 这里保留的是 jsdom 能证的一半：panel 真的挂出，且定位器真的写入了坐标。
      */
     const coords: ReadonlyArray<readonly [label: string, x: number, y: number]> = [
       ['视口内坐标', 100, 200],
@@ -143,7 +143,7 @@ describe('WebUiContextMenu 组件', () => {
     ]
 
     for (const [label, x, y] of coords) {
-      it(`${label}：打开菜单并写入定位坐标`, async () => {
+      it(`${label}：打开 menu 并写入定位坐标`, async () => {
         const el = createContextMenu({}, SIMPLE)
         await waitForUpdate(el)
 
@@ -175,7 +175,7 @@ describe('WebUiContextMenu 组件', () => {
   })
 
   describe('公开 API：close()', () => {
-    it('关闭打开的菜单', async () => {
+    it('关闭打开的 menu', async () => {
       const el = createContextMenu({}, SIMPLE)
       await waitForUpdate(el)
       el.openAt(100, 100)
@@ -188,7 +188,7 @@ describe('WebUiContextMenu 组件', () => {
       cleanupElement(el)
     })
 
-    it('关闭未打开的菜单无副作用', async () => {
+    it('关闭未打开的 menu 无副作用', async () => {
       const el = createContextMenu({}, SIMPLE)
       await waitForUpdate(el)
       el.close()
@@ -202,7 +202,7 @@ describe('WebUiContextMenu 组件', () => {
     // 以下「程序式静默 / 用户手势通知」四条契约已由共享矩阵
     // open-change-contract.spec.ts（web-ui-context-menu 覆盖）等价承接，本文件不再重复。
 
-    it('重新定位已打开菜单后，命令式关闭不派发残留事件', async () => {
+    it('重新定位已打开 menu 后，命令式关闭不派发残留事件', async () => {
       const el = createContextMenu({}, SIMPLE)
       el.openAt(100, 100)
       await waitForMenuOpen(el)
@@ -220,7 +220,7 @@ describe('WebUiContextMenu 组件', () => {
   })
 
   describe('右键触发', () => {
-    it('阻止浏览器原生菜单', async () => {
+    it('阻止浏览器原生 menu', async () => {
       const el = createContextMenu({}, SIMPLE)
       await waitForUpdate(el)
 
@@ -250,7 +250,7 @@ describe('WebUiContextMenu 组件', () => {
       expect(document.documentElement.style.overflow).toBe('')
     })
 
-    it('右键打开菜单', async () => {
+    it('右键打开 menu', async () => {
       const el = createContextMenu({}, SIMPLE)
       await waitForUpdate(el)
 
@@ -266,7 +266,7 @@ describe('WebUiContextMenu 组件', () => {
       await waitForMenuOpen(el)
 
       expect(el.isOpen).toBe(true)
-      // 精确坐标断言在 browser spec（`鼠标右键打开时面板锚定在落点`），理由同上。
+      // 精确坐标断言在 browser spec（`鼠标右键打开时 panel 锚定在落点`），理由同上。
       expect(getMenu()?.style.left).not.toBe('')
       expect(getMenu()?.style.top).not.toBe('')
 
@@ -276,19 +276,19 @@ describe('WebUiContextMenu 组件', () => {
 
   describe('点击外部关闭', () => {
     /*
-     * 原「点击外部关闭菜单」已删除：它用 `document.dispatchEvent(click)` 触发关闭，
-     * 而菜单打开时 scrim 处于 `showModal()` 模态态 —— 真实浏览器里这个 click 到不了
+     * 原「点击外部关闭 menu」已删除：它用 `document.dispatchEvent(click)` 触发关闭，
+     * 而 menu 打开时 scrim 处于 `showModal()` 模态态 —— 真实浏览器里这个 click 到不了
      * document，下层收不到命中。jsdom 没有 top layer，合成事件照样派发，于是这条断言
      * 把一条已被模态契约关掉的通道当成了契约；`document` 捕获阶段那个兜底监听器正是它
      * 唯一的实现，那段监听器已随之删除。留着它就等于把假象留在套件里。
      *
      * 契约本身没有丢，迁到了 browser project：
-     * `context-menu.browser.spec.ts` 的「点 scrim 关闭菜单，且下层 checkbox 既不被命中
-     * 也不收到 click」——它证明得更强，除菜单关闭外还证明了那次点击**没有**穿透到下层，
+     * `context-menu.browser.spec.ts` 的「点 scrim 关闭 menu，且下层 checkbox 既不被命中
+     * 也不收到 click」——它证明得更强，除 menu 关闭外还证明了那次点击**没有**穿透到下层，
      * 而这一半在 jsdom 里根本无法表达。
      */
 
-    it('点击普通菜单项后关闭菜单', async () => {
+    it('点击普通 menu item 后关闭 menu', async () => {
       const el = createContextMenu({}, SIMPLE)
       await waitForUpdate(el)
 
@@ -305,8 +305,8 @@ describe('WebUiContextMenu 组件', () => {
     })
   })
 
-  describe('菜单项交互', () => {
-    it('点击子菜单项时打开子菜单', async () => {
+  describe('menu item 交互', () => {
+    it('点击 submenu item 时打开 submenu', async () => {
       const el = createContextMenu(
         {},
         '<web-ui-dropdown-item submenu>导出<web-ui-dropdown-item>PDF</web-ui-dropdown-item></web-ui-dropdown-item>'
@@ -326,7 +326,7 @@ describe('WebUiContextMenu 组件', () => {
       cleanupElement(el)
     })
 
-    it('打开菜单时锁定页面滚动，并在关闭后恢复', async () => {
+    it('打开 menu 时锁定页面滚动，并在关闭后恢复', async () => {
       const el = createContextMenu({}, SIMPLE)
       await waitForUpdate(el)
 
@@ -355,7 +355,7 @@ describe('WebUiContextMenu 组件', () => {
       cleanupElement(el)
     })
 
-    it('打开菜单时阻止外部容器滚动', async () => {
+    it('打开 menu 时阻止外部容器滚动', async () => {
       const el = createContextMenu({}, SIMPLE)
       const container = document.createElement('div')
       document.body.appendChild(container)
@@ -374,7 +374,7 @@ describe('WebUiContextMenu 组件', () => {
       container.remove()
     })
 
-    it('在另一个区域右键打开时关闭当前菜单', async () => {
+    it('在另一个区域右键打开时关闭当前 menu', async () => {
       const first = createContextMenu({}, SIMPLE)
       const second = createContextMenu({}, SIMPLE)
       await Promise.all([first.updateComplete, second.updateComplete])
@@ -394,7 +394,7 @@ describe('WebUiContextMenu 组件', () => {
   })
 
   describe('Escape 关闭', () => {
-    it('Escape 关闭菜单', async () => {
+    it('Escape 关闭 menu', async () => {
       const el = createContextMenu({}, SIMPLE)
       await waitForUpdate(el)
 
@@ -409,7 +409,7 @@ describe('WebUiContextMenu 组件', () => {
       cleanupElement(el)
     })
 
-    it('有子菜单时先关闭最深层子菜单', async () => {
+    it('有 submenu 时先关闭最深层 submenu', async () => {
       const el = createContextMenu(
         {},
         '<web-ui-dropdown-item submenu>导出<web-ui-dropdown-item>PDF</web-ui-dropdown-item></web-ui-dropdown-item>'
@@ -432,8 +432,8 @@ describe('WebUiContextMenu 组件', () => {
     })
   })
 
-  describe('子菜单悬停', () => {
-    it('停留 200ms 后用 pointerenter 打开子菜单', async () => {
+  describe('submenu 悬停', () => {
+    it('停留 200ms 后用 pointerenter 打开 submenu', async () => {
       const el = createContextMenu(
         {},
         '<web-ui-dropdown-item submenu>导出<web-ui-dropdown-item>PDF</web-ui-dropdown-item></web-ui-dropdown-item>'
@@ -457,7 +457,7 @@ describe('WebUiContextMenu 组件', () => {
       }
     })
 
-    it('touch pointerenter 不打开子菜单', async () => {
+    it('touch pointerenter 不打开 submenu', async () => {
       const el = createContextMenu(
         {},
         '<web-ui-dropdown-item submenu>导出<web-ui-dropdown-item>PDF</web-ui-dropdown-item></web-ui-dropdown-item>'
@@ -537,7 +537,7 @@ describe('WebUiContextMenu 组件', () => {
       cleanupElement(el)
     })
 
-    it('子菜单打开期间重建子项后关闭子菜单，归还的子项被重新隐藏', async () => {
+    it('submenu 打开期间重建子项后关闭 submenu，归还的子项被重新隐藏', async () => {
       const el = createContextMenu(
         {},
         '<web-ui-dropdown-item submenu>导出<web-ui-dropdown-item>PDF</web-ui-dropdown-item></web-ui-dropdown-item>'
@@ -647,7 +647,7 @@ describe('WebUiContextMenu 组件', () => {
       cleanupElement(el)
     })
 
-    it('框架卸载 portal 内旧项并以注释锚点与新项替换，刷新后菜单完整', async () => {
+    it('框架卸载 portal 内旧项并以注释锚点与新项替换，刷新后 menu 完整', async () => {
       const el = createContextMenu({}, SIMPLE)
       await waitForUpdate(el)
       el.openAt(100, 100)
@@ -677,7 +677,7 @@ describe('WebUiContextMenu 组件', () => {
       cleanupElement(el)
     })
 
-    it('翻转多次后关闭重开，菜单项完整归还且 content 无残留注释', async () => {
+    it('翻转多次后关闭重开，menu item 完整归还且 content 无残留注释', async () => {
       const el = createContextMenu({}, SIMPLE)
       await waitForUpdate(el)
       el.openAt(100, 100)
@@ -717,7 +717,7 @@ describe('WebUiContextMenu 组件', () => {
   })
 
   describe('生命周期', () => {
-    it('打开期间脱离文档后重连，状态复位且菜单可重新打开', async () => {
+    it('打开期间脱离文档后重连，状态复位且 menu 可重新打开', async () => {
       const el = createContextMenu({}, SIMPLE)
       await waitForUpdate(el)
       el.openAt(100, 100)
@@ -743,8 +743,8 @@ describe('WebUiContextMenu 组件', () => {
 
   describe('焦点归还', () => {
     /*
-     * 只覆盖「外部接管焦点」这一侧。另一侧（焦点仍在菜单内 → 归还）在本引擎测不了：
-     * 菜单项把焦点放在自己 shadow root 内的控件上，而面板又挂在 overlay 容器的
+     * 只覆盖「外部接管焦点」这一侧。另一侧（焦点仍在 menu 内 → 归还）在本引擎测不了：
+     * menu item 把焦点放在自己 shadow root 内的控件上，而 panel 又挂在 overlay 容器的
      * shadow root 内，jsdom 对这种双层嵌套报出的 document.activeElement 挂在 body 上，
      * 与真实浏览器的 shadow host 语义不一致。该侧由 context-menu.browser.spec.ts 承担。
      */
@@ -759,7 +759,7 @@ describe('WebUiContextMenu 组件', () => {
       el.openAt(100, 100)
       await waitForMenuOpen(el)
 
-      // 菜单项回调同步建立编辑态、微任务里 focus() 进输入框；退场动画结束后才轮到归还。
+      // menu item 回调同步建立编辑态、微任务里 focus() 进 input；退场动画结束后才轮到归还。
       editor.focus()
       el.close()
       await waitForMenuClose(el)
@@ -772,7 +772,7 @@ describe('WebUiContextMenu 组件', () => {
   })
 
   describe('键盘 ContextMenu 键', () => {
-    it('ContextMenu 键打开菜单', async () => {
+    it('ContextMenu 键打开 menu', async () => {
       const el = createContextMenu({}, SIMPLE)
       await waitForUpdate(el)
 
@@ -783,7 +783,7 @@ describe('WebUiContextMenu 组件', () => {
       cleanupElement(el)
     })
 
-    it('Shift+F10 打开菜单', async () => {
+    it('Shift+F10 打开 menu', async () => {
       const el = createContextMenu({}, SIMPLE)
       await waitForUpdate(el)
 
@@ -802,7 +802,7 @@ describe('WebUiContextMenu 组件', () => {
   })
 
   describe('无障碍', () => {
-    it('菜单设置 role="menu"', async () => {
+    it('menu 设置 role="menu"', async () => {
       const el = createContextMenu({}, SIMPLE)
       await waitForUpdate(el)
 
@@ -817,7 +817,7 @@ describe('WebUiContextMenu 组件', () => {
   })
 
   describe('滚动锁定', () => {
-    it('滚动事件不会关闭已打开的菜单', async () => {
+    it('滚动事件不会关闭已打开的 menu', async () => {
       const el = createContextMenu({}, SIMPLE)
       await waitForUpdate(el)
 
@@ -834,7 +834,7 @@ describe('WebUiContextMenu 组件', () => {
   })
 
   describe('条件渲染边界', () => {
-    it('关闭状态把注释锚点替换为 wrapper 后，新成员进入菜单', async () => {
+    it('关闭状态把注释锚点替换为 wrapper 后，新成员进入 menu', async () => {
       const el = createContextMenu({}, '<!--items--><web-ui-dropdown-item>编辑</web-ui-dropdown-item>')
       await waitForUpdate(el)
 
@@ -852,7 +852,7 @@ describe('WebUiContextMenu 组件', () => {
       cleanupElement(el)
     })
 
-    it('打开时删除 wrapper 后立即从菜单移除成员', async () => {
+    it('打开时删除 wrapper 后立即从 menu 移除成员', async () => {
       const el = createContextMenu(
         {},
         '<web-ui-dropdown-item>编辑</web-ui-dropdown-item><div><web-ui-dropdown-item>复制</web-ui-dropdown-item></div>'
@@ -871,7 +871,7 @@ describe('WebUiContextMenu 组件', () => {
       cleanupElement(el)
     })
 
-    it('打开时删除嵌套子菜单 wrapper 后同步移除子成员', async () => {
+    it('打开时删除嵌套 submenu wrapper 后同步移除子成员', async () => {
       const el = createContextMenu(
         {},
         '<web-ui-dropdown-item submenu>导出<div><web-ui-dropdown-item>PDF</web-ui-dropdown-item></div></web-ui-dropdown-item>'
@@ -912,7 +912,7 @@ describe('WebUiContextMenu 组件', () => {
         setup() {
           return { broken }
         },
-        // 与原型页一致：v-if 切换 valid/broken 菜单项，false 分支产生注释锚点
+        // 与原型页一致：v-if 切换 valid/broken menu item，false 分支产生注释锚点
         template:
           template ??
           `
@@ -948,7 +948,7 @@ describe('WebUiContextMenu 组件', () => {
         () => new Promise(resolve => requestAnimationFrame(resolve))
       )
 
-    it('菜单开着时 v-if 翻转、关闭后锚点迁回宿主，再翻转不崩溃', async () => {
+    it('menu 开着时 v-if 翻转、关闭后锚点迁回宿主，再翻转不崩溃', async () => {
       const warnings: string[] = []
       const fixture = mountVueMenu(warnings)
       try {
@@ -986,7 +986,7 @@ describe('WebUiContextMenu 组件', () => {
             <web-ui-dropdown-item v-if="!broken" key="openwith">打开方式</web-ui-dropdown-item>
             <web-ui-dropdown-item v-if="broken" key="recover">找回资源</web-ui-dropdown-item>
             <web-ui-dropdown-divider key="d1"></web-ui-dropdown-divider>
-            <web-ui-dropdown-item v-if="!broken" key="tags">管理标签</web-ui-dropdown-item>
+            <web-ui-dropdown-item v-if="!broken" key="tags">管理 tag</web-ui-dropdown-item>
             <web-ui-dropdown-divider v-if="!broken" key="d2"></web-ui-dropdown-divider>
             <web-ui-dropdown-item key="del">删除</web-ui-dropdown-item>
           </web-ui-context-menu>
@@ -994,7 +994,7 @@ describe('WebUiContextMenu 组件', () => {
       )
       const el = fixture.menuEl()
       const broken = fixture.broken
-      // 读取 portal 内容顺序（项 + 分隔符）：直接在面板内按文档序查询，不依赖内部 class
+      // 读取 portal 内容顺序（项 + 分隔符）：直接在 panel 内按文档序查询，不依赖内部 class
       const contentOrder = () => {
         const panel = getMenu()
         return Array.from(panel?.querySelectorAll('web-ui-dropdown-item, web-ui-dropdown-divider') ?? []).map(item =>
@@ -1002,7 +1002,7 @@ describe('WebUiContextMenu 组件', () => {
         )
       }
       try {
-        const validOrder = ['预览', '打开方式', 'DIV', '管理标签', 'DIV', '删除']
+        const validOrder = ['预览', '打开方式', 'DIV', '管理 tag', 'DIV', '删除']
         const brokenOrder = ['找回资源', 'DIV', '删除']
         const waitForContentOrder = (expected: string[]) =>
           pollUntil(
@@ -1017,7 +1017,7 @@ describe('WebUiContextMenu 组件', () => {
         broken.value = true
         await waitForContentOrder(brokenOrder)
 
-        // 打开态 broken → valid：管理标签与条件 divider 回到无条件 divider 之后
+        // 打开态 broken → valid：管理 tag 与条件 divider 回到无条件 divider 之后
         broken.value = false
         await waitForContentOrder(validOrder)
 
@@ -1043,7 +1043,7 @@ describe('WebUiContextMenu 组件', () => {
             <web-ui-dropdown-item v-if="!broken" key="b">打开方式</web-ui-dropdown-item>
             <web-ui-dropdown-item v-if="broken" key="c">找回资源</web-ui-dropdown-item>
             <web-ui-dropdown-divider key="d1"></web-ui-dropdown-divider>
-            <web-ui-dropdown-item v-if="!broken" key="e">管理标签</web-ui-dropdown-item>
+            <web-ui-dropdown-item v-if="!broken" key="e">管理 tag</web-ui-dropdown-item>
             <web-ui-dropdown-divider v-if="!broken" key="f"></web-ui-dropdown-divider>
             <web-ui-dropdown-item key="g">删除</web-ui-dropdown-item>
           </web-ui-context-menu>
@@ -1051,7 +1051,7 @@ describe('WebUiContextMenu 组件', () => {
       )
       const el = fixture.menuEl()
       const broken = fixture.broken
-      // 全序（派生 itemOrder）：直接在面板内按文档序查询项 + 分隔符，不依赖内部 class
+      // 全序（派生 itemOrder）：直接在 panel 内按文档序查询项 + 分隔符，不依赖内部 class
       const fullOrder = () => {
         const panel = getMenu()
         return Array.from(panel?.querySelectorAll('web-ui-dropdown-item, web-ui-dropdown-divider') ?? []).map(item =>
@@ -1059,7 +1059,7 @@ describe('WebUiContextMenu 组件', () => {
         )
       }
       try {
-        const validItems = ['I:预览', 'I:打开方式', 'DIV', 'I:管理标签', 'DIV', 'I:删除']
+        const validItems = ['I:预览', 'I:打开方式', 'DIV', 'I:管理 tag', 'DIV', 'I:删除']
         const brokenItems = ['I:找回资源', 'DIV', 'I:删除']
         const itemOrder = () => fullOrder()
         const waitForItemOrder = (expected: string[]) =>
@@ -1069,7 +1069,7 @@ describe('WebUiContextMenu 组件', () => {
         await waitForItemOrder(validItems)
 
         // 两轮连续翻转 + 最后 reopen
-        // 判据是每次翻转后菜单项+分隔符的「顺序/集合稳定」，不是框架占位注释的数量。
+        // 判据是每次翻转后 menu item+分隔符的「顺序/集合稳定」，不是框架占位注释的数量。
         for (let round = 0; round < 2; round++) {
           broken.value = true
           await waitForItemOrder(brokenItems)

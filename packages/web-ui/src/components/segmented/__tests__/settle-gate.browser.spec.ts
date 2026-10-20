@@ -9,19 +9,19 @@ import { pollUntil, queryA11y, waitForUpdate } from '@/shared/test-utils'
 import type { WebUiSegmented } from '..'
 
 /*
- * 指示器落定门（浏览器）。
+ * indicator 落定门（浏览器）。
  *
- * 缺陷形态：指示器的 left / width 带着 160ms 过渡，快速连点会连着改 value。若每次改值都
- * 照常起一段过渡，第二段要从第一段的插值中途重新起步——指示器永远慢半拍，连点结束后还要
+ * 缺陷形态：indicator 的 left / width 带着 160ms 过渡，快速连点会连着改 value。若每次改值都
+ * 照常起一段过渡，第二段要从第一段的插值中途重新起步——indicator 永远慢半拍，连点结束后还要
  * 再等一整轮才停在终值，与「已经选到第几项」对不上。
  *
  * 修复：飞行中到达的新值直接落定（不排队、不重启插值）。
  *
- * 判据取**指示器的逐帧几何**，两个方向都必须有，缺一不可：
+ * 判据取**indicator 的逐帧几何**，两个方向都必须有，缺一不可：
  *   - 快速连点 → 采样序列上不得出现中间值（不重跑多段插值）
  *   - 间隔 >200ms 的正常切换 → 采样序列上**必须**出现中间值（门没把正常过渡也关掉）
  * 只测前者的话，一个「把过渡全关掉」的实现同样能过：那样连点确实直接落定，但正常点击
- * 之间的指示器移动也没了，正是这个门要避免的副作用。
+ * 之间的 indicator 移动也没了，正是这个门要避免的副作用。
  *
  * 必须 browser mode：这里量的是 CSS 过渡的逐帧插值，jsdom 没有布局也没有过渡。
  */
@@ -57,7 +57,7 @@ async function mount(): Promise<{
   await waitForUpdate(segmented)
   const indicator = segmented.shadowRoot?.querySelector('.wui-segmented-indicator') as HTMLElement
   // 定位走 afterSync 的 rAF，首帧之后才有 left/width。
-  await pollUntil(() => indicator.getBoundingClientRect().width > 0, '指示器未完成定位')
+  await pollUntil(() => indicator.getBoundingClientRect().width > 0, 'indicator 未完成定位')
   return { segmented, triggers, indicator }
 }
 
@@ -65,14 +65,14 @@ function nextFrame() {
   return new Promise(resolve => requestAnimationFrame(resolve))
 }
 
-/** 轻点某个选项：走 trigger 自己的 click 路径（与真实轻点同一入口）。 */
+/** 轻点某个 option：走 trigger 自己的 click 路径（与真实轻点同一入口）。 */
 async function tap(segmented: WebUiSegmented, trigger: WebUiSegmentedTrigger) {
   optionSurface(trigger).click()
   await waitForUpdate(segmented)
 }
 
 /**
- * 逐帧采样指示器左缘，直到超过 budget 帧或位置连续 3 帧不再变化。
+ * 逐帧采样 indicator 左缘，直到超过 budget 帧或位置连续 3 帧不再变化。
  *
  * 不按固定时长采样：过渡在并行负载下完成时间不可预测。连续若干帧不变即视为已停稳
  *（插值结束或根本没有插值，两种都算停稳）。
@@ -95,10 +95,13 @@ function hasIntermediateValue(samples: number[], from: number, to: number): bool
   const hi = Math.max(from, to)
   const span = hi - lo
   if (span < 1) return false
-  return samples.some(value => value > lo + span * 0.15 && value < hi - span * 0.15)
+  // 两端各留 5% 的余量：直落终值的实现只会取到两端，取不到带内；
+  // 而负载重的 runner 上过渡只被采到一帧时，这一帧可能落在过渡的靠后段
+  // （CI 上实测首帧已在 87% 处），留 15% 的带子会把真实插值判成直落。
+  return samples.some(value => value > lo + span * 0.05 && value < hi - span * 0.05)
 }
 
-describe('WebUiSegmented 指示器落定门（浏览器）', () => {
+describe('WebUiSegmented indicator 落定门（浏览器）', () => {
   it('快速连点直接落定终值，不重跑多段插值', async () => {
     const { segmented, triggers, indicator } = await mount()
     const startLeft = indicator.getBoundingClientRect().left
@@ -109,7 +112,7 @@ describe('WebUiSegmented 指示器落定门（浏览器）', () => {
     await tap(segmented, triggers[2])
     const samples = await sampleLeft(indicator)
 
-    // 核心判据：整段采样里没有中间值——指示器一步就停到终值。
+    // 核心判据：整段采样里没有中间值——indicator 一步就停到终值。
     expect(
       hasIntermediateValue(samples, startLeft, finalLeft),
       `连点采样=${samples.map(v => v.toFixed(1)).join(',')}`
@@ -126,10 +129,11 @@ describe('WebUiSegmented 指示器落定门（浏览器）', () => {
     const startLeft = indicator.getBoundingClientRect().left
     const targetLeft = triggers[1].getBoundingClientRect().left
 
-    // 采样必须紧接轻点开始：先等窗口过期再采，量到的是已经停稳的终值，
-    // 插值早已发生完，判据就永远读不到中间值。
+    // 采样必须与轻点同时起跑：先轻点再采样，采样循环的第一帧可能落在过渡的后段
+    // （CI runner 上实测首帧已在 87% 处），插值就量不到了。
+    const sampling = sampleLeft(indicator)
     await tap(segmented, triggers[1])
-    const samples = await sampleLeft(indicator)
+    const samples = await sampling
 
     expect(
       hasIntermediateValue(samples, startLeft, targetLeft),
@@ -153,8 +157,9 @@ describe('WebUiSegmented 指示器落定门（浏览器）', () => {
     // 再切一次：这一趟必须走完整过渡。
     const from = indicator.getBoundingClientRect().left
     const to = triggers[0].getBoundingClientRect().left
+    const sampling = sampleLeft(indicator)
     await tap(segmented, triggers[0])
-    const samples = await sampleLeft(indicator)
+    const samples = await sampling
 
     expect(hasIntermediateValue(samples, from, to), `过期后采样=${samples.map(v => v.toFixed(1)).join(',')}`).toBe(true)
   })

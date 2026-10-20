@@ -15,7 +15,7 @@ const createTheme = (): WebUiTheme => {
 }
 
 describe('shared/overlay theme-overlay-scope', () => {
-  it('findNearestTheme 沿父链命中最近的可承载浮层的主题宿主', async () => {
+  it('findNearestTheme 沿父链命中最近的可承载 overlay 的主题宿主', async () => {
     const outer = createTheme()
     const inner = createTheme()
     // inner 作为 outer 的 light DOM 子级，形成嵌套作用域

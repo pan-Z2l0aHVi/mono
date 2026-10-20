@@ -72,10 +72,10 @@ export function findFocusedMenuItem(panels: Iterable<HTMLElement | undefined>): 
 }
 
 /**
- * 托管菜单项的模板位锚：每个被迁入面板的项在宿主 light DOM 留一个 marker 注释，
- * 表示其模板位。宿主因此始终持有完整有序骨架（marker + 框架注释锚点 + 非菜单节点），
+ * 托管 menu item 的模板位锚：每个被迁入 panel 的项在宿主 light DOM 留一个 marker 注释，
+ * 表示其模板位。宿主因此始终持有完整有序骨架（marker + 框架注释锚点 + 非 menu 节点），
  * 框架（Vue/React 条件渲染）打开期的插入以宿主为容器、以真实锚点为基准；
- * 面板项的顺序按 marker 序重排；关闭时按 marker 位双向归还。
+ * panel 项的顺序按 marker 序重排；关闭时按 marker 位双向归还。
  * context-menu 与 dropdown 的打开期实时渲染共用本机制。
  */
 export type MenuItemAnchors = Map<HTMLElement, Comment>
@@ -92,7 +92,7 @@ export function reconcileManagedMenuItems(
   anchors: MenuItemAnchors,
   markerText: string
 ): void {
-  // 宿主与 portal 面板分别位于不同容器，结构上不相交且收集只看直接子层，
+  // 宿主与 portal panel 分别位于不同容器，结构上不相交且收集只看直接子层，
   // 两个集合不会重复。
   const inContent = getMovableMenuSubtrees(content)
   const inHost = getMovableMenuSubtrees(host)

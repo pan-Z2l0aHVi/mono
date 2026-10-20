@@ -13,6 +13,6 @@ function Component() {
 }
 
 export const Route = createFileRoute('/components/icon')({
-  staticData: { title: 'Icon 图标' },
+  staticData: { title: 'Icon' },
   component: Component
 })

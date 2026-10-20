@@ -65,7 +65,7 @@ export interface ResourceView {
   preferred: ResourceSourceView | null
   tags: TagView[]
   /**
-   * tags 的按名投影，供按名称工作的界面使用：编辑标签对话框的草稿与入队队列都只有
+   * tags 的按名投影，供按名称工作的界面使用：编辑标签 dialog 的草稿与入队队列都只有
    * 名称（队列里的标签尚未落库，没有颜色可言），过滤与排序也只认名称。
    */
   tagNames: string[]
@@ -187,7 +187,7 @@ export const useLibraryStore = defineStore('library', {
     /**
      * 标签名 → 持久化颜色。
      *
-     * 入队队列与编辑标签对话框手里只有标签名（队列里的标签还没落库，不存在颜色），
+     * 入队队列与编辑标签 dialog 手里只有标签名（队列里的标签还没落库，不存在颜色），
      * 它们要显示已存在标签的颜色只能按名回查。不在这张表里的名称就是尚未创建，
      * 展示中性档。
      */

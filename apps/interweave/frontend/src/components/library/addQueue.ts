@@ -79,7 +79,7 @@ export function createLibraryAddQueue(runtime: PreviewRuntime): LibraryAddQueueC
   let settleDuplicate: ((accept: boolean) => void) | null = null
   // 逐项查询与逐项确认都是异步的：串在一条链上，弹窗才不会叠加，顺序也与提交顺序一致。
   let chain: Promise<void> = Promise.resolve()
-  // close() 递增代次，让链上尚未处理的位置作废：添加对话框已经关掉，剩余项不再弹窗。
+  // close() 递增代次，让链上尚未处理的位置作废：添加 dialog 已经关掉，剩余项不再弹窗。
   let generation = 0
 
   function releaseToken(token: string | null) {
@@ -143,7 +143,7 @@ export function createLibraryAddQueue(runtime: PreviewRuntime): LibraryAddQueueC
     try {
       const matches = await runtime.findResourceLocationMatches(location, KIND_BY_SOURCE[kind].sourceType)
       if (!matches.length) return true
-      // 查询在途时用户可能已经关掉添加对话框：此时弹窗会成为没有归属的悬空确认，
+      // 查询在途时用户可能已经关掉添加 dialog：此时弹窗会成为没有归属的悬空确认，
       // 按取消放行。调用方的代次检查在 await 之后才发生，那时弹窗已经弹出，来不及。
       if (startedAt !== generation) return false
       return await askDuplicate({ location, matches })

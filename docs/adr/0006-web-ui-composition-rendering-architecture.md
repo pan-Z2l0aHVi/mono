@@ -8,8 +8,8 @@
 Overlay 组件族共享滚动锁定与焦点管理两类横切行为；按组件显式声明，不由全局默认隐式推导。
 
 - `no-scroll-lock` 可选择退出背景文档的滚动锁定；Dialog 保持原生模态行为；Select、Dropdown 和 Context Menu 暴露 `no-scroll-lock`，Popover 和 Tooltip 始终不锁定滚动
-- Select 打开时焦点保持在其 combobox 触发器上，通过 `aria-activedescendant` 暴露当前选中项
-- Dropdown 和 Context Menu 使用循环方向键导航、Home/End 键、子菜单导航、Enter/Space 激活
+- Select 打开时焦点保持在其 combobox trigger 上，通过 `aria-activedescendant` 暴露当前选中项
+- Dropdown 和 Context Menu 使用循环方向键导航、Home/End 键、submenu 导航、Enter/Space 激活
 - Escape 的归属不是各组件的私有交互策略，由共享仲裁者统一裁决（见 §7）
 - Popover 仅聚焦其第一个可用的 `[autofocus]` 后代元素
 
@@ -18,8 +18,8 @@ Overlay 组件族共享滚动锁定与焦点管理两类横切行为；按组件
 **定位引擎唯一，定位路径按语义准入分级。**
 
 - 全库唯一定位引擎为 `@floating-ui/dom`，版本由 workspace catalog 锁定
-- 语义一致的浮层默认经 `defineOverlay` / `defineAnchoredPanel` 定位
-- 语义分歧的浮层可拥有私有定位路径，准入条件：(a) 同一引擎与版本；(b) 分歧理由成文于组件内；(c) 引擎级通用知识在第二个组件出现时下沉到 shared
+- 语义一致的 overlay 默认经 `defineOverlay` / `defineAnchoredPanel` 定位
+- 语义分歧的 overlay 可拥有私有定位路径，准入条件：(a) 同一引擎与版本；(b) 分歧理由成文于组件内；(c) 引擎级通用知识在第二个组件出现时下沉到 shared
 - `defineOverlay` 不为单一消费者扩展配置旋钮；能力面扩展以出现第二个真实消费者为前提
 
 ## 3. 布局层叠
@@ -31,7 +31,7 @@ Overlay 组件族共享滚动锁定与焦点管理两类横切行为；按组件
 
 ## 4. 覆盖层内容迁移
 
-覆盖层面板在文档流外（portal），消费者以声明式框架编写内容，组件在打开时物理迁移节点。
+覆盖层 panel 在文档流外（portal），消费者以声明式框架编写内容，组件在打开时物理迁移节点。
 
 1. **打开态内容迁移**：tooltip、select、dropdown、context-menu 使用「打开迁入 portal、关闭迁回 + 身份追踪与注入补偿」
 2. **menu 族关闭态隐藏**：通过 slot 属性改写实现「未分配 → 不渲染」；节点始终留在文档流原位
@@ -53,7 +53,7 @@ Overlay 组件族共享滚动锁定与焦点管理两类横切行为；按组件
 
 Focus token 只定义颜色与宽度：`--wui-color-focus-ring` / `--wui-focus-ring-width`。
 
-中性交互面 `--wui-color-surface-control`；Slider/Switch 轨道 `--wui-color-surface-track`；40px 控件尺寸 `--wui-control-size`；浮动面板阴影 `--wui-shadow-panel`；浮层卡片 `--wui-color-surface-overlay`。
+中性交互面 `--wui-color-surface-control`；Slider/Switch track `--wui-color-surface-track`；40px 控件尺寸 `--wui-control-size`；浮动 panel 阴影 `--wui-shadow-panel`；overlay 卡片 `--wui-color-surface-overlay`。
 
 对外 CSS custom property 使用 `--wui-*`；内部接线变量使用 `--wui-internal-*` 前缀。
 
@@ -62,15 +62,15 @@ Focus token 只定义颜色与宽度：`--wui-color-focus-ring` / `--wui-focus-r
 ### 6.2 Duration / Easing / Scale
 
 - `--wui-duration-focus: 200ms`；`--wui-duration-trigger`（原 `--wui-duration-fast`）；`--wui-duration-drawer-enter: 280ms` / `--wui-duration-drawer-exit: 240ms`；`--wui-duration-float-enter: 240ms` / `--wui-duration-float-exit: 160ms`
-- `--wui-ease-enter`（原 `--wui-ease-out`）；`--wui-ease-slide`（原 `--wui-ease-standard`）；`--wui-ease-float`（锚定浮动面板专用的无回弹弹簧拟合曲线）
-- `--wui-scale-enter: 0.9`（261017 由 0.95 下调至 0.9；锚定浮动面板与 image-preview 由小到大展开；image-preview 的缩放只落在图片舞台层，控件层原地淡入）；`--wui-dialog-scale-enter: 1.1`（dialog 由大到小收缩，越界条件为静止宽度 > `(100/s)vw`，零越界上限是 `1/0.9 ≈ 1.111`（此 0.9 是 `min(90vw, var(--wui-dialog-width))` 的 `90vw` 分支系数，与 `--wui-scale-enter` 的 0.9 无关）；260919 由 1.2 下调至 1.1，默认值不再触发越界）
+- `--wui-ease-enter`（原 `--wui-ease-out`）；`--wui-ease-slide`（原 `--wui-ease-standard`）；`--wui-ease-float`（锚定浮动 panel 专用的无回弹弹簧拟合曲线）
+- `--wui-scale-enter: 0.9`（261017 由 0.95 下调至 0.9；锚定浮动 panel 与 image-preview 由小到大展开；image-preview 的缩放只落在图片舞台层，控件层原地淡入）；`--wui-dialog-scale-enter: 1.1`（dialog 由大到小收缩，越界条件为静止宽度 > `(100/s)vw`，零越界上限是 `1/0.9 ≈ 1.111`（此 0.9 是 `min(90vw, var(--wui-dialog-width))` 的 `90vw` 分支系数，与 `--wui-scale-enter` 的 0.9 无关）；260919 由 1.2 下调至 1.1，默认值不再触发越界）
 
 ### 6.3 语义 Radius Token
 
 三个公开语义 token，不引入数字 scale 或 shape 层：
 
 - `--wui-radius-control: calc(infinity * 1px)` — pill 形小控件
-- `--wui-radius-menu: 18px` — menu/popover 类浮动面板
+- `--wui-radius-menu: 18px` — menu/popover 类浮动 panel
 - `--wui-radius-overlay: 28px` — 大型覆盖层与独立浮动卡片
 
 非 pill radius 与 `--wui-glass-corner-radius` 联动：覆盖 token 时 border-radius 与对角光影一起变化。
@@ -83,13 +83,13 @@ light/dark——它们与外观无关，主题切换不应改变字号或间距�
 **排版族按角色命名，不引入数字阶。** 这与 §6.3 同构：名字回答「这块文字是什么」，
 不回答「它是第几号」。
 
-- 字号四档：`--wui-font-size-caption: 12px`（密集 chrome 标签）、
+- 字号四档：`--wui-font-size-caption: 12px`（密集 chrome label）、
   `--wui-font-size-readout: 13px`（数字读数）、`--wui-font-size: 14px`（正文基准）、
   `--wui-font-size-title: 18px`（有界卡片标题）。
 - 字重两档：`--wui-font-weight-medium: 500`、`--wui-font-weight-semibold: 600`。
 - 行高四档：`tight: 1.2`、`snug: 1.4`、`normal: 1.5`、`relaxed: 1.6`。
 
-`line-height: 1` 与 `0` 刻意不 token 化：前者是控件内单行标签的垂直居中手段，后者是
+`line-height: 1` 与 `0` 刻意不 token 化：前者是控件内单行 label 的垂直居中手段，后者是
 让 inline-flex 包裹盒高收缩到内容的技巧，两者都不是排版行高。`font-size: 0` 同理，是
 消除 inline 基线缝隙的技巧。
 
@@ -112,7 +112,7 @@ light/dark——它们与外观无关，主题切换不应改变字号或间距�
 
 本族刻意不含 1px / 2px / 6px / 7.5px / 10px 与负值：1px 是发丝线与描边环的结构宽度，
 2px、6px、7.5px 是光学修正，10px 是 4px 阶之外的半档耦合值，负 margin 用来抵消 flex
-gap 或按钮 padding。它们的「为什么是这个数」各自独立，不共享间距语义。
+gap 或 button padding。它们的「为什么是这个数」各自独立，不共享间距语义。
 
 另有一类按**语义**而非取值排除：对齐视口边缘或宿主内容边缘的偏移量。它们即使正好落在
 4px 阶上也不挂阶——`--wui-image-preview-edge-gap`、`--wui-toast-viewport-gap`、
@@ -122,7 +122,7 @@ gap 或按钮 padding。它们的「为什么是这个数」各自独立，不�
 密度」意外推移组件与边缘的距离。
 
 `--wui-drawer-close-right`（默认 `16px`）归入这一族值得单独说明，因为它容易被误挂：
-drawer header padding 是 `16px 20px`，而 close 按钮的 `right` 是 `16px`，**20 ≠ 16，二者
+drawer header padding 是 `16px 20px`，而 close button 的 `right` 是 `16px`，**20 ≠ 16，二者
 并不对齐**——组件原有注释声称二者对齐，实测不成立（该注释已在本轮改正）。挂到
 `--wui-space-4` 本身并不会造成视觉变化——该级默认仍是 `16px`——所以不挂阶的理由是
 **语义归属**（参照系是容器边缘），不是视觉风险。相比之下同组的
@@ -130,8 +130,8 @@ drawer header padding 是 `16px 20px`，而 close 按钮的 `right` 是 `16px`�
 分量（都是 `16px`），两者必须同源，否则覆盖该级会把这条对齐关系打断。
 
 组件层落在 4px 阶上的**节奏**字面量已全部挂阶（含 dialog 的 `--wui-dialog-title-gap` /
-`--wui-dialog-desc-gap`、dropdown-divider 的行内 margin、layout 侧栏按钮的 margin、
-drawer header padding 与 close 按钮的 `top`），因此「组件层**生效的静态** padding/gap/margin
+`--wui-dialog-desc-gap`、dropdown-divider 的行内 margin、layout 侧栏 button 的 margin、
+drawer header padding 与 close button 的 `top`），因此「组件层**生效的静态** padding/gap/margin
 的最大节奏值就是 24px」成立。这句只就节奏值立论，不声称穷举所有 4px 阶取值：
 
 - empty 的 padding 由 `--wui-empty-size` 尺寸档在 JS 侧派生（40 / 56 / 72 三档实测
@@ -141,7 +141,7 @@ drawer header padding 与 close 按钮的 `top`），因此「组件层**生效�
   失效、只在第三个上碰巧生效的密度杠杆比没有杠杆更糟，何况它挂进间距阶还会让一次密度
   覆盖顺手改掉占位块尺寸；
 - 组件内部几何同样落在阶上却不挂阶，例如 segmented 指示 thumb 在 track 内的
-  `top`/`bottom: 4px`、switch 滑块的 `translateX()` 行程、slider 的 thumb 尺寸，以及各类
+  `top`/`bottom: 4px`、switch thumb 的 `translateX()` 行程、slider 的 thumb 尺寸，以及各类
   `blur(4px)`。它们不是公开覆盖 token，参照系是组件自身的盒子而非相邻元素的节奏。
 
 > 这两类归属目前只由本节 prose 记录，**没有机器守卫**：守卫覆盖的是族是否连续、当前
@@ -155,9 +155,9 @@ drawer header padding 与 close 按钮的 `top`），因此「组件层**生效�
 
 杠杆的作用域是节奏，不是结构：上一节排除的那些值不跟随。覆盖还必须落在
 `<web-ui-theme>` 作用域内——`:host` 只向自己的子树声明，设在 theme 之上不生效。
-另有一条已知边界：`assets/*.css` 的浮层样式有两条注入路径，经 theme 自带的 overlay root
+另有一条已知边界：`assets/*.css` 的 overlay 样式有两条注入路径，经 theme 自带的 overlay root
 注入时能看到族内 token，退到 document 级 fallback overlay root（一个普通 `div`）时看不到，
-那条路径下浮层间距恒取字面量 fallback。
+那条路径下 overlay 间距恒取字面量 fallback。
 
 `--wui-radio-group-gap` 与 `--wui-checkbox-group-gap` 的默认值由 `8px` 改为引用
 `--wui-space-2`，因此这两枚既有 token 现在与该级耦合：覆盖 `--wui-space-2` 会连带改变
@@ -177,18 +177,18 @@ group 成员间距。显式覆盖 group token 本身仍然优先（嵌入方未�
 `theme-token-parity.spec.ts` 互补：parity 锁「fallback 与定义一致」，本文件锁
 「组件不写裸字面量」与「族内 token 全部被消费」。后者同时挡住新增即死 token。
 
-## 7. 开启态浮层归属
+## 7. 开启态 overlay 归属
 
-「哪一层正开着」由 `src/shared/overlay/open-overlay.ts` 独占，组件不再各自监听 Escape。合并前由三个模块分担同一件事（逻辑父子树、Escape 仲裁、帧事务失效），不变量没有主人，8 个浮层组件各自把它拼成三步登记协议。
+「哪一层正开着」由 `src/shared/overlay/open-overlay.ts` 独占，组件不再各自监听 Escape。合并前由三个模块分担同一件事（逻辑父子树、Escape 仲裁、帧事务失效），不变量没有主人，8 个 overlay 组件各自把它拼成三步登记协议。
 
 - **唯一仲裁者**：document 捕获阶段监听 keydown，按「逻辑组合树下的最内层」归属一次 Escape，然后 `preventDefault()` + `stopPropagation()`。`preventDefault()` 同时压掉原生 `<dialog>` 的 cancel，因此 dialog / drawer / image-preview 的原生机制也由它统一接管——三者都必须自己登记，否则原生 cancel 被压掉后它们既不在候选里、也等不到兜底
-- **身份是句柄而非面板**：`claim(panel)` 返回会话句柄，`release()` 幂等——调用方不必回忆当初传了哪个 panel。**登记即开启**，开启状态是声明而非询问，仲裁时不再回调宿主问 `isOpen()` / `isEscapeCloseEnabled()`；宿主除 `requestClose()` 外只再提供一个 `isConnected()`，且只被惰性回收读取——读 DOM 连接状态不是询问「我开着吗」
-- **两种作用域分离**：实例作用域（`claim` / `scheduleFrame` / `invalidate` / `suspend` / `resume`）跨开合与断连存活；会话作用域（`setInert` / `adopt` / `contains` / `containsEvent` / `hasFocusWithin` / `release`）与一次开启同寿命。帧事务不能压进会话句柄，否则 `release()` 会误杀事务
+- **身份是 handle 而非 panel**：`claim(panel)` 返回会话 handle，`release()` 幂等——调用方不必回忆当初传了哪个 panel。**登记即开启**，开启状态是声明而非询问，仲裁时不再回调宿主问 `isOpen()` / `isEscapeCloseEnabled()`；宿主除 `requestClose()` 外只再提供一个 `isConnected()`，且只被惰性回收读取——读 DOM 连接状态不是询问「我开着吗」
+- **两种作用域分离**：实例作用域（`claim` / `scheduleFrame` / `invalidate` / `suspend` / `resume`）跨开合与断连存活；会话作用域（`setInert` / `adopt` / `contains` / `containsEvent` / `hasFocusWithin` / `release`）与一次开启同寿命。帧事务不能压进会话 handle，否则 `release()` 会误杀事务
 - **「暂时不可关闭」只有一个通道**：`handle.setInert(boolean)`。静态策略（`no-escape-close`）与瞬时状态（drawer 拖拽中）都走它，不设第三个仲裁枚举值——属性可在开启期间改写，claim 时冻结的枚举会随属性切换而失效
 - **惰性与会话同 lifetime**：新 claim 出来的层一律非惰性，因此「重新 claim」的路径（`anchored-panel.reconfigure`、同一 panel 重复 `open()`）之后必须按当前状态重推一次。这一步承重与否取决于该组件在 reconfigure 后是否会渲染：`updated()` 里每次渲染都同步的（select / autocomplete）会把紧随 claim 的那一行掩盖成防御性备份，而 `reconfigure` 不引发渲染的（popover）必须自己重推——两种形态都有判别锁。这是把静态策略做成动态通道的代价，也是该通道唯一需要调用方记住的义务
-- **只表达两件真事**：`arbitration: 'none'` 表示「在树里但不参与仲裁」（tooltip）；多级子菜单用 `handle.adopt(panel)` 显式指名父级，因为 portal 面板与宿主物理分离，祖先链推不出组合关系
-- **撤销时机跟随退场，不提前也不拖过动画**：`close()` 先把会话切到「可见但暂缓仲裁」，动画播完（或被重新 `open()` 以新会话取代）才撤销。旧实现「与 `open` 同拍立即撤销」把还在场上的面板留在未登记状态——未登记即不参与「谁是最内层」的仲裁。暂缓层只是兜底候选：仍在开启的层永远优先，所以「内层关掉后立刻再按一次 Escape」仍归属外层，「一次 Escape 关一层」不退化。与 `setInert` 的分工是所有权：惰性由调用方声明、会随渲染重推，暂缓态由生命周期进入、调用方没有途径跟着渲染重推它。动画播完而宿主仍认为开着时切回开启态（面板已隐藏，不再符合「可见但暂缓」的前提）：交还仲裁让 Escape 走宿主的关闭入口，把面板状态与宿主状态的不一致收敛掉，而不是让一个看不见的面板无限吞掉按键
-- **登记表有兜底回收**：`Layer` 强引用 panel 与 host，漏 `release()` 会让整个组件无法回收，还会把 document 捕获监听永久留住。遍历登记表的入口（仲裁、release，以及建层**之前**的 claim）对 `!panel.isConnected && !host.isConnected()` 的层做惰性回收——判据取**同时**失联，因为面板可能被 portal 在容器间搬运、也可能只是短暂移除再放回。claim 路径的回收刻意跑在新层入表之前：「先 claim 再挂载」是合法时序，那一刻面板与宿主都还没连上，扫新层就会把它误判成死层删掉。dev 期另有 `__openOverlayLayerCount()` 测试钩子，让漏 release 在测试里是一个数字而不是 GC 推断
+- **只表达两件真事**：`arbitration: 'none'` 表示「在树里但不参与仲裁」（tooltip）；多级 submenu 用 `handle.adopt(panel)` 显式指名父级，因为 portal panel 与宿主物理分离，祖先链推不出组合关系
+- **撤销时机跟随退场，不提前也不拖过动画**：`close()` 先把会话切到「可见但暂缓仲裁」，动画播完（或被重新 `open()` 以新会话取代）才撤销。旧实现「与 `open` 同拍立即撤销」把还在场上的 panel 留在未登记状态——未登记即不参与「谁是最内层」的仲裁。暂缓层只是兜底候选：仍在开启的层永远优先，所以「内层关掉后立刻再按一次 Escape」仍归属外层，「一次 Escape 关一层」不退化。与 `setInert` 的分工是所有权：惰性由调用方声明、会随渲染重推，暂缓态由生命周期进入、调用方没有途径跟着渲染重推它。动画播完而宿主仍认为开着时切回开启态（panel 已隐藏，不再符合「可见但暂缓」的前提）：交还仲裁让 Escape 走宿主的关闭入口，把 panel 状态与宿主状态的不一致收敛掉，而不是让一个看不见的 panel 无限吞掉按键
+- **登记表有兜底回收**：`Layer` 强引用 panel 与 host，漏 `release()` 会让整个组件无法回收，还会把 document 捕获监听永久留住。遍历登记表的入口（仲裁、release，以及建层**之前**的 claim）对 `!panel.isConnected && !host.isConnected()` 的层做惰性回收——判据取**同时**失联，因为 panel 可能被 portal 在容器间搬运、也可能只是短暂移除再放回。claim 路径的回收刻意跑在新层入表之前：「先 claim 再挂载」是合法时序，那一刻 panel 与宿主都还没连上，扫新层就会把它误判成死层删掉。dev 期另有 `__openOverlayLayerCount()` 测试钩子，让漏 release 在测试里是一个数字而不是 GC 推断
 - **边界**：presence、滚动锁与 drawer 的层序（nested layers）仍归各自模块——它们回答视觉问题，与「谁是最内层」正交
 
 ## 后果
@@ -196,6 +196,6 @@ group 成员间距。显式覆盖 group token 本身仍然优先（嵌入方未�
 - 每个 Overlay 遵循明确的焦点模型；定位引擎唯一，私有路径需满足三条准入条件
 - 调用方拥有祖先层叠上下文；库不修改也不兜底
 - 组件对消费者节点的写入面严格受限
-- Escape 归属由唯一仲裁者裁决，组件只声明「我开着」；新增浮层必须 `claim` 才参与仲裁，关闭时撤销时机跟随退场动画（见 §7）
+- Escape 归属由唯一仲裁者裁决，组件只声明「我开着」；新增 overlay 必须 `claim` 才参与仲裁，关闭时撤销时机跟随退场动画（见 §7）
 - 新增受管组合时以 GroupController 承担成员与上行逻辑，@lit/context 仅下行
 - 旧 token 命名不保留兼容别名；新组件属于哪一族就用哪个语义 radius token

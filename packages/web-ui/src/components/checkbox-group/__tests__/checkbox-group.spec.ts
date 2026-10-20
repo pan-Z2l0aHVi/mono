@@ -43,7 +43,7 @@ describe('WebUiCheckboxGroup 组件', () => {
       cleanupElement(el)
     })
 
-    it('设置 value 后同步子选项的 checked 状态', async () => {
+    it('设置 value 后同步子 option 的 checked 状态', async () => {
       const el = createGroup()
       await waitForUpdate(el)
 
@@ -58,7 +58,7 @@ describe('WebUiCheckboxGroup 组件', () => {
       cleanupElement(el)
     })
 
-    it('再次设置 value 后更新子选项状态', async () => {
+    it('再次设置 value 后更新子 option 状态', async () => {
       const el = createGroup()
       await waitForUpdate(el)
 
@@ -127,7 +127,7 @@ describe('WebUiCheckboxGroup 组件', () => {
       cleanupElement(el)
     })
 
-    it('disabled 为 true 时点击子选项不更新 value', async () => {
+    it('disabled 为 true 时点击子 option 不更新 value', async () => {
       const el = createGroup()
       el.disabled = true
       await waitForUpdate(el)
@@ -222,7 +222,7 @@ describe('WebUiCheckboxGroup 组件', () => {
       cleanupElement(el)
     })
 
-    it('重复点击已选项将其从 value 数组中移除', async () => {
+    it('重复点击已 option 将其从 value 数组中移除', async () => {
       const el = createGroup()
       await waitForUpdate(el)
 

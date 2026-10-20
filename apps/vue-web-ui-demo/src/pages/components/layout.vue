@@ -1,7 +1,7 @@
 <route lang="json">
 {
   "meta": {
-    "title": "Layout 布局"
+    "title": "Layout"
   }
 }
 </route>

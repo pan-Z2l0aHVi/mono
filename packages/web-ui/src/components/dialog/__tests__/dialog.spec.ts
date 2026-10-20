@@ -13,7 +13,7 @@ function createDialog(slots = ''): WebUiDialog {
   return el
 }
 
-/** 打开态的内部原生 dialog —— 遮罩点击的落点。 */
+/** 打开态的内部原生 dialog —— backdrop 点击的落点。 */
 function panelOf(el: WebUiDialog): HTMLDialogElement | null {
   return el.shadowRoot?.querySelector('dialog') ?? null
 }
@@ -21,7 +21,7 @@ function panelOf(el: WebUiDialog): HTMLDialogElement | null {
 afterEach(() => document.body.replaceChildren())
 
 describe('WebUiDialog', () => {
-  describe('open 反射与程序化开关', () => {
+  describe('open 反射与程序化 toggle', () => {
     it('open 属性反射到 host 元素', async () => {
       const el = createDialog()
 
@@ -72,7 +72,7 @@ describe('WebUiDialog', () => {
       cleanupElement(el)
     })
 
-    // 幂等性：已打开时重复调用 showModal() 既不重派事件也不关掉面板。
+    // 幂等性：已打开时重复调用 showModal() 既不重派事件也不关掉 panel。
     // 少了这条，重复调用导致的「重复 showModal」回归无人看守。
     it('已打开时再次调用 showModal() 不重复触发、也不关闭', async () => {
       const el = createDialog()
@@ -173,8 +173,8 @@ describe('WebUiDialog', () => {
     }
   })
 
-  describe('遮罩点击关闭', () => {
-    it('默认允许点击遮罩关闭对话框', async () => {
+  describe('backdrop 点击关闭', () => {
+    it('默认允许点击 backdrop 关闭 dialog', async () => {
       const el = createDialog()
       el.open = true
       await waitForUpdate(el)
@@ -186,7 +186,7 @@ describe('WebUiDialog', () => {
       cleanupElement(el)
     })
 
-    it('no-backdrop-close 存在时点击遮罩不关闭', async () => {
+    it('no-backdrop-close 存在时点击 backdrop 不关闭', async () => {
       const el = createDialog()
       el.noBackdropClose = true
       el.open = true
@@ -200,9 +200,9 @@ describe('WebUiDialog', () => {
     })
 
     // `no-backdrop-close="false"` 仍是「存在」（Boolean 反射语义），用户后果是同一个：
-    // 点遮罩不关闭。表驱动那条只读属性，这里钉行为——只钉属性的话，某天反射对了
-    // 但遮罩点击闸门失效，这条不会红。
-    it('no-backdrop-close="false" 仍禁用遮罩关闭', async () => {
+    // 点 backdrop 不关闭。表驱动那条只读属性，这里钉行为——只钉属性的话，某天反射对了
+    // 但 backdrop 点击闸门失效，这条不会红。
+    it('no-backdrop-close="false" 仍禁用 backdrop 关闭', async () => {
       const el = createDialog()
       el.setAttribute('no-backdrop-close', 'false')
       el.open = true
@@ -219,7 +219,7 @@ describe('WebUiDialog', () => {
 
   describe('controlled 模式', () => {
     // 关键用户流程：受控下组件只发请求，改不改 open 由 consumer 决定。
-    it('点击遮罩只派发 open-change(false) 请求，不修改 open', async () => {
+    it('点击 backdrop 只派发 open-change(false) 请求，不修改 open', async () => {
       const el = createDialog()
       el.controlled = true
       el.open = true

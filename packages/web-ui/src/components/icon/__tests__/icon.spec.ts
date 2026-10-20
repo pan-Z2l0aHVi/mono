@@ -28,7 +28,7 @@ describe('WebUiIcon 组件', () => {
     cleanupElement(el)
   })
 
-  // 装饰性图形必须对辅助技术隐藏：图标自身不承载语义，name 来自同层的可访问名称来源。
+  // 装饰性图形必须对辅助技术隐藏：icon 自身不承载语义，name 来自同层的可访问名称来源。
   it('渲染的 SVG 对辅助技术隐藏', async () => {
     const el = createIcon()
     await waitForUpdate(el)
@@ -41,7 +41,7 @@ describe('WebUiIcon 组件', () => {
 
   // Iconify 规范里 width/height 缺省即 16。猜成别的值不会报错，只会把图形按错误比例
   // 缩放并偏到画布一角——这正是本组件注释里写明要跟规范一致的那条。
-  it('未声明尺寸的图标按 Iconify 默认的 16×16 画布取景', async () => {
+  it('未声明尺寸的 icon 按 Iconify 默认的 16×16 画布取景', async () => {
     const el = createIcon()
     await waitForUpdate(el)
 
@@ -49,7 +49,7 @@ describe('WebUiIcon 组件', () => {
     cleanupElement(el)
   })
 
-  it('声明了尺寸的图标用自带画布，不套默认值', async () => {
+  it('声明了尺寸的 icon 用自带画布，不套默认值', async () => {
     const el = createIcon({ body: '<path d="M4 6h16v2H4z"/>', width: 24, height: 24 })
     await waitForUpdate(el)
 

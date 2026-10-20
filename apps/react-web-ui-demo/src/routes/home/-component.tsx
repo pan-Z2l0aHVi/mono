@@ -8,12 +8,12 @@ import {
 import { Link } from '@tanstack/react-router'
 
 const quickLinks = [
-  { path: '/components/button', label: 'Button 按钮', desc: '支持多种变体、尺寸、图标与加载态' },
-  { path: '/components/dialog', label: 'Dialog 对话框', desc: '模态与无障碍对齐的对话框交互' },
-  { path: '/components/drawer', label: 'Drawer 抽屉', desc: '支持手势拖拽关闭与悬浮卡片形态' },
-  { path: '/components/theme', label: 'Theme 主题', desc: '深浅色切换与减弱动效策略' },
-  { path: '/components/select', label: 'Select 下拉选择', desc: '基于 Floating UI 的下拉弹层与选项' },
-  { path: '/components/toast', label: 'Toast 通知', desc: '轻量响应式全局通知提示' }
+  { path: '/components/button', label: 'Button', desc: 'Variants, sizes, icons and loading states' },
+  { path: '/components/dialog', label: 'Dialog', desc: 'Modal dialog behavior aligned with accessibility' },
+  { path: '/components/drawer', label: 'Drawer', desc: 'Gesture drag-to-close and floating card variants' },
+  { path: '/components/theme', label: 'Theme', desc: 'Light and dark switching with reduced motion' },
+  { path: '/components/select', label: 'Select', desc: 'Floating UI based dropdown layer and options' },
+  { path: '/components/toast', label: 'Toast', desc: 'Lightweight responsive global notifications' }
 ]
 
 function Home() {

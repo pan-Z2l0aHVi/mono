@@ -406,7 +406,7 @@ describe('WebUiEditableText 组件契约', () => {
 
     const [cancels, detachCancels] = spyEvents(el, 'cancel')
     const [changes, detachChanges] = spyEvents(el, 'change')
-    // 浮层仲裁者在 document 捕获阶段收 Escape：它收不到，才证明按键被编辑层消费
+    // overlay 仲裁者在 document 捕获阶段收 Escape：它收不到，才证明按键被编辑层消费
     const documentCapture: string[] = []
     const onDocumentCapture = (e: Event) => {
       if ((e as KeyboardEvent).key === 'Escape') documentCapture.push('escape')
@@ -432,7 +432,7 @@ describe('WebUiEditableText 组件契约', () => {
     cleanupElement(el)
   })
 
-  it('cancel 只在宿主上派发：外层浮层 shadow 内的 dialog 与 light DOM 祖先都收不到', async () => {
+  it('cancel 只在宿主上派发：外层 overlay shadow 内的 dialog 与 light DOM 祖先都收不到', async () => {
     /*
      * issue #159 的实测形态：drawer 把 <dialog> 放在自己 shadow 里并监听原生 cancel，
      * 消费者的 editable-text 经 slot 投映其中。自定义 cancel 一旦冒泡——composed 与否
@@ -470,7 +470,7 @@ describe('WebUiEditableText 组件契约', () => {
     const [cancels, detachCancels] = spyEvents(el, 'cancel')
     const [changes, detachChanges] = spyEvents(el, 'change')
     try {
-      // blur 路径：点到浮层内别处——提交而非取消，本就无关 dialog 的 cancel 管线
+      // blur 路径：点到 overlay 内别处——提交而非取消，本就无关 dialog 的 cancel 管线
       el.focus()
       await waitForUpdate(el)
       typeDraft(el, 'draft')
@@ -546,7 +546,7 @@ describe('WebUiEditableText 组件契约', () => {
 
     const [cancels, detachCancels] = spyEvents(el, 'cancel')
     const [changes, detachChanges] = spyEvents(el, 'change')
-    // 与 Escape 同套消费策略：按键不外泄，外层表单/浮层监听不应收到
+    // 与 Escape 同套消费策略：按键不外泄，外层表单/overlay 监听不应收到
     const documentCapture: string[] = []
     const onDocumentCapture = (e: Event) => {
       if ((e as KeyboardEvent).key === 'Enter') documentCapture.push('enter')

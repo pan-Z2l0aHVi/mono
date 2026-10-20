@@ -21,7 +21,7 @@ afterEach(() => document.body.replaceChildren())
  * 置 0 为贴边几何。组件把它注册成 `<length>`（index.ts 的 `CSS.registerProperty`），
  * 因此 Consumer 写 unitless 的 `0` 会在计算值阶段归一成 `0px`；不注册的话
  * `calc(100% + 0)` 因 number 与 percentage 不兼容而整条闭合 transform 失效，
- * 抽屉就滑不出视口。
+ * drawer 就滑不出视口。
  *
  * 读的是 token 归一化的结果，不是组件的内部样式取值：前者是 README 承诺给 Consumer
  * 的行为，后者才是 §12 C1 排除的几何。判据见 §14 T1。

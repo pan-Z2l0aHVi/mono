@@ -2,8 +2,8 @@
  * 判断 label 槽位有没有真的画出东西。
  *
  * radio / checkbox 的触发行是 `inline-flex` + `gap: 10px`，宿主宽度由内容撑开，所以那条 gap 是
- * 指示器与标签之间的距离。但 gap 只认「这里有个 flex item」，不认它有没有宽度：槽位空着，或者只放了
- * 一个视觉隐藏的无障碍名（`.sr-only` 出流，不产生行内盒），标签盒子是 0 宽，指示器右边仍然多出 10px。
+ * indicator 与 label 之间的距离。但 gap 只认「这里有个 flex item」，不认它有没有宽度：槽位空着，或者只放了
+ * 一个视觉隐藏的无障碍名（`.sr-only` 出流，不产生行内盒），label 盒子是 0 宽，indicator 右边仍然多出 10px。
  *
  * 判据因此取渲染宽度而不是「槽位有没有被指派内容」——两者只在无障碍名那一种用法上分开，而那正是这里
  * 要修的一种。CSS 也判不出这件事：`slot:empty` 看的是 slot 自己的子节点，被 assign 进来的节点并不是
@@ -57,7 +57,7 @@ function unwatch(target: Element) {
   observer?.unobserve(target)
 }
 
-/** 把标签盒子的空 / 非空变化报给宿主；断开重连后重新接上观察。 */
+/** 把 label 盒子的空 / 非空变化报给宿主；断开重连后重新接上观察。 */
 export class LabelEmptinessController implements ReactiveController {
   private target: Element | undefined
 
@@ -71,7 +71,7 @@ export class LabelEmptinessController implements ReactiveController {
 
   /*
    * 两个生命周期都要接：重连（移出 DOM 再放回去、列表重排、Teleport）不会排一次更新，所以只挂在
-   * hostUpdated 上的话，观察在断开时被拆掉就再也接不回来，标签后来改成什么都不显示宽度都停在旧值上。
+   * hostUpdated 上的话，观察在断开时被拆掉就再也接不回来，label 后来改成什么都不显示宽度都停在旧值上。
    * 而首连时 shadow root 还没有子节点，这里查不到目标，得靠 hostUpdated 补上第一次。
    */
   hostConnected() {

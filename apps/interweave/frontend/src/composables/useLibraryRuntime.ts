@@ -238,13 +238,13 @@ export function useLibraryRuntime(injectedRuntime?: LibraryRuntime) {
 
   /**
    * 打开详情时的 URL 探测（§7.1）。策略收窄为 unavailableOnly：只在当前判为不可用时
-   * 发起——对当前可用的 URL 每次开抽屉都发一次网络请求没有用户可见收益，而「死链恢复」
+   * 发起——对当前可用的 URL 每次开 drawer 都发一次网络请求没有用户可见收益，而「死链恢复」
    * 正是需要重新判定的场景。判定放在这里而不是调用点，是为了让「该不该探测」这条策略
    * 可以被单测直接覆盖。
    *
    * 结论分三态（§7.3）：available/unavailable 已落库，走既有 upsert 回流；inconclusive
    * （断网、DNS、超时）不落库也不改角标，只回一句后端出的用户可见文案。探测失败同样
-   * 不阻塞开抽屉——这是附加信息，不是打开的前置条件。
+   * 不阻塞开 drawer——这是附加信息，不是打开的前置条件。
    */
   async function probeURLSourceOnOpen(preferred: ResourceSourceView | null) {
     if (!runtime.isAvailable) return

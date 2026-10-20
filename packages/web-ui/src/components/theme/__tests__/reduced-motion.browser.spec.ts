@@ -14,7 +14,7 @@ import type { WebUiTheme } from '@/components/theme'
  * 本文件跑在 `browser-reduced-motion` project（Playwright `reducedMotion: 'reduce'`；
  * vite 按文件名路由，凡以 `reduced-motion.browser.spec.ts` 结尾的 spec 都进这个 project）。
  *
- * 契约是"**放慢而不停**"——一个冻结的加载指示器读起来就是界面卡死，所以 reduce 下转场归零、
+ * 契约是"**放慢而不停**"——一个冻结的 spinner 读起来就是界面卡死，所以 reduce 下转场归零、
  * 但这两个循环只把周期拉长（600ms → 1600ms、800ms → 1600ms）。
  *
  * 断言全部走 Web Animations API：原实现读

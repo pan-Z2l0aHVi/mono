@@ -45,7 +45,7 @@ export const defineNativeDialogPresence = () =>
     // 是异步任务（queue a task），可能在之后任意时刻才到达：正常时序在本关闭会话内
     // 到达（消费方 open 已为 false，本就该忽略）；快速「关闭→重开」时它在重新打开
     // 之后才到达，若消费方把它当成外部关闭，会把刚重开的 dialog 关掉——这是 drawer
-    // 连续开关后丢失过渡动画（重开即被误关）的根因。置位后由消费方的
+    // 连续 toggle 后丢失过渡动画（重开即被误关）的根因。置位后由消费方的
     // handleNativeClose 经 handleNativeClose() 消费；消费方 open 为 false 提前返回时
     // 也必须调用一次以消费标志，避免泄漏到下一次真实关闭。
     let selfClosePending = false

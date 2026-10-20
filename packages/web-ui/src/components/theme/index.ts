@@ -198,7 +198,7 @@ export class WebUiTheme extends LitElement {
   override connectedCallback() {
     super.connectedCallback()
     this._syncResolvedAppearance()
-    // 揭示开关曾由 transition prop 单独控制；现在统一由 motion 决定，
+    // reveal toggle 曾由 transition prop 单独控制；现在统一由 motion 决定，
     // 因此连接期间始终记录圆心来源，真正是否动画仍看 _shouldAnimateAppearance。
     this._syncTransitionOriginListeners(true)
     this._syncRootPageColorSync()
@@ -236,7 +236,7 @@ export class WebUiTheme extends LitElement {
     else unregisterThemeRootSync(this)
   }
 
-  // 返回该主题拥有的浮层挂载点；未设置 appearance 时不创建。
+  // 返回该主题拥有的 overlay 挂载点；未设置 appearance 时不创建。
   getOverlayRoot(): HTMLElement | undefined {
     if (!this._hasAppearance()) return undefined
     return this.renderRoot.querySelector<HTMLElement>('[data-wui-overlay-container]') ?? undefined

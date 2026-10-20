@@ -2,7 +2,7 @@ import '@/assets/global.css'
 import '@/generated/examples.css'
 // 同理：layout 的默认值断言直接建元素，得把组件模块拉进来才会升级。
 import '@greypan/web-ui/components/layout'
-// 主题宿主得自己注册：本文件里没有 `<web-ui-theme>` 的模板用法，unplugin 的注入扫不到这个标签。
+// 主题宿主得自己注册：本文件里没有 `<web-ui-theme>` 的模板用法，unplugin 的注入扫不到这个 tag。
 import '@greypan/web-ui/components/theme'
 
 import type { WebUiLayout, WebUiSegmented, WebUiSegmentedTrigger, WebUiSlider } from '@greypan/web-ui'
@@ -127,7 +127,7 @@ async function mountDemos(element: HTMLElement) {
 function sliderIn(element: HTMLElement, title: string) {
   const host = sample(element, title).querySelector<WebUiSlider>('web-ui-slider')
   if (!host) throw new Error(`示例「${title}」没有渲染出 web-ui-slider`)
-  // 影子树里有 role="slider" = 元素真的被注册升级过，不是留着未知标签的空壳。
+  // 影子树里有 role="slider" = 元素真的被注册升级过，不是留着未知 tag 的空壳。
   if (!host.shadowRoot?.querySelector('[role="slider"]')) throw new Error(`示例「${title}」的 slider 没有升级`)
   return host
 }
@@ -294,7 +294,7 @@ describe('example-doc（Vue 面 / 真实浏览器）', () => {
     expect(cellOf(sliderRows, apiSection(slider, 'props'), 'max', '默认值')).toBe('100')
   })
 
-  it('options 表（命令式 API 的选项）与 props 表一样渲染类型与默认值两列', () => {
+  it('options 表（命令式 API 的 option）与 props 表一样渲染类型与默认值两列', () => {
     const rows = rowsOf(mountDoc('image-preview'), 'options')
     const options = apiSection(imagePreview, 'options')
 
@@ -346,18 +346,21 @@ describe('example-doc（Vue 面 / 真实浏览器）', () => {
     if (!section) throw new Error('slider 的 行为说明 小节没有渲染')
     // 散文小节没有表头也没有表格：正文就是生成器渲染好的那段 HTML。
     expect(section.querySelector('table')).toBeNull()
-    expect(section.querySelector('p')?.textContent).toBe(prose.html.replace(/<[^>]*>/g, ''))
+    // 散文可以有多段（列表、代码块都是段落级的），比的是整段正文而不是第一个 <p>。
+    const expected = document.createElement('div')
+    expected.innerHTML = prose.html
+    expect(section.querySelector('div')?.textContent).toBe(expected.textContent)
   })
 
-  it('返回句柄表只收只读成员，列形状来自 markdown', () => {
+  it('返回 handle 表只收只读成员，列形状来自 markdown', () => {
     const element = mountDoc('image-preview')
-    const handle = apiSection(imagePreview, '返回句柄')
-    const rows = rowsOf(element, '返回句柄')
+    const handle = apiSection(imagePreview, '返回 handle')
+    const rows = rowsOf(element, '返回 handle')
 
     expect(rows.map(cells => cells[0])).toEqual(handle.rows.map(row => row[0]))
-    // 句柄上的方法归 ### Methods，这一节只记只读成员——同一件事不在两节里各写一遍。
+    // handle 上的方法归 ### Methods，这一节只记只读成员——同一件事不在两节里各写一遍。
     expect(rows.map(cells => cells[0])).toEqual(['index', 'scale', 'images', 'closed'])
-    expect(headersOf(element, '返回句柄')).toEqual(['名称', '说明', '类型'])
+    expect(headersOf(element, '返回 handle')).toEqual(['名称', '说明', '类型'])
     expect(cellOf(rows, handle, 'closed', '类型')).toBe('Promise<void>')
   })
 

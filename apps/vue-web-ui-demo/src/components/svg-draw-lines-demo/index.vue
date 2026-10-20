@@ -57,30 +57,30 @@ function updateDuration(e: WebUiEvent<WebUiSlider, 'input'>) {
 }
 
 const iconItems = [
-  { id: 'search', label: 'Search 搜索', icon: lucideSearch },
-  { id: 'star', label: 'Star 星标', icon: lucideStar },
-  { id: 'heart', label: 'Heart 收藏', icon: lucideHeart },
-  { id: 'bell', label: 'Bell 通知', icon: lucideBell },
-  { id: 'mail', label: 'Mail 邮件', icon: lucideMail },
-  { id: 'user', label: 'User 用户', icon: lucideUser },
-  { id: 'download', label: 'Download 下载', icon: lucideDownload },
-  { id: 'check', label: 'Check 确认', icon: lucideCheck },
-  { id: 'settings', label: 'Settings 设置', icon: lucideSettings },
-  { id: 'inbox', label: 'Inbox 收件箱', icon: lucideInbox }
+  { id: 'search', label: 'Search', icon: lucideSearch },
+  { id: 'star', label: 'Star', icon: lucideStar },
+  { id: 'heart', label: 'Heart', icon: lucideHeart },
+  { id: 'bell', label: 'Bell', icon: lucideBell },
+  { id: 'mail', label: 'Mail', icon: lucideMail },
+  { id: 'user', label: 'User', icon: lucideUser },
+  { id: 'download', label: 'Download', icon: lucideDownload },
+  { id: 'check', label: 'Check', icon: lucideCheck },
+  { id: 'settings', label: 'Settings', icon: lucideSettings },
+  { id: 'inbox', label: 'Inbox', icon: lucideInbox }
 ]
 </script>
 
 <template>
   <div>
-    <h1>SVG 描边动画</h1>
+    <h1>SVG stroke animation</h1>
     <p class="mb-4 text-(--wui-color-text-secondary)">
       将 SVG 图形的轮廓线以描边动画逐笔绘制。支持 path、rect、circle、line、polyline、polygon、ellipse 等多种基本图形。
     </p>
 
-    <h2>参数控制</h2>
+    <h2>Parameter control</h2>
     <div class="mb-6 flex flex-col gap-4">
       <label class="flex items-center gap-2 text-sm">
-        <span class="whitespace-nowrap text-(--wui-color-text-secondary)">动画时长:</span>
+        <span class="whitespace-nowrap text-(--wui-color-text-secondary)">Duration:</span>
         <web-ui-slider
           :value="duration"
           :min="200"
@@ -93,7 +93,7 @@ const iconItems = [
       </label>
 
       <label class="flex items-center gap-2 text-sm">
-        <span class="text-(--wui-color-text-secondary)">缓动函数:</span>
+        <span class="text-(--wui-color-text-secondary)">Easing:</span>
         <web-ui-select v-model="easing" class="w-36">
           <web-ui-option value="linear">linear</web-ui-option>
           <web-ui-option value="ease">ease</web-ui-option>
@@ -104,13 +104,13 @@ const iconItems = [
         </web-ui-select>
       </label>
 
-      <web-ui-button @click="replayAll" variant="secondary">全部重播</web-ui-button>
+      <web-ui-button @click="replayAll" variant="secondary">Replay all</web-ui-button>
     </div>
 
-    <h2>基础形状（light DOM）</h2>
+    <h2>Basic shapes (light DOM)</h2>
     <div class="mb-6 flex flex-wrap items-end gap-6">
       <div>
-        <p class="mb-1 text-sm text-(--wui-color-text-secondary)">简单线条</p>
+        <p class="mb-1 text-sm text-(--wui-color-text-secondary)">Simple lines</p>
         <div class="flex items-center gap-2">
           <web-ui-svg-draw-lines ref="svg1" :duration="duration" :easing="easing">
             <svg
@@ -127,11 +127,11 @@ const iconItems = [
               <path d="M50 5 L50 35" />
             </svg>
           </web-ui-svg-draw-lines>
-          <web-ui-button @click="replayBasic(1)" variant="ghost">重播</web-ui-button>
+          <web-ui-button @click="replayBasic(1)" variant="ghost">Replay</web-ui-button>
         </div>
       </div>
       <div>
-        <p class="mb-1 text-sm text-(--wui-color-text-secondary)">几何图形</p>
+        <p class="mb-1 text-sm text-(--wui-color-text-secondary)">Geometric figures</p>
         <div class="flex items-center gap-2">
           <web-ui-svg-draw-lines ref="svg2" :duration="duration" :easing="easing">
             <svg
@@ -148,11 +148,11 @@ const iconItems = [
               <circle cx="75" cy="15" r="10" />
             </svg>
           </web-ui-svg-draw-lines>
-          <web-ui-button @click="replayBasic(2)" variant="ghost">重播</web-ui-button>
+          <web-ui-button @click="replayBasic(2)" variant="ghost">Replay</web-ui-button>
         </div>
       </div>
       <div>
-        <p class="mb-1 text-sm text-(--wui-color-text-secondary)">波浪曲线</p>
+        <p class="mb-1 text-sm text-(--wui-color-text-secondary)">Wavy curves</p>
         <div class="flex items-center gap-2">
           <web-ui-svg-draw-lines ref="svg3" :duration="duration" :easing="easing">
             <svg
@@ -168,12 +168,12 @@ const iconItems = [
               <path d="M5 30 Q25 0 50 30 T100 30 T150 30 T195 30" />
             </svg>
           </web-ui-svg-draw-lines>
-          <web-ui-button @click="replayBasic(3)" variant="ghost">重播</web-ui-button>
+          <web-ui-button @click="replayBasic(3)" variant="ghost">Replay</web-ui-button>
         </div>
       </div>
     </div>
 
-    <h2>手动播放与收回</h2>
+    <h2>Manual play and retake</h2>
     <p class="mb-3 text-sm text-(--wui-color-text-secondary)">
       no-autoplay 关闭挂载时的自动播放；replay() 逐笔画入，replay({ reverse: true }) 沿原路径收回。
     </p>
@@ -181,14 +181,14 @@ const iconItems = [
       <web-ui-svg-draw-lines ref="manualRef" no-autoplay :duration="duration" :easing="easing">
         <web-ui-icon :icon="lucideStar" :size="48"></web-ui-icon>
       </web-ui-svg-draw-lines>
-      <web-ui-button @click="manualRef?.replay()" variant="ghost">画入</web-ui-button>
-      <web-ui-button @click="manualRef?.replay({ reverse: true })" variant="ghost">收回</web-ui-button>
+      <web-ui-button @click="manualRef?.replay()" variant="ghost">Draw in</web-ui-button>
+      <web-ui-button @click="manualRef?.replay({ reverse: true })" variant="ghost">Retake</web-ui-button>
     </div>
 
-    <h2>复杂场景</h2>
+    <h2>Complex cases</h2>
     <div class="mb-6 flex flex-wrap items-end gap-8">
       <div>
-        <p class="mb-1 text-sm text-(--wui-color-text-secondary)">多个同级 SVG</p>
+        <p class="mb-1 text-sm text-(--wui-color-text-secondary)">Several sibling SVGs</p>
         <div class="flex items-center gap-2">
           <web-ui-svg-draw-lines ref="multiRef" :duration="duration" :easing="easing">
             <svg viewBox="0 0 50 50" width="50" height="50" fill="none" stroke="currentColor" stroke-width="2">
@@ -198,12 +198,12 @@ const iconItems = [
               <rect x="10" y="10" width="30" height="30" />
             </svg>
           </web-ui-svg-draw-lines>
-          <web-ui-button @click="multiRef?.replay()" variant="ghost">重播</web-ui-button>
+          <web-ui-button @click="multiRef?.replay()" variant="ghost">Replay</web-ui-button>
         </div>
       </div>
 
       <div>
-        <p class="mb-1 text-sm text-(--wui-color-text-secondary)">深层嵌套 &lt;g&gt;</p>
+        <p class="mb-1 text-sm text-(--wui-color-text-secondary)">Deeply nested &lt;g&gt;</p>
         <div class="flex items-center gap-2">
           <web-ui-svg-draw-lines ref="nestedRef" :duration="duration" :easing="easing">
             <svg viewBox="0 0 100 100" width="100" height="100" fill="none" stroke="currentColor" stroke-width="2">
@@ -215,12 +215,12 @@ const iconItems = [
               </g>
             </svg>
           </web-ui-svg-draw-lines>
-          <web-ui-button @click="nestedRef?.replay()" variant="ghost">重播</web-ui-button>
+          <web-ui-button @click="nestedRef?.replay()" variant="ghost">Replay</web-ui-button>
         </div>
       </div>
 
       <div>
-        <p class="mb-1 text-sm text-(--wui-color-text-secondary)">light DOM + Shadow DOM 混合</p>
+        <p class="mb-1 text-sm text-(--wui-color-text-secondary)">light DOM + Shadow DOM mixed</p>
         <div class="flex items-center gap-2">
           <web-ui-svg-draw-lines ref="mixedRef" :duration="duration" :easing="easing">
             <svg
@@ -238,12 +238,12 @@ const iconItems = [
             </svg>
             <web-ui-icon :icon="lucideStar" :size="24"></web-ui-icon>
           </web-ui-svg-draw-lines>
-          <web-ui-button @click="mixedRef?.replay()" variant="ghost">重播</web-ui-button>
+          <web-ui-button @click="mixedRef?.replay()" variant="ghost">Replay</web-ui-button>
         </div>
       </div>
     </div>
 
-    <h2>图标示例（Shadow DOM — web-ui-icon）</h2>
+    <h2>Icon sample (Shadow DOM — web-ui-icon)</h2>
     <div data-testid="svg-icon-grid" class="mb-6 grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
       <div
         v-for="item in iconItems"
@@ -257,7 +257,7 @@ const iconItems = [
         <web-ui-svg-draw-lines :ref="getRef(item.id)" :duration="duration" :easing="easing">
           <web-ui-icon :icon="item.icon" :size="32"></web-ui-icon>
         </web-ui-svg-draw-lines>
-        <web-ui-button @click="replayIcon(item.id)" full variant="ghost">重播</web-ui-button>
+        <web-ui-button @click="replayIcon(item.id)" full variant="ghost">Replay</web-ui-button>
       </div>
     </div>
   </div>

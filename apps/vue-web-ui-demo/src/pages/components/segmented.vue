@@ -1,7 +1,7 @@
 <route lang="json">
 {
   "meta": {
-    "title": "Segmented 分段控制器"
+    "title": "Segmented"
   }
 }
 </route>

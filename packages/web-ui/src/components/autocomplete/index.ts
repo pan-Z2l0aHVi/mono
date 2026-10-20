@@ -34,7 +34,7 @@ import style from './style.css?inline'
 const FILTER_MODES = ['none', 'prefix', 'contains'] as const
 type FilterMode = (typeof FILTER_MODES)[number]
 
-// 自定义 trigger 与 select 同判据：必须留在宿主，不随 options 迁入 portal 面板
+// 自定义 trigger 与 select 同判据：必须留在宿主，不随 options 迁入 portal panel
 function isTriggerSlotNode(node: Node): node is Element {
   return node instanceof Element && node.slot === 'trigger'
 }
@@ -47,15 +47,15 @@ function isEmptySlotNode(node: Node): node is Element {
 /**
  * `web-ui-autocomplete`：可输入并过滤候选的单值选择器。
  *
- * 与 `web-ui-select` 共用 `<web-ui-option>` 子项注册协议与浮层能力，但触发区是
- * 可编辑输入框：`value` 即当前输入文本（表单值），键入时按 `filter` 模式过滤候选，
+ * 与 `web-ui-select` 共用 `<web-ui-option>` 子项注册协议与 overlay 能力，但触发区是
+ * 可编辑 input：`value` 即当前输入文本（表单值），键入时按 `filter` 模式过滤候选，
  * 选择 option 时文本回填为该项 label，`selected-value` 暴露该项的 value。
  * `allow-custom-value` 开启后，Enter 可把不匹配候选的原文作为 custom value 显式提交。
  *
- * 触发器跟随 select 的 wrapper div 模式：`slot[name="trigger"]` 可替换默认触发器
- * （shadow 内的 `web-ui-input`）；多行触发器（如 `web-ui-textarea`）保留 Enter 换行语义，
- * 关闭面板用 Escape 或 blur。
- * tab 位只属于触发器自身：默认触发器是 shadow 内 input，自定义触发器由消费者提供
+ * trigger 跟随 select 的 wrapper div 模式：`slot[name="trigger"]` 可替换默认 trigger
+ * （shadow 内的 `web-ui-input`）；多行 trigger（如 `web-ui-textarea`）保留 Enter 换行语义，
+ * 关闭 panel 用 Escape 或 blur。
+ * tab 位只属于 trigger 自身：默认 trigger 是 shadow 内 input，自定义 trigger 由消费者提供
  * 可聚焦元素（README 契约）；包装 div 恒为 tabindex="-1"，不占顺序焦点，避免双 tab 位。
  */
 @customElement('web-ui-autocomplete')
@@ -164,7 +164,7 @@ export class WebUiAutocomplete extends FormAssociated(LitElement) {
     getPortal: () => this._portal,
     getPortalContent: () => this._portalContent,
     isOpen: () => this.portal && this._isOpen,
-    // 默认 slot 内容随面板迁移；trigger 与已移除的 empty slot 留在宿主，不进面板。
+    // 默认 slot 内容随 panel 迁移；trigger 与已移除的 empty slot 留在宿主，不进 panel。
     getMigratableNodes: () =>
       Array.from(this.childNodes).filter(node => !isTriggerSlotNode(node) && !isEmptySlotNode(node)),
     hasUpdated: () => this.hasUpdated,
@@ -173,8 +173,8 @@ export class WebUiAutocomplete extends FormAssociated(LitElement) {
     unbindOption: option => this._unbindOption(option)
   })
   /*
-   * 触发器委托层：默认触发器（shadow 内 web-ui-input）与 slot[name="trigger"] 自定义
-   * 触发器对组件暴露同一形状，监听统一挂在 trigger 包装 div 上，两条路径不特判。
+   * trigger 委托层：默认 trigger（shadow 内 web-ui-input）与 slot[name="trigger"] 自定义
+   * trigger 对组件暴露同一形状，监听统一挂在 trigger 包装 div 上，两条路径不特判。
    */
   private readonly _trigger = defineComboboxTrigger().make({
     getWrapper: () => this.shadowRoot?.querySelector<HTMLElement>('.autocomplete-trigger') ?? null,
@@ -189,8 +189,8 @@ export class WebUiAutocomplete extends FormAssociated(LitElement) {
     onFocusOut: event => this._onTriggerFocusOut(event)
   })
   /*
-   * 开启态浮层承载「我开着吗」（issue #120 Block 1）：宿主级 keydown 在 portal 模式下
-   * 收不到面板内的 Escape，改由唯一仲裁者在 document 捕获阶段判定最内层。
+   * 开启态 overlay 承载「我开着吗」（issue #120 Block 1）：宿主级 keydown 在 portal 模式下
+   * 收不到 panel 内的 Escape，改由唯一仲裁者在 document 捕获阶段判定最内层。
    * 宿主接口除 requestClose 外只再提供一个 isConnected（仅供惰性回收读取）：开启状态是
    * 声明而非询问。
    */
@@ -199,7 +199,7 @@ export class WebUiAutocomplete extends FormAssociated(LitElement) {
     isConnected: () => this.isConnected
   })
   private readonly _panel = defineAnchoredPanel().make({
-    // 锚点取当前生效的触发器 host：默认触发器或自定义 trigger slot 内容
+    // 锚点取当前生效的 trigger host：默认 trigger 或自定义 trigger slot 内容
     getAnchor: () =>
       this._trigger.getTrigger() ?? this.shadowRoot?.querySelector<HTMLElement>('.autocomplete-trigger') ?? null,
     getLocalPanel: () => this.shadowRoot?.querySelector<HTMLElement>('.autocomplete-overlay') ?? null,
@@ -223,9 +223,9 @@ export class WebUiAutocomplete extends FormAssociated(LitElement) {
   }
 
   /*
-   * 公共焦点委托：聚焦/失焦当前生效的触发器（默认 web-ui-input 或自定义触发器）。
-   * 组件自带 focus 重定向时落到内部原生控件；自定义触发器没有该能力时，
-   * 原生 focus() 聚焦 host 自身。无触发器（尚未首渲或已断开）时静默返回。
+   * 公共焦点委托：聚焦/失焦当前生效的 trigger（默认 web-ui-input 或自定义 trigger）。
+   * 组件自带 focus 重定向时落到内部原生控件；自定义 trigger 没有该能力时，
+   * 原生 focus() 聚焦 host 自身。无 trigger（尚未首渲或已断开）时静默返回。
    */
   override focus(options?: FocusOptions): void {
     this._trigger.focusTrigger(options)
@@ -254,14 +254,14 @@ export class WebUiAutocomplete extends FormAssociated(LitElement) {
 
   private _handlePanelPointerDown = (e: PointerEvent) => {
     // 非 option 区域不可聚焦；阻止 pointerdown 的默认聚焦行为，保持 combobox 焦点，
-    // 使点击 empty state、滚动区和面板 padding 不会被 focusout 误判为外部交互。
+    // 使点击 empty state、滚动区和 panel padding 不会被 focusout 误判为外部交互。
     e.preventDefault()
   }
 
   override connectedCallback() {
     super.connectedCallback()
     this._optionPortal.bindHost()
-    // 宿主可能被上层浮层 portal 迁移（断开重连）：shadow 内的包装 div 仍在，重新绑定委托监听
+    // 宿主可能被上层 overlay portal 迁移（断开重连）：shadow 内的包装 div 仍在，重新绑定委托监听
     this._trigger.bind()
     this.addEventListener('keydown', this._onKeydown)
     this.addEventListener('focusout', this._onFocusOut)
@@ -273,15 +273,15 @@ export class WebUiAutocomplete extends FormAssociated(LitElement) {
   }
 
   /*
-   * 自定义触发器判定必须同步：slotchange 在首次渲染之后才派发，只依赖它会让默认
-   * web-ui-input 先渲染一帧再被替换，自定义触发器出现时会闪一下默认输入框。
+   * 自定义 trigger 判定必须同步：slotchange 在首次渲染之后才派发，只依赖它会让默认
+   * web-ui-input 先渲染一帧再被替换，自定义 trigger 出现时会闪一下默认 input。
    * 判据与 portal 迁移排除（isTriggerSlotNode）同源：宿主直接子节点带 slot="trigger"。
    */
   private _syncTriggerSlot() {
     const hasTriggerSlot = Array.from(this.children).some(isTriggerSlotNode)
     if (this._hasTriggerSlot === hasTriggerSlot) return
     this._hasTriggerSlot = hasTriggerSlot
-    // 触发器在默认与自定义之间切换：anchor 与 portal 会话按新触发器重建。
+    // trigger 在默认与自定义之间切换：anchor 与 portal 会话按新 trigger 重建。
     // 首次渲染前尚无 portal 会话，无需重建。
     if (this.hasUpdated) this._reconfigureOverlay()
   }
@@ -306,7 +306,7 @@ export class WebUiAutocomplete extends FormAssociated(LitElement) {
     this._close()
     this._portal = undefined
     this._portalContent = undefined
-    // 撤销登记由 _panel.dispose() 完成（句柄归它持有），不再需要单独 dispose 仲裁者。
+    // 撤销登记由 _panel.dispose() 完成（handle 归它持有），不再需要单独 dispose 仲裁者。
     this._panel.dispose()
     this._scrollLock.release()
   }
@@ -329,7 +329,7 @@ export class WebUiAutocomplete extends FormAssociated(LitElement) {
   }
 
   override updated(changed: PropertyValues) {
-    // 文本回写经委托层落到当前触发器（默认 web-ui-input 或自定义触发器）
+    // 文本回写经委托层落到当前 trigger（默认 web-ui-input 或自定义 trigger）
     this._trigger.setValue(this._value)
     if (changed.has('portal') || changed.has('overlayContainer'))
       requestAnimationFrame(() => this._reconfigureOverlay())
@@ -351,7 +351,7 @@ export class WebUiAutocomplete extends FormAssociated(LitElement) {
     if (!internals || typeof internals.setValidity !== 'function') return
     // readonly 与 disabled 一致：值不可由用户修改，视为通过校验（原生 barred-from-validation 语义）
     if (this._isDisabled || this.readonly || !this.required || this._value) internals.setValidity({})
-    else internals.setValidity({ valueMissing: true }, '请输入内容')
+    else internals.setValidity({ valueMissing: true }, 'Enter a value')
   }
 
   private _syncOpenAttribute() {
@@ -360,7 +360,7 @@ export class WebUiAutocomplete extends FormAssociated(LitElement) {
 
   /*
    * 禁用/只读态不响应 Escape。仲裁者仍在（吞掉按键并压掉原生 cancel），只是不走关闭
-   * 入口 —— 与旧的「跳过候选」语义不同：旧语义放任事件落到下层浮层，把外层一起关掉。
+   * 入口 —— 与旧的「跳过候选」语义不同：旧语义放任事件落到下层 overlay，把外层一起关掉。
    * 每次渲染后同步即可覆盖 disabled / readonly 属性与表单禁用三条来源。
    */
   private _syncOverlayInert() {
@@ -456,7 +456,7 @@ export class WebUiAutocomplete extends FormAssociated(LitElement) {
   }
 
   private _handleOptionPointerDown = (e: PointerEvent) => {
-    // 保持输入框焦点，避免 focusout 在 click 前关闭浮层。
+    // 保持 input 焦点，避免 focusout 在 click 前关闭 overlay。
     e.preventDefault()
   }
 
@@ -473,8 +473,8 @@ export class WebUiAutocomplete extends FormAssociated(LitElement) {
     // Escape 不在本组件处理：由共享仲裁者在 document 捕获阶段归属（issue #120 Block 1）。
     switch (e.key) {
       /*
-       * 多行触发器（textarea）的方向键归光标移动：面板打开时不接管、不
-       * preventDefault，与 Enter 的 multiline 例外同判据。面板关闭时方向键
+       * 多行 trigger（textarea）的方向键归光标移动：panel 打开时不接管、不
+       * preventDefault，与 Enter 的 multiline 例外同判据。panel 关闭时方向键
        * 仍是打开入口（键盘可达性不依赖指针）。
        */
       case 'ArrowDown':
@@ -487,9 +487,9 @@ export class WebUiAutocomplete extends FormAssociated(LitElement) {
       }
       case 'Enter': {
         /*
-         * 面板打开时接管 Enter：选择候选或提交 custom value。
-         * 零匹配时面板会被过滤状态收敛关闭，但 allow-custom-value 仍需在关闭态提交。
-         * 多行触发器（textarea）保留换行语义，不接管为选中高亮项。
+         * panel 打开时接管 Enter：选择候选或提交 custom value。
+         * 零匹配时 panel 会被过滤状态收敛关闭，但 allow-custom-value 仍需在关闭态提交。
+         * 多行 trigger（textarea）保留换行语义，不接管为选中高亮项。
          */
         const canSubmitCustomValue = this._canSubmitCustomValue()
         if (
@@ -586,8 +586,8 @@ export class WebUiAutocomplete extends FormAssociated(LitElement) {
 
   /*
    * focus/blur 不冒泡，委托层监听等价且冒泡的 focusin/focusout。
-   * 自定义触发器位于 light DOM，其焦点变化不会跨 shadow 边界到达宿主，这里补发
-   * 公共 focus/blur 兑现 README 事件契约；默认触发器在 shadow 内，原生事件已能
+   * 自定义 trigger 位于 light DOM，其焦点变化不会跨 shadow 边界到达宿主，这里补发
+   * 公共 focus/blur 兑现 README 事件契约；默认 trigger 在 shadow 内，原生事件已能
    * 到达宿主，重复派发会让消费端收到两次。
    */
   private _onTriggerFocusIn = (event: FocusEvent) => {
@@ -659,7 +659,7 @@ export class WebUiAutocomplete extends FormAssociated(LitElement) {
 
   private _openOverlay(isKeyboardNavigation = false) {
     this._panel.open(isKeyboardNavigation)
-    // 新会话的句柄刚建立，惰性状态需按当前 disabled/readonly 重新同步。
+    // 新会话的 handle 刚建立，惰性状态需按当前 disabled/readonly 重新同步。
     this._syncOverlayInert()
   }
 
@@ -713,12 +713,12 @@ export class WebUiAutocomplete extends FormAssociated(LitElement) {
     scroll.append(content)
     portal.panel.append(scroll)
     for (const node of Array.from(this.childNodes)) {
-      // 框架注释锚点（v-if/v-for 占位）必须留在宿主：锚点进面板后 Vue 下次翻转
-      // 会以面板内节点为插入基准；portal 的 marker 注释同理不参与迁移。
+      // 框架注释锚点（v-if/v-for 占位）必须留在宿主：锚点进 panel 后 Vue 下次翻转
+      // 会以 panel 内节点为插入基准；portal 的 marker 注释同理不参与迁移。
       if (node instanceof Comment) continue
-      // 自定义 trigger 与 select（:461）同判据：留在宿主，不随 options 迁入浮层
+      // 自定义 trigger 与 select（:461）同判据：留在宿主，不随 options 迁入 overlay
       if (isTriggerSlotNode(node)) continue
-      // 已移除的 empty slot 不能作为普通内容出现在新 portal 面板中
+      // 已移除的 empty slot 不能作为普通内容出现在新 portal panel 中
       if (isEmptySlotNode(node)) continue
       portal.appendContent([node], content)
     }

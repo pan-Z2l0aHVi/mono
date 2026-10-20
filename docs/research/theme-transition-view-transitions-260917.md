@@ -19,7 +19,7 @@ issue #105 记录的三条挂起理由，在当前 Chrome 上**都不成立**：
 真正可复现的缺陷有两条，都在分支自带的参数与交互选择里，与 Chrome 无关：
 
 1. **动画时长 `4.6s linear`**。规范范例与 antd 线上取值都是 `500ms` + `ease-in`，分支写的 4.6s 是它的 9.2 倍。4.6s 的圆形揭示在观感上接近「页面卡住」，不是主题过渡。
-2. **transition 期间整页输入被吞**。规范明确要求 rendering suppression 期间「all pointer hit testing must target its document element, ignoring all other elements」（[css-view-transitions-1 §7.1.1](https://www.w3.org/TR/css-view-transitions-1/)），实测在 transition 未结束前点 `web-ui-select` 面板不展开（`optionW=0`、`aria-expanded=false`），`document.elementFromPoint(400,400)` 只返回 `HTML`。把时长写成 4.6s，等于每次切主题后 UI 死掉 4.6 秒——「点没反应 → 再点一次 → 页面还冻着」正好会被记成「不稳定」。
+2. **transition 期间整页输入被吞**。规范明确要求 rendering suppression 期间「all pointer hit testing must target its document element, ignoring all other elements」（[css-view-transitions-1 §7.1.1](https://www.w3.org/TR/css-view-transitions-1/)），实测在 transition 未结束前点 `web-ui-select` panel 不展开（`optionW=0`、`aria-expanded=false`），`document.elementFromPoint(400,400)` 只返回 `HTML`。把时长写成 4.6s，等于每次切主题后 UI 死掉 4.6 秒——「点没反应 → 再点一次 → 页面还冻着」正好会被记成「不稳定」。
 
 另有两条与 issue 记载不符的事实需要更正：分支相对 `main` 的 3 个 commit 里只有 `92d0ad47` 是主题过渡，另两个是 stylelint/deps 清理；`apps/vue-web-ui-demo/src/assets/theme-transition.css` 与 `apps/react-web-ui-demo/src/assets/theme-transition.css` 两个文件在分支上**没有任何 import**（`git grep theme-transition.css 92d0ad47 -- apps` 无输出），真正生效的只有 `index.vue` 里的非 scoped `<style>` 块。
 
@@ -35,7 +35,7 @@ issue #105 记录的三条挂起理由，在当前 Chrome 上**都不成立**：
 
 ## 实测一：真实 app（分支代码，Chrome 153）
 
-在独立 worktree 跑起 `feat/theme-transition` 的 `vue-web-ui-demo`，用真实鼠标事件点 `web-ui-select`（`aria-label=全局主题`）的选项，Playwright 驱动真实 Chrome：
+在独立 worktree 跑起 `feat/theme-transition` 的 `vue-web-ui-demo`，用真实鼠标事件点 `web-ui-select`（`aria-label=全局主题`）的 option，Playwright 驱动真实 Chrome：
 
 | 轮次         | 方向     | VT 启动 | `updateCallbackDone` | `ready` | `finished`       | group `transform` | `clip-path` 圆心 |
 | ------------ | -------- | ------- | -------------------- | ------- | ---------------- | ----------------- | ---------------- |
@@ -60,7 +60,7 @@ issue #105 记录的三条挂起理由，在当前 Chrome 上**都不成立**：
 
 ## 实测三：antd 官网线上实现
 
-`https://ant.design/index-cn`（站点 6.6.4）在同一 Chrome 内的实测，头部主题按钮 → 下拉「暗黑主题 / 浅色主题」：
+`https://ant.design/index-cn`（站点 6.6.4）在同一 Chrome 内的实测，头部主题 button → 下拉「暗黑主题 / 浅色主题」：
 
 ```css
 /* 页面运行时读到的规则 */

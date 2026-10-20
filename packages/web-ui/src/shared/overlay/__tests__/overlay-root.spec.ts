@@ -8,11 +8,11 @@ afterEach(() => {
 })
 
 /*
- * 浮层容器的**身份**契约：多个浮层共用同一个 fallback 容器，且同一 shadow root 内
+ * overlay 容器的**身份**契约：多个 overlay 共用同一个 fallback 容器，且同一 shadow root 内
  * 反复请求拿到的是同一个容器元素。
  *
  * 这是状态转换（惰性创建 → 复用），判据取对象身份而非 DOM 结构或内部属性——
- * 面板全部挂进同一个容器，容器分裂会让浮层各自为政（样式作用域、层级顺序都随之失序）。
+ * panel 全部挂进同一个容器，容器分裂会让 overlay 各自为政（样式作用域、层级顺序都随之失序）。
  * 「创建了几层 shadow root」「容器带什么 data 属性」是实现形状，不留。
  */
 describe('shared/overlay overlay-root', () => {

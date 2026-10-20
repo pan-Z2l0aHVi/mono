@@ -28,7 +28,7 @@ afterEach(() => document.body.replaceChildren())
  * 本组件独有的缺口：`firstUpdated` 生命周期内只跑一次，而断连会 destroy 双指
  * 缩放手势——重挂载后必须补挂，否则缩放永久失效。
  *
- * 观察面用公开语义：`imagePreview()` 句柄的 `scale`、inner dialog 的
+ * 观察面用公开语义：`imagePreview()` handle 的 `scale`、inner dialog 的
  * `open`/`:modal`、滚动锁的文档级副作用与 `closed` 兑现。
  */
 

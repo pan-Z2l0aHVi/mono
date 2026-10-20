@@ -13,6 +13,6 @@ function Component() {
 }
 
 export const Route = createFileRoute('/components/spinner')({
-  staticData: { title: 'Spinner 加载指示器' },
+  staticData: { title: 'Spinner' },
   component: Component
 })

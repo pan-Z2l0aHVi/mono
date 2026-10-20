@@ -7,7 +7,7 @@
 :host {
   position: relative;
 
-  /* inline-flex 让内层按钮在宿主内完全居中，避免继承的行高撑高宿主、导致图标偏移 */
+  /* inline-flex 让内层 button 在宿主内完全居中，避免继承的行高撑高宿主、导致 icon 偏移 */
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -83,7 +83,7 @@ button:active:not(:disabled) {
   padding: 0;
 }
 
-/* pointer-focus helper 把标记写到 shadow host 上；这里抑制 Shadow DOM 内按钮的 focus ring。 */
+/* pointer-focus helper 把标记写到 shadow host 上；这里抑制 Shadow DOM 内 button 的 focus ring。 */
 :host([data-wui-pointer-focus]) button:focus-visible {
   outline-color: transparent;
 }
@@ -126,7 +126,7 @@ button:active:not(:disabled) {
 :host([variant='glass']) {
   --wui-button-color: var(--wui-color-text, #1b1b1b);
 
-  /* standalone glass 底色由 .wui-glass 提供；hover/active 需要还原玻璃底，避免被按钮状态色整块替换 */
+  /* standalone glass 底色由 .wui-glass 提供；hover/active 需要还原玻璃底，避免被 button 状态色整块替换 */
   --wui-button-bg: transparent;
   --wui-button-bg-hover: var(
     --wui-color-surface-glass-hover,

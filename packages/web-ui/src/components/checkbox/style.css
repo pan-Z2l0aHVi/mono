@@ -9,8 +9,8 @@
 
 /*
  * 勾是 @/icons 的描边资产，颜色经 web-ui-icon 的 --wui-icon-color 传入并取 on-control 档：勾选后
- * 指示器底是 accent，勾留在继承的文字色就是深灰压深蓝。资产必须是 fill:none + stroke:currentColor，
- * 换成实心图标那条 dash 动画照跑但什么都看不见（判据见 checkbox.motion.browser.spec.ts）。
+ * indicator 底是 accent，勾留在继承的文字色就是深灰压深蓝。资产必须是 fill:none + stroke:currentColor，
+ * 换成实心 icon 那条 dash 动画照跑但什么都看不见（判据见 checkbox.motion.browser.spec.ts）。
  * 尺寸是 web-ui-icon 自己的默认 18，宿主够不到嵌套 shadow root 里的 svg，因此不随
  * --wui-selection-control-size 按比例放大。
  */
