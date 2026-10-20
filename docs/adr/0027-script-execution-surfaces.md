@@ -78,12 +78,14 @@
 
 ```text
 scripts/
-  checks/                  # 只读门禁薄入口：hook、policy、changeset、context、package
+  checks/                  # 只读门禁与检查薄入口
     check-pre-commit.mjs   # hook 薄入口
     check-policy.mjs       # PR CI policy 薄入口
     check-changeset.mjs    # PR CI changeset 入口
     check-context.mjs      # CI context 入口
     check-pack.mjs         # CI package 入口
+    check-go.mjs           # Go 格式与 vet 入口
+    test-scripts.mjs       # 脚本测试入口
   workflow/                # 提交命令
     commit.sh
   release/                 # 发布辅助
@@ -100,9 +102,13 @@ scripts/
     context-corpus.mjs
     context-invariants.mjs
     format-clean.mjs
+    go-cache-dir.sh
+    go-check.mjs
     interweave-turbo-inputs.mjs
     no-mutual-links.mjs
     package-contract.mjs
+    script-tests.mjs
+    turbo-cache-dir.mjs
     turbo-cache-invariant.mjs
     web-ui-docs-inputs.mjs
     workspace-manifests.mjs
@@ -142,7 +148,7 @@ scripts/
 3. **切换调用方**：更新 pre-commit、CI、`workflow-topology`、`package.json`；删除 `.agents/checks/` 与被替代的旧实现；确认没有双份运行。
 4. **分类与收敛**：把 workflow、release、maintenance、lib 搬到目标目录，更新 `.mise.toml`、`clean.sh`、`env-doctor` 与文档路径；收敛重复的 turbo/JSON/Markdown 解析并做一次新旧差分。
 
-每一步都按 [`docs/agents/scripts.md`](../agents/scripts.md) 逐次取得授权。搬家与削减检查必须分开；上述四步迁移本身不增减门禁，也不改动 `.github/scripts/**` 与 workspace 脚本；这些目录的后续改动按各自执行面另行提交。
+每一步都按 [`docs/agents/scripts.md`](../agents/scripts.md) 逐次取得授权。搬家与削减检查必须分开；上述四步迁移本身不增减门禁，也不改动 workspace 脚本；`.github/scripts/**` 的改动只限于调用方断言同步。
 
 ## 后果
 
