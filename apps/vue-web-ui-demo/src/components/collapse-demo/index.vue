@@ -40,8 +40,7 @@ import { OverlayScrollbarsComponent } from 'overlayscrollbars-vue'
         </button>
         <div slot="content">
           <div class="p-3">
-            Native<code>&lt;button&gt;</code>As a trigger it keeps the native Enter/Space activation and focus
-            behavior.
+            Native<code>&lt;button&gt;</code>As a trigger it keeps the native Enter/Space activation and focus behavior.
           </div>
         </div>
       </web-ui-collapse>
