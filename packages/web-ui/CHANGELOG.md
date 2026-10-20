@@ -1,5 +1,24 @@
 # @greypan/web-ui
 
+## 11.0.0
+
+### Major Changes
+
+- 2d6d7e6: The built-in user-visible strings of the components are now English. They are the accessible names of the internal controls (the slider track, the dialog and drawer close buttons, the input and textarea clear buttons, the context menu panel, the image preview controls, the spinner, the badge counter, the layout sidebar controls and the toast close button) and the messages the components hand to the browser's native form validation.
+  
+  A Chinese page embedding these components now reads English accessible names and sees English in the browser's validation bubble ("Select this option" instead of "请选择此项"). The components offer no way to override those strings, so a page that needs another language has to replace the affected internals itself.
+  
+  The slider thumb shape and its size tokens change in the same release, see the other changeset.
+- 2d6d7e6: Change the `<web-ui-slider>` thumb shape. It is now a circle at rest and elongates into a capsule along the track while pressed or dragging, matching the switch thumb recipe. A vertical slider elongates in the height direction instead of the width direction.
+  
+  The public size tokens are renamed to match what they now control, with no compatibility layer for the old names:
+  
+  - `--wui-slider-thumb-height` becomes `--wui-slider-thumb-thickness` (the thumb's thickness, and the resting circle's diameter).
+  - `--wui-slider-thumb-width` becomes `--wui-slider-thumb-length` (the capsule's long edge along the track, used while pressed or dragging).
+  - `--wui-slider-height` is removed. It never controlled the slider's height — that is `--wui-slider-vertical-height` — but the track's thickness, which `--wui-slider-track-size` already names.
+  
+  Set the new names instead: `--wui-slider-thumb-thickness` and `--wui-slider-thumb-length` on the slider, and `--wui-slider-track-size` for the track.
+
 ## 10.2.1
 
 ### Patch Changes
