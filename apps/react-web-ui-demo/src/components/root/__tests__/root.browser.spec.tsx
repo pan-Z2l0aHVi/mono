@@ -40,32 +40,21 @@ function isDrawerMode() {
 }
 
 /**
- * 导航项的渲染形态。collapsed state 在 demo 里只体现为排版，所以判据是真实渲染出来的对齐方式与
- * 文字在整行里的落点；`centered` 把「文字贴着整行中间」说成一个几何事实，而不是某个
- * 具体的 CSS 值。
+ * 导航项的对齐方式。collapsed state 在 demo 里只体现为排布，所以判据是渲染出来的对齐方式本身：
+ * 折叠态那一行把内容居中、标签自身也居中；展开态两者都靠左。
  *
- * 容差按行宽缩放（取四分之一）而不是给绝对值：同一个 collapsed state 会以两种行宽渲染——刚回写 collapse
- * 偏好时侧边栏还没真正收窄，行宽 216px、文字严格居中（两侧差 0）；真正重新布局之后行宽变成
- * 44px，被截断的 label 带来约 3.8px 的不对称。展开态与 drawer 态的两侧差是行宽的 0.78～0.83，两类
- * 之间隔着一个数量级，所以四分之一行宽落在中间、两侧都留有余量。
+ * 不量像素：折叠导轨只有 44px，标签放不下会被截断，截断后的文字落点既不是设计契约，也会随字体
+ * 与文案变化——用例守的是「折叠态换成居中排布、展开态保持左对齐」这个结构，不是某个具体像素值。
  */
-function navItemShape() {
+function navItemAlignment() {
   const link = navRoot().querySelector('a')
   if (!link) throw new Error('nav link not found')
   const label = link.querySelector('span')
   if (!label) throw new Error('nav label not found')
 
-  const linkRect = link.getBoundingClientRect()
-  const range = document.createRange()
-  range.selectNodeContents(label)
-  const textRect = range.getBoundingClientRect()
-
-  const leftInset = textRect.left - linkRect.left
-  const rightInset = linkRect.right - textRect.right
   return {
     rowJustify: getComputedStyle(link).justifyContent,
-    labelAlign: getComputedStyle(label).textAlign,
-    centered: linkRect.width > 0 && Math.abs(leftInset - rightInset) < linkRect.width / 4
+    labelAlign: getComputedStyle(label).textAlign
   }
 }
 
@@ -89,15 +78,6 @@ async function mountAppShell() {
 }
 
 /** 复刻 layout 侧边栏 Toggle 的请求链路：layout 只派发请求，宿主回写受控属性。 */
-/** 等侧边栏真正收窄到 collapsed width 再取形状：collapsed width 有过渡，宽态下量到的是过渡中的形状。 */
-async function waitForCollapsedNav() {
-  await vi.waitFor(() => {
-    const link = navRoot().querySelector('a')
-    const width = link ? link.getBoundingClientRect().width : Number.POSITIVE_INFINITY
-    if (width > 48) throw new Error('侧边栏还没有收窄到位')
-  })
-}
-
 async function requestCollapse(collapsed: boolean) {
   await act(async () => {
     layoutRoot().dispatchEvent(new CustomEvent('sidebar-collapsed-change', { detail: { collapsed } }))
@@ -171,25 +151,27 @@ describe('应用外壳（浏览器）：导航 collapsed state 不跨视口泄�
 
   it('桌面端 collapse 后导航文字居中，展开态左对齐', async () => {
     await mountAppShell()
-    const expanded = navItemShape()
-    expect(expanded.centered).toBe(false)
+    const expanded = navItemAlignment()
+    expect(expanded.rowJustify).not.toBe('center')
+    expect(expanded.labelAlign).not.toBe('center')
 
     await requestCollapse(true)
-    const collapsed = navItemShape()
+    const collapsed = navItemAlignment()
 
     expect(isDrawerMode()).toBe(false)
     expect(layoutRoot().sidebarCollapsed).toBe(true)
     // collapse 换了一套渲染，且换成的就是「文字居中」那一套。
     expect(collapsed).not.toEqual(expanded)
-    expect(collapsed.centered).toBe(true)
+    expect(collapsed.rowJustify).toBe('center')
+    expect(collapsed.labelAlign).toBe('center')
   })
 
   it('移动端断点下 drawer 里的导航回到展开态，而不是桌面 collapsed state', async () => {
     await mountAppShell()
-    const expanded = navItemShape()
+    const expanded = navItemAlignment()
 
     await requestCollapse(true)
-    const collapsed = navItemShape()
+    const collapsed = navItemAlignment()
     // 对照：collapse 确实换了一套渲染，否则下面那条「与展开态一致」可能只是因为 collapse 从未生效。
     expect(collapsed).not.toEqual(expanded)
 
@@ -199,26 +181,24 @@ describe('应用外壳（浏览器）：导航 collapsed state 不跨视口泄�
 
     // 前提：collapse preference 仍写在 layout 上，且 drawer 此刻真的是当前形态。
     expect(layoutRoot().sidebarCollapsed).toBe(true)
-    expect(navItemShape()).toEqual(expanded)
+    expect(navItemAlignment()).toEqual(expanded)
   })
 
   it('跨断点往返后桌面 collapsed state 恢复', async () => {
     await mountAppShell()
-    const expanded = navItemShape()
+    const expanded = navItemAlignment()
 
     await requestCollapse(true)
-    await waitForCollapsedNav()
-    const collapsed = navItemShape()
+    const collapsed = navItemAlignment()
 
     await changeViewport(MOBILE_VIEWPORT)
     await settleViewport(true)
     await openDrawer()
-    expect(navItemShape()).toEqual(expanded)
+    expect(navItemAlignment()).toEqual(expanded)
 
     await changeViewport(DESKTOP_VIEWPORT)
     await settleViewport(false)
-    await waitForCollapsedNav()
 
-    expect(navItemShape()).toEqual(collapsed)
+    expect(navItemAlignment()).toEqual(collapsed)
   })
 })

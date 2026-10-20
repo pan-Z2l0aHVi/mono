@@ -69,43 +69,41 @@ function getInitialSidebarWidth(): string {
 interface NavItem {
   path: string
   label: string
-  /** 折叠态导轨只有 44px，放不下完整组件名：短标签是导轨里显示的代号。 */
-  short: string
 }
 
 const navItems: NavItem[] = [
-  { path: '/home', label: 'Home', short: 'Ho' },
-  { path: '/components/avatar', label: 'Avatar', short: 'Av' },
-  { path: '/components/badge', label: 'Badge', short: 'Ba' },
-  { path: '/components/button', label: 'Button', short: 'Bu' },
-  { path: '/components/icon', label: 'Icon', short: 'Ic' },
-  { path: '/components/input', label: 'Input', short: 'In' },
-  { path: '/components/textarea', label: 'Textarea', short: 'Te' },
-  { path: '/components/editable-text', label: 'EditableText', short: 'Ed' },
-  { path: '/components/theme', label: 'Theme', short: 'Th' },
-  { path: '/components/input-number', label: 'InputNumber', short: 'Nu' },
-  { path: '/components/select', label: 'Select', short: 'Se' },
-  { path: '/components/autocomplete', label: 'Autocomplete', short: 'Au' },
-  { path: '/components/dropdown', label: 'Dropdown', short: 'Dr' },
-  { path: '/components/collapse', label: 'Collapse', short: 'Co' },
-  { path: '/components/dialog', label: 'Dialog', short: 'Di' },
-  { path: '/components/drawer', label: 'Drawer', short: 'Dw' },
-  { path: '/components/image-preview', label: 'ImagePreview', short: 'Im' },
-  { path: '/components/empty', label: 'Empty', short: 'Em' },
-  { path: '/components/middle-ellipsis', label: 'MiddleEllipsis', short: 'Mi' },
-  { path: '/components/tooltip', label: 'Tooltip', short: 'Tp' },
-  { path: '/components/switch', label: 'Switch', short: 'Sw' },
-  { path: '/components/slider', label: 'Slider', short: 'Sl' },
-  { path: '/components/radio', label: 'Radio', short: 'Ra' },
-  { path: '/components/checkbox', label: 'Checkbox', short: 'Cb' },
-  { path: '/components/segmented', label: 'Segmented', short: 'Sg' },
-  { path: '/components/spinner', label: 'Spinner', short: 'Sp' },
-  { path: '/components/popover', label: 'Popover', short: 'Po' },
-  { path: '/components/context-menu', label: 'ContextMenu', short: 'Cm' },
-  { path: '/components/toast', label: 'Toast', short: 'To' },
-  { path: '/components/svg-draw-lines', label: 'SVGDrawLines', short: 'Sv' },
-  { path: '/components/back-top', label: 'BackTop', short: 'Bt' },
-  { path: '/components/layout', label: 'Layout', short: 'La' }
+  { path: '/home', label: 'Home' },
+  { path: '/components/avatar', label: 'Avatar' },
+  { path: '/components/badge', label: 'Badge' },
+  { path: '/components/button', label: 'Button' },
+  { path: '/components/icon', label: 'Icon' },
+  { path: '/components/input', label: 'Input' },
+  { path: '/components/textarea', label: 'Textarea' },
+  { path: '/components/editable-text', label: 'EditableText' },
+  { path: '/components/theme', label: 'Theme' },
+  { path: '/components/input-number', label: 'InputNumber' },
+  { path: '/components/select', label: 'Select' },
+  { path: '/components/autocomplete', label: 'Autocomplete' },
+  { path: '/components/dropdown', label: 'Dropdown' },
+  { path: '/components/collapse', label: 'Collapse' },
+  { path: '/components/dialog', label: 'Dialog' },
+  { path: '/components/drawer', label: 'Drawer' },
+  { path: '/components/image-preview', label: 'ImagePreview' },
+  { path: '/components/empty', label: 'Empty' },
+  { path: '/components/middle-ellipsis', label: 'MiddleEllipsis' },
+  { path: '/components/tooltip', label: 'Tooltip' },
+  { path: '/components/switch', label: 'Switch' },
+  { path: '/components/slider', label: 'Slider' },
+  { path: '/components/radio', label: 'Radio' },
+  { path: '/components/checkbox', label: 'Checkbox' },
+  { path: '/components/segmented', label: 'Segmented' },
+  { path: '/components/spinner', label: 'Spinner' },
+  { path: '/components/popover', label: 'Popover' },
+  { path: '/components/context-menu', label: 'ContextMenu' },
+  { path: '/components/toast', label: 'Toast' },
+  { path: '/components/svg-draw-lines', label: 'SVGDrawLines' },
+  { path: '/components/back-top', label: 'BackTop' },
+  { path: '/components/layout', label: 'Layout' }
 ]
 
 const navItemClass =
@@ -305,7 +303,7 @@ export function Root() {
                           navCollapsed ? 'w-full truncate text-center text-sm' : 'min-w-0 flex-1 truncate text-sm'
                         }
                       >
-                        {navCollapsed ? item.short : item.label}
+                        {item.label}
                       </span>
                     </Link>
                   )
