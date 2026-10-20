@@ -78,7 +78,7 @@
 
 ```text
 scripts/
-  checks/                  # 只读门禁与检查薄入口
+  checks/                  # 门禁与脚本测试薄入口
     check-pre-commit.mjs   # hook 薄入口
     check-policy.mjs       # PR CI policy 薄入口
     check-changeset.mjs    # PR CI changeset 入口
