@@ -1,6 +1,6 @@
 # 脚本
 
-本文件规定仓库内脚本的准入、测试与运行边界。`.github/scripts/**` 属于 GitHub workflow，由 workflow 自身的规则与检查约束，不在本文件范围内。命令命名与 namespace 归属见 [`commands.md`](commands.md)，授权机制见 [`workflow.md`](workflow.md#怎么取得这个授权)，验证选择见 [`verification.md`](verification.md)，mise 包装见 [`worktree.md`](worktree.md#mise-exec-与命令外壳)。
+本文件规定仓库内脚本的准入、测试与运行边界。`.github/scripts/**` 属于 GitHub workflow，由 workflow 自身的规则与检查约束，不在本文件范围内。命令命名与 namespace 归属见 [`commands.md`](./commands.md)，授权机制见 [`workflow.md`](./workflow.md#怎么取得这个授权)，验证选择见 [`verification.md`](./verification.md)，mise 包装见 [`worktree.md`](./worktree.md#mise-exec-与命令外壳)。
 
 ## 范围
 
@@ -28,7 +28,7 @@
 - 不在 `sh` 里拼接执行 Node 源码：不写 `node -e`、`node - <<EOF`，也不把 JS 存进变量再执行。
 - 不在 Node 里用 `sh -c` 或启动 `.sh` 辅助脚本完成本可由 argv 表达的工作；外部 CLI（`git`、`pnpm`、`gh`、`turbo`、`ps` 等）以 argv 调用不在此列。
 - 测试为验证 shell 行为而启动 `sh` 是允许的；禁令针对实现代码，不针对测试夹具。
-- bootstrap 例外只允许来自 `.mise.toml` 在 Node 可用前求值的 `[env]` 模板；每个例外的等价实现、降级行为与测试要求见 `.mise.toml` 与 `docs/agents/worktree.md`。新增同类场景必须同时提供等价实现并证明一致，无法提供时登记为明确例外，不要假装存在等价实现。
+- bootstrap 例外只允许来自 `.mise.toml` 在 Node 可用前求值的 `[env]` 模板；每个例外的等价实现、降级行为与测试要求见 `.mise.toml` 与 [`worktree.md`](./worktree.md)。新增同类场景必须同时提供等价实现并证明一致，无法提供时登记为明确例外，不要假装存在等价实现。
 
 ## 根脚本
 
@@ -38,7 +38,7 @@
 
 ### 授权
 
-新增、删除根脚本，或改变它们暴露的根命令，属于仓库级共享配置变更，必须按 [`workflow.md`](workflow.md#怎么取得这个授权) 逐次取得用户明确授权。计划批准不等于脚本授权；没有授权时只做只读调查，或把方案写成待决事项。
+新增、删除根脚本，或改变它们暴露的根命令，属于仓库级共享配置变更，必须按 [`workflow.md`](./workflow.md#怎么取得这个授权) 逐次取得用户明确授权。计划批准不等于脚本授权；没有授权时只做只读调查，或把方案写成待决事项。
 
 ### 测试
 
@@ -52,13 +52,13 @@
 
 - 仓库级校验与生成脚本应能从任意 cwd 运行，用 `import.meta.dirname` 定位仓库根；必须以调用者仓库为上下文的 Git 或任务脚本，应显式用 `git rev-parse --show-toplevel` 解析并校验，不假定 cwd 就是仓库根。
 - 脚本必须非交互：不等待 stdin，不以 TTY 或人工确认为成功条件；失败必须非零退出并给出可定位的错误。
-- 需要调用被钉工具时，按 [`worktree.md`](worktree.md#mise-exec-与命令外壳) 的 mise 包装规则执行。
+- 需要调用被钉工具时，按 [`worktree.md`](./worktree.md#mise-exec-与命令外壳) 的 mise 包装规则执行。
 
 ## Workspace 脚本
 
 workspace 脚本的影响范围限于所属 workspace，职责是承载该 workspace 的构建、发布或生成编排。它们不适用根脚本的逐次授权要求，但仍适用上文的准入与同名测试原则。
 
-- **授权**：新增或修改 workspace 脚本属于常规实施改动，不需要逐次取得用户授权；由 task 级别对应的 review 把关。脚本触发发布、对外交付或其他不可逆副作用时，执行该操作仍按 [`workflow.md`](workflow.md#怎么取得这个授权) 单独授权。
+- **授权**：新增或修改 workspace 脚本属于常规实施改动，不需要逐次取得用户授权；由 task 级别对应的 review 把关。脚本触发发布、对外交付或其他不可逆副作用时，执行该操作仍按 [`workflow.md`](./workflow.md#怎么取得这个授权) 单独授权。
 - **测试**：与根脚本一致，测试可选；一旦存在测试文件，必须与被测文件同目录同名（`foo.mjs` / `foo.ts` / `foo.sh` → `foo.test.mjs`）。测试针对脚本本身，至少覆盖参数、成功输出与退出码、失败路径，以及脚本声称的副作用；不能只靠调用方的集成测试替代。
 - **边界**：不得成为其他 workspace 的隐式入口；跨 workspace 复用的逻辑上移到共享包或根 `scripts/lib/**`。
-- **运行**：同样必须非交互，失败非零退出；调用被钉工具时按 [`worktree.md`](worktree.md#mise-exec-与命令外壳) 的 mise 包装规则执行。
+- **运行**：同样必须非交互，失败非零退出；调用被钉工具时按 [`worktree.md`](./worktree.md#mise-exec-与命令外壳) 的 mise 包装规则执行。

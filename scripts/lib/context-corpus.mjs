@@ -11,7 +11,9 @@ import {
   findRetiredAdrMarkers,
   findUnmarkedReferenceDocs,
   findUnroutedAgentDocs,
-  scanVolatilePhrases
+  parseLocalLinkTarget,
+  scanVolatilePhrases,
+  stripCodeSegments
 } from './context-invariants.mjs'
 import { listPnpmWorkspaceManifests, readPnpmWorkspacePatterns } from './workspace-manifests.mjs'
 
@@ -322,6 +324,34 @@ export async function run(context) {
   for (const file of unmarkedReferenceDocs)
     addError(`${file}: reference corpus requires the corpus-status marker and the non-authoritative banner`)
 
+  // 链接面比指令面大：不入路由、不参与互指与命令检查的语料（研究记录、根 README、CHANGELOG、changeset）
+  // 仍然是读者会点开的文档，target 失效就是失效，不因「时点性」而豁免——历史结论可以旧，链接不能死。
+  // 面 = 指令面 ∪ 已跟踪 Markdown，第三方上游件（skills-lock 登记、正文由上游维护）除外。
+  // 指令面里的自撰 skill 文档按消费面 `.agents/skills/**` 入面，与本仓内容一致（软链），链接按消费面解析。
+  const trackedMarkdown = (() => {
+    const listed = spawnSync('git', ['ls-files', '-z', '--', '*.md'], { cwd: root, encoding: 'utf8' })
+    // git 不可用时只扫指令面：断链门禁照常提供，不因取不到跟踪清单而整体失效。
+    if (listed.error || listed.status !== 0) return []
+    return (
+      listed.stdout
+        .split('\0')
+        .filter(Boolean)
+        .map(file => path.join(root, file))
+        // 已删除但尚未暂存的跟踪文件没有内容可读，不该让整道门禁崩掉。
+        .filter(file => fs.existsSync(file))
+    )
+  })()
+  const instructionSurface = new Set(markdownFiles.map(file => path.resolve(file)))
+  const linkSurface = [...new Set([...markdownFiles, ...trackedMarkdown].map(file => path.resolve(file)))].filter(
+    file => !fromLockedSkill(file)
+  )
+  // 同一份文档会被多篇引用，剥代码片段的结果按文件缓存，锚点另有 anchorCache。
+  const linkSourceCache = new Map()
+  function linkSource(file) {
+    if (!linkSourceCache.has(file)) linkSourceCache.set(file, stripCodeSegments(fs.readFileSync(file, 'utf8')))
+    return linkSourceCache.get(file)
+  }
+
   // (?<!!?) 的 `!?` 允许匹配空串，lookbehind 恒假，链接扫描因此从未跑过；这里要求前面确实不是 `!`（图片语法）。
   const linkPattern = /(?<!!)\[[^\]]*\]\(([^)]+)\)/g
   // 只校验节级锚点：文件存在性由下方文件存在校验负责；`#fragment` 可能是节锚点（`#title`）或显式锚点（`{#custom}`）。
@@ -363,22 +393,47 @@ export async function run(context) {
   const isRulesFile = file => file.startsWith(`${rulesDir}${path.sep}`)
   const inboundTargets = new Set()
   const rulesLoadPaths = new Set()
-  for (const file of markdownFiles) {
-    const source = fs.readFileSync(file, 'utf8')
+  let localLinksChecked = 0
+  // 同一篇文档里同一个 target 常出现多次（目录表反复引用同一入口）；按文件+target 去重，避免同因刷屏。
+  const reportedUnqualified = new Set()
+  for (const file of linkSurface) {
+    const source = linkSource(file)
     const isAdr = adrDocuments.has(file)
+    // 入站与「加载路径」都只认指令面的链接：研究记录或 changelog 里的引用不能替代路由。
+    const onInstructionSurface = instructionSurface.has(file)
     for (const match of source.matchAll(linkPattern)) {
       const target = match[1].trim()
-      if (!target || /^(?:https?:|mailto:|#)/.test(target)) continue
-      const [locationPart, fragment] = target.split('#')
-      const location = locationPart.trim()
-      if (!location) continue
+      const parsed = parseLocalLinkTarget(target)
+      if (!parsed) continue
+      const { location, fragment } = parsed
+      localLinksChecked += 1
       const resolved = path.resolve(path.dirname(file), location)
-      if (!fs.existsSync(resolved)) addError(`${relative(file)}: broken local link ${target}`)
-      if (!isAdr) inboundTargets.add(resolved)
+      const targetExists = fs.existsSync(resolved)
+      if (!targetExists) addError(`${relative(file)}: broken local link ${target}`)
+      // 相对 target 有两种解析习惯：按当前文件所在目录，或按仓库根。仓库根的文档两种解析结果相同，
+      // 写 `docs/agents/build.md` 没问题；子目录里的文档不同——`docs/input.md` 可能两边都存在，指向的却是
+      // 两个不同文件，换个查看器就跳错。所以子目录文档一律要求 `./` 或 `../` 起头，把解析方式写死。
+      else if (
+        !location.startsWith('./') &&
+        !location.startsWith('../') &&
+        path.dirname(relative(file)) !== '.' &&
+        !reportedUnqualified.has(`${file}\u0000${location}`)
+      ) {
+        reportedUnqualified.add(`${file}\u0000${location}`)
+        addError(
+          `${relative(file)}: unqualified relative link ${target}; write ./${location} so every renderer resolves it the same way`
+        )
+      }
+      if (onInstructionSurface && !isAdr) inboundTargets.add(resolved)
       // 链接可能经客户端消费面（`.claude/rules` 软链）写成，或用 `..`/软链绕路；realpath 归一后再比对。
       // 只计真实存在的目标：断链已由上面的 `broken local link` 报过。
-      if (!isRulesFile(file) && fs.existsSync(resolved)) rulesLoadPaths.add(fs.realpathSync(resolved))
-      if (fragment && fs.existsSync(resolved) && !anchoredTargets(resolved).has(ghAnchor(fragment.trim())))
+      if (onInstructionSurface && !isRulesFile(file) && targetExists) rulesLoadPaths.add(fs.realpathSync(resolved))
+      if (
+        fragment &&
+        targetExists &&
+        fs.statSync(resolved).isFile() &&
+        !anchoredTargets(resolved).has(ghAnchor(fragment))
+      )
         addError(`${relative(file)}: broken local anchor ${target}`)
     }
   }
@@ -477,6 +532,7 @@ export async function run(context) {
     const retired = findRetiredAdrMarkers(corpus)
 
     console.log('Context corpus report\n')
+    console.log(`link surface (${linkSurface.length} files, ${localLinksChecked} local links)`)
     console.log(`unrouted docs/agents files (${unroutedAgentDocs.length})`)
     for (const file of unroutedAgentDocs) console.log(`  ${file}`)
     console.log(`\ninstruction docs with no inbound link (${zeroInbound.length})`)
@@ -497,5 +553,5 @@ export async function run(context) {
 
   // 指纹覆盖内容而不只是路径：只哈希路径时，改写正文不会改变指纹，外部索引无从判断是否需要重建。
   const digest = contentDigest([...corpus, ...referenceCorpus])
-  return `${corpus.length + referenceCorpus.length} Markdown files, corpus ${digest}`
+  return `${corpus.length + referenceCorpus.length} Markdown files, ${linkSurface.length} link-scanned files / ${localLinksChecked} local links, corpus ${digest}`
 }

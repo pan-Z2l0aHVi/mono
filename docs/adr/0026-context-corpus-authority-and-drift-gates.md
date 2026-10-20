@@ -2,8 +2,9 @@
 
 - **Date**: 2026-10-19
 - **Status**: 已接受
-- **Amends**: [ADR-0004](0004-progressive-agent-context-architecture.md) 的维护边界——新增语料权威标记与漂移门禁，四层结构与运行时不变量不变
+- **Amends**: [ADR-0004](./0004-progressive-agent-context-architecture.md) 的维护边界——新增语料权威标记与漂移门禁，四层结构与运行时不变量不变
 - **Revised**: 2026-10-19 —— 体量棘轮退役；体量只进入只读报表，不再作为门禁
+- **Revised**: 2026-10-20 —— 断链与节锚点的检查面从指令面扩到全仓已跟踪 Markdown（研究记录、设计资产、根 README、CHANGELOG、changeset）；链接可点是读取前提，不属于时点性内容。路由、互指、命令存在性仍只判定指令面。同一轮把相对 target 限定为 `./`/`../` 起头（仓库根文档除外），消除「按文件解析」与「按仓库根解析」两种习惯的歧义
 - **Relates to**: 纯文本 `docs/agents/agent-context.md`（语料治理细则）、`docs/agents/workflow.md`（授权机制）
 
 ## 背景

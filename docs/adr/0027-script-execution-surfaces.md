@@ -2,7 +2,7 @@
 
 - **Date**: 2026-10-19
 - **Status**: 已接受
-- **Relates to**: [ADR-0014](0014-task-system-v2.md)（政策检查挂载点）、[ADR-0025](0025-pr-review-flow.md)（pre-commit 与 PR CI 的检查集合）
+- **Relates to**: [ADR-0014](./0014-task-system-v2.md)（政策检查挂载点）、[ADR-0025](./0025-pr-review-flow.md)（pre-commit 与 PR CI 的检查集合）
 
 2026-10-19 修订：task 分级与记账已提取为通用 task-ledger skill（ADR-0028 为纯文本），`scripts/workflow/` 只保留 commit helper；§1 执行面表、§5 目录树与命令面说明已同步。
 

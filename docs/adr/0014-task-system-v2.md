@@ -2,7 +2,7 @@
 
 - **Date**: 2026-09-18
 - **Status**: 已接受
-- **Supersedes**: [ADR-0012](0012-instruction-risk-tiering-and-pre-authorized-operations.md) 的风险分级表，以及已退役编排层 ADR 的任务状态机与 mode 词汇（历史见 git）
+- **Supersedes**: [ADR-0012](./0012-instruction-risk-tiering-and-pre-authorized-operations.md) 的风险分级表，以及已退役编排层 ADR 的任务状态机与 mode 词汇（历史见 git）
 - **Amended by**: ADR-0018 —— §3 的状态落点被取代：`<git-common-dir>/tasks/` 改为 `$TMPDIR/greypan/tasks/`，task state 的定位从「唯一执行真相」改为可丢失的本地工作记忆。状态机、级别、快照口径、guard 与政策检查全部决策不变
 
 2026-10-18 注记：ADR-0025 以 schema v3 的本地登记簿和独立政策检查器取代本文的质量相位、diffHash、review、approval、verify 与提交 gate；级别判据、T0/T1 干净起点、task 归属和 playbook 原则继续适用。

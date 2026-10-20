@@ -339,46 +339,46 @@ All form controls participate in native `FormData`, constraint validation, `form
 
 ## All Components
 
-Every component has its own doc page: API reference, behavior notes and interactive examples all live under [`docs/`](docs/). The table below is just the index.
+Every component has its own doc page: API reference, behavior notes and interactive examples all live under [`docs/`](./docs/). The table below is just the index.
 
-| Category               | Component                                                 |
-| ---------------------- | --------------------------------------------------------- |
-| **Form Controls**      | [`<web-ui-input>`](docs/input.md)                         |
-|                        | [`<web-ui-textarea>`](docs/textarea.md)                   |
-|                        | [`<web-ui-editable-text>`](docs/editable-text.md)         |
-|                        | [`<web-ui-input-number>`](docs/input-number.md)           |
-|                        | [`<web-ui-select>`](docs/select.md)                       |
-|                        | [`<web-ui-autocomplete>`](docs/autocomplete.md)           |
-|                        | [`<web-ui-slider>`](docs/slider.md)                       |
-|                        | [`<web-ui-checkbox>`](docs/checkbox.md)                   |
-|                        | [`<web-ui-radio>`](docs/radio.md)                         |
-|                        | [`<web-ui-switch>`](docs/switch.md)                       |
-|                        | [`<web-ui-segmented>`](docs/segmented.md)                 |
-|                        | [`<web-ui-checkbox-group>`](docs/checkbox-group.md)       |
-|                        | [`<web-ui-radio-group>`](docs/radio-group.md)             |
-| **Buttons**            | [`<web-ui-button>`](docs/button.md)                       |
-|                        | [`<web-ui-button-group>`](docs/button-group.md)           |
-| **Overlay / Modal**    | [`<web-ui-dialog>`](docs/dialog.md)                       |
-|                        | [`<web-ui-drawer>`](docs/drawer.md)                       |
-|                        | [`imagePreview()`](docs/image-preview.md)                 |
-| **In-flow Disclosure** | [`<web-ui-collapse>`](docs/collapse.md)                   |
-| **Floating**           | [`<web-ui-popover>`](docs/popover.md)                     |
-|                        | [`<web-ui-tooltip>`](docs/tooltip.md)                     |
-|                        | [`<web-ui-context-menu>`](docs/context-menu.md)           |
-| **Menu**               | [`<web-ui-dropdown>`](docs/dropdown.md)                   |
-|                        | [`<web-ui-dropdown-item>`](docs/dropdown-item.md)         |
-|                        | [`<web-ui-dropdown-divider>`](docs/dropdown-divider.md)   |
-|                        | [`<web-ui-dropdown-header>`](docs/dropdown-header.md)     |
-| **Data Display**       | [`<web-ui-avatar>`](docs/avatar.md)                       |
-|                        | [`<web-ui-badge>`](docs/badge.md)                         |
-|                        | [`<web-ui-empty>`](docs/empty.md)                         |
-|                        | [`<web-ui-middle-ellipsis>`](docs/middle-ellipsis.md)     |
-|                        | [`<web-ui-icon>`](docs/icon.md)                           |
-|                        | [`<web-ui-spinner>`](docs/spinner.md)                     |
-| **Layout & Utility**   | [`<web-ui-layout>`](docs/layout.md)                       |
-|                        | [`<web-ui-back-top>`](docs/back-top.md)                   |
-|                        | [`<web-ui-svg-draw-lines>`](docs/svg-draw-lines.md)       |
-|                        | [`<web-ui-theme>`](docs/theme.md)                         |
-| **Notification**       | [`<web-ui-toast>`](docs/toast.md)                         |
-| **Sub-items**          | [`<web-ui-option>`](docs/option.md)                       |
-|                        | [`<web-ui-segmented-trigger>`](docs/segmented-trigger.md) |
+| Category               | Component                                                   |
+| ---------------------- | ----------------------------------------------------------- |
+| **Form Controls**      | [`<web-ui-input>`](./docs/input.md)                         |
+|                        | [`<web-ui-textarea>`](./docs/textarea.md)                   |
+|                        | [`<web-ui-editable-text>`](./docs/editable-text.md)         |
+|                        | [`<web-ui-input-number>`](./docs/input-number.md)           |
+|                        | [`<web-ui-select>`](./docs/select.md)                       |
+|                        | [`<web-ui-autocomplete>`](./docs/autocomplete.md)           |
+|                        | [`<web-ui-slider>`](./docs/slider.md)                       |
+|                        | [`<web-ui-checkbox>`](./docs/checkbox.md)                   |
+|                        | [`<web-ui-radio>`](./docs/radio.md)                         |
+|                        | [`<web-ui-switch>`](./docs/switch.md)                       |
+|                        | [`<web-ui-segmented>`](./docs/segmented.md)                 |
+|                        | [`<web-ui-checkbox-group>`](./docs/checkbox-group.md)       |
+|                        | [`<web-ui-radio-group>`](./docs/radio-group.md)             |
+| **Buttons**            | [`<web-ui-button>`](./docs/button.md)                       |
+|                        | [`<web-ui-button-group>`](./docs/button-group.md)           |
+| **Overlay / Modal**    | [`<web-ui-dialog>`](./docs/dialog.md)                       |
+|                        | [`<web-ui-drawer>`](./docs/drawer.md)                       |
+|                        | [`imagePreview()`](./docs/image-preview.md)                 |
+| **In-flow Disclosure** | [`<web-ui-collapse>`](./docs/collapse.md)                   |
+| **Floating**           | [`<web-ui-popover>`](./docs/popover.md)                     |
+|                        | [`<web-ui-tooltip>`](./docs/tooltip.md)                     |
+|                        | [`<web-ui-context-menu>`](./docs/context-menu.md)           |
+| **Menu**               | [`<web-ui-dropdown>`](./docs/dropdown.md)                   |
+|                        | [`<web-ui-dropdown-item>`](./docs/dropdown-item.md)         |
+|                        | [`<web-ui-dropdown-divider>`](./docs/dropdown-divider.md)   |
+|                        | [`<web-ui-dropdown-header>`](./docs/dropdown-header.md)     |
+| **Data Display**       | [`<web-ui-avatar>`](./docs/avatar.md)                       |
+|                        | [`<web-ui-badge>`](./docs/badge.md)                         |
+|                        | [`<web-ui-empty>`](./docs/empty.md)                         |
+|                        | [`<web-ui-middle-ellipsis>`](./docs/middle-ellipsis.md)     |
+|                        | [`<web-ui-icon>`](./docs/icon.md)                           |
+|                        | [`<web-ui-spinner>`](./docs/spinner.md)                     |
+| **Layout & Utility**   | [`<web-ui-layout>`](./docs/layout.md)                       |
+|                        | [`<web-ui-back-top>`](./docs/back-top.md)                   |
+|                        | [`<web-ui-svg-draw-lines>`](./docs/svg-draw-lines.md)       |
+|                        | [`<web-ui-theme>`](./docs/theme.md)                         |
+| **Notification**       | [`<web-ui-toast>`](./docs/toast.md)                         |
+| **Sub-items**          | [`<web-ui-option>`](./docs/option.md)                       |
+|                        | [`<web-ui-segmented-trigger>`](./docs/segmented-trigger.md) |
