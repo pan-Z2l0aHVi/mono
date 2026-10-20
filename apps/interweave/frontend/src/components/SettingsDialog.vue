@@ -19,7 +19,7 @@ const { appearance, accent } = storeToRefs(settings)
 
 type SettingsTab = 'general' | 'appearance' | 'library'
 
-/** 面板选择在会话内保持，不入存储：重开设置回到「通用」才是预期的落点。 */
+/** panel 选择在会话内保持，不入存储：重开设置回到「通用」才是预期的落点。 */
 const activeTab = ref<SettingsTab>('general')
 
 const THEME_APPEARANCES: readonly { value: ThemeAppearance; label: string }[] = [
@@ -63,7 +63,7 @@ function handleAppearanceChange(event: WebUiEvent<WebUiSegmented, 'change'>) {
 }
 
 /*
- * 色板的唯一写入路径。调用方是每个选项里的原生按钮——理由见模板里的注释：
+ * 色板的唯一写入路径。调用方是每个 option 里的原生 button——理由见模板里的注释：
  * web-ui-radio 的可点区域在 shadow 内的 <label> 上，:host 自身没有尺寸规则，把 host 放进
  * 布局容器并不会让点击区跟着长到内容上，group 的 change 根本不派发。
  *
@@ -83,12 +83,12 @@ function pickAccent(value: string) {
 
     挂载点是 AppLayout 里 web-ui-layout 的同级节点，不进它的 light DOM：未分配到任何 slot
     的 light 子节点在 shadow DOM 宿主下没有盒子，放进去反而不会渲染。侧边栏（含 ≤640px
-    的抽屉）是 web-ui-layout 内部的子树，原生 dialog 提升进 top layer 后不受其 overflow、
+    的 drawer）是 web-ui-layout 内部的子树，原生 dialog 提升进 top layer 后不受其 overflow、
     transform 与 aside 的 display:none 影响。
 
-    closable：关闭按钮由组件渲染（绝对定位到卡片右上角的 26px icon 按钮，偏移 20/20）。此前这里是
-    宿主自绘的一枚 ghost 按钮加一条 footer「关闭」按钮，两条关闭入口各画一遍——自绘那枚还
-    得自己跟窄屏挤不挤、图标尺寸对齐，现在整套几何归组件，宿主只留标题文字。
+    closable：关闭 button 由组件渲染（绝对定位到卡片右上角的 26px icon button，偏移 20/20）。此前这里是
+    宿主自绘的一枚 ghost button 加一条 footer「关闭」button，两条关闭入口各画一遍——自绘那枚还
+    得自己跟窄屏挤不挤、icon 尺寸对齐，现在整套几何归组件，宿主只留标题文字。
   -->
   <web-ui-dialog
     :open="open"
@@ -100,7 +100,7 @@ function pickAccent(value: string) {
     <!--
       「设置分区」是卡片的固定 chrome，和标题同一段，落在滚动区之外。
 
-      它不能待在内容区：segmented 按住时胶囊按 scale(1.5) 放大，横向越出轨道
+      它不能待在内容区：segmented 按住时胶囊按 scale(1.5) 放大，横向越出 track
       `0.25×胶囊宽 − 4`（最左那颗 52 宽 → 9px），而任何 overflow 非 visible 的祖先都在自己的
       padding box 上裁剪——组件的 `.desc` 只留 6px，应用此前又套了一层侧向 padding 为 0 的
       滚动宿主，这 9px 就被切平（t-0081 实测左沿被切 9px，t-0084 复测 9.9px）。
@@ -116,11 +116,11 @@ function pickAccent(value: string) {
     </div>
 
     <!--
-      固定高度：切 tab 不再让 dialog 长高矮。三个 tab 的面板高度本来差很多（实测
+      固定高度：切 tab 不再让 dialog 长高矮。三个 tab 的 panel 高度本来差很多（实测
       通用 66 / 外观 156 / 资源库 92.4），此前由内容撑高，切一次跳一次。
 
       `--wui-dialog-max-height` 的语义是「内容区高度」（见 @greypan/web-ui 的 dialog），
-      上限由组件的 `.desc` 承担；这里给面板一个 min-height 顶住 token，`.desc` 就不会在
+      上限由组件的 `.desc` 承担；这里给 panel 一个 min-height 顶住 token，`.desc` 就不会在
       内容不足时收缩到内容高——不是 height，也不是把上限交回内容，「切 tab 不跳」才成立。
       token 声明在外层 web-ui-dialog 上，内层作为后代继承得到，两个数不会走散。
       token 里减掉的 158 是本 dialog 的 chrome 实测值（默认 header 模式 + closable），
@@ -131,25 +131,25 @@ function pickAccent(value: string) {
         .desc margin-top       −6（focus-ring 上余量的成对负 margin，扣回 title 下方间距）
         .desc padding-block   12（focus-ring 余量）
         .desc margin-bottom   18
-        .wui-dialog-footer    0（closable 的关闭按钮已绝对定位、不占行，footer slot 已空）
+        .wui-dialog-footer    0（closable 的关闭 button 已绝对定位、不占行，footer slot 已空）
         ------------------------------------------
         chrome                157.59 → 158（向上取整，留亚像素余量）
 
-      面板侧实测最高的一档是「外观」156（主题行 + accent 色板）。
+      panel 侧实测最高的一档是「外观」156（主题行 + accent 色板）。
       328 = 158 (chrome) + 156 (最高内容) + 12 (focus ring 余量，见 .desc) + 2 (亚像素余量)。
       余下 2px 落在色板下方的空处，看不出来，却能挡住「别的平台行差半像素就让最高的一档
-      凭空长出滚动条」。
+      凭空长出 scrollbar」。
 
       max-height 写 min(90vh, ...) 再减 chrome，是为了让矮视口下整张卡片跟着缩，
       而不是内容被裁在 328px 里。
 
-      面板不再自己套滚动宿主：常规尺寸下 156 装得进 token，`overflow: auto` 不滚动也照样
+      panel 不再自己套滚动宿主：常规尺寸下 156 装得进 token，`overflow: auto` 不滚动也照样
       按 padding box 裁剪。溢出这件事交给组件 `.desc` 处理——它有 6px 焦点余量，只在内容
-      真的超出时才滚（实测 320px 宽那档外观面板 186 才触发）。
+      真的超出时才滚（实测 320px 宽那档外观 panel 186 才触发）。
     -->
     <div class="flex min-h-(--wui-dialog-max-height) flex-col">
       <!--
-        通用：MCP 开关是纯静态占位。disabled 而非隐藏，是为了让「这一栏存在但还没做」在
+        通用：MCP switch 是纯静态占位。disabled 而非隐藏，是为了让「这一栏存在但还没做」在
         界面上可见；文案承担解释，控件本身不假装可用。
       -->
       <div v-if="activeTab === 'general'" :class="metadataRowClass">
@@ -176,7 +176,7 @@ function pickAccent(value: string) {
 
         <!--
           accent 预设平铺。选中态由 accent 派生，圆点之外再给一枚实心色块，让「当前 accent」
-          在选项列表里直接看得见——切完之后整窗的强调色都会跟着变。
+          在 option 列表里直接看得见——切完之后整窗的强调色都会跟着变。
 
           这一格用原生 button，而不是让 web-ui-radio 承担点击——这不是「这里排版特殊」，
           是组件的通用形状：**web-ui-radio 的可点区域是 shadow 里那个 <label>，而它的 :host

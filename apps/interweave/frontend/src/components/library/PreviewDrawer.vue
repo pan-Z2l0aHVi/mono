@@ -69,7 +69,7 @@ watch(
     textPreview.value = null
     textError.value = ''
     // 关闭时内容区不渲染媒体元素（见模板的 open && resource 守卫），此时不读取文本，
-    // 避免仅因选中资源（行点击 / 编辑标签）就在后台发起一次无人可见的 fetch。
+    // 避免仅因选中资源（行点击 / 编辑 tag）就在后台发起一次无人可见的 fetch。
     if (!open) {
       textState.value = 'idle'
       return
@@ -109,13 +109,13 @@ function handleOpenChange(event: WebUiEvent<WebUiDrawer, 'open-change'>) {
 
 <template>
   <!--
-    热区取 32px（drawer 自己的默认值是 20px，见 CHANGELOG：曾从 32px 收窄并留了
-    「consumer 可覆回 32px+」的口子）。20px 在 720px 宽的面板边缘上太窄，拖拽命中率低。
+    drag zone 取 32px（drawer 自己的默认值是 20px，见 CHANGELOG：曾从 32px 收窄并留了
+    「consumer 可覆回 32px+」的口子）。20px 在 720px 宽的 panel 边缘上太窄，拖拽命中率低。
 
     content-padding 跟着回到 drawer 默认的 20px，不归零：它同时是拖拽条中线的来源
     （--wui-internal-drag-bar-center = max(padding/2, 厚度/2+4px)），归零时中线被 6px 下限
-    兜住，4px 的胶囊会压在面板内缘上，读起来像边框而不是把手。20px 让胶囊落在 8px 处，
-    稳稳待在 32px 热区之内。代价是网页预览从满铺变成带一圈白框的视口——这个取舍得认。
+    兜住，4px 的胶囊会压在 panel 内缘上，读起来像边框而不是把手。20px 让胶囊落在 8px 处，
+    稳稳待在 32px drag zone 之内。代价是网页预览从满铺变成带一圈白框的视口——这个取舍得认。
   -->
   <web-ui-drawer
     :open="open"
@@ -167,9 +167,9 @@ function handleOpenChange(event: WebUiEvent<WebUiDrawer, 'open-change'>) {
         class="min-h-0 overflow-auto"
       >
         <!--
-          `grid-rows-[minmax(0,1fr)]` 不能省：没有显式轨道时行高由图片撑出，而图片的 `max-h-full`
+          `grid-rows-[minmax(0,1fr)]` 不能省：没有显式 track 时行高由图片撑出，而图片的 `max-h-full`
           又要向这一行取值，两边互相依赖，百分比会退化成 none——图片不再被收进格子，溢出且偏离居中。
-          显式轨道把格子的高度定下来，百分比才解析得回去。
+          显式 track 把格子的高度定下来，百分比才解析得回去。
         -->
         <div class="grid h-full grid-rows-[minmax(0,1fr)] place-items-center p-3">
           <web-ui-empty v-if="imageFailed" :size="72" title="无法显示这张图片" description="文件可能已被移动或删除。">

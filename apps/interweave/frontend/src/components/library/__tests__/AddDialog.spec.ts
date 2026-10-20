@@ -225,7 +225,7 @@ describe('AddDialog', () => {
 
   /*
    * 回归（#188）：paste 事件原先只派发 requestFilePaths、不带剪贴板文本，页面拿不到
-   * 链接。工具栏按钮那条路径本来就没有文本（走 OS 剪贴板文件接口），因此只有事件路径
+   * 链接。工具栏 button 那条路径本来就没有文本（走 OS 剪贴板文件接口），因此只有事件路径
    * 需要把文本带上去。
    */
   it('paste 事件把剪贴板文本交给页面，弹窗关闭时不响应', async () => {
@@ -307,14 +307,14 @@ describe('AddDialog', () => {
     }
   })
 
-  it('点编辑标签把目标队列项传给编辑事件', async () => {
+  it('点编辑 tag 把目标队列项传给编辑事件', async () => {
     const item = queueItem({ tags: ['设计'] })
     const editTags = vi.fn<(target: LibraryQueueItem) => void>()
     const mounted = mountDialog([item], { onEditTags: editTags }, { tagColors: { 设计: TagColor.TagColorBlue } })
 
     try {
       await nextTick()
-      const editButton = button(mounted.host, '编辑标签')
+      const editButton = button(mounted.host, '编辑 tag')
       expect(editButton.disabled).toBe(false)
 
       editButton.click()
@@ -325,8 +325,8 @@ describe('AddDialog', () => {
     }
   })
 
-  it('队列里尚未落库的标签与已登记颜色的标签渲染成不同 chip', async () => {
-    // 队列里的标签还没进库，本来就没有颜色；给它按名称套色会让预览与落库后的
+  it('队列里尚未落库的 tag 与已登记颜色的 tag 渲染成不同 chip', async () => {
+    // 队列里的 tag 还没进库，本来就没有颜色；给它按名称套色会让预览与落库后的
     // 真实颜色对不上。这里只钉「两者渲染结果不同」，不钉具体色值。
     const mounted = mountDialog(
       [queueItem({ tags: ['设计', '待创建'] })],
@@ -401,7 +401,7 @@ describe('AddDialog', () => {
     }
   })
 
-  it('移动端图片预览启用 swipe、关闭 toolbar，并在添加资源 dialog 关闭时释放句柄', async () => {
+  it('移动端 image preview 启用 swipe、关闭 toolbar，并在添加资源 dialog 关闭时释放句柄', async () => {
     const item = queueItem()
     const handle = previewHandle()
     openPreview.mockReturnValue(handle)

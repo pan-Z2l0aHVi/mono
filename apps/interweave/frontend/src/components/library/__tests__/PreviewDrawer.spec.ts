@@ -223,7 +223,7 @@ describe('PreviewDrawer', () => {
     const fetchMock = vi.fn<() => Promise<Response>>(async () => new Response('内容', { status: 200 }))
     vi.stubGlobal('fetch', fetchMock)
 
-    // 资源已选中（行点击/编辑标签路径）但预览未打开：媒体不能挂在隐藏 dialog 里后台加载。
+    // 资源已选中（行点击/编辑 tag 路径）但预览未打开：媒体不能挂在隐藏 dialog 里后台加载。
     const video = await mountDrawer(
       resourceOf(fileSource({ location: '/tmp/a.mp4' }), ResourceKind.ResourceKindVideo),
       { open: false }

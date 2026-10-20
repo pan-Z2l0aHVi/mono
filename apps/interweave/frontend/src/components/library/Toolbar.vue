@@ -34,7 +34,7 @@ const props = defineProps<{
   searchOpen: boolean
   selectionMode: boolean
   selectedCount: number
-  /** 当前筛选后的可见条目数：没有可选项时全选/取消全选都无从谈起，按钮必须禁用。 */
+  /** 当前筛选后的可见条目数：没有可 option 时全选/取消全选都无从谈起，button 必须禁用。 */
   visibleCount: number
   allVisibleSelected: boolean
   mobile: boolean
@@ -85,8 +85,8 @@ function handleSearchKeydown(event: KeyboardEvent) {
 }
 
 /*
- * blur 收起搜索框，但把已生效的查询留在按钮上：searchOpen 归零后查询仍在 store 里，
- * 若按钮不反映这一点，用户会看不到也清不掉这个筛选。
+ * blur 收起搜索框，但把已生效的查询留在 button 上：searchOpen 归零后查询仍在 store 里，
+ * 若 button 不反映这一点，用户会看不到也清不掉这个筛选。
  */
 function handleSearchBlur() {
   emit('update:searchOpen', false)
@@ -130,7 +130,7 @@ const filterLabelClass =
 
       <!--
        * 搜索框展开时这一组会超出 header 宽度，而 header 是 overflow-x: clip：
-       * 溢出的部分不会滚动、也不会提示，直接被裁掉——搜索框右半截连同清除按钮一起消失。
+       * 溢出的部分不会滚动、也不会提示，直接被裁掉——搜索框右半截连同清除 button 一起消失。
        *
        * 两处 min-w-0 解除 flex item 的自动最小尺寸（默认 min-width:auto 会被内容顶住），
        * 让放不下的部分由搜索框自己让位：它按 w-60（240px）参与布局，空间不够时以
@@ -212,11 +212,11 @@ const filterLabelClass =
     </div>
 
     <!--
-      面板的展开/收起走 web-ui-collapse：grid 0fr↔1fr 过渡、关闭稳态 hidden、动画期间
+      panel 的展开/收起走 web-ui-collapse：grid 0fr↔1fr 过渡、关闭稳态 hidden、动画期间
       inert 都由组件管理，这里不再自己算 height / aria-hidden。
 
-      trigger 仍是工具条上的筛选按钮（它自己绑 aria-expanded / aria-controls），不挂进
-      collapse 的 trigger 槽：按钮要在工具条行内、面板要整行铺开，而内容容器在 shadow
+      trigger 仍是工具条上的筛选 button（它自己绑 aria-expanded / aria-controls），不挂进
+      collapse 的 trigger 槽：button 要在工具条行内、panel 要整行铺开，而内容容器在 shadow
       内，light DOM 无法只把内容推到下一行。
     -->
     <web-ui-collapse :open="filterOpen">
@@ -266,8 +266,8 @@ const filterLabelClass =
             <web-ui-input
               slot="trigger"
               :value="filterTag"
-              placeholder="按标签筛选"
-              aria-label="按标签筛选"
+              placeholder="按 tag 筛选"
+              aria-label="按 tag 筛选"
               class="[--wui-input-width:200px]"
             >
               <web-ui-icon slot="prefix" :icon="mdiTagSearchOutline" />
@@ -300,7 +300,7 @@ const filterLabelClass =
               :size="16"
             />
             <web-ui-option value="name" label="名称">名称</web-ui-option>
-            <web-ui-option value="tagName" label="标签名称">标签名称</web-ui-option>
+            <web-ui-option value="tagName" label="tag 名称">tag 名称</web-ui-option>
             <web-ui-option value="latest" label="最新">最近修改</web-ui-option>
             <web-ui-option value="earliest" label="最早">较早修改</web-ui-option>
           </web-ui-select>

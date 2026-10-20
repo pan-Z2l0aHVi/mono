@@ -114,12 +114,12 @@ function submit() {
         .desc margin-top       −6（focus-ring 上余量的成对负 margin，扣回 title 下方间距）
         .desc padding-block   12（focus-ring 余量）
         .desc margin-bottom   18
-        .wui-dialog-footer    36（--wui-control-size，两枚按钮）
+        .wui-dialog-footer    36（--wui-control-size，两枚 button）
         ------------------------------------------
         chrome                 141.59 → 142（向上取整，留亚像素余量）
 
-      与 AddDialog 相同纯属巧合：两者标题都是单行四字，footer 都是两枚按钮。
-      SettingsDialog 没有 footer 按钮、标题两字，实测 chrome 是 157.59 → 158，三处不能互相照抄。
+      与 AddDialog 相同纯属巧合：两者标题都是单行四字，footer 都是两枚 button。
+      SettingsDialog 没有 footer button、标题两字，实测 chrome 是 157.59 → 158，三处不能互相照抄。
 
       触摸端 `@media (pointer: coarse)` 把 --wui-control-size 抬到 40，chrome 变 145.59。
       这 4px 由**卡片**吸收：内容区仍等于 token 本身，一像素不缩，长高的是卡片本身。
@@ -177,7 +177,7 @@ function submit() {
           class="h-full min-h-0 overflow-y-auto rounded-3xl bg-white dark:bg-(--wui-color-surface-raised)"
         >
           <!--
-            滚动条接在宿主 div 上，列表留在它里面：OverlayScrollbars 会把宿主的子节点搬进自己
+            scrollbar 接在宿主 div 上，列表留在它里面：OverlayScrollbars 会把宿主的子节点搬进自己
             生成的 viewport，而 <ol> 的内容模型只容得下 <li>——宿主若还是这个 <ol>，搬进去的
             viewport div 就落进列表里了。
           -->

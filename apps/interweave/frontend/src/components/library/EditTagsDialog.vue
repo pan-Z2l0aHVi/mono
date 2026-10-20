@@ -13,8 +13,8 @@ const props = defineProps<{
   target: ResourceView | LibraryQueueItem | null
   allTagNames: string[]
   /**
-   * 标签名 → 持久化颜色。草稿里可能有刚输入、尚未创建的名字（没有颜色，显示中性档），
-   * 也可能是队列里尚未落库的标签，因此一律按名回查，而不是从 target 上取。
+   * tag 名 → 持久化颜色。草稿里可能有刚输入、尚未创建的名字（没有颜色，显示中性档），
+   * 也可能是队列里尚未落库的 tag，因此一律按名回查，而不是从 target 上取。
    */
   tagColors: Record<string, TagColor>
   busy: boolean
@@ -54,8 +54,8 @@ function handleInput(event: WebUiEvent<WebUiAutocomplete, 'input'>) {
   inputValue.value = event.target.value
 }
 
-// 面板打开时 Enter 归 autocomplete：只把高亮候选回写输入框。真正的提交发生在面板关闭后
-// 的 Enter 或确认按钮上，所以这里必须早于 autocomplete 内部的 keydown 读到 open。
+// panel 打开时 Enter 归 autocomplete：只把高亮候选回写 input。真正的提交发生在 panel 关闭后
+// 的 Enter 或确认 button 上，所以这里必须早于 autocomplete 内部的 keydown 读到 open。
 function handleKeydown(event: KeyboardEvent) {
   if (event.key !== 'Enter' || event.isComposing) return
   if (autocompleteField.value?.open) return
@@ -91,7 +91,7 @@ function removeTag(tag: string) {
     class="mobile:[--wui-dialog-desc-gap:22px] mobile:[--wui-dialog-footer-gap:12px] mobile:[--wui-dialog-inline-padding:20px] mobile:[--wui-dialog-padding:22px_20px_20px] mobile:[--wui-dialog-title-gap:18px] mobile:[--wui-dialog-width:90vw] [--wui-dialog-width:320px]"
     @open-change="handleOpenChange"
   >
-    <span slot="header">标签</span>
+    <span slot="header">tag</span>
 
     <p
       v-if="error"
@@ -103,23 +103,23 @@ function removeTag(tag: string) {
 
     <div class="grid gap-4">
       <div class="grid gap-1.5">
-        <span class="text-sm font-medium text-[#6a6a6a] dark:text-(--wui-color-text-secondary)">添加标签</span>
+        <span class="text-sm font-medium text-[#6a6a6a] dark:text-(--wui-color-text-secondary)">添加 tag</span>
         <web-ui-autocomplete
           ref="autocompleteField"
           :value="inputValue"
           allow-custom-value
           portal
-          placeholder="请输入标签"
-          aria-label="添加标签"
+          placeholder="请输入 tag"
+          aria-label="添加 tag"
           class="block w-full min-w-0 [--wui-autocomplete-max-width:100%] [--wui-input-width:100%]"
           @input="handleInput"
           @keydown="handleKeydown"
         >
-          <web-ui-input slot="trigger" class="w-full min-w-0" placeholder="请输入标签" aria-label="添加标签">
-            <!-- stop：委托层在 trigger 包装 div 上监听 click 打开面板，确认添加不该顺带开面板 -->
+          <web-ui-input slot="trigger" class="w-full min-w-0" placeholder="请输入 tag" aria-label="添加 tag">
+            <!-- stop：委托层在 trigger 包装 div 上监听 click 打开 panel，确认添加不该顺带开 panel -->
             <!--
               28px + mr-[-8px] 是算出来的等距，不是随手取值：input 的 .wui-input-inner 高
-              36px、padding 0 12px。按钮 20px 时上下各留 8px、右侧 12px，本来就不等距。
+              36px、padding 0 12px。button 20px 时上下各留 8px、右侧 12px，本来就不等距。
               放大到 28px 后上下收成 (36-28)/2 = 4px，再用 -8px 把右边距从 12px 拉到
               4px，于是上、下、右三边间隙一致。改 input 的高度或 padding 会打破这个等式。
               宽度走 --wui-button-width 而不是 size：size 同时管 height 与 min-width，
@@ -132,7 +132,7 @@ function removeTag(tag: string) {
               variant="primary"
               size="28"
               :disabled="busy || !inputValue.trim()"
-              aria-label="确认添加标签"
+              aria-label="确认添加 tag"
               @click.stop="addTag()"
             >
               <web-ui-icon :icon="heroiconsCheck16Solid" :size="18" />
@@ -143,7 +143,7 @@ function removeTag(tag: string) {
       </div>
 
       <div class="grid gap-2">
-        <span class="text-sm font-medium text-[#6a6a6a] dark:text-(--wui-color-text-secondary)">当前标签</span>
+        <span class="text-sm font-medium text-[#6a6a6a] dark:text-(--wui-color-text-secondary)">当前 tag</span>
         <div
           v-if="draft.length"
           class="flex min-h-[36px] flex-wrap items-center gap-1.5 rounded-[18px] bg-white px-3 py-1.5 dark:bg-(--wui-color-surface-raised)"
@@ -161,10 +161,10 @@ function removeTag(tag: string) {
               variant="ghost"
               size="16"
               :disabled="busy"
-              :aria-label="`移除标签 ${tag}`"
+              :aria-label="`移除 tag ${tag}`"
               @click="removeTag(tag)"
             >
-              <!-- 实心 X：与面板里的实心 check 同一路子，16px 描边图标在这个 22px chip 里太轻。 -->
+              <!-- 实心 X：与 panel 里的实心 check 同一路子，16px 描边 icon 在这个 22px chip 里太轻。 -->
               <web-ui-icon :icon="heroiconsXMark16Solid" :size="10" />
             </web-ui-button>
           </span>
@@ -174,7 +174,7 @@ function removeTag(tag: string) {
           class="flex items-center gap-2 rounded-2xl border border-dashed border-black/10 px-3 py-3 text-xs text-[#9a9aa4] dark:border-white/10 dark:text-(--wui-color-text-tertiary)"
         >
           <web-ui-icon :icon="lucideTags" :size="14" />
-          暂无标签
+          暂无 tag
         </div>
       </div>
     </div>

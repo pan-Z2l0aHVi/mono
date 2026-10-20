@@ -51,7 +51,7 @@ class WailsLibraryRuntime implements LibraryRuntime {
   }
 
   async addTag(resourceId: string, tagName: string) {
-    return requireTagDTO(await TagService.AddTagToResource(resourceId, tagName), '添加标签')
+    return requireTagDTO(await TagService.AddTagToResource(resourceId, tagName), '添加 tag')
   }
 
   async removeTag(resourceId: string, tagId: string) {

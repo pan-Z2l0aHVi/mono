@@ -52,7 +52,7 @@ const emit = defineEmits<{
   setChecked: [resourceId: string, checked: boolean]
   renameChange: [resource: ResourceView, event: WebUiEvent<WebUiEditableText, 'change'>]
   cancelRename: []
-  /** 键盘导航/右键菜单请求激活某一行：由父级把 activeResourceId 置为该行资源的 id。 */
+  /** 键盘导航/context menu 请求激活某一行：由父级把 activeResourceId 置为该行资源的 id。 */
   activate: [resource: ResourceView]
 }>()
 
@@ -63,7 +63,7 @@ const emptyTitle = computed(() => (props.runtimeAvailable ? '资源库为空' : 
 const checkedSet = computed(() => new Set(props.checkedIds))
 
 /*
- * 行高没有写死。ResourceRow 的标题会 line-clamp-2 换行、标签区会 flex-wrap 换行、进入改名
+ * 行高没有写死。ResourceRow 的标题会 line-clamp-2 换行、tag 区会 flex-wrap 换行、进入改名
  * 编辑态还会从文字换成表单控件，三种情况高度都不同。这个 item-size 只是「还没量到之前先用
  * 多少」的一阶猜测，真正的值由 virtua 挂在每个条目上的 ResizeObserver 量出来覆盖回去。
  */
@@ -94,7 +94,7 @@ const activeIndex = computed(() => {
  *
  * 量的是 getBoundingClientRect().top 加当前 window.scrollY——rect.top 是视口坐标，
  * 文档坐标要加上已经滚过的那一段。这个值随上方 sticky header 高度变化（工具条展开/收起、
- * 筛选面板开合），所以用 ResizeObserver 订阅包裹层本身：包裹层位置一变就重算。
+ * 筛选 panel 开合），所以用 ResizeObserver 订阅包裹层本身：包裹层位置一变就重算。
  *
  * 只订阅包裹层不够——header 变高时包裹层的位置跟着变，但包裹层自身的尺寸没变，
  * ResizeObserver 不会因此触发。真正可靠的是同时听 window 的 resize 与 scroll：
@@ -156,7 +156,7 @@ onBeforeUnmount(() => {
  * 自己的 scrollIndexIntoView 里（见下），那条路径要把 virtua 的列表内偏移用 listOffset
  * 换算成文档坐标。
  *
- * 行高不固定（标题换行、标签换行、改名编辑态），由 virtua 挂在每个条目上的 ResizeObserver
+ * 行高不固定（标题换行、tag 换行、改名编辑态），由 virtua 挂在每个条目上的 ResizeObserver
  * 自动测量，不需要函数式 ref 与自定义 measureElement：
  *   - virtua 只认「元素 -> 下标」的对应（mount 时注册，条目下标变化时重新注册），高度按
  *     下标写进它自己的尺寸表；
@@ -211,16 +211,16 @@ function scrollIndexIntoView(index: number) {
  */
 
 /*
- * 焦点成为 contextResource 的第二个来源。键盘呼出右键菜单（ContextMenu 键 / Shift+F10）
+ * 焦点成为 contextResource 的第二个来源。键盘呼出 context menu（ContextMenu 键 / Shift+F10）
  * 由 web-ui-context-menu 自己监听宿主元素，它不看 contextResource、只按 document.activeElement
- * 的 rect 摆面板；而菜单项全部 gate 在 contextResource 上，它原本只有行上的 contextmenu
+ * 的 rect 摆 panel；而 menu item 全部 gate 在 contextResource 上，它原本只有行上的 contextmenu
  * 事件这一个赋值点。纯键盘呼出时 contextResource 仍是 null，弹出来的是一张紧贴该行、
- * 内容却只有「删除」和两条分隔线的菜单：位置在说「这一行」，内容在说别的资源。
+ * 内容却只有「删除」和两条 divider 的 menu：位置在说「这一行」，内容在说别的资源。
  *
  * 用 focusin 而不是给 ResourceRow 加一个 focus emit：focusin 会冒泡，容器上一个监听就够，
  * 行内的勾选框与改名编辑器获焦时也会顺带把所属行同步上，不必为一个纯内部的状态同步再扩
- * 一条对外 emit 契约。落焦到容器自己身上时置空，免得拿上一条资源的菜单项去填一张锚在
- * 列表上的菜单。
+ * 一条对外 emit 契约。落焦到容器自己身上时置空，免得拿上一条资源的 menu item 去填一张锚在
+ * 列表上的 menu。
  */
 function handleRowsFocusin(event: FocusEvent) {
   const target = event.target
@@ -232,24 +232,24 @@ function handleRowsFocusin(event: FocusEvent) {
 /*
  * 触屏长按是 contextResource 的第三个来源。
  *
- * 开了 long-press 之后菜单有两个开法：鼠标走原生 contextmenu（行上的事件），触屏走组件
- * 自己在宿主上计时打开。后者不发事件、也不认行——它只知道「在哪儿按的」，菜单项却全部
+ * 开了 long-press 之后 menu 有两个开法：鼠标走原生 contextmenu（行上的事件），触屏走组件
+ * 自己在宿主上计时打开。后者不发事件、也不认行——它只知道「在哪儿按的」，menu item 却全部
  * gate 在 contextResource 上。若只补属性不补这个赋值，长按弹出来的是一张位置在某一行的
- * 空菜单：只剩两条分隔线和一个删除「null」的空项。
+ * 空 menu：只剩两条 divider 和一个删除「null」的空项。
  *
- * 为什么在 pointerdown 就落定、而不是等菜单要开了再补：长按的判定归组件的计时器，我们
- * 没有「即将开菜单」这个时刻可挂。此时菜单还没开，v-if 渲染的是最终形态，组件搬运项的
+ * 为什么在 pointerdown 就落定、而不是等 menu 要开了再补：长按的判定归组件的计时器，我们
+ * 没有「即将开 menu」这个时刻可挂。此时 menu 还没开，v-if 渲染的是最终形态，组件搬运项的
  * 那一整套（capture → 移入 portal → 关闭时搬回）拿到的也是完整项集。等开之后再改
- * contextResource 就是在面板里增删节点，正是本组件上方那段 wrapper 注释里记的那个
+ * contextResource 就是在 panel 里增删节点，正是本组件上方那段 wrapper 注释里记的那个
  * 会把锚点搞丢、且无法自愈的坑。
  *
  * 同一时刻要记住「这一手是触屏」。长按抬手后浏览器补发的 click 会照常落到 onRowSelect，
- * 于是菜单和预览 drawer 同时弹出来——组件侧那个 _isLongPressFollowUp() 只吸收它自己
- * 菜单上的补发事件，管不到宿主的行激活，所以这个抑制必须在宿主这边做。
+ * 于是 menu 和预览 drawer 同时弹出来——组件侧那个 _isLongPressFollowUp() 只吸收它自己
+ * menu 上的补发事件，管不到宿主的行激活，所以这个抑制必须在宿主这边做。
  */
 
 /*
- * 这一手长按**确实开出了菜单**。
+ * 这一手长按**确实开出了 menu**。
  *
  * 由组件的 open-change 置位：组件的长按计时器到期后自己调 _openAt，成功才派发这个事件
  * （context-menu/index.ts 的 _userOpenChange.mark()），所以触屏轻点不会误置它；命令式
@@ -261,16 +261,16 @@ let longPressOpened = false
 
 /*
  * 抬手后浏览器会为**同一次触摸**补发一个 click，它同样落到 onRowSelect。不吃掉它，
- * 菜单和预览 drawer 就会一起弹出来——用户看到的正是这个。
+ * menu 和预览 drawer 就会一起弹出来——用户看到的正是这个。
  *
  * 置位时机是**抬手**，不是长按到期。这一点是踩过坑才定下来的：
  *
- * 长按本来就是「按住不放」的手势，菜单弹出之后用户继续按住任意久都完全自然。而补发的
- * click 是在抬手那一刻才到达的，它与「长按到期」的间隔等于「菜单弹出后继续按住的时长」，
+ * 长按本来就是「按住不放」的手势，menu 弹出之后用户继续按住任意久都完全自然。而补发的
+ * click 是在抬手那一刻才到达的，它与「长按到期」的间隔等于「menu 弹出后继续按住的时长」，
  * 由用户决定、上界无限。曾经在这里挂过一个有限窗口（镜像组件的
  * LONG_PRESS_FOLLOW_UP_WINDOW_MS），看起来有组件侧依据，实际上组件那个窗口吸收的是
  * contextmenu——那个事件在长按到期时就派发了，到派发时距锚点已经是 0ms，所以 1000ms
- * 对它成立，对补发的 click 却是给用户可控的时长发通行证：按住超过窗口长度，抽屉照弹。
+ * 对它成立，对补发的 click 却是给用户可控的时长发通行证：按住超过窗口长度，drawer 照弹。
  *
  * 所以这里不用任何时间窗口。抬手置位、下一次 click 消费、下一次 pointerdown 作废，
  * 整条链上唯一的时钟是浏览器自己派发这两个事件的间隔，不需要我们猜一个值。
@@ -284,15 +284,15 @@ let followUpClickPending = false
 /*
  * 这一手是不是触屏。
  *
- * 只在 open-change 那一刻用来把「触屏长按开菜单」与「鼠标右键开菜单」分开：两者派发的
+ * 只在 open-change 那一刻用来把「触屏长按开 menu」与「鼠标右键开 menu」分开：两者派发的
  * 事件序列几乎一样，但只有触屏那条的补发 click 需要被吞。它由 handleSweepStart 在**每一次**
  * pointerdown 上重新判定，不粘滞——若只由 touch 置位，触屏轻点没走到 onRowSelect 时（例如
- * 点在行外）它会一直是 true，之后一次鼠标右键开菜单就被误认成长按，右键之后点行会点不动。
+ * 点在行外）它会一直是 true，之后一次鼠标右键开 menu 就被误认成长按，右键之后点行会点不动。
  */
 let lastPointerWasTouch = false
 
 /**
- * 抬手：把「长按开出了菜单」翻译成「马上会来一个补发的 click」。
+ * 抬手：把「长按开出了 menu」翻译成「马上会来一个补发的 click」。
  *
  * 真实触控管线的顺序是 touchend → pointerup → 浏览器补发 click，所以补发的 click 到达时
  * pointerup 已经过去，标志来得及立住；反过来，下一次 pointerdown 一定晚于这个补发 click
@@ -317,8 +317,8 @@ function handleRowsPointerCancel() {
 
 function handleContextMenuOpenChange(event: WebUiEvent<WebUiContextMenu, 'open-change'>) {
   if (!event.detail.open) return
-  // 菜单关闭不消费标志：补发的 click 恰恰常发生在菜单已关之后，提前作废它就退回老缺陷。
-  // 鼠标右键开菜单时同样派发 open-change，但鼠标点行是合法的，不能吞。
+  // menu 关闭不消费标志：补发的 click 恰恰常发生在 menu 已关之后，提前作废它就退回老缺陷。
+  // 鼠标右键开 menu 时同样派发 open-change，但鼠标点行是合法的，不能吞。
   if (!lastPointerWasTouch) return
   longPressOpened = true
 }
@@ -336,11 +336,11 @@ const ROW_NAVIGATION_KEYS = new Set(['ArrowDown', 'ArrowUp', 'Home', 'End'])
 /*
  * 容器自己也是 tab stop，所以键盘用户能停在「整个列表」这一层。进列表的键位里带
  * Shift+F10：web-ui-context-menu 认的 context-menu 键（见 packages/web-ui/src/components/
- * context-menu/index.ts 的 _onKeydown），焦点在容器上时它照样会开菜单，并把面板锚到容器
+ * context-menu/index.ts 的 _onKeydown），焦点在容器上时它照样会开 menu，并把 panel 锚到容器
  * 自己身上。容器不对应任何一条资源，那种情况下弹出来的只会是一张位置在列表、内容与列表
- * 无关的菜单——和这次要修的键盘缺陷是同一个毛病，只是从「行」换成了「列表」。所以这里
+ * 无关的 menu——和这次要修的键盘缺陷是同一个毛病，只是从「行」换成了「列表」。所以这里
  * 先把焦点交给行：事件继续冒泡到宿主，宿主再读 document.activeElement 时读到的已经是
- * 那一行，菜单于是既锚在行上、也讲这一行的事。
+ * 那一行，menu 于是既锚在行上、也讲这一行的事。
  */
 const ENTER_LIST_KEYS = new Set(['Enter', ' ', 'ArrowDown', 'F10'])
 
@@ -352,10 +352,10 @@ const ENTER_LIST_KEYS = new Set(['Enter', ' ', 'ArrowDown', 'F10'])
  * 仍能 closest 到行），不该顺带激活整行。修饰键组合留给浏览器与系统，Shift+Space 仍是
  * 「向上滚一屏」——焦点不在列表里时，空格也照常滚页面，监听器只在列表容器上。
  *
- * 焦点本身不自动开预览，这是被实现逼出来的：预览抽屉的 web-ui-drawer 内部是原生
+ * 焦点本身不自动开预览，这是被实现逼出来的：预览 drawer 的 web-ui-drawer 内部是原生
  * <dialog> 的 showModal()，打开时浏览器把焦点拉进 dialog、让其后的文档 inert。焦点一落到
- * 行上、抽屉一开，下一行就永远拿不到焦点，Tab 在行间切换这条主路径当场断掉（浏览器实测：
- * 抽屉打开后 row.focus() 无响应）。把抽屉改成非模态要动 web-ui 组件，不在本 task 范围内。
+ * 行上、drawer 一开，下一行就永远拿不到焦点，Tab 在行间切换这条主路径当场断掉（浏览器实测：
+ * drawer 打开后 row.focus() 无响应）。把 drawer 改成非模态要动 web-ui 组件，不在本 task 范围内。
  * 所以焦点在这里的作用是「界定按键的作用域」：空格只作用于焦点所在的那一行，不再需要
  * 「鼠标恰好悬在某一行」这个隐藏判据——#187 的 hover 触发判据就此下线，预览能力留着。
  */
@@ -724,7 +724,7 @@ function armTouchSweep() {
 function handleSweepStart(event: PointerEvent) {
   // 每一手都重新判定触屏/鼠标，并作废上一次手势留下的待消费标志。
   //
-  // 三件事都必须排在下面那些 early return 之前：非选择模式下这里会立刻返回，而长按菜单
+  // 三件事都必须排在下面那些 early return 之前：非选择模式下这里会立刻返回，而长按 menu
   // 恰恰只在非选择模式下可用。
   //
   // 作废的理由：抬手时若没等到补发的 click（被系统吃掉、落点不可点等），标志会悬着，
@@ -734,11 +734,11 @@ function handleSweepStart(event: PointerEvent) {
   lastPointerWasTouch = event.pointerType === 'touch'
   followUpClickPending = false
   longPressOpened = false
-  // 长按菜单要用的 contextResource 在这里落定：这是 pointerdown 冒泡到容器上的第一个监听器，
+  // 长按 menu 要用的 contextResource 在这里落定：这是 pointerdown 冒泡到容器上的第一个监听器，
   // 早于 web-ui-context-menu 自己那个（它在宿主上，我们在容器的后代里）。放在早的那一侧，
-  // 长按计时器到期时 contextResource 已经是对的，菜单开出来就有完整项。
+  // 长按计时器到期时 contextResource 已经是对的，menu 开出来就有完整项。
   syncTouchContext(event)
-  // 右键（button 2）也走 pointerdown，让给右键菜单；只认主键
+  // 右键（button 2）也走 pointerdown，让给 context menu；只认主键
   if (!props.selectionMode || event.button !== 0 || !event.isPrimary) return
   const target = event.target
   if (!(target instanceof Element)) return
@@ -799,7 +799,7 @@ function endSweep() {
   // 它由 armTouchSweep 置位，而 armTouchSweep 只在选择模式下发生——非选择模式根本不注册
   // endSweep。于是「进过一次选择模式并长按扫选」之后，这个标志会一直留着，把之后每一次
   // 右键都吞掉（openContextMenu 见到它就 preventDefault 直接 return），直到用户碰巧再按
-  // 一次左键进选择模式才恢复。表现为：扫选过一次之后，右键菜单整个失灵。
+  // 一次左键进选择模式才恢复。表现为：扫选过一次之后，context menu 整个失灵。
   //
   // 时序上是安全的：同一次手势的 pointerup 一定早于后续右键的 pointerdown，而右键的
   // contextmenu 又在 pointerdown 之后，所以这里清完标志，右键那一次读到的已经是 false。
@@ -819,14 +819,14 @@ function onRowSelect(resource: ResourceView) {
     return
   }
   /*
-   * 长按抬手后浏览器补发的 click 会走到这里。若刚才那手确实开出了菜单，这次 click 就是
-   * 长按的回声而不是一次有意的选择——吃掉，否则菜单与预览 drawer 会同时弹出来。
+   * 长按抬手后浏览器补发的 click 会走到这里。若刚才那手确实开出了 menu，这次 click 就是
+   * 长按的回声而不是一次有意的选择——吃掉，否则 menu 与预览 drawer 会同时弹出来。
    *
-   * 判据是 followUpClickPending：抬手时置位（前提是那手确实开出了菜单），补发的 click
+   * 判据是 followUpClickPending：抬手时置位（前提是那手确实开出了 menu），补发的 click
    * 消费掉即清。触屏与鼠标的区分在 handleContextMenuOpenChange 记标志时就做完了。
    *
-   * 这里刻意不去读「菜单此刻开着没有」：补发的 click 到达之前菜单往往已经因 blur /
-   * 外点关掉，此刻去读到 false，这条抑制就失效了，抽屉照弹——那正是本判据要修的缺陷。
+   * 这里刻意不去读「menu 此刻开着没有」：补发的 click 到达之前 menu 往往已经因 blur /
+   * 外点关掉，此刻去读到 false，这条抑制就失效了，drawer 照弹——那正是本判据要修的缺陷。
    */
   if (followUpClickPending) {
     followUpClickPending = false
@@ -870,14 +870,14 @@ const openWithApps: Partial<Record<ResourceKind, Array<{ label: string; icon: ty
 }
 
 async function openContextMenu(resource: ResourceView, event: MouseEvent) {
-  // 长按扫选手势会顺带触发系统级 contextmenu，那不是「用户想看菜单」，挡掉
+  // 长按扫选手势会顺带触发系统级 contextmenu，那不是「用户想看 menu」，挡掉
   if (suppressContextMenu) {
     event.preventDefault()
     return
   }
   event.preventDefault()
   event.stopPropagation()
-  // 右键呼出菜单本身也写当前行（决策 4 后半句）：emit activate 让父级把 activeResourceId
+  // 右键呼出 menu 本身也写当前行（决策 4 后半句）：emit activate 让父级把 activeResourceId
   // 置为该行资源 id。不调用 focusIndex()——它会 scrollIndexIntoView + row.focus()，会抢走焦点
   //（右键改名时焦点在名字编辑器里）。
   emit('activate', resource)
@@ -938,22 +938,22 @@ function handleRenameChange(resource: ResourceView, event: WebUiEvent<WebUiEdita
   <!--
     disabled 绑在「没有条目」上，而不是绑在右键来源上：context-menu 自己监听宿主的
     contextmenu，列表为空时那块空态区域仍在这个宿主里，右键照样命中。不禁用的话会弹出
-    一张 contextResource 为 null 的菜单——只剩一条分隔线加一个空「删除」项。禁用后
-    事件在组件内被 return 掉，浏览器原生菜单正常出现。
+    一张 contextResource 为 null 的 menu——只剩一条 divider 加一个空「删除」项。禁用后
+    事件在组件内被 return 掉，浏览器原生 menu 正常出现。
   -->
   <!--
-    long-press 让触屏能长按出行菜单（web-ui-context-menu 的 opt-in 属性，只对 pointerType
+    long-press 让触屏能长按出行 menu（web-ui-context-menu 的 opt-in 属性，只对 pointerType
     为 touch 的指针生效，鼠标仍走原生 contextmenu）。
 
     选择模式里同一个「按住不动」已经被扫选占了
-    （armTouchSweep，320ms），而组件的长按阈值是 500ms——两个计时器都会跑，菜单会在扫选
-    已经开始勾选之后弹出来抢画面。语义上也该如此：选择模式的长按是「扫选」，不是「看菜单」。
+    （armTouchSweep，320ms），而组件的长按阈值是 500ms——两个计时器都会跑，menu 会在扫选
+    已经开始勾选之后弹出来抢画面。语义上也该如此：选择模式的长按是「扫选」，不是「看 menu」。
     关掉之后组件在 _onPointerDown 里直接 return，连计时器都不起。
 
     **这里必须让 false 表现为「没有这个属性」，不能写成 `:long-press="!selectionMode"`。**
     Vue 对自定义元素走属性路径（`'long-press' in el` 为 false，属性名是 longPress），false
     会被写成字符串 `"false"`；而 Lit 的 Boolean converter 只看属性在不在（`value !== null`），
-    于是 `"false"` 读出来是 true——布尔整个反了。选择模式里长按照样弹菜单。
+    于是 `"false"` 读出来是 true——布尔整个反了。选择模式里长按照样弹 menu。
     实测过：`agent-browser` 里进选择模式后 `getAttribute('long-press') === "false"` 而
     `longPress === true`。所以 false 分支传 undefined，让 Vue 走 removeAttribute。
     （同一元素上的 `:disabled` 没这个问题：disabled 是 Vue 认识的 spec boolean attribute，
@@ -1074,14 +1074,14 @@ function handleRenameChange(resource: ResourceView, event: WebUiEvent<WebUiEdita
     </div>
 
     <!--
-      所有菜单项都收在这个 wrapper 里，`contents` 让它不产生盒子（对列表布局零影响）。
+      所有 menu item 都收在这个 wrapper 里，`contents` 让它不产生盒子（对列表布局零影响）。
 
-      这层 wrapper 是修一个真实 bug，不是结构偏好：菜单打开时 context-menu 会把项搬进
-      自己的 portal 面板，关闭时再搬回来，而搬回要等退场动画（`_closeMenuAfterPresence`
-      是 async）。这段窗口里 `_isOpen` 已经是 false 但项还留在面板上。此刻右键另一行，
-      上面的 v-if 就会在面板里增删节点，和组件自己的锚点搬运（capture / order / restore
+      这层 wrapper 是修一个真实 bug，不是结构偏好：menu 打开时 context-menu 会把项搬进
+      自己的 portal panel，关闭时再搬回来，而搬回要等退场动画（`_closeMenuAfterPresence`
+      是 async）。这段窗口里 `_isOpen` 已经是 false 但项还留在 panel 上。此刻右键另一行，
+      上面的 v-if 就会在 panel 里增删节点，和组件自己的锚点搬运（capture / order / restore
       + return-to-slot）撞在一起，Vue 的 v-if 注释锚点会被丢在错位的地方——实测后果是
-      菜单只剩「详情 / 重命名 / 删除」、可用项整块消失，且锚点丢失后**无法自愈**，菜单
+      menu 只剩「详情 / 重命名 / 删除」、可用项整块消失，且锚点丢失后**无法自愈**，menu
       从此再也打不开。
 
       收进 wrapper 后组件搬的是「wrapper + 全部项 + 全部 v-if 锚点」这一整块，锚点不可能
@@ -1092,8 +1092,8 @@ function handleRenameChange(resource: ResourceView, event: WebUiEvent<WebUiEdita
       wrapper 上的 slot="context-menu-hidden" 不能省。组件关闭时是靠给项加这个属性来隐藏的
       （模板里只有默认 slot，名字对不上的节点不渲染），而 slot 分配只对**宿主的直接子节点**
       生效——项一旦被包进 wrapper，它们就成了默认 slot 分配节点的内部后代，不再是 slottable，
-      隐藏会失效，菜单项会以明文形式漏在列表下面。挂到 wrapper 自己身上即可：wrapper 是直接
-      子节点，关闭时被正确隐藏；打开时组件把整块搬进 portal 面板，而面板是普通 div、没有
+      隐藏会失效，menu item 会以明文形式漏在列表下面。挂到 wrapper 自己身上即可：wrapper 是直接
+      子节点，关闭时被正确隐藏；打开时组件把整块搬进 portal panel，而 panel 是普通 div、没有
       shadow root，这个属性在那边是惰性的，项照常显示。
     -->
     <div class="contents" slot="context-menu-hidden">
@@ -1119,7 +1119,7 @@ function handleRenameChange(resource: ResourceView, event: WebUiEvent<WebUiEdita
       <!--
         详情不跟预览一起 gate 在「资源可用」上。打开详情会对失效的网页入口发一次探测
         （见 probeURLSourceOnOpen），那条路只对不可用的资源有意义；跟着 gate 住会让探测
-        无入口可达，也会让不可用资源彻底失去详情抽屉（备注、元数据、来源都在里面）。
+        无入口可达，也会让不可用资源彻底失去详情 drawer（备注、元数据、来源都在里面）。
         资源可用时它排在预览与打开方式之后。
       -->
       <web-ui-dropdown-item v-if="contextResource" @click="handleDetail(contextResource)">
@@ -1140,7 +1140,7 @@ function handleRenameChange(resource: ResourceView, event: WebUiEvent<WebUiEdita
       </web-ui-dropdown-item>
       <web-ui-dropdown-item v-if="contextResource?.available" @click="handleTags(contextResource)">
         <web-ui-icon slot="prefix" :icon="lucideTags" :size="14" />
-        标签
+        tag
       </web-ui-dropdown-item>
       <web-ui-dropdown-divider />
       <web-ui-dropdown-item style="color: var(--wui-color-danger, #ef4444)" @click="handleDelete(contextResource)">

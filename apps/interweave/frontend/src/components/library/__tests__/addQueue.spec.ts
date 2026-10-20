@@ -295,7 +295,7 @@ describe('library add queue duplicate confirmation', () => {
     expect(queue.queue.value.map(item => item.location)).toEqual(['/tmp/photo.png'])
   })
 
-  it('提示挂起时关闭添加对话框，挂起项按取消结算且不再处理剩余项', async () => {
+  it('提示挂起时关闭添加 dialog，挂起项按取消结算且不再处理剩余项', async () => {
     const queried: string[] = []
     const queue = createLibraryAddQueue(
       createRuntime({
@@ -316,12 +316,12 @@ describe('library add queue duplicate confirmation', () => {
 
     expect(queue.duplicatePrompt.value).toBeNull()
     expect(queue.queue.value).toEqual([])
-    // 代次作废后剩余项不再查询，关闭后的对话框不该再弹窗。
+    // 代次作废后剩余项不再查询，关闭后的 dialog 不该再弹窗。
     expect(queried).toEqual(['/tmp/first.png'])
   })
 
-  it('查询在途时关闭添加对话框，命中结果不再弹出悬空确认', async () => {
-    // 竞态窗口：findResourceLocationMatches 已发出但还没返回，此刻用户关掉了添加对话框。
+  it('查询在途时关闭添加 dialog，命中结果不再弹出悬空确认', async () => {
+    // 竞态窗口：findResourceLocationMatches 已发出但还没返回，此刻用户关掉了添加 dialog。
     // 代次在 close() 里递增，查询返回时必须按取消放行——否则会弹出一个没人认领的确认框，
     // 且入队链会一直挂在 askDuplicate 上等一个永远不会来的裁决。
     let releaseQuery: ((matches: ResourceLocationMatchDTO[]) => void) | null = null
@@ -347,7 +347,7 @@ describe('library add queue duplicate confirmation', () => {
     await enqueued
     await closing
 
-    // 关键断言：查询返回了命中，但对话框已经关掉，因此一个提示都不该弹。
+    // 关键断言：查询返回了命中，但 dialog 已经关掉，因此一个提示都不该弹。
     expect(queried).toEqual(['/tmp/race.png'])
     expect(queue.duplicatePrompt.value).toBeNull()
     expect(queue.queue.value).toEqual([])
