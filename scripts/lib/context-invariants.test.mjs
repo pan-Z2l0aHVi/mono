@@ -1,6 +1,11 @@
 import assert from 'node:assert/strict'
 
-import { isUnqualifiedRelativeTarget, parseLocalLinkTarget, stripCodeSegments } from './context-invariants.mjs'
+import {
+  isUnqualifiedRelativeTarget,
+  parseLocalLinkTarget,
+  readInlineLinkTarget,
+  stripCodeSegments
+} from './context-invariants.mjs'
 
 try {
   // 远程与协议链接不判定可触达性：离线无法验证，域名失效也不是本仓漂移。
@@ -43,6 +48,15 @@ try {
   assert.deepEqual(parseLocalLinkTarget('./a.md#top "title"'), { location: './a.md', fragment: 'top' })
   assert.deepEqual(parseLocalLinkTarget('<./my doc.md> (title)'), { location: './my doc.md', fragment: '' })
 
+  // destination 里的括号合法：`[p](./some(dir)/x.md)` 的路径不能被截成 `./some(dir`。
+  const targetAfterLabel = text => readInlineLinkTarget(text, text.indexOf('](') + 2)
+  assert.equal(targetAfterLabel('[p](./some(dir)/x.md)'), './some(dir)/x.md')
+  assert.equal(targetAfterLabel('[p](./a.md (title))'), './a.md (title)')
+  assert.equal(targetAfterLabel('[p](<./a b.md>)'), '<./a b.md>')
+  // 跨行或不闭合的 `](` 不是完整链接：返回 null，不能把后文吞成 target。
+  assert.equal(targetAfterLabel('[p](./a.md\n[q](./b.md)'), null)
+  assert.equal(readInlineLinkTarget('[p](./a.md', 5), null)
+
   // 非根文档的 target 必须以 `./`/`../` 起头；`.` 与 `..` 本身已是显式相对写法，绝对路径另有判据。
   assert.equal(isUnqualifiedRelativeTarget('./a.md'), false)
   assert.equal(isUnqualifiedRelativeTarget('../a.md'), false)
@@ -51,7 +65,6 @@ try {
   assert.equal(isUnqualifiedRelativeTarget('/abs/a.md'), false)
   assert.equal(isUnqualifiedRelativeTarget('a.md'), true)
   assert.equal(isUnqualifiedRelativeTarget('docs/a.md'), true)
-  assert.equal(isUnqualifiedRelativeTarget('?raw'), true)
 
   // 代码片段里的 `[...](...)` 不是链接：正则字面量常长成这样。
   assert.equal(

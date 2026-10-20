@@ -13,6 +13,7 @@ import {
   findUnroutedAgentDocs,
   isUnqualifiedRelativeTarget,
   parseLocalLinkTarget,
+  readInlineLinkTarget,
   scanVolatilePhrases,
   stripCodeSegments
 } from './context-invariants.mjs'
@@ -359,10 +360,11 @@ export async function run(context) {
   for (const candidate of [...trackedMarkdown, ...markdownFiles]) {
     const file = path.resolve(candidate)
     if (fromLockedSkill(file)) continue
+    // 入面的一律是 realpath：软链路径只是访问方式，不是文档所在位置。
     const identity = identityOf(file)
     if (linkSurfaceSeen.has(identity)) continue
     linkSurfaceSeen.add(identity)
-    linkSurface.push(file)
+    linkSurface.push(identity)
   }
   // 同一份文档会被多篇引用，剥代码片段的结果按文件缓存，锚点另有 anchorCache。
   const linkSourceCache = new Map()
@@ -372,7 +374,9 @@ export async function run(context) {
   }
 
   // (?<!!?) 的 `!?` 允许匹配空串，lookbehind 恒假，链接扫描因此从未跑过；这里要求前面确实不是 `!`（图片语法）。
-  const linkPattern = /(?<!!)\[[^\]]*\]\(([^)]+)\)/g
+  // 只定位到 `](`，target 由 readInlineLinkTarget 读出：destination 里的括号合法（`./a_(b)/c.md`），
+  // 用 `[^)]+` 截断会把它切成半截路径，报成断链。
+  const linkPattern = /(?<!!)\[[^\]]*\]\(/g
   // 只校验节级锚点：文件存在性由下方文件存在校验负责；`#fragment` 可能是节锚点（`#title`）或显式锚点（`{#custom}`）。
   // Markdown 引擎把节标题转成 GitHub 风格 anchor：小写、去标点、空格转 `-`、连续/首尾 `-` 折叠；显式 `{#name}` 优先。
   const ghAnchor = text =>
@@ -421,7 +425,9 @@ export async function run(context) {
     // 入站与「加载路径」都只认指令面的链接：研究记录或 changelog 里的引用不能替代路由。
     const onInstructionSurface = instructionSurface.has(identityOf(file))
     for (const match of source.matchAll(linkPattern)) {
-      const target = match[1].trim()
+      const rawTarget = readInlineLinkTarget(source, match.index + match[0].length)
+      if (rawTarget === null) continue
+      const target = rawTarget.trim()
       const parsed = parseLocalLinkTarget(target)
       if (!parsed) continue
       const { location, fragment } = parsed

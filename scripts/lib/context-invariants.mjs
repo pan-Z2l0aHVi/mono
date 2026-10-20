@@ -92,6 +92,34 @@ export function parseLocalLinkTarget(raw) {
   return location ? { location, fragment } : null
 }
 
+// 从 `](` 之后的偏移读出一条行内链接的 destination。destination 里的括号是合法的
+// （`./a_(b)/c.md`），正则的 `[^)]+` 会把路径切成半截，所以按平衡括号扫。
+// 行内链接不跨行：到行尾仍未闭合，说明这不是一条完整链接——返回 null 跳过，
+// 而不是把后文一并吞成 target。
+export function readInlineLinkTarget(source, start) {
+  let depth = 1
+  let inAngle = false
+  for (let index = start; index < source.length; index += 1) {
+    const char = source[index]
+    if (char === '\\') {
+      index += 1
+      continue
+    }
+    if (char === '\n') return null
+    if (inAngle) {
+      if (char === '>') inAngle = false
+      continue
+    }
+    if (char === '<' && index === start) inAngle = true
+    else if (char === '(') depth += 1
+    else if (char === ')') {
+      depth -= 1
+      if (depth === 0) return source.slice(start, index)
+    }
+  }
+  return null
+}
+
 // 相对 target 有两种解析习惯：按当前文件所在目录，或按仓库根。两者结果只在仓库根下的文档里相同，
 // 更深的文档写 `docs/input.md` 会落到两个不同文件，换个查看器就跳错——所以非根文档必须显式 `./`、`../`。
 // `.` 与 `..` 本身已经是显式的相对写法，不在此列。
