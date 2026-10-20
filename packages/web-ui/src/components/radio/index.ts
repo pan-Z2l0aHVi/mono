@@ -22,7 +22,7 @@ export class WebUiRadio extends FormAssociated(LitElement) {
 
   @state() private _checked = false
 
-  /** 标签没有可渲染内容（空槽位，或只挂着一个无障碍名）时收掉 gap，见 LabelEmptinessController。 */
+  /** label 没有可渲染内容（空槽位，或只挂着一个无障碍名）时收掉 gap，见 LabelEmptinessController。 */
   @state() private _labelEmpty = false
 
   get checked(): boolean {
@@ -82,7 +82,7 @@ export class WebUiRadio extends FormAssociated(LitElement) {
       internals.setValidity({})
       return
     }
-    internals.setValidity({ valueMissing: true }, '请选择一项')
+    internals.setValidity({ valueMissing: true }, 'Select an option')
   }
 
   private handleClick() {

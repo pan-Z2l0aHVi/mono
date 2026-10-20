@@ -34,7 +34,7 @@ function dialogElement(): HTMLDialogElement {
   return dialog as HTMLDialogElement
 }
 
-/** 图片所在的舞台：单轨道结构下图片的父元素是 slide，舞台上溯一层。 */
+/** 图片所在的舞台：单 track 结构下图片的父元素是 slide，舞台上溯一层。 */
 function stageOf(image: HTMLImageElement): HTMLElement {
   return (image.closest('.wui-image-preview-stage') as HTMLElement) ?? image.parentElement!
 }
@@ -90,7 +90,7 @@ describe('imagePreview 命令式 API', () => {
   })
 
   // 打开时锁滚动、关闭时释放并卸载宿主并兑现 closed：漏掉任一半，调用方的
-  // `await handle.closed` 要么挂死，要么在浮层已经消失后仍被通知。
+  // `await handle.closed` 要么挂死，要么在 overlay 已经消失后仍被通知。
   it('打开时挂载宿主并锁定页面滚动，关闭后移除宿主并兑现 closed', async () => {
     const handle = await openPreview()
 
@@ -214,7 +214,7 @@ describe('imagePreview 命令式 API', () => {
       await handle.closed
     })
 
-    // 退场期间宿主还在文档里、监听还挂着，但已关闭的浮层不该再被手势改写。
+    // 退场期间宿主还在文档里、监听还挂着，但已关闭的 overlay 不该再被手势改写。
     it('关闭后不再响应仍在进行中的双指缩放', async () => {
       const handle = await openPreview()
       const stage = stageOf(currentImage(hostElement()))
@@ -276,12 +276,12 @@ describe('imagePreview 命令式 API', () => {
       await handle.closed
     })
 
-    it('非指针来源的 click（detail 为 0）不当作遮罩点击', async () => {
+    it('非指针来源的 click（detail 为 0）不当作 backdrop 点击', async () => {
       const handle = await openPreview()
       const stage = stageOf(currentImage(hostElement()))
 
       // 先留下一次「起于空白」的按下，再模拟键盘激活控件产生的 click：
-      // 它不是遮罩点击，不得关闭浮层。
+      // 它不是 backdrop 点击，不得关闭 overlay。
       stage.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, button: 0, pointerId: 1, isPrimary: true }))
       dialogElement().dispatchEvent(new MouseEvent('click', { bubbles: true }))
       await hostElement().updateComplete
@@ -306,8 +306,8 @@ describe('imagePreview 命令式 API', () => {
       expect(isMounted()).toBe(false)
     })
 
-    // 双指缩放会补发一次兼容 click；它不是遮罩点击，不能把浮层关掉。
-    it('双指缩放不触发遮罩关闭，余波 click 被吞掉后遮罩关闭仍可用', async () => {
+    // 双指缩放会补发一次兼容 click；它不是 backdrop 点击，不能把 overlay 关掉。
+    it('双指缩放不触发 backdrop 关闭，余波 click 被吞掉后 backdrop 关闭仍可用', async () => {
       const handle = await openPreview()
       const stage = stageOf(currentImage(hostElement()))
 
@@ -321,7 +321,7 @@ describe('imagePreview 命令式 API', () => {
 
       window.dispatchEvent(touchPointer('pointerup', { pointerId: 21, clientX: 100, clientY: 100 }))
       window.dispatchEvent(touchPointer('pointerup', { pointerId: 22, clientX: 300, clientY: 100 }))
-      // 混合输入可能补发一次兼容 click，它不是遮罩点击，不得关闭浮层。
+      // 混合输入可能补发一次兼容 click，它不是 backdrop 点击，不得关闭 overlay。
       stage.dispatchEvent(new MouseEvent('click', { bubbles: true, detail: 1 }))
       await hostElement().updateComplete
       expect(isMounted()).toBe(true)
@@ -335,9 +335,9 @@ describe('imagePreview 命令式 API', () => {
     /*
      * jsdom 没有布局（offsetWidth / stage.clientWidth 均为 0），位移边界恒为 0，
      * 因此这里只覆盖 1x 已进入手势路径这一可观察事实：拖拽结束会置位「已拖动」，
-     * 同一次指针交互补发的 click 不再被当作遮罩点击。位移本身由浏览器用例断言。
+     * 同一次指针交互补发的 click 不再被当作 backdrop 点击。位移本身由浏览器用例断言。
      */
-    it('1x 拖拽进入平移手势路径，释放后的余波 click 不关闭浮层', async () => {
+    it('1x 拖拽进入平移手势路径，释放后的余波 click 不关闭 overlay', async () => {
       const handle = await openPreview()
       const stage = stageOf(currentImage(hostElement()))
 
@@ -377,12 +377,12 @@ describe('imagePreview 命令式 API', () => {
     })
   })
 
-  describe('可访问性与展示选项', () => {
+  describe('可访问性与展示 option', () => {
     it('原生 dialog 暴露可访问名称，计数器宣告当前位置', async () => {
       const handle = await openPreview({ indicator: true })
       const host = hostElement()
 
-      expect(queryA11y(host, 'dialog')?.getAttribute('aria-label')).toBe('图片预览')
+      expect(queryA11y(host, 'dialog')?.getAttribute('aria-label')).toBe('image preview')
       expect(queryA11y(host, '[aria-live]')?.textContent?.trim()).toBe(`1 / ${IMAGES.length}`)
 
       handle.next()
@@ -393,16 +393,16 @@ describe('imagePreview 命令式 API', () => {
       await handle.closed
     })
 
-    it('展示类选项默认全关，只渲染图片本身', async () => {
+    it('展示类 option 默认全关，只渲染图片本身', async () => {
       const handle = await openPreview()
       const host = hostElement()
 
       expect(queryA11y(host, 'img')).not.toBeNull()
       expect(queryA11y(host, '[aria-live]')).toBeNull()
-      expect(queryA11y(host, '[aria-label="关闭"]')).toBeNull()
-      expect(queryA11y(host, '[aria-label="上一张"]')).toBeNull()
-      expect(queryA11y(host, '[aria-label="下一张"]')).toBeNull()
-      expect(queryA11y(host, '[aria-label="放大"]')).toBeNull()
+      expect(queryA11y(host, '[aria-label="Close"]')).toBeNull()
+      expect(queryA11y(host, '[aria-label="Previous image"]')).toBeNull()
+      expect(queryA11y(host, '[aria-label="Next image"]')).toBeNull()
+      expect(queryA11y(host, '[aria-label="Zoom in"]')).toBeNull()
 
       handle.close()
       await handle.closed
@@ -413,34 +413,34 @@ describe('imagePreview 命令式 API', () => {
       const host = hostElement()
 
       expect(queryA11y(host, '[aria-live]')?.textContent?.trim()).toBe(`1 / ${IMAGES.length}`)
-      expect(queryA11y(host, '[aria-label="关闭"]')).not.toBeNull()
-      expect(queryA11y(host, '[aria-label="上一张"]')).not.toBeNull()
-      expect(queryA11y(host, '[aria-label="下一张"]')).not.toBeNull()
-      expect(queryA11y(host, '[aria-label="放大"]')).not.toBeNull()
-      expect(queryA11y(host, '[aria-label="缩小"]')).not.toBeNull()
-      expect(queryA11y(host, '[aria-label="重置缩放"]')).not.toBeNull()
+      expect(queryA11y(host, '[aria-label="Close"]')).not.toBeNull()
+      expect(queryA11y(host, '[aria-label="Previous image"]')).not.toBeNull()
+      expect(queryA11y(host, '[aria-label="Next image"]')).not.toBeNull()
+      expect(queryA11y(host, '[aria-label="Zoom in"]')).not.toBeNull()
+      expect(queryA11y(host, '[aria-label="Zoom out"]')).not.toBeNull()
+      expect(queryA11y(host, '[aria-label="Reset zoom"]')).not.toBeNull()
 
       handle.close()
       await handle.closed
     })
 
-    it('closable 时点击关闭按钮关闭浮层', async () => {
+    it('closable 时点击关闭 button 关闭 overlay', async () => {
       const handle = await openPreview({ closable: true })
 
-      const closeButton = queryA11y(hostElement(), '[aria-label="关闭"]') as HTMLElement
+      const closeButton = queryA11y(hostElement(), '[aria-label="Close"]') as HTMLElement
       closeButton.dispatchEvent(new MouseEvent('click', { bubbles: true, detail: 1 }))
 
       await handle.closed
       expect(isMounted()).toBe(false)
     })
 
-    // 只有一张图时前后切换是死路，nav 不渲染按钮。
-    it('nav 在只有一张图时不渲染切换按钮', async () => {
+    // 只有一张图时前后切换是死路，nav 不渲染 button。
+    it('nav 在只有一张图时不渲染切换 button', async () => {
       const handle = await openPreview({ nav: true, images: [IMAGES[0]] })
       const host = hostElement()
 
-      expect(queryA11y(host, '[aria-label="上一张"]')).toBeNull()
-      expect(queryA11y(host, '[aria-label="下一张"]')).toBeNull()
+      expect(queryA11y(host, '[aria-label="Previous image"]')).toBeNull()
+      expect(queryA11y(host, '[aria-label="Next image"]')).toBeNull()
 
       handle.close()
       await handle.closed

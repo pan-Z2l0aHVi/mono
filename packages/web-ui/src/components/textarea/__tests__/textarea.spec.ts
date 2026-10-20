@@ -110,7 +110,7 @@ describe('WebUiTextarea 组件特有契约', () => {
     cleanupElement(el)
   })
 
-  it('clearable 有值时清除按钮派发一次 input 并把 value 置空', async () => {
+  it('clearable 有值时清除 button 派发一次 input 并把 value 置空', async () => {
     const el = createTextarea()
     el.clearable = true
     el.value = 'hello'
@@ -119,7 +119,7 @@ describe('WebUiTextarea 组件特有契约', () => {
     const events: Event[] = []
     el.addEventListener('input', e => events.push(e))
 
-    const clear = queryA11y(el, '[aria-label="清除"]')
+    const clear = queryA11y(el, '[aria-label="Clear"]')
     expect(clear).toBeTruthy()
     ;(clear as HTMLElement).click()
 
@@ -128,21 +128,21 @@ describe('WebUiTextarea 组件特有契约', () => {
     cleanupElement(el)
   })
 
-  it('readonly 时不渲染清除按钮', async () => {
+  it('readonly 时不渲染清除 button', async () => {
     const el = createTextarea()
     el.clearable = true
     el.readonly = true
     el.value = 'hello'
     await waitForUpdate(el)
-    expect(queryA11y(el, '[aria-label="清除"]')).toBeNull()
+    expect(queryA11y(el, '[aria-label="Clear"]')).toBeNull()
     cleanupElement(el)
   })
 
-  it('clearable 无值时也不渲染清除按钮', async () => {
+  it('clearable 无值时也不渲染清除 button', async () => {
     const el = createTextarea()
     el.clearable = true
     await waitForUpdate(el)
-    expect(queryA11y(el, '[aria-label="清除"]')).toBeNull()
+    expect(queryA11y(el, '[aria-label="Clear"]')).toBeNull()
     cleanupElement(el)
   })
 })

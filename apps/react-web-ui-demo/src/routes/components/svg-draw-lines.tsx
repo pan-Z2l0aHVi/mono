@@ -13,6 +13,6 @@ function Component() {
 }
 
 export const Route = createFileRoute('/components/svg-draw-lines')({
-  staticData: { title: 'SVGDrawLines 描边动画' },
+  staticData: { title: 'SVGDrawLines' },
   component: Component
 })

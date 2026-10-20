@@ -61,13 +61,13 @@ function layoutRoot() {
 }
 
 function navRoot() {
-  const element = document.querySelector('[aria-label="应用导航"]')
+  const element = document.querySelector('[aria-label="App navigation"]')
   if (!element) throw new Error('sidebar nav not found')
   return element
 }
 
 /**
- * 折叠态在这个 demo 里只体现为排版——桌面折叠与移动抽屉渲染的是同一份 slot 内容，
+ * collapsed state 在这个 demo 里只体现为排版——桌面 collapse 与移动 drawer 渲染的是同一份 slot 内容，
  * 「导航项最终带上哪一套工具类」就是它唯一的观察点，jsdom 里也没有布局可读。
  * 判据因此不写死类名：由同一个组件在两种状态下的渲染互相比较得出。
  */
@@ -77,7 +77,7 @@ function navItemClasses() {
   return [...link.classList].sort()
 }
 
-/** 移动端抽屉是否真的接管了 sidebar slot（不接管就谈不上「抽屉里的导航」）。 */
+/** 移动端 drawer 是否真的接管了 sidebar slot（不接管就谈不上「drawer 里的导航」）。 */
 function isDrawerMode() {
   return !!layoutRoot().shadowRoot?.querySelector('web-ui-drawer')
 }
@@ -88,7 +88,7 @@ function isDrawerMode() {
  */
 async function settleViewport(drawerMode: boolean) {
   await vi.waitFor(() => {
-    if (isDrawerMode() !== drawerMode) throw new Error(`抽屉形态没有变成 ${drawerMode}`)
+    if (isDrawerMode() !== drawerMode) throw new Error(`drawer 形态没有变成 ${drawerMode}`)
   })
   await nextTick()
   await layoutRoot().updateComplete
@@ -136,7 +136,7 @@ async function requestCollapse(collapsed: boolean) {
 
 let setMediaMatches: (query: string, matches: boolean) => void
 
-describe('应用外壳：导航折叠态不跨视口泄漏', () => {
+describe('应用外壳：导航 collapsed state 不跨视口泄漏', () => {
   beforeEach(() => {
     setMediaMatches = createMatchMediaStub()
   })
@@ -149,7 +149,7 @@ describe('应用外壳：导航折叠态不跨视口泄漏', () => {
     innerWidthSpy = null
   })
 
-  it('桌面端折叠侧边栏后导航进入折叠态', async () => {
+  it('桌面端 collapsible sidebar 后导航进入 collapsed state', async () => {
     setViewportWidth(DESKTOP_WIDTH)
     await mountAppShell()
     const expanded = navItemClasses()
@@ -161,27 +161,27 @@ describe('应用外壳：导航折叠态不跨视口泄漏', () => {
     expect(navItemClasses()).not.toEqual(expanded)
   })
 
-  it('移动端断点下同一个折叠偏好不把抽屉导航压成折叠态', async () => {
+  it('移动端断点下同一个 collapse preference 不把 drawer 导航压成 collapsed state', async () => {
     setViewportWidth(DESKTOP_WIDTH)
     await mountAppShell()
     const expanded = navItemClasses()
 
     await requestCollapse(true)
-    // 对照：折叠偏好确实改变了导航项的渲染，否则下面那条「与展开态一致」可能只是因为
-    // 折叠从未生效。
+    // 对照：collapse preference 确实改变了导航项的渲染，否则下面那条「与展开态一致」可能只是因为
+    // collapse 从未生效。
     expect(navItemClasses()).not.toEqual(expanded)
 
     setViewportWidth(MOBILE_WIDTH)
     setMediaMatches(MOBILE_QUERY, true)
     await settleViewport(true)
 
-    // 前提：折叠偏好仍写在 layout 上。不成立的话下面那条「与展开态一致」只是没折叠过的假绿
-    // （抽屉形态由 settleViewport 保证，不另设断言）。
+    // 前提：collapse preference 仍写在 layout 上。不成立的话下面那条「与展开态一致」只是没 collapse 过的假绿
+    // （drawer 形态由 settleViewport 保证，不另设断言）。
     expect(layoutRoot().sidebarCollapsed).toBe(true)
     expect(navItemClasses()).toEqual(expanded)
   })
 
-  it('跨断点往返后折叠态在桌面端恢复生效', async () => {
+  it('跨断点往返后 collapsed state 在桌面端恢复生效', async () => {
     setViewportWidth(DESKTOP_WIDTH)
     await mountAppShell()
     const expanded = navItemClasses()

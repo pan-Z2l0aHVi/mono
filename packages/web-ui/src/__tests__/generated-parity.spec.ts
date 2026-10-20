@@ -55,7 +55,7 @@ describe('两端生成物同源', () => {
   // 完整走到产物」。只钉名字不够——dropdown.md 也有一行 `open-change`，那会替它过关。
   it('手写的名称与描述逐字落到产物', () => {
     expect(reactModule).toMatch(/"open-change",\n\s*"<p>开合请求。/)
-    expect(reactModule).toMatch(/"content",\n\s*"<p>折叠内容。/)
+    expect(reactModule).toMatch(/"content",\n\s*"<p>collapse content。/)
   })
 })
 

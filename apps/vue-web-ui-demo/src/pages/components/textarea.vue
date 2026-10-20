@@ -1,7 +1,7 @@
 <route lang="json">
 {
   "meta": {
-    "title": "Textarea 文本域"
+    "title": "Textarea"
   }
 }
 </route>

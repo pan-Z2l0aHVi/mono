@@ -15,7 +15,7 @@ function ScrollBox({ threshold = 200, behavior = 'smooth', children }: ScrollBox
 
   // scrollTarget 是 element 属性而非 attribute，需要在挂载后手动赋值。
   // 接管滚动后滚动发生在 OverlayScrollbars 生成的 viewport 上，宿主自己不再滚动，
-  // 所以目标要取 viewport 而不是宿主元素，否则按钮永远不会出现。
+  // 所以目标要取 viewport 而不是宿主元素，否则 button 永远不会出现。
   useEffect(() => {
     const viewport = boxRef.current?.osInstance()?.elements().viewport
     if (viewport && backTopRef.current) {
@@ -42,39 +42,41 @@ function ScrollBox({ threshold = 200, behavior = 'smooth', children }: ScrollBox
 function BackTopDemo() {
   return (
     <div>
-      <h1>BackTop 回到顶部</h1>
+      <h1>BackTop back top</h1>
 
-      <h2>页面级滚动</h2>
+      <h2>Page scroll</h2>
       <p className="mb-2 text-sm text-(--wui-color-text-secondary)">
-        向下滚动页面超过阈值后出现按钮，点击或按 Enter 回到顶部。通过 <code>--wui-back-top-position</code>、
-        <code>--wui-back-top-left</code> 等自定义属性控制按钮在容器内的定位。
+        向下滚动页面超过阈值后出现 button，点击或按 Enter back top。通过 <code>--wui-back-top-position</code>、
+        <code>--wui-back-top-left</code> 等自定义属性控制 button 在容器内的定位。
       </p>
       <div className="mb-6 h-80 overflow-hidden rounded-xl border border-(--wui-color-border) p-4 relative">
-        <p className="pb-10">这是一个占位区域：滚动页面观察左下角的回到顶部按钮。</p>
+        <p className="pb-10">
+          A placeholder area: scroll the page to watch the back top button in the bottom-left corner.
+        </p>
         <web-ui-back-top className="absolute bottom-5 left-6 right-auto [--wui-back-top-position:absolute]"></web-ui-back-top>
       </div>
 
-      <h2>自定义滚动容器</h2>
+      <h2>Custom scroll container</h2>
       <p className="mb-2 text-sm text-(--wui-color-text-secondary)">
-        通过 scrollTarget 指定滚动容器：按钮悬浮于容器右下角，仅容器滚动时显示。
+        通过 scrollTarget 指定滚动容器：button 悬浮于容器右下角，仅容器滚动时显示。
       </p>
       <ScrollBox />
 
-      <h2>自定义阈值</h2>
+      <h2>Custom threshold</h2>
       <p className="mb-2 text-sm text-(--wui-color-text-secondary)">
-        threshold=&quot;300&quot;：容器滚动超过 300px 才显示按钮。
+        threshold=&quot;300&quot;: the button only shows after the container scrolls past 300px.
       </p>
       <ScrollBox threshold={300} />
 
-      <h2>自定义内容</h2>
-      <p className="mb-2 text-sm text-(--wui-color-text-secondary)">默认 slot 可替换按钮内容。</p>
+      <h2>Custom content</h2>
+      <p className="mb-2 text-sm text-(--wui-color-text-secondary)">The default slot replaces the button content.</p>
       <ScrollBox>
-        <web-ui-button variant="primary">回到顶部</web-ui-button>
+        <web-ui-button variant="primary">back top</web-ui-button>
       </ScrollBox>
 
-      <h2>立即滚动</h2>
+      <h2>Scroll now</h2>
       <p className="mb-2 text-sm text-(--wui-color-text-secondary)">
-        scroll-behavior=&quot;auto&quot;：点击后瞬间回到顶部，无平滑滚动动画。
+        scroll-behavior=&quot;auto&quot;：点击后瞬间 back top，无平滑滚动动画。
       </p>
       <ScrollBox behavior="auto" />
     </div>

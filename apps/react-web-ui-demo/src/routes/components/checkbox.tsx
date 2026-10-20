@@ -14,6 +14,6 @@ function Component() {
 }
 
 export const Route = createFileRoute('/components/checkbox')({
-  staticData: { title: 'Checkbox 复选框' },
+  staticData: { title: 'Checkbox' },
   component: Component
 })

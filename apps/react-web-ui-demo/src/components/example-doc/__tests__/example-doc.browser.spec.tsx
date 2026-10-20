@@ -121,7 +121,7 @@ async function mountDemos(container: HTMLElement) {
 function sliderIn(container: HTMLElement, title: string) {
   const host = sample(container, title).querySelector<WebUiSlider>('web-ui-slider')
   if (!host) throw new Error(`示例「${title}」没有渲染出 web-ui-slider`)
-  // 影子树里有 role="slider" = 元素真的被注册升级过，不是留着未知标签的空壳。
+  // 影子树里有 role="slider" = 元素真的被注册升级过，不是留着未知 tag 的空壳。
   if (!host.shadowRoot?.querySelector('[role="slider"]')) throw new Error(`示例「${title}」的 slider 没有升级`)
   return host
 }
@@ -298,7 +298,7 @@ describe('example-doc（React 面 / 真实浏览器）', () => {
     expect(cellOf(rows, props, 'max', '默认值')).toBe('100')
   })
 
-  it('options 表（命令式 API 的选项）与 props 表一样渲染类型与默认值两列', () => {
+  it('options 表（命令式 API 的 option）与 props 表一样渲染类型与默认值两列', () => {
     const { container } = render(<ExampleDoc component="image-preview" />)
     const options = apiSection(imagePreview, 'options')
     const rows = sectionRows(container, 'options')

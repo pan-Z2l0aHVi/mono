@@ -9,7 +9,7 @@ import type { WebUiTooltip } from '..'
 
 afterEach(() => document.body.replaceChildren())
 
-// CI 无头浏览器的静止光标停在视口左上角：portal 面板隐藏时 Chrome 会在光标下
+// CI 无头浏览器的静止光标停在视口左上角：portal panel 隐藏时 Chrome 会在光标下
 // 重算 hover 并对 tooltip 派发 pointerenter（show-delay=0 时立即重开），
 // 干扰 close 断言。挂载点用 pointer-events 隔离真实指针。
 const mountIsolated = () => {
@@ -56,7 +56,7 @@ describe('WebUiTooltip portal 条件渲染边界（浏览器）', () => {
     app.unmount()
   })
 
-  it('打开期 v-if 新增的 slot 内容实时迁入面板并在关闭后恢复', async () => {
+  it('打开期 v-if 新增的 slot 内容实时迁入 panel 并在关闭后恢复', async () => {
     const mountPoint = mountIsolated()
     const show = ref(false)
     const app = createApp({
@@ -96,7 +96,7 @@ describe('WebUiTooltip portal 条件渲染边界（浏览器）', () => {
     app.unmount()
   })
 
-  it('同 flush 关闭重开容器级 v-if：占位注释归还宿主，重开内容实时迁入面板', async () => {
+  it('同 flush 关闭重开容器级 v-if：占位注释归还宿主，重开内容实时迁入 panel', async () => {
     const mountPoint = mountIsolated()
     const open = ref(false)
     const show = ref(false)
@@ -122,8 +122,8 @@ describe('WebUiTooltip portal 条件渲染边界（浏览器）', () => {
     expect(getPortalPanel('tooltip')).not.toBeNull()
     expect(getPortalPanel('tooltip')?.querySelector('.probe-flag')).not.toBeNull()
 
-    // 打开期 v-if 删除：占位注释被框架插进面板，portal 必须归还宿主，
-    // 否则注释随面板销毁，下次翻转内容会被插进已脱离文档的旧面板
+    // 打开期 v-if 删除：占位注释被框架插进 panel，portal 必须归还宿主，
+    // 否则注释随 panel 销毁，下次翻转内容会被插进已脱离文档的旧 panel
     show.value = false
     await nextTick()
     await tooltip.updateComplete

@@ -1,7 +1,7 @@
 <route lang="json">
 {
   "meta": {
-    "title": "Empty 空状态"
+    "title": "Empty"
   }
 }
 </route>

@@ -38,7 +38,7 @@ export const fixtures: Fixture[] = [
   },
   {
     tag: 'web-ui-autocomplete',
-    // 默认触发器是 shadow 内的 web-ui-input，focus ring 落在它自己的 .wui-input-inner 上
+    // 默认 trigger 是 shadow 内的 web-ui-input，focus ring 落在它自己的 .wui-input-inner 上
     innerSelector: '.wui-input-inner',
     create: () => {
       const el = document.createElement('web-ui-autocomplete') as WebUiAutocomplete
@@ -49,10 +49,10 @@ export const fixtures: Fixture[] = [
 ]
 
 /**
- * 跨 shadow root 解析 focus ring 宿主与原生输入框。
+ * 跨 shadow root 解析 focus ring 宿主与原生 input。
  *
- * autocomplete 的 `::after` focus ring 在默认触发器（shadow 内的 web-ui-input）里，
- * 直接 `querySelector` 穿不进那层 shadow root；同层的原生输入框同理。
+ * autocomplete 的 `::after` focus ring 在默认 trigger（shadow 内的 web-ui-input）里，
+ * 直接 `querySelector` 穿不进那层 shadow root；同层的原生 input 同理。
  */
 function queryDeep<T extends HTMLElement>(root: ParentNode, selector: string): T | null {
   const direct = root.querySelector<T>(selector)
@@ -114,7 +114,7 @@ export async function mountField(
   return { host, inner }
 }
 
-/** 聚焦原生输入框，并推进一帧让过渡进入运行态。 */
+/** 聚焦原生 input，并推进一帧让过渡进入运行态。 */
 export async function focusAndSettle(host: FixtureElement, inner: HTMLElement): Promise<void> {
   const nativeField =
     queryDeep<HTMLElement>(inner, 'input, textarea') ?? queryDeep<HTMLElement>(host.shadowRoot!, 'input, textarea')

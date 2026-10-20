@@ -149,7 +149,7 @@ export class WebUiSlider extends FormAssociated(LitElement) {
     const steps = Math.round((clamped - lower) / this._safeStep)
     // 对齐到 step 网格后必须再收敛一次：`round` 会把值推到网格外侧
     // （max=100 / step=15 → 7 * 15 = 105），不收敛就会突破 max，
-    // 连带 aria-valuenow 与 --percent 溢出轨道。
+    // 连带 aria-valuenow 与 --percent 溢出 track。
     const snapped = Number((lower + steps * this._safeStep).toFixed(this._precision))
     return clamp(snapped, lower, upper)
   }
@@ -262,7 +262,7 @@ export class WebUiSlider extends FormAssociated(LitElement) {
         style=${trackStyle}
         role="slider"
         tabindex=${this._isDisabled ? '-1' : '0'}
-        aria-label="滑块"
+        aria-label="slider"
         aria-orientation=${this.vertical ? 'vertical' : 'horizontal'}
         aria-valuemin=${this.min}
         aria-valuemax=${this.max}

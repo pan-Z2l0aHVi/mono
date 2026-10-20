@@ -27,7 +27,7 @@ export class WebUiDialog extends LitElement {
   @property({ type: Boolean, reflect: true, attribute: 'no-escape-close' }) noEscapeClose = false
 
   /**
-   * Controlled 模式下，Escape 和遮罩点击只派发 `open-change` 请求，
+   * Controlled 模式下，Escape 和 backdrop 点击只派发 `open-change` 请求，
    * 不会自行修改 `open`。Consumer 回写 `open` 后才执行关闭动画。
    * 程序化 API（showModal/close/直接赋值 open）不受此模式影响，始终直通。
    */
@@ -60,7 +60,7 @@ export class WebUiDialog extends LitElement {
   private readonly _userOpenChange = new UserChangeController()
 
   /*
-   * 开启态浮层（issue #120 Block 1）。dialog 的 Escape 原本只走原生 cancel 事件：仲裁者
+   * 开启态 overlay（issue #120 Block 1）。dialog 的 Escape 原本只走原生 cancel 事件：仲裁者
    * 会在 keydown 上 preventDefault 压掉原生关闭请求并 stopPropagation，因此这里必须
    * 自己表达关闭语义（controlled 只派发请求）。
    */
@@ -98,16 +98,16 @@ export class WebUiDialog extends LitElement {
         //
         // 实测（Chromium）showModal() 不会动打开前已经存在的选区，所以这一次清理
         // 同时也覆盖「先选中页面文本、再打开」的情况——modal 打开后被选中的内容挡在
-        // 遮罩后面本来也已不可用。这里只清文档选区，不动 user-select，浮层内正文
+        // backdrop 后面本来也已不可用。这里只清文档选区，不动 user-select，overlay 内正文
         // 仍可正常拖选。
         window.getSelection()?.removeAllRanges()
       }
-      // 原生 dialog 登记为开启态浮层：挂在它上面的 portal 面板成为本层后代，
+      // 原生 dialog 登记为开启态 overlay：挂在它上面的 portal panel 成为本层后代，
       // Escape 仲裁据此判出最内层（issue #120 Block 1）。
       const dialog = this.dialog
       if (dialog) {
         if (this.open) {
-          // 同一面板重新 claim = 新的一次开启：旧会话（含其子层）整体作废。
+          // 同一 panel 重新 claim = 新的一次开启：旧会话（含其子层）整体作废。
           this._handle?.release()
           this._handle = this._overlay.claim(dialog, { ancestryFrom: this })
         } else {
@@ -154,7 +154,7 @@ export class WebUiDialog extends LitElement {
 
   /*
    * `no-escape-close` 时 dialog 仍是候选（Escape 被吞掉、原生 cancel 被压掉），只是
-   * 不走关闭入口。与旧的「跳过候选」语义不同：旧语义放任事件落到下层浮层，把外层
+   * 不走关闭入口。与旧的「跳过候选」语义不同：旧语义放任事件落到下层 overlay，把外层
    * 一起关掉。该属性可在开启期间改写，所以每次渲染后读它，而不是在 claim 时固定。
    */
   private _syncOverlayInert() {
@@ -177,7 +177,7 @@ export class WebUiDialog extends LitElement {
    *    （否则原生关闭会跳过退出动画）；
    * ② 忽略子控件（例如 file input）冒泡上来的 cancel。
    * 实测（overlay-open-owner-260918，2026-09-18）摘掉 `@cancel` 后 dialog.browser.spec.ts
-   * 的「no-escape-close 存在时 Escape/cancel 不关闭对话框」与 remount-reconcile 的
+   * 的「no-escape-close 存在时 Escape/cancel 不关闭 dialog」与 remount-reconcile 的
    * 「打开态被移出文档再接回」两例立刻转红，断言正是 `dispatchEvent(cancel) === false`。
    */
   private handleCancel(e: Event) {
@@ -194,7 +194,7 @@ export class WebUiDialog extends LitElement {
     this._closeFromUser()
   }
 
-  /** 用户发起的关闭入口（Escape、遮罩点击、关闭按钮）共用一条路径。 */
+  /** 用户发起的关闭入口（Escape、backdrop 点击、关闭 button）共用一条路径。 */
   private readonly _closeFromUser = () => {
     if (this.controlled) {
       this.emitOpenChange(false)
@@ -257,7 +257,7 @@ export class WebUiDialog extends LitElement {
   }
 
   /**
-   * 默认模式与 `headless` 模式共用同一枚关闭按钮：都绝对定位到卡片右上角，偏移由
+   * 默认模式与 `headless` 模式共用同一枚关闭 button：都绝对定位到卡片右上角，偏移由
    * `--wui-dialog-close-top` / `--wui-dialog-close-right` 控制（见 style.css）。
    * 它在两种模式下都是卡片的直接子元素，定位参照是卡片本身（.wui-dialog-body）。
    */
@@ -266,7 +266,7 @@ export class WebUiDialog extends LitElement {
       <web-ui-button
         class="wui-dialog-close"
         @click=${this._closeFromUser}
-        aria-label="关闭"
+        aria-label="Close"
         variant="secondary"
         icon
         size="26"

@@ -40,7 +40,7 @@ async function focusedOutlineColor(theme: WebUiTheme): Promise<string> {
 }
 
 describe('焦点环跟随 accent token（浏览器）', () => {
-  it('自定义 accent 改变时，聚焦按钮的 outline 颜色随之改变', async () => {
+  it('自定义 accent 改变时，聚焦 button 的 outline 颜色随之改变', async () => {
     const first = await focusedOutlineColor(await mountWithAccent('#bf5af2'))
     const second = await focusedOutlineColor(await mountWithAccent('#ff453a'))
 

@@ -4,74 +4,74 @@ import { lucideSearch } from '@greypan/web-ui/icons'
 
 <template>
   <div>
-    <h1>输入框</h1>
-    <h2>基础</h2>
+    <h1>input</h1>
+    <h2>Basic</h2>
     <div class="mb-3 flex flex-col gap-3">
-      <web-ui-input placeholder="请输入内容" />
-      <web-ui-input value="已填写的内容" />
+      <web-ui-input placeholder="Enter a value" />
+      <web-ui-input value="Filled content" />
     </div>
 
-    <h2>前缀 / 后缀</h2>
+    <h2>Prefix / suffix</h2>
     <div class="mb-3 flex flex-col gap-3">
-      <web-ui-input placeholder="搜索">
+      <web-ui-input placeholder="Search">
         <web-ui-icon slot="prefix" :icon="lucideSearch"></web-ui-icon>
       </web-ui-input>
-      <web-ui-input value="内容">
+      <web-ui-input value="Content">
         <web-ui-icon slot="suffix" :icon="lucideSearch"></web-ui-icon>
       </web-ui-input>
-      <web-ui-input placeholder="前后都有">
+      <web-ui-input placeholder="Both sides">
         <span slot="prefix">www.</span>
         <span slot="suffix">.com</span>
       </web-ui-input>
     </div>
 
-    <h2>不同 type</h2>
+    <h2>Different types</h2>
     <div class="mb-3 flex flex-col gap-3">
-      <web-ui-input type="password" placeholder="密码" />
+      <web-ui-input type="password" placeholder="Password" />
     </div>
 
-    <h2>禁用</h2>
+    <h2>Disabled</h2>
     <div class="mb-3 flex flex-col gap-3">
-      <web-ui-input placeholder="禁用状态" disabled />
-      <web-ui-input value="禁用有值" disabled />
-      <web-ui-input placeholder="禁用带图标" disabled>
+      <web-ui-input placeholder="Disabled" disabled />
+      <web-ui-input value="Disabled with value" disabled />
+      <web-ui-input placeholder="Disabled with icon" disabled>
         <web-ui-icon slot="prefix" :icon="lucideSearch"></web-ui-icon>
       </web-ui-input>
     </div>
 
-    <h2>只读</h2>
+    <h2>Read only</h2>
     <div class="mb-3 flex flex-col gap-3">
-      <web-ui-input value="只读有值" readonly />
-      <!-- readonly 优先于 clearable：只读时清除按钮隐藏 -->
-      <web-ui-input value="只读可复制" readonly clearable>
+      <web-ui-input value="Read only with value" readonly />
+      <!-- readonly 优先于 clearable：只读时清除 button 隐藏 -->
+      <web-ui-input value="Read only, copyable" readonly clearable>
         <web-ui-icon slot="prefix" :icon="lucideSearch"></web-ui-icon>
       </web-ui-input>
     </div>
 
-    <h2>可清除</h2>
+    <h2>Clearable</h2>
     <div class="mb-3 flex flex-col gap-3">
-      <web-ui-input value="有值可清除" clearable />
-      <web-ui-input placeholder="搜索" clearable>
+      <web-ui-input value="Clearable when filled" clearable />
+      <web-ui-input placeholder="Search" clearable>
         <web-ui-icon slot="prefix" :icon="lucideSearch"></web-ui-icon>
       </web-ui-input>
-      <web-ui-input value="有值可清除" clearable full
+      <web-ui-input value="Clearable when filled" clearable full
         ><span slot="prefix">www.</span><span slot="suffix">@gmail.com</span></web-ui-input
       >
     </div>
 
-    <h2>满宽</h2>
+    <h2>Full width</h2>
     <div class="mb-3 flex flex-col gap-3">
-      <web-ui-input full placeholder="满宽输入框" />
-      <web-ui-input full value="满宽有值" clearable>
+      <web-ui-input full placeholder="Full-width input" />
+      <web-ui-input full value="Full width with value" clearable>
         <web-ui-icon slot="prefix" :icon="lucideSearch"></web-ui-icon>
       </web-ui-input>
     </div>
 
-    <h2>无边框</h2>
+    <h2>Borderless</h2>
     <div class="mb-3 flex flex-col gap-3">
-      <web-ui-input borderless placeholder="无边框输入框" />
-      <web-ui-input borderless value="无边框有值" />
-      <web-ui-input borderless placeholder="带图标">
+      <web-ui-input borderless placeholder="Borderless input" />
+      <web-ui-input borderless value="Borderless with value" />
+      <web-ui-input borderless placeholder="With icon">
         <web-ui-icon slot="prefix" :icon="lucideSearch"></web-ui-icon>
       </web-ui-input>
     </div>

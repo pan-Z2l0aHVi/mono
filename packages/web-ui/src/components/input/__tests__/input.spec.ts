@@ -114,7 +114,7 @@ describe('WebUiInput 组件特有契约', () => {
     expect(() => el.select()).not.toThrow()
   })
 
-  it('clearable 有值时清除按钮派发一次 input 并把 value 置空', async () => {
+  it('clearable 有值时清除 button 派发一次 input 并把 value 置空', async () => {
     const el = createInput()
     el.clearable = true
     el.value = 'hello'
@@ -123,7 +123,7 @@ describe('WebUiInput 组件特有契约', () => {
     const events: Event[] = []
     el.addEventListener('input', e => events.push(e))
 
-    const clear = queryA11y(el, '[aria-label="清除"]')
+    const clear = queryA11y(el, '[aria-label="Clear"]')
     expect(clear).toBeTruthy()
     ;(clear as HTMLElement).click()
 
@@ -132,21 +132,21 @@ describe('WebUiInput 组件特有契约', () => {
     cleanupElement(el)
   })
 
-  it('readonly 时不渲染清除按钮', async () => {
+  it('readonly 时不渲染清除 button', async () => {
     const el = createInput()
     el.clearable = true
     el.readonly = true
     el.value = 'hello'
     await waitForUpdate(el)
-    expect(queryA11y(el, '[aria-label="清除"]')).toBeNull()
+    expect(queryA11y(el, '[aria-label="Clear"]')).toBeNull()
     cleanupElement(el)
   })
 
-  it('clearable 无值时也不渲染清除按钮', async () => {
+  it('clearable 无值时也不渲染清除 button', async () => {
     const el = createInput()
     el.clearable = true
     await waitForUpdate(el)
-    expect(queryA11y(el, '[aria-label="清除"]')).toBeNull()
+    expect(queryA11y(el, '[aria-label="Clear"]')).toBeNull()
     cleanupElement(el)
   })
 
@@ -154,7 +154,7 @@ describe('WebUiInput 组件特有契约', () => {
    * 清除是一次「已提交」的离散变更，不是连续输入：只派发 input 会让
    * `v-model.lazy` 这类只监听 change 的消费者永远收不到清空。
    */
-  it('点击清除按钮同时派发 input 与 change', async () => {
+  it('点击清除 button 同时派发 input 与 change', async () => {
     const el = createInput()
     el.clearable = true
     el.value = 'hello'
@@ -164,8 +164,8 @@ describe('WebUiInput 组件特有契约', () => {
     el.addEventListener('input', () => events.push('input'))
     el.addEventListener('change', () => events.push('change'))
 
-    const clear = queryA11y(el, '[aria-label="清除"]') as HTMLElement
-    expect(clear, '应有清除按钮').toBeTruthy()
+    const clear = queryA11y(el, '[aria-label="Clear"]') as HTMLElement
+    expect(clear, '应有清除 button').toBeTruthy()
     clear.click()
     await waitForUpdate(el)
 
@@ -183,7 +183,7 @@ describe('WebUiInput 组件特有契约', () => {
     const events: string[] = []
     el.addEventListener('change', () => events.push('change'))
 
-    ;(queryA11y(el, '[aria-label="清除"]') as HTMLElement).click()
+    ;(queryA11y(el, '[aria-label="Clear"]') as HTMLElement).click()
     await waitForUpdate(el)
     nativeInput(el).dispatchEvent(new FocusEvent('blur'))
     await waitForUpdate(el)

@@ -3,7 +3,7 @@ component: input-number
 tag: web-ui-input-number
 ---
 
-数字输入框，自带步进按钮与 ArrowUp / ArrowDown 键盘增减；空输入或 `-` 在提交时被忽略，值保持在最后一个有效数字。
+input number，自带步进 button 与 ArrowUp / ArrowDown 键盘增减；空输入或 `-` 在提交时被忽略，值保持在最后一个有效数字。
 
 ## 示例
 

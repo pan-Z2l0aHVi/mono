@@ -46,8 +46,8 @@ afterEach(async () => {
 })
 
 describe('WebUiLayout 组件（浏览器）', () => {
-  describe('桌面端 sidebar 折叠', () => {
-    it('Toggle 请求受控折叠，回写后 aria-label 反映新状态', async () => {
+  describe('桌面端 sidebar collapse', () => {
+    it('Toggle 请求受控 collapse，回写后 aria-label 反映新状态', async () => {
       await setViewport(DESKTOP_VIEWPORT.width, DESKTOP_VIEWPORT.height)
       const layout = createLayout()
       await layout.updateComplete
@@ -59,13 +59,13 @@ describe('WebUiLayout 组件（浏览器）', () => {
       })
       await layout.updateComplete
 
-      byLabel(layout, '折叠侧边栏').click()
+      byLabel(layout, 'Collapse sidebar').click()
       await layout.updateComplete
 
       expect(requested).toEqual([true])
       expect(layout.sidebarCollapsed).toBe(true)
       // byLabel 缺失即抛错，所以这里断的是 label 的**取值**而不是存在性。
-      expect(byLabel(layout, '展开侧边栏').getAttribute('aria-label')).toBe('展开侧边栏')
+      expect(byLabel(layout, 'Expand sidebar').getAttribute('aria-label')).toBe('Expand sidebar')
     })
 
     // 受控语义：属性面变更不是用户请求，不该回派事件，否则消费者的回写会形成回环。
@@ -80,7 +80,7 @@ describe('WebUiLayout 组件（浏览器）', () => {
       layout.sidebarCollapsed = true
       await layout.updateComplete
 
-      expect(byLabel(layout, '展开侧边栏').getAttribute('aria-label')).toBe('展开侧边栏')
+      expect(byLabel(layout, 'Expand sidebar').getAttribute('aria-label')).toBe('Expand sidebar')
       expect(eventCount).toBe(0)
     })
 
@@ -112,7 +112,7 @@ describe('WebUiLayout 组件（浏览器）', () => {
       expect(queryA11y(layout, 'aside')).toBeFalsy()
       const drawer = queryA11y(layout, 'web-ui-drawer')
       expect(drawer).toBeTruthy()
-      expect(drawer?.getAttribute('dialog-label')).toBe('主导航')
+      expect(drawer?.getAttribute('dialog-label')).toBe('Main navigation')
       expect(drawer?.hasAttribute('draggable')).toBe(true)
     })
 
@@ -127,7 +127,7 @@ describe('WebUiLayout 组件（浏览器）', () => {
         requested.push((event as CustomEvent<{ open: boolean }>).detail.open)
       )
 
-      byLabel(layout, '打开导航菜单').click()
+      byLabel(layout, 'Open navigation menu').click()
       await layout.updateComplete
 
       const drawer = queryA11y(layout, 'web-ui-drawer') as HTMLElement
@@ -148,7 +148,7 @@ describe('WebUiLayout 组件（浏览器）', () => {
         requested.push((event as CustomEvent<{ open: boolean }>).detail.open)
       )
 
-      byLabel(layout, '打开导航菜单').click()
+      byLabel(layout, 'Open navigation menu').click()
       await layout.updateComplete
       const drawer = queryA11y(layout, 'web-ui-drawer') as HTMLElement
       await pollUntil(() => drawer.hasAttribute('open'), 'Expected drawer to open')
@@ -668,8 +668,8 @@ describe('WebUiLayout 组件（浏览器）', () => {
       expect(widthRequests).toHaveLength(0)
     })
 
-    // 折叠态没有可调的侧栏，把手必须随折叠一起消失。
-    it('折叠态隐藏 handle，展开后重现', async () => {
+    // collapsed state 没有可调的侧栏，把手必须随 collapse 一起消失。
+    it('collapsed state 隐藏 handle，展开后重现', async () => {
       const layout = await resizableLayout()
       expect(queryA11y(layout, '[role="separator"]')).toBeTruthy()
 
@@ -942,7 +942,7 @@ describe('WebUiLayout 组件（浏览器）', () => {
       await waitForFrame()
 
       await userEvent.tab()
-      const toggle = byLabel(layout, '折叠侧边栏')
+      const toggle = byLabel(layout, 'Collapse sidebar')
       toggle.focus()
 
       const inner = toggle.shadowRoot?.querySelector('button') as HTMLButtonElement | null

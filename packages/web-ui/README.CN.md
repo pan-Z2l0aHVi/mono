@@ -25,17 +25,17 @@ import '@greypan/web-ui'
 // import '@greypan/web-ui/components/button'
 ```
 
-subpath 导入只注册它点名的那个组件，页面用到的每个标签都要单独导入。
+subpath 导入只注册它点名的那个组件，页面用到的每个 label 都要单独导入。
 
 ```html
 <web-ui-button variant="primary">点击我</web-ui-button> <web-ui-icon .icon="${lucidePlus}"></web-ui-icon>
 ```
 
-## 滚动条
+## scrollbar
 
 `@greypan/web-ui/scrollbars` 承载全仓统一的 [OverlayScrollbars](https://github.com/KingSora/OverlayScrollbars)
-滚动条行为：对齐 macOS 的主题、滚动时出现并自动隐去、点击轨道滚动到该位置。样式表每份文档导入一次，
-选项传给所用的适配包。
+scrollbar 行为：对齐 macOS 的主题、滚动时出现并自动隐去、点击 track 滚动到该位置。样式表每份文档导入一次，
+option 传给所用的适配包。
 
 ```js
 import '@greypan/web-ui/scrollbars.css'
@@ -51,14 +51,14 @@ import { OverlayScrollbarsComponent } from 'overlayscrollbars-vue' // 或 overla
   靠它维持可滚动。
 - 目标必须是「纯粹的滚动容器」。OverlayScrollbars 会把宿主变成 flex 行、把子节点搬进它生成的 viewport，
   所以宿主自身的布局一旦承重（grid、居中盒子、`ul`/`ol`）就会坏。
-- OverlayScrollbars 只改变它被初始化到的那个元素，子元素保持原生滚动条。要覆盖文档滚动条就初始化
+- OverlayScrollbars 只改变它被初始化到的那个元素，子元素保持原生 scrollbar。要覆盖文档 scrollbar 就初始化
   `document.body`——在那里 `window.scrollY` / `window.scrollTo` 保持原生语义。
-- 自带滚动容器的组件（`select`、`autocomplete`、dropdown / context-menu 面板、`dialog`、`drawer`、
-  `toast`）在各自的 shadow root 内给**组件内部**滚动条上主题。OverlayScrollbars 进不了 shadow
-  root——它的结构样式与主题类都是文档级选择器——所以组件改为在原生滚动条上读同一组继承的
+- 自带滚动容器的组件（`select`、`autocomplete`、dropdown / context-menu panel、`dialog`、`drawer`、
+  `toast`）在各自的 shadow root 内给**组件内部**scrollbar 上主题。OverlayScrollbars 进不了 shadow
+  root——它的结构样式与主题类都是文档级选择器——所以组件改为在原生 scrollbar 上读同一组继承的
   `--wui-scrollbar-*` 颜色（`scrollbar-color` / `scrollbar-width`），并刻意不用 `::-webkit-scrollbar`：
-  声明它会让引擎放弃平台的覆盖式滚动条、固定占一条布局宽度，而组件内部滚动条正是不能占宽度。
-  导入本样式表，组件内部滚动条才会跟随外观，与整页滚动条同一机制。
+  声明它会让引擎放弃平台的覆盖式 scrollbar、固定占一条布局宽度，而组件内部 scrollbar 正是不能占宽度。
+  导入本样式表，组件内部 scrollbar 才会跟随外观，与整页 scrollbar 同一机制。
 
 ## Vite
 
@@ -137,7 +137,7 @@ function App() {
   return (
     <>
       <web-ui-button variant="primary" onClick={() => alert('点击')}>
-        按钮
+        button
       </web-ui-button>
       <web-ui-input onInput={e => console.log(e.currentTarget.value)} />
     </>
@@ -163,7 +163,7 @@ React 19 按 JSX 键名中的 `on` 后缀原样注册 Custom Element 事件。�
 <web-ui-select value={value} onChange={event => setValue(event.currentTarget.value)} />
 ```
 
-当组件会把子元素移入自身的 Portal Shadow DOM（例如 `web-ui-dropdown` 的菜单项）时，React 根节点的
+当组件会把子元素移入自身的 Portal Shadow DOM（例如 `web-ui-dropdown` 的 menu item）时，React 根节点的
 合成 `onClick` 无法收到该子元素的事件。需要通过 `ref` 直接绑定原生事件：
 
 ```tsx
@@ -180,11 +180,11 @@ useEffect(() => {
 <web-ui-dropdown-item ref={itemRef}>粘贴并关闭</web-ui-dropdown-item>
 ```
 
-在 `portal` 模式下，库会把面板内容物理移入浮层 Shadow DOM：
+在 `portal` 模式下，库会把 panel 内容物理移入 overlay Shadow DOM：
 
-- React 按记录的插入父节点执行删除，因此裸条件子元素（`{condition && <el/>}`）的节点一旦已迁移，在面板打开期间无法删除：commit 失败，且该节点可能在面板关闭时重新出现。
-- 请改为在稳定的包装元素内部做条件渲染——React 记录的插入父节点是包装元素，包装元素内部的增删在面板打开期间与开合周期内都保持可用（示例如下）。
-- 面板打开期间的裸条件新增（向宿主追加内容）不受影响，会自动迁入面板。
+- React 按记录的插入父节点执行删除，因此裸条件子元素（`{condition && <el/>}`）的节点一旦已迁移，在 panel 打开期间无法删除：commit 失败，且该节点可能在 panel 关闭时重新出现。
+- 请改为在稳定的包装元素内部做条件渲染——React 记录的插入父节点是包装元素，包装元素内部的增删在 panel 打开期间与开合周期内都保持可用（示例如下）。
+- panel 打开期间的裸条件新增（向宿主追加内容）不受影响，会自动迁入 panel。
 - 保持内容始终挂载、仅切换可见性仍是有效的回退方案。
 
 ```tsx
@@ -197,11 +197,11 @@ useEffect(() => {
 
 需要 `vue >= 3.5` 作为可选 peer 依赖。
 
-Portal 面板支持实时渲染：浮层打开期间条件新增或删除的内容（`web-ui-select`、`web-ui-autocomplete`、
+Portal panel 支持实时渲染：overlay 打开期间条件新增或删除的内容（`web-ui-select`、`web-ui-autocomplete`、
 `web-ui-popover`、`web-ui-tooltip`、`web-ui-dropdown`、`web-ui-context-menu` 内的 Vue `v-if`）会按模板序
-自动迁入打开中的面板；关闭时所有内容按原锚点位置恢复，后续 patch 继续正常工作。边界：面板打开期间对
-keyed `v-for` 列表做中段 splice 或重排不受支持——Vue 的 keyed children diff 会以已迁入面板的兄弟节点
-计算插入锚点，patch 失败且可能丢项；与编译路径无关（编译模板同样命中）。此类列表更新请在面板关闭后
+自动迁入打开中的 panel；关闭时所有内容按原锚点位置恢复，后续 patch 继续正常工作。边界：panel 打开期间对
+keyed `v-for` 列表做中段 splice 或重排不受支持——Vue 的 keyed children diff 会以已迁入 panel 的兄弟节点
+计算插入锚点，patch 失败且可能丢项；与编译路径无关（编译模板同样命中）。此类列表更新请在 panel 关闭后
 进行，或只做尾部追加/删除。
 
 ```ts
@@ -224,7 +224,7 @@ import '@greypan/web-ui/types/vue'
 
 ```vue
 <template>
-  <web-ui-button variant="primary" @click="handleClick">按钮</web-ui-button>
+  <web-ui-button variant="primary" @click="handleClick">button</web-ui-button>
   <web-ui-input v-model="value" />
   <web-ui-select :value="framework" @change="framework = $event.target.value" />
 </template>
@@ -254,7 +254,7 @@ Vue 事件类型零 cast：带值组件上的 `@input`/`@change` 解析到组件
 
 `web-ui-*` 元素是公开 DOM 边界。`id`、`class`、`style`、全局 HTML 属性和 `data-*` 保留在 Custom Element 宿主上，
 不会复制到 Shadow DOM。只有组件文档明确声明语义映射时，原生元素属性才会传递。例如 `web-ui-button` 会把 `type`
-映射到内部按钮，且仅接受 `button`、`submit`、`reset`；非法值会回退为 `button`。
+映射到内部 button，且仅接受 `button`、`submit`、`reset`；非法值会回退为 `button`。
 
 ARIA 属性同样必须显式支持：使用组件文档化的命名属性，而不是通配 `aria-*` 透传。组件拥有自己的 role 和交互状态。
 `click`、`input`、`change` 等浏览器 composed 原生事件仍是主要交互 API。`open-change` 等 kebab-case 自定义事件
@@ -278,7 +278,7 @@ hover 与按压反馈阶段保持箭头光标，仅在真实拖拽进行中切�
 
 **请求-写回模式（仅 dialog 与 drawer 的 `controlled`）。**
 `controlled=true` 时，用户关闭操作（Escape、backdrop、内置关闭、拖拽释放）只*请求* `open=false`；组件不改自己的
-状态，保持打开，直到Consumer写回 `open=false`。这是模态确认语义——关对话框/抽屉通常是需要Consumer批准的操作（未保存
+状态，保持打开，直到Consumer写回 `open=false`。这是模态确认语义——关 dialog/drawer 通常是需要Consumer批准的操作（未保存
 表单、需确认），与即时开合不同，不能由组件自行提交。只有这两个模态组件使用该模式；即时开合家族（collapse、popover、
 dropdown、tooltip）不需要它。
 
@@ -287,7 +287,7 @@ dropdown、tooltip）不需要它。
 （`el.checked = true`）覆盖内部状态。这与原生 `<input type="checkbox">` 一致——**没有 `controlled` prop 是因为
 值总是可读可写**，React/Vue 层自备受控包装。
 
-若翻转的持久化需要外部往返（例如开关应只有 API 调用成功后保持开启），使用**乐观更新**路径：
+若翻转的持久化需要外部往返（例如 switch 应只有 API 调用成功后保持开启），使用**乐观更新**路径：
 
 - 立即翻转，然后监听 `change`。
 - 请求期间设 `loading`，阻断后续交互并显示 spinner。
@@ -320,16 +320,16 @@ dropdown、tooltip）不需要它。
 |                       | [`<web-ui-segmented>`](./docs/segmented.md)                 |
 |                       | [`<web-ui-checkbox-group>`](./docs/checkbox-group.md)       |
 |                       | [`<web-ui-radio-group>`](./docs/radio-group.md)             |
-| **按钮**              | [`<web-ui-button>`](./docs/button.md)                       |
+| **button**            | [`<web-ui-button>`](./docs/button.md)                       |
 |                       | [`<web-ui-button-group>`](./docs/button-group.md)           |
-| **浮层 / 模态**       | [`<web-ui-dialog>`](./docs/dialog.md)                       |
+| **overlay / 模态**    | [`<web-ui-dialog>`](./docs/dialog.md)                       |
 |                       | [`<web-ui-drawer>`](./docs/drawer.md)                       |
 |                       | [`imagePreview()`](./docs/image-preview.md)                 |
 | **文档流 Disclosure** | [`<web-ui-collapse>`](./docs/collapse.md)                   |
 | **浮动**              | [`<web-ui-popover>`](./docs/popover.md)                     |
 |                       | [`<web-ui-tooltip>`](./docs/tooltip.md)                     |
 |                       | [`<web-ui-context-menu>`](./docs/context-menu.md)           |
-| **菜单**              | [`<web-ui-dropdown>`](./docs/dropdown.md)                   |
+| **menu**              | [`<web-ui-dropdown>`](./docs/dropdown.md)                   |
 |                       | [`<web-ui-dropdown-item>`](./docs/dropdown-item.md)         |
 |                       | [`<web-ui-dropdown-divider>`](./docs/dropdown-divider.md)   |
 |                       | [`<web-ui-dropdown-header>`](./docs/dropdown-header.md)     |

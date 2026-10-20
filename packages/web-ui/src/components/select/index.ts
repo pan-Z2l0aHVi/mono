@@ -119,8 +119,8 @@ export class WebUiSelect extends FormAssociated(LitElement) {
     }
   })
   /*
-   * 开启态浮层承载「我开着吗」（issue #120 Block 1）：本组件不再在 keydown 里自行关闭，
-   * 只声明「我开着」。宿主级监听在 portal 模式下收不到面板内的 Escape，正是原实现的
+   * 开启态 overlay 承载「我开着吗」（issue #120 Block 1）：本组件不再在 keydown 里自行关闭，
+   * 只声明「我开着」。宿主级监听在 portal 模式下收不到 panel 内的 Escape，正是原实现的
    * 缺陷来源；改由唯一仲裁者在 document 捕获阶段判定最内层。
    *
    * 宿主接口除 requestClose 外只再提供一个 isConnected（仅供惰性回收读取）：开启状态是
@@ -136,7 +136,7 @@ export class WebUiSelect extends FormAssociated(LitElement) {
     getPositioning: () => ({
       placement: 'bottom-start',
       offset: 4,
-      // 面板宽度统一为 max(内容, trigger, --wui-overlay-min-width)，内容自适应展开
+      // panel 宽度统一为 max(内容, trigger, --wui-overlay-min-width)，内容自适应展开
       minAnchorWidth: true,
       strategy: this.portal ? 'fixed' : 'absolute'
     }),
@@ -218,7 +218,7 @@ export class WebUiSelect extends FormAssociated(LitElement) {
     const internals = this._formAssociation.getInternals()
     if (!internals || typeof internals.setValidity !== 'function') return
     if (this._isDisabled || !this.required || this.value) internals.setValidity({})
-    else internals.setValidity({ valueMissing: true }, '请选择一项')
+    else internals.setValidity({ valueMissing: true }, 'Select an option')
   }
 
   private _syncOpenAttribute() {
@@ -227,7 +227,7 @@ export class WebUiSelect extends FormAssociated(LitElement) {
 
   /*
    * 禁用态不响应 Escape。仲裁者仍在（吞掉按键并压掉原生 cancel），只是不走关闭入口
-   * —— 与旧的「跳过候选」语义不同：旧语义放任事件落到下层浮层，把外层一起关掉。
+   * —— 与旧的「跳过候选」语义不同：旧语义放任事件落到下层 overlay，把外层一起关掉。
    * 每次渲染后同步即可覆盖 disabled 属性与表单禁用两条来源。
    */
   private _syncOverlayInert() {
@@ -299,7 +299,7 @@ export class WebUiSelect extends FormAssociated(LitElement) {
   }
 
   private _handleOptionPointerDown = (e: PointerEvent) => {
-    // 保持 trigger 焦点，避免 focusout 在 click 前关闭浮层。
+    // 保持 trigger 焦点，避免 focusout 在 click 前关闭 overlay。
     e.preventDefault()
   }
 
@@ -309,7 +309,7 @@ export class WebUiSelect extends FormAssociated(LitElement) {
   }
 
   // slotchange/unregister 的刷新依赖 Lit 渲染调度；键盘或 click 事件可能先于其触发，
-  // 已从 DOM 移除或被移出 Select/portal 面板的选项不得再被激活或选中。
+  // 已从 DOM 移除或被移出 Select/portal panel 的 option 不得再被激活或选中。
   private _isLive(option: WebUiOption): boolean {
     const panel = this.portal ? this._panel.getPanel() : null
     return option.isConnected && (this.contains(option) || (!!panel && panel.contains(option)))
@@ -463,7 +463,7 @@ export class WebUiSelect extends FormAssociated(LitElement) {
     this._portalContent = content
     scroll.append(content)
     portal.panel.append(scroll)
-    // 自定义 trigger 必须留在宿主内，不能随 options 迁入 portal 面板
+    // 自定义 trigger 必须留在宿主内，不能随 options 迁入 portal panel
     portal.moveContent(
       Array.from(this.children).filter(child => child.slot !== 'trigger'),
       content
@@ -494,7 +494,7 @@ export class WebUiSelect extends FormAssociated(LitElement) {
   }
 
   override render() {
-    // portal 模式下 options 被 moveContent 移入浮层 shadow root，id 引用无法跨树作用域
+    // portal 模式下 options 被 moveContent 移入 overlay shadow root，id 引用无法跨树作用域
     // 解析，因此 activedescendant 仅在非 portal 模式输出；aria-controls 同理指向同根内 listbox
     const listboxId = `${this.localName}-listbox`
     const activeDescendant =

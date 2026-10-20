@@ -33,7 +33,7 @@ export type DrawerPlacement = (typeof ALLOWED_PLACEMENTS)[number]
  *   触摸输入的首个 move 常已相对按下点偏移，不重置会让元素在首个 move 一次性兑现
  *   而跳动。代价是这段位移被丢弃，一次手势至少要累积两个 move 才可能产生位移；
  *   `DragMoveInfo/DragEndInfo` 的 `delta*` 与 `duration` 均以该点为零点与起点。
- * - 距离：**自抓取瞬间起的净位移**超过抽屉尺寸的一半（下限 10px）。用净位移而不是
+ * - 距离：**自抓取瞬间起的净位移**超过 drawer 尺寸的一半（下限 10px）。用净位移而不是
  *   绝对位置：从弹回/收尾途中重新抓取时，抓取瞬间停在哪里都不算「已经拖过一半」。
  *   尺寸量不到时（0）由下限兜底，保证退化场景不会因为阈值 0 而「动一下就关」。
  * - 甩动：整段手势的平均速度**达到** 500px/s（含等号）。用「整段手势」而不是释放
@@ -55,8 +55,8 @@ const DRAG_FLICK_VELOCITY = 500
 const DRAG_MIN_VELOCITY_SPAN_MS = 50
 const DRAG_REVERSE_CANCEL_THRESHOLD = 10
 const DRAG_REQUEST_WINDOW_MS = 120
-// 遮罩点击（click 链路）的轻点判定距离：按下起点到 click 坐标的欧氏位移未越过该值
-// 视为轻点，沿用「点遮罩关闭」语义（对齐 _dragCloseThreshold 的 10px 下限量级）。
+// backdrop 点击（click 链路）的轻点判定距离：按下起点到 click 坐标的欧氏位移未越过该值
+// 视为轻点，沿用「点 backdrop 关闭」语义（对齐 _dragCloseThreshold 的 10px 下限量级）。
 // 必须用欧氏长度（而非仅主轴分量）：只看主轴会让「主轴不动、垂直大幅滑动」的
 // press–drag–release 链路仍落在窗口内被误读成轻点。
 const BACKDROP_TAP_DISTANCE = 10
@@ -70,7 +70,7 @@ const BACKDROP_TAP_DISTANCE = 10
  * 判据是「这个元素自己就代表一次用户操作」，分三类：
  *   - 原生可交互元素与原生可点容器（button / input / label / a[href] / summary …）
  *   - 显式可编辑（contenteditable）
- *   - 交互语义 role（组件库自绘的 checkbox、tab、menuitem 等没有原生标签）
+ *   - 交互语义 role（组件库自绘的 checkbox、tab、menuitem 等没有原生 label）
  * 另加「作者显式给了可聚焦 tabindex」：自定义控件常只靠 tabindex 暴露可操作性。
  *
  * 方向是**保守让开**：判不出来就让开。让开的代价是那一小块起不了拖（用户多点一下），
@@ -126,10 +126,10 @@ const SETTLE_MIN_VELOCITY = 1
 const SETTLE_GRACE_MS = 80
 
 /*
- * 拖拽期间由 JS 写入的遮罩透明度变量参与 WAAPI 关键帧。未注册的自定义属性在
+ * 拖拽期间由 JS 写入的 backdrop 透明度变量参与 WAAPI 关键帧。未注册的自定义属性在
  * 关键帧之间是离散插值（半帧跳变），注册为 <number> 后获得线性插值。
  * inherits 必须为 true：::backdrop 只从 originating element 继承「可继承属性」，
- * 注册为不可继承会让变量到不了遮罩，跟手淡出整体失效（Chrome 151 实证）。
+ * 注册为不可继承会让变量到不了 backdrop，跟手淡出整体失效（Chrome 151 实证）。
  * 注册表是全局的，模块重复执行（HMR）时捕获已注册错误并忽略。
  */
 if (typeof CSS !== 'undefined' && 'registerProperty' in CSS) {
@@ -210,7 +210,7 @@ export class WebUiDrawer extends LitElement {
   @property({ type: Boolean, reflect: true, attribute: 'no-backdrop-close' }) noBackdropClose = false
 
   /**
-   * Controlled 模式下，Escape、遮罩、关闭按钮和拖拽关闭只派发 `open-change` 请求，
+   * Controlled 模式下，Escape、backdrop、关闭 button 和拖拽关闭只派发 `open-change` 请求，
    * 不会自行修改 `open`。Consumer 回写 `open` 后才执行关闭动画。
    * 程序化 API（show/close/直接赋值 open）不受此模式影响，始终直通。
    */
@@ -234,7 +234,7 @@ export class WebUiDrawer extends LitElement {
 
   /**
    * Headless 模式：只保留 overlay 基础设施（backdrop、动画、scroll lock、dialog 语义），
-   * 移除内置 UI（glass 样式、header、close 按钮、footer）。Consumer 自定义内容样式。
+   * 移除内置 UI（glass 样式、header、close button、footer）。Consumer 自定义内容样式。
    */
   @property({ type: Boolean, reflect: true }) headless = false
 
@@ -245,7 +245,7 @@ export class WebUiDrawer extends LitElement {
   @property({ type: String, attribute: 'dialog-label' }) dialogLabel = ''
 
   /**
-   * 启用拖拽关闭：打开态在抽屉内缘渲染 drag bar（灰色胶囊 + 加宽热区），
+   * 启用拖拽关闭：打开态在 drawer 内缘渲染 drag bar（灰色胶囊 + 加宽 drag zone），
    * 指针拖拽实时跟手，松手按位移与甩动速度判定关闭或弹回。
    * 关闭态基于原生 dialog 无可见渲染物，因此不支持从关闭态拖拽打开。
    */
@@ -259,13 +259,13 @@ export class WebUiDrawer extends LitElement {
   private _hasFooterSlot = false
   private readonly _userOpenChange = new UserChangeController()
   /*
-   * 上下 placement 的拖拽热区要让开头尾两节（见 style.css 的 --wui-internal-drawer-* 说明）：
-   * `bottom` 贴顶边、热区让开 header，`top` 贴底边、热区让开 footer。让开的量就是那一节的
+   * 上下 placement 的拖拽 drag zone 要让开头尾两节（见 style.css 的 --wui-internal-drawer-* 说明）：
+   * `bottom` 贴顶边、drag zone 让开 header，`top` 贴底边、drag zone 让开 footer。让开的量就是那一节的
    * border-box 高度，写成 host 上的自定义属性交给 CSS 去算偏移——样式侧因此不必知道
    * header / footer 的存在与高度，两条 placement 规则各只读自己的那个属性。
    *
-   * 用 offsetHeight 而非 CSS 侧推导：`[hidden]` 的节天然是 0（让位量归零，热区回到面板边缘），
-   * 而「header 存在但高度为 0」与「没有 header」在布局上是同一件事，不需要额外的存在性开关。
+   * 用 offsetHeight 而非 CSS 侧推导：`[hidden]` 的节天然是 0（让位量归零，drag zone 回到 panel 边缘），
+   * 而「header 存在但高度为 0」与「没有 header」在布局上是同一件事，不需要额外的存在性 toggle。
    * 高度是动态的（consumer 的 padding、窄屏断点改写、slotted 内容换行），所以观察而非读取一次。
    */
   private readonly _headerHeight = new ElementHeightController(this, '.wui-drawer-header', height =>
@@ -279,7 +279,7 @@ export class WebUiDrawer extends LitElement {
    * 让位量 = 该节高度 + 一点呼吸间距，且**只在真有那一节时**才加间距。
    *
    * 间距写成属性值里的 calc 而不是让 CSS 无条件相加，是因为「没有 header」这一态必须精确等于
-   * 修复前的几何（让位量 0，热区顶边贴面板顶边）。若让间距无条件生效，无 header 的抽屉会
+   * 修复前的几何（让位量 0，drag zone 顶边贴 panel 顶边）。若让间距无条件生效，无 header 的 drawer 会
    * 平移 4px，胶囊相对内缘的既有内缩（drag-bar-inset.browser.spec.ts 钉住的关系）跟着变，
    * 这条护栏就不该为了新方案让步。间距本身仍以 token 暴露，真机调参不必回滚代码。
    */
@@ -301,8 +301,8 @@ export class WebUiDrawer extends LitElement {
     getPlacement: () => this._placement
   })
   /*
-   * 开启态浮层（issue #120 Block 1）。drawer 把自己的原生 <dialog> 登记为 panel，使挂在
-   * dialog 上的 portal 面板（select / dropdown / tooltip）在逻辑组合树上成为它的后代，
+   * 开启态 overlay（issue #120 Block 1）。drawer 把自己的原生 <dialog> 登记为 panel，使挂在
+   * dialog 上的 portal panel（select / dropdown / tooltip）在逻辑组合树上成为它的后代，
    * 仲裁者据此选出最内层。
    *
    * 拖拽进行中不响应 Escape，但**仍是候选**：仲裁者照旧吞掉按键并压掉原生 cancel，
@@ -341,7 +341,7 @@ export class WebUiDrawer extends LitElement {
     return this._placement === 'left' || this._placement === 'right' ? 'x' : 'y'
   }
 
-  // 位移正方向 = 抽屉的闭合方向（拖出屏幕为正）。
+  // 位移正方向 = drawer 的闭合方向（拖出屏幕为正）。
   private get _dragCloseSign(): number {
     switch (this._placement) {
       case 'right':
@@ -375,7 +375,7 @@ export class WebUiDrawer extends LitElement {
     return Number.isFinite(parsed) ? parsed : 0
   }
 
-  // 闭合方向上的完全出屏距离：抽屉尺寸 + 浮动留边（headless 下即尺寸本身）。
+  // 闭合方向上的完全出屏距离：drawer 尺寸 + 浮动留边（headless 下即尺寸本身）。
   // CSS 闭合态 transform、controlled 悬停终态与弹簧终点共用同一数学，避免衔接跳变。
   private _dragCloseDistance(dialog: HTMLDialogElement): number {
     return this._measureDragSize() + this._readDrawerInset(dialog)
@@ -405,14 +405,14 @@ export class WebUiDrawer extends LitElement {
   /**
    * 上下 placement 的 header / footer 自己接拖拽手势。
    *
-   * 为什么不是「把热区铺到 header 上」：那样 header 里的控件会被透明命中层吞掉，
+   * 为什么不是「把 drag zone 铺到 header 上」：那样 header 里的控件会被透明命中层吞掉，
    * 正是 A6 修掉的那条缺陷。这里改成事件层让开——控件照常收自己的事件，拖拽只在
    * 「落点不是可点控件」时起手。
    *
    * 三道闸门任一不成立就不接管：
    * 1. placement 必须是上下。左右 placement 的拖拽轴是 x，端头在竖边上，header
    *    既不在可抓边缘上也不该起手（R4 的行为侧）。
-   * 2. 下层嵌套抽屉整套拖拽提示一起退场。热区与热边靠 CSS 的 pointer-events 退场，
+   * 2. 下层嵌套 drawer 整套拖拽提示一起退场。drag zone 与 drag edge 靠 CSS 的 pointer-events 退场，
    *    事件层必须自己判同一条，否则 header 会成为唯一一条漏网的入口。
    * 3. 落点路径里有可点控件就让开——控件优先于「这一块可拖」。
    */
@@ -421,11 +421,11 @@ export class WebUiDrawer extends LitElement {
     const section = (e.currentTarget as HTMLElement | null)?.closest('.wui-drawer-header, .wui-drawer-footer')
     const isHeader = section?.classList.contains('wui-drawer-header') ?? false
     // 只有**贴着可抓边缘**的那一节接手势：bottom 的 header、top 的 footer。
-    // 另一节在面板远端，在那里起手却朝闭合方向拖是反直觉的，也不属于「端头」——
-    // 与热区只让开同一侧那节是同一条边界。
+    // 另一节在 panel 远端，在那里起手却朝闭合方向拖是反直觉的，也不属于「端头」——
+    // 与 drag zone 只让开同一侧那节是同一条边界。
     if (this._placement === 'bottom' && !isHeader) return
     if (this._placement === 'top' && isHeader) return
-    // 下层嵌套抽屉整套拖拽提示一起退场：热区与热边靠 CSS 的 pointer-events 退场，
+    // 下层嵌套 drawer 整套拖拽提示一起退场：drag zone 与 drag edge 靠 CSS 的 pointer-events 退场，
     // 事件层必须判同一条，否则这里是唯一一条漏网的入口。
     if (this.dialog?.classList.contains('is-nested-lower')) return
     if (this._isInteractivePath(e)) return
@@ -535,13 +535,13 @@ export class WebUiDrawer extends LitElement {
     })
     /*
      * 惰性必须与 attach 同拍。漏掉这里，按下到手势终结之间那一整段里 Escape 仍会关闭
-     * 抽屉——旧实现用惰性谓词 `isEscapeCloseEnabled: () => !isDragging()` 在仲裁时现算，
+     * drawer——旧实现用惰性谓词 `isEscapeCloseEnabled: () => !isDragging()` 在仲裁时现算，
      * 没有这个同步问题；改成 push 通道后每个翻转点都得自己推一次。
      *
      * `isDragging()` 的翻转点不止 attach 与 onEnd：手势层的 `handlePointerMove` 在越过死区后
      * 若判定轴向冲突（限定了 x 轴却明显纵向移动，或反之）会直接 `cancel()`，
      * `lostpointercapture` 也会终结手势。这些路径都走 `onCancel`，所以 `onCancel` 里那次
-     * `_syncDragInert()` **不是**冗余——删掉它，「移动中取消拖拽」会让抽屉重新变回可被
+     * `_syncDragInert()` **不是**冗余——删掉它，「移动中取消拖拽」会让 drawer 重新变回可被
      * Escape 关闭。
      */
     this._syncDragInert()
@@ -592,7 +592,7 @@ export class WebUiDrawer extends LitElement {
     this._clearDragStyles(dialog)
   }
 
-  // 将闭合方向位移映射为 dialog transform，并同步遮罩透明度保持跟手反馈。
+  // 将闭合方向位移映射为 dialog transform，并同步 backdrop 透明度保持跟手反馈。
   private _applyDragOffset(dialog: HTMLDialogElement, offset: number) {
     const sign = this._dragCloseSign
     const value = offset * sign
@@ -650,7 +650,7 @@ export class WebUiDrawer extends LitElement {
     this._dragOffset = 0
 
     // 收尾结束必须清掉内联 transform，不能像 WAAPI 时代那样保留 0px：
-    // translateX(0px) 内联会盖住闭合态 CSS transform，之后用按钮/遮罩/Esc 关闭时
+    // translateX(0px) 内联会盖住闭合态 CSS transform，之后用 button/backdrop/Esc 关闭时
     // 计算值恒为 0、开与关都不再触发过渡。
     const finishRebound = () => {
       this._clearDragStyles(dialog)
@@ -803,8 +803,8 @@ export class WebUiDrawer extends LitElement {
    * 更新。两条 slotchange 处理器也接不住这条路径——slotchange 只在**分配集合**变化时派发，
    * 断连期间清空槽位内容时宿主节点本身没动，事件不触发（Chromium 实测）。
    *
-   * 漏掉这一半的后果：断连前有 footer、重连时已清空的抽屉留下一节空的 footer。它在 style.css
-   * 的 padding 下仍有真实高度（实测 32px），于是底部一条点不动的死带，拖拽热区的让位量也照
+   * 漏掉这一半的后果：断连前有 footer、重连时已清空的 drawer 留下一节空的 footer。它在 style.css
+   * 的 padding 下仍有真实高度（实测 32px），于是底部一条点不动的死带，拖拽 drag zone 的让位量也照
    * 它算而不归零。
    *
    * 判据取 light DOM 子节点而非 `slot.assignedNodes()`：首次连接时 shadow 尚未渲染，slot 元素
@@ -892,18 +892,18 @@ export class WebUiDrawer extends LitElement {
         //
         // 实测（Chromium）showModal() 不会动打开前已经存在的选区，所以这一次清理
         // 同时也覆盖「先选中页面文本、再打开」的情况——modal 打开后被选中的内容挡在
-        // 遮罩后面本来也已不可用。这里只清文档选区，不动 user-select，抽屉内正文
-        // 仍可正常拖选；拖拽手柄与开关时序不受影响。
+        // backdrop 后面本来也已不可用。这里只清文档选区，不动 user-select，drawer 内正文
+        // 仍可正常拖选；拖拽 handle 与 toggle 时序不受影响。
         window.getSelection()?.removeAllRanges()
         // presence.sync 已同步发起 showModal：此刻 dialog.open 为真，计数出正确
         // 的层序 depth 并驱动下层缩放。直接同步 register，不等待 is-visible
         //（那要再等一帧，且打开过渡期间上层关系已应确立）。
         this._nestedLayers.register()
-        // 原生 dialog 登记为开启态浮层：挂在它上面的 portal 面板在逻辑组合树上
+        // 原生 dialog 登记为开启态 overlay：挂在它上面的 portal panel 在逻辑组合树上
         // 成为本层后代，Escape 仲裁据此判出最内层（issue #120 Block 1）。
         const dialog = this.dialog
         if (dialog) {
-          // 同一面板重新 claim = 新的一次开启：旧会话（含其子层）整体作废。
+          // 同一 panel 重新 claim = 新的一次开启：旧会话（含其子层）整体作废。
           this._handle?.release()
           this._handle = this._overlay.claim(dialog, { ancestryFrom: this })
           this._syncDragInert()
@@ -935,7 +935,7 @@ export class WebUiDrawer extends LitElement {
      * Escape 的归属由共享仲裁者在 document 捕获阶段判定（issue #120 Block 1）；命中后
      * 它会 stopPropagation，本 handler 不再执行。此处保留两条兜底：
      * ① defaultPrevented 说明仲裁者已介入，不再重复关闭；
-     * ② 兜底路径仍按原逻辑处理，避免「面板未登记」时 Escape 失灵。
+     * ② 兜底路径仍按原逻辑处理，避免「panel 未登记」时 Escape 失灵。
      *
      * 本 handler **不是**可随手删掉的迁移残留：仲裁者挂在 document 上，只对能跨 shadow
      * 边界的事件生效。实测（overlay-open-owner-260918，2026-09-18）摘掉 `@keydown` 后
@@ -976,7 +976,7 @@ export class WebUiDrawer extends LitElement {
   private readonly _closeFromUser = () => {
     if (!this.open) return
     // controlled 悬停等待回写期间，关闭意图已在途（open-change 已派发）：
-    // Escape/遮罩/关闭按钮的重复触发不再派发第二次请求，也不与超时弹回竞争。
+    // Escape/backdrop/关闭 button 的重复触发不再派发第二次请求，也不与超时弹回竞争。
     if (this._dragAwaitWriteback) return
     if (this.controlled) {
       this.emitOpenChange(false)
@@ -1011,7 +1011,7 @@ export class WebUiDrawer extends LitElement {
     // 我们自己 dialog.close() 排队的 close 事件是异步任务：正常时序在本关闭会话内
     // 到达，快速「关闭→重开」时它在重新打开之后才到达（过期事件）。两种情况都已在
     // finishClosing 完成全部清理，由 presence 消费并返回 true，不能当成外部关闭把
-    // 刚重开的 dialog 关掉——否则重开即被误关，表现为连续开关丢失过渡动画。
+    // 刚重开的 dialog 关掉——否则重开即被误关，表现为连续 toggle 丢失过渡动画。
     if (this._presence.handleNativeClose()) return
 
     // 悬停等待期间的原生关闭（如表单 method="dialog"）：视为回写窗口内的重复
@@ -1033,16 +1033,16 @@ export class WebUiDrawer extends LitElement {
   }
 
   /*
-   * 遮罩点击（backdrop click）的按-放链路回溯。
+   * backdrop 点击（backdrop click）的按-放链路回溯。
    *
    * 浏览器对「按下 → 拖动 → 松手」生成的 click 落在起点与松手点 DOM 的**共同祖先**
-   * 上：从面板内容、拖拽热区甚至遮罩本处开始拖拽、松手落在遮罩上时，click 的
-   * target 都是 dialog，与真正的轻点遮罩从 click 自身无法区分（真实鼠标/触摸下
+   * 上：从 panel 内容、拖拽 drag zone 甚至 backdrop 本处开始拖拽、松手落在 backdrop 上时，click 的
+   * target 都是 dialog，与真正的轻点 backdrop 从 click 自身无法区分（真实鼠标/触摸下
    * 必现的误关路径，合成事件不派发 click 故自动化易漏测）。因此在 dialog 的
-   * pointerdown 记录按下起点与是否落在遮罩上，click 时回溯校验：
-   * - 按下起点不在遮罩上（从面板内容/热区开始的链路）→ 不是点遮罩，忽略；
+   * pointerdown 记录按下起点与是否落在 backdrop 上，click 时回溯校验：
+   * - 按下起点不在 backdrop 上（从 panel 内容/drag zone 开始的链路）→ 不是点 backdrop，忽略；
    * - 按下到松手位移超过轻点量级 → 是拖拽松手而非点击，忽略；
-   * 两者都通过才沿用「点遮罩关闭」语义。
+   * 两者都通过才沿用「点 backdrop 关闭」语义。
    */
   private _backdropPress: { onMask: boolean; x: number; y: number } | null = null
 
@@ -1056,7 +1056,7 @@ export class WebUiDrawer extends LitElement {
     // 拖拽进行中 pointer capture 使 click 落在 dialog 上，忽略以避免与手势竞争。
     if (this._isDragging()) return
     // detail 为 0 表示这次 click 不来自指针（键盘激活、程序化 .click()）：
-    // pointerdown 记录可能是上一次指针交互的残留，不能据此判定遮罩点击
+    // pointerdown 记录可能是上一次指针交互的残留，不能据此判定 backdrop 点击
     //（对齐 image-preview 的既有守卫）。
     if (e.detail === 0) return
     const press = this._backdropPress
@@ -1079,19 +1079,19 @@ export class WebUiDrawer extends LitElement {
     const dialogLabel = this.dialogLabel.trim()
     const dialogLabelledBy = !dialogLabel && !this.headless && showHeader ? 'wui-drawer-heading' : nothing
 
-    // 拖拽热区：仅在打开且 draggable 时渲染；胶囊 + 加宽命中条贴在抽屉内缘。
-    // 胶囊是热区的**兄弟节点**而非后代：热区要让开 header / footer（见 style.css），
-    // 胶囊作为后代会连带继承那份让位量，被一起推离面板边缘。两者都是 dialog 的直接子节点，
-    // 胶囊因此相对 dialog 定位、恒贴可抓取边缘，热区则继续为端头上的按钮让位。
+    // 拖拽 drag zone：仅在打开且 draggable 时渲染；胶囊 + 加宽命中条贴在 drawer 内缘。
+    // 胶囊是 drag zone 的**兄弟节点**而非后代：drag zone 要让开 header / footer（见 style.css），
+    // 胶囊作为后代会连带继承那份让位量，被一起推离 panel 边缘。两者都是 dialog 的直接子节点，
+    // 胶囊因此相对 dialog 定位、恒贴可抓取边缘，drag zone 则继续为端头上的 button 让位。
     //
-    // 端头热边补上解耦留下的空档：胶囊贴回边缘后就不再落在热区的让开区里
-    // （bottom + header 实测胶囊带 [8,12]、热区带 [60,80]），那一段若没有命中层，
+    // 端头 drag edge 补上解耦留下的空档：胶囊贴回边缘后就不再落在 drag zone 的让开区里
+    // （bottom + header 实测胶囊带 [8,12]、drag zone 带 [60,80]），那一段若没有命中层，
     // 胶囊就成了一条按不下去、悬停不亮的死装饰——R1 与 R3 在几何上本就不可同满足，
-    // 结构解耦只让两者不再互相位移，命中层必须另给。热边只在上下 placement 渲染：
-    // 左右两条的胶囊本就落在热区内，多一个元素只会让 R5「左右几何不变」需要额外论证。
+    // 结构解耦只让两者不再互相位移，命中层必须另给。drag edge 只在上下 placement 渲染：
+    // 左右两条的胶囊本就落在 drag zone 内，多一个元素只会让 R5「左右几何不变」需要额外论证。
     //
-    // 顺序要紧：胶囊排最后，两条热区（边、区）都在它前面，hover / active / 确认态三条规则
-    // 因此靠通用兄弟选择器 `~` 挂上去。写成相邻兄弟 `+` 的话热边那条会静默失效。
+    // 顺序要紧：胶囊排最后，两条 drag zone（边、区）都在它前面，hover / active / 确认态三条规则
+    // 因此靠通用兄弟选择器 `~` 挂上去。写成相邻兄弟 `+` 的话 drag edge 那条会静默失效。
     const needsEdgeBand = this.placement === 'top' || this.placement === 'bottom'
     const dragBar = this.draggable
       ? html`
@@ -1149,7 +1149,7 @@ export class WebUiDrawer extends LitElement {
                         <web-ui-button
                           class="wui-drawer-close"
                           @click=${this._closeFromUser}
-                          aria-label="关闭"
+                          aria-label="Close"
                           variant="secondary"
                           icon
                           size="26"

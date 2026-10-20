@@ -1,4 +1,4 @@
-// 注册 web-ui-icon：本组件模板直接渲染该标签，消费者模板里不会出现它，
+// 注册 web-ui-icon：本组件模板直接渲染该 label，消费者模板里不会出现它，
 // 因此没有别处会引入。产物保留模块（build.rollupOptions.output.preserveModules）
 // 并由 package.json 的 sideEffects 保证这段副作用 import 不被 tree-shake 掉。
 import '@/components/icon'

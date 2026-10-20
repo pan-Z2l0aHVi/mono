@@ -19,7 +19,7 @@ const createEmpty = (attrs?: Record<string, string>, content?: string): WebUiEmp
 const renderedText = (el: WebUiEmpty): string => el.shadowRoot?.textContent?.trim() ?? ''
 
 /**
- * 默认图标是 icon slot 的 fallback 内容。`web-ui-icon` 是公开组件、`size` 是它的公开
+ * 默认 icon 是 icon slot 的 fallback 内容。`web-ui-icon` 是公开组件、`size` 是它的公开
  * property，所以读它不算摸内部实现。
  */
 const defaultIcon = (el: WebUiEmpty): WebUiIcon | null =>
@@ -44,7 +44,7 @@ describe('WebUiEmpty 组件', () => {
     })
 
     // size 会同时写进 CSS 自定义属性：`"abc"` 产出失效的 `NaNpx`（盒退回 unset），
-    // `"0"` 产出 `0px`（图标不可见）。回退边长本身，整套派生度量因此一起回默认档 56；
+    // `"0"` 产出 `0px`（icon 不可见）。回退边长本身，整套派生度量因此一起回默认档 56；
     // 只回退边长而留白按 NaN 计算，盒与排版都会变成垃圾值。
     it.each([
       ['非数值', 'abc'],
@@ -99,13 +99,13 @@ describe('WebUiEmpty 组件', () => {
       cleanupElement(el)
     })
 
-    it('自定义 icon slot 取代默认图标', async () => {
-      const el = createEmpty(undefined, '<span slot="icon">自定义图标</span>')
+    it('自定义 icon slot 取代默认 icon', async () => {
+      const el = createEmpty(undefined, '<span slot="icon">自定义 icon</span>')
       await waitForUpdate(el)
       await flushSlotChange(el)
 
       const slot = queryA11y(el, 'slot[name="icon"]') as HTMLSlotElement
-      expect(slot.assignedElements().map(node => node.textContent)).toEqual(['自定义图标'])
+      expect(slot.assignedElements().map(node => node.textContent)).toEqual(['自定义 icon'])
       cleanupElement(el)
     })
 

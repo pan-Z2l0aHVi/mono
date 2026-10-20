@@ -12,10 +12,10 @@ function DialogDemo() {
 
   return (
     <div>
-      <h1>对话框</h1>
-      <h2>命令式</h2>
+      <h1>dialog</h1>
+      <h2>Imperative</h2>
       <div className="mb-3 flex gap-2">
-        <web-ui-button onClick={() => dialogRef.current?.showModal()}>打开对话框</web-ui-button>
+        <web-ui-button onClick={() => dialogRef.current?.showModal()}>Open a dialog</web-ui-button>
       </div>
       <web-ui-dialog ref={dialogRef}>
         <span slot="header">Save this message as a draft?</span>
@@ -31,9 +31,9 @@ function DialogDemo() {
         </web-ui-button>
       </web-ui-dialog>
 
-      <h2>声明式</h2>
+      <h2>Declarative</h2>
       <div className="mb-3 flex gap-2">
-        <web-ui-button onClick={() => setVisible1(true)}>打开对话框</web-ui-button>
+        <web-ui-button onClick={() => setVisible1(true)}>Open a dialog</web-ui-button>
       </div>
       <web-ui-dialog open={visible1} onopen-change={event => setVisible1(event.detail.open)}>
         <span slot="header">Save this message as a draft?</span>
@@ -49,21 +49,21 @@ function DialogDemo() {
         </web-ui-button>
       </web-ui-dialog>
 
-      <h2>滚动锁定</h2>
+      <h2>Scroll lock</h2>
       <div className="mb-3 flex gap-2">
-        <web-ui-button onClick={() => setVisible3(true)}>打开不锁定滚动的对话框</web-ui-button>
+        <web-ui-button onClick={() => setVisible3(true)}>Open a dialog without scroll lock</web-ui-button>
       </div>
       <web-ui-dialog open={visible3} noScrollLock onopen-change={event => setVisible3(event.detail.open)}>
-        <span slot="header">可滚动背景</span>
-        此对话框关闭滚动锁定，仍保留原生模态焦点行为。
+        <span slot="header">Scrollable background</span>
+        此 dialog 关闭滚动锁定，仍保留原生模态焦点行为。
         <web-ui-button slot="footer" variant="secondary" full onClick={() => setVisible3(false)}>
-          关闭
+          Close
         </web-ui-button>
       </web-ui-dialog>
 
-      <h2>横向按钮</h2>
+      <h2>Horizontal button</h2>
       <div className="mb-3 flex gap-2">
-        <web-ui-button onClick={() => setVisible2(true)}>打开横向对话框</web-ui-button>
+        <web-ui-button onClick={() => setVisible2(true)}>Open a horizontal dialog</web-ui-button>
       </div>
       <web-ui-dialog open={visible2} {...{ horizontal: true }} onopen-change={event => setVisible2(event.detail.open)}>
         <span slot="header">Save this message as a draft?</span>
@@ -76,56 +76,59 @@ function DialogDemo() {
         </web-ui-button>
       </web-ui-dialog>
 
-      <h2>自定义内容（headless）</h2>
+      <h2>Custom content (headless)</h2>
       <div className="mb-3 flex gap-2">
-        <web-ui-button onClick={() => setVisible4(true)}>打开自定义对话框</web-ui-button>
+        <web-ui-button onClick={() => setVisible4(true)}>Open a custom dialog</web-ui-button>
       </div>
       <web-ui-dialog
         headless
-        dialogLabel="自定义对话框"
+        dialogLabel="Custom dialog"
         open={visible4}
         onopen-change={event => setVisible4(event.detail.open)}
       >
         <div className="text-center">
           <p className="m-0 text-[48px]">🎉</p>
-          <p className="mx-0 mt-3 mb-1 text-lg font-semibold">操作成功</p>
-          <p className="mx-0 mb-5 text-[#6a6a6a]">headless：内容走默认槽，保留 overlay 基础设施、去掉内置 chrome。</p>
+          <p className="mx-0 mt-3 mb-1 text-lg font-semibold">Done</p>
+          <p className="mx-0 mb-5 text-[#6a6a6a]">
+            headless: the content goes through the default slot; the overlay infrastructure stays and the built-in
+            chrome is dropped.
+          </p>
           <web-ui-button variant="primary" full onClick={() => setVisible4(false)}>
-            知道了
+            Got it
           </web-ui-button>
         </div>
       </web-ui-dialog>
 
-      <h2>不可点击遮罩关闭</h2>
+      <h2>Backdrop click does not close</h2>
       <div className="mb-3 flex gap-2">
-        <web-ui-button onClick={() => setVisible5(true)}>打开</web-ui-button>
+        <web-ui-button onClick={() => setVisible5(true)}>Open</web-ui-button>
       </div>
       <web-ui-dialog open={visible5} noBackdropClose onopen-change={event => setVisible5(event.detail.open)}>
-        <span slot="header">确认操作</span>
-        <p>此对话框禁止点击遮罩关闭，必须通过按钮操作。</p>
+        <span slot="header">Confirm</span>
+        <p>This dialog does not close on a backdrop click; use the button instead.</p>
         <web-ui-button slot="footer" variant="primary" full onClick={() => setVisible5(false)}>
-          确认
+          Confirm
         </web-ui-button>
         <web-ui-button slot="footer" variant="secondary" full onClick={() => setVisible5(false)}>
-          取消
+          Cancel
         </web-ui-button>
       </web-ui-dialog>
 
-      <h2>自定义背景色</h2>
+      <h2>Custom background color</h2>
       <div className="mb-3 flex gap-2">
-        <web-ui-button onClick={() => setBgVisible(true)}>打开对话框</web-ui-button>
+        <web-ui-button onClick={() => setBgVisible(true)}>Open a dialog</web-ui-button>
       </div>
       <web-ui-dialog
         open={bgVisible}
         onopen-change={event => setBgVisible(event.detail.open)}
         className="[--wui-dialog-bg:rgb(240_248_255/0.92)]"
       >
-        <span slot="header">自定义背景色</span>
+        <span slot="header">Custom background color</span>
         <p>
-          通过 <code>--wui-dialog-bg</code> CSS 自定义属性覆盖玻璃卡片背景。
+          Through<code>--wui-dialog-bg</code>CSS custom properties override the glass card background.
         </p>
         <web-ui-button slot="footer" variant="primary" full onClick={() => setBgVisible(false)}>
-          确定
+          OK
         </web-ui-button>
       </web-ui-dialog>
     </div>

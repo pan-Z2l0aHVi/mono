@@ -39,8 +39,8 @@ describe('WebUiButtonGroup 组件', () => {
     })
   })
 
-  describe('子按钮上下文', () => {
-    it('不改写子按钮的公开 variant 与 size 属性', async () => {
+  describe('子 button 上下文', () => {
+    it('不改写子 button 的公开 variant 与 size 属性', async () => {
       const el = createButtonGroup(
         '<web-ui-button variant="primary" size="48">A</web-ui-button><web-ui-button variant="danger">B</web-ui-button>'
       )
@@ -69,7 +69,7 @@ describe('WebUiButtonGroup 组件', () => {
       cleanupElement(el)
     })
 
-    it('子按钮离组后仍保留自己的公开属性', async () => {
+    it('子 button 离组后仍保留自己的公开属性', async () => {
       const group = createButtonGroup('<web-ui-button variant="primary" size="48">A</web-ui-button>')
       await waitForUpdate(group)
 

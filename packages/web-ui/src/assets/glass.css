@@ -55,7 +55,7 @@
  * [appearance] 三个选择器下）整套玻璃面就是明色观感，这一层没有理由例外。
  *
  * 渐变半径为 --wui-glass-corner-radius 的固定物理尺寸正圆——视觉覆盖范围不随元素
- * 宽高缩放（百分比方案在大面板上暗边过长、小控件上过弱），各组件用与自身
+ * 宽高缩放（百分比方案在大 panel 上暗边过长、小控件上过弱），各组件用与自身
  * border-radius 同源的值覆盖该变量即可联动。
  *
  * 同源的 --wui-color-glass-highlight 不在此层：它是元素自身 box-shadow 的 inset

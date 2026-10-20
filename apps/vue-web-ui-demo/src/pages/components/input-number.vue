@@ -1,7 +1,7 @@
 <route lang="json">
 {
   "meta": {
-    "title": "InputNumber 数字输入框"
+    "title": "InputNumber"
   }
 }
 </route>

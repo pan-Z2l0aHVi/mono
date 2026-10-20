@@ -3,20 +3,20 @@ component: collapse
 tag: web-ui-collapse
 ---
 
-折叠面板把「触发器」与「内容」放在同一行内：触发器是 default slot，内容放在 `content` slot。
+collapse panel 把「trigger」与「内容」放在同一行内：trigger 是 default slot，内容放在 `content` slot。
 开合是严格受控的——组件只派发 `open-change` 请求，是否真的展开由 Consumer 回写 `open` 决定。
 
 ## 示例
 
 ### 基础用法
 
-触发器可以是任何可交互元素（原生 `button`、`web-ui-button` 等），内容可以是任意节点。
+trigger 可以是任何可交互元素（原生 `button`、`web-ui-button` 等），内容可以是任意节点。
 
 ```react
 <web-ui-collapse open={open} onopen-change={event => setOpen(event.detail.open)}>
   <button type="button" className="w-full text-left">点击展开</button>
   <div slot="content">
-    <p>这是折叠内容，支持任意内容。</p>
+    <p>这是 collapse content，支持任意内容。</p>
   </div>
 </web-ui-collapse>
 ```
@@ -26,7 +26,7 @@ tag: web-ui-collapse
   <web-ui-collapse :open="open" @open-change="open = $event.detail.open">
     <button type="button" class="w-full text-left">点击展开</button>
     <div slot="content">
-      <p>这是折叠内容，支持任意内容。</p>
+      <p>这是 collapse content，支持任意内容。</p>
     </div>
   </web-ui-collapse>
 </template>
@@ -109,10 +109,10 @@ const open = ref(false)
 
 ### Slots
 
-| 名称      | 说明                                                                      |
-| --------- | ------------------------------------------------------------------------- |
-| `default` | 触发器。可放原生 `button` 或任意 `web-ui-*` 组件。                        |
-| `content` | 折叠内容。关闭态按 `keep-mounted` / `peek` 决定是 `hidden` 还是 `inert`。 |
+| 名称      | 说明                                                                              |
+| --------- | --------------------------------------------------------------------------------- |
+| `default` | trigger。可放原生 `button` 或任意 `web-ui-*` 组件。                               |
+| `content` | collapse content。关闭态按 `keep-mounted` / `peek` 决定是 `hidden` 还是 `inert`。 |
 
 ### Methods
 
@@ -127,7 +127,7 @@ const open = ref(false)
 ```html
 <web-ui-collapse>
   <button type="button">点击切换</button>
-  <div slot="content">折叠内容</div>
+  <div slot="content">collapse content</div>
 </web-ui-collapse>
 ```
 
@@ -135,15 +135,15 @@ const open = ref(false)
 
 ### trigger 语义
 
-交互语义完全来自 default slot 放入的元素——原生 `<button>`、`<web-ui-button>` 或其他可交互元素原生提供 Enter/Space 激活与焦点。collapse 把 `aria-expanded` / `aria-controls`（指向内容轨道）与 `aria-disabled` 回写到 trigger slot 的首个 assigned element。trigger 请使用可交互元素：纯 `<span>` 可点击但没有键盘/焦点语义。
+交互语义完全来自 default slot 放入的元素——原生 `<button>`、`<web-ui-button>` 或其他可交互元素原生提供 Enter/Space 激活与焦点。collapse 把 `aria-expanded` / `aria-controls`（指向内容 track）与 `aria-disabled` 回写到 trigger slot 的首个 assigned element。trigger 请使用可交互元素：纯 `<span>` 可点击但没有键盘/焦点语义。
 
 ### 关闭稳态语义
 
-Consumer的 light DOM 永不移动或卸载。默认关闭稳态在内部内容容器上设 `hidden`；`keep-mounted` 时内部容器标记 `inert`，保留在收起轨道内可测量。
+Consumer的 light DOM 永不移动或卸载。默认关闭稳态在内部内容容器上设 `hidden`；`keep-mounted` 时内部容器标记 `inert`，保留在收起 track 内可测量。
 
 ### peek（只露一部分）
 
-设置 `peek` 后关闭稳态不再收拢到 0，而是沿动画轴露出内容的头部 `peek` 长度（`horizontal` 时改为宽度）：轨道保持在内容高度，裁剪长度落在内部容器上。其语义等同 `keep-mounted`——内容保留挂载但被 `inert` 阻断，被裁掉的部分不可聚焦、不可点击。内容本身不足 `peek` 时按内容实际尺寸收起，不留空白。由于固定长度与自适应高度无法由 CSS 插值，`peek` ↔ 展开这两个方向改为读出像素后以显式长度驱动（每次开合测量一次）；其余动画路径仍是零测量的 grid `fr` 过渡。
+设置 `peek` 后关闭稳态不再收拢到 0，而是沿动画轴露出内容的头部 `peek` 长度（`horizontal` 时改为宽度）：track 保持在内容高度，裁剪长度落在内部容器上。其语义等同 `keep-mounted`——内容保留挂载但被 `inert` 阻断，被裁掉的部分不可聚焦、不可点击。内容本身不足 `peek` 时按内容实际尺寸收起，不留空白。由于固定长度与自适应高度无法由 CSS 插值，`peek` ↔ 展开这两个方向改为读出像素后以显式长度驱动（每次开合测量一次）；其余动画路径仍是零测量的 grid `fr` 过渡。
 
 ```html
 <web-ui-collapse peek="120px">

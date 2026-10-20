@@ -30,11 +30,11 @@
 
 ### Patch Changes
 
-- 450e918: fix(context-menu): 「菜单项激活」的作用域改用事件自身的 `eventPhase` 判定，让菜单项回调里的 `close()` 稳定提前出顶层
+- 450e918: fix(context-menu): 「menu item 激活」的作用域改用事件自身的 `eventPhase` 判定，让 menu item 回调里的 `close()` 稳定提前出顶层
   
   `close()` 要提前把 scrim 撤出 top layer 的条件有两个：`_closeSource === 'menu-item'`（组件自己在冒泡阶段关），
-  以及「消费方在自己的菜单项回调里同步调了 `close()`」——后者 `_closeSource` 还是 `'default'`。后者原先用一个
-  布尔标志在面板的**捕获阶段**置位，再用**微任务**复位，理由是「捕获与冒泡在同一个任务里跑完，微任务检查点在它们之后」。
+  以及「消费方在自己的 menu item 回调里同步调了 `close()`」——后者 `_closeSource` 还是 `'default'`。后者原先用一个
+  布尔标志在 panel 的**捕获阶段**置位，再用**微任务**复位，理由是「捕获与冒泡在同一个任务里跑完，微任务检查点在它们之后」。
   
   这个前提在真实输入下不成立：可信事件由浏览器任务派发，**每个监听器返回后**都做一次微任务检查点，
   于是捕获阶段排的微任务在条目自己的监听器（消费方调 `close()` 的地方）**之前**就跑掉了。标志到 `close()` 时
@@ -43,8 +43,8 @@
   
   改法是不再近似「派发什么时候结束」：捕获阶段记下**那次事件对象**，`close()` 判 `eventPhase !== 0`
   （DOM 规范：派发结束后由 terminating 步骤置回 NONE）。作用域精确等于那一次派发，既不需要定时器，
-  也不依赖微任务检查点的位置。副作用面不变：勾选型条目 `stopPropagation()` 之后菜单留着，
-  随后的 Escape / 点外面 / 程序式 `close()` 仍判定为「非菜单项激活」，保留 dialog 默认的焦点归还。
+  也不依赖微任务检查点的位置。副作用面不变：勾选型条目 `stopPropagation()` 之后 menu 留着，
+  随后的 Escape / 点外面 / 程序式 `close()` 仍判定为「非 menu item 激活」，保留 dialog 默认的焦点归还。
 - 9ea3c49: chore: add Go cache probe to share persistent cache across contexts
   
   - .mise.toml: GOCACHE now probes default cache directories (macOS ~/Library/Caches/go-build, Linux ~/.cache/go-build) at runtime; falls back to $TMPDIR/greypan/go-build only when write fails
@@ -55,19 +55,19 @@
   
   两件事都只影响「负载下量到的几何不是终态」这一类 flaky：
   
-  1. `context-menu` 长按开菜单后吸收引擎补发 `contextmenu` / `click` 的窗口，起点从
-     **菜单打开时刻**改到**手势结束（pointerup）时刻**。补发事件由引擎在 touchend 处理时
+  1. `context-menu` 长按开 menu 后吸收引擎补发 `contextmenu` / `click` 的窗口，起点从
+     **menu 打开时刻**改到**手势结束（pointerup）时刻**。补发事件由引擎在 touchend 处理时
      生成，与那次 pointerup 同属一个输入批处理（实测 click 的 `timeStamp` 与 pointerup 的
-     处理时刻相差 ≤3ms）；而主线程被长任务占住时，touchend 的处理能比菜单打开晚 1s 以上
+     处理时刻相差 ≤3ms）；而主线程被长任务占住时，touchend 的处理能比 menu 打开晚 1s 以上
      （实测 1325ms）。以打开时刻为起点，1000ms 的兜底上限会被那段延迟挤爆——补发 click
-     落到窗口外，被当成用户真实点击把**同一次长按刚打开**的菜单关掉。窗口的两条硬边界
-     （下一次 `pointerdown`、菜单关闭）不变，只把起点换成与补发事件同源的那个时刻。
+     落到窗口外，被当成用户真实点击把**同一次长按刚打开**的 menu 关掉。窗口的两条硬边界
+     （下一次 `pointerdown`、menu 关闭）不变，只把起点换成与补发事件同源的那个时刻。
   
   2. 指向 shadow DOM 的命中测试 spec 原先只等比 dialog 矩形两次相等，两个方向都不够：
      进场过渡的进度只在渲染步进里推进，`getBoundingClientRect()` 的强制重算不推它，于是
      「相等」也可以意味着过渡还没起跑（量到的是闭合位矩形，胶囊整个在视口外，
      `elementFromPoint` 返回 null）；而 header / footer 的让位量由 `ResizeObserver` 写回
-     宿主样式，移动的是热区 / 热边而不是 dialog 矩形。`drag-bar-edge-inset`、
+     宿主样式，移动的是 drag zone / drag edge 而不是 dialog 矩形。`drag-bar-edge-inset`、
      `header-drag-surface` 与 `long-press` 三个 spec 改用共享的
      `waitForSettledLayout()`：等过渡跑完 → 抽干一次 ResizeObserver 批次 → 再等一帧让
      写回的样式进入布局 → 连续若干帧矩形真的不再变化。断言一字未改，改的只是取样前的等待。
@@ -95,60 +95,60 @@
   
   `--wui-collapse-peek-edge-active` 的注册由 `inherits: false` 改为 `true`：伪元素读同一个值，
   继承为 false 时它读到的是 `initialValue` 0px，mask 塌缩、模糊层静默消失而其余渲染一切照旧。
-- 56a2290: 组件内部的滚动条接上整页同一套 macOS 滚动条主题，且不额外引入滚动条依赖（#225）。
+- 56a2290: 组件内部的 scrollbar 接上整页同一套 macOS scrollbar 主题，且不额外引入 scrollbar 依赖（#225）。
   
   `web-ui-theme` 的外观分支、`.os-theme-macos` 主题都活在文档层：`.os-scrollbar` 的结构样式是
-  文档级选择器，shadow root 永远匹配不到，所以组件内部的滚动容器此前一直是浏览器默认滚动条。
+  文档级选择器，shadow root 永远匹配不到，所以组件内部的滚动容器此前一直是浏览器默认 scrollbar。
   本次给这些容器加一个 `.wui-scroll` 工具类，在组件自己的 shadow 里 adopted 一份只读继承 token 的
   样式：`scrollbar-color: var(--wui-scrollbar-handle, rgb(0 0 0 / 0.39)) transparent` +
-  `scrollbar-width: thin`。自定义属性跨 shadow 边界继承，颜色因此与整页的覆盖式滚动条同源；
-  样式只 adopted 进各组件的 shadow，不落文档层。覆盖 select、autocomplete、菜单浮层
+  `scrollbar-width: thin`。自定义属性跨 shadow 边界继承，颜色因此与整页的覆盖式 scrollbar 同源；
+  样式只 adopted 进各组件的 shadow，不落文档层。覆盖 select、autocomplete、menu overlay
   （dropdown / context-menu，含 portal 与 top layer 两种容器）、dialog 的 `.desc` 与 headless 内容区、
   drawer 内容区、toast 容器。
   
-  **结论：用纯 CSS，不引入 OverlayScrollbars，也不删除既有依赖。** 库继续服务文档/应用级滚动条
-  （它是唯一能做出「可见 + 自动隐藏 + 零布局宽度」覆盖式滚动条的东西），但把库初始化进每个
-  shadow root 需要用 JS 重建每一条滚动条，超出 issue「组件不必引入第三方依赖」的范围。
+  **结论：用纯 CSS，不引入 OverlayScrollbars，也不删除既有依赖。** 库继续服务文档/应用级 scrollbar
+  （它是唯一能做出「可见 + 自动隐藏 + 零布局宽度」覆盖式 scrollbar 的东西），但把库初始化进每个
+  shadow root 需要用 JS 重建每一条 scrollbar，超出 issue「组件不必引入第三方依赖」的范围。
   
-  **为什么不用 `::-webkit-scrollbar`：** 它是纯 CSS 里唯一能拿到 macOS 几何（细拇指、圆角）的手段，
-  但一旦声明，引擎就会放弃平台自带的覆盖式滚动条，改用经典滚动条并固定占一条布局宽度。实测
+  **为什么不用 `::-webkit-scrollbar`：** 它是纯 CSS 里唯一能拿到 macOS 几何（细 thumb、圆角）的手段，
+  但一旦声明，引擎就会放弃平台自带的覆盖式 scrollbar，改用经典 scrollbar 并固定占一条布局宽度。实测
   （macOS Chromium，`width: 7px`）：同尺寸容器的 `offsetWidth - clientWidth` 从 0 变成 7，直接违反
   issue 的第 (1) 条「不占用宽度」。`scrollbar-color` / `scrollbar-width` 不触发这个切换——覆盖式
-  平台上滚动条保持零宽覆盖，经典平台上才按它们上色、收窄。
+  平台上 scrollbar 保持零宽覆盖，经典平台上才按它们上色、收窄。
   
-  **未覆盖的既有缺口（沿用 #233 已记录的两条，本次不扩大也不修复）：** (a) `var()` 回退值恒为黑拇指，
-  无任何 `web-ui-theme` 的深色页面在组件内部同样拿到黑拇指——与整页 `.os-theme-macos` 一致，属同
+  **未覆盖的既有缺口（沿用 #233 已记录的两条，本次不扩大也不修复）：** (a) `var()` 回退值恒为黑 thumb，
+  无任何 `web-ui-theme` 的深色页面在组件内部同样拿到黑 thumb——与整页 `.os-theme-macos` 一致，属同
   一条既有缺口；正确的修法是在主题 token 层给出跟随外观的回退，会改变文档级 `scrollbars.css` 对库
   路径的既有行为，超出本 issue 的组件内部范围。(b) 只覆写 `--wui-scrollbar-handle` 的消费方在**
   库路径**上悬停档只 +0.01：本条只涉及 `.os-theme-macos` 的 hover/active 字面量，`scrollbar-color`
   没有悬停态，组件内部路径不受影响，故一并保持原样。
   
   新增 `src/scrollbars/__tests__/internal-scrollbars.browser.spec.ts`：在真实浏览器里量 dialog
-  内容区的计算 `scrollbar-color` 随 `web-ui-theme` 的浅/深外观切换，并断言滚动条不占布局宽度
+  内容区的计算 `scrollbar-color` 随 `web-ui-theme` 的浅/深外观切换，并断言 scrollbar 不占布局宽度
   （`offsetWidth - clientWidth === 0`）。`scrollbars.spec.ts` 追加源码形状断言：走 `var()` 读 token、
   `scrollbar-width: thin`、且**不出现** `::-webkit-scrollbar`（这条是承重的，变异已验证）。
-- fe86e28: fix(context-menu): 菜单项回调里自行 close() 时也让 scrim 提前出顶层，保住消费方的焦点转移
+- fe86e28: fix(context-menu): menu item 回调里自行 close() 时也让 scrim 提前出顶层，保住消费方的焦点转移
   
-  `close()` 判定「要不要立刻让 scrim 退出 top layer」时只读 `_closeSource`，而那个标志由面板上的
-  `_onMenuClick` 在**冒泡**阶段置位。消费方在自己的菜单项回调里直接调 `close()` 时，回调挂在条目上、
+  `close()` 判定「要不要立刻让 scrim 退出 top layer」时只读 `_closeSource`，而那个标志由 panel 上的
+  `_onMenuClick` 在**冒泡**阶段置位。消费方在自己的 menu item 回调里直接调 `close()` 时，回调挂在条目上、
   先跑，`close()` 看到的仍是 `'default'`：scrim 留在 top layer 里不退，模态期间整份文档是 inert 的，
   消费方紧接着送进编辑器的焦点被浏览器静默丢弃。
   
-  现象是「触发重命名后焦点停在菜单项上，编辑器根本没进编辑态」（interweave 资源列表 issue #220）。
-  本仓已有一条用例守着同一根因的另一种落点（回调不自己关菜单时，UA 归还焦点会 blur 掉编辑器并提交
+  现象是「触发重命名后焦点停在 menu item 上，编辑器根本没进编辑态」（interweave 资源列表 issue #220）。
+  本仓已有一条用例守着同一根因的另一种落点（回调不自己关 menu 时，UA 归还焦点会 blur 掉编辑器并提交
   未改动的标题），但它盖不到这条路径。
   
-  改法是新增一次性标志 `_menuItemActivated`：面板在**捕获阶段**记下「可激活的菜单项被点了」，
+  改法是新增一次性标志 `_menuItemActivated`：panel 在**捕获阶段**记下「可激活的 menu item 被点了」，
   `close()` 的判定把它与 `_closeSource` 并列。判据复用 `getMenuItemFromEvent` 并排除 disabled 与
-  submenu 项，与 `_onMenuClick` 同源。
+  submenu item，与 `_onMenuClick` 同源。
   
   标志的作用域是**一次事件派发**，在微任务检查点复位：捕获阶段与冒泡阶段（关闭动作发生在那里）
-  都在同一个任务内跑完，需要它判定的两条路径都赶得上；而「点了菜单项但菜单没关」（消费方在自己
+  都在同一个任务内跑完，需要它判定的两条路径都赶得上；而「点了 menu item 但 menu 没关」（消费方在自己
   的条目回调里 `stopPropagation()`）必然跨过检查点，标志已被清掉，不会让后续的 Escape / 点外面 /
-  程序式关闭被误判成菜单项激活。那三种关闭的语义不变，仍保留 dialog 默认效果。
-- ac5e2e4: feat(empty): 空态图标改为纯图形，去掉身后的圆角矩形底面
+  程序式关闭被误判成 menu item 激活。那三种关闭的语义不变，仍保留 dialog 默认效果。
+- ac5e2e4: feat(empty): 空态 icon 改为纯图形，去掉身后的圆角矩形底面
   
-  图标区原本把 `--wui-color-surface-track` 画成一个 `border-radius: 18px` 的圆角矩形托底，
+  icon 区原本把 `--wui-color-surface-track` 画成一个 `border-radius: 18px` 的圆角矩形托底，
   图形浮在上面。issue #230 要求去掉那层底面：盒只留占位与居中，图形直接坐在它背后那张
   表面上，浅色与深色皆然。
   
@@ -159,7 +159,7 @@
   无害，留给那条链按自己的取舍清理。
   
   图形色沿用 `--wui-color-text-secondary`：无底面时字形是这一区唯一的图形元素，
-  `--wui-color-text-tertiary` 在浅色 page 上对比度不足 3:1。新增浏览器用例钉住「图标盒背景
+  `--wui-color-text-tertiary` 在浅色 page 上对比度不足 3:1。新增浏览器用例钉住「icon 盒背景
   透明」与「图形与其背后表面 WCAG 对比度 ≥ 3:1」两条关系，两种 appearance 各跑一遍。
 - ad38525: Lighten the resting scrollbar thumb in light appearance so it matches the measured macOS overlay
   scrollbar, and stop the page-level scrollbars from ignoring that lightness (#216).
@@ -209,19 +209,19 @@
   still overriding just the resting value at `0.5` now gets a hover only `+0.01` above it instead of
   `+0.12` — set the other two explicitly if the wider ladder matters. Nothing about the scrollbar
   geometry, auto-hide timing, or click behavior changed.
-- 1446561: fix(segmented): 拖拽时指示器宽度跟随当前 hover 的 trigger
+- 1446561: fix(segmented): 拖拽时 indicator 宽度跟随当前 hover 的 trigger
   
   #222：`handlePointerDown` 的 `onMove` 把 `--indicator-width` 钉在按下那一项的宽度上，
   拖完整段都写同一个 `initialWidth`。trigger 宽度不等是常态（interweave 设置 dialog 顶部
-  即此形——截图里三项宽度明显不同），于是拇指滑过更宽的那项时仍然保持窄宽，与它滑过的那项
+  即此形——截图里三项宽度明显不同），于是 thumb 滑过更宽的那项时仍然保持窄宽，与它滑过的那项
   始终对不齐，松手才在 `_updateIndicator` 里一次性跳到新宽度。
   
-  改法是把拖拽的几何收进一个 `frameAt(deltaX)`：拇指**中心**跟手（`initialCenter + deltaX`），
-  宽度取「离拇指中心最近的可用 trigger」的宽度，left 由中心减半宽反推。宽度跟着变之后
-  `maxLeft` 必须换成 `trackRight − width`，否则更宽的拇指会被钳在按初始宽度算出的位置上、
-  从轨道右端探出去。
+  改法是把拖拽的几何收进一个 `frameAt(deltaX)`：thumb**中心**跟手（`initialCenter + deltaX`），
+  宽度取「离 thumb 中心最近的可用 trigger」的宽度，left 由中心减半宽反推。宽度跟着变之后
+  `maxLeft` 必须换成 `trackRight − width`，否则更宽的 thumb 会被钳在按初始宽度算出的位置上、
+  从 track 右端探出去。
   
-  取「离拇指中心最近」而不是「离指针最近」，是为了与松手吸附用同一个判据：拖拽中预览到的
+  取「离 thumb 中心最近」而不是「离指针最近」，是为了与松手吸附用同一个判据：拖拽中预览到的
   宽度就是松手会落到的那一项，不会在松手时二次变形；抓在边缘时宽度按抓取偏移滞后，与位置
   的滞后同源。
   
@@ -711,10 +711,10 @@
   Narrow viewports scale by the same `1.5x` instead of adopting the desktop value. A `320px` drawer on a `390px` viewport has only `390 - 8 - 320 = 62px` of room to its left, so a `74.86px` total stack would push the innermost layer off screen. The `49.91px` total leaves its left edge at about `12px`, on screen.
   
   The token name, the `A · ln(d + 1)` formula, the `640px` breakpoint, the scaling and width compensation, drag-to-close, reduced motion, headless, and inset are all unchanged. Setting the token on the host or any ancestor still overrides both defaults, and `0` still turns the reveal off.
-- 3c81816: feat(web-ui): 收窄嵌套抽屉层间露边并把拖拽确认态改为中性灰
+- 3c81816: feat(web-ui): 收窄嵌套 drawer 层间露边并把拖拽确认态改为中性灰
   
   - `--wui-drawer-nested-peek-base` 桌面基准 `54px` → `43.2px`，窄视口（`width <= 640px`）`36px` → `28.8px`，桌面:窄屏 3:2 比例不变。三处字面量（`CSS.registerProperty` 的 `initialValue`、媒体查询覆盖、JS 侧 jsdom 兜底常量）同步更新。
-  - 拖拽手柄越过关闭阈值时的确认底色从 `--wui-color-accent` 改为实心中性灰，与 hover/active 的灰阶对齐。
+  - 拖拽 handle 越过关闭阈值时的确认底色从 `--wui-color-accent` 改为实心中性灰，与 hover/active 的灰阶对齐。
 - 3c81816: Flush the drawer's current layout before switching to the exit transition so WebKit reliably starts the transition when closing immediately after opening.
 - 3c81816: Stop `web-ui-dropdown` from painting the accent `:focus-visible` highlight on its first item when opened by pointer, matching the existing context-menu behavior in WebKit. Keyboard-activated opens keep the highlight, and the first arrow keypress always restores it.
 - 3c81816: feat(web-ui): add `mdiTagSearchOutline` to `@greypan/web-ui/icons`
@@ -1599,7 +1599,7 @@
 
 ### Major Changes
 
-- 1e52bc4: 重构 Web UI CSS token 契约：文本层级改为 `secondary/tertiary/disabled`，focus 指示器拆分为 `--wui-color-focus-ring` 和 `--wui-focus-ring-width`，并删除 `--wui-color-border-strong`。同时将 control surface、track、panel shadow、control size、layout duration 和 back-top 变量统一到语义化命名。
+- 1e52bc4: 重构 Web UI CSS token 契约：文本层级改为 `secondary/tertiary/disabled`，focus indicator 拆分为 `--wui-color-focus-ring` 和 `--wui-focus-ring-width`，并删除 `--wui-color-border-strong`。同时将 control surface、track、panel shadow、control size、layout duration 和 back-top 变量统一到语义化命名。
   
   本次不保留旧名兼容别名。需要迁移的主要映射：
   
@@ -1618,7 +1618,7 @@
 ### Patch Changes
 
 - 1e52bc4: 统一表单关联控件的原生生命周期：`form.reset()` 会恢复首次连接时声明式初始化后的默认值，并为所有表单控件提供浏览器表单状态恢复支持；被 group 管理的 checkbox/radio 子项仍由父 group 统一管理。
-- 1e52bc4: 将 `web-ui-button-group` 的子按钮组态改为内部派生的视觉上下文。`group`、`last` 与 `direction` 不再注入到子 button；请仅依赖按钮组的可见布局，不要读取这些实现属性。
+- 1e52bc4: 将 `web-ui-button-group` 的子 button group态改为内部派生的视觉上下文。`group`、`last` 与 `direction` 不再注入到子 button；请仅依赖 button group的可见布局，不要读取这些实现属性。
 - Updated dependencies [1e52bc4]
   - @greypan/js-kit@2.0.0
   - @greypan/browser-kit@2.0.0
@@ -1636,7 +1636,7 @@
 
 ### Major Changes
 
-- 28a8dc5: 框架类型适配收窄：移除 Vue 全局 `ComponentCustomProps extends HTMLAttributes`（不再污染所有 Vue 组件），React 移除 lowercase `oninput`/`onchange` 事件别名，`$events` 只声明事件本体、宿主 target 由适配层统一注入（`WithHost` 注入 readonly `target`/`currentTarget`），`WebUiElementMap` 成为组件标签单一来源。peer 基线收窄：`@types/react >= 19`、`vue >= 3.5`。Vue `@input`/`@change` 的 `$event.target` 现为组件实例（cast-free），新增 `WebUiEvent<Component, EventName>` 供命名 handler 使用。
+- 28a8dc5: 框架类型适配收窄：移除 Vue 全局 `ComponentCustomProps extends HTMLAttributes`（不再污染所有 Vue 组件），React 移除 lowercase `oninput`/`onchange` 事件别名，`$events` 只声明事件本体、宿主 target 由适配层统一注入（`WithHost` 注入 readonly `target`/`currentTarget`），`WebUiElementMap` 成为组件 label 单一来源。peer 基线收窄：`@types/react >= 19`、`vue >= 3.5`。Vue `@input`/`@change` 的 `$event.target` 现为组件实例（cast-free），新增 `WebUiEvent<Component, EventName>` 供命名 handler 使用。
 
   运行时契约收敛：`checkbox-group`/`radio-group`/`segmented` 管理的子项（checkbox/radio/segmented-trigger）不再把同名 `input`/`change` 冒泡到 group 外——子项自身派发事件（`bubbles: false, composed: false`），group 以 capture 相位监听并只派发一次自己的 `input`/`change`，两者 `target`/`currentTarget` 均为 group。独立使用子控件时保持 `bubbles: true, composed: true`。group 上的消费端事件监听不再重复触发。
 
@@ -1644,7 +1644,7 @@
 
 ### Minor Changes
 
-- 28a8dc5: `web-ui-input`、`web-ui-input-number`、`web-ui-autocomplete` 新增 `readonly` 只读状态属性，补齐与 `web-ui-textarea` 的 API 一致性：值照常提交表单、控件可聚焦选中复制，但不可编辑。只读时隐藏清除按钮、禁用 input-number 步进按钮并阻止 autocomplete 展开下拉，同时跳过必填校验（原生 barred-from-validation 语义）。
+- 28a8dc5: `web-ui-input`、`web-ui-input-number`、`web-ui-autocomplete` 新增 `readonly` 只读状态属性，补齐与 `web-ui-textarea` 的 API 一致性：值照常提交表单、控件可聚焦选中复制，但不可编辑。只读时隐藏清除 button、禁用 input-number 步进 button 并阻止 autocomplete 展开下拉，同时跳过必填校验（原生 barred-from-validation 语义）。
 
   同时修复 `web-ui-input`、`web-ui-textarea`、`web-ui-input-number` 的公共 `change` 事件：原生 change 事件不 composed，无法穿透 Shadow DOM，此前声明的 change 在真实用户交互中从不触发宿主监听器；现在组件捕获原生 change 后补发 composed 事件，与 `$events`/README 声明一致。
 
@@ -1652,7 +1652,7 @@
 
 ### Patch Changes
 
-- 28a8dc5: 修复 Select、Autocomplete 和 Dropdown 浮层的宽度计算，以及菜单浮层在主题作用域内的挂载行为，避免长选项文本裁切和主题样式失效。同步优化 Overlay、Portal 与 Scroll Lock 的共享实现，统一生命周期工厂模式并整理测试目录。
+- 28a8dc5: 修复 Select、Autocomplete 和 Dropdown overlay 的宽度计算，以及 menu overlay 在主题作用域内的挂载行为，避免长 option 文本裁切和主题样式失效。同步优化 Overlay、Portal 与 Scroll Lock 的共享实现，统一生命周期工厂模式并整理测试目录。
 
 ## 2.1.8
 
@@ -1741,7 +1741,7 @@
   ## 破坏性变更
 
   ### 属性重命名
-  - **Switch**: `open` 属性更名为 `checked`（表示开关状态，不再是可见性）
+  - **Switch**: `open` 属性更名为 `checked`（表示 switch 状态，不再是可见性）
 
   ### 事件变更
   - **Switch**: 移除 `open-change`，用户交互改派发 `input` + `change`

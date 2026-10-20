@@ -3,7 +3,7 @@ component: toast
 tag: web-ui-toast
 ---
 
-命令式 toast：通过 `toast()` 创建一条并拿到它的 id，用 `toast.close(id)` 关闭；同一个 `id` 再次调用是更新那一条，而不是新建。下面的表分别列 `toast()` 的选项、命令式入口，以及 `<web-ui-toast>` 元素自身的属性、事件与方法。
+命令式 toast：通过 `toast()` 创建一条并拿到它的 id，用 `toast.close(id)` 关闭；同一个 `id` 再次调用是更新那一条，而不是新建。下面的表分别列 `toast()` 的 option、命令式入口，以及 `<web-ui-toast>` 元素自身的属性、事件与方法。
 
 ## 示例
 
@@ -29,9 +29,9 @@ toast.error('出错了', { duration: 5000 })
 </script>
 ```
 
-### 完整选项
+### 完整 option
 
-`toast()` 接受完整选项：`heading` 是粗体标题，`position` 决定落点，`duration` 为 0 表示不自动关闭。
+`toast()` 接受完整 option：`heading` 是粗体标题，`position` 决定落点，`duration` 为 0 表示不自动关闭。
 
 ```react
 import { toast } from '@greypan/web-ui'
@@ -118,7 +118,7 @@ function dismiss() {
 | `message`   | 通知文本。                                                  | `string`        | `—`           |
 | `type`      | 类型：`success`、`info`、`warning`、`error`。               | `ToastType`     | `'info'`      |
 | `duration`  | 自动关闭时间（ms），0 表示不自动关闭；`error` 默认 `5000`。 | `number`        | `3000`        |
-| `closable`  | 展示关闭按钮。                                              | `boolean`       | `true`        |
+| `closable`  | 展示关闭 button。                                           | `boolean`       | `true`        |
 | `id`        | 合并键：同一个 `id` 再次调用是更新那一条。                  | `string`        | 自动生成      |
 | `heading`   | 粗体标题。                                                  | `string`        | `''`          |
 | `position`  | 屏幕位置。                                                  | `ToastPosition` | `'top-right'` |
@@ -152,7 +152,7 @@ toast.error('出错了', { duration: 5000 })
 toast.info('提示信息')
 toast.warning('请注意')
 
-// 带选项
+// 带 option
 const id = toast({ message: '自定义', type: 'info', position: 'bottom-right', duration: 4000, closable: true })
 
 // 关闭
@@ -205,7 +205,7 @@ toast.success('上传完成', { id: 'upload', duration: 3000 }) // 换 type，�
 | `heading`         | 粗体标题。                                                               | `string`        | `''`          |
 | `message`         | 通知文本。                                                               | `string`        | `''`          |
 | `duration`        | 自动关闭时间（ms），0 表示不自动关闭；`error` 由 manager 兜底为 `5000`。 | `number`        | `3000`        |
-| `no-close-button` | 隐藏关闭按钮。                                                           | `boolean`       | `false`       |
+| `no-close-button` | 隐藏关闭 button。                                                        | `boolean`       | `false`       |
 | `visible`         | 是否可见。                                                               | `boolean`       | `false`       |
 | `toastId`         | 合并键；只作为属性存在（`attribute: false`），由 manager 写入。          | `string`        | `''`          |
 

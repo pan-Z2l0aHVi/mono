@@ -20,7 +20,7 @@ const demoModules = import.meta.glob<{ default: ComponentType }>('../../generate
 const DEMO_PREFIX = '../../generated/demos/'
 
 // lazy 组件在模块作用域建一次：在 render 里调 lazy() 每帧换一个组件身份，示例会被反复卸载重建，
-// 拖到一半的滑块状态当场丢失。
+// 拖到一半的 slider 状态当场丢失。
 const demoComponents = new Map(
   Object.entries(demoModules).map(([file, load]) => [file.slice(DEMO_PREFIX.length, -'.tsx'.length), lazy(load)])
 )
@@ -42,7 +42,7 @@ function ExampleDoc({ component, flavor = 'react' }: { component: string; flavor
         dangerouslySetInnerHTML={{ __html: doc.introHtml }}
       />
 
-      <h2>示例代码</h2>
+      <h2>Example code</h2>
       {doc.samples.map(sample => {
         const Demo = sample.demoKey ? demoComponents.get(`${doc.component}--${sample.demoKey}`) : undefined
         return (

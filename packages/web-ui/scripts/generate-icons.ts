@@ -1,13 +1,13 @@
 #!/usr/bin/env node
 
 /**
- * 图标生成脚本
+ * icon 生成脚本
  *
- * 读取 icons.used.json, 从 @iconify-json/<set>/icons.json 提取图标数据,
+ * 读取 icons.used.json, 从 @iconify-json/<set>/icons.json 提取 icon 数据,
  * 生成 src/icons/generated/<name>.ts 和 barrel index.ts。
  *
- * 图标集的根级 left/top/width/height 作为默认值，
- * 单个图标的同名字段会覆盖根级默认值；两者都没有声明尺寸时按 Iconify 规范补 16×16，
+ * icon 集的根级 left/top/width/height 作为默认值，
+ * 单个 icon 的同名字段会覆盖根级默认值；两者都没有声明尺寸时按 Iconify 规范补 16×16，
  * 保证产物自带画布，渲染端不需要为缺失的尺寸兜底。
  *
  * CLI:     node --experimental-strip-types scripts/generate-icons.ts
@@ -17,7 +17,7 @@
 import { readFileSync, writeFileSync, mkdirSync, existsSync, readdirSync, unlinkSync } from 'node:fs'
 import { resolve } from 'node:path'
 
-/** Iconify 规范：图标与图标集都未声明 width/height 时，画布按 16×16 计（见 @iconify/types README）。 */
+/** Iconify 规范：icon 与 icon 集都未声明 width/height 时，画布按 16×16 计（见 @iconify/types README）。 */
 const ICONIFY_DEFAULT_CANVAS = 16
 
 function toCamelCase(kebab: string): string {
@@ -51,7 +51,7 @@ interface IconSetData {
   root: IconData
 }
 
-/** 解析 alias 引用的实际图标；Iconify 版本升级可能把 icon 迁移为 alias */
+/** 解析 alias 引用的实际 icon；Iconify 版本升级可能把 icon 迁移为 alias */
 function resolveIconData(set: string, name: string, setData: IconSetData, ancestors = new Set([name])): IconData {
   const direct = setData.icons[name]
   if (direct) return direct
@@ -105,10 +105,10 @@ function writeIndex(indexPath: string, entries: Array<{ name: string; camelName:
 }
 
 /**
- * 从 icons.used.json 生成图标模块
+ * 从 icons.used.json 生成 icon 模块
  *
  * @param pkgRoot web-ui 包根目录
- * @returns 生成的图标数量
+ * @returns 生成的 icon 数量
  */
 export async function generateIcons(pkgRoot: string) {
   const iconsUsedPath = resolve(pkgRoot, 'icons.used.json')
@@ -129,7 +129,7 @@ export async function generateIcons(pkgRoot: string) {
     if (!setCache.has(set)) {
       const mod = await import(`@iconify-json/${set}/icons.json`, { with: { type: 'json' } })
       const raw = mod.default
-      // 根级 left/top/width/height 是图标集的默认值
+      // 根级 left/top/width/height 是 icon 集的默认值
       const root: IconData = {
         body: '',
         left: raw.left,

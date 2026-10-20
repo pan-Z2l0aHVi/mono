@@ -3,13 +3,13 @@ component: dropdown-divider
 tag: web-ui-dropdown-divider
 ---
 
-菜单里的分隔线，用来切开成组的菜单项。它没有任何属性、事件与插槽，也不参与键盘导航——菜单只会把焦点停在 `<web-ui-dropdown-item>` 上，它自己只声明 `role="separator"`。它出现在 `<web-ui-dropdown>` / `<web-ui-context-menu>` 的子元素里。
+menu 里的 divider，用来切开成组的 menu item。它没有任何属性、事件与插槽，也不参与键盘导航——menu 只会把焦点停在 `<web-ui-dropdown-item>` 上，它自己只声明 `role="separator"`。它出现在 `<web-ui-dropdown>` / `<web-ui-context-menu>` 的子元素里。
 
 ## 示例
 
-### 分组分隔线 {#basic}
+### 分组 divider {#basic}
 
-分隔线插在两组菜单项之间，宽度撑满菜单面板，两侧各留一点水平外边距。
+divider 插在两组 menu item 之间，宽度撑满 menu panel，两侧各留一点水平外边距。
 
 ```react
 export default function Demo() {

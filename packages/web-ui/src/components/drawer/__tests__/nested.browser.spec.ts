@@ -144,7 +144,7 @@ describe('WebUiDrawer nested 层叠（浏览器）', () => {
     expect(document.documentElement.style.overflow).not.toBe('hidden')
   })
 
-  it('焦点在 footer slot 按钮内按 Escape：仍关闭本层（UA top layer 键盘路由）', async () => {
+  it('焦点在 footer slot button 内按 Escape：仍关闭本层（UA top layer 键盘路由）', async () => {
     const el = document.createElement('web-ui-drawer') as WebUiDrawer
     el.innerHTML = '<web-ui-button slot="footer">关闭</web-ui-button>'
     document.body.append(el)

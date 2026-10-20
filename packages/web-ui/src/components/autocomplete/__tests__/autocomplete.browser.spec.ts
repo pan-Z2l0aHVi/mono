@@ -15,8 +15,8 @@ import type { WebUiAutocomplete } from '..'
 
 afterEach(() => document.body.replaceChildren())
 
-// 视觉浮层（.autocomplete-overlay）是 aria-hidden 的，公开的无障碍面是 shadow 内的
-// role="listbox" 镜像，因此面板本身没有可用 role 定位，只能按 class 取定位目标。
+// 视觉 overlay（.autocomplete-overlay）是 aria-hidden 的，公开的无障碍面是 shadow 内的
+// role="listbox" 镜像，因此 panel 本身没有可用 role 定位，只能按 class 取定位目标。
 function getPortalPanel(theme: HTMLElement): HTMLElement | null {
   const overlayContainer = theme.shadowRoot?.querySelector<HTMLElement>('[data-wui-overlay-container]')
   const portalHost = overlayContainer?.firstElementChild as HTMLElement | null
@@ -24,15 +24,15 @@ function getPortalPanel(theme: HTMLElement): HTMLElement | null {
 }
 
 /*
- * 等到 portal 面板真的出现再取。
+ * 等到 portal panel 真的出现再取。
  *
- * 面板不是同一步渲染出来的：`updated()` 里 `requestAnimationFrame(() => this._reconfigureOverlay())`
+ * panel 不是同一步渲染出来的：`updated()` 里 `requestAnimationFrame(() => this._reconfigureOverlay())`
  * 才把 `.autocomplete-overlay` 建进 theme 的 overlay root，而同一轮渲染里的无障碍镜像
  * （shadow 内的 role=listbox）是同步的。于是同一个场景里 `page.getByRole('listbox')` 会重试、
  * 裸取 `getPortalPanel()` 不会 —— CI run 37726205609 上就报
  * `TypeError: Cannot read properties of null (reading 'querySelectorAll')`。
  *
- * 这里把「读」换成「等到出现再读」：判据不变（面板存在且内容逐项相等），面板始终不出现时
+ * 这里把「读」换成「等到出现再读」：判据不变（panel 存在且内容逐项相等），panel 始终不出现时
  * 仍然在 pollUntil 的预算内抛错 —— 只是不再因为晚一帧而假红。
  */
 async function waitForPortalPanel(theme: HTMLElement): Promise<HTMLElement> {
@@ -54,7 +54,7 @@ function comboboxTrigger(el: WebUiAutocomplete): HTMLElement {
   return el.shadowRoot!.querySelector<HTMLElement>('[role="combobox"]')!
 }
 
-// 默认触发器是 web-ui-input（README 契约）：原生 input 事件从内部 input 冒泡到
+// 默认 trigger 是 web-ui-input（README 契约）：原生 input 事件从内部 input 冒泡到
 // 包装 div 时 target 会 retarget 成这个 host，键入模拟因此落在它上面
 function defaultTrigger(el: WebUiAutocomplete): WebUiInput {
   return el.shadowRoot!.querySelector<WebUiInput>('web-ui-input')!
@@ -78,7 +78,7 @@ function clickTrigger(el: WebUiAutocomplete) {
   defaultTrigger(el).click()
 }
 
-// 自定义触发器位于 light DOM：slot="trigger" 的 assigned 元素即当前生效的触发器
+// 自定义 trigger 位于 light DOM：slot="trigger" 的 assigned 元素即当前生效的 trigger
 function customTrigger(el: WebUiAutocomplete): HTMLElement {
   return el.querySelector<HTMLElement>('[slot="trigger"]')!
 }
@@ -88,7 +88,7 @@ function triggerTextarea(el: WebUiAutocomplete): HTMLTextAreaElement {
 }
 
 describe('WebUiAutocomplete 组件（浏览器）', () => {
-  it('Portal 打开后选项移入 theme-owned overlay root 并可点击选择', async () => {
+  it('Portal 打开后 option 移入 theme-owned overlay root 并可点击选择', async () => {
     const theme = document.createElement('web-ui-theme')
     theme.setAttribute('appearance', 'light')
     theme.className = 'block'
@@ -145,7 +145,7 @@ describe('WebUiAutocomplete 组件（浏览器）', () => {
     expect(activeLabel).toBe('Apple')
 
     // 激活项只通过公开通道（aria-activedescendant → shadow 内 role=option 镜像）暴露，
-    // 据此在面板里找到同 label 的那一项并移除，验证激活态被清理。
+    // 据此在 panel 里找到同 label 的那一项并移除，验证激活态被清理。
     // 断言候选唯一：避免 label 重名时静默选到错误的节点（fixture 的 label 本就唯一）。
     const panel = await waitForPortalPanel(theme)
     const active = [...panel.querySelectorAll<WebUiOption>('web-ui-option')].filter(
@@ -160,7 +160,7 @@ describe('WebUiAutocomplete 组件（浏览器）', () => {
     expect(comboboxTrigger(el).getAttribute('aria-activedescendant')).toBeFalsy()
   })
 
-  it('Portal 面板空白区域点击不会触发 outside close', async () => {
+  it('Portal panel 空白区域点击不会触发 outside close', async () => {
     const theme = document.createElement('web-ui-theme')
     theme.setAttribute('appearance', 'light')
     const el = document.createElement('web-ui-autocomplete')
@@ -253,7 +253,7 @@ describe('WebUiAutocomplete 组件（浏览器）', () => {
     expect(el.open).toBe(false)
   })
 
-  it('无匹配候选时不创建面板，删除字符恢复匹配后重新打开', async () => {
+  it('无匹配候选时不创建 panel，删除字符恢复匹配后重新打开', async () => {
     const el = document.createElement('web-ui-autocomplete')
     el.innerHTML = '<web-ui-option value="apple" label="Apple"></web-ui-option>'
     document.body.append(el)
@@ -365,7 +365,7 @@ describe('WebUiAutocomplete 组件（浏览器）', () => {
     await el.updateComplete
 
     expect(new FormData(form).get('city')).toBe('Beijing')
-    // 默认触发器是 shadow 内的 web-ui-input（自身 form-associated）：它不得与外层
+    // 默认 trigger 是 shadow 内的 web-ui-input（自身 form-associated）：它不得与外层
     // 表单关联，否则同一字段会被提交两次
     expect(new FormData(form).getAll('city')).toEqual(['Beijing'])
 
@@ -580,7 +580,7 @@ describe('WebUiAutocomplete 组件（浏览器）', () => {
     ])
   })
 
-  it('Portal 零匹配时不创建面板，匹配恢复后重新打开', async () => {
+  it('Portal 零匹配时不创建 panel，匹配恢复后重新打开', async () => {
     const theme = document.createElement('web-ui-theme')
     theme.setAttribute('appearance', 'light')
     const el = document.createElement('web-ui-autocomplete')
@@ -768,13 +768,13 @@ describe('WebUiAutocomplete 组件（浏览器）', () => {
     expect(el.querySelector('web-ui-option')).not.toBeNull()
   })
 
-  it('非 portal：位于 shadow root 内水平偏移的定位祖先时，面板仍与输入框对齐', async () => {
+  it('非 portal：位于 shadow root 内水平偏移的定位祖先时，panel 仍与 input 对齐', async () => {
     // 回归：autocomplete 缺少本地 position:relative 包裹层（对比 select 的 .wui-select-inner）时，
-    // 绝对定位面板的包含块会落到远端定位祖先（如 web-ui-layout 的 sticky header），
+    // 绝对定位 panel 的包含块会落到远端定位祖先（如 web-ui-layout 的 sticky header），
     // 而 Floating UI 按 offsetParent（BODY）计算坐标，导致水平偏移。
     // 复刻 web-ui-layout：组件作为 light DOM 内容 slot 进 shadow root 内一个
     // 水平偏移的定位祖先。offsetParent 计算不会跨 shadow 边界取到该祖先（落到 BODY），
-    // 而绝对定位面板的实际包含块却是它——两者不一致时面板就会水平偏移。
+    // 而绝对定位 panel 的实际包含块却是它——两者不一致时 panel 就会水平偏移。
     const host = document.createElement('div')
     host.style.marginTop = '40px'
     const shadow = host.attachShadow({ mode: 'open' })
@@ -800,7 +800,7 @@ describe('WebUiAutocomplete 组件（浏览器）', () => {
     const wrapperRect = wrapper.getBoundingClientRect()
 
     expect(el.open).toBe(true)
-    // bottom-start：面板左边缘应与锚点（默认触发器）左边缘对齐（offset 4 只影响纵向）
+    // bottom-start：panel 左边缘应与锚点（默认 trigger）左边缘对齐（offset 4 只影响纵向）
     expect(Math.abs(panelRect.left - wrapperRect.left)).toBeLessThan(2)
     expect(panelRect.top).toBeGreaterThanOrEqual(wrapperRect.bottom - 1)
   })
@@ -808,7 +808,7 @@ describe('WebUiAutocomplete 组件（浏览器）', () => {
   // D5：原用例主题是 focus ring 的视觉呈现（box-shadow / ::before 描边 / padding 度量），
   // 按 §5 不在契约 spec 断言（同口径先例：input/__tests__/focus.browser.spec.ts 文件头注释）。
   // 保留其中真正的公开面：焦点归宿 + 宿主 `focused` 反射（borderless 组合下同样成立）。
-  it('borderless 输入框聚焦时反射 focused，失焦后移除', async () => {
+  it('borderless input 聚焦时反射 focused，失焦后移除', async () => {
     const el = document.createElement('web-ui-autocomplete')
     el.setAttribute('borderless', '')
     el.innerHTML = '<web-ui-option value="apple" label="Apple"></web-ui-option>'
@@ -826,9 +826,9 @@ describe('WebUiAutocomplete 组件（浏览器）', () => {
     expect(el.hasAttribute('focused')).toBe(false)
   })
 
-  // 默认触发器重构为 web-ui-input：玻璃胶囊的度量（--wui-control-size / --wui-input-width）
+  // 默认 trigger 重构为 web-ui-input：玻璃胶囊的度量（--wui-control-size / --wui-input-width）
   // 必须与独立使用 web-ui-input 完全一致，否则默认用法外观就等于变了。
-  it('默认触发器与独立 web-ui-input 的控件度量一致', async () => {
+  it('默认 trigger 与独立 web-ui-input 的控件度量一致', async () => {
     const el = document.createElement('web-ui-autocomplete')
     el.innerHTML = '<web-ui-option value="apple" label="Apple"></web-ui-option>'
     document.body.append(el)
@@ -845,7 +845,7 @@ describe('WebUiAutocomplete 组件（浏览器）', () => {
     expect(triggerRect.height).toBe(standaloneRect.height)
   })
 
-  it('首次渲染即按自定义触发器渲染，不出现默认输入框闪现', async () => {
+  it('首次渲染即按自定义 trigger 渲染，不出现默认 input 闪现', async () => {
     const el = document.createElement('web-ui-autocomplete')
     el.innerHTML = `
       <web-ui-textarea slot="trigger"></web-ui-textarea>
@@ -854,11 +854,11 @@ describe('WebUiAutocomplete 组件（浏览器）', () => {
     document.body.append(el)
     await el.updateComplete
 
-    // slotchange 是异步的：默认触发器若等它才让位，第一帧会渲染出 web-ui-input
+    // slotchange 是异步的：默认 trigger 若等它才让位，第一帧会渲染出 web-ui-input
     expect(defaultTrigger(el)).toBeNull()
   })
 
-  it('web-ui-textarea 自定义触发器可打开、过滤并用选项回填', async () => {
+  it('web-ui-textarea 自定义 trigger 可打开、过滤并用 option 回填', async () => {
     const el = document.createElement('web-ui-autocomplete')
     el.innerHTML = `
       <web-ui-textarea slot="trigger"></web-ui-textarea>
@@ -883,7 +883,7 @@ describe('WebUiAutocomplete 组件（浏览器）', () => {
     const mirrorOptions = [...el.shadowRoot!.querySelectorAll('.autocomplete-a11y-listbox [role="option"]')]
     expect(mirrorOptions.map(option => option.textContent?.trim())).toEqual(['Banana'])
 
-    // 多行触发器保留 Enter 换行，选择改由真实指针点击完成
+    // 多行 trigger 保留 Enter 换行，选择改由真实指针点击完成
     await page.elementLocator(options[1]!).click()
     await el.updateComplete
 
@@ -894,10 +894,10 @@ describe('WebUiAutocomplete 组件（浏览器）', () => {
     expect(triggerTextarea(el).value).toBe('Banana')
   })
 
-  it('web-ui-input 自定义触发器可打开并过滤（可编辑控件在触发器自己的 shadow 内）', async () => {
+  it('web-ui-input 自定义 trigger 可打开并过滤（可编辑控件在 trigger 自己的 shadow 内）', async () => {
     const el = document.createElement('web-ui-autocomplete')
     el.innerHTML = `
-      <web-ui-input slot="trigger" placeholder="标签/无标签"></web-ui-input>
+      <web-ui-input slot="trigger" placeholder="label/无 label"></web-ui-input>
       <web-ui-option value="apple" label="Apple"></web-ui-option>
       <web-ui-option value="banana" label="Banana"></web-ui-option>
     `
@@ -917,7 +917,7 @@ describe('WebUiAutocomplete 组件（浏览器）', () => {
     expect(options[1]?.hasAttribute('data-filtered')).toBe(false)
   })
 
-  it('web-ui-textarea 自定义触发器 Enter 插入换行不选中高亮项，Escape/blur 关闭', async () => {
+  it('web-ui-textarea 自定义 trigger Enter 插入换行不选中高亮项，Escape/blur 关闭', async () => {
     const el = document.createElement('web-ui-autocomplete')
     el.innerHTML = `
       <web-ui-textarea slot="trigger"></web-ui-textarea>
@@ -933,7 +933,7 @@ describe('WebUiAutocomplete 组件（浏览器）', () => {
     await el.updateComplete
     expect(el.open).toBe(true)
 
-    // 面板打开时方向键归 textarea 光标移动：不导航列表、不设 activedescendant
+    // panel 打开时方向键归 textarea 光标移动：不导航列表、不设 activedescendant
     await userEvent.keyboard('{ArrowDown}')
     await el.updateComplete
     expect(comboboxTrigger(el).getAttribute('aria-activedescendant')).toBeFalsy()
@@ -960,7 +960,7 @@ describe('WebUiAutocomplete 组件（浏览器）', () => {
     await el.updateComplete
     expect(el.open).toBe(false)
 
-    // 失焦路径：焦点移出宿主（含 light DOM 触发器）后经 rAF 复核关闭
+    // 失焦路径：焦点移出宿主（含 light DOM trigger）后经 rAF 复核关闭
     triggerTextarea(el).focus()
     await userEvent.keyboard('{ArrowDown}')
     await el.updateComplete
@@ -974,10 +974,10 @@ describe('WebUiAutocomplete 组件（浏览器）', () => {
     expect(el.open).toBe(false)
   })
 
-  // 公共 focus()/blur()（README Methods）：焦点必须落到当前生效触发器内部的原生控件，
+  // 公共 focus()/blur()（README Methods）：焦点必须落到当前生效 trigger 内部的原生控件，
   // 而不是停在宿主或包装 div。真实浏览器聚焦 shadow 内元素后 document.activeElement
   // retarget 成宿主，因此同时校验内部控件真的拿到焦点。
-  it('公共 focus()/blur() 委托到默认触发器', async () => {
+  it('公共 focus()/blur() 委托到默认 trigger', async () => {
     const el = document.createElement('web-ui-autocomplete')
     el.innerHTML = '<web-ui-option value="apple" label="Apple"></web-ui-option>'
     document.body.append(el)
@@ -998,7 +998,7 @@ describe('WebUiAutocomplete 组件（浏览器）', () => {
     expect(el.hasAttribute('focused')).toBe(false)
   })
 
-  it('公共 focus()/blur() 委托到 textarea 自定义触发器', async () => {
+  it('公共 focus()/blur() 委托到 textarea 自定义 trigger', async () => {
     const el = document.createElement('web-ui-autocomplete')
     el.innerHTML = `
       <web-ui-textarea slot="trigger"></web-ui-textarea>
@@ -1010,7 +1010,7 @@ describe('WebUiAutocomplete 组件（浏览器）', () => {
     el.focus()
     await el.updateComplete
 
-    // light DOM 触发器自身即 activeElement（其 shadow 内 textarea 承接焦点）
+    // light DOM trigger 自身即 activeElement（其 shadow 内 textarea 承接焦点）
     expect(document.activeElement).toBe(customTrigger(el))
     expect(customTrigger(el).shadowRoot?.activeElement).toBe(triggerTextarea(el))
     expect(el.hasAttribute('focused')).toBe(true)

@@ -28,7 +28,7 @@ async function openDialog(component: WebUiDialog): Promise<HTMLDialogElement> {
   await component.updateComplete
   const dialog = component.shadowRoot?.querySelector('dialog') as HTMLDialogElement
   // 进场带 scale(1.1)：transform 未落定前 getBoundingClientRect() 的读数虚高约 10%，
-  // 「宽内容不产生横向滚动条」那条量的就是它。与 dialog-content-height 的 openAndSettle 同口径。
+  // 「宽内容不产生横向 scrollbar」那条量的就是它。与 dialog-content-height 的 openAndSettle 同口径。
   await pollUntil(() => {
     const transform = getComputedStyle(dialog).transform
     return transform === 'none' || transform === 'matrix(1, 0, 0, 1, 0, 0)'
@@ -120,7 +120,7 @@ describe('--wui-dialog-max-height', () => {
     expect(desc.scrollHeight).toBeGreaterThan(desc.clientHeight)
   })
 
-  it('宽内容不产生横向滚动条', async () => {
+  it('宽内容不产生横向 scrollbar', async () => {
     const component = createTallDialog()
     const content = component.firstElementChild as HTMLElement
     content.style.cssText = 'width: 2000px; height: 50px;'
@@ -130,17 +130,17 @@ describe('--wui-dialog-max-height', () => {
     expect(dialog.getBoundingClientRect().right).toBeLessThanOrEqual(window.innerWidth)
 
     /*
-     * 内容区横向不滚动。横向滚动条出现在 `.desc` 而不是外层，所以上一条证明不了这一半
-     * ——外层不越界与内层多出滚动条完全可以同时成立。
+     * 内容区横向不滚动。横向 scrollbar 出现在 `.desc` 而不是外层，所以上一条证明不了这一半
+     * ——外层不越界与内层多出 scrollbar 完全可以同时成立。
      *
      * 这里只能读 overflowX 计算值。实测过其它候选，都区分不出 clip 与 auto：
      *   - scrollWidth 两种取值下都是 2012（clip/hidden 不改变 scrollWidth 的内容口径）；
      *   - 写 scrollLeft 后两种取值下都是 1688（hidden 同样允许程序化滚动）；
-     *   - offsetHeight - clientHeight 都是 0（headless Chromium 不占滚动条槽）。
+     *   - offsetHeight - clientHeight 都是 0（headless Chromium 不占 scrollbar 槽）。
      *
      * 断言写成「不是 auto / 不是 scroll」而不是「等于 clip」：Chromium 会把 clip 与本
      * 规则下面的 overflow-y: auto 配对降级成 hidden，Firefox 保持 clip，两者都不画
-     * 横向滚动条，但计算值不同。
+     * 横向 scrollbar，但计算值不同。
      */
     const desc = query<HTMLElement>(component, '.desc')
     const overflowX = getComputedStyle(desc).overflowX

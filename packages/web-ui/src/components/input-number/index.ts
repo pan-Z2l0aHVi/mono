@@ -167,7 +167,7 @@ export class WebUiInputNumber extends FormAssociated(LitElement) {
   }
 
   // 输入过程只更新草稿与可解析的原始值，显示保持在草稿上：
-  // 逐字把 "1." 规整成 "1" 会打断输入（与原生 number 输入框的编辑体验一致）。
+  // 逐字把 "1." 规整成 "1" 会打断输入（与原生 number input 的编辑体验一致）。
   private handleInput(e: Event) {
     if (this.readonly) return
     if (!(e.target instanceof HTMLInputElement)) return

@@ -19,7 +19,7 @@ function AutocompleteDemo() {
     setCustomSelectedValue(event.currentTarget.selectedValue)
   }
 
-  // 自定义 trigger slot：多行 textarea 触发器保留 Enter 换行，Escape/blur 关闭面板
+  // 自定义 trigger slot：多行 textarea trigger 保留 Enter 换行，Escape/blur 关闭 panel
   const [multilineText, setMultilineText] = useState('')
   const [multilineCommit, setMultilineCommit] = useState({ value: '', selectedValue: '' })
   const multilineTriggerRef = useRef<WebUiAutocomplete>(null)
@@ -35,12 +35,12 @@ function AutocompleteDemo() {
     })
   }
 
-  // 公共 focus() 委托给当前生效触发器：这里是 light DOM 的 web-ui-textarea
+  // 公共 focus() 委托给当前生效 trigger：这里是 light DOM 的 web-ui-textarea
   function focusMultilineTrigger() {
     multilineTriggerRef.current?.focus()
   }
 
-  // 单行自定义触发器保持默认 Enter 语义：面板打开时 Enter 选择高亮项
+  // 单行自定义 trigger 保持默认 Enter 语义：panel 打开时 Enter 选择高亮项
   const [singleLineText, setSingleLineText] = useState('')
 
   function handleSingleLineInput(event: React.InputEvent<WebUiAutocomplete>) {
@@ -64,18 +64,29 @@ function AutocompleteDemo() {
 
   const frameworks = ['Vue', 'React', 'Svelte', 'Angular', 'Solid', 'Preact', 'Lit']
 
-  const cities = ['北京', '上海', '广州', '深圳', '杭州', '成都', '武汉', '西安', '南京', '苏州']
+  const cities = [
+    'Beijing',
+    'Shanghai',
+    'Guangzhou',
+    'Qingdao',
+    'Hangzhou',
+    'Chengdu',
+    'Wuhan',
+    'Xian',
+    'Nanjing',
+    'Suzhou'
+  ]
 
   return (
     <div>
-      <h1>自动补全</h1>
+      <h1>Autocomplete</h1>
 
-      <h2>基础</h2>
+      <h2>Basic</h2>
       <p className="mb-2 text-sm text-(--wui-color-text-secondary)">
-        键入时按 label 过滤候选（默认 <code>contains</code>），选择后文本回填为选项 label。
+        键入时按 label 过滤候选（默认 <code>contains</code>），选择后文本回填为 option label。
       </p>
       <div className="mb-3 flex flex-col gap-3">
-        <web-ui-autocomplete placeholder="输入框架名">
+        <web-ui-autocomplete placeholder="input name">
           {frameworks.map(name => (
             <web-ui-option key={name} value={name} label={name}>
               {name}
@@ -84,16 +95,16 @@ function AutocompleteDemo() {
         </web-ui-autocomplete>
       </div>
 
-      <h2>无边框</h2>
+      <h2>Borderless</h2>
       <div className="mb-3 flex flex-col gap-3">
-        <web-ui-autocomplete borderless placeholder="无边框自动补全">
+        <web-ui-autocomplete borderless placeholder="Borderless autocomplete">
           {frameworks.map(name => (
             <web-ui-option key={name} value={name} label={name}>
               {name}
             </web-ui-option>
           ))}
         </web-ui-autocomplete>
-        <web-ui-autocomplete borderless value="Vue" placeholder="无边框有值">
+        <web-ui-autocomplete borderless value="Vue" placeholder="Borderless with value">
           {frameworks.map(name => (
             <web-ui-option key={name} value={name} label={name}>
               {name}
@@ -102,11 +113,11 @@ function AutocompleteDemo() {
         </web-ui-autocomplete>
       </div>
 
-      <h2>受控值</h2>
+      <h2>Controlled value</h2>
       <div className="mb-3 flex flex-col gap-3">
         <web-ui-autocomplete
           value={text}
-          placeholder="输入城市名"
+          placeholder="Enter a city name"
           onInput={event => setText(event.currentTarget.value)}
         >
           {cities.map(city => (
@@ -115,28 +126,28 @@ function AutocompleteDemo() {
             </web-ui-option>
           ))}
         </web-ui-autocomplete>
-        <div>当前输入：{text || '无'}</div>
+        <div>当前输入：{text || 'None'}</div>
       </div>
 
-      <h2>filter 模式</h2>
+      <h2>filter mode</h2>
       <p className="mb-2 text-sm text-(--wui-color-text-secondary)">
-        <code>contains</code> 包含匹配，<code>prefix</code> 前缀匹配，<code>none</code> 关闭过滤。
+        <code>contains</code>Contains match,<code>prefix</code>Prefix match,<code>none</code> 关闭过滤。
       </p>
       <div className="mb-3 flex flex-col gap-3">
         <div className="flex flex-wrap items-center gap-3">
           <web-ui-select
             value={filterMode}
-            aria-label="过滤模式"
+            aria-label="Filter mode"
             className="[--wui-input-width:140px]"
             onChange={event => setFilterMode(event.currentTarget.value as 'contains' | 'prefix' | 'none')}
           >
-            <web-ui-option value="contains" label="包含"></web-ui-option>
-            <web-ui-option value="prefix" label="前缀"></web-ui-option>
-            <web-ui-option value="none" label="不过滤"></web-ui-option>
+            <web-ui-option value="contains" label="Contains"></web-ui-option>
+            <web-ui-option value="prefix" label="Prefix"></web-ui-option>
+            <web-ui-option value="none" label="No filter"></web-ui-option>
           </web-ui-select>
           <span className="text-sm text-(--wui-color-text-secondary)">当前模式：{filterMode}</span>
         </div>
-        <web-ui-autocomplete filter={filterMode} placeholder="输入框架名">
+        <web-ui-autocomplete filter={filterMode} placeholder="input name">
           {frameworks.map(name => (
             <web-ui-option key={name} value={name} label={name}>
               {name}
@@ -145,28 +156,28 @@ function AutocompleteDemo() {
         </web-ui-autocomplete>
       </div>
 
-      <h2>change 事件</h2>
+      <h2>change event</h2>
       <p className="mb-2 text-sm text-(--wui-color-text-secondary)">
         选择提交时触发 <code>change</code>；<code>selected-value</code> 由当前输入派生，输入不再精确匹配任何 option
         label 时自动清空。
       </p>
       <div className="mb-3 flex flex-col gap-3">
-        <web-ui-autocomplete placeholder="选择城市" onInput={handleInput} onChange={handleChange}>
+        <web-ui-autocomplete placeholder="Select a city" onInput={handleInput} onChange={handleChange}>
           {cities.map(city => (
             <web-ui-option key={city} value={city} label={city}>
               {city}
             </web-ui-option>
           ))}
         </web-ui-autocomplete>
-        <div>实时输入：{liveInput || '无'}</div>
-        <div>实时 selected-value：{liveSelectedValue || '无'}</div>
-        <div>最近 change 文本：{changeValue || '无'}</div>
-        <div>最近 change selected-value：{changeSelectedValue || '无'}</div>
+        <div>实时输入：{liveInput || 'None'}</div>
+        <div>实时 selected-value：{liveSelectedValue || 'None'}</div>
+        <div>最近 change 文本：{changeValue || 'None'}</div>
+        <div>最近 change selected-value：{changeSelectedValue || 'None'}</div>
       </div>
 
-      <h2>禁用选项</h2>
+      <h2>Disabled option</h2>
       <div className="mb-3 flex flex-col gap-3">
-        <web-ui-autocomplete placeholder="部分禁用">
+        <web-ui-autocomplete placeholder="Partially disabled">
           <web-ui-option value="vue" label="Vue"></web-ui-option>
           <web-ui-option value="react" label="React" disabled></web-ui-option>
           <web-ui-option value="svelte" label="Svelte"></web-ui-option>
@@ -176,7 +187,7 @@ function AutocompleteDemo() {
 
       <h2>Portal</h2>
       <div className="mb-3 flex flex-col gap-3">
-        <web-ui-autocomplete portal placeholder="Portal 自动补全">
+        <web-ui-autocomplete portal placeholder="Portal autocomplete">
           {cities.map(city => (
             <web-ui-option key={city} value={city} label={city}>
               {city}
@@ -187,32 +198,34 @@ function AutocompleteDemo() {
 
       <h2>custom value</h2>
       <p className="mb-2 text-sm text-(--wui-color-text-secondary)">
-        开启 <code>allow-custom-value</code> 后，输入不在候选中的文本并按 Enter 提交；此时 <code>selected-value</code>{' '}
-        为空。零匹配时面板保持关闭，按 Enter 仍会提交该文本。
+        On
+        <code>allow-custom-value</code> and type text that matches no option, then press Enter to submit it; then{' '}
+        <code>selected-value</code> 为空。零匹配时 panel 保持关闭，按 Enter 仍会提交该文本。
       </p>
       <div className="mb-3 flex flex-col gap-3">
-        <web-ui-autocomplete allowCustomValue placeholder="输入框架或新建标签" onChange={handleCustomChange}>
+        <web-ui-autocomplete allowCustomValue placeholder="Existing input or new label" onChange={handleCustomChange}>
           {frameworks.map(name => (
             <web-ui-option key={name} value={name} label={name}>
               {name}
             </web-ui-option>
           ))}
         </web-ui-autocomplete>
-        <div>最近提交 value：{customValue || '无'}</div>
-        <div>最近提交 selected-value：{customSelectedValue || '无'}</div>
+        <div>最近提交 value：{customValue || 'None'}</div>
+        <div>最近提交 selected-value：{customSelectedValue || 'None'}</div>
       </div>
 
-      <h2>自定义 Trigger</h2>
+      <h2>Custom trigger</h2>
       <p className="mb-2 text-sm text-(--wui-color-text-secondary)">
-        通过 <code>slot=&quot;trigger&quot;</code> 用可编辑组件替换默认输入框。多行触发器（<code>web-ui-textarea</code>
-        ）保留 Enter 换行：Enter 不选择高亮项，面板用 Escape 或 blur 关闭；面板打开时 ArrowUp/ArrowDown
-        移动文本光标。选中候选仍会把 label 回填到触发器。
+        Through<code>slot=&quot;trigger&quot;</code>Replace the default input with an editable component. A multiline
+        trigger (<code>web-ui-textarea</code>
+        ）保留 Enter 换行：Enter 不选择高亮项，panel 用 Escape 或 blur 关闭；panel 打开时 ArrowUp/ArrowDown
+        移动文本光标。选中候选仍会把 label 回填到 trigger。
       </p>
-      <h3>多行文本触发器</h3>
+      <h3>Multiline text trigger</h3>
       <div className="mb-3 flex flex-col gap-3">
         <web-ui-autocomplete
           ref={multilineTriggerRef}
-          placeholder="输入框架名"
+          placeholder="input name"
           onInput={handleMultilineInput}
           onChange={handleMultilineChange}
         >
@@ -220,7 +233,7 @@ function AutocompleteDemo() {
             slot="trigger"
             rows={3}
             className="[--wui-textarea-width:20rem]"
-            placeholder="多行输入：键入过滤候选，Enter 换行"
+            placeholder="Multiline input: type to filter the options, Enter inserts a newline"
           />
           {frameworks.map(name => (
             <web-ui-option key={name} value={name} label={name}>
@@ -230,34 +243,36 @@ function AutocompleteDemo() {
         </web-ui-autocomplete>
         <div className="flex flex-wrap items-center gap-3">
           <web-ui-button variant="secondary" size="28" onClick={focusMultilineTrigger}>
-            聚焦触发器
+            Focus the trigger
           </web-ui-button>
-          <span className="text-sm text-(--wui-color-text-secondary)">公共 focus() 委托给当前触发器</span>
+          <span className="text-sm text-(--wui-color-text-secondary)">
+            The public focus() delegates to the current trigger
+          </span>
         </div>
-        <div>当前文本（换行原样显示）：</div>
-        <div className="whitespace-pre-wrap text-sm">{multilineText || '无'}</div>
-        <div>最近 change 文本：{multilineCommit.value || '无'}</div>
-        <div>最近 change selected-value：{multilineCommit.selectedValue || '无'}</div>
+        <div>Current text (newlines render as typed):</div>
+        <div className="whitespace-pre-wrap text-sm">{multilineText || 'None'}</div>
+        <div>最近 change 文本：{multilineCommit.value || 'None'}</div>
+        <div>最近 change selected-value：{multilineCommit.selectedValue || 'None'}</div>
       </div>
-      <h3>单行输入触发器</h3>
+      <h3>Single-line input trigger</h3>
       <p className="mb-2 text-sm text-(--wui-color-text-secondary)">
-        单行自定义触发器保持默认 Enter 行为：面板打开时 Enter 选择高亮项。
+        单行自定义 trigger 保持默认 Enter 行为：panel 打开时 Enter 选择高亮项。
       </p>
       <div className="mb-3 flex flex-col gap-3">
-        <web-ui-autocomplete placeholder="输入框架名" onInput={handleSingleLineInput}>
-          <web-ui-input slot="trigger" placeholder="单行输入：Enter 选择高亮项" />
+        <web-ui-autocomplete placeholder="input name" onInput={handleSingleLineInput}>
+          <web-ui-input slot="trigger" placeholder="Single-line input: Enter selects the highlighted option" />
           {frameworks.map(name => (
             <web-ui-option key={name} value={name} label={name}>
               {name}
             </web-ui-option>
           ))}
         </web-ui-autocomplete>
-        <div>当前文本：{singleLineText || '无'}</div>
+        <div>当前文本：{singleLineText || 'None'}</div>
       </div>
 
-      <h2>无滚动锁定</h2>
+      <h2>No scroll lock</h2>
       <div className="mb-3 flex flex-col gap-3">
-        <web-ui-autocomplete noScrollLock placeholder="打开时不锁定页面滚动">
+        <web-ui-autocomplete noScrollLock placeholder="Page scroll is not locked while open">
           {frameworks.map(name => (
             <web-ui-option key={name} value={name} label={name}>
               {name}
@@ -266,9 +281,9 @@ function AutocompleteDemo() {
         </web-ui-autocomplete>
       </div>
 
-      <h2>必填</h2>
+      <h2>Required</h2>
       <div className="mb-3 flex flex-col gap-3">
-        <web-ui-autocomplete required placeholder="必填，留空校验失败">
+        <web-ui-autocomplete required placeholder="Required, validation fails when empty">
           {cities.map(city => (
             <web-ui-option key={city} value={city} label={city}>
               {city}
@@ -277,9 +292,9 @@ function AutocompleteDemo() {
         </web-ui-autocomplete>
       </div>
 
-      <h2>禁用</h2>
+      <h2>Disabled</h2>
       <div className="mb-3 flex flex-col gap-3">
-        <web-ui-autocomplete value="Vue" placeholder="禁用状态" disabled>
+        <web-ui-autocomplete value="Vue" placeholder="Disabled" disabled>
           {frameworks.map(name => (
             <web-ui-option key={name} value={name} label={name}>
               {name}
@@ -288,9 +303,9 @@ function AutocompleteDemo() {
         </web-ui-autocomplete>
       </div>
 
-      <h2>只读</h2>
+      <h2>Read only</h2>
       <div className="mb-3 flex flex-col gap-3">
-        <web-ui-autocomplete value="Vue" placeholder="只读状态" readonly>
+        <web-ui-autocomplete value="Vue" placeholder="Read only" readonly>
           {frameworks.map(name => (
             <web-ui-option key={name} value={name} label={name}>
               {name}

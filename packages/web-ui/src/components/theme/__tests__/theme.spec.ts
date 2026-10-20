@@ -71,7 +71,7 @@ afterEach(() => {
 })
 
 describe('WebUiTheme 组件', () => {
-  describe('主题过渡开关：motion', () => {
+  describe('主题过渡 toggle：motion', () => {
     /*
      * `transition` 布尔 prop 已移除（breaking）：主题切换是否播放 View Transition 揭示
      * 改由 motion 三档统一控制 —— full 播放、reduced 直接落地、system 跟随
@@ -603,7 +603,7 @@ describe('WebUiTheme 组件', () => {
   })
 
   describe('Context Menu 集成', () => {
-    it('模态化后 scrim 与面板落进最近主题的 overlay root，面板挂在 scrim 里', async () => {
+    it('模态化后 scrim 与 panel 落进最近主题的 overlay root，panel 挂在 scrim 里', async () => {
       const theme = createTheme('dark')
       const menu = document.createElement('web-ui-context-menu')
       menu.innerHTML = '<web-ui-dropdown-item>编辑</web-ui-dropdown-item>'
@@ -619,10 +619,10 @@ describe('WebUiTheme 组件', () => {
        *
        * 1. **scrim 在最近主题的 overlay root 里。** `--wui-color-*` 写在 `<web-ui-theme>` 的
        *    `:host` 上、只沿 DOM 树向下继承；scrim 若落在 `document.body`（theme 宿主的**父**
-       *    节点），继承链就断，面板与 scrim 一起退回浅色字面量 fallback —— 深色外观下的
+       *    节点），继承链就断，panel 与 scrim 一起退回浅色字面量 fallback —— 深色外观下的
        *    实测症状。挂在 `document.body` 是这次修复前的行为，这里改钉它必须在 overlay root。
-       * 2. **面板在 scrim 里。** 面板必须与 scrim 同处 top layer 才在模态期间可点；只满足
-       *    第 1 条而把面板留在 overlay root，模态期间它自己就不可点。
+       * 2. **panel 在 scrim 里。** panel 必须与 scrim 同处 top layer 才在模态期间可点；只满足
+       *    第 1 条而把 panel 留在 overlay root，模态期间它自己就不可点。
        *
        * jsdom 算不出 token 的计算色值，深浅两档的取色回归落在
        * `context-menu/__tests__/scrim-theme.browser.spec.ts`。

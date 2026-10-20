@@ -13,6 +13,6 @@ function Component() {
 }
 
 export const Route = createFileRoute('/components/empty')({
-  staticData: { title: 'Empty 空状态' },
+  staticData: { title: 'Empty' },
   component: Component
 })

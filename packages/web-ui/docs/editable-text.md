@@ -115,7 +115,7 @@ function onCancel() {
 
 ### 行为说明
 
-点击时光标落在点击处；键盘聚焦时落在文本末尾。`Enter` 与 `blur` 均提交草稿并恰好派发一次 `change`：`Enter` 不插入换行，并把焦点交还宿主；`blur` 不干预焦点，焦点留在用户移往的位置。只有 `Escape` 取消：值回到进入编辑时的状态，派发 `cancel` 而不派发 `change`，焦点交还宿主，且按键由编辑层消费，外层浮层（抽屉、菜单）不会因同一次按键关闭。`cancel` 不冒泡也不组合，只在组件本身派发：组件被投映在浮层 shadow 内时（如 drawer 标题），它不会触达浮层的原生 `cancel` 关闭管线，监听一律挂在组件本身。值里已有的换行仍按多行渲染，只是不能再靠输入 `Enter` 增加换行。空值继续显示 placeholder；编辑层始终按自身内容撑高，因此空草稿或纯空格草稿在宿主自身塌缩的场合（flex 项 `min-width: 0`、表格单元格）也仍有承接光标的位置。
+点击时光标落在点击处；键盘聚焦时落在文本末尾。`Enter` 与 `blur` 均提交草稿并恰好派发一次 `change`：`Enter` 不插入换行，并把焦点交还宿主；`blur` 不干预焦点，焦点留在用户移往的位置。只有 `Escape` 取消：值回到进入编辑时的状态，派发 `cancel` 而不派发 `change`，焦点交还宿主，且按键由编辑层消费，外层 overlay（drawer、menu）不会因同一次按键关闭。`cancel` 不冒泡也不组合，只在组件本身派发：组件被投映在 overlay shadow 内时（如 drawer 标题），它不会触达 overlay 的原生 `cancel` 关闭管线，监听一律挂在组件本身。值里已有的换行仍按多行渲染，只是不能再靠输入 `Enter` 增加换行。空值继续显示 placeholder；编辑层始终按自身内容撑高，因此空草稿或纯空格草稿在宿主自身塌缩的场合（flex 项 `min-width: 0`、表格单元格）也仍有承接光标的位置。
 
 `select()` 进入编辑态并全选内容；已在编辑态时只重新全选。`disabled` 时与 `focus()` 一样不产生效果。`readonly` 时仍可聚焦和全选，但输入被拒绝，退出编辑态也不派发 `change`。
 
@@ -148,4 +148,4 @@ function onCancel() {
 
 ### 交互变更
 
-`blur` 恢复提交：`Enter` 与 `blur` 均提交草稿，只有 `Escape` 取消，值回到进入编辑时的状态。`Enter` 仍不插入换行。`cancel` 事件不再冒泡：此前冒泡的自定义 `cancel` 会经 slot 进入外层浮层 shadow 内的 `<dialog>`（`composed` 与否都会），被当成关闭请求一并关掉（issue #159）；监听请挂在组件本身。
+`blur` 恢复提交：`Enter` 与 `blur` 均提交草稿，只有 `Escape` 取消，值回到进入编辑时的状态。`Enter` 仍不插入换行。`cancel` 事件不再冒泡：此前冒泡的自定义 `cancel` 会经 slot 进入外层 overlay shadow 内的 `<dialog>`（`composed` 与否都会），被当成关闭请求一并关掉（issue #159）；监听请挂在组件本身。

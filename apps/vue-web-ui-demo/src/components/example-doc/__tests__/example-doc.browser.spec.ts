@@ -2,7 +2,7 @@ import '@/assets/global.css'
 import '@/generated/examples.css'
 // 同理：layout 的默认值断言直接建元素，得把组件模块拉进来才会升级。
 import '@greypan/web-ui/components/layout'
-// 主题宿主得自己注册：本文件里没有 `<web-ui-theme>` 的模板用法，unplugin 的注入扫不到这个标签。
+// 主题宿主得自己注册：本文件里没有 `<web-ui-theme>` 的模板用法，unplugin 的注入扫不到这个 label。
 import '@greypan/web-ui/components/theme'
 
 import type { WebUiLayout, WebUiSegmented, WebUiSegmentedTrigger, WebUiSlider } from '@greypan/web-ui'
@@ -127,7 +127,7 @@ async function mountDemos(element: HTMLElement) {
 function sliderIn(element: HTMLElement, title: string) {
   const host = sample(element, title).querySelector<WebUiSlider>('web-ui-slider')
   if (!host) throw new Error(`示例「${title}」没有渲染出 web-ui-slider`)
-  // 影子树里有 role="slider" = 元素真的被注册升级过，不是留着未知标签的空壳。
+  // 影子树里有 role="slider" = 元素真的被注册升级过，不是留着未知 label 的空壳。
   if (!host.shadowRoot?.querySelector('[role="slider"]')) throw new Error(`示例「${title}」的 slider 没有升级`)
   return host
 }
@@ -294,7 +294,7 @@ describe('example-doc（Vue 面 / 真实浏览器）', () => {
     expect(cellOf(sliderRows, apiSection(slider, 'props'), 'max', '默认值')).toBe('100')
   })
 
-  it('options 表（命令式 API 的选项）与 props 表一样渲染类型与默认值两列', () => {
+  it('options 表（命令式 API 的 option）与 props 表一样渲染类型与默认值两列', () => {
     const rows = rowsOf(mountDoc('image-preview'), 'options')
     const options = apiSection(imagePreview, 'options')
 

@@ -2,8 +2,8 @@ import { describe, expect, it } from 'vite-plus/test'
 
 import { findFocusedMenuItem, getEnabledMenuItems, getMenuChildren, moveMenuChildren } from '../menu-tree'
 
-describe('多级菜单树操作', () => {
-  it('只迁移合法菜单节点并保留其他节点', () => {
+describe('多级 menu 树操作', () => {
+  it('只迁移合法 menu 节点并保留其他节点', () => {
     const source = document.createElement('div')
     const target = document.createElement('div')
     source.innerHTML = '<span>ignored</span><web-ui-dropdown-item>item</web-ui-dropdown-item>'

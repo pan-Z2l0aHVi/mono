@@ -13,6 +13,6 @@ function Component() {
 }
 
 export const Route = createFileRoute('/components/middle-ellipsis')({
-  staticData: { title: 'MiddleEllipsis 中间省略' },
+  staticData: { title: 'MiddleEllipsis' },
   component: Component
 })

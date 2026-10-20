@@ -17,7 +17,7 @@ describe('WebUiSpinner 组件', () => {
       await waitForUpdate(el)
 
       expect(el.getAttribute('role')).toBe('status')
-      expect(el.getAttribute('aria-label')).toBe('加载中')
+      expect(el.getAttribute('aria-label')).toBe('Loading')
       cleanupElement(el)
     })
 
@@ -49,7 +49,7 @@ describe('WebUiSpinner 组件', () => {
       expect(el.description).toBe('正在加载数据...')
     })
 
-    // 全屏浮层同时只能有一个：第二次 show 要接管，第一次必须离开文档。
+    // 全屏 overlay 同时只能有一个：第二次 show 要接管，第一次必须离开文档。
     it('多次 show() 只保留最新一个', () => {
       const first = WebUiSpinner.show()
       const second = WebUiSpinner.show()

@@ -65,7 +65,7 @@ tag: web-ui-middle-ellipsis
 
 ### 行为说明
 
-使用条件与 `text-overflow: ellipsis` 相同：**单行、且有确定行内尺寸**。块级盒子、flex 行里的 `flex: 1; min-width: 0`、grid 轨道都可以。宿主按自身内容撑宽时不存在可用空间，组件按量到的宽度切一次就停止继续收缩，而不是一路塌到只剩标记。
+使用条件与 `text-overflow: ellipsis` 相同：**单行、且有确定行内尺寸**。块级盒子、flex 行里的 `flex: 1; min-width: 0`、grid track 都可以。宿主按自身内容撑宽时不存在可用空间，组件按量到的宽度切一次就停止继续收缩，而不是一路塌到只剩标记。
 
 文件名场景靠 `marker-position` 调节，头部是路径噪声、尾部才是扩展名时取大值。下表是示意而非可复现的取值——确切切点取决于字体——取自 16px `system-ui`、240px 盒子：
 

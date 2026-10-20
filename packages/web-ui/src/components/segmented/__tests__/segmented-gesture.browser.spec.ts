@@ -17,7 +17,7 @@ function gestureSurface(segmented: WebUiSegmented): HTMLElement {
   return surface
 }
 
-/** 单个选项的可交互面以公开语义 role="option" 定位。 */
+/** 单个 option 的可交互面以公开语义 role="option" 定位。 */
 function optionSurface(trigger: WebUiSegmentedTrigger): HTMLElement {
   const surface = queryA11y(trigger, '[role="option"]')
   if (!(surface instanceof HTMLElement)) throw new Error('未找到 role="option" 的可交互面')
@@ -111,20 +111,20 @@ function createUnequalSegmented(): {
 }
 
 /**
- * 指示器的布局宽度：读**计算值**而不是 getBoundingClientRect——拖拽态的指示器带
+ * indicator 的布局宽度：读**计算值**而不是 getBoundingClientRect——拖拽态的 indicator 带
  * `scale(1.5)`，rect 量到的是放大后的可视盒，与 trigger 的 rect 不同量纲。
  */
 function indicatorWidth(segmented: WebUiSegmented): number {
   const indicator = queryA11y(segmented, '.wui-segmented-indicator')
-  if (!(indicator instanceof HTMLElement)) throw new Error('未找到指示器')
+  if (!(indicator instanceof HTMLElement)) throw new Error('未找到 indicator')
   return Number.parseFloat(getComputedStyle(indicator).width)
 }
 
 /**
  * 拖拽到某个 trigger 的中心：按下 + 一段 move，走组件自己的手势入口；指针保持按下。
  *
- * 按下点取 trigger 中心：拇指中心跟手、宽度取「离拇指中心最近的可选项」，抓在边缘时
- * 拇指中心相对指针有一个偏移，宽度会按同样的偏移滞后——那是与松手吸附一致的判据，
+ * 按下点取 trigger 中心：indicator 中心跟手、宽度取「离 indicator 中心最近的 selectable option」，抓在边缘时
+ * indicator 中心相对指针有一个偏移，宽度会按同样的偏移滞后——那是与松手吸附一致的判据，
  * 不是本用例要钉的东西。
  */
 async function dragFromTo(
@@ -153,7 +153,7 @@ async function releaseOn(segmented: WebUiSegmented, at: WebUiSegmentedTrigger, y
 }
 
 describe('WebUiSegmented 手势拖拽与吸附（浏览器）', () => {
-  it('拖拽指示器超过中点松手：吸附至目标选项并触发 input 与 change', async () => {
+  it('拖拽 indicator 超过中点松手：吸附至目标 option 并触发 input 与 change', async () => {
     const { segmented, t1, t2 } = createSegmented()
     await segmented.updateComplete
 
@@ -186,7 +186,7 @@ describe('WebUiSegmented 手势拖拽与吸附（浏览器）', () => {
     expect(changeEvents).toHaveLength(1)
   })
 
-  it('拖拽未过中点松手：回弹至原选项，不触发 input/change', async () => {
+  it('拖拽未过中点松手：回弹至原 option，不触发 input/change', async () => {
     const { segmented, t1, t2 } = createSegmented()
     await segmented.updateComplete
 
@@ -225,7 +225,7 @@ describe('WebUiSegmented 手势拖拽与吸附（浏览器）', () => {
     expect(changeEvents).toHaveLength(0)
   })
 
-  it('跳过 disabled 选项：自动吸附至最近的可用选项', async () => {
+  it('跳过 disabled option：自动吸附至最近的可用 option', async () => {
     const { segmented, t1, t2 } = createSegmented({ disabledSecond: true })
     await segmented.updateComplete
 
@@ -248,7 +248,7 @@ describe('WebUiSegmented 手势拖拽与吸附（浏览器）', () => {
     expect(['daily', 'monthly']).toContain(segmented.value)
   })
 
-  it('轻点（Tap）触发器正常切换选项且触发事件', async () => {
+  it('轻点（Tap）trigger 正常切换 option 且触发事件', async () => {
     const { segmented, t2 } = createSegmented()
     await segmented.updateComplete
 
@@ -270,7 +270,7 @@ describe('WebUiSegmented 手势拖拽与吸附（浏览器）', () => {
     expect(changeEvents).toHaveLength(1)
   })
 
-  it('从非激活项起始的指针序列不切换选项，也不触发事件', async () => {
+  it('从非激活项起始的指针序列不切换 option，也不触发事件', async () => {
     const { segmented, t2 } = createSegmented()
     await segmented.updateComplete
 
@@ -297,7 +297,7 @@ describe('WebUiSegmented 手势拖拽与吸附（浏览器）', () => {
     expect(changeEvents).toHaveLength(0)
   })
 
-  it('flick 抛掷快速手势切换至下一选项', async () => {
+  it('flick 抛掷快速手势切换至下一 option', async () => {
     const { segmented, t1 } = createSegmented()
     await segmented.updateComplete
 
@@ -331,10 +331,10 @@ describe('WebUiSegmented 手势拖拽与吸附（浏览器）', () => {
     await new Promise<void>(resolve => requestAnimationFrame(() => requestAnimationFrame(() => resolve())))
     await segmented.updateComplete
 
-    // 指示器无公开 role，只能按类名定位；本用例整体主题是动效，观察面用 Web Animations API
+    // indicator 无公开 role，只能按类名定位；本用例整体主题是动效，观察面用 Web Animations API
     // （非 CSS 取值）。属判据 §8 的动效例外，最终裁定归 b6。
     const indicator = queryA11y(segmented, '.wui-segmented-indicator') as HTMLElement | null
-    expect(indicator, '指示器应已渲染').not.toBeNull()
+    expect(indicator, 'indicator 应已渲染').not.toBeNull()
 
     expect(indicator!.getAnimations()).toHaveLength(0)
   })
@@ -377,11 +377,11 @@ describe('WebUiSegmented 手势拖拽与吸附（浏览器）', () => {
   })
 
   /*
-   * 栈序契约：thumb 滑到哪个选项上方，那个选项的文字就必须仍在最上层；thumb 一旦盖住文字，
-   * 该选项的命中就会从自身 trigger 变成 segmented，用户点在选中项上却选不中它。
-   * 命中测试是唯一能观测栈序的运行时证据——thumb 的底色、投影、透明度都看不出来。
+   * 栈序契约：indicator 滑到哪个 option 上方，那个 option 的文字就必须仍在最上层；indicator 一旦盖住文字，
+   * 该 option 的命中就会从自身 trigger 变成 segmented，用户点在选中项上却选不中它。
+   * 命中测试是唯一能观测栈序的运行时证据——indicator 的底色、投影、透明度都看不出来。
    */
-  it('静止/按住/拖拽/松开下每个选项的文字都不被 thumb 遮挡', async () => {
+  it('静止/按住/拖拽/松开下每个 option 的文字都不被 indicator 遮挡', async () => {
     const { segmented, t1, t3 } = createSegmented()
     await segmented.updateComplete
 
@@ -392,7 +392,7 @@ describe('WebUiSegmented 手势拖拽与吸附（浏览器）', () => {
       })
       expect(
         hits.every(({ hit }, index) => belongsToTrigger(hit, [t1, t3][index]!)),
-        `${state} 下文字被 thumb 遮挡：${hits.map(({ label, hit }) => `「${label}」→ ${describeHit(hit)}`).join(' | ')}`
+        `${state} 下文字被 indicator 遮挡：${hits.map(({ label, hit }) => `「${label}」→ ${describeHit(hit)}`).join(' | ')}`
       ).toBe(true)
     }
 
@@ -414,46 +414,46 @@ describe('WebUiSegmented 手势拖拽与吸附（浏览器）', () => {
   })
 
   /*
-   * #222：trigger 宽度不等时，拖拽中的指示器宽度必须跟随当前 hover 的 trigger。
+   * #222：trigger 宽度不等时，拖拽中的 indicator 宽度必须跟随当前 hover 的 trigger。
    *
-   * 缺陷形态：拖拽全程把 `--indicator-width` 钉在按下那一项的宽度上，于是拇指滑过更宽的
-   * 选项时仍保持窄宽，与选项对不齐——选项不等宽正是这个控件的常态（interweave 设置
+   * 缺陷形态：拖拽全程把 `--indicator-width` 钉在按下那一项的宽度上，于是 indicator 滑过更宽的
+   * option 时仍保持窄宽，与 option 对不齐——option 不等宽正是这个控件的常态（interweave 设置
    * dialog 顶部即此形）。
    *
-   * 判据取**拖拽尚未松手时**的指示器宽度：松手后 `_updateIndicator` 本来就会把宽度写成
+   * 判据取**拖拽尚未松手时**的 indicator 宽度：松手后 `_updateIndicator` 本来就会把宽度写成
    * 新选中项的宽度，只在松手后断言的话，一条什么都不改的实现同样能过。
    * 双向：滑到宽项变宽、滑回窄项收窄——只钉一个方向的话，「宽度恒等于最宽项」也能过。
    */
-  it('不等宽 trigger：拖拽中指示器宽度跟随 hover 的 trigger', async () => {
+  it('不等宽 trigger：拖拽中 indicator 宽度跟随 hover 的 trigger', async () => {
     const { segmented, t1, t2 } = createUnequalSegmented()
     await segmented.updateComplete
-    await pollUntil(() => indicatorWidth(segmented) > 0, '指示器未完成定位')
+    await pollUntil(() => indicatorWidth(segmented) > 0, 'indicator 未完成定位')
 
     const narrowWidth = t1.getBoundingClientRect().width
     const wideWidth = t2.getBoundingClientRect().width
     // 可证伪：前提是两项宽度真的不等，否则下面两条断言恒真。
     expect(wideWidth - narrowWidth, '前提：两个 trigger 宽度不等').toBeGreaterThan(20)
-    expect(indicatorWidth(segmented), '静止态指示器对齐选中项的宽度').toBeCloseTo(narrowWidth, 0)
+    expect(indicatorWidth(segmented), '静止态 indicator 对齐选中项的宽度').toBeCloseTo(narrowWidth, 0)
 
     const y = await dragFromTo(segmented, t1, t2)
-    expect(indicatorWidth(segmented), '滑到宽项上时指示器应取该 trigger 的宽度').toBeCloseTo(wideWidth, 0)
+    expect(indicatorWidth(segmented), '滑到宽项上时 indicator 应取该 trigger 的宽度').toBeCloseTo(wideWidth, 0)
 
     // 松手落定后反向拖回：宽度跟着换回去，两个方向都钉住。
     await releaseOn(segmented, t2, y)
     expect(segmented.value, '松手应吸附到宽项').toBe('wide')
 
     await dragFromTo(segmented, t2, t1)
-    expect(indicatorWidth(segmented), '滑回窄项上时指示器应取该 trigger 的宽度').toBeCloseTo(narrowWidth, 0)
+    expect(indicatorWidth(segmented), '滑回窄项上时 indicator 应取该 trigger 的宽度').toBeCloseTo(narrowWidth, 0)
   })
 
   /*
-   * 同一缺陷的下游：宽度跟随后，拇指仍要留在轨道内。等宽触发下这条恒真（宽度不变），
-   * 不等宽时若越界，说明跟随的那一项把拇指推出了轨道。
+   * 同一缺陷的下游：宽度跟随后，indicator 仍要留在 track 内。等宽触发下这条恒真（宽度不变），
+   * 不等宽时若越界，说明跟随的那一项把 indicator 推出了 track。
    */
-  it('不等宽 trigger：拖拽中指示器不越出轨道', async () => {
+  it('不等宽 trigger：拖拽中 indicator 不越出 track', async () => {
     const { segmented, t1, t2 } = createUnequalSegmented()
     await segmented.updateComplete
-    await pollUntil(() => indicatorWidth(segmented) > 0, '指示器未完成定位')
+    await pollUntil(() => indicatorWidth(segmented) > 0, 'indicator 未完成定位')
 
     const track = gestureSurface(segmented).getBoundingClientRect()
     const t1Rect = t1.getBoundingClientRect()
@@ -464,18 +464,18 @@ describe('WebUiSegmented 手势拖拽与吸附（浏览器）', () => {
     inner.dispatchEvent(pointer('pointerdown', { clientX: t1Rect.left + 10, clientY: y }))
     await segmented.updateComplete
 
-    // 一路拖到轨道最右端之外：拇指被钳在最后一项上，宽度也取最后一项的。
+    // 一路拖到 track 最右端之外：indicator 被钳在最后一项上，宽度也取最后一项的。
     window.dispatchEvent(pointer('pointermove', { clientX: t2Rect.right + 400, clientY: y }))
     await segmented.updateComplete
 
     const indicator = queryA11y(segmented, '.wui-segmented-indicator') as HTMLElement
     const box = indicator.getBoundingClientRect()
-    // scale(1.5) 绕中心放大，可视盒比布局盒宽；按放大系数换算回布局盒再比轨道。
+    // scale(1.5) 绕中心放大，可视盒比布局盒宽；按放大系数换算回布局盒再比 track。
     const laidOut = {
       left: box.left + (box.width - box.width / 1.5) / 2,
       right: box.right - (box.width - box.width / 1.5) / 2
     }
-    expect(laidOut.left, '指示器左沿越出轨道').toBeGreaterThanOrEqual(track.left - 0.5)
-    expect(laidOut.right, '指示器右沿越出轨道').toBeLessThanOrEqual(track.right + 0.5)
+    expect(laidOut.left, 'indicator 左沿越出 track').toBeGreaterThanOrEqual(track.left - 0.5)
+    expect(laidOut.right, 'indicator 右沿越出 track').toBeLessThanOrEqual(track.right + 0.5)
   })
 })

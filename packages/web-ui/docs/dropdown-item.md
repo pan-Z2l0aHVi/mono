@@ -3,13 +3,13 @@ component: dropdown-item
 tag: web-ui-dropdown-item
 ---
 
-`<web-ui-dropdown>` 与 `<web-ui-context-menu>` 的菜单项：`disabled` 让它留在菜单里但不可选中，键盘导航与悬停都会跳过它；`prefix` / `suffix` 插槽放两端的图标与快捷键提示；`submenu` 把嵌套的子菜单挂到它的下一级。它自己不派发对外事件，`value` 也不被菜单消费——那是留给使用方在原生 `click` 里读的标识。
+`<web-ui-dropdown>` 与 `<web-ui-context-menu>` 的 menu item：`disabled` 让它留在 menu 里但不可选中，键盘导航与悬停都会跳过它；`prefix` / `suffix` 插槽放两端的 icon 与快捷键提示；`submenu` 把嵌套的submenu 挂到它的下一级。它自己不派发对外事件，`value` 也不被 menu 消费——那是留给使用方在原生 `click` 里读的标识。
 
 ## 示例
 
-### 基础菜单 {#basic}
+### 基础 menu {#basic}
 
-菜单项是宿主的子元素，打开时被迁移进浮层面板；`disabled` 的项仍在列表里，只是选不中。
+menu item 是宿主的子元素，打开时被迁移进 overlay panel；`disabled` 的项仍在列表里，只是选不中。
 
 ```react
 export default function Demo() {
@@ -39,9 +39,9 @@ export default function Demo() {
 </template>
 ```
 
-### 图标与快捷键 {#decorated}
+### icon 与快捷键 {#decorated}
 
-`prefix` / `suffix` 是两个装饰位；`pl` 把左内边距写进项本身，让没有图标的纯文本项与带 14px 图标的项左对齐（8px 内边距 + 14px 图标 + 8px 间隙）。
+`prefix` / `suffix` 是两个装饰位；`pl` 把左内边距写进项本身，让没有 icon 的纯文本项与带 14px icon 的项左对齐（8px 内边距 + 14px icon + 8px 间隙）。
 
 ```react
 import { lucideCopy, lucideTrash2 } from '@greypan/web-ui/icons'
@@ -87,9 +87,9 @@ import { lucideCopy, lucideTrash2 } from '@greypan/web-ui/icons'
 </script>
 ```
 
-### 带子菜单的项 {#submenu}
+### 带submenu 的项 {#submenu}
 
-`submenu` 把项变成本级菜单的入口：嵌套在它里面的菜单项成为下一级，右侧长出展开箭头，鼠标悬停或方向键都能进入。
+`submenu` 把项变成本级 menu 的入口：嵌套在它里面的 menu item 成为下一级，右侧长出展开箭头，鼠标悬停或方向键都能进入。
 
 ```react
 export default function Demo() {
@@ -127,26 +127,26 @@ export default function Demo() {
 
 ### Props
 
-| 名称       | 说明                                                                 | 类型      | 默认值  |
-| ---------- | -------------------------------------------------------------------- | --------- | ------- |
-| `disabled` | 禁用项：留在菜单里但不可选中，键盘导航与悬停跳过它。                 | `boolean` | `false` |
-| `pl`       | 项的左内边距，写成 CSS 长度；用来对齐有 / 无 `prefix` 图标的两种项。 | `string`  | `''`    |
-| `value`    | 项的标识，由使用方在原生 `click` 里读取；菜单自己不消费。            | `string`  | `''`    |
-| `submenu`  | 作为子菜单入口：嵌套的菜单项成为下一级，右侧显示展开箭头。           | `boolean` | `false` |
+| 名称       | 说明                                                                  | 类型      | 默认值  |
+| ---------- | --------------------------------------------------------------------- | --------- | ------- |
+| `disabled` | 禁用项：留在 menu 里但不可选中，键盘导航与悬停跳过它。                | `boolean` | `false` |
+| `pl`       | 项的左内边距，写成 CSS 长度；用来对齐有 / 无 `prefix` icon 的两种项。 | `string`  | `''`    |
+| `value`    | 项的标识，由使用方在原生 `click` 里读取；menu 自己不消费。            | `string`  | `''`    |
+| `submenu`  | 作为submenu 入口：嵌套的 menu item 成为下一级，右侧显示展开箭头。     | `boolean` | `false` |
 
 ### Slots
 
 | 名称      | 说明                                                           |
 | --------- | -------------------------------------------------------------- |
-| `prefix`  | 文本左侧的图标或标识。                                         |
-| `default` | 项的文本；也是子菜单项的宿主位置。                             |
+| `prefix`  | 文本左侧的 icon 或标识。                                       |
+| `default` | 项的文本；也是submenu item 的宿主位置。                        |
 | `suffix`  | 文本右侧的快捷键提示等；`submenu` 为真时这一位被展开箭头占用。 |
 
 ### Methods
 
-| 名称          | 说明                                                     |
-| ------------- | -------------------------------------------------------- |
-| `focusItem()` | 聚焦菜单项：通过可见元素聚焦，跨 Shadow DOM 时不丢焦点。 |
+| 名称          | 说明                                                         |
+| ------------- | ------------------------------------------------------------ |
+| `focusItem()` | 聚焦 menu item：通过可见元素聚焦，跨 Shadow DOM 时不丢焦点。 |
 
 ### 行为说明
 

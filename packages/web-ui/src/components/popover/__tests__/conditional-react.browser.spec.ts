@@ -56,7 +56,7 @@ async function mountReactPopover(children: ReactNode): Promise<{
 }
 
 describe('WebUiPopover portal 条件渲染边界（React，浏览器）', () => {
-  it('打开期裸条件新增实时迁入面板并在关闭后恢复', async () => {
+  it('打开期裸条件新增实时迁入 panel 并在关闭后恢复', async () => {
     let show = false
     const { popover, render, unmount } = await mountReactPopover(
       show ? createElement('p', { className: 'probe-flag' }, 'flag') : null
@@ -68,7 +68,7 @@ describe('WebUiPopover portal 条件渲染边界（React，浏览器）', () => 
     await waitForFrame()
     expect(getPortalPanel()?.querySelector('.probe-flag')).toBeNull()
 
-    // 打开期新增：React 以 recorded parent（宿主）appendChild，宿主观察者迁入面板
+    // 打开期新增：React 以 recorded parent（宿主）appendChild，宿主观察者迁入 panel
     show = true
     await render(show ? createElement('p', { className: 'probe-flag' }, 'flag') : null)
     await popover.updateComplete
@@ -124,7 +124,7 @@ describe('WebUiPopover portal 条件渲染边界（React，浏览器）', () => 
     await unmount()
   })
 
-  it('稳定 wrapper 内条件新增：打开期插入进面板并随关闭周期往返', async () => {
+  it('稳定 wrapper 内条件新增：打开期插入进 panel 并随关闭周期往返', async () => {
     let show = false
     const wrap = (flag: ReactNode) => createElement('div', { className: 'probe-wrap' }, flag)
     const { popover, render, unmount } = await mountReactPopover(
@@ -137,7 +137,7 @@ describe('WebUiPopover portal 条件渲染边界（React，浏览器）', () => 
     await waitForFrame()
     expect(getPortalPanel()?.querySelector('.probe-flag')).toBeNull()
 
-    // React 向 wrapper（面板内）插入节点，父子关系一致，内容直接落面板
+    // React 向 wrapper（panel 内）插入节点，父子关系一致，内容直接落 panel
     show = true
     await render(wrap(createElement('p', { className: 'probe-flag' }, 'flag')))
     await popover.updateComplete

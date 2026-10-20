@@ -14,6 +14,6 @@ function Component() {
 }
 
 export const Route = createFileRoute('/components/autocomplete')({
-  staticData: { title: 'Autocomplete 自动补全' },
+  staticData: { title: 'Autocomplete' },
   component: Component
 })

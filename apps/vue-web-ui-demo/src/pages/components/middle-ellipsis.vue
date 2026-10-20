@@ -1,7 +1,7 @@
 <route lang="json">
 {
   "meta": {
-    "title": "MiddleEllipsis 中间省略"
+    "title": "MiddleEllipsis"
   }
 }
 </route>

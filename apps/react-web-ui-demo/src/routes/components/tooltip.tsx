@@ -13,6 +13,6 @@ function Component() {
 }
 
 export const Route = createFileRoute('/components/tooltip')({
-  staticData: { title: 'Tooltip 工具提示' },
+  staticData: { title: 'Tooltip' },
   component: Component
 })

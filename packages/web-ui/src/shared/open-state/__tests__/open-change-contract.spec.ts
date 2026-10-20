@@ -11,7 +11,7 @@ import { getMenuPanels, queryA11y, spyEvents, waitForUpdate } from '@/shared/tes
 /**
  * `open-change` 的共享契约矩阵。
  *
- * `shared/open-state` 是浮层族 `open-change` 的唯一致出点，模块注释写明了它的
+ * `shared/open-state` 是 overlay 族 `open-change` 的唯一致出点，模块注释写明了它的
  * **notification 语义**：组件总是自行变更 `open`，事件只作通知（与 dialog / drawer /
  * layout 的 request 语义相对）。由此可得一条跨组件恒定的契约：
  *
@@ -46,11 +46,11 @@ interface OpenChangeSpec {
    */
   programOpenByProperty?: (el: Openable) => void
   /**
-   * 「已打开」的**可观察后果**（面板已挂载且非 `hidden`），供属性面用例做状态断言。
+   * 「已打开」的**可观察后果**（panel 已挂载且非 `hidden`），供属性面用例做状态断言。
    *
    * 属性面用例不能断言 `el.open`：它是 `@property({ reflect: true })` 的公开属性，
    * 赋值后自读恒为 true（`isOpen` 也只是 `() => this.open` 的别名），断言它属同义反复、
-   * 对回归零保护。改断言面板真的被挂出来了。
+   * 对回归零保护。改断言 panel 真的被挂出来了。
    */
   openedConsequence?: (el: Openable) => boolean
 }
@@ -261,8 +261,8 @@ describe('open-change 契约（notification 语义：程序式静默，用户手
         openByProperty(el)
         await settle(el)
 
-        // 不断言 `el.open`（reflect 属性自读恒真）；断言面板真的挂出来且非 hidden。
-        expect(opened(el), '属性面程序式打开应真的挂出面板').toBe(true)
+        // 不断言 `el.open`（reflect 属性自读恒真）；断言 panel 真的挂出来且非 hidden。
+        expect(opened(el), '属性面程序式打开应真的挂出 panel').toBe(true)
         expect(events, '程序式变更不是用户手势').toHaveLength(0)
 
         detach()
@@ -273,7 +273,7 @@ describe('open-change 契约（notification 语义：程序式静默，用户手
 
 // jsdom 未实现原生 dialog 的 modal 语义，这里局部补足 showModal/close 对 open 的影响。
 // 本文件在 jsdom 下驱动 context-menu（模态 scrim 走 `showModal()`），缺这两个方法会直接抛错，
-// 菜单根本开不起来，下面所有 open-change 断言会连带失败 —— 那是环境缺陷，不是契约缺陷。
+// menu 根本开不起来，下面所有 open-change 断言会连带失败 —— 那是环境缺陷，不是契约缺陷。
 // 刻意不做成 test-helper 里的全局 shim，理由见 test-helper.ts 末尾。
 if (!HTMLDialogElement.prototype.showModal) {
   HTMLDialogElement.prototype.showModal = function () {

@@ -136,7 +136,7 @@ export class WebUiCheckboxGroup extends FormAssociated(LitElement) {
       internals.setValidity({})
       return
     }
-    internals.setValidity({ valueMissing: true }, '请至少选择一项')
+    internals.setValidity({ valueMissing: true }, 'Select at least one option')
   }
 
   override render() {

@@ -139,14 +139,14 @@ slot.empty {
   display: none;
 }
 
-/* 复用 web-ui-button icon ghost：仅覆盖颜色为 faint 并对齐首行，保持弱意图清除图标观感；
-  负 margin-left 抵消容器 flex gap，让清除按钮紧贴文本域内容
-  负 margin-right 抵消 button padding，让清除按钮右侧 spacing 视觉上协调 */
+/* 复用 web-ui-button icon ghost：仅覆盖颜色为 faint 并对齐首行，保持弱意图清除 icon 观感；
+  负 margin-left 抵消容器 flex gap，让清除 button 紧贴 textarea 内容
+  负 margin-right 抵消 button padding，让清除 button 右侧 spacing 视觉上协调 */
 .wui-textarea-inner web-ui-button[variant='ghost'] {
   --wui-button-color: var(--wui-textarea-clear-color);
 
-  /* 与首行文字垂直居中对齐：容器 align-items: flex-start 使按钮贴内容区顶部，
-    首行中心 = padding-top + 行高/2；24px 按钮需相对内容区上移 (行高 − 按钮高度) / 2 */
+  /* 与首行文字垂直居中对齐：容器 align-items: flex-start 使 button 贴内容区顶部，
+    首行中心 = padding-top + 行高/2；24px button 需相对内容区上移 (行高 − button 高度) / 2 */
   margin-top: calc((var(--wui-font-size, 14px) * 1.5 - 24px) / 2);
   margin-right: -4px;
   margin-left: -8px;

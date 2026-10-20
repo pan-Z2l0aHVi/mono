@@ -43,7 +43,7 @@ describe('Web UI focus 契约（浏览器）', () => {
     cleanupElement(button)
   })
 
-  it('输入框取得焦点时宿主反射 focused，失焦后移除', async () => {
+  it('input 取得焦点时宿主反射 focused，失焦后移除', async () => {
     const theme = mountTheme()
     const input = document.createElement('web-ui-input') as WebUiInput
     theme.append(input)
@@ -60,7 +60,7 @@ describe('Web UI focus 契约（浏览器）', () => {
     cleanupElement(input)
   })
 
-  it('键盘 Tab 聚焦输入框并反射 focused', async () => {
+  it('键盘 Tab 聚焦 input 并反射 focused', async () => {
     const theme = mountTheme()
     const input = document.createElement('web-ui-input') as WebUiInput
     theme.append(input)

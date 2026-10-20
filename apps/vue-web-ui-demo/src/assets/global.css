@@ -1,8 +1,8 @@
 /* stylelint-disable custom-property-pattern */
 @import 'tailwindcss';
 
-/* 全局滚动条主题：主题类、库的结构样式与 --os-* 度量都在这里面，一条 import 拿全。
-   只对初始化过 OverlayScrollbars 的元素生效，未接管的容器保持原生滚动条。 */
+/* 全局 scrollbar 主题：主题类、库的结构样式与 --os-* 度量都在这里面，一条 import 拿全。
+   只对初始化过 OverlayScrollbars 的元素生效，未接管的容器保持原生 scrollbar。 */
 @import '@greypan/web-ui/scrollbars.css';
 
 @custom-variant dark (&:where(web-ui-theme[resolved-appearance='dark'] *));
@@ -17,7 +17,7 @@
  * 两条边界得记住：
  *
  * - **只对 layout 子树内的节点生效。** 被 overlay 的 portal 搬到 `document.body` 的内容够不到
- *   （菜单/选项、popover、tooltip、select、autocomplete、image-preview、toast），那里要继续用
+ *   （menu/option、popover、tooltip、select、autocomplete、image-preview、toast），那里要继续用
  *   媒体查询。本 demo 当前没有这类节点。
  * - **不要拿它做 min-width 变体。** Tailwind v4 把 `@custom-variant` 生成的规则排在主题断点
  *   之后，`:where()` 又不抬特异性，于是同属性同权、后出现者胜——一条 `desktop:grid-cols-4`

@@ -30,7 +30,7 @@ function layoutRoot() {
 }
 
 function navRoot() {
-  const element = document.querySelector('[aria-label="应用导航"]')
+  const element = document.querySelector('[aria-label="App navigation"]')
   if (!element) throw new Error('sidebar nav not found')
   return element
 }
@@ -40,13 +40,13 @@ function isDrawerMode() {
 }
 
 /**
- * 导航项的渲染形态。折叠态在 demo 里只体现为排版，所以判据是真实渲染出来的对齐方式与
+ * 导航项的渲染形态。collapsed state 在 demo 里只体现为排版，所以判据是真实渲染出来的对齐方式与
  * 文字在整行里的落点；`centered` 把「文字贴着整行中间」说成一个几何事实，而不是某个
  * 具体的 CSS 值。
  *
- * 容差按行宽缩放（取四分之一）而不是给绝对值：同一个折叠态会以两种行宽渲染——刚回写折叠
+ * 容差按行宽缩放（取四分之一）而不是给绝对值：同一个 collapsed state 会以两种行宽渲染——刚回写 collapse
  * 偏好时侧边栏还没真正收窄，行宽 216px、文字严格居中（两侧差 0）；真正重新布局之后行宽变成
- * 44px，被截断的标签带来约 3.8px 的不对称。展开态与抽屉态的两侧差是行宽的 0.78～0.83，两类
+ * 44px，被截断的 label 带来约 3.8px 的不对称。展开态与 drawer 态的两侧差是行宽的 0.78～0.83，两类
  * 之间隔着一个数量级，所以四分之一行宽落在中间、两侧都留有余量。
  */
 function navItemShape() {
@@ -89,6 +89,15 @@ async function mountAppShell() {
 }
 
 /** 复刻 layout 侧边栏 Toggle 的请求链路：layout 只派发请求，宿主回写受控属性。 */
+/** 等侧边栏真正收窄到 collapsed width 再取形状：collapsed width 有过渡，宽态下量到的是过渡中的形状。 */
+async function waitForCollapsedNav() {
+  await vi.waitFor(() => {
+    const link = navRoot().querySelector('a')
+    const width = link ? link.getBoundingClientRect().width : Number.POSITIVE_INFINITY
+    if (width > 48) throw new Error('侧边栏还没有收窄到位')
+  })
+}
+
 async function requestCollapse(collapsed: boolean) {
   await act(async () => {
     layoutRoot().dispatchEvent(new CustomEvent('sidebar-collapsed-change', { detail: { collapsed } }))
@@ -100,7 +109,7 @@ async function requestCollapse(collapsed: boolean) {
 
 /**
  * 换的是真实视口（`setViewport`），app 的 media query 与 layout 的 `innerWidth` 判定都
- * 由引擎自己给出结论；等的是抽屉形态真的换了，而不是一段固定时长。
+ * 由引擎自己给出结论；等的是 drawer 形态真的换了，而不是一段固定时长。
  *
  * 等待必须用 testing-library 的 `waitFor` 而不是 `vi.waitFor`：跨断点时 React 的回写有两条
  * 异步链路（Root 的 `matchMedia` change 监听、layout 那 100ms 去抖的 resize 处理），实测有
@@ -113,7 +122,7 @@ async function requestCollapse(collapsed: boolean) {
  */
 async function settleViewport(drawerMode: boolean) {
   await waitFor(() => {
-    if (isDrawerMode() !== drawerMode) throw new Error(`抽屉形态没有变成 ${drawerMode}`)
+    if (isDrawerMode() !== drawerMode) throw new Error(`drawer 形态没有变成 ${drawerMode}`)
   })
   await act(async () => {
     await layoutRoot().updateComplete
@@ -131,7 +140,7 @@ async function changeViewport(size: { width: number; height: number }) {
   })
 }
 
-/** 点 layout 自己的移动端入口按钮打开抽屉（真实点击，不是直接写 props）。 */
+/** 点 layout 自己的移动端入口 button 打开 drawer（真实点击，不是直接写 props）。 */
 async function openDrawer() {
   const toggle = layoutRoot().shadowRoot?.querySelector<HTMLElement>('.mobile-toggle')
   if (!toggle) throw new Error('mobile toggle not found')
@@ -143,14 +152,14 @@ async function openDrawer() {
     await userEvent.click(toggle)
   })
   await vi.waitFor(() => {
-    if (navRoot().getBoundingClientRect().width === 0) throw new Error('抽屉没有打开')
+    if (navRoot().getBoundingClientRect().width === 0) throw new Error('drawer 没有打开')
   })
   await act(async () => {
     await layoutRoot().updateComplete
   })
 }
 
-describe('应用外壳（浏览器）：导航折叠态不跨视口泄漏', () => {
+describe('应用外壳（浏览器）：导航 collapsed state 不跨视口泄漏', () => {
   beforeEach(async () => {
     await changeViewport(DESKTOP_VIEWPORT)
   })
@@ -160,7 +169,7 @@ describe('应用外壳（浏览器）：导航折叠态不跨视口泄漏', () =
     await changeViewport(DESKTOP_VIEWPORT)
   })
 
-  it('桌面端折叠后导航文字居中，展开态左对齐', async () => {
+  it('桌面端 collapse 后导航文字居中，展开态左对齐', async () => {
     await mountAppShell()
     const expanded = navItemShape()
     expect(expanded.centered).toBe(false)
@@ -170,34 +179,35 @@ describe('应用外壳（浏览器）：导航折叠态不跨视口泄漏', () =
 
     expect(isDrawerMode()).toBe(false)
     expect(layoutRoot().sidebarCollapsed).toBe(true)
-    // 折叠换了一套渲染，且换成的就是「文字居中」那一套。
+    // collapse 换了一套渲染，且换成的就是「文字居中」那一套。
     expect(collapsed).not.toEqual(expanded)
     expect(collapsed.centered).toBe(true)
   })
 
-  it('移动端断点下抽屉里的导航回到展开态，而不是桌面折叠态', async () => {
+  it('移动端断点下 drawer 里的导航回到展开态，而不是桌面 collapsed state', async () => {
     await mountAppShell()
     const expanded = navItemShape()
 
     await requestCollapse(true)
     const collapsed = navItemShape()
-    // 对照：折叠确实换了一套渲染，否则下面那条「与展开态一致」可能只是因为折叠从未生效。
+    // 对照：collapse 确实换了一套渲染，否则下面那条「与展开态一致」可能只是因为 collapse 从未生效。
     expect(collapsed).not.toEqual(expanded)
 
     await changeViewport(MOBILE_VIEWPORT)
     await settleViewport(true)
     await openDrawer()
 
-    // 前提：折叠偏好仍写在 layout 上，且抽屉此刻真的是当前形态。
+    // 前提：collapse preference 仍写在 layout 上，且 drawer 此刻真的是当前形态。
     expect(layoutRoot().sidebarCollapsed).toBe(true)
     expect(navItemShape()).toEqual(expanded)
   })
 
-  it('跨断点往返后桌面折叠态恢复', async () => {
+  it('跨断点往返后桌面 collapsed state 恢复', async () => {
     await mountAppShell()
     const expanded = navItemShape()
 
     await requestCollapse(true)
+    await waitForCollapsedNav()
     const collapsed = navItemShape()
 
     await changeViewport(MOBILE_VIEWPORT)
@@ -207,6 +217,7 @@ describe('应用外壳（浏览器）：导航折叠态不跨视口泄漏', () =
 
     await changeViewport(DESKTOP_VIEWPORT)
     await settleViewport(false)
+    await waitForCollapsedNav()
 
     expect(navItemShape()).toEqual(collapsed)
   })

@@ -3,13 +3,13 @@ component: tooltip
 tag: web-ui-tooltip
 ---
 
-工具提示，支持指针与焦点触发；`content` 属性提供纯文本，`content` 插槽可放更丰富的内容。
+tooltip，支持指针与焦点触发；`content` 属性提供纯文本，`content` 插槽可放更丰富的内容。
 
 ## 示例
 
 ### 基础
 
-默认插槽是触发器，`content` 是提示文本。
+默认插槽是 trigger，`content` 是提示文本。
 
 ```react
 <web-ui-tooltip content="保存当前更改">
@@ -27,7 +27,7 @@ tag: web-ui-tooltip
 
 ### 内容插槽
 
-`content` 插槽替代纯文本，可放图标或带格式的内容。
+`content` 插槽替代纯文本，可放 icon 或带格式的内容。
 
 ```react
 <web-ui-tooltip placement="right">
@@ -79,7 +79,7 @@ import { lucideInfo } from '@greypan/web-ui/icons'
 | `show-delay`       | 显示延迟（毫秒）。                        | `number`           | `200`   |
 | `hide-delay`       | 隐藏延迟（毫秒）。                        | `number`           | `100`   |
 | `disabled`         | 禁用状态。                                | `boolean`          | `false` |
-| `offset`           | 与触发器的距离（px）。                    | `number`           | `6`     |
+| `offset`           | 与 trigger 的距离（px）。                 | `number`           | `6`     |
 | `content`          | 提示文本，是 `content` 插槽的纯文本替代。 | `string`           | `''`    |
 | `open`             | 可见性。                                  | `boolean`          | `false` |
 | `portal`           | 在 theme-owned overlay root 中渲染。      | `boolean`          | `false` |
@@ -93,14 +93,14 @@ import { lucideInfo } from '@greypan/web-ui/icons'
 
 ### Slots
 
-| 名称      | 说明                                |
-| --------- | ----------------------------------- |
-| `default` | 触发器。                            |
-| `content` | 提示面板内容，替代 `content` 属性。 |
+| 名称      | 说明                                   |
+| --------- | -------------------------------------- |
+| `default` | trigger。                              |
+| `content` | 提示 panel 内容，替代 `content` 属性。 |
 
 ### 行为说明
 
-`open` 是自管理的可见性属性。指针/焦点触发会更新它，直接赋值 property 也会同步本地或 Portal 面板；`open-change` 仅用户来源的开关时派发。第一个 Tooltip 显示后，相邻 Tooltip 会立即切换；其余 pointer/focus 触发使用延迟计时器。
+`open` 是自管理的可见性属性。指针/焦点触发会更新它，直接赋值 property 也会同步本地或 Portal panel；`open-change` 仅用户来源的 toggle 时派发。第一个 Tooltip 显示后，相邻 Tooltip 会立即切换；其余 pointer/focus 触发使用延迟计时器。
 
 ### CSS Custom Properties
 

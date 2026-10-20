@@ -80,7 +80,7 @@ export class WebUiRadioGroup extends FormAssociated(LitElement) {
   )
 
   /**
-   * 成员被移除后，组值若仍指向它就成了幽灵值（表单照旧提交一个不存在的选项）。
+   * 成员被移除后，组值若仍指向它就成了幽灵值（表单照旧提交一个不存在的 option）。
    * 剪枝条件是「曾经出现在成员里、现在消失了」——不能用「不在现存成员里就剪」，
    * 否则 v-if / 异步渲染时先于成员到达的合法组值会被误清。
    */
@@ -142,7 +142,7 @@ export class WebUiRadioGroup extends FormAssociated(LitElement) {
       internals.setValidity({})
       return
     }
-    internals.setValidity({ valueMissing: true }, '请选择一项')
+    internals.setValidity({ valueMissing: true }, 'Select an option')
   }
 
   override render() {

@@ -5,22 +5,24 @@ function SwitchDemo() {
 
   return (
     <div>
-      <h1>开关</h1>
-      <h2>基本用法</h2>
+      <h1>switch</h1>
+      <h2>Basic usage</h2>
       <div className="mb-3 flex items-center gap-3">
         <web-ui-switch checked={enabled} onChange={event => setEnabled(event.currentTarget.checked)} />
-        <span className="text-sm text-gray-600">{enabled ? '开启' : '关闭'}</span>
+        <span className="text-sm text-gray-600">{enabled ? 'On' : 'Close'}</span>
       </div>
-      <p className="text-xs text-gray-400">💡 支持轻点即时切换、全轨道平滑拖拽与抛掷（Flick）切换</p>
-      <h2>禁用状态</h2>
+      <p className="text-xs text-gray-400">
+        💡 Tap to switch instantly, drag across the whole track to track smoothly, or flick to throw
+      </p>
+      <h2>Disabled</h2>
       <div className="mb-3 flex items-center gap-3">
         <web-ui-switch checked disabled />
-        <span className="text-sm text-gray-500">禁用</span>
+        <span className="text-sm text-gray-500">Disabled</span>
       </div>
-      <h2>加载中</h2>
+      <h2>Loading</h2>
       <div className="mb-3 flex items-center gap-3">
         <web-ui-switch checked loading />
-        <span className="text-sm text-gray-500">加载中</span>
+        <span className="text-sm text-gray-500">Loading</span>
       </div>
     </div>
   )

@@ -59,7 +59,7 @@ function getDialog(el: WebUiDrawer): HTMLDialogElement {
   return el.shadowRoot?.querySelector('dialog') as HTMLDialogElement
 }
 
-// 定位器（非断言）：拖拽热区没有公开 role/aria，只能用内部 class 拿到它来派发指针事件（§12 C3）。
+// 定位器（非断言）：拖拽 drag zone 没有公开 role/aria，只能用内部 class 拿到它来派发指针事件（§12 C3）。
 function getDragZone(el: WebUiDrawer): HTMLElement {
   return el.shadowRoot?.querySelector('.wui-drawer-drag-zone') as HTMLElement
 }
@@ -67,7 +67,7 @@ function getDragZone(el: WebUiDrawer): HTMLElement {
 type Delta = { x: number; y: number }
 
 /**
- * 在拖拽区按下 → 移动 → 松手。合成事件直接派发到热区，命中与起点坐标无关，
+ * 在拖拽区按下 → 移动 → 松手。合成事件直接派发到 drag zone，命中与起点坐标无关，
  * 只有**相对位移**参与判定。
  *
  * `steps` 默认 10：判定零点在首个 pointermove（基准校准），单次 move 的
@@ -146,14 +146,14 @@ afterEach(() => document.body.replaceChildren())
  *
  * 判据是 §12 C2：手势断言只留**阈值行为**（拖过阈值 → `open=false` + `open-change`）与
  * **归宿**（焦点、原生 dialog 的 open、事件次数），删掉拖动过程中的 `transform` 位移量、
- * 遮罩 opacity 插值、橡皮筋钳位值、以及 `is-dragging` 状态类断言（§12 C1/C3）。
+ * backdrop opacity 插值、橡皮筋钳位值、以及 `is-dragging` 状态类断言（§12 C1/C3）。
  *
- * 原先还用 `vi.spyOn(dialog, 'animate')` 断言弹簧的调用次数与 `fill: 'both'` 选项——
+ * 原先还用 `vi.spyOn(dialog, 'animate')` 断言弹簧的调用次数与 `fill: 'both'` option——
  * 那是对 `Element.animate` 这一 DOM 方法的实现细节打桩（不是公开契约），删；
  * 「弹回后回到打开位」由 `el.open` + 原生 `dialog.open` 承担。
  */
 describe('WebUiDrawer 拖拽关闭（浏览器）', () => {
-  it('drawer 面板自身不夺焦，内置关闭按钮仍可聚焦', async () => {
+  it('drawer panel 自身不夺焦，内置关闭 button 仍可聚焦', async () => {
     const el = createDrawer()
     el.closable = true
     el.open = true
@@ -161,10 +161,10 @@ describe('WebUiDrawer 拖拽关闭（浏览器）', () => {
     await waitForOpenTransition(el)
 
     getDialog(el).focus()
-    // 焦点归宿是公开契约（§3 白名单）：面板自身不抢焦点。
+    // 焦点归宿是公开契约（§3 白名单）：panel 自身不抢焦点。
     expect(document.activeElement).not.toBe(getDialog(el))
 
-    const close = queryA11y(el, '[aria-label="关闭"]') as HTMLElement | null
+    const close = queryA11y(el, '[aria-label="Close"]') as HTMLElement | null
     const nativeButton = close?.shadowRoot?.querySelector('button') as HTMLButtonElement | null
     nativeButton?.focus()
     expect(close?.shadowRoot?.activeElement).toBe(nativeButton)
@@ -180,7 +180,7 @@ describe('WebUiDrawer 拖拽关闭（浏览器）', () => {
     const events = openChangeEvents(el)
     await dragAndRelease(el, { x: 400, y: 0 })
 
-    // 用户手势关闭与点击关闭按钮同语义：派发一次 open-change(false)
+    // 用户手势关闭与点击关闭 button 同语义：派发一次 open-change(false)
     await waitFor(() => !el.open)
     expect(events.map(event => event.detail.open)).toEqual([false])
     expect(getDialog(el).open).toBe(false)
@@ -276,7 +276,7 @@ describe('WebUiDrawer 拖拽关闭（浏览器）', () => {
     expect(getDialog(el).open).toBe(false)
   })
 
-  it('controlled 悬停等待期间：Escape/遮罩不重复派发 open-change(false)', async () => {
+  it('controlled 悬停等待期间：Escape/backdrop 不重复派发 open-change(false)', async () => {
     // theme motion=reduced 走即时终态路径，稳定进入悬停态
     const theme = document.createElement('web-ui-theme')
     theme.setAttribute('appearance', 'light')
@@ -298,7 +298,7 @@ describe('WebUiDrawer 拖拽关闭（浏览器）', () => {
     expect(events).toHaveLength(1)
 
     // 悬停窗口内的重复关闭意图：不再派发第二次请求。
-    // 遮罩关闭是「pointerdown 落在遮罩 + 近静止 click」的指针链路；detail 为 0 的
+    // backdrop 关闭是「pointerdown 落在 backdrop + 近静止 click」的指针链路；detail 为 0 的
     // dialog.click() 不来自指针，会被 drawer 忽略（对齐 image-preview 的守卫）。
     const dialog = getDialog(el)
     dialog.dispatchEvent(new KeyboardEvent('keydown', { bubbles: true, key: 'Escape' }))
@@ -316,7 +316,7 @@ describe('WebUiDrawer 拖拽关闭（浏览器）', () => {
   })
 
   it('悬停等待期间原地重新抓取后松手：净位移为 0，不重复派发 open-change(false)', async () => {
-    // theme motion=reduced 走即时终态路径，稳定停住悬停态（面板此时停在闭合位附近）。
+    // theme motion=reduced 走即时终态路径，稳定停住悬停态（panel 此时停在闭合位附近）。
     const theme = document.createElement('web-ui-theme')
     theme.setAttribute('appearance', 'light')
     theme.setAttribute('motion', 'reduced')
@@ -335,7 +335,7 @@ describe('WebUiDrawer 拖拽关闭（浏览器）', () => {
     expect(events).toHaveLength(1)
 
     /*
-     * 面板此刻停在「已越过距离阈值」的位置上。在原位重新抓取（不做任何拖动）再松手：
+     * panel 此刻停在「已越过距离阈值」的位置上。在原位重新抓取（不做任何拖动）再松手：
      * 判定用的是**净位移**（自抓取瞬间起算），
      * 所以这次松手既不满足距离判据也不满足甩动判据 → 弹回。
      * 若按绝对位置判（`_dragOffset > 阈值`，本仓旧行为），抓取瞬间的位置本身就过阈值，
@@ -407,7 +407,7 @@ describe('WebUiDrawer 拖拽关闭（浏览器）', () => {
 
     const events = openChangeEvents(el)
     /*
-     * 复现「往边缘反向快速拖拽」（right 抽屉：向左拖出 = 打开方向，向右 = 闭合方向）。
+     * 复现「往边缘反向快速拖拽」（right drawer：向左拖出 = 打开方向，向右 = 闭合方向）。
      * 第一个 move 先向左拖出 120px（同时建立校准点），随后向右回扫到 +132px 松手。
      * 净位移 132px < 距离阈值（尺寸的一半 = 160px），整段平均速度 = 132px / 66ms =
      * 2000px/s ≥ 500px/s，单看甩动判据会关闭；但回扫让「自折返点起的位移」（42px）比
@@ -650,7 +650,7 @@ describe('WebUiDrawer 拖拽关闭（浏览器）', () => {
 
     const dialog = getDialog(el)
 
-    // pointerdown 仍落在热区（命中由事件派发目标决定，与坐标无关）
+    // pointerdown 仍落在 drag zone（命中由事件派发目标决定，与坐标无关）
     getDragZone(el).dispatchEvent(
       new PointerEvent('pointerdown', {
         bubbles: true,
@@ -710,7 +710,7 @@ describe('WebUiDrawer 拖拽关闭（浏览器）', () => {
    * open 归宿 —— `is-settling`、内联 `transform`、`--wui-internal-settle-*` 这些
    * 收尾参数与状态类是内部实现，断言它们等于把实现抄回测试（政策第 6 条）。
    *
-   * 可观察的失败形态是「面板在半途瞬移」或「松手后没有回到打开位」，都由
+   * 可观察的失败形态是「panel 在半途瞬移」或「松手后没有回到打开位」，都由
    * `open` 与 transitionstart 承担。
    */
   it('收尾期间后代冒泡的 transform transitionend 不提前终结收尾', async () => {
@@ -730,7 +730,7 @@ describe('WebUiDrawer 拖拽关闭（浏览器）', () => {
     // 后代自己的 transform 过渡结束：不能把本层收尾判定为完成。
     slotted.dispatchEvent(new TransitionEvent('transitionend', { bubbles: true, propertyName: 'transform' }))
 
-    // 提前终结的表现是内联终值被清掉、面板瞬移回打开位 —— 即收尾动画当场消失。
+    // 提前终结的表现是内联终值被清掉、panel 瞬移回打开位 —— 即收尾动画当场消失。
     expect(ownAnimations(el).length, '后代 transitionend 提前终结了本层收尾').toBeGreaterThan(0)
 
     await settled(el)
@@ -776,7 +776,7 @@ describe('WebUiDrawer 拖拽关闭（浏览器）', () => {
     await dragAndRelease(el, { x: 30, y: 0 }, 10)
 
     // 弹回若残留 translateX(0px) 内联，会盖住闭合态 CSS transform：之后用
-    // 按钮/遮罩/Esc 关闭时计算值恒为 0，开关都不再触发过渡。
+    // button/backdrop/Esc 关闭时计算值恒为 0，toggle 都不再触发过渡。
     // 等收尾真的结束（动画归零）再验证下一次关闭 —— 内联样式是否清干净不是判据，
     // 「下一次关闭还有没有过渡」才是。
     await settled(el)
@@ -792,12 +792,12 @@ describe('WebUiDrawer 拖拽关闭（浏览器）', () => {
   })
 
   /*
-   * 遮罩点击的按-放链路回溯：浏览器对「按下 → 拖动 → 松手」生成的 click 落在
-   * 起点与松手点的**共同祖先** dialog 上，与真正的轻点遮罩从 click 自身无法区分
+   * backdrop 点击的按-放链路回溯：浏览器对「按下 → 拖动 → 松手」生成的 click 落在
+   * 起点与松手点的**共同祖先** dialog 上，与真正的轻点 backdrop 从 click 自身无法区分
    * （真实指针下必现的误关路径，§C1/C2）。组件在 dialog 的 pointerdown 记录按下
-   * 起点与坐标，click 只有「起点在遮罩上且位移在轻点量级内」才关闭。
+   * 起点与坐标，click 只有「起点在 backdrop 上且位移在轻点量级内」才关闭。
    */
-  describe('遮罩点击链路回溯', () => {
+  describe('backdrop 点击链路回溯', () => {
     function backdropDialog(el: WebUiDrawer): HTMLDialogElement {
       return getDialog(el)
     }
@@ -808,7 +808,7 @@ describe('WebUiDrawer 拖拽关闭（浏览器）', () => {
       return el.updateComplete
     }
 
-    it('从面板内容开始的 press–release 链路补发到 dialog 的 click：不关闭', async () => {
+    it('从 panel 内容开始的 press–release 链路补发到 dialog 的 click：不关闭', async () => {
       const el = createDrawer()
       el.open = true
       await el.updateComplete
@@ -818,8 +818,8 @@ describe('WebUiDrawer 拖拽关闭（浏览器）', () => {
       const body = el.shadowRoot?.querySelector('.wui-drawer-body') as HTMLElement
       const dialog = backdropDialog(el)
       const rect = dialog.getBoundingClientRect()
-      // 按下起点在面板内容上，click 带遮罩区域的松手坐标到达 dialog（浏览器按
-      // 共同祖先派发的真实行为）：起点不在遮罩上，不得关闭。
+      // 按下起点在 panel 内容上，click 带 backdrop 区域的松手坐标到达 dialog（浏览器按
+      // 共同祖先派发的真实行为）：起点不在 backdrop 上，不得关闭。
       await pressOn(el, body, rect.left + 40, rect.top + 60)
       dialog.dispatchEvent(
         new MouseEvent('click', { bubbles: true, detail: 1, clientX: rect.left - 80, clientY: rect.top + 60 })
@@ -831,7 +831,7 @@ describe('WebUiDrawer 拖拽关闭（浏览器）', () => {
       expect(events).toHaveLength(0)
     })
 
-    it('从遮罩开始的拖拽链路（位移超过轻点量级）的 click：不关闭', async () => {
+    it('从 backdrop 开始的拖拽链路（位移超过轻点量级）的 click：不关闭', async () => {
       const el = createDrawer()
       el.open = true
       await el.updateComplete
@@ -851,7 +851,7 @@ describe('WebUiDrawer 拖拽关闭（浏览器）', () => {
       expect(events).toHaveLength(0)
     })
 
-    it('遮罩轻点（pointerdown 起点在遮罩 + 近静止 click）：仍关闭', async () => {
+    it('backdrop 轻点（pointerdown 起点在 backdrop + 近静止 click）：仍关闭', async () => {
       const el = createDrawer()
       el.open = true
       await el.updateComplete
@@ -871,7 +871,7 @@ describe('WebUiDrawer 拖拽关闭（浏览器）', () => {
       expect(events.map(event => event.detail.open)).toEqual([false])
     })
 
-    it('detail 为 0 的 click（程序化/键盘来源）不当作遮罩点击', async () => {
+    it('detail 为 0 的 click（程序化/键盘来源）不当作 backdrop 点击', async () => {
       const el = createDrawer()
       el.open = true
       await el.updateComplete

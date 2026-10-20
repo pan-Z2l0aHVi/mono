@@ -14,6 +14,6 @@ function Component() {
 }
 
 export const Route = createFileRoute('/components/button')({
-  staticData: { title: 'Button 按钮' },
+  staticData: { title: 'Button' },
   component: Component
 })

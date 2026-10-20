@@ -9,7 +9,7 @@ async function nextFrame() {
   await new Promise(resolve => requestAnimationFrame(resolve))
 }
 
-// 定位器（非断言）：面板以 aria-live 标识（它是播报语义的载体），不用 class 名单。
+// 定位器（非断言）：panel 以 aria-live 标识（它是播报语义的载体），不用 class 名单。
 function queryPanel(el: WebUiToast): HTMLElement {
   return el.shadowRoot!.querySelector<HTMLElement>('[aria-live]')!
 }

@@ -78,7 +78,7 @@ describe('WebUiCollapse 组件', () => {
       cleanupElement(el)
     })
 
-    // 内容区的 click 不经过 trigger wrapper：点内容不该把面板关掉。
+    // 内容区的 click 不经过 trigger wrapper：点内容不该把 panel 关掉。
     it('内容区 click 不切换', async () => {
       const el = createCollapse()
       await waitForUpdate(el)
@@ -115,7 +115,7 @@ describe('WebUiCollapse 组件', () => {
       cleanupElement(el)
     })
 
-    // aria-controls 必须指向内容轨道，否则 AT 的关系引用指向不存在的元素。
+    // aria-controls 必须指向内容 track，否则 AT 的关系引用指向不存在的元素。
     it('aria-expanded / aria-controls 回写到 trigger 元素并随状态变化', async () => {
       const el = createCollapse()
       await waitForUpdate(el)

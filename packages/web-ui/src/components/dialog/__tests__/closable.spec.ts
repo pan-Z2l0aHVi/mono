@@ -16,9 +16,9 @@ function createDialog(initialHTML = ''): WebUiDialog {
 }
 
 /**
- * 关闭按钮按「有可访问名」定位，不按内部 class。
+ * 关闭 button 按「有可访问名」定位，不按内部 class。
  *
- * 刻意**不**钉住名字的字面量（`aria-label="关闭"`）：可访问名必须存在是 AT 契约，
+ * 刻意**不**钉住名字的字面量（`aria-label="Close"`）：可访问名必须存在是 AT 契约，
  * 具体叫什么属于本地化内容——dialog/index.ts 目前硬编码中文，改成别的语言不该
  * 让这批测试集体变红。
  */
@@ -33,7 +33,7 @@ function closeButton(el: WebUiDialog): HTMLElement | null {
 const flush = () => new Promise<void>(resolve => setTimeout(resolve, 0))
 
 describe('WebUiDialog closable', () => {
-  it('默认不渲染关闭按钮', async () => {
+  it('默认不渲染关闭 button', async () => {
     const el = createDialog('<span slot="header">标题</span>')
     await waitForUpdate(el)
 
@@ -42,7 +42,7 @@ describe('WebUiDialog closable', () => {
     cleanupElement(el)
   })
 
-  it('closable 渲染带可访问名的关闭按钮', async () => {
+  it('closable 渲染带可访问名的关闭 button', async () => {
     const el = createDialog('<span slot="header">标题</span>')
     el.closable = true
     await waitForUpdate(el)
@@ -66,7 +66,7 @@ describe('WebUiDialog closable', () => {
     cleanupElement(open)
   })
 
-  it('点击关闭按钮走用户关闭路径', async () => {
+  it('点击关闭 button 走用户关闭路径', async () => {
     const el = createDialog()
     el.closable = true
     el.open = true
@@ -79,7 +79,7 @@ describe('WebUiDialog closable', () => {
     cleanupElement(el)
   })
 
-  it('controlled 下点击关闭按钮只派发请求，不自行关闭', async () => {
+  it('controlled 下点击关闭 button 只派发请求，不自行关闭', async () => {
     const el = createDialog()
     el.closable = true
     el.controlled = true
@@ -96,7 +96,7 @@ describe('WebUiDialog closable', () => {
     cleanupElement(el)
   })
 
-  it('开启期间切换 closable 可增删按钮', async () => {
+  it('开启期间切换 closable 可增删 button', async () => {
     const el = createDialog()
     el.open = true
     await waitForUpdate(el)
@@ -115,7 +115,7 @@ describe('WebUiDialog closable', () => {
 
 /*
  * headless 模式的契约：默认槽的内容渲染进卡片内的滚动层 `.wui-dialog-content`，内置的
- * header / .desc / footer 三段一律不渲染。开关是 `headless` 布尔属性（reflect），与
+ * header / .desc / footer 三段一律不渲染。toggle 是 `headless` 布尔属性（reflect），与
  * `<web-ui-drawer>` 同形——不再是「往某个具名 slot 里塞元素」。
  */
 function shadowQuery<T extends Element>(el: WebUiDialog, selector: string): T | null {

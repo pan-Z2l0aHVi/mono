@@ -16,6 +16,6 @@ function Component() {
 }
 
 export const Route = createFileRoute('/components/context-menu')({
-  staticData: { title: 'ContextMenu 右键菜单' },
+  staticData: { title: 'ContextMenu' },
   component: Component
 })

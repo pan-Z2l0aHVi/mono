@@ -43,7 +43,7 @@ describe('WebUiRadioGroup 组件', () => {
       cleanupElement(el)
     })
 
-    it('设置 value 后同步子选项的 checked 状态', async () => {
+    it('设置 value 后同步子 option 的 checked 状态', async () => {
       const el = createGroup()
       await waitForUpdate(el)
 
@@ -58,7 +58,7 @@ describe('WebUiRadioGroup 组件', () => {
       cleanupElement(el)
     })
 
-    it('切换 value 后更新子选项状态', async () => {
+    it('切换 value 后更新子 option 状态', async () => {
       const el = createGroup()
       await waitForUpdate(el)
 
@@ -130,7 +130,7 @@ describe('WebUiRadioGroup 组件', () => {
       cleanupElement(el)
     })
 
-    it('disabled 为 true 时点击子选项不更新 value', async () => {
+    it('disabled 为 true 时点击子 option 不更新 value', async () => {
       const el = createGroup()
       el.disabled = true
       await waitForUpdate(el)
@@ -219,7 +219,7 @@ describe('WebUiRadioGroup 组件', () => {
       cleanupElement(el)
     })
 
-    it('选中一个子 radio 后取消其他选项的选中状态', async () => {
+    it('选中一个子 radio 后取消其他 option 的选中状态', async () => {
       const el = createGroup()
       await waitForUpdate(el)
 
@@ -240,7 +240,7 @@ describe('WebUiRadioGroup 组件', () => {
       cleanupElement(el)
     })
 
-    it('点击已选中的选项不重复触发事件', async () => {
+    it('点击已选中的 option 不重复触发事件', async () => {
       const el = createGroup()
       await waitForUpdate(el)
 
@@ -629,7 +629,7 @@ describe('WebUiRadioGroup 重复 value', () => {
 })
 
 /**
- * 成员被移除后组值必须回落，否则会留下指向不存在选项的幽灵值（表单照旧提交）。
+ * 成员被移除后组值必须回落，否则会留下指向不存在 option 的幽灵值（表单照旧提交）。
  * 成员尚未渲染时不得剪：外部预设的初始值要能等到子元素连上。
  */
 describe('WebUiRadioGroup 成员移除后的值剪枝', () => {

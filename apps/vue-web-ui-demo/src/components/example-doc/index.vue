@@ -18,7 +18,7 @@ import { exampleDocs } from '@/generated/examples'
 const demoModules = import.meta.glob<{ default: Component }>('../../generated/demos/*.vue')
 const DEMO_PREFIX = '../../generated/demos/'
 
-// 异步组件在模块作用域建一次：setup 里每次新建会让示例被反复卸载重建，拖到一半的滑块状态当场丢失。
+// 异步组件在模块作用域建一次：setup 里每次新建会让示例被反复卸载重建，拖到一半的 slider 状态当场丢失。
 const demoComponents = new Map(
   Object.entries(demoModules).map(([file, load]) => [
     file.slice(DEMO_PREFIX.length, -'.vue'.length),
@@ -41,7 +41,7 @@ function demoComponent(demoKey: string | null) {
     <!-- 生成器把 markdown 渲染成 HTML 片段（纯文本已在生成时转义），不是运行时拼的用户输入。 -->
     <p class="m-0 text-(--wui-color-text)" data-example-intro v-html="doc.introHtml"></p>
 
-    <h2>示例代码</h2>
+    <h2>Example code</h2>
     <div v-for="sample in doc.samples" :key="sample.title" class="flex flex-col gap-2" :data-sample="sample.title">
       <h3 class="m-0">{{ sample.title }}</h3>
       <p class="m-0 text-gray-500" v-html="sample.descriptionHtml"></p>

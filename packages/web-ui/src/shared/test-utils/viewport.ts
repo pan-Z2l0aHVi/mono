@@ -105,7 +105,7 @@ export async function scrollElementToEnd(el: Element, timeoutMs = 5000): Promise
  * 期待：给定的盒子都**已布局、且完整落在视口内**。
  *
  * 这是命中测试与几何断言最常缺的那条期待值。`elementFromPoint` 在坐标落到视口外
- * 时返回 `null`，于是「胶囊中心命中的是 null」这类失败与「热边没盖住胶囊」在
+ * 时返回 `null`，于是「胶囊中心命中的是 null」这类失败与「drag edge 没盖住胶囊」在
  * 读数上完全一样——后者是真缺陷，前者只是**还没进到该有的布局状态就开始量了**。
  * 把「盒子已布局且在视口内」写成期待值，两者在等待阶段就被分开了：真缺陷会一直
  * 不成立并带读数超时，状态没到位的则等到位为止。
@@ -114,11 +114,11 @@ export async function scrollElementToEnd(el: Element, timeoutMs = 5000): Promise
  * 四条包含关系**全部平凡成立**——那正是本 helper 要隔离掉的
  * 「状态没到位」。所以面积判据是「宽高里至少有一条为正」而不是「面积大于零」：
  * `drag-bar-edge-inset` 有一条用例把 `--wui-drawer-drag-bar-length` 设成 `0px`
- * 来验证「缩短把手是唯一可测的杠杆」，那一刻胶囊与端头热边的宽度真的就是 0，
+ * 来验证「缩短把手是唯一可测的杠杆」，那一刻胶囊与端头 drag edge 的宽度真的就是 0，
  * 但高度仍然是正的。
  *
  * 容差 0.5px：`getBoundingClientRect()` 返回 LayoutUnit 量化值（1/64 px），
- * 而被测目标常常正好贴视口边缘（drawer 面板是 `inset: 0` + `100dvh`），
+ * 而被测目标常常正好贴视口边缘（drawer panel 是 `inset: 0` + `100dvh`），
  * 差一个 1/64px 就够把「已经就位」判成「还没就位」，然后一路等到超时。
  */
 const CONTAINMENT_EPSILON = 0.5

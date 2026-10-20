@@ -35,7 +35,7 @@ const OPTIONS_HTML = `
   <web-ui-option value="cherry" label="Cherry"></web-ui-option>
 `
 
-// 默认触发器是 web-ui-input（README 契约）：在它上面模拟用户键入——
+// 默认 trigger 是 web-ui-input（README 契约）：在它上面模拟用户键入——
 // 原生 input 事件从内部 input 冒泡到包装 div 时，target 会 retarget 成这个 host
 function defaultTrigger(el: WebUiAutocomplete): WebUiInput {
   return el.shadowRoot!.querySelector<WebUiInput>('web-ui-input')!
@@ -64,7 +64,7 @@ function triggerInput(el: WebUiAutocomplete): HTMLInputElement {
   return defaultTrigger(el).shadowRoot!.querySelector<HTMLInputElement>('input')!
 }
 
-// 自定义触发器位于 light DOM（跟随 select 的 wrapper div 模式）
+// 自定义 trigger 位于 light DOM（跟随 select 的 wrapper div 模式）
 type EditableTrigger = HTMLElement & { value: string; shadowRoot: ShadowRoot | null }
 
 function customTrigger(el: WebUiAutocomplete): EditableTrigger {
@@ -84,7 +84,7 @@ function typeIntoCustomTrigger(el: WebUiAutocomplete, text: string) {
   trigger.dispatchEvent(new Event('input', { bubbles: true, composed: true }))
 }
 
-// 键盘事件从触发器内部的真实可编辑元素派发：Enter 是否接管取决于它是 input 还是 textarea
+// 键盘事件从 trigger 内部的真实可编辑元素派发：Enter 是否接管取决于它是 input 还是 textarea
 function pressKeyOnCustomTrigger(el: WebUiAutocomplete, key: string) {
   const inner = customTrigger(el).shadowRoot!.querySelector<HTMLElement>('input, textarea')!
   inner.dispatchEvent(new KeyboardEvent('keydown', { key, bubbles: true, composed: true }))
@@ -92,7 +92,7 @@ function pressKeyOnCustomTrigger(el: WebUiAutocomplete, key: string) {
 
 describe('WebUiAutocomplete 组件', () => {
   describe('宿主属性', () => {
-    it('默认触发器原生 input 有稳定且实例唯一的 id', async () => {
+    it('默认 trigger 原生 input 有稳定且实例唯一的 id', async () => {
       const first = createAutocomplete(OPTIONS_HTML)
       const second = createAutocomplete(OPTIONS_HTML)
       await Promise.all([waitForUpdate(first), waitForUpdate(second)])
@@ -133,7 +133,7 @@ describe('WebUiAutocomplete 组件', () => {
       cleanupElement(el)
     })
 
-    it('value 设置后同步输入框文本', async () => {
+    it('value 设置后同步 input 文本', async () => {
       const el = createAutocomplete(OPTIONS_HTML)
       el.value = 'Apple'
       await waitForUpdate(el)
@@ -342,7 +342,7 @@ describe('WebUiAutocomplete 组件', () => {
   })
 
   describe('打开/关闭', () => {
-    it('点击输入框打开面板，仅 focus 不打开', async () => {
+    it('点击 input 打开 panel，仅 focus 不打开', async () => {
       const el = createAutocomplete(OPTIONS_HTML)
       await waitForUpdate(el)
 
@@ -359,7 +359,7 @@ describe('WebUiAutocomplete 组件', () => {
       cleanupElement(el)
     })
 
-    it('ArrowDown 打开面板', async () => {
+    it('ArrowDown 打开 panel', async () => {
       const el = createAutocomplete(OPTIONS_HTML)
       await waitForUpdate(el)
 
@@ -371,7 +371,7 @@ describe('WebUiAutocomplete 组件', () => {
       cleanupElement(el)
     })
 
-    it('键入打开面板', async () => {
+    it('键入打开 panel', async () => {
       const el = createAutocomplete(OPTIONS_HTML)
       await waitForUpdate(el)
 
@@ -383,7 +383,7 @@ describe('WebUiAutocomplete 组件', () => {
       cleanupElement(el)
     })
 
-    it('键入无匹配时保持面板关闭', async () => {
+    it('键入无匹配时保持 panel 关闭', async () => {
       const el = createAutocomplete(OPTIONS_HTML)
       await waitForUpdate(el)
 
@@ -396,7 +396,7 @@ describe('WebUiAutocomplete 组件', () => {
       cleanupElement(el)
     })
 
-    it('删除字符使匹配恢复后面板重新打开', async () => {
+    it('删除字符使匹配恢复后 panel 重新打开', async () => {
       const el = createAutocomplete(OPTIONS_HTML)
       await waitForUpdate(el)
 
@@ -413,7 +413,7 @@ describe('WebUiAutocomplete 组件', () => {
       cleanupElement(el)
     })
 
-    it('点击无匹配时保持面板关闭', async () => {
+    it('点击无匹配时保持 panel 关闭', async () => {
       const el = createAutocomplete(OPTIONS_HTML)
       await waitForUpdate(el)
 
@@ -427,7 +427,7 @@ describe('WebUiAutocomplete 组件', () => {
       cleanupElement(el)
     })
 
-    it('ArrowDown 无匹配时保持面板关闭', async () => {
+    it('ArrowDown 无匹配时保持 panel 关闭', async () => {
       const el = createAutocomplete(OPTIONS_HTML)
       await waitForUpdate(el)
 
@@ -441,7 +441,7 @@ describe('WebUiAutocomplete 组件', () => {
       cleanupElement(el)
     })
 
-    it('点击外部关闭面板', async () => {
+    it('点击外部关闭 panel', async () => {
       const el = createAutocomplete(OPTIONS_HTML)
       await waitForUpdate(el)
 
@@ -458,7 +458,7 @@ describe('WebUiAutocomplete 组件', () => {
       cleanupElement(el)
     })
 
-    it('Escape 关闭面板', async () => {
+    it('Escape 关闭 panel', async () => {
       const el = createAutocomplete(OPTIONS_HTML)
       await waitForUpdate(el)
 
@@ -908,7 +908,7 @@ describe('WebUiAutocomplete 组件', () => {
       cleanupElement(el)
     })
 
-    it('readonly 时聚焦不打开面板', async () => {
+    it('readonly 时聚焦不打开 panel', async () => {
       const el = createAutocomplete(OPTIONS_HTML)
       el.readonly = true
       await waitForUpdate(el)
@@ -920,7 +920,7 @@ describe('WebUiAutocomplete 组件', () => {
       cleanupElement(el)
     })
 
-    it('readonly 时 ArrowDown 不打开面板', async () => {
+    it('readonly 时 ArrowDown 不打开 panel', async () => {
       const el = createAutocomplete(OPTIONS_HTML)
       el.readonly = true
       await waitForUpdate(el)
@@ -958,7 +958,7 @@ describe('WebUiAutocomplete 组件', () => {
       await waitForUpdate(el)
       expect(el.open).toBe(true)
 
-      // portal 打开后 options 被移入浮层，键盘选择不依赖 light DOM 查询
+      // portal 打开后 options 被移入 overlay，键盘选择不依赖 light DOM 查询
       el.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true }))
       await waitForUpdate(el)
       el.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }))
@@ -973,7 +973,7 @@ describe('WebUiAutocomplete 组件', () => {
   })
 
   /*
-   * 自定义 trigger slot（issue #144）。默认触发器是 shadow 内的 web-ui-input，
+   * 自定义 trigger slot（issue #144）。默认 trigger 是 shadow 内的 web-ui-input，
    * 提供 slot[name="trigger"] 后它让位给消费者组件（如 web-ui-textarea），
    * 两者共用同一份委托层：value/input/click/focus/blur 语义不收窄。
    */
@@ -1013,15 +1013,15 @@ describe('WebUiAutocomplete 组件', () => {
       cleanupElement(el)
     })
 
-    it('wrapper 不占 tab 位：顺序焦点归触发器自身', async () => {
+    it('wrapper 不占 tab 位：顺序焦点归 trigger 自身', async () => {
       const custom = createCustomTrigger(INPUT_TRIGGER)
       await waitForUpdate(custom)
       const fallback = createAutocomplete(OPTIONS_HTML)
       await waitForUpdate(fallback)
 
-      // 默认触发器自带 tab 位（内部 input），自定义触发器的可聚焦性由消费者提供，
-      // （README 契约）。包装 div 恒为 -1 只保留程序化聚焦：若在自定义触发器场景
-      // 给 0，Tab 会先停在 wrapper 上、键入无处可去，再 Tab 才进触发器（双 tab 位）。
+      // 默认 trigger 自带 tab 位（内部 input），自定义 trigger 的可聚焦性由消费者提供，
+      // （README 契约）。包装 div 恒为 -1 只保留程序化聚焦：若在自定义 trigger 场景
+      // 给 0，Tab 会先停在 wrapper 上、键入无处可去，再 Tab 才进 trigger（双 tab 位）。
       expect(comboboxTrigger(custom).getAttribute('tabindex')).toBe('-1')
       expect(comboboxTrigger(fallback).getAttribute('tabindex')).toBe('-1')
 
@@ -1033,7 +1033,7 @@ describe('WebUiAutocomplete 组件', () => {
       cleanupElement(fallback)
     })
 
-    it('点击自定义触发器打开面板', async () => {
+    it('点击自定义 trigger 打开 panel', async () => {
       const el = createCustomTrigger(INPUT_TRIGGER)
       await waitForUpdate(el)
 
@@ -1046,7 +1046,7 @@ describe('WebUiAutocomplete 组件', () => {
       cleanupElement(el)
     })
 
-    it('自定义触发器键入过滤候选并同步 value', async () => {
+    it('自定义 trigger 键入过滤候选并同步 value', async () => {
       const el = createCustomTrigger(INPUT_TRIGGER)
       await waitForUpdate(el)
 
@@ -1060,7 +1060,7 @@ describe('WebUiAutocomplete 组件', () => {
       cleanupElement(el)
     })
 
-    it('选择 option 后文本回写到自定义触发器', async () => {
+    it('选择 option 后文本回写到自定义 trigger', async () => {
       const el = createCustomTrigger(INPUT_TRIGGER)
       await waitForUpdate(el)
 
@@ -1077,7 +1077,7 @@ describe('WebUiAutocomplete 组件', () => {
       cleanupElement(el)
     })
 
-    it('自定义触发器聚焦与失焦派发冒泡 focus/blur', async () => {
+    it('自定义 trigger 聚焦与失焦派发冒泡 focus/blur', async () => {
       const el = createCustomTrigger(TEXTAREA_TRIGGER)
       const [focusEvents] = spyEvents<FocusEvent>(el, 'focus')
       const [blurEvents] = spyEvents<FocusEvent>(el, 'blur')
@@ -1092,14 +1092,14 @@ describe('WebUiAutocomplete 组件', () => {
       await waitForUpdate(el)
       expect(el.hasAttribute('focused')).toBe(false)
 
-      // light DOM 触发器不跨 shadow 边界冒泡原生 focus/blur，宿主按契约补发
+      // light DOM trigger 不跨 shadow 边界冒泡原生 focus/blur，宿主按契约补发
       expect(focusEvents).toHaveLength(1)
       expect(blurEvents).toHaveLength(1)
 
       cleanupElement(el)
     })
 
-    it('自定义触发器补发的 focus/blur 透传 relatedTarget', async () => {
+    it('自定义 trigger 补发的 focus/blur 透传 relatedTarget', async () => {
       const el = createCustomTrigger(INPUT_TRIGGER)
       const [focusEvents] = spyEvents<FocusEvent>(el, 'focus')
       const [blurEvents] = spyEvents<FocusEvent>(el, 'blur')
@@ -1123,7 +1123,7 @@ describe('WebUiAutocomplete 组件', () => {
       cleanupElement(outside)
     })
 
-    it('键入不触发 change：触发器自身的补发 change 被拦在委托层', async () => {
+    it('键入不触发 change：trigger 自身的补发 change 被拦在委托层', async () => {
       const el = createCustomTrigger(INPUT_TRIGGER)
       const [changeEvents] = spyEvents(el, 'change')
       await waitForUpdate(el)
@@ -1137,7 +1137,7 @@ describe('WebUiAutocomplete 组件', () => {
       cleanupElement(el)
     })
 
-    it('Escape 关闭自定义触发器面板', async () => {
+    it('Escape 关闭自定义 trigger panel', async () => {
       const el = createCustomTrigger(INPUT_TRIGGER)
       await waitForUpdate(el)
 
@@ -1153,14 +1153,14 @@ describe('WebUiAutocomplete 组件', () => {
       cleanupElement(el)
     })
 
-    it('多行触发器 Enter 保留换行语义，不选中高亮项', async () => {
+    it('多行 trigger Enter 保留换行语义，不选中高亮项', async () => {
       const el = createCustomTrigger(TEXTAREA_TRIGGER)
       await waitForUpdate(el)
 
       typeIntoCustomTrigger(el, 'Ap')
       await waitForUpdate(el)
 
-      // 面板打开时方向键归 textarea 光标移动：不 preventDefault、不导航列表
+      // panel 打开时方向键归 textarea 光标移动：不 preventDefault、不导航列表
       const arrowDown = new KeyboardEvent('keydown', {
         key: 'ArrowDown',
         bubbles: true,
@@ -1176,7 +1176,7 @@ describe('WebUiAutocomplete 组件', () => {
       pressKeyOnCustomTrigger(el, 'Enter')
       await waitForUpdate(el)
 
-      // 面板保持打开、文本未被回填成候选 label：换行权归 textarea
+      // panel 保持打开、文本未被回填成候选 label：换行权归 textarea
       expect(el.open).toBe(true)
       expect(el.value).toBe('Ap')
       expect(el.selectedValue).toBe('')
@@ -1184,7 +1184,7 @@ describe('WebUiAutocomplete 组件', () => {
       cleanupElement(el)
     })
 
-    it('多行触发器面板关闭时方向键仍打开面板（键盘入口不依赖指针）', async () => {
+    it('多行 trigger panel 关闭时方向键仍打开 panel（键盘入口不依赖指针）', async () => {
       const el = createCustomTrigger(TEXTAREA_TRIGGER)
       await waitForUpdate(el)
 
@@ -1205,7 +1205,7 @@ describe('WebUiAutocomplete 组件', () => {
       cleanupElement(el)
     })
 
-    it('单行自定义触发器 Enter 仍选中高亮项', async () => {
+    it('单行自定义 trigger Enter 仍选中高亮项', async () => {
       const el = createCustomTrigger(INPUT_TRIGGER)
       await waitForUpdate(el)
 
@@ -1252,11 +1252,11 @@ describe('WebUiAutocomplete 组件', () => {
   })
 
   /*
-   * 公共 focus()/blur()（README Methods 契约）：焦点必须落到当前生效的触发器，
-   * 而不是停在宿主或包装 div。默认触发器经 web-ui-input 的公共 focus() 落到内部
-   * input；自定义触发器按其自身能力聚焦（web-ui-textarea 落到内部 textarea）。
+   * 公共 focus()/blur()（README Methods 契约）：焦点必须落到当前生效的 trigger，
+   * 而不是停在宿主或包装 div。默认 trigger 经 web-ui-input 的公共 focus() 落到内部
+   * input；自定义 trigger 按其自身能力聚焦（web-ui-textarea 落到内部 textarea）。
    * jsdom 与真实浏览器口径一致：聚焦 shadow 内元素后 document.activeElement
-   * retarget 成宿主，因此默认触发器额外断言内部 input 真的拿到焦点。
+   * retarget 成宿主，因此默认 trigger 额外断言内部 input 真的拿到焦点。
    */
   describe('公共 focus()/blur() 委托', () => {
     const INPUT_TRIGGER = '<web-ui-input slot="trigger"></web-ui-input>'
@@ -1264,7 +1264,7 @@ describe('WebUiAutocomplete 组件', () => {
     const customTriggerInner = (el: WebUiAutocomplete): HTMLElement =>
       customTrigger(el).shadowRoot!.querySelector<HTMLElement>('input, textarea')!
 
-    it('默认触发器：focus() 落到内部 input，blur() 后失焦', async () => {
+    it('默认 trigger：focus() 落到内部 input，blur() 后失焦', async () => {
       const el = createAutocomplete(OPTIONS_HTML)
       await waitForUpdate(el)
 
@@ -1285,7 +1285,7 @@ describe('WebUiAutocomplete 组件', () => {
       cleanupElement(el)
     })
 
-    it('input 自定义触发器：focus() 落到触发器内部 input', async () => {
+    it('input 自定义 trigger：focus() 落到 trigger 内部 input', async () => {
       const el = createCustomTrigger(INPUT_TRIGGER)
       await waitForUpdate(el)
 
@@ -1305,7 +1305,7 @@ describe('WebUiAutocomplete 组件', () => {
       cleanupElement(el)
     })
 
-    it('textarea 自定义触发器：focus() 落到触发器内部 textarea', async () => {
+    it('textarea 自定义 trigger：focus() 落到 trigger 内部 textarea', async () => {
       const el = createCustomTrigger(TEXTAREA_TRIGGER)
       await waitForUpdate(el)
 
@@ -1324,7 +1324,7 @@ describe('WebUiAutocomplete 组件', () => {
       cleanupElement(el)
     })
 
-    it('触发器切换后 focus() 委托跟随当前生效触发器', async () => {
+    it('trigger 切换后 focus() 委托跟随当前生效 trigger', async () => {
       const el = createAutocomplete(OPTIONS_HTML)
       await waitForUpdate(el)
 
@@ -1367,7 +1367,7 @@ describe('WebUiAutocomplete 组件', () => {
   })
 
   /*
-   * 只读/禁用态下 Escape 必须被吞掉（Q14 语义）：既不关掉本层，也不落到下层浮层。
+   * 只读/禁用态下 Escape 必须被吞掉（Q14 语义）：既不关掉本层，也不落到下层 overlay。
    * 本用例是全套 autocomplete 测试里**唯一**覆盖这条契约的 —— 把 `_syncOverlayInert()`
    * 的方法体整条停掉后，只有它转红（其余 96 例全绿）。
    *

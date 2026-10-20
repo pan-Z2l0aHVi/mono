@@ -27,7 +27,7 @@
  * - `appearance="system"` 的 token 计算值仍由组件内部 CSS 的 `prefers-color-scheme` 决定；
  *   root 同步与 `resolved-appearance` 输出共用同一个 MediaQueryList 监听，翻转时一次重算。
  * - 登记表强引用实例，但删除路径只有组件自己的 disconnectedCallback：自定义元素反应保证移除
- *   必然触发它，不存在 open-overlay 那种「面板被 portal 搬运」需要惰性兜底回收的形状。
+ *   必然触发它，不存在 open-overlay 那种「panel 被 portal 搬运」需要惰性兜底回收的形状。
  */
 
 const ROOT_PAGE_TOKEN = '--wui-color-page'

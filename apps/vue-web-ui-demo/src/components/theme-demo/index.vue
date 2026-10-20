@@ -54,7 +54,7 @@ function setInnermostMotion(e: WebUiEvent<WebUiSegmented, 'input'>) {
 function showScopedToast() {
   if (!scopedToastTarget.value) return
 
-  toast.info('Toast 会挂载到当前 theme scope 的 overlay root。', {
+  toast.info('Toast mounts into the overlay root of the current theme scope.', {
     heading: 'Scoped toast',
     duration: 3000,
     target: scopedToastTarget.value
@@ -69,7 +69,7 @@ function showScopedToast() {
       web-ui-theme 支持多层嵌套，每一层独立控制外观与动效。内层主题优先于外层。
     </p>
 
-    <h2>基本用法（单层）</h2>
+    <h2>Basic usage (single level)</h2>
 
     <web-ui-theme
       :appearance="appearance"
@@ -80,16 +80,16 @@ function showScopedToast() {
       <section style="background: var(--wui-color-page)">
         <div class="mb-4 flex flex-wrap items-center gap-4">
           <div class="flex items-center gap-2">
-            <span class="text-sm text-(--wui-color-text-secondary)">外观</span>
-            <web-ui-segmented :value="appearance" aria-label="单层主题外观" @input="setAppearance">
+            <span class="text-sm text-(--wui-color-text-secondary)">Appearance</span>
+            <web-ui-segmented :value="appearance" aria-label="Single-level theme appearance" @input="setAppearance">
               <web-ui-segmented-trigger value="light">Light</web-ui-segmented-trigger>
               <web-ui-segmented-trigger value="dark">Dark</web-ui-segmented-trigger>
               <web-ui-segmented-trigger value="system">System</web-ui-segmented-trigger>
             </web-ui-segmented>
           </div>
           <div class="flex items-center gap-2">
-            <span class="text-sm text-(--wui-color-text-secondary)">动效偏好</span>
-            <web-ui-segmented :value="motion" aria-label="单层主题动效偏好" @input="setMotion">
+            <span class="text-sm text-(--wui-color-text-secondary)">Motion preference</span>
+            <web-ui-segmented :value="motion" aria-label="Single-level theme motion preference" @input="setMotion">
               <web-ui-segmented-trigger value="full">Full</web-ui-segmented-trigger>
               <web-ui-segmented-trigger value="reduced">Reduced</web-ui-segmented-trigger>
               <web-ui-segmented-trigger value="system">System</web-ui-segmented-trigger>
@@ -105,29 +105,31 @@ function showScopedToast() {
           <web-ui-switch checked></web-ui-switch>
         </div>
 
-        <h3>浮层继承</h3>
+        <h3>Inherited from the overlay</h3>
         <p class="mb-3 text-sm text-(--wui-color-text-secondary)">
           Portal Select、Toast 与 Dialog 均继承当前主题范围的外观和动效 token。
         </p>
         <div class="flex flex-wrap items-center gap-3">
-          <web-ui-select v-model="scopedSelectValue" portal aria-label="主题范围 Portal Select">
+          <web-ui-select v-model="scopedSelectValue" portal aria-label="Theme-scoped portal select">
             <web-ui-option value="portal" label="Portal overlay">Portal overlay</web-ui-option>
             <web-ui-option value="theme" label="Theme tokens">Theme tokens</web-ui-option>
             <web-ui-option value="motion" label="Motion tokens">Motion tokens</web-ui-option>
           </web-ui-select>
-          <web-ui-button ref="scopedToastTarget" variant="secondary" @click="showScopedToast">显示 Toast</web-ui-button>
-          <web-ui-button variant="secondary" @click="scopedDialogOpen = true">打开 Dialog</web-ui-button>
+          <web-ui-button ref="scopedToastTarget" variant="secondary" @click="showScopedToast"
+            >Show a toast</web-ui-button
+          >
+          <web-ui-button variant="secondary" @click="scopedDialogOpen = true">Open a dialog</web-ui-button>
         </div>
 
         <web-ui-dialog :open="scopedDialogOpen" @open-change="scopedDialogOpen = $event.detail.open">
           <span slot="header">Scoped dialog</span>
           Dialog 位于原生 top layer，仍继承当前 theme scope 的颜色与动效 token。
-          <web-ui-button slot="footer" variant="primary" full @click="scopedDialogOpen = false">关闭</web-ui-button>
+          <web-ui-button slot="footer" variant="primary" full @click="scopedDialogOpen = false">Close</web-ui-button>
         </web-ui-dialog>
       </section>
     </web-ui-theme>
 
-    <h2>多层嵌套</h2>
+    <h2>Nested levels</h2>
     <p class="mb-4 text-sm text-(--wui-color-text-secondary)">
       外层 Light / Reduced → 内层 Dark / Full → 最内层 Light / System，每层独立控制，互不干扰。
     </p>
@@ -139,9 +141,9 @@ function showScopedToast() {
       style="border-color: var(--wui-color-border)"
     >
       <section style="background: var(--wui-color-page)">
-        <p class="mb-2 text-xs text-(--wui-color-text-secondary)">外层（Light / Reduced）</p>
+        <p class="mb-2 text-xs text-(--wui-color-text-secondary)">Outer (Light / Reduced)</p>
         <div class="flex flex-wrap gap-3">
-          <web-ui-button variant="primary">外层按钮</web-ui-button>
+          <web-ui-button variant="primary">Outer button</web-ui-button>
           <web-ui-switch checked></web-ui-switch>
         </div>
 
@@ -152,18 +154,26 @@ function showScopedToast() {
           style="border-color: var(--wui-color-border)"
         >
           <section style="background: var(--wui-color-page)">
-            <p class="mb-2 text-xs text-(--wui-color-text-secondary)">内层（可切换）</p>
+            <p class="mb-2 text-xs text-(--wui-color-text-secondary)">Inner (toggleable)</p>
             <div class="mb-4 flex flex-wrap items-center gap-4">
               <div class="flex items-center gap-2">
-                <span class="text-sm text-(--wui-color-text-secondary)">内层外观</span>
-                <web-ui-segmented :value="innerAppearance" aria-label="内层主题外观" @input="setInnerAppearance">
+                <span class="text-sm text-(--wui-color-text-secondary)">Inner appearance</span>
+                <web-ui-segmented
+                  :value="innerAppearance"
+                  aria-label="Inner theme appearance"
+                  @input="setInnerAppearance"
+                >
                   <web-ui-segmented-trigger value="light">Light</web-ui-segmented-trigger>
                   <web-ui-segmented-trigger value="dark">Dark</web-ui-segmented-trigger>
                 </web-ui-segmented>
               </div>
               <div class="flex items-center gap-2">
-                <span class="text-sm text-(--wui-color-text-secondary)">内层动效</span>
-                <web-ui-segmented :value="innerMotion" aria-label="内层主题动效偏好" @input="setInnerMotion">
+                <span class="text-sm text-(--wui-color-text-secondary)">Inner motion</span>
+                <web-ui-segmented
+                  :value="innerMotion"
+                  aria-label="Inner theme motion preference"
+                  @input="setInnerMotion"
+                >
                   <web-ui-segmented-trigger value="system">System</web-ui-segmented-trigger>
                   <web-ui-segmented-trigger value="full">Full</web-ui-segmented-trigger>
                   <web-ui-segmented-trigger value="reduced">Reduced</web-ui-segmented-trigger>
@@ -172,8 +182,8 @@ function showScopedToast() {
             </div>
 
             <div class="flex flex-wrap gap-3">
-              <web-ui-button variant="primary">内层按钮</web-ui-button>
-              <web-ui-input value="内层输入"></web-ui-input>
+              <web-ui-button variant="primary">Inner button</web-ui-button>
+              <web-ui-input value="Inner input"></web-ui-input>
               <web-ui-switch checked></web-ui-switch>
             </div>
 
@@ -184,13 +194,13 @@ function showScopedToast() {
               style="border-color: var(--wui-color-border)"
             >
               <section style="background: var(--wui-color-page)">
-                <p class="mb-2 text-xs text-(--wui-color-text-secondary)">最内层（可切换）</p>
+                <p class="mb-2 text-xs text-(--wui-color-text-secondary)">Innermost (toggleable)</p>
                 <div class="mb-4 flex flex-wrap items-center gap-4">
                   <div class="flex items-center gap-2">
-                    <span class="text-sm text-(--wui-color-text-secondary)">最内层外观</span>
+                    <span class="text-sm text-(--wui-color-text-secondary)">Innermost appearance</span>
                     <web-ui-segmented
                       :value="innermostAppearance"
-                      aria-label="最内层主题外观"
+                      aria-label="Innermost theme appearance"
                       @input="setInnermostAppearance"
                     >
                       <web-ui-segmented-trigger value="light">Light</web-ui-segmented-trigger>
@@ -198,10 +208,10 @@ function showScopedToast() {
                     </web-ui-segmented>
                   </div>
                   <div class="flex items-center gap-2">
-                    <span class="text-sm text-(--wui-color-text-secondary)">最内层动效</span>
+                    <span class="text-sm text-(--wui-color-text-secondary)">Innermost motion</span>
                     <web-ui-segmented
                       :value="innermostMotion"
-                      aria-label="最内层主题动效偏好"
+                      aria-label="Innermost theme motion preference"
                       @input="setInnermostMotion"
                     >
                       <web-ui-segmented-trigger value="system">System</web-ui-segmented-trigger>
@@ -212,7 +222,7 @@ function showScopedToast() {
                 </div>
 
                 <div class="flex flex-wrap gap-3">
-                  <web-ui-button variant="primary">最内层按钮</web-ui-button>
+                  <web-ui-button variant="primary">Innermost button</web-ui-button>
                   <web-ui-switch checked></web-ui-switch>
                 </div>
               </section>

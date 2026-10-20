@@ -3,11 +3,11 @@ component: option
 tag: web-ui-option
 ---
 
-`<web-ui-select>` 与 `<web-ui-autocomplete>` 的选项载体：`value` 是选中时提交的值，`label` 是显示文本（缺省时取自身的文本内容），`prefix` / `suffix` 插槽放两端的图标。它不派发面向使用方的事件——挂载、更新与卸载时发出的注册握手只由父级容器消费；选中态由容器回写 `selected`。
+`<web-ui-select>` 与 `<web-ui-autocomplete>` 的 option 载体：`value` 是选中时提交的值，`label` 是显示文本（缺省时取自身的文本内容），`prefix` / `suffix` 插槽放两端的 icon。它不派发面向使用方的事件——挂载、更新与卸载时发出的注册握手只由父级容器消费；选中态由容器回写 `selected`。
 
 ## 示例
 
-### 基础选项 {#basic}
+### 基础 option {#basic}
 
 `label` 决定容器里显示什么，`value` 是容器派发出去的值。
 
@@ -33,7 +33,7 @@ export default function Demo() {
 </template>
 ```
 
-### 前后缀图标 {#prefix-suffix}
+### 前后缀 icon {#prefix-suffix}
 
 不写 `label` 时，`label` 取默认插槽的文本；`prefix` 与 `suffix` 不参与这段文本。
 
@@ -112,11 +112,11 @@ export default function Demo() {
 
 ### Slots
 
-| 名称      | 说明                                         |
-| --------- | -------------------------------------------- |
-| `prefix`  | 文本左侧的图标或标识。                       |
-| `default` | 选项文本；`label` 为空时这段文本就是 label。 |
-| `suffix`  | 文本右侧的图标或标识。                       |
+| 名称      | 说明                                            |
+| --------- | ----------------------------------------------- |
+| `prefix`  | 文本左侧的 icon 或标识。                        |
+| `default` | option 文本；`label` 为空时这段文本就是 label。 |
+| `suffix`  | 文本右侧的 icon 或标识。                        |
 
 ### 行为说明
 
@@ -124,6 +124,6 @@ export default function Demo() {
 
 ### CSS Custom Properties
 
-| 名称                         | 说明                      | 默认值  |
-| ---------------------------- | ------------------------- | ------- |
-| `--wui-option-check-display` | 选中勾选图标的 display 值 | `block` |
+| 名称                         | 说明                        | 默认值  |
+| ---------------------------- | --------------------------- | ------- |
+| `--wui-option-check-display` | 选中勾选 icon 的 display 值 | `block` |

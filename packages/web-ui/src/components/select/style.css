@@ -111,7 +111,7 @@
   --wui-internal-duration-float-exit: var(--wui-duration-float-exit, 160ms);
   --wui-glass-corner-radius: var(--wui-radius-menu, 18px);
 
-  /* 环底色转 transparent，宽面板的长边中段不留铺底，见 menu-portal.css 同处注释。 */
+  /* 环底色转 transparent，宽 panel 的长边中段不留铺底，见 menu-portal.css 同处注释。 */
   --wui-color-glass-ring: transparent;
   position: absolute;
   z-index: var(--wui-layer-inline-overlay, 1);
@@ -123,7 +123,7 @@
   max-width: var(--wui-select-max-width, 500px);
   border-radius: var(--wui-radius-menu, 18px);
 
-  /* 玻璃背景：wui-glass 在面板自身，这里覆盖其默认玻璃底为菜单表面色 */
+  /* 玻璃背景：wui-glass 在 panel 自身，这里覆盖其默认玻璃底为 menu surface 色 */
   background-color: var(--wui-color-surface-menu, rgb(250 250 250 / 0.76));
 
   &.portal {

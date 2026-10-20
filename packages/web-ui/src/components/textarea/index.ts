@@ -102,7 +102,7 @@ export class WebUiTextarea extends FormAssociated(LitElement) {
      * changed.has('_value')，不必各自调一次。
      *
      * 不能等 ResizeObserver：autosize 把高度写成内联 px，换值时盒子尺寸没变，
-     * 不会触发回调，于是旧高度会一直留着（例如同一个 textarea 随抽屉切换资源，
+     * 不会触发回调，于是旧高度会一直留着（例如同一个 textarea 随 drawer 切换资源，
      * 从长备注切到短备注仍占着长备注的高度）。
      *
      * rows 同理：它决定 height:auto 时的自然高度，但 inline px 会盖掉它，
@@ -234,7 +234,7 @@ export class WebUiTextarea extends FormAssociated(LitElement) {
   }
 
   override render() {
-    // readonly 下不可清除：清空按钮会修改值，与只读语义冲突
+    // readonly 下不可清除：清空 button 会修改值，与只读语义冲突
     const showClear = this.clearable && this._value && !this.readonly
 
     return html`
@@ -265,7 +265,7 @@ export class WebUiTextarea extends FormAssociated(LitElement) {
                 icon
                 variant="ghost"
                 size="20"
-                aria-label="清除"
+                aria-label="Clear"
                 @pointerdown=${this.preventMouseDownBlur}
                 @click=${this.handleClear}
               >

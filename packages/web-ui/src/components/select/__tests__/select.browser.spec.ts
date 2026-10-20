@@ -11,7 +11,7 @@ import type { WebUiSelect } from '..'
 afterEach(() => document.body.replaceChildren())
 
 describe('WebUiSelect 组件（浏览器）', () => {
-  it('Portal 面板在 theme 作用域内挂载到 theme 自己的 overlay root', async () => {
+  it('Portal panel 在 theme 作用域内挂载到 theme 自己的 overlay root', async () => {
     const theme = document.createElement('web-ui-theme')
     theme.setAttribute('appearance', 'light')
     theme.className = 'block'
@@ -29,10 +29,10 @@ describe('WebUiSelect 组件（浏览器）', () => {
 
     expect(select.open).toBe(true)
     const host = theme.getOverlayRoot()?.firstElementChild as HTMLElement | null | undefined
-    expect(host?.shadowRoot?.querySelector('[role="listbox"]'), '面板应挂在 theme 拥有的 overlay root').not.toBeNull()
+    expect(host?.shadowRoot?.querySelector('[role="listbox"]'), 'panel 应挂在 theme 拥有的 overlay root').not.toBeNull()
   })
 
-  it('退出过渡隐藏前重新打开 Portal 面板', async () => {
+  it('退出过渡隐藏前重新打开 Portal panel', async () => {
     const select = document.createElement('web-ui-select')
     select.portal = true
     select.innerHTML = '<web-ui-option value="apple">Apple</web-ui-option>'

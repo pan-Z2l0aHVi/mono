@@ -14,7 +14,7 @@ const createButton = (text = ''): WebUiButton => {
 }
 
 /**
- * 只读公开渲染面：spinner 是 shadow 内渲染的 web-ui-icon（公开组件标签），
+ * 只读公开渲染面：spinner 是 shadow 内渲染的 web-ui-icon（公开组件 label），
  * 默认 slot 用于断言"消费者内容是否被投影"。不依赖内部 class。
  */
 const parts = (el: WebUiButton) => ({
@@ -69,8 +69,8 @@ describe('WebUiButton 组件', () => {
     })
   })
 
-  describe('原生按钮契约', () => {
-    it('type 默认 button，非法值规范化为 button 并映射到内部按钮', async () => {
+  describe('原生 button 契约', () => {
+    it('type 默认 button，非法值规范化为 button 并映射到内部 button', async () => {
       const el = createButton('OK')
       await waitForUpdate(el)
       const inner = el.shadowRoot?.querySelector('button')
@@ -89,7 +89,7 @@ describe('WebUiButton 组件', () => {
       cleanupElement(el)
     })
 
-    it('将文档化的可访问名称映射到内部按钮', async () => {
+    it('将文档化的可访问名称映射到内部 button', async () => {
       const el = createButton()
       el.setAttribute('aria-label', 'Close')
       await waitForUpdate(el)
@@ -98,7 +98,7 @@ describe('WebUiButton 组件', () => {
       cleanupElement(el)
     })
 
-    it('将 data-* 保留在组件宿主而不复制到内部按钮', async () => {
+    it('将 data-* 保留在组件宿主而不复制到内部 button', async () => {
       const el = createButton()
       el.setAttribute('data-testid', 'save')
       await waitForUpdate(el)
@@ -323,7 +323,7 @@ describe('WebUiButton 组件', () => {
   })
 
   describe('键盘操作', () => {
-    it('内联按钮的 click 方法触发宿主事件', async () => {
+    it('内联 button 的 click 方法触发宿主事件', async () => {
       const el = createButton('OK')
       await waitForUpdate(el)
 

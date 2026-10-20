@@ -30,10 +30,10 @@ async function mountThemedMenu(appearance: 'light' | 'dark') {
 }
 
 /**
- * 在**主题作用域内**把 token 落到计算色，作为面板应有的期望值。
+ * 在**主题作用域内**把 token 落到计算色，作为 panel 应有的期望值。
  *
- * 写死 `rgb(...)` 会随 token 调整而腐化，也让「面板取到的是这个 token」退化成「面板取到的是
- * 这个字面量」；把同一 token 在同一作用域里边渲染出来对照，断言才真的在问「面板与它的主题
+ * 写死 `rgb(...)` 会随 token 调整而腐化，也让「panel 取到的是这个 token」退化成「panel 取到的是
+ * 这个字面量」；把同一 token 在同一作用域里边渲染出来对照，断言才真的在问「panel 与它的主题
  * 是不是同一个值」。
  */
 function resolveToken(theme: HTMLElement, token: string): string {
@@ -70,10 +70,10 @@ function findScrim(): HTMLDialogElement | null {
 afterEach(() => document.body.replaceChildren())
 
 /*
- * 深色外观下菜单仍是浅色玻璃的回归。
+ * 深色外观下 menu 仍是浅色玻璃的回归。
  *
  * 根因是 scrim 曾被挂到 `document.body`，而 `<web-ui-theme>` 是 body 的**子**节点：
- * `--wui-color-*` 只沿 DOM 树向下继承，scrim 与挂进 scrim 的面板双双落回
+ * `--wui-color-*` 只沿 DOM 树向下继承，scrim 与挂进 scrim 的 panel 双双落回
  * `var(--wui-color-*, <浅色字面量>)` 的 fallback。修复把 scrim 放进最近主题的 overlay root
  * （与 dropdown / select 同一条路径）。
  *
@@ -83,7 +83,7 @@ afterEach(() => document.body.replaceChildren())
  */
 describe('context-menu 模态 scrim 的主题作用域（浏览器）', () => {
   for (const appearance of ['dark', 'light'] as const) {
-    it(`${appearance} 外观下面板取最近主题的菜单 token，而不是浅色 fallback`, async () => {
+    it(`${appearance} 外观下 panel 取最近主题的 menu token，而不是浅色 fallback`, async () => {
       const { theme, menu } = await mountThemedMenu(appearance)
       menu.openAt(120, 120)
       await menu.updateComplete
@@ -97,7 +97,7 @@ describe('context-menu 模态 scrim 的主题作用域（浏览器）', () => {
       const panel = scrim?.querySelector<HTMLElement>('[role="menu"]')
       expect(panel).toBeTruthy()
 
-      // 主判据：面板的底与前景取的是**最近主题**那份 token，而不是浅色 fallback。
+      // 主判据：panel 的底与前景取的是**最近主题**那份 token，而不是浅色 fallback。
       const panelStyle = getComputedStyle(panel!)
       expect(panelStyle.backgroundColor).toBe(resolveToken(theme, '--wui-color-surface-menu'))
       expect(panelStyle.color).toBe(resolveToken(theme, '--wui-color-text'))

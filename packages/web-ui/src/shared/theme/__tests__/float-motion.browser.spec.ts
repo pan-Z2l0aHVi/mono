@@ -30,7 +30,7 @@ const fixtures = [
 const FLOAT_ENTER_MS = 240
 
 /**
- * 浮层面板动效契约。
+ * overlay panel 动效契约。
  *
  * b4 的 R2 把 8 个组件各写一遍的「单层玻璃」CSS 断言收敛到本文件
  * （popover / tooltip / dropdown / context-menu / select / autocomplete / toast / dialog），
@@ -40,11 +40,11 @@ const FLOAT_ENTER_MS = 240
  * 观察面用 Web Animations API 而非 computed style（§10 S2）。
  *
  * 实测口径（b6，2026-09-16，`motion=full` / `motion=reduced` 各采 4 帧）：
- * - `portal=true`：面板挂进 theme-owned overlay root，open 时确实启动
+ * - `portal=true`：panel 挂进 theme-owned overlay root，open 时确实启动
  *   `opacity` / `transform` / `backdrop-filter` 三条过渡，时长 240ms；reduced 下一条都不启动。
- * - `portal=false`（**本文件不断言**）：本地面板打开时 `getAnimations()` 恒为空 —— 它从
+ * - `portal=false`（**本文件不断言**）：本地 panel 打开时 `getAnimations()` 恒为空 —— 它从
  *   `display: none` 变为可见，没有 before-change style，CSS 过渡不会启动。
- *   即"入场动画"只存在于 portal 路径；本地面板的**退场**仍走过渡（元素已渲染）。该不对称
+ *   即"入场动画"只存在于 portal 路径；本地 panel 的**退场**仍走过渡（元素已渲染）。该不对称
  *   记入契约化重构 Batch 6a 发现项，不改产品代码。
  */
 async function openPanel({ tag, role }: (typeof fixtures)[number], motion: string): Promise<HTMLElement> {
@@ -61,21 +61,21 @@ async function openPanel({ tag, role }: (typeof fixtures)[number], motion: strin
   host.open = true
   await host.updateComplete
 
-  // 面板经 portal 异步挂载；等到它存在且可见（`hidden` 是 R1 明文允许的可见性后果）。
+  // panel 经 portal 异步挂载；等到它存在且可见（`hidden` 是 R1 明文允许的可见性后果）。
   let panel = getThemedPortalPanel(theme, role)
   await pollUntil(() => {
     panel = getThemedPortalPanel(theme, role)
     return panel !== null && !panel.hidden
-  }, `${tag} 的 portal 面板未在 2s 内挂载并可见`)
+  }, `${tag} 的 portal panel 未在 2s 内挂载并可见`)
   await waitForFrame()
 
-  if (panel === null) throw new Error(`${tag} 的 portal 面板缺失`)
+  if (panel === null) throw new Error(`${tag} 的 portal panel 缺失`)
   return panel
 }
 
 afterEach(() => document.body.replaceChildren())
 
-describe('浮层面板动效（浏览器）', () => {
+describe('overlay panel 动效（浏览器）', () => {
   for (const fixture of fixtures) {
     it(`${fixture.tag} portal 打开时启动 float token 时长的入场过渡`, async () => {
       const panel = await openPanel(fixture, 'full')

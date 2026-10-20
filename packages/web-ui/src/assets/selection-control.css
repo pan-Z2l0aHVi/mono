@@ -1,7 +1,7 @@
 /*
  * radio / checkbox 共享外壳。
  *
- * 指示器只有 18px。宿主一旦走 inline-block，页面行高会在宿主内生成匿名行盒，把盒子撑到
+ * indicator 只有 18px。宿主一旦走 inline-block，页面行高会在宿主内生成匿名行盒，把盒子撑到
  * 行高（Tailwind preflight 下是 24px），且多出的空隙落在哪一侧取决于内部基线落点，radio 与
  * checkbox 因此一个贴顶一个贴底。改成 inline-flex 后宿主高度由内容决定，行高不再参与，
  * 与相邻文字的对齐交给 vertical-align 显式声明。
@@ -45,8 +45,8 @@
 }
 
 /*
- * 标签没有可渲染内容时把间距一并收掉。gap 只认「这里有个 flex item」，不认它有没有宽度，所以空槽位
- * 或只挂了一个视觉隐藏的无障碍名时，指示器右边照样多出这一段；判据见 LabelEmptinessController。
+ * label 没有可渲染内容时把间距一并收掉。gap 只认「这里有个 flex item」，不认它有没有宽度，所以空槽位
+ * 或只挂了一个视觉隐藏的无障碍名时，indicator 右边照样多出这一段；判据见 LabelEmptinessController。
  */
 :where(.wui-radio.is-label-empty, .wui-checkbox.is-label-empty) {
   gap: 0;
@@ -63,9 +63,9 @@
 }
 
 /*
- * 指示器底色取控件档。surface-raised 在深色下（#2c2c2e）离页面底色（#242628）只有 8 个
+ * indicator 底色取控件档。surface-raised 在深色下（#2c2c2e）离页面底色（#242628）只有 8 个
  * 亮度点，未选中时几乎看不出有一个圆/方框；surface-control 才是主题里「控件自己的底」
- * 那一档（中性按钮同档），深色比页面高 22 个亮度点，浅色下也从近白的 #f2f2f7 变成可读的 #dfdfdf。
+ * 那一档（中性 button 同档），深色比页面高 22 个亮度点，浅色下也从近白的 #f2f2f7 变成可读的 #dfdfdf。
  */
 :where(.wui-radio-circle, .wui-checkbox-box) {
   isolation: isolate;
@@ -85,9 +85,9 @@
 }
 
 /*
- * 状态层走覆盖层，不占用指示器自己的 background-color：同一个属性没法一半过渡一半即时，
+ * 状态层走覆盖层，不占用 indicator 自己的 background-color：同一个属性没法一半过渡一半即时，
  * 而这里要的是 hover 当帧切换、选中态的 accent 按 --wui-duration-trigger 淡入淡出。
- * z-index: -1 配父级 isolation 把覆盖层夹在控件底与圆点/勾之间，半径跟着指示器走。
+ * z-index: -1 配父级 isolation 把覆盖层夹在控件底与圆点/勾之间，半径跟着 indicator 走。
  */
 :where(.wui-radio-circle, .wui-checkbox-box)::before {
   content: '';
@@ -106,8 +106,8 @@
 /*
  * 未激活态的 hover 状态层。用半透明色而不是混进控件底：覆盖层本就压在不透明的控件底上，
  * 合成结果与 color-mix(text 6%, surface-control) 一致，深色档同样成立。
- * 标签文字带 pointer-events: none，命中落回 label 自身，所以整条触发区（含右侧文字）
- * 的 hover 都会作用到指示器。hover 只在真正的指针设备上生效，避免触屏留态。
+ * label 文字带 pointer-events: none，命中落回 label 自身，所以整条触发区（含右侧文字）
+ * 的 hover 都会作用到 indicator。hover 只在真正的指针设备上生效，避免触屏留态。
  */
 @media (hover: hover) and (pointer: fine) {
   :where(.wui-radio, .wui-checkbox):hover:not(.is-disabled, .is-checked)

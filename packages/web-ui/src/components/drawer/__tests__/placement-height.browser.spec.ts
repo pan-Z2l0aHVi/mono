@@ -8,8 +8,8 @@ import type { WebUiDrawer } from '..'
 
 /*
  * 上下 placement 的高度由公开 token `--wui-drawer-height` 决定（README 双方记录，
- * demo 的「自定义高」按钮直接指向它）。它同时是内容滚不滚得动的前提：
- * `.wui-drawer-content` 靠 `.wui-drawer-body { height: 100% }` 拿到面板高度，面板高度
+ * demo 的「自定义高」button 直接指向它）。它同时是内容滚不滚得动的前提：
+ * `.wui-drawer-content` 靠 `.wui-drawer-body { height: 100% }` 拿到 panel 高度，panel 高度
  * 又必须来自 dialog 这个盒子。dialog 一旦退化成内容高度（`:host(:not([headless])) dialog`
  * 的 `height: auto` 压掉了 placement 块里的 height），`flex: 1` 就没有可收缩的空间，
  * 长内容直接溢出 dialog 盒子（overflow: visible）落到视口之下——够不着，也滚不动。
@@ -45,8 +45,8 @@ async function openDrawer(el: WebUiDrawer): Promise<void> {
 
 afterEach(() => document.body.replaceChildren())
 
-describe('WebUiDrawer 上下 placement 的面板高度（浏览器）', () => {
-  it('--wui-drawer-height 决定面板高度', async () => {
+describe('WebUiDrawer 上下 placement 的 panel 高度（浏览器）', () => {
+  it('--wui-drawer-height 决定 panel 高度', async () => {
     const el = createDrawer('bottom', 40)
     el.style.setProperty('--wui-drawer-height', '260px')
     await openDrawer(el)
@@ -56,7 +56,7 @@ describe('WebUiDrawer 上下 placement 的面板高度（浏览器）', () => {
     expect(getDialog(el).offsetHeight).toBeLessThanOrEqual(260)
   })
 
-  it('内容高过面板时在内容区滚到最后一块，不溢出 dialog 盒子', async () => {
+  it('内容高过 panel 时在内容区滚到最后一块，不溢出 dialog 盒子', async () => {
     const el = createDrawer('bottom', 2000)
     await openDrawer(el)
 

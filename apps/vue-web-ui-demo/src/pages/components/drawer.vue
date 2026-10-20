@@ -1,7 +1,7 @@
 <route lang="json">
 {
   "meta": {
-    "title": "Drawer 抽屉"
+    "title": "Drawer"
   }
 }
 </route>

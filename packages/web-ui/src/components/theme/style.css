@@ -10,14 +10,14 @@
    * 「这块文字是什么」，不回答「它是第几号」）。
    *
    * 字号四档，各自对应一个真实角色而非尺寸偏好：
-   *   caption 12px  密集 chrome 标签（badge、toast 时间戳、menu 分组头）
+   *   caption 12px  密集 chrome label（badge、toast 时间戳、menu 分组头）
    *   readout 13px  数字读数（image-preview 计数与缩放比，带 tabular-nums；
    *                 13px 是承重的——它要装进 min-width:48px 的胶囊）
    *   14px          正文基准，即下面的 --wui-font-size
    *   title 18px    有界卡片标题（dialog、drawer）
    *
    * 行高同理分四档。组件里的 line-height:1 与 0 刻意不 token 化：前者是控件内
-   * 单行标签的垂直居中手段，后者是让包裹盒高收缩到内容的技巧，两者都不是
+   * 单行 label 的垂直居中手段，后者是让包裹盒高收缩到内容的技巧，两者都不是
    * 排版行高，token 化会误导后来者以为可以整体调它们。
    */
   --wui-font-size-caption: 12px;
@@ -40,7 +40,7 @@
    *
    * 本族刻意不含 1px / 2px / 6px / 7.5px / 10px 与负值。1px 是发丝线与描边环的
    * 结构宽度；2px、6px、7.5px 是光学修正；10px 是 4px 阶之外的半档耦合值；负
-   * margin 用来抵消 flex gap 或按钮 padding。它们都是「为什么是这个数」各自独立
+   * margin 用来抵消 flex gap 或 button padding。它们都是「为什么是这个数」各自独立
    * 的答案，不共享「间距」语义，收进同一把尺子只会让覆盖其中之一时误伤其余。
    */
   --wui-space-1: 4px;
@@ -54,7 +54,7 @@
   --wui-control-size: 36px;
   --wui-overlay-min-width: 200px;
 
-  /* radio / checkbox 指示器尺寸。宿主高度由内容撑开，不继承页面行高。 */
+  /* radio / checkbox indicator 尺寸。宿主高度由内容撑开，不继承页面行高。 */
   --wui-selection-control-size: 18px;
 
   /* radio-group / checkbox-group 成员间距，两个 group 各自可覆盖。 */
@@ -77,7 +77,7 @@
   --wui-duration-trigger: 160ms;
   --wui-duration-focus: 200ms;
 
-  /* 锚定浮动面板（menu/popover/select/dropdown/tooltip/autocomplete）的进场与退场时长，
+  /* 锚定浮动 panel（menu/popover/select/dropdown/tooltip/autocomplete）的进场与退场时长，
      出场快于入场。 */
   --wui-duration-float-enter: 240ms;
   --wui-duration-float-exit: 160ms;
@@ -92,7 +92,7 @@
   --wui-duration-collapse-exit: 160ms;
   --wui-duration-layout: 200ms;
 
-  /* image-preview 轮播回位：跟手结束后把轨道过渡到目标位。不属于进出场族，故单独成 token。 */
+  /* image-preview 轮播回位：跟手结束后把 track 过渡到目标位。不属于进出场族，故单独成 token。 */
   --wui-duration-swipe-settle: 220ms;
 
   /* 无限循环的加载指示：icon 旋转与 spinner 叶片追光。周期属于动画自身而非转场，
@@ -109,11 +109,11 @@
   /* 轮播回位的缓动：起步快、末段极慢，与 --wui-ease-slide（整卡位移）区分开。 */
   --wui-ease-swipe: cubic-bezier(0.32, 0.72, 0, 1);
 
-  /* 锚定浮动面板专属进场缓动，无回弹弹簧拟合曲线。若改用 --wui-ease-enter，
+  /* 锚定浮动 panel 专属进场缓动，无回弹弹簧拟合曲线。若改用 --wui-ease-enter，
      开局 30% 的时间就走完 85% 进度，观感是先弹出再落位。 */
   --wui-ease-float: cubic-bezier(0.4, 0.38, 0.2, 1);
 
-  /* 进场缩放起点。两族方向相反，各自成 token：浮动面板与 image-preview 由小到大展开
+  /* 进场缩放起点。两族方向相反，各自成 token：浮动 panel 与 image-preview 由小到大展开
      （0.9 → 1），dialog 由大到小收缩（1.1 → 1，退场反向）。
      方向由承载层决定。image-preview 是满视口表面，起点 >1 会把贴边的 counter/close/
      toolbar 推出视口并裁掉图片四边，只能留在 <1 的档位。dialog 是有界卡片，起点须低于
@@ -124,7 +124,7 @@
   --wui-dialog-scale-enter: 1.1;
   --wui-focus-ring-width: 3px;
 
-  /* control=胶囊控件、menu=浮动菜单面板、overlay=大型覆盖层卡片 */
+  /* control=胶囊控件、menu=浮动 menu panel、overlay=大型覆盖层卡片 */
   --wui-radius-control: calc(infinity * 1px);
   --wui-radius-menu: 18px;
   --wui-radius-overlay: 28px;
@@ -261,14 +261,14 @@
   --wui-color-surface-glass-active: color-mix(in srgb, var(--wui-color-text) 15%, var(--wui-color-surface-glass));
   --wui-color-surface-overlay: rgb(32 34 34 / 0.92);
 
-  /* 深色 elevation：浮动面板与侧边栏都比 page 浅一档。取 --wui-color-surface
-     （#2c2c2e）作为「page 之上一档」的基准色，面板按自身 alpha 叠在 page 上，
+  /* 深色 elevation：浮动 panel 与侧边栏都比 page 浅一档。取 --wui-color-surface
+     （#2c2c2e）作为「page 之上一档」的基准色，panel 按自身 alpha 叠在 page 上，
      合成结果约 rgb(46 45 47)，与 #2c2c2e 相差不超过 2/255。
-     alpha 低于早期的 0.92/0.9：颜色抬升后高 alpha 会让面板读成实心纸片，
+     alpha 低于早期的 0.92/0.9：颜色抬升后高 alpha 会让 panel 读成实心纸片，
      降到 0.74/0.8 恢复旧版的透感（模糊底内容可透出），层级方向不变。
      overlay 是唯一的例外：dialog/drawer/toast 背后的内容是被遮住的主体内容，
-     透过去会与浮层自身文字叠出干扰读的对比，因此单独抬到 0.92 换取可读性，
-     代价是失去透感——它本来也不属于「面板透出 page」的层级语义。 */
+     透过去会与 overlay 自身文字叠出干扰读的对比，因此单独抬到 0.92 换取可读性，
+     代价是失去透感——它本来也不属于「panel 透出 page」的层级语义。 */
   --wui-color-surface-sidebar: rgb(44 44 46 / 0.8);
   --wui-color-surface-segmented: #3a3a3c;
   --wui-color-surface-selected: #5c5c5e;

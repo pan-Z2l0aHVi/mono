@@ -365,10 +365,10 @@ export class WebUiEditableText extends FormAssociated(LitElement) {
     this._refocusing = true
     /*
      * cancel 与原生 <dialog> 的 cancel 同名，而 dialog 的关闭管线就监听这个事件名。
-     * 组件被消费方投映进浮层 shadow（drawer/dialog 标题）时，任何冒泡的 cancel——
+     * 组件被消费方投映进 overlay shadow（drawer/dialog 标题）时，任何冒泡的 cancel——
      * composed 与否都一样，slot 都会把事件带进 shadow 树——都会被那个 dialog 当成
      * 一次关闭请求：issue #159 的实测症状是 drawer 标题聚焦编辑时按 Escape，或点到
-     * 抽屉别处触发 blur，抽屉跟着编辑一起关。因此只在宿主上派发，不冒泡不组合；
+     * drawer 别处触发 blur，drawer 跟着编辑一起关。因此只在宿主上派发，不冒泡不组合；
      * 监听挂在组件本身即可（vue @cancel、React addEventListener 均不受影响）。
      * 手法同 checkbox/radio 受管时的事件策略（见各自 handleClick 注释）。
      */
@@ -390,9 +390,9 @@ export class WebUiEditableText extends FormAssociated(LitElement) {
   /**
    * 编辑态按键归属：Enter 提交、Escape 取消。
    *
-   * 监听挂在 window 捕获阶段而不是 shadow 内的 textarea 上：消费方（浮层仲裁者）在
+   * 监听挂在 window 捕获阶段而不是 shadow 内的 textarea 上：消费方（overlay 仲裁者）在
    * document 捕获阶段收 Escape，组件若只在 textarea 上处理，按键先被仲裁者收走，
-   * 于是一次 Escape 会同时取消编辑和关闭外层浮层。window 在 document 上游，
+   * 于是一次 Escape 会同时取消编辑和关闭外层 overlay。window 在 document 上游，
    * stopPropagation 只有挂在这里才拦得住仲裁者。
    */
   private _claimEditingKeys() {
@@ -408,7 +408,7 @@ export class WebUiEditableText extends FormAssociated(LitElement) {
     if (e.isComposing) return
     if (!e.composedPath().includes(this)) return
     if (e.key === 'Escape') {
-      // 按键本身也被编辑层消费：外层浮层不应收到同一次 Escape
+      // 按键本身也被编辑层消费：外层 overlay 不应收到同一次 Escape
       e.preventDefault()
       e.stopPropagation()
       // 先取消（内部摘除编辑态）再交还焦点：focus 触发的 blur 看到 _editing 已为
@@ -420,14 +420,14 @@ export class WebUiEditableText extends FormAssociated(LitElement) {
     if (e.key === 'Enter') {
       /*
        * Enter 无论是否只读都属于编辑层，消费策略与 Escape 对称：preventDefault
-       * 压掉默认行为，stopPropagation 阻止外层表单隐式提交或浮层监听收到按键。
+       * 压掉默认行为，stopPropagation 阻止外层表单隐式提交或 overlay 监听收到按键。
        * 只读态只是没有草稿可提交，因此消费后直接返回，不退出编辑、不派发 change。
        */
       e.preventDefault()
       e.stopPropagation()
       if (this.readonly) return
       /*
-       * 可编辑态的 Enter 随后提交草稿；外层表单的隐式提交与浮层监听不应收到
+       * 可编辑态的 Enter 随后提交草稿；外层表单的隐式提交与 overlay 监听不应收到
        * 同一次按键——正如 Escape 属于取消。
        */
       this._commitEditing(true)

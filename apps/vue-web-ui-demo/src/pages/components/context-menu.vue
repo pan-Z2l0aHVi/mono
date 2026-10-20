@@ -1,7 +1,7 @@
 <route lang="json">
 {
   "meta": {
-    "title": "ContextMenu 右键菜单"
+    "title": "ContextMenu"
   }
 }
 </route>

@@ -49,7 +49,7 @@ describe('WebUiSelect 组件', () => {
       cleanupElement(el)
     })
 
-    it('设置 value 后通过 combobox 文本反映选中标签', async () => {
+    it('设置 value 后通过 combobox 文本反映选中 label', async () => {
       const el = createSelect(OPTIONS_HTML)
       el.value = 'banana'
       await waitForUpdate(el)
@@ -60,7 +60,7 @@ describe('WebUiSelect 组件', () => {
       cleanupElement(el)
     })
 
-    it('未设置 option label 时使用默认 slot 文本作为选中标签', async () => {
+    it('未设置 option label 时使用默认 slot 文本作为选中 label', async () => {
       const el = createSelect('<web-ui-option value="apple">Apple</web-ui-option>', { value: 'apple' })
       await waitForUpdate(el)
 
@@ -70,7 +70,7 @@ describe('WebUiSelect 组件', () => {
       cleanupElement(el)
     })
 
-    it('已选 option 的 label 更新后同步触发器文本', async () => {
+    it('已选 option 的 label 更新后同步 trigger 文本', async () => {
       const el = createSelect(OPTIONS_HTML, { value: 'apple' })
       await waitForUpdate(el)
 
@@ -85,7 +85,7 @@ describe('WebUiSelect 组件', () => {
       cleanupElement(el)
     })
 
-    it('选项在连接后插入时同步标签', async () => {
+    it('option 在连接后插入时同步 label', async () => {
       const el = createSelect('', { value: 'banana' })
       await waitForUpdate(el)
 
@@ -153,7 +153,7 @@ describe('WebUiSelect 组件', () => {
   })
 
   describe('打开/关闭', () => {
-    it('点击触发器打开浮层', async () => {
+    it('点击 trigger 打开 overlay', async () => {
       const el = createSelect(OPTIONS_HTML)
       await waitForUpdate(el)
 
@@ -167,7 +167,7 @@ describe('WebUiSelect 组件', () => {
       cleanupElement(el)
     })
 
-    it('点击选项后关闭浮层并更新 value', async () => {
+    it('点击 option 后关闭 overlay 并更新 value', async () => {
       const el = createSelect(OPTIONS_HTML)
       el.value = 'apple'
       await waitForUpdate(el)
@@ -223,7 +223,7 @@ describe('WebUiSelect 组件', () => {
       cleanupElement(el)
     })
 
-    it('点击外部关闭浮层', async () => {
+    it('点击外部关闭 overlay', async () => {
       const el = createSelect(OPTIONS_HTML)
       await waitForUpdate(el)
 
@@ -239,7 +239,7 @@ describe('WebUiSelect 组件', () => {
       cleanupElement(el)
     })
 
-    it('焦点移出组件后关闭浮层', async () => {
+    it('焦点移出组件后关闭 overlay', async () => {
       const el = createSelect(OPTIONS_HTML)
       const external = document.createElement('button')
       document.body.append(external)
@@ -353,7 +353,7 @@ describe('WebUiSelect 组件', () => {
   })
 
   describe('键盘导航', () => {
-    it('ArrowDown 打开浮层并把 aria-activedescendant 指向首个选项', async () => {
+    it('ArrowDown 打开 overlay 并把 aria-activedescendant 指向首个 option', async () => {
       const el = createSelect(OPTIONS_HTML)
       await waitForUpdate(el)
 
@@ -389,7 +389,7 @@ describe('WebUiSelect 组件', () => {
       cleanupElement(el)
     })
 
-    it('指针进入选项后清除键盘激活状态', async () => {
+    it('指针进入 option 后清除键盘激活状态', async () => {
       const el = createSelect(OPTIONS_HTML)
       await waitForUpdate(el)
 
@@ -405,7 +405,7 @@ describe('WebUiSelect 组件', () => {
       cleanupElement(el)
     })
 
-    it('触摸指针进入选项时保留键盘激活状态', async () => {
+    it('触摸指针进入 option 时保留键盘激活状态', async () => {
       const el = createSelect(OPTIONS_HTML)
       await waitForUpdate(el)
 
@@ -420,7 +420,7 @@ describe('WebUiSelect 组件', () => {
       cleanupElement(el)
     })
 
-    it('Escape 关闭浮层', async () => {
+    it('Escape 关闭 overlay', async () => {
       const el = createSelect(OPTIONS_HTML)
       await waitForUpdate(el)
 
@@ -440,7 +440,7 @@ describe('WebUiSelect 组件', () => {
       el.value = 'apple'
       await waitForUpdate(el)
 
-      // 第一次 ArrowDown 打开浮层并定位到已选项
+      // 第一次 ArrowDown 打开 overlay 并定位到已 option
       el.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true }))
       await waitForUpdate(el)
       // 第二次 ArrowDown 移动到下一项
@@ -546,7 +546,7 @@ describe('WebUiSelect 组件', () => {
   })
 
   describe('条件渲染边界', () => {
-    it('注释锚点替换为包含 option 的 wrapper 后同步选中标签', async () => {
+    it('注释锚点替换为包含 option 的 wrapper 后同步选中 label', async () => {
       const el = createSelect('<!--options-->', { value: 'banana' })
       await waitForUpdate(el)
 
@@ -562,7 +562,7 @@ describe('WebUiSelect 组件', () => {
       cleanupElement(el)
     })
 
-    it('portal 打开时删除整个 wrapper 不再激活已删除选项', async () => {
+    it('portal 打开时删除整个 wrapper 不再激活已删除 option', async () => {
       const el = createSelect(`
         <div>
           <web-ui-option value="banana" label="Banana"></web-ui-option>
@@ -595,7 +595,7 @@ describe('WebUiSelect 组件', () => {
     })
   })
 
-  describe('触发器插槽', () => {
+  describe('trigger 插槽', () => {
     it('提供 trigger slot 时按 name 投影该 slot', async () => {
       const el = createSelect(OPTIONS_HTML)
       el.innerHTML = `
@@ -624,7 +624,7 @@ describe('WebUiSelect 组件', () => {
       cleanupElement(el)
     })
 
-    it('点击 trigger slot 内容打开浮层', async () => {
+    it('点击 trigger slot 内容打开 overlay', async () => {
       const el = createSelect(OPTIONS_HTML)
       el.innerHTML = `
         <span slot="trigger">Click me</span>
@@ -642,7 +642,7 @@ describe('WebUiSelect 组件', () => {
       cleanupElement(el)
     })
 
-    it('trigger slot 模式下选择选项仍更新 value', async () => {
+    it('trigger slot 模式下选择 option 仍更新 value', async () => {
       const el = createSelect(OPTIONS_HTML)
       el.innerHTML = `
         <span slot="trigger">Pick one</span>
@@ -690,7 +690,7 @@ describe('WebUiSelect 组件', () => {
   })
 
   /*
-   * 禁用态下 Escape 必须被吞掉（Q14 语义）：既不关掉本层，也不落到下层浮层。
+   * 禁用态下 Escape 必须被吞掉（Q14 语义）：既不关掉本层，也不落到下层 overlay。
    * 本用例是全套 select 测试里**唯一**覆盖这条契约的 —— 把 `_syncOverlayInert()` 的方法体
    * 整条停掉后，只有它转红（其余 61 例全绿）。
    *

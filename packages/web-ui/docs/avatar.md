@@ -3,13 +3,13 @@ component: avatar
 tag: web-ui-avatar
 ---
 
-头像，支持图片加载失败与无图片时回退到名称首字母，避免在图片缺位处留下空洞。
+avatar，支持图片加载失败与无图片时回退到名称首字母，避免在图片缺位处留下空洞。
 
 ## 示例
 
 ### 基础
 
-传入 `src` 时按图片渲染，`alt` 作为图片替代文本，`size` 决定头像边长。
+传入 `src` 时按图片渲染，`alt` 作为图片替代文本，`size` 决定 avatar 边长。
 
 ```react
 <web-ui-avatar src="/avatars/grey.png" alt="Grey" size={48}></web-ui-avatar>
@@ -23,7 +23,7 @@ tag: web-ui-avatar
 
 ### 首字母回退
 
-没有 `src`、或图片加载失败时，组件从 `name` 取首字母渲染回退头像。
+没有 `src`、或图片加载失败时，组件从 `name` 取首字母渲染回退 avatar。
 
 ```react
 <web-ui-avatar name="Grey Pan" size={40}></web-ui-avatar>
@@ -68,7 +68,7 @@ import { lucideUser } from '@greypan/web-ui/icons'
 | `src`   | 图片 URL；留空或加载失败时回退。    | `string`               | `''`       |
 | `alt`   | 图片替代文本。                      | `string`               | `''`       |
 | `name`  | 展示名称，用于首字母回退。          | `string`               | `''`       |
-| `size`  | 头像边长（px）。                    | `number`               | `40`       |
+| `size`  | avatar 边长（px）。                 | `number`               | `40`       |
 | `shape` | 形状：`circle`（默认）或 `square`。 | `'circle' \| 'square'` | `'circle'` |
 
 ### Slots

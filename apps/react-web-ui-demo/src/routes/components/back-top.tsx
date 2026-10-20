@@ -13,6 +13,6 @@ function Component() {
 }
 
 export const Route = createFileRoute('/components/back-top')({
-  staticData: { title: 'BackTop 回到顶部' },
+  staticData: { title: 'BackTop' },
   component: Component
 })

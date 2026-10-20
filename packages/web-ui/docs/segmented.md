@@ -3,7 +3,7 @@ component: segmented
 tag: web-ui-segmented
 ---
 
-分段控制器（单选按钮组），子项是 `<web-ui-segmented-trigger>`；`value` 同步选中项，并与原生 `<form>` 集成。
+segmented（单选 button group），子项是 `<web-ui-segmented-trigger>`；`value` 同步选中项，并与原生 `<form>` 集成。
 
 ## 示例
 
@@ -37,7 +37,7 @@ const view = ref('week')
 
 ### 变体
 
-`variant` 选择轨道与指示器的材质：`inset`（默认，嵌入轨道）或 `raised`（经典浮起）。
+`variant` 选择 track 与 indicator 的材质：`inset`（默认，嵌入 track）或 `raised`（经典浮起）。
 
 ```react
 <web-ui-segmented variant="raised" value="list">
@@ -104,18 +104,18 @@ const view = ref('week')
 
 ### 变体
 
-`inset`（默认，「凹」）是不透明实体轨道（`--wui-color-surface`）——1px 描边环与投影全程常驻，静止指示器是 `--wui-color-surface-segmented` 纯灰底，视觉上嵌入轨道。浅色下该 token 与 `--wui-color-page` 同值，轨道与页面齐平，凹感只由常驻环与投影承担；深色下它是「比页面高一档」的 elevation，轨道依旧浮离页面。`raised`（「凸」）是经典形态：flat 灰轨道（`--wui-color-surface-segmented`，无环无投影），静止指示器是 `--wui-color-surface-selected` 实体底加柔投影，浮起于轨道之上。两个变体的按压/拖拽态一致——指示器转透明玻璃（backdrop blur、80ms 淡入的描边环、1.5x 放大），松开淡回各自静止面。非法值回退 `inset`。
+`inset`（默认，「凹」）是不透明实体 track（`--wui-color-surface`）——1px 描边环与投影全程常驻，静止 indicator 是 `--wui-color-surface-segmented` 纯灰底，视觉上嵌入 track。浅色下该 token 与 `--wui-color-page` 同值，track 与页面齐平，凹感只由常驻环与投影承担；深色下它是「比页面高一档」的 elevation，track 依旧浮离页面。`raised`（「凸」）是经典形态：flat 灰 track（`--wui-color-surface-segmented`，无环无投影），静止 indicator 是 `--wui-color-surface-selected` 实体底加柔投影，浮起于 track 之上。两个变体的按压/拖拽态一致——indicator 转透明玻璃（backdrop blur、80ms 淡入的描边环、1.5x 放大），松开淡回各自静止面。非法值回退 `inset`。
 
 与原生 `<form>` 集成（通过 `ElementInternals`）。
 
 根据 `value` 同步子 trigger 的 `checked` 状态。`disabled` 提供继承的有效禁用状态，不改写 trigger 自身的 `disabled` 属性。直接设 `value` 不派发事件。
 
-按住当前选中项横向拖拽可滑动指示器，松手吸附到最近选项（快速抛掷按速度切换）。trigger 宽度不等时，拖拽中的指示器取「离自身中心最近的那一项」的宽度——即预览松手会落到的那一项，而不是保持按下那一项的宽度。触摸面声明 `touch-action: none`，拖拽激活期间阻止 `touchmove` 默认滚动，避免 iOS Safari 中断手势。
+按住当前选中项横向拖拽可滑动 indicator，松手吸附到最近 option（快速抛掷按速度切换）。trigger 宽度不等时，拖拽中的 indicator 取「离自身中心最近的那一项」的宽度——即预览松手会落到的那一项，而不是保持按下那一项的宽度。触摸面声明 `touch-action: none`，拖拽激活期间阻止 `touchmove` 默认滚动，避免 iOS Safari 中断手势。
 
 ### 按压态
 
-轨道在所有状态下都是不透明实体面（`--wui-color-surface`，浅色即 page 同色、无 backdrop filter），1px 描边环与投影全程不变；转为玻璃的是指示器这一层。静止态指示器是 `--wui-color-surface-segmented` 实色底、玻璃输出全部关闭；按压/拖拽态获得 backdrop blur、随 80ms 过渡淡入的玻璃描边环与 1.5x 放大，底色全透明：指示器的 blur 采样面整个落在轨道之内，此前的玻璃轨道上全透明指示器在均匀深底与相邻轨道仅差 +0.5 阶，条纹底实测指示器内部灰度 std 1.89（背景渗透）；轨道实体化后同一采样 std 归零，按压态本体的可感知性由实色轨道与放大/环/投影共同承担，不再需要 tint 打底或压制轨道边缘装饰。底色不淡入——按下第一帧即落定；松开时指示器经 `--wui-duration-press` 淡回实色灰底。
+track 在所有状态下都是不透明实体面（`--wui-color-surface`，浅色即 page 同色、无 backdrop filter），1px 描边环与投影全程不变；转为玻璃的是 indicator 这一层。静止态 indicator 是 `--wui-color-surface-segmented` 实色底、玻璃输出全部关闭；按压/拖拽态获得 backdrop blur、随 80ms 过渡淡入的玻璃描边环与 1.5x 放大，底色全透明：indicator 的 blur 采样面整个落在 track 之内，此前的玻璃 track 上全透明 indicator 在均匀深底与相邻 track 仅差 +0.5 阶，条纹底实测 indicator 内部灰度 std 1.89（背景渗透）；track 实体化后同一采样 std 归零，按压态本体的可感知性由实色 track 与放大/环/投影共同承担，不再需要 tint 打底或压制 track 边缘装饰。底色不淡入——按下第一帧即落定；松开时 indicator 经 `--wui-duration-press` 淡回实色灰底。
 
 ### 文字色
 
-选中与未选中项文字一律保持 `--wui-color-text-secondary`——`inset`/`raised` 两个变体一致，静止态与按压/拖拽态一致。选中态只由指示器承担，任何标签都不着 `--wui-color-accent`。
+选中与未选中项文字一律保持 `--wui-color-text-secondary`——`inset`/`raised` 两个变体一致，静止态与按压/拖拽态一致。选中态只由 indicator 承担，任何 label 都不着 `--wui-color-accent`。

@@ -12,7 +12,7 @@ afterEach(() => document.body.replaceChildren())
  * 共有契约（value/disabled 默认值、属性反射、input・change・focus・blur 事件、
  * value 双向同步、formAssociated）见
  * `src/shared/form-association/__tests__/text-control-contract.spec.ts`。
- * 本文件只保留 input-number 特有的公开契约：步进按钮、min/max 收敛、精度、键盘。
+ * 本文件只保留 input-number 特有的公开契约：步进 button、min/max 收敛、精度、键盘。
  */
 const createNumber = (attrs?: Record<string, string>): WebUiInputNumber =>
   mountElement<WebUiInputNumber>('web-ui-input-number', { attrs })
@@ -28,8 +28,8 @@ describe('WebUiInputNumber 组件特有契约', () => {
     cleanupElement(el)
   })
 
-  describe('步进按钮', () => {
-    it('点击增加按钮增大值', async () => {
+  describe('步进 button', () => {
+    it('点击增加 button 增大值', async () => {
       const el = createNumber()
       el.value = 5
       await waitForUpdate(el)
@@ -41,7 +41,7 @@ describe('WebUiInputNumber 组件特有契约', () => {
       cleanupElement(el)
     })
 
-    it('点击减少按钮减小值', async () => {
+    it('点击减少 button 减小值', async () => {
       const el = createNumber()
       el.value = 5
       await waitForUpdate(el)
@@ -53,7 +53,7 @@ describe('WebUiInputNumber 组件特有契约', () => {
       cleanupElement(el)
     })
 
-    it('点击增加按钮只派发 input，不派发 change', async () => {
+    it('点击增加 button 只派发 input，不派发 change', async () => {
       const el = createNumber()
       await waitForUpdate(el)
 
@@ -67,7 +67,7 @@ describe('WebUiInputNumber 组件特有契约', () => {
       cleanupElement(el)
     })
 
-    it('disabled 时点击按钮不触发 input 事件', async () => {
+    it('disabled 时点击 button 不触发 input 事件', async () => {
       const el = createNumber()
       el.disabled = true
       await waitForUpdate(el)
@@ -80,7 +80,7 @@ describe('WebUiInputNumber 组件特有契约', () => {
       cleanupElement(el)
     })
 
-    it('readonly 时步进按钮禁用且点击不触发 input', async () => {
+    it('readonly 时步进 button 禁用且点击不触发 input', async () => {
       const el = createNumber()
       el.readonly = true
       await waitForUpdate(el)
@@ -97,7 +97,7 @@ describe('WebUiInputNumber 组件特有契约', () => {
   })
 
   describe('min / max 边界', () => {
-    it('到达 min 时减少按钮被禁用', async () => {
+    it('到达 min 时减少 button 被禁用', async () => {
       const el = createNumber()
       el.min = 0
       el.value = 0
@@ -108,7 +108,7 @@ describe('WebUiInputNumber 组件特有契约', () => {
       cleanupElement(el)
     })
 
-    it('到达 max 时增加按钮被禁用', async () => {
+    it('到达 max 时增加 button 被禁用', async () => {
       const el = createNumber()
       el.max = 10
       el.value = 10

@@ -82,7 +82,7 @@ export class WebUiSwitch extends FormAssociated(LitElement) {
     const internals = this._formAssociation.getInternals()
     if (!internals || typeof internals.setValidity !== 'function') return
     if (this._isDisabled || !this.required || this._checked) internals.setValidity({})
-    else internals.setValidity({ valueMissing: true }, '请启用此项')
+    else internals.setValidity({ valueMissing: true }, 'Enable this option')
   }
 
   // 阻止 label 默认行为，避免原生 checkbox 重复触发点击。
