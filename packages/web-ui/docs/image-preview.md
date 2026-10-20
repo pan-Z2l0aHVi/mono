@@ -3,7 +3,7 @@ component: image-preview
 tag: web-ui-image-preview
 ---
 
-命令式 image preview：通过 `imagePreview()` 打开，用返回的句柄控制；内部使用原生 `<dialog>`，默认挂载到最近的 theme-owned overlay root。下面的表分别列 `imagePreview()` 的 option 与返回句柄的成员。
+命令式 image preview：通过 `imagePreview()` 打开，用返回的 handle 控制；内部使用原生 `<dialog>`，默认挂载到最近的 theme-owned overlay root。下面的表分别列 `imagePreview()` 的 option 与返回 handle 的成员。
 
 ## 示例
 
@@ -88,9 +88,9 @@ function openBounded(images: { src: string; alt?: string }[]) {
 </script>
 ```
 
-### 句柄
+### handle
 
-句柄暴露只读的 `index`、`scale`、`images`、`closed` 与下表的方法，可据此实现自己的 trigger 与状态 panel。
+handle 暴露只读的 `index`、`scale`、`images`、`closed` 与下表的方法，可据此实现自己的 trigger 与状态 panel。
 
 ```react
 const preview = imagePreview({ images })
@@ -143,7 +143,7 @@ async function inspect(images: { src: string; alt?: string }[]) {
 | `zoomIn()`    | 放大一档（0.5），上限 4。                                                       |
 | `zoomOut()`   | 缩小一档（0.5），下限 1。                                                       |
 | `resetZoom()` | 缩放与平移复位：回到 1x 并居中。                                                |
-| `close()`     | 关闭预览；句柄的 `closed` 在退场结束后兑现。                                    |
+| `close()`     | 关闭预览；handle 的 `closed` 在退场结束后兑现。                                 |
 
 ### 行为说明
 
@@ -171,7 +171,7 @@ await preview.closed
 
 展示类 option 默认全关：不传任何 option 时只渲染图片本身，导航、工具条、关闭 button 与 indicator 都需要显式开启。
 
-### 返回句柄
+### 返回 handle
 
 | 名称     | 说明                             | 类型                          |
 | -------- | -------------------------------- | ----------------------------- |

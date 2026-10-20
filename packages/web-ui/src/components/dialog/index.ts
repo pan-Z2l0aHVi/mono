@@ -68,7 +68,7 @@ export class WebUiDialog extends LitElement {
     requestClose: () => this._closeFromUser(),
     isConnected: () => this.isConnected
   })
-  /** 当前开启会话的句柄；未开启时为 null。查询与惰性同步走它。 */
+  /** 当前开启会话的 handle；未开启时为 null。查询与惰性同步走它。 */
   private _handle: OpenOverlayHandle | null = null
   private readonly _scrollLock = defineScrollLockLease().make()
   private readonly _presence = defineNativeDialogPresence().make({

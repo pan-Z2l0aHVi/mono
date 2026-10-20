@@ -995,7 +995,7 @@ class WebUiImagePreview extends LitElement {
  * 打开一个命令式 image preview。
  *
  * 组件挂载到目标 `web-ui-theme` 的 overlay 容器（无主题作用域时回退到全局
- * fallback root），返回的句柄是唯一的控制入口。所有展示类 option 默认关闭，
+ * fallback root），返回的 handle 是唯一的控制入口。所有展示类 option 默认关闭，
  * 默认只渲染图片本身。
  */
 export function imagePreview(options: ImagePreviewOptions): ImagePreviewHandle {

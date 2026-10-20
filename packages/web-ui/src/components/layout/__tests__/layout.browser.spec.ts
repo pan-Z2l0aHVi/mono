@@ -369,7 +369,7 @@ describe('WebUiLayout 组件（浏览器）', () => {
       expect(layout.sidebarWidth).toBe('240px')
     })
 
-    // 手写的 role=separator 必须自己补 tabindex，否则键盘用户永远到不了调宽把手。
+    // 手写的 role=separator 必须自己补 tabindex，否则键盘用户永远到不了调宽 resize handle。
     it('handle 是可聚焦的 splitter', async () => {
       const layout = await resizableLayout()
       const handle = handleOf(layout)
@@ -400,7 +400,7 @@ describe('WebUiLayout 组件（浏览器）', () => {
     })
 
     /*
-     * Enter 提交后临时宽度必须清空（`_resizeWidth = null`），焦点仍停在把手上时
+     * Enter 提交后临时宽度必须清空（`_resizeWidth = null`），焦点仍停在 resize handle 上时
      * 再按回车是「无未提交调整」，不该再派发第二次请求——这正是 :233 注释写明的
      * 意图。判别力来自**第二次** Enter：只按一次 Enter 的用例无法区分「提交后清空」
      * 与「提交后原样留着」，删掉清空这行本用例立刻转红。
@@ -422,7 +422,7 @@ describe('WebUiLayout 组件（浏览器）', () => {
       await layout.updateComplete
       expect(widthRequests).toHaveLength(1)
 
-      // 焦点未动，把手上没有新的未提交调整：回车不该产生第二次请求。
+      // 焦点未动，resize handle 上没有新的未提交调整：回车不该产生第二次请求。
       handle.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter' }))
       await layout.updateComplete
       expect(widthRequests).toHaveLength(1)
@@ -668,7 +668,7 @@ describe('WebUiLayout 组件（浏览器）', () => {
       expect(widthRequests).toHaveLength(0)
     })
 
-    // collapsed state 没有可调的侧栏，把手必须随 collapse 一起消失。
+    // collapsed state 没有可调的侧栏，resize handle 必须随 collapse 一起消失。
     it('collapsed state 隐藏 handle，展开后重现', async () => {
       const layout = await resizableLayout()
       expect(queryA11y(layout, '[role="separator"]')).toBeTruthy()
@@ -682,7 +682,7 @@ describe('WebUiLayout 组件（浏览器）', () => {
       expect(queryA11y(layout, '[role="separator"]')).toBeTruthy()
     })
 
-    // 跨越断点会卸载桌面 layout（把手随之消失）。悬挂的手势若不终结，切回桌面后
+    // 跨越断点会卸载桌面 layout（resize handle 随之消失）。悬挂的手势若不终结，切回桌面后
     // 所有新拖拽都会在入口被 `_isResizing()` 拦下。
     it('拖拽中视口跨越移动端断点后，切回桌面仍可再次拖拽', async () => {
       const layout = await resizableLayout()

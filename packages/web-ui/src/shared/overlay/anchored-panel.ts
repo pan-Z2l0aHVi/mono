@@ -30,10 +30,10 @@ export interface AnchoredPanelOptions {
 export interface AnchoredPanelApi {
   getPanel(): HTMLElement | null
   /**
-   * 当前在场会话的句柄；没有任何在场会话时为 `null`。
+   * 当前在场会话的 handle；没有任何在场会话时为 `null`。
    * 查询（`contains` / `containsEvent` / `hasFocusWithin`）与 `setInert` 都走它，
    * 调用方因此不必持有 panel 引用，也不知道存在全局注册表。
-   * 退场等待期间仍是同一个句柄（暂缓仲裁），动画播完或重新 `open()` 才换人。
+   * 退场等待期间仍是同一个 handle（暂缓仲裁），动画播完或重新 `open()` 才换人。
    */
   getHandle(): OpenOverlayHandle | null
   open(isInstant?: boolean): void
@@ -126,7 +126,7 @@ export const defineAnchoredPanel = () =>
          *
          * 退场被打断时 `showOverlayPresence` 已把 panel 带回场，`open()` 同时重新 claim
          * （与「重复 open 视为新的一次开启」同一条路径），本条 `close()` 随后的
-         * `return false` 不碰那个新句柄。
+         * `return false` 不碰那个新 handle。
          *
          * 走到 `isStillOpen()` 时退场已经播完：panel 已 `hidden`。此刻宿主仍认为开着，
          * 是 panel 状态与宿主状态不一致的那一格——把层交还仲裁而不是继续暂缓。继续暂缓的

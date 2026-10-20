@@ -49,7 +49,7 @@ interface MenuOverlay {
   api: OverlayApi
   overlay: HTMLElement
   content: HTMLElement
-  /** 该层为submenu 时的会话句柄；根层句柄由组件单独持有（见 `_handle`）。 */
+  /** 该层为submenu 时的会话 handle；根层 handle 由组件单独持有（见 `_handle`）。 */
   handle?: OpenOverlayHandle
 }
 
@@ -92,15 +92,15 @@ export class WebUiDropdown extends LitElement {
   })
   private readonly _scrollLock = defineScrollLockLease().make()
   /**
-   * 当前 Escape 候选的会话句柄（level 0）。panel 要等一帧才建好，而 Escape 可能在这之前
+   * 当前 Escape 候选的会话 handle（level 0）。panel 要等一帧才建好，而 Escape 可能在这之前
    * 到达：先以宿主为 panel claim 一次，panel 就绪后 release 旧会话、再以真实 panel 重新 claim。
-   * submenu 的句柄存在各自 `MenuOverlay.handle` 上（经 adopt 进本句柄子树）。
+   * submenu 的 handle 存在各自 `MenuOverlay.handle` 上（经 adopt 进本 handle 子树）。
    */
   private _handle: OpenOverlayHandle | null = null
   // 行为层（hover / outside-click / 键盘 / submenu 收尾）由 shared/menu-behavior 驱动
   private readonly _outsideClickGuard = createMenuOutsideClickGuard(
     this,
-    // 根句柄的 contains 递归覆盖全部已 adopt 的子层，一次查询替代逐层判定。
+    // 根 handle 的 contains 递归覆盖全部已 adopt 的子层，一次查询替代逐层判定。
     node => this._handle?.contains(node) ?? false
   )
   private readonly _closingSubmenus = createClosingSubmenuStack<MenuOverlay>({
@@ -478,14 +478,14 @@ export class WebUiDropdown extends LitElement {
    * 登记与「panel 是否本帧新建」解耦，与 context-menu 的根层修复同构。
    *
    * 退场被打断时（`_closeRootAfterPresence` 在 `hideOverlayPresence` 返回 false 后提前
-   * return）panel 仍在 DOM 里，而关闭分支已经把句柄撤了。此时重开走的是 `_ensureOverlay`
+   * return）panel 仍在 DOM 里，而关闭分支已经把 handle 撤了。此时重开走的是 `_ensureOverlay`
    * 的两条复用分支，它们不会重跑 `_buildOverlay`——原先只有 `_buildOverlay` 会 claim/adopt，
    * 于是出现「panel 可见 + `open === true` 却没有任何登记」：Escape 关不掉它（仲裁看不到它），
    * 守卫里 `contains` 恒 false，点 panel 内部反被当成外部点击关掉整张 menu。
    *
    * `open` 属性路径（`updated()` 里 scheduleFrame 到 `_ensureOverlay(0)`）与 `openMenu()`
    * 都落在复用分支上，因此**所有**根 claim 都必须走这里 —— 只在 `_ensureOverlay` 里补 claim
-   * 是不够的：`openMenu()` 会先把句柄建好，使那次补 claim 变成 no-op，子层照样被漏掉。
+   * 是不够的：`openMenu()` 会先把 handle 建好，使那次补 claim 变成 no-op，子层照样被漏掉。
    *
    * 新 claim 即新会话，旧会话连同其全部 adopt 子树一起作废，因此**仍在场的**子层必须
    * 在这里统一重挂。来源有两个：`_overlays` 里登记的层级，以及本轮已退场、被移出
@@ -500,10 +500,10 @@ export class WebUiDropdown extends LitElement {
     }
     /*
      * 收尾栈里的submenu panel 同样「可见但已脱离快照」：`_closeSubmenuFrom` 只把它们移出
-     * `_overlays`，层仍挂在旧句柄下、panel 仍在 DOM 里退场。不重挂的话它们会被判成 panel 外，
+     * `_overlays`，层仍挂在旧 handle 下、panel 仍在 DOM 里退场。不重挂的话它们会被判成 panel 外，
      * 点它内部就关掉整张 menu —— base 的 `composition.contains` 走登记树、且退场期间不注销，
      * 所以这条是相对 base 的行为回归，不是 parity。
-     * 新句柄要写回容器：收尾结束时 adapter.dispose 释放的是 `container.handle`。
+     * 新 handle 要写回容器：收尾结束时 adapter.dispose 释放的是 `container.handle`。
      */
     for (const container of this._closingSubmenus.closing()) {
       container.handle = this._handle.adopt(container.overlay)
@@ -511,7 +511,7 @@ export class WebUiDropdown extends LitElement {
     return this._handle
   }
 
-  /** 句柄缺失时补登记；panel 还没建好时以宿主代填，与 `_openMenu` 的占位会话同一口径。 */
+  /** handle 缺失时补登记；panel 还没建好时以宿主代填，与 `_openMenu` 的占位会话同一口径。 */
   private _ensureRootHandle(): OpenOverlayHandle {
     return this._handle ?? this._claimRoot(this._overlays.get(0)?.overlay ?? this)
   }
@@ -519,7 +519,7 @@ export class WebUiDropdown extends LitElement {
   private _ensureOverlay(level: number, isInstant = false, submenuItem?: HTMLElement): boolean {
     const closingOverlay = submenuItem ? this._closingSubmenus.take(submenuItem) : undefined
     if (closingOverlay) {
-      // 从 closing 栈取回的 panel：登记已在关闭时撤销，这里必须重新挂回根句柄子树。
+      // 从 closing 栈取回的 panel：登记已在关闭时撤销，这里必须重新挂回根 handle 子树。
       closingOverlay.handle = this._ensureRootHandle().adopt(closingOverlay.overlay)
       this._overlays.set(level, closingOverlay)
       closingOverlay.api.open()
@@ -566,9 +566,9 @@ export class WebUiDropdown extends LitElement {
         this._populateLevel0()
       } else {
         /*
-         * 子层进根句柄子树，默认不是独立候选 —— 「在树里但不是这一层」由此表达；
+         * 子层进根 handle 子树，默认不是独立候选 —— 「在树里但不是这一层」由此表达；
          * 原先按 level 找父 panel 的判断随之消失。用 `_ensureRootHandle()` 而不是 `_handle?.`：
-         * 后者在句柄意外缺失时会静默跳过 adopt，留下一棵无人认领的子树。
+         * 后者在 handle 意外缺失时会静默跳过 adopt，留下一棵无人认领的子树。
          */
         const handle = this._ensureRootHandle().adopt(overlay)
         this._overlays.set(level, { api: ctrl, overlay, content, handle })
@@ -583,11 +583,11 @@ export class WebUiDropdown extends LitElement {
   private _disposeOverlay(level: number) {
     const overlay = this._overlays.get(level)
     if (level === 0) {
-      // 根句柄撤销会递归撤销全部已 adopt 的子层。
+      // 根 handle 撤销会递归撤销全部已 adopt 的子层。
       this._handle?.release()
       this._handle = null
     }
-    // 子层句柄随所属 MenuOverlay 释放；已被根层递归撤销时幂等无操作。
+    // 子层 handle 随所属 MenuOverlay 释放；已被根层递归撤销时幂等无操作。
     overlay?.handle?.release()
     overlay?.overlay.removeEventListener('click', this._onMenuClick)
     overlay?.overlay.removeEventListener('keydown', this._onKeydown)
@@ -608,7 +608,7 @@ export class WebUiDropdown extends LitElement {
 
   private _disposeAll() {
     /*
-     * 先无条件撤销根句柄。`_openMenu` 会先用宿主当 panel claim 一次占位会话（真实 panel 要等
+     * 先无条件撤销根 handle。`_openMenu` 会先用宿主当 panel claim 一次占位会话（真实 panel 要等
      * 一帧才建好），若这段时间内宿主被卸载、`_buildOverlay` 没机会跑，`_overlays` 仍是空的
      * —— 只遍历 `_overlays` 就会漏掉它：该层永久留在模块注册表里强引用整个组件，且宿主
      * 重挂载后 `panel.isConnected` 又为真，占位层重新成为候选、吞掉 Escape。

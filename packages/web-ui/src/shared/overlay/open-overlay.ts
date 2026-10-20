@@ -12,7 +12,7 @@
  *
  * 本模块的取舍：
  *
- * - 身份是**句柄**而非 panel 元素：`release()` 不需要调用方回忆当初传了哪个 panel。
+ * - 身份是**handle**而非 panel 元素：`release()` 不需要调用方回忆当初传了哪个 panel。
  * - 开启状态是**声明**而非询问：仲裁时不再回调宿主问 `isOpen()`，宿主只提供
  *   `requestClose()` 与一个仅供惰性回收读取的 `isConnected()`；模块持有的真相即真相。
  * - `claim` 即「我开着」：一次 claim 对应一次开启，登记与仲裁是同一个动作。
@@ -21,10 +21,10 @@
  *   `deferArbitration(false)` 离开：于是「退场被打断」与「宿主仍认为开着」不再把看得见
  *   的 panel 留在未登记状态，而退场已播完、宿主却仍认为开着的那一格，也不会让一个看不
  *   见的 panel 无限吞掉 Escape。
- * - 查询走句柄（`contains` / `containsEvent` / `hasFocusWithin`），调用方不再需要
+ * - 查询走 handle（`contains` / `containsEvent` / `hasFocusWithin`），调用方不再需要
  *   持有 panel 引用，也不知道存在全局注册表。
  * - 实例作用域与会话作用域分开：帧事务的 lifetime 比一次开合长（tooltip 跨断连
- *   `resume()`），把它压进会话句柄会在 `release()` 时误杀事务。
+ *   `resume()`），把它压进会话 handle 会在 `release()` 时误杀事务。
  *
  * 刻意**不**吸收 presence、滚动锁与 drawer 的层序（nested layers）：它们回答的是
  * 视觉问题（`is-visible`、层序缩放），与「谁是最内层」正交，硬合并会互相污染。
@@ -65,7 +65,7 @@ export interface OverlayFrameHandle {
   cancel(): void
 }
 
-/** 会话作用域：一次开启对应一个句柄。 */
+/** 会话作用域：一次开启对应一个 handle。 */
 export interface OpenOverlayHandle {
   /**
    * 惰性：仍是候选（照旧 `preventDefault()` 压掉原生 `<dialog>` 的关闭请求），但不走
@@ -100,12 +100,12 @@ export interface OpenOverlayHandle {
    */
   deferArbitration(deferred?: boolean): void
   /**
-   * 把子层 panel 纳入本句柄的子树（多级submenu），默认不成为独立候选。
+   * 把子层 panel 纳入本 handle 的子树（多级submenu），默认不成为独立候选。
    *
    * 与 `claim` 的区别只在父级如何确定：`claim` 走祖先链，`adopt` 由调用方指名。
    *
-   * 在已 `release()` 的句柄上调用**不建层**、返回空操作句柄 —— 否则会建出一个父层已死
-   * 的孤层：它仍参与仲裁，却不在父层的子树里，除调用方手里那个句柄外没有回收路径。
+   * 在已 `release()` 的 handle 上调用**不建层**、返回空操作 handle —— 否则会建出一个父层已死
+   * 的孤层：它仍参与仲裁，却不在父层的子树里，除调用方手里那个 handle 外没有回收路径。
    */
   adopt(panel: HTMLElement, options?: OverlayClaimOptions): OpenOverlayHandle
   /** 本层子树（含已 adopt 的子层）是否包含 node。 */
@@ -122,7 +122,7 @@ export interface OpenOverlayHandle {
 export interface OpenOverlay {
   claim(panel: HTMLElement, options?: OverlayClaimOptions): OpenOverlayHandle
   /**
-   * 帧事务调度。`whileLive` 句柄一旦 release，回调自动作废 —— 取代原先由调用方
+   * 帧事务调度。`whileLive` handle 一旦 release，回调自动作废 —— 取代原先由调用方
    * 手工传入 `expectedOpen` 的轮询（那个参数正是「模块还得回头问宿主」的证据）。
    */
   scheduleFrame(callback: () => void, whileLive?: OpenOverlayHandle): OverlayFrameHandle
@@ -183,7 +183,7 @@ let sequence = 0
  * dev 期测试钩子：登记表尺寸。
  *
  * 「漏 release」是结构性风险，而 `layers` 的尺寸无法从公开 interface 观察——调用方
- * 只持有句柄，看不到全局注册表，测试于是只能靠 GC 语义推断。有了它，泄漏在测试里
+ * 只持有 handle，看不到全局注册表，测试于是只能靠 GC 语义推断。有了它，泄漏在测试里
  * 是一个可直接断言的数字。`import.meta.env.DEV` 是编译期常量，生产构建里整段消失。
  */
 declare global {
@@ -196,7 +196,7 @@ if (import.meta.env.DEV) {
 }
 
 /*
- * 已失效句柄的空操作替身，用于 `adopt` 在 released 句柄上的返回值。其余句柄方法在
+ * 已失效 handle 的空操作替身，用于 `adopt` 在 released handle 上的返回值。其余 handle 方法在
  * released 时都静默降级，返回值也必须一起降级，否则调用方会以为自己拿到了一棵可用子树。
  */
 const inactiveHandle: OpenOverlayHandle = {
@@ -524,7 +524,7 @@ export const defineOpenOverlay = () =>
             frames.delete(frame)
             if (suspended || scheduledGeneration !== generation) return
             // 会话已结束：该帧属于上一轮开合，丢弃而不是执行在错误的层上。
-            // 句柄已 release，或同一 panel 重新 claim 换了新句柄（旧层仍在 WeakMap 里，
+            // handle 已 release，或同一 panel 重新 claim 换了新 handle（旧层仍在 WeakMap 里，
             // 标记为 released），两种情形都要丢。
             if (whileLive) {
               const liveLayer = layerByHandle.get(whileLive)

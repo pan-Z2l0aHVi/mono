@@ -984,7 +984,7 @@ describe('WebUiContextMenu 组件（浏览器）', () => {
 
   /*
    * 退场被打断时 `_closeMenuAfterPresence` 会在 `hideOverlayPresence` 返回 false 后提前
-   * 退出，`_menu` 因此仍在，而关闭分支已经撤了句柄。重开必须补 claim：否则 menu 可见却无登记，
+   * 退出，`_menu` 因此仍在，而关闭分支已经撤了 handle。重开必须补 claim：否则 menu 可见却无登记，
    * Escape 关不掉它，且每次 document click（含 panel 内部）都会被判成外部点击而关闭 menu。
    */
   it('退场中重开后仍保持登记：panel 内点击不关闭，Escape 仍可关闭', async () => {
@@ -1047,14 +1047,14 @@ describe('WebUiContextMenu 组件（浏览器）', () => {
     const submenuPanel = getMenus()[1]!
     submenuPanel.style.transition = 'opacity 5s'
 
-    // 第一次 Escape 让submenu 进 closing 栈，第二次关闭根 menu（句柄随之撤销）。
+    // 第一次 Escape 让submenu 进 closing 栈，第二次关闭根 menu（handle 随之撤销）。
     dispatchEscape()
     await nextFrame()
     dispatchEscape()
     await menu.updateComplete
     await nextFrame()
 
-    // 退场窗口内重开：根句柄换代。
+    // 退场窗口内重开：根 handle 换代。
     menu.openAt(40, 40)
     await menu.updateComplete
     await nextFrame()

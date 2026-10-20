@@ -114,7 +114,7 @@ export class WebUiPopover extends LitElement {
       ?.addEventListener('slotchange', () => this.requestUpdate())
 
     if (this.open) {
-      // 建立会话的那一帧没有句柄可作 liveness 凭据：关闭路径会 invalidate()（见 updated），
+      // 建立会话的那一帧没有 handle 可作 liveness 凭据：关闭路径会 invalidate()（见 updated），
       // 微任务先于 rAF 排空，因此该帧不可能跨过一次关闭执行。
       this._overlay.scheduleFrame(() => {
         this._openOverlay(this._shouldOpenInstantly)
@@ -129,7 +129,7 @@ export class WebUiPopover extends LitElement {
     this.removeEventListener('focusout', this._onFocusOut)
     this.removeEventListener('pointerenter', this._onPointerEnter)
     this.removeEventListener('pointerleave', this._onPointerLeave)
-    // 停止帧调度；撤销登记由 _panel.dispose() 完成（句柄归它持有）。
+    // 停止帧调度；撤销登记由 _panel.dispose() 完成（handle 归它持有）。
     this._overlay.suspend()
     clearTimeout(this._showTimer)
     clearTimeout(this._hideTimer)

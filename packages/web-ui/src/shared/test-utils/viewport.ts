@@ -114,7 +114,7 @@ export async function scrollElementToEnd(el: Element, timeoutMs = 5000): Promise
  * 四条包含关系**全部平凡成立**——那正是本 helper 要隔离掉的
  * 「状态没到位」。所以面积判据是「宽高里至少有一条为正」而不是「面积大于零」：
  * `drag-bar-edge-inset` 有一条用例把 `--wui-drawer-drag-bar-length` 设成 `0px`
- * 来验证「缩短把手是唯一可测的杠杆」，那一刻胶囊与端头 drag edge 的宽度真的就是 0，
+ * 来验证「缩短 drag bar 是唯一可测的杠杆」，那一刻胶囊与端头 drag edge 的宽度真的就是 0，
  * 但高度仍然是正的。
  *
  * 容差 0.5px：`getBoundingClientRect()` 返回 LayoutUnit 量化值（1/64 px），

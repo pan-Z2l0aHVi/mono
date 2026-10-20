@@ -402,7 +402,7 @@ describe('WebUiDropdown 组件（浏览器）', () => {
 
   /*
    * 退场被打断时 panel 留在 DOM 里，而关闭分支已经撤销了登记。重开必须补登记：把仍在场
-   * 的子层重新挂回新会话子树。否则submenu item 可见却落在根句柄子树之外，点它会被 document
+   * 的子层重新挂回新会话子树。否则submenu item 可见却落在根 handle 子树之外，点它会被 document
    * 上的守卫当成外部点击，把整张 menu 关掉——submenu item 因此点不动。
    *
    * 退场过渡被刻意拉长，把「退场进行中重开」这个窗口钉成确定性的。
@@ -445,7 +445,7 @@ describe('WebUiDropdown 组件（浏览器）', () => {
 
   /*
    * 同源的第二个入口：`open` 属性路径不经过 `openMenu()`，claim 必须由复用分支自己补。
-   * 否则会出现「open === true + panel 可见 + 句柄为 null」，且点 panel 内部立刻关闭整张 menu：
+   * 否则会出现「open === true + panel 可见 + handle 为 null」，且点 panel 内部立刻关闭整张 menu：
    * 同一组件两个公开入口一个正常、一个彻底无登记。
    */
   it('退场窗口内经 open 属性重开时仍保持登记：panel 内点击不关闭 menu', async () => {
@@ -482,7 +482,7 @@ describe('WebUiDropdown 组件（浏览器）', () => {
   /*
    * 重挂的第三个来源：收尾栈。ArrowLeft 的非即时关闭路径把submenu panel 移出内部集合，
    * 只剩收尾栈还记得它——panel 仍在 DOM 里、仍在退场中。根重开时若只重挂当前集合，
-   * 这块 panel 就落在根句柄子树之外，点它内部照样把整张 menu 关掉。
+   * 这块 panel 就落在根 handle 子树之外，点它内部照样把整张 menu 关掉。
    *
    * 与上面两条的分工：那两条走 `closeAll()`，submenu 留在集合里；本条先用 ArrowLeft
    * 把submenu 推进收尾栈。两次重开都必须发生，缺一条循环即转红。

@@ -306,7 +306,7 @@ export class WebUiAutocomplete extends FormAssociated(LitElement) {
     this._close()
     this._portal = undefined
     this._portalContent = undefined
-    // 撤销登记由 _panel.dispose() 完成（句柄归它持有），不再需要单独 dispose 仲裁者。
+    // 撤销登记由 _panel.dispose() 完成（handle 归它持有），不再需要单独 dispose 仲裁者。
     this._panel.dispose()
     this._scrollLock.release()
   }
@@ -659,7 +659,7 @@ export class WebUiAutocomplete extends FormAssociated(LitElement) {
 
   private _openOverlay(isKeyboardNavigation = false) {
     this._panel.open(isKeyboardNavigation)
-    // 新会话的句柄刚建立，惰性状态需按当前 disabled/readonly 重新同步。
+    // 新会话的 handle 刚建立，惰性状态需按当前 disabled/readonly 重新同步。
     this._syncOverlayInert()
   }
 

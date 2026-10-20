@@ -312,7 +312,7 @@ export class WebUiDrawer extends LitElement {
     requestClose: () => this._closeFromUser(),
     isConnected: () => this.isConnected
   })
-  /** 当前开启会话的句柄；未开启时为 null。 */
+  /** 当前开启会话的 handle；未开启时为 null。 */
   private _handle: OpenOverlayHandle | null = null
 
   private _dragGesture: DragGestureHandle | null = null

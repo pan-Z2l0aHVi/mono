@@ -124,7 +124,7 @@ export class WebUiTooltip extends LitElement {
     this.removeEventListener('focusout', this._onFocusOut)
     clearTimeout(this._showTimer)
     clearTimeout(this._hideTimer)
-    // 停止帧调度；撤销登记由 _panel.dispose() 完成（句柄归它持有）。
+    // 停止帧调度；撤销登记由 _panel.dispose() 完成（handle 归它持有）。
     this._overlay.suspend()
     this._syncVisibleTooltipCount(false)
     this._panel.dispose()

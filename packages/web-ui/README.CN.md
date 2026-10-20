@@ -263,7 +263,7 @@ ARIA 属性同样必须显式支持：使用组件文档化的命名属性，而
 ### Cursor 行为
 
 交互控件使用原生箭头光标，而不是手型光标；disabled 控件使用 `not-allowed`。Slider、Switch 和 Segmented 在
-hover 与按压反馈阶段保持箭头光标，仅在真实拖拽进行中切换为 `grabbing`。专用拖拽把手和 resize 控件保留各自
+hover 与按压反馈阶段保持箭头光标，仅在真实拖拽进行中切换为 `grabbing`。专用拖拽 drag bar 和 resize 控件保留各自
 的专用光标。Cursor 样式位于 Shadow DOM 内，应用层普通选择器无法覆盖。
 
 ### 受控状态语义

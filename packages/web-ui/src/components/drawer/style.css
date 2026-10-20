@@ -219,13 +219,13 @@ dialog.is-nested-lower .wui-drawer-drag-zone {
  *
  * 代价明说：触摸命中面积从满宽收到胶囊长度（默认 390×12 → 56×12）。可接受——
  * **drag zone 本身没动**（满宽 20–32px 仍在让开位上），大面积起手能力并未丢失，
- * drag edge 只负责兑现「你看到的那个把手按得动」。
+ * drag edge 只负责兑现「你看到的那个 drag bar 按得动」。
  *
  * 收窄后仍压不死的情况只有一类：消费侧把可点控件放在胶囊那条水平跨度内。
  * 纯 CSS 无法消除（带要覆盖胶囊就必须有胶囊那么宽，而胶囊就画在那里）。
  * 但那不是新引入的视觉冲突——thickness 40px 时胶囊自身已压在 header 内容上，
- * drag edge 只是把「胶囊盖住的地方」一并变成可拖。是 consumer 要求了一个粗把手，
- * 而把手就画在 header 上。
+ * drag edge 只是把「胶囊盖住的地方」一并变成可拖。是 consumer 要求了一个粗 drag bar，
+ * 而 drag bar 就画在 header 上。
  *
  * 实测：给该控件抬 z-index ≥ 5 **救不回来**——Chromium 里本元素始终压在 slotted
  * 节点之上，抬 z-index 无效。唯一量得着的杠杆是 `--wui-drawer-drag-bar-length`：
@@ -236,7 +236,7 @@ dialog.is-nested-lower .wui-drawer-drag-zone {
  * - `--wui-drawer-drag-edge-size`（默认 20px）是给手指的命中厚度。
  * 加这条是因为端头原本只有 12px（＝中线 10 + 半个厚度 2），真机反馈「很难拖动到」。
  * 默认值取 20px 的依据：与主 drag zone `--wui-drawer-drag-zone-size` 的默认厚度同值，
- * 于是**胶囊的命中带恒不窄于主 drag zone**，「按你看到的把手」不会比「按旁边的带子」更难。
+ * 于是**胶囊的命中带恒不窄于主 drag zone**，「按你看到的 drag bar」不会比「按旁边的带子」更难。
  * 再往上加会开始吃掉 header 里控件的位置（端头整块可拖后，那一节是要放控件的）。
  *
  * 取 max() 而非直接用 token，是为了保住包含关系：中线的下限（`max()` 第二项）保证
@@ -522,11 +522,11 @@ dialog.is-dragging .wui-drawer-drag-zone {
    * （实测 thickness 4/16/24/40 × space-4 16/8/4 共 12 组，测试按这个矩阵逐组断言），
    * 正常情形靠几何就够。
    * 这一层防的是几何失效的那一格：`--wui-drawer-drag-bar-length` 同样是公开 token，
-   * 调到把手伸到 button 所在的位置时相交面积不为 0（实测 320px 时为 78px²），
+   * 调到 drag bar 伸到 button 所在的位置时相交面积不为 0（实测 320px 时为 78px²），
    * 此时唯一还能救的就是层序。
    *
    * 为它单独抬这一层是有实测依据的**不对称**，不是泛泛的防御性声明：
-   * 消费侧把控件塞进把手跨度里时，同一招不管用——Chromium 里端头 drag edge 始终压在
+   * 消费侧把控件塞进 drag bar 跨度里时，同一招不管用——Chromium 里端头 drag edge 始终压在
    * **slotted** 节点之上，给 slotted 元素抬 z-index 无效（已在测试注释里记下实测）。
    * 本 button 是组件自己画的 shadow 节点，层序对它有效，所以它是这条链上唯一能自救的节点。
    */

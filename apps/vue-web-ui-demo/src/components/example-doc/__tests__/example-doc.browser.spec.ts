@@ -352,15 +352,15 @@ describe('example-doc（Vue 面 / 真实浏览器）', () => {
     expect(section.querySelector('div')?.textContent).toBe(expected.textContent)
   })
 
-  it('返回句柄表只收只读成员，列形状来自 markdown', () => {
+  it('返回 handle 表只收只读成员，列形状来自 markdown', () => {
     const element = mountDoc('image-preview')
-    const handle = apiSection(imagePreview, '返回句柄')
-    const rows = rowsOf(element, '返回句柄')
+    const handle = apiSection(imagePreview, '返回 handle')
+    const rows = rowsOf(element, '返回 handle')
 
     expect(rows.map(cells => cells[0])).toEqual(handle.rows.map(row => row[0]))
     // 句柄上的方法归 ### Methods，这一节只记只读成员——同一件事不在两节里各写一遍。
     expect(rows.map(cells => cells[0])).toEqual(['index', 'scale', 'images', 'closed'])
-    expect(headersOf(element, '返回句柄')).toEqual(['名称', '说明', '类型'])
+    expect(headersOf(element, '返回 handle')).toEqual(['名称', '说明', '类型'])
     expect(cellOf(rows, handle, 'closed', '类型')).toBe('Promise<void>')
   })
 

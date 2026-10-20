@@ -338,7 +338,7 @@ describe('open overlay 的组合树查询', () => {
     expect(secondHandle.contains(child)).toBe(true)
   })
 
-  it('released 句柄上 adopt 不建层：不留无人回收却仍参与仲裁的孤层', () => {
+  it('released handle 上 adopt 不建层：不留无人回收却仍参与仲裁的孤层', () => {
     const requestClose = vi.fn<() => void>()
     const instance = overlay(requestClose)
     const handle = claim(instance, panel())
@@ -348,7 +348,7 @@ describe('open overlay 的组合树查询', () => {
     const orphan = handle.adopt(child, { arbitration: 'escape' })
     created.push(orphan)
 
-    // 返回值必须与其它句柄方法一样静默降级，且不能建出任何参与仲裁的层。
+    // 返回值必须与其它 handle 方法一样静默降级，且不能建出任何参与仲裁的层。
     expect(orphan.contains(child)).toBe(false)
     expect(orphan.hasFocusWithin()).toBe(false)
     const event = pressEscape()
@@ -372,7 +372,7 @@ describe('open overlay 的帧事务', () => {
     expect(callback).toHaveBeenCalledTimes(1)
   })
 
-  it('whileLive 句柄释放后，属于该会话的帧不再执行', async () => {
+  it('whileLive handle 释放后，属于该会话的帧不再执行', async () => {
     const instance = overlay()
     const handle = claim(instance, panel())
     const callback = vi.fn<() => void>()

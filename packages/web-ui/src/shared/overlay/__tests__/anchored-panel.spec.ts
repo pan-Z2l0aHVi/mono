@@ -144,7 +144,7 @@ describe('anchored panel 的退场第三态', () => {
 
     finishExit(panel)
     expect(await closing).toBe(false)
-    // 句柄没被丢弃：退场被打断时若清掉它，panel 就留在屏幕上且没有关闭归属。
+    // handle 没被丢弃：退场被打断时若清掉它，panel 就留在屏幕上且没有关闭归属。
     // 会话仍在场这一点由下一条（Escape 走宿主关闭入口）钉住。
     expect(api.getHandle()).not.toBeNull()
   })

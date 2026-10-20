@@ -190,17 +190,17 @@ export class WebUiContextMenu extends LitElement {
    * `'menu-item'`，两条判定同向，不会互相抵消。
    */
   private _menuItemActivationEvent: Event | null = null
-  /** 根 panel 的开启会话句柄；未开启时为 null。查询走它。 */
+  /** 根 panel 的开启会话 handle；未开启时为 null。查询走它。 */
   private _menuHandle: OpenOverlayHandle | null = null
   /**
-   * submenu panel → 会话句柄。子层经 `adopt` 进根句柄子树（默认不成为独立候选），
-   * 但仍各自持有句柄：整层关闭或收尾动画结束时按 panel 精确撤销。
+   * submenu panel → 会话 handle。子层经 `adopt` 进根 handle 子树（默认不成为独立候选），
+   * 但仍各自持有 handle：整层关闭或收尾动画结束时按 panel 精确撤销。
    */
   private readonly _submenuHandles = new Map<HTMLElement, OpenOverlayHandle>()
   // 行为层（hover / outside-click / 键盘 / submenu 收尾）由 shared/menu-behavior 驱动
   private readonly _outsideClickGuard = createMenuOutsideClickGuard(
     this,
-    // 根句柄的 contains 递归覆盖全部已 adopt 的子层，一次查询替代逐 panel 判定。
+    // 根 handle 的 contains 递归覆盖全部已 adopt 的子层，一次查询替代逐 panel 判定。
     node => this._menuHandle?.contains(node) ?? false
   )
   private readonly _closingSubmenus = createClosingSubmenuStack<MenuPortalOverlay>({
@@ -356,7 +356,7 @@ export class WebUiContextMenu extends LitElement {
         }
         /*
          * 登记与 panel 建立解耦。退场动画被打断时（`_closeMenuAfterPresence` 在
-         * `hideOverlayPresence` 返回 false 后提前退出）`_menu` 还在，而关闭分支已经把句柄
+         * `hideOverlayPresence` 返回 false 后提前退出）`_menu` 还在，而关闭分支已经把 handle
          * 撤了；此时重开必须补 claim。否则 menu 开着且可见却没有登记：Escape 关不掉它
          * （仲裁看不到它），而 `_menuHandle === null` 会让每次 document click——包括 panel
          * 内部与submenu 父项——都被 `_outsideClickGuard` 判成外部点击而关闭 menu。
@@ -364,17 +364,17 @@ export class WebUiContextMenu extends LitElement {
         if (!this._menuHandle) {
           this._menuHandle = this._overlay.claim(this._menu.panel)
           // 重新 claim = 新会话：根层的子层随之作废，仍在场的submenu panel 要重新 adopt 回
-          // 新句柄的子树，否则根句柄的 contains 看不到它们。
+          // 新 handle 的子树，否则根 handle 的 contains 看不到它们。
           for (const submenu of this._activeSubmenus) {
             this._submenuHandles.delete(submenu.panel)
             this._submenuHandles.set(submenu.panel, this._menuHandle.adopt(submenu.panel))
           }
           // 收尾栈里的submenu panel 同样「可见但已脱离快照」：`_closeSubmenusFrom` 只把它们
           // 移出 `_activeSubmenus`，panel 仍在 DOM 里退场。**这个循环承重**：不补 adopt，
-          // 它们就会落在句柄的登记树之外，被判成「panel 外」，点它内部会关掉整张 menu。
+          // 它们就会落在 handle 的登记树之外，被判成「panel 外」，点它内部会关掉整张 menu。
           // 用例 `退场窗口内重开后，收尾中的submenu panel 在取回前后都不可被当成 panel 外` 守着
           // 这一条 —— 把循环体整段删掉，那条会红（实测 1 failed | 95 passed）。
-          // 写进 `_submenuHandles` 还因为收尾结束时 `_releaseSubmenu` 按 panel 取句柄释放。
+          // 写进 `_submenuHandles` 还因为收尾结束时 `_releaseSubmenu` 按 panel 取 handle 释放。
           for (const container of this._closingSubmenus.closing()) {
             this._submenuHandles.set(container.panel, this._menuHandle.adopt(container.panel))
           }
@@ -919,14 +919,14 @@ export class WebUiContextMenu extends LitElement {
       this._activeSubmenus[level] = closingSubmenu
       this._activeSubmenuItems[level] = item
       /*
-       * 取回的 panel 写回 `_submenuHandles`，让收尾结束时的 `_releaseSubmenu` 释放到正确的句柄。
-       * 注：「panel 在根句柄子树里」这一条已由上面的 claim 分支保证 —— 该分支会把仍在
+       * 取回的 panel 写回 `_submenuHandles`，让收尾结束时的 `_releaseSubmenu` 释放到正确的 handle。
+       * 注：「panel 在根 handle 子树里」这一条已由上面的 claim 分支保证 —— 该分支会把仍在
        * closing 栈里的 panel 一并重挂（`_closingSubmenus.closing()`）。实测单独摘掉这一行
        * 全部用例仍绿，所以它维护的是释放账本，不是树的成员关系。
        *
        * **这一行没有任何测试守护**：把 `adopt` 与 `set` 一起摘掉，context-menu 的 96 条
        * 用例仍然全绿（实测 96 passed）。所以下面写的是「当前如此」—— 这一行维护的是
-       * 释放账本（收尾结束时 `_releaseSubmenu` 按 panel 取句柄），不是树的成员关系；
+       * 释放账本（收尾结束时 `_releaseSubmenu` 按 panel 取 handle），不是树的成员关系；
        * 成员关系由上面 claim 分支的 `_closingSubmenus.closing()` 循环负责，那一条**是**
        * 有测试的。改动这一行前请自己判断要不要补一条能红的用例，别把这里的沉默当成覆盖。
        */
@@ -956,7 +956,7 @@ export class WebUiContextMenu extends LitElement {
     this._activeSubmenus[level] = submenu
     this._activeSubmenuItems[level] = item
     /*
-     * 子层进根句柄的子树，默认不是独立候选 —— 「它在树里、但不参与这一层裁决」由此
+     * 子层进根 handle 的子树，默认不是独立候选 —— 「它在树里、但不参与这一层裁决」由此
      * 表达。原先按 level===0 选择根 panel 还是上一层子 panel 的父级判断随之消失：contains
      * 沿子树递归，拍平与嵌套对任何现有查询结果等价。
      */
@@ -1265,7 +1265,7 @@ export class WebUiContextMenu extends LitElement {
     this._scrollLock.sync(isOpen && !this.noScrollLock)
   }
 
-  /** 按 panel 撤销一层submenu 的登记；句柄已随根层递归撤销时幂等无操作。 */
+  /** 按 panel 撤销一层submenu 的登记；handle 已随根层递归撤销时幂等无操作。 */
   private _releaseSubmenu(panel: HTMLElement) {
     this._submenuHandles.get(panel)?.release()
     this._submenuHandles.delete(panel)
