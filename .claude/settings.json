@@ -1,0 +1,14 @@
+{
+  "permissions": {
+    "deny": [
+      "Read(./**/.env)",
+      "Read(./**/.env.local)",
+      "Edit(./apps/*/frontend/bindings/**)",
+      "Edit(./apps/*/src/generated/**)",
+      "Edit(./**/auto-imports.d.ts)",
+      "Edit(./**/routeTree.gen.ts)",
+      "Edit(./**/typed-router.d.ts)",
+      "Edit(./packages/web-ui/src/icons/**)"
+    ]
+  }
+}

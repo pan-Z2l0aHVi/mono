@@ -1,0 +1,38 @@
+# Codex 仓级配置（2026-10-20 从 ~/.codex/config.toml 下放）。
+#
+# 作用域：本仓库所有目录。Codex 从项目根（含 .git 的目录）向下逐级加载
+# .codex/config.toml，越靠近 cwd 的越优先；链路 worktree 各自是项目根，因此
+# 每个 worktree 都读这一份（文件入库，worktree checkout 出来即有）。
+#
+# 为什么不放在用户级：全访问是为了本仓库的 monorepo 多 agent 开发，不是这台
+# 机器的通用策略。留在 ~/.codex/config.toml 会让所有仓库一起失去文件系统
+# 边界；放到仓级后，只有本仓库跑全访问，其他仓库回落到 Codex 默认。
+#
+# 为什么必须关沙箱：线程工作区是 git linked worktree，它自己的 admin dir
+# （<main>/.git/worktrees/<slug>/index.lock）被 Codex 按名字保护，沙箱下
+# git add / commit / freeze 每次都要提权，线程反复 blocked。代价是命令不再有
+# 文件系统边界，隔离退回到 task gate、Git 禁令和目录纪律这些软机制。
+#
+# 为什么不写 `--approve-for-me`：它会连带注入 sandbox_mode="workspace-write"，
+# 而 CLI 层覆盖一切配置层，关沙箱就无从谈起。所以这里逐项写出要的语义：保留
+# auto_review（该 flag 的真正价值），去掉 workspace-write。
+#
+# 这是对官方推荐（可信仓库用 workspace-write + on-request，全访问仅限受控
+# 容器）的一次主动偏离，不是回到默认。判定依据与代价见 docs/agents/environments.md。
+sandbox_mode = "danger-full-access"
+approval_policy = "on-request"
+approvals_reviewer = "auto_review"
+
+# 若哪天把 sandbox_mode 改回 workspace-write 或 read-only，以下三块要一起恢复，
+# 并且实测结论要重新探测：
+#
+# [sandbox_workspace_write]
+# network_access = true
+# writable_roots = [ ... ]   # 含主仓库 .git；沙箱按名字保护 .git，列仓库根没用
+#
+# [shell_environment_policy.set]
+# CHOKIDAR_USEPOLLING = "1"  # 沙箱拒绝 mach-lookup com.apple.FSEvents，
+#                            # vite/vite-plus 构建会死在 fs.watch 上
+#
+# 另：即使把 writable_roots 配全，也打不开 linked worktree 自己的 admin dir
+# （.git/worktrees/<slug>/index.lock），那正是当初关沙箱的原因。
