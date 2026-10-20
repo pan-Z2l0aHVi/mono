@@ -349,7 +349,10 @@ describe('example-doc（React 面 / 真实浏览器）', () => {
     if (!section) throw new Error('slider 的 行为说明 小节没有渲染')
     // 散文小节没有表头也没有表格：正文就是生成器渲染好的那段 HTML，DOM 里逐字就是 payload 的 html。
     expect(section.querySelector('table')).toBeNull()
-    expect(section.querySelector('p')?.textContent).toBe(prose.html.replace(/<[^>]*>/g, ''))
+    // 散文可以有多段（列表、代码块都是段落级的），比的是整段正文而不是第一个 <p>。
+    const expected = document.createElement('div')
+    expected.innerHTML = prose.html
+    expect(section.querySelector('div')?.textContent).toBe(expected.textContent)
   })
 
   it('返回句柄表只收只读成员，列形状来自 markdown', () => {

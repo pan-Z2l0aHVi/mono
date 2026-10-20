@@ -5633,7 +5633,7 @@ export const exampleDocs: ExampleDoc[] = [
   {
     "component": "slider",
     "tag": "web-ui-slider",
-    "introHtml": "<p>范围滑块，支持刻度标记与垂直方向；拖拽走 pointer capture，键盘支持方向键、Home / End 与 PageUp / PageDown。</p>",
+    "introHtml": "<p>范围 slider，支持刻度标记与垂直方向；拖拽走 pointer capture，键盘支持方向键、Home / End 与 PageUp / PageDown。</p>",
     "api": [
       {
         "kind": "table",
@@ -5756,11 +5756,11 @@ export const exampleDocs: ExampleDoc[] = [
         "rows": [
           [
             "focus()",
-            "<p>聚焦 <code>role=\"slider\"</code> 的轨道元素。</p>"
+            "<p>聚焦 <code>role=\"slider\"</code> 的 track 元素。</p>"
           ],
           [
             "blur()",
-            "<p>让轨道元素失焦。</p>"
+            "<p>让 track 元素失焦。</p>"
           ]
         ]
       },
@@ -5768,7 +5768,7 @@ export const exampleDocs: ExampleDoc[] = [
         "kind": "prose",
         "key": "行为说明",
         "title": "行为说明",
-        "html": "<p>支持 ArrowLeft/Right/Up/Down、Home/End、PageUp/PageDown 键盘导航。使用 pointer capture 处理鼠标、触控笔和触摸交互；组件 host 与触控轨道均声明 <code>touch-action: none</code>，拖拽激活期间同时阻止 <code>touchmove</code> 默认滚动，避免 iOS Safari 在横/纵拖拽过程中接管手势。</p>"
+        "html": "<p>支持 ArrowLeft/Right/Up/Down、Home/End、PageUp/PageDown 键盘导航。使用 pointer capture 处理鼠标、触控笔和触摸交互；组件 host 与触控 track 均声明 <code>touch-action: none</code>，拖拽激活期间同时阻止 <code>touchmove</code> 默认滚动，避免 iOS Safari 在横/纵拖拽过程中接管手势。</p>\n<p>thumb 静止态是正圆，直径取厚度 <code>--wui-slider-thumb-height</code>；按压或拖拽时沿 track 方向展开成胶囊，厚度不变、长边取 <code>--wui-slider-thumb-width</code>。横向 slider 的 thumb 展开为宽度方向，纵向 slider 的 thumb 展开为高度方向，与 switch thumb 同一套配方。形状切换带 <code>--wui-duration-press</code> 过渡。</p>"
       },
       {
         "kind": "table",
@@ -5791,37 +5791,37 @@ export const exampleDocs: ExampleDoc[] = [
         "rows": [
           [
             "--wui-slider-width",
-            "<p>滑块宽度</p>",
+            "<p>slider 宽度</p>",
             "200px"
           ],
           [
             "--wui-slider-vertical-height",
-            "<p>垂直滑块高度</p>",
+            "<p>垂直 slider 高度</p>",
             "200px"
           ],
           [
             "--wui-slider-height",
-            "<p>轨道厚度</p>",
+            "<p>track 厚度</p>",
             "var(--wui-slider-track-size, 6px)"
           ],
           [
             "--wui-slider-track-size",
-            "<p>轨道尺寸</p>",
+            "<p>track 尺寸</p>",
             "6px"
           ],
           [
             "--wui-slider-thumb-width",
-            "<p>滑块宽度</p>",
+            "<p>thumb 按压/拖拽态沿 track 方向的长边</p>",
             "24px"
           ],
           [
             "--wui-slider-thumb-height",
-            "<p>滑块高度</p>",
+            "<p>thumb 厚度（静止态为正圆直径）</p>",
             "20px"
           ],
           [
             "--wui-slider-marks-inset",
-            "<p>刻度内缩</p>",
+            "<p>marks 内缩</p>",
             "0"
           ]
         ]
@@ -5841,7 +5841,7 @@ export const exampleDocs: ExampleDoc[] = [
       {
         "id": "marks-vertical",
         "title": "刻度与垂直方向",
-        "descriptionHtml": "<p><code>marks</code> 显示刻度标记，<code>vertical</code> 让滑块沿垂直方向排列。</p>",
+        "descriptionHtml": "<p><code>marks</code> 显示刻度标记，<code>vertical</code> 让 slider 沿垂直方向排列。</p>",
         "html": {
           "react": "<pre class=\"shiki shiki-themes github-light github-dark mdc-code\" style=\"--shiki-light:#24292e;--shiki-dark:#e1e4e8;--shiki-light-bg:#fff;--shiki-dark-bg:#24292e\" tabindex=\"0\"><code><span class=\"line\"><span style=\"--shiki-light:#D73A49;--shiki-dark:#F97583\">export</span><span style=\"--shiki-light:#D73A49;--shiki-dark:#F97583\"> default</span><span style=\"--shiki-light:#D73A49;--shiki-dark:#F97583\"> function</span><span style=\"--shiki-light:#6F42C1;--shiki-dark:#B392F0\"> Demo</span><span style=\"--shiki-light:#24292E;--shiki-dark:#E1E4E8\">() {</span></span>\n<span class=\"line\"><span style=\"--shiki-light:#D73A49;--shiki-dark:#F97583\">  return</span><span style=\"--shiki-light:#24292E;--shiki-dark:#E1E4E8\"> &#x3C;</span><span style=\"--shiki-light:#005CC5;--shiki-dark:#79B8FF\">web-ui-slider</span><span style=\"--shiki-light:#6F42C1;--shiki-dark:#B392F0\"> marks</span><span style=\"--shiki-light:#6F42C1;--shiki-dark:#B392F0\"> vertical</span><span style=\"--shiki-light:#6F42C1;--shiki-dark:#B392F0\"> min</span><span style=\"--shiki-light:#D73A49;--shiki-dark:#F97583\">=</span><span style=\"--shiki-light:#24292E;--shiki-dark:#E1E4E8\">{</span><span style=\"--shiki-light:#005CC5;--shiki-dark:#79B8FF\">0</span><span style=\"--shiki-light:#24292E;--shiki-dark:#E1E4E8\">} </span><span style=\"--shiki-light:#6F42C1;--shiki-dark:#B392F0\">max</span><span style=\"--shiki-light:#D73A49;--shiki-dark:#F97583\">=</span><span style=\"--shiki-light:#24292E;--shiki-dark:#E1E4E8\">{</span><span style=\"--shiki-light:#005CC5;--shiki-dark:#79B8FF\">10</span><span style=\"--shiki-light:#24292E;--shiki-dark:#E1E4E8\">} </span><span style=\"--shiki-light:#6F42C1;--shiki-dark:#B392F0\">value</span><span style=\"--shiki-light:#D73A49;--shiki-dark:#F97583\">=</span><span style=\"--shiki-light:#24292E;--shiki-dark:#E1E4E8\">{</span><span style=\"--shiki-light:#005CC5;--shiki-dark:#79B8FF\">3</span><span style=\"--shiki-light:#24292E;--shiki-dark:#E1E4E8\">}>&#x3C;/</span><span style=\"--shiki-light:#005CC5;--shiki-dark:#79B8FF\">web-ui-slider</span><span style=\"--shiki-light:#24292E;--shiki-dark:#E1E4E8\">></span></span>\n<span class=\"line\"><span style=\"--shiki-light:#24292E;--shiki-dark:#E1E4E8\">}</span></span></code></pre>",
           "vue": "<pre class=\"shiki shiki-themes github-light github-dark mdc-code\" style=\"--shiki-light:#24292e;--shiki-dark:#e1e4e8;--shiki-light-bg:#fff;--shiki-dark-bg:#24292e\" tabindex=\"0\"><code><span class=\"line\"><span style=\"--shiki-light:#24292E;--shiki-dark:#E1E4E8\">&#x3C;</span><span style=\"--shiki-light:#22863A;--shiki-dark:#85E89D\">template</span><span style=\"--shiki-light:#24292E;--shiki-dark:#E1E4E8\">></span></span>\n<span class=\"line\"><span style=\"--shiki-light:#24292E;--shiki-dark:#E1E4E8\">  &#x3C;</span><span style=\"--shiki-light:#22863A;--shiki-dark:#85E89D\">web-ui-slider</span><span style=\"--shiki-light:#6F42C1;--shiki-dark:#B392F0\"> marks</span><span style=\"--shiki-light:#6F42C1;--shiki-dark:#B392F0\"> vertical</span><span style=\"--shiki-light:#6F42C1;--shiki-dark:#B392F0\"> :min</span><span style=\"--shiki-light:#24292E;--shiki-dark:#E1E4E8\">=</span><span style=\"--shiki-light:#032F62;--shiki-dark:#9ECBFF\">\"0\"</span><span style=\"--shiki-light:#6F42C1;--shiki-dark:#B392F0\"> :max</span><span style=\"--shiki-light:#24292E;--shiki-dark:#E1E4E8\">=</span><span style=\"--shiki-light:#032F62;--shiki-dark:#9ECBFF\">\"10\"</span><span style=\"--shiki-light:#6F42C1;--shiki-dark:#B392F0\"> :value</span><span style=\"--shiki-light:#24292E;--shiki-dark:#E1E4E8\">=</span><span style=\"--shiki-light:#032F62;--shiki-dark:#9ECBFF\">\"3\"</span><span style=\"--shiki-light:#24292E;--shiki-dark:#E1E4E8\">>&#x3C;/</span><span style=\"--shiki-light:#22863A;--shiki-dark:#85E89D\">web-ui-slider</span><span style=\"--shiki-light:#24292E;--shiki-dark:#E1E4E8\">></span></span>\n<span class=\"line\"><span style=\"--shiki-light:#24292E;--shiki-dark:#E1E4E8\">&#x3C;/</span><span style=\"--shiki-light:#22863A;--shiki-dark:#85E89D\">template</span><span style=\"--shiki-light:#24292E;--shiki-dark:#E1E4E8\">></span></span></code></pre>"
@@ -7333,7 +7333,7 @@ export const exampleDocs: ExampleDoc[] = [
   {
     "component": "toast",
     "tag": "web-ui-toast",
-    "introHtml": "<p>Toast 通知。常规用法是命令式 API <code>toast()</code>：同一 <code>id</code> 的再次调用是更新那一条，而不是新建。</p>",
+    "introHtml": "<p>命令式 toast：通过 <code>toast()</code> 创建一条并拿到它的 id，用 <code>toast.close(id)</code> 关闭；同一个 <code>id</code> 再次调用是更新那一条，而不是新建。下面的表分别列 <code>toast()</code> 的选项、命令式入口，以及 <code>&lt;web-ui-toast></code> 元素自身的属性、事件与方法。</p>",
     "api": [
       {
         "kind": "table",
@@ -7416,6 +7416,142 @@ export const exampleDocs: ExampleDoc[] = [
       },
       {
         "kind": "table",
+        "key": "methods",
+        "title": "Methods",
+        "columns": [
+          {
+            "title": "名称",
+            "kind": "name"
+          },
+          {
+            "title": "说明",
+            "kind": "html"
+          }
+        ],
+        "rows": [
+          [
+            "toast(options)",
+            "<p>创建或更新一条 toast，返回这条 toast 的最终 id。</p>"
+          ],
+          [
+            "toast.success(message, options?)",
+            "<p>创建一条 <code>success</code> 类型的 toast。</p>"
+          ],
+          [
+            "toast.info(message, options?)",
+            "<p>创建一条 <code>info</code> 类型的 toast。</p>"
+          ],
+          [
+            "toast.warning(message, options?)",
+            "<p>创建一条 <code>warning</code> 类型的 toast。</p>"
+          ],
+          [
+            "toast.error(message, options?)",
+            "<p>创建一条 <code>error</code> 类型的 toast；它的默认时长是 <code>5000</code>，比其余类型更长。</p>"
+          ],
+          [
+            "toast.close(id)",
+            "<p>关闭指定 id 的那条 toast，覆盖它出现的每个阶段。</p>"
+          ],
+          [
+            "toast.clear()",
+            "<p>一次关闭当前全部 toast。</p>"
+          ]
+        ]
+      },
+      {
+        "kind": "prose",
+        "key": "行为说明",
+        "title": "行为说明",
+        "html": "<p>命令式入口之下没有别的必经步骤：<code>toast()</code> 自行把 toast 元素挂到最近的 theme-owned overlay root（没有主题作用域时回退到全局 fallback root），<code>target</code> 用来解析最近的主题作用域，<code>container</code> 显式指定挂载容器并优先于主题作用域。同一个微任务里的多条 toast 先入队、再一次性挂载，因此待挂载的条目在落地前还能被同 id 的调用改写。</p>\n<p>悬停暂停自动关闭计时器（使用 <code>pointerenter</code>/<code>pointerleave</code>），指针离开后<strong>续跑剩余时间</strong>，而不是重新计满。暂停期间漏掉 <code>pointerleave</code>（指针拖出窗口、元素在悬停中被搬迁或摘出）时，由 document 级 <code>pointerover</code>/<code>pointerout</code>/<code>pointerleave</code> 兜底恢复，不会永久停在屏幕上。</p>\n<pre><code class=\"language-ts\">import { toast } from '@greypan/web-ui'\n\n// 创建\ntoast.success('操作成功')\ntoast.error('出错了', { duration: 5000 })\ntoast.info('提示信息')\ntoast.warning('请注意')\n\n// 带选项\nconst id = toast({ message: '自定义', type: 'info', position: 'bottom-right', duration: 4000, closable: true })\n\n// 关闭\ntoast.close(id)\ntoast.clear()\n\n// upsert：同一 id 再次调用是更新那一条，而不是再建一条\ntoast.error('网络连接中断，正在重试…', { id: 'network' })\ntoast.error('网络连接中断（第 2 次重试）', { id: 'network' })\n\n// 一条 toast 走完整个生命周期\ntoast.info('上传中 0%', { id: 'upload', duration: 0 })\ntoast.info('上传中 60%', { id: 'upload' }) // 省略 duration，计时不动\ntoast.success('上传完成', { id: 'upload', duration: 3000 }) // 换 type，重新开始倒计时\n</code></pre>\n<p>每次调用都返回这条 toast 的最终 id，调用方无需区分新建还是更新。</p>"
+      },
+      {
+        "kind": "prose",
+        "key": "upsert 语义",
+        "title": "upsert 语义",
+        "html": "<p>同一 <code>id</code> 再次调用的结果：</p>\n<p>列依次为 目标状态 / 结果：</p>\n<ul>\n<li>已挂载 / 返回同一个 id；给出的字段覆盖，未给出的保持原值</li>\n<li>同 tick 内仍在待挂载 / patch 待挂载的 options，挂载后生效，不产生第二条</li>\n<li>已关闭或正在退场 / 新建一条；正在离场的那条自行走完退场动画</li>\n</ul>\n<p><code>duration</code> 只有显式传入才重启倒计时（悬停暂停期间是例外：只记新值不点火，指针离开后按新时长计满）；<code>message</code>、<code>heading</code>、<code>type</code> 是普通属性，不碰计时。<code>toast.error</code> 的 5000 默认值在<strong>创建时</strong>兜底，不算显式传入，因此重复调用 <code>toast.error(msg, { id })</code> 不会重置倒计时。<code>position</code> 变化会把元素搬到新容器并保住剩余计时（支持 <code>moveBefore</code> 的引擎直接搬，其余走暂停/续跑降级）；若倒计时在主线程被占用期间已经到期，降级路径会在续跑时直接退场，而不是让它一直挂着。<code>container</code> 与 <code>target</code> 以首次调用为准，不支持把已存在的 toast 换到另一个 overlay root。</p>"
+      },
+      {
+        "kind": "prose",
+        "key": "关闭语义",
+        "title": "关闭语义",
+        "html": "<p><code>toast.close(id)</code> 覆盖 toast 出现的每个阶段，包括「还没开始显示」的两种：</p>\n<p>列依次为 目标状态 / 结果：</p>\n<ul>\n<li>已显示 / 播放退场动画，结束后派发 <code>toast-close</code></li>\n<li>已挂载、<code>show()</code> 未跑 / 没有退场动画可播，立即派发 <code>toast-close</code></li>\n<li>同 tick 仍在待挂载 / 挂载前出队：不会出现，也不派发事件</li>\n<li>已在退场 / 空操作，由那条 toast 自己走完退场</li>\n</ul>\n<p><code>toast.clear()</code> 的口径相同：队列条目一并取消，已挂载的全部关闭。</p>"
+      },
+      {
+        "kind": "table",
+        "key": "props",
+        "title": "Props",
+        "columns": [
+          {
+            "title": "名称",
+            "kind": "name"
+          },
+          {
+            "title": "说明",
+            "kind": "html"
+          },
+          {
+            "title": "类型",
+            "kind": "code"
+          },
+          {
+            "title": "默认值",
+            "kind": "code"
+          }
+        ],
+        "rows": [
+          [
+            "type",
+            "<p>类型：<code>success</code>、<code>info</code>、<code>warning</code>、<code>error</code>。</p>",
+            "ToastType",
+            "'info'"
+          ],
+          [
+            "position",
+            "<p>屏幕位置。</p>",
+            "ToastPosition",
+            "'top-right'"
+          ],
+          [
+            "heading",
+            "<p>粗体标题。</p>",
+            "string",
+            "''"
+          ],
+          [
+            "message",
+            "<p>通知文本。</p>",
+            "string",
+            "''"
+          ],
+          [
+            "duration",
+            "<p>自动关闭时间（ms），0 表示不自动关闭；<code>error</code> 由 manager 兜底为 <code>5000</code>。</p>",
+            "number",
+            "3000"
+          ],
+          [
+            "no-close-button",
+            "<p>隐藏关闭按钮。</p>",
+            "boolean",
+            "false"
+          ],
+          [
+            "visible",
+            "<p>是否可见。</p>",
+            "boolean",
+            "false"
+          ],
+          [
+            "toastId",
+            "<p>合并键；只作为属性存在（<code>attribute: false</code>），由 manager 写入。</p>",
+            "string",
+            "''"
+          ]
+        ]
+      },
+      {
+        "kind": "table",
         "key": "events",
         "title": "Events",
         "columns": [
@@ -7436,69 +7572,10 @@ export const exampleDocs: ExampleDoc[] = [
         ]
       },
       {
-        "kind": "table",
-        "key": "methods",
-        "title": "Methods",
-        "columns": [
-          {
-            "title": "名称",
-            "kind": "name"
-          },
-          {
-            "title": "说明",
-            "kind": "html"
-          }
-        ],
-        "rows": [
-          [
-            "startAutoClose()",
-            "<p>按当前 <code>duration</code> 重排自动关闭计时；<code>duration</code> 为 0 时只拆掉已有计时器，不再装新的。</p>"
-          ],
-          [
-            "setDuration(ms)",
-            "<p>更新 <code>duration</code> 并按新值重排计时；悬停暂停期间只记新值，指针离开后按新时长计满，<code>ms</code> 为 0 表示不再自动关闭。</p>"
-          ],
-          [
-            "pauseAutoClose()",
-            "<p>记下剩余时间并停表，供不支持 <code>moveBefore</code> 的引擎在搬迁节点前调用。</p>"
-          ],
-          [
-            "resumeAutoClose()",
-            "<p>与 <code>pauseAutoClose()</code> 成对，按记下的剩余时间续跑；已到期则立即退场，悬停尚未结束时只交还剩余时间。</p>"
-          ],
-          [
-            "show()",
-            "<p>播放入场（<code>visible</code> 置真）并在 <code>duration</code> 大于 0 时开始计时；由 toast manager 在挂载后调用。</p>"
-          ],
-          [
-            "dismiss(reason?)",
-            "<p>关闭并派发 <code>toast-close</code>：已显示时先播退场动画，未显示（尚未入场或从未显示）时立即派发；<code>reason</code> 取 <code>ToastCloseReason</code>，默认 <code>'programmatic'</code>。</p>"
-          ]
-        ]
-      },
-      {
         "kind": "prose",
-        "key": "行为说明",
-        "title": "行为说明",
-        "html": "<p>直接使用元素时，<code>no-close-button</code> 是标准布尔属性，用于隐藏关闭按钮。</p>\n<p>悬停暂停自动关闭计时器（使用 <code>pointerenter</code>/<code>pointerleave</code>），指针离开后<strong>续跑剩余时间</strong>，而不是重新计满。暂停期间漏掉 <code>pointerleave</code>（指针拖出窗口、元素在悬停中被搬迁或摘出）时，由 document 级 <code>pointerover</code>/<code>pointerout</code>/<code>pointerleave</code> 兜底恢复，不会永久停在屏幕上。同一微任务中批量挂载 Toast。</p>"
-      },
-      {
-        "kind": "prose",
-        "key": "命令式 api",
-        "title": "命令式 API",
-        "html": "<pre><code class=\"language-ts\">import { toast } from '@greypan/web-ui'\n\n// 创建\ntoast.success('操作成功')\ntoast.error('出错了', { duration: 5000 })\ntoast.info('提示信息')\ntoast.warning('请注意')\n\n// 带选项\nconst id = toast({ message: '自定义', type: 'info', position: 'bottom-right', duration: 4000, closable: true })\n\n// 关闭\ntoast.close(id)\ntoast.clear()\n\n// upsert：同一 id 再次调用是更新那一条，而不是再建一条\ntoast.error('网络连接中断，正在重试…', { id: 'network' })\ntoast.error('网络连接中断（第 2 次重试）', { id: 'network' })\n\n// 一条 toast 走完整个生命周期\ntoast.info('上传中 0%', { id: 'upload', duration: 0 })\ntoast.info('上传中 60%', { id: 'upload' }) // 省略 duration，计时不动\ntoast.success('上传完成', { id: 'upload', duration: 3000 }) // 换 type，重新开始倒计时\n</code></pre>\n<p>每次调用都返回这条 toast 的最终 id，调用方无需区分新建还是更新。</p>"
-      },
-      {
-        "kind": "prose",
-        "key": "upsert 语义",
-        "title": "upsert 语义",
-        "html": "<p>同一 <code>id</code> 再次调用的结果：</p>\n<p>列依次为 目标状态 / 结果：</p>\n<ul>\n<li>已挂载 / 返回同一个 id；给出的字段覆盖，未给出的保持原值</li>\n<li>同 tick 内仍在待挂载 / patch 待挂载的 options，挂载后生效，不产生第二条</li>\n<li>已关闭或正在退场 / 新建一条；正在离场的那条自行走完退场动画</li>\n</ul>\n<p><code>duration</code> 只有显式传入才重启倒计时（悬停暂停期间是例外：只记新值不点火，指针离开后按新时长计满）；<code>message</code>、<code>heading</code>、<code>type</code> 是普通属性，不碰计时。<code>toast.error</code> 的 5000 默认值在<strong>创建时</strong>兜底，不算显式传入，因此重复调用 <code>toast.error(msg, { id })</code> 不会重置倒计时。<code>position</code> 变化会把元素搬到新容器并保住剩余计时（支持 <code>moveBefore</code> 的引擎直接搬，其余走暂停/续跑降级）；若倒计时在主线程被占用期间已经到期，降级路径会在续跑时直接退场，而不是让它一直挂着。<code>container</code> 与 <code>target</code> 以首次调用为准，不支持把已存在的 toast 换到另一个 overlay root。</p>"
-      },
-      {
-        "kind": "prose",
-        "key": "关闭语义",
-        "title": "关闭语义",
-        "html": "<p><code>toast.close(id)</code> 覆盖 toast 出现的每个阶段，包括「还没开始显示」的两种：</p>\n<p>列依次为 目标状态 / 结果：</p>\n<ul>\n<li>已显示 / 播放退场动画，结束后派发 <code>toast-close</code></li>\n<li>已挂载、<code>show()</code> 未跑 / 没有退场动画可播，立即派发 <code>toast-close</code></li>\n<li>同 tick 仍在待挂载 / 挂载前出队：不会出现，也不派发事件</li>\n<li>已在退场 / 空操作，由那条 toast 自己走完退场</li>\n</ul>\n<p><code>toast.clear()</code> 的口径相同：队列条目一并取消，已挂载的全部关闭。</p>"
+        "key": "元素属性与方法",
+        "title": "元素属性与方法",
+        "html": "<p>命令式入口下，<code>&lt;web-ui-toast></code> 的属性由 manager 写入：合并键落在 <code>toastId</code> 上（只作为属性存在，<code>attribute: false</code>），其余属性与上面的 Props 表一一对应。元素自身还公开一组实例方法：<code>show()</code> 播放入场（<code>visible</code> 置真）并在 <code>duration</code> 大于 0 时开始计时；<code>dismiss(reason?)</code> 关闭并派发 <code>toast-close</code>，已显示时先播退场动画，未显示时立即派发，<code>reason</code> 取 <code>ToastCloseReason</code>，默认 <code>'programmatic'</code>；<code>setDuration(ms)</code> 更新 <code>duration</code> 并按新值重排计时，<code>ms</code> 为 0 表示不再自动关闭；<code>pauseAutoClose()</code> 记下剩余时间并停表，与 <code>resumeAutoClose()</code> 成对续跑；<code>startAutoClose()</code> 按当前 <code>duration</code> 重排自动关闭计时。</p>"
       },
       {
         "kind": "table",
@@ -7545,6 +7622,16 @@ export const exampleDocs: ExampleDoc[] = [
       },
       {
         "id": null,
+        "title": "完整选项",
+        "descriptionHtml": "<p><code>toast()</code> 接受完整选项：<code>heading</code> 是粗体标题，<code>position</code> 决定落点，<code>duration</code> 为 0 表示不自动关闭。</p>",
+        "html": {
+          "react": "<pre class=\"shiki shiki-themes github-light github-dark mdc-code\" style=\"--shiki-light:#24292e;--shiki-dark:#e1e4e8;--shiki-light-bg:#fff;--shiki-dark-bg:#24292e\" tabindex=\"0\"><code><span class=\"line\"><span style=\"--shiki-light:#D73A49;--shiki-dark:#F97583\">import</span><span style=\"--shiki-light:#24292E;--shiki-dark:#E1E4E8\"> { toast } </span><span style=\"--shiki-light:#D73A49;--shiki-dark:#F97583\">from</span><span style=\"--shiki-light:#032F62;--shiki-dark:#9ECBFF\"> '@greypan/web-ui'</span></span>\n<span class=\"line\"></span>\n<span class=\"line\"><span style=\"--shiki-light:#D73A49;--shiki-dark:#F97583\">const</span><span style=\"--shiki-light:#005CC5;--shiki-dark:#79B8FF\"> id</span><span style=\"--shiki-light:#D73A49;--shiki-dark:#F97583\"> =</span><span style=\"--shiki-light:#6F42C1;--shiki-dark:#B392F0\"> toast</span><span style=\"--shiki-light:#24292E;--shiki-dark:#E1E4E8\">({</span></span>\n<span class=\"line\"><span style=\"--shiki-light:#24292E;--shiki-dark:#E1E4E8\">  heading: </span><span style=\"--shiki-light:#032F62;--shiki-dark:#9ECBFF\">'已保存'</span><span style=\"--shiki-light:#24292E;--shiki-dark:#E1E4E8\">,</span></span>\n<span class=\"line\"><span style=\"--shiki-light:#24292E;--shiki-dark:#E1E4E8\">  message: </span><span style=\"--shiki-light:#032F62;--shiki-dark:#9ECBFF\">'更改已写入云端'</span><span style=\"--shiki-light:#24292E;--shiki-dark:#E1E4E8\">,</span></span>\n<span class=\"line\"><span style=\"--shiki-light:#24292E;--shiki-dark:#E1E4E8\">  type: </span><span style=\"--shiki-light:#032F62;--shiki-dark:#9ECBFF\">'info'</span><span style=\"--shiki-light:#24292E;--shiki-dark:#E1E4E8\">,</span></span>\n<span class=\"line\"><span style=\"--shiki-light:#24292E;--shiki-dark:#E1E4E8\">  position: </span><span style=\"--shiki-light:#032F62;--shiki-dark:#9ECBFF\">'bottom-right'</span><span style=\"--shiki-light:#24292E;--shiki-dark:#E1E4E8\">,</span></span>\n<span class=\"line\"><span style=\"--shiki-light:#24292E;--shiki-dark:#E1E4E8\">  duration: </span><span style=\"--shiki-light:#005CC5;--shiki-dark:#79B8FF\">4000</span><span style=\"--shiki-light:#24292E;--shiki-dark:#E1E4E8\">,</span></span>\n<span class=\"line\"><span style=\"--shiki-light:#24292E;--shiki-dark:#E1E4E8\">  closable: </span><span style=\"--shiki-light:#005CC5;--shiki-dark:#79B8FF\">true</span></span>\n<span class=\"line\"><span style=\"--shiki-light:#24292E;--shiki-dark:#E1E4E8\">})</span></span></code></pre>",
+          "vue": "<pre class=\"shiki shiki-themes github-light github-dark mdc-code\" style=\"--shiki-light:#24292e;--shiki-dark:#e1e4e8;--shiki-light-bg:#fff;--shiki-dark-bg:#24292e\" tabindex=\"0\"><code><span class=\"line\"><span style=\"--shiki-light:#24292E;--shiki-dark:#E1E4E8\">&#x3C;</span><span style=\"--shiki-light:#22863A;--shiki-dark:#85E89D\">script</span><span style=\"--shiki-light:#6F42C1;--shiki-dark:#B392F0\"> setup</span><span style=\"--shiki-light:#6F42C1;--shiki-dark:#B392F0\"> lang</span><span style=\"--shiki-light:#24292E;--shiki-dark:#E1E4E8\">=</span><span style=\"--shiki-light:#032F62;--shiki-dark:#9ECBFF\">\"ts\"</span><span style=\"--shiki-light:#24292E;--shiki-dark:#E1E4E8\">></span></span>\n<span class=\"line\"><span style=\"--shiki-light:#D73A49;--shiki-dark:#F97583\">import</span><span style=\"--shiki-light:#24292E;--shiki-dark:#E1E4E8\"> { toast } </span><span style=\"--shiki-light:#D73A49;--shiki-dark:#F97583\">from</span><span style=\"--shiki-light:#032F62;--shiki-dark:#9ECBFF\"> '@greypan/web-ui'</span></span>\n<span class=\"line\"></span>\n<span class=\"line\"><span style=\"--shiki-light:#D73A49;--shiki-dark:#F97583\">function</span><span style=\"--shiki-light:#6F42C1;--shiki-dark:#B392F0\"> notify</span><span style=\"--shiki-light:#24292E;--shiki-dark:#E1E4E8\">() {</span></span>\n<span class=\"line\"><span style=\"--shiki-light:#D73A49;--shiki-dark:#F97583\">  return</span><span style=\"--shiki-light:#6F42C1;--shiki-dark:#B392F0\"> toast</span><span style=\"--shiki-light:#24292E;--shiki-dark:#E1E4E8\">({</span></span>\n<span class=\"line\"><span style=\"--shiki-light:#24292E;--shiki-dark:#E1E4E8\">    heading: </span><span style=\"--shiki-light:#032F62;--shiki-dark:#9ECBFF\">'已保存'</span><span style=\"--shiki-light:#24292E;--shiki-dark:#E1E4E8\">,</span></span>\n<span class=\"line\"><span style=\"--shiki-light:#24292E;--shiki-dark:#E1E4E8\">    message: </span><span style=\"--shiki-light:#032F62;--shiki-dark:#9ECBFF\">'更改已写入云端'</span><span style=\"--shiki-light:#24292E;--shiki-dark:#E1E4E8\">,</span></span>\n<span class=\"line\"><span style=\"--shiki-light:#24292E;--shiki-dark:#E1E4E8\">    type: </span><span style=\"--shiki-light:#032F62;--shiki-dark:#9ECBFF\">'info'</span><span style=\"--shiki-light:#24292E;--shiki-dark:#E1E4E8\">,</span></span>\n<span class=\"line\"><span style=\"--shiki-light:#24292E;--shiki-dark:#E1E4E8\">    position: </span><span style=\"--shiki-light:#032F62;--shiki-dark:#9ECBFF\">'bottom-right'</span></span>\n<span class=\"line\"><span style=\"--shiki-light:#24292E;--shiki-dark:#E1E4E8\">  })</span></span>\n<span class=\"line\"><span style=\"--shiki-light:#24292E;--shiki-dark:#E1E4E8\">}</span></span>\n<span class=\"line\"><span style=\"--shiki-light:#24292E;--shiki-dark:#E1E4E8\">&#x3C;/</span><span style=\"--shiki-light:#22863A;--shiki-dark:#85E89D\">script</span><span style=\"--shiki-light:#24292E;--shiki-dark:#E1E4E8\">></span></span></code></pre>"
+        },
+        "demoKey": null
+      },
+      {
+        "id": null,
         "title": "合并同一条",
         "descriptionHtml": "<p>给同一个 <code>id</code> 再次调用即更新它，适合进度或重试这类连续状态；<code>duration</code> 只有显式传入才重启倒计时。</p>",
         "html": {
@@ -7555,11 +7642,11 @@ export const exampleDocs: ExampleDoc[] = [
       },
       {
         "id": null,
-        "title": "直接使用元素",
-        "descriptionHtml": "<p>单个 Toast 元素可声明式使用，<code>heading</code> 与 <code>message</code> 是两级文案；<code>toastId</code>（合并键）、<code>visible</code>（是否可见）与 <code>no-close-button</code>（隐藏关闭按钮）是元素自身的属性，下表列的是 <code>toast()</code> 的选项。</p>",
+        "title": "关闭",
+        "descriptionHtml": "<p>每次调用都返回这条 toast 的最终 id；<code>toast.close(id)</code> 关掉单条，<code>toast.clear()</code> 一次收走全部。</p>",
         "html": {
-          "react": "<pre class=\"shiki shiki-themes github-light github-dark mdc-code\" style=\"--shiki-light:#24292e;--shiki-dark:#e1e4e8;--shiki-light-bg:#fff;--shiki-dark-bg:#24292e\" tabindex=\"0\"><code><span class=\"line\"><span style=\"--shiki-light:#24292E;--shiki-dark:#E1E4E8\">&#x3C;</span><span style=\"--shiki-light:#005CC5;--shiki-dark:#79B8FF\">web-ui-toast</span><span style=\"--shiki-light:#6F42C1;--shiki-dark:#B392F0\"> type</span><span style=\"--shiki-light:#D73A49;--shiki-dark:#F97583\">=</span><span style=\"--shiki-light:#032F62;--shiki-dark:#9ECBFF\">\"success\"</span><span style=\"--shiki-light:#6F42C1;--shiki-dark:#B392F0\"> heading</span><span style=\"--shiki-light:#D73A49;--shiki-dark:#F97583\">=</span><span style=\"--shiki-light:#032F62;--shiki-dark:#9ECBFF\">\"已保存\"</span><span style=\"--shiki-light:#6F42C1;--shiki-dark:#B392F0\"> message</span><span style=\"--shiki-light:#D73A49;--shiki-dark:#F97583\">=</span><span style=\"--shiki-light:#032F62;--shiki-dark:#9ECBFF\">\"更改已写入云端\"</span><span style=\"--shiki-light:#6F42C1;--shiki-dark:#B392F0\"> duration</span><span style=\"--shiki-light:#D73A49;--shiki-dark:#F97583\">=</span><span style=\"--shiki-light:#24292E;--shiki-dark:#E1E4E8\">{</span><span style=\"--shiki-light:#005CC5;--shiki-dark:#79B8FF\">3000</span><span style=\"--shiki-light:#24292E;--shiki-dark:#E1E4E8\">} </span><span style=\"--shiki-light:#6F42C1;--shiki-dark:#B392F0\">visible</span><span style=\"--shiki-light:#24292E;--shiki-dark:#E1E4E8\">>&#x3C;/</span><span style=\"--shiki-light:#005CC5;--shiki-dark:#79B8FF\">web-ui-toast</span><span style=\"--shiki-light:#24292E;--shiki-dark:#E1E4E8\">></span></span></code></pre>",
-          "vue": "<pre class=\"shiki shiki-themes github-light github-dark mdc-code\" style=\"--shiki-light:#24292e;--shiki-dark:#e1e4e8;--shiki-light-bg:#fff;--shiki-dark-bg:#24292e\" tabindex=\"0\"><code><span class=\"line\"><span style=\"--shiki-light:#24292E;--shiki-dark:#E1E4E8\">&#x3C;</span><span style=\"--shiki-light:#22863A;--shiki-dark:#85E89D\">template</span><span style=\"--shiki-light:#24292E;--shiki-dark:#E1E4E8\">></span></span>\n<span class=\"line\"><span style=\"--shiki-light:#24292E;--shiki-dark:#E1E4E8\">  &#x3C;</span><span style=\"--shiki-light:#22863A;--shiki-dark:#85E89D\">web-ui-toast</span><span style=\"--shiki-light:#6F42C1;--shiki-dark:#B392F0\"> type</span><span style=\"--shiki-light:#24292E;--shiki-dark:#E1E4E8\">=</span><span style=\"--shiki-light:#032F62;--shiki-dark:#9ECBFF\">\"success\"</span><span style=\"--shiki-light:#6F42C1;--shiki-dark:#B392F0\"> heading</span><span style=\"--shiki-light:#24292E;--shiki-dark:#E1E4E8\">=</span><span style=\"--shiki-light:#032F62;--shiki-dark:#9ECBFF\">\"已保存\"</span><span style=\"--shiki-light:#6F42C1;--shiki-dark:#B392F0\"> message</span><span style=\"--shiki-light:#24292E;--shiki-dark:#E1E4E8\">=</span><span style=\"--shiki-light:#032F62;--shiki-dark:#9ECBFF\">\"更改已写入云端\"</span><span style=\"--shiki-light:#6F42C1;--shiki-dark:#B392F0\"> :duration</span><span style=\"--shiki-light:#24292E;--shiki-dark:#E1E4E8\">=</span><span style=\"--shiki-light:#032F62;--shiki-dark:#9ECBFF\">\"3000\"</span><span style=\"--shiki-light:#6F42C1;--shiki-dark:#B392F0\"> visible</span><span style=\"--shiki-light:#24292E;--shiki-dark:#E1E4E8\">>&#x3C;/</span><span style=\"--shiki-light:#22863A;--shiki-dark:#85E89D\">web-ui-toast</span><span style=\"--shiki-light:#24292E;--shiki-dark:#E1E4E8\">></span></span>\n<span class=\"line\"><span style=\"--shiki-light:#24292E;--shiki-dark:#E1E4E8\">&#x3C;/</span><span style=\"--shiki-light:#22863A;--shiki-dark:#85E89D\">template</span><span style=\"--shiki-light:#24292E;--shiki-dark:#E1E4E8\">></span></span></code></pre>"
+          "react": "<pre class=\"shiki shiki-themes github-light github-dark mdc-code\" style=\"--shiki-light:#24292e;--shiki-dark:#e1e4e8;--shiki-light-bg:#fff;--shiki-dark-bg:#24292e\" tabindex=\"0\"><code><span class=\"line\"><span style=\"--shiki-light:#D73A49;--shiki-dark:#F97583\">import</span><span style=\"--shiki-light:#24292E;--shiki-dark:#E1E4E8\"> { toast } </span><span style=\"--shiki-light:#D73A49;--shiki-dark:#F97583\">from</span><span style=\"--shiki-light:#032F62;--shiki-dark:#9ECBFF\"> '@greypan/web-ui'</span></span>\n<span class=\"line\"></span>\n<span class=\"line\"><span style=\"--shiki-light:#D73A49;--shiki-dark:#F97583\">const</span><span style=\"--shiki-light:#005CC5;--shiki-dark:#79B8FF\"> id</span><span style=\"--shiki-light:#D73A49;--shiki-dark:#F97583\"> =</span><span style=\"--shiki-light:#24292E;--shiki-dark:#E1E4E8\"> toast.</span><span style=\"--shiki-light:#6F42C1;--shiki-dark:#B392F0\">info</span><span style=\"--shiki-light:#24292E;--shiki-dark:#E1E4E8\">(</span><span style=\"--shiki-light:#032F62;--shiki-dark:#9ECBFF\">'提示信息'</span><span style=\"--shiki-light:#24292E;--shiki-dark:#E1E4E8\">)</span></span>\n<span class=\"line\"><span style=\"--shiki-light:#24292E;--shiki-dark:#E1E4E8\">toast.</span><span style=\"--shiki-light:#6F42C1;--shiki-dark:#B392F0\">close</span><span style=\"--shiki-light:#24292E;--shiki-dark:#E1E4E8\">(id)</span></span>\n<span class=\"line\"><span style=\"--shiki-light:#24292E;--shiki-dark:#E1E4E8\">toast.</span><span style=\"--shiki-light:#6F42C1;--shiki-dark:#B392F0\">clear</span><span style=\"--shiki-light:#24292E;--shiki-dark:#E1E4E8\">()</span></span></code></pre>",
+          "vue": "<pre class=\"shiki shiki-themes github-light github-dark mdc-code\" style=\"--shiki-light:#24292e;--shiki-dark:#e1e4e8;--shiki-light-bg:#fff;--shiki-dark-bg:#24292e\" tabindex=\"0\"><code><span class=\"line\"><span style=\"--shiki-light:#24292E;--shiki-dark:#E1E4E8\">&#x3C;</span><span style=\"--shiki-light:#22863A;--shiki-dark:#85E89D\">script</span><span style=\"--shiki-light:#6F42C1;--shiki-dark:#B392F0\"> setup</span><span style=\"--shiki-light:#6F42C1;--shiki-dark:#B392F0\"> lang</span><span style=\"--shiki-light:#24292E;--shiki-dark:#E1E4E8\">=</span><span style=\"--shiki-light:#032F62;--shiki-dark:#9ECBFF\">\"ts\"</span><span style=\"--shiki-light:#24292E;--shiki-dark:#E1E4E8\">></span></span>\n<span class=\"line\"><span style=\"--shiki-light:#D73A49;--shiki-dark:#F97583\">import</span><span style=\"--shiki-light:#24292E;--shiki-dark:#E1E4E8\"> { toast } </span><span style=\"--shiki-light:#D73A49;--shiki-dark:#F97583\">from</span><span style=\"--shiki-light:#032F62;--shiki-dark:#9ECBFF\"> '@greypan/web-ui'</span></span>\n<span class=\"line\"></span>\n<span class=\"line\"><span style=\"--shiki-light:#D73A49;--shiki-dark:#F97583\">function</span><span style=\"--shiki-light:#6F42C1;--shiki-dark:#B392F0\"> dismiss</span><span style=\"--shiki-light:#24292E;--shiki-dark:#E1E4E8\">() {</span></span>\n<span class=\"line\"><span style=\"--shiki-light:#D73A49;--shiki-dark:#F97583\">  const</span><span style=\"--shiki-light:#005CC5;--shiki-dark:#79B8FF\"> id</span><span style=\"--shiki-light:#D73A49;--shiki-dark:#F97583\"> =</span><span style=\"--shiki-light:#24292E;--shiki-dark:#E1E4E8\"> toast.</span><span style=\"--shiki-light:#6F42C1;--shiki-dark:#B392F0\">info</span><span style=\"--shiki-light:#24292E;--shiki-dark:#E1E4E8\">(</span><span style=\"--shiki-light:#032F62;--shiki-dark:#9ECBFF\">'提示信息'</span><span style=\"--shiki-light:#24292E;--shiki-dark:#E1E4E8\">)</span></span>\n<span class=\"line\"><span style=\"--shiki-light:#24292E;--shiki-dark:#E1E4E8\">  toast.</span><span style=\"--shiki-light:#6F42C1;--shiki-dark:#B392F0\">close</span><span style=\"--shiki-light:#24292E;--shiki-dark:#E1E4E8\">(id)</span></span>\n<span class=\"line\"><span style=\"--shiki-light:#24292E;--shiki-dark:#E1E4E8\">  toast.</span><span style=\"--shiki-light:#6F42C1;--shiki-dark:#B392F0\">clear</span><span style=\"--shiki-light:#24292E;--shiki-dark:#E1E4E8\">()</span></span>\n<span class=\"line\"><span style=\"--shiki-light:#24292E;--shiki-dark:#E1E4E8\">}</span></span>\n<span class=\"line\"><span style=\"--shiki-light:#24292E;--shiki-dark:#E1E4E8\">&#x3C;/</span><span style=\"--shiki-light:#22863A;--shiki-dark:#85E89D\">script</span><span style=\"--shiki-light:#24292E;--shiki-dark:#E1E4E8\">></span></span></code></pre>"
         },
         "demoKey": null
       }

@@ -118,8 +118,17 @@
 }
 
 .wui-slider-thumb {
-  /* thumb 是 pill，描边光影需要有限半径，取短边（height）的一半 */
-  --wui-glass-corner-radius: calc(var(--wui-slider-thumb-height, 20px) / 2);
+  /*
+   * thumb 几何：静止态是正圆（直径取厚度 --wui-slider-thumb-height），
+   * 按压 / 拖拽态沿 track 方向展开成胶囊（长边取 --wui-slider-thumb-width），
+   * 与 switch thumb 同一套配方：厚度不变、长度变长。
+   * 两个角色变量把「厚度」与「长边」和具体的 CSS 轴解耦：
+   * 横向 slider 把长边放进宽度方向，纵向 slider 放进高度方向。
+   * 描边光影需要有限半径，取厚度的一半：正圆与胶囊两端的圆角都是它。
+   */
+  --wui-slider-thumb-thickness: var(--wui-slider-thumb-height, 20px);
+  --wui-slider-thumb-length: var(--wui-slider-thumb-width, 24px);
+  --wui-glass-corner-radius: calc(var(--wui-slider-thumb-thickness) / 2);
 
   cursor: inherit;
 
@@ -130,11 +139,13 @@
   transform-origin: center center;
   transform: translate(-50%, -50%) scale(1);
 
-  width: var(--wui-slider-thumb-width, 24px);
-  height: var(--wui-slider-thumb-height, 20px);
+  width: var(--wui-slider-thumb-thickness);
+  height: var(--wui-slider-thumb-thickness);
   border-radius: var(--wui-radius-control, calc(infinity * 1px));
 
   transition:
+    width var(--wui-duration-press, 80ms) cubic-bezier(0.4, 0, 0.2, 1),
+    height var(--wui-duration-press, 80ms) cubic-bezier(0.4, 0, 0.2, 1),
     transform var(--wui-duration-press, 80ms) cubic-bezier(0.4, 0, 0.2, 1),
     background-color var(--wui-duration-press, 80ms) ease,
     box-shadow var(--wui-duration-press, 80ms) ease;
@@ -153,6 +164,9 @@
     /* 环底色随按压/拖拽态转 transparent（理由见 menu-portal.css）。 */
     --wui-color-glass-ring: transparent;
     transform: translate(-50%, -50%) scale(1.5);
+
+    /* 横向 slider 沿 track 方向展开成胶囊：厚度不变，长边走宽度方向。 */
+    width: var(--wui-slider-thumb-length);
     background-color: transparent;
     box-shadow:
       inset 0 0 0 0.5px color-mix(in srgb, var(--wui-color-glass-highlight, rgb(255 255 255 / 0.9)) 38%, transparent),
@@ -164,7 +178,11 @@
   &.is-dragging {
     --wui-color-glass-ring: transparent;
     cursor: grabbing;
+
     transform: translate(-50%, -50%) scale(1.5);
+
+    width: var(--wui-slider-thumb-length);
+
     background-color: transparent;
     box-shadow:
       inset 0 0 0 0.5px color-mix(in srgb, var(--wui-color-glass-highlight, rgb(255 255 255 / 0.9)) 38%, transparent),
@@ -182,10 +200,16 @@
 
   &.is-pressed:not(.is-dragging) {
     transform: translate(-50%, 50%) scale(1.5);
+
+    /* 纵向 slider 的长边走高度方向：厚度不变，长边仍是 --wui-slider-thumb-width。 */
+    width: var(--wui-slider-thumb-thickness);
+    height: var(--wui-slider-thumb-length);
   }
 
   &.is-dragging {
     transform: translate(-50%, 50%) scale(1.5);
+    width: var(--wui-slider-thumb-thickness);
+    height: var(--wui-slider-thumb-length);
   }
 }
 

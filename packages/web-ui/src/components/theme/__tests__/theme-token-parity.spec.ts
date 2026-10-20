@@ -434,10 +434,11 @@ describe('注释不是 fallback 站点', () => {
   })
 
   it('剥注释后组件 CSS 的站点总数少 2（剥掉的两处正是注释内的 var()）', () => {
-    // 覆盖面口径：原样扫出 692 处，剥掉 collapse:232 与 dialog:72 两处注释站点后剩 690
-    // （较上一版少 2 处，来自 empty 去掉的圆角与底面两条声明——见 #230；
-    //  多于上一版 5 处，来自 collapse peek 晕染伪元素新增的 var() 站点）
-    expect(allFallbackSites).toHaveLength(690)
+    // 覆盖面口径：原样扫出 693 处，剥掉 collapse:232 与 dialog:72 两处注释站点后剩 691
+    // （较上一版多 1 处，来自 slider thumb 几何：静止态改正圆、按压态展开成胶囊后，
+    //  「厚度 / 长边」两个角色变量各带一次 fallback，替掉了原先直写的三处；
+    //  另加两处来自 thumb 形状过渡新增的 width / height 过渡项）
+    expect(allFallbackSites).toHaveLength(691)
   })
 
   it('原样扫描与剥注释扫描的差集恰好是这两处，其余站点逐字不动', () => {
