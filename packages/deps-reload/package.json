@@ -39,7 +39,8 @@
   "devDependencies": {
     "@greypan/tsconfig": "workspace:*",
     "vite": "catalog:",
-    "vite-plus": "catalog:"
+    "vite-plus": "catalog:",
+    "webpack": "catalog:"
   },
   "peerDependencies": {
     "vite": "catalog:",

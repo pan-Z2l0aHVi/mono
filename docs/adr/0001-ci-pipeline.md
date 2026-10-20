@@ -4,13 +4,15 @@
 - **Status**: 已接受
 - **Amended by**: [ADR-0014](0014-task-system-v2.md)（`vp staged` 暂存自动修复退役，pre-commit 只跑 guard——task gate 加 `.agents/checks/` 政策检查——不改写文件）
 
+2026-10-19 注记：task 分级与记账已迁出根 `scripts/`，现行入口见 task-ledger skill；ADR-0028 记录迁移。下文提到的历史命令名不再可执行。
+
 ## 背景
 
 该 monorepo 需要一条 CI 流水线，在合并前捕获回归问题，并在发布时自动发布软件包。
 
 ## 决策
 
-- **CI**（`.github/workflows/ci.yml`）：changeset 状态检查 → 完整构建 → Web 格式、lint、类型检查与 Go 静态检查 → 测试；提交 hook 在提交前自动修复暂存文件的格式问题（2026-09-20 修订：pre-commit 现在只跑 `pnpm agent:task guard`，不改写文件，见 [ADR-0014](0014-task-system-v2.md)。）
+- **CI**（`.github/workflows/ci.yml`）：changeset 状态检查 → 完整构建 → Web 格式、lint、类型检查与 Go 静态检查 → 测试；提交 hook 在提交前自动修复暂存文件的格式问题（2026-09-20 修订：pre-commit 现在只跑 `agent:task guard`，不改写文件，见 [ADR-0014](0014-task-system-v2.md)。）
 - **创建版本 PR**（`.github/workflows/changeset-version.yml`）：仅使用 `changesets/action@v2` 创建版本 PR。它会对私有 Wails 工作区进行版本管理，但不会将其发布到 npm。
 - **发布 npm 软件包**（`.github/workflows/npm-publish.yml`）：合并版本 PR 后，通过 npm Trusted Publishing 重新构建并发布公开软件包。
 - **验证 Wails 桌面端**（`.github/workflows/wails-verify.yml`）：原生 macOS/Windows 构建用于验证桌面端 Pull Request，并支持只读权限的手动运行。

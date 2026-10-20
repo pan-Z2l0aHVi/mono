@@ -2,7 +2,6 @@
   "$schema": "https://turbo.build/schema.json",
   "ui": "tui",
   "globalDependencies": [".mise.toml"],
-  "globalPassThroughEnv": ["CHOKIDAR_USEPOLLING"],
   "tasks": {
     "build": {
       "dependsOn": ["^build"],

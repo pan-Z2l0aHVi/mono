@@ -82,12 +82,9 @@ runs:
         restore-keys: |
           ${{ runner.os }}-pnpm-
 
-    - name: Set official registry
-      if: inputs.skip-install != 'true'
-      shell: bash
-      run: pnpm config set registry https://registry.npmjs.org/
-
     - name: Install dependencies
       if: inputs.skip-install != 'true'
       shell: bash
-      run: pnpm install --frozen-lockfile
+      # 项目 .npmrc 的 registry 优先级高于用户级配置，`pnpm config set registry` 不会改变
+      # 本仓的安装源；只有 CLI flag 能覆盖。仓库本地保留镜像，CI 固定走官方源。
+      run: pnpm install --frozen-lockfile --registry=https://registry.npmjs.org/

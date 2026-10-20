@@ -1,4 +1,8 @@
+<!-- corpus-status: reference -->
+
 # Wails 3 SPA 路由研究：Hash vs History
+
+> 状态：非权威参考（时点性研究）。结论以现行 ADR、源码与测试为准。
 
 ## 结论
 

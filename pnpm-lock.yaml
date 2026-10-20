@@ -833,9 +833,6 @@ importers:
       vite:
         specifier: npm:@voidzero-dev/vite-plus-core@0.3.2
         version: '@voidzero-dev/vite-plus-core@0.3.2(@types/node@26.4.1)(jiti@2.7.0)(terser@5.51.2)(typescript@6.0.3)(yaml@2.9.0)'
-      webpack:
-        specifier: 'catalog:'
-        version: 5.110.3(lightningcss@1.33.0)(postcss@8.5.28)
     devDependencies:
       '@greypan/tsconfig':
         specifier: workspace:*
@@ -843,6 +840,9 @@ importers:
       vite-plus:
         specifier: 'catalog:'
         version: 0.3.2(@types/node@26.4.1)(@vitest/browser-playwright@4.1.11)(jiti@2.7.0)(jsdom@30.0.1)(msw@2.15.0(@types/node@26.4.1)(typescript@6.0.3))(terser@5.51.2)(typescript@6.0.3)(yaml@2.9.0)
+      webpack:
+        specifier: 'catalog:'
+        version: 5.110.3(lightningcss@1.33.0)(postcss@8.5.28)
 
   packages/js-kit:
     dependencies:
@@ -939,9 +939,6 @@ importers:
       vite:
         specifier: npm:@voidzero-dev/vite-plus-core@0.3.2
         version: '@voidzero-dev/vite-plus-core@0.3.2(@types/node@26.4.1)(jiti@2.7.0)(terser@5.51.2)(typescript@6.0.3)(yaml@2.9.0)'
-      webpack:
-        specifier: 'catalog:'
-        version: 5.110.3(lightningcss@1.33.0)(postcss@8.5.28)
     devDependencies:
       '@greypan/tsconfig':
         specifier: workspace:*
@@ -949,6 +946,9 @@ importers:
       vite-plus:
         specifier: 'catalog:'
         version: 0.3.2(@types/node@26.4.1)(@vitest/browser-playwright@4.1.11)(jiti@2.7.0)(jsdom@30.0.1)(msw@2.15.0(@types/node@26.4.1)(typescript@6.0.3))(terser@5.51.2)(typescript@6.0.3)(yaml@2.9.0)
+      webpack:
+        specifier: 'catalog:'
+        version: 5.110.3(lightningcss@1.33.0)(postcss@8.5.28)
 
   packages/web-ui:
     dependencies:
@@ -9810,26 +9810,20 @@ snapshots:
     dependencies:
       '@webassemblyjs/helper-numbers': 1.13.2
       '@webassemblyjs/helper-wasm-bytecode': 1.13.2
-    optional: true
 
-  '@webassemblyjs/floating-point-hex-parser@1.13.2':
-    optional: true
+  '@webassemblyjs/floating-point-hex-parser@1.13.2': {}
 
-  '@webassemblyjs/helper-api-error@1.13.2':
-    optional: true
+  '@webassemblyjs/helper-api-error@1.13.2': {}
 
-  '@webassemblyjs/helper-buffer@1.14.1':
-    optional: true
+  '@webassemblyjs/helper-buffer@1.14.1': {}
 
   '@webassemblyjs/helper-numbers@1.13.2':
     dependencies:
       '@webassemblyjs/floating-point-hex-parser': 1.13.2
       '@webassemblyjs/helper-api-error': 1.13.2
       '@xtuc/long': 4.2.2
-    optional: true
 
-  '@webassemblyjs/helper-wasm-bytecode@1.13.2':
-    optional: true
+  '@webassemblyjs/helper-wasm-bytecode@1.13.2': {}
 
   '@webassemblyjs/helper-wasm-section@1.14.1':
     dependencies:
@@ -9837,20 +9831,16 @@ snapshots:
       '@webassemblyjs/helper-buffer': 1.14.1
       '@webassemblyjs/helper-wasm-bytecode': 1.13.2
       '@webassemblyjs/wasm-gen': 1.14.1
-    optional: true
 
   '@webassemblyjs/ieee754@1.13.2':
     dependencies:
       '@xtuc/ieee754': 1.2.0
-    optional: true
 
   '@webassemblyjs/leb128@1.13.2':
     dependencies:
       '@xtuc/long': 4.2.2
-    optional: true
 
-  '@webassemblyjs/utf8@1.13.2':
-    optional: true
+  '@webassemblyjs/utf8@1.13.2': {}
 
   '@webassemblyjs/wasm-edit@1.14.1':
     dependencies:
@@ -9862,7 +9852,6 @@ snapshots:
       '@webassemblyjs/wasm-opt': 1.14.1
       '@webassemblyjs/wasm-parser': 1.14.1
       '@webassemblyjs/wast-printer': 1.14.1
-    optional: true
 
   '@webassemblyjs/wasm-gen@1.14.1':
     dependencies:
@@ -9871,7 +9860,6 @@ snapshots:
       '@webassemblyjs/ieee754': 1.13.2
       '@webassemblyjs/leb128': 1.13.2
       '@webassemblyjs/utf8': 1.13.2
-    optional: true
 
   '@webassemblyjs/wasm-opt@1.14.1':
     dependencies:
@@ -9879,7 +9867,6 @@ snapshots:
       '@webassemblyjs/helper-buffer': 1.14.1
       '@webassemblyjs/wasm-gen': 1.14.1
       '@webassemblyjs/wasm-parser': 1.14.1
-    optional: true
 
   '@webassemblyjs/wasm-parser@1.14.1':
     dependencies:
@@ -9889,19 +9876,15 @@ snapshots:
       '@webassemblyjs/ieee754': 1.13.2
       '@webassemblyjs/leb128': 1.13.2
       '@webassemblyjs/utf8': 1.13.2
-    optional: true
 
   '@webassemblyjs/wast-printer@1.14.1':
     dependencies:
       '@webassemblyjs/ast': 1.14.1
       '@xtuc/long': 4.2.2
-    optional: true
 
-  '@xtuc/ieee754@1.2.0':
-    optional: true
+  '@xtuc/ieee754@1.2.0': {}
 
-  '@xtuc/long@4.2.2':
-    optional: true
+  '@xtuc/long@4.2.2': {}
 
   '@yuku-codegen/binding-android-arm64@0.9.5':
     optional: true
@@ -9989,13 +9972,11 @@ snapshots:
   ajv-formats@2.1.1(ajv@8.20.0):
     optionalDependencies:
       ajv: 8.20.0
-    optional: true
 
   ajv-keywords@5.1.0(ajv@8.20.0):
     dependencies:
       ajv: 8.20.0
       fast-deep-equal: 3.1.3
-    optional: true
 
   ajv@6.15.0:
     dependencies:
@@ -10252,8 +10233,7 @@ snapshots:
     dependencies:
       readdirp: 5.1.1
 
-  chrome-trace-event@1.0.4:
-    optional: true
+  chrome-trace-event@1.0.4: {}
 
   cli-cursor@3.1.0:
     dependencies:
@@ -10840,8 +10820,7 @@ snapshots:
 
   eta@4.6.0: {}
 
-  events@3.3.0:
-    optional: true
+  events@3.3.0: {}
 
   expand-tilde@2.0.2:
     dependencies:
@@ -11410,7 +11389,6 @@ snapshots:
       '@types/node': 26.4.1
       merge-stream: 2.0.0
       supports-color: 8.1.1
-    optional: true
 
   jiti@2.6.1: {}
 
@@ -11750,8 +11728,7 @@ snapshots:
 
   meow@14.1.0: {}
 
-  merge-stream@2.0.0:
-    optional: true
+  merge-stream@2.0.0: {}
 
   merge2@1.4.1: {}
 
@@ -11908,8 +11885,7 @@ snapshots:
       braces: 3.0.3
       picomatch: 2.3.2
 
-  mime-db@1.54.0:
-    optional: true
+  mime-db@1.54.0: {}
 
   mimic-fn@2.1.0: {}
 
@@ -11937,7 +11913,6 @@ snapshots:
     optionalDependencies:
       lightningcss: 1.33.0
       postcss: 8.5.28
-    optional: true
 
   minipass@7.1.3: {}
 
@@ -11992,8 +11967,7 @@ snapshots:
   natural-compare@1.4.0:
     optional: true
 
-  neo-async@2.6.2:
-    optional: true
+  neo-async@2.6.2: {}
 
   node-releases@2.0.54: {}
 
@@ -12553,7 +12527,6 @@ snapshots:
       ajv: 8.20.0
       ajv-formats: 2.1.1(ajv@8.20.0)
       ajv-keywords: 5.1.0(ajv@8.20.0)
-    optional: true
 
   scule@1.3.0: {}
 
@@ -12883,7 +12856,6 @@ snapshots:
   supports-color@8.1.1:
     dependencies:
       has-flag: 4.0.0
-    optional: true
 
   supports-hyperlinks@4.5.0:
     dependencies:
@@ -13430,7 +13402,6 @@ snapshots:
   watchpack@2.5.2:
     dependencies:
       graceful-fs: 4.2.11
-    optional: true
 
   wcwidth@1.0.1:
     dependencies:
@@ -13438,8 +13409,7 @@ snapshots:
 
   webidl-conversions@8.0.1: {}
 
-  webpack-sources@3.5.1:
-    optional: true
+  webpack-sources@3.5.1: {}
 
   webpack-virtual-modules@0.6.2: {}
 
@@ -13481,7 +13451,6 @@ snapshots:
       - sharp
       - svgo
       - uglify-js
-    optional: true
 
   whatwg-mimetype@5.0.0: {}
 

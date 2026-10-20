@@ -3,7 +3,7 @@
 // - Windows：仅编译 Windows EXE
 // - Linux：仅构建前端（CI 环境，不编译 Go）
 //
-// 两条事实决定了这个默认形状。两条都由 .github/scripts/ci-topology.test.mjs 的断言钉住，改这里之前先看那份测试：
+// 两条事实决定了这个默认形状。两条都由 .github/scripts/lib/workflow-topology.test.mjs 的断言钉住，改这里之前先看那份测试：
 //
 // 1. 只做宿主平台。`build:windows` 在 darwin 上是交叉编译，而它的消费者只有
 //    `wails-verify.yml` / `wails-release.yml` 矩阵里的 `windows-latest` runner——那两边在矩阵里直接调
@@ -15,7 +15,7 @@
 // turbo 会把它扇出到 `node scripts/build.mjs`——在 Linux 上取 `build:frontend` 这一支，不编译 Go。
 // 真正的前提是**没有任何 CI runner 执行到 darwin 这一支**：桌面产物的验证面固定为上面两条矩阵，
 // 它们不走聚合脚本。聚合脚本一旦被改成宿主相关（例如上面第 1 条裁掉的交叉编译），矩阵必须继续
-// 直接调子脚本，否则 Windows 产物就不再被构建——ci-topology.test.mjs 为此断言矩阵命令不是 `build`。
+// 直接调子脚本，否则 Windows 产物就不再被构建——workflow-topology.test.mjs 为此断言矩阵命令不是 `build`。
 //
 // Go/Wails 桌面编译仍由 wails-verify.yml 单独覆盖（macOS/Windows runner）。
 // Linux CI 无需安装 GTK/WebKit 系统库。

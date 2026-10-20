@@ -1,4 +1,8 @@
+<!-- corpus-status: reference -->
+
 # TypeScript 7 升级可行性调研（mono monorepo）
+
+> 状态：非权威参考（时点性研究）。结论以现行 ADR、源码与测试为准。
 
 > 回答「本 monorepo 能否整体升级到最新的 TypeScript 7」。调研日期 2026-09-09。官方事实（发布状态、破坏性变更、生态适配）均追溯一手来源（devblogs.microsoft.com、GitHub、npm registry），来源逐条标注；仓库事实来自当前源码与 manifest；另附本机原生 TS 7.0.2 的实测结果。「源码事实 / 实测 / 推断」按要求标注。
 

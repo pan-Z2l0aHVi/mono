@@ -2,10 +2,8 @@
 
 - **Date**: 2026-09-14
 - **Status**: 已接受
-- **Amends**: 已删除的 ADR-0011「Agent 模型绑定与思考强度分档」的「后果」中关于角色契约执行体自述参与机械校验的说明（该 ADR 已随多 Agent 编排层于 2026-10-03 整体移除）
 - **Relates to**: [ADR-0004](0004-progressive-agent-context-architecture.md)
 - **Superseded by**: ADR-0014 —— 本 ADR 的风险分级表被 `level`（t0/t1/t2）取代；第 3、4 节的 `scripts/audit-instructions.mjs` 与两个约束预算基线文件已随 ADR-0014 退役，不再维护（仍生效的部分只有预授权操作清单，已并入 `docs/agents/workflow.md`）
-- **2026-10-03 注记**：原「Further amended by」指向的 Role/Supervisor ADR 随多 Agent 编排层整体移除，相关现行权威不复存在
 
 ## 背景
 
@@ -27,7 +25,7 @@ ADR-0004 建立了渐进披露的 context 架构，ADR-0010 与 ADR-0011（两�
 
 ### 1. 变更按可查证的风险分级，而不是按变更类别触发
 
-`docs/agents/workflow.md` 的「变更风险分级」是唯一权威分级表：P0 走 `orchestrated`，P1 走 `direct`，P2 免 task state。判据全部可从变更路径、manifest 与 contract-change-review skill 的 `verify` 查询输出查证：受影响 workspace 只有一个时，P2 的「单 workspace」条件成立。根 `AGENTS.md` 的 Mutation Gate 只给判定入口和不可绕过的边界，不复制分级表。
+`docs/agents/workflow.md` 的「变更风险分级」是唯一权威分级表：P0 走 `orchestrated`，P1 走 `direct`，P2 免 task state。判据全部可从变更路径、manifest 与 monorepo-change-impact skill 的 `verify` 查询输出查证：受影响 workspace 只有一个时，P2 的「单 workspace」条件成立。根 `AGENTS.md` 的 Mutation Gate 只给判定入口和不可绕过的边界，不复制分级表。
 
 放宽 gate 不需要改 `scripts/agent-workflow.mjs`：提交 hook 在找不到 active task 时返回 `{ok: true, enforced: false}` 并放行，这是脚本既有行为。
 

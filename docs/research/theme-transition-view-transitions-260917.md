@@ -1,4 +1,8 @@
+<!-- corpus-status: reference -->
+
 # 主题切换过渡复核（issue #105）：View Transitions 在当前 Chrome 的真实表现
+
+> 状态：非权威参考（时点性研究）。结论以现行 ADR、源码与测试为准。
 
 复核日期 2026-09-17，工作区 `release/260917`，被测分支 `origin/feat/theme-transition`（tip `92d0ad47`），被测浏览器 Google Chrome 153.0.8010.48（macOS，headed 与 headless=new 各跑一轮）。本文件只做事实核验，**不实施任何代码修改**。
 

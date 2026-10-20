@@ -4,6 +4,10 @@
 - **Status**: 已接受
 - **Amended by**: [ADR-0014](0014-task-system-v2.md)（pre-commit 不再自动修复暂存文件）
 
+2026-10-19 注记：task 分级与记账已迁出根 `scripts/`，现行入口见 task-ledger skill；ADR-0028 记录迁移。下文提到的历史命令名不再可执行。
+
+2026-10-19 注记：构建模式划分已按包的实际产物需求调整；现行判据见 `docs/agents/build.md`，下文按入口数的分类不再作为选择依据。
+
 ## 背景
 
 多个软件包具有不同的构建需求（单入口使用 tsdown、多入口使用 Vite lib 模式、应用需要完整打包），需要统一的构建接口。
@@ -16,7 +20,7 @@
 - **子路径导出软件包**（js-kit、browser-kit、web-ui）：`vp build`（Vite lib 模式 + preserveModules + vite-plugin-dts）→ `.js` + `.d.ts`
 - **React 应用**：`vp build`
 - **Vue 应用**：`vue-tsc --build && vp build`
-- **工作区验证**：`pnpm run check-code` 运行 `vp check`（格式化/lint/类型检查）与 `check-go`（自动发现 Go 模块并运行 `go vet`）；提交 hook 自动修复暂存文件（2026-09-20 修订：pre-commit 已改为只跑 `pnpm agent:task guard`，格式修复由 `fix-code` 与 task `freeze` 承担，见 [ADR-0014](0014-task-system-v2.md)。）
+- **工作区验证**：`pnpm run check-code` 运行 `vp check`（格式化/lint/类型检查）与 `check-go`（自动发现 Go 模块并运行 `go vet`）；提交 hook 自动修复暂存文件（2026-09-20 修订：pre-commit 已改为只跑 `agent:task guard`，格式修复由 `fix-code` 与 task `freeze` 承担，见 [ADR-0014](0014-task-system-v2.md)。）
 
 ## 后果
 

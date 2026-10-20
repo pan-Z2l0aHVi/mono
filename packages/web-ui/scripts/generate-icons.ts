@@ -14,7 +14,7 @@
  * Vite:    import { generateIcons } from './scripts/generate-icons'
  */
 
-import { readFileSync, writeFileSync, mkdirSync, existsSync } from 'node:fs'
+import { readFileSync, writeFileSync, mkdirSync, existsSync, readdirSync, unlinkSync } from 'node:fs'
 import { resolve } from 'node:path'
 
 /** Iconify 规范：图标与图标集都未声明 width/height 时，画布按 16×16 计（见 @iconify/types README）。 */
@@ -162,6 +162,12 @@ export async function generateIcons(pkgRoot: string) {
     const camelName = toCamelCase(fileName)
     barrel.push({ name: fileName, camelName })
   }
+
+  // 生成目录只由 icons.used.json 决定；输入移除后必须同步删除旧产物，否则仓库里
+  // 会留下任何输入都生成不出来的「生成物」。
+  const expected = new Set(barrel.map(entry => `${entry.name}.ts`))
+  for (const file of readdirSync(outDir))
+    if (file.endsWith('.ts') && !expected.has(file)) unlinkSync(resolve(outDir, file))
 
   writeIndex(indexPath, barrel)
   return barrel.length

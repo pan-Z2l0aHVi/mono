@@ -30,7 +30,7 @@ ADR-0014 把 task 分档收敛为 `level`（t0/t1/t2），但判据仍是一份�
 | T1   | 触及可执行内容，且路径落在某个 workspace 之下，且未命中 T0                                                             |
 | T2   | 只触及非可执行内容（文档、注释、纯格式、二进制产物）                                                                   |
 
-不把根目录下每个配置文件名登记成一份判据清单：那会在仓库迭代时变成注定漂移的副本，软判断配合 contract-change-review skill 的 `verify` 查询足够。`verify` 只用于核实「跨 workspace 的公共契约」这一条，输出只涉及一个 workspace 时该条不成立。
+不把根目录下每个配置文件名登记成一份判据清单：那会在仓库迭代时变成注定漂移的副本，软判断配合 monorepo-change-impact skill 的 `verify` 查询足够。`verify` 只用于核实「跨 workspace 的公共契约」这一条，输出只涉及一个 workspace 时该条不成立。
 
 依赖变更一律归 T0，无论单包还是多包：lockfile 的路径归属本身有歧义，按「命中即 T0」避免判据漂移。
 
@@ -46,7 +46,7 @@ T1 的 review 由可选改回强制，approval 与它成对，两条分叉合一
 
 ### 3. 测试验收复用 `verify` 的 `--kind`，不新增相位
 
-`pnpm agent:task verify` 增加 `--kind`，取 `test`（默认）或 `acceptance`。前者是实施阶段自证的功能测试，后者是以测试工程师视角对功能层做的独立验收。
+`agent:task verify` 增加 `--kind`，取 `test`（默认）或 `acceptance`。前者是实施阶段自证的功能测试，后者是以测试工程师视角对功能层做的独立验收。（2026-10-19 注记：`verify` 已随 ADR-0025 退役，task CLI 进一步迁入 task-ledger skill；见 ADR-0028（纯文本）。）
 
 `kind` 只落在证据记录里，不改变状态机：ADR-0014 §2 已确定「验证是证据记录而非相位」。`done` 因此按 `kind` 各取最新一条 `pass` 要求，T1 要 `test`，T0 再加 `acceptance`。某类验证的最新一条若是 `fail`，它推翻同 `diffHash` 上更早的 `pass`，保留原有的 fail-fast 语义。两种错误写法都不会静默回落到默认值：漏值的 `--kind` 被 `parseArgs` 记成布尔 `true`，逐项比对直接拒绝；等号形式 `--kind=<value>` 被 `parseArgs` 存成独立键，也被显式拒绝。
 

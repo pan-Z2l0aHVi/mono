@@ -1,4 +1,8 @@
+<!-- corpus-status: reference -->
+
 # Collapse / Accordion 组件 API 设计模式研究：Compound Components vs 单组件 Slots
+
+> 状态：非权威参考（时点性研究）。结论以现行 ADR、源码与测试为准。
 
 > 针对 Lit + Shadow DOM web component 组件库（`packages/web-ui`）的 collapse 组件（ADR-0030）公开 API 设计模式调研。对比两种模式：**模式 A**（shadcn/Radix 式 compound components，根 + trigger + content 多元素）与**模式 B**（Element Plus 式单组件 + slots）。所有论断均追溯一手来源（官方文档、源码、spec、MDN BCD），来源以「源码事实」或「推断」标注。
 
