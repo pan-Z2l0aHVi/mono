@@ -63,7 +63,7 @@ const emptyTitle = computed(() => (props.runtimeAvailable ? '资源库为空' : 
 const checkedSet = computed(() => new Set(props.checkedIds))
 
 /*
- * 行高没有写死。ResourceRow 的标题会 line-clamp-2 换行、tag 区会 flex-wrap 换行、进入改名
+ * 行高没有写死。ResourceRow 的标题会 line-clamp-2 换行、标签区会 flex-wrap 换行、进入改名
  * 编辑态还会从文字换成表单控件，三种情况高度都不同。这个 item-size 只是「还没量到之前先用
  * 多少」的一阶猜测，真正的值由 virtua 挂在每个条目上的 ResizeObserver 量出来覆盖回去。
  */
@@ -156,7 +156,7 @@ onBeforeUnmount(() => {
  * 自己的 scrollIndexIntoView 里（见下），那条路径要把 virtua 的列表内偏移用 listOffset
  * 换算成文档坐标。
  *
- * 行高不固定（标题换行、tag 换行、改名编辑态），由 virtua 挂在每个条目上的 ResizeObserver
+ * 行高不固定（标题换行、标签换行、改名编辑态），由 virtua 挂在每个条目上的 ResizeObserver
  * 自动测量，不需要函数式 ref 与自定义 measureElement：
  *   - virtua 只认「元素 -> 下标」的对应（mount 时注册，条目下标变化时重新注册），高度按
  *     下标写进它自己的尺寸表；
@@ -1140,7 +1140,7 @@ function handleRenameChange(resource: ResourceView, event: WebUiEvent<WebUiEdita
       </web-ui-dropdown-item>
       <web-ui-dropdown-item v-if="contextResource?.available" @click="handleTags(contextResource)">
         <web-ui-icon slot="prefix" :icon="lucideTags" :size="14" />
-        tag
+        标签
       </web-ui-dropdown-item>
       <web-ui-dropdown-divider />
       <web-ui-dropdown-item style="color: var(--wui-color-danger, #ef4444)" @click="handleDelete(contextResource)">

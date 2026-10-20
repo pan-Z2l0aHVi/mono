@@ -58,7 +58,7 @@ describe('WebUiDropdownItem 组件', () => {
       const el = createItem({ submenu: '' }, 'Sub<span slot="suffix">Ctrl+S</span>')
       await waitForUpdate(el)
 
-      expect(projectedCount(el, 'suffix'), 'submenu item不投影 suffix，改为展开指示').toBe(0)
+      expect(projectedCount(el, 'suffix'), 'submenu item 不投影 suffix，改为展开指示').toBe(0)
 
       cleanupElement(el)
     })

@@ -40,7 +40,7 @@ describe('组件 import 生成', () => {
     { name: 'kebab-case', tag: 'web-ui-button' },
     { name: 'PascalCase', tag: 'WebUiButton' },
     { name: '单字母后缀的 PascalCase', tag: 'WebUiA' }
-  ])('$name label 都映射到同名组件', async ({ tag }) => {
+  ])('$name tag 都映射到同名组件', async ({ tag }) => {
     const code = await runTransformedCode({
       code: `<template><${tag} /></template>`,
       id: '/src/App.vue'
@@ -50,8 +50,8 @@ describe('组件 import 生成', () => {
     expect(code).toContain(`import { WebUi${dir === 'a' ? 'A' : 'Button'} } from '@greypan/web-ui/components/${dir}'`)
   })
 
-  it('模板里的混合大小写 kebab label 归一到小写组件目录', async () => {
-    // Vue 模板的 label 名大小写不敏感：导入路径必须是小写目录，否则在大小写敏感的
+  it('模板里的混合大小写 kebab tag 归一到小写组件目录', async () => {
+    // Vue 模板的 tag 名大小写不敏感：导入路径必须是小写目录，否则在大小写敏感的
     // 文件系统上解析不到模块
     const code = await runTransformedCode({
       code: '<template><web-ui-Button /></template>',
@@ -108,14 +108,14 @@ describe('组件 import 生成', () => {
   })
 
   it.each([
-    { name: '没有组件 label', code: '<template><main /></template>' },
-    { name: '只有别的包的 label', code: '<template><other-ui-button /></template>' },
+    { name: '没有组件 tag', code: '<template><main /></template>' },
+    { name: '只有别的包的 tag', code: '<template><other-ui-button /></template>' },
     { name: 'tagPrefix 出现在普通文本里', code: '<template>web-ui-button</template>' }
   ])('$name 时不改写源码', async ({ code: input }) => {
     expect(await runTransformRaw({ code: input, id: '/src/App.vue' })).toBeUndefined()
   })
 
-  it('模块源码里全大写的 kebab label 也生成导入', async () => {
+  it('模块源码里全大写的 kebab tag 也生成导入', async () => {
     const result = await runTransform({
       code: `
       <template>
@@ -130,7 +130,7 @@ describe('组件 import 生成', () => {
     expect(result.code).toContain(`import { WebUiCard } from '@greypan/web-ui/components/card'`)
   })
 
-  it('模块源码里混合大小写的 kebab label 归一到小写组件目录', async () => {
+  it('模块源码里混合大小写的 kebab tag 归一到小写组件目录', async () => {
     const result = await runTransform({
       code: `
       <template>
@@ -144,7 +144,7 @@ describe('组件 import 生成', () => {
     expect(result.code).not.toContain('components/Button')
   })
 
-  it('模块源码里全大写的 kebab label 在 React 中也生成导入', async () => {
+  it('模块源码里全大写的 kebab tag 在 React 中也生成导入', async () => {
     const result = await runTransform({
       code: `
       const App = () => <WEB-UI-BUTTON />
@@ -158,7 +158,7 @@ describe('组件 import 生成', () => {
   // 上面三条来自 ba26659f（连同 factory.ts 的预筛修复）。这里补它没枚举的大小写变体：
   // 首字母大写同样被 HTML/Vue 的大小写不敏感规则覆盖，但既不在那三条的输入里，也不在
   // HTML 入口那组里——只有模块源码这一条路径会走到它。
-  it('首字母大写的 kebab label 也生成导入', async () => {
+  it('首字母大写的 kebab tag 也生成导入', async () => {
     const code = await runTransformedCode({
       code: '<template><Web-ui-Button /></template>',
       id: '/src/App.vue'
@@ -183,7 +183,7 @@ describe('Vue SFC 注入位置', () => {
       id: '/src/App.vue'
     })
 
-    // 断言注入点：import 落在 <script setup> 开 label 之后、原代码之前
+    // 断言注入点：import 落在 <script setup> 开 tag 之后、原代码之前
     expect(code.indexOf('<script setup>')).toBeLessThan(code.indexOf('import { WebUiButton }'))
     expect(code.indexOf('import { WebUiButton }')).toBeLessThan(code.indexOf('const a = 1'))
     expect(code.indexOf('const a = 1')).toBeLessThan(code.indexOf('</script>'))
@@ -317,7 +317,7 @@ describe('Vite HTML 入口注入', () => {
     expect(tag.children).toContain(`import { WebUiCard } from '@greypan/web-ui/components/card'`)
   })
 
-  it('重复 label 按组件去重', async () => {
+  it('重复 tag 按组件去重', async () => {
     const tag = await runHtmlInjection({
       html: '<web-ui-button>1</web-ui-button><web-ui-button>2</web-ui-button><web-ui-card></web-ui-card>'
     })
@@ -337,7 +337,7 @@ describe('Vite HTML 入口注入', () => {
       html: '<web-ui-Button>ok</web-ui-Button>',
       forbidden: 'components/Button'
     }
-  ])('$name label 归一到小写组件名', async ({ html, forbidden }) => {
+  ])('$name tag 归一到小写组件名', async ({ html, forbidden }) => {
     const tag = await runHtmlInjection({ html })
 
     expect(tag.children).toContain(`from '@greypan/web-ui/components/button'`)
@@ -346,21 +346,21 @@ describe('Vite HTML 入口注入', () => {
 
   it.each([
     { name: 'PascalCase 不是合法的 custom element', html: '<WebUiButton />' },
-    { name: '注释中的伪 label', html: '<!-- <web-ui-button>fake</web-ui-button> --><html><body>ok</body></html>' },
+    { name: '注释中的伪 tag', html: '<!-- <web-ui-button>fake</web-ui-button> --><html><body>ok</body></html>' },
     {
-      name: 'script/style 原始文本中的伪 label',
+      name: 'script/style 原始文本中的伪 tag',
       html: `<html><head><script>const tpl = '<web-ui-button>';</script><style>.x::after { content: '<web-ui-card>'; }</style></head><body></body></html>`
     },
     {
-      name: 'title/textarea/iframe 中的伪 label',
+      name: 'title/textarea/iframe 中的伪 tag',
       html: '<html><head><title><web-ui-button>App</web-ui-button></title></head><body><textarea><web-ui-card></web-ui-card></textarea><iframe><web-ui-dialog></web-ui-dialog></iframe></body></html>'
     },
     {
-      name: '双引号属性值中的伪 label',
+      name: '双引号属性值中的伪 tag',
       html: '<div data-template="<web-ui-button>"></div><div data-single=\'<web-ui-card>\'></div>'
     },
     {
-      name: '等号两侧带空白的属性值中的伪 label',
+      name: '等号两侧带空白的属性值中的伪 tag',
       html: '<div data-template = "<web-ui-button>"></div><div data-single = \'<web-ui-card>\'></div>'
     },
     {
@@ -373,7 +373,7 @@ describe('Vite HTML 入口注入', () => {
     },
     { name: '空 HTML', html: '' },
     {
-      name: '没有组件 label 的页面',
+      name: '没有组件 tag 的页面',
       html: '<!doctype html><html><head><title>App</title></head><body><main>empty</main></body></html>'
     }
   ])('$name 时原样返回 HTML，不注入脚本', async ({ html }) => {
@@ -382,15 +382,15 @@ describe('Vite HTML 入口注入', () => {
 
   it.each([
     {
-      name: '普通文本中的等号与引号不遮蔽真实 label',
+      name: '普通文本中的等号与引号不遮蔽真实 tag',
       html: '<div>template = "<web-ui-button>"</div>'
     },
     {
-      name: '属性值中的伪 <script> 字面量不吞掉后续真实 label',
+      name: '属性值中的伪 <script> 字面量不吞掉后续真实 tag',
       html: '<div data-template="<script>"></div><web-ui-button>ok</web-ui-button>'
     },
     {
-      name: '<template> 内容中的真实 label',
+      name: '<template> 内容中的真实 tag',
       html: '<html><body><template><web-ui-button></web-ui-button></template></body></html>'
     }
   ])('$name 仍被识别并注入', async ({ html }) => {

@@ -97,7 +97,7 @@ async function openMenuAt(
     '根 menu 未定位'
   )
   const parentItem = mainPanel.querySelector<HTMLElement>('web-ui-dropdown-item')
-  if (!parentItem) throw new Error('未找到submenu 父项')
+  if (!parentItem) throw new Error('未找到 submenu 父项')
   return { menu, parentItem, mainPanel }
 }
 
@@ -112,7 +112,7 @@ async function openSubmenu(parentItem: HTMLElement): Promise<HTMLElement> {
 }
 
 /**
- * 把submenu 触发项的右缘摆到「右侧刚好放不下submenu」的窗口正中，返回打开submenu 前的现场。
+ * 把 submenu 触发项的右缘摆到「右侧刚好放不下 submenu」的窗口正中，返回打开 submenu 前的现场。
  *
  * 设视口宽 I、submenu 真实宽 W、边距 p。触发项右缘为 r 时：
  * - 正确读数：`r + W + p > I` → 右侧放不下 → 向左开；
@@ -190,7 +190,7 @@ describe('WebUiContextMenu submenu 开合方向的宽度来源（浏览器）', 
     const sibling = mainPanel.querySelectorAll<HTMLElement>('web-ui-dropdown-item')[1]
     if (!sibling) throw new Error('未找到叶子项')
 
-    // 悬停叶子项关闭submenu（非即时 → 进 closing 缓存），等出场缩放推进到位再悬停回父项重开。
+    // 悬停叶子项关闭 submenu（非即时 → 进 closing 缓存），等出场缩放推进到位再悬停回父项重开。
     sibling.dispatchEvent(new PointerEvent('pointerenter'))
     await waitFor(
       () => submenu,
@@ -210,7 +210,7 @@ describe('WebUiContextMenu submenu 开合方向的宽度来源（浏览器）', 
           panel.dataset.wuiPresence === 'open' &&
           panel.getAnimations().length === 0
         ),
-      '重开的submenu 未落位'
+      '重开的 submenu 未落位'
     )
 
     // 负向对照：panel 身份必须仍是同一个。换成新 panel 说明 closing 缓存没命中，本用例就退化成与

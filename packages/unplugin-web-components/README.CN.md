@@ -90,8 +90,8 @@ function App() {
 
 HTML 注入说明：
 
-- HTML 中仅识别 kebab-case 自定义元素（`<web-ui-*>` → `web-ui-button`），大小写不敏感——HTML label 名解析时统一小写化，`<WEB-UI-BUTTON>` 与 `<web-ui-Button>` 都按 `web-ui-button` 处理。驼峰命名（`<WebUiButton>`）不支持：解析器会将其归一到另一个 label（`webuibutton`）。
-- 跳过 HTML 注释及 RAWTEXT/RCDATA 区域（`script`、`style`、`title`、`textarea`、`iframe`、`xmp`、`noembed`、`noframes`、`noscript`），其中的伪 label 不会产生导入。未闭合区域通常视为延伸到文件末尾；由于正则扫描无法同时模拟注释与 RAWTEXT 的 tokenizer 状态，注释内未闭合的 `<script>`/`style` 伪 label（如 `<!-- <script> --><web-ui-button>`）可能吞掉其后的真实 label。带引号属性值同样跳过，等号两侧允许空白——`<div data-template = "<web-ui-button>">` 不会触发导入。
+- HTML 中仅识别 kebab-case 自定义元素（`<web-ui-*>` → `web-ui-button`），大小写不敏感——HTML tag 名解析时统一小写化，`<WEB-UI-BUTTON>` 与 `<web-ui-Button>` 都按 `web-ui-button` 处理。驼峰命名（`<WebUiButton>`）不支持：解析器会将其归一到另一个 label（`webuibutton`）。
+- 跳过 HTML 注释及 RAWTEXT/RCDATA 区域（`script`、`style`、`title`、`textarea`、`iframe`、`xmp`、`noembed`、`noframes`、`noscript`），其中的伪 tag 不会产生导入。未闭合区域通常视为延伸到文件末尾；由于正则扫描无法同时模拟注释与 RAWTEXT 的 tokenizer 状态，注释内未闭合的 `<script>`/`style` 伪 tag（如 `<!-- <script> --><web-ui-button>`）可能吞掉其后的真实 tag。带引号属性值同样跳过，等号两侧允许空白——`<div data-template = "<web-ui-button>">` 不会触发导入。
 - HTML 必须经 Vite 构建（`vite build`）。`public/` 中的文件按原样提供，直接双击打开的 HTML 不会被转换。
 
 ## API
@@ -102,7 +102,7 @@ HTML 注入说明：
 
 | 参数                  | 类型      | 默认值  | 说明                               |
 | --------------------- | --------- | ------- | ---------------------------------- |
-| `options.tagPrefix`   | `string`  | -       | 组件 label 前缀（如 `'web-ui'`）   |
+| `options.tagPrefix`   | `string`  | -       | 组件 tag 前缀（如 `'web-ui'`）     |
 | `options.packageName` | `string`  | -       | NPM 包名（如 `'@greypan/web-ui'`） |
 | `options.sideEffects` | `boolean` | `false` | 使用副作用导入（`import 'pkg'`）   |
 | `options.withStyle`   | `string`  | -       | 随组件导入的 CSS 文件              |

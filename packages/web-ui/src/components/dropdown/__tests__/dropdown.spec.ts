@@ -324,8 +324,8 @@ describe('WebUiDropdown 组件', () => {
   })
 
   describe('submenu', () => {
-    // 触屏上 hover 是指针划过时的假象；按它开submenu 会让点击子项永远打不开。
-    it('touch pointerenter 不打开submenu', async () => {
+    // 触屏上 hover 是指针划过时的假象；按它开 submenu 会让点击子项永远打不开。
+    it('touch pointerenter 不打开 submenu', async () => {
       const el = createDropdown(
         {},
         '<button slot="trigger">M</button><web-ui-dropdown-item submenu>导出<web-ui-dropdown-item>PDF</web-ui-dropdown-item></web-ui-dropdown-item>'
@@ -341,7 +341,7 @@ describe('WebUiDropdown 组件', () => {
         await vi.advanceTimersByTimeAsync(200)
         await el.updateComplete
 
-        // 公开可观察后果是只有一级（根）panel，没有第二级submenu panel。
+        // 公开可观察后果是只有一级（根）panel，没有第二级 submenu panel。
         expect(getMenuPanels()).toHaveLength(1)
       } finally {
         vi.useRealTimers()
@@ -399,7 +399,7 @@ describe('WebUiDropdown 组件', () => {
       expect(items[0]?.shadowRoot?.activeElement, '剩余首项应接住键盘焦点').toBeTruthy()
     })
 
-    it('打开时删除嵌套submenu wrapper 后同步移除子成员', async () => {
+    it('打开时删除嵌套 submenu wrapper 后同步移除子成员', async () => {
       const el = createDropdown(
         {},
         '<button slot="trigger">M</button><web-ui-dropdown-item submenu>导出<div><web-ui-dropdown-item>PDF</web-ui-dropdown-item></div></web-ui-dropdown-item>'

@@ -69,7 +69,7 @@ watch(
     textPreview.value = null
     textError.value = ''
     // 关闭时内容区不渲染媒体元素（见模板的 open && resource 守卫），此时不读取文本，
-    // 避免仅因选中资源（行点击 / 编辑 tag）就在后台发起一次无人可见的 fetch。
+    // 避免仅因选中资源（行点击 / 编辑标签）就在后台发起一次无人可见的 fetch。
     if (!open) {
       textState.value = 'idle'
       return

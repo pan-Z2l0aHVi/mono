@@ -307,14 +307,14 @@ describe('AddDialog', () => {
     }
   })
 
-  it('点编辑 tag 把目标队列项传给编辑事件', async () => {
+  it('点编辑标签把目标队列项传给编辑事件', async () => {
     const item = queueItem({ tags: ['设计'] })
     const editTags = vi.fn<(target: LibraryQueueItem) => void>()
     const mounted = mountDialog([item], { onEditTags: editTags }, { tagColors: { 设计: TagColor.TagColorBlue } })
 
     try {
       await nextTick()
-      const editButton = button(mounted.host, '编辑 tag')
+      const editButton = button(mounted.host, '编辑标签')
       expect(editButton.disabled).toBe(false)
 
       editButton.click()
@@ -325,8 +325,8 @@ describe('AddDialog', () => {
     }
   })
 
-  it('队列里尚未落库的 tag 与已登记颜色的 tag 渲染成不同 chip', async () => {
-    // 队列里的 tag 还没进库，本来就没有颜色；给它按名称套色会让预览与落库后的
+  it('队列里尚未落库的标签与已登记颜色的标签渲染成不同 chip', async () => {
+    // 队列里的标签还没进库，本来就没有颜色；给它按名称套色会让预览与落库后的
     // 真实颜色对不上。这里只钉「两者渲染结果不同」，不钉具体色值。
     const mounted = mountDialog(
       [queueItem({ tags: ['设计', '待创建'] })],

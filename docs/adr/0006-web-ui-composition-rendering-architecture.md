@@ -141,7 +141,7 @@ drawer header padding 与 close button 的 `top`），因此「组件层**生效
   失效、只在第三个上碰巧生效的密度杠杆比没有杠杆更糟，何况它挂进间距阶还会让一次密度
   覆盖顺手改掉占位块尺寸；
 - 组件内部几何同样落在阶上却不挂阶，例如 segmented 指示 thumb 在 track 内的
-  `top`/`bottom: 4px`、switch slider 的 `translateX()` 行程、slider 的 thumb 尺寸，以及各类
+  `top`/`bottom: 4px`、switch thumb 的 `translateX()` 行程、slider 的 thumb 尺寸，以及各类
   `blur(4px)`。它们不是公开覆盖 token，参照系是组件自身的盒子而非相邻元素的节奏。
 
 > 这两类归属目前只由本节 prose 记录，**没有机器守卫**：守卫覆盖的是族是否连续、当前

@@ -23,8 +23,8 @@ const THEMES = { light: 'github-light', dark: 'github-dark' } as const
 const LANGS = [...new Set(Object.values(FLAVORS).map(flavor => flavor.shikiLang))]
 
 /**
- * 预热用的样例：每种语法各来一小段带自定义元素 label 与成员调用的代码。冷启动那份错乱落在的正是这类
- * 记号上（label 名与成员访问的 scope 划得跟稳定形态不一样）。
+ * 预热用的样例：每种语法各来一小段带自定义元素 tag 与成员调用的代码。冷启动那份错乱落在的正是这类
+ * 记号上（tag 名与成员访问的 scope 划得跟稳定形态不一样）。
  */
 const WARMUP: Record<(typeof LANGS)[number], string> = {
   tsx: '<x-demo onChange={event => console.log(event.currentTarget.value)}></x-demo>',
@@ -68,7 +68,7 @@ export async function highlight(code: string, flavor: FenceFlavor, file: string)
  * 自证：发出去的 HTML 剥掉标记、解掉实体之后必须逐字等于输入。着色器吞掉一个空白或字符，页面上
  * 显示的就不是 markdown 里那一份，而示例代码块同时是「被执行的那份源码」，这条不能松。
  * 查最终 HTML 而不是 `codeToTokens` 的 token 流：拼 HTML 那一步本身也在被审的范围里，token 层
- * 对得上、外框多塞一个换行照样会漂移。能用正则剥 label 是因为 shiki 把正文里的 `<` 与 `&` 写成
+ * 对得上、外框多塞一个换行照样会漂移。能用正则剥 tag 是因为 shiki 把正文里的 `<` 与 `&` 写成
  * `&#x3C;` / `&#x26;`，剩下的尖括号一律是标记本身。
  */
 function assertHtmlPreservesSource(code: string, html: string, flavor: FenceFlavor, file: string): void {
@@ -82,8 +82,8 @@ const NAMED_ENTITIES: Record<string, string> = { amp: '&', quot: '"' }
 /**
  * 高亮 HTML 的可见文本：剥掉标记、解掉实体。
  *
- * 先剥 label 再解实体：shiki 把正文里的 `<` 与 `&` 写成 `&#x3C;` / `&#x26;`，所以剩下的尖括号
- * 一律是标记本身，剥 label 不会把代码里的 label 当成标记。顺序反了就会把 `<web-ui-button>` 吃掉。
+ * 先剥 tag 再解实体：shiki 把正文里的 `<` 与 `&` 写成 `&#x3C;` / `&#x26;`，所以剩下的尖括号
+ * 一律是标记本身，剥 tag 不会把代码里的 tag 当成标记。顺序反了就会把 `<web-ui-button>` 吃掉。
  * 实体必须一趟解完（一个 alternation 正则），分几趟解会把源码里字面写着的 `&quot;` 解两遍变成 `"`。
  * 导出给宿主复用：宿主断言「页面显示的代码 == markdown 围栏」时量的是同一份可见文本。
  */

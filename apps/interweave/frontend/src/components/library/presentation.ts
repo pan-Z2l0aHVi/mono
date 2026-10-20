@@ -58,7 +58,7 @@ export const DEFAULT_TAG_CLASS = 'bg-black/5 text-gray-500 dark:bg-white/10 dark
 /**
  * 持久化颜色 key → chip 样式。
  *
- * class 对照原样取自此前的「tag 名 → 样式」映射，只是把 key 从 tag 名换成颜色 key，
+ * class 对照原样取自此前的「标签名 → 样式」映射，只是把 key 从标签名换成颜色 key，
  * 因此随机色只会落在此前就已经在用、且浅深两态对比度都验过的颜色上。
  *
  * 穷尽 Record<TagColor, string> 是与后端闭集的编译期契约：新增颜色而这里漏了样式
@@ -96,13 +96,13 @@ export const metadataValueClass =
   'min-w-0 truncate text-right text-xs leading-5 text-[#22212a] dark:text-(--wui-color-text)'
 
 /*
- * tag chip 的统一外形：全 app 固定 22px 高。
+ * 标签 chip 的统一外形：全 app 固定 22px 高。
  *
  * 用 inline-flex + items-center 而不是 inline-block + py-0.5：高度由 h-[22px] 唯一决定，
- * tag 文字再长也不会靠行内 padding 把行高撑开，列表行因此保持等高。
+ * 标签文字再长也不会靠行内 padding 把行高撑开，列表行因此保持等高。
  *
- * min-w-[22px] 与高度同值：一两个字的短 tag 不会被 px-2 之后的文字宽度压成窄条，
- * 底色始终是直径不小于高的圆角，扫一眼列表时短 tag 不会退化成一个点。
+ * min-w-[22px] 与高度同值：一两个字的短标签不会被 px-2 之后的文字宽度压成窄条，
+ * 底色始终是直径不小于高的圆角，扫一眼列表时短标签不会退化成一个点。
  */
 export const tagChipClass = 'inline-flex h-[22px] min-w-[22px] items-center px-2 rounded-full text-xs whitespace-nowrap'
 

@@ -119,7 +119,7 @@ describe('AppNav：主导航', () => {
    * 这里不再 spy 组件原型方法复测一遍。导航自身的职责——aria-current、navigate 分支、
    * 设置入口——由其余用例守住。
    */
-  it('collapse 时不渲染文字 tag，只保留 aria-label', async () => {
+  it('collapse 时不渲染文字 label，只保留 aria-label', async () => {
     const mounted = await mountNav({ collapsed: true })
 
     expect(mounted.host.textContent).not.toContain('资料库')
@@ -155,7 +155,7 @@ describe('AppNav：设置入口', () => {
     await mounted.close()
   })
 
-  it('collapse 时入口同样只剩 icon，文字 tag 不渲染', async () => {
+  it('collapse 时入口同样只剩 icon，文字 label 不渲染', async () => {
     const mounted = await mountNav({ collapsed: true })
 
     expect(mounted.host.textContent).not.toContain('设置')

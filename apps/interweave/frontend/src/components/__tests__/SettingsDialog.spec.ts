@@ -41,7 +41,7 @@ function buttonByLabel(host: HTMLElement, label: string) {
 }
 
 /*
- * 关闭**行为**由后面两条覆盖——受控的 Escape/遮罩路径，以及 shadow 内 button 点击派发的
+ * 关闭**行为**由后面两条覆盖——受控的 Escape/backdrop 路径，以及 shadow 内 button 点击派发的
  * `open-change`（组件把两条用户关闭入口收在 `_closeFromUser` 一处，controlled 下都只派发
  * 关闭请求，宿主因此仍拿到同一条 `update:open(false)`）。button 本身点不点得动归 web-ui 自己测。
  */
@@ -300,7 +300,7 @@ describe('SettingsDialog', () => {
     }
   })
 
-  it('controlled 下 Escape 与遮罩点击的关闭请求透传成 update:open，不自行改 open', async () => {
+  it('controlled 下 Escape 与 backdrop 点击的关闭请求透传成 update:open，不自行改 open', async () => {
     const onUpdateOpen = vi.fn<(value: boolean) => void>()
     const mounted = mountDialog(onUpdateOpen)
 

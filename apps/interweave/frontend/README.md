@@ -5,7 +5,7 @@
 ## 结构
 
 - `src/components/`：应用壳（`AppLayout` + `AppNav`）与资源库组件。
-- `src/pages/`：资源库、tag、Map、设置页面。页面是应用壳的子节点，需要占 header slot 时在根节点上写 `slot="header"`，不要自带一套 `web-ui-layout`。
+- `src/pages/`：资源库、标签、Map、设置页面。页面是应用壳的子节点，需要占 header slot 时在根节点上写 `slot="header"`，不要自带一套 `web-ui-layout`。
 - `src/composables/`：历史导航、媒体查询与资源库运行时组合式函数。
 - `src/services/library/`：资源库 Wails API adapter；普通浏览器没有 Wails bridge，因此不加载业务数据。
 - `src/stores/`：Pinia 注入与资源库展示状态。

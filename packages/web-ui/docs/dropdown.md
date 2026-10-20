@@ -3,7 +3,7 @@ component: dropdown
 tag: web-ui-dropdown
 ---
 
-dropdown menu：`trigger` 插槽放 trigger，其余子元素作为 menu item 渲染进 overlay panel，支持 divider、分组标题与多级submenu。
+dropdown menu：`trigger` 插槽放 trigger，其余子元素作为 menu item 渲染进 overlay panel，支持 divider、分组标题与多级 submenu。
 
 ## 示例
 
@@ -77,9 +77,9 @@ import { lucideCopy, lucideTrash2 } from '@greypan/web-ui/icons'
 </script>
 ```
 
-### 多级submenu
+### 多级 submenu
 
-在 menu item 上设置 `submenu` 后，嵌套的submenu item 成为它的下一级。
+在 menu item 上设置 `submenu` 后，嵌套的 submenu item 成为它的下一级。
 
 ```react
 <web-ui-dropdown>

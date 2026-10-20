@@ -34,7 +34,7 @@ const props = defineProps<{
   searchOpen: boolean
   selectionMode: boolean
   selectedCount: number
-  /** 当前筛选后的可见条目数：没有可 option 时全选/取消全选都无从谈起，button 必须禁用。 */
+  /** 当前筛选后的可见条目数：没有可选项时全选/取消全选都无从谈起，button 必须禁用。 */
   visibleCount: number
   allVisibleSelected: boolean
   mobile: boolean
@@ -266,8 +266,8 @@ const filterLabelClass =
             <web-ui-input
               slot="trigger"
               :value="filterTag"
-              placeholder="按 tag 筛选"
-              aria-label="按 tag 筛选"
+              placeholder="按标签筛选"
+              aria-label="按标签筛选"
               class="[--wui-input-width:200px]"
             >
               <web-ui-icon slot="prefix" :icon="mdiTagSearchOutline" />
@@ -300,7 +300,7 @@ const filterLabelClass =
               :size="16"
             />
             <web-ui-option value="name" label="名称">名称</web-ui-option>
-            <web-ui-option value="tagName" label="tag 名称">tag 名称</web-ui-option>
+            <web-ui-option value="tagName" label="标签名称">标签名称</web-ui-option>
             <web-ui-option value="latest" label="最新">最近修改</web-ui-option>
             <web-ui-option value="earliest" label="最早">较早修改</web-ui-option>
           </web-ui-select>

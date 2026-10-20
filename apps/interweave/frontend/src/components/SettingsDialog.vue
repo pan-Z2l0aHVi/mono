@@ -78,7 +78,7 @@ function pickAccent(value: string) {
 
 <template>
   <!--
-    controlled：open 的唯一真相在宿主。Escape 与遮罩点击因此只派发关闭请求，由宿主回写 open
+    controlled：open 的唯一真相在宿主。Escape 与 backdrop 点击因此只派发关闭请求，由宿主回写 open
     才走退出动画——否则组件自行改 open，而 Vue 侧的 vdom 仍认为它是 true，两边就此分叉。
 
     挂载点是 AppLayout 里 web-ui-layout 的同级节点，不进它的 light DOM：未分配到任何 slot

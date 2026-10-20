@@ -60,7 +60,7 @@ describe('EditTagsDialog', () => {
       const input = mounted.host.querySelector<WebUiAutocomplete>('web-ui-autocomplete')
       if (!input) throw new Error('tag autocomplete was not rendered')
 
-      // 选中候选（change）只回写 input，不直接落入当前 tag、不触发保存。
+      // 选中候选（change）只回写 input，不直接落入当前标签、不触发保存。
       input.value = '旅行'
       input.dispatchEvent(new Event('input', { bubbles: true, composed: true }))
       input.dispatchEvent(new Event('change', { bubbles: true, composed: true }))
@@ -68,8 +68,8 @@ describe('EditTagsDialog', () => {
       expect(textContent(mounted.host, '旅行')).toBeUndefined()
       expect(save).not.toHaveBeenCalled()
 
-      // 点确认 button 才把 input 内容加入当前 tag，并即时以队列 id 保存。
-      const confirmAdd = mounted.host.querySelector<HTMLElement>('web-ui-button[aria-label="确认添加 tag"]')
+      // 点确认 button 才把 input 内容加入当前标签，并即时以队列 id 保存。
+      const confirmAdd = mounted.host.querySelector<HTMLElement>('web-ui-button[aria-label="确认添加标签"]')
       if (!confirmAdd) throw new Error('confirm add button was not rendered')
       confirmAdd.click()
       await nextTick()

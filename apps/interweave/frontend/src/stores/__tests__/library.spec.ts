@@ -52,7 +52,7 @@ describe('toResourceView（DTO → view-model 翻译）', () => {
     expect(view.tagNames).toEqual(['design'])
   })
 
-  it('tag 颜色随 DTO 落到 view：id、名称、持久化色都保留，不在客户端按名称猜色', () => {
+  it('标签颜色随 DTO 落到 view：id、名称、持久化色都保留，不在客户端按名称猜色', () => {
     const view = toResourceView(dto())
     expect(view.tags).toEqual([{ id: 't1', name: 'design', color: TagColor.TagColorTeal }])
   })
@@ -224,7 +224,7 @@ describe('filterAndSort（列表语义）', () => {
     expect(filterAndSort(resources, { ...base, searchQuery: 'beta' }).map(r => r.id)).toEqual(['r2'])
   })
 
-  it('来源/可用性/分类/tag 过滤', () => {
+  it('来源/可用性/分类/标签过滤', () => {
     expect(filterAndSort(resources, { ...base, filterSource: 'url' }).map(r => r.id)).toEqual(['r1'])
     expect(filterAndSort(resources, { ...base, filterAvailability: 'unavailable' }).map(r => r.id)).toEqual(['r2'])
     expect(filterAndSort(resources, { ...base, filterKind: ResourceKind.ResourceKindDocument }).map(r => r.id)).toEqual(
@@ -246,7 +246,7 @@ describe('useLibraryStore（Pinia 集成）', () => {
     setActivePinia(createPinia())
   })
 
-  it('setResources 翻译整表，getter 派生 tag 集合', () => {
+  it('setResources 翻译整表，getter 派生标签集合', () => {
     const store = useLibraryStore()
     store.setResources([dto()])
     expect(store.resources).toHaveLength(1)
@@ -261,7 +261,7 @@ describe('useLibraryStore（Pinia 集成）', () => {
       dto({ id: 'r2', tags: [{ id: 't2', name: 'design', created_at: 1, color: TagColor.TagColorTeal }] }),
       dto({ id: 'r3', tags: [{ id: 't3', name: 'ops', created_at: 1, color: TagColor.TagColorPink }] })
     ])
-    // 同名 tag 在多个资源上必须收敛到同一个颜色，否则列表里两行同名 tag 长得不一样。
+    // 同名标签在多个资源上必须收敛到同一个颜色，否则列表里两行同名标签长得不一样。
     expect(store.tagColors).toEqual({ design: TagColor.TagColorTeal, ops: TagColor.TagColorPink })
   })
 

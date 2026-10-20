@@ -68,7 +68,7 @@ const GROUP_CLASS =
 
 /*
  * 整行动作 button。web-ui-button 的内层 button 固定 justify-content: center，所以靠一个
- * flex-1 撑杆把 chevron 推到行尾，tag 因此贴左。撑杆必须放在 suffix slot 里：内层 button
+ * flex-1 撑杆把 chevron 推到行尾，标签因此贴左。撑杆必须放在 suffix slot 里：内层 button
  * 把默认 slot 包在一个 flex: 0 1 auto 的 span.label 里，放在默认 slot 撑不开；prefix 与
  * suffix 两个 slot 是 display: contents，它们的子元素才是 button 的直接 flex item。
  * --wui-radius-control 归零让 hover 底色是直角，外角交给分组裁。
@@ -150,7 +150,7 @@ function handleTitleChange(event: WebUiEvent<WebUiEditableText, 'change'>) {
  * 关闭 drawer 时页面同步把 activeResourceId 清空，下一个 patch 就会移除仍在聚焦的
  * textarea；从文档里摘掉一个聚焦元素不会派发 blur，`@change` 永远不会来。所以这里
  * 在 input 时就把值留下来，卸载前用 watcher 补一次提交——不能用模板 ref，Vue 会在
- * pre-flush watcher 之前就把它清空（实测 hasEditor 已是 false）。鼠标路径（点遮罩、
+ * pre-flush watcher 之前就把它清空（实测 hasEditor 已是 false）。鼠标路径（点 backdrop、
  * 点关闭、点工具栏）都先 blur，所以只有键盘会丢。
  */
 const pendingNote = ref<string | null>(null)
@@ -169,7 +169,7 @@ watch(
   () => props.resource,
   (next, previous) => {
     if (!previous || pendingNote.value === null) return
-    // 同一条资源被 store 回写（保存成功、打 tag 等）也会走到这里，那不是切换也不是关闭。
+    // 同一条资源被 store 回写（保存成功、打标签等）也会走到这里，那不是切换也不是关闭。
     if (next && next.id === previous.id) return
     const note = pendingNote.value
     pendingNote.value = null
@@ -234,8 +234,8 @@ onScopeDispose(() => clearTimeout(copiedRevertTimer))
       -->
       <div class="grid gap-4 mobile:p-5">
         <!--
-        标题与 tag 收进第一张白卡：iOS 设置详情页顶部是「名字 + 若干属性」的分组，
-        不是浮在分组之上的裸标题。tag 行与标题行之间用发丝线分隔，与组内行分隔同源。
+        标题与标签收进第一张白卡：iOS 设置详情页顶部是「名字 + 若干属性」的分组，
+        不是浮在分组之上的裸标题。标签行与标题行之间用发丝线分隔，与组内行分隔同源。
       -->
         <div :class="GROUP_CLASS">
           <h2 class="group/title flex items-center gap-2 m-0 px-4 py-3">
@@ -267,9 +267,9 @@ onScopeDispose(() => clearTimeout(copiedRevertTimer))
           </h2>
 
           <!--
-          tag 自己换行，编辑 button 常驻行尾：外层不换行，内层 tags 容器 flex-1 min-w-0
+          标签自己换行，编辑 button 常驻行尾：外层不换行，内层 tags 容器 flex-1 min-w-0
           承担换行，button 作为其后唯一的 flex item 被推到最右。直接让整行 flex-wrap
-          的话，tag 铺满一行时 button 会被挤到下一行左侧。
+          的话，标签铺满一行时 button 会被挤到下一行左侧。
         -->
           <div class="flex items-center gap-1.5 border-t border-black/6 px-4 py-3 dark:border-white/8">
             <div class="flex min-w-0 flex-1 flex-wrap items-center gap-1.5">
@@ -277,13 +277,13 @@ onScopeDispose(() => clearTimeout(copiedRevertTimer))
                 {{ tag.name }}
               </span>
             </div>
-            <web-ui-tooltip content="编辑 tag" placement="top">
+            <web-ui-tooltip content="编辑标签" placement="top">
               <web-ui-button
                 class="shrink-0"
                 icon
                 variant="ghost"
                 size="22"
-                aria-label="编辑 tag"
+                aria-label="编辑标签"
                 @click="emit('editTags', resource)"
               >
                 <web-ui-icon :icon="lucideTags" :size="13" />

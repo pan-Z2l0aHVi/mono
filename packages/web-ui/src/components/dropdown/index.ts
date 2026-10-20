@@ -49,7 +49,7 @@ interface MenuOverlay {
   api: OverlayApi
   overlay: HTMLElement
   content: HTMLElement
-  /** 该层为submenu 时的会话 handle；根层 handle 由组件单独持有（见 `_handle`）。 */
+  /** 该层为 submenu 时的会话 handle；根层 handle 由组件单独持有（见 `_handle`）。 */
   handle?: OpenOverlayHandle
 }
 
@@ -499,7 +499,7 @@ export class WebUiDropdown extends LitElement {
       sub.handle = this._handle.adopt(sub.overlay)
     }
     /*
-     * 收尾栈里的submenu panel 同样「可见但已脱离快照」：`_closeSubmenuFrom` 只把它们移出
+     * 收尾栈里的 submenu panel 同样「可见但已脱离快照」：`_closeSubmenuFrom` 只把它们移出
      * `_overlays`，层仍挂在旧 handle 下、panel 仍在 DOM 里退场。不重挂的话它们会被判成 panel 外，
      * 点它内部就关掉整张 menu —— base 的 `composition.contains` 走登记树、且退场期间不注销，
      * 所以这条是相对 base 的行为回归，不是 parity。

@@ -44,10 +44,10 @@ function isDrawerMode() {
 
 /**
  * 导航项的对齐方式。collapsed state 在 demo 里只体现为排布，所以判据是渲染出来的对齐方式本身：
- * 折叠态那一行把内容居中、标签自身也居中；展开态两者都靠左。
+ * collapsed state 那一行把内容居中、label 自身也居中；expanded state 两者都靠左。
  *
- * 不量像素：折叠导轨只有 44px，标签放不下会被截断，截断后的文字落点既不是设计契约，也会随字体
- * 与文案变化——用例守的是「折叠态换成居中排布、展开态保持左对齐」这个结构，不是某个具体像素值。
+ * 不量像素：collapsed 导轨只有 44px，label 放不下会被截断，截断后的文字落点既不是设计契约，也会随字体
+ * 与文案变化——用例守的是「collapsed state 换成居中排布、expanded state 保持左对齐」这个结构，不是某个具体像素值。
  */
 function navItemAlignment() {
   const link = navRoot().querySelector('a')
@@ -129,7 +129,7 @@ describe('应用外壳（浏览器）：导航 collapsed state 不跨视口泄�
     await setViewport(DESKTOP_VIEWPORT.width, DESKTOP_VIEWPORT.height)
   })
 
-  it('桌面端 collapse 后导航文字居中，展开态左对齐', async () => {
+  it('桌面端 collapse 后导航文字居中，expanded state 左对齐', async () => {
     await mountAppShell()
     const expanded = navItemAlignment()
     expect(expanded.rowJustify).not.toBe('center')
@@ -146,13 +146,13 @@ describe('应用外壳（浏览器）：导航 collapsed state 不跨视口泄�
     expect(collapsed.labelAlign).toBe('center')
   })
 
-  it('移动端断点下 drawer 里的导航回到展开态，而不是桌面 collapsed state', async () => {
+  it('移动端断点下 drawer 里的导航回到 expanded state，而不是桌面 collapsed state', async () => {
     await mountAppShell()
     const expanded = navItemAlignment()
 
     await requestCollapse(true)
     const collapsed = navItemAlignment()
-    // 对照：collapse 确实换了一套渲染，否则下面那条「与展开态一致」可能只是因为 collapse 从未生效。
+    // 对照：collapse 确实换了一套渲染，否则下面那条「与 expanded state 一致」可能只是因为 collapse 从未生效。
     expect(collapsed).not.toEqual(expanded)
 
     await setViewport(MOBILE_VIEWPORT.width, MOBILE_VIEWPORT.height)

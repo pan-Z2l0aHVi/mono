@@ -13,8 +13,8 @@ const props = defineProps<{
   target: ResourceView | LibraryQueueItem | null
   allTagNames: string[]
   /**
-   * tag 名 → 持久化颜色。草稿里可能有刚输入、尚未创建的名字（没有颜色，显示中性档），
-   * 也可能是队列里尚未落库的 tag，因此一律按名回查，而不是从 target 上取。
+   * 标签名 → 持久化颜色。草稿里可能有刚输入、尚未创建的名字（没有颜色，显示中性档），
+   * 也可能是队列里尚未落库的标签，因此一律按名回查，而不是从 target 上取。
    */
   tagColors: Record<string, TagColor>
   busy: boolean
@@ -91,7 +91,7 @@ function removeTag(tag: string) {
     class="mobile:[--wui-dialog-desc-gap:22px] mobile:[--wui-dialog-footer-gap:12px] mobile:[--wui-dialog-inline-padding:20px] mobile:[--wui-dialog-padding:22px_20px_20px] mobile:[--wui-dialog-title-gap:18px] mobile:[--wui-dialog-width:90vw] [--wui-dialog-width:320px]"
     @open-change="handleOpenChange"
   >
-    <span slot="header">tag</span>
+    <span slot="header">标签</span>
 
     <p
       v-if="error"
@@ -103,19 +103,19 @@ function removeTag(tag: string) {
 
     <div class="grid gap-4">
       <div class="grid gap-1.5">
-        <span class="text-sm font-medium text-[#6a6a6a] dark:text-(--wui-color-text-secondary)">添加 tag</span>
+        <span class="text-sm font-medium text-[#6a6a6a] dark:text-(--wui-color-text-secondary)">添加标签</span>
         <web-ui-autocomplete
           ref="autocompleteField"
           :value="inputValue"
           allow-custom-value
           portal
-          placeholder="请输入 tag"
-          aria-label="添加 tag"
+          placeholder="请输入标签"
+          aria-label="添加标签"
           class="block w-full min-w-0 [--wui-autocomplete-max-width:100%] [--wui-input-width:100%]"
           @input="handleInput"
           @keydown="handleKeydown"
         >
-          <web-ui-input slot="trigger" class="w-full min-w-0" placeholder="请输入 tag" aria-label="添加 tag">
+          <web-ui-input slot="trigger" class="w-full min-w-0" placeholder="请输入标签" aria-label="添加标签">
             <!-- stop：委托层在 trigger 包装 div 上监听 click 打开 panel，确认添加不该顺带开 panel -->
             <!--
               28px + mr-[-8px] 是算出来的等距，不是随手取值：input 的 .wui-input-inner 高
@@ -132,7 +132,7 @@ function removeTag(tag: string) {
               variant="primary"
               size="28"
               :disabled="busy || !inputValue.trim()"
-              aria-label="确认添加 tag"
+              aria-label="确认添加标签"
               @click.stop="addTag()"
             >
               <web-ui-icon :icon="heroiconsCheck16Solid" :size="18" />
@@ -143,7 +143,7 @@ function removeTag(tag: string) {
       </div>
 
       <div class="grid gap-2">
-        <span class="text-sm font-medium text-[#6a6a6a] dark:text-(--wui-color-text-secondary)">当前 tag</span>
+        <span class="text-sm font-medium text-[#6a6a6a] dark:text-(--wui-color-text-secondary)">当前标签</span>
         <div
           v-if="draft.length"
           class="flex min-h-[36px] flex-wrap items-center gap-1.5 rounded-[18px] bg-white px-3 py-1.5 dark:bg-(--wui-color-surface-raised)"
@@ -161,7 +161,7 @@ function removeTag(tag: string) {
               variant="ghost"
               size="16"
               :disabled="busy"
-              :aria-label="`移除 tag ${tag}`"
+              :aria-label="`移除标签 ${tag}`"
               @click="removeTag(tag)"
             >
               <!-- 实心 X：与 panel 里的实心 check 同一路子，16px 描边 icon 在这个 22px chip 里太轻。 -->
@@ -174,7 +174,7 @@ function removeTag(tag: string) {
           class="flex items-center gap-2 rounded-2xl border border-dashed border-black/10 px-3 py-3 text-xs text-[#9a9aa4] dark:border-white/10 dark:text-(--wui-color-text-tertiary)"
         >
           <web-ui-icon :icon="lucideTags" :size="14" />
-          暂无 tag
+          暂无标签
         </div>
       </div>
     </div>

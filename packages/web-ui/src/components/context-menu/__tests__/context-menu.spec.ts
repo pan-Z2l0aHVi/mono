@@ -306,7 +306,7 @@ describe('WebUiContextMenu 组件', () => {
   })
 
   describe('menu item 交互', () => {
-    it('点击submenu item 时打开submenu', async () => {
+    it('点击 submenu item 时打开 submenu', async () => {
       const el = createContextMenu(
         {},
         '<web-ui-dropdown-item submenu>导出<web-ui-dropdown-item>PDF</web-ui-dropdown-item></web-ui-dropdown-item>'
@@ -409,7 +409,7 @@ describe('WebUiContextMenu 组件', () => {
       cleanupElement(el)
     })
 
-    it('有submenu 时先关闭最深层submenu', async () => {
+    it('有 submenu 时先关闭最深层 submenu', async () => {
       const el = createContextMenu(
         {},
         '<web-ui-dropdown-item submenu>导出<web-ui-dropdown-item>PDF</web-ui-dropdown-item></web-ui-dropdown-item>'
@@ -433,7 +433,7 @@ describe('WebUiContextMenu 组件', () => {
   })
 
   describe('submenu 悬停', () => {
-    it('停留 200ms 后用 pointerenter 打开submenu', async () => {
+    it('停留 200ms 后用 pointerenter 打开 submenu', async () => {
       const el = createContextMenu(
         {},
         '<web-ui-dropdown-item submenu>导出<web-ui-dropdown-item>PDF</web-ui-dropdown-item></web-ui-dropdown-item>'
@@ -457,7 +457,7 @@ describe('WebUiContextMenu 组件', () => {
       }
     })
 
-    it('touch pointerenter 不打开submenu', async () => {
+    it('touch pointerenter 不打开 submenu', async () => {
       const el = createContextMenu(
         {},
         '<web-ui-dropdown-item submenu>导出<web-ui-dropdown-item>PDF</web-ui-dropdown-item></web-ui-dropdown-item>'
@@ -537,7 +537,7 @@ describe('WebUiContextMenu 组件', () => {
       cleanupElement(el)
     })
 
-    it('submenu 打开期间重建子项后关闭submenu，归还的子项被重新隐藏', async () => {
+    it('submenu 打开期间重建子项后关闭 submenu，归还的子项被重新隐藏', async () => {
       const el = createContextMenu(
         {},
         '<web-ui-dropdown-item submenu>导出<web-ui-dropdown-item>PDF</web-ui-dropdown-item></web-ui-dropdown-item>'
@@ -871,7 +871,7 @@ describe('WebUiContextMenu 组件', () => {
       cleanupElement(el)
     })
 
-    it('打开时删除嵌套submenu wrapper 后同步移除子成员', async () => {
+    it('打开时删除嵌套 submenu wrapper 后同步移除子成员', async () => {
       const el = createContextMenu(
         {},
         '<web-ui-dropdown-item submenu>导出<div><web-ui-dropdown-item>PDF</web-ui-dropdown-item></div></web-ui-dropdown-item>'

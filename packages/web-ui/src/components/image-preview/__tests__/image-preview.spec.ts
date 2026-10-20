@@ -382,7 +382,7 @@ describe('imagePreview 命令式 API', () => {
       const handle = await openPreview({ indicator: true })
       const host = hostElement()
 
-      expect(queryA11y(host, 'dialog')?.getAttribute('aria-label')).toBe('image preview')
+      expect(queryA11y(host, 'dialog')?.getAttribute('aria-label')).toBe('Image preview')
       expect(queryA11y(host, '[aria-live]')?.textContent?.trim()).toBe(`1 / ${IMAGES.length}`)
 
       handle.next()

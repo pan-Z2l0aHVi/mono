@@ -19,7 +19,7 @@ const sidebarWidth = computed(() => (mobile.value ? 'min(320px, 80vw)' : desktop
 
 /*
  * collapse 是**桌面端**的密度偏好，移动端 drawer 恒以展开态呈现同一份导航：drawer 宽
- * min(320px, 80vw)，套用 collapsed state 会把 tag 挤掉（collapsed 为真时 AppNav 不渲染文字）。
+ * min(320px, 80vw)，套用 collapsed state 会把标签挤掉（collapsed 为真时 AppNav 不渲染文字）。
  * web-ui-layout 的 `sidebar-collapsed` 契约同样写明它「不会影响移动端 Drawer」，
  * 它只是无从替 Consumer 决定 slot 内容怎么渲染，所以闸门留在这里。
  */

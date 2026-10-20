@@ -3,7 +3,7 @@ component: dropdown-item
 tag: web-ui-dropdown-item
 ---
 
-`<web-ui-dropdown>` 与 `<web-ui-context-menu>` 的 menu item：`disabled` 让它留在 menu 里但不可选中，键盘导航与悬停都会跳过它；`prefix` / `suffix` 插槽放两端的 icon 与快捷键提示；`submenu` 把嵌套的submenu 挂到它的下一级。它自己不派发对外事件，`value` 也不被 menu 消费——那是留给使用方在原生 `click` 里读的标识。
+`<web-ui-dropdown>` 与 `<web-ui-context-menu>` 的 menu item：`disabled` 让它留在 menu 里但不可选中，键盘导航与悬停都会跳过它；`prefix` / `suffix` 插槽放两端的 icon 与快捷键提示；`submenu` 把嵌套的 submenu 挂到它的下一级。它自己不派发对外事件，`value` 也不被 menu 消费——那是留给使用方在原生 `click` 里读的标识。
 
 ## 示例
 
@@ -87,7 +87,7 @@ import { lucideCopy, lucideTrash2 } from '@greypan/web-ui/icons'
 </script>
 ```
 
-### 带submenu 的项 {#submenu}
+### 带 submenu 的项 {#submenu}
 
 `submenu` 把项变成本级 menu 的入口：嵌套在它里面的 menu item 成为下一级，右侧长出展开箭头，鼠标悬停或方向键都能进入。
 
@@ -132,14 +132,14 @@ export default function Demo() {
 | `disabled` | 禁用项：留在 menu 里但不可选中，键盘导航与悬停跳过它。                | `boolean` | `false` |
 | `pl`       | 项的左内边距，写成 CSS 长度；用来对齐有 / 无 `prefix` icon 的两种项。 | `string`  | `''`    |
 | `value`    | 项的标识，由使用方在原生 `click` 里读取；menu 自己不消费。            | `string`  | `''`    |
-| `submenu`  | 作为submenu 入口：嵌套的 menu item 成为下一级，右侧显示展开箭头。     | `boolean` | `false` |
+| `submenu`  | 作为 submenu 入口：嵌套的 menu item 成为下一级，右侧显示展开箭头。    | `boolean` | `false` |
 
 ### Slots
 
 | 名称      | 说明                                                           |
 | --------- | -------------------------------------------------------------- |
 | `prefix`  | 文本左侧的 icon 或标识。                                       |
-| `default` | 项的文本；也是submenu item 的宿主位置。                        |
+| `default` | 项的文本；也是 submenu item 的宿主位置。                       |
 | `suffix`  | 文本右侧的快捷键提示等；`submenu` 为真时这一位被展开箭头占用。 |
 
 ### Methods

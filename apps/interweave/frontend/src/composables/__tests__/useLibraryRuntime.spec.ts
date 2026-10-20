@@ -169,7 +169,7 @@ describe('useLibraryRuntime', () => {
     expect(deleteResource).toHaveBeenCalledWith('created')
   })
 
-  it('添加资源后按队列 tag 逐项持久化并回读最新 DTO', async () => {
+  it('添加资源后按队列标签逐项持久化并回读最新 DTO', async () => {
     const created = createResource({ id: 'tagged', title: 'Tagged' })
     const tagged = createResource({
       id: 'tagged',

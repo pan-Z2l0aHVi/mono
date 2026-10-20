@@ -262,7 +262,7 @@ export class WebUiSlider extends FormAssociated(LitElement) {
         style=${trackStyle}
         role="slider"
         tabindex=${this._isDisabled ? '-1' : '0'}
-        aria-label="slider"
+        aria-label="Slider"
         aria-orientation=${this.vertical ? 'vertical' : 'horizontal'}
         aria-valuemin=${this.min}
         aria-valuemax=${this.max}

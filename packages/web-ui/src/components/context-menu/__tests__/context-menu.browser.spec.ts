@@ -16,7 +16,7 @@ import type { WebUiContextMenu } from '..'
 const SUBMENU =
   '<web-ui-dropdown-item submenu>Export<web-ui-dropdown-item>PDF</web-ui-dropdown-item></web-ui-dropdown-item>'
 
-// 根 panel 与submenu panel 都在 overlay 容器上（按文档序），统一用共享定位器枚举。
+// 根 panel 与 submenu panel 都在 overlay 容器上（按文档序），统一用共享定位器枚举。
 function getMenus(): HTMLElement[] {
   return getMenuPanels()
 }
@@ -911,7 +911,7 @@ describe('WebUiContextMenu 组件（浏览器）', () => {
     expect(reopened).toEqual(['找回资源', '打开方式', '删除'])
   })
 
-  it('框架直接向 portal 插入带submenu 的项，刷新后纳入托管且嵌套隐藏', async () => {
+  it('框架直接向 portal 插入带 submenu 的项，刷新后纳入托管且嵌套隐藏', async () => {
     const menu = document.createElement('web-ui-context-menu')
     menu.innerHTML = '<web-ui-dropdown-item>编辑</web-ui-dropdown-item>'
     document.body.append(menu)
@@ -1020,14 +1020,14 @@ describe('WebUiContextMenu 组件（浏览器）', () => {
   })
 
   /*
-   * 根层在退场窗口内重新 claim 时，收尾栈里的submenu panel 仍在 DOM 里、仍然可见，但已经
+   * 根层在退场窗口内重新 claim 时，收尾栈里的 submenu panel 仍在 DOM 里、仍然可见，但已经
    * 离开 `_activeSubmenus`。它必须在**取回之前与之后**都被挂回新会话的子树，否则会被
    * 判成 panel 外 —— 点它内部就关掉整张 menu（base 的登记树直到 dispose 才注销，故属回归）。
    *
    * 两个 panel 的 transition 都钉长：根 panel 撑开「重开窗口」，submenu panel 让 closing 栈条目
    * 不被提前 dispose —— 否则 take 走的是新建分支（自带 adopt），覆盖不到这个窗口。
    */
-  it('退场窗口内重开后，收尾中的submenu panel 在取回前后都不可被当成 panel 外', async () => {
+  it('退场窗口内重开后，收尾中的 submenu panel 在取回前后都不可被当成 panel 外', async () => {
     const menu = document.createElement('web-ui-context-menu')
     menu.innerHTML = SUBMENU
     document.body.append(menu)
@@ -1047,7 +1047,7 @@ describe('WebUiContextMenu 组件（浏览器）', () => {
     const submenuPanel = getMenus()[1]!
     submenuPanel.style.transition = 'opacity 5s'
 
-    // 第一次 Escape 让submenu 进 closing 栈，第二次关闭根 menu（handle 随之撤销）。
+    // 第一次 Escape 让 submenu 进 closing 栈，第二次关闭根 menu（handle 随之撤销）。
     dispatchEscape()
     await nextFrame()
     dispatchEscape()

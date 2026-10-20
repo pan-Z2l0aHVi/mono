@@ -36,7 +36,7 @@ const props = defineProps<{
   error: string
   mobile: boolean
   /**
-   * tag 名 → 持久化颜色。队列里的 tag 还没落库，本身没有颜色可言，
+   * 标签名 → 持久化颜色。队列里的标签还没落库，本身没有颜色可言，
    * 因此按名回查已确定的那个；查不到就是尚未创建，展示中性档。
    */
   tagColors: Record<string, TagColor>
@@ -422,13 +422,13 @@ function handleRenameChange(item: LibraryQueueItem, event: WebUiEvent<WebUiEdita
                     <span v-for="tag in item.tags" :key="tag" :class="[tagChipClass, tagClass(props.tagColors[tag])]">
                       {{ tag }}
                     </span>
-                    <web-ui-tooltip content="编辑 tag" :placement="itemIndex < 5 ? 'bottom' : 'top'">
+                    <web-ui-tooltip content="编辑标签" :placement="itemIndex < 5 ? 'bottom' : 'top'">
                       <web-ui-button
                         class="shrink-0 [--wui-button-color:var(--wui-color-accent,#08f)]"
                         icon
                         variant="ghost"
                         size="20"
-                        aria-label="编辑 tag"
+                        aria-label="编辑标签"
                         @click="emit('editTags', item)"
                       >
                         <web-ui-icon :icon="lucideTags" :size="12" />
@@ -480,7 +480,7 @@ function handleRenameChange(item: LibraryQueueItem, event: WebUiEvent<WebUiEdita
               >
                 <!-- 与左侧 drop 区的支持类型说明同理，各自成行而不是靠自动折行。 -->
                 <span>添加的资源将显示在此处</span>
-                <span>名称和 tag 可修改</span>
+                <span>名称和标签可修改</span>
               </span>
             </span>
           </web-ui-empty>

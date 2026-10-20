@@ -5,7 +5,7 @@
 ## 导航
 
 - Go Wails host 入口是 [`main.go`](./main.go)，后端能力边界在 [`backend/`](./backend/)，前端集成在 [`frontend/src/`](./frontend/src/)。
-- [`backend/library/`](./backend/library/) 拥有 Resource、Source、语义 tag、Map 与其本地持久化；[`backend/native/`](./backend/native/) 拥有受控的 OS 能力；[`backend/remote/`](./backend/remote/) 仅供 Go 发起出站 HTTP；[`backend/internal/`](./backend/internal/) 只放跨后端模块复用的工具。
+- [`backend/library/`](./backend/library/) 拥有 Resource、Source、语义标签、Map 与其本地持久化；[`backend/native/`](./backend/native/) 拥有受控的 OS 能力；[`backend/remote/`](./backend/remote/) 仅供 Go 发起出站 HTTP；[`backend/internal/`](./backend/internal/) 只放跨后端模块复用的工具。
 - 前端保留模块边界，即 [`frontend/src/`](./frontend/src/) 下的 [`components/`](./frontend/src/components/)、[`pages/`](./frontend/src/pages/)、[`stores/`](./frontend/src/stores/)、[`composables/`](./frontend/src/composables/) 和 [`services/`](./frontend/src/services/)，以及由 `vue-router/vite` 从 [`frontend/src/pages/`](./frontend/src/pages/) 生成的 file-based 路由表。
 - 应用壳只有一套：[`frontend/src/components/AppLayout.vue`](./frontend/src/components/AppLayout.vue) 独占 `web-ui-layout` 与 [`frontend/src/components/AppNav.vue`](./frontend/src/components/AppNav.vue)，`RouterView` 只往默认 slot 换页面内容。
 - 页面需要顶部工具条时，在多根 fragment 的根节点上写 `slot="header"`，不要自带 `web-ui-layout`，也不要在模板里按 route meta 分叉壳。分叉会让切路由重建 sidebar，掐断正在播放的 icon 画线动画。
@@ -15,12 +15,12 @@
 ## 领域与产品边界
 
 - 产品与领域词汇以本文件的「领域与产品边界」为权威。后端能力边界与持久化模型读 [ADR-0008](../../docs/adr/0008-interweave-backend-architecture.md) 和 [ADR-0009](../../docs/adr/0009-interweave-sqlite-persistence-wal.md)。已实现行为以 [`backend/library/`](./backend/library/) 及其 Go 测试为真相。纯局部实现不预读这些文档。
-- 产品边界（不得顺手扩大的部分）：Interweave 引用外部内容而不接管它，不复制、移动、重命名或删除原始文件与网页，移除 Resource 只删库内记录；不做全盘扫描、自动归类、自动修复、后台可用性轮询、账户、云同步或跨设备同步；文件夹监听只限库内已登记 file source 所在目录，用于同步可用状态，不扩展为全盘或递归扫描；不做内容托管（无 Markdown/富文本工作台）、全文索引、OCR、音视频转写或 Resource 版本历史；tag 只在单个 Resource 上增删，无父子、别名、全局管理 panel 或自动语义合并；MCP 与 Agent 写入不进入 v1。
+- 产品边界（不得顺手扩大的部分）：Interweave 引用外部内容而不接管它，不复制、移动、重命名或删除原始文件与网页，移除 Resource 只删库内记录；不做全盘扫描、自动归类、自动修复、后台可用性轮询、账户、云同步或跨设备同步；文件夹监听只限库内已登记 file source 所在目录，用于同步可用状态，不扩展为全盘或递归扫描；不做内容托管（无 Markdown/富文本工作台）、全文索引、OCR、音视频转写或 Resource 版本历史；标签只在单个 Resource 上增删，无父子、别名、全局管理 panel 或自动语义合并；MCP 与 Agent 写入不进入 v1。
 - 公共 UI 契约仍以 [`packages/web-ui`](../../packages/web-ui) 为准。
 - 不在前端复制领域规则。后续 Go 侧实现统一落在 [`backend/`](./backend/)。
 
 **资源（Resource）**:
-用户希望长期找回、理解或使用的原子概念对象；保存独立标题、短备注、语义 tag 与一个或多个 Source。
+用户希望长期找回、理解或使用的原子概念对象；保存独立标题、短备注、语义标签与一个或多个 Source。
 _Avoid_: 条目、文件夹、项目容器、内容页面
 
 **v1 新资源库起点**:
@@ -48,16 +48,16 @@ _Avoid_: 添加时自动去重、重复定位、隐式合并或转移 Source
 已登记的 file source 只监听其所在目录：`available` 随文件增删自动翻转并恢复，媒体读取确认不可达时立即改判为 `false`。URL 不做监听，只在用户打开详情时按需重新判定；该次判定无法得出结论时保留原值。
 _Avoid_: `unknown`、独立状态枚举、以元数据完整性替代可用性、后台轮询探测、把无法判定写成不可用
 
-**语义 tag（Semantic Tag）**:
-用户赋予 Resource 的扁平内容意义。每个 Tag 有不可变内部 `tag_id`；名称经标准化后不可变；标准名称相同即自动复用；没有别名、全局管理 panel 或自动语义合并；操作仅在单个 Resource 上增删 Tagging。tag 无父子、路径、继承或显式 tag 关系；Resource 的关联仅从共享语义 tag 派生。
-_Avoid_: 文件夹、目录、类型、状态、tag 别名、自动语义合并
+**语义标签（Semantic Tag）**:
+用户赋予 Resource 的扁平内容意义。每个 Tag 有不可变内部 `tag_id`；名称经标准化后不可变；标准名称相同即自动复用；没有别名、全局管理 panel 或自动语义合并；操作仅在单个 Resource 上增删 Tagging。标签无父子、路径、继承或显式标签关系；Resource 的关联仅从共享语义标签派生。
+_Avoid_: 文件夹、目录、类型、状态、标签别名、自动语义合并
 
 **Tagging**:
 一个 Resource 被赋予一个 Tag 的内部归属关系，只引用 `resource_id` 与 `tag_id`；不是特殊 Tag，也不直接向用户展示。
-_Avoid_: `ResourceTag`、tag 子类型、以 tag 名称作为关联键
+_Avoid_: `ResourceTag`、标签子类型、以标签名称作为关联键
 
 **资源关系地图（Map）**:
-从 Resource 与语义 tag 的归属关系派生的分层探索视图，用于发现主题群、桥梁与孤立资源；仅支持局部探索与单资源就近增删 tag，不持久化画布布局或手工连线。
+从 Resource 与语义标签的归属关系派生的分层探索视图，用于发现主题群、桥梁与孤立资源；仅支持局部探索与单资源就近增删标签，不持久化画布布局或手工连线。
 _Avoid_: 文件树、画布编辑器、关系连线器、资源容器
 
 ## Wails Service 与 bindings allowlist

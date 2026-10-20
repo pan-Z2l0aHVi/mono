@@ -179,7 +179,7 @@ describe('DetailDrawer', () => {
       await nextTick()
       typeNote(mounted.host, '回写场景')
 
-      // 同一 id 的新对象 = 保存成功或打 tag 后的 store 回写，不是切换也不是关闭。
+      // 同一 id 的新对象 = 保存成功或打标签后的 store 回写，不是切换也不是关闭。
       mounted.setResource(resourceView({ note: '回写场景' }))
       await nextTick()
 

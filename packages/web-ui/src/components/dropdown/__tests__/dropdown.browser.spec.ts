@@ -192,7 +192,7 @@ describe('WebUiDropdown 组件（浏览器）', () => {
     expect(getComputedStyle(focusedControl(openRootItems()[0]!)!).backgroundColor).not.toBe('rgb(0, 136, 255)')
   })
 
-  it('指针点击可以打开submenu', async () => {
+  it('指针点击可以打开 submenu', async () => {
     const warn = vi.spyOn(console, 'warn')
     try {
       const menu = createDropdown(SUBMENU)
@@ -326,8 +326,8 @@ describe('WebUiDropdown 组件（浏览器）', () => {
     expect(nested!.open).toBe(false)
   })
 
-  // 键盘用户要能用方向键开合submenu：ArrowRight 进入、ArrowLeft 退回父级。
-  it('键盘语义激活可以关闭并重新打开submenu', async () => {
+  // 键盘用户要能用方向键开合 submenu：ArrowRight 进入、ArrowLeft 退回父级。
+  it('键盘语义激活可以关闭并重新打开 submenu', async () => {
     const menu = createDropdown(SUBMENU)
     await menu.updateComplete
 
@@ -387,7 +387,7 @@ describe('WebUiDropdown 组件（浏览器）', () => {
     parentControl.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true, composed: true }))
     submenu?.dispatchEvent(new TransitionEvent('transitionend', { propertyName: 'opacity', bubbles: true }))
 
-    // 退场中的submenu panel 在整个退出过渡里**都在 DOM 上**，所以「数量变成 2」在 t0 就成立，
+    // 退场中的 submenu panel 在整个退出过渡里**都在 DOM 上**，所以「数量变成 2」在 t0 就成立，
     // 等它是空转。真正要等的是下面那条断言的主角：panel 不再被 `hidden`。
     await waitFor(
       () => getMenuPanels()[1]?.hasAttribute('hidden') === false,
@@ -402,12 +402,12 @@ describe('WebUiDropdown 组件（浏览器）', () => {
 
   /*
    * 退场被打断时 panel 留在 DOM 里，而关闭分支已经撤销了登记。重开必须补登记：把仍在场
-   * 的子层重新挂回新会话子树。否则submenu item 可见却落在根 handle 子树之外，点它会被 document
+   * 的子层重新挂回新会话子树。否则 submenu item 可见却落在根 handle 子树之外，点它会被 document
    * 上的守卫当成外部点击，把整张 menu 关掉——submenu item 因此点不动。
    *
    * 退场过渡被刻意拉长，把「退场进行中重开」这个窗口钉成确定性的。
    */
-  it('退场窗口内重开后，仍在场的submenu panel 内点击不关闭整张 menu', async () => {
+  it('退场窗口内重开后，仍在场的 submenu panel 内点击不关闭整张 menu', async () => {
     const menu = createDropdown(SUBMENU)
     await menu.updateComplete
 
@@ -480,14 +480,14 @@ describe('WebUiDropdown 组件（浏览器）', () => {
   })
 
   /*
-   * 重挂的第三个来源：收尾栈。ArrowLeft 的非即时关闭路径把submenu panel 移出内部集合，
+   * 重挂的第三个来源：收尾栈。ArrowLeft 的非即时关闭路径把 submenu panel 移出内部集合，
    * 只剩收尾栈还记得它——panel 仍在 DOM 里、仍在退场中。根重开时若只重挂当前集合，
    * 这块 panel 就落在根 handle 子树之外，点它内部照样把整张 menu 关掉。
    *
    * 与上面两条的分工：那两条走 `closeAll()`，submenu 留在集合里；本条先用 ArrowLeft
-   * 把submenu 推进收尾栈。两次重开都必须发生，缺一条循环即转红。
+   * 把 submenu 推进收尾栈。两次重开都必须发生，缺一条循环即转红。
    */
-  it('退场窗口内重开后，收尾中的submenu panel 内点击不关闭整张 menu', async () => {
+  it('退场窗口内重开后，收尾中的 submenu panel 内点击不关闭整张 menu', async () => {
     const menu = createDropdown(SUBMENU)
     await menu.updateComplete
 

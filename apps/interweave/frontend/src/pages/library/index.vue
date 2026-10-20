@@ -188,7 +188,7 @@ function previewResource(resource: ResourceView) {
 /*
  * 右键「重命名」要把目标行置成激活行。
  *
- * activeResourceId 只有左键预览、详情、tag 这三条入口会写（selectResource / openResourceDetail /
+ * activeResourceId 只有左键预览、详情、标签这三条入口会写（selectResource / openResourceDetail /
  * editResourceTags），改名这条路上没有人碰它。于是从 context menu 改名后，底色仍旧停在上一次激活的
  * 那一行上（没人激活过时则一行都没有）——用户看到的就是「激活底色没有跟着切过来」。
  *

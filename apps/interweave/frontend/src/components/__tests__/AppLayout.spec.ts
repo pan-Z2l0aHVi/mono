@@ -130,7 +130,7 @@ describe('AppLayout：应用外壳', () => {
 /*
  * issue #195：`sidebar-collapsed` 是桌面端的密度偏好，而 slot 内容同时服务桌面 aside
  * 与移动端 drawer。若把 collapsed state 直接透传给 AppNav，移动端 drawer 里的导航会以 collapsed state 渲染
- * （collapsed 为真时不渲染文字 tag）。闸门因此必须按 viewport 收窄。
+ * （collapsed 为真时不渲染文字 label）。闸门因此必须按 viewport 收窄。
  *
  * 如今只剩一个视口信号：`web-ui-layout` 自己订阅媒体查询，并通过 `mobile-change` 把判定
  * 交给壳。所以拨一次 matchMedia 就同时移动了 layout 的树与壳的 collapse gate——#195 那轮
@@ -297,7 +297,7 @@ describe('AppLayout：设置 dialog 接线', () => {
     await flush()
     expect(settingsDialog().open).toBe(true)
 
-    // Escape 与遮罩点击都走这条 open-change；controlled 下组件不会自行改 open。
+    // Escape 与 backdrop 点击都走这条 open-change；controlled 下组件不会自行改 open。
     settingsDialog().dispatchEvent(new CustomEvent('open-change', { detail: { open: false } }))
     await flush()
     expect(settingsDialog().open).toBe(false)

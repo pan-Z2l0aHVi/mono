@@ -29,7 +29,7 @@ const DAY = 24 * HOUR
 // 固定基准时刻：fixture 之间的先后关系要稳定，否则「最近修改/较早修改」排序无法复现。
 const BASE = Date.UTC(2026, 8, 24, 9, 0, 0)
 
-// 预览数据没有库，颜色按名称散列而不是随机：这样同名 tag 在四处渲染中颜色一致，
+// 预览数据没有库，颜色按名称散列而不是随机：这样同名标签在四处渲染中颜色一致，
 // 复现后端「创建时定色、之后只读」这条不变量，浏览器里才看得出真实效果。
 // $zero 是 Go 零值（无色），不进候选池。
 const MOCK_TAG_COLORS = Object.values(TagColor).filter(color => color !== TagColor.$zero)
@@ -357,7 +357,7 @@ export function createMockLibraryRuntime(): LibraryRuntime {
       try {
         const found = require(resourceId)
         if (found.tags.some(tag => tag.name === tagName)) {
-          return Promise.reject(new Error(`tag「${tagName}」已经存在`))
+          return Promise.reject(new Error(`标签「${tagName}」已经存在`))
         }
         const tag = toTagDTO(tagName, resourceId)
         found.tags.push(tag)
@@ -382,7 +382,7 @@ export function createMockLibraryRuntime(): LibraryRuntime {
     resourceMediaURL: sourceId => mediaBySourceId.get(sourceId) ?? null,
     pendingFilePreviewURL: () => null,
 
-    // 浏览器里唯一能真实生效的动作就是开新 tag；file 入口没有对应的系统打开方式。
+    // 浏览器里唯一能真实生效的动作就是开新标签；file 入口没有对应的系统打开方式。
     openExternal: target => {
       if (/^https?:\/\//.test(target)) window.open(target, '_blank', 'noopener,noreferrer')
       return Promise.resolve()

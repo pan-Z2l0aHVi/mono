@@ -1172,7 +1172,7 @@ describe('ResourceList：键盘呼出 context menu', () => {
 
       // 六项齐全。缺哪一项，那一项的键盘入口就是断的
       expect(labelsOf(mounted.host)).toEqual(
-        expect.arrayContaining(['预览', '打开方式', '详情', '重命名', 'tag', '删除'])
+        expect.arrayContaining(['预览', '打开方式', '详情', '重命名', '标签', '删除'])
       )
     } finally {
       mounted.unmount()
@@ -1199,7 +1199,7 @@ describe('ResourceList：键盘呼出 context menu', () => {
 
       const labels = labelsOf(mounted.host)
       expect(labels).not.toContain('预览')
-      expect(labels).not.toContain('tag')
+      expect(labels).not.toContain('标签')
       expect(labels).toContain('找回资源')
       expect(labels).toContain('详情')
     } finally {
@@ -1331,7 +1331,7 @@ describe('ResourceList：键盘呼出 context menu', () => {
   })
 })
 
-describe('ResourceList：context menu item的搬运包装', () => {
+describe('ResourceList：context menu 项的搬运包装', () => {
   afterEach(() => {
     document.body.innerHTML = ''
   })

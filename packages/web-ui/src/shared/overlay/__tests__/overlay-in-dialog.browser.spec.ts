@@ -291,7 +291,7 @@ describe('Portal overlay 在已打开原生 dialog 内（top layer）', () => {
    * submenu 左缘即触发项右缘、顶边对齐（right-start 的纵向语义是**顶边对齐**，
    * submenu 可比触发项高，不得因此上移）。
    *
-   * 判据是两条边的**关系**（差 ≤ 1px 容差），不是submenu 落在视口里的某个像素位置 ——
+   * 判据是两条边的**关系**（差 ≤ 1px 容差），不是 submenu 落在视口里的某个像素位置 ——
    * 钳制那条由 `context-menu/viewport-fit.browser.spec.ts` 承担。
    *
    * 两处必须等入场过渡落定再量：入场期间 panel 带 scale，触发项的 rect 被缩放，
@@ -306,7 +306,7 @@ describe('Portal overlay 在已打开原生 dialog 内（top layer）', () => {
     drawerDialogAppend(dialog, menu)
     await menu.updateComplete
 
-    // x 取视口左缘附近：右开方向给submenu 留出充裕空间，保证右开语义成立，
+    // x 取视口左缘附近：右开方向给 submenu 留出充裕空间，保证右开语义成立，
     // 不因空间不足翻转朝左（翻转朝左会走另一条分支）。
     menu.openAt(8, 60)
     await menu.updateComplete
@@ -444,7 +444,7 @@ describe('Portal overlay 在已打开原生 dialog 内（top layer）', () => {
     const copyItem = mainPanel.querySelectorAll<HTMLElement>('web-ui-dropdown-item')[1]
     copyItem?.dispatchEvent(new PointerEvent('pointerenter'))
     parentItem?.dispatchEvent(new PointerEvent('pointerenter'))
-    // 竞态断言落在动态解析出的当前活跃submenu panel 上；panel 身份则必须**仍是同一个** ——
+    // 竞态断言落在动态解析出的当前活跃 submenu panel 上；panel 身份则必须**仍是同一个** ——
     // 换成重建 panel 就说明 2000ms 声明没生效、closing 缓存没命中，竞态从未发生，
     // 后面那条「坐标不被迟到写入覆盖」会变成恒真断言。这条即 R18 的负向对照。
     const submenu = await waitFor(

@@ -5,7 +5,7 @@
  * 1. DTO → view-model 翻译：与后端契约的词汇在此一次性对齐。早期草稿里的
  *    name / broken / sourceType: 'local'|'link' 等分歧词汇，
  *    对应关系为 name→title、broken→!available、local/link→file/url；页面不得再各自翻译 DTO。
- * 2. 列表展示语义：搜索、过滤、排序与派生 tag 集合，恰好实现一次。
+ * 2. 列表展示语义：搜索、过滤、排序与派生标签集合，恰好实现一次。
  * preferred 基数、唯一 Source 删除约束等领域不变量留在 Go core，前端只读。
  *
  * 与 generated bindings 的关系：仅类型导入（import type），运行时零 Wails 依赖，
@@ -25,7 +25,7 @@ export type SourceType = 'file' | 'url'
 export type ResourceKind = ResourceDTOKind | 'unknown'
 
 /**
- * tag 展示色，由后端按 tag 名持久化。
+ * 标签展示色，由后端按标签名持久化。
  *
  * 颜色不是前端的装饰决策：同一名称在全库各处必须是同一个颜色，所以这里只搬运
  * 后端给的 key，映射成 chip 样式是 presentation 层的事。
@@ -65,8 +65,8 @@ export interface ResourceView {
   preferred: ResourceSourceView | null
   tags: TagView[]
   /**
-   * tags 的按名投影，供按名称工作的界面使用：编辑 tag dialog 的草稿与入队队列都只有
-   * 名称（队列里的 tag 尚未落库，没有颜色可言），过滤与排序也只认名称。
+   * tags 的按名投影，供按名称工作的界面使用：编辑标签 dialog 的草稿与入队队列都只有
+   * 名称（队列里的标签尚未落库，没有颜色可言），过滤与排序也只认名称。
    */
   tagNames: string[]
   /** 至少一个入口可用即为可用。 */
@@ -185,10 +185,10 @@ export const useLibraryStore = defineStore('library', {
       return [...new Set(state.resources.flatMap(resource => resource.tagNames))].sort()
     },
     /**
-     * tag 名 → 持久化颜色。
+     * 标签名 → 持久化颜色。
      *
-     * 入队队列与编辑 tag dialog 手里只有 tag 名（队列里的 tag 还没落库，不存在颜色），
-     * 它们要显示已存在 tag 的颜色只能按名回查。不在这张表里的名称就是尚未创建，
+     * 入队队列与编辑标签 dialog 手里只有标签名（队列里的标签还没落库，不存在颜色），
+     * 它们要显示已存在标签的颜色只能按名回查。不在这张表里的名称就是尚未创建，
      * 展示中性档。
      */
     tagColors(state): Record<string, TagColor> {

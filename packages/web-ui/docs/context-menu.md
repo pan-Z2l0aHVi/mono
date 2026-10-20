@@ -119,7 +119,7 @@ function onOpenChange(event: CustomEvent<{ open: boolean }>) {
 
 ### 行为说明
 
-通过 `contextmenu` 事件打开。menu item：`web-ui-dropdown-item`、`web-ui-dropdown-divider`、`web-ui-dropdown-header`。支持键盘导航和submenu hover。
+通过 `contextmenu` 事件打开。menu item：`web-ui-dropdown-item`、`web-ui-dropdown-divider`、`web-ui-dropdown-header`。支持键盘导航和 submenu hover。
 
 menu 打开期间是模态的：它渲染进浏览器 top layer 里一个透明的 `<dialog>`，下层页面拿不到任何命中测试。因此「点外面」只会关掉 menu，不会顺带把下面那一行、那个 checkbox、那个链接一起激活。scrim 刻意保持完全透明——它的职责是吃掉这次命中，不是给页面加一层 scrim。另有一处需要知道的代价：menu item 激活后约 160ms 的退场过渡里，scrim 已经提前出了 top layer，下层页面在这段时间重新可点，menu 的层级也退回普通流。
 

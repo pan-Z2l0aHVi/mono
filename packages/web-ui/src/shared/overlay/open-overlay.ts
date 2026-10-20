@@ -100,7 +100,7 @@ export interface OpenOverlayHandle {
    */
   deferArbitration(deferred?: boolean): void
   /**
-   * 把子层 panel 纳入本 handle 的子树（多级submenu），默认不成为独立候选。
+   * 把子层 panel 纳入本 handle 的子树（多级 submenu），默认不成为独立候选。
    *
    * 与 `claim` 的区别只在父级如何确定：`claim` 走祖先链，`adopt` 由调用方指名。
    *

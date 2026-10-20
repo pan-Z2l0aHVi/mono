@@ -68,7 +68,7 @@ export interface MenuHoverDelegate {
   /** 该层当前激活（子 panel 已展开）的项；用于避免重复打开。 */
   getActiveItem(level: number): HTMLElement | undefined
   isSubmenuItem(item: HTMLElement): boolean
-  /** hover 到 submenu item且它不是当前激活项。 */
+  /** hover 到 submenu item 且它不是当前激活项。 */
   openSubmenu(item: HTMLElement): void
   /** hover 到叶子项且存在更深层级：关闭比它深的子 panel（内部自行重新 bind）。 */
   closeFrom(level: number): void

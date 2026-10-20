@@ -801,7 +801,7 @@ class WebUiImagePreview extends LitElement {
 
     return html`
       <dialog
-        aria-label="image preview"
+        aria-label="Image preview"
         @cancel=${this._handleCancel}
         @close=${this._handleNativeClose}
         @pointerdown=${this._handlePointerDown}

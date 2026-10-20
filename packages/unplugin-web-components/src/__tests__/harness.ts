@@ -77,7 +77,7 @@ export function runHtmlHook({ options = {}, html }: { options?: PluginOptions; h
   return createHtmlHook(options).handler(html)
 }
 
-/** 返回注入的单个 label 描述，断言「注入了脚本」并取出其内容。 */
+/** 返回注入的单个 tag 描述，断言「注入了脚本」并取出其内容。 */
 export async function runHtmlInjection({ options = {}, html }: { options?: PluginOptions; html: string }) {
   const result = await runHtmlHook({ options, html })
 

@@ -135,7 +135,7 @@ export class WebUiContextMenu extends LitElement {
    */
   private _longPressGestureEndedAt: number | null = null
   // submenu dialog 定位的唯一写者代数（按 panel 键控）：同帧关闭→重开复用同一 panel
-  // 时只允许最新一次定位写入；不同层级submenu 各有 panel，互不作废。
+  // 时只允许最新一次定位写入；不同层级 submenu 各有 panel，互不作废。
   private readonly _submenuPositionEpochs = new WeakMap<HTMLElement, number>()
   private _menu?: MenuPortalOverlay
   /**
@@ -158,7 +158,7 @@ export class WebUiContextMenu extends LitElement {
    *
    * 鼠标不居中：桌面右键的肌肉记忆是 menu**左上角**出现在光标处。更要紧的是居中会让光标
    * 落在 panel 上缘正中 —— 也就是落在第一项的命中区里。后果是 menu 一开就有项处于 hover 高亮，
-   * 并且紧接着再右键一次（想开submenu）会打在 menu item 上而不是空白处。`overlay-in-dialog`
+   * 并且紧接着再右键一次（想开 submenu）会打在 menu item 上而不是空白处。`overlay-in-dialog`
    * 里 `openAt(100, 400)` 那条用例钉的 `'top left'` 正是这条契约。
    *
    * 判据是**开启来源**（调用点显式传入），不靠运行时嗅探 pointerType 或视口宽度：
@@ -247,7 +247,7 @@ export class WebUiContextMenu extends LitElement {
   }
   /*
    * 开启态 overlay（issue #120 Block 1）。根 panel 是登记对象：submenu 经 adopt 成为它的逻辑
-   * 后代；关闭动作仍走 closeDeepestOrAll（最深submenu 优先）。
+   * 后代；关闭动作仍走 closeDeepestOrAll（最深 submenu 优先）。
    */
   private readonly _overlay = defineOpenOverlay().make({
     requestClose: () => this._keyboardDelegate.closeDeepestOrAll(),
@@ -259,7 +259,7 @@ export class WebUiContextMenu extends LitElement {
   private _shouldOpenInstantly = true
   private _suppressInitialFocusVisible = true
   private _refreshScheduled = false
-  // 主 menu dialog 路径与submenu 一样使用代数令牌；快速 openAt/refresh 或 close 后，
+  // 主 menu dialog 路径与 submenu 一样使用代数令牌；快速 openAt/refresh 或 close 后，
   // 迟到的 positioning promise 只能被丢弃，不能覆盖最新坐标。
   private readonly _menuPositionGeneration = defineOverlayPositioningGeneration().make()
   // menu 打开期间宿主可能不经重定位直接改写子内容（网络推送、定时器等），
@@ -359,27 +359,27 @@ export class WebUiContextMenu extends LitElement {
          * `hideOverlayPresence` 返回 false 后提前退出）`_menu` 还在，而关闭分支已经把 handle
          * 撤了；此时重开必须补 claim。否则 menu 开着且可见却没有登记：Escape 关不掉它
          * （仲裁看不到它），而 `_menuHandle === null` 会让每次 document click——包括 panel
-         * 内部与submenu 父项——都被 `_outsideClickGuard` 判成外部点击而关闭 menu。
+         * 内部与 submenu 父项——都被 `_outsideClickGuard` 判成外部点击而关闭 menu。
          */
         if (!this._menuHandle) {
           this._menuHandle = this._overlay.claim(this._menu.panel)
-          // 重新 claim = 新会话：根层的子层随之作废，仍在场的submenu panel 要重新 adopt 回
+          // 重新 claim = 新会话：根层的子层随之作废，仍在场的 submenu panel 要重新 adopt 回
           // 新 handle 的子树，否则根 handle 的 contains 看不到它们。
           for (const submenu of this._activeSubmenus) {
             this._submenuHandles.delete(submenu.panel)
             this._submenuHandles.set(submenu.panel, this._menuHandle.adopt(submenu.panel))
           }
-          // 收尾栈里的submenu panel 同样「可见但已脱离快照」：`_closeSubmenusFrom` 只把它们
+          // 收尾栈里的 submenu panel 同样「可见但已脱离快照」：`_closeSubmenusFrom` 只把它们
           // 移出 `_activeSubmenus`，panel 仍在 DOM 里退场。**这个循环承重**：不补 adopt，
           // 它们就会落在 handle 的登记树之外，被判成「panel 外」，点它内部会关掉整张 menu。
-          // 用例 `退场窗口内重开后，收尾中的submenu panel 在取回前后都不可被当成 panel 外` 守着
+          // 用例 `退场窗口内重开后，收尾中的 submenu panel 在取回前后都不可被当成 panel 外` 守着
           // 这一条 —— 把循环体整段删掉，那条会红（实测 1 failed | 95 passed）。
           // 写进 `_submenuHandles` 还因为收尾结束时 `_releaseSubmenu` 按 panel 取 handle 释放。
           for (const container of this._closingSubmenus.closing()) {
             this._submenuHandles.set(container.panel, this._menuHandle.adopt(container.panel))
           }
         }
-        // 父项始终留在 menu.content 内，观察它即可覆盖各级submenu 在打开期间的内容重建。
+        // 父项始终留在 menu.content 内，观察它即可覆盖各级 submenu 在打开期间的内容重建。
         this._contentObserver.observe(this._menu.content, { childList: true, subtree: true })
         requestAnimationFrame(() => {
           if (!this._isOpen || !this._menu) return
@@ -857,7 +857,7 @@ export class WebUiContextMenu extends LitElement {
 
   /**
    * Escape 的**唯一**关闭路径仍是共享仲裁者（`_overlay.requestClose` → `closeDeepestOrAll`），
-   * 它按层深决定是关最深submenu 还是关整张 menu。原生 dialog 自己也监听 Escape 并派发
+   * 它按层深决定是关最深 submenu 还是关整张 menu。原生 dialog 自己也监听 Escape 并派发
    * `cancel`，若放任默认行为，UA 会直接关掉 scrim —— 那条路径不经过组件状态机，
    * 既可能漏派 `open-change`，也会把「关最深一层」的语义降级成「整张 menu 没了」。
    *
@@ -1265,7 +1265,7 @@ export class WebUiContextMenu extends LitElement {
     this._scrollLock.sync(isOpen && !this.noScrollLock)
   }
 
-  /** 按 panel 撤销一层submenu 的登记；handle 已随根层递归撤销时幂等无操作。 */
+  /** 按 panel 撤销一层 submenu 的登记；handle 已随根层递归撤销时幂等无操作。 */
   private _releaseSubmenu(panel: HTMLElement) {
     this._submenuHandles.get(panel)?.release()
     this._submenuHandles.delete(panel)

@@ -239,7 +239,7 @@ duration 默认值为 `--wui-duration-press: 80ms`、`--wui-duration-feedback: 1
 | `--wui-color-warning`              | 警告                                 | `#d97706`                                                            | `#ff9f0a`                                                               |
 | `--wui-color-danger`               | 危险                                 | `#dc2626`                                                            | `#ff453a`                                                               |
 | `--wui-color-info`                 | 信息                                 | `#2563eb`                                                            | `#64d2ff`                                                               |
-| `--wui-color-backdrop`             | Modal 遮罩                           | `rgb(0 0 0 / 0.12)`                                                  | `rgb(0 0 0 / 0.48)`                                                     |
+| `--wui-color-backdrop`             | Modal backdrop                       | `rgb(0 0 0 / 0.12)`                                                  | `rgb(0 0 0 / 0.48)`                                                     |
 | `--wui-color-focus-ring`           | Focus indicator 颜色，由 accent 派生 | `color-mix(in srgb, var(--wui-color-accent, #08f) 40%, transparent)` | `color-mix(in srgb, var(--wui-color-accent, #0a84ff) 62%, transparent)` |
 
 ### Shadow tokens
