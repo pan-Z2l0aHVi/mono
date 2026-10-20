@@ -75,9 +75,9 @@ export default function Demo() {
 
 ### 行为说明
 
-以内部派生的视觉上下文控制 button group方向，不改写子 button 属性。
+以内部派生的视觉上下文控制 button group 方向，不改写子 button 属性。
 
-在 button group宿主上设置。该 token 控制两个方向上的长边：横排改的是分割线高度，竖排改的是宽度。
+在 button group 宿主上设置。该 token 控制两个方向上的长边：横排改的是分割线高度，竖排改的是宽度。
 
 ### CSS Custom Properties
 

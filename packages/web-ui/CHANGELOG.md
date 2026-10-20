@@ -1618,7 +1618,7 @@
 ### Patch Changes
 
 - 1e52bc4: 统一表单关联控件的原生生命周期：`form.reset()` 会恢复首次连接时声明式初始化后的默认值，并为所有表单控件提供浏览器表单状态恢复支持；被 group 管理的 checkbox/radio 子项仍由父 group 统一管理。
-- 1e52bc4: 将 `web-ui-button-group` 的子 button group态改为内部派生的视觉上下文。`group`、`last` 与 `direction` 不再注入到子 button；请仅依赖 button group的可见布局，不要读取这些实现属性。
+- 1e52bc4: 将 `web-ui-button-group` 的子 button group 态改为内部派生的视觉上下文。`group`、`last` 与 `direction` 不再注入到子 button；请仅依赖 button group 的可见布局，不要读取这些实现属性。
 - Updated dependencies [1e52bc4]
   - @greypan/js-kit@2.0.0
   - @greypan/browser-kit@2.0.0
