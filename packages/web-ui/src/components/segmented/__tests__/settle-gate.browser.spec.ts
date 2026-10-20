@@ -95,7 +95,10 @@ function hasIntermediateValue(samples: number[], from: number, to: number): bool
   const hi = Math.max(from, to)
   const span = hi - lo
   if (span < 1) return false
-  return samples.some(value => value > lo + span * 0.15 && value < hi - span * 0.15)
+  // 两端各留 5% 的余量：直落终值的实现只会取到两端，取不到带内；
+  // 而负载重的 runner 上过渡只被采到一帧时，这一帧可能落在过渡的靠后段
+  // （CI 上实测首帧已在 87% 处），留 15% 的带子会把真实插值判成直落。
+  return samples.some(value => value > lo + span * 0.05 && value < hi - span * 0.05)
 }
 
 describe('WebUiSegmented indicator 落定门（浏览器）', () => {
@@ -126,10 +129,11 @@ describe('WebUiSegmented indicator 落定门（浏览器）', () => {
     const startLeft = indicator.getBoundingClientRect().left
     const targetLeft = triggers[1].getBoundingClientRect().left
 
-    // 采样必须紧接轻点开始：先等窗口过期再采，量到的是已经停稳的终值，
-    // 插值早已发生完，判据就永远读不到中间值。
+    // 采样必须与轻点同时起跑：先轻点再采样，采样循环的第一帧可能落在过渡的后段
+    // （CI runner 上实测首帧已在 87% 处），插值就量不到了。
+    const sampling = sampleLeft(indicator)
     await tap(segmented, triggers[1])
-    const samples = await sampleLeft(indicator)
+    const samples = await sampling
 
     expect(
       hasIntermediateValue(samples, startLeft, targetLeft),
@@ -153,8 +157,9 @@ describe('WebUiSegmented indicator 落定门（浏览器）', () => {
     // 再切一次：这一趟必须走完整过渡。
     const from = indicator.getBoundingClientRect().left
     const to = triggers[0].getBoundingClientRect().left
+    const sampling = sampleLeft(indicator)
     await tap(segmented, triggers[0])
-    const samples = await sampleLeft(indicator)
+    const samples = await sampling
 
     expect(hasIntermediateValue(samples, from, to), `过期后采样=${samples.map(v => v.toFixed(1)).join(',')}`).toBe(true)
   })
