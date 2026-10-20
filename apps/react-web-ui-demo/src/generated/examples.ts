@@ -5768,7 +5768,7 @@ export const exampleDocs: ExampleDoc[] = [
         "kind": "prose",
         "key": "行为说明",
         "title": "行为说明",
-        "html": "<p>支持 ArrowLeft/Right/Up/Down、Home/End、PageUp/PageDown 键盘导航。使用 pointer capture 处理鼠标、触控笔和触摸交互；组件 host 与触控 track 均声明 <code>touch-action: none</code>，拖拽激活期间同时阻止 <code>touchmove</code> 默认滚动，避免 iOS Safari 在横/纵拖拽过程中接管手势。</p>\n<p>thumb 静止态是正圆，直径取厚度 <code>--wui-slider-thumb-height</code>；按压或拖拽时沿 track 方向展开成胶囊，厚度不变、长边取 <code>--wui-slider-thumb-width</code>。横向 slider 的 thumb 展开为宽度方向，纵向 slider 的 thumb 展开为高度方向，与 switch thumb 同一套配方。形状切换带 <code>--wui-duration-press</code> 过渡。</p>"
+        "html": "<p>支持 ArrowLeft/Right/Up/Down、Home/End、PageUp/PageDown 键盘导航。使用 pointer capture 处理鼠标、触控笔和触摸交互；组件 host 与触控 track 均声明 <code>touch-action: none</code>，拖拽激活期间同时阻止 <code>touchmove</code> 默认滚动，避免 iOS Safari 在横/纵拖拽过程中接管手势。</p>\n<p>thumb 静止态是正圆，直径取厚度 <code>--wui-slider-thumb-thickness</code>；按压或拖拽时沿 track 方向展开成胶囊，厚度不变、长边取 <code>--wui-slider-thumb-length</code>。横向 slider 的 thumb 展开为宽度方向，纵向 slider 的 thumb 展开为高度方向，与 switch thumb 同一套配方。形状切换带 <code>--wui-duration-press</code> 过渡。</p>"
       },
       {
         "kind": "table",
@@ -5800,22 +5800,17 @@ export const exampleDocs: ExampleDoc[] = [
             "200px"
           ],
           [
-            "--wui-slider-height",
-            "<p>track 厚度</p>",
-            "var(--wui-slider-track-size, 6px)"
-          ],
-          [
             "--wui-slider-track-size",
-            "<p>track 尺寸</p>",
+            "<p>track 厚度</p>",
             "6px"
           ],
           [
-            "--wui-slider-thumb-width",
+            "--wui-slider-thumb-length",
             "<p>thumb 按压/拖拽态沿 track 方向的长边</p>",
             "24px"
           ],
           [
-            "--wui-slider-thumb-height",
+            "--wui-slider-thumb-thickness",
             "<p>thumb 厚度（静止态为正圆直径）</p>",
             "20px"
           ],
