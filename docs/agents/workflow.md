@@ -1,12 +1,12 @@
 # 开发与协作工作流
 
-本文件规定从方案到合并的工作顺序、用户授权边界与跨阶段恢复。任务分级与本地台账见 [`.agents/skills/task-ledger/SKILL.md`](../../.agents/skills/task-ledger/SKILL.md)，PR 审查见 [`review.md`](review.md)，验证选择见 [`verification.md`](verification.md)，提交规则见 [`commit.md`](commit.md)。需求拆分与 owner/worktree 分配由外部编排层负责，仓库 CLI 不承担编排。
+本文件规定从方案到合并的工作顺序、用户授权边界与跨阶段恢复。任务分级与本地台账见 [`.agents/skills/task-ledger/SKILL.md`](../../.agents/skills/task-ledger/SKILL.md)，PR 审查见 review.md，验证选择见 verification.md，提交规则见 commit.md。需求拆分与 owner/worktree 分配由外部编排层负责，仓库 CLI 不承担编排。
 
 ## 从方案到合并
 
 工作顺序是方案 → 实施与测试 → 提交并创建 PR → 独立 review 与按影响选择的端到端验收 → 修复复审 → 核对合并前证据并经用户授权后合并。实施、测试与提交可以小步交错；PR 阶段的独立 review 与验收可以并行。端到端验收按变更影响选择，不要求所有任务执行。
 
-合并前的 review、测试与 CI 证据必须对应当前 PR base/head；PR CI 复检不替代实施阶段的验证证据。这里的顺序不对应 task CLI 相位，也不把结论写回本地台账。审查与验证细节由 [`review.md`](review.md) 和 [`verification.md`](verification.md) 规定。
+合并前的 review、测试与 CI 证据必须对应当前 PR base/head；PR CI 复检不替代实施阶段的验证证据。这里的顺序不对应 task CLI 相位，也不把结论写回本地台账。审查与验证细节由 review.md 和 verification.md 规定。
 
 ## 预授权操作
 
@@ -48,4 +48,4 @@
 - 中断恢复以 Task Packet 与真实 Git 状态为准，台账（见 `task-ledger` skill）只辅助归属和进度，不能补造已通过的验证、review 或 CI。
 - 合并前仍须取得明确授权；授权前保留可检查的 diff 与证据。
 
-release playbook、changeset 与发布链验证见 `release.md`。流程拆分、PR 跟进与 worktree 回收由编排层负责。
+release playbook、changeset 与发布链验证见 release.md。流程拆分、PR 跟进与 worktree 回收由编排层负责。

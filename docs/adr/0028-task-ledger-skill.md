@@ -2,8 +2,8 @@
 
 - **Date**: 2026-10-19
 - **Status**: 已接受
-- **Amends**: [ADR-0014](0014-task-system-v2.md) 的 task 载体、[ADR-0018](0018-task-state-in-tmpdir.md) 的物理落点、[ADR-0024](0024-task-tiering-v3.md) 的级别判据载体与 [ADR-0025](0025-pr-review-flow.md) 的 schema/命令面
-- **Relates to**: [ADR-0027](0027-script-execution-surfaces.md)（根 `scripts/` 的执行面分类）、[ADR-0004](0004-progressive-agent-context-architecture.md)（skill 与 instruction 体系）
+- **Amends**: [ADR-0014](./0014-task-system-v2.md) 的 task 载体、[ADR-0018](./0018-task-state-in-tmpdir.md) 的物理落点、[ADR-0024](./0024-task-tiering-v3.md) 的级别判据载体与 [ADR-0025](./0025-pr-review-flow.md) 的 schema/命令面
+- **Relates to**: [ADR-0027](./0027-script-execution-surfaces.md)（根 `scripts/` 的执行面分类）、[ADR-0004](./0004-progressive-agent-context-architecture.md)（skill 与 instruction 体系）
 
 ## 背景与取舍
 

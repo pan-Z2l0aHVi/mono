@@ -6,7 +6,7 @@ Wails 3 desktop application using a Go backend and a Vue WebView frontend.
 
 There is no standalone product specification. Domain vocabulary,
 application-level boundaries and non-goals are authoritative in
-[`AGENTS.md`](AGENTS.md), backend and persistence decisions in
+[`AGENTS.md`](./AGENTS.md), backend and persistence decisions in
 [ADR-0008](../../docs/adr/0008-interweave-backend-architecture.md) /
 [ADR-0009](../../docs/adr/0009-interweave-sqlite-persistence-wal.md), and implemented
 behavior in `backend/**` with its Go tests. Read them before changing Interweave's

@@ -2,8 +2,8 @@
 
 - **Date**: 2026-10-03
 - **Status**: 已接受
-- **Amends**: [ADR-0014](0014-task-system-v2.md) §5 的「跨 workspace 的拆分按 `agent:find-usages` 的受影响 workspace 决定」一行——拆分与派发不再由仓库内的 agent 承担，改由编排层决定
-- **Relates to**: [ADR-0018](0018-task-state-in-tmpdir.md)（task state 落点与可丢失定位，与本 ADR 无冲突）
+- **Amends**: [ADR-0014](./0014-task-system-v2.md) §5 的「跨 workspace 的拆分按 `agent:find-usages` 的受影响 workspace 决定」一行——拆分与派发不再由仓库内的 agent 承担，改由编排层决定
+- **Relates to**: [ADR-0018](./0018-task-state-in-tmpdir.md)（task state 落点与可丢失定位，与本 ADR 无冲突）
 
 ## 背景
 
@@ -47,7 +47,7 @@ T0 必须 review 的要求不变，形态改变：编排层为 review 开一条�
 
 编排层的实现、角色契约与派发协议留在 herdr-projects 侧，不进本仓版本控制。仓库文档只写它承担的职责与它交付到仓库边界上的那几个值（worktree 路径、base SHA、owner 标识），不复制它的实现。
 
-同时明确不复活的清单：角色契约（Manager/Supervisor/Reviewer 等）、Handoff 模板、pane 时序、执行体启动参数，以及已删除 ADR 的编号。ADR 编号不复用——0010/0011/0015/0016/0017/0019/0020 永久空缺，此后 0021 与 0022 被依次使用，其中 0022（发布通道形态）已于 2026-10-06 整篇删除、编号一并永久空缺，下一个可用编号是 0023。列这份清单是为了不让它们被当成待办重新写回来，指向它们的内容仍然只留在 `6d7e1694` 的 diff 与 changeset 里，0022 则留在删除它的那次 commit 里。（2026-10-07 注记：0023 已被 [ADR-0023](0023-layout-exposes-derived-mobile-viewport-state.md) 使用，此后的下一个可用编号是 0024。）
+同时明确不复活的清单：角色契约（Manager/Supervisor/Reviewer 等）、Handoff 模板、pane 时序、执行体启动参数，以及已删除 ADR 的编号。ADR 编号不复用——0010/0011/0015/0016/0017/0019/0020 永久空缺，此后 0021 与 0022 被依次使用，其中 0022（发布通道形态）已于 2026-10-06 整篇删除、编号一并永久空缺，下一个可用编号是 0023。列这份清单是为了不让它们被当成待办重新写回来，指向它们的内容仍然只留在 `6d7e1694` 的 diff 与 changeset 里，0022 则留在删除它的那次 commit 里。（2026-10-07 注记：0023 已被 [ADR-0023](./0023-layout-exposes-derived-mobile-viewport-state.md) 使用，此后的下一个可用编号是 0024。）
 
 ## 为什么不让仓库继续自己拆分
 
@@ -70,4 +70,4 @@ T0 必须 review 的要求不变，形态改变：编排层为 review 开一条�
 - 仓库的文档面更小，但多了一份外部依赖：不在 herdr-projects 侧的人无法从本仓文档得知一条 task 是怎么被拆出来和派下去的。这是有意接受的——这份信息在编排层才是真相，把它复制进仓库只会得到第二份会过期的副本。
 - 门禁强度不变。拆分权移出仓库不降低任何一条 task 内部的严格程度，因为级别判据本身没有被放宽，被删的那一项从来就不是影响面判据（见 §2）。
 - `agent:task` 的全部子命令语义与当时的 task CLI 实现**一字未改**。这是本 ADR 存在的意义所在：编排层换了，仓库的门禁必须是同一个。（2026-10-19 注记：task CLI 已迁出根 `scripts/` 并收敛为 task-ledger skill，见 ADR-0028（纯文本）；本条只剩历史意义。）
-- 已删除的七篇编排 ADR 仍在 [ADR-0014](0014-task-system-v2.md) 与 [ADR-0012](0012-instruction-risk-tiering-and-pre-authorized-operations.md) 的头部注记里以「已删除」形态被引用，本 ADR 是这条注记的延续，不是它们的替代。
+- 已删除的七篇编排 ADR 仍在 [ADR-0014](./0014-task-system-v2.md) 与 [ADR-0012](./0012-instruction-risk-tiering-and-pre-authorized-operations.md) 的头部注记里以「已删除」形态被引用，本 ADR 是这条注记的延续，不是它们的替代。

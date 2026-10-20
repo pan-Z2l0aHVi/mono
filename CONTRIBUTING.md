@@ -1,6 +1,6 @@
 # 贡献指南
 
-本文件面向贡献者，覆盖环境准备、开发、测试、代码质量与提交。Agent 的任务流程以 [`AGENTS.md`](AGENTS.md) 为入口，不在此重复。工具链版本与命令面分别以 `.mise.toml`、根 `package.json` 和各包 README 为准。
+本文件面向贡献者，覆盖环境准备、开发、测试、代码质量与提交。Agent 的任务流程以 [`AGENTS.md`](./AGENTS.md) 为入口，不在此重复。工具链版本与命令面分别以 `.mise.toml`、根 `package.json` 和各包 README 为准。
 
 ## 起步
 

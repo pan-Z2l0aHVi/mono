@@ -2,7 +2,7 @@
 
 - **Date**: 2026-10-07
 - **Status**: 已接受
-- **Relates to**: [ADR-0005](0005-web-ui-component-architecture.md)（三面 API 与事件模型）、[ADR-0006](0006-web-ui-composition-rendering-architecture.md)（`resolved-appearance` 的派生输出先例与 @lit/context 组合模式）
+- **Relates to**: [ADR-0005](./0005-web-ui-component-architecture.md)（三面 API 与事件模型）、[ADR-0006](./0006-web-ui-composition-rendering-architecture.md)（`resolved-appearance` 的派生输出先例与 @lit/context 组合模式）
 
 ## 背景
 
@@ -29,7 +29,7 @@ issue #195 修好了「桌面的折叠偏好泄漏进移动端 drawer」，但�
 
 它是**派生输出，不是第二个输入**：组件独占写入；property 只读（赋值不生效，严格模式下抛错），写 attribute 在同一次 attribute reaction 内被恢复（值也归位成组件自己写的空串），两种写法都不派发事件。`mobile-change` 每次跨断点派发一次，元素在窄视口挂载时连接那一刻的求值也算一次。
 
-形态沿 [ADR-0006](0006-web-ui-composition-rendering-architecture.md) 里 `resolved-appearance` 的先例：那个属性同样是只读派生、由组件独占写入、外部改动被恢复的对外状态，区别只是 `mobile` 是布尔且带一个变化事件。
+形态沿 [ADR-0006](./0006-web-ui-composition-rendering-architecture.md) 里 `resolved-appearance` 的先例：那个属性同样是只读派生、由组件独占写入、外部改动被恢复的对外状态，区别只是 `mobile` 是布尔且带一个变化事件。
 
 **消费侧的时序有框架差异，且是实测出来的**：layout 自己在 microtask 里重渲染，Vue 在模板里绑 `@mobile-change` 即可（监听挂在插入之前，flush 也在 microtask，早于 layout 的更新）；React 必须用 ref + `useLayoutEffect` 先读后订阅、并用 `flushSync` 回写——React 对 DOM 监听里的 setState 走 scheduler 宏任务，否则每次跨进移动端都会留下一帧「drawer 已按新状态渲染、consumer 的 sidebar-width 还是桌面值」（本仓 React demo 修复前实测 2/221 帧，修复后 0）。这两个用法写进了 README（中英）。
 

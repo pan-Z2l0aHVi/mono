@@ -36,7 +36,7 @@
 
 - Workspace 只有 `apps/**` 和 `packages/**` 两类；版本尽量走 workspace `catalog`。
 - `packages/browser-kit`、`deps-reload`、`js-kit`、`unplugin-web-components` 与 `web-ui` 是公开 npm 包；`test-kit`（测试基础设施）、`tsconfig`（配置 profiles）和 `md-to-comp`（构建期 Vite 插件引擎）是 workspace 内部私有包。私有包仍参与 Changesets 版本计算，发布边界见 [`docs/agents/release.md`](docs/agents/release.md)。
-- 自撰 agent skills 不走 npm，只在 GitHub 分发；实体在 [`skills/`](skills)，说明见 [`skills/README.md`](skills/README.md)。
+- 自撰 agent skills 不走 npm，只在 GitHub 分发；实体在 [`skills/`](./skills)，说明见 [`skills/README.md`](skills/README.md)。
 - `apps/*` 都是 `private` 的集成或交付应用，不是公共 API 的权威来源。
 - [`apps/interweave/frontend`](apps/interweave/frontend) 是独立 `private` workspace，属 Wails 前端集成面；Go host 在 [`apps/interweave`](apps/interweave)。
 
