@@ -361,7 +361,7 @@ describe('example-doc（React 面 / 真实浏览器）', () => {
     const rows = sectionRows(container, '返回 handle')
 
     expect(rows.map(cells => cells[0])).toEqual(handle.rows.map(row => row[0]))
-    // 句柄上的方法归 ### Methods，这一节只记只读成员——同一件事不在两节里各写一遍。
+    // handle上的方法归 ### Methods，这一节只记只读成员——同一件事不在两节里各写一遍。
     expect(rows.map(cells => cells[0])).toEqual(['index', 'scale', 'images', 'closed'])
     expect(sectionHeaders(container, '返回 handle')).toEqual(['名称', '说明', '类型'])
     expect(cellOf(rows, handle, 'closed', '类型')).toBe('Promise<void>')

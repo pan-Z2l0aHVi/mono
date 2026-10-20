@@ -70,7 +70,7 @@ const BACKDROP_TAP_DISTANCE = 10
  * 判据是「这个元素自己就代表一次用户操作」，分三类：
  *   - 原生可交互元素与原生可点容器（button / input / label / a[href] / summary …）
  *   - 显式可编辑（contenteditable）
- *   - 交互语义 role（组件库自绘的 checkbox、tab、menuitem 等没有原生 label）
+ *   - 交互语义 role（组件库自绘的 checkbox、tab、menuitem 等没有原生 tag）
  * 另加「作者显式给了可聚焦 tabindex」：自定义控件常只靠 tabindex 暴露可操作性。
  *
  * 方向是**保守让开**：判不出来就让开。让开的代价是那一小块起不了拖（用户多点一下），

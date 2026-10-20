@@ -42,7 +42,7 @@ export * from '@/components/tooltip'
 export type { WebUiEvent, WebUiEventName } from '@/types/utils'
 
 // 从各组件模块的 HTMLElementTagNameMap 全局声明派生全部 web-ui tag 映射。
-// 框架类型适配器（React/Vue）通过 mapped type 生成组件 label，无需手写组件清单。
+// 框架类型适配器（React/Vue）通过 mapped type 生成组件 tag，无需手写组件清单。
 export type WebUiElementMap = {
   [K in keyof HTMLElementTagNameMap as K extends `web-ui-${string}` ? K : never]: HTMLElementTagNameMap[K]
 }

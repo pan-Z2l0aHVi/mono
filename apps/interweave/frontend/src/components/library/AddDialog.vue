@@ -133,7 +133,7 @@ function closePendingImagePreview() {
 
 function openImagePreview(item: LibraryQueueItem, event: Event) {
   if (!isImagePreviewItem(item)) return
-  // imagePreview 在打开时复制 images 且句柄不支持替换；预览作为顶层模态阻止底层队列操作，
+  // imagePreview 在打开时复制 images 且handle不支持替换；预览作为顶层模态阻止底层队列操作，
   // 因此本次使用快照，关闭后的下一次打开再从最新队列重建集合。
   const entries = props.queue.flatMap(candidate =>
     isImagePreviewItem(candidate) ? [{ item: candidate, image: { src: candidate.mediaUrl, alt: candidate.title } }] : []

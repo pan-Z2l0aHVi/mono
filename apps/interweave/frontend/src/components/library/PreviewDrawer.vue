@@ -114,7 +114,7 @@ function handleOpenChange(event: WebUiEvent<WebUiDrawer, 'open-change'>) {
 
     content-padding 跟着回到 drawer 默认的 20px，不归零：它同时是拖拽条中线的来源
     （--wui-internal-drag-bar-center = max(padding/2, 厚度/2+4px)），归零时中线被 6px 下限
-    兜住，4px 的胶囊会压在 panel 内缘上，读起来像边框而不是把手。20px 让胶囊落在 8px 处，
+    兜住，4px 的胶囊会压在 panel 内缘上，读起来像边框而不是drag bar。20px 让胶囊落在 8px 处，
     稳稳待在 32px drag zone 之内。代价是网页预览从满铺变成带一圈白框的视口——这个取舍得认。
   -->
   <web-ui-drawer

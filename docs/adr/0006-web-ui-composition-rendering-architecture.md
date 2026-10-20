@@ -182,8 +182,8 @@ group 成员间距。显式覆盖 group token 本身仍然优先（嵌入方未�
 「哪一层正开着」由 `src/shared/overlay/open-overlay.ts` 独占，组件不再各自监听 Escape。合并前由三个模块分担同一件事（逻辑父子树、Escape 仲裁、帧事务失效），不变量没有主人，8 个 overlay 组件各自把它拼成三步登记协议。
 
 - **唯一仲裁者**：document 捕获阶段监听 keydown，按「逻辑组合树下的最内层」归属一次 Escape，然后 `preventDefault()` + `stopPropagation()`。`preventDefault()` 同时压掉原生 `<dialog>` 的 cancel，因此 dialog / drawer / image-preview 的原生机制也由它统一接管——三者都必须自己登记，否则原生 cancel 被压掉后它们既不在候选里、也等不到兜底
-- **身份是句柄而非 panel**：`claim(panel)` 返回会话句柄，`release()` 幂等——调用方不必回忆当初传了哪个 panel。**登记即开启**，开启状态是声明而非询问，仲裁时不再回调宿主问 `isOpen()` / `isEscapeCloseEnabled()`；宿主除 `requestClose()` 外只再提供一个 `isConnected()`，且只被惰性回收读取——读 DOM 连接状态不是询问「我开着吗」
-- **两种作用域分离**：实例作用域（`claim` / `scheduleFrame` / `invalidate` / `suspend` / `resume`）跨开合与断连存活；会话作用域（`setInert` / `adopt` / `contains` / `containsEvent` / `hasFocusWithin` / `release`）与一次开启同寿命。帧事务不能压进会话句柄，否则 `release()` 会误杀事务
+- **身份是handle而非 panel**：`claim(panel)` 返回会话handle，`release()` 幂等——调用方不必回忆当初传了哪个 panel。**登记即开启**，开启状态是声明而非询问，仲裁时不再回调宿主问 `isOpen()` / `isEscapeCloseEnabled()`；宿主除 `requestClose()` 外只再提供一个 `isConnected()`，且只被惰性回收读取——读 DOM 连接状态不是询问「我开着吗」
+- **两种作用域分离**：实例作用域（`claim` / `scheduleFrame` / `invalidate` / `suspend` / `resume`）跨开合与断连存活；会话作用域（`setInert` / `adopt` / `contains` / `containsEvent` / `hasFocusWithin` / `release`）与一次开启同寿命。帧事务不能压进会话handle，否则 `release()` 会误杀事务
 - **「暂时不可关闭」只有一个通道**：`handle.setInert(boolean)`。静态策略（`no-escape-close`）与瞬时状态（drawer 拖拽中）都走它，不设第三个仲裁枚举值——属性可在开启期间改写，claim 时冻结的枚举会随属性切换而失效
 - **惰性与会话同 lifetime**：新 claim 出来的层一律非惰性，因此「重新 claim」的路径（`anchored-panel.reconfigure`、同一 panel 重复 `open()`）之后必须按当前状态重推一次。这一步承重与否取决于该组件在 reconfigure 后是否会渲染：`updated()` 里每次渲染都同步的（select / autocomplete）会把紧随 claim 的那一行掩盖成防御性备份，而 `reconfigure` 不引发渲染的（popover）必须自己重推——两种形态都有判别锁。这是把静态策略做成动态通道的代价，也是该通道唯一需要调用方记住的义务
 - **只表达两件真事**：`arbitration: 'none'` 表示「在树里但不参与仲裁」（tooltip）；多级 submenu 用 `handle.adopt(panel)` 显式指名父级，因为 portal panel 与宿主物理分离，祖先链推不出组合关系

@@ -14,7 +14,7 @@ const createButton = (text = ''): WebUiButton => {
 }
 
 /**
- * 只读公开渲染面：spinner 是 shadow 内渲染的 web-ui-icon（公开组件 label），
+ * 只读公开渲染面：spinner 是 shadow 内渲染的 web-ui-icon（公开组件 tag），
  * 默认 slot 用于断言"消费者内容是否被投影"。不依赖内部 class。
  */
 const parts = (el: WebUiButton) => ({

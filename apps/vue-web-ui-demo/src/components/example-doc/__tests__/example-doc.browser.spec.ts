@@ -2,7 +2,7 @@ import '@/assets/global.css'
 import '@/generated/examples.css'
 // 同理：layout 的默认值断言直接建元素，得把组件模块拉进来才会升级。
 import '@greypan/web-ui/components/layout'
-// 主题宿主得自己注册：本文件里没有 `<web-ui-theme>` 的模板用法，unplugin 的注入扫不到这个 label。
+// 主题宿主得自己注册：本文件里没有 `<web-ui-theme>` 的模板用法，unplugin 的注入扫不到这个 tag。
 import '@greypan/web-ui/components/theme'
 
 import type { WebUiLayout, WebUiSegmented, WebUiSegmentedTrigger, WebUiSlider } from '@greypan/web-ui'
@@ -127,7 +127,7 @@ async function mountDemos(element: HTMLElement) {
 function sliderIn(element: HTMLElement, title: string) {
   const host = sample(element, title).querySelector<WebUiSlider>('web-ui-slider')
   if (!host) throw new Error(`示例「${title}」没有渲染出 web-ui-slider`)
-  // 影子树里有 role="slider" = 元素真的被注册升级过，不是留着未知 label 的空壳。
+  // 影子树里有 role="slider" = 元素真的被注册升级过，不是留着未知 tag 的空壳。
   if (!host.shadowRoot?.querySelector('[role="slider"]')) throw new Error(`示例「${title}」的 slider 没有升级`)
   return host
 }
@@ -358,7 +358,7 @@ describe('example-doc（Vue 面 / 真实浏览器）', () => {
     const rows = rowsOf(element, '返回 handle')
 
     expect(rows.map(cells => cells[0])).toEqual(handle.rows.map(row => row[0]))
-    // 句柄上的方法归 ### Methods，这一节只记只读成员——同一件事不在两节里各写一遍。
+    // handle上的方法归 ### Methods，这一节只记只读成员——同一件事不在两节里各写一遍。
     expect(rows.map(cells => cells[0])).toEqual(['index', 'scale', 'images', 'closed'])
     expect(headersOf(element, '返回 handle')).toEqual(['名称', '说明', '类型'])
     expect(cellOf(rows, handle, 'closed', '类型')).toBe('Promise<void>')

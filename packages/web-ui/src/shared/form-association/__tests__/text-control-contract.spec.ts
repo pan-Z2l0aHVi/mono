@@ -21,7 +21,7 @@ type TextControl = HTMLElement & { updateComplete: Promise<unknown>; value: stri
 interface TextControlSpec {
   tag: string
   label: string
-  /** shadow 中承载用户输入的原生控件 label */
+  /** shadow 中承载用户输入的原生控件 tag */
   native: 'input' | 'textarea'
   /** value 默认值的可读描述（用于标题） */
   defaultLabel: string

@@ -58,7 +58,7 @@ const handleCommands: { label: string; run: (handle: ImagePreviewHandle) => void
   { label: 'Close', run: handle => handle.close() }
 ]
 
-// 句柄是唯一的控制入口；保持引用后既可以驱动它，也能读取 index / scale。
+// handle是唯一的控制入口；保持引用后既可以驱动它，也能读取 index / scale。
 const activeHandle = ref<ImagePreviewHandle>()
 const statusText = ref('Not open')
 let statusTimer: ReturnType<typeof setInterval> | undefined
@@ -76,7 +76,7 @@ function stopTracking() {
   statusTimer = undefined
 }
 
-// 预览内部的滚轮 / 双击缩放不会回调外部，因此轮询句柄让 panel 保持同步。
+// 预览内部的滚轮 / 双击缩放不会回调外部，因此轮询handle让 panel 保持同步。
 function trackHandle(handle: ImagePreviewHandle) {
   stopTracking()
   activeHandle.value = handle
@@ -192,7 +192,7 @@ onBeforeUnmount(() => {
   <div>
     <h1>ImagePreview image preview</h1>
     <p class="mb-6 text-sm text-gray-500">
-      命令式 overlay 组件，没有声明式 label 契约：只能通过
+      命令式 overlay 组件，没有声明式 tag 契约：只能通过
       <code>imagePreview()</code>and control it through the returned handle. It mounts into the nearest<code
         >web-ui-theme</code
       >
@@ -298,7 +298,7 @@ onBeforeUnmount(() => {
 
     <h2>Handle control</h2>
     <p class="mb-3 text-sm text-gray-500">
-      句柄暴露 <code>index</code> / <code>scale</code> / <code>images</code> /
+      handle暴露 <code>index</code> / <code>scale</code> / <code>images</code> /
       <code>closed</code> 与全部控制方法，可以据此实现自己的 trigger 和状态 panel。
     </p>
     <div class="mb-3 flex flex-wrap gap-2">
