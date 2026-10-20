@@ -7,8 +7,8 @@
 
 `apps/interweave/backend/` 按能力边界组织为四个一级模块：
 
-- `library/`：Interweave 产品能力。拥有 Resource、Source、语义标签、派生 Map 及其业务规则；SQLite 持久化属于此模块的内部实现
-- `native/`：受控的桌面操作系统能力（文件选择、打开本地或外部目标、系统对话框）
+- `library/`：Interweave 产品能力。拥有 Resource、Source、语义 tag、派生 Map 及其业务规则；SQLite 持久化属于此模块的内部实现
+- `native/`：受控的桌面操作系统能力（文件选择、打开本地或外部目标、系统 dialog）
 - `remote/`：Go 侧出站 HTTP 能力（URL 元数据读取及未来业务 API client）
 - `internal/`：仅在后端多个模块之间复用的、与 Interweave 产品无关的 Go 工具
 
@@ -30,7 +30,7 @@
 
 ### core 包
 
-承载产品规则与编排：Resource/Source/Tag/Map 的写入时序与事务边界、URL 元数据抓取与超时、`available` 判定、Source 基数与首选回退等不变量、标签同名复用与幂等、输入规范化。`core` 不感知 Wails 或前端。
+承载产品规则与编排：Resource/Source/Tag/Map 的写入时序与事务边界、URL 元数据抓取与超时、`available` 判定、Source 基数与首选回退等不变量、tag 同名复用与幂等、输入规范化。`core` 不感知 Wails 或前端。
 
 - `core` 领域类型以 `storage` 模型类型别名暴露，并新增装配视图（`ResourceView`/`GlobalMap`/`LocalMap`）
 - `core` 定义哨兵错误，其 Error() 文案即前端可见文案；service 透传

@@ -51,7 +51,7 @@ describe('defineLastWords 测试', () => {
   })
 
   it('页面转入后台时立刻冲刷积压数据', async () => {
-    // 移动端切走标签页即回收页面：等到 batch 窗口到期，数据就随页面一起没了。
+    // 移动端切走 tab 即回收页面：等到 batch 窗口到期，数据就随页面一起没了。
     // visibilitychange 是 unload 之外唯一还来得及发请求的时机。
     const tracker = defineTracker({ url: 'https://example.com', transport })
       .use(defineBatchTrack())

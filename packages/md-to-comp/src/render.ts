@@ -2,7 +2,7 @@ import type { FenceFlavor } from './highlight'
 
 /**
  * API 表一列渲染成什么：`name` 是行的身份（首列）、`html` 是富文本说明（次列），其余列都是普通值列。
- * 形状由列的位置定，标签由配置给，所以渲染端不必认识任何一节叫什么。
+ * 形状由列的位置定，label 由配置给，所以渲染端不必认识任何一节叫什么。
  */
 export type ApiColumnKind = 'name' | 'code' | 'html'
 

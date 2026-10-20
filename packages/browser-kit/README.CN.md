@@ -6,7 +6,7 @@
 
 ## 功能
 
-- **Storage**：`defineLocal`/`defineSession` 支持命名空间、TTL 过期、跨标签页同步
+- **Storage**：`defineLocal`/`defineSession` 支持命名空间、TTL 过期、跨 tab 同步
 - **Tracker**：数据埋点上报，支持批量聚合、页面错误收集、离线恢复、临终遗言
 - **History Nav**：Navigation API 只读子集，跟踪前进/后退可用性（`defineHistoryNav`）
 - **Env**：17 个环境检测标志（微信、钉钉、PWA、移动端等）
@@ -45,7 +45,7 @@ storage.get('user') // { name: 'Alice' }
 // TTL（1 小时）
 storage.set('token', 'abc123', 3600_000)
 
-// 监听跨标签页变更
+// 监听跨 tab 变更
 const unwatch = storage.watch('user', (newVal, oldVal) => {
   console.log('user changed', newVal, oldVal)
 })
@@ -76,7 +76,7 @@ const tracker = defineTracker({ url: '/api/track' })
 tracker.track({ event: 'page_view', path: '/' })
 ```
 
-完整选项表（含 `transport` 与 `transform`）、flush/outbox 语义与 page-error 事件契约见 [`src/tracker/README.md`](./src/tracker/README.md)。
+完整 option 表（含 `transport` 与 `transform`）、flush/outbox 语义与 page-error 事件契约见 [`src/tracker/README.md`](./src/tracker/README.md)。
 
 ## API
 
@@ -88,7 +88,7 @@ tracker.track({ event: 'page_view', path: '/' })
 | ----------- | -------- | ------ | ---------------- |
 | `namespace` | `string` | `''`   | 存储命名空间前缀 |
 
-TTL 语义、`watch` 跨标签页行为与存储降级细节见 [`src/storage/README.md`](./src/storage/README.md)。
+TTL 语义、`watch` 跨 tab 行为与存储降级细节见 [`src/storage/README.md`](./src/storage/README.md)。
 
 ### `local` / `session`
 
@@ -198,21 +198,21 @@ TTL 语义、`watch` 跨标签页行为与存储降级细节见 [`src/storage/RE
 
 将文本或 Blob 写入系统剪贴板。支持 text/plain 和 text/html。
 
-| 参数      | 类型                                   | 默认值 | 说明         |
-| --------- | -------------------------------------- | ------ | ------------ |
-| `content` | `string \| Blob`                       | -      | 待复制的内容 |
-| `options` | `{ format?: string; debug?: boolean }` | -      | 剪贴板选项   |
+| 参数      | 类型                                   | 默认值 | 说明          |
+| --------- | -------------------------------------- | ------ | ------------- |
+| `content` | `string \| Blob`                       | -      | 待复制的内容  |
+| `options` | `{ format?: string; debug?: boolean }` | -      | 剪贴板 option |
 
 ### `on(element, event, handler, options?)`
 
 添加事件监听器，断开连接时自动清理。
 
-| 参数      | 类型                      | 默认值 | 说明         |
-| --------- | ------------------------- | ------ | ------------ |
-| `element` | `EventTarget`             | -      | 目标元素     |
-| `event`   | `string`                  | -      | 事件名称     |
-| `handler` | `Function`                | -      | 事件处理函数 |
-| `options` | `AddEventListenerOptions` | -      | 监听器选项   |
+| 参数      | 类型                      | 默认值 | 说明          |
+| --------- | ------------------------- | ------ | ------------- |
+| `element` | `EventTarget`             | -      | 目标元素      |
+| `event`   | `string`                  | -      | 事件名称      |
+| `handler` | `Function`                | -      | 事件处理函数  |
+| `options` | `AddEventListenerOptions` | -      | 监听器 option |
 
 ### `off(element, event, handler, options?)`
 

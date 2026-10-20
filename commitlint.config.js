@@ -93,7 +93,7 @@ export default {
     ],
     enableMultipleScopes: true,
     // 清单外的名字（跨包协调的临时 scope、尚未登记的目录）走「自定义输入 scope」。
-    // 注意多选模式下选自定义项会替换掉已勾选项。
+    // 注意多选模式下选自定义项会替换掉已勾 option。
     allowCustomScopes: true,
     customScopesAlias: '自定义输入 scope',
     skipQuestions: ['body', 'footer', 'footerPrefix', 'breaking'],

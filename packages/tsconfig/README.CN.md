@@ -17,7 +17,7 @@
 
 ## 为什么需要分层？
 
-TypeScript 的 `lib` 选项是按运行环境分组的，而非按项目类型：
+TypeScript 的 `lib` option 是按运行环境分组的，而非按项目类型：
 
 - `ESNext` — 纯 ECMAScript（不含 `setTimeout`、`EventTarget`、`URL`）
 - `webworker` — 无 DOM，含纯运行时 API（有 `setTimeout`/`EventTarget`/`URL`，也有 `postMessage`/`Cache`）

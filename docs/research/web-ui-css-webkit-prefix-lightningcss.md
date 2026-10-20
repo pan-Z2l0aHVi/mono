@@ -50,7 +50,7 @@ if (resolved.transformer === 'lightningcss') {
 ## 3. lightningcss 前缀能力（源码/README 事实，1.33.0）
 
 - README：「Vendor prefixing – Lightning CSS accepts a list of browser targets, and automatically adds (and removes) vendor prefixes.」「Browserslist configuration – … opt-in browserslist configuration discovery …」。
-- `TransformOptions`（`node/index.d.ts`）只有 `targets?: Targets`、`include?: number`、`exclude?: number`，**没有 `browserslist` 选项**；要接 browserslist 必须用 `browserslistToTargets(browserslist(...))` 转成 `Targets`。
+- `TransformOptions`（`node/index.d.ts`）只有 `targets?: Targets`、`include?: number`、`exclude?: number`，**没有 `browserslist` option**；要接 browserslist 必须用 `browserslistToTargets(browserslist(...))` 转成 `Targets`。
 - `Features.VendorPrefixes = 262144`；默认 include 开启（实测：设 targets 即出前缀）。
 
 ## 4. 实测（2026-09-14，本机 darwin-arm64）

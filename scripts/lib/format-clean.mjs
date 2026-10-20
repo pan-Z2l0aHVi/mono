@@ -65,7 +65,7 @@ export async function run({ root, env = process.env }) {
   const stylelintFiles = []
   const goFiles = []
   for (const file of staged) {
-    // 两类名字先 fail-closed：以 - 开头的路径会被工具当成开关，被 git C-引号化的路径在磁盘上不存在。
+    // 两类名字先 fail-closed：以 - 开头的路径会被工具当成 switch，被 git C-引号化的路径在磁盘上不存在。
     if (file.startsWith('-'))
       throw new Error(
         `cannot run: staged path '${file}' starts with '-' and would be parsed\n` +

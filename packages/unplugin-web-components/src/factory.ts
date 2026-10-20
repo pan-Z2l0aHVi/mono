@@ -12,9 +12,9 @@ export interface UnpluginWebComponentsOptions {
   withStyle?: string
 }
 
-// 移除不参与元素解析的区域，避免其中的伪标签触发无效导入。替换顺序有依赖：
-// 先剥带引号属性值——其中的尖括号是属性文本而非标签，若不先移除，属性值里的 `<script>`
-// 等字面量会被当作 RAWTEXT 起点、吞掉其后直到 EOF 的真实组件标签；再剥 RAWTEXT/字符数据
+// 移除不参与元素解析的区域，避免其中的伪 label 触发无效导入。替换顺序有依赖：
+// 先剥带引号属性值——其中的尖括号是属性文本而非 label，若不先移除，属性值里的 `<script>`
+// 等字面量会被当作 RAWTEXT 起点、吞掉其后直到 EOF 的真实组件 label；再剥 RAWTEXT/字符数据
 // 元素整体（script/style/xmp/iframe/noembed/noframes/noscript 原始文本，title/textarea
 // 字符数据）；最后剥注释。未闭合区域通常匹配到 EOF（注释内伪 RAWTEXT 起点是已知限制）。
 // 其余标记（含 <template> 内容）保留。
@@ -73,7 +73,7 @@ export const factory = (options: UnpluginWebComponentsOptions): UnpluginOptions 
     // 用 matchAll 而非共享 g-flag 正则 + exec：避免跨 transform 调用残留 lastIndex，
     // 使同一正则被复用多次时匹配起点漂移
     for (const match of code.matchAll(kebabReg)) {
-      // HTML/Vue 模板标签名大小写不敏感，捕获名统一小写，避免导入路径携带大小写
+      // HTML/Vue 模板 label 名大小写不敏感，捕获名统一小写，避免导入路径携带大小写
       // （如 <web-ui-Button> 归一到 components/button，在大小写敏感文件系统上才可解析）
       dirs.add(match[1].toLowerCase())
     }
@@ -107,7 +107,7 @@ export const factory = (options: UnpluginWebComponentsOptions): UnpluginOptions 
     transform(code: string, id: string) {
       if (id.includes('node_modules')) return
       // 用真实匹配用的正则做预筛，而不是大小写敏感的子串检查：模块源码里的大写/混合大小写
-      // kebab 标签（<WEB-UI-BUTTON>）contains('web-ui') 为假，会被预筛挡在 kebabReg 之前。
+      // kebab label（<WEB-UI-BUTTON>）contains('web-ui') 为假，会被预筛挡在 kebabReg 之前。
       // String#search 对 g-flag 正则不写 lastIndex，预筛不会污染 makeImports 的 matchAll 起点
       if (code.search(kebabReg) < 0 && code.search(pascalReg) < 0) return
       if (!/\.(vue|jsx|tsx)$/.test(id)) return
@@ -131,9 +131,9 @@ export const factory = (options: UnpluginWebComponentsOptions): UnpluginOptions 
       transformIndexHtml: {
         order: 'pre',
         handler: (html: string) => {
-          // HTML 标签名大小写不敏感，解析器统一小写化：先把可扫描区域整体小写，
+          // HTML label 名大小写不敏感，解析器统一小写化：先把可扫描区域整体小写，
           // 使 <WEB-UI-BUTTON>/<web-ui-Button> 等变体归一到 web-ui-button 并匹配 fast-path；
-          // 驼峰/帕斯卡命名（<WebUiButton>）小写后是另一个标签名，仍不识别
+          // 驼峰/帕斯卡命名（<WebUiButton>）小写后是另一个 label 名，仍不识别
           const markup = stripHtmlNoise(html).toLowerCase()
           if (!markup.includes(kebabTagPrefix)) return html
           const imports = makeImports(markup, false)

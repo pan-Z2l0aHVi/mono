@@ -26,7 +26,7 @@
 release/260909 worktree 的 select diff（未提交，本调研已纳入需求面）：
 
 ```ts
-// 自定义 trigger 必须留在宿主内，不能随 options 迁入 portal 面板
+// 自定义 trigger 必须留在宿主内，不能随 options 迁入 portal panel
 portal.moveContent(
   Array.from(this.children).filter(child => child.slot !== 'trigger'),
   content
@@ -34,7 +34,7 @@ portal.moveContent(
 ```
 
 | 5 | 与消费者框架 vdom 的冲突补偿：`onContentChange` MutationObserver → `scheduleRefresh`；已删除节点 `removeContent` 防关闭时「复活」 | `select/index.ts:437,589`、`select/__tests__/conditional-combo.spec.ts` | 领域（React/Vue 内建 portal 由 vdom 拥有节点，无此问题） |
-| 6 | menu 族专用形态：无 shadow 共享面板（复用容器预注入样式）；dialog 容器例外自注入；submenu 独立 overlay；关闭态 slot 属性隐藏（`context-menu-hidden` / `web-ui-menu-level-*-hidden`） | `src/shared/menu-portal/menu-portal.ts`、ADR-0033 | **领域** |
+| 6 | menu 族专用形态：无 shadow 共享 panel（复用容器预注入样式）；dialog 容器例外自注入；submenu 独立 overlay；关闭态 slot 属性隐藏（`context-menu-hidden` / `web-ui-menu-level-*-hidden`） | `src/shared/menu-portal/menu-portal.ts`、ADR-0033 | **领域** |
 | 7 | presence 进出场协调：`data-wuiPresence` 状态机（entering/open/closing）、可中断、transitionend + duration+80ms 兜底、jsdom 短路；native dialog top layer 退出动画生命周期 | `src/shared/overlay/presence.ts`、`native-dialog-presence.ts` | 领域 |
 | 8 | 与定位引擎分层：portal 只管容器与内容归属，定位由 `defineOverlay`（`@floating-ui/dom`）负责，`defineAnchoredPanel` 组合三者 | `src/shared/overlay/anchored-panel.ts`、ADR-0038 | 通用（该分层正是业界共识） |
 
@@ -48,7 +48,7 @@ ADR-0033 还约束了组件对消费者节点的写入边界（仅位置移动 +
 
 ## 3. Lit 官方生态：无 portal/overlay 原语
 
-lit.dev「Lit Labs」页列出全部 14 个 `@lit-labs` 包（scoped-registry-mixin、eleventy-plugin-lit、motion、observers、signals、ssr、testing、virtualizer、analyzer、cli、compiler、preact-signals、router 等），**无任何 portal、overlay、popup、tooltip 或浮层定位项目**。https://lit.dev/docs/libraries/labs/
+lit.dev「Lit Labs」页列出全部 14 个 `@lit-labs` 包（scoped-registry-mixin、eleventy-plugin-lit、motion、observers、signals、ssr、testing、virtualizer、analyzer、cli、compiler、preact-signals、router 等），**无任何 portal、overlay、popup、tooltip 或 overlay 定位项目**。https://lit.dev/docs/libraries/labs/
 
 ## 4. npm 独立 WC / Lit portal 库：未找到活跃维护者
 

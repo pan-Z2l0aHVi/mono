@@ -21,7 +21,7 @@ definePlugin(() => setup)
 - `definePlugin` 创建插件定义
 - `.use()` 组合额外的插件
 - `.make()` 生成最终配置好的实例
-- 选项使用 `DEFAULT_OPTIONS` + `Required<Options>` 模式
+- option 使用 `DEFAULT_OPTIONS` + `Required<Options>` 模式
 
 ## 后果
 
