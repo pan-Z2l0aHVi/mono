@@ -8,7 +8,7 @@
 `apps/interweave/backend/` 按能力边界组织为四个一级模块：
 
 - `library/`：Interweave 产品能力。拥有 Resource、Source、语义标签、派生 Map 及其业务规则；SQLite 持久化属于此模块的内部实现
-- `native/`：受控的桌面操作系统能力（文件选择、打开本地或外部目标、系统 dialog）
+- `native/`：受控的桌面操作系统能力（文件选择、打开本地或外部目标、系统对话框）
 - `remote/`：Go 侧出站 HTTP 能力（URL 元数据读取及未来业务 API client）
 - `internal/`：仅在后端多个模块之间复用的、与 Interweave 产品无关的 Go 工具
 
