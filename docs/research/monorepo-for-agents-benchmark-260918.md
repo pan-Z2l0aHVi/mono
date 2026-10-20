@@ -132,7 +132,7 @@
 
 - 两个执行体 CLI 都自带沙箱，是 dispatch flag 主动绕过了它们：`codex --yolo` 是 `--dangerously-bypass-approvals-and-sandbox -a never` 的别名（codex 0.154.0 实测）；`claude --dangerously-skip-permissions` 同理绕过权限层。
 - codex 侧最小变更为 `codex -s workspace-write -a never --add-dir <例外路径>`；本仓 reviewer 角色的 `codex --sandbox read-only -a never` 已长期在用——沙箱路径可行性已被本仓自证。
-- Claude Code 无 `--sandbox` CLI flag，但 sandboxed Bash 经 `--settings <file>` 按会话注入，支持域名级网络允许列表（强于 codex 的网络二元 switch）。
+- Claude Code 无 `--sandbox` CLI flag，但 sandboxed Bash 经 `--settings <file>` 按会话注入，支持域名级网络允许列表（强于 codex 的网络二元开关）。
 - workspace 范围之外的例外共五类：主仓 `.git`（task state 写入 `<git-common-dir>/tasks/`，freeze/verify/guard 硬性需要）、共享 turbo 缓存（当前为 `<system-temp>/greypan/turbo-cache/<repo-id>`，261018 更新；helper 按 Git common directory 计算）、pnpm 全局 store（install 需网络与 store 写入）、浏览器测试产物（Chrome/agent-browser 缓存目录）、registry + loopback 网络（dev server / vitest）。
 - 残余风险（诚实记录）：`.git` 例外意味着被攻破的 coder 仍可篡改共享 VCS 元数据（hooks/refs），workspace 级并非严格沙箱；codex 开 `network_access` 后无域名过滤，其网络隔离基本失效。若只做一侧，Claude `--settings` 路线（域名级过滤）收益最大。
 

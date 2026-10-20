@@ -7,7 +7,7 @@
 ## 功能
 
 - **自动导入**：在模板中检测到 Web Components 时自动添加导入
-- **双 label 检测**：在模块源码中支持 kebab-case（`<web-ui-button>`）和 PascalCase（`<WebUiButton>`）
+- **双 tag 检测**：在模块源码中支持 kebab-case（`<web-ui-button>`）和 PascalCase（`<WebUiButton>`）
 - **样式注入**：可选的 CSS 文件导入
 - **Vite HTML 入口**：向 `index.html` 及其他 Vite HTML 构建入口注入组件导入
 - **入口点**：仅发布 `/vite` 与 `/webpack` 子路径导出
@@ -90,7 +90,7 @@ function App() {
 
 HTML 注入说明：
 
-- HTML 中仅识别 kebab-case 自定义元素（`<web-ui-*>` → `web-ui-button`），大小写不敏感——HTML tag 名解析时统一小写化，`<WEB-UI-BUTTON>` 与 `<web-ui-Button>` 都按 `web-ui-button` 处理。驼峰命名（`<WebUiButton>`）不支持：解析器会将其归一到另一个 label（`webuibutton`）。
+- HTML 中仅识别 kebab-case 自定义元素（`<web-ui-*>` → `web-ui-button`），大小写不敏感——HTML tag 名解析时统一小写化，`<WEB-UI-BUTTON>` 与 `<web-ui-Button>` 都按 `web-ui-button` 处理。驼峰命名（`<WebUiButton>`）不支持：解析器会将其归一到另一个 tag（`webuibutton`）。
 - 跳过 HTML 注释及 RAWTEXT/RCDATA 区域（`script`、`style`、`title`、`textarea`、`iframe`、`xmp`、`noembed`、`noframes`、`noscript`），其中的伪 tag 不会产生导入。未闭合区域通常视为延伸到文件末尾；由于正则扫描无法同时模拟注释与 RAWTEXT 的 tokenizer 状态，注释内未闭合的 `<script>`/`style` 伪 tag（如 `<!-- <script> --><web-ui-button>`）可能吞掉其后的真实 tag。带引号属性值同样跳过，等号两侧允许空白——`<div data-template = "<web-ui-button>">` 不会触发导入。
 - HTML 必须经 Vite 构建（`vite build`）。`public/` 中的文件按原样提供，直接双击打开的 HTML 不会被转换。
 

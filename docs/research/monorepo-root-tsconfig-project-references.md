@@ -51,7 +51,7 @@
 ### 1.3 `tsc -b`（build mode）
 
 - 官方定位：`--build` 是 `tsc` 的**另一个入口**，更像构建编排器：找到所有被引用工程 → 判断是否 up-to-date → 按正确顺序构建过期工程。
-- 常用 switch：`--verbose`、`--dry`（只显示、不构建）、`--clean`、`--force`、`--watch`。
+- 常用 flag：`--verbose`、`--dry`（只显示、不构建）、`--clean`、`--force`、`--watch`。
 - 关键语义：**`tsc -b` 对所有工程等价于开启 `noEmitOnError`**（否则过期依赖的错误只会出现一次）。
 - 相关 option（TSConfig Reference「Projects」组）：`disableReferencedProjectLoad`、`disableSolutionSearching`、`disableSourceOfProjectReferenceRedirect`。
 - `declarationMap`：官方说明它让编辑器能**跨工程边界透明地**「Go to Definition」与 Rename。

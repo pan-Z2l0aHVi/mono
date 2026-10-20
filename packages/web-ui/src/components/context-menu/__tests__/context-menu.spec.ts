@@ -986,7 +986,7 @@ describe('WebUiContextMenu 组件', () => {
             <web-ui-dropdown-item v-if="!broken" key="openwith">打开方式</web-ui-dropdown-item>
             <web-ui-dropdown-item v-if="broken" key="recover">找回资源</web-ui-dropdown-item>
             <web-ui-dropdown-divider key="d1"></web-ui-dropdown-divider>
-            <web-ui-dropdown-item v-if="!broken" key="tags">管理 label</web-ui-dropdown-item>
+            <web-ui-dropdown-item v-if="!broken" key="tags">管理 tag</web-ui-dropdown-item>
             <web-ui-dropdown-divider v-if="!broken" key="d2"></web-ui-dropdown-divider>
             <web-ui-dropdown-item key="del">删除</web-ui-dropdown-item>
           </web-ui-context-menu>
@@ -1002,7 +1002,7 @@ describe('WebUiContextMenu 组件', () => {
         )
       }
       try {
-        const validOrder = ['预览', '打开方式', 'DIV', '管理 label', 'DIV', '删除']
+        const validOrder = ['预览', '打开方式', 'DIV', '管理 tag', 'DIV', '删除']
         const brokenOrder = ['找回资源', 'DIV', '删除']
         const waitForContentOrder = (expected: string[]) =>
           pollUntil(
@@ -1017,7 +1017,7 @@ describe('WebUiContextMenu 组件', () => {
         broken.value = true
         await waitForContentOrder(brokenOrder)
 
-        // 打开态 broken → valid：管理 label 与条件 divider 回到无条件 divider 之后
+        // 打开态 broken → valid：管理 tag 与条件 divider 回到无条件 divider 之后
         broken.value = false
         await waitForContentOrder(validOrder)
 
@@ -1043,7 +1043,7 @@ describe('WebUiContextMenu 组件', () => {
             <web-ui-dropdown-item v-if="!broken" key="b">打开方式</web-ui-dropdown-item>
             <web-ui-dropdown-item v-if="broken" key="c">找回资源</web-ui-dropdown-item>
             <web-ui-dropdown-divider key="d1"></web-ui-dropdown-divider>
-            <web-ui-dropdown-item v-if="!broken" key="e">管理 label</web-ui-dropdown-item>
+            <web-ui-dropdown-item v-if="!broken" key="e">管理 tag</web-ui-dropdown-item>
             <web-ui-dropdown-divider v-if="!broken" key="f"></web-ui-dropdown-divider>
             <web-ui-dropdown-item key="g">删除</web-ui-dropdown-item>
           </web-ui-context-menu>
@@ -1059,7 +1059,7 @@ describe('WebUiContextMenu 组件', () => {
         )
       }
       try {
-        const validItems = ['I:预览', 'I:打开方式', 'DIV', 'I:管理 label', 'DIV', 'I:删除']
+        const validItems = ['I:预览', 'I:打开方式', 'DIV', 'I:管理 tag', 'DIV', 'I:删除']
         const brokenItems = ['I:找回资源', 'DIV', 'I:删除']
         const itemOrder = () => fullOrder()
         const waitForItemOrder = (expected: string[]) =>

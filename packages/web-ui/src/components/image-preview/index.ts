@@ -105,7 +105,7 @@ const SWIPE_SETTLE_MS = 320
 
 /**
  * 图像预览的内部宿主。对外只通过 `imagePreview()` 使用，因此不导出类、
- * 不注册 `HTMLElementTagNameMap`，避免形成声明式 label 契约。
+ * 不注册 `HTMLElementTagNameMap`，避免形成声明式 tag 契约。
  *
  * 内部使用原生 `<dialog>.showModal()`，与 `<web-ui-dialog>` 共享
  * `native-dialog-presence` 与 `scroll-lock` 两个底层插件，而不是复用该组件：

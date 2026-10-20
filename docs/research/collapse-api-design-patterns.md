@@ -157,5 +157,5 @@ shadcn 是 Radix 的纯 re-export 薄封装：`apps/v4/registry/new-york-v4/ui/c
 
 1. **「Element Plus 式」的前提需要修正**：Element Plus 实际是根 + item 两组件、trigger 内置在 item，不是「单组件 + trigger/content slot」；真正符合该描述的先行者是 wa-details / vaadin-details 单元素 disclosure。
 2. **web component 生态没有一家做 Radix 式三元素拆分**。主流只有单元素 disclosure 与根 + item 两种形态；三元素拆分是 React 生态特有，其成立依赖 Context 分发与「安全卸载 children」——后者恰是 web component 做不到的（消费者 light DOM 不能由组件移除，ADR-0030 背景节第 2 点）。三元素拆分并非不可行（当前实现即是证明），但它不是任何 web component 库验证过的路线。
-3. **模式 A 在 Lit 下有结构性优势**：真 button a11y 完全可控、`closest` 嵌套归属、三态 hidden/inert、与 GroupController 基建同轨；模式 B′ 的优势是 label 更少、用法更轻，且单元素也能做对 a11y。两条路线能力上限相近，差异主要在结构惯性与基建复用。
+3. **模式 A 在 Lit 下有结构性优势**：真 button a11y 完全可控、`closest` 嵌套归属、三态 hidden/inert、与 GroupController 基建同轨；模式 B′ 的优势是标签更少、用法更轻，且单元素也能做对 a11y。两条路线能力上限相近，差异主要在结构惯性与基建复用。
 4. **当前实现已完成（测试 / demo / ADR 齐全），推翻重写的成本收益不成立**。合理演进是按 ADR-0030 预留增加 accordion：根与 GroupController 复用，每个 panel 仍是 collapse 族元素——与 Radix Collapsible→Accordion 的复用路径同构，也与 wa-accordion / sp-accordion / fluent-accordion 的根 + item 形态收敛。

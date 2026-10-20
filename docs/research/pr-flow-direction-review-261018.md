@@ -13,7 +13,7 @@
 - GitHub 的 stale approval option 会在 PR diff 变化时撤销既有审批；另一个 option 要求最近一次可审查推送由推送者之外的人批准。后者不自动撤销旧审批。目标分支改变 merge base 也可能使审批失效。PR 作者不能批准自己的 PR。因此，单人账号若开启强制人工审批，需要事先确认另有合格 reviewer，否则会把自己锁在合并门外。[ruleset 规则](https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/managing-rulesets/available-rules-for-rulesets)、[批准 PR](https://docs.github.com/en/pull-requests/how-tos/review-pull-requests/approving-a-pull-request-with-required-reviews)
 - Git 的 `pre-commit` 在提交前运行，非零退出可阻止 commit，但 `git commit --no-verify` 可绕过它。它适合快速反馈，不是远端合并的最终证明。`git add -A` 在未给 pathspec 时将整个工作树的新增、修改和删除写入 index；`git add -p` 支持只选部分 hunk。Git 默认 commit 的是 index 中内容。[githooks](https://git-scm.com/docs/githooks)、[git-add](https://git-scm.com/docs/git-add)
 - Changesets 的 FAQ 明说，不需发布的改动无需 changeset。CLI 支持 `--empty`，用途是满足要求每个 PR 有 changeset 的 CI；`status` 在包变更却无 changeset 时会退出 1。Changeset 中的包名和 semver bump 是发布意图，`version` 才据此修改版本、依赖与 changelog。由此不能把「文件命中 package 路径」直接等同于「应发版」，也不能把空声明当成实际版本判断。[Changesets FAQ](https://changesets.dev/faq)、[CLI 指南](https://changesets.dev/guide/cli)
-- GitHub 当前文档已允许特定配置下的 Copilot approving review 满足 required approval；该功能仍为 public preview，默认关闭。仓库配置中「允许 Copilot 提交 approval」与「让该 approval 计入 merge 要求」是独立 switch，还可能受组织、企业和路径范围限制。通用 required reviews 页面仍有「Copilot reviews 不计数」的旧表述，不能据此推断所有 bot 一概无效，也不能假定本仓已经开通、启用或愿意付费。[Copilot approval](https://docs.github.com/en/copilot/how-tos/use-copilot-agents/use-code-review#pull-request-approvals-from-copilot)、[Copilot 配置](https://docs.github.com/en/copilot/how-tos/copilot-on-github/set-up-copilot/configure-code-review)、[通用审批页](https://docs.github.com/en/pull-requests/how-tos/review-pull-requests/approving-a-pull-request-with-required-reviews)
+- GitHub 当前文档已允许特定配置下的 Copilot approving review 满足 required approval；该功能仍为 public preview，默认关闭。仓库配置中「允许 Copilot 提交 approval」与「让该 approval 计入 merge 要求」是独立开关，还可能受组织、企业和路径范围限制。通用 required reviews 页面仍有「Copilot reviews 不计数」的旧表述，不能据此推断所有 bot 一概无效，也不能假定本仓已经开通、启用或愿意付费。[Copilot approval](https://docs.github.com/en/copilot/how-tos/use-copilot-agents/use-code-review#pull-request-approvals-from-copilot)、[Copilot 配置](https://docs.github.com/en/copilot/how-tos/copilot-on-github/set-up-copilot/configure-code-review)、[通用审批页](https://docs.github.com/en/pull-requests/how-tos/review-pull-requests/approving-a-pull-request-with-required-reviews)
 
 ## 责任划分的工程判断
 
@@ -32,7 +32,7 @@ Changeset 判定交给知道用户可见行为和发布范围的实施者，再�
 ## 仍需本仓实证
 
 1. 当前 ruleset 到底要求哪些 check、是否要求审批、是否允许绕过、CI 是否每次在最新 SHA 运行；required workflow 有没有因路径过滤而 Pending。
-2. 单人 GitHub 账号、agent 身份和可用 reviewer 的权限；Copilot approval 的计划、企业与仓库 switch、费用和真实测试 PR 行为。
+2. 单人 GitHub 账号、agent 身份和可用 reviewer 的权限；Copilot approval 的计划、企业与仓库开关、费用和真实测试 PR 行为。
 3. 本地五项检查、相关测试和全量构建的耗时与失败分布；多少时间花在重复运行，多少缺陷只在 CI 或 review 被发现。
 4. 编排层是否已保证 worktree 独占；`$TMPDIR` 丢失或状态与 Git/PR 冲突时，当前恢复步骤是否依赖台账中不可重建的信息。
 5. 发布包、私有应用和根目录工具的真实发布策略；历史 PR 里空 changeset 与漏发版分别出现多少次。
@@ -66,4 +66,4 @@ Changeset 判定交给知道用户可见行为和发布范围的实施者，再�
 4. **用实际收益决定台账后续规模。** 若编排层依赖 owner/worktree 的占用查询，保留这部分；PR、CI、review 的状态仍以 GitHub 为准。短期 schema v1 到 v2 的兼容代码可以接受，避免把十个命令全部当成永久设计。观察重复录入、恢复失败和冲突案例后再删减，不用另一套状态机替换旧状态机。
 5. **单独重新决定空 changeset 政策。** 官方自动化指南明确介绍了允许缺省和强制声明两种方式，且不建议普遍阻断所有无 changeset 的贡献；若偏好一致声明，也支持 --empty。当前政策可以是有意选择，但需说明它防的是遗漏发布判断，代价是每个无版本影响 PR 的额外文件。不要宣称这是工具要求，也不要在本次方向审查中擅改已有发布政策。[官方自动化指南](https://changesets.dev/guide/automating)
 
-以上 1、2 是我建议当前变更合并前处理的最小收口；3 至 5 是后续取舍，不建议在没有实际需求时一并扩大重构。对自动 review 的具体产品、配额、可用 switch 或 required-check 设计，本次都未启用或实测，不能据文档存在就认定适合本仓。
+以上 1、2 是我建议当前变更合并前处理的最小收口；3 至 5 是后续取舍，不建议在没有实际需求时一并扩大重构。对自动 review 的具体产品、配额、可用开关 或 required-check 设计，本次都未启用或实测，不能据文档存在就认定适合本仓。

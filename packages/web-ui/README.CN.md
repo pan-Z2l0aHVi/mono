@@ -25,7 +25,7 @@ import '@greypan/web-ui'
 // import '@greypan/web-ui/components/button'
 ```
 
-subpath 导入只注册它点名的那个组件，页面用到的每个 label 都要单独导入。
+subpath 导入只注册它点名的那个组件，页面用到的每个 tag 都要单独导入。
 
 ```html
 <web-ui-button variant="primary">点击我</web-ui-button> <web-ui-icon .icon="${lucidePlus}"></web-ui-icon>
