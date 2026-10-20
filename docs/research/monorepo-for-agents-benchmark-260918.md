@@ -68,7 +68,7 @@
 - T0/T1/T2 状态机 + freeze/diffHash + review/approval 绑定同一 hash + `events[]` append-only（`docs/agents/workflow.md`、`scripts/task.mjs`、ADR-0014）：业界公开材料无此强度。freeze 归一化管线与 pre-commit 只留 guard 的竞态消除（ADR-0014 §4）是扎实的工程决策。
 - 浏览器证据三档 + `agent:verify check-env`（`docs/agents/runtime-verification.md`）直接把「证据不可信环境中的验证结论无效」机制化，业界未见对应物（推断：官方只有 screenshot/verify skill 层面）。
 - **没做对**：`scripts/task.mjs:407-415` 的 `verify` 只记录 agent 自报的 `name/result`，不执行命令、不校验 exit code——「done 前必须 pass」的硬 gate 建立在自报之上。业界对应物是「deterministic Stop hook / CI 实跑」（best-practices §verification）。缓解是 CI 全量兜底 + `live.clean` 与 hash 一致性检查，但「验证真的跑过且通过」在 T0/T1 本地闭环内不可证。
-- `audit:instructions` 与预算基线退役（ADR-0014、[`docs/agents/context.md`](../agents/context.md)）后，instruction 体系回归纯人工 diff review，与业界「instruction 当代码测、evals gate CI」方向相反。
+- `audit:instructions` 与预算基线退役（ADR-0014、[`docs/agents/agent-context.md`](../agents/agent-context.md)）后，instruction 体系回归纯人工 diff review，与业界「instruction 当代码测、evals gate CI」方向相反。
 
 ### 2.4 影响面/契约查询 —— 做对了
 
@@ -138,7 +138,7 @@
 
 结论：P0 成本从「评估引入隔离体系（天级以上）」修正为「改 dispatch flags + 例外清单 + 实测闭环（约 1 天）」。
 
-**勘误（260919）**：本节第 2 条「本仓 reviewer 角色的 `codex --sandbox read-only -a never` 已长期在用——沙箱路径可行性已被本仓自证」为假，据 §2.6 勘误同一条来源（`manager.md`「Dispatch permissions」把 Reviewer 列为完全访问）。本仓从未以 sandbox 参数启动过任何角色的 CLI，因此上面的「约 1 天」只有 CLI flag 存在性证据（`codex 0.154.0` 的 `--help`）支撑，缺少本仓实测闭环；成本估计降级为待验证，需要先跑一次 sandbox 化的 dispatch 再定档。另：文中 `.agents/agents/manager.md` 一类路径已于 260919 迁址到 `.agents/skills/herdr-agents/roles/`（见 [ADR-0015](../adr/0015-role-contracts-in-herdr-agents-skill.md)），本节作为当时的读取记录保留原路径。
+**勘误（260919）**：本节第 2 条「本仓 reviewer 角色的 `codex --sandbox read-only -a never` 已长期在用——沙箱路径可行性已被本仓自证」为假，据 §2.6 勘误同一条来源（`manager.md`「Dispatch permissions」把 Reviewer 列为完全访问）。本仓从未以 sandbox 参数启动过任何角色的 CLI，因此上面的「约 1 天」只有 CLI flag 存在性证据（`codex 0.154.0` 的 `--help`）支撑，缺少本仓实测闭环；成本估计降级为待验证，需要先跑一次 sandbox 化的 dispatch 再定档。另：文中 `.agents/agents/manager.md` 一类路径已于 260919 迁址到 `.agents/skills/herdr-agents/roles/`（见 ADR-0015；该 ADR 已在 45 篇合并为架构级记录时删除），本节作为当时的读取记录保留原路径。
 
 ### 4.2 「过程税」实测为轻，但遵从结论只覆盖编排者
 

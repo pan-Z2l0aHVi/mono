@@ -1,6 +1,6 @@
 # 验证选择与测试执行
 
-本文件回答两个问题：这次改动该跑哪些验证，以及那些验证怎么执行。运行时证据本身怎么取（真实浏览器、原生应用、引擎级取证、证据档位）由 [`runtime-verification.md`](runtime-verification.md) 承担；测试用例编写策略见 [`.agents/skills/test-authoring/SKILL.md`](../../.agents/skills/test-authoring/SKILL.md)；受版本控制的生成物与其完成证据见 `build.md`。
+本文件回答两个问题：这次改动该跑哪些验证，以及那些验证怎么执行。运行时证据本身怎么取（真实浏览器、原生应用、引擎级取证、证据档位）由 [`runtime-verification.md`](./runtime-verification.md) 承担；测试用例编写策略见 [`.agents/skills/test-authoring/SKILL.md`](../../.agents/skills/test-authoring/SKILL.md)；受版本控制的生成物清单见 [`generated-artifacts.md`](./generated-artifacts.md)，其完成证据见 build.md。
 
 ## 从变更路径到验证计划
 
@@ -16,7 +16,7 @@ PR CI 对当前 base/head 复检 required checks，不替代实施阶段已要�
 
 各包的具体测试环境以包配置和测试文件为准：`web-ui` 用 jsdom 覆盖宿主 API、属性/事件、渲染与非浏览器 DOM 语义，用 browser mode 覆盖 jsdom 无法忠实实现的浏览器原生行为；两个 demo 各有 jsdom 接线层与浏览器层，后者用真实视口验证对齐与几何。`browser-kit` 通过 `@greypan/test-kit` 使用 MSW；共享浏览器状态要求相关 spec 保持独立，除非移除了共享状态，否则不要重新启用文件并行。
 
-Demo 的网格列数基线由各自的 `grid-columns.browser.spec.*` 钉住，守的是 Tailwind v4 自定义变体的排序陷阱；具体视口与列数见 spec。生成物、语料与缓存输入见 `build.md`。
+Demo 的网格列数基线由各自的 `grid-columns.browser.spec.*` 钉住，守的是 Tailwind v4 自定义变体的排序陷阱；具体视口与列数见 spec。生成物清单见 [`generated-artifacts.md`](./generated-artifacts.md)，语料与缓存输入见 build.md。
 
 ## 本地复现与浏览器 spec 隔离
 

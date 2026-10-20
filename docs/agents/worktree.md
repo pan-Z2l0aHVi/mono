@@ -2,7 +2,7 @@
 
 本文件拥有三件互相关联的事：在一个新 worktree 里把工具链准备好、让各 worktree 共享同一份构建缓存、以及在未激活 mise 的 shell 里正确执行命令。它们的共同线索是「拿到一个 worktree 之后怎么正确执行命令」，所以放在一起。
 
-worktree 本身是任务隔离边界，不是包名的别名。包清单、依赖边界与发布边界以 [`ARCHITECTURE.md`](../../ARCHITECTURE.md) 为权威；包级构建脚本、Vite/Turbo 配置与生成物生命周期见 `build.md`；客户端权限边界见 [`environments.md`](environments.md)；mise/turbo 的 env 注入由本文承担；提交边界的授权口径见 [`commit.md`](commit.md)。
+worktree 本身是任务隔离边界，不是包名的别名。包清单、依赖边界与发布边界以 [`ARCHITECTURE.md`](../../ARCHITECTURE.md) 为权威；包级构建脚本、Vite/Turbo 配置与生成物生命周期见 build.md；客户端权限边界见 [`environments.md`](./environments.md)；mise/turbo 的 env 注入由本文承担；提交边界的授权口径见 [`commit.md`](./commit.md)。
 
 ## 编排层与归属
 
@@ -30,7 +30,7 @@ CI 在 `ci.yml` 显式把 artifact cache 放到 `${{ github.workspace }}/.turbo`
 
 构建或验证前怀疑 `dist` 产物异常（例如被 watch 进程清空 d.ts）时，先裸跑 `pnpm run agent:env-doctor` 体检，再用 `pnpm run agent:env-doctor --fix`（自动 `turbo build --force`）或手动 `turbo build --force` 重建。doctor 按同一公式得到的本地 canonical 路径判断注入；CI workspace override 不会作为它自己的预期值。
 
-Codex 线程能不能写共享 Turbo cache，取决于客户端的权限配置，见 [`environments.md`](environments.md)。
+Codex 线程能不能写共享 Turbo cache，取决于客户端的权限配置，见 [`environments.md`](./environments.md)。
 
 ### 缓存可信链
 

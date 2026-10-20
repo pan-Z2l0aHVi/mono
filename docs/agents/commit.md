@@ -1,10 +1,10 @@
 # 提交边界与 Git Commit
 
-本文件规定提交授权、commit message、署名、pre-commit hook 与本地检查。任务分级与本地登记见 [`.agents/skills/task-ledger/SKILL.md`](../../.agents/skills/task-ledger/SKILL.md)，任务总流程与授权见 `docs/agents/workflow.md`，PR 阶段 review 见 `review.md`。commitlint 的类型、scope、字数、大小写与语言规则以 `commitlint.config.js` 为准。
+本文件规定提交授权、commit message、署名、pre-commit hook 与本地检查。任务分级与本地登记见 [`.agents/skills/task-ledger/SKILL.md`](../../.agents/skills/task-ledger/SKILL.md)，任务总流程与授权见 [`workflow.md`](./workflow.md)，PR 阶段 review 见 [`review.md`](./review.md)。commitlint 的类型、scope、字数、大小写与语言规则以 `commitlint.config.js` 为准。
 
 ## 授权边界
 
-改变仓库历史、分支、远端或发布状态都需用户逐次明确授权；完整边界与取得方式见 `docs/agents/workflow.md` 的「预授权操作」。task status 或本地检查通过都不构成提交授权。
+改变仓库历史、分支、远端或发布状态都需用户逐次明确授权；完整边界与取得方式见 [`workflow.md`](./workflow.md#预授权操作)。task status 或本地检查通过都不构成提交授权。
 
 ## Message 与署名
 
@@ -22,7 +22,7 @@ bash scripts/workflow/commit.sh <type> <scope> "<subject>" --dry
 
 ## Pre-commit 与本地 checks
 
-受版本控制的 pre-commit hook 通过 `mise exec -- pnpm run check-pre-commit` 运行五项只读仓库政策检查：`command-conventions`、`format-clean`、`no-mutual-links`、`turbo-cache-invariant`、`web-ui-docs-inputs`。入口并发执行各原子检查，任一检查抛错即整体失败。这些检查从当前 Git worktree 运行，不读取 task state 或 `AGENT_TASK_*`；它们不运行 fixer、不改写文件或 index。PR CI 的 changeset gate 不属于本地政策，见 `release.md`。
+受版本控制的 pre-commit hook 通过 `mise exec -- pnpm run check-pre-commit` 运行五项只读仓库政策检查：`command-conventions`、`format-clean`、`no-mutual-links`、`turbo-cache-invariant`、`web-ui-docs-inputs`。入口并发执行各原子检查，任一检查抛错即整体失败。这些检查从当前 Git worktree 运行，不读取 task state 或 `AGENT_TASK_*`；它们不运行 fixer、不改写文件或 index。PR CI 的 changeset gate 不属于本地政策，见 release.md。
 
 `fix-code` 是实施者显式运行的工作树修复命令；它可能改写多个文件，但不会自动暂存。运行后检查 diff，再只暂存预期文件。pre-commit 不调用 `fix-code`。
 

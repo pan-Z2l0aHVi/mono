@@ -2,8 +2,8 @@
 
 - **Date**: 2026-10-11
 - **Status**: 已接受
-- **Amends**: [ADR-0014](0014-task-system-v2.md) §1 的分级判据与 §5 的 review 拓扑、[ADR-0021](0021-orchestration-layer-moved-to-herdr-projects.md) §2 的 T0 判据面
-- **Relates to**: [ADR-0018](0018-task-state-in-tmpdir.md)（task state 落点，与本 ADR 无冲突）
+- **Amends**: [ADR-0014](./0014-task-system-v2.md) §1 的分级判据与 §5 的 review 拓扑、[ADR-0021](./0021-orchestration-layer-moved-to-herdr-projects.md) §2 的 T0 判据面
+- **Relates to**: [ADR-0018](./0018-task-state-in-tmpdir.md)（task state 落点，与本 ADR 无冲突）
 
 2026-10-18 注记：ADR-0025 取代本文的 review、approval、verify 与 task 关闭 gate 决策；T0/T1/T2 的分级判据与 worktree 起点规则继续适用。
 

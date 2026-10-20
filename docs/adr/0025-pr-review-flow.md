@@ -2,8 +2,8 @@
 
 - **Date**: 2026-10-18
 - **Status**: 已接受
-- **Amends**: [ADR-0014](0014-task-system-v2.md) 与 [ADR-0024](0024-task-tiering-v3.md) 的 task 状态、review、approval、验证和提交 gate
-- **Relates to**: [ADR-0018](0018-task-state-in-tmpdir.md)（临时目录中的本地 task 台账）、[ADR-0021](0021-orchestration-layer-moved-to-herdr-projects.md)（worktree 与编排边界）
+- **Amends**: [ADR-0014](./0014-task-system-v2.md) 与 [ADR-0024](./0024-task-tiering-v3.md) 的 task 状态、review、approval、验证和提交 gate
+- **Relates to**: [ADR-0018](./0018-task-state-in-tmpdir.md)（临时目录中的本地 task 台账）、[ADR-0021](./0021-orchestration-layer-moved-to-herdr-projects.md)（worktree 与编排边界）
 - **Amended by**: 2026-10-19 —— 退役 `ci:check-policies` 包装入口；pre-commit 与 PR CI 各自直接执行 `scripts/checks/` 下的只读入口。检查集合、执行顺序与失败语义以 ADR-0027 §1–§2 为准
 
 ## 背景与取舍

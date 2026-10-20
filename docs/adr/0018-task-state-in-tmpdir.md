@@ -2,7 +2,7 @@
 
 - **Date**: 2026-09-28
 - **Status**: 已接受
-- **Amends**: [ADR-0014](0014-task-system-v2.md) §3 的状态落点（「状态存 `<git-common-dir>/tasks/<task-id>.json`，跨 worktree 共享」）与「后果」节「`<git-common-dir>/tasks/` 是唯一执行真相」一句
+- **Amends**: [ADR-0014](./0014-task-system-v2.md) §3 的状态落点（「状态存 `<git-common-dir>/tasks/<task-id>.json`，跨 worktree 共享」）与「后果」节「`<git-common-dir>/tasks/` 是唯一执行真相」一句
 
 2026-10-18 注记：ADR-0025 保留 `$TMPDIR/greypan/tasks/` 的物理落点；当前 schema、status 与恢复规则以下一条 2026-10-19 注记所指的 task-ledger skill 为准。
 
