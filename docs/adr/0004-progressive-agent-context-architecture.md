@@ -2,8 +2,9 @@
 
 - **Date**: 2026-08-09
 - **Status**: 已接受
-- **Amended by**: 2026-10-03 —— Session Role 层整体退役（见下文两节）；四层架构本身不变
+- **Amended by**: 2026-10-03 —— Session Role 层整体退役（历史见 git）；四层架构本身不变
 - **Amended by**: 2026-10-18 —— ADR-0025 将 task 登记簿、五项本地政策检查与 PR 流程拆为独立职责；context 职责表和 Task-specific 文档权威同步
+- **Amended by**: ADR-0026 —— 增加语料权威标记与漂移门禁；补充见 ADR-0026，本文不复制其规则
 
 ## 背景
 
@@ -16,7 +17,7 @@
 采用四层、按任务展开的 agent context 架构：
 
 1. **Always available**：根 [`AGENTS.md`](../../AGENTS.md) 只保留项目身份、不可绕过的仓库约束和 task routing，是唯一的项目入口文件；根目录不为单个客户端另建适配入口，Codex 与 Claude Code 都直接读层级 `AGENTS.md`，不复制共享规则正文。（2026-09-26 修订：此前根 `CLAUDE.md` 是一行 `@AGENTS.md` import 的薄适配，给不支持 `AGENTS.md` 的 Claude Code 客户端留退路。它已删除——实测 2.1.283 已原生发现 `AGENTS.md`，而该文件的存在会让原生发现整条不生效，把 `instructionFiles` 显式声明成 `claude-md-and-agents-md` 也救不回来，代价是全部包级 `AGENTS.md` 静默失去按需注入、退回到靠模型自觉 Read。取舍与实测矩阵见 `docs/agents/agent-context.md`「客户端适配」。）
-2. **Project context**：[`CONTEXT.md`](../../CONTEXT.md) 记录跨包工程原则、领域术语和 ADR 索引。只在架构、跨包、术语或长期设计取舍相关任务中加载。（2026-10-10 修订：原先归入本层的「包边界、依赖方向」改由 Repository map 层（[`ARCHITECTURE.md`](../../ARCHITECTURE.md)）承载——包的角色与边界属于仓库地图，`CONTEXT.md` 只保留工程原则、领域词汇与 ADR 索引。四层结构本身不变，`docs/agents/agent-context.md` 的 Context 层级表与之同步。）
+2. **Project context**：[`CONTEXT.md`](../../CONTEXT.md) 记录跨包工程原则、Task/PR 流程词汇和 ADR 索引。只在架构、跨包、术语或长期设计取舍相关任务中加载。（2026-10-10 修订：原先归入本层的「包边界、依赖方向」改由 Repository map 层（[`ARCHITECTURE.md`](../../ARCHITECTURE.md)）承载——包的角色与边界属于仓库地图，`CONTEXT.md` 只保留工程原则、领域词汇与 ADR 索引。四层结构本身不变，`docs/agents/agent-context.md` 的 Context 层级表与之同步。2026-10-19 修订：领域词汇改由拥有该领域的包或应用级 `AGENTS.md` 承载；`CONTEXT.md` 只保留跨包工程原则、Task/PR 流程词汇与 ADR 索引，依据是 ADR-0026 的「权威优先于完整」。）
 3. **Task-specific context**：`docs/agents/*.md`、`.agents/rules/*.md` 和最近的包级 `AGENTS.md` 承载按领域执行的流程与局部约束。包级文件不复制根规则。
 4. **On-demand evidence**：相关 ADR、README、manifest、配置、源码和测试在影响范围确定后加载；当前实现和可执行验证优先于文字说明。
 
@@ -32,24 +33,10 @@
 
 新增 instruction、rule、skill 提示或 hook 之前，必须先判断代码边界、类型、测试、lint 或脚本能否更可靠地表达该约束。只有无法自动验证、且确实影响工程选择的约束才写入 instruction system。
 
-## 角色实施补充（2026-09-01；2026-09-24 修订；2026-10-03 废止）
-
-Session Role 层服务于显式调用的 herdr 编排，契约位于 `herdr-cos` skill 的 `roles/`。Role 描述会话身份、职责和完成条件，可以在同一会话中服务多个 task。Rules 定义约束，Skills 定义专业方法，Task 记录当前需求。
-
-Role 不注册为 Claude Code subagent，也不通过 `.claude/agents` symlink 暴露；普通单会话不承担 Role。Role 文档只描述自己的职责，不复制执行体选择规则、handoff 处方或编排时序。
-
-**2026-10-03 废止**：承载这一层的 `herdr-cos` skill 连同 Role 契约、编排账本与 supervisor 角色一并移除，本节保留为历史记录。当前 context 架构是上面四层：会话身份由客户端与会话本身承担，不再有独立的 Session Role 层。
-
-## 角色执行体绑定补充（2026-09-10；2026-09-24 修订；2026-09-30 废止）
-
-角色到执行体的默认绑定和启动参数曾由 herdr 编排 skill 维护；模型与思考强度由用户会话或 Manager 按任务指定，不设 Role 默认。Role 可以在同一会话中服务多个 task，Rules、Skills、Task 的分层不变。
-
-**2026-09-30 废止**：默认绑定被取消——执行体在建会话前当场选定。**2026-10-03 再次废止**：该问题随 Role 层整体退役，本节不构成现行指引。
-
 ## 后果
 
 - 根入口从详细操作手册收敛为稳定导航层，局部任务的初始 context 更小。
-- [`web-ui.md`](../agents/web-ui.md) 只负责把 `web-ui` 任务路由到对应 ADR；组件契约和框架事件边界仍以 ADR-0005 为准。[`build.md`](../agents/build.md) 承载构建与 CI，发布操作以 [`release.md`](../agents/release.md) 为准，release plane 术语以 [ADR-0003](0003-release-planes.md) 为准，避免污染通用 project context。
+- [`web-ui.md`](../agents/web-ui.md) 只负责把 `web-ui` 任务路由到对应 ADR；组件契约和框架事件边界仍以 ADR-0005 为准。[`build.md`](../agents/build.md) 承载构建与 CI，发布操作以 [`release.md`](../agents/release.md) 为准，release plane 术语以 ADR-0003 为准，避免污染通用 project context。
 - 文档同步要求集中在 `docs/agents/agent-context.md`，减少根入口与 task guide 的重复；影响未来取舍的变更仍需 ADR，并更新 `CONTEXT.md` 索引。
 - Agent 需要遵循路由选择 context，而不是把「读完所有文档」视为完成探索。缺少所需证据时，应回到 manifest、配置、源码、测试或相关 ADR。
 - Codex、Claude Code 通过共享入口、规则和 skills 复用同一套规范；客户端专属配置只承担工具适配。公共契约 review skill 以窄触发条件将任务路由到 skill 内置的影响面与契约查询脚本及发布产物验证，不把这类流程加入所有任务的常驻 context。

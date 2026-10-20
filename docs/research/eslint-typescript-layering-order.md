@@ -1,4 +1,8 @@
+<!-- corpus-status: reference -->
+
 # ESLint / oxlint「基础层 + TS 特化层」覆盖顺序调研
+
+> 状态：非权威参考（时点性研究）。结论以现行 ADR、源码与测试为准。
 
 > 回答「JS 基础层（面广）+ TS 特化层（面窄）在两套配置块命中同一文件时，行业惯例的正确先后顺序是什么」。调研日期 2026-10-09。官方论断追溯 eslint.org / oxc.rs / typescript-eslint.io 与上游源码；真实仓库论断追溯 GitHub 默认分支原始文件（ref = 抓取时 HEAD，2026-10-09）。逐条标注「官方文档 / 源码事实 / 推断」。三套体系（ESLint flat config、ESLint legacy eslintrc、oxlint overrides）覆盖语义分别说明。
 

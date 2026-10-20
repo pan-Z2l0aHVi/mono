@@ -1,0 +1,106 @@
+#!/usr/bin/env bash
+# commit.sh — 非交互式 conventional commit，绕过 git-cz 的 TTY 依赖
+#
+# 用法:
+#   bash scripts/workflow/commit.sh <type> <scope> <subject> [-b "body line"]
+#
+# 参数:
+#   type     - 提交类型（必填）
+#   scope    - 作用域（必填）
+#   subject  - 提交描述（必填）
+#   -b       - 可选 body（可多次使用，每次一行）
+#   --dry    - 仅显示 commit message，不实际提交
+#
+# type 的校验以 commitlint.config.js 为准；scope 由该文件的 cz-git prompt 提供建议，也允许自定义。
+# scope 支持逗号分隔多 scope: "browser-kit,web-ui"
+
+set -euo pipefail
+
+BODY_LINES=()
+DRY_RUN=false
+
+parse_args() {
+  while [ $# -gt 0 ]; do
+    case "$1" in
+      -b)
+        shift
+        BODY_LINES+=("$1")
+        ;;
+      --dry)
+        DRY_RUN=true
+        ;;
+      *)
+        if [ -z "${TYPE:-}" ]; then
+          TYPE="$1"
+        elif [ -z "${SCOPE:-}" ]; then
+          SCOPE="$1"
+        elif [ -z "${SUBJECT:-}" ]; then
+          SUBJECT="$1"
+        fi
+        ;;
+    esac
+    shift
+  done
+}
+
+parse_args "$@"
+
+if [ -z "${TYPE:-}" ] || [ -z "${SCOPE:-}" ] || [ -z "${SUBJECT:-}" ]; then
+  echo "用法: bash scripts/workflow/commit.sh <type> <scope> <subject> [-b \"body\"] [--dry]" >&2
+  echo "" >&2
+  echo "示例:" >&2
+  echo "  bash scripts/workflow/commit.sh feat js-kit \"add url parser utility\"" >&2
+  echo "  bash scripts/workflow/commit.sh fix web-ui,js-kit \"resolve hydration mismatch\" -b \"Fix race condition in SSR\"" >&2
+  echo "" >&2
+  echo "type 以 commitlint.config.js 为准；scope 建议来自其 cz-git prompt，支持逗号分隔多 scope" >&2
+  exit 1
+fi
+
+# ── stash 泄漏守卫 ──
+# 任何 stash push/pop（手工或外部工具）都可能把旧的未提交变更残留在工作区。
+# 如果出现预期外的 delete/rename，很可能是 stash 泄漏，应拒绝提交。
+LEAKED=$(git diff --name-status --diff-filter=DR 2>/dev/null || true)
+if [ -n "$LEAKED" ]; then
+  echo "❌ 检测到 stash 泄漏，以下文件不在本次提交范围内：" >&2
+  echo "$LEAKED" >&2
+  echo "" >&2
+  echo "   请先手动清理这些变更（git stash / git restore / git clean），再重新提交。" >&2
+  exit 1
+fi
+
+HEADER="${TYPE}(${SCOPE}): ${SUBJECT}"
+
+# 预览必须与真正提交的那一条逐字相同：--dry 的用途就是「看要提交什么」，而 commitlint 不接受
+# emoji 前缀（`📚 docs(web-ui): x` 会被判 subject-empty + type-empty）。所以下面打印的就是下面
+# `git commit -m` 收到的 HEADER——曾经这里多打一个 emoji，于是预览给的是一条过不了 commitlint 的
+# message，照文档走 `--dry` 的人看到坏形状，转而绕开脚本改用 `git commit -F`。
+echo "" >&2
+echo "📝 Commit message:" >&2
+echo "   ${HEADER}" >&2
+
+if [ ${#BODY_LINES[@]} -gt 0 ]; then
+  echo "" >&2
+  echo "   Body:" >&2
+  for line in "${BODY_LINES[@]+"${BODY_LINES[@]}"}"; do
+    echo "   ${line}" >&2
+  done
+fi
+echo "" >&2
+
+if [ "$DRY_RUN" = true ]; then
+  echo "(dry-run, 未实际提交)" >&2
+  exit 0
+fi
+
+# ── 提交 ──
+# 注意：commitlint 不支持 emoji 前缀，所以实际提交时只用 HEADER
+BODY_ARGS=()
+for line in "${BODY_LINES[@]+"${BODY_LINES[@]}"}"; do
+  BODY_ARGS+=(-m "$line")
+done
+
+if [ ${#BODY_ARGS[@]} -gt 0 ]; then
+  GIT_EDITOR=true git commit -m "${HEADER}" "${BODY_ARGS[@]+"${BODY_ARGS[@]}"}"
+else
+  GIT_EDITOR=true git commit -m "${HEADER}"
+fi

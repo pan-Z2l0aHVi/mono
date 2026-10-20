@@ -1,4 +1,8 @@
+<!-- corpus-status: reference -->
+
 # Web UI Portal 层调研：现成库 vs 手写
+
+> 状态：非权威参考（时点性研究）。结论以现行 ADR、源码与测试为准。
 
 > 针对 `packages/web-ui` 的 portal 层（调用链：Lit 组件 → `src/shared` 封装 → 底层库）能否用现成成熟库替代的调研。结论先行，所有论断附一手来源（官方文档原文、GitHub 源码、npm registry 数据）。本调研已考虑 release/260909 worktree 的未提交优化影响（select 的 trigger-slot 迁移过滤），portal 基础设施（`portal.ts` / `menu-portal.ts`）在该 worktree 未改动。
 

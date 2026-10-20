@@ -61,16 +61,13 @@ jobs:
             ${{ runner.os }}-${{ runner.arch }}-turbo-${{ hashFiles('.mise.toml') }}-
 
       - name: Check shared agent context
-        run: pnpm run ci:validate-context
+        run: pnpm run check-context
 
-      # 纳入唯一 required context；显式 bash 使用 fail-fast，任一 policy check 失败都会使 job 失败。
+      # 纳入唯一 required context；check-policy 内部并发运行各 policy check，任一失败都会使 job 失败。
       - name: Check repository policies
         shell: bash
         run: |
-          .agents/checks/command-conventions
-          .agents/checks/no-mutual-links
-          .agents/checks/turbo-cache-invariant
-          .agents/checks/web-ui-docs-inputs
+          pnpm run check-policy
 
       - name: Check changesets
         if: github.event_name == 'pull_request' && github.head_ref != 'changeset-release/main'
@@ -78,15 +75,14 @@ jobs:
           PR_BASE_SHA: ${{ github.event.pull_request.base.sha }}
           PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
         run: |
-          pnpm exec changeset status --since="$PR_BASE_SHA"
-          .agents/checks/changeset-required --base "$PR_BASE_SHA" --head "$PR_HEAD_SHA"
+          pnpm run check-changeset --base "$PR_BASE_SHA" --head "$PR_HEAD_SHA"
 
       # 保留 workspace package 构建；Wails 原生工作流负责 Interweave app wrapper。
       - name: Build
         run: pnpm exec turbo run build --filter=!@greypan/interweave
 
       - name: Test repository Agent tools
-        run: pnpm run ci:test-scripts
+        run: pnpm run test-scripts
 
       - name: Check published package contracts
         run: pnpm run check-pack

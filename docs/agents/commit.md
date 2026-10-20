@@ -1,10 +1,10 @@
 # 提交边界与 Git Commit
 
-本文件规定提交授权、commit message、署名、pre-commit hook 与本地检查。任务分级见 `docs/agents/task-levels.md`，任务总流程与授权见 `docs/agents/workflow.md`，本地登记簿见 `docs/agents/task-ledger.md`，PR 阶段 review 见 `review.md`。commitlint 的类型、scope、字数、大小写与语言规则以 `commitlint.config.js` 为准。
+本文件规定提交授权、commit message、署名、pre-commit hook 与本地检查。任务分级与本地登记见 [`.agents/skills/task-ledger/SKILL.md`](../../.agents/skills/task-ledger/SKILL.md)，任务总流程与授权见 `docs/agents/workflow.md`，PR 阶段 review 见 `review.md`。commitlint 的类型、scope、字数、大小写与语言规则以 `commitlint.config.js` 为准。
 
 ## 授权边界
 
-commit、push、merge、tag、publish、release 都需要用户逐次明确授权。完整清单与授权方式见 `docs/agents/workflow.md` 的「预授权操作」和「怎么取得这个授权」。task status 或本地检查通过都不构成提交授权。
+改变仓库历史、分支、远端或发布状态都需用户逐次明确授权；完整边界与取得方式见 `docs/agents/workflow.md` 的「预授权操作」。task status 或本地检查通过都不构成提交授权。
 
 ## Message 与署名
 
@@ -13,7 +13,7 @@ scope 标识受影响的 workspace，不表示领域；跨 workspace 协作用�
 授权提交时先暂存预期文件并预览，再运行：
 
 ```bash
-bash scripts/commit.sh <type> <scope> "<subject>" --dry
+bash scripts/workflow/commit.sh <type> <scope> "<subject>" --dry
 ```
 
 确认 message 和文件列表后去掉 `--dry`。`commit.sh` 每一行分别传给 `-m`，正文行间保留空行，不要用 `git commit -F` 绕开脚本。
@@ -22,15 +22,7 @@ bash scripts/commit.sh <type> <scope> "<subject>" --dry
 
 ## Pre-commit 与本地 checks
 
-受版本控制的 `.vite-hooks/pre-commit` 调用 `mise exec -- pnpm ci:check-policies`。该入口从当前 Git worktree 运行五项只读仓库政策检查，不读取 task state 或 `AGENT_TASK_*`：
-
-1. `command-conventions`
-2. `format-clean`
-3. `no-mutual-links`
-4. `turbo-cache-invariant`
-5. `web-ui-docs-inputs`
-
-缺少整个 `.agents/checks/` 目录、任一检查缺失或不可执行、或任何检查非零退出时，命令失败。成功 stdout 只有 JSON 结果；子检查日志写到 stderr。该门禁不运行 fixer、不改写文件或 index。`changeset-required` 不属于这五项本地政策，由 PR CI 使用 base/head SHA 执行，见 `release.md`。
+受版本控制的 pre-commit hook 通过 `mise exec -- pnpm run check-pre-commit` 运行五项只读仓库政策检查：`command-conventions`、`format-clean`、`no-mutual-links`、`turbo-cache-invariant`、`web-ui-docs-inputs`。入口并发执行各原子检查，任一检查抛错即整体失败。这些检查从当前 Git worktree 运行，不读取 task state 或 `AGENT_TASK_*`；它们不运行 fixer、不改写文件或 index。PR CI 的 changeset gate 不属于本地政策，见 `release.md`。
 
 `fix-code` 是实施者显式运行的工作树修复命令；它可能改写多个文件，但不会自动暂存。运行后检查 diff，再只暂存预期文件。pre-commit 不调用 `fix-code`。
 

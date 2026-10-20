@@ -1,1 +1,1 @@
-mise exec -- pnpm ci:check-policies
+mise exec -- pnpm run check-pre-commit

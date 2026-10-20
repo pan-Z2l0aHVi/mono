@@ -1,4 +1,8 @@
+<!-- corpus-status: reference -->
+
 # 单行文本中间省略（issue #198）调研
+
+> 状态：非权威参考（时点性研究）。结论以现行 ADR、源码与测试为准。
 
 > 结论先行，论断附一手来源。实测日期 2026-10-06/07，worktree `hp/mono/t-0056-research-198`，
 > 被测浏览器 Google Chrome 154.0.0.0（macOS，`agent-verify` 与 chrome-devtools MCP 各自拉起）。

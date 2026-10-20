@@ -24,7 +24,7 @@ jobs:
           ref: main
           fetch-depth: 0
 
-      # This job only runs changeset status and a node script; scoping the install
+      # This job only runs changeset status and a shell script; scoping the install
       # keeps it off the go toolchain and the wails3 build.
       - uses: ./.github/actions/setup-deps
         with:
@@ -42,7 +42,7 @@ jobs:
         uses: changesets/action@v2
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
-          version-script: node apps/interweave/scripts/release-version.mjs
+          version-script: sh apps/interweave/scripts/changeset-version.sh
           pr-title: 'chore: version packages'
           commit-message: 'chore: version packages'
 
