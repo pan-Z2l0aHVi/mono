@@ -59,7 +59,7 @@
 
 ## 机器拦截的覆盖面
 
-`.claude/settings.json` 的 `permissions.deny` 覆盖上表全部 Edit 路径（`apps/*/frontend/bindings/**`、`apps/*/src/generated/**`、`**/routeTree.gen.ts`、`**/typed-router.d.ts`、`**/auto-imports.d.ts`、`packages/web-ui/src/icons/**`），另外拦截 `.env` 读取。它只挡工具调用，不挡 generator，所以「跑 generator 产生 diff」的正常路径不受影响；口径与边界见 environments.md。
+`.claude/settings.json` 的 `permissions.deny` 是这些路径的权威名单：上表每一类生成物都有对应条目，另外拦截 `.env` 读取。它只挡工具调用，不挡 generator，所以「跑 generator 产生 diff」的正常路径不受影响；口径与边界见 environments.md。
 
 `**/__screenshots__/` 与 `**/.vitest-attachments/` 是测试证据而不是生成物，故意不进 `deny`：基线由测试运行器写盘，拦手改既拦不彻底，又会挡掉显式更新基线的正当路径。
 

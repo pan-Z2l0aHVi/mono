@@ -47,7 +47,7 @@
 
 正文提到另一篇文档时，用行内链接而不是行内 code：链接文字保留文件名，target 写相对当前文件的路径；要指到小节时把锚点写进 target，形如 `./workflow.md#怎么取得这个授权`。文件名只写成 code 的旧稿既不可点，也不进语料图。
 
-target 由渲染器按**当前文件所在目录**解析。同目录的兄弟文档必须写成 `./文件名`，不能只写裸文件名：部分查看器把裸 `workflow.md` 当成从根开始的路径，点了打不开，加 `./` 才能明确表达「相对当前文件」。反方向也要注意：在 `docs/agents/` 里写 `docs/agents/build.md` 会解析成 `docs/agents/docs/agents/build.md`，是死链。跨目录用 `../`。这条对子目录里的所有文档都强制（`check-context` 机检）：只要不在仓库根，target 就必须以 `./` 或 `../` 起头；入口层（根 `AGENTS.md` 与根 `README*`）可以写仓库相对路径，因为那里两种解析结果一致，包级 `AGENTS.md` 与 workspace `README.md` 在包根，按同一条规则也要加 `./`。
+target 由渲染器按**当前文件所在目录**解析。同目录的兄弟文档必须写成 `./文件名`，不能只写裸文件名：部分查看器把裸 `workflow.md` 当成从根开始的路径，点了打不开，加 `./` 才能明确表达「相对当前文件」。反方向也要注意：在 `docs/agents/` 里写 `docs/agents/build.md` 会解析成 `docs/agents/docs/agents/build.md`，是死链。跨目录用 `../`。这条对仓库根以下的文档全部强制（`check-context` 机检）：只要文档本身不在仓库根，target 就必须以 `./` 或 `../` 起头。放在仓库根下的文档不受此限——那里按文件解析与按仓库根解析结果相同，写 `docs/agents/build.md` 就是对的；包级 `AGENTS.md` 与 workspace `README.md` 在包根而不是仓库根，按同一条规则也要加 `./`。
 
 不转成链接的四种情况：
 
@@ -76,9 +76,9 @@ ADR 是历史记录，正文不改写；旧 ADR 对现行文档的回指按上�
 两个扫描面不同，混用会误判覆盖范围：
 
 - **指令面**：路由、互指图、ADR 入站、根命令存在性的判定范围，只含被加载的语料（入口文档、`docs/agents/**`、`docs/adr/**`、`.agents/**`、自撰 skill、包级 `AGENTS.md` 与 workspace `README.md`）。
-- **链接面**：断链与节锚点的判定范围，含全部已跟踪 Markdown，即指令面加上 `docs/research/**`、`docs/design/**`、根 `README*.md`、`CHANGELOG.md` 与 `.changeset/*.md`。第三方上游件按其 `skills-lock.json` 出处排除，正文由上游维护。
+- **链接面**：断链与节锚点的判定范围，含全部已跟踪 Markdown，即指令面加上 `docs/research/**`、`docs/design/**`、根 `README*.md`、`CHANGELOG.md` 与 `.changeset/*.md`。第三方上游件按其 `skills-lock.json` 出处排除，正文由上游维护。自撰 skill 在 `skills/` 是实体、在 `.agents/skills/` 是软链，同一文件只扫一遍，且按实体路径解析链接——那才是渲染器与读者看到的位置。
 
-判据只针对本地 target：`http(s)`、`mailto:`、`tel:` 等协议链接离线无法验证，不检查；纯锚点与只有 query 的 target 指向本文件，也不检查。本地 target 一律按当前文件所在目录解析，因此子目录里的文档必须写 `./` 或 `../` 起头的路径：`docs/input.md` 这类写法在按文件解析和按仓库根解析两种习惯下可能落到两个不同的文件，换个查看器就跳错，所以判为错误。仓库根文档（根 `AGENTS.md` 与 `README*`）不受此限，那里两种解析结果相同，写 `docs/agents/build.md` 就是对的。行内 code 与围栏代码块里的 `[…](…)` 不是链接，扫描前剥掉；否则研究笔录里贴的正则字面量会被当成断链。
+判据只针对本地 target：`http(s)`、`mailto:`、`tel:` 等协议链接离线无法验证，不检查；纯锚点与只有 query 的 target 指向本文件，也不检查。只检查行内链接 `[文字](target)`——reference-style 定义与 HTML `href` 不在扫描面内，改写时不要指望守卫兜住。本地 target 一律按当前文件所在目录解析，因此仓库根以下的文档必须写 `./` 或 `../` 起头的路径：`docs/input.md` 这类写法在按文件解析和按仓库根解析两种习惯下可能落到两个不同的文件，换个查看器就跳错，所以判为错误。仓库根下的文档不受此限，那里两种解析结果相同。尖括号包裹（`<./a b.md>`）与带 title 的链接（`[x](./a.md "标题")`）按 CommonMark 取 destination，title 不参与路径判定。行内 code 与围栏代码块里的 `[…](…)` 不是链接，扫描前剥掉；否则研究笔录里贴的正则字面量会被当成断链。
 
 ## 客户端适配
 

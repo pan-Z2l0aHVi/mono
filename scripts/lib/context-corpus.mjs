@@ -11,6 +11,7 @@ import {
   findRetiredAdrMarkers,
   findUnmarkedReferenceDocs,
   findUnroutedAgentDocs,
+  isUnqualifiedRelativeTarget,
   parseLocalLinkTarget,
   scanVolatilePhrases,
   stripCodeSegments
@@ -327,7 +328,6 @@ export async function run(context) {
   // 链接面比指令面大：不入路由、不参与互指与命令检查的语料（研究记录、根 README、CHANGELOG、changeset）
   // 仍然是读者会点开的文档，target 失效就是失效，不因「时点性」而豁免——历史结论可以旧，链接不能死。
   // 面 = 指令面 ∪ 已跟踪 Markdown，第三方上游件（skills-lock 登记、正文由上游维护）除外。
-  // 指令面里的自撰 skill 文档按消费面 `.agents/skills/**` 入面，与本仓内容一致（软链），链接按消费面解析。
   const trackedMarkdown = (() => {
     const listed = spawnSync('git', ['ls-files', '-z', '--', '*.md'], { cwd: root, encoding: 'utf8' })
     // git 不可用时只扫指令面：断链门禁照常提供，不因取不到跟踪清单而整体失效。
@@ -341,10 +341,29 @@ export async function run(context) {
         .filter(file => fs.existsSync(file))
     )
   })()
-  const instructionSurface = new Set(markdownFiles.map(file => path.resolve(file)))
-  const linkSurface = [...new Set([...markdownFiles, ...trackedMarkdown].map(file => path.resolve(file)))].filter(
-    file => !fromLockedSkill(file)
-  )
+  // 软链让同一篇文档有两条路径：指令面按消费面写成 `.agents/skills/x/SKILL.md`，实体在 `skills/x/SKILL.md`。
+  // 身份按 realpath 归一，同一文件只扫一遍；扫的那条用实体路径——GitHub 渲染的就是它，读者点的也是它，
+  // 消费面路径比实体多一层目录，`../` 会解析到别处，按它判链接会把正确的写法判成断链。
+  const identityOf = file => {
+    try {
+      return fs.realpathSync(file)
+    } catch {
+      // 两次读取之间消失时退化成按字面路径识别；可读性由下面的读取报错。
+      return path.resolve(file)
+    }
+  }
+  const instructionSurface = new Set(markdownFiles.map(identityOf))
+  // 实体路径优先：`trackedMarkdown` 里是 `skills/**`，`markdownFiles` 里是映射出来的消费面路径。
+  const linkSurface = []
+  const linkSurfaceSeen = new Set()
+  for (const candidate of [...trackedMarkdown, ...markdownFiles]) {
+    const file = path.resolve(candidate)
+    if (fromLockedSkill(file)) continue
+    const identity = identityOf(file)
+    if (linkSurfaceSeen.has(identity)) continue
+    linkSurfaceSeen.add(identity)
+    linkSurface.push(file)
+  }
   // 同一份文档会被多篇引用，剥代码片段的结果按文件缓存，锚点另有 anchorCache。
   const linkSourceCache = new Map()
   function linkSource(file) {
@@ -400,7 +419,7 @@ export async function run(context) {
     const source = linkSource(file)
     const isAdr = adrDocuments.has(file)
     // 入站与「加载路径」都只认指令面的链接：研究记录或 changelog 里的引用不能替代路由。
-    const onInstructionSurface = instructionSurface.has(file)
+    const onInstructionSurface = instructionSurface.has(identityOf(file))
     for (const match of source.matchAll(linkPattern)) {
       const target = match[1].trim()
       const parsed = parseLocalLinkTarget(target)
@@ -410,13 +429,12 @@ export async function run(context) {
       const resolved = path.resolve(path.dirname(file), location)
       const targetExists = fs.existsSync(resolved)
       if (!targetExists) addError(`${relative(file)}: broken local link ${target}`)
-      // 相对 target 有两种解析习惯：按当前文件所在目录，或按仓库根。仓库根的文档两种解析结果相同，
-      // 写 `docs/agents/build.md` 没问题；子目录里的文档不同——`docs/input.md` 可能两边都存在，指向的却是
-      // 两个不同文件，换个查看器就跳错。所以子目录文档一律要求 `./` 或 `../` 起头，把解析方式写死。
+      // 相对 target 有两种解析习惯：按当前文件所在目录，或按仓库根。仓库根下的文档两种解析结果相同，
+      // 写 `docs/agents/build.md` 没问题；更深的文档不同——`docs/input.md` 可能两边都存在，指向的却是
+      // 两个不同文件，换个查看器就跳错。所以非根文档一律要求 `./` 或 `../` 起头，把解析方式写死。
       else if (
-        !location.startsWith('./') &&
-        !location.startsWith('../') &&
         path.dirname(relative(file)) !== '.' &&
+        isUnqualifiedRelativeTarget(location) &&
         !reportedUnqualified.has(`${file}\u0000${location}`)
       ) {
         reportedUnqualified.add(`${file}\u0000${location}`)

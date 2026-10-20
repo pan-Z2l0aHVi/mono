@@ -1,4 +1,5 @@
 import crypto from 'node:crypto'
+import path from 'node:path'
 
 // 只收已观测到的漂移短语。泛化的「当前」「目前」会把合法的过程描述一起判红，
 // 而文风 lint 不在门禁职责内（ADR-0026）。
@@ -29,11 +30,43 @@ export function countNonWhitespace(source) {
 // 围栏代码块与行内 code 里的 `[label](target)` 不是链接：研究笔录常直接贴正则字面量
 // （`/[?&](?:worker|raw)\b/`），朴素的行内链接模式会把 `[...](...)` 当成断链。
 // 链接扫描前先剥掉这两类片段；剥掉后不再回报行号，所以偏移变化无碍。
-const FENCED_CODE = /^ {0,3}(?:```|~~~)[^\n]*\n[\s\S]*?^ {0,3}(?:```|~~~)[^\n]*$/gm
-const INLINE_CODE = /`+[^`\n]*`+/g
+//
+// 逐行配对而不是一条跨行正则：CommonMark 的围栏只由**同字符、不短于开启行**的围栏行关闭，
+// 混用 ``` 与 ~~~ 或 4 反引号里夹 ``` 都会让单条正则提前闭合，把代码泄漏成正文；
+// 未闭合的围栏延续到文件尾，也要按这个语义剥。
+const FENCE = /^ {0,3}(`{3,}|~{3,})/
+const INLINE_CODE = /(`+)([\s\S]*?)\1/g
 
 export function stripCodeSegments(source) {
-  return source.replace(FENCED_CODE, '').replace(INLINE_CODE, '')
+  const kept = []
+  let fence = null
+  for (const line of source.split('\n')) {
+    const marker = FENCE.exec(line)
+    if (fence) {
+      // 关闭行必须只有围栏字符（允许行尾空格），且同字符、不短于开启行。
+      const closes =
+        marker &&
+        marker[1][0] === fence.char &&
+        marker[1].length >= fence.length &&
+        !line.slice(marker[0].length).trim()
+      if (closes) fence = null
+      kept.push('')
+      continue
+    }
+    // 反引号围栏的 info string 里不能再出现反引号（CommonMark），这种行不是围栏开启。
+    if (marker && marker[1][0] === '`' && line.slice(marker[0].length).includes('`')) {
+      kept.push(line)
+      continue
+    }
+    if (marker) {
+      fence = { char: marker[1][0], length: marker[1].length }
+      kept.push('')
+      continue
+    }
+    // 行内 code 按行剥：等长反引号串配对，`` ``a ` b`` `` 这种跨反引号写法也能整段消失。
+    kept.push(line.replace(INLINE_CODE, ''))
+  }
+  return kept.join('\n')
 }
 
 // 链接 target 归一为 `{ location, fragment }`；返回 null 表示「不需要判定文件可触达性」：
@@ -41,18 +74,31 @@ export function stripCodeSegments(source) {
 //   - 纯锚点（`#foo`）只指向本文件，不存在文件可达性问题；
 //   - 只有 query 没有路径（`?raw`）同样是本文件派生，不是路径。
 // `file.md?raw` 的 query 在文件系统上不存在：剥掉再判可达性，否则会报成断链。
+// `[x](./a.md "标题")` 的 title 不是路径的一部分，按 CommonMark 在空白处截断（`<…>` 包裹的除外）。
 export function parseLocalLinkTarget(raw) {
-  const target = raw.trim()
+  const trimmed = raw.trim()
+  if (!trimmed) return null
+  const angleEnd = trimmed.startsWith('<') ? trimmed.indexOf('>') : -1
+  const spaceStart = trimmed.search(/\s/)
+  const target = angleEnd >= 0 ? trimmed.slice(1, angleEnd) : spaceStart >= 0 ? trimmed.slice(0, spaceStart) : trimmed
   if (!target) return null
   if (/^[a-z][a-z0-9+.-]*:/i.test(target)) return null
   if (target.startsWith('#')) return null
-  const unwrapped = target.startsWith('<') ? target.slice(1).replace(/>$/, '') : target
-  const hashIndex = unwrapped.indexOf('#')
-  const fragment = hashIndex < 0 ? '' : unwrapped.slice(hashIndex + 1).trim()
-  const beforeFragment = hashIndex < 0 ? unwrapped : unwrapped.slice(0, hashIndex)
+  const hashIndex = target.indexOf('#')
+  const fragment = hashIndex < 0 ? '' : target.slice(hashIndex + 1).trim()
+  const beforeFragment = hashIndex < 0 ? target : target.slice(0, hashIndex)
   const queryIndex = beforeFragment.indexOf('?')
   const location = (queryIndex < 0 ? beforeFragment : beforeFragment.slice(0, queryIndex)).trim()
   return location ? { location, fragment } : null
+}
+
+// 相对 target 有两种解析习惯：按当前文件所在目录，或按仓库根。两者结果只在仓库根下的文档里相同，
+// 更深的文档写 `docs/input.md` 会落到两个不同文件，换个查看器就跳错——所以非根文档必须显式 `./`、`../`。
+// `.` 与 `..` 本身已经是显式的相对写法，不在此列。
+export function isUnqualifiedRelativeTarget(location) {
+  if (location === '.' || location === '..') return false
+  if (location.startsWith('./') || location.startsWith('../')) return false
+  return !path.posix.isAbsolute(location)
 }
 
 export function scanVolatilePhrases(entries) {

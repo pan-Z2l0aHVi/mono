@@ -29,13 +29,13 @@
 
 ### 不要用 `settings.local.json` 存命令白名单
 
-Claude 按 git common dir 解析工程设置，不按目录：主仓库 `.claude/settings.local.json` 里的条目会被所有 worktree 会话读到。2026-10-20 前那里堆了 20 多条 allow，已清空（备份在 `~/.claude/backups/settings.local.json.mono-20261020-100049`）。要放宽权限就改机器级的权限模式，不要在这种「本地私货」文件里逐条堆命令。
+Claude 按 git common dir 解析工程设置，不按目录：主仓库 `.claude/settings.local.json` 里的条目会被所有 worktree 会话读到。那里曾经堆了 20 多条 allow，已在本机清空并就地备份（备份目录属机器本地状态，不写进仓库）。要放宽权限就改机器级的权限模式，不要在这种「本地私货」文件里逐条堆命令。
 
 ### Codex：没有按路径的 deny，别指望仓级拦住文件
 
 Codex 没有 Claude 的 `permissions.deny` 对应物。`[sandbox_workspace_write]` 只有反向的 `writable_roots`，写成 `read_only_paths`、`deny_paths`、`protected_paths` 都会被 `--strict-config` 判成 `unrecognized configuration setting`；而本仓库跑 `danger-full-access`，`writable_roots` 这个表根本不参与，所以仓级当前没有任何按路径的限制能力。
 
-可编程的口子只有 hooks：`[[hooks.PreToolUse]]` 配 `matcher`，内层 `[[hooks.PreToolUse.hooks]]` 用 `type = "command"`，脚本从 stdin 读 `tool_name` 与 `tool_input`，回 `{"hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"deny"}}`。`hooks` feature 在本机 0.162.1 是 stable 且已启用，这份配置被 `--strict-config` 接受，hook 来源里包含 `project`，所以能写在 `.codex/config.toml`。
+可编程的口子只有 hooks：`[[hooks.PreToolUse]]` 配 `matcher`，内层 `[[hooks.PreToolUse.hooks]]` 用 `type = "command"`，脚本从 stdin 读 `tool_name` 与 `tool_input`，回 `{"hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"deny"}}`。`hooks` feature 在实测版本里已是 stable 且默认启用（版本以 `codex --version` 为准），这份配置被 `--strict-config` 接受，hook 来源里包含 `project`，所以能写在 `.codex/config.toml`。
 
 不值得这么做：hooks 需要逐台机器在交互式会话里 `/hooks` 信任，未信任直接跳过（非交互只能 `--dangerously-bypass-hook-trust`）；hook 只拿到工具入参，路径匹配要自己写，且不覆盖所有 shell 调用；全访问下 agent 也能改 hook 脚本本身。生成物不手改这条约束交给 [`AGENTS.md`](../../AGENTS.md) 与代码评审，别在 Codex 侧伪造一个护栏。
 
