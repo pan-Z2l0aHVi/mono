@@ -4,7 +4,7 @@
 - **Status**: 已接受
 - **Relates to**: [ADR-0014](0014-task-system-v2.md)（政策检查挂载点）、[ADR-0025](0025-pr-review-flow.md)（pre-commit 与 PR CI 的检查集合）
 
-2026-10-19 修订：task 分级与记账已提取为通用 task-ledger skill（ADR-0028 为纯文本），`scripts/workflow/` 只保留 commit helper；§1 执行面表与 §5 目录树已同步。
+2026-10-19 修订：task 分级与记账已提取为通用 task-ledger skill（ADR-0028 为纯文本），`scripts/workflow/` 只保留 commit helper；§1 执行面表、§5 目录树与命令面说明已同步。
 
 ## 背景与取舍
 
@@ -113,7 +113,7 @@ scripts/
     *.test.mjs             # 与原子模块同名，可选
 ```
 
-`scripts/lib/` 同时承载跨检查复用的 helper 与各原子检查实现；`scripts/checks/` 只保留入口，避免入口目录重新长出实现。单次使用的解析留在所属检查实现内。workspace 内的 `apps/*/scripts` 与 `packages/*/scripts` 保持原位。根 `package.json` 的命令名除 `ci:validate-context` 改为 `check-context` 外不变，只更新目标路径；`.mise.toml` 与 `clean.sh` 对 `turbo-cache-dir.sh` 的引用同步改为 `scripts/lib/turbo-cache-dir.sh`；`env-doctor` 改用等价的 `scripts/lib/turbo-cache-dir.mjs`。
+`scripts/lib/` 同时承载跨检查复用的 helper 与各原子检查实现；`scripts/checks/` 只保留入口，避免入口目录重新长出实现。单次使用的解析留在所属检查实现内。workspace 内的 `apps/*/scripts` 与 `packages/*/scripts` 保持原位。根 `package.json` 的命令面以该文件为准：本 PR 内门禁入口统一为无 namespace 的 `check-*`，task 记账入口随 ADR-0028 移出根命令；目标路径同步更新。`.mise.toml` 与 `clean.sh` 对 `turbo-cache-dir.sh` 的引用同步改为 `scripts/lib/turbo-cache-dir.sh`；`env-doctor` 改用等价的 `scripts/lib/turbo-cache-dir.mjs`。
 
 ### 6. 语言与运行时
 
@@ -142,7 +142,7 @@ scripts/
 3. **切换调用方**：更新 pre-commit、CI、`workflow-topology`、`package.json`；删除 `.agents/checks/` 与被替代的旧实现；确认没有双份运行。
 4. **分类与收敛**：把 workflow、release、maintenance、lib 搬到目标目录，更新 `.mise.toml`、`clean.sh`、`env-doctor` 与文档路径；收敛重复的 turbo/JSON/Markdown 解析并做一次新旧差分。
 
-每一步都按 [`docs/agents/scripts.md`](../agents/scripts.md) 逐次取得授权。搬家与削减检查必须分开；本次不增减门禁，也不改动 `.github/scripts/**` 与 workspace 脚本。
+每一步都按 [`docs/agents/scripts.md`](../agents/scripts.md) 逐次取得授权。搬家与削减检查必须分开；上述四步迁移本身不增减门禁，也不改动 `.github/scripts/**` 与 workspace 脚本；这些目录的后续改动按各自执行面另行提交。
 
 ## 后果
 

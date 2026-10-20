@@ -4,7 +4,7 @@
 - **Status**: 已接受
 - **Amends**: [ADR-0014](0014-task-system-v2.md) §3 的状态落点（「状态存 `<git-common-dir>/tasks/<task-id>.json`，跨 worktree 共享」）与「后果」节「`<git-common-dir>/tasks/` 是唯一执行真相」一句
 
-2026-10-18 注记：ADR-0025 保留 `$TMPDIR/greypan/tasks/` 的物理落点，当前 schema、status 与恢复规则见 docs/agents/task-ledger.md。
+2026-10-18 注记：ADR-0025 保留 `$TMPDIR/greypan/tasks/` 的物理落点；当前 schema、status 与恢复规则以下一条 2026-10-19 注记所指的 task-ledger skill 为准。
 
 2026-10-19 注记：上一条中的物理落点已被 ADR-0028 提取的通用 task-ledger skill 取代；当前 schema、状态目录与恢复规则以该 skill 为准。下文提到的历史命令名与路径仅作决策历史保留。
 
