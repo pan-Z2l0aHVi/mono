@@ -129,6 +129,11 @@ export class WebUiInputNumber extends FormAssociated(LitElement) {
 
   private readonly _formAssociationController = new FormAssociationController(this, this._formAssociation)
 
+  override formDisabledCallback(disabled: boolean) {
+    super.formDisabledCallback(disabled)
+    this.toggleAttribute('data-form-disabled', disabled)
+  }
+
   override updated() {
     this._syncValidity()
     this.toggleAttribute('focused', this._focused)
