@@ -24,9 +24,28 @@ Web 表面由 chrome-devtools MCP 承担真实浏览器交互，覆盖导航、�
 - 优先复用目标端口上合适的现有 dev server；只有无可用实例、现有实例无法提供所需状态或需要隔离时才新建，使用未占用端口并记录 PID。
 - 只停止当前任务启动的服务器。不得终止用户或其他任务的服务器；目标端口上的服务器无响应时先取得用户授权，机制见 [`workflow.md`](./workflow.md#怎么取得这个授权)。
 - 不得附加或控制用户的 Chrome 会话。隔离的判据是本任务独占的专用 profile，不是用了哪个工具；接管既有会话的方式一律不满足要求。需要登录态时在专用 profile 内自行登录。
-- 启动真实浏览器时，记录本任务专用 profile 的完整路径（`--user-data-dir`）和浏览器主进程 PID。若启动工具不返回这些信息，在启动服务与浏览器的父子关系仍可见时，用系统进程表定位并记录；不要只记 MCP 服务 PID，因为浏览器可能在服务退出后继续运行。每个并行任务必须使用不同的 profile。
-- 验证结束后，关闭本任务打开的页面，停止为验证启动的服务器，并结束本任务启动的浏览器主进程本身。chrome-devtools-mcp 1.11.0 仅提供 `close_page`，且其工具说明指出最后一个打开的 page 无法关闭；关闭页面不能代替回收浏览器进程。`agent-browser` 的启动父进程也可能先于浏览器退出。
-- 回收时用启动记录中的 PID 和完整 profile 路径复核进程。把下面两个变量替换为本任务记录值，再检查浏览器主进程确实包含这个 `--user-data-dir`，并列出所有使用该 profile 的进程：
+- 启动真实浏览器时，记录本任务专用 profile 的完整路径（`--user-data-dir`）、启动服务 PID 与 CWD、浏览器主进程 PID 和 PPID。若启动工具不返回这些信息，在服务与浏览器的进程关系仍可见时，用系统进程表定位并记录；不要只记 MCP 服务 PID，因为浏览器可能在服务退出后继续运行。每个并行任务必须使用不同的 profile。
+- 在共享 codex app-server 下，多个 `chrome-devtools-mcp` 服务可能有同一个 app-server 父进程；这个共同父进程不能区分任务。用当前 worktree 的物理路径精确定位本任务的 MCP 服务，再从该服务的子进程关系定位浏览器。在 macOS 上执行以下命令，逐个检查进程表中的 `chrome-devtools-mcp` PID：
+
+  ```sh
+  worktree="$(cd "$(git rev-parse --show-toplevel)" && pwd -P)"
+  ps -ww -axo pid=,ppid=,command=
+  mcp_pid="进程表中的候选 chrome-devtools-mcp PID"
+  ps -ww -p "$mcp_pid" -o pid=,ppid=,command=
+  lsof -a -p "$mcp_pid" -d cwd -Fn
+  ```
+
+  `lsof` 输出的 `n` 路径必须与 `$worktree` 完全相同，且候选服务必须唯一。再用 MCP PID 查询它的直接子进程，并核对浏览器主进程：
+
+  ```sh
+  ps -ww -axo pid=,ppid=,command= | MCP_PARENT_PID="$mcp_pid" awk '$2 == ENVIRON["MCP_PARENT_PID"]'
+  browser_pid="上一步中浏览器主进程的 PID"
+  ps -ww -p "$browser_pid" -o pid=,ppid=,command=
+  ```
+
+  浏览器主进程的 PPID 必须是该 MCP 服务 PID；同时记录命令行中的完整专用 `--user-data-dir`。若浏览器经中间进程启动，必须逐级核对并记录从 MCP 服务到浏览器主进程的完整父子链。对 `agent-browser`，按相同方法用本任务启动器的精确 worktree CWD 和浏览器父子链定位；启动器可能先于浏览器退出，因此要在启动时记下这条链。只能确认共享 app-server 父进程、浏览器 CWD，或 PID 与 profile 自洽，都不足以建立归属。
+- 验证结束后，关闭本任务打开的页面，停止为验证启动的服务器，并结束本任务启动的浏览器主进程本身。经核对的 chrome-devtools MCP 工具说明指出，`close_page` 无法关闭最后一个打开的 page；验证时应查看当前工具集是否提供浏览器级关闭动作。无论采用哪种方式关闭页面，都要检查浏览器进程是否退出；关页成功不能作为进程已退出的证据。进程仍在时，按下方归属判据回收。`agent-browser` 的启动父进程也可能先于浏览器退出。
+- 回收时先依据启动记录复核完整归属链，确认本任务 worktree 对应唯一 MCP/启动服务，再确认浏览器主进程 PID、PPID 与专用 profile。若服务仍运行，重新检查其 CWD 与父子链；若服务已退出，只能依赖启动时记录的链条，并仍须复核浏览器 PID 与完整 profile。链条未记录、候选不唯一或任一环节无法确认时，不要猜测回收。完成归属核验后，再用 PID 和完整 profile 路径检查进程。把下面两个变量替换为本任务记录值，再检查浏览器主进程确实包含这个 `--user-data-dir`，并列出所有使用该 profile 的进程：
 
   ```sh
   browser_pid="本任务记录的浏览器主进程 PID"
@@ -45,7 +64,7 @@ Web 表面由 chrome-devtools MCP 承担真实浏览器交互，覆盖导航、�
   ```
 
   确认命令行仍包含完整路径且 PID 是浏览器主进程后，发送 `kill -TERM "$browser_pid"`，等待 10 秒让浏览器关闭 profile，再运行 profile 查询确认进程已退出。若仍有输出，逐个把查询结果里的 PID 设为 `process_pid`，用 `ps -ww -p "$process_pid" -o pid=,ppid=,command=` 复核 PID 和完整路径，再向已确认属于本任务的进程发送 `kill -TERM "$process_pid"`，等待 10 秒并重新查询。只有进程仍在且 PID 与完整路径再次确认匹配时，才发送 `kill -KILL "$process_pid"`。记录结束后的核验结果。
-- 按 [`workflow.md`](./workflow.md#预授权操作)，回收本任务启动且能由本任务的 PID 与专用 profile 唯一确认的实例属于预授权操作。不得按通用应用名、profile 前缀、CPU 使用率、运行时长或工作目录猜测归属。无法唯一确认时停止回收，先按 [`workflow.md`](./workflow.md#怎么取得这个授权) 取得用户授权并确认目标；目标仍不明确时保留进程并报告缺口。仓库测试运行器管理的浏览器由测试命令管理，不按本条单独查杀。
+- 按 [`workflow.md`](./workflow.md#预授权操作)，只有启动记录能从本任务 worktree 对应的唯一 MCP/启动服务，追到浏览器父子链、PID 和专用 profile，且每一环都能复核时，回收该实例才属于预授权操作。精确 worktree CWD 只用于定位 MCP/启动服务，不用于从浏览器进程本身推断归属。不得按共享 app-server 父进程、通用应用名、profile 前缀、CPU 使用率或运行时长猜测归属。无法唯一确认时停止回收，先按 [`workflow.md`](./workflow.md#怎么取得这个授权) 取得用户授权并确认目标；目标仍不明确时保留进程并报告缺口。仓库测试运行器管理的浏览器由测试命令管理，不按本条单独查杀。
 - 仅对本地自签名 HTTPS demo 忽略证书错误；不得为外部站点放松证书验证。
 - 用户要求保留本地服务时报告本地 URL，并在验证记录中说明保留的资源。
 

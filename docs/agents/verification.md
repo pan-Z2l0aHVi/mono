@@ -14,10 +14,10 @@ PR CI 对当前 base/head 复检 required checks，不替代实施阶段已要�
 
 涉及真实浏览器运行时验证时，提交前逐项核对验证记录：
 
-- 记录本任务专用 profile 的完整路径和浏览器主进程 PID。
+- 记录本任务 worktree 的物理路径、MCP/启动服务 PID 与 CWD、浏览器主进程 PID 和 PPID，以及专用 profile 的完整路径；确认从 worktree 到服务、再到浏览器的归属链可复核。
 - 记录回收方式，以及结束后该 profile 已无进程的检查结果。
 - 本次没有启动浏览器时，明确标为“不适用”。
-- 无法唯一确认进程归属时，按 [`workflow.md`](./workflow.md#怎么取得这个授权) 取得授权并确认目标，或将清理列为未完成；不得把无法确认的进程记作已回收。
+- 服务退出后，归属链须有启动时记录；无法唯一确认进程归属时，按 [`workflow.md`](./workflow.md#怎么取得这个授权) 取得授权并确认目标，或将清理列为未完成；不得把无法确认的进程记作已回收。
 
 回收步骤与归属判据见 [`runtime-verification.md`](./runtime-verification.md#隔离与资源)。
 
