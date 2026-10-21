@@ -89,7 +89,7 @@ describe('WebUiSlider 指针拖拽（浏览器）', () => {
     cleanupElement(el)
   })
 
-  it('竖向滑动未达到水平拖拽阈值时不提交 tap', async () => {
+  it('竖向滑动越过交叉轴阈值后回到起点也不提交 tap', async () => {
     const el = createSlider() as Updatable
     el.value = 40
     await el.updateComplete
@@ -105,7 +105,8 @@ describe('WebUiSlider 指针拖拽（浏览器）', () => {
 
     track.dispatchEvent(pointer('pointerdown', downX, downY))
     window.dispatchEvent(pointer('pointermove', downX + 2, downY + 53))
-    window.dispatchEvent(pointer('pointerup', downX + 2, downY + 53))
+    window.dispatchEvent(pointer('pointermove', downX + 2, downY + 1))
+    window.dispatchEvent(pointer('pointerup', downX + 2, downY + 1))
     await el.updateComplete
 
     expect(el.value).toBe(40)
