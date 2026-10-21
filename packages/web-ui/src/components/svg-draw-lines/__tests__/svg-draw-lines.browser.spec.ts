@@ -1,6 +1,6 @@
 import '..'
 
-import { afterEach, describe, expect, it } from 'vite-plus/test'
+import { afterEach, describe, expect, it, vi } from 'vite-plus/test'
 
 import { mountElement, waitForFrame, waitForUpdate } from '@/shared/test-utils'
 
@@ -11,6 +11,53 @@ const createEl = (): WebUiSvgDrawLines => mountElement<WebUiSvgDrawLines>('web-u
 afterEach(() => document.body.replaceChildren())
 
 describe('WebUiSvgDrawLines 组件（浏览器）', () => {
+  it('CSS.registerProperty 不可用时仍播放且不越过 dash 范围', async () => {
+    const originalCSS = globalThis.CSS
+    const cssWithoutRegisterProperty = Object.create(originalCSS) as typeof CSS
+    Object.defineProperty(cssWithoutRegisterProperty, 'registerProperty', { configurable: true, value: undefined })
+    vi.stubGlobal('CSS', cssWithoutRegisterProperty)
+
+    let el: WebUiSvgDrawLines | undefined
+    let path: SVGPathElement | undefined
+    let replayed: Promise<void> | undefined
+    try {
+      const component = (el = createEl())
+      component.duration = 1000
+      component.easing = 'cubic-bezier(0.68, -0.55, 0.27, 1.55)'
+      component.noAutoplay = true
+      component.innerHTML = '<svg><path d="M0 0 L100 0" stroke-width="2"/></svg>'
+      await waitForUpdate(component)
+      const actualPath = (path = component.querySelector('path')!)
+      replayed = component.replay()
+
+      await expect.poll(() => actualPath.getAnimations().length).toBeGreaterThan(0)
+      const animation = actualPath.getAnimations()[0]!
+      animation.pause()
+      expect(animation.effect?.getTiming().easing).toBe('linear')
+
+      const blank = Number(actualPath.style.strokeDasharray)
+      const offsets: number[] = []
+      for (let step = 0; step <= 100; step += 1) {
+        animation.currentTime = (component.duration * step) / 100
+        offsets.push(Number.parseFloat(getComputedStyle(actualPath).strokeDashoffset))
+      }
+
+      expect(offsets.every(offset => Number.isFinite(offset) && offset >= 0 && offset <= blank)).toBe(true)
+      expect(offsets[0]).toBe(blank)
+      expect(offsets[offsets.length - 1]).toBe(0)
+      animation.cancel()
+      await replayed
+    } finally {
+      try {
+        path?.getAnimations().forEach(animation => animation.cancel())
+        el?.remove()
+        await replayed
+      } finally {
+        vi.unstubAllGlobals()
+      }
+    }
+  })
+
   it('直接 light DOM SVG 完成后恢复原始内联样式', async () => {
     const el = createEl()
     el.duration = 50

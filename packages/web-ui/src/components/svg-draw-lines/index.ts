@@ -12,8 +12,9 @@ const DASH_OFFSET_PROPERTY = '--wui-svg-draw-lines-offset'
 
 let dashOffsetPropertyRegistered = false
 
-function registerDashOffsetProperty() {
-  if (dashOffsetPropertyRegistered) return
+function registerDashOffsetProperty(): boolean {
+  if (typeof CSS === 'undefined' || typeof CSS.registerProperty !== 'function') return false
+  if (dashOffsetPropertyRegistered) return true
 
   try {
     CSS.registerProperty({
@@ -25,10 +26,14 @@ function registerDashOffsetProperty() {
   } catch (error) {
     const alreadyRegistered =
       typeof DOMException !== 'undefined' && error instanceof DOMException && error.name === 'InvalidModificationError'
-    if (!alreadyRegistered) throw error
+    if (!alreadyRegistered) {
+      console.warn('web-ui-svg-draw-lines could not register its typed offset property. Using linear easing.', error)
+      return false
+    }
   }
 
   dashOffsetPropertyRegistered = true
+  return true
 }
 
 interface AnimationRun {
@@ -222,15 +227,23 @@ export class WebUiSvgDrawLines extends LitElement {
       const from = reverse ? 0 : len
       const to = reverse ? len : 0
 
-      registerDashOffsetProperty()
+      const canClampOvershoot = registerDashOffsetProperty()
       el.style.strokeDasharray = blank
-      el.style.setProperty(DASH_OFFSET_PROPERTY, `${from}px`)
-      el.style.strokeDashoffset = `clamp(0px, var(${DASH_OFFSET_PROPERTY}), ${blank}px)`
+      if (canClampOvershoot) {
+        el.style.setProperty(DASH_OFFSET_PROPERTY, `${from}px`)
+        el.style.strokeDashoffset = `clamp(0px, var(${DASH_OFFSET_PROPERTY}), ${blank}px)`
+      } else {
+        // Older engines cannot interpolate the registered helper property. Animate the real offset
+        // with a bounded easing so replay still works without letting an overshoot crop the path.
+        el.style.removeProperty(DASH_OFFSET_PROPERTY)
+        el.style.strokeDashoffset = `${from}px`
+      }
       run.blankByElement.set(el, blank)
 
-      const anim = el.animate([{ [DASH_OFFSET_PROPERTY]: `${from}px` }, { [DASH_OFFSET_PROPERTY]: `${to}px` }], {
+      const property = canClampOvershoot ? DASH_OFFSET_PROPERTY : 'strokeDashoffset'
+      const anim = el.animate([{ [property]: `${from}px` }, { [property]: `${to}px` }], {
         duration: this.duration,
-        easing: this.easing,
+        easing: canClampOvershoot ? this.easing : 'linear',
         fill: 'forwards'
       })
 
