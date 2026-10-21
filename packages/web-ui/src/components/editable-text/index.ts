@@ -8,7 +8,7 @@ import { createFieldId } from '@/shared/form-association/field-id'
 
 import style from './style.css?inline'
 
-/** 空值且无 placeholder 时占位，保留一个行盒，避免宿主退化成 0 高度、无法点击进入编辑。 */
+/** 空值且无 placeholder 时保留可点击行盒。 */
 const BLANK_GLYPH = '\u200B'
 
 /** 行/字符落点二分的容差（px），吸收次像素与舍入差异。 */
@@ -477,7 +477,14 @@ export class WebUiEditableText extends FormAssociated(LitElement) {
   override render() {
     return html`
       <div class="layers" @pointerdown=${this._onPointerDown} @click=${this._onClick}>
-        <span class=${classMap({ text: true, placeholder: this._value === '' })}>${this._displayText}</span>
+        <span
+          class=${classMap({
+            text: true,
+            placeholder: this._value === '',
+            'trailing-newline': this._value.endsWith('\n')
+          })}
+          >${this._displayText}</span
+        >
         <textarea
           id=${this._fieldId}
           class="editor"
