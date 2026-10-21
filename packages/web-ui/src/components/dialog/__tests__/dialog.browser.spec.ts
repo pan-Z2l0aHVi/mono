@@ -18,6 +18,39 @@ function createDialog(): WebUiDialog {
 }
 
 describe('WebUiDialog 组件（浏览器）', () => {
+  it('关闭态不进入 Tab 顺序，也不拦截视口中央命中', async () => {
+    const centerTarget = document.createElement('button')
+    centerTarget.textContent = '中央页面按钮'
+    centerTarget.tabIndex = -1
+    centerTarget.style.cssText = 'position:fixed;left:50%;top:50%;transform:translate(-50%,-50%)'
+    document.body.append(centerTarget)
+
+    const before = document.createElement('button')
+    before.textContent = '之前'
+    document.body.append(before)
+
+    const component = createDialog()
+    const footerButton = document.createElement('button')
+    footerButton.slot = 'footer'
+    footerButton.textContent = 'Save'
+    component.append(footerButton)
+
+    const after = document.createElement('button')
+    after.textContent = '之后'
+    document.body.append(after)
+
+    await component.updateComplete
+    await new Promise(resolve => requestAnimationFrame(resolve))
+
+    const dialog = component.shadowRoot?.querySelector('dialog') as HTMLDialogElement
+    expect(dialog.open).toBe(false)
+
+    before.focus()
+    await userEvent.keyboard('{Tab}')
+    expect(document.activeElement).toBe(after)
+    expect(document.elementFromPoint(window.innerWidth / 2, window.innerHeight / 2)).toBe(centerTarget)
+  })
+
   it('panel 自身不夺焦，内部 button 可聚焦', async () => {
     const component = createDialog()
     const button = document.createElement('button')
