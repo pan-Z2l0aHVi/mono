@@ -39,8 +39,8 @@
   font-size: var(--wui-font-size, 14px);
   line-height: 1;
 
-  /* 选中与未选中同档灰：区分度只由玻璃 indicator 承担，未选中项无底色。 */
-  color: var(--wui-color-text-secondary, #6a6a6a);
+  /* 所有 label 同用主文本色，确保 indicator 上的文字满足正文对比度；选择状态仍由 indicator 承担。 */
+  color: var(--wui-color-text, #1b1b1b);
   white-space: nowrap;
 
   background-color: transparent;

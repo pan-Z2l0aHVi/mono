@@ -411,4 +411,4 @@ track 在所有状态下都是不透明实体面（`--wui-color-surface`，浅�
 
 ### 文字色
 
-选中与未选中项文字一律保持 `--wui-color-text-secondary`——`inset`/`raised` 两个变体一致，静止态与按压/拖拽态一致。选中态只由 indicator 承担，任何 label 都不着 `--wui-color-accent`。
+所有 label 一律使用 `--wui-color-text` 主文本色；内建 light/dark 主题下，14px 文字压在 `inset`/`raised` 静止 indicator 上均满足 4.5:1。选中与未选中项保持同色，选择状态仍由 indicator 承担，任何 label 都不着 `--wui-color-accent`。
