@@ -98,6 +98,26 @@ describe('WebUiButton 组件', () => {
       cleanupElement(el)
     })
 
+    it('将展开状态与控制关系映射到内部 button', async () => {
+      const el = createButton()
+      el.setAttribute('aria-disabled', 'true')
+      el.setAttribute('aria-expanded', 'false')
+      el.setAttribute('aria-controls', 'panel-id')
+      await waitForUpdate(el)
+
+      const inner = el.shadowRoot?.querySelector('button')
+      expect(inner?.getAttribute('aria-disabled')).toBe('true')
+      expect(inner?.getAttribute('aria-expanded')).toBe('false')
+      expect(inner?.getAttribute('aria-controls')).toBe('panel-id')
+
+      el.setAttribute('aria-expanded', 'true')
+      el.removeAttribute('aria-disabled')
+      await waitForUpdate(el)
+      expect(inner?.getAttribute('aria-expanded')).toBe('true')
+      expect(inner?.hasAttribute('aria-disabled')).toBe(false)
+      cleanupElement(el)
+    })
+
     it('将 data-* 保留在组件宿主而不复制到内部 button', async () => {
       const el = createButton()
       el.setAttribute('data-testid', 'save')

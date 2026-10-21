@@ -959,6 +959,24 @@ export const exampleDocs: ExampleDoc[] = [
             "<p>无障碍名称。icon button 必须提供，否则读屏器只会读出空 button。</p>",
             "string | null",
             "null"
+          ],
+          [
+            "aria-disabled",
+            "<p>禁用状态；作为 slot trigger 时同步到内部原生 button。</p>",
+            "string | null",
+            "null"
+          ],
+          [
+            "aria-expanded",
+            "<p>展开状态；作为 <code>web-ui-collapse</code> trigger 时同步到内部原生 button。</p>",
+            "string | null",
+            "null"
+          ],
+          [
+            "aria-controls",
+            "<p>被控制内容的 ID；作为 <code>web-ui-collapse</code> trigger 时同步到内部原生 button。</p>",
+            "string | null",
+            "null"
           ]
         ]
       },
@@ -1578,7 +1596,7 @@ export const exampleDocs: ExampleDoc[] = [
         "kind": "prose",
         "key": "trigger 语义",
         "title": "trigger 语义",
-        "html": "<p>交互语义完全来自 default slot 放入的元素——原生 <code>&lt;button></code>、<code>&lt;web-ui-button></code> 或其他可交互元素原生提供 Enter/Space 激活与焦点。collapse 把 <code>aria-expanded</code> / <code>aria-controls</code>（指向内容 track）与 <code>aria-disabled</code> 回写到 trigger slot 的首个 assigned element。trigger 请使用可交互元素：纯 <code>&lt;span></code> 可点击但没有键盘/焦点语义。</p>"
+        "html": "<p>交互语义完全来自 default slot 放入的元素——原生 <code>&lt;button></code>、<code>&lt;web-ui-button></code> 或其他可交互元素原生提供 Enter/Space 激活与焦点。collapse 把 <code>aria-expanded</code> / <code>aria-controls</code>（指向内容 track）与 <code>aria-disabled</code> 回写到 trigger slot 的首个 assigned element。<code>&lt;web-ui-button></code> 会将这些状态同步到内部原生 <code>&lt;button></code>，供辅助技术读取。trigger 请使用可交互元素：纯 <code>&lt;span></code> 可点击但没有键盘/焦点语义。</p>"
       },
       {
         "kind": "prose",

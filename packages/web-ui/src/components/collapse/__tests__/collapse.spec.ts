@@ -1,4 +1,5 @@
 import '..'
+import '@/components/button'
 
 import { describe, expect, it } from 'vite-plus/test'
 
@@ -128,6 +129,38 @@ describe('WebUiCollapse 组件', () => {
 
       await clickTrigger(el)
       expect(button.getAttribute('aria-expanded')).toBe('true')
+      cleanupElement(el)
+    })
+
+    it('web-ui-button trigger 将 collapse ARIA 转发到内部原生 button', async () => {
+      const el = createCollapse('<web-ui-button>Trigger</web-ui-button><div slot="content">Content</div>')
+      const trigger = el.querySelector('web-ui-button')!
+      await waitForUpdate(trigger)
+      await waitForUpdate(el)
+
+      const button = trigger.shadowRoot?.querySelector<HTMLButtonElement>('button[part="button"]')
+      if (!button) throw new Error('web-ui-button has no native button part')
+      const track = el.shadowRoot?.querySelector('.wui-collapse-track') as HTMLElement
+
+      expect(trigger.getAttribute('aria-expanded')).toBe('false')
+      expect(trigger.getAttribute('aria-controls')).toBe(track.id)
+      expect(button.getAttribute('aria-expanded')).toBe('false')
+      expect(button.getAttribute('aria-controls')).toBe(track.id)
+
+      button.click()
+      await waitForUpdate(el)
+      await waitForUpdate(trigger)
+      expect(button.getAttribute('aria-expanded')).toBe('true')
+
+      el.disabled = true
+      await waitForUpdate(el)
+      await waitForUpdate(trigger)
+      expect(button.getAttribute('aria-disabled')).toBe('true')
+
+      el.disabled = false
+      await waitForUpdate(el)
+      await waitForUpdate(trigger)
+      expect(button.hasAttribute('aria-disabled')).toBe(false)
       cleanupElement(el)
     })
 

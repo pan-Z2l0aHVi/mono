@@ -1,7 +1,9 @@
 import '..'
+import '@/components/button'
 import '@/components/theme'
 
 import { afterEach, describe, expect, it } from 'vite-plus/test'
+import { page } from 'vite-plus/test/browser'
 
 import { scrollElementTo } from '@/shared/test-utils/viewport'
 
@@ -58,6 +60,33 @@ afterEach(() => document.body.replaceChildren())
  * 真实布局下的内容挂载与滚动位置、真实焦点归宿、真实 inert 阻断。
  */
 describe('WebUiCollapse 组件（浏览器）', () => {
+  it('web-ui-button trigger 的开合状态出现在可访问 button 上', async () => {
+    const el = createCollapse('<web-ui-button>Trigger</web-ui-button><div slot="content">Content</div>')
+    await el.updateComplete
+    const trigger = page.elementLocator(el).getByRole('button', { name: 'Trigger' })
+    const button = trigger.element() as HTMLButtonElement
+
+    expect(trigger.length).toBe(1)
+    expect(button.tagName).toBe('BUTTON')
+    expect(button.getAttribute('aria-expanded')).toBe('false')
+    expect(button.getAttribute('aria-controls')).toBe(queryTrack(el).id)
+
+    button.click()
+    await el.updateComplete
+    await el.querySelector('web-ui-button')!.updateComplete
+    expect(button.getAttribute('aria-expanded')).toBe('true')
+
+    el.disabled = true
+    await el.updateComplete
+    await el.querySelector('web-ui-button')!.updateComplete
+    expect(button.getAttribute('aria-disabled')).toBe('true')
+
+    el.disabled = false
+    await el.updateComplete
+    await el.querySelector('web-ui-button')!.updateComplete
+    expect(button.hasAttribute('aria-disabled')).toBe(false)
+  })
+
   it('展开收起切换内容可见性', async () => {
     const el = createCollapse()
     await el.updateComplete

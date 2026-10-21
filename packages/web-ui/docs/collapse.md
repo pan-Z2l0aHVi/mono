@@ -135,7 +135,7 @@ const open = ref(false)
 
 ### trigger 语义
 
-交互语义完全来自 default slot 放入的元素——原生 `<button>`、`<web-ui-button>` 或其他可交互元素原生提供 Enter/Space 激活与焦点。collapse 把 `aria-expanded` / `aria-controls`（指向内容 track）与 `aria-disabled` 回写到 trigger slot 的首个 assigned element。trigger 请使用可交互元素：纯 `<span>` 可点击但没有键盘/焦点语义。
+交互语义完全来自 default slot 放入的元素——原生 `<button>`、`<web-ui-button>` 或其他可交互元素原生提供 Enter/Space 激活与焦点。collapse 把 `aria-expanded` / `aria-controls`（指向内容 track）与 `aria-disabled` 回写到 trigger slot 的首个 assigned element。`<web-ui-button>` 会将这些状态同步到内部原生 `<button>`，供辅助技术读取。trigger 请使用可交互元素：纯 `<span>` 可点击但没有键盘/焦点语义。
 
 ### 关闭稳态语义
 
