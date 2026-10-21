@@ -18,6 +18,36 @@ function createDialog(): WebUiDialog {
 }
 
 describe('WebUiDialog 组件（浏览器）', () => {
+  it('horizontal 让 footer 操作按钮同行，关闭后恢复纵向排列', async () => {
+    const component = createDialog()
+    const buttons = ['Cancel', 'Save'].map(text => {
+      const button = document.createElement('web-ui-button')
+      button.slot = 'footer'
+      button.setAttribute('full', '')
+      button.textContent = text
+      component.append(button)
+      return button
+    })
+
+    component.horizontal = true
+    component.open = true
+    await component.updateComplete
+    await new Promise(resolve => requestAnimationFrame(resolve))
+
+    const [firstButton, secondButton] = buttons
+    expect(component.hasAttribute('horizontal')).toBe(true)
+    expect(Math.abs(secondButton!.getBoundingClientRect().top - firstButton!.getBoundingClientRect().top)).toBeLessThan(
+      1
+    )
+
+    component.horizontal = false
+    await component.updateComplete
+    await new Promise(resolve => requestAnimationFrame(resolve))
+
+    expect(component.hasAttribute('horizontal')).toBe(false)
+    expect(secondButton!.getBoundingClientRect().top).toBeGreaterThan(firstButton!.getBoundingClientRect().top)
+  })
+
   it('关闭态不进入 Tab 顺序，也不拦截视口中央命中', async () => {
     const centerTarget = document.createElement('button')
     centerTarget.textContent = '中央页面按钮'
