@@ -10,6 +10,17 @@
 
 PR CI 对当前 base/head 复检 required checks，不替代实施阶段已要求的单元、全量 workspace 或脚本测试。记录准确命令、结果、浏览器 URL / 操作和未验证缺口；失败时保留输出，区分环境问题、现有失败和本次回归，不要用删除测试或跳过检查代替修复。
 
+## 提交前的运行时资源核对
+
+涉及真实浏览器运行时验证时，提交前逐项核对验证记录：
+
+- 记录本任务专用 profile 的完整路径和浏览器主进程 PID。
+- 记录回收方式，以及结束后该 profile 已无进程的检查结果。
+- 本次没有启动浏览器时，明确标为“不适用”。
+- 无法唯一确认进程归属时，按 [`workflow.md`](./workflow.md#怎么取得这个授权) 取得授权并确认目标，或将清理列为未完成；不得把无法确认的进程记作已回收。
+
+回收步骤与归属判据见 [`runtime-verification.md`](./runtime-verification.md#隔离与资源)。
+
 ## 测试环境与命令
 
 测试框架是 Vitest（通过 `vite-plus`）。根 `pnpm run test` 由 Turbo 编排各 workspace 的 `test` 任务；受影响的包用 `pnpm exec turbo test --filter=@greypan/<name>`。仓库脚本测试是 tracked-only 的 `*.test.mjs`，由 `pnpm test-scripts` 执行，不属于 `pnpm run test`；新增而未跟踪的脚本测试要在实施中显式运行。
