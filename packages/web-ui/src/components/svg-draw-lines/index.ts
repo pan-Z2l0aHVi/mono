@@ -7,6 +7,29 @@ import { prefersReducedMotion } from '@/shared/theme/reduced-motion'
 import style from './style.css?inline'
 
 const GEOMETRY_SELECTOR = 'path, rect, circle, line, polyline, polygon, ellipse'
+// Animate a registered length, then clamp it before using it as a dash offset.
+const DASH_OFFSET_PROPERTY = '--wui-svg-draw-lines-offset'
+
+let dashOffsetPropertyRegistered = false
+
+function registerDashOffsetProperty() {
+  if (dashOffsetPropertyRegistered) return
+
+  try {
+    CSS.registerProperty({
+      name: DASH_OFFSET_PROPERTY,
+      syntax: '<length>',
+      inherits: false,
+      initialValue: '0px'
+    })
+  } catch (error) {
+    const alreadyRegistered =
+      typeof DOMException !== 'undefined' && error instanceof DOMException && error.name === 'InvalidModificationError'
+    if (!alreadyRegistered) throw error
+  }
+
+  dashOffsetPropertyRegistered = true
+}
 
 interface AnimationRun {
   reverse: boolean
@@ -118,6 +141,8 @@ export class WebUiSvgDrawLines extends LitElement {
         el.style.strokeDashoffset = authored?.dashoffset ?? ''
         this._stickyBlank.delete(el)
       }
+
+      el.style.removeProperty(DASH_OFFSET_PROPERTY)
     }
 
     if (this._activeRun === run) this._activeRun = undefined
@@ -194,15 +219,16 @@ export class WebUiSvgDrawLines extends LitElement {
       const len = el.getTotalLength() + strokeWidth
       // 空白 = 整条路径落在 dash 间隙里；满 = 偏移归零。两个方向只是这两端换先后。
       const blank = `${len}`
-      const full = '0'
-      const from = reverse ? full : blank
-      const to = reverse ? blank : full
+      const from = reverse ? 0 : len
+      const to = reverse ? len : 0
 
+      registerDashOffsetProperty()
       el.style.strokeDasharray = blank
-      el.style.strokeDashoffset = from
+      el.style.setProperty(DASH_OFFSET_PROPERTY, `${from}px`)
+      el.style.strokeDashoffset = `clamp(0px, var(${DASH_OFFSET_PROPERTY}), ${blank}px)`
       run.blankByElement.set(el, blank)
 
-      const anim = el.animate([{ strokeDashoffset: from }, { strokeDashoffset: to }], {
+      const anim = el.animate([{ [DASH_OFFSET_PROPERTY]: `${from}px` }, { [DASH_OFFSET_PROPERTY]: `${to}px` }], {
         duration: this.duration,
         easing: this.easing,
         fill: 'forwards'

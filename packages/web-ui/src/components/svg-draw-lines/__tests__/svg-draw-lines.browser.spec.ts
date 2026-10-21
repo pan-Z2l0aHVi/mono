@@ -169,38 +169,38 @@ describe('WebUiSvgDrawLines 组件（浏览器）', () => {
     el.remove()
   })
 
-  /*
-   * 「沿原路收回」的契约是两端互换，所以要看的是关键帧顺序：只断言末态分不出「真的反着播」
-   * 和「正着播完再抹掉」。观察面用 WAAPI 的 getKeyframes()（§10 S2），只钉哪一端是 0、
-   * 另一端非 0，不钉具体长度（§12 C1）。
-   */
-  it('收回的关键帧从满描边走到空白，画入相反', async () => {
-    const el = createEl()
-    el.duration = 5000
-    el.noAutoplay = true
-    el.innerHTML = '<svg><path d="M0 0 L100 100"/></svg>'
-    await waitForUpdate(el)
-    const path = el.querySelector('path')!
+  it('overshooting easing keeps draw-in and reverse offsets within the dash range', async () => {
+    for (const reverse of [false, true]) {
+      const el = createEl()
+      el.duration = 1000
+      el.easing = 'cubic-bezier(0.68, -0.55, 0.27, 1.55)'
+      el.noAutoplay = true
+      el.innerHTML = '<svg><path d="M0 0 L100 0" stroke-width="2"/></svg>'
+      await waitForUpdate(el)
+      const path = el.querySelector('path')!
+      const replayed = el.replay({ reverse })
 
-    const ends = (): [number, number] => {
-      const frames = (path.getAnimations()[0]!.effect as KeyframeEffect).getKeyframes()
-      return [Number(frames[0].strokeDashoffset), Number(frames[frames.length - 1].strokeDashoffset)]
+      await expect.poll(() => path.getAnimations().length).toBeGreaterThan(0)
+      const animation = path.getAnimations()[0]!
+      animation.pause()
+      const blank = Number(path.style.strokeDasharray)
+      const offsets: number[] = []
+
+      for (let step = 0; step <= 100; step += 1) {
+        animation.currentTime = (el.duration * step) / 100
+        offsets.push(Number.parseFloat(getComputedStyle(path).strokeDashoffset))
+      }
+
+      expect(offsets.every(offset => Number.isFinite(offset) && offset >= 0 && offset <= blank)).toBe(true)
+      expect(offsets[0]).toBe(reverse ? 0 : blank)
+      expect(offsets[offsets.length - 1]).toBe(reverse ? blank : 0)
+      expect(Math.min(...offsets)).toBe(0)
+      expect(Math.max(...offsets)).toBe(blank)
+
+      animation.cancel()
+      await replayed
+      el.remove()
     }
-
-    void el.replay({ reverse: true })
-    await expect.poll(() => path.getAnimations().length).toBeGreaterThan(0)
-    const [retractFrom, retractTo] = ends()
-    expect(retractFrom).toBe(0)
-    expect(retractTo).toBeGreaterThan(0)
-    path.getAnimations().forEach(animation => animation.cancel())
-
-    void el.replay()
-    await expect.poll(() => path.getAnimations().length).toBeGreaterThan(0)
-    const [revealFrom, revealTo] = ends()
-    expect(revealFrom).toBeGreaterThan(0)
-    expect(revealTo).toBe(0)
-    path.getAnimations().forEach(animation => animation.cancel())
-    el.remove()
   })
 
   /*
