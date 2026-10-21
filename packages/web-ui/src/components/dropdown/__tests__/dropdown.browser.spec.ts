@@ -320,6 +320,372 @@ describe('WebUiDropdown 组件（浏览器）', () => {
     expect(secondMenu.open).toBe(true)
   })
 
+  it('焦点离开 menu panel 后关闭并保留新的焦点落点', async () => {
+    const previous = document.createElement('button')
+    previous.textContent = 'Previous'
+    document.body.append(previous)
+
+    const menu = createDropdown(TWO_ITEMS)
+    const outside = document.createElement('button')
+    outside.textContent = 'Outside'
+    document.body.append(outside)
+    await menu.updateComplete
+
+    previous.focus()
+    menu.openMenu()
+    await menu.updateComplete
+    const panels = await waitForMenuPanels(1)
+    expect(panels).toHaveLength(1)
+    expect(document.documentElement.style.overflow).toBe('hidden')
+    expect(document.documentElement.style.overscrollBehavior).toBe('none')
+
+    outside.focus()
+    await waitFor(() => !menu.open, 'menu panel 失焦后应关闭')
+    await menu.updateComplete
+    const trigger = menu.querySelector<HTMLElement>('[slot="trigger"]')!
+
+    expect(menu.open).toBe(false)
+    expect(trigger.getAttribute('aria-expanded')).toBe('false')
+    expect(document.documentElement.style.overflow).toBe('')
+    expect(document.documentElement.style.overscrollBehavior).toBe('')
+    await waitForMenuPanels(0)
+    expect(document.activeElement).toBe(outside)
+  })
+
+  it('focusout 没有 relatedTarget 时仍关闭已失去焦点的 menu', async () => {
+    const menu = createDropdown(TWO_ITEMS)
+    await menu.updateComplete
+
+    menu.openMenu()
+    await menu.updateComplete
+    const panels = await waitForMenuPanels(1)
+    expect(panels).toHaveLength(1)
+    const item = openRootItems()[0]!
+    const control = focusedControl(item)!
+    expect(item.shadowRoot?.activeElement).toBe(control)
+
+    control.blur()
+    await waitFor(() => !menu.open, 'menu item 失焦后应关闭')
+    await menu.updateComplete
+
+    expect(menu.querySelector('[slot="trigger"]')?.getAttribute('aria-expanded')).toBe('false')
+    expect(document.documentElement.style.overflow).toBe('')
+    expect(document.documentElement.style.overscrollBehavior).toBe('')
+    await waitForMenuPanels(0)
+  })
+
+  it('点击 menu panel 内的非焦点空白处不会关闭 menu', async () => {
+    const menu = createDropdown(TWO_ITEMS)
+    await menu.updateComplete
+    menu.openMenu()
+    await menu.updateComplete
+    const panels = await waitForMenuPanels(1)
+    expect(panels).toHaveLength(1)
+
+    const control = focusedControl(openRootItems()[0]!)!
+    const panel = panels[0]!
+    panel.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, composed: true }))
+    control.blur()
+    await nextFrame()
+    expect(menu.open).toBe(true)
+    panel.dispatchEvent(new PointerEvent('pointerup', { bubbles: true, composed: true }))
+    panel.dispatchEvent(clickEvent(1))
+    await nextFrame()
+
+    expect(menu.open).toBe(true)
+    expect(menu.querySelector('[slot="trigger"]')?.getAttribute('aria-expanded')).toBe('true')
+    expect(document.documentElement.style.overflow).toBe('hidden')
+    expect(document.documentElement.style.overscrollBehavior).toBe('none')
+  })
+
+  it('点击外部焦点控件关闭时保留点击后的焦点', async () => {
+    const menu = createDropdown(TWO_ITEMS)
+    const outside = document.createElement('button')
+    outside.textContent = 'Outside'
+    document.body.append(outside)
+    await menu.updateComplete
+
+    menu.openMenu()
+    await menu.updateComplete
+    expect(await waitForMenuPanels(1)).toHaveLength(1)
+
+    outside.focus()
+    outside.dispatchEvent(clickEvent(1))
+    await waitFor(() => !menu.open, '点击面板外控件后 menu 应关闭')
+    await menu.updateComplete
+    await waitForMenuPanels(0)
+
+    expect(menu.querySelector('[slot="trigger"]')?.getAttribute('aria-expanded')).toBe('false')
+    expect(document.documentElement.style.overflow).toBe('')
+    expect(document.documentElement.style.overscrollBehavior).toBe('')
+    expect(document.activeElement).toBe(outside)
+  })
+
+  it('Tab 从当前 menu item 移至下一个 tab stop 并关闭 menu', async () => {
+    const previous = document.createElement('button')
+    previous.textContent = 'Previous'
+    document.body.append(previous)
+
+    const menu = createDropdown(TWO_ITEMS)
+    const next = document.createElement('button')
+    next.textContent = 'Next'
+    document.body.append(next)
+    await menu.updateComplete
+    menu.openMenu()
+    await menu.updateComplete
+    expect(await waitForMenuPanels(1)).toHaveLength(1)
+
+    await userEvent.keyboard('{ArrowDown}')
+    await nextFrame()
+    const items = openRootItems()
+    expect(items[1]?.shadowRoot?.activeElement).toBe(focusedControl(items[1]!))
+
+    await userEvent.keyboard('{Tab}')
+    await waitFor(() => !menu.open, 'Tab 离开 menu 后应关闭')
+    await menu.updateComplete
+    await waitForMenuPanels(0)
+
+    expect(menu.querySelector('[slot="trigger"]')?.getAttribute('aria-expanded')).toBe('false')
+    expect(document.documentElement.style.overflow).toBe('')
+    expect(document.documentElement.style.overscrollBehavior).toBe('')
+    expect(document.activeElement).toBe(next)
+  })
+
+  it('Shift+Tab 从当前 menu item 移至上一个 tab stop 并关闭 menu', async () => {
+    const previous = document.createElement('button')
+    previous.textContent = 'Previous'
+    document.body.append(previous)
+
+    const menu = createDropdown(TWO_ITEMS)
+    const next = document.createElement('button')
+    next.textContent = 'Next'
+    document.body.append(next)
+    await menu.updateComplete
+    menu.openMenu()
+    await menu.updateComplete
+    expect(await waitForMenuPanels(1)).toHaveLength(1)
+
+    await userEvent.keyboard('{Shift>}{Tab}{/Shift}')
+    await waitFor(() => !menu.open, 'Shift+Tab 离开 menu 后应关闭')
+    await menu.updateComplete
+    await waitForMenuPanels(0)
+
+    expect(menu.querySelector('[slot="trigger"]')?.getAttribute('aria-expanded')).toBe('false')
+    expect(document.documentElement.style.overflow).toBe('')
+    expect(document.documentElement.style.overscrollBehavior).toBe('')
+    expect(document.activeElement).toBe(previous)
+  })
+
+  it('Tab 到达页面末尾时不跳回更早的 tab stop', async () => {
+    const previous = document.createElement('button')
+    previous.textContent = 'Previous'
+    document.body.append(previous)
+
+    const menu = createDropdown(TWO_ITEMS)
+    await menu.updateComplete
+    menu.openMenu()
+    await menu.updateComplete
+    expect(await waitForMenuPanels(1)).toHaveLength(1)
+
+    await userEvent.keyboard('{Tab}')
+    await waitFor(() => !menu.open, 'Tab 离开页面末尾的 menu 后应关闭')
+    await menu.updateComplete
+    await waitForMenuPanels(0)
+
+    expect(menu.querySelector('[slot="trigger"]')?.getAttribute('aria-expanded')).toBe('false')
+    expect(document.documentElement.style.overflow).toBe('')
+    expect(document.documentElement.style.overscrollBehavior).toBe('')
+    expect(document.activeElement).not.toBe(previous)
+  })
+
+  it('Tab 进入原生 radio group 时聚焦已选中的 radio', async () => {
+    const menu = createDropdown(TWO_ITEMS)
+    const unchecked = document.createElement('input')
+    unchecked.type = 'radio'
+    unchecked.name = 'choice'
+    unchecked.value = 'unchecked'
+    const checked = document.createElement('input')
+    checked.type = 'radio'
+    checked.name = 'choice'
+    checked.value = 'checked'
+    checked.checked = true
+    document.body.append(unchecked, checked)
+    await menu.updateComplete
+    menu.openMenu()
+    await menu.updateComplete
+    expect(await waitForMenuPanels(1)).toHaveLength(1)
+
+    await userEvent.keyboard('{Tab}')
+    await waitFor(() => !menu.open, 'Tab 离开 menu 后应关闭')
+    await menu.updateComplete
+    await waitForMenuPanels(0)
+
+    expect(document.activeElement).toBe(checked)
+    expect(menu.querySelector('[slot="trigger"]')?.getAttribute('aria-expanded')).toBe('false')
+  })
+
+  it('Tab 跳过仍处于退场 DOM 中的 submenu', async () => {
+    const menu = createDropdown(SUBMENU)
+    const next = document.createElement('button')
+    next.textContent = 'Next'
+    document.body.append(next)
+    await menu.updateComplete
+    menu.openMenu()
+    await menu.updateComplete
+    await waitForMenuPanels(1)
+
+    const parentItem = requireRootItem()
+    parentItem.click()
+    const panels = await waitForMenuPanels(2)
+    expect(panels).toHaveLength(2)
+    const submenuPanel = panels[1]!
+    submenuPanel.style.transition = 'opacity 5s'
+    const submenuControl = focusedControl(requireItemIn(submenuPanel, 'submenu'))!
+    submenuControl.focus()
+    submenuControl.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowLeft', bubbles: true, composed: true }))
+    await nextFrame()
+
+    await userEvent.keyboard('{Tab}')
+    await waitFor(() => !menu.open, 'Tab 离开 menu 后应关闭')
+    await menu.updateComplete
+    await waitForMenuPanels(0)
+
+    expect(document.activeElement).toBe(next)
+    expect(menu.querySelector('[slot="trigger"]')?.getAttribute('aria-expanded')).toBe('false')
+  })
+
+  it('Tab 将 inline SVG 的显式 tab stop 纳入顺序', async () => {
+    const menu = createDropdown(TWO_ITEMS)
+    const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg')
+    svg.setAttribute('tabindex', '0')
+    svg.setAttribute('width', '32')
+    svg.setAttribute('height', '32')
+    document.body.append(svg)
+    await menu.updateComplete
+    menu.openMenu()
+    await menu.updateComplete
+    expect(await waitForMenuPanels(1)).toHaveLength(1)
+
+    await userEvent.keyboard('{Tab}')
+    await waitFor(() => !menu.open, 'Tab 离开 menu 后应关闭')
+    await menu.updateComplete
+    await waitForMenuPanels(0)
+
+    expect(document.activeElement).toBe(svg)
+    expect(menu.querySelector('[slot="trigger"]')?.getAttribute('aria-expanded')).toBe('false')
+  })
+
+  it('Tab 保留 shadow root 内正 tabindex 的局部顺序', async () => {
+    const menu = createDropdown(TWO_ITEMS)
+    const shadowHost = document.createElement('div')
+    const shadowButton = document.createElement('button')
+    shadowButton.tabIndex = 1
+    shadowHost.attachShadow({ mode: 'open' }).append(shadowButton)
+    const following = document.createElement('button')
+    document.body.append(shadowHost, following)
+    await menu.updateComplete
+    menu.openMenu()
+    await menu.updateComplete
+    expect(await waitForMenuPanels(1)).toHaveLength(1)
+
+    await userEvent.keyboard('{Tab}')
+    await waitFor(() => !menu.open, 'Tab 离开 menu 后应关闭')
+    await menu.updateComplete
+    await waitForMenuPanels(0)
+
+    expect(shadowHost.shadowRoot?.activeElement).toBe(shadowButton)
+    expect(menu.querySelector('[slot="trigger"]')?.getAttribute('aria-expanded')).toBe('false')
+  })
+
+  it('焦点离开正在退场的 submenu 后关闭根 menu', async () => {
+    const content =
+      '<button slot="trigger">Menu</button><web-ui-dropdown-item submenu>Export<web-ui-dropdown-item>PDF</web-ui-dropdown-item></web-ui-dropdown-item><web-ui-dropdown-item>Other</web-ui-dropdown-item>'
+    const menu = createDropdown(content)
+    const outside = document.createElement('button')
+    document.body.append(outside)
+    await menu.updateComplete
+    menu.openMenu()
+    await menu.updateComplete
+    await waitForMenuPanels(1)
+
+    const rootItems = openRootItems()
+    const otherItem = rootItems[rootItems.length - 1]
+    expect(otherItem?.textContent).toContain('Other')
+    rootItems[0]?.click()
+    const panels = await waitForMenuPanels(2)
+    expect(panels).toHaveLength(2)
+    const submenuPanel = panels[1]!
+    submenuPanel.style.transition = 'opacity 5s'
+    const submenuControl = focusedControl(submenuPanel.querySelector<HTMLElement>('web-ui-dropdown-item')!)!
+    submenuControl.focus()
+
+    await nextFrame()
+    await nextFrame()
+    await userEvent.hover(otherItem!)
+    await waitFor(() => submenuPanel.dataset.wuiPresence === 'closing', 'hover 收起后 submenu 应进入退场状态')
+    const submenuItem = submenuPanel.querySelector<HTMLElement>('web-ui-dropdown-item')!
+    expect(submenuItem.isConnected).toBe(true)
+    expect(submenuItem.shadowRoot?.activeElement).toBe(submenuControl)
+
+    outside.focus()
+    await waitFor(() => !menu.open, '焦点离开退场 submenu 后根 menu 应关闭')
+    await menu.updateComplete
+
+    expect(menu.querySelector('[slot="trigger"]')?.getAttribute('aria-expanded')).toBe('false')
+    expect(document.documentElement.style.overflow).toBe('')
+    expect(document.documentElement.style.overscrollBehavior).toBe('')
+    expect(document.activeElement).toBe(outside)
+  })
+
+  it('Shift+Tab 到达页面开头时不跳回更晚的 tab stop', async () => {
+    const menu = createDropdown(TWO_ITEMS)
+    const next = document.createElement('button')
+    next.textContent = 'Next'
+    document.body.append(menu, next)
+    await menu.updateComplete
+    menu.openMenu()
+    await menu.updateComplete
+    expect(await waitForMenuPanels(1)).toHaveLength(1)
+
+    await userEvent.keyboard('{Shift>}{Tab}{/Shift}')
+    await waitFor(() => !menu.open, 'Shift+Tab 离开页面开头的 menu 后应关闭')
+    await menu.updateComplete
+    await waitForMenuPanels(0)
+
+    expect(menu.querySelector('[slot="trigger"]')?.getAttribute('aria-expanded')).toBe('false')
+    expect(document.documentElement.style.overflow).toBe('')
+    expect(document.documentElement.style.overscrollBehavior).toBe('')
+    expect(document.activeElement).not.toBe(next)
+  })
+
+  it('Tab 顺序留在包含 dropdown 的 modal scope 内', async () => {
+    const dialog = document.createElement('dialog')
+    const menu = createDropdown(TWO_ITEMS)
+    const next = document.createElement('button')
+    next.textContent = 'Dialog next'
+    const outside = document.createElement('button')
+    outside.textContent = 'Outside dialog'
+    dialog.append(menu, next)
+    document.body.append(dialog, outside)
+    dialog.showModal()
+    await menu.updateComplete
+    menu.openMenu()
+    await menu.updateComplete
+    await waitFor(() => dialog.querySelectorAll('[role="menu"]').length === 1, 'modal 中的 menu panel 应挂载')
+    expect(dialog.querySelectorAll('[role="menu"]')).toHaveLength(1)
+
+    await userEvent.keyboard('{Shift>}{Tab}{/Shift}')
+    await waitFor(() => !menu.open, 'Shift+Tab 离开 modal 中的 menu 后应关闭')
+    await menu.updateComplete
+    await waitFor(() => dialog.querySelectorAll('[role="menu"]').length === 0, 'modal 中的 menu panel 应卸载')
+
+    expect(menu.querySelector('[slot="trigger"]')?.getAttribute('aria-expanded')).toBe('false')
+    expect(document.activeElement).toBe(next)
+    expect(document.activeElement).not.toBe(outside)
+    expect(dialog.open).toBe(true)
+    dialog.close()
+  })
+
   // 上一会话的手势模态不能漏到下一会话：属性驱动的打开没有手势信息，必须回到默认口径。
   it('声明式 open 打开不沿用上一次键盘会话的 focus 模态', async () => {
     const menu = createDropdown(TWO_ITEMS)

@@ -43,6 +43,157 @@ const SLOT_PREFIX = 'web-ui-menu-level-'
 // 一级 menu item 的模板位 marker（机制与 context-menu 共用，见 menu-tree 的托管项锚说明）。
 const MENU_ITEM_MARKER = 'wui-dropdown-menu-item'
 
+/** 依照组合树顺序收集 tab stops，包含 slot 投影和开放的 shadow root。 */
+type SequentialFocusTarget = HTMLElement | SVGElement
+
+function getSequentialFocusTargets(root: Node): SequentialFocusTarget[] {
+  interface FocusEntry {
+    target?: SequentialFocusTarget
+    nested: FocusEntry[]
+    tabIndex: number
+  }
+
+  const isHidden = (node: Node): boolean => {
+    let current: Node | null = node
+    while (current) {
+      if (current instanceof HTMLElement && (current.hidden || current.inert)) return true
+      current = getComposedParent(current)
+    }
+    return false
+  }
+
+  const getTarget = (node: Element): SequentialFocusTarget | undefined => {
+    if (
+      !(node instanceof HTMLElement || node instanceof SVGElement) ||
+      isHidden(node) ||
+      node.tabIndex < 0 ||
+      node.matches(':disabled') ||
+      getComputedStyle(node).visibility === 'hidden' ||
+      node.getClientRects().length === 0
+    ) {
+      return undefined
+    }
+    return node
+  }
+
+  const getScopeOwnerTabIndex = (owner: HTMLElement | HTMLSlotElement): number | undefined => {
+    if (!owner.hasAttribute('tabindex')) return 0
+    const tabIndex = owner.tabIndex
+    return tabIndex < 0 ? undefined : tabIndex
+  }
+
+  const visitNodes = (nodes: Iterable<Node>): FocusEntry[] => {
+    const entries: FocusEntry[] = []
+
+    const visit = (node: Node) => {
+      if (node instanceof HTMLSlotElement) {
+        const tabIndex = getScopeOwnerTabIndex(node)
+        if (tabIndex === undefined) return
+        const assigned = node.assignedNodes()
+        const children = visitNodes(assigned.length ? assigned : Array.from(node.childNodes))
+        const target = getTarget(node)
+        entries.push({ target, nested: children, tabIndex: target?.tabIndex ?? tabIndex })
+        return
+      }
+
+      if (node instanceof Element) {
+        const target = getTarget(node)
+        if (node instanceof HTMLElement && node.shadowRoot) {
+          const tabIndex = getScopeOwnerTabIndex(node)
+          if (tabIndex === undefined) return
+          entries.push({
+            target,
+            nested: visitNodes(node.shadowRoot.childNodes),
+            tabIndex: target?.tabIndex ?? tabIndex
+          })
+          return
+        }
+
+        if (target) entries.push({ target, nested: [], tabIndex: target.tabIndex })
+        for (const child of Array.from(node.childNodes)) visit(child)
+        return
+      }
+
+      for (const child of Array.from(node.childNodes)) visit(child)
+    }
+
+    for (const node of nodes) visit(node)
+    const positive = entries.filter(entry => entry.tabIndex > 0).sort((a, b) => a.tabIndex - b.tabIndex)
+    return [...positive, ...entries.filter(entry => entry.tabIndex === 0)]
+  }
+
+  const entries = visitNodes(root instanceof Element ? [root] : root.childNodes)
+  const targets: SequentialFocusTarget[] = []
+  const flatten = (items: FocusEntry[]) => {
+    for (const item of items) {
+      if (item.target) targets.push(item.target)
+      flatten(item.nested)
+    }
+  }
+  flatten(entries)
+
+  const radioGroups = new Map<Node, Map<HTMLFormElement | null, Map<string, HTMLInputElement[]>>>()
+  for (const target of targets) {
+    if (!(target instanceof HTMLInputElement) || target.type !== 'radio' || !target.name) continue
+    const tree = target.getRootNode()
+    let forms = radioGroups.get(tree)
+    if (!forms) {
+      forms = new Map()
+      radioGroups.set(tree, forms)
+    }
+    let names = forms.get(target.form)
+    if (!names) {
+      names = new Map()
+      forms.set(target.form, names)
+    }
+    const members = names.get(target.name) ?? []
+    members.push(target)
+    names.set(target.name, members)
+  }
+
+  const groupedRadioStops = new Set<HTMLInputElement>()
+  for (const forms of radioGroups.values()) {
+    for (const names of forms.values()) {
+      for (const members of names.values()) {
+        groupedRadioStops.add(members.find(member => member.checked) ?? members[0]!)
+      }
+    }
+  }
+  const sequentialTargets = targets.filter(target => {
+    if (!(target instanceof HTMLInputElement) || target.type !== 'radio' || !target.name) return true
+    return groupedRadioStops.has(target)
+  })
+  return sequentialTargets
+}
+
+function getComposedParent(node: Node): Node | null {
+  if (node instanceof Element && node.assignedSlot) return node.assignedSlot
+  return node.parentNode instanceof ShadowRoot ? node.parentNode.host : node.parentNode
+}
+
+function isComposedDescendant(node: Node, ancestor: Node): boolean {
+  let current: Node | null = node
+  while (current) {
+    if (current === ancestor) return true
+    current = getComposedParent(current)
+  }
+  return false
+}
+
+function getFocusNavigationScope(node: Node): { root: Node; wraps: boolean } {
+  let current: Node | null = node
+  while (current) {
+    if (current instanceof HTMLDialogElement && current.open && current.matches(':modal')) {
+      return { root: current, wraps: true }
+    }
+    if (current instanceof HTMLElement && current.getAttribute('aria-modal') === 'true') {
+      return { root: current, wraps: true }
+    }
+    current = getComposedParent(current)
+  }
+  return { root: document, wraps: false }
+}
+
 let dropdownIdCounter = 0
 
 interface MenuOverlay {
@@ -51,6 +202,12 @@ interface MenuOverlay {
   content: HTMLElement
   /** 该层为 submenu 时的会话 handle；根层 handle 由组件单独持有（见 `_handle`）。 */
   handle?: OpenOverlayHandle
+}
+
+type PointerInteraction = {
+  startedInsideMenu: boolean
+  completed: boolean
+  clickInsideMenu?: boolean
 }
 
 @customElement('web-ui-dropdown')
@@ -154,6 +311,9 @@ export class WebUiDropdown extends LitElement {
   }
   private readonly _userOpenChange = new UserChangeController()
   private _restoreFocusTarget?: HTMLElement
+  private _skipFocusRestoreOnClose = false
+  private _pointerInteraction?: PointerInteraction
+  private _pendingFocusOutCheck?: () => void
   private _shouldOpenInstantly = true
   /**
    * 本次打开是否抑制首项的 `:focus-visible` accent 视觉（口径与 context-menu 一致）。
@@ -185,7 +345,12 @@ export class WebUiDropdown extends LitElement {
     super.connectedCallback()
     this._overlay.resume()
     this.addEventListener('keydown', this._onKeydown)
+    document.addEventListener('pointerdown', this._onPointerDown, true)
+    document.addEventListener('pointerup', this._onPointerUp, true)
+    document.addEventListener('pointercancel', this._onPointerCancel, true)
     document.addEventListener('click', this._onClickOutside)
+    document.addEventListener('focusin', this._onFocusIn, true)
+    document.addEventListener('focusout', this._onFocusOut, true)
     this._menuContentObserver.observe(this, { childList: true, subtree: true })
     /*
      * 重挂载对账：`disconnectedCallback` 会拆掉 panel、把 menu item 迁回宿主，但 `open` 是公开
@@ -209,7 +374,12 @@ export class WebUiDropdown extends LitElement {
     super.disconnectedCallback()
     this._menuContentObserver.disconnect()
     this.removeEventListener('keydown', this._onKeydown)
+    document.removeEventListener('pointerdown', this._onPointerDown, true)
+    document.removeEventListener('pointerup', this._onPointerUp, true)
+    document.removeEventListener('pointercancel', this._onPointerCancel, true)
     document.removeEventListener('click', this._onClickOutside)
+    document.removeEventListener('focusin', this._onFocusIn, true)
+    document.removeEventListener('focusout', this._onFocusOut, true)
     this._outsideClickGuard.dispose()
     this._hoverBinder.dispose()
     // 停止帧调度；登记由 _cleanupClosedMenu → _disposeAll 撤销。
@@ -224,6 +394,7 @@ export class WebUiDropdown extends LitElement {
 
     if (changed.has('open')) {
       if (this.open) {
+        this._skipFocusRestoreOnClose = false
         this._syncOpenOverlay(true)
       } else {
         this._overlay.invalidate()
@@ -343,8 +514,16 @@ export class WebUiDropdown extends LitElement {
   private _cleanupClosedMenu() {
     this._closeAllSubmenus()
     this._returnLevel0Items()
+    this._resetMenuTabStops()
     this._disposeAll()
     this._syncTriggerAria()
+  }
+
+  private _resetMenuTabStops() {
+    this.querySelectorAll<HTMLElement>('web-ui-dropdown-item').forEach(item => {
+      const control = item.shadowRoot?.querySelector<HTMLElement>('[role="menuitem"]')
+      if (control) control.tabIndex = item.hasAttribute('disabled') ? -1 : 0
+    })
   }
 
   private async _closeRootAfterPresence() {
@@ -357,7 +536,8 @@ export class WebUiDropdown extends LitElement {
       menuOverlay.overlay.matches(':focus-within')
     )
     this._cleanupClosedMenu()
-    if (shouldRestoreFocus) this._restoreFocusTarget?.focus()
+    if (shouldRestoreFocus && !this._skipFocusRestoreOnClose) this._restoreFocusTarget?.focus()
+    this._skipFocusRestoreOnClose = false
     this._restoreFocusTarget = undefined
   }
 
@@ -687,9 +867,124 @@ export class WebUiDropdown extends LitElement {
   }
 
   private _onClickOutside = (e: MouseEvent) => {
+    if (this._pointerInteraction) {
+      this._pointerInteraction.completed = true
+      this._pointerInteraction.clickInsideMenu = this._outsideClickGuard.isInside(e)
+      this._pointerInteraction = undefined
+      this._resumePendingFocusOutCheck()
+    }
     if (!this.isOpen || this._outsideClickGuard.isArmed()) return
     if (this._outsideClickGuard.isInside(e)) return
     this._closeAll(true)
+  }
+
+  private _onPointerDown = (event: PointerEvent) => {
+    this._pointerInteraction = {
+      startedInsideMenu: Boolean(this.open && this._handle?.containsEvent(event)),
+      completed: false
+    }
+  }
+
+  private _onPointerUp = (event: PointerEvent) => {
+    const interaction = this._pointerInteraction
+    if (!interaction) return
+    interaction.completed = true
+    interaction.clickInsideMenu = Boolean(this._handle?.containsEvent(event))
+    this._pointerInteraction = undefined
+    this._resumePendingFocusOutCheck()
+  }
+
+  private _onPointerCancel = () => {
+    const interaction = this._pointerInteraction
+    if (!interaction) return
+    interaction.completed = true
+    interaction.clickInsideMenu = interaction.startedInsideMenu
+    this._pointerInteraction = undefined
+    this._resumePendingFocusOutCheck()
+  }
+
+  private _resumePendingFocusOutCheck() {
+    const check = this._pendingFocusOutCheck
+    this._pendingFocusOutCheck = undefined
+    check?.()
+  }
+
+  private _onFocusOut = (event: FocusEvent) => {
+    const handle = this._handle
+    if (!this.open || !handle?.containsEvent(event)) return
+    const pointerInteraction = this._pointerInteraction
+    const source = event.composedPath()[0]
+    // Lit 更新条目时可能替换焦点控件并从已脱离的节点派发 focusout。
+    if (source instanceof Node && !source.isConnected) return
+    const next = event.relatedTarget
+    if (
+      next instanceof Node &&
+      [...this._overlays.values()].some(({ overlay }) => isComposedDescendant(next, overlay))
+    ) {
+      return
+    }
+    const movedToKnownOutsideTarget = next instanceof Node
+    if (movedToKnownOutsideTarget) this._skipFocusRestoreOnClose = true
+
+    const checkFocus = () => {
+      if (!this.open || this._handle !== handle) return
+      if (pointerInteraction?.startedInsideMenu) {
+        if (!pointerInteraction.completed) {
+          // pointerdown 可能先让 menu item 失焦；等同一手势的 pointerup/click 确认是否点在 menu 内。
+          this._pendingFocusOutCheck = () => this._overlay.scheduleFrame(checkFocus)
+          return
+        }
+        if (pointerInteraction.clickInsideMenu) return
+      }
+      if (handle.hasFocusWithin()) {
+        if (movedToKnownOutsideTarget) this._skipFocusRestoreOnClose = false
+        return
+      }
+      this._skipFocusRestoreOnClose = true
+      this._closeAll(true)
+    }
+    this._overlay.scheduleFrame(checkFocus)
+  }
+
+  private _onFocusIn = (event: FocusEvent) => {
+    const handle = this._handle
+    if (!this.open || !handle?.containsEvent(event)) return
+    const focusedItem = getMenuItemFromEvent(event)
+    if (!focusedItem) return
+
+    this._setMenuTabStop(focusedItem)
+  }
+
+  private _setMenuTabStop(focusedItem?: HTMLElement) {
+    for (const { content } of this._overlays.values()) {
+      content.querySelectorAll<HTMLElement>('web-ui-dropdown-item').forEach(item => {
+        const control = item.shadowRoot?.querySelector<HTMLElement>('[role="menuitem"]')
+        if (control) control.tabIndex = item === focusedItem && !item.hasAttribute('disabled') ? 0 : -1
+      })
+    }
+  }
+
+  private _moveFocusToAdjacentPageTarget(backward: boolean): boolean {
+    const trigger = this._queryTriggerAnchor()
+    const scope = getFocusNavigationScope(trigger ?? this)
+    // panel 位于 overlay portal；按 trigger 的页面位置找相邻 stop，避免依赖 shadow root 的原生 Tab 顺序。
+    const menuPanels = [
+      ...[...this._overlays.values()].map(({ overlay }) => overlay),
+      ...this._closingSubmenus.closing().map(({ overlay }) => overlay)
+    ]
+    const targets = getSequentialFocusTargets(scope.root).filter(
+      target => !menuPanels.some(panel => isComposedDescendant(target, panel))
+    )
+    if (!targets.length) return false
+
+    const triggerTargets = trigger ? targets.filter(target => isComposedDescendant(target, trigger)) : []
+    const edgeTarget = backward ? triggerTargets[0] : triggerTargets.at(-1)
+    if (!edgeTarget) return false
+    const targetIndex = targets.indexOf(edgeTarget) + (backward ? -1 : 1)
+    const target = targets[targetIndex] ?? (scope.wraps ? (backward ? targets.at(-1) : targets[0]) : undefined)
+    if (!target) return false
+    target.focus()
+    return true
   }
 
   private _onMenuClick = (e: MouseEvent) => {
@@ -704,6 +999,15 @@ export class WebUiDropdown extends LitElement {
 
   private _onKeydown = (e: KeyboardEvent) => {
     if (this.disabled || !this.open) return
+
+    if (e.key === 'Tab') {
+      this._setMenuTabStop()
+      e.preventDefault()
+      this._skipFocusRestoreOnClose = true
+      if (!this._moveFocusToAdjacentPageTarget(e.shiftKey)) document.body.focus()
+      this._closeAll(true)
+      return
+    }
 
     // overlay 上键盘事件 target 是 menu item 而非组件自身，不能限定 e.target === this，
     // 否则鼠标打开、焦点在 menu item 时 Escape 无法关闭
