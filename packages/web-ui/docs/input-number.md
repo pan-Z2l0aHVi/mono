@@ -75,18 +75,20 @@ const quantity = ref(1)
 
 ### Props
 
-| 名称          | 说明                           | 类型      | 默认值     |
-| ------------- | ------------------------------ | --------- | ---------- |
-| `placeholder` | 占位文本。                     | `string`  | `''`       |
-| `name`        | 表单字段名。                   | `string`  | `''`       |
-| `disabled`    | 禁用状态。                     | `boolean` | `false`    |
-| `readonly`    | 只读状态。                     | `boolean` | `false`    |
-| `required`    | 必填校验。                     | `boolean` | `false`    |
-| `precision`   | 小数精度，在读取与提交时规整。 | `number`  | `0`        |
-| `value`       | 当前值。                       | `number`  | `0`        |
-| `min`         | 最小值。                       | `number`  | `0`        |
-| `max`         | 最大值。                       | `number`  | `Infinity` |
-| `step`        | 步进值。                       | `number`  | `1`        |
+| 名称              | 说明                                 | 类型      | 默认值     |
+| ----------------- | ------------------------------------ | --------- | ---------- |
+| `placeholder`     | 占位文本。                           | `string`  | `''`       |
+| `name`            | 表单字段名。                         | `string`  | `''`       |
+| `disabled`        | 禁用状态。                           | `boolean` | `false`    |
+| `readonly`        | 只读状态。                           | `boolean` | `false`    |
+| `required`        | 必填校验。                           | `boolean` | `false`    |
+| `aria-label`      | 输入框的无障碍名称。                 | `string`  | —          |
+| `aria-labelledby` | 无障碍名称引用，用于命名内部输入框。 | `string`  | —          |
+| `precision`       | 小数精度，在读取与提交时规整。       | `number`  | `0`        |
+| `value`           | 当前值。                             | `number`  | `0`        |
+| `min`             | 最小值。                             | `number`  | `0`        |
+| `max`             | 最大值。                             | `number`  | `Infinity` |
+| `step`            | 步进值。                             | `number`  | `1`        |
 
 ### Events
 
