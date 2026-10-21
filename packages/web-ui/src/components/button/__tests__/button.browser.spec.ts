@@ -35,6 +35,35 @@ describe('WebUiButton 组件（浏览器）', () => {
     expect(icon.getBoundingClientRect().height).toBe(32)
   })
 
+  it('size 通过数字属性赋值时仍按 px 更新', async () => {
+    const button = mountElement<WebUiButton>('web-ui-button')
+    ;(button as unknown as { size: unknown }).size = 32
+
+    await waitForUpdate(button)
+
+    expect(button.getBoundingClientRect().height).toBe(32)
+  })
+
+  it('数字 size 为 0 时仍按 0px 处理', async () => {
+    const button = mountElement<WebUiButton>('web-ui-button')
+    ;(button as unknown as { size: unknown }).size = 0
+
+    await waitForUpdate(button)
+
+    expect(button.getBoundingClientRect().height).toBe(0)
+  })
+
+  it('移除 size 属性后恢复默认高度', async () => {
+    const button = mountElement<WebUiButton>('web-ui-button', { attrs: { size: '32' } })
+    await waitForUpdate(button)
+    expect(button.getBoundingClientRect().height).toBe(32)
+
+    button.removeAttribute('size')
+    await waitForUpdate(button)
+
+    expect(button.getBoundingClientRect().height).toBe(36)
+  })
+
   it('将规范化后的 type 传给真实原生 button', async () => {
     const button = mountElement<WebUiButton>('web-ui-button', { attrs: { type: 'invalid' } })
     await waitForUpdate(button)

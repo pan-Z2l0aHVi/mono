@@ -90,7 +90,10 @@ export class WebUiButton extends FormAssociated(LitElement) {
       return { '--wui-control-size': 'var(--wui-internal-button-group-button-size, 30px)' }
     }
 
-    const size = this.size.trim()
+    const sizeValue: unknown = this.size
+    if (typeof sizeValue !== 'string' && typeof sizeValue !== 'number') return {}
+
+    const size = `${sizeValue}`.trim()
     if (!size) return {}
 
     // 裸数字按 px 解释；带单位的 CSS 长度原样使用。
