@@ -13,6 +13,8 @@ import type { WebUiDropdown } from '..'
 
 const SUBMENU =
   '<button slot="trigger">Menu</button><web-ui-dropdown-item submenu>Export<web-ui-dropdown-item>PDF</web-ui-dropdown-item></web-ui-dropdown-item>'
+const NESTED_SUBMENU =
+  '<button slot="trigger">Menu</button><web-ui-dropdown-item submenu>Export<web-ui-dropdown-item submenu>File type<web-ui-dropdown-item>PDF</web-ui-dropdown-item></web-ui-dropdown-item></web-ui-dropdown-item><web-ui-dropdown-item>Delete</web-ui-dropdown-item>'
 
 const SIMPLE = '<button slot="trigger">Menu</button><web-ui-dropdown-item>Open</web-ui-dropdown-item>'
 const TWO_ITEMS =
@@ -98,6 +100,15 @@ function requireRootItem(): HTMLElement {
 function requireItemIn(panel: HTMLElement | undefined, label: string): HTMLElement {
   const item = panel?.querySelector<HTMLElement>('web-ui-dropdown-item')
   if (!item) throw new Error(`${label}panel 未挂载或没有 menu item`)
+  return item
+}
+
+/** 指定 menu item 文本；精确匹配，避免把 submenu 的后代误当成同级项。 */
+function requireItemByText(panel: HTMLElement | undefined, text: string): HTMLElement {
+  const item = [...(panel?.querySelectorAll<HTMLElement>('web-ui-dropdown-item') ?? [])].find(
+    candidate => candidate.textContent?.trim() === text
+  )
+  if (!item) throw new Error(`找不到文本为「${text}」的 menu item`)
   return item
 }
 
@@ -326,9 +337,8 @@ describe('WebUiDropdown 组件（浏览器）', () => {
     expect(nested!.open).toBe(false)
   })
 
-  // 键盘用户要能用方向键开合 submenu：ArrowRight 进入、ArrowLeft 退回父级。
-  it('键盘语义激活可以关闭并重新打开 submenu', async () => {
-    const menu = createDropdown(SUBMENU)
+  it('ArrowLeft 将焦点还给 submenu 父项，之后方向键仍可导航', async () => {
+    const menu = createDropdown(NESTED_SUBMENU)
     await menu.updateComplete
 
     menu.querySelector<HTMLButtonElement>('button')?.click()
@@ -338,28 +348,53 @@ describe('WebUiDropdown 组件（浏览器）', () => {
 
     const parentItem = requireRootItem()
     const parentControl = focusedControl(parentItem)!
-    parentControl.focus()
-    expect(parentItem.shadowRoot?.activeElement, '父项内部的 menuitem 应取得焦点').toBe(parentControl)
-
-    parentItem.click()
+    await userEvent.keyboard('{ArrowRight}')
 
     const opened = await waitForMenuPanels(2)
     expect(opened).toHaveLength(2)
+    const nestedItem = requireItemIn(opened[1], 'File type')
+    const nestedControl = focusedControl(nestedItem)!
     expect(opened[1]?.textContent).toContain('PDF')
 
-    const submenuControl = focusedControl(requireItemIn(opened[1], 'submenu'))!
-    submenuControl.focus()
-    submenuControl.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowLeft', bubbles: true, composed: true }))
+    await userEvent.keyboard('{ArrowLeft}')
     getMenuPanels()[1]?.dispatchEvent(new TransitionEvent('transitionend', { propertyName: 'opacity', bubbles: true }))
 
     expect(await waitForMenuPanels(1)).toHaveLength(1)
+    expect(parentItem.shadowRoot?.activeElement, 'ArrowLeft 后焦点应回到 Export').toBe(parentControl)
 
-    parentControl.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true, composed: true }))
+    await userEvent.keyboard('{ArrowDown}')
+    const siblingItem = requireItemByText(getMenuPanels()[0], 'Delete')
+    const siblingControl = focusedControl(siblingItem)!
+    expect(siblingItem.shadowRoot?.activeElement).toBe(siblingControl)
 
+    await userEvent.keyboard('{ArrowUp}')
+    expect(parentItem.shadowRoot?.activeElement).toBe(parentControl)
+    await userEvent.keyboard('{Home}')
+    expect(parentItem.shadowRoot?.activeElement).toBe(parentControl)
+    await userEvent.keyboard('{End}')
+    expect(siblingItem.shadowRoot?.activeElement).toBe(siblingControl)
+    await userEvent.keyboard('{ArrowUp}')
+    expect(parentItem.shadowRoot?.activeElement).toBe(parentControl)
+
+    await userEvent.keyboard('{ArrowRight}')
     const reopened = await waitForMenuPanels(2)
     expect(reopened).toHaveLength(2)
-    expect(reopened[1]?.hasAttribute('hidden')).toBe(false)
-    expect(reopened[1]?.textContent).toContain('PDF')
+    expect(nestedItem.shadowRoot?.activeElement).toBe(nestedControl)
+
+    await userEvent.keyboard('{ArrowRight}')
+    const deepest = await waitForMenuPanels(3)
+    expect(deepest).toHaveLength(3)
+    expect(deepest[2]?.textContent).toContain('PDF')
+
+    await userEvent.keyboard('{ArrowLeft}')
+    getMenuPanels()[2]?.dispatchEvent(new TransitionEvent('transitionend', { propertyName: 'opacity', bubbles: true }))
+    expect(await waitForMenuPanels(2)).toHaveLength(2)
+    expect(nestedItem.shadowRoot?.activeElement, '深层 ArrowLeft 后焦点应回到 File type').toBe(nestedControl)
+
+    await userEvent.keyboard('{ArrowLeft}')
+    getMenuPanels()[1]?.dispatchEvent(new TransitionEvent('transitionend', { propertyName: 'opacity', bubbles: true }))
+    expect(await waitForMenuPanels(1)).toHaveLength(1)
+    expect(parentItem.shadowRoot?.activeElement).toBe(parentControl)
   })
 
   it('submenu 退出过渡中可以被键盘重新打开', async () => {
