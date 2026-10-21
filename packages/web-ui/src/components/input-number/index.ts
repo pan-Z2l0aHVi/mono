@@ -599,6 +599,11 @@ export class WebUiInputNumber extends FormAssociated(LitElement) {
     this.requestUpdate()
   }
 
+  override formDisabledCallback(disabled: boolean) {
+    super.formDisabledCallback(disabled)
+    this.toggleAttribute('data-form-disabled', disabled)
+  }
+
   override updated() {
     this._syncLabelledbyObserver()
     if (this._supportsLabelledbyElements) {

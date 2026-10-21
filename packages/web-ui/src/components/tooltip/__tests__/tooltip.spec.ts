@@ -1,4 +1,5 @@
 import '..'
+import '@/components/button'
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 
@@ -105,6 +106,71 @@ describe('WebUiTooltip 组件', () => {
       vi.advanceTimersByTime(200)
       await waitForUpdate(el)
       expect(el.isOpen).toBe(false)
+
+      cleanupElement(el)
+    })
+
+    it('打开期间禁用会立即关闭 tooltip', async () => {
+      const el = createTooltip({ content: '提示' })
+      el.open = true
+      await waitForUpdate(el)
+      expect(el.isOpen).toBe(true)
+
+      el.disabled = true
+      await waitForUpdate(el)
+
+      expect(el.isOpen).toBe(false)
+      expect(queryA11y(el, '[role="tooltip"]')?.hasAttribute('hidden')).toBe(true)
+
+      cleanupElement(el)
+    })
+
+    it('禁用会取消等待中的显示延迟', async () => {
+      const el = createTooltip({ content: '提示' })
+      await waitForUpdate(el)
+
+      el.dispatchEvent(new PointerEvent('pointerenter'))
+      vi.advanceTimersByTime(100)
+      el.disabled = true
+      await waitForUpdate(el)
+
+      vi.advanceTimersByTime(200)
+      await waitForUpdate(el)
+      expect(el.isOpen).toBe(false)
+
+      cleanupElement(el)
+    })
+
+    it('disabled 时直接设置 open 也不会重新打开', async () => {
+      const el = createTooltip({ disabled: '', content: '提示' })
+      await waitForUpdate(el)
+
+      el.open = true
+      await waitForUpdate(el)
+
+      expect(el.isOpen).toBe(false)
+      expect(queryA11y(el, '[role="tooltip"]')?.hasAttribute('hidden')).toBe(true)
+
+      cleanupElement(el)
+    })
+
+    it('重新启用后打开不受 disabled 期间 pointerleave 影响', async () => {
+      const el = createTooltip({ 'hide-delay': '100', content: '提示' })
+      el.open = true
+      await waitForUpdate(el)
+
+      el.disabled = true
+      await waitForUpdate(el)
+      el.dispatchEvent(new PointerEvent('pointerleave'))
+
+      el.disabled = false
+      await waitForUpdate(el)
+      el.open = true
+      await waitForUpdate(el)
+
+      vi.advanceTimersByTime(100)
+      await waitForUpdate(el)
+      expect(el.isOpen).toBe(true)
 
       cleanupElement(el)
     })
@@ -264,10 +330,15 @@ describe('WebUiTooltip 组件', () => {
     it('keyboard focusin 立即显示', async () => {
       const el = createTooltip({ content: '提示' })
       await waitForUpdate(el)
-      const trigger = el.querySelector('button')!
-      vi.spyOn(trigger, 'matches').mockReturnValue(true)
+      const trigger = document.createElement('web-ui-button')
+      trigger.textContent = 'Trigger'
+      el.replaceChildren(trigger)
+      await waitForUpdate(trigger)
+      const focusedButton = trigger.shadowRoot?.querySelector('button')
+      expect(focusedButton).toBeTruthy()
+      vi.spyOn(focusedButton!, 'matches').mockReturnValue(true)
 
-      trigger.dispatchEvent(new FocusEvent('focusin', { bubbles: true }))
+      focusedButton!.dispatchEvent(new FocusEvent('focusin', { bubbles: true, composed: true }))
       await waitForUpdate(el)
 
       expect(el.isOpen).toBe(true)
