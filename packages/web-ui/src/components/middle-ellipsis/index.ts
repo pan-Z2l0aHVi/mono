@@ -260,7 +260,8 @@ export class WebUiMiddleEllipsis extends LitElement {
 
   override updated(): void {
     const textEl = this._textEl
-    if (!textEl) return
+    // Lit can finish an update after this host was removed. Resume fitting only after reconnect.
+    if (!textEl || !this.isConnected) return
 
     this._observeMeasure()
 

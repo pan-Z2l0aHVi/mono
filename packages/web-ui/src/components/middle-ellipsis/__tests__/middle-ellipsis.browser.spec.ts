@@ -444,6 +444,22 @@ describe('web-ui-middle-ellipsis 的字体度量变化（浏览器）', () => {
     expect(shownWidth(el)).toBeLessThanOrEqual(width + 1)
     expectTrimmedTo(el, LONG)
   })
+
+  it('断连后完成的更新不会重新订阅字体度量', async () => {
+    const el = mount({ text: LONG }, 'width: 148px; font: 16px/1.5 monospace;')
+    await settle(el)
+    const before = shown(el)
+
+    el.remove()
+    el.requestUpdate()
+    await settle(el)
+
+    el.style.fontSize = '30px'
+    document.fonts.dispatchEvent(new Event('loadingdone'))
+    await settle(el)
+
+    expect(shown(el)).toBe(before)
+  })
 })
 
 describe('web-ui-middle-ellipsis 的属性（浏览器）', () => {
