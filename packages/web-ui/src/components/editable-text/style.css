@@ -37,6 +37,14 @@
   display: inline;
 }
 
+/* pre-wrap 不为文本节点末尾的换行留下行盒；空的零宽行内块触发末行排版，
+   不向文本节点添加字符，因此选择、复制与 value 保持一致。 */
+.text.trailing-newline::after {
+  content: '';
+  display: inline-block;
+  width: 0;
+}
+
 .placeholder {
   color: var(--wui-color-text-secondary, #6a6a6a);
 }
