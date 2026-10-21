@@ -1,4 +1,5 @@
 import '..'
+import '@/components/button'
 import '@/components/drawer'
 import '@/components/dropdown-item'
 import '@/components/popover'
@@ -6,6 +7,7 @@ import '@/components/popover'
 import { afterEach, describe, expect, it, vi } from 'vite-plus/test'
 import { userEvent } from 'vite-plus/test/browser'
 
+import type { WebUiButton } from '@/components/button'
 import type { WebUiPopover } from '@/components/popover'
 import { getMenuPanels, getPortalPanels, queryA11y } from '@/shared/test-utils'
 
@@ -167,6 +169,36 @@ describe('WebUiDropdown 组件（浏览器）', () => {
     expect(items[0]?.shadowRoot?.activeElement).toBe(focusedControl(items[0]!))
     expect(focusedControl(items[0]!)?.matches(':focus-visible')).toBe(true)
     expect(getComputedStyle(focusedControl(items[0]!)!).backgroundColor).toBe('rgb(0, 136, 255)')
+  })
+
+  it('Escape 关闭后将焦点交还 shadow trigger 并移除 aria-controls', async () => {
+    const menu = createDropdown(
+      '<web-ui-button slot="trigger">Menu</web-ui-button><web-ui-dropdown-item>Open</web-ui-dropdown-item>'
+    )
+    await menu.updateComplete
+
+    const trigger = menu.querySelector<WebUiButton>('web-ui-button')!
+    await trigger.updateComplete
+    const triggerButton = trigger.shadowRoot?.querySelector<HTMLButtonElement>('button')
+    expect(triggerButton).toBeTruthy()
+
+    triggerButton!.focus()
+    expect(trigger.shadowRoot?.activeElement).toBe(triggerButton)
+
+    await userEvent.keyboard('{Enter}')
+    await menu.updateComplete
+    const [rootPanel] = await waitForMenuPanels(1)
+    expect(rootPanel).toBeDefined()
+    expect(trigger.getAttribute('aria-controls')).toBe(rootPanel!.id)
+
+    await userEvent.keyboard('{Escape}')
+    await menu.updateComplete
+    rootPanel!.dispatchEvent(new TransitionEvent('transitionend', { propertyName: 'opacity', bubbles: true }))
+    await waitFor(() => getMenuPanels().length === 0, 'Expected the dropdown to finish closing')
+
+    expect(getMenuPanels()).toHaveLength(0)
+    expect(trigger.shadowRoot?.activeElement).toBe(triggerButton)
+    expect(trigger.getAttribute('aria-controls')).toBeNull()
   })
 
   // 上一会话的手势模态不能漏到下一会话：属性驱动的打开没有手势信息，必须回到默认口径。
