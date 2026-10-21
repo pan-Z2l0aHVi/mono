@@ -3,6 +3,7 @@ import '../../theme'
 import '@/components/option'
 
 import { afterEach, describe, expect, it } from 'vite-plus/test'
+import { userEvent } from 'vite-plus/test/browser'
 
 import { getPortalPanel } from '@/shared/test-utils'
 
@@ -11,6 +12,58 @@ import type { WebUiSelect } from '..'
 afterEach(() => document.body.replaceChildren())
 
 describe('WebUiSelect 组件（浏览器）', () => {
+  it('真实键盘输入可打开、导航、typeahead 并提交选择', async () => {
+    const select = document.createElement('web-ui-select')
+    select.value = 'svelte'
+    select.innerHTML = `
+      <web-ui-option value="vue" label="Vue"></web-ui-option>
+      <web-ui-option value="react" label="React"></web-ui-option>
+      <web-ui-option value="svelte" label="Svelte"></web-ui-option>
+    `
+    document.body.append(select)
+    await select.updateComplete
+
+    const trigger = select.shadowRoot!.querySelector<HTMLElement>('[role="combobox"]')!
+    const activeValue = () => {
+      const activeId = trigger.getAttribute('aria-activedescendant')
+      return Array.from(select.querySelectorAll('web-ui-option'))
+        .find(option => option.id === activeId)
+        ?.getAttribute('value')
+    }
+
+    trigger.focus()
+    await userEvent.keyboard('{Enter}')
+    await select.updateComplete
+    expect(select.open).toBe(true)
+
+    await userEvent.keyboard('{Home}')
+    await select.updateComplete
+    expect(activeValue()).toBe('vue')
+
+    await userEvent.keyboard('{End}')
+    await select.updateComplete
+    expect(activeValue()).toBe('svelte')
+
+    await userEvent.keyboard('r')
+    await select.updateComplete
+    expect(activeValue()).toBe('react')
+    expect(select.value).toBe('svelte')
+
+    await userEvent.keyboard('{Enter}')
+    await select.updateComplete
+    expect(select.value).toBe('react')
+    expect(select.open).toBe(false)
+
+    await userEvent.keyboard(' ')
+    await select.updateComplete
+    expect(select.open).toBe(true)
+
+    await userEvent.keyboard(' ')
+    await select.updateComplete
+    expect(select.value).toBe('react')
+    expect(select.open).toBe(false)
+  })
+
   it('Portal panel 在 theme 作用域内挂载到 theme 自己的 overlay root', async () => {
     const theme = document.createElement('web-ui-theme')
     theme.setAttribute('appearance', 'light')

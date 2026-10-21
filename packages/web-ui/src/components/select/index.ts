@@ -92,6 +92,9 @@ export class WebUiSelect extends FormAssociated(LitElement) {
   @state() private _selectedLabel = ''
   @state() private _hasTriggerSlot = false
 
+  private _typeaheadBuffer = ''
+  private _typeaheadLastInputAt = 0
+
   private _options: WebUiOption[] = []
   private _portal?: OverlayPortal
   private _portalContent?: HTMLElement
@@ -299,6 +302,7 @@ export class WebUiSelect extends FormAssociated(LitElement) {
 
     // 指针接管后只保留 :hover，避免键盘激活项与悬停项同时高亮。
     this._activeIndex = -1
+    this._resetTypeahead()
     this._syncActiveOption()
   }
 
@@ -320,7 +324,7 @@ export class WebUiSelect extends FormAssociated(LitElement) {
   }
 
   private _onKeydown = (e: KeyboardEvent) => {
-    if (this._isDisabled) return
+    if (this._isDisabled || e.isComposing) return
 
     // Escape 不在本组件处理：由共享仲裁者在 document 捕获阶段归属（issue #120 Block 1）。
     switch (e.key) {
@@ -337,22 +341,105 @@ export class WebUiSelect extends FormAssociated(LitElement) {
         if (!this._isOpen) this._open(true)
         else this._navigateActive(-1)
         break
+      case 'Home':
+        if (!this._isOpen) break
+        e.preventDefault()
+        this._moveActiveToBoundary(true)
+        break
+      case 'End':
+        if (!this._isOpen) break
+        e.preventDefault()
+        this._moveActiveToBoundary(false)
+        break
       case 'Enter': {
-        if (this._isOpen && this._activeIndex >= 0) {
-          const option = this._options[this._activeIndex]
-          if (option && this._isLive(option) && !option.disabled) {
-            this.value = option.value
-            this._notifyValueChange()
-          }
-          this._close()
-          e.preventDefault()
-        }
+        e.preventDefault()
+        if (!this._isOpen) this._open(true)
+        else if (this._activeIndex >= 0) this._selectActiveOption()
         break
       }
+      case ' ':
+      case 'Space':
+      case 'Spacebar': {
+        e.preventDefault()
+        if (!this._isOpen) this._open(true)
+        else if (this._activeIndex >= 0) this._selectActiveOption()
+        break
+      }
+      default:
+        if (this._isOpen && !e.isComposing && !e.ctrlKey && !e.metaKey && !e.altKey && Array.from(e.key).length === 1) {
+          e.preventDefault()
+          this._typeahead(e.key)
+        }
+        break
     }
   }
 
+  private _selectActiveOption() {
+    const option = this._options[this._activeIndex]
+    if (option && this._isLive(option) && !option.disabled) {
+      this.value = option.value
+      this._notifyValueChange()
+    }
+    this._close()
+  }
+
+  private _moveActiveToBoundary(toStart: boolean) {
+    this._resetTypeahead()
+    const enabled = this._options.filter(option => !option.disabled && this._isLive(option))
+    const option = toStart ? enabled[0] : enabled.at(-1)
+    if (!option) return
+
+    this._activeIndex = this._options.indexOf(option)
+    this._syncActiveOption()
+  }
+
+  private _typeahead(key: string) {
+    const enabled = this._options.filter(option => !option.disabled && this._isLive(option))
+    if (!enabled.length) return
+
+    const now = Date.now()
+    const withinSequence = now - this._typeaheadLastInputAt <= 500
+    const isRepeatedKey =
+      withinSequence &&
+      Array.from(this._typeaheadBuffer).length === 1 &&
+      this._normalizeTypeaheadText(this._typeaheadBuffer) === this._normalizeTypeaheadText(key)
+    const query = isRepeatedKey ? key : withinSequence ? `${this._typeaheadBuffer}${key}` : key
+    this._typeaheadBuffer = query
+    this._typeaheadLastInputAt = now
+
+    const activeOption = this._options[this._activeIndex]
+    const activeIndex = activeOption ? enabled.indexOf(activeOption) : -1
+    const findMatch = (prefix: string) => {
+      const normalizedPrefix = this._normalizeTypeaheadText(prefix)
+      for (let offset = 1; offset <= enabled.length; offset++) {
+        const option = enabled[(activeIndex + offset + enabled.length) % enabled.length]
+        if (this._normalizeTypeaheadText(option.label.trimStart()).startsWith(normalizedPrefix)) return option
+      }
+      return undefined
+    }
+
+    const currentMatch =
+      query !== key &&
+      activeIndex >= 0 &&
+      activeOption &&
+      this._normalizeTypeaheadText(activeOption.label.trimStart()).startsWith(this._normalizeTypeaheadText(query))
+        ? activeOption
+        : undefined
+    const queryMatch = currentMatch ?? findMatch(query)
+    const option = queryMatch ?? (query === key ? undefined : findMatch(key))
+    if (!queryMatch && query !== key) this._typeaheadBuffer = key
+    if (!option) return
+
+    this._activeIndex = this._options.indexOf(option)
+    this._syncActiveOption()
+  }
+
+  private _normalizeTypeaheadText(value: string) {
+    return value.normalize('NFD').replace(/\p{M}/gu, '').toLocaleLowerCase()
+  }
+
   private _navigateActive(delta: number) {
+    this._resetTypeahead()
     const enabled = this._options.filter(o => !o.disabled && this._isLive(o))
     if (!enabled.length) return
 
@@ -398,11 +485,18 @@ export class WebUiSelect extends FormAssociated(LitElement) {
   })
 
   private _open(isKeyboardNavigation = false) {
+    this._resetTypeahead()
     this._openController.open(isKeyboardNavigation)
   }
 
   private _close() {
+    this._resetTypeahead()
     this._openController.close()
+  }
+
+  private _resetTypeahead() {
+    this._typeaheadBuffer = ''
+    this._typeaheadLastInputAt = 0
   }
 
   private _dispatchOpenChange() {
