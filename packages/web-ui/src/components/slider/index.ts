@@ -12,6 +12,8 @@ import { normalizeNumber } from '@/shared/normalize'
 
 import style from './style.css?inline'
 
+const POINTER_DRAG_THRESHOLD = 6
+
 installPointerFocusSuppression()
 
 @customElement('web-ui-slider')
@@ -195,7 +197,7 @@ export class WebUiSlider extends FormAssociated(LitElement) {
     this._dragGestureHandle?.destroy()
     this._dragGestureHandle = attachDragGesture(event, {
       axis: this.vertical ? 'y' : 'x',
-      threshold: 6,
+      threshold: POINTER_DRAG_THRESHOLD,
       onMove: (_info, e) => {
         this._dragging = true
         this._setValueFromPointer(e)
@@ -209,7 +211,10 @@ export class WebUiSlider extends FormAssociated(LitElement) {
         }
         this._interactionStartValue = undefined
       },
-      onTap: (_info, e) => {
+      onTap: (info, e) => {
+        const crossAxisDelta = this.vertical ? info.deltaX : info.deltaY
+        if (Math.abs(crossAxisDelta) >= POINTER_DRAG_THRESHOLD) return
+
         this._setValueFromPointer(e)
         if (this._interactionStartValue !== this.value) {
           this.dispatchEvent(new Event('change', { bubbles: true, composed: true }))

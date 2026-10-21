@@ -89,6 +89,31 @@ describe('WebUiSlider 指针拖拽（浏览器）', () => {
     cleanupElement(el)
   })
 
+  it('竖向滑动未达到水平拖拽阈值时不提交 tap', async () => {
+    const el = createSlider() as Updatable
+    el.value = 40
+    await el.updateComplete
+
+    const track = trackOf(el)
+    const rect = track.getBoundingClientRect()
+    const downX = rect.left + rect.width * 0.4
+    const downY = rect.top + rect.height / 2
+    const inputEvents: Event[] = []
+    const changeEvents: Event[] = []
+    el.addEventListener('input', e => inputEvents.push(e))
+    el.addEventListener('change', e => changeEvents.push(e))
+
+    track.dispatchEvent(pointer('pointerdown', downX, downY))
+    window.dispatchEvent(pointer('pointermove', downX + 2, downY + 53))
+    window.dispatchEvent(pointer('pointerup', downX + 2, downY + 53))
+    await el.updateComplete
+
+    expect(el.value).toBe(40)
+    expect(inputEvents).toHaveLength(0)
+    expect(changeEvents).toHaveLength(0)
+    cleanupElement(el)
+  })
+
   it('pointerup 后继续移动不再更新 value', async () => {
     const el = createSlider() as Updatable
     await el.updateComplete
