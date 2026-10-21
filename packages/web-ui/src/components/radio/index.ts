@@ -47,6 +47,10 @@ export class WebUiRadio extends FormAssociated(LitElement) {
     )
   }
 
+  private get _tabIndex(): number {
+    return this._isDisabled || this._groupManagement.getContext()?.tabStop === false ? -1 : 0
+  }
+
   private get _isManagedByGroup(): boolean {
     return this._groupManagement.getContext() !== undefined
   }
@@ -70,6 +74,10 @@ export class WebUiRadio extends FormAssociated(LitElement) {
   }).make()
 
   private readonly _formAssociationController = new FormAssociationController(this, this._formAssociation)
+
+  override focus(options?: FocusOptions): void {
+    this.shadowRoot?.querySelector<HTMLElement>('[role="radio"]')?.focus(options)
+  }
 
   private readonly _labelEmptiness = new LabelEmptinessController(this, '.wui-radio-label', empty => {
     this._labelEmpty = empty
@@ -116,7 +124,7 @@ export class WebUiRadio extends FormAssociated(LitElement) {
     return html`
       <label
         class=${classMap(cls)}
-        tabindex=${this._isDisabled ? '-1' : '0'}
+        tabindex=${String(this._tabIndex)}
         role="radio"
         aria-checked=${String(this._checked)}
         aria-disabled=${String(this._isDisabled)}

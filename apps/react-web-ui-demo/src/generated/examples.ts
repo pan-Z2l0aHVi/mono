@@ -4783,7 +4783,7 @@ export const exampleDocs: ExampleDoc[] = [
   {
     "component": "radio-group",
     "tag": "web-ui-radio-group",
-    "introHtml": "<p>一组 <code>&lt;web-ui-radio></code> 的容器：把成员的选中状态收敛成单个 <code>value</code>，选中变化时统一派发 <code>input</code> / <code>change</code>，并负责组级禁用与必填校验。成员自己声明的 <code>name</code> 在组内不参与提交，表单字段名取组上的 <code>name</code>。</p>",
+    "introHtml": "<p>一组 <code>&lt;web-ui-radio></code> 的容器：把成员的选中状态收敛成单个 <code>value</code>，选中变化时统一派发 <code>input</code> / <code>change</code>，并负责组级禁用与必填校验。容器提供 <code>radiogroup</code> 语义，<code>direction</code> 同步为 <code>aria-orientation</code>，组级禁用与必填状态分别暴露为 <code>aria-disabled</code> 和 <code>aria-required</code>。用 <code>aria-label</code> 或 <code>aria-labelledby</code> 设置组的无障碍名称。横排组用左右方向键，竖排组用上下方向键移动焦点并选中成员。成员自己声明的 <code>name</code> 在组内不参与提交，表单字段名取组上的 <code>name</code>。</p>",
     "api": [
       {
         "kind": "table",
@@ -4816,19 +4816,19 @@ export const exampleDocs: ExampleDoc[] = [
           ],
           [
             "disabled",
-            "<p>禁用整组，并把禁用态下发给成员。</p>",
+            "<p>禁用整组并把禁用态下发给成员；组容器暴露 <code>aria-disabled</code>。</p>",
             "boolean",
             "false"
           ],
           [
             "required",
-            "<p>必填校验：组没有值时拦截原生提交。</p>",
+            "<p>必填校验：组没有值时拦截原生提交；组容器暴露 <code>aria-required</code>。</p>",
             "boolean",
             "false"
           ],
           [
             "direction",
-            "<p>成员排列方向。</p>",
+            "<p>成员排列方向，也是组容器的 <code>aria-orientation</code>。</p>",
             "'horizontal' | 'vertical'",
             "'vertical'"
           ],
@@ -4837,6 +4837,18 @@ export const exampleDocs: ExampleDoc[] = [
             "<p>当前选中的值，也是成员选中态的唯一来源。</p>",
             "string",
             "''"
+          ],
+          [
+            "aria-label",
+            "<p>组的无障碍名称。</p>",
+            "string | null",
+            "null"
+          ],
+          [
+            "aria-labelledby",
+            "<p>引用提供组无障碍名称的元素 ID。</p>",
+            "string | undefined",
+            "—"
           ]
         ]
       },

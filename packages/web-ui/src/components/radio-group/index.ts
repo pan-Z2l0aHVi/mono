@@ -10,6 +10,10 @@ import type { WebUiRadio } from '../radio'
 import style from './style.css?inline'
 
 const ALLOWED_DIRECTIONS = ['horizontal', 'vertical'] as const
+const RADIO_GROUP_KEYS = {
+  horizontal: { next: 'ArrowRight', previous: 'ArrowLeft' },
+  vertical: { next: 'ArrowDown', previous: 'ArrowUp' }
+} as const
 
 @customElement('web-ui-radio-group')
 export class WebUiRadioGroup extends FormAssociated(LitElement) {
@@ -17,6 +21,8 @@ export class WebUiRadioGroup extends FormAssociated(LitElement) {
   @property({ type: String, reflect: true }) name = ''
   @property({ type: Boolean, reflect: true }) disabled = false
   @property({ type: Boolean, reflect: true }) required = false
+  @property({ type: String, attribute: 'aria-label', reflect: true }) override ariaLabel: string | null = null
+  @property({ type: String, attribute: 'aria-labelledby', reflect: true }) ariaLabelledby: string | undefined
 
   @property({ type: String, reflect: true })
   get direction(): 'horizontal' | 'vertical' {
@@ -41,6 +47,12 @@ export class WebUiRadioGroup extends FormAssociated(LitElement) {
         this.value = value
       },
       getDisabled: () => this._isDisabled,
+      getTabStopItem: items => {
+        if (this._isDisabled) return undefined
+        const enabledItems = items.filter(item => !this._isRadioDisabled(item))
+        const matchingValue = this._value ? enabledItems.filter(item => item.value === this._value) : []
+        return matchingValue.find(item => item.checked) ?? matchingValue[0] ?? enabledItems[0]
+      },
       isItem: (target): target is WebUiRadio => target instanceof HTMLElement && target.matches('web-ui-radio'),
       // 选中判定按元素身份而非 value 相等：value 重复时按值比较会把多个成员
       // 同时标为选中，破坏单选不变式。重复值取第一个匹配（或已选中的那个，
@@ -130,6 +142,53 @@ export class WebUiRadioGroup extends FormAssociated(LitElement) {
 
   private readonly _formAssociationController = new FormAssociationController(this, this._formAssociation)
 
+  override connectedCallback() {
+    this._syncHostSemantics()
+    super.connectedCallback()
+  }
+
+  override updated() {
+    this._syncHostSemantics()
+  }
+
+  private _syncHostSemantics() {
+    this.setAttribute('role', 'radiogroup')
+    this.setAttribute('aria-orientation', this.direction)
+    this.setAttribute('aria-disabled', String(this._isDisabled))
+    this.setAttribute('aria-required', String(this.required))
+  }
+
+  private _isRadioDisabled(radio: WebUiRadio) {
+    return radio.disabled || radio.matches(':disabled')
+  }
+
+  private _handleKeyDown(event: KeyboardEvent) {
+    if (this._isDisabled || event.altKey || event.ctrlKey || event.metaKey) return
+
+    const keys = RADIO_GROUP_KEYS[this.direction]
+    const delta = event.key === keys.next ? 1 : event.key === keys.previous ? -1 : 0
+    if (!delta) return
+
+    const target = event
+      .composedPath()
+      .find((node): node is WebUiRadio => node instanceof HTMLElement && node.matches('web-ui-radio'))
+    if (!target) return
+
+    const items = [...this.querySelectorAll<WebUiRadio>('web-ui-radio')].filter(item => !this._isRadioDisabled(item))
+    const index = items.indexOf(target)
+    if (index < 0 || items.length === 0) return
+
+    event.preventDefault()
+    const next = items[(index + delta + items.length) % items.length]
+    if (!next) return
+
+    next.focus()
+    if (next.checked) return
+    next.checked = true
+    next.dispatchEvent(new Event('input'))
+    next.dispatchEvent(new Event('change'))
+  }
+
   override formDisabledCallback(disabled: boolean) {
     this._formAssociation.setDisabled(disabled)
     this._groupController.sync()
@@ -146,7 +205,11 @@ export class WebUiRadioGroup extends FormAssociated(LitElement) {
   }
 
   override render() {
-    return html`<div class="wui-radio-group"><slot></slot></div>`
+    return html`
+      <div class="wui-radio-group" @keydown=${this._handleKeyDown}>
+        <slot></slot>
+      </div>
+    `
   }
 
   declare readonly $events: {

@@ -33,6 +33,68 @@ const clickChild = (group: WebUiRadioGroup, index: number) => {
 }
 
 describe('WebUiRadioGroup 组件', () => {
+  describe('无障碍语义', () => {
+    it('在宿主上暴露组角色、排列方向、组状态与 aria-label', async () => {
+      const el = createGroup(RADIO_HTML, {
+        direction: 'horizontal',
+        disabled: '',
+        required: '',
+        'aria-label': '套餐'
+      })
+      await waitForUpdate(el)
+
+      expect(el.getAttribute('role')).toBe('radiogroup')
+      expect(el.getAttribute('aria-orientation')).toBe('horizontal')
+      expect(el.getAttribute('aria-disabled')).toBe('true')
+      expect(el.getAttribute('aria-required')).toBe('true')
+      expect(el.getAttribute('aria-label')).toBe('套餐')
+
+      el.direction = 'vertical'
+      el.disabled = false
+      el.required = false
+      await waitForUpdate(el)
+
+      expect(el.getAttribute('aria-orientation')).toBe('vertical')
+      expect(el.getAttribute('aria-disabled')).toBe('false')
+      expect(el.getAttribute('aria-required')).toBe('false')
+
+      cleanupElement(el)
+    })
+
+    it('保留外部 aria-labelledby 引用作为组名称来源', async () => {
+      const label = document.createElement('span')
+      label.id = 'plan-label'
+      label.textContent = '套餐'
+      const updatedLabel = document.createElement('span')
+      updatedLabel.id = 'updated-plan-label'
+      updatedLabel.textContent = '更新后的套餐'
+      document.body.append(label, updatedLabel)
+
+      const el = createGroup(RADIO_HTML, { 'aria-labelledby': 'plan-label' })
+      await waitForUpdate(el)
+
+      expect(el.getAttribute('role')).toBe('radiogroup')
+      expect(el.getAttribute('aria-labelledby')).toBe('plan-label')
+
+      label.textContent = '新版套餐'
+      el.ariaLabelledby = 'updated-plan-label'
+      await waitForUpdate(el)
+      expect(el.getAttribute('aria-labelledby')).toBe('updated-plan-label')
+
+      cleanupElement(el)
+    })
+
+    it('空白 aria-labelledby 不影响 radiogroup 渲染', async () => {
+      const el = createGroup(RADIO_HTML, { 'aria-labelledby': '   \t ' })
+      await waitForUpdate(el)
+
+      expect(el.getAttribute('role')).toBe('radiogroup')
+      expect(el.getAttribute('aria-labelledby')).toBe('   \t ')
+
+      cleanupElement(el)
+    })
+  })
+
   describe('属性: value', () => {
     it('初始值为空字符串', async () => {
       const el = createGroup()
@@ -72,6 +134,36 @@ describe('WebUiRadioGroup 组件', () => {
       expect(radios[0].checked).toBe(false)
       expect(radios[1].checked).toBe(false)
       expect(radios[2].checked).toBe(true)
+
+      cleanupElement(el)
+    })
+
+    it('清空或设置无匹配值时清除旧选中态并回退到首个可用 tab stop', async () => {
+      const el = createGroup()
+      el.value = 'b'
+      await waitForUpdate(el)
+      const radios = [...el.querySelectorAll<WebUiRadio>('web-ui-radio')]
+      await Promise.all(radios.map(radio => radio.updateComplete))
+
+      el.value = ''
+      await waitForUpdate(el)
+      await Promise.all(radios.map(radio => radio.updateComplete))
+      expect(radios.map(radio => radio.checked)).toEqual([false, false, false])
+      expect(radios.map(radio => queryA11y(radio, '[role="radio"]')?.getAttribute('tabindex'))).toEqual([
+        '0',
+        '-1',
+        '-1'
+      ])
+
+      el.value = 'missing'
+      await waitForUpdate(el)
+      await Promise.all(radios.map(radio => radio.updateComplete))
+      expect(radios.map(radio => radio.checked)).toEqual([false, false, false])
+      expect(radios.map(radio => queryA11y(radio, '[role="radio"]')?.getAttribute('tabindex'))).toEqual([
+        '0',
+        '-1',
+        '-1'
+      ])
 
       cleanupElement(el)
     })
@@ -121,11 +213,12 @@ describe('WebUiRadioGroup 组件', () => {
 
       expect(queryA11y(radios[0], '[role="radio"]')?.getAttribute('aria-disabled')).toBe('true')
       expect(queryA11y(radios[0], '[role="radio"]')?.getAttribute('tabindex')).toBe('-1')
-      for (const radio of [...radios].slice(1)) {
-        const control = queryA11y(radio, '[role="radio"]')
-        expect(control?.getAttribute('aria-disabled')).toBe('false')
-        expect(control?.getAttribute('tabindex')).toBe('0')
-      }
+      const firstEnabledControl = queryA11y(radios[1]!, '[role="radio"]')
+      const nextControl = queryA11y(radios[2]!, '[role="radio"]')
+      expect(firstEnabledControl?.getAttribute('aria-disabled')).toBe('false')
+      expect(firstEnabledControl?.getAttribute('tabindex')).toBe('0')
+      expect(nextControl?.getAttribute('aria-disabled')).toBe('false')
+      expect(nextControl?.getAttribute('tabindex')).toBe('-1')
 
       cleanupElement(el)
     })
@@ -611,6 +704,9 @@ describe('WebUiRadioGroup 重复 value', () => {
     expect(checkedOf(el)).toEqual([false, true, false])
     expect(ariaCheckedOf(el)).toEqual(['false', 'true', 'false'])
     expect(el.value).toBe('x')
+    const radios = [...el.querySelectorAll<WebUiRadio>('web-ui-radio')]
+    await Promise.all(radios.map(radio => radio.updateComplete))
+    expect(radios.map(radio => queryA11y(radio, '[role="radio"]')?.getAttribute('tabindex'))).toEqual(['-1', '0', '-1'])
     cleanupElement(el)
   })
 

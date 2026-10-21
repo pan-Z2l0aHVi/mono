@@ -14,6 +14,7 @@ import type { ReactiveController, ReactiveControllerHost } from 'lit'
 
 export interface SelectionGroupContext {
   readonly disabled: boolean
+  readonly tabStop?: boolean
 }
 
 export interface ButtonGroupContext {
@@ -206,9 +207,14 @@ export class GroupController implements ReactiveController {
 
   private observeHost() {
     this.disconnectHostObserver()
-    // 监听 light DOM 的增删，覆盖 Vue v-if / React && 的 comment 锚点替换与深层包裹
+    // 监听 light DOM 的增删和 disabled 变化，覆盖 Vue v-if / React && 锚点替换、深层包裹及成员的有效禁用状态。
     this.observer = new MutationObserver(this.handleMutations)
-    this.observer.observe(this.host, { childList: true, subtree: true })
+    this.observer.observe(this.host, {
+      childList: true,
+      subtree: true,
+      attributes: true,
+      attributeFilter: ['disabled']
+    })
   }
 
   private disconnectHostObserver() {
@@ -250,6 +256,7 @@ export interface GroupCoordinatorOptions<Item extends HTMLElement, Value> {
   readonly getValue: () => Value
   readonly setValue: (value: Value) => void
   readonly getDisabled: () => boolean
+  readonly getTabStopItem?: (items: readonly Item[]) => Item | undefined
   readonly isItem: (target: EventTarget | null) => target is Item
   readonly isItemSelected: (item: Item, value: Value) => boolean
   readonly getNextValue: (item: Item, value: Value) => Value
@@ -287,6 +294,7 @@ export function defineGroupCoordinator<Item extends HTMLElement, Value>(options:
       const nextItems = options.getItems()
       const value = options.getValue()
       const disabled = options.getDisabled()
+      const tabStopItem = options.getTabStopItem?.(nextItems)
       // 成员变化也要重放选中写回：新成员需继承当前选中态。
       const membershipChanged = nextItems.length !== lastItems.size || [...nextItems].some(item => !lastItems.has(item))
       const selectionChanged =
@@ -305,10 +313,14 @@ export function defineGroupCoordinator<Item extends HTMLElement, Value>(options:
       // 禁用下行：每次 sync 以新 Map 载荷整体广播（成员增删与禁用变化一并覆盖，
       // 新 Map 实例保证 Object.is 判定为变更）。
       provider.setValue(
-        new Map(
+        new Map<HTMLElement, SelectionGroupContext>(
           nextItems.map(item => [
-            item as HTMLElement,
-            disabled ? DISABLED_SELECTION_CONTEXT : ENABLED_SELECTION_CONTEXT
+            item,
+            disabled
+              ? DISABLED_SELECTION_CONTEXT
+              : options.getTabStopItem
+                ? { disabled: false, tabStop: item === tabStopItem }
+                : ENABLED_SELECTION_CONTEXT
           ])
         )
       )
@@ -338,6 +350,7 @@ export function defineGroupCoordinator<Item extends HTMLElement, Value>(options:
         const next = options.getNextValue(event.target, current)
         if (options.valuesEqual(current, next)) {
           options.resyncOnUnchangedValue?.(event.target)
+          if (options.resyncOnUnchangedValue) sync()
           return
         }
 
