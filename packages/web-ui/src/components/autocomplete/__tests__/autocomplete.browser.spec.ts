@@ -586,6 +586,52 @@ describe('WebUiAutocomplete 组件（浏览器）', () => {
     expect(window.scrollY).toBe(pageScrollY)
   })
 
+  it.each([
+    [false, 'wheel'],
+    [true, 'wheel'],
+    [false, 'touch'],
+    [true, 'touch']
+  ] as const)('滚动接管后不再用 Enter 提交旧的键盘激活项（portal=%s，input=%s）', async (portal, input) => {
+    const theme = document.createElement('web-ui-theme')
+    theme.setAttribute('appearance', 'light')
+    const el = document.createElement('web-ui-autocomplete')
+    el.portal = portal
+    el.style.setProperty('--wui-autocomplete-max-height', '200px')
+    el.innerHTML = Array.from(
+      { length: 10 },
+      (_, index) => `<web-ui-option value="option-${index + 1}" label="Option ${index + 1}"></web-ui-option>`
+    ).join('')
+    theme.append(el)
+    document.body.append(theme)
+    await theme.updateComplete
+    await el.updateComplete
+
+    focusTrigger(el)
+    dispatchKeydown(el, 'ArrowDown')
+    await waitForFrame()
+    await el.updateComplete
+
+    const panel = portal
+      ? await waitForPortalPanel(theme)
+      : el.shadowRoot!.querySelector<HTMLElement>('.autocomplete-overlay')!
+    const scroll = panel.querySelector<HTMLElement>('.autocomplete-scroll')!
+    expect(comboboxTrigger(el).getAttribute('aria-activedescendant')).toBeTruthy()
+
+    if (input === 'wheel') {
+      scroll.dispatchEvent(new WheelEvent('wheel', { bubbles: true, composed: true, deltaY: 120 }))
+    } else {
+      scroll.dispatchEvent(new PointerEvent('pointermove', { bubbles: true, composed: true, pointerType: 'touch' }))
+    }
+    scroll.scrollTop = 128
+    await el.updateComplete
+
+    expect(comboboxTrigger(el).getAttribute('aria-activedescendant')).toBeNull()
+    dispatchKeydown(el, 'Enter')
+    await el.updateComplete
+    expect(el.value).toBe('')
+    expect(el.open).toBe(true)
+  })
+
   it('Portal 打开后动态插入、删除、reorder 的 option 保持 visual/mirror/registry 一致', async () => {
     const theme = document.createElement('web-ui-theme')
     theme.setAttribute('appearance', 'light')

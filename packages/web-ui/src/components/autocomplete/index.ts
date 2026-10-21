@@ -156,6 +156,7 @@ export class WebUiAutocomplete extends FormAssociated(LitElement) {
   private _portal?: OverlayPortal
   private _portalContent?: HTMLElement
   private _keyboardNavigationActive = false
+  private _scrollInteractionElement?: HTMLElement
   private readonly _scrollLock = defineScrollLockLease().make()
 
   // option 注册表 / portal 同步 / 微任务调度收敛到 shared 模块（select 同款）
@@ -305,6 +306,7 @@ export class WebUiAutocomplete extends FormAssociated(LitElement) {
     document.removeEventListener('click', this._onClickOutside)
     this._options.forEach(this._unbindOption)
     this._close()
+    this._syncScrollInteractionListeners()
     this._portal = undefined
     this._portalContent = undefined
     // 撤销登记由 _panel.dispose() 完成（handle 归它持有），不再需要单独 dispose 仲裁者。
@@ -425,14 +427,8 @@ export class WebUiAutocomplete extends FormAssociated(LitElement) {
     onPointerDown: event => this._handleOptionPointerDown(event),
     onUpdate: () => this._onOptionUpdate()
   })
-  private _bindOption = (option: WebUiOption) => {
-    this._optionListeners.bind(option)
-    option.addEventListener('pointermove', this._handleOptionPointerMove)
-  }
-  private _unbindOption = (option: WebUiOption) => {
-    this._optionListeners.unbind(option)
-    option.removeEventListener('pointermove', this._handleOptionPointerMove)
-  }
+  private _bindOption = (option: WebUiOption) => this._optionListeners.bind(option)
+  private _unbindOption = (option: WebUiOption) => this._optionListeners.unbind(option)
 
   private _refreshOptions() {
     const activeOption = this._options[this._activeIndex]
@@ -463,13 +459,34 @@ export class WebUiAutocomplete extends FormAssociated(LitElement) {
     this._syncActiveOption()
   }
 
-  private _handleOptionPointerMove = (e: PointerEvent) => {
-    if (e.pointerType === 'touch' || !this._isOpen || !this._keyboardNavigationActive) return
+  private _syncScrollInteractionListeners() {
+    const next = this._isOpen ? this._panel.getPanel()?.querySelector<HTMLElement>('.autocomplete-scroll') : undefined
+    if (next === this._scrollInteractionElement) return
 
-    // 列表滚动可能在静止指针下触发 pointerover；只有真实指针移动才切回悬停导航。
+    this._scrollInteractionElement?.removeEventListener('pointermove', this._handleListPointerMove)
+    this._scrollInteractionElement?.removeEventListener('wheel', this._handleListWheel)
+    this._scrollInteractionElement = next ?? undefined
+    this._scrollInteractionElement?.addEventListener('pointermove', this._handleListPointerMove)
+    this._scrollInteractionElement?.addEventListener('wheel', this._handleListWheel)
+  }
+
+  private _clearKeyboardNavigation() {
+    if (!this._keyboardNavigationActive) return
+
     this._keyboardNavigationActive = false
     this._activeIndex = -1
     this._syncActiveOption()
+  }
+
+  private _handleListPointerMove = () => {
+    if (!this._isOpen) return
+    this._clearKeyboardNavigation()
+  }
+
+  private _handleListWheel = () => {
+    if (!this._isOpen) return
+    // 滚轮是新的用户意图：清除旧键盘激活，避免滚动后 Enter 提交屏幕外选项。
+    this._clearKeyboardNavigation()
   }
 
   private _handleOptionPointerDown = (e: PointerEvent) => {
@@ -678,6 +695,7 @@ export class WebUiAutocomplete extends FormAssociated(LitElement) {
       this._keyboardNavigationActive = false
       this._activeIndex = -1
       this._options.forEach(o => o.removeAttribute('active'))
+      this._syncScrollInteractionListeners()
     }
   })
 
@@ -700,6 +718,7 @@ export class WebUiAutocomplete extends FormAssociated(LitElement) {
 
   private _openOverlay(isKeyboardNavigation = false) {
     this._panel.open(isKeyboardNavigation)
+    this._syncScrollInteractionListeners()
     // keyboard-open 会先建立 active option；overlay 打开后再同步一次，确保首次激活也能滚入列表区。
     this._syncActiveOption()
     // 新会话的 handle 刚建立，惰性状态需按当前 disabled/readonly 重新同步。
@@ -709,6 +728,7 @@ export class WebUiAutocomplete extends FormAssociated(LitElement) {
   private async _closeOverlay() {
     const closed = await this._panel.close(() => this._isOpen)
     if (closed) {
+      this._syncScrollInteractionListeners()
       this._portal = undefined
       this._portalContent = undefined
     }
@@ -718,6 +738,7 @@ export class WebUiAutocomplete extends FormAssociated(LitElement) {
     this._portal = undefined
     this._portalContent = undefined
     this._panel.reconfigure(this._isOpen)
+    this._syncScrollInteractionListeners()
     /*
      * reconfigure 重新 claim = 新会话，inert 回到 false。实测这条重推是**冗余**的（摘掉本行
      * 全部用例仍绿）：这条路径后面跟着一轮渲染，而 `updated()` 每次渲染都会调
