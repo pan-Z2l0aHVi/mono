@@ -22,6 +22,7 @@ export class WebUiDialog extends LitElement {
 
   @property({ type: Boolean, reflect: true }) open = false
   @property({ type: Boolean, reflect: true }) closable = false
+  @property({ type: Boolean, reflect: true }) horizontal = false
   @property({ type: Boolean, reflect: true, attribute: 'no-scroll-lock' }) noScrollLock = false
   @property({ type: Boolean, reflect: true, attribute: 'no-backdrop-close' }) noBackdropClose = false
   @property({ type: Boolean, reflect: true, attribute: 'no-escape-close' }) noEscapeClose = false
