@@ -69,6 +69,11 @@ const orphanDocs = (docs: string[], surfaces: Surface[]) => {
   const rendered = new Set(surfaces.flatMap(surface => [...surface.used.values()].flat()))
   return docs.filter(name => !rendered.has(name))
 }
+/** 页面从 `@/components/` 引了什么，除 `<ExampleDoc>` 自身的壳以外。 */
+const demoImports = (source: string) =>
+  [...source.matchAll(/from '@\/components\/([^']+)'/g)]
+    .map(match => match[1].split('/')[0])
+    .filter(name => name !== 'example-doc')
 
 describe('示例显示与 markdown 围栏同源', () => {
   it('每个示例的高亮 HTML 可见文本逐字等于围栏原文', () => {
@@ -131,7 +136,7 @@ describe('带锚点的示例落成可编译文件', () => {
 // 过渡期清单：已迁到「docs 全量生成」的文档。每迁完一篇就加进来；全部迁完后删除本清单，
 // 并在生成配置里开启 requireDemo，让漏锚点直接在生成阶段失败。清单里的文档断言的是「每条
 // 示例都有锚点」，补上锚点测试天然覆盖不到的那半边。
-const migratedDocs = ['drawer']
+const migratedDocs = ['drawer', 'slider']
 
 describe('已迁移文档的每条示例都能渲染', () => {
   it('迁移清单里没有漏掉锚点的示例', () => {
@@ -144,6 +149,16 @@ describe('已迁移文档的每条示例都能渲染', () => {
         const file = path.join(demosDir, demoFileName(component, sample.demoKey, FLAVOR))
         expect(existsSync(file), `${file} 不存在：已迁移文档的示例必须落成可预览的组件文件`).toBe(true)
       }
+    }
+  })
+
+  it('已迁移文档的页面只剩 <ExampleDoc>，手写 demo 已删除', () => {
+    for (const component of migratedDocs) {
+      const route = path.join(routesDir, `${component}.tsx`)
+      const extras = demoImports(readFileSync(route, 'utf8'))
+      expect(extras, `${route}：迁移后的页面只渲染 <ExampleDoc>，仍引入 ${extras.join('、')}`).toEqual([])
+      const demoDir = path.resolve(import.meta.dirname, '../components', `${component}-demo`)
+      expect(existsSync(demoDir), `${demoDir} 还在：迁移后没有消费者的手写 demo 必须删掉`).toBe(false)
     }
   })
 })
@@ -170,6 +185,10 @@ describe('覆盖守卫（React 路由侧）', () => {
     expect(rendersOwn({ used: new Map([['radio', ['radio-group']]]) }, 'radio')).toBe(false)
     expect(orphanDocs(['radio', 'radio-group'], [{ used: new Map([['radio', ['radio']]]) }])).toEqual(['radio-group'])
     expect(unresolvedRefs({ used: new Map([['radio', ['radio', 'nope']]]) }, ['radio'])).toEqual(['nope'])
+    expect(
+      demoImports(`import Demo from '@/components/slider-demo'\nimport Doc from '@/components/example-doc'`)
+    ).toEqual(['slider-demo'])
+    expect(demoImports(`import Doc from '@/components/example-doc/index'`)).toEqual([])
   })
 })
 

@@ -21,8 +21,11 @@ import { setViewport } from '@/__tests__/viewport'
 // `?raw` 读的是 `import.meta.glob` 拿去编译的同一个文件：这条断言把「页面上显示的那份」直接钉到
 // 「被执行的那份」上，中间不经过 payload 与围栏的等价推定。
 import basicSource from '@/generated/demos/slider--basic.tsx?raw'
-import controlledSource from '@/generated/demos/slider--controlled.tsx?raw'
-import marksSource from '@/generated/demos/slider--marks-vertical.tsx?raw'
+import eventsSource from '@/generated/demos/slider--events.tsx?raw'
+import formSource from '@/generated/demos/slider--form.tsx?raw'
+import marksSource from '@/generated/demos/slider--marks.tsx?raw'
+import sizingSource from '@/generated/demos/slider--sizing.tsx?raw'
+import verticalSource from '@/generated/demos/slider--vertical.tsx?raw'
 import { exampleDocs } from '@/generated/examples'
 
 import ExampleDoc from '..'
@@ -51,8 +54,11 @@ if (!slider || !button || !imagePreview || !collapse || !layout || !theme || !se
 /** demoKey → 落盘文件字节；少一条就在断言里直接报出来，不留「这条没被覆盖」的静默缺口。 */
 const demoSources: Record<string, string> = {
   basic: basicSource,
-  controlled: controlledSource,
-  'marks-vertical': marksSource
+  marks: marksSource,
+  vertical: verticalSource,
+  events: eventsSource,
+  form: formSource,
+  sizing: sizingSource
 }
 
 // 生成样式让 token 取 shiki 双主题里的浅色那一边。这里按 span 自己带的 `--shiki-light` 取色，
@@ -110,7 +116,18 @@ function keyword(container: HTMLElement) {
   return element
 }
 
-// live 示例是 lazy 的：不先把三份 demo 等齐，Suspense 会在断言之后才落地，React 的 act 环境
+/** 一条示例该有几个 slider 宿主，数的是那份落盘源码里 `<web-ui-slider` 标签的个数。 */
+function expectedSliders(demoKey: string | null | undefined) {
+  const source = demoKey ? demoSources[demoKey] : undefined
+  if (!source) throw new Error(`slider--${demoKey ?? '(无锚点)'} 的源码没有导入，测不到它该挂几个宿主`)
+  return (source.match(/<web-ui-slider/g) ?? []).length
+}
+
+// 函数声明里的引用不吃模块作用域的窄化（声明可以被提前调用），所以「生成数据里确实有 slider」
+// 这一条在模块作用域先落一次，`mountDemos` 再用它。
+const sliderSamples = slider.samples
+
+// live 示例是 lazy 的：不先把六份 demo 等齐，Suspense 会在断言之后才落地，React 的 act 环境
 // 于是报「suspended resource finished loading inside a test, but not wrapped in act」。
 //
 // 这里的等待用 RTL 的 `waitFor`，而且**不**包进 `act`：`waitFor` 轮询期间会把
@@ -120,10 +137,16 @@ function keyword(container: HTMLElement) {
 async function mountDemos(container: HTMLElement) {
   // 超时给到 8 秒：第一份 demo 的 dynamic import 是冷的，要等 dev server 现转源码，默认 1 秒不够；
   // 之后同一轮里模块已缓存，等到的就是真实挂载时间。
+  //
+  // 判据是逐条示例的宿主数，期望值现算自 demo 源码：语料里加一个 slider，这里就要求预览里
+  // 真的多挂一个；只按「每个预览至少一个」判会放过局部没结算完的情况。
+  const expected = sliderSamples.map(candidate => [candidate.title, expectedSliders(candidate.demoKey)] as const)
   await waitFor(
     () => {
-      const mounted = container.querySelectorAll('[data-sample-preview] web-ui-slider')
-      if (mounted.length !== 3) throw new Error(`live 示例只挂载了 ${mounted.length} 个 web-ui-slider`)
+      for (const [title, count] of expected) {
+        const mounted = sample(container, title).querySelectorAll('web-ui-slider').length
+        if (mounted !== count) throw new Error(`示例「${title}」挂了 ${mounted} 个 slider，源码里写的是 ${count} 个`)
+      }
     },
     { timeout: 8000 }
   )
@@ -132,9 +155,10 @@ async function mountDemos(container: HTMLElement) {
   })
 }
 
-function sliderIn(container: HTMLElement, title: string) {
-  const host = sample(container, title).querySelector<WebUiSlider>('web-ui-slider')
-  if (!host) throw new Error(`示例「${title}」没有渲染出 web-ui-slider`)
+/** 一条示例里可以摆多个宿主，所以要指明取第几个。 */
+function sliderIn(container: HTMLElement, title: string, index = 0) {
+  const host = [...sample(container, title).querySelectorAll<WebUiSlider>('web-ui-slider')][index]
+  if (!host) throw new Error(`示例「${title}」的第 ${index + 1} 个位置没有渲染出 web-ui-slider`)
   // 影子树里有 role="slider" = 元素真的被注册升级过，不是留着未知 tag 的空壳。
   if (!host.shadowRoot?.querySelector('[role="slider"]')) throw new Error(`示例「${title}」的 slider 没有升级`)
   return host
@@ -220,10 +244,10 @@ describe('example-doc（React 面 / 真实浏览器）', () => {
 
   it('渲染的是 react 那一份代码，不是 vue 的', () => {
     const { container } = render(<ExampleDoc component="slider" />)
-    const payload = slider.samples.find(candidate => candidate.title === '受控值')?.html.react
-    if (!payload) throw new Error('生成数据里缺少受控值的 react 代码')
+    const payload = slider.samples.find(candidate => candidate.title === '垂直方向')?.html.react
+    if (!payload) throw new Error('生成数据里缺少垂直方向的 react 代码')
 
-    const code = sample(container, '受控值').querySelector('pre.shiki')
+    const code = sample(container, '垂直方向').querySelector('pre.shiki')
     expect(code?.textContent).toContain('useState')
     expect(code?.textContent).not.toContain('<template>')
     // 生成的 HTML 片段经 dangerouslySetInnerHTML 落地后必须与 payload 逐字节同构；先解析一次，
@@ -283,8 +307,8 @@ describe('example-doc（React 面 / 真实浏览器）', () => {
   it('代码框架用 segmented 切换，点击与键盘都能换一份源码', async () => {
     const { container } = render(<ExampleDoc component="slider" />)
     await settleCollapses(container)
-    const article = sample(container, '受控值')
-    const segmented = segmentedIn(container, '受控值')
+    const article = sample(container, '垂直方向')
+    const segmented = segmentedIn(container, '垂直方向')
     const triggers = triggersOf(segmented)
     // React 站先把 React 排在前面：第一项就是这份代码默认展示的运行时。
     expect(triggers.map(trigger => trigger.textContent?.trim())).toEqual(['React', 'Vue'])
@@ -323,7 +347,7 @@ describe('example-doc（React 面 / 真实浏览器）', () => {
   it('复制按钮写入当前源码，成功与失败都换成对应 icon', async () => {
     const { container } = render(<ExampleDoc component="slider" />)
     await settleCollapses(container)
-    const article = sample(container, '受控值')
+    const article = sample(container, '垂直方向')
     const copy = article.querySelector<HTMLElement>('[data-copy]')
     if (!copy) throw new Error('代码区没有复制按钮')
     await waitFor(() => expect(copy.shadowRoot?.querySelector('button')).toBeTruthy())
@@ -364,7 +388,7 @@ describe('example-doc（React 面 / 真实浏览器）', () => {
   it('复制失败时换成失败 icon，而不是静默吞掉', async () => {
     const { container } = render(<ExampleDoc component="slider" />)
     await settleCollapses(container)
-    const article = sample(container, '受控值')
+    const article = sample(container, '垂直方向')
     const copy = article.querySelector<HTMLElement>('[data-copy]')
     if (!copy) throw new Error('代码区没有复制按钮')
     await waitFor(() => expect(copy.shadowRoot?.querySelector('button')).toBeTruthy())
@@ -608,7 +632,7 @@ describe('example-doc（React 面 / 真实浏览器）', () => {
   it('展开后的代码区有最大高度并自己滚动', async () => {
     const { container } = render(<ExampleDoc component="slider" />)
     await settleCollapses(container)
-    const code = sample(container, '受控值').querySelector<HTMLElement>('[data-code]')
+    const code = sample(container, '垂直方向').querySelector<HTMLElement>('[data-code]')
     if (!code) throw new Error('代码区没有 data-code')
 
     const style = getComputedStyle(code)
@@ -623,7 +647,7 @@ describe('example-doc（React 面 / 真实浏览器）', () => {
       slider.samples.map(candidate => candidate.demoKey).filter(Boolean)
     )
     await mountDemos(container)
-    expect(sliderIn(container, '基础').value).toBe(40)
+    expect(sliderIn(container, '基础', 1).value).toBe(40)
 
     const buttonContainer = render(<ExampleDoc component="button" />).container
     expect(
@@ -641,20 +665,28 @@ describe('example-doc（React 面 / 真实浏览器）', () => {
     expect(sample(container, '基础').querySelector('pre.shiki')?.textContent).toMatch(
       /min=\{0\} max=\{100\} step=\{5\} value=\{40\}/
     )
-    const basic = sliderIn(container, '基础')
+    const basic = sliderIn(container, '基础', 1)
     expect([basic.min, basic.max, basic.step, basic.value]).toEqual([0, 100, 5, 40])
 
-    expect(sample(container, '刻度与垂直方向').querySelector('pre.shiki')?.textContent).toMatch(/marks vertical/)
-    const vertical = sliderIn(container, '刻度与垂直方向')
+    // shiki 的 `<pre>` 里行与行之间没有文本节点分隔，所以逐属性判断，不比对跨行片段。
+    const verticalCode = sample(container, '垂直方向').querySelector('pre.shiki')?.textContent ?? ''
+    expect(verticalCode).toContain('vertical')
+    expect(verticalCode).toContain('marks')
+    const vertical = sliderIn(container, '垂直方向', 1)
     expect([vertical.marks, vertical.vertical]).toEqual([true, true])
+
+    // CSS 变量示例写的也是「页面上的数字」：类里的 `--wui-slider-*` 要经生成的 `examples.css`
+    // 落到宿主盒子上，量得到才说明这条示例真的在演示尺寸，而不是只剩一段没人用的类名。
+    const sized = getComputedStyle(sliderIn(container, 'CSS 变量'))
+    expect([sized.width, sized.height]).toEqual(['300px', '10px'])
   })
 
   it('示例是活的：键盘能改值', async () => {
     const { container } = render(<ExampleDoc component="slider" />)
     await mountDemos(container)
 
-    const host = sliderIn(container, '受控值')
-    expect(host.value).toBe(30)
+    const host = sliderIn(container, '垂直方向')
+    expect(host.value).toBe(60)
     const thumb = host.shadowRoot?.querySelector<HTMLElement>('[role="slider"]')
     if (!thumb) throw new Error('web-ui-slider 的影子树里没有 role="slider"')
 
@@ -664,7 +696,87 @@ describe('example-doc（React 面 / 真实浏览器）', () => {
       thumb.focus()
       await userEvent.keyboard('{ArrowRight}')
     })
-    await waitFor(() => expect(host.value).toBe(31))
+    await waitFor(() => expect(host.value).toBe(61))
+  })
+
+  it('事件示例的读数跟着键盘走：onInput 与 onChange 真的接在 custom element 上', async () => {
+    const { container } = render(<ExampleDoc component="slider" />)
+    await mountDemos(container)
+
+    const preview = sample(container, 'input 与 change').querySelector('[data-sample-preview]')
+    const readout = () => preview?.querySelector('output')?.textContent?.trim()
+    expect(readout()).toBe('input: 40 / change: 40')
+
+    const host = sliderIn(container, 'input 与 change')
+    const thumb = host.shadowRoot?.querySelector<HTMLElement>('[role="slider"]')
+    if (!thumb) throw new Error('事件示例的 slider 没有升级')
+    await act(async () => {
+      thumb.focus()
+      await userEvent.keyboard('{ArrowRight}')
+    })
+    // step 是 5，一次右箭头推进一档；两个读数一起动才说明两条 handler 都接上了。
+    await waitFor(() => expect(readout()).toBe('input: 45 / change: 45'))
+  })
+
+  it('表单取值示例：提交带出滑块的值，重置把读数和值一起清掉', async () => {
+    const { container } = render(<ExampleDoc component="slider" />)
+    await mountDemos(container)
+
+    const preview = sample(container, '表单取值').querySelector('[data-sample-preview]')
+    if (!preview) throw new Error('表单取值示例没有 live 预览')
+    const readout = () => preview.querySelector('output')?.textContent?.trim()
+    // 提交动作的转发在影子 `<button>` 的 handler 里，点宿主不会触发 submit。
+    const shadowButton = (label: string) => {
+      const host = [...preview.querySelectorAll<HTMLElement>('web-ui-button')].find(
+        item => item.textContent?.trim() === label
+      )
+      if (!host) throw new Error(`表单取值示例里没有「${label}」按钮`)
+      return host.shadowRoot?.querySelector<HTMLElement>('button')
+    }
+
+    const slider = sliderIn(container, '表单取值')
+    expect([readout(), slider.value]).toEqual(['尚未提交', 40])
+
+    const thumb = slider.shadowRoot?.querySelector<HTMLElement>('[role="slider"]')
+    if (!thumb) throw new Error('表单取值示例的 slider 没有升级')
+    await act(async () => {
+      thumb.focus()
+      await userEvent.keyboard('{ArrowRight}')
+    })
+    // step 是 5，所以一次右箭头推进一档。
+    await waitFor(() => expect(slider.value).toBe(45))
+
+    await act(async () => shadowButton('提交')?.click())
+    await waitFor(() => expect(readout()).toBe('volume=45'))
+
+    await act(async () => shadowButton('重置')?.click())
+    await waitFor(() => expect([readout(), slider.value]).toEqual(['尚未提交', 40]))
+  })
+
+  it('props 表里手写的默认值，就是 slider 元素的实际初值', async () => {
+    const { container } = render(<ExampleDoc component="slider" />)
+    await mountDemos(container)
+
+    // 「基础」的第一条不写任何属性，正好当默认值样本：表里那一列是手写的，元素初值来自组件源码，
+    // 两边对不上就是文档漏改（layout 那条同判据）。属性增删也会在这里红。
+    const host = sliderIn(container, '基础')
+    const actual: Record<string, string> = {
+      disabled: String(host.disabled),
+      marks: String(host.marks),
+      vertical: String(host.vertical),
+      name: host.name,
+      required: String(host.required),
+      value: String(host.value),
+      min: String(host.min),
+      max: String(host.max),
+      step: String(host.step)
+    }
+    const props = apiSection(slider, 'props')
+    const defaultColumn = columnOf(props, '默认值')
+    expect(Object.keys(actual).sort()).toEqual(props.rows.map(row => row[0]).sort())
+    for (const row of props.rows) {
+      expect(actual[row[0]], `${row[0]} 的默认值与元素初值不一致`).toBe(documentedDefault(row[defaultColumn]))
+    }
   })
 
   it('props 表把 markdown 里手写的类型与默认值原样渲染出来', () => {
