@@ -143,8 +143,9 @@ export class WebUiDropdown extends LitElement {
       if (itemIndex >= 0) this._toggleSubmenu(level, itemIndex, true)
     },
     closeToParent: level => {
+      const parentItem = this._getLevelItems(level - 1)[this._activePath[level - 1]]
       this._closeSubmenuFrom(level)
-      return this._getLevelItems(level - 1)[this._activePath[level - 1]]
+      return parentItem
     },
     closeDeepestOrAll: () => {
       if (this._activePath.length > 0) this._closeSubmenuFrom(this._activePath.length)
