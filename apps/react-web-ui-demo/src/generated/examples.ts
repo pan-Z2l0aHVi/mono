@@ -1912,6 +1912,12 @@ export const exampleDocs: ExampleDoc[] = [
             "false"
           ],
           [
+            "horizontal",
+            "<p>Footer 操作按钮横向排列。</p>",
+            "boolean",
+            "false"
+          ],
+          [
             "no-scroll-lock",
             "<p>打开时不锁定页面滚动。</p>",
             "boolean",
