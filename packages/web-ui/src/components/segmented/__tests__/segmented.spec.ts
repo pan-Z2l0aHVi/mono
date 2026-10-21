@@ -67,6 +67,29 @@ describe('WebUiSegmented 组件', () => {
       cleanupElement(el)
     })
 
+    it('静态 value attribute 在子 trigger 升级后仍同步选中态', async () => {
+      const el = document.createElement('web-ui-segmented')
+      el.setAttribute('value', 'b')
+      el.innerHTML = TRIGGER_HTML
+      const triggers = [...el.querySelectorAll<WebUiSegmentedTrigger>('web-ui-segmented-trigger')]
+
+      // 模拟 HTML parser 先连接 group：trigger 的 value attribute 已有，property 尚不可读。
+      triggers[1].value = undefined as unknown as string
+      document.body.appendChild(el)
+      triggers[1].value = 'b'
+
+      await waitForUpdate(el)
+      await Promise.all(triggers.map(trigger => trigger.updateComplete))
+
+      expect(el.value).toBe('b')
+      expect(triggers.filter(trigger => trigger.checked).map(trigger => trigger.value)).toEqual(['b'])
+      for (const [index, trigger] of triggers.entries()) {
+        expect(queryA11y(trigger, '[role="option"]')?.getAttribute('aria-selected')).toBe(String(index === 1))
+      }
+
+      cleanupElement(el)
+    })
+
     it('设置并切换 value 时子 option checked 唯一且与 value 一致', async () => {
       const el = createSegmented(TRIGGER_HTML)
       await waitForUpdate(el)
