@@ -3,7 +3,7 @@ component: switch
 tag: web-ui-switch
 ---
 
-switch 切换，声明 `role="switch"` 与 `aria-checked`；`loading` 期间阻断交互并显示待定状态。键盘焦点落在内层原生 checkbox 上，**空格与 Enter 都能切换**。
+switch 切换，声明 `role="switch"` 与 `aria-checked`；`loading` 期间阻断交互并显示待定状态。默认插槽的子文本会作为可见标签和默认 accessible name；也可以在 host 设置 `aria-label` 或 `aria-labelledby`。键盘焦点落在 host 上，**空格与 Enter 都能切换**。
 
 ## 示例
 
@@ -47,7 +47,7 @@ const enabled = ref(false)
 
 ### 表单值
 
-switch 自身不渲染 label 盒之外的内容，`name` 与 `value` 让它在表单里以选中值参与提交。
+可见标签同时命名 switch；`aria-label` 或 `aria-labelledby` 可覆盖默认名称。`name` 与 `value` 让 switch 在表单里以选中值参与提交。
 
 ```react
 <form>
@@ -78,6 +78,14 @@ switch 自身不渲染 label 盒之外的内容，`name` 与 `value` 让它在�
 | `required` | 必填校验。        | `boolean` | `false` |
 | `loading`  | 加载状态。        | `boolean` | `false` |
 
+### accessible name
+
+默认插槽内容会显示在 track 旁，并作为 switch 的 accessible name。需要引用外部 label 时，在 `web-ui-switch` host 设置 `aria-labelledby`；也可以直接设置 `aria-label`。
+
+```html
+<web-ui-switch aria-labelledby="notification-label"></web-ui-switch> <span id="notification-label">启用通知</span>
+```
+
 ### Events
 
 | 名称     | 说明                     |
@@ -87,4 +95,4 @@ switch 自身不渲染 label 盒之外的内容，`name` 与 `value` 让它在�
 
 ### 行为说明
 
-使用 `role="switch"` 和 `aria-checked`。Pointer 事件管理按下状态。
+使用 host 上的 `role="switch"`、`aria-checked` 和 `aria-disabled`。host 接收键盘焦点；Space 与 Enter 切换状态。Pointer 事件管理轨道的按下状态。

@@ -5,34 +5,17 @@
 }
 
 :host {
-  touch-action: none;
-  display: inline-block;
+  display: inline-flex;
 }
 
 :host([disabled]) {
   cursor: not-allowed;
 }
 
-/*
-标准视觉隐藏技术（sr-only）：
-业内标准的“屏幕阅读器专用”隐藏方案。
-把 checkbox 缩放到 1x1 像素，但保留在 dom 中，
-既让肉眼看不见，又能让读屏软件识别，并允许键盘用户通过空格键切换状态。
-*/
-.sr-only {
-  position: absolute;
-
-  overflow: hidden;
-
-  width: 1px;
-  height: 1px;
-  margin: -1px;
-  padding: 0;
-  border: 0;
-
-  white-space: nowrap;
-
-  clip-path: inset(50%);
+.wui-switch-content {
+  display: inline-flex;
+  gap: 8px;
+  align-items: center;
 }
 
 .wui-switch-track {
@@ -55,12 +38,6 @@
   outline-offset: 2px;
 
   transition: background-color var(--wui-duration-trigger, 160ms) ease;
-
-  /* 实际获得焦点的是内部 sr-only 的 checkbox，track 本身不可聚焦；
-     :focus-visible 在 track 上永不匹配，需用 :focus-within 让键盘焦点环生效 */
-  &:focus-within {
-    outline-color: var(--wui-color-focus-ring, color-mix(in srgb, var(--wui-color-accent, #08f) 40%, transparent));
-  }
 
   &.is-open {
     background-color: var(--wui-color-accent, #08f);
@@ -130,7 +107,11 @@
   cursor: grabbing;
 }
 
-:host([data-wui-pointer-focus]) .wui-switch-track:focus-within {
+:host(:focus-visible) .wui-switch-track {
+  outline-color: var(--wui-color-focus-ring, color-mix(in srgb, var(--wui-color-accent, #08f) 40%, transparent));
+}
+
+:host([data-wui-pointer-focus]:focus-visible) .wui-switch-track {
   outline-color: transparent;
 }
 
