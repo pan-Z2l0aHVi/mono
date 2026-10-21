@@ -5,6 +5,8 @@
 }
 
 :host {
+  --wui-internal-button-group-button-size: calc(var(--wui-control-size, 36px) * 5 / 6);
+
   display: inline-block;
 }
 
