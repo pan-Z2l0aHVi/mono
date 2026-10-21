@@ -148,6 +148,7 @@ describe('WebUiDialog', () => {
   describe('布尔属性语义', () => {
     // `="false"` 仍为真——Boolean 反射契约，不是「字符串解析成假值」。
     const cases = [
+      ['horizontal', 'horizontal'],
       ['noEscapeClose', 'no-escape-close'],
       ['noBackdropClose', 'no-backdrop-close'],
       ['controlled', 'controlled']
