@@ -8,6 +8,7 @@ import { userEvent } from 'vite-plus/test/browser'
 
 import type { WebUiPopover } from '@/components/popover'
 import { getMenuPanels, getPortalPanels, queryA11y } from '@/shared/test-utils'
+import { setViewport } from '@/shared/test-utils/viewport'
 
 import type { WebUiDropdown } from '..'
 
@@ -211,6 +212,41 @@ describe('WebUiDropdown 组件（浏览器）', () => {
       expect(warn).not.toHaveBeenCalledWith(expect.stringContaining('Element web-ui-dropdown scheduled an update'))
     } finally {
       warn.mockRestore()
+    }
+  })
+
+  it('submenu 在窄视口内保持完整可见', async () => {
+    const previousViewport = { width: window.innerWidth, height: window.innerHeight }
+    const previousMinWidth = document.documentElement.style.getPropertyValue('--wui-overlay-min-width')
+
+    try {
+      await setViewport(390, 844)
+      document.documentElement.style.setProperty('--wui-overlay-min-width', '200px')
+      const menu = createDropdown(SUBMENU)
+      menu.style.cssText = 'position:fixed;left:12px;top:120px;'
+      await menu.updateComplete
+
+      menu.querySelector<HTMLButtonElement>('button')?.click()
+      const rootPanels = await waitForMenuPanels(1)
+      expect(rootPanels).toHaveLength(1)
+
+      const parentControl = focusedControl(requireRootItem())!
+      parentControl.focus()
+      await userEvent.keyboard('{ArrowRight}')
+
+      const panels = await waitForMenuPanels(2)
+      expect(panels).toHaveLength(2)
+      const submenu = panels[1]!
+      await Promise.all(submenu.getAnimations().map(animation => animation.finished.catch(() => undefined)))
+
+      const rect = submenu.getBoundingClientRect()
+      expect(rect.left, `submenu 左缘 ${rect.left} 应留在视口内`).toBeGreaterThanOrEqual(8)
+      expect(rect.right, `submenu 右缘 ${rect.right} 应留出 8px 视口间距`).toBeLessThanOrEqual(window.innerWidth - 8)
+      expect(document.documentElement.scrollWidth).toBe(window.innerWidth)
+    } finally {
+      await setViewport(previousViewport.width, previousViewport.height)
+      if (previousMinWidth) document.documentElement.style.setProperty('--wui-overlay-min-width', previousMinWidth)
+      else document.documentElement.style.removeProperty('--wui-overlay-min-width')
     }
   })
 
