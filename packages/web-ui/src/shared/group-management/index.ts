@@ -14,6 +14,7 @@ import type { ReactiveController, ReactiveControllerHost } from 'lit'
 
 export interface SelectionGroupContext {
   readonly disabled: boolean
+  readonly tabStop?: boolean
 }
 
 export interface ButtonGroupContext {
@@ -147,6 +148,7 @@ export interface GroupLifecycle {
 
 interface GroupControllerOptions {
   afterSync?: () => void
+  observeAttributes?: readonly string[]
 }
 
 /**
@@ -208,7 +210,12 @@ export class GroupController implements ReactiveController {
     this.disconnectHostObserver()
     // 监听 light DOM 的增删，覆盖 Vue v-if / React && 的 comment 锚点替换与深层包裹
     this.observer = new MutationObserver(this.handleMutations)
-    this.observer.observe(this.host, { childList: true, subtree: true })
+    const observerOptions: MutationObserverInit = { childList: true, subtree: true }
+    if (this.options.observeAttributes?.length) {
+      observerOptions.attributes = true
+      observerOptions.attributeFilter = [...this.options.observeAttributes]
+    }
+    this.observer.observe(this.host, observerOptions)
   }
 
   private disconnectHostObserver() {
@@ -252,6 +259,7 @@ export interface GroupCoordinatorOptions<Item extends HTMLElement, Value> {
   readonly getDisabled: () => boolean
   readonly isItem: (target: EventTarget | null) => target is Item
   readonly isItemSelected: (item: Item, value: Value) => boolean
+  readonly isItemTabStop?: (item: Item, items: readonly Item[]) => boolean
   readonly getNextValue: (item: Item, value: Value) => Value
   readonly valuesEqual: (a: Value, b: Value) => boolean
   readonly copyValue: (value: Value) => Value
@@ -306,10 +314,11 @@ export function defineGroupCoordinator<Item extends HTMLElement, Value>(options:
       // 新 Map 实例保证 Object.is 判定为变更）。
       provider.setValue(
         new Map(
-          nextItems.map(item => [
-            item as HTMLElement,
-            disabled ? DISABLED_SELECTION_CONTEXT : ENABLED_SELECTION_CONTEXT
-          ])
+          nextItems.map(item => {
+            const context = disabled ? DISABLED_SELECTION_CONTEXT : ENABLED_SELECTION_CONTEXT
+            const tabStop = options.isItemTabStop?.(item, nextItems)
+            return [item as HTMLElement, tabStop === undefined ? context : { ...context, tabStop }] as const
+          })
         )
       )
 

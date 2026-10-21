@@ -100,19 +100,46 @@ export class WebUiSegmented extends FormAssociated(LitElement) {
       getDisabled: () => this._isDisabled,
       isItem: (target): target is WebUiSegmentedTrigger =>
         target instanceof HTMLElement && target.matches('web-ui-segmented-trigger'),
-      isItemSelected: (trigger, value) => trigger.value === value,
+      isItemSelected: (trigger, value) => {
+        if (!value) return false
+        let selected: WebUiSegmentedTrigger | undefined
+        for (const item of this.querySelectorAll<WebUiSegmentedTrigger>('web-ui-segmented-trigger')) {
+          if (item.value !== value) continue
+          if (!selected) selected = item
+          if (item.checked) {
+            selected = item
+            break
+          }
+        }
+        return trigger === selected
+      },
+      isItemTabStop: (trigger, triggers) => {
+        const enabled = triggers.filter(item => !item.disabled)
+        const tabStop = enabled.find(item => item.checked) ?? enabled[0]
+        return trigger === tabStop
+      },
       getNextValue: (trigger, value) => (trigger.checked ? trigger.value : value),
       valuesEqual: (a, b) => a === b,
       copyValue: value => value,
       setItemSelected: (trigger, selected) => {
         trigger.checked = selected
       },
+      resyncOnUnchangedValue: selected => {
+        for (const trigger of this.querySelectorAll<WebUiSegmentedTrigger>('web-ui-segmented-trigger')) {
+          trigger.checked = trigger === selected
+        }
+        this._groupController.sync()
+        requestAnimationFrame(() => void this._updateIndicator())
+      },
       dispatchValueChange: () => {
         this.dispatchEvent(new Event('input', { bubbles: true, composed: true }))
         this.dispatchEvent(new Event('change', { bubbles: true, composed: true }))
       }
     }).make(),
-    { afterSync: () => requestAnimationFrame(() => void this._updateIndicator()) }
+    {
+      observeAttributes: ['disabled'],
+      afterSync: () => requestAnimationFrame(() => void this._updateIndicator())
+    }
   )
 
   get value(): string {
@@ -136,7 +163,7 @@ export class WebUiSegmented extends FormAssociated(LitElement) {
     let width = 0
 
     triggers.forEach(trigger => {
-      if (trigger.value === this._value) {
+      if (trigger.checked) {
         const triggerRect = trigger.getBoundingClientRect()
         const groupRect = this.getBoundingClientRect()
         left = triggerRect.left - groupRect.left
@@ -222,7 +249,7 @@ export class WebUiSegmented extends FormAssociated(LitElement) {
     const enabledTriggers = triggers.filter(t => !t.disabled)
     if (enabledTriggers.length === 0) return
 
-    const activeTrigger = triggers.find(t => t.value === this._value)
+    const activeTrigger = triggers.find(t => t.checked)
     if (!activeTrigger || activeTrigger.disabled) return
 
     const activeTriggerRect = activeTrigger.getBoundingClientRect()
@@ -322,6 +349,8 @@ export class WebUiSegmented extends FormAssociated(LitElement) {
             this._groupController.sync()
             this.dispatchEvent(new Event('input', { bubbles: true, composed: true }))
             this.dispatchEvent(new Event('change', { bubbles: true, composed: true }))
+          } else if (targetTrigger !== activeTrigger) {
+            targetTrigger.shadowRoot?.querySelector<HTMLElement>('[role="option"]')?.click()
           } else {
             void this._updateIndicator()
           }
@@ -345,6 +374,58 @@ export class WebUiSegmented extends FormAssociated(LitElement) {
     if (!this._dragGestureHandle?.isDragging()) {
       this._pressed = false
     }
+  }
+
+  private handleKeyDown(event: KeyboardEvent) {
+    if (this._isDisabled || event.altKey || event.ctrlKey || event.metaKey || event.shiftKey) return
+
+    const current = event
+      .composedPath()
+      .find(
+        (target): target is WebUiSegmentedTrigger =>
+          target instanceof HTMLElement && target.matches('web-ui-segmented-trigger')
+      )
+    if (!current) return
+
+    const triggers = [...this.querySelectorAll<WebUiSegmentedTrigger>('web-ui-segmented-trigger')]
+    const enabled = triggers.filter(trigger => !trigger.disabled)
+    const currentIndex = triggers.indexOf(current)
+    if (currentIndex === -1 || enabled.length === 0) return
+    const direction = getComputedStyle(this).direction === 'rtl' ? -1 : 1
+
+    const nextEnabled = (direction: -1 | 1): WebUiSegmentedTrigger => {
+      for (let offset = 1; offset <= triggers.length; offset += 1) {
+        const index = (currentIndex + direction * offset + triggers.length) % triggers.length
+        const candidate = triggers[index]
+        if (candidate && !candidate.disabled) return candidate
+      }
+      return current
+    }
+
+    let next: WebUiSegmentedTrigger
+    switch (event.key) {
+      case 'ArrowRight':
+        next = nextEnabled(direction)
+        break
+      case 'ArrowLeft':
+        next = nextEnabled(direction === 1 ? -1 : 1)
+        break
+      case 'Home':
+        next = enabled[0]
+        break
+      case 'End':
+        next = enabled[enabled.length - 1]
+        break
+      default:
+        return
+    }
+
+    const option = next.shadowRoot?.querySelector<HTMLElement>('[role="option"]')
+    if (!option) return
+
+    event.preventDefault()
+    option.focus()
+    if (next !== current || !next.checked) option.click()
   }
 
   private readonly _formAssociation = defineFormAssociation<string>({
@@ -385,6 +466,7 @@ export class WebUiSegmented extends FormAssociated(LitElement) {
         })}
         role="listbox"
         aria-orientation="horizontal"
+        @keydown=${this.handleKeyDown}
         @pointerdown=${this.handlePointerDown}
         @pointerup=${this.handlePointerUp}
         @pointercancel=${this.handlePointerUp}
