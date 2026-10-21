@@ -237,6 +237,46 @@ describe('WebUiEditableText 布局契约（浏览器）', () => {
     cleanupElement(el)
   })
 
+  it.each(['first line\nsecond line\n', 'first line\nsecond line\n\n', 'ab\n'])(
+    '值以换行结尾时两层保留相同末行，编辑层不溢出宿主或遮挡下方内容：%j',
+    async value => {
+      const parent = document.createElement('div')
+      parent.style.cssText = 'display: flex; flex-direction: column; align-items: flex-start;'
+      document.body.append(parent)
+
+      const el = mountElement<WebUiEditableText>('web-ui-editable-text', {
+        attrs: { value, style: FIXTURE_STYLE },
+        parent
+      })
+      const below = document.createElement('div')
+      below.style.cssText = 'width: 200px; height: 32px;'
+      parent.append(below)
+      await waitForUpdate(el)
+
+      const displayHost = el.getBoundingClientRect()
+      const editor = editorOf(el)
+      const textLineTops: number[] = []
+      for (const rect of textLayerOf(el).getClientRects()) {
+        if (!textLineTops.some(top => Math.abs(top - rect.top) < 1)) textLineTops.push(rect.top)
+      }
+      expect(textLineTops.length, '文本层保留尾换行产生的空行').toBe(value.split('\n').length)
+      expect(textLayerOf(el).textContent, '末行占位不修改可选择的文案').toBe(value)
+
+      el.focus()
+      await waitForUpdate(el)
+
+      const editingHost = el.getBoundingClientRect()
+      const editorBox = editor.getBoundingClientRect()
+      expect(rectsClose(displayHost, editingHost), '进入编辑不改变宿主盒').toBe(true)
+      expect(covers(editingHost, editorBox), '编辑层完整落在宿主盒内').toBe(true)
+      expect(editor.selectionStart, '编辑光标仍落在原始值末尾').toBe(value.length)
+
+      const belowBox = below.getBoundingClientRect()
+      expect(document.elementFromPoint(belowBox.left + 8, belowBox.top + 4), '宿主下方命中仍落到后续内容').toBe(below)
+      cleanupElement(parent)
+    }
+  )
+
   /**
    * 同一份文案在文字态与编辑态的 overlay 像素差异。
    * 光标是编辑态独有绘制项，置透明后排除其对像素比对的影响。

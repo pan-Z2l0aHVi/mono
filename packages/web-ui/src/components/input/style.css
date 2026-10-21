@@ -9,7 +9,8 @@
   display: inline-block;
 }
 
-:host([disabled]) {
+:host([disabled]),
+:host([data-form-disabled]) {
   cursor: not-allowed;
   opacity: 0.4;
 }
@@ -103,7 +104,6 @@ input {
 
   &:disabled {
     cursor: not-allowed;
-    opacity: 0.4;
   }
 }
 
