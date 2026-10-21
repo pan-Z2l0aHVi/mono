@@ -1,10 +1,30 @@
 import { html, LitElement, nothing, type PropertyValues, unsafeCSS } from 'lit'
 import { customElement, property } from 'lit/decorators.js'
 import { repeat } from 'lit/directives/repeat.js'
+import { styleMap } from 'lit/directives/style-map.js'
+
+import type { WebUiTheme } from '@/components/theme'
+import { findRootTheme } from '@/shared/overlay/theme-overlay-scope'
 
 import style from './style.css?inline'
 
 const LEAF_COUNT = 8
+
+type SpinnerMountTarget = {
+  element: HTMLElement
+  initializingTheme?: WebUiTheme
+}
+
+function getSpinnerMountTarget(): SpinnerMountTarget {
+  const rootTheme = findRootTheme()
+  const overlayRoot = rootTheme?.getOverlayRoot()
+  if (overlayRoot) return { element: overlayRoot }
+
+  const initializingTheme = Array.from(document.querySelectorAll<WebUiTheme>('web-ui-theme')).find(
+    theme => theme.appearance !== undefined
+  )
+  return initializingTheme ? { element: initializingTheme, initializingTheme } : { element: document.body }
+}
 
 @customElement('web-ui-spinner')
 export class WebUiSpinner extends LitElement {
@@ -12,14 +32,36 @@ export class WebUiSpinner extends LitElement {
 
   @property({ type: Number, reflect: true }) size = 24
   @property({ type: String }) description = ''
+  /** 叶片颜色；空字符串时跟随主题次要文本色。 */
+  @property({ type: String }) color = ''
 
-  // 自动创建并挂载全屏实例。
-  static show(options?: { size?: number; duration?: number; description?: string }): WebUiSpinner {
+  /**
+   * 显示一个全屏加载实例并挂载到主题 overlay root（无主题时挂载到 body）；新实例会替换之前由此方法创建的实例。
+   * @param options 尺寸、说明文字、颜色与可选自动关闭时长。
+   * @returns 已挂载的 spinner 实例。
+   */
+  static show(options?: { size?: number; duration?: number; description?: string; color?: string }): WebUiSpinner {
     const el = document.createElement('web-ui-spinner')
     el._imperative = true
     if (options?.size) el.size = options.size
     if (options?.description) el.description = options.description
-    document.body.appendChild(el)
+    if (options?.color !== undefined) el.color = options.color
+    const mountTarget = getSpinnerMountTarget()
+    mountTarget.element.appendChild(el)
+    if (mountTarget.initializingTheme) {
+      const theme = mountTarget.initializingTheme
+      const moveIntoOverlayRoot = () => {
+        const overlayRoot = theme.getOverlayRoot()
+        if (overlayRoot && theme.isConnected && el.parentElement === theme) overlayRoot.appendChild(el)
+      }
+      void theme.updateComplete.then(
+        () => {
+          moveIntoOverlayRoot()
+          if (el.parentElement === theme) window.requestAnimationFrame(moveIntoOverlayRoot)
+        },
+        () => undefined
+      )
+    }
     if (options?.duration && options.duration > 0) {
       el._timer = window.setTimeout(() => WebUiSpinner.hide(), options.duration)
     }
@@ -53,7 +95,7 @@ export class WebUiSpinner extends LitElement {
       this.setAttribute('aria-label', 'Loading')
     }
     if (this._imperative) {
-      WebUiSpinner._current?.remove()
+      if (WebUiSpinner._current && WebUiSpinner._current !== this) WebUiSpinner._current.remove()
       WebUiSpinner._current = this
       this.classList.add('wui-spinner-overlay')
     }
@@ -62,8 +104,12 @@ export class WebUiSpinner extends LitElement {
   override disconnectedCallback() {
     super.disconnectedCallback()
     if (this._timer) {
-      clearTimeout(this._timer)
-      this._timer = undefined
+      const timer = this._timer
+      queueMicrotask(() => {
+        if (this.isConnected || this._timer !== timer) return
+        clearTimeout(timer)
+        this._timer = undefined
+      })
     }
   }
 
@@ -76,7 +122,7 @@ export class WebUiSpinner extends LitElement {
 
   override render() {
     const spinner = html`
-      <div class="wui-spinner">
+      <div class="wui-spinner" style=${styleMap({ color: this.color || undefined })}>
         ${repeat(
           Array.from({ length: LEAF_COUNT }, (_, i) => i),
           i =>

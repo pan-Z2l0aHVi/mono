@@ -8,6 +8,7 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  color: var(--wui-color-text-secondary, #6a6a6a);
 }
 
 :host(.wui-spinner-overlay) {
@@ -18,7 +19,6 @@
   position: relative;
   width: var(--wui-spinner-size, 24px);
   height: var(--wui-spinner-size, 24px);
-  color: #666;
 
   span {
     position: absolute;
