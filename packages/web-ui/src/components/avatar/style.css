@@ -30,10 +30,7 @@
     max(0px, calc(var(--wui-avatar-size, 40px) * 0.25))
   );
 
-  border-radius: min(
-    var(--wui-internal-avatar-square-radius, 12px),
-    max(0px, calc(var(--wui-avatar-size, 40px) * 0.25))
-  );
+  border-radius: var(--wui-glass-corner-radius);
 }
 
 .avatar-img {
