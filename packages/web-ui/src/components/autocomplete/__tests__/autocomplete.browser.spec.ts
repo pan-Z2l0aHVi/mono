@@ -575,7 +575,7 @@ describe('WebUiAutocomplete 组件（浏览器）', () => {
     const options = portal
       ? [...panel.querySelectorAll<WebUiOption>('web-ui-option')]
       : [...el.querySelectorAll<WebUiOption>('web-ui-option')]
-    expect(options.filter(option => !option.hasAttribute('data-filtered'))).toHaveLength(10)
+    expect(page.getByRole('option').length).toBe(10)
     expect(scroll.scrollHeight).toBeGreaterThan(scroll.clientHeight)
     const activeId = comboboxTrigger(el).getAttribute('aria-activedescendant')
     expect(activeId).toBeTruthy()
