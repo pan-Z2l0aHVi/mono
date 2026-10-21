@@ -122,7 +122,10 @@ function createPositioningMiddleware(
 ): Middleware[] {
   const middleware: Middleware[] = [offset(options.offset)]
   if (options.flip) middleware.push(flip())
-  if (options.shift) middleware.push(shift({ padding: 8 }))
+  if (options.shift) {
+    const side = options.placement.split('-')[0]
+    middleware.push(shift({ padding: 8, crossAxis: side === 'left' || side === 'right' }))
+  }
 
   const widthMiddleware = createWidthMiddleware(overlay, options, widthStyles, positioningGeneration, generation)
   if (widthMiddleware) middleware.push(widthMiddleware)
