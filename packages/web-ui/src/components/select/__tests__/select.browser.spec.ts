@@ -11,8 +11,19 @@ import type { WebUiSelect } from '..'
 
 afterEach(() => document.body.replaceChildren())
 
+// 无头浏览器的静止光标位于视口左上角；关闭或展开 overlay 时，Chrome 可能在光标下
+// 重算 hover 并给 option 派发 pointerover，干扰纯键盘状态断言。这个用例不验证指针，
+// 因此挂载点隔离真实指针命中，同时保留程序化聚焦与键盘输入。
+const mountKeyboardIsolated = () => {
+  const mountPoint = document.createElement('div')
+  mountPoint.style.pointerEvents = 'none'
+  document.body.append(mountPoint)
+  return mountPoint
+}
+
 describe('WebUiSelect 组件（浏览器）', () => {
   it('真实键盘输入可打开、导航、typeahead 并提交选择', async () => {
+    const mountPoint = mountKeyboardIsolated()
     const select = document.createElement('web-ui-select')
     select.value = 'svelte'
     select.innerHTML = `
@@ -20,7 +31,7 @@ describe('WebUiSelect 组件（浏览器）', () => {
       <web-ui-option value="react" label="React"></web-ui-option>
       <web-ui-option value="svelte" label="Svelte"></web-ui-option>
     `
-    document.body.append(select)
+    mountPoint.append(select)
     await select.updateComplete
 
     const trigger = select.shadowRoot!.querySelector<HTMLElement>('[role="combobox"]')!
