@@ -84,6 +84,150 @@ describe('WebUiSlider 组件', () => {
     })
   })
 
+  describe('accessible name', () => {
+    it('将宿主 aria-label 转发给内部 slider', async () => {
+      const el = createSlider()
+      await waitForUpdate(el)
+
+      el.setAttribute('aria-label', '音量')
+      await waitForUpdate(el)
+
+      const slider = queryA11y(el, '[role="slider"]')
+      expect(slider?.getAttribute('aria-label')).toBe('音量')
+
+      cleanupElement(el)
+    })
+
+    it('将宿主 aria-labelledby 的文本镜像到内部 slider 可引用的作用域', async () => {
+      const label = document.createElement('span')
+      label.id = 'slider-volume-label'
+      label.textContent = '音量'
+      document.body.append(label)
+
+      const el = createSlider()
+      await waitForUpdate(el)
+      el.setAttribute('aria-labelledby', label.id)
+      await waitForUpdate(el)
+
+      const slider = queryA11y(el, '[role="slider"]')
+      const labelledby = slider?.getAttribute('aria-labelledby')
+      expect(labelledby).toBeTruthy()
+      expect(el.shadowRoot?.querySelector(`#${labelledby}`)?.textContent).toBe('音量')
+
+      cleanupElement(el)
+      label.remove()
+    })
+
+    it('从 aria-labelledby 引用元素的 accessible text alternative 取名', async () => {
+      const button = document.createElement('button')
+      button.id = 'slider-volume-label'
+      button.setAttribute('aria-label', 'Master volume')
+      const wrapper = document.createElement('span')
+      wrapper.id = 'slider-channel-label'
+      const image = document.createElement('img')
+      image.alt = 'Left channel'
+      wrapper.append(image)
+      document.body.append(button, wrapper)
+
+      const el = createSlider()
+      await waitForUpdate(el)
+      el.setAttribute('aria-labelledby', `${button.id} ${wrapper.id}`)
+      await waitForUpdate(el)
+
+      const slider = queryA11y(el, '[role="slider"]')
+      const labelledby = slider?.getAttribute('aria-labelledby')
+      expect(labelledby).toBeTruthy()
+      expect(el.shadowRoot?.querySelector(`#${labelledby}`)?.textContent).toBe('Master volume Left channel')
+
+      cleanupElement(el)
+      button.remove()
+      wrapper.remove()
+    })
+
+    it('从 aria-labelledby 的文本中排除 aria-hidden 后代', async () => {
+      const label = document.createElement('span')
+      label.id = 'slider-volume-label'
+      label.append(document.createTextNode('Volume'))
+      const hiddenDescription = document.createElement('span')
+      hiddenDescription.setAttribute('aria-hidden', 'true')
+      hiddenDescription.textContent = ' hidden description'
+      label.append(hiddenDescription)
+      document.body.append(label)
+
+      const el = createSlider()
+      el.setAttribute('aria-labelledby', label.id)
+      await waitForUpdate(el)
+
+      const labelledby = queryA11y(el, '[role="slider"]')?.getAttribute('aria-labelledby')
+      expect(el.shadowRoot?.querySelector(`#${labelledby}`)?.textContent).toBe('Volume')
+
+      cleanupElement(el)
+      label.remove()
+    })
+
+    it('更新 aria-labelledby 的引用文本', async () => {
+      const label = document.createElement('span')
+      label.id = 'slider-volume-label'
+      label.textContent = 'Volume'
+      document.body.append(label)
+
+      const el = createSlider()
+      el.setAttribute('aria-labelledby', label.id)
+      await waitForUpdate(el)
+
+      const labelledby = queryA11y(el, '[role="slider"]')?.getAttribute('aria-labelledby')
+      expect(labelledby).toBeTruthy()
+      const mirroredLabel = el.shadowRoot?.querySelector(`#${labelledby}`)
+      expect(mirroredLabel?.textContent).toBe('Volume')
+
+      label.textContent = 'Master volume'
+      await vi.waitFor(() => expect(mirroredLabel?.textContent).toBe('Master volume'))
+
+      cleanupElement(el)
+      label.remove()
+    })
+
+    it('引用元素被移除后清除过期名称', async () => {
+      const label = document.createElement('span')
+      label.id = 'slider-volume-label'
+      label.textContent = 'Volume'
+      document.body.append(label)
+
+      const el = createSlider()
+      el.setAttribute('aria-labelledby', label.id)
+      await waitForUpdate(el)
+      const slider = queryA11y(el, '[role="slider"]')
+      expect(slider?.hasAttribute('aria-labelledby')).toBe(true)
+
+      label.remove()
+      await vi.waitFor(() => expect(slider?.hasAttribute('aria-labelledby')).toBe(false))
+
+      cleanupElement(el)
+    })
+
+    it('没有消费者名称时不生成共用的默认名称', async () => {
+      const el = createSlider()
+      await waitForUpdate(el)
+
+      const slider = queryA11y(el, '[role="slider"]')
+      expect(slider?.hasAttribute('aria-label')).toBe(false)
+      expect(slider?.hasAttribute('aria-labelledby')).toBe(false)
+
+      cleanupElement(el)
+    })
+
+    it('忽略空白 aria-labelledby', async () => {
+      const el = createSlider()
+      el.setAttribute('aria-labelledby', '  ')
+      await waitForUpdate(el)
+
+      const slider = queryA11y(el, '[role="slider"]')
+      expect(slider?.hasAttribute('aria-labelledby')).toBe(false)
+
+      cleanupElement(el)
+    })
+  })
+
   describe('事件', () => {
     it('点击 track 更新 value 并触发 input', async () => {
       const el = createSlider()

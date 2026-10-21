@@ -1,6 +1,7 @@
 import '..'
 
 import { afterEach, describe, expect, it } from 'vite-plus/test'
+import { page } from 'vite-plus/test/browser'
 
 import { cleanupElement, pollUntil, queryA11y } from '@/shared/test-utils'
 
@@ -28,6 +29,74 @@ const trackOf = (el: HTMLElement): HTMLElement => {
   expect(node, '未找到 role="slider" 的可交互元素').toBeTruthy()
   return node as HTMLElement
 }
+
+describe('WebUiSlider accessible name（浏览器）', () => {
+  it('宿主 aria-label 命名 role=slider，多个实例保持可区分且支持更新', async () => {
+    const music = createSlider() as Updatable
+    const voice = createSlider() as Updatable
+    await Promise.all([music.updateComplete, voice.updateComplete])
+
+    music.setAttribute('aria-label', 'Music')
+    voice.setAttribute('aria-label', 'Voice')
+    await Promise.all([music.updateComplete, voice.updateComplete])
+
+    const musicHost = page.elementLocator(music)
+    const voiceHost = page.elementLocator(voice)
+    expect(musicHost.getByRole('slider', { name: 'Music' }).length).toBe(1)
+    expect(voiceHost.getByRole('slider', { name: 'Voice' }).length).toBe(1)
+    expect(page.getByRole('slider', { name: 'Slider' }).length).toBe(0)
+
+    cleanupElement(music)
+    cleanupElement(voice)
+  })
+
+  it('宿主 aria-labelledby 使用外部引用文本并跟随文本变化', async () => {
+    const label = document.createElement('span')
+    label.id = 'slider-volume-label'
+    label.textContent = 'Volume'
+    document.body.append(label)
+
+    const slider = createSlider() as Updatable
+    await slider.updateComplete
+    slider.setAttribute('aria-labelledby', label.id)
+    await slider.updateComplete
+
+    const sliderHost = page.elementLocator(slider)
+    expect(sliderHost.getByRole('slider', { name: 'Volume' }).length).toBe(1)
+
+    label.textContent = 'Master volume'
+    await pollUntil(
+      () => sliderHost.getByRole('slider', { name: 'Master volume' }).length === 1,
+      'aria-labelledby 更新文本后 accessible name 未同步'
+    )
+
+    cleanupElement(slider)
+    label.remove()
+  })
+
+  it('aria-labelledby 不把 aria-hidden 后代并入 accessible name', async () => {
+    const label = document.createElement('span')
+    label.id = 'slider-volume-label'
+    label.append(document.createTextNode('Volume'))
+    const hiddenDescription = document.createElement('span')
+    hiddenDescription.setAttribute('aria-hidden', 'true')
+    hiddenDescription.textContent = ' hidden description'
+    label.append(hiddenDescription)
+    document.body.append(label)
+
+    const slider = createSlider() as Updatable
+    await slider.updateComplete
+    slider.setAttribute('aria-labelledby', label.id)
+    await slider.updateComplete
+
+    const sliderHost = page.elementLocator(slider)
+    expect(sliderHost.getByRole('slider', { name: 'Volume' }).length).toBe(1)
+    expect(sliderHost.getByRole('slider', { name: 'Volume hidden description' }).length).toBe(0)
+
+    cleanupElement(slider)
+    label.remove()
+  })
+})
 
 const pointer = (type: string, x: number, y: number): PointerEvent =>
   new PointerEvent(type, { bubbles: true, pointerId: 1, clientX: x, clientY: y })

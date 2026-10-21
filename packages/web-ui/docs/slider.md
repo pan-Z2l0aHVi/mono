@@ -3,7 +3,7 @@ component: slider
 tag: web-ui-slider
 ---
 
-范围 slider，支持刻度标记与垂直方向；拖拽走 pointer capture，键盘支持方向键、Home / End 与 PageUp / PageDown。
+范围 slider，支持刻度标记与垂直方向；拖拽走 pointer capture，键盘支持方向键、Home / End 与 PageUp / PageDown。每个实例都应通过 `aria-label` 或 `aria-labelledby` 提供可区分的名称。
 
 ## 示例
 
@@ -13,13 +13,13 @@ tag: web-ui-slider
 
 ```react
 export default function Demo() {
-  return <web-ui-slider min={0} max={100} step={5} value={40}></web-ui-slider>
+  return <web-ui-slider aria-label="音量" min={0} max={100} step={5} value={40}></web-ui-slider>
 }
 ```
 
 ```vue
 <template>
-  <web-ui-slider :min="0" :max="100" :step="5" :value="40"></web-ui-slider>
+  <web-ui-slider aria-label="音量" :min="0" :max="100" :step="5" :value="40"></web-ui-slider>
 </template>
 ```
 
@@ -29,13 +29,13 @@ export default function Demo() {
 
 ```react
 export default function Demo() {
-  return <web-ui-slider marks vertical min={0} max={10} value={3}></web-ui-slider>
+  return <web-ui-slider aria-label="垂直刻度" marks vertical min={0} max={10} value={3}></web-ui-slider>
 }
 ```
 
 ```vue
 <template>
-  <web-ui-slider marks vertical :min="0" :max="10" :value="3"></web-ui-slider>
+  <web-ui-slider aria-label="垂直刻度" marks vertical :min="0" :max="10" :value="3"></web-ui-slider>
 </template>
 ```
 
@@ -52,6 +52,7 @@ export default function Demo() {
   return (
     <web-ui-slider
       value={volume}
+      aria-label="音量"
       min={0}
       max={100}
       onInput={event => setVolume(event.currentTarget.value)}
@@ -62,7 +63,7 @@ export default function Demo() {
 
 ```vue
 <template>
-  <web-ui-slider :value="volume" :min="0" :max="100" @input="onInput"></web-ui-slider>
+  <web-ui-slider aria-label="音量" :value="volume" :min="0" :max="100" @input="onInput"></web-ui-slider>
 </template>
 
 <script setup lang="ts">
@@ -81,17 +82,19 @@ function onInput(event: WebUiEvent<WebUiSlider, 'input'>) {
 
 ### Props
 
-| 名称       | 说明           | 类型      | 默认值  |
-| ---------- | -------------- | --------- | ------- |
-| `disabled` | 禁用状态。     | `boolean` | `false` |
-| `marks`    | 显示刻度标记。 | `boolean` | `false` |
-| `vertical` | 垂直方向。     | `boolean` | `false` |
-| `name`     | 表单字段名。   | `string`  | `''`    |
-| `required` | 必填校验。     | `boolean` | `false` |
-| `value`    | 当前值。       | `number`  | `0`     |
-| `min`      | 最小值。       | `number`  | `0`     |
-| `max`      | 最大值。       | `number`  | `100`   |
-| `step`     | 步进值。       | `number`  | `1`     |
+| 名称              | 说明                                            | 类型      | 默认值  |
+| ----------------- | ----------------------------------------------- | --------- | ------- |
+| `disabled`        | 禁用状态。                                      | `boolean` | `false` |
+| `marks`           | 显示刻度标记。                                  | `boolean` | `false` |
+| `vertical`        | 垂直方向。                                      | `boolean` | `false` |
+| `name`            | 表单字段名。                                    | `string`  | `''`    |
+| `required`        | 必填校验。                                      | `boolean` | `false` |
+| `aria-label`      | slider 的无障碍名称。                           | `string`  | —       |
+| `aria-labelledby` | 指向提供 slider 无障碍名称的一个或多个元素 ID。 | `string`  | —       |
+| `value`           | 当前值。                                        | `number`  | `0`     |
+| `min`             | 最小值。                                        | `number`  | `0`     |
+| `max`             | 最大值。                                        | `number`  | `100`   |
+| `step`            | 步进值。                                        | `number`  | `1`     |
 
 ### Events
 
