@@ -320,6 +320,41 @@ describe('WebUiDropdown 组件（浏览器）', () => {
     expect(secondMenu.open).toBe(true)
   })
 
+  it('按住已打开菜单的 trigger 时延迟处理 focusout，避免释放后重新打开', async () => {
+    const menu = createDropdown(SIMPLE)
+    await menu.updateComplete
+    const trigger = menu.querySelector<HTMLButtonElement>('[slot="trigger"]')!
+
+    await userEvent.click(trigger)
+    await menu.updateComplete
+    expect(await waitForMenuPanels(1)).toHaveLength(1)
+    expect(menu.open).toBe(true)
+
+    trigger.dispatchEvent(
+      new PointerEvent('pointerdown', { bubbles: true, composed: true, pointerId: 1, pointerType: 'mouse', button: 0 })
+    )
+    trigger.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, composed: true, button: 0, buttons: 1 }))
+    trigger.focus()
+    await nextFrame()
+    await nextFrame()
+
+    expect(menu.open).toBe(true)
+    expect(trigger.getAttribute('aria-expanded')).toBe('true')
+
+    trigger.dispatchEvent(
+      new PointerEvent('pointerup', { bubbles: true, composed: true, pointerId: 1, pointerType: 'mouse', button: 0 })
+    )
+    trigger.dispatchEvent(new MouseEvent('mouseup', { bubbles: true, composed: true, button: 0 }))
+    trigger.dispatchEvent(clickEvent(1))
+    await waitFor(() => !menu.open, '释放 trigger 后 click 应关闭原菜单')
+    await menu.updateComplete
+    await waitForMenuPanels(0)
+
+    expect(trigger.getAttribute('aria-expanded')).toBe('false')
+    expect(document.documentElement.style.overflow).toBe('')
+    expect(document.documentElement.style.overscrollBehavior).toBe('')
+  })
+
   it('焦点离开 menu panel 后关闭并保留新的焦点落点', async () => {
     const previous = document.createElement('button')
     previous.textContent = 'Previous'

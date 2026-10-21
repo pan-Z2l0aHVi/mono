@@ -206,6 +206,7 @@ interface MenuOverlay {
 
 type PointerInteraction = {
   startedInsideMenu: boolean
+  startedWithinDropdown: boolean
   completed: boolean
   clickInsideMenu?: boolean
 }
@@ -879,8 +880,12 @@ export class WebUiDropdown extends LitElement {
   }
 
   private _onPointerDown = (event: PointerEvent) => {
+    const startedInsideMenu = Boolean(this.open && this._handle?.containsEvent(event))
     this._pointerInteraction = {
-      startedInsideMenu: Boolean(this.open && this._handle?.containsEvent(event)),
+      startedInsideMenu,
+      // Trigger 的默认焦点动作也可能先于 click 让菜单项失焦；等 pointerup 后再检查，
+      // 让同一次 trigger click 先执行开合切换，避免按住 trigger 时抢先关、松开后又重开。
+      startedWithinDropdown: Boolean(this.open && (startedInsideMenu || event.composedPath().includes(this))),
       completed: false
     }
   }
@@ -928,7 +933,7 @@ export class WebUiDropdown extends LitElement {
 
     const checkFocus = () => {
       if (!this.open || this._handle !== handle) return
-      if (pointerInteraction?.startedInsideMenu) {
+      if (pointerInteraction?.startedWithinDropdown) {
         if (!pointerInteraction.completed) {
           // pointerdown 可能先让 menu item 失焦；等同一手势的 pointerup/click 确认是否点在 menu 内。
           this._pendingFocusOutCheck = () => this._overlay.scheduleFrame(checkFocus)
