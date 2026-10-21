@@ -25,9 +25,15 @@
 }
 
 :host([shape='square']) .avatar-inner {
-  --wui-glass-corner-radius: var(--wui-internal-avatar-square-radius, 12px);
+  --wui-glass-corner-radius: min(
+    var(--wui-internal-avatar-square-radius, 12px),
+    max(0px, calc(var(--wui-avatar-size, 40px) * 0.25))
+  );
 
-  border-radius: var(--wui-internal-avatar-square-radius, 12px);
+  border-radius: min(
+    var(--wui-internal-avatar-square-radius, 12px),
+    max(0px, calc(var(--wui-avatar-size, 40px) * 0.25))
+  );
 }
 
 .avatar-img {
