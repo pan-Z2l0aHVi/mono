@@ -268,12 +268,23 @@ export class WebUiDropdown extends LitElement {
     return active === null || active === document.body || active === document.documentElement
   }
 
+  /** Resolve the actual focus node through open shadow roots. */
+  private _getDeepActiveElement(): HTMLElement | undefined {
+    let active: Element | null = document.activeElement
+    while (active instanceof HTMLElement) {
+      const nested = active.shadowRoot?.activeElement
+      if (!(nested instanceof HTMLElement)) return active
+      active = nested
+    }
+    return undefined
+  }
+
   /**
    * 打开态的唯一对账入口：panel、滚动锁、outside click、hover 与 menu 焦点都从这里收敛，
    * `updated()` 的打开分支与重连对账共用它，两条路径必须落到同一个状态。
    */
   private _syncOpenOverlay(takeFocus: boolean) {
-    this._restoreFocusTarget ??= document.activeElement instanceof HTMLElement ? document.activeElement : undefined
+    this._restoreFocusTarget ??= this._getDeepActiveElement()
     this._outsideClickGuard.arm()
     this._syncScrollLock()
     this._hideAllSubmenuChildren()
@@ -333,6 +344,7 @@ export class WebUiDropdown extends LitElement {
     this._closeAllSubmenus()
     this._returnLevel0Items()
     this._disposeAll()
+    this._syncTriggerAria()
   }
 
   private async _closeRootAfterPresence() {
@@ -340,8 +352,12 @@ export class WebUiDropdown extends LitElement {
     if (overlay && !(await hideOverlayPresence(overlay))) return
     if (this.open || !this.isConnected) return
 
+    // submenu panels 与 root panel 是兄弟节点；整张 menu 收尾会移除所有仍持有焦点的层级。
+    const shouldRestoreFocus = [...this._overlays.values(), ...this._closingSubmenus.closing()].some(menuOverlay =>
+      menuOverlay.overlay.matches(':focus-within')
+    )
     this._cleanupClosedMenu()
-    this._restoreFocusTarget?.focus()
+    if (shouldRestoreFocus) this._restoreFocusTarget?.focus()
     this._restoreFocusTarget = undefined
   }
 
