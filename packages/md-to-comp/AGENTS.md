@@ -10,7 +10,7 @@
 - 落盘必须走 `writeIfChanged`：无条件覆写会改掉这次任务自己的输入哈希、从此拿不到缓存命中，dev 下还会让宿主的 watcher 绕回生成形成死循环。
 - 测试期由插件按 `process.env.VITEST` 分叉成只判不改（`checkArtifacts`）。`buildStart` 与 watcher 触发的 `regenerate` 共用 `applyArtifacts` 这一处判据——判据只贴在其中一条上，另一条就会在测试期改写工作区。配置因此就地写在宿主的 `vite.config.ts` 里，不另立配置文件，也不让 spec 去 import 整个 vite config（整文件求值会把插件工厂一并跑一遍）。
 - API 表按原文行读（`src/markdown.ts` 的 `readTableLines`），不走 mdast：表格是 GFM 扩展，引入 `remark-gfm` 尚未被授权。表头必须逐字等于配置里的列名，每行列数也要相等——不核对的话多出来的一节会被读成不存在，等于那段话没写。列的语义按位置定：首列是名称、次列是富文本说明、第 3 列起都是普通值列，值列不允许空单元格（无值写 `—`）。类型列里的联合类型写成 `'a' \| 'b'`，`\|` 按 GFM 规则还原成字面竖线。散文小节走另一条路：正文整段渲染成 HTML，出现表格行即报错（说明这一节的表头漏登记了），正文为空也报错。
-- 高亮颜色由 shiki 的双主题写成 `--shiki-light` / `--shiki-dark` 落在每个 token 上，取哪一边由本包生成的 CSS 判，所以切外观不必重新生成高亮 HTML。`renderCss(darkSelector)` 只在给出 `darkSelector` 时多吐一段深色覆盖规则：那个祖先选择器是宿主 DOM 的概念（本包不知道该叫什么），配置里传，包内不给默认值。
+- 高亮颜色由 shiki 的双主题写成 `--shiki-light` / `--shiki-dark` 落在每个 token 上，取哪一边由本包生成的 CSS 判，所以切外观不必重新生成高亮 HTML。`renderCss(darkSelector)` 同时产出 Markdown 正文版式（`.mdc-markdown` / `.mdc-heading`，按 Notion 的默认阅读口径给标签、间距与颜色；正文与表格字号不抄 Notion 的字面值，统一跟宿主的 `--wui-font-size`（只在 `.mdc-markdown` 声明一次，表格靠继承；脱离主题时回落 14px）），宿主只负责挂 class；给出 `darkSelector` 时再追加代码 token 与正文的深色覆盖规则。那个祖先选择器是宿主 DOM 的概念（本包不知道该叫什么），配置里传，包内不给默认值。
 - 文件名（去 `.md`）必须等于 frontmatter 的 `component`：文档的名字就是它的身份，两个名字并存会漂移。
 - `src/generated/**` 是宿主的产物落点，本包不碰：本包只回一份 `GeneratedFile[]`，写盘与孤儿清扫由 `emit.ts` 对宿主给定的目录执行。
 - `private` 包，不出包；宿主构建时经 turbo 的 `^build` 自动拿到新 `dist`，改引擎不必发版。

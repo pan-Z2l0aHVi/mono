@@ -104,7 +104,7 @@ const view = ref('week')
 
 ### 变体
 
-`inset`（默认，「凹」）是不透明实体 track（`--wui-color-surface`）——1px 描边环与投影全程常驻，静止 indicator 是 `--wui-color-surface-segmented` 纯灰底，视觉上嵌入 track。浅色下该 token 与 `--wui-color-page` 同值，track 与页面齐平，凹感只由常驻环与投影承担；深色下它是「比页面高一档」的 elevation，track 依旧浮离页面。`raised`（「凸」）是经典形态：flat 灰 track（`--wui-color-surface-segmented`，无环无投影），静止 indicator 是 `--wui-color-surface-selected` 实体底加柔投影，浮起于 track 之上。两个变体的按压/拖拽态一致——indicator 转透明玻璃（backdrop blur、80ms 淡入的描边环、1.5x 放大），松开淡回各自静止面。非法值回退 `inset`。
+`inset`（默认，「凹」）是不透明实体 track（`--wui-color-surface`）——1px 描边环与投影全程常驻，静止 indicator 是 `--wui-color-surface-segmented` 纯灰底，视觉上嵌入 track。浅色下该 token 与 `--wui-color-page` 同值，track 与页面齐平，凹感只由常驻环与投影承担；深色下它是「比页面高一档」的 elevation，track 依旧浮离页面。`raised`（「凸」）是经典形态：flat 灰 track（`--wui-color-surface-segmented-track`，无环无投影），静止 indicator 是 `--wui-color-surface-selected` 实体底加柔投影，浮起于 track 之上。浅色这对是 `#e5e5ea → #fff`：indicator 与 `--wui-color-page` 同为最白，凸起由「与页面同色的实色面浮在沉下去的轨道上 + 柔投影」读出。深色方向正好相反——`--wui-color-page`（`#242628`）是阶梯最暗的一档，「与 page 同色」等于把 indicator 压到轨道之下，于是 indicator 取 `#3a3a3c`，与同主题 `secondary` button 的面同一个色，轨道随之沉到 `#2c2c2e`。结果是深色下两个变体共用同一对灰阶，凹与凸只由装饰区分（常驻环与投影 vs 柔投影）。两个变体的按压/拖拽态一致——indicator 转透明玻璃（backdrop blur、80ms 淡入的描边环、1.5x 放大），松开淡回各自静止面。非法值回退 `inset`。
 
 与原生 `<form>` 集成（通过 `ElementInternals`）。
 

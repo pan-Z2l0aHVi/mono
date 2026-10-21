@@ -123,6 +123,16 @@ describe('generate', () => {
     expect(data[0]).toBe(data[1])
     expect(style[0]).toBe(style[1])
     expect(style[0]).toContain(CONFIG.darkSelector)
+    // Markdown 正文版式也由生成器统一产出：宿主只挂 class，所有 demo 页共用这一份取值。
+    expect(style[0]).toContain('.mdc-markdown')
+    expect(style[0]).toContain('.mdc-heading')
+    expect(style[0]).toContain('color: #37352f')
+    expect(style[0]).toContain('h2.mdc-heading')
+    // 正文字号跟宿主正文 token，不抄 Notion 的 16px：抄回来会让文档正文比组件里的文字还大。
+    expect(style[0]).toContain('font-size: var(--wui-font-size, 14px)')
+    // 语料里不留硬编码的正文字号。表格不重复这条声明、只靠继承拿字号（Chromium 的 UA 样式表
+    // 没给 table 写 font，实测继承成立），渲染出来到底几 px 由两端 browser spec 量。
+    expect(style[0]).not.toContain('font-size: 14px')
 
     // 刚落盘的产物与产出集合一致：这就是两个 demo 的 `turbo test` 在 `VITEST` 下跑的那一句。
     expect(() => checkArtifacts(files, demosDirs)).not.toThrow()
@@ -149,6 +159,19 @@ describe('generate', () => {
     expect(() => checkArtifacts(files, demosDirs)).toThrow(/slider--gone\.tsx/)
     writeArtifacts(files, demosDirs)
     expect(() => checkArtifacts(files, demosDirs)).not.toThrow()
+  })
+
+  it('requireDemo 开启后，没有锚点的示例在生成阶段失败', async () => {
+    const { input, outputs } = layout(source => source.replace('### 基础 {#basic}', '### 基础'))
+    await expect(generate({ ...CONFIG, requireDemo: true, input, outputs })).rejects.toThrow(
+      /slider\.md：示例「基础」没有 `\{#id\}` 锚点/
+    )
+  })
+
+  it('requireDemo 开启时，全部示例都有锚点就照常生成', async () => {
+    const { input, outputs } = layout()
+    const { files } = await generate({ ...CONFIG, requireDemo: true, input, outputs })
+    expect(files.some(file => file.path.endsWith('slider--basic.vue'))).toBe(true)
   })
 
   it('语料本身的错在读到它的那一刻就失败', async () => {

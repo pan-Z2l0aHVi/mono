@@ -9,7 +9,9 @@ import { exampleDocs } from '../generated/examples'
 // 语料 join 的 Vue 侧：「示例显示 == markdown 围栏」「带锚点的示例落成可编译文件」「页面 ↔ 语料
 // 不互为孤儿」三条由本包持有；生成器那侧的判据（篡改 / 孤儿 / 表格形状）在 `@greypan/md-to-comp`
 // 的单测里；跨 app 的另一半（两端生成数据逐字节一致、页面名集合 == React 路由名集合）由 web-ui 包的
-// generated-parity.spec.ts 持有。「产物是否新鲜」由 vite.config.ts 里的插件在测试期跑 checkArtifacts
+// generated-parity.spec.ts 持有。「手写装饰件同源」那条却住在两侧各自的 spec 里，不放 web-ui：
+// `@greypan/web-ui#test` 的 turbo 输入只覆盖本包目录，只有 app 抄本漂移时它会命中缓存直接判绿，
+// 断言一次都不跑；放在 app 侧则任一份被改到自己那一份，那一端的套件必然重新执行。「产物是否新鲜」由 vite.config.ts 里的插件在测试期跑 checkArtifacts
 // （只判不改），不在这份 spec 里重复。
 const docsDir = path.resolve(import.meta.dirname, '../../../../packages/web-ui/docs')
 const demosDir = path.resolve(import.meta.dirname, '../generated/demos')
@@ -125,6 +127,26 @@ describe('带锚点的示例落成可编译文件', () => {
   })
 })
 
+// 过渡期清单：已迁到「docs 全量生成」的文档。每迁完一篇就加进来；全部迁完后删除本清单，
+// 并在生成配置里开启 requireDemo，让漏锚点直接在生成阶段失败。清单里的文档断言的是「每条
+// 示例都有锚点」，补上锚点测试天然覆盖不到的那半边。
+const migratedDocs = ['drawer']
+
+describe('已迁移文档的每条示例都能渲染', () => {
+  it('迁移清单里没有漏掉锚点的示例', () => {
+    for (const component of migratedDocs) {
+      const doc = docByName.get(component)
+      if (!doc) throw new Error(`${component}：生成数据里没有这个 component`)
+      expect(doc.samples.length, `${component}：已迁移文档一条示例都没有`).toBeGreaterThan(0)
+      for (const sample of doc.samples) {
+        if (!sample.demoKey) throw new Error(`${component}/${sample.title}：已迁移文档里的示例必须带 \`{#id}\` 锚点`)
+        const file = path.join(demosDir, demoFileName(component, sample.demoKey, FLAVOR))
+        expect(existsSync(file), `${file} 不存在：已迁移文档的示例必须落成可预览的组件文件`).toBe(true)
+      }
+    }
+  })
+})
+
 describe('覆盖守卫（Vue 页面侧）', () => {
   const surface = surfaceOf(pagesDir, '.vue')
 
@@ -147,5 +169,18 @@ describe('覆盖守卫（Vue 页面侧）', () => {
     expect(rendersOwn({ used: new Map([['radio', ['radio-group']]]) }, 'radio')).toBe(false)
     expect(orphanDocs(['radio', 'radio-group'], [{ used: new Map([['radio', ['radio']]]) }])).toEqual(['radio-group'])
     expect(unresolvedRefs({ used: new Map([['radio', ['radio', 'nope']]]) }, ['radio'])).toEqual(['nope'])
+  })
+})
+
+describe('手写装饰件跨 app 同源', () => {
+  it('flavor-icons.ts 与另一端逐字节一致', () => {
+    const own = path.resolve(import.meta.dirname, '../components/example-doc/flavor-icons.ts')
+    const sibling = path.resolve(
+      import.meta.dirname,
+      '../../../react-web-ui-demo/src/components/example-doc/flavor-icons.ts'
+    )
+    expect(readFileSync(own, 'utf8'), `本端与 react 端的 flavor-icons.ts 抄本已经漂移`).toBe(
+      readFileSync(sibling, 'utf8')
+    )
   })
 })

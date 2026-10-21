@@ -5,7 +5,17 @@ import '@greypan/web-ui/components/layout'
 // 主题宿主得自己注册：本文件里没有 `<web-ui-theme>` 的模板用法，unplugin 的注入扫不到这个 tag。
 import '@greypan/web-ui/components/theme'
 
-import type { WebUiLayout, WebUiSegmented, WebUiSegmentedTrigger, WebUiSlider } from '@greypan/web-ui'
+import type {
+  WebUiCheckbox,
+  WebUiCollapse,
+  WebUiDrawer,
+  WebUiLayout,
+  WebUiSegmented,
+  WebUiSegmentedTrigger,
+  WebUiSlider,
+  WebUiTooltip
+} from '@greypan/web-ui'
+import { akarIconsCircleCheck, lucideCircleAlert, lucideCopy } from '@greypan/web-ui/icons'
 import { mount, type VueWrapper } from '@vue/test-utils'
 import { afterEach, describe, expect, it, vi } from 'vite-plus/test'
 import { userEvent } from 'vite-plus/test/browser'
@@ -19,6 +29,7 @@ import controlledSource from '@/generated/demos/slider--controlled.vue?raw'
 import marksSource from '@/generated/demos/slider--marks-vertical.vue?raw'
 import { exampleDocs } from '@/generated/examples'
 
+import { reactIcon, vueIcon } from '../flavor-icons'
 import ExampleDoc from '../index.vue'
 
 /*
@@ -38,8 +49,11 @@ const imagePreview = exampleDocs.find(doc => doc.component === 'image-preview')
 const layout = exampleDocs.find(doc => doc.component === 'layout')
 const theme = exampleDocs.find(doc => doc.component === 'theme')
 const segmentedTrigger = exampleDocs.find(doc => doc.component === 'segmented-trigger')
-if (!slider || !button || !collapse || !imagePreview || !layout || !theme || !segmentedTrigger)
-  throw new Error('生成数据里缺少 slider / button / collapse / image-preview / layout / theme / segmented-trigger')
+const drawer = exampleDocs.find(doc => doc.component === 'drawer')
+if (!slider || !button || !collapse || !imagePreview || !layout || !theme || !segmentedTrigger || !drawer)
+  throw new Error(
+    '生成数据里缺少 slider / button / collapse / image-preview / layout / theme / segmented-trigger / drawer'
+  )
 
 /** demoKey → 落盘文件字节；少一条就在断言里直接报出来，不留「这条没被覆盖」的静默缺口。 */
 const demoSources: Record<string, string> = {
@@ -143,6 +157,13 @@ async function mountSegmented(element: HTMLElement) {
     await host.updateComplete
 }
 
+// Lit 首帧是异步的：collapse 的影子树落地前，light DOM 里的代码块没有被 slot 分配，
+// getComputedStyle 会读到空串；样式与可见性断言先等宿主渲染完。
+async function settleCollapses(element: HTMLElement) {
+  for (const host of element.querySelectorAll<WebUiCollapse>('web-ui-collapse')) await host.updateComplete
+  await nextTick()
+}
+
 function segmentedIn(element: HTMLElement, title: string) {
   const host = sample(element, title).querySelector<WebUiSegmented>('web-ui-segmented')
   if (!host) throw new Error(`示例「${title}」没有渲染出 web-ui-segmented`)
@@ -171,8 +192,9 @@ afterEach(() => {
 })
 
 describe('example-doc（Vue 面 / 真实浏览器）', () => {
-  it('示例逐条来自 markdown，代码块在真实引擎里带了颜色', () => {
+  it('示例逐条来自 markdown，代码块在真实引擎里带了颜色', async () => {
     const element = mountDoc('button')
+    await settleCollapses(element)
 
     expect(element.querySelector('[data-example-intro]')?.textContent).toBe(
       new DOMParser().parseFromString(button.introHtml, 'text/html').body.textContent?.trim()
@@ -221,6 +243,7 @@ describe('example-doc（Vue 面 / 真实浏览器）', () => {
 
   it('外观切到深色时，token 换用 --shiki-dark', async () => {
     const plain = mountDoc('button')
+    await settleCollapses(plain)
     expect(getComputedStyle(keyword(plain)).color).toBe(KEYWORD_LIGHT)
 
     // 生成样式的深色判定读的是 web-ui-theme 的 resolved-appearance，所以把示例挂进一个真实的
@@ -230,8 +253,349 @@ describe('example-doc（Vue 面 / 真实浏览器）', () => {
     document.body.append(theme)
     mountDoc('button', theme)
     await vi.waitFor(() => expect(theme.getAttribute('resolved-appearance')).toBe('dark'))
+    await settleCollapses(theme)
     expect(getComputedStyle(keyword(theme)).color).toBe(KEYWORD_DARK)
+
+    // 正文、说明、行内代码与表头也跟着换深色档，而不是只换代码 token。
+    const intro = theme.querySelector<HTMLElement>('[data-example-intro]')
+    const description = theme.querySelector<HTMLElement>('.mdc-markdown-secondary')
+    const headCell = theme.querySelector<HTMLElement>('[data-example-api="props"] th')
+    const inlineCode = description?.querySelector('code')
+    if (!intro || !description || !headCell || !inlineCode) throw new Error('深色 markdown 断言缺少节点')
+    expect(getComputedStyle(intro).color).toBe('rgba(255, 255, 255, 0.81)')
+    expect(getComputedStyle(description).color).toBe('rgba(255, 255, 255, 0.46)')
+    expect(getComputedStyle(inlineCode).color).toBe('rgb(255, 115, 105)')
+    expect(getComputedStyle(headCell).backgroundColor).toBe('rgba(255, 255, 255, 0.055)')
     theme.remove()
+  })
+
+  it('代码框架用 segmented 切换，点击与键盘都能换一份源码', async () => {
+    const element = mountDoc('slider')
+    await settleCollapses(element)
+    const article = sample(element, '受控值')
+    const segmented = segmentedIn(element, '受控值')
+    const triggers = triggersOf(segmented)
+    expect(triggers.map(trigger => trigger.textContent?.trim())).toEqual(['Vue', 'React'])
+    // 名称前各挂一枚框架标记，且排在文字之前：tab 上的框架名靠形状认，比读字快。
+    triggers.forEach((trigger, index) => {
+      const icon = trigger.querySelector('web-ui-icon')
+      expect(icon?.icon).toBe(index === 0 ? vueIcon : reactIcon)
+      expect(trigger.querySelector('span')?.firstElementChild).toBe(icon)
+    })
+    // 工具条用 raised 变体（indicator 浮在沉一档的 track 上），与页面底色的工具条区分开。
+    expect(segmented.variant).toBe('raised')
+    expect(segmented.value).toBe('vue')
+    expect(article.querySelector('[data-current-flavor]')?.getAttribute('data-current-flavor')).toBe('vue')
+    expect(article.querySelector('[data-code] pre')?.textContent).toContain('@input')
+
+    await userEvent.click(optionOf(triggers[1]))
+    await vi.waitFor(() => expect(segmented.value).toBe('react'))
+    await vi.waitFor(() =>
+      expect(article.querySelector('[data-current-flavor]')?.getAttribute('data-current-flavor')).toBe('react')
+    )
+    expect(article.querySelector('[data-code] pre')?.textContent).toContain('useState')
+    expect(triggers.map(trigger => trigger.checked)).toEqual([false, true])
+
+    optionOf(triggers[0]).focus()
+    await userEvent.keyboard('{Enter}')
+    await vi.waitFor(() => expect(segmented.value).toBe('vue'))
+    await vi.waitFor(() =>
+      expect(article.querySelector('[data-current-flavor]')?.getAttribute('data-current-flavor')).toBe('vue')
+    )
+    // 焦点留在被激活的 option 上：document.activeElement 只会看到 trigger 宿主。
+    expect(triggers[0].shadowRoot?.activeElement).toBe(optionOf(triggers[0]))
+  })
+
+  it('复制按钮写入当前源码，成功与失败都换成对应 icon', async () => {
+    const element = mountDoc('slider')
+    await settleCollapses(element)
+    const article = sample(element, '受控值')
+    const copy = article.querySelector<HTMLElement>('[data-copy]')
+    if (!copy) throw new Error('代码区没有复制按钮')
+    await vi.waitFor(() => expect(copy.shadowRoot?.querySelector('button')).toBeTruthy())
+    expect(copy.getAttribute('aria-label')).toBe('复制代码')
+    expect(copy.querySelector('web-ui-icon')?.icon).toBe(lucideCopy)
+    // 描边宿主只在成功态出现：静止时按钮里就是一枚普通图标。
+    expect(copy.querySelector('web-ui-svg-draw-lines')).toBeNull()
+
+    const writes: string[] = []
+    const clipboard = Object.getOwnPropertyDescriptor(navigator, 'clipboard')
+    Object.defineProperty(navigator, 'clipboard', {
+      configurable: true,
+      value: { writeText: async (text: string) => void writes.push(text) }
+    })
+
+    try {
+      copy.shadowRoot?.querySelector<HTMLElement>('button')?.click()
+      await vi.waitFor(() => expect(writes).toHaveLength(1))
+      expect(writes[0]).toContain('@input')
+      await vi.waitFor(() => expect(copy.getAttribute('aria-label')).toBe('已复制'))
+      expect(copy.querySelector('web-ui-icon')?.icon).toBe(akarIconsCircleCheck)
+      // 成功图标挂在描边宿主里：勾与圆是被画出来的，不是淡进来的一张现成图。
+      const drawn = copy.querySelector('web-ui-svg-draw-lines')
+      expect(drawn?.querySelector('web-ui-icon')?.icon).toBe(akarIconsCircleCheck)
+      expect(drawn?.duration).toBe(300)
+      // 成功态用主题的成功绿，而不是沿用文字色。
+      expect(copy.querySelector('web-ui-icon')?.classList.contains('text-(--wui-color-success)')).toBe(true)
+      // tooltip 跟着反馈走：悬停时读到的也是「已复制」，不是一直停在「复制代码」。
+      expect(article.querySelector<WebUiTooltip>('web-ui-tooltip')?.content).toBe('已复制')
+      // 图标变化之外还有一条 live region，读屏器不依赖 aria-label 的变化也能听到结果。
+      expect(article.querySelector('[aria-live="polite"]')?.textContent).toBe('已复制')
+    } finally {
+      if (clipboard) Object.defineProperty(navigator, 'clipboard', clipboard)
+      else Reflect.deleteProperty(navigator, 'clipboard')
+    }
+  })
+
+  it('复制失败时换成失败 icon，而不是静默吞掉', async () => {
+    const element = mountDoc('slider')
+    await settleCollapses(element)
+    const article = sample(element, '受控值')
+    const copy = article.querySelector<HTMLElement>('[data-copy]')
+    if (!copy) throw new Error('代码区没有复制按钮')
+    await vi.waitFor(() => expect(copy.shadowRoot?.querySelector('button')).toBeTruthy())
+
+    const clipboard = Object.getOwnPropertyDescriptor(navigator, 'clipboard')
+    const execCommand = Object.getOwnPropertyDescriptor(document, 'execCommand')
+    Object.defineProperty(navigator, 'clipboard', {
+      configurable: true,
+      value: {
+        writeText: async () => {
+          throw new Error('denied')
+        }
+      }
+    })
+    Object.defineProperty(document, 'execCommand', { configurable: true, value: () => false })
+
+    try {
+      copy.shadowRoot?.querySelector<HTMLElement>('button')?.click()
+      await vi.waitFor(() => expect(copy.getAttribute('aria-label')).toBe('复制失败'))
+      expect(copy.querySelector('web-ui-icon')?.icon).toBe(lucideCircleAlert)
+      expect(copy.querySelector('web-ui-icon')?.classList.contains('text-(--wui-color-danger)')).toBe(true)
+    } finally {
+      if (clipboard) Object.defineProperty(navigator, 'clipboard', clipboard)
+      else Reflect.deleteProperty(navigator, 'clipboard')
+      if (execCommand) Object.defineProperty(document, 'execCommand', execCommand)
+      else Reflect.deleteProperty(document, 'execCommand')
+    }
+  })
+
+  it('drawer 页每条示例都有预览与代码，预览能真的打开 drawer', async () => {
+    const element = mountDoc('drawer')
+    await settleCollapses(element)
+    const articles = [...element.querySelectorAll<HTMLElement>('[data-sample]')]
+    expect(articles.map(node => node.getAttribute('data-sample'))).toEqual(
+      drawer.samples.map(candidate => candidate.title)
+    )
+    for (const article of articles) {
+      const title = article.getAttribute('data-sample')
+      expect(article.querySelector('[data-sample-preview]'), `${title}：已迁移示例缺少预览`).not.toBeNull()
+      expect(article.querySelector('[data-code] pre'), `${title}：已迁移示例缺少代码`).not.toBeNull()
+    }
+
+    // 预览区必须单独取：工具条里的 web-ui-button 会先于异步 demo 升级，用整篇文章等会等错对象。
+    const basic = sample(element, drawer.samples[0].title)
+    const preview = basic.querySelector('[data-sample-preview]')
+    await vi.waitFor(
+      () => expect(preview?.querySelector('web-ui-button')?.shadowRoot?.querySelector('button')).toBeTruthy(),
+      { timeout: 8000 }
+    )
+    const trigger = preview?.querySelector('web-ui-button')?.shadowRoot?.querySelector<HTMLElement>('button')
+    const host = preview?.querySelector<WebUiDrawer>('web-ui-drawer')
+    if (!trigger || !host) throw new Error('基础示例没有渲染出 button / drawer')
+    trigger.click()
+    await vi.waitFor(() => expect(host.open).toBe(true))
+    expect(host.shadowRoot?.querySelector('dialog')?.open).toBe(true)
+  })
+
+  it('drawer 关闭按钮示例：点文案也能勾选', async () => {
+    const element = mountDoc('drawer')
+    await settleCollapses(element)
+    await vi.waitFor(() => expect(sample(element, '关闭按钮').querySelector('web-ui-checkbox')).toBeTruthy())
+    const article = sample(element, '关闭按钮')
+    const checkbox = article.querySelector<WebUiCheckbox>('web-ui-checkbox')
+    const drawerHost = article.querySelector<WebUiDrawer>('web-ui-drawer')
+    if (!checkbox || !drawerHost) throw new Error('关闭按钮示例没有渲染 checkbox / drawer')
+    await vi.waitFor(() => expect(checkbox.shadowRoot?.querySelector('label')).toBeTruthy())
+    expect(checkbox.checked).toBe(true)
+    expect(drawerHost.closable).toBe(true)
+
+    // 文案放在组件默认槽里：点击落点命中内部 <label>，宿主与文案都能切换。
+    await userEvent.click(checkbox)
+    await vi.waitFor(() => expect(checkbox.checked).toBe(false))
+    await vi.waitFor(() => expect(drawerHost.closable).toBe(false))
+  })
+
+  it('代码区默认只露出 peek，展开与收起由工具条按钮控制', async () => {
+    const element = mountDoc('button')
+    await settleCollapses(element)
+    const article = sample(element, button.samples[0].title)
+    const host = article.querySelector<WebUiCollapse>('web-ui-collapse')
+    const inner = host?.shadowRoot?.querySelector('.wui-collapse-inner')
+    const toggle = article.querySelector<HTMLElement>('[data-toggle-code]')
+    if (!host || !inner || !toggle) throw new Error('collapse 或展开按钮不完整')
+    await vi.waitFor(() => expect(toggle.shadowRoot?.querySelector('button')).toBeTruthy())
+
+    expect(host.open).toBe(false)
+    expect(host.peek).toBe('128px')
+    expect(inner.hasAttribute('inert')).toBe(true)
+    expect(toggle.getAttribute('aria-expanded')).toBe('false')
+    // 工具条只留图标：说明文字落在 aria-label 与 tooltip 上。
+    expect(toggle.getAttribute('aria-label')).toBe('展开代码')
+    const tooltips = [...article.querySelectorAll<WebUiTooltip>('web-ui-tooltip')]
+    expect(tooltips.map(tooltip => tooltip.content)).toEqual(['复制代码', '展开代码'])
+
+    toggle.shadowRoot?.querySelector<HTMLElement>('button')?.click()
+    await vi.waitFor(() => expect(host.open).toBe(true))
+    await host.updateComplete
+    await nextTick()
+    expect(inner.hasAttribute('inert')).toBe(false)
+    expect(toggle.getAttribute('aria-expanded')).toBe('true')
+    expect(toggle.getAttribute('aria-label')).toBe('收起代码')
+    expect(tooltips.map(tooltip => tooltip.content)).toEqual(['复制代码', '收起代码'])
+
+    toggle.shadowRoot?.querySelector<HTMLElement>('button')?.click()
+    await vi.waitFor(() => expect(host.open).toBe(false))
+    await host.updateComplete
+    expect(inner.hasAttribute('inert')).toBe(true)
+  })
+
+  it('代码卡片圆角 16px，三段同色同边距，收起态渐隐带遮住 peek 六成以上', async () => {
+    const element = mountDoc('slider')
+    await settleCollapses(element)
+    const article = sample(element, slider.samples[0].title)
+    const card = article.querySelector<HTMLElement>('[data-current-flavor]')
+    const preview = article.querySelector<HTMLElement>('[data-sample-preview]')
+    const toolbar = article.querySelector<HTMLElement>('[data-flavor-switch]')?.parentElement
+    const code = article.querySelector<HTMLElement>('[data-code]')
+    const host = article.querySelector<WebUiCollapse>('web-ui-collapse')
+    if (!card || !preview || !toolbar || !code || !host) throw new Error('代码卡片或工具条没有渲染')
+
+    expect(getComputedStyle(card).borderRadius).toBe('16px')
+    // 预览、工具条、代码区三段一律铺页面底色，卡片壳自己不铺底：深色下预览区不能再浮出一层。
+    // 判据取 class 而不是 computed 底色：这一段没挂在 web-ui-theme 里，token 变量解析不出颜色，
+    // 给卡片铺了底在这里同样算出透明。
+    for (const node of [preview, toolbar, code]) {
+      expect(node.classList.contains('bg-(--wui-color-page)')).toBe(true)
+    }
+    expect([...card.classList].some(name => name.startsWith('bg-'))).toBe(false)
+    // 预览、工具条、代码区共用同一档左右内边距，内容边线才是齐的。
+    expect([preview, toolbar, code].map(node => getComputedStyle(node).paddingLeft)).toEqual(['16px', '16px', '16px'])
+
+    // 代码 12px；工具条抬到代码区之上，segmented 长按时向下的投影才不会被后绘制的折叠区盖掉。
+    expect(getComputedStyle(code).fontSize).toBe('12px')
+    expect(getComputedStyle(toolbar).position).toBe('relative')
+    expect(getComputedStyle(toolbar).zIndex).toBe('10')
+    // 但只在卡内抬：`isolate` 让这张卡自成一个 stacking context，否则同一个 10 会去和
+    // 页面 header（`--wui-layer-header` 也是 10）比大小，后画的工具条直接盖到 header 上。
+    expect(getComputedStyle(card).isolation).toBe('isolate')
+
+    // peek 128px 至少容得下上边距加四行完整代码；被截断的那半行不是遮挡的主力。
+    const style = getComputedStyle(code)
+    const lineHeight = parseFloat(style.lineHeight)
+    expect(parseFloat(host.peek ?? '0')).toBeGreaterThanOrEqual(parseFloat(style.paddingTop) + 4 * lineHeight)
+    // 真正的「下面还有内容」由末端渐隐带说出，长度取 peek 的六成以上。组件把推导值写在影子树的
+    // inner 上，且首帧会过渡到位，所以等到落稳再判，别把过渡中途的读数当成不达标。
+    const inner = host.shadowRoot?.querySelector<HTMLElement>('.wui-collapse-inner')
+    if (!inner) throw new Error('collapse 的影子树没有渲染')
+    const peekLength = parseFloat(host.peek ?? '0')
+    await vi.waitFor(() =>
+      expect(
+        parseFloat(getComputedStyle(inner).getPropertyValue('--wui-collapse-peek-edge-active')) / peekLength
+      ).toBeGreaterThanOrEqual(0.6)
+    )
+  })
+
+  it('markdown 正文按 Notion 版式渲染：正文 / 标题 / 行内代码 / 表格', async () => {
+    const element = mountDoc('slider')
+    await settleCollapses(element)
+    const article = sample(element, slider.samples[0].title)
+    const intro = element.querySelector<HTMLElement>('[data-example-intro]')
+    const description = article.querySelector<HTMLElement>('.mdc-markdown-secondary')
+    const sectionHeading = element.querySelector<HTMLElement>('h2.mdc-heading')
+    const sampleHeading = article.querySelector<HTMLElement>('h3.mdc-heading')
+    const table = element.querySelector<HTMLElement>('[data-example-api="props"] table')
+    const headCell = table?.querySelector('th')
+    const inlineCode = description?.querySelector('code')
+    if (!intro || !description || !sectionHeading || !sampleHeading || !table || !headCell || !inlineCode)
+      throw new Error('markdown 版式断言缺少节点')
+
+    // 正文跟页面正文字号 token（14px）/ 1.5、#37352f；说明弱一档。
+    const body = getComputedStyle(intro)
+    expect(body.fontSize).toBe('14px')
+    expect(body.lineHeight).toBe('21px')
+    expect(body.color).toBe('rgb(55, 53, 47)')
+    expect(getComputedStyle(description).color).toBe('rgba(55, 53, 47, 0.65)')
+
+    // 标题层级取自 Notion 的阅读页。
+    expect(getComputedStyle(sectionHeading).fontSize).toBe('24px')
+    expect(getComputedStyle(sampleHeading).fontSize).toBe('20px')
+
+    // 行内代码：红字 + 灰底。
+    expect(getComputedStyle(inlineCode).color).toBe('rgb(235, 87, 87)')
+    expect(getComputedStyle(inlineCode).backgroundColor).toBe('rgba(135, 131, 120, 0.15)')
+
+    // 表格字号靠 .mdc-markdown 继承（生成的 CSS 不给 table 重复声明），所以 table 与单元格都量：
+    // 真有 UA 或宿主规则盖住表格时，红的是这条实测，不是某一行 CSS 文本。
+    expect(getComputedStyle(table).fontSize).toBe('14px')
+    expect(getComputedStyle(headCell).fontSize).toBe('14px')
+    expect(getComputedStyle(headCell).padding).toBe('7px 9px')
+    expect(getComputedStyle(headCell).borderTopColor).toBe('rgb(233, 233, 231)')
+    expect(getComputedStyle(headCell).backgroundColor).toBe('rgba(242, 241, 238, 0.5)')
+  })
+
+  it('工具条空白处也能开合代码，内部控件不误触', async () => {
+    const element = mountDoc('button')
+    await settleCollapses(element)
+    const article = sample(element, button.samples[0].title)
+    const host = article.querySelector<WebUiCollapse>('web-ui-collapse')
+    const bar = article.querySelector<HTMLElement>('[data-flavor-switch]')?.parentElement
+    const segmented = article.querySelector<HTMLElement>('[data-flavor-switch]')
+    if (!host || !bar || !segmented) throw new Error('工具条结构不完整')
+
+    bar.click()
+    await vi.waitFor(() => expect(host.open).toBe(true))
+    bar.click()
+    await vi.waitFor(() => expect(host.open).toBe(false))
+
+    // segmented 自己 stop 掉冒泡：点它只切框架，不会顺带把代码区打开。
+    segmented.click()
+    expect(host.open).toBe(false)
+  })
+
+  it('收起代码后滚动位置复位，再次展开从顶部开始', async () => {
+    // 只有长示例才能滚出真实位移：drawer 的「嵌套堆叠」源码有 60 多行，必然超过 32rem。
+    const element = mountDoc('drawer')
+    await settleCollapses(element)
+    const article = sample(element, '嵌套堆叠')
+    const host = article.querySelector<WebUiCollapse>('web-ui-collapse')
+    const code = article.querySelector<HTMLElement>('[data-code]')
+    const toggle = article.querySelector<HTMLElement>('[data-toggle-code]')
+    if (!host || !code || !toggle) throw new Error('collapse、代码区或展开按钮不完整')
+    await vi.waitFor(() => expect(toggle.shadowRoot?.querySelector('button')).toBeTruthy())
+    const button = () => toggle.shadowRoot?.querySelector<HTMLElement>('button')
+
+    button()?.click()
+    await vi.waitFor(() => expect(host.open).toBe(true))
+    await host.updateComplete
+    code.scrollTop = 300
+    expect(code.scrollTop).toBe(300)
+
+    button()?.click()
+    await vi.waitFor(() => expect(host.open).toBe(false))
+    await host.updateComplete
+    expect(code.scrollTop).toBe(0)
+  })
+
+  it('展开后的代码区有最大高度并自己滚动', async () => {
+    const element = mountDoc('slider')
+    await settleCollapses(element)
+    const code = sample(element, '受控值').querySelector<HTMLElement>('[data-code]')
+    if (!code) throw new Error('代码区没有 data-code')
+
+    const style = getComputedStyle(code)
+    expect(style.maxHeight).toBe('512px')
+    expect(style.overflowY).toBe('auto')
   })
 
   it('带锚点的示例挂成真组件，没锚点的只有代码', async () => {

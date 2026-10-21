@@ -107,18 +107,18 @@ export const exampleDocs: ExampleDoc[] = ${JSON.stringify(docs, null, 2)}
 }
 
 /**
- * 只放代码着色的取色规则与 shiki `<pre>` 的复位。shiki 的 `defaultColor: false` 把颜色写成
+ * 代码块取色与 Markdown 正文版式。shiki 的 `defaultColor: false` 把颜色写成
  * `--shiki-light` / `--shiki-dark` 变量落在每个 token 上，这里决定当前外观取哪一边；
  * 深色判定跟着配置里的 `darkSelector` 走，和宿主其余表面用同一个外观源，
  * 所以切换外观不需要重新生成高亮 HTML。
  *
- * 外框（圆角、底色、内边距、滚动、字号）留给宿主的样式层，所以 `.mdc-code` 把 shiki 自带的
- * `<pre>` 版式复位成「继承外面那一层」——那部分归宿主主题管，搬进来反而会绕开它。
+ * 代码块外框（圆角、底色、内边距、滚动、字号）仍留给宿主的样式层，所以 `.mdc-code` 把 shiki
+ * 自带的 `<pre>` 版式复位成「继承外面那一层」。正文的 `.mdc-markdown` / `.mdc-heading`
+ * 则在这里统一收口：取值跟随 Notion 的默认阅读版式，所有 demo 页都从同一份 `examples.css`
+ * 拿到同一套标签、间距、字号与颜色，宿主只负责挂 class。
  *
- * 两份规则都落在同一个 `.mdc-code` 上，所以复位必须排在取色之前：stylelint 的
- * `no-descending-specificity` 按「最后一个复合选择器相同」的规则成对比较，低比重的
- * `.mdc-code` 排在高比重的 `${darkSelector} .mdc-code` 之后会直接红。两组属性不相交，
- * 先后与级联结果无关。
+ * 顺序按 stylelint 的 `no-descending-specificity` 排：先低比重的复位与浅色取色，再正文版式，
+ * 最后是带 `darkSelector` 前缀的深色覆盖。深色规则比重更高，必须收在末尾。
  */
 export function renderCss(darkSelector?: string): string {
   const dark = darkSelector
@@ -126,6 +126,40 @@ export function renderCss(darkSelector?: string): string {
 ${darkSelector} .mdc-code,
 ${darkSelector} .mdc-code span {
   color: var(--shiki-dark);
+}
+
+${darkSelector} .mdc-markdown,
+${darkSelector} .mdc-heading {
+  color: rgb(255 255 255 / 0.81);
+}
+
+${darkSelector} .mdc-markdown-secondary {
+  color: rgb(255 255 255 / 0.46);
+}
+
+${darkSelector} .mdc-markdown :not(pre) > code {
+  color: #ff7369;
+}
+
+${darkSelector} .mdc-markdown a {
+  text-decoration-color: rgb(255 255 255 / 0.4);
+}
+
+${darkSelector} .mdc-markdown hr {
+  border-top-color: rgb(255 255 255 / 0.094);
+}
+
+${darkSelector} .mdc-markdown pre {
+  background-color: rgb(255 255 255 / 0.055);
+}
+
+${darkSelector} .mdc-markdown th,
+${darkSelector} .mdc-markdown td {
+  border-color: rgb(255 255 255 / 0.094);
+}
+
+${darkSelector} .mdc-markdown th {
+  background-color: rgb(255 255 255 / 0.055);
 }
 `
     : ''
@@ -149,6 +183,177 @@ ${darkSelector} .mdc-code span {
 .mdc-code,
 .mdc-code span {
   color: var(--shiki-light);
+}
+
+/*
+ * Markdown 正文版式：默认值取自 Notion 的阅读页——系统 UI 字体、
+ * #37352f 主文字、85% 行内代码。正文字号不抄 Notion 写死的 16px，表格更不单独声明一档
+ * 字号（跟着正文继承），两者都跟随宿主的正文 token，
+ * 而是跟随宿主的正文 token，页面才不会正文比组件里的文字还大；
+ * 脱离主题单独引用时回落到 14px，与设计系统的正文基准同一个值。
+ * 容器挂 .mdc-markdown、标题挂 .mdc-heading；说明这类次要正文再加 .mdc-markdown-secondary。
+ */
+.mdc-markdown {
+  font-family:
+    ui-sans-serif, -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, 'Apple Color Emoji', Arial, sans-serif,
+    'Segoe UI Emoji', 'Segoe UI Symbol';
+  font-size: var(--wui-font-size, 14px);
+  line-height: 1.5;
+  color: #37352f;
+  overflow-wrap: break-word;
+}
+
+.mdc-markdown > :first-child {
+  margin-top: 0;
+}
+
+.mdc-markdown > :last-child {
+  margin-bottom: 0;
+}
+
+.mdc-markdown p {
+  margin: 8px 0;
+}
+
+.mdc-markdown ul,
+.mdc-markdown ol {
+  margin: 8px 0;
+  padding-left: 24px;
+}
+
+.mdc-markdown ul {
+  list-style: disc;
+}
+
+.mdc-markdown ol {
+  list-style: decimal;
+}
+
+.mdc-markdown li {
+  margin: 2px 0;
+}
+
+.mdc-markdown li > p {
+  margin: 0;
+}
+
+.mdc-markdown li > ul,
+.mdc-markdown li > ol {
+  margin: 2px 0;
+}
+
+.mdc-markdown strong {
+  font-weight: 600;
+}
+
+.mdc-markdown :not(pre) > code {
+  padding: 0.2em 0.4em;
+  border-radius: 3px;
+
+  font-family: SFMono-Regular, menlo, consolas, 'Liberation Mono', courier, monospace;
+  font-size: 85%;
+  color: #eb5757;
+
+  background-color: rgb(135 131 120 / 0.15);
+}
+
+.mdc-markdown a {
+  color: inherit;
+  text-decoration: underline;
+  text-decoration-color: rgb(55 53 47 / 0.4);
+  text-underline-offset: 2px;
+}
+
+.mdc-markdown blockquote {
+  margin: 8px 0;
+  padding-left: 14px;
+  border-left: 3px solid currentcolor;
+}
+
+.mdc-markdown hr {
+  margin: 16px 0;
+  border: 0;
+  border-top: 1px solid rgb(55 53 47 / 0.16);
+}
+
+.mdc-markdown img {
+  max-width: 100%;
+  height: auto;
+}
+
+.mdc-markdown pre {
+  overflow-x: auto;
+
+  margin: 8px 0;
+  padding: 12px 16px;
+  border-radius: 4px;
+
+  font-family: SFMono-Regular, menlo, consolas, 'Liberation Mono', courier, monospace;
+  font-size: 85%;
+  line-height: 1.5;
+
+  background-color: rgb(247 246 243);
+}
+
+.mdc-markdown pre code {
+  padding: 0;
+  font: inherit;
+  color: inherit;
+  background-color: transparent;
+}
+
+.mdc-markdown table {
+  border-spacing: 0;
+  border-collapse: collapse;
+  width: 100%;
+  margin: 8px 0;
+}
+
+.mdc-markdown th,
+.mdc-markdown td {
+  padding: 7px 9px;
+  border: 1px solid #e9e9e7;
+
+  text-align: left;
+  overflow-wrap: anywhere;
+  vertical-align: top;
+}
+
+.mdc-markdown th {
+  font-weight: 500;
+  background-color: rgb(242 241 238 / 0.5);
+}
+
+.mdc-markdown-secondary {
+  color: rgb(55 53 47 / 0.65);
+}
+
+.mdc-heading {
+  margin: 0;
+  font-weight: 600;
+  color: #37352f;
+}
+
+h1.mdc-heading {
+  font-size: 30px;
+  font-weight: 700;
+  line-height: 1.2;
+  letter-spacing: -0.01em;
+}
+
+h2.mdc-heading {
+  font-size: 24px;
+  line-height: 1.3;
+}
+
+h3.mdc-heading {
+  font-size: 20px;
+  line-height: 1.4;
+}
+
+h4.mdc-heading {
+  font-size: 18px;
+  line-height: 1.4;
 }
 ${dark}`
 }

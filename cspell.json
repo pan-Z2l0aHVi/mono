@@ -113,6 +113,9 @@
     "vdom",
     "Tera",
     "shiki",
-    "SHIKI"
+    "SHIKI",
+    "Segoe",
+    "menlo",
+    "consolas"
   ]
 }
