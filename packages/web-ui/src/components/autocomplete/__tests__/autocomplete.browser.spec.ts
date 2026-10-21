@@ -549,11 +549,13 @@ describe('WebUiAutocomplete 组件（浏览器）', () => {
     theme.setAttribute('appearance', 'light')
     const el = document.createElement('web-ui-autocomplete')
     el.portal = portal
+    el.filter = 'none'
     el.value = 'Option 10'
     el.style.setProperty('--wui-autocomplete-max-height', '200px')
     el.innerHTML = Array.from(
       { length: 10 },
-      (_, index) => `<web-ui-option value="Option ${index + 1}" label="Option ${index + 1}"></web-ui-option>`
+      (_, index) =>
+        `<web-ui-option value="Option ${index + 1}" label="Option ${index + 1}"${index < 9 ? ' disabled' : ''}></web-ui-option>`
     ).join('')
     theme.append(el)
     document.body.append(theme)
@@ -573,6 +575,8 @@ describe('WebUiAutocomplete 组件（浏览器）', () => {
     const options = portal
       ? [...panel.querySelectorAll<WebUiOption>('web-ui-option')]
       : [...el.querySelectorAll<WebUiOption>('web-ui-option')]
+    expect(options.filter(option => !option.hasAttribute('data-filtered'))).toHaveLength(10)
+    expect(scroll.scrollHeight).toBeGreaterThan(scroll.clientHeight)
     const activeId = comboboxTrigger(el).getAttribute('aria-activedescendant')
     expect(activeId).toBeTruthy()
     const activeLabel = el.shadowRoot!.getElementById(activeId!)!.textContent!.trim()
