@@ -7193,6 +7193,12 @@ export const exampleDocs: ExampleDoc[] = [
             "#fff"
           ],
           [
+            "--wui-color-on-danger",
+            "<p><code>danger</code> 背景上的前景色</p>",
+            "#fff",
+            "#000"
+          ],
+          [
             "--wui-color-on-control",
             "<p>控件内芯前景色</p>",
             "#fff",
