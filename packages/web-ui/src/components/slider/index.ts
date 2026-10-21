@@ -191,7 +191,6 @@ export class WebUiSlider extends FormAssociated(LitElement) {
     if (this._isDisabled) return
     this._pressed = true
     this._interactionStartValue = this.value
-    this._setValueFromPointer(event)
 
     this._dragGestureHandle?.destroy()
     this._dragGestureHandle = attachDragGesture(event, {
@@ -210,7 +209,8 @@ export class WebUiSlider extends FormAssociated(LitElement) {
         }
         this._interactionStartValue = undefined
       },
-      onTap: () => {
+      onTap: (_info, e) => {
+        this._setValueFromPointer(e)
         if (this._interactionStartValue !== this.value) {
           this.dispatchEvent(new Event('change', { bubbles: true, composed: true }))
         }
