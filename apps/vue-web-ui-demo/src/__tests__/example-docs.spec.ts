@@ -135,7 +135,7 @@ describe('带锚点的示例落成可编译文件', () => {
 // 过渡期清单：已迁到「docs 全量生成」的文档。每迁完一篇就加进来；全部迁完后删除本清单，
 // 并在生成配置里开启 requireDemo，让漏锚点直接在生成阶段失败。清单里的文档断言的是「每条
 // 示例都有锚点」，补上锚点测试天然覆盖不到的那半边。
-const migratedDocs = ['drawer', 'slider']
+const migratedDocs = ['drawer', 'slider', 'checkbox', 'radio']
 
 describe('已迁移文档的每条示例都能渲染', () => {
   it('迁移清单里没有漏掉锚点的示例', () => {

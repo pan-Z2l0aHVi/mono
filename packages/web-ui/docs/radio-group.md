@@ -50,27 +50,93 @@ function onInput(event: WebUiEvent<WebUiRadioGroup, 'input'>) {
 
 ### 排列方向 {#direction}
 
-`direction` 决定成员横排还是竖排，默认 `vertical`；成员之间的间距由 `--wui-radio-group-gap` 控制。
+`direction` 决定成员横排还是竖排，默认 `vertical`；非法值也回退到 `vertical`。
 
 ```react
 export default function Demo() {
   return (
-    <web-ui-radio-group direction="horizontal" value="m">
-      <web-ui-radio value="s">小</web-ui-radio>
-      <web-ui-radio value="m">中</web-ui-radio>
-      <web-ui-radio value="l">大</web-ui-radio>
-    </web-ui-radio-group>
+    <div className="flex flex-wrap gap-8">
+      <div className="flex flex-col gap-2">
+        <span className="text-xs text-(--wui-color-text-secondary)">direction: vertical（默认）</span>
+        <web-ui-radio-group value="s">
+          <web-ui-radio value="s">小</web-ui-radio>
+          <web-ui-radio value="m">中</web-ui-radio>
+        </web-ui-radio-group>
+      </div>
+
+      <div className="flex flex-col gap-2">
+        <span className="text-xs text-(--wui-color-text-secondary)">direction: horizontal</span>
+        <web-ui-radio-group direction="horizontal" value="s">
+          <web-ui-radio value="s">小</web-ui-radio>
+          <web-ui-radio value="m">中</web-ui-radio>
+        </web-ui-radio-group>
+      </div>
+    </div>
   )
 }
 ```
 
 ```vue
 <template>
-  <web-ui-radio-group direction="horizontal" value="m">
-    <web-ui-radio value="s">小</web-ui-radio>
-    <web-ui-radio value="m">中</web-ui-radio>
-    <web-ui-radio value="l">大</web-ui-radio>
-  </web-ui-radio-group>
+  <div class="flex flex-wrap gap-8">
+    <div class="flex flex-col gap-2">
+      <span class="text-xs text-(--wui-color-text-secondary)">direction: vertical（默认）</span>
+      <web-ui-radio-group value="s">
+        <web-ui-radio value="s">小</web-ui-radio>
+        <web-ui-radio value="m">中</web-ui-radio>
+      </web-ui-radio-group>
+    </div>
+
+    <div class="flex flex-col gap-2">
+      <span class="text-xs text-(--wui-color-text-secondary)">direction: horizontal</span>
+      <web-ui-radio-group direction="horizontal" value="s">
+        <web-ui-radio value="s">小</web-ui-radio>
+        <web-ui-radio value="m">中</web-ui-radio>
+      </web-ui-radio-group>
+    </div>
+  </div>
+</template>
+```
+
+### 成员间距 {#gap}
+
+成员之间的间距走 `--wui-radio-group-gap`，默认经 `--wui-space-2` 解析成 8px；覆盖它只换间距，不动排列方向。下面两条是同一份成员，只有这个变量不同。
+
+```react
+export default function Demo() {
+  return (
+    <div className="flex flex-col items-start gap-6">
+      <web-ui-radio-group direction="horizontal" value="s">
+        <web-ui-radio value="s">小</web-ui-radio>
+        <web-ui-radio value="m">中</web-ui-radio>
+        <web-ui-radio value="l">大</web-ui-radio>
+      </web-ui-radio-group>
+
+      <web-ui-radio-group direction="horizontal" className="[--wui-radio-group-gap:16px]" value="s">
+        <web-ui-radio value="s">小</web-ui-radio>
+        <web-ui-radio value="m">中</web-ui-radio>
+        <web-ui-radio value="l">大</web-ui-radio>
+      </web-ui-radio-group>
+    </div>
+  )
+}
+```
+
+```vue
+<template>
+  <div class="flex flex-col items-start gap-6">
+    <web-ui-radio-group direction="horizontal" value="s">
+      <web-ui-radio value="s">小</web-ui-radio>
+      <web-ui-radio value="m">中</web-ui-radio>
+      <web-ui-radio value="l">大</web-ui-radio>
+    </web-ui-radio-group>
+
+    <web-ui-radio-group direction="horizontal" class="[--wui-radio-group-gap:16px]" value="s">
+      <web-ui-radio value="s">小</web-ui-radio>
+      <web-ui-radio value="m">中</web-ui-radio>
+      <web-ui-radio value="l">大</web-ui-radio>
+    </web-ui-radio-group>
+  </div>
 </template>
 ```
 

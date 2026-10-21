@@ -50,27 +50,93 @@ function onInput(event: WebUiEvent<WebUiCheckboxGroup, 'input'>) {
 
 ### 排列方向 {#direction}
 
-`direction` 决定成员横排还是竖排，默认 `vertical`；成员之间的间距由 `--wui-checkbox-group-gap` 控制。
+`direction` 决定成员横排还是竖排，默认 `vertical`；非法值也回退到 `vertical`。
 
 ```react
 export default function Demo() {
   return (
-    <web-ui-checkbox-group direction="horizontal" value={['apple']}>
-      <web-ui-checkbox value="apple">Apple</web-ui-checkbox>
-      <web-ui-checkbox value="banana">Banana</web-ui-checkbox>
-      <web-ui-checkbox value="cherry">Cherry</web-ui-checkbox>
-    </web-ui-checkbox-group>
+    <div className="flex flex-wrap gap-8">
+      <div className="flex flex-col gap-2">
+        <span className="text-xs text-(--wui-color-text-secondary)">direction: vertical（默认）</span>
+        <web-ui-checkbox-group value={['apple']}>
+          <web-ui-checkbox value="apple">Apple</web-ui-checkbox>
+          <web-ui-checkbox value="banana">Banana</web-ui-checkbox>
+        </web-ui-checkbox-group>
+      </div>
+
+      <div className="flex flex-col gap-2">
+        <span className="text-xs text-(--wui-color-text-secondary)">direction: horizontal</span>
+        <web-ui-checkbox-group direction="horizontal" value={['apple']}>
+          <web-ui-checkbox value="apple">Apple</web-ui-checkbox>
+          <web-ui-checkbox value="banana">Banana</web-ui-checkbox>
+        </web-ui-checkbox-group>
+      </div>
+    </div>
   )
 }
 ```
 
 ```vue
 <template>
-  <web-ui-checkbox-group direction="horizontal" :value="['apple']">
-    <web-ui-checkbox value="apple">Apple</web-ui-checkbox>
-    <web-ui-checkbox value="banana">Banana</web-ui-checkbox>
-    <web-ui-checkbox value="cherry">Cherry</web-ui-checkbox>
-  </web-ui-checkbox-group>
+  <div class="flex flex-wrap gap-8">
+    <div class="flex flex-col gap-2">
+      <span class="text-xs text-(--wui-color-text-secondary)">direction: vertical（默认）</span>
+      <web-ui-checkbox-group :value="['apple']">
+        <web-ui-checkbox value="apple">Apple</web-ui-checkbox>
+        <web-ui-checkbox value="banana">Banana</web-ui-checkbox>
+      </web-ui-checkbox-group>
+    </div>
+
+    <div class="flex flex-col gap-2">
+      <span class="text-xs text-(--wui-color-text-secondary)">direction: horizontal</span>
+      <web-ui-checkbox-group direction="horizontal" :value="['apple']">
+        <web-ui-checkbox value="apple">Apple</web-ui-checkbox>
+        <web-ui-checkbox value="banana">Banana</web-ui-checkbox>
+      </web-ui-checkbox-group>
+    </div>
+  </div>
+</template>
+```
+
+### 成员间距 {#gap}
+
+成员之间的间距走 `--wui-checkbox-group-gap`，默认经 `--wui-space-2` 解析成 8px；覆盖它只换间距，不动排列方向。下面两条是同一份成员，只有这个变量不同。
+
+```react
+export default function Demo() {
+  return (
+    <div className="flex flex-col items-start gap-6">
+      <web-ui-checkbox-group direction="horizontal" value={['apple']}>
+        <web-ui-checkbox value="apple">Apple</web-ui-checkbox>
+        <web-ui-checkbox value="banana">Banana</web-ui-checkbox>
+        <web-ui-checkbox value="cherry">Cherry</web-ui-checkbox>
+      </web-ui-checkbox-group>
+
+      <web-ui-checkbox-group direction="horizontal" className="[--wui-checkbox-group-gap:16px]" value={['apple']}>
+        <web-ui-checkbox value="apple">Apple</web-ui-checkbox>
+        <web-ui-checkbox value="banana">Banana</web-ui-checkbox>
+        <web-ui-checkbox value="cherry">Cherry</web-ui-checkbox>
+      </web-ui-checkbox-group>
+    </div>
+  )
+}
+```
+
+```vue
+<template>
+  <div class="flex flex-col items-start gap-6">
+    <web-ui-checkbox-group direction="horizontal" :value="['apple']">
+      <web-ui-checkbox value="apple">Apple</web-ui-checkbox>
+      <web-ui-checkbox value="banana">Banana</web-ui-checkbox>
+      <web-ui-checkbox value="cherry">Cherry</web-ui-checkbox>
+    </web-ui-checkbox-group>
+
+    <web-ui-checkbox-group direction="horizontal" class="[--wui-checkbox-group-gap:16px]" :value="['apple']">
+      <web-ui-checkbox value="apple">Apple</web-ui-checkbox>
+      <web-ui-checkbox value="banana">Banana</web-ui-checkbox>
+      <web-ui-checkbox value="cherry">Cherry</web-ui-checkbox>
+    </web-ui-checkbox-group>
+  </div>
 </template>
 ```
 
