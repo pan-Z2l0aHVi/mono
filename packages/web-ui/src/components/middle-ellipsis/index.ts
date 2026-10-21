@@ -35,6 +35,68 @@ const MAX_REFINE_ROUNDS = 3
  */
 const WIDTH_EPSILON = 0.5
 
+interface MeasurementTarget {
+  readonly notify: () => void
+  text: string | null
+  width: number
+}
+
+const measurementTargets = new WeakMap<Element, MeasurementTarget>()
+let measurementObserver: ResizeObserver | undefined
+
+/** Observe the full-text probe so font metric changes can refit without a host resize. */
+function getMeasurementObserver(): ResizeObserver | null {
+  if (typeof ResizeObserver === 'undefined') return null
+  if (measurementObserver) return measurementObserver
+
+  measurementObserver = new ResizeObserver(entries => {
+    for (const entry of entries) {
+      const target = measurementTargets.get(entry.target)
+      if (!target) continue
+
+      const text = entry.target.textContent
+      const width = entry.contentRect.width
+      if (target.text !== text) {
+        target.text = text
+        target.width = width
+        continue
+      }
+
+      if (target.width < 0) {
+        target.width = width
+        continue
+      }
+
+      if (target.width === width) continue
+      target.width = width
+      target.notify()
+    }
+  })
+
+  return measurementObserver
+}
+
+function observeMeasurement(target: Element, notify: () => void): void {
+  const observer = getMeasurementObserver()
+  if (!observer) return
+
+  measurementTargets.set(target, { notify, text: target.textContent, width: -1 })
+  observer.observe(target, { box: 'content-box' })
+}
+
+function unobserveMeasurement(target: Element): void {
+  measurementTargets.delete(target)
+  measurementObserver?.unobserve(target)
+}
+
+function updateMeasurementText(target: Element, text: string): void {
+  const observation = measurementTargets.get(target)
+  if (!observation) return
+
+  observation.text = text
+  observation.width = target.getBoundingClientRect().width
+}
+
 /**
  * 单行中间省略：把超长文本截成 `首段…尾段`，省略号出现在中间而不是末尾。
  *
@@ -115,18 +177,43 @@ export class WebUiMiddleEllipsis extends LitElement {
   private _available = -1
   /** 当前渲染出来的文本实际占宽（px）。收敛守卫靠它判断现有输出是否已经放得下。 */
   private _rendered = 0
-  /** 输入变过、还没按新输入切过。 */
+  /** 输入或字体度量变过、还没重新拟合。 */
   private _dirty = true
   private _refineRound = 0
+  private _observedMeasure?: HTMLElement
 
   private readonly _range = document.createRange()
 
   private readonly _width = new ElementWidthController(this, width => this._onWidth(width))
 
+  private readonly _onMeasureWidthChange = (): void => {
+    this._refineRound = 0
+    this._dirty = true
+    // Reuse the last fit's ResizeObserver content-box width; clientWidth rounds fractional pixels.
+    this._apply(this._available > 0 ? this._available : this._currentWidth())
+  }
+
   private readonly _probe: WidthProbe = {
     prefix: units => this._rangeWidth(0, units),
     suffix: units => this._rangeWidth(this.text.length - units, this.text.length),
     marker: () => this._markerProbe?.getBoundingClientRect().width ?? 0
+  }
+
+  override connectedCallback(): void {
+    super.connectedCallback()
+    if (this._available >= 0) {
+      this._dirty = true
+      this._refineRound = 0
+    }
+    this._observeMeasure()
+  }
+
+  override disconnectedCallback(): void {
+    if (this._observedMeasure) {
+      unobserveMeasurement(this._observedMeasure)
+      this._observedMeasure = undefined
+    }
+    super.disconnectedCallback()
   }
 
   override willUpdate(changed: PropertyValues<this>): void {
@@ -145,6 +232,8 @@ export class WebUiMiddleEllipsis extends LitElement {
   override updated(): void {
     const textEl = this._textEl
     if (!textEl) return
+
+    this._observeMeasure()
 
     this._rendered = textEl.getBoundingClientRect().width
 
@@ -263,7 +352,19 @@ export class WebUiMiddleEllipsis extends LitElement {
   /** 把全文装进隐藏量具。它没有 Lit 绑定，改它不会触发重渲染。 */
   private _syncMeasure(): void {
     const measure = this._measure
-    if (measure && measure.textContent !== this.text) measure.textContent = this.text
+    if (measure && measure.textContent !== this.text) {
+      measure.textContent = this.text
+      updateMeasurementText(measure, this.text)
+    }
+  }
+
+  private _observeMeasure(): void {
+    const measure = this._measure
+    if (!measure || measure === this._observedMeasure) return
+
+    if (this._observedMeasure) unobserveMeasurement(this._observedMeasure)
+    this._observedMeasure = measure
+    observeMeasurement(measure, this._onMeasureWidthChange)
   }
 
   /** `[from, to)` 这段原文在量具里的渲染宽度。空区间恒为 0——Range 塌缩矩形的宽度不可靠。 */
