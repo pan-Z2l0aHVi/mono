@@ -28,7 +28,7 @@
   visibility: hidden;
   opacity: 0;
 
-  .back-top-inner:focus-visible {
+  &:focus-visible {
     border-radius: var(--wui-radius-control, calc(infinity * 1px));
     outline: var(--wui-focus-ring-width, 3px) solid
       var(--wui-color-focus-ring, color-mix(in srgb, var(--wui-color-accent, #0071e3) 40%, transparent));

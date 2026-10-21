@@ -27,6 +27,7 @@ export class WebUiBackTop extends LitElement {
   private _scrollBehavior: 'smooth' | 'auto' = 'smooth'
   @property({ type: Boolean, reflect: true }) visible = false
   @property({ attribute: false }) scrollTarget: HTMLElement | Window = window
+  @property({ type: String, attribute: 'aria-label' }) override ariaLabel: string | null = null
 
   @property({ type: Number, reflect: true })
   get threshold(): number {
@@ -129,8 +130,17 @@ export class WebUiBackTop extends LitElement {
   }
 
   override render() {
+    const ariaLabel = this.ariaLabel?.trim() || 'Back to top'
+
     return html`
-      <div class="back-top-inner" role="button" tabindex="0" @click=${this.toTop} @keydown=${this.onEnter}>
+      <div
+        class="back-top-inner"
+        role="button"
+        aria-label=${ariaLabel}
+        tabindex="0"
+        @click=${this.toTop}
+        @keydown=${this.onEnter}
+      >
         <slot>
           <web-ui-button variant="glass" tabindex="-1" icon>
             <web-ui-icon .icon=${lucideArrowUpToLine}></web-ui-icon>

@@ -470,6 +470,12 @@ export const exampleDocs: ExampleDoc[] = [
         ],
         "rows": [
           [
+            "aria-label",
+            "<p>button 的无障碍名称；可自定义名称或语言。</p>",
+            "string",
+            "'Back to top'"
+          ],
+          [
             "scroll-behavior",
             "<p>滚动行为：<code>smooth</code>（默认）或 <code>auto</code>；主题要求减少动效时立即滚动。</p>",
             "'smooth' | 'auto'",
@@ -541,7 +547,7 @@ export const exampleDocs: ExampleDoc[] = [
         "kind": "prose",
         "key": "定位",
         "title": "定位",
-        "html": "<p><code>scrollTarget</code> 为 <code>window</code> 时 button 固定在视口角落；为 <code>HTMLElement</code> 时需将元素放置在容器内部，button 通过 <code>position: sticky</code> 悬浮于容器底部角落。偏移量沿用 <code>--wui-back-top-top/right/bottom/left</code> CSS 变量。</p>\n<p>角色：<code>button</code>，键盘 Enter 触发 back top。</p>"
+        "html": "<p><code>scrollTarget</code> 为 <code>window</code> 时 button 固定在视口角落；为 <code>HTMLElement</code> 时需将元素放置在容器内部，button 通过 <code>position: sticky</code> 悬浮于容器底部角落。偏移量沿用 <code>--wui-back-top-top/right/bottom/left</code> CSS 变量。</p>\n<p>角色：<code>button</code>，默认无障碍名称为 <code>Back to top</code>；键盘 Enter 或 Space 触发 back top。</p>"
       },
       {
         "kind": "table",
