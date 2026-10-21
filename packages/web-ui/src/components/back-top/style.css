@@ -12,6 +12,7 @@
    横向偏移沿用 --wui-back-top-left/right，纵向沿用 --wui-back-top-bottom */
 :host([container-mode]) {
   position: sticky;
+  top: var(--wui-back-top-top, auto);
   bottom: var(--wui-back-top-bottom, 20px);
 }
 
@@ -38,6 +39,7 @@
 
 :host([container-mode]) .back-top-inner {
   position: static;
+  width: fit-content;
   margin-right: var(--wui-back-top-right, 20px);
   margin-left: var(--wui-back-top-left, auto);
 }
