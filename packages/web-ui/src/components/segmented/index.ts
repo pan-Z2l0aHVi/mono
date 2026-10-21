@@ -119,7 +119,11 @@ export class WebUiSegmented extends FormAssociated(LitElement) {
   override connectedCallback() {
     super.connectedCallback()
     // HTML 解析可先连接 group、后 upgrade trigger；等子项定义完成后再核对一次选中态。
-    void customElements.whenDefined('web-ui-segmented-trigger').then(() => {
+    void customElements.whenDefined('web-ui-segmented-trigger').then(async () => {
+      if (!this.isConnected) return
+      const triggers = [...this.querySelectorAll<WebUiSegmentedTrigger>('web-ui-segmented-trigger')]
+      // 等待 upgrade 时触发的首轮 Lit 更新完成，再修正连接期间写入的旧值。
+      await Promise.all(triggers.map(trigger => trigger.updateComplete))
       if (this.isConnected) this._groupController.sync()
     })
   }

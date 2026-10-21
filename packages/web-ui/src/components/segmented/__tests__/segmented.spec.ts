@@ -1,5 +1,4 @@
 import '..'
-import '@/components/segmented-trigger'
 
 import { describe, expect, it } from 'vite-plus/test'
 
@@ -40,6 +39,52 @@ const clickTrigger = (group: WebUiSegmented, index: number) => {
 }
 
 describe('WebUiSegmented 组件', () => {
+  it('静态 value attribute 在子 trigger 定义晚于组首次更新后仍同步选中态', async () => {
+    expect(customElements.get('web-ui-segmented-trigger')).toBeUndefined()
+
+    const el = document.createElement('web-ui-segmented')
+    el.setAttribute('value', 'b')
+    el.innerHTML = TRIGGER_HTML
+    const pendingUpgradeTriggers = [...el.querySelectorAll<HTMLElement>('web-ui-segmented-trigger')]
+    document.body.appendChild(el)
+
+    // 先让父 group 完成初次连接与更新；此时子项的 custom element 仍未注册。
+    await flushSlotChange(el)
+    expect(el.value).toBe('b')
+    expect(customElements.get('web-ui-segmented-trigger')).toBeUndefined()
+    expect(pendingUpgradeTriggers.map(trigger => (trigger as HTMLElement & { value?: string }).value)).toEqual([
+      undefined,
+      undefined,
+      undefined
+    ])
+    expect(pendingUpgradeTriggers.map(trigger => (trigger as HTMLElement & { checked?: boolean }).checked)).toEqual([
+      false,
+      false,
+      false
+    ])
+
+    await import('../../segmented-trigger')
+    await customElements.whenDefined('web-ui-segmented-trigger')
+
+    const triggers = [...el.querySelectorAll<WebUiSegmentedTrigger>('web-ui-segmented-trigger')]
+    await flushSlotChange(el)
+    await Promise.all(triggers.map(trigger => trigger.updateComplete))
+
+    expect(
+      triggers.map(trigger => ({
+        value: trigger.value,
+        checked: trigger.checked,
+        ariaSelected: queryA11y(trigger, '[role="option"]')?.getAttribute('aria-selected')
+      }))
+    ).toEqual([
+      { value: 'a', checked: false, ariaSelected: 'false' },
+      { value: 'b', checked: true, ariaSelected: 'true' },
+      { value: 'c', checked: false, ariaSelected: 'false' }
+    ])
+
+    cleanupElement(el)
+  })
+
   describe('属性：value', () => {
     it('初始值为空字符串', async () => {
       const el = createSegmented(TRIGGER_HTML)
@@ -63,29 +108,6 @@ describe('WebUiSegmented 组件', () => {
       await Promise.all([...triggers].map(t => t.updateComplete))
       expect(triggers[0].checked).toBe(true)
       expect(triggers[1].checked).toBe(false)
-
-      cleanupElement(el)
-    })
-
-    it('静态 value attribute 在子 trigger 升级后仍同步选中态', async () => {
-      const el = document.createElement('web-ui-segmented')
-      el.setAttribute('value', 'b')
-      el.innerHTML = TRIGGER_HTML
-      const triggers = [...el.querySelectorAll<WebUiSegmentedTrigger>('web-ui-segmented-trigger')]
-
-      // 模拟 HTML parser 先连接 group：trigger 的 value attribute 已有，property 尚不可读。
-      triggers[1].value = undefined as unknown as string
-      document.body.appendChild(el)
-      triggers[1].value = 'b'
-
-      await waitForUpdate(el)
-      await Promise.all(triggers.map(trigger => trigger.updateComplete))
-
-      expect(el.value).toBe('b')
-      expect(triggers.filter(trigger => trigger.checked).map(trigger => trigger.value)).toEqual(['b'])
-      for (const [index, trigger] of triggers.entries()) {
-        expect(queryA11y(trigger, '[role="option"]')?.getAttribute('aria-selected')).toBe(String(index === 1))
-      }
 
       cleanupElement(el)
     })
