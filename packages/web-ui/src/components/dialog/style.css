@@ -94,7 +94,9 @@ dialog {
 /* dialog 不是 flex 容器时 .desc 的 height:100% 拿不到确定高度（:host 是 display:contents，
    dialog 自身默认 block），宿主的内层 grid 因此撑不满、两栏不等高。模式判定按 DOM 形状
    而不是 attribute，理由见下方 grid 规则上的注释。 */
-dialog:has(.desc) {
+
+/* 只在打开态覆盖原生 dialog 的 display，关闭后保留 UA 的 display:none。 */
+dialog[open]:has(.desc) {
   display: flex;
   flex-direction: column;
 }
