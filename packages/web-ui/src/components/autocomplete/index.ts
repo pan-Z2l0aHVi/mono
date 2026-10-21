@@ -155,6 +155,7 @@ export class WebUiAutocomplete extends FormAssociated(LitElement) {
   private _options: WebUiOption[] = []
   private _portal?: OverlayPortal
   private _portalContent?: HTMLElement
+  private _keyboardNavigationActive = false
   private readonly _scrollLock = defineScrollLockLease().make()
 
   // option 注册表 / portal 同步 / 微任务调度收敛到 shared 模块（select 同款）
@@ -424,8 +425,14 @@ export class WebUiAutocomplete extends FormAssociated(LitElement) {
     onPointerDown: event => this._handleOptionPointerDown(event),
     onUpdate: () => this._onOptionUpdate()
   })
-  private _bindOption = (option: WebUiOption) => this._optionListeners.bind(option)
-  private _unbindOption = (option: WebUiOption) => this._optionListeners.unbind(option)
+  private _bindOption = (option: WebUiOption) => {
+    this._optionListeners.bind(option)
+    option.addEventListener('pointermove', this._handleOptionPointerMove)
+  }
+  private _unbindOption = (option: WebUiOption) => {
+    this._optionListeners.unbind(option)
+    option.removeEventListener('pointermove', this._handleOptionPointerMove)
+  }
 
   private _refreshOptions() {
     const activeOption = this._options[this._activeIndex]
@@ -449,8 +456,18 @@ export class WebUiAutocomplete extends FormAssociated(LitElement) {
   private _handleOptionPointerOver = (e: PointerEvent) => {
     if (e.pointerType === 'touch') return
     if (!this._isOpen || !(e.currentTarget instanceof HTMLElement)) return
+    if (this._keyboardNavigationActive) return
 
     // 指针接管后只保留 :hover，避免键盘激活项与悬停项同时高亮。
+    this._activeIndex = -1
+    this._syncActiveOption()
+  }
+
+  private _handleOptionPointerMove = (e: PointerEvent) => {
+    if (e.pointerType === 'touch' || !this._isOpen || !this._keyboardNavigationActive) return
+
+    // 列表滚动可能在静止指针下触发 pointerover；只有真实指针移动才切回悬停导航。
+    this._keyboardNavigationActive = false
     this._activeIndex = -1
     this._syncActiveOption()
   }
@@ -522,6 +539,7 @@ export class WebUiAutocomplete extends FormAssociated(LitElement) {
     const enabled = this._options.filter(o => !o.disabled && !o.hasAttribute('data-filtered'))
     if (!enabled.length) return
 
+    this._keyboardNavigationActive = true
     const currentIdx = this._activeIndex >= 0 ? enabled.indexOf(this._options[this._activeIndex]) : delta > 0 ? -1 : 0
     this._activeIndex = this._options.indexOf(enabled[nextWrappingIndex(enabled.length, currentIdx, delta)])
     this._syncActiveOption()
@@ -529,12 +547,32 @@ export class WebUiAutocomplete extends FormAssociated(LitElement) {
 
   private _setInitialActiveOption() {
     const firstEnabled = this._options.findIndex(o => !o.disabled && !o.hasAttribute('data-filtered'))
+    this._keyboardNavigationActive = true
     this._activeIndex = firstEnabled
     this._syncActiveOption()
   }
 
   private _syncActiveOption() {
     this._options.forEach((option, index) => option.toggleAttribute('active', index === this._activeIndex))
+
+    if (this._isOpen) this._scrollActiveOptionIntoView()
+  }
+
+  private _scrollActiveOptionIntoView() {
+    const activeOption = this._options[this._activeIndex]
+    const scroll = this._panel.getPanel()?.querySelector<HTMLElement>('.autocomplete-scroll')
+    if (!activeOption || !scroll?.clientHeight) return
+
+    const optionRect = activeOption.getBoundingClientRect()
+    const scrollRect = scroll.getBoundingClientRect()
+    // Overlay 入场时会 scale；把视口中的溢出量换算回 scrollTop 使用的未缩放坐标。
+    const scaleY = scroll.offsetHeight ? scrollRect.height / scroll.offsetHeight : 1
+    if (!scaleY) return
+
+    const visibleTop = scrollRect.top + scroll.clientTop * scaleY
+    const visibleBottom = visibleTop + scroll.clientHeight * scaleY
+    if (optionRect.top < visibleTop) scroll.scrollTop -= (visibleTop - optionRect.top) / scaleY
+    else if (optionRect.bottom > visibleBottom) scroll.scrollTop += (optionRect.bottom - visibleBottom) / scaleY
   }
 
   private _selectOption(option: WebUiOption) {
@@ -574,6 +612,7 @@ export class WebUiAutocomplete extends FormAssociated(LitElement) {
     if (this._isDisabled || this.readonly) return
     if (value === this._value) return
     this.value = value
+    this._keyboardNavigationActive = false
     this._activeIndex = -1
     this._syncActiveOption()
     this._open()
@@ -625,6 +664,7 @@ export class WebUiAutocomplete extends FormAssociated(LitElement) {
     openOverlay: isKeyboardNavigation => this._openOverlay(isKeyboardNavigation),
     closeOverlay: () => void this._closeOverlay(),
     onOpen: isKeyboardNavigation => {
+      this._keyboardNavigationActive = isKeyboardNavigation
       if (isKeyboardNavigation) this._setInitialActiveOption()
       else this._syncActiveOption()
     },
@@ -635,6 +675,7 @@ export class WebUiAutocomplete extends FormAssociated(LitElement) {
       this._optionPortal.syncPortalContent()
     },
     onAfterClose: () => {
+      this._keyboardNavigationActive = false
       this._activeIndex = -1
       this._options.forEach(o => o.removeAttribute('active'))
     }
@@ -659,6 +700,8 @@ export class WebUiAutocomplete extends FormAssociated(LitElement) {
 
   private _openOverlay(isKeyboardNavigation = false) {
     this._panel.open(isKeyboardNavigation)
+    // keyboard-open 会先建立 active option；overlay 打开后再同步一次，确保首次激活也能滚入列表区。
+    this._syncActiveOption()
     // 新会话的 handle 刚建立，惰性状态需按当前 disabled/readonly 重新同步。
     this._syncOverlayInert()
   }

@@ -78,6 +78,10 @@ function clickTrigger(el: WebUiAutocomplete) {
   defaultTrigger(el).click()
 }
 
+function dispatchKeydown(el: WebUiAutocomplete, key: string) {
+  triggerInput(el).dispatchEvent(new KeyboardEvent('keydown', { key, bubbles: true, composed: true }))
+}
+
 // 自定义 trigger 位于 light DOM：slot="trigger" 的 assigned 元素即当前生效的 trigger
 function customTrigger(el: WebUiAutocomplete): HTMLElement {
   return el.querySelector<HTMLElement>('[slot="trigger"]')!
@@ -485,6 +489,101 @@ describe('WebUiAutocomplete 组件（浏览器）', () => {
     expect(page.getByRole('listbox').length).toBe(0)
     await userEvent.keyboard('{ArrowDown}')
     expect(page.getByRole('listbox').length).toBe(1)
+  })
+
+  it.each([false, true])('键盘导航时将激活项保持在可视区（portal=%s）', async portal => {
+    const theme = document.createElement('web-ui-theme')
+    theme.setAttribute('appearance', 'light')
+    const el = document.createElement('web-ui-autocomplete')
+    el.portal = portal
+    el.style.setProperty('--wui-autocomplete-max-height', '200px')
+    el.innerHTML = Array.from(
+      { length: 10 },
+      (_, index) => `<web-ui-option value="option-${index + 1}" label="Option ${index + 1}"></web-ui-option>`
+    ).join('')
+    theme.append(el)
+    document.body.append(theme)
+    await theme.updateComplete
+    await el.updateComplete
+
+    focusTrigger(el)
+    clickTrigger(el)
+    await waitForFrame()
+    await el.updateComplete
+
+    const panel = portal
+      ? await waitForPortalPanel(theme)
+      : el.shadowRoot!.querySelector<HTMLElement>('.autocomplete-overlay')!
+    const scroll = panel.querySelector<HTMLElement>('.autocomplete-scroll')!
+    const options = portal
+      ? [...panel.querySelectorAll<WebUiOption>('web-ui-option')]
+      : [...el.querySelectorAll<WebUiOption>('web-ui-option')]
+    const pageScrollY = window.scrollY
+
+    for (let index = 0; index < 9; index++) dispatchKeydown(el, 'ArrowDown')
+    await el.updateComplete
+    await waitForFrame()
+
+    options[0]!.dispatchEvent(new PointerEvent('pointerover', { bubbles: true, composed: true, pointerType: 'mouse' }))
+
+    const activeId = comboboxTrigger(el).getAttribute('aria-activedescendant')
+    expect(activeId).toBeTruthy()
+    const activeLabel = el.shadowRoot!.getElementById(activeId!)!.textContent!.trim()
+    const active = options.find(option => option.label === activeLabel)!
+    const activeRect = active.getBoundingClientRect()
+    const scrollRect = scroll.getBoundingClientRect()
+
+    expect(active.label).toBe('Option 9')
+    expect(activeRect.top).toBeGreaterThanOrEqual(scrollRect.top)
+    expect(activeRect.bottom).toBeLessThanOrEqual(scrollRect.bottom)
+    expect(window.scrollY).toBe(pageScrollY)
+
+    dispatchKeydown(el, 'Enter')
+    await el.updateComplete
+    expect(el.value).toBe('Option 9')
+    expect(el.selectedValue).toBe('option-9')
+  })
+
+  it.each([false, true])('键盘打开时将已选中的末项滚入可视区（portal=%s）', async portal => {
+    const theme = document.createElement('web-ui-theme')
+    theme.setAttribute('appearance', 'light')
+    const el = document.createElement('web-ui-autocomplete')
+    el.portal = portal
+    el.value = 'Option 10'
+    el.style.setProperty('--wui-autocomplete-max-height', '200px')
+    el.innerHTML = Array.from(
+      { length: 10 },
+      (_, index) => `<web-ui-option value="Option ${index + 1}" label="Option ${index + 1}"></web-ui-option>`
+    ).join('')
+    theme.append(el)
+    document.body.append(theme)
+    await theme.updateComplete
+    await el.updateComplete
+
+    focusTrigger(el)
+    const pageScrollY = window.scrollY
+    dispatchKeydown(el, 'ArrowDown')
+    await waitForFrame()
+    await el.updateComplete
+
+    const panel = portal
+      ? await waitForPortalPanel(theme)
+      : el.shadowRoot!.querySelector<HTMLElement>('.autocomplete-overlay')!
+    const scroll = panel.querySelector<HTMLElement>('.autocomplete-scroll')!
+    const options = portal
+      ? [...panel.querySelectorAll<WebUiOption>('web-ui-option')]
+      : [...el.querySelectorAll<WebUiOption>('web-ui-option')]
+    const activeId = comboboxTrigger(el).getAttribute('aria-activedescendant')
+    expect(activeId).toBeTruthy()
+    const activeLabel = el.shadowRoot!.getElementById(activeId!)!.textContent!.trim()
+    const active = options.find(option => option.label === activeLabel)
+    expect(active?.label).toBe('Option 10')
+
+    const activeRect = active!.getBoundingClientRect()
+    const scrollRect = scroll.getBoundingClientRect()
+    expect(activeRect.top).toBeGreaterThanOrEqual(scrollRect.top)
+    expect(activeRect.bottom).toBeLessThanOrEqual(scrollRect.bottom)
+    expect(window.scrollY).toBe(pageScrollY)
   })
 
   it('Portal 打开后动态插入、删除、reorder 的 option 保持 visual/mirror/registry 一致', async () => {
