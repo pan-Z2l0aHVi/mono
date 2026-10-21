@@ -7183,8 +7183,8 @@ export const exampleDocs: ExampleDoc[] = [
           [
             "--wui-color-accent",
             "<p>Accent 和输入焦点边框</p>",
-            "#08f",
-            "#0a84ff"
+            "#0071e3",
+            "#0071e3"
           ],
           [
             "--wui-color-on-accent",
@@ -7231,8 +7231,8 @@ export const exampleDocs: ExampleDoc[] = [
           [
             "--wui-color-focus-ring",
             "<p>Focus indicator 颜色，由 accent 派生</p>",
-            "color-mix(in srgb, var(--wui-color-accent, #08f) 40%, transparent)",
-            "color-mix(in srgb, var(--wui-color-accent, #0a84ff) 62%, transparent)"
+            "color-mix(in srgb, var(--wui-color-accent, #0071e3) 40%, transparent)",
+            "color-mix(in srgb, var(--wui-color-accent) 62%, var(--wui-color-text) 38%)"
           ]
         ]
       },
