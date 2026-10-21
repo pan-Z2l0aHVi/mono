@@ -215,11 +215,11 @@
 }
 
 /*
- * 裁剪长度只在关闭稳态由 CSS 声明；动画期间由内联长度覆盖，落稳态清除后回到这里。
- * 下面几条 peek 规则按选择器特异性升序排列（`no-descending-specificity`）：
- * 不带 presence 限定的两条 mask 在最前，horizontal 的裁剪（多一个类）在最后。
+ * 关闭稳态裁剪长度由 CSS 声明；动画期间由内联长度覆盖，落稳态后回到这里。
+ * `max-height` 仅适用于垂直模式；horizontal 模式由后续规则裁剪宽度。
+ * 轴向裁剪规则按特异性递增排列（`no-descending-specificity`）。
  */
-.wui-collapse-track[data-wui-peek]:not([data-wui-presence]) .wui-collapse-inner {
+.wui-collapse-track[data-wui-peek]:not([data-wui-presence], .is-horizontal) .wui-collapse-inner {
   max-height: var(--wui-collapse-peek, 0);
 }
 
