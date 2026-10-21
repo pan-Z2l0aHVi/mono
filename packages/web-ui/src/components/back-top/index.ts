@@ -7,6 +7,7 @@ import { customElement, property, state } from 'lit/decorators.js'
 
 import { lucideArrowUpToLine } from '@/icons'
 import { normalizeLiteral, normalizeNumber } from '@/shared/normalize'
+import { prefersReducedMotion } from '@/shared/theme/reduced-motion'
 
 import style from './style.css?inline'
 
@@ -100,10 +101,23 @@ export class WebUiBackTop extends LitElement {
   }
 
   toTop() {
-    this.target.scrollTo({
-      top: 0,
-      behavior: this.scrollBehavior
-    })
+    const target = this.target
+    if (!prefersReducedMotion(this)) {
+      target.scrollTo({ top: 0, behavior: this.scrollBehavior })
+      return
+    }
+
+    // `auto` 会跟随 CSS scroll-behavior，因此仅在启动减少动效的滚动时临时覆盖目标元素。
+    const scrollElement = 'style' in target ? target : document.documentElement
+    const previousBehavior = scrollElement.style.getPropertyValue('scroll-behavior')
+    const previousPriority = scrollElement.style.getPropertyPriority('scroll-behavior')
+    scrollElement.style.setProperty('scroll-behavior', 'auto', 'important')
+    try {
+      target.scrollTo({ top: 0, behavior: 'auto' })
+    } finally {
+      if (previousBehavior) scrollElement.style.setProperty('scroll-behavior', previousBehavior, previousPriority)
+      else scrollElement.style.removeProperty('scroll-behavior')
+    }
   }
 
   // ARIA button 契约要求 Enter 与 Space 均能激活

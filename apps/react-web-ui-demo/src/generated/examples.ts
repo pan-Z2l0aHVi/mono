@@ -444,7 +444,7 @@ export const exampleDocs: ExampleDoc[] = [
   {
     "component": "back-top",
     "tag": "web-ui-back-top",
-    "introHtml": "<p>back top button：滚动超过阈值后出现在角落，点击或按 Enter 平滑 back top；也可以挂到自定义滚动容器内。</p>",
+    "introHtml": "<p>back top button：滚动超过阈值后出现在角落，默认平滑回顶；主题设置为 <code>motion=\"reduced\"</code>，或 <code>motion=\"system\"</code> 且系统偏好减少动效时，点击或按 Enter 会立即回顶。也可以挂到自定义滚动容器内。</p>",
     "api": [
       {
         "kind": "table",
@@ -471,7 +471,7 @@ export const exampleDocs: ExampleDoc[] = [
         "rows": [
           [
             "scroll-behavior",
-            "<p>滚动行为：<code>smooth</code>（默认）或 <code>auto</code>。</p>",
+            "<p>滚动行为：<code>smooth</code>（默认）或 <code>auto</code>；主题要求减少动效时立即滚动。</p>",
             "'smooth' | 'auto'",
             "'smooth'"
           ],
@@ -533,7 +533,7 @@ export const exampleDocs: ExampleDoc[] = [
         "rows": [
           [
             "toTop()",
-            "<p>滚动回顶部，行为由 <code>scroll-behavior</code> 决定。</p>"
+            "<p>滚动回顶部；主题要求减少动效时立即滚动。</p>"
           ]
         ]
       },
@@ -609,7 +609,7 @@ export const exampleDocs: ExampleDoc[] = [
       {
         "id": null,
         "title": "滚动行为",
-        "descriptionHtml": "<p><code>scroll-behavior</code> 为 <code>auto</code> 时点击立即到位，不播放平滑滚动动画。</p>",
+        "descriptionHtml": "<p><code>scroll-behavior=\"auto\"</code> 不请求平滑滚动。主题要求减少动效时，即使属性为默认的 <code>smooth</code> 或滚动容器的 CSS 指定 <code>scroll-behavior: smooth</code>，点击或按 Enter 也会立即到位。</p>",
         "html": {
           "react": "<pre class=\"shiki shiki-themes github-light github-dark mdc-code\" style=\"--shiki-light:#24292e;--shiki-dark:#e1e4e8;--shiki-light-bg:#fff;--shiki-dark-bg:#24292e\" tabindex=\"0\"><code><span class=\"line\"><span style=\"--shiki-light:#24292E;--shiki-dark:#E1E4E8\">&#x3C;</span><span style=\"--shiki-light:#005CC5;--shiki-dark:#79B8FF\">web-ui-back-top</span><span style=\"--shiki-light:#6F42C1;--shiki-dark:#B392F0\"> scroll-behavior</span><span style=\"--shiki-light:#D73A49;--shiki-dark:#F97583\">=</span><span style=\"--shiki-light:#032F62;--shiki-dark:#9ECBFF\">\"auto\"</span><span style=\"--shiki-light:#24292E;--shiki-dark:#E1E4E8\">>&#x3C;/</span><span style=\"--shiki-light:#005CC5;--shiki-dark:#79B8FF\">web-ui-back-top</span><span style=\"--shiki-light:#24292E;--shiki-dark:#E1E4E8\">></span></span></code></pre>",
           "vue": "<pre class=\"shiki shiki-themes github-light github-dark mdc-code\" style=\"--shiki-light:#24292e;--shiki-dark:#e1e4e8;--shiki-light-bg:#fff;--shiki-dark-bg:#24292e\" tabindex=\"0\"><code><span class=\"line\"><span style=\"--shiki-light:#24292E;--shiki-dark:#E1E4E8\">&#x3C;</span><span style=\"--shiki-light:#22863A;--shiki-dark:#85E89D\">template</span><span style=\"--shiki-light:#24292E;--shiki-dark:#E1E4E8\">></span></span>\n<span class=\"line\"><span style=\"--shiki-light:#24292E;--shiki-dark:#E1E4E8\">  &#x3C;</span><span style=\"--shiki-light:#22863A;--shiki-dark:#85E89D\">web-ui-back-top</span><span style=\"--shiki-light:#6F42C1;--shiki-dark:#B392F0\"> scroll-behavior</span><span style=\"--shiki-light:#24292E;--shiki-dark:#E1E4E8\">=</span><span style=\"--shiki-light:#032F62;--shiki-dark:#9ECBFF\">\"auto\"</span><span style=\"--shiki-light:#24292E;--shiki-dark:#E1E4E8\">>&#x3C;/</span><span style=\"--shiki-light:#22863A;--shiki-dark:#85E89D\">web-ui-back-top</span><span style=\"--shiki-light:#24292E;--shiki-dark:#E1E4E8\">></span></span>\n<span class=\"line\"><span style=\"--shiki-light:#24292E;--shiki-dark:#E1E4E8\">&#x3C;/</span><span style=\"--shiki-light:#22863A;--shiki-dark:#85E89D\">template</span><span style=\"--shiki-light:#24292E;--shiki-dark:#E1E4E8\">></span></span></code></pre>"
