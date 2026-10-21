@@ -3732,7 +3732,7 @@ export const exampleDocs: ExampleDoc[] = [
           ],
           [
             "precision",
-            "<p>小数精度，在读取与提交时规整。</p>",
+            "<p>显式设置时，在读取与提交时规整小数位；未显式设置时按 <code>step</code> 推导。</p>",
             "number",
             "0"
           ],
@@ -3756,7 +3756,7 @@ export const exampleDocs: ExampleDoc[] = [
           ],
           [
             "step",
-            "<p>步进值。</p>",
+            "<p>步进值；未显式设置 <code>precision</code> 时，其小数位数也决定默认规整精度。</p>",
             "number",
             "1"
           ]
@@ -3808,7 +3808,7 @@ export const exampleDocs: ExampleDoc[] = [
       {
         "id": null,
         "title": "精度",
-        "descriptionHtml": "<p><code>precision</code> 决定小数位数，超出部分在<strong>读取与提交</strong>时规整；赋值本身保留原始小数，因此 <code>precision</code> 与 <code>value</code> 的声明顺序不影响结果（<code>value=\"1.5\" precision=\"2\"</code> 与反序都得到 <code>1.5</code>）。</p>\n<p>编辑中清空或输入非法内容不会破坏 <code>value</code>：失焦时显示会回填为已提交值，表单提交的始终是最后那个合法值。</p>",
+        "descriptionHtml": "<p><code>precision</code> 决定读取与提交时保留的小数位数；未显式设置时按 <code>step</code> 的小数位数推导，因此 <code>step=0.3</code> 在默认设置下每次增加 <code>0.3</code>。显式设置 <code>precision</code> 后则按该值规整，例如 <code>precision=0</code> 会将小数步进结果取整。赋值本身保留原始小数，因此 <code>precision</code> 与 <code>value</code> 的声明顺序不影响结果（<code>value=\"1.5\" precision=\"2\"</code> 与反序都得到 <code>1.5</code>）。</p>\n<p>编辑中清空或输入非法内容不会破坏 <code>value</code>：失焦时显示会回填为已提交值，表单提交的始终是最后那个合法值。</p>",
         "html": {
           "react": "<pre class=\"shiki shiki-themes github-light github-dark mdc-code\" style=\"--shiki-light:#24292e;--shiki-dark:#e1e4e8;--shiki-light-bg:#fff;--shiki-dark-bg:#24292e\" tabindex=\"0\"><code><span class=\"line\"><span style=\"--shiki-light:#24292E;--shiki-dark:#E1E4E8\">&#x3C;</span><span style=\"--shiki-light:#005CC5;--shiki-dark:#79B8FF\">web-ui-input-number</span><span style=\"--shiki-light:#6F42C1;--shiki-dark:#B392F0\"> precision</span><span style=\"--shiki-light:#D73A49;--shiki-dark:#F97583\">=</span><span style=\"--shiki-light:#24292E;--shiki-dark:#E1E4E8\">{</span><span style=\"--shiki-light:#005CC5;--shiki-dark:#79B8FF\">2</span><span style=\"--shiki-light:#24292E;--shiki-dark:#E1E4E8\">} </span><span style=\"--shiki-light:#6F42C1;--shiki-dark:#B392F0\">step</span><span style=\"--shiki-light:#D73A49;--shiki-dark:#F97583\">=</span><span style=\"--shiki-light:#24292E;--shiki-dark:#E1E4E8\">{</span><span style=\"--shiki-light:#005CC5;--shiki-dark:#79B8FF\">0.01</span><span style=\"--shiki-light:#24292E;--shiki-dark:#E1E4E8\">} </span><span style=\"--shiki-light:#6F42C1;--shiki-dark:#B392F0\">value</span><span style=\"--shiki-light:#D73A49;--shiki-dark:#F97583\">=</span><span style=\"--shiki-light:#24292E;--shiki-dark:#E1E4E8\">{</span><span style=\"--shiki-light:#005CC5;--shiki-dark:#79B8FF\">9.99</span><span style=\"--shiki-light:#24292E;--shiki-dark:#E1E4E8\">}>&#x3C;/</span><span style=\"--shiki-light:#005CC5;--shiki-dark:#79B8FF\">web-ui-input-number</span><span style=\"--shiki-light:#24292E;--shiki-dark:#E1E4E8\">></span></span></code></pre>",
           "vue": "<pre class=\"shiki shiki-themes github-light github-dark mdc-code\" style=\"--shiki-light:#24292e;--shiki-dark:#e1e4e8;--shiki-light-bg:#fff;--shiki-dark-bg:#24292e\" tabindex=\"0\"><code><span class=\"line\"><span style=\"--shiki-light:#24292E;--shiki-dark:#E1E4E8\">&#x3C;</span><span style=\"--shiki-light:#22863A;--shiki-dark:#85E89D\">template</span><span style=\"--shiki-light:#24292E;--shiki-dark:#E1E4E8\">></span></span>\n<span class=\"line\"><span style=\"--shiki-light:#24292E;--shiki-dark:#E1E4E8\">  &#x3C;</span><span style=\"--shiki-light:#22863A;--shiki-dark:#85E89D\">web-ui-input-number</span><span style=\"--shiki-light:#6F42C1;--shiki-dark:#B392F0\"> :precision</span><span style=\"--shiki-light:#24292E;--shiki-dark:#E1E4E8\">=</span><span style=\"--shiki-light:#032F62;--shiki-dark:#9ECBFF\">\"2\"</span><span style=\"--shiki-light:#6F42C1;--shiki-dark:#B392F0\"> :step</span><span style=\"--shiki-light:#24292E;--shiki-dark:#E1E4E8\">=</span><span style=\"--shiki-light:#032F62;--shiki-dark:#9ECBFF\">\"0.01\"</span><span style=\"--shiki-light:#6F42C1;--shiki-dark:#B392F0\"> :value</span><span style=\"--shiki-light:#24292E;--shiki-dark:#E1E4E8\">=</span><span style=\"--shiki-light:#032F62;--shiki-dark:#9ECBFF\">\"9.99\"</span><span style=\"--shiki-light:#24292E;--shiki-dark:#E1E4E8\">>&#x3C;/</span><span style=\"--shiki-light:#22863A;--shiki-dark:#85E89D\">web-ui-input-number</span><span style=\"--shiki-light:#24292E;--shiki-dark:#E1E4E8\">></span></span>\n<span class=\"line\"><span style=\"--shiki-light:#24292E;--shiki-dark:#E1E4E8\">&#x3C;/</span><span style=\"--shiki-light:#22863A;--shiki-dark:#85E89D\">template</span><span style=\"--shiki-light:#24292E;--shiki-dark:#E1E4E8\">></span></span></code></pre>"

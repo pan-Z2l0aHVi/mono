@@ -53,6 +53,119 @@ describe('WebUiInputNumber 组件特有契约', () => {
       cleanupElement(el)
     })
 
+    it('默认 precision 下按 step=0.3 步进', async () => {
+      const el = createNumber()
+      el.value = 1
+      el.step = 0.3
+      await waitForUpdate(el)
+
+      const increase = stepButton(el, 'Increase')
+      for (let i = 0; i < 3; i++) {
+        increase.click()
+        await waitForUpdate(el)
+      }
+
+      expect(el.value).toBe(1.9)
+      cleanupElement(el)
+    })
+
+    it('默认 precision 下按 step=0.5 每次增加 0.5', async () => {
+      const el = createNumber()
+      el.value = 1
+      el.step = 0.5
+      await waitForUpdate(el)
+
+      const increase = stepButton(el, 'Increase')
+      increase.click()
+      await waitForUpdate(el)
+      expect(el.value).toBe(1.5)
+
+      increase.click()
+      await waitForUpdate(el)
+      expect(el.value).toBe(2)
+      cleanupElement(el)
+    })
+
+    it('显式 precision=0 仍按指定精度规整 step', async () => {
+      const el = createNumber()
+      el.value = 1
+      el.step = 0.3
+      el.precision = 0
+      await waitForUpdate(el)
+
+      stepButton(el, 'Increase').click()
+      await waitForUpdate(el)
+
+      expect(el.value).toBe(1)
+      cleanupElement(el)
+    })
+
+    it('已渲染后显式设置 precision=0 会更新显示值', async () => {
+      const el = createNumber()
+      el.value = 1
+      el.step = 0.5
+      await waitForUpdate(el)
+
+      stepButton(el, 'Increase').click()
+      await waitForUpdate(el)
+      expect(el.value).toBe(1.5)
+
+      el.precision = 0
+      await waitForUpdate(el)
+
+      expect(el.value).toBe(2)
+      expect(nativeInput(el).value).toBe('2')
+      cleanupElement(el)
+    })
+
+    it('移除 precision 属性后恢复按 step 推导精度', async () => {
+      const el = createNumber({ precision: '0', step: '0.3', value: '1' })
+      await waitForUpdate(el)
+
+      el.removeAttribute('precision')
+      await waitForUpdate(el)
+      stepButton(el, 'Increase').click()
+      await waitForUpdate(el)
+
+      expect(el.value).toBe(1.3)
+      expect(el.hasAttribute('precision')).toBe(false)
+      cleanupElement(el)
+    })
+
+    it('将 precision 设为 null 后克隆仍按 step 推导精度', async () => {
+      const el = createNumber({ precision: '0', step: '0.3', value: '1' })
+      await waitForUpdate(el)
+
+      el.precision = null
+      await waitForUpdate(el)
+      const clone = el.cloneNode(true) as WebUiInputNumber
+      document.body.append(clone)
+      await waitForUpdate(clone)
+
+      stepButton(clone, 'Increase').click()
+      await waitForUpdate(clone)
+
+      expect(el.hasAttribute('precision')).toBe(false)
+      expect(clone.value).toBe(1.3)
+      cleanupElement(el)
+      cleanupElement(clone)
+    })
+
+    it('step 精度规整不会让极大有限值溢出或失精', async () => {
+      const el = createNumber()
+      el.step = 0.1
+      el.value = Number.MAX_SAFE_INTEGER
+      await waitForUpdate(el)
+
+      expect(el.value).toBe(Number.MAX_SAFE_INTEGER)
+
+      el.value = Number.MAX_VALUE
+      await waitForUpdate(el)
+
+      expect(el.value).toBe(Number.MAX_VALUE)
+      cleanupElement(el)
+    })
+
     it('点击增加 button 只派发 input，不派发 change', async () => {
       const el = createNumber()
       await waitForUpdate(el)
@@ -192,6 +305,19 @@ describe('WebUiInputNumber 组件特有契约', () => {
   })
 
   describe('键盘操作', () => {
+    it('默认 precision 下 ArrowUp 按小数 step 增加', async () => {
+      const el = createNumber()
+      el.value = 1
+      el.step = 0.3
+      await waitForUpdate(el)
+
+      nativeInput(el).dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowUp', bubbles: true, composed: true }))
+      await waitForUpdate(el)
+
+      expect(el.value).toBe(1.3)
+      cleanupElement(el)
+    })
+
     it('ArrowUp 增大值并派发 input 和 change', async () => {
       const el = createNumber()
       el.value = 5
