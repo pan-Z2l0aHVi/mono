@@ -77,6 +77,14 @@ web-ui-button.toast-close-btn {
   }
 }
 
+@media (hover: none), (pointer: coarse) {
+  web-ui-button.toast-close-btn {
+    pointer-events: auto;
+    cursor: pointer;
+    opacity: 1;
+  }
+}
+
 @media (hover: hover) and (pointer: fine) {
   web-ui-button.toast-close-btn:hover,
   .toast:hover web-ui-button.toast-close-btn {
