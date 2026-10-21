@@ -1,4 +1,5 @@
 import '..'
+import '@/components/button'
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 
@@ -329,10 +330,15 @@ describe('WebUiTooltip 组件', () => {
     it('keyboard focusin 立即显示', async () => {
       const el = createTooltip({ content: '提示' })
       await waitForUpdate(el)
-      const trigger = el.querySelector('button')!
-      vi.spyOn(trigger, 'matches').mockReturnValue(true)
+      const trigger = document.createElement('web-ui-button')
+      trigger.textContent = 'Trigger'
+      el.replaceChildren(trigger)
+      await waitForUpdate(trigger)
+      const focusedButton = trigger.shadowRoot?.querySelector('button')
+      expect(focusedButton).toBeTruthy()
+      vi.spyOn(focusedButton!, 'matches').mockReturnValue(true)
 
-      trigger.dispatchEvent(new FocusEvent('focusin', { bubbles: true }))
+      focusedButton!.dispatchEvent(new FocusEvent('focusin', { bubbles: true, composed: true }))
       await waitForUpdate(el)
 
       expect(el.isOpen).toBe(true)

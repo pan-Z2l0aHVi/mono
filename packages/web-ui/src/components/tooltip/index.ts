@@ -185,7 +185,9 @@ export class WebUiTooltip extends LitElement {
 
   private _onFocusIn = (event: FocusEvent) => {
     if (this.disabled) return
-    if (!(event.target instanceof Element) || !event.target.matches(':focus-visible')) return
+
+    const focusedElement = event.composedPath()[0] ?? event.target
+    if (!(focusedElement instanceof Element) || !focusedElement.matches(':focus-visible')) return
 
     clearTimeout(this._hideTimer)
     this._show(true)
