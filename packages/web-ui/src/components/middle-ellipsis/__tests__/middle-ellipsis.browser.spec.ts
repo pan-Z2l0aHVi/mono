@@ -393,6 +393,28 @@ describe('web-ui-middle-ellipsis 的字体度量变化（浏览器）', () => {
     }
   })
 
+  it('字体加载完成后即使全文量具宽度不变也重新切分', async () => {
+    const el = mount({ text: LONG }, 'width: 148px; font: 16px/1.5 monospace;')
+    await settle(el)
+    const width = availableWidth(el)
+    const measure = el.shadowRoot?.querySelector<HTMLElement>('.measure')
+    if (!measure) throw new Error('web-ui-middle-ellipsis 缺少全文量具')
+    measure.style.width = `${measure.getBoundingClientRect().width}px`
+    await settle(el)
+
+    el.style.fontSize = '30px'
+    await settle(el)
+    expect(shownWidth(el)).toBeGreaterThan(width)
+
+    document.fonts.dispatchEvent(new Event('loadingdone'))
+    await settle(el)
+
+    expect(availableWidth(el)).toBe(width)
+    expect(shown(el).endsWith('txt')).toBe(true)
+    expect(shownWidth(el)).toBeLessThanOrEqual(width + 1)
+    expectTrimmedTo(el, LONG)
+  })
+
   it('等宽替换文本后字号变化仍按最新文本切分', async () => {
     const el = mount({ text: LONG }, 'width: 148px; font: 16px/1.5 monospace;')
     await settle(el)

@@ -43,6 +43,31 @@ interface MeasurementTarget {
 
 const measurementTargets = new WeakMap<Element, MeasurementTarget>()
 let measurementObserver: ResizeObserver | undefined
+const fontMetricSubscribers = new Set<() => void>()
+let observedFontSet: FontFaceSet | undefined
+
+function onFontsLoaded(): void {
+  for (const notify of fontMetricSubscribers) notify()
+}
+
+function observeFontMetrics(notify: () => void): void {
+  const fontSet = document.fonts
+  if (!fontSet) return
+
+  if (!observedFontSet) {
+    observedFontSet = fontSet
+    observedFontSet.addEventListener('loadingdone', onFontsLoaded)
+  }
+  fontMetricSubscribers.add(notify)
+}
+
+function unobserveFontMetrics(notify: () => void): void {
+  fontMetricSubscribers.delete(notify)
+  if (fontMetricSubscribers.size > 0 || !observedFontSet) return
+
+  observedFontSet.removeEventListener('loadingdone', onFontsLoaded)
+  observedFontSet = undefined
+}
 
 /** Observe the full-text probe so font metric changes can refit without a host resize. */
 function getMeasurementObserver(): ResizeObserver | null {
@@ -77,14 +102,18 @@ function getMeasurementObserver(): ResizeObserver | null {
 }
 
 function observeMeasurement(target: Element, notify: () => void): void {
+  measurementTargets.set(target, { notify, text: target.textContent, width: -1 })
+  observeFontMetrics(notify)
+
   const observer = getMeasurementObserver()
   if (!observer) return
 
-  measurementTargets.set(target, { notify, text: target.textContent, width: -1 })
   observer.observe(target, { box: 'content-box' })
 }
 
 function unobserveMeasurement(target: Element): void {
+  const observation = measurementTargets.get(target)
+  if (observation) unobserveFontMetrics(observation.notify)
   measurementTargets.delete(target)
   measurementObserver?.unobserve(target)
 }
@@ -186,7 +215,7 @@ export class WebUiMiddleEllipsis extends LitElement {
 
   private readonly _width = new ElementWidthController(this, width => this._onWidth(width))
 
-  private readonly _onMeasureWidthChange = (): void => {
+  private readonly _onMeasurementChange = (): void => {
     this._refineRound = 0
     this._dirty = true
     // Reuse the last fit's ResizeObserver content-box width; clientWidth rounds fractional pixels.
@@ -364,7 +393,7 @@ export class WebUiMiddleEllipsis extends LitElement {
 
     if (this._observedMeasure) unobserveMeasurement(this._observedMeasure)
     this._observedMeasure = measure
-    observeMeasurement(measure, this._onMeasureWidthChange)
+    observeMeasurement(measure, this._onMeasurementChange)
   }
 
   /** `[from, to)` 这段原文在量具里的渲染宽度。空区间恒为 0——Range 塌缩矩形的宽度不可靠。 */
