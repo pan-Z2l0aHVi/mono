@@ -86,7 +86,11 @@ export class WebUiButton extends FormAssociated(LitElement) {
 
   private get _sizeStyle(): Record<string, string> {
     // size 仅控制 button 高度；icon 模式下 min-width 同步为相同值，天然保持正方形。
-    const size = (this._groupContext ? '30' : this.size).trim()
+    if (this._groupContext) {
+      return { '--wui-control-size': 'var(--wui-internal-button-group-button-size, 30px)' }
+    }
+
+    const size = this.size.trim()
     if (!size) return {}
 
     // 裸数字按 px 解释；带单位的 CSS 长度原样使用。

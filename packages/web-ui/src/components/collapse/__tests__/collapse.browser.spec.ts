@@ -240,6 +240,20 @@ describe('WebUiCollapse 组件（浏览器）', () => {
     expect(getComputedStyle(queryInner(el), '::after').maskImage).toMatch(/^linear-gradient\(to right/)
   })
 
+  it('水平 peek 只裁剪宽度并保留内容自然高度', async () => {
+    const el = document.createElement('web-ui-collapse')
+    el.horizontal = true
+    el.peek = '60px'
+    el.innerHTML =
+      '<button class="trigger">Trigger</button><div slot="content"><div style="height: 200px; width: 300px">Content</div></div>'
+    document.body.append(el)
+    await el.updateComplete
+
+    const rect = queryInner(el).getBoundingClientRect()
+    expect(rect.width).toBeCloseTo(60, 1)
+    expect(rect.height).toBeCloseTo(200, 1)
+  })
+
   // 首帧没有 before-change 样式可过渡；这里证明它不会启动一条动画（而不是等它跑完）。
   it('初始带 open attribute 直接落稳态，不播放展开过渡', async () => {
     const el = document.createElement('web-ui-collapse')
