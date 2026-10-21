@@ -72,6 +72,11 @@ export class WebUiInput extends FormAssociated(LitElement) {
 
   private readonly _formAssociationController = new FormAssociationController(this, this._formAssociation)
 
+  override formDisabledCallback(disabled: boolean) {
+    super.formDisabledCallback(disabled)
+    this.toggleAttribute('data-form-disabled', disabled)
+  }
+
   override updated(changed: Map<string, unknown>) {
     if (changed.has('_value')) {
       const input = this.shadowRoot?.querySelector('input')
