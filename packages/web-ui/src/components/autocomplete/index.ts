@@ -691,7 +691,7 @@ export class WebUiAutocomplete extends FormAssociated(LitElement) {
     const portal = defineOverlayPortal().make({
       container: this.overlayContainer,
       target: this,
-      style: `${glass}\n${overlayMotion}\n${style}`,
+      style: `${glass}\n${overlayMotion}\n${internalScrollbars}\n${style}`,
       className: 'wui-glass autocomplete-overlay portal wui-floating-panel',
       onContentChange: () => {
         this._optionPortal.scheduleRefresh()
