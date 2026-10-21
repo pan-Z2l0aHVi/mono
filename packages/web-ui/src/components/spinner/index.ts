@@ -2,6 +2,9 @@ import { html, LitElement, nothing, type PropertyValues, unsafeCSS } from 'lit'
 import { customElement, property } from 'lit/decorators.js'
 import { repeat } from 'lit/directives/repeat.js'
 
+import { defineOpenOverlay, type OpenOverlayHandle } from '@/shared/overlay/open-overlay'
+import { defineScrollLockLease } from '@/shared/scroll-lock/scroll-lock'
+
 import style from './style.css?inline'
 
 const LEAF_COUNT = 8
@@ -12,6 +15,13 @@ export class WebUiSpinner extends LitElement {
 
   @property({ type: Number, reflect: true }) size = 24
   @property({ type: String }) description = ''
+
+  private readonly _overlay = defineOpenOverlay().make({
+    requestClose: () => undefined,
+    isConnected: () => this.isConnected
+  })
+  private _overlayHandle?: OpenOverlayHandle
+  private readonly _scrollLock = defineScrollLockLease().make()
 
   // 自动创建并挂载全屏实例。
   static show(options?: { size?: number; duration?: number; description?: string }): WebUiSpinner {
@@ -53,14 +63,24 @@ export class WebUiSpinner extends LitElement {
       this.setAttribute('aria-label', 'Loading')
     }
     if (this._imperative) {
-      WebUiSpinner._current?.remove()
+      if (WebUiSpinner._current !== this) WebUiSpinner._current?.remove()
       WebUiSpinner._current = this
       this.classList.add('wui-spinner-overlay')
+      this._scrollLock.sync(true)
+      this.requestUpdate()
     }
   }
 
   override disconnectedCallback() {
     super.disconnectedCallback()
+    const dialog = this.shadowRoot?.querySelector('dialog')
+    if (dialog?.open) {
+      if (typeof dialog.close === 'function') dialog.close()
+      else dialog.removeAttribute('open')
+    }
+    this._overlayHandle?.release()
+    this._overlayHandle = undefined
+    this._scrollLock.release()
     if (this._timer) {
       clearTimeout(this._timer)
       this._timer = undefined
@@ -69,9 +89,27 @@ export class WebUiSpinner extends LitElement {
 
   protected override updated(props: PropertyValues) {
     super.updated(props)
+    this._syncImperativeOverlay()
     if (props.has('size')) {
       this.style.setProperty('--wui-spinner-size', `${this.size}px`)
     }
+  }
+
+  private _syncImperativeOverlay() {
+    if (!this._imperative || !this.isConnected) return
+    const dialog = this.shadowRoot?.querySelector('dialog')
+    if (!dialog || dialog.open) return
+
+    if (typeof dialog.showModal === 'function') {
+      dialog.showModal()
+      this._overlayHandle = this._overlay.claim(dialog, { ancestryFrom: this })
+    } else {
+      dialog.setAttribute('open', '')
+    }
+  }
+
+  private _handleDialogCancel(event: Event) {
+    event.preventDefault()
   }
 
   override render() {
@@ -88,7 +126,18 @@ export class WebUiSpinner extends LitElement {
       ${this.description ? html`<div class="spinner-description">${this.description}</div>` : nothing}
       <slot name="description"></slot>
     `
-    return this._imperative ? html`<div class="wui-spinner-overlay">${spinner}</div>` : spinner
+    return this._imperative
+      ? html`<dialog
+          class="wui-spinner-overlay"
+          aria-label=${this.getAttribute('aria-label')}
+          aria-modal="true"
+          @cancel=${this._handleDialogCancel}
+        >
+          <div class="wui-spinner-overlay-content" role="status" aria-label=${this.getAttribute('aria-label')}>
+            ${spinner}
+          </div>
+        </dialog>`
+      : spinner
   }
 }
 
