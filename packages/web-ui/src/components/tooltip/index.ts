@@ -137,6 +137,14 @@ export class WebUiTooltip extends LitElement {
     }
   }
 
+  protected override willUpdate(changed: Map<string, unknown>) {
+    if (this.disabled && (changed.has('disabled') || changed.has('open'))) {
+      clearTimeout(this._showTimer)
+      clearTimeout(this._hideTimer)
+      this.open = false
+    }
+  }
+
   protected override updated(changed: Map<string, unknown>) {
     if (changed.has('portal') || changed.has('overlayContainer')) {
       // 同帧 open + reconfigure 可能重复建事务；invalidate 保证 reconfigure 是当前唯一帧回调。
@@ -148,6 +156,7 @@ export class WebUiTooltip extends LitElement {
     if (changed.has('open')) {
       this._syncVisibleTooltipCount(this.open)
       if (this.open) {
+        clearTimeout(this._hideTimer)
         this._openOverlay(this._shouldOpenInstantly)
         this._shouldOpenInstantly = true
       } else {
@@ -170,7 +179,6 @@ export class WebUiTooltip extends LitElement {
 
   private _onPointerLeave = (e: PointerEvent) => {
     if (e.pointerType === 'touch') return
-    if (this.disabled) return
     clearTimeout(this._showTimer)
     this._hideTimer = setTimeout(() => this._hide(), this.hideDelay)
   }
@@ -184,7 +192,6 @@ export class WebUiTooltip extends LitElement {
   }
 
   private _onFocusOut = () => {
-    if (this.disabled) return
     clearTimeout(this._showTimer)
     this._hide()
   }
