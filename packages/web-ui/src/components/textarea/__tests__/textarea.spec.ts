@@ -138,6 +138,17 @@ describe('WebUiTextarea 组件特有契约', () => {
     cleanupElement(el)
   })
 
+  it('disabled 时不渲染清除 button', async () => {
+    const el = createTextarea()
+    el.clearable = true
+    el.disabled = true
+    el.value = 'hello'
+    await waitForUpdate(el)
+
+    expect(queryA11y(el, '[aria-label="Clear"]')).toBeNull()
+    cleanupElement(el)
+  })
+
   it('clearable 无值时也不渲染清除 button', async () => {
     const el = createTextarea()
     el.clearable = true

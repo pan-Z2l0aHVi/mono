@@ -3911,7 +3911,7 @@ export const exampleDocs: ExampleDoc[] = [
           ],
           [
             "clearable",
-            "<p>显示清除 button。</p>",
+            "<p>有值且未设置 <code>disabled</code> 或 <code>readonly</code> 时显示清除 button。</p>",
             "boolean",
             "false"
           ],
@@ -4069,7 +4069,7 @@ export const exampleDocs: ExampleDoc[] = [
       {
         "id": null,
         "title": "清除 button",
-        "descriptionHtml": "<p><code>clearable</code> 在有值时显示清除 button，<code>full</code> 让 input 占满父容器宽度。点击清除 button 会清空值，并<strong>同时派发 <code>input</code> 与 <code>change</code></strong>（清除是一次已提交的离散变更，不是连续输入，只监听 <code>change</code> 的消费者也能收到）。</p>",
+        "descriptionHtml": "<p><code>clearable</code> 在有值且未设置 <code>disabled</code> 或 <code>readonly</code> 时显示清除 button，<code>full</code> 让 input 占满父容器宽度。点击清除 button 会清空值，并<strong>同时派发 <code>input</code> 与 <code>change</code></strong>（清除是一次已提交的离散变更，不是连续输入，只监听 <code>change</code> 的消费者也能收到）。</p>",
         "html": {
           "react": "<pre class=\"shiki shiki-themes github-light github-dark mdc-code\" style=\"--shiki-light:#24292e;--shiki-dark:#e1e4e8;--shiki-light-bg:#fff;--shiki-dark-bg:#24292e\" tabindex=\"0\"><code><span class=\"line\"><span style=\"--shiki-light:#24292E;--shiki-dark:#E1E4E8\">&#x3C;</span><span style=\"--shiki-light:#005CC5;--shiki-dark:#79B8FF\">web-ui-input</span><span style=\"--shiki-light:#6F42C1;--shiki-dark:#B392F0\"> clearable</span><span style=\"--shiki-light:#6F42C1;--shiki-dark:#B392F0\"> full</span><span style=\"--shiki-light:#6F42C1;--shiki-dark:#B392F0\"> placeholder</span><span style=\"--shiki-light:#D73A49;--shiki-dark:#F97583\">=</span><span style=\"--shiki-light:#032F62;--shiki-dark:#9ECBFF\">\"输入关键词\"</span><span style=\"--shiki-light:#24292E;--shiki-dark:#E1E4E8\">>&#x3C;/</span><span style=\"--shiki-light:#005CC5;--shiki-dark:#79B8FF\">web-ui-input</span><span style=\"--shiki-light:#24292E;--shiki-dark:#E1E4E8\">></span></span></code></pre>",
           "vue": "<pre class=\"shiki shiki-themes github-light github-dark mdc-code\" style=\"--shiki-light:#24292e;--shiki-dark:#e1e4e8;--shiki-light-bg:#fff;--shiki-dark-bg:#24292e\" tabindex=\"0\"><code><span class=\"line\"><span style=\"--shiki-light:#24292E;--shiki-dark:#E1E4E8\">&#x3C;</span><span style=\"--shiki-light:#22863A;--shiki-dark:#85E89D\">template</span><span style=\"--shiki-light:#24292E;--shiki-dark:#E1E4E8\">></span></span>\n<span class=\"line\"><span style=\"--shiki-light:#24292E;--shiki-dark:#E1E4E8\">  &#x3C;</span><span style=\"--shiki-light:#22863A;--shiki-dark:#85E89D\">web-ui-input</span><span style=\"--shiki-light:#6F42C1;--shiki-dark:#B392F0\"> clearable</span><span style=\"--shiki-light:#6F42C1;--shiki-dark:#B392F0\"> full</span><span style=\"--shiki-light:#6F42C1;--shiki-dark:#B392F0\"> placeholder</span><span style=\"--shiki-light:#24292E;--shiki-dark:#E1E4E8\">=</span><span style=\"--shiki-light:#032F62;--shiki-dark:#9ECBFF\">\"输入关键词\"</span><span style=\"--shiki-light:#24292E;--shiki-dark:#E1E4E8\">>&#x3C;/</span><span style=\"--shiki-light:#22863A;--shiki-dark:#85E89D\">web-ui-input</span><span style=\"--shiki-light:#24292E;--shiki-dark:#E1E4E8\">></span></span>\n<span class=\"line\"><span style=\"--shiki-light:#24292E;--shiki-dark:#E1E4E8\">&#x3C;/</span><span style=\"--shiki-light:#22863A;--shiki-dark:#85E89D\">template</span><span style=\"--shiki-light:#24292E;--shiki-dark:#E1E4E8\">></span></span></code></pre>"
@@ -6434,7 +6434,7 @@ export const exampleDocs: ExampleDoc[] = [
           ],
           [
             "clearable",
-            "<p>显示清除 button。</p>",
+            "<p>有值且未设置 <code>disabled</code> 或 <code>readonly</code> 时显示清除 button。</p>",
             "boolean",
             "false"
           ],

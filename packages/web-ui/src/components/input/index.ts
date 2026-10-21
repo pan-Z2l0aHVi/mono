@@ -174,8 +174,8 @@ export class WebUiInput extends FormAssociated(LitElement) {
   }
 
   override render() {
-    // readonly 下不可清除：清空 button 会修改值，与只读语义冲突
-    const showClear = this.clearable && this._value && !this.readonly
+    // disabled / readonly 时隐藏清除 button，避免暴露不可执行的值修改操作
+    const showClear = this.clearable && this._value && !this._isDisabled && !this.readonly
 
     return html`
       <div class="wui-glass wui-input-inner" @click=${this.focusInput}>

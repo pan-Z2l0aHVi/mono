@@ -67,7 +67,7 @@ tag: web-ui-textarea
 | `readonly`        | 只读状态。                                                     | `boolean`             | `false` |
 | `required`        | 必填校验。                                                     | `boolean`             | `false` |
 | `full`            | 占满父容器宽度。                                               | `boolean`             | `false` |
-| `clearable`       | 显示清除 button。                                              | `boolean`             | `false` |
+| `clearable`       | 有值且未设置 `disabled` 或 `readonly` 时显示清除 button。      | `boolean`             | `false` |
 | `borderless`      | ghost 形态：移除边框、背景与阴影，保留 padding 与 focus ring。 | `boolean`             | `false` |
 | `rows`            | 显示行数。                                                     | `number`              | `3`     |
 | `minlength`       | 最小长度校验。                                                 | `number \| undefined` | —       |

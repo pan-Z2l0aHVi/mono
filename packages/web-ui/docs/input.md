@@ -23,7 +23,7 @@ tag: web-ui-input
 
 ### 清除 button
 
-`clearable` 在有值时显示清除 button，`full` 让 input 占满父容器宽度。点击清除 button 会清空值，并**同时派发 `input` 与 `change`**（清除是一次已提交的离散变更，不是连续输入，只监听 `change` 的消费者也能收到）。
+`clearable` 在有值且未设置 `disabled` 或 `readonly` 时显示清除 button，`full` 让 input 占满父容器宽度。点击清除 button 会清空值，并**同时派发 `input` 与 `change`**（清除是一次已提交的离散变更，不是连续输入，只监听 `change` 的消费者也能收到）。
 
 ```react
 <web-ui-input clearable full placeholder="输入关键词"></web-ui-input>
@@ -101,7 +101,7 @@ const keyword = ref('')
 | `disabled`    | 禁用状态。                                                     | `boolean`        | `false`  |
 | `readonly`    | 只读状态。                                                     | `boolean`        | `false`  |
 | `required`    | 必填校验。                                                     | `boolean`        | `false`  |
-| `clearable`   | 显示清除 button。                                              | `boolean`        | `false`  |
+| `clearable`   | 有值且未设置 `disabled` 或 `readonly` 时显示清除 button。      | `boolean`        | `false`  |
 | `full`        | 占满父容器宽度。                                               | `boolean`        | `false`  |
 | `borderless`  | ghost 形态：移除边框、背景与阴影，保留 padding 与 focus ring。 | `boolean`        | `false`  |
 | `aria-label`  | 无障碍 label。                                                 | `string \| null` | `null`   |
