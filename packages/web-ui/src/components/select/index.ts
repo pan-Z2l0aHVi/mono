@@ -244,7 +244,11 @@ export class WebUiSelect extends FormAssociated(LitElement) {
 
   private _syncSelected() {
     this._options.forEach(o => {
-      o.selected = o.value === this.value
+      const selected = this.value !== '' && o.value === this.value
+      o.selected = selected
+      o.setAttribute('role', 'option')
+      o.setAttribute('aria-selected', String(selected))
+      o.setAttribute('aria-disabled', String(o.disabled))
     })
     if (!this.value) {
       this._selectedLabel = this.placeholder
