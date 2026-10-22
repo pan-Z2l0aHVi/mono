@@ -438,7 +438,8 @@ describe('注释不是 fallback 站点', () => {
     // （较上一版多 5 处，来自 slider 公开尺寸 token 改名：thumb 的厚度与长边各自成为公开 token，
     //  在每个使用点各带一次 fallback（厚度 5 处、长边 4 处）；
     //  track 那边两处 `var(--wui-slider-height, var(--wui-slider-track-size, 6px))`
-    //  合并成 `var(--wui-slider-track-size, 6px)`，少 2 处）
+    //  合并成 `var(--wui-slider-track-size, 6px)`，少 2 处；button-group 新增一处控件尺寸 fallback，
+    //  同时垂直轨道宽度不再绑定控制尺寸 token，少 1 处）
     expect(allFallbackSites).toHaveLength(696)
   })
 

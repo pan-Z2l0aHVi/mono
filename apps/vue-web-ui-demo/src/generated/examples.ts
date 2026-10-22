@@ -1912,6 +1912,12 @@ export const exampleDocs: ExampleDoc[] = [
             "false"
           ],
           [
+            "horizontal",
+            "<p>Footer 操作按钮横向排列。</p>",
+            "boolean",
+            "false"
+          ],
+          [
             "no-scroll-lock",
             "<p>打开时不锁定页面滚动。</p>",
             "boolean",
@@ -3731,9 +3737,21 @@ export const exampleDocs: ExampleDoc[] = [
             "false"
           ],
           [
+            "aria-label",
+            "<p>输入框的无障碍名称。</p>",
+            "string",
+            "—"
+          ],
+          [
+            "aria-labelledby",
+            "<p>无障碍名称引用，用于命名内部输入框。</p>",
+            "string",
+            "—"
+          ],
+          [
             "precision",
-            "<p>小数精度，在读取与提交时规整。</p>",
-            "number",
+            "<p>显式设置时按该值规整；设为 <code>null</code> 或移除属性时按 <code>step</code> 推导精度。</p>",
+            "number | null",
             "0"
           ],
           [
@@ -3756,7 +3774,7 @@ export const exampleDocs: ExampleDoc[] = [
           ],
           [
             "step",
-            "<p>步进值。</p>",
+            "<p>步进值；未显式设置 <code>precision</code> 时，其小数位数也决定默认规整精度。</p>",
             "number",
             "1"
           ]
@@ -3808,7 +3826,7 @@ export const exampleDocs: ExampleDoc[] = [
       {
         "id": null,
         "title": "精度",
-        "descriptionHtml": "<p><code>precision</code> 决定小数位数，超出部分在<strong>读取与提交</strong>时规整；赋值本身保留原始小数，因此 <code>precision</code> 与 <code>value</code> 的声明顺序不影响结果（<code>value=\"1.5\" precision=\"2\"</code> 与反序都得到 <code>1.5</code>）。</p>\n<p>编辑中清空或输入非法内容不会破坏 <code>value</code>：失焦时显示会回填为已提交值，表单提交的始终是最后那个合法值。</p>",
+        "descriptionHtml": "<p><code>precision</code> 决定读取与提交时保留的小数位数；未显式设置时按 <code>step</code> 的小数位数推导，因此 <code>step=0.3</code> 在默认设置下每次增加 <code>0.3</code>。显式设置 <code>precision</code> 后则按该值规整，例如 <code>precision=0</code> 会将小数步进结果取整。赋值本身保留原始小数，因此 <code>precision</code> 与 <code>value</code> 的声明顺序不影响结果（<code>value=\"1.5\" precision=\"2\"</code> 与反序都得到 <code>1.5</code>）。</p>\n<p>编辑中清空或输入非法内容不会破坏 <code>value</code>：失焦时显示会回填为已提交值，表单提交的始终是最后那个合法值。</p>",
         "html": {
           "react": "<pre class=\"shiki shiki-themes github-light github-dark mdc-code\" style=\"--shiki-light:#24292e;--shiki-dark:#e1e4e8;--shiki-light-bg:#fff;--shiki-dark-bg:#24292e\" tabindex=\"0\"><code><span class=\"line\"><span style=\"--shiki-light:#24292E;--shiki-dark:#E1E4E8\">&#x3C;</span><span style=\"--shiki-light:#005CC5;--shiki-dark:#79B8FF\">web-ui-input-number</span><span style=\"--shiki-light:#6F42C1;--shiki-dark:#B392F0\"> precision</span><span style=\"--shiki-light:#D73A49;--shiki-dark:#F97583\">=</span><span style=\"--shiki-light:#24292E;--shiki-dark:#E1E4E8\">{</span><span style=\"--shiki-light:#005CC5;--shiki-dark:#79B8FF\">2</span><span style=\"--shiki-light:#24292E;--shiki-dark:#E1E4E8\">} </span><span style=\"--shiki-light:#6F42C1;--shiki-dark:#B392F0\">step</span><span style=\"--shiki-light:#D73A49;--shiki-dark:#F97583\">=</span><span style=\"--shiki-light:#24292E;--shiki-dark:#E1E4E8\">{</span><span style=\"--shiki-light:#005CC5;--shiki-dark:#79B8FF\">0.01</span><span style=\"--shiki-light:#24292E;--shiki-dark:#E1E4E8\">} </span><span style=\"--shiki-light:#6F42C1;--shiki-dark:#B392F0\">value</span><span style=\"--shiki-light:#D73A49;--shiki-dark:#F97583\">=</span><span style=\"--shiki-light:#24292E;--shiki-dark:#E1E4E8\">{</span><span style=\"--shiki-light:#005CC5;--shiki-dark:#79B8FF\">9.99</span><span style=\"--shiki-light:#24292E;--shiki-dark:#E1E4E8\">}>&#x3C;/</span><span style=\"--shiki-light:#005CC5;--shiki-dark:#79B8FF\">web-ui-input-number</span><span style=\"--shiki-light:#24292E;--shiki-dark:#E1E4E8\">></span></span></code></pre>",
           "vue": "<pre class=\"shiki shiki-themes github-light github-dark mdc-code\" style=\"--shiki-light:#24292e;--shiki-dark:#e1e4e8;--shiki-light-bg:#fff;--shiki-dark-bg:#24292e\" tabindex=\"0\"><code><span class=\"line\"><span style=\"--shiki-light:#24292E;--shiki-dark:#E1E4E8\">&#x3C;</span><span style=\"--shiki-light:#22863A;--shiki-dark:#85E89D\">template</span><span style=\"--shiki-light:#24292E;--shiki-dark:#E1E4E8\">></span></span>\n<span class=\"line\"><span style=\"--shiki-light:#24292E;--shiki-dark:#E1E4E8\">  &#x3C;</span><span style=\"--shiki-light:#22863A;--shiki-dark:#85E89D\">web-ui-input-number</span><span style=\"--shiki-light:#6F42C1;--shiki-dark:#B392F0\"> :precision</span><span style=\"--shiki-light:#24292E;--shiki-dark:#E1E4E8\">=</span><span style=\"--shiki-light:#032F62;--shiki-dark:#9ECBFF\">\"2\"</span><span style=\"--shiki-light:#6F42C1;--shiki-dark:#B392F0\"> :step</span><span style=\"--shiki-light:#24292E;--shiki-dark:#E1E4E8\">=</span><span style=\"--shiki-light:#032F62;--shiki-dark:#9ECBFF\">\"0.01\"</span><span style=\"--shiki-light:#6F42C1;--shiki-dark:#B392F0\"> :value</span><span style=\"--shiki-light:#24292E;--shiki-dark:#E1E4E8\">=</span><span style=\"--shiki-light:#032F62;--shiki-dark:#9ECBFF\">\"9.99\"</span><span style=\"--shiki-light:#24292E;--shiki-dark:#E1E4E8\">>&#x3C;/</span><span style=\"--shiki-light:#22863A;--shiki-dark:#85E89D\">web-ui-input-number</span><span style=\"--shiki-light:#24292E;--shiki-dark:#E1E4E8\">></span></span>\n<span class=\"line\"><span style=\"--shiki-light:#24292E;--shiki-dark:#E1E4E8\">&#x3C;/</span><span style=\"--shiki-light:#22863A;--shiki-dark:#85E89D\">template</span><span style=\"--shiki-light:#24292E;--shiki-dark:#E1E4E8\">></span></span></code></pre>"
@@ -5364,7 +5382,7 @@ export const exampleDocs: ExampleDoc[] = [
         "kind": "prose",
         "key": "变体",
         "title": "变体",
-        "html": "<p><code>inset</code>（默认，「凹」）是不透明实体 track（<code>--wui-color-surface</code>）——1px 描边环与投影全程常驻，静止 indicator 是 <code>--wui-color-surface-segmented</code> 纯灰底，视觉上嵌入 track。浅色下该 token 与 <code>--wui-color-page</code> 同值，track 与页面齐平，凹感只由常驻环与投影承担；深色下它是「比页面高一档」的 elevation，track 依旧浮离页面。<code>raised</code>（「凸」）是经典形态：flat 灰 track（<code>--wui-color-surface-segmented</code>，无环无投影），静止 indicator 是 <code>--wui-color-surface-selected</code> 实体底加柔投影，浮起于 track 之上。两个变体的按压/拖拽态一致——indicator 转透明玻璃（backdrop blur、80ms 淡入的描边环、1.5x 放大），松开淡回各自静止面。非法值回退 <code>inset</code>。</p>\n<p>与原生 <code>&lt;form></code> 集成（通过 <code>ElementInternals</code>）。</p>\n<p>根据 <code>value</code> 同步子 trigger 的 <code>checked</code> 状态。<code>disabled</code> 提供继承的有效禁用状态，不改写 trigger 自身的 <code>disabled</code> 属性。直接设 <code>value</code> 不派发事件。</p>\n<p>按住当前选中项横向拖拽可滑动 indicator，松手吸附到最近 option（快速抛掷按速度切换）。trigger 宽度不等时，拖拽中的 indicator 取「离自身中心最近的那一项」的宽度——即预览松手会落到的那一项，而不是保持按下那一项的宽度。触摸面声明 <code>touch-action: none</code>，拖拽激活期间阻止 <code>touchmove</code> 默认滚动，避免 iOS Safari 中断手势。</p>"
+        "html": "<p><code>inset</code>（默认，「凹」）是不透明实体 track（<code>--wui-color-surface</code>）——1px 描边环与投影全程常驻，静止 indicator 是 <code>--wui-color-surface-segmented</code> 纯灰底，视觉上嵌入 track。浅色下该 token 与 <code>--wui-color-page</code> 同值，track 与页面齐平，凹感只由常驻环与投影承担；深色下它是「比页面高一档」的 elevation，track 依旧浮离页面。<code>raised</code>（「凸」）是经典形态：flat 灰 track（<code>--wui-color-surface-segmented</code>，无环无投影），静止 indicator 是 <code>--wui-color-surface-selected</code> 实体底加柔投影，浮起于 track 之上。两个变体的按压/拖拽态一致——indicator 转透明玻璃（backdrop blur、80ms 淡入的描边环、1.5x 放大），松开淡回各自静止面。非法值回退 <code>inset</code>。</p>\n<p>与原生 <code>&lt;form></code> 集成（通过 <code>ElementInternals</code>）。</p>\n<p>根据 <code>value</code> 同步子 trigger 的 <code>checked</code> 状态。<code>disabled</code> 提供继承的有效禁用状态，不改写 trigger 自身的 <code>disabled</code> 属性。直接设 <code>value</code> 不派发事件。</p>\n<p>键盘用户按 Tab 进入当前选中项；没有选中项时进入首个启用项。组内只有这一项参与 Tab 顺序。水平组中，ArrowLeft / ArrowRight 在启用项间循环移动焦点并更新选中值，Home / End 移到首个 / 末个启用项；禁用项会跳过。ArrowUp / ArrowDown 不移动焦点。</p>\n<p>按住当前选中项横向拖拽可滑动 indicator，松手吸附到最近 option（快速抛掷按速度切换）。trigger 宽度不等时，拖拽中的 indicator 取「离自身中心最近的那一项」的宽度——即预览松手会落到的那一项，而不是保持按下那一项的宽度。触摸面声明 <code>touch-action: none</code>，拖拽激活期间阻止 <code>touchmove</code> 默认滚动，避免 iOS Safari 中断手势。</p>"
       },
       {
         "kind": "prose",
@@ -5548,7 +5566,7 @@ export const exampleDocs: ExampleDoc[] = [
         "kind": "prose",
         "key": "行为说明",
         "title": "行为说明",
-        "html": "<p>子 <code>&lt;web-ui-option></code> 通过 <code>option-register</code> / <code>option-unregister</code> 注册。支持 ArrowDown/ArrowUp/Enter/Escape 键盘导航。</p>\n<p>Portal panel 创建时会镜像 host 上解析后的这些变量；更新 host 后需重新打开 Portal panel 才会生效。</p>"
+        "html": "<p>子 <code>&lt;web-ui-option></code> 通过 <code>option-register</code> / <code>option-unregister</code> 注册。打开时，面板使用 <code>role=\"listbox\"</code>，候选项使用 <code>role=\"option\"</code>，当前非空 <code>value</code> 对应的 option 设为 <code>aria-selected=\"true\"</code>，<code>aria-disabled</code> 反映禁用状态。非 Portal 模式下，键盘导航时 <code>aria-activedescendant</code> 指向当前 option；Portal 模式因 option 与 combobox 位于不同的 Shadow DOM 树中，不设置此属性。支持 ArrowDown/ArrowUp/Enter/Escape 键盘导航。</p>\n<p>Portal panel 创建时会镜像 host 上解析后的这些变量；更新 host 后需重新打开 Portal panel 才会生效。</p>"
       },
       {
         "kind": "table",
@@ -5935,7 +5953,7 @@ export const exampleDocs: ExampleDoc[] = [
         "rows": [
           [
             "WebUiSpinner.show(options?)",
-            "<p>挂载一个全屏实例并返回它；<code>size</code> / <code>description</code> 覆盖默认外观，<code>duration</code> 大于 0 时到期调用 <code>hide()</code>。</p>"
+            "<p>挂载一个全屏实例并返回它；期间拦截指针交互并锁定页面滚动。<code>size</code> / <code>description</code> 覆盖默认外观，<code>duration</code> 大于 0 时到期调用 <code>hide()</code>。</p>"
           ],
           [
             "WebUiSpinner.hide()",
@@ -6011,7 +6029,7 @@ export const exampleDocs: ExampleDoc[] = [
       {
         "id": null,
         "title": "阻塞式加载",
-        "descriptionHtml": "<p><code>WebUiSpinner.show()</code> 显示全屏加载，<code>duration</code> 到期自动关闭，<code>hide()</code> 立即隐藏。</p>",
+        "descriptionHtml": "<p><code>WebUiSpinner.show()</code> 显示全屏加载，期间会拦截指针交互并锁定页面滚动；<code>duration</code> 到期自动关闭，<code>hide()</code> 立即隐藏。</p>",
         "html": {
           "react": "<pre class=\"shiki shiki-themes github-light github-dark mdc-code\" style=\"--shiki-light:#24292e;--shiki-dark:#e1e4e8;--shiki-light-bg:#fff;--shiki-dark-bg:#24292e\" tabindex=\"0\"><code><span class=\"line\"><span style=\"--shiki-light:#D73A49;--shiki-dark:#F97583\">import</span><span style=\"--shiki-light:#24292E;--shiki-dark:#E1E4E8\"> { WebUiSpinner } </span><span style=\"--shiki-light:#D73A49;--shiki-dark:#F97583\">from</span><span style=\"--shiki-light:#032F62;--shiki-dark:#9ECBFF\"> '@greypan/web-ui'</span></span>\n<span class=\"line\"></span>\n<span class=\"line\"><span style=\"--shiki-light:#24292E;--shiki-dark:#E1E4E8\">WebUiSpinner.</span><span style=\"--shiki-light:#6F42C1;--shiki-dark:#B392F0\">show</span><span style=\"--shiki-light:#24292E;--shiki-dark:#E1E4E8\">({ size: </span><span style=\"--shiki-light:#005CC5;--shiki-dark:#79B8FF\">64</span><span style=\"--shiki-light:#24292E;--shiki-dark:#E1E4E8\">, description: </span><span style=\"--shiki-light:#032F62;--shiki-dark:#9ECBFF\">'正在同步云端文件'</span><span style=\"--shiki-light:#24292E;--shiki-dark:#E1E4E8\"> })</span></span>\n<span class=\"line\"><span style=\"--shiki-light:#24292E;--shiki-dark:#E1E4E8\">WebUiSpinner.</span><span style=\"--shiki-light:#6F42C1;--shiki-dark:#B392F0\">show</span><span style=\"--shiki-light:#24292E;--shiki-dark:#E1E4E8\">({ duration: </span><span style=\"--shiki-light:#005CC5;--shiki-dark:#79B8FF\">2000</span><span style=\"--shiki-light:#24292E;--shiki-dark:#E1E4E8\"> })</span></span>\n<span class=\"line\"><span style=\"--shiki-light:#24292E;--shiki-dark:#E1E4E8\">WebUiSpinner.</span><span style=\"--shiki-light:#6F42C1;--shiki-dark:#B392F0\">hide</span><span style=\"--shiki-light:#24292E;--shiki-dark:#E1E4E8\">()</span></span></code></pre>",
           "vue": "<pre class=\"shiki shiki-themes github-light github-dark mdc-code\" style=\"--shiki-light:#24292e;--shiki-dark:#e1e4e8;--shiki-light-bg:#fff;--shiki-dark-bg:#24292e\" tabindex=\"0\"><code><span class=\"line\"><span style=\"--shiki-light:#24292E;--shiki-dark:#E1E4E8\">&#x3C;</span><span style=\"--shiki-light:#22863A;--shiki-dark:#85E89D\">script</span><span style=\"--shiki-light:#6F42C1;--shiki-dark:#B392F0\"> setup</span><span style=\"--shiki-light:#6F42C1;--shiki-dark:#B392F0\"> lang</span><span style=\"--shiki-light:#24292E;--shiki-dark:#E1E4E8\">=</span><span style=\"--shiki-light:#032F62;--shiki-dark:#9ECBFF\">\"ts\"</span><span style=\"--shiki-light:#24292E;--shiki-dark:#E1E4E8\">></span></span>\n<span class=\"line\"><span style=\"--shiki-light:#D73A49;--shiki-dark:#F97583\">import</span><span style=\"--shiki-light:#24292E;--shiki-dark:#E1E4E8\"> { WebUiSpinner } </span><span style=\"--shiki-light:#D73A49;--shiki-dark:#F97583\">from</span><span style=\"--shiki-light:#032F62;--shiki-dark:#9ECBFF\"> '@greypan/web-ui'</span></span>\n<span class=\"line\"></span>\n<span class=\"line\"><span style=\"--shiki-light:#D73A49;--shiki-dark:#F97583\">function</span><span style=\"--shiki-light:#6F42C1;--shiki-dark:#B392F0\"> sync</span><span style=\"--shiki-light:#24292E;--shiki-dark:#E1E4E8\">() {</span></span>\n<span class=\"line\"><span style=\"--shiki-light:#24292E;--shiki-dark:#E1E4E8\">  WebUiSpinner.</span><span style=\"--shiki-light:#6F42C1;--shiki-dark:#B392F0\">show</span><span style=\"--shiki-light:#24292E;--shiki-dark:#E1E4E8\">({ size: </span><span style=\"--shiki-light:#005CC5;--shiki-dark:#79B8FF\">64</span><span style=\"--shiki-light:#24292E;--shiki-dark:#E1E4E8\">, description: </span><span style=\"--shiki-light:#032F62;--shiki-dark:#9ECBFF\">'正在同步云端文件'</span><span style=\"--shiki-light:#24292E;--shiki-dark:#E1E4E8\">, duration: </span><span style=\"--shiki-light:#005CC5;--shiki-dark:#79B8FF\">2000</span><span style=\"--shiki-light:#24292E;--shiki-dark:#E1E4E8\"> })</span></span>\n<span class=\"line\"><span style=\"--shiki-light:#24292E;--shiki-dark:#E1E4E8\">}</span></span>\n<span class=\"line\"><span style=\"--shiki-light:#24292E;--shiki-dark:#E1E4E8\">&#x3C;/</span><span style=\"--shiki-light:#22863A;--shiki-dark:#85E89D\">script</span><span style=\"--shiki-light:#24292E;--shiki-dark:#E1E4E8\">></span></span></code></pre>"
@@ -7183,14 +7201,20 @@ export const exampleDocs: ExampleDoc[] = [
           [
             "--wui-color-accent",
             "<p>Accent 和输入焦点边框</p>",
-            "#08f",
+            "#0071e3",
             "#0a84ff"
           ],
           [
             "--wui-color-on-accent",
             "<p>Accent 上的前景色</p>",
             "#fff",
-            "#fff"
+            "#000"
+          ],
+          [
+            "--wui-color-on-danger",
+            "<p><code>danger</code> 背景上的前景色</p>",
+            "#fff",
+            "#000"
           ],
           [
             "--wui-color-on-control",
@@ -7231,8 +7255,8 @@ export const exampleDocs: ExampleDoc[] = [
           [
             "--wui-color-focus-ring",
             "<p>Focus indicator 颜色，由 accent 派生</p>",
-            "color-mix(in srgb, var(--wui-color-accent, #08f) 40%, transparent)",
-            "color-mix(in srgb, var(--wui-color-accent, #0a84ff) 62%, transparent)"
+            "color-mix(in srgb, var(--wui-color-accent, #0071e3) 40%, transparent)",
+            "color-mix(in srgb, var(--wui-color-accent, #0a84ff) 62%, var(--wui-color-text) 38%)"
           ]
         ]
       },
