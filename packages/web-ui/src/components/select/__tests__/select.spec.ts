@@ -152,6 +152,35 @@ describe('WebUiSelect 组件', () => {
     })
   })
 
+  describe('可访问名称', () => {
+    it('将 aria-label 转发到 combobox，并响应更新和移除', async () => {
+      const el = createSelect(OPTIONS_HTML, { 'aria-label': '全局主题' })
+      await waitForUpdate(el)
+
+      expect(queryA11y(el, '[role="combobox"]')?.getAttribute('aria-label')).toBe('全局主题')
+
+      el.setAttribute('aria-label', '主题偏好')
+      await waitForUpdate(el)
+      expect(queryA11y(el, '[role="combobox"]')?.getAttribute('aria-label')).toBe('主题偏好')
+
+      el.removeAttribute('aria-label')
+      await waitForUpdate(el)
+      expect(queryA11y(el, '[role="combobox"]')?.hasAttribute('aria-label')).toBe(false)
+
+      cleanupElement(el)
+    })
+
+    it('未提供命名属性时不添加空的 ARIA 名称', async () => {
+      const el = createSelect(OPTIONS_HTML)
+      await waitForUpdate(el)
+      const trigger = queryA11y(el, '[role="combobox"]')
+
+      expect(trigger?.hasAttribute('aria-label')).toBe(false)
+
+      cleanupElement(el)
+    })
+  })
+
   describe('打开/关闭', () => {
     it('点击 trigger 打开 overlay', async () => {
       const el = createSelect(OPTIONS_HTML)

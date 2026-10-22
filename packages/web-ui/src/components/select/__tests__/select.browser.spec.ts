@@ -3,7 +3,7 @@ import '../../theme'
 import '@/components/option'
 
 import { afterEach, describe, expect, it } from 'vite-plus/test'
-import { userEvent } from 'vite-plus/test/browser'
+import { page, userEvent } from 'vite-plus/test/browser'
 
 import { getPortalPanel } from '@/shared/test-utils'
 
@@ -22,6 +22,16 @@ const mountKeyboardIsolated = () => {
 }
 
 describe('WebUiSelect 组件（浏览器）', () => {
+  it('host aria-label gives the combobox an accessible name', async () => {
+    const select = document.createElement('web-ui-select')
+    select.setAttribute('aria-label', 'Global theme')
+    document.body.append(select)
+    await select.updateComplete
+
+    const root = page.elementLocator(select)
+    expect(root.getByRole('combobox', { name: 'Global theme' }).length).toBe(1)
+  })
+
   it('真实键盘输入可打开、导航、typeahead 并提交选择', async () => {
     const mountPoint = mountKeyboardIsolated()
     const select = document.createElement('web-ui-select')

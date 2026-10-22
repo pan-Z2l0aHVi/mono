@@ -27,6 +27,16 @@ function onPointerDown() {
   markPointer()
 }
 
+function clearPointerFocusMark(target: Element | null) {
+  if (!target) return
+
+  target.removeAttribute('data-wui-pointer-focus')
+  const root = target.getRootNode()
+  if (root instanceof ShadowRoot && root.host instanceof HTMLElement) {
+    root.host.removeAttribute('data-wui-pointer-focus')
+  }
+}
+
 function onKeyDown(event: KeyboardEvent) {
   if (
     event.key === 'Tab' ||
@@ -39,6 +49,7 @@ function onKeyDown(event: KeyboardEvent) {
     event.key === 'PageDown'
   ) {
     markKeyboard()
+    clearPointerFocusMark(document.activeElement)
   }
 }
 
@@ -53,11 +64,7 @@ function onFocusIn(event: FocusEvent) {
       root.host.dataset.wuiPointerFocus = 'true'
     }
   } else {
-    target.removeAttribute('data-wui-pointer-focus')
-    const root = target.getRootNode()
-    if (root instanceof ShadowRoot && root.host instanceof HTMLElement) {
-      root.host.removeAttribute('data-wui-pointer-focus')
-    }
+    clearPointerFocusMark(target)
   }
 }
 
