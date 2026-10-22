@@ -2,6 +2,7 @@ import '@/components/icon'
 
 import { html, LitElement, unsafeCSS } from 'lit'
 import { customElement, property, state } from 'lit/decorators.js'
+import { ifDefined } from 'lit/directives/if-defined.js'
 
 import glass from '@/assets/glass.css?inline'
 import { lucideMinus, lucidePlus } from '@/icons'
@@ -21,6 +22,144 @@ const decimalPlaces = (value: number): number => {
   return Math.max(0, (numberText.split('.')[1]?.length ?? 0) - Number(exponent))
 }
 
+type LabelledbyRoot = Document | ShadowRoot
+
+interface LabelledbyReferenceRegistration {
+  ids: Set<string>
+  onReferenceChange: () => void
+  onStylesheetChange: () => void
+}
+
+interface LabelledbyRootObserver {
+  observer: MutationObserver
+  registrations: Set<LabelledbyReferenceRegistration>
+  registrationsById: Map<string, Set<LabelledbyReferenceRegistration>>
+  onStylesheetLoad: (event: Event) => void
+  notifyStylesheetChange: () => void
+}
+
+const labelledbyRootObservers = new WeakMap<LabelledbyRoot, LabelledbyRootObserver>()
+
+function nodeReferenceIds(node: Node): string[] {
+  if (!(node instanceof Element)) return []
+  const elements = [node, ...node.querySelectorAll('[id], label[for]')]
+  return elements
+    .flatMap(element => (element instanceof HTMLLabelElement ? [element.id, element.htmlFor] : [element.id]))
+    .filter(Boolean)
+}
+
+function isStylesheetElement(element: Element): boolean {
+  return (
+    element instanceof HTMLStyleElement ||
+    (element instanceof HTMLLinkElement && element.relList.contains('stylesheet'))
+  )
+}
+
+function nodeContainsStylesheet(node: Node): boolean {
+  return (
+    (node instanceof Element && isStylesheetElement(node)) ||
+    (node instanceof Element && node.querySelector('style, link[rel~="stylesheet"]') !== null)
+  )
+}
+
+function observeLabelledbyReferences(
+  root: LabelledbyRoot,
+  ids: Set<string>,
+  onReferenceChange: () => void,
+  onStylesheetChange: () => void
+): () => void {
+  let shared = labelledbyRootObservers.get(root)
+
+  if (!shared) {
+    const registrations = new Set<LabelledbyReferenceRegistration>()
+    const registrationsById = new Map<string, Set<LabelledbyReferenceRegistration>>()
+    const notifyStylesheetChange = () => registrations.forEach(registration => registration.onStylesheetChange())
+    const onStylesheetLoad = (event: Event) => {
+      if (event.target instanceof HTMLLinkElement && event.target.relList.contains('stylesheet')) {
+        notifyStylesheetChange()
+      }
+    }
+
+    const observer = new MutationObserver(records => {
+      const changedRegistrations = new Set<LabelledbyReferenceRegistration>()
+      let stylesheetChanged = false
+      const addRegistrationsForId = (id: string | null) => {
+        if (!id) return
+        registrationsById.get(id)?.forEach(registration => changedRegistrations.add(registration))
+      }
+
+      for (const record of records) {
+        if (record.type === 'attributes') {
+          const element = record.target as Element
+          if (record.attributeName === 'id') {
+            addRegistrationsForId(record.oldValue)
+            addRegistrationsForId(element.id)
+          } else if (record.attributeName === 'for' && element instanceof HTMLLabelElement) {
+            addRegistrationsForId(record.oldValue)
+            addRegistrationsForId(element.htmlFor)
+          } else if (['disabled', 'media'].includes(record.attributeName ?? '') && isStylesheetElement(element)) {
+            stylesheetChanged = true
+          }
+        } else if (record.type === 'childList') {
+          if (record.target instanceof HTMLStyleElement || record.target instanceof HTMLLinkElement) {
+            stylesheetChanged = true
+          }
+          for (const node of [...record.addedNodes, ...record.removedNodes]) {
+            if (nodeContainsStylesheet(node)) stylesheetChanged = true
+            for (const id of nodeReferenceIds(node)) addRegistrationsForId(id)
+          }
+        }
+      }
+
+      if (stylesheetChanged) notifyStylesheetChange()
+      changedRegistrations.forEach(registration => registration.onReferenceChange())
+    })
+
+    shared = {
+      observer,
+      registrations,
+      registrationsById,
+      onStylesheetLoad,
+      notifyStylesheetChange
+    }
+    labelledbyRootObservers.set(root, shared)
+    observer.observe(root, {
+      subtree: true,
+      childList: true,
+      attributes: true,
+      attributeFilter: ['id', 'for', 'disabled', 'media'],
+      attributeOldValue: true
+    })
+    root.addEventListener('load', onStylesheetLoad, true)
+  }
+
+  const registration: LabelledbyReferenceRegistration = {
+    ids: new Set(ids),
+    onReferenceChange,
+    onStylesheetChange
+  }
+  shared.registrations.add(registration)
+  for (const id of registration.ids) {
+    const registrations = shared.registrationsById.get(id) ?? new Set()
+    registrations.add(registration)
+    shared.registrationsById.set(id, registrations)
+  }
+
+  return () => {
+    if (!shared?.registrations.delete(registration)) return
+    for (const id of registration.ids) {
+      const registrations = shared.registrationsById.get(id)
+      registrations?.delete(registration)
+      if (registrations?.size === 0) shared.registrationsById.delete(id)
+    }
+    if (shared.registrations.size === 0) {
+      shared.observer.disconnect()
+      root.removeEventListener('load', shared.onStylesheetLoad, true)
+      labelledbyRootObservers.delete(root)
+    }
+  }
+}
+
 @customElement('web-ui-input-number')
 export class WebUiInputNumber extends FormAssociated(LitElement) {
   static override styles = [unsafeCSS(glass), unsafeCSS(style)]
@@ -30,6 +169,8 @@ export class WebUiInputNumber extends FormAssociated(LitElement) {
   @property({ type: Boolean, reflect: true }) disabled = false
   @property({ type: Boolean, reflect: true }) readonly = false
   @property({ type: Boolean, reflect: true }) required = false
+  @property({ type: String, attribute: 'aria-label' }) override ariaLabel: string | null = null
+  @property({ type: String, attribute: 'aria-labelledby' }) ariaLabelledby: string | undefined
   @property({ type: Number })
   get precision(): number {
     return this._precision
@@ -68,6 +209,330 @@ export class WebUiInputNumber extends FormAssociated(LitElement) {
   private _precision = 0
   private _precisionWasSet = false
   private readonly _fieldId = createFieldId('web-ui-input-number')
+  private _labelledbyObserver: MutationObserver | null = null
+  private _releaseLabelledbyReferences: (() => void) | null = null
+  private _labelledbyAncestorObserver: MutationObserver | null = null
+  private _observedLabelledbyRoot: Node | null = null
+  private _observedLabelledbyReferenceIds = ''
+  private _observedLabelledbyTargets: Element[] = []
+  private _observedLabelledbyMutationTargets: Element[] = []
+  private _observedLabelledbyValueControls: Element[] = []
+  private _observedLabelledbyAncestors: Element[] = []
+  private _observedLabelledbyText = ''
+  private _observedLabelledbyWindow: Window | null = null
+  private readonly _onLabelledbyViewportChange = () => this.requestUpdate()
+  private readonly _onLabelledbyValueChange = () => {
+    if (this._getLabelledbyText() !== this._observedLabelledbyText) this.requestUpdate()
+  }
+
+  private get _supportsLabelledbyElements(): boolean {
+    return typeof Element !== 'undefined' && 'ariaLabelledByElements' in Element.prototype
+  }
+
+  private _getLabelledbyIds(idRefs: string | null | undefined = this.ariaLabelledby): string[] {
+    const normalizedIdRefs = idRefs?.trim()
+    return normalizedIdRefs ? normalizedIdRefs.split(/\s+/).filter(Boolean) : []
+  }
+
+  private _getLabelledbyTargets(
+    root: Document | ShadowRoot | null = null,
+    idRefs: string | null | undefined = this.ariaLabelledby
+  ): Element[] {
+    const scope = root ?? this.getRootNode()
+    if (!(scope instanceof Document || scope instanceof ShadowRoot)) return []
+
+    return this._getLabelledbyIds(idRefs)
+      .map(id => {
+        const escapedId = typeof CSS !== 'undefined' && CSS.escape ? CSS.escape(id) : id
+        return scope.querySelector(`#${escapedId}`)
+      })
+      .filter((element): element is Element => element !== null)
+  }
+
+  private _getLabelledbyValueControls(targets: Element[]): Element[] {
+    const controls = new Set<Element>()
+    for (const target of targets) {
+      if (target.matches('input, textarea, select')) controls.add(target)
+      target.querySelectorAll('input, textarea, select').forEach(control => controls.add(control))
+    }
+    return [...controls]
+  }
+
+  private _getObservedLabelledbyReferences(root: Document | ShadowRoot | null): {
+    ids: Set<string>
+    targets: Element[]
+  } {
+    return {
+      ids: new Set(this._getLabelledbyIds()),
+      targets: root ? this._getLabelledbyTargets(root) : []
+    }
+  }
+
+  private _isLabelledbyElementHidden(element: Element): boolean {
+    const visibility = getComputedStyle(element).visibility
+    if (visibility === 'hidden' || visibility === 'collapse') return true
+
+    let current: Element | null = element
+    while (current) {
+      const style = getComputedStyle(current)
+      if (
+        current.getAttribute('aria-hidden') === 'true' ||
+        current.hasAttribute('hidden') ||
+        style.display === 'none'
+      ) {
+        return true
+      }
+
+      if (current.parentElement) {
+        current = current.parentElement
+      } else {
+        const root = current.getRootNode()
+        current = root instanceof ShadowRoot ? root.host : null
+      }
+    }
+    return false
+  }
+
+  private _getLabelledbyElementText(
+    element: Element,
+    includeHidden = false,
+    embeddedControlValue = false,
+    visited = new Set<Element>()
+  ): string {
+    if (visited.has(element)) return ''
+    if (!includeHidden && this._isLabelledbyElementHidden(element)) return ''
+    const nextVisited = new Set(visited)
+    nextVisited.add(element)
+
+    const ariaLabel = element.getAttribute('aria-label')?.trim()
+    if (ariaLabel) return ariaLabel
+
+    if (
+      element instanceof HTMLImageElement ||
+      element instanceof HTMLAreaElement ||
+      (element instanceof HTMLInputElement && element.type === 'image')
+    ) {
+      const alt = element.getAttribute('alt')
+      if (alt !== null) return alt.trim()
+    }
+
+    if (element instanceof HTMLInputElement && ['button', 'submit', 'reset'].includes(element.type)) {
+      const value = element.value.trim()
+      if (value) return value
+    }
+
+    if (element instanceof HTMLInputElement && ['checkbox', 'radio'].includes(element.type)) {
+      if (embeddedControlValue) return element.checked ? 'on' : 'off'
+      const labels = Array.from(element.labels ?? [])
+      if (labels.length > 0) {
+        return labels
+          .map(label => this._getLabelledbyElementText(label, includeHidden, false, nextVisited))
+          .filter(Boolean)
+          .join(' ')
+      }
+      return element.getAttribute('title')?.trim() ?? ''
+    }
+
+    if (element instanceof HTMLInputElement && element.type !== 'hidden') {
+      if (embeddedControlValue) {
+        const value = element.value.trim()
+        if (value) return value
+      }
+      const labels = Array.from(element.labels ?? [])
+      if (labels.length > 0) {
+        return labels
+          .map(label => this._getLabelledbyElementText(label, includeHidden, false, nextVisited))
+          .filter(Boolean)
+          .join(' ')
+      }
+    }
+
+    if (element instanceof HTMLTextAreaElement) {
+      if (embeddedControlValue) {
+        const value = element.value.trim()
+        if (value) return value
+      }
+      const labels = Array.from(element.labels ?? [])
+      if (labels.length > 0) {
+        return labels
+          .map(label => this._getLabelledbyElementText(label, includeHidden, false, nextVisited))
+          .filter(Boolean)
+          .join(' ')
+      }
+    }
+
+    if (element instanceof HTMLSelectElement) {
+      if (!embeddedControlValue) {
+        const labels = Array.from(element.labels ?? [])
+        if (labels.length > 0) {
+          return labels
+            .map(label => this._getLabelledbyElementText(label, includeHidden, false, nextVisited))
+            .filter(Boolean)
+            .join(' ')
+        }
+        return element.getAttribute('title')?.trim() ?? ''
+      }
+
+      const selectedOptions = Array.from(element.selectedOptions)
+        .map(option => option.label.trim() || option.textContent?.trim() || '')
+        .filter(Boolean)
+        .join(' ')
+      if (selectedOptions) return selectedOptions
+    }
+
+    const text = Array.from(element.childNodes)
+      .map(node => {
+        if (node.nodeType === Node.TEXT_NODE) return node.textContent ?? ''
+        if (!(node instanceof Element)) return ''
+        const isControl =
+          node instanceof HTMLInputElement || node instanceof HTMLTextAreaElement || node instanceof HTMLSelectElement
+        return this._getLabelledbyElementText(node, includeHidden, isControl, nextVisited)
+      })
+      .join('')
+      .replace(/\s+/g, ' ')
+      .trim()
+    return text || element.getAttribute('title')?.trim() || ''
+  }
+
+  private _getLabelledbyText(): string {
+    return this._getLabelledbyTargets()
+      .map(element => this._getLabelledbyElementText(element, this._isLabelledbyElementHidden(element)))
+      .filter(Boolean)
+      .join(' ')
+  }
+
+  private _getLabelledbyAncestors(targets: Element[]): Element[] {
+    const ancestors = new Set<Element>()
+    for (const target of targets) {
+      let current: Element | null = target
+      while (current) {
+        ancestors.add(current)
+        if (current.parentElement) {
+          current = current.parentElement
+        } else {
+          const root = current.getRootNode()
+          current = root instanceof ShadowRoot ? root.host : null
+        }
+      }
+    }
+    return [...ancestors]
+  }
+
+  private _syncLabelledbyObserver() {
+    const root = this.getRootNode()
+    const scope = root instanceof Document || root instanceof ShadowRoot ? root : null
+    const references = this._getObservedLabelledbyReferences(scope)
+    const referenceIds = [...references.ids].join('\u0000')
+    const targets = references.targets
+    const valueControls = this._getLabelledbyValueControls(targets)
+    const mutationTargets = new Set(targets)
+    for (const control of valueControls) {
+      if (
+        control instanceof HTMLInputElement ||
+        control instanceof HTMLTextAreaElement ||
+        control instanceof HTMLSelectElement
+      ) {
+        Array.from(control.labels ?? []).forEach(label => mutationTargets.add(label))
+      }
+    }
+    const observedTargets = [...mutationTargets]
+    const ancestors = this._getLabelledbyAncestors(observedTargets)
+    const sameMutationTargets =
+      observedTargets.length === this._observedLabelledbyMutationTargets.length &&
+      observedTargets.every((target, index) => target === this._observedLabelledbyMutationTargets[index])
+    const sameValueControls =
+      valueControls.length === this._observedLabelledbyValueControls.length &&
+      valueControls.every((control, index) => control === this._observedLabelledbyValueControls[index])
+    const sameAncestors =
+      ancestors.length === this._observedLabelledbyAncestors.length &&
+      ancestors.every((ancestor, index) => ancestor === this._observedLabelledbyAncestors[index])
+    const rootChanged = root !== this._observedLabelledbyRoot
+    const nextWindow = this.ariaLabelledby && this.isConnected ? this.ownerDocument.defaultView : null
+
+    if (nextWindow !== this._observedLabelledbyWindow) {
+      this._observedLabelledbyWindow?.removeEventListener('resize', this._onLabelledbyViewportChange)
+      this._observedLabelledbyWindow = nextWindow
+      this._observedLabelledbyWindow?.addEventListener('resize', this._onLabelledbyViewportChange)
+    }
+
+    if (rootChanged || referenceIds !== this._observedLabelledbyReferenceIds) {
+      this._releaseLabelledbyReferences?.()
+      this._releaseLabelledbyReferences = null
+      this._observedLabelledbyRoot = root
+      this._observedLabelledbyReferenceIds = referenceIds
+
+      if (this.isConnected && scope && references.ids.size > 0) {
+        this._releaseLabelledbyReferences = observeLabelledbyReferences(
+          scope,
+          references.ids,
+          () => this.requestUpdate(),
+          () => {
+            if (this._getLabelledbyText() !== this._observedLabelledbyText) this.requestUpdate()
+          }
+        )
+      }
+    }
+
+    if (rootChanged || !sameMutationTargets) {
+      this._labelledbyObserver?.disconnect()
+      this._observedLabelledbyTargets = targets
+      this._observedLabelledbyMutationTargets = observedTargets
+
+      if (this.isConnected && observedTargets.length > 0) {
+        this._labelledbyObserver = new MutationObserver(() => {
+          const currentValueControls = this._getLabelledbyValueControls(this._observedLabelledbyTargets)
+          const controlsChanged =
+            currentValueControls.length !== this._observedLabelledbyValueControls.length ||
+            currentValueControls.some((control, index) => control !== this._observedLabelledbyValueControls[index])
+          if (controlsChanged || this._getLabelledbyText() !== this._observedLabelledbyText) this.requestUpdate()
+        })
+
+        for (const target of observedTargets) {
+          // button/submit/reset 的 value IDL 在 default mode，property 赋值会反射到 value attribute。
+          this._labelledbyObserver.observe(target, {
+            subtree: true,
+            childList: true,
+            characterData: true,
+            attributes: true,
+            attributeFilter: ['aria-label', 'alt', 'value', 'title', 'type', 'aria-hidden', 'hidden', 'class', 'style']
+          })
+        }
+      }
+    }
+
+    if (rootChanged || !sameValueControls) {
+      this._observedLabelledbyValueControls.forEach(control => {
+        control.removeEventListener('input', this._onLabelledbyValueChange)
+        control.removeEventListener('change', this._onLabelledbyValueChange)
+      })
+      this._observedLabelledbyValueControls = valueControls
+      if (this.isConnected) {
+        valueControls.forEach(control => {
+          control.addEventListener('input', this._onLabelledbyValueChange)
+          control.addEventListener('change', this._onLabelledbyValueChange)
+        })
+      }
+    }
+
+    if (rootChanged || !sameAncestors) {
+      this._labelledbyAncestorObserver?.disconnect()
+      this._observedLabelledbyAncestors = ancestors
+
+      if (this.isConnected && ancestors.length > 0) {
+        this._labelledbyAncestorObserver = new MutationObserver(() => {
+          if (this._getLabelledbyText() !== this._observedLabelledbyText) this.requestUpdate()
+        })
+        for (const ancestor of ancestors) {
+          this._labelledbyAncestorObserver.observe(ancestor, {
+            attributes: true,
+            attributeFilter: ['aria-hidden', 'hidden', 'class', 'style']
+          })
+        }
+      }
+    }
+
+    this._observedLabelledbyText = this._getLabelledbyText()
+  }
 
   @property({ type: Number, reflect: true })
   get value(): number {
@@ -148,14 +613,48 @@ export class WebUiInputNumber extends FormAssociated(LitElement) {
 
   private readonly _formAssociationController = new FormAssociationController(this, this._formAssociation)
 
+  override connectedCallback() {
+    super.connectedCallback()
+    this.requestUpdate()
+  }
+
   override formDisabledCallback(disabled: boolean) {
     super.formDisabledCallback(disabled)
     this.toggleAttribute('data-form-disabled', disabled)
   }
 
   override updated() {
+    this._syncLabelledbyObserver()
+    if (this._supportsLabelledbyElements) {
+      const input = this.shadowRoot?.querySelector('input')
+      // 用元素引用跨过 ShadowRoot，让浏览器按当前文本与样式计算名称；字符串回退兼容旧浏览器。
+      if (input) input.ariaLabelledByElements = this._getLabelledbyTargets()
+    }
     this._syncValidity()
     this.toggleAttribute('focused', this._focused)
+  }
+
+  override disconnectedCallback() {
+    this._labelledbyObserver?.disconnect()
+    this._releaseLabelledbyReferences?.()
+    this._labelledbyAncestorObserver?.disconnect()
+    this._labelledbyObserver = null
+    this._releaseLabelledbyReferences = null
+    this._labelledbyAncestorObserver = null
+    this._observedLabelledbyWindow?.removeEventListener('resize', this._onLabelledbyViewportChange)
+    this._observedLabelledbyWindow = null
+    this._observedLabelledbyRoot = null
+    this._observedLabelledbyReferenceIds = ''
+    this._observedLabelledbyTargets = []
+    this._observedLabelledbyMutationTargets = []
+    this._observedLabelledbyValueControls.forEach(control => {
+      control.removeEventListener('input', this._onLabelledbyValueChange)
+      control.removeEventListener('change', this._onLabelledbyValueChange)
+    })
+    this._observedLabelledbyValueControls = []
+    this._observedLabelledbyAncestors = []
+    this._observedLabelledbyText = ''
+    super.disconnectedCallback()
   }
 
   private _syncValidity() {
@@ -271,6 +770,8 @@ export class WebUiInputNumber extends FormAssociated(LitElement) {
           step="any"
           placeholder=${this.placeholder}
           name=${this.name}
+          aria-label=${ifDefined(this._getLabelledbyText() || this.ariaLabel)}
+          aria-labelledby=${ifDefined(this.ariaLabelledby)}
           .value=${this._draft ?? String(this.value)}
           ?disabled=${this._isDisabled}
           ?readonly=${this.readonly}

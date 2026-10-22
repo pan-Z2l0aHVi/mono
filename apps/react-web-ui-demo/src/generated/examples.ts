@@ -1912,6 +1912,12 @@ export const exampleDocs: ExampleDoc[] = [
             "false"
           ],
           [
+            "horizontal",
+            "<p>Footer 操作按钮横向排列。</p>",
+            "boolean",
+            "false"
+          ],
+          [
             "no-scroll-lock",
             "<p>打开时不锁定页面滚动。</p>",
             "boolean",
@@ -3731,9 +3737,21 @@ export const exampleDocs: ExampleDoc[] = [
             "false"
           ],
           [
+            "aria-label",
+            "<p>输入框的无障碍名称。</p>",
+            "string",
+            "—"
+          ],
+          [
+            "aria-labelledby",
+            "<p>无障碍名称引用，用于命名内部输入框。</p>",
+            "string",
+            "—"
+          ],
+          [
             "precision",
-            "<p>显式设置时，在读取与提交时规整小数位；未显式设置时按 <code>step</code> 推导。</p>",
-            "number",
+            "<p>显式设置时按该值规整；设为 <code>null</code> 或移除属性时按 <code>step</code> 推导精度。</p>",
+            "number | null",
             "0"
           ],
           [

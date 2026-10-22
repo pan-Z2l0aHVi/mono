@@ -1,4 +1,5 @@
 import '..'
+import '@/components/button'
 import '@/components/drawer'
 import '@/components/dropdown-item'
 import '@/components/popover'
@@ -6,8 +7,10 @@ import '@/components/popover'
 import { afterEach, describe, expect, it, vi } from 'vite-plus/test'
 import { userEvent } from 'vite-plus/test/browser'
 
+import type { WebUiButton } from '@/components/button'
 import type { WebUiPopover } from '@/components/popover'
 import { getMenuPanels, getPortalPanels, queryA11y } from '@/shared/test-utils'
+import { setViewport } from '@/shared/test-utils/viewport'
 
 import type { WebUiDropdown } from '..'
 
@@ -180,6 +183,143 @@ describe('WebUiDropdown 组件（浏览器）', () => {
     expect(getComputedStyle(focusedControl(items[0]!)!).backgroundColor).toBe('rgb(0, 136, 255)')
   })
 
+  it('Escape 关闭后将焦点交还 shadow trigger 并移除 aria-controls', async () => {
+    const menu = createDropdown(
+      '<web-ui-button slot="trigger">Menu</web-ui-button><web-ui-dropdown-item>Open</web-ui-dropdown-item>'
+    )
+    await menu.updateComplete
+
+    const trigger = menu.querySelector<WebUiButton>('web-ui-button')!
+    await trigger.updateComplete
+    const triggerButton = trigger.shadowRoot?.querySelector<HTMLButtonElement>('button')
+    expect(triggerButton).toBeTruthy()
+
+    triggerButton!.focus()
+    expect(trigger.shadowRoot?.activeElement).toBe(triggerButton)
+
+    await userEvent.keyboard('{Enter}')
+    await menu.updateComplete
+    const [rootPanel] = await waitForMenuPanels(1)
+    expect(rootPanel).toBeDefined()
+    expect(trigger.getAttribute('aria-controls')).toBe(rootPanel!.id)
+
+    await userEvent.keyboard('{Escape}')
+    await menu.updateComplete
+    rootPanel!.dispatchEvent(new TransitionEvent('transitionend', { propertyName: 'opacity', bubbles: true }))
+    await waitFor(() => getMenuPanels().length === 0, 'Expected the dropdown to finish closing')
+
+    expect(getMenuPanels()).toHaveLength(0)
+    expect(trigger.shadowRoot?.activeElement).toBe(triggerButton)
+    expect(trigger.getAttribute('aria-controls')).toBeNull()
+  })
+
+  it('关闭时焦点在 submenu 中也交还 trigger', async () => {
+    const menu = createDropdown(
+      '<web-ui-button slot="trigger">Menu</web-ui-button><web-ui-dropdown-item submenu>More<web-ui-dropdown-item>Child</web-ui-dropdown-item></web-ui-dropdown-item>'
+    )
+    await menu.updateComplete
+
+    const trigger = menu.querySelector<WebUiButton>('web-ui-button')!
+    await trigger.updateComplete
+    const triggerButton = trigger.shadowRoot?.querySelector<HTMLButtonElement>('button')
+    if (!triggerButton) throw new Error('web-ui-button trigger did not render its native button')
+    triggerButton.focus()
+    await userEvent.keyboard('{Enter}')
+
+    const [rootPanel] = await waitForMenuPanels(1)
+    expect(rootPanel).toBeDefined()
+    requireRootItem().click()
+    const panels = await waitForMenuPanels(2)
+    expect(panels).toHaveLength(2)
+
+    const submenuItem = requireItemIn(panels[1], 'submenu')
+    const submenuControl = focusedControl(submenuItem)
+    if (!submenuControl) throw new Error('submenu item did not render a focusable menuitem')
+    submenuControl.focus()
+    expect(submenuItem.shadowRoot?.activeElement).toBe(submenuControl)
+
+    menu.closeAll()
+    await menu.updateComplete
+    rootPanel!.dispatchEvent(new TransitionEvent('transitionend', { propertyName: 'opacity', bubbles: true }))
+    await waitFor(() => getMenuPanels().length === 0, 'Expected the dropdown and submenu to finish closing')
+
+    expect(getMenuPanels()).toHaveLength(0)
+    expect(trigger.shadowRoot?.activeElement).toBe(triggerButton)
+  })
+
+  it('点击外部输入框关闭后保留焦点并允许输入', async () => {
+    const menu = createDropdown(
+      '<web-ui-button slot="trigger">Menu</web-ui-button><web-ui-dropdown-item>Open</web-ui-dropdown-item>'
+    )
+    await menu.updateComplete
+
+    const trigger = menu.querySelector<WebUiButton>('web-ui-button')!
+    await trigger.updateComplete
+    const triggerButton = trigger.shadowRoot?.querySelector<HTMLButtonElement>('button')
+    if (!triggerButton) throw new Error('web-ui-button trigger did not render its native button')
+    triggerButton.focus()
+    triggerButton.dispatchEvent(clickEvent(1))
+
+    const [rootPanel] = await waitForMenuPanels(1)
+    expect(rootPanel).toBeDefined()
+
+    const input = document.createElement('input')
+    Object.assign(input.style, { position: 'fixed', top: '400px', left: '400px' })
+    document.body.append(input)
+    input.focus()
+    input.dispatchEvent(clickEvent(1))
+    expect(document.activeElement).toBe(input)
+    expect(menu.open).toBe(false)
+
+    rootPanel!.dispatchEvent(new TransitionEvent('transitionend', { propertyName: 'opacity', bubbles: true }))
+    await waitFor(() => getMenuPanels().length === 0, 'Expected the dropdown to finish closing')
+
+    expect(getMenuPanels()).toHaveLength(0)
+    expect(document.activeElement).toBe(input)
+    await userEvent.type(input, 'hello')
+    expect(input.value).toBe('hello')
+  })
+
+  it('打开另一个 dropdown 时不把焦点抢回已关闭的 trigger', async () => {
+    const firstMenu = createDropdown(
+      '<web-ui-button slot="trigger">First</web-ui-button><web-ui-dropdown-item>First item</web-ui-dropdown-item>'
+    )
+    const secondMenu = createDropdown(
+      '<web-ui-button slot="trigger">Second</web-ui-button><web-ui-dropdown-item>Second item</web-ui-dropdown-item>'
+    )
+    await Promise.all([firstMenu.updateComplete, secondMenu.updateComplete])
+
+    const firstTrigger = firstMenu.querySelector<WebUiButton>('web-ui-button')!
+    const secondTrigger = secondMenu.querySelector<WebUiButton>('web-ui-button')!
+    await Promise.all([firstTrigger.updateComplete, secondTrigger.updateComplete])
+    const firstButton = firstTrigger.shadowRoot?.querySelector<HTMLButtonElement>('button')
+    const secondButton = secondTrigger.shadowRoot?.querySelector<HTMLButtonElement>('button')
+    if (!firstButton || !secondButton) throw new Error('web-ui-button triggers did not render their native buttons')
+
+    firstButton.focus()
+    firstButton.dispatchEvent(clickEvent(1))
+    const [firstPanel] = await waitForMenuPanels(1)
+    expect(firstPanel).toBeDefined()
+
+    secondButton.focus()
+    secondButton.dispatchEvent(clickEvent(1))
+    await waitFor(
+      () => getMenuPanels().some(panel => panel.id === secondTrigger.getAttribute('aria-controls')),
+      'Expected the second dropdown panel to open'
+    )
+    expect(firstMenu.open).toBe(false)
+    expect(secondMenu.open).toBe(true)
+
+    firstPanel!.dispatchEvent(new TransitionEvent('transitionend', { propertyName: 'opacity', bubbles: true }))
+    await waitFor(() => getMenuPanels().length === 1, 'Expected only the second dropdown to remain open')
+
+    expect(getMenuPanels()).toHaveLength(1)
+    expect(getMenuPanels()[0]?.id).toBe(secondTrigger.getAttribute('aria-controls'))
+    expect(getMenuPanels()[0]?.matches(':focus-within')).toBe(true)
+    expect(firstTrigger.shadowRoot?.activeElement).toBeNull()
+    expect(secondMenu.open).toBe(true)
+  })
+
   // 上一会话的手势模态不能漏到下一会话：属性驱动的打开没有手势信息，必须回到默认口径。
   it('声明式 open 打开不沿用上一次键盘会话的 focus 模态', async () => {
     const menu = createDropdown(TWO_ITEMS)
@@ -222,6 +362,41 @@ describe('WebUiDropdown 组件（浏览器）', () => {
       expect(warn).not.toHaveBeenCalledWith(expect.stringContaining('Element web-ui-dropdown scheduled an update'))
     } finally {
       warn.mockRestore()
+    }
+  })
+
+  it('submenu 在窄视口内保持完整可见', async () => {
+    const previousViewport = { width: window.innerWidth, height: window.innerHeight }
+    const previousMinWidth = document.documentElement.style.getPropertyValue('--wui-overlay-min-width')
+
+    try {
+      await setViewport(390, 844)
+      document.documentElement.style.setProperty('--wui-overlay-min-width', '200px')
+      const menu = createDropdown(SUBMENU)
+      menu.style.cssText = 'position:fixed;left:12px;top:120px;'
+      await menu.updateComplete
+
+      menu.querySelector<HTMLButtonElement>('button')?.click()
+      const rootPanels = await waitForMenuPanels(1)
+      expect(rootPanels).toHaveLength(1)
+
+      const parentControl = focusedControl(requireRootItem())!
+      parentControl.focus()
+      await userEvent.keyboard('{ArrowRight}')
+
+      const panels = await waitForMenuPanels(2)
+      expect(panels).toHaveLength(2)
+      const submenu = panels[1]!
+      await Promise.all(submenu.getAnimations().map(animation => animation.finished.catch(() => undefined)))
+
+      const rect = submenu.getBoundingClientRect()
+      expect(rect.left, `submenu 左缘 ${rect.left} 应留在视口内`).toBeGreaterThanOrEqual(8)
+      expect(rect.right, `submenu 右缘 ${rect.right} 应留出 8px 视口间距`).toBeLessThanOrEqual(window.innerWidth - 8)
+      expect(document.documentElement.scrollWidth).toBe(window.innerWidth)
+    } finally {
+      await setViewport(previousViewport.width, previousViewport.height)
+      if (previousMinWidth) document.documentElement.style.setProperty('--wui-overlay-min-width', previousMinWidth)
+      else document.documentElement.style.removeProperty('--wui-overlay-min-width')
     }
   })
 
