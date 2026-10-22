@@ -141,19 +141,24 @@ describe('带锚点的示例落成可编译文件', () => {
 const migratedDocs = [
   'autocomplete',
   'avatar',
+  'back-top',
   'badge',
   'button',
   'checkbox',
   'collapse',
+  'context-menu',
+  'dialog',
   'drawer',
   'dropdown',
   'editable-text',
   'empty',
   'icon',
+  'image-preview',
   'input',
   'input-number',
   'layout',
   'middle-ellipsis',
+  'popover',
   'radio',
   'segmented',
   'select',
@@ -162,7 +167,9 @@ const migratedDocs = [
   'svg-draw-lines',
   'switch',
   'textarea',
-  'theme'
+  'theme',
+  'toast',
+  'tooltip'
 ]
 
 describe('已迁移文档的每条示例都能渲染', () => {

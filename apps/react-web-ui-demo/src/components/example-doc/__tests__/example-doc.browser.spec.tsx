@@ -3,16 +3,22 @@ import '@/generated/examples.css'
 
 import type {
   WebUiAutocomplete,
+  WebUiBackTop,
   WebUiCheckbox,
   WebUiCollapse,
+  WebUiContextMenu,
+  WebUiDialog,
   WebUiDrawer,
   WebUiDropdown,
+  WebUiDropdownItem,
   WebUiLayout,
+  WebUiPopover,
   WebUiRadio,
   WebUiSegmented,
   WebUiSegmentedTrigger,
   WebUiSelect,
   WebUiSlider,
+  WebUiToast,
   WebUiTooltip
 } from '@greypan/web-ui'
 import { akarIconsCircleCheck, lucideCircleAlert, lucideCopy } from '@greypan/web-ui/icons'
@@ -167,14 +173,23 @@ function expectedHosts(component: string, demoKey: string | null | undefined, ta
   return { count, exact: !source.includes('.map(') }
 }
 
-/** 宿主 tag + 影子树里该有的 role：等挂载与判升级都按这两列取。 */
+/**
+ * 宿主 tag + 影子树里「已升级」的判据：`role` 是 `[role="…"]` 的简写，影子树不带 role 的组件（原生
+ * `<dialog>`、纯 anchor 容器）改用 `probe` 指认那个必然存在的节点。
+ */
 interface Host {
   tag: string
-  role: string
+  role?: string
+  probe?: string
 }
 const sliderHost: Host = { tag: 'web-ui-slider', role: 'slider' }
 const checkboxHost: Host = { tag: 'web-ui-checkbox', role: 'checkbox' }
 const radioHost: Host = { tag: 'web-ui-radio', role: 'radio' }
+const tooltipHost: Host = { tag: 'web-ui-tooltip', role: 'tooltip' }
+const popoverHost: Host = { tag: 'web-ui-popover', role: 'dialog' }
+const contextMenuHost: Host = { tag: 'web-ui-context-menu', probe: '.context-menu-anchor' }
+const dialogHost: Host = { tag: 'web-ui-dialog', probe: 'dialog' }
+const backTopHost: Host = { tag: 'web-ui-back-top', role: 'button' }
 
 // 迁移到「docs 全量生成」的文档：示例逐条都有落盘文件与 live 宿主，所以下面那几组逐条断言按
 // 同一套形状铺到每一篇（补一篇就加一行），不再只有 slider 一份脚手架。
@@ -185,20 +200,25 @@ const radioHost: Host = { tag: 'web-ui-radio', role: 'radio' }
 const migratedDocs: { doc: Doc; tag: string }[] = [
   { doc: docOf('autocomplete'), tag: 'web-ui-autocomplete' },
   { doc: docOf('avatar'), tag: 'web-ui-avatar' },
+  { doc: docOf('back-top'), tag: 'web-ui-back-top' },
   { doc: docOf('badge'), tag: 'web-ui-badge' },
   { doc: docOf('button'), tag: 'web-ui-button' },
   { doc: checkbox, tag: 'web-ui-checkbox' },
   { doc: checkboxGroup, tag: 'web-ui-checkbox' },
-  { doc: collapse, tag: 'web-ui-collapse' },
+  { doc: docOf('collapse'), tag: 'web-ui-collapse' },
+  { doc: docOf('context-menu'), tag: 'web-ui-context-menu' },
+  { doc: docOf('dialog'), tag: 'web-ui-dialog' },
   { doc: drawer, tag: 'web-ui-drawer' },
   { doc: docOf('dropdown'), tag: 'web-ui-dropdown' },
   { doc: docOf('editable-text'), tag: 'web-ui-editable-text' },
   { doc: docOf('empty'), tag: 'web-ui-empty' },
   { doc: docOf('icon'), tag: 'web-ui-icon' },
+  { doc: docOf('image-preview'), tag: 'web-ui-image-preview' },
   { doc: docOf('input'), tag: 'web-ui-input' },
   { doc: docOf('input-number'), tag: 'web-ui-input-number' },
   { doc: layout, tag: 'web-ui-layout' },
   { doc: docOf('middle-ellipsis'), tag: 'web-ui-middle-ellipsis' },
+  { doc: docOf('popover'), tag: 'web-ui-popover' },
   { doc: radio, tag: 'web-ui-radio' },
   { doc: radioGroup, tag: 'web-ui-radio' },
   { doc: docOf('segmented'), tag: 'web-ui-segmented' },
@@ -208,7 +228,9 @@ const migratedDocs: { doc: Doc; tag: string }[] = [
   { doc: docOf('svg-draw-lines'), tag: 'web-ui-svg-draw-lines' },
   { doc: docOf('switch'), tag: 'web-ui-switch' },
   { doc: docOf('textarea'), tag: 'web-ui-textarea' },
-  { doc: theme, tag: 'web-ui-theme' }
+  { doc: theme, tag: 'web-ui-theme' },
+  { doc: docOf('toast'), tag: 'web-ui-toast' },
+  { doc: docOf('tooltip'), tag: 'web-ui-tooltip' }
 ]
 
 // live 示例是 lazy 的：不先把每条示例的宿主等齐，Suspense 会在断言之后才落地，React 的 act 环境
@@ -253,9 +275,10 @@ async function mountDemos(container: HTMLElement, doc: Doc, tag: string) {
 function hostIn<T extends HTMLElement>(container: HTMLElement, title: string, host: Host, index = 0): T {
   const element = [...previewOf(container, title).querySelectorAll<T>(host.tag)][index]
   if (!element) throw new Error(`示例「${title}」的第 ${index + 1} 个位置没有渲染出 ${host.tag}`)
-  // 影子树里有 role="<host.role>" = 元素真的被注册升级过，不是留着未知 tag 的空壳。
-  if (!element.shadowRoot?.querySelector(`[role="${host.role}"]`))
-    throw new Error(`示例「${title}」的 ${host.tag} 没有升级`)
+  // 影子树里有那个判据节点 = 元素真的被注册升级过，不是留着未知 tag 的空壳。
+  const marker = host.probe ?? `[role="${host.role}"]`
+  if (!element.shadowRoot?.querySelector(marker))
+    throw new Error(`示例「${title}」的 ${host.tag} 没有升级（${marker}）`)
   return element
 }
 
@@ -273,12 +296,18 @@ function readoutOf(preview: HTMLElement) {
   return () => preview.querySelector('output')?.textContent?.trim()
 }
 
-// 提交动作的转发在影子 `<button>` 的 handler 里，点宿主不会触发 submit。
-function shadowButton(preview: HTMLElement, label: string) {
+// 按文案取预览里的那个 web-ui-button 宿主：指针要打在宿主上才会进入 tooltip / popover 的监听链。
+function buttonOf(preview: HTMLElement, label: string) {
   const host = [...preview.querySelectorAll<HTMLElement>('web-ui-button')].find(
     item => item.textContent?.trim() === label
   )
   if (!host) throw new Error(`预览里没有「${label}」按钮`)
+  return host
+}
+
+// 提交动作的转发在影子 `<button>` 的 handler 里，点宿主不会触发 submit。
+function shadowButton(preview: HTMLElement, label: string) {
+  const host = buttonOf(preview, label)
   const button = host.shadowRoot?.querySelector<HTMLElement>('button')
   if (!button) throw new Error(`「${label}」按钮还没有渲染出影子 <button>`)
   return button
@@ -367,16 +396,88 @@ function deepQuery<T extends Element>(root: Document | ShadowRoot, selector: str
 }
 
 /**
- * 当前这条示例的根 menu panel：trigger 的 aria-controls 指向它。
+ * 当前这条示例的根 panel：trigger 的 aria-controls 指向它。
  * 直接按 value 在文档里找会命中别的测试留下的同值 item。
  */
-function dropdownPanelOf(preview: HTMLElement) {
+function panelOf(preview: HTMLElement, what: string) {
   const trigger = preview.querySelector<HTMLElement>('[slot="trigger"]')
   const id = trigger?.getAttribute('aria-controls')
-  if (!id) throw new Error('dropdown trigger 上没有 aria-controls')
+  if (!id) throw new Error(`${what} 的 trigger 上没有 aria-controls`)
   const panel = deepQuery<HTMLElement>(document, `#${CSS.escape(id)}`)
-  if (!panel) throw new Error(`overlay 里没有 id="${id}" 的 menu panel`)
+  if (!panel) throw new Error(`overlay 里没有 id="${id}" 的 ${what} panel`)
   return panel
+}
+
+const dropdownPanelOf = (preview: HTMLElement) => panelOf(preview, 'menu')
+const popoverPanelOf = (preview: HTMLElement) => panelOf(preview, 'popover')
+
+/** overlay root 自己带一层 shadow：命令式挂上去的 toast / image-preview 只能全树扫。 */
+function deepQueryAll<T extends Element>(root: Document | ShadowRoot, selector: string): T[] {
+  const found = [...root.querySelectorAll<T>(selector)]
+  for (const host of root.querySelectorAll('*')) {
+    if (!host.shadowRoot) continue
+    found.push(...deepQueryAll<T>(host.shadowRoot, selector))
+  }
+  return found
+}
+
+const toastElements = () => deepQueryAll<WebUiToast>(document, 'web-ui-toast')
+const imagePreviewElements = () => deepQueryAll<HTMLElement>(document, 'web-ui-image-preview')
+
+/**
+ * 命令式文档（toast / image-preview）的预览里一个宿主都没有，`mountDemos` 的宿主数因此判不出
+ * lazy 围栏有没有结算完：动按钮前先等示例自己挂上来。
+ */
+async function demoSettled(container: HTMLElement, title: string) {
+  await waitFor(() => expect(previewOf(container, title).querySelector('web-ui-button')).not.toBeNull())
+}
+
+/** toast 的正文在影子树里：宿主自己没有可读的 textContent。 */
+function toastMessage(el: WebUiToast) {
+  return el.shadowRoot?.querySelector('.toast-message')?.textContent ?? ''
+}
+
+/**
+ * toast 与 image-preview 由命令式 API 挂进文档级 overlay root，示例卸载只触发退场动画、不当场移除。
+ * 残留宿主会抢先满足「点之前一个都没有」，所以每次动手前先等 overlay 退干净。
+ */
+async function overlayCleared() {
+  await waitFor(() => expect(toastElements().length + imagePreviewElements().length).toBe(0))
+}
+
+/** 打开期间 context-menu 把 item 迁进 overlay 里的 panel；按 item 文案认出是哪一块。 */
+function openMenuPanelWith(text: string) {
+  const panel = deepQueryAll<HTMLElement>(document, '.wui-menu-portal-overlay.context-menu').find(item =>
+    [...item.querySelectorAll('web-ui-dropdown-item')].some(el => el.textContent?.includes(text))
+  )
+  if (!panel) throw new Error(`overlay 里没有含「${text}」的 context-menu panel`)
+  return panel
+}
+
+function menuItemOf(panel: HTMLElement, text: string) {
+  const item = [...panel.querySelectorAll<WebUiDropdownItem>('web-ui-dropdown-item')].find(el =>
+    el.textContent?.includes(text)
+  )
+  if (!item) throw new Error(`panel 里没有「${text}」这一项`)
+  return item
+}
+
+/** 右键路径就是宿主上的 `contextmenu`：合成事件带上按点坐标即可，不需要真的指针输入。 */
+async function rightClick(host: HTMLElement) {
+  const { left, top } = host.getBoundingClientRect()
+  await act(async () => {
+    host.dispatchEvent(
+      new MouseEvent('contextmenu', { bubbles: true, cancelable: true, clientX: left + 24, clientY: top + 24 })
+    )
+  })
+}
+
+/** 滚动容器里的可见性判据走组件自己挂的 `scroll` 监听：赋值后补一次事件，不等原生节流。 */
+async function scrollBox(box: HTMLElement, top: number) {
+  await act(async () => {
+    box.scrollTop = top
+    box.dispatchEvent(new Event('scroll'))
+  })
 }
 
 /** markdown 默认值单元格 → 元素侧的比较值：去掉反引号与字面量引号，`—` 表示空串。 */
@@ -1496,5 +1597,549 @@ describe('example-doc（React 面 / 真实浏览器）', () => {
 
     await act(async () => shadowButton(preview, '重置').click())
     await waitFor(() => expect([readout(), host.value]).toEqual(['尚未提交', 'wed']))
+  })
+
+  it('tooltip 基础示例是活的：悬停出提示、移开收起，读数跟着 open-change', async () => {
+    const { container } = render(<ExampleDoc component="tooltip" />)
+    await mountDemos(container, docOf('tooltip'), 'web-ui-tooltip')
+
+    const preview = previewOf(container, '基础')
+    const readout = readoutOf(preview)
+    const host = hostIn<WebUiTooltip>(container, '基础', tooltipHost)
+    const trigger = host.querySelector<HTMLElement>('web-ui-button')
+    if (!trigger) throw new Error('基础示例的 tooltip 里没有 trigger 按钮')
+    expect([host.open, readout()]).toEqual([false, 'open-change：0 次 · 最后一次 detail.open = —'])
+
+    // pointerenter 不冒泡，但 user-event 沿 enter 链逐个派发，所以打在 trigger 上就进得了宿主监听。
+    await act(async () => {
+      await userEvent.hover(trigger)
+    })
+    await waitFor(() =>
+      expect([host.open, readout()]).toEqual([true, 'open-change：1 次 · 最后一次 detail.open = true'])
+    )
+    expect(host.shadowRoot?.querySelector('.tooltip-text')?.textContent).toBe('保存当前更改')
+
+    await act(async () => {
+      await userEvent.unhover(trigger)
+    })
+    await waitFor(() =>
+      expect([host.open, readout()]).toEqual([false, 'open-change：2 次 · 最后一次 detail.open = false'])
+    )
+  })
+
+  it('tooltip 富内容示例：提示来自 slot="content"，不是 content 属性', async () => {
+    const { container } = render(<ExampleDoc component="tooltip" />)
+    await mountDemos(container, docOf('tooltip'), 'web-ui-tooltip')
+
+    const preview = previewOf(container, '富内容')
+    const readout = readoutOf(preview)
+    const host = hostIn<WebUiTooltip>(container, '富内容', tooltipHost)
+    const trigger = host.querySelector<HTMLElement>('web-ui-button')
+    if (!trigger) throw new Error('富内容示例的 tooltip 里没有 trigger 按钮')
+    expect(trigger.getAttribute('aria-label')).toBe('查看快捷键')
+
+    await act(async () => {
+      await userEvent.hover(trigger)
+    })
+    await waitFor(() => expect([host.open, readout()]).toEqual([true, '最后一次 detail.open = true']))
+
+    // 影子面板里没有 .tooltip-text，落位的是具名 slot；内容节点留在宿主 light DOM。
+    expect(host.shadowRoot?.querySelector('.tooltip-text')).toBeNull()
+    const slot = host.shadowRoot?.querySelector<HTMLSlotElement>('slot[name="content"]')
+    const content = slot?.assignedElements()[0]
+    expect(content?.parentElement).toBe(host)
+    expect(content?.textContent).toContain('打开命令面板')
+
+    await act(async () => {
+      await userEvent.unhover(trigger)
+    })
+    await waitFor(() => expect(readout()).toBe('最后一次 detail.open = false'))
+  })
+
+  it('tooltip 延迟示例：0 延迟即时开合，禁用提示不出现也不派发', async () => {
+    const { container } = render(<ExampleDoc component="tooltip" />)
+    await mountDemos(container, docOf('tooltip'), 'web-ui-tooltip')
+
+    const preview = previewOf(container, '延迟')
+    const readout = readoutOf(preview)
+    const [instant, locked] = [...preview.querySelectorAll<WebUiTooltip>('web-ui-tooltip')]
+    if (!instant || !locked) throw new Error('延迟示例没有渲染两个 tooltip')
+    expect([instant.showDelay, instant.hideDelay]).toEqual([0, 0])
+
+    const instantTrigger = instant.querySelector<HTMLElement>('web-ui-button')
+    if (!instantTrigger) throw new Error('即时提示的 tooltip 里没有 trigger 按钮')
+    await act(async () => {
+      await userEvent.hover(instantTrigger)
+    })
+    await waitFor(() => expect(instant.open).toBe(true))
+    // readout 由 open-change handler 写入，晚于 open 翻转：跟着等，不等瞬时序。
+    await waitFor(() => expect(readout()).toBe('即时提示最近一次 detail.open = true · 禁用提示不派发'))
+
+    await act(async () => {
+      await userEvent.unhover(instantTrigger)
+    })
+    await waitFor(() => expect(instant.open).toBe(false))
+
+    // disabled 只关掉触发：不显示、也不派发，所以读数停在上一次。
+    expect(locked.disabled).toBe(true)
+    const lockedTrigger = locked.querySelector<HTMLElement>('web-ui-button')
+    if (!lockedTrigger) throw new Error('禁用提示的 tooltip 里没有 trigger 按钮')
+    await act(async () => {
+      await userEvent.hover(lockedTrigger)
+    })
+    await waitFor(() =>
+      expect([locked.open, readout()]).toEqual([false, '即时提示最近一次 detail.open = false · 禁用提示不派发'])
+    )
+  })
+
+  it('popover 基础示例：点 trigger 开合，内容真的落进 panel 的 slot', async () => {
+    const { container } = render(<ExampleDoc component="popover" />)
+    await mountDemos(container, docOf('popover'), 'web-ui-popover')
+
+    const preview = previewOf(container, '基础')
+    const readout = readoutOf(preview)
+    const host = hostIn<WebUiPopover>(container, '基础', popoverHost)
+    expect([host.open, readout()]).toEqual([false, 'open-change：0 次 · 最后一次 detail.open = —'])
+
+    await act(async () => shadowButton(preview, '显示详情').click())
+    await waitFor(() =>
+      expect([host.open, readout()]).toEqual([true, 'open-change：1 次 · 最后一次 detail.open = true'])
+    )
+    // 默认插槽里的节点留在宿主 light DOM，靠 panel 的 <slot> 显示：assignedNodes 关闭态也成立，所以和 open 一起等。
+    await waitFor(() =>
+      expect(
+        host.open &&
+          popoverPanelOf(preview)
+            .querySelector<HTMLSlotElement>('slot:not([name])')
+            ?.assignedNodes()
+            .some(node => node.textContent?.includes('发布详情'))
+      ).toBe(true)
+    )
+
+    await act(async () => shadowButton(preview, '显示详情').click())
+    await waitFor(() =>
+      expect([host.open, readout()]).toEqual([false, 'open-change：2 次 · 最后一次 detail.open = false'])
+    )
+  })
+
+  it('popover hover 示例：进与出各等 100ms，读数只跟随用户来源', async () => {
+    const { container } = render(<ExampleDoc component="popover" />)
+    await mountDemos(container, docOf('popover'), 'web-ui-popover')
+
+    const preview = previewOf(container, 'Hover 触发')
+    const readout = readoutOf(preview)
+    const host = hostIn<WebUiPopover>(container, 'Hover 触发', popoverHost)
+    expect(host.trigger).toBe('hover')
+    const trigger = buttonOf(preview, '悬停我')
+
+    await act(async () => {
+      await userEvent.hover(trigger)
+    })
+    await waitFor(() => expect([host.open, readout()]).toEqual([true, '最后一次 detail.open = true']))
+
+    // 这个模式下 click 不参与开合：点已经开着的 trigger 也不会收掉 panel。
+    await act(async () => {
+      await userEvent.click(trigger)
+    })
+    expect([host.open, readout()]).toEqual([true, '最后一次 detail.open = true'])
+
+    await act(async () => {
+      await userEvent.unhover(trigger)
+    })
+    await waitFor(() => expect([host.open, readout()]).toEqual([false, '最后一次 detail.open = false']))
+  })
+
+  it('popover 受控示例：show()/close() 不派发，trigger 点击派发并由页面回写', async () => {
+    const { container } = render(<ExampleDoc component="popover" />)
+    await mountDemos(container, docOf('popover'), 'web-ui-popover')
+
+    const preview = previewOf(container, '受控开合')
+    const readout = readoutOf(preview)
+    const host = hostIn<WebUiPopover>(container, '受控开合', popoverHost)
+    expect([host.open, host.trigger, readout()]).toEqual([false, 'manual', 'open = false'])
+
+    await act(async () => shadowButton(preview, 'show()').click())
+    await waitFor(() => expect([host.open, readout()]).toEqual([true, 'open = true']))
+
+    // manual 的 panel 被 setInert：Escape 被吞掉，既不关闭也不派发。
+    await act(async () => {
+      await userEvent.keyboard('{Escape}')
+    })
+    expect([host.open, readout()]).toEqual([true, 'open = true'])
+
+    await act(async () => shadowButton(preview, 'close()').click())
+    await waitFor(() => expect([host.open, readout()]).toEqual([false, 'open = false']))
+
+    // 点 trigger 是用户来源：组件切换后派发 open-change，页面把 detail.open 写回同一份状态。
+    await act(async () => shadowButton(preview, '手动开合').click())
+    await waitFor(() => expect([host.open, readout()]).toEqual([true, 'open = true']))
+    await act(async () => shadowButton(preview, '手动开合').click())
+    await waitFor(() => expect([host.open, readout()]).toEqual([false, 'open = false']))
+  })
+
+  it('context-menu 基础示例：右键打开，激活一项关掉并回报', async () => {
+    const { container } = render(<ExampleDoc component="context-menu" />)
+    await mountDemos(container, docOf('context-menu'), 'web-ui-context-menu')
+
+    const preview = previewOf(container, '基础')
+    const readout = readoutOf(preview)
+    const host = hostIn<WebUiContextMenu>(container, '基础', contextMenuHost)
+    expect([host.isOpen, readout()]).toEqual([false, 'open-change：0 次 · 最后一次 detail.open = —'])
+
+    await rightClick(host)
+    await waitFor(() =>
+      expect([host.isOpen, readout()]).toEqual([true, 'open-change：1 次 · 最后一次 detail.open = true'])
+    )
+
+    // item 是打开之后才迁进 panel 的：等 panel 带着这一项出现再点。
+    const panel = await waitFor(() => openMenuPanelWith('粘贴'))
+    expect(menuItemOf(panel, '删除').disabled).toBe(true)
+    await act(async () => menuItemOf(panel, '复制').click())
+    await waitFor(() =>
+      expect([host.isOpen, readout()]).toEqual([false, 'open-change：2 次 · 最后一次 detail.open = false'])
+    )
+    // 关掉后 item 迁回宿主。
+    await waitFor(() => expect(host.querySelectorAll('web-ui-dropdown-item').length).toBe(3))
+  })
+
+  it('context-menu 禁用示例：右键不打开也不计数，重新启用后照常', async () => {
+    const { container } = render(<ExampleDoc component="context-menu" />)
+    await mountDemos(container, docOf('context-menu'), 'web-ui-context-menu')
+
+    const preview = previewOf(container, '禁用')
+    const readout = readoutOf(preview)
+    const host = hostIn<WebUiContextMenu>(container, '禁用', contextMenuHost)
+
+    await act(async () => shadowButton(preview, '禁用 menu').click())
+    await rightClick(host)
+    expect([host.isOpen, readout()]).toEqual([false, 'disabled = true · open-change：0 次 · 最后一次 detail.open = —'])
+
+    await act(async () => shadowButton(preview, '启用 menu').click())
+    await rightClick(host)
+    await waitFor(() =>
+      expect([host.isOpen, readout()]).toEqual([
+        true,
+        'disabled = false · open-change：1 次 · 最后一次 detail.open = true'
+      ])
+    )
+
+    await act(async () => {
+      await userEvent.keyboard('{Escape}')
+    })
+    await waitFor(() => expect(host.isOpen).toBe(false))
+  })
+
+  it('dialog 基础示例：程序式打开与 footer 都不派发，Escape 把结果交回来', async () => {
+    const { container } = render(<ExampleDoc component="dialog" />)
+    await mountDemos(container, docOf('dialog'), 'web-ui-dialog')
+
+    const preview = previewOf(container, '基础')
+    const readout = readoutOf(preview)
+    const host = hostIn<WebUiDialog>(container, '基础', dialogHost)
+    const native = () => host.shadowRoot?.querySelector('dialog')
+    expect([host.open, native()?.hasAttribute('open'), readout()]).toEqual([
+      false,
+      false,
+      'open-change：0 次 · 最后一次 detail.open = —'
+    ])
+
+    // 页面把 open 置真：这条路径不派发事件，读数停在 0 次。
+    await act(async () => shadowButton(preview, '打开 dialog').click())
+    await waitFor(() => expect(host.open).toBe(true))
+    expect(readout()).toBe('open-change：0 次 · 最后一次 detail.open = —')
+    expect(host.shadowRoot?.querySelector('.wui-dialog-heading')?.textContent).toBe('确认操作')
+
+    // footer 里的按钮也是页面直接改状态。
+    await act(async () => shadowButton(preview, '取消').click())
+    await waitFor(() => expect(host.open).toBe(false))
+    expect(readout()).toBe('open-change：0 次 · 最后一次 detail.open = —')
+
+    await act(async () => shadowButton(preview, '打开 dialog').click())
+    await waitFor(() => expect(host.open).toBe(true))
+    await act(async () => {
+      await userEvent.keyboard('{Escape}')
+    })
+    await waitFor(() =>
+      expect([host.open, readout()]).toEqual([false, 'open-change：1 次 · 最后一次 detail.open = false'])
+    )
+  })
+
+  it('dialog 受控关闭示例：Escape 只请求关闭，页面不回写就保持打开', async () => {
+    const { container } = render(<ExampleDoc component="dialog" />)
+    await mountDemos(container, docOf('dialog'), 'web-ui-dialog')
+
+    const preview = previewOf(container, '受控关闭')
+    const host = hostIn<WebUiDialog>(container, '受控关闭', dialogHost)
+    // 这条示例的读数在 dialog 内部：拦截次数由页面自己累加。
+    const readout = readoutOf(preview)
+    expect(readout()).toBe('已拦截关闭请求 · 0 次')
+
+    await act(async () => shadowButton(preview, '打开 dialog').click())
+    await waitFor(() => expect(host.open).toBe(true))
+
+    await act(async () => {
+      await userEvent.keyboard('{Escape}')
+    })
+    await waitFor(() => expect(readout()).toBe('已拦截关闭请求 · 1 次'))
+    expect(host.open).toBe(true)
+
+    await act(async () => {
+      await userEvent.keyboard('{Escape}')
+    })
+    await waitFor(() => expect(readout()).toBe('已拦截关闭请求 · 2 次'))
+    expect(host.open).toBe(true)
+
+    // 「放弃更改」直接写 false：程序式关闭，controlled 不拦。
+    await act(async () => shadowButton(preview, '放弃更改').click())
+    await waitFor(() => expect(host.open).toBe(false))
+  })
+
+  it('dialog headless 示例：内置 header 与 footer 一概不渲染，默认插槽自己铺内容', async () => {
+    const { container } = render(<ExampleDoc component="dialog" />)
+    await mountDemos(container, docOf('dialog'), 'web-ui-dialog')
+
+    const preview = previewOf(container, 'Headless')
+    const readout = readoutOf(preview)
+    const host = hostIn<WebUiDialog>(container, 'Headless', dialogHost)
+    const shadow = host.shadowRoot
+    if (!shadow) throw new Error('headless dialog 没有影子树')
+    expect(host.headless).toBe(true)
+    expect(shadow.querySelector('.header')).toBeNull()
+    expect(shadow.querySelector('.wui-dialog-footer')).toBeNull()
+    expect(shadow.querySelector('dialog')?.getAttribute('aria-label')).toBe('图片详情')
+    expect(readout()).toBe('headless dialog：已关闭')
+
+    await act(async () => shadowButton(preview, '打开图片详情').click())
+    await waitFor(() => expect([host.open, readout()]).toEqual([true, 'headless dialog：已打开']))
+    expect(shadow.querySelector('.wui-dialog-content')).not.toBeNull()
+    // 默认插槽内容是宿主 light DOM：量 host.textContent 才证明落在 dialog 里，preview 全文谁都能命中。
+    expect(host.textContent).toContain('山间清晨')
+
+    await act(async () => shadowButton(preview, '完成').click())
+    await waitFor(() => expect([host.open, readout()]).toEqual([false, 'headless dialog：已关闭']))
+  })
+
+  it('toast 快捷方法示例：四条各建一条，正文与类型都落进影子树', async () => {
+    const { container } = render(<ExampleDoc component="toast" />)
+    await mountDemos(container, docOf('toast'), 'web-ui-toast')
+
+    await demoSettled(container, '快捷方法')
+    const preview = previewOf(container, '快捷方法')
+    const readout = readoutOf(preview)
+    await overlayCleared()
+
+    for (const label of ['success', 'info', 'warning', 'error']) {
+      await act(async () => shadowButton(preview, label).click())
+    }
+    // 影子树首帧是异步的：连正文一起等到渲染完再比。
+    await waitFor(() => expect(toastElements().map(toastMessage)).toEqual(['操作成功', '提示信息', '请注意', '出错了']))
+    expect(toastElements()).toHaveLength(4)
+    expect(readout()).toMatch(/^最近创建的 id：toast-\d+$/)
+    // error 走 role="alert"，其余交给容器 role="log" 的 polite 播报。
+    expect(toastElements()[3]?.shadowRoot?.querySelector('[role="alert"]')).not.toBeNull()
+    expect(toastElements()[1]?.shadowRoot?.querySelector('[role="alert"]')).toBeNull()
+  })
+
+  it('toast 完整 option 示例：heading 与 position 落到那一条 toast 上', async () => {
+    const { container } = render(<ExampleDoc component="toast" />)
+    await mountDemos(container, docOf('toast'), 'web-ui-toast')
+
+    await demoSettled(container, '完整 option')
+    const preview = previewOf(container, '完整 option')
+    const readout = readoutOf(preview)
+    await overlayCleared()
+    await act(async () => shadowButton(preview, '创建完整 option 的 toast').click())
+    await waitFor(() => expect(toastElements().map(toastMessage)).toEqual(['更改已写入云端']))
+
+    const item = toastElements()[0]
+    if (!item) throw new Error('完整 option 示例没有建出 toast')
+    expect(item.shadowRoot?.querySelector('.toast-heading')?.textContent).toBe('已保存')
+    expect(item.parentElement?.className).toContain('wui-toast-bottom-right')
+    expect(readout()).toMatch(/^id：toast-\d+ · 位置：bottom-right · 4 秒后自动关闭$/)
+  })
+
+  it('toast 合并同一条示例：同 id 原地替换，不追加第二条', async () => {
+    const { container } = render(<ExampleDoc component="toast" />)
+    await mountDemos(container, docOf('toast'), 'web-ui-toast')
+
+    await demoSettled(container, '合并同一条')
+    const preview = previewOf(container, '合并同一条')
+    const readout = readoutOf(preview)
+
+    await overlayCleared()
+    await act(async () => shadowButton(preview, '开始上传').click())
+    await waitFor(() => expect(toastElements().map(toastMessage)).toEqual(['上传中 0%']))
+    expect(readout()).toBe('id：demo-upload · 当前：0%')
+
+    await act(async () => shadowButton(preview, '进度 60%').click())
+    await waitFor(() => expect(toastElements().map(toastMessage)).toEqual(['上传中 60%']))
+    expect(toastElements()).toHaveLength(1)
+
+    await act(async () => shadowButton(preview, '完成').click())
+    await waitFor(() => expect(toastElements().map(toastMessage)).toEqual(['上传完成']))
+    expect(toastElements()[0]?.shadowRoot?.querySelector('.toast.success')).not.toBeNull()
+    expect(readout()).toBe('id：demo-upload · 当前：完成')
+  })
+
+  it('toast 关闭示例：close(id) 收走那一条，clear() 收走全部', async () => {
+    const { container } = render(<ExampleDoc component="toast" />)
+    await mountDemos(container, docOf('toast'), 'web-ui-toast')
+
+    await demoSettled(container, '关闭')
+    const preview = previewOf(container, '关闭')
+    const readout = readoutOf(preview)
+
+    await overlayCleared()
+    await act(async () => shadowButton(preview, '创建一条').click())
+    await waitFor(() => expect(toastElements()).toHaveLength(1))
+    expect(toastElements()[0]?.shadowRoot?.querySelector('.toast-message')?.textContent).toBe('这条 toast 不会自动关闭')
+
+    await act(async () => shadowButton(preview, '关闭这一条').click())
+    await waitFor(() => expect(toastElements()).toHaveLength(0))
+    expect(readout()).toBe('最近操作：toast.close(demo-close)')
+
+    await act(async () => shadowButton(preview, '创建一条').click())
+    await waitFor(() => expect(toastElements()).toHaveLength(1))
+    await act(async () => shadowButton(preview, '清空全部').click())
+    await waitFor(() => expect(toastElements()).toHaveLength(0))
+    expect(readout()).toBe('最近操作：toast.clear()')
+
+    // 挂载排在微任务里：同一 tick 内先建再 clear()，等过一整个宏任务周期也不该冒出那条 toast。
+    await act(async () => {
+      shadowButton(preview, '创建一条').click()
+      shadowButton(preview, '清空全部').click()
+      await new Promise(resolve => setTimeout(resolve, 0))
+    })
+    expect(toastElements()).toHaveLength(0)
+    expect(readout()).toBe('最近操作：toast.clear()')
+  })
+
+  it('back-top 容器示例：scrollTarget 赋值后切到容器模式，过阈值才出现', async () => {
+    const { container } = render(<ExampleDoc component="back-top" />)
+    await mountDemos(container, docOf('back-top'), 'web-ui-back-top')
+
+    const host = hostIn<WebUiBackTop>(container, '自定义滚动容器', backTopHost)
+    const box = host.parentElement
+    if (!box) throw new Error('back-top 没有放在滚动容器内部')
+    // scrollTarget 是 element property，只能挂载后赋值：demo 的 useEffect 交完容器组件才切模式。
+    await waitFor(() => expect(host.scrollTarget).toBe(box))
+    expect(host.hasAttribute('container-mode')).toBe(true)
+    expect([host.threshold, host.visible]).toEqual([100, false])
+
+    await scrollBox(box, 150)
+    await waitFor(() => expect(host.visible).toBe(true))
+    await scrollBox(box, 0)
+    await waitFor(() => expect(host.visible).toBe(false))
+  })
+
+  it('back-top 自定义内容示例：default slot 顶掉默认内容，出现时机仍由阈值决定', async () => {
+    const { container } = render(<ExampleDoc component="back-top" />)
+    await mountDemos(container, docOf('back-top'), 'web-ui-back-top')
+
+    const preview = previewOf(container, '自定义内容')
+    const host = hostIn<WebUiBackTop>(container, '自定义内容', backTopHost)
+    const box = host.parentElement
+    if (!box) throw new Error('自定义内容示例的 back-top 没有放在滚动容器内部')
+    const slotted = buttonOf(preview, '回到顶部')
+    expect(slotted.closest('web-ui-back-top')).toBe(host)
+    expect(getComputedStyle(slotted).visibility).toBe('hidden')
+
+    await scrollBox(box, 150)
+    await waitFor(() => expect(host.visible).toBe(true))
+    expect(getComputedStyle(slotted).visibility).toBe('visible')
+
+    // 交互语义仍由组件提供：点 slot 里的 button 也走同一条 toTop()。
+    await act(async () => slotted.click())
+    await waitFor(() => expect(box.scrollTop).toBe(0))
+  })
+
+  it('back-top 立即回到顶部示例：scroll-behavior=auto 的点击不播动画', async () => {
+    const { container } = render(<ExampleDoc component="back-top" />)
+    await mountDemos(container, docOf('back-top'), 'web-ui-back-top')
+
+    const host = hostIn<WebUiBackTop>(container, '立即回到顶部', backTopHost)
+    const box = host.parentElement
+    if (!box) throw new Error('立即回到顶部示例的 back-top 没有放在滚动容器内部')
+    expect(host.scrollBehavior).toBe('auto')
+
+    await scrollBox(box, 150)
+    await waitFor(() => expect(host.visible).toBe(true))
+
+    const inner = host.shadowRoot?.querySelector<HTMLElement>('[role="button"]')
+    if (!inner) throw new Error('back-top 的影子树里没有 role="button"')
+    await act(async () => inner.click())
+    expect(box.scrollTop).toBe(0)
+
+    // 键盘同理：Enter 与 Space 都走 toTop()。
+    await scrollBox(box, 150)
+    await waitFor(() => expect(host.visible).toBe(true))
+    await act(async () => {
+      inner.dispatchEvent(new KeyboardEvent('keydown', { key: ' ', bubbles: true, cancelable: true }))
+    })
+    expect(box.scrollTop).toBe(0)
+  })
+
+  it('image-preview 基础示例：命令式打开挂到 overlay root，Escape 退场后宿主移除', async () => {
+    const { container } = render(<ExampleDoc component="image-preview" />)
+    await mountDemos(container, docOf('image-preview'), 'web-ui-image-preview')
+
+    await demoSettled(container, '基础')
+    const preview = previewOf(container, '基础')
+    await overlayCleared()
+
+    await act(async () => shadowButton(preview, '打开预览').click())
+    // appendChild 一发生 length 就到 1：等首帧证据 dialog.open，shadow 内容渲染完，后面的 null 断言才可信。
+    await waitFor(() => expect(imagePreviewElements()[0]?.shadowRoot?.querySelector('dialog')?.open).toBe(true))
+    const host = imagePreviewElements()[0]
+    if (!host) throw new Error('预览宿主没有挂进 overlay')
+    // 只传 images：四个展示类 option 保持默认关闭，画面上没有控件。
+    expect(host.shadowRoot?.querySelector('.wui-image-preview-counter')).toBeNull()
+    expect(host.shadowRoot?.querySelector('.wui-image-preview-close')).toBeNull()
+
+    await act(async () => {
+      await userEvent.keyboard('{Escape}')
+    })
+    await waitFor(() => expect(imagePreviewElements()).toHaveLength(0))
+  })
+
+  it('image-preview 展示类 option 与 handle 读数：控件齐、跳图后再放大', async () => {
+    const { container } = render(<ExampleDoc component="image-preview" />)
+    await mountDemos(container, docOf('image-preview'), 'web-ui-image-preview')
+
+    await demoSettled(container, '展示类 option')
+    const display = previewOf(container, '展示类 option')
+    await overlayCleared()
+    await act(async () => shadowButton(display, '打开预览（全部控件）').click())
+    // appendChild 一发生 length 就到 1：直接等首帧证据 counter 文本，shadow 内容渲染完再断其余控件。
+    await waitFor(() =>
+      expect(imagePreviewElements()[0]?.shadowRoot?.querySelector('.wui-image-preview-counter')?.textContent).toBe(
+        '1 / 3'
+      )
+    )
+    const all = imagePreviewElements()[0]
+    if (!all) throw new Error('全部控件示例没有挂出预览宿主')
+    expect(all.shadowRoot?.querySelectorAll('.wui-image-preview-nav')).toHaveLength(2)
+    expect(all.shadowRoot?.querySelector('.wui-image-preview-toolbar')).not.toBeNull()
+
+    const close = all.shadowRoot?.querySelector<HTMLElement>('.wui-image-preview-close')
+    if (!close) throw new Error('closable 没有渲染关闭 button')
+    await act(async () => close.click())
+    await waitFor(() => expect(imagePreviewElements()).toHaveLength(0))
+
+    // handle：先 goTo 再 zoomIn（切图会把缩放复位到 1x），读数同步拿到新值。
+    await demoSettled(container, 'handle')
+    const handle = previewOf(container, 'handle')
+    const readout = readoutOf(handle)
+    expect(readout()).toBe('尚未打开')
+    await act(async () => shadowButton(handle, '打开并跳到第 2 张').click())
+    await waitFor(() => expect(readout()).toBe('第 2 张 · 缩放 150%'))
+    const opened = imagePreviewElements()[0]
+    if (!opened) throw new Error('handle 示例没有挂出预览宿主')
+    await waitFor(() => expect(opened.shadowRoot?.querySelector('.wui-image-preview-scale')?.textContent).toBe('150%'))
+
+    await act(async () => {
+      await userEvent.keyboard('{Escape}')
+    })
+    await waitFor(() => expect(readout()).toBe('预览已关闭'))
   })
 })

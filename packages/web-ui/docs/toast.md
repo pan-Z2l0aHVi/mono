@@ -7,105 +7,305 @@ tag: web-ui-toast
 
 ## 示例
 
-### 快捷方法
+### 快捷方法 {#shortcuts}
 
-`toast.success` / `info` / `warning` / `error` 是四种类型的常用写法，`error` 的默认时长比其余更长。
+`toast.success` / `info` / `warning` / `error` 是 `toast()` 加 `type` 的快捷写法，每次调用返回这条 toast 的最终 id；`error` 的默认时长是 `5000`，比其余类型的 `3000` 长。四条都落在默认的 `top-right`。示例卸载时 `toast.clear()`，避免留下的 toast 影响页面上其他示例。
 
 ```tsx
 import { toast } from '@greypan/web-ui'
+import { useEffect, useState } from 'react'
 
-toast.success('操作成功')
-toast.info('提示信息')
-toast.warning('请注意')
-toast.error('出错了', { duration: 5000 })
+export default function Demo() {
+  const [last, setLast] = useState('—')
+
+  useEffect(() => () => toast.clear(), [])
+
+  return (
+    <div className="flex flex-col items-start gap-3">
+      <div className="flex flex-wrap gap-2">
+        <web-ui-button onClick={() => setLast(toast.success('操作成功'))}>success</web-ui-button>
+        <web-ui-button onClick={() => setLast(toast.info('提示信息'))}>info</web-ui-button>
+        <web-ui-button onClick={() => setLast(toast.warning('请注意'))}>warning</web-ui-button>
+        <web-ui-button onClick={() => setLast(toast.error('出错了'))}>error</web-ui-button>
+      </div>
+      <output className="text-sm text-(--wui-color-text-secondary)">最近创建的 id：{last}</output>
+    </div>
+  )
+}
 ```
 
 ```vue
+<template>
+  <div class="flex flex-col items-start gap-3">
+    <div class="flex flex-wrap gap-2">
+      <web-ui-button @click="showSuccess">success</web-ui-button>
+      <web-ui-button @click="showInfo">info</web-ui-button>
+      <web-ui-button @click="showWarning">warning</web-ui-button>
+      <web-ui-button @click="showError">error</web-ui-button>
+    </div>
+    <output class="text-sm text-(--wui-color-text-secondary)">最近创建的 id：{{ last }}</output>
+  </div>
+</template>
+
 <script setup lang="ts">
 import { toast } from '@greypan/web-ui'
+import { onBeforeUnmount, ref } from 'vue'
 
-toast.success('操作成功')
-toast.error('出错了', { duration: 5000 })
+const last = ref('—')
+
+function showSuccess() {
+  last.value = toast.success('操作成功')
+}
+
+function showInfo() {
+  last.value = toast.info('提示信息')
+}
+
+function showWarning() {
+  last.value = toast.warning('请注意')
+}
+
+function showError() {
+  last.value = toast.error('出错了')
+}
+
+onBeforeUnmount(() => toast.clear())
 </script>
 ```
 
-### 完整 option
+### 完整 option {#options}
 
-`toast()` 接受完整 option：`heading` 是粗体标题，`position` 决定落点，`duration` 为 0 表示不自动关闭。
+`toast()` 接受完整 option：`heading` 是粗体标题，`message` 是正文，`position` 决定落进哪个角的容器（这里是 `bottom-right`），`duration` 是自动关闭的毫秒数，`closable` 控制是否渲染关闭 button。返回的 id 写进读数。
 
 ```tsx
 import { toast } from '@greypan/web-ui'
+import { useEffect, useState } from 'react'
 
-const id = toast({
-  heading: '已保存',
-  message: '更改已写入云端',
-  type: 'info',
-  position: 'bottom-right',
-  duration: 4000,
-  closable: true
-})
+export default function Demo() {
+  const [id, setId] = useState('—')
+
+  useEffect(() => () => toast.clear(), [])
+
+  return (
+    <div className="flex flex-col items-start gap-3">
+      <web-ui-button
+        onClick={() => {
+          setId(
+            toast({
+              heading: '已保存',
+              message: '更改已写入云端',
+              type: 'info',
+              position: 'bottom-right',
+              duration: 4000,
+              closable: true
+            })
+          )
+        }}
+      >
+        创建完整 option 的 toast
+      </web-ui-button>
+      <output className="text-sm text-(--wui-color-text-secondary)">
+        id：{id} · 位置：bottom-right · 4 秒后自动关闭
+      </output>
+    </div>
+  )
+}
 ```
 
 ```vue
+<template>
+  <div class="flex flex-col items-start gap-3">
+    <web-ui-button @click="notify">创建完整 option 的 toast</web-ui-button>
+    <output class="text-sm text-(--wui-color-text-secondary)">
+      id：{{ id }} · 位置：bottom-right · 4 秒后自动关闭
+    </output>
+  </div>
+</template>
+
 <script setup lang="ts">
 import { toast } from '@greypan/web-ui'
+import { onBeforeUnmount, ref } from 'vue'
+
+const id = ref('—')
 
 function notify() {
-  return toast({
+  id.value = toast({
     heading: '已保存',
     message: '更改已写入云端',
     type: 'info',
-    position: 'bottom-right'
+    position: 'bottom-right',
+    duration: 4000,
+    closable: true
   })
 }
+
+onBeforeUnmount(() => toast.clear())
 </script>
 ```
 
-### 合并同一条
+### 合并同一条 {#upsert}
 
-给同一个 `id` 再次调用即更新它，适合进度或重试这类连续状态；`duration` 只有显式传入才重启倒计时。
+同一个 `id` 的后续调用更新那一条，不会新增。第一步显式传 `duration: 0`，不自动关闭；后两步不传 `duration`，倒计时保持不动；最后一步显式传 `3000` 才重新开始计时。
 
 ```tsx
 import { toast } from '@greypan/web-ui'
+import { useEffect, useState } from 'react'
 
-toast.info('上传中 0%', { id: 'upload', duration: 0 })
-toast.info('上传中 60%', { id: 'upload' })
-toast.success('上传完成', { id: 'upload', duration: 3000 })
-```
+const UPLOAD_ID = 'demo-upload'
 
-```vue
-<script setup lang="ts">
-import { toast } from '@greypan/web-ui'
+export default function Demo() {
+  const [step, setStep] = useState('尚未开始')
 
-function upload() {
-  toast.info('上传中 0%', { id: 'upload', duration: 0 })
-  toast.info('上传中 60%', { id: 'upload' })
-  toast.success('上传完成', { id: 'upload', duration: 3000 })
+  useEffect(() => () => toast.clear(), [])
+
+  function start() {
+    setStep('0%')
+    toast.info('上传中 0%', { id: UPLOAD_ID, duration: 0 })
+  }
+
+  function progress() {
+    setStep('60%')
+    toast.info('上传中 60%', { id: UPLOAD_ID })
+  }
+
+  function finish() {
+    setStep('完成')
+    toast.success('上传完成', { id: UPLOAD_ID, duration: 3000 })
+  }
+
+  return (
+    <div className="flex flex-col items-start gap-3">
+      <div className="flex flex-wrap gap-2">
+        <web-ui-button onClick={start}>开始上传</web-ui-button>
+        <web-ui-button onClick={progress}>进度 60%</web-ui-button>
+        <web-ui-button onClick={finish}>完成</web-ui-button>
+      </div>
+      <output className="text-sm text-(--wui-color-text-secondary)">
+        id：{UPLOAD_ID} · 当前：{step}
+      </output>
+    </div>
+  )
 }
-</script>
-```
-
-### 关闭
-
-每次调用都返回这条 toast 的最终 id；`toast.close(id)` 关掉单条，`toast.clear()` 一次收走全部。
-
-```tsx
-import { toast } from '@greypan/web-ui'
-
-const id = toast.info('提示信息')
-toast.close(id)
-toast.clear()
 ```
 
 ```vue
+<template>
+  <div class="flex flex-col items-start gap-3">
+    <div class="flex flex-wrap gap-2">
+      <web-ui-button @click="start">开始上传</web-ui-button>
+      <web-ui-button @click="progress">进度 60%</web-ui-button>
+      <web-ui-button @click="finish">完成</web-ui-button>
+    </div>
+    <output class="text-sm text-(--wui-color-text-secondary)">id：{{ UPLOAD_ID }} · 当前：{{ step }}</output>
+  </div>
+</template>
+
 <script setup lang="ts">
 import { toast } from '@greypan/web-ui'
+import { onBeforeUnmount, ref } from 'vue'
 
-function dismiss() {
-  const id = toast.info('提示信息')
-  toast.close(id)
+const UPLOAD_ID = 'demo-upload'
+const step = ref('尚未开始')
+
+function start() {
+  step.value = '0%'
+  toast.info('上传中 0%', { id: UPLOAD_ID, duration: 0 })
+}
+
+function progress() {
+  step.value = '60%'
+  toast.info('上传中 60%', { id: UPLOAD_ID })
+}
+
+function finish() {
+  step.value = '完成'
+  toast.success('上传完成', { id: UPLOAD_ID, duration: 3000 })
+}
+
+onBeforeUnmount(() => toast.clear())
+</script>
+```
+
+### 关闭 {#close}
+
+每次调用都返回最终 id；`toast.close(id)` 关掉指定的一条，`toast.clear()` 收走当前全部。这里先建一条 `duration: 0`、不会自动关闭的 toast，再分别用两种方式关闭，`<output>` 记录最后一次操作。
+
+```tsx
+import { toast } from '@greypan/web-ui'
+import { useEffect, useState } from 'react'
+
+const DEMO_ID = 'demo-close'
+
+export default function Demo() {
+  const [last, setLast] = useState('—')
+
+  useEffect(() => () => toast.clear(), [])
+
+  function create() {
+    setLast(`创建 ${toast.info('这条 toast 不会自动关闭', { id: DEMO_ID, duration: 0 })}`)
+  }
+
+  function closeOne() {
+    toast.close(DEMO_ID)
+    setLast(`toast.close(${DEMO_ID})`)
+  }
+
+  function clearAll() {
+    toast.clear()
+    setLast('toast.clear()')
+  }
+
+  return (
+    <div className="flex flex-col items-start gap-3">
+      <div className="flex flex-wrap gap-2">
+        <web-ui-button onClick={create}>创建一条</web-ui-button>
+        <web-ui-button variant="secondary" onClick={closeOne}>
+          关闭这一条
+        </web-ui-button>
+        <web-ui-button variant="secondary" onClick={clearAll}>
+          清空全部
+        </web-ui-button>
+      </div>
+      <output className="text-sm text-(--wui-color-text-secondary)">最近操作：{last}</output>
+    </div>
+  )
+}
+```
+
+```vue
+<template>
+  <div class="flex flex-col items-start gap-3">
+    <div class="flex flex-wrap gap-2">
+      <web-ui-button @click="create">创建一条</web-ui-button>
+      <web-ui-button variant="secondary" @click="closeOne">关闭这一条</web-ui-button>
+      <web-ui-button variant="secondary" @click="clearAll">清空全部</web-ui-button>
+    </div>
+    <output class="text-sm text-(--wui-color-text-secondary)">最近操作：{{ last }}</output>
+  </div>
+</template>
+
+<script setup lang="ts">
+import { toast } from '@greypan/web-ui'
+import { onBeforeUnmount, ref } from 'vue'
+
+const DEMO_ID = 'demo-close'
+const last = ref('—')
+
+function create() {
+  last.value = `创建 ${toast.info('这条 toast 不会自动关闭', { id: DEMO_ID, duration: 0 })}`
+}
+
+function closeOne() {
+  toast.close(DEMO_ID)
+  last.value = `toast.close(${DEMO_ID})`
+}
+
+function clearAll() {
   toast.clear()
+  last.value = 'toast.clear()'
 }
+
+onBeforeUnmount(() => toast.clear())
 </script>
 ```
 

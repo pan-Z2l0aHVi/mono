@@ -3,113 +3,186 @@ component: image-preview
 tag: web-ui-image-preview
 ---
 
-命令式 image preview：通过 `imagePreview()` 打开，用返回的 handle 控制；内部使用原生 `<dialog>`，默认挂载到最近的 theme-owned overlay root。下面的表分别列 `imagePreview()` 的 option 与返回 handle 的成员。
+命令式 image preview：通过 `imagePreview()` 打开，用返回的 handle 控制；内部使用原生 `<dialog>`，不传 `container` 时挂到根主题（`web-ui-theme`）的 overlay root，页面里没有主题作用域时回退到全局 fallback root——传 `target` 则改为解析它最近的 theme 作用域。下面的表分别列 `imagePreview()` 的 option 与返回 handle 的成员。
 
 ## 示例
 
-### 基础
+### 基础 {#basic}
 
-只传图片时只渲染图片本身，点击图片外空白或按 Escape 关闭。
+`imagePreview()` 一调用就把宿主挂到根主题（或 `container` 指定）的 overlay root 上并立即打开，同时返回 handle。只传 `images` 时四个展示类 option 保持默认关闭，画面上只有图片本身——方向键切图、滚轮与 `+` / `-` 缩放、`0` 重置、双击在 1x 与 2x 之间切换都照常可用。点击图片以外的空白处或按 Escape 关闭：关闭请求先播退场过渡，宿主移除后 handle 的 `closed` 才兑现。
 
 ```tsx
 import { imagePreview } from '@greypan/web-ui'
 
-const preview = imagePreview({
-  images: [
-    { src: '/photos/a.jpg', alt: '图 A' },
-    { src: '/photos/b.jpg', alt: '图 B' }
-  ]
-})
+const gradientImage = (label: string, from: string, to: string) =>
+  `data:image/svg+xml,${encodeURIComponent(
+    `<svg xmlns="http://www.w3.org/2000/svg" width="960" height="640"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop stop-color="${from}"/><stop offset="1" stop-color="${to}"/></linearGradient></defs><rect width="960" height="640" fill="url(#g)"/><text x="480" y="336" fill="#fff" font-family="sans-serif" font-size="64" text-anchor="middle">${label}</text></svg>`
+  )}`
 
-preview.next()
-await preview.closed
+const IMAGES = [
+  { src: gradientImage('第一张', '#0a84ff', '#5e5ce6'), alt: '蓝色渐变的示例图' },
+  { src: gradientImage('第二张', '#ff375f', '#ff9f0a'), alt: '橙红渐变的示例图' },
+  { src: gradientImage('第三张', '#30d158', '#0a84ff'), alt: '青绿渐变的示例图' }
+]
+
+export default function Demo() {
+  return <web-ui-button onClick={() => imagePreview({ images: IMAGES })}>打开预览</web-ui-button>
+}
 ```
 
 ```vue
+<template>
+  <web-ui-button @click="open">打开预览</web-ui-button>
+</template>
+
 <script setup lang="ts">
 import { imagePreview } from '@greypan/web-ui'
+
+const gradientImage = (label: string, from: string, to: string) =>
+  `data:image/svg+xml,${encodeURIComponent(
+    `<svg xmlns="http://www.w3.org/2000/svg" width="960" height="640"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop stop-color="${from}"/><stop offset="1" stop-color="${to}"/></linearGradient></defs><rect width="960" height="640" fill="url(#g)"/><text x="480" y="336" fill="#fff" font-family="sans-serif" font-size="64" text-anchor="middle">${label}</text></svg>`
+  )}`
+
+const IMAGES = [
+  { src: gradientImage('第一张', '#0a84ff', '#5e5ce6'), alt: '蓝色渐变的示例图' },
+  { src: gradientImage('第二张', '#ff375f', '#ff9f0a'), alt: '橙红渐变的示例图' },
+  { src: gradientImage('第三张', '#30d158', '#0a84ff'), alt: '青绿渐变的示例图' }
+]
 
 function open() {
-  const preview = imagePreview({
-    images: [
-      { src: '/photos/a.jpg', alt: '图 A' },
-      { src: '/photos/b.jpg', alt: '图 B' }
-    ],
-    nav: true,
-    toolbar: true,
-    closable: true,
-    indicator: true
-  })
-  preview.next()
+  imagePreview({ images: IMAGES })
 }
 </script>
 ```
 
-### 展示类 option
+### 展示类 option {#display-options}
 
-`nav`、`toolbar`、`closable`、`indicator` 彼此独立且默认关闭，需要显式开启。
+`nav`、`toolbar`、`closable`、`indicator` 彼此独立、默认全关，四个都传 `true` 才会把上一张 / 下一张 button、缩放工具条、关闭 button 与「当前 / 总数」indicator 一起带出来。`nav` 只在图片多于一张时渲染；`loop` 默认 `true`，首尾环绕，所以这里的三张图可以一直朝同一个方向翻。
 
 ```tsx
-const preview = imagePreview({
-  images,
-  index: 0,
-  nav: true,
-  toolbar: true,
-  closable: true,
-  indicator: true
-})
+import { imagePreview } from '@greypan/web-ui'
+
+const gradientImage = (label: string, from: string, to: string) =>
+  `data:image/svg+xml,${encodeURIComponent(
+    `<svg xmlns="http://www.w3.org/2000/svg" width="960" height="640"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop stop-color="${from}"/><stop offset="1" stop-color="${to}"/></linearGradient></defs><rect width="960" height="640" fill="url(#g)"/><text x="480" y="336" fill="#fff" font-family="sans-serif" font-size="64" text-anchor="middle">${label}</text></svg>`
+  )}`
+
+const IMAGES = [
+  { src: gradientImage('第一张', '#0a84ff', '#5e5ce6'), alt: '蓝色渐变的示例图' },
+  { src: gradientImage('第二张', '#ff375f', '#ff9f0a'), alt: '橙红渐变的示例图' },
+  { src: gradientImage('第三张', '#30d158', '#0a84ff'), alt: '青绿渐变的示例图' }
+]
+
+export default function Demo() {
+  return (
+    <web-ui-button
+      onClick={() => imagePreview({ images: IMAGES, nav: true, toolbar: true, closable: true, indicator: true })}
+    >
+      打开预览（全部控件）
+    </web-ui-button>
+  )
+}
 ```
 
 ```vue
+<template>
+  <web-ui-button @click="open">打开预览（全部控件）</web-ui-button>
+</template>
+
 <script setup lang="ts">
 import { imagePreview } from '@greypan/web-ui'
 
-function openFull(images: { src: string; alt?: string }[]) {
-  return imagePreview({ images, nav: true, toolbar: true, closable: true, indicator: true })
+const gradientImage = (label: string, from: string, to: string) =>
+  `data:image/svg+xml,${encodeURIComponent(
+    `<svg xmlns="http://www.w3.org/2000/svg" width="960" height="640"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop stop-color="${from}"/><stop offset="1" stop-color="${to}"/></linearGradient></defs><rect width="960" height="640" fill="url(#g)"/><text x="480" y="336" fill="#fff" font-family="sans-serif" font-size="64" text-anchor="middle">${label}</text></svg>`
+  )}`
+
+const IMAGES = [
+  { src: gradientImage('第一张', '#0a84ff', '#5e5ce6'), alt: '蓝色渐变的示例图' },
+  { src: gradientImage('第二张', '#ff375f', '#ff9f0a'), alt: '橙红渐变的示例图' },
+  { src: gradientImage('第三张', '#30d158', '#0a84ff'), alt: '青绿渐变的示例图' }
+]
+
+function open() {
+  imagePreview({ images: IMAGES, nav: true, toolbar: true, closable: true, indicator: true })
 }
 </script>
 ```
 
-### 滑动与循环
+### handle {#handle}
 
-`swipe` 在 1x 倍率下允许左右滑动切图；`loop` 关闭时首尾钳制、边界方向回弹。
+handle 的 `index`、`scale`、`images`、`closed` 是只读成员，方法调用后同步读得到新值；预览内部的手势与键盘操作不会回调外部，需要时自己读。顺序上先 `goTo(1)` 再 `zoomIn()`：切图会把缩放复位到 1x，反过来写放大就丢了。示例把读数写进 `<output>`，`closed` 兑现后再改成「预览已关闭」。
 
 ```tsx
-const preview = imagePreview({ images, swipe: true, loop: false })
-```
-
-```vue
-<script setup lang="ts">
 import { imagePreview } from '@greypan/web-ui'
+import { useState } from 'react'
 
-function openBounded(images: { src: string; alt?: string }[]) {
-  return imagePreview({ images, swipe: true, loop: false })
+const gradientImage = (label: string, from: string, to: string) =>
+  `data:image/svg+xml,${encodeURIComponent(
+    `<svg xmlns="http://www.w3.org/2000/svg" width="960" height="640"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop stop-color="${from}"/><stop offset="1" stop-color="${to}"/></linearGradient></defs><rect width="960" height="640" fill="url(#g)"/><text x="480" y="336" fill="#fff" font-family="sans-serif" font-size="64" text-anchor="middle">${label}</text></svg>`
+  )}`
+
+const IMAGES = [
+  { src: gradientImage('第一张', '#0a84ff', '#5e5ce6'), alt: '蓝色渐变的示例图' },
+  { src: gradientImage('第二张', '#ff375f', '#ff9f0a'), alt: '橙红渐变的示例图' },
+  { src: gradientImage('第三张', '#30d158', '#0a84ff'), alt: '青绿渐变的示例图' }
+]
+
+export default function Demo() {
+  const [status, setStatus] = useState('尚未打开')
+
+  function open() {
+    const preview = imagePreview({ images: IMAGES, toolbar: true })
+    // 切图会把缩放复位到 1x，所以先 goTo 再 zoomIn。
+    preview.goTo(1)
+    preview.zoomIn()
+    setStatus(`第 ${preview.index + 1} 张 · 缩放 ${Math.round(preview.scale * 100)}%`)
+    void preview.closed.then(() => setStatus('预览已关闭'))
+  }
+
+  return (
+    <div className="flex flex-wrap items-center gap-3">
+      <web-ui-button onClick={open}>打开并跳到第 2 张</web-ui-button>
+      <output className="text-sm text-(--wui-color-text-secondary)">{status}</output>
+    </div>
+  )
 }
-</script>
-```
-
-### handle
-
-handle 暴露只读的 `index`、`scale`、`images`、`closed` 与下表的方法，可据此实现自己的 trigger 与状态 panel。
-
-```tsx
-const preview = imagePreview({ images })
-preview.goTo(2)
-preview.zoomIn()
-await preview.closed
-console.log(preview.index, preview.scale)
 ```
 
 ```vue
+<template>
+  <div class="flex flex-wrap items-center gap-3">
+    <web-ui-button @click="open">打开并跳到第 2 张</web-ui-button>
+    <output class="text-sm text-(--wui-color-text-secondary)">{{ status }}</output>
+  </div>
+</template>
+
 <script setup lang="ts">
 import { imagePreview } from '@greypan/web-ui'
+import { ref } from 'vue'
 
-async function inspect(images: { src: string; alt?: string }[]) {
-  const preview = imagePreview({ images })
-  preview.goTo(2)
+const gradientImage = (label: string, from: string, to: string) =>
+  `data:image/svg+xml,${encodeURIComponent(
+    `<svg xmlns="http://www.w3.org/2000/svg" width="960" height="640"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop stop-color="${from}"/><stop offset="1" stop-color="${to}"/></linearGradient></defs><rect width="960" height="640" fill="url(#g)"/><text x="480" y="336" fill="#fff" font-family="sans-serif" font-size="64" text-anchor="middle">${label}</text></svg>`
+  )}`
+
+const IMAGES = [
+  { src: gradientImage('第一张', '#0a84ff', '#5e5ce6'), alt: '蓝色渐变的示例图' },
+  { src: gradientImage('第二张', '#ff375f', '#ff9f0a'), alt: '橙红渐变的示例图' },
+  { src: gradientImage('第三张', '#30d158', '#0a84ff'), alt: '青绿渐变的示例图' }
+]
+
+const status = ref('尚未打开')
+
+function open() {
+  const preview = imagePreview({ images: IMAGES, toolbar: true })
+  // 切图会把缩放复位到 1x，所以先 goTo 再 zoomIn。
+  preview.goTo(1)
   preview.zoomIn()
-  await preview.closed
-  console.log(preview.index, preview.scale)
+  status.value = `第 ${preview.index + 1} 张 · 缩放 ${Math.round(preview.scale * 100)}%`
+  void preview.closed.then(() => {
+    status.value = '预览已关闭'
+  })
 }
 </script>
 ```
@@ -152,19 +225,18 @@ async function inspect(images: { src: string; alt?: string }[]) {
 ```ts
 import { imagePreview } from '@greypan/web-ui'
 
-const preview = imagePreview({
-  images: [{ src: '/a.jpg', alt: '图 A' }, { src: '/b.jpg' }],
-  index: 0,
-  nav: true,
-  toolbar: true,
-  closable: true,
-  indicator: true
-})
+function openPreview() {
+  const preview = imagePreview({
+    images: [{ src: '/a.jpg', alt: '图 A' }, { src: '/b.jpg' }],
+    nav: true,
+    toolbar: true,
+    closable: true,
+    indicator: true
+  })
 
-preview.next()
-preview.zoomIn()
-
-await preview.closed
+  preview.next()
+  preview.zoomIn()
+}
 ```
 
 `ImagePreviewItem` 为 `{ src: string; alt?: string }`；`alt` 缺省为空字符串。

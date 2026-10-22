@@ -7,76 +7,245 @@ tag: web-ui-context-menu
 
 ## 示例
 
-### 基础
+### 基础 {#basic}
 
-在触发区域内右键即可打开，menu 从鼠标位置展开。
+default slot 的第一个元素是触发区域，其余子元素是 menu item：在触发区内右键，menu 从光标位置展开。`prefix` / `suffix` 插槽放 icon 与快捷键提示，`disabled` 的项留在 menu 里但选不中。`open-change` 报告开合，`detail.open` 是当时状态；点空白、按 Escape 或激活某一项都会关掉 menu 并再报一次。下面那行读数是事件计数与最后一次 `detail.open`。
 
 ```tsx
-<web-ui-context-menu>
-  <div className="context-zone">在此区域右键点击</div>
-  <web-ui-dropdown-item>复制</web-ui-dropdown-item>
-  <web-ui-dropdown-item>粘贴</web-ui-dropdown-item>
-  <web-ui-dropdown-divider></web-ui-dropdown-divider>
-  <web-ui-dropdown-item disabled>删除</web-ui-dropdown-item>
-</web-ui-context-menu>
+import { lucideClipboardPaste, lucideCopy, lucideTrash2 } from '@greypan/web-ui/icons'
+import { useState } from 'react'
+
+export default function Demo() {
+  const [count, setCount] = useState(0)
+  const [last, setLast] = useState('—')
+
+  return (
+    <div className="flex w-full flex-col items-start gap-3">
+      <web-ui-context-menu
+        className="w-full"
+        onopen-change={event => {
+          setCount(value => value + 1)
+          setLast(event.detail.open ? 'true' : 'false')
+        }}
+      >
+        <div className="flex h-32 w-full items-center justify-center rounded-xl border border-dashed border-(--wui-color-border) bg-(--wui-color-surface-control) text-sm text-(--wui-color-text-secondary)">
+          在此区域右键点击
+        </div>
+        <web-ui-dropdown-item>
+          <web-ui-icon slot="prefix" size={14} icon={lucideCopy}></web-ui-icon>复制
+          <span slot="suffix" className="opacity-40">
+            ⌘C
+          </span>
+        </web-ui-dropdown-item>
+        <web-ui-dropdown-item>
+          <web-ui-icon slot="prefix" size={14} icon={lucideClipboardPaste}></web-ui-icon>粘贴
+          <span slot="suffix" className="opacity-40">
+            ⌘V
+          </span>
+        </web-ui-dropdown-item>
+        <web-ui-dropdown-divider></web-ui-dropdown-divider>
+        <web-ui-dropdown-item disabled>
+          <web-ui-icon slot="prefix" size={14} icon={lucideTrash2}></web-ui-icon>删除
+          <span slot="suffix" className="opacity-40">
+            ⌫
+          </span>
+        </web-ui-dropdown-item>
+      </web-ui-context-menu>
+      <output className="text-sm text-(--wui-color-text-secondary)">
+        open-change：{count} 次 · 最后一次 detail.open = {last}
+      </output>
+    </div>
+  )
+}
 ```
 
 ```vue
 <template>
-  <web-ui-context-menu>
-    <div class="context-zone">在此区域右键点击</div>
-    <web-ui-dropdown-item>复制</web-ui-dropdown-item>
-    <web-ui-dropdown-item>粘贴</web-ui-dropdown-item>
-    <web-ui-dropdown-divider></web-ui-dropdown-divider>
-    <web-ui-dropdown-item disabled>删除</web-ui-dropdown-item>
-  </web-ui-context-menu>
-</template>
-```
-
-### 触屏长按
-
-`long-press` 让触屏按住 `long-press-delay` 毫秒后打开 menu，从按点向下展开；按住期间位移超过 10px 会取消。
-
-```tsx
-<web-ui-context-menu long-press long-press-delay={600}>
-  <div className="context-zone">按住我打开 menu</div>
-  <web-ui-dropdown-item>重命名</web-ui-dropdown-item>
-  <web-ui-dropdown-item>移动</web-ui-dropdown-item>
-</web-ui-context-menu>
-```
-
-```vue
-<template>
-  <web-ui-context-menu long-press :long-press-delay="600">
-    <div class="context-zone">按住我打开 menu</div>
-    <web-ui-dropdown-item>重命名</web-ui-dropdown-item>
-    <web-ui-dropdown-item>移动</web-ui-dropdown-item>
-  </web-ui-context-menu>
-</template>
-```
-
-### 监听开合
-
-`open-change` 通知 menu 开与关；关闭后焦点归还给打开前持焦的元素。
-
-```tsx
-<web-ui-context-menu onopen-change={event => console.log(event.detail.open)}>
-  <div className="context-zone">在此区域右键点击</div>
-  <web-ui-dropdown-item>复制</web-ui-dropdown-item>
-</web-ui-context-menu>
-```
-
-```vue
-<template>
-  <web-ui-context-menu @open-change="onOpenChange">
-    <div class="context-zone">在此区域右键点击</div>
-    <web-ui-dropdown-item>复制</web-ui-dropdown-item>
-  </web-ui-context-menu>
+  <div class="flex w-full flex-col items-start gap-3">
+    <web-ui-context-menu class="w-full" @open-change="onOpenChange">
+      <div
+        class="flex h-32 w-full items-center justify-center rounded-xl border border-dashed border-(--wui-color-border) bg-(--wui-color-surface-control) text-sm text-(--wui-color-text-secondary)"
+      >
+        在此区域右键点击
+      </div>
+      <web-ui-dropdown-item>
+        <web-ui-icon slot="prefix" :size="14" :icon="lucideCopy"></web-ui-icon>复制
+        <span slot="suffix" class="opacity-40">⌘C</span>
+      </web-ui-dropdown-item>
+      <web-ui-dropdown-item>
+        <web-ui-icon slot="prefix" :size="14" :icon="lucideClipboardPaste"></web-ui-icon>粘贴
+        <span slot="suffix" class="opacity-40">⌘V</span>
+      </web-ui-dropdown-item>
+      <web-ui-dropdown-divider></web-ui-dropdown-divider>
+      <web-ui-dropdown-item disabled>
+        <web-ui-icon slot="prefix" :size="14" :icon="lucideTrash2"></web-ui-icon>删除
+        <span slot="suffix" class="opacity-40">⌫</span>
+      </web-ui-dropdown-item>
+    </web-ui-context-menu>
+    <output class="text-sm text-(--wui-color-text-secondary)">
+      open-change：{{ count }} 次 · 最后一次 detail.open = {{ last }}
+    </output>
+  </div>
 </template>
 
 <script setup lang="ts">
-function onOpenChange(event: CustomEvent<{ open: boolean }>) {
-  console.log(event.detail.open)
+import type { WebUiContextMenu, WebUiEvent } from '@greypan/web-ui'
+import { lucideClipboardPaste, lucideCopy, lucideTrash2 } from '@greypan/web-ui/icons'
+import { ref } from 'vue'
+
+const count = ref(0)
+const last = ref('—')
+
+function onOpenChange(event: WebUiEvent<WebUiContextMenu, 'open-change'>) {
+  count.value += 1
+  last.value = event.detail.open ? 'true' : 'false'
+}
+</script>
+```
+
+### 触屏长按 {#long-press}
+
+`long-press` 是触屏 opt-in：按住 `long-press-delay`（这里 600 ms）后打开 menu，从按点向下展开；按住期间位移超过 10px 视为滚动并取消。它只响应 `pointerType === 'touch'`，鼠标右键仍走原生 `contextmenu`、不受 `long-press` 影响。长按打开后浏览器为同一次触摸补发的 `contextmenu` 与 `click` 会被吸收，既不会重复打开，也不会把刚打开的 menu 立刻关掉。
+
+```tsx
+import { useState } from 'react'
+
+export default function Demo() {
+  const [count, setCount] = useState(0)
+  const [last, setLast] = useState('—')
+
+  return (
+    <div className="flex w-full flex-col items-start gap-3">
+      <web-ui-context-menu
+        className="w-full"
+        long-press
+        long-press-delay={600}
+        onopen-change={event => {
+          setCount(value => value + 1)
+          setLast(event.detail.open ? 'true' : 'false')
+        }}
+      >
+        <div className="flex h-32 w-full items-center justify-center rounded-xl border border-dashed border-(--wui-color-border) bg-(--wui-color-surface-control) text-sm text-(--wui-color-text-secondary)">
+          在此区域按住 600 ms（触屏）
+        </div>
+        <web-ui-dropdown-item>重命名</web-ui-dropdown-item>
+        <web-ui-dropdown-item>移动</web-ui-dropdown-item>
+      </web-ui-context-menu>
+      <output className="text-sm text-(--wui-color-text-secondary)">
+        open-change：{count} 次 · 最后一次 detail.open = {last}
+      </output>
+    </div>
+  )
+}
+```
+
+```vue
+<template>
+  <div class="flex w-full flex-col items-start gap-3">
+    <web-ui-context-menu class="w-full" long-press :long-press-delay="600" @open-change="onOpenChange">
+      <div
+        class="flex h-32 w-full items-center justify-center rounded-xl border border-dashed border-(--wui-color-border) bg-(--wui-color-surface-control) text-sm text-(--wui-color-text-secondary)"
+      >
+        在此区域按住 600 ms（触屏）
+      </div>
+      <web-ui-dropdown-item>重命名</web-ui-dropdown-item>
+      <web-ui-dropdown-item>移动</web-ui-dropdown-item>
+    </web-ui-context-menu>
+    <output class="text-sm text-(--wui-color-text-secondary)">
+      open-change：{{ count }} 次 · 最后一次 detail.open = {{ last }}
+    </output>
+  </div>
+</template>
+
+<script setup lang="ts">
+import type { WebUiContextMenu, WebUiEvent } from '@greypan/web-ui'
+import { ref } from 'vue'
+
+const count = ref(0)
+const last = ref('—')
+
+function onOpenChange(event: WebUiEvent<WebUiContextMenu, 'open-change'>) {
+  count.value += 1
+  last.value = event.detail.open ? 'true' : 'false'
+}
+</script>
+```
+
+### 禁用 {#disabled}
+
+`disabled` 只抑制 menu：右键不打开，触发区本身不置灰、颜色也不变——组件不渲染 menu 面，没有可置灰的对象，禁用 context menu 也不等于禁用触发区。下面那个 button 切换 `disabled`，区域文案跟着状态走；读数记录 `open-change`，禁用期间右键不计数，重新启用后照常打开。
+
+```tsx
+import { useState } from 'react'
+
+export default function Demo() {
+  const [disabled, setDisabled] = useState(false)
+  const [count, setCount] = useState(0)
+  const [last, setLast] = useState('—')
+
+  return (
+    <div className="flex w-full flex-col items-start gap-3">
+      <web-ui-context-menu
+        className="w-full"
+        disabled={disabled}
+        onopen-change={event => {
+          setCount(value => value + 1)
+          setLast(event.detail.open ? 'true' : 'false')
+        }}
+      >
+        <div className="flex h-32 w-full items-center justify-center rounded-xl border border-dashed border-(--wui-color-border) bg-(--wui-color-surface-control) text-sm text-(--wui-color-text-secondary)">
+          {disabled ? 'menu 已禁用：右键不打开' : '在此区域右键点击'}
+        </div>
+        <web-ui-dropdown-item>编辑</web-ui-dropdown-item>
+        <web-ui-dropdown-item>复制</web-ui-dropdown-item>
+      </web-ui-context-menu>
+      <div className="flex flex-wrap items-center gap-3">
+        <web-ui-button variant="secondary" onClick={() => setDisabled(value => !value)}>
+          {disabled ? '启用 menu' : '禁用 menu'}
+        </web-ui-button>
+        <output className="text-sm text-(--wui-color-text-secondary)">
+          disabled = {String(disabled)} · open-change：{count} 次 · 最后一次 detail.open = {last}
+        </output>
+      </div>
+    </div>
+  )
+}
+```
+
+```vue
+<template>
+  <div class="flex w-full flex-col items-start gap-3">
+    <web-ui-context-menu class="w-full" :disabled="disabled" @open-change="onOpenChange">
+      <div
+        class="flex h-32 w-full items-center justify-center rounded-xl border border-dashed border-(--wui-color-border) bg-(--wui-color-surface-control) text-sm text-(--wui-color-text-secondary)"
+      >
+        {{ disabled ? 'menu 已禁用：右键不打开' : '在此区域右键点击' }}
+      </div>
+      <web-ui-dropdown-item>编辑</web-ui-dropdown-item>
+      <web-ui-dropdown-item>复制</web-ui-dropdown-item>
+    </web-ui-context-menu>
+    <div class="flex flex-wrap items-center gap-3">
+      <web-ui-button variant="secondary" @click="disabled = !disabled">
+        {{ disabled ? '启用 menu' : '禁用 menu' }}
+      </web-ui-button>
+      <output class="text-sm text-(--wui-color-text-secondary)">
+        disabled = {{ disabled }} · open-change：{{ count }} 次 · 最后一次 detail.open = {{ last }}
+      </output>
+    </div>
+  </div>
+</template>
+
+<script setup lang="ts">
+import type { WebUiContextMenu, WebUiEvent } from '@greypan/web-ui'
+import { ref } from 'vue'
+
+const disabled = ref(false)
+const count = ref(0)
+const last = ref('—')
+
+function onOpenChange(event: WebUiEvent<WebUiContextMenu, 'open-change'>) {
+  count.value += 1
+  last.value = event.detail.open ? 'true' : 'false'
 }
 </script>
 ```
