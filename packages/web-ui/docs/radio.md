@@ -98,6 +98,10 @@ const size = ref('m')
 | --------- | ------------------------------------------------------ |
 | `default` | label 文本；为空时收掉 indicator 与 label 之间的间距。 |
 
+### 行为说明
+
+Shadow DOM 内的交互 `<span>` 声明 `role="radio"`，并同步 `aria-checked`、`aria-disabled` 和 `tabindex`。Enter/Space 键盘切换。
+
 ### 布局
 
 与 `<web-ui-checkbox>` 共用同一套选择控件盒契约，包括「label 没有画出东西时收起间距」这一条——宿主高度由内容撑开、不继承页面行高，indicator 宽高走 `--wui-selection-control-size`，与相邻文字按 `vertical-align: middle` 对齐。

@@ -129,6 +129,23 @@ for (const spec of CONTROLS) {
   })
 }
 
+for (const spec of CONTROLS.filter(candidate => candidate.role === 'checkbox' || candidate.role === 'radio')) {
+  describe(`${spec.label} ARIA 放置`, () => {
+    it('不会把交互语义属性放在 label 上', async () => {
+      const el = mount(spec)
+      await waitForUpdate(el)
+
+      const control = controlOf(spec, el)
+      expect(control.localName).not.toBe('label')
+      expect(
+        el.shadowRoot?.querySelector('label[role], label[aria-checked], label[aria-disabled], label[tabindex]')
+      ).toBeNull()
+      expect(control.getAttribute('tabindex')).toBe('0')
+      cleanupElement(el)
+    })
+  })
+}
+
 // 下列能力并非三控件共有的公开契约，因此按能力筛选控件列表来注册用例，
 // 而不是在测试注册作用域内写条件语句（`vitest/no-conditional-tests`）。
 
