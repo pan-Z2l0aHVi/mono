@@ -31,6 +31,21 @@ function triggerDuration(el: HTMLElement): number {
   return parsed === null ? 160 : Math.max(0, parsed)
 }
 
+function findSelectedTriggerByValue(
+  triggers: Iterable<WebUiSegmentedTrigger>,
+  value: string
+): WebUiSegmentedTrigger | undefined {
+  if (!value) return undefined
+
+  let selected: WebUiSegmentedTrigger | undefined
+  for (const trigger of triggers) {
+    if (trigger.value !== value) continue
+    if (!selected) selected = trigger
+    if (trigger.checked) return trigger
+  }
+  return selected
+}
+
 @customElement('web-ui-segmented')
 export class WebUiSegmented extends FormAssociated(LitElement) {
   // track 是不透明实体面：底色取 surface（浅色即 page，深色即 surface-raised 档）、无
@@ -80,6 +95,18 @@ export class WebUiSegmented extends FormAssociated(LitElement) {
   private _settleRequest = 0
   private _settleTimer: number | undefined
 
+  override connectedCallback() {
+    super.connectedCallback()
+    if (customElements.get('web-ui-segmented-trigger')) return
+    void customElements.whenDefined('web-ui-segmented-trigger').then(() => {
+      if (!this.isConnected) return
+      // 宿主可能先于子 trigger 同步。定义完成后重同步会刷新 tab-stop context；
+      // 当宿主 value 和成员集合未变化时，协调器不会重放选中写回。
+      this._groupController.sync()
+      requestAnimationFrame(() => void this._updateIndicator())
+    })
+  }
+
   override disconnectedCallback() {
     super.disconnectedCallback()
     this._dragGestureHandle?.destroy()
@@ -100,22 +127,13 @@ export class WebUiSegmented extends FormAssociated(LitElement) {
       getDisabled: () => this._isDisabled,
       isItem: (target): target is WebUiSegmentedTrigger =>
         target instanceof HTMLElement && target.matches('web-ui-segmented-trigger'),
-      isItemSelected: (trigger, value) => {
-        if (!value) return false
-        let selected: WebUiSegmentedTrigger | undefined
-        for (const item of this.querySelectorAll<WebUiSegmentedTrigger>('web-ui-segmented-trigger')) {
-          if (item.value !== value) continue
-          if (!selected) selected = item
-          if (item.checked) {
-            selected = item
-            break
-          }
-        }
-        return trigger === selected
-      },
+      isItemSelected: (trigger, value) =>
+        trigger ===
+        findSelectedTriggerByValue(this.querySelectorAll<WebUiSegmentedTrigger>('web-ui-segmented-trigger'), value),
       isItemTabStop: (trigger, triggers) => {
         const enabled = triggers.filter(item => !item.disabled)
-        const tabStop = enabled.find(item => item.checked) ?? enabled[0]
+        const selected = findSelectedTriggerByValue(triggers, this._value)
+        const tabStop = selected && !selected.disabled ? selected : enabled[0]
         return trigger === tabStop
       },
       getNextValue: (trigger, value) => (trigger.checked ? trigger.value : value),
@@ -161,15 +179,13 @@ export class WebUiSegmented extends FormAssociated(LitElement) {
     const triggers = this.querySelectorAll<WebUiSegmentedTrigger>('web-ui-segmented-trigger')
     let left = 0
     let width = 0
-
-    triggers.forEach(trigger => {
-      if (trigger.checked) {
-        const triggerRect = trigger.getBoundingClientRect()
-        const groupRect = this.getBoundingClientRect()
-        left = triggerRect.left - groupRect.left
-        width = triggerRect.width
-      }
-    })
+    const selectedTrigger = findSelectedTriggerByValue(triggers, this._value)
+    if (selectedTrigger) {
+      const triggerRect = selectedTrigger.getBoundingClientRect()
+      const groupRect = this.getBoundingClientRect()
+      left = triggerRect.left - groupRect.left
+      width = triggerRect.width
+    }
 
     // 上一段移动还在飞行 → 这次直接落定（_settling 关掉 left / width 过渡，见 style.css）。
     // 落定这一趟自己也要占飞行窗口，所以放在写定位**之前**开窗：窗口一开，第三次连点
@@ -249,7 +265,7 @@ export class WebUiSegmented extends FormAssociated(LitElement) {
     const enabledTriggers = triggers.filter(t => !t.disabled)
     if (enabledTriggers.length === 0) return
 
-    const activeTrigger = triggers.find(t => t.checked)
+    const activeTrigger = findSelectedTriggerByValue(triggers, this._value)
     if (!activeTrigger || activeTrigger.disabled) return
 
     const activeTriggerRect = activeTrigger.getBoundingClientRect()

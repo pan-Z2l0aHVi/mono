@@ -229,6 +229,30 @@ describe('WebUiSegmented 组件', () => {
       cleanupElement(el)
     })
 
+    it('选中项禁用且有同值副本时 Tab stop 回退到首个启用项', async () => {
+      const el = createSegmented(
+        `
+          <web-ui-segmented-trigger value="a">A</web-ui-segmented-trigger>
+          <web-ui-segmented-trigger value="x" disabled>Disabled X</web-ui-segmented-trigger>
+          <web-ui-segmented-trigger value="x">Enabled X</web-ui-segmented-trigger>
+          <web-ui-segmented-trigger value="z">Z</web-ui-segmented-trigger>
+        `,
+        { value: 'x' }
+      )
+      await settleSegmented(el)
+
+      const triggers = [...el.querySelectorAll<WebUiSegmentedTrigger>('web-ui-segmented-trigger')]
+      expect(triggers.map(trigger => trigger.checked)).toEqual([false, true, false, false])
+      expect(triggers.map(trigger => queryA11y(trigger, '[role="option"]')?.getAttribute('tabindex'))).toEqual([
+        '0',
+        '-1',
+        '-1',
+        '-1'
+      ])
+
+      cleanupElement(el)
+    })
+
     it('左右方向键跳过禁用项、循环移动并同步选中值', async () => {
       const el = createSegmented(
         `
