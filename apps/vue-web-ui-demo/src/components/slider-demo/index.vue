@@ -41,18 +41,24 @@ function updateVerticalMarkedValue(event: WebUiEvent<WebUiSlider, 'input'>) {
     <section>
       <h2>Base styles</h2>
       <div class="examples">
-        <div class="example"><web-ui-slider :value="standardValue" @input="updateStandardValue" /></div>
-        <div class="example"><web-ui-slider :value="42" /></div>
-        <div class="example"><web-ui-slider :value="42" disabled /></div>
+        <div class="example">
+          <web-ui-slider aria-label="Volume" :value="standardValue" @input="updateStandardValue" />
+        </div>
+        <div class="example"><web-ui-slider aria-label="Default value" :value="42" /></div>
+        <div class="example"><web-ui-slider aria-label="Disabled default value" :value="42" disabled /></div>
       </div>
     </section>
 
     <section>
       <h2>Marks</h2>
       <div class="examples">
-        <div class="example"><web-ui-slider :value="markedValue" :step="10" marks @input="updateMarkedValue" /></div>
-        <div class="example"><web-ui-slider :value="70" :step="10" marks /></div>
-        <div class="example"><web-ui-slider :value="50" :step="10" marks disabled /></div>
+        <div class="example">
+          <web-ui-slider aria-label="Marked value" :value="markedValue" :step="10" marks @input="updateMarkedValue" />
+        </div>
+        <div class="example"><web-ui-slider aria-label="High marked value" :value="70" :step="10" marks /></div>
+        <div class="example">
+          <web-ui-slider aria-label="Disabled marked value" :value="50" :step="10" marks disabled />
+        </div>
       </div>
     </section>
 
@@ -60,6 +66,7 @@ function updateVerticalMarkedValue(event: WebUiEvent<WebUiSlider, 'input'>) {
       <h2>Range and events</h2>
       <div class="event-example">
         <web-ui-slider
+          aria-label="Range value"
           :value="inputValue"
           :min="10"
           :max="90"
@@ -76,15 +83,22 @@ function updateVerticalMarkedValue(event: WebUiEvent<WebUiSlider, 'input'>) {
       <h2>Vertical</h2>
       <div class="vertical-examples">
         <div class="example">
-          <web-ui-slider vertical :value="verticalValue" @input="updateVerticalValue" />
+          <web-ui-slider aria-label="Vertical value" vertical :value="verticalValue" @input="updateVerticalValue" />
           <span class="label">{{ verticalValue }}</span>
         </div>
         <div class="example">
-          <web-ui-slider vertical :value="verticalMarkedValue" :step="10" marks @input="updateVerticalMarkedValue" />
+          <web-ui-slider
+            aria-label="Vertical marked value"
+            vertical
+            :value="verticalMarkedValue"
+            :step="10"
+            marks
+            @input="updateVerticalMarkedValue"
+          />
           <span class="label">{{ verticalMarkedValue }}</span>
         </div>
         <div class="example">
-          <web-ui-slider vertical :value="50" disabled />
+          <web-ui-slider aria-label="Disabled vertical value" vertical :value="50" disabled />
           <span class="label">Disabled</span>
         </div>
       </div>
