@@ -2,4 +2,4 @@
 '@greypan/web-ui': patch
 ---
 
-Scale button group member buttons with `--wui-control-size` while keeping their default 5:6 size ratio with the track.
+Scale button group member buttons with `--wui-control-size`; vertical tracks expand to fit their widest member.
