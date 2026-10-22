@@ -237,6 +237,7 @@ describe('WebUiSlider 组件', () => {
       const slider = queryA11y(el, '[role="slider"]')!
       vi.spyOn(slider, 'getBoundingClientRect').mockReturnValue(new DOMRect(0, 0, 200, 8))
       slider.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, clientX: 100, pointerId: 1 }))
+      slider.dispatchEvent(new PointerEvent('pointerup', { bubbles: true, clientX: 100, pointerId: 1 }))
 
       expect(el.value).toBe(50)
       expect(events).toHaveLength(1)
@@ -267,6 +268,7 @@ describe('WebUiSlider 组件', () => {
       const slider = queryA11y(el, '[role="slider"]')!
       vi.spyOn(slider, 'getBoundingClientRect').mockReturnValue(new DOMRect(0, 0, 8, 200))
       slider.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, clientY: 50, pointerId: 1 }))
+      slider.dispatchEvent(new PointerEvent('pointerup', { bubbles: true, clientY: 50, pointerId: 1 }))
 
       expect(el.value).toBe(75)
 
