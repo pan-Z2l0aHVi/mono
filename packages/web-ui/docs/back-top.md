@@ -11,7 +11,7 @@ back top button：滚动超过阈值后出现在角落，点击或按 Enter 平�
 
 默认跟随页面滚动（`scrollTarget` 为 `window`），超过 `threshold` 后显示。
 
-```react
+```tsx
 <web-ui-back-top threshold={200}></web-ui-back-top>
 ```
 
@@ -25,7 +25,7 @@ back top button：滚动超过阈值后出现在角落，点击或按 Enter 平�
 
 `scroll-behavior` 为 `auto` 时点击立即到位，不播放平滑滚动动画。
 
-```react
+```tsx
 <web-ui-back-top scroll-behavior="auto"></web-ui-back-top>
 ```
 
@@ -39,7 +39,7 @@ back top button：滚动超过阈值后出现在角落，点击或按 Enter 平�
 
 把 `scrollTarget` 指向自己的滚动容器后，button 以 `position: sticky` 悬浮在容器右下角，只随该容器滚动出现。`scrollTarget` 是 element 属性，需要在挂载后赋值。
 
-```react
+```tsx
 const scrollBoxRef = useRef(null)
 const backTopRef = useRef(null)
 
@@ -79,7 +79,7 @@ onMounted(() => {
 
 默认插槽替换 button 内容，交互语义仍由组件提供。
 
-```react
+```tsx
 <web-ui-back-top>
   <web-ui-button variant="primary">back top</web-ui-button>
 </web-ui-back-top>

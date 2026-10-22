@@ -11,7 +11,7 @@ tag: web-ui-radio
 
 默认插槽是 label 文字。单选控件自己只会「选中且保持」，点击已选中的一项不会取消它，所以独立使用时由页面持有这个值，`checked` 写成比较结果。
 
-```react
+```tsx
 import { useState } from 'react'
 
 export default function Demo() {
@@ -51,7 +51,7 @@ const plan = ref('basic')
 
 `disabled` 关掉交互：已选中的一项停在选中态，按下不动、校验也让路；组级禁用写在 `<web-ui-radio-group>` 上，见下面的单选组。
 
-```react
+```tsx
 export default function Demo() {
   return (
     <div className="flex flex-col items-start gap-3">
@@ -77,7 +77,7 @@ export default function Demo() {
 
 选中的那一项以 `name` 为字段名、`value` 为值进入 `FormData`，未选中的不进；`value` 留空时提交 `'on'`。同名的两项独立存在时谁被点谁就提交，保持单选是页面的事——要交给组件做就用 `<web-ui-radio-group>`。
 
-```react
+```tsx
 import { useRef, useState } from 'react'
 
 export default function Demo() {

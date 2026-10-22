@@ -11,7 +11,7 @@ tag: web-ui-toast
 
 `toast.success` / `info` / `warning` / `error` 是四种类型的常用写法，`error` 的默认时长比其余更长。
 
-```react
+```tsx
 import { toast } from '@greypan/web-ui'
 
 toast.success('操作成功')
@@ -33,7 +33,7 @@ toast.error('出错了', { duration: 5000 })
 
 `toast()` 接受完整 option：`heading` 是粗体标题，`position` 决定落点，`duration` 为 0 表示不自动关闭。
 
-```react
+```tsx
 import { toast } from '@greypan/web-ui'
 
 const id = toast({
@@ -65,7 +65,7 @@ function notify() {
 
 给同一个 `id` 再次调用即更新它，适合进度或重试这类连续状态；`duration` 只有显式传入才重启倒计时。
 
-```react
+```tsx
 import { toast } from '@greypan/web-ui'
 
 toast.info('上传中 0%', { id: 'upload', duration: 0 })
@@ -89,7 +89,7 @@ function upload() {
 
 每次调用都返回这条 toast 的最终 id；`toast.close(id)` 关掉单条，`toast.clear()` 一次收走全部。
 
-```react
+```tsx
 import { toast } from '@greypan/web-ui'
 
 const id = toast.info('提示信息')

@@ -11,7 +11,7 @@ tooltip，支持指针与焦点触发；`content` 属性提供纯文本，`conte
 
 默认插槽是 trigger，`content` 是提示文本。
 
-```react
+```tsx
 <web-ui-tooltip content="保存当前更改">
   <web-ui-button variant="secondary">保存</web-ui-button>
 </web-ui-tooltip>
@@ -29,7 +29,7 @@ tooltip，支持指针与焦点触发；`content` 属性提供纯文本，`conte
 
 `content` 插槽替代纯文本，可放 icon 或带格式的内容。
 
-```react
+```tsx
 <web-ui-tooltip placement="right">
   <web-ui-icon slot="default" icon={lucideInfo}></web-ui-icon>
   <div slot="content">
@@ -55,7 +55,7 @@ import { lucideInfo } from '@greypan/web-ui/icons'
 
 `show-delay` / `hide-delay` 控制指针进出时的显示与隐藏延迟；`disabled` 直接关闭提示。
 
-```react
+```tsx
 <web-ui-tooltip content="立即出现" show-delay={0} hide-delay={0}>
   <web-ui-button>悬停我</web-ui-button>
 </web-ui-tooltip>

@@ -11,7 +11,7 @@ tag: web-ui-context-menu
 
 在触发区域内右键即可打开，menu 从鼠标位置展开。
 
-```react
+```tsx
 <web-ui-context-menu>
   <div className="context-zone">在此区域右键点击</div>
   <web-ui-dropdown-item>复制</web-ui-dropdown-item>
@@ -37,7 +37,7 @@ tag: web-ui-context-menu
 
 `long-press` 让触屏按住 `long-press-delay` 毫秒后打开 menu，从按点向下展开；按住期间位移超过 10px 会取消。
 
-```react
+```tsx
 <web-ui-context-menu long-press long-press-delay={600}>
   <div className="context-zone">按住我打开 menu</div>
   <web-ui-dropdown-item>重命名</web-ui-dropdown-item>
@@ -59,7 +59,7 @@ tag: web-ui-context-menu
 
 `open-change` 通知 menu 开与关；关闭后焦点归还给打开前持焦的元素。
 
-```react
+```tsx
 <web-ui-context-menu onopen-change={event => console.log(event.detail.open)}>
   <div className="context-zone">在此区域右键点击</div>
   <web-ui-dropdown-item>复制</web-ui-dropdown-item>

@@ -37,7 +37,7 @@ const CONFIG = {
 const REACT_BODY = ['export default function Demo() {', '  return <web-ui-slider min={0}></web-ui-slider>', '}'].join(
   '\n'
 )
-const REACT_FENCE = ['```react', REACT_BODY, '```'].join('\n')
+const REACT_FENCE = ['```tsx', REACT_BODY, '```'].join('\n')
 
 const VUE_BODY = ['<template>', '  <web-ui-slider :min="0"></web-ui-slider>', '</template>'].join('\n')
 const VUE_FENCE = ['```vue', VUE_BODY, '```'].join('\n')

@@ -11,7 +11,7 @@ tag: web-ui-select
 
 子 `<web-ui-option>` 通过事件向父级注册，键盘支持 ArrowDown / ArrowUp / Enter / Escape。
 
-```react
+```tsx
 <web-ui-select placeholder="请选择" onChange={event => setFramework(event.currentTarget.value)}>
   <web-ui-option value="vue" label="Vue"></web-ui-option>
   <web-ui-option value="react" label="React"></web-ui-option>
@@ -39,7 +39,7 @@ const framework = ref('')
 
 `<web-ui-option>` 的 `prefix` / `suffix` 插槽在 label 两侧加 icon 或后缀信息，`disabled` 项不可选。
 
-```react
+```tsx
 <web-ui-select placeholder="选择优先级">
   <web-ui-option value="high" label="高优先级">
     <span slot="prefix">🔴</span>
@@ -65,7 +65,7 @@ const framework = ref('')
 
 把内容放进 `trigger` 插槽替换默认 label 与箭头，外壳与 overlay 锚点保持默认。
 
-```react
+```tsx
 <web-ui-select>
   <web-ui-icon slot="trigger" icon={lucideSettings} size={18}></web-ui-icon>
   <web-ui-option value="theme" label="主题设置"></web-ui-option>

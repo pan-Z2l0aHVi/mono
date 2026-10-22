@@ -24,7 +24,10 @@
     // 忽略 hex 十六进制颜色
     "#[a-fA-F0-9]{3,6}",
     // 忽略 react 自定义事件（例如：onvisible-change）
-    "\\bon[a-z-]{4,}\\b"
+    "\\bon[a-z-]{4,}\\b",
+    // 忽略 percent-encode 出来的转义（`%3Csvg`、`%234f46e5`）：内联 data URI 的组成部分，
+    // 示例图靠它做到不带二进制素材、不依赖网络，按词判只会把人逼回外链素材。
+    "%[0-9A-Fa-f]{2}[A-Za-z0-9]*"
   ],
   "useGitignore": true,
   "version": "0.2",
@@ -116,6 +119,10 @@
     "SHIKI",
     "Segoe",
     "menlo",
-    "consolas"
+    "consolas",
+    "pxpx",
+    // 「长串断词」示例的 opaque 值：语料里写一次，生成器把它复制进两端的 demo 产物。
+    // 之前用一条 `[A-Z0-9]{16,}` 放过整类，代价是全仓永久不再检查任何长大写串，所以改成按字面量登记。
+    "AAAABBBBCCCCDDDDEEEE"
   ]
 }

@@ -21,7 +21,7 @@ export interface MdToCompConfig {
   dir?: string
   /** 从示例标题里取锚点；默认 `braceAnchor`。 */
   anchor?: AnchorFn
-  /** 一条示例必须齐这几份围栏，顺序即配对顺序；扩展名由入口钉死。 */
+  /** 一条示例必须齐这几份围栏，顺序即配对顺序；落盘扩展名由 `FLAVOR_LANG` 给出。 */
   flavors: readonly FenceFlavor[]
   apiTables: ApiTables
   /**

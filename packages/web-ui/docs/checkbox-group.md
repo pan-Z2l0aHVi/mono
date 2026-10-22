@@ -11,7 +11,7 @@ tag: web-ui-checkbox-group
 
 组的 `value` 是会选中的那些项，成员按自己是否在数组里决定选中。
 
-```react
+```tsx
 import { useState } from 'react'
 
 export default function Demo() {
@@ -52,7 +52,7 @@ function onInput(event: WebUiEvent<WebUiCheckboxGroup, 'input'>) {
 
 `direction` 决定成员横排还是竖排，默认 `vertical`；非法值也回退到 `vertical`。
 
-```react
+```tsx
 export default function Demo() {
   return (
     <div className="flex flex-wrap gap-8">
@@ -102,7 +102,7 @@ export default function Demo() {
 
 成员之间的间距走 `--wui-checkbox-group-gap`，默认经 `--wui-space-2` 解析成 8px；覆盖它只换间距，不动排列方向。下面两条是同一份成员，只有这个变量不同。
 
-```react
+```tsx
 export default function Demo() {
   return (
     <div className="flex flex-col items-start gap-6">
@@ -144,7 +144,7 @@ export default function Demo() {
 
 `disabled` 关掉整组的交互，这个禁用态会下发给成员；`required` 让原生表单校验在组为空时拦截提交。
 
-```react
+```tsx
 export default function Demo() {
   return (
     <web-ui-checkbox-group name="toppings" value={['cheese']} required disabled>

@@ -11,7 +11,7 @@ tag: web-ui-checkbox
 
 `checked` 是控件状态，默认插槽是 label 文字；indicator、间距与右侧文案都是触发区，点哪儿都算一次切换。
 
-```react
+```tsx
 import { useState } from 'react'
 
 export default function Demo() {
@@ -67,7 +67,7 @@ function toggle(channel: string) {
 
 `disabled` 关掉交互，按下不动、校验也让路；组级禁用写在 `<web-ui-checkbox-group>` 上，见下面的多选组。
 
-```react
+```tsx
 export default function Demo() {
   return (
     <div className="flex flex-col items-start gap-3">
@@ -93,7 +93,7 @@ export default function Demo() {
 
 `name` 是字段名、`value` 是选中时提交的值：同一字段名可以挂多项，每个选中项各占一条 `FormData` 条目，未选中的不进表单。`required` 让原生校验在未勾选时拦下提交。
 
-```react
+```tsx
 import { useRef, useState } from 'react'
 
 export default function Demo() {

@@ -11,7 +11,7 @@ tag: web-ui-popover
 
 click 模式点击 trigger 切换；trigger 请放入可交互元素，ARIA 状态会回写到它。
 
-```react
+```tsx
 <web-ui-popover>
   <web-ui-button slot="trigger" variant="secondary">
     显示详情
@@ -33,7 +33,7 @@ click 模式点击 trigger 切换；trigger 请放入可交互元素，ARIA 状�
 
 `trigger` 为 `hover` 时用 `pointerenter` / `pointerleave` 加延迟控制开合。
 
-```react
+```tsx
 <web-ui-popover trigger="hover" placement="top">
   <web-ui-button slot="trigger">悬停我</web-ui-button>
   <div className="popover-body">悬停显示的气泡</div>
@@ -53,7 +53,7 @@ click 模式点击 trigger 切换；trigger 请放入可交互元素，ARIA 状�
 
 `open` 可被程序化写入，`open-change` 只报告用户来源的开合。
 
-```react
+```tsx
 <web-ui-popover open={open} onopen-change={event => setOpen(event.detail.open)}>
   <web-ui-button slot="trigger" onClick={() => setOpen(!open)}>
     主题设置

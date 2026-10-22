@@ -11,7 +11,7 @@ tag: web-ui-slider
 
 不写属性时范围是 `0`–`100`、步进 `1`；`min` / `max` / `step` 约束取值范围与步进幅度，`disabled` 让 track 与 thumb 退出交互。
 
-```react
+```tsx
 export default function Demo() {
   return (
     <div className="flex flex-col items-start gap-6">
@@ -37,7 +37,7 @@ export default function Demo() {
 
 `marks` 沿 track 画出刻度点，刻度间距取 `step`，所以刻度密度由步进决定；刻度最多画 100 段，`step` 相对 `min`–`max` 太密时只画前 100 段，不铺满 track。
 
-```react
+```tsx
 export default function Demo() {
   return (
     <div className="flex flex-col items-start gap-8">
@@ -61,7 +61,7 @@ export default function Demo() {
 
 `vertical` 让 track 竖起来，数值由下往上增长；`aria-orientation` 随之变成 `vertical`，方向键仍用上下键调节。
 
-```react
+```tsx
 import { useState } from 'react'
 
 export default function Demo() {
@@ -127,7 +127,7 @@ const volume = ref(30)
 
 拖拽过程中 `input` 连续触发，松手时只在数值真的变过之后派发一次 `change`；键盘每按一次调节键，值变了就先 `input` 再 `change`。点击 track 的空白处也算一次取值变更。
 
-```react
+```tsx
 import { useState } from 'react'
 
 export default function Demo() {
@@ -183,7 +183,7 @@ const changeValue = ref(40)
 
 `name` 让当前值以该字段名进入 `FormData`；组件通过 ElementInternals 接入宿主 `<form>`，所以 `form.reset()` 会把值退回初始值。
 
-```react
+```tsx
 import { useRef, useState } from 'react'
 
 export default function Demo() {
@@ -253,7 +253,7 @@ function reset() {
 
 `--wui-slider-width` / `--wui-slider-vertical-height` 决定 host 的轴长，`--wui-slider-track-size` 是 track 厚度，thumb 的厚度与按压态长边各走一个变量。
 
-```react
+```tsx
 export default function Demo() {
   return (
     <div className="flex flex-wrap items-end gap-8">

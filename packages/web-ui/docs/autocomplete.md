@@ -11,7 +11,7 @@ tag: web-ui-autocomplete
 
 键入时按 label 过滤候选，没有匹配项时 panel 保持关闭；下拉 panel 的开合通过 `open-change` 通知。
 
-```react
+```tsx
 <web-ui-autocomplete placeholder="选择框架" onChange={event => console.log(event.currentTarget.value)}>
   <web-ui-option value="vue" label="Vue"></web-ui-option>
   <web-ui-option value="react" label="React"></web-ui-option>
@@ -40,7 +40,7 @@ function onChange(event: Event) {
 
 把可编辑组件放进 `trigger` 插槽即可替换默认 input。多行 trigger 保留 Enter 换行语义，关闭 panel 改用 Escape 或 blur。
 
-```react
+```tsx
 <web-ui-autocomplete placeholder="描述问题" filter="none">
   <web-ui-textarea slot="trigger" rows="3"></web-ui-textarea>
   <web-ui-option value="bug" label="缺陷"></web-ui-option>
@@ -62,7 +62,7 @@ function onChange(event: Event) {
 
 开启 `allow-custom-value` 后，无匹配且无活动项时 Enter 会把输入原文作为 custom value 提交，`selected-value` 保持为空。
 
-```react
+```tsx
 <web-ui-autocomplete allow-custom-value placeholder="输入或选择 label"></web-ui-autocomplete>
 ```
 

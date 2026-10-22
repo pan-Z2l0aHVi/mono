@@ -11,7 +11,7 @@ tag: web-ui-drawer
 
 `placement` 决定滑入方向，`heading` 在没有 `header` 插槽时作为标题回落。点击遮罩或按 Escape 关闭。
 
-```react
+```tsx
 import { useState } from 'react'
 
 type Placement = 'right' | 'left' | 'top' | 'bottom'
@@ -108,7 +108,7 @@ function openFrom(next: Placement) {
 
 不绑定 `open`，通过元素实例的 `show()` / `close()` 控制。适合由命令式流程触发的场景；程序式开合不派发 `open-change`。
 
-```react
+```tsx
 import type { WebUiDrawer } from '@greypan/web-ui'
 import { useRef } from 'react'
 
@@ -152,7 +152,7 @@ const drawer = useTemplateRef<WebUiDrawer>('drawer')
 
 左右方向的尺寸由 `--wui-drawer-width` 控制，上下方向由 `--wui-drawer-height` 控制。
 
-```react
+```tsx
 import type { CSSProperties } from 'react'
 import { useState } from 'react'
 
@@ -255,7 +255,7 @@ function openWith(item: (typeof sizes)[number]) {
 
 `header` 插槽完全替换内置标题区；既没有 `heading` 也没有 `header` 时，标题区整体不渲染。`closable` 的关闭按钮独立于 header 内容，固定在右上角。
 
-```react
+```tsx
 import { useState } from 'react'
 
 export default function Demo() {
@@ -317,7 +317,7 @@ const noHeader = ref(false)
 
 `closable` 显示内置关闭按钮。按钮固定在 header 右上角，不随正文滚动。
 
-```react
+```tsx
 import { useState } from 'react'
 
 export default function Demo() {
@@ -370,7 +370,7 @@ const closable = ref(true)
 
 `footer` 插槽固定在 drawer 底部，正文滚动时保持可见。
 
-```react
+```tsx
 import { useState } from 'react'
 
 export default function Demo() {
@@ -430,7 +430,7 @@ const open = ref(false)
 
 drawer 默认在打开期间锁定页面滚动；`no-scroll-lock` 保留背景滚动。
 
-```react
+```tsx
 import { useState } from 'react'
 
 export default function Demo() {
@@ -473,7 +473,7 @@ const open = ref(false)
 
 默认点击遮罩关闭；`no-backdrop-close` 后只能通过关闭按钮、footer 操作或 Escape 退出。
 
-```react
+```tsx
 import { useState } from 'react'
 
 export default function Demo() {
@@ -520,7 +520,7 @@ const open = ref(false)
 
 `controlled` 下，Escape、遮罩与关闭按钮只派发 `open-change(false)`；消费方回写 `open` 后才真正关闭。示例拒绝第一次关闭请求，必须点 footer 的确认按钮。
 
-```react
+```tsx
 import { useState } from 'react'
 
 export default function Demo() {
@@ -602,7 +602,7 @@ function close() {
 
 `headless` 只保留原生 dialog、遮罩、动画、滚动锁定与 Escape / 遮罩关闭，不渲染内置 header、关闭按钮或 footer。消费方负责默认插槽内容的完整样式，并必须提供 `dialog-label`。示例同时开启 `draggable`，headless 也支持拖拽关闭。
 
-```react
+```tsx
 import { useState } from 'react'
 
 export default function Demo() {
@@ -662,7 +662,7 @@ const open = ref(false)
 
 开启 `draggable` 后，drawer 内缘出现灰色胶囊 drag bar。向关闭方向拖过自身尺寸的一半，或快速甩动后松手即关闭；未达阈值则回弹。方向随 `placement` 适配。
 
-```react
+```tsx
 import { useState } from 'react'
 
 export default function Demo() {
@@ -733,7 +733,7 @@ const bottomOpen = ref(false)
 
 同组件声明式嵌套即自动堆叠：后打开的位于顶层全尺寸，下层按 `0.95^n` 缩放并向内偏移，露边宽度按 `A·ln(n)` 分配。层宽不同或乱序时，组件会按上方最大宽度补偿，保证每层左缘都可见；Escape 与遮罩点击只作用于最顶层。
 
-```react
+```tsx
 import type { CSSProperties } from 'react'
 import { useState } from 'react'
 
@@ -886,7 +886,7 @@ function closeLevel(index: number) {
 
 多个 drawer 作为同级节点挂载，依次打开后由组件自动管理层序：先打开的缩放并偏移，后打开的在顶层；按任意顺序关闭，剩余层级会重新排列。
 
-```react
+```tsx
 import { useState } from 'react'
 
 export default function Demo() {
@@ -953,7 +953,7 @@ const open = ref([false, false, false])
 
 背景、圆角与视口留边分别由 `--wui-drawer-bg`、`--wui-drawer-radius`、`--wui-drawer-inset` 控制；置 `--wui-drawer-inset: 0` 得到贴边几何。
 
-```react
+```tsx
 import { useState } from 'react'
 
 export default function Demo() {

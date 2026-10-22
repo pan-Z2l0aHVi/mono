@@ -11,7 +11,7 @@ segmented（单选 button group），子项是 `<web-ui-segmented-trigger>`；`v
 
 默认插槽投影 segmented-trigger，选中由 `value` 决定。
 
-```react
+```tsx
 <web-ui-segmented value={view} onInput={event => setView(event.currentTarget.value)}>
   <web-ui-segmented-trigger value="day">日</web-ui-segmented-trigger>
   <web-ui-segmented-trigger value="week">周</web-ui-segmented-trigger>
@@ -39,7 +39,7 @@ const view = ref('week')
 
 `variant` 选择 track 与 indicator 的材质：`inset`（默认，嵌入 track）或 `raised`（经典浮起）。
 
-```react
+```tsx
 <web-ui-segmented variant="raised" value="list">
   <web-ui-segmented-trigger value="list">列表</web-ui-segmented-trigger>
   <web-ui-segmented-trigger value="grid">网格</web-ui-segmented-trigger>
@@ -59,7 +59,7 @@ const view = ref('week')
 
 `disabled` 加在组上会禁用全部 trigger；只禁用某一项时加在该 trigger 上。
 
-```react
+```tsx
 <web-ui-segmented value="a">
   <web-ui-segmented-trigger value="a">可用</web-ui-segmented-trigger>
   <web-ui-segmented-trigger value="b" disabled>

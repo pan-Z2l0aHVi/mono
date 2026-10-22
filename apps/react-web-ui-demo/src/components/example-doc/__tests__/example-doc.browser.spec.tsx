@@ -19,28 +19,6 @@ import { afterEach, describe, expect, it } from 'vite-plus/test'
 import { userEvent } from 'vite-plus/test/browser'
 
 import { setViewport } from '@/__tests__/viewport'
-// `?raw` 读的是 `import.meta.glob` 拿去编译的同一个文件：这条断言把「页面上显示的那份」直接钉到
-// 「被执行的那份」上，中间不经过 payload 与围栏的等价推定。
-import checkboxBasicSource from '@/generated/demos/checkbox--basic.tsx?raw'
-import checkboxDisabledSource from '@/generated/demos/checkbox--disabled.tsx?raw'
-import checkboxFormSource from '@/generated/demos/checkbox--form.tsx?raw'
-import checkboxGroupBasicSource from '@/generated/demos/checkbox-group--basic.tsx?raw'
-import checkboxGroupDirectionSource from '@/generated/demos/checkbox-group--direction.tsx?raw'
-import checkboxGroupDisabledRequiredSource from '@/generated/demos/checkbox-group--disabled-required.tsx?raw'
-import checkboxGroupGapSource from '@/generated/demos/checkbox-group--gap.tsx?raw'
-import radioBasicSource from '@/generated/demos/radio--basic.tsx?raw'
-import radioDisabledSource from '@/generated/demos/radio--disabled.tsx?raw'
-import radioFormSource from '@/generated/demos/radio--form.tsx?raw'
-import radioGroupBasicSource from '@/generated/demos/radio-group--basic.tsx?raw'
-import radioGroupDirectionSource from '@/generated/demos/radio-group--direction.tsx?raw'
-import radioGroupDisabledRequiredSource from '@/generated/demos/radio-group--disabled-required.tsx?raw'
-import radioGroupGapSource from '@/generated/demos/radio-group--gap.tsx?raw'
-import sliderBasicSource from '@/generated/demos/slider--basic.tsx?raw'
-import sliderEventsSource from '@/generated/demos/slider--events.tsx?raw'
-import sliderFormSource from '@/generated/demos/slider--form.tsx?raw'
-import sliderMarksSource from '@/generated/demos/slider--marks.tsx?raw'
-import sliderSizingSource from '@/generated/demos/slider--sizing.tsx?raw'
-import sliderVerticalSource from '@/generated/demos/slider--vertical.tsx?raw'
 import { exampleDocs } from '@/generated/examples'
 
 import ExampleDoc from '..'
@@ -83,28 +61,39 @@ if (
     '生成数据里缺少 slider / button / image-preview / collapse / layout / theme / segmented-trigger / drawer / checkbox / radio / checkbox-group / radio-group'
   )
 
-/** `${component}--${demoKey}` → 落盘文件字节；少一条就在断言里直接报出来，不留「这条没被覆盖」的静默缺口。 */
-const demoSources: Record<string, string> = {
-  'checkbox--basic': checkboxBasicSource,
-  'checkbox--disabled': checkboxDisabledSource,
-  'checkbox--form': checkboxFormSource,
-  'checkbox-group--basic': checkboxGroupBasicSource,
-  'checkbox-group--direction': checkboxGroupDirectionSource,
-  'checkbox-group--disabled-required': checkboxGroupDisabledRequiredSource,
-  'checkbox-group--gap': checkboxGroupGapSource,
-  'radio--basic': radioBasicSource,
-  'radio--disabled': radioDisabledSource,
-  'radio--form': radioFormSource,
-  'radio-group--basic': radioGroupBasicSource,
-  'radio-group--direction': radioGroupDirectionSource,
-  'radio-group--disabled-required': radioGroupDisabledRequiredSource,
-  'radio-group--gap': radioGroupGapSource,
-  'slider--basic': sliderBasicSource,
-  'slider--events': sliderEventsSource,
-  'slider--form': sliderFormSource,
-  'slider--marks': sliderMarksSource,
-  'slider--sizing': sliderSizingSource,
-  'slider--vertical': sliderVerticalSource
+/** 逐篇铺断言时按名字取生成数据：取不到就红，别让拼错的组件名变成「这篇没被测」。 */
+function docOf(component: string): Doc {
+  const doc = exampleDocs.find(candidate => candidate.component === component)
+  if (!doc) throw new Error(`生成数据里没有 ${component} 这个 component`)
+  return doc
+}
+
+/**
+ * `${component}--${demoKey}` → 落盘文件字节。`?raw` 读的是 `import.meta.glob` 拿去编译的同一个文件，
+ * 于是「页面上显示的那份」直接钉在「被执行的那份」上，中间不经过 payload 与围栏的等价推定。
+ *
+ * 这里用 glob 而不是逐条 `?raw` import：这条断言的覆盖面是「所有带锚点的示例」，18 篇一百多条写进口
+ * 只会漏，而漏掉的那条正好是改名或改围栏时会漂的那条。缺文件由 `demoSourceOf` 报出来，
+ * 「没覆盖」不等于「通过」。
+ */
+const demoRawModules = import.meta.glob<string>('../../../generated/demos/*.tsx', {
+  query: '?raw',
+  import: 'default',
+  eager: true
+})
+// key 取文件名去掉扩展：demo 文件名就是 `${component}--${demoKey}`，全局唯一，不必再带路径前缀。
+const demoSources: Record<string, string> = Object.fromEntries(
+  Object.entries(demoRawModules).map(([file, source]) => [
+    file.slice(file.lastIndexOf('/') + 1, -'.tsx'.length),
+    source
+  ])
+)
+
+function demoSourceOf(component: string, demoKey: string | null | undefined) {
+  const key = `${component}--${demoKey ?? '(无锚点)'}`
+  const source = demoSources[key]
+  if (source === undefined) throw new Error(`${key} 没有落盘文件，测不到它显示的是不是被执行的那份`)
+  return source
 }
 
 // 生成样式让 token 取 shiki 双主题里的浅色那一边。这里按 span 自己带的 `--shiki-light` 取色，
@@ -168,10 +157,11 @@ function keyword(container: HTMLElement) {
 }
 
 /** 一条示例该有几个宿主，数的是那份落盘源码里 `<${tag}` 标签的个数（不含同前缀的别的 tag）。 */
-function expectedHosts(component: string, demoKey: string | null | undefined, host: Host) {
-  const source = demoKey ? demoSources[`${component}--${demoKey}`] : undefined
-  if (!source) throw new Error(`${component}--${demoKey ?? '(无锚点)'} 的源码没有导入，测不到它该挂几个 ${host.tag}`)
-  return (source.match(new RegExp(`<${host.tag}(?![-\\w])`, 'g')) ?? []).length
+function expectedHosts(component: string, demoKey: string | null | undefined, tag: string) {
+  const source = demoSourceOf(component, demoKey)
+  const count = (source.match(new RegExp(`<${tag}(?![-\\w])`, 'g')) ?? []).length
+  // 源码里出现 `.map(` 时，渲染出来的宿主个数由数据决定，静态数不出来，这条只能判下界。
+  return { count, exact: !source.includes('.map(') }
 }
 
 /** 宿主 tag + 影子树里该有的 role：等挂载与判升级都按这两列取。 */
@@ -186,14 +176,32 @@ const radioHost: Host = { tag: 'web-ui-radio', role: 'radio' }
 // 迁移到「docs 全量生成」的文档：示例逐条都有落盘文件与 live 宿主，所以下面那几组逐条断言按
 // 同一套形状铺到每一篇（补一篇就加一行），不再只有 slider 一份脚手架。
 //
-// 两篇 group 文档按**成员**宿主计数：组元素的影子树里没有任何 role，拿它当宿主判不了升级，而组里的
-// 成员各自带 role，正好把「组示例真的挂出可交互控件」这件事量出来。
-const migratedDocs: { doc: Doc; host: Host }[] = [
-  { doc: slider, host: sliderHost },
-  { doc: checkbox, host: checkboxHost },
-  { doc: radio, host: radioHost },
-  { doc: checkboxGroup, host: checkboxHost },
-  { doc: radioGroup, host: radioHost }
+// 宿主 tag 按**真实渲染出来的那个元素**数：两篇 group 文档数成员（组元素的影子树里没有 role，
+// 拿它当宿主判不了升级，成员各自带 role），`spinner` 的 `{#imperative}` 走 `WebUiSpinner.show()`
+// 挂在 body 上，源码里没有那个 tag，于是该示例期望 0 个宿主——这是它的真实形状，不是漏判。
+const migratedDocs: { doc: Doc; tag: string }[] = [
+  { doc: docOf('avatar'), tag: 'web-ui-avatar' },
+  { doc: docOf('badge'), tag: 'web-ui-badge' },
+  { doc: docOf('button'), tag: 'web-ui-button' },
+  { doc: checkbox, tag: 'web-ui-checkbox' },
+  { doc: checkboxGroup, tag: 'web-ui-checkbox' },
+  { doc: collapse, tag: 'web-ui-collapse' },
+  { doc: drawer, tag: 'web-ui-drawer' },
+  { doc: docOf('editable-text'), tag: 'web-ui-editable-text' },
+  { doc: docOf('empty'), tag: 'web-ui-empty' },
+  { doc: docOf('icon'), tag: 'web-ui-icon' },
+  { doc: docOf('input'), tag: 'web-ui-input' },
+  { doc: docOf('input-number'), tag: 'web-ui-input-number' },
+  { doc: layout, tag: 'web-ui-layout' },
+  { doc: docOf('middle-ellipsis'), tag: 'web-ui-middle-ellipsis' },
+  { doc: radio, tag: 'web-ui-radio' },
+  { doc: radioGroup, tag: 'web-ui-radio' },
+  { doc: slider, tag: 'web-ui-slider' },
+  { doc: docOf('spinner'), tag: 'web-ui-spinner' },
+  { doc: docOf('svg-draw-lines'), tag: 'web-ui-svg-draw-lines' },
+  { doc: docOf('switch'), tag: 'web-ui-switch' },
+  { doc: docOf('textarea'), tag: 'web-ui-textarea' },
+  { doc: theme, tag: 'web-ui-theme' }
 ]
 
 // live 示例是 lazy 的：不先把每条示例的宿主等齐，Suspense 会在断言之后才落地，React 的 act 环境
@@ -203,33 +211,40 @@ const migratedDocs: { doc: Doc; host: Host }[] = [
 // `IS_REACT_ACT_ENVIRONMENT` 暂时关掉（root.browser.spec.tsx 的 `settleViewport` 记了同一条口径），
 // 落在这个窗口里的 lazy 结算因此不再被记账。反过来把 `waitFor` 塞进 `act` 会得到
 // 「not configured to support act」，而且那份结算没人 flush，等到超时依然是空的。
-async function mountDemos(container: HTMLElement, doc: Doc, host: Host) {
+async function mountDemos(container: HTMLElement, doc: Doc, tag: string) {
   // 超时给到 8 秒：第一份 demo 的 dynamic import 是冷的，要等 dev server 现转源码，默认 1 秒不够；
   // 之后同一轮里模块已缓存，等到的就是真实挂载时间。
   //
   // 判据是逐条示例的宿主数，期望值现算自 demo 源码：语料里给某条示例加一个宿主，这里就要求预览里
   // 真的多挂一个；只按「每个预览至少一个」判会放过局部没结算完的情况。
-  const expected = doc.samples.map(
-    candidate => [candidate.title, expectedHosts(doc.component, candidate.demoKey, host)] as const
-  )
+  // 没锚点的示例没有预览区，也不该有：那条对应关系由「带锚点的示例挂成真组件」一条断言管。
+  const expected = doc.samples
+    .filter(candidate => candidate.demoKey)
+    .map(candidate => [candidate.title, expectedHosts(doc.component, candidate.demoKey, tag)] as const)
   await waitFor(
     () => {
-      for (const [title, count] of expected) {
-        const mounted = sample(container, title).querySelectorAll(host.tag).length
-        if (mounted !== count)
-          throw new Error(`示例「${title}」挂了 ${mounted} 个 ${host.tag}，源码里写的是 ${count} 个`)
+      for (const [title, { count, exact }] of expected) {
+        // 只在预览区里数：卡片工具条上的复制/展开按钮和它们的图标也是 `web-ui-button` / `web-ui-icon`，
+        // 从整张卡取会多算两个。
+        const mounted = previewOf(container, title).querySelectorAll(tag).length
+        if (exact ? mounted !== count : mounted < count)
+          throw new Error(
+            `示例「${title}」挂了 ${mounted} 个 ${tag}，源码里写的是 ${count} 个（${
+              exact ? '源码逐个手写，判相等' : '源码用 map 生成，判下界'
+            }）`
+          )
       }
     },
     { timeout: 8000 }
   )
   await act(async () => {
-    for (const element of container.querySelectorAll<Upgradable>(host.tag)) await element.updateComplete
+    for (const element of container.querySelectorAll<Upgradable>(tag)) await element.updateComplete
   })
 }
 
 /** 一条示例里可以摆多个宿主，所以要指明取第几个。 */
 function hostIn<T extends HTMLElement>(container: HTMLElement, title: string, host: Host, index = 0): T {
-  const element = [...sample(container, title).querySelectorAll<T>(host.tag)][index]
+  const element = [...previewOf(container, title).querySelectorAll<T>(host.tag)][index]
   if (!element) throw new Error(`示例「${title}」的第 ${index + 1} 个位置没有渲染出 ${host.tag}`)
   // 影子树里有 role="<host.role>" = 元素真的被注册升级过，不是留着未知 tag 的空壳。
   if (!element.shadowRoot?.querySelector(`[role="${host.role}"]`))
@@ -338,7 +353,9 @@ describe('example-doc（React 面 / 真实浏览器）', () => {
     const { container } = render(<ExampleDoc component="button" />)
     await settleCollapses(container)
 
-    expect(container.querySelector('[data-example-intro]')?.innerHTML).toBe(button.introHtml)
+    // 同下面那段代码块断言：比的是内容而不是转义写法，所以两侧都先过一遍 DOM 序列化。
+    const parsedIntro = new DOMParser().parseFromString(button.introHtml, 'text/html').body
+    expect(container.querySelector('[data-example-intro]')?.innerHTML).toBe(parsedIntro.innerHTML)
     expect(
       [...container.querySelectorAll('[data-sample]')].map(element => element.getAttribute('data-sample'))
     ).toEqual(button.samples.map(candidate => candidate.title))
@@ -369,13 +386,12 @@ describe('example-doc（React 面 / 真实浏览器）', () => {
     // 逐篇逐条比，而不是挑一条：这条契约的覆盖面就是「所有带锚点的示例」，改名或改围栏时
     // 恰恰是没被断言盖住的那篇那条会漂。文件字节 = 可见文本 + 一个行尾换行（见 `demoFileContent`），
     // 写成 `trimEnd()` 会把「文件末尾多一个空行」这类形状放掉。
-    for (const { doc, host } of migratedDocs) {
+    for (const { doc, tag } of migratedDocs) {
       const { container } = render(<ExampleDoc component={doc.component} />)
-      await mountDemos(container, doc, host)
+      await mountDemos(container, doc, tag)
       for (const candidate of doc.samples) {
         if (!candidate.demoKey) continue
-        const source = demoSources[`${doc.component}--${candidate.demoKey}`]
-        if (source === undefined) throw new Error(`生成数据里的 ${doc.component}--${candidate.demoKey} 没有落盘文件`)
+        const source = demoSourceOf(doc.component, candidate.demoKey)
         const text = sample(container, candidate.title).querySelector('pre.shiki')?.textContent ?? ''
         expect(`${text}\n`, `${doc.component}--${candidate.demoKey}`).toBe(source)
       }
@@ -751,26 +767,20 @@ describe('example-doc（React 面 / 真实浏览器）', () => {
 
   it('带锚点的示例挂成真组件，没锚点的只有代码', async () => {
     // 逐篇比预览区与锚点的对应：写了 `{#id}` 的示例必须挂出 live 预览区，没写的只出代码。
-    for (const { doc, host } of migratedDocs) {
+    for (const { doc, tag } of migratedDocs) {
       const { container } = render(<ExampleDoc component={doc.component} />)
       expect(
         [...container.querySelectorAll('[data-sample-preview]')].map(element =>
           element.getAttribute('data-sample-preview')
         )
       ).toEqual(doc.samples.map(candidate => candidate.demoKey).filter(Boolean))
-      await mountDemos(container, doc, host)
+      await mountDemos(container, doc, tag)
     }
-
-    const buttonContainer = render(<ExampleDoc component="button" />).container
-    expect(
-      buttonContainer.querySelector('[data-sample-preview]'),
-      'button 的示例没有锚点，不该生成 live 预览'
-    ).toBeNull()
   })
 
   it('页面上写的数字，就是屏幕上跑起来的那个值', async () => {
     const { container } = render(<ExampleDoc component="slider" />)
-    await mountDemos(container, slider, sliderHost)
+    await mountDemos(container, slider, 'web-ui-slider')
 
     // 代码块与 demo 文件同源，所以从渲染出来的 `<pre>` 文本里读到的取值，必须等于被执行那份源码
     // 传进组件的 props——这一条在浏览器层把「显示」和「执行」接上了。
@@ -795,7 +805,7 @@ describe('example-doc（React 面 / 真实浏览器）', () => {
 
   it('示例是活的：键盘能改值', async () => {
     const { container } = render(<ExampleDoc component="slider" />)
-    await mountDemos(container, slider, sliderHost)
+    await mountDemos(container, slider, 'web-ui-slider')
 
     const host = sliderIn(container, '垂直方向')
     expect(host.value).toBe(60)
@@ -813,7 +823,7 @@ describe('example-doc（React 面 / 真实浏览器）', () => {
 
   it('事件示例的读数跟着键盘走：onInput 与 onChange 真的接在 custom element 上', async () => {
     const { container } = render(<ExampleDoc component="slider" />)
-    await mountDemos(container, slider, sliderHost)
+    await mountDemos(container, slider, 'web-ui-slider')
 
     const preview = previewOf(container, 'input 与 change')
     const readout = readoutOf(preview)
@@ -832,7 +842,7 @@ describe('example-doc（React 面 / 真实浏览器）', () => {
 
   it('表单取值示例：提交带出滑块的值，重置把读数和值一起清掉', async () => {
     const { container } = render(<ExampleDoc component="slider" />)
-    await mountDemos(container, slider, sliderHost)
+    await mountDemos(container, slider, 'web-ui-slider')
 
     const preview = previewOf(container, '表单取值')
     const readout = readoutOf(preview)
@@ -859,7 +869,7 @@ describe('example-doc（React 面 / 真实浏览器）', () => {
 
   it('props 表里手写的默认值，就是 slider 元素的实际初值', async () => {
     const { container } = render(<ExampleDoc component="slider" />)
-    await mountDemos(container, slider, sliderHost)
+    await mountDemos(container, slider, 'web-ui-slider')
 
     // 「基础」的第一条不写任何属性，正好当默认值样本：表里那一列是手写的，元素初值来自组件源码，
     // 两边对不上就是文档漏改（layout 与 checkbox / radio 那两条同判据）。属性增删也会在这里红。
@@ -903,7 +913,7 @@ describe('example-doc（React 面 / 真实浏览器）', () => {
 
   it('checkbox 示例是活的：点整行都能勾选，禁用项按下不动', async () => {
     const { container } = render(<ExampleDoc component="checkbox" />)
-    await mountDemos(container, checkbox, checkboxHost)
+    await mountDemos(container, checkbox, 'web-ui-checkbox')
 
     const readout = readoutOf(previewOf(container, '基础'))
     const [email, sms] = [0, 1].map(index => hostIn<WebUiCheckbox>(container, '基础', checkboxHost, index))
@@ -929,7 +939,7 @@ describe('example-doc（React 面 / 真实浏览器）', () => {
 
   it('checkbox 表单示例：required 拦下空提交，勾满才出 name=value，重置清回去', async () => {
     const { container } = render(<ExampleDoc component="checkbox" />)
-    await mountDemos(container, checkbox, checkboxHost)
+    await mountDemos(container, checkbox, 'web-ui-checkbox')
 
     const preview = previewOf(container, '表单值')
     const readout = readoutOf(preview)
@@ -957,7 +967,7 @@ describe('example-doc（React 面 / 真实浏览器）', () => {
 
   it('radio 示例是活的：点选会换项，再点已选中的一项不动，禁用项点不动', async () => {
     const { container } = render(<ExampleDoc component="radio" />)
-    await mountDemos(container, radio, radioHost)
+    await mountDemos(container, radio, 'web-ui-radio')
 
     const readout = readoutOf(previewOf(container, '基础'))
     const [basic, pro] = [0, 1].map(index => hostIn<WebUiRadio>(container, '基础', radioHost, index))
@@ -990,7 +1000,7 @@ describe('example-doc（React 面 / 真实浏览器）', () => {
 
   it('radio 表单示例：提交带出选中项的 value，重置回到初始项', async () => {
     const { container } = render(<ExampleDoc component="radio" />)
-    await mountDemos(container, radio, radioHost)
+    await mountDemos(container, radio, 'web-ui-radio')
 
     const preview = previewOf(container, '表单值')
     const readout = readoutOf(preview)
@@ -1012,12 +1022,12 @@ describe('example-doc（React 面 / 真实浏览器）', () => {
 
   it('组示例的排列方向与成员间距真的落到样式里', async () => {
     // 组文档等挂载按**成员**宿主判（组元素影子树里没有 role），方向与间距则量组元素本身。
-    for (const [doc, host, groupTag] of [
-      [checkboxGroup, checkboxHost, 'web-ui-checkbox-group'],
-      [radioGroup, radioHost, 'web-ui-radio-group']
+    for (const [doc, tag, groupTag] of [
+      [checkboxGroup, 'web-ui-checkbox', 'web-ui-checkbox-group'],
+      [radioGroup, 'web-ui-radio', 'web-ui-radio-group']
     ] as const) {
       const { container } = render(<ExampleDoc component={doc.component} />)
-      await mountDemos(container, doc, host)
+      await mountDemos(container, doc, tag)
 
       // 两条 direction 的差别要量得出来：读属性证明不了样式生效，flex 轴向才决定成员是叠着还是并排。
       const dirs = [...sample(container, '排列方向').querySelectorAll<HTMLElement>(groupTag)]
@@ -1131,7 +1141,7 @@ describe('example-doc（React 面 / 真实浏览器）', () => {
     expect(cellOf(rows, color, '--wui-color-page', '深色默认值')).toBe('#242628')
   })
 
-  it('layout 的三张 API 表来自 markdown，示例只有代码没有 live 预览', () => {
+  it('layout 的三张 API 表来自 markdown，四条示例都挂出 live 预览', async () => {
     const { container } = render(<ExampleDoc component="layout" />)
 
     for (const key of ['props', 'events', 'slots'] as const) {
@@ -1145,9 +1155,14 @@ describe('example-doc（React 面 / 真实浏览器）', () => {
     expect(
       [...container.querySelectorAll('[data-sample]')].map(element => element.getAttribute('data-sample'))
     ).toEqual(layout.samples.map(candidate => candidate.title))
-    // layout 的示例是纯展示片段（没有 `{#id}` 锚点）：整页布局嵌进文档页会和外层 shell 抢 sticky
-    // header，真实交互由手写的 layout-demo 页面演示，文档页只出代码。
-    expect(container.querySelector('[data-sample-preview]')).toBeNull()
+    // layout 是整屏布局，直接铺进文档页会和外层 shell 抢 sticky header，所以每条示例自己套一个
+    // 限高滚动容器：预览区存在，且宿主真的挂上了。
+    expect(
+      [...container.querySelectorAll('[data-sample-preview]')].map(element =>
+        element.getAttribute('data-sample-preview')
+      )
+    ).toEqual(layout.samples.map(candidate => candidate.demoKey))
+    await mountDemos(container, layout, 'web-ui-layout')
   })
 
   it('layout props 表里手写的默认值，就是元素实际的默认值', async () => {

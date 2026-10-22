@@ -1,7 +1,7 @@
 import { existsSync, readdirSync, readFileSync } from 'node:fs'
 import path from 'node:path'
 
-import { demoFileContent, demoFileName, visibleText } from '@greypan/md-to-comp'
+import { demoFileContent, demoFileName, FLAVOR_LANG, visibleText } from '@greypan/md-to-comp'
 import { describe, expect, it } from 'vite-plus/test'
 
 import { exampleDocs } from '../generated/examples'
@@ -18,6 +18,8 @@ const demosDir = path.resolve(import.meta.dirname, '../generated/demos')
 const pagesDir = path.resolve(import.meta.dirname, '../pages/components')
 
 const FLAVOR = 'vue' as const
+/** 语料里的围栏语言由生成器那张表给出，不在这里抄第二份：react 那侧写的就不是框架名。 */
+const FENCE_LANG = FLAVOR_LANG[FLAVOR]
 
 const corpusFiles = readdirSync(docsDir)
   .filter(file => file.endsWith('.md'))
@@ -82,10 +84,11 @@ describe('示例显示与 markdown 围栏同源', () => {
       const doc = docByName.get(component)
       if (!doc) throw new Error(`${name}：生成数据里没有这个 component`)
       const markdown = readFileSync(path.join(docsDir, name), 'utf8')
-      const fences = fencesOf(markdown, FLAVOR)
-      expect(fences, `${name}：${FLAVOR} 围栏数 ${fences.length} 与示例数 ${doc.samples.length} 不一致`).toHaveLength(
-        doc.samples.length
-      )
+      const fences = fencesOf(markdown, FENCE_LANG)
+      expect(
+        fences,
+        `${name}：${FENCE_LANG} 围栏数 ${fences.length} 与示例数 ${doc.samples.length} 不一致`
+      ).toHaveLength(doc.samples.length)
       fences.forEach((fence, index) => {
         const sample = doc.samples[index]
         expect(
@@ -116,7 +119,7 @@ describe('带锚点的示例落成可编译文件', () => {
         const sample = doc.samples.find(candidate => candidate.title === anchor.title)
         if (!sample) throw new Error(`${name}：带锚点的示例「${anchor.title}」没进生成数据`)
         expect(sample.demoKey, `${name}/${anchor.title}：生成数据里的 demoKey 不是锚点`).toBe(anchor.id)
-        const fence = fencesOf(markdown, FLAVOR)[doc.samples.indexOf(sample)]
+        const fence = fencesOf(markdown, FENCE_LANG)[doc.samples.indexOf(sample)]
         const file = path.join(demosDir, demoFileName(component, anchor.id, FLAVOR))
         expect(
           existsSync(file),
@@ -135,7 +138,28 @@ describe('带锚点的示例落成可编译文件', () => {
 // 过渡期清单：已迁到「docs 全量生成」的文档。每迁完一篇就加进来；全部迁完后删除本清单，
 // 并在生成配置里开启 requireDemo，让漏锚点直接在生成阶段失败。清单里的文档断言的是「每条
 // 示例都有锚点」，补上锚点测试天然覆盖不到的那半边。
-const migratedDocs = ['drawer', 'slider', 'checkbox', 'radio']
+const migratedDocs = [
+  'avatar',
+  'badge',
+  'button',
+  'checkbox',
+  'collapse',
+  'drawer',
+  'editable-text',
+  'empty',
+  'icon',
+  'input',
+  'input-number',
+  'layout',
+  'middle-ellipsis',
+  'radio',
+  'slider',
+  'spinner',
+  'svg-draw-lines',
+  'switch',
+  'textarea',
+  'theme'
+]
 
 describe('已迁移文档的每条示例都能渲染', () => {
   it('迁移清单里没有漏掉锚点的示例', () => {

@@ -11,7 +11,7 @@ tag: web-ui-dialog
 
 `open` 控制可见性，`heading` 是无 header 插槽时的标题回落，`closable` 渲染内置关闭 button。
 
-```react
+```tsx
 const [open, setOpen] = useState(false)
 
 return (
@@ -47,7 +47,7 @@ const open = ref(false)
 
 开启 `controlled` 后，Escape 与 backdrop 点击只请求 `open=false`，在消费方回写前 dialog 保持打开。
 
-```react
+```tsx
 <web-ui-dialog
   open={open}
   controlled
@@ -79,7 +79,7 @@ function onOpenChange(event: CustomEvent<{ open: boolean }>) {
 
 `headless` 只保留 overlay 行为，默认插槽渲染为卡片内唯一的滚动层；此时必须用 `dialog-label` 提供可访问名称。
 
-```react
+```tsx
 <web-ui-dialog open={open} headless dialog-label="图片详情">
   <div className="my-dialog-content">自定义内容与样式</div>
 </web-ui-dialog>

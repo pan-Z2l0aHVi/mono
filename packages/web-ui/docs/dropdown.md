@@ -11,7 +11,7 @@ dropdown menu：`trigger` 插槽放 trigger，其余子元素作为 menu item �
 
 menu item 从宿主子元素迁移到 overlay panel，`trigger` 必须是可交互元素。
 
-```react
+```tsx
 <web-ui-dropdown>
   <web-ui-button slot="trigger" variant="secondary">
     操作
@@ -39,7 +39,7 @@ menu item 从宿主子元素迁移到 overlay panel，`trigger` 必须是可交�
 
 `prefix` / `suffix` 插槽装饰 menu item，`dropdown-header` 给一组项加标题。
 
-```react
+```tsx
 <web-ui-dropdown>
   <web-ui-button slot="trigger" variant="secondary">
     文件
@@ -81,7 +81,7 @@ import { lucideCopy, lucideTrash2 } from '@greypan/web-ui/icons'
 
 在 menu item 上设置 `submenu` 后，嵌套的 submenu item 成为它的下一级。
 
-```react
+```tsx
 <web-ui-dropdown>
   <web-ui-button slot="trigger" variant="secondary">
     更多

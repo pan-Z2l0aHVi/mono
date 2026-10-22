@@ -11,7 +11,7 @@ tag: web-ui-image-preview
 
 只传图片时只渲染图片本身，点击图片外空白或按 Escape 关闭。
 
-```react
+```tsx
 import { imagePreview } from '@greypan/web-ui'
 
 const preview = imagePreview({
@@ -49,7 +49,7 @@ function open() {
 
 `nav`、`toolbar`、`closable`、`indicator` 彼此独立且默认关闭，需要显式开启。
 
-```react
+```tsx
 const preview = imagePreview({
   images,
   index: 0,
@@ -74,7 +74,7 @@ function openFull(images: { src: string; alt?: string }[]) {
 
 `swipe` 在 1x 倍率下允许左右滑动切图；`loop` 关闭时首尾钳制、边界方向回弹。
 
-```react
+```tsx
 const preview = imagePreview({ images, swipe: true, loop: false })
 ```
 
@@ -92,7 +92,7 @@ function openBounded(images: { src: string; alt?: string }[]) {
 
 handle 暴露只读的 `index`、`scale`、`images`、`closed` 与下表的方法，可据此实现自己的 trigger 与状态 panel。
 
-```react
+```tsx
 const preview = imagePreview({ images })
 preview.goTo(2)
 preview.zoomIn()
