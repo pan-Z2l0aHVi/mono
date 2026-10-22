@@ -139,12 +139,14 @@ describe('带锚点的示例落成可编译文件', () => {
 // 并在生成配置里开启 requireDemo，让漏锚点直接在生成阶段失败。清单里的文档断言的是「每条
 // 示例都有锚点」，补上锚点测试天然覆盖不到的那半边。
 const migratedDocs = [
+  'autocomplete',
   'avatar',
   'badge',
   'button',
   'checkbox',
   'collapse',
   'drawer',
+  'dropdown',
   'editable-text',
   'empty',
   'icon',
@@ -153,6 +155,8 @@ const migratedDocs = [
   'layout',
   'middle-ellipsis',
   'radio',
+  'segmented',
+  'select',
   'slider',
   'spinner',
   'svg-draw-lines',

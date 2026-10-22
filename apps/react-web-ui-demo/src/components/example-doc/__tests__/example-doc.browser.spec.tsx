@@ -2,13 +2,16 @@ import '@/assets/global.css'
 import '@/generated/examples.css'
 
 import type {
+  WebUiAutocomplete,
   WebUiCheckbox,
   WebUiCollapse,
   WebUiDrawer,
+  WebUiDropdown,
   WebUiLayout,
   WebUiRadio,
   WebUiSegmented,
   WebUiSegmentedTrigger,
+  WebUiSelect,
   WebUiSlider,
   WebUiTooltip
 } from '@greypan/web-ui'
@@ -180,6 +183,7 @@ const radioHost: Host = { tag: 'web-ui-radio', role: 'radio' }
 // 拿它当宿主判不了升级，成员各自带 role），`spinner` 的 `{#imperative}` 走 `WebUiSpinner.show()`
 // 挂在 body 上，源码里没有那个 tag，于是该示例期望 0 个宿主——这是它的真实形状，不是漏判。
 const migratedDocs: { doc: Doc; tag: string }[] = [
+  { doc: docOf('autocomplete'), tag: 'web-ui-autocomplete' },
   { doc: docOf('avatar'), tag: 'web-ui-avatar' },
   { doc: docOf('badge'), tag: 'web-ui-badge' },
   { doc: docOf('button'), tag: 'web-ui-button' },
@@ -187,6 +191,7 @@ const migratedDocs: { doc: Doc; tag: string }[] = [
   { doc: checkboxGroup, tag: 'web-ui-checkbox' },
   { doc: collapse, tag: 'web-ui-collapse' },
   { doc: drawer, tag: 'web-ui-drawer' },
+  { doc: docOf('dropdown'), tag: 'web-ui-dropdown' },
   { doc: docOf('editable-text'), tag: 'web-ui-editable-text' },
   { doc: docOf('empty'), tag: 'web-ui-empty' },
   { doc: docOf('icon'), tag: 'web-ui-icon' },
@@ -196,6 +201,8 @@ const migratedDocs: { doc: Doc; tag: string }[] = [
   { doc: docOf('middle-ellipsis'), tag: 'web-ui-middle-ellipsis' },
   { doc: radio, tag: 'web-ui-radio' },
   { doc: radioGroup, tag: 'web-ui-radio' },
+  { doc: docOf('segmented'), tag: 'web-ui-segmented' },
+  { doc: docOf('select'), tag: 'web-ui-select' },
   { doc: slider, tag: 'web-ui-slider' },
   { doc: docOf('spinner'), tag: 'web-ui-spinner' },
   { doc: docOf('svg-draw-lines'), tag: 'web-ui-svg-draw-lines' },
@@ -328,6 +335,48 @@ function optionOf(trigger: WebUiSegmentedTrigger) {
   const option = trigger.shadowRoot?.querySelector<HTMLElement>('[role="option"]')
   if (!option) throw new Error('web-ui-segmented-trigger 的影子树里没有 role="option"')
   return option
+}
+
+const selectHost: Host = { tag: 'web-ui-select', role: 'combobox' }
+const autocompleteHost: Host = { tag: 'web-ui-autocomplete', role: 'combobox' }
+
+/** select / autocomplete 的开合落在影子树里的 trigger 上：宿主自己的点击进不去。 */
+function comboboxOf(host: HTMLElement) {
+  const combobox = host.shadowRoot?.querySelector<HTMLElement>('[role="combobox"]')
+  if (!combobox) throw new Error(`${host.localName} 的影子树里没有 role="combobox"`)
+  return combobox
+}
+
+/** autocomplete 默认 trigger 是影子树里的 web-ui-input，键入要落到它内部的原生控件上。 */
+function autocompleteInput(host: WebUiAutocomplete) {
+  const input = host.shadowRoot?.querySelector('web-ui-input')?.shadowRoot?.querySelector<HTMLInputElement>('input')
+  if (!input) throw new Error('autocomplete 默认 trigger 没有渲染出原生 input')
+  return input
+}
+
+/** dropdown 的 menu panel 挂在 overlay root 的 shadow 树里，普通 querySelector 看不到。 */
+function deepQuery<T extends Element>(root: Document | ShadowRoot, selector: string): T | null {
+  const direct = root.querySelector<T>(selector)
+  if (direct) return direct
+  for (const host of root.querySelectorAll('*')) {
+    if (!host.shadowRoot) continue
+    const found = deepQuery<T>(host.shadowRoot, selector)
+    if (found) return found
+  }
+  return null
+}
+
+/**
+ * 当前这条示例的根 menu panel：trigger 的 aria-controls 指向它。
+ * 直接按 value 在文档里找会命中别的测试留下的同值 item。
+ */
+function dropdownPanelOf(preview: HTMLElement) {
+  const trigger = preview.querySelector<HTMLElement>('[slot="trigger"]')
+  const id = trigger?.getAttribute('aria-controls')
+  if (!id) throw new Error('dropdown trigger 上没有 aria-controls')
+  const panel = deepQuery<HTMLElement>(document, `#${CSS.escape(id)}`)
+  if (!panel) throw new Error(`overlay 里没有 id="${id}" 的 menu panel`)
+  return panel
 }
 
 /** markdown 默认值单元格 → 元素侧的比较值：去掉反引号与字面量引号，`—` 表示空串。 */
@@ -1227,5 +1276,225 @@ describe('example-doc（React 面 / 真实浏览器）', () => {
       optionOf(items[1]).click()
     })
     expect(disabled.value).toBe('list')
+  })
+
+  it('select 示例是活的：选中后回写 value，清除回到空，禁用控件打不开', async () => {
+    const { container } = render(<ExampleDoc component="select" />)
+    await mountDemos(container, docOf('select'), 'web-ui-select')
+
+    const preview = previewOf(container, '基础')
+    const readout = readoutOf(preview)
+    const host = hostIn<WebUiSelect>(container, '基础', selectHost)
+    expect([host.value, readout()]).toEqual(['vue', '当前值：vue'])
+
+    await act(async () => {
+      await userEvent.click(comboboxOf(host))
+    })
+    await waitFor(() => expect(host.open).toBe(true))
+
+    // 选中项由页面的 onChange 回写 value，trigger 的标签与读数一起动。
+    await act(async () => {
+      await userEvent.click(preview.querySelector<HTMLElement>('web-ui-option[value="react"]')!)
+    })
+    await waitFor(() => expect([host.value, readout()]).toEqual(['react', '当前值：react']))
+    expect(host.open).toBe(false)
+
+    await act(async () => shadowButton(preview, '清除').click())
+    await waitFor(() => expect([host.value, readout()]).toEqual(['', '当前值：（空）']))
+
+    // 禁用态在 Playwright 眼里不是 enabled 元素，userEvent 会拒绝点击；直接派发 click 才测得到守卫。
+    const locked = hostIn<WebUiSelect>(container, '基础', selectHost, 1)
+    await act(async () => comboboxOf(locked).click())
+    expect(locked.open).toBe(false)
+  })
+
+  it('select 表单示例：required 拦下空提交，选中后带出 framework，重置回空', async () => {
+    const { container } = render(<ExampleDoc component="select" />)
+    await mountDemos(container, docOf('select'), 'web-ui-select')
+
+    const preview = previewOf(container, '表单取值')
+    const readout = readoutOf(preview)
+    const host = hostIn<WebUiSelect>(container, '表单取值', selectHost)
+    expect(readout()).toBe('尚未提交')
+
+    // 空提交被 required 拦在 submit 事件之前；只读 output 分不出「被拦下」和「提交了空字段」
+    // （demo 对缺失字段同样写空串），所以直接数 form 上的 submit 事件。
+    const form = preview.querySelector('form')
+    if (!form) throw new Error('表单取值示例没有 form')
+    let submits = 0
+    const countSubmit = () => submits++
+    form.addEventListener('submit', countSubmit)
+
+    await act(async () => shadowButton(preview, '提交').click())
+    expect([submits, readout()]).toEqual([0, '尚未提交'])
+
+    await act(async () => {
+      await userEvent.click(comboboxOf(host))
+    })
+    await waitFor(() => expect(host.open).toBe(true))
+    await act(async () => {
+      await userEvent.click(preview.querySelector<HTMLElement>('web-ui-option[value="vue"]')!)
+    })
+    await waitFor(() => expect(host.value).toBe('vue'))
+
+    await act(async () => shadowButton(preview, '提交').click())
+    await waitFor(() => expect(readout()).toBe('framework=vue'))
+    expect(submits).toBe(1)
+
+    await act(async () => shadowButton(preview, '重置').click())
+    await waitFor(() => expect([readout(), host.value]).toEqual(['尚未提交', '']))
+    form.removeEventListener('submit', countSubmit)
+  })
+
+  it('select 的 open-change 每次开合各报一次', async () => {
+    const { container } = render(<ExampleDoc component="select" />)
+    await mountDemos(container, docOf('select'), 'web-ui-select')
+
+    const preview = previewOf(container, '开合通知')
+    const readout = readoutOf(preview)
+    const host = hostIn<WebUiSelect>(container, '开合通知', selectHost)
+    expect(readout()).toBe('open-change：0 次 · 最后一次 detail.open = —')
+
+    await act(async () => {
+      await userEvent.click(comboboxOf(host))
+    })
+    await waitFor(() => expect(readout()).toBe('open-change：1 次 · 最后一次 detail.open = true'))
+
+    await act(async () => {
+      await userEvent.click(comboboxOf(host))
+    })
+    await waitFor(() => expect(readout()).toBe('open-change：2 次 · 最后一次 detail.open = false'))
+  })
+
+  it('autocomplete 示例是活的：键入过滤候选，选中回填 label 与 selected-value', async () => {
+    const { container } = render(<ExampleDoc component="autocomplete" />)
+    await mountDemos(container, docOf('autocomplete'), 'web-ui-autocomplete')
+
+    const preview = previewOf(container, '基础')
+    const readout = readoutOf(preview)
+    const host = hostIn<WebUiAutocomplete>(container, '基础', autocompleteHost)
+
+    await act(async () => {
+      autocompleteInput(host).focus()
+      await userEvent.keyboard('React')
+    })
+    await waitFor(() => expect(host.open).toBe(true))
+    // 不匹配的候选被过滤标记藏起来：剩下的可点项只有 React。
+    expect(preview.querySelector('web-ui-option[value="Vue"]')?.hasAttribute('data-filtered')).toBe(true)
+
+    await act(async () => {
+      await userEvent.click(preview.querySelector<HTMLElement>('web-ui-option[value="React"]')!)
+    })
+    await waitFor(() => expect(readout()).toBe('输入：React · selected-value：React'))
+    expect([host.value, host.selectedValue]).toEqual(['React', 'React'])
+  })
+
+  it('autocomplete 允许自定义值：无匹配时 Enter 提交原文，selected-value 保持空', async () => {
+    const { container } = render(<ExampleDoc component="autocomplete" />)
+    await mountDemos(container, docOf('autocomplete'), 'web-ui-autocomplete')
+
+    const preview = previewOf(container, '允许自定义值')
+    const readout = readoutOf(preview)
+    const host = hostIn<WebUiAutocomplete>(container, '允许自定义值', autocompleteHost)
+
+    await act(async () => {
+      autocompleteInput(host).focus()
+      await userEvent.keyboard('Rust')
+    })
+    // 没有候选匹得上，panel 不会留在打开态。
+    await waitFor(() => expect(host.open).toBe(false))
+
+    await act(async () => {
+      await userEvent.keyboard('{Enter}')
+    })
+    await waitFor(() => expect(readout()).toBe('最近提交：Rust · selected-value：(空)'))
+    expect(host.selectedValue).toBe('')
+  })
+
+  it('dropdown 受控示例：trigger 打开，portal 里的 item 点击关闭并带回选择', async () => {
+    const { container } = render(<ExampleDoc component="dropdown" />)
+    await mountDemos(container, docOf('dropdown'), 'web-ui-dropdown')
+
+    const preview = previewOf(container, '受控开合')
+    const readout = readoutOf(preview)
+    const host = preview.querySelector<WebUiDropdown>('web-ui-dropdown')
+    if (!host) throw new Error('受控开合示例没有渲染 web-ui-dropdown')
+    expect(host.open).toBe(false)
+
+    await act(async () => shadowButton(preview, '受控菜单').click())
+    await waitFor(() => expect(host.open).toBe(true))
+    await waitFor(() => expect(readout()).toBe('状态：open · 最近选择：—'))
+
+    // item 被迁进 overlay root 的 shadow 树，React 的合成事件收不到；示例用 callback ref 挂原生监听。
+    await waitFor(() =>
+      expect(dropdownPanelOf(preview).querySelector('web-ui-dropdown-item[value="archive"]')).not.toBeNull()
+    )
+    await act(async () =>
+      dropdownPanelOf(preview).querySelector<HTMLElement>('web-ui-dropdown-item[value="archive"]')?.click()
+    )
+    await waitFor(() => expect([host.open, readout()]).toEqual([false, '状态：closed · 最近选择：归档']))
+  })
+
+  it('dropdown 命令式入口直接改 open，禁用菜单打不开', async () => {
+    const { container } = render(<ExampleDoc component="dropdown" />)
+    await mountDemos(container, docOf('dropdown'), 'web-ui-dropdown')
+
+    const preview = previewOf(container, '命令式')
+    const [menu, locked] = [...preview.querySelectorAll<WebUiDropdown>('web-ui-dropdown')]
+    if (!menu || !locked) throw new Error('命令式示例没有渲染两个 web-ui-dropdown')
+    expect([menu.open, locked.open]).toEqual([false, false])
+
+    await act(async () => shadowButton(preview, '调用 openMenu()').click())
+    await waitFor(() => expect(menu.open).toBe(true))
+
+    await act(async () => shadowButton(preview, '调用 closeAll()').click())
+    await waitFor(() => expect(menu.open).toBe(false))
+
+    await act(async () => shadowButton(preview, '禁用菜单').click())
+    expect(locked.open).toBe(false)
+  })
+
+  it('segmented 事件示例：用户切换派发 input 与 change，外部改值不派发', async () => {
+    const { container } = render(<ExampleDoc component="segmented" />)
+    await mountDemos(container, docOf('segmented'), 'web-ui-segmented')
+
+    const preview = previewOf(container, 'input 与 change')
+    const readout = readoutOf(preview)
+    const host = segmentedIn(container, 'input 与 change')
+    const triggers = triggersOf(host)
+    expect(readout()).toBe('input: 0 / change: 0 · 当前值：week')
+
+    // 程序化路径：页面直接改 value，indicator 动但两条计数都不动。
+    await act(async () => shadowButton(preview, '外部设为「月」').click())
+    await waitFor(() => expect(readout()).toBe('input: 0 / change: 0 · 当前值：month'))
+    expect(triggers.map(trigger => trigger.checked)).toEqual([false, false, true])
+
+    // 点击已是当前项不派发。
+    await act(async () => optionOf(triggers[2]).click())
+    await waitFor(() => expect(host.value).toBe('month'))
+    expect(readout()).toBe('input: 0 / change: 0 · 当前值：month')
+
+    await act(async () => optionOf(triggers[0]).click())
+    await waitFor(() => expect(readout()).toBe('input: 1 / change: 1 · 当前值：day'))
+  })
+
+  it('segmented 表单示例：提交带出选中项，重置回初始项', async () => {
+    const { container } = render(<ExampleDoc component="segmented" />)
+    await mountDemos(container, docOf('segmented'), 'web-ui-segmented')
+
+    const preview = previewOf(container, '表单字段')
+    const readout = readoutOf(preview)
+    const host = segmentedIn(container, '表单字段')
+    const triggers = triggersOf(host)
+    expect([host.value, readout()]).toEqual(['wed', '尚未提交'])
+
+    await act(async () => optionOf(triggers[1]).click())
+    await waitFor(() => expect(host.value).toBe('tue'))
+
+    await act(async () => shadowButton(preview, '提交').click())
+    await waitFor(() => expect(readout()).toBe('day=tue'))
+
+    await act(async () => shadowButton(preview, '重置').click())
+    await waitFor(() => expect([readout(), host.value]).toEqual(['尚未提交', 'wed']))
   })
 })
