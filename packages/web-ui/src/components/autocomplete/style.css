@@ -55,7 +55,7 @@
 /* 自定义 trigger 场景下包装 div 可能成为 tab 位，补 focus ring（默认 trigger 自带） */
 .autocomplete-trigger:focus-visible {
   outline: var(--wui-focus-ring-width, 3px) solid
-    var(--wui-color-focus-ring, color-mix(in srgb, var(--wui-color-accent, #08f) 40%, transparent));
+    var(--wui-color-focus-ring, color-mix(in srgb, var(--wui-color-accent, #0071e3) 40%, transparent));
   outline-offset: 2px;
 }
 
