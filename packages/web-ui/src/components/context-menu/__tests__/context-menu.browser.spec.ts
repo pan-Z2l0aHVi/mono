@@ -232,10 +232,10 @@ describe('WebUiContextMenu 组件（浏览器）', () => {
     const secondControl = items[1]?.shadowRoot?.querySelector<HTMLElement>('.item-inner')
     expect(items[0]?.shadowRoot?.activeElement).toBe(firstControl)
     expect(firstControl?.matches(':focus-visible')).toBe(true)
-    expect(getComputedStyle(firstControl!).backgroundColor).not.toBe('rgb(0, 136, 255)')
+    expect(getComputedStyle(firstControl!).backgroundColor).not.toBe('rgb(0, 113, 227)')
 
     await userEvent.hover(firstControl!)
-    expect(getComputedStyle(firstControl!).backgroundColor).not.toBe('rgb(0, 136, 255)')
+    expect(getComputedStyle(firstControl!).backgroundColor).not.toBe('rgb(0, 113, 227)')
 
     await userEvent.keyboard('{ArrowDown}')
     await nextFrame()
@@ -243,14 +243,14 @@ describe('WebUiContextMenu 组件（浏览器）', () => {
     expect(items[1]?.shadowRoot?.activeElement).toBe(secondControl)
     expect(items[1]?.hasAttribute('data-wui-menu-focus-suppressed')).toBe(false)
     expect(secondControl?.matches(':focus-visible')).toBe(true)
-    expect(getComputedStyle(secondControl!).backgroundColor).toBe('rgb(0, 136, 255)')
+    expect(getComputedStyle(secondControl!).backgroundColor).toBe('rgb(0, 113, 227)')
 
     await userEvent.keyboard('{ArrowUp}')
     await nextFrame()
 
     expect(items[0]?.shadowRoot?.activeElement).toBe(firstControl)
     expect(items[0]?.hasAttribute('data-wui-menu-focus-suppressed')).toBe(false)
-    expect(getComputedStyle(firstControl!).backgroundColor).toBe('rgb(0, 136, 255)')
+    expect(getComputedStyle(firstControl!).backgroundColor).toBe('rgb(0, 113, 227)')
   })
 
   it('键盘打开 menu 时首项保留焦点视觉', async () => {
@@ -268,7 +268,7 @@ describe('WebUiContextMenu 组件（浏览器）', () => {
     expect(firstItem?.shadowRoot?.activeElement).toBe(firstControl)
     expect(firstItem?.hasAttribute('data-wui-menu-focus-suppressed')).toBe(false)
     expect(firstControl?.matches(':focus-visible')).toBe(true)
-    expect(getComputedStyle(firstControl!).backgroundColor).toBe('rgb(0, 136, 255)')
+    expect(getComputedStyle(firstControl!).backgroundColor).toBe('rgb(0, 113, 227)')
   })
 
   /*
