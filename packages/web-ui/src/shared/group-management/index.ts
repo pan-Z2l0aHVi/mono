@@ -260,6 +260,7 @@ export interface GroupCoordinatorOptions<Item extends HTMLElement, Value> {
   readonly isItem: (target: EventTarget | null) => target is Item
   readonly isItemSelected: (item: Item, value: Value) => boolean
   readonly isItemTabStop?: (item: Item, items: readonly Item[]) => boolean
+  readonly getItemSelected?: (item: Item) => boolean
   readonly getNextValue: (item: Item, value: Value) => Value
   readonly valuesEqual: (a: Value, b: Value) => boolean
   readonly copyValue: (value: Value) => Value
@@ -297,11 +298,17 @@ export function defineGroupCoordinator<Item extends HTMLElement, Value>(options:
       const disabled = options.getDisabled()
       // 成员变化也要重放选中写回：新成员需继承当前选中态。
       const membershipChanged = nextItems.length !== lastItems.size || [...nextItems].some(item => !lastItems.has(item))
+      // 子项可能在宿主首次连接后才完成 custom-element upgrade；值变得可读时，
+      // 即使组值和成员集合没变，也要修复之前写入的过期选中态。
+      const itemSelectionChanged =
+        options.getItemSelected !== undefined &&
+        nextItems.some(item => options.getItemSelected?.(item) !== options.isItemSelected(item, value))
       const selectionChanged =
         !initialized ||
         !options.valuesEqual(value, lastValue as Value) ||
         disabled !== lastDisabled ||
-        membershipChanged
+        membershipChanged ||
+        itemSelectionChanged
 
       // 上行选中写回：根写入子项（context 是纯下行，不承担该方向）。
       if (selectionChanged) {
