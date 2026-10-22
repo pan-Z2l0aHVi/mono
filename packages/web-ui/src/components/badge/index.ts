@@ -12,6 +12,14 @@ import style from './style.css?inline'
 const ALLOWED_PLACEMENTS = ['top-right', 'top-left', 'bottom-right', 'bottom-left'] as const
 const MAX_SAFE = Number.MAX_SAFE_INTEGER
 
+function hasDefaultSlotContent(nodes: Iterable<Node>): boolean {
+  for (const node of nodes) {
+    if (node.nodeType === Node.TEXT_NODE && node.textContent?.trim()) return true
+    if (node.nodeType === Node.ELEMENT_NODE && (node as Element).slot === '') return true
+  }
+  return false
+}
+
 @customElement('web-ui-badge')
 export class WebUiBadge extends LitElement {
   static override styles = [unsafeCSS(glass), unsafeCSS(style)]
@@ -81,13 +89,26 @@ export class WebUiBadge extends LitElement {
 
   @state() private _hasContent = false
 
+  private readonly _contentObserver = new MutationObserver(() => this._syncHasContent())
+
   private readonly _handleSlotChange = () => {
-    this._hasContent = this.children.length > 0
+    this._syncHasContent()
+  }
+
+  private _syncHasContent(): void {
+    const slot = this.renderRoot.querySelector('slot')
+    this._hasContent = hasDefaultSlotContent(slot?.assignedNodes() ?? this.childNodes)
   }
 
   override connectedCallback() {
     super.connectedCallback()
-    this._hasContent = this.children.length > 0
+    this._syncHasContent()
+    this._contentObserver.observe(this, { characterData: true, subtree: true })
+  }
+
+  override disconnectedCallback() {
+    this._contentObserver.disconnect()
+    super.disconnectedCallback()
   }
 
   override render() {
