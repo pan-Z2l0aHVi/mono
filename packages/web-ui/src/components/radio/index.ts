@@ -5,7 +5,12 @@ import { classMap } from 'lit/directives/class-map.js'
 import selectionControl from '@/assets/selection-control.css?inline'
 import { installPointerFocusSuppression } from '@/shared/focus/pointer-focus'
 import { FormAssociated, defineFormAssociation, FormAssociationController } from '@/shared/form-association'
-import { defineGroupManaged, selectionGroupContextKey, type SelectionGroupContext } from '@/shared/group-management'
+import {
+  defineGroupManaged,
+  GROUP_MEMBER_DISABLED_CHANGE_EVENT,
+  selectionGroupContextKey,
+  type SelectionGroupContext
+} from '@/shared/group-management'
 import { LabelEmptinessController } from '@/shared/label-emptiness'
 
 import style from './style.css?inline'
@@ -24,6 +29,9 @@ export class WebUiRadio extends FormAssociated(LitElement) {
 
   /** label 没有可渲染内容（空槽位，或只挂着一个无障碍名）时收掉 gap，见 LabelEmptinessController。 */
   @state() private _labelEmpty = false
+
+  private _renderedDisabled: boolean | undefined
+  private _wasManagedByGroup = false
 
   get checked(): boolean {
     return this._checked
@@ -51,6 +59,12 @@ export class WebUiRadio extends FormAssociated(LitElement) {
     return this._groupManagement.getContext() !== undefined
   }
 
+  private get _isTabStop(): boolean {
+    if (this._isDisabled) return false
+    if (!this._isManagedByGroup) return true
+    return this._groupManagement.getContext()?.rovingTabStop === true
+  }
+
   private readonly _formAssociation = defineFormAssociation<boolean>({
     host: this,
     initialize: () => {
@@ -74,6 +88,16 @@ export class WebUiRadio extends FormAssociated(LitElement) {
   private readonly _labelEmptiness = new LabelEmptinessController(this, '.wui-radio-label', empty => {
     this._labelEmpty = empty
   })
+
+  override updated() {
+    const isManagedByGroup = this._isManagedByGroup
+    const isDisabled = this._isDisabled
+    if (isManagedByGroup && (!this._wasManagedByGroup || this._renderedDisabled !== isDisabled)) {
+      queueMicrotask(() => this.dispatchEvent(new Event(GROUP_MEMBER_DISABLED_CHANGE_EVENT)))
+    }
+    this._wasManagedByGroup = isManagedByGroup
+    this._renderedDisabled = isDisabled
+  }
 
   private _syncValidity() {
     const internals = this._formAssociation.getInternals()
@@ -116,7 +140,7 @@ export class WebUiRadio extends FormAssociated(LitElement) {
     return html`
       <span
         class=${classMap(cls)}
-        tabindex=${this._isDisabled ? '-1' : '0'}
+        tabindex=${this._isTabStop ? '0' : '-1'}
         role="radio"
         aria-checked=${String(this._checked)}
         aria-disabled=${String(this._isDisabled)}
