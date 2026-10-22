@@ -49,11 +49,12 @@ describe('WebUiSpinner 组件', () => {
       expect(document.documentElement.style.overscrollBehavior).toBe(originalOverscrollBehavior)
     })
 
-    it('show() 接受 size 与 description', () => {
-      const el = WebUiSpinner.show({ size: 40, description: '正在加载数据...' })
+    it('show() 接受 size、description 与 color', () => {
+      const el = WebUiSpinner.show({ size: 40, description: '正在加载数据...', color: 'rebeccapurple' })
 
       expect(el.size).toBe(40)
       expect(el.description).toBe('正在加载数据...')
+      expect(el.color).toBe('rebeccapurple')
     })
 
     // 全屏 overlay 同时只能有一个：第二次 show 要接管，第一次必须离开文档。
