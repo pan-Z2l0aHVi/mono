@@ -31,19 +31,18 @@ interface ChoiceSpec {
   label: string
   role: 'checkbox' | 'radio' | 'switch'
   /**
-   * 是否在本矩阵内覆盖键盘切换。checkbox / radio 自行处理 keydown，可在 jsdom 合成验证；
-   * switch 不处理 keydown，其键盘可达性来自 label 内视觉隐藏的原生 checkbox 的**原生激活**
-   * 行为——jsdom 不合成该行为，因此由 `switch-keyboard.browser.spec.ts` 在真实浏览器中覆盖。
+   * 是否在本矩阵内覆盖键盘切换。checkbox / radio 自行处理 keydown；switch 在 host 上处理，
+   * 均可在 jsdom 中验证状态与事件契约。
    */
   keyboard: boolean
-  /** 禁用态是否置 aria-disabled；switch 未渲染该属性 */
+  /** 禁用态是否置 aria-disabled */
   ariaDisabled: boolean
 }
 
 const CONTROLS: ReadonlyArray<ChoiceSpec> = [
   { tag: 'web-ui-checkbox', label: 'WebUiCheckbox', role: 'checkbox', keyboard: true, ariaDisabled: true },
   { tag: 'web-ui-radio', label: 'WebUiRadio', role: 'radio', keyboard: true, ariaDisabled: true },
-  { tag: 'web-ui-switch', label: 'WebUiSwitch', role: 'switch', keyboard: false, ariaDisabled: false }
+  { tag: 'web-ui-switch', label: 'WebUiSwitch', role: 'switch', keyboard: true, ariaDisabled: true }
 ]
 
 /** 三者共有且均 `reflect: true` 的属性。注意 `value` 与 `checked` 都不反射。 */
@@ -57,6 +56,7 @@ const mount = (spec: ChoiceSpec): ChoiceControl => mountElement<ChoiceControl>(s
 
 /** 断言语义角色存在后返回它；缺角色时立即失败，而不是抛出隐晦的 TypeError。 */
 const controlOf = (spec: ChoiceSpec, el: ChoiceControl): HTMLElement => {
+  if (spec.role === 'switch') return el
   const node = queryA11y(el, `[role="${spec.role}"]`)
   expect(node, `未找到 role="${spec.role}" 的可交互元素`).toBeTruthy()
   return node as HTMLElement
