@@ -33,7 +33,7 @@
 
 .item-inner:focus-visible {
   color: var(--wui-color-on-accent, #fff);
-  background: var(--wui-color-accent, #08f);
+  background: var(--wui-color-accent, #0071e3);
 }
 
 :host([active]) .item-inner {
