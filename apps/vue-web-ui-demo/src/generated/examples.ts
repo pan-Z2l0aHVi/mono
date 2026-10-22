@@ -6201,7 +6201,7 @@ export const exampleDocs: ExampleDoc[] = [
   {
     "component": "switch",
     "tag": "web-ui-switch",
-    "introHtml": "<p>switch 切换，声明 <code>role=\"switch\"</code> 与 <code>aria-checked</code>；<code>loading</code> 期间阻断交互并显示待定状态。键盘焦点落在内层原生 checkbox 上，<strong>空格与 Enter 都能切换</strong>。</p>",
+    "introHtml": "<p>switch 切换，声明 <code>role=\"switch\"</code> 与 <code>aria-checked</code>；<code>loading</code> 期间阻断交互并显示待定状态。默认插槽的子文本会作为可见标签和默认 accessible name；也可以在 host 设置 <code>aria-label</code> 或 <code>aria-labelledby</code>。键盘焦点落在 host 上，<strong>空格与 Enter 都能切换</strong>。</p>",
     "api": [
       {
         "kind": "table",
@@ -6266,6 +6266,39 @@ export const exampleDocs: ExampleDoc[] = [
       },
       {
         "kind": "table",
+        "key": "slots",
+        "title": "Slots",
+        "columns": [
+          {
+            "title": "名称",
+            "kind": "name"
+          },
+          {
+            "title": "说明",
+            "kind": "html"
+          }
+        ],
+        "rows": [
+          [
+            "default",
+            "<p>可见标签文本，并作为 switch 的 accessible name；为空时不增加额外间距。</p>"
+          ]
+        ]
+      },
+      {
+        "kind": "prose",
+        "key": "布局",
+        "title": "布局",
+        "html": "<p>track 固定为 <code>40px × 20px</code>，标签与 track 之间默认间距为 <code>8px</code>。default slot 没有可渲染宽度时（空槽位或只放了视觉隐藏的无障碍名），间距会收起，宿主宽度不会超过 track。没有可见标签时可通过 <code>aria-label</code> 或 <code>aria-labelledby</code> 提供 accessible name。</p>"
+      },
+      {
+        "kind": "prose",
+        "key": "accessible name",
+        "title": "accessible name",
+        "html": "<p>默认插槽内容会显示在 track 旁，并作为 switch 的 accessible name。需要引用外部 label 时，在 <code>web-ui-switch</code> host 设置 <code>aria-labelledby</code>；也可以直接设置 <code>aria-label</code>。</p>\n<pre><code class=\"language-html\">&lt;web-ui-switch aria-labelledby=\"notification-label\">&lt;/web-ui-switch> &lt;span id=\"notification-label\">启用通知&lt;/span>\n</code></pre>"
+      },
+      {
+        "kind": "table",
         "key": "events",
         "title": "Events",
         "columns": [
@@ -6293,7 +6326,7 @@ export const exampleDocs: ExampleDoc[] = [
         "kind": "prose",
         "key": "行为说明",
         "title": "行为说明",
-        "html": "<p>使用 <code>role=\"switch\"</code> 和 <code>aria-checked</code>。Pointer 事件管理按下状态。</p>"
+        "html": "<p>使用 host 上的 <code>role=\"switch\"</code>、<code>aria-checked</code> 和 <code>aria-disabled</code>。host 接收键盘焦点；Space 与 Enter 切换状态。Pointer 事件管理轨道的按下状态。</p>"
       }
     ],
     "samples": [
@@ -6320,7 +6353,7 @@ export const exampleDocs: ExampleDoc[] = [
       {
         "id": null,
         "title": "表单值",
-        "descriptionHtml": "<p>switch 自身不渲染 label 盒之外的内容，<code>name</code> 与 <code>value</code> 让它在表单里以选中值参与提交。</p>",
+        "descriptionHtml": "<p>可见标签同时命名 switch；<code>aria-label</code> 或 <code>aria-labelledby</code> 可覆盖默认名称。<code>name</code> 与 <code>value</code> 让 switch 在表单里以选中值参与提交。</p>",
         "html": {
           "react": "<pre class=\"shiki shiki-themes github-light github-dark mdc-code\" style=\"--shiki-light:#24292e;--shiki-dark:#e1e4e8;--shiki-light-bg:#fff;--shiki-dark-bg:#24292e\" tabindex=\"0\"><code><span class=\"line\"><span style=\"--shiki-light:#24292E;--shiki-dark:#E1E4E8\">&#x3C;</span><span style=\"--shiki-light:#22863A;--shiki-dark:#85E89D\">form</span><span style=\"--shiki-light:#24292E;--shiki-dark:#E1E4E8\">></span></span>\n<span class=\"line\"><span style=\"--shiki-light:#24292E;--shiki-dark:#E1E4E8\">  &#x3C;</span><span style=\"--shiki-light:#005CC5;--shiki-dark:#79B8FF\">web-ui-switch</span><span style=\"--shiki-light:#6F42C1;--shiki-dark:#B392F0\"> name</span><span style=\"--shiki-light:#D73A49;--shiki-dark:#F97583\">=</span><span style=\"--shiki-light:#032F62;--shiki-dark:#9ECBFF\">\"newsletter\"</span><span style=\"--shiki-light:#6F42C1;--shiki-dark:#B392F0\"> value</span><span style=\"--shiki-light:#D73A49;--shiki-dark:#F97583\">=</span><span style=\"--shiki-light:#032F62;--shiki-dark:#9ECBFF\">\"on\"</span><span style=\"--shiki-light:#6F42C1;--shiki-dark:#B392F0\"> required</span><span style=\"--shiki-light:#24292E;--shiki-dark:#E1E4E8\">></span></span>\n<span class=\"line\"><span style=\"--shiki-light:#24292E;--shiki-dark:#E1E4E8\">    订阅邮件</span></span>\n<span class=\"line\"><span style=\"--shiki-light:#24292E;--shiki-dark:#E1E4E8\">  &#x3C;/</span><span style=\"--shiki-light:#005CC5;--shiki-dark:#79B8FF\">web-ui-switch</span><span style=\"--shiki-light:#24292E;--shiki-dark:#E1E4E8\">></span></span>\n<span class=\"line\"><span style=\"--shiki-light:#24292E;--shiki-dark:#E1E4E8\">&#x3C;/</span><span style=\"--shiki-light:#22863A;--shiki-dark:#85E89D\">form</span><span style=\"--shiki-light:#24292E;--shiki-dark:#E1E4E8\">></span></span></code></pre>",
           "vue": "<pre class=\"shiki shiki-themes github-light github-dark mdc-code\" style=\"--shiki-light:#24292e;--shiki-dark:#e1e4e8;--shiki-light-bg:#fff;--shiki-dark-bg:#24292e\" tabindex=\"0\"><code><span class=\"line\"><span style=\"--shiki-light:#24292E;--shiki-dark:#E1E4E8\">&#x3C;</span><span style=\"--shiki-light:#22863A;--shiki-dark:#85E89D\">template</span><span style=\"--shiki-light:#24292E;--shiki-dark:#E1E4E8\">></span></span>\n<span class=\"line\"><span style=\"--shiki-light:#24292E;--shiki-dark:#E1E4E8\">  &#x3C;</span><span style=\"--shiki-light:#22863A;--shiki-dark:#85E89D\">form</span><span style=\"--shiki-light:#24292E;--shiki-dark:#E1E4E8\">></span></span>\n<span class=\"line\"><span style=\"--shiki-light:#24292E;--shiki-dark:#E1E4E8\">    &#x3C;</span><span style=\"--shiki-light:#22863A;--shiki-dark:#85E89D\">web-ui-switch</span><span style=\"--shiki-light:#6F42C1;--shiki-dark:#B392F0\"> name</span><span style=\"--shiki-light:#24292E;--shiki-dark:#E1E4E8\">=</span><span style=\"--shiki-light:#032F62;--shiki-dark:#9ECBFF\">\"newsletter\"</span><span style=\"--shiki-light:#6F42C1;--shiki-dark:#B392F0\"> value</span><span style=\"--shiki-light:#24292E;--shiki-dark:#E1E4E8\">=</span><span style=\"--shiki-light:#032F62;--shiki-dark:#9ECBFF\">\"on\"</span><span style=\"--shiki-light:#6F42C1;--shiki-dark:#B392F0\"> required</span><span style=\"--shiki-light:#24292E;--shiki-dark:#E1E4E8\">>订阅邮件&#x3C;/</span><span style=\"--shiki-light:#22863A;--shiki-dark:#85E89D\">web-ui-switch</span><span style=\"--shiki-light:#24292E;--shiki-dark:#E1E4E8\">></span></span>\n<span class=\"line\"><span style=\"--shiki-light:#24292E;--shiki-dark:#E1E4E8\">  &#x3C;/</span><span style=\"--shiki-light:#22863A;--shiki-dark:#85E89D\">form</span><span style=\"--shiki-light:#24292E;--shiki-dark:#E1E4E8\">></span></span>\n<span class=\"line\"><span style=\"--shiki-light:#24292E;--shiki-dark:#E1E4E8\">&#x3C;/</span><span style=\"--shiki-light:#22863A;--shiki-dark:#85E89D\">template</span><span style=\"--shiki-light:#24292E;--shiki-dark:#E1E4E8\">></span></span></code></pre>"
