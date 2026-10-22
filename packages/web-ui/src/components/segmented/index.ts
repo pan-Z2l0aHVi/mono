@@ -31,6 +31,21 @@ function triggerDuration(el: HTMLElement): number {
   return parsed === null ? 160 : Math.max(0, parsed)
 }
 
+function findSelectedTriggerByValue(
+  triggers: Iterable<WebUiSegmentedTrigger>,
+  value: string
+): WebUiSegmentedTrigger | undefined {
+  if (!value) return undefined
+
+  let selected: WebUiSegmentedTrigger | undefined
+  for (const trigger of triggers) {
+    if (trigger.value !== value) continue
+    if (!selected) selected = trigger
+    if (trigger.checked) return trigger
+  }
+  return selected
+}
+
 @customElement('web-ui-segmented')
 export class WebUiSegmented extends FormAssociated(LitElement) {
   // track 是不透明实体面：底色取 surface（浅色即 page，深色即 surface-raised 档）、无
@@ -80,6 +95,18 @@ export class WebUiSegmented extends FormAssociated(LitElement) {
   private _settleRequest = 0
   private _settleTimer: number | undefined
 
+  override connectedCallback() {
+    super.connectedCallback()
+    // HTML 解析可先连接 group、后 upgrade trigger；等子项定义完成后再核对一次选中态。
+    void customElements.whenDefined('web-ui-segmented-trigger').then(async () => {
+      if (!this.isConnected) return
+      const triggers = [...this.querySelectorAll<WebUiSegmentedTrigger>('web-ui-segmented-trigger')]
+      // 等待 upgrade 时触发的首轮 Lit 更新完成，再修正连接期间写入的旧值。
+      await Promise.all(triggers.map(trigger => trigger.updateComplete))
+      if (this.isConnected) this._groupController.sync()
+    })
+  }
+
   override disconnectedCallback() {
     super.disconnectedCallback()
     this._dragGestureHandle?.destroy()
@@ -100,19 +127,38 @@ export class WebUiSegmented extends FormAssociated(LitElement) {
       getDisabled: () => this._isDisabled,
       isItem: (target): target is WebUiSegmentedTrigger =>
         target instanceof HTMLElement && target.matches('web-ui-segmented-trigger'),
-      isItemSelected: (trigger, value) => trigger.value === value,
+      isItemSelected: (trigger, value) =>
+        trigger ===
+        findSelectedTriggerByValue(this.querySelectorAll<WebUiSegmentedTrigger>('web-ui-segmented-trigger'), value),
+      isItemTabStop: (trigger, triggers) => {
+        const enabled = triggers.filter(item => !item.disabled)
+        const selected = findSelectedTriggerByValue(triggers, this._value)
+        const tabStop = selected && !selected.disabled ? selected : enabled[0]
+        return trigger === tabStop
+      },
+      getItemSelected: trigger => trigger.checked,
       getNextValue: (trigger, value) => (trigger.checked ? trigger.value : value),
       valuesEqual: (a, b) => a === b,
       copyValue: value => value,
       setItemSelected: (trigger, selected) => {
         trigger.checked = selected
       },
+      resyncOnUnchangedValue: selected => {
+        for (const trigger of this.querySelectorAll<WebUiSegmentedTrigger>('web-ui-segmented-trigger')) {
+          trigger.checked = trigger === selected
+        }
+        this._groupController.sync()
+        requestAnimationFrame(() => void this._updateIndicator())
+      },
       dispatchValueChange: () => {
         this.dispatchEvent(new Event('input', { bubbles: true, composed: true }))
         this.dispatchEvent(new Event('change', { bubbles: true, composed: true }))
       }
     }).make(),
-    { afterSync: () => requestAnimationFrame(() => void this._updateIndicator()) }
+    {
+      observeAttributes: ['disabled'],
+      afterSync: () => requestAnimationFrame(() => void this._updateIndicator())
+    }
   )
 
   get value(): string {
@@ -134,15 +180,13 @@ export class WebUiSegmented extends FormAssociated(LitElement) {
     const triggers = this.querySelectorAll<WebUiSegmentedTrigger>('web-ui-segmented-trigger')
     let left = 0
     let width = 0
-
-    triggers.forEach(trigger => {
-      if (trigger.value === this._value) {
-        const triggerRect = trigger.getBoundingClientRect()
-        const groupRect = this.getBoundingClientRect()
-        left = triggerRect.left - groupRect.left
-        width = triggerRect.width
-      }
-    })
+    const selectedTrigger = findSelectedTriggerByValue(triggers, this._value)
+    if (selectedTrigger) {
+      const triggerRect = selectedTrigger.getBoundingClientRect()
+      const groupRect = this.getBoundingClientRect()
+      left = triggerRect.left - groupRect.left
+      width = triggerRect.width
+    }
 
     // 上一段移动还在飞行 → 这次直接落定（_settling 关掉 left / width 过渡，见 style.css）。
     // 落定这一趟自己也要占飞行窗口，所以放在写定位**之前**开窗：窗口一开，第三次连点
@@ -222,7 +266,7 @@ export class WebUiSegmented extends FormAssociated(LitElement) {
     const enabledTriggers = triggers.filter(t => !t.disabled)
     if (enabledTriggers.length === 0) return
 
-    const activeTrigger = triggers.find(t => t.value === this._value)
+    const activeTrigger = findSelectedTriggerByValue(triggers, this._value)
     if (!activeTrigger || activeTrigger.disabled) return
 
     const activeTriggerRect = activeTrigger.getBoundingClientRect()
@@ -322,6 +366,8 @@ export class WebUiSegmented extends FormAssociated(LitElement) {
             this._groupController.sync()
             this.dispatchEvent(new Event('input', { bubbles: true, composed: true }))
             this.dispatchEvent(new Event('change', { bubbles: true, composed: true }))
+          } else if (targetTrigger !== activeTrigger) {
+            targetTrigger.shadowRoot?.querySelector<HTMLElement>('[role="option"]')?.click()
           } else {
             void this._updateIndicator()
           }
@@ -345,6 +391,58 @@ export class WebUiSegmented extends FormAssociated(LitElement) {
     if (!this._dragGestureHandle?.isDragging()) {
       this._pressed = false
     }
+  }
+
+  private handleKeyDown(event: KeyboardEvent) {
+    if (this._isDisabled || event.altKey || event.ctrlKey || event.metaKey || event.shiftKey) return
+
+    const current = event
+      .composedPath()
+      .find(
+        (target): target is WebUiSegmentedTrigger =>
+          target instanceof HTMLElement && target.matches('web-ui-segmented-trigger')
+      )
+    if (!current) return
+
+    const triggers = [...this.querySelectorAll<WebUiSegmentedTrigger>('web-ui-segmented-trigger')]
+    const enabled = triggers.filter(trigger => !trigger.disabled)
+    const currentIndex = triggers.indexOf(current)
+    if (currentIndex === -1 || enabled.length === 0) return
+    const direction = getComputedStyle(this).direction === 'rtl' ? -1 : 1
+
+    const nextEnabled = (direction: -1 | 1): WebUiSegmentedTrigger => {
+      for (let offset = 1; offset <= triggers.length; offset += 1) {
+        const index = (currentIndex + direction * offset + triggers.length) % triggers.length
+        const candidate = triggers[index]
+        if (candidate && !candidate.disabled) return candidate
+      }
+      return current
+    }
+
+    let next: WebUiSegmentedTrigger
+    switch (event.key) {
+      case 'ArrowRight':
+        next = nextEnabled(direction)
+        break
+      case 'ArrowLeft':
+        next = nextEnabled(direction === 1 ? -1 : 1)
+        break
+      case 'Home':
+        next = enabled[0]
+        break
+      case 'End':
+        next = enabled[enabled.length - 1]
+        break
+      default:
+        return
+    }
+
+    const option = next.shadowRoot?.querySelector<HTMLElement>('[role="option"]')
+    if (!option) return
+
+    event.preventDefault()
+    option.focus()
+    if (next !== current || !next.checked) option.click()
   }
 
   private readonly _formAssociation = defineFormAssociation<string>({
@@ -385,6 +483,7 @@ export class WebUiSegmented extends FormAssociated(LitElement) {
         })}
         role="listbox"
         aria-orientation="horizontal"
+        @keydown=${this.handleKeyDown}
         @pointerdown=${this.handlePointerDown}
         @pointerup=${this.handlePointerUp}
         @pointercancel=${this.handlePointerUp}

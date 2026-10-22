@@ -1,16 +1,20 @@
-import { html, LitElement, unsafeCSS } from 'lit'
+import { html, LitElement, nothing, unsafeCSS } from 'lit'
 import { customElement, property, state } from 'lit/decorators.js'
 import { classMap } from 'lit/directives/class-map.js'
+import { ifDefined } from 'lit/directives/if-defined.js'
 import { styleMap } from 'lit/directives/style-map.js'
 
 import glass from '@/assets/glass.css?inline'
 import { installPointerFocusSuppression } from '@/shared/focus/pointer-focus'
 import { FormAssociated, defineFormAssociation, FormAssociationController } from '@/shared/form-association'
+import { createFieldId } from '@/shared/form-association/field-id'
 import { attachDragGesture, type DragGestureHandle } from '@/shared/gesture/drag-gesture'
 import { clamp } from '@/shared/gesture/physics'
 import { normalizeNumber } from '@/shared/normalize'
 
 import style from './style.css?inline'
+
+const POINTER_DRAG_THRESHOLD = 6
 
 installPointerFocusSuppression()
 
@@ -23,6 +27,21 @@ export class WebUiSlider extends FormAssociated(LitElement) {
   @property({ type: Boolean, reflect: true }) vertical = false
   @property({ type: String, reflect: true }) name = ''
   @property({ type: Boolean, reflect: true }) required = false
+  @property({ type: String, attribute: 'aria-label' }) override ariaLabel: string | null = null
+  @property({ type: String, attribute: 'aria-labelledby' }) ariaLabelledby: string | undefined
+
+  private readonly _fieldId = createFieldId('web-ui-slider')
+  private _renderedLabelledbyText = ''
+  private _labelledbyControlTargets = new Set<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>()
+  private readonly _labelledbyObserver = new MutationObserver(() => {
+    const labelledbyText = this._getLabelledbyText()
+    if (labelledbyText !== this._renderedLabelledbyText) this.requestUpdate()
+    this._observeLabelledbyTargets()
+  })
+  private readonly _handleLabelledbyControlValueChange = () => {
+    const labelledbyText = this._getLabelledbyText()
+    if (labelledbyText !== this._renderedLabelledbyText) this.requestUpdate()
+  }
 
   // value 使用访问器模式同步表单关联状态。
   private _value = 0
@@ -72,9 +91,20 @@ export class WebUiSlider extends FormAssociated(LitElement) {
   private _dragGestureHandle: DragGestureHandle | null = null
 
   override disconnectedCallback() {
+    this._labelledbyObserver.disconnect()
+    this._syncLabelledbyControlTargets(new Set())
     super.disconnectedCallback()
     this._dragGestureHandle?.destroy()
     this._dragGestureHandle = null
+  }
+
+  override connectedCallback() {
+    super.connectedCallback()
+    this._observeLabelledbyTargets()
+  }
+
+  override updated(changed: Map<string, unknown>) {
+    if (changed.has('ariaLabelledby')) this._observeLabelledbyTargets()
   }
 
   private readonly _formAssociation = defineFormAssociation<number>({
@@ -141,6 +171,199 @@ export class WebUiSlider extends FormAssociated(LitElement) {
     return Number.isFinite(this.step) && this.step > 0 ? this.step : 1
   }
 
+  private _getLabelledbyText(): string {
+    if (!this.ariaLabelledby) return ''
+
+    const root = this.getRootNode()
+    if (!(root instanceof Document || root instanceof ShadowRoot)) return ''
+
+    return this.ariaLabelledby
+      .trim()
+      .split(/\s+/)
+      .filter(Boolean)
+      .map(id => this._getReferencedTextAlternative(root, id))
+      .filter(Boolean)
+      .join(' ')
+  }
+
+  private _getReferencedTextAlternative(root: Document | ShadowRoot, id: string, visited = new Set<Element>()): string {
+    const escapedId = typeof CSS !== 'undefined' && CSS.escape ? CSS.escape(id) : id
+    const element = root.querySelector(`#${escapedId}`)
+    if (!element || visited.has(element)) return ''
+    visited.add(element)
+
+    const hiddenReferenceRoot = this._isHiddenFromAccessibleName(element) ? element : undefined
+    return this._getElementTextAlternative(root, element, visited, true, hiddenReferenceRoot)
+  }
+
+  private _getElementTextAlternative(
+    root: Document | ShadowRoot,
+    element: Element,
+    visited: Set<Element>,
+    directlyReferenced = false,
+    hiddenReferenceRoot?: Element
+  ): string {
+    if (!directlyReferenced && this._isHiddenFromAccessibleName(element, hiddenReferenceRoot)) return ''
+
+    const labelledby = element.getAttribute('aria-labelledby')
+    if (labelledby) {
+      const text = labelledby
+        .trim()
+        .split(/\s+/)
+        .map(referencedId => this._getReferencedTextAlternative(root, referencedId, visited))
+        .filter(Boolean)
+        .join(' ')
+      if (text) return text
+    }
+
+    const ariaLabel = element.getAttribute('aria-label')?.trim()
+    if (ariaLabel) return ariaLabel
+
+    if (
+      element instanceof HTMLInputElement ||
+      element instanceof HTMLTextAreaElement ||
+      element instanceof HTMLSelectElement
+    ) {
+      return element.value.trim()
+    }
+
+    if (element.localName === 'img') {
+      const alt = element.getAttribute('alt')?.trim()
+      if (alt) return alt
+    }
+
+    const content = Array.from(element.childNodes)
+      .map(node => {
+        if (node.nodeType === Node.TEXT_NODE) return node.textContent?.trim() ?? ''
+        if (node instanceof Element) {
+          if (visited.has(node)) return ''
+          visited.add(node)
+          return this._getElementTextAlternative(root, node, visited, false, hiddenReferenceRoot)
+        }
+        return ''
+      })
+      .filter(Boolean)
+      .join(' ')
+
+    return content || element.getAttribute('title')?.trim() || ''
+  }
+
+  private _isHiddenFromAccessibleName(element: Element, ignoredAncestor?: Element): boolean {
+    let current: Element | null = element
+    while (current && current !== ignoredAncestor) {
+      if (current.hasAttribute('hidden') || current.getAttribute('aria-hidden') === 'true') return true
+
+      const style = current.ownerDocument.defaultView?.getComputedStyle(current)
+      if (style?.display === 'none' || style?.visibility === 'hidden' || style?.visibility === 'collapse') return true
+
+      current = current.parentElement
+    }
+    return false
+  }
+
+  private _observeLabelledbyTargets() {
+    this._labelledbyObserver.disconnect()
+    if (!this.ariaLabelledby || !this.isConnected) {
+      this._syncLabelledbyControlTargets(new Set())
+      return
+    }
+
+    const root = this.getRootNode()
+    if (!(root instanceof Document || root instanceof ShadowRoot)) {
+      this._syncLabelledbyControlTargets(new Set())
+      return
+    }
+
+    const pendingIds = this.ariaLabelledby.trim().split(/\s+/).filter(Boolean)
+    const visitedIds = new Set<string>()
+    const targets = new Set<Element>()
+
+    while (pendingIds.length) {
+      const id = pendingIds.pop()!
+      if (visitedIds.has(id)) continue
+      visitedIds.add(id)
+
+      const escapedId = typeof CSS !== 'undefined' && CSS.escape ? CSS.escape(id) : id
+      const target = root.querySelector(`#${escapedId}`)
+      if (!target) continue
+
+      targets.add(target)
+      const nestedLabelledby = target.getAttribute('aria-labelledby')
+      if (nestedLabelledby) pendingIds.push(...nestedLabelledby.trim().split(/\s+/).filter(Boolean))
+    }
+
+    this._syncLabelledbyControlTargets(
+      new Set(
+        [...targets].filter(
+          (target): target is HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement =>
+            target instanceof HTMLInputElement ||
+            target instanceof HTMLTextAreaElement ||
+            target instanceof HTMLSelectElement
+        )
+      )
+    )
+
+    const structuralTargets = new Set<Node>()
+    for (const target of targets) {
+      this._labelledbyObserver.observe(target, {
+        subtree: true,
+        childList: true,
+        characterData: true,
+        attributes: true,
+        attributeFilter: [
+          'alt',
+          'aria-hidden',
+          'aria-label',
+          'aria-labelledby',
+          'class',
+          'hidden',
+          'id',
+          'style',
+          'title',
+          'value'
+        ]
+      })
+
+      let ancestor = target.parentNode
+      while (ancestor && ancestor !== root) {
+        if (!(ancestor instanceof Element && targets.has(ancestor))) structuralTargets.add(ancestor)
+        ancestor = ancestor.parentNode
+      }
+    }
+
+    for (const target of structuralTargets) {
+      this._labelledbyObserver.observe(target, {
+        childList: true,
+        attributes: true,
+        attributeFilter: ['aria-hidden', 'class', 'hidden', 'style']
+      })
+    }
+
+    const missingTargets = visitedIds.size !== targets.size
+    this._labelledbyObserver.observe(root, {
+      childList: true,
+      subtree: missingTargets,
+      attributes: missingTargets,
+      attributeFilter: missingTargets ? ['aria-hidden', 'class', 'hidden', 'id', 'style'] : undefined
+    })
+  }
+
+  private _syncLabelledbyControlTargets(targets: Set<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) {
+    for (const target of this._labelledbyControlTargets) {
+      if (targets.has(target)) continue
+      target.removeEventListener('input', this._handleLabelledbyControlValueChange)
+      target.removeEventListener('change', this._handleLabelledbyControlValueChange)
+    }
+
+    for (const target of targets) {
+      if (this._labelledbyControlTargets.has(target)) continue
+      target.addEventListener('input', this._handleLabelledbyControlValueChange)
+      target.addEventListener('change', this._handleLabelledbyControlValueChange)
+    }
+
+    this._labelledbyControlTargets = targets
+  }
+
   private _normalizeValue(value: number): number {
     if (!Number.isFinite(value)) return this.min
     const lower = Math.min(this.min, this.max)
@@ -191,12 +414,11 @@ export class WebUiSlider extends FormAssociated(LitElement) {
     if (this._isDisabled) return
     this._pressed = true
     this._interactionStartValue = this.value
-    this._setValueFromPointer(event)
 
     this._dragGestureHandle?.destroy()
     this._dragGestureHandle = attachDragGesture(event, {
       axis: this.vertical ? 'y' : 'x',
-      threshold: 6,
+      threshold: POINTER_DRAG_THRESHOLD,
       onMove: (_info, e) => {
         this._dragging = true
         this._setValueFromPointer(e)
@@ -210,7 +432,11 @@ export class WebUiSlider extends FormAssociated(LitElement) {
         }
         this._interactionStartValue = undefined
       },
-      onTap: () => {
+      onTap: (info, e) => {
+        const crossAxisDelta = this.vertical ? info.deltaX : info.deltaY
+        if (Math.abs(crossAxisDelta) >= POINTER_DRAG_THRESHOLD) return
+
+        this._setValueFromPointer(e)
         if (this._interactionStartValue !== this.value) {
           this.dispatchEvent(new Event('change', { bubbles: true, composed: true }))
         }
@@ -255,14 +481,19 @@ export class WebUiSlider extends FormAssociated(LitElement) {
       'is-dragging': this._dragging
     })
     const trackStyle = styleMap({ '--percent': `${this._percent}%` })
+    const labelledbyText = this._getLabelledbyText()
+    this._renderedLabelledbyText = labelledbyText
+    const labelledbyId = `${this._fieldId}-label`
 
     return html`
+      ${labelledbyText ? html`<span class="wui-slider-a11y-only" id=${labelledbyId}>${labelledbyText}</span>` : nothing}
       <div
         class=${trackClass}
         style=${trackStyle}
         role="slider"
         tabindex=${this._isDisabled ? '-1' : '0'}
-        aria-label="Slider"
+        aria-label=${ifDefined(this.ariaLabel)}
+        aria-labelledby=${labelledbyText ? labelledbyId : nothing}
         aria-orientation=${this.vertical ? 'vertical' : 'horizontal'}
         aria-valuemin=${this.min}
         aria-valuemax=${this.max}

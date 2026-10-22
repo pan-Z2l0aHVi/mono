@@ -2,7 +2,7 @@ import '..'
 
 import { afterEach, describe, expect, it } from 'vite-plus/test'
 
-import { cleanupElement, mountElement, queryA11y, spyEvents, waitForUpdate } from '@/shared/test-utils'
+import { cleanupElement, mountElement, spyEvents, waitForUpdate } from '@/shared/test-utils'
 
 import type { WebUiSwitch } from '..'
 
@@ -17,32 +17,31 @@ afterEach(() => document.body.replaceChildren())
  */
 const createSwitch = (): WebUiSwitch => mountElement<WebUiSwitch>('web-ui-switch')
 
-/** 断言语义角色存在后返回它；缺角色时立即失败，而不是抛出隐晦的 TypeError。 */
-const controlOf = (el: WebUiSwitch): HTMLElement => {
-  const node = queryA11y(el, '[role="switch"]')
-  expect(node, '未找到 role="switch" 的可交互元素').toBeTruthy()
-  return node as HTMLElement
-}
-
 describe('WebUiSwitch 组件特有契约', () => {
-  it('内部 checkbox 有稳定且实例唯一的 id', async () => {
-    const first = createSwitch()
-    const second = createSwitch()
-    await Promise.all([waitForUpdate(first), waitForUpdate(second)])
+  it('在宿主公开 switch 语义与可交互状态', async () => {
+    const el = createSwitch()
+    await waitForUpdate(el)
 
-    const inputOf = (el: WebUiSwitch): HTMLInputElement => queryA11y(el, 'input[type="checkbox"]') as HTMLInputElement
-    const firstId = inputOf(first).id
-    const secondId = inputOf(second).id
-    expect(firstId).not.toBe('')
-    expect(secondId).not.toBe('')
-    expect(secondId).not.toBe(firstId)
+    expect(el.getAttribute('role')).toBe('switch')
+    expect(el.getAttribute('aria-checked')).toBe('false')
+    expect(el.getAttribute('aria-disabled')).toBe('false')
+    expect(el.tabIndex).toBe(0)
 
-    first.checked = true
-    await waitForUpdate(first)
-    expect(inputOf(first).id).toBe(firstId)
+    el.checked = true
+    await waitForUpdate(el)
+    expect(el.getAttribute('aria-checked')).toBe('true')
 
-    cleanupElement(first)
-    cleanupElement(second)
+    el.disabled = true
+    await waitForUpdate(el)
+    expect(el.getAttribute('aria-disabled')).toBe('true')
+    expect(el.tabIndex).toBe(-1)
+
+    el.disabled = false
+    await waitForUpdate(el)
+    expect(el.getAttribute('aria-disabled')).toBe('false')
+    expect(el.tabIndex).toBe(0)
+
+    cleanupElement(el)
   })
 
   it('loading 时点击不切换状态', async () => {
@@ -50,10 +49,19 @@ describe('WebUiSwitch 组件特有契约', () => {
     el.loading = true
     await waitForUpdate(el)
 
-    controlOf(el).click()
+    el.click()
     await waitForUpdate(el)
 
     expect(el.checked).toBe(false)
+    cleanupElement(el)
+  })
+
+  it('loading spinner 使用 theme accent token', async () => {
+    const el = createSwitch()
+    el.loading = true
+    await waitForUpdate(el)
+
+    expect(el.shadowRoot?.querySelector('web-ui-icon')?.getAttribute('color')).toBe('var(--wui-color-accent, #0071e3)')
     cleanupElement(el)
   })
 
@@ -65,7 +73,7 @@ describe('WebUiSwitch 组件特有契约', () => {
     const [changeEvents] = spyEvents(el, 'change')
 
     for (let i = 0; i < 3; i++) {
-      controlOf(el).click()
+      el.click()
       await waitForUpdate(el)
     }
 
