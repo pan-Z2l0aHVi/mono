@@ -35,6 +35,97 @@ const MAX_REFINE_ROUNDS = 3
  */
 const WIDTH_EPSILON = 0.5
 
+interface MeasurementTarget {
+  readonly notify: () => void
+  text: string | null
+  width: number
+}
+
+const measurementTargets = new WeakMap<Element, MeasurementTarget>()
+let measurementObserver: ResizeObserver | undefined
+const fontMetricSubscribers = new Set<() => void>()
+let observedFontSet: FontFaceSet | undefined
+
+function onFontsLoaded(): void {
+  for (const notify of fontMetricSubscribers) notify()
+}
+
+function observeFontMetrics(notify: () => void): void {
+  const fontSet = document.fonts
+  if (!fontSet) return
+
+  if (!observedFontSet) {
+    observedFontSet = fontSet
+    observedFontSet.addEventListener('loadingdone', onFontsLoaded)
+  }
+  fontMetricSubscribers.add(notify)
+}
+
+function unobserveFontMetrics(notify: () => void): void {
+  fontMetricSubscribers.delete(notify)
+  if (fontMetricSubscribers.size > 0 || !observedFontSet) return
+
+  observedFontSet.removeEventListener('loadingdone', onFontsLoaded)
+  observedFontSet = undefined
+}
+
+/** Observe the full-text probe so font metric changes can refit without a host resize. */
+function getMeasurementObserver(): ResizeObserver | null {
+  if (typeof ResizeObserver === 'undefined') return null
+  if (measurementObserver) return measurementObserver
+
+  measurementObserver = new ResizeObserver(entries => {
+    for (const entry of entries) {
+      const target = measurementTargets.get(entry.target)
+      if (!target) continue
+
+      const text = entry.target.textContent
+      const width = entry.contentRect.width
+      if (target.text !== text) {
+        target.text = text
+        target.width = width
+        continue
+      }
+
+      if (target.width < 0) {
+        target.width = width
+        continue
+      }
+
+      if (target.width === width) continue
+      target.width = width
+      target.notify()
+    }
+  })
+
+  return measurementObserver
+}
+
+function observeMeasurement(target: Element, notify: () => void): void {
+  measurementTargets.set(target, { notify, text: target.textContent, width: -1 })
+  observeFontMetrics(notify)
+
+  const observer = getMeasurementObserver()
+  if (!observer) return
+
+  observer.observe(target, { box: 'content-box' })
+}
+
+function unobserveMeasurement(target: Element): void {
+  const observation = measurementTargets.get(target)
+  if (observation) unobserveFontMetrics(observation.notify)
+  measurementTargets.delete(target)
+  measurementObserver?.unobserve(target)
+}
+
+function updateMeasurementText(target: Element, text: string): void {
+  const observation = measurementTargets.get(target)
+  if (!observation) return
+
+  observation.text = text
+  observation.width = target.getBoundingClientRect().width
+}
+
 /**
  * 单行中间省略：把超长文本截成 `首段…尾段`，省略号出现在中间而不是末尾。
  *
@@ -113,20 +204,47 @@ export class WebUiMiddleEllipsis extends LitElement {
 
   /** 最近一次切分依据的可用宽度（px）；-1 表示还没量到过布局。 */
   private _available = -1
+  /** 最近一次 ResizeObserver 测得的宿主内容盒宽度；收敛守卫跳过拟合时也继续更新。 */
+  private _observedWidth = -1
   /** 当前渲染出来的文本实际占宽（px）。收敛守卫靠它判断现有输出是否已经放得下。 */
   private _rendered = 0
-  /** 输入变过、还没按新输入切过。 */
+  /** 输入或字体度量变过、还没重新拟合。 */
   private _dirty = true
   private _refineRound = 0
+  private _observedMeasure?: HTMLElement
 
   private readonly _range = document.createRange()
 
   private readonly _width = new ElementWidthController(this, width => this._onWidth(width))
 
+  private readonly _onMeasurementChange = (): void => {
+    this._refineRound = 0
+    this._dirty = true
+    // `_available` can predate a shrink; use the latest precise content-box width even when it skipped a refit.
+    this._apply(this._observedWidth > 0 ? this._observedWidth : this._currentWidth())
+  }
+
   private readonly _probe: WidthProbe = {
     prefix: units => this._rangeWidth(0, units),
     suffix: units => this._rangeWidth(this.text.length - units, this.text.length),
     marker: () => this._markerProbe?.getBoundingClientRect().width ?? 0
+  }
+
+  override connectedCallback(): void {
+    super.connectedCallback()
+    if (this._available >= 0) {
+      this._dirty = true
+      this._refineRound = 0
+    }
+    this._observeMeasure()
+  }
+
+  override disconnectedCallback(): void {
+    if (this._observedMeasure) {
+      unobserveMeasurement(this._observedMeasure)
+      this._observedMeasure = undefined
+    }
+    super.disconnectedCallback()
   }
 
   override willUpdate(changed: PropertyValues<this>): void {
@@ -144,7 +262,10 @@ export class WebUiMiddleEllipsis extends LitElement {
 
   override updated(): void {
     const textEl = this._textEl
-    if (!textEl) return
+    // Lit can finish an update after this host was removed. Resume fitting only after reconnect.
+    if (!textEl || !this.isConnected) return
+
+    this._observeMeasure()
 
     this._rendered = textEl.getBoundingClientRect().width
 
@@ -188,6 +309,7 @@ export class WebUiMiddleEllipsis extends LitElement {
    * 少截一些）。
    */
   private _onWidth(width: number): void {
+    this._observedWidth = width
     if (!(width > 0)) return
 
     /*
@@ -263,7 +385,19 @@ export class WebUiMiddleEllipsis extends LitElement {
   /** 把全文装进隐藏量具。它没有 Lit 绑定，改它不会触发重渲染。 */
   private _syncMeasure(): void {
     const measure = this._measure
-    if (measure && measure.textContent !== this.text) measure.textContent = this.text
+    if (measure && measure.textContent !== this.text) {
+      measure.textContent = this.text
+      updateMeasurementText(measure, this.text)
+    }
+  }
+
+  private _observeMeasure(): void {
+    const measure = this._measure
+    if (!measure || measure === this._observedMeasure) return
+
+    if (this._observedMeasure) unobserveMeasurement(this._observedMeasure)
+    this._observedMeasure = measure
+    observeMeasurement(measure, this._onMeasurementChange)
   }
 
   /** `[from, to)` 这段原文在量具里的渲染宽度。空区间恒为 0——Range 塌缩矩形的宽度不可靠。 */
