@@ -51,7 +51,7 @@ describe('pointer focus suppression', () => {
     expect(button.hasAttribute('data-wui-pointer-focus')).toBe(false)
   })
 
-  it('指针按下之后再来一次键盘导航，标记被清除', () => {
+  it('指针按下之后键盘导航会立即清除当前焦点标记', () => {
     const button = mountFocusTarget()
 
     document.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, composed: true, isPrimary: true }))
@@ -59,8 +59,7 @@ describe('pointer focus suppression', () => {
     expect(button.dataset.wuiPointerFocus).toBe('true')
 
     document.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true, composed: true }))
-    button.blur()
-    button.focus()
+    expect(document.activeElement).toBe(button)
     expect(button.hasAttribute('data-wui-pointer-focus')).toBe(false)
   })
 })
