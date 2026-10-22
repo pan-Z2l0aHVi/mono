@@ -101,6 +101,7 @@ export class WebUiSegmented extends FormAssociated(LitElement) {
       isItem: (target): target is WebUiSegmentedTrigger =>
         target instanceof HTMLElement && target.matches('web-ui-segmented-trigger'),
       isItemSelected: (trigger, value) => trigger.value === value,
+      getItemSelected: trigger => trigger.checked,
       getNextValue: (trigger, value) => (trigger.checked ? trigger.value : value),
       valuesEqual: (a, b) => a === b,
       copyValue: value => value,
@@ -114,6 +115,18 @@ export class WebUiSegmented extends FormAssociated(LitElement) {
     }).make(),
     { afterSync: () => requestAnimationFrame(() => void this._updateIndicator()) }
   )
+
+  override connectedCallback() {
+    super.connectedCallback()
+    // HTML 解析可先连接 group、后 upgrade trigger；等子项定义完成后再核对一次选中态。
+    void customElements.whenDefined('web-ui-segmented-trigger').then(async () => {
+      if (!this.isConnected) return
+      const triggers = [...this.querySelectorAll<WebUiSegmentedTrigger>('web-ui-segmented-trigger')]
+      // 等待 upgrade 时触发的首轮 Lit 更新完成，再修正连接期间写入的旧值。
+      await Promise.all(triggers.map(trigger => trigger.updateComplete))
+      if (this.isConnected) this._groupController.sync()
+    })
+  }
 
   get value(): string {
     return this._value
