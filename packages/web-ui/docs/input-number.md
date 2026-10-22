@@ -23,7 +23,7 @@ input number，自带步进 button 与 ArrowUp / ArrowDown 键盘增减；空输
 
 ### 精度
 
-`precision` 决定小数位数，超出部分在**读取与提交**时规整；赋值本身保留原始小数，因此 `precision` 与 `value` 的声明顺序不影响结果（`value="1.5" precision="2"` 与反序都得到 `1.5`）。
+`precision` 决定读取与提交时保留的小数位数；未显式设置时按 `step` 的小数位数推导，因此 `step=0.3` 在默认设置下每次增加 `0.3`。显式设置 `precision` 后则按该值规整，例如 `precision=0` 会将小数步进结果取整。赋值本身保留原始小数，因此 `precision` 与 `value` 的声明顺序不影响结果（`value="1.5" precision="2"` 与反序都得到 `1.5`）。
 
 编辑中清空或输入非法内容不会破坏 `value`：失焦时显示会回填为已提交值，表单提交的始终是最后那个合法值。
 
@@ -75,20 +75,20 @@ const quantity = ref(1)
 
 ### Props
 
-| 名称              | 说明                                 | 类型      | 默认值     |
-| ----------------- | ------------------------------------ | --------- | ---------- |
-| `placeholder`     | 占位文本。                           | `string`  | `''`       |
-| `name`            | 表单字段名。                         | `string`  | `''`       |
-| `disabled`        | 禁用状态。                           | `boolean` | `false`    |
-| `readonly`        | 只读状态。                           | `boolean` | `false`    |
-| `required`        | 必填校验。                           | `boolean` | `false`    |
-| `aria-label`      | 输入框的无障碍名称。                 | `string`  | —          |
-| `aria-labelledby` | 无障碍名称引用，用于命名内部输入框。 | `string`  | —          |
-| `precision`       | 小数精度，在读取与提交时规整。       | `number`  | `0`        |
-| `value`           | 当前值。                             | `number`  | `0`        |
-| `min`             | 最小值。                             | `number`  | `0`        |
-| `max`             | 最大值。                             | `number`  | `Infinity` |
-| `step`            | 步进值。                             | `number`  | `1`        |
+| 名称              | 说明                                                               | 类型             | 默认值     |
+| ----------------- | ------------------------------------------------------------------ | ---------------- | ---------- |
+| `placeholder`     | 占位文本。                                                         | `string`         | `''`       |
+| `name`            | 表单字段名。                                                       | `string`         | `''`       |
+| `disabled`        | 禁用状态。                                                         | `boolean`        | `false`    |
+| `readonly`        | 只读状态。                                                         | `boolean`        | `false`    |
+| `required`        | 必填校验。                                                         | `boolean`        | `false`    |
+| `aria-label`      | 输入框的无障碍名称。                                               | `string`         | —          |
+| `aria-labelledby` | 无障碍名称引用，用于命名内部输入框。                               | `string`         | —          |
+| `precision`       | 显式设置时按该值规整；设为 `null` 或移除属性时按 `step` 推导精度。 | `number \| null` | `0`        |
+| `value`           | 当前值。                                                           | `number`         | `0`        |
+| `min`             | 最小值。                                                           | `number`         | `0`        |
+| `max`             | 最大值。                                                           | `number`         | `Infinity` |
+| `step`            | 步进值；未显式设置 `precision` 时，其小数位数也决定默认规整精度。  | `number`         | `1`        |
 
 ### Events
 
