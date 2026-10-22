@@ -8,6 +8,10 @@
   display: inline-flex;
 }
 
+:host(:focus-visible) {
+  outline: none;
+}
+
 :host([disabled]) {
   cursor: not-allowed;
 }
@@ -16,6 +20,14 @@
   display: inline-flex;
   gap: 8px;
   align-items: center;
+}
+
+.wui-switch-content.is-label-empty {
+  gap: 0;
+}
+
+.wui-switch-label.is-disabled {
+  opacity: 0.4;
 }
 
 .wui-switch-track {

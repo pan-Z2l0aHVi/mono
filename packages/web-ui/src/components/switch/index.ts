@@ -11,6 +11,7 @@ import { installPointerFocusSuppression } from '@/shared/focus/pointer-focus'
 import { FormAssociated, defineFormAssociation, FormAssociationController } from '@/shared/form-association'
 import { attachDragGesture, type DragGestureHandle } from '@/shared/gesture/drag-gesture'
 import { clamp, normalizeProgress } from '@/shared/gesture/physics'
+import { LabelEmptinessController } from '@/shared/label-emptiness'
 
 import style from './style.css?inline'
 
@@ -20,6 +21,8 @@ installPointerFocusSuppression()
 export class WebUiSwitch extends FormAssociated(LitElement) {
   static override styles = [unsafeCSS(glass), unsafeCSS(style)]
   @state() private _checked = false
+  /** label 没有可渲染内容时收掉 track 与 label 之间的 gap。 */
+  @state() private _labelEmpty = false
 
   get checked(): boolean {
     return this._checked
@@ -116,6 +119,10 @@ export class WebUiSwitch extends FormAssociated(LitElement) {
   }).make()
 
   private readonly _formAssociationController = new FormAssociationController(this, this._formAssociation)
+
+  private readonly _labelEmptiness = new LabelEmptinessController(this, '.wui-switch-label', empty => {
+    this._labelEmpty = empty
+  })
 
   private _syncValidity() {
     const internals = this._formAssociation.getInternals()
@@ -229,10 +236,18 @@ export class WebUiSwitch extends FormAssociated(LitElement) {
 
   override render() {
     const isOpen = this._isDragging ? this._dragProgress >= 0.5 : this._checked
+    const contentCls = {
+      'wui-switch-content': true,
+      'is-label-empty': this._labelEmpty
+    }
     const trackCls = {
       'wui-switch-track': true,
       'is-open': isOpen,
       'is-dragging': this._isDragging,
+      'is-disabled': this._isDisabled || this.loading
+    }
+    const labelCls = {
+      'wui-switch-label': true,
       'is-disabled': this._isDisabled || this.loading
     }
     // wui-glass 条件化：静止态实体白 thumb，按压/拖拽时切换为玻璃（backdrop blur +
@@ -245,7 +260,7 @@ export class WebUiSwitch extends FormAssociated(LitElement) {
     const trackStyle = this._isDragging ? { '--wui-switch-drag-offset': `${this._dragOffset}px` } : {}
 
     return html`
-      <span class="wui-switch-content">
+      <span class=${classMap(contentCls)}>
         <span
           class=${classMap(trackCls)}
           style=${styleMap(trackStyle)}
@@ -269,7 +284,7 @@ export class WebUiSwitch extends FormAssociated(LitElement) {
             }
           </span>
         </span>
-        <span class="wui-switch-label"><slot></slot></span>
+        <span class=${classMap(labelCls)}><slot></slot></span>
       </span>
     `
   }

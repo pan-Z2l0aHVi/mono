@@ -186,4 +186,42 @@ describe('WebUiSwitch 键盘契约（浏览器）', () => {
     cleanupElement(labelledBy)
     label.remove()
   })
+
+  it('没有可见标签时不额外增加 track 与标签之间的宽度', async () => {
+    const unnamed = mount()
+    const named = mount({ 'aria-label': 'Alpha' })
+    await Promise.all([waitForUpdate(unnamed), waitForUpdate(named)])
+
+    await expect
+      .poll(() => [unnamed.getBoundingClientRect().width, named.getBoundingClientRect().width])
+      .toEqual([40, 40])
+
+    cleanupElement(unnamed)
+    cleanupElement(named)
+  })
+
+  it('键盘焦点只显示轨道上的 focus ring', async () => {
+    const el = mount()
+    await waitForUpdate(el)
+
+    await userEvent.keyboard('{Tab}')
+
+    const track = el.shadowRoot!.querySelector('.wui-switch-track')!
+    expect(document.activeElement).toBe(el)
+    expect(getComputedStyle(el).outlineStyle).toBe('none')
+    expect(getComputedStyle(track).outlineColor).not.toBe('rgba(0, 0, 0, 0)')
+
+    cleanupElement(el)
+  })
+
+  it('disabled 时可见标签与轨道一起变淡', async () => {
+    const el = mount({ disabled: '' })
+    el.textContent = 'Disabled option'
+    await waitForUpdate(el)
+
+    const label = el.shadowRoot!.querySelector('.wui-switch-label')!
+    expect(getComputedStyle(label).opacity).toBe('0.4')
+
+    cleanupElement(el)
+  })
 })

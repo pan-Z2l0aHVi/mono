@@ -78,6 +78,16 @@ const enabled = ref(false)
 | `required` | 必填校验。        | `boolean` | `false` |
 | `loading`  | 加载状态。        | `boolean` | `false` |
 
+### Slots
+
+| 名称      | 说明                                                                   |
+| --------- | ---------------------------------------------------------------------- |
+| `default` | 可见标签文本，并作为 switch 的 accessible name；为空时不增加额外间距。 |
+
+### 布局
+
+track 固定为 `40px × 20px`，标签与 track 之间默认间距为 `8px`。default slot 没有可渲染宽度时（空槽位或只放了视觉隐藏的无障碍名），间距会收起，宿主宽度不会超过 track。没有可见标签时可通过 `aria-label` 或 `aria-labelledby` 提供 accessible name。
+
 ### accessible name
 
 默认插槽内容会显示在 track 旁，并作为 switch 的 accessible name。需要引用外部 label 时，在 `web-ui-switch` host 设置 `aria-labelledby`；也可以直接设置 `aria-label`。
