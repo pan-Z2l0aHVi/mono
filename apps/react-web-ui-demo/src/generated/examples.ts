@@ -6098,7 +6098,7 @@ export const exampleDocs: ExampleDoc[] = [
           ],
           [
             "easing",
-            "<p>注册长度型自定义属性可用时传给 <code>element.animate()</code>；不可用时使用 <code>linear</code>。</p>",
+            "<p>浏览器支持注册长度型自定义属性插值时传给 <code>element.animate()</code>；否则使用 <code>linear</code>。</p>",
             "string",
             "'linear'"
           ],

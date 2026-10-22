@@ -10,11 +10,51 @@ const GEOMETRY_SELECTOR = 'path, rect, circle, line, polyline, polygon, ellipse'
 // Animate a registered length, then clamp it before using it as a dash offset.
 const DASH_OFFSET_PROPERTY = '--wui-svg-draw-lines-offset'
 
-let dashOffsetPropertyRegistered = false
+let dashOffsetRegistrationApi: typeof CSS.registerProperty | undefined
+let dashOffsetInterpolationSupported: boolean | undefined
+
+function isAlreadyRegistered(error: unknown): boolean {
+  return (
+    typeof DOMException !== 'undefined' && error instanceof DOMException && error.name === 'InvalidModificationError'
+  )
+}
+
+function supportsDashOffsetInterpolation(): boolean {
+  const probe = document.createElement('span')
+  let animation: Animation | undefined
+  try {
+    probe.style.setProperty(DASH_OFFSET_PROPERTY, '0px')
+    document.documentElement.append(probe)
+    animation = probe.animate([{ [DASH_OFFSET_PROPERTY]: '0px' }, { [DASH_OFFSET_PROPERTY]: '100px' }], {
+      duration: 1000,
+      easing: 'linear',
+      fill: 'both'
+    })
+    animation.pause()
+    animation.currentTime = 250
+
+    const interpolated = Number.parseFloat(getComputedStyle(probe).getPropertyValue(DASH_OFFSET_PROPERTY))
+    return Number.isFinite(interpolated) && Math.abs(interpolated - 25) < 0.1
+  } catch (error) {
+    console.warn('web-ui-svg-draw-lines could not verify typed offset interpolation. Using linear easing.', error)
+    return false
+  } finally {
+    animation?.cancel()
+    probe.remove()
+  }
+}
 
 function registerDashOffsetProperty(): boolean {
-  if (typeof CSS === 'undefined' || typeof CSS.registerProperty !== 'function') return false
-  if (dashOffsetPropertyRegistered) return true
+  if (typeof CSS === 'undefined' || typeof CSS.registerProperty !== 'function' || typeof document === 'undefined')
+    return false
+
+  const registerProperty = CSS.registerProperty
+  if (dashOffsetRegistrationApi !== registerProperty) {
+    // Capability is cached only for the registration implementation that passed the probe.
+    dashOffsetRegistrationApi = registerProperty
+    dashOffsetInterpolationSupported = undefined
+  }
+  if (dashOffsetInterpolationSupported !== undefined) return dashOffsetInterpolationSupported
 
   try {
     CSS.registerProperty({
@@ -24,16 +64,15 @@ function registerDashOffsetProperty(): boolean {
       initialValue: '0px'
     })
   } catch (error) {
-    const alreadyRegistered =
-      typeof DOMException !== 'undefined' && error instanceof DOMException && error.name === 'InvalidModificationError'
-    if (!alreadyRegistered) {
+    if (!isAlreadyRegistered(error)) {
       console.warn('web-ui-svg-draw-lines could not register its typed offset property. Using linear easing.', error)
+      dashOffsetInterpolationSupported = false
       return false
     }
   }
 
-  dashOffsetPropertyRegistered = true
-  return true
+  dashOffsetInterpolationSupported = supportsDashOffsetInterpolation()
+  return dashOffsetInterpolationSupported
 }
 
 interface AnimationRun {

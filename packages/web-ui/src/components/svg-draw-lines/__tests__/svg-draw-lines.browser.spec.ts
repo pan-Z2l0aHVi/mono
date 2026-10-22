@@ -58,6 +58,50 @@ describe('WebUiSvgDrawLines 组件（浏览器）', () => {
     }
   })
 
+  it('CSS.registerProperty 可用但长度属性不可插值时仍用线性回退播放', async () => {
+    const originalCSS = globalThis.CSS
+    const cssWithoutInterpolation = Object.create(originalCSS) as typeof CSS
+    Object.defineProperty(cssWithoutInterpolation, 'registerProperty', { configurable: true, value: () => undefined })
+    vi.stubGlobal('CSS', cssWithoutInterpolation)
+
+    let el: WebUiSvgDrawLines | undefined
+    let path: SVGPathElement | undefined
+    let replayed: Promise<void> | undefined
+    try {
+      const component = (el = createEl())
+      component.duration = 1000
+      component.easing = 'cubic-bezier(0.68, -0.55, 0.27, 1.55)'
+      component.noAutoplay = true
+      component.innerHTML = '<svg><path d="M0 0 L100 0" stroke-width="2"/></svg>'
+      await waitForUpdate(component)
+      const actualPath = (path = component.querySelector('path')!)
+      replayed = component.replay()
+
+      await expect.poll(() => actualPath.getAnimations().length).toBeGreaterThan(0)
+      const animation = actualPath.getAnimations()[0]!
+      animation.pause()
+      expect(animation.effect?.getTiming().easing).toBe('linear')
+
+      const blank = Number(actualPath.style.strokeDasharray)
+      animation.currentTime = 250
+      expect(Number.parseFloat(getComputedStyle(actualPath).strokeDashoffset)).toBeCloseTo(blank * 0.75, 1)
+      animation.currentTime = 500
+      expect(Number.parseFloat(getComputedStyle(actualPath).strokeDashoffset)).toBeCloseTo(blank * 0.5, 1)
+      expect(actualPath.style.getPropertyValue('--wui-svg-draw-lines-offset')).toBe('')
+
+      animation.cancel()
+      await replayed
+    } finally {
+      try {
+        path?.getAnimations().forEach(animation => animation.cancel())
+        el?.remove()
+        await replayed
+      } finally {
+        vi.unstubAllGlobals()
+      }
+    }
+  })
+
   it('直接 light DOM SVG 完成后恢复原始内联样式', async () => {
     const el = createEl()
     el.duration = 50
@@ -230,6 +274,7 @@ describe('WebUiSvgDrawLines 组件（浏览器）', () => {
       await expect.poll(() => path.getAnimations().length).toBeGreaterThan(0)
       const animation = path.getAnimations()[0]!
       animation.pause()
+      expect(animation.effect?.getTiming().easing).toBe(el.easing)
       const blank = Number(path.style.strokeDasharray)
       const offsets: number[] = []
 
@@ -241,6 +286,8 @@ describe('WebUiSvgDrawLines 组件（浏览器）', () => {
       expect(offsets.every(offset => Number.isFinite(offset) && offset >= 0 && offset <= blank)).toBe(true)
       expect(offsets[0]).toBe(reverse ? 0 : blank)
       expect(offsets[offsets.length - 1]).toBe(reverse ? blank : 0)
+      expect(offsets[25]).toBe(reverse ? 0 : blank)
+      expect(offsets[75]).toBe(reverse ? blank : 0)
       expect(Math.min(...offsets)).toBe(0)
       expect(Math.max(...offsets)).toBe(blank)
 
