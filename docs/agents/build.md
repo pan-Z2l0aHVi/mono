@@ -64,4 +64,4 @@ CI 构建 workspace 包并跳过 Interweave app wrapper；Wails verify / release
 
 PR changeset gate 由 CI 对 PR base/head 执行 `pnpm run check-changeset`（含 `changeset status` 与自定义内容检查）；本地 pre-commit 政策检查不运行该检查。版本 PR 按条件豁免。required check 覆盖 CI 与仓库硬约束，不等于 PR review；review 规则见 [`review.md`](./review.md)。
 
-`ci.yml` 对 PR `opened`、`synchronize`、`reopened` 与 `edited` 事件运行；PR 标题检查位于依赖安装之前，并用 PR base 提交中的 `commitlint.config.js` 规则检查标题，避免提案分支替换现行语言规则。标题先从事件负载读取；fork PR 负载不含完整 PR 对象时，用仅有 `pull-requests: read` 权限的 `GITHUB_TOKEN` 通过 `gh api` 读取标题与 base SHA。API token 只提供给读取步骤，标题检查脚本本身不接收 token。若 board 用中文任务标题创建 PR，检查会快速失败；将 PR 标题改成英文后，`edited` 事件重跑 CI。PR 的其他元数据编辑也会触发完整 CI。
+`ci.yml` 对 PR `opened`、`synchronize`、`reopened` 与 `edited` 事件运行；PR 标题检查位于依赖安装之前，并用 PR base 提交中的 `commitlint.config.js` 规则检查标题，避免提案分支替换现行语言规则。标题先从事件负载读取；fork PR 负载不含完整 PR 对象时，用仅有 `pull-requests: read` 权限的 `GITHUB_TOKEN` 通过 `gh api` 读取标题与 base SHA。API token 只提供给读取步骤，标题检查脚本本身不接收 token。Herdr board 目前把中文任务标题用作 PR 标题；改成英文会写远端 PR 元数据，按 [`workflow.md` 的授权流程](./workflow.md#怎么取得这个授权)取得授权后，用 `gh pr edit <number> --title "<English title>"` 修改。`edited` 事件会触发完整 CI 重跑；若标题保持中文，required check 会失败。其他 PR 元数据编辑也会触发完整重跑。
