@@ -358,8 +358,8 @@ describe('web-ui-middle-ellipsis 的容器变化（浏览器）', () => {
 
 describe('web-ui-middle-ellipsis 的字体度量变化（浏览器）', () => {
   it('字体重切使用最近一次 ResizeObserver 报告的小数内容盒宽度', async () => {
-    const text = 'abcdefghijkl'
-    const expected = `${text.slice(0, 5)}…${text.slice(-5)}`
+    const text = 'abcdefghi'
+    const expected = `${text.slice(0, 3)}…${text.slice(-3)}`
     const measure = document.createElement('span')
     measure.style.cssText = 'position: fixed; left: -10000px; white-space: nowrap; font: 20.05px/1.5 monospace;'
     measure.textContent = expected
@@ -371,7 +371,7 @@ describe('web-ui-middle-ellipsis 的字体度量变化（浏览器）', () => {
     expect(width).toBeGreaterThan(expectedWidth)
     expect(Math.round(width)).toBeLessThan(expectedWidth)
 
-    const el = mount({ text }, 'width: 200px; font: 16px/1.5 monospace;')
+    const el = mount({ text }, 'width: 200px; font: 14px/1.5 monospace;')
     await settle(el)
     el.style.width = `${width}px`
     await settle(el)
