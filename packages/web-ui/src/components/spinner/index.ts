@@ -38,12 +38,16 @@ export class WebUiSpinner extends LitElement {
 
   // 销毁由 show() 挂载的全屏实例。
   static hide() {
-    if (WebUiSpinner._current?._timer) {
-      clearTimeout(WebUiSpinner._current._timer)
-      WebUiSpinner._current._timer = undefined
+    const current = WebUiSpinner._current
+    if (!current) return
+
+    if (current._timer) {
+      clearTimeout(current._timer)
+      current._timer = undefined
     }
-    WebUiSpinner._current?.remove()
-    WebUiSpinner._current = undefined
+    current._closeDialog()
+    current.remove()
+    if (WebUiSpinner._current === current) WebUiSpinner._current = undefined
   }
 
   /** @internal 当前命令式实例 */
@@ -73,11 +77,7 @@ export class WebUiSpinner extends LitElement {
 
   override disconnectedCallback() {
     super.disconnectedCallback()
-    const dialog = this.shadowRoot?.querySelector('dialog')
-    if (dialog?.open) {
-      if (typeof dialog.close === 'function') dialog.close()
-      else dialog.removeAttribute('open')
-    }
+    this._closeDialog()
     this._overlayHandle?.release()
     this._overlayHandle = undefined
     this._scrollLock.release()
@@ -110,6 +110,13 @@ export class WebUiSpinner extends LitElement {
 
   private _handleDialogCancel(event: Event) {
     event.preventDefault()
+  }
+
+  private _closeDialog() {
+    const dialog = this.shadowRoot?.querySelector('dialog')
+    if (!dialog?.open) return
+    if (typeof dialog.close === 'function') dialog.close()
+    else dialog.removeAttribute('open')
   }
 
   override render() {

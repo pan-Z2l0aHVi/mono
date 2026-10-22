@@ -15,6 +15,24 @@ afterEach(() => {
 })
 
 describe('WebUiSpinner 命令式 overlay（浏览器）', () => {
+  it('hide() 在移除 host 前关闭 modal 并将焦点还给原控件', async () => {
+    const trigger = document.createElement('button')
+    trigger.textContent = 'Open loading overlay'
+    document.body.append(trigger)
+    trigger.focus()
+
+    const spinner = WebUiSpinner.show()
+    await spinner.updateComplete
+    await new Promise(resolve => requestAnimationFrame(() => resolve(undefined)))
+
+    expect(document.activeElement).toBe(spinner)
+
+    WebUiSpinner.hide()
+
+    expect(document.body.contains(spinner)).toBe(false)
+    expect(document.activeElement).toBe(trigger)
+  })
+
   it('拦截底层控件的指针命中并锁定页面滚动', async () => {
     const spacer = document.createElement('div')
     spacer.style.height = '2000px'
