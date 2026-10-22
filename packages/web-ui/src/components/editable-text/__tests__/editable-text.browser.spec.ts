@@ -511,7 +511,7 @@ describe('WebUiEditableText 布局契约（浏览器）', () => {
     await waitForUpdate(el)
     const editor = editorOf(el)
 
-    expect(getComputedStyle(editor).caretColor, '默认取 token 兜底值 #08f').toBe('rgb(0, 136, 255)')
+    expect(getComputedStyle(editor).caretColor, '默认取 token 兜底值 #0071e3').toBe('rgb(0, 113, 227)')
 
     el.style.setProperty('--wui-color-accent', '#ff0000')
     await waitForUpdate(el)

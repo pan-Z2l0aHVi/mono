@@ -3,8 +3,8 @@
 }
 
 .is-checked .wui-checkbox-box {
-  border-color: var(--wui-color-accent, #08f);
-  background-color: var(--wui-color-accent, #08f);
+  border-color: var(--wui-color-accent, #0071e3);
+  background-color: var(--wui-color-accent, #0071e3);
 }
 
 /*

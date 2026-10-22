@@ -8,6 +8,7 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  color: var(--wui-color-text-secondary, #6a6a6a);
 }
 
 :host(.wui-spinner-overlay) {
@@ -18,7 +19,6 @@
   position: relative;
   width: var(--wui-spinner-size, 24px);
   height: var(--wui-spinner-size, 24px);
-  color: #666;
 
   span {
     position: absolute;
@@ -47,26 +47,43 @@
 }
 
 .wui-spinner-overlay {
-  pointer-events: none;
+  pointer-events: auto;
 
   position: fixed;
   z-index: var(--wui-layer-loading, 300);
   inset: 0;
 
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  width: 100%;
+  max-width: none;
+  height: 100%;
+  max-height: none;
+  margin: 0;
+  padding: 0;
+  border: 0;
+
+  color: inherit;
+
+  background: transparent;
+
+  &::backdrop {
+    background: transparent;
+  }
+}
+
+.wui-spinner-overlay-content {
   display: flex;
   flex-direction: column;
   gap: var(--wui-space-2, 8px);
   align-items: center;
   justify-content: center;
-
-  .wui-spinner {
-    pointer-events: auto;
-  }
 }
 
 .spinner-description {
-  pointer-events: auto;
-
   max-width: 240px;
 
   font-size: var(--wui-font-size, 14px);

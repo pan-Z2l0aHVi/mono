@@ -5,7 +5,7 @@ import type { WebUiLayout, WebUiSegmented, WebUiSegmentedTrigger, WebUiSlider } 
 import { cleanup, render, waitFor } from '@testing-library/react'
 import { act } from 'react'
 import { afterEach, describe, expect, it } from 'vite-plus/test'
-import { userEvent } from 'vite-plus/test/browser'
+import { page, userEvent } from 'vite-plus/test/browser'
 
 import { setViewport } from '@/__tests__/viewport'
 // `?raw` 读的是 `import.meta.glob` 拿去编译的同一个文件：这条断言把「页面上显示的那份」直接钉到
@@ -246,6 +246,31 @@ describe('example-doc（React 面 / 真实浏览器）', () => {
       buttonContainer.querySelector('[data-sample-preview]'),
       'button 的示例没有锚点，不该生成 live 预览'
     ).toBeNull()
+  })
+
+  it('同页的 slider 示例使用不同 accessible name', async () => {
+    const { container } = render(<ExampleDoc component="slider" />)
+    await mountDemos(container)
+
+    const examples = [
+      ['基础', '音量'],
+      ['刻度与垂直方向', '垂直刻度'],
+      ['受控值', '受控音量']
+    ] as const
+    expect(new Set(examples.map(([, name]) => name)).size).toBe(examples.length)
+
+    for (const [title, name] of examples) {
+      const host = sliderIn(container, title)
+      expect(host.getAttribute('aria-label')).toBe(name)
+      expect(
+        page.elementLocator(host).getByRole('slider', { name, exact: true }).length,
+        `${title} 的 slider 名称`
+      ).toBe(1)
+      expect(
+        page.elementLocator(container).getByRole('slider', { name, exact: true }).length,
+        `当前组件文档中名为「${name}」的 slider`
+      ).toBe(1)
+    }
   })
 
   it('页面上写的数字，就是屏幕上跑起来的那个值', async () => {

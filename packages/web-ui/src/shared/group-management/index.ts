@@ -15,6 +15,7 @@ import type { ReactiveController, ReactiveControllerHost } from 'lit'
 export interface SelectionGroupContext {
   readonly disabled: boolean
   readonly rovingTabStop: boolean
+  readonly tabStop?: boolean
 }
 
 export interface ButtonGroupContext {
@@ -150,6 +151,7 @@ export interface GroupLifecycle {
 
 interface GroupControllerOptions {
   afterSync?: () => void
+  observeAttributes?: readonly string[]
 }
 
 /**
@@ -223,7 +225,12 @@ export class GroupController implements ReactiveController {
     this.disconnectHostObserver()
     // 监听 light DOM 的增删，覆盖 Vue v-if / React && 的 comment 锚点替换与深层包裹
     this.observer = new MutationObserver(this.handleMutations)
-    this.observer.observe(this.host, { childList: true, subtree: true })
+    const observerOptions: MutationObserverInit = { childList: true, subtree: true }
+    if (this.options.observeAttributes?.length) {
+      observerOptions.attributes = true
+      observerOptions.attributeFilter = [...this.options.observeAttributes]
+    }
+    this.observer.observe(this.host, observerOptions)
   }
 
   private disconnectHostObserver() {
@@ -267,6 +274,7 @@ export interface GroupCoordinatorOptions<Item extends HTMLElement, Value> {
   readonly getDisabled: () => boolean
   readonly isItem: (target: EventTarget | null) => target is Item
   readonly isItemSelected: (item: Item, value: Value) => boolean
+  readonly isItemTabStop?: (item: Item, items: readonly Item[]) => boolean
   readonly getItemSelected?: (item: Item) => boolean
   readonly getNextValue: (item: Item, value: Value) => Value
   readonly valuesEqual: (a: Value, b: Value) => boolean
@@ -286,9 +294,13 @@ const ENABLED_SELECTION_CONTEXT: SelectionGroupContext = { disabled: false, rovi
 const ENABLED_ROVING_SELECTION_CONTEXT: SelectionGroupContext = { disabled: false, rovingTabStop: true }
 const DISABLED_SELECTION_CONTEXT: SelectionGroupContext = { disabled: true, rovingTabStop: false }
 
-function getSelectionContext(disabled: boolean, rovingTabStop: boolean): SelectionGroupContext {
-  if (disabled) return DISABLED_SELECTION_CONTEXT
-  return rovingTabStop ? ENABLED_ROVING_SELECTION_CONTEXT : ENABLED_SELECTION_CONTEXT
+function getSelectionContext(disabled: boolean, rovingTabStop: boolean, tabStop?: boolean): SelectionGroupContext {
+  const context = disabled
+    ? DISABLED_SELECTION_CONTEXT
+    : rovingTabStop
+      ? ENABLED_ROVING_SELECTION_CONTEXT
+      : ENABLED_SELECTION_CONTEXT
+  return tabStop === undefined ? context : { ...context, tabStop }
 }
 
 /**
@@ -338,7 +350,11 @@ export function defineGroupCoordinator<Item extends HTMLElement, Value>(options:
         new Map(
           nextItems.map((item, index) => [
             item as HTMLElement,
-            getSelectionContext(disabled, options.getRovingTabStop?.(item, index, nextItems, value) === true)
+            getSelectionContext(
+              disabled,
+              options.getRovingTabStop?.(item, index, nextItems, value) === true,
+              options.isItemTabStop?.(item, nextItems)
+            )
           ])
         )
       )
