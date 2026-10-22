@@ -28,8 +28,8 @@ const createGroup = (radioHtml = RADIO_HTML, attrs?: Record<string, string>): We
 
 const clickChild = (group: WebUiRadioGroup, index: number) => {
   const radio = group.querySelectorAll<WebUiRadio>('web-ui-radio')[index]
-  const label = queryA11y(radio, 'label') as HTMLElement
-  label.click()
+  const control = queryA11y(radio, '[role="radio"]') as HTMLElement
+  control.click()
 }
 
 const controlOf = (radio: WebUiRadio): HTMLElement => queryA11y(radio, '[role="radio"]') as HTMLElement
@@ -446,8 +446,8 @@ describe('WebUiRadioGroup 组件', () => {
       const [inputEvents, detachInput] = spyEvents(container, 'input')
       const [changeEvents, detachChange] = spyEvents(container, 'change')
 
-      const label = queryA11y(radio, 'label') as HTMLElement
-      label.click()
+      const control = queryA11y(radio, '[role="radio"]') as HTMLElement
+      control.click()
       await waitForUpdate(radio)
 
       expect(inputEvents).toHaveLength(1)

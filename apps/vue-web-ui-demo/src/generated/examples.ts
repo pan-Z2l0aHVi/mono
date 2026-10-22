@@ -1272,7 +1272,7 @@ export const exampleDocs: ExampleDoc[] = [
   {
     "component": "checkbox",
     "tag": "web-ui-checkbox",
-    "introHtml": "<p>单个 checkbox，声明 <code>role=\"checkbox\"</code>，支持 Enter / Space 切换；与原生 <code>&lt;form></code> 集成，选中时把 <code>value</code> 提交进 <code>FormData</code>。</p>",
+    "introHtml": "<p>单个 checkbox，支持 Enter / Space 切换；与原生 <code>&lt;form></code> 集成，选中时把 <code>value</code> 提交进 <code>FormData</code>。</p>",
     "api": [
       {
         "kind": "table",
@@ -1379,7 +1379,7 @@ export const exampleDocs: ExampleDoc[] = [
         "kind": "prose",
         "key": "行为说明",
         "title": "行为说明",
-        "html": "<p>使用 <code>role=\"checkbox\"</code> 和 <code>aria-checked</code>。Enter/Space 键盘切换。</p>"
+        "html": "<p>Shadow DOM 内的交互 <code>&lt;span></code> 声明 <code>role=\"checkbox\"</code>，并同步 <code>aria-checked</code>、<code>aria-disabled</code> 和 <code>tabindex</code>。Enter/Space 键盘切换。</p>"
       },
       {
         "kind": "prose",
@@ -4414,7 +4414,7 @@ export const exampleDocs: ExampleDoc[] = [
         "kind": "prose",
         "key": "行为说明",
         "title": "行为说明",
-        "html": "<p>使用条件与 <code>text-overflow: ellipsis</code> 相同：<strong>单行、且有确定行内尺寸</strong>。块级盒子、flex 行里的 <code>flex: 1; min-width: 0</code>、grid track 都可以。宿主按自身内容撑宽时不存在可用空间，组件按量到的宽度切一次就停止继续收缩，而不是一路塌到只剩标记。</p>\n<p>文件名场景靠 <code>marker-position</code> 调节，头部是路径噪声、尾部才是扩展名时取大值。下表是示意而非可复现的取值——确切切点取决于字体——取自 16px <code>system-ui</code>、240px 盒子：</p>\n<p>列依次为 marker-position / 240px 盒子里：</p>\n<ul>\n<li><code>0</code> / <code>very-long-file-name-abcdefghi…</code></li>\n<li><code>50</code>（默认） / <code>very-long-file-…-abcdefghij.txt</code></li>\n<li><code>80</code> / <code>very-l…file-name-abcdefghij.txt</code></li>\n</ul>\n<p>切点一律落在<strong>字素簇</strong>边界上：代理对、组合符序列、ZWJ emoji 都不会被从中间劈开。截断期间完整原文写在文本元素的 <code>title</code> 上，放得下之后移除。宿主需为 <code>direction: ltr</code>；<code>direction: rtl</code> 下合串会被双向算法重排。</p>"
+        "html": "<p>使用条件与 <code>text-overflow: ellipsis</code> 相同：<strong>单行、且有确定行内尺寸</strong>。块级盒子、flex 行里的 <code>flex: 1; min-width: 0</code>、grid track 都可以。宿主按自身内容撑宽时不存在可用空间，组件按量到的宽度切一次就停止继续收缩，而不是一路塌到只剩标记。</p>\n<p>容器宽度变化会触发重新切分。字体度量变化也会重新测量：全文量具尺寸变化（例如根字号变化）由 <code>ResizeObserver</code> 发现；字体加载完成事件会补上全文总宽不变但字形宽度重新分布的情况。组件断连后停止监听，重连时按当前布局重新拟合。</p>\n<p>文件名场景靠 <code>marker-position</code> 调节，头部是路径噪声、尾部才是扩展名时取大值。下表是示意而非可复现的取值——确切切点取决于字体——取自 16px <code>system-ui</code>、240px 盒子：</p>\n<p>列依次为 marker-position / 240px 盒子里：</p>\n<ul>\n<li><code>0</code> / <code>very-long-file-name-abcdefghi…</code></li>\n<li><code>50</code>（默认） / <code>very-long-file-…-abcdefghij.txt</code></li>\n<li><code>80</code> / <code>very-l…file-name-abcdefghij.txt</code></li>\n</ul>\n<p>切点一律落在<strong>字素簇</strong>边界上：代理对、组合符序列、ZWJ emoji 都不会被从中间劈开。截断期间完整原文写在文本元素的 <code>title</code> 上，放得下之后移除。宿主需为 <code>direction: ltr</code>；<code>direction: rtl</code> 下合串会被双向算法重排。</p>"
       },
       {
         "kind": "prose",
@@ -5075,6 +5075,12 @@ export const exampleDocs: ExampleDoc[] = [
             "<p>label 文本；为空时收掉 indicator 与 label 之间的间距。</p>"
           ]
         ]
+      },
+      {
+        "kind": "prose",
+        "key": "行为说明",
+        "title": "行为说明",
+        "html": "<p>Shadow DOM 内的交互 <code>&lt;span></code> 声明 <code>role=\"radio\"</code>，并同步 <code>aria-checked</code>、<code>aria-disabled</code> 和 <code>tabindex</code>。Enter/Space 键盘切换。</p>"
       },
       {
         "kind": "prose",
@@ -6201,7 +6207,7 @@ export const exampleDocs: ExampleDoc[] = [
   {
     "component": "switch",
     "tag": "web-ui-switch",
-    "introHtml": "<p>switch 切换，声明 <code>role=\"switch\"</code> 与 <code>aria-checked</code>；<code>loading</code> 期间阻断交互并显示待定状态。键盘焦点落在内层原生 checkbox 上，<strong>空格与 Enter 都能切换</strong>。</p>",
+    "introHtml": "<p>switch 切换，声明 <code>role=\"switch\"</code> 与 <code>aria-checked</code>；<code>loading</code> 期间阻断交互并显示待定状态。默认插槽的子文本会作为可见标签和默认 accessible name；也可以在 host 设置 <code>aria-label</code> 或 <code>aria-labelledby</code>。键盘焦点落在 host 上，<strong>空格与 Enter 都能切换</strong>。</p>",
     "api": [
       {
         "kind": "table",
@@ -6266,6 +6272,39 @@ export const exampleDocs: ExampleDoc[] = [
       },
       {
         "kind": "table",
+        "key": "slots",
+        "title": "Slots",
+        "columns": [
+          {
+            "title": "名称",
+            "kind": "name"
+          },
+          {
+            "title": "说明",
+            "kind": "html"
+          }
+        ],
+        "rows": [
+          [
+            "default",
+            "<p>可见标签文本，并作为 switch 的 accessible name；为空时不增加额外间距。</p>"
+          ]
+        ]
+      },
+      {
+        "kind": "prose",
+        "key": "布局",
+        "title": "布局",
+        "html": "<p>track 固定为 <code>40px × 20px</code>，标签与 track 之间默认间距为 <code>8px</code>。default slot 没有可渲染宽度时（空槽位或只放了视觉隐藏的无障碍名），间距会收起，宿主宽度不会超过 track。没有可见标签时可通过 <code>aria-label</code> 或 <code>aria-labelledby</code> 提供 accessible name。</p>"
+      },
+      {
+        "kind": "prose",
+        "key": "accessible name",
+        "title": "accessible name",
+        "html": "<p>默认插槽内容会显示在 track 旁，并作为 switch 的 accessible name。需要引用外部 label 时，在 <code>web-ui-switch</code> host 设置 <code>aria-labelledby</code>；也可以直接设置 <code>aria-label</code>。</p>\n<pre><code class=\"language-html\">&lt;web-ui-switch aria-labelledby=\"notification-label\">&lt;/web-ui-switch> &lt;span id=\"notification-label\">启用通知&lt;/span>\n</code></pre>"
+      },
+      {
+        "kind": "table",
         "key": "events",
         "title": "Events",
         "columns": [
@@ -6293,7 +6332,7 @@ export const exampleDocs: ExampleDoc[] = [
         "kind": "prose",
         "key": "行为说明",
         "title": "行为说明",
-        "html": "<p>使用 <code>role=\"switch\"</code> 和 <code>aria-checked</code>。Pointer 事件管理按下状态。</p>"
+        "html": "<p>使用 host 上的 <code>role=\"switch\"</code>、<code>aria-checked</code> 和 <code>aria-disabled</code>。host 接收键盘焦点；Space 与 Enter 切换状态。Pointer 事件管理轨道的按下状态。</p>"
       }
     ],
     "samples": [
@@ -6320,7 +6359,7 @@ export const exampleDocs: ExampleDoc[] = [
       {
         "id": null,
         "title": "表单值",
-        "descriptionHtml": "<p>switch 自身不渲染 label 盒之外的内容，<code>name</code> 与 <code>value</code> 让它在表单里以选中值参与提交。</p>",
+        "descriptionHtml": "<p>可见标签同时命名 switch；<code>aria-label</code> 或 <code>aria-labelledby</code> 可覆盖默认名称。<code>name</code> 与 <code>value</code> 让 switch 在表单里以选中值参与提交。</p>",
         "html": {
           "react": "<pre class=\"shiki shiki-themes github-light github-dark mdc-code\" style=\"--shiki-light:#24292e;--shiki-dark:#e1e4e8;--shiki-light-bg:#fff;--shiki-dark-bg:#24292e\" tabindex=\"0\"><code><span class=\"line\"><span style=\"--shiki-light:#24292E;--shiki-dark:#E1E4E8\">&#x3C;</span><span style=\"--shiki-light:#22863A;--shiki-dark:#85E89D\">form</span><span style=\"--shiki-light:#24292E;--shiki-dark:#E1E4E8\">></span></span>\n<span class=\"line\"><span style=\"--shiki-light:#24292E;--shiki-dark:#E1E4E8\">  &#x3C;</span><span style=\"--shiki-light:#005CC5;--shiki-dark:#79B8FF\">web-ui-switch</span><span style=\"--shiki-light:#6F42C1;--shiki-dark:#B392F0\"> name</span><span style=\"--shiki-light:#D73A49;--shiki-dark:#F97583\">=</span><span style=\"--shiki-light:#032F62;--shiki-dark:#9ECBFF\">\"newsletter\"</span><span style=\"--shiki-light:#6F42C1;--shiki-dark:#B392F0\"> value</span><span style=\"--shiki-light:#D73A49;--shiki-dark:#F97583\">=</span><span style=\"--shiki-light:#032F62;--shiki-dark:#9ECBFF\">\"on\"</span><span style=\"--shiki-light:#6F42C1;--shiki-dark:#B392F0\"> required</span><span style=\"--shiki-light:#24292E;--shiki-dark:#E1E4E8\">></span></span>\n<span class=\"line\"><span style=\"--shiki-light:#24292E;--shiki-dark:#E1E4E8\">    订阅邮件</span></span>\n<span class=\"line\"><span style=\"--shiki-light:#24292E;--shiki-dark:#E1E4E8\">  &#x3C;/</span><span style=\"--shiki-light:#005CC5;--shiki-dark:#79B8FF\">web-ui-switch</span><span style=\"--shiki-light:#24292E;--shiki-dark:#E1E4E8\">></span></span>\n<span class=\"line\"><span style=\"--shiki-light:#24292E;--shiki-dark:#E1E4E8\">&#x3C;/</span><span style=\"--shiki-light:#22863A;--shiki-dark:#85E89D\">form</span><span style=\"--shiki-light:#24292E;--shiki-dark:#E1E4E8\">></span></span></code></pre>",
           "vue": "<pre class=\"shiki shiki-themes github-light github-dark mdc-code\" style=\"--shiki-light:#24292e;--shiki-dark:#e1e4e8;--shiki-light-bg:#fff;--shiki-dark-bg:#24292e\" tabindex=\"0\"><code><span class=\"line\"><span style=\"--shiki-light:#24292E;--shiki-dark:#E1E4E8\">&#x3C;</span><span style=\"--shiki-light:#22863A;--shiki-dark:#85E89D\">template</span><span style=\"--shiki-light:#24292E;--shiki-dark:#E1E4E8\">></span></span>\n<span class=\"line\"><span style=\"--shiki-light:#24292E;--shiki-dark:#E1E4E8\">  &#x3C;</span><span style=\"--shiki-light:#22863A;--shiki-dark:#85E89D\">form</span><span style=\"--shiki-light:#24292E;--shiki-dark:#E1E4E8\">></span></span>\n<span class=\"line\"><span style=\"--shiki-light:#24292E;--shiki-dark:#E1E4E8\">    &#x3C;</span><span style=\"--shiki-light:#22863A;--shiki-dark:#85E89D\">web-ui-switch</span><span style=\"--shiki-light:#6F42C1;--shiki-dark:#B392F0\"> name</span><span style=\"--shiki-light:#24292E;--shiki-dark:#E1E4E8\">=</span><span style=\"--shiki-light:#032F62;--shiki-dark:#9ECBFF\">\"newsletter\"</span><span style=\"--shiki-light:#6F42C1;--shiki-dark:#B392F0\"> value</span><span style=\"--shiki-light:#24292E;--shiki-dark:#E1E4E8\">=</span><span style=\"--shiki-light:#032F62;--shiki-dark:#9ECBFF\">\"on\"</span><span style=\"--shiki-light:#6F42C1;--shiki-dark:#B392F0\"> required</span><span style=\"--shiki-light:#24292E;--shiki-dark:#E1E4E8\">>订阅邮件&#x3C;/</span><span style=\"--shiki-light:#22863A;--shiki-dark:#85E89D\">web-ui-switch</span><span style=\"--shiki-light:#24292E;--shiki-dark:#E1E4E8\">></span></span>\n<span class=\"line\"><span style=\"--shiki-light:#24292E;--shiki-dark:#E1E4E8\">  &#x3C;/</span><span style=\"--shiki-light:#22863A;--shiki-dark:#85E89D\">form</span><span style=\"--shiki-light:#24292E;--shiki-dark:#E1E4E8\">></span></span>\n<span class=\"line\"><span style=\"--shiki-light:#24292E;--shiki-dark:#E1E4E8\">&#x3C;/</span><span style=\"--shiki-light:#22863A;--shiki-dark:#85E89D\">template</span><span style=\"--shiki-light:#24292E;--shiki-dark:#E1E4E8\">></span></span></code></pre>"
