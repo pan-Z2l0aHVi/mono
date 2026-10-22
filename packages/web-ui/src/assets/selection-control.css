@@ -39,7 +39,7 @@
   &:focus-visible {
     border-radius: var(--wui-radius-control, calc(infinity * 1px));
     outline: var(--wui-focus-ring-width, 3px) solid
-      var(--wui-color-focus-ring, color-mix(in srgb, var(--wui-color-accent, #08f) 40%, transparent));
+      var(--wui-color-focus-ring, color-mix(in srgb, var(--wui-color-accent, #0071e3) 40%, transparent));
     outline-offset: 2px;
   }
 }
@@ -106,7 +106,7 @@
 /*
  * 未激活态的 hover 状态层。用半透明色而不是混进控件底：覆盖层本就压在不透明的控件底上，
  * 合成结果与 color-mix(text 6%, surface-control) 一致，深色档同样成立。
- * label 文字带 pointer-events: none，命中落回 label 自身，所以整条触发区（含右侧文字）
+ * label 文字带 pointer-events: none，命中落回交互元素自身，所以整条触发区（含右侧文字）
  * 的 hover 都会作用到 indicator。hover 只在真正的指针设备上生效，避免触屏留态。
  */
 @media (hover: hover) and (pointer: fine) {

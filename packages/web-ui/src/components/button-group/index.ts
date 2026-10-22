@@ -44,6 +44,32 @@ export class WebUiButtonGroup extends LitElement {
     }).make()
   )
 
+  private _trackResizeObserver: ResizeObserver | null = null
+
+  override connectedCallback(): void {
+    super.connectedCallback()
+    void this.updateComplete.then(() => {
+      if (!this.isConnected || typeof ResizeObserver === 'undefined') return
+
+      const track = this.renderRoot.querySelector<HTMLElement>('.wui-button-group-inner')
+      if (!track) return
+
+      this._trackResizeObserver ??= new ResizeObserver(() => {
+        // 读取未变换的布局尺寸，避免 dialog 进退场缩放污染玻璃圆角。
+        const { width, height } = getComputedStyle(track)
+        const cornerRadius = Math.min(Number.parseFloat(width), Number.parseFloat(height)) / 2
+        // max-content 垂直轨道的短边会随成员内容变化，玻璃角点渐变需要同步跟随。
+        track.style.setProperty('--wui-glass-corner-radius', `${cornerRadius}px`)
+      })
+      this._trackResizeObserver.observe(track, { box: 'border-box' })
+    })
+  }
+
+  override disconnectedCallback(): void {
+    this._trackResizeObserver?.disconnect()
+    super.disconnectedCallback()
+  }
+
   override render() {
     return html`
       <div class="wui-glass wui-button-group-inner">

@@ -381,6 +381,33 @@ describe('WebUiSelect 组件', () => {
     })
   })
 
+  describe('无障碍语义', () => {
+    it('空字符串 value 不将 option 标记为已选中', async () => {
+      const el = createSelect('<web-ui-option value="" label="No selection"></web-ui-option>')
+      await waitForUpdate(el)
+
+      const option = el.querySelector<WebUiOption>('web-ui-option')!
+      expect(option.selected).toBe(false)
+      expect(option.getAttribute('aria-selected')).toBe('false')
+
+      cleanupElement(el)
+    })
+
+    it('option 角色与 aria-selected 反映当前 value', async () => {
+      const el = createSelect(OPTIONS_HTML)
+      el.value = 'banana'
+      el.querySelectorAll<WebUiOption>('web-ui-option')[2]!.disabled = true
+      await waitForUpdate(el)
+
+      const options = [...el.querySelectorAll<WebUiOption>('web-ui-option')]
+      expect(options.map(option => option.getAttribute('role'))).toEqual(['option', 'option', 'option'])
+      expect(options.map(option => option.getAttribute('aria-selected'))).toEqual(['false', 'true', 'false'])
+      expect(options.map(option => option.getAttribute('aria-disabled'))).toEqual(['false', 'false', 'true'])
+
+      cleanupElement(el)
+    })
+  })
+
   describe('键盘导航', () => {
     it('ArrowDown 打开 overlay 并把 aria-activedescendant 指向首个 option', async () => {
       const el = createSelect(OPTIONS_HTML)
@@ -393,6 +420,7 @@ describe('WebUiSelect 组件', () => {
       const activeId = queryA11y(el, '[role="combobox"]')?.getAttribute('aria-activedescendant')
       const active = activeId ? el.querySelector(`#${activeId}`) : null
       expect(active?.tagName.toLowerCase()).toBe('web-ui-option')
+      expect(active?.getAttribute('role')).toBe('option')
       expect(active?.getAttribute('value')).toBe('apple')
 
       cleanupElement(el)

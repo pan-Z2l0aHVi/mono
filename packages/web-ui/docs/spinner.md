@@ -3,18 +3,19 @@ component: spinner
 tag: web-ui-spinner
 ---
 
-加载旋转器，声明式放在页面里，或用静态 `WebUiSpinner.show()` / `hide()` 做阻塞式加载。
+加载旋转器，声明式放在页面里，或用静态 `WebUiSpinner.show()` / `hide()` 做阻塞式加载。命令式实例会挂到当前主题的 overlay root，以继承主题颜色；没有主题时挂到 body 的 fallback overlay root。
 
 ## 示例
 
 ### 基础
 
-`size` 是像素尺寸，宿主带 `role="status"` 与 `aria-label="加载中"`。
+`size` 是像素尺寸。颜色默认跟随主题次要文本色，也可以用 `color` 指定 CSS 颜色值。宿主带 `role="status"` 与 `aria-label="加载中"`。
 
 ```react
 <web-ui-spinner size={16}></web-ui-spinner>
 <web-ui-spinner size={24}></web-ui-spinner>
 <web-ui-spinner size={32}></web-ui-spinner>
+<web-ui-spinner size={32} color="#0a84ff"></web-ui-spinner>
 ```
 
 ```vue
@@ -22,6 +23,7 @@ tag: web-ui-spinner
   <web-ui-spinner :size="16"></web-ui-spinner>
   <web-ui-spinner :size="24"></web-ui-spinner>
   <web-ui-spinner :size="32"></web-ui-spinner>
+  <web-ui-spinner :size="32" color="#0a84ff"></web-ui-spinner>
 </template>
 ```
 
@@ -43,12 +45,12 @@ tag: web-ui-spinner
 
 ### 阻塞式加载
 
-`WebUiSpinner.show()` 显示全屏加载，`duration` 到期自动关闭，`hide()` 立即隐藏。
+`WebUiSpinner.show()` 显示全屏加载，期间会拦截指针交互并锁定页面滚动；`duration` 到期自动关闭，`hide()` 立即隐藏。
 
 ```react
 import { WebUiSpinner } from '@greypan/web-ui'
 
-WebUiSpinner.show({ size: 64, description: '正在同步云端文件' })
+WebUiSpinner.show({ size: 64, description: '正在同步云端文件', color: '#0a84ff' })
 WebUiSpinner.show({ duration: 2000 })
 WebUiSpinner.hide()
 ```
@@ -67,10 +69,11 @@ function sync() {
 
 ### Props
 
-| 名称          | 说明         | 类型     | 默认值 |
-| ------------- | ------------ | -------- | ------ |
-| `size`        | 尺寸（px）。 | `number` | `24`   |
-| `description` | 描述文字。   | `string` | `''`   |
+| 名称          | 说明                                   | 类型     | 默认值 |
+| ------------- | -------------------------------------- | -------- | ------ |
+| `size`        | 尺寸（px）。                           | `number` | `24`   |
+| `description` | 描述文字。                             | `string` | `''`   |
+| `color`       | CSS 颜色值；为空时跟随主题次要文本色。 | `string` | `''`   |
 
 ### Slots
 
@@ -80,10 +83,10 @@ function sync() {
 
 ### Methods
 
-| 名称                          | 说明                                                                                                   |
-| ----------------------------- | ------------------------------------------------------------------------------------------------------ |
-| `WebUiSpinner.show(options?)` | 挂载一个全屏实例并返回它；`size` / `description` 覆盖默认外观，`duration` 大于 0 时到期调用 `hide()`。 |
-| `WebUiSpinner.hide()`         | 拆掉计时器并移除 `show()` 挂载的实例。                                                                 |
+| 名称                          | 说明                                                                                                                                                                                                            |
+| ----------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `WebUiSpinner.show(options?)` | 在主题 overlay root（无主题时为 body 的 fallback overlay root）挂载一个全屏实例并返回它；期间拦截指针交互并锁定页面滚动。`size` / `description` / `color` 覆盖默认外观，`duration` 大于 0 时到期调用 `hide()`。 |
+| `WebUiSpinner.hide()`         | 拆掉计时器并移除 `show()` 挂载的实例。                                                                                                                                                                          |
 
 ### 行为说明
 
@@ -95,11 +98,11 @@ function sync() {
 import { WebUiSpinner } from '@greypan/web-ui'
 
 WebUiSpinner.show() // 显示
-WebUiSpinner.show({ size: 32, duration: 2000 }) // 带 option 显示
+WebUiSpinner.show({ size: 32, duration: 2000, color: '#0a84ff' }) // 带 option 显示
 WebUiSpinner.hide() // 隐藏
 ```
 
-`WebUiSpinner.show(options?: { size?: number; duration?: number; description?: string })`
+`WebUiSpinner.show(options?: { size?: number; duration?: number; description?: string; color?: string })`
 
 ### CSS Custom Properties
 
