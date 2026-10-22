@@ -1,7 +1,7 @@
 import '..'
 
 import { afterEach, describe, expect, it } from 'vite-plus/test'
-import { page } from 'vite-plus/test/browser'
+import { page, userEvent } from 'vite-plus/test/browser'
 
 import { cleanupElement, pollUntil, queryA11y } from '@/shared/test-utils'
 import { setViewport } from '@/shared/test-utils/viewport'
@@ -356,6 +356,29 @@ describe('WebUiSlider 指针拖拽（浏览器）', () => {
     await el.updateComplete
 
     expect(el.value).toBe(51)
+    cleanupElement(el)
+  })
+
+  it('指针点击后用方向键调整时 focus ring 可见', async () => {
+    const el = createSlider() as Updatable
+    await el.updateComplete
+
+    const track = trackOf(el)
+    await userEvent.click(track)
+    await el.updateComplete
+
+    expect(document.activeElement).toBe(el)
+    expect(el.dataset.wuiPointerFocus).toBe('true')
+    const valueAfterClick = el.value
+
+    await userEvent.keyboard('{ArrowUp}')
+    await el.updateComplete
+
+    expect(el.value).toBe(valueAfterClick + 1)
+    expect(document.activeElement).toBe(el)
+    expect(track.matches(':focus-visible')).toBe(true)
+    expect(el.hasAttribute('data-wui-pointer-focus')).toBe(false)
+    expect(getComputedStyle(track).outlineColor).not.toBe('rgba(0, 0, 0, 0)')
     cleanupElement(el)
   })
 
