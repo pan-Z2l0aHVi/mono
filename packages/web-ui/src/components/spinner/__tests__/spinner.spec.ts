@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vite-plus/test'
 
+import { getFallbackOverlayRoot } from '@/shared/overlay/overlay-root'
 import { cleanupElement, mountElement, waitForUpdate } from '@/shared/test-utils'
 
 import { WebUiSpinner } from '..'
@@ -34,12 +35,12 @@ describe('WebUiSpinner 组件', () => {
   })
 
   describe('命令式 API: show / hide', () => {
-    it('show() 创建并挂载到 body，hide() 移除它', () => {
+    it('show() 无主题时挂载到 fallback overlay root，hide() 移除它', () => {
       const el = WebUiSpinner.show()
-      expect(document.body.contains(el)).toBe(true)
+      expect(getFallbackOverlayRoot().contains(el)).toBe(true)
 
       WebUiSpinner.hide()
-      expect(document.body.contains(el)).toBe(false)
+      expect(el.isConnected).toBe(false)
     })
 
     it('show() 接受 size、description 与 color', () => {
@@ -55,17 +56,17 @@ describe('WebUiSpinner 组件', () => {
       const first = WebUiSpinner.show()
       const second = WebUiSpinner.show()
 
-      expect(document.body.contains(first)).toBe(false)
-      expect(document.body.contains(second)).toBe(true)
+      expect(first.isConnected).toBe(false)
+      expect(second.isConnected).toBe(true)
     })
 
     it('show({ duration }) 到时自动关闭', () => {
       vi.useFakeTimers()
       const el = WebUiSpinner.show({ duration: 500 })
-      expect(document.body.contains(el)).toBe(true)
+      expect(el.isConnected).toBe(true)
 
       vi.advanceTimersByTime(500)
-      expect(document.body.contains(el)).toBe(false)
+      expect(el.isConnected).toBe(false)
       vi.useRealTimers()
     })
 
@@ -74,7 +75,7 @@ describe('WebUiSpinner 组件', () => {
       const el = WebUiSpinner.show({ duration: 0 })
 
       vi.advanceTimersByTime(10_000)
-      expect(document.body.contains(el)).toBe(true)
+      expect(el.isConnected).toBe(true)
       vi.useRealTimers()
     })
 
@@ -84,7 +85,7 @@ describe('WebUiSpinner 组件', () => {
       WebUiSpinner.hide()
 
       vi.advanceTimersByTime(10_000)
-      expect(document.body.contains(el)).toBe(false)
+      expect(el.isConnected).toBe(false)
       vi.useRealTimers()
     })
 

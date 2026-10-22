@@ -29,7 +29,6 @@
 }
 
 :host([direction='vertical']) .wui-button-group-inner {
-  width: var(--wui-control-size, 36px);
   height: auto;
   padding: var(--wui-space-1, 4px) 0;
 }

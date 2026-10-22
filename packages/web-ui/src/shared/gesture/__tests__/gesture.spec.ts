@@ -182,6 +182,40 @@ describe('shared/gesture attachDragGesture', () => {
     el.remove()
   })
 
+  it.each([
+    { axis: 'x' as const, firstMoveX: 102, firstMoveY: 107, returnX: 102, returnY: 101 },
+    { axis: 'y' as const, firstMoveX: 107, firstMoveY: 102, returnX: 101, returnY: 102 }
+  ])(
+    '交叉轴越过 threshold 时先取消 $axis 轴滚动意图，不把回到起点的松手当 tap',
+    ({ axis, firstMoveX, firstMoveY, returnX, returnY }) => {
+      const el = document.createElement('div')
+      document.body.append(el)
+
+      const onTap = vi.fn<() => void>()
+      const onCancel = vi.fn<() => void>()
+      const handle = attachDragGesture(el, { axis, threshold: 6, onTap, onCancel })
+
+      el.dispatchEvent(new PointerEvent('pointerdown', { pointerId: 1, clientX: 100, clientY: 100, isPrimary: true }))
+      window.dispatchEvent(
+        new PointerEvent('pointermove', { pointerId: 1, clientX: firstMoveX, clientY: firstMoveY, isPrimary: true })
+      )
+      expect(handle.isDragging()).toBe(false)
+      expect(onCancel).toHaveBeenCalledTimes(1)
+
+      // 释放前回到接近按下点的位置，也不能让已取消的手势重新成为 tap。
+      window.dispatchEvent(
+        new PointerEvent('pointermove', { pointerId: 1, clientX: returnX, clientY: returnY, isPrimary: true })
+      )
+      window.dispatchEvent(
+        new PointerEvent('pointerup', { pointerId: 1, clientX: returnX, clientY: returnY, isPrimary: true })
+      )
+      expect(onTap).not.toHaveBeenCalled()
+
+      handle.destroy()
+      el.remove()
+    }
+  )
+
   // 按下即阻止命中链上的 touchmove：不这么做，第一次纵向滑动就把拖拽抢走。
   it('触摸守护：按下即在命中链各层阻止 touchmove', () => {
     const el = document.createElement('div')

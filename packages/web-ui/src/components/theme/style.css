@@ -233,8 +233,9 @@
   --wui-color-glass-ring-sheen: rgb(255 255 255 / 0.5);
   --wui-color-glass-ring-shade: rgb(0 0 0 / 0.03);
   --wui-glass-brightness: 1.06;
-  --wui-color-accent: #08f;
+  --wui-color-accent: #0071e3;
   --wui-color-on-accent: #fff;
+  --wui-color-on-danger: #fff;
   --wui-color-on-control: #fff;
   --wui-color-success: #16a34a;
   --wui-color-warning: #d97706;
@@ -245,7 +246,7 @@
   --wui-shadow-panel: 0 3px 9px rgb(0 0 0 / 0.27);
   --wui-shadow-glass:
     0 0 1px rgb(0 0 0 / 0.02), 0 0 8px rgb(0 0 0 / 0.03), 0 2px 16px rgb(0 0 0 / 0.025), 0 8px 32px rgb(0 0 0 / 0.015);
-  --wui-color-focus-ring: color-mix(in srgb, var(--wui-color-accent, #08f) 40%, transparent);
+  --wui-color-focus-ring: color-mix(in srgb, var(--wui-color-accent, #0071e3) 40%, transparent);
   color-scheme: light;
 }
 
@@ -285,7 +286,8 @@
   --wui-color-glass-ring-shade: rgb(0 0 0 / 0.5);
   --wui-glass-brightness: 1.02;
   --wui-color-accent: #0a84ff;
-  --wui-color-on-accent: #fff;
+  --wui-color-on-accent: #000;
+  --wui-color-on-danger: #000;
   --wui-color-on-control: #f2f2f7;
   --wui-color-success: #30d158;
   --wui-color-warning: #ff9f0a;
@@ -295,7 +297,7 @@
   --wui-shadow-overlay: 0 18px 48px rgb(0 0 0 / 0.48);
   --wui-shadow-panel: 0 4px 16px rgb(0 0 0 / 0.32);
   --wui-shadow-glass: 0 8px 24px rgb(0 0 0 / 0.08);
-  --wui-color-focus-ring: color-mix(in srgb, var(--wui-color-accent, #0a84ff) 62%, transparent);
+  --wui-color-focus-ring: color-mix(in srgb, var(--wui-color-accent, #0a84ff) 62%, var(--wui-color-text) 38%);
   color-scheme: dark;
 }
 
@@ -327,7 +329,8 @@
     --wui-color-glass-ring-shade: rgb(0 0 0 / 0.5);
     --wui-glass-brightness: 1.02;
     --wui-color-accent: #0a84ff;
-    --wui-color-on-accent: #fff;
+    --wui-color-on-accent: #000;
+    --wui-color-on-danger: #000;
     --wui-color-on-control: #f2f2f7;
     --wui-color-success: #30d158;
     --wui-color-warning: #ff9f0a;
@@ -337,7 +340,7 @@
     --wui-shadow-overlay: 0 18px 48px rgb(0 0 0 / 0.48);
     --wui-shadow-panel: 0 4px 16px rgb(0 0 0 / 0.32);
     --wui-shadow-glass: 0 8px 24px rgb(0 0 0 / 0.08);
-    --wui-color-focus-ring: color-mix(in srgb, var(--wui-color-accent, #0a84ff) 62%, transparent);
+    --wui-color-focus-ring: color-mix(in srgb, var(--wui-color-accent, #0a84ff) 62%, var(--wui-color-text) 38%);
     color-scheme: dark;
   }
 }

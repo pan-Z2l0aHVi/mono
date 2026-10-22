@@ -4,6 +4,7 @@ import { repeat } from 'lit/directives/repeat.js'
 import { styleMap } from 'lit/directives/style-map.js'
 
 import type { WebUiTheme } from '@/components/theme'
+import { getFallbackOverlayRoot } from '@/shared/overlay/overlay-root'
 import { findRootTheme } from '@/shared/overlay/theme-overlay-scope'
 
 import style from './style.css?inline'
@@ -23,7 +24,7 @@ function getSpinnerMountTarget(): SpinnerMountTarget {
   const initializingTheme = Array.from(document.querySelectorAll<WebUiTheme>('web-ui-theme')).find(
     theme => theme.appearance !== undefined
   )
-  return initializingTheme ? { element: initializingTheme, initializingTheme } : { element: document.body }
+  return initializingTheme ? { element: initializingTheme, initializingTheme } : { element: getFallbackOverlayRoot() }
 }
 
 @customElement('web-ui-spinner')
@@ -36,7 +37,7 @@ export class WebUiSpinner extends LitElement {
   @property({ type: String }) color = ''
 
   /**
-   * 显示一个全屏加载实例并挂载到主题 overlay root（无主题时挂载到 body）；新实例会替换之前由此方法创建的实例。
+   * 显示一个全屏加载实例并挂载到主题 overlay root（无主题时挂载到 fallback overlay root）；新实例会替换之前由此方法创建的实例。
    * @param options 尺寸、说明文字、颜色与可选自动关闭时长。
    * @returns 已挂载的 spinner 实例。
    */
