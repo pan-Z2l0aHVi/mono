@@ -10,6 +10,7 @@ import { imagePreview, type ImagePreviewOptions } from '..'
 const SVG =
   '<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="900"><rect width="1200" height="900" fill="#08f"/></svg>'
 const IMAGE_SRC = `data:image/svg+xml,${encodeURIComponent(SVG)}`
+const SINGLE_IMAGE = [{ src: IMAGE_SRC, alt: '单图' }]
 const IMAGES = [
   { src: IMAGE_SRC, alt: '图 A' },
   { src: IMAGE_SRC, alt: '图 B' },
@@ -153,6 +154,16 @@ describe('imagePreview 命令式 API（浏览器）', () => {
     await userEvent.keyboard('{Escape}')
     await handle.closed
     expect(isMounted()).toBe(false)
+  })
+
+  it('单图默认 loop 时只渲染当前图片', async () => {
+    const { handle, host } = await openPreview({ images: SINGLE_IMAGE })
+    const images = Array.from(host.shadowRoot?.querySelectorAll('.wui-image-preview-track img') ?? [])
+
+    expect(images.map(image => image.getAttribute('data-index'))).toEqual(['0'])
+
+    handle.close()
+    await handle.closed
   })
 
   it('打开后焦点进入预览，关闭后回到打开前的元素', async () => {
@@ -684,17 +695,10 @@ describe('imagePreview 相对 src（浏览器）', () => {
     return new URL('fixtures/relative-src.svg', specPath).pathname
   }
 
-  /** 当前图与「未 settle 的相邻图」的淡入透明度。两者起点相同，只差 is-loaded。 */
-  async function opacityPair(host: LitElement): Promise<{ current: number; neighbor: number }> {
+  /** 当前图淡入完成后的透明度。 */
+  async function currentOpacity(host: LitElement): Promise<number> {
     await pollUntil(() => getComputedStyle(currentImage(host)).opacity === '1', 'the current image never faded in')
-    const images = [...(host.shadowRoot?.querySelectorAll('img') ?? [])] as HTMLImageElement[]
-    const current = currentImage(host)
-    const neighbor = images.find(image => image !== current)
-    if (!neighbor) throw new Error('expected the preview to render an adjacent image')
-    return {
-      current: Number(getComputedStyle(current).opacity),
-      neighbor: Number(getComputedStyle(neighbor).opacity)
-    }
+    return Number(getComputedStyle(currentImage(host)).opacity)
   }
 
   it('加载完成后当前图淡入到位', async () => {
@@ -705,7 +709,7 @@ describe('imagePreview 相对 src（浏览器）', () => {
     const host = hostElement()
     await host.updateComplete
 
-    expect((await opacityPair(host)).current).toBe(1)
+    expect(await currentOpacity(host)).toBe(1)
 
     handle.close()
     await handle.closed
@@ -717,7 +721,7 @@ describe('imagePreview 相对 src（浏览器）', () => {
     await host.updateComplete
 
     // @error 与 @load 共用 settle 回调，同样要按原始串登记，否则失败态也停在起点。
-    expect((await opacityPair(host)).current).toBe(1)
+    expect(await currentOpacity(host)).toBe(1)
     expect(currentImage(host).alt).toBe('缺失图片')
 
     handle.close()
