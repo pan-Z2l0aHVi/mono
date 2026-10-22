@@ -486,6 +486,37 @@ describe('WebUiDropdown 组件（浏览器）', () => {
     expect(document.activeElement).toBe(next)
   })
 
+  it('Tab 从 web-ui-button trigger 菜单移至下一个 tab stop 并关闭 menu', async () => {
+    const previous = document.createElement('button')
+    previous.textContent = 'Previous'
+    document.body.append(previous)
+
+    const menu = createDropdown(
+      '<web-ui-button slot="trigger">Menu</web-ui-button><web-ui-dropdown-item>One</web-ui-dropdown-item>'
+    )
+    const trigger = menu.querySelector<WebUiButton>('web-ui-button')!
+    const next = document.createElement('button')
+    next.textContent = 'Next'
+    document.body.append(menu, next)
+    await menu.updateComplete
+    await trigger.updateComplete
+    const triggerButton = trigger.shadowRoot?.querySelector<HTMLButtonElement>('button')
+    expect(triggerButton).toBeTruthy()
+
+    menu.openMenu()
+    await menu.updateComplete
+    expect(await waitForMenuPanels(1)).toHaveLength(1)
+
+    await userEvent.keyboard('{Tab}')
+    await waitFor(() => !menu.open, 'Tab 离开 menu 后应关闭')
+    await menu.updateComplete
+    await waitForMenuPanels(0)
+
+    expect(document.activeElement).toBe(next)
+    expect(menu.querySelector('[slot="trigger"]')?.getAttribute('aria-expanded')).toBe('false')
+    expect(document.documentElement.style.overflow).toBe('')
+  })
+
   it('Shift+Tab 从当前 menu item 移至上一个 tab stop 并关闭 menu', async () => {
     const previous = document.createElement('button')
     previous.textContent = 'Previous'
@@ -522,6 +553,14 @@ describe('WebUiDropdown 组件（浏览器）', () => {
     await menu.updateComplete
     expect(await waitForMenuPanels(1)).toHaveLength(1)
 
+    let tabDefaultPrevented: boolean | undefined
+    const captureTabDefault = (event: KeyboardEvent) => {
+      if (event.key === 'Tab') {
+        tabDefaultPrevented = event.defaultPrevented
+        document.removeEventListener('keydown', captureTabDefault)
+      }
+    }
+    document.addEventListener('keydown', captureTabDefault)
     await userEvent.keyboard('{Tab}')
     await waitFor(() => !menu.open, 'Tab 离开页面末尾的 menu 后应关闭')
     await menu.updateComplete
@@ -530,7 +569,84 @@ describe('WebUiDropdown 组件（浏览器）', () => {
     expect(menu.querySelector('[slot="trigger"]')?.getAttribute('aria-expanded')).toBe('false')
     expect(document.documentElement.style.overflow).toBe('')
     expect(document.documentElement.style.overscrollBehavior).toBe('')
+    expect(tabDefaultPrevented).toBe(false)
+    expect(document.activeElement).toBe(document.body)
     expect(document.activeElement).not.toBe(previous)
+  })
+
+  it('Tab 将没有 tabindex 的 contenteditable 纳入页面顺序', async () => {
+    const menu = createDropdown(TWO_ITEMS)
+    const editor = document.createElement('div')
+    editor.contentEditable = 'true'
+    editor.textContent = 'Edit text'
+    document.body.append(editor)
+    await menu.updateComplete
+    menu.openMenu()
+    await menu.updateComplete
+    expect(await waitForMenuPanels(1)).toHaveLength(1)
+
+    await userEvent.keyboard('{Tab}')
+    await waitFor(() => !menu.open, 'Tab 离开 menu 后应关闭')
+    await menu.updateComplete
+    await waitForMenuPanels(0)
+
+    expect(document.activeElement).toBe(editor)
+    expect(menu.querySelector('[slot="trigger"]')?.getAttribute('aria-expanded')).toBe('false')
+  })
+
+  it('Tab 跳过 tabindex 为 -1 的 contenteditable', async () => {
+    const menu = createDropdown(TWO_ITEMS)
+    const editor = document.createElement('div')
+    editor.contentEditable = 'true'
+    editor.tabIndex = -1
+    const next = document.createElement('button')
+    next.textContent = 'Next'
+    document.body.append(editor, next)
+    await menu.updateComplete
+    menu.openMenu()
+    await menu.updateComplete
+    expect(await waitForMenuPanels(1)).toHaveLength(1)
+
+    await userEvent.keyboard('{Tab}')
+    await waitFor(() => !menu.open, 'Tab 离开 menu 后应关闭')
+    await menu.updateComplete
+    await waitForMenuPanels(0)
+
+    expect(document.activeElement).toBe(next)
+    expect(menu.querySelector('[slot="trigger"]')?.getAttribute('aria-expanded')).toBe('false')
+  })
+
+  it('Tab 保留 closed shadow root 内浏览器原生 tab stop', async () => {
+    const tagName = 'web-ui-dropdown-closed-focus-test'
+    if (!customElements.get(tagName)) {
+      customElements.define(
+        tagName,
+        class extends HTMLElement {
+          constructor() {
+            super()
+            const shadow = this.attachShadow({ mode: 'closed' })
+            const control = document.createElement('button')
+            control.textContent = 'Inside closed shadow root'
+            shadow.append(control)
+          }
+        }
+      )
+    }
+    const menu = createDropdown(TWO_ITEMS)
+    const closedShadowHost = document.createElement(tagName)
+    document.body.append(closedShadowHost)
+    await menu.updateComplete
+    menu.openMenu()
+    await menu.updateComplete
+    expect(await waitForMenuPanels(1)).toHaveLength(1)
+
+    await userEvent.keyboard('{Tab}')
+    await waitFor(() => !menu.open, 'Tab 离开 menu 后应关闭')
+    await menu.updateComplete
+    await waitForMenuPanels(0)
+
+    expect(document.activeElement).toBe(closedShadowHost)
+    expect(menu.querySelector('[slot="trigger"]')?.getAttribute('aria-expanded')).toBe('false')
   })
 
   it('Tab 进入原生 radio group 时聚焦已选中的 radio', async () => {
@@ -682,6 +798,14 @@ describe('WebUiDropdown 组件（浏览器）', () => {
     await menu.updateComplete
     expect(await waitForMenuPanels(1)).toHaveLength(1)
 
+    let tabDefaultPrevented: boolean | undefined
+    const captureTabDefault = (event: KeyboardEvent) => {
+      if (event.key === 'Tab') {
+        tabDefaultPrevented = event.defaultPrevented
+        document.removeEventListener('keydown', captureTabDefault)
+      }
+    }
+    document.addEventListener('keydown', captureTabDefault)
     await userEvent.keyboard('{Shift>}{Tab}{/Shift}')
     await waitFor(() => !menu.open, 'Shift+Tab 离开页面开头的 menu 后应关闭')
     await menu.updateComplete
@@ -690,6 +814,8 @@ describe('WebUiDropdown 组件（浏览器）', () => {
     expect(menu.querySelector('[slot="trigger"]')?.getAttribute('aria-expanded')).toBe('false')
     expect(document.documentElement.style.overflow).toBe('')
     expect(document.documentElement.style.overscrollBehavior).toBe('')
+    expect(tabDefaultPrevented).toBe(false)
+    expect(document.activeElement).toBe(document.body)
     expect(document.activeElement).not.toBe(next)
   })
 
@@ -719,6 +845,168 @@ describe('WebUiDropdown 组件（浏览器）', () => {
     expect(document.activeElement).not.toBe(outside)
     expect(dialog.open).toBe(true)
     dialog.close()
+  })
+
+  it('modal 中 Tab 离开时会跳过打开期间动态加入的 menu item', async () => {
+    const dialog = document.createElement('dialog')
+    const menu = createDropdown('<button slot="trigger">Menu</button><web-ui-dropdown-item>One</web-ui-dropdown-item>')
+    const next = document.createElement('button')
+    next.textContent = 'Dialog next'
+    dialog.append(menu, next)
+    document.body.append(dialog)
+    dialog.showModal()
+    await menu.updateComplete
+    menu.openMenu()
+    await menu.updateComplete
+    await waitFor(() => dialog.querySelector('[role="menu"]') !== null, 'modal 中的 menu panel 应挂载')
+    const panel = dialog.querySelector<HTMLElement>('[role="menu"]')!
+
+    const dynamicItem = document.createElement('web-ui-dropdown-item')
+    dynamicItem.textContent = 'Dynamic'
+    menu.append(dynamicItem)
+    const dynamicControl = () => dynamicItem.shadowRoot?.querySelector<HTMLElement>('[role="menuitem"]')
+    await waitFor(() => panel!.textContent?.includes('Dynamic') === true, '动态 menu item 应迁入已打开的 panel')
+
+    let dynamicTabIndexDuringTab: number | undefined
+    const recordDynamicTabIndex = (event: KeyboardEvent) => {
+      if (event.key !== 'Tab') return
+      dynamicTabIndexDuringTab = dynamicControl()?.tabIndex
+      window.removeEventListener('keydown', recordDynamicTabIndex)
+    }
+    window.addEventListener('keydown', recordDynamicTabIndex)
+    await userEvent.keyboard('{Tab}')
+    await waitFor(() => !menu.open, 'Tab 离开 modal 中的 menu 后应关闭')
+    await menu.updateComplete
+    await waitFor(() => dialog.querySelector('[role="menu"]') === null, 'modal 中的 menu panel 应卸载')
+
+    expect(dynamicTabIndexDuringTab).toBe(-1)
+    expect(document.activeElement).toBe(next)
+    expect(document.activeElement).not.toBe(dynamicControl())
+    expect(menu.querySelector('[slot="trigger"]')?.getAttribute('aria-expanded')).toBe('false')
+    dialog.close()
+  })
+
+  it('被取消的 Tab 不会抑制后续 Escape 的焦点恢复', async () => {
+    const previous = document.createElement('button')
+    previous.textContent = 'Previous'
+    const menu = createDropdown('<button slot="trigger">Menu</button><web-ui-dropdown-item>One</web-ui-dropdown-item>')
+    const next = document.createElement('button')
+    next.textContent = 'Next'
+    document.body.append(previous, menu, next)
+    previous.focus()
+    await menu.updateComplete
+    menu.openMenu()
+    await menu.updateComplete
+    expect(await waitForMenuPanels(1)).toHaveLength(1)
+    const item = requireItemIn(getMenuPanels()[0], 'root menu ')
+    const control = focusedControl(item)
+    expect(control).toBeTruthy()
+
+    let tabPrevented = false
+    window.addEventListener(
+      'keydown',
+      event => {
+        if (event.key === 'Tab') {
+          event.preventDefault()
+          tabPrevented = event.defaultPrevented
+        }
+      },
+      { once: true }
+    )
+    await userEvent.keyboard('{Tab}')
+    expect(tabPrevented).toBe(true)
+    expect(control?.matches(':focus')).toBe(true)
+    expect(menu.open).toBe(true)
+
+    await userEvent.keyboard('{Escape}')
+    await waitFor(() => !menu.open, 'Escape 应关闭 menu')
+    await menu.updateComplete
+    await waitForMenuPanels(0)
+
+    expect(document.activeElement).toBe(previous)
+    expect(menu.querySelector('[slot="trigger"]')?.getAttribute('aria-expanded')).toBe('false')
+    expect(document.activeElement).not.toBe(next)
+  })
+
+  it('断开期间结束的指针手势不会阻止重连后的 focusout 关闭', async () => {
+    const menu = createDropdown(TWO_ITEMS)
+    const outside = document.createElement('button')
+    document.body.append(outside)
+    await menu.updateComplete
+    menu.openMenu()
+    await menu.updateComplete
+    expect(await waitForMenuPanels(1)).toHaveLength(1)
+
+    menu.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, composed: true, pointerId: 1 }))
+    menu.remove()
+    document.dispatchEvent(new PointerEvent('pointerup', { bubbles: true, composed: true, pointerId: 1 }))
+    document.body.append(menu)
+    await menu.updateComplete
+    expect(await waitForMenuPanels(1)).toHaveLength(1)
+
+    outside.focus()
+    await waitFor(() => !menu.open, '重连后焦点离开 menu 应关闭')
+    await menu.updateComplete
+    await waitForMenuPanels(0)
+
+    expect(menu.querySelector('[slot="trigger"]')?.getAttribute('aria-expanded')).toBe('false')
+    expect(document.documentElement.style.overflow).toBe('')
+    expect(document.activeElement).toBe(outside)
+  })
+
+  it('菜单内点击让焦点回到 body 后，焦点进入页面控件时关闭 menu', async () => {
+    const menu = createDropdown(TWO_ITEMS)
+    const next = document.createElement('button')
+    next.textContent = 'Next'
+    document.body.append(next)
+    await menu.updateComplete
+    menu.openMenu()
+    await menu.updateComplete
+    expect(await waitForMenuPanels(1)).toHaveLength(1)
+
+    const panel = getMenuPanels()[0]!
+    const control = focusedControl(requireItemIn(panel, 'root menu '))
+    expect(control).toBeTruthy()
+    panel.dispatchEvent(
+      new PointerEvent('pointerdown', { bubbles: true, composed: true, pointerId: 1, pointerType: 'mouse', button: 0 })
+    )
+    control!.blur()
+    panel.dispatchEvent(
+      new PointerEvent('pointerup', { bubbles: true, composed: true, pointerId: 1, pointerType: 'mouse', button: 0 })
+    )
+    panel.dispatchEvent(clickEvent(1))
+    expect(menu.open).toBe(true)
+
+    next.focus()
+    await waitFor(() => !menu.open, '焦点进入页面控件后 menu 应关闭')
+    await menu.updateComplete
+    await waitForMenuPanels(0)
+
+    expect(document.activeElement).toBe(next)
+    expect(menu.querySelector('[slot="trigger"]')?.getAttribute('aria-expanded')).toBe('false')
+    expect(document.documentElement.style.overflow).toBe('')
+  })
+
+  it('菜单打开后被禁用时，Tab 仍会退出并关闭 menu', async () => {
+    const menu = createDropdown(TWO_ITEMS)
+    const next = document.createElement('button')
+    next.textContent = 'Next'
+    document.body.append(next)
+    await menu.updateComplete
+    menu.openMenu()
+    await menu.updateComplete
+    expect(await waitForMenuPanels(1)).toHaveLength(1)
+
+    menu.disabled = true
+    await menu.updateComplete
+    await userEvent.keyboard('{Tab}')
+    await waitFor(() => !menu.open, 'Tab 应关闭已禁用的打开态 menu')
+    await menu.updateComplete
+    await waitForMenuPanels(0)
+
+    expect(document.activeElement).toBe(next)
+    expect(menu.querySelector('[slot="trigger"]')?.getAttribute('aria-expanded')).toBe('false')
+    expect(document.documentElement.style.overflow).toBe('')
   })
 
   // 上一会话的手势模态不能漏到下一会话：属性驱动的打开没有手势信息，必须回到默认口径。
