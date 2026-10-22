@@ -110,7 +110,7 @@ export class WebUiAvatar extends LitElement {
         class=${classMap({ 'avatar-inner': true, 'wui-glass': this._showFallback })}
         role=${isDecorative ? 'presentation' : 'img'}
         aria-label=${ifDefined(this._ariaLabel)}
-        aria-hidden=${isDecorative ? 'true' : undefined}
+        aria-hidden=${ifDefined(isDecorative ? 'true' : undefined)}
         style="width:${this.size}px;height:${this.size}px;--wui-avatar-size:${this.size}px"
       >
         ${
