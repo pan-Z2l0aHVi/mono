@@ -46,6 +46,8 @@
   display: flex;
   align-items: center;
   justify-content: center;
+
+  color: var(--wui-color-text, #1b1b1b);
 }
 
 slot {
@@ -61,9 +63,7 @@ slot {
 
 .avatar-initials {
   user-select: none;
-
   font-size: calc(var(--wui-avatar-size, 40px) * 0.4);
   font-weight: var(--wui-font-weight-medium, 500);
   line-height: 1;
-  color: var(--wui-color-text, #1b1b1b);
 }
