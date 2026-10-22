@@ -27,6 +27,12 @@ function forceSmoothDocumentScroll() {
   document.documentElement.style.setProperty('scroll-behavior', 'smooth', 'important')
 }
 
+function activateBackTop(el: WebUiBackTop) {
+  const button = el.shadowRoot?.querySelector<HTMLElement>('[role="button"]')
+  if (!button) throw new Error('back-top 未渲染 role=button')
+  button.click()
+}
+
 beforeEach(() => {
   const style = document.documentElement.style
   originalScrollBehavior = style.getPropertyValue('scroll-behavior')
@@ -74,5 +80,44 @@ describe('WebUiBackTop reduced motion scroll（浏览器）', () => {
     expect(window.scrollY).toBe(0)
     expect(document.documentElement.style.getPropertyValue('scroll-behavior')).toBe('smooth')
     expect(document.documentElement.style.getPropertyPriority('scroll-behavior')).toBe('important')
+  })
+
+  it('window 存在名为 style 的全局元素时，reduced 点击仍瞬时回顶', async () => {
+    const namedStyle = document.createElement('div')
+    namedStyle.id = 'style'
+    document.body.append(namedStyle)
+    expect(Reflect.get(window, 'style')).toBe(namedStyle)
+
+    await scrollWindowTo(1600)
+    const el = await mountBackTop('reduced')
+    forceSmoothDocumentScroll()
+
+    activateBackTop(el)
+
+    expect(window.scrollY).toBe(0)
+    expect(document.documentElement.style.getPropertyValue('scroll-behavior')).toBe('smooth')
+    expect(document.documentElement.style.getPropertyPriority('scroll-behavior')).toBe('important')
+  })
+
+  it('reduced 点击在自定义滚动容器上瞬时回顶并恢复其 smooth 样式', async () => {
+    const target = document.createElement('div')
+    target.style.cssText = 'height: 200px; overflow: auto; scroll-behavior: auto !important;'
+    const content = document.createElement('div')
+    content.style.height = '1600px'
+    target.append(content)
+    document.body.append(target)
+
+    const el = await mountBackTop('reduced')
+    el.scrollTarget = target
+    await el.updateComplete
+    target.scrollTop = 1200
+    expect(target.scrollTop).toBe(1200)
+    target.style.setProperty('scroll-behavior', 'smooth', 'important')
+
+    activateBackTop(el)
+
+    expect(target.scrollTop).toBe(0)
+    expect(target.style.getPropertyValue('scroll-behavior')).toBe('smooth')
+    expect(target.style.getPropertyPriority('scroll-behavior')).toBe('important')
   })
 })
