@@ -3,7 +3,7 @@ component: spinner
 tag: web-ui-spinner
 ---
 
-加载旋转器，声明式放在页面里，或用静态 `WebUiSpinner.show()` / `hide()` 做阻塞式加载。命令式实例会挂到当前主题的 overlay root，以继承主题颜色；没有主题时挂到 `body`。
+加载旋转器，声明式放在页面里，或用静态 `WebUiSpinner.show()` / `hide()` 做阻塞式加载。命令式实例会挂到当前主题的 overlay root，以继承主题颜色；没有主题时挂到 body 的 fallback overlay root。
 
 ## 示例
 
@@ -45,12 +45,12 @@ tag: web-ui-spinner
 
 ### 阻塞式加载
 
-`WebUiSpinner.show()` 显示全屏加载，`duration` 到期自动关闭，`hide()` 立即隐藏。
+`WebUiSpinner.show()` 显示全屏加载，期间会拦截指针交互并锁定页面滚动；`duration` 到期自动关闭，`hide()` 立即隐藏。
 
 ```react
 import { WebUiSpinner } from '@greypan/web-ui'
 
-WebUiSpinner.show({ size: 64, description: '正在同步云端文件' })
+WebUiSpinner.show({ size: 64, description: '正在同步云端文件', color: '#0a84ff' })
 WebUiSpinner.show({ duration: 2000 })
 WebUiSpinner.hide()
 ```
@@ -83,10 +83,10 @@ function sync() {
 
 ### Methods
 
-| 名称                          | 说明                                                                                                                                                     |
-| ----------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `WebUiSpinner.show(options?)` | 在主题 overlay root（无主题时为 `body`）挂载一个全屏实例并返回它；`size` / `description` / `color` 覆盖默认外观，`duration` 大于 0 时到期调用 `hide()`。 |
-| `WebUiSpinner.hide()`         | 拆掉计时器并移除 `show()` 挂载的实例。                                                                                                                   |
+| 名称                          | 说明                                                                                                                                                                                                            |
+| ----------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `WebUiSpinner.show(options?)` | 在主题 overlay root（无主题时为 body 的 fallback overlay root）挂载一个全屏实例并返回它；期间拦截指针交互并锁定页面滚动。`size` / `description` / `color` 覆盖默认外观，`duration` 大于 0 时到期调用 `hide()`。 |
+| `WebUiSpinner.hide()`         | 拆掉计时器并移除 `show()` 挂载的实例。                                                                                                                                                                          |
 
 ### 行为说明
 

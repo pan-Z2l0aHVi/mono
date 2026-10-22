@@ -35,12 +35,18 @@ describe('WebUiSpinner 组件', () => {
   })
 
   describe('命令式 API: show / hide', () => {
-    it('show() 无主题时挂载到 fallback overlay root，hide() 移除它', () => {
+    it('show() 无主题时挂载到 fallback overlay root 并锁滚动，hide() 移除它', () => {
+      const originalOverflow = document.documentElement.style.overflow
+      const originalOverscrollBehavior = document.documentElement.style.overscrollBehavior
       const el = WebUiSpinner.show()
       expect(getFallbackOverlayRoot().contains(el)).toBe(true)
+      expect(document.documentElement.style.overflow).toBe('hidden')
+      expect(document.documentElement.style.overscrollBehavior).toBe('none')
 
       WebUiSpinner.hide()
       expect(el.isConnected).toBe(false)
+      expect(document.documentElement.style.overflow).toBe(originalOverflow)
+      expect(document.documentElement.style.overscrollBehavior).toBe(originalOverscrollBehavior)
     })
 
     it('show() 接受 size、description 与 color', () => {
@@ -53,21 +59,52 @@ describe('WebUiSpinner 组件', () => {
 
     // 全屏 overlay 同时只能有一个：第二次 show 要接管，第一次必须离开文档。
     it('多次 show() 只保留最新一个', () => {
+      const originalOverflow = document.documentElement.style.overflow
       const first = WebUiSpinner.show()
       const second = WebUiSpinner.show()
 
       expect(first.isConnected).toBe(false)
       expect(second.isConnected).toBe(true)
+      expect(document.documentElement.style.overflow).toBe('hidden')
+
+      WebUiSpinner.hide()
+      expect(document.documentElement.style.overflow).toBe(originalOverflow)
     })
 
     it('show({ duration }) 到时自动关闭', () => {
       vi.useFakeTimers()
+      const originalOverflow = document.documentElement.style.overflow
       const el = WebUiSpinner.show({ duration: 500 })
       expect(el.isConnected).toBe(true)
+      expect(document.documentElement.style.overflow).toBe('hidden')
 
       vi.advanceTimersByTime(500)
       expect(el.isConnected).toBe(false)
+      expect(document.documentElement.style.overflow).toBe(originalOverflow)
       vi.useRealTimers()
+    })
+
+    it('命令式实例被手动移除时释放页面滚动锁', () => {
+      const originalOverflow = document.documentElement.style.overflow
+      const el = WebUiSpinner.show()
+
+      el.remove()
+
+      expect(document.documentElement.style.overflow).toBe(originalOverflow)
+    })
+
+    it('同一命令式实例重新挂载时不移除自身并保留滚动锁租约', () => {
+      const originalOverflow = document.documentElement.style.overflow
+      const el = WebUiSpinner.show()
+      el.remove()
+
+      getFallbackOverlayRoot().append(el)
+
+      expect(getFallbackOverlayRoot().contains(el)).toBe(true)
+      expect(document.documentElement.style.overflow).toBe('hidden')
+
+      WebUiSpinner.hide()
+      expect(document.documentElement.style.overflow).toBe(originalOverflow)
     })
 
     it('duration 为 0 时不自动关闭', () => {
