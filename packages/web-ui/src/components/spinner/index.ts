@@ -2,6 +2,9 @@ import { html, LitElement, nothing, type PropertyValues, unsafeCSS } from 'lit'
 import { customElement, property } from 'lit/decorators.js'
 import { repeat } from 'lit/directives/repeat.js'
 
+import { getFallbackOverlayRoot } from '@/shared/overlay/overlay-root'
+import { findRootTheme } from '@/shared/overlay/theme-overlay-scope'
+
 import style from './style.css?inline'
 
 const LEAF_COUNT = 8
@@ -19,7 +22,8 @@ export class WebUiSpinner extends LitElement {
     el._imperative = true
     if (options?.size) el.size = options.size
     if (options?.description) el.description = options.description
-    document.body.appendChild(el)
+    const overlayRoot = findRootTheme()?.getOverlayRoot() ?? getFallbackOverlayRoot()
+    overlayRoot.appendChild(el)
     if (options?.duration && options.duration > 0) {
       el._timer = window.setTimeout(() => WebUiSpinner.hide(), options.duration)
     }

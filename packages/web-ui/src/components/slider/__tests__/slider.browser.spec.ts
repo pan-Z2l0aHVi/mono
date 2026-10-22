@@ -63,6 +63,58 @@ describe('WebUiSlider 指针拖拽（浏览器）', () => {
     cleanupElement(el)
   })
 
+  it('竖向为主的斜拖被判定为滚动时不改变 value', async () => {
+    const el = createSlider() as Updatable
+    el.value = 40
+    await el.updateComplete
+
+    const track = trackOf(el)
+    const rect = track.getBoundingClientRect()
+    const downX = rect.left + rect.width * 0.25
+    const downY = rect.top + rect.height / 2
+    const inputEvents: Event[] = []
+    const changeEvents: Event[] = []
+    el.addEventListener('input', e => inputEvents.push(e))
+    el.addEventListener('change', e => changeEvents.push(e))
+
+    track.dispatchEvent(pointer('pointerdown', downX, downY))
+    window.dispatchEvent(pointer('pointermove', downX + 12, downY + 53))
+    window.dispatchEvent(pointer('pointermove', downX + 20, downY + 103))
+    window.dispatchEvent(pointer('pointerup', downX + 20, downY + 103))
+    await el.updateComplete
+
+    expect(el.value).toBe(40)
+    expect(inputEvents).toHaveLength(0)
+    expect(changeEvents).toHaveLength(0)
+    cleanupElement(el)
+  })
+
+  it('竖向滑动越过交叉轴阈值后回到起点也不提交 tap', async () => {
+    const el = createSlider() as Updatable
+    el.value = 40
+    await el.updateComplete
+
+    const track = trackOf(el)
+    const rect = track.getBoundingClientRect()
+    const downX = rect.left + rect.width * 0.4
+    const downY = rect.top + rect.height / 2
+    const inputEvents: Event[] = []
+    const changeEvents: Event[] = []
+    el.addEventListener('input', e => inputEvents.push(e))
+    el.addEventListener('change', e => changeEvents.push(e))
+
+    track.dispatchEvent(pointer('pointerdown', downX, downY))
+    window.dispatchEvent(pointer('pointermove', downX + 2, downY + 53))
+    window.dispatchEvent(pointer('pointermove', downX + 2, downY + 1))
+    window.dispatchEvent(pointer('pointerup', downX + 2, downY + 1))
+    await el.updateComplete
+
+    expect(el.value).toBe(40)
+    expect(inputEvents).toHaveLength(0)
+    expect(changeEvents).toHaveLength(0)
+    cleanupElement(el)
+  })
+
   it('pointerup 后继续移动不再更新 value', async () => {
     const el = createSlider() as Updatable
     await el.updateComplete
@@ -73,15 +125,15 @@ describe('WebUiSlider 指针拖拽（浏览器）', () => {
 
     track.dispatchEvent(pointer('pointerdown', rect.left + rect.width * 0.5, y))
     await el.updateComplete
-    const valueAtDown = el.value
 
     track.dispatchEvent(pointer('pointerup', rect.left + rect.width * 0.5, y))
     await el.updateComplete
+    const valueAtRelease = el.value
 
     track.dispatchEvent(pointer('pointermove', rect.left + rect.width * 0.9, y))
     await el.updateComplete
 
-    expect(el.value).toBe(valueAtDown)
+    expect(el.value).toBe(valueAtRelease)
     cleanupElement(el)
   })
 
