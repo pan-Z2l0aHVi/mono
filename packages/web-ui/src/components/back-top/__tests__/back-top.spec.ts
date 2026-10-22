@@ -1,7 +1,9 @@
 import '..'
+import '@/components/theme'
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 
+import type { WebUiTheme } from '@/components/theme'
 import { mountElement, queryA11y, waitForUpdate } from '@/shared/test-utils'
 
 import type { WebUiBackTop } from '..'
@@ -19,12 +21,47 @@ const triggerButton = (el: WebUiBackTop): HTMLElement => {
   return button as HTMLElement
 }
 
+async function mountInTheme(motion: 'reduced' | 'system') {
+  const theme = document.createElement('web-ui-theme') as WebUiTheme
+  theme.appearance = 'light'
+  theme.motion = motion
+
+  const el = createBackTop()
+  theme.append(el)
+  document.body.append(theme)
+  await theme.updateComplete
+  await waitForUpdate(el)
+
+  return el
+}
+
+function stubReducedMotionPreference() {
+  const descriptor = Object.getOwnPropertyDescriptor(window, 'matchMedia')
+  Object.defineProperty(window, 'matchMedia', {
+    configurable: true,
+    value: (media: string) => ({
+      matches: media === '(prefers-reduced-motion: reduce)',
+      media,
+      onchange: null,
+      addEventListener: () => {},
+      removeEventListener: () => {},
+      dispatchEvent: () => false
+    })
+  })
+
+  return () => {
+    if (descriptor) Object.defineProperty(window, 'matchMedia', descriptor)
+    else Reflect.deleteProperty(window, 'matchMedia')
+  }
+}
+
 beforeEach(() => {
   document.body.replaceChildren()
 })
 
 afterEach(() => {
   document.body.replaceChildren()
+  vi.restoreAllMocks()
   delete (window as unknown as Record<string, unknown>).scrollY
 })
 
@@ -125,6 +162,33 @@ describe('WebUiBackTop 组件', () => {
 
       spy.mockRestore()
       el.remove()
+    })
+
+    it('motion=reduced 时优先瞬时滚动，即使 scrollBehavior 默认是 smooth', async () => {
+      const el = await mountInTheme('reduced')
+      const spy = vi.spyOn(window, 'scrollTo').mockImplementation(() => {})
+
+      el.toTop()
+      expect(spy).toHaveBeenCalledWith({ top: 0, behavior: 'auto' })
+
+      spy.mockRestore()
+      el.remove()
+    })
+
+    it('motion=system 且系统偏好 reduce 时优先瞬时滚动', async () => {
+      const restoreMatchMedia = stubReducedMotionPreference()
+      try {
+        const el = await mountInTheme('system')
+        const spy = vi.spyOn(window, 'scrollTo').mockImplementation(() => {})
+
+        el.toTop()
+        expect(spy).toHaveBeenCalledWith({ top: 0, behavior: 'auto' })
+
+        spy.mockRestore()
+        el.remove()
+      } finally {
+        restoreMatchMedia()
+      }
     })
 
     it('自定义 scrollTarget 时滚动该元素而不是页面', () => {
