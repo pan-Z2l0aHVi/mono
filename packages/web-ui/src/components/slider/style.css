@@ -19,6 +19,22 @@
   cursor: not-allowed;
 }
 
+.wui-slider-a11y-only {
+  position: absolute;
+
+  overflow: hidden;
+
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  border: 0;
+
+  white-space: nowrap;
+
+  clip-path: inset(50%);
+}
+
 .wui-slider-track {
   touch-action: none;
   cursor: default;

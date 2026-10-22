@@ -82,6 +82,7 @@ const iconItems = [
       <label class="flex items-center gap-2 text-sm">
         <span class="whitespace-nowrap text-(--wui-color-text-secondary)">Duration:</span>
         <web-ui-slider
+          aria-label="Duration"
           :value="duration"
           :min="200"
           :max="5000"
