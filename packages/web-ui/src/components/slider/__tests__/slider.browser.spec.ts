@@ -1,6 +1,7 @@
 import '..'
 
 import { afterEach, describe, expect, it } from 'vite-plus/test'
+import { page } from 'vite-plus/test/browser'
 
 import { cleanupElement, pollUntil, queryA11y } from '@/shared/test-utils'
 
@@ -28,6 +29,117 @@ const trackOf = (el: HTMLElement): HTMLElement => {
   expect(node, '未找到 role="slider" 的可交互元素').toBeTruthy()
   return node as HTMLElement
 }
+
+describe('WebUiSlider accessible name（浏览器）', () => {
+  it('宿主 aria-label 命名 role=slider，多个实例保持可区分且支持更新', async () => {
+    const music = createSlider() as Updatable
+    const voice = createSlider() as Updatable
+    await Promise.all([music.updateComplete, voice.updateComplete])
+
+    music.setAttribute('aria-label', 'Music')
+    voice.setAttribute('aria-label', 'Voice')
+    await Promise.all([music.updateComplete, voice.updateComplete])
+
+    const musicHost = page.elementLocator(music)
+    const voiceHost = page.elementLocator(voice)
+    expect(musicHost.getByRole('slider', { name: 'Music' }).length).toBe(1)
+    expect(voiceHost.getByRole('slider', { name: 'Voice' }).length).toBe(1)
+    expect(page.getByRole('slider', { name: 'Slider' }).length).toBe(0)
+
+    cleanupElement(music)
+    cleanupElement(voice)
+  })
+
+  it('宿主 aria-labelledby 使用外部引用文本并跟随文本变化', async () => {
+    const label = document.createElement('span')
+    label.id = 'slider-volume-label'
+    label.textContent = 'Volume'
+    document.body.append(label)
+
+    const slider = createSlider() as Updatable
+    await slider.updateComplete
+    slider.setAttribute('aria-labelledby', label.id)
+    await slider.updateComplete
+
+    const sliderHost = page.elementLocator(slider)
+    expect(sliderHost.getByRole('slider', { name: 'Volume' }).length).toBe(1)
+
+    label.textContent = 'Master volume'
+    await pollUntil(
+      () => sliderHost.getByRole('slider', { name: 'Master volume' }).length === 1,
+      'aria-labelledby 更新文本后 accessible name 未同步'
+    )
+
+    cleanupElement(slider)
+    label.remove()
+  })
+
+  it('aria-labelledby 不把 aria-hidden 后代并入 accessible name', async () => {
+    const label = document.createElement('span')
+    label.id = 'slider-volume-label'
+    label.append(document.createTextNode('Volume'))
+    const hiddenDescription = document.createElement('span')
+    hiddenDescription.setAttribute('aria-hidden', 'true')
+    hiddenDescription.textContent = ' hidden description'
+    label.append(hiddenDescription)
+    document.body.append(label)
+
+    const slider = createSlider() as Updatable
+    await slider.updateComplete
+    slider.setAttribute('aria-labelledby', label.id)
+    await slider.updateComplete
+
+    const sliderHost = page.elementLocator(slider)
+    expect(sliderHost.getByRole('slider', { name: 'Volume' }).length).toBe(1)
+    expect(sliderHost.getByRole('slider', { name: 'Volume hidden description' }).length).toBe(0)
+
+    cleanupElement(slider)
+    label.remove()
+  })
+
+  it('aria-labelledby 忽略非图片 alt、读取文本框值并跟随输入变化', async () => {
+    const visibleLabel = document.createElement('span')
+    visibleLabel.id = 'slider-visible-label'
+    visibleLabel.setAttribute('alt', 'Alt Attribute')
+    visibleLabel.textContent = 'Visible Text'
+
+    const input = document.createElement('input')
+    input.id = 'slider-input-label'
+    input.value = 'Input Value'
+
+    const nativeVisible = document.createElement('div')
+    nativeVisible.setAttribute('role', 'slider')
+    nativeVisible.setAttribute('aria-labelledby', visibleLabel.id)
+    const nativeInput = document.createElement('div')
+    nativeInput.setAttribute('role', 'slider')
+    nativeInput.setAttribute('aria-labelledby', input.id)
+    document.body.append(visibleLabel, input, nativeVisible, nativeInput)
+
+    const visible = createSlider() as Updatable
+    const fromInput = createSlider() as Updatable
+    visible.setAttribute('aria-labelledby', visibleLabel.id)
+    fromInput.setAttribute('aria-labelledby', input.id)
+    await Promise.all([visible.updateComplete, fromInput.updateComplete])
+
+    expect(page.getByRole('slider', { name: 'Visible Text' }).length).toBe(2)
+    expect(page.getByRole('slider', { name: 'Alt Attribute' }).length).toBe(0)
+    expect(page.getByRole('slider', { name: 'Input Value' }).length).toBe(2)
+
+    input.value = 'Updated Input Value'
+    input.dispatchEvent(new Event('input', { bubbles: true }))
+    await pollUntil(
+      () => page.getByRole('slider', { name: 'Updated Input Value' }).length === 2,
+      'aria-labelledby 未跟随被引用文本框的 value 更新'
+    )
+
+    cleanupElement(visible)
+    cleanupElement(fromInput)
+    visibleLabel.remove()
+    input.remove()
+    nativeVisible.remove()
+    nativeInput.remove()
+  })
+})
 
 const pointer = (type: string, x: number, y: number): PointerEvent =>
   new PointerEvent(type, { bubbles: true, pointerId: 1, clientX: x, clientY: y })
