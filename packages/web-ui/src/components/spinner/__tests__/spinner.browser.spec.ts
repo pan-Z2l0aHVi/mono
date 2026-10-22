@@ -33,6 +33,23 @@ describe('WebUiSpinner 命令式 overlay（浏览器）', () => {
     expect(document.activeElement).toBe(trigger)
   })
 
+  it('host 的 aria-label 更新后同步 modal accessible name', async () => {
+    const spinner = WebUiSpinner.show()
+    await spinner.updateComplete
+    await new Promise(resolve => requestAnimationFrame(() => resolve(undefined)))
+
+    const dialog = spinner.shadowRoot?.querySelector('dialog')
+    const status = dialog?.querySelector('[role="status"]')
+    expect(dialog?.getAttribute('aria-label')).toBe('Loading')
+    expect(status?.getAttribute('aria-label')).toBe('Loading')
+
+    spinner.setAttribute('aria-label', 'Synchronizing data')
+    await spinner.updateComplete
+
+    expect(dialog?.getAttribute('aria-label')).toBe('Synchronizing data')
+    expect(status?.getAttribute('aria-label')).toBe('Synchronizing data')
+  })
+
   it('拦截底层控件的指针命中并锁定页面滚动', async () => {
     const spacer = document.createElement('div')
     spacer.style.height = '2000px'

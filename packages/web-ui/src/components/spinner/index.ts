@@ -15,6 +15,7 @@ export class WebUiSpinner extends LitElement {
 
   @property({ type: Number, reflect: true }) size = 24
   @property({ type: String }) description = ''
+  @property({ type: String, attribute: 'aria-label' }) private _ariaLabel?: string
 
   private readonly _overlay = defineOpenOverlay().make({
     requestClose: () => undefined,
@@ -136,13 +137,11 @@ export class WebUiSpinner extends LitElement {
     return this._imperative
       ? html`<dialog
           class="wui-spinner-overlay"
-          aria-label=${this.getAttribute('aria-label')}
+          aria-label=${this._ariaLabel}
           aria-modal="true"
           @cancel=${this._handleDialogCancel}
         >
-          <div class="wui-spinner-overlay-content" role="status" aria-label=${this.getAttribute('aria-label')}>
-            ${spinner}
-          </div>
+          <div class="wui-spinner-overlay-content" role="status" aria-label=${this._ariaLabel}>${spinner}</div>
         </dialog>`
       : spinner
   }
