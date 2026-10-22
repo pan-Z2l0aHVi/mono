@@ -1272,7 +1272,7 @@ export const exampleDocs: ExampleDoc[] = [
   {
     "component": "checkbox",
     "tag": "web-ui-checkbox",
-    "introHtml": "<p>单个 checkbox，声明 <code>role=\"checkbox\"</code>，支持 Enter / Space 切换；与原生 <code>&lt;form></code> 集成，选中时把 <code>value</code> 提交进 <code>FormData</code>。</p>",
+    "introHtml": "<p>单个 checkbox，支持 Enter / Space 切换；与原生 <code>&lt;form></code> 集成，选中时把 <code>value</code> 提交进 <code>FormData</code>。</p>",
     "api": [
       {
         "kind": "table",
@@ -1379,7 +1379,7 @@ export const exampleDocs: ExampleDoc[] = [
         "kind": "prose",
         "key": "行为说明",
         "title": "行为说明",
-        "html": "<p>使用 <code>role=\"checkbox\"</code> 和 <code>aria-checked</code>。Enter/Space 键盘切换。</p>"
+        "html": "<p>Shadow DOM 内的交互 <code>&lt;span></code> 声明 <code>role=\"checkbox\"</code>，并同步 <code>aria-checked</code>、<code>aria-disabled</code> 和 <code>tabindex</code>。Enter/Space 键盘切换。</p>"
       },
       {
         "kind": "prose",
@@ -5075,6 +5075,12 @@ export const exampleDocs: ExampleDoc[] = [
             "<p>label 文本；为空时收掉 indicator 与 label 之间的间距。</p>"
           ]
         ]
+      },
+      {
+        "kind": "prose",
+        "key": "行为说明",
+        "title": "行为说明",
+        "html": "<p>Shadow DOM 内的交互 <code>&lt;span></code> 声明 <code>role=\"radio\"</code>，并同步 <code>aria-checked</code>、<code>aria-disabled</code> 和 <code>tabindex</code>。Enter/Space 键盘切换。</p>"
       },
       {
         "kind": "prose",
