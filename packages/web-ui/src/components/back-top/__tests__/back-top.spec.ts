@@ -244,6 +244,15 @@ describe('WebUiBackTop 组件', () => {
       el.remove()
     })
 
+    it('自定义 slot 内容存在时不覆盖其 accessible name', async () => {
+      const el = createBackTop()
+      el.append('back top')
+      await waitForUpdate(el)
+
+      expect(triggerButton(el).hasAttribute('aria-label')).toBe(false)
+      el.remove()
+    })
+
     it.each([
       ['Enter', 'Enter'],
       ['Space', ' ']

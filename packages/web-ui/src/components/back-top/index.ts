@@ -2,7 +2,7 @@ import '@/components/button'
 import '@/components/icon'
 
 import { getRootScrollTop } from '@greypan/browser-kit'
-import { html, LitElement, type PropertyValues, unsafeCSS } from 'lit'
+import { html, LitElement, nothing, type PropertyValues, unsafeCSS } from 'lit'
 import { customElement, property, state } from 'lit/decorators.js'
 
 import { lucideArrowUpToLine } from '@/icons'
@@ -41,14 +41,19 @@ export class WebUiBackTop extends LitElement {
   private _threshold = 200
 
   @state() private eventController?: AbortController
+  // `slotchange` 不覆盖同一个 Text 节点的内容变化，需要同步重新计算 fallback name。
+  private readonly slottedTextObserver = new MutationObserver(() => this.requestUpdate())
+  private readonly onSlotChange = () => this.requestUpdate()
 
   override connectedCallback() {
     super.connectedCallback()
+    this.slottedTextObserver.observe(this, { characterData: true, subtree: true })
     this.computeVisible()
     this.onScrollTarget()
   }
 
   override disconnectedCallback() {
+    this.slottedTextObserver.disconnect()
     super.disconnectedCallback()
     this.eventController?.abort()
   }
@@ -129,8 +134,18 @@ export class WebUiBackTop extends LitElement {
     }
   }
 
+  private hasDefaultSlotContent() {
+    return [...this.childNodes].some(node => {
+      if (node.nodeType === Node.ELEMENT_NODE) {
+        const element = node as Element
+        return !element.hasAttribute('slot') || element.getAttribute('slot') === ''
+      }
+      return node.nodeType === Node.TEXT_NODE && Boolean(node.textContent?.trim())
+    })
+  }
+
   override render() {
-    const ariaLabel = this.ariaLabel?.trim() || 'Back to top'
+    const ariaLabel = this.ariaLabel?.trim() || (this.hasDefaultSlotContent() ? nothing : 'Back to top')
 
     return html`
       <div
@@ -141,7 +156,7 @@ export class WebUiBackTop extends LitElement {
         @click=${this.toTop}
         @keydown=${this.onEnter}
       >
-        <slot>
+        <slot @slotchange=${this.onSlotChange}>
           <web-ui-button variant="glass" tabindex="-1" icon>
             <web-ui-icon .icon=${lucideArrowUpToLine}></web-ui-icon>
           </web-ui-button>
