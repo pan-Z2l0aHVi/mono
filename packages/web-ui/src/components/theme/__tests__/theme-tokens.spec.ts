@@ -10,6 +10,7 @@ const here = import.meta.url
 const packageRoot = fileURLToPath(new URL('../../../../', here))
 const style = fs.readFileSync(`${packageRoot}src/components/theme/style.css`, 'utf8')
 const glass = fs.readFileSync(`${packageRoot}src/assets/glass.css`, 'utf8')
+const button = fs.readFileSync(`${packageRoot}src/components/button/style.css`, 'utf8')
 
 const tokenNames = [...style.matchAll(/(--wui-[a-z0-9-]+):/g)].map(match => match[1])
 const uniqueTokenNames = [...new Set(tokenNames)]
@@ -17,8 +18,124 @@ const uniqueTokenNames = [...new Set(tokenNames)]
 // 明色档定义块：颜色 token 只定义在 [appearance] 三个选择器下，基础 :host 块里一枚都没有
 const lightBlock = style.slice(style.indexOf(":host([appearance='light'])")).split('\n}')[0]
 const lightValue = (name: string) => lightBlock.match(new RegExp(`${name}:\\s*([^;]+);`))?.[1].trim() ?? ''
+const darkBlock = style.slice(style.indexOf(":host([appearance='dark'])")).split('\n}')[0]
+const darkValue = (name: string) => darkBlock.match(new RegExp(`${name}:\\s*([^;]+);`))?.[1].trim() ?? ''
+const systemDarkBlock = style.slice(style.lastIndexOf(":host([appearance='system'])")).split('\n  }')[0]
+const systemDarkValue = (name: string) => systemDarkBlock.match(new RegExp(`${name}:\\s*([^;]+);`))?.[1].trim() ?? ''
+
+function primaryStateMixPercent(state: 'hover' | 'active'): number {
+  const match = button.match(
+    new RegExp(`--wui-button-bg-${state}:\\s*color-mix\\(in srgb, var\\(--wui-button-bg,[^)]+\\) (\\d+)%?, black\\)`)
+  )
+  if (!match) throw new Error(`Expected primary button ${state} background to mix accent with black`)
+  return Number(match[1]) / 100
+}
+
+function toRgb(value: string): number[] {
+  const match = value.match(/^#([\da-f]{3}|[\da-f]{6})$/i)
+  if (!match) throw new Error(`Expected a hex color, received ${value}`)
+  const hex = match[1].length === 3 ? match[1].replace(/./g, channel => channel + channel) : match[1]
+  return [0, 2, 4].map(index => Number.parseInt(hex.slice(index, index + 2), 16))
+}
+
+function luminance(value: string): number {
+  const [red, green, blue] = toRgb(value).map(channel => {
+    const normalized = channel / 255
+    return normalized <= 0.04045 ? normalized / 12.92 : ((normalized + 0.055) / 1.055) ** 2.4
+  })
+  return 0.2126 * red + 0.7152 * green + 0.0722 * blue
+}
+
+function contrastRatio(foreground: string, background: string): number {
+  const [lighter, darker] = [luminance(foreground), luminance(background)].sort((a, b) => b - a)
+  return (lighter + 0.05) / (darker + 0.05)
+}
+
+function mixColors(first: string, second: string, firstWeight: number): string {
+  const [firstRgb, secondRgb] = [toRgb(first), toRgb(second)]
+  const channels = firstRgb.map((channel, index) =>
+    Math.round(channel * firstWeight + secondRgb[index] * (1 - firstWeight))
+  )
+  return `#${channels.map(channel => channel.toString(16).padStart(2, '0')).join('')}`
+}
 
 describe('WebUiTheme token contract', () => {
+  it('light 与 dark 的默认 accent 前景满足常规文字 WCAG AA 对比度', () => {
+    for (const [appearance, value] of [
+      ['light', lightValue],
+      ['dark', darkValue]
+    ] as const) {
+      const accent = value('--wui-color-accent')
+      const onAccent = value('--wui-color-on-accent')
+      expect(accent, `${appearance} theme 应定义 accent`).not.toBe('')
+      expect(onAccent, `${appearance} theme 应定义 on-accent`).not.toBe('')
+      expect(contrastRatio(onAccent, accent), `${appearance} accent 与 on-accent 应达到 4.5:1`).toBeGreaterThanOrEqual(
+        4.5
+      )
+    }
+  })
+
+  it('dark accent 在主要深色表面上保留非文本对比度，且 control ink 与填色可区分', () => {
+    const accent = darkValue('--wui-color-accent')
+    const onControl = darkValue('--wui-color-on-control')
+
+    for (const surface of ['--wui-color-page', '--wui-color-surface', '--wui-color-surface-control']) {
+      expect(
+        contrastRatio(accent, darkValue(surface)),
+        `${surface} 上的 accent foreground/indicator 应达到 3:1`
+      ).toBeGreaterThanOrEqual(3)
+    }
+
+    expect(
+      contrastRatio(onControl, accent),
+      '选中控件的内部 indicator 应与 accent fill 达到 3:1'
+    ).toBeGreaterThanOrEqual(3)
+  })
+
+  it('system 暗色沿用 dark accent 与 on-accent 配对', () => {
+    expect(systemDarkValue('--wui-color-accent')).toBe(darkValue('--wui-color-accent'))
+    expect(systemDarkValue('--wui-color-on-accent')).toBe(darkValue('--wui-color-on-accent'))
+  })
+
+  it('primary button 的 hover 与 active 背景都保留 on-accent 文字对比度', () => {
+    const states = [primaryStateMixPercent('hover'), primaryStateMixPercent('active')]
+
+    for (const [appearance, value] of [
+      ['light', lightValue],
+      ['dark', darkValue]
+    ] as const) {
+      const accent = value('--wui-color-accent')
+      const onAccent = value('--wui-color-on-accent')
+
+      for (const [index, accentWeight] of states.entries()) {
+        const background = mixColors(accent, '#000', accentWeight)
+        expect(
+          contrastRatio(onAccent, background),
+          `${appearance} primary ${index === 0 ? 'hover' : 'active'} text should reach 4.5:1`
+        ).toBeGreaterThanOrEqual(4.5)
+      }
+    }
+  })
+
+  it('dark focus indicator 保持与深色表面的非文本对比度', () => {
+    const focusRing = darkValue('--wui-color-focus-ring')
+    const focusColor = mixColors(darkValue('--wui-color-accent'), darkValue('--wui-color-text'), 0.62)
+    expect(focusRing).toContain('var(--wui-color-accent')
+    expect(focusRing).toContain('var(--wui-color-text')
+
+    for (const surface of [
+      '--wui-color-page',
+      '--wui-color-surface',
+      '--wui-color-surface-control',
+      '--wui-color-surface-track'
+    ]) {
+      expect(
+        contrastRatio(focusColor, darkValue(surface)),
+        `${surface} 上的 focus indicator 应达到 3:1`
+      ).toBeGreaterThanOrEqual(3)
+    }
+  })
+
   it('使用语义化文本、radius 和 focus token', () => {
     for (const name of [
       '--wui-color-text-secondary',
