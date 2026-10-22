@@ -28,8 +28,8 @@ const createGroup = (checkboxHtml = GROUP_HTML, attrs?: Record<string, string>):
 
 const clickChild = (group: WebUiCheckboxGroup, index: number) => {
   const checkbox = group.querySelectorAll<WebUiCheckbox>('web-ui-checkbox')[index]
-  const label = queryA11y(checkbox, 'label') as HTMLElement
-  label.click()
+  const control = queryA11y(checkbox, '[role="checkbox"]') as HTMLElement
+  control.click()
 }
 
 describe('WebUiCheckboxGroup 组件', () => {
@@ -323,8 +323,8 @@ describe('WebUiCheckboxGroup 组件', () => {
       const [inputEvents, detachInput] = spyEvents(container, 'input')
       const [changeEvents, detachChange] = spyEvents(container, 'change')
 
-      const label = queryA11y(checkbox, 'label') as HTMLElement
-      label.click()
+      const control = queryA11y(checkbox, '[role="checkbox"]') as HTMLElement
+      control.click()
       await waitForUpdate(checkbox)
 
       expect(inputEvents).toHaveLength(1)
