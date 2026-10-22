@@ -3737,6 +3737,18 @@ export const exampleDocs: ExampleDoc[] = [
             "false"
           ],
           [
+            "aria-label",
+            "<p>输入框的无障碍名称。</p>",
+            "string",
+            "—"
+          ],
+          [
+            "aria-labelledby",
+            "<p>无障碍名称引用，用于命名内部输入框。</p>",
+            "string",
+            "—"
+          ],
+          [
             "precision",
             "<p>小数精度，在读取与提交时规整。</p>",
             "number",
@@ -5370,7 +5382,7 @@ export const exampleDocs: ExampleDoc[] = [
         "kind": "prose",
         "key": "变体",
         "title": "变体",
-        "html": "<p><code>inset</code>（默认，「凹」）是不透明实体 track（<code>--wui-color-surface</code>）——1px 描边环与投影全程常驻，静止 indicator 是 <code>--wui-color-surface-segmented</code> 纯灰底，视觉上嵌入 track。浅色下该 token 与 <code>--wui-color-page</code> 同值，track 与页面齐平，凹感只由常驻环与投影承担；深色下它是「比页面高一档」的 elevation，track 依旧浮离页面。<code>raised</code>（「凸」）是经典形态：flat 灰 track（<code>--wui-color-surface-segmented</code>，无环无投影），静止 indicator 是 <code>--wui-color-surface-selected</code> 实体底加柔投影，浮起于 track 之上。两个变体的按压/拖拽态一致——indicator 转透明玻璃（backdrop blur、80ms 淡入的描边环、1.5x 放大），松开淡回各自静止面。非法值回退 <code>inset</code>。</p>\n<p>与原生 <code>&lt;form></code> 集成（通过 <code>ElementInternals</code>）。</p>\n<p>根据 <code>value</code> 同步子 trigger 的 <code>checked</code> 状态。<code>disabled</code> 提供继承的有效禁用状态，不改写 trigger 自身的 <code>disabled</code> 属性。直接设 <code>value</code> 不派发事件。</p>\n<p>按住当前选中项横向拖拽可滑动 indicator，松手吸附到最近 option（快速抛掷按速度切换）。trigger 宽度不等时，拖拽中的 indicator 取「离自身中心最近的那一项」的宽度——即预览松手会落到的那一项，而不是保持按下那一项的宽度。触摸面声明 <code>touch-action: none</code>，拖拽激活期间阻止 <code>touchmove</code> 默认滚动，避免 iOS Safari 中断手势。</p>"
+        "html": "<p><code>inset</code>（默认，「凹」）是不透明实体 track（<code>--wui-color-surface</code>）——1px 描边环与投影全程常驻，静止 indicator 是 <code>--wui-color-surface-segmented</code> 纯灰底，视觉上嵌入 track。浅色下该 token 与 <code>--wui-color-page</code> 同值，track 与页面齐平，凹感只由常驻环与投影承担；深色下它是「比页面高一档」的 elevation，track 依旧浮离页面。<code>raised</code>（「凸」）是经典形态：flat 灰 track（<code>--wui-color-surface-segmented</code>，无环无投影），静止 indicator 是 <code>--wui-color-surface-selected</code> 实体底加柔投影，浮起于 track 之上。两个变体的按压/拖拽态一致——indicator 转透明玻璃（backdrop blur、80ms 淡入的描边环、1.5x 放大），松开淡回各自静止面。非法值回退 <code>inset</code>。</p>\n<p>与原生 <code>&lt;form></code> 集成（通过 <code>ElementInternals</code>）。</p>\n<p>根据 <code>value</code> 同步子 trigger 的 <code>checked</code> 状态。<code>disabled</code> 提供继承的有效禁用状态，不改写 trigger 自身的 <code>disabled</code> 属性。直接设 <code>value</code> 不派发事件。</p>\n<p>键盘用户按 Tab 进入当前选中项；没有选中项时进入首个启用项。组内只有这一项参与 Tab 顺序。水平组中，ArrowLeft / ArrowRight 在启用项间循环移动焦点并更新选中值，Home / End 移到首个 / 末个启用项；禁用项会跳过。ArrowUp / ArrowDown 不移动焦点。</p>\n<p>按住当前选中项横向拖拽可滑动 indicator，松手吸附到最近 option（快速抛掷按速度切换）。trigger 宽度不等时，拖拽中的 indicator 取「离自身中心最近的那一项」的宽度——即预览松手会落到的那一项，而不是保持按下那一项的宽度。触摸面声明 <code>touch-action: none</code>，拖拽激活期间阻止 <code>touchmove</code> 默认滚动，避免 iOS Safari 中断手势。</p>"
       },
       {
         "kind": "prose",
@@ -7189,14 +7201,20 @@ export const exampleDocs: ExampleDoc[] = [
           [
             "--wui-color-accent",
             "<p>Accent 和输入焦点边框</p>",
-            "#08f",
+            "#0071e3",
             "#0a84ff"
           ],
           [
             "--wui-color-on-accent",
             "<p>Accent 上的前景色</p>",
             "#fff",
-            "#fff"
+            "#000"
+          ],
+          [
+            "--wui-color-on-danger",
+            "<p><code>danger</code> 背景上的前景色</p>",
+            "#fff",
+            "#000"
           ],
           [
             "--wui-color-on-control",
@@ -7237,8 +7255,8 @@ export const exampleDocs: ExampleDoc[] = [
           [
             "--wui-color-focus-ring",
             "<p>Focus indicator 颜色，由 accent 派生</p>",
-            "color-mix(in srgb, var(--wui-color-accent, #08f) 40%, transparent)",
-            "color-mix(in srgb, var(--wui-color-accent, #0a84ff) 62%, transparent)"
+            "color-mix(in srgb, var(--wui-color-accent, #0071e3) 40%, transparent)",
+            "color-mix(in srgb, var(--wui-color-accent, #0a84ff) 62%, var(--wui-color-text) 38%)"
           ]
         ]
       },

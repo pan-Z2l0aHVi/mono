@@ -153,19 +153,19 @@ describe('WebUiDropdown 组件（浏览器）', () => {
     const items = openRootItems()
     expect(items[0]?.shadowRoot?.activeElement).toBe(focusedControl(items[0]!))
     expect(focusedControl(items[0]!)?.matches(':focus-visible')).toBe(true)
-    expect(getComputedStyle(focusedControl(items[0]!)!).backgroundColor).not.toBe('rgb(0, 136, 255)')
+    expect(getComputedStyle(focusedControl(items[0]!)!).backgroundColor).not.toBe('rgb(0, 113, 227)')
 
     await userEvent.keyboard('{ArrowDown}')
     await nextFrame()
 
     expect(items[1]?.shadowRoot?.activeElement).toBe(focusedControl(items[1]!))
-    expect(getComputedStyle(focusedControl(items[1]!)!).backgroundColor).toBe('rgb(0, 136, 255)')
+    expect(getComputedStyle(focusedControl(items[1]!)!).backgroundColor).toBe('rgb(0, 113, 227)')
 
     await userEvent.keyboard('{ArrowUp}')
     await nextFrame()
 
     expect(items[0]?.shadowRoot?.activeElement).toBe(focusedControl(items[0]!))
-    expect(getComputedStyle(focusedControl(items[0]!)!).backgroundColor).toBe('rgb(0, 136, 255)')
+    expect(getComputedStyle(focusedControl(items[0]!)!).backgroundColor).toBe('rgb(0, 113, 227)')
   })
 
   it('键盘激活打开时首项保留 focus-visible accent', async () => {
@@ -180,7 +180,7 @@ describe('WebUiDropdown 组件（浏览器）', () => {
     const items = openRootItems()
     expect(items[0]?.shadowRoot?.activeElement).toBe(focusedControl(items[0]!))
     expect(focusedControl(items[0]!)?.matches(':focus-visible')).toBe(true)
-    expect(getComputedStyle(focusedControl(items[0]!)!).backgroundColor).toBe('rgb(0, 136, 255)')
+    expect(getComputedStyle(focusedControl(items[0]!)!).backgroundColor).toBe('rgb(0, 113, 227)')
   })
 
   it('Escape 关闭后将焦点交还 shadow trigger 并移除 aria-controls', async () => {
@@ -329,7 +329,7 @@ describe('WebUiDropdown 组件（浏览器）', () => {
     await menu.updateComplete
     await nextFrame()
     await nextFrame()
-    expect(getComputedStyle(focusedControl(openRootItems()[0]!)!).backgroundColor).toBe('rgb(0, 136, 255)')
+    expect(getComputedStyle(focusedControl(openRootItems()[0]!)!).backgroundColor).toBe('rgb(0, 113, 227)')
 
     menu.closeAll()
     await menu.updateComplete
@@ -340,7 +340,7 @@ describe('WebUiDropdown 组件（浏览器）', () => {
     await nextFrame()
     await nextFrame()
 
-    expect(getComputedStyle(focusedControl(openRootItems()[0]!)!).backgroundColor).not.toBe('rgb(0, 136, 255)')
+    expect(getComputedStyle(focusedControl(openRootItems()[0]!)!).backgroundColor).not.toBe('rgb(0, 113, 227)')
   })
 
   it('指针点击可以打开 submenu', async () => {
