@@ -1,12 +1,18 @@
 <template>
   <div class="flex items-start gap-10">
     <div class="flex flex-col items-center gap-3">
-      <web-ui-slider vertical :value="brightness" @input="brightness = $event.currentTarget.value"></web-ui-slider>
+      <web-ui-slider
+        aria-label="垂直亮度"
+        vertical
+        :value="brightness"
+        @input="brightness = $event.currentTarget.value"
+      ></web-ui-slider>
       <span class="text-xs text-(--wui-color-text-secondary)">{{ brightness }}</span>
     </div>
 
     <div class="flex flex-col items-center gap-3">
       <web-ui-slider
+        aria-label="垂直音量"
         vertical
         marks
         :step="10"

@@ -7,6 +7,7 @@ export default function Demo() {
   return (
     <div className="flex flex-wrap items-center gap-5">
       <web-ui-slider
+        aria-label="事件演示"
         marks
         step={5}
         min={10}

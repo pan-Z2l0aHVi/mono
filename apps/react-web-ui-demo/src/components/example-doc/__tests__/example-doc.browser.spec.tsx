@@ -733,11 +733,11 @@ describe('example-doc（React 面 / 真实浏览器）', () => {
     const checkbox = article.querySelector<WebUiCheckbox>('web-ui-checkbox')
     const drawerHost = article.querySelector<WebUiDrawer>('web-ui-drawer')
     if (!checkbox || !drawerHost) throw new Error('关闭按钮示例没有渲染 checkbox / drawer')
-    await waitFor(() => expect(checkbox.shadowRoot?.querySelector('label')).toBeTruthy())
+    await waitFor(() => expect(checkbox.shadowRoot?.querySelector('[role="checkbox"]')).toBeTruthy())
     expect(checkbox.checked).toBe(true)
     expect(drawerHost.closable).toBe(true)
 
-    // 文案放在组件默认槽里：点击落点命中内部 <label>，宿主与文案都能切换。
+    // 文案放在组件默认槽里：点击落点命中影子树里 role="checkbox" 的交互 span，宿主与文案都能切换。
     await act(async () => userEvent.click(checkbox))
     await waitFor(() => expect(checkbox.checked).toBe(false))
     expect(drawerHost.closable).toBe(false)
@@ -930,17 +930,20 @@ describe('example-doc（React 面 / 真实浏览器）', () => {
 
   it('同页的 slider 示例使用不同 accessible name', async () => {
     const { container } = render(<ExampleDoc component="slider" />)
-    await mountDemos(container)
+    await mountDemos(container, slider, 'web-ui-slider')
 
     const examples = [
-      ['基础', '音量'],
-      ['刻度与垂直方向', '垂直刻度'],
-      ['受控值', '受控音量']
+      ['基础', 0, '音量'],
+      ['刻度标记', 0, '刻度步进 10'],
+      ['垂直方向', 0, '垂直亮度'],
+      ['input 与 change', 0, '事件演示'],
+      ['表单取值', 0, '表单音量'],
+      ['CSS 变量', 0, '宽轨道']
     ] as const
-    expect(new Set(examples.map(([, name]) => name)).size).toBe(examples.length)
+    expect(new Set(examples.map(([, , name]) => name)).size).toBe(examples.length)
 
-    for (const [title, name] of examples) {
-      const host = sliderIn(container, title)
+    for (const [title, index, name] of examples) {
+      const host = sliderIn(container, title, index)
       expect(host.getAttribute('aria-label')).toBe(name)
       expect(
         page.elementLocator(host).getByRole('slider', { name, exact: true }).length,
@@ -1043,23 +1046,30 @@ describe('example-doc（React 面 / 真实浏览器）', () => {
   })
 
   it('props 表里手写的默认值，就是 slider 元素的实际初值', async () => {
-    const { container } = render(<ExampleDoc component="slider" />)
-    await mountDemos(container, slider, 'web-ui-slider')
-
-    // 「基础」的第一条不写任何属性，正好当默认值样本：表里那一列是手写的，元素初值来自组件源码，
-    // 两边对不上就是文档漏改（layout 与 checkbox / radio 那两条同判据）。属性增删也会在这里红。
-    const host = sliderIn(container, '基础')
-    expect({
-      disabled: String(host.disabled),
-      marks: String(host.marks),
-      vertical: String(host.vertical),
-      name: host.name,
-      required: String(host.required),
-      value: String(host.value),
-      min: String(host.min),
-      max: String(host.max),
-      step: String(host.step)
-    }).toEqual(documentedDefaults(slider))
+    // 每条 slider 示例都带 aria-label（可命名是文档明说的要求），页面上取不到「什么都没写」的
+    // 样本，所以直接建一个裸元素比：表里那一列是手写的，元素初值来自组件源码，两边对不上就是文档漏改。
+    const bare = document.createElement('web-ui-slider')
+    try {
+      document.body.append(bare)
+      await act(async () => {
+        await bare.updateComplete
+      })
+      expect({
+        disabled: String(bare.disabled),
+        marks: String(bare.marks),
+        vertical: String(bare.vertical),
+        name: bare.name,
+        required: String(bare.required),
+        'aria-label': bare.getAttribute('aria-label') ?? '',
+        'aria-labelledby': bare.getAttribute('aria-labelledby') ?? '',
+        value: String(bare.value),
+        min: String(bare.min),
+        max: String(bare.max),
+        step: String(bare.step)
+      }).toEqual(documentedDefaults(slider))
+    } finally {
+      bare.remove()
+    }
   })
 
   it('props 表里手写的默认值，就是 checkbox / radio 元素的实际初值', async () => {

@@ -14,7 +14,7 @@ export default function Demo() {
         setSubmitted(typeof volume === 'string' ? volume : '')
       }}
     >
-      <web-ui-slider name="volume" step={5} value={40}></web-ui-slider>
+      <web-ui-slider aria-label="表单音量" name="volume" step={5} value={40}></web-ui-slider>
       <web-ui-button type="submit">提交</web-ui-button>
       <web-ui-button
         onClick={() => {

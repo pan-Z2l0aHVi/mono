@@ -8,6 +8,7 @@ export default function Demo() {
     <div className="flex items-start gap-10">
       <div className="flex flex-col items-center gap-3">
         <web-ui-slider
+          aria-label="垂直亮度"
           vertical
           value={brightness}
           onInput={event => setBrightness(event.currentTarget.value)}
@@ -17,6 +18,7 @@ export default function Demo() {
 
       <div className="flex flex-col items-center gap-3">
         <web-ui-slider
+          aria-label="垂直音量"
           vertical
           marks
           step={10}

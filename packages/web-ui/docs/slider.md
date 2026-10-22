@@ -15,9 +15,9 @@ tag: web-ui-slider
 export default function Demo() {
   return (
     <div className="flex flex-col items-start gap-6">
-      <web-ui-slider></web-ui-slider>
-      <web-ui-slider min={0} max={100} step={5} value={40}></web-ui-slider>
-      <web-ui-slider min={0} max={100} step={5} value={65} disabled></web-ui-slider>
+      <web-ui-slider aria-label="音量"></web-ui-slider>
+      <web-ui-slider aria-label="亮度" min={0} max={100} step={5} value={40}></web-ui-slider>
+      <web-ui-slider aria-label="禁用的音量" min={0} max={100} step={5} value={65} disabled></web-ui-slider>
     </div>
   )
 }
@@ -26,9 +26,9 @@ export default function Demo() {
 ```vue
 <template>
   <div class="flex flex-col items-start gap-6">
-    <web-ui-slider></web-ui-slider>
-    <web-ui-slider :min="0" :max="100" :step="5" :value="40"></web-ui-slider>
-    <web-ui-slider :min="0" :max="100" :step="5" :value="65" disabled></web-ui-slider>
+    <web-ui-slider aria-label="音量"></web-ui-slider>
+    <web-ui-slider aria-label="亮度" :min="0" :max="100" :step="5" :value="40"></web-ui-slider>
+    <web-ui-slider aria-label="禁用的音量" :min="0" :max="100" :step="5" :value="65" disabled></web-ui-slider>
   </div>
 </template>
 ```
@@ -41,8 +41,8 @@ export default function Demo() {
 export default function Demo() {
   return (
     <div className="flex flex-col items-start gap-8">
-      <web-ui-slider marks step={10} value={40}></web-ui-slider>
-      <web-ui-slider marks step={25} value={50}></web-ui-slider>
+      <web-ui-slider aria-label="刻度步进 10" marks step={10} value={40}></web-ui-slider>
+      <web-ui-slider aria-label="刻度步进 25" marks step={25} value={50}></web-ui-slider>
     </div>
   )
 }
@@ -51,8 +51,8 @@ export default function Demo() {
 ```vue
 <template>
   <div class="flex flex-col items-start gap-8">
-    <web-ui-slider marks :step="10" :value="40"></web-ui-slider>
-    <web-ui-slider marks :step="25" :value="50"></web-ui-slider>
+    <web-ui-slider aria-label="刻度步进 10" marks :step="10" :value="40"></web-ui-slider>
+    <web-ui-slider aria-label="刻度步进 25" marks :step="25" :value="50"></web-ui-slider>
   </div>
 </template>
 ```
@@ -72,6 +72,7 @@ export default function Demo() {
     <div className="flex items-start gap-10">
       <div className="flex flex-col items-center gap-3">
         <web-ui-slider
+          aria-label="垂直亮度"
           vertical
           value={brightness}
           onInput={event => setBrightness(event.currentTarget.value)}
@@ -81,6 +82,7 @@ export default function Demo() {
 
       <div className="flex flex-col items-center gap-3">
         <web-ui-slider
+          aria-label="垂直音量"
           vertical
           marks
           step={10}
@@ -98,12 +100,18 @@ export default function Demo() {
 <template>
   <div class="flex items-start gap-10">
     <div class="flex flex-col items-center gap-3">
-      <web-ui-slider vertical :value="brightness" @input="brightness = $event.currentTarget.value"></web-ui-slider>
+      <web-ui-slider
+        aria-label="垂直亮度"
+        vertical
+        :value="brightness"
+        @input="brightness = $event.currentTarget.value"
+      ></web-ui-slider>
       <span class="text-xs text-(--wui-color-text-secondary)">{{ brightness }}</span>
     </div>
 
     <div class="flex flex-col items-center gap-3">
       <web-ui-slider
+        aria-label="垂直音量"
         vertical
         marks
         :step="10"
@@ -137,6 +145,7 @@ export default function Demo() {
   return (
     <div className="flex flex-wrap items-center gap-5">
       <web-ui-slider
+        aria-label="事件演示"
         marks
         step={5}
         min={10}
@@ -157,6 +166,7 @@ export default function Demo() {
 <template>
   <div class="flex flex-wrap items-center gap-5">
     <web-ui-slider
+      aria-label="事件演示"
       marks
       :step="5"
       :min="10"
@@ -200,7 +210,7 @@ export default function Demo() {
         setSubmitted(typeof volume === 'string' ? volume : '')
       }}
     >
-      <web-ui-slider name="volume" step={5} value={40}></web-ui-slider>
+      <web-ui-slider aria-label="表单音量" name="volume" step={5} value={40}></web-ui-slider>
       <web-ui-button type="submit">提交</web-ui-button>
       <web-ui-button
         onClick={() => {
@@ -221,7 +231,7 @@ export default function Demo() {
 ```vue
 <template>
   <form ref="form" class="flex flex-wrap items-center gap-4" @submit="onSubmit">
-    <web-ui-slider name="volume" :step="5" :value="40"></web-ui-slider>
+    <web-ui-slider aria-label="表单音量" name="volume" :step="5" :value="40"></web-ui-slider>
     <web-ui-button type="submit">提交</web-ui-button>
     <web-ui-button @click="reset">重置</web-ui-button>
     <output class="text-sm text-(--wui-color-text-secondary)">
@@ -258,16 +268,19 @@ export default function Demo() {
   return (
     <div className="flex flex-wrap items-end gap-8">
       <web-ui-slider
+        aria-label="宽轨道"
         className="[--wui-slider-width:300px] [--wui-slider-track-size:10px] [--wui-slider-thumb-thickness:26px] [--wui-slider-thumb-length:38px]"
         value={35}
       ></web-ui-slider>
 
       <web-ui-slider
+        aria-label="窄轨道"
         className="[--wui-slider-width:160px] [--wui-slider-track-size:2px] [--wui-slider-thumb-thickness:12px]"
         value={72}
       ></web-ui-slider>
 
       <web-ui-slider
+        aria-label="垂直宽轨道"
         vertical
         marks
         className="[--wui-slider-vertical-height:120px] [--wui-slider-track-size:8px] [--wui-slider-marks-inset:6px]"
@@ -283,16 +296,19 @@ export default function Demo() {
 <template>
   <div class="flex flex-wrap items-end gap-8">
     <web-ui-slider
+      aria-label="宽轨道"
       class="[--wui-slider-width:300px] [--wui-slider-track-size:10px] [--wui-slider-thumb-thickness:26px] [--wui-slider-thumb-length:38px]"
       :value="35"
     ></web-ui-slider>
 
     <web-ui-slider
+      aria-label="窄轨道"
       class="[--wui-slider-width:160px] [--wui-slider-track-size:2px] [--wui-slider-thumb-thickness:12px]"
       :value="72"
     ></web-ui-slider>
 
     <web-ui-slider
+      aria-label="垂直宽轨道"
       vertical
       marks
       class="[--wui-slider-vertical-height:120px] [--wui-slider-track-size:8px] [--wui-slider-marks-inset:6px]"
