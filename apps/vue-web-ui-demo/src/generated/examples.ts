@@ -7202,13 +7202,13 @@ export const exampleDocs: ExampleDoc[] = [
             "--wui-color-accent",
             "<p>Accent 和输入焦点边框</p>",
             "#0071e3",
-            "#0071e3"
+            "#0a84ff"
           ],
           [
             "--wui-color-on-accent",
             "<p>Accent 上的前景色</p>",
             "#fff",
-            "#fff"
+            "#000"
           ],
           [
             "--wui-color-on-control",

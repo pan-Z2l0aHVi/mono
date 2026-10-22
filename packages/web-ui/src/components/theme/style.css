@@ -284,8 +284,8 @@
   --wui-color-glass-ring-sheen: rgb(255 255 255 / 0.2);
   --wui-color-glass-ring-shade: rgb(0 0 0 / 0.5);
   --wui-glass-brightness: 1.02;
-  --wui-color-accent: #0071e3;
-  --wui-color-on-accent: #fff;
+  --wui-color-accent: #0a84ff;
+  --wui-color-on-accent: #000;
   --wui-color-on-control: #f2f2f7;
   --wui-color-success: #30d158;
   --wui-color-warning: #ff9f0a;
@@ -326,8 +326,8 @@
     --wui-color-glass-ring-sheen: rgb(255 255 255 / 0.2);
     --wui-color-glass-ring-shade: rgb(0 0 0 / 0.5);
     --wui-glass-brightness: 1.02;
-    --wui-color-accent: #0071e3;
-    --wui-color-on-accent: #fff;
+    --wui-color-accent: #0a84ff;
+    --wui-color-on-accent: #000;
     --wui-color-on-control: #f2f2f7;
     --wui-color-success: #30d158;
     --wui-color-warning: #ff9f0a;
