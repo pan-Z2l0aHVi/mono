@@ -15,13 +15,17 @@ function SliderDemo() {
         <h2>Base styles</h2>
         <div className="examples">
           <div className="example">
-            <web-ui-slider value={standardValue} onInput={event => setStandardValue(event.currentTarget.value)} />
+            <web-ui-slider
+              aria-label="Volume"
+              value={standardValue}
+              onInput={event => setStandardValue(event.currentTarget.value)}
+            />
           </div>
           <div className="example">
-            <web-ui-slider value={42} />
+            <web-ui-slider aria-label="Default value" value={42} />
           </div>
           <div className="example">
-            <web-ui-slider value={42} disabled />
+            <web-ui-slider aria-label="Disabled default value" value={42} disabled />
           </div>
         </div>
       </section>
@@ -30,6 +34,7 @@ function SliderDemo() {
         <div className="examples">
           <div className="example">
             <web-ui-slider
+              aria-label="Marked value"
               value={markedValue}
               step={10}
               marks
@@ -37,10 +42,10 @@ function SliderDemo() {
             />
           </div>
           <div className="example">
-            <web-ui-slider value={70} step={10} marks />
+            <web-ui-slider aria-label="High marked value" value={70} step={10} marks />
           </div>
           <div className="example">
-            <web-ui-slider value={50} step={10} marks disabled />
+            <web-ui-slider aria-label="Disabled marked value" value={50} step={10} marks disabled />
           </div>
         </div>
       </section>
@@ -48,6 +53,7 @@ function SliderDemo() {
         <h2>Range and events</h2>
         <div className="event-example">
           <web-ui-slider
+            aria-label="Range value"
             value={inputValue}
             min={10}
             max={90}
@@ -66,6 +72,7 @@ function SliderDemo() {
         <div className="vertical-examples">
           <div className="example">
             <web-ui-slider
+              aria-label="Vertical value"
               vertical
               value={verticalValue}
               onInput={event => setVerticalValue(event.currentTarget.value)}
@@ -74,6 +81,7 @@ function SliderDemo() {
           </div>
           <div className="example">
             <web-ui-slider
+              aria-label="Vertical marked value"
               vertical
               value={verticalMarkedValue}
               step={10}
@@ -83,7 +91,7 @@ function SliderDemo() {
             <span className="label">{verticalMarkedValue}</span>
           </div>
           <div className="example">
-            <web-ui-slider vertical value={50} disabled />
+            <web-ui-slider aria-label="Disabled vertical value" vertical value={50} disabled />
             <span className="label">Disabled</span>
           </div>
         </div>

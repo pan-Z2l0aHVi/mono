@@ -8,7 +8,7 @@ import '@greypan/web-ui/components/theme'
 import type { WebUiLayout, WebUiSegmented, WebUiSegmentedTrigger, WebUiSlider } from '@greypan/web-ui'
 import { mount, type VueWrapper } from '@vue/test-utils'
 import { afterEach, describe, expect, it, vi } from 'vite-plus/test'
-import { userEvent } from 'vite-plus/test/browser'
+import { page, userEvent } from 'vite-plus/test/browser'
 import { nextTick } from 'vue'
 
 import { setViewport } from '@/__tests__/viewport'
@@ -244,6 +244,31 @@ describe('example-doc（Vue 面 / 真实浏览器）', () => {
     expect(sliderIn(element, '基础').value).toBe(40)
 
     expect(mountDoc('button').querySelector('[data-sample-preview]')).toBeNull()
+  })
+
+  it('同页的 slider 示例使用不同 accessible name', async () => {
+    const element = mountDoc('slider')
+    await mountDemos(element)
+
+    const examples = [
+      ['基础', '音量'],
+      ['刻度与垂直方向', '垂直刻度'],
+      ['受控值', '受控音量']
+    ] as const
+    expect(new Set(examples.map(([, name]) => name)).size).toBe(examples.length)
+
+    for (const [title, name] of examples) {
+      const host = sliderIn(element, title)
+      expect(host.getAttribute('aria-label')).toBe(name)
+      expect(
+        page.elementLocator(host).getByRole('slider', { name, exact: true }).length,
+        `${title} 的 slider 名称`
+      ).toBe(1)
+      expect(
+        page.elementLocator(element).getByRole('slider', { name, exact: true }).length,
+        `当前组件文档中名为「${name}」的 slider`
+      ).toBe(1)
+    }
   })
 
   it('页面上写的数字，就是屏幕上跑起来的那个值', async () => {
