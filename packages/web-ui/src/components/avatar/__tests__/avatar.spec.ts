@@ -47,13 +47,14 @@ describe('WebUiAvatar 组件', () => {
       ['有 alt', { alt: '用户 avatar', src: '/a.png' }, 'img', '用户 avatar'],
       ['只有 name', { name: 'Alice' }, 'img', 'Alice'],
       ['两者都没有', {}, 'presentation', null]
-    ])('%s 决定 role 与 label', async (_label, attrs, expectedRole, expectedLabel) => {
+    ])('%s 决定 role、label 与隐藏状态', async (_label, attrs, expectedRole, expectedLabel) => {
       const el = createAvatar(attrs as Record<string, string>)
       await waitForUpdate(el)
 
       const node = queryA11y(el, `[role="${expectedRole}"]`)
       expect(node).toBeTruthy()
-      expect(node?.getAttribute(expectedLabel ? 'aria-label' : 'aria-hidden')).toBe(expectedLabel ?? 'true')
+      expect(node?.getAttribute('aria-label')).toBe(expectedLabel)
+      expect(node?.getAttribute('aria-hidden')).toBe(expectedLabel ? null : 'true')
       cleanupElement(el)
     })
 
