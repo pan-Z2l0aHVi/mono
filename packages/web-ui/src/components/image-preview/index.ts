@@ -619,10 +619,10 @@ class WebUiImagePreview extends LitElement {
     this._swipeOffset = 0
   }
 
-  /** 轮播滑动的相邻图索引；loop 环绕，非 loop 越界返回 -1（表示没有可滑入的图）。 */
+  /** 轮播滑动的相邻图索引；单图没有相邻图，多图 loop 环绕，非 loop 越界返回 -1。 */
   private _adjacentIndex(dir: 1 | -1): number {
     const count = this.images.length
-    if (count === 0) return -1
+    if (count <= 1) return -1
     if (this.loop) return (((this._index + dir) % count) + count) % count
     const target = this._index + dir
     return target >= 0 && target < count ? target : -1
