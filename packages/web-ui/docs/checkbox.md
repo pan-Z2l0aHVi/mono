@@ -3,7 +3,7 @@ component: checkbox
 tag: web-ui-checkbox
 ---
 
-单个 checkbox，声明 `role="checkbox"`，支持 Enter / Space 切换；与原生 `<form>` 集成，选中时把 `value` 提交进 `FormData`。
+单个 checkbox，支持 Enter / Space 切换；与原生 `<form>` 集成，选中时把 `value` 提交进 `FormData`。
 
 ## 示例
 
@@ -102,7 +102,7 @@ const selected = ref<string[]>([])
 
 ### 行为说明
 
-使用 `role="checkbox"` 和 `aria-checked`。Enter/Space 键盘切换。
+Shadow DOM 内的交互 `<span>` 声明 `role="checkbox"`，并同步 `aria-checked`、`aria-disabled` 和 `tabindex`。Enter/Space 键盘切换。
 
 ### 布局
 

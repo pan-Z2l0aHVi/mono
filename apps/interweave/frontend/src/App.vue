@@ -4,7 +4,7 @@ import { useOverlayScrollbars } from 'overlayscrollbars-vue'
 import { computed, onMounted } from 'vue'
 
 import AppLayout from '@/components/AppLayout.vue'
-import { useSettingsStore } from '@/stores/settings'
+import { getAccentThemeStyle, useSettingsStore } from '@/stores/settings'
 
 const settings = useSettingsStore()
 
@@ -26,7 +26,7 @@ onMounted(() => {
  * 是为了赢过 theme 自己那条 :host([appearance=...]) —— 内联样式优先级高于任何作者样式表规则，
  * 于是一处覆盖同时压住 light / dark / system 三个分支。
  */
-const themeStyle = computed(() => ({ '--wui-color-accent': settings.accent }))
+const themeStyle = computed(() => getAccentThemeStyle(settings.accent))
 </script>
 
 <template>

@@ -279,17 +279,19 @@ export function attachDragGesture(
       const rawDeltaY = e.clientY - startY
       const distance =
         axis === 'x' ? Math.abs(rawDeltaX) : axis === 'y' ? Math.abs(rawDeltaY) : Math.hypot(rawDeltaX, rawDeltaY)
+
+      // 交叉轴位移达到阈值且占主导时，立即让给滚动意图；不能等主轴也越过阈值，
+      // 否则这类手势会一直处于 tap 候选态，并在松手时被点击定位控件提交。
+      if (axis === 'x' && Math.abs(rawDeltaY) >= threshold && Math.abs(rawDeltaY) > Math.abs(rawDeltaX)) {
+        cancel()
+        return
+      }
+      if (axis === 'y' && Math.abs(rawDeltaX) >= threshold && Math.abs(rawDeltaX) > Math.abs(rawDeltaY)) {
+        cancel()
+        return
+      }
       if (distance < threshold) return
 
-      // 若限定了 X 轴且 Y 轴位移明显更大，视为滚动意图而非拖拽
-      if (axis === 'x' && Math.abs(rawDeltaY) > Math.abs(rawDeltaX)) {
-        cancel()
-        return
-      }
-      if (axis === 'y' && Math.abs(rawDeltaX) > Math.abs(rawDeltaY)) {
-        cancel()
-        return
-      }
       isThresholdPassed = true
       // 手势从「被识别」这一刻起算：有意图死区时，pointerdown 之后到越过死区之前的
       // 悬停不属于拖拽轨迹，计进 duration 会稀释整段手势的平均速度。

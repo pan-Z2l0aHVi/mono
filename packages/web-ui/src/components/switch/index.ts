@@ -1,6 +1,6 @@
 import '@/components/icon'
 
-import { html, LitElement, unsafeCSS } from 'lit'
+import { html, LitElement, unsafeCSS, type PropertyValues } from 'lit'
 import { customElement, property, state } from 'lit/decorators.js'
 import { classMap } from 'lit/directives/class-map.js'
 import { styleMap } from 'lit/directives/style-map.js'
@@ -9,9 +9,9 @@ import glass from '@/assets/glass.css?inline'
 import { lucideLoaderCircle } from '@/icons'
 import { installPointerFocusSuppression } from '@/shared/focus/pointer-focus'
 import { FormAssociated, defineFormAssociation, FormAssociationController } from '@/shared/form-association'
-import { createFieldId } from '@/shared/form-association/field-id'
 import { attachDragGesture, type DragGestureHandle } from '@/shared/gesture/drag-gesture'
 import { clamp, normalizeProgress } from '@/shared/gesture/physics'
+import { LabelEmptinessController } from '@/shared/label-emptiness'
 
 import style from './style.css?inline'
 
@@ -21,6 +21,8 @@ installPointerFocusSuppression()
 export class WebUiSwitch extends FormAssociated(LitElement) {
   static override styles = [unsafeCSS(glass), unsafeCSS(style)]
   @state() private _checked = false
+  /** label 没有可渲染内容时收掉 track 与 label 之间的 gap。 */
+  @state() private _labelEmpty = false
 
   get checked(): boolean {
     return this._checked
@@ -47,12 +49,75 @@ export class WebUiSwitch extends FormAssociated(LitElement) {
   private _maxTravel = 20
   private _startOffset = 0
   private _dragGestureHandle: DragGestureHandle | null = null
-  private readonly _fieldId = createFieldId('web-ui-switch')
+  private _tabIndexBeforeDisabled: string | null = null
+  private _isTabIndexSuppressed = false
+  private _tabIndexObserver: MutationObserver | null = null
+  private readonly _handleHostClick = () => this.handleClick()
+  private readonly _handleHostKeydown = (event: KeyboardEvent) => this.handleKeydown(event)
+  private readonly _handleTabIndexMutations = (records: MutationRecord[]) => {
+    if (!this._isTabIndexSuppressed || records.length === 0) return
+    this._tabIndexBeforeDisabled = this.getAttribute('tabindex')
+    this._setSuppressedTabIndex()
+  }
+
+  override connectedCallback() {
+    super.connectedCallback()
+    this._tabIndexObserver = new MutationObserver(this._handleTabIndexMutations)
+    this._tabIndexObserver.observe(this, { attributes: true, attributeFilter: ['tabindex'] })
+    this.addEventListener('click', this._handleHostClick)
+    this.addEventListener('keydown', this._handleHostKeydown)
+    this._syncAccessibility()
+  }
 
   override disconnectedCallback() {
     super.disconnectedCallback()
+    this._tabIndexObserver?.disconnect()
+    this._tabIndexObserver = null
+    this.removeEventListener('click', this._handleHostClick)
+    this.removeEventListener('keydown', this._handleHostKeydown)
     this._dragGestureHandle?.destroy()
     this._dragGestureHandle = null
+  }
+
+  override updated(changedProperties: PropertyValues<this>) {
+    super.updated(changedProperties)
+    this._syncAccessibility()
+  }
+
+  private _syncAccessibility() {
+    this.setAttribute('role', 'switch')
+    this.setAttribute('aria-checked', String(this._checked))
+    const isDisabled = this._isDisabled || this.loading
+    this.setAttribute('aria-disabled', String(isDisabled))
+
+    if (isDisabled) {
+      if (!this._isTabIndexSuppressed) {
+        this._tabIndexBeforeDisabled = this.getAttribute('tabindex')
+        this._isTabIndexSuppressed = true
+      } else if (this.getAttribute('tabindex') !== '-1') {
+        this._tabIndexBeforeDisabled = this.getAttribute('tabindex')
+      }
+      this._setSuppressedTabIndex()
+    } else if (this._isTabIndexSuppressed) {
+      this._capturePendingTabIndexMutation()
+      if (this._tabIndexBeforeDisabled === null) this.tabIndex = 0
+      else this.setAttribute('tabindex', this._tabIndexBeforeDisabled)
+      this._isTabIndexSuppressed = false
+    } else if (!this.hasAttribute('tabindex')) {
+      this.tabIndex = 0
+    }
+  }
+
+  private _capturePendingTabIndexMutation() {
+    if (this._tabIndexObserver?.takeRecords().length) {
+      this._tabIndexBeforeDisabled = this.getAttribute('tabindex')
+    }
+  }
+
+  private _setSuppressedTabIndex() {
+    if (this.getAttribute('tabindex') === '-1') return
+    this.setAttribute('tabindex', '-1')
+    this._tabIndexObserver?.takeRecords()
   }
 
   private get _isDisabled(): boolean {
@@ -78,6 +143,10 @@ export class WebUiSwitch extends FormAssociated(LitElement) {
 
   private readonly _formAssociationController = new FormAssociationController(this, this._formAssociation)
 
+  private readonly _labelEmptiness = new LabelEmptinessController(this, '.wui-switch-label', empty => {
+    this._labelEmpty = empty
+  })
+
   private _syncValidity() {
     const internals = this._formAssociation.getInternals()
     if (!internals || typeof internals.setValidity !== 'function') return
@@ -85,13 +154,8 @@ export class WebUiSwitch extends FormAssociated(LitElement) {
     else internals.setValidity({ valueMissing: true }, 'Enable this option')
   }
 
-  // 阻止 label 默认行为，避免原生 checkbox 重复触发点击。
-  // 但内层 input 自己触发的 click（空格/辅助技术的原生激活）必须放行：
-  // 它已经完成勾选，再 preventDefault 会把原生激活撤销，造成
-  // 「宿主 checked=true、内层 checkbox=false」的分裂。
-  private handleClick(e: Event) {
-    if (e.target instanceof HTMLInputElement) return
-    e.preventDefault()
+  // 交互由 switch host 处理，light DOM 标签文本与轨道点击都会冒泡到这里。
+  private handleClick() {
     if (this._dragged) {
       this._dragged = false
       return
@@ -100,23 +164,11 @@ export class WebUiSwitch extends FormAssociated(LitElement) {
     this._applyChecked(!this._checked)
   }
 
-  // 原生激活（空格、辅助技术）已完成勾选，这里只把状态同步过来。
-  // 原生 input 事件本身是 composed，已经冒泡到宿主，不能再补一个；
-  // 原生 change 不是 composed，过不了 shadow 边界，需要由组件转发。
-  private handleNativeChange(e: Event) {
-    if (!(e.target instanceof HTMLInputElement)) return
-    if (this._dragged) {
-      this._dragged = false
-      return
-    }
-    this._applyChecked(e.target.checked, false)
-  }
-
-  // 原生 checkbox 不响应 Enter，补上 role="switch" 应有的开合语义
+  // 自定义 switch host 承接焦点，Space 与 Enter 都切换状态。
   private handleKeydown(e: KeyboardEvent) {
-    if (e.key !== 'Enter') return
+    if (e.key !== ' ' && e.key !== 'Enter') return
     e.preventDefault()
-    if (this._isDisabled || this.loading) return
+    if (e.repeat || this._isDisabled || this.loading) return
     this._applyChecked(!this._checked)
   }
 
@@ -207,10 +259,18 @@ export class WebUiSwitch extends FormAssociated(LitElement) {
 
   override render() {
     const isOpen = this._isDragging ? this._dragProgress >= 0.5 : this._checked
+    const contentCls = {
+      'wui-switch-content': true,
+      'is-label-empty': this._labelEmpty
+    }
     const trackCls = {
       'wui-switch-track': true,
       'is-open': isOpen,
       'is-dragging': this._isDragging,
+      'is-disabled': this._isDisabled || this.loading
+    }
+    const labelCls = {
+      'wui-switch-label': true,
       'is-disabled': this._isDisabled || this.loading
     }
     // wui-glass 条件化：静止态实体白 thumb，按压/拖拽时切换为玻璃（backdrop blur +
@@ -223,36 +283,32 @@ export class WebUiSwitch extends FormAssociated(LitElement) {
     const trackStyle = this._isDragging ? { '--wui-switch-drag-offset': `${this._dragOffset}px` } : {}
 
     return html`
-      <label
-        class=${classMap(trackCls)}
-        style=${styleMap(trackStyle)}
-        role="switch"
-        aria-checked=${String(this._checked)}
-        @click=${this.handleClick}
-        @pointerdown=${this.handlePointerDown}
-        @pointerup=${this.handlePointerUp}
-        @pointercancel=${this.handlePointerUp}
-        @pointerleave=${this.handlePointerLeave}
-      >
-        <input
-          id=${this._fieldId}
-          type="checkbox"
-          .checked=${this._checked}
-          ?disabled=${this._isDisabled || this.loading}
-          class="sr-only"
-          @change=${this.handleNativeChange}
-          @keydown=${this.handleKeydown}
-        />
-        <div class=${classMap(thumbCls)}>
-          ${
-            this.loading
-              ? html`<div class="wui-switch-loading">
-                  <web-ui-icon .icon=${lucideLoaderCircle} size="14" color="#08f" spin></web-ui-icon>
-                </div>`
-              : ''
-          }
-        </div>
-      </label>
+      <span class=${classMap(contentCls)}>
+        <span
+          class=${classMap(trackCls)}
+          style=${styleMap(trackStyle)}
+          @pointerdown=${this.handlePointerDown}
+          @pointerup=${this.handlePointerUp}
+          @pointercancel=${this.handlePointerUp}
+          @pointerleave=${this.handlePointerLeave}
+        >
+          <span class=${classMap(thumbCls)}>
+            ${
+              this.loading
+                ? html`<span class="wui-switch-loading">
+                    <web-ui-icon
+                      .icon=${lucideLoaderCircle}
+                      size="14"
+                      color="var(--wui-color-accent, #0071e3)"
+                      spin
+                    ></web-ui-icon>
+                  </span>`
+                : ''
+            }
+          </span>
+        </span>
+        <span class=${classMap(labelCls)}><slot></slot></span>
+      </span>
     `
   }
 

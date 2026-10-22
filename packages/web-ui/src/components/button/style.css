@@ -59,7 +59,7 @@ button {
 
   &:focus-visible {
     outline: var(--wui-focus-ring-width, 3px) solid
-      var(--wui-color-focus-ring, color-mix(in srgb, var(--wui-color-accent, #08f) 40%, transparent));
+      var(--wui-color-focus-ring, color-mix(in srgb, var(--wui-color-accent, #0071e3) 40%, transparent));
     outline-offset: 2px;
   }
 }
@@ -90,9 +90,9 @@ button:active:not(:disabled) {
 
 :host([variant='primary']) {
   --wui-button-color: var(--wui-color-on-accent, #fff);
-  --wui-button-bg: var(--wui-color-accent, #08f);
-  --wui-button-bg-hover: color-mix(in srgb, var(--wui-button-bg, #08f) 88%, black);
-  --wui-button-bg-active: color-mix(in srgb, var(--wui-button-bg, #08f) 76%, black);
+  --wui-button-bg: var(--wui-color-accent, #0071e3);
+  --wui-button-bg-hover: color-mix(in srgb, var(--wui-button-bg, #0071e3) 94%, black);
+  --wui-button-bg-active: color-mix(in srgb, var(--wui-button-bg, #0071e3) 90%, black);
 }
 
 :host([variant='secondary']) {

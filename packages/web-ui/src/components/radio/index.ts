@@ -114,7 +114,7 @@ export class WebUiRadio extends FormAssociated(LitElement) {
     }
 
     return html`
-      <label
+      <span
         class=${classMap(cls)}
         tabindex=${this._isDisabled ? '-1' : '0'}
         role="radio"
@@ -127,7 +127,7 @@ export class WebUiRadio extends FormAssociated(LitElement) {
           <span class="wui-radio-dot"></span>
         </span>
         <span class="wui-radio-label"><slot></slot></span>
-      </label>
+      </span>
     `
   }
 

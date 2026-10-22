@@ -112,19 +112,19 @@ import { lucideSearch } from '@greypan/web-ui/icons'
 
 ### Props
 
-| 名称            | 说明                                                                                        | 类型                                                         | 默认值     |
-| --------------- | ------------------------------------------------------------------------------------------- | ------------------------------------------------------------ | ---------- |
-| `variant`       | 视觉变体：`primary` / `secondary` / `ghost` / `danger` / `glass`。                          | `'primary' \| 'secondary' \| 'ghost' \| 'danger' \| 'glass'` | `'glass'`  |
-| `disabled`      | 禁用态。禁用时不派发 click，也不参与表单提交。                                              | `boolean`                                                    | `false`    |
-| `loading`       | 加载态。与 `disabled` 一样阻断交互，并优先渲染 spinner。                                    | `boolean`                                                    | `false`    |
-| `full`          | 占满父容器宽度。                                                                            | `boolean`                                                    | `false`    |
-| `icon`          | icon 模式：button 为正方形，默认插槽整体作为 icon。                                         | `boolean`                                                    | `false`    |
-| `size`          | button 高度（CSS 长度，如 `28`、`32px`）。在 `web-ui-button-group` 内被忽略。               | `string`                                                     | `''`       |
-| `type`          | 原生 button 的 `type`：`button` / `submit` / `reset`。后两者把 activation 转发给宿主 form。 | `button \| submit \| reset`                                  | `'button'` |
-| `aria-label`    | 无障碍名称。icon button 必须提供，否则读屏器只会读出空 button。                             | `string \| null`                                             | `null`     |
-| `aria-disabled` | 禁用状态；作为 slot trigger 时同步到内部原生 button。                                       | `string \| null`                                             | `null`     |
-| `aria-expanded` | 展开状态；作为 `web-ui-collapse` trigger 时同步到内部原生 button。                          | `string \| null`                                             | `null`     |
-| `aria-controls` | 被控制内容的 ID；作为 `web-ui-collapse` trigger 时同步到内部原生 button。                   | `string \| null`                                             | `null`     |
+| 名称            | 说明                                                                                                       | 类型                                                         | 默认值     |
+| --------------- | ---------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------ | ---------- |
+| `variant`       | 视觉变体：`primary` / `secondary` / `ghost` / `danger` / `glass`。                                         | `'primary' \| 'secondary' \| 'ghost' \| 'danger' \| 'glass'` | `'glass'`  |
+| `disabled`      | 禁用态。禁用时不派发 click，也不参与表单提交。                                                             | `boolean`                                                    | `false`    |
+| `loading`       | 加载态。与 `disabled` 一样阻断交互，并优先渲染 spinner。                                                   | `boolean`                                                    | `false`    |
+| `full`          | 占满父容器宽度。                                                                                           | `boolean`                                                    | `false`    |
+| `icon`          | icon 模式：button 为正方形，默认插槽整体作为 icon。                                                        | `boolean`                                                    | `false`    |
+| `size`          | button 高度；裸数字按 px 解释，也接受 CSS 长度（如 `32px`、`1.5rem`）。在 `web-ui-button-group` 内被忽略。 | `string`                                                     | `''`       |
+| `type`          | 原生 button 的 `type`：`button` / `submit` / `reset`。后两者把 activation 转发给宿主 form。                | `button \| submit \| reset`                                  | `'button'` |
+| `aria-label`    | 无障碍名称。icon button 必须提供，否则读屏器只会读出空 button。                                            | `string \| null`                                             | `null`     |
+| `aria-disabled` | 值为 `true` 时阻止 click 与表单动作，但保留焦点能力；作为 slot trigger 时同步到内部原生 button。           | `string \| null`                                             | `null`     |
+| `aria-expanded` | 展开状态；作为 `web-ui-collapse` trigger 时同步到内部原生 button。                                         | `string \| null`                                             | `null`     |
+| `aria-controls` | 被控制内容的 ID；作为 `web-ui-collapse` trigger 时同步到内部原生 button。                                  | `string \| null`                                             | `null`     |
 
 ### Slots
 
@@ -138,7 +138,7 @@ import { lucideSearch } from '@greypan/web-ui/icons'
 
 `submit` 和 `reset` 在 composed `click` 事件完成派发后，通过宿主的 form owner 转发到其原生 `<form>`；对这次 click 调用 `preventDefault()` 会取消该动作。内部 button 自身仍没有 form owner，因此 `SubmitEvent.submitter` 为 `null`。button 不向 `FormData` 贡献值。
 
-禁用、加载和 `formDisabled` 状态（包括祖先 `fieldset` 导致的禁用）都会阻止 `click` 事件。
+`disabled`、`loading`、`formDisabled`（包括祖先 `fieldset` 导致的禁用）和 `aria-disabled="true"` 都会阻止 `click` 与表单动作。`aria-disabled` 不会设置原生 `disabled`，因此仍可聚焦。
 
 `icon` 与 `loading` 同时开启时，button 只渲染 spinner，默认插槽 icon 不投影。默认 icon 几何保持正方形，`full` 或显式 width 除外。
 

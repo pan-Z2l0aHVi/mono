@@ -17,6 +17,8 @@ export interface AccentPreset {
   /** 写进 --wui-color-accent 的字面量。 */
   value: string
   label: string
+  /** 覆盖 --wui-color-on-accent；未设置时沿用 web-ui-theme 的外观默认值。 */
+  onAccent?: string
 }
 
 const APPEARANCE_STORAGE_KEY = 'theme-appearance'
@@ -27,28 +29,34 @@ const THEME_APPEARANCES = new Set<ThemeAppearance>(['light', 'dark', 'system'])
 /**
  * accent 预设色板。
  *
- * 前景统一是白（--wui-color-on-accent，theme 在 light 与 dark 两档下都已定为 #fff，不在这里覆盖），
- * 所以每个色值都要对白字过 WCAG AA 4.5:1。消费点是 button / badge / option / dropdown-item 的
- * 14–15px 常规字重正文，不是大字，4.5:1 才是该用的门槛。
+ * web-ui 默认的 --wui-color-on-accent 随外观变化：light 为 #fff，dark 为 #000。Interweave
+ * 里覆在这些预设色上的 14–15px 白字应达到 WCAG AA 4.5:1；这些是常规字重正文，不是大字。
  *
  * 绿与橙因此**不是** Apple system 色：#30d158 只有 2.02:1、#ff9f0a 只有 2.06:1，都不达标，
- * 换成同色相的深一档 #1d8348（4.78:1）与 #c64600（4.91:1）。其余四色保留 Apple 原色——
- * 它们在 3.4–3.7:1，与 web-ui 既有的 accent（light #08f 3.52:1、dark #0a84ff 3.65:1）
- * 是同一档，属于既有状态，不在这一笔里一并抬高。
+ * 换成同色相的深一档 #1d8348 与 #c64600。深色主题的默认黑字在这两种颜色上仍低于 4.5:1，
+ * 所以它们明确配白字；白字在浅色和深色主题都达标，按钮 hover / active 的背景还会进一步变深。
  *
- * 「蓝」取 #0a84ff 而非 light 档的 #08f，是与 web-ui dark appearance 的默认 accent 同源，
- * 于是这一档在亮暗两档下与不设 accent 时视觉一致。
+ * 「蓝」保留 #0a84ff。web-ui 的 light 默认值现为 #0071e3，dark 默认值仍为 #0a84ff。
  */
 export const ACCENT_PRESETS: readonly AccentPreset[] = [
   { value: '#0a84ff', label: '蓝' },
-  { value: '#1d8348', label: '绿' },
-  { value: '#c64600', label: '橙' },
+  { value: '#1d8348', label: '绿', onAccent: '#fff' },
+  { value: '#c64600', label: '橙', onAccent: '#fff' },
   { value: '#ff453a', label: '红' },
   { value: '#bf5af2', label: '紫' },
   { value: '#ff375f', label: '粉' }
 ] as const
 
 const DEFAULT_ACCENT = ACCENT_PRESETS[0].value
+
+export function getAccentThemeStyle(accent: string): Record<string, string> {
+  const preset = ACCENT_PRESETS.find(candidate => candidate.value === accent) ?? ACCENT_PRESETS[0]
+
+  return {
+    '--wui-color-accent': preset.value,
+    ...(preset.onAccent ? { '--wui-color-on-accent': preset.onAccent } : {})
+  }
+}
 
 function isThemeAppearance(appearance: unknown): appearance is ThemeAppearance {
   return typeof appearance === 'string' && THEME_APPEARANCES.has(appearance as ThemeAppearance)
