@@ -357,6 +357,54 @@ describe('web-ui-middle-ellipsis 的容器变化（浏览器）', () => {
 })
 
 describe('web-ui-middle-ellipsis 的字体度量变化（浏览器）', () => {
+  it('字体重切使用最近一次 ResizeObserver 报告的小数内容盒宽度', async () => {
+    const text = 'abcdefghijkl'
+    const expected = `${text.slice(0, 5)}…${text.slice(-5)}`
+    const measure = document.createElement('span')
+    measure.style.cssText = 'position: fixed; left: -10000px; white-space: nowrap; font: 20.05px/1.5 monospace;'
+    measure.textContent = expected
+    document.body.append(measure)
+    const expectedWidth = measure.getBoundingClientRect().width
+    measure.remove()
+
+    const width = Math.floor(expectedWidth) + 0.49
+    expect(width).toBeGreaterThan(expectedWidth)
+    expect(Math.round(width)).toBeLessThan(expectedWidth)
+
+    const el = mount({ text }, 'width: 200px; font: 16px/1.5 monospace;')
+    await settle(el)
+    el.style.width = `${width}px`
+    await settle(el)
+    expect(shown(el)).toBe(text)
+
+    el.style.fontSize = '20.05px'
+    await settle(el)
+
+    expect(shown(el)).toBe(expected)
+    expect(shownWidth(el)).toBeLessThanOrEqual(width)
+    expectTrimmedTo(el, text)
+  })
+
+  it('容器收缩后内容仍放得下，字体度量变化按当前宽度重切', async () => {
+    const text = 'abcdefghij'
+    const el = mount({ text }, 'width: 200px; font: 16px/1.5 monospace;')
+    await settle(el)
+    expect(shown(el)).toBe(text)
+
+    el.style.width = '100px'
+    await settle(el)
+    expect(availableWidth(el)).toBe(100)
+    expect(shown(el)).toBe(text)
+
+    el.style.fontSize = '30px'
+    await settle(el)
+
+    expect(availableWidth(el)).toBe(100)
+    expect(shown(el)).not.toBe(text)
+    expect(shownWidth(el)).toBeLessThanOrEqual(availableWidth(el) + 1)
+    expectTrimmedTo(el, text)
+  })
+
   it('宿主字号变化后重新切分并保住文件名尾部', async () => {
     const el = mount({ text: LONG }, 'width: 148px; font: 16px/1.5 monospace;')
     await settle(el)

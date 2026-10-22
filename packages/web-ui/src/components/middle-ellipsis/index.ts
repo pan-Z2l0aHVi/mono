@@ -204,6 +204,8 @@ export class WebUiMiddleEllipsis extends LitElement {
 
   /** 最近一次切分依据的可用宽度（px）；-1 表示还没量到过布局。 */
   private _available = -1
+  /** 最近一次 ResizeObserver 测得的宿主内容盒宽度；收敛守卫跳过拟合时也继续更新。 */
+  private _observedWidth = -1
   /** 当前渲染出来的文本实际占宽（px）。收敛守卫靠它判断现有输出是否已经放得下。 */
   private _rendered = 0
   /** 输入或字体度量变过、还没重新拟合。 */
@@ -218,8 +220,8 @@ export class WebUiMiddleEllipsis extends LitElement {
   private readonly _onMeasurementChange = (): void => {
     this._refineRound = 0
     this._dirty = true
-    // Reuse the last fit's ResizeObserver content-box width; clientWidth rounds fractional pixels.
-    this._apply(this._available > 0 ? this._available : this._currentWidth())
+    // `_available` can predate a shrink; use the latest precise content-box width even when it skipped a refit.
+    this._apply(this._observedWidth > 0 ? this._observedWidth : this._currentWidth())
   }
 
   private readonly _probe: WidthProbe = {
@@ -307,6 +309,7 @@ export class WebUiMiddleEllipsis extends LitElement {
    * 少截一些）。
    */
   private _onWidth(width: number): void {
+    this._observedWidth = width
     if (!(width > 0)) return
 
     /*
