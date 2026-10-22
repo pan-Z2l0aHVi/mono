@@ -1,11 +1,10 @@
 import '@/components/icon'
-import '@/components/spinner'
 import '@/components/theme'
 
 import { afterEach, describe, expect, it } from 'vite-plus/test'
 
 import type { WebUiIcon } from '@/components/icon'
-import type { WebUiSpinner } from '@/components/spinner'
+import { WebUiSpinner } from '@/components/spinner'
 import type { WebUiTheme } from '@/components/theme'
 
 /**
@@ -29,9 +28,9 @@ import type { WebUiTheme } from '@/components/theme'
  * 必须同时证明周期确实**变了**。故「motion=system 放慢」与「motion=full 回到默认」拆为成对用例，
  * 走同一个 `loopPeriods()` 观察函数——后者即前者的对照组。
  */
-function mountTheme(motion: string): WebUiTheme {
+function mountTheme(motion: string, appearance: 'light' | 'dark' = 'light'): WebUiTheme {
   const theme = document.createElement('web-ui-theme') as WebUiTheme
-  theme.appearance = 'light'
+  theme.appearance = appearance
   theme.motion = motion
   document.body.append(theme)
   return theme
@@ -60,9 +59,30 @@ function loopPeriods(el: HTMLElement, animationName: string): number[] {
     })
 }
 
-afterEach(() => document.body.replaceChildren())
+afterEach(() => {
+  WebUiSpinner.hide()
+  document.body.replaceChildren()
+})
 
 describe('系统 prefers-reduced-motion 下无限加载循环的周期（浏览器）', () => {
+  it('命令式 spinner 沿用深色 reduced theme 的 token 与 1.6s 循环', async () => {
+    const theme = mountTheme('reduced', 'dark')
+    await theme.updateComplete
+
+    const spinner = WebUiSpinner.show({ description: '正在加载数据...' })
+    await spinner.updateComplete
+
+    expect(theme.getOverlayRoot()?.contains(spinner)).toBe(true)
+    expect(getComputedStyle(spinner).getPropertyValue('--wui-color-text-secondary').trim()).toBe('#a1a1a6')
+    expect(getComputedStyle(spinner.shadowRoot!.querySelector('.spinner-description')!).color).toBe(
+      'rgb(161, 161, 166)'
+    )
+
+    const leafPeriods = loopPeriods(spinner, 'wui-spinner-leaf-fade')
+    expect(leafPeriods.length).toBeGreaterThan(0)
+    expect(new Set(leafPeriods)).toEqual(new Set([1600]))
+  })
+
   it('motion=system 跟随系统偏好：两个加载循环放慢到 1.6s 且不停', async () => {
     const theme = mountTheme('system')
 

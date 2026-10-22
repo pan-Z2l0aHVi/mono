@@ -1,47 +1,38 @@
 import '@/components/switch'
 
 import { afterEach, describe, expect, it } from 'vite-plus/test'
-import { userEvent } from 'vite-plus/test/browser'
+import { page, userEvent } from 'vite-plus/test/browser'
 
-import { cleanupElement, mountElement, queryA11y, spyEvents, waitForUpdate } from '@/shared/test-utils'
+import { cleanupElement, mountElement, spyEvents, waitForUpdate } from '@/shared/test-utils'
 
 afterEach(() => document.body.replaceChildren())
 
-type TestSwitch = HTMLElement & { updateComplete: Promise<unknown>; checked: boolean }
+type TestSwitch = HTMLElement & { updateComplete: Promise<unknown>; checked: boolean; disabled: boolean }
 
 const mount = (attrs: Record<string, string> = {}): TestSwitch => mountElement<TestSwitch>('web-ui-switch', { attrs })
 
-/**
- * switch 自身不处理 keydown：键盘可达性由 label 内那个视觉隐藏（`sr-only`，clip-path 而非
- * display:none）的原生 `input[type=checkbox]` 提供——焦点落在它上面后按空格触发浏览器原生
- * 激活 → `click` 冒泡到 label → 组件切换状态。
- *
- * 该路径是真实的公开无障碍契约（见 `switch/style.css` 的 sr-only 注释），但**只能在真实
- * 浏览器里验证**：jsdom 不合成原生激活行为，合成 keydown 也不会命中任何处理器。
- */
-const keyboardEntry = (el: TestSwitch): HTMLInputElement => {
-  const input = queryA11y(el, 'input[type="checkbox"]')
-  expect(input, 'switch 应提供原生 checkbox 作为键盘入口').toBeTruthy()
-  return input as HTMLInputElement
+const switchControl = (el: TestSwitch): TestSwitch => {
+  expect(el.getAttribute('role'), '宿主应承载 switch 语义').toBe('switch')
+  return el
 }
 
 describe('WebUiSwitch 键盘契约（浏览器）', () => {
-  it('Tab 使焦点进入 switch 的原生键盘入口', async () => {
+  it('Tab 使焦点进入 switch 宿主', async () => {
     const el = mount()
     await waitForUpdate(el)
 
     await userEvent.keyboard('{Tab}')
 
-    // 焦点在 shadow 内，文档层重定位到宿主。
+    // 语义 role 与键盘焦点都直接落在 custom element 宿主上。
     expect(document.activeElement, 'Tab 应把焦点交给 switch').toBe(el)
-    expect(el.shadowRoot!.activeElement, '组件内焦点应落在原生 checkbox 上').toBe(keyboardEntry(el))
+    expect(el.shadowRoot!.activeElement, 'switch 不应再把焦点藏在 shadow DOM 内').toBeNull()
     cleanupElement(el)
   })
 
   it('空格键切换并派发一次 input 与 change', async () => {
     const el = mount()
     await waitForUpdate(el)
-    keyboardEntry(el).focus()
+    switchControl(el).focus()
 
     const [inputEvents, detachInput] = spyEvents(el, 'input')
     const [changeEvents, detachChange] = spyEvents(el, 'change')
@@ -61,7 +52,7 @@ describe('WebUiSwitch 键盘契约（浏览器）', () => {
   it('连续两次空格键切回初始状态', async () => {
     const el = mount()
     await waitForUpdate(el)
-    keyboardEntry(el).focus()
+    switchControl(el).focus()
 
     const [inputEvents, detachInput] = spyEvents(el, 'input')
 
@@ -78,10 +69,46 @@ describe('WebUiSwitch 键盘契约（浏览器）', () => {
     cleanupElement(el)
   })
 
+  it('保留作者设置的 tabindex，包括切换禁用态之后', async () => {
+    const el = mount({ tabindex: '-1' })
+    await waitForUpdate(el)
+    expect(el.tabIndex).toBe(-1)
+
+    el.checked = true
+    await waitForUpdate(el)
+    expect(el.tabIndex).toBe(-1)
+
+    el.disabled = true
+    await waitForUpdate(el)
+    expect(el.tabIndex).toBe(-1)
+
+    el.disabled = false
+    await waitForUpdate(el)
+    expect(el.tabIndex).toBe(-1)
+
+    cleanupElement(el)
+  })
+
+  it('按住 Space 时重复 keydown 不会重复切换', async () => {
+    const el = mount()
+    await waitForUpdate(el)
+    el.focus()
+
+    el.dispatchEvent(new KeyboardEvent('keydown', { key: ' ', bubbles: true }))
+    await waitForUpdate(el)
+    expect(el.checked).toBe(true)
+
+    el.dispatchEvent(new KeyboardEvent('keydown', { key: ' ', bubbles: true, repeat: true }))
+    await waitForUpdate(el)
+    expect(el.checked).toBe(true)
+
+    cleanupElement(el)
+  })
+
   it('disabled 时空格键不切换且不派发事件', async () => {
     const el = mount({ disabled: '' })
     await waitForUpdate(el)
-    keyboardEntry(el).focus()
+    switchControl(el).focus()
 
     const [inputEvents, detachInput] = spyEvents(el, 'input')
     const [changeEvents, detachChange] = spyEvents(el, 'change')
@@ -98,32 +125,10 @@ describe('WebUiSwitch 键盘契约（浏览器）', () => {
     cleanupElement(el)
   })
 
-  /**
-   * 内层 sr-only checkbox 是可聚焦的无障碍入口，它自身的 checkedness 必须与
-   * 组件状态一致；否则读屏拿到的是「role=switch[checked=true] 里嵌着
-   * checkbox[checked=false]」这种自相矛盾的树。
-   */
-  it('空格切换后内层原生 checkbox 与宿主状态一致', async () => {
-    const el = mount()
-    await waitForUpdate(el)
-    keyboardEntry(el).focus()
-
-    await userEvent.keyboard(' ')
-    await waitForUpdate(el)
-    expect(el.checked).toBe(true)
-    expect(keyboardEntry(el).checked).toBe(true)
-
-    await userEvent.keyboard(' ')
-    await waitForUpdate(el)
-    expect(el.checked).toBe(false)
-    expect(keyboardEntry(el).checked).toBe(false)
-    cleanupElement(el)
-  })
-
   it('Enter 也能切换并派发一次 input 与 change', async () => {
     const el = mount()
     await waitForUpdate(el)
-    keyboardEntry(el).focus()
+    switchControl(el).focus()
 
     const [inputEvents, detachInput] = spyEvents(el, 'input')
     const [changeEvents, detachChange] = spyEvents(el, 'change')
@@ -132,7 +137,7 @@ describe('WebUiSwitch 键盘契约（浏览器）', () => {
     await waitForUpdate(el)
 
     expect(el.checked).toBe(true)
-    expect(keyboardEntry(el).checked).toBe(true)
+    expect(el.getAttribute('aria-checked')).toBe('true')
     expect(inputEvents).toHaveLength(1)
     expect(changeEvents).toHaveLength(1)
 
@@ -144,12 +149,79 @@ describe('WebUiSwitch 键盘契约（浏览器）', () => {
   it('disabled 时 Enter 不切换', async () => {
     const el = mount({ disabled: '' })
     await waitForUpdate(el)
-    keyboardEntry(el).focus()
+    switchControl(el).focus()
 
     await userEvent.keyboard('{Enter}')
     await waitForUpdate(el)
 
     expect(el.checked).toBe(false)
+    cleanupElement(el)
+  })
+
+  it('light DOM 文本可见并作为 switch 的默认可访问名', async () => {
+    const el = mount()
+    el.textContent = 'Enable notifications'
+    await waitForUpdate(el)
+
+    expect(page.getByRole('switch', { name: 'Enable notifications' }).length).toBe(1)
+    expect(el.innerText).toContain('Enable notifications')
+
+    cleanupElement(el)
+  })
+
+  it('host aria-label 与 aria-labelledby 可以命名 switch', async () => {
+    const labelled = mount({ 'aria-label': 'Notification setting' })
+    await waitForUpdate(labelled)
+    expect(page.getByRole('switch', { name: 'Notification setting' }).length).toBe(1)
+
+    const label = document.createElement('span')
+    label.id = 'external-switch-label'
+    label.textContent = 'Email updates'
+    document.body.append(label)
+    const labelledBy = mount({ 'aria-labelledby': label.id })
+    await waitForUpdate(labelledBy)
+    expect(page.getByRole('switch', { name: 'Email updates' }).length).toBe(1)
+
+    cleanupElement(labelled)
+    cleanupElement(labelledBy)
+    label.remove()
+  })
+
+  it('没有可见标签时不额外增加 track 与标签之间的宽度', async () => {
+    const unnamed = mount()
+    const named = mount({ 'aria-label': 'Alpha' })
+    await Promise.all([waitForUpdate(unnamed), waitForUpdate(named)])
+
+    await expect
+      .poll(() => [unnamed.getBoundingClientRect().width, named.getBoundingClientRect().width])
+      .toEqual([40, 40])
+
+    cleanupElement(unnamed)
+    cleanupElement(named)
+  })
+
+  it('键盘焦点只显示轨道上的 focus ring', async () => {
+    const el = mount()
+    await waitForUpdate(el)
+
+    await userEvent.keyboard('{Tab}')
+
+    const track = el.shadowRoot!.querySelector('.wui-switch-track')!
+    expect(document.activeElement).toBe(el)
+    expect(getComputedStyle(el).outlineStyle).toBe('none')
+    expect(getComputedStyle(track).outlineColor).not.toBe('rgba(0, 0, 0, 0)')
+
+    cleanupElement(el)
+  })
+
+  it('disabled 时可见标签与轨道一起变淡', async () => {
+    const el = mount({ disabled: '' })
+    el.textContent = 'Disabled option'
+    await waitForUpdate(el)
+
+    const label = el.shadowRoot!.querySelector('.wui-switch-label')!
+    expect(getComputedStyle(label).opacity).toBe('0.4')
+
     cleanupElement(el)
   })
 })

@@ -1,4 +1,5 @@
 import '..'
+import '@/components/theme'
 
 import { afterEach, describe, expect, it } from 'vite-plus/test'
 import { userEvent } from 'vite-plus/test/browser'
@@ -8,12 +9,98 @@ import { flush, mountElement, waitForUpdate } from '@/shared/test-utils'
 
 import type { WebUiButton } from '..'
 
+function luminance(color: string): number {
+  const channels = color
+    .match(/[\d.]+/g)
+    ?.slice(0, 3)
+    .map(Number)
+  if (!channels || channels.length !== 3) throw new Error(`Expected an rgb color, received ${color}`)
+  const [red, green, blue] = channels.map(channel => {
+    const normalized = channel / 255
+    return normalized <= 0.04045 ? normalized / 12.92 : ((normalized + 0.055) / 1.055) ** 2.4
+  })
+  return 0.2126 * red + 0.7152 * green + 0.0722 * blue
+}
+
+function contrastRatio(first: string, second: string): number {
+  const [lighter, darker] = [luminance(first), luminance(second)].sort((a, b) => b - a)
+  return (lighter + 0.05) / (darker + 0.05)
+}
+
 afterEach(() => {
   document.body.replaceChildren()
   resetPointerFocusState()
 })
 
 describe('WebUiButton 组件（浏览器）', () => {
+  it('接受裸 px 数值与带单位的 CSS 长度，并保持 icon button 正方形', async () => {
+    const numeric = mountElement<WebUiButton>('web-ui-button', { attrs: { size: '32' } })
+    const decimal = mountElement<WebUiButton>('web-ui-button', { attrs: { size: '.5' } })
+    const trailingDecimal = mountElement<WebUiButton>('web-ui-button', { attrs: { size: '32.' } })
+    const pixels = mountElement<WebUiButton>('web-ui-button', { attrs: { size: '32px' } })
+    const rem = mountElement<WebUiButton>('web-ui-button', { attrs: { size: '1.5rem' } })
+    const icon = mountElement<WebUiButton>('web-ui-button', {
+      attrs: { size: '32px', icon: '', 'aria-label': 'Icon button' }
+    })
+
+    await Promise.all([numeric, decimal, trailingDecimal, pixels, rem, icon].map(waitForUpdate))
+
+    expect(numeric.getBoundingClientRect().height).toBe(32)
+    expect(decimal.getBoundingClientRect().height).toBe(0.5)
+    expect(trailingDecimal.getBoundingClientRect().height).toBe(32)
+    expect(pixels.getBoundingClientRect().height).toBe(32)
+    expect(rem.getBoundingClientRect().height).toBe(24)
+    expect(icon.getBoundingClientRect().width).toBe(32)
+    expect(icon.getBoundingClientRect().height).toBe(32)
+  })
+
+  it('size 通过数字属性赋值时仍按 px 更新', async () => {
+    const button = mountElement<WebUiButton>('web-ui-button')
+    ;(button as unknown as { size: unknown }).size = 32
+
+    await waitForUpdate(button)
+
+    expect(button.getBoundingClientRect().height).toBe(32)
+  })
+
+  it('数字 size 为 0 时仍按 0px 处理', async () => {
+    const button = mountElement<WebUiButton>('web-ui-button')
+    ;(button as unknown as { size: unknown }).size = 0
+
+    await waitForUpdate(button)
+
+    expect(button.getBoundingClientRect().height).toBe(0)
+  })
+
+  it('移除 size 属性后恢复默认高度', async () => {
+    const button = mountElement<WebUiButton>('web-ui-button', { attrs: { size: '32' } })
+    await waitForUpdate(button)
+    expect(button.getBoundingClientRect().height).toBe(32)
+
+    button.removeAttribute('size')
+    await waitForUpdate(button)
+
+    expect(button.getBoundingClientRect().height).toBe(36)
+  })
+
+  it('dark primary 的文字与 accent 背景达到 WCAG AA', async () => {
+    const theme = document.createElement('web-ui-theme')
+    theme.setAttribute('appearance', 'dark')
+    theme.setAttribute('motion', 'reduced')
+    const button = document.createElement('web-ui-button') as WebUiButton
+    button.variant = 'primary'
+    button.textContent = 'Primary'
+    theme.append(button)
+    document.body.append(theme)
+    await waitForUpdate(theme)
+    await waitForUpdate(button)
+
+    const inner = button.shadowRoot?.querySelector('button')
+    expect(inner).toBeTruthy()
+    const styles = getComputedStyle(inner!)
+    expect(contrastRatio(styles.color, styles.backgroundColor)).toBeGreaterThanOrEqual(4.5)
+  })
+
   it('将规范化后的 type 传给真实原生 button', async () => {
     const button = mountElement<WebUiButton>('web-ui-button', { attrs: { type: 'invalid' } })
     await waitForUpdate(button)

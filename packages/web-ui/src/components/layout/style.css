@@ -133,7 +133,7 @@ aside {
   border-radius: var(--wui-radius-control, calc(infinity * 1px));
 
   opacity: 0;
-  background: var(--wui-color-accent, #08f);
+  background: var(--wui-color-accent, #0071e3);
 
   transition: opacity var(--wui-duration-feedback, 100ms) ease;
 }
@@ -156,7 +156,7 @@ aside.is-resizing .sidebar-resize-handle::before {
 .sidebar-resize-handle:focus-visible {
   border-radius: var(--wui-radius-control, calc(infinity * 1px));
   outline: var(--wui-focus-ring-width, 3px) solid
-    var(--wui-color-focus-ring, color-mix(in srgb, var(--wui-color-accent, #08f) 40%, transparent));
+    var(--wui-color-focus-ring, color-mix(in srgb, var(--wui-color-accent, #0071e3) 40%, transparent));
   outline-offset: 2px;
 }
 

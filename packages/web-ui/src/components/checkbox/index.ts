@@ -168,7 +168,7 @@ export class WebUiCheckbox extends FormAssociated(LitElement) {
     }
 
     return html`
-      <label
+      <span
         class=${classMap(cls)}
         tabindex=${this._isDisabled ? '-1' : '0'}
         role="checkbox"
@@ -184,7 +184,7 @@ export class WebUiCheckbox extends FormAssociated(LitElement) {
           ></span>
         </span>
         <span class="wui-checkbox-label"><slot></slot></span>
-      </label>
+      </span>
     `
   }
 
