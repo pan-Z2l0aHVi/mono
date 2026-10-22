@@ -7211,6 +7211,12 @@ export const exampleDocs: ExampleDoc[] = [
             "#000"
           ],
           [
+            "--wui-color-on-danger",
+            "<p><code>danger</code> 背景上的前景色</p>",
+            "#fff",
+            "#000"
+          ],
+          [
             "--wui-color-on-control",
             "<p>控件内芯前景色</p>",
             "#fff",
@@ -7250,7 +7256,7 @@ export const exampleDocs: ExampleDoc[] = [
             "--wui-color-focus-ring",
             "<p>Focus indicator 颜色，由 accent 派生</p>",
             "color-mix(in srgb, var(--wui-color-accent, #0071e3) 40%, transparent)",
-            "color-mix(in srgb, var(--wui-color-accent) 62%, var(--wui-color-text) 38%)"
+            "color-mix(in srgb, var(--wui-color-accent, #0a84ff) 62%, var(--wui-color-text) 38%)"
           ]
         ]
       },
