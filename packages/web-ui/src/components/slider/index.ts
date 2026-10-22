@@ -32,11 +32,16 @@ export class WebUiSlider extends FormAssociated(LitElement) {
 
   private readonly _fieldId = createFieldId('web-ui-slider')
   private _renderedLabelledbyText = ''
+  private _labelledbyControlTargets = new Set<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>()
   private readonly _labelledbyObserver = new MutationObserver(() => {
     const labelledbyText = this._getLabelledbyText()
     if (labelledbyText !== this._renderedLabelledbyText) this.requestUpdate()
     this._observeLabelledbyTargets()
   })
+  private readonly _handleLabelledbyControlValueChange = () => {
+    const labelledbyText = this._getLabelledbyText()
+    if (labelledbyText !== this._renderedLabelledbyText) this.requestUpdate()
+  }
 
   // value 使用访问器模式同步表单关联状态。
   private _value = 0
@@ -87,6 +92,7 @@ export class WebUiSlider extends FormAssociated(LitElement) {
 
   override disconnectedCallback() {
     this._labelledbyObserver.disconnect()
+    this._syncLabelledbyControlTargets(new Set())
     super.disconnectedCallback()
     this._dragGestureHandle?.destroy()
     this._dragGestureHandle = null
@@ -213,8 +219,18 @@ export class WebUiSlider extends FormAssociated(LitElement) {
     const ariaLabel = element.getAttribute('aria-label')?.trim()
     if (ariaLabel) return ariaLabel
 
-    const alt = element.getAttribute('alt')?.trim()
-    if (alt) return alt
+    if (
+      element instanceof HTMLInputElement ||
+      element instanceof HTMLTextAreaElement ||
+      element instanceof HTMLSelectElement
+    ) {
+      return element.value.trim()
+    }
+
+    if (element.localName === 'img') {
+      const alt = element.getAttribute('alt')?.trim()
+      if (alt) return alt
+    }
 
     const content = Array.from(element.childNodes)
       .map(node => {
@@ -247,10 +263,16 @@ export class WebUiSlider extends FormAssociated(LitElement) {
 
   private _observeLabelledbyTargets() {
     this._labelledbyObserver.disconnect()
-    if (!this.ariaLabelledby || !this.isConnected) return
+    if (!this.ariaLabelledby || !this.isConnected) {
+      this._syncLabelledbyControlTargets(new Set())
+      return
+    }
 
     const root = this.getRootNode()
-    if (!(root instanceof Document || root instanceof ShadowRoot)) return
+    if (!(root instanceof Document || root instanceof ShadowRoot)) {
+      this._syncLabelledbyControlTargets(new Set())
+      return
+    }
 
     const pendingIds = this.ariaLabelledby.trim().split(/\s+/).filter(Boolean)
     const visitedIds = new Set<string>()
@@ -270,6 +292,17 @@ export class WebUiSlider extends FormAssociated(LitElement) {
       if (nestedLabelledby) pendingIds.push(...nestedLabelledby.trim().split(/\s+/).filter(Boolean))
     }
 
+    this._syncLabelledbyControlTargets(
+      new Set(
+        [...targets].filter(
+          (target): target is HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement =>
+            target instanceof HTMLInputElement ||
+            target instanceof HTMLTextAreaElement ||
+            target instanceof HTMLSelectElement
+        )
+      )
+    )
+
     const structuralTargets = new Set<Node>()
     for (const target of targets) {
       this._labelledbyObserver.observe(target, {
@@ -286,7 +319,8 @@ export class WebUiSlider extends FormAssociated(LitElement) {
           'hidden',
           'id',
           'style',
-          'title'
+          'title',
+          'value'
         ]
       })
 
@@ -312,6 +346,22 @@ export class WebUiSlider extends FormAssociated(LitElement) {
       attributes: missingTargets,
       attributeFilter: missingTargets ? ['aria-hidden', 'class', 'hidden', 'id', 'style'] : undefined
     })
+  }
+
+  private _syncLabelledbyControlTargets(targets: Set<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) {
+    for (const target of this._labelledbyControlTargets) {
+      if (targets.has(target)) continue
+      target.removeEventListener('input', this._handleLabelledbyControlValueChange)
+      target.removeEventListener('change', this._handleLabelledbyControlValueChange)
+    }
+
+    for (const target of targets) {
+      if (this._labelledbyControlTargets.has(target)) continue
+      target.addEventListener('input', this._handleLabelledbyControlValueChange)
+      target.addEventListener('change', this._handleLabelledbyControlValueChange)
+    }
+
+    this._labelledbyControlTargets = targets
   }
 
   private _normalizeValue(value: number): number {

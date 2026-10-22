@@ -6,7 +6,7 @@ export default function Demo() {
   return (
     <web-ui-slider
       value={volume}
-      aria-label="音量"
+      aria-label="受控音量"
       min={0}
       max={100}
       onInput={event => setVolume(event.currentTarget.value)}

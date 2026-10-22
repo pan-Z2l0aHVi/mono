@@ -52,7 +52,7 @@ export default function Demo() {
   return (
     <web-ui-slider
       value={volume}
-      aria-label="音量"
+      aria-label="受控音量"
       min={0}
       max={100}
       onInput={event => setVolume(event.currentTarget.value)}
@@ -63,7 +63,7 @@ export default function Demo() {
 
 ```vue
 <template>
-  <web-ui-slider aria-label="音量" :value="volume" :min="0" :max="100" @input="onInput"></web-ui-slider>
+  <web-ui-slider aria-label="受控音量" :value="volume" :min="0" :max="100" @input="onInput"></web-ui-slider>
 </template>
 
 <script setup lang="ts">

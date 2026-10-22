@@ -96,6 +96,49 @@ describe('WebUiSlider accessible name（浏览器）', () => {
     cleanupElement(slider)
     label.remove()
   })
+
+  it('aria-labelledby 忽略非图片 alt、读取文本框值并跟随输入变化', async () => {
+    const visibleLabel = document.createElement('span')
+    visibleLabel.id = 'slider-visible-label'
+    visibleLabel.setAttribute('alt', 'Alt Attribute')
+    visibleLabel.textContent = 'Visible Text'
+
+    const input = document.createElement('input')
+    input.id = 'slider-input-label'
+    input.value = 'Input Value'
+
+    const nativeVisible = document.createElement('div')
+    nativeVisible.setAttribute('role', 'slider')
+    nativeVisible.setAttribute('aria-labelledby', visibleLabel.id)
+    const nativeInput = document.createElement('div')
+    nativeInput.setAttribute('role', 'slider')
+    nativeInput.setAttribute('aria-labelledby', input.id)
+    document.body.append(visibleLabel, input, nativeVisible, nativeInput)
+
+    const visible = createSlider() as Updatable
+    const fromInput = createSlider() as Updatable
+    visible.setAttribute('aria-labelledby', visibleLabel.id)
+    fromInput.setAttribute('aria-labelledby', input.id)
+    await Promise.all([visible.updateComplete, fromInput.updateComplete])
+
+    expect(page.getByRole('slider', { name: 'Visible Text' }).length).toBe(2)
+    expect(page.getByRole('slider', { name: 'Alt Attribute' }).length).toBe(0)
+    expect(page.getByRole('slider', { name: 'Input Value' }).length).toBe(2)
+
+    input.value = 'Updated Input Value'
+    input.dispatchEvent(new Event('input', { bubbles: true }))
+    await pollUntil(
+      () => page.getByRole('slider', { name: 'Updated Input Value' }).length === 2,
+      'aria-labelledby 未跟随被引用文本框的 value 更新'
+    )
+
+    cleanupElement(visible)
+    cleanupElement(fromInput)
+    visibleLabel.remove()
+    input.remove()
+    nativeVisible.remove()
+    nativeInput.remove()
+  })
 })
 
 const pointer = (type: string, x: number, y: number): PointerEvent =>
