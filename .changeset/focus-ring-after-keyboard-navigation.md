@@ -1,5 +1,5 @@
 ---
-"@greypan/web-ui": patch
+'@greypan/web-ui': patch
 ---
 
 Restore the focus ring when keyboard navigation follows pointer input.
