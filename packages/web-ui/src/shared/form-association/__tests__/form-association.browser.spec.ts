@@ -61,6 +61,21 @@ describe('表单关联组件（浏览器）', () => {
     expect([...new FormData(form).keys()]).toHaveLength(0)
   })
 
+  it('提交小数 step 步进结果时不触发原生 stepMismatch', async () => {
+    const [form, input] = appendFormControl<WebUiInputNumber>('web-ui-input-number')
+    input.name = 'quantity'
+    input.value = 1
+    input.step = 0.3
+    await input.updateComplete
+
+    ;(queryA11y(input, 'button[aria-label="Increase"]') as HTMLButtonElement).click()
+    await input.updateComplete
+
+    expect(input.value).toBe(1.3)
+    expect(form.checkValidity()).toBe(true)
+    expect(new FormData(form).get('quantity')).toBe('1.3')
+  })
+
   it('仅在选中时提交可勾选控件值，并恢复声明初始状态', async () => {
     const cases: Array<[string, string]> = [
       ['web-ui-checkbox', 'agree'],

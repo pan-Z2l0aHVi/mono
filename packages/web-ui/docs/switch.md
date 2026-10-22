@@ -3,7 +3,7 @@ component: switch
 tag: web-ui-switch
 ---
 
-开关，声明 `role="switch"` 与 `aria-checked`；点击即时开合，也支持按住 track 横拖与甩动定值，空格与 Enter 都能键盘切换。
+开关，声明 `role="switch"` 与 `aria-checked`；点击即时开合，也支持按住 track 横拖与甩动定值，空格与 Enter 都能键盘切换。默认插槽的子文本会作为可见标签和默认 accessible name；也可以在 host 上设置 `aria-label` 或 `aria-labelledby`。
 
 ## 示例
 
@@ -84,7 +84,7 @@ export default function Demo() {
 
 ### 事件节奏 {#events}
 
-事件只在用户操作后派发：点击与 Enter 派发 `input` 加 `change`，空格由内部原生 checkbox 完成激活、`input` 自己冒泡到宿主，组件只补 `change`。程序写入 `checked` 两条都不派发——下面这个按钮走的正是这条路。
+事件只在用户操作后派发：点击、Enter 与空格都由组件派发 `input` 加 `change` 两条。程序写入 `checked` 两条都不派发——下面这个按钮走的正是这条路。
 
 ```tsx
 import type { WebUiSwitch } from '@greypan/web-ui'
@@ -196,7 +196,7 @@ function record(name: string) {
 
 ### 表单值 {#form}
 
-`name` 是字段名，`value` 是提交值，留空时提交 `'on'`。未选中时这个字段整个不进 `FormData`；`required` 在未选中时拦下提交（`valueMissing`），外层 `<fieldset disabled>` 禁用时校验一并退让。
+`name` 是字段名，`value` 是提交值，留空时提交 `'on'`。未选中时这个字段整个不进 `FormData`；`required` 在未选中时拦下提交（`valueMissing`），外层 `<fieldset disabled>` 禁用时校验一并退让。可见标签同时命名 switch；`aria-label` 或 `aria-labelledby` 可覆盖默认名称。
 
 ```tsx
 import { useRef, useState } from 'react'
@@ -281,25 +281,31 @@ function reset() {
 | `required` | 必填校验：未选中时拦下提交。                                       | `boolean` | `false` |
 | `loading`  | 加载状态：阻断交互，thumb 内显示旋转 icon，当前值保持不动。        | `boolean` | `false` |
 
+### Slots
+
+| 名称      | 说明                                                                   |
+| --------- | ---------------------------------------------------------------------- |
+| `default` | 可见标签文本，并作为 switch 的 accessible name；为空时不增加额外间距。 |
+
 ### Events
 
-| 名称     | 说明                                                                              |
-| -------- | --------------------------------------------------------------------------------- |
-| `input`  | 用户切换时派发：点击、Enter、拖拽定值，以及空格时内部控件冒泡上来的原生 `input`。 |
-| `change` | 与 `input` 同一批提交点派发；空格这条由组件转发，程序写入 `checked` 不派发。      |
+| 名称     | 说明                                                                |
+| -------- | ------------------------------------------------------------------- |
+| `input`  | 用户切换时派发：点击、Enter、空格与拖拽定值，四条路径都由组件派发。 |
+| `change` | 与 `input` 同一批提交点派发；程序写入 `checked` 不派发。            |
 
 ### 行为说明
 
 `checked` 不是观察属性，而是内部状态上的一对 getter / setter：原生标签上写下的 `checked` 只在挂载时被读一次，之后 Lit 不再看这个属性；框架的动态绑定落到 property 上才会随渲染更新。直接写 `el.checked = true` 生效，但不反射成属性，也不派发任何事件。要跟着页面走就接住 `change` 再写回，见上面的基础示例。
 
-三条激活路径的事件来源不同。鼠标点击落在 shadow 内的 `<label>` 上，组件 `preventDefault()` 掉它的默认激活行为，避免内部 checkbox 再 toggling 一次，然后自己写入新值并派发 `input` 与 `change`。空格走内部 sr-only checkbox 的原生激活：原生 `input` 组合且冒泡，宿主直接收到；原生 `change` 不组合、过不了 shadow 边界，由组件在宿主上补发一条 `composed` 的 `change`。原生 checkbox 不响应 Enter，组件补上 `role="switch"` 应有的开合语义，派发 `input` 与 `change`。拖拽定值那一次同样派发两条。
+三条激活路径的最终出口相同：点击、Space / Enter 与拖拽定值都经组件写入新值，并在宿主上派发 `input` 与 `change` 两条 `composed` 事件。host 自己承接 click 与 keydown（Space / Enter `preventDefault()` 后切换，不依赖内部原生控件），所以三条路径不再有冒泡与转发之分，程序写入 `checked` 仍不派发。
 
-`disabled` 与 `loading` 共用同一条禁用路径：`_isDisabled`（含表单级禁用）或 `loading` 时，点击、键盘与拖拽三条入口都在处理函数最前面返回，thumb 停在当前值。校验只走一半：`required` 的 `valueMissing` 判定读的是 `_isDisabled`，因此 `disabled` 上报干净状态、`loading` 不上报。宿主上没有 tab 位，可用态下按 Tab 实际聚焦的是 shadow 内的 sr-only checkbox，焦点环靠 `:focus-within` 画在 track 上；鼠标触发的焦点不画环，交给共享的 pointer focus 抑制机制。`disabled` 或 `loading` 时这个内部控件一并被 `disabled`，整块离开 tab 序列，焦点环也就无从出现。
+`disabled` 与 `loading` 共用同一条禁用路径：`_isDisabled`（含表单级禁用）或 `loading` 时，点击、键盘与拖拽三条入口都在处理函数最前面返回，thumb 停在当前值。校验只走一半：`required` 的 `valueMissing` 判定读的是 `_isDisabled`，因此 `disabled` 上报干净状态、`loading` 不上报。键盘焦点落在 host 上（可用态 `tabindex=0`），焦点环靠 `:host(:focus-visible)` 画在 track 上；鼠标触发的焦点不画环，交给共享的 pointer focus 抑制机制。`disabled` 或 `loading` 时 host 的 `tabindex` 被压成 `-1`（原值记下、恢复时还原），整块离开 tab 序列，焦点环也就无从出现。
 
-无障碍名称目前缺一段：组件没有 `aria-label` 属性，shadow 内 `role="switch"` 的 `<label>` 盒里也没有可读文本，写在宿主外的文字不会进 shadow。读屏因此只能报出「开关 + 已勾选/未勾选」，说不出这个开关是关于什么的。
+accessible name：默认插槽内容就是可见标签，同时也是 switch 的 accessible name；需要引用外部 label 时在 `web-ui-switch` host 上设置 `aria-labelledby`，或直接设置 `aria-label`。host 上的 `role="switch"`、`aria-checked` 与 `aria-disabled` 由组件同步维护。
 
 ### 布局
 
-track 是 40×20 的胶囊盒，圆角取 `--wui-radius-control`，底色取 `--wui-color-surface-track`，打开时换成 `--wui-color-accent`；thumb 是 16×16 圆点，静止态用 `--wui-color-on-control` 实心加阴影，按压与拖拽时换成 glass 表面并加宽到 20px、`scale(1.5)`，两条形态切换由 transition 衔接。打开态位移 20px（按压态 16px，配合放大后的视觉位置一致）。拖拽期间的位置走内联的 `--wui-switch-drag-offset`，同时关掉 transition 让它跟手——这个变量由组件自己驱动，不要当样式钩子写。宿主与 track 都是 `touch-action: none`，`user-select: none` 只写在 track 上；禁用与加载落到 `.is-disabled`，整块降到四成不透明度并换 `not-allowed` 光标。
+标签与 track 之间默认间距为 `8px`；default slot 没有可渲染宽度时（空槽位或只放了视觉隐藏的无障碍名）间距收起，宿主宽度不会超过 track。track 是 40×20 的胶囊盒，圆角取 `--wui-radius-control`，底色取 `--wui-color-surface-track`，打开时换成 `--wui-color-accent`；thumb 是 16×16 圆点，静止态用 `--wui-color-on-control` 实心加阴影，按压与拖拽时换成 glass 表面并加宽到 20px、`scale(1.5)`，两条形态切换由 transition 衔接。打开态位移 20px（按压态 16px，配合放大后的视觉位置一致）。拖拽期间的位置走内联的 `--wui-switch-drag-offset`，同时关掉 transition 让它跟手——这个变量由组件自己驱动，不要当样式钩子写。宿主与 track 都是 `touch-action: none`，`user-select: none` 只写在 track 上；禁用与加载落到 `.is-disabled`，整块降到四成不透明度并换 `not-allowed` 光标。
 
 组件没有自有的尺寸或颜色 token，全部走主题共享 token，因此这里不列 CSS Custom Properties 表：宽度与颜色要改，改的是 `--wui-color-surface-track` 与 `--wui-color-accent` 这类主题变量本身，作用范围是所有控件。

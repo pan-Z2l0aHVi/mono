@@ -3,7 +3,7 @@ component: back-top
 tag: web-ui-back-top
 ---
 
-回到顶部 button（`web-ui-back-top`）：滚动位置达到 `threshold` 后出现在角落，点击或按 Enter / Space 回到顶部。默认跟随页面滚动；把 `scrollTarget` 指向某个滚动容器后，它只随该容器滚动出现，并停在容器底部角落。
+回到顶部 button（`web-ui-back-top`）：滚动位置达到 `threshold` 后出现在角落，点击或按 Enter / Space 回到顶部。默认平滑回顶；主题设置为 `motion="reduced"`，或 `motion="system"` 且系统偏好减少动效时，点击或按 Enter 会立即回顶。默认跟随页面滚动；把 `scrollTarget` 指向某个滚动容器后，它只随该容器滚动出现，并停在容器底部角落。
 
 ## 示例
 
@@ -117,7 +117,7 @@ onMounted(() => {
 
 ### 立即回到顶部 {#instant}
 
-`scroll-behavior` 默认 `smooth`，`toTop()` 走平滑滚动；改成 `auto` 后直接跳到顶部、不播动画。两者只在滚动方式上不同：可见性判断、阈值与 slot 都不受影响。
+`scroll-behavior="auto"` 不请求平滑滚动，点击直接跳到顶部。主题要求减少动效时，即使属性为默认的 `smooth` 或滚动容器的 CSS 指定 `scroll-behavior: smooth`，点击或按 Enter 也会立即到位。两者只在滚动方式上不同：可见性判断、阈值与 slot 都不受影响。
 
 ```tsx
 import type { WebUiBackTop } from '@greypan/web-ui'
@@ -171,12 +171,12 @@ onMounted(() => {
 
 ### Props
 
-| 名称              | 说明                                                     | 类型                    | 默认值     |
-| ----------------- | -------------------------------------------------------- | ----------------------- | ---------- |
-| `scroll-behavior` | 滚动行为：`smooth`（默认）或 `auto`。                    | `'smooth' \| 'auto'`    | `'smooth'` |
-| `visible`         | 当前可见状态，由滚动位置驱动。                           | `boolean`               | `false`    |
-| `scrollTarget`    | 滚动容器，`window`（默认）或 `HTMLElement`（property）。 | `HTMLElement \| Window` | `window`   |
-| `threshold`       | 显示 button 的滚动阈值（px）。                           | `number`                | `200`      |
+| 名称              | 说明                                                              | 类型                    | 默认值     |
+| ----------------- | ----------------------------------------------------------------- | ----------------------- | ---------- |
+| `scroll-behavior` | 滚动行为：`smooth`（默认）或 `auto`；主题要求减少动效时立即滚动。 | `'smooth' \| 'auto'`    | `'smooth'` |
+| `visible`         | 当前可见状态，由滚动位置驱动。                                    | `boolean`               | `false`    |
+| `scrollTarget`    | 滚动容器，`window`（默认）或 `HTMLElement`（property）。          | `HTMLElement \| Window` | `window`   |
+| `threshold`       | 显示 button 的滚动阈值（px）。                                    | `number`                | `200`      |
 
 ### Slots
 
@@ -186,9 +186,9 @@ onMounted(() => {
 
 ### Methods
 
-| 名称      | 说明                                        |
-| --------- | ------------------------------------------- |
-| `toTop()` | 滚动回顶部，行为由 `scroll-behavior` 决定。 |
+| 名称      | 说明                                     |
+| --------- | ---------------------------------------- |
+| `toTop()` | 滚动回顶部；主题要求减少动效时立即滚动。 |
 
 ### 定位
 

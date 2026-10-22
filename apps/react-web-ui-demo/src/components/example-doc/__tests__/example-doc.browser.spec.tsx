@@ -25,7 +25,7 @@ import { akarIconsCircleCheck, lucideCircleAlert, lucideCopy } from '@greypan/we
 import { cleanup, render, waitFor } from '@testing-library/react'
 import { act } from 'react'
 import { afterEach, describe, expect, it } from 'vite-plus/test'
-import { userEvent } from 'vite-plus/test/browser'
+import { page, userEvent } from 'vite-plus/test/browser'
 
 import { setViewport } from '@/__tests__/viewport'
 import { exampleDocs } from '@/generated/examples'
@@ -925,6 +925,31 @@ describe('example-doc（React 面 / 真实浏览器）', () => {
         )
       ).toEqual(doc.samples.map(candidate => candidate.demoKey).filter(Boolean))
       await mountDemos(container, doc, tag)
+    }
+  })
+
+  it('同页的 slider 示例使用不同 accessible name', async () => {
+    const { container } = render(<ExampleDoc component="slider" />)
+    await mountDemos(container)
+
+    const examples = [
+      ['基础', '音量'],
+      ['刻度与垂直方向', '垂直刻度'],
+      ['受控值', '受控音量']
+    ] as const
+    expect(new Set(examples.map(([, name]) => name)).size).toBe(examples.length)
+
+    for (const [title, name] of examples) {
+      const host = sliderIn(container, title)
+      expect(host.getAttribute('aria-label')).toBe(name)
+      expect(
+        page.elementLocator(host).getByRole('slider', { name, exact: true }).length,
+        `${title} 的 slider 名称`
+      ).toBe(1)
+      expect(
+        page.elementLocator(container).getByRole('slider', { name, exact: true }).length,
+        `当前组件文档中名为「${name}」的 slider`
+      ).toBe(1)
     }
   })
 

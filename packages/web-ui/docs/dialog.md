@@ -220,6 +220,7 @@ const open = ref(false)
 | ------------------- | -------------------------------------------------------------- | --------- | ------- |
 | `open`              | dialog 可见性。                                                | `boolean` | `false` |
 | `closable`          | 显示内置关闭 button。                                          | `boolean` | `false` |
+| `horizontal`        | Footer 操作按钮横向排列。                                      | `boolean` | `false` |
 | `no-scroll-lock`    | 打开时不锁定页面滚动。                                         | `boolean` | `false` |
 | `no-backdrop-close` | 禁止点击 backdrop 关闭。                                       | `boolean` | `false` |
 | `no-escape-close`   | 禁止按 Escape 关闭。                                           | `boolean` | `false` |

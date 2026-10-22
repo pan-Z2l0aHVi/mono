@@ -31,7 +31,7 @@ import type {
 import { akarIconsCircleCheck, lucideCircleAlert, lucideCopy } from '@greypan/web-ui/icons'
 import { mount, type VueWrapper } from '@vue/test-utils'
 import { afterEach, describe, expect, it, vi } from 'vite-plus/test'
-import { userEvent } from 'vite-plus/test/browser'
+import { page, userEvent } from 'vite-plus/test/browser'
 import { nextTick } from 'vue'
 
 import { setViewport } from '@/__tests__/viewport'
@@ -903,6 +903,31 @@ describe('example-doc（Vue 面 / 真实浏览器）', () => {
         [...element.querySelectorAll('[data-sample-preview]')].map(node => node.getAttribute('data-sample-preview'))
       ).toEqual(doc.samples.map(candidate => candidate.demoKey).filter(Boolean))
       await mountDemos(element, doc, tag)
+    }
+  })
+
+  it('同页的 slider 示例使用不同 accessible name', async () => {
+    const element = mountDoc('slider')
+    await mountDemos(element)
+
+    const examples = [
+      ['基础', '音量'],
+      ['刻度与垂直方向', '垂直刻度'],
+      ['受控值', '受控音量']
+    ] as const
+    expect(new Set(examples.map(([, name]) => name)).size).toBe(examples.length)
+
+    for (const [title, name] of examples) {
+      const host = sliderIn(element, title)
+      expect(host.getAttribute('aria-label')).toBe(name)
+      expect(
+        page.elementLocator(host).getByRole('slider', { name, exact: true }).length,
+        `${title} 的 slider 名称`
+      ).toBe(1)
+      expect(
+        page.elementLocator(element).getByRole('slider', { name, exact: true }).length,
+        `当前组件文档中名为「${name}」的 slider`
+      ).toBe(1)
     }
   })
 

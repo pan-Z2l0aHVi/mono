@@ -1,6 +1,7 @@
 import '..'
 
 import { afterEach, describe, expect, it } from 'vite-plus/test'
+import { page, userEvent } from 'vite-plus/test/browser'
 
 import { cleanupElement, pollUntil, queryA11y } from '@/shared/test-utils'
 
@@ -28,6 +29,117 @@ const trackOf = (el: HTMLElement): HTMLElement => {
   expect(node, '未找到 role="slider" 的可交互元素').toBeTruthy()
   return node as HTMLElement
 }
+
+describe('WebUiSlider accessible name（浏览器）', () => {
+  it('宿主 aria-label 命名 role=slider，多个实例保持可区分且支持更新', async () => {
+    const music = createSlider() as Updatable
+    const voice = createSlider() as Updatable
+    await Promise.all([music.updateComplete, voice.updateComplete])
+
+    music.setAttribute('aria-label', 'Music')
+    voice.setAttribute('aria-label', 'Voice')
+    await Promise.all([music.updateComplete, voice.updateComplete])
+
+    const musicHost = page.elementLocator(music)
+    const voiceHost = page.elementLocator(voice)
+    expect(musicHost.getByRole('slider', { name: 'Music' }).length).toBe(1)
+    expect(voiceHost.getByRole('slider', { name: 'Voice' }).length).toBe(1)
+    expect(page.getByRole('slider', { name: 'Slider' }).length).toBe(0)
+
+    cleanupElement(music)
+    cleanupElement(voice)
+  })
+
+  it('宿主 aria-labelledby 使用外部引用文本并跟随文本变化', async () => {
+    const label = document.createElement('span')
+    label.id = 'slider-volume-label'
+    label.textContent = 'Volume'
+    document.body.append(label)
+
+    const slider = createSlider() as Updatable
+    await slider.updateComplete
+    slider.setAttribute('aria-labelledby', label.id)
+    await slider.updateComplete
+
+    const sliderHost = page.elementLocator(slider)
+    expect(sliderHost.getByRole('slider', { name: 'Volume' }).length).toBe(1)
+
+    label.textContent = 'Master volume'
+    await pollUntil(
+      () => sliderHost.getByRole('slider', { name: 'Master volume' }).length === 1,
+      'aria-labelledby 更新文本后 accessible name 未同步'
+    )
+
+    cleanupElement(slider)
+    label.remove()
+  })
+
+  it('aria-labelledby 不把 aria-hidden 后代并入 accessible name', async () => {
+    const label = document.createElement('span')
+    label.id = 'slider-volume-label'
+    label.append(document.createTextNode('Volume'))
+    const hiddenDescription = document.createElement('span')
+    hiddenDescription.setAttribute('aria-hidden', 'true')
+    hiddenDescription.textContent = ' hidden description'
+    label.append(hiddenDescription)
+    document.body.append(label)
+
+    const slider = createSlider() as Updatable
+    await slider.updateComplete
+    slider.setAttribute('aria-labelledby', label.id)
+    await slider.updateComplete
+
+    const sliderHost = page.elementLocator(slider)
+    expect(sliderHost.getByRole('slider', { name: 'Volume' }).length).toBe(1)
+    expect(sliderHost.getByRole('slider', { name: 'Volume hidden description' }).length).toBe(0)
+
+    cleanupElement(slider)
+    label.remove()
+  })
+
+  it('aria-labelledby 忽略非图片 alt、读取文本框值并跟随输入变化', async () => {
+    const visibleLabel = document.createElement('span')
+    visibleLabel.id = 'slider-visible-label'
+    visibleLabel.setAttribute('alt', 'Alt Attribute')
+    visibleLabel.textContent = 'Visible Text'
+
+    const input = document.createElement('input')
+    input.id = 'slider-input-label'
+    input.value = 'Input Value'
+
+    const nativeVisible = document.createElement('div')
+    nativeVisible.setAttribute('role', 'slider')
+    nativeVisible.setAttribute('aria-labelledby', visibleLabel.id)
+    const nativeInput = document.createElement('div')
+    nativeInput.setAttribute('role', 'slider')
+    nativeInput.setAttribute('aria-labelledby', input.id)
+    document.body.append(visibleLabel, input, nativeVisible, nativeInput)
+
+    const visible = createSlider() as Updatable
+    const fromInput = createSlider() as Updatable
+    visible.setAttribute('aria-labelledby', visibleLabel.id)
+    fromInput.setAttribute('aria-labelledby', input.id)
+    await Promise.all([visible.updateComplete, fromInput.updateComplete])
+
+    expect(page.getByRole('slider', { name: 'Visible Text' }).length).toBe(2)
+    expect(page.getByRole('slider', { name: 'Alt Attribute' }).length).toBe(0)
+    expect(page.getByRole('slider', { name: 'Input Value' }).length).toBe(2)
+
+    input.value = 'Updated Input Value'
+    input.dispatchEvent(new Event('input', { bubbles: true }))
+    await pollUntil(
+      () => page.getByRole('slider', { name: 'Updated Input Value' }).length === 2,
+      'aria-labelledby 未跟随被引用文本框的 value 更新'
+    )
+
+    cleanupElement(visible)
+    cleanupElement(fromInput)
+    visibleLabel.remove()
+    input.remove()
+    nativeVisible.remove()
+    nativeInput.remove()
+  })
+})
 
 const pointer = (type: string, x: number, y: number): PointerEvent =>
   new PointerEvent(type, { bubbles: true, pointerId: 1, clientX: x, clientY: y })
@@ -63,6 +175,58 @@ describe('WebUiSlider 指针拖拽（浏览器）', () => {
     cleanupElement(el)
   })
 
+  it('竖向为主的斜拖被判定为滚动时不改变 value', async () => {
+    const el = createSlider() as Updatable
+    el.value = 40
+    await el.updateComplete
+
+    const track = trackOf(el)
+    const rect = track.getBoundingClientRect()
+    const downX = rect.left + rect.width * 0.25
+    const downY = rect.top + rect.height / 2
+    const inputEvents: Event[] = []
+    const changeEvents: Event[] = []
+    el.addEventListener('input', e => inputEvents.push(e))
+    el.addEventListener('change', e => changeEvents.push(e))
+
+    track.dispatchEvent(pointer('pointerdown', downX, downY))
+    window.dispatchEvent(pointer('pointermove', downX + 12, downY + 53))
+    window.dispatchEvent(pointer('pointermove', downX + 20, downY + 103))
+    window.dispatchEvent(pointer('pointerup', downX + 20, downY + 103))
+    await el.updateComplete
+
+    expect(el.value).toBe(40)
+    expect(inputEvents).toHaveLength(0)
+    expect(changeEvents).toHaveLength(0)
+    cleanupElement(el)
+  })
+
+  it('竖向滑动越过交叉轴阈值后回到起点也不提交 tap', async () => {
+    const el = createSlider() as Updatable
+    el.value = 40
+    await el.updateComplete
+
+    const track = trackOf(el)
+    const rect = track.getBoundingClientRect()
+    const downX = rect.left + rect.width * 0.4
+    const downY = rect.top + rect.height / 2
+    const inputEvents: Event[] = []
+    const changeEvents: Event[] = []
+    el.addEventListener('input', e => inputEvents.push(e))
+    el.addEventListener('change', e => changeEvents.push(e))
+
+    track.dispatchEvent(pointer('pointerdown', downX, downY))
+    window.dispatchEvent(pointer('pointermove', downX + 2, downY + 53))
+    window.dispatchEvent(pointer('pointermove', downX + 2, downY + 1))
+    window.dispatchEvent(pointer('pointerup', downX + 2, downY + 1))
+    await el.updateComplete
+
+    expect(el.value).toBe(40)
+    expect(inputEvents).toHaveLength(0)
+    expect(changeEvents).toHaveLength(0)
+    cleanupElement(el)
+  })
+
   it('pointerup 后继续移动不再更新 value', async () => {
     const el = createSlider() as Updatable
     await el.updateComplete
@@ -73,15 +237,15 @@ describe('WebUiSlider 指针拖拽（浏览器）', () => {
 
     track.dispatchEvent(pointer('pointerdown', rect.left + rect.width * 0.5, y))
     await el.updateComplete
-    const valueAtDown = el.value
 
     track.dispatchEvent(pointer('pointerup', rect.left + rect.width * 0.5, y))
     await el.updateComplete
+    const valueAtRelease = el.value
 
     track.dispatchEvent(pointer('pointermove', rect.left + rect.width * 0.9, y))
     await el.updateComplete
 
-    expect(el.value).toBe(valueAtDown)
+    expect(el.value).toBe(valueAtRelease)
     cleanupElement(el)
   })
 
@@ -101,6 +265,29 @@ describe('WebUiSlider 指针拖拽（浏览器）', () => {
     await el.updateComplete
 
     expect(el.value).toBe(51)
+    cleanupElement(el)
+  })
+
+  it('指针点击后用方向键调整时 focus ring 可见', async () => {
+    const el = createSlider() as Updatable
+    await el.updateComplete
+
+    const track = trackOf(el)
+    await userEvent.click(track)
+    await el.updateComplete
+
+    expect(document.activeElement).toBe(el)
+    expect(el.dataset.wuiPointerFocus).toBe('true')
+    const valueAfterClick = el.value
+
+    await userEvent.keyboard('{ArrowUp}')
+    await el.updateComplete
+
+    expect(el.value).toBe(valueAfterClick + 1)
+    expect(document.activeElement).toBe(el)
+    expect(track.matches(':focus-visible')).toBe(true)
+    expect(el.hasAttribute('data-wui-pointer-focus')).toBe(false)
+    expect(getComputedStyle(track).outlineColor).not.toBe('rgba(0, 0, 0, 0)')
     cleanupElement(el)
   })
 

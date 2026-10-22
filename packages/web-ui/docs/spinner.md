@@ -83,7 +83,7 @@ export default function Demo() {
 
 ### 全屏实例 {#imperative}
 
-`show()` 在 `document.body` 上挂一个 `position: fixed; inset: 0` 的实例，`size` / `description` 覆盖外观，`duration` 大于 0 时到期自动 `hide()`。它**不拦交互**：overlay 自身 `pointer-events: none`，只有旋转器和说明文字吃指针，要真挡住页面得自己铺遮罩。连点不会叠层——新实例挂上时移除上一个命令式实例；`hide()` 同时清掉 `duration` 计时器。
+`show()` 在当前主题的 overlay root（没有主题作用域时回退到 body 的 fallback overlay root）挂一个全屏实例，`size` / `description` / `color` 覆盖外观，`duration` 大于 0 时到期自动 `hide()`。实例期间用原生 `<dialog>` 的 `showModal()` 拦截页面其余交互并锁定滚动；`hide()` 或卸载会同时释放滚动锁、清掉 `duration` 计时器。连点不会叠层——新实例挂上时移除上一个命令式实例。
 
 ```tsx
 import { WebUiSpinner } from '@greypan/web-ui'
@@ -193,6 +193,7 @@ export default function Demo() {
 | ------------- | ------------------------------------------------------ | -------- | ------ |
 | `size`        | 旋转器像素尺寸；组件把它写成宿主内联样式的宽高 token。 | `number` | `24`   |
 | `description` | 说明文字，由组件排版（次要色、居中、最大 240px）。     | `string` | `''`   |
+| `color`       | 叶片颜色，CSS 颜色值；为空时跟随主题次要文本色。       | `string` | `''`   |
 
 ### Slots
 
@@ -206,14 +207,15 @@ export default function Demo() {
 | ------------- | ------------------------------------------------------------------ | -------- | ------ |
 | `size`        | 实例尺寸；只在 truthy 时写实例的 `size`，`0` 被忽略而留默认 `24`。 | `number` | `24`   |
 | `description` | 实例说明文字，走属性那条通道；空串等于不设。                       | `string` | `''`   |
+| `color`       | 实例叶片颜色，CSS 颜色值；空串等于不设。                           | `string` | `''`   |
 | `duration`    | 大于 `0` 时到期自动 `hide()`；不传或 `0` 就一直挂着。              | `number` | —      |
 
 ### Methods
 
-| 名称                          | 说明                                                                                                                 |
-| ----------------------------- | -------------------------------------------------------------------------------------------------------------------- |
-| `WebUiSpinner.show(options?)` | 在 `document.body` 上挂载一个全屏实例并返回它；新实例 connect 时移除上一个命令式实例，`duration` 到期调用 `hide()`。 |
-| `WebUiSpinner.hide()`         | 清掉 `duration` 计时器并移除 `show()` 挂载的实例；没有实例时为 no-op。                                               |
+| 名称                          | 说明                                                                                                                                                                                                        |
+| ----------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `WebUiSpinner.show(options?)` | 在主题 overlay root（无主题时为 body 的 fallback overlay root）挂载一个全屏实例并返回它；期间用 `showModal()` 拦截页面交互并锁定滚动。新实例 connect 时移除上一个命令式实例，`duration` 到期调用 `hide()`。 |
+| `WebUiSpinner.hide()`         | 释放滚动锁、清掉 `duration` 计时器并移除 `show()` 挂载的实例；没有实例时为 no-op。                                                                                                                          |
 
 ### 行为说明
 
@@ -221,13 +223,13 @@ export default function Demo() {
 
 `size` 不是只写 CSS 变量：组件在 `updated()` 里把 `--wui-spinner-size` 写成宿主**内联样式**，所以在宿主上设同名变量会被盖掉，尺寸只有 `size` 这一个入口。
 
-命令式实例挂在 `document.body` 上，位于 `<web-ui-theme>` 的作用域之外，读不到主题 token，只能用组件样式里的字面回落值：说明文字恒为 `#6a6a6a`、转速恒为 `800ms`、层级恒为 `300`。也就是说深色外观下全屏实例的说明文字仍是浅色那一档，`motion="reduced"` 也放慢不到它。声明式实例放在主题作用域内，这三条都跟着主题走。
+命令式实例挂在主题的 overlay root 里（没有主题作用域时挂 body 的 fallback overlay root），主题 token 沿 overlay root 继承：说明文字、转速（`--wui-duration-spinner`）与层级（`--wui-layer-loading`）都跟主题走。没有主题作用域时才落回组件样式里的字面值 `#6a6a6a` / `800ms` / `300`。
 
-组件卸载不会替你收尾：`show()` 之后没人调 `hide()`，全屏实例就一直留在 `document.body` 上，路由切换也一样。
+组件不会替你收尾：`duration` 不传或为 `0` 时实例一直挂着，只有 `hide()`、新实例顶替或显式移除才会收掉它；实例被移除时会释放滚动锁与 overlay 占位。
 
 ### 颜色
 
-叶片颜色是组件样式里写死的 `#666`，既不继承 `currentColor` 也没有对外 token，因此深浅外观下旋转器本体都是同一个颜色，宿主上的 `color` / `--wui-icon-color` 一类都够不到它（shadow DOM 里的这一条声明优先级在宿主继承之上）。要改变观感只有转速与尺寸两个入口；说明文字倒是走 `--wui-color-text-secondary`。
+叶片用 `currentcolor` 画：默认继承宿主的 `--wui-color-text-secondary`（回落 `#6a6a6a`），`color` 属性给 CSS 颜色值即可覆盖（声明式与 `show()` 的 `color` option 都走它）。说明文字走 `--wui-color-text-secondary`。
 
 ### CSS Custom Properties
 

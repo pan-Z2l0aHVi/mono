@@ -61,7 +61,7 @@ export default function Demo() {
 
 ### 小数精度 {#precision}
 
-`precision` 是小数位数，只在读取与提交时规整，赋值时不抹掉原始小数——`value={1.5}` 与 `precision={1}` 的书写顺序不影响结果。`step` 不会因为声明了 `precision` 而自动退化，小数场景要自己把步幅写成 `0.01`。
+`precision` 决定读取与提交时保留的小数位数，赋值时不抹掉原始小数——`value={1.5}` 与 `precision={1}` 的书写顺序不影响结果。未显式设置时按 `step` 的小数位数推导：`step={0.3}` 在默认设置下每次规整到 1 位小数；显式设置 `precision` 后按该值规整，例如 `precision={0}` 会把小数步进结果取整。`step` 本身不会因 `precision` 而退化，`precision={2}` 时步幅仍是 `1`。
 
 ```tsx
 export default function Demo() {
@@ -263,18 +263,20 @@ export default function Demo() {
 
 ### Props
 
-| 名称          | 说明                                               | 类型      | 默认值     |
-| ------------- | -------------------------------------------------- | --------- | ---------- |
-| `placeholder` | 占位文本；只在编辑中清空内容时露出。               | `string`  | `''`       |
-| `name`        | 表单字段名。                                       | `string`  | `''`       |
-| `disabled`    | 禁用状态。                                         | `boolean` | `false`    |
-| `readonly`    | 只读状态；步进 button 与键盘增减一并让路。         | `boolean` | `false`    |
-| `required`    | 必填校验。                                         | `boolean` | `false`    |
-| `value`       | 当前值，也是表单提交值；越界写入会收敛到范围端点。 | `number`  | `0`        |
-| `min`         | 最小值。                                           | `number`  | `0`        |
-| `max`         | 最大值。                                           | `number`  | `Infinity` |
-| `step`        | 步进幅度。                                         | `number`  | `1`        |
-| `precision`   | 小数位数，在读取与提交时规整，赋值不抹原始小数。   | `number`  | `0`        |
+| 名称              | 说明                                                              | 类型             | 默认值     |
+| ----------------- | ----------------------------------------------------------------- | ---------------- | ---------- |
+| `placeholder`     | 占位文本；只在编辑中清空内容时露出。                              | `string`         | `''`       |
+| `name`            | 表单字段名。                                                      | `string`         | `''`       |
+| `disabled`        | 禁用状态。                                                        | `boolean`        | `false`    |
+| `readonly`        | 只读状态；步进 button 与键盘增减一并让路。                        | `boolean`        | `false`    |
+| `required`        | 必填校验。                                                        | `boolean`        | `false`    |
+| `value`           | 当前值，也是表单提交值；越界写入会收敛到范围端点。                | `number`         | `0`        |
+| `min`             | 最小值。                                                          | `number`         | `0`        |
+| `max`             | 最大值。                                                          | `number`         | `Infinity` |
+| `step`            | 步进幅度；未显式设置 `precision` 时，其小数位数决定默认规整精度。 | `number`         | `1`        |
+| `precision`       | 显式设置时按该值规整；设为 `null` 或移除属性时按 `step` 推导。    | `number \| null` | `0`        |
+| `aria-label`      | 输入框的无障碍名称。                                              | `string`         | —          |
+| `aria-labelledby` | 无障碍名称引用，用于命名内部输入框。                              | `string`         | —          |
 
 ### Events
 
@@ -287,7 +289,7 @@ export default function Demo() {
 
 `value` 没有空态：默认 `0`，赋值与提交都先过 `min` / `max` 收敛，因此写 `999` 进 `max=100` 得到的是 `100`。编辑是另一层——内部控件绑的是草稿，`1.`、空串、非数字文本都只改显示不改 `value`；失焦时合法草稿写回并提交，非法或空草稿回填上一个提交值且不派发 `change`。
 
-`precision` 不参与赋值，只发生在读取（`get value`）与步进提交两点，所以声明顺序无关；`0.01` 不会被默认的 `precision=0` 提前取整成 `0`。`step` 不随 `precision` 退化，`precision=2` 时步幅仍是 `1`，小数步进要显式写 `step={0.01}`。
+`precision` 不参与赋值，只发生在读取（`get value`）与步进提交两点，所以声明顺序无关；`0.01` 不会被默认设置提前取整成 `0`。未显式设置 `precision` 时按 `step` 的小数位数推导规整精度，小数场景不再必须显式写 `step={0.01}` 配 `precision`；显式设置后按该值规整，`step` 本身不退化。
 
 事件分派节奏不一致是组件的现状：文本输入的 `input` 来自内部原生控件冒泡，`change` 因为原生 `change` 不组合、过不了 shadow 边界而由组件在宿主上补发一次；步进 button 只派发 `input`，ArrowUp / ArrowDown 派发 `input` 与 `change` 两条。只听 `change` 的受控写法会漏掉点击步进。
 

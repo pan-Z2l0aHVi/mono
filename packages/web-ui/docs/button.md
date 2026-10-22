@@ -41,7 +41,7 @@ export default function Demo() {
 
 ### 尺寸 {#sizes}
 
-`size` 只写数字（`size="28"`），组件把它写成内部 button 的 `--wui-control-size: 28px`，只决定高度；留空时高度由 theme 的 `--wui-control-size`（36px）给出。`icon` 模式下 `min-width` 与高度同值，所以那枚正方形跟着一起变。带单位的写法拼出来是 `32pxpx`，那是个无效值：`height` / `min-width` 不会退回默认档，而是改由内容决定，所以别写单位。组内成员的高度由 `<web-ui-button-group>` 统一成 30px，自己写的 `size` 在组里不起作用。
+`size` 接受裸数字或 CSS 长度：裸数字按 px 解释（`size="28"` 即 `--wui-control-size: 28px`），带单位的写法（`32px`、`1.5rem`）原样使用；只决定高度；留空时高度由 theme 的 `--wui-control-size`（36px）给出。`icon` 模式下 `min-width` 与高度同值，所以那枚正方形跟着一起变。组内成员的高度由 `<web-ui-button-group>` 统一成 30px，自己写的 `size` 在组里不起作用。
 
 ```tsx
 import { lucideSearch } from '@greypan/web-ui/icons'
@@ -516,16 +516,16 @@ const fourStates = {
 
 ### Props
 
-| 名称         | 说明                                                                                                   | 类型                                                         | 默认值     |
-| ------------ | ------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------ | ---------- |
-| `variant`    | 视觉变体；集合外的值回退到 `glass`。                                                                   | `'primary' \| 'secondary' \| 'ghost' \| 'danger' \| 'glass'` | `'glass'`  |
-| `disabled`   | 禁用状态，内部原生 button 一起禁用。                                                                   | `boolean`                                                    | `false`    |
-| `loading`    | 加载态。同样阻断交互，并优先渲染 spinner。                                                             | `boolean`                                                    | `false`    |
-| `full`       | 占满父容器宽度。                                                                                       | `boolean`                                                    | `false`    |
-| `icon`       | icon 模式：宿主成正方形，默认插槽整体作为 icon 内容。                                                  | `boolean`                                                    | `false`    |
-| `size`       | button 高度，只写数字并写成 `--wui-control-size: 28px`；在 `<web-ui-button-group>` 内被组统一成 30px。 | `string`                                                     | `''`       |
-| `type`       | 原生 button 的 `type`；非法值规范化成 `button`。                                                       | `'button' \| 'submit' \| 'reset'`                            | `'button'` |
-| `aria-label` | 无障碍名称，透传给内部 button。                                                                        | `string \| null`                                             | `null`     |
+| 名称         | 说明                                                                                                                  | 类型                                                         | 默认值     |
+| ------------ | --------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------ | ---------- |
+| `variant`    | 视觉变体；集合外的值回退到 `glass`。                                                                                  | `'primary' \| 'secondary' \| 'ghost' \| 'danger' \| 'glass'` | `'glass'`  |
+| `disabled`   | 禁用状态，内部原生 button 一起禁用。                                                                                  | `boolean`                                                    | `false`    |
+| `loading`    | 加载态。同样阻断交互，并优先渲染 spinner。                                                                            | `boolean`                                                    | `false`    |
+| `full`       | 占满父容器宽度。                                                                                                      | `boolean`                                                    | `false`    |
+| `icon`       | icon 模式：宿主成正方形，默认插槽整体作为 icon 内容。                                                                 | `boolean`                                                    | `false`    |
+| `size`       | button 高度；裸数字按 px 解释，也接受 CSS 长度（如 `32px`、`1.5rem`）。在 `<web-ui-button-group>` 内被组统一成 30px。 | `string`                                                     | `''`       |
+| `type`       | 原生 button 的 `type`；非法值规范化成 `button`。                                                                      | `'button' \| 'submit' \| 'reset'`                            | `'button'` |
+| `aria-label` | 无障碍名称，透传给内部 button。                                                                                       | `string \| null`                                             | `null`     |
 
 ### Slots
 

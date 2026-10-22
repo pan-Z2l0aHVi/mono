@@ -3,7 +3,7 @@ component: slider
 tag: web-ui-slider
 ---
 
-范围 slider，支持刻度标记与垂直方向；拖拽走 pointer capture，键盘支持方向键、Home / End 与 PageUp / PageDown。
+范围 slider，支持刻度标记与垂直方向；拖拽走 pointer capture，键盘支持方向键、Home / End 与 PageUp / PageDown。每个实例都应通过 `aria-label` 或 `aria-labelledby` 提供可区分的名称。
 
 ## 示例
 
@@ -307,17 +307,19 @@ export default function Demo() {
 
 ### Props
 
-| 名称       | 说明                     | 类型      | 默认值  |
-| ---------- | ------------------------ | --------- | ------- |
-| `disabled` | 禁用状态。               | `boolean` | `false` |
-| `marks`    | 显示刻度标记。           | `boolean` | `false` |
-| `vertical` | 垂直方向。               | `boolean` | `false` |
-| `name`     | 表单字段名。             | `string`  | `''`    |
-| `required` | 只反射属性，不参与校验。 | `boolean` | `false` |
-| `value`    | 当前值。                 | `number`  | `0`     |
-| `min`      | 最小值。                 | `number`  | `0`     |
-| `max`      | 最大值。                 | `number`  | `100`   |
-| `step`     | 步进值。                 | `number`  | `1`     |
+| 名称              | 说明                                            | 类型      | 默认值  |
+| ----------------- | ----------------------------------------------- | --------- | ------- |
+| `disabled`        | 禁用状态。                                      | `boolean` | `false` |
+| `marks`           | 显示刻度标记。                                  | `boolean` | `false` |
+| `vertical`        | 垂直方向。                                      | `boolean` | `false` |
+| `name`            | 表单字段名。                                    | `string`  | `''`    |
+| `required`        | 只反射属性，不参与校验。                        | `boolean` | `false` |
+| `aria-label`      | slider 的无障碍名称。                           | `string`  | —       |
+| `aria-labelledby` | 指向提供 slider 无障碍名称的一个或多个元素 ID。 | `string`  | —       |
+| `value`           | 当前值。                                        | `number`  | `0`     |
+| `min`             | 最小值。                                        | `number`  | `0`     |
+| `max`             | 最大值。                                        | `number`  | `100`   |
+| `step`            | 步进值。                                        | `number`  | `1`     |
 
 ### Events
 
