@@ -9,9 +9,9 @@ import type { WebUiCheckboxGroup } from '..'
 
 afterEach(() => document.body.replaceChildren())
 
-// 点击子 checkbox 的 shadow label 触发用户交互
+// 点击子 checkbox 的交互元素触发用户交互
 const clickChild = (checkbox: WebUiCheckbox) => {
-  checkbox.shadowRoot!.querySelector('label')!.click()
+  checkbox.shadowRoot!.querySelector<HTMLElement>('[role="checkbox"]')!.click()
 }
 
 describe('CheckboxGroup 跨组移动成员（浏览器）', () => {

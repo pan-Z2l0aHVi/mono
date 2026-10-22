@@ -450,10 +450,15 @@ describe('WebUiDrawer drag bar 配色状态（浏览器）', () => {
     child.open = true
     await child.updateComplete
     await pollUntil(() => getDialog(parent).classList.contains('is-nested-lower'), 'lower layer not marked')
-    await new Promise(resolve => setTimeout(resolve, 250))
 
     const bar = getDragBar(parent)
     const edge = getDragEdge(parent)!
+    await pollUntil(
+      () => getComputedStyle(bar).opacity === '0' && getComputedStyle(edge).opacity === '0',
+      () =>
+        `下层 drawer 的 drag bar 和端头 drag edge 未完成退场 ` +
+        `(bar=${getComputedStyle(bar).opacity}, edge=${getComputedStyle(edge).opacity})`
+    )
     expect(getComputedStyle(bar).opacity, '下层 drawer 的 drag bar 没有退场').toBe('0')
     expect(getComputedStyle(edge).opacity, '下层 drawer 的端头 drag edge 没有退场').toBe('0')
     expect(getComputedStyle(edge).pointerEvents, '下层 drawer 的端头 drag edge 仍吃事件').toBe('none')
