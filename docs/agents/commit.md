@@ -22,7 +22,9 @@ bash scripts/workflow/commit.sh <type> <scope> "<subject>" --dry
 
 ## Pre-commit 与本地 checks
 
-受版本控制的 pre-commit hook 通过 `mise exec -- pnpm run check-pre-commit` 运行五项只读仓库政策检查：`command-conventions`、`format-clean`、`no-mutual-links`、`turbo-cache-invariant`、`web-ui-docs-inputs`。入口并发执行各原子检查，任一检查抛错即整体失败。这些检查从当前 Git worktree 运行，不读取 task state 或 `AGENT_TASK_*`；它们不运行 fixer、不改写文件或 index。PR CI 的 changeset gate 不属于本地政策，见 release.md。
+受版本控制的 `.vite-hooks/commit-msg` 通过 `mise exec -- pnpm exec commitlint --edit "$1"` 检查提交消息；`.vite-hooks/pre-commit` 通过 `mise exec -- pnpm run check-pre-commit` 运行五项只读仓库政策检查：`command-conventions`、`format-clean`、`no-mutual-links`、`turbo-cache-invariant`、`web-ui-docs-inputs`。`pnpm install` 的 `prepare` 脚本调用 `vp config` 安装 Vite+ dispatcher；可用 `vp hooks status` 检查是否接入当前仓库。若 Git 的 `core.hooksPath` 已指向其他目录，`vp config` 会保留该设置，受版本控制的 hooks 就不会运行；不要在任务中自行改写 Git 配置。这些检查从当前 Git worktree 运行，不读取 task state 或 `AGENT_TASK_*`；它们不运行 fixer、不改写文件或 index。PR CI 的 changeset gate 不属于本地政策，见 release.md。
+
+CI 会使用 PR base 中 `commitlint.config.js` 的 `message-english-only` 规则检查 PR 标题，因为 squash commit 的 subject 来自 PR 标题。Herdr board 当前用任务标题创建 draft PR；若标题含中文，required check 会在安装依赖前快速失败。PR 创建后应立即用 `gh pr edit <number> --title "<English title>"` 改为英文；`edited` 事件会重新运行 CI。中文任务标题会消耗一次 board 的检查修复轮次，标题修改后会完整重跑 CI；任何其他 PR 元数据编辑也会触发完整重跑。
 
 `fix-code` 是实施者显式运行的工作树修复命令；它可能改写多个文件，但不会自动暂存。运行后检查 diff，再只暂存预期文件。pre-commit 不调用 `fix-code`。
 
