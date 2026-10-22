@@ -148,6 +148,7 @@ export interface GroupLifecycle {
 
 interface GroupControllerOptions {
   afterSync?: () => void
+  observeAttributes?: readonly string[]
 }
 
 /**
@@ -207,14 +208,14 @@ export class GroupController implements ReactiveController {
 
   private observeHost() {
     this.disconnectHostObserver()
-    // 监听 light DOM 的增删和 disabled 变化，覆盖 Vue v-if / React && 锚点替换、深层包裹及成员的有效禁用状态。
+    // 监听 light DOM 的增删，覆盖 Vue v-if / React && 的 comment 锚点替换与深层包裹
     this.observer = new MutationObserver(this.handleMutations)
-    this.observer.observe(this.host, {
-      childList: true,
-      subtree: true,
-      attributes: true,
-      attributeFilter: ['disabled']
-    })
+    const observerOptions: MutationObserverInit = { childList: true, subtree: true }
+    if (this.options.observeAttributes?.length) {
+      observerOptions.attributes = true
+      observerOptions.attributeFilter = [...this.options.observeAttributes]
+    }
+    this.observer.observe(this.host, observerOptions)
   }
 
   private disconnectHostObserver() {
@@ -256,9 +257,10 @@ export interface GroupCoordinatorOptions<Item extends HTMLElement, Value> {
   readonly getValue: () => Value
   readonly setValue: (value: Value) => void
   readonly getDisabled: () => boolean
-  readonly getTabStopItem?: (items: readonly Item[]) => Item | undefined
   readonly isItem: (target: EventTarget | null) => target is Item
   readonly isItemSelected: (item: Item, value: Value) => boolean
+  readonly isItemTabStop?: (item: Item, items: readonly Item[]) => boolean
+  readonly getItemSelected?: (item: Item) => boolean
   readonly getNextValue: (item: Item, value: Value) => Value
   readonly valuesEqual: (a: Value, b: Value) => boolean
   readonly copyValue: (value: Value) => Value
@@ -294,14 +296,19 @@ export function defineGroupCoordinator<Item extends HTMLElement, Value>(options:
       const nextItems = options.getItems()
       const value = options.getValue()
       const disabled = options.getDisabled()
-      const tabStopItem = options.getTabStopItem?.(nextItems)
       // 成员变化也要重放选中写回：新成员需继承当前选中态。
       const membershipChanged = nextItems.length !== lastItems.size || [...nextItems].some(item => !lastItems.has(item))
+      // 子项可能在宿主首次连接后才完成 custom-element upgrade；值变得可读时，
+      // 即使组值和成员集合没变，也要修复之前写入的过期选中态。
+      const itemSelectionChanged =
+        options.getItemSelected !== undefined &&
+        nextItems.some(item => options.getItemSelected?.(item) !== options.isItemSelected(item, value))
       const selectionChanged =
         !initialized ||
         !options.valuesEqual(value, lastValue as Value) ||
         disabled !== lastDisabled ||
-        membershipChanged
+        membershipChanged ||
+        itemSelectionChanged
 
       // 上行选中写回：根写入子项（context 是纯下行，不承担该方向）。
       if (selectionChanged) {
@@ -313,15 +320,12 @@ export function defineGroupCoordinator<Item extends HTMLElement, Value>(options:
       // 禁用下行：每次 sync 以新 Map 载荷整体广播（成员增删与禁用变化一并覆盖，
       // 新 Map 实例保证 Object.is 判定为变更）。
       provider.setValue(
-        new Map<HTMLElement, SelectionGroupContext>(
-          nextItems.map(item => [
-            item,
-            disabled
-              ? DISABLED_SELECTION_CONTEXT
-              : options.getTabStopItem
-                ? { disabled: false, tabStop: item === tabStopItem }
-                : ENABLED_SELECTION_CONTEXT
-          ])
+        new Map(
+          nextItems.map(item => {
+            const context = disabled ? DISABLED_SELECTION_CONTEXT : ENABLED_SELECTION_CONTEXT
+            const tabStop = options.isItemTabStop?.(item, nextItems)
+            return [item as HTMLElement, tabStop === undefined ? context : { ...context, tabStop }] as const
+          })
         )
       )
 
@@ -350,7 +354,6 @@ export function defineGroupCoordinator<Item extends HTMLElement, Value>(options:
         const next = options.getNextValue(event.target, current)
         if (options.valuesEqual(current, next)) {
           options.resyncOnUnchangedValue?.(event.target)
-          if (options.resyncOnUnchangedValue) sync()
           return
         }
 

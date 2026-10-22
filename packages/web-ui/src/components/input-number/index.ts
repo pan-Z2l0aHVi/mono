@@ -17,6 +17,11 @@ import { normalizeNumber } from '@/shared/normalize'
 
 import style from './style.css?inline'
 
+const decimalPlaces = (value: number): number => {
+  const [numberText, exponent = '0'] = value.toString().toLowerCase().split('e')
+  return Math.max(0, (numberText.split('.')[1]?.length ?? 0) - Number(exponent))
+}
+
 type LabelledbyRoot = Document | ShadowRoot
 
 interface LabelledbyReferenceRegistration {
@@ -166,7 +171,7 @@ export class WebUiInputNumber extends FormAssociated(LitElement) {
   @property({ type: Boolean, reflect: true }) required = false
   @property({ type: String, attribute: 'aria-label' }) override ariaLabel: string | null = null
   @property({ type: String, attribute: 'aria-labelledby' }) ariaLabelledby: string | undefined
-  @property({ type: Number, reflect: true })
+  @property({ type: Number })
   get precision(): number {
     return this._precision
   }
@@ -174,10 +179,19 @@ export class WebUiInputNumber extends FormAssociated(LitElement) {
   // `<web-ui-input-number value="1.5" precision="2">` 先跑 value setter、
   // 后跑 precision setter，若赋值时就按当时的默认精度 0 取整，1.5 会先变 2，
   // 之后再声明 precision=2 也恢复不了。
-  set precision(v: number) {
+  set precision(v: number | null) {
     const old = this._precision
-    this._precision = v
-    this.requestUpdate('precision', old)
+    const wasExplicitlySet = this._precisionWasSet
+    this._precision = v ?? 0
+    this._precisionWasSet = v !== null
+
+    if (v === null) {
+      if (this.hasAttribute('precision')) this.removeAttribute('precision')
+    } else if (this.getAttribute('precision') !== String(v)) {
+      this.setAttribute('precision', String(v))
+    }
+
+    if (old !== this._precision || wasExplicitlySet !== this._precisionWasSet) this.requestUpdate()
   }
 
   /** 原始值：只做 min/max 收敛，不按精度取整（取整发生在 get value）。 */
@@ -193,6 +207,7 @@ export class WebUiInputNumber extends FormAssociated(LitElement) {
   @state() private _step = 1
   @state() private _focused = false
   private _precision = 0
+  private _precisionWasSet = false
   private readonly _fieldId = createFieldId('web-ui-input-number')
   private _labelledbyObserver: MutationObserver | null = null
   private _releaseLabelledbyReferences: (() => void) | null = null
@@ -559,13 +574,17 @@ export class WebUiInputNumber extends FormAssociated(LitElement) {
     return this._step
   }
 
-  // 步进值，默认 1；若声明了 precision 则以 precision 退化步进
+  // 默认 precision 未显式设置时，读取精度会跟随 step 的小数位数。
   set step(v: unknown) {
     this._step = normalizeNumber(v, 0, Infinity, 1)
   }
 
   private get _effectiveStep(): number {
     return this._step
+  }
+
+  private get _effectivePrecision(): number {
+    return this._precisionWasSet ? this._precision : Math.max(this._precision, decimalPlaces(this._step))
   }
 
   private get atMin(): boolean {
@@ -642,12 +661,7 @@ export class WebUiInputNumber extends FormAssociated(LitElement) {
     const input = this.shadowRoot?.querySelector('input')
     const internals = this._formAssociation.getInternals()
     if (!internals || !input || typeof internals.setValidity !== 'function') return
-    forwardInputValidity(
-      internals,
-      input,
-      ['valueMissing', 'rangeUnderflow', 'rangeOverflow', 'stepMismatch'],
-      this._isDisabled
-    )
+    forwardInputValidity(internals, input, ['valueMissing', 'rangeUnderflow', 'rangeOverflow'], this._isDisabled)
   }
 
   private clamp(v: number): number {
@@ -655,8 +669,12 @@ export class WebUiInputNumber extends FormAssociated(LitElement) {
   }
 
   private round(v: number): number {
-    const f = 10 ** this.precision
-    return Math.round(v * f) / f
+    const f = 10 ** this._effectivePrecision
+    if (!Number.isFinite(f) || f === 0) return v
+    if (Math.abs(v) > Number.MAX_SAFE_INTEGER / f) return v
+    const scaled = v * f
+    if (!Number.isFinite(scaled)) return v
+    return Math.round(scaled) / f
   }
 
   private setValueAndNotify(v: number) {
@@ -735,6 +753,7 @@ export class WebUiInputNumber extends FormAssociated(LitElement) {
   }
 
   override render() {
+    // step 是相对当前值的增减幅度，不要求值落在原生 input 以 min 为基准的 step 网格上。
     return html`
       <div class="wui-glass wui-input-inner">
         <button
@@ -748,6 +767,7 @@ export class WebUiInputNumber extends FormAssociated(LitElement) {
         <input
           id=${this._fieldId}
           type="number"
+          step="any"
           placeholder=${this.placeholder}
           name=${this.name}
           aria-label=${ifDefined(this._getLabelledbyText() || this.ariaLabel)}
