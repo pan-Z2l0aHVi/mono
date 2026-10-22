@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vite-plus/test'
 
+import { getFallbackOverlayRoot } from '@/shared/overlay/overlay-root'
 import { cleanupElement, mountElement, waitForUpdate } from '@/shared/test-utils'
 
 import { WebUiSpinner } from '..'
@@ -34,16 +35,16 @@ describe('WebUiSpinner 组件', () => {
   })
 
   describe('命令式 API: show / hide', () => {
-    it('show() 创建并挂载到 body，hide() 移除它', () => {
+    it('show() 无主题时挂载到 fallback overlay root 并锁滚动，hide() 移除它', () => {
       const originalOverflow = document.documentElement.style.overflow
       const originalOverscrollBehavior = document.documentElement.style.overscrollBehavior
       const el = WebUiSpinner.show()
-      expect(document.body.contains(el)).toBe(true)
+      expect(getFallbackOverlayRoot().contains(el)).toBe(true)
       expect(document.documentElement.style.overflow).toBe('hidden')
       expect(document.documentElement.style.overscrollBehavior).toBe('none')
 
       WebUiSpinner.hide()
-      expect(document.body.contains(el)).toBe(false)
+      expect(el.isConnected).toBe(false)
       expect(document.documentElement.style.overflow).toBe(originalOverflow)
       expect(document.documentElement.style.overscrollBehavior).toBe(originalOverscrollBehavior)
     })
@@ -61,8 +62,8 @@ describe('WebUiSpinner 组件', () => {
       const first = WebUiSpinner.show()
       const second = WebUiSpinner.show()
 
-      expect(document.body.contains(first)).toBe(false)
-      expect(document.body.contains(second)).toBe(true)
+      expect(first.isConnected).toBe(false)
+      expect(second.isConnected).toBe(true)
       expect(document.documentElement.style.overflow).toBe('hidden')
 
       WebUiSpinner.hide()
@@ -73,11 +74,11 @@ describe('WebUiSpinner 组件', () => {
       vi.useFakeTimers()
       const originalOverflow = document.documentElement.style.overflow
       const el = WebUiSpinner.show({ duration: 500 })
-      expect(document.body.contains(el)).toBe(true)
+      expect(el.isConnected).toBe(true)
       expect(document.documentElement.style.overflow).toBe('hidden')
 
       vi.advanceTimersByTime(500)
-      expect(document.body.contains(el)).toBe(false)
+      expect(el.isConnected).toBe(false)
       expect(document.documentElement.style.overflow).toBe(originalOverflow)
       vi.useRealTimers()
     })
@@ -96,9 +97,9 @@ describe('WebUiSpinner 组件', () => {
       const el = WebUiSpinner.show()
       el.remove()
 
-      document.body.append(el)
+      getFallbackOverlayRoot().append(el)
 
-      expect(document.body.contains(el)).toBe(true)
+      expect(getFallbackOverlayRoot().contains(el)).toBe(true)
       expect(document.documentElement.style.overflow).toBe('hidden')
 
       WebUiSpinner.hide()
@@ -110,7 +111,7 @@ describe('WebUiSpinner 组件', () => {
       const el = WebUiSpinner.show({ duration: 0 })
 
       vi.advanceTimersByTime(10_000)
-      expect(document.body.contains(el)).toBe(true)
+      expect(el.isConnected).toBe(true)
       vi.useRealTimers()
     })
 
@@ -120,7 +121,7 @@ describe('WebUiSpinner 组件', () => {
       WebUiSpinner.hide()
 
       vi.advanceTimersByTime(10_000)
-      expect(document.body.contains(el)).toBe(false)
+      expect(el.isConnected).toBe(false)
       vi.useRealTimers()
     })
 

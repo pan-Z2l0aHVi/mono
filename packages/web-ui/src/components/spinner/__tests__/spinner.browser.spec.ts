@@ -1,7 +1,7 @@
 import '..'
 
 import { afterEach, describe, expect, it } from 'vite-plus/test'
-import { userEvent } from 'vite-plus/test/browser'
+import { page, userEvent } from 'vite-plus/test/browser'
 
 import { WebUiSpinner } from '..'
 
@@ -25,11 +25,12 @@ describe('WebUiSpinner 命令式 overlay（浏览器）', () => {
     await spinner.updateComplete
     await new Promise(resolve => requestAnimationFrame(() => resolve(undefined)))
 
-    expect(document.activeElement).toBe(spinner)
+    const overlayRoot = spinner.getRootNode() as ShadowRoot
+    expect(document.activeElement).toBe(overlayRoot.host)
 
     WebUiSpinner.hide()
 
-    expect(document.body.contains(spinner)).toBe(false)
+    expect(spinner.isConnected).toBe(false)
     expect(document.activeElement).toBe(trigger)
   })
 
@@ -67,9 +68,10 @@ describe('WebUiSpinner 命令式 overlay（浏览器）', () => {
     const rect = button.getBoundingClientRect()
     const x = rect.x + rect.width / 2
     const y = rect.y + rect.height / 2
-    const hit = document.elementFromPoint(x, y)
-    expect(hit).toBe(spinner)
-    hit?.dispatchEvent(new MouseEvent('click', { bubbles: true, composed: true, clientX: x, clientY: y }))
+    const overlayRoot = spinner.getRootNode() as ShadowRoot
+    expect(document.elementFromPoint(x, y)).toBe(overlayRoot.host)
+    expect(overlayRoot.elementFromPoint(x, y)).toBe(spinner)
+    await page.elementLocator(button).click({ force: true })
     expect(underlyingClicks).toBe(0)
 
     const overlay = spinner.shadowRoot?.querySelector('.wui-spinner-overlay')
@@ -97,7 +99,9 @@ describe('WebUiSpinner 命令式 overlay（浏览器）', () => {
     expect(spinnerDialog?.getAttribute('aria-modal')).toBe('true')
     expect(spinnerDialog?.querySelector('[role="status"]')?.getAttribute('aria-label')).toBe('Loading')
     const rect = button.getBoundingClientRect()
-    expect(document.elementFromPoint(rect.x + rect.width / 2, rect.y + rect.height / 2)).toBe(spinner)
+    const overlayRoot = spinner.getRootNode() as ShadowRoot
+    expect(document.elementFromPoint(rect.x + rect.width / 2, rect.y + rect.height / 2)).toBe(overlayRoot.host)
+    expect(overlayRoot.elementFromPoint(rect.x + rect.width / 2, rect.y + rect.height / 2)).toBe(spinner)
 
     await userEvent.keyboard('{Escape}')
 

@@ -19,7 +19,8 @@ export class WebUiSegmentedTrigger extends LitElement {
 
   private readonly _groupManagement = defineGroupManaged<SelectionGroupContext>(this, {
     context: selectionGroupContextKey,
-    requestUpdate: () => this.requestUpdate()
+    requestUpdate: () => this.requestUpdate(),
+    equals: (a, b) => a?.disabled === b?.disabled && a?.tabStop === b?.tabStop
   }).make()
 
   private get _isDisabled(): boolean {
@@ -57,7 +58,7 @@ export class WebUiSegmentedTrigger extends LitElement {
     return html`
       <div
         class=${classMap(cls)}
-        tabindex=${this._isDisabled ? '-1' : '0'}
+        tabindex=${this._isDisabled || this._groupManagement.getContext()?.tabStop === false ? '-1' : '0'}
         role="option"
         aria-selected=${String(this.checked)}
         aria-disabled=${String(this._isDisabled)}

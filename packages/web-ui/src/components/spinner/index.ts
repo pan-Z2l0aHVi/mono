@@ -3,6 +3,8 @@ import { customElement, property } from 'lit/decorators.js'
 import { repeat } from 'lit/directives/repeat.js'
 
 import { defineOpenOverlay, type OpenOverlayHandle } from '@/shared/overlay/open-overlay'
+import { getFallbackOverlayRoot } from '@/shared/overlay/overlay-root'
+import { findRootTheme } from '@/shared/overlay/theme-overlay-scope'
 import { defineScrollLockLease } from '@/shared/scroll-lock/scroll-lock'
 
 import style from './style.css?inline'
@@ -30,7 +32,8 @@ export class WebUiSpinner extends LitElement {
     el._imperative = true
     if (options?.size) el.size = options.size
     if (options?.description) el.description = options.description
-    document.body.appendChild(el)
+    const overlayRoot = findRootTheme()?.getOverlayRoot() ?? getFallbackOverlayRoot()
+    overlayRoot.appendChild(el)
     if (options?.duration && options.duration > 0) {
       el._timer = window.setTimeout(() => WebUiSpinner.hide(), options.duration)
     }
