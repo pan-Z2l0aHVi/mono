@@ -11,6 +11,8 @@ tag: web-ui-radio-group
 
 组持有唯一的值：`value` 决定谁被选中，成员的选中态由组下发，页面只读组的值。
 
+Tab 进入组时，焦点落在已选中的成员；若尚无选中项，则落在第一个启用成员。组内只有这个成员是 Tab stop。方向键会在启用成员间循环移动焦点并立即选中；`Home` 和 `End` 分别选中第一个和最后一个启用成员。
+
 ```react
 import { useState } from 'react'
 
