@@ -27,17 +27,15 @@ const THEME_APPEARANCES = new Set<ThemeAppearance>(['light', 'dark', 'system'])
 /**
  * accent 预设色板。
  *
- * 前景统一是白（--wui-color-on-accent，theme 在 light 与 dark 两档下都已定为 #fff，不在这里覆盖），
- * 所以每个色值都要对白字过 WCAG AA 4.5:1。消费点是 button / badge / option / dropdown-item 的
- * 14–15px 常规字重正文，不是大字，4.5:1 才是该用的门槛。
+ * web-ui 默认的 --wui-color-on-accent 随外观变化：light 为 #fff，dark 为 #000。本表只写
+ * --wui-color-accent，不定义文字颜色。Interweave 里覆在这些预设色上的 14–15px 白字应达到
+ * WCAG AA 4.5:1；这些是常规字重正文，不是大字。
  *
  * 绿与橙因此**不是** Apple system 色：#30d158 只有 2.02:1、#ff9f0a 只有 2.06:1，都不达标，
- * 换成同色相的深一档 #1d8348（4.78:1）与 #c64600（4.91:1）。其余四色保留 Apple 原色——
- * 它们在 3.4–3.7:1，与 web-ui 既有的 accent（light #08f 3.52:1、dark #0a84ff 3.65:1）
- * 是同一档，属于既有状态，不在这一笔里一并抬高。
+ * 换成同色相的深一档 #1d8348（4.78:1）与 #c64600（4.91:1）。其余四色与蓝色预设值保持原样；
+ * 它们的主题配对问题不在这次修改范围内。
  *
- * 「蓝」取 #0a84ff 而非 light 档的 #08f，是与 web-ui dark appearance 的默认 accent 同源，
- * 于是这一档在亮暗两档下与不设 accent 时视觉一致。
+ * 「蓝」保留 #0a84ff。web-ui 的 light 默认值现为 #0071e3，dark 默认值仍为 #0a84ff。
  */
 export const ACCENT_PRESETS: readonly AccentPreset[] = [
   { value: '#0a84ff', label: '蓝' },

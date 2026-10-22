@@ -10,15 +10,15 @@ import type { WebUiButton } from '../../button'
 afterEach(() => document.body.replaceChildren())
 
 describe('WebUiButtonGroup 控件尺寸（浏览器）', () => {
-  it('成员按钮随 --wui-control-size 缩放并保持与轨道的相对尺寸', async () => {
+  it('成员按钮随 --wui-control-size 缩放，垂直轨道覆盖最长成员', async () => {
     const parent = document.createElement('div')
     document.body.append(parent)
 
     const horizontal = document.createElement('web-ui-button-group')
-    horizontal.innerHTML = '<web-ui-button>A</web-ui-button><web-ui-button>B</web-ui-button>'
+    horizontal.innerHTML = '<web-ui-button>A wide text button</web-ui-button><web-ui-button>B</web-ui-button>'
     const vertical = document.createElement('web-ui-button-group')
     vertical.direction = 'vertical'
-    vertical.innerHTML = '<web-ui-button>A</web-ui-button><web-ui-button>B</web-ui-button>'
+    vertical.innerHTML = '<web-ui-button>A wide text button</web-ui-button><web-ui-button>B</web-ui-button>'
     const standalone = document.createElement('web-ui-button')
     parent.append(horizontal, vertical, standalone)
 
@@ -30,13 +30,15 @@ describe('WebUiButtonGroup 控件尺寸（浏览器）', () => {
       horizontalTrack: horizontal.getBoundingClientRect().height,
       horizontalButton: horizontalButton.getBoundingClientRect().height,
       verticalTrack: vertical.getBoundingClientRect().width,
+      verticalButtonWidth: verticalButton.getBoundingClientRect().width,
       verticalButton: verticalButton.getBoundingClientRect().height,
       standaloneButton: standalone.getBoundingClientRect().height
     })
 
     const defaults = geometry()
     expect(defaults.horizontalButton / defaults.horizontalTrack).toBeCloseTo(5 / 6, 2)
-    expect(defaults.verticalButton / defaults.verticalTrack).toBeCloseTo(5 / 6, 2)
+    expect(defaults.verticalTrack).toBeGreaterThanOrEqual(defaults.verticalButtonWidth)
+    expect(defaults.verticalTrack).toBeGreaterThan(defaults.horizontalTrack)
     expect(defaults.standaloneButton).toBe(defaults.horizontalTrack)
 
     parent.style.setProperty('--wui-control-size', '48px')
@@ -45,8 +47,8 @@ describe('WebUiButtonGroup 控件尺寸（浏览器）', () => {
     const scaled = geometry()
     expect(scaled.horizontalTrack).toBeGreaterThan(defaults.horizontalTrack)
     expect(scaled.horizontalButton / scaled.horizontalTrack).toBeCloseTo(5 / 6, 2)
-    expect(scaled.verticalTrack).toBeGreaterThan(defaults.verticalTrack)
-    expect(scaled.verticalButton / scaled.verticalTrack).toBeCloseTo(5 / 6, 2)
+    expect(scaled.verticalButton).toBeGreaterThan(defaults.verticalButton)
+    expect(scaled.verticalTrack).toBeGreaterThanOrEqual(scaled.verticalButtonWidth)
     expect(scaled.standaloneButton).toBe(scaled.horizontalTrack)
   })
 })

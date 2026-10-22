@@ -1,5 +1,4 @@
 import '..'
-import '@/components/segmented-trigger'
 
 import { describe, expect, it } from 'vite-plus/test'
 
@@ -39,7 +38,68 @@ const clickTrigger = (group: WebUiSegmented, index: number) => {
   if (inner instanceof HTMLElement) inner.click()
 }
 
+const pressOptionKey = (trigger: WebUiSegmentedTrigger, key: string): KeyboardEvent => {
+  const option = queryA11y(trigger, '[role="option"]')
+  if (!(option instanceof HTMLElement)) throw new Error('未找到 role="option" 的可交互元素')
+  const event = new KeyboardEvent('keydown', { key, bubbles: true, composed: true, cancelable: true })
+  option.dispatchEvent(event)
+  return event
+}
+
+const settleSegmented = async (group: WebUiSegmented) => {
+  await waitForUpdate(group)
+  await Promise.all(
+    [...group.querySelectorAll<WebUiSegmentedTrigger>('web-ui-segmented-trigger')].map(t => t.updateComplete)
+  )
+}
+
 describe('WebUiSegmented 组件', () => {
+  it('静态 value attribute 在子 trigger 定义晚于组首次更新后仍同步选中态', async () => {
+    expect(customElements.get('web-ui-segmented-trigger')).toBeUndefined()
+
+    const el = document.createElement('web-ui-segmented')
+    el.setAttribute('value', 'b')
+    el.innerHTML = TRIGGER_HTML
+    const pendingUpgradeTriggers = [...el.querySelectorAll<HTMLElement>('web-ui-segmented-trigger')]
+    document.body.appendChild(el)
+
+    // 先让父 group 完成初次连接与更新；此时子项的 custom element 仍未注册。
+    await flushSlotChange(el)
+    expect(el.value).toBe('b')
+    expect(customElements.get('web-ui-segmented-trigger')).toBeUndefined()
+    expect(pendingUpgradeTriggers.map(trigger => (trigger as HTMLElement & { value?: string }).value)).toEqual([
+      undefined,
+      undefined,
+      undefined
+    ])
+    expect(pendingUpgradeTriggers.map(trigger => (trigger as HTMLElement & { checked?: boolean }).checked)).toEqual([
+      false,
+      false,
+      false
+    ])
+
+    await import('../../segmented-trigger')
+    await customElements.whenDefined('web-ui-segmented-trigger')
+
+    const triggers = [...el.querySelectorAll<WebUiSegmentedTrigger>('web-ui-segmented-trigger')]
+    await flushSlotChange(el)
+    await Promise.all(triggers.map(trigger => trigger.updateComplete))
+
+    expect(
+      triggers.map(trigger => ({
+        value: trigger.value,
+        checked: trigger.checked,
+        ariaSelected: queryA11y(trigger, '[role="option"]')?.getAttribute('aria-selected')
+      }))
+    ).toEqual([
+      { value: 'a', checked: false, ariaSelected: 'false' },
+      { value: 'b', checked: true, ariaSelected: 'true' },
+      { value: 'c', checked: false, ariaSelected: 'false' }
+    ])
+
+    cleanupElement(el)
+  })
+
   describe('属性：value', () => {
     it('初始值为空字符串', async () => {
       const el = createSegmented(TRIGGER_HTML)
@@ -195,6 +255,106 @@ describe('WebUiSegmented 组件', () => {
   })
 
   describe('用户交互', () => {
+    it('只将当前选中项或首个启用项放入 Tab 序列', async () => {
+      const el = createSegmented(`
+        <web-ui-segmented-trigger value="a">A</web-ui-segmented-trigger>
+        <web-ui-segmented-trigger value="b" disabled>B</web-ui-segmented-trigger>
+        <web-ui-segmented-trigger value="c">C</web-ui-segmented-trigger>
+      `)
+      await settleSegmented(el)
+
+      const triggers = [...el.querySelectorAll<WebUiSegmentedTrigger>('web-ui-segmented-trigger')]
+      const tabIndexes = () => triggers.map(trigger => queryA11y(trigger, '[role="option"]')?.getAttribute('tabindex'))
+      expect(tabIndexes()).toEqual(['0', '-1', '-1'])
+
+      el.value = 'c'
+      await settleSegmented(el)
+      expect(tabIndexes()).toEqual(['-1', '-1', '0'])
+
+      cleanupElement(el)
+    })
+
+    it('选中项禁用且有同值副本时 Tab stop 回退到首个启用项', async () => {
+      const el = createSegmented(
+        `
+          <web-ui-segmented-trigger value="a">A</web-ui-segmented-trigger>
+          <web-ui-segmented-trigger value="x" disabled>Disabled X</web-ui-segmented-trigger>
+          <web-ui-segmented-trigger value="x">Enabled X</web-ui-segmented-trigger>
+          <web-ui-segmented-trigger value="z">Z</web-ui-segmented-trigger>
+        `,
+        { value: 'x' }
+      )
+      await settleSegmented(el)
+
+      const triggers = [...el.querySelectorAll<WebUiSegmentedTrigger>('web-ui-segmented-trigger')]
+      expect(triggers.map(trigger => trigger.checked)).toEqual([false, true, false, false])
+      expect(triggers.map(trigger => queryA11y(trigger, '[role="option"]')?.getAttribute('tabindex'))).toEqual([
+        '0',
+        '-1',
+        '-1',
+        '-1'
+      ])
+
+      cleanupElement(el)
+    })
+
+    it('左右方向键跳过禁用项、循环移动并同步选中值', async () => {
+      const el = createSegmented(
+        `
+          <web-ui-segmented-trigger value="a">A</web-ui-segmented-trigger>
+          <web-ui-segmented-trigger value="b" disabled>B</web-ui-segmented-trigger>
+          <web-ui-segmented-trigger value="c">C</web-ui-segmented-trigger>
+        `,
+        { value: 'a' }
+      )
+      await settleSegmented(el)
+      const triggers = [...el.querySelectorAll<WebUiSegmentedTrigger>('web-ui-segmented-trigger')]
+      const [inputEvents, detachInput] = spyEvents(el, 'input')
+      const [changeEvents, detachChange] = spyEvents(el, 'change')
+
+      expect(pressOptionKey(triggers[0], 'ArrowRight').defaultPrevented).toBe(true)
+      await settleSegmented(el)
+      expect(el.value).toBe('c')
+      expect(triggers.map(trigger => trigger.checked)).toEqual([false, false, true])
+      expect(inputEvents).toHaveLength(1)
+      expect(changeEvents).toHaveLength(1)
+
+      pressOptionKey(triggers[2], 'ArrowRight')
+      await settleSegmented(el)
+      expect(el.value).toBe('a')
+
+      pressOptionKey(triggers[0], 'ArrowLeft')
+      await settleSegmented(el)
+      expect(el.value).toBe('c')
+      expect(queryA11y(triggers[2], '[role="option"]')?.getAttribute('tabindex')).toBe('0')
+
+      detachInput()
+      detachChange()
+      cleanupElement(el)
+    })
+
+    it('Home / End 跳到首尾，垂直方向键不导航', async () => {
+      const el = createSegmented(TRIGGER_HTML, { value: 'b' })
+      await settleSegmented(el)
+      const triggers = [...el.querySelectorAll<WebUiSegmentedTrigger>('web-ui-segmented-trigger')]
+
+      pressOptionKey(triggers[1], 'Home')
+      await settleSegmented(el)
+      expect(el.value).toBe('a')
+
+      pressOptionKey(triggers[0], 'End')
+      await settleSegmented(el)
+      expect(el.value).toBe('c')
+
+      expect(pressOptionKey(triggers[2], 'ArrowDown').defaultPrevented).toBe(false)
+      expect(pressOptionKey(triggers[2], 'ArrowUp').defaultPrevented).toBe(false)
+      await settleSegmented(el)
+      expect(el.value).toBe('c')
+      expect(queryA11y(triggers[2], '[role="option"]')?.getAttribute('tabindex')).toBe('0')
+
+      cleanupElement(el)
+    })
+
     it('点击子 trigger 后 value 更新为所选值', async () => {
       const el = createSegmented(TRIGGER_HTML)
       await waitForUpdate(el)
