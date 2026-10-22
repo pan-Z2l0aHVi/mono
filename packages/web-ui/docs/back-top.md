@@ -97,13 +97,13 @@ onMounted(() => {
 
 ### Props
 
-| 名称              | 说明                                                                        | 类型                    | 默认值          |
-| ----------------- | --------------------------------------------------------------------------- | ----------------------- | --------------- |
-| `aria-label`      | button 的无障碍名称；可自定义名称或语言。                                    | `string`                | `'Back to top'` |
-| `scroll-behavior` | 滚动行为：`smooth`（默认）或 `auto`；主题要求减少动效时立即滚动。            | `'smooth' \| 'auto'`    | `'smooth'`      |
-| `visible`         | 当前可见状态，由滚动位置驱动。                                               | `boolean`               | `false`         |
-| `scrollTarget`    | 滚动容器，`window`（默认）或 `HTMLElement`（property）。                     | `HTMLElement \| Window` | `window`        |
-| `threshold`       | 显示 button 的滚动阈值（px）。                                               | `number`                | `200`           |
+| 名称              | 说明                                                              | 类型                    | 默认值          |
+| ----------------- | ----------------------------------------------------------------- | ----------------------- | --------------- |
+| `aria-label`      | button 的无障碍名称；可自定义名称或语言。                         | `string`                | `'Back to top'` |
+| `scroll-behavior` | 滚动行为：`smooth`（默认）或 `auto`；主题要求减少动效时立即滚动。 | `'smooth' \| 'auto'`    | `'smooth'`      |
+| `visible`         | 当前可见状态，由滚动位置驱动。                                    | `boolean`               | `false`         |
+| `scrollTarget`    | 滚动容器，`window`（默认）或 `HTMLElement`（property）。          | `HTMLElement \| Window` | `window`        |
+| `threshold`       | 显示 button 的滚动阈值（px）。                                    | `number`                | `200`           |
 
 ### Slots
 
