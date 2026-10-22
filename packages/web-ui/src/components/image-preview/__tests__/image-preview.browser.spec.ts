@@ -677,8 +677,8 @@ describe('imagePreview 命令式 API（浏览器）', () => {
  * 表现是「图片加载了但整块空白」，本文件的其余 fixture 全是 data: URI（原始串 == 解析后
  * 串），覆盖不到该形态。
  *
- * 判据用**与缺省态的相对关系**而不是精确 opacity 值：未施加 is-loaded 的相邻图仍在过渡
- * 起点上，两条路径的起点相同，因此「当前图淡入到位而相邻图没有」才真的说明状态被登记上了。
+ * 判据只检查当前图是否淡入到 `opacity: 1`。`img.complete` 单独不足以证明 settle 状态已按
+ * 原始相对 src 登记并触发 `is-loaded`。
  */
 describe('imagePreview 相对 src（浏览器）', () => {
   /**
