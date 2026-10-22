@@ -944,7 +944,7 @@ export const exampleDocs: ExampleDoc[] = [
           ],
           [
             "size",
-            "<p>button 高度（CSS 长度，如 <code>28</code>、<code>32px</code>）。在 <code>web-ui-button-group</code> 内被忽略。</p>",
+            "<p>button 高度；裸数字按 px 解释，也接受 CSS 长度（如 <code>32px</code>、<code>1.5rem</code>）。在 <code>web-ui-button-group</code> 内被忽略。</p>",
             "string",
             "''"
           ],
