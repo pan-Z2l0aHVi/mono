@@ -2,7 +2,7 @@ import '..'
 
 import { afterEach, describe, expect, it } from 'vite-plus/test'
 
-import { cleanupElement, mountElement, queryA11y, spyEvents, waitForUpdate } from '@/shared/test-utils'
+import { cleanupElement, mountElement, spyEvents, waitForUpdate } from '@/shared/test-utils'
 
 import type { WebUiSwitch } from '..'
 
@@ -15,10 +15,10 @@ afterEach(() => document.body.replaceChildren())
  */
 const createSwitch = (): WebUiSwitch => mountElement<WebUiSwitch>('web-ui-switch')
 
-/** 断言语义角色存在后返回它；手势必须落在承载 role 的可交互元素上。 */
+/** 返回承载指针手势的轨道；可访问角色由 switch host 承载。 */
 const trackOf = (el: WebUiSwitch): HTMLElement => {
-  const node = queryA11y(el, '[role="switch"]')
-  expect(node, '未找到 role="switch" 的可交互元素').toBeTruthy()
+  const node = el.shadowRoot?.querySelector<HTMLElement>('.wui-switch-track')
+  expect(node, '未找到 switch 轨道').toBeTruthy()
   return node as HTMLElement
 }
 
