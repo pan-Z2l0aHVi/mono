@@ -1,5 +1,6 @@
 import '..'
 import '@/components/checkbox-group'
+import '@/components/theme'
 
 import { afterEach, describe, expect, it } from 'vite-plus/test'
 
@@ -34,7 +35,47 @@ const states = (el: WebUiCheckbox): string =>
     .map(a => a.playState)
     .join()
 
+function luminance(color: string): number {
+  const channels = color
+    .match(/[\d.]+/g)
+    ?.slice(0, 3)
+    .map(Number)
+  if (!channels || channels.length !== 3) throw new Error(`Expected an rgb color, received ${color}`)
+  const [red, green, blue] = channels.map(channel => {
+    const normalized = channel / 255
+    return normalized <= 0.04045 ? normalized / 12.92 : ((normalized + 0.055) / 1.055) ** 2.4
+  })
+  return 0.2126 * red + 0.7152 * green + 0.0722 * blue
+}
+
+function contrastRatio(first: string, second: string): number {
+  const [lighter, darker] = [luminance(first), luminance(second)].sort((a, b) => b - a)
+  return (lighter + 0.05) / (darker + 0.05)
+}
+
 describe('WebUiCheckbox 勾画线（浏览器）', () => {
+  it('dark checked fill stays distinguishable from page, surface, and control surfaces', async () => {
+    const theme = document.createElement('web-ui-theme')
+    theme.setAttribute('appearance', 'dark')
+    theme.setAttribute('motion', 'reduced')
+    const el = document.createElement('web-ui-checkbox') as WebUiCheckbox
+    el.setAttribute('checked', '')
+    theme.append(el)
+    document.body.append(theme)
+    await waitForUpdate(theme)
+    await waitForUpdate(el)
+
+    const box = el.shadowRoot?.querySelector('.wui-checkbox-box')
+    expect(box).toBeTruthy()
+    const fill = getComputedStyle(box!).backgroundColor
+    for (const surface of ['rgb(36, 38, 40)', 'rgb(44, 44, 46)', 'rgb(58, 58, 60)']) {
+      expect(
+        contrastRatio(fill, surface),
+        `${surface} should remain distinct from the checked fill`
+      ).toBeGreaterThanOrEqual(3)
+    }
+  })
+
   it('挂载时已勾选是初始状态，不画线', async () => {
     const el = mountElement<WebUiCheckbox>('web-ui-checkbox', { attrs: { checked: '' } })
     await waitForUpdate(el)

@@ -40,7 +40,7 @@
   transition: background-color var(--wui-duration-trigger, 160ms) ease;
 
   &.is-open {
-    background-color: var(--wui-color-accent, #08f);
+    background-color: var(--wui-color-accent, #0071e3);
   }
 
   &.is-disabled {
@@ -108,7 +108,7 @@
 }
 
 :host(:focus-visible) .wui-switch-track {
-  outline-color: var(--wui-color-focus-ring, color-mix(in srgb, var(--wui-color-accent, #08f) 40%, transparent));
+  outline-color: var(--wui-color-focus-ring, color-mix(in srgb, var(--wui-color-accent, #0071e3) 40%, transparent));
 }
 
 :host([data-wui-pointer-focus]:focus-visible) .wui-switch-track {

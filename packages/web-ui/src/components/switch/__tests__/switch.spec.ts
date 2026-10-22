@@ -56,6 +56,15 @@ describe('WebUiSwitch 组件特有契约', () => {
     cleanupElement(el)
   })
 
+  it('loading spinner 使用 theme accent token', async () => {
+    const el = createSwitch()
+    el.loading = true
+    await waitForUpdate(el)
+
+    expect(el.shadowRoot?.querySelector('web-ui-icon')?.getAttribute('color')).toBe('var(--wui-color-accent, #0071e3)')
+    cleanupElement(el)
+  })
+
   it('多次点击每次都派发一次 input 与 change', async () => {
     const el = createSwitch()
     await waitForUpdate(el)

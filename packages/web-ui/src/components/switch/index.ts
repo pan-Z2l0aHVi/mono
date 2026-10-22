@@ -258,7 +258,12 @@ export class WebUiSwitch extends FormAssociated(LitElement) {
             ${
               this.loading
                 ? html`<span class="wui-switch-loading">
-                    <web-ui-icon .icon=${lucideLoaderCircle} size="14" color="#08f" spin></web-ui-icon>
+                    <web-ui-icon
+                      .icon=${lucideLoaderCircle}
+                      size="14"
+                      color="var(--wui-color-accent, #0071e3)"
+                      spin
+                    ></web-ui-icon>
                   </span>`
                 : ''
             }
