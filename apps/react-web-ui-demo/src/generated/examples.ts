@@ -3737,6 +3737,18 @@ export const exampleDocs: ExampleDoc[] = [
             "false"
           ],
           [
+            "aria-label",
+            "<p>输入框的无障碍名称。</p>",
+            "string",
+            "—"
+          ],
+          [
+            "aria-labelledby",
+            "<p>无障碍名称引用，用于命名内部输入框。</p>",
+            "string",
+            "—"
+          ],
+          [
             "precision",
             "<p>小数精度，在读取与提交时规整。</p>",
             "number",
