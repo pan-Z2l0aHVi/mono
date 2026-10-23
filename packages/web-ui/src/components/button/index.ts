@@ -52,8 +52,10 @@ export class WebUiButton extends FormAssociated(LitElement) {
   }
   private _type: (typeof ALLOWED_TYPES)[number] = 'button'
 
-  // Explicitly delegated accessible naming attributes.
+  // Explicitly delegated ARIA attributes.
   @property({ type: String, attribute: 'aria-label' }) override ariaLabel: string | null = null
+  @property({ type: String, attribute: 'aria-disabled' }) override ariaDisabled: string | null = null
+  @property({ type: String, attribute: 'aria-expanded' }) override ariaExpanded: string | null = null
 
   private readonly _groupManagement = defineGroupManaged<ButtonGroupContext>(this, {
     context: buttonGroupContextKey,
@@ -84,6 +86,11 @@ export class WebUiButton extends FormAssociated(LitElement) {
     return this.disabled || this.loading || this._formAssociation.isFormDisabled()
   }
 
+  constructor() {
+    super()
+    this.addEventListener('click', this._handleHostClick)
+  }
+
   private get _sizeStyle(): Record<string, string> {
     // size 仅控制 button 高度；icon 模式下 min-width 同步为相同值，天然保持正方形。
     if (this._groupContext) {
@@ -103,7 +110,7 @@ export class WebUiButton extends FormAssociated(LitElement) {
   }
 
   private handleClick(e: Event) {
-    if (this._isDisabled) {
+    if (this._isDisabled || this.ariaDisabled === 'true') {
       e.preventDefault()
       e.stopPropagation()
       return
@@ -125,6 +132,12 @@ export class WebUiButton extends FormAssociated(LitElement) {
     })
   }
 
+  private readonly _handleHostClick = (event: Event) => {
+    if (event.composedPath()[0] !== this || (!this._isDisabled && this.ariaDisabled !== 'true')) return
+    event.preventDefault()
+    event.stopPropagation()
+  }
+
   override render() {
     const groupContext = this._groupContext
     const btnClass = {
@@ -140,6 +153,8 @@ export class WebUiButton extends FormAssociated(LitElement) {
       <button
         type=${this.type}
         aria-label=${ifDefined(this.ariaLabel)}
+        aria-disabled=${ifDefined(this.ariaDisabled)}
+        aria-expanded=${ifDefined(this.ariaExpanded)}
         class=${classMap(btnClass)}
         part="button"
         style=${Object.keys(this._sizeStyle).length > 0 ? styleMap(this._sizeStyle) : nothing}
