@@ -11,7 +11,7 @@ tag: web-ui-dropdown-item
 
 menu item 是宿主的子元素，打开时被迁移进 overlay panel；`disabled` 的项仍在列表里，只是选不中。
 
-```react
+```tsx
 export default function Demo() {
   return (
     <web-ui-dropdown>
@@ -43,7 +43,7 @@ export default function Demo() {
 
 `prefix` / `suffix` 是两个装饰位；`pl` 把左内边距写进项本身，让没有 icon 的纯文本项与带 14px icon 的项左对齐（8px 内边距 + 14px icon + 8px 间隙）。
 
-```react
+```tsx
 import { lucideCopy, lucideTrash2 } from '@greypan/web-ui/icons'
 
 export default function Demo() {
@@ -91,7 +91,7 @@ import { lucideCopy, lucideTrash2 } from '@greypan/web-ui/icons'
 
 `submenu` 把项变成本级 menu 的入口：嵌套在它里面的 menu item 成为下一级，右侧长出展开箭头，鼠标悬停或方向键都能进入。
 
-```react
+```tsx
 export default function Demo() {
   return (
     <web-ui-dropdown>

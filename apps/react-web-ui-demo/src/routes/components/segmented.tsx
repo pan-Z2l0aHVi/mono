@@ -1,14 +1,12 @@
 import { createFileRoute } from '@tanstack/react-router'
 
 import ExampleDoc from '@/components/example-doc'
-import DemoComponent from '@/components/segmented-demo'
 
 function Component() {
   return (
     <>
-      <DemoComponent />
-      <ExampleDoc component="segmented" />
-      <ExampleDoc component="segmented-trigger" />
+      <ExampleDoc component="segmented" level="primary" />
+      <ExampleDoc component="segmented-trigger" level="secondary" />
     </>
   )
 }

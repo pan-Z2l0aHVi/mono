@@ -8,11 +8,9 @@
 
 <script setup lang="ts">
 import ExampleDoc from '@/components/example-doc/index.vue'
-import RadioDemo from '@/components/radio-demo/index.vue'
 </script>
 
 <template>
-  <RadioDemo />
-  <ExampleDoc component="radio" />
-  <ExampleDoc component="radio-group" />
+  <ExampleDoc component="radio" level="primary" />
+  <ExampleDoc component="radio-group" level="secondary" />
 </template>

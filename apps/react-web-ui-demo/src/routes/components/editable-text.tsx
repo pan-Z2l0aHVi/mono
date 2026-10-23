@@ -1,15 +1,9 @@
 import { createFileRoute } from '@tanstack/react-router'
 
-import DemoComponent from '@/components/editable-text-demo'
 import ExampleDoc from '@/components/example-doc'
 
 function Component() {
-  return (
-    <>
-      <DemoComponent />
-      <ExampleDoc component="editable-text" />
-    </>
-  )
+  return <ExampleDoc component="editable-text" level="primary" />
 }
 
 export const Route = createFileRoute('/components/editable-text')({

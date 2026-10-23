@@ -7,66 +7,556 @@ tag: web-ui-theme
 
 ## 示例
 
-### 基础
+### 浅色与暗色 {#appearance}
 
-`appearance` 选择配色方案，未设置时主题保持 inactive 但解析输出使用默认的 `light`。
+`appearance` 决定这一层作用域解析出哪一套颜色与阴影 token，`light` 与 `dark` 在同一页可以并存。theme 宿主不生成盒也不绘制任何东西，所以作用域要由子元素自己接住 `--wui-color-page` 与 `--wui-color-text`；组件内部的颜色不靠这两个 class，它们读的是同一批继承下来的 token。
 
-```react
-<web-ui-theme appearance="dark">
-  <web-ui-button variant="primary">暗色主题下的 button</web-ui-button>
-</web-ui-theme>
+```tsx
+const appearances = ['light', 'dark'] as const
+
+const labels: Record<(typeof appearances)[number], string> = {
+  light: '浅色作用域',
+  dark: '暗色作用域'
+}
+
+export default function Demo() {
+  return (
+    <div className="flex flex-wrap gap-4">
+      {appearances.map(item => (
+        <web-ui-theme key={item} appearance={item}>
+          <div className="w-64 rounded-2xl bg-(--wui-color-page) p-4 text-(--wui-color-text)">
+            <p className="m-0 font-medium">{labels[item]}</p>
+            <p className="m-0 mb-3 text-sm text-(--wui-color-text-secondary)">文本、次要文本与控件表面都取这一层的值</p>
+            <div className="flex flex-wrap items-center gap-2">
+              <web-ui-button variant="primary">主要</web-ui-button>
+              <web-ui-button variant="secondary">次要</web-ui-button>
+              <web-ui-switch checked></web-ui-switch>
+            </div>
+          </div>
+        </web-ui-theme>
+      ))}
+    </div>
+  )
+}
 ```
 
 ```vue
 <template>
-  <web-ui-theme appearance="dark">
-    <web-ui-button variant="primary">暗色主题下的 button</web-ui-button>
-  </web-ui-theme>
+  <div class="flex flex-wrap gap-4">
+    <web-ui-theme v-for="item in appearances" :key="item" :appearance="item">
+      <div class="w-64 rounded-2xl bg-(--wui-color-page) p-4 text-(--wui-color-text)">
+        <p class="m-0 font-medium">{{ labels[item] }}</p>
+        <p class="m-0 mb-3 text-sm text-(--wui-color-text-secondary)">文本、次要文本与控件表面都取这一层的值</p>
+        <div class="flex flex-wrap items-center gap-2">
+          <web-ui-button variant="primary">主要</web-ui-button>
+          <web-ui-button variant="secondary">次要</web-ui-button>
+          <web-ui-switch checked></web-ui-switch>
+        </div>
+      </div>
+    </web-ui-theme>
+  </div>
 </template>
+
+<script setup lang="ts">
+const appearances = ['light', 'dark'] as const
+
+const labels: Record<(typeof appearances)[number], string> = {
+  light: '浅色作用域',
+  dark: '暗色作用域'
+}
+</script>
 ```
 
-### 跟随系统与动效范围
+### 切换外观 {#toggle}
 
-`appearance="system"` 跟随 `prefers-color-scheme`；`motion` 定义当前范围的动效偏好，`reduced` 归零转场、两个无限加载循环只放慢。
+把 `appearance` 绑到页面状态上就是主题切换，`system` 由 `prefers-color-scheme` 解析。开关写在同一个作用域里，改的只有这一层：文档页自己套在一个 `<web-ui-theme>` 里，示例因此是嵌套主题，换色只揭示它自己的 capture box，外层外观与写在 `documentElement` 上的页面色都不受影响。这一层是否播放揭示由自己的 `motion` 决定。
 
-```react
-<web-ui-theme appearance="system" motion="reduced">
-  {children}
-</web-ui-theme>
-```
+```tsx
+import type { ThemeAppearance } from '@greypan/web-ui'
+import { useState } from 'react'
 
-```vue
-<template>
-  <web-ui-theme appearance="system" motion="reduced">
-    <slot />
-  </web-ui-theme>
-</template>
-```
+const appearances: { label: string; value: ThemeAppearance }[] = [
+  { label: '浅色', value: 'light' },
+  { label: '暗色', value: 'dark' },
+  { label: '跟随系统', value: 'system' }
+]
 
-### 绑定解析后的外观
+export default function Demo() {
+  const [appearance, setAppearance] = useState<ThemeAppearance>('light')
 
-`resolved-appearance` 是只读的派生输出，可以放心把选择器绑到它上面，无需再维护第二份主题状态。
-
-```react
-<div style={{ colorScheme: 'light dark' }}>
-  <web-ui-theme appearance={appearance}>
-    <div className="hero">当前外观由 resolved-appearance 选择器控制</div>
-  </web-ui-theme>
-</div>
+  return (
+    <web-ui-theme appearance={appearance}>
+      <div className="w-full max-w-sm rounded-2xl bg-(--wui-color-page) p-4 text-(--wui-color-text)">
+        <div className="mb-3 flex flex-wrap items-center gap-2">
+          <span className="text-sm text-(--wui-color-text-secondary)">appearance</span>
+          <web-ui-segmented
+            value={appearance}
+            aria-label="示例作用域的外观"
+            onInput={event => {
+              const next = appearances.find(item => item.value === event.currentTarget.value)
+              if (next) setAppearance(next.value)
+            }}
+          >
+            {appearances.map(item => (
+              <web-ui-segmented-trigger key={item.value} value={item.value}>
+                {item.label}
+              </web-ui-segmented-trigger>
+            ))}
+          </web-ui-segmented>
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          <web-ui-input value="作用域内的输入框"></web-ui-input>
+          <web-ui-button variant="primary">确认</web-ui-button>
+        </div>
+      </div>
+    </web-ui-theme>
+  )
+}
 ```
 
 ```vue
 <template>
   <web-ui-theme :appearance="appearance">
-    <div class="hero">当前外观由 resolved-appearance 选择器控制</div>
+    <div class="w-full max-w-sm rounded-2xl bg-(--wui-color-page) p-4 text-(--wui-color-text)">
+      <div class="mb-3 flex flex-wrap items-center gap-2">
+        <span class="text-sm text-(--wui-color-text-secondary)">appearance</span>
+        <web-ui-segmented :value="appearance" aria-label="示例作用域的外观" @input="pick($event.currentTarget.value)">
+          <web-ui-segmented-trigger v-for="item in appearances" :key="item.value" :value="item.value">
+            {{ item.label }}
+          </web-ui-segmented-trigger>
+        </web-ui-segmented>
+      </div>
+      <div class="flex flex-wrap items-center gap-2">
+        <web-ui-input value="作用域内的输入框"></web-ui-input>
+        <web-ui-button variant="primary">确认</web-ui-button>
+      </div>
+    </div>
   </web-ui-theme>
 </template>
 
 <script setup lang="ts">
+import type { ThemeAppearance } from '@greypan/web-ui'
 import { ref } from 'vue'
 
-const appearance = ref<'light' | 'dark' | 'system'>('system')
+const appearances: { label: string; value: ThemeAppearance }[] = [
+  { label: '浅色', value: 'light' },
+  { label: '暗色', value: 'dark' },
+  { label: '跟随系统', value: 'system' }
+]
+
+const appearance = ref<ThemeAppearance>('light')
+
+function pick(value: string) {
+  const next = appearances.find(item => item.value === value)
+  if (next) appearance.value = next.value
+}
 </script>
+```
+
+### 派生输出 {#resolved}
+
+`resolved-appearance`（同时以 `resolvedAppearance` property 暴露）恒为 `light` 或 `dark`：显式 `appearance` 直接透传，`system` 从 `prefers-color-scheme` 解析并在 OS 翻转时实时更新，未设置 `appearance` 时输出默认值 `light`。theme 不派发任何事件，所以消费端观察它就直接绑这个 attribute——CSS 选择器或 MutationObserver 都行。它由组件独占写入：外部 `setAttribute` 在同一次 attribute reaction 内就被恢复，下面的按钮把解析结果与恢复后的回读一起显示出来。
+
+```tsx
+import type { WebUiTheme } from '@greypan/web-ui'
+import { useRef, useState } from 'react'
+
+export default function Demo() {
+  const theme = useRef<WebUiTheme>(null)
+  const [report, setReport] = useState('还没读取')
+
+  function inspect() {
+    const el = theme.current
+    if (!el) return
+    const derived = el.resolvedAppearance
+    const tampered = derived === 'dark' ? 'light' : 'dark'
+    el.setAttribute('resolved-appearance', tampered)
+    setReport(`解析结果 ${derived}；外部写入 ${tampered} 之后回读到 ${el.getAttribute('resolved-appearance')}`)
+  }
+
+  return (
+    <div className="flex flex-col items-start gap-3">
+      <web-ui-theme ref={theme} appearance="system">
+        <web-ui-button onClick={inspect}>读取并尝试改写</web-ui-button>
+      </web-ui-theme>
+      <output className="text-sm text-(--wui-color-text-secondary)">{report}</output>
+    </div>
+  )
+}
+```
+
+```vue
+<template>
+  <div class="flex flex-col items-start gap-3">
+    <web-ui-theme ref="theme" appearance="system">
+      <web-ui-button @click="inspect">读取并尝试改写</web-ui-button>
+    </web-ui-theme>
+    <output class="text-sm text-(--wui-color-text-secondary)">{{ report }}</output>
+  </div>
+</template>
+
+<script setup lang="ts">
+import type { WebUiTheme } from '@greypan/web-ui'
+import { useTemplateRef, ref } from 'vue'
+
+const theme = useTemplateRef<WebUiTheme>('theme')
+const report = ref('还没读取')
+
+function inspect() {
+  const el = theme.value
+  if (!el) return
+  const derived = el.resolvedAppearance
+  const tampered = derived === 'dark' ? 'light' : 'dark'
+  el.setAttribute('resolved-appearance', tampered)
+  report.value = `解析结果 ${derived}；外部写入 ${tampered} 之后回读到 ${el.getAttribute('resolved-appearance')}`
+}
+</script>
+```
+
+### 嵌套作用域 {#nested}
+
+主题可以层层嵌套，每一层解析自己的 token：内层覆盖外层，离开内层又回到外层的值，两层的 `resolved-appearance` 各自输出。`motion` 同样是每层自己的档位、不沿祖先继承，内层不写就是默认的 `system`。宿主不生成盒，所以布局（这里的高度间距）要写在作用域内的子元素上，写在 `<web-ui-theme>` 宿主上是空的。
+
+```tsx
+export default function Demo() {
+  return (
+    <web-ui-theme appearance="light" motion="reduced">
+      <div className="rounded-2xl bg-(--wui-color-page) p-4 text-(--wui-color-text)">
+        <p className="m-0 mb-2 text-xs text-(--wui-color-text-secondary)">外层 light / reduced</p>
+        <div className="flex flex-wrap items-center gap-2">
+          <web-ui-button variant="primary">外层按钮</web-ui-button>
+          <web-ui-switch checked></web-ui-switch>
+        </div>
+
+        <web-ui-theme appearance="dark">
+          <div className="mt-3 rounded-2xl border border-(--wui-color-border) bg-(--wui-color-page) p-4 text-(--wui-color-text)">
+            <p className="m-0 mb-2 text-xs text-(--wui-color-text-secondary)">内层 dark / motion 未写，取 system</p>
+            <div className="flex flex-wrap items-center gap-2">
+              <web-ui-button variant="primary">内层按钮</web-ui-button>
+              <web-ui-input value="内层的输入框"></web-ui-input>
+            </div>
+          </div>
+        </web-ui-theme>
+
+        <div className="mt-3 flex flex-wrap items-center gap-2">
+          <web-ui-button variant="primary">回到外层</web-ui-button>
+          <web-ui-switch checked></web-ui-switch>
+        </div>
+      </div>
+    </web-ui-theme>
+  )
+}
+```
+
+```vue
+<template>
+  <web-ui-theme appearance="light" motion="reduced">
+    <div class="rounded-2xl bg-(--wui-color-page) p-4 text-(--wui-color-text)">
+      <p class="m-0 mb-2 text-xs text-(--wui-color-text-secondary)">外层 light / reduced</p>
+      <div class="flex flex-wrap items-center gap-2">
+        <web-ui-button variant="primary">外层按钮</web-ui-button>
+        <web-ui-switch checked></web-ui-switch>
+      </div>
+
+      <web-ui-theme appearance="dark">
+        <div
+          class="mt-3 rounded-2xl border border-(--wui-color-border) bg-(--wui-color-page) p-4 text-(--wui-color-text)"
+        >
+          <p class="m-0 mb-2 text-xs text-(--wui-color-text-secondary)">内层 dark / motion 未写，取 system</p>
+          <div class="flex flex-wrap items-center gap-2">
+            <web-ui-button variant="primary">内层按钮</web-ui-button>
+            <web-ui-input value="内层的输入框"></web-ui-input>
+          </div>
+        </div>
+      </web-ui-theme>
+
+      <div class="mt-3 flex flex-wrap items-center gap-2">
+        <web-ui-button variant="primary">回到外层</web-ui-button>
+        <web-ui-switch checked></web-ui-switch>
+      </div>
+    </div>
+  </web-ui-theme>
+</template>
+```
+
+### 动效档位 {#motion}
+
+`motion` 管的是这一层的动效档位：`reduced` 把转场时长归零（两个无限加载循环不停，只放慢到 `1600ms`），`full` 始终播放，`system` 跟随 `prefers-reduced-motion`。它不参与 `appearance` 的解析，`isReducedMotion()` 给出这一层的判定结果。打开 portal select 的 panel 可以直接比较进出场时长——panel 挂进这一层的 overlay root，用的就是这一层的时长 token。
+
+```tsx
+import type { ThemeMotion, WebUiTheme } from '@greypan/web-ui'
+import { useRef, useState } from 'react'
+
+const motions: { label: string; value: ThemeMotion }[] = [
+  { label: 'full', value: 'full' },
+  { label: 'reduced', value: 'reduced' },
+  { label: 'system', value: 'system' }
+]
+
+export default function Demo() {
+  const theme = useRef<WebUiTheme>(null)
+  const [motion, setMotion] = useState<ThemeMotion>('system')
+  const [reduced, setReduced] = useState('')
+
+  return (
+    <web-ui-theme ref={theme} appearance="light" motion={motion}>
+      <div className="w-full max-w-md rounded-2xl bg-(--wui-color-page) p-4 text-(--wui-color-text)">
+        <div className="mb-3 flex flex-wrap items-center gap-2">
+          <span className="text-sm text-(--wui-color-text-secondary)">motion</span>
+          <web-ui-segmented
+            value={motion}
+            aria-label="示例作用域的动效档位"
+            onInput={event => {
+              const next = motions.find(item => item.value === event.currentTarget.value)
+              if (next) setMotion(next.value)
+            }}
+          >
+            {motions.map(item => (
+              <web-ui-segmented-trigger key={item.value} value={item.value}>
+                {item.label}
+              </web-ui-segmented-trigger>
+            ))}
+          </web-ui-segmented>
+        </div>
+
+        <div className="flex flex-wrap items-center gap-2">
+          <web-ui-select portal placeholder="打开看时长" aria-label="动效档位对照用的 select">
+            <web-ui-option value="enter" label="进场">
+              进场
+            </web-ui-option>
+            <web-ui-option value="exit" label="退场">
+              退场
+            </web-ui-option>
+          </web-ui-select>
+          <web-ui-button
+            variant="secondary"
+            onClick={() => setReduced(`isReducedMotion() = ${String(theme.current?.isReducedMotion())}`)}
+          >
+            读取判定
+          </web-ui-button>
+          <output className="text-sm text-(--wui-color-text-secondary)">{reduced === '' ? '还没读取' : reduced}</output>
+        </div>
+      </div>
+    </web-ui-theme>
+  )
+}
+```
+
+```vue
+<template>
+  <web-ui-theme ref="theme" appearance="light" :motion="motion">
+    <div class="w-full max-w-md rounded-2xl bg-(--wui-color-page) p-4 text-(--wui-color-text)">
+      <div class="mb-3 flex flex-wrap items-center gap-2">
+        <span class="text-sm text-(--wui-color-text-secondary)">motion</span>
+        <web-ui-segmented :value="motion" aria-label="示例作用域的动效档位" @input="pick($event.currentTarget.value)">
+          <web-ui-segmented-trigger v-for="item in motions" :key="item.value" :value="item.value">
+            {{ item.label }}
+          </web-ui-segmented-trigger>
+        </web-ui-segmented>
+      </div>
+
+      <div class="flex flex-wrap items-center gap-2">
+        <web-ui-select portal placeholder="打开看时长" aria-label="动效档位对照用的 select">
+          <web-ui-option value="enter" label="进场">进场</web-ui-option>
+          <web-ui-option value="exit" label="退场">退场</web-ui-option>
+        </web-ui-select>
+        <web-ui-button variant="secondary" @click="inspect">读取判定</web-ui-button>
+        <output class="text-sm text-(--wui-color-text-secondary)">{{ reduced === '' ? '还没读取' : reduced }}</output>
+      </div>
+    </div>
+  </web-ui-theme>
+</template>
+
+<script setup lang="ts">
+import type { ThemeMotion, WebUiTheme } from '@greypan/web-ui'
+import { useTemplateRef, ref } from 'vue'
+
+const motions: { label: string; value: ThemeMotion }[] = [
+  { label: 'full', value: 'full' },
+  { label: 'reduced', value: 'reduced' },
+  { label: 'system', value: 'system' }
+]
+
+const theme = useTemplateRef<WebUiTheme>('theme')
+const motion = ref<ThemeMotion>('system')
+const reduced = ref('')
+
+function pick(value: string) {
+  const next = motions.find(item => item.value === value)
+  if (next) motion.value = next.value
+}
+
+function inspect() {
+  const el = theme.value
+  if (!el) return
+  reduced.value = `isReducedMotion() = ${String(el.isReducedMotion())}`
+}
+</script>
+```
+
+### overlay root 与 portal {#overlay}
+
+每个 active 主题同时是它自己的 theme-owned overlay root：`getOverlayRoot()` 返回它，未设置 `appearance` 的主题不创建、返回 `undefined`。Portal 类组件在没有显式容器时挂到最近 active theme 的 overlay root，所以 panel 用的就是这一层的 token；`toast()` 不带 `target` 时优先 root theme，示例因此显式把触发按钮作为 `target` 传进去。`<web-ui-dialog>` 在原生 top layer，颜色和动效 token 靠 DOM 继承取这一层的值。
+
+```tsx
+import { toast, type WebUiButton, type WebUiTheme } from '@greypan/web-ui'
+import { useRef, useState } from 'react'
+
+export default function Demo() {
+  const theme = useRef<WebUiTheme>(null)
+  const toastTarget = useRef<WebUiButton>(null)
+  const [dialogOpen, setDialogOpen] = useState(false)
+  const [report, setReport] = useState('还没读取')
+
+  return (
+    <web-ui-theme ref={theme} appearance="dark">
+      <div className="w-full max-w-md rounded-2xl bg-(--wui-color-page) p-4 text-(--wui-color-text)">
+        <div className="flex flex-wrap items-center gap-2">
+          <web-ui-select portal placeholder="Portal select" aria-label="挂进作用域 overlay root 的 select">
+            <web-ui-option value="portal" label="Portal overlay">
+              Portal overlay
+            </web-ui-option>
+            <web-ui-option value="token" label="Theme token">
+              Theme token
+            </web-ui-option>
+          </web-ui-select>
+          <web-ui-button
+            ref={toastTarget}
+            variant="secondary"
+            onClick={() =>
+              toast.info('这条 toast 挂进示例自己的 overlay root。', {
+                heading: '作用域 toast',
+                duration: 3000,
+                target: toastTarget.current ?? undefined
+              })
+            }
+          >
+            显示 toast
+          </web-ui-button>
+          <web-ui-button variant="secondary" onClick={() => setDialogOpen(true)}>
+            打开 dialog
+          </web-ui-button>
+          <web-ui-button
+            variant="ghost"
+            onClick={() =>
+              setReport(
+                theme.current?.getOverlayRoot() ? 'getOverlayRoot() 返回元素' : 'getOverlayRoot() 返回 undefined'
+              )
+            }
+          >
+            读取 overlay root
+          </web-ui-button>
+        </div>
+        <output className="mt-2 block text-sm text-(--wui-color-text-secondary)">{report}</output>
+
+        <web-ui-dialog
+          open={dialogOpen}
+          heading="作用域 dialog"
+          onopen-change={event => setDialogOpen(event.detail.open)}
+        >
+          dialog 在原生 top layer，颜色与动效 token 仍从这一层继承。
+          <web-ui-button slot="footer" variant="primary" full onClick={() => setDialogOpen(false)}>
+            关闭
+          </web-ui-button>
+        </web-ui-dialog>
+      </div>
+    </web-ui-theme>
+  )
+}
+```
+
+```vue
+<template>
+  <web-ui-theme ref="theme" appearance="dark">
+    <div class="w-full max-w-md rounded-2xl bg-(--wui-color-page) p-4 text-(--wui-color-text)">
+      <div class="flex flex-wrap items-center gap-2">
+        <web-ui-select portal placeholder="Portal select" aria-label="挂进作用域 overlay root 的 select">
+          <web-ui-option value="portal" label="Portal overlay">Portal overlay</web-ui-option>
+          <web-ui-option value="token" label="Theme token">Theme token</web-ui-option>
+        </web-ui-select>
+        <web-ui-button ref="toast-target" variant="secondary" @click="showToast">显示 toast</web-ui-button>
+        <web-ui-button variant="secondary" @click="dialogOpen = true">打开 dialog</web-ui-button>
+        <web-ui-button variant="ghost" @click="inspect">读取 overlay root</web-ui-button>
+      </div>
+      <output class="mt-2 block text-sm text-(--wui-color-text-secondary)">{{ report }}</output>
+
+      <web-ui-dialog :open="dialogOpen" heading="作用域 dialog" @open-change="dialogOpen = $event.detail.open">
+        dialog 在原生 top layer，颜色与动效 token 仍从这一层继承。
+        <web-ui-button slot="footer" variant="primary" full @click="dialogOpen = false">关闭</web-ui-button>
+      </web-ui-dialog>
+    </div>
+  </web-ui-theme>
+</template>
+
+<script setup lang="ts">
+import { toast, type WebUiButton, type WebUiTheme } from '@greypan/web-ui'
+import { useTemplateRef, ref } from 'vue'
+
+const theme = useTemplateRef<WebUiTheme>('theme')
+const toastTarget = useTemplateRef<WebUiButton>('toast-target')
+const dialogOpen = ref(false)
+const report = ref('还没读取')
+
+function showToast() {
+  toast.info('这条 toast 挂进示例自己的 overlay root。', {
+    heading: '作用域 toast',
+    duration: 3000,
+    target: toastTarget.value ?? undefined
+  })
+}
+
+function inspect() {
+  report.value = theme.value?.getOverlayRoot() ? 'getOverlayRoot() 返回元素' : 'getOverlayRoot() 返回 undefined'
+}
+</script>
+```
+
+### 作用域内覆盖 token {#tokens}
+
+token 的默认值由 `<web-ui-theme>` 为自己的子树声明，覆盖点因此要落在作用域内的元素上：抬 `--wui-control-size` 与 `--wui-input-width` 改控件的高度与宽度，抬 `--wui-space-4` 改节奏——组件各自的覆盖 token（`--wui-button-px`、`--wui-dialog-padding` 那一类）只把这些级当 fallback 默认值。派生 token 在宿主上就算好了：`--wui-color-focus-ring` 由 `--wui-color-accent` 派生，写在子元素上的 accent 覆盖不会带着它一起变。
+
+```tsx
+export default function Demo() {
+  return (
+    <web-ui-theme appearance="light">
+      <div className="flex flex-wrap gap-4 rounded-2xl bg-(--wui-color-page) p-4 text-(--wui-color-text)">
+        <div className="flex flex-col items-start gap-[var(--wui-space-4)]">
+          <p className="m-0 text-sm text-(--wui-color-text-secondary)">作用域默认值</p>
+          <web-ui-button variant="primary">确定</web-ui-button>
+          <web-ui-input value="宽度与高度都取默认档"></web-ui-input>
+        </div>
+
+        <div className="flex flex-col items-start gap-[var(--wui-space-4)] [--wui-control-size:44px] [--wui-input-width:240px] [--wui-space-4:24px] [--wui-color-accent:#0f7b6c]">
+          <p className="m-0 text-sm text-(--wui-color-text-secondary)">同一作用域内抬高一档</p>
+          <web-ui-button variant="primary">确定</web-ui-button>
+          <web-ui-input value="抬高了控件高度与宽度"></web-ui-input>
+        </div>
+      </div>
+    </web-ui-theme>
+  )
+}
+```
+
+```vue
+<template>
+  <web-ui-theme appearance="light">
+    <div class="flex flex-wrap gap-4 rounded-2xl bg-(--wui-color-page) p-4 text-(--wui-color-text)">
+      <div class="flex flex-col items-start gap-[var(--wui-space-4)]">
+        <p class="m-0 text-sm text-(--wui-color-text-secondary)">作用域默认值</p>
+        <web-ui-button variant="primary">确定</web-ui-button>
+        <web-ui-input value="宽度与高度都取默认档"></web-ui-input>
+      </div>
+
+      <div
+        class="flex flex-col items-start gap-[var(--wui-space-4)] [--wui-control-size:44px] [--wui-input-width:240px] [--wui-space-4:24px] [--wui-color-accent:#0f7b6c]"
+      >
+        <p class="m-0 text-sm text-(--wui-color-text-secondary)">同一作用域内抬高一档</p>
+        <web-ui-button variant="primary">确定</web-ui-button>
+        <web-ui-input value="抬高了控件高度与宽度"></web-ui-input>
+      </div>
+    </div>
+  </web-ui-theme>
+</template>
 ```
 
 ## API
@@ -206,42 +696,43 @@ duration 默认值为 `--wui-duration-press: 80ms`、`--wui-duration-feedback: 1
 
 ### Color tokens
 
-| 名称                               | 说明                                 | 浅色默认值                                                              | 深色默认值                                                                            |
-| ---------------------------------- | ------------------------------------ | ----------------------------------------------------------------------- | ------------------------------------------------------------------------------------- |
-| `--wui-color-page`                 | 页面背景                             | `#fff`                                                                  | `#242628`                                                                             |
-| `--wui-color-surface`              | 普通 表面                            | `#fff`                                                                  | `#2c2c2e`                                                                             |
-| `--wui-color-surface-raised`       | 抬升表面                             | `#f2f2f7`                                                               | `#2c2c2e`                                                                             |
-| `--wui-color-surface-control`      | 中性可交互控件表面                   | `#dfdfdf`                                                               | `#3a3a3c`                                                                             |
-| `--wui-color-surface-track`        | Slider/Switch track 表面             | `#e5e5ea`                                                               | `#444446`                                                                             |
-| `--wui-color-surface-menu`         | Menu 和浮动 panel 表面               | `rgb(250 250 250 / 0.76)`                                               | `rgb(49 48 50 / 0.74)`                                                                |
-| `--wui-color-surface-glass`        | 液态玻璃表面                         | `rgb(250 250 250 / 0.34)`                                               | `rgb(44 44 46 / 0.42)`                                                                |
-| `--wui-color-surface-glass-hover`  | Glass 完整悬停背景                   | `color-mix(... text 6%, surface-glass)`                                 | `color-mix(... text 6%, surface-glass)`                                               |
-| `--wui-color-surface-glass-active` | Glass 完整按下背景                   | `color-mix(... text 15%, surface-glass)`                                | `color-mix(... text 15%, surface-glass)`                                              |
-| `--wui-color-surface-overlay`      | 半透明 overlay 表面                  | `rgb(248 248 248 / 0.92)`                                               | `rgb(32 34 34 / 0.92)`                                                                |
-| `--wui-color-surface-sidebar`      | 侧边栏 panel 表面                    | `rgb(233 233 233 / 0.82)`                                               | `rgb(44 44 46 / 0.8)`                                                                 |
-| `--wui-color-surface-segmented`    | Segmented indicator 表面             | `#e5e5ea`                                                               | `#3a3a3c`                                                                             |
-| `--wui-color-surface-selected`     | 选中表面                             | `#fff`                                                                  | `#5c5c5e`                                                                             |
-| `--wui-color-text`                 | 主要文本                             | `#1b1b1b`                                                               | `#e9eaea`                                                                             |
-| `--wui-color-text-secondary`       | 次要文本                             | `#6a6a6a`                                                               | `#a1a1a6`                                                                             |
-| `--wui-color-text-tertiary`        | 三级文本和弱意图 icon                | `color-mix(in srgb, var(--wui-color-text) 35%, transparent)`            | `color-mix(in srgb, var(--wui-color-text) 42%, transparent)`                          |
-| `--wui-color-text-disabled`        | 禁用态前景文本                       | `color-mix(in srgb, var(--wui-color-text) 32%, transparent)`            | `color-mix(in srgb, var(--wui-color-text) 38%, transparent)`                          |
-| `--wui-color-state-layer-hover`    | 透明悬停层                           | `color-mix(in srgb, var(--wui-color-text) 6%, transparent)`             | `color-mix(in srgb, var(--wui-color-text) 6%, transparent)`                           |
-| `--wui-color-state-layer-active`   | 透明按下层                           | `color-mix(in srgb, var(--wui-color-text) 15%, transparent)`            | `color-mix(in srgb, var(--wui-color-text) 15%, transparent)`                          |
-| `--wui-color-border`               | 常规边框和 divider                   | `rgb(0 0 0 / 0.1)`                                                      | `rgb(255 255 255 / 0.14)`                                                             |
-| `--wui-color-glass-highlight`      | 表面 inset 高光                      | `rgb(255 255 255 / 0.9)`                                                | `rgb(255 255 255 / 0.1)`                                                              |
-| `--wui-color-glass-ring`           | 1px 描边环底色                       | `rgb(0 0 0 / 0.05)`                                                     | `rgb(255 255 255 / 0.05)`                                                             |
-| `--wui-color-glass-ring-sheen`     | 描边环角落受光光泽                   | `rgb(255 255 255 / 0.5)`                                                | `rgb(255 255 255 / 0.2)`                                                              |
-| `--wui-color-glass-ring-shade`     | 描边环角落背光压暗                   | `rgb(0 0 0 / 0.03)`                                                     | `rgb(0 0 0 / 0.5)`                                                                    |
-| `--wui-color-accent`               | Accent 和输入焦点边框                | `#0071e3`                                                               | `#0a84ff`                                                                             |
-| `--wui-color-on-accent`            | Accent 上的前景色                    | `#fff`                                                                  | `#000`                                                                                |
-| `--wui-color-on-danger`            | `danger` 背景上的前景色              | `#fff`                                                                  | `#000`                                                                                |
-| `--wui-color-on-control`           | 控件内芯前景色                       | `#fff`                                                                  | `#f2f2f7`                                                                             |
-| `--wui-color-success`              | 成功                                 | `#16a34a`                                                               | `#30d158`                                                                             |
-| `--wui-color-warning`              | 警告                                 | `#d97706`                                                               | `#ff9f0a`                                                                             |
-| `--wui-color-danger`               | 危险                                 | `#dc2626`                                                               | `#ff453a`                                                                             |
-| `--wui-color-info`                 | 信息                                 | `#2563eb`                                                               | `#64d2ff`                                                                             |
-| `--wui-color-backdrop`             | Modal backdrop                       | `rgb(0 0 0 / 0.12)`                                                     | `rgb(0 0 0 / 0.48)`                                                                   |
-| `--wui-color-focus-ring`           | Focus indicator 颜色，由 accent 派生 | `color-mix(in srgb, var(--wui-color-accent, #0071e3) 40%, transparent)` | `color-mix(in srgb, var(--wui-color-accent, #0a84ff) 62%, var(--wui-color-text) 38%)` |
+| 名称                                  | 说明                                 | 浅色默认值                                                              | 深色默认值                                                                            |
+| ------------------------------------- | ------------------------------------ | ----------------------------------------------------------------------- | ------------------------------------------------------------------------------------- |
+| `--wui-color-page`                    | 页面背景                             | `#fff`                                                                  | `#242628`                                                                             |
+| `--wui-color-surface`                 | 普通 表面                            | `#fff`                                                                  | `#2c2c2e`                                                                             |
+| `--wui-color-surface-raised`          | 抬升表面                             | `#f2f2f7`                                                               | `#2c2c2e`                                                                             |
+| `--wui-color-surface-control`         | 中性可交互控件表面                   | `#dfdfdf`                                                               | `#3a3a3c`                                                                             |
+| `--wui-color-surface-track`           | Slider/Switch track 表面             | `#e5e5ea`                                                               | `#444446`                                                                             |
+| `--wui-color-surface-menu`            | Menu 和浮动 panel 表面               | `rgb(250 250 250 / 0.76)`                                               | `rgb(49 48 50 / 0.74)`                                                                |
+| `--wui-color-surface-glass`           | 液态玻璃表面                         | `rgb(250 250 250 / 0.34)`                                               | `rgb(44 44 46 / 0.42)`                                                                |
+| `--wui-color-surface-glass-hover`     | Glass 完整悬停背景                   | `color-mix(... text 6%, surface-glass)`                                 | `color-mix(... text 6%, surface-glass)`                                               |
+| `--wui-color-surface-glass-active`    | Glass 完整按下背景                   | `color-mix(... text 15%, surface-glass)`                                | `color-mix(... text 15%, surface-glass)`                                              |
+| `--wui-color-surface-overlay`         | 半透明 overlay 表面                  | `rgb(248 248 248 / 0.92)`                                               | `rgb(32 34 34 / 0.92)`                                                                |
+| `--wui-color-surface-sidebar`         | 侧边栏 panel 表面                    | `rgb(233 233 233 / 0.82)`                                               | `rgb(44 44 46 / 0.8)`                                                                 |
+| `--wui-color-surface-segmented`       | Segmented indicator 表面             | `#e5e5ea`                                                               | `#3a3a3c`                                                                             |
+| `--wui-color-surface-segmented-track` | Segmented 凸变种 track 表面          | `#e5e5ea`                                                               | `#2c2c2e`                                                                             |
+| `--wui-color-surface-selected`        | 选中表面                             | `#fff`                                                                  | `#3a3a3c`                                                                             |
+| `--wui-color-text`                    | 主要文本                             | `#1b1b1b`                                                               | `#e9eaea`                                                                             |
+| `--wui-color-text-secondary`          | 次要文本                             | `#6a6a6a`                                                               | `#a1a1a6`                                                                             |
+| `--wui-color-text-tertiary`           | 三级文本和弱意图 icon                | `color-mix(in srgb, var(--wui-color-text) 35%, transparent)`            | `color-mix(in srgb, var(--wui-color-text) 42%, transparent)`                          |
+| `--wui-color-text-disabled`           | 禁用态前景文本                       | `color-mix(in srgb, var(--wui-color-text) 32%, transparent)`            | `color-mix(in srgb, var(--wui-color-text) 38%, transparent)`                          |
+| `--wui-color-state-layer-hover`       | 透明悬停层                           | `color-mix(in srgb, var(--wui-color-text) 6%, transparent)`             | `color-mix(in srgb, var(--wui-color-text) 6%, transparent)`                           |
+| `--wui-color-state-layer-active`      | 透明按下层                           | `color-mix(in srgb, var(--wui-color-text) 15%, transparent)`            | `color-mix(in srgb, var(--wui-color-text) 15%, transparent)`                          |
+| `--wui-color-border`                  | 常规边框和 divider                   | `rgb(0 0 0 / 0.1)`                                                      | `rgb(255 255 255 / 0.14)`                                                             |
+| `--wui-color-glass-highlight`         | 表面 inset 高光                      | `rgb(255 255 255 / 0.9)`                                                | `rgb(255 255 255 / 0.1)`                                                              |
+| `--wui-color-glass-ring`              | 1px 描边环底色                       | `rgb(0 0 0 / 0.05)`                                                     | `rgb(255 255 255 / 0.05)`                                                             |
+| `--wui-color-glass-ring-sheen`        | 描边环角落受光光泽                   | `rgb(255 255 255 / 0.5)`                                                | `rgb(255 255 255 / 0.2)`                                                              |
+| `--wui-color-glass-ring-shade`        | 描边环角落背光压暗                   | `rgb(0 0 0 / 0.03)`                                                     | `rgb(0 0 0 / 0.5)`                                                                    |
+| `--wui-color-accent`                  | Accent 和输入焦点边框                | `#0071e3`                                                               | `#0a84ff`                                                                             |
+| `--wui-color-on-accent`               | Accent 上的前景色                    | `#fff`                                                                  | `#000`                                                                                |
+| `--wui-color-on-danger`               | `danger` 背景上的前景色              | `#fff`                                                                  | `#000`                                                                                |
+| `--wui-color-on-control`              | 控件内芯前景色                       | `#fff`                                                                  | `#f2f2f7`                                                                             |
+| `--wui-color-success`                 | 成功                                 | `#16a34a`                                                               | `#30d158`                                                                             |
+| `--wui-color-warning`                 | 警告                                 | `#d97706`                                                               | `#ff9f0a`                                                                             |
+| `--wui-color-danger`                  | 危险                                 | `#dc2626`                                                               | `#ff453a`                                                                             |
+| `--wui-color-info`                    | 信息                                 | `#2563eb`                                                               | `#64d2ff`                                                                             |
+| `--wui-color-backdrop`                | Modal backdrop                       | `rgb(0 0 0 / 0.12)`                                                     | `rgb(0 0 0 / 0.48)`                                                                   |
+| `--wui-color-focus-ring`              | Focus indicator 颜色，由 accent 派生 | `color-mix(in srgb, var(--wui-color-accent, #0071e3) 40%, transparent)` | `color-mix(in srgb, var(--wui-color-accent, #0a84ff) 62%, var(--wui-color-text) 38%)` |
 
 ### Shadow tokens
 
