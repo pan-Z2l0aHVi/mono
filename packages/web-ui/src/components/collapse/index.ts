@@ -107,6 +107,12 @@ export class WebUiCollapse extends LitElement {
   // 动画代际：每次管线启动自增，旧管线的 transitionend/兜底定时器/rAF 全部失效。
   private _generation = 0
   private _lastOpen?: boolean
+  private _triggerAriaSnapshot?: {
+    trigger: HTMLElement
+    expanded: string | null
+    controls: string | null
+    disabled: string | null
+  }
 
   override connectedCallback() {
     super.connectedCallback()
@@ -127,6 +133,7 @@ export class WebUiCollapse extends LitElement {
   override disconnectedCallback() {
     super.disconnectedCallback()
     this._clearExitTimer()
+    this._restoreTriggerAriaSnapshot()
   }
 
   protected override updated(changed: Map<string, unknown>) {
@@ -205,9 +212,35 @@ export class WebUiCollapse extends LitElement {
     this.requestUpdate()
   }
 
+  private _restoreTriggerAriaSnapshot() {
+    const snapshot = this._triggerAriaSnapshot
+    if (!snapshot) return
+
+    for (const [attribute, value] of Object.entries({
+      'aria-expanded': snapshot.expanded,
+      'aria-controls': snapshot.controls,
+      'aria-disabled': snapshot.disabled
+    })) {
+      if (value === null) snapshot.trigger.removeAttribute(attribute)
+      else snapshot.trigger.setAttribute(attribute, value)
+    }
+    this._triggerAriaSnapshot = undefined
+  }
+
   // ARIA 状态回写到 trigger 元素本身（wrapper 不可聚焦，AT 读不到）。
   private _syncTriggerAria() {
     const trigger = this._queryTrigger()
+    if (this._triggerAriaSnapshot?.trigger !== trigger) {
+      this._restoreTriggerAriaSnapshot()
+      if (trigger) {
+        this._triggerAriaSnapshot = {
+          trigger,
+          expanded: trigger.getAttribute('aria-expanded'),
+          controls: trigger.getAttribute('aria-controls'),
+          disabled: trigger.getAttribute('aria-disabled')
+        }
+      }
+    }
     if (!trigger) return
     trigger.setAttribute('aria-expanded', String(this.open))
     trigger.setAttribute('aria-controls', this._contentId)
