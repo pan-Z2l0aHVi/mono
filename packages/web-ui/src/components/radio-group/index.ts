@@ -15,7 +15,7 @@ const RADIO_GROUP_KEYS = {
   horizontal: { next: 'ArrowRight', previous: 'ArrowLeft' },
   vertical: { next: 'ArrowDown', previous: 'ArrowUp' }
 } as const
-const AVAILABILITY_ATTRIBUTES = ['hidden', 'inert', 'aria-hidden', 'style', 'class', 'open', 'popover'] as const
+const AVAILABILITY_ATTRIBUTES = ['hidden', 'inert', 'aria-hidden', 'style', 'class', 'open', 'popover', 'slot'] as const
 
 interface DocumentAvailabilityObserver {
   readonly subscribers: Set<() => void>
@@ -247,9 +247,15 @@ export class WebUiRadioGroup extends FormAssociated(LitElement) {
    */
   private _knownMemberValues = new Set<string>()
   private _availabilityObserver: MutationObserver | null = null
+  private _availabilityResizeObserver: ResizeObserver | null = null
   private _availabilityToggleTargets = new Set<Element>()
+  private _availabilitySlotTargets = new Set<Element>()
   private _unsubscribeDocumentAvailability: (() => void) | null = null
   private readonly _handleAvailabilityToggle = () => this._groupController.sync()
+  private readonly _handleAvailabilitySlotChange = () => {
+    this._observeAvailabilityAncestors()
+    this._groupController.sync()
+  }
 
   private _getComposedAncestors(element: Element): Element[] {
     const ancestors: Element[] = []
@@ -323,7 +329,10 @@ export class WebUiRadioGroup extends FormAssociated(LitElement) {
   override disconnectedCallback() {
     this._availabilityObserver?.disconnect()
     this._availabilityObserver = null
+    this._availabilityResizeObserver?.disconnect()
+    this._availabilityResizeObserver = null
     this._syncAvailabilityToggleTargets([])
+    this._syncAvailabilitySlotTargets([])
     this._unsubscribeDocumentAvailability?.()
     this._unsubscribeDocumentAvailability = null
     super.disconnectedCallback()
@@ -374,14 +383,17 @@ export class WebUiRadioGroup extends FormAssociated(LitElement) {
   private _observeAvailabilityAncestors() {
     this._availabilityObserver?.disconnect()
     this._availabilityObserver = null
+    this._availabilityResizeObserver?.disconnect()
+    this._availabilityResizeObserver = null
 
     const ancestors = this._getComposedAncestors(this)
     this._syncAvailabilityToggleTargets(ancestors)
+    this._syncAvailabilitySlotTargets(ancestors)
     if (ancestors.length === 0) return
 
     this._availabilityObserver = new MutationObserver(records => {
-      if (records.some(record => record.attributeName === 'popover')) {
-        this._syncAvailabilityToggleTargets(this._getComposedAncestors(this))
+      if (records.some(record => record.attributeName === 'popover' || record.attributeName === 'slot')) {
+        this._observeAvailabilityAncestors()
       }
       this._groupController.sync()
     })
@@ -390,6 +402,11 @@ export class WebUiRadioGroup extends FormAssociated(LitElement) {
         attributes: true,
         attributeFilter: [...AVAILABILITY_ATTRIBUTES]
       })
+    }
+
+    if (typeof ResizeObserver !== 'undefined') {
+      this._availabilityResizeObserver = new ResizeObserver(() => this._groupController.sync())
+      for (const ancestor of ancestors) this._availabilityResizeObserver.observe(ancestor)
     }
   }
 
@@ -403,6 +420,19 @@ export class WebUiRadioGroup extends FormAssociated(LitElement) {
       if (!ancestor.hasAttribute('popover')) continue
       ancestor.addEventListener('toggle', this._handleAvailabilityToggle)
       this._availabilityToggleTargets.add(ancestor)
+    }
+  }
+
+  private _syncAvailabilitySlotTargets(ancestors: readonly Element[]) {
+    for (const target of this._availabilitySlotTargets) {
+      target.removeEventListener('slotchange', this._handleAvailabilitySlotChange)
+    }
+    this._availabilitySlotTargets.clear()
+
+    for (const ancestor of ancestors) {
+      if (ancestor.localName !== 'slot') continue
+      ancestor.addEventListener('slotchange', this._handleAvailabilitySlotChange)
+      this._availabilitySlotTargets.add(ancestor)
     }
   }
 

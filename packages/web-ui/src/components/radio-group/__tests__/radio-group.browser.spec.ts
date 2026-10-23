@@ -357,6 +357,101 @@ describe('WebUiRadioGroup 无障碍语义（浏览器）', () => {
     popover.hidePopover()
   })
 
+  it('radio group 重新分配 slot 后改用新组合祖先计算 tab stop', async () => {
+    const host = createGroup()
+    await waitForUpdate(host)
+    const radios = [...host.querySelectorAll<Updatable>('web-ui-radio')]
+    await Promise.all(radios.map(radio => radio.updateComplete))
+
+    const shell = document.createElement('div')
+    const shadow = shell.attachShadow({ mode: 'open' })
+    const hiddenContainer = document.createElement('div')
+    hiddenContainer.hidden = true
+    const hiddenSlot = document.createElement('slot')
+    hiddenSlot.name = 'hidden'
+    hiddenContainer.append(hiddenSlot)
+    const visibleContainer = document.createElement('div')
+    const visibleSlot = document.createElement('slot')
+    visibleSlot.name = 'visible'
+    visibleContainer.append(visibleSlot)
+    shadow.append(hiddenContainer, visibleContainer)
+    document.body.append(shell)
+    host.slot = 'hidden'
+    shell.append(host)
+    await new Promise<void>(resolve => requestAnimationFrame(() => resolve()))
+    await waitForUpdate(host)
+    await Promise.all(radios.map(radio => radio.updateComplete))
+
+    expect(
+      radios.every(radio => radio.shadowRoot?.querySelector('[role="radio"]')?.getAttribute('tabindex') === '-1')
+    ).toBe(true)
+
+    host.slot = 'visible'
+    await new Promise<void>(resolve => requestAnimationFrame(() => resolve()))
+    await waitForUpdate(host)
+    await Promise.all(radios.map(radio => radio.updateComplete))
+    expect(radios[0]?.shadowRoot?.querySelector('[role="radio"]')?.getAttribute('tabindex')).toBe('0')
+    expect(radios[1]?.shadowRoot?.querySelector('[role="radio"]')?.getAttribute('tabindex')).toBe('-1')
+
+    visibleContainer.hidden = true
+    await new Promise<void>(resolve => requestAnimationFrame(() => resolve()))
+    await Promise.all(radios.map(radio => radio.updateComplete))
+    expect(
+      radios.every(radio => radio.shadowRoot?.querySelector('[role="radio"]')?.getAttribute('tabindex') === '-1')
+    ).toBe(true)
+
+    visibleContainer.hidden = false
+    await new Promise<void>(resolve => requestAnimationFrame(() => resolve()))
+    await Promise.all(radios.map(radio => radio.updateComplete))
+    expect(radios[0]?.shadowRoot?.querySelector('[role="radio"]')?.getAttribute('tabindex')).toBe('0')
+  })
+
+  it('容器尺寸改变触发 container query 后更新 radio 的 tab stop', async () => {
+    const style = document.createElement('style')
+    style.textContent = `
+      @container (max-width: 500px) {
+        web-ui-radio[value="basic"] { visibility: hidden; }
+      }
+    `
+    document.head.append(style)
+
+    try {
+      const host = createGroup()
+      const wrapper = document.createElement('div')
+      wrapper.style.cssText = 'display: flex; width: 1000px; height: 1px'
+      const container = document.createElement('div')
+      container.style.cssText = 'container-type: inline-size; flex: 1 1 0; min-width: 0'
+      const spacer = document.createElement('span')
+      spacer.style.cssText = 'flex: 0 0 400px; height: 1px'
+      const largerSpacer = document.createElement('span')
+      largerSpacer.style.cssText = 'flex: 0 0 700px; height: 1px'
+      host.remove()
+      container.append(host)
+      wrapper.append(container, spacer)
+      document.body.append(wrapper)
+      await waitForUpdate(host)
+      const radios = [...host.querySelectorAll<Updatable>('web-ui-radio')]
+      await Promise.all(radios.map(radio => radio.updateComplete))
+      await new Promise<void>(resolve => requestAnimationFrame(() => requestAnimationFrame(() => resolve())))
+
+      expect(container.getBoundingClientRect().width).toBeGreaterThan(500)
+      expect(getComputedStyle(radios[0]!).visibility).toBe('visible')
+      expect(radios[0]?.shadowRoot?.querySelector('[role="radio"]')?.getAttribute('tabindex')).toBe('0')
+
+      spacer.remove()
+      wrapper.append(largerSpacer)
+      await new Promise<void>(resolve => requestAnimationFrame(() => requestAnimationFrame(() => resolve())))
+      await Promise.all(radios.map(radio => radio.updateComplete))
+
+      expect(container.getBoundingClientRect().width).toBeLessThanOrEqual(500)
+      expect(getComputedStyle(radios[0]!).visibility).toBe('hidden')
+      expect(radios[0]?.shadowRoot?.querySelector('[role="radio"]')?.getAttribute('tabindex')).toBe('-1')
+      expect(radios[1]?.shadowRoot?.querySelector('[role="radio"]')?.getAttribute('tabindex')).toBe('0')
+    } finally {
+      style.remove()
+    }
+  })
+
   it('媒体查询隐藏当前 tab stop 时切换到可见 radio', async () => {
     const previousViewport = { width: window.innerWidth, height: window.innerHeight }
     const host = createGroup()
