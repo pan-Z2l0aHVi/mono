@@ -208,6 +208,7 @@
   /* 侧边栏专用表面：浅色保持中性分层，深色单独抬升一档（见下方 dark 块注释）。 */
   --wui-color-surface-sidebar: rgb(233 233 233 / 0.82);
   --wui-color-surface-segmented: #e5e5ea;
+  --wui-color-surface-segmented-track: #e5e5ea;
   --wui-color-surface-selected: #fff;
   --wui-color-text: #1b1b1b;
   --wui-color-text-secondary: #6a6a6a;
@@ -271,8 +272,16 @@
      透过去会与 overlay 自身文字叠出干扰读的对比，因此单独抬到 0.92 换取可读性，
      代价是失去透感——它本来也不属于「panel 透出 page」的层级语义。 */
   --wui-color-surface-sidebar: rgb(44 44 46 / 0.8);
+
+  /* Segmented 的深色两档：凸起的 indicator 与同主题的 secondary button 面同色（#3a3a3c =
+     surface-control），所以它「就是一颗按钮」，观感不靠亮度断层；轨道因此必须沉一档到 #2c2c2e。
+     凹变种本来就是 #2c2c2e track + #3a3a3c indicator，于是深色下两个变体共用同一对灰阶，
+     凹/凸的分别只剩装饰（常驻环与投影 vs 柔投影）。浅色那种纸片浮感（track #e5e5ea 沉下去、
+     indicator 与 page 同为阶梯最白的 #fff）在深色做不出来：page（#242628）是阶梯最暗的一档，
+     「与 page 同色」在这里等于把 indicator 压到 track 之下，方向正好反了。 */
   --wui-color-surface-segmented: #3a3a3c;
-  --wui-color-surface-selected: #5c5c5e;
+  --wui-color-surface-segmented-track: #2c2c2e;
+  --wui-color-surface-selected: #3a3a3c;
   --wui-color-text: #e9eaea;
   --wui-color-text-secondary: #a1a1a6;
   --wui-color-text-tertiary: color-mix(in srgb, var(--wui-color-text) 42%, transparent);
@@ -315,7 +324,8 @@
     --wui-color-surface-overlay: rgb(32 34 34 / 0.92);
     --wui-color-surface-sidebar: rgb(44 44 46 / 0.8);
     --wui-color-surface-segmented: #3a3a3c;
-    --wui-color-surface-selected: #5c5c5e;
+    --wui-color-surface-segmented-track: #2c2c2e;
+    --wui-color-surface-selected: #3a3a3c;
     --wui-color-text: #e9eaea;
     --wui-color-text-secondary: #a1a1a6;
     --wui-color-text-tertiary: color-mix(in srgb, var(--wui-color-text) 42%, transparent);

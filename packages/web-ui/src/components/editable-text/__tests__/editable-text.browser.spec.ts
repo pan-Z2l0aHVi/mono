@@ -643,6 +643,54 @@ describe('WebUiEditableText 交互契约（浏览器）', () => {
     cleanupElement(el)
   })
 
+  it('宿主 blur() 走的就是编辑层那条提交路径：草稿成为新值、恰好一次 change', async () => {
+    /*
+     * Methods 表里 `blur()` 那一行声称组件没有重写它、编辑态下对宿主调它仍会把焦点从编辑层
+     * 移走，于是走提交。上面那条用「焦点移往组件之外」触发同一段提交，宿主自己 `blur()`
+     * 这条一直没有断言，语料那句因此没有机器判据兜着（它曾经写反过）。
+     */
+    const el = mount({ value: 'hello' })
+    await startDraft(el)
+
+    const [cancels, detachCancel] = spyEvents(el, 'cancel')
+    const [changes, detachChange] = spyEvents(el, 'change')
+    try {
+      el.blur()
+      await waitForUpdate(el)
+
+      expect(changes, '宿主 blur() 提交并派发一次 change').toHaveLength(1)
+      expect(cancels, '提交不派发 cancel').toHaveLength(0)
+      expect(el.value, '草稿成为新值').toBe('hello world')
+      expect(el.hasAttribute('editing'), '退出编辑').toBe(false)
+    } finally {
+      detachCancel()
+      detachChange()
+    }
+    cleanupElement(el)
+  })
+
+  it('readonly 时宿主 blur() 只退出编辑，不派发 change', async () => {
+    // readonly 的「不派发」此前只在卸载路径上钉过；`blur()` 那一行写的是同一条 readonly 分支。
+    const el = mount({ value: 'hello', readonly: '' })
+    await waitForUpdate(el)
+    el.focus()
+    await waitForUpdate(el)
+    expect(el.hasAttribute('editing'), 'readonly 不挡进入编辑').toBe(true)
+
+    const [changes, detachChange] = spyEvents(el, 'change')
+    try {
+      el.blur()
+      await waitForUpdate(el)
+
+      expect(changes, 'readonly 的 blur 只退出编辑').toHaveLength(0)
+      expect(el.value, '值保持原样').toBe('hello')
+      expect(el.hasAttribute('editing'), '退出编辑').toBe(false)
+    } finally {
+      detachChange()
+    }
+    cleanupElement(el)
+  })
+
   it('空草稿 blur 提交：空值被提交，文本层回落 placeholder', async () => {
     const el = mount({ value: 'hello', placeholder: 'Untitled' })
     await waitForUpdate(el)
