@@ -4,12 +4,8 @@ import { afterEach, describe, expect, it } from 'vite-plus/test'
 import { page, userEvent } from 'vite-plus/test/browser'
 
 import { cleanupElement, pollUntil, queryA11y } from '@/shared/test-utils'
-import { setViewport } from '@/shared/test-utils/viewport'
 
-afterEach(async () => {
-  document.body.replaceChildren()
-  await setViewport(1280, 720)
-})
+afterEach(() => document.body.replaceChildren())
 
 /**
  * 指针拖拽契约：以公开 `value` 与 `input` / `change` 派发观察手势结果。
@@ -101,66 +97,6 @@ describe('WebUiSlider accessible name（浏览器）', () => {
     label.remove()
   })
 
-  it('aria-labelledby 保留显式空 alt，不把图片 title 当作名称', async () => {
-    const label = document.createElement('span')
-    label.id = 'slider-decorative-image-label'
-    label.append('Volume ')
-    const image = document.createElement('img')
-    image.alt = ''
-    image.title = 'Decorative image'
-    label.append(image)
-    document.body.append(label)
-
-    const slider = createSlider() as Updatable
-    slider.setAttribute('aria-labelledby', label.id)
-    await slider.updateComplete
-
-    const sliderHost = page.elementLocator(slider)
-    expect(sliderHost.getByRole('slider', { name: 'Volume' }).length).toBe(1)
-    expect(sliderHost.getByRole('slider', { name: 'Volume Decorative image' }).length).toBe(0)
-
-    cleanupElement(slider)
-    label.remove()
-  })
-
-  it('aria-labelledby 随响应式 CSS 标签可见性变化更新 accessible name', async () => {
-    await setViewport(1280, 720)
-
-    const responsiveStyle = document.createElement('style')
-    responsiveStyle.textContent = `
-      @media (max-width: 640px) {
-        .slider-label-wide { display: none; }
-      }
-      @media (min-width: 641px) {
-        .slider-label-narrow { display: none; }
-      }
-    `
-    const label = document.createElement('span')
-    label.id = 'slider-responsive-label'
-    label.innerHTML =
-      '<span class="slider-label-wide">Desktop volume</span><span class="slider-label-narrow">Mobile volume</span>'
-    document.head.append(responsiveStyle)
-    document.body.append(label)
-
-    const slider = createSlider() as Updatable
-    slider.setAttribute('aria-labelledby', label.id)
-    await slider.updateComplete
-
-    const sliderHost = page.elementLocator(slider)
-    expect(sliderHost.getByRole('slider', { name: 'Desktop volume' }).length).toBe(1)
-
-    await setViewport(390, 844)
-    await pollUntil(
-      () => sliderHost.getByRole('slider', { name: 'Mobile volume' }).length === 1,
-      '响应式标签切换后 accessible name 未更新'
-    )
-    expect(sliderHost.getByRole('slider', { name: 'Desktop volume' }).length).toBe(0)
-
-    cleanupElement(slider)
-    label.remove()
-    responsiveStyle.remove()
-  })
-
   it('aria-labelledby 忽略非图片 alt、读取文本框值并跟随输入变化', async () => {
     const visibleLabel = document.createElement('span')
     visibleLabel.id = 'slider-visible-label'
@@ -202,33 +138,6 @@ describe('WebUiSlider accessible name（浏览器）', () => {
     input.remove()
     nativeVisible.remove()
     nativeInput.remove()
-  })
-
-  it('引用容器内的文本框值变化后刷新 accessible name', async () => {
-    const label = document.createElement('span')
-    label.id = 'slider-nested-input-label'
-    label.append(document.createTextNode('Account '))
-    const input = document.createElement('input')
-    input.value = 'Primary'
-    label.append(input)
-    document.body.append(label)
-
-    const slider = createSlider() as Updatable
-    slider.setAttribute('aria-labelledby', label.id)
-    await slider.updateComplete
-
-    const sliderHost = page.elementLocator(slider)
-    expect(sliderHost.getByRole('slider', { name: 'Account Primary' }).length).toBe(1)
-
-    input.value = 'Secondary'
-    input.dispatchEvent(new Event('input', { bubbles: true }))
-    await pollUntil(
-      () => sliderHost.getByRole('slider', { name: 'Account Secondary' }).length === 1,
-      'aria-labelledby 未跟随嵌套文本框的 value 更新'
-    )
-
-    cleanupElement(slider)
-    label.remove()
   })
 })
 

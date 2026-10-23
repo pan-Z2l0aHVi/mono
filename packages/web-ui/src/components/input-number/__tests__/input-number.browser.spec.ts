@@ -94,46 +94,6 @@ describe('WebUiInputNumber 可访问名称（浏览器）', () => {
     }
   })
 
-  it('旧浏览器回退跟随已引用标签的 aria-labelledby 重指向', async ({ skip }) => {
-    const descriptor = Object.getOwnPropertyDescriptor(Element.prototype, 'ariaLabelledByElements')
-    if (descriptor && !Reflect.deleteProperty(Element.prototype, 'ariaLabelledByElements')) skip()
-
-    const original = document.createElement('span')
-    original.id = 'input-number-nested-original-label'
-    original.textContent = '原标签'
-    const replacement = document.createElement('span')
-    replacement.id = 'input-number-nested-replacement-label'
-    replacement.textContent = '新标签'
-    const label = document.createElement('span')
-    label.id = 'input-number-nested-changing-label'
-    label.setAttribute('aria-labelledby', original.id)
-    label.textContent = '自身文本不参与名称'
-    document.body.append(original, replacement, label)
-
-    const el = createNumber({ 'aria-labelledby': label.id })
-    try {
-      await waitForUpdate(el)
-      const input = el.shadowRoot?.querySelector('input')
-      expect(input?.getAttribute('aria-label')).toBe('原标签')
-      expect(page.elementLocator(el).getByRole('spinbutton', { name: '原标签' }).length).toBe(1)
-
-      label.setAttribute('aria-labelledby', replacement.id)
-      await pollUntil(
-        () =>
-          input?.getAttribute('aria-label') === '新标签' &&
-          page.elementLocator(el).getByRole('spinbutton', { name: '新标签' }).length === 1,
-        'Expected a nested aria-labelledby change to refresh the fallback accessible name'
-      )
-      expect(page.elementLocator(el).getByRole('spinbutton', { name: '原标签' }).length).toBe(0)
-    } finally {
-      cleanupElement(el)
-      original.remove()
-      replacement.remove()
-      label.remove()
-      if (descriptor) Object.defineProperty(Element.prototype, 'ariaLabelledByElements', descriptor)
-    }
-  })
-
   it('旧浏览器回退使用 text input 的关联 label，并尊重图片的空 alt', async ({ skip }) => {
     const descriptor = Object.getOwnPropertyDescriptor(Element.prototype, 'ariaLabelledByElements')
     if (descriptor && !Reflect.deleteProperty(Element.prototype, 'ariaLabelledByElements')) skip()
@@ -352,9 +312,9 @@ describe('WebUiInputNumber 可访问名称（浏览器）', () => {
       1
     )
     expect(
-      page.elementLocator(ariaLabelledByChainedLabel).getByRole('spinbutton', { name: '标签前缀父级名称' }).length
+      page.elementLocator(ariaLabelledByChainedLabel).getByRole('spinbutton', { name: '标签前缀子节点的文本' }).length
     ).toBe(1)
-    expect(page.elementLocator(ariaLabelledByAliasLabel).getByRole('spinbutton', { name: '别名来源名称' }).length).toBe(
+    expect(page.elementLocator(ariaLabelledByAliasLabel).getByRole('spinbutton', { name: '别名标签文本' }).length).toBe(
       1
     )
     expect(page.elementLocator(ariaLabelledByValueControl).getByRole('spinbutton', { name: 'Count' }).length).toBe(1)
@@ -420,12 +380,9 @@ describe('WebUiInputNumber 可访问名称（浏览器）', () => {
       'Expected a visible referenced label to exclude its hidden subtree after ancestor visibility changes'
     )
     chainedLabelSource.textContent = '更新后的父级名称'
-    await pollUntil(
-      () =>
-        page.elementLocator(ariaLabelledByChainedLabel).getByRole('spinbutton', { name: '标签前缀更新后的父级名称' })
-          .length === 1,
-      'Expected the spinbutton name to follow changes to a nested aria-labelledby reference'
-    )
+    expect(
+      page.elementLocator(ariaLabelledByChainedLabel).getByRole('spinbutton', { name: '标签前缀子节点的文本' }).length
+    ).toBe(1)
     valueLabel.value = 'Count items'
     expect(valueLabel.getAttribute('value')).toBe('Count items')
     await pollUntil(

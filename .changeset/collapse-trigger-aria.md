@@ -2,4 +2,4 @@
 '@greypan/web-ui': patch
 ---
 
-Write collapse trigger ARIA state to the interactive control exposed by custom triggers, and suppress activation when a button is marked `aria-disabled="true"`.
+Expose `aria-expanded` and `aria-disabled` on the native button inside `<web-ui-button>` when it is used as a collapse trigger. Keep `aria-controls` on the host because its IDREF cannot resolve across shadow roots; `aria-disabled="true"` also suppresses button activation.

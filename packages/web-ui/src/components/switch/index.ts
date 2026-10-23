@@ -51,19 +51,11 @@ export class WebUiSwitch extends FormAssociated(LitElement) {
   private _dragGestureHandle: DragGestureHandle | null = null
   private _tabIndexBeforeDisabled: string | null = null
   private _isTabIndexSuppressed = false
-  private _tabIndexObserver: MutationObserver | null = null
   private readonly _handleHostClick = () => this.handleClick()
   private readonly _handleHostKeydown = (event: KeyboardEvent) => this.handleKeydown(event)
-  private readonly _handleTabIndexMutations = (records: MutationRecord[]) => {
-    if (!this._isTabIndexSuppressed || records.length === 0) return
-    this._tabIndexBeforeDisabled = this.getAttribute('tabindex')
-    this._setSuppressedTabIndex()
-  }
 
   override connectedCallback() {
     super.connectedCallback()
-    this._tabIndexObserver = new MutationObserver(this._handleTabIndexMutations)
-    this._tabIndexObserver.observe(this, { attributes: true, attributeFilter: ['tabindex'] })
     this.addEventListener('click', this._handleHostClick)
     this.addEventListener('keydown', this._handleHostKeydown)
     this._syncAccessibility()
@@ -71,8 +63,6 @@ export class WebUiSwitch extends FormAssociated(LitElement) {
 
   override disconnectedCallback() {
     super.disconnectedCallback()
-    this._tabIndexObserver?.disconnect()
-    this._tabIndexObserver = null
     this.removeEventListener('click', this._handleHostClick)
     this.removeEventListener('keydown', this._handleHostKeydown)
     this._dragGestureHandle?.destroy()
@@ -97,27 +87,14 @@ export class WebUiSwitch extends FormAssociated(LitElement) {
       } else if (this.getAttribute('tabindex') !== '-1') {
         this._tabIndexBeforeDisabled = this.getAttribute('tabindex')
       }
-      this._setSuppressedTabIndex()
+      this.tabIndex = -1
     } else if (this._isTabIndexSuppressed) {
-      this._capturePendingTabIndexMutation()
       if (this._tabIndexBeforeDisabled === null) this.tabIndex = 0
       else this.setAttribute('tabindex', this._tabIndexBeforeDisabled)
       this._isTabIndexSuppressed = false
     } else if (!this.hasAttribute('tabindex')) {
       this.tabIndex = 0
     }
-  }
-
-  private _capturePendingTabIndexMutation() {
-    if (this._tabIndexObserver?.takeRecords().length) {
-      this._tabIndexBeforeDisabled = this.getAttribute('tabindex')
-    }
-  }
-
-  private _setSuppressedTabIndex() {
-    if (this.getAttribute('tabindex') === '-1') return
-    this.setAttribute('tabindex', '-1')
-    this._tabIndexObserver?.takeRecords()
   }
 
   private get _isDisabled(): boolean {

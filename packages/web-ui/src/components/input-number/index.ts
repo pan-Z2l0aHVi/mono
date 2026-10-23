@@ -97,9 +97,6 @@ function observeLabelledbyReferences(
           } else if (record.attributeName === 'for' && element instanceof HTMLLabelElement) {
             addRegistrationsForId(record.oldValue)
             addRegistrationsForId(element.htmlFor)
-          } else if (record.attributeName === 'aria-labelledby') {
-            // 嵌套引用不一定自身有 id，变化后重算当前 root 的所有已注册命名链。
-            registrations.forEach(registration => changedRegistrations.add(registration))
           } else if (['disabled', 'media'].includes(record.attributeName ?? '') && isStylesheetElement(element)) {
             stylesheetChanged = true
           }
@@ -130,7 +127,7 @@ function observeLabelledbyReferences(
       subtree: true,
       childList: true,
       attributes: true,
-      attributeFilter: ['id', 'for', 'aria-labelledby', 'disabled', 'media'],
+      attributeFilter: ['id', 'for', 'disabled', 'media'],
       attributeOldValue: true
     })
     root.addEventListener('load', onStylesheetLoad, true)
@@ -265,35 +262,9 @@ export class WebUiInputNumber extends FormAssociated(LitElement) {
     ids: Set<string>
     targets: Element[]
   } {
-    const ids = new Set(this._getLabelledbyIds())
-    const targets = root ? [...new Set(this._getLabelledbyTargets(root))] : []
-    const targetSet = new Set(targets)
-    const visited = new Set<Element>()
-    const visitNestedReferences = (element: Element) => {
-      if (visited.has(element)) return
-      visited.add(element)
-
-      const elementRoot = element.getRootNode()
-      if (!(elementRoot instanceof Document || elementRoot instanceof ShadowRoot)) return
-
-      for (const id of this._getLabelledbyIds(element.getAttribute('aria-labelledby'))) {
-        ids.add(id)
-        const target = elementRoot.getElementById(id)
-        if (target && !targetSet.has(target)) {
-          targetSet.add(target)
-          targets.push(target)
-        }
-        if (target) visitNestedReferences(target)
-      }
-
-      element.querySelectorAll('[aria-labelledby]').forEach(visitNestedReferences)
-    }
-
-    targets.forEach(visitNestedReferences)
-
     return {
-      ids,
-      targets
+      ids: new Set(this._getLabelledbyIds()),
+      targets: root ? this._getLabelledbyTargets(root) : []
     }
   }
 
@@ -332,20 +303,6 @@ export class WebUiInputNumber extends FormAssociated(LitElement) {
     if (!includeHidden && this._isLabelledbyElementHidden(element)) return ''
     const nextVisited = new Set(visited)
     nextVisited.add(element)
-
-    const labelledBy = element.getAttribute('aria-labelledby')?.trim()
-    if (labelledBy) {
-      const root = element.getRootNode()
-      const scope = root instanceof Document || root instanceof ShadowRoot ? root : element.ownerDocument
-      const referencedText = labelledBy
-        .split(/\s+/)
-        .map(id => scope.getElementById(id))
-        .filter((reference): reference is HTMLElement => reference !== null)
-        .map(reference => this._getLabelledbyElementText(reference, true, false, nextVisited))
-        .filter(Boolean)
-        .join(' ')
-      if (referencedText) return referencedText
-    }
 
     const ariaLabel = element.getAttribute('aria-label')?.trim()
     if (ariaLabel) return ariaLabel

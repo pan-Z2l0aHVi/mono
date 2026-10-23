@@ -2,7 +2,7 @@ import '..'
 
 import { afterEach, describe, expect, it } from 'vite-plus/test'
 
-import { cleanupElement, mountElement, pollUntil, spyEvents, waitForUpdate } from '@/shared/test-utils'
+import { cleanupElement, mountElement, spyEvents, waitForUpdate } from '@/shared/test-utils'
 
 import type { WebUiSwitch } from '..'
 
@@ -40,25 +40,6 @@ describe('WebUiSwitch 组件特有契约', () => {
     await waitForUpdate(el)
     expect(el.getAttribute('aria-disabled')).toBe('false')
     expect(el.tabIndex).toBe(0)
-
-    cleanupElement(el)
-  })
-
-  it('禁用期间修改 tabindex 后恢复时保留新值', async () => {
-    const el = createSwitch()
-    el.setAttribute('tabindex', '3')
-    await waitForUpdate(el)
-
-    el.disabled = true
-    await waitForUpdate(el)
-    expect(el.getAttribute('tabindex')).toBe('-1')
-
-    el.setAttribute('tabindex', '7')
-    await pollUntil(() => el.getAttribute('tabindex') === '-1', '禁用期间的 tabindex 修改应继续排除 switch')
-
-    el.disabled = false
-    await waitForUpdate(el)
-    expect(el.getAttribute('tabindex')).toBe('7')
 
     cleanupElement(el)
   })

@@ -38,10 +38,6 @@ export class WebUiSlider extends FormAssociated(LitElement) {
     if (labelledbyText !== this._renderedLabelledbyText) this.requestUpdate()
     this._observeLabelledbyTargets()
   })
-  private _observedLabelledbyWindow: Window | null = null
-  private readonly _handleLabelledbyViewportChange = () => {
-    if (this._getLabelledbyText() !== this._renderedLabelledbyText) this.requestUpdate()
-  }
   private readonly _handleLabelledbyControlValueChange = () => {
     const labelledbyText = this._getLabelledbyText()
     if (labelledbyText !== this._renderedLabelledbyText) this.requestUpdate()
@@ -97,7 +93,6 @@ export class WebUiSlider extends FormAssociated(LitElement) {
   override disconnectedCallback() {
     this._labelledbyObserver.disconnect()
     this._syncLabelledbyControlTargets(new Set())
-    this._syncLabelledbyViewportListener()
     super.disconnectedCallback()
     this._dragGestureHandle?.destroy()
     this._dragGestureHandle = null
@@ -233,7 +228,8 @@ export class WebUiSlider extends FormAssociated(LitElement) {
     }
 
     if (element.localName === 'img') {
-      if (element.hasAttribute('alt')) return element.getAttribute('alt')?.trim() ?? ''
+      const alt = element.getAttribute('alt')?.trim()
+      if (alt) return alt
     }
 
     const content = Array.from(element.childNodes)
@@ -267,7 +263,6 @@ export class WebUiSlider extends FormAssociated(LitElement) {
 
   private _observeLabelledbyTargets() {
     this._labelledbyObserver.disconnect()
-    this._syncLabelledbyViewportListener()
     if (!this.ariaLabelledby || !this.isConnected) {
       this._syncLabelledbyControlTargets(new Set())
       return
@@ -297,20 +292,16 @@ export class WebUiSlider extends FormAssociated(LitElement) {
       if (nestedLabelledby) pendingIds.push(...nestedLabelledby.trim().split(/\s+/).filter(Boolean))
     }
 
-    const controlTargets = new Set<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>()
-    for (const target of targets) {
-      const controls = [target, ...target.querySelectorAll('input, textarea, select')]
-      for (const control of controls) {
-        if (
-          control instanceof HTMLInputElement ||
-          control instanceof HTMLTextAreaElement ||
-          control instanceof HTMLSelectElement
-        ) {
-          controlTargets.add(control)
-        }
-      }
-    }
-    this._syncLabelledbyControlTargets(controlTargets)
+    this._syncLabelledbyControlTargets(
+      new Set(
+        [...targets].filter(
+          (target): target is HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement =>
+            target instanceof HTMLInputElement ||
+            target instanceof HTMLTextAreaElement ||
+            target instanceof HTMLSelectElement
+        )
+      )
+    )
 
     const structuralTargets = new Set<Node>()
     for (const target of targets) {
@@ -355,15 +346,6 @@ export class WebUiSlider extends FormAssociated(LitElement) {
       attributes: missingTargets,
       attributeFilter: missingTargets ? ['aria-hidden', 'class', 'hidden', 'id', 'style'] : undefined
     })
-  }
-
-  private _syncLabelledbyViewportListener() {
-    const nextWindow = this.ariaLabelledby?.trim() && this.isConnected ? this.ownerDocument.defaultView : null
-    if (nextWindow === this._observedLabelledbyWindow) return
-
-    this._observedLabelledbyWindow?.removeEventListener('resize', this._handleLabelledbyViewportChange)
-    this._observedLabelledbyWindow = nextWindow
-    this._observedLabelledbyWindow?.addEventListener('resize', this._handleLabelledbyViewportChange)
   }
 
   private _syncLabelledbyControlTargets(targets: Set<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) {

@@ -145,7 +145,7 @@ describe('WebUiCollapse 组件', () => {
       expect(trigger.getAttribute('aria-expanded')).toBe('false')
       expect(trigger.getAttribute('aria-controls')).toBe(track.id)
       expect(button.getAttribute('aria-expanded')).toBe('false')
-      expect(button.getAttribute('aria-controls')).toBe(track.id)
+      expect(button.hasAttribute('aria-controls')).toBe(false)
 
       button.click()
       await waitForUpdate(el)
@@ -161,6 +161,21 @@ describe('WebUiCollapse 组件', () => {
       await waitForUpdate(el)
       await waitForUpdate(trigger)
       expect(button.hasAttribute('aria-disabled')).toBe(false)
+      cleanupElement(el)
+    })
+
+    it('aria-disabled 的 web-ui-button 宿主 click 不切换 collapse', async () => {
+      const el = createCollapse('<web-ui-button>Trigger</web-ui-button><div slot="content">Content</div>')
+      const trigger = el.querySelector('web-ui-button')!
+      await waitForUpdate(trigger)
+      await waitForUpdate(el)
+
+      trigger.setAttribute('aria-disabled', 'true')
+      await waitForUpdate(trigger)
+      trigger.click()
+      await waitForUpdate(el)
+
+      expect(el.open).toBe(false)
       cleanupElement(el)
     })
 
@@ -221,6 +236,32 @@ describe('WebUiCollapse 组件', () => {
       el.disabled = false
       await waitForUpdate(el)
       expect(triggerButton(el).hasAttribute('aria-disabled')).toBe(false)
+      cleanupElement(el)
+    })
+
+    it('移除 disabled 的 web-ui-button trigger 时恢复原有 ARIA 状态', async () => {
+      const el = createCollapse('<web-ui-button>Trigger</web-ui-button><div slot="content">Content</div>')
+      el.disabled = true
+      await waitForUpdate(el)
+
+      const trigger = el.querySelector('web-ui-button')!
+      await waitForUpdate(trigger)
+      const button = trigger.shadowRoot?.querySelector<HTMLButtonElement>('button[part="button"]')
+      if (!button) throw new Error('web-ui-button has no native button part')
+      expect(button.getAttribute('aria-disabled')).toBe('true')
+
+      let clickCount = 0
+      trigger.addEventListener('click', () => clickCount++)
+      trigger.remove()
+      el.requestUpdate()
+      await waitForUpdate(el)
+      await waitForUpdate(trigger)
+
+      expect(trigger.hasAttribute('aria-expanded')).toBe(false)
+      expect(trigger.hasAttribute('aria-controls')).toBe(false)
+      expect(trigger.hasAttribute('aria-disabled')).toBe(false)
+      button.click()
+      expect(clickCount).toBe(1)
       cleanupElement(el)
     })
   })

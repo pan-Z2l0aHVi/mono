@@ -528,7 +528,6 @@ const fourStates = {
 | `aria-label`    | 无障碍名称，透传给内部原生 button。                                                                                   | `string \| null`                                             | `null`     |
 | `aria-disabled` | 值为 `true` 时阻止 click 与表单动作，但保留焦点能力；透传给内部原生 button。                                          | `string \| null`                                             | `null`     |
 | `aria-expanded` | 展开状态；透传给内部原生 button，供辅助技术读取。                                                                     | `string \| null`                                             | `null`     |
-| `aria-controls` | 被控制内容的 ID；透传给内部原生 button。                                                                              | `string \| null`                                             | `null`     |
 
 ### Slots
 
@@ -540,7 +539,7 @@ const fourStates = {
 
 ### 行为说明
 
-`click` 由 shadow 内的原生 button 派发，组合并冒泡到宿主，`event.target` 重定向到宿主；Enter 与 空格 走同一次原生 activation，所以指针与键盘共用这一个事件。`disabled`、`loading` 与表单级禁用（祖先 `<fieldset disabled>`）都会把内部 button 真的置为 disabled，click 不再产生、tab 也进不来。`aria-label`、`aria-disabled`、`aria-expanded` 与 `aria-controls` 显式委派到内部原生 button；其余 `data-*` 与属性留在宿主上，不会自动复制。用 `<web-ui-button>` 作 collapse trigger 时，辅助技术可在暴露为 button 的内部节点读取 `aria-expanded`。
+`click` 由 shadow 内的原生 button 派发，组合并冒泡到宿主，`event.target` 重定向到宿主；Enter 与 空格 走同一次原生 activation，所以指针与键盘共用这一个事件。`disabled`、`loading` 与表单级禁用（祖先 `<fieldset disabled>`）都会把内部 button 真的置为 disabled，click 不再产生、tab 也进不来。`aria-label`、`aria-disabled` 与 `aria-expanded` 显式委派到内部原生 button；`aria-controls` 及其他属性留在宿主上，不会自动复制，因为 IDREF 不能跨 shadow root 解析。用 `<web-ui-button>` 作 collapse trigger 时，辅助技术可在暴露为 button 的内部节点读取 `aria-expanded`。
 
 `submit` 与 `reset` 在 composed `click` 的同步监听全部派发完之后，经宿主的 form owner 转发到原生 `<form>`；对这次 click 调 `preventDefault()` 会取消该动作。内部 button 自身没有 form owner，因此 `SubmitEvent.submitter` 为 `null`。button 不向 `FormData` 贡献值（form state 恒为 `null`）。
 

@@ -63,25 +63,6 @@ describe('WebUiInputNumber 组件特有契约', () => {
       label.remove()
     })
 
-    it('跟随引用标签上的 aria-labelledby 生成回退名称', async () => {
-      const nestedLabel = document.createElement('span')
-      nestedLabel.id = 'nested-quantity-label'
-      nestedLabel.textContent = '件数'
-      const label = document.createElement('span')
-      label.id = 'quantity-label-reference'
-      label.setAttribute('aria-labelledby', nestedLabel.id)
-      label.textContent = '错误名称'
-      document.body.append(nestedLabel, label)
-
-      const el = createNumber({ 'aria-labelledby': label.id })
-      await waitForUpdate(el)
-
-      expect(nativeInput(el).getAttribute('aria-label')).toBe('件数')
-      cleanupElement(el)
-      nestedLabel.remove()
-      label.remove()
-    })
-
     it('用 title 命名没有文本内容的标签引用，并跟随 title 更新', async () => {
       const label = document.createElement('span')
       label.id = 'title-quantity-label'

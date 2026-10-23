@@ -56,7 +56,6 @@ export class WebUiButton extends FormAssociated(LitElement) {
   @property({ type: String, attribute: 'aria-label' }) override ariaLabel: string | null = null
   @property({ type: String, attribute: 'aria-disabled' }) override ariaDisabled: string | null = null
   @property({ type: String, attribute: 'aria-expanded' }) override ariaExpanded: string | null = null
-  @property({ type: String, attribute: 'aria-controls' }) ariaControls: string | null = null
 
   private readonly _groupManagement = defineGroupManaged<ButtonGroupContext>(this, {
     context: buttonGroupContextKey,
@@ -85,6 +84,11 @@ export class WebUiButton extends FormAssociated(LitElement) {
 
   private get _isDisabled(): boolean {
     return this.disabled || this.loading || this._formAssociation.isFormDisabled()
+  }
+
+  constructor() {
+    super()
+    this.addEventListener('click', this._handleHostClick)
   }
 
   private get _sizeStyle(): Record<string, string> {
@@ -128,6 +132,12 @@ export class WebUiButton extends FormAssociated(LitElement) {
     })
   }
 
+  private readonly _handleHostClick = (event: Event) => {
+    if (event.composedPath()[0] !== this || (!this._isDisabled && this.ariaDisabled !== 'true')) return
+    event.preventDefault()
+    event.stopPropagation()
+  }
+
   override render() {
     const groupContext = this._groupContext
     const btnClass = {
@@ -145,7 +155,6 @@ export class WebUiButton extends FormAssociated(LitElement) {
         aria-label=${ifDefined(this.ariaLabel)}
         aria-disabled=${ifDefined(this.ariaDisabled)}
         aria-expanded=${ifDefined(this.ariaExpanded)}
-        aria-controls=${ifDefined(this.ariaControls)}
         class=${classMap(btnClass)}
         part="button"
         style=${Object.keys(this._sizeStyle).length > 0 ? styleMap(this._sizeStyle) : nothing}

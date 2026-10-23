@@ -69,7 +69,7 @@ describe('WebUiCollapse 组件（浏览器）', () => {
     expect(trigger.length).toBe(1)
     expect(button.tagName).toBe('BUTTON')
     expect(button.getAttribute('aria-expanded')).toBe('false')
-    expect(button.getAttribute('aria-controls')).toBe(queryTrack(el).id)
+    expect(button.hasAttribute('aria-controls')).toBe(false)
 
     button.click()
     await el.updateComplete
@@ -85,6 +85,28 @@ describe('WebUiCollapse 组件（浏览器）', () => {
     await el.updateComplete
     await el.querySelector('web-ui-button')!.updateComplete
     expect(button.hasAttribute('aria-disabled')).toBe(false)
+  })
+
+  it('替换 disabled trigger 会还原旧 web-ui-button 的 ARIA 状态', async () => {
+    const el = createCollapse('<web-ui-button>Trigger</web-ui-button><div slot="content">Content</div>')
+    el.disabled = true
+    await el.updateComplete
+
+    const trigger = el.querySelector('web-ui-button')!
+    await trigger.updateComplete
+    const button = trigger.shadowRoot!.querySelector<HTMLButtonElement>('button[part="button"]')!
+    expect(button.getAttribute('aria-disabled')).toBe('true')
+
+    let clickCount = 0
+    trigger.addEventListener('click', () => clickCount++)
+    trigger.remove()
+    await waitFor(() => !trigger.hasAttribute('aria-disabled'))
+    await trigger.updateComplete
+
+    expect(trigger.hasAttribute('aria-expanded')).toBe(false)
+    expect(trigger.hasAttribute('aria-controls')).toBe(false)
+    button.click()
+    expect(clickCount).toBe(1)
   })
 
   it('展开收起切换内容可见性', async () => {
