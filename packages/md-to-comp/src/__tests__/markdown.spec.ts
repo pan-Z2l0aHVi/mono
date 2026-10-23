@@ -29,7 +29,7 @@ const CONFIG: Pick<MdToCompConfig, 'flavors' | 'apiTables'> = {
 const FRONTMATTER = ['---', 'component: slider', 'tag: web-ui-slider', '---', ''].join('\n')
 const INTRO = '范围 slider，支持刻度标记。\n'
 const REACT_FENCE = [
-  '```react',
+  '```tsx',
   'export default function Demo() {',
   '  return <web-ui-slider min={0}></web-ui-slider>',
   '}',
@@ -226,9 +226,18 @@ describe('parseMarkdown', () => {
       parseWith(source => source.replace('## 示例\n\n', '## 示例\n\n这段谁都不渲染。\n\n')),
       /不会被渲染/
     ],
-    ['围栏语言写成 tsx', parseWith(source => source.replace('```react', '```tsx')), /代码块语言必须是 react \/ vue/],
+    // 旧写法（`react` 当围栏语言）归为未支持：格式化器看不见它，落盘的 .tsx 却归格式化器管。
+    [
+      '围栏语言写成 react',
+      parseWith(source => source.replace('```tsx', '```react')),
+      /代码块语言必须是 react 用 ```tsx，vue 用 ```vue，收到 `react`/
+    ],
     ['围栏带了元信息', parseWith(source => source.replace('```vue', '```vue title="x"')), /未支持的元信息/],
-    ['只写了 react 块', parseWith(source => source.replace(`${VUE_FENCE}\n`, '')), /必须为每个 flavor 各有一个代码块/],
+    [
+      '只写了 react 那份围栏',
+      parseWith(source => source.replace(`${VUE_FENCE}\n`, '')),
+      /必须为每个 flavor 各有一个代码块/
+    ],
     [
       '一个示例块都没有',
       parseWith(source => `${FRONTMATTER}\n${INTRO}\n\n## 示例\n\n## API\n\n${PROPS_TABLE}\n`),
@@ -314,8 +323,10 @@ describe('parseMarkdown', () => {
     expect(run).toThrow(message)
   })
 
-  it('配置里的 flavors 决定围栏语言，不是硬编码的 react / vue', () => {
+  it('配置里的 flavors 决定认哪种围栏语言，不是硬编码的 tsx / vue', () => {
     // 只配一个 flavor：多出来的那份围栏就成了「未支持的语言」。
-    expect(() => parseMarkdown(DOC, 'slider.md', { ...CONFIG, flavors: ['react'] })).toThrow(/代码块语言必须是 react/)
+    expect(() => parseMarkdown(DOC, 'slider.md', { ...CONFIG, flavors: ['react'] })).toThrow(
+      /代码块语言必须是 react 用 ```tsx，收到 `vue`/
+    )
   })
 })

@@ -7,54 +7,120 @@ tag: web-ui-layout
 
 ## 示例
 
-### 基础
+### 基础 {#basic}
 
-五个插槽各占一区：`banner` 在主体上方全宽，`header` 是内容区的 sticky header，`sidebar` 是侧边栏卡片内容，默认插槽是主内容区，`tabbar` 是底部栏。`header-glow` 在 header 插槽内容背后加一层装饰性晕染，它属于背景层，插槽内容始终在它上方。
+五个插槽各占一区：`banner` 在主体上方全宽，`header` 是内容区的 sticky header，`sidebar` 是侧边栏卡片内容，默认插槽是主内容区，`tabbar` 是底部栏。`header-glow` 在 header 插槽内容背后加一层装饰性晕染，它属于背景层，插槽内容始终在它上方。layout 是应用外壳级的整屏布局，示例把它装进一个限高的滚动容器里，Banner 随内容滚出，header 与 tabbar 各贴在容器上下缘。
 
-```react
-<web-ui-layout header-glow>
-  <div slot="banner">全宽 Banner</div>
-  <div slot="header">Header</div>
-  <nav slot="sidebar">侧边栏</nav>
-  <p>正文</p>
-  <div slot="tabbar">Tabbar</div>
-</web-ui-layout>
+```tsx
+export default function Demo() {
+  return (
+    <div className="h-[420px] overflow-auto rounded-lg border border-(--wui-color-border)">
+      <web-ui-layout header-glow>
+        <div
+          slot="banner"
+          className="flex items-center justify-center bg-(--wui-color-accent) px-4 py-2 text-sm text-(--wui-color-on-accent)"
+        >
+          全宽 Banner
+        </div>
+        <div slot="header" className="flex items-center px-4 py-2 text-sm font-medium">
+          Header
+        </div>
+        <nav slot="sidebar" className="flex h-full min-h-0 flex-col gap-1 overflow-y-auto p-2">
+          <span className="rounded-md p-2 text-sm">Overview</span>
+          <span className="rounded-md p-2 text-sm">Components</span>
+          <span className="rounded-md p-2 text-sm">Theme</span>
+        </nav>
+        <div className="p-4">
+          <p className="m-0 text-sm">正文区随内层滚动条滚动，header 与 tabbar 各贴在容器上下缘。</p>
+          <div className="mt-3 h-[420px] rounded-md bg-(--wui-color-surface-control)" />
+        </div>
+        <div slot="tabbar" className="flex items-center justify-center px-4 py-2 text-xs">
+          Tabbar
+        </div>
+      </web-ui-layout>
+    </div>
+  )
+}
 ```
 
 ```vue
 <template>
-  <web-ui-layout header-glow>
-    <div slot="banner">全宽 Banner</div>
-    <div slot="header">Header</div>
-    <nav slot="sidebar">侧边栏</nav>
-    <p>正文</p>
-    <div slot="tabbar">Tabbar</div>
-  </web-ui-layout>
+  <div class="h-[420px] overflow-auto rounded-lg border border-(--wui-color-border)">
+    <web-ui-layout header-glow>
+      <div
+        slot="banner"
+        class="flex items-center justify-center bg-(--wui-color-accent) px-4 py-2 text-sm text-(--wui-color-on-accent)"
+      >
+        全宽 Banner
+      </div>
+      <div slot="header" class="flex items-center px-4 py-2 text-sm font-medium">Header</div>
+      <nav slot="sidebar" class="flex h-full min-h-0 flex-col gap-1 overflow-y-auto p-2">
+        <span class="rounded-md p-2 text-sm">Overview</span>
+        <span class="rounded-md p-2 text-sm">Components</span>
+        <span class="rounded-md p-2 text-sm">Theme</span>
+      </nav>
+      <div class="p-4">
+        <p class="m-0 text-sm">正文区随内层滚动条滚动，header 与 tabbar 各贴在容器上下缘。</p>
+        <div class="mt-3 h-[420px] rounded-md bg-(--wui-color-surface-control)" />
+      </div>
+      <div slot="tabbar" class="flex items-center justify-center px-4 py-2 text-xs">Tabbar</div>
+    </web-ui-layout>
+  </div>
 </template>
 ```
 
-### Collapsible sidebar
+### Collapsible sidebar {#collapsible-sidebar}
 
-`sidebar-collapsed` 是桌面端的受控 collapse 状态：它只把桌面端 aside 收窄到 `collapsed-width`，不影响移动端 Drawer。桌面端 Toggle 由 layout 自己渲染，Consumer 只负责把 `sidebar-collapsed-change` 的请求值回写。两条分支渲染的是同一份 `sidebar` 插槽内容，所以内容密度要跟着 collapse 变的 Consumer 必须按 `mobile` 收窄那个条件（例如 `collapsed && !layout.mobile`，或 CSS 的 `web-ui-layout[mobile]`），否则 collapsed state 会一路渲染进 Drawer（issue #195）。
+`sidebar-collapsed` 是桌面端的受控 collapse 状态：它只把桌面端 aside 收窄到 `collapsed-width`，不影响移动端 Drawer。桌面端 Toggle 由 layout 自己渲染，Consumer 只负责把 `sidebar-collapsed-change` 的请求值回写。两条分支渲染的是同一份 `sidebar` 插槽内容，所以内容密度要跟着 collapse 变的 Consumer 必须按 `mobile` 收窄那个条件（例如 `collapsed && !layout.mobile`，或 CSS 的 `web-ui-layout[mobile]`），否则 collapsed state 会一路渲染进 Drawer（issue #195）。本示例的侧边栏不随 collapse 改内容密度，收起后窄 aside 靠 `.sidebar-viewport` 的 `overflow: hidden` 裁掉超出部分。
 
-```react
-const [collapsed, setCollapsed] = useState(false)
+```tsx
+import { useState } from 'react'
 
-<web-ui-layout
-  sidebarCollapsed={collapsed}
-  onsidebar-collapsed-change={event => setCollapsed(event.detail.collapsed)}
->
-  <nav slot="sidebar">侧边栏</nav>
-  <p>正文</p>
-</web-ui-layout>
+export default function Demo() {
+  const [collapsed, setCollapsed] = useState(false)
+
+  return (
+    <div className="flex flex-col gap-3">
+      <div className="h-[420px] overflow-auto rounded-lg border border-(--wui-color-border)">
+        <web-ui-layout
+          sidebarCollapsed={collapsed}
+          onsidebar-collapsed-change={event => setCollapsed(event.detail.collapsed)}
+        >
+          <nav slot="sidebar" className="flex h-full min-h-0 flex-col gap-1 overflow-y-auto p-2">
+            <span className="rounded-md p-2 text-sm">Overview</span>
+            <span className="rounded-md p-2 text-sm">Components</span>
+            <span className="rounded-md p-2 text-sm">Theme</span>
+            <span className="rounded-md p-2 text-sm">Settings</span>
+          </nav>
+          <div className="p-4">
+            <p className="m-0 text-sm">点侧边栏底部的 Toggle 收起 / 展开，layout 只把桌面端 aside 收窄到 68px。</p>
+          </div>
+        </web-ui-layout>
+      </div>
+      <p className="text-sm text-(--wui-color-text-secondary)">sidebar-collapsed：{collapsed ? 'true' : 'false'}</p>
+    </div>
+  )
+}
 ```
 
 ```vue
 <template>
-  <web-ui-layout :sidebarCollapsed="collapsed" @sidebar-collapsed-change="collapsed = $event.detail.collapsed">
-    <nav slot="sidebar">侧边栏</nav>
-    <p>正文</p>
-  </web-ui-layout>
+  <div class="flex flex-col gap-3">
+    <div class="h-[420px] overflow-auto rounded-lg border border-(--wui-color-border)">
+      <web-ui-layout :sidebarCollapsed="collapsed" @sidebar-collapsed-change="collapsed = $event.detail.collapsed">
+        <nav slot="sidebar" class="flex h-full min-h-0 flex-col gap-1 overflow-y-auto p-2">
+          <span class="rounded-md p-2 text-sm">Overview</span>
+          <span class="rounded-md p-2 text-sm">Components</span>
+          <span class="rounded-md p-2 text-sm">Theme</span>
+          <span class="rounded-md p-2 text-sm">Settings</span>
+        </nav>
+        <div class="p-4">
+          <p class="m-0 text-sm">点侧边栏底部的 Toggle 收起 / 展开，layout 只把桌面端 aside 收窄到 68px。</p>
+        </div>
+      </web-ui-layout>
+    </div>
+    <p class="text-sm text-(--wui-color-text-secondary)">sidebar-collapsed：{{ collapsed ? 'true' : 'false' }}</p>
+  </div>
 </template>
 
 <script setup lang="ts">
@@ -64,37 +130,69 @@ const collapsed = ref(false)
 </script>
 ```
 
-### 拖拽调整宽度
+### 拖拽调整宽度 {#resizable-sidebar}
 
 开启 `sidebar-resizable` 后，桌面端侧边栏右缘出现调整 handle（collapsed state 隐藏），拖拽实时改宽；键盘聚焦后用 ←/→ 以 16px 步进（Shift 加速到 64px），Home/End 跳到上下限。拖拽释放或键盘 Enter 提交时派发一次 `sidebar-width-change`，携带最终像素宽度；Consumer 回写后宽度重新由 `sidebar-width` 接管，Escape 撤回未提交的调整。`sidebar-min-width` / `sidebar-max-width` 是 px 字面量，上限还受一半视口钳制，内置上限优先于配置值。
 
-```react
-const [width, setWidth] = useState('240px')
+```tsx
+import { useState } from 'react'
 
-<web-ui-layout
-  sidebar-resizable
-  sidebarWidth={width}
-  sidebar-min-width="160px"
-  sidebar-max-width="360px"
-  onsidebar-width-change={event => setWidth(event.detail.width)}
->
-  <nav slot="sidebar">侧边栏</nav>
-  <p>正文</p>
-</web-ui-layout>
+export default function Demo() {
+  const [width, setWidth] = useState('240px')
+
+  return (
+    <div className="flex flex-col gap-3">
+      <div className="h-[420px] overflow-auto rounded-lg border border-(--wui-color-border)">
+        <web-ui-layout
+          sidebar-resizable
+          sidebarWidth={width}
+          sidebar-min-width="160px"
+          sidebar-max-width="360px"
+          onsidebar-width-change={event => setWidth(event.detail.width)}
+        >
+          <nav slot="sidebar" className="flex h-full min-h-0 flex-col gap-1 overflow-y-auto p-2">
+            <span className="rounded-md p-2 text-sm">Overview</span>
+            <span className="rounded-md p-2 text-sm">Components</span>
+            <span className="rounded-md p-2 text-sm">Theme</span>
+          </nav>
+          <div className="p-4">
+            <p className="m-0 text-sm">
+              拖桌面端侧边栏右缘的 handle 改宽；聚焦后用 ←/→ 步进、Enter 提交、Escape 撤回未提交的调整。
+            </p>
+          </div>
+        </web-ui-layout>
+      </div>
+      <p className="text-sm text-(--wui-color-text-secondary)">sidebar-width：{width}</p>
+    </div>
+  )
+}
 ```
 
 ```vue
 <template>
-  <web-ui-layout
-    sidebar-resizable
-    :sidebarWidth="width"
-    sidebar-min-width="160px"
-    sidebar-max-width="360px"
-    @sidebar-width-change="width = $event.detail.width"
-  >
-    <nav slot="sidebar">侧边栏</nav>
-    <p>正文</p>
-  </web-ui-layout>
+  <div class="flex flex-col gap-3">
+    <div class="h-[420px] overflow-auto rounded-lg border border-(--wui-color-border)">
+      <web-ui-layout
+        sidebar-resizable
+        :sidebarWidth="width"
+        sidebar-min-width="160px"
+        sidebar-max-width="360px"
+        @sidebar-width-change="width = $event.detail.width"
+      >
+        <nav slot="sidebar" class="flex h-full min-h-0 flex-col gap-1 overflow-y-auto p-2">
+          <span class="rounded-md p-2 text-sm">Overview</span>
+          <span class="rounded-md p-2 text-sm">Components</span>
+          <span class="rounded-md p-2 text-sm">Theme</span>
+        </nav>
+        <div class="p-4">
+          <p class="m-0 text-sm">
+            拖桌面端侧边栏右缘的 handle 改宽；聚焦后用 ←/→ 步进、Enter 提交、Escape 撤回未提交的调整。
+          </p>
+        </div>
+      </web-ui-layout>
+    </div>
+    <p class="text-sm text-(--wui-color-text-secondary)">sidebar-width：{{ width }}</p>
+  </div>
 </template>
 
 <script setup lang="ts">
@@ -104,47 +202,83 @@ const width = ref('240px')
 </script>
 ```
 
-### 移动端 Drawer 与视口判定
+### 移动端 Drawer 与视口判定 {#mobile-drawer}
 
-`sidebar-open` 是移动端 Drawer 的受控可见性，与 `sidebar-collapsed` 相互独立。`mobile` 由 layout 独占写入，它、layout 的渲染分支和 CSS 的 `@media (width <= 640px)` 是同一条条件，翻转瞬间三者一起变，还额外派发一次 `mobile-change`。React 要在 `useLayoutEffect` 里先读 `layout.mobile` 再订阅（挂载那一刻派发的事件早于订阅）；跨断点那次回写用 `flushSync`，否则会有一帧新树已上屏而 Consumer 还是旧值（挂载那次读就在 `useLayoutEffect` 里，`setState` 本身上屏前生效，不必再包一层）。Vue 的模板监听在元素插入前挂好，直接绑即可。
+`sidebar-open` 是移动端 Drawer 的受控可见性，与 `sidebar-collapsed` 相互独立。`mobile` 由 layout 独占写入，它、layout 的渲染分支和 CSS 的 `@media (width <= 640px)` 是同一条条件，翻转瞬间三者一起变，还额外派发一次 `mobile-change`。React 要在 `useLayoutEffect` 里先读 `layout.mobile` 再订阅（挂载那一刻派发的事件早于订阅）；跨断点那次回写用 `flushSync`，否则会有一帧新树已上屏而 Consumer 还是旧值（挂载那次读就在 `useLayoutEffect` 里，`setState` 本身上屏前生效，不必再包一层）。Vue 的模板监听在元素插入前挂好，直接绑即可。把视口收窄到 640px 及以下，layout 会切到移动端分支：header 里出现 Toggle，点它经 `sidebar-open-change` 请求打开 Drawer。
 
-```react
-import { flushSync } from 'react-dom'
+```tsx
+import type { WebUiLayout } from '@greypan/web-ui'
 import { useLayoutEffect, useRef, useState } from 'react'
+import { flushSync } from 'react-dom'
 
-const layoutRef = useRef(null)
-const [open, setOpen] = useState(false)
-const [mobile, setMobile] = useState(false)
+export default function Demo() {
+  const layoutRef = useRef<WebUiLayout>(null)
+  const [open, setOpen] = useState(false)
+  const [mobile, setMobile] = useState(false)
 
-useLayoutEffect(() => {
-  const layout = layoutRef.current
-  if (!layout) return
-  setMobile(layout.mobile)
-  const onChange = event => flushSync(() => setMobile(event.detail.mobile))
-  layout.addEventListener('mobile-change', onChange)
-  return () => layout.removeEventListener('mobile-change', onChange)
-}, [])
+  useLayoutEffect(() => {
+    const layout = layoutRef.current
+    if (!layout) return
+    setMobile(layout.mobile)
+    const onChange = (event: Event) => {
+      const next = (event as CustomEvent<{ mobile: boolean }>).detail.mobile
+      flushSync(() => setMobile(next))
+    }
+    layout.addEventListener('mobile-change', onChange)
+    return () => layout.removeEventListener('mobile-change', onChange)
+  }, [])
 
-<web-ui-layout
-  ref={layoutRef}
-  sidebarOpen={open}
-  onsidebar-open-change={event => setOpen(event.detail.open)}
->
-  <nav slot="sidebar">导航</nav>
-  {mobile ? '移动端' : '桌面端'}
-</web-ui-layout>
+  return (
+    <div className="flex flex-col gap-3">
+      <div className="h-[420px] overflow-auto rounded-lg border border-(--wui-color-border)">
+        <web-ui-layout ref={layoutRef} sidebarOpen={open} onsidebar-open-change={event => setOpen(event.detail.open)}>
+          <div slot="header" className="flex items-center px-4 py-2 text-sm font-medium">
+            Header
+          </div>
+          <nav slot="sidebar" className="flex h-full min-h-0 flex-col gap-1 overflow-y-auto p-2">
+            <span className="rounded-md p-2 text-sm">导航</span>
+            <span className="rounded-md p-2 text-sm">组件</span>
+          </nav>
+          <div className="p-4">
+            <p className="m-0 text-sm">
+              把视口收窄到 640px 及以下，header 出现 Toggle；点它经 sidebar-open-change 请求打开 Drawer。
+            </p>
+          </div>
+        </web-ui-layout>
+      </div>
+      <p className="text-sm text-(--wui-color-text-secondary)">
+        mobile：{mobile ? 'true' : 'false'} · sidebar-open：{open ? 'true' : 'false'}
+      </p>
+    </div>
+  )
+}
 ```
 
 ```vue
 <template>
-  <web-ui-layout
-    :sidebarOpen="open"
-    @sidebar-open-change="open = $event.detail.open"
-    @mobile-change="mobile = $event.detail.mobile"
-  >
-    <nav slot="sidebar">导航</nav>
-    {{ mobile ? '移动端' : '桌面端' }}
-  </web-ui-layout>
+  <div class="flex flex-col gap-3">
+    <div class="h-[420px] overflow-auto rounded-lg border border-(--wui-color-border)">
+      <web-ui-layout
+        :sidebarOpen="open"
+        @sidebar-open-change="open = $event.detail.open"
+        @mobile-change="mobile = $event.detail.mobile"
+      >
+        <div slot="header" class="flex items-center px-4 py-2 text-sm font-medium">Header</div>
+        <nav slot="sidebar" class="flex h-full min-h-0 flex-col gap-1 overflow-y-auto p-2">
+          <span class="rounded-md p-2 text-sm">导航</span>
+          <span class="rounded-md p-2 text-sm">组件</span>
+        </nav>
+        <div class="p-4">
+          <p class="m-0 text-sm">
+            把视口收窄到 640px 及以下，header 出现 Toggle；点它经 sidebar-open-change 请求打开 Drawer。
+          </p>
+        </div>
+      </web-ui-layout>
+    </div>
+    <p class="text-sm text-(--wui-color-text-secondary)">
+      mobile：{{ mobile ? 'true' : 'false' }} · sidebar-open：{{ open ? 'true' : 'false' }}
+    </p>
+  </div>
 </template>
 
 <script setup lang="ts">

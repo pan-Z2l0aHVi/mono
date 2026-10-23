@@ -24,7 +24,10 @@ export default {
     // 模块，而路由模块对 `@greypan/web-ui` 根 barrel 的值导入（spinner / image-preview / toast 等）
     // 会把 web-ui 的组件图连同它的裸依赖一并带进启动扫描，扫描器自己就能发现。路由或页面改由虚拟
     // 模块加载（file-based routing、`import.meta.glob`）时扫描器跟不进去，那时才需要这份清单。
-    include: ['vite-plus > vitest > expect-type']
+    // 冷缓存（CI fresh clone）下 `react-dom/client` 会被 browser 运行时在中段才发现并预打包，
+    // 触发整页 reload，把已挂载的示例全部清空（"示例「基础」没有渲染"连锁失败）。
+    // 启动扫描只覆盖路由图，覆盖不到 spec 直接 import 的生成 demo 图，所以这里显式列出。
+    include: ['vite-plus > vitest > expect-type', 'react-dom/client']
   },
   test: {
     projects: [

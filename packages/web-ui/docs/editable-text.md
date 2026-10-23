@@ -7,79 +7,483 @@ tag: web-ui-editable-text
 
 ## 示例
 
-### 基础
+### 基础 {#basic}
 
-点击文字进入编辑态，离开即按提交语义收尾。
+点击文字进入编辑态，光标落在点击处；按 Tab 聚焦时光标落在文本末尾。字体、颜色与对齐全部继承外部上下文，所以编辑前它就是一段普通文字。
 
-```react
-<web-ui-editable-text value="点击编辑这段文字" placeholder="未命名"></web-ui-editable-text>
+```tsx
+export default function Demo() {
+  return (
+    <div className="flex flex-col items-start gap-3">
+      <web-ui-editable-text value="点击就地编辑" aria-label="标题"></web-ui-editable-text>
+      <web-ui-editable-text value="这一段把排版继承给编辑层" className="text-lg font-medium"></web-ui-editable-text>
+    </div>
+  )
+}
 ```
 
 ```vue
 <template>
-  <web-ui-editable-text value="点击编辑这段文字" placeholder="未命名"></web-ui-editable-text>
+  <div class="flex flex-col items-start gap-3">
+    <web-ui-editable-text value="点击就地编辑" aria-label="标题"></web-ui-editable-text>
+    <web-ui-editable-text value="这一段把排版继承给编辑层" class="text-lg font-medium"></web-ui-editable-text>
+  </div>
 </template>
 ```
 
-### 提交与取消
+### 受控值与提交 {#events}
 
-Enter 与 blur 都提交草稿并派发一次 `change`；Escape 恢复进入编辑时的值，派发 `cancel` 而不派发 `change`。
+`value` 是当前值，也是表单提交值；`input` 来自编辑层的原生输入，`change` 只在提交点派发一次——Enter 或失焦。要由页面持有这个值就接住 `change` 再写回。
 
-```react
-const [text, setText] = useState('项目名称')
+```tsx
+import { useState } from 'react'
 
-return (
-  <web-ui-editable-text
-    value={text}
-    onChange={event => setText(event.currentTarget.value)}
-    placeholder="未命名项目"
-  ></web-ui-editable-text>
-)
+export default function Demo() {
+  const [title, setTitle] = useState('季度复盘')
+  const [draft, setDraft] = useState('')
+  const [committed, setCommitted] = useState('')
+
+  return (
+    <div className="flex flex-col items-start gap-3">
+      <web-ui-editable-text
+        value={title}
+        aria-label="标题"
+        placeholder="未命名"
+        onInput={event => setDraft(event.currentTarget.value)}
+        onChange={event => {
+          setTitle(event.currentTarget.value)
+          setCommitted(event.currentTarget.value)
+        }}
+      ></web-ui-editable-text>
+      <output className="text-sm text-(--wui-color-text-secondary)">
+        input 草稿：{draft || '(还没有输入)'} · change 提交：{committed || '(未提交)'}
+      </output>
+    </div>
+  )
+}
 ```
 
 ```vue
 <template>
-  <web-ui-editable-text
-    :value="text"
-    placeholder="未命名项目"
-    @change="text = $event.currentTarget.value"
-  ></web-ui-editable-text>
+  <div class="flex flex-col items-start gap-3">
+    <web-ui-editable-text
+      :value="title"
+      aria-label="标题"
+      placeholder="未命名"
+      @input="onInput"
+      @change="onChange"
+    ></web-ui-editable-text>
+    <output class="text-sm text-(--wui-color-text-secondary)">
+      input 草稿：{{ draft || '(还没有输入)' }} · change 提交：{{ committed || '(未提交)' }}
+    </output>
+  </div>
+</template>
+
+<script setup lang="ts">
+import type { WebUiEditableText, WebUiEvent } from '@greypan/web-ui'
+import { ref } from 'vue'
+
+const title = ref('季度复盘')
+const draft = ref('')
+const committed = ref('')
+
+function onInput(event: WebUiEvent<WebUiEditableText, 'input'>) {
+  draft.value = event.currentTarget.value
+}
+
+function onChange(event: WebUiEvent<WebUiEditableText, 'change'>) {
+  const value = event.currentTarget.value
+  title.value = value
+  committed.value = value
+}
+</script>
+```
+
+### Escape 取消 {#cancel}
+
+只有 Escape 走取消：值回到进入编辑时的状态，派发 `cancel` 而不派发 `change`，焦点交还宿主，这次按键也由编辑层消费掉，外层 overlay（drawer、menu）不会因为同一次按键关闭。`cancel` 不冒泡也不组合，一律挂在组件本身监听——React 没有对应的合成事件，只能挂原生监听。
+
+```tsx
+import type { WebUiEditableText } from '@greypan/web-ui'
+import { useEffect, useRef, useState } from 'react'
+
+export default function Demo() {
+  const fieldRef = useRef<WebUiEditableText>(null)
+  const [last, setLast] = useState('还没有操作')
+
+  useEffect(() => {
+    const element = fieldRef.current
+    if (!element) return
+    const onCancel = () => setLast('cancel：Escape 已把值恢复成进入编辑时的状态')
+    element.addEventListener('cancel', onCancel)
+    return () => element.removeEventListener('cancel', onCancel)
+  }, [])
+
+  return (
+    <div className="flex flex-col items-start gap-3">
+      <web-ui-editable-text ref={fieldRef} value="改几个字，然后按 Escape"></web-ui-editable-text>
+      <output className="text-sm text-(--wui-color-text-secondary)">{last}</output>
+    </div>
+  )
+}
+```
+
+```vue
+<template>
+  <div class="flex flex-col items-start gap-3">
+    <web-ui-editable-text value="改几个字，然后按 Escape" @cancel="onCancel"></web-ui-editable-text>
+    <output class="text-sm text-(--wui-color-text-secondary)">{{ last }}</output>
+  </div>
 </template>
 
 <script setup lang="ts">
 import { ref } from 'vue'
 
-const text = ref('项目名称')
+const last = ref('还没有操作')
+
+function onCancel() {
+  last.value = 'cancel：Escape 已把值恢复成进入编辑时的状态'
+}
 </script>
 ```
 
-### 监听取消
+### 空值与占位 {#placeholder}
 
-`cancel` 与原生 `<dialog>` 事件同名但不冒泡、不组合，React 没有对应的合成事件，需要挂原生监听。
+`placeholder` 只在值为空时显示，取二级文本色；提交空值也算一次提交，值变空之后文字层回落到占位。空值又没写 `placeholder` 时组件留一个零宽字符，保住行盒与点击进入编辑的地方。
 
-```react
-const ref = useRef(null)
-
-useEffect(() => {
-  const element = ref.current
-  if (!element) return
-  const onCancel = () => console.log('已取消编辑')
-  element.addEventListener('cancel', onCancel)
-  return () => element.removeEventListener('cancel', onCancel)
-}, [])
-
-return <web-ui-editable-text ref={ref} value="试试按 Escape"></web-ui-editable-text>
+```tsx
+export default function Demo() {
+  return (
+    <div className="flex flex-col items-start gap-3">
+      <web-ui-editable-text placeholder="未命名项目" aria-label="空值"></web-ui-editable-text>
+      <web-ui-editable-text value="有值时不显示占位" placeholder="未命名项目" aria-label="有值"></web-ui-editable-text>
+      <web-ui-editable-text aria-label="清空之后"></web-ui-editable-text>
+    </div>
+  )
+}
 ```
 
 ```vue
 <template>
-  <web-ui-editable-text value="试试按 Escape" @cancel="onCancel"></web-ui-editable-text>
+  <div class="flex flex-col items-start gap-3">
+    <web-ui-editable-text placeholder="未命名项目" aria-label="空值"></web-ui-editable-text>
+    <web-ui-editable-text value="有值时不显示占位" placeholder="未命名项目" aria-label="有值"></web-ui-editable-text>
+    <web-ui-editable-text aria-label="清空之后"></web-ui-editable-text>
+  </div>
+</template>
+```
+
+### 多行 {#multiline}
+
+值里已有的换行照常成行（`white-space` 默认 `pre-wrap`），第二行文字在盒宽处自然断行；Enter 属于提交，不插入换行，所以多行文案靠值本身带 `\n`。文字层与编辑层同盒同排版，进入编辑不会顶偏像素。
+
+```tsx
+export default function Demo() {
+  return (
+    <web-ui-editable-text
+      className="w-80"
+      value={'第一行按值里的换行成行\n第二行的长文案会在盒宽处折行，文字态与编辑态共用同一个盒'}
+      placeholder="多行占位"
+      aria-label="多行"
+    ></web-ui-editable-text>
+  )
+}
+```
+
+```vue
+<template>
+  <web-ui-editable-text class="w-80" :value="multiline" placeholder="多行占位" aria-label="多行"></web-ui-editable-text>
 </template>
 
 <script setup lang="ts">
-function onCancel() {
-  console.log('已取消编辑')
+const multiline = '第一行按值里的换行成行\n第二行的长文案会在盒宽处折行，文字态与编辑态共用同一个盒'
+</script>
+```
+
+### 禁用与只读 {#states}
+
+`disabled` 把宿主移出 tab 序列，指针与键盘都进不了编辑，只换 `not-allowed` 光标、不做视觉置灰；`readonly` 仍可聚焦与全选，输入被拒绝，退出编辑态也不派发 `change`。
+
+```tsx
+export default function Demo() {
+  return (
+    <div className="flex flex-col items-start gap-3">
+      <web-ui-editable-text value="禁用：点不动，也不在 tab 序列里" disabled aria-label="禁用"></web-ui-editable-text>
+      <web-ui-editable-text placeholder="禁用且空值：仍显示占位" disabled aria-label="禁用空值"></web-ui-editable-text>
+      <web-ui-editable-text value="只读：能选中复制，改不动" readonly aria-label="只读"></web-ui-editable-text>
+    </div>
+  )
 }
+```
+
+```vue
+<template>
+  <div class="flex flex-col items-start gap-3">
+    <web-ui-editable-text value="禁用：点不动，也不在 tab 序列里" disabled aria-label="禁用"></web-ui-editable-text>
+    <web-ui-editable-text placeholder="禁用且空值：仍显示占位" disabled aria-label="禁用空值"></web-ui-editable-text>
+    <web-ui-editable-text value="只读：能选中复制，改不动" readonly aria-label="只读"></web-ui-editable-text>
+  </div>
+</template>
+```
+
+### 表单值 {#form}
+
+`name` 是字段名，提交值就是当前值，空值也照常以空字符串进入 `FormData`。组件没有 `required`，也不转发校验判定，必填请由外层承担；`form.reset()` 回填挂载时的初值。
+
+```tsx
+import { useRef, useState } from 'react'
+
+export default function Demo() {
+  const formRef = useRef<HTMLFormElement>(null)
+  const [submitted, setSubmitted] = useState('')
+
+  return (
+    <form
+      ref={formRef}
+      className="flex w-full flex-col items-start gap-3"
+      onSubmit={event => {
+        event.preventDefault()
+        const fields: string[] = []
+        for (const [name, value] of new FormData(event.currentTarget)) {
+          if (typeof value === 'string') fields.push(`${name}=${value.replace(/\n/g, '\\n') || '(空)'}`)
+        }
+        setSubmitted(fields.join(' · ') || '(没有字段)')
+      }}
+    >
+      <div className="flex flex-col items-start gap-1">
+        <span className="text-sm text-(--wui-color-text-secondary)">标题</span>
+        <web-ui-editable-text name="title" value="初始标题" aria-label="标题"></web-ui-editable-text>
+      </div>
+      <div className="flex flex-col items-start gap-1">
+        <span className="text-sm text-(--wui-color-text-secondary)">摘要：可留空</span>
+        <web-ui-editable-text
+          name="bio"
+          className="w-80"
+          placeholder="写一句摘要"
+          aria-label="摘要"
+        ></web-ui-editable-text>
+      </div>
+      <div className="flex items-center gap-3">
+        <web-ui-button type="submit">提交</web-ui-button>
+        <web-ui-button
+          onClick={() => {
+            formRef.current?.reset()
+            setSubmitted('')
+          }}
+        >
+          重置
+        </web-ui-button>
+        <output className="text-sm text-(--wui-color-text-secondary)">
+          {submitted === '' ? '尚未提交' : submitted}
+        </output>
+      </div>
+    </form>
+  )
+}
+```
+
+```vue
+<template>
+  <form ref="form" class="flex w-full flex-col items-start gap-3" @submit="onSubmit">
+    <div class="flex flex-col items-start gap-1">
+      <span class="text-sm text-(--wui-color-text-secondary)">标题</span>
+      <web-ui-editable-text name="title" value="初始标题" aria-label="标题"></web-ui-editable-text>
+    </div>
+    <div class="flex flex-col items-start gap-1">
+      <span class="text-sm text-(--wui-color-text-secondary)">摘要：可留空</span>
+      <web-ui-editable-text name="bio" class="w-80" placeholder="写一句摘要" aria-label="摘要"></web-ui-editable-text>
+    </div>
+    <div class="flex items-center gap-3">
+      <web-ui-button type="submit">提交</web-ui-button>
+      <web-ui-button @click="reset">重置</web-ui-button>
+      <output class="text-sm text-(--wui-color-text-secondary)">{{ submitted === '' ? '尚未提交' : submitted }}</output>
+    </div>
+  </form>
+</template>
+
+<script setup lang="ts">
+import { useTemplateRef, ref } from 'vue'
+
+const submitted = ref('')
+const form = useTemplateRef('form')
+
+function onSubmit(event: Event) {
+  event.preventDefault()
+  const fields: string[] = []
+  for (const [name, value] of new FormData(event.currentTarget as HTMLFormElement)) {
+    if (typeof value === 'string') fields.push(`${name}=${value.replace(/\n/g, '\\n') || '(空)'}`)
+  }
+  submitted.value = fields.join(' · ') || '(没有字段)'
+}
+
+function reset() {
+  form.value?.reset()
+  submitted.value = ''
+}
+</script>
+```
+
+### 卸载时保住草稿 {#unmount}
+
+编辑到一半的元素被从 DOM 移除时，Chromium 会派发 `blur` 并按提交语义收尾，WebKit 什么都不派发、草稿随组件丢弃——`commit-on-unmount` 就是为后者存在的。开启之后卸载复用同一条提交路径：草稿成为新值、恰好派发一次 `change`，且只在草稿确实与进入编辑时的值不同时才提交。移除由组件自己的渲染驱动时 `change` 走不到框架的事件委托根，所以这里挂原生监听从元素上读值，再用微任务把结果交给组件树之外的状态。
+
+```tsx
+import type { WebUiEditableText } from '@greypan/web-ui'
+import { useEffect, useRef, useState } from 'react'
+
+export default function Demo() {
+  const fieldRef = useRef<WebUiEditableText>(null)
+  const [mounted, setMounted] = useState(true)
+  const [saved, setSaved] = useState('')
+
+  // 卸载由这次 render 驱动，change 到不了 React 的委托根：挂原生监听，从元素上读值
+  useEffect(() => {
+    const element = fieldRef.current
+    if (!element) return
+    const onChange = () => {
+      const value = element.value
+      queueMicrotask(() => setSaved(value))
+    }
+    element.addEventListener('change', onChange)
+    return () => element.removeEventListener('change', onChange)
+  }, [mounted])
+
+  return (
+    <div className="flex flex-col items-start gap-3">
+      {mounted ? (
+        <web-ui-editable-text
+          ref={fieldRef}
+          commit-on-unmount
+          value="改几个字，再按下面的卸载按钮"
+          aria-label="可卸载"
+        ></web-ui-editable-text>
+      ) : (
+        <span className="text-sm text-(--wui-color-text-secondary)">这一行已经从 DOM 移除</span>
+      )}
+      <div className="flex flex-wrap items-center gap-3">
+        <web-ui-button onClick={() => setMounted(false)}>卸载这一行</web-ui-button>
+        <web-ui-button onClick={() => setMounted(true)}>重新挂载</web-ui-button>
+        <output className="text-sm text-(--wui-color-text-secondary)">卸载保住：{saved || '(还没有)'}</output>
+      </div>
+    </div>
+  )
+}
+```
+
+```vue
+<template>
+  <div class="flex flex-col items-start gap-3">
+    <web-ui-editable-text
+      v-if="mounted"
+      commit-on-unmount
+      value="改几个字，再按下面的卸载按钮"
+      aria-label="可卸载"
+      @change="saveDraft"
+    ></web-ui-editable-text>
+    <span v-else class="text-sm text-(--wui-color-text-secondary)">这一行已经从 DOM 移除</span>
+    <div class="flex flex-wrap items-center gap-3">
+      <web-ui-button @click="mounted = false">卸载这一行</web-ui-button>
+      <web-ui-button @click="mounted = true">重新挂载</web-ui-button>
+      <output class="text-sm text-(--wui-color-text-secondary)">卸载保住：{{ saved || '(还没有)' }}</output>
+    </div>
+  </div>
+</template>
+
+<script setup lang="ts">
+import type { WebUiEditableText, WebUiEvent } from '@greypan/web-ui'
+import { ref } from 'vue'
+
+const mounted = ref(true)
+const saved = ref('')
+
+// 卸载由这次渲染驱动：change 到达时元素正在离开文档，先把值取出来再交给状态
+function saveDraft(event: WebUiEvent<WebUiEditableText, 'change'>) {
+  const value = event.currentTarget.value
+  queueMicrotask(() => (saved.value = value))
+}
+</script>
+```
+
+### 聚焦与全选 {#methods}
+
+宿主本身可聚焦（非禁用态带 `tabindex="0"`），`focus()` 聚焦宿主并进入编辑态，`select()` 进入编辑态并全选内容——已在编辑态时只重新全选。两者在 `disabled` 下都不产生效果。
+
+```tsx
+import type { WebUiEditableText } from '@greypan/web-ui'
+import { useRef } from 'react'
+
+export default function Demo() {
+  const fieldRef = useRef<WebUiEditableText>(null)
+
+  return (
+    <div className="flex flex-col items-start gap-3">
+      <web-ui-editable-text ref={fieldRef} value="全选之后可以直接输入替换" aria-label="替换"></web-ui-editable-text>
+      <div className="flex flex-wrap items-center gap-3">
+        <web-ui-button onClick={() => fieldRef.current?.focus()}>聚焦</web-ui-button>
+        <web-ui-button onClick={() => fieldRef.current?.select()}>全选</web-ui-button>
+      </div>
+    </div>
+  )
+}
+```
+
+```vue
+<template>
+  <div class="flex flex-col items-start gap-3">
+    <web-ui-editable-text ref="field" value="全选之后可以直接输入替换" aria-label="替换"></web-ui-editable-text>
+    <div class="flex flex-wrap items-center gap-3">
+      <web-ui-button @click="field?.focus()">聚焦</web-ui-button>
+      <web-ui-button @click="field?.select()">全选</web-ui-button>
+    </div>
+  </div>
+</template>
+
+<script setup lang="ts">
+import type { WebUiEditableText } from '@greypan/web-ui'
+import { useTemplateRef } from 'vue'
+
+const field = useTemplateRef<WebUiEditableText>('field')
+</script>
+```
+
+### CSS 变量 {#sizing}
+
+两层共用同一组空白与断词变量，覆盖时仍保持一致；光标颜色走共享的 `--wui-color-accent`，自定义属性能穿透 shadow 边界继承，所以在宿主或任意祖先上设都有效。
+
+```tsx
+export default function Demo() {
+  return (
+    <div className="flex flex-col items-start gap-3">
+      <web-ui-editable-text value="AAAABBBBCCCCDDDDEEEE" className="w-32" aria-label="长串断词"></web-ui-editable-text>
+      <web-ui-editable-text
+        value={'空白按原样保留\n默认就是 pre-wrap'}
+        className="w-40 [--wui-editable-text-white-space:pre]"
+        aria-label="保留空白"
+      ></web-ui-editable-text>
+      <web-ui-editable-text
+        value="光标色改到这个 accent"
+        className="[--wui-color-accent:#7c3aed]"
+      ></web-ui-editable-text>
+    </div>
+  )
+}
+```
+
+```vue
+<template>
+  <div class="flex flex-col items-start gap-3">
+    <web-ui-editable-text value="AAAABBBBCCCCDDDDEEEE" class="w-32" aria-label="长串断词"></web-ui-editable-text>
+    <web-ui-editable-text
+      :value="spacing"
+      class="w-40 [--wui-editable-text-white-space:pre]"
+      aria-label="保留空白"
+    ></web-ui-editable-text>
+    <web-ui-editable-text value="光标色改到这个 accent" class="[--wui-color-accent:#7c3aed]"></web-ui-editable-text>
+  </div>
+</template>
+
+<script setup lang="ts">
+const spacing = '空白按原样保留\n默认就是 pre-wrap'
 </script>
 ```
 
@@ -99,25 +503,25 @@ function onCancel() {
 
 ### Events
 
-| 名称     | 说明                              |
-| -------- | --------------------------------- |
-| `input`  | 每次输入时触发。                  |
-| `change` | 提交草稿时触发（Enter 或 blur）。 |
-| `cancel` | Escape 取消时触发，不冒泡不组合。 |
+| 名称     | 说明                                                    |
+| -------- | ------------------------------------------------------- |
+| `input`  | 每次输入时触发，来自编辑层原生 `input` 的冒泡。         |
+| `change` | 提交草稿时触发（Enter 或 blur），一次提交恰好一条。     |
+| `cancel` | Escape 取消时触发，不冒泡不组合：监听一律挂在组件本身。 |
 
 ### Methods
 
-| 名称       | 说明                                                                                                                 |
-| ---------- | -------------------------------------------------------------------------------------------------------------------- |
-| `focus()`  | 聚焦宿主并进入编辑态，键盘聚焦把光标放在文本末尾；`disabled` 时宿主移出 tab 序列，不产生效果。                       |
-| `blur()`   | 让宿主失焦；焦点离开编辑层时走 blur 提交语义——草稿成为新值并恰好派发一次 `change`，`readonly` 时只退出编辑、不派发。 |
-| `select()` | 进入编辑态并全选内容；已在编辑态时只重新全选。`disabled` 时不进入编辑。                                              |
+| 名称       | 说明                                                                                                                                                                                                                                                                                                 |
+| ---------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `focus()`  | 组件没有重写它，走原生宿主聚焦：宿主有 tab 位（`tabindex="0"`），聚焦被宿主的 `focus` 监听接住并进入编辑态，光标落在文本末尾；`disabled` 时宿主没有 tab 位，调用不产生效果。                                                                                                                         |
+| `blur()`   | 组件没有重写它，走原生失焦：编辑态下焦点在 shadow 的编辑层上，对宿主调 `blur()` 仍会把焦点从编辑层移走，于是走的就是编辑层自己那条 `blur` 提交路径——草稿成为新值并恰好派发一次 `change`（`readonly` 时只退出编辑、不派发）。不在编辑态时它是空操作；把焦点移往组件之外是同一条路径的另一种触发方式。 |
+| `select()` | 进入编辑态并全选内容；已在编辑态时只重新全选。`disabled` 时不进入编辑。                                                                                                                                                                                                                              |
 
 ### 行为说明
 
 点击时光标落在点击处；键盘聚焦时落在文本末尾。`Enter` 与 `blur` 均提交草稿并恰好派发一次 `change`：`Enter` 不插入换行，并把焦点交还宿主；`blur` 不干预焦点，焦点留在用户移往的位置。只有 `Escape` 取消：值回到进入编辑时的状态，派发 `cancel` 而不派发 `change`，焦点交还宿主，且按键由编辑层消费，外层 overlay（drawer、menu）不会因同一次按键关闭。`cancel` 不冒泡也不组合，只在组件本身派发：组件被投映在 overlay shadow 内时（如 drawer 标题），它不会触达 overlay 的原生 `cancel` 关闭管线，监听一律挂在组件本身。值里已有的换行仍按多行渲染，只是不能再靠输入 `Enter` 增加换行。空值继续显示 placeholder；编辑层始终按自身内容撑高，因此空草稿或纯空格草稿在宿主自身塌缩的场合（flex 项 `min-width: 0`、表格单元格）也仍有承接光标的位置。
 
-`select()` 进入编辑态并全选内容；已在编辑态时只重新全选。`disabled` 时与 `focus()` 一样不产生效果。`readonly` 时仍可聚焦和全选，但输入被拒绝，退出编辑态也不派发 `change`。
+编辑态由宿主上的 `editing` 属性表达，`disabled` 时属性不会挂上。`select()` 进入编辑态并全选内容；已在编辑态时只重新全选。`disabled` 时与 `focus()` 一样不产生效果。`readonly` 时仍可聚焦和全选，但输入被拒绝，退出编辑态也不派发 `change`。
 
 共用盒子带来两个约束：`line-height` 需不小于 `1`，更紧凑时原生编辑层内容会高出自身盒子，文字被顶偏 1px；`nowrap` 加固定宽度时，超出盒宽的文案在文字态溢出显示、在编辑态于盒内滚动。
 
