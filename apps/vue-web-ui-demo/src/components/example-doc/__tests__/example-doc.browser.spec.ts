@@ -211,7 +211,8 @@ const backTopHost: Host = { tag: 'web-ui-back-top', role: 'button' }
 
 // live 示例是 defineAsyncComponent：先等每条示例真的挂上宿主，再等 Lit 自己的更新周期落地。
 async function mountDemos(element: HTMLElement, doc: Doc, tag: string) {
-  // 超时给到 8 秒：第一份 demo 的 dynamic import 是冷的，要等 dev server 现转源码，默认 1 秒不够；
+  // 超时给 30 秒：第一份 demo 的 dynamic import 是冷的，要等 dev server 现转源码，默认 1 秒不够；
+  // CI 慢机上整页批量挂载实测还会越过 8s（React 面 drawer 页 14 个 lazy chunk 实证），余量给足。
   // 与 React 面同一口径（`example-doc.browser.spec.tsx` 的 `mountDemos`）：判据是逐条示例的宿主数，
   // 期望值现算自 demo 源码，所以语料里给某条示例加一个宿主就要求预览里真的多挂一个，
   // 只按「每个预览区至少一个」判会放过局部没结算完的情况。
@@ -233,7 +234,7 @@ async function mountDemos(element: HTMLElement, doc: Doc, tag: string) {
           )
       }
     },
-    { timeout: 8000 }
+    { timeout: 30_000 }
   )
   await nextTick()
   for (const node of element.querySelectorAll<Upgradable>(tag)) await node.updateComplete
@@ -283,7 +284,7 @@ function shadowButton(preview: HTMLElement, label: string) {
 // segmented-trigger 的 live 示例同样是 defineAsyncComponent，等两个宿主与它们的子 trigger 都升级完。
 async function mountSegmented(element: HTMLElement) {
   await vi.waitFor(() => expect(element.querySelectorAll('[data-sample-preview] web-ui-segmented')).toHaveLength(2), {
-    timeout: 8000
+    timeout: 30_000
   })
   await nextTick()
   for (const host of element.querySelectorAll<WebUiSegmented>('web-ui-segmented')) await host.updateComplete
@@ -636,7 +637,7 @@ describe('example-doc（Vue 面 / 真实浏览器）', () => {
     const preview = basic.querySelector('[data-sample-preview]')
     await vi.waitFor(
       () => expect(preview?.querySelector('web-ui-button')?.shadowRoot?.querySelector('button')).toBeTruthy(),
-      { timeout: 8000 }
+      { timeout: 30_000 }
     )
     const trigger = preview?.querySelector('web-ui-button')?.shadowRoot?.querySelector<HTMLElement>('button')
     const host = preview?.querySelector<WebUiDrawer>('web-ui-drawer')

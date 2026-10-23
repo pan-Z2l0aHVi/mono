@@ -221,7 +221,7 @@ async function mountDemos(container: HTMLElement, doc: Doc, tag: string) {
           )
       }
     },
-    { timeout: 8000 }
+    { timeout: 30_000 }
   )
   await act(async () => {
     for (const element of container.querySelectorAll<Upgradable>(tag)) await element.updateComplete
@@ -277,7 +277,7 @@ async function mountSegmented(container: HTMLElement) {
       const mounted = container.querySelectorAll('[data-sample-preview] web-ui-segmented')
       if (mounted.length !== 2) throw new Error(`live 示例只挂载了 ${mounted.length} 个 web-ui-segmented`)
     },
-    { timeout: 8000 }
+    { timeout: 30_000 }
   )
   await act(async () => {
     for (const host of container.querySelectorAll<WebUiSegmented>('web-ui-segmented')) await host.updateComplete
@@ -295,6 +295,7 @@ async function settleCollapses(container: HTMLElement) {
 }
 
 // drawer 页 14 条示例全是 lazy 组件：先把它们结算完，避免 Suspense 在断言之后落地触发 act 告警。
+// 轮询上限给 30s：CI 慢机上 14 个 lazy chunk 的编译与升级实测越过 8s（本地亚秒级全绿），余量给足。
 async function mountDrawerDemos(container: HTMLElement) {
   const total = drawer?.samples.length ?? 0
   await waitFor(
@@ -302,7 +303,7 @@ async function mountDrawerDemos(container: HTMLElement) {
       const mounted = container.querySelectorAll('[data-sample] web-ui-drawer')
       if (mounted.length < total) throw new Error(`live 示例只挂载了 ${mounted.length} / ${total} 个 drawer`)
     },
-    { timeout: 8000 }
+    { timeout: 30_000 }
   )
 }
 
@@ -656,7 +657,7 @@ describe('example-doc（React 面 / 真实浏览器）', () => {
         if (!preview?.querySelector('web-ui-button')?.shadowRoot?.querySelector('button'))
           throw new Error('基础示例的 web-ui-button 还没升级')
       },
-      { timeout: 8000 }
+      { timeout: 30_000 }
     )
     const trigger = preview?.querySelector('web-ui-button')?.shadowRoot?.querySelector<HTMLElement>('button')
     const host = preview?.querySelector<WebUiDrawer>('web-ui-drawer')
