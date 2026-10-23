@@ -28,8 +28,8 @@ function contrastRatio(foreground: Rgb, background: Rgb): number {
   return (lighter + 0.05) / (darker + 0.05)
 }
 
-/** 从公开 avatar 元素截图的中央区域采样，测量实际绘制的底色与图标/文字像素。 */
-async function renderedContrast(avatar: WebUiAvatar): Promise<number> {
+/** 从公开 avatar 元素截图的中央区域采样，读取实际底色与图标/文字的最大对比度。 */
+async function renderedColors(avatar: WebUiAvatar): Promise<{ background: Rgb; contrastRatio: number }> {
   const { base64 } = await page.elementLocator(avatar).screenshot({ base64: true })
   const image = new Image()
   image.src = `data:image/png;base64,${base64}`
@@ -62,7 +62,23 @@ async function renderedContrast(avatar: WebUiAvatar): Promise<number> {
   const background = colors[0]?.color
   if (!background || colors.length < 2) throw new Error('avatar 截图中没有可辨识的前景与背景像素')
 
-  return Math.max(...colors.slice(1).map(({ color }) => contrastRatio(color, background)))
+  return {
+    background,
+    contrastRatio: Math.max(...colors.slice(1).map(({ color }) => contrastRatio(color, background)))
+  }
+}
+
+/** 将主题 surface token 绘制为计算色，作为公开主题下实际回退底色的参照。 */
+function themeSurfaceRaisedColor(parent: HTMLElement): Rgb {
+  const swatch = document.createElement('span')
+  swatch.style.backgroundColor = 'var(--wui-color-surface-raised)'
+  parent.append(swatch)
+  const backgroundColor = getComputedStyle(swatch).backgroundColor
+  swatch.remove()
+
+  const channels = backgroundColor.match(/\d+/g)?.slice(0, 3).map(Number)
+  if (!channels || channels.length !== 3) throw new Error(`无法读取主题 surface-raised 颜色：${backgroundColor}`)
+  return channels as Rgb
 }
 
 describe('avatar 回退内容对比度（浏览器）', () => {
@@ -90,10 +106,13 @@ describe('avatar 回退内容对比度（浏览器）', () => {
     await Promise.all([waitForUpdate(iconAvatar), waitForUpdate(initialsAvatar)])
     await new Promise(resolve => requestAnimationFrame(resolve))
 
-    const iconContrast = await renderedContrast(iconAvatar)
-    const initialsContrast = await renderedContrast(initialsAvatar)
+    const expectedBackground = themeSurfaceRaisedColor(themedPage)
+    const icon = await renderedColors(iconAvatar)
+    const initials = await renderedColors(initialsAvatar)
 
-    expect(iconContrast, `${appearance} 默认图标对比度应达到 4.5:1`).toBeGreaterThanOrEqual(4.5)
-    expect(initialsContrast, `${appearance} 首字母对比度应达到 4.5:1`).toBeGreaterThanOrEqual(4.5)
+    expect(icon.background, `${appearance} 默认图标回退底色应匹配主题 surface-raised`).toEqual(expectedBackground)
+    expect(initials.background, `${appearance} 首字母回退底色应匹配主题 surface-raised`).toEqual(expectedBackground)
+    expect(icon.contrastRatio, `${appearance} 默认图标对比度应达到 4.5:1`).toBeGreaterThanOrEqual(4.5)
+    expect(initials.contrastRatio, `${appearance} 首字母对比度应达到 4.5:1`).toBeGreaterThanOrEqual(4.5)
   })
 })
