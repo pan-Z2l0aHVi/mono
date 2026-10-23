@@ -205,10 +205,12 @@ describe('已迁移文档的每条示例都能渲染', () => {
 describe('已迁移文档的壳映射（ExampleDoc）', () => {
   // 先把全部 demo 模块收进模块缓存再挂壳：壳的懒加载只结算已命中的 promise，
   // 不给 run 留下一批在途 import（收尾时会挂住 10s 才退出）。
+  // 逐篇挂 31 篇语料的壳，本地亚秒级；CI runner 慢机实测越过默认 5s（与被删的全量遍历用例
+  // 同一类慢，那时给的是 120s），beforeAll 的批量预载同理。给足余量但只作用于这一条链路。
   const allDemos = import.meta.glob('../generated/demos/*.vue')
   beforeAll(async () => {
     await Promise.all(Object.values(allDemos).map(load => load()))
-  })
+  }, 30_000)
 
   it('带锚点的示例由壳挂出预览区，顺序与生成数据的锚点序一致', () => {
     for (const component of migratedDocs) {
@@ -221,7 +223,7 @@ describe('已迁移文档的壳映射（ExampleDoc）', () => {
         doc.samples.map(sample => sample.demoKey)
       )
     }
-  })
+  }, 30_000)
 })
 
 describe('覆盖守卫（Vue 页面侧）', () => {
