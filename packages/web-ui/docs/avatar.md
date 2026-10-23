@@ -249,6 +249,6 @@ export default function Demo() {
 
 ### 布局
 
-宿主是 inline-block、`line-height: 0`，方盒由 `size` 定边长，`--wui-avatar-size` 同步写成内联值供影子内部使用。圆形档的圆角走 `--wui-radius-control`（默认是 pill），方形档是 12px，`--wui-glass-corner-radius` 也跟着这两档走，所以回退态的高光渐变与盒形不会错位。回退态会挂上 glass 材质，从那里拿到模糊、内描边环与投影；底色仍然是方盒自己那层半透明灰 `rgb(229 229 229 / 0.6)`，它在样式表里后声明，压过 glass 的 `--wui-color-surface-glass`。图片态只有图片本身。
+宿主是 inline-block、`line-height: 0`，方盒由 `size` 定边长，`--wui-avatar-size` 同步写成内联值供影子内部使用。圆形档的圆角走 `--wui-radius-control`（默认是 pill），方形档是 12px，`--wui-glass-corner-radius` 也跟着这两档走，所以回退态的高光渐变与盒形不会错位。回退态会挂上 glass 材质，从那里拿到模糊、内描边环与投影；底色使用 `--wui-color-surface-raised`，首字母与默认图标使用 `--wui-color-text`，会随主题切换。图片态只有图片本身。
 
 `default` 插槽的盒是绝对定位铺满整个头像并居中，它不参与「该画什么」的判定，因此给了 `src` 且图片成功加载时插槽内容会叠在图片之上，而不是被藏起来——降级内容和图片是二选一的关系，别同时给。组件没有对外的 CSS 变量旋钮，尺寸与形状都归 `size` / `shape`。
