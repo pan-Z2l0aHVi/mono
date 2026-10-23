@@ -453,7 +453,7 @@ export class WebUiSelect extends FormAssociated(LitElement) {
     const portal = defineOverlayPortal().make({
       container: this.overlayContainer,
       target: this,
-      style: `${glass}\n${overlayMotion}\n${style}`,
+      style: `${glass}\n${overlayMotion}\n${internalScrollbars}\n${style}`,
       className: 'wui-glass select-overlay portal wui-floating-panel',
       onContentChange: () => this._optionPortal.scheduleRefresh()
     })
@@ -523,7 +523,7 @@ export class WebUiSelect extends FormAssociated(LitElement) {
           aria-controls=${this.portal ? nothing : listboxId}
           aria-disabled=${String(this._isDisabled)}
           aria-activedescendant=${activeDescendant}
-          aria-label=${ifDefined(this.ariaLabel ?? undefined)}
+          aria-label=${ifDefined(this.ariaLabel)}
         >
           <slot name="trigger" @slotchange=${this._onTriggerSlotChange}></slot>
           ${!this._hasTriggerSlot ? html`<span class="label">${this._selectedLabel}</span>` : nothing}

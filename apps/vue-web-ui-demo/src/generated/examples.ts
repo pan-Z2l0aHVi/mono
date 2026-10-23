@@ -447,7 +447,7 @@ export const exampleDocs: ExampleDoc[] = [
         "kind": "prose",
         "key": "布局",
         "title": "布局",
-        "html": "<p>宿主是 inline-block、<code>line-height: 0</code>，方盒由 <code>size</code> 定边长，<code>--wui-avatar-size</code> 同步写成内联值供影子内部使用。圆形档的圆角走 <code>--wui-radius-control</code>（默认是 pill），方形档是 12px，<code>--wui-glass-corner-radius</code> 也跟着这两档走，所以回退态的高光渐变与盒形不会错位。回退态会挂上 glass 材质，从那里拿到模糊、内描边环与投影；底色仍然是方盒自己那层半透明灰 <code>rgb(229 229 229 / 0.6)</code>，它在样式表里后声明，压过 glass 的 <code>--wui-color-surface-glass</code>。图片态只有图片本身。</p>\n<p><code>default</code> 插槽的盒是绝对定位铺满整个头像并居中，它不参与「该画什么」的判定，因此给了 <code>src</code> 且图片成功加载时插槽内容会叠在图片之上，而不是被藏起来——降级内容和图片是二选一的关系，别同时给。组件没有对外的 CSS 变量旋钮，尺寸与形状都归 <code>size</code> / <code>shape</code>。</p>"
+        "html": "<p>宿主是 inline-block、<code>line-height: 0</code>，方盒由 <code>size</code> 定边长，<code>--wui-avatar-size</code> 同步写成内联值供影子内部使用。圆形档的圆角走 <code>--wui-radius-control</code>（默认是 pill），方形档是 12px，<code>--wui-glass-corner-radius</code> 也跟着这两档走，所以回退态的高光渐变与盒形不会错位。回退态会挂上 glass 材质，从那里拿到模糊、内描边环与投影；底色使用 <code>--wui-color-surface-raised</code>，首字母与默认图标使用 <code>--wui-color-text</code>，会随主题切换。图片态只有图片本身。</p>\n<p><code>default</code> 插槽的盒是绝对定位铺满整个头像并居中，它不参与「该画什么」的判定，因此给了 <code>src</code> 且图片成功加载时插槽内容会叠在图片之上，而不是被藏起来——降级内容和图片是二选一的关系，别同时给。组件没有对外的 CSS 变量旋钮，尺寸与形状都归 <code>size</code> / <code>shape</code>。</p>"
       }
     ],
     "samples": [
@@ -7075,7 +7075,7 @@ export const exampleDocs: ExampleDoc[] = [
           ],
           [
             "easing",
-            "<p>传递给 <code>element.animate()</code> 的 CSS 缓动函数。</p>",
+            "<p>浏览器支持注册长度型自定义属性插值时传给 <code>element.animate()</code>；否则使用 <code>linear</code>。</p>",
             "string",
             "'linear'"
           ],
