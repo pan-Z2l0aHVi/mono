@@ -15,7 +15,7 @@
     <web-ui-collapse>
       <web-ui-button variant="secondary" full>web-ui-button</web-ui-button>
       <div slot="content">
-        <div class="p-3 text-sm">自定义元素也能当 trigger；组件把状态 aria 回写到它身上。</div>
+        <div class="p-3 text-sm">自定义元素也能当 trigger；展开状态会同步到它内部原生 button，供辅助技术读取。</div>
       </div>
     </web-ui-collapse>
 
@@ -25,7 +25,7 @@
         带 prefix icon 的 trigger
       </web-ui-button>
       <div slot="content">
-        <div class="p-3 text-sm">被指派的第一件东西仍然是那个 button，所以 aria 落在它身上。</div>
+        <div class="p-3 text-sm">被指派的第一件东西仍然是那个 button；展开状态会同步到它内部原生 button。</div>
       </div>
     </web-ui-collapse>
 
