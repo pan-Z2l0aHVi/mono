@@ -73,7 +73,7 @@ describe('WebUiRadioGroup 键盘契约（浏览器）', () => {
     expect(document.activeElement).toBe(after)
   })
 
-  it('纵向组用上下键循环导航，Home 和 End 移至首尾并派发组事件', async () => {
+  it('纵向组的四个方向键都可循环导航，Home 和 End 移至首尾并派发组事件', async () => {
     const group = createGroup('b')
     await settleGroup(group)
     const radios = [...group.querySelectorAll<WebUiRadio>('web-ui-radio')]
@@ -84,6 +84,8 @@ describe('WebUiRadioGroup 键盘契约（浏览器）', () => {
     const steps = [
       ['{ArrowDown}', 2, 'c'],
       ['{ArrowUp}', 1, 'b'],
+      ['{ArrowRight}', 2, 'c'],
+      ['{ArrowLeft}', 1, 'b'],
       ['{Home}', 0, 'a'],
       ['{End}', 2, 'c']
     ] as const
@@ -100,40 +102,28 @@ describe('WebUiRadioGroup 键盘契约（浏览器）', () => {
     expect(changeEvents).toHaveLength(steps.length)
     detachInput()
     detachChange()
-
-    const perpendicularArrow = new KeyboardEvent('keydown', {
-      key: 'ArrowRight',
-      bubbles: true,
-      cancelable: true,
-      composed: true
-    })
-    radioControl(radios[2]!).dispatchEvent(perpendicularArrow)
-    await settleGroup(group)
-    expect(perpendicularArrow.defaultPrevented).toBe(false)
-    expect(group.value).toBe('c')
   })
 
-  it('横向组用左右键导航，并忽略上下键', async () => {
+  it('横向组保留左右视觉方向，上下键也可导航', async () => {
     const group = createGroup('b', GROUP_CONTENT, 'horizontal')
     await settleGroup(group)
     const radios = [...group.querySelectorAll<WebUiRadio>('web-ui-radio')]
     radioControl(radios[1]!).focus()
 
-    await userEvent.keyboard('{ArrowRight}')
-    await settleGroup(group)
-    expect(group.value).toBe('c')
-    expect(focusedRadioIndex(group)).toBe(2)
+    const steps = [
+      ['{ArrowRight}', 2, 'c'],
+      ['{ArrowLeft}', 1, 'b'],
+      ['{ArrowDown}', 2, 'c'],
+      ['{ArrowUp}', 1, 'b']
+    ] as const
 
-    const perpendicularArrow = new KeyboardEvent('keydown', {
-      key: 'ArrowDown',
-      bubbles: true,
-      cancelable: true,
-      composed: true
-    })
-    radioControl(radios[2]!).dispatchEvent(perpendicularArrow)
-    await settleGroup(group)
-    expect(perpendicularArrow.defaultPrevented).toBe(false)
-    expect(group.value).toBe('c')
+    for (const [key, expectedIndex, expectedValue] of steps) {
+      await userEvent.keyboard(key)
+      await settleGroup(group)
+      expect(group.value).toBe(expectedValue)
+      expect(focusedRadioIndex(group)).toBe(expectedIndex)
+      expect(radioTabIndexes(group)).toEqual(radios.map((_, index) => (index === expectedIndex ? '0' : '-1')))
+    }
   })
 
   it('嵌套组只响应最近所属组的键盘导航', async () => {

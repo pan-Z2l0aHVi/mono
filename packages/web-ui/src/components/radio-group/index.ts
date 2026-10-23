@@ -12,8 +12,8 @@ import style from './style.css?inline'
 
 const ALLOWED_DIRECTIONS = ['horizontal', 'vertical'] as const
 const RADIO_GROUP_KEYS = {
-  horizontal: { next: 'ArrowRight', previous: 'ArrowLeft' },
-  vertical: { next: 'ArrowDown', previous: 'ArrowUp' }
+  next: ['ArrowRight', 'ArrowDown'],
+  previous: ['ArrowLeft', 'ArrowUp']
 } as const
 const AVAILABILITY_ATTRIBUTES = ['hidden', 'inert', 'aria-hidden', 'style', 'class', 'open', 'popover', 'slot'] as const
 
@@ -192,9 +192,19 @@ export class WebUiRadioGroup extends FormAssociated(LitElement) {
     if (enabledRadios.length === 0) return
     const currentIndex = enabledRadios.indexOf(target)
 
-    const keys = RADIO_GROUP_KEYS[this.direction]
-    let delta = event.key === keys.next ? 1 : event.key === keys.previous ? -1 : 0
-    if (delta && this.direction === 'horizontal' && getComputedStyle(this).direction === 'rtl') delta *= -1
+    let delta = RADIO_GROUP_KEYS.next.some(key => event.key === key)
+      ? 1
+      : RADIO_GROUP_KEYS.previous.some(key => event.key === key)
+        ? -1
+        : 0
+    if (
+      delta &&
+      this.direction === 'horizontal' &&
+      (event.key === 'ArrowLeft' || event.key === 'ArrowRight') &&
+      getComputedStyle(this).direction === 'rtl'
+    ) {
+      delta *= -1
+    }
     let nextRadio: WebUiRadio | undefined
     if (delta) {
       if (currentIndex >= 0) {
