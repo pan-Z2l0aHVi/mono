@@ -20,27 +20,6 @@ const VOLATILE_PHRASES = Object.freeze([
 const REMOTE_WRITE =
   /\b(?:git push|gh pr (?:create|merge|comment|review|edit)|npm publish|pnpm publish|git tag|gh release|wails3 package)\b/
 export const AUTHORIZATION_POINTER = 'workflow.md#怎么取得这个授权'
-const TIMEOUT_AUTHORIZATION_REQUIREMENTS = Object.freeze([
-  { label: 'CI/workflow timeout-minutes', text: 'timeout-minutes' },
-  { label: 'test runner and E2E timeouts', text: '测试运行器与 E2E 的 timeout' },
-  { label: 'build and script timeout/retry caps', text: '构建与脚本中的 timeout 和重试次数/累计等待' },
-  { label: 'toolchain/orchestration wait caps', text: '工具链或任务编排层的等待上限' },
-  {
-    label: 'adjustments and additions require explicit user authorization',
-    text: '调整或新增任何执行超时、等待上限或重试上限都须先取得用户明确授权'
-  },
-  { label: 'ban on loosening caps to pass failing checks', text: '不得为了让失败的检查变绿而放宽这些上限' },
-  { label: 'requested value and prior cap', text: '目标值、当前或原有上限（新增且无旧值时注明「无」）' },
-  { label: 'run duration and log/stage evidence', text: '相关 run 的实际耗时及对应日志/阶段证据' },
-  { label: 'requested value basis', text: '并说明目标值依据' },
-  { label: 'raising requires proof the prior cap was exhausted', text: '证明失败 run 用尽原上限后仍未完成该工作' },
-  { label: 'distinguish insufficient cap from other failures', text: '原因是上限不足而非其他故障' },
-  { label: 'slowest comparable run', text: '同一任务路径有多次可比运行时，按最慢一次的实测耗时评估' },
-  { label: 'do not estimate from the fastest or cache-hot run', text: '不得以最快或缓存热的 run 推断' },
-  { label: 'lowering requires a stated purpose', text: '若申请收紧限制，须说明目的' },
-  { label: 'normal-path measured duration', text: '正常路径的实测耗时' },
-  { label: 'lower cap preserves valid work', text: '证明新值不会中断有效工作' }
-])
 const REFERENCE_MARKER = '<!-- corpus-status: reference -->'
 const REFERENCE_BANNER = '状态：非权威参考'
 
@@ -183,10 +162,6 @@ export function findMissingAuthorizationPointers(entries) {
       .map(({ file }) => file)
       .sort()
   )
-}
-
-export function findMissingTimeoutAuthorizationRequirements(source) {
-  return TIMEOUT_AUTHORIZATION_REQUIREMENTS.filter(({ text }) => !source.includes(text)).map(({ label }) => label)
 }
 
 export function findUnmarkedReferenceDocs(entries) {

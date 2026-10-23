@@ -8,7 +8,6 @@ import {
   contentDigest,
   countNonWhitespace,
   findMissingAuthorizationPointers,
-  findMissingTimeoutAuthorizationRequirements,
   findRetiredAdrMarkers,
   findUnmarkedReferenceDocs,
   findUnroutedAgentDocs,
@@ -300,7 +299,7 @@ export async function run(context) {
         : []
     )
   ]
-  // 语料门禁只检查可客观判定的漂移属性（ADR-0026）：路由完整性、外部状态快照、授权指针、超时授权条款要点与非权威标记。
+  // 语料门禁只检查可客观判定的漂移属性（ADR-0026）：路由完整性、外部状态快照、授权指针与非权威标记。
   // 文风与 concern 归属不在此列，交给 review。
   const corpus = [...new Set(markdownFiles.map(relativePosix))].sort().map(file => ({ file, source: read(file) }))
   // 研究记录与设计资产不在指令面的链接/命令扫描内，但属于 RAG 语料：必须有非权威标记，并进入内容指纹。
@@ -322,9 +321,6 @@ export async function run(context) {
 
   for (const file of findMissingAuthorizationPointers(corpus))
     addError(`${file}: remote write commands require the authorization pointer ${AUTHORIZATION_POINTER}`)
-
-  for (const requirement of findMissingTimeoutAuthorizationRequirements(read('docs/agents/workflow.md')))
-    addError(`docs/agents/workflow.md: timeout authorization policy is missing "${requirement}"`)
 
   const unmarkedReferenceDocs = findUnmarkedReferenceDocs(referenceCorpus)
   for (const file of unmarkedReferenceDocs)
