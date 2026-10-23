@@ -8,7 +8,7 @@ import {
   contentDigest,
   countNonWhitespace,
   findMissingAuthorizationPointers,
-  findTimeoutAuthorizationPolicyViolations,
+  findMissingTimeoutAuthorizationRequirements,
   findRetiredAdrMarkers,
   findUnmarkedReferenceDocs,
   findUnroutedAgentDocs,
@@ -323,8 +323,8 @@ export async function run(context) {
   for (const file of findMissingAuthorizationPointers(corpus))
     addError(`${file}: remote write commands require the authorization pointer ${AUTHORIZATION_POINTER}`)
 
-  for (const violation of findTimeoutAuthorizationPolicyViolations(read('docs/agents/workflow.md')))
-    addError(`docs/agents/workflow.md: timeout authorization policy ${violation}`)
+  for (const requirement of findMissingTimeoutAuthorizationRequirements(read('docs/agents/workflow.md')))
+    addError(`docs/agents/workflow.md: timeout authorization policy is missing "${requirement}"`)
 
   const unmarkedReferenceDocs = findUnmarkedReferenceDocs(referenceCorpus)
   for (const file of unmarkedReferenceDocs)
