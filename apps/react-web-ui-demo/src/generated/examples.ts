@@ -7075,7 +7075,7 @@ export const exampleDocs: ExampleDoc[] = [
           ],
           [
             "easing",
-            "<p>传递给 <code>element.animate()</code> 的 CSS 缓动函数。</p>",
+            "<p>浏览器支持注册长度型自定义属性插值时传给 <code>element.animate()</code>；否则使用 <code>linear</code>。</p>",
             "string",
             "'linear'"
           ],
