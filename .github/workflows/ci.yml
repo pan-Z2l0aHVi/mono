@@ -1,9 +1,11 @@
 name: CI
 
-# 不监听 push；pull_request 默认验证 GitHub 生成的合并对象。strict 只要求 PR 分支跟上 base，
-# squash 会创建新提交，不能据此断言合并提交与先前测试对象完全相同。trunk 复检走 workflow_dispatch。
+# main push 只预热 Wails apt 缓存；pull_request 默认验证 GitHub 生成的合并对象。strict 只要求 PR 分支跟上 base，
+# squash 会创建新提交，不能据此断言合并提交与先前测试对象完全相同。trunk 全量复检走 workflow_dispatch。
 on:
   pull_request:
+    branches: [main]
+  push:
     branches: [main]
   workflow_dispatch:
 
@@ -11,12 +13,31 @@ permissions:
   contents: read
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.head_ref || github.ref_name }}
+  group: ${{ github.workflow }}-${{ github.head_ref || github.ref_name }}-${{ github.event_name }}
   cancel-in-progress: true
 
 jobs:
+  prepare-wails-apt-cache:
+    name: Prepare Wails apt cache
+    runs-on: ubuntu-latest
+    # Historical cold installs took up to 26.9 minutes in setup-deps; leave room to seed the PR cache.
+    timeout-minutes: 35
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: ./.github/actions/setup-deps
+        with:
+          skip-mise: 'true'
+          skip-install: 'true'
+          wails: 'true'
+          wails-download-only: 'true'
+
   check:
     runs-on: ubuntu-latest
+    needs: prepare-wails-apt-cache
+    # On pushes only warm the default-branch cache. For PRs, continue after preparation failure but honor cancellation.
+    if: ${{ github.event_name != 'push' && !cancelled() }}
     timeout-minutes: 15
     env:
       # CI 显式把 artifact cache 放在 workspace 内，供 actions/cache 保存与恢复；mise 保留此覆盖。
