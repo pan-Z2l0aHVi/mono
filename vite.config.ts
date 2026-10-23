@@ -8,7 +8,9 @@ export default {
     ],
     rules: {
       'vite-plus/prefer-vite-plus-imports': 'error',
-      'shadcn/no-unknown-classes': 'error',
+      // `.mdc-*` 是 md-to-comp 生成进 examples.css 的正文版式类，不归 Tailwind 管；不登记的话
+      // `no-unknown-classes` 会把宿主里挂的这些 class 判成拼写错误。
+      'shadcn/no-unknown-classes': ['error', { allow: ['mdc-*'] }],
       'shadcn/no-inline-styles': 'error',
       'shadcn/require-static-classes': 'error'
     },

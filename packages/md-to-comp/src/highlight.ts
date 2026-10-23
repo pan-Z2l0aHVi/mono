@@ -3,24 +3,24 @@ import { createHighlighter, type Highlighter } from 'shiki'
 import { fail } from './errors'
 
 /**
- * 围栏语言是「给消费方看的框架名」，它同时决定两件事：shiki 要用哪个语法 id、落盘的组件文件用什么扩展名。
- * 两张表钉在一处，配置里再写一遍就是可被写歪的第二次机会。
+ * flavor 是配置与产物里用的框架名，它在语料与磁盘上写成同一个标识：围栏语言、shiki 语法 id、落盘扩展名
+ * 三处都取这一个值，拆成几张表就会各漂各的。
+ *
+ * react 那一格写 `tsx` 而不是 `react`，是因为围栏原文就是要编译执行的那份源码，而格式化器只认识它自己
+ * 那套语言名：写成 `react` 的块在 markdown 里不被格式化，落盘的 `.tsx` 却归它管，于是「产物逐字节等于
+ * 围栏」与「产物已格式化」这两条只能靠人手对齐，语料改一处就红一次。
  */
-const FLAVORS = {
-  react: { shikiLang: 'tsx', extension: 'tsx' },
-  vue: { shikiLang: 'vue', extension: 'vue' }
-} as const
+export const FLAVOR_LANG = {
+  react: 'tsx',
+  vue: 'vue'
+} as const satisfies Record<string, string>
 
-export type FenceFlavor = keyof typeof FLAVORS
-
-export function flavorExtension(flavor: FenceFlavor): string {
-  return FLAVORS[flavor].extension
-}
+export type FenceFlavor = keyof typeof FLAVOR_LANG
 
 const THEMES = { light: 'github-light', dark: 'github-dark' } as const
 
-/** 预加载哪些语法由 `FLAVORS` 推出：手抄第二份，加 flavor 时它就成了没人提醒的第四处。 */
-const LANGS = [...new Set(Object.values(FLAVORS).map(flavor => flavor.shikiLang))]
+/** 预加载哪些语法由 `FLAVOR_LANG` 推出：手抄第二份，加 flavor 时它就成了没人提醒的第四处。 */
+const LANGS = [...new Set(Object.values(FLAVOR_LANG))]
 
 /**
  * 预热用的样例：每种语法各来一小段带自定义元素 tag 与成员调用的代码。冷启动那份错乱落在的正是这类
@@ -54,7 +54,7 @@ function highlighter(): Promise<Highlighter> {
  * 由生成的 CSS 按宿主的外观源选用，深浅色切换不需要重新生成。
  */
 export async function highlight(code: string, flavor: FenceFlavor, file: string): Promise<string> {
-  const lang = FLAVORS[flavor].shikiLang
+  const lang = FLAVOR_LANG[flavor]
   const hl = await highlighter()
   const html = hl.codeToHtml(code, { lang, themes: THEMES, defaultColor: false })
   // 外框（圆角、底色、滚动）归宿主自己的样式管，这里只把类名并到 shiki 的 <pre> 上。

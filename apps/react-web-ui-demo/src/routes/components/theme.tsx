@@ -1,15 +1,9 @@
 import { createFileRoute } from '@tanstack/react-router'
 
 import ExampleDoc from '@/components/example-doc'
-import DemoComponent from '@/components/theme-demo'
 
 function Component() {
-  return (
-    <>
-      <DemoComponent />
-      <ExampleDoc component="theme" />
-    </>
-  )
+  return <ExampleDoc component="theme" level="primary" />
 }
 
 export const Route = createFileRoute('/components/theme')({

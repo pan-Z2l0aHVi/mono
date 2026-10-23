@@ -7,6 +7,7 @@ import { unified } from 'unified'
 
 import { braceAnchor } from './anchor'
 import { fail } from './errors'
+import { FLAVOR_LANG } from './highlight'
 import type { ApiColumnKind, ExampleApiColumn, ExampleApiSection } from './render'
 import type { MdToCompConfig } from './types'
 
@@ -15,7 +16,7 @@ export interface SampleBlock {
   /** 示例标题里的显式锚点 id；存在即代表这一条示例要落成可交互的组件文件。 */
   id: string | null
   descriptionHtml: string
-  /** 围栏语言 → 围栏原文。键集就是配置的 flavors。 */
+  /** flavor → 围栏原文。键集就是配置的 flavors，取的是各自那种围栏语言（`FLAVOR_LANG`）写成的块。 */
   fences: Record<string, string>
 }
 
@@ -289,15 +290,16 @@ export function parseMarkdown(source: string, file: string, config: ParseConfig)
 
   const samples: SampleBlock[] = []
   const ids = new Set<string>()
+  // 报错文案里成对写「flavor 用哪种围栏语言」：配置里写的是框架名，语料里写的是语言标识，
+  // 只报其中一个都会让人对着另一份猜。
+  const fenceHint = config.flavors.map(flavor => `${flavor} 用 \`\`\`${FLAVOR_LANG[flavor]}`).join('，')
   for (const sub of sampleGroups ? sampleGroups.sections : []) {
     if (!sub.title) fail(`${file}：\`## ${SAMPLES_SECTION}\` 里有一个 \`###\` 标题是空的`)
     const id = anchorOf(sub.rawTitle).id
     const fences = sub.nodes.filter(node => node.type === 'code')
     for (const fence of fences) {
-      if (!(config.flavors as readonly string[]).includes(fence.lang ?? ''))
-        fail(
-          `${file}：示例「${sub.title}」里的代码块语言必须是 ${config.flavors.join(' / ')}，收到 \`${fence.lang ?? '(无)'}\``
-        )
+      if (!config.flavors.some(flavor => FLAVOR_LANG[flavor] === fence.lang))
+        fail(`${file}：示例「${sub.title}」里的代码块语言必须是 ${fenceHint}，收到 \`${fence.lang ?? '(无)'}\``)
       if (fence.meta)
         fail(
           `${file}：示例「${sub.title}」的 \`\`\`${fence.lang} 带了未支持的元信息 \`${fence.meta}\`；示例 id 写在 ### 标题里`
@@ -306,13 +308,13 @@ export function parseMarkdown(source: string, file: string, config: ParseConfig)
     const fencesByFlavor: Record<string, string> = {}
     const counts: Record<string, number> = {}
     for (const flavor of config.flavors) {
-      const matched = fences.filter(fence => fence.lang === flavor)
+      const matched = fences.filter(fence => fence.lang === FLAVOR_LANG[flavor])
       counts[flavor] = matched.length
       fencesByFlavor[flavor] = matched[0]?.value ?? ''
     }
     if (config.flavors.some(flavor => counts[flavor] !== 1))
       fail(
-        `${file}：示例「${sub.title}」必须为每个 flavor 各有一个代码块（${config.flavors.join(' / ')}），收到 ${JSON.stringify(counts)}`
+        `${file}：示例「${sub.title}」必须为每个 flavor 各有一个代码块（${fenceHint}），收到 ${JSON.stringify(counts)}`
       )
     if (id !== null) {
       const checked = anchorId(id, sub.title, file)

@@ -1,0 +1,27 @@
+import { useState } from 'react'
+
+export default function Demo() {
+  const [collapsed, setCollapsed] = useState(false)
+
+  return (
+    <div className="flex flex-col gap-3">
+      <div className="h-[420px] overflow-auto rounded-lg border border-(--wui-color-border)">
+        <web-ui-layout
+          sidebarCollapsed={collapsed}
+          onsidebar-collapsed-change={event => setCollapsed(event.detail.collapsed)}
+        >
+          <nav slot="sidebar" className="flex h-full min-h-0 flex-col gap-1 overflow-y-auto p-2">
+            <span className="rounded-md p-2 text-sm">Overview</span>
+            <span className="rounded-md p-2 text-sm">Components</span>
+            <span className="rounded-md p-2 text-sm">Theme</span>
+            <span className="rounded-md p-2 text-sm">Settings</span>
+          </nav>
+          <div className="p-4">
+            <p className="m-0 text-sm">点侧边栏底部的 Toggle 收起 / 展开，layout 只把桌面端 aside 收窄到 68px。</p>
+          </div>
+        </web-ui-layout>
+      </div>
+      <p className="text-sm text-(--wui-color-text-secondary)">sidebar-collapsed：{collapsed ? 'true' : 'false'}</p>
+    </div>
+  )
+}
