@@ -623,7 +623,7 @@ export const exampleDocs: ExampleDoc[] = [
         "kind": "prose",
         "key": "定位",
         "title": "定位",
-        "html": "<p><code>scrollTarget</code> 为 <code>window</code> 时 button 固定在视口角落；为 <code>HTMLElement</code> 时需将元素放置在容器内部，button 通过 <code>position: sticky</code> 悬浮于容器底部角落。偏移量沿用 <code>--wui-back-top-top/right/bottom/left</code> CSS 变量。</p>\n<p>角色：<code>button</code>，键盘 Enter 与 Space 都触发 back top。</p>"
+        "html": "<p><code>scrollTarget</code> 为 <code>window</code> 时 button 固定在视口角落，四个方向的偏移由 <code>--wui-back-top-top/right/bottom/left</code> 控制；为 <code>HTMLElement</code> 时需将元素放置在容器内部，button 通过 <code>position: sticky</code> 悬浮于容器底部角落，水平偏移沿用 <code>--wui-back-top-left/right</code>，垂直偏移使用 <code>--wui-back-top-bottom</code>，<code>--wui-back-top-top</code> 不参与容器定位。</p>\n<p>角色：<code>button</code>，键盘 Enter 与 Space 都触发 back top。</p>"
       },
       {
         "kind": "table",
@@ -656,7 +656,7 @@ export const exampleDocs: ExampleDoc[] = [
           ],
           [
             "--wui-back-top-top",
-            "<p>上偏移</p>",
+            "<p>上偏移（仅 window 模式）</p>",
             "auto"
           ],
           [

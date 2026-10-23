@@ -192,17 +192,17 @@ onMounted(() => {
 
 ### 定位
 
-`scrollTarget` 为 `window` 时 button 固定在视口角落；为 `HTMLElement` 时需将元素放置在容器内部，button 通过 `position: sticky` 悬浮于容器底部角落。偏移量沿用 `--wui-back-top-top/right/bottom/left` CSS 变量。
+`scrollTarget` 为 `window` 时 button 固定在视口角落，四个方向的偏移由 `--wui-back-top-top/right/bottom/left` 控制；为 `HTMLElement` 时需将元素放置在容器内部，button 通过 `position: sticky` 悬浮于容器底部角落，水平偏移沿用 `--wui-back-top-left/right`，垂直偏移使用 `--wui-back-top-bottom`，`--wui-back-top-top` 不参与容器定位。
 
 角色：`button`，键盘 Enter 与 Space 都触发 back top。
 
 ### CSS Custom Properties
 
-| 名称                      | 说明     | 默认值                           |
-| ------------------------- | -------- | -------------------------------- |
-| `--wui-back-top-position` | CSS 定位 | `fixed`                          |
-| `--wui-back-top-z-index`  | 层级     | `var(--wui-layer-auxiliary, 20)` |
-| `--wui-back-top-top`      | 上偏移   | `auto`                           |
-| `--wui-back-top-right`    | 右偏移   | `20px`                           |
-| `--wui-back-top-bottom`   | 下偏移   | `20px`                           |
-| `--wui-back-top-left`     | 左偏移   | `auto`                           |
+| 名称                      | 说明                     | 默认值                           |
+| ------------------------- | ------------------------ | -------------------------------- |
+| `--wui-back-top-position` | CSS 定位                 | `fixed`                          |
+| `--wui-back-top-z-index`  | 层级                     | `var(--wui-layer-auxiliary, 20)` |
+| `--wui-back-top-top`      | 上偏移（仅 window 模式） | `auto`                           |
+| `--wui-back-top-right`    | 右偏移                   | `20px`                           |
+| `--wui-back-top-bottom`   | 下偏移                   | `20px`                           |
+| `--wui-back-top-left`     | 左偏移                   | `auto`                           |

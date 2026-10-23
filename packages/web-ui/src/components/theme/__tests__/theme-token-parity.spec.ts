@@ -434,9 +434,9 @@ describe('注释不是 fallback 站点', () => {
   })
 
   it('剥注释后组件 CSS 的站点总数少 2（剥掉的两处正是注释内的 var()）', () => {
-    // 覆盖面口径：原样扫出 702 处，剥掉 collapse:232 与 dialog:72 两处注释站点后剩 700。
-    // 相比基线的 697 处，main 新增 2 处 avatar fallback，分支新增 1 处 back-top top fallback。
-    expect(allFallbackSites).toHaveLength(700)
+    // 覆盖面口径：原样扫出 701 处，剥掉 collapse:232 与 dialog:72 两处注释站点后剩 699。
+    // 相比基线的 697 处，main 新增 2 处 avatar fallback。
+    expect(allFallbackSites).toHaveLength(699)
   })
 
   it('原样扫描与剥注释扫描的差集恰好是这两处，其余站点逐字不动', () => {
