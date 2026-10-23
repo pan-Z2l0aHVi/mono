@@ -329,6 +329,36 @@ describe('WebUiRadioGroup 无障碍语义（浏览器）', () => {
     expect(radios[1]?.shadowRoot?.querySelector('[role="radio"]')?.getAttribute('tabindex')).toBe('-1')
   })
 
+  it('闭合 details 的 summary 通过 Shadow DOM 包含 radio group 时仍可操作', async () => {
+    const host = createGroup()
+    await waitForUpdate(host)
+    const radios = [...host.querySelectorAll<Updatable>('web-ui-radio')]
+    await Promise.all(radios.map(radio => radio.updateComplete))
+
+    const details = document.createElement('details')
+    const summary = document.createElement('summary')
+    const shell = document.createElement('div')
+    shell.attachShadow({ mode: 'open' }).append(host)
+    summary.append(shell)
+    details.append(summary)
+    document.body.append(details)
+    await waitForUpdate(host)
+    await Promise.all(radios.map(radio => radio.updateComplete))
+
+    expect(radios[0]?.shadowRoot?.querySelector('[role="radio"]')?.getAttribute('tabindex')).toBe('0')
+    expect(radios[1]?.shadowRoot?.querySelector('[role="radio"]')?.getAttribute('tabindex')).toBe('-1')
+
+    radios[0]?.focus()
+    await userEvent.keyboard('{ArrowRight}')
+    await waitForUpdate(host)
+    await Promise.all(radios.map(radio => radio.updateComplete))
+
+    expect(host.value).toBe('pro')
+    expect(document.activeElement).toBe(shell)
+    expect(shell.shadowRoot?.activeElement).toBe(radios[1])
+    expect(radios[1]?.shadowRoot?.activeElement).toBe(radios[1]?.shadowRoot?.querySelector('[role="radio"]'))
+  })
+
   it('打开原生 popover 后恢复 radio group 的 tab stop', async () => {
     const host = createGroup()
     await waitForUpdate(host)

@@ -382,15 +382,17 @@ export class WebUiRadioGroup extends FormAssociated(LitElement) {
     if (isRadioDisabled(radio) || radio.matches(':disabled')) return true
 
     const ancestors = this._getComposedAncestors(radio)
+    const isInVisibleSummary = (details: Element) => {
+      const summary = [...details.children].find(child => child.localName === 'summary')
+      return summary !== undefined && ancestors.includes(summary)
+    }
     if (
       ancestors.some(
         element =>
           element.hasAttribute('hidden') ||
           element.hasAttribute('inert') ||
           element.getAttribute('aria-hidden')?.toLowerCase() === 'true' ||
-          (element.localName === 'details' &&
-            !element.hasAttribute('open') &&
-            ![...element.children].find(child => child.localName === 'summary')?.contains(radio))
+          (element.localName === 'details' && !element.hasAttribute('open') && !isInVisibleSummary(element))
       )
     )
       return true
