@@ -11,6 +11,10 @@ import { activateRadio, focusRadio, isRadioDisabled } from '../radio/interaction
 import style from './style.css?inline'
 
 const ALLOWED_DIRECTIONS = ['horizontal', 'vertical'] as const
+const RADIO_GROUP_KEYS = {
+  horizontal: { next: 'ArrowRight', previous: 'ArrowLeft' },
+  vertical: { next: 'ArrowDown', previous: 'ArrowUp' }
+} as const
 const AVAILABILITY_ATTRIBUTES = ['hidden', 'inert', 'aria-hidden', 'style', 'class', 'open', 'popover'] as const
 
 interface DocumentAvailabilityObserver {
@@ -159,12 +163,9 @@ export class WebUiRadioGroup extends FormAssociated(LitElement) {
     if (enabledRadios.length === 0) return
     const currentIndex = enabledRadios.indexOf(target)
 
-    const horizontalArrow = event.key === 'ArrowRight' || event.key === 'ArrowLeft'
-    let delta = event.key === 'ArrowRight' || event.key === 'ArrowDown' ? 1 : 0
-    if (event.key === 'ArrowLeft' || event.key === 'ArrowUp') delta = -1
-    if (delta && horizontalArrow && this.direction === 'horizontal' && getComputedStyle(this).direction === 'rtl') {
-      delta *= -1
-    }
+    const keys = RADIO_GROUP_KEYS[this.direction]
+    let delta = event.key === keys.next ? 1 : event.key === keys.previous ? -1 : 0
+    if (delta && this.direction === 'horizontal' && getComputedStyle(this).direction === 'rtl') delta *= -1
     let nextRadio: WebUiRadio | undefined
     if (delta) {
       if (currentIndex >= 0) {

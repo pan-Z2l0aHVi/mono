@@ -390,9 +390,7 @@ describe('WebUiRadioGroup 组件', () => {
 
       const actions = [
         ['ArrowDown', 2, 'c'],
-        ['ArrowRight', 0, 'a'],
-        ['ArrowUp', 2, 'c'],
-        ['ArrowLeft', 1, 'b'],
+        ['ArrowUp', 1, 'b'],
         ['Home', 0, 'a'],
         ['End', 2, 'c']
       ] as const
