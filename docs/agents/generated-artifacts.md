@@ -4,14 +4,14 @@
 
 ## 清单
 
-| 产物                   | 路径                                                                                   | generator                                   | 触发方式                                                      |
-| ---------------------- | -------------------------------------------------------------------------------------- | ------------------------------------------- | ------------------------------------------------------------- |
-| `web-ui` icon 模块     | `packages/web-ui/src/icons/index.ts`、`packages/web-ui/src/icons/generated/**`         | `packages/web-ui/scripts/generate-icons.ts` | `pnpm --filter @greypan/web-ui generate-icons`，产物入库      |
-| TanStack Router 路由树 | `apps/react-web-ui-demo/src/routeTree.gen.ts`                                          | TanStack Router 的 Vite 插件                | React demo 的 dev 与 build                                    |
-| vue-router 路由类型    | `apps/vue-web-ui-demo/typed-router.d.ts`、`apps/interweave/frontend/typed-router.d.ts` | unplugin-vue-router                         | 对应宿主的 dev 与 build                                       |
-| auto-import 声明       | `apps/vue-web-ui-demo/auto-imports.d.ts`、`apps/interweave/frontend/auto-imports.d.ts` | unplugin-auto-import                        | 对应宿主的 dev 与 build                                       |
-| demo 示例与 API 表     | `apps/react-web-ui-demo/src/generated/**`、`apps/vue-web-ui-demo/src/generated/**`     | `@greypan/md-to-comp` 的 Vite 插件          | 宿主 dev 与 build；输入是 `packages/web-ui/docs/*.md`         |
-| Wails Go bindings      | `apps/interweave/frontend/bindings/**`                                                 | Wails bindings generator（单一入口）        | `pnpm exec turbo build --filter=@greypan/interweave-frontend` |
+| 产物                   | 路径                                                                                   | generator                                   | 触发方式                                                                                                   |
+| ---------------------- | -------------------------------------------------------------------------------------- | ------------------------------------------- | ---------------------------------------------------------------------------------------------------------- |
+| `web-ui` icon 模块     | `packages/web-ui/src/icons/index.ts`、`packages/web-ui/src/icons/generated/**`         | `packages/web-ui/scripts/generate-icons.ts` | `pnpm --filter @greypan/web-ui generate-icons`，产物入库                                                   |
+| TanStack Router 路由树 | `apps/react-web-ui-demo/src/routeTree.gen.ts`                                          | TanStack Router 的 Vite 插件                | React demo 的 dev 与 build                                                                                 |
+| vue-router 路由类型    | `apps/vue-web-ui-demo/typed-router.d.ts`、`apps/interweave/frontend/typed-router.d.ts` | unplugin-vue-router                         | 对应宿主的 dev 与 build                                                                                    |
+| auto-import 声明       | `apps/vue-web-ui-demo/auto-imports.d.ts`、`apps/interweave/frontend/auto-imports.d.ts` | unplugin-auto-import                        | 对应宿主的 dev 与 build                                                                                    |
+| demo 示例与 API 表     | `apps/react-web-ui-demo/src/generated/**`、`apps/vue-web-ui-demo/src/generated/**`     | `@greypan/md-to-comp` 的 Vite 插件          | 宿主 dev 与 build；输入是 `packages/web-ui/docs/*.md`；CI 在宿主 build 前有只判校验步（`check-generated`） |
+| Wails Go bindings      | `apps/interweave/frontend/bindings/**`                                                 | Wails bindings generator（单一入口）        | `pnpm exec turbo build --filter=@greypan/interweave-frontend`                                              |
 
 `apps/*/src/generated/**` 里是 `examples.ts`、`examples.css` 与 `demos/**` 三类文件，同一次生成一起写盘，不要挑其中某一类单独改。
 
