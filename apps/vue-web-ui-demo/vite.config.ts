@@ -65,13 +65,13 @@ export default {
     // web-ui 那一半由 `@greypan/web-ui/vite` 提供，跟随组件库自己的运行时依赖，不要在这里抄一份。
     //
     // `pinia` 必须显式列出，判据是「摘掉就红」而不是「留着没坏处」：把它从这份清单里删掉并清掉依赖
-    // 缓存，`example-doc.browser.spec.ts` 会在跑途中收到 `dependency optimized: pinia` →
+    // 缓存，浏览器档会在跑途中收到 `dependency optimized: pinia` →
     // `optimized dependencies changed. reloading`，vitest 跟着报 `Vite unexpectedly reloaded a test`，
     // 37 条里红 8 条，报 `TypeError: Cannot define property form, object is not extensible`
-    // （`drawer` 同一条），栈停在 `useTemplateRef`；把这条加回来同一份 spec 37/37 绿。
+    // （`drawer` 同一条），栈停在 `useTemplateRef`；把这条加回来同一批用例全绿。
     //
     // 为什么测试里碰得到它：import pinia 的只有 `src/main.ts` 和全仓无人引用的 `src/stores/counter.ts`，
-    // spec 没有一处引 main.ts——main.ts 挂在 `index.html` 的入口 script 上，所以 pinia 在这份 config 的
+    // 测试没有一处引 main.ts——main.ts 挂在 `index.html` 的入口 script 上，所以 pinia 在这份 config 的
     // 依赖图里可达，只是不在启动时那份清单里。
     //
     // 机制（下面是解释，不是本文件验证过的判据）：重打包让页面同时存在两份 Vue runtime，dev 模式下
