@@ -7,9 +7,9 @@ export default function Demo() {
   const bounce = useRef<WebUiSvgDrawLines>(null)
 
   function replayAll() {
-    fast.current?.replay()
-    slow.current?.replay()
-    bounce.current?.replay()
+    void fast.current?.replay()
+    void slow.current?.replay()
+    void bounce.current?.replay()
   }
 
   return (
