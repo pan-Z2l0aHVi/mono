@@ -11,7 +11,7 @@ menu 里的 divider，用来切开成组的 menu item。它没有任何属性、
 
 divider 插在两组 menu item 之间，宽度撑满 menu panel，两侧各留一点水平外边距。
 
-```react
+```tsx
 export default function Demo() {
   return (
     <web-ui-dropdown>

@@ -1,14 +1,12 @@
 import { createFileRoute } from '@tanstack/react-router'
 
-import DemoComponent from '@/components/autocomplete-demo'
 import ExampleDoc from '@/components/example-doc'
 
 function Component() {
   return (
     <>
-      <DemoComponent />
-      <ExampleDoc component="autocomplete" />
-      <ExampleDoc component="option" />
+      <ExampleDoc component="autocomplete" level="primary" />
+      <ExampleDoc component="option" level="secondary" />
     </>
   )
 }
