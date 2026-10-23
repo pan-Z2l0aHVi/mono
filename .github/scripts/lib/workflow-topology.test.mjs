@@ -68,7 +68,11 @@ function assertPolicyStepContract(text) {
   assert.equal(workflow.stepShells[policy.name], policy.shell, 'policy step must use fail-fast Bash')
   assert.equal(workflow.steps[policy.name], undefined, 'policy step must always run')
   assert.equal(workflow.stepContinueOnError[policy.name], undefined, 'policy errors must fail the step')
-  assert.equal(workflow.jobs[policy.job]?.if, undefined, 'required job must not be skippable')
+  assert.equal(
+    workflow.jobs[policy.job]?.if,
+    '${{ !cancelled() }}',
+    'required job must run after cache preparation failure but honor workflow cancellation'
+  )
   assert.equal(workflow.jobs[policy.job]?.continueOnError, undefined, 'required job must propagate failures')
   assert.deepEqual(runTexts(namedStep(text, policy.name)), policy.runs)
 }
@@ -106,6 +110,15 @@ function assertPullRequestValidationIsReadOnly(workflow) {
 // The single required CI context must run all policy checks and propagate any failure.
 {
   const ci = workflowText['ci.yml']
+  const ciWorkflow = parsed['ci.yml']
+  const cachePreparation = workflowJob(ci, 'prepare-wails-apt-cache')
+  assert.deepEqual(ciWorkflow.jobs.check.needs, ['prepare-wails-apt-cache'])
+  assert.equal(ciWorkflow.jobs.check.if, '${{ !cancelled() }}')
+  assert.match(cachePreparation, /timeout-minutes: 35/)
+  assert.match(
+    cachePreparation,
+    /skip-mise: 'true'[\s\S]*skip-install: 'true'[\s\S]*wails: 'true'[\s\S]*wails-download-only: 'true'/
+  )
   assert.ok(parsed['ci.yml'].jobs[REQUIRED_CONTEXT], 'the required context must remain the CI job')
   assertChangesetStepContract(ci)
   const requiredChangesetCommand = 'pnpm run check-changeset --base "$PR_BASE_SHA" --head "$PR_HEAD_SHA"'
@@ -152,7 +165,9 @@ function assertPullRequestValidationIsReadOnly(workflow) {
   assert.throws(() =>
     assertPolicyStepContract(mutateOnce(ci, marker, `${marker}        id: repository-policies\n        if: false\n`))
   )
-  assert.throws(() => assertPolicyStepContract(mutateOnce(ci, '  check:\n', '  check:\n    if: false\n')))
+  assert.throws(() =>
+    assertPolicyStepContract(mutateOnce(ci, '    if: ${{ !cancelled() }}\n', '    if: false\n'))
+  )
   assert.throws(() => assertPolicyStepContract(mutateOnce(ci, '  check:\n', '  check:\n    continue-on-error: true\n')))
 
   const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'ci-policy-fail-fast-'))
@@ -473,11 +488,14 @@ function matrixEntries(text) {
   assert.match(setup, /ImageVersion/)
   assert.match(setup, /actions\/cache@v5/)
   const aptPlanStart = setup.indexOf('    - name: Resolve Wails Linux package cache key\n')
-  const aptCacheStart = setup.indexOf('    - name: Cache Wails Linux package archives\n')
+  const aptCacheStart = setup.indexOf('    - name: Restore Wails Linux package archives\n')
+  const aptDownloadStart = setup.indexOf('    - name: Download Wails Linux package archives\n')
   const aptInstallStart = setup.indexOf('    - name: Install Wails Linux prerequisites\n')
+  const aptSaveStart = setup.indexOf('    - name: Save Wails Linux package archives\n')
   assert.ok(
-    aptPlanStart >= 0 && aptPlanStart < aptCacheStart && aptCacheStart < aptInstallStart,
-    'Wails apt archives must be restored before the required package installation'
+    aptPlanStart >= 0 && aptPlanStart < aptCacheStart && aptCacheStart < aptDownloadStart &&
+      aptDownloadStart < aptInstallStart && aptInstallStart < aptSaveStart,
+    'Wails apt archives must be restored before download/install and saved immediately afterward'
   )
   assert.match(setup, /--print-uris[\s\S]*?libgtk-4-dev libwebkitgtk-6\.0-dev/)
   assert.match(setup, /apt_plan_hash=.*sha256sum/)
@@ -486,6 +504,14 @@ function matrixEntries(text) {
   assert.match(setup, /key: wails-apt-\$\{\{ steps\.wails-apt-cache\.outputs\.key \}\}/)
   assert.match(setup, /restore-keys: \|\n\s+wails-apt-\$\{\{ steps\.wails-apt-cache\.outputs\.scope \}\}-/)
   assert.match(setup, /APT::Keep-Downloaded-Packages=true/)
+  assert.match(setup, /  skip-mise:\n[\s\S]*?default: 'false'/)
+  assert.match(setup, /uses: jdx\/mise-action@v4\n\s+if: inputs\.skip-mise != 'true'/)
+  assert.match(setup, /id: wails-apt-download[\s\S]*install --download-only -y --no-install-recommends libgtk-4-dev libwebkitgtk-6\.0-dev/)
+  assert.match(setup, /id: wails-apt-install[\s\S]*install -y --no-install-recommends libgtk-4-dev libwebkitgtk-6\.0-dev/)
+  assert.match(setup, /steps\.wails-apt-download\.outcome == 'success'/)
+  assert.match(setup, /steps\.wails-apt-install\.outcome == 'success'/)
+  assert.doesNotMatch(setup, /if: always\(\)[^\n]*wails-apt/)
+  assert.match(setup, /uses: actions\/cache\/restore@v5[\s\S]*uses: actions\/cache\/save@v5/)
   for (const keyPart of [
     'runner.os',
     'runner.arch',

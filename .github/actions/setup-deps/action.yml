@@ -3,8 +3,10 @@
 #   - uses: ./.github/actions/setup-deps
 #       with:
 #         mise-install: 'node pnpm'  # 仅安装指定工具（默认安装 .mise.toml 全部）
+#         skip-mise: 'true'          # 跳过 mise 工具安装
 #         skip-install: 'true'       # 跳过 pnpm install（准备 job 不需要装依赖）
 #         wails: 'true'              # 安装 Wails Linux 系统依赖（libgtk-4-dev, libwebkitgtk-6.0-dev）
+#         wails-download-only: 'true' # 仅下载 Wails Linux 包，用于预热缓存
 #         go-cache: 'true'           # 用平台/镜像/Go/模块哈希/SHA 键缓存 Go 模块与编译产物
 name: 'Setup Dependencies'
 description: 'Install tools via mise, cache pnpm store, and install dependencies'
@@ -14,12 +16,20 @@ inputs:
     description: 'Space-separated tools for mise install. Empty = install all from .mise.toml'
     required: false
     default: ''
+  skip-mise:
+    description: 'Skip installing tools via mise'
+    required: false
+    default: 'false'
   skip-install:
     description: 'Skip pnpm install and pnpm-related steps'
     required: false
     default: 'false'
   wails:
     description: 'Install Wails Linux system dependencies (libgtk-4-dev, libwebkitgtk-6.0-dev)'
+    required: false
+    default: 'false'
+  wails-download-only:
+    description: 'Download Wails Linux package archives without installing them'
     required: false
     default: 'false'
   go-cache:
@@ -57,17 +67,29 @@ runs:
         echo "key=${cache_scope}-${apt_plan_hash}" >> "$GITHUB_OUTPUT"
         echo "scope=${cache_scope}" >> "$GITHUB_OUTPUT"
 
-    - name: Cache Wails Linux package archives
+    - name: Restore Wails Linux package archives
       if: inputs.wails == 'true' && runner.os == 'Linux'
-      uses: actions/cache@v5
+      id: wails-apt-restore
+      uses: actions/cache/restore@v5
       with:
         path: ${{ runner.temp }}/wails-apt-archives
         key: wails-apt-${{ steps.wails-apt-cache.outputs.key }}
         restore-keys: |
           wails-apt-${{ steps.wails-apt-cache.outputs.scope }}-
 
+    - name: Download Wails Linux package archives
+      if: inputs.wails == 'true' && inputs.wails-download-only == 'true' && runner.os == 'Linux'
+      id: wails-apt-download
+      shell: bash
+      run: |
+        sudo apt-get \
+          -o "Dir::Cache::archives=${RUNNER_TEMP}/wails-apt-archives" \
+          -o APT::Keep-Downloaded-Packages=true \
+          install --download-only -y --no-install-recommends libgtk-4-dev libwebkitgtk-6.0-dev
+
     - name: Install Wails Linux prerequisites
-      if: inputs.wails == 'true' && runner.os == 'Linux'
+      if: inputs.wails == 'true' && inputs.wails-download-only != 'true' && runner.os == 'Linux'
+      id: wails-apt-install
       shell: bash
       run: |
         sudo apt-get \
@@ -75,7 +97,22 @@ runs:
           -o APT::Keep-Downloaded-Packages=true \
           install -y --no-install-recommends libgtk-4-dev libwebkitgtk-6.0-dev
 
+    - name: Save Wails Linux package archives
+      if: >-
+        inputs.wails == 'true' && runner.os == 'Linux' &&
+        steps.wails-apt-cache.outputs.key != '' &&
+        steps.wails-apt-restore.outputs.cache-hit != 'true' &&
+        (
+          (inputs.wails-download-only == 'true' && steps.wails-apt-download.outcome == 'success') ||
+          (inputs.wails-download-only != 'true' && steps.wails-apt-install.outcome == 'success')
+        )
+      uses: actions/cache/save@v5
+      with:
+        path: ${{ runner.temp }}/wails-apt-archives
+        key: wails-apt-${{ steps.wails-apt-cache.outputs.key }}
+
     - uses: jdx/mise-action@v4
+      if: inputs.skip-mise != 'true'
       with:
         install: 'true'
         install_args: ${{ inputs.mise-install }}

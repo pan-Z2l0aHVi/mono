@@ -15,8 +15,27 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  prepare-wails-apt-cache:
+    name: Prepare Wails apt cache
+    runs-on: ubuntu-latest
+    # Historical cold installs took up to 26.9 minutes in setup-deps; leave room to seed the PR cache.
+    timeout-minutes: 35
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: ./.github/actions/setup-deps
+        with:
+          skip-mise: 'true'
+          skip-install: 'true'
+          wails: 'true'
+          wails-download-only: 'true'
+
   check:
     runs-on: ubuntu-latest
+    needs: prepare-wails-apt-cache
+    # Run the required check after cache preparation fails, but honor cancellation of superseded PR runs.
+    if: ${{ !cancelled() }}
     timeout-minutes: 15
     env:
       # CI 显式把 artifact cache 放在 workspace 内，供 actions/cache 保存与恢复；mise 保留此覆盖。
