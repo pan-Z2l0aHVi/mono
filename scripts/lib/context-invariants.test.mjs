@@ -2,12 +2,50 @@ import assert from 'node:assert/strict'
 
 import {
   isUnqualifiedRelativeTarget,
+  findMissingTimeoutAuthorizationRequirements,
   parseLocalLinkTarget,
   readInlineLinkTarget,
   stripCodeSegments
 } from './context-invariants.mjs'
 
 try {
+  const timeoutPolicy = [
+    'timeout-minutes',
+    '测试运行器与 E2E 的 timeout',
+    '构建与脚本中的 timeout 和重试次数/累计等待',
+    '工具链或任务编排层的等待上限',
+    '调整或新增任何执行超时、等待上限或重试上限都须先取得用户明确授权',
+    '不得为了让失败的检查变绿而放宽这些上限',
+    '目标值、当前或原有上限（新增且无旧值时注明「无」）',
+    '相关 run 的实际耗时及对应日志/阶段证据',
+    '并说明目标值依据',
+    '证明失败 run 用尽原上限后仍未完成该工作',
+    '原因是上限不足而非其他故障',
+    '同一任务路径有多次可比运行时，按最慢一次的实测耗时评估',
+    '不得以最快或缓存热的 run 推断',
+    '若申请收紧限制，须说明目的',
+    '正常路径的实测耗时',
+    '证明新值不会中断有效工作'
+  ].join('\n')
+  assert.deepEqual(findMissingTimeoutAuthorizationRequirements(timeoutPolicy), [])
+  assert.deepEqual(findMissingTimeoutAuthorizationRequirements('timeout-minutes'), [
+    'test runner and E2E timeouts',
+    'build and script timeout/retry caps',
+    'toolchain/orchestration wait caps',
+    'adjustments and additions require explicit user authorization',
+    'ban on loosening caps to pass failing checks',
+    'requested value and prior cap',
+    'run duration and log/stage evidence',
+    'requested value basis',
+    'raising requires proof the prior cap was exhausted',
+    'distinguish insufficient cap from other failures',
+    'slowest comparable run',
+    'do not estimate from the fastest or cache-hot run',
+    'lowering requires a stated purpose',
+    'normal-path measured duration',
+    'lower cap preserves valid work'
+  ])
+
   // 远程与协议链接不判定可触达性：离线无法验证，域名失效也不是本仓漂移。
   for (const remote of [
     'https://example.com/dead',
