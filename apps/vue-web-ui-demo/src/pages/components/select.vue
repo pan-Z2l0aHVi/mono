@@ -8,11 +8,9 @@
 
 <script setup lang="ts">
 import ExampleDoc from '@/components/example-doc/index.vue'
-import SelectDemo from '@/components/select-demo/index.vue'
 </script>
 
 <template>
-  <SelectDemo />
-  <ExampleDoc component="select" />
-  <ExampleDoc component="option" />
+  <ExampleDoc component="select" level="primary" />
+  <ExampleDoc component="option" level="secondary" />
 </template>
