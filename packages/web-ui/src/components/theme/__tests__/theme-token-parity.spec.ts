@@ -434,8 +434,8 @@ describe('注释不是 fallback 站点', () => {
   })
 
   it('剥注释后组件 CSS 的站点总数少 2（剥掉的两处正是注释内的 var()）', () => {
-    // 覆盖面口径：原样扫出 701 处，剥掉 collapse:232 与 dialog:72 两处注释站点后剩 699
-    // 相比 origin/main 的 697 处，多出的 2 处来自 avatar fallback 底色与字色新增的主题 token fallback。
+    // 覆盖面口径：原样扫出 701 处，剥掉 collapse:232 与 dialog:72 两处注释站点后剩 699。
+    // 相比基线的 697 处，main 新增 2 处 avatar fallback。
     expect(allFallbackSites).toHaveLength(699)
   })
 
