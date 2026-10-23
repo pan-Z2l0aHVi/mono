@@ -7,33 +7,202 @@ tag: web-ui-dialog
 
 ## 示例
 
-### 基础
+### 基础 {#basic}
 
-`open` 控制可见性，`heading` 是无 header 插槽时的标题回落，`closable` 渲染内置关闭 button。
+`open` 由页面持有：button 把它置真；Escape、backdrop 点击与内置关闭 button（`closable`）由组件自己关到位，再用 `open-change` 把结果交回来，页面按 `detail.open` 回写。footer 里的 button 是页面直接改状态，属于程序式更新，不会再派发一次事件——读数因此只在用户从组件侧关闭时增长。`heading` 是 `header` 槽为空时的标题回落。
 
-```react
-const [open, setOpen] = useState(false)
+```tsx
+import { useState } from 'react'
 
-return (
-  <>
-    <web-ui-button onClick={() => setOpen(true)}>打开 dialog</web-ui-button>
-    <web-ui-dialog open={open} heading="确认操作" closable onopen-change={event => setOpen(event.detail.open)}>
-      <p>删除后无法恢复，确定继续吗？</p>
-      <web-ui-button slot="footer" variant="danger" onClick={() => setOpen(false)}>
-        删除
-      </web-ui-button>
-    </web-ui-dialog>
-  </>
-)
+export default function Demo() {
+  const [open, setOpen] = useState(false)
+  const [changes, setChanges] = useState(0)
+  const [last, setLast] = useState('—')
+
+  return (
+    <div className="flex flex-col items-start gap-3">
+      <web-ui-button onClick={() => setOpen(true)}>打开 dialog</web-ui-button>
+      <output className="text-sm text-(--wui-color-text-secondary)">
+        open-change：{changes} 次 · 最后一次 detail.open = {last}
+      </output>
+      <web-ui-dialog
+        open={open}
+        heading="确认操作"
+        closable
+        onopen-change={event => {
+          setChanges(value => value + 1)
+          setLast(event.detail.open ? 'true' : 'false')
+          setOpen(event.detail.open)
+        }}
+      >
+        <p className="m-0">删除后无法恢复，确定继续吗？</p>
+        <web-ui-button slot="footer" variant="secondary" onClick={() => setOpen(false)}>
+          取消
+        </web-ui-button>
+        <web-ui-button slot="footer" variant="danger" onClick={() => setOpen(false)}>
+          删除
+        </web-ui-button>
+      </web-ui-dialog>
+    </div>
+  )
+}
 ```
 
 ```vue
 <template>
-  <web-ui-button @click="open = true">打开 dialog</web-ui-button>
-  <web-ui-dialog :open="open" heading="确认操作" closable @open-change="open = $event.detail.open">
-    <p>删除后无法恢复，确定继续吗？</p>
-    <web-ui-button slot="footer" variant="danger" @click="open = false">删除</web-ui-button>
-  </web-ui-dialog>
+  <div class="flex flex-col items-start gap-3">
+    <web-ui-button @click="open = true">打开 dialog</web-ui-button>
+    <output class="text-sm text-(--wui-color-text-secondary)">
+      open-change：{{ changes }} 次 · 最后一次 detail.open = {{ last }}
+    </output>
+    <web-ui-dialog :open="open" heading="确认操作" closable @open-change="onOpenChange">
+      <p class="m-0">删除后无法恢复，确定继续吗？</p>
+      <web-ui-button slot="footer" variant="secondary" @click="open = false">取消</web-ui-button>
+      <web-ui-button slot="footer" variant="danger" @click="open = false">删除</web-ui-button>
+    </web-ui-dialog>
+  </div>
+</template>
+
+<script setup lang="ts">
+import type { WebUiDialog, WebUiEvent } from '@greypan/web-ui'
+import { ref } from 'vue'
+
+const open = ref(false)
+const changes = ref(0)
+const last = ref('—')
+
+function onOpenChange(event: WebUiEvent<WebUiDialog, 'open-change'>) {
+  changes.value += 1
+  last.value = event.detail.open ? 'true' : 'false'
+  open.value = event.detail.open
+}
+</script>
+```
+
+### 受控关闭 {#controlled-close}
+
+`controlled` 把关闭的决定权交给页面：Escape、backdrop 点击与 closable button 都不再改 `open`，只派发 `open-change` 请求关闭。页面不回写就保持打开，`<output>` 累加被拦截的请求数；footer 的「放弃更改」直接写 `false`，那是程序式关闭，`controlled` 不拦。
+
+```tsx
+import { useState } from 'react'
+
+export default function Demo() {
+  const [open, setOpen] = useState(false)
+  const [requests, setRequests] = useState(0)
+
+  return (
+    <div className="flex flex-col items-start gap-3">
+      <web-ui-button onClick={() => setOpen(true)}>打开 dialog</web-ui-button>
+      <web-ui-dialog
+        open={open}
+        controlled
+        closable
+        heading="未保存的更改"
+        onopen-change={event => {
+          if (!event.detail.open) setRequests(count => count + 1)
+        }}
+      >
+        <p className="m-0">Escape 与 backdrop 只请求关闭；页面不写回，dialog 保持打开。</p>
+        <output className="block text-sm text-(--wui-color-text-secondary)">已拦截关闭请求 · {requests} 次</output>
+        <web-ui-button slot="footer" variant="secondary" onClick={() => setOpen(false)}>
+          放弃更改
+        </web-ui-button>
+      </web-ui-dialog>
+    </div>
+  )
+}
+```
+
+```vue
+<template>
+  <div class="flex flex-col items-start gap-3">
+    <web-ui-button @click="open = true">打开 dialog</web-ui-button>
+    <web-ui-dialog :open="open" controlled closable heading="未保存的更改" @open-change="onOpenChange">
+      <p class="m-0">Escape 与 backdrop 只请求关闭；页面不写回，dialog 保持打开。</p>
+      <output class="block text-sm text-(--wui-color-text-secondary)">已拦截关闭请求 · {{ requests }} 次</output>
+      <web-ui-button slot="footer" variant="secondary" @click="open = false">放弃更改</web-ui-button>
+    </web-ui-dialog>
+  </div>
+</template>
+
+<script setup lang="ts">
+import type { WebUiDialog, WebUiEvent } from '@greypan/web-ui'
+import { ref } from 'vue'
+
+const open = ref(false)
+const requests = ref(0)
+
+function onOpenChange(event: WebUiEvent<WebUiDialog, 'open-change'>) {
+  if (!event.detail.open) requests.value += 1
+}
+</script>
+```
+
+### Headless {#headless}
+
+`headless` 只保留 overlay 基础设施——backdrop、进出场动画、滚动锁与原生 `<dialog>` 语义；内置 chrome 带、正文区与 footer 一概不渲染，默认插槽直接落进卡片内的滚动层。此时没有可自动关联的内置标题，`dialog-label` 必须由页面提供，卡片外观与关闭 button 也全部自绘。
+
+```tsx
+import { useState } from 'react'
+
+export default function Demo() {
+  const [open, setOpen] = useState(false)
+
+  return (
+    <div className="flex flex-col items-start gap-3">
+      <web-ui-button onClick={() => setOpen(true)}>打开图片详情</web-ui-button>
+      <output className="text-sm text-(--wui-color-text-secondary)">
+        headless dialog：{open ? '已打开' : '已关闭'}
+      </output>
+      <web-ui-dialog open={open} headless dialog-label="图片详情" onopen-change={event => setOpen(event.detail.open)}>
+        <div className="flex flex-col gap-4">
+          <div className="flex items-start justify-between gap-3">
+            <div className="flex flex-col gap-1">
+              <h2 className="m-0 text-base font-semibold">山间清晨</h2>
+              <span className="text-xs text-(--wui-color-text-secondary)">3840 × 2160 · JPEG</span>
+            </div>
+            <web-ui-button variant="secondary" onClick={() => setOpen(false)}>
+              关闭
+            </web-ui-button>
+          </div>
+          <div className="flex h-32 items-center justify-center rounded-lg bg-(--wui-color-surface-glass) text-sm text-(--wui-color-text-secondary)">
+            预览区域由页面自绘
+          </div>
+          <web-ui-button variant="primary" onClick={() => setOpen(false)}>
+            完成
+          </web-ui-button>
+        </div>
+      </web-ui-dialog>
+    </div>
+  )
+}
+```
+
+```vue
+<template>
+  <div class="flex flex-col items-start gap-3">
+    <web-ui-button @click="open = true">打开图片详情</web-ui-button>
+    <output class="text-sm text-(--wui-color-text-secondary)">
+      headless dialog：{{ open ? '已打开' : '已关闭' }}
+    </output>
+    <web-ui-dialog :open="open" headless dialog-label="图片详情" @open-change="open = $event.detail.open">
+      <div class="flex flex-col gap-4">
+        <div class="flex items-start justify-between gap-3">
+          <div class="flex flex-col gap-1">
+            <h2 class="m-0 text-base font-semibold">山间清晨</h2>
+            <span class="text-xs text-(--wui-color-text-secondary)">3840 × 2160 · JPEG</span>
+          </div>
+          <web-ui-button variant="secondary" @click="open = false">关闭</web-ui-button>
+        </div>
+        <div
+          class="flex h-32 items-center justify-center rounded-lg bg-(--wui-color-surface-glass) text-sm text-(--wui-color-text-secondary)"
+        >
+          预览区域由页面自绘
+        </div>
+        <web-ui-button variant="primary" @click="open = false">完成</web-ui-button>
+      </div>
+    </web-ui-dialog>
+  </div>
 </template>
 
 <script setup lang="ts">
@@ -41,56 +210,6 @@ import { ref } from 'vue'
 
 const open = ref(false)
 </script>
-```
-
-### 受控关闭
-
-开启 `controlled` 后，Escape 与 backdrop 点击只请求 `open=false`，在消费方回写前 dialog 保持打开。
-
-```react
-<web-ui-dialog
-  open={open}
-  controlled
-  heading="未保存的更改"
-  onopen-change={event => {
-    if (event.detail.open === false) requestClose()
-    else setOpen(true)
-  }}
->
-  <p>离开前要先保存吗？</p>
-</web-ui-dialog>
-```
-
-```vue
-<template>
-  <web-ui-dialog :open="open" controlled heading="未保存的更改" @open-change="onOpenChange">
-    <p>离开前要先保存吗？</p>
-  </web-ui-dialog>
-</template>
-
-<script setup lang="ts">
-function onOpenChange(event: CustomEvent<{ open: boolean }>) {
-  if (!event.detail.open) requestClose()
-}
-</script>
-```
-
-### Headless
-
-`headless` 只保留 overlay 行为，默认插槽渲染为卡片内唯一的滚动层；此时必须用 `dialog-label` 提供可访问名称。
-
-```react
-<web-ui-dialog open={open} headless dialog-label="图片详情">
-  <div className="my-dialog-content">自定义内容与样式</div>
-</web-ui-dialog>
-```
-
-```vue
-<template>
-  <web-ui-dialog :open="open" headless dialog-label="图片详情">
-    <div class="my-dialog-content">自定义内容与样式</div>
-  </web-ui-dialog>
-</template>
 ```
 
 ## API
