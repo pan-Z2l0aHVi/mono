@@ -472,6 +472,20 @@ function matrixEntries(text) {
   assert.match(setup, /ImageOS/)
   assert.match(setup, /ImageVersion/)
   assert.match(setup, /actions\/cache@v5/)
+  const aptPlanStart = setup.indexOf('    - name: Resolve Wails Linux package cache key\n')
+  const aptCacheStart = setup.indexOf('    - name: Cache Wails Linux package archives\n')
+  const aptInstallStart = setup.indexOf('    - name: Install Wails Linux prerequisites\n')
+  assert.ok(
+    aptPlanStart >= 0 && aptPlanStart < aptCacheStart && aptCacheStart < aptInstallStart,
+    'Wails apt archives must be restored before the required package installation'
+  )
+  assert.match(setup, /--print-uris[\s\S]*?libgtk-4-dev libwebkitgtk-6\.0-dev/)
+  assert.match(setup, /apt_plan_hash=.*sha256sum/)
+  assert.match(setup, /key=\$\{cache_scope\}-\$\{apt_plan_hash\}/)
+  assert.match(setup, /cache_scope="\$\{ID\}-\$\{VERSION_ID\}-\$\(dpkg --print-architecture\)"/)
+  assert.match(setup, /key: wails-apt-\$\{\{ steps\.wails-apt-cache\.outputs\.key \}\}/)
+  assert.match(setup, /restore-keys: \|\n\s+wails-apt-\$\{\{ steps\.wails-apt-cache\.outputs\.scope \}\}-/)
+  assert.match(setup, /APT::Keep-Downloaded-Packages=true/)
   for (const keyPart of [
     'runner.os',
     'runner.arch',

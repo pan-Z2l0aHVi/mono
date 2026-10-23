@@ -32,12 +32,48 @@ runs:
   steps:
     # Wails Go 工具在 Linux 上编译会链接 GTK4/WebKitGTK，必须先于 mise install 安装系统库，
     # 否则 mise 编译 go:.../wails3 会因 pkg-config 找不到 gtk4/webkitgtk-6.0 而失败。
-    - name: Install Wails Linux prerequisites
+    - name: Update Wails package indexes
       if: inputs.wails == 'true' && runner.os == 'Linux'
       shell: bash
       run: |
         sudo apt-get update
-        sudo apt-get install -y --no-install-recommends libgtk-4-dev libwebkitgtk-6.0-dev
+
+    - name: Resolve Wails Linux package cache key
+      if: inputs.wails == 'true' && runner.os == 'Linux'
+      id: wails-apt-cache
+      shell: bash
+      run: |
+        set -euo pipefail
+        apt_cache_dir="${RUNNER_TEMP}/wails-apt-archives"
+        mkdir -p "$apt_cache_dir/partial"
+        chmod 1777 "$apt_cache_dir/partial"
+        apt_plan="$(sudo apt-get \
+          -o "Dir::Cache::archives=$apt_cache_dir" \
+          --print-uris --yes --no-install-recommends install \
+          libgtk-4-dev libwebkitgtk-6.0-dev)"
+        apt_plan_hash="$(printf '%s\n' "$apt_plan" | sha256sum | cut -d' ' -f1)"
+        source /etc/os-release
+        cache_scope="${ID}-${VERSION_ID}-$(dpkg --print-architecture)"
+        echo "key=${cache_scope}-${apt_plan_hash}" >> "$GITHUB_OUTPUT"
+        echo "scope=${cache_scope}" >> "$GITHUB_OUTPUT"
+
+    - name: Cache Wails Linux package archives
+      if: inputs.wails == 'true' && runner.os == 'Linux'
+      uses: actions/cache@v5
+      with:
+        path: ${{ runner.temp }}/wails-apt-archives
+        key: wails-apt-${{ steps.wails-apt-cache.outputs.key }}
+        restore-keys: |
+          wails-apt-${{ steps.wails-apt-cache.outputs.scope }}-
+
+    - name: Install Wails Linux prerequisites
+      if: inputs.wails == 'true' && runner.os == 'Linux'
+      shell: bash
+      run: |
+        sudo apt-get \
+          -o "Dir::Cache::archives=${RUNNER_TEMP}/wails-apt-archives" \
+          -o APT::Keep-Downloaded-Packages=true \
+          install -y --no-install-recommends libgtk-4-dev libwebkitgtk-6.0-dev
 
     - uses: jdx/mise-action@v4
       with:

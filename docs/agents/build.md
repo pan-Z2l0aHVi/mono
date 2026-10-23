@@ -60,6 +60,8 @@ CI 构建 workspace 包并跳过 Interweave app wrapper；Wails verify / release
 
 未经用户授权不执行发布。取得授权的机制见 [`workflow.md`](./workflow.md#怎么取得这个授权)。不得直接运行 `npm publish`，首次发布用 `pnpm publish-new-pack <package-dir>`。Git 检查的绕过禁令见 [`commit.md`](./commit.md)。
 
+CI 的 check 仍需在 mise 安装前准备 Wails Linux 开发包。mise 从 Go 源码编译 pinned wails3；CI 会核验 CLI，并在 interweave-frontend 构建时生成 bindings，因此这些系统依赖也服务于构建链。setup-deps 缓存 apt 下载，但每次都会执行安装；缓存未命中时继续从配置的软件源下载。
+
 ## PR changeset gate
 
 PR changeset gate 由 CI 对 PR base/head 执行 `pnpm run check-changeset`（含 `changeset status` 与自定义内容检查）；本地 pre-commit 政策检查不运行该检查。版本 PR 按条件豁免。required check 覆盖 CI 与仓库硬约束，不等于 PR review；review 规则见 [`review.md`](./review.md)。
