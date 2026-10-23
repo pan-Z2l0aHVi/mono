@@ -199,7 +199,11 @@ function assertPullRequestValidationIsReadOnly(workflow) {
     .filter(([, workflow]) => workflow.triggers.some(trigger => trigger.on === 'push'))
     .map(([file]) => file)
   assert.deepEqual(pushWorkflows, ['changeset-version.yml', 'ci.yml'])
-  assert.deepEqual(parsed['ci.yml'].triggers.map(trigger => trigger.on).sort(), ['pull_request', 'push', 'workflow_dispatch'])
+  assert.deepEqual(parsed['ci.yml'].triggers.map(trigger => trigger.on).sort(), [
+    'pull_request',
+    'push',
+    'workflow_dispatch'
+  ])
   for (const [file, workflow] of Object.entries(parsed)) {
     assert.ok(Object.keys(workflow.permissions).length > 0, `${file} must declare workflow permissions`)
     for (const trigger of workflow.triggers) {
@@ -499,11 +503,16 @@ function matrixEntries(text) {
   const aptCacheStart = setup.indexOf('    - name: Restore Wails Linux package archives\n')
   const aptDownloadStart = setup.indexOf('    - name: Download Wails Linux package archives\n')
   const aptInstallStart = setup.indexOf('    - name: Install Wails Linux prerequisites\n')
+  const aptPermissionsStart = setup.indexOf('    - name: Prepare Wails Linux package archives for caching\n')
   const aptSaveStart = setup.indexOf('    - name: Save Wails Linux package archives\n')
   assert.ok(
-    aptPlanStart >= 0 && aptPlanStart < aptCacheStart && aptCacheStart < aptDownloadStart &&
-      aptDownloadStart < aptInstallStart && aptInstallStart < aptSaveStart,
-    'Wails apt archives must be restored before download/install and saved immediately afterward'
+    aptPlanStart >= 0 &&
+      aptPlanStart < aptCacheStart &&
+      aptCacheStart < aptDownloadStart &&
+      aptDownloadStart < aptInstallStart &&
+      aptInstallStart < aptPermissionsStart &&
+      aptPermissionsStart < aptSaveStart,
+    'Wails apt archives must be restored before download/install, made readable, then saved'
   )
   assert.match(setup, /--print-uris[\s\S]*?libgtk-4-dev libwebkitgtk-6\.0-dev/)
   assert.match(setup, /apt_plan_hash=.*sha256sum/)
@@ -514,10 +523,18 @@ function matrixEntries(text) {
   assert.match(setup, /APT::Keep-Downloaded-Packages=true/)
   assert.match(setup, /  skip-mise:\n[\s\S]*?default: 'false'/)
   assert.match(setup, /uses: jdx\/mise-action@v4\n\s+if: inputs\.skip-mise != 'true'/)
-  assert.match(setup, /id: wails-apt-download[\s\S]*install --download-only -y --no-install-recommends libgtk-4-dev libwebkitgtk-6\.0-dev/)
-  assert.match(setup, /id: wails-apt-install[\s\S]*install -y --no-install-recommends libgtk-4-dev libwebkitgtk-6\.0-dev/)
+  assert.match(
+    setup,
+    /id: wails-apt-download[\s\S]*install --download-only -y --no-install-recommends libgtk-4-dev libwebkitgtk-6\.0-dev/
+  )
+  assert.match(
+    setup,
+    /id: wails-apt-install[\s\S]*install -y --no-install-recommends libgtk-4-dev libwebkitgtk-6\.0-dev/
+  )
   assert.match(setup, /steps\.wails-apt-download\.outcome == 'success'/)
   assert.match(setup, /steps\.wails-apt-install\.outcome == 'success'/)
+  assert.match(setup, /id: wails-apt-permissions[\s\S]*sudo chown -R "\$\(id -u\):\$\(id -g\)"/)
+  assert.match(setup, /steps\.wails-apt-permissions\.outcome == 'success'/)
   assert.doesNotMatch(setup, /if: always\(\)[^\n]*wails-apt/)
   assert.match(setup, /uses: actions\/cache\/restore@v5[\s\S]*uses: actions\/cache\/save@v5/)
   for (const keyPart of [

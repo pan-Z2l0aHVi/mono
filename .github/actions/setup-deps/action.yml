@@ -97,11 +97,24 @@ runs:
           -o APT::Keep-Downloaded-Packages=true \
           install -y --no-install-recommends libgtk-4-dev libwebkitgtk-6.0-dev
 
+    - name: Prepare Wails Linux package archives for caching
+      if: >-
+        inputs.wails == 'true' && runner.os == 'Linux' &&
+        (
+          (inputs.wails-download-only == 'true' && steps.wails-apt-download.outcome == 'success') ||
+          (inputs.wails-download-only != 'true' && steps.wails-apt-install.outcome == 'success')
+        )
+      id: wails-apt-permissions
+      shell: bash
+      run: |
+        sudo chown -R "$(id -u):$(id -g)" "${RUNNER_TEMP}/wails-apt-archives"
+
     - name: Save Wails Linux package archives
       if: >-
         inputs.wails == 'true' && runner.os == 'Linux' &&
         steps.wails-apt-cache.outputs.key != '' &&
         steps.wails-apt-restore.outputs.cache-hit != 'true' &&
+        steps.wails-apt-permissions.outcome == 'success' &&
         (
           (inputs.wails-download-only == 'true' && steps.wails-apt-download.outcome == 'success') ||
           (inputs.wails-download-only != 'true' && steps.wails-apt-install.outcome == 'success')
