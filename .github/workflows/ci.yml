@@ -17,7 +17,7 @@ concurrency:
 jobs:
   check:
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 30
     env:
       # CI 显式把 artifact cache 放在 workspace 内，供 actions/cache 保存与恢复；mise 保留此覆盖。
       TURBO_CACHE_DIR: ${{ github.workspace }}/.turbo
