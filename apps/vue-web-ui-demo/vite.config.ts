@@ -1,5 +1,5 @@
 import depsReload from '@greypan/deps-reload/vite'
-import { braceAnchor } from '@greypan/md-to-comp'
+import { braceAnchor, type MdToCompViteOptions } from '@greypan/md-to-comp'
 import mdToCompVue from '@greypan/md-to-comp/vue'
 import unpluginWebComponents from '@greypan/unplugin-web-components/vite'
 import { webUiOptimizeDeps } from '@greypan/web-ui/vite'
@@ -12,6 +12,43 @@ import { searchForWorkspaceRoot, type UserConfig } from 'vite-plus'
 import { playwright } from 'vite-plus/test/browser-playwright'
 import { VueRouterAutoImports } from 'vue-router/unplugin'
 import vueRouter from 'vue-router/vite'
+
+// 具名导出供 scripts/workflow/check-md-to-comp-artifacts.mjs 复用：CI 在 Build 步之前以这份配置
+// 只判不改地校验生成物。配置只有这一份，不另抄。
+export const mdToCompOptions: MdToCompViteOptions = {
+  input: '../../packages/web-ui/docs',
+  output: 'src/generated',
+  dir: 'demos',
+  anchor: braceAnchor,
+  flavors: ['react', 'vue'],
+  apiTables: {
+    // 列序是引擎约定：首列是名称（行的身份）、次列是说明（富文本），第 3 列起都是普通值列。
+    // 只登记表格小节；标题不在这里的 `###` 按散文渲染（正文整段 markdown）。
+    // Props 记元素属性，Options 记命令式 API 的 option（`imagePreview()` / `toast()` 这类没有声明式契约的入口）。
+    // Methods 记组件对外的公开方法：元素实例方法、静态方法，以及命令式 API 返回 handle 上的方法。
+    // 返回 handle 记命令式 API 返回对象上的只读成员，那些成员的方法归 Methods。
+    // CSS Custom Properties 记组件对外暴露的变量；theme 的 token 表按族分节，颜色与阴影两族另有浅色/深色两列。
+    columns: {
+      Props: ['名称', '说明', '类型', '默认值'],
+      Options: ['名称', '说明', '类型', '默认值'],
+      Events: ['名称', '说明'],
+      Slots: ['名称', '说明'],
+      Methods: ['名称', '说明'],
+      '返回 handle': ['名称', '说明', '类型'],
+      'CSS Custom Properties': ['名称', '说明', '默认值'],
+      'Foundation tokens': ['名称', '说明', '默认值'],
+      'Typography tokens': ['名称', '说明', '默认值'],
+      'Spacing tokens': ['名称', '说明', '默认值'],
+      'Selection control tokens': ['名称', '说明', '默认值'],
+      'Radius tokens': ['名称', '说明', '默认值'],
+      'Layer tokens': ['名称', '说明', '默认值'],
+      'Color tokens': ['名称', '说明', '浅色默认值', '深色默认值'],
+      'Shadow tokens': ['名称', '说明', '浅色默认值', '深色默认值']
+    }
+  },
+  // 深浅外观源是 web-ui-theme 的派生属性；切外观不需要重新生成高亮 HTML。
+  darkSelector: "web-ui-theme[resolved-appearance='dark']"
+}
 
 export default {
   resolve: {
@@ -26,7 +63,21 @@ export default {
     // 清单，是 vitest 自己注入的条目在本 pnpm 布局下解析不到，无害。
     //
     // web-ui 那一半由 `@greypan/web-ui/vite` 提供，跟随组件库自己的运行时依赖，不要在这里抄一份。
-    include: ['vite-plus > vitest > expect-type', ...webUiOptimizeDeps]
+    //
+    // `pinia` 必须显式列出，判据是「摘掉就红」而不是「留着没坏处」：把它从这份清单里删掉并清掉依赖
+    // 缓存，浏览器档会在跑途中收到 `dependency optimized: pinia` →
+    // `optimized dependencies changed. reloading`，vitest 跟着报 `Vite unexpectedly reloaded a test`，
+    // 37 条里红 8 条，报 `TypeError: Cannot define property form, object is not extensible`
+    // （`drawer` 同一条），栈停在 `useTemplateRef`；把这条加回来同一批用例全绿。
+    //
+    // 为什么测试里碰得到它：import pinia 的只有 `src/main.ts` 和全仓无人引用的 `src/stores/counter.ts`，
+    // 测试没有一处引 main.ts——main.ts 挂在 `index.html` 的入口 script 上，所以 pinia 在这份 config 的
+    // 依赖图里可达，只是不在启动时那份清单里。
+    //
+    // 机制（下面是解释，不是本文件验证过的判据）：重打包让页面同时存在两份 Vue runtime，dev 模式下
+    // 冻结的 `EMPTY_OBJ` 两边不是同一个对象，`i.refs === EMPTY_OBJ` 认不出对面那份，转而往对面那份
+    // 冻结对象上 `defineProperty`，带模板 ref 的示例整块挂不上。
+    include: ['vite-plus > vitest > expect-type', 'pinia', ...webUiOptimizeDeps]
   },
   test: {
     projects: [
@@ -64,41 +115,10 @@ export default {
   },
   plugins: [
     // 示例文档：markdown 是唯一来源，dev 与 build 都由这个插件生成 `src/generated/**`。
-    // 生成物同样受版本控制，测试档只判不改（不一致就让这次的测试红），所以 CI 不需要另跑生成命令。
-    mdToCompVue({
-      input: '../../packages/web-ui/docs',
-      output: 'src/generated',
-      dir: 'demos',
-      anchor: braceAnchor,
-      flavors: ['react', 'vue'],
-      apiTables: {
-        // 列序是引擎约定：首列是名称（行的身份）、次列是说明（富文本），第 3 列起都是普通值列。
-        // 只登记表格小节；标题不在这里的 `###` 按散文渲染（正文整段 markdown）。
-        // Props 记元素属性，Options 记命令式 API 的 option（`imagePreview()` / `toast()` 这类没有声明式契约的入口）。
-        // Methods 记组件对外的公开方法：元素实例方法、静态方法，以及命令式 API 返回 handle 上的方法。
-        // 返回 handle 记命令式 API 返回对象上的只读成员，那些成员的方法归 Methods。
-        // CSS Custom Properties 记组件对外暴露的变量；theme 的 token 表按族分节，颜色与阴影两族另有浅色/深色两列。
-        columns: {
-          Props: ['名称', '说明', '类型', '默认值'],
-          Options: ['名称', '说明', '类型', '默认值'],
-          Events: ['名称', '说明'],
-          Slots: ['名称', '说明'],
-          Methods: ['名称', '说明'],
-          '返回 handle': ['名称', '说明', '类型'],
-          'CSS Custom Properties': ['名称', '说明', '默认值'],
-          'Foundation tokens': ['名称', '说明', '默认值'],
-          'Typography tokens': ['名称', '说明', '默认值'],
-          'Spacing tokens': ['名称', '说明', '默认值'],
-          'Selection control tokens': ['名称', '说明', '默认值'],
-          'Radius tokens': ['名称', '说明', '默认值'],
-          'Layer tokens': ['名称', '说明', '默认值'],
-          'Color tokens': ['名称', '说明', '浅色默认值', '深色默认值'],
-          'Shadow tokens': ['名称', '说明', '浅色默认值', '深色默认值']
-        }
-      },
-      // 深浅外观源是 web-ui-theme 的派生属性；切外观不需要重新生成高亮 HTML。
-      darkSelector: "web-ui-theme[resolved-appearance='dark']"
-    }),
+    // 生成物同样受版本控制，测试档只判不改（不一致就让这次的测试红）；CI 在 Build 步之前还经
+    // `check-generated` 任务以 mdToCompOptions 只判不改地复验一次（Build 的写盘会把失步产物
+    // 治愈，测试档的判据到那时永远空转）。
+    mdToCompVue(mdToCompOptions),
     vueRouter(),
     vue({
       template: {

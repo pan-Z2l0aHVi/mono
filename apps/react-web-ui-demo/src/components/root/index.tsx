@@ -66,6 +66,17 @@ function getInitialSidebarWidth(): string {
   return typeof width === 'string' && /^\d+(\.\d+)?px$/.test(width) ? width : DEFAULT_SIDEBAR_WIDTH
 }
 
+/*
+ * layout 的四个 `*-change` 都是 `bubbles: true, composed: true`，而文档页里示例的 `web-ui-layout` 就挂在
+ * 本站侧栏的子树内，它一翻转事件就顺着冒到这里。只采信自己这一层：窄视口下点示例的 Toggle，本站 drawer
+ * 会跟着打开（实测 `shellDrawerOpen: true`，命中的那条事件 `target` 是示例元素）；挂载那四次嵌套的
+ * `mobile-change` 还会把 flushSync 送进 React 提交阶段，报 "flushSync was called from inside a lifecycle
+ * method"。
+ */
+function isOwnLayoutEvent(event: Event): boolean {
+  return event.target === event.currentTarget
+}
+
 interface NavItem {
   path: string
   label: string
@@ -129,7 +140,6 @@ export function Root() {
    * 插入之后才挂上的，接不到那一次，所以初值必须自己读。运行时跨断点则要 flushSync 同步回写——
    * layout 在媒体查询变化的那一刻派发事件，React 从 DOM 事件里 setState 走的是 scheduler 的宏任务，
    * 会晚于 layout 自己的 microtask 渲染，实测留下 2/221 帧「drawer 已渲染、sidebar-width 仍是桌面值」。
-   * 这里的监听只接运行时事件，不在 React 生命周期内，flushSync 的告警条件不成立。
    */
   useLayoutEffect(() => {
     const layout = layoutRef.current
@@ -137,6 +147,7 @@ export function Root() {
 
     setIsMobileSidebar(layout.mobile)
     const syncMobileSidebarViewport = (event: Event) => {
+      if (!isOwnLayoutEvent(event)) return
       const next = (event as CustomEvent<{ mobile: boolean }>).detail.mobile
       flushSync(() => setIsMobileSidebar(next))
     }
@@ -193,15 +204,18 @@ export function Root() {
   }
 
   const updateSidebarCollapsed = (event: CustomEvent<{ collapsed: boolean }>) => {
+    if (!isOwnLayoutEvent(event)) return
     setSidebarCollapsed(event.detail.collapsed)
   }
 
   const updateSidebarOpen = (event: CustomEvent<{ open: boolean }>) => {
+    if (!isOwnLayoutEvent(event)) return
     setSidebarOpen(event.detail.open)
   }
 
   // 拖拽调宽的受控回写 + localStorage 持久化（仅桌面端生效）
   const updateSidebarWidth = (event: CustomEvent<{ width: string }>) => {
+    if (!isOwnLayoutEvent(event)) return
     setDesktopSidebarWidth(event.detail.width)
     writeStoredTheme(SIDEBAR_WIDTH_STORAGE_KEY, JSON.stringify(event.detail.width))
   }

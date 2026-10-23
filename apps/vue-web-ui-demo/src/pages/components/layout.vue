@@ -8,10 +8,8 @@
 
 <script setup lang="ts">
 import ExampleDoc from '@/components/example-doc/index.vue'
-import LayoutDemo from '@/components/layout-demo/index.vue'
 </script>
 
 <template>
-  <LayoutDemo />
-  <ExampleDoc component="layout" />
+  <ExampleDoc component="layout" level="primary" />
 </template>

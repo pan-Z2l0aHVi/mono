@@ -28,8 +28,32 @@ const createGroup = (radioHtml = RADIO_HTML, attrs?: Record<string, string>): We
 
 const clickChild = (group: WebUiRadioGroup, index: number) => {
   const radio = group.querySelectorAll<WebUiRadio>('web-ui-radio')[index]
-  const label = queryA11y(radio, 'label') as HTMLElement
-  label.click()
+  const control = queryA11y(radio, '[role="radio"]') as HTMLElement
+  control.click()
+}
+
+const controlOf = (radio: WebUiRadio): HTMLElement => queryA11y(radio, '[role="radio"]') as HTMLElement
+
+const tabIndexesOf = (group: WebUiRadioGroup): string[] =>
+  [...group.querySelectorAll<WebUiRadio>('web-ui-radio')].map(radio => controlOf(radio).getAttribute('tabindex') ?? '')
+
+const focusedIndexOf = (group: WebUiRadioGroup): number =>
+  [...group.querySelectorAll<WebUiRadio>('web-ui-radio')].findIndex(
+    radio => radio.shadowRoot?.activeElement === controlOf(radio)
+  )
+
+const pressRadioKey = (radio: WebUiRadio, key: string): boolean => {
+  const event = new KeyboardEvent('keydown', { key, bubbles: true, cancelable: true, composed: true })
+  controlOf(radio).dispatchEvent(event)
+  return event.defaultPrevented
+}
+
+const settleGroup = async (group: WebUiRadioGroup) => {
+  await waitForUpdate(group)
+  const radios = [...group.querySelectorAll<WebUiRadio>('web-ui-radio')]
+  await Promise.all(radios.map(radio => radio.updateComplete))
+  await waitForUpdate(group)
+  await Promise.all(radios.map(radio => radio.updateComplete))
 }
 
 describe('WebUiRadioGroup 组件', () => {
@@ -213,12 +237,10 @@ describe('WebUiRadioGroup 组件', () => {
 
       expect(queryA11y(radios[0], '[role="radio"]')?.getAttribute('aria-disabled')).toBe('true')
       expect(queryA11y(radios[0], '[role="radio"]')?.getAttribute('tabindex')).toBe('-1')
-      const firstEnabledControl = queryA11y(radios[1]!, '[role="radio"]')
-      const nextControl = queryA11y(radios[2]!, '[role="radio"]')
-      expect(firstEnabledControl?.getAttribute('aria-disabled')).toBe('false')
-      expect(firstEnabledControl?.getAttribute('tabindex')).toBe('0')
-      expect(nextControl?.getAttribute('aria-disabled')).toBe('false')
-      expect(nextControl?.getAttribute('tabindex')).toBe('-1')
+      expect(
+        [...radios].slice(1).map(radio => queryA11y(radio, '[role="radio"]')?.getAttribute('aria-disabled'))
+      ).toEqual(['false', 'false'])
+      expect(tabIndexesOf(el)).toEqual(['-1', '0', '-1'])
 
       cleanupElement(el)
     })
@@ -355,6 +377,85 @@ describe('WebUiRadioGroup 组件', () => {
     })
   })
 
+  describe('键盘导航与 Tab 顺序', () => {
+    it('只为选中项保留一个 Tab stop，方向键循环选择并移动焦点', async () => {
+      const el = createGroup()
+      el.value = 'b'
+      await settleGroup(el)
+
+      const radios = [...el.querySelectorAll<WebUiRadio>('web-ui-radio')]
+      const [inputEvents, detachInput] = spyEvents(el, 'input')
+      const [changeEvents, detachChange] = spyEvents(el, 'change')
+      controlOf(radios[1]).focus()
+
+      const actions = [
+        ['ArrowDown', 2, 'c'],
+        ['ArrowRight', 0, 'a'],
+        ['ArrowUp', 2, 'c'],
+        ['ArrowLeft', 1, 'b'],
+        ['Home', 0, 'a'],
+        ['End', 2, 'c']
+      ] as const
+
+      for (const [key, expectedIndex, expectedValue] of actions) {
+        expect(pressRadioKey(radios[focusedIndexOf(el)], key)).toBe(true)
+        await settleGroup(el)
+
+        expect(el.value).toBe(expectedValue)
+        expect(focusedIndexOf(el)).toBe(expectedIndex)
+        expect(tabIndexesOf(el)).toEqual(radios.map((_, index) => (index === expectedIndex ? '0' : '-1')))
+      }
+
+      expect(inputEvents).toHaveLength(actions.length)
+      expect(changeEvents).toHaveLength(actions.length)
+      detachInput()
+      detachChange()
+      cleanupElement(el)
+    })
+
+    it('空值组以首个启用项作为 Tab stop，方向键跳过禁用项', async () => {
+      const el = createGroup(`
+        <web-ui-radio value="a" disabled>A</web-ui-radio>
+        <web-ui-radio value="b">B</web-ui-radio>
+        <web-ui-radio value="c">C</web-ui-radio>
+      `)
+      await settleGroup(el)
+
+      const radios = [...el.querySelectorAll<WebUiRadio>('web-ui-radio')]
+      expect(tabIndexesOf(el)).toEqual(['-1', '0', '-1'])
+      controlOf(radios[1]).focus()
+
+      expect(pressRadioKey(radios[1], 'ArrowDown')).toBe(true)
+      await settleGroup(el)
+
+      expect(el.value).toBe('c')
+      expect(focusedIndexOf(el)).toBe(2)
+      expect(tabIndexesOf(el)).toEqual(['-1', '-1', '0'])
+
+      cleanupElement(el)
+    })
+
+    it('选中项被禁用后回退到启用项，并在导航时跳过它', async () => {
+      const el = createGroup()
+      el.value = 'b'
+      await settleGroup(el)
+
+      const radios = [...el.querySelectorAll<WebUiRadio>('web-ui-radio')]
+      radios[1].disabled = true
+      await settleGroup(el)
+      expect(tabIndexesOf(el)).toEqual(['0', '-1', '-1'])
+
+      controlOf(radios[0]).focus()
+      expect(pressRadioKey(radios[0], 'ArrowDown')).toBe(true)
+      await settleGroup(el)
+
+      expect(el.value).toBe('c')
+      expect(focusedIndexOf(el)).toBe(2)
+      expect(tabIndexesOf(el)).toEqual(['-1', '-1', '0'])
+      cleanupElement(el)
+    })
+  })
+
   describe('事件', () => {
     it('点击子 radio 只派发一次 input 事件，target/currentTarget 均为 group', async () => {
       const el = createGroup()
@@ -437,8 +538,8 @@ describe('WebUiRadioGroup 组件', () => {
       const [inputEvents, detachInput] = spyEvents(container, 'input')
       const [changeEvents, detachChange] = spyEvents(container, 'change')
 
-      const label = queryA11y(radio, 'label') as HTMLElement
-      label.click()
+      const control = queryA11y(radio, '[role="radio"]') as HTMLElement
+      control.click()
       await waitForUpdate(radio)
 
       expect(inputEvents).toHaveLength(1)

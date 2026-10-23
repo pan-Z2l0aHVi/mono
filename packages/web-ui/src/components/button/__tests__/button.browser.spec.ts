@@ -33,6 +33,56 @@ afterEach(() => {
 })
 
 describe('WebUiButton 组件（浏览器）', () => {
+  it('接受裸 px 数值与带单位的 CSS 长度，并保持 icon button 正方形', async () => {
+    const numeric = mountElement<WebUiButton>('web-ui-button', { attrs: { size: '32' } })
+    const decimal = mountElement<WebUiButton>('web-ui-button', { attrs: { size: '.5' } })
+    const trailingDecimal = mountElement<WebUiButton>('web-ui-button', { attrs: { size: '32.' } })
+    const pixels = mountElement<WebUiButton>('web-ui-button', { attrs: { size: '32px' } })
+    const rem = mountElement<WebUiButton>('web-ui-button', { attrs: { size: '1.5rem' } })
+    const icon = mountElement<WebUiButton>('web-ui-button', {
+      attrs: { size: '32px', icon: '', 'aria-label': 'Icon button' }
+    })
+
+    await Promise.all([numeric, decimal, trailingDecimal, pixels, rem, icon].map(waitForUpdate))
+
+    expect(numeric.getBoundingClientRect().height).toBe(32)
+    expect(decimal.getBoundingClientRect().height).toBe(0.5)
+    expect(trailingDecimal.getBoundingClientRect().height).toBe(32)
+    expect(pixels.getBoundingClientRect().height).toBe(32)
+    expect(rem.getBoundingClientRect().height).toBe(24)
+    expect(icon.getBoundingClientRect().width).toBe(32)
+    expect(icon.getBoundingClientRect().height).toBe(32)
+  })
+
+  it('size 通过数字属性赋值时仍按 px 更新', async () => {
+    const button = mountElement<WebUiButton>('web-ui-button')
+    ;(button as unknown as { size: unknown }).size = 32
+
+    await waitForUpdate(button)
+
+    expect(button.getBoundingClientRect().height).toBe(32)
+  })
+
+  it('数字 size 为 0 时仍按 0px 处理', async () => {
+    const button = mountElement<WebUiButton>('web-ui-button')
+    ;(button as unknown as { size: unknown }).size = 0
+
+    await waitForUpdate(button)
+
+    expect(button.getBoundingClientRect().height).toBe(0)
+  })
+
+  it('移除 size 属性后恢复默认高度', async () => {
+    const button = mountElement<WebUiButton>('web-ui-button', { attrs: { size: '32' } })
+    await waitForUpdate(button)
+    expect(button.getBoundingClientRect().height).toBe(32)
+
+    button.removeAttribute('size')
+    await waitForUpdate(button)
+
+    expect(button.getBoundingClientRect().height).toBe(36)
+  })
+
   it('dark primary 的文字与 accent 背景达到 WCAG AA', async () => {
     const theme = document.createElement('web-ui-theme')
     theme.setAttribute('appearance', 'dark')
@@ -105,6 +155,49 @@ describe('WebUiButton 组件（浏览器）', () => {
     await flush()
     expect(resetEvents).toBe(1)
     expect(input.value).toBe('initial')
+  })
+
+  it('aria-disabled 阻止 submit 和 reset，同时保留原生 button 焦点能力', async () => {
+    const form = document.createElement('form')
+    const input = document.createElement('input')
+    input.defaultValue = 'initial'
+    input.value = 'changed'
+    const submitButton = document.createElement('web-ui-button')
+    submitButton.type = 'submit'
+    submitButton.setAttribute('aria-disabled', 'true')
+    const resetButton = document.createElement('web-ui-button')
+    resetButton.type = 'reset'
+    resetButton.setAttribute('aria-disabled', 'true')
+    form.append(input, submitButton, resetButton)
+    document.body.append(form)
+    await Promise.all([waitForUpdate(submitButton), waitForUpdate(resetButton)])
+
+    let submitEvents = 0
+    let resetEvents = 0
+    form.addEventListener('submit', event => {
+      event.preventDefault()
+      submitEvents += 1
+    })
+    form.addEventListener('reset', () => {
+      resetEvents += 1
+    })
+
+    const innerSubmit = submitButton.shadowRoot?.querySelector<HTMLButtonElement>('button')
+    const innerReset = resetButton.shadowRoot?.querySelector<HTMLButtonElement>('button')
+    expect(innerSubmit?.disabled).toBe(false)
+    expect(innerReset?.disabled).toBe(false)
+    expect(innerSubmit?.getAttribute('aria-disabled')).toBe('true')
+    expect(innerReset?.getAttribute('aria-disabled')).toBe('true')
+
+    innerSubmit?.focus()
+    expect(submitButton.shadowRoot?.activeElement).toBe(innerSubmit)
+    innerSubmit?.click()
+    innerReset?.click()
+    await flush()
+
+    expect(submitEvents).toBe(0)
+    expect(resetEvents).toBe(0)
+    expect(input.value).toBe('changed')
   })
 
   it('原生 input 按 Enter 恰好通过 type=submit 宿主触发一次隐式提交', async () => {

@@ -24,6 +24,8 @@ Interweave 由 Wails 宿主管理嵌套前端，其 alias 只启动 Wails host�
 
 [`packages/web-ui/docs/*.md`](../../packages/web-ui/docs/) 是 demo 示例与 API 表的唯一输入。generator 在 dev 与 build 时写盘，测试期只判不改；两个 demo 与 `web-ui` 的 parity 测试保证产物与 markdown 一致、两端产物逐字节一致。改动组件 API 必须同时改对应 markdown。生成器的输入契约与校验规则以 `@greypan/md-to-comp` 的测试为准。
 
+CI 在 Build 步之前经两端 demo 的 `check-generated` turbo 任务以同一份插件配置只判不改地校验产物：Build 的写盘会把失步产物原地治愈，测试档里的判据到那时永远空转，所以检测必须抢在 healing 之前。判据与测试档同源（`@greypan/md-to-comp` 的 `checkArtifacts`），配置直接 import 各 demo `vite.config.ts` 的 `mdToCompOptions` 具名导出，不抄第二份。
+
 这些语料必须进入本包 `build` 与 `test` 的 turbo inputs：根配置排除 Markdown，包级 `turbo.json` 重新纳入，并由 `pnpm run check-policy` 中的 `web-ui-docs-inputs` 检查守护。
 
 `apps/interweave/frontend/bindings/**` 的生成过程不得删除已有文件，并用产出集合守卫防止静默少产出；陈旧文件由人工清理。frontend 的 turbo inputs 由 Go 源、Go 模块文件与 bindings generator 构成。
@@ -59,6 +61,8 @@ CI 构建 workspace 包并跳过 Interweave app wrapper；Wails verify / release
 `deploy-pages.yml` 只发布 `DEMO_APPS` 列出的 demo 应用到 `/mono/<name>/`，不遍历全部 `apps/<name>`，也没有根落地页。History 路由的深层链接依赖 404 回退：应用必须在创建路由器之前恢复 `redirect`，未知路径保持 404。
 
 未经用户授权不执行发布。取得授权的机制见 [`workflow.md`](./workflow.md#怎么取得这个授权)。不得直接运行 `npm publish`，首次发布用 `pnpm publish-new-pack <package-dir>`。Git 检查的绕过禁令见 [`commit.md`](./commit.md)。
+
+CI 的 check 仍需在 mise 安装前准备 Wails Linux 开发包。mise 从 Go 源码编译 pinned wails3；CI 会核验 CLI，并在 interweave-frontend 构建时生成 bindings，因此这些系统依赖也服务于构建链。check 前的独立 job 会下载包并为当前 PR 写入 apt 归档缓存，最长 35 分钟；required check 保持 15 分钟并等待该 job。main push 只运行预热 job，不运行完整 check；成功写入的默认分支 cache 可供后续 PR 读取。只有完整下载或安装成功才会写入缓存；保存步骤紧跟 apt 操作，因此后续步骤失败不会阻止写入。PR 写入的缓存供该 PR 后续运行复用，新 PR 不能读取其他 PR 的缓存。缓存未命中时仍从配置的软件源下载；冷缓存 job 失败时 check 也会继续运行并报告自身结果。
 
 ## PR changeset gate
 

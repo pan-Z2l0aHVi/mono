@@ -11,7 +11,9 @@ tag: web-ui-radio-group
 
 组持有唯一的值：`value` 决定谁被选中，成员的选中态由组下发，页面只读组的值。
 
-```react
+Tab 进入组时，焦点落在已选中的成员；若尚无选中项，则落在第一个启用成员。组内只有这个成员是 Tab stop。方向键在启用成员间循环移动焦点并立即选中；`Home` 和 `End` 分别选中第一个和最后一个启用成员。
+
+```tsx
 import { useState } from 'react'
 
 export default function Demo() {
@@ -50,27 +52,93 @@ function onInput(event: WebUiEvent<WebUiRadioGroup, 'input'>) {
 
 ### 排列方向 {#direction}
 
-`direction` 决定成员横排还是竖排，默认 `vertical`；成员之间的间距由 `--wui-radio-group-gap` 控制。
+`direction` 决定成员横排还是竖排，默认 `vertical`；非法值也回退到 `vertical`。
 
-```react
+```tsx
 export default function Demo() {
   return (
-    <web-ui-radio-group direction="horizontal" value="m">
-      <web-ui-radio value="s">小</web-ui-radio>
-      <web-ui-radio value="m">中</web-ui-radio>
-      <web-ui-radio value="l">大</web-ui-radio>
-    </web-ui-radio-group>
+    <div className="flex flex-wrap gap-8">
+      <div className="flex flex-col gap-2">
+        <span className="text-xs text-(--wui-color-text-secondary)">direction: vertical（默认）</span>
+        <web-ui-radio-group value="s">
+          <web-ui-radio value="s">小</web-ui-radio>
+          <web-ui-radio value="m">中</web-ui-radio>
+        </web-ui-radio-group>
+      </div>
+
+      <div className="flex flex-col gap-2">
+        <span className="text-xs text-(--wui-color-text-secondary)">direction: horizontal</span>
+        <web-ui-radio-group direction="horizontal" value="s">
+          <web-ui-radio value="s">小</web-ui-radio>
+          <web-ui-radio value="m">中</web-ui-radio>
+        </web-ui-radio-group>
+      </div>
+    </div>
   )
 }
 ```
 
 ```vue
 <template>
-  <web-ui-radio-group direction="horizontal" value="m">
-    <web-ui-radio value="s">小</web-ui-radio>
-    <web-ui-radio value="m">中</web-ui-radio>
-    <web-ui-radio value="l">大</web-ui-radio>
-  </web-ui-radio-group>
+  <div class="flex flex-wrap gap-8">
+    <div class="flex flex-col gap-2">
+      <span class="text-xs text-(--wui-color-text-secondary)">direction: vertical（默认）</span>
+      <web-ui-radio-group value="s">
+        <web-ui-radio value="s">小</web-ui-radio>
+        <web-ui-radio value="m">中</web-ui-radio>
+      </web-ui-radio-group>
+    </div>
+
+    <div class="flex flex-col gap-2">
+      <span class="text-xs text-(--wui-color-text-secondary)">direction: horizontal</span>
+      <web-ui-radio-group direction="horizontal" value="s">
+        <web-ui-radio value="s">小</web-ui-radio>
+        <web-ui-radio value="m">中</web-ui-radio>
+      </web-ui-radio-group>
+    </div>
+  </div>
+</template>
+```
+
+### 成员间距 {#gap}
+
+成员之间的间距走 `--wui-radio-group-gap`，默认经 `--wui-space-2` 解析成 8px；覆盖它只换间距，不动排列方向。下面两条是同一份成员，只有这个变量不同。
+
+```tsx
+export default function Demo() {
+  return (
+    <div className="flex flex-col items-start gap-6">
+      <web-ui-radio-group direction="horizontal" value="s">
+        <web-ui-radio value="s">小</web-ui-radio>
+        <web-ui-radio value="m">中</web-ui-radio>
+        <web-ui-radio value="l">大</web-ui-radio>
+      </web-ui-radio-group>
+
+      <web-ui-radio-group direction="horizontal" className="[--wui-radio-group-gap:16px]" value="s">
+        <web-ui-radio value="s">小</web-ui-radio>
+        <web-ui-radio value="m">中</web-ui-radio>
+        <web-ui-radio value="l">大</web-ui-radio>
+      </web-ui-radio-group>
+    </div>
+  )
+}
+```
+
+```vue
+<template>
+  <div class="flex flex-col items-start gap-6">
+    <web-ui-radio-group direction="horizontal" value="s">
+      <web-ui-radio value="s">小</web-ui-radio>
+      <web-ui-radio value="m">中</web-ui-radio>
+      <web-ui-radio value="l">大</web-ui-radio>
+    </web-ui-radio-group>
+
+    <web-ui-radio-group direction="horizontal" class="[--wui-radio-group-gap:16px]" value="s">
+      <web-ui-radio value="s">小</web-ui-radio>
+      <web-ui-radio value="m">中</web-ui-radio>
+      <web-ui-radio value="l">大</web-ui-radio>
+    </web-ui-radio-group>
+  </div>
 </template>
 ```
 
@@ -78,7 +146,7 @@ export default function Demo() {
 
 `disabled` 关掉整组的交互，这个禁用态会下发给成员；`required` 让原生表单校验在组没有值时拦截提交。
 
-```react
+```tsx
 export default function Demo() {
   return (
     <web-ui-radio-group name="plan" value="basic" required disabled>

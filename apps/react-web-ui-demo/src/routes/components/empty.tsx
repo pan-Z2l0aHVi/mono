@@ -1,15 +1,9 @@
 import { createFileRoute } from '@tanstack/react-router'
 
-import DemoComponent from '@/components/empty-demo'
 import ExampleDoc from '@/components/example-doc'
 
 function Component() {
-  return (
-    <>
-      <DemoComponent />
-      <ExampleDoc component="empty" />
-    </>
-  )
+  return <ExampleDoc component="empty" level="primary" />
 }
 
 export const Route = createFileRoute('/components/empty')({

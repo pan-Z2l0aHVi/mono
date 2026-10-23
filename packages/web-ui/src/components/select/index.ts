@@ -2,6 +2,7 @@ import '@/components/icon'
 
 import { html, LitElement, nothing, type PropertyValues, unsafeCSS } from 'lit'
 import { customElement, property, state } from 'lit/decorators.js'
+import { ifDefined } from 'lit/directives/if-defined.js'
 
 import glass from '@/assets/glass.css?inline'
 import overlayMotion from '@/assets/overlay-motion.css?inline'
@@ -43,6 +44,9 @@ export class WebUiSelect extends FormAssociated(LitElement) {
   @property({ type: Boolean, reflect: true, attribute: 'no-scroll-lock' }) noScrollLock = false
   @property({ attribute: false }) overlayContainer?: OverlayContainer
   @property({ type: String, reflect: true }) name = ''
+
+  // Explicitly delegated accessible naming attributes.
+  @property({ type: String, attribute: 'aria-label' }) override ariaLabel: string | null = null
 
   // value 使用内部状态 + 访问器模式，在变更时同步 ElementInternals；
   // @property + reflect 让它与 input/textarea/slider/input-number 的 value 反射语义保持一致。
@@ -449,7 +453,7 @@ export class WebUiSelect extends FormAssociated(LitElement) {
     const portal = defineOverlayPortal().make({
       container: this.overlayContainer,
       target: this,
-      style: `${glass}\n${overlayMotion}\n${style}`,
+      style: `${glass}\n${overlayMotion}\n${internalScrollbars}\n${style}`,
       className: 'wui-glass select-overlay portal wui-floating-panel',
       onContentChange: () => this._optionPortal.scheduleRefresh()
     })
@@ -519,6 +523,7 @@ export class WebUiSelect extends FormAssociated(LitElement) {
           aria-controls=${this.portal ? nothing : listboxId}
           aria-disabled=${String(this._isDisabled)}
           aria-activedescendant=${activeDescendant}
+          aria-label=${ifDefined(this.ariaLabel)}
         >
           <slot name="trigger" @slotchange=${this._onTriggerSlotChange}></slot>
           ${!this._hasTriggerSlot ? html`<span class="label">${this._selectedLabel}</span>` : nothing}

@@ -3,77 +3,181 @@ component: checkbox
 tag: web-ui-checkbox
 ---
 
-单个 checkbox，声明 `role="checkbox"`，支持 Enter / Space 切换；与原生 `<form>` 集成，选中时把 `value` 提交进 `FormData`。
+单个 checkbox，支持 Enter / Space 切换；与原生 `<form>` 集成，选中时把 `value` 提交进 `FormData`。
 
 ## 示例
 
-### 基础
+### 基础 {#basic}
 
-`checked` 是控件状态，默认插槽是 label 文字。
+`checked` 是控件状态，默认插槽是 label 文字；indicator、间距与右侧文案都是触发区，点哪儿都算一次切换。
 
-```react
-<web-ui-checkbox checked={agreed} onChange={event => setAgreed(event.currentTarget.checked)}>
-  我已阅读并同意服务条款
-</web-ui-checkbox>
+```tsx
+import { useState } from 'react'
+
+export default function Demo() {
+  const [channels, setChannels] = useState(['email'])
+
+  function toggle(channel: string) {
+    setChannels(current =>
+      current.includes(channel) ? current.filter(item => item !== channel) : [...current, channel]
+    )
+  }
+
+  return (
+    <div className="flex flex-col items-start gap-3">
+      <web-ui-checkbox checked={channels.includes('email')} onChange={() => toggle('email')}>
+        邮件通知
+      </web-ui-checkbox>
+      <web-ui-checkbox checked={channels.includes('sms')} onChange={() => toggle('sms')}>
+        短信通知
+      </web-ui-checkbox>
+      <output className="text-sm text-(--wui-color-text-secondary)">
+        已选择：{channels.join('、') || '还没有选中项'}
+      </output>
+    </div>
+  )
+}
 ```
 
 ```vue
 <template>
-  <web-ui-checkbox :checked="agreed" @change="agreed = !agreed">我已阅读并同意服务条款</web-ui-checkbox>
+  <div class="flex flex-col items-start gap-3">
+    <web-ui-checkbox :checked="channels.includes('email')" @change="toggle('email')">邮件通知</web-ui-checkbox>
+    <web-ui-checkbox :checked="channels.includes('sms')" @change="toggle('sms')">短信通知</web-ui-checkbox>
+    <output class="text-sm text-(--wui-color-text-secondary)"
+      >已选择：{{ channels.join('、') || '还没有选中项' }}</output
+    >
+  </div>
 </template>
 
 <script setup lang="ts">
 import { ref } from 'vue'
 
-const agreed = ref(false)
+const channels = ref(['email'])
+
+function toggle(channel: string) {
+  channels.value = channels.value.includes(channel)
+    ? channels.value.filter(item => item !== channel)
+    : [...channels.value, channel]
+}
 </script>
 ```
 
-### 表单值
+### 禁用 {#disabled}
 
-`value` 是选中时提交的值，`name` 是字段名，`required` 让原生表单校验在未选中时拦截提交。
+`disabled` 关掉交互，按下不动、校验也让路；组级禁用写在 `<web-ui-checkbox-group>` 上，见下面的多选组。
 
-```react
-<web-ui-checkbox name="plan" value="pro" required>
-  专业版
-</web-ui-checkbox>
+```tsx
+export default function Demo() {
+  return (
+    <div className="flex flex-col items-start gap-3">
+      <web-ui-checkbox checked disabled>
+        邮件通知（已选中，禁用）
+      </web-ui-checkbox>
+      <web-ui-checkbox disabled>短信通知（禁用）</web-ui-checkbox>
+    </div>
+  )
+}
 ```
 
 ```vue
 <template>
-  <web-ui-checkbox name="plan" value="pro" required>专业版</web-ui-checkbox>
+  <div class="flex flex-col items-start gap-3">
+    <web-ui-checkbox :checked="true" disabled>邮件通知（已选中，禁用）</web-ui-checkbox>
+    <web-ui-checkbox disabled>短信通知（禁用）</web-ui-checkbox>
+  </div>
 </template>
 ```
 
-### checkbox 组
+### 表单值 {#form}
 
-`<web-ui-checkbox-group>` 统一管理成员的选中与表单提交；`direction` 控制排列方向。
+`name` 是字段名、`value` 是选中时提交的值：同一字段名可以挂多项，每个选中项各占一条 `FormData` 条目，未选中的不进表单。`required` 让原生校验在未勾选时拦下提交。
 
-```react
-<web-ui-checkbox-group name="fruits" value={selected} onInput={event => setSelected(event.currentTarget.value)}>
-  <web-ui-checkbox value="apple">苹果</web-ui-checkbox>
-  <web-ui-checkbox value="banana">香蕉</web-ui-checkbox>
-  <web-ui-checkbox value="cherry" disabled>
-    樱桃
-  </web-ui-checkbox>
-</web-ui-checkbox-group>
+```tsx
+import { useRef, useState } from 'react'
+
+export default function Demo() {
+  const formRef = useRef<HTMLFormElement>(null)
+  const [submitted, setSubmitted] = useState('')
+
+  return (
+    <form
+      ref={formRef}
+      className="flex flex-col items-start gap-3"
+      onSubmit={event => {
+        event.preventDefault()
+        const fields: string[] = []
+        for (const [name, value] of new FormData(event.currentTarget)) {
+          if (typeof value === 'string') fields.push(`${name}=${value}`)
+        }
+        setSubmitted(fields.join(' · '))
+      }}
+    >
+      <web-ui-checkbox name="channel" value="email">
+        邮件
+      </web-ui-checkbox>
+      <web-ui-checkbox name="channel" value="sms">
+        短信
+      </web-ui-checkbox>
+      <web-ui-checkbox name="agreement" value="yes" required>
+        我已阅读并同意服务条款
+      </web-ui-checkbox>
+      <div className="flex items-center gap-3">
+        <web-ui-button type="submit">提交</web-ui-button>
+        <web-ui-button
+          onClick={() => {
+            formRef.current?.reset()
+            setSubmitted('')
+          }}
+        >
+          重置
+        </web-ui-button>
+        <output className="text-sm text-(--wui-color-text-secondary)">
+          {submitted === '' ? '尚未提交' : submitted}
+        </output>
+      </div>
+    </form>
+  )
+}
 ```
 
 ```vue
 <template>
-  <web-ui-checkbox-group name="fruits" :value="selected" @input="selected = $event.currentTarget.value">
-    <web-ui-checkbox value="apple">苹果</web-ui-checkbox>
-    <web-ui-checkbox value="banana">香蕉</web-ui-checkbox>
-    <web-ui-checkbox value="cherry" disabled>樱桃</web-ui-checkbox>
-  </web-ui-checkbox-group>
+  <form ref="form" class="flex flex-col items-start gap-3" @submit="onSubmit">
+    <web-ui-checkbox name="channel" value="email">邮件</web-ui-checkbox>
+    <web-ui-checkbox name="channel" value="sms">短信</web-ui-checkbox>
+    <web-ui-checkbox name="agreement" value="yes" required>我已阅读并同意服务条款</web-ui-checkbox>
+    <div class="flex items-center gap-3">
+      <web-ui-button type="submit">提交</web-ui-button>
+      <web-ui-button @click="reset">重置</web-ui-button>
+      <output class="text-sm text-(--wui-color-text-secondary)">{{ submitted === '' ? '尚未提交' : submitted }}</output>
+    </div>
+  </form>
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
+import { useTemplateRef, ref } from 'vue'
 
-const selected = ref<string[]>([])
+const submitted = ref('')
+const form = useTemplateRef('form')
+
+function onSubmit(event: Event) {
+  event.preventDefault()
+  const fields: string[] = []
+  for (const [name, value] of new FormData(event.currentTarget as HTMLFormElement)) {
+    if (typeof value === 'string') fields.push(`${name}=${value}`)
+  }
+  submitted.value = fields.join(' · ')
+}
+
+function reset() {
+  form.value?.reset()
+  submitted.value = ''
+}
 </script>
 ```
+
+多个独立 checkbox 要收敛成一个 `string[]`、并由组统一派发事件与提交时，用 `<web-ui-checkbox-group>`，见下面的多选组。
 
 ## API
 
@@ -89,10 +193,10 @@ const selected = ref<string[]>([])
 
 ### Events
 
-| 名称     | 说明                     |
-| -------- | ------------------------ |
-| `input`  | 选中状态变化时触发。     |
-| `change` | 用户切换选中状态时触发。 |
+| 名称     | 说明                                              |
+| -------- | ------------------------------------------------- |
+| `input`  | 用户切换选中状态时派发：点击，或按 Enter / 空格。 |
+| `change` | 与 `input` 在同一次用户操作里一起派发。           |
 
 ### Slots
 
@@ -102,7 +206,9 @@ const selected = ref<string[]>([])
 
 ### 行为说明
 
-使用 `role="checkbox"` 和 `aria-checked`。Enter/Space 键盘切换。
+Shadow DOM 内的交互 `<span>` 声明 `role="checkbox"`，并同步 `aria-checked`、`aria-disabled` 和 `tabindex`。Enter/Space 键盘切换。
+
+未选中的项不写进 `FormData`；`getFormValue` 在 `value` 为空时退回 `'on'`，与原生 checkbox 一致。组内成员（`<web-ui-checkbox-group>` 的直接子项）自己派发的 `input` / `change` 不冒泡、不跨 shadow 边界，事件由组在宿主上统一派发一次，所以宿主外面只听到一组事件，不会为每个成员各听一遍。
 
 ### 布局
 

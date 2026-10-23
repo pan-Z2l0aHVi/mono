@@ -14,6 +14,7 @@ import type { ReactiveController, ReactiveControllerHost } from 'lit'
 
 export interface SelectionGroupContext {
   readonly disabled: boolean
+  readonly rovingTabStop: boolean
   readonly tabStop?: boolean
 }
 
@@ -40,6 +41,7 @@ const BUTTON_GROUP_CONTEXT_LOOSE = BUTTON_GROUP_CONTEXT as unknown as AnyGroupCo
 
 export const selectionGroupContextKey: AnyGroupContext = SELECTION_GROUP_CONTEXT_LOOSE
 export const buttonGroupContextKey: AnyGroupContext = BUTTON_GROUP_CONTEXT_LOOSE
+export const GROUP_MEMBER_DISABLED_CHANGE_EVENT = 'wui-group-member-disabled-change'
 
 interface GroupControllerHost extends HTMLElement, ReactiveControllerHost {
   readonly renderRoot: Element | DocumentFragment
@@ -144,6 +146,7 @@ export interface GroupLifecycle {
   sync(): boolean
   disconnect(): void
   handleChange?(event: Event): void
+  handleKeyDown?(event: KeyboardEvent): void
 }
 
 interface GroupControllerOptions {
@@ -169,6 +172,8 @@ export class GroupController implements ReactiveController {
   hostConnected() {
     this.connected = true
     this.host.addEventListener('change', this.handleChange, true)
+    this.host.addEventListener('keydown', this.handleKeyDown, true)
+    this.host.addEventListener(GROUP_MEMBER_DISABLED_CHANGE_EVENT, this.handleMemberDisabledChange, true)
     this.observeHost()
     this.observeSlots()
     this.sync()
@@ -182,6 +187,8 @@ export class GroupController implements ReactiveController {
   hostDisconnected() {
     this.connected = false
     this.host.removeEventListener('change', this.handleChange, true)
+    this.host.removeEventListener('keydown', this.handleKeyDown, true)
+    this.host.removeEventListener(GROUP_MEMBER_DISABLED_CHANGE_EVENT, this.handleMemberDisabledChange, true)
     this.disconnectSlots()
     this.disconnectHostObserver()
     this.lifecycle.disconnect()
@@ -189,6 +196,14 @@ export class GroupController implements ReactiveController {
 
   private readonly handleChange = (event: Event) => {
     this.lifecycle.handleChange?.(event)
+  }
+
+  private readonly handleKeyDown = (event: KeyboardEvent) => {
+    this.lifecycle.handleKeyDown?.(event)
+  }
+
+  private readonly handleMemberDisabledChange = () => {
+    this.sync()
   }
 
   private readonly handleSlotChange = () => {
@@ -266,6 +281,8 @@ export interface GroupCoordinatorOptions<Item extends HTMLElement, Value> {
   readonly copyValue: (value: Value) => Value
   readonly setItemSelected: (item: Item, selected: boolean) => void
   readonly dispatchValueChange: () => void
+  readonly getRovingTabStop?: (item: Item, index: number, items: readonly Item[], value: Value) => boolean
+  readonly handleKeyDown?: (event: KeyboardEvent) => void
   /**
    * 交互已发生但值没有变化时的回调（例如单选组成员 value 重复：点击同值成员
    * 不会改变 value，却必须把选中态收到被点击的那一项）。缺省视为无事可做。
@@ -273,8 +290,18 @@ export interface GroupCoordinatorOptions<Item extends HTMLElement, Value> {
   readonly resyncOnUnchangedValue?: (item: Item) => void
 }
 
-const ENABLED_SELECTION_CONTEXT: SelectionGroupContext = { disabled: false }
-const DISABLED_SELECTION_CONTEXT: SelectionGroupContext = { disabled: true }
+const ENABLED_SELECTION_CONTEXT: SelectionGroupContext = { disabled: false, rovingTabStop: false }
+const ENABLED_ROVING_SELECTION_CONTEXT: SelectionGroupContext = { disabled: false, rovingTabStop: true }
+const DISABLED_SELECTION_CONTEXT: SelectionGroupContext = { disabled: true, rovingTabStop: false }
+
+function getSelectionContext(disabled: boolean, rovingTabStop: boolean, tabStop?: boolean): SelectionGroupContext {
+  const context = disabled
+    ? DISABLED_SELECTION_CONTEXT
+    : rovingTabStop
+      ? ENABLED_ROVING_SELECTION_CONTEXT
+      : ENABLED_SELECTION_CONTEXT
+  return tabStop === undefined ? context : { ...context, tabStop }
+}
 
 /**
  * 在一个内部插件接口后收敛选中态、继承禁用与受管子项成员关系。
@@ -321,11 +348,14 @@ export function defineGroupCoordinator<Item extends HTMLElement, Value>(options:
       // 新 Map 实例保证 Object.is 判定为变更）。
       provider.setValue(
         new Map(
-          nextItems.map(item => {
-            const context = disabled ? DISABLED_SELECTION_CONTEXT : ENABLED_SELECTION_CONTEXT
-            const tabStop = options.isItemTabStop?.(item, nextItems)
-            return [item as HTMLElement, tabStop === undefined ? context : { ...context, tabStop }] as const
-          })
+          nextItems.map((item, index) => [
+            item as HTMLElement,
+            getSelectionContext(
+              disabled,
+              options.getRovingTabStop?.(item, index, nextItems, value) === true,
+              options.isItemTabStop?.(item, nextItems)
+            )
+          ])
         )
       )
 
@@ -354,11 +384,15 @@ export function defineGroupCoordinator<Item extends HTMLElement, Value>(options:
         const next = options.getNextValue(event.target, current)
         if (options.valuesEqual(current, next)) {
           options.resyncOnUnchangedValue?.(event.target)
+          if (options.resyncOnUnchangedValue) sync()
           return
         }
 
         options.setValue(next)
         options.dispatchValueChange()
+      },
+      handleKeyDown(event: KeyboardEvent) {
+        options.handleKeyDown?.(event)
       }
     }
   })
