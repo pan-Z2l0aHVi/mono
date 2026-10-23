@@ -81,9 +81,8 @@ function docOf(component: string): Doc {
  * `${component}--${demoKey}` → 落盘文件字节。`?raw` 读的是 `import.meta.glob` 拿去编译的同一个文件，
  * 于是「页面上显示的那份」直接钉在「被执行的那份」上，中间不经过 payload 与围栏的等价推定。
  *
- * 这里用 glob 而不是逐条 `?raw` import：这条断言的覆盖面是「所有带锚点的示例」，18 篇一百多条写进口
- * 只会漏，而漏掉的那条正好是改名或改围栏时会漂的那条。缺文件由 `demoSourceOf` 报出来，
- * 「没覆盖」不等于「通过」。
+ * 这里用 glob 而不是逐条 `?raw` import：消费方是逐篇用例，写进口只会漏，而漏掉的那条正好是
+ * 改名或改围栏时会漂的那条。缺文件由 `demoSourceOf` 报出来，「没覆盖」不等于「通过」。
  */
 const demoRawModules = import.meta.glob<string>('../../../generated/demos/*.tsx', {
   query: '?raw',
@@ -191,48 +190,6 @@ const contextMenuHost: Host = { tag: 'web-ui-context-menu', probe: '.context-men
 const dialogHost: Host = { tag: 'web-ui-dialog', probe: 'dialog' }
 const backTopHost: Host = { tag: 'web-ui-back-top', role: 'button' }
 
-// 迁移到「docs 全量生成」的文档：示例逐条都有落盘文件与 live 宿主，所以下面那几组逐条断言按
-// 同一套形状铺到每一篇（补一篇就加一行），不再只有 slider 一份脚手架。
-//
-// 宿主 tag 按**真实渲染出来的那个元素**数：两篇 group 文档数成员（组元素的影子树里没有 role，
-// 拿它当宿主判不了升级，成员各自带 role），`spinner` 的 `{#imperative}` 走 `WebUiSpinner.show()`
-// 挂在 body 上，源码里没有那个 tag，于是该示例期望 0 个宿主——这是它的真实形状，不是漏判。
-const migratedDocs: { doc: Doc; tag: string }[] = [
-  { doc: docOf('autocomplete'), tag: 'web-ui-autocomplete' },
-  { doc: docOf('avatar'), tag: 'web-ui-avatar' },
-  { doc: docOf('back-top'), tag: 'web-ui-back-top' },
-  { doc: docOf('badge'), tag: 'web-ui-badge' },
-  { doc: docOf('button'), tag: 'web-ui-button' },
-  { doc: checkbox, tag: 'web-ui-checkbox' },
-  { doc: checkboxGroup, tag: 'web-ui-checkbox' },
-  { doc: docOf('collapse'), tag: 'web-ui-collapse' },
-  { doc: docOf('context-menu'), tag: 'web-ui-context-menu' },
-  { doc: docOf('dialog'), tag: 'web-ui-dialog' },
-  { doc: drawer, tag: 'web-ui-drawer' },
-  { doc: docOf('dropdown'), tag: 'web-ui-dropdown' },
-  { doc: docOf('editable-text'), tag: 'web-ui-editable-text' },
-  { doc: docOf('empty'), tag: 'web-ui-empty' },
-  { doc: docOf('icon'), tag: 'web-ui-icon' },
-  { doc: docOf('image-preview'), tag: 'web-ui-image-preview' },
-  { doc: docOf('input'), tag: 'web-ui-input' },
-  { doc: docOf('input-number'), tag: 'web-ui-input-number' },
-  { doc: layout, tag: 'web-ui-layout' },
-  { doc: docOf('middle-ellipsis'), tag: 'web-ui-middle-ellipsis' },
-  { doc: docOf('popover'), tag: 'web-ui-popover' },
-  { doc: radio, tag: 'web-ui-radio' },
-  { doc: radioGroup, tag: 'web-ui-radio' },
-  { doc: docOf('segmented'), tag: 'web-ui-segmented' },
-  { doc: docOf('select'), tag: 'web-ui-select' },
-  { doc: slider, tag: 'web-ui-slider' },
-  { doc: docOf('spinner'), tag: 'web-ui-spinner' },
-  { doc: docOf('svg-draw-lines'), tag: 'web-ui-svg-draw-lines' },
-  { doc: docOf('switch'), tag: 'web-ui-switch' },
-  { doc: docOf('textarea'), tag: 'web-ui-textarea' },
-  { doc: theme, tag: 'web-ui-theme' },
-  { doc: docOf('toast'), tag: 'web-ui-toast' },
-  { doc: docOf('tooltip'), tag: 'web-ui-tooltip' }
-]
-
 // live 示例是 lazy 的：不先把每条示例的宿主等齐，Suspense 会在断言之后才落地，React 的 act 环境
 // 于是报「suspended resource finished loading inside a test, but not wrapped in act」。
 //
@@ -246,7 +203,7 @@ async function mountDemos(container: HTMLElement, doc: Doc, tag: string) {
   //
   // 判据是逐条示例的宿主数，期望值现算自 demo 源码：语料里给某条示例加一个宿主，这里就要求预览里
   // 真的多挂一个；只按「每个预览至少一个」判会放过局部没结算完的情况。
-  // 没锚点的示例没有预览区，也不该有：那条对应关系由「带锚点的示例挂成真组件」一条断言管。
+  // 没锚点的示例没有预览区，也不该有：那条对应关系由 `src/__tests__/example-docs.spec.ts` 的壳映射用例管。
   const expected = doc.samples
     .filter(candidate => candidate.demoKey)
     .map(candidate => [candidate.title, expectedHosts(doc.component, candidate.demoKey, tag)] as const)
@@ -531,22 +488,6 @@ describe('example-doc（React 面 / 真实浏览器）', () => {
     expect(code?.innerHTML).toBe(parsed?.innerHTML)
     expect(code?.textContent).toBe(parsed?.textContent)
   })
-
-  it('每条带锚点的示例，页面 <pre> 的可见文本就是那份落盘文件', async () => {
-    // 逐篇逐条比，而不是挑一条：这条契约的覆盖面就是「所有带锚点的示例」，改名或改围栏时
-    // 恰恰是没被断言盖住的那篇那条会漂。文件字节 = 可见文本 + 一个行尾换行（见 `demoFileContent`），
-    // 写成 `trimEnd()` 会把「文件末尾多一个空行」这类形状放掉。
-    for (const { doc, tag } of migratedDocs) {
-      const { container } = render(<ExampleDoc component={doc.component} />)
-      await mountDemos(container, doc, tag)
-      for (const candidate of doc.samples) {
-        if (!candidate.demoKey) continue
-        const source = demoSourceOf(doc.component, candidate.demoKey)
-        const text = sample(container, candidate.title).querySelector('pre.shiki')?.textContent ?? ''
-        expect(`${text}\n`, `${doc.component}--${candidate.demoKey}`).toBe(source)
-      }
-    }
-  }, 120_000) // 逐篇挂载全部锚点示例，CI runner 上远超默认 15s。
 
   it('外观切到深色时，token 换用 --shiki-dark', async () => {
     const { container, unmount } = render(<ExampleDoc component="button" />)
@@ -914,19 +855,6 @@ describe('example-doc（React 面 / 真实浏览器）', () => {
     expect(style.maxHeight).toBe('512px')
     expect(style.overflowY).toBe('auto')
   })
-
-  it('带锚点的示例挂成真组件，没锚点的只有代码', async () => {
-    // 逐篇比预览区与锚点的对应：写了 `{#id}` 的示例必须挂出 live 预览区，没写的只出代码。
-    for (const { doc, tag } of migratedDocs) {
-      const { container } = render(<ExampleDoc component={doc.component} />)
-      expect(
-        [...container.querySelectorAll('[data-sample-preview]')].map(element =>
-          element.getAttribute('data-sample-preview')
-        )
-      ).toEqual(doc.samples.map(candidate => candidate.demoKey).filter(Boolean))
-      await mountDemos(container, doc, tag)
-    }
-  }, 120_000) // 逐篇挂载全部锚点示例，CI runner 上远超默认 15s。
 
   it('同页的 slider 示例使用不同 accessible name', async () => {
     const { container } = render(<ExampleDoc component="slider" />)
