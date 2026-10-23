@@ -8,10 +8,8 @@
 
 <script setup lang="ts">
 import ExampleDoc from '@/components/example-doc/index.vue'
-import TooltipDemo from '@/components/tooltip-demo/index.vue'
 </script>
 
 <template>
-  <TooltipDemo />
-  <ExampleDoc component="tooltip" />
+  <ExampleDoc component="tooltip" level="primary" />
 </template>

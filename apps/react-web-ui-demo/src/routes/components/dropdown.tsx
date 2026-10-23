@@ -1,16 +1,14 @@
 import { createFileRoute } from '@tanstack/react-router'
 
-import DemoComponent from '@/components/dropdown-demo'
 import ExampleDoc from '@/components/example-doc'
 
 function Component() {
   return (
     <>
-      <DemoComponent />
-      <ExampleDoc component="dropdown" />
-      <ExampleDoc component="dropdown-item" />
-      <ExampleDoc component="dropdown-divider" />
-      <ExampleDoc component="dropdown-header" />
+      <ExampleDoc component="dropdown" level="primary" />
+      <ExampleDoc component="dropdown-item" level="secondary" />
+      <ExampleDoc component="dropdown-divider" level="secondary" />
+      <ExampleDoc component="dropdown-header" level="secondary" />
     </>
   )
 }

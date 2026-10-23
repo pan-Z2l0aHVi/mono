@@ -37,9 +37,9 @@ describe('两端生成物同源', () => {
   // 所以这一条同时是 `\|` 往返的判据。行是 `string[][]`，列序按 markdown 原样保留。
   it('手写值列从 markdown 一路走到产物（\\| 往返）', () => {
     expect(reactModule).toMatch(
-      /"variant",\n\s*"<p>视觉变体：[^"]*<\/p>",\n\s*"'primary' \| 'secondary' \| 'ghost' \| 'danger' \| 'glass'",\n\s*"'glass'"/
+      /"variant",\n\s*"<p>视觉变体[^"]*<\/p>",\n\s*"'primary' \| 'secondary' \| 'ghost' \| 'danger' \| 'glass'",\n\s*"'glass'"/
     )
-    expect(reactModule).toMatch(/"button \| submit \| reset"/)
+    expect(reactModule).toMatch(/'button' \| 'submit' \| 'reset'/)
   })
 
   // button.md 没写 ### Events 小节，所以它不该凭空长出一张 Events 表。按「下一个 component 条目」
@@ -54,7 +54,7 @@ describe('两端生成物同源', () => {
   // 把名字与那句中文描述一起钉住：表格是这份数据的唯一来源，量的是「手写进 collapse.md 的一行
   // 完整走到产物」。只钉名字不够——dropdown.md 也有一行 `open-change`，那会替它过关。
   it('手写的名称与描述逐字落到产物', () => {
-    expect(reactModule).toMatch(/"open-change",\n\s*"<p>开合请求。/)
+    expect(reactModule).toMatch(/"open-change",\n\s*"<p>用户手势开合后的通知：/)
     expect(reactModule).toMatch(/"content",\n\s*"<p>collapse content。/)
   })
 })
