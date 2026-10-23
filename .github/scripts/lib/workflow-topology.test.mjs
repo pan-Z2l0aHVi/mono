@@ -70,8 +70,8 @@ function assertPolicyStepContract(text) {
   assert.equal(workflow.stepContinueOnError[policy.name], undefined, 'policy errors must fail the step')
   assert.equal(
     workflow.jobs[policy.job]?.if,
-    '${{ !cancelled() }}',
-    'required job must run after cache preparation failure but honor workflow cancellation'
+    "${{ github.event_name != 'push' && !cancelled() }}",
+    'required job must skip cache-only pushes, run after preparation failure, and honor workflow cancellation'
   )
   assert.equal(workflow.jobs[policy.job]?.continueOnError, undefined, 'required job must propagate failures')
   assert.deepEqual(runTexts(namedStep(text, policy.name)), policy.runs)
@@ -111,9 +111,15 @@ function assertPullRequestValidationIsReadOnly(workflow) {
 {
   const ci = workflowText['ci.yml']
   const ciWorkflow = parsed['ci.yml']
+  assert.match(
+    ci,
+    /group: \$\{\{ github\.workflow \}\}-\$\{\{ github\.head_ref \|\| github\.ref_name \}\}-\$\{\{ github\.event_name \}\}/,
+    'cache-only main pushes must not cancel a full workflow_dispatch check'
+  )
   const cachePreparation = workflowJob(ci, 'prepare-wails-apt-cache')
   assert.deepEqual(ciWorkflow.jobs.check.needs, ['prepare-wails-apt-cache'])
-  assert.equal(ciWorkflow.jobs.check.if, '${{ !cancelled() }}')
+  assert.equal(ciWorkflow.jobs['prepare-wails-apt-cache'].if, undefined)
+  assert.equal(ciWorkflow.jobs.check.if, "${{ github.event_name != 'push' && !cancelled() }}")
   assert.match(cachePreparation, /timeout-minutes: 35/)
   assert.match(
     cachePreparation,
@@ -166,7 +172,9 @@ function assertPullRequestValidationIsReadOnly(workflow) {
     assertPolicyStepContract(mutateOnce(ci, marker, `${marker}        id: repository-policies\n        if: false\n`))
   )
   assert.throws(() =>
-    assertPolicyStepContract(mutateOnce(ci, '    if: ${{ !cancelled() }}\n', '    if: false\n'))
+    assertPolicyStepContract(
+      mutateOnce(ci, "    if: ${{ github.event_name != 'push' && !cancelled() }}\n", '    if: false\n')
+    )
   )
   assert.throws(() => assertPolicyStepContract(mutateOnce(ci, '  check:\n', '  check:\n    continue-on-error: true\n')))
 
@@ -190,8 +198,8 @@ function assertPullRequestValidationIsReadOnly(workflow) {
   const pushWorkflows = Object.entries(parsed)
     .filter(([, workflow]) => workflow.triggers.some(trigger => trigger.on === 'push'))
     .map(([file]) => file)
-  assert.deepEqual(pushWorkflows, ['changeset-version.yml'])
-  assert.deepEqual(parsed['ci.yml'].triggers.map(trigger => trigger.on).sort(), ['pull_request', 'workflow_dispatch'])
+  assert.deepEqual(pushWorkflows, ['changeset-version.yml', 'ci.yml'])
+  assert.deepEqual(parsed['ci.yml'].triggers.map(trigger => trigger.on).sort(), ['pull_request', 'push', 'workflow_dispatch'])
   for (const [file, workflow] of Object.entries(parsed)) {
     assert.ok(Object.keys(workflow.permissions).length > 0, `${file} must declare workflow permissions`)
     for (const trigger of workflow.triggers) {
