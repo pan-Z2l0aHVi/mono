@@ -43,6 +43,29 @@ const SLOT_PREFIX = 'web-ui-menu-level-'
 // 一级 menu item 的模板位 marker（机制与 context-menu 共用，见 menu-tree 的托管项锚说明）。
 const MENU_ITEM_MARKER = 'wui-dropdown-menu-item'
 
+function getComposedParent(node: Node): Node | null {
+  if (node instanceof Element && node.assignedSlot) return node.assignedSlot
+  return node.parentNode instanceof ShadowRoot ? node.parentNode.host : node.parentNode
+}
+
+function isComposedDescendant(node: Node, ancestor: Node): boolean {
+  let current: Node | null = node
+  while (current) {
+    if (current === ancestor) return true
+    current = getComposedParent(current)
+  }
+  return false
+}
+
+function hasNativeModalAncestor(node: Node): boolean {
+  let current: Node | null = node
+  while (current) {
+    if (current instanceof HTMLDialogElement && current.open && current.matches(':modal')) return true
+    current = getComposedParent(current)
+  }
+  return false
+}
+
 let dropdownIdCounter = 0
 
 interface MenuOverlay {
@@ -51,6 +74,13 @@ interface MenuOverlay {
   content: HTMLElement
   /** 该层为 submenu 时的会话 handle；根层 handle 由组件单独持有（见 `_handle`）。 */
   handle?: OpenOverlayHandle
+}
+
+type PointerInteraction = {
+  startedInsideMenu: boolean
+  startedWithinDropdown: boolean
+  completed: boolean
+  clickInsideMenu?: boolean
 }
 
 @customElement('web-ui-dropdown')
@@ -154,6 +184,15 @@ export class WebUiDropdown extends LitElement {
   }
   private readonly _userOpenChange = new UserChangeController()
   private _restoreFocusTarget?: HTMLElement
+  private _skipFocusRestoreOnClose = false
+  private _pointerInteraction?: PointerInteraction
+  private _pendingFocusOutCheck?: () => void
+  private _pendingTabNavigation?: {
+    event: KeyboardEvent
+    focusedItem: HTMLElement
+    previousFocus?: HTMLElement
+    focusTrigger: boolean
+  }
   private _shouldOpenInstantly = true
   /**
    * 本次打开是否抑制首项的 `:focus-visible` accent 视觉（口径与 context-menu 一致）。
@@ -185,7 +224,13 @@ export class WebUiDropdown extends LitElement {
     super.connectedCallback()
     this._overlay.resume()
     this.addEventListener('keydown', this._onKeydown)
+    window.addEventListener('keydown', this._onTabKeydown)
+    document.addEventListener('pointerdown', this._onPointerDown, true)
+    document.addEventListener('pointerup', this._onPointerUp, true)
+    document.addEventListener('pointercancel', this._onPointerCancel, true)
     document.addEventListener('click', this._onClickOutside)
+    document.addEventListener('focusin', this._onFocusIn, true)
+    document.addEventListener('focusout', this._onFocusOut, true)
     this._menuContentObserver.observe(this, { childList: true, subtree: true })
     /*
      * 重挂载对账：`disconnectedCallback` 会拆掉 panel、把 menu item 迁回宿主，但 `open` 是公开
@@ -208,8 +253,17 @@ export class WebUiDropdown extends LitElement {
   override disconnectedCallback() {
     super.disconnectedCallback()
     this._menuContentObserver.disconnect()
+    this._pointerInteraction = undefined
+    this._pendingFocusOutCheck = undefined
+    this._pendingTabNavigation = undefined
     this.removeEventListener('keydown', this._onKeydown)
+    window.removeEventListener('keydown', this._onTabKeydown)
+    document.removeEventListener('pointerdown', this._onPointerDown, true)
+    document.removeEventListener('pointerup', this._onPointerUp, true)
+    document.removeEventListener('pointercancel', this._onPointerCancel, true)
     document.removeEventListener('click', this._onClickOutside)
+    document.removeEventListener('focusin', this._onFocusIn, true)
+    document.removeEventListener('focusout', this._onFocusOut, true)
     this._outsideClickGuard.dispose()
     this._hoverBinder.dispose()
     // 停止帧调度；登记由 _cleanupClosedMenu → _disposeAll 撤销。
@@ -224,6 +278,7 @@ export class WebUiDropdown extends LitElement {
 
     if (changed.has('open')) {
       if (this.open) {
+        this._skipFocusRestoreOnClose = false
         this._syncOpenOverlay(true)
       } else {
         this._overlay.invalidate()
@@ -343,8 +398,16 @@ export class WebUiDropdown extends LitElement {
   private _cleanupClosedMenu() {
     this._closeAllSubmenus()
     this._returnLevel0Items()
+    this._resetMenuTabStops()
     this._disposeAll()
     this._syncTriggerAria()
+  }
+
+  private _resetMenuTabStops() {
+    this.querySelectorAll<HTMLElement>('web-ui-dropdown-item').forEach(item => {
+      const control = item.shadowRoot?.querySelector<HTMLElement>('[role="menuitem"]')
+      if (control) control.tabIndex = item.hasAttribute('disabled') ? -1 : 0
+    })
   }
 
   private async _closeRootAfterPresence() {
@@ -357,7 +420,8 @@ export class WebUiDropdown extends LitElement {
       menuOverlay.overlay.matches(':focus-within')
     )
     this._cleanupClosedMenu()
-    if (shouldRestoreFocus) this._restoreFocusTarget?.focus()
+    if (shouldRestoreFocus && !this._skipFocusRestoreOnClose) this._restoreFocusTarget?.focus()
+    this._skipFocusRestoreOnClose = false
     this._restoreFocusTarget = undefined
   }
 
@@ -647,6 +711,19 @@ export class WebUiDropdown extends LitElement {
     return el instanceof HTMLElement ? el : null
   }
 
+  private _focusTriggerForTab() {
+    const trigger = this._queryTriggerAnchor()
+    if (!trigger) return
+    trigger.focus()
+    const active = this._getDeepActiveElement()
+    if (active && isComposedDescendant(active, trigger)) return
+
+    const control = trigger.shadowRoot?.querySelector<HTMLElement>(
+      'button:not(:disabled), input:not(:disabled), select:not(:disabled), textarea:not(:disabled), a[href], [tabindex]:not([tabindex="-1"])'
+    )
+    control?.focus()
+  }
+
   /*
    * trigger 语义回写（Q9a）：slot 进来的元素是真正的可聚焦交互元素，
    * aria-haspopup / aria-expanded / aria-controls 必须设在它身上；
@@ -687,9 +764,117 @@ export class WebUiDropdown extends LitElement {
   }
 
   private _onClickOutside = (e: MouseEvent) => {
+    if (this._pointerInteraction) {
+      this._pointerInteraction.completed = true
+      this._pointerInteraction.clickInsideMenu = this._outsideClickGuard.isInside(e)
+      this._pointerInteraction = undefined
+      this._resumePendingFocusOutCheck()
+    }
     if (!this.isOpen || this._outsideClickGuard.isArmed()) return
     if (this._outsideClickGuard.isInside(e)) return
     this._closeAll(true)
+  }
+
+  private _onPointerDown = (event: PointerEvent) => {
+    const startedInsideMenu = Boolean(this.open && this._handle?.containsEvent(event))
+    this._pointerInteraction = {
+      startedInsideMenu,
+      // Trigger 的默认焦点动作也可能先于 click 让菜单项失焦；等 pointerup 后再检查，
+      // 让同一次 trigger click 先执行开合切换，避免按住 trigger 时抢先关、松开后又重开。
+      startedWithinDropdown: Boolean(this.open && (startedInsideMenu || event.composedPath().includes(this))),
+      completed: false
+    }
+  }
+
+  private _onPointerUp = (event: PointerEvent) => {
+    const interaction = this._pointerInteraction
+    if (!interaction) return
+    interaction.completed = true
+    interaction.clickInsideMenu = Boolean(this._handle?.containsEvent(event))
+    this._pointerInteraction = undefined
+    this._resumePendingFocusOutCheck()
+  }
+
+  private _onPointerCancel = () => {
+    const interaction = this._pointerInteraction
+    if (!interaction) return
+    interaction.completed = true
+    interaction.clickInsideMenu = interaction.startedInsideMenu
+    this._pointerInteraction = undefined
+    this._resumePendingFocusOutCheck()
+  }
+
+  private _resumePendingFocusOutCheck() {
+    const check = this._pendingFocusOutCheck
+    this._pendingFocusOutCheck = undefined
+    check?.()
+  }
+
+  private _onFocusOut = (event: FocusEvent) => {
+    const handle = this._handle
+    if (!this.open || !handle?.containsEvent(event)) return
+    const pointerInteraction = this._pointerInteraction
+    const source = event.composedPath()[0]
+    // Lit 更新条目时可能替换焦点控件并从已脱离的节点派发 focusout。
+    if (source instanceof Node && !source.isConnected) return
+    const next = event.relatedTarget
+    if (
+      next instanceof Node &&
+      [...this._overlays.values()].some(({ overlay }) => isComposedDescendant(next, overlay))
+    ) {
+      return
+    }
+    const movedToKnownOutsideTarget = next instanceof Node
+    if (movedToKnownOutsideTarget) this._skipFocusRestoreOnClose = true
+
+    const checkFocus = () => {
+      if (!this.open || this._handle !== handle) return
+      if (this._pendingTabNavigation) {
+        this._pendingFocusOutCheck = () => this._overlay.scheduleFrame(checkFocus)
+        return
+      }
+      if (pointerInteraction?.startedWithinDropdown) {
+        if (!pointerInteraction.completed) {
+          // pointerdown 可能先让 menu item 失焦；等同一手势的 pointerup/click 确认是否点在 menu 内。
+          this._pendingFocusOutCheck = () => this._overlay.scheduleFrame(checkFocus)
+          return
+        }
+        if (pointerInteraction.clickInsideMenu) return
+      }
+      if (handle.hasFocusWithin()) {
+        if (movedToKnownOutsideTarget) this._skipFocusRestoreOnClose = false
+        return
+      }
+      this._skipFocusRestoreOnClose = true
+      this._closeAll(true)
+    }
+    this._overlay.scheduleFrame(checkFocus)
+  }
+
+  private _onFocusIn = (event: FocusEvent) => {
+    const handle = this._handle
+    if (!this.open || !handle) return
+    if (!handle.containsEvent(event)) {
+      if (this._pendingTabNavigation) return
+      if (this._pointerInteraction?.startedWithinDropdown && !this._pointerInteraction.completed) return
+      this._skipFocusRestoreOnClose = true
+      this._closeAll(true)
+      return
+    }
+    this._skipFocusRestoreOnClose = false
+    const focusedItem = getMenuItemFromEvent(event)
+    if (!focusedItem) return
+
+    this._setMenuTabStop(focusedItem)
+  }
+
+  private _setMenuTabStop(focusedItem?: HTMLElement) {
+    for (const { content } of this._overlays.values()) {
+      content.querySelectorAll<HTMLElement>('web-ui-dropdown-item').forEach(item => {
+        const control = item.shadowRoot?.querySelector<HTMLElement>('[role="menuitem"]')
+        if (control) control.tabIndex = item === focusedItem && !item.hasAttribute('disabled') ? 0 : -1
+      })
+    }
   }
 
   private _onMenuClick = (e: MouseEvent) => {
@@ -703,11 +888,55 @@ export class WebUiDropdown extends LitElement {
   }
 
   private _onKeydown = (e: KeyboardEvent) => {
-    if (this.disabled || !this.open) return
+    if (!this.open) return
+
+    if (e.key === 'Tab') return
+    if (this.disabled) return
 
     // overlay 上键盘事件 target 是 menu item 而非组件自身，不能限定 e.target === this，
     // 否则鼠标打开、焦点在 menu item 时 Escape 无法关闭
     handleMenuKeyboard(this._keyboardDelegate, e)
+  }
+
+  private _onTabKeydown = (e: KeyboardEvent) => {
+    if (e.key !== 'Tab' || !this.open || e.defaultPrevented) return
+    const focusedItem = getMenuItemFromEvent(e)
+    if (!focusedItem || this._getFocusedLevel(focusedItem) === undefined) return
+
+    const isInsideNativeModal = [...this._overlays.values()].some(({ overlay }) => hasNativeModalAncestor(overlay))
+    const navigation = {
+      event: e,
+      focusedItem,
+      previousFocus:
+        focusedItem.shadowRoot?.activeElement instanceof HTMLElement
+          ? focusedItem.shadowRoot.activeElement
+          : this._getDeepActiveElement(),
+      focusTrigger: !isInsideNativeModal || !e.shiftKey
+    }
+    this._pendingTabNavigation = navigation
+    this._setMenuTabStop()
+    if (navigation.focusTrigger) this._focusTriggerForTab()
+
+    // 等当前键盘事件及默认动作结束，再读取包括后注册 window listener 在内的最终取消状态。
+    setTimeout(() => {
+      if (this._pendingTabNavigation !== navigation) return
+      this._pendingTabNavigation = undefined
+
+      if (e.defaultPrevented) {
+        this._setMenuTabStop(focusedItem)
+        if (navigation.previousFocus?.isConnected && this._getDeepActiveElement() !== navigation.previousFocus) {
+          navigation.previousFocus.focus()
+        }
+        return
+      }
+
+      if (navigation.focusTrigger || !this._handle?.hasFocusWithin()) {
+        this._skipFocusRestoreOnClose = true
+        this._closeAll(true)
+      } else {
+        this._setMenuTabStop(focusedItem)
+      }
+    }, 0)
   }
 
   private _getFocusedLevel(item?: HTMLElement): number | undefined {
