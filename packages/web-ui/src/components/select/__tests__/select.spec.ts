@@ -492,6 +492,23 @@ describe('WebUiSelect 组件', () => {
       cleanupElement(el)
     })
 
+    it('typeahead 将带点大写 I 与 i 匹配', async () => {
+      const dottedI = String.fromCharCode(0x130)
+      const el = createSelect(`<web-ui-option value="dotted-i" label="${dottedI}"></web-ui-option>`)
+      await waitForUpdate(el)
+
+      el.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true }))
+      await waitForUpdate(el)
+      el.dispatchEvent(new KeyboardEvent('keydown', { key: 'i', bubbles: true, cancelable: true }))
+      await waitForUpdate(el)
+
+      const trigger = queryA11y(el, '[role="combobox"]') as HTMLElement
+      const activeId = trigger.getAttribute('aria-activedescendant')
+      expect(activeId ? el.querySelector<WebUiOption>(`#${activeId}`)?.value : undefined).toBe('dotted-i')
+
+      cleanupElement(el)
+    })
+
     it.each([
       { state: 'disabled', invalidate: (option: WebUiOption) => (option.disabled = true) },
       { state: 'removed', invalidate: (option: WebUiOption) => option.remove() }

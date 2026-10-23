@@ -439,7 +439,7 @@ export class WebUiSelect extends FormAssociated(LitElement) {
   }
 
   private _normalizeTypeaheadText(value: string) {
-    return value.normalize('NFD').replace(/\p{M}/gu, '').toLocaleLowerCase()
+    return value.toLocaleLowerCase().normalize('NFD').replace(/\p{M}/gu, '')
   }
 
   private _navigateActive(delta: number) {
