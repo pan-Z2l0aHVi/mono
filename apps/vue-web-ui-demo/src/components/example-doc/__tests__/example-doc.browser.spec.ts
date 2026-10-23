@@ -522,26 +522,21 @@ describe('example-doc（Vue 面 / 真实浏览器）', () => {
     expect(code?.textContent).toBe(parsed?.textContent)
   })
 
-  it(
-    '每条带锚点的示例，页面 <pre> 的可见文本就是那份落盘文件',
-    async () => {
-      // 逐篇逐条比，而不是挑一条：这条契约的覆盖面就是「所有带锚点的示例」，改名或改围栏时
-      // 恰恰是没被断言盖住的那篇那条会漂。文件字节 = 可见文本 + 一个行尾换行（见 `demoFileContent`），
-      // 写成 `trimEnd()` 会把「文件末尾多一个空行」这类形状放掉。
-      for (const { doc, tag } of migratedDocs) {
-        const element = mountDoc(doc.component)
-        await mountDemos(element, doc, tag)
-        for (const candidate of doc.samples) {
-          if (!candidate.demoKey) continue
-          const source = demoSourceOf(doc.component, candidate.demoKey)
-          const text = sample(element, candidate.title).querySelector('pre.shiki')?.textContent ?? ''
-          expect(`${text}\n`, `${doc.component}--${candidate.demoKey}`).toBe(source)
-        }
+  it('每条带锚点的示例，页面 <pre> 的可见文本就是那份落盘文件', async () => {
+    // 逐篇逐条比，而不是挑一条：这条契约的覆盖面就是「所有带锚点的示例」，改名或改围栏时
+    // 恰恰是没被断言盖住的那篇那条会漂。文件字节 = 可见文本 + 一个行尾换行（见 `demoFileContent`），
+    // 写成 `trimEnd()` 会把「文件末尾多一个空行」这类形状放掉。
+    for (const { doc, tag } of migratedDocs) {
+      const element = mountDoc(doc.component)
+      await mountDemos(element, doc, tag)
+      for (const candidate of doc.samples) {
+        if (!candidate.demoKey) continue
+        const source = demoSourceOf(doc.component, candidate.demoKey)
+        const text = sample(element, candidate.title).querySelector('pre.shiki')?.textContent ?? ''
+        expect(`${text}\n`, `${doc.component}--${candidate.demoKey}`).toBe(source)
       }
-    },
-    // 逐篇挂载全部锚点示例，CI runner 上远超默认 15s。
-    120_000,
-  )
+    }
+  }, 120_000) // 逐篇挂载全部锚点示例，CI runner 上远超默认 15s。
 
   it('外观切到深色时，token 换用 --shiki-dark', async () => {
     const plain = mountDoc('button')
