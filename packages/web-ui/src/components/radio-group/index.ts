@@ -24,6 +24,8 @@ interface DocumentAvailabilityObserver {
   readonly view: Window
   readonly notify: () => void
   readonly refreshMediaQueries: () => void
+  readonly handleStylesheetLoad: (event: Event) => void
+  readonly handleTabKeydown: (event: KeyboardEvent) => void
 }
 
 const documentAvailabilityObservers = new WeakMap<Document, DocumentAvailabilityObserver>()
@@ -81,6 +83,20 @@ function subscribeToDocumentAvailability(document: Document, callback: () => voi
         }
       }
     }
+    const handleStylesheetLoad = (event: Event) => {
+      const target = event.target
+      if (!(target instanceof HTMLLinkElement) || !target.relList.contains('stylesheet')) return
+      refreshMediaQueries()
+      notify()
+    }
+    // CSSStyleSheet has no rule-change event. Refresh before the browser's Tab
+    // default action so CSSOM-only visibility changes cannot strand the group.
+    const handleTabKeydown = (event: KeyboardEvent) => {
+      if (event.key === 'Tab') {
+        refreshMediaQueries()
+        notify()
+      }
+    }
     const observer = new MutationObserver(() => {
       refreshMediaQueries()
       notify()
@@ -88,7 +104,18 @@ function subscribeToDocumentAvailability(document: Document, callback: () => voi
     const styleRoot = document.head ?? document.documentElement
     observer.observe(styleRoot, { attributes: true, childList: true, characterData: true, subtree: true })
     view.addEventListener('resize', notify)
-    state = { subscribers, mediaQueries, observer, view, notify, refreshMediaQueries }
+    document.addEventListener('load', handleStylesheetLoad, true)
+    document.addEventListener('keydown', handleTabKeydown, true)
+    state = {
+      subscribers,
+      mediaQueries,
+      observer,
+      view,
+      notify,
+      refreshMediaQueries,
+      handleStylesheetLoad,
+      handleTabKeydown
+    }
     documentAvailabilityObservers.set(document, state)
     refreshMediaQueries()
   }
@@ -101,6 +128,8 @@ function subscribeToDocumentAvailability(document: Document, callback: () => voi
     if (current.subscribers.size > 0) return
     current.observer.disconnect()
     current.view.removeEventListener('resize', current.notify)
+    document.removeEventListener('load', current.handleStylesheetLoad, true)
+    document.removeEventListener('keydown', current.handleTabKeydown, true)
     for (const mediaQuery of current.mediaQueries.values()) mediaQuery.removeEventListener('change', current.notify)
     current.mediaQueries.clear()
     documentAvailabilityObservers.delete(document)

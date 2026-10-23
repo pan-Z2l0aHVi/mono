@@ -452,6 +452,65 @@ describe('WebUiRadioGroup 无障碍语义（浏览器）', () => {
     }
   })
 
+  it('动态样式表加载后更新 radio 的 tab stop', async () => {
+    const host = createGroup()
+    await waitForUpdate(host)
+    const radios = [...host.querySelectorAll<Updatable>('web-ui-radio')]
+    await Promise.all(radios.map(radio => radio.updateComplete))
+
+    const stylesheet = document.createElement('link')
+    stylesheet.rel = 'stylesheet'
+    const url = URL.createObjectURL(
+      new Blob(['web-ui-radio[value="basic"] { visibility: hidden; }'], { type: 'text/css' })
+    )
+    const loaded = new Promise<void>((resolve, reject) => {
+      stylesheet.addEventListener('load', () => resolve(), { once: true })
+      stylesheet.addEventListener('error', () => reject(new Error('stylesheet failed to load')), { once: true })
+    })
+
+    try {
+      stylesheet.href = url
+      document.head.append(stylesheet)
+      await loaded
+      await new Promise<void>(resolve => requestAnimationFrame(() => resolve()))
+      await Promise.all(radios.map(radio => radio.updateComplete))
+
+      expect(getComputedStyle(radios[0]!).visibility).toBe('hidden')
+      expect(radios[0]?.shadowRoot?.querySelector('[role="radio"]')?.getAttribute('tabindex')).toBe('-1')
+      expect(radios[1]?.shadowRoot?.querySelector('[role="radio"]')?.getAttribute('tabindex')).toBe('0')
+    } finally {
+      stylesheet.remove()
+      URL.revokeObjectURL(url)
+    }
+  })
+
+  it('Tab 前重新计算 CSSOM 规则引起的 radio 可见性变化', async () => {
+    const host = createGroup()
+    await waitForUpdate(host)
+    const radios = [...host.querySelectorAll<Updatable>('web-ui-radio')]
+    await Promise.all(radios.map(radio => radio.updateComplete))
+
+    const stylesheet = document.createElement('style')
+    document.head.append(stylesheet)
+    try {
+      await new Promise<void>(resolve => requestAnimationFrame(() => resolve()))
+      stylesheet.sheet?.insertRule('web-ui-radio[value="basic"] { visibility: hidden; }')
+
+      const beforeGroup = document.createElement('button')
+      document.body.insertBefore(beforeGroup, document.body.firstChild)
+      beforeGroup.focus()
+      await userEvent.keyboard('{Tab}')
+      await Promise.all(radios.map(radio => radio.updateComplete))
+
+      expect(getComputedStyle(radios[0]!).visibility).toBe('hidden')
+      expect(radios[0]?.shadowRoot?.querySelector('[role="radio"]')?.getAttribute('tabindex')).toBe('-1')
+      expect(radios[1]?.shadowRoot?.querySelector('[role="radio"]')?.getAttribute('tabindex')).toBe('0')
+      expect(document.activeElement).toBe(radios[1])
+    } finally {
+      stylesheet.remove()
+    }
+  })
+
   it('媒体查询隐藏当前 tab stop 时切换到可见 radio', async () => {
     const previousViewport = { width: window.innerWidth, height: window.innerHeight }
     const host = createGroup()
