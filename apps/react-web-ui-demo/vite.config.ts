@@ -1,5 +1,5 @@
 import depsReload from '@greypan/deps-reload/vite'
-import { braceAnchor } from '@greypan/md-to-comp'
+import { braceAnchor, type MdToCompViteOptions } from '@greypan/md-to-comp'
 import mdToCompReact from '@greypan/md-to-comp/react'
 import unpluginWebComponents from '@greypan/unplugin-web-components/vite'
 import babel from '@rolldown/plugin-babel'
@@ -10,6 +10,43 @@ import legacy from '@vitejs/plugin-legacy'
 import react, { reactCompilerPreset } from '@vitejs/plugin-react'
 import { searchForWorkspaceRoot, type UserConfig } from 'vite-plus'
 import { playwright } from 'vite-plus/test/browser-playwright'
+
+// 具名导出供 scripts/workflow/check-md-to-comp-artifacts.mjs 复用：CI 在 Build 步之前以这份配置
+// 只判不改地校验生成物。配置只有这一份，不另抄。
+export const mdToCompOptions: MdToCompViteOptions = {
+  input: '../../packages/web-ui/docs',
+  output: 'src/generated',
+  dir: 'demos',
+  anchor: braceAnchor,
+  flavors: ['react', 'vue'],
+  apiTables: {
+    // 列序是引擎约定：首列是名称（行的身份）、次列是说明（富文本），第 3 列起都是普通值列。
+    // 只登记表格小节；标题不在这里的 `###` 按散文渲染（正文整段 markdown）。
+    // Props 记元素属性，Options 记命令式 API 的 option（`imagePreview()` / `toast()` 这类没有声明式契约的入口）。
+    // Methods 记组件对外的公开方法：元素实例方法、静态方法，以及命令式 API 返回 handle 上的方法。
+    // 返回 handle 记命令式 API 返回对象上的只读成员，那些成员的方法归 Methods。
+    // CSS Custom Properties 记组件对外暴露的变量；theme 的 token 表按族分节，颜色与阴影两族另有浅色/深色两列。
+    columns: {
+      Props: ['名称', '说明', '类型', '默认值'],
+      Options: ['名称', '说明', '类型', '默认值'],
+      Events: ['名称', '说明'],
+      Slots: ['名称', '说明'],
+      Methods: ['名称', '说明'],
+      '返回 handle': ['名称', '说明', '类型'],
+      'CSS Custom Properties': ['名称', '说明', '默认值'],
+      'Foundation tokens': ['名称', '说明', '默认值'],
+      'Typography tokens': ['名称', '说明', '默认值'],
+      'Spacing tokens': ['名称', '说明', '默认值'],
+      'Selection control tokens': ['名称', '说明', '默认值'],
+      'Radius tokens': ['名称', '说明', '默认值'],
+      'Layer tokens': ['名称', '说明', '默认值'],
+      'Color tokens': ['名称', '说明', '浅色默认值', '深色默认值'],
+      'Shadow tokens': ['名称', '说明', '浅色默认值', '深色默认值']
+    }
+  },
+  // 深浅外观源是 web-ui-theme 的派生属性；切外观不需要重新生成高亮 HTML。
+  darkSelector: "web-ui-theme[resolved-appearance='dark']"
+}
 
 export default {
   resolve: {
@@ -68,41 +105,10 @@ export default {
   },
   plugins: [
     // 示例文档：markdown 是唯一来源，dev 与 build 都由这个插件生成 `src/generated/**`。
-    // 生成物同样受版本控制，测试档只判不改（不一致就让这次的测试红），所以 CI 不需要另跑生成命令。
-    mdToCompReact({
-      input: '../../packages/web-ui/docs',
-      output: 'src/generated',
-      dir: 'demos',
-      anchor: braceAnchor,
-      flavors: ['react', 'vue'],
-      apiTables: {
-        // 列序是引擎约定：首列是名称（行的身份）、次列是说明（富文本），第 3 列起都是普通值列。
-        // 只登记表格小节；标题不在这里的 `###` 按散文渲染（正文整段 markdown）。
-        // Props 记元素属性，Options 记命令式 API 的 option（`imagePreview()` / `toast()` 这类没有声明式契约的入口）。
-        // Methods 记组件对外的公开方法：元素实例方法、静态方法，以及命令式 API 返回 handle 上的方法。
-        // 返回 handle 记命令式 API 返回对象上的只读成员，那些成员的方法归 Methods。
-        // CSS Custom Properties 记组件对外暴露的变量；theme 的 token 表按族分节，颜色与阴影两族另有浅色/深色两列。
-        columns: {
-          Props: ['名称', '说明', '类型', '默认值'],
-          Options: ['名称', '说明', '类型', '默认值'],
-          Events: ['名称', '说明'],
-          Slots: ['名称', '说明'],
-          Methods: ['名称', '说明'],
-          '返回 handle': ['名称', '说明', '类型'],
-          'CSS Custom Properties': ['名称', '说明', '默认值'],
-          'Foundation tokens': ['名称', '说明', '默认值'],
-          'Typography tokens': ['名称', '说明', '默认值'],
-          'Spacing tokens': ['名称', '说明', '默认值'],
-          'Selection control tokens': ['名称', '说明', '默认值'],
-          'Radius tokens': ['名称', '说明', '默认值'],
-          'Layer tokens': ['名称', '说明', '默认值'],
-          'Color tokens': ['名称', '说明', '浅色默认值', '深色默认值'],
-          'Shadow tokens': ['名称', '说明', '浅色默认值', '深色默认值']
-        }
-      },
-      // 深浅外观源是 web-ui-theme 的派生属性；切外观不需要重新生成高亮 HTML。
-      darkSelector: "web-ui-theme[resolved-appearance='dark']"
-    }),
+    // 生成物同样受版本控制，测试档只判不改（不一致就让这次的测试红）；CI 在 Build 步之前还经
+    // `check-generated` 任务以 mdToCompOptions 只判不改地复验一次（Build 的写盘会把失步产物
+    // 治愈，测试档的判据到那时永远空转）。
+    mdToCompReact(mdToCompOptions),
     tanstackRouter({
       target: 'react',
       autoCodeSplitting: true
