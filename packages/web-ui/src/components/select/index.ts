@@ -523,7 +523,7 @@ export class WebUiSelect extends FormAssociated(LitElement) {
           aria-controls=${this.portal ? nothing : listboxId}
           aria-disabled=${String(this._isDisabled)}
           aria-activedescendant=${activeDescendant}
-          aria-label=${ifDefined(this.ariaLabel ?? undefined)}
+          aria-label=${ifDefined(this.ariaLabel)}
         >
           <slot name="trigger" @slotchange=${this._onTriggerSlotChange}></slot>
           ${!this._hasTriggerSlot ? html`<span class="label">${this._selectedLabel}</span>` : nothing}
