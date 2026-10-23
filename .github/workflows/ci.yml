@@ -77,6 +77,11 @@ jobs:
         run: |
           pnpm run check-changeset --base "$PR_BASE_SHA" --head "$PR_HEAD_SHA"
 
+      # 生成物新鲜度在 Build 之前只判不改地校验：Build 里 md-to-comp 插件的 writeArtifacts 会把
+      # 失步的 src/generated/** 原地写新（healing），挂在测试档的 checkArtifacts 到那时永远空转。
+      - name: Check generated artifacts
+        run: pnpm exec turbo run check-generated --filter=@greypan/react-web-ui-demo --filter=@greypan/vue-web-ui-demo
+
       # 保留 workspace package 构建；Wails 原生工作流负责 Interweave app wrapper。
       - name: Build
         run: pnpm exec turbo run build --filter=!@greypan/interweave
