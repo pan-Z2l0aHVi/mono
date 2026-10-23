@@ -11,7 +11,7 @@ import { activateRadio, focusRadio, isRadioDisabled } from '../radio/interaction
 import style from './style.css?inline'
 
 const ALLOWED_DIRECTIONS = ['horizontal', 'vertical'] as const
-const AVAILABILITY_ATTRIBUTES = ['hidden', 'inert', 'aria-hidden', 'style', 'class', 'open'] as const
+const AVAILABILITY_ATTRIBUTES = ['hidden', 'inert', 'aria-hidden', 'style', 'class', 'open', 'popover'] as const
 
 interface DocumentAvailabilityObserver {
   readonly subscribers: Set<() => void>
@@ -246,7 +246,9 @@ export class WebUiRadioGroup extends FormAssociated(LitElement) {
    */
   private _knownMemberValues = new Set<string>()
   private _availabilityObserver: MutationObserver | null = null
+  private _availabilityToggleTargets = new Set<Element>()
   private _unsubscribeDocumentAvailability: (() => void) | null = null
+  private readonly _handleAvailabilityToggle = () => this._groupController.sync()
 
   private _getComposedAncestors(element: Element): Element[] {
     const ancestors: Element[] = []
@@ -320,6 +322,7 @@ export class WebUiRadioGroup extends FormAssociated(LitElement) {
   override disconnectedCallback() {
     this._availabilityObserver?.disconnect()
     this._availabilityObserver = null
+    this._syncAvailabilityToggleTargets([])
     this._unsubscribeDocumentAvailability?.()
     this._unsubscribeDocumentAvailability = null
     super.disconnectedCallback()
@@ -371,15 +374,34 @@ export class WebUiRadioGroup extends FormAssociated(LitElement) {
     this._availabilityObserver?.disconnect()
     this._availabilityObserver = null
 
-    const ancestors = this._getComposedAncestors(this).slice(1)
+    const ancestors = this._getComposedAncestors(this)
+    this._syncAvailabilityToggleTargets(ancestors)
     if (ancestors.length === 0) return
 
-    this._availabilityObserver = new MutationObserver(() => this._groupController.sync())
+    this._availabilityObserver = new MutationObserver(records => {
+      if (records.some(record => record.attributeName === 'popover')) {
+        this._syncAvailabilityToggleTargets(this._getComposedAncestors(this))
+      }
+      this._groupController.sync()
+    })
     for (const ancestor of ancestors) {
       this._availabilityObserver.observe(ancestor, {
         attributes: true,
         attributeFilter: [...AVAILABILITY_ATTRIBUTES]
       })
+    }
+  }
+
+  private _syncAvailabilityToggleTargets(ancestors: readonly Element[]) {
+    for (const target of this._availabilityToggleTargets) {
+      target.removeEventListener('toggle', this._handleAvailabilityToggle)
+    }
+    this._availabilityToggleTargets.clear()
+
+    for (const ancestor of ancestors) {
+      if (!ancestor.hasAttribute('popover')) continue
+      ancestor.addEventListener('toggle', this._handleAvailabilityToggle)
+      this._availabilityToggleTargets.add(ancestor)
     }
   }
 

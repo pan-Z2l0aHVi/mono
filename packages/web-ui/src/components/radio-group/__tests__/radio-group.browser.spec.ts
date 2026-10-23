@@ -329,6 +329,34 @@ describe('WebUiRadioGroup 无障碍语义（浏览器）', () => {
     expect(radios[1]?.shadowRoot?.querySelector('[role="radio"]')?.getAttribute('tabindex')).toBe('-1')
   })
 
+  it('打开原生 popover 后恢复 radio group 的 tab stop', async () => {
+    const host = createGroup()
+    await waitForUpdate(host)
+    const radios = [...host.querySelectorAll<Updatable>('web-ui-radio')]
+    await Promise.all(radios.map(radio => radio.updateComplete))
+
+    const popover = document.createElement('div')
+    popover.setAttribute('popover', 'auto')
+    host.remove()
+    popover.append(host)
+    document.body.append(popover)
+    await waitForUpdate(host)
+    await Promise.all(radios.map(radio => radio.updateComplete))
+    expect(
+      radios.every(radio => radio.shadowRoot?.querySelector('[role="radio"]')?.getAttribute('tabindex') === '-1')
+    ).toBe(true)
+
+    const opened = new Promise<void>(resolve => popover.addEventListener('toggle', () => resolve(), { once: true }))
+    popover.showPopover()
+    await opened
+    await waitForUpdate(host)
+    await Promise.all(radios.map(radio => radio.updateComplete))
+
+    expect(radios[0]?.shadowRoot?.querySelector('[role="radio"]')?.getAttribute('tabindex')).toBe('0')
+    expect(radios[1]?.shadowRoot?.querySelector('[role="radio"]')?.getAttribute('tabindex')).toBe('-1')
+    popover.hidePopover()
+  })
+
   it('媒体查询隐藏当前 tab stop 时切换到可见 radio', async () => {
     const previousViewport = { width: window.innerWidth, height: window.innerHeight }
     const host = createGroup()
