@@ -20,6 +20,7 @@ export default function Demo() {
   return (
     <div className="flex flex-col items-start gap-3">
       <web-ui-select
+        aria-label="前端框架"
         value={framework}
         placeholder="请选择框架"
         onChange={event => setFramework(event.currentTarget.value)}
@@ -43,7 +44,12 @@ export default function Demo() {
 ```vue
 <template>
   <div class="flex flex-col items-start gap-3">
-    <web-ui-select :value="framework" placeholder="请选择框架" @change="framework = $event.currentTarget.value">
+    <web-ui-select
+      aria-label="前端框架"
+      :value="framework"
+      placeholder="请选择框架"
+      @change="framework = $event.currentTarget.value"
+    >
       <web-ui-option value="vue" label="Vue"></web-ui-option>
       <web-ui-option value="react" label="React"></web-ui-option>
       <web-ui-option value="svelte" label="Svelte"></web-ui-option>
@@ -371,6 +377,7 @@ export default function Demo() {
 | `no-scroll-lock`   | 打开时不锁定页面滚动。                         | `boolean`          | `false` |
 | `overlayContainer` | 显式 Portal 容器（property）。                 | `OverlayContainer` | —       |
 | `name`             | 表单字段名。                                   | `string`           | `''`    |
+| `aria-label`       | combobox 的 accessible name。                  | `string \| null`   | `null`  |
 | `value`            | 选中值。                                       | `string`           | `''`    |
 
 ### Events

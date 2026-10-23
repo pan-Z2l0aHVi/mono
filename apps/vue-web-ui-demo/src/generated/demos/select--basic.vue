@@ -1,6 +1,11 @@
 <template>
   <div class="flex flex-col items-start gap-3">
-    <web-ui-select :value="framework" placeholder="请选择框架" @change="framework = $event.currentTarget.value">
+    <web-ui-select
+      aria-label="前端框架"
+      :value="framework"
+      placeholder="请选择框架"
+      @change="framework = $event.currentTarget.value"
+    >
       <web-ui-option value="vue" label="Vue"></web-ui-option>
       <web-ui-option value="react" label="React"></web-ui-option>
       <web-ui-option value="svelte" label="Svelte"></web-ui-option>

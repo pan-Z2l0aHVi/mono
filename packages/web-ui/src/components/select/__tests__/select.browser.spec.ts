@@ -3,6 +3,7 @@ import '../../theme'
 import '@/components/option'
 
 import { afterEach, describe, expect, it } from 'vite-plus/test'
+import { page } from 'vite-plus/test/browser'
 
 import { getPortalPanel } from '@/shared/test-utils'
 
@@ -11,6 +12,16 @@ import type { WebUiSelect } from '..'
 afterEach(() => document.body.replaceChildren())
 
 describe('WebUiSelect 组件（浏览器）', () => {
+  it('host aria-label gives the combobox an accessible name', async () => {
+    const select = document.createElement('web-ui-select')
+    select.setAttribute('aria-label', 'Global theme')
+    document.body.append(select)
+    await select.updateComplete
+
+    const root = page.elementLocator(select)
+    expect(root.getByRole('combobox', { name: 'Global theme' }).length).toBe(1)
+  })
+
   it('Portal panel 在 theme 作用域内挂载到 theme 自己的 overlay root', async () => {
     const theme = document.createElement('web-ui-theme')
     theme.setAttribute('appearance', 'light')

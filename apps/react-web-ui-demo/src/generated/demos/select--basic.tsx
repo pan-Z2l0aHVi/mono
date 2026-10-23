@@ -6,6 +6,7 @@ export default function Demo() {
   return (
     <div className="flex flex-col items-start gap-3">
       <web-ui-select
+        aria-label="前端框架"
         value={framework}
         placeholder="请选择框架"
         onChange={event => setFramework(event.currentTarget.value)}
