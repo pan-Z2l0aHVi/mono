@@ -78,6 +78,13 @@ export async function generate(options: GenerateOptions): Promise<GenerateResult
 
   const dir = options.dir ?? 'demos'
   const docs = readDocs(options)
+  if (options.requireDemo)
+    for (const doc of docs)
+      for (const sample of doc.samples)
+        if (!emitsDemoFile(sample.id))
+          fail(
+            `${doc.sourceFile}：示例「${sample.title}」没有 \`{#id}\` 锚点；requireDemo 开启时每条示例都要落成组件文件`
+          )
   const payloads = await buildPayloads(docs, options.flavors)
   const module = renderModule(payloads)
   const css = renderCss(options.darkSelector)

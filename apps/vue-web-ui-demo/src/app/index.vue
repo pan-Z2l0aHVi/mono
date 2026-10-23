@@ -63,9 +63,19 @@ const sidebarWidth = computed(() => (isMobileSidebarViewport.value ? mobileSideb
  * Consumer 决定 slot 内容怎么渲染，所以闸门留在这里。
  */
 const navCollapsed = computed(() => sidebarCollapsed.value && !isMobileSidebarViewport.value)
+/*
+ * layout 的四个 `*-change` 都是 `bubbles: true, composed: true`，而文档页里示例的 `web-ui-layout` 就挂在
+ * 本站侧栏的子树内，它一翻转事件就顺着冒到这里。只采信自己这一层：窄视口下点示例的 Toggle，本站 drawer
+ * 会跟着打开（实测 `shellDrawerOpen: true`，命中的那条事件 `target` 是示例元素）。
+ */
+function isOwnLayoutEvent(event: Event): boolean {
+  return event.target === event.currentTarget
+}
+
 // 挂载即移动端时，layout 会在连接那一刻派发一次 mobile-change，模板监听挂在其之前，
 // 因此首帧拿到的就是 layout 自己的判定。
 function updateMobileSidebarViewport(event: WebUiEvent<WebUiLayout, 'mobile-change'>) {
+  if (!isOwnLayoutEvent(event)) return
   isMobileSidebarViewport.value = event.detail.mobile
 }
 
@@ -89,15 +99,18 @@ function updateThemeMotion(event: WebUiEvent<WebUiSelect, 'change'>) {
 }
 
 function updateSidebarCollapsed(event: WebUiEvent<WebUiLayout, 'sidebar-collapsed-change'>) {
+  if (!isOwnLayoutEvent(event)) return
   sidebarCollapsed.value = event.detail.collapsed
 }
 
 function updateSidebarOpen(event: WebUiEvent<WebUiLayout, 'sidebar-open-change'>) {
+  if (!isOwnLayoutEvent(event)) return
   sidebarOpen.value = event.detail.open
 }
 
 // 拖拽调宽的受控回写 + localStorage 持久化（仅桌面端生效）
 function updateSidebarWidth(event: WebUiEvent<WebUiLayout, 'sidebar-width-change'>) {
+  if (!isOwnLayoutEvent(event)) return
   desktopSidebarWidth.value = event.detail.width
   local.set(SIDEBAR_WIDTH_STORAGE_KEY, event.detail.width)
 }

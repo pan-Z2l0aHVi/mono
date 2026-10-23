@@ -1,5 +1,5 @@
 import { fail } from './errors'
-import { flavorExtension, type FenceFlavor } from './highlight'
+import { FLAVOR_LANG, type FenceFlavor } from './highlight'
 
 /** 只有显式写出了锚点 id 的示例才落成组件文件；没有 id 的仍只出高亮代码。 */
 export function emitsDemoFile(id: string | null): id is string {
@@ -7,7 +7,7 @@ export function emitsDemoFile(id: string | null): id is string {
 }
 
 export function demoFileName(component: string, id: string, flavor: FenceFlavor): string {
-  return `${component}--${id}.${flavorExtension(flavor)}`
+  return `${component}--${id}.${FLAVOR_LANG[flavor]}`
 }
 
 /**

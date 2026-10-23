@@ -23,14 +23,22 @@ import { routeTree } from '@/routeTree.gen'
  *
  * 下面两组数字**由类名链条按主题断点逐档算出**，不是「我觉得应该是几列」，也不是照抄 1280
  * 那一档：
- *   home 页   `grid-cols-1 sm:grid-cols-2 md:grid-cols-3`
- *   svg 示例页 `grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5`
+ *   home 页             `grid-cols-1 sm:grid-cols-2 md:grid-cols-3`
+ *   本文件的探针 fixture `grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5`
  * 断点取自 `src/assets/global.css` 的 `@theme`：sm 640 / md 768 / lg 1024 / xl 1280 / 2xl 1536。
  * 某档宽度命中 `>= 断点` 的类就取它的列数；取不到更高断点的类时**沿用前一个胜者**（Tailwind
  * 不会在更高断点把列数「重置」）：
- *   home：390→1；640/641→sm 2；768/1024/1280/1440/1536/1920→md 3（没有 lg/xl/2xl 类）
- *   svg ：390→2；640/641→sm 3；768→md 4；1024/1280/1440/1536/1920→lg 5（没有 xl/2xl 类）
+ *   home ：390→1；640/641→sm 2；768/1024/1280/1440/1536/1920→md 3（没有 lg/xl/2xl 类）
+ *   探针 ：390→2；640/641→sm 3；768→md 4；1024/1280/1440/1536/1920→lg 5（没有 xl/2xl 类）
  * 所以两组数组在高位是平的——那是推导结果，不是抄来的。
+ *
+ * 为什么第二条不再是某个真实页面：这条链原本挂在手写的 svg 示例页上，那一页现在只渲染由
+ * `packages/web-ui/docs/svg-draw-lines.md` 生成的示例，而语料里没有任何 `grid-cols` 类（全仓
+ * `lg:grid-cols-*` 随那两个手写 demo 一起消失）。home 的链最高只到 `md`，于是 ≥1024 那段
+ * 没有落点；这里就地声明一条 fixture 链，把采样边界补回 lg 档。**代价要说明白**：fixture 不是
+ * 应用表面，它守的是生成出来的样式表里的规则次序，不再守某个具体页面的排版。
+ * 类名必须是这个文件里的字面量——Tailwind 靠扫描源码生成这些工具类，把它拼成动态字符串会让
+ * 规则消失，量出来恒为 1 列，于是这条以红而不是以绿汇报漂移。
  *
  * 这组数字只取决于这两处网格上的 sm/md/lg 类名：**声明**一个新的自定义变体（例如另一条线程
  * 的 `@custom-variant mobile (…)`）不会改变它们——网格上没有该类就生成不出能胜出的规则；
@@ -42,7 +50,16 @@ const BREAKPOINTS = [390, 640, 641, 768, 1024, 1280, 1440, 1536, 1920]
 const VIEWPORT_HEIGHT = 900
 
 const HOME_QUICK_LINKS_COLUMNS = [1, 2, 2, 3, 3, 3, 3, 3, 3]
-const SVG_ICON_COLUMNS = [2, 3, 3, 4, 5, 5, 5, 5, 5]
+const PROBE_GRID_COLUMNS = [2, 3, 3, 4, 5, 5, 5, 5, 5]
+
+const PROBE_TEST_ID = 'variant-order-probe-grid'
+
+/** 变体排序探针：类链只在这里声明一次，渲染出的 track 数就是它按档胜出的列数。 */
+function ProbeGrid() {
+  return (
+    <div data-testid={PROBE_TEST_ID} className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5" />
+  )
+}
 
 /** 渲染出来的 track 数就是列数；`grid-template-columns` 的 computed 值即用后的 track 列表。 */
 function columnCount(testId: string) {
@@ -104,9 +121,9 @@ describe('网格列数基线（浏览器）', () => {
     expect(await columnsAcrossBreakpoints('home-quick-links-grid')).toEqual(HOME_QUICK_LINKS_COLUMNS)
   })
 
-  it('svg 示例页 icon 网格在九档视口下保持 2/3/3/4/5/5/5/5/5 列', async () => {
-    await mountPage('/components/svg-draw-lines', 'svg-icon-grid')
+  it('变体排序探针在九档视口下保持 2/3/3/4/5/5/5/5/5 列', async () => {
+    render(<ProbeGrid />)
 
-    expect(await columnsAcrossBreakpoints('svg-icon-grid')).toEqual(SVG_ICON_COLUMNS)
+    expect(await columnsAcrossBreakpoints(PROBE_TEST_ID)).toEqual(PROBE_GRID_COLUMNS)
   })
 })

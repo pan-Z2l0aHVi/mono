@@ -8,10 +8,8 @@
 
 <script setup lang="ts">
 import ExampleDoc from '@/components/example-doc/index.vue'
-import IconDemo from '@/components/icon-demo/index.vue'
 </script>
 
 <template>
-  <IconDemo />
-  <ExampleDoc component="icon" />
+  <ExampleDoc component="icon" level="primary" />
 </template>

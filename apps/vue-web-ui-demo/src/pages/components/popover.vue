@@ -8,10 +8,8 @@
 
 <script setup lang="ts">
 import ExampleDoc from '@/components/example-doc/index.vue'
-import PopoverDemo from '@/components/popover-demo/index.vue'
 </script>
 
 <template>
-  <PopoverDemo />
-  <ExampleDoc component="popover" />
+  <ExampleDoc component="popover" level="primary" />
 </template>

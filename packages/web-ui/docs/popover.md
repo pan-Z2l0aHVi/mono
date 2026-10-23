@@ -7,73 +7,202 @@ tag: web-ui-popover
 
 ## 示例
 
-### 基础
+### 基础 {#basic}
 
-click 模式点击 trigger 切换；trigger 请放入可交互元素，ARIA 状态会回写到它。
+click 模式点 trigger 切换，点 panel 外或按 Escape 关闭；trigger 请放入可交互元素（`web-ui-button` 或原生 `button`），开合状态会回写到它的 `aria-expanded` / `aria-controls`。`open-change` 只在用户来源的开合后派发，程序式写 `open` 不派发；下面那行读数就是最近一次通知的值。
 
-```react
-<web-ui-popover>
-  <web-ui-button slot="trigger" variant="secondary">
-    显示详情
-  </web-ui-button>
-  <div className="popover-body">这里是弹出层内容</div>
-</web-ui-popover>
+```tsx
+import { useState } from 'react'
+
+export default function Demo() {
+  const [count, setCount] = useState(0)
+  const [last, setLast] = useState('—')
+
+  return (
+    <div className="flex w-full max-w-md flex-col items-start gap-3">
+      <web-ui-popover
+        onopen-change={event => {
+          setCount(value => value + 1)
+          setLast(event.detail.open ? 'true' : 'false')
+        }}
+      >
+        <web-ui-button slot="trigger" variant="secondary">
+          显示详情
+        </web-ui-button>
+        <div className="flex max-w-xs flex-col gap-1 text-sm">
+          <span className="font-semibold">发布详情</span>
+          <span>panel 放任意节点；点 trigger 切换，点外面或按 Escape 关闭。</span>
+        </div>
+      </web-ui-popover>
+      <output className="text-sm text-(--wui-color-text-secondary)">
+        open-change：{count} 次 · 最后一次 detail.open = {last}
+      </output>
+    </div>
+  )
+}
 ```
 
 ```vue
 <template>
-  <web-ui-popover>
-    <web-ui-button slot="trigger" variant="secondary">显示详情</web-ui-button>
-    <div class="popover-body">这里是弹出层内容</div>
-  </web-ui-popover>
+  <div class="flex w-full max-w-md flex-col items-start gap-3">
+    <web-ui-popover @open-change="onOpenChange">
+      <web-ui-button slot="trigger" variant="secondary">显示详情</web-ui-button>
+      <div class="flex max-w-xs flex-col gap-1 text-sm">
+        <span class="font-semibold">发布详情</span>
+        <span>panel 放任意节点；点 trigger 切换，点外面或按 Escape 关闭。</span>
+      </div>
+    </web-ui-popover>
+    <output class="text-sm text-(--wui-color-text-secondary)">
+      open-change：{{ count }} 次 · 最后一次 detail.open = {{ last }}
+    </output>
+  </div>
 </template>
+
+<script setup lang="ts">
+import type { WebUiEvent, WebUiPopover } from '@greypan/web-ui'
+import { ref } from 'vue'
+
+const count = ref(0)
+const last = ref('—')
+
+function onOpenChange(event: WebUiEvent<WebUiPopover, 'open-change'>) {
+  count.value += 1
+  last.value = event.detail.open ? 'true' : 'false'
+}
+</script>
 ```
 
-### Hover 触发
+### Hover 触发 {#hover}
 
-`trigger` 为 `hover` 时用 `pointerenter` / `pointerleave` 加延迟控制开合。
+`trigger="hover"` 用 `pointerenter` / `pointerleave` 加 100ms 延迟控制开合；指针从 trigger 移进 panel 不会收起。click 与 focus 在这个模式下都不触发，读数同样只跟随用户来源的 `open-change`。
 
-```react
-<web-ui-popover trigger="hover" placement="top">
-  <web-ui-button slot="trigger">悬停我</web-ui-button>
-  <div className="popover-body">悬停显示的气泡</div>
-</web-ui-popover>
+```tsx
+import { useState } from 'react'
+
+export default function Demo() {
+  const [last, setLast] = useState('—')
+
+  return (
+    <div className="flex w-full max-w-md flex-col items-start gap-3">
+      <web-ui-popover
+        trigger="hover"
+        placement="top"
+        onopen-change={event => setLast(event.detail.open ? 'true' : 'false')}
+      >
+        <web-ui-button slot="trigger" variant="secondary">
+          悬停我
+        </web-ui-button>
+        <div className="max-w-xs text-sm">悬停显示的 panel；移进 panel 内仍然开着，离开 100ms 后才收起。</div>
+      </web-ui-popover>
+      <output className="text-sm text-(--wui-color-text-secondary)">最后一次 detail.open = {last}</output>
+    </div>
+  )
+}
 ```
 
 ```vue
 <template>
-  <web-ui-popover trigger="hover" placement="top">
-    <web-ui-button slot="trigger">悬停我</web-ui-button>
-    <div class="popover-body">悬停显示的气泡</div>
-  </web-ui-popover>
-</template>
-```
-
-### 受控开合
-
-`open` 可被程序化写入，`open-change` 只报告用户来源的开合。
-
-```react
-<web-ui-popover open={open} onopen-change={event => setOpen(event.detail.open)}>
-  <web-ui-button slot="trigger" onClick={() => setOpen(!open)}>
-    主题设置
-  </web-ui-button>
-  <div className="popover-body">受控内容</div>
-</web-ui-popover>
-```
-
-```vue
-<template>
-  <web-ui-popover :open="open" @open-change="open = $event.detail.open">
-    <web-ui-button slot="trigger" @click="open = !open">主题设置</web-ui-button>
-    <div class="popover-body">受控内容</div>
-  </web-ui-popover>
+  <div class="flex w-full max-w-md flex-col items-start gap-3">
+    <web-ui-popover trigger="hover" placement="top" @open-change="last = $event.detail.open ? 'true' : 'false'">
+      <web-ui-button slot="trigger" variant="secondary">悬停我</web-ui-button>
+      <div class="max-w-xs text-sm">悬停显示的 panel；移进 panel 内仍然开着，离开 100ms 后才收起。</div>
+    </web-ui-popover>
+    <output class="text-sm text-(--wui-color-text-secondary)">最后一次 detail.open = {{ last }}</output>
+  </div>
 </template>
 
 <script setup lang="ts">
 import { ref } from 'vue'
 
+const last = ref('—')
+</script>
+```
+
+### 受控开合 {#controlled}
+
+`trigger="manual"` 不响应悬停，点 panel 外与 Escape 也不会关闭；开合由外部 button 调用 `show()` / `close()` 或点 trigger 自己切换。`open` 由页面状态持有：程序式调用不派发 `open-change`，所以 button 在调用后自己同步状态；用户点 trigger 时组件切换并派发 `open-change`，handler 把 `detail.open` 回写进同一份状态。下面读数就是页面持有的 `open`。
+
+```tsx
+import type { WebUiPopover } from '@greypan/web-ui'
+import { useRef, useState } from 'react'
+
+export default function Demo() {
+  const panel = useRef<WebUiPopover>(null)
+  const [open, setOpen] = useState(false)
+
+  return (
+    <div className="flex w-full max-w-md flex-col items-start gap-3">
+      <web-ui-popover ref={panel} trigger="manual" open={open} onopen-change={event => setOpen(event.detail.open)}>
+        <web-ui-button slot="trigger" variant="secondary">
+          手动开合
+        </web-ui-button>
+        <div className="flex max-w-xs flex-col gap-1 text-sm">
+          <span className="font-semibold">manual 模式</span>
+          <span>不响应悬停；点击面板外或按 Escape 也不关闭。</span>
+        </div>
+      </web-ui-popover>
+      <div className="flex flex-wrap items-center gap-2">
+        <web-ui-button
+          size="28"
+          variant="secondary"
+          onClick={() => {
+            panel.current?.show()
+            setOpen(true)
+          }}
+        >
+          show()
+        </web-ui-button>
+        <web-ui-button
+          size="28"
+          variant="secondary"
+          onClick={() => {
+            panel.current?.close()
+            setOpen(false)
+          }}
+        >
+          close()
+        </web-ui-button>
+        <output className="text-sm text-(--wui-color-text-secondary)">open = {String(open)}</output>
+      </div>
+    </div>
+  )
+}
+```
+
+```vue
+<template>
+  <div class="flex w-full max-w-md flex-col items-start gap-3">
+    <web-ui-popover ref="panel" trigger="manual" :open="open" @open-change="open = $event.detail.open">
+      <web-ui-button slot="trigger" variant="secondary">手动开合</web-ui-button>
+      <div class="flex max-w-xs flex-col gap-1 text-sm">
+        <span class="font-semibold">manual 模式</span>
+        <span>不响应悬停；点击面板外或按 Escape 也不关闭。</span>
+      </div>
+    </web-ui-popover>
+    <div class="flex flex-wrap items-center gap-2">
+      <web-ui-button size="28" variant="secondary" @click="show">show()</web-ui-button>
+      <web-ui-button size="28" variant="secondary" @click="close">close()</web-ui-button>
+      <output class="text-sm text-(--wui-color-text-secondary)">open = {{ open }}</output>
+    </div>
+  </div>
+</template>
+
+<script setup lang="ts">
+import type { WebUiPopover } from '@greypan/web-ui'
+import { ref, useTemplateRef } from 'vue'
+
+const panel = useTemplateRef<WebUiPopover>('panel')
 const open = ref(false)
+
+function show() {
+  panel.value?.show()
+  open.value = true
+}
+
+function close() {
+  panel.value?.close()
+  open.value = false
+}
 </script>
 ```
 
@@ -114,7 +243,7 @@ const open = ref(false)
 
 ### 行为说明
 
-Hover 模式使用 `pointerenter`/`pointerleave` 加延迟控制。Click 模式点击切换。Manual 模式仅响应命令式调用。
+Hover 模式使用 `pointerenter`/`pointerleave` 加延迟控制。Click 模式点击切换。Manual 模式不响应悬停，点击面板外与 Escape 也不关闭；trigger 点击与 `show()` / `close()` 都能改 `open`，其中程序式调用不派发 `open-change`。
 
 ### trigger ARIA
 
