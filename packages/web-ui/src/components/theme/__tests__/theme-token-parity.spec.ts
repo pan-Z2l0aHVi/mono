@@ -434,13 +434,9 @@ describe('注释不是 fallback 站点', () => {
   })
 
   it('剥注释后组件 CSS 的站点总数少 2（剥掉的两处正是注释内的 var()）', () => {
-    // 覆盖面口径：原样扫出 699 处，剥掉 collapse:232 与 dialog:72 两处注释站点后剩 697
-    // （较上一版多 5 处，来自 slider 公开尺寸 token 改名：thumb 的厚度与长边各自成为公开 token，
-    //  在每个使用点各带一次 fallback（厚度 5 处、长边 4 处）；
-    //  track 那边两处 `var(--wui-slider-height, var(--wui-slider-track-size, 6px))`
-    //  合并成 `var(--wui-slider-track-size, 6px)`，少 2 处；spinner 主题色与 button-group 控件尺寸各新增一处 fallback；
-    //  垂直轨道宽度不再绑定控制尺寸 token，少 1 处）
-    expect(allFallbackSites).toHaveLength(697)
+    // 覆盖面口径：原样扫出 701 处，剥掉 collapse:232 与 dialog:72 两处注释站点后剩 699
+    // 相比 origin/main 的 697 处，多出的 2 处来自 avatar fallback 底色与字色新增的主题 token fallback。
+    expect(allFallbackSites).toHaveLength(699)
   })
 
   it('原样扫描与剥注释扫描的差集恰好是这两处，其余站点逐字不动', () => {
