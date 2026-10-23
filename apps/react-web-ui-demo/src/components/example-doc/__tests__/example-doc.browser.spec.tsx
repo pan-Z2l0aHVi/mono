@@ -926,7 +926,7 @@ describe('example-doc（React 面 / 真实浏览器）', () => {
       ).toEqual(doc.samples.map(candidate => candidate.demoKey).filter(Boolean))
       await mountDemos(container, doc, tag)
     }
-  })
+  }, 120_000) // 逐篇挂载全部锚点示例，CI runner 上远超默认 15s。
 
   it('同页的 slider 示例使用不同 accessible name', async () => {
     const { container } = render(<ExampleDoc component="slider" />)
