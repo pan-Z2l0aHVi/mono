@@ -268,6 +268,52 @@ describe('theme transition（浏览器）', () => {
     wrapper.restore()
   })
 
+  /*
+   * 局部揭示要求宿主有盒，而它默认 `display: contents`，所以飞行期间被临时抬成 block。盒一多，
+   * 父级 flex 的 item 就从「作用域内那个 width:100% 的子元素」换成了宿主自己，子元素的宽度基准
+   * 跟着换成宿主的 shrink-to-fit——内容在揭示期间跳窄、结束后再跳回来（demo 里表现为深色区宽度
+   * 跳变）。这里钉的是行为：换了盒，宽度不许动。
+   */
+  it('嵌套主题在揭示期间不改变内容宽度', async () => {
+    const wrapper = wrapStartViewTransition()
+    const outer = createRootTheme()
+    const flex = document.createElement('div')
+    flex.style.cssText = 'display:flex;flex-wrap:wrap;width:600px'
+    const inner = document.createElement('web-ui-theme') as WebUiTheme
+    inner.appearance = 'light'
+    inner.motion = 'full'
+    inner.style.setProperty('--wui-theme-transition-duration', '3000ms')
+    const content = document.createElement('div')
+    content.style.cssText = 'width:100%;max-width:384px'
+    content.append(
+      ...[0, 1, 2].map(() => {
+        const row = document.createElement('span')
+        row.style.cssText = 'display:block;height:16px;width:120px'
+        return row
+      })
+    )
+    inner.append(content)
+    flex.append(inner)
+    outer.append(flex)
+    await inner.updateComplete
+
+    const before = content.getBoundingClientRect().width
+    expect(before).toBe(384)
+
+    inner.appearance = 'dark'
+    const transition = wrapper.current
+    expect(transition).toBeDefined()
+    await transition!.ready
+    expect(getComputedStyle(inner).display).toBe('block')
+    expect(content.getBoundingClientRect().width).toBe(before)
+
+    await transition!.finished
+    expect(content.getBoundingClientRect().width).toBe(before)
+    expect(inner.style.getPropertyValue('width')).toBe('')
+    expect(inner.style.getPropertyValue('display')).toBe('')
+    wrapper.restore()
+  })
+
   it('pointermove 与 pointerup 不触发 skip，pointerdown 立即恢复 hit-test', async () => {
     const wrapper = wrapStartViewTransition()
     const source = createHitTarget()

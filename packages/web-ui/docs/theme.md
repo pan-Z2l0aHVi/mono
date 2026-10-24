@@ -73,7 +73,7 @@ const labels: Record<(typeof appearances)[number], string> = {
 
 把 `appearance` 绑到页面状态上就是主题切换，`system` 由 `prefers-color-scheme` 解析。
 
-开关写在同一个作用域里，改的只有这一层：文档页自己套在一个 `<web-ui-theme>` 里，示例因此是嵌套主题，换色只揭示它自己的 capture box，外层外观与写在 `documentElement` 上的页面色都不受影响。这一层是否播放揭示由自己的 `motion` 决定。
+开关写在同一个作用域里，改的只有这一层。示例外面再包一层固定 `dark` 的主题，把嵌套摆到明面上：内层换色只揭示它自己的 capture box，外层的外观与写在 `documentElement` 上的页面色都不受影响；这一层是否播放揭示由自己的 `motion` 决定。
 
 ```tsx
 import type { ThemeAppearance } from '@greypan/web-ui'
@@ -89,29 +89,34 @@ export default function Demo() {
   const [appearance, setAppearance] = useState<ThemeAppearance>('light')
 
   return (
-    <web-ui-theme appearance={appearance}>
-      <div className="w-full max-w-sm rounded-2xl bg-(--wui-color-page) p-4 text-(--wui-color-text)">
-        <div className="mb-3 flex flex-wrap items-center gap-2">
-          <span className="text-sm text-(--wui-color-text-secondary)">appearance</span>
-          <web-ui-segmented
-            value={appearance}
-            aria-label="示例作用域的外观"
-            onInput={event => {
-              const next = appearances.find(item => item.value === event.currentTarget.value)
-              if (next) setAppearance(next.value)
-            }}
-          >
-            {appearances.map(item => (
-              <web-ui-segmented-trigger key={item.value} value={item.value}>
-                {item.label}
-              </web-ui-segmented-trigger>
-            ))}
-          </web-ui-segmented>
-        </div>
-        <div className="flex flex-wrap items-center gap-2">
-          <web-ui-input value="作用域内的输入框"></web-ui-input>
-          <web-ui-button variant="primary">确认</web-ui-button>
-        </div>
+    <web-ui-theme appearance="dark">
+      <div className="rounded-2xl bg-(--wui-color-page) p-4 text-(--wui-color-text)">
+        <p className="m-0 mb-3 text-xs text-(--wui-color-text-secondary)">外层固定 dark，内层怎么切都动不了它</p>
+        <web-ui-theme appearance={appearance}>
+          <div className="w-full max-w-sm rounded-2xl border border-(--wui-color-border) bg-(--wui-color-page) p-4 text-(--wui-color-text)">
+            <div className="mb-3 flex flex-wrap items-center gap-2">
+              <span className="text-sm text-(--wui-color-text-secondary)">appearance</span>
+              <web-ui-segmented
+                value={appearance}
+                aria-label="示例作用域的外观"
+                onInput={event => {
+                  const next = appearances.find(item => item.value === event.currentTarget.value)
+                  if (next) setAppearance(next.value)
+                }}
+              >
+                {appearances.map(item => (
+                  <web-ui-segmented-trigger key={item.value} value={item.value}>
+                    {item.label}
+                  </web-ui-segmented-trigger>
+                ))}
+              </web-ui-segmented>
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
+              <web-ui-input value="作用域内的输入框"></web-ui-input>
+              <web-ui-button variant="primary">确认</web-ui-button>
+            </div>
+          </div>
+        </web-ui-theme>
       </div>
     </web-ui-theme>
   )
@@ -120,20 +125,31 @@ export default function Demo() {
 
 ```vue
 <template>
-  <web-ui-theme :appearance="appearance">
-    <div class="w-full max-w-sm rounded-2xl bg-(--wui-color-page) p-4 text-(--wui-color-text)">
-      <div class="mb-3 flex flex-wrap items-center gap-2">
-        <span class="text-sm text-(--wui-color-text-secondary)">appearance</span>
-        <web-ui-segmented :value="appearance" aria-label="示例作用域的外观" @input="pick($event.currentTarget.value)">
-          <web-ui-segmented-trigger v-for="item in appearances" :key="item.value" :value="item.value">
-            {{ item.label }}
-          </web-ui-segmented-trigger>
-        </web-ui-segmented>
-      </div>
-      <div class="flex flex-wrap items-center gap-2">
-        <web-ui-input value="作用域内的输入框"></web-ui-input>
-        <web-ui-button variant="primary">确认</web-ui-button>
-      </div>
+  <web-ui-theme appearance="dark">
+    <div class="rounded-2xl bg-(--wui-color-page) p-4 text-(--wui-color-text)">
+      <p class="m-0 mb-3 text-xs text-(--wui-color-text-secondary)">外层固定 dark，内层怎么切都动不了它</p>
+      <web-ui-theme :appearance="appearance">
+        <div
+          class="w-full max-w-sm rounded-2xl border border-(--wui-color-border) bg-(--wui-color-page) p-4 text-(--wui-color-text)"
+        >
+          <div class="mb-3 flex flex-wrap items-center gap-2">
+            <span class="text-sm text-(--wui-color-text-secondary)">appearance</span>
+            <web-ui-segmented
+              :value="appearance"
+              aria-label="示例作用域的外观"
+              @input="pick($event.currentTarget.value)"
+            >
+              <web-ui-segmented-trigger v-for="item in appearances" :key="item.value" :value="item.value">
+                {{ item.label }}
+              </web-ui-segmented-trigger>
+            </web-ui-segmented>
+          </div>
+          <div class="flex flex-wrap items-center gap-2">
+            <web-ui-input value="作用域内的输入框"></web-ui-input>
+            <web-ui-button variant="primary">确认</web-ui-button>
+          </div>
+        </div>
+      </web-ui-theme>
     </div>
   </web-ui-theme>
 </template>
@@ -225,35 +241,62 @@ function inspect() {
 
 主题可以层层嵌套，每一层解析自己的 token：内层覆盖外层，离开内层又回到外层的值，两层的 `resolved-appearance` 各自输出。
 
-`motion` 同样是每层自己的档位、不沿祖先继承，内层不写就是默认的 `system`。
+`motion` 同样是每层自己的档位、不沿祖先继承，内层不写就是默认的 `system`。它裁的是这一层的过渡时长（`--wui-duration-*`），所以档位差要用动效看得见的控件来摆：两层各放一枚 segmented 与 switch——指示器与滑块的过渡都读本层的 `--wui-duration-trigger`，点一下，外层（`reduced`）瞬移、内层（取 `system`）滑过去。
 
 宿主不生成盒，所以布局（这里的高度间距）要写在作用域内的子元素上，写在 `<web-ui-theme>` 宿主上是空的。
 
 ```tsx
+import { useState } from 'react'
+
+const sides: { label: string; value: string }[] = [
+  { label: 'A', value: 'a' },
+  { label: 'B', value: 'b' }
+]
+
 export default function Demo() {
+  const [outerValue, setOuterValue] = useState('a')
+  const [innerValue, setInnerValue] = useState('a')
+
   return (
     <web-ui-theme appearance="light" motion="reduced">
       <div className="rounded-2xl bg-(--wui-color-page) p-4 text-(--wui-color-text)">
-        <p className="m-0 mb-2 text-xs text-(--wui-color-text-secondary)">外层 light / reduced</p>
-        <div className="flex flex-wrap items-center gap-2">
-          <web-ui-button variant="primary">外层按钮</web-ui-button>
-          <web-ui-switch checked></web-ui-switch>
+        <p className="m-0 mb-2 text-xs text-(--wui-color-text-secondary)">外层 light / reduced：瞬移</p>
+        <div className="flex flex-wrap items-center gap-3">
+          <web-ui-segmented
+            value={outerValue}
+            aria-label="外层动效对照"
+            onInput={event => setOuterValue(event.currentTarget.value)}
+          >
+            {sides.map(item => (
+              <web-ui-segmented-trigger key={item.value} value={item.value}>
+                {item.label}
+              </web-ui-segmented-trigger>
+            ))}
+          </web-ui-segmented>
+          <web-ui-switch></web-ui-switch>
         </div>
 
         <web-ui-theme appearance="dark">
           <div className="mt-3 rounded-2xl border border-(--wui-color-border) bg-(--wui-color-page) p-4 text-(--wui-color-text)">
-            <p className="m-0 mb-2 text-xs text-(--wui-color-text-secondary)">内层 dark / motion 未写，取 system</p>
-            <div className="flex flex-wrap items-center gap-2">
-              <web-ui-button variant="primary">内层按钮</web-ui-button>
-              <web-ui-input value="内层的输入框"></web-ui-input>
+            <p className="m-0 mb-2 text-xs text-(--wui-color-text-secondary)">
+              内层 dark / motion 未写，取 system：滑动
+            </p>
+            <div className="flex flex-wrap items-center gap-3">
+              <web-ui-segmented
+                value={innerValue}
+                aria-label="内层动效对照"
+                onInput={event => setInnerValue(event.currentTarget.value)}
+              >
+                {sides.map(item => (
+                  <web-ui-segmented-trigger key={item.value} value={item.value}>
+                    {item.label}
+                  </web-ui-segmented-trigger>
+                ))}
+              </web-ui-segmented>
+              <web-ui-switch checked></web-ui-switch>
             </div>
           </div>
         </web-ui-theme>
-
-        <div className="mt-3 flex flex-wrap items-center gap-2">
-          <web-ui-button variant="primary">回到外层</web-ui-button>
-          <web-ui-switch checked></web-ui-switch>
-        </div>
       </div>
     </web-ui-theme>
   )
@@ -264,31 +307,54 @@ export default function Demo() {
 <template>
   <web-ui-theme appearance="light" motion="reduced">
     <div class="rounded-2xl bg-(--wui-color-page) p-4 text-(--wui-color-text)">
-      <p class="m-0 mb-2 text-xs text-(--wui-color-text-secondary)">外层 light / reduced</p>
-      <div class="flex flex-wrap items-center gap-2">
-        <web-ui-button variant="primary">外层按钮</web-ui-button>
-        <web-ui-switch checked></web-ui-switch>
+      <p class="m-0 mb-2 text-xs text-(--wui-color-text-secondary)">外层 light / reduced：瞬移</p>
+      <div class="flex flex-wrap items-center gap-3">
+        <web-ui-segmented
+          :value="outerValue"
+          aria-label="外层动效对照"
+          @input="outerValue = $event.currentTarget.value"
+        >
+          <web-ui-segmented-trigger v-for="item in sides" :key="item.value" :value="item.value">
+            {{ item.label }}
+          </web-ui-segmented-trigger>
+        </web-ui-segmented>
+        <web-ui-switch></web-ui-switch>
       </div>
 
       <web-ui-theme appearance="dark">
         <div
           class="mt-3 rounded-2xl border border-(--wui-color-border) bg-(--wui-color-page) p-4 text-(--wui-color-text)"
         >
-          <p class="m-0 mb-2 text-xs text-(--wui-color-text-secondary)">内层 dark / motion 未写，取 system</p>
-          <div class="flex flex-wrap items-center gap-2">
-            <web-ui-button variant="primary">内层按钮</web-ui-button>
-            <web-ui-input value="内层的输入框"></web-ui-input>
+          <p class="m-0 mb-2 text-xs text-(--wui-color-text-secondary)">内层 dark / motion 未写，取 system：滑动</p>
+          <div class="flex flex-wrap items-center gap-3">
+            <web-ui-segmented
+              :value="innerValue"
+              aria-label="内层动效对照"
+              @input="innerValue = $event.currentTarget.value"
+            >
+              <web-ui-segmented-trigger v-for="item in sides" :key="item.value" :value="item.value">
+                {{ item.label }}
+              </web-ui-segmented-trigger>
+            </web-ui-segmented>
+            <web-ui-switch checked></web-ui-switch>
           </div>
         </div>
       </web-ui-theme>
-
-      <div class="mt-3 flex flex-wrap items-center gap-2">
-        <web-ui-button variant="primary">回到外层</web-ui-button>
-        <web-ui-switch checked></web-ui-switch>
-      </div>
     </div>
   </web-ui-theme>
 </template>
+
+<script setup lang="ts">
+import { ref } from 'vue'
+
+const sides = [
+  { label: 'A', value: 'a' },
+  { label: 'B', value: 'b' }
+] as const
+
+const outerValue = ref('a')
+const innerValue = ref('a')
+</script>
 ```
 
 ### 动效档位 {#motion}
