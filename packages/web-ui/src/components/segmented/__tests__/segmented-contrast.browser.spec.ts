@@ -12,19 +12,17 @@ import type { WebUiTheme } from '@/components/theme'
 import { queryA11y, waitForUpdate } from '@/shared/test-utils'
 
 /**
- * segmented 的三条可辨度守卫：label 文字对 track 底、凸变种 indicator 对 track 底的亮度差，
- * 以及凸变种 indicator 与同主题 secondary button 面是否同色。
+ * segmented 的可辨度守卫：未选中 label 与 track 底、选中 label 与真实 indicator 的文字对比度，
+ * raised indicator 相对 track 的亮度差，以及深色 raised indicator 与同主题 secondary button 面是否同色。
  *
- * 这里断言的是**关系**而非色值：WCAG 相对亮度比 `ratio(文字, track 底) ≥ 3`。两侧颜色
- * 都由主题 token 决定，断言里不含任何颜色字面量——主题怎么调色板（连同 media 块与双语文档
- * 一起改，那是一次完全正常的编辑）它都应成立，而只要 label 与 track 的明暗关系被破坏，它就会红。
- * 第三条拿同一主题里的 secondary button 当参照物，判据是两个 calc 出来的色相等。
+ * 这里断言的是**关系**而非色值：WCAG 相对亮度比由主题 token 决定，断言里不含颜色字面量。
+ * 它应允许主题整体调整，同时拦住文字与实际承载面的对比度不足。
  *
  * 只钉「文字色等于某个 token」不够：README parity 守卫管的是文档与定义同步，管不了
  * 换一组同样合法的色值之后两者是否还看得清。
  *
- * track 与 label 走公开语义（`role="listbox"` / `role="option"`），不需要内部 class；indicator
- * 是模板里一个没有语义的 `<span>`，公开面拿不到它，只能按 `.wui-segmented-indicator` 取。
+ * track 与 label 走公开语义（role="listbox" / role="option"）；indicator 是模板里一个没有语义
+ * 的 <span>，公开面拿不到它，只能按 .wui-segmented-indicator 取。
  */
 afterEach(() => document.body.replaceChildren())
 
@@ -32,6 +30,7 @@ async function mount(
   appearance: 'light' | 'dark',
   variant: 'inset' | 'raised' = 'inset'
 ): Promise<{
+  segmented: WebUiSegmented
   track: HTMLElement
   indicator: HTMLElement
   buttonFace: HTMLElement
@@ -49,7 +48,8 @@ async function mount(
     return trigger
   })
   segmented.append(...triggers)
-  // 同主题里的参照物：secondary button 的面就是「这颗 indicator 应该长得像谁」。
+
+  // 同主题里的参照物：secondary button 的面是深色 raised indicator 的对照面。
   const button = document.createElement('web-ui-button') as WebUiButton
   button.variant = 'secondary'
   button.textContent = 'ok'
@@ -62,16 +62,22 @@ async function mount(
   const track = queryA11y(segmented, '[role="listbox"]')
   if (!(track instanceof HTMLElement)) throw new Error('未找到 role="listbox" 的 track surface')
   const indicator = queryA11y(segmented, '.wui-segmented-indicator')
-  if (!(indicator instanceof HTMLElement)) throw new Error('未找到静止态 indicator')
+  if (!(indicator instanceof HTMLElement)) throw new Error('未找到 selected indicator')
   const buttonFace = button.shadowRoot?.querySelector('button')
   if (!(buttonFace instanceof HTMLElement)) throw new Error('未找到 button 的 shadow 面')
-  return { track, indicator, buttonFace, triggers }
+  return { segmented, track, indicator, buttonFace, triggers }
 }
 
 function textColorOf(trigger: WebUiSegmentedTrigger): string {
   const surface = queryA11y(trigger, '[role="option"]')
   if (!(surface instanceof HTMLElement)) throw new Error('未找到 role="option" 的可交互面')
   return getComputedStyle(surface).color
+}
+
+function selectedIndicatorColorOf(segmented: WebUiSegmented): string {
+  const indicator = queryA11y(segmented, '.wui-segmented-indicator')
+  if (!(indicator instanceof HTMLElement)) throw new Error('未找到 selected indicator')
+  return getComputedStyle(indicator).backgroundColor
 }
 
 /** WCAG 相对亮度比：两条计算色值的亮度之比，两侧顺序无关。 */
@@ -92,28 +98,39 @@ function contrastRatio(a: string, b: string): number {
 
 describe('WebUiSegmented 可辨度（浏览器）', () => {
   for (const appearance of ['light', 'dark'] as const) {
-    it(`${appearance} 下每个 label 与 track 底的对比度 ≥ 3:1`, async () => {
+    it(`${appearance} 下未选中 label 与 track 底的对比度 ≥ 4.5:1`, async () => {
       const { track, triggers } = await mount(appearance)
       const backdrop = getComputedStyle(track).backgroundColor
 
       for (const trigger of triggers) {
+        const surface = queryA11y(trigger, '[role="option"]')
+        if (surface?.getAttribute('aria-selected') === 'true') continue
         const label = trigger.textContent ?? ''
         const ratio = contrastRatio(textColorOf(trigger), backdrop)
-        expect(ratio, `「${label}」与 track 底对比度不足：${ratio.toFixed(2)}:1`).toBeGreaterThanOrEqual(3)
+        expect(ratio, `「${label}」与 track 底对比度不足：${ratio.toFixed(2)}:1`).toBeGreaterThanOrEqual(4.5)
       }
     })
+
+    for (const variant of ['inset', 'raised'] as const) {
+      it(`${appearance} / ${variant} 下选中 label 与 indicator 的对比度 ≥ 4.5:1`, async () => {
+        const { segmented, triggers } = await mount(appearance, variant)
+        const selected = triggers.find(
+          trigger => queryA11y(trigger, '[role="option"]')?.getAttribute('aria-selected') === 'true'
+        )
+        if (!selected) throw new Error('未找到已选中的 segmented label')
+
+        const ratio = contrastRatio(textColorOf(selected), selectedIndicatorColorOf(segmented))
+        expect(
+          ratio,
+          `${appearance} / ${variant} 的选中 label 与 indicator 对比度不足：${ratio.toFixed(2)}:1`
+        ).toBeGreaterThanOrEqual(4.5)
+      })
+    }
   }
 
   /*
-   * 凸变种（raised）的静止 indicator 靠投影与几何读出「浮起」，不靠亮度断层，所以尺子取浅色档：
-   * #e5e5ea track / #fff indicator，比值 1.26。深色抬一档灰的代价比想象中大——同一条
-   * #2c2c2e 轨道上，indicator 从 #3a3a3c（1.23）换到 #48484a 就是 1.53，换到更早的 #5c5c5e
-   * 是 2.09；亮度断层一盖过投影，选中块就读成一条高亮，而不是一颗按钮。
-   * 断言拿两档各自量出的比值相比、不写色值字面量：调色板整体重排它仍然成立，只把深色
-   * indicator 调亮就会红。
-   *
-   * 容差 0.1 刻意小于深色阶梯往上抬一档带来的比值增量（indicator 从 #3a3a3c 换到 #444446 是
-   * 1.23 → 1.43，+0.21），所以它只吸收派生色与 color-mix 的抖动，放不下一次真实的抬档。
+   * raised 变种的静止 indicator 靠投影与几何读出「浮起」，不靠亮度断层，所以比较浅色与深色
+   * indicator 相对各自 track 的对比度。这条关系允许主题整体重排，但会拦住深色面被抬亮成高亮条。
    */
   it('raised 变体两档下 indicator 相对 track 的亮度差同一量级', async () => {
     const ratios = { light: 0, dark: 0 }
@@ -125,7 +142,6 @@ describe('WebUiSegmented 可辨度（浏览器）', () => {
       )
     }
 
-    // indicator 必须仍看得见（比值 > 1），但深色不得比浅色的凸起断层更亮。
     expect(ratios.light).toBeGreaterThan(1)
     expect(ratios.dark).toBeGreaterThan(1)
     const summary = `light ${ratios.light.toFixed(2)}:1 vs dark ${ratios.dark.toFixed(2)}:1`
@@ -135,15 +151,8 @@ describe('WebUiSegmented 可辨度（浏览器）', () => {
   })
 
   /*
-   * 「深色下这颗 indicator 要像一颗按钮」的可执行版本：它的底色与同一主题里 secondary
-   * button 的面是同一个 calc 值。用真实 button 当参照而不是色值字面量，是为了让失效模式
-   * 自己说话——重排调色板时两者一起动、用例仍绿，只把 indicator 抬亮（旧值 #5c5c5e）就红。
-   *
-   * 浅色刻意不进这条断言：那里 button 的面是 #dfdfdf、indicator 是 #fff，比按钮面还白——它读成
-   * 一张与 page 同为最白的纸片浮在沉下去的轨道上，本来就不是 button 面。深色没有这个选项
-   * （page 是阶梯最暗的一档），比 button 面再亮一档只剩 surface-track（#444446），断层一盖过
-   * 投影就读成高亮条而不是按钮，所以这里直接对齐 button 面，代价是轨道要沉一档
-   * （见 surface-segmented-track）。
+   * 深色 raised indicator 应沿用 secondary button 面的色值；以真实 button 为参照，
+   * 让配色整体调整仍可成立，同时防止 indicator 单独抬亮后变成高亮条。
    */
   it('dark 下 raised 的 indicator 与同主题 secondary button 同面', async () => {
     const { indicator, buttonFace } = await mount('dark', 'raised')

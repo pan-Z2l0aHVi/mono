@@ -6257,7 +6257,7 @@ export const exampleDocs: ExampleDoc[] = [
         "kind": "prose",
         "key": "文字色",
         "title": "文字色",
-        "html": "<p>选中与未选中项文字一律保持 <code>--wui-color-text-secondary</code>——<code>inset</code>/<code>raised</code> 两个变体一致，静止态与按压/拖拽态一致。选中态只由 indicator 承担，任何 label 都不着 <code>--wui-color-accent</code>。</p>"
+        "html": "<p>所有 label 一律使用 <code>--wui-color-text</code> 主文本色；内建 light/dark 主题下，14px 文字压在 <code>inset</code>/<code>raised</code> 静止 indicator 上均满足 4.5:1。选中与未选中项保持同色，选择状态仍由 indicator 承担，任何 label 都不着 <code>--wui-color-accent</code>。</p>"
       }
     ],
     "samples": [
