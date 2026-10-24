@@ -99,7 +99,7 @@ import { lucideSearch } from '@greypan/web-ui/icons'
 
 ### 清除 button {#clearable}
 
-`clearable` 只在有值时画出清除 button，空值时不画；点它会清空值，并**同时派发 `input` 与 `change`**——清空是一次已提交的离散变更，不是连续输入，只监听 `change` 的消费者也必须收到。`full` 让控件占满父容器宽度。
+`clearable` 只在有值且未设置 `disabled` 或 `readonly` 时画出清除 button；空值、禁用或只读时不画。点击清除 button 会清空值，并**同时派发 `input` 与 `change`**——清空是一次已提交的离散变更，不是连续输入，只监听 `change` 的消费者也必须收到。`full` 让控件占满父容器宽度。
 
 ```tsx
 export default function Demo() {
@@ -123,7 +123,7 @@ export default function Demo() {
 
 ### 禁用与只读 {#states}
 
-`disabled` 关掉输入，校验也让路，宿主整体降到四成不透明度；`readonly` 保留可读、可全选与可复制，但不接受输入，并收起清除 button——清除会改值，与只读语义冲突。
+`disabled` 关掉输入、校验与清除操作，宿主整体降到四成不透明度；`readonly` 保留可读、可全选与可复制，但不接受输入，并收起清除 button——清除会改值，与只读语义冲突。
 
 ```tsx
 import { lucideSearch } from '@greypan/web-ui/icons'
@@ -411,7 +411,7 @@ export default function Demo() {
 | `disabled`    | 禁用状态。                                                     | `boolean`        | `false`  |
 | `readonly`    | 只读状态。                                                     | `boolean`        | `false`  |
 | `required`    | 必填校验。                                                     | `boolean`        | `false`  |
-| `clearable`   | 显示清除 button；空值或 `readonly` 时不画。                    | `boolean`        | `false`  |
+| `clearable`   | 有值且未设置 `disabled` 或 `readonly` 时显示清除 button。      | `boolean`        | `false`  |
 | `full`        | 占满父容器宽度。                                               | `boolean`        | `false`  |
 | `borderless`  | ghost 形态：移除边框、背景与阴影，保留 padding 与 focus ring。 | `boolean`        | `false`  |
 | `aria-label`  | 无障碍 label。                                                 | `string \| null` | `null`   |
