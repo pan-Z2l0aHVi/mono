@@ -207,7 +207,10 @@
 
   /* 侧边栏专用表面：浅色保持中性分层，深色单独抬升一档（见下方 dark 块注释）。 */
   --wui-color-surface-sidebar: rgb(233 233 233 / 0.82);
-  --wui-color-surface-segmented: #e5e5ea;
+
+  /* 凹变种 indicator 与中性可交互控件同面：浅色与深色的默认值都取 control（= secondary button 的面）。
+     凸变种那颗另走一条等式（chip 与 page 同色、track 沉到 page 之下），规则见 segmented/style.css。 */
+  --wui-color-surface-segmented: #dfdfdf;
   --wui-color-surface-segmented-track: #e5e5ea;
   --wui-color-surface-selected: #fff;
   --wui-color-text: #1b1b1b;
@@ -279,7 +282,7 @@
      往上走的档差同量级：page→surface +6~+8、surface→control +14、control→track +10）。凸起方向仍由
      「chip 比 track 亮」读出，WCAG 亮度比 1.16:1，与浅色的 1.26:1 同量级，不会盖过柔投影。
      凹变种（inset）不参与：它的语义是「按下去的灰面」，track 取 surface（#2c2c2e）、indicator 取
-     #3a3a3c，与 page 同色反而读不出选中。 */
+     control（#3a3a3c，与浅色那颗同档），与 page 同色反而读不出选中。 */
   --wui-color-surface-segmented: #3a3a3c;
   --wui-color-surface-segmented-track: #17191a;
   --wui-color-surface-selected: #242628;

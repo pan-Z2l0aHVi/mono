@@ -319,15 +319,15 @@ onBeforeUnmount(() => toast.clear())
 
 | 名称        | 说明                                                        | 类型            | 默认值        |
 | ----------- | ----------------------------------------------------------- | --------------- | ------------- |
-| `message`   | 通知文本。                                                  | `string`        | `—`           |
+| `message`   | 通知文本。                                                  | `string`        | —             |
 | `type`      | 类型：`success`、`info`、`warning`、`error`。               | `ToastType`     | `'info'`      |
 | `duration`  | 自动关闭时间（ms），0 表示不自动关闭；`error` 默认 `5000`。 | `number`        | `3000`        |
 | `closable`  | 展示关闭 button。                                           | `boolean`       | `true`        |
 | `id`        | 合并键：同一个 `id` 再次调用是更新那一条。                  | `string`        | 自动生成      |
 | `heading`   | 粗体标题。                                                  | `string`        | `''`          |
 | `position`  | 屏幕位置。                                                  | `ToastPosition` | `'top-right'` |
-| `target`    | 用于查找最近 theme-owned overlay root。                     | `Element`       | `—`           |
-| `container` | 显式挂载容器（最高优先级）。                                | `HTMLElement`   | `—`           |
+| `target`    | 用于查找最近 theme-owned overlay root。                     | `Element`       | —             |
+| `container` | 显式挂载容器（最高优先级）。                                | `HTMLElement`   | —             |
 
 ### Methods
 

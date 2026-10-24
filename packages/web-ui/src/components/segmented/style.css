@@ -53,8 +53,8 @@
 }
 
 /* raised 变体（「凸」）：经典形态的 flat 灰 track——surface-segmented-track 实色，无描边环、无投影
-   （.wui-glass 的 box-shadow 与 ::before 环整体关掉），三种状态下保持同值。浅色它与凹变种 indicator
-   同色（#e5e5ea），深色让 track 沉到 page 之下（#17191a），好给 indicator 留出「与 page 同色」那一档。 */
+   （.wui-glass 的 box-shadow 与 ::before 环整体关掉），三种状态下保持同值。浅色它是 page（#fff）之下
+   的 #e5e5ea，深色让 track 沉到 page 之下（#17191a），两种都是给 indicator 留出「与 page 同色」那一档。 */
 :host([variant='raised']) .wui-segmented {
   background-color: var(--wui-color-surface-segmented-track, #e5e5ea);
   box-shadow: none;
@@ -86,8 +86,9 @@
 
   /* inset 变体（默认）静止态是纯灰底：.wui-glass 恒挂只为复用按压态配方，这里把它的
      glass-only 输出逐条关掉——backdrop blur、::before 描边环、inset 高光与投影，
-     只留 surface-segmented 实色。 */
-  background-color: var(--wui-color-surface-segmented, #e5e5ea);
+     只留 surface-segmented 实色（该 token 浅色与深色的默认值都等于 surface-control，也就是 secondary
+     button 的面；这条等式由 segmented-contrast 用例守着，两枚 token 在 theme 里各自是字面量定义）。 */
+  background-color: var(--wui-color-surface-segmented, #dfdfdf);
   backdrop-filter: none;
   box-shadow: none;
 

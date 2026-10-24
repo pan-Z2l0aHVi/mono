@@ -79,3 +79,15 @@ body {
 :not(:defined) {
   display: none;
 }
+
+/*
+ * 代码区的滚动被 OverlayScrollbars 接管后，真正的滚动元素是实例的 viewport，焦点也归它（见
+ * example-doc 里搬到 viewport 的 tabindex）。库把这一层的 outline 复位成 none，所以补回仓里
+ * 统一的 focus ring，否则键盘焦点没有可见反馈。偏移取负：代码卡外层有圆角并且 overflow-hidden，
+ * 向外描边会被裁掉。
+ */
+[data-code] [data-overlayscrollbars-viewport]:focus-visible {
+  outline: var(--wui-focus-ring-width, 3px) solid
+    var(--wui-color-focus-ring, color-mix(in srgb, var(--wui-color-accent, #0071e3) 40%, transparent));
+  outline-offset: -3px;
+}

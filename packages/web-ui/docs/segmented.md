@@ -399,7 +399,9 @@ function onChange(event: WebUiEvent<WebUiSegmented, 'change'>) {
 
 `inset`（默认，「凹」）是不透明实体 track（`--wui-color-surface`）——1px 描边环与投影全程常驻，静止 indicator 是 `--wui-color-surface-segmented` 纯灰底，视觉上嵌入 track。
 
-浅色下该 token 与 `--wui-color-page` 同值，track 与页面齐平，凹感只由常驻环与投影承担；深色下它是「比页面高一档」的 elevation，track 依旧浮离页面。
+浅色下 track 与 `--wui-color-page` 同值，与页面齐平，凹感只由常驻环与投影承担；深色下 track 是「比页面高一档」的 elevation，依旧浮离页面。
+
+indicator 那一档在浅色与深色下都取 `--wui-color-surface-control` 的默认值，也就是 `secondary` button 的面（浅 `#dfdfdf`、深 `#3a3a3c`）：选中那颗与同主题的中性可交互控件同面，不另起一档灰。这是同值而不是别名——两枚 token 在主题里各自定义、互不引用，所以单独覆盖 control 不会带着这颗 indicator 一起动。
 
 `raised`（「凸」）是经典形态：flat 灰 track（`--wui-color-surface-segmented-track`，无环无投影），静止 indicator 是 `--wui-color-surface-selected` 实体底加柔投影，浮起于 track 之上。
 

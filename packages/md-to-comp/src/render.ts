@@ -128,6 +128,15 @@ ${darkSelector} .mdc-code span {
   color: var(--shiki-dark);
 }
 
+/*
+ * 行号槽的压暗要在深色档再写一遍：上面那条深色取色规则是 darkSelector + .mdc-code + span，
+ * 与 .mdc-code + .line-number 同为两个类位却多带一个元素，比重更高，不补这一条，深色下行号会被
+ * 刷成正文满色——档位差异就只剩浅色有了。
+ */
+${darkSelector} .mdc-code .line-number {
+  color: color-mix(in srgb, currentcolor 45%, transparent);
+}
+
 ${darkSelector} .mdc-markdown,
 ${darkSelector} .mdc-heading {
   color: rgb(255 255 255 / 0.81);
@@ -183,6 +192,27 @@ ${darkSelector} .mdc-markdown th {
 .mdc-code,
 .mdc-code span {
   color: var(--shiki-light);
+}
+
+/*
+ * 行号槽：shiki 的 render-line-number 在生成期把它写在每一行最前面。这里把它摆成右对齐栏，
+ * 并取比正文暗一档的颜色——currentColor 混透明，所以它跟着上面的取色走，深色档另有同一条规则
+ * （见文件末尾，比重压过深色取色那条）。
+ * 宽按三位数字预留（ch 就是这一栏所用等宽字体的一个数字宽）：语料里最长的示例也只有几十行，
+ * 四位数行号不会发生，多留的宽度只会把代码往右推。
+ * user-select: none 让鼠标划过选代码时不顺手把行号圈进选区。复制按钮不归这里管：它读的是 DOM 文本，
+ * 要自己摘掉这一槽。
+ */
+.mdc-code .line-number {
+  user-select: none;
+
+  display: inline-block;
+
+  width: 3ch;
+  margin-inline-end: 2ch;
+
+  color: color-mix(in srgb, currentcolor 45%, transparent);
+  text-align: end;
 }
 
 /*

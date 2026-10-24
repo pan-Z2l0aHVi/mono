@@ -205,11 +205,11 @@ function open() {
 
 | 名称              | 说明                                               | 类型                 | 默认值  |
 | ----------------- | -------------------------------------------------- | -------------------- | ------- |
-| `images`          | 图片列表，至少一项；每项为 `{ src, alt? }`。       | `ImagePreviewItem[]` | `—`     |
+| `images`          | 图片列表，至少一项；每项为 `{ src, alt? }`。       | `ImagePreviewItem[]` | —       |
 | `index`           | 初始图片索引，越界时钳制到有效区间。               | `number`             | `0`     |
 | `loop`            | 首尾循环切换。                                     | `boolean`            | `true`  |
-| `target`          | 用于解析最近 theme-owned overlay root 的触发元素。 | `Element`            | `—`     |
-| `container`       | 显式挂载容器，优先级高于主题作用域。               | `HTMLElement`        | `—`     |
+| `target`          | 用于解析最近 theme-owned overlay root 的触发元素。 | `Element`            | —       |
+| `container`       | 显式挂载容器，优先级高于主题作用域。               | `HTMLElement`        | —       |
 | `nav`             | 展示上一张 / 下一张 button。                       | `boolean`            | `false` |
 | `toolbar`         | 展示缩放工具条。                                   | `boolean`            | `false` |
 | `closable`        | 展示关闭 button。                                  | `boolean`            | `false` |

@@ -24,6 +24,9 @@ const quickLinks = [
   { path: '/components/select', label: 'Select', desc: 'Floating UI based dropdown layer and options' },
   { path: '/components/toast', label: 'Toast', desc: 'Lightweight responsive global notifications' }
 ]
+
+// 子路径部署（GITHUB_BASE_PATH）下写死的绝对路径会 404，logo 必须带上 base 前缀。
+const logoSrc = `${import.meta.env.BASE_URL}bo-transparent.png`
 </script>
 
 <template>
@@ -33,7 +36,7 @@ const quickLinks = [
         class="absolute -inset-1.5 rounded-[40px] bg-linear-to-tr from-(--wui-color-accent) to-(--wui-color-accent) opacity-40 blur-xl transition-all duration-500 group-hover:opacity-75"
       ></div>
       <img
-        src="/bo-transparent.png"
+        :src="logoSrc"
         alt="Bo Logo"
         class="relative w-36 h-36 md:w-44 md:h-44 rounded-[32px] shadow-2xl border border-(--wui-color-border) object-cover bg-(--wui-color-surface) transition-transform duration-300 group-hover:scale-105"
       />
