@@ -217,15 +217,16 @@ function copyAnnouncement(key: string) {
 
           <div class="overflow-hidden rounded-4xl border border-(--wui-color-border)">
             <!-- 整条工具条都是展开触发区；内部控件各自 stop，点它们不会顺带开合代码。
-                 `relative z-10` 把工具条抬到下方代码区之上：segmented 长按时投影会向下溢出，
-                 否则后绘制的折叠区会把阴影盖掉一截。这一层只在卡内比较，见上方 `isolate`。 -->
+                 `relative z-10` 把工具条抬到下方代码区之上：segmented 的投影朝下溢出（凹变种是 track
+                 的常驻外投影，凸变种是 indicator 的柔投影），否则后绘制的折叠区会把阴影盖掉一截。
+                 这一层只在卡内比较，见上方 `isolate`。 -->
             <div
               class="relative z-10 flex cursor-pointer flex-wrap items-center justify-between gap-3 bg-(--wui-color-page) px-4 pt-4 pb-2"
               @click="toggleExpanded($event, sampleKey(sample, index))"
             >
               <web-ui-segmented
                 :value="activeFlavor(sampleKey(sample, index))"
-                variant="raised"
+                variant="inset"
                 data-flavor-switch
                 aria-label="示例代码框架"
                 @click.stop

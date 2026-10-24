@@ -6245,7 +6245,7 @@ export const exampleDocs: ExampleDoc[] = [
         "kind": "prose",
         "key": "变体",
         "title": "变体",
-        "html": "<p><code>inset</code>（默认，「凹」）是不透明实体 track（<code>--wui-color-surface</code>）——1px 描边环与投影全程常驻，静止 indicator 是 <code>--wui-color-surface-segmented</code> 纯灰底，视觉上嵌入 track。</p>\n<p>浅色下该 token 与 <code>--wui-color-page</code> 同值，track 与页面齐平，凹感只由常驻环与投影承担；深色下它是「比页面高一档」的 elevation，track 依旧浮离页面。</p>\n<p><code>raised</code>（「凸」）是经典形态：flat 灰 track（<code>--wui-color-surface-segmented-track</code>，无环无投影），静止 indicator 是 <code>--wui-color-surface-selected</code> 实体底加柔投影，浮起于 track 之上。</p>\n<p>浅色这对是 <code>#e5e5ea → #fff</code>：indicator 与 <code>--wui-color-page</code> 同为最白，凸起由「与页面同色的实色面浮在沉下去的轨道上 + 柔投影」读出。</p>\n<p>深色方向正好相反——<code>--wui-color-page</code>（<code>#242628</code>）是阶梯最暗的一档，「与 page 同色」等于把 indicator 压到轨道之下，于是 indicator 取 <code>#3a3a3c</code>，与同主题 <code>secondary</code> button 的面同一个色，轨道随之沉到 <code>#2c2c2e</code>。</p>\n<p>结果是深色下两个变体共用同一对灰阶，凹与凸只由装饰区分（常驻环与投影 vs 柔投影）。</p>\n<p>两个变体的按压/拖拽态一致——indicator 转透明玻璃（backdrop blur、80ms 淡入的描边环、1.5x 放大），松开淡回各自静止面。</p>\n<p>非法值回退 <code>inset</code>。</p>\n<p>与原生 <code>&lt;form></code> 集成（通过 <code>ElementInternals</code>）。</p>\n<p>根据 <code>value</code> 同步子 trigger 的 <code>checked</code> 状态。<code>disabled</code> 提供继承的有效禁用状态，不改写 trigger 自身的 <code>disabled</code> 属性。直接设 <code>value</code> 不派发事件。</p>\n<p>键盘用户按 Tab 进入当前选中项；没有选中项时进入首个启用项。组内只有这一项参与 Tab 顺序。</p>\n<p>水平组中，ArrowLeft / ArrowRight 在启用项间循环移动焦点并更新选中值，Home / End 移到首个 / 末个启用项；禁用项会跳过。</p>\n<p>ArrowUp / ArrowDown 不移动焦点。</p>\n<p>按住当前选中项横向拖拽可滑动 indicator，松手吸附到最近 option（快速抛掷按速度切换）。</p>\n<p>trigger 宽度不等时，拖拽中的 indicator 取「离自身中心最近的那一项」的宽度——即预览松手会落到的那一项，而不是保持按下那一项的宽度。</p>\n<p>触摸面声明 <code>touch-action: none</code>，拖拽激活期间阻止 <code>touchmove</code> 默认滚动，避免 iOS Safari 中断手势。</p>"
+        "html": "<p><code>inset</code>（默认，「凹」）是不透明实体 track（<code>--wui-color-surface</code>）——1px 描边环与投影全程常驻，静止 indicator 是 <code>--wui-color-surface-segmented</code> 纯灰底，视觉上嵌入 track。</p>\n<p>浅色下该 token 与 <code>--wui-color-page</code> 同值，track 与页面齐平，凹感只由常驻环与投影承担；深色下它是「比页面高一档」的 elevation，track 依旧浮离页面。</p>\n<p><code>raised</code>（「凸」）是经典形态：flat 灰 track（<code>--wui-color-surface-segmented-track</code>，无环无投影），静止 indicator 是 <code>--wui-color-surface-selected</code> 实体底加柔投影，浮起于 track 之上。</p>\n<p>浅色这对是 <code>#e5e5ea → #fff</code>：indicator 与 <code>--wui-color-page</code> 同为最白，凸起由「与页面同色的实色面浮在沉下去的轨道上 + 柔投影」读出。</p>\n<p>深色走同一条不变量：indicator 仍与 <code>--wui-color-page</code> 同色（<code>#242628</code>），动的是轨道——<code>--wui-color-surface-segmented-track</code> 沉到 page 之下取 <code>#17191a</code>，比 page 再暗 13 到 14/255，与该主题往上走的档差同量级（page→surface 是 +6 到 +8、surface→control 是 +14、control→track 是 +10）。</p>\n<p>page 已经是深色阶梯最暗的一档，所以「与 page 同色」只能靠把轨道往下开来成立，而不是把 indicator 往上抬。凸起方向仍由「indicator 比 track 亮」读出：两档的 WCAG 亮度比分别是 1.26:1（浅）与 1.16:1（深），同一量级，不会盖过柔投影。</p>\n<p>于是深色下两个变体不再共用同一对灰阶：inset 是 <code>#2c2c2e</code> track + <code>#3a3a3c</code> indicator（选中面比轨道亮，读成按下去的灰面），raised 是 <code>#17191a</code> track + <code>#242628</code> indicator（选中面与页面同色，读成浮起来的一截页面）。</p>\n<p>这条不变量说的是「与 page 同色」，不是「与所在容器同色」。浅色下 page 与 surface 都是 <code>#fff</code>，两句话等价；深色下 surface 是 <code>#2c2c2e</code>，所以凸变种放进 surface 卡片里时，chip 会比卡片本身暗一档。</p>\n<p>凸起在这两种容器下都由 track 与柔投影读出，变的只是「chip 是否与背后那片面齐平」：贴在页面上齐平，贴在 surface 上不齐平。</p>\n<p>两个变体的按压/拖拽态一致——indicator 转透明玻璃（backdrop blur、80ms 淡入的描边环、1.5x 放大），松开淡回各自静止面。</p>\n<p>非法值回退 <code>inset</code>。</p>\n<p>与原生 <code>&lt;form></code> 集成（通过 <code>ElementInternals</code>）。</p>\n<p>根据 <code>value</code> 同步子 trigger 的 <code>checked</code> 状态。<code>disabled</code> 提供继承的有效禁用状态，不改写 trigger 自身的 <code>disabled</code> 属性。直接设 <code>value</code> 不派发事件。</p>\n<p>键盘用户按 Tab 进入当前选中项；没有选中项时进入首个启用项。组内只有这一项参与 Tab 顺序。</p>\n<p>水平组中，ArrowLeft / ArrowRight 在启用项间循环移动焦点并更新选中值，Home / End 移到首个 / 末个启用项；禁用项会跳过。</p>\n<p>ArrowUp / ArrowDown 不移动焦点。</p>\n<p>按住当前选中项横向拖拽可滑动 indicator，松手吸附到最近 option（快速抛掷按速度切换）。</p>\n<p>trigger 宽度不等时，拖拽中的 indicator 取「离自身中心最近的那一项」的宽度——即预览松手会落到的那一项，而不是保持按下那一项的宽度。</p>\n<p>触摸面声明 <code>touch-action: none</code>，拖拽激活期间阻止 <code>touchmove</code> 默认滚动，避免 iOS Safari 中断手势。</p>"
       },
       {
         "kind": "prose",
@@ -8330,13 +8330,13 @@ export const exampleDocs: ExampleDoc[] = [
             "--wui-color-surface-segmented-track",
             "<p>Segmented 凸变种 track 表面</p>",
             "#e5e5ea",
-            "#2c2c2e"
+            "#17191a"
           ],
           [
             "--wui-color-surface-selected",
-            "<p>选中表面</p>",
+            "<p>选中面（凸变种 indicator，与 page 同色）</p>",
             "#fff",
-            "#3a3a3c"
+            "#242628"
           ],
           [
             "--wui-color-text",

@@ -405,9 +405,15 @@ function onChange(event: WebUiEvent<WebUiSegmented, 'change'>) {
 
 浅色这对是 `#e5e5ea → #fff`：indicator 与 `--wui-color-page` 同为最白，凸起由「与页面同色的实色面浮在沉下去的轨道上 + 柔投影」读出。
 
-深色方向正好相反——`--wui-color-page`（`#242628`）是阶梯最暗的一档，「与 page 同色」等于把 indicator 压到轨道之下，于是 indicator 取 `#3a3a3c`，与同主题 `secondary` button 的面同一个色，轨道随之沉到 `#2c2c2e`。
+深色走同一条不变量：indicator 仍与 `--wui-color-page` 同色（`#242628`），动的是轨道——`--wui-color-surface-segmented-track` 沉到 page 之下取 `#17191a`，比 page 再暗 13 到 14/255，与该主题往上走的档差同量级（page→surface 是 +6 到 +8、surface→control 是 +14、control→track 是 +10）。
 
-结果是深色下两个变体共用同一对灰阶，凹与凸只由装饰区分（常驻环与投影 vs 柔投影）。
+page 已经是深色阶梯最暗的一档，所以「与 page 同色」只能靠把轨道往下开来成立，而不是把 indicator 往上抬。凸起方向仍由「indicator 比 track 亮」读出：两档的 WCAG 亮度比分别是 1.26:1（浅）与 1.16:1（深），同一量级，不会盖过柔投影。
+
+于是深色下两个变体不再共用同一对灰阶：inset 是 `#2c2c2e` track + `#3a3a3c` indicator（选中面比轨道亮，读成按下去的灰面），raised 是 `#17191a` track + `#242628` indicator（选中面与页面同色，读成浮起来的一截页面）。
+
+这条不变量说的是「与 page 同色」，不是「与所在容器同色」。浅色下 page 与 surface 都是 `#fff`，两句话等价；深色下 surface 是 `#2c2c2e`，所以凸变种放进 surface 卡片里时，chip 会比卡片本身暗一档。
+
+凸起在这两种容器下都由 track 与柔投影读出，变的只是「chip 是否与背后那片面齐平」：贴在页面上齐平，贴在 surface 上不齐平。
 
 两个变体的按压/拖拽态一致——indicator 转透明玻璃（backdrop blur、80ms 淡入的描边环、1.5x 放大），松开淡回各自静止面。
 

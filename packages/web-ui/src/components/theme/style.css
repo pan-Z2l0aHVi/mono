@@ -273,15 +273,16 @@
      代价是失去透感——它本来也不属于「panel 透出 page」的层级语义。 */
   --wui-color-surface-sidebar: rgb(44 44 46 / 0.8);
 
-  /* Segmented 的深色两档：凸起的 indicator 与同主题的 secondary button 面同色（#3a3a3c =
-     surface-control），所以它「就是一颗按钮」，观感不靠亮度断层；轨道因此必须沉一档到 #2c2c2e。
-     凹变种本来就是 #2c2c2e track + #3a3a3c indicator，于是深色下两个变体共用同一对灰阶，
-     凹/凸的分别只剩装饰（常驻环与投影 vs 柔投影）。浅色那种纸片浮感（track #e5e5ea 沉下去、
-     indicator 与 page 同为阶梯最白的 #fff）在深色做不出来：page（#242628）是阶梯最暗的一档，
-     「与 page 同色」在这里等于把 indicator 压到 track 之下，方向正好反了。 */
+  /* Segmented 的深色两档。凸变种（raised）复刻浅色那条「indicator 与 page 同色、track 沉一档」的
+     关系：浅色是 chip #fff（= page）浮在 #e5e5ea 上，深色 page（#242628）本来就是阶梯最暗的一档，
+     所以要让 chip 取到 page 色，只能把 track 再往下开一档到 #17191a（比 page 暗 13~14/255，与该主题
+     往上走的档差同量级：page→surface +6~+8、surface→control +14、control→track +10）。凸起方向仍由
+     「chip 比 track 亮」读出，WCAG 亮度比 1.16:1，与浅色的 1.26:1 同量级，不会盖过柔投影。
+     凹变种（inset）不参与：它的语义是「按下去的灰面」，track 取 surface（#2c2c2e）、indicator 取
+     #3a3a3c，与 page 同色反而读不出选中。 */
   --wui-color-surface-segmented: #3a3a3c;
-  --wui-color-surface-segmented-track: #2c2c2e;
-  --wui-color-surface-selected: #3a3a3c;
+  --wui-color-surface-segmented-track: #17191a;
+  --wui-color-surface-selected: #242628;
   --wui-color-text: #e9eaea;
   --wui-color-text-secondary: #a1a1a6;
   --wui-color-text-tertiary: color-mix(in srgb, var(--wui-color-text) 42%, transparent);
@@ -324,8 +325,8 @@
     --wui-color-surface-overlay: rgb(32 34 34 / 0.92);
     --wui-color-surface-sidebar: rgb(44 44 46 / 0.8);
     --wui-color-surface-segmented: #3a3a3c;
-    --wui-color-surface-segmented-track: #2c2c2e;
-    --wui-color-surface-selected: #3a3a3c;
+    --wui-color-surface-segmented-track: #17191a;
+    --wui-color-surface-selected: #242628;
     --wui-color-text: #e9eaea;
     --wui-color-text-secondary: #a1a1a6;
     --wui-color-text-tertiary: color-mix(in srgb, var(--wui-color-text) 42%, transparent);
