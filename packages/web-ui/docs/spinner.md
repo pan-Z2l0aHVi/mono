@@ -83,7 +83,11 @@ export default function Demo() {
 
 ### 全屏实例 {#imperative}
 
-`show()` 在当前主题的 overlay root（没有主题作用域时回退到 body 的 fallback overlay root）挂一个全屏实例，`size` / `description` / `color` 覆盖外观，`duration` 大于 0 时到期自动 `hide()`。实例期间用原生 `<dialog>` 的 `showModal()` 拦截页面其余交互并锁定滚动；`hide()` 或卸载会同时释放滚动锁、清掉 `duration` 计时器。连点不会叠层——新实例挂上时移除上一个命令式实例。
+`show()` 在当前主题的 overlay root（没有主题作用域时回退到 body 的 fallback overlay root）挂一个全屏实例，`size` / `description` / `color` 覆盖外观，`duration` 大于 0 时到期自动 `hide()`。
+
+实例期间用原生 `<dialog>` 的 `showModal()` 拦截页面其余交互并锁定滚动；`hide()` 或卸载会同时释放滚动锁、清掉 `duration` 计时器。
+
+连点不会叠层——新实例挂上时移除上一个命令式实例。
 
 ```tsx
 import { WebUiSpinner } from '@greypan/web-ui'
@@ -219,17 +223,23 @@ export default function Demo() {
 
 ### 行为说明
 
-无障碍名在 `connectedCallback` 里补：缺 `role` 补 `status`，缺 `aria-label` 补 `Loading`；两者都已存在时不改写。叶片是 8 根 `<span>`，各自转 `i * 45deg` 并带 `-(i / 8)` 周期的负 `animation-delay`，视觉上就是一圈追着跑的余晖。
+无障碍名在 `connectedCallback` 里补：缺 `role` 补 `status`，缺 `aria-label` 补 `Loading`；两者都已存在时不改写。
+
+叶片是 8 根 `<span>`，各自转 `i * 45deg` 并带 `-(i / 8)` 周期的负 `animation-delay`，视觉上就是一圈追着跑的余晖。
 
 `size` 不是只写 CSS 变量：组件在 `updated()` 里把 `--wui-spinner-size` 写成宿主**内联样式**，所以在宿主上设同名变量会被盖掉，尺寸只有 `size` 这一个入口。
 
-命令式实例挂在主题的 overlay root 里（没有主题作用域时挂 body 的 fallback overlay root），主题 token 沿 overlay root 继承：说明文字、转速（`--wui-duration-spinner`）与层级（`--wui-layer-loading`）都跟主题走。没有主题作用域时才落回组件样式里的字面值 `#6a6a6a` / `800ms` / `300`。
+命令式实例挂在主题的 overlay root 里（没有主题作用域时挂 body 的 fallback overlay root），主题 token 沿 overlay root 继承：说明文字、转速（`--wui-duration-spinner`）与层级（`--wui-layer-loading`）都跟主题走。
+
+没有主题作用域时才落回组件样式里的字面值 `#6a6a6a` / `800ms` / `300`。
 
 组件不会替你收尾：`duration` 不传或为 `0` 时实例一直挂着，只有 `hide()`、新实例顶替或显式移除才会收掉它；实例被移除时会释放滚动锁与 overlay 占位。
 
 ### 颜色
 
-叶片用 `currentcolor` 画：默认继承宿主的 `--wui-color-text-secondary`（回落 `#6a6a6a`），`color` 属性给 CSS 颜色值即可覆盖（声明式与 `show()` 的 `color` option 都走它）。说明文字走 `--wui-color-text-secondary`。
+叶片用 `currentcolor` 画：默认继承宿主的 `--wui-color-text-secondary`（回落 `#6a6a6a`），`color` 属性给 CSS 颜色值即可覆盖（声明式与 `show()` 的 `color` option 都走它）。
+
+说明文字走 `--wui-color-text-secondary`。
 
 ### CSS Custom Properties
 

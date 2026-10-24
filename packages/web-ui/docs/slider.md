@@ -353,9 +353,15 @@ export default function Demo() {
 
 ### 行为说明
 
-支持 ArrowLeft/Right/Up/Down、Home/End、PageUp/PageDown 键盘导航。使用 pointer capture 处理鼠标、触控笔和触摸交互；组件 host 与触控 track 均声明 `touch-action: none`，拖拽激活期间同时阻止 `touchmove` 默认滚动，避免 iOS Safari 在横/纵拖拽过程中接管手势。
+支持 ArrowLeft/Right/Up/Down、Home/End、PageUp/PageDown 键盘导航。
 
-thumb 静止态是正圆，直径取厚度 `--wui-slider-thumb-thickness`；按压或拖拽时沿 track 方向展开成胶囊，厚度不变、长边取 `--wui-slider-thumb-length`。横向 slider 的 thumb 展开为宽度方向，纵向 slider 的 thumb 展开为高度方向，与 switch thumb 同一套配方。形状切换带 `--wui-duration-press` 过渡。
+使用 pointer capture 处理鼠标、触控笔和触摸交互；组件 host 与触控 track 均声明 `touch-action: none`，拖拽激活期间同时阻止 `touchmove` 默认滚动，避免 iOS Safari 在横/纵拖拽过程中接管手势。
+
+thumb 静止态是正圆，直径取厚度 `--wui-slider-thumb-thickness`；按压或拖拽时沿 track 方向展开成胶囊，厚度不变、长边取 `--wui-slider-thumb-length`。
+
+横向 slider 的 thumb 展开为宽度方向，纵向 slider 的 thumb 展开为高度方向，与 switch thumb 同一套配方。
+
+形状切换带 `--wui-duration-press` 过渡。
 
 ### CSS Custom Properties
 

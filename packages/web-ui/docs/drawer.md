@@ -1043,11 +1043,19 @@ const open = ref(false)
 
 关闭时保留原生 dialog 的 top layer，待退出过渡完成后调用 `dialog.close()`。Escape 始终走此关闭路径；`no-backdrop-close` 仅控制 backdrop 点击。
 
-启用 `closable` 时，内置关闭按钮固定在 header 右上角（默认顶部 `16px`、右侧 `16px`），不会再拉伸到 drawer 中间。顶部 `16px` 经 `--wui-space-4` 解析，因此与 drawer 的 header padding 同源；右侧 `16px` 是按钮自身到 panel 右边沿的偏移，它并不等于 header 的水平内边距（`20px`），因此保持字面量。
+启用 `closable` 时，内置关闭按钮固定在 header 右上角（默认顶部 `16px`、右侧 `16px`），不会再拉伸到 drawer 中间。
 
-`--wui-drawer-nested-peek-base` 不需要消费方声明：默认值 `43.2px` 是组件用 `CSS.registerProperty` 注册该属性时的 `initialValue`（`components/drawer/index.ts`），窄视口的 `28.8px` 基准来自 `components/drawer/style.css` 的 `@media (width <= 640px)` 规则——这两处就是内置基准的所在地。在宿主或任意祖先上设置该 token 可同时覆盖两者，在任何视口宽度下都生效。
+顶部 `16px` 经 `--wui-space-4` 解析，因此与 drawer 的 header padding 同源；右侧 `16px` 是按钮自身到 panel 右边沿的偏移，它并不等于 header 的水平内边距（`20px`），因此保持字面量。
 
-按内置基准，四层 `320px` 等宽堆叠逐层露边在桌面端为 `29.94px` / `17.52px` / `12.43px`、窄视口为 `19.96px` / `11.68px` / `8.29px`，对应总堆叠宽度 `59.89px` 与 `39.93px`。单层始终不动，因为 `ln(1)` 为 `0`。
+`--wui-drawer-nested-peek-base` 不需要消费方声明：默认值 `43.2px` 是组件用 `CSS.registerProperty` 注册该属性时的 `initialValue`（`components/drawer/index.ts`）。
+
+窄视口的 `28.8px` 基准来自 `components/drawer/style.css` 的 `@media (width <= 640px)` 规则——这两处就是内置基准的所在地。
+
+在宿主或任意祖先上设置该 token 可同时覆盖两者，在任何视口宽度下都生效。
+
+按内置基准，四层 `320px` 等宽堆叠逐层露边在桌面端为 `29.94px` / `17.52px` / `12.43px`、窄视口为 `19.96px` / `11.68px` / `8.29px`，对应总堆叠宽度 `59.89px` 与 `39.93px`。
+
+单层始终不动，因为 `ln(1)` 为 `0`。
 
 ### 拖拽关闭
 
@@ -1055,11 +1063,32 @@ const open = ref(false)
 
 中线跟随 `--wui-drawer-content-padding` 的半值，并以「半个胶囊厚度 + 4px 呼吸间距」兜底：把该 padding 归零、让内容贴边铺满时，胶囊仍留可见内缩，既不会越出 panel 内缘，也不会贴死 panel 边缘。
 
-胶囊是纯视觉件：`pointer-events: none`，本身不吃任何一次按下。真正被按下的是命中层。左右 placement 只有 drag zone；上下 placement 有三层——拖拽 drag zone、沿可抓取边缘的一条端头 drag edge（宽度与胶囊等宽，厚度不小于 `--wui-drawer-drag-edge-size`），以及整块的 header（`placement=bottom`）或 footer（`placement=top`）。drag edge 的高度取「胶囊外沿」与该 token 的较大者，按构造覆盖胶囊所在的带，所以在四个 placement 上，按住胶囊能开始拖拽、悬停胶囊会点亮它。
+胶囊是纯视觉件：`pointer-events: none`，本身不吃任何一次按下。真正被按下的是命中层。
 
-让开 header（`placement=bottom`）或 footer（`placement=top`）的是 drag zone 本身，因此那一节不会把胶囊推离 panel 边缘；而那一节改由**自己**接拖拽，不再整块按不动：在它里面任意一点起手都能开始拖拽，标题文字同样在内。控件的让开是**逐个控件、在事件层**做的，不是把命中面几何切开——按下路径上只要出现可点元素（原生 `button` / `input` / `select` / `textarea` / `label` / `a[href]` / `summary`，任何 `contenteditable`，交互语义 `role`（`button`、`checkbox`、`switch`、`tab`、`menuitem`、`option`、`slider` 等），以及任何显式 `tabindex` 且不为 `-1`），这一次按下就交给控件、不起拖拽。自绘控件若本身不是原生可交互元素，需要带上其中之一才会被认出来；补 `role` 或 `tabindex` 就是入口，而它本身也是无障碍上该做的事。几何切割是被有意否掉的：它必须测量每个控件的位置，控件一动就失效，而且只是把 A6 那条缺陷换了个位置。代价是明说的：内置关闭按钮贴着 panel 右缘、在胶囊跨度之外，仍可点击；落在胶囊水平跨度内的控件，其顶部到 drag edge 高度之间仍被拖拽面盖住。
+左右 placement 只有 drag zone；上下 placement 有三层——拖拽 drag zone、沿可抓取边缘的一条端头 drag edge（宽度与胶囊等宽，厚度不小于 `--wui-drawer-drag-edge-size`），以及整块的 header（`placement=bottom`）或 footer（`placement=top`）。
 
-「drag bar 占位」自带一条推论：落在这条跨度内、顶边又落在 drag edge 高度（`--wui-drawer-drag-edge-size`，默认 20px；胶囊外沿更厚时以胶囊为准）之内的控件，上部会被拖拽面盖住——drag bar 就画在那里，起手必须从 drag bar 所在的位置开始。抬 `z-index` 没用（Chromium 里 drag edge 始终压在 slotted 内容之上），量得着的杠杆是 `--wui-drawer-drag-bar-length`（同时决定胶囊长度与 drag edge 宽度）与 `--wui-drawer-drag-edge-size`（drag edge 厚度）。
+drag edge 的高度取「胶囊外沿」与该 token 的较大者，按构造覆盖胶囊所在的带，所以在四个 placement 上，按住胶囊能开始拖拽、悬停胶囊会点亮它。
+
+让开 header（`placement=bottom`）或 footer（`placement=top`）的是 drag zone 本身，因此那一节不会把胶囊推离 panel 边缘；而那一节改由**自己**接拖拽，不再整块按不动：在它里面任意一点起手都能开始拖拽，标题文字同样在内。
+
+控件的让开是**逐个控件、在事件层**做的，不是把命中面几何切开。
+
+按下路径上只要出现可点元素，这一次按下就交给控件、不起拖拽。可点元素包括：
+
+- 原生 `button` / `input` / `select` / `textarea` / `label` / `a[href]` / `summary`
+- 任何 `contenteditable`
+- 交互语义 `role`（`button`、`checkbox`、`switch`、`tab`、`menuitem`、`option`、`slider` 等）
+- 任何显式 `tabindex` 且不为 `-1`
+
+自绘控件若本身不是原生可交互元素，需要带上其中之一才会被认出来；补 `role` 或 `tabindex` 就是入口，而它本身也是无障碍上该做的事。
+
+几何切割是被有意否掉的：它必须测量每个控件的位置，控件一动就失效，而且只是把 A6 那条缺陷换了个位置。
+
+代价是明说的：内置关闭按钮贴着 panel 右缘、在胶囊跨度之外，仍可点击；落在胶囊水平跨度内的控件，其顶部到 drag edge 高度之间仍被拖拽面盖住。
+
+「drag bar 占位」自带一条推论：落在这条跨度内、顶边又落在 drag edge 高度（`--wui-drawer-drag-edge-size`，默认 20px；胶囊外沿更厚时以胶囊为准）之内的控件，上部会被拖拽面盖住——drag bar 就画在那里，起手必须从 drag bar 所在的位置开始。
+
+抬 `z-index` 没用（Chromium 里 drag edge 始终压在 slotted 内容之上），量得着的杠杆是 `--wui-drawer-drag-bar-length`（同时决定胶囊长度与 drag edge 宽度）与 `--wui-drawer-drag-edge-size`（drag edge 厚度）。
 
 - 拖拽实时跟手，backdrop 透明度按比例淡出。
 - backdrop 点击关闭只认**轻点链路**：按下起点在 backdrop 上、且按-放位移在轻点量级内的 click 才关闭。浏览器对「按下 → 拖动 → 松手」生成的 click 落在起点与松手点的共同祖先（dialog）上——从 panel 内容或 backdrop 上开始拖拽、松手落在 backdrop 时，click 的 target 同样是 dialog；组件在 `pointerdown` 记录起点与坐标做回溯校验，这类拖拽松手一律弹回。`detail` 为 0 的 click（键盘/程序化来源）不消费指针记录。

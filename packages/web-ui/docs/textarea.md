@@ -35,7 +35,9 @@ export default function Demo() {
 
 ### 自动高度 {#autosize}
 
-`autosize` 让高度跟着内容走：组件把高度写成内联值，同时关掉原生拖拽手柄，两套高度来源不并存。`max-height`（px，`0` 表示不限）单独写在内部控件的内联样式上，只要大于 0 就生效，跟开没开 `autosize` 无关：开着时它是自动高度的上限，到顶之后框内滚动；没开时它钳住拖拽手柄拉出来的高度。
+`autosize` 让高度跟着内容走：组件把高度写成内联值，同时关掉原生拖拽手柄，两套高度来源不并存。
+
+`max-height`（px，`0` 表示不限）单独写在内部控件的内联样式上，只要大于 0 就生效，跟开没开 `autosize` 无关：开着时它是自动高度的上限，到顶之后框内滚动；没开时它钳住拖拽手柄拉出来的高度。
 
 ```tsx
 export default function Demo() {
@@ -444,17 +446,39 @@ export default function Demo() {
 
 ### 行为说明
 
-宿主不可聚焦，也没有 tab 位：Tab 与点击都把焦点交给 shadow 内的原生 textarea，组件把焦点态反射成宿主上的 `focused` 属性，focus ring 由这条属性驱动。内部控件的 `input` 原生就冒泡且组合；`change` 不组合，由组件在宿主上补发一次 `composed` 的 `change`。清除 button 只派发 `input`，不派发 `change`——这一点与 `<web-ui-input>` 不同，只听 `change` 的消费者收不到这次清空。
+宿主不可聚焦，也没有 tab 位：Tab 与点击都把焦点交给 shadow 内的原生 textarea，组件把焦点态反射成宿主上的 `focused` 属性，focus ring 由这条属性驱动。
 
-`autosize` 独占高度：它把高度写成内联值，所以同时关掉原生拖拽手柄，避免拖完之后下一次内容变化又被拉回。高度在每次取值变化与 `rows` 变化时重算，不依赖 `ResizeObserver` 的回调，因此同一个控件随外层切换长文案与短文案时不会留着旧高度。`max-height` 写成内联样式，与 `autosize` 无关地钳制内部控件：开着时封顶自动高度，到顶框内滚动；没开时钳住拖拽出来的高度。`0` 表示不限。
+内部控件的 `input` 原生就冒泡且组合；`change` 不组合，由组件在宿主上补发一次 `composed` 的 `change`。
 
-`required` / `minlength` / `maxlength` 的判定（`valueMissing` / `tooShort` / `tooLong`）经 ElementInternals 转发给宿主 `<form>`；`disabled` 与表单级禁用让校验一并退让。`readonly` 也让校验退让：只读的原生控件按 HTML 规范被豁免于约束验证，转发的状态恒为干净，`required readonly` 的空值拦不下提交。`form.reset()` 按挂载时的初值回填。
+清除 button 只派发 `input`，不派发 `change`——这一点与 `<web-ui-input>` 不同，只听 `change` 的消费者收不到这次清空。
 
-无障碍名称只有 `aria-label` 这一条是通的：它连同 `aria-labelledby` 一起被透传到 shadow 内的原生 `<textarea>`，而 `aria-labelledby` 的 IDREF 只在同一棵 shadow 树里解析，够不到 light DOM，所以指向宿主外面某个元素的写法取不到名字。组件也没有把内部控件的 id 暴露出来，外层的 `<label for>` 同样接不上（宿主不是 labelable 元素）。要给控件供名，写 `aria-label`：`prefix` slot 里的可见文字落在容器上，不在原生 `<textarea>` 的盒子里，不会成为它的名称。
+`autosize` 独占高度：它把高度写成内联值，所以同时关掉原生拖拽手柄，避免拖完之后下一次内容变化又被拉回。
+
+高度在每次取值变化与 `rows` 变化时重算，不依赖 `ResizeObserver` 的回调，因此同一个控件随外层切换长文案与短文案时不会留着旧高度。
+
+`max-height` 写成内联样式，与 `autosize` 无关地钳制内部控件：开着时封顶自动高度，到顶框内滚动；没开时钳住拖拽出来的高度。`0` 表示不限。
+
+`required` / `minlength` / `maxlength` 的判定（`valueMissing` / `tooShort` / `tooLong`）经 ElementInternals 转发给宿主 `<form>`；`disabled` 与表单级禁用让校验一并退让。
+
+`readonly` 也让校验退让：只读的原生控件按 HTML 规范被豁免于约束验证，转发的状态恒为干净，`required readonly` 的空值拦不下提交。
+
+`form.reset()` 按挂载时的初值回填。
+
+无障碍名称只有 `aria-label` 这一条是通的：它连同 `aria-labelledby` 一起被透传到 shadow 内的原生 `<textarea>`，而 `aria-labelledby` 的 IDREF 只在同一棵 shadow 树里解析，够不到 light DOM，所以指向宿主外面某个元素的写法取不到名字。
+
+组件也没有把内部控件的 id 暴露出来，外层的 `<label for>` 同样接不上（宿主不是 labelable 元素）。
+
+要给控件供名，写 `aria-label`：`prefix` slot 里的可见文字落在容器上，不在原生 `<textarea>` 的盒子里，不会成为它的名称。
 
 ### 布局
 
-宿主是 block 盒，输入区宽度取 `--wui-textarea-width`（`200px`），`full` 时改成 `100%`；容器按内容折行，最小高度取 `--wui-control-size`（`36px`），圆角取 `--wui-radius-menu`（`18px`），底面是共享的 glass 表面，`borderless` 连描边环一起去掉。未开 `autosize` 时原生拖拽手柄可用（`resize: vertical`）。文字取 `--wui-font-size`，行高取 `--wui-line-height-normal`，粗指针设备上字号钳到不小于 `16px`，避免 iOS Safari 聚焦时缩放页面。占位文本与 slot 内容取二级文本色。清除 button 复用 icon ghost 形态的 `<web-ui-button>`，用负 margin 抵掉容器 `gap` 与自身 padding，并按首行中心对齐——容器顶对齐使它在多行框里也贴着第一行。
+宿主是 block 盒，输入区宽度取 `--wui-textarea-width`（`200px`），`full` 时改成 `100%`；容器按内容折行，最小高度取 `--wui-control-size`（`36px`），圆角取 `--wui-radius-menu`（`18px`），底面是共享的 glass 表面，`borderless` 连描边环一起去掉。
+
+未开 `autosize` 时原生拖拽手柄可用（`resize: vertical`）。
+
+文字取 `--wui-font-size`，行高取 `--wui-line-height-normal`，粗指针设备上字号钳到不小于 `16px`，避免 iOS Safari 聚焦时缩放页面。占位文本与 slot 内容取二级文本色。
+
+清除 button 复用 icon ghost 形态的 `<web-ui-button>`，用负 margin 抵掉容器 `gap` 与自身 padding，并按首行中心对齐——容器顶对齐使它在多行框里也贴着第一行。
 
 ### CSS Custom Properties
 

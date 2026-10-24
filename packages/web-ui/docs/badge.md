@@ -378,12 +378,26 @@ const count = ref(3)
 
 显示判定只有一条优先级链：`badge-hidden` 最先，写了就不画；其次 `dot`，写了就恒画；剩下才轮到 `count > 0 || show-zero`。数字同理，`dot` 下画空白，否则取 `count > max ? 'max+' : count`。
 
-`count` 与 `max` 走同一套数值规范化：非有限数（`NaN`、±Infinity）与非数值回落到各自默认值 `0` / `99`，负数与超出 `Number.MAX_SAFE_INTEGER` 的值按区间裁剪，所以 `count={-5}` 落回 0（角标随之消失）。`placement` 走字面量白名单，不在四个角里的值（含空串）回落到 `top-right`，并立即把宿主 attribute 修正成规范后的值。
+`count` 与 `max` 走同一套数值规范化：非有限数（`NaN`、±Infinity）与非数值回落到各自默认值 `0` / `99`，负数与超出 `Number.MAX_SAFE_INTEGER` 的值按区间裁剪，所以 `count={-5}` 落回 0（角标随之消失）。
 
-角标是 `role="status"` 的活跃区域，`aria-label` 由组件按状态给出固定文案：`dot` 报 `Unread`，`count` 大于 0 报 `<count> unread messages`，`show-zero` 报 `No unread messages`；`badge-hidden` 时这个节点整个不渲染，无障碍树里不再有播报。文案是组件内置的英文，不提供可配的无障碍名称属性，要自定义语义就别用 `badge-hidden` 之外的隐藏手段。
+`placement` 走字面量白名单，不在四个角里的值（含空串）回落到 `top-right`，并立即把宿主 attribute 修正成规范后的值。
+
+角标是 `role="status"` 的活跃区域，`aria-label` 由组件按状态给出固定文案：`dot` 报 `Unread`，`count` 大于 0 报 `<count> unread messages`，`show-zero` 报 `No unread messages`；`badge-hidden` 时这个节点整个不渲染，无障碍树里不再有播报。
+
+文案是组件内置的英文，不提供可配的无障碍名称属性，要自定义语义就别用 `badge-hidden` 之外的隐藏手段。
 
 ### 布局
 
-宿主是 inline-block，包裹层是 inline-flex。有内容时包裹层转成 `position: relative`、角标绝对定位到选中的角，`translate` 的基准由 `placement` 给（数字是 ±50%、圆点是 ±40%，让角标压出轮廓而不是贴在边线上），`offset-x` / `offset-y` 作为内部变量叠在这条 translate 上。内容判的是元素子节点的个数：只放了纯文本时不算有内容，角标会留在行内流里，所以「包住一段文字」这种写法请给文字套一个元素。
+宿主是 inline-block，包裹层是 inline-flex。
 
-角标没有对外暴露的尺寸与颜色旋钮：底色取 `--wui-color-danger`、文字取 `--wui-color-on-accent`、描边取 `--wui-color-page`（1px，用来把角标从深色内容上切出来），圆角走 `--wui-radius-control`（默认是 pill），高度 18px、最小宽度 18px、左右内边距 `--wui-space-1`、字号 `--wui-font-size-caption`；`dot` 只把宽高收到 8px 并去掉内边距。要换颜色请改这几枚语义 token 的作用域，而不是找角标上的属性。
+有内容时包裹层转成 `position: relative`、角标绝对定位到选中的角，`translate` 的基准由 `placement` 给（数字是 ±50%、圆点是 ±40%，让角标压出轮廓而不是贴在边线上），`offset-x` / `offset-y` 作为内部变量叠在这条 translate 上。
+
+内容判的是元素子节点的个数：只放了纯文本时不算有内容，角标会留在行内流里，所以「包住一段文字」这种写法请给文字套一个元素。
+
+角标没有对外暴露的尺寸与颜色旋钮：底色取 `--wui-color-danger`、文字取 `--wui-color-on-accent`、描边取 `--wui-color-page`（1px，用来把角标从深色内容上切出来）。
+
+圆角走 `--wui-radius-control`（默认是 pill），高度 18px、最小宽度 18px、左右内边距 `--wui-space-1`、字号 `--wui-font-size-caption`。
+
+`dot` 只把宽高收到 8px 并去掉内边距。
+
+要换颜色请改这几枚语义 token 的作用域，而不是找角标上的属性。

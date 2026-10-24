@@ -64,7 +64,7 @@ function Home() {
             <Link
               key={link.path}
               to={link.path}
-              className="wui-glass group rounded-xl p-4 text-left flex flex-col justify-between transition-all duration-200 [--wui-glass-corner-radius:12px] hover:[--wui-color-surface-glass:var(--wui-color-surface-glass-hover)] hover:[--wui-color-glass-ring:var(--wui-color-accent)]"
+              className="wui-glass group rounded-xl p-4 text-left flex flex-col justify-between transition-all duration-200 [--wui-glass-corner-radius:12px] hover:[--wui-color-glass-ring:var(--wui-color-accent)]"
             >
               <div>
                 <div className="font-medium text-(--wui-color-text) group-hover:text-(--wui-color-accent) transition-colors">

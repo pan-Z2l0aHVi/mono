@@ -3,7 +3,11 @@ component: dropdown-divider
 tag: web-ui-dropdown-divider
 ---
 
-menu 里的 divider，用来切开成组的 menu item。它没有任何属性、事件与插槽，也不参与键盘导航——menu 只会把焦点停在 `<web-ui-dropdown-item>` 上，它自己只声明 `role="separator"`。它出现在 `<web-ui-dropdown>` / `<web-ui-context-menu>` 的子元素里。
+menu 里的 divider，用来切开成组的 menu item。
+
+它没有任何属性、事件与插槽，也不参与键盘导航——menu 只会把焦点停在 `<web-ui-dropdown-item>` 上，它自己只声明 `role="separator"`。
+
+它出现在 `<web-ui-dropdown>` / `<web-ui-context-menu>` 的子元素里。
 
 ## 示例
 

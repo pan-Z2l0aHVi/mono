@@ -1,6 +1,8 @@
 <template>
   <div class="flex w-full flex-col gap-5">
-    <div class="flex w-64 flex-col gap-2">
+    <web-ui-button full variant="primary">full：占满整行</web-ui-button>
+
+    <div class="grid w-full grid-cols-2 gap-2">
       <web-ui-button full variant="primary">full：占满这一列</web-ui-button>
       <web-ui-button full>full：glass 档</web-ui-button>
     </div>

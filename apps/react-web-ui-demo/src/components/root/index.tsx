@@ -311,6 +311,7 @@ export function Root() {
                       data-active={active}
                       aria-current={active ? 'page' : undefined}
                       aria-label={item.label}
+                      onClick={() => setSidebarOpen(false)}
                     >
                       <span
                         className={

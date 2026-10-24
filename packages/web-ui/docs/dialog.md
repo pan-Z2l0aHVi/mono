@@ -9,7 +9,11 @@ tag: web-ui-dialog
 
 ### 基础 {#basic}
 
-`open` 由页面持有：button 把它置真；Escape、backdrop 点击与内置关闭 button（`closable`）由组件自己关到位，再用 `open-change` 把结果交回来，页面按 `detail.open` 回写。footer 里的 button 是页面直接改状态，属于程序式更新，不会再派发一次事件——读数因此只在用户从组件侧关闭时增长。`heading` 是 `header` 槽为空时的标题回落。
+`open` 由页面持有：button 把它置真；Escape、backdrop 点击与内置关闭 button（`closable`）由组件自己关到位，再用 `open-change` 把结果交回来，页面按 `detail.open` 回写。
+
+footer 里的 button 是页面直接改状态，属于程序式更新，不会再派发一次事件——读数因此只在用户从组件侧关闭时增长。
+
+`heading` 是 `header` 槽为空时的标题回落。
 
 ```tsx
 import { useState } from 'react'
@@ -81,7 +85,9 @@ function onOpenChange(event: WebUiEvent<WebUiDialog, 'open-change'>) {
 
 ### 受控关闭 {#controlled-close}
 
-`controlled` 把关闭的决定权交给页面：Escape、backdrop 点击与 closable button 都不再改 `open`，只派发 `open-change` 请求关闭。页面不回写就保持打开，`<output>` 累加被拦截的请求数；footer 的「放弃更改」直接写 `false`，那是程序式关闭，`controlled` 不拦。
+`controlled` 把关闭的决定权交给页面：Escape、backdrop 点击与 closable button 都不再改 `open`，只派发 `open-change` 请求关闭。
+
+页面不回写就保持打开，`<output>` 累加被拦截的请求数；footer 的「放弃更改」直接写 `false`，那是程序式关闭，`controlled` 不拦。
 
 ```tsx
 import { useState } from 'react'
@@ -140,7 +146,9 @@ function onOpenChange(event: WebUiEvent<WebUiDialog, 'open-change'>) {
 
 ### Headless {#headless}
 
-`headless` 只保留 overlay 基础设施——backdrop、进出场动画、滚动锁与原生 `<dialog>` 语义；内置 chrome 带、正文区与 footer 一概不渲染，默认插槽直接落进卡片内的滚动层。此时没有可自动关联的内置标题，`dialog-label` 必须由页面提供，卡片外观与关闭 button 也全部自绘。
+`headless` 只保留 overlay 基础设施——backdrop、进出场动画、滚动锁与原生 `<dialog>` 语义；内置 chrome 带、正文区与 footer 一概不渲染，默认插槽直接落进卡片内的滚动层。
+
+此时没有可自动关联的内置标题，`dialog-label` 必须由页面提供，卡片外观与关闭 button 也全部自绘。
 
 ```tsx
 import { useState } from 'react'
@@ -252,13 +260,27 @@ const open = ref(false)
 
 ### 行为说明
 
-`header` 槽是卡片的 chrome 带：不参与滚动，自带水平 padding（`--wui-dialog-inline-padding`），内容不会贴到卡片内沿。`heading` 属性是它的 fallback——槽一旦有分配元素就整条接管，否则非空的 `heading` 渲染出 `.wui-dialog-heading`；两者都为空时整条带隐藏。
+`header` 槽是卡片的 chrome 带：不参与滚动，自带水平 padding（`--wui-dialog-inline-padding`），内容不会贴到卡片内沿。
 
-`default` 槽在两种模式下都承载正文。默认模式下它渲染进 `.desc`（卡片的内容区），与 `header` 带、`footer` 并列。`headless` 下整张卡片变成一个滚动层：`default` 槽渲染进 `.wui-dialog-content`，`header` 带、`.desc` 与 `footer` 一概不渲染，`heading` 一并失效。`headless` 与 `<web-ui-drawer>` 是同一套机制——显式布尔属性，不是「往某个插槽里塞东西」的 toggle。
+`heading` 属性是它的 fallback——槽一旦有分配元素就整条接管，否则非空的 `heading` 渲染出 `.wui-dialog-heading`；两者都为空时整条带隐藏。
+
+`default` 槽在两种模式下都承载正文。默认模式下它渲染进 `.desc`（卡片的内容区），与 `header` 带、`footer` 并列。
+
+`headless` 下整张卡片变成一个滚动层：`default` 槽渲染进 `.wui-dialog-content`，`header` 带、`.desc` 与 `footer` 一概不渲染，`heading` 一并失效。
+
+`headless` 与 `<web-ui-drawer>` 是同一套机制——显式布尔属性，不是「往某个插槽里塞东西」的 toggle。
 
 使用原生 `<dialog>`，`@cancel` 阻止默认关闭行为。除非存在 `no-escape-close`，否则 Escape 调用 `close()`；除非存在 `no-backdrop-close`，否则点击 backdrop 关闭。启用 `controlled` 后，两者都只派发关闭请求而不自关闭。
 
-启用 `closable` 后，默认模式与 `headless` 模式都会渲染内置关闭 button，且与 Escape、backdrop 点击走同一条关闭路径（`controlled` 对它同样生效）。两种模式的位置已统一：button 都绝对定位到卡片右上角，距卡片两沿的偏移由 `--wui-dialog-close-top` / `--wui-dialog-close-right` 控制（默认都是 `20px`；drawer 关闭 button 仍为 `16px`）。只有 `headless` 会把整卡换掉；默认模式下 `header` 带会为 button 留出避让，长内容不会钻到 button 下面。icon 与 drawer 关闭 button 同为 `ooui:close`。不启用 `closable` 时什么都不渲染——既没有 button，也没有多余的包裹层。
+启用 `closable` 后，默认模式与 `headless` 模式都会渲染内置关闭 button，且与 Escape、backdrop 点击走同一条关闭路径（`controlled` 对它同样生效）。
+
+两种模式的位置已统一：button 都绝对定位到卡片右上角，距卡片两沿的偏移由 `--wui-dialog-close-top` / `--wui-dialog-close-right` 控制（默认都是 `20px`；drawer 关闭 button 仍为 `16px`）。
+
+只有 `headless` 会把整卡换掉；默认模式下 `header` 带会为 button 留出避让，长内容不会钻到 button 下面。
+
+icon 与 drawer 关闭 button 同为 `ooui:close`。
+
+不启用 `closable` 时什么都不渲染——既没有 button，也没有多余的包裹层。
 
 > **Escape 归属**：Escape 由共享仲裁者统一判定，一次按键只关闭**最内层**的已打开 overlay（popover、select、autocomplete、dropdown、context-menu、drawer、dialog 都参与）。例如在 drawer 内打开 select，第一次 Escape 只关 select，第二次才关 drawer。互不嵌套的并列 overlay 按打开顺序关闭最上层。正在播退场过渡的 panel 仍在场上，也仍由它接住 Escape——但只要还有别的 overlay 开着，那一次按键仍然归该层，「一次按键关一层」不因此改变。`image-preview` 同样参与：它的原生 `<dialog>` 会登记进同一个仲裁者，Escape 按层级判定；组件的 `cancel` handler 只是拦掉原生的瞬时关闭，把 top layer 保留到退场过渡结束。
 
@@ -268,7 +290,9 @@ const open = ref(false)
 
 ### accessible name
 
-设置了 `dialog-label` 时，内部原生 `<dialog>` 直接取它的 `aria-label`；否则在默认模式且 `header` 带可见时，取指向该带的 `aria-labelledby="wui-dialog-heading"`。`headless` 没有可指向的内置标题，所以**名字必须由 Consumer 提供**——`dialog-label`，或自绘的可关联标题元素。
+设置了 `dialog-label` 时，内部原生 `<dialog>` 直接取它的 `aria-label`；否则在默认模式且 `header` 带可见时，取指向该带的 `aria-labelledby="wui-dialog-heading"`。
+
+`headless` 没有可指向的内置标题，所以**名字必须由 Consumer 提供**——`dialog-label`，或自绘的可关联标题元素。
 
 ### CSS Custom Properties
 

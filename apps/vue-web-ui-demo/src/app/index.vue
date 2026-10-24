@@ -254,6 +254,7 @@ function isNavActive(path: string) {
               :data-active="isNavActive(item.path)"
               :aria-current="isNavActive(item.path) ? 'page' : undefined"
               :aria-label="item.label"
+              @click="sidebarOpen = false"
             >
               <span :class="navCollapsed ? 'w-full truncate text-center text-sm' : 'min-w-0 flex-1 truncate text-sm'">
                 {{ item.label }}

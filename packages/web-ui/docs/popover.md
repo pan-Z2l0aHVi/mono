@@ -9,7 +9,9 @@ tag: web-ui-popover
 
 ### 基础 {#basic}
 
-click 模式点 trigger 切换，点 panel 外或按 Escape 关闭；trigger 请放入可交互元素（`web-ui-button` 或原生 `button`），开合状态会回写到它的 `aria-expanded` / `aria-controls`。`open-change` 只在用户来源的开合后派发，程序式写 `open` 不派发；下面那行读数就是最近一次通知的值。
+click 模式点 trigger 切换，点 panel 外或按 Escape 关闭；trigger 请放入可交互元素（`web-ui-button` 或原生 `button`），开合状态会回写到它的 `aria-expanded` / `aria-controls`。
+
+`open-change` 只在用户来源的开合后派发，程序式写 `open` 不派发；下面那行读数就是最近一次通知的值。
 
 ```tsx
 import { useState } from 'react'
@@ -120,7 +122,11 @@ const last = ref('—')
 
 ### 受控开合 {#controlled}
 
-`trigger="manual"` 不响应悬停，点 panel 外与 Escape 也不会关闭；开合由外部 button 调用 `show()` / `close()` 或点 trigger 自己切换。`open` 由页面状态持有：程序式调用不派发 `open-change`，所以 button 在调用后自己同步状态；用户点 trigger 时组件切换并派发 `open-change`，handler 把 `detail.open` 回写进同一份状态。下面读数就是页面持有的 `open`。
+`trigger="manual"` 不响应悬停，点 panel 外与 Escape 也不会关闭；开合由外部 button 调用 `show()` / `close()` 或点 trigger 自己切换。
+
+`open` 由页面状态持有：程序式调用不派发 `open-change`，所以 button 在调用后自己同步状态；用户点 trigger 时组件切换并派发 `open-change`，handler 把 `detail.open` 回写进同一份状态。
+
+下面读数就是页面持有的 `open`。
 
 ```tsx
 import type { WebUiPopover } from '@greypan/web-ui'
@@ -243,8 +249,12 @@ function close() {
 
 ### 行为说明
 
-Hover 模式使用 `pointerenter`/`pointerleave` 加延迟控制。Click 模式点击切换。Manual 模式不响应悬停，点击面板外与 Escape 也不关闭；trigger 点击与 `show()` / `close()` 都能改 `open`，其中程序式调用不派发 `open-change`。
+Hover 模式使用 `pointerenter`/`pointerleave` 加延迟控制。
+
+Click 模式点击切换。Manual 模式不响应悬停，点击面板外与 Escape 也不关闭；trigger 点击与 `show()` / `close()` 都能改 `open`，其中程序式调用不派发 `open-change`。
 
 ### trigger ARIA
 
-开合状态回写到 trigger 元素：`aria-expanded` 与 `aria-controls`（指向 panel）设在 `trigger` slot 的首个 assigned element 上（包装结构上的同名属性保留兼容）。trigger slot 请放入可交互元素（原生 button、`web-ui-button`）。
+开合状态回写到 trigger 元素：`aria-expanded` 与 `aria-controls`（指向 panel）设在 `trigger` slot 的首个 assigned element 上（包装结构上的同名属性保留兼容）。
+
+trigger slot 请放入可交互元素（原生 button、`web-ui-button`）。

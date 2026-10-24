@@ -194,7 +194,11 @@ function reset() {
 
 Shadow DOM 内的交互 `<span>` 声明 `role="radio"`，并同步 `aria-checked`、`aria-disabled` 和 `tabindex`。Enter/Space 键盘切换。
 
-点击只把该项置为选中，不会取消自己，也不会取消兄弟项；同页面的单选由宿主状态或 `<web-ui-radio-group>` 维持。`required` 在未选中时拦截原生提交（`valueMissing`），组内成员把这个判定交给组。组内成员自己派发的 `input` / `change` 不冒泡、不跨 shadow 边界，事件由组在宿主上统一派发一次。
+点击只把该项置为选中，不会取消自己，也不会取消兄弟项；同页面的单选由宿主状态或 `<web-ui-radio-group>` 维持。
+
+`required` 在未选中时拦截原生提交（`valueMissing`），组内成员把这个判定交给组。
+
+组内成员自己派发的 `input` / `change` 不冒泡、不跨 shadow 边界，事件由组在宿主上统一派发一次。
 
 ### 布局
 

@@ -195,12 +195,15 @@ function ExampleDoc({ component, nativeFlavor = 'react', level }: ExampleDocProp
                 `isolate` 让这张卡自己成一个 stacking context：工具条的 z-10 只在卡内比较，
                 既压得住下方代码区，也不会越过页面 header（`--wui-layer-header` 也是 10，
                 卡外比大小就会被后画的工具条盖住）。
+                预览区 z-20 压过工具条：select / dropdown / autocomplete 不开 `portal` 时面板是
+                宿主内的 `position: absolute`（`--wui-layer-inline-overlay` 只有 1），向下溢出预览区
+                就会被工具条盖掉；抬到 20 让整块预览（含溢出的面板）画在代码卡之上。
                 预览区不画边框、直接铺在页面上；边框与圆角只包住下方「工具条 + 代码区」。
               */}
               <div className="isolate" data-current-flavor={flavor}>
                 {Demo ? (
                   <div
-                    className="flex flex-wrap items-center gap-3 bg-(--wui-color-page) p-4"
+                    className="relative z-20 flex flex-wrap items-center gap-3 bg-(--wui-color-page) px-4 py-8"
                     data-sample-preview={sample.demoKey ?? undefined}
                   >
                     <Suspense fallback={null}>
@@ -209,12 +212,12 @@ function ExampleDoc({ component, nativeFlavor = 'react', level }: ExampleDocProp
                   </div>
                 ) : null}
 
-                <div className="overflow-hidden rounded-2xl border border-(--wui-color-border)">
+                <div className="overflow-hidden rounded-4xl border border-(--wui-color-border)">
                   {/* 整条工具条都是展开触发区；内部控件各自 stop，点它们不会顺带开合代码。 */}
                   {/* `relative z-10` 把工具条抬到下方代码区之上：segmented 长按时投影会向下溢出，
                       否则后绘制的折叠区会把阴影盖掉一截。这一层只在卡内比较，见上方 `isolate`。 */}
                   <div
-                    className="relative z-10 flex cursor-pointer flex-wrap items-center justify-between gap-3 border-b border-(--wui-color-border) bg-(--wui-color-page) px-4 py-2"
+                    className="relative z-10 flex cursor-pointer flex-wrap items-center justify-between gap-3 bg-(--wui-color-page) px-4 pt-4 pb-2"
                     onClick={event => toggleExpanded(event, key)}
                   >
                     <web-ui-segmented
@@ -235,52 +238,55 @@ function ExampleDoc({ component, nativeFlavor = 'react', level }: ExampleDocProp
                       ))}
                     </web-ui-segmented>
 
-                    <div className="flex items-center gap-1" onClick={event => event.stopPropagation()}>
+                    <div className="flex items-center" onClick={event => event.stopPropagation()}>
                       <span className="sr-only" aria-live="polite">
                         {copyAnnouncement(key)}
                       </span>
-                      <web-ui-tooltip content={copyLabel(key)}>
-                        <web-ui-button
-                          icon
-                          variant="ghost"
-                          size="28"
-                          data-copy
-                          aria-label={copyLabel(key)}
-                          onClick={event => void copyCode(event, key)}
-                        >
-                          {/* 成功态才包进描边宿主：`web-ui-svg-draw-lines` 在 slot 内容稳定时自动播一次，
-                            所以每次复制都会重新画出勾与圆，而不是淡入一张现成的图。 */}
-                          {copyState(key) === 'copied' ? (
-                            <web-ui-svg-draw-lines duration={300}>
+                      <web-ui-button-group>
+                        <web-ui-tooltip content={copyLabel(key)}>
+                          <web-ui-button
+                            icon
+                            variant="ghost"
+                            data-copy
+                            aria-label={copyLabel(key)}
+                            onClick={event => void copyCode(event, key)}
+                          >
+                            {/* 成功态才包进描边宿主：`web-ui-svg-draw-lines` 在 slot 内容稳定时自动播一次，
+                              所以每次复制都会重新画出勾与圆，而不是淡入一张现成的图。 */}
+                            {copyState(key) === 'copied' ? (
+                              <web-ui-svg-draw-lines duration={300}>
+                                <web-ui-icon
+                                  icon={akarIconsCircleCheck}
+                                  size={15}
+                                  className="text-(--wui-color-success)"
+                                ></web-ui-icon>
+                              </web-ui-svg-draw-lines>
+                            ) : (
                               <web-ui-icon
-                                icon={akarIconsCircleCheck}
+                                icon={copyIcon(key)}
                                 size={15}
-                                className="text-(--wui-color-success)"
+                                className={copyState(key) === 'failed' ? 'text-(--wui-color-danger)' : ''}
                               ></web-ui-icon>
-                            </web-ui-svg-draw-lines>
-                          ) : (
+                            )}
+                          </web-ui-button>
+                        </web-ui-tooltip>
+                        <web-ui-tooltip content={isExpanded ? '收起代码' : '展开代码'}>
+                          <web-ui-button
+                            icon
+                            variant="ghost"
+                            data-toggle-code
+                            aria-label={isExpanded ? '收起代码' : '展开代码'}
+                            aria-expanded={isExpanded ? 'true' : 'false'}
+                            aria-controls={panelId(key)}
+                            onClick={event => toggleExpanded(event, key)}
+                          >
                             <web-ui-icon
-                              icon={copyIcon(key)}
+                              icon={isExpanded ? lucideChevronUp : lucideChevronDown}
                               size={15}
-                              className={copyState(key) === 'failed' ? 'text-(--wui-color-danger)' : ''}
                             ></web-ui-icon>
-                          )}
-                        </web-ui-button>
-                      </web-ui-tooltip>
-                      <web-ui-tooltip content={isExpanded ? '收起代码' : '展开代码'}>
-                        <web-ui-button
-                          icon
-                          variant="ghost"
-                          size="28"
-                          data-toggle-code
-                          aria-label={isExpanded ? '收起代码' : '展开代码'}
-                          aria-expanded={isExpanded ? 'true' : 'false'}
-                          aria-controls={panelId(key)}
-                          onClick={event => toggleExpanded(event, key)}
-                        >
-                          <web-ui-icon icon={isExpanded ? lucideChevronUp : lucideChevronDown} size={15}></web-ui-icon>
-                        </web-ui-button>
-                      </web-ui-tooltip>
+                          </web-ui-button>
+                        </web-ui-tooltip>
+                      </web-ui-button-group>
                     </div>
                   </div>
 

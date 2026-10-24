@@ -3,7 +3,9 @@ component: dropdown-item
 tag: web-ui-dropdown-item
 ---
 
-`<web-ui-dropdown>` 与 `<web-ui-context-menu>` 的 menu item：`disabled` 让它留在 menu 里但不可选中，键盘导航与悬停都会跳过它；`prefix` / `suffix` 插槽放两端的 icon 与快捷键提示；`submenu` 把嵌套的 submenu 挂到它的下一级。它自己不派发对外事件，`value` 也不被 menu 消费——那是留给使用方在原生 `click` 里读的标识。
+`<web-ui-dropdown>` 与 `<web-ui-context-menu>` 的 menu item：`disabled` 让它留在 menu 里但不可选中，键盘导航与悬停都会跳过它；`prefix` / `suffix` 插槽放两端的 icon 与快捷键提示；`submenu` 把嵌套的 submenu 挂到它的下一级。
+
+它自己不派发对外事件，`value` 也不被 menu 消费——那是留给使用方在原生 `click` 里读的标识。
 
 ## 示例
 

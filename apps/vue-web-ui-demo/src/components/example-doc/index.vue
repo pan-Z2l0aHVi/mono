@@ -201,23 +201,26 @@ function copyAnnouncement(key: string) {
           `isolate` 让这张卡自己成一个 stacking context：工具条的 z-10 只在卡内比较，
           既压得住下方代码区，也不会越过页面 header（`--wui-layer-header` 也是 10，
           卡外比大小就会被后画的工具条盖住）。
+          预览区 z-20 压过工具条：select / dropdown / autocomplete 不开 `portal` 时面板是
+          宿主内的 `position: absolute`（`--wui-layer-inline-overlay` 只有 1），向下溢出预览区
+          就会被工具条盖掉；抬到 20 让整块预览（含溢出的面板）画在代码卡之上。
           预览区不画边框、直接铺在页面上；边框与圆角只包住下方「工具条 + 代码区」。
         -->
         <div class="isolate" :data-current-flavor="activeFlavor(sampleKey(sample, index))">
           <div
             v-if="demoComponent(sample.demoKey)"
-            class="flex flex-wrap items-center gap-3 bg-(--wui-color-page) p-4"
+            class="relative z-20 flex flex-wrap items-center gap-3 bg-(--wui-color-page) px-4 py-8"
             :data-sample-preview="sample.demoKey ?? undefined"
           >
             <component :is="demoComponent(sample.demoKey)" />
           </div>
 
-          <div class="overflow-hidden rounded-2xl border border-(--wui-color-border)">
+          <div class="overflow-hidden rounded-4xl border border-(--wui-color-border)">
             <!-- 整条工具条都是展开触发区；内部控件各自 stop，点它们不会顺带开合代码。
                  `relative z-10` 把工具条抬到下方代码区之上：segmented 长按时投影会向下溢出，
                  否则后绘制的折叠区会把阴影盖掉一截。这一层只在卡内比较，见上方 `isolate`。 -->
             <div
-              class="relative z-10 flex cursor-pointer flex-wrap items-center justify-between gap-3 border-b border-(--wui-color-border) bg-(--wui-color-page) px-4 py-2"
+              class="relative z-10 flex cursor-pointer flex-wrap items-center justify-between gap-3 bg-(--wui-color-page) px-4 pt-4 pb-2"
               @click="toggleExpanded($event, sampleKey(sample, index))"
             >
               <web-ui-segmented
@@ -236,51 +239,51 @@ function copyAnnouncement(key: string) {
                 </web-ui-segmented-trigger>
               </web-ui-segmented>
 
-              <div class="flex items-center gap-1" @click.stop>
+              <div class="flex items-center" @click.stop>
                 <span class="sr-only" aria-live="polite">{{ copyAnnouncement(sampleKey(sample, index)) }}</span>
-                <web-ui-tooltip :content="copyLabel(sampleKey(sample, index))">
-                  <web-ui-button
-                    icon
-                    variant="ghost"
-                    size="28"
-                    data-copy
-                    :aria-label="copyLabel(sampleKey(sample, index))"
-                    @click="copyCode($event, sampleKey(sample, index))"
-                  >
-                    <!-- 成功态才包进描边宿主：`web-ui-svg-draw-lines` 在 slot 内容稳定时自动播一次，
-                       所以每次复制都会重新画出勾与圆，而不是淡入一张现成的图。 -->
-                    <web-ui-svg-draw-lines v-if="copyState(sampleKey(sample, index)) === 'copied'" :duration="300">
+                <web-ui-button-group>
+                  <web-ui-tooltip :content="copyLabel(sampleKey(sample, index))">
+                    <web-ui-button
+                      icon
+                      variant="ghost"
+                      data-copy
+                      :aria-label="copyLabel(sampleKey(sample, index))"
+                      @click="copyCode($event, sampleKey(sample, index))"
+                    >
+                      <!-- 成功态才包进描边宿主：`web-ui-svg-draw-lines` 在 slot 内容稳定时自动播一次，
+                         所以每次复制都会重新画出勾与圆，而不是淡入一张现成的图。 -->
+                      <web-ui-svg-draw-lines v-if="copyState(sampleKey(sample, index)) === 'copied'" :duration="300">
+                        <web-ui-icon
+                          :icon="akarIconsCircleCheck"
+                          :size="15"
+                          class="text-(--wui-color-success)"
+                        ></web-ui-icon>
+                      </web-ui-svg-draw-lines>
                       <web-ui-icon
-                        :icon="akarIconsCircleCheck"
+                        v-else
+                        :icon="copyIcon(sampleKey(sample, index))"
                         :size="15"
-                        class="text-(--wui-color-success)"
+                        :class="copyState(sampleKey(sample, index)) === 'failed' ? 'text-(--wui-color-danger)' : ''"
                       ></web-ui-icon>
-                    </web-ui-svg-draw-lines>
-                    <web-ui-icon
-                      v-else
-                      :icon="copyIcon(sampleKey(sample, index))"
-                      :size="15"
-                      :class="copyState(sampleKey(sample, index)) === 'failed' ? 'text-(--wui-color-danger)' : ''"
-                    ></web-ui-icon>
-                  </web-ui-button>
-                </web-ui-tooltip>
-                <web-ui-tooltip :content="expanded[sampleKey(sample, index)] ? '收起代码' : '展开代码'">
-                  <web-ui-button
-                    icon
-                    variant="ghost"
-                    size="28"
-                    data-toggle-code
-                    :aria-label="expanded[sampleKey(sample, index)] ? '收起代码' : '展开代码'"
-                    :aria-expanded="expanded[sampleKey(sample, index)] ?? false"
-                    :aria-controls="panelId(sampleKey(sample, index))"
-                    @click="toggleExpanded($event, sampleKey(sample, index))"
-                  >
-                    <web-ui-icon
-                      :icon="expanded[sampleKey(sample, index)] ? lucideChevronUp : lucideChevronDown"
-                      :size="15"
-                    ></web-ui-icon>
-                  </web-ui-button>
-                </web-ui-tooltip>
+                    </web-ui-button>
+                  </web-ui-tooltip>
+                  <web-ui-tooltip :content="expanded[sampleKey(sample, index)] ? '收起代码' : '展开代码'">
+                    <web-ui-button
+                      icon
+                      variant="ghost"
+                      data-toggle-code
+                      :aria-label="expanded[sampleKey(sample, index)] ? '收起代码' : '展开代码'"
+                      :aria-expanded="expanded[sampleKey(sample, index)] ?? false"
+                      :aria-controls="panelId(sampleKey(sample, index))"
+                      @click="toggleExpanded($event, sampleKey(sample, index))"
+                    >
+                      <web-ui-icon
+                        :icon="expanded[sampleKey(sample, index)] ? lucideChevronUp : lucideChevronDown"
+                        :size="15"
+                      ></web-ui-icon>
+                    </web-ui-button>
+                  </web-ui-tooltip>
+                </web-ui-button-group>
               </div>
             </div>
 
