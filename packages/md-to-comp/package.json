@@ -1,6 +1,6 @@
 {
   "name": "@greypan/md-to-comp",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "private": true,
   "description": "markdown 示例文档引擎：把带围栏与 API 表的 markdown 生成示例数据、可交互组件源码，并提供驱动生成的 Vite 插件",
   "type": "module",
