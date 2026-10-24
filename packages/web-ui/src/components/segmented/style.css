@@ -171,7 +171,8 @@
   transform: scale(1.5);
 
   background-color: transparent;
-  backdrop-filter: blur(4px) saturate(160%) brightness(var(--wui-glass-brightness, 1.06));
+  backdrop-filter: blur(var(--wui-glass-blur, 4px)) saturate(var(--wui-glass-saturation, 160%))
+    brightness(var(--wui-glass-brightness, 1.06));
   box-shadow:
     inset 0 0 0 0.5px color-mix(in srgb, var(--wui-color-glass-highlight, rgb(255 255 255 / 0.9)) 38%, transparent),
     inset 0 1px 0.5px color-mix(in srgb, var(--wui-color-glass-highlight, rgb(255 255 255 / 0.9)) 52%, transparent),

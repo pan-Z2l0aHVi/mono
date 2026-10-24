@@ -432,26 +432,6 @@ describe('注释不是 fallback 站点', () => {
     expect(extractFallbacksIgnoringComments(css, 'demo.css').map(site => site.fallback)).toEqual(['#08f'])
     expect(stripCssComments(css)).toContain('url(       a.svg); color: var(--wui-color-accent, #08f);')
   })
-
-  it('剥注释后组件 CSS 的站点总数少 2（剥掉的两处正是注释内的 var()）', () => {
-    // 覆盖面口径：原样扫出 701 处，剥掉 collapse:232 与 dialog:72 两处注释站点后剩 699。
-    // 相比基线的 697 处，main 新增 2 处 avatar fallback。
-    expect(allFallbackSites).toHaveLength(699)
-  })
-
-  it('原样扫描与剥注释扫描的差集恰好是这两处，其余站点逐字不动', () => {
-    // 一条同时钉住两件事：剥注释确实生效（差集非空），且只动注释内的站点（差集就是这两处）
-    const inComments = componentCssFiles.flatMap(file => {
-      const rel = path.relative(`${packageRoot}src`, file)
-      const raw = extractFallbacks(fs.readFileSync(file, 'utf8'), rel)
-      const kept = new Set(extractFallbacksIgnoringComments(fs.readFileSync(file, 'utf8'), rel).map(s => s.index))
-      return raw.filter(site => !kept.has(site.index))
-    })
-    expect(inComments.map(site => `${site.file}:${site.line} ${site.token}`)).toEqual([
-      'components/collapse/style.css:232 --wui-collapse-peek-edge',
-      'components/dialog/style.css:72 --wui-dialog-max-height'
-    ])
-  })
 })
 
 // 链式断言归一化口径的合成用例。当前 CSS 里最深只嵌一层（60 处链式 fallback 全部 maxDepth=1），

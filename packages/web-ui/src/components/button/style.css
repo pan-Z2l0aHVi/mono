@@ -122,7 +122,7 @@ button:active:not(:disabled) {
   --wui-button-bg-active: color-mix(in srgb, var(--wui-color-danger, #dc2626) 45%, var(--wui-color-surface, #fff));
 }
 
-/* .wui-glass 样式由 @/assets/glass.css 提供 */
+/* .wui-glass 样式由 @/classes/glass.css 提供 */
 :host([variant='glass']) {
   --wui-button-color: var(--wui-color-text, #1b1b1b);
 

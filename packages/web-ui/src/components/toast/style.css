@@ -35,7 +35,7 @@
 
   opacity: 0;
   background-color: var(--wui-color-surface-overlay, rgb(248 248 248 / 0.92));
-  backdrop-filter: blur(0) saturate(160%) brightness(var(--wui-glass-brightness, 1.06));
+  backdrop-filter: blur(0) saturate(var(--wui-glass-saturation, 160%)) brightness(var(--wui-glass-brightness, 1.06));
 
   /* transition 列表需手写 -webkit-backdrop-filter：lightningcss 不会在 transition
    value 内追加 -webkit 项，iOS 16.4 上 blur 过渡依赖它（属性前缀会自动生成）。 */
@@ -49,7 +49,8 @@
 :host([visible]) .toast {
   transform: translate(0, 0) scale(1);
   opacity: 1;
-  backdrop-filter: blur(4px) saturate(160%) brightness(var(--wui-glass-brightness, 1.06));
+  backdrop-filter: blur(var(--wui-glass-blur, 4px)) saturate(var(--wui-glass-saturation, 160%))
+    brightness(var(--wui-glass-brightness, 1.06));
 }
 
 :host(:not([visible])) .toast {

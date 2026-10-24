@@ -682,7 +682,7 @@ const cappedRows = Array.from(
 
 ### CSS 变量 {#theming}
 
-`--wui-collapse-peek-edge` 显式指定渐变长度，优先于推导值；`--wui-collapse-peek-edge-blur` 是同一条带上背景模糊的半径；`--wui-collapse-peek-edge-color` 是渐变末端颜色，mask 按 alpha 解析，所以必须带 alpha。`peek` 写成百分比时推导结果不是长度、无法被注册的 `<length>` 属性插值，会静默回落成无渐隐——那种写法想要带子就只能走 `--wui-collapse-peek-edge`。两条都停在关闭稳态，第一条的模糊半径被拉到 10px，第二条把末端颜色指向共享的 `--wui-color-border`（自带 alpha），带子因此看得见。
+`--wui-collapse-peek-edge` 显式指定渐变长度，优先于推导值；`--wui-collapse-peek-edge-blur` 是同一条带上背景模糊的半径；`--wui-collapse-peek-edge-color` 是裁剪边缘处的渐变起点色（默认页面底色），向内容方向淡到全透明。`peek` 写成百分比时推导结果不是长度、无法被注册的 `<length>` 属性插值，会静默回落成无渐隐——那种写法想要带子就只能走 `--wui-collapse-peek-edge`。两条都停在关闭稳态，第一条的模糊半径被拉到 10px，第二条把边缘色指向共享的 `--wui-color-border`，带子因此与默认的页面色区分得开。
 
 ```tsx
 import type { CSSProperties } from 'react'
@@ -724,13 +724,13 @@ export default function Demo() {
           type="button"
           className="w-full cursor-pointer rounded-md bg-(--wui-color-surface-control) px-3 py-2 text-left"
         >
-          末端颜色取共享 border 色
+          边缘颜色取共享 border 色
         </button>
         <div slot="content">
           <div className="p-3 text-sm">
             {Array.from({ length: 5 }, (_, index) => (
               <p key={index} className="m-0">
-                段落 {index + 1}：末端落到 0.3 alpha 而不是全透明，裁剪边缘因此留着残影。
+                段落 {index + 1}：裁剪边缘的底色换成 border 色，带子从边缘向内淡出。
               </p>
             ))}
           </div>
@@ -769,7 +769,7 @@ export default function Demo() {
         type="button"
         class="w-full cursor-pointer rounded-md bg-(--wui-color-surface-control) px-3 py-2 text-left"
       >
-        末端颜色取共享 border 色
+        边缘颜色取共享 border 色
       </button>
       <div slot="content">
         <div class="p-3 text-sm">
@@ -787,7 +787,7 @@ const blurRows = Array.from(
 )
 const edgeColorRows = Array.from(
   { length: 5 },
-  (_, index) => `段落 ${index + 1}：末端落到 0.3 alpha 而不是全透明，裁剪边缘因此留着残影。`
+  (_, index) => `段落 ${index + 1}：裁剪边缘的底色换成 border 色，带子从边缘向内淡出。`
 )
 </script>
 ```
@@ -1219,11 +1219,11 @@ default slot 的全部内容都被包进 trigger wrapper，因而都在点击代
 
 露出区域的裁剪边缘自带一段 alpha 渐变（`horizontal` 时改为右边），让被裁掉的部分柔和过渡到背景而不是硬切。渐变长度由 `peek` 推导，不需要也没有第二个属性可调——需要时用 CSS 变量微调：
 
-渐变带由两层组成，配对方式与 layout header 的晕染一致：上面那条 alpha 渐隐之外，同一条带上再叠一层真实的 `backdrop-filter` 模糊，被裁掉的内容因此是被**糊掉**的，而不只是被调成半透明。模糊强度由本盒自己的 `mask-image` 调制——从带子起点为 0 升到后半段满强度、再在裁剪边缘前回到 0：起点不为 0 会在「突然开始模糊」处留一条接缝，末端不为 0 则会一路糊到裁剪边界。展开态活动长度为 0，各色标塌缩到 100% 而末位色标是全透明，于是这一层什么都不画。
+渐变带由两层组成，直接复用公共 `.wui-glow`（与 layout header 的晕染同一份样式，见 `@greypan/web-ui/classes.css`）：上面那条 alpha 渐隐之外，同一条带上再叠一层真实的 `backdrop-filter` 模糊，被裁掉的内容因此是被**糊掉**的，而不只是被调成半透明。组件内把两层提升到内容之上（默认 `.wui-glow` 位于内容之下）。模糊强度由本盒自己的 `mask-image` 调制——从带子起点为 0 升到后半段满强度、再在裁剪边缘前回到 0：起点不为 0 会在「突然开始模糊」处留一条接缝，末端不为 0 则会一路糊到裁剪边界。展开态活动长度为 0，各色标塌缩到 100% 而末位色标是全透明，于是这一层什么都不画。
 
 比例设为 `0` 即关闭渐隐。推导是纯 CSS 的 `calc(peek * ratio)`：`peek` 用 rem 时渐变长度自动跟随根字号缩放，JS 侧不需要做任何单位解析。已知限制：`peek` 取百分比时推导结果不是长度、无法被注册属性插值，会静默回落为「无渐隐」，此时请用 `--wui-collapse-peek-edge` 显式指定长度。
 
-渐变是四段「先陡后缓」而非线性：主体全黑延伸到渐变带起点后，前 30% 距离就降到 60% alpha，65% 处 26%，末端落到边缘颜色。线性渐变的 alpha 在带子前 40% 几乎贴着 1.0，人眼感知到的虚化远短于声明长度——把下降前置后，带子从起点就明显发虚，同样长度的感知长度接近翻倍。
+内容那条 alpha 渐隐是四段「先陡后缓」而非线性：主体全黑延伸到渐变带起点后，前 30% 距离就降到 60% alpha，65% 处 26%，末端全透明。线性渐变的 alpha 在带子前 40% 几乎贴着 1.0，人眼感知到的虚化远短于声明长度——把下降前置后，带子从起点就明显发虚，同样长度的感知长度接近翻倍。
 
 渐变带位置用百分比声明、相对容器的**当前渲染高度**（即 `max-height` 动画的那个高度），因此收起动画期间渐变带逐帧跟随裁剪边缘移动，`mask-image` 字符串本身无需插值。渐变带长度由注册的 `<length>` 自定义属性驱动，随开合动画平滑淡入淡出，而不是等收起动画落稳态才突然出现。
 
@@ -1237,13 +1237,13 @@ default slot 的全部内容都被包进 trigger wrapper，因而都在点击代
 
 ### CSS Custom Properties
 
-| 名称                             | 说明                                           | 默认值        |
-| -------------------------------- | ---------------------------------------------- | ------------- |
-| `--wui-collapse-peek-edge-ratio` | 渐变长度占 `peek` 的比例                       | `0.4`         |
-| `--wui-collapse-peek-edge-max`   | 长度上限，避免大 `peek` 算出过长的虚化带       | `112px`       |
-| `--wui-collapse-peek-edge`       | 显式指定长度，优先于推导值                     | —             |
-| `--wui-collapse-peek-edge-color` | 渐变末端颜色（需带 alpha，mask 按 alpha 解析） | `transparent` |
-| `--wui-collapse-peek-edge-blur`  | 同一条渐变带上背景模糊的半径                   | `4px`         |
+| 名称                             | 说明                                     | 默认值                        |
+| -------------------------------- | ---------------------------------------- | ----------------------------- |
+| `--wui-collapse-peek-edge-ratio` | 渐变长度占 `peek` 的比例                 | `0.4`                         |
+| `--wui-collapse-peek-edge-max`   | 长度上限，避免大 `peek` 算出过长的虚化带 | `112px`                       |
+| `--wui-collapse-peek-edge`       | 显式指定长度，优先于推导值               | —                             |
+| `--wui-collapse-peek-edge-color` | 裁剪边缘处的渐变起点色                   | `var(--wui-color-page, #fff)` |
+| `--wui-collapse-peek-edge-blur`  | 同一条渐变带上背景模糊的半径             | `4px`                         |
 
 ### 已知限制
 

@@ -60,6 +60,70 @@ import { OverlayScrollbarsComponent } from 'overlayscrollbars-vue' // 或 overla
   声明它会让引擎放弃平台的覆盖式 scrollbar、固定占一条布局宽度，而组件内部 scrollbar 正是不能占宽度。
   导入本样式表，组件内部 scrollbar 才会跟随外观，与整页 scrollbar 同一机制。
 
+## Classes
+
+`@greypan/web-ui/classes.css` 汇总可复用的公共 class，组件内部与消费方共用同一份源码：
+`.wui-glass`（毛玻璃表面）与 `.wui-glow`（装饰性背景晕染）。
+
+```js
+import '@greypan/web-ui/classes.css'
+```
+
+### .wui-glass
+
+给任意容器加 `.wui-glass` 即可获得毛玻璃表面；组件内部（drawer body、dialog / toast、tooltip /
+popover、input 等）用的也是同一份样式。
+
+```html
+<div class="wui-glass">...</div>
+```
+
+- 同时提供半透明底色、`backdrop-filter`（模糊 / 饱和 / 亮度）、元素自身的 inset 高光与投影，
+  以及用 `::before` 挖出的 1px 描边环：环的左上 / 右下受光、右上 / 左下背光，半径由
+  `--wui-glass-corner-radius` 控制。
+- 容器需要有确定的盒子尺寸和可被采样的背景。`.wui-glass` 只在宿主没有其他 `position` 时补
+  `position: relative`，并移除自身 border（描边由环承担）；圆角仍跟随宿主的 `border-radius`。
+- 非 pill 表面应把 `--wui-glass-corner-radius` 覆盖成与自身圆角同源的值，否则角部光影半径与
+  盒形不匹配。颜色 token 由主题给出浅 / 深两套默认值，优先覆盖 token 而不是重写 `backdrop-filter`。
+
+| token                          | 默认值                    | 说明                                                 |
+| ------------------------------ | ------------------------- | ---------------------------------------------------- |
+| `--wui-color-surface-glass`    | `rgb(250 250 250 / 0.34)` | 半透明底色；深色主题为 `rgb(44 44 46 / 0.42)`        |
+| `--wui-glass-blur`             | `4px`                     | `backdrop-filter` 模糊半径；设 `0px` 关闭            |
+| `--wui-glass-saturation`       | `160%`                    | 背景饱和度                                           |
+| `--wui-glass-brightness`       | `1.06`                    | 背景亮度；深色主题为 `1.02`                          |
+| `--wui-color-glass-highlight`  | `rgb(255 255 255 / 0.9)`  | 元素 inset 高光；深色主题为 `rgb(255 255 255 / 0.1)` |
+| `--wui-glass-corner-radius`    | `32px`                    | 描边环径向光影的半径                                 |
+| `--wui-color-glass-ring`       | `rgb(0 0 0 / 0.05)`       | 1px 环底色；深色主题为 `rgb(255 255 255 / 0.05)`     |
+| `--wui-color-glass-ring-sheen` | `rgb(255 255 255 / 0.5)`  | 受光角光泽；深色主题为 `rgb(255 255 255 / 0.2)`      |
+| `--wui-color-glass-ring-shade` | `rgb(0 0 0 / 0.03)`       | 背光角压暗；深色主题为 `rgb(0 0 0 / 0.5)`            |
+| `--wui-shadow-glass`           | 四层扩散阴影              | 元素投影；未设置时使用类内默认值                     |
+
+### .wui-glow
+
+给任意容器加 `.wui-glow` 即可，不需要额外组件或 DOM；`web-ui-layout` 的 `header-glow` 与
+collapse 的 peek 边缘用的也是同一份样式。
+
+```html
+<div class="wui-glow">...</div>
+```
+
+- 渐变与模糊都是容器的背景层，内容始终位于其上方。容器需要有确定的盒子尺寸；`.wui-glow` 只在
+  宿主没有其他 `position` 时补 `position: relative`，并加 `isolation: isolate`。
+- 默认从容器顶部向下铺 `--wui-color-page` 渐变，再叠 `blur(4px)`；模糊层向下探出 24px 后收尾。
+  容器或祖先的 `overflow: hidden` 会裁掉这段尾巴。
+- 宿主是不透明背景时，渐变会叠在它上方，但模糊采样不到宿主背后的内容——只会模糊自身的纯色背景。
+  想要毛玻璃观感，宿主表面应保持半透明。
+
+| token                           | 默认值                                 | 说明                                        |
+| ------------------------------- | -------------------------------------- | ------------------------------------------- |
+| `--wui-glow-color`              | `var(--wui-color-page, #fff)`          | 渐变起点色                                  |
+| `--wui-glow-gradient-direction` | `to bottom`                            | `linear-gradient` 的方向                    |
+| `--wui-glow-gradient`           | 由起点色与方向生成的 `linear-gradient` | 完整 background-image；设 `none` 关闭渐变   |
+| `--wui-glow-blur`               | `4px`                                  | `backdrop-filter` 模糊半径；设 `0px` 关闭   |
+| `--wui-glow-overhang`           | `24px`                                 | 模糊层向容器下方探出的高度                  |
+| `--wui-glow-fade`               | `36px`                                 | 从全强度到透明的衰减总长，应不小于 overhang |
+
 ## Vite
 
 `@greypan/web-ui/vite` 导出 `webUiOptimizeDeps`，即需要并进应用 `optimizeDeps.include` 的 web-ui 运行时

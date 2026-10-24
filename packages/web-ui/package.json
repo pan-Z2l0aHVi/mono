@@ -14,6 +14,8 @@
   "sideEffects": [
     "./src/components/**",
     "./dist/components/**",
+    "./src/classes/**",
+    "./dist/classes/**",
     "./src/scrollbars/**",
     "./dist/scrollbars/**"
   ],
@@ -30,6 +32,7 @@
       "types": "./dist/icons/index.d.ts",
       "import": "./dist/icons/index.js"
     },
+    "./classes.css": "./dist/classes/style.css",
     "./scrollbars": {
       "types": "./dist/scrollbars/index.d.ts",
       "import": "./dist/scrollbars/index.js"

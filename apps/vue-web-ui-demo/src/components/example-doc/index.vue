@@ -201,113 +201,111 @@ function copyAnnouncement(key: string) {
           `isolate` 让这张卡自己成一个 stacking context：工具条的 z-10 只在卡内比较，
           既压得住下方代码区，也不会越过页面 header（`--wui-layer-header` 也是 10，
           卡外比大小就会被后画的工具条盖住）。
-          卡片自己不铺底：预览、工具条、代码区三段一律 `--wui-color-page`，圆角交给 `overflow-hidden` 裁。
-          再铺一层 surface-raised 只会多出一个永远看不见的声明，深色下还容易读成浮起的面板。
+          预览区不画边框、直接铺在页面上；边框与圆角只包住下方「工具条 + 代码区」。
         -->
-        <div
-          class="isolate overflow-hidden rounded-2xl border border-(--wui-color-border)"
-          :data-current-flavor="activeFlavor(sampleKey(sample, index))"
-        >
+        <div class="isolate" :data-current-flavor="activeFlavor(sampleKey(sample, index))">
           <div
             v-if="demoComponent(sample.demoKey)"
-            class="flex flex-wrap items-center gap-3 border-b border-(--wui-color-border) bg-(--wui-color-page) p-4"
+            class="flex flex-wrap items-center gap-3 bg-(--wui-color-page) p-4"
             :data-sample-preview="sample.demoKey ?? undefined"
           >
             <component :is="demoComponent(sample.demoKey)" />
           </div>
 
-          <!-- 整条工具条都是展开触发区；内部控件各自 stop，点它们不会顺带开合代码。
-               `relative z-10` 把工具条抬到下方代码区之上：segmented 长按时投影会向下溢出，
-               否则后绘制的折叠区会把阴影盖掉一截。这一层只在卡内比较，见上方 `isolate`。 -->
-          <div
-            class="relative z-10 flex cursor-pointer flex-wrap items-center justify-between gap-3 border-b border-(--wui-color-border) bg-(--wui-color-page) px-4 py-2"
-            @click="toggleExpanded($event, sampleKey(sample, index))"
-          >
-            <web-ui-segmented
-              :value="activeFlavor(sampleKey(sample, index))"
-              variant="raised"
-              data-flavor-switch
-              aria-label="示例代码框架"
-              @click.stop
-              @input="onFlavorInput($event, sampleKey(sample, index))"
+          <div class="overflow-hidden rounded-2xl border border-(--wui-color-border)">
+            <!-- 整条工具条都是展开触发区；内部控件各自 stop，点它们不会顺带开合代码。
+                 `relative z-10` 把工具条抬到下方代码区之上：segmented 长按时投影会向下溢出，
+                 否则后绘制的折叠区会把阴影盖掉一截。这一层只在卡内比较，见上方 `isolate`。 -->
+            <div
+              class="relative z-10 flex cursor-pointer flex-wrap items-center justify-between gap-3 border-b border-(--wui-color-border) bg-(--wui-color-page) px-4 py-2"
+              @click="toggleExpanded($event, sampleKey(sample, index))"
             >
-              <web-ui-segmented-trigger v-for="flavor in flavors" :key="flavor" :value="flavor">
-                <span class="flex items-center gap-1.5">
-                  <web-ui-icon :icon="FLAVOR_ICONS[flavor]" :size="14"></web-ui-icon>
-                  {{ FLAVOR_LABELS[flavor] }}
-                </span>
-              </web-ui-segmented-trigger>
-            </web-ui-segmented>
+              <web-ui-segmented
+                :value="activeFlavor(sampleKey(sample, index))"
+                variant="raised"
+                data-flavor-switch
+                aria-label="示例代码框架"
+                @click.stop
+                @input="onFlavorInput($event, sampleKey(sample, index))"
+              >
+                <web-ui-segmented-trigger v-for="flavor in flavors" :key="flavor" :value="flavor">
+                  <span class="flex items-center gap-1.5">
+                    <web-ui-icon :icon="FLAVOR_ICONS[flavor]" :size="14"></web-ui-icon>
+                    {{ FLAVOR_LABELS[flavor] }}
+                  </span>
+                </web-ui-segmented-trigger>
+              </web-ui-segmented>
 
-            <div class="flex items-center gap-1" @click.stop>
-              <span class="sr-only" aria-live="polite">{{ copyAnnouncement(sampleKey(sample, index)) }}</span>
-              <web-ui-tooltip :content="copyLabel(sampleKey(sample, index))">
-                <web-ui-button
-                  icon
-                  variant="ghost"
-                  size="28"
-                  data-copy
-                  :aria-label="copyLabel(sampleKey(sample, index))"
-                  @click="copyCode($event, sampleKey(sample, index))"
-                >
-                  <!-- 成功态才包进描边宿主：`web-ui-svg-draw-lines` 在 slot 内容稳定时自动播一次，
+              <div class="flex items-center gap-1" @click.stop>
+                <span class="sr-only" aria-live="polite">{{ copyAnnouncement(sampleKey(sample, index)) }}</span>
+                <web-ui-tooltip :content="copyLabel(sampleKey(sample, index))">
+                  <web-ui-button
+                    icon
+                    variant="ghost"
+                    size="28"
+                    data-copy
+                    :aria-label="copyLabel(sampleKey(sample, index))"
+                    @click="copyCode($event, sampleKey(sample, index))"
+                  >
+                    <!-- 成功态才包进描边宿主：`web-ui-svg-draw-lines` 在 slot 内容稳定时自动播一次，
                        所以每次复制都会重新画出勾与圆，而不是淡入一张现成的图。 -->
-                  <web-ui-svg-draw-lines v-if="copyState(sampleKey(sample, index)) === 'copied'" :duration="300">
+                    <web-ui-svg-draw-lines v-if="copyState(sampleKey(sample, index)) === 'copied'" :duration="300">
+                      <web-ui-icon
+                        :icon="akarIconsCircleCheck"
+                        :size="15"
+                        class="text-(--wui-color-success)"
+                      ></web-ui-icon>
+                    </web-ui-svg-draw-lines>
                     <web-ui-icon
-                      :icon="akarIconsCircleCheck"
+                      v-else
+                      :icon="copyIcon(sampleKey(sample, index))"
                       :size="15"
-                      class="text-(--wui-color-success)"
+                      :class="copyState(sampleKey(sample, index)) === 'failed' ? 'text-(--wui-color-danger)' : ''"
                     ></web-ui-icon>
-                  </web-ui-svg-draw-lines>
-                  <web-ui-icon
-                    v-else
-                    :icon="copyIcon(sampleKey(sample, index))"
-                    :size="15"
-                    :class="copyState(sampleKey(sample, index)) === 'failed' ? 'text-(--wui-color-danger)' : ''"
-                  ></web-ui-icon>
-                </web-ui-button>
-              </web-ui-tooltip>
-              <web-ui-tooltip :content="expanded[sampleKey(sample, index)] ? '收起代码' : '展开代码'">
-                <web-ui-button
-                  icon
-                  variant="ghost"
-                  size="28"
-                  data-toggle-code
-                  :aria-label="expanded[sampleKey(sample, index)] ? '收起代码' : '展开代码'"
-                  :aria-expanded="expanded[sampleKey(sample, index)] ?? false"
-                  :aria-controls="panelId(sampleKey(sample, index))"
-                  @click="toggleExpanded($event, sampleKey(sample, index))"
-                >
-                  <web-ui-icon
-                    :icon="expanded[sampleKey(sample, index)] ? lucideChevronUp : lucideChevronDown"
-                    :size="15"
-                  ></web-ui-icon>
-                </web-ui-button>
-              </web-ui-tooltip>
+                  </web-ui-button>
+                </web-ui-tooltip>
+                <web-ui-tooltip :content="expanded[sampleKey(sample, index)] ? '收起代码' : '展开代码'">
+                  <web-ui-button
+                    icon
+                    variant="ghost"
+                    size="28"
+                    data-toggle-code
+                    :aria-label="expanded[sampleKey(sample, index)] ? '收起代码' : '展开代码'"
+                    :aria-expanded="expanded[sampleKey(sample, index)] ?? false"
+                    :aria-controls="panelId(sampleKey(sample, index))"
+                    @click="toggleExpanded($event, sampleKey(sample, index))"
+                  >
+                    <web-ui-icon
+                      :icon="expanded[sampleKey(sample, index)] ? lucideChevronUp : lucideChevronDown"
+                      :size="15"
+                    ></web-ui-icon>
+                  </web-ui-button>
+                </web-ui-tooltip>
+              </div>
             </div>
-          </div>
 
-          <!--
-            关闭态露出 128px：12px 上边距 + 4 行 24px + 第 5 行的 20px。末端渐隐/晕染带取
-            peek 的 60%（76.8px），「下面还有内容」由一整段发虚说出来，而不是只把最后一行切一半。
-            这个比例的前提是 128px 还没顶到晕染带上限 `--wui-collapse-peek-edge-max`（112px）：
-            peek 抬高到 187px 以上，带子会被上限掐住、遮挡比例跌破 60%。
-          -->
-          <web-ui-collapse
-            :open="expanded[sampleKey(sample, index)] ?? false"
-            peek="128px"
-            class="bg-(--wui-color-page) [--wui-collapse-peek-edge-ratio:0.6]"
-          >
-            <div slot="content">
-              <div
-                :id="panelId(sampleKey(sample, index))"
-                class="max-h-[32rem] overflow-auto bg-(--wui-color-page) px-4 pt-3 pb-4 font-mono text-xs leading-6"
-                data-code
-                tabindex="0"
-                v-html="sample.html[activeFlavor(sampleKey(sample, index))]"
-              ></div>
-            </div>
-          </web-ui-collapse>
+            <!--
+              关闭态露出 128px：12px 上边距 + 4 行 24px + 第 5 行的 20px。末端渐隐/晕染带取
+              peek 的 60%（76.8px），「下面还有内容」由一整段发虚说出来，而不是只把最后一行切一半。
+              这个比例的前提是 128px 还没顶到晕染带上限 `--wui-collapse-peek-edge-max`（112px）：
+              peek 抬高到 187px 以上，带子会被上限掐住、遮挡比例跌破 60%。
+            -->
+            <web-ui-collapse
+              :open="expanded[sampleKey(sample, index)] ?? false"
+              peek="128px"
+              class="bg-(--wui-color-page) [--wui-collapse-peek-edge-ratio:0.6]"
+            >
+              <div slot="content">
+                <div
+                  :id="panelId(sampleKey(sample, index))"
+                  class="max-h-[32rem] overflow-auto bg-(--wui-color-page) px-4 pt-3 pb-4 font-mono text-xs leading-6"
+                  data-code
+                  tabindex="0"
+                  v-html="sample.html[activeFlavor(sampleKey(sample, index))]"
+                ></div>
+              </div>
+            </web-ui-collapse>
+          </div>
         </div>
       </article>
     </section>

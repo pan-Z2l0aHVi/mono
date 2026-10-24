@@ -251,7 +251,7 @@ export function Root() {
                   variant="ghost"
                   onClick={() => setBannerVisible(false)}
                 >
-                  <web-ui-icon className="text-white" icon={lucideX} size={16}></web-ui-icon>
+                  <web-ui-icon className="text-(--wui-color-on-accent)" icon={lucideX} size={16}></web-ui-icon>
                 </web-ui-button>
               </div>
             ) : null}

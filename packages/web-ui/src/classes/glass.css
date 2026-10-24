@@ -1,3 +1,8 @@
+/* 只在宿主没有其他 position 时补定位，避免盖掉消费方的绝对/固定定位。 */
+:where(.wui-glass) {
+  position: relative;
+}
+
 .wui-glass {
   /*
    * 内部阴影变量在 glass 元素上自声明默认值，切断从祖先 glass 容器（drawer/dialog
@@ -12,8 +17,6 @@
     0 8px 32px rgb(0 0 0 / 0.015)
   );
 
-  position: relative;
-
   border: none;
 
   background-color: var(--wui-color-surface-glass, rgb(250 250 250 / 0.34));
@@ -21,7 +24,8 @@
 
   /* Safari 16.4 只支持带 -webkit- 前缀的 backdrop-filter（无前缀 18 才支持）；
      前缀由 lightningcss 按 ?inline 管线默认 targets（含 ios16.4）自动生成，无需手写。 */
-  backdrop-filter: blur(4px) saturate(160%) brightness(var(--wui-glass-brightness, 1.06));
+  backdrop-filter: blur(var(--wui-glass-blur, 4px)) saturate(var(--wui-glass-saturation, 160%))
+    brightness(var(--wui-glass-brightness, 1.06));
   box-shadow:
     inset 0 0 0 0.5px color-mix(in srgb, var(--wui-color-glass-highlight, rgb(255 255 255 / 0.9)) 38%, transparent),
     inset 0 1px 0.5px color-mix(in srgb, var(--wui-color-glass-highlight, rgb(255 255 255 / 0.9)) 52%, transparent),

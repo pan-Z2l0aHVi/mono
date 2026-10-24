@@ -4,7 +4,7 @@ import { html, LitElement, unsafeCSS } from 'lit'
 import { customElement, property, state } from 'lit/decorators.js'
 import { ifDefined } from 'lit/directives/if-defined.js'
 
-import glass from '@/assets/glass.css?inline'
+import glass from '@/classes/glass.css?inline'
 import { lucideMinus, lucidePlus } from '@/icons'
 import {
   FormAssociated,

@@ -4,7 +4,7 @@ import { classMap } from 'lit/directives/class-map.js'
 import { ifDefined } from 'lit/directives/if-defined.js'
 import { styleMap } from 'lit/directives/style-map.js'
 
-import glass from '@/assets/glass.css?inline'
+import glass from '@/classes/glass.css?inline'
 import { normalizeLiteral, normalizeNumber } from '@/shared/normalize'
 
 import style from './style.css?inline'

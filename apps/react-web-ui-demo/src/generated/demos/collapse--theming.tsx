@@ -37,13 +37,13 @@ export default function Demo() {
           type="button"
           className="w-full cursor-pointer rounded-md bg-(--wui-color-surface-control) px-3 py-2 text-left"
         >
-          末端颜色取共享 border 色
+          边缘颜色取共享 border 色
         </button>
         <div slot="content">
           <div className="p-3 text-sm">
             {Array.from({ length: 5 }, (_, index) => (
               <p key={index} className="m-0">
-                段落 {index + 1}：末端落到 0.3 alpha 而不是全透明，裁剪边缘因此留着残影。
+                段落 {index + 1}：裁剪边缘的底色换成 border 色，带子从边缘向内淡出。
               </p>
             ))}
           </div>

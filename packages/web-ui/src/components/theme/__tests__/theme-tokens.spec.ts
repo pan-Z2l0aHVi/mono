@@ -9,7 +9,7 @@ import { describe, expect, it } from 'vite-plus/test'
 const here = import.meta.url
 const packageRoot = fileURLToPath(new URL('../../../../', here))
 const style = fs.readFileSync(`${packageRoot}src/components/theme/style.css`, 'utf8')
-const glass = fs.readFileSync(`${packageRoot}src/assets/glass.css`, 'utf8')
+const glass = fs.readFileSync(`${packageRoot}src/classes/glass.css`, 'utf8')
 const button = fs.readFileSync(`${packageRoot}src/components/button/style.css`, 'utf8')
 
 const tokenNames = [...style.matchAll(/(--wui-[a-z0-9-]+):/g)].map(match => match[1])
@@ -183,7 +183,7 @@ describe('WebUiTheme token contract', () => {
   })
 
   /*
-   * 改名只被 theme 定义侧守卫是不够的：三枚 token 的唯一消费点是 assets/glass.css，
+   * 改名只被 theme 定义侧守卫是不够的：三枚 token 的唯一消费点是 classes/glass.css，
    * 而 assets/*.css 被 fallback 守卫显式排除。写错 var 名或改回旧名时浏览器会静默
    * 回落到字面量默认值——明色下 shade / sheen 的字面量恰好等于目标值，改错了在明色
    * 完全看不出来。这里把「新名被引用、旧名不再被引用」钉死。

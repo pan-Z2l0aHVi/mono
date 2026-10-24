@@ -1,0 +1,78 @@
+/*
+ * 通用晕染层
+ * ==========
+ *
+ * 给任意有盒子尺寸的容器加一层装饰性背景：::before 画渐变，::after 叠真实模糊
+ * （backdrop-filter）。两层都放在 z-index: -1，因此内容与插槽始终位于其上方。
+ *
+ * 用法是给容器加 `.wui-glow`，并从 `@greypan/web-ui/classes.css` 引入本文件（该文件
+ * 同时导出 `.wui-glass`）。组件内部需要同一效果时（如 `header-glow`、collapse peek）
+ * 用 `?inline` 引入同一份源码，避免复制规则。
+ *
+ * 定位与层叠
+ * ----------
+ * `:where()` 让 position 只做兜底：宿主自己声明了 sticky / absolute / fixed 时一律
+ * 让位。`isolation: isolate` 是必要的，否则负层级伪元素会落到更外层 stacking context
+ * 的背景之后。容器若有 `overflow: hidden`，向外的模糊尾巴会被裁掉；要保留尾巴就
+ * 让 overflow 保持 `visible`。
+ *
+ * 参数
+ * ----
+ * 渐变是否出现、颜色与方向都由 token 决定：
+ *
+ * - `--wui-glow-gradient`：完整 background-image 值；设 `none` 即只保留模糊。
+ * - `--wui-glow-gradient-direction`：`linear-gradient` 的方向，默认 `to bottom`。
+ * - `--wui-glow-color`：渐变起点色，默认跟随页面底色 `--wui-color-page`。
+ * - `--wui-glow-blur`：`backdrop-filter` 的模糊半径，默认 `4px`；设 `0px` 关闭模糊。
+ * - `--wui-glow-overhang`：模糊层向盒下探的高度，默认 `24px`。
+ * - `--wui-glow-fade`：从全强度到 0 的衰减总长度，默认 `36px`，应不小于 overhang。
+ *
+ * 盒底缘的 alpha = overhang / fade。旧版对 52px header 是向下外扩 30px、衰减约 45px，
+ * 底缘 alpha ≈ 0.67；24 / 36 在同样高度上保持这个强度，盒内曲线与原版基本重合，盒外
+ * 只剩 24px 的模糊尾巴。旧版的百分比 mask 会让更高的 header 底缘更淡；新版改用绝对
+ * 长度，底缘强度不随容器高度变化。fade 小于 overhang 时，全强度段会延伸到盒外。
+ *
+ * 端点用裸 `transparent`（即 rgb(0 0 0 / 0)）而不是与起点色做 color-mix：后者按
+ * 预乘 alpha 混色会得到完全不透明的原色，终点没有羽化。裸 transparent 在渐变插值
+ * 中同样按预乘处理，各引擎一致淡到 0，且不引入新色相。
+ */
+:where(.wui-glow) {
+  position: relative;
+}
+
+.wui-glow {
+  isolation: isolate;
+}
+
+.wui-glow::before,
+.wui-glow::after {
+  pointer-events: none;
+  content: '';
+
+  position: absolute;
+  z-index: -1;
+  inset: 0;
+
+  border-radius: inherit;
+}
+
+.wui-glow::before {
+  background: var(
+    --wui-glow-gradient,
+    linear-gradient(
+      var(--wui-glow-gradient-direction, to bottom),
+      var(--wui-glow-color, var(--wui-color-page, #fff)),
+      transparent
+    )
+  );
+}
+
+.wui-glow::after {
+  inset: 0 0 calc(-1 * var(--wui-glow-overhang, 24px));
+
+  backdrop-filter: blur(var(--wui-glow-blur, 4px));
+
+  mask-image: linear-gradient(to bottom, black 0, black calc(100% - var(--wui-glow-fade, 36px)), transparent 100%);
+  mask-repeat: no-repeat;
+  mask-size: 100% 100%;
+}

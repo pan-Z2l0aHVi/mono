@@ -84,7 +84,7 @@ const quickLinks = [
           v-for="link in quickLinks"
           :key="link.path"
           :to="link.path"
-          class="group p-4 rounded-xl border border-(--wui-color-border) bg-(--wui-color-surface) hover:bg-(--wui-color-surface-raised) hover:border-(--wui-color-accent) transition-all duration-200 text-left flex flex-col justify-between"
+          class="wui-glass group rounded-xl p-4 text-left flex flex-col justify-between transition-all duration-200 [--wui-glass-corner-radius:12px] hover:[--wui-color-surface-glass:var(--wui-color-surface-glass-hover)] hover:[--wui-color-glass-ring:var(--wui-color-accent)]"
         >
           <div>
             <div class="font-medium text-(--wui-color-text) group-hover:text-(--wui-color-accent) transition-colors">
