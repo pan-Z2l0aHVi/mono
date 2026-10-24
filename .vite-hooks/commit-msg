@@ -1,1 +1,8 @@
-mise exec -- pnpm exec commitlint --edit $1
+#!/bin/sh
+message=$(git stripspace --strip-comments < "$1") || exit $?
+if [ -z "$message" ]; then
+  printf '%s\n' 'commit message must contain non-comment content' >&2
+  exit 1
+fi
+
+exec mise exec -- pnpm exec commitlint --edit "$1"

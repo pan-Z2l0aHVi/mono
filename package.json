@@ -4,7 +4,7 @@
   "license": "MIT",
   "type": "module",
   "scripts": {
-    "prepare": "vp config",
+    "prepare": "vp config && node scripts/maintenance/install-git-hooks.mjs",
     "clean": "bash scripts/maintenance/clean.sh",
     "build": "turbo build",
     "test": "turbo test",

@@ -93,6 +93,106 @@ function assertChangesetStepContract(text) {
   assert.deepEqual(runTexts(step), ['pnpm run check-changeset --base "$PR_BASE_SHA" --head "$PR_HEAD_SHA"'])
 }
 
+function assertPrTitleStepContract(text) {
+  const workflow = parseWorkflow(text)
+  const requiredCheckJob = workflowJob(text, REQUIRED_CONTEXT)
+  const readerName = 'Read PR title'
+  const reader = namedStep(requiredCheckJob, readerName)
+  const prepareName = 'Prepare base PR title rule'
+  const prepare = namedStep(requiredCheckJob, prepareName)
+  const checkerName = 'Check PR title'
+  const checker = namedStep(requiredCheckJob, checkerName)
+  const setup = requiredCheckJob.indexOf('      - uses: ./.github/actions/setup-deps\n')
+
+  assert.equal(workflow.stepJobs[readerName], REQUIRED_CONTEXT, 'PR title lookup must belong to the required context')
+  assert.equal(workflow.steps[readerName], "github.event_name == 'pull_request'", 'title lookup must run only for PRs')
+  assert.equal(workflow.permissions['pull-requests'], 'read', 'title lookup must have read-only PR permission')
+  assert.ok(reader.includes('.pull_request.base.sha // empty'), 'title lookup must read the PR base SHA')
+  assert.ok(reader.includes('GH_TOKEN: ${{ github.token }}'), 'title API fallback must use the workflow token')
+  assert.ok(reader.includes('gh api --jq .title'), 'title API fallback must read the PR title')
+  assert.ok(reader.includes('gh api --jq .base.sha'), 'title API fallback must read the PR base SHA')
+  assert.ok(
+    reader.includes('printf \'%s\' "$title" > "$RUNNER_TEMP/pr-title"'),
+    'title lookup must persist to a temp file'
+  )
+  assert.ok(
+    reader.includes('printf \'%s\' "$base_sha" > "$RUNNER_TEMP/pr-base-sha"'),
+    'title lookup must persist the base SHA'
+  )
+
+  assert.equal(
+    workflow.stepJobs[prepareName],
+    REQUIRED_CONTEXT,
+    'trusted checker preparation must belong to the required context'
+  )
+  assert.equal(
+    workflow.steps[prepareName],
+    "github.event_name == 'pull_request'",
+    'trusted checker preparation must run only for PRs'
+  )
+  assert.ok(prepare.includes('git cat-file -e "$base_sha^{commit}"'), 'trusted base commit must be present')
+  assert.ok(prepare.includes('git show "$base_sha:commitlint.config.js"'), 'rule must come from the PR base')
+  assert.ok(
+    prepare.includes('git show "$base_sha:.github/scripts/check-pr-title.mjs"'),
+    'checker must come from the PR base once it exists there'
+  )
+  assert.ok(
+    prepare.includes('cp .github/scripts/check-pr-title.mjs "$RUNNER_TEMP/check-pr-title.mjs"'),
+    'the first rollout must be able to introduce its checker'
+  )
+  assert.equal(workflow.stepJobs[checkerName], REQUIRED_CONTEXT, 'PR title check must belong to the required context')
+  assert.equal(workflow.steps[checkerName], "github.event_name == 'pull_request'", 'title check must run only for PRs')
+  assert.ok(checker.includes('COMMITLINT_CONFIG_PATH: ${{ runner.temp }}/commitlint.config.mjs'))
+  assert.deepEqual(runTexts(checker), ['node "$RUNNER_TEMP/check-pr-title.mjs"'])
+  assert.ok(
+    setup > -1 && requiredCheckJob.indexOf(`      - name: ${readerName}\n`) < setup,
+    'title lookup must run before dependency setup'
+  )
+  assert.ok(
+    requiredCheckJob.indexOf(`      - name: ${prepareName}\n`) < setup,
+    'trusted checker preparation must run before dependency setup'
+  )
+  assert.ok(
+    requiredCheckJob.indexOf(`      - name: ${checkerName}\n`) < setup,
+    'title check must run before dependency setup'
+  )
+
+  const trigger = workflow.triggers.find(item => item.on === 'pull_request')
+  assert.deepEqual(trigger.types, ['opened', 'synchronize', 'reopened', 'edited'], 'editing the title must rerun CI')
+}
+
+function assertPrTitleCheckerBehavior() {
+  const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'pr-title-check-'))
+  try {
+    const titlePath = path.join(directory, 'title')
+    const configPath = path.join(directory, 'commitlint.config.mjs')
+    fs.copyFileSync(path.join(repoRoot, 'commitlint.config.js'), configPath)
+
+    function check(title) {
+      fs.writeFileSync(titlePath, title)
+      return spawnSync(process.execPath, [path.join(repoRoot, '.github/scripts/check-pr-title.mjs')], {
+        encoding: 'utf8',
+        env: {
+          ...process.env,
+          COMMITLINT_CONFIG_PATH: configPath,
+          GITHUB_REF: 'refs/pull/54/merge',
+          PR_TITLE_PATH: titlePath
+        }
+      })
+    }
+
+    const english = check('ci(root): enforce English commit messages')
+    assert.equal(english.status, 0, english.stderr)
+    assert.match(english.stdout, /PR title is English/)
+
+    const cjk = check('#319 radio/checkbox 把 role 挂在 label 上')
+    assert.equal(cjk.status, 1)
+    assert.match(cjk.stderr, /gh pr edit 54 --title/)
+  } finally {
+    fs.rmSync(directory, { recursive: true, force: true })
+  }
+}
+
 function assertPullRequestValidationIsReadOnly(workflow) {
   for (const [name, permission] of Object.entries(workflow.permissions)) {
     assert.ok(permission === 'read' || permission === 'none', `${name} must not grant write access to PR validation`)
@@ -127,6 +227,8 @@ function assertPullRequestValidationIsReadOnly(workflow) {
   )
   assert.ok(parsed['ci.yml'].jobs[REQUIRED_CONTEXT], 'the required context must remain the CI job')
   assertChangesetStepContract(ci)
+  assertPrTitleStepContract(ci)
+  assertPrTitleCheckerBehavior()
   const requiredChangesetCommand = 'pnpm run check-changeset --base "$PR_BASE_SHA" --head "$PR_HEAD_SHA"'
   assert.equal(ci.split(requiredChangesetCommand).length - 1, 1, 'the changeset command mutation anchor must be unique')
   assert.throws(
@@ -139,11 +241,16 @@ function assertPullRequestValidationIsReadOnly(workflow) {
     parsed['ci.yml'].jobs.check.name === undefined || parsed['ci.yml'].jobs.check.name === REQUIRED_CONTEXT,
     'the required job display name must stay equal to its registered context'
   )
-  assert.deepEqual(parsed['ci.yml'].permissions, { contents: 'read' }, 'PR validation must remain read-only')
+  assert.deepEqual(
+    parsed['ci.yml'].permissions,
+    { contents: 'read', 'pull-requests': 'read' },
+    'PR validation must remain read-only'
+  )
   assert.deepEqual(parsed['ci.yml'].jobs.check.permissions, {}, 'the required job must not elevate PR permissions')
   assert.throws(() =>
-    assert.deepEqual(parseWorkflow(ci.replace('  contents: read\n', '  contents: write\n')).permissions, {
-      contents: 'read'
+    assert.deepEqual(parseWorkflow(ci.replace('  pull-requests: read\n', '  pull-requests: write\n')).permissions, {
+      contents: 'read',
+      'pull-requests': 'read'
     })
   )
   assert.throws(() =>
