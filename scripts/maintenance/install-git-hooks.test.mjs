@@ -136,6 +136,24 @@ exec sh "$hook" "$@"
     assert.equal(fs.readFileSync(marker, 'utf8'), `${messagePath}\n`)
   }
 
+  const versionedCommitHook = path.join(repoRoot, '.vite-hooks', 'commit-msg')
+  const runVersionedCommitHook = message => {
+    fs.writeFileSync(messagePath, message)
+    return spawnSync('sh', [versionedCommitHook, messagePath], {
+      cwd: repoRoot,
+      encoding: 'utf8',
+      env: process.env
+    })
+  }
+  assertSuccess(
+    runVersionedCommitHook('fix(root): verify the English commit hook\n'),
+    'accept an English commit message'
+  )
+  assert.notEqual(runVersionedCommitHook('fix(root): 修复提交检查\n').status, 0, 'reject CJK prose in a commit message')
+  const commentOnlyResult = runVersionedCommitHook('#319 radio/checkbox 把 role 挂在 label 上\n')
+  assert.notEqual(commentOnlyResult.status, 0, 'reject a commit message with only comment lines')
+  assert.match(commentOnlyResult.stderr, /commit message must contain non-comment content/)
+
   fs.unlinkSync(mainMarker)
   fs.unlinkSync(linkedMarker)
   assertSuccess(
