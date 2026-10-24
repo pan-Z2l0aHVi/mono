@@ -409,6 +409,22 @@ describe('WebUiSelect 组件', () => {
   })
 
   describe('键盘导航', () => {
+    it.each([
+      { name: 'Space', key: ' ' },
+      { name: 'Enter', key: 'Enter' }
+    ])('$name 在关闭态打开 overlay', async ({ key }) => {
+      const el = createSelect(OPTIONS_HTML)
+      await waitForUpdate(el)
+
+      el.dispatchEvent(new KeyboardEvent('keydown', { key, bubbles: true, cancelable: true }))
+      await waitForUpdate(el)
+
+      expect(el.open).toBe(true)
+      expect(queryA11y(el, '[role="combobox"]')?.getAttribute('aria-expanded')).toBe('true')
+
+      cleanupElement(el)
+    })
+
     it('ArrowDown 打开 overlay 并把 aria-activedescendant 指向首个 option', async () => {
       const el = createSelect(OPTIONS_HTML)
       await waitForUpdate(el)
@@ -423,6 +439,115 @@ describe('WebUiSelect 组件', () => {
       expect(active?.getAttribute('role')).toBe('option')
       expect(active?.getAttribute('value')).toBe('apple')
 
+      cleanupElement(el)
+    })
+
+    it('展开态 Home、End 与首字母输入移动激活项但不提交 value', async () => {
+      const el = createSelect(`
+        <web-ui-option value="disabled-start" label="Disabled start" disabled></web-ui-option>
+        <web-ui-option value="apple" label="Apple"></web-ui-option>
+        <web-ui-option value="elm" label="Elm"></web-ui-option>
+        <web-ui-option value="react" label="React"></web-ui-option>
+        <web-ui-option value="raspberry" label="Raspberry"></web-ui-option>
+        <web-ui-option value="cherry" label="Cherry"></web-ui-option>
+        <web-ui-option value="disabled-end" label="Disabled end" disabled></web-ui-option>
+      `)
+      el.value = 'cherry'
+      await waitForUpdate(el)
+
+      el.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true }))
+      await waitForUpdate(el)
+
+      const trigger = queryA11y(el, '[role="combobox"]') as HTMLElement
+      const activeValue = () => {
+        const activeId = trigger.getAttribute('aria-activedescendant')
+        return activeId ? el.querySelector<WebUiOption>(`#${activeId}`)?.value : undefined
+      }
+
+      el.dispatchEvent(new KeyboardEvent('keydown', { key: 'Home', bubbles: true, cancelable: true }))
+      await waitForUpdate(el)
+      expect(activeValue()).toBe('apple')
+
+      el.dispatchEvent(new KeyboardEvent('keydown', { key: 'End', bubbles: true, cancelable: true }))
+      await waitForUpdate(el)
+      expect(activeValue()).toBe('cherry')
+
+      el.dispatchEvent(new KeyboardEvent('keydown', { key: 'r', bubbles: true, cancelable: true }))
+      await waitForUpdate(el)
+      expect(activeValue()).toBe('react')
+
+      el.dispatchEvent(new KeyboardEvent('keydown', { key: 'e', bubbles: true, cancelable: true }))
+      await waitForUpdate(el)
+      expect(activeValue()).toBe('react')
+
+      el.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true, cancelable: true }))
+      await waitForUpdate(el)
+      expect(activeValue()).toBe('raspberry')
+
+      el.dispatchEvent(new KeyboardEvent('keydown', { key: 'a', bubbles: true, cancelable: true }))
+      await waitForUpdate(el)
+      expect(activeValue()).toBe('apple')
+      expect(el.value).toBe('cherry')
+
+      cleanupElement(el)
+    })
+
+    it('typeahead 将带点大写 I 与 i 匹配', async () => {
+      const dottedI = String.fromCharCode(0x130)
+      const el = createSelect(`
+        <web-ui-option value="alpha" label="Alpha"></web-ui-option>
+        <web-ui-option value="dotted-i" label="${dottedI}tem"></web-ui-option>
+      `)
+      await waitForUpdate(el)
+
+      el.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true }))
+      await waitForUpdate(el)
+      const trigger = queryA11y(el, '[role="combobox"]') as HTMLElement
+      const activeValue = () => {
+        const activeId = trigger.getAttribute('aria-activedescendant')
+        return activeId ? el.querySelector<WebUiOption>(`#${activeId}`)?.value : undefined
+      }
+      expect(activeValue()).toBe('alpha')
+
+      el.dispatchEvent(new KeyboardEvent('keydown', { key: 'i', bubbles: true, cancelable: true }))
+      await waitForUpdate(el)
+
+      expect(activeValue()).toBe('dotted-i')
+      expect(el.value).toBe('')
+
+      cleanupElement(el)
+    })
+
+    it.each([
+      { state: 'disabled', invalidate: (option: WebUiOption) => (option.disabled = true) },
+      { state: 'removed', invalidate: (option: WebUiOption) => option.remove() }
+    ])('多字符 typeahead 不延续到已 $state 的激活项', async ({ invalidate }) => {
+      const el = createSelect(`
+        <web-ui-option value="apple" label="Apple"></web-ui-option>
+        <web-ui-option value="elm" label="Elm"></web-ui-option>
+        <web-ui-option value="react" label="React"></web-ui-option>
+        <web-ui-option value="raspberry" label="Raspberry"></web-ui-option>
+      `)
+      await waitForUpdate(el)
+
+      el.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true }))
+      await waitForUpdate(el)
+
+      const trigger = queryA11y(el, '[role="combobox"]') as HTMLElement
+      const activeValue = () => {
+        const activeId = trigger.getAttribute('aria-activedescendant')
+        return activeId ? el.querySelector<WebUiOption>(`#${activeId}`)?.value : undefined
+      }
+
+      el.dispatchEvent(new KeyboardEvent('keydown', { key: 'r', bubbles: true }))
+      await waitForUpdate(el)
+      expect(activeValue()).toBe('react')
+
+      invalidate(el.querySelector<WebUiOption>('[value="react"]')!)
+      el.dispatchEvent(new KeyboardEvent('keydown', { key: 'e', bubbles: true }))
+      await waitForUpdate(el)
+
+      expect(activeValue()).toBe('elm')
       cleanupElement(el)
     })
 

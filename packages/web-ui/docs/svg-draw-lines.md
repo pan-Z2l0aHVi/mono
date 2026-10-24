@@ -169,9 +169,9 @@ export default function Demo() {
   const bounce = useRef<WebUiSvgDrawLines>(null)
 
   function replayAll() {
-    fast.current?.replay()
-    slow.current?.replay()
-    bounce.current?.replay()
+    void fast.current?.replay()
+    void slow.current?.replay()
+    void bounce.current?.replay()
   }
 
   return (
@@ -258,9 +258,9 @@ const slow = useTemplateRef<WebUiSvgDrawLines>('slow')
 const bounce = useTemplateRef<WebUiSvgDrawLines>('bounce')
 
 function replayAll() {
-  fast.value?.replay()
-  slow.value?.replay()
-  bounce.value?.replay()
+  void fast.value?.replay()
+  void slow.value?.replay()
+  void bounce.value?.replay()
 }
 </script>
 ```
@@ -501,11 +501,11 @@ const lines = useTemplateRef<WebUiSvgDrawLines>('lines')
 
 ### Props
 
-| 名称          | 说明                                         | 类型      | 默认值     |
-| ------------- | -------------------------------------------- | --------- | ---------- |
-| `duration`    | 动画时长（毫秒），限制在 0–30000。           | `number`  | `1000`     |
-| `easing`      | 传递给 `element.animate()` 的 CSS 缓动函数。 | `string`  | `'linear'` |
-| `no-autoplay` | 关闭内容首次出现时的自动播放。               | `boolean` | `false`    |
+| 名称          | 说明                                                                              | 类型      | 默认值     |
+| ------------- | --------------------------------------------------------------------------------- | --------- | ---------- |
+| `duration`    | 动画时长（毫秒），限制在 0–30000。                                                | `number`  | `1000`     |
+| `easing`      | 浏览器支持注册长度型自定义属性插值时传给 `element.animate()`；否则使用 `linear`。 | `string`  | `'linear'` |
+| `no-autoplay` | 关闭内容首次出现时的自动播放。                                                    | `boolean` | `false`    |
 
 ### Slots
 
