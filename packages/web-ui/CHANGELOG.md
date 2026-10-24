@@ -1,5 +1,76 @@
 # @greypan/web-ui
 
+## 11.1.0
+
+### Minor Changes
+
+- 046addb: Give the dark `segmented` raised indicator the invariant light already has — the resting chip is the page colour, floating in a track that sinks one step below it — instead of the brighter gray it shipped with. `--wui-color-surface-selected` therefore moves from `#5c5c5e` to `#242628` in dark, the same value as `--wui-color-page` there, and the convex track gets its own token, `--wui-color-surface-segmented-track` (`#e5e5ea` in light, `#17191a` in dark), opened below the page rather than above it; `--wui-color-surface-segmented` keeps naming the inset indicator face. The convex reading survives because the chip stays lighter than the track in both appearances (WCAG luminance ratio 1.26:1 in light, 1.16:1 in dark), and the two variants no longer collapse onto one gray pair in dark: `inset` keeps its pressed-in `#3a3a3c` chip on a `#2c2c2e` track. Because the chip is pinned to the page tier rather than to whatever container holds it, a raised segmented placed on a `--wui-color-surface` card reads one step darker than that card in dark.
+  
+  Dark had the inset chip on the neutral control tier already; light did not. `--wui-color-surface-segmented` light default moves from `#e5e5ea` to `#dfdfdf`, so in both appearances the resting inset chip is the same face a `secondary` button uses (`--wui-color-surface-control`). The two variants now each pin one tier — `raised` to the page, `inset` to the control surface — and a spec asserts each equality against a live probe of the referenced token rather than a colour literal.
+  
+  Generated Markdown body text follows `--wui-font-size` instead of Notion's hard-coded pixel sizes, and tables take that size by inheritance, so a documentation page is no longer set larger than the components it documents.
+  
+  Every generated code block now carries a line-number gutter. `@greypan/md-to-comp` runs shiki's own `transformerRenderLineNumber` in the same `codeToHtml` pass that highlights the code, so the numbers come from the highlighter rather than from a CSS counter, and a line the gutter numbers is the line the reader can quote back. The generated `examples.css` styles the slot — `user-select: none`, a right-aligned column as wide as three digits, held at 45% of the surrounding colour in both appearances — so it neither joins a text selection nor competes with the code for attention. Injecting that text is the one exception to "the fence and the rendered block are the same bytes": the generator's round-trip self-check and both demos' visible-text assertions strip the gutter span before comparing, and the copy button clones the `<pre>`, drops those spans and writes the fence verbatim, so the clipboard still gets runnable source.
+  
+  An empty default-value cell in an API table is a `—` placeholder meaning "this member has no default", which is prose about the row rather than a literal a reader could write, so the corpus no longer wraps it in backticks and the demos render only real literals as inline code.
+- de69393: Add a `--wui-color-on-danger` theme token for badge count text in both themes.
+- 6baecc3: Keep `web-ui-layout`'s `header-glow` layers from spilling horizontally, and restore the former natural blur fade with a shorter tail. The blur layer now fades over 36px and extends 24px below the header instead of 30px, reaching the same ~0.67 alpha at the edge of the default 52px header as the previous 30px offset while covering less content; taller headers keep that edge strength instead of fading further under the old percentage mask. Both pseudo-elements stay flush with the header's left and right edges, so the backdrop sample no longer paints vertical dark bands on narrow viewports.
+  
+  Add `@greypan/web-ui/classes.css`: a reusable `.wui-glow` layer that can be applied to any box (cards included), with tokens for gradient presence and direction, colour, blur radius, overhang and fade length. The same stylesheet exports the existing `.wui-glass` surface, now with `--wui-glass-blur` and `--wui-glass-saturation` tokens so the backdrop recipe can be tuned without rewriting `backdrop-filter`. `header-glow` and collapse's peek edge use the same stylesheet internally, and the demo home cards now use the `.wui-glass` surface.
+- fea85a3: Add a `color` property to `web-ui-spinner` and make its default follow the theme text-secondary color.
+
+### Patch Changes
+
+- 9eec040: Hide clear buttons in disabled input and textarea components.
+- e15289b: Restore focus to the parent item when ArrowLeft closes a dropdown submenu.
+- 6648b13: Defer slider value updates until a track tap completes or drag intent is accepted. Cancel cross-axis movement as soon as it crosses the gesture threshold and dominates.
+- 5d047d3: Use theme-aware colors for avatar fallbacks.
+- 1738c7e: Give back-top buttons an accessible default name and working token-based focus ring.
+- 8deb266: Respect reduced-motion preferences in back-top scrolling.
+- c54fd58: Fix badge overlays for plain text in its default slot.
+- cec5e97: Improve default accent text contrast in light and dark themes.
+- 395cb7e: Fix immediate keyboard tooltip display for shadow DOM triggers.
+- c3a6fd1: Block pointer interaction and page scrolling while the imperative spinner overlay is open.
+- c790a22: Improve segmented label contrast on selected indicators.
+- 1843927: Add keyboard navigation and roving tabindex to radio groups.
+- f96acc7: Scale button group member buttons with `--wui-control-size`; vertical tracks expand to fit their widest member.
+- 69b34cd: Allow `web-ui-button` size values to use CSS lengths such as `px` and `rem` while keeping bare numbers in pixels.
+- f9fed85: Add arrow-key navigation and roving tabindex to segmented controls.
+- 85417bd: Hide closed dialogs from layout, hit testing, and keyboard navigation.
+- 765f4b0: Expose `aria-expanded` and `aria-disabled` on the native button inside `<web-ui-button>` when it is used as a collapse trigger. Keep `aria-controls` on the host because its IDREF cannot resolve across shadow roots; `aria-disabled="true"` also suppresses button activation.
+- b78432b: Expose `horizontal` as a reflected Boolean property on `web-ui-dialog` so dynamic bindings update the footer layout.
+- c3bee8e: Close dropdown menus when focus leaves them and move focus to the adjacent page control on Tab.
+- 053f053: Preserve the final line box for editable text values ending with a newline.
+- 5b1b9b4: Fix vertical button groups so the glass track expands to fit the widest button.
+- 9db0265: Restore the focus ring when keyboard navigation follows pointer input.
+- 7b54ba5: Fix horizontal collapse peek clipping so it preserves the content's natural height.
+- eb3594d: Forward `aria-label` and `aria-labelledby` from `web-ui-input-number` to its native number input.
+- aa6fcf5: Infer input-number rounding precision from fractional step values when precision is omitted.
+- 9014b4a: Keep the active autocomplete option visible during keyboard navigation.
+- d326d03: Fix image preview loop rendering so a single image is shown only once.
+- e517a4f: Keep dropdown submenus within the viewport on narrow screens.
+- 527ec9c: Omit `aria-hidden` from non-decorative avatars.
+- 1b82461: Fix back-top alignment in custom scroll containers.
+- b428a73: Fix dropdown focus restoration and stale `aria-controls` after closing.
+- da5ffa8: Fix disabled opacity for input controls so text, icons, and control surfaces fade consistently.
+- d45da09: Restore themed internal scrollbars in select and autocomplete portal panels.
+- db6879a: Keep toast close buttons visible and interactive for coarse pointers.
+- b548de9: Recalculate middle ellipsis output when font metrics change so truncated text stays within the available width.
+- 4d01bf5: Fix initial segmented selection so upgraded triggers expose the correct checked and accessible selected state.
+- a53f0c6: Forward host `aria-label` to the `web-ui-select` combobox trigger.
+- 9748689: Fix select keyboard support for opening, Home/End navigation, and typeahead.
+- 8fe5d2f: Expose select option roles and synchronized ARIA selection and disabled states.
+- e0ac1f5: Fix accessible naming for `web-ui-slider` by forwarding host `aria-label` and `aria-labelledby` attributes to its internal slider. Sliders no longer receive a shared default name, so consumers should provide a distinguishable name for every instance.
+- 9949f0d: Close open tooltips when they become disabled.
+- 7094b03: Render switch child text as a visible label and expose switch semantics on the host.
+- 8288ef3: Keep SVG draw offsets within the dash range when easing curves overshoot.
+- 58b57e3: The svg-draw-lines duration-easing demos called `replay()` without handling the returned promise, which the corpus lint flags as a floating promise. The three `replayAll` fences now discard it with `void`, and the generated demo files were regenerated from the corrected corpus. No runtime behavior change.
+- f33e475: Keep imperative spinner overlays within the active theme scope.
+- 4cc003c: Scale square avatar corner radii with avatar size.
+- 62bb498: Let pointer events pass through decorative badge indicators to slotted content.
+- 767ca49: Move radio and checkbox ARIA semantics off label elements.
+- 893f76a: Add radiogroup semantics, accessible naming, and arrow-key navigation to radio groups.
+
 ## 11.0.0
 
 ### Major Changes
