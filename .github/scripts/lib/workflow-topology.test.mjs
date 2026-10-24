@@ -603,8 +603,11 @@ function matrixEntries(text) {
   assert.match(setup, /go env GOMODCACHE/)
   assert.match(setup, /go env GOCACHE/)
   assert.match(setup, /go env GOVERSION/)
-  assert.match(setup, /ImageOS/)
-  assert.match(setup, /ImageVersion/)
+  // 键与前缀同构且不含镜像段：restore-keys 按字面前缀匹配，键多出的段会令前缀永不命中；
+  // 镜像滚动接近天级，含镜像段等于每次滚动后 go vet 全冷。
+  assert.doesNotMatch(setup, /ImageOS|ImageVersion/)
+  assert.match(setup, /key: \$\{\{ runner\.os \}\}-\$\{\{ runner\.arch \}\}-go-/)
+  assert.match(setup, /restore-keys: \|\n\s+\$\{\{ runner\.os \}\}-\$\{\{ runner\.arch \}\}-go-/)
   assert.match(setup, /actions\/cache@v5/)
   const aptPlanStart = setup.indexOf('    - name: Resolve Wails Linux package cache key\n')
   const aptCacheStart = setup.indexOf('    - name: Restore Wails Linux package archives\n')
@@ -647,8 +650,6 @@ function matrixEntries(text) {
   for (const keyPart of [
     'runner.os',
     'runner.arch',
-    'outputs.imageos',
-    'outputs.imageversion',
     'outputs.goversion',
     "hashFiles('apps/interweave/go.sum')",
     'github.sha'
