@@ -139,8 +139,6 @@ runs:
         echo "gomodcache=$(go env GOMODCACHE)" >> "$GITHUB_OUTPUT"
         echo "gocache=$(go env GOCACHE)" >> "$GITHUB_OUTPUT"
         echo "goversion=$(go env GOVERSION)" >> "$GITHUB_OUTPUT"
-        echo "imageos=${ImageOS:-unknown}" >> "$GITHUB_OUTPUT"
-        echo "imageversion=${ImageVersion:-unknown}" >> "$GITHUB_OUTPUT"
 
     - name: Cache Go modules and build artifacts
       if: inputs.go-cache == 'true'
@@ -149,9 +147,10 @@ runs:
         path: |
           ${{ steps.go-cache-paths.outputs.gomodcache }}
           ${{ steps.go-cache-paths.outputs.gocache }}
-        key: ${{ runner.os }}-${{ runner.arch }}-${{ steps.go-cache-paths.outputs.imageos }}-${{ steps.go-cache-paths.outputs.imageversion }}-go-${{ steps.go-cache-paths.outputs.goversion }}-${{ hashFiles('apps/interweave/go.sum') }}-${{ github.sha }}
-        # 回退前缀不含镜像版本：runner 镜像接近天级重建，含它会令每次镜像滚动后 go vet 全冷。
+        # 键与前缀共享同一开头结构（restore-keys 是字面前缀匹配，键含额外段会令前缀永不命中），
+        # 且不含镜像版本：runner 镜像接近天级重建，含它会令每次镜像滚动后 go vet 全冷。
         # Go build cache 内容寻址（cgo 预处理输出参与哈希），跨镜像恢复旧条目只会在输入变化时自然 miss。
+        key: ${{ runner.os }}-${{ runner.arch }}-go-${{ steps.go-cache-paths.outputs.goversion }}-${{ hashFiles('apps/interweave/go.sum') }}-${{ github.sha }}
         restore-keys: |
           ${{ runner.os }}-${{ runner.arch }}-go-${{ steps.go-cache-paths.outputs.goversion }}-${{ hashFiles('apps/interweave/go.sum') }}-
 
