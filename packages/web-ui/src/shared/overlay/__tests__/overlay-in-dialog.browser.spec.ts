@@ -118,6 +118,18 @@ async function waitForPanelPositioned(panel: HTMLElement | null | undefined, mes
   )
 }
 
+async function waitForPanelAnimationsToSettle(panel: HTMLElement, message: string) {
+  // `open` 在 requestAnimationFrame 回调里切换；当帧查询 `getAnimations()` 可能早于浏览器登记 CSS transition。
+  // 跨过完整的样式更新后再判断，避免把尚未启动的 transition 当作已结束。
+  await nextFrame()
+  await nextFrame()
+  await waitFor(
+    () => panel.getAnimations().length,
+    count => count === 0,
+    message
+  )
+}
+
 function expectVisibleInDialog(panel: HTMLElement | null | undefined, dialog: HTMLDialogElement) {
   expect(dialog.matches(':modal')).toBe(true)
 
@@ -317,11 +329,7 @@ describe('Portal overlay 在已打开原生 dialog 内（top layer）', () => {
       'Expected the context menu to be positioned'
     )
 
-    await waitFor(
-      () => mainPanel.getAnimations().length,
-      count => count === 0,
-      'Expected the main menu enter transition to settle'
-    )
+    await waitForPanelAnimationsToSettle(mainPanel, 'Expected the main menu enter transition to settle')
     const parentItem = mainPanel.querySelector<HTMLElement>('web-ui-dropdown-item')
     parentItem?.click()
     const submenu = await waitForPanelPositioned(
@@ -330,11 +338,7 @@ describe('Portal overlay 在已打开原生 dialog 内（top layer）', () => {
     )
 
     // 同理，submenu 自身的入场过渡也要落定，否则量到的是 scale 中间态。
-    await waitFor(
-      () => submenu.getAnimations().length,
-      count => count === 0,
-      'Expected the submenu enter transition to settle'
-    )
+    await waitForPanelAnimationsToSettle(submenu, 'Expected the submenu enter transition to settle')
 
     const parentRect = parentItem!.getBoundingClientRect()
     const submenuRect = submenu.getBoundingClientRect()
