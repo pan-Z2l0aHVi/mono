@@ -98,6 +98,53 @@ describe('WebUiButton 组件', () => {
       cleanupElement(el)
     })
 
+    it('将展开和禁用状态映射到内部 button，但不跨 shadow root 转发 aria-controls', async () => {
+      const panel = document.createElement('div')
+      panel.id = 'panel-id'
+      document.body.append(panel)
+
+      const el = createButton()
+      el.setAttribute('aria-disabled', 'true')
+      el.setAttribute('aria-expanded', 'false')
+      el.setAttribute('aria-controls', 'panel-id')
+      await waitForUpdate(el)
+
+      const inner = el.shadowRoot?.querySelector('button')
+      expect(inner?.getAttribute('aria-disabled')).toBe('true')
+      expect(inner?.getAttribute('aria-expanded')).toBe('false')
+      expect(el.getAttribute('aria-controls')).toBe('panel-id')
+      expect(inner?.hasAttribute('aria-controls')).toBe(false)
+
+      el.setAttribute('aria-expanded', 'true')
+      el.removeAttribute('aria-disabled')
+      await waitForUpdate(el)
+      expect(inner?.getAttribute('aria-expanded')).toBe('true')
+      expect(inner?.hasAttribute('aria-disabled')).toBe(false)
+      cleanupElement(el)
+      panel.remove()
+    })
+
+    it('aria-disabled=true 也阻止从组件宿主派发的 click', async () => {
+      const el = createButton()
+      el.setAttribute('aria-disabled', 'true')
+      await waitForUpdate(el)
+
+      const wrapper = document.createElement('div')
+      wrapper.append(el)
+      let bubbledClicks = 0
+      wrapper.addEventListener('click', () => bubbledClicks++)
+
+      el.click()
+      expect(bubbledClicks).toBe(0)
+
+      el.setAttribute('aria-disabled', 'false')
+      await waitForUpdate(el)
+      el.click()
+      expect(bubbledClicks).toBe(1)
+      cleanupElement(el)
+      wrapper.remove()
+    })
+
     it('将 data-* 保留在组件宿主而不复制到内部 button', async () => {
       const el = createButton()
       el.setAttribute('data-testid', 'save')

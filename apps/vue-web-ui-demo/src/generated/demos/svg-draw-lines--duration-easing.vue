@@ -42,8 +42,8 @@ const slow = useTemplateRef<WebUiSvgDrawLines>('slow')
 const bounce = useTemplateRef<WebUiSvgDrawLines>('bounce')
 
 function replayAll() {
-  fast.value?.replay()
-  slow.value?.replay()
-  bounce.value?.replay()
+  void fast.value?.replay()
+  void slow.value?.replay()
+  void bounce.value?.replay()
 }
 </script>

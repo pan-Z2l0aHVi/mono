@@ -142,7 +142,7 @@ export default function Demo() {
 
 ### trigger 类型 {#trigger}
 
-交互语义来自 default slot 里那个元素本身：原生 `<button>` 与 `<web-ui-button>` 自带 Enter / Space 激活和焦点，组件只把 `aria-expanded` / `aria-controls` / `aria-disabled` 回写到 default slot 里第一个被指派的元素。整个 default slot 都落在点击代理范围内，点其中任何一处都算一次开合，所以说明文字别塞进来。最后一条放的是纯文本 trigger：点得动，但不可聚焦、没有键盘激活，只用来演示反面写法。
+交互语义来自 default slot 里那个元素本身：原生 `<button>` 与 `<web-ui-button>` 自带 Enter / Space 激活和焦点，组件把 `aria-expanded` / `aria-controls` / `aria-disabled` 回写到 default slot 里第一个被指派的元素。`<web-ui-button>` 会把 `aria-expanded` 和 `aria-disabled` 同步到内部原生 button；`aria-controls` 留在宿主上，不复制到另一个 shadow root，因为 IDREF 不能跨 shadow root 解析。整个 default slot 都落在点击代理范围内，点其中任何一处都算一次开合，所以说明文字别塞进来。最后一条放的是纯文本 trigger：点得动，但不可聚焦、没有键盘激活，只用来演示反面写法。
 
 ```tsx
 import { lucideChevronDown } from '@greypan/web-ui/icons'
@@ -167,7 +167,9 @@ export default function Demo() {
           web-ui-button
         </web-ui-button>
         <div slot="content">
-          <div className="p-3 text-sm">自定义元素也能当 trigger；组件把状态 aria 回写到它身上。</div>
+          <div className="p-3 text-sm">
+            自定义元素也能当 trigger；展开状态会同步到它内部原生 button，供辅助技术读取。
+          </div>
         </div>
       </web-ui-collapse>
 
@@ -176,7 +178,7 @@ export default function Demo() {
           <web-ui-icon slot="prefix" icon={lucideChevronDown} size={14}></web-ui-icon>带 prefix icon 的 trigger
         </web-ui-button>
         <div slot="content">
-          <div className="p-3 text-sm">被指派的第一件东西仍然是那个 button，所以 aria 落在它身上。</div>
+          <div className="p-3 text-sm">被指派的第一件东西仍然是那个 button；展开状态会同步到它内部原生 button。</div>
         </div>
       </web-ui-collapse>
 
@@ -209,7 +211,7 @@ export default function Demo() {
     <web-ui-collapse>
       <web-ui-button variant="secondary" full>web-ui-button</web-ui-button>
       <div slot="content">
-        <div class="p-3 text-sm">自定义元素也能当 trigger；组件把状态 aria 回写到它身上。</div>
+        <div class="p-3 text-sm">自定义元素也能当 trigger；展开状态会同步到它内部原生 button，供辅助技术读取。</div>
       </div>
     </web-ui-collapse>
 
@@ -219,7 +221,7 @@ export default function Demo() {
         带 prefix icon 的 trigger
       </web-ui-button>
       <div slot="content">
-        <div class="p-3 text-sm">被指派的第一件东西仍然是那个 button，所以 aria 落在它身上。</div>
+        <div class="p-3 text-sm">被指派的第一件东西仍然是那个 button；展开状态会同步到它内部原生 button。</div>
       </div>
     </web-ui-collapse>
 
@@ -1171,10 +1173,10 @@ function removeRow() {
 
 ### Slots
 
-| 名称      | 说明                                                                                                                                                            |
-| --------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `default` | trigger。整个 slot 都在点击代理里，点任何一处都算一次开合；`aria-expanded` / `aria-controls` / `aria-disabled` 回写到其中第一个被指派的元素，所以放可交互元素。 |
-| `content` | collapse content。关闭态按 `keep-mounted` / `peek` 决定是 `hidden` 还是 `inert`。                                                                               |
+| 名称      | 说明                                                                                                                                                                                                                                             |
+| --------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `default` | trigger。整个 slot 都在点击代理里，点任何一处都算一次开合；`aria-expanded` / `aria-controls` / `aria-disabled` 回写到其中第一个被指派的元素。`<web-ui-button>` 会把 `aria-expanded` 与 `aria-disabled` 同步到内部原生 button，所以放可交互元素。 |
+| `content` | collapse content。关闭态按 `keep-mounted` / `peek` 决定是 `hidden` 还是 `inert`。                                                                                                                                                                |
 
 ### Methods
 
@@ -1194,7 +1196,7 @@ function removeRow() {
 
 ### trigger 语义
 
-交互语义完全来自 default slot 放入的元素——原生 `<button>`、`<web-ui-button>` 或其他可交互元素原生提供 Enter / Space 激活与焦点。collapse 把 `aria-expanded` / `aria-controls`（指向内容 track）与 `aria-disabled` 回写到 trigger slot 的首个 assigned element。trigger 请使用可交互元素：纯 `<span>` 可点击但没有键盘 / 焦点语义。
+交互语义完全来自 default slot 放入的元素——原生 `<button>`、`<web-ui-button>` 或其他可交互元素原生提供 Enter / Space 激活与焦点。collapse 把 `aria-expanded` / `aria-controls`（指向内容 track）与 `aria-disabled` 回写到 trigger slot 的首个 assigned element；`<web-ui-button>` 将 `aria-expanded` 与 `aria-disabled` 同步到内部原生 button。`aria-controls` 留在宿主上，因为指向 collapse shadow root 的 IDREF 不能在另一个 shadow root 中解析。trigger 请使用可交互元素：纯 `<span>` 可点击但没有键盘 / 焦点语义。
 
 default slot 的全部内容都被包进 trigger wrapper，因而都在点击代理里：往 default slot 放说明文字，那段文字点下去同样算一次开合。组件只回写第一个被指派的元素，所以可交互元素要放在最前面。
 

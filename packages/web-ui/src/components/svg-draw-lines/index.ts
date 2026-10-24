@@ -7,6 +7,73 @@ import { prefersReducedMotion } from '@/shared/theme/reduced-motion'
 import style from './style.css?inline'
 
 const GEOMETRY_SELECTOR = 'path, rect, circle, line, polyline, polygon, ellipse'
+// Animate a registered length, then clamp it before using it as a dash offset.
+const DASH_OFFSET_PROPERTY = '--wui-svg-draw-lines-offset'
+
+let dashOffsetRegistrationApi: typeof CSS.registerProperty | undefined
+let dashOffsetInterpolationSupported: boolean | undefined
+
+function isAlreadyRegistered(error: unknown): boolean {
+  return (
+    typeof DOMException !== 'undefined' && error instanceof DOMException && error.name === 'InvalidModificationError'
+  )
+}
+
+function supportsDashOffsetInterpolation(): boolean {
+  const probe = document.createElement('span')
+  let animation: Animation | undefined
+  try {
+    probe.style.setProperty(DASH_OFFSET_PROPERTY, '0px')
+    document.documentElement.append(probe)
+    animation = probe.animate([{ [DASH_OFFSET_PROPERTY]: '0px' }, { [DASH_OFFSET_PROPERTY]: '100px' }], {
+      duration: 1000,
+      easing: 'linear',
+      fill: 'both'
+    })
+    animation.pause()
+    animation.currentTime = 250
+
+    const interpolated = Number.parseFloat(getComputedStyle(probe).getPropertyValue(DASH_OFFSET_PROPERTY))
+    return Number.isFinite(interpolated) && Math.abs(interpolated - 25) < 0.1
+  } catch (error) {
+    console.warn('web-ui-svg-draw-lines could not verify typed offset interpolation. Using linear easing.', error)
+    return false
+  } finally {
+    animation?.cancel()
+    probe.remove()
+  }
+}
+
+function registerDashOffsetProperty(): boolean {
+  if (typeof CSS === 'undefined' || typeof CSS.registerProperty !== 'function' || typeof document === 'undefined')
+    return false
+
+  const registerProperty = CSS.registerProperty
+  if (dashOffsetRegistrationApi !== registerProperty) {
+    // Capability is cached only for the registration implementation that passed the probe.
+    dashOffsetRegistrationApi = registerProperty
+    dashOffsetInterpolationSupported = undefined
+  }
+  if (dashOffsetInterpolationSupported !== undefined) return dashOffsetInterpolationSupported
+
+  try {
+    CSS.registerProperty({
+      name: DASH_OFFSET_PROPERTY,
+      syntax: '<length>',
+      inherits: false,
+      initialValue: '0px'
+    })
+  } catch (error) {
+    if (!isAlreadyRegistered(error)) {
+      console.warn('web-ui-svg-draw-lines could not register its typed offset property. Using linear easing.', error)
+      dashOffsetInterpolationSupported = false
+      return false
+    }
+  }
+
+  dashOffsetInterpolationSupported = supportsDashOffsetInterpolation()
+  return dashOffsetInterpolationSupported
+}
 
 interface AnimationRun {
   reverse: boolean
@@ -118,6 +185,8 @@ export class WebUiSvgDrawLines extends LitElement {
         el.style.strokeDashoffset = authored?.dashoffset ?? ''
         this._stickyBlank.delete(el)
       }
+
+      el.style.removeProperty(DASH_OFFSET_PROPERTY)
     }
 
     if (this._activeRun === run) this._activeRun = undefined
@@ -194,17 +263,26 @@ export class WebUiSvgDrawLines extends LitElement {
       const len = el.getTotalLength() + strokeWidth
       // 空白 = 整条路径落在 dash 间隙里；满 = 偏移归零。两个方向只是这两端换先后。
       const blank = `${len}`
-      const full = '0'
-      const from = reverse ? full : blank
-      const to = reverse ? blank : full
+      const from = reverse ? 0 : len
+      const to = reverse ? len : 0
 
+      const canClampOvershoot = registerDashOffsetProperty()
       el.style.strokeDasharray = blank
-      el.style.strokeDashoffset = from
+      if (canClampOvershoot) {
+        el.style.setProperty(DASH_OFFSET_PROPERTY, `${from}px`)
+        el.style.strokeDashoffset = `clamp(0px, var(${DASH_OFFSET_PROPERTY}), ${blank}px)`
+      } else {
+        // Older engines cannot interpolate the registered helper property. Animate the real offset
+        // with a bounded easing so replay still works without letting an overshoot crop the path.
+        el.style.removeProperty(DASH_OFFSET_PROPERTY)
+        el.style.strokeDashoffset = `${from}px`
+      }
       run.blankByElement.set(el, blank)
 
-      const anim = el.animate([{ strokeDashoffset: from }, { strokeDashoffset: to }], {
+      const property = canClampOvershoot ? DASH_OFFSET_PROPERTY : 'strokeDashoffset'
+      const anim = el.animate([{ [property]: `${from}px` }, { [property]: `${to}px` }], {
         duration: this.duration,
-        easing: this.easing,
+        easing: canClampOvershoot ? this.easing : 'linear',
         fill: 'forwards'
       })
 
