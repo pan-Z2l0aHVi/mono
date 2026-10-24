@@ -6455,7 +6455,7 @@ export const exampleDocs: ExampleDoc[] = [
         "kind": "prose",
         "key": "行为说明",
         "title": "行为说明",
-        "html": "<p>子 <code>&lt;web-ui-option></code> 通过 <code>option-register</code> / <code>option-unregister</code> 注册。打开时，面板使用 <code>role=\"listbox\"</code>，候选项使用 <code>role=\"option\"</code>，当前非空 <code>value</code> 对应的 option 设为 <code>aria-selected=\"true\"</code>，<code>aria-disabled</code> 反映禁用状态。非 Portal 模式下，键盘导航时 <code>aria-activedescendant</code> 指向当前 option；Portal 模式因 option 与 combobox 位于不同的 Shadow DOM 树中，不设置此属性。支持 ArrowDown/ArrowUp/Enter/Escape 键盘导航。</p>\n<p>Portal panel 创建时会镜像 host 上解析后的这些变量；更新 host 后需重新打开 Portal panel 才会生效。</p>"
+        "html": "<p>子 <code>&lt;web-ui-option></code> 通过 <code>option-register</code> / <code>option-unregister</code> 注册。打开时，面板使用 <code>role=\"listbox\"</code>，候选项使用 <code>role=\"option\"</code>，当前非空 <code>value</code> 对应的 option 设为 <code>aria-selected=\"true\"</code>，<code>aria-disabled</code> 反映禁用状态。非 Portal 模式下，键盘导航时 <code>aria-activedescendant</code> 指向当前 option；Portal 模式因 option 与 combobox 位于不同的 Shadow DOM 树中，不设置此属性。关闭态的 Space / Enter / ArrowDown / ArrowUp 打开 panel；展开态的 ArrowDown / ArrowUp、Home / End 与 typeahead 移动激活项，Enter / Space 选择并关闭，Escape 关闭。</p>\n<p>Portal panel 创建时会镜像 host 上解析后的这些变量；更新 host 后需重新打开 Portal panel 才会生效。</p>"
       },
       {
         "kind": "table",
