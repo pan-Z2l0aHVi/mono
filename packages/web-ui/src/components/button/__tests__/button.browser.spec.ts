@@ -157,6 +157,49 @@ describe('WebUiButton 组件（浏览器）', () => {
     expect(input.value).toBe('initial')
   })
 
+  it('aria-disabled 阻止 submit 和 reset，同时保留原生 button 焦点能力', async () => {
+    const form = document.createElement('form')
+    const input = document.createElement('input')
+    input.defaultValue = 'initial'
+    input.value = 'changed'
+    const submitButton = document.createElement('web-ui-button')
+    submitButton.type = 'submit'
+    submitButton.setAttribute('aria-disabled', 'true')
+    const resetButton = document.createElement('web-ui-button')
+    resetButton.type = 'reset'
+    resetButton.setAttribute('aria-disabled', 'true')
+    form.append(input, submitButton, resetButton)
+    document.body.append(form)
+    await Promise.all([waitForUpdate(submitButton), waitForUpdate(resetButton)])
+
+    let submitEvents = 0
+    let resetEvents = 0
+    form.addEventListener('submit', event => {
+      event.preventDefault()
+      submitEvents += 1
+    })
+    form.addEventListener('reset', () => {
+      resetEvents += 1
+    })
+
+    const innerSubmit = submitButton.shadowRoot?.querySelector<HTMLButtonElement>('button')
+    const innerReset = resetButton.shadowRoot?.querySelector<HTMLButtonElement>('button')
+    expect(innerSubmit?.disabled).toBe(false)
+    expect(innerReset?.disabled).toBe(false)
+    expect(innerSubmit?.getAttribute('aria-disabled')).toBe('true')
+    expect(innerReset?.getAttribute('aria-disabled')).toBe('true')
+
+    innerSubmit?.focus()
+    expect(submitButton.shadowRoot?.activeElement).toBe(innerSubmit)
+    innerSubmit?.click()
+    innerReset?.click()
+    await flush()
+
+    expect(submitEvents).toBe(0)
+    expect(resetEvents).toBe(0)
+    expect(input.value).toBe('changed')
+  })
+
   it('原生 input 按 Enter 恰好通过 type=submit 宿主触发一次隐式提交', async () => {
     const form = document.createElement('form')
     const input = document.createElement('input')
