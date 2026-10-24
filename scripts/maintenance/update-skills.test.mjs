@@ -65,15 +65,14 @@ function withLayout(fn) {
 
 // ── checkRepoLayout 对真实仓库状态 ──
 
-const realLayout = checkRepoLayout({
+// 清单不在此钉死：自撰 skill 由 skills/ 实体目录表达，第三方由 skills-lock.json 表达，
+// 结构契约由 checkRepoLayout 执行；显式名单只会在迭代中漂移。skill 被删导致的死链接由 check-context 的链接面兜住。
+checkRepoLayout({
   rootSkillsDir: join(repoRoot, 'skills'),
   agentsSkillsDir,
   vendoredDir: join(repoRoot, '.agents', 'skills-vendored'),
   lockFile
 })
-assert.deepEqual(realLayout.repoAuthored, ['monorepo-change-impact', 'request-authorization', 'task-ledger', 'test-authoring'])
-assert.deepEqual(realLayout.mirrored, [])
-assert.deepEqual(realLayout.vendored, ['apple-design', 'emil-design-eng', 'review-animations', 'wizard'])
 // skills/ 根的 README.md 是 GitHub 通道的安装说明，必须存在且可读。
 assert.match(readFileSync(join(repoRoot, 'skills', 'README.md'), 'utf8'), /npx skills add/)
 
