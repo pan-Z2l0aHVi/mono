@@ -1,5 +1,67 @@
 # @greypan/web-ui
 
+## 11.1.0
+
+### Minor Changes
+
+- 046addb: Make the dark `segmented` raised indicator read as a button. Its resting face is now the same surface as a `secondary` button in that theme, so `--wui-color-surface-selected` changes from `#5c5c5e` to `#3a3a3c` in dark. Because the convex track has to sit one step below that face, it moves to a new token, `--wui-color-surface-segmented-track` (`#e5e5ea` in light, `#2c2c2e` in dark); `--wui-color-surface-segmented` keeps naming the inset indicator face. Light reads the other way round — there the convex face is the same white as the page and the track sinks below it, while dark puts the page at the bottom of the ladder. In dark the two variants therefore now share one gray pair and differ only by decoration: a constant ring and shadow versus a soft shadow.
+  
+  Generated Markdown body text follows `--wui-font-size` instead of Notion's hard-coded pixel sizes, and tables take that size by inheritance, so a documentation page is no longer set larger than the components it documents.
+- de69393: Add a `--wui-color-on-danger` theme token for badge count text in both themes.
+- fea85a3: Add a `color` property to `web-ui-spinner` and make its default follow the theme text-secondary color.
+
+### Patch Changes
+
+- 9eec040: Hide clear buttons in disabled input and textarea components.
+- e15289b: Restore focus to the parent item when ArrowLeft closes a dropdown submenu.
+- 6648b13: Defer slider value updates until a track tap completes or drag intent is accepted. Cancel cross-axis movement as soon as it crosses the gesture threshold and dominates.
+- 5d047d3: Use theme-aware colors for avatar fallbacks.
+- 1738c7e: Give back-top buttons an accessible default name and working token-based focus ring.
+- 8deb266: Respect reduced-motion preferences in back-top scrolling.
+- c54fd58: Fix badge overlays for plain text in its default slot.
+- cec5e97: Improve default accent text contrast in light and dark themes.
+- 395cb7e: Fix immediate keyboard tooltip display for shadow DOM triggers.
+- c3a6fd1: Block pointer interaction and page scrolling while the imperative spinner overlay is open.
+- c790a22: Improve segmented label contrast on selected indicators.
+- 1843927: Add keyboard navigation and roving tabindex to radio groups.
+- f96acc7: Scale button group member buttons with `--wui-control-size`; vertical tracks expand to fit their widest member.
+- 69b34cd: Allow `web-ui-button` size values to use CSS lengths such as `px` and `rem` while keeping bare numbers in pixels.
+- f9fed85: Add arrow-key navigation and roving tabindex to segmented controls.
+- 85417bd: Hide closed dialogs from layout, hit testing, and keyboard navigation.
+- 765f4b0: Expose `aria-expanded` and `aria-disabled` on the native button inside `<web-ui-button>` when it is used as a collapse trigger. Keep `aria-controls` on the host because its IDREF cannot resolve across shadow roots; `aria-disabled="true"` also suppresses button activation.
+- b78432b: Expose `horizontal` as a reflected Boolean property on `web-ui-dialog` so dynamic bindings update the footer layout.
+- c3bee8e: Close dropdown menus when focus leaves them and move focus to the adjacent page control on Tab.
+- 053f053: Preserve the final line box for editable text values ending with a newline.
+- 5b1b9b4: Fix vertical button groups so the glass track expands to fit the widest button.
+- 9db0265: Restore the focus ring when keyboard navigation follows pointer input.
+- 7b54ba5: Fix horizontal collapse peek clipping so it preserves the content's natural height.
+- eb3594d: Forward `aria-label` and `aria-labelledby` from `web-ui-input-number` to its native number input.
+- aa6fcf5: Infer input-number rounding precision from fractional step values when precision is omitted.
+- 9014b4a: Keep the active autocomplete option visible during keyboard navigation.
+- d326d03: Fix image preview loop rendering so a single image is shown only once.
+- e517a4f: Keep dropdown submenus within the viewport on narrow screens.
+- 527ec9c: Omit `aria-hidden` from non-decorative avatars.
+- 1b82461: Fix back-top alignment in custom scroll containers.
+- b428a73: Fix dropdown focus restoration and stale `aria-controls` after closing.
+- da5ffa8: Fix disabled opacity for input controls so text, icons, and control surfaces fade consistently.
+- d45da09: Restore themed internal scrollbars in select and autocomplete portal panels.
+- db6879a: Keep toast close buttons visible and interactive for coarse pointers.
+- b548de9: Recalculate middle ellipsis output when font metrics change so truncated text stays within the available width.
+- 4d01bf5: Fix initial segmented selection so upgraded triggers expose the correct checked and accessible selected state.
+- a53f0c6: Forward host `aria-label` to the `web-ui-select` combobox trigger.
+- 9748689: Fix select keyboard support for opening, Home/End navigation, and typeahead.
+- 8fe5d2f: Expose select option roles and synchronized ARIA selection and disabled states.
+- e0ac1f5: Fix accessible naming for `web-ui-slider` by forwarding host `aria-label` and `aria-labelledby` attributes to its internal slider. Sliders no longer receive a shared default name, so consumers should provide a distinguishable name for every instance.
+- 9949f0d: Close open tooltips when they become disabled.
+- 7094b03: Render switch child text as a visible label and expose switch semantics on the host.
+- 8288ef3: Keep SVG draw offsets within the dash range when easing curves overshoot.
+- 58b57e3: The svg-draw-lines duration-easing demos called `replay()` without handling the returned promise, which the corpus lint flags as a floating promise. The three `replayAll` fences now discard it with `void`, and the generated demo files were regenerated from the corrected corpus. No runtime behavior change.
+- f33e475: Keep imperative spinner overlays within the active theme scope.
+- 4cc003c: Scale square avatar corner radii with avatar size.
+- 62bb498: Let pointer events pass through decorative badge indicators to slotted content.
+- 767ca49: Move radio and checkbox ARIA semantics off label elements.
+- 893f76a: Add radiogroup semantics, accessible naming, and arrow-key navigation to radio groups.
+
 ## 11.0.0
 
 ### Major Changes

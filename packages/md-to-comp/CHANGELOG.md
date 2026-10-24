@@ -1,5 +1,16 @@
 # @greypan/md-to-comp
 
+## 0.0.2
+
+### Patch Changes
+
+- 046addb: Make the dark `segmented` raised indicator read as a button. Its resting face is now the same surface as a `secondary` button in that theme, so `--wui-color-surface-selected` changes from `#5c5c5e` to `#3a3a3c` in dark. Because the convex track has to sit one step below that face, it moves to a new token, `--wui-color-surface-segmented-track` (`#e5e5ea` in light, `#2c2c2e` in dark); `--wui-color-surface-segmented` keeps naming the inset indicator face. Light reads the other way round — there the convex face is the same white as the page and the track sinks below it, while dark puts the page at the bottom of the ladder. In dark the two variants therefore now share one gray pair and differ only by decoration: a constant ring and shadow versus a soft shadow.
+  
+  Generated Markdown body text follows `--wui-font-size` instead of Notion's hard-coded pixel sizes, and tables take that size by inheritance, so a documentation page is no longer set larger than the components it documents.
+- 046addb: The `react` flavor's fence language is now `tsx` instead of `react`, so the corpus, the emitted demo file and the formatter all speak one name. ` ```react ` blocks were invisible to the formatter while the `.tsx` files they produced were governed by it, which left "the artifact equals the fence byte for byte" and "the artifact is formatted" only reconcilable by hand. `FLAVOR_LANG` is the single table behind the fence language, the shiki grammar id and the file extension, and the parser's error now names the language each flavor expects.
+  
+  Breaking for consumers of the module surface: `flavorExtension` is no longer exported from `@greypan/md-to-comp`, because the extension it returned was the same value `FLAVOR_LANG` already holds. Read `FLAVOR_LANG[flavor]` instead. The package is private and has no importer for that name.
+
 ## 0.0.1
 
 ### Patch Changes
