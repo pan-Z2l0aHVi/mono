@@ -150,8 +150,10 @@ runs:
           ${{ steps.go-cache-paths.outputs.gomodcache }}
           ${{ steps.go-cache-paths.outputs.gocache }}
         key: ${{ runner.os }}-${{ runner.arch }}-${{ steps.go-cache-paths.outputs.imageos }}-${{ steps.go-cache-paths.outputs.imageversion }}-go-${{ steps.go-cache-paths.outputs.goversion }}-${{ hashFiles('apps/interweave/go.sum') }}-${{ github.sha }}
+        # 回退前缀不含镜像版本：runner 镜像接近天级重建，含它会令每次镜像滚动后 go vet 全冷。
+        # Go build cache 内容寻址（cgo 预处理输出参与哈希），跨镜像恢复旧条目只会在输入变化时自然 miss。
         restore-keys: |
-          ${{ runner.os }}-${{ runner.arch }}-${{ steps.go-cache-paths.outputs.imageos }}-${{ steps.go-cache-paths.outputs.imageversion }}-go-${{ steps.go-cache-paths.outputs.goversion }}-${{ hashFiles('apps/interweave/go.sum') }}-
+          ${{ runner.os }}-${{ runner.arch }}-go-${{ steps.go-cache-paths.outputs.goversion }}-${{ hashFiles('apps/interweave/go.sum') }}-
 
     - name: Resolve pnpm store path
       if: inputs.skip-install != 'true'
