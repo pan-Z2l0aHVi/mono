@@ -218,6 +218,41 @@ describe('WebUiBackTop 组件', () => {
       el.remove()
     })
 
+    it('默认提供 button 的可访问名称', async () => {
+      const el = createBackTop()
+      await waitForUpdate(el)
+
+      expect(triggerButton(el).getAttribute('aria-label')).toBe('Back to top')
+      el.remove()
+    })
+
+    it('将宿主 aria-label 转发到 button', async () => {
+      const el = createBackTop()
+      el.setAttribute('aria-label', '返回页面顶部')
+      await waitForUpdate(el)
+
+      expect(triggerButton(el).getAttribute('aria-label')).toBe('返回页面顶部')
+      el.remove()
+    })
+
+    it('空 aria-label 回退到默认名称', async () => {
+      const el = createBackTop()
+      el.setAttribute('aria-label', '  ')
+      await waitForUpdate(el)
+
+      expect(triggerButton(el).getAttribute('aria-label')).toBe('Back to top')
+      el.remove()
+    })
+
+    it('自定义 slot 内容存在时不覆盖其 accessible name', async () => {
+      const el = createBackTop()
+      el.append('back top')
+      await waitForUpdate(el)
+
+      expect(triggerButton(el).hasAttribute('aria-label')).toBe(false)
+      el.remove()
+    })
+
     it.each([
       ['Enter', 'Enter'],
       ['Space', ' ']

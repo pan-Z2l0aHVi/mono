@@ -8,11 +8,9 @@
 
 <script setup lang="ts">
 import ExampleDoc from '@/components/example-doc/index.vue'
-import SegmentedDemo from '@/components/segmented-demo/index.vue'
 </script>
 
 <template>
-  <SegmentedDemo />
-  <ExampleDoc component="segmented" />
-  <ExampleDoc component="segmented-trigger" />
+  <ExampleDoc component="segmented" level="primary" />
+  <ExampleDoc component="segmented-trigger" level="secondary" />
 </template>

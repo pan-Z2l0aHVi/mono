@@ -21,7 +21,7 @@ export interface MdToCompConfig {
   dir?: string
   /** 从示例标题里取锚点；默认 `braceAnchor`。 */
   anchor?: AnchorFn
-  /** 一条示例必须齐这几份围栏，顺序即配对顺序；扩展名由入口钉死。 */
+  /** 一条示例必须齐这几份围栏，顺序即配对顺序；落盘扩展名由 `FLAVOR_LANG` 给出。 */
   flavors: readonly FenceFlavor[]
   apiTables: ApiTables
   /**
@@ -30,6 +30,11 @@ export interface MdToCompConfig {
    * `data-*`、`.dark` 都行），所以这里只收一个选择器；不写就只出浅色一条规则。
    */
   darkSelector?: string
+  /**
+   * 要求每条示例都带 `{#id}` 锚点并落成组件文件。默认关闭，供尚未迁移完的语料逐篇接入；
+   * 全部迁移后开启，漏写锚点会在生成阶段失败，而不是静默退化成「只有代码、没有预览」。
+   */
+  requireDemo?: boolean
 }
 
 /** 一处产物落点。同一个 input 可以出多份，每份服务一个框架。 */

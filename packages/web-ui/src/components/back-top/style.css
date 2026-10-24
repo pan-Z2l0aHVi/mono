@@ -9,7 +9,7 @@
 }
 
 /* 容器模式：scrollTarget 为元素时 button 悬浮于容器底部（元素需置于容器内部），
-   横向偏移沿用 --wui-back-top-left/right，纵向沿用 --wui-back-top-bottom */
+   横向偏移沿用 --wui-back-top-left/right，纵向沿用 --wui-back-top-bottom；不使用 top */
 :host([container-mode]) {
   position: sticky;
   bottom: var(--wui-back-top-bottom, 20px);
@@ -28,7 +28,7 @@
   visibility: hidden;
   opacity: 0;
 
-  .back-top-inner:focus-visible {
+  &:focus-visible {
     border-radius: var(--wui-radius-control, calc(infinity * 1px));
     outline: var(--wui-focus-ring-width, 3px) solid
       var(--wui-color-focus-ring, color-mix(in srgb, var(--wui-color-accent, #0071e3) 40%, transparent));
@@ -38,6 +38,7 @@
 
 :host([container-mode]) .back-top-inner {
   position: static;
+  width: fit-content;
   margin-right: var(--wui-back-top-right, 20px);
   margin-left: var(--wui-back-top-left, auto);
 }

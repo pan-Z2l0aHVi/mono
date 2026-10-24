@@ -68,7 +68,11 @@ function assertPolicyStepContract(text) {
   assert.equal(workflow.stepShells[policy.name], policy.shell, 'policy step must use fail-fast Bash')
   assert.equal(workflow.steps[policy.name], undefined, 'policy step must always run')
   assert.equal(workflow.stepContinueOnError[policy.name], undefined, 'policy errors must fail the step')
-  assert.equal(workflow.jobs[policy.job]?.if, undefined, 'required job must not be skippable')
+  assert.equal(
+    workflow.jobs[policy.job]?.if,
+    "${{ github.event_name != 'push' && !cancelled() }}",
+    'required job must skip cache-only pushes, run after preparation failure, and honor workflow cancellation'
+  )
   assert.equal(workflow.jobs[policy.job]?.continueOnError, undefined, 'required job must propagate failures')
   assert.deepEqual(runTexts(namedStep(text, policy.name)), policy.runs)
 }
@@ -91,13 +95,14 @@ function assertChangesetStepContract(text) {
 
 function assertPrTitleStepContract(text) {
   const workflow = parseWorkflow(text)
+  const requiredCheckJob = workflowJob(text, REQUIRED_CONTEXT)
   const readerName = 'Read PR title'
-  const reader = namedStep(text, readerName)
+  const reader = namedStep(requiredCheckJob, readerName)
   const prepareName = 'Prepare base PR title rule'
-  const prepare = namedStep(text, prepareName)
+  const prepare = namedStep(requiredCheckJob, prepareName)
   const checkerName = 'Check PR title'
-  const checker = namedStep(text, checkerName)
-  const setup = text.indexOf('      - uses: ./.github/actions/setup-deps\n')
+  const checker = namedStep(requiredCheckJob, checkerName)
+  const setup = requiredCheckJob.indexOf('      - uses: ./.github/actions/setup-deps\n')
 
   assert.equal(workflow.stepJobs[readerName], REQUIRED_CONTEXT, 'PR title lookup must belong to the required context')
   assert.equal(workflow.steps[readerName], "github.event_name == 'pull_request'", 'title lookup must run only for PRs')
@@ -140,14 +145,17 @@ function assertPrTitleStepContract(text) {
   assert.ok(checker.includes('COMMITLINT_CONFIG_PATH: ${{ runner.temp }}/commitlint.config.mjs'))
   assert.deepEqual(runTexts(checker), ['node "$RUNNER_TEMP/check-pr-title.mjs"'])
   assert.ok(
-    setup > -1 && text.indexOf(`      - name: ${readerName}\n`) < setup,
+    setup > -1 && requiredCheckJob.indexOf(`      - name: ${readerName}\n`) < setup,
     'title lookup must run before dependency setup'
   )
   assert.ok(
-    text.indexOf(`      - name: ${prepareName}\n`) < setup,
+    requiredCheckJob.indexOf(`      - name: ${prepareName}\n`) < setup,
     'trusted checker preparation must run before dependency setup'
   )
-  assert.ok(text.indexOf(`      - name: ${checkerName}\n`) < setup, 'title check must run before dependency setup')
+  assert.ok(
+    requiredCheckJob.indexOf(`      - name: ${checkerName}\n`) < setup,
+    'title check must run before dependency setup'
+  )
 
   const trigger = workflow.triggers.find(item => item.on === 'pull_request')
   assert.deepEqual(trigger.types, ['opened', 'synchronize', 'reopened', 'edited'], 'editing the title must rerun CI')
@@ -202,6 +210,21 @@ function assertPullRequestValidationIsReadOnly(workflow) {
 // The single required CI context must run all policy checks and propagate any failure.
 {
   const ci = workflowText['ci.yml']
+  const ciWorkflow = parsed['ci.yml']
+  assert.match(
+    ci,
+    /group: \$\{\{ github\.workflow \}\}-\$\{\{ github\.head_ref \|\| github\.ref_name \}\}-\$\{\{ github\.event_name \}\}/,
+    'cache-only main pushes must not cancel a full workflow_dispatch check'
+  )
+  const cachePreparation = workflowJob(ci, 'prepare-wails-apt-cache')
+  assert.deepEqual(ciWorkflow.jobs.check.needs, ['prepare-wails-apt-cache'])
+  assert.equal(ciWorkflow.jobs['prepare-wails-apt-cache'].if, undefined)
+  assert.equal(ciWorkflow.jobs.check.if, "${{ github.event_name != 'push' && !cancelled() }}")
+  assert.match(cachePreparation, /timeout-minutes: 35/)
+  assert.match(
+    cachePreparation,
+    /skip-mise: 'true'[\s\S]*skip-install: 'true'[\s\S]*wails: 'true'[\s\S]*wails-download-only: 'true'/
+  )
   assert.ok(parsed['ci.yml'].jobs[REQUIRED_CONTEXT], 'the required context must remain the CI job')
   assertChangesetStepContract(ci)
   assertPrTitleStepContract(ci)
@@ -255,7 +278,11 @@ function assertPullRequestValidationIsReadOnly(workflow) {
   assert.throws(() =>
     assertPolicyStepContract(mutateOnce(ci, marker, `${marker}        id: repository-policies\n        if: false\n`))
   )
-  assert.throws(() => assertPolicyStepContract(mutateOnce(ci, '  check:\n', '  check:\n    if: false\n')))
+  assert.throws(() =>
+    assertPolicyStepContract(
+      mutateOnce(ci, "    if: ${{ github.event_name != 'push' && !cancelled() }}\n", '    if: false\n')
+    )
+  )
   assert.throws(() => assertPolicyStepContract(mutateOnce(ci, '  check:\n', '  check:\n    continue-on-error: true\n')))
 
   const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'ci-policy-fail-fast-'))
@@ -278,8 +305,12 @@ function assertPullRequestValidationIsReadOnly(workflow) {
   const pushWorkflows = Object.entries(parsed)
     .filter(([, workflow]) => workflow.triggers.some(trigger => trigger.on === 'push'))
     .map(([file]) => file)
-  assert.deepEqual(pushWorkflows, ['changeset-version.yml'])
-  assert.deepEqual(parsed['ci.yml'].triggers.map(trigger => trigger.on).sort(), ['pull_request', 'workflow_dispatch'])
+  assert.deepEqual(pushWorkflows, ['changeset-version.yml', 'ci.yml'])
+  assert.deepEqual(parsed['ci.yml'].triggers.map(trigger => trigger.on).sort(), [
+    'pull_request',
+    'push',
+    'workflow_dispatch'
+  ])
   for (const [file, workflow] of Object.entries(parsed)) {
     assert.ok(Object.keys(workflow.permissions).length > 0, `${file} must declare workflow permissions`)
     for (const trigger of workflow.triggers) {
@@ -575,6 +606,44 @@ function matrixEntries(text) {
   assert.match(setup, /ImageOS/)
   assert.match(setup, /ImageVersion/)
   assert.match(setup, /actions\/cache@v5/)
+  const aptPlanStart = setup.indexOf('    - name: Resolve Wails Linux package cache key\n')
+  const aptCacheStart = setup.indexOf('    - name: Restore Wails Linux package archives\n')
+  const aptDownloadStart = setup.indexOf('    - name: Download Wails Linux package archives\n')
+  const aptInstallStart = setup.indexOf('    - name: Install Wails Linux prerequisites\n')
+  const aptPermissionsStart = setup.indexOf('    - name: Prepare Wails Linux package archives for caching\n')
+  const aptSaveStart = setup.indexOf('    - name: Save Wails Linux package archives\n')
+  assert.ok(
+    aptPlanStart >= 0 &&
+      aptPlanStart < aptCacheStart &&
+      aptCacheStart < aptDownloadStart &&
+      aptDownloadStart < aptInstallStart &&
+      aptInstallStart < aptPermissionsStart &&
+      aptPermissionsStart < aptSaveStart,
+    'Wails apt archives must be restored before download/install, made readable, then saved'
+  )
+  assert.match(setup, /--print-uris[\s\S]*?libgtk-4-dev libwebkitgtk-6\.0-dev/)
+  assert.match(setup, /apt_plan_hash=.*sha256sum/)
+  assert.match(setup, /key=\$\{cache_scope\}-\$\{apt_plan_hash\}/)
+  assert.match(setup, /cache_scope="\$\{ID\}-\$\{VERSION_ID\}-\$\(dpkg --print-architecture\)"/)
+  assert.match(setup, /key: wails-apt-\$\{\{ steps\.wails-apt-cache\.outputs\.key \}\}/)
+  assert.match(setup, /restore-keys: \|\n\s+wails-apt-\$\{\{ steps\.wails-apt-cache\.outputs\.scope \}\}-/)
+  assert.match(setup, /APT::Keep-Downloaded-Packages=true/)
+  assert.match(setup, /  skip-mise:\n[\s\S]*?default: 'false'/)
+  assert.match(setup, /uses: jdx\/mise-action@v4\n\s+if: inputs\.skip-mise != 'true'/)
+  assert.match(
+    setup,
+    /id: wails-apt-download[\s\S]*install --download-only -y --no-install-recommends libgtk-4-dev libwebkitgtk-6\.0-dev/
+  )
+  assert.match(
+    setup,
+    /id: wails-apt-install[\s\S]*install -y --no-install-recommends libgtk-4-dev libwebkitgtk-6\.0-dev/
+  )
+  assert.match(setup, /steps\.wails-apt-download\.outcome == 'success'/)
+  assert.match(setup, /steps\.wails-apt-install\.outcome == 'success'/)
+  assert.match(setup, /id: wails-apt-permissions[\s\S]*sudo chown -R "\$\(id -u\):\$\(id -g\)"/)
+  assert.match(setup, /steps\.wails-apt-permissions\.outcome == 'success'/)
+  assert.doesNotMatch(setup, /if: always\(\)[^\n]*wails-apt/)
+  assert.match(setup, /uses: actions\/cache\/restore@v5[\s\S]*uses: actions\/cache\/save@v5/)
   for (const keyPart of [
     'runner.os',
     'runner.arch',

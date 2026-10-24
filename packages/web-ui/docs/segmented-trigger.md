@@ -11,7 +11,7 @@ tag: web-ui-segmented-trigger
 
 `value` 决定哪个 trigger 是当前项，容器按它回写 `checked`；默认插槽里的文本就是 button 内容。
 
-```react
+```tsx
 import { useState } from 'react'
 
 export default function Demo() {
@@ -47,7 +47,7 @@ const view = ref('day')
 
 `disabled` 加在 trigger 上只禁这一项：它留在 track 里，但不可选中，键盘导航也跳过它。加在 `<web-ui-segmented>` 上则是禁用全部 trigger。
 
-```react
+```tsx
 import { useState } from 'react'
 
 export default function Demo() {

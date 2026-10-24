@@ -7,7 +7,8 @@
     "build": "vp build",
     "dev": "vp dev",
     "preview": "vp preview",
-    "test": "vp test run"
+    "test": "vp test run",
+    "check-generated": "node ../../scripts/workflow/check-md-to-comp-artifacts.mjs . react"
   },
   "dependencies": {
     "@greypan/js-kit": "workspace:*",

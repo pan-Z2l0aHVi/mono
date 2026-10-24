@@ -11,7 +11,7 @@ tag: web-ui-option
 
 `label` 决定容器里显示什么，`value` 是容器派发出去的值。
 
-```react
+```tsx
 export default function Demo() {
   return (
     <web-ui-select placeholder="请选择">
@@ -37,7 +37,7 @@ export default function Demo() {
 
 不写 `label` 时，`label` 取默认插槽的文本；`prefix` 与 `suffix` 不参与这段文本。
 
-```react
+```tsx
 import { lucideImage, lucideStar } from '@greypan/web-ui/icons'
 
 export default function Demo() {
@@ -79,7 +79,7 @@ import { lucideImage, lucideStar } from '@greypan/web-ui/icons'
 
 `disabled` 的项留在列表里，但不可选中，键盘导航也会跳过它。
 
-```react
+```tsx
 export default function Demo() {
   return (
     <web-ui-select placeholder="请选择">
