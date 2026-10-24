@@ -20,19 +20,19 @@
 
 不同层级可以为路由短暂提及同一主题，但只能有一个流程权威来源；其他位置只说明何时加载或链接到它，不复制完整处方。`docs/agents/` 内部按 concern 切分，同一个 concern 只由一篇拥有；跨切面概念下沉为独立文档。下表列出与根/包级边界交叉的主题。
 
-| 主题                     | 规则边界                                                                        | 流程权威来源                                           | 证据类别                                       |
-| ------------------------ | ------------------------------------------------------------------------------- | ------------------------------------------------------ | ---------------------------------------------- |
-| 生成物                   | 根/包级 `AGENTS.md` 只指向清单，不复制路径                                      | [`generated-artifacts.md`](./generated-artifacts.md)   | generator diff、构建、消费者类型检查           |
-| 真实浏览器取证           | 根/包级 `AGENTS.md` 仅声明需要浏览器层                                          | [`runtime-verification.md`](./runtime-verification.md) | 浏览器用例与 MCP 操作记录                      |
-| 该跑哪些验证             | 根/包级 `AGENTS.md` 只路由，不复制选择矩阵                                      | [`verification.md`](./verification.md)                 | 相关测试与聚焦构建                             |
-| 影响面与契约查询         | 根入口不提供查询命令；工具接口见 monorepo-change-impact skill                   | monorepo-change-impact skill 的 SKILL.md               | 契约查询脚本与其测试                           |
-| 任务级别与准入           | 根 `AGENTS.md`「变更准入与登记」只给判定入口，不复制级别表                      | task-ledger skill 的 SKILL.md                          | 登记 CLI 的级别校验                            |
-| 本地登记簿与 Task Packet | 根 `AGENTS.md` 只路由，不复制 schema、命令或恢复处方                            | task-ledger skill 的 SKILL.md                          | 记录 fixture 与 status 查询                    |
-| 预授权操作               | 根 `AGENTS.md` 只列被允许与需授权的类别                                         | [`workflow.md`](./workflow.md)                         | 四项说明与用户选择记录                         |
-| 提交边界与署名           | 根 `AGENTS.md` 只路由授权边界，不复制操作清单                                   | [`commit.md`](./commit.md)                             | pre-commit 政策检查与 PR CI 的 changeset gate  |
-| worktree 与缓存          | 根 `AGENTS.md` 说明 owner 与 worktree 唯一性                                    | [`worktree.md`](./worktree.md)                         | 缓存不变量守卫                                 |
-| 客户端权限               | 根 `AGENTS.md` 只给路由，不复制配置                                             | [`environments.md`](./environments.md)                 | 客户端配置与线程实际行为                       |
-| 公共 `web-ui` 契约       | [`packages/web-ui/AGENTS.md`](../../packages/web-ui/AGENTS.md) 指向受影响消费者 | [`web-ui.md`](./web-ui.md)                             | fixtures、contracts、browser/integration tests |
+| 主题                     | 规则边界                                                                        | 流程权威来源                                                                                     | 证据类别                                       |
+| ------------------------ | ------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------ | ---------------------------------------------- |
+| 生成物                   | 根/包级 `AGENTS.md` 只指向清单，不复制路径                                      | [`generated-artifacts.md`](./generated-artifacts.md)                                             | generator diff、构建、消费者类型检查           |
+| 真实浏览器取证           | 根/包级 `AGENTS.md` 仅声明需要浏览器层                                          | [`runtime-verification.md`](./runtime-verification.md)                                           | 浏览器用例与 MCP 操作记录                      |
+| 该跑哪些验证             | 根/包级 `AGENTS.md` 只路由，不复制选择矩阵                                      | [`verification.md`](./verification.md)                                                           | 相关测试与聚焦构建                             |
+| 影响面与契约查询         | 根入口不提供查询命令；工具接口见 monorepo-change-impact skill                   | monorepo-change-impact skill 的 SKILL.md                                                         | 契约查询脚本与其测试                           |
+| 任务级别与准入           | 根 `AGENTS.md`「变更准入与登记」只给判定入口，不复制级别表                      | task-ledger skill 的 SKILL.md                                                                    | 登记 CLI 的级别校验                            |
+| 本地登记簿与 Task Packet | 根 `AGENTS.md` 只路由，不复制 schema、命令或恢复处方                            | task-ledger skill 的 SKILL.md                                                                    | 记录 fixture 与 status 查询                    |
+| 预授权操作               | 根 `AGENTS.md` 只列被允许与需授权的类别                                         | [`workflow.md`](./workflow.md)（授权边界）与 request-authorization skill 的 SKILL.md（弹窗形状） | 四项说明与用户选择记录                         |
+| 提交边界与署名           | 根 `AGENTS.md` 只路由授权边界，不复制操作清单                                   | [`commit.md`](./commit.md)                                                                       | pre-commit 政策检查与 PR CI 的 changeset gate  |
+| worktree 与缓存          | 根 `AGENTS.md` 说明 owner 与 worktree 唯一性                                    | [`worktree.md`](./worktree.md)                                                                   | 缓存不变量守卫                                 |
+| 客户端权限               | 根 `AGENTS.md` 只给路由，不复制配置                                             | [`environments.md`](./environments.md)                                                           | 客户端配置与线程实际行为                       |
+| 公共 `web-ui` 契约       | [`packages/web-ui/AGENTS.md`](../../packages/web-ui/AGENTS.md) 指向受影响消费者 | [`web-ui.md`](./web-ui.md)                                                                       | fixtures、contracts、browser/integration tests |
 
 ## 链接方向
 

@@ -169,6 +169,16 @@ jobs:
       - name: Check published package contracts
         run: pnpm run check-pack
 
+      # cspell 结果缓存按内容键判失效，同 SHA 精确命中、旧 SHA 前缀回退；PR 重复 run 复用，
+      # 缓存隔离模型下新 PR 首跑自建。
+      - name: Cache cspell results
+        uses: actions/cache@v5
+        with:
+          path: .cspellcache
+          key: ${{ runner.os }}-cspell-${{ github.sha }}
+          restore-keys: |
+            ${{ runner.os }}-cspell-
+
       - name: Format + Lint + Type-check + Go vet
         run: pnpm run check-code
 
