@@ -85,6 +85,11 @@ export class WebUiRadio extends FormAssociated(LitElement) {
 
   private readonly _formAssociationController = new FormAssociationController(this, this._formAssociation)
 
+  override focus(options?: FocusOptions): void {
+    if (this._isDisabled) return
+    this.shadowRoot?.querySelector<HTMLElement>('[role="radio"]')?.focus(options)
+  }
+
   private readonly _labelEmptiness = new LabelEmptinessController(this, '.wui-radio-label', empty => {
     this._labelEmpty = empty
   })
