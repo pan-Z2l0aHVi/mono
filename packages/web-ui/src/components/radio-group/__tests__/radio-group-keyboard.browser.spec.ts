@@ -43,8 +43,8 @@ async function settleGroup(group: WebUiRadioGroup): Promise<void> {
   await Promise.all(radios.map(radio => radio.updateComplete))
 }
 
-function createGroup(value: string, content = GROUP_CONTENT): WebUiRadioGroup {
-  return mountElement<WebUiRadioGroup>('web-ui-radio-group', { attrs: { value }, html: content })
+function createGroup(value: string, content = GROUP_CONTENT, direction: 'horizontal' | 'vertical' = 'vertical') {
+  return mountElement<WebUiRadioGroup>('web-ui-radio-group', { attrs: { value, direction }, html: content })
 }
 
 describe('WebUiRadioGroup 键盘契约（浏览器）', () => {
@@ -63,7 +63,7 @@ describe('WebUiRadioGroup 键盘契约（浏览器）', () => {
     expect(focusedRadioIndex(group)).toBe(1)
     expect(radioTabIndexes(group)).toEqual(['-1', '0', '-1'])
 
-    await userEvent.keyboard('{ArrowRight}')
+    await userEvent.keyboard('{ArrowDown}')
     await settleGroup(group)
     expect(group.value).toBe('c')
     expect(focusedRadioIndex(group)).toBe(2)
@@ -73,7 +73,7 @@ describe('WebUiRadioGroup 键盘契约（浏览器）', () => {
     expect(document.activeElement).toBe(after)
   })
 
-  it('四个方向键循环导航，Home 和 End 移至首尾并派发组事件', async () => {
+  it('纵向组的四个方向键都可循环导航，Home 和 End 移至首尾并派发组事件', async () => {
     const group = createGroup('b')
     await settleGroup(group)
     const radios = [...group.querySelectorAll<WebUiRadio>('web-ui-radio')]
@@ -83,8 +83,8 @@ describe('WebUiRadioGroup 键盘契约（浏览器）', () => {
 
     const steps = [
       ['{ArrowDown}', 2, 'c'],
-      ['{ArrowRight}', 0, 'a'],
-      ['{ArrowUp}', 2, 'c'],
+      ['{ArrowUp}', 1, 'b'],
+      ['{ArrowRight}', 2, 'c'],
       ['{ArrowLeft}', 1, 'b'],
       ['{Home}', 0, 'a'],
       ['{End}', 2, 'c']
@@ -102,6 +102,28 @@ describe('WebUiRadioGroup 键盘契约（浏览器）', () => {
     expect(changeEvents).toHaveLength(steps.length)
     detachInput()
     detachChange()
+  })
+
+  it('横向组保留左右视觉方向，上下键也可导航', async () => {
+    const group = createGroup('b', GROUP_CONTENT, 'horizontal')
+    await settleGroup(group)
+    const radios = [...group.querySelectorAll<WebUiRadio>('web-ui-radio')]
+    radioControl(radios[1]!).focus()
+
+    const steps = [
+      ['{ArrowRight}', 2, 'c'],
+      ['{ArrowLeft}', 1, 'b'],
+      ['{ArrowDown}', 2, 'c'],
+      ['{ArrowUp}', 1, 'b']
+    ] as const
+
+    for (const [key, expectedIndex, expectedValue] of steps) {
+      await userEvent.keyboard(key)
+      await settleGroup(group)
+      expect(group.value).toBe(expectedValue)
+      expect(focusedRadioIndex(group)).toBe(expectedIndex)
+      expect(radioTabIndexes(group)).toEqual(radios.map((_, index) => (index === expectedIndex ? '0' : '-1')))
+    }
   })
 
   it('嵌套组只响应最近所属组的键盘导航', async () => {
@@ -122,7 +144,7 @@ describe('WebUiRadioGroup 键盘契约（浏览器）', () => {
     const innerRadios = [...inner.querySelectorAll<WebUiRadio>('web-ui-radio')]
     radioControl(innerRadios[1]!).focus()
 
-    await userEvent.keyboard('{ArrowRight}')
+    await userEvent.keyboard('{ArrowDown}')
     await settleGroup(outer)
     await settleGroup(inner)
 
@@ -146,7 +168,7 @@ describe('WebUiRadioGroup 键盘契约（浏览器）', () => {
     expect(radioTabIndexes(group)).toEqual(['-1', '0', '-1'])
 
     radioControl(radioB!).focus()
-    await userEvent.keyboard('{ArrowRight}')
+    await userEvent.keyboard('{ArrowDown}')
     await settleGroup(group)
     expect(group.value).toBe('c')
     expect(focusedRadioIndex(group)).toBe(2)
@@ -164,7 +186,7 @@ describe('WebUiRadioGroup 键盘契约（浏览器）', () => {
     expect(radioTabIndexes(group)).toEqual(['-1', '0', '-1'])
 
     radioControl(radioA!).focus()
-    await userEvent.keyboard('{ArrowRight}')
+    await userEvent.keyboard('{ArrowDown}')
     await settleGroup(group)
     expect(group.value).toBe('b')
     expect(focusedRadioIndex(group)).toBe(1)

@@ -3,7 +3,7 @@ component: radio-group
 tag: web-ui-radio-group
 ---
 
-一组 `<web-ui-radio>` 的容器：把成员的选中状态收敛成单个 `value`，选中变化时统一派发 `input` / `change`，并负责组级禁用与必填校验。成员自己声明的 `name` 在组内不参与提交，表单字段名取组上的 `name`。
+一组 `<web-ui-radio>` 的容器：把成员的选中状态收敛成单个 `value`，选中变化时统一派发 `input` / `change`，并负责组级禁用与必填校验。容器提供 `radiogroup` 语义，`direction` 同步为 `aria-orientation`，组级禁用与必填状态分别暴露为 `aria-disabled` 和 `aria-required`。用 `aria-label` 或 `aria-labelledby` 设置组的无障碍名称。横排组用左右方向键，竖排组用上下方向键移动焦点并选中成员。成员自己声明的 `name` 在组内不参与提交，表单字段名取组上的 `name`。
 
 ## 示例
 
@@ -170,13 +170,15 @@ export default function Demo() {
 
 ### Props
 
-| 名称        | 说明                                     | 类型                         | 默认值       |
-| ----------- | ---------------------------------------- | ---------------------------- | ------------ |
-| `name`      | 表单字段名。                             | `string`                     | `''`         |
-| `disabled`  | 禁用整组，并把禁用态下发给成员。         | `boolean`                    | `false`      |
-| `required`  | 必填校验：组没有值时拦截原生提交。       | `boolean`                    | `false`      |
-| `direction` | 成员排列方向。                           | `'horizontal' \| 'vertical'` | `'vertical'` |
-| `value`     | 当前选中的值，也是成员选中态的唯一来源。 | `string`                     | `''`         |
+| 名称              | 说明                                                           | 类型                         | 默认值       |
+| ----------------- | -------------------------------------------------------------- | ---------------------------- | ------------ |
+| `name`            | 表单字段名。                                                   | `string`                     | `''`         |
+| `disabled`        | 禁用整组并把禁用态下发给成员；组容器暴露 `aria-disabled`。     | `boolean`                    | `false`      |
+| `required`        | 必填校验：组没有值时拦截原生提交；组容器暴露 `aria-required`。 | `boolean`                    | `false`      |
+| `direction`       | 成员排列方向，也是组容器的 `aria-orientation`。                | `'horizontal' \| 'vertical'` | `'vertical'` |
+| `value`           | 当前选中的值，也是成员选中态的唯一来源。                       | `string`                     | `''`         |
+| `aria-label`      | 组的无障碍名称。                                               | `string \| null`             | `null`       |
+| `aria-labelledby` | 引用提供组无障碍名称的元素 ID。                                | `string \| undefined`        | —            |
 
 ### Events
 
