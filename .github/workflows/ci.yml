@@ -1,16 +1,19 @@
 name: CI
 
-# main push 只预热 Wails apt 缓存；pull_request 默认验证 GitHub 生成的合并对象。strict 只要求 PR 分支跟上 base，
-# squash 会创建新提交，不能据此断言合并提交与先前测试对象完全相同。trunk 全量复检走 workflow_dispatch。
+# main push 只预热 Wails apt 缓存；pull_request 验证 GitHub 生成的合并对象，标题更新也触发检查。
+# strict 只要求 PR 分支跟上 base；squash 会创建新提交，不能据此断言合并提交与先前测试对象完全相同。
+# trunk 全量复检走 workflow_dispatch。
 on:
   pull_request:
     branches: [main]
+    types: [opened, synchronize, reopened, edited]
   push:
     branches: [main]
   workflow_dispatch:
 
 permissions:
   contents: read
+  pull-requests: read
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.head_ref || github.ref_name }}-${{ github.event_name }}
@@ -47,6 +50,59 @@ jobs:
       - uses: actions/checkout@v7
         with:
           fetch-depth: 0
+
+      - name: Read PR title
+        if: github.event_name == 'pull_request'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          title=$(jq -r '.pull_request.title // empty' "$GITHUB_EVENT_PATH")
+          base_sha=$(jq -r '.pull_request.base.sha // empty' "$GITHUB_EVENT_PATH")
+          if [ -z "$title" ]; then
+            pull_number=${GITHUB_REF#refs/pull/}
+            pull_number=${pull_number%/merge}
+            if [[ ! "$pull_number" =~ ^[0-9]+$ ]]; then
+              echo "Cannot determine pull request number from $GITHUB_REF" >&2
+              exit 1
+            fi
+            title=$(gh api --jq .title "repos/$GITHUB_REPOSITORY/pulls/$pull_number")
+          fi
+          if [ -z "$base_sha" ]; then
+            pull_number=${GITHUB_REF#refs/pull/}
+            pull_number=${pull_number%/merge}
+            if [[ ! "$pull_number" =~ ^[0-9]+$ ]]; then
+              echo "Cannot determine pull request number from $GITHUB_REF" >&2
+              exit 1
+            fi
+            base_sha=$(gh api --jq .base.sha "repos/$GITHUB_REPOSITORY/pulls/$pull_number")
+          fi
+          printf '%s' "$title" > "$RUNNER_TEMP/pr-title"
+          printf '%s' "$base_sha" > "$RUNNER_TEMP/pr-base-sha"
+
+      - name: Prepare base PR title rule
+        if: github.event_name == 'pull_request'
+        run: |
+          set -euo pipefail
+          base_sha=$(cat "$RUNNER_TEMP/pr-base-sha")
+          if [[ ! "$base_sha" =~ ^[[:xdigit:]]{40,64}$ ]]; then
+            echo "Cannot determine a valid PR base SHA" >&2
+            exit 1
+          fi
+          git cat-file -e "$base_sha^{commit}"
+          git show "$base_sha:commitlint.config.js" > "$RUNNER_TEMP/commitlint.config.mjs"
+          if git cat-file -e "$base_sha:.github/scripts/check-pr-title.mjs" 2>/dev/null; then
+            git show "$base_sha:.github/scripts/check-pr-title.mjs" > "$RUNNER_TEMP/check-pr-title.mjs"
+          else
+            cp .github/scripts/check-pr-title.mjs "$RUNNER_TEMP/check-pr-title.mjs"
+          fi
+
+      - name: Check PR title
+        if: github.event_name == 'pull_request'
+        env:
+          PR_TITLE_PATH: ${{ runner.temp }}/pr-title
+          COMMITLINT_CONFIG_PATH: ${{ runner.temp }}/commitlint.config.mjs
+        run: node "$RUNNER_TEMP/check-pr-title.mjs"
 
       - name: Record tested PR snapshot
         if: github.event_name == 'pull_request'
