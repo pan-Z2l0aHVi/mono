@@ -5,6 +5,7 @@
 - **Amended by**: 2026-10-03 —— Session Role 层整体退役（历史见 git）；四层架构本身不变
 - **Amended by**: 2026-10-18 —— ADR-0025 将 task 登记簿、五项本地政策检查与 PR 流程拆为独立职责；context 职责表和 Task-specific 文档权威同步
 - **Amended by**: ADR-0026 —— 增加语料权威标记与漂移门禁；补充见 ADR-0026，本文不复制其规则
+- **Amended by**: 2026-10-24 —— 授权请求的弹窗形状从 workflow.md 内联正文移至仓库自撰 skill `request-authorization`（`skills/` 发现面，可经 `npx skills add` 复用）；workflow.md 保留授权边界、同意语义与指向，职责表同步
 
 ## 背景
 
