@@ -494,17 +494,26 @@ describe('WebUiSelect 组件', () => {
 
     it('typeahead 将带点大写 I 与 i 匹配', async () => {
       const dottedI = String.fromCharCode(0x130)
-      const el = createSelect(`<web-ui-option value="dotted-i" label="${dottedI}"></web-ui-option>`)
+      const el = createSelect(`
+        <web-ui-option value="alpha" label="Alpha"></web-ui-option>
+        <web-ui-option value="dotted-i" label="${dottedI}tem"></web-ui-option>
+      `)
       await waitForUpdate(el)
 
       el.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true }))
       await waitForUpdate(el)
+      const trigger = queryA11y(el, '[role="combobox"]') as HTMLElement
+      const activeValue = () => {
+        const activeId = trigger.getAttribute('aria-activedescendant')
+        return activeId ? el.querySelector<WebUiOption>(`#${activeId}`)?.value : undefined
+      }
+      expect(activeValue()).toBe('alpha')
+
       el.dispatchEvent(new KeyboardEvent('keydown', { key: 'i', bubbles: true, cancelable: true }))
       await waitForUpdate(el)
 
-      const trigger = queryA11y(el, '[role="combobox"]') as HTMLElement
-      const activeId = trigger.getAttribute('aria-activedescendant')
-      expect(activeId ? el.querySelector<WebUiOption>(`#${activeId}`)?.value : undefined).toBe('dotted-i')
+      expect(activeValue()).toBe('dotted-i')
+      expect(el.value).toBe('')
 
       cleanupElement(el)
     })

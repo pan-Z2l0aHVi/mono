@@ -357,6 +357,7 @@ export class WebUiSelect extends FormAssociated(LitElement) {
         break
       case 'Enter': {
         e.preventDefault()
+        if (e.repeat) break
         if (!this._isOpen) this._open(true)
         else if (this._activeIndex >= 0) this._selectActiveOption()
         break
@@ -365,6 +366,7 @@ export class WebUiSelect extends FormAssociated(LitElement) {
       case 'Space':
       case 'Spacebar': {
         e.preventDefault()
+        if (e.repeat) break
         if (!this._isOpen) this._open(true)
         else if (this._activeIndex >= 0) this._selectActiveOption()
         break

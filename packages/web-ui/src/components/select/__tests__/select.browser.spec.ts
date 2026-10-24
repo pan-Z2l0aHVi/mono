@@ -85,6 +85,55 @@ describe('WebUiSelect 组件（浏览器）', () => {
     expect(select.open).toBe(false)
   })
 
+  it.each([
+    { name: 'Space', key: ' ' },
+    { name: 'Enter', key: 'Enter' }
+  ])('按住 $name 时忽略重复 keydown，不提交未选择的首项', async ({ key }) => {
+    const mountPoint = mountKeyboardIsolated()
+    const select = document.createElement('web-ui-select')
+    select.innerHTML = `
+      <web-ui-option value="vue" label="Vue"></web-ui-option>
+      <web-ui-option value="react" label="React"></web-ui-option>
+    `
+    mountPoint.append(select)
+    await select.updateComplete
+
+    const trigger = select.shadowRoot!.querySelector<HTMLElement>('[role="combobox"]')!
+    const openEvents: CustomEvent<{ open: boolean }>[] = []
+    const inputEvents: Event[] = []
+    const changeEvents: Event[] = []
+    select.addEventListener('open-change', event => openEvents.push(event as CustomEvent<{ open: boolean }>))
+    select.addEventListener('input', event => inputEvents.push(event))
+    select.addEventListener('change', event => changeEvents.push(event))
+
+    trigger.focus()
+    trigger.dispatchEvent(new KeyboardEvent('keydown', { key, bubbles: true, cancelable: true, composed: true }))
+    await select.updateComplete
+
+    expect(select.open).toBe(true)
+    expect(select.value).toBe('')
+    expect(openEvents.map(event => event.detail.open)).toEqual([true])
+
+    const dispatchRepeatedKeydown = () =>
+      trigger.dispatchEvent(
+        new KeyboardEvent('keydown', { key, bubbles: true, cancelable: true, composed: true, repeat: true })
+      )
+    dispatchRepeatedKeydown()
+    await select.updateComplete
+
+    expect(select.open).toBe(true)
+    expect(select.value).toBe('')
+
+    for (let index = 1; index < 30; index++) dispatchRepeatedKeydown()
+    await select.updateComplete
+
+    expect(select.open).toBe(true)
+    expect(select.value).toBe('')
+    expect(openEvents.map(event => event.detail.open)).toEqual([true])
+    expect(inputEvents).toHaveLength(0)
+    expect(changeEvents).toHaveLength(0)
+  })
+
   it('Portal panel 在 theme 作用域内挂载到 theme 自己的 overlay root', async () => {
     const theme = document.createElement('web-ui-theme')
     theme.setAttribute('appearance', 'light')
