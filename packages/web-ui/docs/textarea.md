@@ -159,7 +159,7 @@ const committed = ref('')
 
 ### 清除 button {#clearable}
 
-`clearable` 只在有值时画出清除 button，它对齐首行而不是整框垂直居中；点它清空值并派发 `input`。`full` 让控件占满父容器宽度，`--wui-textarea-width` 只在非 `full` 时生效。
+`clearable` 只在有值且未设置 `disabled` 或 `readonly` 时画出清除 button；空值、禁用或只读时不画。清除 button 对齐首行而不是整框垂直居中；点它清空值并派发 `input`。`full` 让控件占满父容器宽度，`--wui-textarea-width` 只在非 `full` 时生效。
 
 ```tsx
 export default function Demo() {
@@ -183,7 +183,7 @@ export default function Demo() {
 
 ### 禁用与只读 {#states}
 
-`disabled` 关掉输入，校验也让路，宿主整体降到四成不透明度；`readonly` 保留可读、可全选与可复制，仍可拖拽右下角改高度，但不接受输入，并收起清除 button。
+`disabled` 关掉输入、校验与清除操作，宿主整体降到四成不透明度；`readonly` 保留可读、可全选与可复制，仍可拖拽右下角改高度，但不接受输入，并收起清除 button。
 
 ```tsx
 export default function Demo() {
@@ -407,7 +407,7 @@ export default function Demo() {
 | `readonly`        | 只读状态。                                                     | `boolean`             | `false` |
 | `required`        | 必填校验。                                                     | `boolean`             | `false` |
 | `full`            | 占满父容器宽度。                                               | `boolean`             | `false` |
-| `clearable`       | 显示清除 button；空值或 `readonly` 时不画。                    | `boolean`             | `false` |
+| `clearable`       | 有值且未设置 `disabled` 或 `readonly` 时显示清除 button。      | `boolean`             | `false` |
 | `borderless`      | ghost 形态：移除边框、背景与阴影，保留 padding 与 focus ring。 | `boolean`             | `false` |
 | `rows`            | 显示行数，也是自动高度的起点。                                 | `number`              | `3`     |
 | `minlength`       | 最小长度校验。                                                 | `number \| undefined` | —       |
