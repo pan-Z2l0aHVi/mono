@@ -5630,7 +5630,7 @@ export const exampleDocs: ExampleDoc[] = [
   {
     "component": "radio-group",
     "tag": "web-ui-radio-group",
-    "introHtml": "<p>一组 <code>&lt;web-ui-radio></code> 的容器：把成员的选中状态收敛成单个 <code>value</code>，选中变化时统一派发 <code>input</code> / <code>change</code>，并负责组级禁用与必填校验。成员自己声明的 <code>name</code> 在组内不参与提交，表单字段名取组上的 <code>name</code>。</p>",
+    "introHtml": "<p>一组 <code>&lt;web-ui-radio></code> 的容器：把成员的选中状态收敛成单个 <code>value</code>，选中变化时统一派发 <code>input</code> / <code>change</code>，并负责组级禁用与必填校验。容器提供 <code>radiogroup</code> 语义，<code>direction</code> 同步为 <code>aria-orientation</code>，组级禁用与必填状态分别暴露为 <code>aria-disabled</code> 和 <code>aria-required</code>。用 <code>aria-label</code> 或 <code>aria-labelledby</code> 设置组的无障碍名称。横排组用左右方向键，竖排组用上下方向键移动焦点并选中成员。成员自己声明的 <code>name</code> 在组内不参与提交，表单字段名取组上的 <code>name</code>。</p>",
     "api": [
       {
         "kind": "table",
@@ -5663,19 +5663,19 @@ export const exampleDocs: ExampleDoc[] = [
           ],
           [
             "disabled",
-            "<p>禁用整组，并把禁用态下发给成员。</p>",
+            "<p>禁用整组并把禁用态下发给成员；组容器暴露 <code>aria-disabled</code>。</p>",
             "boolean",
             "false"
           ],
           [
             "required",
-            "<p>必填校验：组没有值时拦截原生提交。</p>",
+            "<p>必填校验：组没有值时拦截原生提交；组容器暴露 <code>aria-required</code>。</p>",
             "boolean",
             "false"
           ],
           [
             "direction",
-            "<p>成员排列方向。</p>",
+            "<p>成员排列方向，也是组容器的 <code>aria-orientation</code>。</p>",
             "'horizontal' | 'vertical'",
             "'vertical'"
           ],
@@ -5684,6 +5684,18 @@ export const exampleDocs: ExampleDoc[] = [
             "<p>当前选中的值，也是成员选中态的唯一来源。</p>",
             "string",
             "''"
+          ],
+          [
+            "aria-label",
+            "<p>组的无障碍名称。</p>",
+            "string | null",
+            "null"
+          ],
+          [
+            "aria-labelledby",
+            "<p>引用提供组无障碍名称的元素 ID。</p>",
+            "string | undefined",
+            "—"
           ]
         ]
       },
@@ -6437,7 +6449,7 @@ export const exampleDocs: ExampleDoc[] = [
         "kind": "prose",
         "key": "行为说明",
         "title": "行为说明",
-        "html": "<p>子 <code>&lt;web-ui-option></code> 通过 <code>option-register</code> / <code>option-unregister</code> 注册。打开时，面板使用 <code>role=\"listbox\"</code>，候选项使用 <code>role=\"option\"</code>，当前非空 <code>value</code> 对应的 option 设为 <code>aria-selected=\"true\"</code>，<code>aria-disabled</code> 反映禁用状态。非 Portal 模式下，键盘导航时 <code>aria-activedescendant</code> 指向当前 option；Portal 模式因 option 与 combobox 位于不同的 Shadow DOM 树中，不设置此属性。支持 ArrowDown/ArrowUp/Enter/Escape 键盘导航。</p>\n<p>Portal panel 创建时会镜像 host 上解析后的这些变量；更新 host 后需重新打开 Portal panel 才会生效。</p>"
+        "html": "<p>子 <code>&lt;web-ui-option></code> 通过 <code>option-register</code> / <code>option-unregister</code> 注册。打开时，面板使用 <code>role=\"listbox\"</code>，候选项使用 <code>role=\"option\"</code>，当前非空 <code>value</code> 对应的 option 设为 <code>aria-selected=\"true\"</code>，<code>aria-disabled</code> 反映禁用状态。非 Portal 模式下，键盘导航时 <code>aria-activedescendant</code> 指向当前 option；Portal 模式因 option 与 combobox 位于不同的 Shadow DOM 树中，不设置此属性。关闭态的 Space / Enter / ArrowDown / ArrowUp 打开 panel；展开态的 ArrowDown / ArrowUp、Home / End 与 typeahead 移动激活项，Enter / Space 选择并关闭，Escape 关闭。</p>\n<p>Portal panel 创建时会镜像 host 上解析后的这些变量；更新 host 后需重新打开 Portal panel 才会生效。</p>"
       },
       {
         "kind": "table",
