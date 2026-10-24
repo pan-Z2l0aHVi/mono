@@ -292,7 +292,11 @@ import { lucideChevronLeft, lucideDownload, lucideUpload } from '@greypan/web-ui
 
 ### 画布
 
-`viewBox` 由数据对象的 `left` / `top` / `width` / `height` 拼出，缺省取 `0 0 16 16`——Iconify 规范里 width/height 缺省即 16。`@greypan/web-ui/icons` 生成的资产都自带画布，这条兜底只服务直接传进来的原始对象。画布给错了不会报错，只会把图形按错误比例缩放并偏到画布一角，所以自己拼对象时要按 SVG 的真实坐标系写 `width` / `height`。
+`viewBox` 由数据对象的 `left` / `top` / `width` / `height` 拼出，缺省取 `0 0 16 16`——Iconify 规范里 width/height 缺省即 16。
+
+`@greypan/web-ui/icons` 生成的资产都自带画布，这条兜底只服务直接传进来的原始对象。
+
+画布给错了不会报错，只会把图形按错误比例缩放并偏到画布一角，所以自己拼对象时要按 SVG 的真实坐标系写 `width` / `height`。
 
 ### CSS Custom Properties
 

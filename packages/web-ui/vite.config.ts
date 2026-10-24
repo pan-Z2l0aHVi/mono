@@ -97,6 +97,7 @@ export default {
     lib: {
       entry: {
         'components/index': resolve(import.meta.dirname, 'src/components/index.ts'),
+        'classes/style': resolve(import.meta.dirname, 'src/classes/style.css'),
         'icons/index': resolve(import.meta.dirname, 'src/icons/index.ts'),
         'scrollbars/index': resolve(import.meta.dirname, 'src/scrollbars/index.ts'),
         'vite/index': resolve(import.meta.dirname, 'src/vite/index.ts')

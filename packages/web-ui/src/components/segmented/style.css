@@ -53,8 +53,8 @@
 }
 
 /* raised 变体（「凸」）：经典形态的 flat 灰 track——surface-segmented-track 实色，无描边环、无投影
-   （.wui-glass 的 box-shadow 与 ::before 环整体关掉），三种状态下保持同值。浅色它与凹变种 indicator
-   同色（#e5e5ea），深色单独沉到 #2c2c2e，好让 indicator 用上 secondary button 的面。 */
+   （.wui-glass 的 box-shadow 与 ::before 环整体关掉），三种状态下保持同值。浅色它是 page（#fff）之下
+   的 #e5e5ea，深色让 track 沉到 page 之下（#17191a），两种都是给 indicator 留出「与 page 同色」那一档。 */
 :host([variant='raised']) .wui-segmented {
   background-color: var(--wui-color-surface-segmented-track, #e5e5ea);
   box-shadow: none;
@@ -86,8 +86,9 @@
 
   /* inset 变体（默认）静止态是纯灰底：.wui-glass 恒挂只为复用按压态配方，这里把它的
      glass-only 输出逐条关掉——backdrop blur、::before 描边环、inset 高光与投影，
-     只留 surface-segmented 实色。 */
-  background-color: var(--wui-color-surface-segmented, #e5e5ea);
+     只留 surface-segmented 实色（该 token 浅色与深色的默认值都等于 surface-control，也就是 secondary
+     button 的面；这条等式由 segmented-contrast 用例守着，两枚 token 在 theme 里各自是字面量定义）。 */
+  background-color: var(--wui-color-surface-segmented, #dfdfdf);
   backdrop-filter: none;
   box-shadow: none;
 
@@ -131,8 +132,8 @@
     box-shadow var(--wui-duration-press, 80ms) ease;
 }
 
-/* raised 变体静止态：实体 indicator + 柔投影（经典形态；浅色 #fff，dark 主题
-   surface-selected 取 #3a3a3c，与该主题的 secondary button 面同色，同为实体档）。仅换底与投影，
+/* raised 变体静止态：实体 indicator + 柔投影（经典形态；两档下 surface-selected 都与该主题的 page
+   同色——浅色 #fff、深色 #242628，深色靠 track 沉到 page 之下保住凸起方向）。仅换底与投影，
    几何与过渡和 inset 变体同源。
    注意源顺序：本规则与下方按压/拖拽规则特异性相同（(0,3,0)），按压态必须排在更后面，
    才能把实体底/柔投影覆盖成透明玻璃配方。 */
@@ -171,7 +172,8 @@
   transform: scale(1.5);
 
   background-color: transparent;
-  backdrop-filter: blur(4px) saturate(160%) brightness(var(--wui-glass-brightness, 1.06));
+  backdrop-filter: blur(var(--wui-glass-blur, 4px)) saturate(var(--wui-glass-saturation, 160%))
+    brightness(var(--wui-glass-brightness, 1.06));
   box-shadow:
     inset 0 0 0 0.5px color-mix(in srgb, var(--wui-color-glass-highlight, rgb(255 255 255 / 0.9)) 38%, transparent),
     inset 0 1px 0.5px color-mix(in srgb, var(--wui-color-glass-highlight, rgb(255 255 255 / 0.9)) 52%, transparent),

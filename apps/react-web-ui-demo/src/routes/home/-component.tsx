@@ -36,19 +36,19 @@ function Home() {
 
       <div className="flex flex-wrap justify-center gap-3 mb-12">
         <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-(--wui-color-accent) text-(--wui-color-on-accent) shadow-sm">
-          <web-ui-icon slot="prefix" icon={lucidePackage} size={14}></web-ui-icon>
+          <web-ui-icon icon={lucidePackage} size={14}></web-ui-icon>
           Web Components 原生
         </span>
         <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-(--wui-color-surface-raised) border border-(--wui-color-border) text-(--wui-color-text)">
-          <web-ui-icon slot="prefix" icon={lucideCode} size={14}></web-ui-icon>
+          <web-ui-icon icon={lucideCode} size={14}></web-ui-icon>
           跨框架无缝适配
         </span>
         <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-(--wui-color-surface-raised) border border-(--wui-color-border) text-(--wui-color-text)">
-          <web-ui-icon slot="prefix" icon={lucideSlidersHorizontal} size={14}></web-ui-icon>
+          <web-ui-icon icon={lucideSlidersHorizontal} size={14}></web-ui-icon>
           语义化设计 Token
         </span>
         <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-(--wui-color-surface-raised) border border-(--wui-color-border) text-(--wui-color-text)">
-          <web-ui-icon slot="prefix" icon={lucideSettings} size={14}></web-ui-icon>
+          <web-ui-icon icon={lucideSettings} size={14}></web-ui-icon>
           深浅色 & 动效偏好
         </span>
       </div>
@@ -64,7 +64,7 @@ function Home() {
             <Link
               key={link.path}
               to={link.path}
-              className="group p-4 rounded-xl border border-(--wui-color-border) bg-(--wui-color-surface) hover:bg-(--wui-color-surface-raised) hover:border-(--wui-color-accent) transition-all duration-200 text-left flex flex-col justify-between"
+              className="wui-glass group rounded-xl p-4 text-left flex flex-col justify-between transition-all duration-200 [--wui-glass-corner-radius:12px] hover:[--wui-color-glass-ring:var(--wui-color-accent)]"
             >
               <div>
                 <div className="font-medium text-(--wui-color-text) group-hover:text-(--wui-color-accent) transition-colors">

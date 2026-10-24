@@ -329,7 +329,9 @@ function reset() {
 
 ### 聚焦与全选 {#methods}
 
-`focus()` / `blur()` 委托到 shadow 内的原生 input，`select()` 全选当前值；`focus()` 与 `select()` 在 `disabled` 下不产生效果，`blur()` 没有这道守卫，只是禁用态的内部控件本来就拿不到焦点。宿主自身没有 tab 位，所以按 Tab 进来的也是内部控件的焦点，焦点环由组件自己的焦点态画出。
+`focus()` / `blur()` 委托到 shadow 内的原生 input，`select()` 全选当前值；`focus()` 与 `select()` 在 `disabled` 下不产生效果，`blur()` 没有这道守卫，只是禁用态的内部控件本来就拿不到焦点。
+
+宿主自身没有 tab 位，所以按 Tab 进来的也是内部控件的焦点，焦点环由组件自己的焦点态画出。
 
 ```tsx
 import type { WebUiInput } from '@greypan/web-ui'
@@ -445,13 +447,27 @@ export default function Demo() {
 
 宿主自身不可聚焦，也没有 tab 位：Tab 与点击都把焦点交给 shadow 内的原生 input，组件把焦点态反射成宿主上的 `focused` 属性，focus ring 由这条属性驱动。编程式 `focus()` / `blur()` / `select()` 一并委托给这个内部控件。
 
-内部控件的 `input` 原生就冒泡且组合，所以宿主直接收得到；原生 `change` 不组合，过不了 shadow 边界，由组件在宿主上补发一个 `composed` 的 `change`。清除 button 走的是同一次离散变更，`input` 与 `change` 一起派发，`v-model.lazy` 这类只听 `change` 的消费者不会漏掉清空。
+内部控件的 `input` 原生就冒泡且组合，所以宿主直接收得到；原生 `change` 不组合，过不了 shadow 边界，由组件在宿主上补发一个 `composed` 的 `change`。
 
-`disabled` 与表单级禁用（外层 `<fieldset disabled>`）都让输入与校验退出：`required` 与 `type="email"` 的判定（`valueMissing` / `typeMismatch`）经 ElementInternals 转发给宿主 `<form>`，禁用时不再拦截提交。`readonly` 同样让校验退出，不只是拦输入：只读的原生控件按 HTML 规范被豁免于约束验证，`validity.valid` 恒为真，转发的状态因此总是干净——`required readonly` 的空值拦不下提交。`form.reset()` 按挂载时的初值回填。
+清除 button 走的是同一次离散变更，`input` 与 `change` 一起派发，`v-model.lazy` 这类只听 `change` 的消费者不会漏掉清空。
+
+`disabled` 与表单级禁用（外层 `<fieldset disabled>`）都让输入与校验退出：`required` 与 `type="email"` 的判定（`valueMissing` / `typeMismatch`）经 ElementInternals 转发给宿主 `<form>`，禁用时不再拦截提交。
+
+`readonly` 同样让校验退出，不只是拦输入：只读的原生控件按 HTML 规范被豁免于约束验证，`validity.valid` 恒为真，转发的状态因此总是干净——`required readonly` 的空值拦不下提交。
+
+`form.reset()` 按挂载时的初值回填。
 
 ### 布局
 
-宿主是 inline-block，`full` 时改成 block 并把输入区铺满父容器；输入区高度取 `--wui-control-size`（`36px`），圆角取 `--wui-radius-control`（胶囊），底面是共享的 glass 表面，`borderless` 连描边环一起去掉。文字取 `--wui-font-size`，粗指针设备上钳到不小于 `16px`，避免 iOS Safari 聚焦时缩放页面。占位文本与 slot 内容取二级文本色，placeholder 的排版只写 `font: inherit`，由控件字号统一决定。前后缀之间的 `gap` 归容器所有：某一侧插槽没有指派节点时那个 slot 盒整块收起，不留半个 `gap`——判定读的是 `slot.assignedElements().length`，只看有没有被指派的元素，不度量它是否真的画出东西；指派一个自己 `display: none` 的节点同样算「有内容」，`gap` 照留。清除 button 复用 icon ghost 形态的 `<web-ui-button>`，只在有值且非只读时挂上，并用负 margin 抵掉容器的 `gap` 与自身 padding，使它贴住输入文本。
+宿主是 inline-block，`full` 时改成 block 并把输入区铺满父容器；输入区高度取 `--wui-control-size`（`36px`），圆角取 `--wui-radius-control`（胶囊），底面是共享的 glass 表面，`borderless` 连描边环一起去掉。
+
+文字取 `--wui-font-size`，粗指针设备上钳到不小于 `16px`，避免 iOS Safari 聚焦时缩放页面。
+
+占位文本与 slot 内容取二级文本色，placeholder 的排版只写 `font: inherit`，由控件字号统一决定。
+
+前后缀之间的 `gap` 归容器所有：某一侧插槽没有指派节点时那个 slot 盒整块收起，不留半个 `gap`——判定读的是 `slot.assignedElements().length`，只看有没有被指派的元素，不度量它是否真的画出东西；指派一个自己 `display: none` 的节点同样算「有内容」，`gap` 照留。
+
+清除 button 复用 icon ghost 形态的 `<web-ui-button>`，只在有值且非只读时挂上，并用负 margin 抵掉容器的 `gap` 与自身 padding，使它贴住输入文本。
 
 ### CSS Custom Properties
 

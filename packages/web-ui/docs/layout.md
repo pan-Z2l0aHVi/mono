@@ -9,7 +9,11 @@ tag: web-ui-layout
 
 ### 基础 {#basic}
 
-五个插槽各占一区：`banner` 在主体上方全宽，`header` 是内容区的 sticky header，`sidebar` 是侧边栏卡片内容，默认插槽是主内容区，`tabbar` 是底部栏。`header-glow` 在 header 插槽内容背后加一层装饰性晕染，它属于背景层，插槽内容始终在它上方。layout 是应用外壳级的整屏布局，示例把它装进一个限高的滚动容器里，Banner 随内容滚出，header 与 tabbar 各贴在容器上下缘。
+五个插槽各占一区：`banner` 在主体上方全宽，`header` 是内容区的 sticky header，`sidebar` 是侧边栏卡片内容，默认插槽是主内容区，`tabbar` 是底部栏。
+
+`header-glow` 在 header 插槽内容背后加一层装饰性晕染，它属于背景层，插槽内容始终在它上方。
+
+layout 是应用外壳级的整屏布局，示例把它装进一个限高的滚动容器里，Banner 随内容滚出，header 与 tabbar 各贴在容器上下缘。
 
 ```tsx
 export default function Demo() {
@@ -71,7 +75,13 @@ export default function Demo() {
 
 ### Collapsible sidebar {#collapsible-sidebar}
 
-`sidebar-collapsed` 是桌面端的受控 collapse 状态：它只把桌面端 aside 收窄到 `collapsed-width`，不影响移动端 Drawer。桌面端 Toggle 由 layout 自己渲染，Consumer 只负责把 `sidebar-collapsed-change` 的请求值回写。两条分支渲染的是同一份 `sidebar` 插槽内容，所以内容密度要跟着 collapse 变的 Consumer 必须按 `mobile` 收窄那个条件（例如 `collapsed && !layout.mobile`，或 CSS 的 `web-ui-layout[mobile]`），否则 collapsed state 会一路渲染进 Drawer（issue #195）。本示例的侧边栏不随 collapse 改内容密度，收起后窄 aside 靠 `.sidebar-viewport` 的 `overflow: hidden` 裁掉超出部分。
+`sidebar-collapsed` 是桌面端的受控 collapse 状态：它只把桌面端 aside 收窄到 `collapsed-width`，不影响移动端 Drawer。
+
+桌面端 Toggle 由 layout 自己渲染，Consumer 只负责把 `sidebar-collapsed-change` 的请求值回写。
+
+两条分支渲染的是同一份 `sidebar` 插槽内容，所以内容密度要跟着 collapse 变的 Consumer 必须按 `mobile` 收窄那个条件（例如 `collapsed && !layout.mobile`，或 CSS 的 `web-ui-layout[mobile]`），否则 collapsed state 会一路渲染进 Drawer（issue #195）。
+
+本示例的侧边栏不随 collapse 改内容密度，收起后窄 aside 靠 `.sidebar-viewport` 的 `overflow: hidden` 裁掉超出部分。
 
 ```tsx
 import { useState } from 'react'
@@ -132,7 +142,11 @@ const collapsed = ref(false)
 
 ### 拖拽调整宽度 {#resizable-sidebar}
 
-开启 `sidebar-resizable` 后，桌面端侧边栏右缘出现调整 handle（collapsed state 隐藏），拖拽实时改宽；键盘聚焦后用 ←/→ 以 16px 步进（Shift 加速到 64px），Home/End 跳到上下限。拖拽释放或键盘 Enter 提交时派发一次 `sidebar-width-change`，携带最终像素宽度；Consumer 回写后宽度重新由 `sidebar-width` 接管，Escape 撤回未提交的调整。`sidebar-min-width` / `sidebar-max-width` 是 px 字面量，上限还受一半视口钳制，内置上限优先于配置值。
+开启 `sidebar-resizable` 后，桌面端侧边栏右缘出现调整 handle（collapsed state 隐藏），拖拽实时改宽；键盘聚焦后用 ←/→ 以 16px 步进（Shift 加速到 64px），Home/End 跳到上下限。
+
+拖拽释放或键盘 Enter 提交时派发一次 `sidebar-width-change`，携带最终像素宽度；Consumer 回写后宽度重新由 `sidebar-width` 接管，Escape 撤回未提交的调整。
+
+`sidebar-min-width` / `sidebar-max-width` 是 px 字面量，上限还受一半视口钳制，内置上限优先于配置值。
 
 ```tsx
 import { useState } from 'react'
@@ -204,7 +218,15 @@ const width = ref('240px')
 
 ### 移动端 Drawer 与视口判定 {#mobile-drawer}
 
-`sidebar-open` 是移动端 Drawer 的受控可见性，与 `sidebar-collapsed` 相互独立。`mobile` 由 layout 独占写入，它、layout 的渲染分支和 CSS 的 `@media (width <= 640px)` 是同一条条件，翻转瞬间三者一起变，还额外派发一次 `mobile-change`。React 要在 `useLayoutEffect` 里先读 `layout.mobile` 再订阅（挂载那一刻派发的事件早于订阅）；跨断点那次回写用 `flushSync`，否则会有一帧新树已上屏而 Consumer 还是旧值（挂载那次读就在 `useLayoutEffect` 里，`setState` 本身上屏前生效，不必再包一层）。Vue 的模板监听在元素插入前挂好，直接绑即可。把视口收窄到 640px 及以下，layout 会切到移动端分支：header 里出现 Toggle，点它经 `sidebar-open-change` 请求打开 Drawer。
+`sidebar-open` 是移动端 Drawer 的受控可见性，与 `sidebar-collapsed` 相互独立。
+
+`mobile` 由 layout 独占写入，它、layout 的渲染分支和 CSS 的 `@media (width <= 640px)` 是同一条条件，翻转瞬间三者一起变，还额外派发一次 `mobile-change`。
+
+React 要在 `useLayoutEffect` 里先读 `layout.mobile` 再订阅（挂载那一刻派发的事件早于订阅）；跨断点那次回写用 `flushSync`，否则会有一帧新树已上屏而 Consumer 还是旧值（挂载那次读就在 `useLayoutEffect` 里，`setState` 本身上屏前生效，不必再包一层）。
+
+Vue 的模板监听在元素插入前挂好，直接绑即可。
+
+把视口收窄到 640px 及以下，layout 会切到移动端分支：header 里出现 Toggle，点它经 `sidebar-open-change` 请求打开 Drawer。
 
 ```tsx
 import type { WebUiLayout } from '@greypan/web-ui'
@@ -326,7 +348,13 @@ const mobile = ref(false)
 
 ### 移动端视口状态
 
-`mobile` 是派生输出而不是第二个输入——由 layout 独占写入；property 只读（赋值不生效，严格模式下抛错），写 attribute 会在同一次 reaction 内被恢复、连值一起归位，两种写法都不派发事件。它与 layout 的渲染分支、以及 layout CSS 用来隐藏桌面 aside 的媒体查询（`@media (width <= 640px)`）是同一条条件，三者不可能互相错开；翻转不再经 resize 去抖，就发生在媒体查询变化的那一刻。`mobile-change` 每次跨断点只派发一次，元素在窄视口挂载时连接那一刻的那次求值也算一次。Consumer 用 `layout.mobile` 读当前值、用 `mobile-change` 收更新即可，CSS 侧可以写 `web-ui-layout[mobile]`。
+`mobile` 是派生输出而不是第二个输入——由 layout 独占写入；property 只读（赋值不生效，严格模式下抛错），写 attribute 会在同一次 reaction 内被恢复、连值一起归位，两种写法都不派发事件。
+
+它与 layout 的渲染分支、以及 layout CSS 用来隐藏桌面 aside 的媒体查询（`@media (width <= 640px)`）是同一条条件，三者不可能互相错开；翻转不再经 resize 去抖，就发生在媒体查询变化的那一刻。
+
+`mobile-change` 每次跨断点只派发一次，元素在窄视口挂载时连接那一刻的那次求值也算一次。
+
+Consumer 用 `layout.mobile` 读当前值、用 `mobile-change` 收更新即可，CSS 侧可以写 `web-ui-layout[mobile]`。
 
 ### 框架侧的消费方式
 
@@ -338,7 +366,11 @@ layout 自身在 microtask 里重渲染，因此**在宏任务上响应的消费
 
 ### collapse 只作用于桌面端
 
-`sidebar-collapsed` 只收窄桌面端侧边栏，布局不对移动端 Drawer 施加任何 collapse 几何。两条分支承载的是同一份 `sidebar` 插槽内容，所以侧边栏内容密度跟着该属性变的 Consumer 必须按 `mobile` 收窄这个条件（例如 `collapsed && !layout.mobile`，或 CSS 的 `web-ui-layout[mobile]`），否则桌面的 collapse preference 会一路渲染进 Drawer。见 issue #195。
+`sidebar-collapsed` 只收窄桌面端侧边栏，布局不对移动端 Drawer 施加任何 collapse 几何。
+
+两条分支承载的是同一份 `sidebar` 插槽内容，所以侧边栏内容密度跟着该属性变的 Consumer 必须按 `mobile` 收窄这个条件（例如 `collapsed && !layout.mobile`，或 CSS 的 `web-ui-layout[mobile]`），否则桌面的 collapse preference 会一路渲染进 Drawer。
+
+见 issue #195。
 
 ### 侧边栏调整宽度
 
@@ -351,7 +383,11 @@ layout 自身在 microtask 里重渲染，因此**在宏任务上响应的消费
 
 ### 行为说明
 
-`web-ui-layout` 只约束侧边栏卡片的可用空间并管理桌面端 Toggle，不创建桌面端侧边栏 scrollport。若仅让桌面端侧边栏的一部分滚动，请将 `sidebar` 插槽根节点设为 `height: 100%; min-height: 0` 的 flex column，再将 `overflow-y: auto` 设置到目标子元素。这样 Consumer 可自行固定头部和底部，无需额外的公共 slot：
+`web-ui-layout` 只约束侧边栏卡片的可用空间并管理桌面端 Toggle，不创建桌面端侧边栏 scrollport。
+
+若仅让桌面端侧边栏的一部分滚动，请将 `sidebar` 插槽根节点设为 `height: 100%; min-height: 0` 的 flex column，再将 `overflow-y: auto` 设置到目标子元素。
+
+这样 Consumer 可自行固定头部和底部，无需额外的公共 slot：
 
 ```html
 <div slot="sidebar" class="sidebar-root">
@@ -379,11 +415,35 @@ layout 自身在 microtask 里重渲染，因此**在宏任务上响应的消费
 }
 ```
 
-在 `640px` 及以下——与 `mobile` 报告的正是同一条条件——侧边栏会切换为使用内置 glass body、可滚动 content 和 drag zone 的 `web-ui-drawer`。Layout 会将 `sidebar-width` 映射为 `--wui-drawer-width`，将 `--wui-layout-sidebar-radius` 映射为 `--wui-drawer-radius`。移动端 Toggle 以 glass 变体位于 header 行内。其左缩进默认 `8px`，可通过 `--wui-layout-mobile-toggle-inset` 与 Consumer 自身的 header 内边距对齐。
+在 `640px` 及以下——与 `mobile` 报告的正是同一条条件——侧边栏会切换为使用内置 glass body、可滚动 content 和 drag zone 的 `web-ui-drawer`。
 
-`header-glow` 会在 header 插槽内容和移动端 Toggle 的背后添加 `pointer-events: none` 的装饰性晕染。它属于 Header 背景而非前景层，因此插槽内容始终位于其上方。晕染颜色取自 `--wui-color-page`，因此浅色/暗色模式自动跟随；要改颜色，在 `web-ui-layout`、theme 或其上层任意位置覆盖该属性即可。晕染由两层伪元素合成：`::before` 在 header 盒内用 `linear-gradient` 绘制底色并渐变到全透明，`::after` 再叠一层真实的 `backdrop-filter: blur(4px)`，并用 `mask` 让这层模糊的 alpha 沿高度衰减、到底缘附近归零。两层职责分开后，模糊强度与颜色浓度互不牵制。两层都用负 `margin` 而不是 `transform` 撑开；模糊层止于 header 上缘，只向下与向两侧延伸。横向裁剪归属 `.layout-content`，glow 因此不会撑出横向 scrollbar。布局层级顺序为 Header（`10`）< Auxiliary（`20`）< Banner（`30`）< Tabbar（`40`）< Sidebar（`50`）。
+Layout 会将 `sidebar-width` 映射为 `--wui-drawer-width`，将 `--wui-layout-sidebar-radius` 映射为 `--wui-drawer-radius`。
 
-侧边栏卡片表面使用 `--wui-color-surface-sidebar`：浅色保持半透明中性分层，深色比 `--wui-color-page` 浅一档、与 `--wui-color-surface` 同级。它独立成 token，是因为 dialog、drawer 和 toast 共用 `--wui-color-surface-overlay`，可以采用不同表面。
+移动端 Toggle 以 glass 变体位于 header 行内。其左缩进默认 `8px`，可通过 `--wui-layout-mobile-toggle-inset` 与 Consumer 自身的 header 内边距对齐。
+
+`header-glow` 会在 header 插槽内容和移动端 Toggle 的背后添加 `pointer-events: none` 的装饰性晕染。它属于 Header 背景而非前景层，因此插槽内容始终位于其上方。
+
+晕染来自共享的 `.wui-glow` 样式（`@greypan/web-ui/classes.css`），布局组件通过 `?inline` 引入同一份源码，因此同一个 class 也能用在任意容器上。
+
+晕染由两层伪元素合成：`::before` 用 `linear-gradient` 从 `--wui-color-page` 渐变到全透明，`::after` 再叠一层真实的 `backdrop-filter: blur(4px)`，并用 `mask` 让这层模糊的 alpha 沿高度衰减到 0。
+
+两层职责分开后，模糊强度与颜色浓度互不牵制。
+
+默认渐变方向为 `to bottom`；要改颜色，在 `web-ui-layout`、theme 或其上层任意位置覆盖 `--wui-glow-color` 即可，浅色/暗色模式自动跟随。
+
+在默认 52px 高的 header 上，模糊层向下探出 `24px`、衰减总长 `36px`，底缘 alpha 约 `0.67`，与旧版向下探出 30px 的底缘强度一致；新版按绝对长度衰减，header 更高时底缘强度不变（旧版的百分比衰减会变淡）。
+
+横向不越出 header 盒，纵向尾巴会覆盖 header 下方 24px 内的内容。
+
+可通过 `--wui-glow-overhang`、`--wui-glow-fade`、`--wui-glow-blur`、`--wui-glow-gradient` 与 `--wui-glow-gradient-direction` 调整；设为 `--wui-glow-gradient: none` 只保留模糊。
+
+完整 token 表见包根 README 的 Classes 小节。
+
+布局层级顺序为 Header（`10`）< Auxiliary（`20`）< Banner（`30`）< Tabbar（`40`）< Sidebar（`50`）。
+
+侧边栏卡片表面使用 `--wui-color-surface-sidebar`：浅色保持半透明中性分层，深色比 `--wui-color-page` 浅一档、与 `--wui-color-surface` 同级。
+
+它独立成 token，是因为 dialog、drawer 和 toast 共用 `--wui-color-surface-overlay`，可以采用不同表面。
 
 ### CSS Custom Properties
 

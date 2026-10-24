@@ -64,6 +64,75 @@ import { OverlayScrollbarsComponent } from 'overlayscrollbars-react' // or overl
   not do. Import this stylesheet for the internal scrollbars to follow the appearance, just like the
   page-level ones.
 
+## Classes
+
+`@greypan/web-ui/classes.css` bundles the reusable public classes shared by components and consumers:
+`.wui-glass` (frosted surface) and `.wui-glow` (decorative backdrop).
+
+```js
+import '@greypan/web-ui/classes.css'
+```
+
+### .wui-glass
+
+Add `.wui-glass` to any container for a frosted surface. Components use the same stylesheet internally
+(drawer body, dialog / toast, tooltip / popover, input, and so on).
+
+```html
+<div class="wui-glass">...</div>
+```
+
+- It provides the translucent background, the `backdrop-filter` (blur / saturation / brightness), the
+  element's own inset highlight and shadow, and a 1px ring cut out with `::before`: the ring lights the
+  top-left / bottom-right corners and shades the top-right / bottom-left ones, with the radius controlled
+  by `--wui-glass-corner-radius`.
+- The container needs a box size and a background that can be sampled. `.wui-glass` only adds
+  `position: relative` when the host has no other `position`, and removes the host's own border (the ring
+  replaces it); the corner radius still follows the host's `border-radius`.
+- For non-pill surfaces, override `--wui-glass-corner-radius` with a value derived from the element's own
+  radius, otherwise the corner lighting will not match the box shape. Colours come from the theme with
+  separate light / dark defaults; prefer overriding tokens over rewriting `backdrop-filter`.
+
+| token                          | default                   | description                                          |
+| ------------------------------ | ------------------------- | ---------------------------------------------------- |
+| `--wui-color-surface-glass`    | `rgb(250 250 250 / 0.34)` | Translucent surface; `rgb(44 44 46 / 0.42)` in dark  |
+| `--wui-glass-blur`             | `4px`                     | `backdrop-filter` radius; set `0px` to disable       |
+| `--wui-glass-saturation`       | `160%`                    | Backdrop saturation                                  |
+| `--wui-glass-brightness`       | `1.06`                    | Backdrop brightness; `1.02` in dark                  |
+| `--wui-color-glass-highlight`  | `rgb(255 255 255 / 0.9)`  | Inset highlight; `rgb(255 255 255 / 0.1)` in dark    |
+| `--wui-glass-corner-radius`    | `32px`                    | Radius of the ring's corner lighting                 |
+| `--wui-color-glass-ring`       | `rgb(0 0 0 / 0.05)`       | 1px ring base; `rgb(255 255 255 / 0.05)` in dark     |
+| `--wui-color-glass-ring-sheen` | `rgb(255 255 255 / 0.5)`  | Lit-corner sheen; `rgb(255 255 255 / 0.2)` in dark   |
+| `--wui-color-glass-ring-shade` | `rgb(0 0 0 / 0.03)`       | Unlit-corner shade; `rgb(0 0 0 / 0.5)` in dark       |
+| `--wui-shadow-glass`           | four-layer diffuse shadow | Element shadow; the class default applies when unset |
+
+### .wui-glow
+
+Add `.wui-glow` to any container; no extra component or DOM is needed. `web-ui-layout`'s
+`header-glow` and collapse's peek edge use the same stylesheet.
+
+```html
+<div class="wui-glow">...</div>
+```
+
+- Both the gradient and the blur are background layers; content always sits above them. The container
+  needs a box size. `.wui-glow` only adds `position: relative` when the host has no other `position`, and
+  adds `isolation: isolate`.
+- By default it lays a `--wui-color-page` gradient from the top edge down, then overlays `blur(4px)`; the
+  blurred layer extends 24px below the container before fading out. `overflow: hidden` on the container or
+  an ancestor clips that tail.
+- On an opaque host the gradient still shows above its background, but the blur cannot sample what is behind
+  the host — it only blurs the host's own flat colour. Keep the host surface translucent for a frosted look.
+
+| token                           | default                                         | description                                          |
+| ------------------------------- | ----------------------------------------------- | ---------------------------------------------------- |
+| `--wui-glow-color`              | `var(--wui-color-page, #fff)`                   | Gradient start colour                                |
+| `--wui-glow-gradient-direction` | `to bottom`                                     | `linear-gradient` direction                          |
+| `--wui-glow-gradient`           | `linear-gradient` built from colour + direction | Full background-image; set `none` to disable         |
+| `--wui-glow-blur`               | `4px`                                           | `backdrop-filter` radius; set `0px` to disable       |
+| `--wui-glow-overhang`           | `24px`                                          | How far the blurred layer extends below the box      |
+| `--wui-glow-fade`               | `36px`                                          | Full-strength-to-transparent length; keep ≥ overhang |
+
 ## Vite
 
 `@greypan/web-ui/vite` exports `webUiOptimizeDeps`, the list of web-ui runtime dependencies an app has to merge

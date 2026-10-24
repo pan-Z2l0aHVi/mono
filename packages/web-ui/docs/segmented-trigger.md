@@ -3,7 +3,9 @@ component: segmented-trigger
 tag: web-ui-segmented-trigger
 ---
 
-`<web-ui-segmented>` 的分段 button：`value` 是它代表的分段值，选中由父级 segmented 回写 `checked`，表单提交归父级。点击或 Enter / Space 派发 `change`——在组内该事件不冒泡，由父级统一派发一次组级事件；脱离组时才冒泡并穿透 shadow。
+`<web-ui-segmented>` 的分段 button：`value` 是它代表的分段值，选中由父级 segmented 回写 `checked`，表单提交归父级。
+
+点击或 Enter / Space 派发 `change`——在组内该事件不冒泡，由父级统一派发一次组级事件；脱离组时才冒泡并穿透 shadow。
 
 ## 示例
 

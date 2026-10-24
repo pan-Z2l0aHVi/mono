@@ -174,8 +174,9 @@ const navItems: NavItem[] = [
   { path: '/components/layout', label: 'Layout' }
 ]
 
+// active 底色浅色取设计给定的 #d5d7d7；深色不跟——sidebar 在深色是 #2c2c2e，亮灰会读成一条高亮带，仍走 control 档。
 const navItemClass =
-  'flex items-center gap-2 w-full min-w-9 min-h-9 px-2.5 border-0 rounded-full cursor-pointer text-left transition-all duration-150 text-(--wui-color-text) active:bg-[rgb(34_33_42/0.12)] dark:active:bg-white/15 data-[active=true]:bg-[color-mix(in_srgb,var(--wui-color-surface-control,#dfdfdf)_90%,var(--wui-color-text,#1b1b1b))] data-[active=true]:hover:bg-[color-mix(in_srgb,var(--wui-color-surface-control,#dfdfdf)_90%,var(--wui-color-text,#1b1b1b))] data-[active=true]:active:bg-[color-mix(in_srgb,var(--wui-color-surface-control,#dfdfdf)_70%,var(--wui-color-text,#1b1b1b))]'
+  'flex items-center gap-2 w-full min-w-9 min-h-9 px-2.5 border-0 rounded-full cursor-pointer text-left transition-all duration-150 text-(--wui-color-text) active:bg-[rgb(34_33_42/0.12)] dark:active:bg-white/15 data-[active=true]:bg-[#d5d7d7] data-[active=true]:hover:bg-[#d5d7d7] data-[active=true]:active:bg-[color-mix(in_srgb,#d5d7d7_70%,var(--wui-color-text,#1b1b1b))] dark:data-[active=true]:bg-[color-mix(in_srgb,var(--wui-color-surface-control,#dfdfdf)_90%,var(--wui-color-text,#1b1b1b))] dark:data-[active=true]:hover:bg-[color-mix(in_srgb,var(--wui-color-surface-control,#dfdfdf)_90%,var(--wui-color-text,#1b1b1b))] dark:data-[active=true]:active:bg-[color-mix(in_srgb,var(--wui-color-surface-control,#dfdfdf)_70%,var(--wui-color-text,#1b1b1b))]'
 
 function isNavActive(path: string) {
   return route.path === path || route.path === `${path}/`
@@ -205,11 +206,11 @@ function isNavActive(path: string) {
         <div
           v-if="bannerVisible"
           slot="banner"
-          class="flex items-center justify-center gap-2 py-2 px-4 bg-(--wui-color-accent) text-(--wui-color-on-accent) text-sm"
+          class="flex items-center justify-center gap-2 bg-(--wui-color-accent) px-4 py-2 text-sm text-(--wui-color-on-accent)"
         >
           <span>🎉 Welcome to the web-ui component library!</span>
           <web-ui-button class="ml-auto" size="24" icon variant="ghost" @click="bannerVisible = false">
-            <web-ui-icon class="text-white" :icon="lucideX" :size="16"></web-ui-icon>
+            <web-ui-icon class="text-(--wui-color-on-accent)" :icon="lucideX" :size="16"></web-ui-icon>
           </web-ui-button>
         </div>
         <div slot="header" class="flex h-full w-full items-center justify-end gap-4 px-4 py-2 mobile:w-screen">
@@ -254,6 +255,7 @@ function isNavActive(path: string) {
               :data-active="isNavActive(item.path)"
               :aria-current="isNavActive(item.path) ? 'page' : undefined"
               :aria-label="item.label"
+              @click="sidebarOpen = false"
             >
               <span :class="navCollapsed ? 'w-full truncate text-center text-sm' : 'min-w-0 flex-1 truncate text-sm'">
                 {{ item.label }}
@@ -265,7 +267,6 @@ function isNavActive(path: string) {
           <!-- 正文 gutter 归 shell 所有：web-ui-layout 的 main 不带 padding，逐页加会漏页。 -->
           <RouterView />
         </div>
-        <div class="h-100 w-full"></div>
       </web-ui-layout>
       <web-ui-back-top></web-ui-back-top>
     </div>

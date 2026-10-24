@@ -1,7 +1,7 @@
 import { html, LitElement, unsafeCSS } from 'lit'
 import { customElement, property } from 'lit/decorators.js'
 
-import glass from '@/assets/glass.css?inline'
+import glass from '@/classes/glass.css?inline'
 import {
   buttonGroupContextKey,
   defineGroupPresentation,

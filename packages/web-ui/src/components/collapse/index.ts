@@ -2,6 +2,7 @@ import { html, LitElement, unsafeCSS } from 'lit'
 import { customElement, property, query } from 'lit/decorators.js'
 import { classMap } from 'lit/directives/class-map.js'
 
+import glow from '@/classes/glow.css?inline'
 import { UserChangeController } from '@/shared/events/user-change'
 import { dispatchOpenChangeEvent } from '@/shared/open-state'
 import { getTransitionDuration } from '@/shared/overlay/presence'
@@ -67,7 +68,7 @@ let collapseIdCounter = 0
  */
 @customElement('web-ui-collapse')
 export class WebUiCollapse extends LitElement {
-  static override styles = unsafeCSS(style)
+  static override styles = [unsafeCSS(glow), unsafeCSS(style)]
 
   /** 展开状态；严格受控，唯一状态源。 */
   @property({ type: Boolean, reflect: true }) open = false
@@ -496,7 +497,7 @@ export class WebUiCollapse extends LitElement {
       <div class="wui-collapse-trigger-wrapper" @slotchange=${this._onTriggerSlotChange}><slot></slot></div>
       <div class="wui-collapse-content">
         <div class=${classMap(trackClass)} id=${this._contentId}>
-          <div class="wui-collapse-inner">
+          <div class=${classMap({ 'wui-collapse-inner': true, 'wui-glow': this._peeks })}>
             <slot name="content"></slot>
           </div>
         </div>

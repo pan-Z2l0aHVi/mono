@@ -1,7 +1,11 @@
 export default function Demo() {
   return (
     <div className="flex w-full flex-col gap-5">
-      <div className="flex w-64 flex-col gap-2">
+      <web-ui-button full variant="primary">
+        full：占满整行
+      </web-ui-button>
+
+      <div className="grid w-full grid-cols-2 gap-2">
         <web-ui-button full variant="primary">
           full：占满这一列
         </web-ui-button>

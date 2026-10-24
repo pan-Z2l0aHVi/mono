@@ -26,6 +26,7 @@
     "dev": "vp pack --watch --clean=false"
   },
   "dependencies": {
+    "@shikijs/transformers": "catalog:",
     "hast-util-to-html": "catalog:",
     "js-yaml": "catalog:",
     "remark-frontmatter": "catalog:",

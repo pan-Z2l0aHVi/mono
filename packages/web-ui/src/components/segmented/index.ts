@@ -2,7 +2,7 @@ import { html, LitElement, unsafeCSS } from 'lit'
 import { customElement, property, state } from 'lit/decorators.js'
 import { classMap } from 'lit/directives/class-map.js'
 
-import glass from '@/assets/glass.css?inline'
+import glass from '@/classes/glass.css?inline'
 import { installPointerFocusSuppression } from '@/shared/focus/pointer-focus'
 import { FormAssociated, defineFormAssociation, FormAssociationController } from '@/shared/form-association'
 import { attachDragGesture, type DragGestureHandle } from '@/shared/gesture/drag-gesture'
@@ -53,7 +53,7 @@ export class WebUiSegmented extends FormAssociated(LitElement) {
   // .wui-glass 提供且全状态同值；indicator 恒挂同一配方，静止态由 surface-segmented 实色
   // 盖住玻璃输出，按压与拖拽态才透出玻璃。
   // variant="raised" 切回经典形态：flat 灰 track（surface-segmented-track、无环无投影）+
-  // 实体 indicator（surface-selected + 柔投影；深色下这枚就是 secondary button 的面），
+  // 实体 indicator（surface-selected + 柔投影；两档下这枚都与 page 同色，深色靠 track 沉到 page 之下），
   // 按压/拖拽态两变体同为透明玻璃；
   // 视觉差异全部由 :host([variant=...]) 规则承载，见 style.css。
   static override styles = [unsafeCSS(glass), unsafeCSS(style)]

@@ -117,8 +117,9 @@ const navItems: NavItem[] = [
   { path: '/components/layout', label: 'Layout' }
 ]
 
+// active 底色浅色取设计给定的 #d5d7d7；深色不跟——sidebar 在深色是 #2c2c2e，亮灰会读成一条高亮带，仍走 control 档。
 const navItemClass =
-  'flex items-center gap-2 w-full min-w-9 min-h-9 px-2.5 border-0 rounded-full cursor-pointer text-left transition-all duration-150 text-(--wui-color-text) active:bg-[rgb(34_33_42/0.12)] dark:active:bg-white/15 data-[active=true]:bg-[color-mix(in_srgb,var(--wui-color-surface-control,#dfdfdf)_90%,var(--wui-color-text,#1b1b1b))] data-[active=true]:hover:bg-[color-mix(in_srgb,var(--wui-color-surface-control,#dfdfdf)_90%,var(--wui-color-text,#1b1b1b))] data-[active=true]:active:bg-[color-mix(in_srgb,var(--wui-color-surface-control,#dfdfdf)_70%,var(--wui-color-text,#1b1b1b))]'
+  'flex items-center gap-2 w-full min-w-9 min-h-9 px-2.5 border-0 rounded-full cursor-pointer text-left transition-all duration-150 text-(--wui-color-text) active:bg-[rgb(34_33_42/0.12)] dark:active:bg-white/15 data-[active=true]:bg-[#d5d7d7] data-[active=true]:hover:bg-[#d5d7d7] data-[active=true]:active:bg-[color-mix(in_srgb,#d5d7d7_70%,var(--wui-color-text,#1b1b1b))] dark:data-[active=true]:bg-[color-mix(in_srgb,var(--wui-color-surface-control,#dfdfdf)_90%,var(--wui-color-text,#1b1b1b))] dark:data-[active=true]:hover:bg-[color-mix(in_srgb,var(--wui-color-surface-control,#dfdfdf)_90%,var(--wui-color-text,#1b1b1b))] dark:data-[active=true]:active:bg-[color-mix(in_srgb,var(--wui-color-surface-control,#dfdfdf)_70%,var(--wui-color-text,#1b1b1b))]'
 
 function isNavActive(pathname: string, path: string) {
   return pathname === path || pathname === `${path}/`
@@ -175,7 +176,7 @@ export function Root() {
   useEffect(() => {
     void router.load().then(() => {
       requestAnimationFrame(() => {
-        const link = navSidebarRef.current?.getElement()?.querySelector('.active')
+        const link = navSidebarRef.current?.getElement()?.querySelector('[data-active="true"]')
         link?.scrollIntoView({ block: 'center' })
       })
     })
@@ -251,7 +252,7 @@ export function Root() {
                   variant="ghost"
                   onClick={() => setBannerVisible(false)}
                 >
-                  <web-ui-icon className="text-white" icon={lucideX} size={16}></web-ui-icon>
+                  <web-ui-icon className="text-(--wui-color-on-accent)" icon={lucideX} size={16}></web-ui-icon>
                 </web-ui-button>
               </div>
             ) : null}
@@ -311,6 +312,7 @@ export function Root() {
                       data-active={active}
                       aria-current={active ? 'page' : undefined}
                       aria-label={item.label}
+                      onClick={() => setSidebarOpen(false)}
                     >
                       <span
                         className={
@@ -328,8 +330,6 @@ export function Root() {
             <div className="p-3">
               <Outlet />
             </div>
-
-            <div className="h-100 w-full"></div>
           </web-ui-layout>
           <web-ui-back-top></web-ui-back-top>
         </div>

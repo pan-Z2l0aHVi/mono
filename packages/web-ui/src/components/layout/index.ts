@@ -7,7 +7,8 @@ import { customElement, property, state } from 'lit/decorators.js'
 import { classMap } from 'lit/directives/class-map.js'
 import { styleMap } from 'lit/directives/style-map.js'
 
-import glass from '@/assets/glass.css?inline'
+import glass from '@/classes/glass.css?inline'
+import glow from '@/classes/glow.css?inline'
 import { radixIconsPanelLeftMinimized } from '@/icons'
 import { attachDragGesture, clamp, type DragGestureHandle } from '@/shared/gesture'
 import { defineVisibleAreaTracker, VisibleAreaController } from '@/shared/visible-area'
@@ -38,7 +39,7 @@ const MOBILE_VIEWPORT_QUERY = '(width <= 640px)'
  */
 @customElement('web-ui-layout')
 export class WebUiLayout extends LitElement {
-  static override styles = [unsafeCSS(glass), unsafeCSS(style)]
+  static override styles = [unsafeCSS(glass), unsafeCSS(glow), unsafeCSS(style)]
 
   /**
    * 桌面端 Sidebar 的持久布局偏好。
@@ -429,7 +430,7 @@ export class WebUiLayout extends LitElement {
           </aside>
         </div>
         <div class="layout-content">
-          <header>
+          <header class="${classMap({ 'wui-glow': this.headerGlow })}">
             <slot name="header"></slot>
           </header>
           <main><slot></slot></main>
@@ -440,7 +441,7 @@ export class WebUiLayout extends LitElement {
 
     const mobileLayout = html`
       <div class="layout-content">
-        <header>
+        <header class="${classMap({ 'wui-glow': this.headerGlow })}">
           <web-ui-button
             class="mobile-toggle"
             icon

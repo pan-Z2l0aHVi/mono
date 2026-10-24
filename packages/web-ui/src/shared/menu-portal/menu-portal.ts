@@ -1,6 +1,6 @@
-import glass from '@/assets/glass.css?inline'
 import menuPortalStyle from '@/assets/menu-portal.css?inline'
 import overlayMotion from '@/assets/overlay-motion.css?inline'
+import glass from '@/classes/glass.css?inline'
 import internalScrollbars from '@/scrollbars/internal.css?inline'
 import { resolveOverlayContainer } from '@/shared/overlay/portal'
 

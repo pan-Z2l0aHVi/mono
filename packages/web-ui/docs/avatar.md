@@ -97,7 +97,11 @@ export default function Demo() {
 
 ### 尺寸 {#sizes}
 
-`size` 是唯一尺寸旋钮：它写成方盒的内联宽高，并同步成 `--wui-avatar-size` 供影子内部取值，圆形档的高光圆角按它的一半算（方形档固定 12px）。回退内容跟着它走：首字母字号取 `size` 的 40%，默认图标按同一比例取整。图片按 `object-fit: cover` 裁进这个方盒，长宽比不一致时居中裁切而不是拉伸。
+`size` 是唯一尺寸旋钮：它写成方盒的内联宽高，并同步成 `--wui-avatar-size` 供影子内部取值，圆形档的高光圆角按它的一半算（方形档固定 12px）。
+
+回退内容跟着它走：首字母字号取 `size` 的 40%，默认图标按同一比例取整。
+
+图片按 `object-fit: cover` 裁进这个方盒，长宽比不一致时居中裁切而不是拉伸。
 
 ```tsx
 export default function Demo() {
@@ -241,14 +245,24 @@ export default function Demo() {
 
 ### 行为说明
 
-三种内容互斥，按 `src` → `default` 插槽 → `name` 首字母 → 默认图标的顺序取第一个能画的：`src` 有值且没报过错就画图片；`src` 留空或报 `error` 时进入回退态，回退态里只要 `default` 插槽有元素子节点就不再画首字母与图标，否则按 `name` 出首字母、`name` 也为空时出内置的 `lucideUser`。`shape` 走字面量白名单：只认 `circle` / `square`，其他值（含空串）回落到 `circle` 并修正宿主 attribute。`size` 没有这层规范化，它是原样反射的数值属性，`size="abc"` 这类解析不出数值的输入会当 `NaN` 用下去，因此它的取值范围由页面自己保证。
+三种内容互斥，按 `src` → `default` 插槽 → `name` 首字母 → 默认图标的顺序取第一个能画的：`src` 有值且没报过错就画图片；`src` 留空或报 `error` 时进入回退态，回退态里只要 `default` 插槽有元素子节点就不再画首字母与图标，否则按 `name` 出首字母、`name` 也为空时出内置的 `lucideUser`。
 
-无障碍名按 `alt` → `name` 的顺序取，取到了才声明 `role="img"` 并写 `aria-label`；两个都留空时这块头像按装饰处理，影子节点是 `role="presentation"` 且 `aria-hidden="true"`，屏幕阅读器不会播报它。所以「只有头像、名字在头像外面」的写法里，这个头像本来就不该被播报。
+`shape` 走字面量白名单：只认 `circle` / `square`，其他值（含空串）回落到 `circle` 并修正宿主 attribute。
+
+`size` 没有这层规范化，它是原样反射的数值属性，`size="abc"` 这类解析不出数值的输入会当 `NaN` 用下去，因此它的取值范围由页面自己保证。
+
+无障碍名按 `alt` → `name` 的顺序取，取到了才声明 `role="img"` 并写 `aria-label`；两个都留空时这块头像按装饰处理，影子节点是 `role="presentation"` 且 `aria-hidden="true"`，屏幕阅读器不会播报它。
+
+所以「只有头像、名字在头像外面」的写法里，这个头像本来就不该被播报。
 
 首字母取自 `name` 的前两个词的第一个字符并转大写。中文这类按空格分不开的名字因此只会取到第一个字（`潘某某` 出「潘」），要两个字就自己把词分开，或者改用 `default` 插槽。字号是 `size` 的 40%，默认图标按同一比例取整，所以小头像不会塞不下字。
 
 ### 布局
 
-宿主是 inline-block、`line-height: 0`，方盒由 `size` 定边长，`--wui-avatar-size` 同步写成内联值供影子内部使用。圆形档的圆角走 `--wui-radius-control`（默认是 pill），方形档是 12px，`--wui-glass-corner-radius` 也跟着这两档走，所以回退态的高光渐变与盒形不会错位。回退态会挂上 glass 材质，从那里拿到模糊、内描边环与投影；底色使用 `--wui-color-surface-raised`，首字母与默认图标使用 `--wui-color-text`，会随主题切换。图片态只有图片本身。
+宿主是 inline-block、`line-height: 0`，方盒由 `size` 定边长，`--wui-avatar-size` 同步写成内联值供影子内部使用。
+
+圆形档的圆角走 `--wui-radius-control`（默认是 pill），方形档是 12px，`--wui-glass-corner-radius` 也跟着这两档走，所以回退态的高光渐变与盒形不会错位。
+
+回退态会挂上 glass 材质，从那里拿到模糊、内描边环与投影；底色使用 `--wui-color-surface-raised`，首字母与默认图标使用 `--wui-color-text`，会随主题切换。图片态只有图片本身。
 
 `default` 插槽的盒是绝对定位铺满整个头像并居中，它不参与「该画什么」的判定，因此给了 `src` 且图片成功加载时插槽内容会叠在图片之上，而不是被藏起来——降级内容和图片是二选一的关系，别同时给。组件没有对外的 CSS 变量旋钮，尺寸与形状都归 `size` / `shape`。

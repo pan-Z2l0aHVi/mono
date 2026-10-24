@@ -267,6 +267,18 @@ export class WebUiTheme extends LitElement {
     return null
   }
 
+  // 宿主 `display: contents` 时不产盒，rect 为 0；要量的是 slotted 子内容的并集宽度。
+  // jsdom 的 Range 没有几何实现，量不到就返回 0——飞行期间退回不钉宽的旧行为。
+  private _contentWidth(): number {
+    try {
+      const range = document.createRange()
+      range.selectNodeContents(this)
+      return range.getBoundingClientRect().width
+    } catch {
+      return 0
+    }
+  }
+
   private _transitionOrigin(): { x: number; y: number } {
     if (Number.isFinite(transitionOrigin.x) && Number.isFinite(transitionOrigin.y)) {
       return transitionOrigin
@@ -343,9 +355,18 @@ export class WebUiTheme extends LitElement {
     }
 
     const hadDisplay = this.style.getPropertyValue('display')
+    const hadWidth = this.style.getPropertyValue('width')
     const hadTransitionName = transitionName ? this.style.getPropertyValue('view-transition-name') : undefined
     if (transitionName) {
+      /*
+       * 抬成 block 同时把宿主塞回父级布局：flex 容器里原本的 flex item 是作用域内那个
+       * `width: 100%` 的子元素，换成宿主当 item 之后宽度基准成了 shrink-to-fit，内容在揭示
+       * 期间跳窄、结束再跳回来。所以先把内容几何钉在宿主上——换了盒，没换宽度。
+       * `display: contents` 时宿主自己的 rect 是 0，量子内容只能靠 Range。
+       */
+      const contentWidth = this._contentWidth()
       this.style.setProperty('display', 'block')
+      if (contentWidth > 0) this.style.setProperty('width', `${contentWidth}px`)
       this.style.setProperty('view-transition-name', transitionName)
     }
 
@@ -358,6 +379,8 @@ export class WebUiTheme extends LitElement {
       if (!transitionName) return
       if (hadTransitionName) this.style.setProperty('view-transition-name', hadTransitionName)
       else this.style.removeProperty('view-transition-name')
+      if (hadWidth) this.style.setProperty('width', hadWidth)
+      else this.style.removeProperty('width')
       if (hadDisplay) this.style.setProperty('display', hadDisplay)
       else this.style.removeProperty('display')
     }

@@ -5,6 +5,9 @@ import {
   lucideCircleAlert,
   lucideCopy
 } from '@greypan/web-ui/icons'
+import { webUiScrollbarsOptions } from '@greypan/web-ui/scrollbars'
+import { OverlayScrollbars } from 'overlayscrollbars'
+import { OverlayScrollbarsComponent } from 'overlayscrollbars-react'
 import { lazy, Suspense, useEffect, useRef, useState, type ComponentType, type MouseEvent } from 'react'
 
 import { exampleDocs } from '@/generated/examples'
@@ -32,14 +35,42 @@ type Flavor = 'react' | 'vue'
 
 const FLAVOR_LABELS: Record<Flavor, string> = { vue: 'Vue', react: 'React' }
 const FLAVOR_ICONS = { vue: vueIcon, react: reactIcon } as const
+// 只有凹进来的 React 标要走宿主取色（形状画成 currentColor，见 flavor-icons.ts）；Vue 的官方双色
+// 写在 body 的字面量里，缺省即可。类名放这里而不是 flavor-icons.ts，是让 Tailwind 在组件源文件里扫到。
+const FLAVOR_ICON_CLASS: Partial<Record<Flavor, string>> = { react: 'text-[#087eae] dark:text-[#61dafb]' }
 
 const ABBREVIATIONS: Record<string, string> = { api: 'API', svg: 'SVG', ui: 'UI' }
+
+// 「没有默认值」在语料里落成 em dash 占位符，它是散文不是字面量，所以即便落在值列也不实行内代码。
+const NO_DEFAULT_VALUE = '—'
 
 function displayNameOf(component: string) {
   return component
     .split('-')
     .map(part => ABBREVIATIONS[part] ?? part.charAt(0).toUpperCase() + part.slice(1))
     .join(' ')
+}
+
+/*
+ * 代码区由 OverlayScrollbars 接管后，`[data-code]` 这一层成了 `overflow: hidden` 的 host，
+ * 真正滚动的是实例的 viewport 元素，所以滚动复位必须打在它上面。
+ * 实例还没建好（首帧、jsdom）时退回 host 本身，此时 host 上的 `overflow-auto` 就是原来的原生滚动。
+ */
+function resetCodeScroll(panel: HTMLElement) {
+  const scroller = OverlayScrollbars(panel)?.elements().viewport ?? panel
+  scroller.scrollTop = 0
+  scroller.scrollLeft = 0
+}
+
+/*
+ * 同一个理由也管焦点：库把 target 变成 `overflow: hidden` 的 host 之后，target 上的 tabindex 不再
+ * 带来键盘滚动。textarea 场景库自己会把 tabindex 从 target 搬到 viewport，div 场景不会，所以在这里
+ * 补上同一步——焦点和方向键都落在真正的滚动元素上。
+ */
+const codeScrollbarsEvents = {
+  initialized: (instance: OverlayScrollbars) => {
+    instance.elements().viewport.tabIndex = 0
+  }
 }
 
 interface ExampleDocProps {
@@ -94,10 +125,7 @@ function ExampleDoc({ component, nativeFlavor = 'react', level }: ExampleDocProp
 
     // 收起后代码区回到顶部，与从未展开时一致；否则再次展开会停在上次读到的位置。
     const panel = event.currentTarget.closest('[data-sample]')?.querySelector<HTMLElement>('[data-code]')
-    if (panel) {
-      panel.scrollTop = 0
-      panel.scrollLeft = 0
-    }
+    if (panel) resetCodeScroll(panel)
   }
 
   /*
@@ -138,7 +166,11 @@ function ExampleDoc({ component, nativeFlavor = 'react', level }: ExampleDocProp
   }
 
   async function copyCode(event: MouseEvent<HTMLElement>, key: string) {
-    const text = event.currentTarget.closest('[data-sample]')?.querySelector('[data-code] pre')?.textContent ?? ''
+    const pre = event.currentTarget.closest('[data-sample]')?.querySelector<HTMLElement>('[data-code] pre')
+    // 行号槽是生成器往每行前面塞的文本，剪贴板要的是围栏原文，所以克隆一份摘掉它再取文本。
+    const frame = pre?.cloneNode(true) as HTMLElement | undefined
+    frame?.querySelectorAll('.line-number').forEach(node => node.remove())
+    const text = frame?.textContent ?? ''
     setCopied({ key, ok: text !== '' && (await writeClipboard(text)) })
     clearTimeout(copyTimer.current)
     copyTimer.current = setTimeout(() => setCopied(null), 1600)
@@ -195,16 +227,15 @@ function ExampleDoc({ component, nativeFlavor = 'react', level }: ExampleDocProp
                 `isolate` 让这张卡自己成一个 stacking context：工具条的 z-10 只在卡内比较，
                 既压得住下方代码区，也不会越过页面 header（`--wui-layer-header` 也是 10，
                 卡外比大小就会被后画的工具条盖住）。
-                卡片自己不铺底：预览、工具条、代码区三段一律 `--wui-color-page`，圆角交给 `overflow-hidden` 裁。
-                再铺一层 surface-raised 只会多出一个永远看不见的声明，深色下还容易读成浮起的面板。
+                预览区 z-20 压过工具条：select / dropdown / autocomplete 不开 `portal` 时面板是
+                宿主内的 `position: absolute`（`--wui-layer-inline-overlay` 只有 1），向下溢出预览区
+                就会被工具条盖掉；抬到 20 让整块预览（含溢出的面板）画在代码卡之上。
+                预览区不画边框、直接铺在页面上；边框与圆角只包住下方「工具条 + 代码区」。
               */}
-              <div
-                className="isolate overflow-hidden rounded-2xl border border-(--wui-color-border)"
-                data-current-flavor={flavor}
-              >
+              <div className="isolate" data-current-flavor={flavor}>
                 {Demo ? (
                   <div
-                    className="flex flex-wrap items-center gap-3 border-b border-(--wui-color-border) bg-(--wui-color-page) p-4"
+                    className="relative z-20 flex flex-wrap items-center gap-3 bg-(--wui-color-page) px-4 py-8"
                     data-sample-preview={sample.demoKey ?? undefined}
                   >
                     <Suspense fallback={null}>
@@ -213,101 +244,116 @@ function ExampleDoc({ component, nativeFlavor = 'react', level }: ExampleDocProp
                   </div>
                 ) : null}
 
-                {/* 整条工具条都是展开触发区；内部控件各自 stop，点它们不会顺带开合代码。 */}
-                {/* `relative z-10` 把工具条抬到下方代码区之上：segmented 长按时投影会向下溢出，
-                    否则后绘制的折叠区会把阴影盖掉一截。这一层只在卡内比较，见上方 `isolate`。 */}
-                <div
-                  className="relative z-10 flex cursor-pointer flex-wrap items-center justify-between gap-3 border-b border-(--wui-color-border) bg-(--wui-color-page) px-4 py-2"
-                  onClick={event => toggleExpanded(event, key)}
-                >
-                  <web-ui-segmented
-                    value={flavor}
-                    variant="raised"
-                    data-flavor-switch
-                    aria-label="示例代码框架"
-                    onClick={event => event.stopPropagation()}
-                    onInput={event => selectFlavor(key, event.currentTarget.value)}
-                  >
-                    {flavors.map(item => (
-                      <web-ui-segmented-trigger key={item} value={item}>
-                        <span className="flex items-center gap-1.5">
-                          <web-ui-icon icon={FLAVOR_ICONS[item]} size={14}></web-ui-icon>
-                          {FLAVOR_LABELS[item]}
-                        </span>
-                      </web-ui-segmented-trigger>
-                    ))}
-                  </web-ui-segmented>
-
-                  <div className="flex items-center gap-1" onClick={event => event.stopPropagation()}>
-                    <span className="sr-only" aria-live="polite">
-                      {copyAnnouncement(key)}
-                    </span>
-                    <web-ui-tooltip content={copyLabel(key)}>
-                      <web-ui-button
-                        icon
-                        variant="ghost"
-                        size="28"
-                        data-copy
-                        aria-label={copyLabel(key)}
-                        onClick={event => void copyCode(event, key)}
-                      >
-                        {/* 成功态才包进描边宿主：`web-ui-svg-draw-lines` 在 slot 内容稳定时自动播一次，
-                            所以每次复制都会重新画出勾与圆，而不是淡入一张现成的图。 */}
-                        {copyState(key) === 'copied' ? (
-                          <web-ui-svg-draw-lines duration={300}>
+                <div className="overflow-hidden rounded-4xl border border-(--wui-color-border)">
+                  {/* 工具条只摆控件，不接管开合：展开由右侧 chevron 按钮和收起态那块代码预览负责。 */}
+                  {/* `relative z-10` 把工具条抬到下方代码区之上：segmented 的投影朝下溢出（凹变种是
+                      track 的常驻外投影，凸变种是 indicator 的柔投影），否则后绘制的折叠区会把阴影盖掉
+                      一截。这一层只在卡内比较，见上方 `isolate`。 */}
+                  <div className="relative z-10 flex flex-wrap items-center justify-between gap-3 bg-(--wui-color-page) px-4 pt-4 pb-2">
+                    <web-ui-segmented
+                      value={flavor}
+                      variant="inset"
+                      data-flavor-switch
+                      aria-label="示例代码框架"
+                      onInput={event => selectFlavor(key, event.currentTarget.value)}
+                    >
+                      {flavors.map(item => (
+                        <web-ui-segmented-trigger key={item} value={item}>
+                          <span className="flex items-center gap-1.5">
                             <web-ui-icon
-                              icon={akarIconsCircleCheck}
-                              size={15}
-                              className="text-(--wui-color-success)"
+                              icon={FLAVOR_ICONS[item]}
+                              size={14}
+                              className={FLAVOR_ICON_CLASS[item]}
                             ></web-ui-icon>
-                          </web-ui-svg-draw-lines>
-                        ) : (
-                          <web-ui-icon
-                            icon={copyIcon(key)}
-                            size={15}
-                            className={copyState(key) === 'failed' ? 'text-(--wui-color-danger)' : ''}
-                          ></web-ui-icon>
-                        )}
-                      </web-ui-button>
-                    </web-ui-tooltip>
-                    <web-ui-tooltip content={isExpanded ? '收起代码' : '展开代码'}>
-                      <web-ui-button
-                        icon
-                        variant="ghost"
-                        size="28"
-                        data-toggle-code
-                        aria-label={isExpanded ? '收起代码' : '展开代码'}
-                        aria-expanded={isExpanded ? 'true' : 'false'}
-                        aria-controls={panelId(key)}
-                        onClick={event => toggleExpanded(event, key)}
-                      >
-                        <web-ui-icon icon={isExpanded ? lucideChevronUp : lucideChevronDown} size={15}></web-ui-icon>
-                      </web-ui-button>
-                    </web-ui-tooltip>
-                  </div>
-                </div>
+                            {FLAVOR_LABELS[item]}
+                          </span>
+                        </web-ui-segmented-trigger>
+                      ))}
+                    </web-ui-segmented>
 
-                {/*
-                  关闭态露出 128px：12px 上边距 + 4 行 24px + 第 5 行的 20px。末端渐隐/晕染带取
-                  peek 的 60%（76.8px），「下面还有内容」由一整段发虚说出来，而不是只把最后一行切一半。
-                  这个比例的前提是 128px 还没顶到晕染带上限 `--wui-collapse-peek-edge-max`（112px）：
-                  peek 抬高到 187px 以上，带子会被上限掐住、遮挡比例跌破 60%。
-                */}
-                <web-ui-collapse
-                  open={isExpanded}
-                  peek="128px"
-                  className="bg-(--wui-color-page) [--wui-collapse-peek-edge-ratio:0.6]"
-                >
-                  <div slot="content">
-                    <div
-                      id={panelId(key)}
-                      className="max-h-[32rem] overflow-auto bg-(--wui-color-page) px-4 pt-3 pb-4 font-mono text-xs leading-6"
-                      data-code
-                      tabIndex={0}
-                      dangerouslySetInnerHTML={{ __html: sample.html[flavor] }}
-                    />
+                    <div className="flex items-center">
+                      <span className="sr-only" aria-live="polite">
+                        {copyAnnouncement(key)}
+                      </span>
+                      <web-ui-button-group>
+                        <web-ui-tooltip content={copyLabel(key)}>
+                          <web-ui-button
+                            icon
+                            variant="ghost"
+                            data-copy
+                            aria-label={copyLabel(key)}
+                            onClick={event => void copyCode(event, key)}
+                          >
+                            {/* 成功态才包进描边宿主：`web-ui-svg-draw-lines` 在 slot 内容稳定时自动播一次，
+                              所以每次复制都会重新画出勾与圆，而不是淡入一张现成的图。 */}
+                            {copyState(key) === 'copied' ? (
+                              <web-ui-svg-draw-lines duration={300}>
+                                <web-ui-icon
+                                  icon={akarIconsCircleCheck}
+                                  size={15}
+                                  className="text-(--wui-color-success)"
+                                ></web-ui-icon>
+                              </web-ui-svg-draw-lines>
+                            ) : (
+                              <web-ui-icon
+                                icon={copyIcon(key)}
+                                size={15}
+                                className={copyState(key) === 'failed' ? 'text-(--wui-color-danger)' : ''}
+                              ></web-ui-icon>
+                            )}
+                          </web-ui-button>
+                        </web-ui-tooltip>
+                        <web-ui-tooltip content={isExpanded ? '收起代码' : '展开代码'}>
+                          <web-ui-button
+                            icon
+                            variant="ghost"
+                            data-toggle-code
+                            aria-label={isExpanded ? '收起代码' : '展开代码'}
+                            aria-expanded={isExpanded ? 'true' : 'false'}
+                            aria-controls={panelId(key)}
+                            onClick={event => toggleExpanded(event, key)}
+                          >
+                            <web-ui-icon
+                              icon={isExpanded ? lucideChevronUp : lucideChevronDown}
+                              size={15}
+                            ></web-ui-icon>
+                          </web-ui-button>
+                        </web-ui-tooltip>
+                      </web-ui-button-group>
+                    </div>
                   </div>
-                </web-ui-collapse>
+
+                  {/*
+                    关闭态露出 128px：12px 上边距 + 4 行 24px + 第 5 行的 20px。末端渐隐/晕染带取
+                    peek 的 60%（76.8px），「下面还有内容」由一整段发虚说出来，而不是只把最后一行切一半。
+                    这个比例的前提是 128px 还没顶到晕染带上限 `--wui-collapse-peek-edge-max`（112px）：
+                    peek 抬高到 187px 以上，带子会被上限掐住、遮挡比例跌破 60%。
+
+                    收起态这块露出的代码就是展开触发区（点哪一行都算），展开后它退化成一段可滚动的正文，
+                    点击不再改状态——否则读到一半想选中一个标识符，整块代码会当场收回去。
+                  */}
+                  <web-ui-collapse
+                    open={isExpanded}
+                    peek="128px"
+                    className="bg-(--wui-color-page) [--wui-collapse-peek-edge-ratio:0.6]"
+                    onClick={event => {
+                      if (isExpanded) return
+                      toggleExpanded(event, key)
+                    }}
+                  >
+                    <div slot="content">
+                      <OverlayScrollbarsComponent
+                        id={panelId(key)}
+                        options={webUiScrollbarsOptions}
+                        events={codeScrollbarsEvents}
+                        className="max-h-[32rem] overflow-auto bg-(--wui-color-page) px-4 pt-3 pb-4 font-mono text-xs leading-6"
+                        data-code
+                      >
+                        <div dangerouslySetInnerHTML={{ __html: sample.html[flavor] }} />
+                      </OverlayScrollbarsComponent>
+                    </div>
+                  </web-ui-collapse>
+                </div>
               </div>
             </article>
           )
@@ -341,6 +387,11 @@ function ExampleDoc({ component, nativeFlavor = 'react', level }: ExampleDocProp
                         {section.columns.map((column, index) =>
                           column.kind === 'html' ? (
                             <td key={column.title} dangerouslySetInnerHTML={{ __html: row[index] ?? '' }} />
+                          ) : column.kind === 'code' && row[index] !== NO_DEFAULT_VALUE ? (
+                            // 值列（类型 / 默认值）由生成器标成 'code'：它们是字面量，不是散文。
+                            <td key={column.title}>
+                              <code>{row[index]}</code>
+                            </td>
                           ) : (
                             <td key={column.title}>{row[index]}</td>
                           )

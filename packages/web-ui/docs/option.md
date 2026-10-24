@@ -3,7 +3,9 @@ component: option
 tag: web-ui-option
 ---
 
-`<web-ui-select>` 与 `<web-ui-autocomplete>` 的 option 载体：`value` 是选中时提交的值，`label` 是显示文本（缺省时取自身的文本内容），`prefix` / `suffix` 插槽放两端的 icon。它不派发面向使用方的事件——挂载、更新与卸载时发出的注册握手只由父级容器消费；选中态由容器回写 `selected`。
+`<web-ui-select>` 与 `<web-ui-autocomplete>` 的 option 载体：`value` 是选中时提交的值，`label` 是显示文本（缺省时取自身的文本内容），`prefix` / `suffix` 插槽放两端的 icon。
+
+它不派发面向使用方的事件——挂载、更新与卸载时发出的注册握手只由父级容器消费；选中态由容器回写 `selected`。
 
 ## 示例
 

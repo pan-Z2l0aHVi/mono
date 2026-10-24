@@ -3,13 +3,21 @@ component: back-top
 tag: web-ui-back-top
 ---
 
-回到顶部 button（`web-ui-back-top`）：滚动位置达到 `threshold` 后出现在角落，点击或按 Enter / Space 回到顶部。默认平滑回顶；主题设置为 `motion="reduced"`，或 `motion="system"` 且系统偏好减少动效时，点击或按 Enter 会立即回顶。默认跟随页面滚动；把 `scrollTarget` 指向某个滚动容器后，它只随该容器滚动出现，并停在容器底部角落。
+回到顶部 button（`web-ui-back-top`）：滚动位置达到 `threshold` 后出现在角落，点击或按 Enter / Space 回到顶部。
+
+默认平滑回顶；主题设置为 `motion="reduced"`，或 `motion="system"` 且系统偏好减少动效时，点击或按 Enter 会立即回顶。
+
+默认跟随页面滚动；把 `scrollTarget` 指向某个滚动容器后，它只随该容器滚动出现，并停在容器底部角落。
 
 ## 示例
 
 ### 自定义滚动容器 {#container}
 
-`scrollTarget` 是 element property 而不是 attribute，所以只能在挂载后赋值：先用 `ref` 拿到容器与 `<web-ui-back-top>`，再在 `useEffect` / `onMounted` 里把容器交给它。赋值后组件把 `scroll` 监听重绑到该容器，并切到容器模式——宿主变成 `position: sticky`、停在容器底部，容器滚动达到 `threshold` 后 button 才出现，点击回容器顶部。因此元素必须放在滚动容器内部，容器自己要有可滚动的溢出内容；三条示例都用原生 `overflow-auto`。
+`scrollTarget` 是 element property 而不是 attribute，所以只能在挂载后赋值：先用 `ref` 拿到容器与 `<web-ui-back-top>`，再在 `useEffect` / `onMounted` 里把容器交给它。
+
+赋值后组件把 `scroll` 监听重绑到该容器，并切到容器模式——宿主变成 `position: sticky`、停在容器底部，容器滚动达到 `threshold` 后 button 才出现，点击回容器顶部。
+
+因此元素必须放在滚动容器内部，容器自己要有可滚动的溢出内容；三条示例都用原生 `overflow-auto`。
 
 ```tsx
 import type { WebUiBackTop } from '@greypan/web-ui'
@@ -61,7 +69,9 @@ onMounted(() => {
 
 ### 自定义内容 {#custom-content}
 
-default slot 整体替换 button 的视觉内容，交互语义仍由组件提供：内层 wrapper 是 `role="button"`、`tabindex="0"`，指针点击、Enter 与 Space 都触发 `toTop()`。默认内容是 `web-ui-button` 包着的上箭头 icon；换成一条 primary button 后，出现时机、阈值与滚动行为都不变。
+default slot 整体替换 button 的视觉内容，交互语义仍由组件提供：内层 wrapper 是 `role="button"`、`tabindex="0"`，指针点击、Enter 与 Space 都触发 `toTop()`。
+
+默认内容是 `web-ui-button` 包着的上箭头 icon；换成一条 primary button 后，出现时机、阈值与滚动行为都不变。
 
 button 的无障碍名称默认来自 slot 内容；默认 icon 内容回退为 `Back to top`。可在宿主设置 `aria-label` 指定名称；设置时应包含可见标签文本。自定义内容本身没有可访问名称时，也应设置宿主 `aria-label`。
 
@@ -119,7 +129,11 @@ onMounted(() => {
 
 ### 立即回到顶部 {#instant}
 
-`scroll-behavior="auto"` 不请求平滑滚动，点击直接跳到顶部。主题要求减少动效时，即使属性为默认的 `smooth` 或滚动容器的 CSS 指定 `scroll-behavior: smooth`，点击或按 Enter 也会立即到位。两者只在滚动方式上不同：可见性判断、阈值与 slot 都不受影响。
+`scroll-behavior="auto"` 不请求平滑滚动，点击直接跳到顶部。
+
+主题要求减少动效时，即使属性为默认的 `smooth` 或滚动容器的 CSS 指定 `scroll-behavior: smooth`，点击或按 Enter 也会立即到位。
+
+两者只在滚动方式上不同：可见性判断、阈值与 slot 都不受影响。
 
 ```tsx
 import type { WebUiBackTop } from '@greypan/web-ui'

@@ -9,7 +9,11 @@ tag: web-ui-select
 
 ### 基础 {#basic}
 
-`value` 由页面持有：选中后 `change` 把 `event.currentTarget.value` 交回来，写回 `value` 后 trigger 的文本跟着走；不写 `value` 时 trigger 显示 `placeholder`。程序写入 `value` 不派发事件，所以「清除」只是换页面状态。`disabled` 让整个控件退出交互。
+`value` 由页面持有：选中后 `change` 把 `event.currentTarget.value` 交回来，写回 `value` 后 trigger 的文本跟着走；不写 `value` 时 trigger 显示 `placeholder`。
+
+程序写入 `value` 不派发事件，所以「清除」只是换页面状态。
+
+`disabled` 让整个控件退出交互。
 
 ```tsx
 import { useState } from 'react'
@@ -397,7 +401,13 @@ export default function Demo() {
 
 ### 行为说明
 
-子 `<web-ui-option>` 通过 `option-register` / `option-unregister` 注册。打开时，面板使用 `role="listbox"`，候选项使用 `role="option"`，当前非空 `value` 对应的 option 设为 `aria-selected="true"`，`aria-disabled` 反映禁用状态。非 Portal 模式下，键盘导航时 `aria-activedescendant` 指向当前 option；Portal 模式因 option 与 combobox 位于不同的 Shadow DOM 树中，不设置此属性。关闭态的 Space / Enter / ArrowDown / ArrowUp 打开 panel；展开态的 ArrowDown / ArrowUp、Home / End 与 typeahead 移动激活项，Enter / Space 选择并关闭，Escape 关闭。
+子 `<web-ui-option>` 通过 `option-register` / `option-unregister` 注册。
+
+打开时，面板使用 `role="listbox"`，候选项使用 `role="option"`，当前非空 `value` 对应的 option 设为 `aria-selected="true"`，`aria-disabled` 反映禁用状态。
+
+非 Portal 模式下，键盘导航时 `aria-activedescendant` 指向当前 option；Portal 模式因 option 与 combobox 位于不同的 Shadow DOM 树中，不设置此属性。
+
+关闭态的 Space / Enter / ArrowDown / ArrowUp 打开 panel；展开态的 ArrowDown / ArrowUp、Home / End 与 typeahead 移动激活项，Enter / Space 选择并关闭，Escape 关闭。
 
 Portal panel 创建时会镜像 host 上解析后的这些变量；更新 host 后需重新打开 Portal panel 才会生效。
 

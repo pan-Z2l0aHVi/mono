@@ -240,7 +240,9 @@ function onChange(event: WebUiEvent<WebUiAutocomplete, 'change'>) {
 
 ### 自定义 trigger {#custom-trigger}
 
-把可编辑组件放进 `trigger` 插槽即可替换默认 input：多行 trigger 保留 Enter 换行语义，关闭 panel 改用 Escape 或 blur；这里同时用 `filter="none"` 让候选始终全量列出。`focus()` 委托给当前 trigger，落在 `web-ui-textarea` 内部的原生控件上。
+把可编辑组件放进 `trigger` 插槽即可替换默认 input：多行 trigger 保留 Enter 换行语义，关闭 panel 改用 Escape 或 blur；这里同时用 `filter="none"` 让候选始终全量列出。
+
+`focus()` 委托给当前 trigger，落在 `web-ui-textarea` 内部的原生控件上。
 
 ```tsx
 import type { WebUiAutocomplete } from '@greypan/web-ui'
@@ -443,13 +445,23 @@ const frameworks = ['Vue', 'React', 'Svelte', 'Angular']
 
 ### 行为说明
 
-键入时按 label 过滤候选（`contains` 或 `prefix`，`none` 关闭过滤）。没有匹配项时下拉 panel 保持关闭；删除字符后重新出现匹配项时，panel 会再次打开。选择 option 时文本回填为该项 label，`selected-value` 暴露该项的 value；`change` 在选择提交时触发。支持 ArrowDown/ArrowUp/Enter/Escape 键盘导航。
+键入时按 label 过滤候选（`contains` 或 `prefix`，`none` 关闭过滤）。
+
+没有匹配项时下拉 panel 保持关闭；删除字符后重新出现匹配项时，panel 会再次打开。
+
+选择 option 时文本回填为该项 label，`selected-value` 暴露该项的 value；`change` 在选择提交时触发。
+
+支持 ArrowDown/ArrowUp/Enter/Escape 键盘导航。
 
 Portal panel 创建时会镜像 host 上解析后的这些变量；更新 host 后需重新打开 Portal panel 才会生效。
 
 ### trigger
 
-默认 trigger 是 shadow 内的 `web-ui-input`。把任意可编辑组件放进 `trigger` slot 即可替换它——包装 div 继续承载 combobox ARIA，并以 `data-custom-trigger` 标记当前使用自定义 trigger，overlay 始终以 trigger 元素为锚点。组件的 `focus()` / `blur()` 委托到当前生效的 trigger：`web-ui-input` 与 `web-ui-textarea` 会把焦点落到内部原生控件；自定义 trigger 没有自己的 focus 重定向时，聚焦 trigger 元素自身。
+默认 trigger 是 shadow 内的 `web-ui-input`。
+
+把任意可编辑组件放进 `trigger` slot 即可替换它——包装 div 继续承载 combobox ARIA，并以 `data-custom-trigger` 标记当前使用自定义 trigger，overlay 始终以 trigger 元素为锚点。
+
+组件的 `focus()` / `blur()` 委托到当前生效的 trigger：`web-ui-input` 与 `web-ui-textarea` 会把焦点落到内部原生控件；自定义 trigger 没有自己的 focus 重定向时，聚焦 trigger 元素自身。
 
 ```html
 <web-ui-autocomplete placeholder="描述问题">
@@ -459,11 +471,23 @@ Portal panel 创建时会镜像 host 上解析后的这些变量；更新 host �
 </web-ui-autocomplete>
 ```
 
-自定义 trigger 与默认 trigger 共用同一份契约：字符串 `value` 承载文本、可聚焦，并派发组件委托监听的事件（`input`、`click`、`focus`、`blur`）。`web-ui-input` 与 `web-ui-textarea` 开箱即用；自定义元素只要暴露字符串 `value` property 即可接入。包装 div 不占 tab 位（`tabindex="-1"`）：顺序焦点归 trigger 自身，自定义 trigger 必须可聚焦，键盘用户才能到达 combobox。
+自定义 trigger 与默认 trigger 共用同一份契约：字符串 `value` 承载文本、可聚焦，并派发组件委托监听的事件（`input`、`click`、`focus`、`blur`）。
 
-多行 trigger（可编辑元素为 `<textarea>`）保留 Enter 换行语义：Enter 不会选中高亮项，也不会提交 custom value，关闭 panel 用 Escape 或 blur。选择 option 仍会把该项 label 回写到 trigger。单行自定义 trigger 保持默认的 Enter 语义。panel 打开时 ArrowUp/ArrowDown 适用同一例外：方向键移动文本光标而不导航候选，该状态下键盘无法导航 option——用指针点击选择。panel 关闭时 ArrowDown/ArrowUp 仍可打开 panel。
+`web-ui-input` 与 `web-ui-textarea` 开箱即用；自定义元素只要暴露字符串 `value` property 即可接入。
 
-启用 `allow-custom-value` 后，无匹配且无活动 option 时，Enter 会把当前输入原文作为 custom value 提交并关闭 panel；`change` 会触发，`selected-value` 保持为空。过滤后没有任何候选时 panel 不展开（已展开则收起），此时 Enter 仍走同一条提交路径。组件不会自动创建 option，也不会 trim 原文。命中禁用 option 的文本不会绕过禁用语义，也不会派生为已选 option。
+包装 div 不占 tab 位（`tabindex="-1"`）：顺序焦点归 trigger 自身，自定义 trigger 必须可聚焦，键盘用户才能到达 combobox。
+
+多行 trigger（可编辑元素为 `<textarea>`）保留 Enter 换行语义：Enter 不会选中高亮项，也不会提交 custom value，关闭 panel 用 Escape 或 blur。选择 option 仍会把该项 label 回写到 trigger。
+
+单行自定义 trigger 保持默认的 Enter 语义。
+
+panel 打开时 ArrowUp/ArrowDown 适用同一例外：方向键移动文本光标而不导航候选，该状态下键盘无法导航 option——用指针点击选择。panel 关闭时 ArrowDown/ArrowUp 仍可打开 panel。
+
+启用 `allow-custom-value` 后，无匹配且无活动 option 时，Enter 会把当前输入原文作为 custom value 提交并关闭 panel；`change` 会触发，`selected-value` 保持为空。
+
+过滤后没有任何候选时 panel 不展开（已展开则收起），此时 Enter 仍走同一条提交路径。
+
+组件不会自动创建 option，也不会 trim 原文。命中禁用 option 的文本不会绕过禁用语义，也不会派生为已选 option。
 
 ### CSS Custom Properties
 

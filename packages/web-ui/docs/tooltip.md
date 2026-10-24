@@ -9,7 +9,11 @@ tooltip，支持指针与焦点触发；`content` 属性提供纯文本，`conte
 
 ### 基础 {#basic}
 
-默认插槽是 trigger，`content` 属性给出纯文本提示。指针进入按 `show-delay` 延迟显示，键盘聚焦（`:focus-visible`）立即显示；指针离开按 `hide-delay` 收起，失焦则立即收起。`open-change` 只在用户来源的开合后派发，`detail.open` 是组件已经落到的状态；下面那行读数就是最近一次通知的值。
+默认插槽是 trigger，`content` 属性给出纯文本提示。
+
+指针进入按 `show-delay` 延迟显示，键盘聚焦（`:focus-visible`）立即显示；指针离开按 `hide-delay` 收起，失焦则立即收起。
+
+`open-change` 只在用户来源的开合后派发，`detail.open` 是组件已经落到的状态；下面那行读数就是最近一次通知的值。
 
 ```tsx
 import { useState } from 'react'
@@ -65,7 +69,9 @@ function onOpenChange(event: WebUiEvent<WebUiTooltip, 'open-change'>) {
 
 ### 富内容 {#rich-content}
 
-`content` 插槽替代纯文本，可以放多行、加粗或行内代码。插槽元素必须是 tooltip 的直接子节点并带 `slot="content"`；默认插槽里的 trigger 不要写 slot 属性。trigger 用带 `aria-label` 的 icon button，保持可聚焦，键盘用户也能看到提示。
+`content` 插槽替代纯文本，可以放多行、加粗或行内代码。插槽元素必须是 tooltip 的直接子节点并带 `slot="content"`；默认插槽里的 trigger 不要写 slot 属性。
+
+trigger 用带 `aria-label` 的 icon button，保持可聚焦，键盘用户也能看到提示。
 
 ```tsx
 import { lucideInfo } from '@greypan/web-ui/icons'
@@ -220,7 +226,9 @@ const last = ref('—')
 
 ### 行为说明
 
-`open` 是自管理的可见性属性。指针/焦点触发会更新它，直接赋值 property 也会同步本地或 Portal panel；`open-change` 仅用户来源的 toggle 时派发。第一个 Tooltip 显示后，相邻 Tooltip 会立即切换；其余 pointer/focus 触发使用延迟计时器。
+`open` 是自管理的可见性属性。指针/焦点触发会更新它，直接赋值 property 也会同步本地或 Portal panel；`open-change` 仅用户来源的 toggle 时派发。
+
+第一个 Tooltip 显示后，相邻 Tooltip 会立即切换；其余 pointer/focus 触发使用延迟计时器。
 
 ### CSS Custom Properties
 

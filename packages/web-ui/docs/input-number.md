@@ -61,7 +61,11 @@ export default function Demo() {
 
 ### 小数精度 {#precision}
 
-`precision` 决定读取与提交时保留的小数位数，赋值时不抹掉原始小数——`value={1.5}` 与 `precision={1}` 的书写顺序不影响结果。未显式设置时按 `step` 的小数位数推导：`step={0.3}` 在默认设置下每次规整到 1 位小数；显式设置 `precision` 后按该值规整，例如 `precision={0}` 会把小数步进结果取整。`step` 本身不会因 `precision` 而退化，`precision={2}` 时步幅仍是 `1`。
+`precision` 决定读取与提交时保留的小数位数，赋值时不抹掉原始小数——`value={1.5}` 与 `precision={1}` 的书写顺序不影响结果。
+
+未显式设置时按 `step` 的小数位数推导：`step={0.3}` 在默认设置下每次规整到 1 位小数；显式设置 `precision` 后按该值规整，例如 `precision={0}` 会把小数步进结果取整。
+
+`step` 本身不会因 `precision` 而退化，`precision={2}` 时步幅仍是 `1`。
 
 ```tsx
 export default function Demo() {
@@ -87,7 +91,11 @@ export default function Demo() {
 
 ### 受控值与事件 {#events}
 
-`value` 是受控值，接住 `input` 才能跟着输入与步进走。`input` 每敲一个字、每点一次步进 button 都派发；`change` 只在提交点派发——文本失焦提交与 ArrowUp / ArrowDown，点击步进 button 不派发。两条都接住，下面的读数才会分开显示这两种节奏。
+`value` 是受控值，接住 `input` 才能跟着输入与步进走。
+
+`input` 每敲一个字、每点一次步进 button 都派发；`change` 只在提交点派发——文本失焦提交与 ArrowUp / ArrowDown，点击步进 button 不派发。
+
+两条都接住，下面的读数才会分开显示这两种节奏。
 
 ```tsx
 import { useState } from 'react'
@@ -287,19 +295,41 @@ export default function Demo() {
 
 ### 行为说明
 
-`value` 没有空态：默认 `0`，赋值与提交都先过 `min` / `max` 收敛，因此写 `999` 进 `max=100` 得到的是 `100`。编辑是另一层——内部控件绑的是草稿，`1.`、空串、非数字文本都只改显示不改 `value`；失焦时合法草稿写回并提交，非法或空草稿回填上一个提交值且不派发 `change`。
+`value` 没有空态：默认 `0`，赋值与提交都先过 `min` / `max` 收敛，因此写 `999` 进 `max=100` 得到的是 `100`。
 
-`precision` 不参与赋值，只发生在读取（`get value`）与步进提交两点，所以声明顺序无关；`0.01` 不会被默认设置提前取整成 `0`。未显式设置 `precision` 时按 `step` 的小数位数推导规整精度，小数场景不再必须显式写 `step={0.01}` 配 `precision`；显式设置后按该值规整，`step` 本身不退化。
+编辑是另一层——内部控件绑的是草稿，`1.`、空串、非数字文本都只改显示不改 `value`；失焦时合法草稿写回并提交，非法或空草稿回填上一个提交值且不派发 `change`。
 
-事件分派节奏不一致是组件的现状：文本输入的 `input` 来自内部原生控件冒泡，`change` 因为原生 `change` 不组合、过不了 shadow 边界而由组件在宿主上补发一次；步进 button 只派发 `input`，ArrowUp / ArrowDown 派发 `input` 与 `change` 两条。只听 `change` 的受控写法会漏掉点击步进。
+`precision` 不参与赋值，只发生在读取（`get value`）与步进提交两点，所以声明顺序无关；`0.01` 不会被默认设置提前取整成 `0`。
 
-校验只透传 `required` / `disabled` / `readonly` 到内部控件，`min` / `max` / `step` 没有透传。因此 `valueMissing` 正常生效（清空后必填拦下提交），`rangeUnderflow` / `rangeOverflow` 基本不会触发——越界早在提交时被 clamp；而 `stepMismatch` 按原生 `number` 控件的默认 `step=1`、基准 `0` 判定，非整数取值有被判成不合法并拦下提交的风险。表单里的 `input-number` 建议保持整数 `step`，需要小数就在外层自己校验。
+未显式设置 `precision` 时按 `step` 的小数位数推导规整精度，小数场景不再必须显式写 `step={0.01}` 配 `precision`；显式设置后按该值规整，`step` 本身不退化。
 
-组件没有 slot：`prefix` / `suffix` 是 `<web-ui-input>` 与 `<web-ui-textarea>` 的能力，写在 `input-number` 里的子节点不会渲染。也没有 `focus()` / `blur()` / `select()` 委托：宿主自身没有 tab 位，按 Tab 进的是 shadow 内的原生控件，在宿主上调这三个方法不会落到它上面。禁用态由宿主上的 `disabled` 属性驱动，焦点态反射成 `focused` 属性，focus ring 跟着这条属性走。
+事件分派节奏不一致是组件的现状：文本输入的 `input` 来自内部原生控件冒泡，`change` 因为原生 `change` 不组合、过不了 shadow 边界而由组件在宿主上补发一次；步进 button 只派发 `input`，ArrowUp / ArrowDown 派发 `input` 与 `change` 两条。
+
+只听 `change` 的受控写法会漏掉点击步进。
+
+校验只透传 `required` / `disabled` / `readonly` 到内部控件，`min` / `max` / `step` 没有透传。
+
+因此 `valueMissing` 正常生效（清空后必填拦下提交），`rangeUnderflow` / `rangeOverflow` 基本不会触发——越界早在提交时被 clamp；而 `stepMismatch` 按原生 `number` 控件的默认 `step=1`、基准 `0` 判定，非整数取值有被判成不合法并拦下提交的风险。
+
+表单里的 `input-number` 建议保持整数 `step`，需要小数就在外层自己校验。
+
+组件没有 slot：`prefix` / `suffix` 是 `<web-ui-input>` 与 `<web-ui-textarea>` 的能力，写在 `input-number` 里的子节点不会渲染。
+
+也没有 `focus()` / `blur()` / `select()` 委托：宿主自身没有 tab 位，按 Tab 进的是 shadow 内的原生控件，在宿主上调这三个方法不会落到它上面。
+
+禁用态由宿主上的 `disabled` 属性驱动，焦点态反射成 `focused` 属性，focus ring 跟着这条属性走。
 
 ### 布局
 
-宿主是 inline-block。输入区宽度取 `--wui-input-width`（`200px`），最小宽度与高度都取 `--wui-control-size`（`36px`），圆角取 `--wui-radius-control`（胶囊），底面是共享的 glass 表面；两枚步进 button 是 shadow 内的原生 `<button class="num-btn">`（不是 `<web-ui-button>`），30×30、无边框透明底，取二级文本色，hover 与 active 走 state layer token，到达 `min` / `max` 或 `readonly` 时进入禁用态。数字居中显示（`text-align: center`），原生 spinner 被隐藏，改由这两个 button 承担增减。文字取 `--wui-font-size`，粗指针设备上钳到不小于 `16px`，避免 iOS Safari 聚焦时缩放页面；占位文本取二级文本色。
+宿主是 inline-block。
+
+输入区宽度取 `--wui-input-width`（`200px`），最小宽度与高度都取 `--wui-control-size`（`36px`），圆角取 `--wui-radius-control`（胶囊），底面是共享的 glass 表面。
+
+两枚步进 button 是 shadow 内的原生 `<button class="num-btn">`（不是 `<web-ui-button>`），30×30、无边框透明底，取二级文本色，hover 与 active 走 state layer token，到达 `min` / `max` 或 `readonly` 时进入禁用态。
+
+数字居中显示（`text-align: center`），原生 spinner 被隐藏，改由这两个 button 承担增减。
+
+文字取 `--wui-font-size`，粗指针设备上钳到不小于 `16px`，避免 iOS Safari 聚焦时缩放页面；占位文本取二级文本色。
 
 ### CSS Custom Properties
 
