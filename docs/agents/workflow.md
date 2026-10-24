@@ -31,7 +31,7 @@
 
 ### 怎么取得这个授权
 
-需要授权时，直接调用 [`request-authorization` skill](../../skills/request-authorization/SKILL.md)：以交互式弹窗提交请求，弹窗正文四项说明、选项要求、同意语义与回合收尾自检都由该 skill 拥有。客户端不支持 skill 调用时，读该 SKILL.md 按形状执行。
+需要授权时，直接调用 [`request-authorization` skill](../../skills/request-authorization/SKILL.md)：以交互式弹窗提交请求，弹窗正文四项说明、选项要求与回合收尾自检都由该 skill 拥有。客户端不支持 skill 调用时，读该 SKILL.md 按形状执行。
 
 弹窗只是呈现选择，不代替授权本身——用户点了推荐项才是授权，**没有回答不等于同意**。
 

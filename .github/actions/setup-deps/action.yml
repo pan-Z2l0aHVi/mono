@@ -7,7 +7,7 @@
 #         skip-install: 'true'       # 跳过 pnpm install（准备 job 不需要装依赖）
 #         wails: 'true'              # 安装 Wails Linux 系统依赖（libgtk-4-dev, libwebkitgtk-6.0-dev）
 #         wails-download-only: 'true' # 仅下载 Wails Linux 包，用于预热缓存
-#         go-cache: 'true'           # 用平台/镜像/Go/模块哈希/SHA 键缓存 Go 模块与编译产物
+#         go-cache: 'true'           # 用平台/Go/模块哈希/SHA 键缓存 Go 模块与编译产物
 name: 'Setup Dependencies'
 description: 'Install tools via mise, cache pnpm store, and install dependencies'
 
