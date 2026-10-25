@@ -3,15 +3,15 @@ component: radio-group
 tag: web-ui-radio-group
 ---
 
-一组 `<web-ui-radio>` 的容器：把成员的选中状态收敛成单个 `value`，选中变化时统一派发 `input` / `change`，并负责组级禁用与必填校验。容器提供 `radiogroup` 语义，`direction` 同步为 `aria-orientation`，组级禁用与必填状态分别暴露为 `aria-disabled` 和 `aria-required`。用 `aria-label` 或 `aria-labelledby` 设置组的无障碍名称。横排组用左右方向键，竖排组用上下方向键移动焦点并选中成员。成员自己声明的 `name` 在组内不参与提交，表单字段名取组上的 `name`。
+A container for a group of `<web-ui-radio>`: it collapses the members' selected state into a single `value`, dispatches `input` / `change` uniformly when the selection changes, and handles group-level disabling and required validation. The container provides `radiogroup` semantics, `direction` is mirrored as `aria-orientation`, and the group-level disabled and required states are exposed as `aria-disabled` and `aria-required` respectively. Set the group's accessible name with `aria-label` or `aria-labelledby`. In a horizontal group the left / right arrow keys move focus and selection between members; in a vertical group the up / down arrow keys do. A member's own `name` does not take part in submission inside the group; the form field name comes from the group's `name`.
 
-## 示例
+## Samples
 
-### 单选组 {#basic}
+### Single radio group {#basic}
 
-组持有唯一的值：`value` 决定谁被选中，成员的选中态由组下发，页面只读组的值。
+The group holds the only value: `value` decides which member is selected, the selected state of members is pushed down by the group, and the page only reads the group's value.
 
-Tab 进入组时，焦点落在已选中的成员；若尚无选中项，则落在第一个启用成员。组内只有这个成员是 Tab stop。方向键在启用成员间循环移动焦点并立即选中；`Home` 和 `End` 分别选中第一个和最后一个启用成员。
+When Tab enters the group, focus lands on the selected member; if nothing is selected yet, it lands on the first enabled member. Only that member is a tab stop inside the group. The arrow keys move focus cyclically between enabled members and select immediately; `Home` and `End` select the first and last enabled member respectively.
 
 ```tsx
 import { useState } from 'react'
@@ -21,9 +21,9 @@ export default function Demo() {
 
   return (
     <web-ui-radio-group name="size" value={size} onInput={event => setSize(event.currentTarget.value)}>
-      <web-ui-radio value="s">小</web-ui-radio>
-      <web-ui-radio value="m">中</web-ui-radio>
-      <web-ui-radio value="l">大</web-ui-radio>
+      <web-ui-radio value="s">Small</web-ui-radio>
+      <web-ui-radio value="m">Medium</web-ui-radio>
+      <web-ui-radio value="l">Large</web-ui-radio>
     </web-ui-radio-group>
   )
 }
@@ -32,9 +32,9 @@ export default function Demo() {
 ```vue
 <template>
   <web-ui-radio-group name="size" :value="size" @input="onInput">
-    <web-ui-radio value="s">小</web-ui-radio>
-    <web-ui-radio value="m">中</web-ui-radio>
-    <web-ui-radio value="l">大</web-ui-radio>
+    <web-ui-radio value="s">Small</web-ui-radio>
+    <web-ui-radio value="m">Medium</web-ui-radio>
+    <web-ui-radio value="l">Large</web-ui-radio>
   </web-ui-radio-group>
 </template>
 
@@ -50,27 +50,27 @@ function onInput(event: WebUiEvent<WebUiRadioGroup, 'input'>) {
 </script>
 ```
 
-### 排列方向 {#direction}
+### Direction {#direction}
 
-`direction` 决定成员横排还是竖排，默认 `vertical`；非法值也回退到 `vertical`。
+`direction` decides whether members are laid out horizontally or vertically, default `vertical`; invalid values also fall back to `vertical`.
 
 ```tsx
 export default function Demo() {
   return (
     <div className="flex flex-wrap gap-8">
       <div className="flex flex-col gap-2">
-        <span className="text-xs text-(--wui-color-text-secondary)">direction: vertical（默认）</span>
+        <span className="text-xs text-(--wui-color-text-secondary)">direction: vertical (default)</span>
         <web-ui-radio-group value="s">
-          <web-ui-radio value="s">小</web-ui-radio>
-          <web-ui-radio value="m">中</web-ui-radio>
+          <web-ui-radio value="s">Small</web-ui-radio>
+          <web-ui-radio value="m">Medium</web-ui-radio>
         </web-ui-radio-group>
       </div>
 
       <div className="flex flex-col gap-2">
         <span className="text-xs text-(--wui-color-text-secondary)">direction: horizontal</span>
         <web-ui-radio-group direction="horizontal" value="s">
-          <web-ui-radio value="s">小</web-ui-radio>
-          <web-ui-radio value="m">中</web-ui-radio>
+          <web-ui-radio value="s">Small</web-ui-radio>
+          <web-ui-radio value="m">Medium</web-ui-radio>
         </web-ui-radio-group>
       </div>
     </div>
@@ -82,42 +82,42 @@ export default function Demo() {
 <template>
   <div class="flex flex-wrap gap-8">
     <div class="flex flex-col gap-2">
-      <span class="text-xs text-(--wui-color-text-secondary)">direction: vertical（默认）</span>
+      <span class="text-xs text-(--wui-color-text-secondary)">direction: vertical (default)</span>
       <web-ui-radio-group value="s">
-        <web-ui-radio value="s">小</web-ui-radio>
-        <web-ui-radio value="m">中</web-ui-radio>
+        <web-ui-radio value="s">Small</web-ui-radio>
+        <web-ui-radio value="m">Medium</web-ui-radio>
       </web-ui-radio-group>
     </div>
 
     <div class="flex flex-col gap-2">
       <span class="text-xs text-(--wui-color-text-secondary)">direction: horizontal</span>
       <web-ui-radio-group direction="horizontal" value="s">
-        <web-ui-radio value="s">小</web-ui-radio>
-        <web-ui-radio value="m">中</web-ui-radio>
+        <web-ui-radio value="s">Small</web-ui-radio>
+        <web-ui-radio value="m">Medium</web-ui-radio>
       </web-ui-radio-group>
     </div>
   </div>
 </template>
 ```
 
-### 成员间距 {#gap}
+### Member gap {#gap}
 
-成员之间的间距走 `--wui-radio-group-gap`，默认经 `--wui-space-2` 解析成 8px；覆盖它只换间距，不动排列方向。下面两条是同一份成员，只有这个变量不同。
+The gap between members comes from `--wui-radio-group-gap`, which by default resolves through `--wui-space-2` to 8px; overriding it changes only the gap, not the layout direction. The two groups below share the same members and differ only in this variable.
 
 ```tsx
 export default function Demo() {
   return (
     <div className="flex flex-col items-start gap-6">
       <web-ui-radio-group direction="horizontal" value="s">
-        <web-ui-radio value="s">小</web-ui-radio>
-        <web-ui-radio value="m">中</web-ui-radio>
-        <web-ui-radio value="l">大</web-ui-radio>
+        <web-ui-radio value="s">Small</web-ui-radio>
+        <web-ui-radio value="m">Medium</web-ui-radio>
+        <web-ui-radio value="l">Large</web-ui-radio>
       </web-ui-radio-group>
 
       <web-ui-radio-group direction="horizontal" className="[--wui-radio-group-gap:16px]" value="s">
-        <web-ui-radio value="s">小</web-ui-radio>
-        <web-ui-radio value="m">中</web-ui-radio>
-        <web-ui-radio value="l">大</web-ui-radio>
+        <web-ui-radio value="s">Small</web-ui-radio>
+        <web-ui-radio value="m">Medium</web-ui-radio>
+        <web-ui-radio value="l">Large</web-ui-radio>
       </web-ui-radio-group>
     </div>
   )
@@ -128,30 +128,30 @@ export default function Demo() {
 <template>
   <div class="flex flex-col items-start gap-6">
     <web-ui-radio-group direction="horizontal" value="s">
-      <web-ui-radio value="s">小</web-ui-radio>
-      <web-ui-radio value="m">中</web-ui-radio>
-      <web-ui-radio value="l">大</web-ui-radio>
+      <web-ui-radio value="s">Small</web-ui-radio>
+      <web-ui-radio value="m">Medium</web-ui-radio>
+      <web-ui-radio value="l">Large</web-ui-radio>
     </web-ui-radio-group>
 
     <web-ui-radio-group direction="horizontal" class="[--wui-radio-group-gap:16px]" value="s">
-      <web-ui-radio value="s">小</web-ui-radio>
-      <web-ui-radio value="m">中</web-ui-radio>
-      <web-ui-radio value="l">大</web-ui-radio>
+      <web-ui-radio value="s">Small</web-ui-radio>
+      <web-ui-radio value="m">Medium</web-ui-radio>
+      <web-ui-radio value="l">Large</web-ui-radio>
     </web-ui-radio-group>
   </div>
 </template>
 ```
 
-### 组级禁用与必填 {#disabled-required}
+### Group-level disabled and required {#disabled-required}
 
-`disabled` 关掉整组的交互，这个禁用态会下发给成员；`required` 让原生表单校验在组没有值时拦截提交。
+`disabled` turns off interaction for the whole group, and that disabled state is pushed down to the members; `required` makes native form validation block submission while the group has no value.
 
 ```tsx
 export default function Demo() {
   return (
     <web-ui-radio-group name="plan" value="basic" required disabled>
-      <web-ui-radio value="basic">基础版</web-ui-radio>
-      <web-ui-radio value="pro">专业版</web-ui-radio>
+      <web-ui-radio value="basic">Basic</web-ui-radio>
+      <web-ui-radio value="pro">Pro</web-ui-radio>
     </web-ui-radio-group>
   )
 }
@@ -160,8 +160,8 @@ export default function Demo() {
 ```vue
 <template>
   <web-ui-radio-group name="plan" value="basic" required disabled>
-    <web-ui-radio value="basic">基础版</web-ui-radio>
-    <web-ui-radio value="pro">专业版</web-ui-radio>
+    <web-ui-radio value="basic">Basic</web-ui-radio>
+    <web-ui-radio value="pro">Pro</web-ui-radio>
   </web-ui-radio-group>
 </template>
 ```
@@ -170,38 +170,38 @@ export default function Demo() {
 
 ### Props
 
-| 名称              | 说明                                                           | 类型                         | 默认值       |
-| ----------------- | -------------------------------------------------------------- | ---------------------------- | ------------ |
-| `name`            | 表单字段名。                                                   | `string`                     | `''`         |
-| `disabled`        | 禁用整组并把禁用态下发给成员；组容器暴露 `aria-disabled`。     | `boolean`                    | `false`      |
-| `required`        | 必填校验：组没有值时拦截原生提交；组容器暴露 `aria-required`。 | `boolean`                    | `false`      |
-| `direction`       | 成员排列方向，也是组容器的 `aria-orientation`。                | `'horizontal' \| 'vertical'` | `'vertical'` |
-| `value`           | 当前选中的值，也是成员选中态的唯一来源。                       | `string`                     | `''`         |
-| `aria-label`      | 组的无障碍名称。                                               | `string \| null`             | `null`       |
-| `aria-labelledby` | 引用提供组无障碍名称的元素 ID。                                | `string \| undefined`        | —            |
+| Name              | Description                                                                                                              | Type                         | Default      |
+| ----------------- | ------------------------------------------------------------------------------------------------------------------------ | ---------------------------- | ------------ |
+| `name`            | Form field name.                                                                                                         | `string`                     | `''`         |
+| `disabled`        | Disables the whole group and pushes the disabled state down to the members; the group container exposes `aria-disabled`. | `boolean`                    | `false`      |
+| `required`        | Required validation: blocks native submission while the group has no value; the group container exposes `aria-required`. | `boolean`                    | `false`      |
+| `direction`       | Layout direction of the members, also the group container's `aria-orientation`.                                          | `'horizontal' \| 'vertical'` | `'vertical'` |
+| `value`           | The currently selected value, and the single source of the members' selected state.                                      | `string`                     | `''`         |
+| `aria-label`      | The group's accessible name.                                                                                             | `string \| null`             | `null`       |
+| `aria-labelledby` | ID of the element that provides the group's accessible name.                                                             | `string \| undefined`        | —            |
 
 ### Events
 
-| 名称     | 说明                                           |
-| -------- | ---------------------------------------------- |
-| `input`  | 选中变化时触发，`currentTarget.value` 是新值。 |
-| `change` | 与 `input` 一起派发，语义上表示一次确认。      |
+| Name     | Description                                                                 |
+| -------- | --------------------------------------------------------------------------- |
+| `input`  | Fired when the selection changes; `currentTarget.value` is the new value.   |
+| `change` | Dispatched together with `input`, semantically representing a confirmation. |
 
 ### Slots
 
-| 名称      | 说明                           |
-| --------- | ------------------------------ |
-| `default` | 组内的 `<web-ui-radio>` 成员。 |
+| Name      | Description                                    |
+| --------- | ---------------------------------------------- |
+| `default` | The `<web-ui-radio>` members inside the group. |
 
-### 行为说明
+### Behavior
 
-`disabled` 提供继承的有效禁用状态，不改写子项自身的 `disabled` 属性。`direction` 传入非法值时回退为 `vertical`。
+`disabled` provides an inherited effective disabled state without rewriting each child's own `disabled` attribute. An invalid `direction` value falls back to `vertical`.
 
-在 group 元素本身，或同一个 `<web-ui-theme>` 作用域内的祖先元素上设置。
+Set it on the group element itself, or on an ancestor within the same `<web-ui-theme>` scope.
 
-theme 宿主会为自己的子树声明该间距阶，写在 `<web-ui-theme>` 元素之外的覆盖到不了 group。
+The theme host declares that spacing step for its own subtree, so an override written outside the `<web-ui-theme>` element does not reach the group.
 
-它的默认值现在经 `--wui-space-2` 解析，所以在 theme 宿主上覆盖该级会连带改变成员间距；显式设置这个 token 仍然优先于两者。
+Its default now resolves through `--wui-space-2`, so overriding that step on the theme host also changes the member gap; an explicit assignment of this token still takes precedence over both.
 
 ```css
 web-ui-radio-group {
@@ -211,6 +211,6 @@ web-ui-radio-group {
 
 ### CSS Custom Properties
 
-| 名称                    | 说明                  | 默认值               |
-| ----------------------- | --------------------- | -------------------- |
-| `--wui-radio-group-gap` | 成员 radio 之间的间距 | `var(--wui-space-2)` |
+| Name                    | Description               | Default              |
+| ----------------------- | ------------------------- | -------------------- |
+| `--wui-radio-group-gap` | Gap between member radios | `var(--wui-space-2)` |

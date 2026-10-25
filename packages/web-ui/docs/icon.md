@@ -3,13 +3,13 @@ component: icon
 tag: web-ui-icon
 ---
 
-icon 渲染组件，输入是 Iconify 数据对象（`@greypan/web-ui/icons` 按图标集命名导出的就是这种对象）；渲染出来是一个 `aria-hidden="true"` 的 `<svg>`，图标自身不承载可访问名称。
+icon rendering component; the input is an Iconify data object (`@greypan/web-ui/icons` exports objects of this shape named by icon set). It renders an `<svg>` with `aria-hidden="true"`, and the icon itself carries no accessible name.
 
-## 示例
+## Samples
 
-### 基础 {#basic}
+### Basic {#basic}
 
-`icon` 声明为 `attribute: false`，只认 property 绑定，传的是 Iconify 数据对象而不是图标名字。不传 `icon` 时组件什么都不画，连 `<svg>` 也不产生。
+`icon` is declared as `attribute: false`, so it only accepts property bindings and takes an Iconify data object rather than an icon name. Without `icon`, the component draws nothing—not even an `<svg>`.
 
 ```tsx
 import { lucideFolderOpen, lucideSearch, lucideSettings } from '@greypan/web-ui/icons'
@@ -19,15 +19,15 @@ export default function Demo() {
     <div className="flex flex-wrap items-center gap-6">
       <span className="flex items-center gap-2">
         <web-ui-icon icon={lucideSearch}></web-ui-icon>
-        搜索
+        Search
       </span>
       <span className="flex items-center gap-2">
         <web-ui-icon icon={lucideFolderOpen}></web-ui-icon>
-        打开项目
+        Open project
       </span>
       <span className="flex items-center gap-2">
         <web-ui-icon icon={lucideSettings}></web-ui-icon>
-        设置
+        Settings
       </span>
     </div>
   )
@@ -39,15 +39,15 @@ export default function Demo() {
   <div class="flex flex-wrap items-center gap-6">
     <span class="flex items-center gap-2">
       <web-ui-icon :icon="lucideSearch"></web-ui-icon>
-      搜索
+      Search
     </span>
     <span class="flex items-center gap-2">
       <web-ui-icon :icon="lucideFolderOpen"></web-ui-icon>
-      打开项目
+      Open project
     </span>
     <span class="flex items-center gap-2">
       <web-ui-icon :icon="lucideSettings"></web-ui-icon>
-      设置
+      Settings
     </span>
   </div>
 </template>
@@ -57,9 +57,9 @@ import { lucideFolderOpen, lucideSearch, lucideSettings } from '@greypan/web-ui/
 </script>
 ```
 
-### 自带图标数据 {#raw}
+### Bring your own icon data {#raw}
 
-组件认的输入只有 `IconifyIcon` 这一种形状：`body` 必填，是一段 SVG 内部标记；`width` / `height` / `left` / `top` 描述画布。自己拼一个同样能渲染，图标不必先进 `@greypan/web-ui/icons`。
+The only input shape the component accepts is `IconifyIcon`: `body` is required and is a fragment of inner SVG markup; `width` / `height` / `left` / `top` describe the canvas. A hand-built object renders just as well; an icon does not have to live in `@greypan/web-ui/icons` first.
 
 ```tsx
 const clock = {
@@ -73,7 +73,7 @@ export default function Demo() {
     <div className="flex flex-wrap items-center gap-6">
       <span className="flex items-center gap-2">
         <web-ui-icon icon={clock}></web-ui-icon>
-        默认 18px
+        Default 18px
       </span>
       <span className="flex items-center gap-2">
         <web-ui-icon icon={clock} size={32} color="#007aff"></web-ui-icon>
@@ -89,7 +89,7 @@ export default function Demo() {
   <div class="flex flex-wrap items-center gap-6">
     <span class="flex items-center gap-2">
       <web-ui-icon :icon="clock"></web-ui-icon>
-      默认 18px
+      Default 18px
     </span>
     <span class="flex items-center gap-2">
       <web-ui-icon :icon="clock" :size="32" color="#007aff"></web-ui-icon>
@@ -107,9 +107,9 @@ const clock = {
 </script>
 ```
 
-### 尺寸 {#size}
+### Size {#size}
 
-`size` 是像素数值，同时写进 `<svg>` 的 `width` 与 `height`；`viewBox` 取资产自己的画布，所以图形按 viewBox 等比缩放，不是被拉伸。默认 `18`。
+`size` is a pixel number written into both the `<svg>`'s `width` and `height`; the `viewBox` comes from the asset's own canvas, so the graphic scales proportionally by viewBox rather than being stretched. The default is `18`.
 
 ```tsx
 import { lucideStar } from '@greypan/web-ui/icons'
@@ -147,9 +147,9 @@ const sizes = [14, 18, 24, 32]
 </script>
 ```
 
-### 颜色 {#color}
+### Color {#color}
 
-三条来源按优先级排：`color` 写成 `<svg>` 的内联 style，压过一切；其次是宿主上的 `--wui-icon-color`；都没有就跟着文字颜色走——资产画的是 `stroke="currentColor"`。最后一个是前两条同时给，内联 style 赢了。
+Three sources in priority order: `color` becomes an inline style on the `<svg>` and beats everything; next is `--wui-icon-color` on the host; if neither is set, the icon follows the text color—the asset draws with `stroke="currentColor"`. The last one has both of the first two, and the inline style wins.
 
 ```tsx
 import { lucideHeart } from '@greypan/web-ui/icons'
@@ -159,7 +159,7 @@ export default function Demo() {
     <div className="flex flex-wrap items-center gap-6">
       <span className="flex items-center gap-2 text-(--wui-color-danger)">
         <web-ui-icon icon={lucideHeart}></web-ui-icon>
-        跟着文字颜色
+        Follows the text color
       </span>
       <web-ui-icon icon={lucideHeart} color="#007aff"></web-ui-icon>
       <web-ui-icon icon={lucideHeart} className="[--wui-icon-color:#34c759]"></web-ui-icon>
@@ -174,7 +174,7 @@ export default function Demo() {
   <div class="flex flex-wrap items-center gap-6">
     <span class="flex items-center gap-2 text-(--wui-color-danger)">
       <web-ui-icon :icon="lucideHeart"></web-ui-icon>
-      跟着文字颜色
+      Follows the text color
     </span>
     <web-ui-icon :icon="lucideHeart" color="#007aff"></web-ui-icon>
     <web-ui-icon :icon="lucideHeart" class="[--wui-icon-color:#34c759]"></web-ui-icon>
@@ -187,9 +187,9 @@ import { lucideHeart } from '@greypan/web-ui/icons'
 </script>
 ```
 
-### 旋转 {#spin}
+### Spin {#spin}
 
-`spin` 给 `<svg>` 挂一条无限循环的 rotation，周期取 `--wui-duration-spin`（`600ms`）。主题 `motion="reduced"` 或系统 reduce 偏好下这条 token 放慢到 `1600ms` 而不停：加载指示停掉会被读成界面卡死。
+`spin` puts an infinite rotation on the `<svg>`, with the period taken from `--wui-duration-spin` (`600ms`). Under the `motion="reduced"` theme or a system reduce preference, the token slows to `1600ms` instead of stopping: a stopped loading indicator reads as a frozen interface.
 
 ```tsx
 import { lucideLoaderCircle } from '@greypan/web-ui/icons'
@@ -202,7 +202,7 @@ export default function Demo() {
     <div className="flex flex-wrap items-center gap-6">
       <web-ui-icon icon={lucideLoaderCircle} size={24} spin={spinning}></web-ui-icon>
       <web-ui-checkbox checked={spinning} onChange={event => setSpinning(event.currentTarget.checked)}>
-        旋转
+        Spin
       </web-ui-checkbox>
     </div>
   )
@@ -213,7 +213,7 @@ export default function Demo() {
 <template>
   <div class="flex flex-wrap items-center gap-6">
     <web-ui-icon :icon="lucideLoaderCircle" :size="24" :spin="spinning"></web-ui-icon>
-    <web-ui-checkbox :checked="spinning" @change="spinning = $event.target.checked">旋转</web-ui-checkbox>
+    <web-ui-checkbox :checked="spinning" @change="spinning = $event.target.checked">Spin</web-ui-checkbox>
   </div>
 </template>
 
@@ -225,9 +225,9 @@ const spinning = ref(true)
 </script>
 ```
 
-### 与按钮组合 {#button}
+### Combined with button {#button}
 
-button 的 `prefix` / `suffix` 插槽放 icon，图标与 label 走同一条 flex 线、共用 label 的字体色。纯图标按钮打开 `icon` 并写 `aria-label`：图标自己 `aria-hidden`，按钮里没有别的可见内容时它是唯一的线索。
+button's `prefix` / `suffix` slots hold icons; the icon and the label sit on the same flex line and share the label's text color. An icon-only button turns on `icon` and writes an `aria-label`: the icon is `aria-hidden` itself, so when the button has no other visible content it is the only clue.
 
 ```tsx
 import { lucideChevronLeft, lucideDownload, lucideUpload } from '@greypan/web-ui/icons'
@@ -237,13 +237,13 @@ export default function Demo() {
     <div className="flex flex-wrap items-center gap-3">
       <web-ui-button>
         <web-ui-icon slot="prefix" icon={lucideUpload} size={16}></web-ui-icon>
-        上传
+        Upload
       </web-ui-button>
       <web-ui-button variant="secondary">
         <web-ui-icon slot="suffix" icon={lucideDownload} size={16}></web-ui-icon>
-        下载
+        Download
       </web-ui-button>
-      <web-ui-button icon aria-label="上一页">
+      <web-ui-button icon aria-label="Previous page">
         <web-ui-icon icon={lucideChevronLeft}></web-ui-icon>
       </web-ui-button>
     </div>
@@ -256,13 +256,13 @@ export default function Demo() {
   <div class="flex flex-wrap items-center gap-3">
     <web-ui-button>
       <web-ui-icon slot="prefix" :icon="lucideUpload" :size="16"></web-ui-icon>
-      上传
+      Upload
     </web-ui-button>
     <web-ui-button variant="secondary">
       <web-ui-icon slot="suffix" :icon="lucideDownload" :size="16"></web-ui-icon>
-      下载
+      Download
     </web-ui-button>
-    <web-ui-button icon aria-label="上一页">
+    <web-ui-button icon aria-label="Previous page">
       <web-ui-icon :icon="lucideChevronLeft"></web-ui-icon>
     </web-ui-button>
   </div>
@@ -277,30 +277,30 @@ import { lucideChevronLeft, lucideDownload, lucideUpload } from '@greypan/web-ui
 
 ### Props
 
-| 名称    | 说明                                                                            | 类型          | 默认值  |
-| ------- | ------------------------------------------------------------------------------- | ------------- | ------- |
-| `icon`  | Iconify 数据对象；`attribute: false`，只按 property 传，不认图标名字。          | `IconifyIcon` | —       |
-| `spin`  | 旋转动画。                                                                      | `boolean`     | `false` |
-| `size`  | 像素尺寸，同时写进 `<svg>` 的 `width` 与 `height`。                             | `number`      | `18`    |
-| `color` | 图标颜色，写成 `<svg>` 的内联 style；留空时先读 `--wui-icon-color` 再读文字色。 | `string`      | —       |
+| Name    | Description                                                                                                               | Type          | Default |
+| ------- | ------------------------------------------------------------------------------------------------------------------------- | ------------- | ------- |
+| `icon`  | Iconify data object; `attribute: false`, so it is passed only as a property and an icon name is not accepted.             | `IconifyIcon` | —       |
+| `spin`  | Rotation animation.                                                                                                       | `boolean`     | `false` |
+| `size`  | Pixel size, written into both the `<svg>`'s `width` and `height`.                                                         | `number`      | `18`    |
+| `color` | Icon color, written as an inline style on the `<svg>`; when empty, `--wui-icon-color` is read first, then the text color. | `string`      | —       |
 
-### 行为说明
+### Behavior
 
-`aria-hidden="true"` 挂在生成的 `<svg>` 上，宿主只是一个 `inline-flex` 盒、不带任何语义，所以图标的名字一律由外部提供：旁边的文字、或者宿主控件的 `aria-label`。宿主 `user-select: none`，图标文字混排时不会被整段选中拖走。
+`aria-hidden="true"` is set on the generated `<svg>`, and the host is just an `inline-flex` box with no semantics, so the icon's name always comes from outside: the adjacent text, or the host control's `aria-label`. The host is `user-select: none`, so a mixed icon-and-text run is not selected and dragged away as a whole.
 
-`spin`、`size`、`color` 三个属性都 reflect，DOM 上能直接读回当前值；`icon` 不 reflect，它是个对象。
+The `spin`, `size`, and `color` properties all reflect, so their current values can be read back from the DOM; `icon` does not reflect, because it is an object.
 
-### 画布
+### Canvas
 
-`viewBox` 由数据对象的 `left` / `top` / `width` / `height` 拼出，缺省取 `0 0 16 16`——Iconify 规范里 width/height 缺省即 16。
+The `viewBox` is assembled from the data object's `left` / `top` / `width` / `height`, defaulting to `0 0 16 16`—in the Iconify spec, width/height default to 16.
 
-`@greypan/web-ui/icons` 生成的资产都自带画布，这条兜底只服务直接传进来的原始对象。
+Assets generated by `@greypan/web-ui/icons` all carry their own canvas; this fallback only serves raw objects passed in directly.
 
-画布给错了不会报错，只会把图形按错误比例缩放并偏到画布一角，所以自己拼对象时要按 SVG 的真实坐标系写 `width` / `height`。
+A wrong canvas does not raise an error; it only scales the graphic at the wrong ratio and pushes it into a corner of the canvas, so write `width` / `height` in the object's real SVG coordinate system when hand-building one.
 
 ### CSS Custom Properties
 
-| 名称                  | 说明                                              | 默认值    |
-| --------------------- | ------------------------------------------------- | --------- |
-| `--wui-icon-color`    | icon 颜色；被 `color` 属性的内联 style 盖过       | `inherit` |
-| `--wui-duration-spin` | `spin` 的旋转周期；reduce 下放慢到 `1600ms`，不停 | `600ms`   |
+| Name                  | Description                                                                 | Default   |
+| --------------------- | --------------------------------------------------------------------------- | --------- |
+| `--wui-icon-color`    | Icon color; overridden by the `color` property's inline style               | `inherit` |
+| `--wui-duration-spin` | Rotation period of `spin`; slows to `1600ms` under reduce, without stopping | `600ms`   |

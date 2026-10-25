@@ -3,13 +3,13 @@ component: middle-ellipsis
 tag: web-ui-middle-ellipsis
 ---
 
-单行中间省略：保留首尾、丢掉中间，`very-long-file-…-abcdefghij.txt`。切点一律落在字素簇边界上，不会劈开代理对、组合符序列或 ZWJ emoji。
+Single-line middle ellipsis: keep both ends, drop the middle, `very-long-file-…-abcdefghij.txt`. Cuts always land on grapheme cluster boundaries and never split surrogate pairs, combining sequences, or ZWJ emoji.
 
-## 示例
+## Samples
 
-### 保留首尾 {#basic}
+### Keep both ends {#basic}
 
-两行是**同一串文本**，区别只在截断的机制。`text-overflow: ellipsis` 只能保住头部，长文件名因此丢掉真正区分它们的扩展名；中间省略把省略号放到中间，头尾都留着。两种写法都需要单行、且有确定的行内尺寸。
+The two lines are **the same string**; they differ only in the truncation mechanism. `text-overflow: ellipsis` can only preserve the head, so a long filename loses the extension that actually distinguishes it; middle ellipsis puts the ellipsis in the middle and keeps both head and tail. Both approaches require a single line with a definite inline size.
 
 ```tsx
 const FILENAME = 'very-long-file-name-abcdefghij.txt'
@@ -49,9 +49,9 @@ const FILENAME = 'very-long-file-name-abcdefghij.txt'
 </script>
 ```
 
-### 中英混排 {#cjk}
+### Mixed CJK and ASCII {#cjk}
 
-汉字与 ASCII 混在一串里是常态：头部是中文标题、尾部是扩展名。汉字每个都是整宽的一个字素簇，切点因此一次挪动一格，不会切出半个字符。两行是同一串文本，第二行取 `marker-position: 80` 把额度让给尾部。
+Han characters and ASCII mixed in one string is the norm: the head is a Chinese title and the tail is the extension. Each Han character is a full-width grapheme cluster, so the cut moves one cell at a time and never slices a character in half. Both lines are the same string; the second line uses `marker-position: 80` to give the budget to the tail.
 
 ```tsx
 const CJK_TITLE = '海外增长与留存复盘报告-2026年第二季度终稿-v3-final.docx'
@@ -60,7 +60,7 @@ export default function Demo() {
   return (
     <div className="flex w-full max-w-md flex-col gap-3">
       <div className="w-48">
-        <div className="mb-1 text-xs text-(--wui-color-text-secondary)">marker-position 默认 50</div>
+        <div className="mb-1 text-xs text-(--wui-color-text-secondary)">marker-position default 50</div>
         <web-ui-middle-ellipsis text={CJK_TITLE}></web-ui-middle-ellipsis>
       </div>
       <div className="w-48">
@@ -76,7 +76,7 @@ export default function Demo() {
 <template>
   <div class="flex w-full max-w-md flex-col gap-3">
     <div class="w-48">
-      <div class="mb-1 text-xs text-(--wui-color-text-secondary)">marker-position 默认 50</div>
+      <div class="mb-1 text-xs text-(--wui-color-text-secondary)">marker-position default 50</div>
       <web-ui-middle-ellipsis :text="CJK_TITLE"></web-ui-middle-ellipsis>
     </div>
     <div class="w-48">
@@ -91,13 +91,13 @@ const CJK_TITLE = '海外增长与留存复盘报告-2026年第二季度终稿-v
 </script>
 ```
 
-### 长无空格串与字素簇 {#clusters}
+### Long strings without spaces and grapheme clusters {#clusters}
 
-第一行是 120 个没有空格的 `a`：不换行，按实测宽度切到刚好放得下。
+The first line is 120 `a` characters with no spaces: no wrapping, and it is cut to exactly what the measured width can hold.
 
-第二行整行都是 ZWJ 序列（👩‍💻 = `U+1F469 U+200D U+1F4BB`）与「基字符 + 变体选择符」（⚠️ = `U+26A0 U+FE0F`），无论切在哪里都应当整簇保留，不会出现半个 emoji 或落单的连接符。
+The second line consists entirely of ZWJ sequences (👩‍💻 = `U+1F469 U+200D U+1F4BB`) and "base character + variation selector" pairs (⚠️ = `U+26A0 U+FE0F`); wherever the cut lands, the whole cluster should be preserved, with no half emoji or stray joiner.
 
-两个串都写成转义：`U+200D` 与 `U+FE0F` 零宽，字面量丢了读不出来。
+Both strings are written as escapes: `U+200D` and `U+FE0F` are zero-width, so a literal copy would be unreadable.
 
 ```tsx
 const NO_SPACE = 'a'.repeat(120)
@@ -107,11 +107,11 @@ export default function Demo() {
   return (
     <div className="flex w-full max-w-md flex-col gap-3">
       <div className="w-48">
-        <div className="mb-1 text-xs text-(--wui-color-text-secondary)">无空格长串</div>
+        <div className="mb-1 text-xs text-(--wui-color-text-secondary)">Long string without spaces</div>
         <web-ui-middle-ellipsis text={NO_SPACE}></web-ui-middle-ellipsis>
       </div>
       <div className="w-48">
-        <div className="mb-1 text-xs text-(--wui-color-text-secondary)">ZWJ 与变体选择符</div>
+        <div className="mb-1 text-xs text-(--wui-color-text-secondary)">ZWJ and variation selectors</div>
         <web-ui-middle-ellipsis text={CLUSTERS}></web-ui-middle-ellipsis>
       </div>
     </div>
@@ -123,11 +123,11 @@ export default function Demo() {
 <template>
   <div class="flex w-full max-w-md flex-col gap-3">
     <div class="w-48">
-      <div class="mb-1 text-xs text-(--wui-color-text-secondary)">无空格长串</div>
+      <div class="mb-1 text-xs text-(--wui-color-text-secondary)">Long string without spaces</div>
       <web-ui-middle-ellipsis :text="NO_SPACE"></web-ui-middle-ellipsis>
     </div>
     <div class="w-48">
-      <div class="mb-1 text-xs text-(--wui-color-text-secondary)">ZWJ 与变体选择符</div>
+      <div class="mb-1 text-xs text-(--wui-color-text-secondary)">ZWJ and variation selectors</div>
       <web-ui-middle-ellipsis :text="CLUSTERS"></web-ui-middle-ellipsis>
     </div>
   </div>
@@ -139,9 +139,9 @@ const CLUSTERS = `${'\u{1F469}\u200D\u{1F4BB}'.repeat(16)}${'\u{26A0}\uFE0F}'.re
 </script>
 ```
 
-### 标记 {#marker}
+### Marker {#marker}
 
-`marker` 换掉中间那个省略号。第三行的 `marker` 是空串：确实截断了，只是不给任何可见信号——把鼠标移上去，`title` 里是完整的原文。
+`marker` replaces the ellipsis in the middle. The third line uses an empty `marker`: it is really truncated, it just gives no visible signal—hover it and the `title` holds the full original text.
 
 ```tsx
 const FILENAME = 'very-long-file-name-abcdefghij.txt'
@@ -150,15 +150,15 @@ export default function Demo() {
   return (
     <div className="flex w-full max-w-md flex-col gap-3">
       <div className="w-48">
-        <div className="mb-1 text-xs text-(--wui-color-text-secondary)">默认 …</div>
+        <div className="mb-1 text-xs text-(--wui-color-text-secondary)">Default …</div>
         <web-ui-middle-ellipsis text={FILENAME}></web-ui-middle-ellipsis>
       </div>
       <div className="w-48">
-        <div className="mb-1 text-xs text-(--wui-color-text-secondary)">marker 为 [..]</div>
+        <div className="mb-1 text-xs text-(--wui-color-text-secondary)">marker is [..]</div>
         <web-ui-middle-ellipsis text={FILENAME} marker="[..]"></web-ui-middle-ellipsis>
       </div>
       <div className="w-48">
-        <div className="mb-1 text-xs text-(--wui-color-text-secondary)">marker 为空串</div>
+        <div className="mb-1 text-xs text-(--wui-color-text-secondary)">marker is an empty string</div>
         <web-ui-middle-ellipsis text={FILENAME} marker=""></web-ui-middle-ellipsis>
       </div>
     </div>
@@ -170,15 +170,15 @@ export default function Demo() {
 <template>
   <div class="flex w-full max-w-md flex-col gap-3">
     <div class="w-48">
-      <div class="mb-1 text-xs text-(--wui-color-text-secondary)">默认 …</div>
+      <div class="mb-1 text-xs text-(--wui-color-text-secondary)">Default …</div>
       <web-ui-middle-ellipsis :text="FILENAME"></web-ui-middle-ellipsis>
     </div>
     <div class="w-48">
-      <div class="mb-1 text-xs text-(--wui-color-text-secondary)">marker 为 [..]</div>
+      <div class="mb-1 text-xs text-(--wui-color-text-secondary)">marker is [..]</div>
       <web-ui-middle-ellipsis :text="FILENAME" marker="[..]"></web-ui-middle-ellipsis>
     </div>
     <div class="w-48">
-      <div class="mb-1 text-xs text-(--wui-color-text-secondary)">marker 为空串</div>
+      <div class="mb-1 text-xs text-(--wui-color-text-secondary)">marker is an empty string</div>
       <web-ui-middle-ellipsis :text="FILENAME" marker=""></web-ui-middle-ellipsis>
     </div>
   </div>
@@ -189,9 +189,9 @@ const FILENAME = 'very-long-file-name-abcdefghij.txt'
 </script>
 ```
 
-### 标记位置 {#marker-position}
+### Marker position {#marker-position}
 
-`marker-position` 是标记所在的横向比例，0–100，默认 `50`：`0` 只剩头部（等价于末尾省略），`100` 只剩尾部。头部是路径噪声、尾部才是扩展名的场景取大于 50 的值。
+`marker-position` is the horizontal ratio, 0–100, at which the marker sits, default `50`: `0` keeps only the head (equivalent to end ellipsis) and `100` keeps only the tail. When the head is path noise and the tail is the extension, use a value above 50.
 
 ```tsx
 const FILENAME = 'very-long-file-name-abcdefghij.txt'
@@ -227,9 +227,9 @@ const POSITIONS = [0, 50, 80, 100]
 </script>
 ```
 
-### 容器宽度 {#container}
+### Container width {#container}
 
-宽度由容器给出，容器变化后重算：缩窄截得更狠，放宽则收回截断。下面两个盒子是百分比宽度，各自带一个上限——上限保证在宽屏上也仍然溢出，否则窗口够宽时整串放得下，盒子里就什么都看不到了。拖动窗口宽度可以看到两行跟着重切。
+The width comes from the container and is recomputed when the container changes: narrower cuts harder, wider takes truncation back. The two boxes below have percentage widths, each with a cap—the cap guarantees overflow even on a wide screen, otherwise the whole string fits once the window is wide enough and nothing is visible in the box. Drag the window width to watch both lines re-cut.
 
 ```tsx
 const LONG_PATH = 'assets/images/screenshots/2026/06/very-long-file-name-abcdefghij.png'
@@ -238,11 +238,11 @@ export default function Demo() {
   return (
     <div className="flex w-full flex-col gap-3">
       <div className="w-1/3 max-w-48">
-        <div className="mb-1 text-xs text-(--wui-color-text-secondary)">容器宽度的 1/3（上限 192px）</div>
+        <div className="mb-1 text-xs text-(--wui-color-text-secondary)">1/3 of the container width (max 192px)</div>
         <web-ui-middle-ellipsis text={LONG_PATH}></web-ui-middle-ellipsis>
       </div>
       <div className="w-1/6 max-w-32">
-        <div className="mb-1 text-xs text-(--wui-color-text-secondary)">容器宽度的 1/6（上限 128px）</div>
+        <div className="mb-1 text-xs text-(--wui-color-text-secondary)">1/6 of the container width (max 128px)</div>
         <web-ui-middle-ellipsis text={LONG_PATH}></web-ui-middle-ellipsis>
       </div>
     </div>
@@ -254,11 +254,11 @@ export default function Demo() {
 <template>
   <div class="flex w-full flex-col gap-3">
     <div class="w-1/3 max-w-48">
-      <div class="mb-1 text-xs text-(--wui-color-text-secondary)">容器宽度的 1/3（上限 192px）</div>
+      <div class="mb-1 text-xs text-(--wui-color-text-secondary)">1/3 of the container width (max 192px)</div>
       <web-ui-middle-ellipsis :text="LONG_PATH"></web-ui-middle-ellipsis>
     </div>
     <div class="w-1/6 max-w-32">
-      <div class="mb-1 text-xs text-(--wui-color-text-secondary)">容器宽度的 1/6（上限 128px）</div>
+      <div class="mb-1 text-xs text-(--wui-color-text-secondary)">1/6 of the container width (max 128px)</div>
       <web-ui-middle-ellipsis :text="LONG_PATH"></web-ui-middle-ellipsis>
     </div>
   </div>
@@ -273,57 +273,57 @@ const LONG_PATH = 'assets/images/screenshots/2026/06/very-long-file-name-abcdefg
 
 ### Props
 
-| 名称              | 说明                                                | 类型     | 默认值 |
-| ----------------- | --------------------------------------------------- | -------- | ------ |
-| `text`            | 完整文本，组件只读不回写。                          | `string` | `''`   |
-| `marker`          | 插在两端之间的标记；空串即截断但不给可见信号。      | `string` | `'…'`  |
-| `marker-position` | 标记所在的横向比例 0–100；越界夹紧，`NaN` 回落 50。 | `number` | `50`   |
+| Name              | Description                                                                                      | Type     | Default |
+| ----------------- | ------------------------------------------------------------------------------------------------ | -------- | ------- |
+| `text`            | Full text; the component only reads it and never writes back.                                    | `string` | `''`    |
+| `marker`          | Marker inserted between the two ends; an empty string truncates without a visible signal.        | `string` | `'…'`   |
+| `marker-position` | Horizontal ratio 0–100 where the marker sits; out-of-range values clamp, `NaN` falls back to 50. | `number` | `50`    |
 
-### 行为说明
+### Behavior
 
-`marker` 与 `marker-position` 都 reflect，DOM 上能直接读回当前值；`text` 不 reflect 到渲染结果里——屏幕上那串是切出来的合串，不是 `text`。
+`marker` and `marker-position` both reflect, so the current values can be read back from the DOM; `text` does not reflect into the rendered result—the string on screen is the sliced combination, not `text`.
 
-三个属性里只有 `text` 是 `@property` 直接字段，另两个走 setter 做归一化：`marker` 把 `null` / `undefined` 落成 `…`（空串照旧是空串），`marker-position` 走 `normalizeNumber(value, 0, 100, 50)`，越界夹紧、`NaN` 回落 50。
+Of the three properties, only `text` is a direct `@property` field; the other two go through setters that normalize: `marker` turns `null` / `undefined` into `…` (an empty string stays empty), and `marker-position` goes through `normalizeNumber(value, 0, 100, 50)`, clamping out-of-range values and falling back to 50 for `NaN`.
 
-宽度口径：`ElementWidthController` 观察的是**宿主**，取 `contentRect.width`（分数），不是整数 `clientWidth`——差的那半个像素足以让二分挑错最后一个字素簇。
+Width measurement: `ElementWidthController` observes the **host** and takes `contentRect.width` (fractional), not the integer `clientWidth`—half a pixel is enough to make the binary search pick the wrong last grapheme cluster.
 
-属性刚改完、观察者的回调还没到的那一帧，用 `.root` 的 `clientWidth` 同步补测一次，免得先按全文画一帧再切。
+In the frame where a property has just changed and the observer callback has not arrived yet, `.root`'s `clientWidth` is measured synchronously as a stopgap, so the component does not paint one frame of the full text before cutting.
 
-量到宽度 ≤ 0（宿主还没布局、或 jsdom）时什么都不做，并且留着「有未落的拟合」这个标记，等它重新有布局再切。
+When the measured width is ≤ 0 (the host is not laid out yet, or jsdom), the component does nothing and keeps the "there is a pending fit" flag, waiting until it is laid out again before cutting.
 
-重新测量：容器宽度变化会触发重新切分。
+Re-measurement: a container width change triggers re-cutting.
 
-字体度量变化也会重新测量——全文量具尺寸变化（例如根字号变化）由 `ResizeObserver` 发现；字体加载完成事件（`document.fonts` 的 `loadingdone`）会补上全文总宽不变但字形宽度重新分布的情况。组件断连后停止监听，重连时按当前布局重新拟合。
+Font metric changes also trigger re-measurement—a change in the size of the full-text measuring element (a root font size change, for example) is detected by the `ResizeObserver`; the font loading event (`document.fonts`' `loadingdone`) covers the case where the total width of the full text stays the same but glyph widths are redistributed. The component stops listening after disconnect and refits against the current layout on reconnect.
 
-更新时序：`willUpdate` 先把显示退回全文（上一版的切分是按旧文本算的，拿它渲染新文本会显示一段两个版本都不属于的串），`updated()` 再把真正的重切排进微任务——同一帧渲染之前完成，用户看不到那个全文中间态。
+Update timing: `willUpdate` first falls back to the full text for display (the previous cut was computed from the old text, and rendering the new text with it would show a string belonging to neither version), then `updated()` schedules the real re-cut in a microtask—completed before the same frame paints, so the user never sees that intermediate full-text state.
 
-`title` 只在**确实截断**时挂在文本元素上，放得下之后移除；这就是「空标记也算截断了」唯一的可见证据。
+`title` is attached to the text element only when the text is **actually truncated**, and removed once it fits; that is the only visible evidence that "an empty marker still counts as truncation".
 
-### 标记位置的取值
+### Marker position values
 
-文件名场景靠 `marker-position` 调节。两端额度是 `(1 - p)` 与 `p` 乘上「可用宽度减掉标记实宽」，再各自用「前 i 簇 / 后 i 簇」的实测宽度二分逼近。下面是示意而非可复现的取值——确切切点取决于字体——取自 16px `system-ui`、240px 盒子：
+Filename scenarios are tuned with `marker-position`. The two ends get `(1 - p)` and `p` times "available width minus the marker's actual width", and each is approximated by binary search over the measured widths of "the first i clusters / the last i clusters". The values below are illustrative rather than reproducible—the exact cut depends on the font—taken from 16px `system-ui` in a 240px box:
 
-- `0` / `very-long-file-name-abcdefghi…`：头部占满，等价于末尾省略。
-- `50`（默认） / `very-long-file-…-abcdefghij.txt`：两端各留一截。
-- `80` / `very-l…file-name-abcdefghij.txt`：额度让给尾部。
-- `100`：头部额度为 0，只剩标记与尾部。
+- `0` / `very-long-file-name-abcdefghi…`: the head takes everything, equivalent to end ellipsis.
+- `50` (default) / `very-long-file-…-abcdefghij.txt`: both ends keep a slice.
+- `80` / `very-l…file-name-abcdefghij.txt`: the budget goes to the tail.
+- `100`: the head budget is 0, leaving only the marker and the tail.
 
-### 合串复核与收敛
+### Joined-string recheck and convergence
 
-分段预算看不见 `head|marker` 与 `marker|tail` 两个接缝处的字距与连字，合串可能比两段额度之和更宽。
+The segment budget cannot see the letter spacing and ligatures at the two seams, `head|marker` and `marker|tail`, so the joined string may be wider than the sum of the two budgets.
 
-组件在渲染之后量**真实盒子**：超出容差 0.5px 就按超出量回收额度重切，最多 3 轮——3 轮是纯防御，兜的是「调用方把标记撑得比容器还宽」这类退化输入，常规路径一轮都不触发。
+After rendering, the component measures the **real box**: when it exceeds the tolerance by 0.5px, it reclaims budget by the excess and re-cuts, up to 3 rounds—3 rounds is pure defense, covering degenerate inputs such as "the caller makes the marker wider than the container"; the normal path triggers none.
 
-标记本身都放不下的时候（额度 ≤ 0），让标记溢出、由 `overflow: hidden` 裁掉，而不是退回全文：退回全文会把标记挤出盒外，用户连「这里被截断了」的信号都看不到。
+When even the marker does not fit (budget ≤ 0), the marker is allowed to overflow and be clipped by `overflow: hidden` rather than falling back to the full text: falling back would push the marker outside the box and the user would lose even the "this is truncated" signal.
 
-宿主宽度由内容决定时（flex 主轴 `auto`、或 `width: fit-content`），把自己截短会反过来把宿主量窄，于是排下一次尺寸回调——这个自驱动收缩可能一路棘轮到只剩标记。收缩方向因此带一条收敛守卫：判据取「当前输出已经放得下」，放得下就没有必须重切的理由，第一步就停；放长方向一律重切。
+When the host width is content-driven (flex main axis `auto`, or `width: fit-content`), truncating itself makes the host measure narrower, which schedules the next size callback—this self-driven shrink can ratchet all the way down to the marker alone. The shrink direction therefore carries a convergence guard: the criterion is "the current output already fits", and if it fits there is no reason to re-cut, so it stops at the first step; the grow direction always re-cuts.
 
-### 已知限制——复制与辅助技术
+### Known limitations: copy and assistive technology
 
-元素里装的是屏幕上那串，因此选中复制拿到的是截断后的文本，读屏与页内查找命中的也是截断后的串。
+The element contains the on-screen string, so selecting and copying yields the truncated text, and screen readers and in-page find also hit the truncated string.
 
-CSS 的 `text-overflow` 没有这两个问题（它从不改动文本节点），这是用 JS 算切点绕不开的代价；原文经 `title` 提供。
+CSS `text-overflow` does not have these two problems (it never modifies the text node); this is the unavoidable cost of computing cuts in JS. The original text is provided through `title`.
 
-保持全文留在 DOM 里的替代方案及其代价见 `docs/research/web-ui-middle-ellipsis-261007.md`。
+For the alternative of keeping the full text in the DOM and its costs, see `docs/research/web-ui-middle-ellipsis-261007.md`.
 
-宿主需为 `direction: ltr`；`direction: rtl` 下合串会被双向算法重排。组件没有事件、没有插槽，也不消费任何 `--wui-*` token：字体、字号、颜色、行高全部从宿主继承，所以外观完全交给你所在的容器决定。
+The host must be `direction: ltr`; under `direction: rtl` the joined string is reordered by the bidi algorithm. The component has no events, no slots, and consumes no `--wui-*` token: font, font size, color, and line height are all inherited from the host, so appearance is decided entirely by the surrounding container.
