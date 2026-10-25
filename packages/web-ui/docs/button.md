@@ -576,7 +576,6 @@ const fourStates = {
 | `size`          | button 高度；裸数字按 px 解释，也接受 CSS 长度（如 `32px`、`1.5rem`）。在 `<web-ui-button-group>` 内被组统一成 30px。 | `string`                                                     | `''`       |
 | `type`          | 原生 button 的 `type`；非法值规范化成 `button`。                                                                      | `'button' \| 'submit' \| 'reset'`                            | `'button'` |
 | `aria-label`    | 无障碍名称，透传给内部原生 button。                                                                                   | `string \| null`                                             | `null`     |
-| `aria-disabled` | 值为 `true` 时阻止 click 与表单动作，但保留焦点能力；透传给内部原生 button。                                          | `string \| null`                                             | `null`     |
 | `aria-expanded` | 展开状态；透传给内部原生 button，供辅助技术读取。                                                                     | `string \| null`                                             | `null`     |
 
 ### Slots
@@ -593,7 +592,7 @@ const fourStates = {
 
 `disabled`、`loading` 与表单级禁用（祖先 `<fieldset disabled>`）都会把内部 button 真的置为 disabled，click 不再产生、tab 也进不来。
 
-`aria-label`、`aria-disabled` 与 `aria-expanded` 显式委派到内部原生 button；`aria-controls` 及其他属性留在宿主上，不会自动复制，因为 IDREF 不能跨 shadow root 解析。
+`aria-label` 与 `aria-expanded` 显式委派到内部原生 button；`aria-controls` 及其他属性留在宿主上，不会自动复制，因为 IDREF 不能跨 shadow root 解析。
 
 用 `<web-ui-button>` 作 collapse trigger 时，辅助技术可在暴露为 button 的内部节点读取 `aria-expanded`。
 
@@ -603,7 +602,7 @@ const fourStates = {
 
 button 不向 `FormData` 贡献值（form state 恒为 `null`）。
 
-`aria-disabled="true"` 会阻止 `click` 与表单动作，但不会设置原生 `disabled`，因此内部 button 仍可聚焦。
+禁用只有 `disabled` 一条路径：它会把内部原生 button 真的置为 disabled，click 与表单动作都不再发生。`aria-disabled` 不读取也不转发——「看起来禁用但仍可聚焦」的语义不提供，写上去的 `aria-disabled` 只留在宿主，对行为没有影响。
 
 `icon` 与 `loading` 同时开启时只渲染 spinner，默认插槽不投影；非 icon 模式下 spinner 排在 label 之前，与前后缀并存。
 

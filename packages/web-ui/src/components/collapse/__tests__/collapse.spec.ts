@@ -116,23 +116,22 @@ describe('WebUiCollapse 组件', () => {
       cleanupElement(el)
     })
 
-    // aria-controls 必须指向内容 track，否则 AT 的关系引用指向不存在的元素。
-    it('aria-expanded / aria-controls 回写到 trigger 元素并随状态变化', async () => {
+    // 内容 track 在 shadow 内，IDREF 不能跨 shadow root 解析，因此不回写 aria-controls：
+    // 写出去在 AT 眼里等同悬空引用，展开关系只由 aria-expanded 表达。
+    it('aria-expanded 回写到 trigger 元素并随状态变化，不回写 aria-controls', async () => {
       const el = createCollapse()
       await waitForUpdate(el)
       const button = triggerButton(el)
-      const track = el.shadowRoot?.querySelector('.wui-collapse-track') as HTMLElement
 
       expect(button.getAttribute('aria-expanded')).toBe('false')
-      expect(track.id).not.toBe('')
-      expect(button.getAttribute('aria-controls')).toBe(track.id)
+      expect(button.hasAttribute('aria-controls')).toBe(false)
 
       await clickTrigger(el)
       expect(button.getAttribute('aria-expanded')).toBe('true')
       cleanupElement(el)
     })
 
-    it('web-ui-button trigger 将 collapse ARIA 转发到内部原生 button', async () => {
+    it('web-ui-button trigger 将 collapse 状态转发到内部原生 button', async () => {
       const el = createCollapse('<web-ui-button>Trigger</web-ui-button><div slot="content">Content</div>')
       const trigger = el.querySelector('web-ui-button')!
       await waitForUpdate(trigger)
@@ -140,10 +139,9 @@ describe('WebUiCollapse 组件', () => {
 
       const button = trigger.shadowRoot?.querySelector<HTMLButtonElement>('button[part="button"]')
       if (!button) throw new Error('web-ui-button has no native button part')
-      const track = el.shadowRoot?.querySelector('.wui-collapse-track') as HTMLElement
 
       expect(trigger.getAttribute('aria-expanded')).toBe('false')
-      expect(trigger.getAttribute('aria-controls')).toBe(track.id)
+      expect(trigger.hasAttribute('aria-controls')).toBe(false)
       expect(button.getAttribute('aria-expanded')).toBe('false')
       expect(button.hasAttribute('aria-controls')).toBe(false)
 
@@ -155,24 +153,40 @@ describe('WebUiCollapse 组件', () => {
       el.disabled = true
       await waitForUpdate(el)
       await waitForUpdate(trigger)
-      expect(button.getAttribute('aria-disabled')).toBe('true')
+      expect(trigger.hasAttribute('disabled')).toBe(true)
+      expect(button.disabled).toBe(true)
 
       el.disabled = false
       await waitForUpdate(el)
       await waitForUpdate(trigger)
-      expect(button.hasAttribute('aria-disabled')).toBe(false)
+      expect(trigger.hasAttribute('disabled')).toBe(false)
+      expect(button.disabled).toBe(false)
       cleanupElement(el)
     })
 
-    it('aria-disabled 的 web-ui-button 宿主 click 不切换 collapse', async () => {
+    it('disabled 的 web-ui-button trigger 宿主 click 不切换 collapse', async () => {
       const el = createCollapse('<web-ui-button>Trigger</web-ui-button><div slot="content">Content</div>')
       const trigger = el.querySelector('web-ui-button')!
       await waitForUpdate(trigger)
       await waitForUpdate(el)
 
-      trigger.setAttribute('aria-disabled', 'true')
+      el.disabled = true
+      await waitForUpdate(el)
       await waitForUpdate(trigger)
       trigger.click()
+      await waitForUpdate(el)
+
+      expect(el.open).toBe(false)
+      cleanupElement(el)
+    })
+
+    // trigger 不是表单控件时 `disabled` 只是无效属性，点击仍会被组件自身拦下。
+    it('disabled 时非表单 trigger 的 click 同样被忽略', async () => {
+      const el = createCollapse('<span class="trigger">自定义</span><div slot="content">Content</div>')
+      el.disabled = true
+      await waitForUpdate(el)
+
+      el.querySelector<HTMLElement>('span.trigger')!.click()
       await waitForUpdate(el)
 
       expect(el.open).toBe(false)
@@ -191,7 +205,6 @@ describe('WebUiCollapse 组件', () => {
       await waitForUpdate(el)
 
       expect(button.getAttribute('aria-expanded')).toBe('false')
-      expect(button.getAttribute('aria-controls')).not.toBe('')
       cleanupElement(el)
     })
 
@@ -227,19 +240,19 @@ describe('WebUiCollapse 组件', () => {
       cleanupElement(el)
     })
 
-    it('disabled 回写 trigger 的 aria-disabled，并随属性解除', async () => {
+    it('disabled 回写 trigger 的 disabled，并随属性解除', async () => {
       const el = createCollapse()
       el.disabled = true
       await waitForUpdate(el)
-      expect(triggerButton(el).getAttribute('aria-disabled')).toBe('true')
+      expect(triggerButton(el).disabled).toBe(true)
 
       el.disabled = false
       await waitForUpdate(el)
-      expect(triggerButton(el).hasAttribute('aria-disabled')).toBe(false)
+      expect(triggerButton(el).disabled).toBe(false)
       cleanupElement(el)
     })
 
-    it('移除 disabled 的 web-ui-button trigger 时恢复原有 ARIA 状态', async () => {
+    it('移除 disabled 的 web-ui-button trigger 时恢复原有状态', async () => {
       const el = createCollapse('<web-ui-button>Trigger</web-ui-button><div slot="content">Content</div>')
       el.disabled = true
       await waitForUpdate(el)
@@ -248,7 +261,7 @@ describe('WebUiCollapse 组件', () => {
       await waitForUpdate(trigger)
       const button = trigger.shadowRoot?.querySelector<HTMLButtonElement>('button[part="button"]')
       if (!button) throw new Error('web-ui-button has no native button part')
-      expect(button.getAttribute('aria-disabled')).toBe('true')
+      expect(button.disabled).toBe(true)
 
       let clickCount = 0
       trigger.addEventListener('click', () => clickCount++)
@@ -259,7 +272,7 @@ describe('WebUiCollapse 组件', () => {
 
       expect(trigger.hasAttribute('aria-expanded')).toBe(false)
       expect(trigger.hasAttribute('aria-controls')).toBe(false)
-      expect(trigger.hasAttribute('aria-disabled')).toBe(false)
+      expect(trigger.hasAttribute('disabled')).toBe(false)
       button.click()
       expect(clickCount).toBe(1)
       cleanupElement(el)
