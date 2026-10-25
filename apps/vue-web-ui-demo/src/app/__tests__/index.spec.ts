@@ -67,9 +67,8 @@ function navRoot() {
 }
 
 /**
- * collapsed state 在这个 demo 里只体现为排版——桌面 collapse 与移动 drawer 渲染的是同一份 slot 内容，
- * 「导航项最终带上哪一套工具类」就是它唯一的观察点，jsdom 里也没有布局可读。
- * 判据因此不写死类名：由同一个组件在两种状态下的渲染互相比较得出。
+ * 这个 jsdom 层不模拟真实布局；短标签、tooltip 与文本布局由 browser spec 验证。
+ * 此处只比较导航项的类变化，确认桌面 collapsed state 不会泄漏到移动 drawer。
  */
 function navItemClasses() {
   const link = navRoot().querySelector('a')
