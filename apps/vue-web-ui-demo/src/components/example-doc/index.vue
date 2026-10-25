@@ -19,8 +19,8 @@ import { reactIcon, vueIcon } from './flavor-icons'
 /**
  * 由示例文档 markdown 生成的页面主体：组件标题、简介、逐示例预览、双框架源码与 API 表。
  *
- * 数据全部来自 `packages/web-ui/docs/<name>.md`。带 `{#id}` 锚点的示例由生成器落成
- * `src/generated/demos/<component>--<id>.vue`，预览执行的字节与代码区显示的字节同源；
+ * 数据全部来自 `packages/web-ui/docs/<name>.CN.md`（本站只出中文源语种）。带 `{#id}` 锚点的示例由
+ * 生成器落成 `src/generated/demos/<component>--<id>.vue`，预览执行的字节与代码区显示的字节同源；
  * 没有锚点的语料只展示代码。
  *
  * 预览只运行当前站点框架；代码区始终提供 Vue / React 两份完整源码。

@@ -3,27 +3,27 @@ component: dropdown-header
 tag: web-ui-dropdown-header
 ---
 
-menu 里的分组标题：一段不参与交互的小字，给紧随其后的几个 menu item 起名。它没有属性与事件，也不参与键盘导航——menu 只会把焦点停在 `<web-ui-dropdown-item>` 上。分组标题常与 `<web-ui-dropdown-divider>` 一起用。
+A group title inside a menu: a piece of small text that takes no part in interaction and names the menu items that follow it. It has no props or events and does not take part in keyboard navigation—the menu only stops focus on `<web-ui-dropdown-item>`. A group title is often used together with `<web-ui-dropdown-divider>`.
 
-## 示例
+## Samples
 
-### 分组标题 {#basic}
+### Group title {#basic}
 
-标题让一组 menu item 有名字；它不可聚焦、不可点击，键盘上下键会直接跳过。
+The title gives a set of menu items a name; it is not focusable and not clickable, and the up / down arrow keys skip it.
 
 ```tsx
 export default function Demo() {
   return (
     <web-ui-dropdown>
       <web-ui-button slot="trigger" variant="secondary">
-        更多
+        More
       </web-ui-button>
-      <web-ui-dropdown-header>编辑</web-ui-dropdown-header>
-      <web-ui-dropdown-item>复制</web-ui-dropdown-item>
-      <web-ui-dropdown-item>粘贴</web-ui-dropdown-item>
+      <web-ui-dropdown-header>Edit</web-ui-dropdown-header>
+      <web-ui-dropdown-item>Copy</web-ui-dropdown-item>
+      <web-ui-dropdown-item>Paste</web-ui-dropdown-item>
       <web-ui-dropdown-divider></web-ui-dropdown-divider>
-      <web-ui-dropdown-header>危险操作</web-ui-dropdown-header>
-      <web-ui-dropdown-item disabled>删除</web-ui-dropdown-item>
+      <web-ui-dropdown-header>Dangerous actions</web-ui-dropdown-header>
+      <web-ui-dropdown-item disabled>Delete</web-ui-dropdown-item>
     </web-ui-dropdown>
   )
 }
@@ -32,13 +32,13 @@ export default function Demo() {
 ```vue
 <template>
   <web-ui-dropdown>
-    <web-ui-button slot="trigger" variant="secondary">更多</web-ui-button>
-    <web-ui-dropdown-header>编辑</web-ui-dropdown-header>
-    <web-ui-dropdown-item>复制</web-ui-dropdown-item>
-    <web-ui-dropdown-item>粘贴</web-ui-dropdown-item>
+    <web-ui-button slot="trigger" variant="secondary">More</web-ui-button>
+    <web-ui-dropdown-header>Edit</web-ui-dropdown-header>
+    <web-ui-dropdown-item>Copy</web-ui-dropdown-item>
+    <web-ui-dropdown-item>Paste</web-ui-dropdown-item>
     <web-ui-dropdown-divider></web-ui-dropdown-divider>
-    <web-ui-dropdown-header>危险操作</web-ui-dropdown-header>
-    <web-ui-dropdown-item disabled>删除</web-ui-dropdown-item>
+    <web-ui-dropdown-header>Dangerous actions</web-ui-dropdown-header>
+    <web-ui-dropdown-item disabled>Delete</web-ui-dropdown-item>
   </web-ui-dropdown>
 </template>
 ```
@@ -47,6 +47,6 @@ export default function Demo() {
 
 ### Slots
 
-| 名称      | 说明             |
-| --------- | ---------------- |
-| `default` | 分组标题的文本。 |
+| Name      | Description              |
+| --------- | ------------------------ |
+| `default` | Text of the group title. |

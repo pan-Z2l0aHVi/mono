@@ -3,29 +3,29 @@ component: dropdown-divider
 tag: web-ui-dropdown-divider
 ---
 
-menu 里的 divider，用来切开成组的 menu item。
+A divider inside a menu, used to separate groups of menu items.
 
-它没有任何属性、事件与插槽，也不参与键盘导航——menu 只会把焦点停在 `<web-ui-dropdown-item>` 上，它自己只声明 `role="separator"`。
+It has no props, events, or slots and does not take part in keyboard navigation—the menu only stops focus on `<web-ui-dropdown-item>`, and the divider itself only declares `role="separator"`.
 
-它出现在 `<web-ui-dropdown>` / `<web-ui-context-menu>` 的子元素里。
+It appears among the children of `<web-ui-dropdown>` / `<web-ui-context-menu>`.
 
-## 示例
+## Samples
 
-### 分组 divider {#basic}
+### Group divider {#basic}
 
-divider 插在两组 menu item 之间，宽度撑满 menu panel，两侧各留一点水平外边距。
+A divider sits between two groups of menu items, spans the full width of the menu panel, and leaves a little horizontal margin on both sides.
 
 ```tsx
 export default function Demo() {
   return (
     <web-ui-dropdown>
       <web-ui-button slot="trigger" variant="secondary">
-        操作
+        Actions
       </web-ui-button>
-      <web-ui-dropdown-item>复制</web-ui-dropdown-item>
-      <web-ui-dropdown-item>粘贴</web-ui-dropdown-item>
+      <web-ui-dropdown-item>Copy</web-ui-dropdown-item>
+      <web-ui-dropdown-item>Paste</web-ui-dropdown-item>
       <web-ui-dropdown-divider></web-ui-dropdown-divider>
-      <web-ui-dropdown-item disabled>删除</web-ui-dropdown-item>
+      <web-ui-dropdown-item disabled>Delete</web-ui-dropdown-item>
     </web-ui-dropdown>
   )
 }
@@ -34,11 +34,11 @@ export default function Demo() {
 ```vue
 <template>
   <web-ui-dropdown>
-    <web-ui-button slot="trigger" variant="secondary">操作</web-ui-button>
-    <web-ui-dropdown-item>复制</web-ui-dropdown-item>
-    <web-ui-dropdown-item>粘贴</web-ui-dropdown-item>
+    <web-ui-button slot="trigger" variant="secondary">Actions</web-ui-button>
+    <web-ui-dropdown-item>Copy</web-ui-dropdown-item>
+    <web-ui-dropdown-item>Paste</web-ui-dropdown-item>
     <web-ui-dropdown-divider></web-ui-dropdown-divider>
-    <web-ui-dropdown-item disabled>删除</web-ui-dropdown-item>
+    <web-ui-dropdown-item disabled>Delete</web-ui-dropdown-item>
   </web-ui-dropdown>
 </template>
 ```

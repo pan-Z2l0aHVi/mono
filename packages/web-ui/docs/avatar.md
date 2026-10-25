@@ -3,16 +3,16 @@ component: avatar
 tag: web-ui-avatar
 ---
 
-avatar，按 `src` 画图片；没有图片或图片加载失败时回退到 `name` 的首字母，`name` 也留空时回退到默认图标。
+avatar draws an image from `src`; when there is no image or the image fails to load, it falls back to the initials of `name`, and when `name` is also empty, to the default icon.
 
-## 示例
+## Samples
 
-### 图片 {#image}
+### Image {#image}
 
-`src` 是图片 URL，`alt` 同时给出图片替代文本与无障碍名称，`size` 决定头像边长（px）。
+`src` is the image URL, `alt` supplies both the image alternative text and the accessible name, and `size` sets the avatar's edge length (px).
 
 ```tsx
-// 示例图是一段内联 SVG：语料不带二进制素材，也不依赖网络。
+// The sample image is an inline SVG: the corpus ships no binary assets and does not depend on the network.
 const photo =
   "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='96' height='96'%3E%3Crect width='96' height='96' fill='%234f46e5'/%3E%3Ccircle cx='48' cy='56' r='22' fill='%23c7d2fe'/%3E%3Ccircle cx='48' cy='92' r='26' fill='%23a5b4fc'/%3E%3C/svg%3E"
 
@@ -37,15 +37,15 @@ export default function Demo() {
 </template>
 
 <script setup lang="ts">
-// 示例图是一段内联 SVG：语料不带二进制素材，也不依赖网络。
+// The sample image is an inline SVG: the corpus ships no binary assets and does not depend on the network.
 const photo =
   "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='96' height='96'%3E%3Crect width='96' height='96' fill='%234f46e5'/%3E%3Ccircle cx='48' cy='56' r='22' fill='%23c7d2fe'/%3E%3Ccircle cx='48' cy='92' r='26' fill='%23a5b4fc'/%3E%3C/svg%3E"
 </script>
 ```
 
-### 首字母回退 {#initials}
+### Initials fallback {#initials}
 
-没有 `src` 时不画图片，改从 `name` 取首字母：按空白切词、最多取前两词，各取第一个字符再转大写，所以 `Grey Pan` 是 GP、`Ada` 只有 A、`John Michael Doe` 截到 JM。`name` 同时充当无障碍名称。
+Without `src`, no image is drawn and initials are taken from `name`: the name is split on whitespace, at most the first two words are used, and the first character of each is uppercased, so `Grey Pan` gives GP, `Ada` gives only A, and `John Michael Doe` is truncated to JM. `name` also serves as the accessible name.
 
 ```tsx
 export default function Demo() {
@@ -69,9 +69,9 @@ export default function Demo() {
 </template>
 ```
 
-### 图标回退 {#icon-fallback}
+### Icon fallback {#icon-fallback}
 
-`src` 与 `name` 都留空、`default` 插槽也空着时，回退到内置的 `<web-ui-icon>` 人形图标。它没有名字可播报，于是整个头像按装饰性内容处理（见下面的行为说明）。
+When `src` and `name` are both empty and the `default` slot is empty too, it falls back to the built-in `<web-ui-icon>` person icon. That icon has no name to announce, so the whole avatar is treated as decorative content (see Behavior below).
 
 ```tsx
 export default function Demo() {
@@ -95,13 +95,13 @@ export default function Demo() {
 </template>
 ```
 
-### 尺寸 {#sizes}
+### Sizes {#sizes}
 
-`size` 是唯一尺寸旋钮：它写成方盒的内联宽高，并同步成 `--wui-avatar-size` 供影子内部取值，圆形档的高光圆角按它的一半算（方形档固定 12px）。
+`size` is the only size knob: it is written as the inline width and height of the square box and mirrored into `--wui-avatar-size` for use inside the shadow root, and the highlight radius of the circle shape is derived from half of it (the square shape is fixed at 12px).
 
-回退内容跟着它走：首字母字号取 `size` 的 40%，默认图标按同一比例取整。
+Fallback content follows it: the initials font size is 40% of `size`, and the default icon is rounded at the same ratio.
 
-图片按 `object-fit: cover` 裁进这个方盒，长宽比不一致时居中裁切而不是拉伸。
+The image is cropped into this square box with `object-fit: cover`, so a mismatched aspect ratio is center-cropped rather than stretched.
 
 ```tsx
 export default function Demo() {
@@ -131,12 +131,12 @@ export default function Demo() {
 </template>
 ```
 
-### 方形 {#square}
+### Square {#square}
 
-`shape="square"` 把圆角收到 12px 的方块，图片、首字母与默认图标三种内容共用这一档形状。非法值不参与渲染，会被规范回 `circle`。
+`shape="square"` pulls the radius in to a 12px square, and image, initials, and the default icon all share this shape. Invalid values take no part in rendering and are normalized to `circle`.
 
 ```tsx
-// 示例图是一段内联 SVG：语料不带二进制素材，也不依赖网络。
+// The sample image is an inline SVG: the corpus ships no binary assets and does not depend on the network.
 const photo =
   "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='96' height='96'%3E%3Crect width='96' height='96' fill='%234f46e5'/%3E%3Ccircle cx='48' cy='56' r='22' fill='%23c7d2fe'/%3E%3Ccircle cx='48' cy='92' r='26' fill='%23a5b4fc'/%3E%3C/svg%3E"
 
@@ -161,15 +161,15 @@ export default function Demo() {
 </template>
 
 <script setup lang="ts">
-// 示例图是一段内联 SVG：语料不带二进制素材，也不依赖网络。
+// The sample image is an inline SVG: the corpus ships no binary assets and does not depend on the network.
 const photo =
   "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='96' height='96'%3E%3Crect width='96' height='96' fill='%234f46e5'/%3E%3Ccircle cx='48' cy='56' r='22' fill='%23c7d2fe'/%3E%3Ccircle cx='48' cy='92' r='26' fill='%23a5b4fc'/%3E%3C/svg%3E"
 </script>
 ```
 
-### 加载失败 {#error}
+### Load failure {#error}
 
-图片 `error` 之后组件按回退处理：有 `name` 就出首字母，没有就出默认图标，不会留下破图。回退判定按 `src` 生效——换掉 `src` 时上一次的失败记录会被清掉。
+After the image reports `error`, the component treats it as a fallback: initials if there is a `name`, otherwise the default icon, never a broken image. The fallback decision applies per `src`—replacing `src` clears the previous failure record.
 
 ```tsx
 export default function Demo() {
@@ -191,9 +191,9 @@ export default function Demo() {
 </template>
 ```
 
-### 自定义降级内容 {#slot}
+### Custom fallback content {#slot}
 
-`default` 插槽用来替换首字母或默认图标，例如用工号、等级标记填上这个位置。插槽内容按元素子节点判定，只要有一个元素就生效，并且优先于 `name`。
+The `default` slot replaces the initials or the default icon, for example to fill the spot with an employee ID or a rank marker. Slot content is judged by element children: a single element is enough to take effect, and it wins over `name`.
 
 ```tsx
 export default function Demo() {
@@ -204,7 +204,7 @@ export default function Demo() {
       </web-ui-avatar>
 
       <web-ui-avatar name="Grey Pan" size={56}>
-        <span className="text-lg">客</span>
+        <span className="text-lg">Guest</span>
       </web-ui-avatar>
     </div>
   )
@@ -219,7 +219,7 @@ export default function Demo() {
     </web-ui-avatar>
 
     <web-ui-avatar name="Grey Pan" :size="56">
-      <span class="text-lg">客</span>
+      <span class="text-lg">Guest</span>
     </web-ui-avatar>
   </div>
 </template>
@@ -229,40 +229,40 @@ export default function Demo() {
 
 ### Props
 
-| 名称    | 说明                                | 类型                   | 默认值     |
-| ------- | ----------------------------------- | ---------------------- | ---------- |
-| `src`   | 图片 URL；留空或加载失败时回退。    | `string`               | `''`       |
-| `alt`   | 图片替代文本。                      | `string`               | `''`       |
-| `name`  | 展示名称，用于首字母回退。          | `string`               | `''`       |
-| `size`  | avatar 边长（px）。                 | `number`               | `40`       |
-| `shape` | 形状：`circle`（默认）或 `square`。 | `'circle' \| 'square'` | `'circle'` |
+| Name    | Description                                             | Type                   | Default    |
+| ------- | ------------------------------------------------------- | ---------------------- | ---------- |
+| `src`   | Image URL; falls back when empty or when loading fails. | `string`               | `''`       |
+| `alt`   | Image alternative text.                                 | `string`               | `''`       |
+| `name`  | Display name, used for the initials fallback.           | `string`               | `''`       |
+| `size`  | avatar edge length (px).                                | `number`               | `40`       |
+| `shape` | Shape: `circle` (default) or `square`.                  | `'circle' \| 'square'` | `'circle'` |
 
 ### Slots
 
-| 名称      | 说明                                       |
-| --------- | ------------------------------------------ |
-| `default` | 图片加载失败时的降级内容，替代默认首字母。 |
+| Name      | Description                                                                    |
+| --------- | ------------------------------------------------------------------------------ |
+| `default` | Fallback content when the image fails to load, replacing the default initials. |
 
-### 行为说明
+### Behavior
 
-三种内容互斥，按 `src` → `default` 插槽 → `name` 首字母 → 默认图标的顺序取第一个能画的：`src` 有值且没报过错就画图片；`src` 留空或报 `error` 时进入回退态，回退态里只要 `default` 插槽有元素子节点就不再画首字母与图标，否则按 `name` 出首字母、`name` 也为空时出内置的 `lucideUser`。
+The three kinds of content are mutually exclusive, and the first one that can be drawn wins in the order `src` → `default` slot → initials from `name` → default icon: an image is drawn when `src` has a value and has not errored; when `src` is empty or reports `error` the component enters the fallback state, where any element child in the `default` slot suppresses both initials and icon, otherwise initials come from `name`, and when `name` is empty too the built-in `lucideUser` is drawn.
 
-`shape` 走字面量白名单：只认 `circle` / `square`，其他值（含空串）回落到 `circle` 并修正宿主 attribute。
+`shape` goes through a literal allowlist: only `circle` / `square` are accepted, and any other value (including an empty string) falls back to `circle` and the host attribute is corrected.
 
-`size` 没有这层规范化，它是原样反射的数值属性，`size="abc"` 这类解析不出数值的输入会当 `NaN` 用下去，因此它的取值范围由页面自己保证。
+`size` has no such normalization. It is a numeric property reflected as-is, so input that does not parse to a number, such as `size="abc"`, is used as `NaN`; keeping its value in range is therefore up to the page.
 
-无障碍名按 `alt` → `name` 的顺序取，取到了才声明 `role="img"` 并写 `aria-label`；两个都留空时这块头像按装饰处理，影子节点是 `role="presentation"` 且 `aria-hidden="true"`，屏幕阅读器不会播报它。
+The accessible name is taken in the order `alt` → `name`; only when one is found does it declare `role="img"` and write `aria-label`. When both are empty the avatar is treated as decorative: the shadow node is `role="presentation"` with `aria-hidden="true"`, so screen readers do not announce it.
 
-所以「只有头像、名字在头像外面」的写法里，这个头像本来就不该被播报。
+So in the pattern where the avatar is the only visual and the name sits outside it, this avatar should not be announced in the first place.
 
-首字母取自 `name` 的前两个词的第一个字符并转大写。中文这类按空格分不开的名字因此只会取到第一个字（`潘某某` 出「潘」），要两个字就自己把词分开，或者改用 `default` 插槽。字号是 `size` 的 40%，默认图标按同一比例取整，所以小头像不会塞不下字。
+Initials are the first character of the first two words of `name`, uppercased. Names that cannot be split on spaces, such as Chinese ones, therefore yield only the first character (`潘某某` yields `潘`); to get two characters, split the words yourself or switch to the `default` slot. The font size is 40% of `size` and the default icon is rounded at the same ratio, so small avatars still fit the text.
 
-### 布局
+### Layout
 
-宿主是 inline-block、`line-height: 0`，方盒由 `size` 定边长，`--wui-avatar-size` 同步写成内联值供影子内部使用。
+The host is inline-block with `line-height: 0`; `size` sets the edge length of the square box, and the same value is written inline to `--wui-avatar-size` for use inside the shadow root.
 
-圆形档的圆角走 `--wui-radius-control`（默认是 pill），方形档是 12px，`--wui-glass-corner-radius` 也跟着这两档走，所以回退态的高光渐变与盒形不会错位。
+The circle shape takes its radius from `--wui-radius-control` (pill by default) and the square shape uses 12px; `--wui-glass-corner-radius` follows these two cases as well, so the highlight gradient of the fallback state does not misalign with the box shape.
 
-回退态会挂上 glass 材质，从那里拿到模糊、内描边环与投影；底色使用 `--wui-color-surface-raised`，首字母与默认图标使用 `--wui-color-text`，会随主题切换。图片态只有图片本身。
+The fallback state carries the glass material, which supplies the blur, inner stroke ring, and shadow; the background uses `--wui-color-surface-raised`, while initials and the default icon use `--wui-color-text` and therefore follow theme switches. The image state has only the image itself.
 
-`default` 插槽的盒是绝对定位铺满整个头像并居中，它不参与「该画什么」的判定，因此给了 `src` 且图片成功加载时插槽内容会叠在图片之上，而不是被藏起来——降级内容和图片是二选一的关系，别同时给。组件没有对外的 CSS 变量旋钮，尺寸与形状都归 `size` / `shape`。
+The `default` slot box is absolutely positioned, filling the whole avatar and centered. It takes no part in deciding what to draw, so when `src` is set and the image loads successfully the slot content is layered on top of the image rather than hidden—fallback content and the image are alternatives, so do not supply both. The component exposes no CSS variable knobs; size and shape both belong to `size` / `shape`.

@@ -12,7 +12,7 @@
 
 当前实现选择了**模式 A：三元素 compound 组件族**，与 segmented/segmented-trigger 先例对齐（ADR-0030 第 3 节）。
 
-用法（`packages/web-ui/docs/collapse.md` 的锚点示例，生成到两端 demo 的 `src/generated/demos/`）：
+用法（`packages/web-ui/docs/collapse.CN.md` 的锚点示例，生成到两端 demo 的 `src/generated/**/demos/`）：
 
 ```html
 <web-ui-collapse open="{...}">
