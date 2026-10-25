@@ -217,6 +217,43 @@ describe('应用外壳（浏览器）：导航 collapsed state 不跨视口泄�
     expect([...navRoot().querySelectorAll('a span')].map(label => label.textContent?.trim())).toEqual(fullLabels)
   })
 
+  it('挂载时已有 toast，banner 扩高后 header 保持默认纵向间距', async () => {
+    const toastId = 'root-mount-toast'
+
+    try {
+      await act(async () => {
+        toast.info('持续显示', { id: toastId, position: 'top-right', duration: 0 })
+        await Promise.resolve()
+        await nextFrame()
+        await nextFrame()
+      })
+      await mountAppShell()
+      const header = layoutRoot().querySelector<HTMLElement>('[slot="header"]')
+      const banner = layoutRoot().querySelector<HTMLElement>('[slot="banner"]')
+      if (!header) throw new Error('header not found')
+      if (!banner) throw new Error('banner not found')
+
+      await waitFor(() => {
+        const toastElement = findToast(toastId)
+        if (!toastElement?.visible) throw new Error('top-right toast not visible')
+        expect(banner.getBoundingClientRect().bottom).toBeGreaterThanOrEqual(
+          toastElement.getBoundingClientRect().bottom
+        )
+        const computedStyle = getComputedStyle(header)
+        expect(computedStyle.paddingTop).toBe(computedStyle.paddingBottom)
+      })
+    } finally {
+      await act(async () => {
+        toast.clear()
+        await Promise.resolve()
+        await nextFrame()
+      })
+      await waitFor(() => {
+        if (findToast(toastId)) throw new Error('toast did not close')
+      })
+    }
+  })
+
   it('右上角 toast 显示时滚过 banner，sticky header 控件仍避开 toast', async () => {
     await mountAppShell()
     const toastId = 'root-sticky-header-toast'
@@ -236,6 +273,12 @@ describe('应用外壳（浏览器）：导航 collapsed state 不跨视口泄�
 
       await waitFor(() => {
         if (!findToast(toastId)?.visible) throw new Error('top-right toast not visible')
+      })
+      const header = layoutRoot().querySelector<HTMLElement>('[slot="header"]')
+      if (!header) throw new Error('header not found')
+      await waitFor(() => {
+        const computedStyle = getComputedStyle(header)
+        expect(computedStyle.paddingTop).toBe(computedStyle.paddingBottom)
       })
       const bannerCloseButton = layoutRoot().querySelector<HTMLElement>('[slot="banner"] web-ui-button')
       if (!bannerCloseButton) throw new Error('banner close button not found')

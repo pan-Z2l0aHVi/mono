@@ -293,6 +293,14 @@ export function Root() {
       resizeObserver?.disconnect()
     }
   }, [])
+  useLayoutEffect(() => {
+    // Safe-area state changes the banner height; remeasure the sticky header after that layout commits.
+    const header = layoutRef.current?.querySelector<HTMLElement>('[slot="header"]')
+    const headerTop = header?.getBoundingClientRect().top ?? window.innerHeight
+    const requiredHeaderPaddingTop = topRightToastSafeBottom > 0 ? Math.max(8, topRightToastSafeBottom - headerTop) : 8
+    setTopRightToastHeaderPaddingTop(requiredHeaderPaddingTop > 8 ? requiredHeaderPaddingTop : 0)
+  }, [bannerVisible, topRightToastSafeBottom])
+
   const hasTopRightToast = topRightToastSafeBottom > 0
   const toastSafeAreaStyle = hasTopRightToast
     ? ({ '--toast-safe-bottom': `${topRightToastSafeBottom}px` } as React.CSSProperties)
