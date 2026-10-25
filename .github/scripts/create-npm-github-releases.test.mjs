@@ -114,6 +114,65 @@ try {
   }
 
   {
+    const tag = '@greypan/alpha@1.2.0'
+    const gh = adapter({ [tag]: { draft: false, targetSha: 'b'.repeat(40) } })
+    await assert.rejects(
+      createReleasesForPackages({
+        packages: [packages[1]],
+        root,
+        repository,
+        mergeSha,
+        adapter: gh,
+        log
+      }),
+      /tag .*expected/
+    )
+    assert.deepEqual(gh.created, [])
+  }
+
+  {
+    const tag = '@greypan/alpha@1.2.0'
+    const gh = adapter({ [tag]: { draft: true, targetSha: mergeSha } })
+    await assert.rejects(
+      createReleasesForPackages({
+        packages: [packages[1]],
+        root,
+        repository,
+        mergeSha,
+        adapter: gh,
+        log
+      }),
+      /is not published/
+    )
+    assert.deepEqual(gh.created, [])
+  }
+
+  {
+    const tag = '@greypan/alpha@1.2.0'
+    const inner = adapter()
+    const gh = {
+      findRelease: inner.findRelease,
+      createRelease: inner.createRelease,
+      resolveTag: async value => (inner.tags.get(value) === mergeSha ? 'b'.repeat(40) : null)
+    }
+    await assert.rejects(
+      createReleasesForPackages({
+        packages: [packages[1]],
+        root,
+        repository,
+        mergeSha,
+        adapter: gh,
+        log
+      }),
+      /was created but did not verify/
+    )
+    assert.deepEqual(
+      inner.created.map(({ tag: created }) => created),
+      [tag]
+    )
+  }
+
+  {
     const calls = []
     const spawn = (_command, args) => {
       calls.push(args)
