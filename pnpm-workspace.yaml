@@ -67,8 +67,9 @@ catalog:
   overlayscrollbars-react: ^0.5.6
   overlayscrollbars-vue: ^0.5.10
   # oxc 的 React Compiler（Rust）实现，由 @vitejs/plugin-react 的 `compiler` 选项按需加载。
-  # 独立 native 二进制，和 rolldown/vite-plus 内置的 oxc 不同源，不必对齐版本；但它同时受
-  # plugin-react 的 peer 段（`^0.145.0`，0.x 的 caret 只放到 0.155.x）约束，升级先看那条。
+  # 独立 native 二进制，和 rolldown/vite-plus 内置的 oxc 不同源，不必对齐版本；但
+  # plugin-react@6.1.1 的 peer 段写的是 `^0.145.0`（0.x 的 caret 只覆盖 0.145.x），这里装的
+  # 0.155.0 已超出该段——上游每个 minor 都发新版、peer 声明滞后，实测可用；升级前先看 peer 是否已放宽。
   oxc-transform-react: ^0.155.0
   pinia: ^4.0.2
   playwright: ^1.61.1
