@@ -146,3 +146,7 @@ msgstr "Light/dark & motion preferences"
 #: src/routes/home/-component.tsx
 msgid "常用组件快速预览"
 msgstr "Popular components at a glance"
+
+#: src/components/root/index.tsx
+msgid "关闭横幅"
+msgstr "Close banner"
