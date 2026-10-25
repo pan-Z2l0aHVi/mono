@@ -4,7 +4,6 @@ import os from 'node:os'
 import path from 'node:path'
 
 import {
-  createNpmRegistryLookup,
   createNpmReleaseAdapter,
   createReleasesForPackages,
   parsePackageReleases
@@ -45,7 +44,6 @@ function adapter(initial = {}) {
 }
 
 const log = { log() {} }
-const fastRetry = { retryDelays: [0], wait: async () => {} }
 
 try {
   {
@@ -65,39 +63,6 @@ try {
   }
 
   {
-    let call
-    const lookup = createNpmRegistryLookup({
-      spawn: (_command, args) => {
-        call = args
-        return { status: 0, stdout: '"1.2.0"', stderr: '' }
-      }
-    })
-    assert.equal(await lookup(packages[1].name, packages[1].version), true)
-    assert.deepEqual(call, [
-      'view',
-      '@greypan/alpha@1.2.0',
-      'version',
-      '--json',
-      '--registry=https://registry.npmjs.org'
-    ])
-
-    const absent = createNpmRegistryLookup({
-      spawn: () => ({ status: 1, stdout: '', stderr: 'npm ERR! code E404' })
-    })
-    assert.equal(await absent(packages[1].name, packages[1].version), false)
-
-    const unauthorized = createNpmRegistryLookup({
-      spawn: () => ({ status: 1, stdout: '', stderr: 'npm ERR! code E401' })
-    })
-    await assert.rejects(unauthorized(packages[1].name, packages[1].version), /E401/)
-
-    const wrongVersion = createNpmRegistryLookup({
-      spawn: () => ({ status: 0, stdout: '"1.2.1"', stderr: '' })
-    })
-    await assert.rejects(wrongVersion(packages[1].name, packages[1].version), /returned "1.2.1"/)
-  }
-
-  {
     const gh = adapter()
     const selectedByVersionDiff = [packages[1]]
     const result = await createReleasesForPackages({
@@ -105,10 +70,8 @@ try {
       root,
       repository,
       mergeSha,
-      lookupRegistry: async () => true,
       adapter: gh,
-      log,
-      ...fastRetry
+      log
     })
     assert.deepEqual(result, selectedByVersionDiff)
     assert.deepEqual(
@@ -119,24 +82,6 @@ try {
   }
 
   {
-    const gh = adapter()
-    await assert.rejects(
-      createReleasesForPackages({
-        packages: [packages[1]],
-        root,
-        repository,
-        mergeSha,
-        lookupRegistry: async () => false,
-        adapter: gh,
-        log,
-        ...fastRetry
-      }),
-      /still absent after registry retries/
-    )
-    assert.deepEqual(gh.created, [])
-  }
-
-  {
     const tag = '@greypan/alpha@1.2.0'
     const gh = adapter({ [tag]: { draft: false, targetSha: mergeSha } })
     await createReleasesForPackages({
@@ -144,10 +89,8 @@ try {
       root,
       repository,
       mergeSha,
-      lookupRegistry: async () => true,
       adapter: gh,
-      log,
-      ...fastRetry
+      log
     })
     assert.deepEqual(gh.created, [])
   }
@@ -162,10 +105,8 @@ try {
         root,
         repository,
         mergeSha,
-        lookupRegistry: async () => true,
         adapter: gh,
-        log,
-        ...fastRetry
+        log
       }),
       /tag .*expected/
     )

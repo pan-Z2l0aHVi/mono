@@ -4,34 +4,6 @@ import path from 'node:path'
 
 import { createGitHubApi, run } from './lib/github.mjs'
 
-const npmRegistry = 'https://registry.npmjs.org'
-
-export function createNpmRegistryLookup({ npm = 'npm', env = process.env, spawn = spawnSync } = {}) {
-  return async (name, version) => {
-    const args = ['view', `${name}@${version}`, 'version', '--json', `--registry=${npmRegistry}`]
-    const result = spawn(npm, args, { encoding: 'utf8', env })
-    if (result.error) throw new Error(`could not start npm view for ${name}@${version}: ${result.error.message}`)
-    if (result.status === 0) {
-      const stdout = (result.stdout ?? '').trim()
-      let value
-      try {
-        value = JSON.parse(stdout)
-      } catch {
-        value = stdout.replace(/^['"]|['"]$/g, '')
-      }
-      if (Array.isArray(value) && value.length === 1) value = value[0]
-      if (value !== version) {
-        throw new Error(`npm view returned ${JSON.stringify(value)} for ${name}@${version}`)
-      }
-      return true
-    }
-    const message = `${result.stderr ?? ''}\n${result.stdout ?? ''}`
-    if (/\bE404\b|HTTP\s+404|404\s+Not Found/i.test(message)) return false
-    const reason = result.signal ? `signal ${result.signal}` : `exit ${result.status}`
-    throw new Error(`npm view failed for ${name}@${version} (${reason}): ${message.trim() || 'no diagnostic output'}`)
-  }
-}
-
 export async function parsePackageReleases(value, { root = process.cwd() } = {}) {
   let packages
   try {
@@ -108,16 +80,14 @@ export function createNpmReleaseAdapter({
   return { findRelease, resolveTag, createRelease }
 }
 
+// publish job 成功即视为版本已发布；刻意不做 npm registry 回查与重试，取舍见 docs/agents/release.md「npm 发布重跑与 release notes」。
 export async function createReleasesForPackages({
   packages,
   root = process.cwd(),
   repository,
   mergeSha,
-  lookupRegistry,
   adapter,
-  log = console,
-  retryDelays = [0, 1000, 2000, 4000],
-  wait = delay => new Promise(resolve => setTimeout(resolve, delay))
+  log = console
 }) {
   if (typeof repository !== 'string' || !/^[^/]+\/[^/]+$/.test(repository)) {
     throw new Error('GITHUB_REPOSITORY must be owner/repository')
@@ -125,24 +95,10 @@ export async function createReleasesForPackages({
   if (typeof mergeSha !== 'string' || !/^[0-9a-f]{40}$/i.test(mergeSha)) {
     throw new Error('MERGE_SHA must be a 40-character commit SHA')
   }
-  if (typeof lookupRegistry !== 'function') throw new Error('lookupRegistry must be a function')
   const candidates = await parsePackageReleases(packages, { root })
   const published = []
 
   for (const candidate of candidates) {
-    let foundInRegistry = false
-    for (let attempt = 0; attempt < retryDelays.length; attempt++) {
-      if (retryDelays[attempt] > 0) await wait(retryDelays[attempt])
-      if (await lookupRegistry(candidate.name, candidate.version)) {
-        foundInRegistry = true
-        break
-      }
-    }
-    if (!foundInRegistry) {
-      throw new Error(
-        'npm version ' + candidate.name + '@' + candidate.version + ' is still absent after registry retries'
-      )
-    }
     published.push(candidate)
 
     const tag = candidate.name + '@' + candidate.version
@@ -189,7 +145,6 @@ async function main() {
     root: process.cwd(),
     repository,
     mergeSha,
-    lookupRegistry: createNpmRegistryLookup(),
     adapter: createNpmReleaseAdapter({ repository, mergeSha })
   })
 }

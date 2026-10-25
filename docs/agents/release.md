@@ -27,7 +27,7 @@ PR CI 的机械性修复由对应 task owner 处理；逻辑、测试和契约�
 
 ## npm 发布重跑与 release notes
 
-`prepare` 从 merge commit 检测本次版本化的公共包，把包名、版本与目录作为 job 输出传给后续 job；不产生 receipt 或可复用的中间产物。`publish` 成功后 `release-notes` 才运行，逐个候选包查询官方 npm registry，用有限退避重试；仍查不到版本时整体失败，不创建 GitHub Release，也不把该版本当作已发布。已存在且指向当前 merge SHA 的 published release 直接跳过并记录；指向其它 SHA 或仍为 draft 时失败。新建 release 后重新读取并核对 draft 状态与 tag 指向。重跑按当前 merge commit 重新检测候选包，因此重复执行是幂等的，但不能据此推算历史上是否发布过。workflow 按仓库串行，后一次运行排队而非取消前一次。
+`prepare` 从 merge commit 检测本次版本化的公共包，把包名、版本与目录作为 job 输出传给后续 job；不产生 receipt 或可复用的中间产物。`publish` 成功即视为版本已发布，`release-notes` 不查询 npm registry、不等待其可见性——npm publish 受理与 registry 落库是异步的，传播延迟不阻塞发布链；npm 侧未实际落库时可能产生指向不存在版本的 Release，这是对齐 changesets/action、release-please 等主流信任式发布而接受的取舍。release-notes 直接为候选包创建 GitHub Release：已存在且指向当前 merge SHA 的 published release 直接跳过并记录；指向其它 SHA 或仍为 draft 时失败。新建 release 后重新读取并核对 draft 状态与 tag 指向。重跑按当前 merge commit 重新检测候选包，因此重复执行是幂等的，但不能据此推算历史上是否发布过。workflow 按仓库串行，后一次运行排队而非取消前一次。
 
 ## Wails desktop release 恢复
 
