@@ -182,6 +182,9 @@ catalogs:
     '@iconify-json/akar-icons':
       specifier: ^1.2.7
       version: 1.2.7
+    '@iconify-json/andrsrxn':
+      specifier: ^1.2.2
+      version: 1.2.2
     '@iconify-json/bi':
       specifier: ^1.2.7
       version: 1.2.7
@@ -218,9 +221,6 @@ catalogs:
     '@lit/context':
       specifier: ^1.1.6
       version: 1.1.6
-    '@rolldown/plugin-babel':
-      specifier: ^0.2.3
-      version: 0.2.3
     '@shadcn/lint':
       specifier: ^0.2.0
       version: 0.2.0
@@ -287,9 +287,9 @@ catalogs:
     '@wailsio/runtime':
       specifier: 3.0.0-beta.25
       version: 3.0.0-beta.25
-    babel-plugin-react-compiler:
-      specifier: ^1.0.0
-      version: 1.0.0
+    '@wuchale/jsx':
+      specifier: ^0.13.0
+      version: 0.13.0
     browserslist:
       specifier: ^4.28.5
       version: 4.28.9
@@ -341,6 +341,9 @@ catalogs:
     overlayscrollbars-vue:
       specifier: ^0.5.10
       version: 0.5.10
+    oxc-transform-react:
+      specifier: ^0.155.0
+      version: 0.155.0
     pinia:
       specifier: ^4.0.2
       version: 4.0.3
@@ -440,6 +443,9 @@ catalogs:
     webpack:
       specifier: ^5.99.0
       version: 5.110.3
+    wuchale:
+      specifier: ^0.26.7
+      version: 0.26.7
     zustand:
       specifier: ^5.0.14
       version: 5.0.15
@@ -663,9 +669,6 @@ importers:
       '@greypan/unplugin-web-components':
         specifier: workspace:*
         version: link:../../packages/unplugin-web-components
-      '@rolldown/plugin-babel':
-        specifier: 'catalog:'
-        version: 0.2.3(@babel/core@7.29.7(supports-color@10.2.2))(@babel/runtime@7.29.7)(@voidzero-dev/vite-plus-core@0.3.2(@types/node@26.4.1)(jiti@2.7.0)(terser@5.51.2)(typescript@6.0.3)(yaml@2.9.0))(rolldown@1.2.7)
       '@tailwindcss/vite':
         specifier: 'catalog:'
         version: 4.3.3(@voidzero-dev/vite-plus-core@0.3.2(@types/node@26.4.1)(jiti@2.7.0)(terser@5.51.2)(typescript@6.0.3)(yaml@2.9.0))
@@ -684,15 +687,15 @@ importers:
       '@vitejs/plugin-basic-ssl':
         specifier: 'catalog:'
         version: 2.3.0(@voidzero-dev/vite-plus-core@0.3.2(@types/node@26.4.1)(jiti@2.7.0)(terser@5.51.2)(typescript@6.0.3)(yaml@2.9.0))
-      '@vitejs/plugin-legacy':
-        specifier: 'catalog:'
-        version: 8.2.3(@voidzero-dev/vite-plus-core@0.3.2(@types/node@26.4.1)(jiti@2.7.0)(terser@5.51.2)(typescript@6.0.3)(yaml@2.9.0))(supports-color@10.2.2)(terser@5.51.2)
       '@vitejs/plugin-react':
         specifier: 'catalog:'
-        version: 6.1.1(@rolldown/plugin-babel@0.2.3(@babel/core@7.29.7(supports-color@10.2.2))(@babel/runtime@7.29.7)(@voidzero-dev/vite-plus-core@0.3.2(@types/node@26.4.1)(jiti@2.7.0)(terser@5.51.2)(typescript@6.0.3)(yaml@2.9.0))(rolldown@1.2.7))(@voidzero-dev/vite-plus-core@0.3.2(@types/node@26.4.1)(jiti@2.7.0)(terser@5.51.2)(typescript@6.0.3)(yaml@2.9.0))(babel-plugin-react-compiler@1.0.0)
-      babel-plugin-react-compiler:
+        version: 6.1.1(@rolldown/plugin-babel@0.2.3(@babel/core@7.29.7(supports-color@10.2.2))(@babel/runtime@7.29.7)(@voidzero-dev/vite-plus-core@0.3.2(@types/node@26.4.1)(jiti@2.7.0)(terser@5.51.2)(typescript@6.0.3)(yaml@2.9.0))(rolldown@1.2.7))(@voidzero-dev/vite-plus-core@0.3.2(@types/node@26.4.1)(jiti@2.7.0)(terser@5.51.2)(typescript@6.0.3)(yaml@2.9.0))(babel-plugin-react-compiler@1.0.0)(oxc-transform-react@0.155.0)
+      '@wuchale/jsx':
         specifier: 'catalog:'
-        version: 1.0.0
+        version: 0.13.0(react@19.2.8)
+      oxc-transform-react:
+        specifier: 'catalog:'
+        version: 0.155.0
       tailwindcss:
         specifier: 'catalog:'
         version: 4.3.3
@@ -705,6 +708,9 @@ importers:
       vite-plus:
         specifier: 'catalog:'
         version: 0.3.2(@types/node@26.4.1)(@vitest/browser-playwright@4.1.11)(jiti@2.7.0)(jsdom@30.0.1)(msw@2.15.0(@types/node@26.4.1)(typescript@6.0.3))(terser@5.51.2)(typescript@6.0.3)(yaml@2.9.0)
+      wuchale:
+        specifier: 'catalog:'
+        version: 0.26.7
 
   apps/vue-web-ui-demo:
     dependencies:
@@ -977,6 +983,9 @@ importers:
       '@iconify-json/akar-icons':
         specifier: 'catalog:'
         version: 1.2.7
+      '@iconify-json/andrsrxn':
+        specifier: 'catalog:'
+        version: 1.2.2
       '@iconify-json/bi':
         specifier: 'catalog:'
         version: 1.2.7
@@ -2089,6 +2098,9 @@ packages:
   '@iconify-json/akar-icons@1.2.7':
     resolution: {integrity: sha512-cw44dCnZgGhm6Tywxm0WALAnDB9AyGkDk7kiLMo2B/Ayt7duZu/uyrsqb55weWUN8Ge2sQAOl8MRtT6bFcLzPg==}
 
+  '@iconify-json/andrsrxn@1.2.2':
+    resolution: {integrity: sha512-ykv0OHh694O4EhIk1ARsB7Z/VQWzUHTUpdTVECwCYys/GLhEcUFVuADpDj6WH3w5DZM5yjyTjnZ/4IXKdCOZ/Q==}
+
   '@iconify-json/bi@1.2.7':
     resolution: {integrity: sha512-IPz8WNxmLkH1I9msl+0Q4OnmjjvP4uU0Z61a4i4sqonB6vKSbMGUWuGn8/YuuszlReVj8rf+3gNv5JU8Xoljyg==}
 
@@ -2388,6 +2400,128 @@ packages:
 
   '@oxc-project/types@0.149.0':
     resolution: {integrity: sha512-Efcc+iF0j3Bf67YjEqIqWXbX5XddXoK/Mw4K1/JuXwRCZ8N16VR7iT23nlCc9XrveFVh/E5Rqs2StT0V8v9LdA==}
+
+  '@oxc-transform-react/binding-android-arm-eabi@0.155.0':
+    resolution: {integrity: sha512-X0gdaAcnVLdTUduUdsJ7pRPDpTwhiHRcq8wOC37HXMA1L5XaHbu/zQkeCmb84CChiIvRiQqHF6WkO8DLl62yeA==}
+    engines: {node: ^20.19.0 || >=22.12.0}
+    cpu: [arm]
+    os: [android]
+
+  '@oxc-transform-react/binding-android-arm64@0.155.0':
+    resolution: {integrity: sha512-OtYUiF+jniic0JVMoyZPABnSckQUjDJwIyawDCjq8dM5f0bTDvURKgbDJrL7tR+Z86xvdxkvzwtqb0Xb+HlrBA==}
+    engines: {node: ^20.19.0 || >=22.12.0}
+    cpu: [arm64]
+    os: [android]
+
+  '@oxc-transform-react/binding-darwin-arm64@0.155.0':
+    resolution: {integrity: sha512-6EjLyB0XcCaXDWS8/q7QfMdmEGkeI11L9dtKu7Ju3Pl0dRKLcwXVdzdjGP3itzHy4RDbEAuVlCwO6lfFRpkiWg==}
+    engines: {node: ^20.19.0 || >=22.12.0}
+    cpu: [arm64]
+    os: [darwin]
+
+  '@oxc-transform-react/binding-darwin-x64@0.155.0':
+    resolution: {integrity: sha512-n80yhAy3DNm3u5OqJDpNf+S7gaNpWyICSCoiTt6+oO9YC9oWkm/ywc12Qwrg7wCFtvniR64w+hWjkxKjETdscw==}
+    engines: {node: ^20.19.0 || >=22.12.0}
+    cpu: [x64]
+    os: [darwin]
+
+  '@oxc-transform-react/binding-freebsd-x64@0.155.0':
+    resolution: {integrity: sha512-zZH3IX7fFrQA+zmy/amDrAe1OxqJl3vBmh+yROvsfPPaUWSn8+0Z451F9tMGhQ1iL6miBcDUHChBOVjfaJXBUg==}
+    engines: {node: ^20.19.0 || >=22.12.0}
+    cpu: [x64]
+    os: [freebsd]
+
+  '@oxc-transform-react/binding-linux-arm-gnueabihf@0.155.0':
+    resolution: {integrity: sha512-/WnW+j/lVYwNHzaFK6uONgbC9M1S7nTWV+ONe7F9pDz3xCfvhTeWTDrqN84/vrPbxT7Xh9j3PXVnU2cw+L2NHQ==}
+    engines: {node: ^20.19.0 || >=22.12.0}
+    cpu: [arm]
+    os: [linux]
+
+  '@oxc-transform-react/binding-linux-arm-musleabihf@0.155.0':
+    resolution: {integrity: sha512-VzH6NX11/y0S4nhvYRYWP54G7VPhTy7MoHiAp1nOsRIOaGssUATn1/fLglgz2EgJmxr5AHy1SK9dDd/PUmW5iQ==}
+    engines: {node: ^20.19.0 || >=22.12.0}
+    cpu: [arm]
+    os: [linux]
+
+  '@oxc-transform-react/binding-linux-arm64-gnu@0.155.0':
+    resolution: {integrity: sha512-mLF5v1yiJghvDG5wUXWv9P0iEItM3EuFgSFfqdyY134fUsU5f7t5B7nxLr4T7DrEUWhs1+SwKNWZA+Mv4HSFiw==}
+    engines: {node: ^20.19.0 || >=22.12.0}
+    cpu: [arm64]
+    os: [linux]
+    libc: [glibc]
+
+  '@oxc-transform-react/binding-linux-arm64-musl@0.155.0':
+    resolution: {integrity: sha512-EkBHEZKR4kDTU7+/mdleIu6VREm0zsQwDzQXAsMvbaRsmy8RkD8tOiXPNh6vyyqtahkLhEdj4vBs9c9h9iO66A==}
+    engines: {node: ^20.19.0 || >=22.12.0}
+    cpu: [arm64]
+    os: [linux]
+    libc: [musl]
+
+  '@oxc-transform-react/binding-linux-ppc64-gnu@0.155.0':
+    resolution: {integrity: sha512-Iz26Sm7q5tO2h+da6leks3y62raTyZp32n3FX6WydxsecbFNzKpm+rKNPoti9Syd3u03rmkYlS8q7tPQMLLjUw==}
+    engines: {node: ^20.19.0 || >=22.12.0}
+    cpu: [ppc64]
+    os: [linux]
+    libc: [glibc]
+
+  '@oxc-transform-react/binding-linux-riscv64-gnu@0.155.0':
+    resolution: {integrity: sha512-CvKMO4MNKLdmy8Q75r1rwBz+VBcSYDObCyQaJOLWAwJnsWXiV7I788N4p2iWUYPWPmfvUd6d0UrrRz5ma5CCnw==}
+    engines: {node: ^20.19.0 || >=22.12.0}
+    cpu: [riscv64]
+    os: [linux]
+    libc: [glibc]
+
+  '@oxc-transform-react/binding-linux-riscv64-musl@0.155.0':
+    resolution: {integrity: sha512-OfYtP9jEMZwdnjPLVrrMvy3CQSqwdQJw6Q6YU23fObDECt1lEe2o+TJ6nFgDVAKhTl7pc9dca3vGXRgNfiBfoA==}
+    engines: {node: ^20.19.0 || >=22.12.0}
+    cpu: [riscv64]
+    os: [linux]
+    libc: [musl]
+
+  '@oxc-transform-react/binding-linux-s390x-gnu@0.155.0':
+    resolution: {integrity: sha512-u5USLM5psVaNX2KEzTwfcKlzgGI16EY7Iod/Z/7Fw9FwBQiN+DUyhC99NL63aJ/Qyq0N5HIG4Y95DIEekc+EfQ==}
+    engines: {node: ^20.19.0 || >=22.12.0}
+    cpu: [s390x]
+    os: [linux]
+    libc: [glibc]
+
+  '@oxc-transform-react/binding-linux-x64-gnu@0.155.0':
+    resolution: {integrity: sha512-Kbddg5Eu/B+l6xW0CS5kaNNRK79IWu7o4NsDkn8SMz7k0N8CHV5watP0pscPIUuxcknBZkQxGqQ+b+qV7B18vA==}
+    engines: {node: ^20.19.0 || >=22.12.0}
+    cpu: [x64]
+    os: [linux]
+    libc: [glibc]
+
+  '@oxc-transform-react/binding-linux-x64-musl@0.155.0':
+    resolution: {integrity: sha512-hFZ69Mh6rZ1XeqSv4njgAB5WgKGBSTgH596EHusayzH+jtgczsMPK81k4SWlguKxrrzIqezLC8pyzhgruaNQGw==}
+    engines: {node: ^20.19.0 || >=22.12.0}
+    cpu: [x64]
+    os: [linux]
+    libc: [musl]
+
+  '@oxc-transform-react/binding-openharmony-arm64@0.155.0':
+    resolution: {integrity: sha512-XikOLTZAchqLWNep6ptHZnA47EGlV0s7zpCA7iPRuiM/V9xfgqBbolryFu9/lNjoN6twmt8k0aRuW0frxSTVNQ==}
+    engines: {node: ^20.19.0 || >=22.12.0}
+    cpu: [arm64]
+    os: [openharmony]
+
+  '@oxc-transform-react/binding-win32-arm64-msvc@0.155.0':
+    resolution: {integrity: sha512-3aJKnNR9dBcSTfrrB3PxaYP5N1Myua8DZSHhe4SEp8M/SusvxdaK6bf9h6h801UsQB66S75fk4iTyEShLHZztA==}
+    engines: {node: ^20.19.0 || >=22.12.0}
+    cpu: [arm64]
+    os: [win32]
+
+  '@oxc-transform-react/binding-win32-ia32-msvc@0.155.0':
+    resolution: {integrity: sha512-i2ZSZ79dSgVvC+Ksxju3/4p9+6vXzbeY7iOoBreL4mNOCjQziYChdv5Z921V9AZ4E4LVnD/NoHpez6M8T0Ga3A==}
+    engines: {node: ^20.19.0 || >=22.12.0}
+    cpu: [ia32]
+    os: [win32]
+
+  '@oxc-transform-react/binding-win32-x64-msvc@0.155.0':
+    resolution: {integrity: sha512-lrPIzcUHw/hB/LuT/G639+IrPCvvMlthF3xCE9grz1IbsSk+22sb5zyCxTvmpBxZR7/E1ckwZdnw7AmpAd+7Jg==}
+    engines: {node: ^20.19.0 || >=22.12.0}
+    cpu: [x64]
+    os: [win32]
 
   '@oxfmt/binding-android-arm-eabi@0.67.0':
     resolution: {integrity: sha512-2olh3ioEmc4gRzQm7jxyB1b/PFBoFvTq8KdgYySeNpysDtA6DEg2Mvya4/I6flhL7G0eOrE8RD7JCNCIMhE16Q==}
@@ -3038,6 +3172,11 @@ packages:
 
   '@standard-schema/spec@1.1.0':
     resolution: {integrity: sha512-l2aFy5jALhniG5HgqrD6jXLi/rUWrKvqN/qJx6yoJsgKhblVd+iqqU4RCXavm/jPityDo5TCvKMnpjKnOriy0w==}
+
+  '@sveltejs/acorn-typescript@1.0.13':
+    resolution: {integrity: sha512-wgKggnhZVL9Bfx1OaKKTrYY9BFRk6C8UAkQNUcIv1+llzYrIqy+RZm5HPKzn0NpEBvTVhTqB4kQyllZywsRBRQ==}
+    peerDependencies:
+      acorn: ^8.9.0
 
   '@tailwindcss/node@4.3.3':
     resolution: {integrity: sha512-/T8IKEsf9VTU6tLjgC7+sv2mOPtQxzE2jMw7u4Tt40Tx+QSZxpzh95/H6cMKoja9XuW7iMdLJYBB0o9G1CaAgg==}
@@ -3744,6 +3883,17 @@ packages:
 
   '@webassemblyjs/wast-printer@1.14.1':
     resolution: {integrity: sha512-kPSSXE6De1XOR820C90RIo2ogvZG+c3KiHzqUoO/F34Y2shGzesfqv7o57xrxovZJH/MetF5UjroJ/R/3isoiw==}
+
+  '@wuchale/jsx@0.13.0':
+    resolution: {integrity: sha512-CQhwbbIjl/ncMdHE5zurn9/l/jd0YSbSYWQEGmnRrTvpkwklnxQ9Xk2dD8n1Ik/Rpj1schxFJycZoFStfTYXGg==}
+    peerDependencies:
+      react: ^19.1
+      solid-js: ^1.9
+    peerDependenciesMeta:
+      react:
+        optional: true
+      solid-js:
+        optional: true
 
   '@xtuc/ieee754@1.2.0':
     resolution: {integrity: sha512-DX8nKgqcGwsc0eJSqYt5lwP4DH5FlHnmuWWBRy7X0NcaGR0ZtuyeESgMwTYVEtxmsNGY+qit4QYT/MIYTOTPeA==}
@@ -5502,6 +5652,9 @@ packages:
   magic-string@1.2.3:
     resolution: {integrity: sha512-Bpb0W2TbLKOZ7vJnOUnVRGq3WL2p+ISV29M6hYPL1AFCpyKZpdr5ytiXoTSSxRVhg8YW7f65+6gbG8WG6PCa/g==}
 
+  magic-string@1.4.3:
+    resolution: {integrity: sha512-z12OxmaPGE0F4xlpGdjuAUckipLpQlTAuAmyGhNoD7ODpYUzvDfvtxUbjM/jwznyP178oju/KDdyi220wNJ0RQ==}
+
   math-intrinsics@1.1.0:
     resolution: {integrity: sha512-/IXtbwEk5HTPyEwyKX6hGkYXxM9nbj64B+ilVJnC/R6B0pH5G4V3b0pVbL7DBj4tkhBAppbQUlf6F6Xl9LHu1g==}
     engines: {node: '>= 0.4'}
@@ -5830,6 +5983,10 @@ packages:
     resolution: {integrity: sha512-syxUKHeUll89RIABQADcI7sikYrwyssvA6gj4phSSIPezKVM8yMaLAiLLSc7fmzVvrwybfFGFbW5zme9sX87rg==}
     engines: {node: ^20.19.0 || >=22.12.0}
 
+  oxc-transform-react@0.155.0:
+    resolution: {integrity: sha512-JsZb0yduU1JdSj1RrNov2Ysio68LW9VKa10vkAJehy3NsE6UZrfcjmTLrStBRVF40YKxN30I+Cq8zJxIXzLqHQ==}
+    engines: {node: ^20.19.0 || >=22.12.0}
+
   oxc-walker@1.1.1:
     resolution: {integrity: sha512-Hwd7dq28zu/Er99+bpWp16CGwFrhyalJh0W3JOB7XpPvgWo3MqMi2ksWGKuzzA9zt50mJ2pIUwR5lpAdZ9ACNQ==}
     peerDependencies:
@@ -5977,6 +6134,9 @@ packages:
   pngjs@7.0.0:
     resolution: {integrity: sha512-LKWqWJRhstyYo9pGvgor/ivk2w94eSjE3RGVuzLGlr3NmD8bf7RcYGze1mNdEHRP6TRP6rMuDHk5t44hnTRyow==}
     engines: {node: '>=14.19.0'}
+
+  pofile@1.1.4:
+    resolution: {integrity: sha512-r6Q21sKsY1AjTVVjOuU02VYKVNQGJNQHjTIvs4dEbeuuYfxgYk/DGD2mqqq4RDaVkwdSq0VEtmQUOPe/wH8X3g==}
 
   possible-typed-array-names@1.1.0:
     resolution: {integrity: sha512-/+5VFTchJDoVj3bhoqi6UeymcD00DAwb1nJwamzPvHEszJ4FpF6SNNbUbOS8yI56qHzdV8eK0qEfOSiodkTdxg==}
@@ -7169,6 +7329,10 @@ packages:
         optional: true
       utf-8-validate:
         optional: true
+
+  wuchale@0.26.7:
+    resolution: {integrity: sha512-G9V612ezxLmXQ8vm6R3kETsBOCubvN1yxYv9I3GoU7uIVXPpCThgGrRyxD8ZZPJUOizz0IljZp6UgSlKPyILsQ==}
+    hasBin: true
 
   xdg-basedir@5.1.0:
     resolution: {integrity: sha512-GCPAHLvrIH13+c0SuacwvRYj2SxJXQ4kaVTT5xgL3kPrz56XxkF21IGhjSE1+W0aw7gpBWRGXLCPnPby6lSpmQ==}
@@ -8523,6 +8687,10 @@ snapshots:
     dependencies:
       '@iconify/types': 2.0.0
 
+  '@iconify-json/andrsrxn@1.2.2':
+    dependencies:
+      '@iconify/types': 2.0.0
+
   '@iconify-json/bi@1.2.7':
     dependencies:
       '@iconify/types': 2.0.0
@@ -8754,9 +8922,67 @@ snapshots:
 
   '@oxc-project/runtime@0.149.0': {}
 
-  '@oxc-project/types@0.148.0': {}
+  '@oxc-project/types@0.148.0':
+    optional: true
 
   '@oxc-project/types@0.149.0': {}
+
+  '@oxc-transform-react/binding-android-arm-eabi@0.155.0':
+    optional: true
+
+  '@oxc-transform-react/binding-android-arm64@0.155.0':
+    optional: true
+
+  '@oxc-transform-react/binding-darwin-arm64@0.155.0':
+    optional: true
+
+  '@oxc-transform-react/binding-darwin-x64@0.155.0':
+    optional: true
+
+  '@oxc-transform-react/binding-freebsd-x64@0.155.0':
+    optional: true
+
+  '@oxc-transform-react/binding-linux-arm-gnueabihf@0.155.0':
+    optional: true
+
+  '@oxc-transform-react/binding-linux-arm-musleabihf@0.155.0':
+    optional: true
+
+  '@oxc-transform-react/binding-linux-arm64-gnu@0.155.0':
+    optional: true
+
+  '@oxc-transform-react/binding-linux-arm64-musl@0.155.0':
+    optional: true
+
+  '@oxc-transform-react/binding-linux-ppc64-gnu@0.155.0':
+    optional: true
+
+  '@oxc-transform-react/binding-linux-riscv64-gnu@0.155.0':
+    optional: true
+
+  '@oxc-transform-react/binding-linux-riscv64-musl@0.155.0':
+    optional: true
+
+  '@oxc-transform-react/binding-linux-s390x-gnu@0.155.0':
+    optional: true
+
+  '@oxc-transform-react/binding-linux-x64-gnu@0.155.0':
+    optional: true
+
+  '@oxc-transform-react/binding-linux-x64-musl@0.155.0':
+    optional: true
+
+  '@oxc-transform-react/binding-openharmony-arm64@0.155.0':
+    optional: true
+
+  '@oxc-transform-react/binding-win32-arm64-msvc@0.155.0':
+    optional: true
+
+  '@oxc-transform-react/binding-win32-ia32-msvc@0.155.0':
+    optional: true
+
+  '@oxc-transform-react/binding-win32-x64-msvc@0.155.0':
+    optional: true
 
   '@oxfmt/binding-android-arm-eabi@0.67.0':
     optional: true
@@ -8949,6 +9175,7 @@ snapshots:
     optionalDependencies:
       '@babel/runtime': 7.29.7
       vite: '@voidzero-dev/vite-plus-core@0.3.2(@types/node@26.4.1)(jiti@2.7.0)(terser@5.51.2)(typescript@6.0.3)(yaml@2.9.0)'
+    optional: true
 
   '@rolldown/pluginutils@1.0.1': {}
 
@@ -9133,6 +9360,10 @@ snapshots:
   '@sindresorhus/merge-streams@4.0.0': {}
 
   '@standard-schema/spec@1.1.0': {}
+
+  '@sveltejs/acorn-typescript@1.0.13(acorn@8.18.0)':
+    dependencies:
+      acorn: 8.18.0
 
   '@tailwindcss/node@4.3.3':
     dependencies:
@@ -9527,13 +9758,14 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  '@vitejs/plugin-react@6.1.1(@rolldown/plugin-babel@0.2.3(@babel/core@7.29.7(supports-color@10.2.2))(@babel/runtime@7.29.7)(@voidzero-dev/vite-plus-core@0.3.2(@types/node@26.4.1)(jiti@2.7.0)(terser@5.51.2)(typescript@6.0.3)(yaml@2.9.0))(rolldown@1.2.7))(@voidzero-dev/vite-plus-core@0.3.2(@types/node@26.4.1)(jiti@2.7.0)(terser@5.51.2)(typescript@6.0.3)(yaml@2.9.0))(babel-plugin-react-compiler@1.0.0)':
+  '@vitejs/plugin-react@6.1.1(@rolldown/plugin-babel@0.2.3(@babel/core@7.29.7(supports-color@10.2.2))(@babel/runtime@7.29.7)(@voidzero-dev/vite-plus-core@0.3.2(@types/node@26.4.1)(jiti@2.7.0)(terser@5.51.2)(typescript@6.0.3)(yaml@2.9.0))(rolldown@1.2.7))(@voidzero-dev/vite-plus-core@0.3.2(@types/node@26.4.1)(jiti@2.7.0)(terser@5.51.2)(typescript@6.0.3)(yaml@2.9.0))(babel-plugin-react-compiler@1.0.0)(oxc-transform-react@0.155.0)':
     dependencies:
       '@rolldown/pluginutils': 1.0.1
       vite: '@voidzero-dev/vite-plus-core@0.3.2(@types/node@26.4.1)(jiti@2.7.0)(terser@5.51.2)(typescript@6.0.3)(yaml@2.9.0)'
     optionalDependencies:
       '@rolldown/plugin-babel': 0.2.3(@babel/core@7.29.7(supports-color@10.2.2))(@babel/runtime@7.29.7)(@voidzero-dev/vite-plus-core@0.3.2(@types/node@26.4.1)(jiti@2.7.0)(terser@5.51.2)(typescript@6.0.3)(yaml@2.9.0))(rolldown@1.2.7)
       babel-plugin-react-compiler: 1.0.0
+      oxc-transform-react: 0.155.0
 
   '@vitejs/plugin-vue@6.0.8(@voidzero-dev/vite-plus-core@0.3.2(@types/node@26.4.1)(jiti@2.7.0)(terser@5.51.2)(typescript@6.0.3)(yaml@2.9.0))(vue@3.5.42(typescript@6.0.3))':
     dependencies:
@@ -9897,6 +10129,14 @@ snapshots:
       '@webassemblyjs/ast': 1.14.1
       '@xtuc/long': 4.2.2
 
+  '@wuchale/jsx@0.13.0(react@19.2.8)':
+    dependencies:
+      '@sveltejs/acorn-typescript': 1.0.13(acorn@8.18.0)
+      acorn: 8.18.0
+      wuchale: 0.26.7
+    optionalDependencies:
+      react: 19.2.8
+
   '@xtuc/ieee754@1.2.0': {}
 
   '@xtuc/long@4.2.2': {}
@@ -10118,6 +10358,7 @@ snapshots:
   babel-plugin-react-compiler@1.0.0:
     dependencies:
       '@babel/types': 7.29.8
+    optional: true
 
   bail@2.0.2: {}
 
@@ -11670,6 +11911,10 @@ snapshots:
     dependencies:
       '@jridgewell/sourcemap-codec': 1.6.0
 
+  magic-string@1.4.3:
+    dependencies:
+      '@jridgewell/sourcemap-codec': 1.6.0
+
   math-intrinsics@1.1.0: {}
 
   mathml-tag-names@4.0.0: {}
@@ -12093,6 +12338,28 @@ snapshots:
       '@oxc-parser/binding-win32-x64-msvc': 0.148.0
     optional: true
 
+  oxc-transform-react@0.155.0:
+    optionalDependencies:
+      '@oxc-transform-react/binding-android-arm-eabi': 0.155.0
+      '@oxc-transform-react/binding-android-arm64': 0.155.0
+      '@oxc-transform-react/binding-darwin-arm64': 0.155.0
+      '@oxc-transform-react/binding-darwin-x64': 0.155.0
+      '@oxc-transform-react/binding-freebsd-x64': 0.155.0
+      '@oxc-transform-react/binding-linux-arm-gnueabihf': 0.155.0
+      '@oxc-transform-react/binding-linux-arm-musleabihf': 0.155.0
+      '@oxc-transform-react/binding-linux-arm64-gnu': 0.155.0
+      '@oxc-transform-react/binding-linux-arm64-musl': 0.155.0
+      '@oxc-transform-react/binding-linux-ppc64-gnu': 0.155.0
+      '@oxc-transform-react/binding-linux-riscv64-gnu': 0.155.0
+      '@oxc-transform-react/binding-linux-riscv64-musl': 0.155.0
+      '@oxc-transform-react/binding-linux-s390x-gnu': 0.155.0
+      '@oxc-transform-react/binding-linux-x64-gnu': 0.155.0
+      '@oxc-transform-react/binding-linux-x64-musl': 0.155.0
+      '@oxc-transform-react/binding-openharmony-arm64': 0.155.0
+      '@oxc-transform-react/binding-win32-arm64-msvc': 0.155.0
+      '@oxc-transform-react/binding-win32-ia32-msvc': 0.155.0
+      '@oxc-transform-react/binding-win32-x64-msvc': 0.155.0
+
   oxc-walker@1.1.1(@oxc-project/types@0.148.0)(oxc-parser@0.148.0)(rolldown@1.2.7):
     optionalDependencies:
       '@oxc-project/types': 0.148.0
@@ -12245,6 +12512,8 @@ snapshots:
       playwright-core: 1.63.0
 
   pngjs@7.0.0: {}
+
+  pofile@1.1.4: {}
 
   possible-typed-array-names@1.1.0: {}
 
@@ -12464,6 +12733,7 @@ snapshots:
       '@rolldown/binding-openharmony-arm64': 1.2.7
       '@rolldown/binding-win32-arm64-msvc': 1.2.7
       '@rolldown/binding-win32-x64-msvc': 1.2.7
+    optional: true
 
   rollup@4.63.1:
     dependencies:
@@ -13679,6 +13949,16 @@ snapshots:
       signal-exit: 4.1.0
 
   ws@8.21.3: {}
+
+  wuchale@0.26.7:
+    dependencies:
+      '@sveltejs/acorn-typescript': 1.0.13(acorn@8.18.0)
+      acorn: 8.18.0
+      chokidar: 5.0.0
+      magic-string: 1.4.3
+      picomatch: 4.0.7
+      pofile: 1.1.4
+      tinyglobby: 0.2.17
 
   xdg-basedir@5.1.0: {}
 

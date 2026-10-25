@@ -10,25 +10,30 @@ import { OverlayScrollbars } from 'overlayscrollbars'
 import { OverlayScrollbarsComponent } from 'overlayscrollbars-react'
 import { lazy, Suspense, useEffect, useRef, useState, type ComponentType, type MouseEvent } from 'react'
 
-import { exampleDocs } from '@/generated/examples'
+import { useExampleDoc, useLocale } from '@/i18n/locale'
 
 import { reactIcon, vueIcon } from './flavor-icons'
 
 /**
  * 由示例文档 markdown 生成的页面主体：组件标题、简介、逐示例预览、双框架源码与 API 表。
  *
- * 数据全部来自 `packages/web-ui/docs/<name>.md`。带 `{#id}` 锚点的示例由生成器落成
- * `src/generated/demos/<component>--<id>.tsx`，预览执行的字节与代码区显示的字节同源；
+ * 数据全部来自 `packages/web-ui/docs/<name><suffix>.md`，按当前语种取生成产物：中文源在
+ * `src/generated/zh-CN/`、英文译文在 `src/generated/en/`。带 `{#id}` 锚点的示例由生成器落成
+ * `src/generated/<locale>/demos/<component>--<id>.tsx`，预览执行的字节与代码区显示的字节同源；
  * 没有锚点的语料只展示代码。
  *
  * 预览只运行当前站点框架；代码区始终提供 Vue / React 两份完整源码。
  */
-const demoModules = import.meta.glob<{ default: ComponentType }>('../../generated/demos/*.tsx')
-const DEMO_PREFIX = '../../generated/demos/'
+const demoModules = import.meta.glob<{ default: ComponentType }>('../../generated/*/demos/*.tsx')
+const DEMO_PATTERN = /^\.\.\/\.\.\/generated\/([^/]+)\/demos\/(.+)\.tsx$/
 
 // lazy 组件在模块作用域建一次：在 render 里调 lazy() 每帧换一个组件身份，交互中途的状态会丢失。
 const demoComponents = new Map(
-  Object.entries(demoModules).map(([file, load]) => [file.slice(DEMO_PREFIX.length, -'.tsx'.length), lazy(load)])
+  Object.entries(demoModules).map(([file, load]) => {
+    const match = DEMO_PATTERN.exec(file)
+    if (!match) throw new Error(`无法从生成物路径解析语种与示例名：${file}`)
+    return [`${match[1]}/${match[2]}`, lazy(load)]
+  })
 )
 
 type Flavor = 'react' | 'vue'
@@ -40,6 +45,9 @@ const FLAVOR_ICONS = { vue: vueIcon, react: reactIcon } as const
 const FLAVOR_ICON_CLASS: Partial<Record<Flavor, string>> = { react: 'text-[#087eae] dark:text-[#61dafb]' }
 
 const ABBREVIATIONS: Record<string, string> = { api: 'API', svg: 'SVG', ui: 'UI' }
+
+// API 是接口术语，中英两版都保留英文。
+const API_HEADING = 'API'
 
 // 「没有默认值」在语料里落成 em dash 占位符，它是散文不是字面量，所以即便落在值列也不实行内代码。
 const NO_DEFAULT_VALUE = '—'
@@ -82,7 +90,8 @@ interface ExampleDocProps {
 }
 
 function ExampleDoc({ component, nativeFlavor = 'react', level }: ExampleDocProps) {
-  const doc = exampleDocs.find(candidate => candidate.component === component)
+  const doc = useExampleDoc(component)
+  const { locale } = useLocale()
   const [activeFlavors, setActiveFlavors] = useState<Record<string, Flavor>>({})
   const [expanded, setExpanded] = useState<Record<string, boolean>>({})
   const [copied, setCopied] = useState<{ key: string; ok: boolean } | null>(null)
@@ -195,7 +204,9 @@ function ExampleDoc({ component, nativeFlavor = 'react', level }: ExampleDocProp
   }
 
   return (
-    <section className="mt-10 flex flex-col gap-8" data-example-doc={doc.component}>
+    // 根节点这条字面量 aria-label 同时是 wuchale 的锚点：组件作用域里没有其它文案时，它才会在
+    // 组件顶部生成运行时初始化；否则嵌套标题会引用到回调作用域里那个未定义的 `_w_runtime_`。
+    <section className="mt-10 flex flex-col gap-8" aria-label="示例文档" data-example-doc={doc.component}>
       <header className="flex flex-col gap-2">
         {level === 'primary' ? (
           <h1 className="mdc-heading">{displayNameOf(component)}</h1>
@@ -212,7 +223,7 @@ function ExampleDoc({ component, nativeFlavor = 'react', level }: ExampleDocProp
         {doc.samples.map((sample, index) => {
           const key = sampleKey(sample, index)
           const flavor = activeFlavor(key)
-          const Demo = sample.demoKey ? demoComponents.get(`${component}--${sample.demoKey}`) : undefined
+          const Demo = sample.demoKey ? demoComponents.get(`${locale}/${component}--${sample.demoKey}`) : undefined
           const isExpanded = expanded[key] ?? false
           return (
             <article className="flex flex-col gap-3" data-sample={sample.title} key={key}>
@@ -227,15 +238,21 @@ function ExampleDoc({ component, nativeFlavor = 'react', level }: ExampleDocProp
                 `isolate` 让这张卡自己成一个 stacking context：工具条的 z-10 只在卡内比较，
                 既压得住下方代码区，也不会越过页面 header（`--wui-layer-header` 也是 10，
                 卡外比大小就会被后画的工具条盖住）。
-                预览区 z-20 压过工具条：select / dropdown / autocomplete 不开 `portal` 时面板是
-                宿主内的 `position: absolute`（`--wui-layer-inline-overlay` 只有 1），向下溢出预览区
-                就会被工具条盖掉；抬到 20 让整块预览（含溢出的面板）画在代码卡之上。
-                预览区不画边框、直接铺在页面上；边框与圆角只包住下方「工具条 + 代码区」。
+
+                预览区只是个层级占位（`relative z-20`）：select / dropdown / autocomplete 不开
+                `portal` 时面板是宿主内的 `position: absolute`（`--wui-layer-inline-overlay` 只有 1），
+                向下溢出预览区就会被工具条盖掉；抬到 20 让整块预览（含溢出的面板）画在代码卡之上。
+                边框与圆角只包住下方「工具条 + 代码区」。
+
+                这一层**不铺底色**。`--wui-color-page` 的实色底和页面同色，肉眼看不出来，却是这一带
+                唯一的一堵墙：工具条里向上溢出的东西（tooltip 气泡、segmented 按压态的上方投影）
+                要跨过卡片上沿 17px 才摆得下，落到这块同色实底后面就被拦腰截断——看着像被裁剪，
+                实际整条祖先链上连一个 `overflow: hidden` 都没有。
               */}
               <div className="isolate" data-current-flavor={flavor}>
                 {Demo ? (
                   <div
-                    className="relative z-20 flex flex-wrap items-center gap-3 bg-(--wui-color-page) px-4 py-8"
+                    className="relative z-20 flex flex-wrap items-center gap-3 px-4 py-8"
                     data-sample-preview={sample.demoKey ?? undefined}
                   >
                     <Suspense fallback={null}>
@@ -244,12 +261,20 @@ function ExampleDoc({ component, nativeFlavor = 'react', level }: ExampleDocProp
                   </div>
                 ) : null}
 
-                <div className="overflow-hidden rounded-4xl border border-(--wui-color-border)">
+                {/*
+                  这一层只画边框和圆角，**不裁剪**：工具条里的 segmented 才能把按压态画全。
+                  按压/拖拽态的 indicator 会 scale(1.5) 并带一枚 `0 2px 20px` 的柔投影，
+                  横向需要约 16px（放大外扩）+ 22px（投影可见半径）的余量，而工具条只留了
+                  `px-4`；在这里裁就会把药丸的左半圆和左侧投影一起切平，看着像「长按时阴影
+                  被吃掉一截」。
+                */}
+                <div className="rounded-4xl border border-(--wui-color-border)">
                   {/* 工具条只摆控件，不接管开合：展开由右侧 chevron 按钮和收起态那块代码预览负责。 */}
                   {/* `relative z-10` 把工具条抬到下方代码区之上：segmented 的投影朝下溢出（凹变种是
                       track 的常驻外投影，凸变种是 indicator 的柔投影），否则后绘制的折叠区会把阴影盖掉
-                      一截。这一层只在卡内比较，见上方 `isolate`。 */}
-                  <div className="relative z-10 flex flex-wrap items-center justify-between gap-3 bg-(--wui-color-page) px-4 pt-4 pb-2">
+                      一截。这一层只在卡内比较，见上方 `isolate`。
+                      顶部圆角补在这一层：外层不再裁剪，工具条的白底会自己溢出到圆角之外。 */}
+                  <div className="relative z-10 flex flex-wrap items-center justify-between gap-3 rounded-t-4xl bg-(--wui-color-page) px-4 pt-4 pb-2">
                     <web-ui-segmented
                       value={flavor}
                       variant="inset"
@@ -332,10 +357,19 @@ function ExampleDoc({ component, nativeFlavor = 'react', level }: ExampleDocProp
                     收起态这块露出的代码就是展开触发区（点哪一行都算），展开后它退化成一段可滚动的正文，
                     点击不再改状态——否则读到一半想选中一个标识符，整块代码会当场收回去。
                   */}
+                  {/*
+                    底部圆角不另起一层裁剪，而是骑在**本来就会裁自己内容**的两层上：
+                    collapse 宿主（画白底那层）和滚动容器（OverlayScrollbars 会把 host 改成
+                    `overflow: hidden`，圆角随之成为它自己的裁剪形状）。再套一层 `overflow: hidden`
+                    只为圆角，等于给以后所有浮层/阴影埋一颗雷——被裁的人永远找不到是哪一层干的。
+
+                    收起态的底线不是圆角所在的那条边：那里是 peek 的直切，由 collapse 的渐隐带
+                    收尾（末端 alpha 归零），落不到圆角上。
+                  */}
                   <web-ui-collapse
                     open={isExpanded}
                     peek="128px"
-                    className="bg-(--wui-color-page) [--wui-collapse-peek-edge-ratio:0.6]"
+                    className="rounded-b-4xl bg-(--wui-color-page) [--wui-collapse-peek-edge-ratio:0.6]"
                     onClick={event => {
                       if (isExpanded) return
                       toggleExpanded(event, key)
@@ -346,7 +380,7 @@ function ExampleDoc({ component, nativeFlavor = 'react', level }: ExampleDocProp
                         id={panelId(key)}
                         options={webUiScrollbarsOptions}
                         events={codeScrollbarsEvents}
-                        className="max-h-[32rem] overflow-auto bg-(--wui-color-page) px-4 pt-3 pb-4 font-mono text-xs leading-6"
+                        className="max-h-[32rem] overflow-auto rounded-b-4xl bg-(--wui-color-page) px-4 pt-3 pb-4 font-mono text-xs leading-6"
                         data-code
                       >
                         <div dangerouslySetInnerHTML={{ __html: sample.html[flavor] }} />
@@ -362,7 +396,7 @@ function ExampleDoc({ component, nativeFlavor = 'react', level }: ExampleDocProp
 
       {doc.api.length > 0 ? (
         <section className="flex flex-col gap-6">
-          <SectionHeading className="mdc-heading">API</SectionHeading>
+          <SectionHeading className="mdc-heading">{API_HEADING}</SectionHeading>
 
           {/* API 小节有两型：登记过表头的是表，列形状完全由生成的 columns 决定；其余是散文。
               `.mdc-markdown` 也挂在这一层：散文与表格共用同一套 Notion 标签样式。 */}

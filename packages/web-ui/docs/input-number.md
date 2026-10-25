@@ -3,13 +3,13 @@ component: input-number
 tag: web-ui-input-number
 ---
 
-数字 input，左右各一个步进 button，支持 `min` / `max` / `step` / `precision`；越界与非法输入都在提交点收敛回有效值。
+Numeric input with a step button on each side, supporting `min` / `max` / `step` / `precision`; out-of-range and invalid input converge back to a valid value at the commit point.
 
-## 示例
+## Samples
 
-### 基础 {#basic}
+### Basic {#basic}
 
-不接 `value` 时组件自己持有数值，默认 `0`。`value` 恒为数字、没有空态，所以 `placeholder` 只在编辑中把内容清空时露出来：内部控件绑的是编辑草稿，草稿为空才让占位文本显形。
+Without a `value`, the component holds the number itself, defaulting to `0`. `value` is always a number and has no empty state, so `placeholder` only appears when the content is cleared during editing: the inner control is bound to an editing draft, and only an empty draft lets the placeholder text show.
 
 ```tsx
 export default function Demo() {
@@ -17,7 +17,7 @@ export default function Demo() {
     <div className="flex flex-wrap items-center gap-3">
       <web-ui-input-number></web-ui-input-number>
       <web-ui-input-number value={12}></web-ui-input-number>
-      <web-ui-input-number placeholder="件" value={0}></web-ui-input-number>
+      <web-ui-input-number placeholder="pcs" value={0}></web-ui-input-number>
     </div>
   )
 }
@@ -28,14 +28,14 @@ export default function Demo() {
   <div class="flex flex-wrap items-center gap-3">
     <web-ui-input-number></web-ui-input-number>
     <web-ui-input-number :value="12"></web-ui-input-number>
-    <web-ui-input-number placeholder="件" :value="0"></web-ui-input-number>
+    <web-ui-input-number placeholder="pcs" :value="0"></web-ui-input-number>
   </div>
 </template>
 ```
 
-### 取值范围 {#range}
+### Value range {#range}
 
-`min` / `max` 收住取值，`step` 决定步进幅度。落在端点时对应那一侧的步进 button 自己变禁用；编辑中可以写出越界文本，越界值在提交那一刻被拉回范围。
+`min` / `max` hold the value in range and `step` decides the step size. At an endpoint, the step button on that side disables itself; while editing you can type out-of-range text, and an out-of-range value is pulled back into range at the moment of commit.
 
 ```tsx
 export default function Demo() {
@@ -59,13 +59,13 @@ export default function Demo() {
 </template>
 ```
 
-### 小数精度 {#precision}
+### Decimal precision {#precision}
 
-`precision` 决定读取与提交时保留的小数位数，赋值时不抹掉原始小数——`value={1.5}` 与 `precision={1}` 的书写顺序不影响结果。
+`precision` decides how many decimal places are kept when reading and committing; assignment does not erase the original decimals—the order of `value={1.5}` and `precision={1}` does not affect the result.
 
-未显式设置时按 `step` 的小数位数推导：`step={0.3}` 在默认设置下每次规整到 1 位小数；显式设置 `precision` 后按该值规整，例如 `precision={0}` 会把小数步进结果取整。
+When not set explicitly, it is derived from the decimal places of `step`: with the default settings `step={0.3}` normalizes to 1 decimal place on each step; with an explicit `precision` the value is normalized to that, for example `precision={0}` rounds fractional step results to integers.
 
-`step` 本身不会因 `precision` 而退化，`precision={2}` 时步幅仍是 `1`。
+`step` itself does not degrade because of `precision`: with `precision={2}` the step is still `1`.
 
 ```tsx
 export default function Demo() {
@@ -89,13 +89,13 @@ export default function Demo() {
 </template>
 ```
 
-### 受控值与事件 {#events}
+### Controlled value and events {#events}
 
-`value` 是受控值，接住 `input` 才能跟着输入与步进走。
+`value` is a controlled value; catch `input` for it to follow typing and stepping.
 
-`input` 每敲一个字、每点一次步进 button 都派发；`change` 只在提交点派发——文本失焦提交与 ArrowUp / ArrowDown，点击步进 button 不派发。
+`input` fires on every keystroke and every step button click; `change` is dispatched only at commit points—the text blur commit and ArrowUp / ArrowDown—and not by clicking a step button.
 
-两条都接住，下面的读数才会分开显示这两种节奏。
+Catch both, and the readout below will show the two rhythms separately.
 
 ```tsx
 import { useState } from 'react'
@@ -115,7 +115,7 @@ export default function Demo() {
         onChange={event => setCommitted(event.currentTarget.value)}
       ></web-ui-input-number>
       <output className="text-sm text-(--wui-color-text-secondary)">
-        跟随 input：{live} · 只在提交点变化的 change：{committed}
+        Follows input: {live} · change, only at commit points: {committed}
       </output>
     </div>
   )
@@ -134,7 +134,7 @@ export default function Demo() {
       @change="committed = $event.currentTarget.value"
     ></web-ui-input-number>
     <output class="text-sm text-(--wui-color-text-secondary)">
-      跟随 input：{{ live }} · 只在提交点变化的 change：{{ committed }}
+      Follows input: {{ live }} · change, only at commit points: {{ committed }}
     </output>
   </div>
 </template>
@@ -147,9 +147,9 @@ const committed = ref(1)
 </script>
 ```
 
-### 禁用与只读 {#states}
+### Disabled and readonly {#states}
 
-`disabled` 关掉输入与步进，校验一并退让，宿主整体降到四成不透明度。`readonly` 保留可读与可复制，两个步进 button 直接画成禁用态，ArrowUp / ArrowDown 无响应，失焦提交也不转发 `change`。
+`disabled` turns off input and stepping, makes validation yield as well, and drops the whole host to forty percent opacity. `readonly` keeps reading and copying possible, but both step buttons are drawn in their disabled state, ArrowUp / ArrowDown do nothing, and a blur commit does not forward `change`.
 
 ```tsx
 export default function Demo() {
@@ -171,9 +171,9 @@ export default function Demo() {
 </template>
 ```
 
-### 表单值 {#form}
+### Form value {#form}
 
-`name` 是字段名，提交值是 `String(value)`。`required` 在编辑中清空时拦下提交（`valueMissing`），`form.reset()` 回填挂载时的初值。表单里的 `input-number` 请保持整数 `step`，理由写在下面的行为说明。
+`name` is the field name and the submitted value is `String(value)`. `required` blocks submission when the content is cleared during editing (`valueMissing`), and `form.reset()` restores the initial value at mount. Keep an integer `step` for `input-number` inside forms, for the reason given in the behavior notes below.
 
 ```tsx
 import { useRef, useState } from 'react'
@@ -192,20 +192,22 @@ export default function Demo() {
         for (const [name, value] of new FormData(event.currentTarget)) {
           if (typeof value === 'string') fields.push(`${name}=${value}`)
         }
-        setSubmitted(fields.join(' · ') || '(没有字段)')
+        setSubmitted(fields.join(' · ') || '(no fields)')
       }}
     >
       <web-ui-input-number name="quantity" value={3} min={1} max={9} step={1} required></web-ui-input-number>
-      <web-ui-button type="submit">提交</web-ui-button>
+      <web-ui-button type="submit">Submit</web-ui-button>
       <web-ui-button
         onClick={() => {
           formRef.current?.reset()
           setSubmitted('')
         }}
       >
-        重置
+        Reset
       </web-ui-button>
-      <output className="text-sm text-(--wui-color-text-secondary)">{submitted === '' ? '尚未提交' : submitted}</output>
+      <output className="text-sm text-(--wui-color-text-secondary)">
+        {submitted === '' ? 'Not submitted yet' : submitted}
+      </output>
     </form>
   )
 }
@@ -215,9 +217,11 @@ export default function Demo() {
 <template>
   <form ref="form" class="flex flex-wrap items-center gap-4" @submit="onSubmit">
     <web-ui-input-number name="quantity" :value="3" :min="1" :max="9" :step="1" required></web-ui-input-number>
-    <web-ui-button type="submit">提交</web-ui-button>
-    <web-ui-button @click="reset">重置</web-ui-button>
-    <output class="text-sm text-(--wui-color-text-secondary)">{{ submitted === '' ? '尚未提交' : submitted }}</output>
+    <web-ui-button type="submit">Submit</web-ui-button>
+    <web-ui-button @click="reset">Reset</web-ui-button>
+    <output class="text-sm text-(--wui-color-text-secondary)">
+      {{ submitted === '' ? 'Not submitted yet' : submitted }}
+    </output>
   </form>
 </template>
 
@@ -233,7 +237,7 @@ function onSubmit(event: Event) {
   for (const [name, value] of new FormData(event.currentTarget as HTMLFormElement)) {
     if (typeof value === 'string') fields.push(`${name}=${value}`)
   }
-  submitted.value = fields.join(' · ') || '(没有字段)'
+  submitted.value = fields.join(' · ') || '(no fields)'
 }
 
 function reset() {
@@ -243,9 +247,9 @@ function reset() {
 </script>
 ```
 
-### CSS 变量 {#sizing}
+### CSS variables {#sizing}
 
-宽度取 `--wui-input-width`（与 `<web-ui-input>` 同一个 token），`input-number` 自己没有 `full`；再窄也会被 `--wui-control-size` 兜住最小宽度。
+The width comes from `--wui-input-width` (the same token as `<web-ui-input>`), and `input-number` has no `full` of its own; however narrow it gets, `--wui-control-size` still holds a minimum width.
 
 ```tsx
 export default function Demo() {
@@ -271,68 +275,68 @@ export default function Demo() {
 
 ### Props
 
-| 名称              | 说明                                                              | 类型             | 默认值     |
-| ----------------- | ----------------------------------------------------------------- | ---------------- | ---------- |
-| `placeholder`     | 占位文本；只在编辑中清空内容时露出。                              | `string`         | `''`       |
-| `name`            | 表单字段名。                                                      | `string`         | `''`       |
-| `disabled`        | 禁用状态。                                                        | `boolean`        | `false`    |
-| `readonly`        | 只读状态；步进 button 与键盘增减一并让路。                        | `boolean`        | `false`    |
-| `required`        | 必填校验。                                                        | `boolean`        | `false`    |
-| `value`           | 当前值，也是表单提交值；越界写入会收敛到范围端点。                | `number`         | `0`        |
-| `min`             | 最小值。                                                          | `number`         | `0`        |
-| `max`             | 最大值。                                                          | `number`         | `Infinity` |
-| `step`            | 步进幅度；未显式设置 `precision` 时，其小数位数决定默认规整精度。 | `number`         | `1`        |
-| `precision`       | 显式设置时按该值规整；设为 `null` 或移除属性时按 `step` 推导。    | `number \| null` | `0`        |
-| `aria-label`      | 输入框的无障碍名称。                                              | `string`         | —          |
-| `aria-labelledby` | 无障碍名称引用，用于命名内部输入框。                              | `string`         | —          |
+| Name              | Description                                                                                                              | Type             | Default    |
+| ----------------- | ------------------------------------------------------------------------------------------------------------------------ | ---------------- | ---------- |
+| `placeholder`     | Placeholder text; shown only when the content is cleared during editing.                                                 | `string`         | `''`       |
+| `name`            | Form field name.                                                                                                         | `string`         | `''`       |
+| `disabled`        | Disabled state.                                                                                                          | `boolean`        | `false`    |
+| `readonly`        | Read-only state; the step buttons and the keyboard increment/decrement yield as well.                                    | `boolean`        | `false`    |
+| `required`        | Required validation.                                                                                                     | `boolean`        | `false`    |
+| `value`           | Current value, also the form submission value; an out-of-range write converges to a range endpoint.                      | `number`         | `0`        |
+| `min`             | Minimum value.                                                                                                           | `number`         | `0`        |
+| `max`             | Maximum value.                                                                                                           | `number`         | `Infinity` |
+| `step`            | Step size; when `precision` is not set explicitly, its decimal places decide the default normalization precision.        | `number`         | `1`        |
+| `precision`       | Normalizes to this value when set explicitly; when set to `null` or the attribute is removed, it is derived from `step`. | `number \| null` | `0`        |
+| `aria-label`      | Accessible name of the input.                                                                                            | `string`         | —          |
+| `aria-labelledby` | Accessible name reference, used to name the inner input.                                                                 | `string`         | —          |
 
 ### Events
 
-| 名称     | 说明                                                                          |
-| -------- | ----------------------------------------------------------------------------- |
-| `input`  | 每敲一个字、每点一次步进 button 派发；组件没有可清空值的清除 button。         |
-| `change` | 提交点派发：文本失焦提交、ArrowUp / ArrowDown。点击步进 button 不派发这一条。 |
+| Name     | Description                                                                                                                   |
+| -------- | ----------------------------------------------------------------------------------------------------------------------------- |
+| `input`  | Fired on every keystroke and every step button click; the component has no clear button that could empty the value.           |
+| `change` | Dispatched at commit points: the text blur commit and ArrowUp / ArrowDown. Clicking a step button does not dispatch this one. |
 
-### 行为说明
+### Behavior
 
-`value` 没有空态：默认 `0`，赋值与提交都先过 `min` / `max` 收敛，因此写 `999` 进 `max=100` 得到的是 `100`。
+`value` has no empty state: it defaults to `0`, and both assignment and submission first converge through `min` / `max`, so writing `999` into `max=100` yields `100`.
 
-编辑是另一层——内部控件绑的是草稿，`1.`、空串、非数字文本都只改显示不改 `value`；失焦时合法草稿写回并提交，非法或空草稿回填上一个提交值且不派发 `change`。
+Editing is another layer—the inner control is bound to a draft, and `1.`, an empty string, or non-numeric text only change the display, not `value`; on blur a valid draft is written back and committed, while an invalid or empty draft restores the last committed value and dispatches no `change`.
 
-`precision` 不参与赋值，只发生在读取（`get value`）与步进提交两点，所以声明顺序无关；`0.01` 不会被默认设置提前取整成 `0`。
+`precision` takes no part in assignment; it only happens at two points, reading (`get value`) and the step commit, so declaration order does not matter; `0.01` is not rounded to `0` ahead of time by the default settings.
 
-未显式设置 `precision` 时按 `step` 的小数位数推导规整精度，小数场景不再必须显式写 `step={0.01}` 配 `precision`；显式设置后按该值规整，`step` 本身不退化。
+When `precision` is not set explicitly, the normalization precision is derived from the decimal places of `step`, so fractional cases no longer have to write `step={0.01}` together with `precision`; once set explicitly the value is normalized to it, and `step` itself does not degrade.
 
-事件分派节奏不一致是组件的现状：文本输入的 `input` 来自内部原生控件冒泡，`change` 因为原生 `change` 不组合、过不了 shadow 边界而由组件在宿主上补发一次；步进 button 只派发 `input`，ArrowUp / ArrowDown 派发 `input` 与 `change` 两条。
+The inconsistent event dispatch rhythm is the component's current state: `input` from text entry comes from the inner native control bubbling up, while `change` is dispatched once by the component on the host because the native `change` is not composed and cannot cross the shadow boundary; the step buttons dispatch only `input`, and ArrowUp / ArrowDown dispatch both `input` and `change`.
 
-只听 `change` 的受控写法会漏掉点击步进。
+A controlled setup that listens only to `change` misses step button clicks.
 
-校验只透传 `required` / `disabled` / `readonly` 到内部控件，`min` / `max` / `step` 没有透传。
+Validation passes only `required` / `disabled` / `readonly` through to the inner control; `min` / `max` / `step` are not passed through.
 
-因此 `valueMissing` 正常生效（清空后必填拦下提交），`rangeUnderflow` / `rangeOverflow` 基本不会触发——越界早在提交时被 clamp；而 `stepMismatch` 按原生 `number` 控件的默认 `step=1`、基准 `0` 判定，非整数取值有被判成不合法并拦下提交的风险。
+As a result `valueMissing` works normally (required blocks submission after clearing), while `rangeUnderflow` / `rangeOverflow` basically never trigger—out-of-range values are clamped at commit time; and `stepMismatch` is judged against the native `number` control's default `step=1` with base `0`, so non-integer values risk being judged invalid and blocking submission.
 
-表单里的 `input-number` 建议保持整数 `step`，需要小数就在外层自己校验。
+For `input-number` inside a form, prefer an integer `step`; when decimals are needed, validate them yourself in the outer layer.
 
-组件没有 slot：`prefix` / `suffix` 是 `<web-ui-input>` 与 `<web-ui-textarea>` 的能力，写在 `input-number` 里的子节点不会渲染。
+The component has no slot: `prefix` / `suffix` are capabilities of `<web-ui-input>` and `<web-ui-textarea>`, and child nodes written inside `input-number` are not rendered.
 
-也没有 `focus()` / `blur()` / `select()` 委托：宿主自身没有 tab 位，按 Tab 进的是 shadow 内的原生控件，在宿主上调这三个方法不会落到它上面。
+Nor is there any `focus()` / `blur()` / `select()` delegation: the host itself has no tab stop, so Tab enters the native control inside the shadow root, and calling these three methods on the host will not reach it.
 
-禁用态由宿主上的 `disabled` 属性驱动，焦点态反射成 `focused` 属性，focus ring 跟着这条属性走。
+The disabled state is driven by the `disabled` attribute on the host, and the focus state reflects to a `focused` attribute, which the focus ring follows.
 
-### 布局
+### Layout
 
-宿主是 inline-block。
+The host is inline-block.
 
-输入区宽度取 `--wui-input-width`（`200px`），最小宽度与高度都取 `--wui-control-size`（`36px`），圆角取 `--wui-radius-control`（胶囊），底面是共享的 glass 表面。
+The input area takes its width from `--wui-input-width` (`200px`), its minimum width and height from `--wui-control-size` (`36px`), and its radius from `--wui-radius-control` (pill), on the shared glass surface.
 
-两枚步进 button 是 shadow 内的原生 `<button class="num-btn">`（不是 `<web-ui-button>`），30×30、无边框透明底，取二级文本色，hover 与 active 走 state layer token，到达 `min` / `max` 或 `readonly` 时进入禁用态。
+The two step buttons are native `<button class="num-btn">` elements inside the shadow root (not `<web-ui-button>`), 30×30, borderless with a transparent background, in the secondary text color, with hover and active going through the state layer tokens, and they enter their disabled state when `min` / `max` is reached or `readonly` is set.
 
-数字居中显示（`text-align: center`），原生 spinner 被隐藏，改由这两个 button 承担增减。
+The number is centered (`text-align: center`), and the native spinner is hidden, with the two buttons taking over increment and decrement.
 
-文字取 `--wui-font-size`，粗指针设备上钳到不小于 `16px`，避免 iOS Safari 聚焦时缩放页面；占位文本取二级文本色。
+The text takes `--wui-font-size`, clamped to no less than `16px` on coarse pointer devices to prevent iOS Safari from zooming the page on focus; the placeholder text takes the secondary text color.
 
 ### CSS Custom Properties
 
-| 名称                | 说明                                                                 | 默认值  |
-| ------------------- | -------------------------------------------------------------------- | ------- |
-| `--wui-input-width` | 输入区宽度，与 `<web-ui-input>` 共用同一个 token；没有 `full` 变体。 | `200px` |
+| Name                | Description                                                                               | Default |
+| ------------------- | ----------------------------------------------------------------------------------------- | ------- |
+| `--wui-input-width` | Input area width, sharing the same token as `<web-ui-input>`; there is no `full` variant. | `200px` |

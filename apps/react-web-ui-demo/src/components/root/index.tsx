@@ -11,6 +11,8 @@ import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { flushSync } from 'react-dom'
 import { ErrorBoundary } from 'react-error-boundary'
 
+import { useLocale } from '@/i18n/locale'
+
 import { RootErrorFallback } from './root-error-fallback'
 
 type ThemeAppearance = 'light' | 'dark' | 'system'
@@ -22,6 +24,13 @@ const SIDEBAR_WIDTH_STORAGE_KEY = 'sidebar-width'
 const DEFAULT_SIDEBAR_WIDTH = '240px'
 const THEME_APPEARANCES = new Set<ThemeAppearance>(['light', 'dark', 'system'])
 const THEME_MOTIONS = new Set<ThemeMotion>(['full', 'reduced', 'system'])
+// 外观档位名是技术术语，中英两版都保持英文，因此不进入 wuchale 语料。
+const LIGHT_LABEL = 'Light'
+const DARK_LABEL = 'Dark'
+// 语种名按该语言自己的写法给出，两版都不译：误切到读不懂的界面语言时，靠「简体中文」四个字
+// 就能找回母语，不必先读懂当前界面上的 "Simplified Chinese"。
+const ZH_CN_LABEL = '简体中文'
+const EN_LABEL = 'English'
 
 function isThemeAppearance(appearance: unknown): appearance is ThemeAppearance {
   return typeof appearance === 'string' && THEME_APPEARANCES.has(appearance as ThemeAppearance)
@@ -127,6 +136,7 @@ function isNavActive(pathname: string, path: string) {
 }
 
 export function Root() {
+  const { locale, setLocale } = useLocale()
   const [themeAppearance, setThemeAppearance] = useState<ThemeAppearance>(getInitialThemeAppearance)
   const [themeMotion, setThemeMotion] = useState<ThemeMotion>(getInitialThemeMotion)
   const [bannerVisible, setBannerVisible] = useState(true)
@@ -324,6 +334,11 @@ export function Root() {
     commitThemeAppearance(appearance)
   }
 
+  const updateLocale = (event: React.ChangeEvent<WebUiSelect>) => {
+    const next = event.currentTarget.value
+    if (next === 'zh-CN' || next === 'en') setLocale(next)
+  }
+
   const updateThemeMotion = (event: React.ChangeEvent<WebUiSelect>) => {
     const motion = event.currentTarget.value
     if (!isThemeMotion(motion)) return
@@ -372,7 +387,7 @@ export function Root() {
                 style={toastSafeAreaStyle}
                 className={`relative flex items-center justify-center gap-2 bg-(--wui-color-accent) px-4 py-2 text-sm text-(--wui-color-on-accent) ${hasTopRightToast ? 'min-h-[var(--toast-safe-bottom)] max-[1024px]:pt-[var(--toast-safe-bottom)] mobile:pl-12' : ''}`}
               >
-                <span>🎉 Welcome to the web-ui component library!</span>
+                <span>🎉 欢迎使用 web-ui 组件库！</span>
                 <web-ui-button
                   className={`ml-auto ${hasTopRightToast ? 'mr-[337px] mobile:absolute mobile:left-0 mobile:top-2 mobile:ml-0 mobile:mr-0 mobile:max-[359px]:top-[var(--toast-safe-bottom)]' : ''}`}
                   size="24"
@@ -397,33 +412,46 @@ export function Root() {
               <web-ui-select
                 value={themeMotion}
                 className="[--wui-input-width:120px]"
-                aria-label="Global motion"
+                aria-label="全局动效"
                 onChange={updateThemeMotion}
               >
-                <web-ui-option value="full" label="Full motion">
-                  Full motion
+                <web-ui-option value="full" label="完整动效">
+                  完整动效
                 </web-ui-option>
-                <web-ui-option value="reduced" label="Reduced motion">
-                  Reduced motion
+                <web-ui-option value="reduced" label="减弱动效">
+                  减弱动效
                 </web-ui-option>
-                <web-ui-option value="system" label="Follow system">
-                  Follow system
+                <web-ui-option value="system" label="跟随系统">
+                  跟随系统
                 </web-ui-option>
               </web-ui-select>
               <web-ui-select
                 value={themeAppearance}
                 className="[--wui-input-width:120px]"
-                aria-label="Global theme"
+                aria-label="全局主题"
                 onChange={updateThemeAppearance}
               >
-                <web-ui-option value="light" label="Light">
-                  Light
+                <web-ui-option value="light" label={LIGHT_LABEL}>
+                  {LIGHT_LABEL}
                 </web-ui-option>
-                <web-ui-option value="dark" label="Dark">
-                  Dark
+                <web-ui-option value="dark" label={DARK_LABEL}>
+                  {DARK_LABEL}
                 </web-ui-option>
-                <web-ui-option value="system" label="Follow system">
-                  Follow system
+                <web-ui-option value="system" label="跟随系统">
+                  跟随系统
+                </web-ui-option>
+              </web-ui-select>
+              <web-ui-select
+                value={locale}
+                className="[--wui-input-width:120px]"
+                aria-label="全局语言"
+                onChange={updateLocale}
+              >
+                <web-ui-option value="zh-CN" label={ZH_CN_LABEL}>
+                  {ZH_CN_LABEL}
+                </web-ui-option>
+                <web-ui-option value="en" label={EN_LABEL}>
+                  {EN_LABEL}
                 </web-ui-option>
               </web-ui-select>
             </div>
@@ -432,9 +460,9 @@ export function Root() {
               ref={navSidebarRef}
               options={webUiScrollbarsOptions}
               className="relative z-20 h-full min-h-0 overflow-y-auto p-2 mobile:px-0"
-              aria-label="App navigation"
+              aria-label="应用导航"
             >
-              <nav className="grid gap-1" aria-label="Main navigation">
+              <nav className="grid gap-1" aria-label="主导航">
                 {navItems.map(item => {
                   const active = isNavActive(pathname, item.path)
                   return (
