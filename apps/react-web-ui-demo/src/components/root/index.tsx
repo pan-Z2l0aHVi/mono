@@ -171,40 +171,75 @@ export function Root() {
   // toast 可落在主题、fallback 或自定义容器；只为视口上缘可见的堆栈给顶栏留安全区。
   useLayoutEffect(() => {
     const shadowRootObservers = new Map<ShadowRoot, MutationObserver>()
+    let roots = new Set<Document | ShadowRoot>([document])
+    let hostsWithoutShadowRoot = new Set<HTMLElement>()
     let observedToasts = new Set<WebUiToast>()
     let observedContainers = new Set<HTMLElement>()
     let syncTopRightToasts = () => {}
+    let refreshObservedToasts = () => {}
+    let discoverShadowRoots = () => {}
     let syncFrame: number | undefined
-    const scheduleSync = () => {
+    let discoverBeforeSync = false
+    let scheduleSync: (discover?: boolean) => void = () => {}
+    const onViewportChange = () => {
+      let needsRootDiscovery = false
+      for (const host of hostsWithoutShadowRoot) {
+        if (!host.isConnected || !host.shadowRoot) continue
+        needsRootDiscovery = true
+        break
+      }
+      scheduleSync(needsRootDiscovery)
+    }
+    const onScroll = onViewportChange
+    const onResize = onViewportChange
+    const resizeObserver = typeof ResizeObserver === 'undefined' ? undefined : new ResizeObserver(onResize)
+
+    scheduleSync = discover => {
+      discoverBeforeSync ||= discover === true
       if (syncFrame !== undefined) return
       if (typeof requestAnimationFrame === 'undefined') {
+        if (discoverBeforeSync) {
+          discoverBeforeSync = false
+          discoverShadowRoots()
+          refreshObservedToasts()
+        }
         syncTopRightToasts()
         return
       }
       syncFrame = requestAnimationFrame(() => {
         syncFrame = undefined
+        if (discoverBeforeSync) {
+          discoverBeforeSync = false
+          discoverShadowRoots()
+          refreshObservedToasts()
+        }
         syncTopRightToasts()
       })
     }
-    const resizeObserver = typeof ResizeObserver === 'undefined' ? undefined : new ResizeObserver(scheduleSync)
-    syncTopRightToasts = () => {
-      const roots = new Set<Document | ShadowRoot>([document])
-      for (const root of roots) {
+
+    discoverShadowRoots = () => {
+      const nextRoots = new Set<Document | ShadowRoot>([document])
+      const nextHostsWithoutShadowRoot = new Set<HTMLElement>()
+      for (const root of nextRoots) {
         for (const element of root.querySelectorAll<Element>('*')) {
-          const shadowRoot = (element as HTMLElement).shadowRoot
-          if (shadowRoot) roots.add(shadowRoot)
+          const host = element as HTMLElement
+          if (host.shadowRoot) {
+            nextRoots.add(host.shadowRoot)
+          } else if (host.localName.includes('-') || host.hasAttribute('is')) {
+            nextHostsWithoutShadowRoot.add(host)
+          }
         }
       }
 
       for (const [root, observer] of shadowRootObservers) {
-        if (roots.has(root)) continue
+        if (nextRoots.has(root)) continue
         observer.disconnect()
         shadowRootObservers.delete(root)
       }
 
-      for (const root of roots) {
+      for (const root of nextRoots) {
         if (!(root instanceof ShadowRoot) || shadowRootObservers.has(root)) continue
-        const observer = new MutationObserver(scheduleSync)
+        const observer = new MutationObserver(() => scheduleSync(true))
         observer.observe(root, {
           childList: true,
           subtree: true,
@@ -213,7 +248,11 @@ export function Root() {
         })
         shadowRootObservers.set(root, observer)
       }
+      roots = nextRoots
+      hostsWithoutShadowRoot = nextHostsWithoutShadowRoot
+    }
 
+    refreshObservedToasts = () => {
       const toasts = [
         ...new Set([...roots].flatMap(root => [...root.querySelectorAll<WebUiToast>('web-ui-toast')]))
       ].filter(toast => toast.position === 'top-right')
@@ -235,14 +274,17 @@ export function Root() {
       )
       for (const container of observedContainers) {
         if (nextObservedContainers.has(container)) continue
-        container.removeEventListener('scroll', scheduleSync)
+        container.removeEventListener('scroll', onScroll)
       }
       for (const container of nextObservedContainers) {
         if (observedContainers.has(container)) continue
-        container.addEventListener('scroll', scheduleSync, { passive: true })
+        container.addEventListener('scroll', onScroll, { passive: true })
       }
       observedContainers = nextObservedContainers
+    }
 
+    syncTopRightToasts = () => {
+      const toasts = [...observedToasts]
       const getParentElement = (element: HTMLElement): HTMLElement | null => {
         if (element.parentElement instanceof HTMLElement) return element.parentElement
         const root = element.getRootNode()
@@ -277,19 +319,26 @@ export function Root() {
       setTopRightToastHeaderPaddingTop(requiredHeaderPaddingTop > 8 ? requiredHeaderPaddingTop : 0)
     }
 
-    const documentObserver = new MutationObserver(scheduleSync)
-    documentObserver.observe(document.documentElement, { childList: true, subtree: true })
-    window.addEventListener('resize', scheduleSync)
-    window.addEventListener('scroll', scheduleSync, true)
+    const documentObserver = new MutationObserver(() => scheduleSync(true))
+    documentObserver.observe(document.documentElement, {
+      childList: true,
+      subtree: true,
+      attributes: true,
+      attributeFilter: ['position']
+    })
+    window.addEventListener('resize', onResize)
+    window.addEventListener('scroll', onScroll, true)
+    discoverShadowRoots()
+    refreshObservedToasts()
     syncTopRightToasts()
 
     return () => {
       documentObserver.disconnect()
-      window.removeEventListener('resize', scheduleSync)
-      window.removeEventListener('scroll', scheduleSync, true)
+      window.removeEventListener('resize', onResize)
+      window.removeEventListener('scroll', onScroll, true)
       if (syncFrame !== undefined) cancelAnimationFrame(syncFrame)
       for (const observer of shadowRootObservers.values()) observer.disconnect()
-      for (const container of observedContainers) container.removeEventListener('scroll', scheduleSync)
+      for (const container of observedContainers) container.removeEventListener('scroll', onScroll)
       resizeObserver?.disconnect()
     }
   }, [])
