@@ -137,11 +137,16 @@ describe('应用外壳（浏览器）：导航 collapsed state 不跨视口泄�
       return {
         accessibleName: link.getAttribute('aria-label'),
         visibleLabel: label?.textContent?.trim() ?? '',
+        labelClientWidth: label?.clientWidth ?? 0,
+        labelScrollWidth: label?.scrollWidth ?? 0,
         tooltip: link.getAttribute('title')
       }
     })
 
     expect(new Set(collapsedEntries.map(entry => entry.visibleLabel)).size).toBe(links.length)
+    expect(
+      collapsedEntries.every(entry => entry.labelClientWidth > 0 && entry.labelScrollWidth <= entry.labelClientWidth)
+    ).toBe(true)
     expect(
       collapsedEntries.every(
         entry => entry.visibleLabel && entry.accessibleName && entry.tooltip === entry.accessibleName
