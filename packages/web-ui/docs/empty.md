@@ -83,7 +83,7 @@ import { lucideSearch } from '@greypan/web-ui/icons'
 export default function Demo() {
   return (
     <web-ui-empty size={72}>
-      <web-ui-icon slot="icon" icon={lucideSearch} size={31}></web-ui-icon>
+      <web-ui-icon slot="icon" icon={lucideSearch} size={51}></web-ui-icon>
       <strong>没有匹配的条目</strong>
       <span slot="description">试试更短的关键词，或者换一个筛选条件。</span>
       <div slot="action" className="flex items-center justify-center gap-3">
@@ -98,7 +98,7 @@ export default function Demo() {
 ```vue
 <template>
   <web-ui-empty :size="72">
-    <web-ui-icon slot="icon" :icon="lucideSearch" :size="31"></web-ui-icon>
+    <web-ui-icon slot="icon" :icon="lucideSearch" :size="51"></web-ui-icon>
     <strong>没有匹配的条目</strong>
     <span slot="description">试试更短的关键词，或者换一个筛选条件。</span>
     <div slot="action" class="flex items-center justify-center gap-3">
@@ -167,7 +167,7 @@ export default function Demo() {
 
 八枚 `--wui-empty-*` 始终压在上面：`size` 派生出来的那几项（icon 盒、`min-height`、内边距、两行字号）逐项被覆盖，另外三枚（内容宽度与两个段间距）本来就不随 `size` 动，写变量是改它们的唯一入口。只需要调个别度量时就逐项覆盖，不必回去改 `size`。
 
-注意 `--wui-empty-icon-size` 只改图形盒，默认字形仍按 `size` 算。
+注意 `--wui-empty-icon-size` 只改图形盒，默认字形仍按 `size` 派生。
 
 ```tsx
 export default function Demo() {
@@ -183,7 +183,7 @@ export default function Demo() {
         className="[--wui-empty-icon-size:80px] [--wui-empty-title-margin-top:4px]"
         size={40}
         title="图形盒撑到 80px"
-        description="字形还是按 size 的 3/7 画，所以图形周围会多出空白。"
+        description="字形还是按 size 的 5/7 画，所以图形周围会多出空白。"
       ></web-ui-empty>
 
       <web-ui-empty
@@ -219,7 +219,7 @@ export default function Demo() {
       class="[--wui-empty-icon-size:80px] [--wui-empty-title-margin-top:4px]"
       :size="40"
       title="图形盒撑到 80px"
-      description="字形还是按 size 的 3/7 画，所以图形周围会多出空白。"
+      description="字形还是按 size 的 5/7 画，所以图形周围会多出空白。"
     ></web-ui-empty>
 
     <web-ui-empty
@@ -260,15 +260,15 @@ export default function Demo() {
 
 ### 行为说明
 
-`size` 是整个空态的单一旋钮：它驱动 icon 盒、`min-height`、内边距与标题/描述字号，因此大 icon 不再配 medium 留白：
+`size` 是整个空态的单一旋钮：它驱动图标盒与字形、`min-height`、内边距与标题/描述字号，因此大 icon 不再配 medium 留白：
 
-列依次为 size / icon 盒 / 字形 / min-height / 内边距 块/行 / 标题 / 描述：
+列依次为 size / 字形与图标盒 / min-height / 内边距 块/行 / 标题 / 描述：
 
-- `40` / `40px` / `17px` / `171px` / `23px/17px` / `14px` / `13px`
-- `56` / `56px` / `24px` / `240px` / `32px/24px` / `16px` / `14px`
-- `72` / `72px` / `31px` / `309px` / `41px/31px` / `16px` / `14px`
+- `40` / `29px` / `171px` / `23px/17px` / `14px` / `13px`
+- `56` / `40px` / `240px` / `32px/24px` / `16px` / `14px`
+- `72` / `51px` / `309px` / `41px/31px` / `16px` / `14px`
 
-派生规则是 `min-height: round(size * 30 / 7)`、`padding-block: round(size * 4 / 7)`、`padding-inline: round(size * 3 / 7)`，默认字形是 `round(size * 3 / 7)`。
+派生规则是 `min-height: round(size * 30 / 7)`、`padding-block: round(size * 4 / 7)`、`padding-inline: round(size * 3 / 7)`、默认字形 `round(size * 5 / 7)`。图标盒与字形同尺寸：底色退役后不再留隐形内边距，图形与标题之间的距离就是 `--wui-empty-title-margin-top`。
 
 字号只有一档台阶而不是连续缩放：低于 `56` 时标题 `14px`、描述 `13px`，`56` 及以上为 `16px` 与 `14px`。更大的空态靠留白撑开，而不是靠字变大。
 
@@ -282,7 +282,7 @@ export default function Demo() {
 
 `action` 插槽里的多个元素不会自己排成一排，操作区只负责它上方那段间距。
 
-`icon` 插槽的图形要自己带尺寸：默认图形的边长是按 `size` 派生的 `round(size * 3 / 7)`，组件不会去量插槽内容，所以换 icon 时按同一比例写它的 `size`（`size={40}` 配 17、`72` 配 31），或者干脆连 `--wui-empty-icon-size` 一起调。
+`icon` 插槽的图形要自己带尺寸：默认图形的边长是按 `size` 派生的 `round(size * 5 / 7)`，组件不会去量插槽内容，所以换 icon 时按同一比例写它的 `size`（`size={40}` 配 29、`72` 配 51），或者干脆连 `--wui-empty-icon-size` 一起调。
 
 `title` 复用的是全局 `title` 属性并且会反射回宿主，因此浏览器同时把这段文字当原生 tooltip 在悬停时画出来。不想要这层提示就用默认插槽放标题；这一位的效果是等价的，只是不会被当成 tooltip 文本。
 
@@ -292,19 +292,19 @@ export default function Demo() {
 
 列依次为 旧值 / 新值 / 默认字形：
 
-- `small` / `40` / `17`
-- `medium` / `56` / `24`
-- `large` / `72` / `31`
+- `small` / `40` / `29`
+- `medium` / `56` / `40`
+- `large` / `72` / `51`
 
 ### CSS Custom Properties
 
-| 名称                                | 说明                         | 默认值      |
-| ----------------------------------- | ---------------------------- | ----------- |
-| `--wui-empty-min-height`            | 最小高度                     | `240px`     |
-| `--wui-empty-padding`               | 内边距                       | `32px 24px` |
-| `--wui-empty-icon-size`             | icon 容器尺寸，优先于 `size` | `56px`      |
-| `--wui-empty-content-width`         | 标题/描述/操作区最大宽度     | `480px`     |
-| `--wui-empty-title-margin-top`      | icon 与标题之间的间距        | `16px`      |
-| `--wui-empty-title-font-size`       | 标题字号                     | `16px`      |
-| `--wui-empty-description-font-size` | 描述字号                     | `14px`      |
-| `--wui-empty-action-margin-top`     | 操作区上方的间距             | `20px`      |
+| 名称                                | 说明                                  | 默认值      |
+| ----------------------------------- | ------------------------------------- | ----------- |
+| `--wui-empty-min-height`            | 最小高度                              | `240px`     |
+| `--wui-empty-padding`               | 内边距                                | `32px 24px` |
+| `--wui-empty-icon-size`             | icon 盒尺寸，优先于 `size` 派生的字形 | `40px`      |
+| `--wui-empty-content-width`         | 标题/描述/操作区最大宽度              | `480px`     |
+| `--wui-empty-title-margin-top`      | icon 与标题之间的间距                 | `16px`      |
+| `--wui-empty-title-font-size`       | 标题字号                              | `16px`      |
+| `--wui-empty-description-font-size` | 描述字号                              | `14px`      |
+| `--wui-empty-action-margin-top`     | 操作区上方的间距                      | `20px`      |

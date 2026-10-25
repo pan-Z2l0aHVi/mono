@@ -11,7 +11,7 @@ export default function Demo() {
         className="[--wui-empty-icon-size:80px] [--wui-empty-title-margin-top:4px]"
         size={40}
         title="图形盒撑到 80px"
-        description="字形还是按 size 的 3/7 画，所以图形周围会多出空白。"
+        description="字形还是按 size 的 5/7 画，所以图形周围会多出空白。"
       ></web-ui-empty>
 
       <web-ui-empty

@@ -21,7 +21,7 @@ async function createEmpty(size?: string): Promise<WebUiEmpty> {
   return el
 }
 
-/** icon 盒的边长：非法 size 若漏过归一化，这里会是 `NaNpx` 或 `0px` 而不是可用尺寸。 */
+/** icon 盒的边长：盒与字形同尺寸，所以它就是 `round(size * 5 / 7)`。非法 size 若漏过归一化，这里会是 `NaNpx` 或 `0px` 而不是可用尺寸。 */
 async function iconBoxWidth(el: WebUiEmpty): Promise<string> {
   const box = el.shadowRoot!.querySelector<HTMLElement>('.empty-icon')
   if (!box) throw new Error('web-ui-empty shadow root 缺少 .empty-icon')
@@ -31,23 +31,23 @@ async function iconBoxWidth(el: WebUiEmpty): Promise<string> {
 
 describe('web-ui-empty 的 size 归一化（浏览器）', () => {
   it.each([
-    ['40', '40px'],
-    ['56', '56px'],
-    ['72', '72px']
+    ['40', '29px'],
+    ['56', '40px'],
+    ['72', '51px']
   ])('size=%s 产出 %s 的 icon 盒', async (size, expected) => {
     expect(await iconBoxWidth(await createEmpty(size))).toBe(expected)
   })
 
-  it('未写 size 时按默认 56 渲染', async () => {
-    expect(await iconBoxWidth(await createEmpty())).toBe('56px')
+  it('未写 size 时按默认 56 渲染，字形 40', async () => {
+    expect(await iconBoxWidth(await createEmpty())).toBe('40px')
   })
 
   it.each(['abc', '', '0', '-5', 'Infinity', 'NaN'])(
-    '非法 size="%s" 的 icon 盒回退为默认 56，而不是 NaN 或 0',
+    '非法 size="%s" 的 icon 盒回退为默认 56 的字形 40，而不是 NaN 或 0',
     async raw => {
       const el = await createEmpty(raw)
       expect(el.size).toBe(56)
-      expect(await iconBoxWidth(el)).toBe('56px')
+      expect(await iconBoxWidth(el)).toBe('40px')
     }
   )
 

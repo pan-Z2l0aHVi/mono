@@ -14,12 +14,15 @@ import style from './style.css?inline'
 const DEFAULT_SIZE = 56
 
 /**
- * 派生度量统一除以 7。取 7 是为了让默认档 56 整除出改前 medium 的四个值：字形 3/7 → 24、
+ * 派生度量统一除以 7。取 7 是为了让默认档 56 整除出改前 medium 的四个值：字形 5/7 → 40、
  * min-height 30/7 → 240、padding 块 4/7 → 32、padding 行 3/7 → 24。40 与 72 因此落到
- * 171 / 23 / 17 与 309 / 41 / 31，字形 17 与 31。
+ * 171 / 23 / 17 与 309 / 41 / 31，字形 29 与 51。
+ *
+ * 字形取 5/7 而不是 3/7：圆角矩形底面退役后，字形是这一区唯一的图形（#440）。3/7 的 24
+ * 在 56 的隐形盒里显得又小又离标题远，5/7 让图形撑到接近原本底面占的视觉体量。
  */
 const DERIVED_DENOMINATOR = 7
-const GLYPH_NUMERATOR = 3
+const GLYPH_NUMERATOR = 5
 const MIN_HEIGHT_NUMERATOR = 30
 const PADDING_BLOCK_NUMERATOR = 4
 const PADDING_INLINE_NUMERATOR = 3
@@ -38,7 +41,7 @@ const DEFAULT_DESCRIPTION_FONT_SIZE = 14
  * 只做数值合法性判断，不做枚举映射：有限正数原样采用，其余输入（NaN、±Infinity、0、负数）
  * 回退默认边长。
  *
- * 这一层是必要的：`size` 会同时写进 `--wui-internal-empty-size`，未守卫时
+ * 这一层是必要的：`size` 会同时写进 `--wui-internal-empty-glyph-size`，未守卫时
  * `size="abc"` 会产出失效的 `NaNpx`（盒退回 unset 而涨成 300×300），
  * `size=""` 会产出 `0px`（icon 不可见）。回退的是边长本身，整套派生度量因此一起回到默认档
  * 56，而不是按 `NaN` 算出垃圾值。
@@ -54,13 +57,13 @@ export class WebUiEmpty extends LitElement {
   @property({ type: String, reflect: true }) description = ''
 
   /**
-   * 版面缩放基准，单位 px，默认 56。驱动 icon 盒、min-height、padding 与标题/描述字号，
+   * 版面缩放基准，单位 px，默认 56。驱动图标与图形、min-height、padding 与标题/描述字号，
    * 使大 icon 不再配 medium 留白。
    *
-   * 派生规则：icon 容器边长即 `size`，默认字形边长 `round(size * 3 / 7)`，min-height
-   * `round(size * 30 / 7)`，padding 块 `round(size * 4 / 7)`、行 `round(size * 3 / 7)`；
-   * 字号在 56 处分两档，低于 56 为 14px / 13px，56 及以上为 16px / 14px。段间距与内容宽度
-   * 不随它变化。
+   * 派生规则：默认字形边长 `round(size * 5 / 7)`，图标盒与字形同尺寸（不再留隐形内边距），
+   * min-height `round(size * 30 / 7)`，padding 块 `round(size * 4 / 7)`、行
+   * `round(size * 3 / 7)`；字号在 56 处分两档，低于 56 为 14px / 13px，56 及以上为
+   * 16px / 14px。段间距与内容宽度不随它变化。
    *
    * 派生值全部落在 `--wui-internal-empty-*` 上，`--wui-empty-*` 仍压在其上，所以逐项覆盖
    * 优先于本属性。非法输入（非有限数、0、负数）回退默认边长 56。
@@ -93,7 +96,7 @@ export class WebUiEmpty extends LitElement {
     const compact = size < COMPACT_SIZE_THRESHOLD
     const scaled = (numerator: number) => `${Math.round((size * numerator) / DERIVED_DENOMINATOR)}px`
     return {
-      '--wui-internal-empty-size': `${size}px`,
+      '--wui-internal-empty-glyph-size': `${this._iconSize}px`,
       '--wui-internal-empty-min-height': scaled(MIN_HEIGHT_NUMERATOR),
       '--wui-internal-empty-padding-block': scaled(PADDING_BLOCK_NUMERATOR),
       '--wui-internal-empty-padding-inline': scaled(PADDING_INLINE_NUMERATOR),

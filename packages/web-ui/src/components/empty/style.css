@@ -29,8 +29,12 @@
   align-items: center;
   justify-content: center;
 
-  width: var(--wui-empty-icon-size, var(--wui-internal-empty-size, 56px));
-  height: var(--wui-empty-icon-size, var(--wui-internal-empty-size, 56px));
+  /*
+   * 盒与字形同尺寸：底色退役后隐形内边距只会把图形推离标题（#440）。盒不再比字形大，
+   * 图形与标题之间的距离就正好是 .empty-title 的 margin-top，不需要为补偿留白再调它。
+   */
+  width: var(--wui-empty-icon-size, var(--wui-internal-empty-glyph-size, 40px));
+  height: var(--wui-empty-icon-size, var(--wui-internal-empty-glyph-size, 40px));
 
   /*
    * 纯图形，不绘制底面：盒只负责占位与居中，图形直接坐在它背后那张表面上，

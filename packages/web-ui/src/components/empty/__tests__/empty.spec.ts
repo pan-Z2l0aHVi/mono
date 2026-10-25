@@ -58,7 +58,7 @@ describe('WebUiEmpty 组件', () => {
       await waitForUpdate(el)
 
       expect(el.size).toBe(56)
-      expect(defaultIcon(el)?.size).toBe(24)
+      expect(defaultIcon(el)?.size).toBe(40)
       expect(el.getAttribute('size')).toBe('56')
       cleanupElement(el)
     })
