@@ -884,7 +884,7 @@ function closeLevel(index: number) {
 
 ### 同级堆叠 {#siblings}
 
-多个 drawer 作为同级节点挂载，依次打开后由组件自动管理层序：先打开的缩放并偏移，后打开的在顶层；按任意顺序关闭，剩余层级会重新排列。
+三个 drawer 作为同级节点挂载。先点页面按钮打开 drawer 1，再从当前 drawer 的 footer 打开下一层。层序由组件自动管理：先打开的缩放并偏移，后打开的在顶层；按任意顺序关闭，剩余层级会重新排列。
 
 ```tsx
 import { useState } from 'react'
@@ -898,13 +898,7 @@ export default function Demo() {
 
   return (
     <>
-      <div className="flex flex-wrap gap-3">
-        {open.map((_, index) => (
-          <web-ui-button key={index} onClick={() => setAt(index, true)}>
-            打开 drawer {index + 1}
-          </web-ui-button>
-        ))}
-      </div>
+      <web-ui-button onClick={() => setAt(0, true)}>打开 drawer 1</web-ui-button>
 
       {open.map((value, index) => (
         <web-ui-drawer
@@ -914,7 +908,15 @@ export default function Demo() {
           closable
           onopen-change={event => setAt(index, event.detail.open)}
         >
-          <p>第 {index + 1} 个同级 drawer。打开下一个，观察这一层缩放并让出边缘。</p>
+          <p>
+            第 {index + 1} 个同级 drawer。
+            {index < open.length - 1 ? '从 footer 打开下一层。' : '关闭后观察剩余层级重新排列。'}
+          </p>
+          {index < open.length - 1 && (
+            <web-ui-button slot="footer" variant="secondary" full onClick={() => setAt(index + 1, true)}>
+              打开 drawer {index + 2}
+            </web-ui-button>
+          )}
         </web-ui-drawer>
       ))}
     </>
@@ -924,11 +926,7 @@ export default function Demo() {
 
 ```vue
 <template>
-  <div class="flex flex-wrap gap-3">
-    <web-ui-button v-for="(value, index) in open" :key="index" @click="open[index] = true">
-      打开 drawer {{ index + 1 }}
-    </web-ui-button>
-  </div>
+  <web-ui-button @click="open[0] = true">打开 drawer 1</web-ui-button>
 
   <web-ui-drawer
     v-for="(value, index) in open"
@@ -938,7 +936,20 @@ export default function Demo() {
     closable
     @open-change="open[index] = $event.detail.open"
   >
-    <p>第 {{ index + 1 }} 个同级 drawer。打开下一个，观察这一层缩放并让出边缘。</p>
+    <p>
+      第 {{ index + 1 }} 个同级 drawer。{{
+        index < open.length - 1 ? '从 footer 打开下一层。' : '关闭后观察剩余层级重新排列。'
+      }}
+    </p>
+    <web-ui-button
+      v-if="index < open.length - 1"
+      slot="footer"
+      variant="secondary"
+      full
+      @click="open[index + 1] = true"
+    >
+      打开 drawer {{ index + 2 }}
+    </web-ui-button>
   </web-ui-drawer>
 </template>
 
