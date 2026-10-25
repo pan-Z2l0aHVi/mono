@@ -42,13 +42,7 @@ function isDrawerMode() {
   return !!layoutRoot().shadowRoot?.querySelector('web-ui-drawer')
 }
 
-/**
- * 导航项的对齐方式。collapsed state 在 demo 里只体现为排布，所以判据是渲染出来的对齐方式本身：
- * collapsed state 那一行把内容居中、label 自身也居中；expanded state 两者都靠左。
- *
- * 不量像素：collapsed 导轨只有 44px，label 放不下会被截断，截断后的文字落点既不是设计契约，也会随字体
- * 与文案变化——用例守的是「collapsed state 换成居中排布、expanded state 保持左对齐」这个结构，不是某个具体像素值。
- */
+/** collapsed state 居中显示短标签，expanded state 左对齐完整 label。 */
 function navItemAlignment() {
   const link = navRoot().querySelector('a')
   if (!link) throw new Error('nav link not found')
@@ -127,6 +121,37 @@ describe('应用外壳（浏览器）：导航 collapsed state 不跨视口泄�
     wrapper?.unmount()
     wrapper = null
     await setViewport(DESKTOP_VIEWPORT.width, DESKTOP_VIEWPORT.height)
+  })
+
+  it('桌面端 collapsed state 使用唯一短标签，并通过 title 提供完整 label', async () => {
+    await mountAppShell()
+    const links = [...navRoot().querySelectorAll<HTMLAnchorElement>('a')]
+    const expandedLabels = links.map(link => link.querySelector('span')?.textContent?.trim() ?? '')
+    expect(links.length).toBeGreaterThan(0)
+
+    await requestCollapse(true)
+
+    const collapsedEntries = links.map(link => {
+      const label = link.querySelector('span')
+
+      return {
+        accessibleName: link.getAttribute('aria-label'),
+        visibleLabel: label?.textContent?.trim() ?? '',
+        tooltip: link.getAttribute('title')
+      }
+    })
+
+    expect(new Set(collapsedEntries.map(entry => entry.visibleLabel)).size).toBe(links.length)
+    expect(
+      collapsedEntries.every(
+        entry => entry.visibleLabel && entry.accessibleName && entry.tooltip === entry.accessibleName
+      )
+    ).toBe(true)
+
+    await requestCollapse(false)
+
+    expect(links.map(link => link.querySelector('span')?.textContent?.trim() ?? '')).toEqual(expandedLabels)
+    expect(links.every(link => !link.hasAttribute('title'))).toBe(true)
   })
 
   it('桌面端 collapse 后导航文字居中，expanded state 左对齐', async () => {
