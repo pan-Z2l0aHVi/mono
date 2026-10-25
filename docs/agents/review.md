@@ -6,9 +6,9 @@
 
 ## 固定输入与范围
 
-由编排层提供 PR URL、仓库和独立的 reviewer worktree。审查开始时记录 PR 当前 base 与 head 的完整 SHA、目标分支、作者、状态、draft、文件数及合并对象，并读取完整 diff、已有 inline review、review 和普通评论。文件、评论或提交对象无法完整读取时，报告覆盖不完整，不给出「无问题」或可合并结论。
+由编排层提供 PR URL 与仓库，尽量附独立的 reviewer worktree；未提供时 reviewer 只读复用已有 worktree，核对要求不变。审查开始时记录 PR 当前 base 与 head 的完整 SHA、目标分支、作者、状态、draft、文件数及合并对象，并读取完整 diff、已有 inline review、review 和普通评论。文件、评论或提交对象无法完整读取时，报告覆盖不完整，不给出「无问题」或可合并结论。
 
-reviewer 不得切换、覆盖或修改实施者 worktree。使用专属 reviewer worktree，核对其 origin 指向 PR base 仓库、HEAD 等于 PR head、base/head 对象存在，并审查 merge-base..head 的完整改动，而不是只看最新 commit。审查开始和提交报告前都要重新读取 PR base/head；head 变化后旧报告只覆盖旧提交。force push、rebase、base 更新或范围变化后，重新求 merge-base 并检查完整受影响面。
+reviewer 不得切换、覆盖或修改实施者 worktree，审查中不执行任何文件修改或 git 写操作。专属 reviewer worktree 与只读复用的已有 worktree 都核对 origin 指向 PR base 仓库、HEAD 等于 PR head、base/head 对象存在，并审查 merge-base..head 的完整改动，而不是只看最新 commit。审查开始和提交报告前都要重新读取 PR base/head；head 变化后旧报告只覆盖旧提交。force push、rebase、base 更新或范围变化后，重新求 merge-base 并检查完整受影响面。
 
 GitHub `pull_request` 的 CI 默认 checkout 是 base/head 的临时合并对象，代码 review 固定在 PR head。不能把 Actions run/check 关联用的 PR head SHA 当作 runner 实际测试的 checkout SHA。`gh pr checks --json` 不提供 head SHA；改用 run/check 对象或 check-runs API 核对关联的 head。required `check` 必须关联当前 PR head，并在实际执行快照与政策检查后成功；关联 SHA、base/head 或 step 结果不符时，不能证明当前输入已通过 CI。
 
