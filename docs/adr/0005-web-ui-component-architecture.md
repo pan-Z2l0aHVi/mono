@@ -47,7 +47,7 @@
 
 ### 2.6 slot-trigger ARIA 回写
 
-slot-trigger 组件（popover、dropdown、collapse、context-menu）把 `aria-expanded` / `aria-controls` / `aria-haspopup` 回写到 trigger slot 的首个 assigned element。组件不做 `role="button"` 补齐——trigger 由消费者提供交互语义。
+slot-trigger 组件（popover、dropdown、collapse、context-menu）把 `aria-expanded` / `aria-controls` / `aria-haspopup` 回写到 trigger slot 的首个 assigned element。组件不做 `role="button"` 补齐——trigger 由消费者提供交互语义。collapse 例外地不回写 `aria-controls`：它的目标 track 在组件自己的 shadow root 内，跨 shadow root 的 IDREF 无法解析，写出去等同悬空引用，展开关系只由 `aria-expanded` 表达。
 
 ## 3. 框架类型适配
 

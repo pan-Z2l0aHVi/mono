@@ -103,10 +103,7 @@ function ExamplePreview({
   if (!Demo || !demoKey) return null
 
   return (
-    <div
-      className="relative z-20 flex flex-wrap items-center gap-3 bg-(--wui-color-page) px-4 py-8"
-      data-sample-preview={demoKey}
-    >
+    <div className="relative z-20 flex flex-wrap items-center gap-3 px-4 py-8" data-sample-preview={demoKey}>
       {renderDemoComponent ? (
         <Suspense fallback={null}>
           <Demo />
@@ -283,20 +280,34 @@ function ExampleDoc({ component, nativeFlavor = 'react', previewAnchorsOnly = fa
                 `isolate` 让这张卡自己成一个 stacking context：工具条的 z-10 只在卡内比较，
                 既压得住下方代码区，也不会越过页面 header（`--wui-layer-header` 也是 10，
                 卡外比大小就会被后画的工具条盖住）。
-                预览区 z-20 压过工具条：select / dropdown / autocomplete 不开 `portal` 时面板是
-                宿主内的 `position: absolute`（`--wui-layer-inline-overlay` 只有 1），向下溢出预览区
-                就会被工具条盖掉；抬到 20 让整块预览（含溢出的面板）画在代码卡之上。
-                预览区不画边框、直接铺在页面上；边框与圆角只包住下方「工具条 + 代码区」。
+
+                预览区只是个层级占位（`relative z-20`）：select / dropdown / autocomplete 不开
+                `portal` 时面板是宿主内的 `position: absolute`（`--wui-layer-inline-overlay` 只有 1），
+                向下溢出预览区就会被工具条盖掉；抬到 20 让整块预览（含溢出的面板）画在代码卡之上。
+                边框与圆角只包住下方「工具条 + 代码区」。
+
+                这一层**不铺底色**。`--wui-color-page` 的实色底和页面同色，肉眼看不出来，却是这一带
+                唯一的一堵墙：工具条里向上溢出的东西（tooltip 气泡、segmented 按压态的上方投影）
+                要跨过卡片上沿 17px 才摆得下，落到这块同色实底后面就被拦腰截断——看着像被裁剪，
+                实际整条祖先链上连一个 `overflow: hidden` 都没有。
               */}
               <div className="isolate" data-current-flavor={flavor}>
                 <ExamplePreview Demo={Demo} demoKey={sample.demoKey} />
 
-                <div className="overflow-hidden rounded-4xl border border-(--wui-color-border)">
+                {/*
+                  这一层只画边框和圆角，**不裁剪**：工具条里的 segmented 才能把按压态画全。
+                  按压/拖拽态的 indicator 会 scale(1.5) 并带一枚 `0 2px 20px` 的柔投影，
+                  横向需要约 16px（放大外扩）+ 22px（投影可见半径）的余量，而工具条只留了
+                  `px-4`；在这里裁就会把药丸的左半圆和左侧投影一起切平，看着像「长按时阴影
+                  被吃掉一截」。
+                */}
+                <div className="rounded-4xl border border-(--wui-color-border)">
                   {/* 工具条只摆控件，不接管开合：展开由右侧 chevron 按钮和收起态那块代码预览负责。 */}
                   {/* `relative z-10` 把工具条抬到下方代码区之上：segmented 的投影朝下溢出（凹变种是
                       track 的常驻外投影，凸变种是 indicator 的柔投影），否则后绘制的折叠区会把阴影盖掉
-                      一截。这一层只在卡内比较，见上方 `isolate`。 */}
-                  <div className="relative z-10 flex flex-wrap items-center justify-between gap-3 bg-(--wui-color-page) px-4 pt-4 pb-2">
+                      一截。这一层只在卡内比较，见上方 `isolate`。
+                      顶部圆角补在这一层：外层不再裁剪，工具条的白底会自己溢出到圆角之外。 */}
+                  <div className="relative z-10 flex flex-wrap items-center justify-between gap-3 rounded-t-4xl bg-(--wui-color-page) px-4 pt-4 pb-2">
                     <web-ui-segmented
                       value={flavor}
                       variant="inset"
@@ -379,10 +390,19 @@ function ExampleDoc({ component, nativeFlavor = 'react', previewAnchorsOnly = fa
                     收起态这块露出的代码就是展开触发区（点哪一行都算），展开后它退化成一段可滚动的正文，
                     点击不再改状态——否则读到一半想选中一个标识符，整块代码会当场收回去。
                   */}
+                  {/*
+                    底部圆角不另起一层裁剪，而是骑在**本来就会裁自己内容**的两层上：
+                    collapse 宿主（画白底那层）和滚动容器（OverlayScrollbars 会把 host 改成
+                    `overflow: hidden`，圆角随之成为它自己的裁剪形状）。再套一层 `overflow: hidden`
+                    只为圆角，等于给以后所有浮层/阴影埋一颗雷——被裁的人永远找不到是哪一层干的。
+
+                    收起态的底线不是圆角所在的那条边：那里是 peek 的直切，由 collapse 的渐隐带
+                    收尾（末端 alpha 归零），落不到圆角上。
+                  */}
                   <web-ui-collapse
                     open={isExpanded}
                     peek="128px"
-                    className="bg-(--wui-color-page) [--wui-collapse-peek-edge-ratio:0.6]"
+                    className="rounded-b-4xl bg-(--wui-color-page) [--wui-collapse-peek-edge-ratio:0.6]"
                     onClick={event => {
                       if (isExpanded) return
                       toggleExpanded(event, key)
@@ -393,7 +413,7 @@ function ExampleDoc({ component, nativeFlavor = 'react', previewAnchorsOnly = fa
                         id={panelId(key)}
                         options={webUiScrollbarsOptions}
                         events={codeScrollbarsEvents}
-                        className="max-h-[32rem] overflow-auto bg-(--wui-color-page) px-4 pt-3 pb-4 font-mono text-xs leading-6"
+                        className="max-h-[32rem] overflow-auto rounded-b-4xl bg-(--wui-color-page) px-4 pt-3 pb-4 font-mono text-xs leading-6"
                         data-code
                       >
                         <div dangerouslySetInnerHTML={{ __html: sample.html[flavor] }} />
