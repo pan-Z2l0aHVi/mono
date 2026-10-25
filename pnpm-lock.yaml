@@ -182,6 +182,9 @@ catalogs:
     '@iconify-json/akar-icons':
       specifier: ^1.2.7
       version: 1.2.7
+    '@iconify-json/andrsrxn':
+      specifier: ^1.2.2
+      version: 1.2.2
     '@iconify-json/bi':
       specifier: ^1.2.7
       version: 1.2.7
@@ -989,6 +992,9 @@ importers:
       '@iconify-json/akar-icons':
         specifier: 'catalog:'
         version: 1.2.7
+      '@iconify-json/andrsrxn':
+        specifier: 'catalog:'
+        version: 1.2.2
       '@iconify-json/bi':
         specifier: 'catalog:'
         version: 1.2.7
@@ -2100,6 +2106,9 @@ packages:
 
   '@iconify-json/akar-icons@1.2.7':
     resolution: {integrity: sha512-cw44dCnZgGhm6Tywxm0WALAnDB9AyGkDk7kiLMo2B/Ayt7duZu/uyrsqb55weWUN8Ge2sQAOl8MRtT6bFcLzPg==}
+
+  '@iconify-json/andrsrxn@1.2.2':
+    resolution: {integrity: sha512-ykv0OHh694O4EhIk1ARsB7Z/VQWzUHTUpdTVECwCYys/GLhEcUFVuADpDj6WH3w5DZM5yjyTjnZ/4IXKdCOZ/Q==}
 
   '@iconify-json/bi@1.2.7':
     resolution: {integrity: sha512-IPz8WNxmLkH1I9msl+0Q4OnmjjvP4uU0Z61a4i4sqonB6vKSbMGUWuGn8/YuuszlReVj8rf+3gNv5JU8Xoljyg==}
@@ -8558,6 +8567,10 @@ snapshots:
     optional: true
 
   '@iconify-json/akar-icons@1.2.7':
+    dependencies:
+      '@iconify/types': 2.0.0
+
+  '@iconify-json/andrsrxn@1.2.2':
     dependencies:
       '@iconify/types': 2.0.0
 
