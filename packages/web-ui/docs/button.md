@@ -582,7 +582,6 @@ const fourStates = {
 | `size`          | Button height; bare numbers are interpreted as px, and CSS lengths such as `32px` and `1.5rem` are accepted. Inside `<web-ui-button-group>` it is unified to 30px by the group. | `string`                                                     | `''`       |
 | `type`          | The native button's `type`; invalid values normalize to `button`.                                                                                                               | `'button' \| 'submit' \| 'reset'`                            | `'button'` |
 | `aria-label`    | Accessible name, forwarded to the native button inside.                                                                                                                         | `string \| null`                                             | `null`     |
-| `aria-disabled` | When `true`, blocks click and form actions while keeping focusability; forwarded to the native button inside.                                                                   | `string \| null`                                             | `null`     |
 | `aria-expanded` | Expanded state; forwarded to the native button inside for assistive technology to read.                                                                                         | `string \| null`                                             | `null`     |
 
 ### Slots
@@ -599,7 +598,7 @@ const fourStates = {
 
 `disabled`, `loading`, and form-level disabling (an ancestor `<fieldset disabled>`) all really disable the inner button: no click is produced and the tab order no longer reaches it.
 
-`aria-label`, `aria-disabled`, and `aria-expanded` are explicitly delegated to the native button inside; `aria-controls` and other attributes stay on the host and are not copied automatically, because IDREFs cannot resolve across a shadow root.
+`aria-label` and `aria-expanded` are explicitly delegated to the native button inside; `aria-controls` and other attributes stay on the host and are not copied automatically, because IDREFs cannot resolve across a shadow root.
 
 When `<web-ui-button>` is used as a collapse trigger, assistive technology can read `aria-expanded` on the inner node exposed as a button.
 
@@ -609,7 +608,7 @@ The inner button has no form owner of its own, so `SubmitEvent.submitter` is `nu
 
 button does not contribute a value to `FormData` (form state is always `null`).
 
-`aria-disabled="true"` blocks `click` and form actions but does not set the native `disabled`, so the inner button remains focusable.
+`disabled` is the only path to a disabled state: it really disables the native button inside, so neither `click` nor form actions happen. `aria-disabled` is neither read nor forwarded—the "looks disabled but stays focusable" semantics are not offered, and a hand-written `aria-disabled` stays on the host with no effect on behavior.
 
 When `icon` and `loading` are both on, only the spinner is rendered and the default slot is not projected; outside icon mode the spinner comes before the label and coexists with prefix/suffix.
 
