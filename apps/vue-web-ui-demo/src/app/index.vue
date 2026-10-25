@@ -137,41 +137,42 @@ onMounted(async () => {
 interface NavItem {
   path: string
   label: string
+  shortLabel: string
 }
 
 const navItems: NavItem[] = [
-  { path: '/home', label: 'Home' },
-  { path: '/components/avatar', label: 'Avatar' },
-  { path: '/components/badge', label: 'Badge' },
-  { path: '/components/button', label: 'Button' },
-  { path: '/components/icon', label: 'Icon' },
-  { path: '/components/input', label: 'Input' },
-  { path: '/components/textarea', label: 'Textarea' },
-  { path: '/components/editable-text', label: 'EditableText' },
-  { path: '/components/theme', label: 'Theme' },
-  { path: '/components/input-number', label: 'InputNumber' },
-  { path: '/components/select', label: 'Select' },
-  { path: '/components/autocomplete', label: 'Autocomplete' },
-  { path: '/components/dropdown', label: 'Dropdown' },
-  { path: '/components/collapse', label: 'Collapse' },
-  { path: '/components/dialog', label: 'Dialog' },
-  { path: '/components/drawer', label: 'Drawer' },
-  { path: '/components/image-preview', label: 'ImagePreview' },
-  { path: '/components/empty', label: 'Empty' },
-  { path: '/components/middle-ellipsis', label: 'MiddleEllipsis' },
-  { path: '/components/tooltip', label: 'Tooltip' },
-  { path: '/components/switch', label: 'Switch' },
-  { path: '/components/slider', label: 'Slider' },
-  { path: '/components/radio', label: 'Radio' },
-  { path: '/components/checkbox', label: 'Checkbox' },
-  { path: '/components/segmented', label: 'Segmented' },
-  { path: '/components/spinner', label: 'Spinner' },
-  { path: '/components/popover', label: 'Popover' },
-  { path: '/components/context-menu', label: 'ContextMenu' },
-  { path: '/components/toast', label: 'Toast' },
-  { path: '/components/svg-draw-lines', label: 'SVGDrawLines' },
-  { path: '/components/back-top', label: 'BackTop' },
-  { path: '/components/layout', label: 'Layout' }
+  { path: '/home', label: 'Home', shortLabel: 'Ho' },
+  { path: '/components/avatar', label: 'Avatar', shortLabel: 'Av' },
+  { path: '/components/badge', label: 'Badge', shortLabel: 'Ba' },
+  { path: '/components/button', label: 'Button', shortLabel: 'Bu' },
+  { path: '/components/icon', label: 'Icon', shortLabel: 'Ic' },
+  { path: '/components/input', label: 'Input', shortLabel: 'In' },
+  { path: '/components/textarea', label: 'Textarea', shortLabel: 'Tx' },
+  { path: '/components/editable-text', label: 'EditableText', shortLabel: 'Et' },
+  { path: '/components/theme', label: 'Theme', shortLabel: 'Th' },
+  { path: '/components/input-number', label: 'InputNumber', shortLabel: 'Nu' },
+  { path: '/components/select', label: 'Select', shortLabel: 'Se' },
+  { path: '/components/autocomplete', label: 'Autocomplete', shortLabel: 'Ac' },
+  { path: '/components/dropdown', label: 'Dropdown', shortLabel: 'Dd' },
+  { path: '/components/collapse', label: 'Collapse', shortLabel: 'Cl' },
+  { path: '/components/dialog', label: 'Dialog', shortLabel: 'Di' },
+  { path: '/components/drawer', label: 'Drawer', shortLabel: 'Dr' },
+  { path: '/components/image-preview', label: 'ImagePreview', shortLabel: 'Ip' },
+  { path: '/components/empty', label: 'Empty', shortLabel: 'Em' },
+  { path: '/components/middle-ellipsis', label: 'MiddleEllipsis', shortLabel: 'Me' },
+  { path: '/components/tooltip', label: 'Tooltip', shortLabel: 'Tp' },
+  { path: '/components/switch', label: 'Switch', shortLabel: 'Sw' },
+  { path: '/components/slider', label: 'Slider', shortLabel: 'Sl' },
+  { path: '/components/radio', label: 'Radio', shortLabel: 'Ra' },
+  { path: '/components/checkbox', label: 'Checkbox', shortLabel: 'Ch' },
+  { path: '/components/segmented', label: 'Segmented', shortLabel: 'Sg' },
+  { path: '/components/spinner', label: 'Spinner', shortLabel: 'Sp' },
+  { path: '/components/popover', label: 'Popover', shortLabel: 'Po' },
+  { path: '/components/context-menu', label: 'ContextMenu', shortLabel: 'Cm' },
+  { path: '/components/toast', label: 'Toast', shortLabel: 'To' },
+  { path: '/components/svg-draw-lines', label: 'SVGDrawLines', shortLabel: 'Sd' },
+  { path: '/components/back-top', label: 'BackTop', shortLabel: 'Bt' },
+  { path: '/components/layout', label: 'Layout', shortLabel: 'Ly' }
 ]
 
 // active 底色浅色取设计给定的 #d5d7d7；深色不跟——sidebar 在深色是 #2c2c2e，亮灰会读成一条高亮带，仍走 control 档。
@@ -262,10 +263,11 @@ function isNavActive(path: string) {
               :data-active="isNavActive(item.path)"
               :aria-current="isNavActive(item.path) ? 'page' : undefined"
               :aria-label="item.label"
+              :title="navCollapsed ? item.label : undefined"
               @click="sidebarOpen = false"
             >
-              <span :class="navCollapsed ? 'w-full truncate text-center text-sm' : 'min-w-0 flex-1 truncate text-sm'">
-                {{ item.label }}
+              <span :class="navCollapsed ? 'w-full text-center text-sm' : 'min-w-0 flex-1 truncate text-sm'">
+                {{ navCollapsed ? item.shortLabel : item.label }}
               </span>
             </RouterLink>
           </nav>
