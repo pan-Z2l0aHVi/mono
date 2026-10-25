@@ -1,6 +1,11 @@
 <template>
   <div class="flex flex-col gap-3">
-    <web-ui-textarea ref="field" :rows="3" value="全选之后可以直接输入替换"></web-ui-textarea>
+    <web-ui-textarea
+      ref="field"
+      aria-label="待全选的多行文本"
+      :rows="3"
+      value="全选之后可以直接输入替换"
+    ></web-ui-textarea>
     <div class="flex flex-wrap items-center gap-3">
       <web-ui-button @click="field?.focus()">聚焦</web-ui-button>
       <web-ui-button @click="field?.select()">全选</web-ui-button>
