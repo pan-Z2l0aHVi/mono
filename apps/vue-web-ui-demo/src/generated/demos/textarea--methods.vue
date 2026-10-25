@@ -1,8 +1,8 @@
 <template>
   <div class="flex flex-col gap-3">
     <web-ui-textarea
-      ref="field"
       aria-label="待全选的多行文本"
+      ref="field"
       :rows="3"
       value="全选之后可以直接输入替换"
     ></web-ui-textarea>

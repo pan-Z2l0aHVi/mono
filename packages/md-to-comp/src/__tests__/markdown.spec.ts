@@ -1,10 +1,11 @@
 import { describe, expect, it } from 'vite-plus/test'
 
+import type { FenceFlavor } from '../highlight'
 import { parseMarkdown, type ParsedDoc } from '../markdown'
-import type { MdToCompConfig } from '../types'
+import type { ApiTables } from '../types'
 
 /*
- * markdown 面的契约：`### 标题 {#id}` 的锚点、`## 示例` 与可省的 `## API`、围栏与表格的形状，
+ * markdown 面的契约：`### 标题 {#id}` 的锚点、`## Samples` 与可省的 `## API`、围栏与表格的形状，
  * 以及 `## API` 下「表头登记在配置里的是表、其余按散文渲染」这条分岔。
  * 这里量的是「解析器认不认」——产物落盘对不对由 `emit.spec.ts` 与仓库根的完整生成断言管。
  * 分队的原则是：能在纯函数上判死的规则，别等到跑一遍生成器才知道。
@@ -13,7 +14,7 @@ import type { MdToCompConfig } from '../types'
  * 不需要复刻对齐后的空格数（仓库里的 .md 是被格式化器补过空格的，那是另一件事）。
  */
 
-const CONFIG: Pick<MdToCompConfig, 'flavors' | 'apiTables'> = {
+const CONFIG: { flavors: readonly FenceFlavor[]; apiTables: ApiTables } = {
   flavors: ['react', 'vue'],
   apiTables: {
     columns: {
@@ -55,7 +56,7 @@ const DOC = [
   FRONTMATTER,
   INTRO,
   '',
-  '## 示例',
+  '## Samples',
   '',
   SAMPLE,
   '## API',
@@ -164,7 +165,7 @@ describe('parseMarkdown', () => {
       FRONTMATTER,
       INTRO,
       '',
-      '## 示例',
+      '## Samples',
       '',
       SAMPLE,
       '## API',
@@ -220,10 +221,12 @@ describe('parseMarkdown', () => {
       /重复/
     ],
     ['出现不认识的一级小节', parseWith(source => `${source}\n## 注意事项\n\n写着玩的。\n`), /不认识的小节/],
-    ['同一小节写两遍', parseWith(source => source.replace('## API', `## 示例\n\n${SAMPLE}\n## API`)), /出现多次/],
+    // 旧中文小节名不再是契约的一部分：语料分语种之后骨架名只有一套，`## 示例` 是写法错误。
+    ['还写着旧的中文小节名', parseWith(source => source.replace('## Samples', '## 示例')), /不认识的小节/],
+    ['同一小节写两遍', parseWith(source => source.replace('## API', `## Samples\n\n${SAMPLE}\n## API`)), /出现多次/],
     [
       '第一个 ### 之前有正文',
-      parseWith(source => source.replace('## 示例\n\n', '## 示例\n\n这段谁都不渲染。\n\n')),
+      parseWith(source => source.replace('## Samples\n\n', '## Samples\n\n这段谁都不渲染。\n\n')),
       /不会被渲染/
     ],
     // 旧写法（`react` 当围栏语言）归为未支持：格式化器看不见它，落盘的 .tsx 却归格式化器管。
@@ -240,7 +243,7 @@ describe('parseMarkdown', () => {
     ],
     [
       '一个示例块都没有',
-      parseWith(source => `${FRONTMATTER}\n${INTRO}\n\n## 示例\n\n## API\n\n${PROPS_TABLE}\n`),
+      parseWith(source => `${FRONTMATTER}\n${INTRO}\n\n## Samples\n\n## API\n\n${PROPS_TABLE}\n`),
       /至少要有一个/
     ],
     ['缺 frontmatter', parseWith(source => source.replace(FRONTMATTER, '')), /缺少 frontmatter/],

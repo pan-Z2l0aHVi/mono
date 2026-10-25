@@ -2,12 +2,14 @@ import { existsSync, readdirSync, readFileSync } from 'node:fs'
 import path from 'node:path'
 
 import { demoFileContent, demoFileName, FLAVOR_LANG, visibleText } from '@greypan/md-to-comp'
-import { render } from '@testing-library/react'
+import { render, waitFor } from '@testing-library/react'
 import { createElement } from 'react'
 import { describe, expect, it } from 'vite-plus/test'
 
 import ExampleDoc from '../components/example-doc'
-import { exampleDocs } from '../generated/examples'
+import { exampleDocs as enExampleDocs, type ExampleDoc as ExampleDocData } from '../generated/en/examples'
+import { exampleDocs as zhExampleDocs } from '../generated/zh-CN/examples'
+import { loadExampleDocs, loadShellLocale, LocaleProvider } from '../i18n/locale'
 
 // 语料 join 的 React 侧：「示例显示 == markdown 围栏」「带锚点的示例落成可编译文件」「页面 ↔ 语料
 // 不互为孤儿」三条由本包持有；生成器那侧的判据（篡改 / 孤儿 / 表格形状）在 `@greypan/md-to-comp`
@@ -18,18 +20,52 @@ import { exampleDocs } from '../generated/examples'
 // 「产物是否新鲜」由 vite.config.ts 里的插件在测试期跑 checkArtifacts
 // （只判不改），不在这份 spec 里重复。
 const docsDir = path.resolve(import.meta.dirname, '../../../../packages/web-ui/docs')
-const demosDir = path.resolve(import.meta.dirname, '../generated/demos')
+const zhDemosDir = path.resolve(import.meta.dirname, '../generated/zh-CN/demos')
 const routesDir = path.resolve(import.meta.dirname, '../routes/components')
 
 const FLAVOR = 'react' as const
 /** 语料里的围栏语言由生成器那张表给出（react 写的是 `tsx`），在这里再抄一遍字符串就会跟着契约漂。 */
 const FENCE_LANG = FLAVOR_LANG[FLAVOR]
 
-const corpusFiles = readdirSync(docsDir)
-  .filter(file => file.endsWith('.md'))
-  .sort()
-const docNames = corpusFiles.map(file => file.replace(/\.md$/, ''))
-const docByName = new Map(exampleDocs.map(doc => [doc.component, doc]))
+/** 中文是源语种（`.CN.md`），英文译文的文件名没有语种后缀。 */
+function corpusOf(suffix: string) {
+  return readdirSync(docsDir)
+    .filter(file => file.endsWith(suffix) && (suffix !== '.md' || !file.endsWith('.CN.md')))
+    .sort()
+}
+
+interface LocaleSurface {
+  label: string
+  suffix: string
+  files: string[]
+  docsByName: Map<string, ExampleDocData>
+  demosDir: string
+}
+
+// 两个语种各拿自己那一份生成数据与 demo 目录，过同一组判据：中文查 zh-CN 产物，英文查 en 产物。
+const localeSurfaces: LocaleSurface[] = [
+  {
+    label: 'zh-CN',
+    suffix: '.CN.md',
+    docs: zhExampleDocs,
+    demosDir: zhDemosDir
+  },
+  {
+    label: 'en',
+    suffix: '.md',
+    docs: enExampleDocs,
+    demosDir: path.resolve(import.meta.dirname, '../generated/en/demos')
+  }
+].map(({ label, suffix, docs, demosDir }) => ({
+  label,
+  suffix,
+  files: corpusOf(suffix),
+  docsByName: new Map(docs.map(doc => [doc.component, doc])),
+  demosDir
+}))
+
+const docNames = corpusOf('.CN.md').map(file => file.replace(/\.CN\.md$/, ''))
+const docByName = new Map(zhExampleDocs.map(doc => [doc.component, doc]))
 
 /** `### 受控值 {#controlled}`：锚点存在即代表这条示例被落成了组件文件。 */
 function anchoredSamples(markdown: string) {
@@ -81,62 +117,66 @@ const demoImports = (source: string) =>
     .filter(name => name !== 'example-doc')
 
 describe('示例显示与 markdown 围栏同源', () => {
-  it('每个示例的高亮 HTML 可见文本逐字等于围栏原文', () => {
-    let checked = 0
-    for (const name of corpusFiles) {
-      const component = name.replace(/\.md$/, '')
-      const doc = docByName.get(component)
-      if (!doc) throw new Error(`${name}：生成数据里没有这个 component`)
-      const markdown = readFileSync(path.join(docsDir, name), 'utf8')
-      const fences = fencesOf(markdown, FENCE_LANG)
-      expect(
-        fences,
-        `${name}：${FENCE_LANG} 围栏数 ${fences.length} 与示例数 ${doc.samples.length} 不一致`
-      ).toHaveLength(doc.samples.length)
-      fences.forEach((fence, index) => {
-        const sample = doc.samples[index]
+  for (const locale of localeSurfaces) {
+    it(`${locale.label}：每个示例的高亮 HTML 可见文本逐字等于围栏原文`, () => {
+      let checked = 0
+      for (const name of locale.files) {
+        const component = name.slice(0, -locale.suffix.length)
+        const doc = locale.docsByName.get(component)
+        if (!doc) throw new Error(`${name}：生成数据里没有这个 component`)
+        const markdown = readFileSync(path.join(docsDir, name), 'utf8')
+        const fences = fencesOf(markdown, FENCE_LANG)
         expect(
-          sample.html[FLAVOR],
-          `${name}/${sample.title}/${FLAVOR}：高亮外框形状变了，Tailwind 那层边框与这里的取色会对不上`
-        ).toMatch(/^<pre class="shiki shiki-themes github-light github-dark mdc-code"/)
-        expect(
-          visibleText(sample.html[FLAVOR]),
-          `${name}/${sample.title}/${FLAVOR}：显示出来的代码与 markdown 围栏不是同一份字节`
-        ).toBe(fence)
-        checked += 1
-      })
-    }
-    expect(checked).toBeGreaterThan(0)
-  })
+          fences,
+          `${name}：${FENCE_LANG} 围栏数 ${fences.length} 与示例数 ${doc.samples.length} 不一致`
+        ).toHaveLength(doc.samples.length)
+        fences.forEach((fence, index) => {
+          const sample = doc.samples[index]
+          expect(
+            sample.html[FLAVOR],
+            `${name}/${sample.title}/${FLAVOR}：高亮外框形状变了，Tailwind 那层边框与这里的取色会对不上`
+          ).toMatch(/^<pre class="shiki shiki-themes github-light github-dark mdc-code"/)
+          expect(
+            visibleText(sample.html[FLAVOR]),
+            `${name}/${sample.title}/${FLAVOR}：显示出来的代码与 markdown 围栏不是同一份字节`
+          ).toBe(fence)
+          checked += 1
+        })
+      }
+      expect(checked).toBeGreaterThan(0)
+    })
+  }
 })
 
 describe('带锚点的示例落成可编译文件', () => {
-  it('落盘文件与围栏逐字相同（只差行尾换行）', () => {
-    let demoCount = 0
-    for (const name of corpusFiles) {
-      const component = name.replace(/\.md$/, '')
-      const markdown = readFileSync(path.join(docsDir, name), 'utf8')
-      const doc = docByName.get(component)
-      if (!doc) throw new Error(`${name}：生成数据里没有这个 component`)
-      for (const anchor of anchoredSamples(markdown)) {
-        demoCount += 1
-        const sample = doc.samples.find(candidate => candidate.title === anchor.title)
-        if (!sample) throw new Error(`${name}：带锚点的示例「${anchor.title}」没进生成数据`)
-        expect(sample.demoKey, `${name}/${anchor.title}：生成数据里的 demoKey 不是锚点`).toBe(anchor.id)
-        const fence = fencesOf(markdown, FENCE_LANG)[doc.samples.indexOf(sample)]
-        const file = path.join(demosDir, demoFileName(component, anchor.id, FLAVOR))
-        expect(
-          existsSync(file),
-          `${file} 不存在：带 \`### ${anchor.title} {#${anchor.id}}\` 的示例必须落成组件文件`
-        ).toBe(true)
-        expect(
-          readFileSync(file, 'utf8'),
-          `${file} 与 markdown 围栏不是同一份源码：显示的那份和被执行的那份漂移了`
-        ).toBe(demoFileContent(fence))
+  for (const locale of localeSurfaces) {
+    it(`${locale.label}：落盘文件与围栏逐字相同（只差行尾换行）`, () => {
+      let demoCount = 0
+      for (const name of locale.files) {
+        const component = name.slice(0, -locale.suffix.length)
+        const markdown = readFileSync(path.join(docsDir, name), 'utf8')
+        const doc = locale.docsByName.get(component)
+        if (!doc) throw new Error(`${name}：生成数据里没有这个 component`)
+        for (const anchor of anchoredSamples(markdown)) {
+          demoCount += 1
+          const sample = doc.samples.find(candidate => candidate.title === anchor.title)
+          if (!sample) throw new Error(`${name}：带锚点的示例「${anchor.title}」没进生成数据`)
+          expect(sample.demoKey, `${name}/${anchor.title}：生成数据里的 demoKey 不是锚点`).toBe(anchor.id)
+          const fence = fencesOf(markdown, FENCE_LANG)[doc.samples.indexOf(sample)]
+          const file = path.join(locale.demosDir, demoFileName(component, anchor.id, FLAVOR))
+          expect(
+            existsSync(file),
+            `${file} 不存在：带 \`### ${anchor.title} {#${anchor.id}}\` 的示例必须落成组件文件`
+          ).toBe(true)
+          expect(
+            readFileSync(file, 'utf8'),
+            `${file} 与 markdown 围栏不是同一份源码：显示的那份和被执行的那份漂移了`
+          ).toBe(demoFileContent(fence))
+        }
       }
-    }
-    expect(demoCount, '一篇带锚点的示例都没有：「示例落成可编译文件」这条通道等于没被任何断言覆盖').toBeGreaterThan(0)
-  })
+      expect(demoCount, '一篇带锚点的示例都没有：「示例落成可编译文件」这条通道等于没被任何断言覆盖').toBeGreaterThan(0)
+    })
+  }
 })
 
 // 过渡期清单：已迁到「docs 全量生成」的文档。每迁完一篇就加进来；全部迁完后删除本清单，
@@ -184,7 +224,7 @@ describe('已迁移文档的每条示例都能渲染', () => {
       expect(doc.samples.length, `${component}：已迁移文档一条示例都没有`).toBeGreaterThan(0)
       for (const sample of doc.samples) {
         if (!sample.demoKey) throw new Error(`${component}/${sample.title}：已迁移文档里的示例必须带 \`{#id}\` 锚点`)
-        const file = path.join(demosDir, demoFileName(component, sample.demoKey, FLAVOR))
+        const file = path.join(zhDemosDir, demoFileName(component, sample.demoKey, FLAVOR))
         expect(existsSync(file), `${file} 不存在：已迁移文档的示例必须落成可预览的组件文件`).toBe(true)
       }
     }
@@ -204,31 +244,42 @@ describe('已迁移文档的每条示例都能渲染', () => {
 // 壳映射判在 jsdom（不挂真组件，只判壳真的把带锚点的示例接上了生成的 demo）：预览区由壳自己的
 // `import.meta.glob` 映射渲染，产物加载失败不影响判据；demo 真挂得出宿主由人工验收兜底，这里不重复。
 describe('已迁移文档的壳映射（ExampleDoc）', () => {
-  it('带锚点的示例由壳挂出预览区，顺序与生成数据的锚点序一致', () => {
-    const { container, unmount } = render(
-      createElement(
-        'div',
-        null,
-        migratedDocs.map(component =>
-          createElement(ExampleDoc, { component, key: component, previewAnchorsOnly: true })
+  it('带锚点的示例由壳挂出预览区，顺序与生成数据的锚点序一致', async () => {
+    for (const surface of localeSurfaces) {
+      const locale = surface.label as 'zh-CN' | 'en'
+      localStorage.setItem('locale', locale)
+      await Promise.all([loadExampleDocs(locale), loadShellLocale(locale)])
+
+      const { container, unmount } = render(
+        createElement(
+          LocaleProvider,
+          null,
+          createElement(
+            'div',
+            null,
+            migratedDocs.map(component =>
+              createElement(ExampleDoc, { component, key: component, previewAnchorsOnly: true })
+            )
+          )
         )
       )
-    )
-    const previewsByComponent = new Map(
-      [...container.querySelectorAll<HTMLElement>('[data-example-doc]')].map(section => [
-        section.dataset.exampleDoc!,
-        [...section.querySelectorAll('[data-sample-preview]')].map(node => node.getAttribute('data-sample-preview'))
-      ])
-    )
-    unmount()
+      await waitFor(() => expect(container.querySelectorAll('[data-example-doc]')).toHaveLength(migratedDocs.length))
+      const previewsByComponent = new Map(
+        [...container.querySelectorAll<HTMLElement>('[data-example-doc]')].map(section => [
+          section.dataset.exampleDoc!,
+          [...section.querySelectorAll('[data-sample-preview]')].map(node => node.getAttribute('data-sample-preview'))
+        ])
+      )
+      unmount()
 
-    for (const component of migratedDocs) {
-      const doc = docByName.get(component)
-      if (!doc) throw new Error(`${component}：生成数据里没有这个 component`)
-      expect(
-        previewsByComponent.get(component),
-        `${component}：预览区与生成数据的锚点不是同一串（壳的 glob 映射或 demoKey 漂了）`
-      ).toEqual(doc.samples.map(sample => sample.demoKey))
+      for (const component of migratedDocs) {
+        const doc = surface.docsByName.get(component)
+        if (!doc) throw new Error(`${locale}/${component}：生成数据里没有这个 component`)
+        expect(
+          previewsByComponent.get(component),
+          `${locale}/${component}：预览区与生成数据的锚点不是同一串（壳的 glob 映射或 demoKey 漂了）`
+        ).toEqual(doc.samples.map(sample => sample.demoKey))
+      }
     }
   }, 30_000)
 })

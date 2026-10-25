@@ -3,27 +3,27 @@ component: dropdown
 tag: web-ui-dropdown
 ---
 
-dropdown menu：`trigger` 插槽放 trigger，其余子元素作为 menu item 渲染进 overlay panel，支持 divider、分组标题与多级 submenu。
+dropdown menu: the `trigger` slot holds the trigger and the remaining children render as menu items inside the overlay panel, with support for dividers, group headers, and multi-level submenus.
 
-## 示例
+## Samples
 
-### 基础 {#basic}
+### Basic {#basic}
 
-`trigger` 放可交互元素，其余子元素作为 menu item 在打开时迁入 overlay panel；`divider` 分组，`disabled` 的项留在列表里但选不中。
+`trigger` holds an interactive element, and the remaining children move into the overlay panel as menu items when opened; `divider` separates groups, and `disabled` items stay in the list but cannot be selected.
 
 ```tsx
 export default function Demo() {
   return (
     <web-ui-dropdown>
       <web-ui-button slot="trigger" variant="secondary">
-        操作
+        Actions
       </web-ui-button>
-      <web-ui-dropdown-item value="edit">编辑</web-ui-dropdown-item>
-      <web-ui-dropdown-item value="copy">复制</web-ui-dropdown-item>
-      <web-ui-dropdown-item value="paste">粘贴</web-ui-dropdown-item>
+      <web-ui-dropdown-item value="edit">Edit</web-ui-dropdown-item>
+      <web-ui-dropdown-item value="copy">Copy</web-ui-dropdown-item>
+      <web-ui-dropdown-item value="paste">Paste</web-ui-dropdown-item>
       <web-ui-dropdown-divider></web-ui-dropdown-divider>
       <web-ui-dropdown-item value="delete" disabled>
-        删除
+        Delete
       </web-ui-dropdown-item>
     </web-ui-dropdown>
   )
@@ -33,19 +33,19 @@ export default function Demo() {
 ```vue
 <template>
   <web-ui-dropdown>
-    <web-ui-button slot="trigger" variant="secondary">操作</web-ui-button>
-    <web-ui-dropdown-item value="edit">编辑</web-ui-dropdown-item>
-    <web-ui-dropdown-item value="copy">复制</web-ui-dropdown-item>
-    <web-ui-dropdown-item value="paste">粘贴</web-ui-dropdown-item>
+    <web-ui-button slot="trigger" variant="secondary">Actions</web-ui-button>
+    <web-ui-dropdown-item value="edit">Edit</web-ui-dropdown-item>
+    <web-ui-dropdown-item value="copy">Copy</web-ui-dropdown-item>
+    <web-ui-dropdown-item value="paste">Paste</web-ui-dropdown-item>
     <web-ui-dropdown-divider></web-ui-dropdown-divider>
-    <web-ui-dropdown-item value="delete" disabled>删除</web-ui-dropdown-item>
+    <web-ui-dropdown-item value="delete" disabled>Delete</web-ui-dropdown-item>
   </web-ui-dropdown>
 </template>
 ```
 
-### icon 与快捷键 {#icons}
+### Icons and shortcuts {#icons}
 
-`prefix` / `suffix` 插槽装饰 menu item 两侧，`dropdown-header` 给一组项加标题；快捷键只是文本，组件不解析按键。
+The `prefix` / `suffix` slots decorate both sides of a menu item, and `dropdown-header` adds a title to a group of items; shortcuts are just text and the component does not parse keys.
 
 ```tsx
 import { lucideCopy, lucideTrash2 } from '@greypan/web-ui/icons'
@@ -54,17 +54,17 @@ export default function Demo() {
   return (
     <web-ui-dropdown>
       <web-ui-button slot="trigger" variant="secondary">
-        文件
+        File
       </web-ui-button>
-      <web-ui-dropdown-header>编辑</web-ui-dropdown-header>
+      <web-ui-dropdown-header>Edit</web-ui-dropdown-header>
       <web-ui-dropdown-item value="copy">
-        <web-ui-icon slot="prefix" size={14} icon={lucideCopy}></web-ui-icon>复制
+        <web-ui-icon slot="prefix" size={14} icon={lucideCopy}></web-ui-icon>Copy
         <span slot="suffix" className="opacity-40">
           ⌘C
         </span>
       </web-ui-dropdown-item>
       <web-ui-dropdown-item value="delete" disabled>
-        <web-ui-icon slot="prefix" size={14} icon={lucideTrash2}></web-ui-icon>删除
+        <web-ui-icon slot="prefix" size={14} icon={lucideTrash2}></web-ui-icon>Delete
         <span slot="suffix" className="opacity-40">
           ⌘⌫
         </span>
@@ -77,14 +77,14 @@ export default function Demo() {
 ```vue
 <template>
   <web-ui-dropdown>
-    <web-ui-button slot="trigger" variant="secondary">文件</web-ui-button>
-    <web-ui-dropdown-header>编辑</web-ui-dropdown-header>
+    <web-ui-button slot="trigger" variant="secondary">File</web-ui-button>
+    <web-ui-dropdown-header>Edit</web-ui-dropdown-header>
     <web-ui-dropdown-item value="copy">
-      <web-ui-icon slot="prefix" :size="14" :icon="lucideCopy"></web-ui-icon>复制
+      <web-ui-icon slot="prefix" :size="14" :icon="lucideCopy"></web-ui-icon>Copy
       <span slot="suffix" class="opacity-40">⌘C</span>
     </web-ui-dropdown-item>
     <web-ui-dropdown-item value="delete" disabled>
-      <web-ui-icon slot="prefix" :size="14" :icon="lucideTrash2"></web-ui-icon>删除
+      <web-ui-icon slot="prefix" :size="14" :icon="lucideTrash2"></web-ui-icon>Delete
       <span slot="suffix" class="opacity-40">⌘⌫</span>
     </web-ui-dropdown-item>
   </web-ui-dropdown>
@@ -95,31 +95,31 @@ import { lucideCopy, lucideTrash2 } from '@greypan/web-ui/icons'
 </script>
 ```
 
-### 多级 submenu {#submenu}
+### Multi-level submenu {#submenu}
 
-在 menu item 上写 `submenu`，嵌套在它里面的 item 成为下一级；悬停或方向键进入，每一级都是独立的 panel。
+Writing `submenu` on a menu item makes the items nested inside it the next level; hover or the arrow keys enter it, and every level is its own panel.
 
 ```tsx
 export default function Demo() {
   return (
     <web-ui-dropdown>
       <web-ui-button slot="trigger" variant="secondary">
-        文件
+        File
       </web-ui-button>
       <web-ui-dropdown-item submenu>
-        新建
+        New
         <web-ui-dropdown-item submenu>
-          办公文档
-          <web-ui-dropdown-item value="word">Word 文档</web-ui-dropdown-item>
-          <web-ui-dropdown-item value="excel">Excel 表格</web-ui-dropdown-item>
+          Office document
+          <web-ui-dropdown-item value="word">Word document</web-ui-dropdown-item>
+          <web-ui-dropdown-item value="excel">Excel spreadsheet</web-ui-dropdown-item>
         </web-ui-dropdown-item>
         <web-ui-dropdown-item submenu>
-          代码文件
+          Code file
           <web-ui-dropdown-item value="typescript">TypeScript</web-ui-dropdown-item>
           <web-ui-dropdown-item value="python">Python</web-ui-dropdown-item>
         </web-ui-dropdown-item>
       </web-ui-dropdown-item>
-      <web-ui-dropdown-item value="export">导出</web-ui-dropdown-item>
+      <web-ui-dropdown-item value="export">Export</web-ui-dropdown-item>
     </web-ui-dropdown>
   )
 }
@@ -128,28 +128,28 @@ export default function Demo() {
 ```vue
 <template>
   <web-ui-dropdown>
-    <web-ui-button slot="trigger" variant="secondary">文件</web-ui-button>
+    <web-ui-button slot="trigger" variant="secondary">File</web-ui-button>
     <web-ui-dropdown-item submenu>
-      新建
+      New
       <web-ui-dropdown-item submenu>
-        办公文档
-        <web-ui-dropdown-item value="word">Word 文档</web-ui-dropdown-item>
-        <web-ui-dropdown-item value="excel">Excel 表格</web-ui-dropdown-item>
+        Office document
+        <web-ui-dropdown-item value="word">Word document</web-ui-dropdown-item>
+        <web-ui-dropdown-item value="excel">Excel spreadsheet</web-ui-dropdown-item>
       </web-ui-dropdown-item>
       <web-ui-dropdown-item submenu>
-        代码文件
+        Code file
         <web-ui-dropdown-item value="typescript">TypeScript</web-ui-dropdown-item>
         <web-ui-dropdown-item value="python">Python</web-ui-dropdown-item>
       </web-ui-dropdown-item>
     </web-ui-dropdown-item>
-    <web-ui-dropdown-item value="export">导出</web-ui-dropdown-item>
+    <web-ui-dropdown-item value="export">Export</web-ui-dropdown-item>
   </web-ui-dropdown>
 </template>
 ```
 
-### 受控开合 {#controlled}
+### Controlled open state {#controlled}
 
-`open` 由页面持有：外部按钮直接改它，trigger、Escape 与点外面通过 `open-change` 回写；menu item 点击不会自动关闭，代码在 item 的原生 click 里回写。
+`open` is held by the page: an external button changes it directly, while the trigger, Escape, and outside clicks write back through `open-change`; clicking a menu item does not close automatically, so the code writes back in the item's native click.
 
 ```tsx
 import type { WebUiDropdownItem } from '@greypan/web-ui'
@@ -159,7 +159,7 @@ export default function Demo() {
   const [open, setOpen] = useState(false)
   const [last, setLast] = useState('—')
 
-  // menu item 打开时被迁进 portal panel，React 的 onClick 委托在根容器收不到；这里直接挂原生 click。
+  // Menu items move into the portal panel when opened, so React's onClick delegation at the root container never sees them; attach a native click here instead.
   const handleItemRef = useCallback((item: WebUiDropdownItem | null) => {
     if (!item) return
     const element = item
@@ -175,25 +175,25 @@ export default function Demo() {
     <div className="flex flex-col items-start gap-3">
       <div className="flex flex-wrap items-center gap-3">
         <web-ui-button variant="secondary" onClick={() => setOpen(value => !value)}>
-          {open ? '关闭菜单' : '打开菜单'}
+          {open ? 'Close menu' : 'Open menu'}
         </web-ui-button>
         <output className="text-sm text-(--wui-color-text-secondary)">
-          状态：{open ? 'open' : 'closed'} · 最近选择：{last}
+          State: {open ? 'open' : 'closed'} · Last selection: {last}
         </output>
       </div>
 
       <web-ui-dropdown open={open} onopen-change={event => setOpen(event.detail.open)}>
         <web-ui-button slot="trigger" variant="secondary">
-          受控菜单
+          Controlled menu
         </web-ui-button>
         <web-ui-dropdown-item ref={handleItemRef} value="edit">
-          编辑
+          Edit
         </web-ui-dropdown-item>
         <web-ui-dropdown-item ref={handleItemRef} value="copy">
-          复制
+          Copy
         </web-ui-dropdown-item>
         <web-ui-dropdown-item ref={handleItemRef} value="archive">
-          归档
+          Archive
         </web-ui-dropdown-item>
       </web-ui-dropdown>
     </div>
@@ -206,18 +206,18 @@ export default function Demo() {
   <div class="flex flex-col items-start gap-3">
     <div class="flex flex-wrap items-center gap-3">
       <web-ui-button variant="secondary" @click="open = !open">
-        {{ open ? '关闭菜单' : '打开菜单' }}
+        {{ open ? 'Close menu' : 'Open menu' }}
       </web-ui-button>
       <output class="text-sm text-(--wui-color-text-secondary)">
-        状态：{{ open ? 'open' : 'closed' }} · 最近选择：{{ last }}
+        State: {{ open ? 'open' : 'closed' }} · Last selection: {{ last }}
       </output>
     </div>
 
     <web-ui-dropdown :open="open" @open-change="open = $event.detail.open">
-      <web-ui-button slot="trigger" variant="secondary">受控菜单</web-ui-button>
-      <web-ui-dropdown-item value="edit" @click="select('编辑')">编辑</web-ui-dropdown-item>
-      <web-ui-dropdown-item value="copy" @click="select('复制')">复制</web-ui-dropdown-item>
-      <web-ui-dropdown-item value="archive" @click="select('归档')">归档</web-ui-dropdown-item>
+      <web-ui-button slot="trigger" variant="secondary">Controlled menu</web-ui-button>
+      <web-ui-dropdown-item value="edit" @click="select('Edit')">Edit</web-ui-dropdown-item>
+      <web-ui-dropdown-item value="copy" @click="select('Copy')">Copy</web-ui-dropdown-item>
+      <web-ui-dropdown-item value="archive" @click="select('Archive')">Archive</web-ui-dropdown-item>
     </web-ui-dropdown>
   </div>
 </template>
@@ -235,9 +235,9 @@ function select(label: string) {
 </script>
 ```
 
-### 定位 {#placement}
+### Placement {#placement}
 
-`placement` 交给 Floating UI，默认 `bottom-start`；空间不够时 `flip` / `shift` 会自动翻转或平移 panel。
+`placement` is delegated to Floating UI and defaults to `bottom-start`; when there is not enough space, `flip` / `shift` flip or shift the panel automatically.
 
 ```tsx
 export default function Demo() {
@@ -245,34 +245,34 @@ export default function Demo() {
     <div className="flex flex-wrap items-start gap-3">
       <web-ui-dropdown placement="bottom-start">
         <web-ui-button slot="trigger" variant="secondary">
-          bottom-start（默认）
+          bottom-start (default)
         </web-ui-button>
-        <web-ui-dropdown-item>新建</web-ui-dropdown-item>
-        <web-ui-dropdown-item>打开</web-ui-dropdown-item>
+        <web-ui-dropdown-item>New</web-ui-dropdown-item>
+        <web-ui-dropdown-item>Open</web-ui-dropdown-item>
       </web-ui-dropdown>
 
       <web-ui-dropdown placement="bottom-end">
         <web-ui-button slot="trigger" variant="secondary">
           bottom-end
         </web-ui-button>
-        <web-ui-dropdown-item>新建</web-ui-dropdown-item>
-        <web-ui-dropdown-item>打开</web-ui-dropdown-item>
+        <web-ui-dropdown-item>New</web-ui-dropdown-item>
+        <web-ui-dropdown-item>Open</web-ui-dropdown-item>
       </web-ui-dropdown>
 
       <web-ui-dropdown placement="top-start">
         <web-ui-button slot="trigger" variant="secondary">
           top-start
         </web-ui-button>
-        <web-ui-dropdown-item>新建</web-ui-dropdown-item>
-        <web-ui-dropdown-item>打开</web-ui-dropdown-item>
+        <web-ui-dropdown-item>New</web-ui-dropdown-item>
+        <web-ui-dropdown-item>Open</web-ui-dropdown-item>
       </web-ui-dropdown>
 
       <web-ui-dropdown placement="top-end">
         <web-ui-button slot="trigger" variant="secondary">
           top-end
         </web-ui-button>
-        <web-ui-dropdown-item>新建</web-ui-dropdown-item>
-        <web-ui-dropdown-item>打开</web-ui-dropdown-item>
+        <web-ui-dropdown-item>New</web-ui-dropdown-item>
+        <web-ui-dropdown-item>Open</web-ui-dropdown-item>
       </web-ui-dropdown>
     </div>
   )
@@ -283,35 +283,35 @@ export default function Demo() {
 <template>
   <div class="flex flex-wrap items-start gap-3">
     <web-ui-dropdown placement="bottom-start">
-      <web-ui-button slot="trigger" variant="secondary">bottom-start（默认）</web-ui-button>
-      <web-ui-dropdown-item>新建</web-ui-dropdown-item>
-      <web-ui-dropdown-item>打开</web-ui-dropdown-item>
+      <web-ui-button slot="trigger" variant="secondary">bottom-start (default)</web-ui-button>
+      <web-ui-dropdown-item>New</web-ui-dropdown-item>
+      <web-ui-dropdown-item>Open</web-ui-dropdown-item>
     </web-ui-dropdown>
 
     <web-ui-dropdown placement="bottom-end">
       <web-ui-button slot="trigger" variant="secondary">bottom-end</web-ui-button>
-      <web-ui-dropdown-item>新建</web-ui-dropdown-item>
-      <web-ui-dropdown-item>打开</web-ui-dropdown-item>
+      <web-ui-dropdown-item>New</web-ui-dropdown-item>
+      <web-ui-dropdown-item>Open</web-ui-dropdown-item>
     </web-ui-dropdown>
 
     <web-ui-dropdown placement="top-start">
       <web-ui-button slot="trigger" variant="secondary">top-start</web-ui-button>
-      <web-ui-dropdown-item>新建</web-ui-dropdown-item>
-      <web-ui-dropdown-item>打开</web-ui-dropdown-item>
+      <web-ui-dropdown-item>New</web-ui-dropdown-item>
+      <web-ui-dropdown-item>Open</web-ui-dropdown-item>
     </web-ui-dropdown>
 
     <web-ui-dropdown placement="top-end">
       <web-ui-button slot="trigger" variant="secondary">top-end</web-ui-button>
-      <web-ui-dropdown-item>新建</web-ui-dropdown-item>
-      <web-ui-dropdown-item>打开</web-ui-dropdown-item>
+      <web-ui-dropdown-item>New</web-ui-dropdown-item>
+      <web-ui-dropdown-item>Open</web-ui-dropdown-item>
     </web-ui-dropdown>
   </div>
 </template>
 ```
 
-### 命令式 {#imperative}
+### Imperative {#imperative}
 
-`openMenu()` 打开、`closeAll()` 关闭全部层级；两者都是命令式入口，不派发 `open-change`。`disabled` 会同时挡掉 trigger 点击与 `openMenu()`。
+`openMenu()` opens and `closeAll()` closes all levels; both are imperative entry points and do not dispatch `open-change`. `disabled` blocks both trigger clicks and `openMenu()`.
 
 ```tsx
 import type { WebUiDropdown } from '@greypan/web-ui'
@@ -324,30 +324,30 @@ export default function Demo() {
     <div className="flex flex-col items-start gap-3">
       <div className="flex flex-wrap items-center gap-3">
         <web-ui-button variant="secondary" onClick={() => menu.current?.openMenu()}>
-          调用 openMenu()
+          Call openMenu()
         </web-ui-button>
         <web-ui-button variant="secondary" onClick={() => menu.current?.closeAll()}>
-          调用 closeAll()
+          Call closeAll()
         </web-ui-button>
       </div>
 
       <div className="flex flex-wrap items-start gap-3">
         <web-ui-dropdown ref={menu}>
           <web-ui-button slot="trigger" variant="secondary">
-            命令式菜单
+            Imperative menu
           </web-ui-button>
-          <web-ui-dropdown-item value="edit">编辑</web-ui-dropdown-item>
+          <web-ui-dropdown-item value="edit">Edit</web-ui-dropdown-item>
           <web-ui-dropdown-item submenu>
-            更多
-            <web-ui-dropdown-item value="archive">归档</web-ui-dropdown-item>
+            More
+            <web-ui-dropdown-item value="archive">Archive</web-ui-dropdown-item>
           </web-ui-dropdown-item>
         </web-ui-dropdown>
 
         <web-ui-dropdown disabled>
           <web-ui-button slot="trigger" variant="secondary">
-            禁用菜单
+            Disabled menu
           </web-ui-button>
-          <web-ui-dropdown-item>不可打开</web-ui-dropdown-item>
+          <web-ui-dropdown-item>Cannot be opened</web-ui-dropdown-item>
         </web-ui-dropdown>
       </div>
     </div>
@@ -359,23 +359,23 @@ export default function Demo() {
 <template>
   <div class="flex flex-col items-start gap-3">
     <div class="flex flex-wrap items-center gap-3">
-      <web-ui-button variant="secondary" @click="menu?.openMenu()">调用 openMenu()</web-ui-button>
-      <web-ui-button variant="secondary" @click="menu?.closeAll()">调用 closeAll()</web-ui-button>
+      <web-ui-button variant="secondary" @click="menu?.openMenu()">Call openMenu()</web-ui-button>
+      <web-ui-button variant="secondary" @click="menu?.closeAll()">Call closeAll()</web-ui-button>
     </div>
 
     <div class="flex flex-wrap items-start gap-3">
       <web-ui-dropdown ref="menu">
-        <web-ui-button slot="trigger" variant="secondary">命令式菜单</web-ui-button>
-        <web-ui-dropdown-item value="edit">编辑</web-ui-dropdown-item>
+        <web-ui-button slot="trigger" variant="secondary">Imperative menu</web-ui-button>
+        <web-ui-dropdown-item value="edit">Edit</web-ui-dropdown-item>
         <web-ui-dropdown-item submenu>
-          更多
-          <web-ui-dropdown-item value="archive">归档</web-ui-dropdown-item>
+          More
+          <web-ui-dropdown-item value="archive">Archive</web-ui-dropdown-item>
         </web-ui-dropdown-item>
       </web-ui-dropdown>
 
       <web-ui-dropdown disabled>
-        <web-ui-button slot="trigger" variant="secondary">禁用菜单</web-ui-button>
-        <web-ui-dropdown-item>不可打开</web-ui-dropdown-item>
+        <web-ui-button slot="trigger" variant="secondary">Disabled menu</web-ui-button>
+        <web-ui-dropdown-item>Cannot be opened</web-ui-dropdown-item>
       </web-ui-dropdown>
     </div>
   </div>
@@ -393,38 +393,38 @@ const menu = useTemplateRef<WebUiDropdown>('menu')
 
 ### Props
 
-| 名称             | 说明                                    | 类型        | 默认值           |
-| ---------------- | --------------------------------------- | ----------- | ---------------- |
-| `open`           | menu 可见性。                           | `boolean`   | `false`          |
-| `disabled`       | 禁用状态。                              | `boolean`   | `false`          |
-| `match-width`    | panel 宽度匹配 trigger 宽度。           | `boolean`   | `false`          |
-| `no-scroll-lock` | 打开时不锁定页面滚动。                  | `boolean`   | `false`          |
-| `placement`      | Floating UI 位置，默认 `bottom-start`。 | `Placement` | `'bottom-start'` |
-| `offset`         | 与 trigger 的距离（px）。               | `number`    | `4`              |
+| Name             | Description                                        | Type        | Default          |
+| ---------------- | -------------------------------------------------- | ----------- | ---------------- |
+| `open`           | Menu visibility.                                   | `boolean`   | `false`          |
+| `disabled`       | Disabled state.                                    | `boolean`   | `false`          |
+| `match-width`    | Panel width matches the trigger width.             | `boolean`   | `false`          |
+| `no-scroll-lock` | Does not lock page scrolling while open.           | `boolean`   | `false`          |
+| `placement`      | Floating UI placement; defaults to `bottom-start`. | `Placement` | `'bottom-start'` |
+| `offset`         | Distance from the trigger (px).                    | `number`    | `4`              |
 
 ### Events
 
-| 名称          | 说明                                  |
-| ------------- | ------------------------------------- |
-| `open-change` | menu 开合，`detail.open` 为当前状态。 |
+| Name          | Description                                                  |
+| ------------- | ------------------------------------------------------------ |
+| `open-change` | Menu open state changes; `detail.open` is the current state. |
 
 ### Slots
 
-| 名称      | 说明                        |
-| --------- | --------------------------- |
-| `trigger` | trigger，请放入可交互元素。 |
+| Name      | Description                                |
+| --------- | ------------------------------------------ |
+| `trigger` | Trigger; put an interactive element in it. |
 
 ### Methods
 
-| 名称         | 说明                                                                  |
-| ------------ | --------------------------------------------------------------------- |
-| `openMenu()` | 打开 menu；命令式打开不派发 `open-change`，并抑制首项的 accent 高亮。 |
-| `closeAll()` | 关闭全部层级；命令式关闭不派发 `open-change`。                        |
+| Name         | Description                                                                                                               |
+| ------------ | ------------------------------------------------------------------------------------------------------------------------- |
+| `openMenu()` | Opens the menu; an imperative open does not dispatch `open-change` and suppresses the accent highlight of the first item. |
+| `closeAll()` | Closes all levels; an imperative close does not dispatch `open-change`.                                                   |
 
-### 行为说明
+### Behavior
 
-menu item：`web-ui-dropdown-item`、`web-ui-dropdown-divider`、`web-ui-dropdown-header`。submenu 在 `web-ui-dropdown-item` 上通过 `submenu` 属性启用。完整键盘导航支持。
+Menu items: `web-ui-dropdown-item`, `web-ui-dropdown-divider`, `web-ui-dropdown-header`. A submenu is enabled on `web-ui-dropdown-item` through the `submenu` attribute. Full keyboard navigation is supported.
 
-### trigger ARIA
+### Trigger ARIA
 
-`aria-haspopup="menu"`、`aria-expanded` 与 `aria-controls`（指向根 menu panel）回写到 `trigger` slot 的首个 assigned element。trigger slot 请放入可交互元素。
+`aria-haspopup="menu"`, `aria-expanded`, and `aria-controls` (pointing at the root menu panel) are written back to the first assigned element of the `trigger` slot. Put an interactive element in the trigger slot.

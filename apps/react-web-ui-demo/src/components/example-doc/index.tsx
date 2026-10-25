@@ -10,25 +10,30 @@ import { OverlayScrollbars } from 'overlayscrollbars'
 import { OverlayScrollbarsComponent } from 'overlayscrollbars-react'
 import { lazy, Suspense, useEffect, useRef, useState, type ComponentType, type MouseEvent } from 'react'
 
-import { exampleDocs } from '@/generated/examples'
+import { useExampleDoc, useLocale } from '@/i18n/locale'
 
 import { reactIcon, vueIcon } from './flavor-icons'
 
 /**
  * 由示例文档 markdown 生成的页面主体：组件标题、简介、逐示例预览、双框架源码与 API 表。
  *
- * 数据全部来自 `packages/web-ui/docs/<name>.md`。带 `{#id}` 锚点的示例由生成器落成
- * `src/generated/demos/<component>--<id>.tsx`，预览执行的字节与代码区显示的字节同源；
+ * 数据全部来自 `packages/web-ui/docs/<name><suffix>.md`，按当前语种取生成产物：中文源在
+ * `src/generated/zh-CN/`、英文译文在 `src/generated/en/`。带 `{#id}` 锚点的示例由生成器落成
+ * `src/generated/<locale>/demos/<component>--<id>.tsx`，预览执行的字节与代码区显示的字节同源；
  * 没有锚点的语料只展示代码。
  *
  * 预览只运行当前站点框架；代码区始终提供 Vue / React 两份完整源码。
  */
-const demoModules = import.meta.glob<{ default: ComponentType }>('../../generated/demos/*.tsx')
-const DEMO_PREFIX = '../../generated/demos/'
+const demoModules = import.meta.glob<{ default: ComponentType }>('../../generated/*/demos/*.tsx')
+const DEMO_PATTERN = /^\.\.\/\.\.\/generated\/([^/]+)\/demos\/(.+)\.tsx$/
 
 // lazy 组件在模块作用域建一次：在 render 里调 lazy() 每帧换一个组件身份，交互中途的状态会丢失。
 const demoComponents = new Map(
-  Object.entries(demoModules).map(([file, load]) => [file.slice(DEMO_PREFIX.length, -'.tsx'.length), lazy(load)])
+  Object.entries(demoModules).map(([file, load]) => {
+    const match = DEMO_PATTERN.exec(file)
+    if (!match) throw new Error(`无法从生成物路径解析语种与示例名：${file}`)
+    return [`${match[1]}/${match[2]}`, lazy(load)]
+  })
 )
 
 type Flavor = 'react' | 'vue'
@@ -40,6 +45,9 @@ const FLAVOR_ICONS = { vue: vueIcon, react: reactIcon } as const
 const FLAVOR_ICON_CLASS: Partial<Record<Flavor, string>> = { react: 'text-[#087eae] dark:text-[#61dafb]' }
 
 const ABBREVIATIONS: Record<string, string> = { api: 'API', svg: 'SVG', ui: 'UI' }
+
+// API 是接口术语，中英两版都保留英文。
+const API_HEADING = 'API'
 
 // 「没有默认值」在语料里落成 em dash 占位符，它是散文不是字面量，所以即便落在值列也不实行内代码。
 const NO_DEFAULT_VALUE = '—'
@@ -77,7 +85,7 @@ interface ExampleDocProps {
   component: string
   /** 预览与默认代码 tab 使用的框架；默认 React 站。 */
   nativeFlavor?: Flavor
-  /** 壳映射测试只检查预览容器时，跳过文档主体与演示组件。 */
+  /** 锚点映射测试只检查预览容器时，跳过文档主体与演示组件。 */
   previewAnchorsOnly?: boolean
   /** 主文档用 primary，多文档页的后续文档用 secondary；不传时不渲染组件标题。 */
   level?: 'primary' | 'secondary'
@@ -109,7 +117,8 @@ function ExamplePreview({
 }
 
 function ExampleDoc({ component, nativeFlavor = 'react', previewAnchorsOnly = false, level }: ExampleDocProps) {
-  const doc = exampleDocs.find(candidate => candidate.component === component)
+  const doc = useExampleDoc(component)
+  const { locale } = useLocale()
   const [activeFlavors, setActiveFlavors] = useState<Record<string, Flavor>>({})
   const [expanded, setExpanded] = useState<Record<string, boolean>>({})
   const [copied, setCopied] = useState<{ key: string; ok: boolean } | null>(null)
@@ -118,24 +127,6 @@ function ExampleDoc({ component, nativeFlavor = 'react', previewAnchorsOnly = fa
   useEffect(() => () => clearTimeout(copyTimer.current), [])
 
   if (!doc) return null
-
-  if (previewAnchorsOnly) {
-    return (
-      <section data-example-doc={doc.component}>
-        {doc.samples.map((sample, index) => {
-          const Demo = sample.demoKey ? demoComponents.get(`${component}--${sample.demoKey}`) : undefined
-          return (
-            <ExamplePreview
-              key={sampleKey(sample, index)}
-              Demo={Demo}
-              demoKey={sample.demoKey}
-              renderDemoComponent={false}
-            />
-          )
-        })}
-      </section>
-    )
-  }
 
   // 本站框架在前：segmented 的第一项就是这份代码默认展示的运行时。
   const flavors: Flavor[] = nativeFlavor === 'vue' ? ['vue', 'react'] : ['react', 'vue']
@@ -147,6 +138,24 @@ function ExampleDoc({ component, nativeFlavor = 'react', previewAnchorsOnly = fa
 
   function sampleKey(sample: { id: string | null }, index: number) {
     return sample.id ?? `sample-${index}`
+  }
+
+  if (previewAnchorsOnly) {
+    return (
+      <section data-example-doc={doc.component}>
+        {doc.samples.map((sample, index) => {
+          const Demo = sample.demoKey ? demoComponents.get(`${locale}/${component}--${sample.demoKey}`) : undefined
+          return (
+            <ExamplePreview
+              key={sampleKey(sample, index)}
+              Demo={Demo}
+              demoKey={sample.demoKey}
+              renderDemoComponent={false}
+            />
+          )
+        })}
+      </section>
+    )
   }
 
   function activeFlavor(key: string): Flavor {
@@ -240,7 +249,9 @@ function ExampleDoc({ component, nativeFlavor = 'react', previewAnchorsOnly = fa
   }
 
   return (
-    <section className="mt-10 flex flex-col gap-8" data-example-doc={doc.component}>
+    // 根节点这条字面量 aria-label 同时是 wuchale 的锚点：组件作用域里没有其它文案时，它才会在
+    // 组件顶部生成运行时初始化；否则嵌套标题会引用到回调作用域里那个未定义的 `_w_runtime_`。
+    <section className="mt-10 flex flex-col gap-8" aria-label="示例文档" data-example-doc={doc.component}>
       <header className="flex flex-col gap-2">
         {level === 'primary' ? (
           <h1 className="mdc-heading">{displayNameOf(component)}</h1>
@@ -257,7 +268,7 @@ function ExampleDoc({ component, nativeFlavor = 'react', previewAnchorsOnly = fa
         {doc.samples.map((sample, index) => {
           const key = sampleKey(sample, index)
           const flavor = activeFlavor(key)
-          const Demo = sample.demoKey ? demoComponents.get(`${component}--${sample.demoKey}`) : undefined
+          const Demo = sample.demoKey ? demoComponents.get(`${locale}/${component}--${sample.demoKey}`) : undefined
           const isExpanded = expanded[key] ?? false
           return (
             <article className="flex flex-col gap-3" data-sample={sample.title} key={key}>
@@ -398,7 +409,7 @@ function ExampleDoc({ component, nativeFlavor = 'react', previewAnchorsOnly = fa
 
       {doc.api.length > 0 ? (
         <section className="flex flex-col gap-6">
-          <SectionHeading className="mdc-heading">API</SectionHeading>
+          <SectionHeading className="mdc-heading">{API_HEADING}</SectionHeading>
 
           {/* API 小节有两型：登记过表头的是表，列形状完全由生成的 columns 决定；其余是散文。
               `.mdc-markdown` 也挂在这一层：散文与表格共用同一套 Notion 标签样式。 */}

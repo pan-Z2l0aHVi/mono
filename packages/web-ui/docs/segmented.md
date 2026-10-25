@@ -3,15 +3,15 @@ component: segmented
 tag: web-ui-segmented
 ---
 
-segmented（单选 button group），子项是 `<web-ui-segmented-trigger>`；`value` 同步选中项，并与原生 `<form>` 集成。
+segmented (a single-select button group) has `<web-ui-segmented-trigger>` children; `value` synchronizes the selected item and integrates with the native `<form>`.
 
-## 示例
+## Samples
 
-### 基础受控 {#basic}
+### Basic controlled {#basic}
 
-默认插槽投影 segmented-trigger，`value` 决定哪一项选中；点击（或 Enter / Space）后由 `input` 带回新值，页面把它写回 `value` 维持受控。
+The default slot projects segmented-trigger, and `value` decides which item is selected; after a click (or Enter / Space), `input` carries the new value back and the page writes it into `value` to stay controlled.
 
-按住当前选中项横向拖拽也能连续切换，松手吸附到离 indicator 中心最近的 trigger，快速抛掷按速度切换。
+Holding and dragging horizontally on the current item also switches continuously; on release the indicator snaps to the trigger closest to its center, and a fast fling switches by velocity.
 
 ```tsx
 import { useState } from 'react'
@@ -22,13 +22,13 @@ export default function Demo() {
   return (
     <div className="flex flex-col items-start gap-3">
       <web-ui-segmented value={day} onInput={event => setDay(event.currentTarget.value)}>
-        <web-ui-segmented-trigger value="mon">周一</web-ui-segmented-trigger>
-        <web-ui-segmented-trigger value="tue">周二</web-ui-segmented-trigger>
-        <web-ui-segmented-trigger value="wed">周三</web-ui-segmented-trigger>
-        <web-ui-segmented-trigger value="thu">周四</web-ui-segmented-trigger>
-        <web-ui-segmented-trigger value="fri">周五</web-ui-segmented-trigger>
+        <web-ui-segmented-trigger value="mon">Mon</web-ui-segmented-trigger>
+        <web-ui-segmented-trigger value="tue">Tue</web-ui-segmented-trigger>
+        <web-ui-segmented-trigger value="wed">Wed</web-ui-segmented-trigger>
+        <web-ui-segmented-trigger value="thu">Thu</web-ui-segmented-trigger>
+        <web-ui-segmented-trigger value="fri">Fri</web-ui-segmented-trigger>
       </web-ui-segmented>
-      <output className="text-sm text-(--wui-color-text-secondary)">当前选中：{day}</output>
+      <output className="text-sm text-(--wui-color-text-secondary)">Selected: {day}</output>
     </div>
   )
 }
@@ -38,13 +38,13 @@ export default function Demo() {
 <template>
   <div class="flex flex-col items-start gap-3">
     <web-ui-segmented :value="day" @input="day = $event.currentTarget.value">
-      <web-ui-segmented-trigger value="mon">周一</web-ui-segmented-trigger>
-      <web-ui-segmented-trigger value="tue">周二</web-ui-segmented-trigger>
-      <web-ui-segmented-trigger value="wed">周三</web-ui-segmented-trigger>
-      <web-ui-segmented-trigger value="thu">周四</web-ui-segmented-trigger>
-      <web-ui-segmented-trigger value="fri">周五</web-ui-segmented-trigger>
+      <web-ui-segmented-trigger value="mon">Mon</web-ui-segmented-trigger>
+      <web-ui-segmented-trigger value="tue">Tue</web-ui-segmented-trigger>
+      <web-ui-segmented-trigger value="wed">Wed</web-ui-segmented-trigger>
+      <web-ui-segmented-trigger value="thu">Thu</web-ui-segmented-trigger>
+      <web-ui-segmented-trigger value="fri">Fri</web-ui-segmented-trigger>
     </web-ui-segmented>
-    <output class="text-sm text-(--wui-color-text-secondary)">当前选中：{{ day }}</output>
+    <output class="text-sm text-(--wui-color-text-secondary)">Selected: {{ day }}</output>
   </div>
 </template>
 
@@ -55,9 +55,9 @@ const day = ref('wed')
 </script>
 ```
 
-### 变体对比 {#variants}
+### Variant comparison {#variants}
 
-`variant` 选择 track 与 indicator 的材质：`inset`（默认）把 indicator 嵌进带常驻环与投影的 track，`raised` 是经典浮起形态。两个变体的交互、按压态与文字色一致，只有静止面不同。
+`variant` picks the material of the track and the indicator: `inset` (default) embeds the indicator in a track with a persistent ring and shadow, while `raised` is the classic floating form. Both variants share the same interaction, pressed state, and text color; only the resting surface differs.
 
 ```tsx
 import { useState } from 'react'
@@ -69,13 +69,13 @@ export default function Demo() {
   return (
     <div className="flex flex-wrap items-start gap-8">
       <div className="flex flex-col items-start gap-3">
-        <span className="text-sm text-(--wui-color-text-secondary)">inset（默认）</span>
+        <span className="text-sm text-(--wui-color-text-secondary)">inset (default)</span>
         <web-ui-segmented value={insetView} onInput={event => setInsetView(event.currentTarget.value)}>
-          <web-ui-segmented-trigger value="day">日</web-ui-segmented-trigger>
-          <web-ui-segmented-trigger value="week">周</web-ui-segmented-trigger>
-          <web-ui-segmented-trigger value="month">月</web-ui-segmented-trigger>
+          <web-ui-segmented-trigger value="day">Day</web-ui-segmented-trigger>
+          <web-ui-segmented-trigger value="week">Week</web-ui-segmented-trigger>
+          <web-ui-segmented-trigger value="month">Month</web-ui-segmented-trigger>
         </web-ui-segmented>
-        <output className="text-sm text-(--wui-color-text-secondary)">选中值：{insetView}</output>
+        <output className="text-sm text-(--wui-color-text-secondary)">Selected: {insetView}</output>
       </div>
 
       <div className="flex flex-col items-start gap-3">
@@ -85,11 +85,11 @@ export default function Demo() {
           value={raisedView}
           onInput={event => setRaisedView(event.currentTarget.value)}
         >
-          <web-ui-segmented-trigger value="day">日</web-ui-segmented-trigger>
-          <web-ui-segmented-trigger value="week">周</web-ui-segmented-trigger>
-          <web-ui-segmented-trigger value="month">月</web-ui-segmented-trigger>
+          <web-ui-segmented-trigger value="day">Day</web-ui-segmented-trigger>
+          <web-ui-segmented-trigger value="week">Week</web-ui-segmented-trigger>
+          <web-ui-segmented-trigger value="month">Month</web-ui-segmented-trigger>
         </web-ui-segmented>
-        <output className="text-sm text-(--wui-color-text-secondary)">选中值：{raisedView}</output>
+        <output className="text-sm text-(--wui-color-text-secondary)">Selected: {raisedView}</output>
       </div>
     </div>
   )
@@ -100,23 +100,23 @@ export default function Demo() {
 <template>
   <div class="flex flex-wrap items-start gap-8">
     <div class="flex flex-col items-start gap-3">
-      <span class="text-sm text-(--wui-color-text-secondary)">inset（默认）</span>
+      <span class="text-sm text-(--wui-color-text-secondary)">inset (default)</span>
       <web-ui-segmented :value="insetView" @input="insetView = $event.currentTarget.value">
-        <web-ui-segmented-trigger value="day">日</web-ui-segmented-trigger>
-        <web-ui-segmented-trigger value="week">周</web-ui-segmented-trigger>
-        <web-ui-segmented-trigger value="month">月</web-ui-segmented-trigger>
+        <web-ui-segmented-trigger value="day">Day</web-ui-segmented-trigger>
+        <web-ui-segmented-trigger value="week">Week</web-ui-segmented-trigger>
+        <web-ui-segmented-trigger value="month">Month</web-ui-segmented-trigger>
       </web-ui-segmented>
-      <output class="text-sm text-(--wui-color-text-secondary)">选中值：{{ insetView }}</output>
+      <output class="text-sm text-(--wui-color-text-secondary)">Selected: {{ insetView }}</output>
     </div>
 
     <div class="flex flex-col items-start gap-3">
       <span class="text-sm text-(--wui-color-text-secondary)">raised</span>
       <web-ui-segmented variant="raised" :value="raisedView" @input="raisedView = $event.currentTarget.value">
-        <web-ui-segmented-trigger value="day">日</web-ui-segmented-trigger>
-        <web-ui-segmented-trigger value="week">周</web-ui-segmented-trigger>
-        <web-ui-segmented-trigger value="month">月</web-ui-segmented-trigger>
+        <web-ui-segmented-trigger value="day">Day</web-ui-segmented-trigger>
+        <web-ui-segmented-trigger value="week">Week</web-ui-segmented-trigger>
+        <web-ui-segmented-trigger value="month">Month</web-ui-segmented-trigger>
       </web-ui-segmented>
-      <output class="text-sm text-(--wui-color-text-secondary)">选中值：{{ raisedView }}</output>
+      <output class="text-sm text-(--wui-color-text-secondary)">Selected: {{ raisedView }}</output>
     </div>
   </div>
 </template>
@@ -129,9 +129,9 @@ const raisedView = ref('week')
 </script>
 ```
 
-### 单项禁用与组级禁用 {#disabled}
+### Item and group disabled {#disabled}
 
-`disabled` 加在 trigger 上只禁这一项，其余项照常切换；加在 `<web-ui-segmented>` 上禁用整组，子项自身的 `disabled` 属性不变，但全部退出 Tab 序列并停止响应点击。
+`disabled` on a trigger disables only that item while the rest keep switching; `disabled` on `<web-ui-segmented>` disables the whole group—the members' own `disabled` attributes stay unchanged, but they all leave the tab order and stop responding to clicks.
 
 ```tsx
 import { useState } from 'react'
@@ -143,25 +143,25 @@ export default function Demo() {
   return (
     <div className="flex flex-wrap items-start gap-8">
       <div className="flex flex-col items-start gap-3">
-        <span className="text-sm text-(--wui-color-text-secondary)">单项 disabled</span>
+        <span className="text-sm text-(--wui-color-text-secondary)">Item disabled</span>
         <web-ui-segmented value={view} onInput={event => setView(event.currentTarget.value)}>
-          <web-ui-segmented-trigger value="list">列表</web-ui-segmented-trigger>
+          <web-ui-segmented-trigger value="list">List</web-ui-segmented-trigger>
           <web-ui-segmented-trigger value="grid" disabled>
-            网格
+            Grid
           </web-ui-segmented-trigger>
-          <web-ui-segmented-trigger value="board">看板</web-ui-segmented-trigger>
+          <web-ui-segmented-trigger value="board">Board</web-ui-segmented-trigger>
         </web-ui-segmented>
-        <output className="text-sm text-(--wui-color-text-secondary)">选中值：{view}</output>
+        <output className="text-sm text-(--wui-color-text-secondary)">Selected: {view}</output>
       </div>
 
       <div className="flex flex-col items-start gap-3">
-        <span className="text-sm text-(--wui-color-text-secondary)">组级 disabled</span>
+        <span className="text-sm text-(--wui-color-text-secondary)">Group disabled</span>
         <web-ui-segmented disabled value={lockedView}>
-          <web-ui-segmented-trigger value="list">列表</web-ui-segmented-trigger>
-          <web-ui-segmented-trigger value="grid">网格</web-ui-segmented-trigger>
-          <web-ui-segmented-trigger value="board">看板</web-ui-segmented-trigger>
+          <web-ui-segmented-trigger value="list">List</web-ui-segmented-trigger>
+          <web-ui-segmented-trigger value="grid">Grid</web-ui-segmented-trigger>
+          <web-ui-segmented-trigger value="board">Board</web-ui-segmented-trigger>
         </web-ui-segmented>
-        <output className="text-sm text-(--wui-color-text-secondary)">选中值：{lockedView}（不可切换）</output>
+        <output className="text-sm text-(--wui-color-text-secondary)">Selected: {lockedView} (not switchable)</output>
       </div>
     </div>
   )
@@ -172,23 +172,23 @@ export default function Demo() {
 <template>
   <div class="flex flex-wrap items-start gap-8">
     <div class="flex flex-col items-start gap-3">
-      <span class="text-sm text-(--wui-color-text-secondary)">单项 disabled</span>
+      <span class="text-sm text-(--wui-color-text-secondary)">Item disabled</span>
       <web-ui-segmented :value="view" @input="view = $event.currentTarget.value">
-        <web-ui-segmented-trigger value="list">列表</web-ui-segmented-trigger>
-        <web-ui-segmented-trigger value="grid" disabled>网格</web-ui-segmented-trigger>
-        <web-ui-segmented-trigger value="board">看板</web-ui-segmented-trigger>
+        <web-ui-segmented-trigger value="list">List</web-ui-segmented-trigger>
+        <web-ui-segmented-trigger value="grid" disabled>Grid</web-ui-segmented-trigger>
+        <web-ui-segmented-trigger value="board">Board</web-ui-segmented-trigger>
       </web-ui-segmented>
-      <output class="text-sm text-(--wui-color-text-secondary)">选中值：{{ view }}</output>
+      <output class="text-sm text-(--wui-color-text-secondary)">Selected: {{ view }}</output>
     </div>
 
     <div class="flex flex-col items-start gap-3">
-      <span class="text-sm text-(--wui-color-text-secondary)">组级 disabled</span>
+      <span class="text-sm text-(--wui-color-text-secondary)">Group disabled</span>
       <web-ui-segmented disabled :value="lockedView">
-        <web-ui-segmented-trigger value="list">列表</web-ui-segmented-trigger>
-        <web-ui-segmented-trigger value="grid">网格</web-ui-segmented-trigger>
-        <web-ui-segmented-trigger value="board">看板</web-ui-segmented-trigger>
+        <web-ui-segmented-trigger value="list">List</web-ui-segmented-trigger>
+        <web-ui-segmented-trigger value="grid">Grid</web-ui-segmented-trigger>
+        <web-ui-segmented-trigger value="board">Board</web-ui-segmented-trigger>
       </web-ui-segmented>
-      <output class="text-sm text-(--wui-color-text-secondary)">选中值：{{ lockedView }}（不可切换）</output>
+      <output class="text-sm text-(--wui-color-text-secondary)">Selected: {{ lockedView }} (not switchable)</output>
     </div>
   </div>
 </template>
@@ -201,9 +201,9 @@ const lockedView = ref('list')
 </script>
 ```
 
-### 表单字段 {#form}
+### Form field {#form}
 
-`name` 让当前选中值以该字段名进入 `FormData`，未选中任何项时不提交该字段。组件通过 ElementInternals 接入 `<form>`，`form.reset()` 会把 `value` 退回挂载时的初始值。
+`name` makes the currently selected value enter `FormData` under that field name, and when nothing is selected the field is not submitted. The component joins the `<form>` through ElementInternals, and `form.reset()` returns `value` to the initial value at mount time.
 
 ```tsx
 import { useRef, useState } from 'react'
@@ -227,14 +227,14 @@ export default function Demo() {
       }}
     >
       <web-ui-segmented name="day" value={day} onInput={event => setDay(event.currentTarget.value)}>
-        <web-ui-segmented-trigger value="mon">周一</web-ui-segmented-trigger>
-        <web-ui-segmented-trigger value="tue">周二</web-ui-segmented-trigger>
-        <web-ui-segmented-trigger value="wed">周三</web-ui-segmented-trigger>
-        <web-ui-segmented-trigger value="thu">周四</web-ui-segmented-trigger>
-        <web-ui-segmented-trigger value="fri">周五</web-ui-segmented-trigger>
+        <web-ui-segmented-trigger value="mon">Mon</web-ui-segmented-trigger>
+        <web-ui-segmented-trigger value="tue">Tue</web-ui-segmented-trigger>
+        <web-ui-segmented-trigger value="wed">Wed</web-ui-segmented-trigger>
+        <web-ui-segmented-trigger value="thu">Thu</web-ui-segmented-trigger>
+        <web-ui-segmented-trigger value="fri">Fri</web-ui-segmented-trigger>
       </web-ui-segmented>
       <div className="flex flex-wrap items-center gap-3">
-        <web-ui-button type="submit">提交</web-ui-button>
+        <web-ui-button type="submit">Submit</web-ui-button>
         <web-ui-button
           onClick={() => {
             formRef.current?.reset()
@@ -242,10 +242,10 @@ export default function Demo() {
             setDay('wed')
           }}
         >
-          重置
+          Reset
         </web-ui-button>
         <output className="text-sm text-(--wui-color-text-secondary)">
-          {submitted === '' ? '尚未提交' : submitted}
+          {submitted === '' ? 'Not submitted yet' : submitted}
         </output>
       </div>
     </form>
@@ -257,17 +257,17 @@ export default function Demo() {
 <template>
   <form ref="form" class="flex flex-col items-start gap-3" @submit="onSubmit">
     <web-ui-segmented name="day" :value="day" @input="day = $event.currentTarget.value">
-      <web-ui-segmented-trigger value="mon">周一</web-ui-segmented-trigger>
-      <web-ui-segmented-trigger value="tue">周二</web-ui-segmented-trigger>
-      <web-ui-segmented-trigger value="wed">周三</web-ui-segmented-trigger>
-      <web-ui-segmented-trigger value="thu">周四</web-ui-segmented-trigger>
-      <web-ui-segmented-trigger value="fri">周五</web-ui-segmented-trigger>
+      <web-ui-segmented-trigger value="mon">Mon</web-ui-segmented-trigger>
+      <web-ui-segmented-trigger value="tue">Tue</web-ui-segmented-trigger>
+      <web-ui-segmented-trigger value="wed">Wed</web-ui-segmented-trigger>
+      <web-ui-segmented-trigger value="thu">Thu</web-ui-segmented-trigger>
+      <web-ui-segmented-trigger value="fri">Fri</web-ui-segmented-trigger>
     </web-ui-segmented>
     <div class="flex flex-wrap items-center gap-3">
-      <web-ui-button type="submit">提交</web-ui-button>
-      <web-ui-button @click="reset">重置</web-ui-button>
+      <web-ui-button type="submit">Submit</web-ui-button>
+      <web-ui-button @click="reset">Reset</web-ui-button>
       <output class="text-sm text-(--wui-color-text-secondary)">
-        {{ submitted === '' ? '尚未提交' : submitted }}
+        {{ submitted === '' ? 'Not submitted yet' : submitted }}
       </output>
     </div>
   </form>
@@ -297,9 +297,9 @@ function reset() {
 </script>
 ```
 
-### input 与 change {#events}
+### input and change {#events}
 
-每次用户切换（点击、Enter / Space 或拖拽）都会先 `input` 再 `change` 各派发一次，点击已是当前项的 trigger 不派发。下面的按钮直接改 `value` 走程序化路径：indicator 会移动，两个计数都不变。
+Every user switch (click, Enter / Space, or drag) dispatches `input` and then `change`, one each; clicking a trigger that is already current dispatches neither. The button below changes `value` directly along the programmatic path: the indicator moves and neither counter changes.
 
 ```tsx
 import { useState } from 'react'
@@ -322,14 +322,14 @@ export default function Demo() {
           setChangeCount(count => count + 1)
         }}
       >
-        <web-ui-segmented-trigger value="day">日</web-ui-segmented-trigger>
-        <web-ui-segmented-trigger value="week">周</web-ui-segmented-trigger>
-        <web-ui-segmented-trigger value="month">月</web-ui-segmented-trigger>
+        <web-ui-segmented-trigger value="day">Day</web-ui-segmented-trigger>
+        <web-ui-segmented-trigger value="week">Week</web-ui-segmented-trigger>
+        <web-ui-segmented-trigger value="month">Month</web-ui-segmented-trigger>
       </web-ui-segmented>
       <output className="text-sm text-(--wui-color-text-secondary)">
-        input: {inputCount} / change: {changeCount} · 当前值：{view}
+        input: {inputCount} / change: {changeCount} · current: {view}
       </output>
-      <web-ui-button onClick={() => setView('month')}>外部设为「月」</web-ui-button>
+      <web-ui-button onClick={() => setView('month')}>Set to “Month” externally</web-ui-button>
     </div>
   )
 }
@@ -339,14 +339,14 @@ export default function Demo() {
 <template>
   <div class="flex flex-col items-start gap-3">
     <web-ui-segmented :value="view" @input="onInput" @change="onChange">
-      <web-ui-segmented-trigger value="day">日</web-ui-segmented-trigger>
-      <web-ui-segmented-trigger value="week">周</web-ui-segmented-trigger>
-      <web-ui-segmented-trigger value="month">月</web-ui-segmented-trigger>
+      <web-ui-segmented-trigger value="day">Day</web-ui-segmented-trigger>
+      <web-ui-segmented-trigger value="week">Week</web-ui-segmented-trigger>
+      <web-ui-segmented-trigger value="month">Month</web-ui-segmented-trigger>
     </web-ui-segmented>
     <output class="text-sm text-(--wui-color-text-secondary)">
-      input: {{ inputCount }} / change: {{ changeCount }} · 当前值：{{ view }}
+      input: {{ inputCount }} / change: {{ changeCount }} · current: {{ view }}
     </output>
-    <web-ui-button @click="view = 'month'">外部设为「月」</web-ui-button>
+    <web-ui-button @click="view = 'month'">Set to “Month” externally</web-ui-button>
   </div>
 </template>
 
@@ -374,81 +374,81 @@ function onChange(event: WebUiEvent<WebUiSegmented, 'change'>) {
 
 ### Props
 
-| 名称       | 说明                                   | 类型                  | 默认值    |
-| ---------- | -------------------------------------- | --------------------- | --------- |
-| `name`     | 表单字段名。                           | `string`              | `''`      |
-| `variant`  | 材质变体：`inset`（默认）或 `raised`。 | `'inset' \| 'raised'` | `'inset'` |
-| `disabled` | 禁用全部 trigger。                     | `boolean`             | `false`   |
-| `required` | 只反射属性，不参与校验。               | `boolean`             | `false`   |
-| `value`    | 当前选中值。                           | `string`              | `''`      |
+| Name       | Description                                          | Type                  | Default   |
+| ---------- | ---------------------------------------------------- | --------------------- | --------- |
+| `name`     | Form field name.                                     | `string`              | `''`      |
+| `variant`  | Material variant: `inset` (default) or `raised`.     | `'inset' \| 'raised'` | `'inset'` |
+| `disabled` | Disables every trigger.                              | `boolean`             | `false`   |
+| `required` | Reflects the attribute only; not part of validation. | `boolean`             | `false`   |
+| `value`    | Currently selected value.                            | `string`              | `''`      |
 
 ### Events
 
-| 名称     | 说明                                       |
-| -------- | ------------------------------------------ |
-| `input`  | 用户点击、键盘或拖拽结束改变选中项时触发。 |
-| `change` | 与 `input` 成对派发，一次切换各一次。      |
+| Name     | Description                                                                            |
+| -------- | -------------------------------------------------------------------------------------- |
+| `input`  | Fired when the selection changes through a user click, keyboard, or the end of a drag. |
+| `change` | Dispatched as a pair with `input`, once each per switch.                               |
 
 ### Slots
 
-| 名称      | 说明                                     |
-| --------- | ---------------------------------------- |
-| `default` | 投影 `<web-ui-segmented-trigger>` 子项。 |
+| Name      | Description                                     |
+| --------- | ----------------------------------------------- |
+| `default` | Projects `<web-ui-segmented-trigger>` children. |
 
-### 变体
+### Variants
 
-`inset`（默认，「凹」）是不透明实体 track（`--wui-color-surface`）——1px 描边环与投影全程常驻，静止 indicator 是 `--wui-color-surface-segmented` 纯灰底，视觉上嵌入 track。
+`inset` (default, "concave") is an opaque solid track (`--wui-color-surface`)—the 1px stroke ring and shadow stay on at all times, and the resting indicator is a flat gray `--wui-color-surface-segmented` fill, so it looks embedded in the track.
 
-浅色下 track 与 `--wui-color-page` 同值，与页面齐平，凹感只由常驻环与投影承担；深色下 track 是「比页面高一档」的 elevation，依旧浮离页面。
+In light mode the track has the same value as `--wui-color-page` and sits flush with the page, so the concave feel comes only from the persistent ring and shadow; in dark mode the track is one elevation step above the page and still floats off it.
 
-indicator 那一档在浅色与深色下都取 `--wui-color-surface-control` 的默认值，也就是 `secondary` button 的面（浅 `#dfdfdf`、深 `#3a3a3c`）：选中那颗与同主题的中性可交互控件同面，不另起一档灰。这是同值而不是别名——两枚 token 在主题里各自定义、互不引用，所以单独覆盖 control 不会带着这颗 indicator 一起动。
+The indicator step takes the default of `--wui-color-surface-control` in both light and dark—that is, the `secondary` button surface (light `#dfdfdf`, dark `#3a3a3c`): the selected chip shares the surface of a neutral interactive control in the same theme instead of introducing another gray. This is the same value, not an alias—the two tokens are defined independently in the theme and do not reference each other, so overriding control alone does not move this indicator.
 
-`raised`（「凸」）是经典形态：flat 灰 track（`--wui-color-surface-segmented-track`，无环无投影），静止 indicator 是 `--wui-color-surface-selected` 实体底加柔投影，浮起于 track 之上。
+`raised` ("convex") is the classic form: a flat gray track (`--wui-color-surface-segmented-track`, no ring or shadow) with the resting indicator as a `--wui-color-surface-selected` solid fill plus a soft shadow, floating above the track.
 
-浅色这对是 `#e5e5ea → #fff`：indicator 与 `--wui-color-page` 同为最白，凸起由「与页面同色的实色面浮在沉下去的轨道上 + 柔投影」读出。
+In light mode this pair is `#e5e5ea → #fff`: the indicator is as white as `--wui-color-page`, and the raised feel reads from "a solid surface in the page color floating above a recessed track + a soft shadow".
 
-深色走同一条不变量：indicator 仍与 `--wui-color-page` 同色（`#242628`），动的是轨道——`--wui-color-surface-segmented-track` 沉到 page 之下取 `#17191a`，比 page 再暗 13 到 14/255，与该主题往上走的档差同量级（page→surface 是 +6 到 +8、surface→control 是 +14、control→track 是 +10）。
+Dark follows the same invariant: the indicator still matches `--wui-color-page` (`#242628`), and the track is what moves—`--wui-color-surface-segmented-track` sinks below the page to `#17191a`, 13 to 14/255 darker than the page, on the same order as this theme's upward steps (page→surface is +6 to +8, surface→control is +14, control→track is +10).
 
-page 已经是深色阶梯最暗的一档，所以「与 page 同色」只能靠把轨道往下开来成立，而不是把 indicator 往上抬。凸起方向仍由「indicator 比 track 亮」读出：两档的 WCAG 亮度比分别是 1.26:1（浅）与 1.16:1（深），同一量级，不会盖过柔投影。
+The page is already the darkest step of the dark ladder, so "the same color as the page" can only hold by opening the track downward rather than lifting the indicator up. The raised direction still reads from "the indicator is brighter than the track": the WCAG luminance ratios of the two steps are 1.26:1 (light) and 1.16:1 (dark), the same order of magnitude, so neither overpowers the soft shadow.
 
-于是深色下两个变体不再共用同一对灰阶：inset 是 `#2c2c2e` track + `#3a3a3c` indicator（选中面比轨道亮，读成按下去的灰面），raised 是 `#17191a` track + `#242628` indicator（选中面与页面同色，读成浮起来的一截页面）。
+So in dark mode the two variants no longer share one gray pair: inset is a `#2c2c2e` track + `#3a3a3c` indicator (the selected surface is brighter than the track, reading as a pressed gray), while raised is a `#17191a` track + `#242628` indicator (the selected surface matches the page, reading as a slice of page floating up).
 
-这条不变量说的是「与 page 同色」，不是「与所在容器同色」。浅色下 page 与 surface 都是 `#fff`，两句话等价；深色下 surface 是 `#2c2c2e`，所以凸变种放进 surface 卡片里时，chip 会比卡片本身暗一档。
+The invariant says "the same color as the page", not "the same color as the containing element". In light mode the page and surface are both `#fff`, so the two statements are equivalent; in dark mode the surface is `#2c2c2e`, so putting the raised variant inside a surface card makes the chip one step darker than the card itself.
 
-凸起在这两种容器下都由 track 与柔投影读出，变的只是「chip 是否与背后那片面齐平」：贴在页面上齐平，贴在 surface 上不齐平。
+In both containers the raised feel comes from the track and the soft shadow; only "whether the chip is flush with the surface behind it" changes: flush on the page, not flush on a surface.
 
-两个变体的按压/拖拽态一致——indicator 转透明玻璃（backdrop blur、80ms 淡入的描边环、1.5x 放大），松开淡回各自静止面。
+Both variants share the same pressed / drag state—the indicator turns into transparent glass (backdrop blur, a stroke ring fading in over 80ms, 1.5x scale), and fades back to its own resting surface on release.
 
-非法值回退 `inset`。
+Invalid values fall back to `inset`.
 
-与原生 `<form>` 集成（通过 `ElementInternals`）。
+Integration with the native `<form>` (through `ElementInternals`).
 
-根据 `value` 同步子 trigger 的 `checked` 状态。`disabled` 提供继承的有效禁用状态，不改写 trigger 自身的 `disabled` 属性。直接设 `value` 不派发事件。
+Syncs the child triggers' `checked` state from `value`. `disabled` provides an inherited effective disabled state without rewriting the triggers' own `disabled` attribute. Setting `value` directly dispatches no events.
 
-键盘用户按 Tab 进入当前选中项；没有选中项时进入首个启用项。组内只有这一项参与 Tab 顺序。
+Keyboard users press Tab into the currently selected item; with no selection, the first enabled item receives focus. Only that one item in the group participates in the tab order.
 
-水平组中，ArrowLeft / ArrowRight 在启用项间循环移动焦点并更新选中值，Home / End 移到首个 / 末个启用项；禁用项会跳过。
+In a horizontal group, ArrowLeft / ArrowRight move focus cyclically among enabled items and update the selection, and Home / End move to the first / last enabled item; disabled items are skipped.
 
-ArrowUp / ArrowDown 不移动焦点。
+ArrowUp / ArrowDown do not move focus.
 
-按住当前选中项横向拖拽可滑动 indicator，松手吸附到最近 option（快速抛掷按速度切换）。
+Holding the current item and dragging horizontally slides the indicator, and releasing snaps to the nearest option (a fast fling switches by velocity).
 
-trigger 宽度不等时，拖拽中的 indicator 取「离自身中心最近的那一项」的宽度——即预览松手会落到的那一项，而不是保持按下那一项的宽度。
+When trigger widths differ, the dragging indicator takes the width of the item closest to its own center—that is, the item the release would land on, rather than keeping the width of the pressed item.
 
-触摸面声明 `touch-action: none`，拖拽激活期间阻止 `touchmove` 默认滚动，避免 iOS Safari 中断手势。
+The touch surface declares `touch-action: none` and blocks the default `touchmove` scroll while a drag is active, so iOS Safari does not interrupt the gesture.
 
-### 按压态
+### Pressed state
 
-track 在所有状态下都是不透明实体面（`--wui-color-surface`，浅色即 page 同色、无 backdrop filter），1px 描边环与投影全程不变；转为玻璃的是 indicator 这一层。
+In every state the track is an opaque solid surface (`--wui-color-surface`, i.e. the page color in light mode, with no backdrop filter), and its 1px stroke ring and shadow never change; the layer that turns into glass is the indicator.
 
-静止态 indicator 是 `--wui-color-surface-segmented` 实色底、玻璃输出全部关闭。
+The resting indicator is a solid `--wui-color-surface-segmented` fill with all glass output turned off.
 
-按压/拖拽态获得 backdrop blur、随 80ms 过渡淡入的玻璃描边环与 1.5x 放大，底色全透明：indicator 的 blur 采样面整个落在 track 之内，此前的玻璃 track 上全透明 indicator 在均匀深底与相邻 track 仅差 +0.5 阶，条纹底实测 indicator 内部灰度 std 1.89（背景渗透）。
+The pressed / drag state gains a backdrop blur, a glass stroke ring fading in over an 80ms transition, and 1.5x scale, with a fully transparent fill: the indicator's blur sample area lies entirely inside the track, whereas previously a fully transparent indicator over a glass track differed from the adjacent track by only +0.5 steps on a uniformly dark base, and on a striped background the indicator interior measured a gray std of 1.89 (background bleed).
 
-track 实体化后同一采样 std 归零，按压态本体的可感知性由实色 track 与放大/环/投影共同承担，不再需要 tint 打底或压制 track 边缘装饰。
+Once the track is solid, the same sample std drops to zero, and the pressed body's perceptibility comes from the solid track together with the scale / ring / shadow, so no tint base or suppression of the track's edge decoration is needed anymore.
 
-底色不淡入——按下第一帧即落定；松开时 indicator 经 `--wui-duration-press` 淡回实色灰底。
+The fill does not fade in—it settles on the first frame of the press; on release the indicator fades back to the solid gray fill over `--wui-duration-press`.
 
-### 文字色
+### Label color
 
-所有 label 一律使用 `--wui-color-text` 主文本色；内建 light/dark 主题下，14px 文字压在 `inset`/`raised` 静止 indicator 上均满足 4.5:1。选中与未选中项保持同色，选择状态仍由 indicator 承担，任何 label 都不着 `--wui-color-accent`。
+All labels use the primary `--wui-color-text`; under the built-in light/dark themes, 14px text on the resting `inset`/`raised` indicator meets 4.5:1. Selected and unselected items keep the same color, the selection is still carried by the indicator, and no label uses `--wui-color-accent`.
