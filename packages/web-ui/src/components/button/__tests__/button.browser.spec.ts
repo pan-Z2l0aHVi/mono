@@ -157,17 +157,17 @@ describe('WebUiButton 组件（浏览器）', () => {
     expect(input.value).toBe('initial')
   })
 
-  it('aria-disabled 阻止 submit 和 reset，同时保留原生 button 焦点能力', async () => {
+  it('disabled 阻止 submit 和 reset，并把原生 button 移出 tab 序列', async () => {
     const form = document.createElement('form')
     const input = document.createElement('input')
     input.defaultValue = 'initial'
     input.value = 'changed'
     const submitButton = document.createElement('web-ui-button')
     submitButton.type = 'submit'
-    submitButton.setAttribute('aria-disabled', 'true')
+    submitButton.disabled = true
     const resetButton = document.createElement('web-ui-button')
     resetButton.type = 'reset'
-    resetButton.setAttribute('aria-disabled', 'true')
+    resetButton.disabled = true
     form.append(input, submitButton, resetButton)
     document.body.append(form)
     await Promise.all([waitForUpdate(submitButton), waitForUpdate(resetButton)])
@@ -184,13 +184,11 @@ describe('WebUiButton 组件（浏览器）', () => {
 
     const innerSubmit = submitButton.shadowRoot?.querySelector<HTMLButtonElement>('button')
     const innerReset = resetButton.shadowRoot?.querySelector<HTMLButtonElement>('button')
-    expect(innerSubmit?.disabled).toBe(false)
-    expect(innerReset?.disabled).toBe(false)
-    expect(innerSubmit?.getAttribute('aria-disabled')).toBe('true')
-    expect(innerReset?.getAttribute('aria-disabled')).toBe('true')
+    expect(innerSubmit?.disabled).toBe(true)
+    expect(innerReset?.disabled).toBe(true)
 
     innerSubmit?.focus()
-    expect(submitButton.shadowRoot?.activeElement).toBe(innerSubmit)
+    expect(submitButton.shadowRoot?.activeElement).not.toBe(innerSubmit)
     innerSubmit?.click()
     innerReset?.click()
     await flush()

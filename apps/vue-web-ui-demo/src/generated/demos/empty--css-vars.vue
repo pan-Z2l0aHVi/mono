@@ -7,10 +7,9 @@
     ></web-ui-empty>
 
     <web-ui-empty
-      class="[--wui-empty-icon-size:80px] [--wui-empty-title-margin-top:4px]"
-      :size="40"
-      title="图形盒撑到 80px"
-      description="字形还是按 size 的 3/7 画，所以图形周围会多出空白。"
+      class="[--wui-empty-icon-size:56px] [--wui-empty-icon-color:var(--wui-color-accent)]"
+      title="图形放大并换色"
+      description="只换颜色不碰 opacity，图形仍是默认的淡一档。"
     ></web-ui-empty>
 
     <web-ui-empty
@@ -22,9 +21,9 @@
     </web-ui-empty>
 
     <web-ui-empty
-      class="[--wui-empty-title-font-size:20px] [--wui-empty-description-font-size:12px]"
-      title="两个字号也能单独改"
-      description="字号默认只有两档台阶，变量始终压在台阶之上。"
+      class="[--wui-empty-title-color:var(--wui-color-accent)] [--wui-empty-description-color:var(--wui-color-text-tertiary)] [--wui-empty-title-font-size:20px]"
+      title="标题与描述各自换色"
+      description="颜色与字号是四条互不相干的通道。"
     ></web-ui-empty>
   </div>
 </template>
