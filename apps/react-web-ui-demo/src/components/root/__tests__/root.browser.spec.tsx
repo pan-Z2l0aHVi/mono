@@ -166,6 +166,34 @@ describe('应用外壳（浏览器）：导航 collapsed state 不跨视口泄�
     expect(collapsed.labelAlign).toBe('center')
   })
 
+  it('1440px 桌面折叠态显示唯一短标签和全名提示，展开态显示完整名称', async () => {
+    await changeViewport({ width: 1440, height: 900 })
+    await mountAppShell()
+
+    const expandedLinks = [...navRoot().querySelectorAll<HTMLAnchorElement>('a')]
+    const fullLabels = expandedLinks.map(link => link.getAttribute('aria-label'))
+    expect(expandedLinks).toHaveLength(32)
+    expect(expandedLinks.map(link => link.querySelector('span')?.textContent?.trim())).toEqual(fullLabels)
+    expect(expandedLinks.every(link => link.title === '')).toBe(true)
+
+    await requestCollapse(true)
+
+    const collapsedLinks = [...navRoot().querySelectorAll<HTMLAnchorElement>('a')]
+    const shortLabels = collapsedLinks.map(link => link.querySelector('span')?.textContent?.trim() ?? '')
+    expect(new Set(shortLabels).size).toBe(32)
+    expect(shortLabels.every(label => label.length > 0 && label.length <= 2)).toBe(true)
+    expect(collapsedLinks.map(link => link.title)).toEqual(fullLabels)
+    expect(
+      collapsedLinks.every(link => {
+        const label = link.querySelector('span')
+        return !!label && label.scrollWidth <= label.clientWidth
+      })
+    ).toBe(true)
+
+    await requestCollapse(false)
+    expect([...navRoot().querySelectorAll('a span')].map(label => label.textContent?.trim())).toEqual(fullLabels)
+  })
+
   it('移动端断点下 drawer 里的导航回到 expanded state，而不是桌面 collapsed state', async () => {
     await mountAppShell()
     const expanded = navItemAlignment()
