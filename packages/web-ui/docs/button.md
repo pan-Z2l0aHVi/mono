@@ -608,7 +608,7 @@ The inner button has no form owner of its own, so `SubmitEvent.submitter` is `nu
 
 button does not contribute a value to `FormData` (form state is always `null`).
 
-`disabled` is the only path to a disabled state: it really disables the native button inside, so neither `click` nor form actions happen. `aria-disabled` is neither read nor forwarded—the "looks disabled but stays focusable" semantics are not offered, and a hand-written `aria-disabled` stays on the host with no effect on behaviour.
+`disabled` is the only path to a disabled state: it really disables the native button inside, so neither `click` nor form actions happen. `aria-disabled` is neither read nor forwarded—the "looks disabled but stays focusable" semantics are not offered, and a hand-written `aria-disabled` stays on the host with no effect on behavior.
 
 When `icon` and `loading` are both on, only the spinner is rendered and the default slot is not projected; outside icon mode the spinner comes before the label and coexists with prefix/suffix.
 
