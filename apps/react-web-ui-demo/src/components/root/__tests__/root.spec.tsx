@@ -4,6 +4,8 @@ import { cleanup, render, waitFor } from '@testing-library/react'
 import { act } from 'react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 
+import { loadShellLocale, LocaleProvider } from '@/i18n/locale'
+
 import { Root } from '..'
 
 // 必须与 `web-ui-layout` 的 `MOBILE_VIEWPORT_QUERY`（`components/layout/index.ts`）逐字相同：
@@ -58,7 +60,7 @@ function layoutRoot() {
 }
 
 function navRoot() {
-  const element = document.querySelector('[aria-label="App navigation"]')
+  const element = document.querySelector('[slot="sidebar"]')
   if (!element) throw new Error('sidebar nav not found')
   return element
 }
@@ -115,8 +117,15 @@ function setViewportWidth(width: number) {
 }
 
 async function mountAppShell() {
+  // 固定到中文源语种，避免 Provider 挂载后再异步换一次壳文案。
+  localStorage.setItem('locale', 'zh-CN')
+  await loadShellLocale('zh-CN')
   const router = buildRouter()
-  render(<RouterProvider router={router} />)
+  render(
+    <LocaleProvider>
+      <RouterProvider router={router} />
+    </LocaleProvider>
+  )
   await waitFor(() => {
     if (!document.querySelector('web-ui-layout')) throw new Error('layout not mounted')
   })

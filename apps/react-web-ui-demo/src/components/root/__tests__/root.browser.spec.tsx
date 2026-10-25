@@ -8,6 +8,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { userEvent } from 'vite-plus/test/browser'
 
 import { setViewport } from '@/__tests__/viewport'
+import { loadShellLocale, LocaleProvider } from '@/i18n/locale'
 
 import { Root } from '..'
 
@@ -30,7 +31,7 @@ function layoutRoot() {
 }
 
 function navRoot() {
-  const element = document.querySelector('[aria-label="App navigation"]')
+  const element = document.querySelector('[slot="sidebar"]')
   if (!element) throw new Error('sidebar nav not found')
   return element
 }
@@ -68,7 +69,13 @@ function buildRouter() {
 }
 
 async function mountAppShell() {
-  render(<RouterProvider router={buildRouter()} />)
+  localStorage.setItem('locale', 'zh-CN')
+  await loadShellLocale('zh-CN')
+  render(
+    <LocaleProvider>
+      <RouterProvider router={buildRouter()} />
+    </LocaleProvider>
+  )
   await waitFor(() => {
     if (!document.querySelector('web-ui-layout')) throw new Error('layout not mounted')
   })
