@@ -244,12 +244,22 @@ function ExampleDoc({ component, nativeFlavor = 'react', level }: ExampleDocProp
                   </div>
                 ) : null}
 
-                <div className="overflow-hidden rounded-4xl border border-(--wui-color-border)">
+                {/*
+                  圆角只包住「工具条 + 代码区」的外观，**裁剪下沉到代码区**：这一层不裁，
+                  工具条里的 segmented 才能把按压态画全。
+
+                  按压/拖拽态的 indicator 会 scale(1.5) 并带一枚 `0 2px 20px` 的柔投影，
+                  横向需要约 16px（放大外扩）+ 22px（投影可见半径）的余量，而工具条只留了
+                  `px-4`。留在这一层裁就会把药丸的左半圆和左侧投影一起切平，看着像「长按时
+                  阴影被吃掉一截」。同理代码区自己也需要圆角裁剪，见下方那层 wrapper。
+                */}
+                <div className="rounded-4xl border border-(--wui-color-border)">
                   {/* 工具条只摆控件，不接管开合：展开由右侧 chevron 按钮和收起态那块代码预览负责。 */}
                   {/* `relative z-10` 把工具条抬到下方代码区之上：segmented 的投影朝下溢出（凹变种是
                       track 的常驻外投影，凸变种是 indicator 的柔投影），否则后绘制的折叠区会把阴影盖掉
-                      一截。这一层只在卡内比较，见上方 `isolate`。 */}
-                  <div className="relative z-10 flex flex-wrap items-center justify-between gap-3 bg-(--wui-color-page) px-4 pt-4 pb-2">
+                      一截。这一层只在卡内比较，见上方 `isolate`。
+                      顶部圆角补在这一层：外层不再裁剪，工具条的白底会自己溢出到圆角之外。 */}
+                  <div className="relative z-10 flex flex-wrap items-center justify-between gap-3 rounded-t-4xl bg-(--wui-color-page) px-4 pt-4 pb-2">
                     <web-ui-segmented
                       value={flavor}
                       variant="inset"
@@ -332,27 +342,33 @@ function ExampleDoc({ component, nativeFlavor = 'react', level }: ExampleDocProp
                     收起态这块露出的代码就是展开触发区（点哪一行都算），展开后它退化成一段可滚动的正文，
                     点击不再改状态——否则读到一半想选中一个标识符，整块代码会当场收回去。
                   */}
-                  <web-ui-collapse
-                    open={isExpanded}
-                    peek="128px"
-                    className="bg-(--wui-color-page) [--wui-collapse-peek-edge-ratio:0.6]"
-                    onClick={event => {
-                      if (isExpanded) return
-                      toggleExpanded(event, key)
-                    }}
-                  >
-                    <div slot="content">
-                      <OverlayScrollbarsComponent
-                        id={panelId(key)}
-                        options={webUiScrollbarsOptions}
-                        events={codeScrollbarsEvents}
-                        className="max-h-[32rem] overflow-auto bg-(--wui-color-page) px-4 pt-3 pb-4 font-mono text-xs leading-6"
-                        data-code
-                      >
-                        <div dangerouslySetInnerHTML={{ __html: sample.html[flavor] }} />
-                      </OverlayScrollbarsComponent>
-                    </div>
-                  </web-ui-collapse>
+                  {/*
+                    圆角裁剪落在这一层，只裁代码区：展开态的长代码与收起态的 peek 都是直角块，
+                    外层不裁之后必须有人把它们收进底部圆角里。
+                  */}
+                  <div className="overflow-hidden rounded-b-4xl">
+                    <web-ui-collapse
+                      open={isExpanded}
+                      peek="128px"
+                      className="bg-(--wui-color-page) [--wui-collapse-peek-edge-ratio:0.6]"
+                      onClick={event => {
+                        if (isExpanded) return
+                        toggleExpanded(event, key)
+                      }}
+                    >
+                      <div slot="content">
+                        <OverlayScrollbarsComponent
+                          id={panelId(key)}
+                          options={webUiScrollbarsOptions}
+                          events={codeScrollbarsEvents}
+                          className="max-h-[32rem] overflow-auto bg-(--wui-color-page) px-4 pt-3 pb-4 font-mono text-xs leading-6"
+                          data-code
+                        >
+                          <div dangerouslySetInnerHTML={{ __html: sample.html[flavor] }} />
+                        </OverlayScrollbarsComponent>
+                      </div>
+                    </web-ui-collapse>
+                  </div>
                 </div>
               </div>
             </article>

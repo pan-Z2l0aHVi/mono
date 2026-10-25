@@ -61,7 +61,6 @@
   display: block;
   inline-size: 100%;
   block-size: 100%;
-
   opacity: var(--wui-empty-icon-opacity, 0.75);
 }
 
