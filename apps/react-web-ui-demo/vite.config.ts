@@ -2,12 +2,10 @@ import depsReload from '@greypan/deps-reload/vite'
 import { braceAnchor, type MdToCompViteOptions } from '@greypan/md-to-comp'
 import mdToCompReact from '@greypan/md-to-comp/react'
 import unpluginWebComponents from '@greypan/unplugin-web-components/vite'
-import babel from '@rolldown/plugin-babel'
 import tailwindcss from '@tailwindcss/vite'
 import { tanstackRouter } from '@tanstack/router-plugin/vite'
 import basicSsl from '@vitejs/plugin-basic-ssl'
-import legacy from '@vitejs/plugin-legacy'
-import react, { reactCompilerPreset } from '@vitejs/plugin-react'
+import react from '@vitejs/plugin-react'
 import { searchForWorkspaceRoot, type UserConfig } from 'vite-plus'
 import { playwright } from 'vite-plus/test/browser-playwright'
 import { wuchale } from 'wuchale/vite'
@@ -156,14 +154,22 @@ export default {
       target: 'react',
       autoCodeSplitting: true
     }),
-    react(),
-    babel({
-      presets: [reactCompilerPreset()]
-    }),
+    // 顺序是硬的：这个插件按源码文本匹配 `<web-ui-*` 决定注入哪些自定义元素导入，而
+    // React Compiler 的 transform 同样是 `enforce: 'pre'`，跑完就把 JSX 降成 `jsx(...)` /
+    // `jsxDEV(...)` 调用、tag 文本不复存在。同一 enforce 档按注册顺序执行，所以它必须排在 `react()` 之前。
     unpluginWebComponents({
       tagPrefix: 'web-ui',
       packageName: '@greypan/web-ui',
       sideEffects: true
+    }),
+    // React Compiler 走 oxc 的 Rust 实现（`oxc-transform-react`，由这个选项按需加载），
+    // 源码 transform 不再经过 Babel。目标运行时是 React 19 自带的 `react/compiler-runtime`，
+    // 不额外装 runtime 包。
+    // `exclude` 也挡掉 workspace 链接包的 `dist`：那些路径经 realpath 解析后不在 `node_modules`
+    // 里，默认 exclude 拦不住，Lit 的产物会被顺带当成 React 源码分析一遍。
+    react({
+      compiler: true,
+      exclude: [/\/node_modules\//, /\/packages\/[^/]+\/dist\//]
     }),
     depsReload([
       {
@@ -184,12 +190,11 @@ export default {
     // 不跟着走 https：浏览器于是按 https 去连一个明文服务，得到 ERR_SSL_PROTOCOL_ERROR
     // （`ignoreHTTPSErrors` 治的是证书错误，救不了协议层）。它只服务 dev server，
     // 测试模式下去掉。
-    ...(process.env.VITEST ? [] : [basicSsl()]),
-    legacy({
-      modernTargets: ['Chrome >=111', 'Edge >=111', 'Safari >=16.4', 'iOS >=16.4', 'Firefox >=128'],
-      renderLegacyChunks: false,
-      modernPolyfills: true
-    })
+    ...(process.env.VITEST ? [] : [basicSsl()])
+    // 这里没有 `@vitejs/plugin-legacy`：它在本 app 只做 modern polyfill 注入（`renderLegacyChunks`
+    // 从来是关的），而注入的那批 core-js 模块是 babel usage 检测在打包后的第三方代码与文档字符串上
+    // 的误报——产物里调用点为 0，`browserslist` 基线原生覆盖全部实际用到的 API。删掉顺带把 Babel
+    // 从依赖图里清干净，加载体积少 17.66 KB gzip。真要补某个老 API 就在入口显式 import 对应模块。
   ],
   base: process.env.GITHUB_BASE_PATH || '/',
   css: {
