@@ -7,7 +7,7 @@ Right-click context menu: the first child element is the trigger area and the re
 
 ## Samples
 
-### Basic {#basic}
+### Basic
 
 The first element in the default slot is the trigger area and the remaining children are menu items: right-click inside the trigger area and the menu opens from the cursor position.
 
@@ -109,7 +109,7 @@ function onOpenChange(event: WebUiEvent<WebUiContextMenu, 'open-change'>) {
 </script>
 ```
 
-### Touch long press {#long-press}
+### Touch long press
 
 `long-press` is a touch opt-in: holding for `long-press-delay` (600 ms here) opens the menu, expanding downward from the press point; moving more than 10px during the hold is treated as scrolling and cancels it.
 
@@ -181,7 +181,7 @@ function onOpenChange(event: WebUiEvent<WebUiContextMenu, 'open-change'>) {
 </script>
 ```
 
-### Disabled {#disabled}
+### Disabled
 
 `disabled` only suppresses the menu: a right-click does not open it, and the trigger area itself is neither greyed out nor recolored—the component renders no menu surface at all, so there is nothing to grey out, and disabling a context menu is not the same as disabling the trigger area.
 

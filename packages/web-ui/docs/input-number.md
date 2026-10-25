@@ -7,7 +7,7 @@ Numeric input with a step button on each side, supporting `min` / `max` / `step`
 
 ## Samples
 
-### Basic {#basic}
+### Basic
 
 Without a `value`, the component holds the number itself, defaulting to `0`. `value` is always a number and has no empty state, so `placeholder` only appears when the content is cleared during editing: the inner control is bound to an editing draft, and only an empty draft lets the placeholder text show.
 
@@ -33,7 +33,7 @@ export default function Demo() {
 </template>
 ```
 
-### Value range {#range}
+### Value range
 
 `min` / `max` hold the value in range and `step` decides the step size. At an endpoint, the step button on that side disables itself; while editing you can type out-of-range text, and an out-of-range value is pulled back into range at the moment of commit.
 
@@ -59,7 +59,7 @@ export default function Demo() {
 </template>
 ```
 
-### Decimal precision {#precision}
+### Decimal precision
 
 `precision` decides how many decimal places are kept when reading and committing; assignment does not erase the original decimals—the order of `value={1.5}` and `precision={1}` does not affect the result.
 
@@ -89,7 +89,7 @@ export default function Demo() {
 </template>
 ```
 
-### Controlled value and events {#events}
+### Controlled value and events
 
 `value` is a controlled value; catch `input` for it to follow typing and stepping.
 
@@ -147,7 +147,7 @@ const committed = ref(1)
 </script>
 ```
 
-### Disabled and readonly {#states}
+### Disabled and readonly
 
 `disabled` turns off input and stepping, makes validation yield as well, and drops the whole host to forty percent opacity. `readonly` keeps reading and copying possible, but both step buttons are drawn in their disabled state, ArrowUp / ArrowDown do nothing, and a blur commit does not forward `change`.
 
@@ -171,7 +171,7 @@ export default function Demo() {
 </template>
 ```
 
-### Form value {#form}
+### Form value
 
 `name` is the field name and the submitted value is `String(value)`. `required` blocks submission when the content is cleared during editing (`valueMissing`), and `form.reset()` restores the initial value at mount. Keep an integer `step` for `input-number` inside forms, for the reason given in the behavior notes below.
 
@@ -247,7 +247,7 @@ function reset() {
 </script>
 ```
 
-### CSS variables {#sizing}
+### CSS variables
 
 The width comes from `--wui-input-width` (the same token as `<web-ui-input>`), and `input-number` has no `full` of its own; however narrow it gets, `--wui-control-size` still holds a minimum width.
 

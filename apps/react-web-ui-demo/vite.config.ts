@@ -1,5 +1,5 @@
 import depsReload from '@greypan/deps-reload/vite'
-import { braceAnchor, type MdToCompViteOptions } from '@greypan/md-to-comp'
+import type { MdToCompViteOptions } from '@greypan/md-to-comp'
 import mdToCompReact from '@greypan/md-to-comp/react'
 import unpluginWebComponents from '@greypan/unplugin-web-components/vite'
 import babel from '@rolldown/plugin-babel'
@@ -24,7 +24,6 @@ export const mdToCompOptions: MdToCompViteOptions = {
   // 样式与语种无关（高亮双主题 + Markdown 正文版式），只写一份。
   styles: 'src/generated/examples.css',
   dir: 'demos',
-  anchor: braceAnchor,
   flavors: ['react', 'vue'],
   // 语料文件名分语种：中文源是 `button.CN.md`，英文译文是 `button.md`。长后缀优先，所以
   // `.md` 不会把 `.CN.md` 抢走。

@@ -7,7 +7,7 @@ avatar，按 `src` 画图片；没有图片或图片加载失败时回退到 `na
 
 ## Samples
 
-### 图片 {#image}
+### Image
 
 `src` 是图片 URL，`alt` 同时给出图片替代文本与无障碍名称，`size` 决定头像边长（px）。
 
@@ -43,7 +43,7 @@ const photo =
 </script>
 ```
 
-### 首字母回退 {#initials}
+### Initials fallback
 
 没有 `src` 时不画图片，改从 `name` 取首字母：按空白切词、最多取前两词，各取第一个字符再转大写，所以 `Grey Pan` 是 GP、`Ada` 只有 A、`John Michael Doe` 截到 JM。`name` 同时充当无障碍名称。
 
@@ -69,7 +69,7 @@ export default function Demo() {
 </template>
 ```
 
-### 图标回退 {#icon-fallback}
+### Icon fallback
 
 `src` 与 `name` 都留空、`default` 插槽也空着时，回退到内置的 `<web-ui-icon>` 人形图标。它没有名字可播报，于是整个头像按装饰性内容处理（见下面的行为说明）。
 
@@ -95,7 +95,7 @@ export default function Demo() {
 </template>
 ```
 
-### 尺寸 {#sizes}
+### Sizes
 
 `size` 是唯一尺寸旋钮：它写成方盒的内联宽高，并同步成 `--wui-avatar-size` 供影子内部取值，圆形档的高光圆角按它的一半算（方形档固定 12px）。
 
@@ -131,7 +131,7 @@ export default function Demo() {
 </template>
 ```
 
-### 方形 {#square}
+### Square
 
 `shape="square"` 把圆角收到 12px 的方块，图片、首字母与默认图标三种内容共用这一档形状。非法值不参与渲染，会被规范回 `circle`。
 
@@ -167,7 +167,7 @@ const photo =
 </script>
 ```
 
-### 加载失败 {#error}
+### Load failure
 
 图片 `error` 之后组件按回退处理：有 `name` 就出首字母，没有就出默认图标，不会留下破图。回退判定按 `src` 生效——换掉 `src` 时上一次的失败记录会被清掉。
 
@@ -191,7 +191,7 @@ export default function Demo() {
 </template>
 ```
 
-### 自定义降级内容 {#slot}
+### Custom fallback content
 
 `default` 插槽用来替换首字母或默认图标，例如用工号、等级标记填上这个位置。插槽内容按元素子节点判定，只要有一个元素就生效，并且优先于 `name`。
 

@@ -11,7 +11,7 @@ It appears among the children of `<web-ui-dropdown>` / `<web-ui-context-menu>`.
 
 ## Samples
 
-### Group divider {#basic}
+### Group divider
 
 A divider sits between two groups of menu items, spans the full width of the menu panel, and leaves a little horizontal margin on both sides.
 

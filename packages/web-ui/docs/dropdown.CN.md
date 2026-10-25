@@ -7,7 +7,7 @@ dropdown menu：`trigger` 插槽放 trigger，其余子元素作为 menu item �
 
 ## Samples
 
-### 基础 {#basic}
+### Basic
 
 `trigger` 放可交互元素，其余子元素作为 menu item 在打开时迁入 overlay panel；`divider` 分组，`disabled` 的项留在列表里但选不中。
 
@@ -43,7 +43,7 @@ export default function Demo() {
 </template>
 ```
 
-### icon 与快捷键 {#icons}
+### Icons and shortcuts
 
 `prefix` / `suffix` 插槽装饰 menu item 两侧，`dropdown-header` 给一组项加标题；快捷键只是文本，组件不解析按键。
 
@@ -95,7 +95,7 @@ import { lucideCopy, lucideTrash2 } from '@greypan/web-ui/icons'
 </script>
 ```
 
-### 多级 submenu {#submenu}
+### Multi-level submenu
 
 在 menu item 上写 `submenu`，嵌套在它里面的 item 成为下一级；悬停或方向键进入，每一级都是独立的 panel。
 
@@ -147,7 +147,7 @@ export default function Demo() {
 </template>
 ```
 
-### 受控开合 {#controlled}
+### Controlled open state
 
 `open` 由页面持有：外部按钮直接改它，trigger、Escape 与点外面通过 `open-change` 回写；menu item 点击不会自动关闭，代码在 item 的原生 click 里回写。
 
@@ -235,7 +235,7 @@ function select(label: string) {
 </script>
 ```
 
-### 定位 {#placement}
+### Placement
 
 `placement` 交给 Floating UI，默认 `bottom-start`；空间不够时 `flip` / `shift` 会自动翻转或平移 panel。
 
@@ -309,7 +309,7 @@ export default function Demo() {
 </template>
 ```
 
-### 命令式 {#imperative}
+### Imperative
 
 `openMenu()` 打开、`closeAll()` 关闭全部层级；两者都是命令式入口，不派发 `open-change`。`disabled` 会同时挡掉 trigger 点击与 `openMenu()`。
 

@@ -7,7 +7,7 @@ tag: web-ui-editable-text
 
 ## Samples
 
-### 基础 {#basic}
+### Basic
 
 点击文字进入编辑态，光标落在点击处；按 Tab 聚焦时光标落在文本末尾。字体、颜色与对齐全部继承外部上下文，所以编辑前它就是一段普通文字。
 
@@ -31,7 +31,7 @@ export default function Demo() {
 </template>
 ```
 
-### 受控值与提交 {#events}
+### Controlled value and commit
 
 `value` 是当前值，也是表单提交值；`input` 来自编辑层的原生输入，`change` 只在提交点派发一次——Enter 或失焦。要由页面持有这个值就接住 `change` 再写回。
 
@@ -99,7 +99,7 @@ function onChange(event: WebUiEvent<WebUiEditableText, 'change'>) {
 </script>
 ```
 
-### Escape 取消 {#cancel}
+### Escape cancels
 
 只有 Escape 走取消：值回到进入编辑时的状态，派发 `cancel` 而不派发 `change`，焦点交还宿主，这次按键也由编辑层消费掉，外层 overlay（drawer、menu）不会因为同一次按键关闭。`cancel` 不冒泡也不组合，一律挂在组件本身监听——React 没有对应的合成事件，只能挂原生监听。
 
@@ -147,7 +147,7 @@ function onCancel() {
 </script>
 ```
 
-### 空值与占位 {#placeholder}
+### Empty value and placeholder
 
 `placeholder` 只在值为空时显示，取二级文本色；提交空值也算一次提交，值变空之后文字层回落到占位。空值又没写 `placeholder` 时组件留一个零宽字符，保住行盒与点击进入编辑的地方。
 
@@ -173,7 +173,7 @@ export default function Demo() {
 </template>
 ```
 
-### 多行 {#multiline}
+### Multiline
 
 值里已有的换行照常成行（`white-space` 默认 `pre-wrap`），第二行文字在盒宽处自然断行；Enter 属于提交，不插入换行，所以多行文案靠值本身带 `\n`。文字层与编辑层同盒同排版，进入编辑不会顶偏像素。
 
@@ -200,7 +200,7 @@ const multiline = '第一行按值里的换行成行\n第二行的长文案会�
 </script>
 ```
 
-### 禁用与只读 {#states}
+### Disabled and readonly
 
 `disabled` 把宿主移出 tab 序列，指针与键盘都进不了编辑，只换 `not-allowed` 光标、不做视觉置灰；`readonly` 仍可聚焦与全选，输入被拒绝，退出编辑态也不派发 `change`。
 
@@ -226,7 +226,7 @@ export default function Demo() {
 </template>
 ```
 
-### 表单值 {#form}
+### Form value
 
 `name` 是字段名，提交值就是当前值，空值也照常以空字符串进入 `FormData`。组件没有 `required`，也不转发校验判定，必填请由外层承担；`form.reset()` 回填挂载时的初值。
 
@@ -323,7 +323,7 @@ function reset() {
 </script>
 ```
 
-### 卸载时保住草稿 {#unmount}
+### Preserving the draft on unmount
 
 编辑到一半的元素被从 DOM 移除时，Chromium 会派发 `blur` 并按提交语义收尾，WebKit 什么都不派发、草稿随组件丢弃——`commit-on-unmount` 就是为后者存在的。
 
@@ -408,7 +408,7 @@ function saveDraft(event: WebUiEvent<WebUiEditableText, 'change'>) {
 </script>
 ```
 
-### 聚焦与全选 {#methods}
+### Focus and select all
 
 宿主本身可聚焦（非禁用态带 `tabindex="0"`），`focus()` 聚焦宿主并进入编辑态，`select()` 进入编辑态并全选内容——已在编辑态时只重新全选。两者在 `disabled` 下都不产生效果。
 
@@ -450,7 +450,7 @@ const field = useTemplateRef<WebUiEditableText>('field')
 </script>
 ```
 
-### CSS 变量 {#sizing}
+### CSS variables
 
 两层共用同一组空白与断词变量，覆盖时仍保持一致；光标颜色走共享的 `--wui-color-accent`，自定义属性能穿透 shadow 边界继承，所以在宿主或任意祖先上设都有效。
 

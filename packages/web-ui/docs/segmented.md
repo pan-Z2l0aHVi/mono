@@ -7,7 +7,7 @@ segmented (a single-select button group) has `<web-ui-segmented-trigger>` childr
 
 ## Samples
 
-### Basic controlled {#basic}
+### Basic controlled
 
 The default slot projects segmented-trigger, and `value` decides which item is selected; after a click (or Enter / Space), `input` carries the new value back and the page writes it into `value` to stay controlled.
 
@@ -55,7 +55,7 @@ const day = ref('wed')
 </script>
 ```
 
-### Variant comparison {#variants}
+### Variant comparison
 
 `variant` picks the material of the track and the indicator: `inset` (default) embeds the indicator in a track with a persistent ring and shadow, while `raised` is the classic floating form. Both variants share the same interaction, pressed state, and text color; only the resting surface differs.
 
@@ -129,7 +129,7 @@ const raisedView = ref('week')
 </script>
 ```
 
-### Item and group disabled {#disabled}
+### Item and group disabled
 
 `disabled` on a trigger disables only that item while the rest keep switching; `disabled` on `<web-ui-segmented>` disables the whole group—the members' own `disabled` attributes stay unchanged, but they all leave the tab order and stop responding to clicks.
 
@@ -201,7 +201,7 @@ const lockedView = ref('list')
 </script>
 ```
 
-### Form field {#form}
+### Form field
 
 `name` makes the currently selected value enter `FormData` under that field name, and when nothing is selected the field is not submitted. The component joins the `<form>` through ElementInternals, and `form.reset()` returns `value` to the initial value at mount time.
 
@@ -297,7 +297,7 @@ function reset() {
 </script>
 ```
 
-### input and change {#events}
+### input and change
 
 Every user switch (click, Enter / Space, or drag) dispatches `input` and then `change`, one each; clicking a trigger that is already current dispatches neither. The button below changes `value` directly along the programmatic path: the indicator moves and neither counter changes.
 

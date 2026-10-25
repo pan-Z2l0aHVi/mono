@@ -19,9 +19,9 @@ import { reactIcon, vueIcon } from './flavor-icons'
 /**
  * 由示例文档 markdown 生成的页面主体：组件标题、简介、逐示例预览、双框架源码与 API 表。
  *
- * 数据全部来自 `packages/web-ui/docs/<name>.CN.md`（本站只出中文源语种）。带 `{#id}` 锚点的示例由
- * 生成器落成 `src/generated/demos/<component>--<id>.vue`，预览执行的字节与代码区显示的字节同源；
- * 没有锚点的语料只展示代码。
+ * 数据全部来自 `packages/web-ui/docs/<name>.CN.md`（本站只出中文源语种）。每条示例按标题派生的 id
+ * 由生成器落成 `src/generated/demos/<component>--<id>.vue`，预览执行的字节与代码区显示的字节同源；
+ * 标题两侧同文（英文专业术语），页面显示的也是它。
  *
  * 预览只运行当前站点框架；代码区始终提供 Vue / React 两份完整源码。
  */
@@ -93,8 +93,8 @@ function panelId(key: string) {
   return `${props.component}-${key}-panel`
 }
 
-function demoComponent(demoKey: string | null) {
-  return demoKey ? demoComponents.get(`${props.component}--${demoKey}`) : undefined
+function demoComponent(demoKey: string) {
+  return demoComponents.get(`${props.component}--${demoKey}`)
 }
 
 /*
@@ -252,7 +252,7 @@ function copyAnnouncement(key: string) {
           <div
             v-if="demoComponent(sample.demoKey)"
             class="relative z-20 flex flex-wrap items-center gap-3 px-4 py-8"
-            :data-sample-preview="sample.demoKey ?? undefined"
+            :data-sample-preview="sample.demoKey"
           >
             <component :is="demoComponent(sample.demoKey)" />
           </div>

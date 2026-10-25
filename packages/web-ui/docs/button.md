@@ -9,7 +9,7 @@ It does not contribute a value to `FormData`; `type="submit"` / `type="reset"` f
 
 ## Samples
 
-### Variants {#variants}
+### Variants
 
 `variant` determines the visual hierarchy. The only valid values are `primary` / `secondary` / `ghost` / `danger` / `glass`; any value outside the set falls back to `glass`. `glass` blends into the page background and suits toolbars; a page should have only one `primary`.
 
@@ -41,7 +41,7 @@ export default function Demo() {
 </template>
 ```
 
-### Sizes {#sizes}
+### Sizes
 
 `size` accepts a bare number or a CSS length: a bare number is interpreted as px (`size="28"` means `--wui-control-size: 28px`), while values with units (`32px`, `1.5rem`) are used as-is. It only controls the height; when omitted, the height comes from the theme's `--wui-control-size` (36px).
 
@@ -87,7 +87,7 @@ import { lucideSearch } from '@greypan/web-ui/icons'
 </script>
 ```
 
-### Width {#width}
+### Width
 
 There are only two ways to set the width: `full` makes the host a block and stretches the inner button across the parent, while `--wui-button-width` gives the inner button a fixed width (default `max-content`).
 
@@ -141,7 +141,7 @@ export default function Demo() {
 </template>
 ```
 
-### Prefix and suffix {#prefix-suffix}
+### Prefix and suffix
 
 The default slot is the label text (wrapped in an inner span), and the named `prefix` / `suffix` slots sit on either side of it. The gap between the three parts comes from `--wui-button-gap`.
 
@@ -207,7 +207,7 @@ import { lucideChevronLeft, lucideChevronRight, lucideSearch } from '@greypan/we
 </script>
 ```
 
-### Icon mode {#icon}
+### Icon mode
 
 `icon` zeroes the padding and makes `min-width` equal the height, so the host becomes a square. The default slot is treated wholesale as icon content and no longer wrapped in the label span; `prefix` / `suffix` are not rendered in this mode.
 
@@ -283,7 +283,7 @@ import { lucideSearch } from '@greypan/web-ui/icons'
 </script>
 ```
 
-### Disabled and loading {#disabled-loading}
+### Disabled and loading
 
 Both `disabled` and `loading` really disable the native button inside: it dispatches no `click` and leaves the tab order, and writing both attributes produces the same result. The disabled state drops the whole control to forty percent opacity and gives up hover / pressed states.
 
@@ -353,7 +353,7 @@ const pending = ref(false)
 </script>
 ```
 
-### Click and pressed state {#click}
+### Click and pressed state
 
 button has no custom events; the host listens to the native `click`. It originates on the native button inside the shadow root, bubbles out composed, and `event.target` is retargeted to the host, so both React and Vue can put a handler directly on `<web-ui-button>`.
 
@@ -403,7 +403,7 @@ const clicks = ref(0)
 </script>
 ```
 
-### Form submit and reset {#form}
+### Form submit and reset
 
 `type` has only three valid values, `button` / `submit` / `reset`; invalid values normalize to `button`.
 
@@ -494,7 +494,7 @@ function onCancelledClick(event: MouseEvent) {
 </script>
 ```
 
-### CSS variables {#theming}
+### CSS variables
 
 All seven variables in the table are declared on the `<web-ui-button>` host itself. `--wui-button-width` / `--wui-button-px` / `--wui-button-gap` are declared nowhere else, so a class on the host is enough (the first button below).
 

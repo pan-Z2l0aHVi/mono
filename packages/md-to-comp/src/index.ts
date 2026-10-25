@@ -1,4 +1,4 @@
-export { braceAnchor } from './anchor'
+export { titleSlug } from './anchor'
 export type { AnchorFn, SampleAnchor } from './anchor'
 export { checkArtifacts, writeArtifacts, writeIfChanged } from './emit'
 export { DocError, fail } from './errors'
@@ -18,7 +18,7 @@ export type {
   ExampleDocPayload,
   SamplePayload
 } from './render'
-export { assertSelfContained, demoFileContent, demoFileName, emitsDemoFile } from './sample'
+export { assertSelfContained, demoFileContent, demoFileName } from './sample'
 export type { ApiTables, DocsLocale, GeneratedFile, GenerateOptions, MdToCompConfig, OutputTarget } from './types'
 export { createMdToCompVite, resolveGenerateOptions } from './vite'
 export type { MdToCompViteOptions, MdToCompViteOutput } from './vite'

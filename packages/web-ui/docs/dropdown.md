@@ -7,7 +7,7 @@ dropdown menu: the `trigger` slot holds the trigger and the remaining children r
 
 ## Samples
 
-### Basic {#basic}
+### Basic
 
 `trigger` holds an interactive element, and the remaining children move into the overlay panel as menu items when opened; `divider` separates groups, and `disabled` items stay in the list but cannot be selected.
 
@@ -43,7 +43,7 @@ export default function Demo() {
 </template>
 ```
 
-### Icons and shortcuts {#icons}
+### Icons and shortcuts
 
 The `prefix` / `suffix` slots decorate both sides of a menu item, and `dropdown-header` adds a title to a group of items; shortcuts are just text and the component does not parse keys.
 
@@ -95,7 +95,7 @@ import { lucideCopy, lucideTrash2 } from '@greypan/web-ui/icons'
 </script>
 ```
 
-### Multi-level submenu {#submenu}
+### Multi-level submenu
 
 Writing `submenu` on a menu item makes the items nested inside it the next level; hover or the arrow keys enter it, and every level is its own panel.
 
@@ -147,7 +147,7 @@ export default function Demo() {
 </template>
 ```
 
-### Controlled open state {#controlled}
+### Controlled open state
 
 `open` is held by the page: an external button changes it directly, while the trigger, Escape, and outside clicks write back through `open-change`; clicking a menu item does not close automatically, so the code writes back in the item's native click.
 
@@ -235,7 +235,7 @@ function select(label: string) {
 </script>
 ```
 
-### Placement {#placement}
+### Placement
 
 `placement` is delegated to Floating UI and defaults to `bottom-start`; when there is not enough space, `flip` / `shift` flip or shift the panel automatically.
 
@@ -309,7 +309,7 @@ export default function Demo() {
 </template>
 ```
 
-### Imperative {#imperative}
+### Imperative
 
 `openMenu()` opens and `closeAll()` closes all levels; both are imperative entry points and do not dispatch `open-change`. `disabled` blocks both trigger clicks and `openMenu()`.
 

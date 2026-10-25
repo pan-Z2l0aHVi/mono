@@ -7,7 +7,7 @@ tag: web-ui-middle-ellipsis
 
 ## Samples
 
-### 保留首尾 {#basic}
+### Keep both ends
 
 两行是**同一串文本**，区别只在截断的机制。`text-overflow: ellipsis` 只能保住头部，长文件名因此丢掉真正区分它们的扩展名；中间省略把省略号放到中间，头尾都留着。两种写法都需要单行、且有确定的行内尺寸。
 
@@ -49,7 +49,7 @@ const FILENAME = 'very-long-file-name-abcdefghij.txt'
 </script>
 ```
 
-### 中英混排 {#cjk}
+### Mixed CJK and ASCII
 
 汉字与 ASCII 混在一串里是常态：头部是中文标题、尾部是扩展名。汉字每个都是整宽的一个字素簇，切点因此一次挪动一格，不会切出半个字符。两行是同一串文本，第二行取 `marker-position: 80` 把额度让给尾部。
 
@@ -91,7 +91,7 @@ const CJK_TITLE = '海外增长与留存复盘报告-2026年第二季度终稿-v
 </script>
 ```
 
-### 长无空格串与字素簇 {#clusters}
+### Long strings without spaces and grapheme clusters
 
 第一行是 120 个没有空格的 `a`：不换行，按实测宽度切到刚好放得下。
 
@@ -139,7 +139,7 @@ const CLUSTERS = `${'\u{1F469}\u200D\u{1F4BB}'.repeat(16)}${'\u{26A0}\uFE0F}'.re
 </script>
 ```
 
-### 标记 {#marker}
+### Marker
 
 `marker` 换掉中间那个省略号。第三行的 `marker` 是空串：确实截断了，只是不给任何可见信号——把鼠标移上去，`title` 里是完整的原文。
 
@@ -189,7 +189,7 @@ const FILENAME = 'very-long-file-name-abcdefghij.txt'
 </script>
 ```
 
-### 标记位置 {#marker-position}
+### Marker position
 
 `marker-position` 是标记所在的横向比例，0–100，默认 `50`：`0` 只剩头部（等价于末尾省略），`100` 只剩尾部。头部是路径噪声、尾部才是扩展名的场景取大于 50 的值。
 
@@ -227,7 +227,7 @@ const POSITIONS = [0, 50, 80, 100]
 </script>
 ```
 
-### 容器宽度 {#container}
+### Container width
 
 宽度由容器给出，容器变化后重算：缩窄截得更狠，放宽则收回截断。下面两个盒子是百分比宽度，各自带一个上限——上限保证在宽屏上也仍然溢出，否则窗口够宽时整串放得下，盒子里就什么都看不到了。拖动窗口宽度可以看到两行跟着重切。
 

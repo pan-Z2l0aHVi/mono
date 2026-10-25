@@ -7,7 +7,7 @@ tag: web-ui-layout
 
 ## Samples
 
-### 基础 {#basic}
+### Basic
 
 五个插槽各占一区：`banner` 在主体上方全宽，`header` 是内容区的 sticky header，`sidebar` 是侧边栏卡片内容，默认插槽是主内容区，`tabbar` 是底部栏。
 
@@ -73,7 +73,7 @@ export default function Demo() {
 </template>
 ```
 
-### Collapsible sidebar {#collapsible-sidebar}
+### Collapsible sidebar
 
 `sidebar-collapsed` 是桌面端的受控 collapse 状态：它只把桌面端 aside 收窄到 `collapsed-width`，不影响移动端 Drawer。
 
@@ -140,7 +140,7 @@ const collapsed = ref(false)
 </script>
 ```
 
-### 拖拽调整宽度 {#resizable-sidebar}
+### Resize by dragging
 
 开启 `sidebar-resizable` 后，桌面端侧边栏右缘出现调整 handle（collapsed state 隐藏），拖拽实时改宽；键盘聚焦后用 ←/→ 以 16px 步进（Shift 加速到 64px），Home/End 跳到上下限。
 
@@ -216,7 +216,7 @@ const width = ref('240px')
 </script>
 ```
 
-### 移动端 Drawer 与视口判定 {#mobile-drawer}
+### Mobile drawer and viewport detection
 
 `sidebar-open` 是移动端 Drawer 的受控可见性，与 `sidebar-collapsed` 相互独立。
 
