@@ -3,21 +3,21 @@ component: textarea
 tag: web-ui-textarea
 ---
 
-多行文本 input，支持清除 button、自动高度与前后缀插槽；焦点委托到 shadow 内的原生 textarea。
+A multiline text input with a clear button, autosize, and prefix/suffix slots; focus is delegated to the native textarea inside the shadow root.
 
-## 示例
+## Samples
 
-### 基础 {#basic}
+### Basic {#basic}
 
-`rows` 决定初始显示行数（默认 3 行），`placeholder` 在空值时显示；不接 `input` 时组件自己持有内容，要由页面同步就写 `value` 并接住 `input`，见下面的受控值与事件。
+`rows` sets the initial number of visible rows (3 by default), and `placeholder` is shown when the value is empty; when `input` is not handled, the component holds the content itself—to sync it from the page, write `value` and handle `input`, as in Controlled value and character count below.
 
 ```tsx
 export default function Demo() {
   return (
     <div className="flex flex-col gap-3">
-      <web-ui-textarea placeholder="默认三行"></web-ui-textarea>
-      <web-ui-textarea rows={6} placeholder="六行高"></web-ui-textarea>
-      <web-ui-textarea rows={3} value="已经写好的内容"></web-ui-textarea>
+      <web-ui-textarea placeholder="Three rows by default"></web-ui-textarea>
+      <web-ui-textarea rows={6} placeholder="Six rows tall"></web-ui-textarea>
+      <web-ui-textarea rows={3} value="Content already written"></web-ui-textarea>
     </div>
   )
 }
@@ -26,25 +26,34 @@ export default function Demo() {
 ```vue
 <template>
   <div class="flex flex-col gap-3">
-    <web-ui-textarea placeholder="默认三行"></web-ui-textarea>
-    <web-ui-textarea :rows="6" placeholder="六行高"></web-ui-textarea>
-    <web-ui-textarea :rows="3" value="已经写好的内容"></web-ui-textarea>
+    <web-ui-textarea placeholder="Three rows by default"></web-ui-textarea>
+    <web-ui-textarea :rows="6" placeholder="Six rows tall"></web-ui-textarea>
+    <web-ui-textarea :rows="3" value="Content already written"></web-ui-textarea>
   </div>
 </template>
 ```
 
-### 自动高度 {#autosize}
+### Autosize {#autosize}
 
-`autosize` 让高度跟着内容走：组件把高度写成内联值，同时关掉原生拖拽手柄，两套高度来源不并存。
+`autosize` makes the height follow the content: the component writes the height as an inline value and turns off the native resize handle at the same time, so the two sources of height never coexist.
 
-`max-height`（px，`0` 表示不限）单独写在内部控件的内联样式上，只要大于 0 就生效，跟开没开 `autosize` 无关：开着时它是自动高度的上限，到顶之后框内滚动；没开时它钳住拖拽手柄拉出来的高度。
+`max-height` (px, `0` meaning no limit) is written separately into the inner control's inline style and takes effect whenever it is greater than 0, regardless of whether `autosize` is on: with autosize on it caps the automatic height and the box scrolls once the cap is reached; with autosize off it clamps the height produced by dragging the resize handle.
 
 ```tsx
 export default function Demo() {
   return (
     <div className="flex flex-col gap-3">
-      <web-ui-textarea autosize full placeholder="输入多行内容，高度随内容增长"></web-ui-textarea>
-      <web-ui-textarea autosize full max-height={120} placeholder="超过 120px 之后在框内滚动"></web-ui-textarea>
+      <web-ui-textarea
+        autosize
+        full
+        placeholder="Type multiple lines; the height grows with the content"
+      ></web-ui-textarea>
+      <web-ui-textarea
+        autosize
+        full
+        max-height={120}
+        placeholder="Scrolls inside the box beyond 120px"
+      ></web-ui-textarea>
     </div>
   )
 }
@@ -53,15 +62,24 @@ export default function Demo() {
 ```vue
 <template>
   <div class="flex flex-col gap-3">
-    <web-ui-textarea autosize full placeholder="输入多行内容，高度随内容增长"></web-ui-textarea>
-    <web-ui-textarea autosize full :max-height="120" placeholder="超过 120px 之后在框内滚动"></web-ui-textarea>
+    <web-ui-textarea
+      autosize
+      full
+      placeholder="Type multiple lines; the height grows with the content"
+    ></web-ui-textarea>
+    <web-ui-textarea
+      autosize
+      full
+      :max-height="120"
+      placeholder="Scrolls inside the box beyond 120px"
+    ></web-ui-textarea>
   </div>
 </template>
 ```
 
-### 前后缀 {#prefix-suffix}
+### Prefix and suffix {#prefix-suffix}
 
-`prefix` / `suffix` 插槽放 icon 或文字，它们与首行文字顶对齐；没有可见 label 时用 `aria-label` 给出无障碍名称（`aria-labelledby` 的限制见下面的行为说明）。
+The `prefix` / `suffix` slots hold an icon or text and are top-aligned with the first line of text; without a visible label, use `aria-label` to provide the accessible name (see Behavior below for the limits of `aria-labelledby`).
 
 ```tsx
 import { lucideFileText } from '@greypan/web-ui/icons'
@@ -69,12 +87,12 @@ import { lucideFileText } from '@greypan/web-ui/icons'
 export default function Demo() {
   return (
     <div className="flex flex-col gap-3">
-      <web-ui-textarea aria-label="备注" clearable placeholder="带前缀 icon">
+      <web-ui-textarea aria-label="Notes" clearable placeholder="With a prefix icon">
         <web-ui-icon slot="prefix" icon={lucideFileText} size={16}></web-ui-icon>
       </web-ui-textarea>
-      <web-ui-textarea aria-label="反馈" clearable placeholder="前后缀都是文字">
-        <span slot="prefix">备注：</span>
-        <span slot="suffix">最多 200 字</span>
+      <web-ui-textarea aria-label="Feedback" clearable placeholder="Both prefix and suffix are text">
+        <span slot="prefix">Notes: </span>
+        <span slot="suffix">up to 200 characters</span>
       </web-ui-textarea>
     </div>
   )
@@ -84,12 +102,12 @@ export default function Demo() {
 ```vue
 <template>
   <div class="flex flex-col gap-3">
-    <web-ui-textarea aria-label="备注" clearable placeholder="带前缀 icon">
+    <web-ui-textarea aria-label="Notes" clearable placeholder="With a prefix icon">
       <web-ui-icon slot="prefix" :icon="lucideFileText" :size="16"></web-ui-icon>
     </web-ui-textarea>
-    <web-ui-textarea aria-label="反馈" clearable placeholder="前后缀都是文字">
-      <span slot="prefix">备注：</span>
-      <span slot="suffix">最多 200 字</span>
+    <web-ui-textarea aria-label="Feedback" clearable placeholder="Both prefix and suffix are text">
+      <span slot="prefix">Notes: </span>
+      <span slot="suffix">up to 200 characters</span>
     </web-ui-textarea>
   </div>
 </template>
@@ -99,9 +117,9 @@ import { lucideFileText } from '@greypan/web-ui/icons'
 </script>
 ```
 
-### 受控值与字数 {#events}
+### Controlled value and character count {#events}
 
-`value` 是输入值也是表单提交值；`input` 每敲一个字（含换行）派发一次，`change` 与内部原生控件对齐，值改动后失焦时转发一次。`maxlength` 限制可输入长度，计数器由页面按 `value` 自己算。
+`value` is the input value and also the form-submitted value; `input` is dispatched on every keystroke (including newlines), and `change` aligns with the inner native control and is forwarded once when the value has changed and the field loses focus. `maxlength` limits the length that can be typed, and the counter is computed by the page from `value`.
 
 ```tsx
 import { useState } from 'react'
@@ -118,13 +136,13 @@ export default function Demo() {
         rows={4}
         maxlength={20}
         value={value}
-        placeholder="最多 20 字，输入后失焦即提交"
+        placeholder="Up to 20 characters, commits on blur after typing"
         onInput={event => setValue(event.currentTarget.value)}
         onChange={event => setCommitted(event.currentTarget.value)}
       ></web-ui-textarea>
       <div className="flex items-center gap-3 text-sm text-(--wui-color-text-secondary)">
         <output>
-          input：{value.length} / 20 · change：{committed ? `${committed.length} 字` : '(未提交)'}
+          input: {value.length} / 20 · change: {committed ? `${committed.length} chars` : '(not committed)'}
         </output>
       </div>
     </div>
@@ -141,12 +159,15 @@ export default function Demo() {
       :rows="4"
       :maxlength="20"
       :value="value"
-      placeholder="最多 20 字，输入后失焦即提交"
+      placeholder="Up to 20 characters, commits on blur after typing"
       @input="value = $event.currentTarget.value"
       @change="committed = $event.currentTarget.value"
     ></web-ui-textarea>
     <div class="flex items-center gap-3 text-sm text-(--wui-color-text-secondary)">
-      <output>input：{{ value.length }} / 20 · change：{{ committed ? `${committed.length} 字` : '(未提交)' }}</output>
+      <output
+        >input: {{ value.length }} / 20 · change:
+        {{ committed ? `${committed.length} chars` : '(not committed)' }}</output
+      >
     </div>
   </div>
 </template>
@@ -159,16 +180,16 @@ const committed = ref('')
 </script>
 ```
 
-### 清除 button {#clearable}
+### Clear button {#clearable}
 
-`clearable` 只在有值且未设置 `disabled` 或 `readonly` 时画出清除 button；空值、禁用或只读时不画。清除 button 对齐首行而不是整框垂直居中；点它清空值并派发 `input`。`full` 让控件占满父容器宽度，`--wui-textarea-width` 只在非 `full` 时生效。
+`clearable` draws the clear button only when there is a value and neither `disabled` nor `readonly` is set; an empty value, disabled, or readonly draws nothing. The clear button is aligned with the first line rather than centered vertically in the whole box; clicking it clears the value and dispatches `input`. `full` makes the control fill the parent's width, and `--wui-textarea-width` only takes effect when `full` is not set.
 
 ```tsx
 export default function Demo() {
   return (
     <div className="flex w-full flex-col gap-3">
-      <web-ui-textarea full clearable value="这一段可以一次清掉"></web-ui-textarea>
-      <web-ui-textarea full clearable placeholder="空值时没有清除 button"></web-ui-textarea>
+      <web-ui-textarea full clearable value="This block can be cleared in one go"></web-ui-textarea>
+      <web-ui-textarea full clearable placeholder="No clear button when the value is empty"></web-ui-textarea>
     </div>
   )
 }
@@ -177,22 +198,22 @@ export default function Demo() {
 ```vue
 <template>
   <div class="flex w-full flex-col gap-3">
-    <web-ui-textarea full clearable value="这一段可以一次清掉"></web-ui-textarea>
-    <web-ui-textarea full clearable placeholder="空值时没有清除 button"></web-ui-textarea>
+    <web-ui-textarea full clearable value="This block can be cleared in one go"></web-ui-textarea>
+    <web-ui-textarea full clearable placeholder="No clear button when the value is empty"></web-ui-textarea>
   </div>
 </template>
 ```
 
-### 禁用与只读 {#states}
+### Disabled and readonly {#states}
 
-`disabled` 关掉输入、校验与清除操作，宿主整体降到四成不透明度；`readonly` 保留可读、可全选与可复制，仍可拖拽右下角改高度，但不接受输入，并收起清除 button。
+`disabled` turns off typing, validation, and clearing, and drops the whole host to forty percent opacity; `readonly` keeps the content readable, selectable, and copyable and still lets the user drag the bottom-right corner to change the height, but rejects input and hides the clear button.
 
 ```tsx
 export default function Demo() {
   return (
     <div className="flex w-full flex-col gap-3">
-      <web-ui-textarea full disabled value="禁用：读得到，改不动"></web-ui-textarea>
-      <web-ui-textarea full readonly clearable value="只读：清除 button 已收起"></web-ui-textarea>
+      <web-ui-textarea full disabled value="Disabled: readable, not editable"></web-ui-textarea>
+      <web-ui-textarea full readonly clearable value="Readonly: the clear button is hidden"></web-ui-textarea>
     </div>
   )
 }
@@ -201,22 +222,27 @@ export default function Demo() {
 ```vue
 <template>
   <div class="flex w-full flex-col gap-3">
-    <web-ui-textarea full disabled value="禁用：读得到，改不动"></web-ui-textarea>
-    <web-ui-textarea full readonly clearable value="只读：清除 button 已收起"></web-ui-textarea>
+    <web-ui-textarea full disabled value="Disabled: readable, not editable"></web-ui-textarea>
+    <web-ui-textarea full readonly clearable value="Readonly: the clear button is hidden"></web-ui-textarea>
   </div>
 </template>
 ```
 
-### 无边框 {#borderless}
+### Borderless {#borderless}
 
-`borderless` 移除边框、背景、模糊与 glass 描边环，只留 padding 与 focus ring，圆角仍取 `--wui-radius-menu`；外层自己画容器时用这一形态。
+`borderless` removes the border, background, blur, and glass ring, leaving only padding and the focus ring; the radius still comes from `--wui-radius-menu`. Use this form when an outer layer draws its own container.
 
 ```tsx
 export default function Demo() {
   return (
     <div className="flex w-full flex-col gap-3">
-      <web-ui-textarea full borderless placeholder="无边框输入"></web-ui-textarea>
-      <web-ui-textarea full borderless rows={4} value="无边框且有值，容器由外层负责"></web-ui-textarea>
+      <web-ui-textarea full borderless placeholder="Borderless input"></web-ui-textarea>
+      <web-ui-textarea
+        full
+        borderless
+        rows={4}
+        value="Borderless with a value; the outer layer owns the container"
+      ></web-ui-textarea>
     </div>
   )
 }
@@ -225,15 +251,20 @@ export default function Demo() {
 ```vue
 <template>
   <div class="flex w-full flex-col gap-3">
-    <web-ui-textarea full borderless placeholder="无边框输入"></web-ui-textarea>
-    <web-ui-textarea full borderless :rows="4" value="无边框且有值，容器由外层负责"></web-ui-textarea>
+    <web-ui-textarea full borderless placeholder="Borderless input"></web-ui-textarea>
+    <web-ui-textarea
+      full
+      borderless
+      :rows="4"
+      value="Borderless with a value; the outer layer owns the container"
+    ></web-ui-textarea>
   </div>
 </template>
 ```
 
-### 表单值 {#form}
+### Form value {#form}
 
-`name` 是字段名，提交值就是当前内容。`required` 在未填时拦下提交（`valueMissing`），`minlength` 在字数不够时拦下（`tooShort`）；两条判定都经 ElementInternals 转发给宿主 `<form>`。
+`name` is the field name and the submitted value is the current content. `required` blocks submission when the field is empty (`valueMissing`), and `minlength` blocks it when the text is too short (`tooShort`); both checks are forwarded to the host `<form>` through ElementInternals.
 
 ```tsx
 import { useRef, useState } from 'react'
@@ -252,7 +283,7 @@ export default function Demo() {
         for (const [name, value] of new FormData(event.currentTarget)) {
           if (typeof value === 'string') fields.push(`${name}=${value.replace(/\n/g, '\\n')}`)
         }
-        setSubmitted(fields.join(' · ') || '(没有字段)')
+        setSubmitted(fields.join(' · ') || '(no fields)')
       }}
     >
       <web-ui-textarea
@@ -260,20 +291,20 @@ export default function Demo() {
         rows={3}
         required
         minlength={10}
-        placeholder="备注：必填，至少 10 字"
+        placeholder="Notes: required, at least 10 characters"
       ></web-ui-textarea>
       <div className="flex items-center gap-3">
-        <web-ui-button type="submit">提交</web-ui-button>
+        <web-ui-button type="submit">Submit</web-ui-button>
         <web-ui-button
           onClick={() => {
             formRef.current?.reset()
             setSubmitted('')
           }}
         >
-          重置
+          Reset
         </web-ui-button>
         <output className="text-sm text-(--wui-color-text-secondary)">
-          {submitted === '' ? '尚未提交' : submitted}
+          {submitted === '' ? 'Not submitted yet' : submitted}
         </output>
       </div>
     </form>
@@ -289,12 +320,14 @@ export default function Demo() {
       :rows="3"
       required
       :minlength="10"
-      placeholder="备注：必填，至少 10 字"
+      placeholder="Notes: required, at least 10 characters"
     ></web-ui-textarea>
     <div class="flex items-center gap-3">
-      <web-ui-button type="submit">提交</web-ui-button>
-      <web-ui-button @click="reset">重置</web-ui-button>
-      <output class="text-sm text-(--wui-color-text-secondary)">{{ submitted === '' ? '尚未提交' : submitted }}</output>
+      <web-ui-button type="submit">Submit</web-ui-button>
+      <web-ui-button @click="reset">Reset</web-ui-button>
+      <output class="text-sm text-(--wui-color-text-secondary)">{{
+        submitted === '' ? 'Not submitted yet' : submitted
+      }}</output>
     </div>
   </form>
 </template>
@@ -311,7 +344,7 @@ function onSubmit(event: Event) {
   for (const [name, value] of new FormData(event.currentTarget as HTMLFormElement)) {
     if (typeof value === 'string') fields.push(`${name}=${value.replace(/\n/g, '\\n')}`)
   }
-  submitted.value = fields.join(' · ') || '(没有字段)'
+  submitted.value = fields.join(' · ') || '(no fields)'
 }
 
 function reset() {
@@ -321,9 +354,9 @@ function reset() {
 </script>
 ```
 
-### 聚焦与全选 {#methods}
+### Focus and select all {#methods}
 
-`focus()` / `blur()` 委托到 shadow 内的原生 textarea，`select()` 全选当前内容；三条在 `disabled` 下都不产生效果。宿主自身没有 tab 位，按 Tab 进来的始终是内部控件的焦点。
+`focus()` / `blur()` delegate to the native textarea inside the shadow root, and `select()` selects the current content; none of the three has any effect when `disabled`. The host itself has no tab stop, so pressing Tab always lands on the focus of the inner control.
 
 ```tsx
 import type { WebUiTextarea } from '@greypan/web-ui'
@@ -334,11 +367,11 @@ export default function Demo() {
 
   return (
     <div className="flex flex-col gap-3">
-      <web-ui-textarea ref={fieldRef} rows={3} value="全选之后可以直接输入替换"></web-ui-textarea>
+      <web-ui-textarea ref={fieldRef} rows={3} value="Type directly to replace after selecting all"></web-ui-textarea>
       <div className="flex flex-wrap items-center gap-3">
-        <web-ui-button onClick={() => fieldRef.current?.focus()}>聚焦</web-ui-button>
-        <web-ui-button onClick={() => fieldRef.current?.select()}>全选</web-ui-button>
-        <web-ui-button onClick={() => fieldRef.current?.blur()}>失焦</web-ui-button>
+        <web-ui-button onClick={() => fieldRef.current?.focus()}>Focus</web-ui-button>
+        <web-ui-button onClick={() => fieldRef.current?.select()}>Select all</web-ui-button>
+        <web-ui-button onClick={() => fieldRef.current?.blur()}>Blur</web-ui-button>
       </div>
     </div>
   )
@@ -348,11 +381,11 @@ export default function Demo() {
 ```vue
 <template>
   <div class="flex flex-col gap-3">
-    <web-ui-textarea ref="field" :rows="3" value="全选之后可以直接输入替换"></web-ui-textarea>
+    <web-ui-textarea ref="field" :rows="3" value="Type directly to replace after selecting all"></web-ui-textarea>
     <div class="flex flex-wrap items-center gap-3">
-      <web-ui-button @click="field?.focus()">聚焦</web-ui-button>
-      <web-ui-button @click="field?.select()">全选</web-ui-button>
-      <web-ui-button @click="field?.blur()">失焦</web-ui-button>
+      <web-ui-button @click="field?.focus()">Focus</web-ui-button>
+      <web-ui-button @click="field?.select()">Select all</web-ui-button>
+      <web-ui-button @click="field?.blur()">Blur</web-ui-button>
     </div>
   </div>
 </template>
@@ -365,9 +398,9 @@ const field = useTemplateRef<WebUiTextarea>('field')
 </script>
 ```
 
-### CSS 变量 {#sizing}
+### CSS variables {#sizing}
 
-`--wui-textarea-width` 决定输入区宽度（`full` 时被 `100%` 接管），`--wui-textarea-clear-color` 决定清除 button 的颜色。
+`--wui-textarea-width` sets the input area width (taken over by `100%` under `full`), and `--wui-textarea-clear-color` sets the clear button color.
 
 ```tsx
 export default function Demo() {
@@ -375,10 +408,10 @@ export default function Demo() {
     <div className="flex flex-wrap items-start gap-3">
       <web-ui-textarea
         clearable
-        value="宽一档、清除色改 danger"
+        value="One step wider, clear color set to danger"
         className="[--wui-textarea-width:280px] [--wui-textarea-clear-color:var(--wui-color-danger)]"
       ></web-ui-textarea>
-      <web-ui-textarea clearable value="窄一档" className="[--wui-textarea-width:120px]"></web-ui-textarea>
+      <web-ui-textarea clearable value="One step narrower" className="[--wui-textarea-width:120px]"></web-ui-textarea>
     </div>
   )
 }
@@ -389,10 +422,10 @@ export default function Demo() {
   <div class="flex flex-wrap items-start gap-3">
     <web-ui-textarea
       clearable
-      value="宽一档、清除色改 danger"
+      value="One step wider, clear color set to danger"
       class="[--wui-textarea-width:280px] [--wui-textarea-clear-color:var(--wui-color-danger)]"
     ></web-ui-textarea>
-    <web-ui-textarea clearable value="窄一档" class="[--wui-textarea-width:120px]"></web-ui-textarea>
+    <web-ui-textarea clearable value="One step narrower" class="[--wui-textarea-width:120px]"></web-ui-textarea>
   </div>
 </template>
 ```
@@ -401,88 +434,88 @@ export default function Demo() {
 
 ### Props
 
-| 名称              | 说明                                                           | 类型                  | 默认值  |
-| ----------------- | -------------------------------------------------------------- | --------------------- | ------- |
-| `placeholder`     | 占位文本。                                                     | `string`              | `''`    |
-| `name`            | 表单字段名。                                                   | `string`              | `''`    |
-| `disabled`        | 禁用状态。                                                     | `boolean`             | `false` |
-| `readonly`        | 只读状态。                                                     | `boolean`             | `false` |
-| `required`        | 必填校验。                                                     | `boolean`             | `false` |
-| `full`            | 占满父容器宽度。                                               | `boolean`             | `false` |
-| `clearable`       | 有值且未设置 `disabled` 或 `readonly` 时显示清除 button。      | `boolean`             | `false` |
-| `borderless`      | ghost 形态：移除边框、背景与阴影，保留 padding 与 focus ring。 | `boolean`             | `false` |
-| `rows`            | 显示行数，也是自动高度的起点。                                 | `number`              | `3`     |
-| `minlength`       | 最小长度校验。                                                 | `number \| undefined` | —       |
-| `maxlength`       | 最大长度校验。                                                 | `number \| undefined` | —       |
-| `autosize`        | 自动调整高度，同时强制 `resize: none`。                        | `boolean`             | `false` |
-| `max-height`      | 自动高度上限（px），0 表示不限制。                             | `number`              | `0`     |
-| `aria-label`      | 无障碍 label。                                                 | `string \| null`      | `null`  |
-| `aria-labelledby` | 无障碍 label 引用。                                            | `string \| undefined` | —       |
-| `value`           | 输入值，也是表单提交值。                                       | `string`              | `''`    |
+| Name              | Description                                                                                      | Type                  | Default |
+| ----------------- | ------------------------------------------------------------------------------------------------ | --------------------- | ------- |
+| `placeholder`     | Placeholder text.                                                                                | `string`              | `''`    |
+| `name`            | Form field name.                                                                                 | `string`              | `''`    |
+| `disabled`        | Disabled state.                                                                                  | `boolean`             | `false` |
+| `readonly`        | Readonly state.                                                                                  | `boolean`             | `false` |
+| `required`        | Required validation.                                                                             | `boolean`             | `false` |
+| `full`            | Fills the parent's width.                                                                        | `boolean`             | `false` |
+| `clearable`       | Shows the clear button when there is a value and neither `disabled` nor `readonly` is set.       | `boolean`             | `false` |
+| `borderless`      | Ghost form: removes the border, background, and shadow while keeping padding and the focus ring. | `boolean`             | `false` |
+| `rows`            | Number of visible rows; also the starting point for autosize.                                    | `number`              | `3`     |
+| `minlength`       | Minimum length validation.                                                                       | `number \| undefined` | —       |
+| `maxlength`       | Maximum length validation.                                                                       | `number \| undefined` | —       |
+| `autosize`        | Adjusts the height automatically and forces `resize: none`.                                      | `boolean`             | `false` |
+| `max-height`      | Upper bound for the automatic height (px); 0 means no limit.                                     | `number`              | `0`     |
+| `aria-label`      | Accessible label.                                                                                | `string \| null`      | `null`  |
+| `aria-labelledby` | Accessible label reference.                                                                      | `string \| undefined` | —       |
+| `value`           | Input value, also the form-submitted value.                                                      | `string`              | `''`    |
 
 ### Events
 
-| 名称     | 说明                                                     |
-| -------- | -------------------------------------------------------- |
-| `input`  | 每次输入派发。                                           |
-| `change` | 值改动后失焦时由内部原生控件转发一次。                   |
-| `focus`  | 内部原生控件的 `focus`，组合但不冒泡：宿主上要捕获监听。 |
-| `blur`   | 内部原生控件的 `blur`，与 `focus` 同一条路径。           |
+| Name     | Description                                                                              |
+| -------- | ---------------------------------------------------------------------------------------- |
+| `input`  | Dispatched on every input.                                                               |
+| `change` | Forwarded once by the inner native control when the value has changed and focus is lost. |
+| `focus`  | The inner native control's `focus`, composed but not bubbling: capture on the host.      |
+| `blur`   | The inner native control's `blur`, on the same path as `focus`.                          |
 
 ### Slots
 
-| 名称     | 说明                                                  |
-| -------- | ----------------------------------------------------- |
-| `prefix` | textarea 左侧的 icon 或文字，与首行对齐。             |
-| `suffix` | textarea 右侧的 icon 或文字；清除 button 画在它之前。 |
+| Name     | Description                                                                     |
+| -------- | ------------------------------------------------------------------------------- |
+| `prefix` | Icon or text to the left of the textarea, aligned with the first line.          |
+| `suffix` | Icon or text to the right of the textarea; the clear button is drawn before it. |
 
 ### Methods
 
-| 名称              | 说明                                                         |
-| ----------------- | ------------------------------------------------------------ |
-| `focus(options?)` | 聚焦 shadow 内的原生 textarea；`disabled` 时不产生效果。     |
-| `blur()`          | 让 shadow 内的原生 textarea 失焦。                           |
-| `select()`        | 全选当前值；`disabled` 时不产生效果，`readonly` 下仍然可用。 |
+| Name              | Description                                                                            |
+| ----------------- | -------------------------------------------------------------------------------------- |
+| `focus(options?)` | Focuses the native textarea inside the shadow root; no effect when `disabled`.         |
+| `blur()`          | Blurs the native textarea inside the shadow root.                                      |
+| `select()`        | Selects the current value; no effect when `disabled`, still available when `readonly`. |
 
-### 行为说明
+### Behavior
 
-宿主不可聚焦，也没有 tab 位：Tab 与点击都把焦点交给 shadow 内的原生 textarea，组件把焦点态反射成宿主上的 `focused` 属性，focus ring 由这条属性驱动。
+The host is not focusable and has no tab stop: both Tab and clicks hand focus to the native textarea inside the shadow root, and the component reflects the focus state as a `focused` attribute on the host, which drives the focus ring.
 
-内部控件的 `input` 原生就冒泡且组合；`change` 不组合，由组件在宿主上补发一次 `composed` 的 `change`。
+The inner control's `input` already bubbles and is composed; `change` is not composed, so the component re-dispatches a `composed` `change` on the host.
 
-清除 button 只派发 `input`，不派发 `change`——这一点与 `<web-ui-input>` 不同，只听 `change` 的消费者收不到这次清空。
+The clear button dispatches only `input`, not `change`—this differs from `<web-ui-input>`, so consumers that only listen to `change` do not receive this clearing.
 
-`autosize` 独占高度：它把高度写成内联值，所以同时关掉原生拖拽手柄，避免拖完之后下一次内容变化又被拉回。
+`autosize` owns the height exclusively: it writes the height as an inline value and therefore turns off the native resize handle, so that the next content change after a drag does not pull the box back.
 
-高度在每次取值变化与 `rows` 变化时重算，不依赖 `ResizeObserver` 的回调，因此同一个控件随外层切换长文案与短文案时不会留着旧高度。
+The height is recomputed whenever the value changes and whenever `rows` changes, without relying on a `ResizeObserver` callback, so the same control switching between long and short copy in its outer layout never keeps a stale height.
 
-`max-height` 写成内联样式，与 `autosize` 无关地钳制内部控件：开着时封顶自动高度，到顶框内滚动；没开时钳住拖拽出来的高度。`0` 表示不限。
+`max-height` is written as an inline style and clamps the inner control independently of `autosize`: with autosize on it caps the automatic height and the box scrolls once the cap is reached; with autosize off it clamps the height produced by dragging. `0` means no limit.
 
-`required` / `minlength` / `maxlength` 的判定（`valueMissing` / `tooShort` / `tooLong`）经 ElementInternals 转发给宿主 `<form>`；`disabled` 与表单级禁用让校验一并退让。
+The `required` / `minlength` / `maxlength` checks (`valueMissing` / `tooShort` / `tooLong`) are forwarded to the host `<form>` through ElementInternals; `disabled` and form-level disabling make validation back off along with everything else.
 
-`readonly` 也让校验退让：只读的原生控件按 HTML 规范被豁免于约束验证，转发的状态恒为干净，`required readonly` 的空值拦不下提交。
+`readonly` also makes validation back off: per the HTML specification, a readonly native control is barred from constraint validation, so the forwarded state is always clean and an empty `required readonly` value does not block submission.
 
-`form.reset()` 按挂载时的初值回填。
+`form.reset()` restores the value from mount time.
 
-无障碍名称只有 `aria-label` 这一条是通的：它连同 `aria-labelledby` 一起被透传到 shadow 内的原生 `<textarea>`，而 `aria-labelledby` 的 IDREF 只在同一棵 shadow 树里解析，够不到 light DOM，所以指向宿主外面某个元素的写法取不到名字。
+The only accessible name that works is `aria-label`: it is forwarded to the native `<textarea>` inside the shadow root together with `aria-labelledby`, but `aria-labelledby` is an IDREF that only resolves inside the same shadow tree and cannot reach the light DOM, so a reference to an element outside the host yields no name.
 
-组件也没有把内部控件的 id 暴露出来，外层的 `<label for>` 同样接不上（宿主不是 labelable 元素）。
+The component does not expose the inner control's id either, so an outer `<label for>` cannot connect to it (the host is not a labelable element).
 
-要给控件供名，写 `aria-label`：`prefix` slot 里的可见文字落在容器上，不在原生 `<textarea>` 的盒子里，不会成为它的名称。
+To give the control a name, write `aria-label`: the visible text in the `prefix` slot lands on the container, not inside the native `<textarea>` box, and does not become its name.
 
-### 布局
+### Layout
 
-宿主是 block 盒，输入区宽度取 `--wui-textarea-width`（`200px`），`full` 时改成 `100%`；容器按内容折行，最小高度取 `--wui-control-size`（`36px`），圆角取 `--wui-radius-menu`（`18px`），底面是共享的 glass 表面，`borderless` 连描边环一起去掉。
+The host is a block box; the input area width comes from `--wui-textarea-width` (`200px`), and `full` changes it to `100%`. The container wraps its content, its minimum height comes from `--wui-control-size` (`36px`), its radius from `--wui-radius-menu` (`18px`), and its surface from the shared glass surface; `borderless` removes the ring along with it.
 
-未开 `autosize` 时原生拖拽手柄可用（`resize: vertical`）。
+When `autosize` is off, the native resize handle is available (`resize: vertical`).
 
-文字取 `--wui-font-size`，行高取 `--wui-line-height-normal`，粗指针设备上字号钳到不小于 `16px`，避免 iOS Safari 聚焦时缩放页面。占位文本与 slot 内容取二级文本色。
+Text takes `--wui-font-size` and line height `--wui-line-height-normal`, with the font size clamped to no less than `16px` on coarse-pointer devices so that iOS Safari does not zoom the page on focus. Placeholder text and slot content take the secondary text color.
 
-清除 button 复用 icon ghost 形态的 `<web-ui-button>`，用负 margin 抵掉容器 `gap` 与自身 padding，并按首行中心对齐——容器顶对齐使它在多行框里也贴着第一行。
+The clear button reuses the icon ghost form of `<web-ui-button>`, offsets the container's `gap` and its own padding with negative margins, and aligns to the center of the first line—the container is top-aligned, which keeps it against the first line even in a multiline box.
 
 ### CSS Custom Properties
 
-| 名称                         | 说明                                  | 默认值                           |
-| ---------------------------- | ------------------------------------- | -------------------------------- |
-| `--wui-textarea-width`       | 输入区宽度；`full` 时被 `100%` 接管。 | `200px`                          |
-| `--wui-textarea-clear-color` | 清除 button 的颜色。                  | `var(--wui-color-text-tertiary)` |
+| Name                         | Description                                                | Default                          |
+| ---------------------------- | ---------------------------------------------------------- | -------------------------------- |
+| `--wui-textarea-width`       | Input area width; taken over by `100%` when `full` is set. | `200px`                          |
+| `--wui-textarea-clear-color` | Clear button color.                                        | `var(--wui-color-text-tertiary)` |

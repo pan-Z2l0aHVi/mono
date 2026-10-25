@@ -1,4 +1,4 @@
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
 
@@ -23,13 +23,30 @@ const CONFIG = {
   dir: 'demos',
   anchor: braceAnchor,
   flavors: ['react', 'vue'],
-  apiTables: {
-    columns: {
-      Props: ['名称', '说明', '类型', '默认值'],
-      Events: ['名称', '说明'],
-      Slots: ['名称', '说明']
+  locales: [
+    {
+      locale: 'zh-CN',
+      suffix: '.CN.md',
+      apiTables: {
+        columns: {
+          Props: ['名称', '说明', '类型', '默认值'],
+          Events: ['名称', '说明'],
+          Slots: ['名称', '说明']
+        }
+      }
+    },
+    {
+      locale: 'en',
+      suffix: '.md',
+      apiTables: {
+        columns: {
+          Props: ['Name', 'Description', 'Type', 'Default'],
+          Events: ['Name', 'Description'],
+          Slots: ['Name', 'Description']
+        }
+      }
     }
-  },
+  ],
   darkSelector: "web-ui-theme[resolved-appearance='dark']"
 } satisfies Omit<GenerateOptions, 'input' | 'outputs'>
 
@@ -50,7 +67,7 @@ const DOC = [
   '',
   '范围 slider，支持刻度标记。',
   '',
-  '## 示例',
+  '## Samples',
   '',
   '### 基础 {#basic}',
   '',
@@ -90,18 +107,27 @@ function scratch(): string {
   return dir
 }
 
+/** 中文源的对应译文：同一组示例与 API 表，只有散文与列名换成了英文。 */
+const EN_DOC = DOC.replace('范围 slider，支持刻度标记。', 'A range slider with tick marks.')
+  .replace('### 基础 {#basic}', '### Basic {#basic}')
+  .replace('| 名称 | 说明 | 类型 | 默认值 |', '| Name | Description | Type | Default |')
+  .replace('| `min` | 最小值。 | `number` | `0` |', '| `min` | Minimum value. | `number` | `0` |')
+  .replace('| 名称 | 说明 |', '| Name | Description |')
+  .replace('| `input` | 拖拽过程中触发。 |', '| `input` | Fired while dragging. |')
+  .replace('`peek` 模式下不支持嵌套。', 'Nesting is not supported in `peek` mode.')
+
 /** 一份最小语料 + 两个 output；`patch` 用来把某一条判据单独弄歪。 */
 function layout(patch: (source: string) => string = source => source) {
   const root = scratch()
   const input = path.join(root, 'docs')
   mkdirSync(input, { recursive: true })
-  writeFileSync(path.join(input, 'slider.md'), patch(DOC))
+  writeFileSync(path.join(input, 'slider.CN.md'), patch(DOC))
   return {
     root,
     input,
     outputs: [
-      { output: path.join(root, 'react-out'), flavor: 'react' as const },
-      { output: path.join(root, 'vue-out'), flavor: 'vue' as const }
+      { output: path.join(root, 'react-out'), flavor: 'react' as const, locale: 'zh-CN' },
+      { output: path.join(root, 'vue-out'), flavor: 'vue' as const, locale: 'zh-CN' }
     ]
   }
 }
@@ -164,7 +190,7 @@ describe('generate', () => {
   it('requireDemo 开启后，没有锚点的示例在生成阶段失败', async () => {
     const { input, outputs } = layout(source => source.replace('### 基础 {#basic}', '### 基础'))
     await expect(generate({ ...CONFIG, requireDemo: true, input, outputs })).rejects.toThrow(
-      /slider\.md：示例「基础」没有 `\{#id\}` 锚点/
+      /slider\.CN\.md：示例「基础」没有 `\{#id\}` 锚点/
     )
   })
 
@@ -177,9 +203,9 @@ describe('generate', () => {
   it('语料本身的错在读到它的那一刻就失败', async () => {
     // frontmatter 的 component 与文件名不一致：产物按文件名走，这条不一致会让落点静默错位。
     const renamed = layout()
-    writeFileSync(path.join(renamed.input, 'slider-renamed.md'), DOC)
+    writeFileSync(path.join(renamed.input, 'slider-renamed.CN.md'), DOC)
     await expect(generate({ ...CONFIG, input: renamed.input, outputs: renamed.outputs })).rejects.toThrow(
-      /与文件名不一致/
+      /与文件名（去掉 \.CN\.md）不一致/
     )
 
     const missing = layout()
@@ -191,5 +217,61 @@ describe('generate', () => {
   it('output 的 flavor 不在配置的 flavors 里就失败', async () => {
     const { input, outputs } = layout()
     await expect(generate({ ...CONFIG, input, flavors: ['react'], outputs })).rejects.toThrow(/不在配置的 flavors/)
+  })
+
+  it('语种按最长后缀分开生成：同语种跨框架逐字节一致，样式只写一份', async () => {
+    const { root, input } = layout()
+    writeFileSync(path.join(input, 'slider.md'), EN_DOC)
+    const styles = path.join(root, 'styles', 'examples.css')
+    const outputs = [
+      { output: path.join(root, 'react-zh'), flavor: 'react' as const, locale: 'zh-CN' },
+      { output: path.join(root, 'react-en'), flavor: 'react' as const, locale: 'en' },
+      { output: path.join(root, 'vue-zh'), flavor: 'vue' as const, locale: 'zh-CN' }
+    ]
+    const { files, demosDirs } = await generate({ ...CONFIG, input, outputs, styles })
+    writeArtifacts(files, demosDirs)
+
+    const zh = readFileSync(path.join(root, 'react-zh', 'examples.ts'), 'utf8')
+    const en = readFileSync(path.join(root, 'react-en', 'examples.ts'), 'utf8')
+    expect(zh).toContain('"title": "基础"')
+    expect(en).toContain('"title": "Basic"')
+    // 译文语料不该把中文标题带进产物：分语种的意义就是两份数据各说各的语言。
+    expect(en).not.toContain('基础')
+    // 同一语种的两个 output 是「同一份来源」：跨框架的数据必须逐字节一致。
+    expect(readFileSync(path.join(root, 'vue-zh', 'examples.ts'), 'utf8')).toBe(zh)
+
+    // 样式与语种无关：只写 styles 这一份，output 目录里不再各写一份。
+    expect(existsSync(styles)).toBe(true)
+    expect(existsSync(path.join(root, 'react-zh', 'examples.css'))).toBe(false)
+    expect(existsSync(path.join(root, 'react-en', 'examples.css'))).toBe(false)
+
+    // 两个语种各自落 demo：component 与锚点同名，目录不同，互不覆盖。
+    expect(existsSync(path.join(root, 'react-zh', 'demos', 'slider--basic.tsx'))).toBe(true)
+    expect(existsSync(path.join(root, 'react-en', 'demos', 'slider--basic.tsx'))).toBe(true)
+  })
+
+  it('认领不到语种后缀的文件直接失败，不静默漏掉一篇文档', async () => {
+    const { input, outputs } = layout()
+    writeFileSync(path.join(input, 'slider.md'), EN_DOC)
+    const zhOnly = CONFIG.locales.filter(locale => locale.locale === 'zh-CN')
+    await expect(generate({ ...CONFIG, locales: zhOnly, input, outputs })).rejects.toThrow(/不属于任何语种/)
+  })
+
+  it('output 指向没有文档的语种时失败，不写出空模块', async () => {
+    const { root, input, outputs } = layout()
+    await expect(
+      generate({
+        ...CONFIG,
+        input,
+        outputs: [...outputs, { output: path.join(root, 'en-out'), flavor: 'react', locale: 'en' }]
+      })
+    ).rejects.toThrow(/没有任何 markdown/)
+  })
+
+  it('两个 output 指向同一个目录时失败，不靠输出顺序决定谁覆盖谁', async () => {
+    const { input, outputs } = layout()
+    await expect(
+      generate({ ...CONFIG, input, outputs: [outputs[0], { ...outputs[1], output: outputs[0].output }] })
+    ).rejects.toThrow(/同一个目录/)
   })
 })

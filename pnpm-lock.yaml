@@ -287,6 +287,9 @@ catalogs:
     '@wailsio/runtime':
       specifier: 3.0.0-beta.25
       version: 3.0.0-beta.25
+    '@wuchale/jsx':
+      specifier: ^0.13.0
+      version: 0.13.0
     babel-plugin-react-compiler:
       specifier: ^1.0.0
       version: 1.0.0
@@ -440,6 +443,9 @@ catalogs:
     webpack:
       specifier: ^5.99.0
       version: 5.110.3
+    wuchale:
+      specifier: ^0.26.7
+      version: 0.26.7
     zustand:
       specifier: ^5.0.14
       version: 5.0.15
@@ -690,6 +696,9 @@ importers:
       '@vitejs/plugin-react':
         specifier: 'catalog:'
         version: 6.1.1(@rolldown/plugin-babel@0.2.3(@babel/core@7.29.7(supports-color@10.2.2))(@babel/runtime@7.29.7)(@voidzero-dev/vite-plus-core@0.3.2(@types/node@26.4.1)(jiti@2.7.0)(terser@5.51.2)(typescript@6.0.3)(yaml@2.9.0))(rolldown@1.2.7))(@voidzero-dev/vite-plus-core@0.3.2(@types/node@26.4.1)(jiti@2.7.0)(terser@5.51.2)(typescript@6.0.3)(yaml@2.9.0))(babel-plugin-react-compiler@1.0.0)
+      '@wuchale/jsx':
+        specifier: 'catalog:'
+        version: 0.13.0(react@19.2.8)
       babel-plugin-react-compiler:
         specifier: 'catalog:'
         version: 1.0.0
@@ -705,6 +714,9 @@ importers:
       vite-plus:
         specifier: 'catalog:'
         version: 0.3.2(@types/node@26.4.1)(@vitest/browser-playwright@4.1.11)(jiti@2.7.0)(jsdom@30.0.1)(msw@2.15.0(@types/node@26.4.1)(typescript@6.0.3))(terser@5.51.2)(typescript@6.0.3)(yaml@2.9.0)
+      wuchale:
+        specifier: 'catalog:'
+        version: 0.26.7
 
   apps/vue-web-ui-demo:
     dependencies:
@@ -3039,6 +3051,11 @@ packages:
   '@standard-schema/spec@1.1.0':
     resolution: {integrity: sha512-l2aFy5jALhniG5HgqrD6jXLi/rUWrKvqN/qJx6yoJsgKhblVd+iqqU4RCXavm/jPityDo5TCvKMnpjKnOriy0w==}
 
+  '@sveltejs/acorn-typescript@1.0.13':
+    resolution: {integrity: sha512-wgKggnhZVL9Bfx1OaKKTrYY9BFRk6C8UAkQNUcIv1+llzYrIqy+RZm5HPKzn0NpEBvTVhTqB4kQyllZywsRBRQ==}
+    peerDependencies:
+      acorn: ^8.9.0
+
   '@tailwindcss/node@4.3.3':
     resolution: {integrity: sha512-/T8IKEsf9VTU6tLjgC7+sv2mOPtQxzE2jMw7u4Tt40Tx+QSZxpzh95/H6cMKoja9XuW7iMdLJYBB0o9G1CaAgg==}
 
@@ -3744,6 +3761,17 @@ packages:
 
   '@webassemblyjs/wast-printer@1.14.1':
     resolution: {integrity: sha512-kPSSXE6De1XOR820C90RIo2ogvZG+c3KiHzqUoO/F34Y2shGzesfqv7o57xrxovZJH/MetF5UjroJ/R/3isoiw==}
+
+  '@wuchale/jsx@0.13.0':
+    resolution: {integrity: sha512-CQhwbbIjl/ncMdHE5zurn9/l/jd0YSbSYWQEGmnRrTvpkwklnxQ9Xk2dD8n1Ik/Rpj1schxFJycZoFStfTYXGg==}
+    peerDependencies:
+      react: ^19.1
+      solid-js: ^1.9
+    peerDependenciesMeta:
+      react:
+        optional: true
+      solid-js:
+        optional: true
 
   '@xtuc/ieee754@1.2.0':
     resolution: {integrity: sha512-DX8nKgqcGwsc0eJSqYt5lwP4DH5FlHnmuWWBRy7X0NcaGR0ZtuyeESgMwTYVEtxmsNGY+qit4QYT/MIYTOTPeA==}
@@ -5502,6 +5530,9 @@ packages:
   magic-string@1.2.3:
     resolution: {integrity: sha512-Bpb0W2TbLKOZ7vJnOUnVRGq3WL2p+ISV29M6hYPL1AFCpyKZpdr5ytiXoTSSxRVhg8YW7f65+6gbG8WG6PCa/g==}
 
+  magic-string@1.4.3:
+    resolution: {integrity: sha512-z12OxmaPGE0F4xlpGdjuAUckipLpQlTAuAmyGhNoD7ODpYUzvDfvtxUbjM/jwznyP178oju/KDdyi220wNJ0RQ==}
+
   math-intrinsics@1.1.0:
     resolution: {integrity: sha512-/IXtbwEk5HTPyEwyKX6hGkYXxM9nbj64B+ilVJnC/R6B0pH5G4V3b0pVbL7DBj4tkhBAppbQUlf6F6Xl9LHu1g==}
     engines: {node: '>= 0.4'}
@@ -5977,6 +6008,9 @@ packages:
   pngjs@7.0.0:
     resolution: {integrity: sha512-LKWqWJRhstyYo9pGvgor/ivk2w94eSjE3RGVuzLGlr3NmD8bf7RcYGze1mNdEHRP6TRP6rMuDHk5t44hnTRyow==}
     engines: {node: '>=14.19.0'}
+
+  pofile@1.1.4:
+    resolution: {integrity: sha512-r6Q21sKsY1AjTVVjOuU02VYKVNQGJNQHjTIvs4dEbeuuYfxgYk/DGD2mqqq4RDaVkwdSq0VEtmQUOPe/wH8X3g==}
 
   possible-typed-array-names@1.1.0:
     resolution: {integrity: sha512-/+5VFTchJDoVj3bhoqi6UeymcD00DAwb1nJwamzPvHEszJ4FpF6SNNbUbOS8yI56qHzdV8eK0qEfOSiodkTdxg==}
@@ -7169,6 +7203,10 @@ packages:
         optional: true
       utf-8-validate:
         optional: true
+
+  wuchale@0.26.7:
+    resolution: {integrity: sha512-G9V612ezxLmXQ8vm6R3kETsBOCubvN1yxYv9I3GoU7uIVXPpCThgGrRyxD8ZZPJUOizz0IljZp6UgSlKPyILsQ==}
+    hasBin: true
 
   xdg-basedir@5.1.0:
     resolution: {integrity: sha512-GCPAHLvrIH13+c0SuacwvRYj2SxJXQ4kaVTT5xgL3kPrz56XxkF21IGhjSE1+W0aw7gpBWRGXLCPnPby6lSpmQ==}
@@ -9134,6 +9172,10 @@ snapshots:
 
   '@standard-schema/spec@1.1.0': {}
 
+  '@sveltejs/acorn-typescript@1.0.13(acorn@8.18.0)':
+    dependencies:
+      acorn: 8.18.0
+
   '@tailwindcss/node@4.3.3':
     dependencies:
       '@jridgewell/remapping': 2.3.5
@@ -9896,6 +9938,14 @@ snapshots:
     dependencies:
       '@webassemblyjs/ast': 1.14.1
       '@xtuc/long': 4.2.2
+
+  '@wuchale/jsx@0.13.0(react@19.2.8)':
+    dependencies:
+      '@sveltejs/acorn-typescript': 1.0.13(acorn@8.18.0)
+      acorn: 8.18.0
+      wuchale: 0.26.7
+    optionalDependencies:
+      react: 19.2.8
 
   '@xtuc/ieee754@1.2.0': {}
 
@@ -11670,6 +11720,10 @@ snapshots:
     dependencies:
       '@jridgewell/sourcemap-codec': 1.6.0
 
+  magic-string@1.4.3:
+    dependencies:
+      '@jridgewell/sourcemap-codec': 1.6.0
+
   math-intrinsics@1.1.0: {}
 
   mathml-tag-names@4.0.0: {}
@@ -12245,6 +12299,8 @@ snapshots:
       playwright-core: 1.63.0
 
   pngjs@7.0.0: {}
+
+  pofile@1.1.4: {}
 
   possible-typed-array-names@1.1.0: {}
 
@@ -13679,6 +13735,16 @@ snapshots:
       signal-exit: 4.1.0
 
   ws@8.21.3: {}
+
+  wuchale@0.26.7:
+    dependencies:
+      '@sveltejs/acorn-typescript': 1.0.13(acorn@8.18.0)
+      acorn: 8.18.0
+      chokidar: 5.0.0
+      magic-string: 1.4.3
+      picomatch: 4.0.7
+      pofile: 1.1.4
+      tinyglobby: 0.2.17
 
   xdg-basedir@5.1.0: {}
 

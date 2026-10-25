@@ -1,0 +1,148 @@
+msgid ""
+msgstr ""
+"Source-Language: zh-CN\n"
+"Language: zh-CN\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=1\n"
+"X-Plurals-Order: other\n"
+
+#: src/components/example-doc/index.tsx
+msgid "已复制"
+msgstr "已复制"
+
+#: src/components/example-doc/index.tsx
+msgid "复制失败"
+msgstr "复制失败"
+
+#: src/components/example-doc/index.tsx
+msgid "复制代码"
+msgstr "复制代码"
+
+#: src/components/example-doc/index.tsx
+msgid "示例代码框架"
+msgstr "示例代码框架"
+
+#: src/components/example-doc/index.tsx
+#: src/components/example-doc/index.tsx
+msgid "收起代码"
+msgstr "收起代码"
+
+#: src/components/example-doc/index.tsx
+#: src/components/example-doc/index.tsx
+msgid "展开代码"
+msgstr "展开代码"
+
+#: src/components/example-doc/index.tsx
+msgid "示例"
+msgstr "示例"
+
+#: src/routes/home/-component.tsx
+msgid "查看演示 →"
+msgstr "查看演示 →"
+
+#: src/routes/home/-component.tsx
+msgid "基于 Web Components 的跨框架现代 UI 组件库。一套轻量、精致的核心设计系统，原生支持 Vue、React 以及任意前端技术栈。"
+msgstr "基于 Web Components 的跨框架现代 UI 组件库。一套轻量、精致的核心设计系统，原生支持 Vue、React 以及任意前端技术栈。"
+
+#: src/components/not-found/index.tsx
+msgid "你要找的页面不存在"
+msgstr "你要找的页面不存在"
+
+#: src/components/root/index.tsx
+msgid "🎉 欢迎使用 web-ui 组件库！"
+msgstr "🎉 欢迎使用 web-ui 组件库！"
+
+#: src/components/root/index.tsx
+#: src/components/root/index.tsx
+msgid "完整动效"
+msgstr "完整动效"
+
+#: src/components/root/index.tsx
+#: src/components/root/index.tsx
+msgid "减弱动效"
+msgstr "减弱动效"
+
+#: src/components/root/index.tsx
+#: src/components/root/index.tsx
+#: src/components/root/index.tsx
+#: src/components/root/index.tsx
+msgid "跟随系统"
+msgstr "跟随系统"
+
+#: src/components/root/index.tsx
+msgid "全局动效"
+msgstr "全局动效"
+
+#: src/components/root/index.tsx
+msgid "全局主题"
+msgstr "全局主题"
+
+#: src/components/root/index.tsx
+msgid "全局语言"
+msgstr "全局语言"
+
+#: src/components/root/index.tsx
+msgid "主导航"
+msgstr "主导航"
+
+#: src/components/root/index.tsx
+msgid "应用导航"
+msgstr "应用导航"
+
+#: src/routes/home/-component.tsx
+msgid "变体、尺寸、图标与加载状态"
+msgstr "变体、尺寸、图标与加载状态"
+
+#: src/routes/home/-component.tsx
+msgid "遵循无障碍规范的模态对话框行为"
+msgstr "遵循无障碍规范的模态对话框行为"
+
+#: src/routes/home/-component.tsx
+msgid "手势拖拽关闭与浮动卡片形态"
+msgstr "手势拖拽关闭与浮动卡片形态"
+
+#: src/routes/home/-component.tsx
+msgid "深浅外观切换与减弱动效"
+msgstr "深浅外观切换与减弱动效"
+
+#: src/routes/home/-component.tsx
+msgid "基于 Floating UI 的下拉浮层与选项"
+msgstr "基于 Floating UI 的下拉浮层与选项"
+
+#: src/routes/home/-component.tsx
+msgid "轻量、响应式的全局通知"
+msgstr "轻量、响应式的全局通知"
+
+#: src/components/root/root-error-fallback/index.tsx
+msgid "出了点问题"
+msgstr "出了点问题"
+
+#: src/components/root/root-error-fallback/index.tsx
+msgid "重试"
+msgstr "重试"
+
+#: src/components/example-doc/index.tsx
+msgid "示例文档"
+msgstr "示例文档"
+
+#: src/routes/home/-component.tsx
+msgid "Web Components 原生"
+msgstr "Web Components 原生"
+
+#: src/routes/home/-component.tsx
+msgid "跨框架无缝适配"
+msgstr "跨框架无缝适配"
+
+#: src/routes/home/-component.tsx
+msgid "语义化设计 Token"
+msgstr "语义化设计 Token"
+
+#: src/routes/home/-component.tsx
+msgid "深浅色 & 动效偏好"
+msgstr "深浅色 & 动效偏好"
+
+#: src/routes/home/-component.tsx
+msgid "常用组件快速预览"
+msgstr "常用组件快速预览"
