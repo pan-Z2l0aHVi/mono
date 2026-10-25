@@ -27,7 +27,7 @@ const THEME_MOTIONS = new Set<ThemeMotion>(['full', 'reduced', 'system'])
 // 外观档位名是技术术语，中英两版都保持英文，因此不进入 wuchale 语料。
 const LIGHT_LABEL = 'Light'
 const DARK_LABEL = 'Dark'
-// 语种名用本族语写法（endonym），两版都不译：误切到读不懂的界面语言时，靠「简体中文」四个字
+// 语种名按该语言自己的写法给出，两版都不译：误切到读不懂的界面语言时，靠「简体中文」四个字
 // 就能找回母语，不必先读懂当前界面上的 "Simplified Chinese"。
 const ZH_CN_LABEL = '简体中文'
 const EN_LABEL = 'English'
