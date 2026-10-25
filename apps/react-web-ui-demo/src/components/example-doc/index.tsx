@@ -77,11 +77,38 @@ interface ExampleDocProps {
   component: string
   /** 预览与默认代码 tab 使用的框架；默认 React 站。 */
   nativeFlavor?: Flavor
+  /** 壳映射测试只检查预览容器时，跳过文档主体与演示组件。 */
+  previewAnchorsOnly?: boolean
   /** 主文档用 primary，多文档页的后续文档用 secondary；不传时不渲染组件标题。 */
   level?: 'primary' | 'secondary'
 }
 
-function ExampleDoc({ component, nativeFlavor = 'react', level }: ExampleDocProps) {
+function ExamplePreview({
+  Demo,
+  demoKey,
+  renderDemoComponent = true
+}: {
+  Demo: ComponentType | undefined
+  demoKey: string | null | undefined
+  renderDemoComponent?: boolean
+}) {
+  if (!Demo || !demoKey) return null
+
+  return (
+    <div
+      className="relative z-20 flex flex-wrap items-center gap-3 bg-(--wui-color-page) px-4 py-8"
+      data-sample-preview={demoKey}
+    >
+      {renderDemoComponent ? (
+        <Suspense fallback={null}>
+          <Demo />
+        </Suspense>
+      ) : null}
+    </div>
+  )
+}
+
+function ExampleDoc({ component, nativeFlavor = 'react', previewAnchorsOnly = false, level }: ExampleDocProps) {
   const doc = exampleDocs.find(candidate => candidate.component === component)
   const [activeFlavors, setActiveFlavors] = useState<Record<string, Flavor>>({})
   const [expanded, setExpanded] = useState<Record<string, boolean>>({})
@@ -91,6 +118,24 @@ function ExampleDoc({ component, nativeFlavor = 'react', level }: ExampleDocProp
   useEffect(() => () => clearTimeout(copyTimer.current), [])
 
   if (!doc) return null
+
+  if (previewAnchorsOnly) {
+    return (
+      <section data-example-doc={doc.component}>
+        {doc.samples.map((sample, index) => {
+          const Demo = sample.demoKey ? demoComponents.get(`${component}--${sample.demoKey}`) : undefined
+          return (
+            <ExamplePreview
+              key={sampleKey(sample, index)}
+              Demo={Demo}
+              demoKey={sample.demoKey}
+              renderDemoComponent={false}
+            />
+          )
+        })}
+      </section>
+    )
+  }
 
   // 本站框架在前：segmented 的第一项就是这份代码默认展示的运行时。
   const flavors: Flavor[] = nativeFlavor === 'vue' ? ['vue', 'react'] : ['react', 'vue']
@@ -233,16 +278,7 @@ function ExampleDoc({ component, nativeFlavor = 'react', level }: ExampleDocProp
                 预览区不画边框、直接铺在页面上；边框与圆角只包住下方「工具条 + 代码区」。
               */}
               <div className="isolate" data-current-flavor={flavor}>
-                {Demo ? (
-                  <div
-                    className="relative z-20 flex flex-wrap items-center gap-3 bg-(--wui-color-page) px-4 py-8"
-                    data-sample-preview={sample.demoKey ?? undefined}
-                  >
-                    <Suspense fallback={null}>
-                      <Demo />
-                    </Suspense>
-                  </div>
-                ) : null}
+                <ExamplePreview Demo={Demo} demoKey={sample.demoKey} />
 
                 <div className="overflow-hidden rounded-4xl border border-(--wui-color-border)">
                   {/* 工具条只摆控件，不接管开合：展开由右侧 chevron 按钮和收起态那块代码预览负责。 */}

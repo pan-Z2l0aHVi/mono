@@ -2,9 +2,9 @@ import { existsSync, readdirSync, readFileSync } from 'node:fs'
 import path from 'node:path'
 
 import { demoFileContent, demoFileName, FLAVOR_LANG, visibleText } from '@greypan/md-to-comp'
-import { act, render } from '@testing-library/react'
+import { render } from '@testing-library/react'
 import { createElement } from 'react'
-import { beforeAll, describe, expect, it } from 'vite-plus/test'
+import { describe, expect, it } from 'vite-plus/test'
 
 import ExampleDoc from '../components/example-doc'
 import { exampleDocs } from '../generated/examples'
@@ -204,31 +204,31 @@ describe('已迁移文档的每条示例都能渲染', () => {
 // 壳映射判在 jsdom（不挂真组件，只判壳真的把带锚点的示例接上了生成的 demo）：预览区由壳自己的
 // `import.meta.glob` 映射渲染，产物加载失败不影响判据；demo 真挂得出宿主由人工验收兜底，这里不重复。
 describe('已迁移文档的壳映射（ExampleDoc）', () => {
-  // 先把全部 demo 模块收进模块缓存：壳的 lazy 加载只结算缓存命中的 promise，用例结束时
-  // 不会留下在途 import 拖住 run 收尾。
-  // 逐篇挂 31 篇语料的壳，本地亚秒级；CI runner 慢机实测越过默认 5s（与被删的全量遍历用例
-  // 同一类慢，那时给的是 120s），beforeAll 的批量预载同理。给足余量但只作用于这一条链路。
-  const allDemos = import.meta.glob('../generated/demos/*.tsx')
-  beforeAll(async () => {
-    await Promise.all(Object.values(allDemos).map(load => load()))
-  }, 30_000)
+  it('带锚点的示例由壳挂出预览区，顺序与生成数据的锚点序一致', () => {
+    const { container, unmount } = render(
+      createElement(
+        'div',
+        null,
+        migratedDocs.map(component =>
+          createElement(ExampleDoc, { component, key: component, previewAnchorsOnly: true })
+        )
+      )
+    )
+    const previewsByComponent = new Map(
+      [...container.querySelectorAll<HTMLElement>('[data-example-doc]')].map(section => [
+        section.dataset.exampleDoc!,
+        [...section.querySelectorAll('[data-sample-preview]')].map(node => node.getAttribute('data-sample-preview'))
+      ])
+    )
+    unmount()
 
-  it('带锚点的示例由壳挂出预览区，顺序与生成数据的锚点序一致', async () => {
     for (const component of migratedDocs) {
       const doc = docByName.get(component)
       if (!doc) throw new Error(`${component}：生成数据里没有这个 component`)
-      const { container, unmount } = render(createElement(ExampleDoc, { component }))
-      const keys = [...container.querySelectorAll('[data-sample-preview]')].map(node =>
-        node.getAttribute('data-sample-preview')
-      )
-      unmount()
-      // lazy 的 payload 在 render 之后才结算；容器已卸载，结算落不到任何 DOM 上，但 act 记账开着
-      // 会每篇告警一条「not wrapped in act」。放在卸载后的一次空 act 里消化，既不告警也不会让
-      // demo 真的渲染进 jsdom（React 19 的 render 不能包进外层 act，实测提交为空树）。
-      await act(async () => {})
-      expect(keys, `${component}：预览区与生成数据的锚点不是同一串（壳的 glob 映射或 demoKey 漂了）`).toEqual(
-        doc.samples.map(sample => sample.demoKey)
-      )
+      expect(
+        previewsByComponent.get(component),
+        `${component}：预览区与生成数据的锚点不是同一串（壳的 glob 映射或 demoKey 漂了）`
+      ).toEqual(doc.samples.map(sample => sample.demoKey))
     }
   }, 30_000)
 })
