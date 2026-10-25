@@ -3,21 +3,21 @@ component: back-top
 tag: web-ui-back-top
 ---
 
-回到顶部 button（`web-ui-back-top`）：滚动位置达到 `threshold` 后出现在角落，点击或按 Enter / Space 回到顶部。
+A back-to-top button (`web-ui-back-top`): it appears in the corner once the scroll position reaches `threshold`, and clicking it or pressing Enter / Space returns to the top.
 
-默认平滑回顶；主题设置为 `motion="reduced"`，或 `motion="system"` 且系统偏好减少动效时，点击或按 Enter 会立即回顶。
+By default it scrolls smoothly to the top; when the theme is set to `motion="reduced"`, or to `motion="system"` with a system preference for reduced motion, clicking or pressing Enter jumps to the top immediately.
 
-默认跟随页面滚动；把 `scrollTarget` 指向某个滚动容器后，它只随该容器滚动出现，并停在容器底部角落。
+By default it follows page scrolling; after pointing `scrollTarget` at a scroll container, it appears only with that container's scrolling and rests in the container's bottom corner.
 
-## 示例
+## Samples
 
-### 自定义滚动容器 {#container}
+### Custom scroll container {#container}
 
-`scrollTarget` 是 element property 而不是 attribute，所以只能在挂载后赋值：先用 `ref` 拿到容器与 `<web-ui-back-top>`，再在 `useEffect` / `onMounted` 里把容器交给它。
+`scrollTarget` is an element property rather than an attribute, so it can only be assigned after mount: take a `ref` to the container and to `<web-ui-back-top>`, then hand the container over inside `useEffect` / `onMounted`.
 
-赋值后组件把 `scroll` 监听重绑到该容器，并切到容器模式——宿主变成 `position: sticky`、停在容器底部，容器滚动达到 `threshold` 后 button 才出现，点击回容器顶部。
+After the assignment the component rebinds its `scroll` listener to that container and switches to container mode—the host becomes `position: sticky` and rests at the container's bottom; the button appears only once the container scrolls past `threshold`, and a click returns the container to its top.
 
-因此元素必须放在滚动容器内部，容器自己要有可滚动的溢出内容；三条示例都用原生 `overflow-auto`。
+The element must therefore live inside the scroll container, and the container itself needs overflowing content to scroll; all three samples use the native `overflow-auto`.
 
 ```tsx
 import type { WebUiBackTop } from '@greypan/web-ui'
@@ -36,7 +36,7 @@ export default function Demo() {
     <div ref={boxRef} className="h-40 w-full overflow-auto rounded-xl border border-(--wui-color-border) p-3">
       {Array.from({ length: 20 }, (_, index) => (
         <p key={index} className="m-0 py-1 text-sm">
-          滚动容器第 {index + 1} 行
+          Scroll container row {index + 1}
         </p>
       ))}
       <web-ui-back-top ref={backTopRef} threshold={100}></web-ui-back-top>
@@ -57,7 +57,7 @@ export default function Demo() {
 import type { WebUiBackTop } from '@greypan/web-ui'
 import { onMounted, useTemplateRef } from 'vue'
 
-const rows = Array.from({ length: 20 }, (_, index) => `滚动容器第 ${index + 1} 行`)
+const rows = Array.from({ length: 20 }, (_, index) => `Scroll container row ${index + 1}`)
 const box = useTemplateRef<HTMLDivElement>('box')
 const backTop = useTemplateRef<WebUiBackTop>('backTop')
 
@@ -67,13 +67,13 @@ onMounted(() => {
 </script>
 ```
 
-### 自定义内容 {#custom-content}
+### Custom content {#custom-content}
 
-default slot 整体替换 button 的视觉内容，交互语义仍由组件提供：内层 wrapper 是 `role="button"`、`tabindex="0"`，指针点击、Enter 与 Space 都触发 `toTop()`。
+The default slot replaces the whole visual content of the button, while the component still provides the interaction semantics: the inner wrapper is `role="button"` with `tabindex="0"`, and pointer clicks, Enter, and Space all call `toTop()`.
 
-默认内容是 `web-ui-button` 包着的上箭头 icon；换成一条 primary button 后，出现时机、阈值与滚动行为都不变。
+The default content is an up-arrow icon wrapped in `web-ui-button`; swapping in a primary button leaves the appearance timing, the threshold, and the scroll behavior unchanged.
 
-button 的无障碍名称默认来自 slot 内容；默认 icon 内容回退为 `Back to top`。可在宿主设置 `aria-label` 指定名称；设置时应包含可见标签文本。自定义内容本身没有可访问名称时，也应设置宿主 `aria-label`。
+The button's accessible name comes from the slot content by default; the default icon content falls back to `Back to top`. Set `aria-label` on the host to specify a name; when set, it should include the visible label text. When the custom content itself has no accessible name, the host `aria-label` should be set as well.
 
 ```tsx
 import type { WebUiBackTop } from '@greypan/web-ui'
@@ -92,11 +92,11 @@ export default function Demo() {
     <div ref={boxRef} className="h-40 w-full overflow-auto rounded-xl border border-(--wui-color-border) p-3">
       {Array.from({ length: 20 }, (_, index) => (
         <p key={index} className="m-0 py-1 text-sm">
-          滚动容器第 {index + 1} 行
+          Scroll container row {index + 1}
         </p>
       ))}
       <web-ui-back-top ref={backTopRef} threshold={100}>
-        <web-ui-button variant="primary">回到顶部</web-ui-button>
+        <web-ui-button variant="primary">Back to top</web-ui-button>
       </web-ui-back-top>
     </div>
   )
@@ -108,7 +108,7 @@ export default function Demo() {
   <div ref="box" class="h-40 w-full overflow-auto rounded-xl border border-(--wui-color-border) p-3">
     <p v-for="row in rows" :key="row" class="m-0 py-1 text-sm">{{ row }}</p>
     <web-ui-back-top ref="backTop" :threshold="100">
-      <web-ui-button variant="primary">回到顶部</web-ui-button>
+      <web-ui-button variant="primary">Back to top</web-ui-button>
     </web-ui-back-top>
   </div>
 </template>
@@ -117,7 +117,7 @@ export default function Demo() {
 import type { WebUiBackTop } from '@greypan/web-ui'
 import { onMounted, useTemplateRef } from 'vue'
 
-const rows = Array.from({ length: 20 }, (_, index) => `滚动容器第 ${index + 1} 行`)
+const rows = Array.from({ length: 20 }, (_, index) => `Scroll container row ${index + 1}`)
 const box = useTemplateRef<HTMLDivElement>('box')
 const backTop = useTemplateRef<WebUiBackTop>('backTop')
 
@@ -127,13 +127,13 @@ onMounted(() => {
 </script>
 ```
 
-### 立即回到顶部 {#instant}
+### Jump to top immediately {#instant}
 
-`scroll-behavior="auto"` 不请求平滑滚动，点击直接跳到顶部。
+`scroll-behavior="auto"` does not request smooth scrolling, so a click jumps straight to the top.
 
-主题要求减少动效时，即使属性为默认的 `smooth` 或滚动容器的 CSS 指定 `scroll-behavior: smooth`，点击或按 Enter 也会立即到位。
+When the theme requires reduced motion, a click or Enter arrives instantly even if the attribute is the default `smooth` or the scroll container's CSS specifies `scroll-behavior: smooth`.
 
-两者只在滚动方式上不同：可见性判断、阈值与 slot 都不受影响。
+The two differ only in how they scroll: the visibility check, the threshold, and the slot are all unaffected.
 
 ```tsx
 import type { WebUiBackTop } from '@greypan/web-ui'
@@ -152,7 +152,7 @@ export default function Demo() {
     <div ref={boxRef} className="h-40 w-full overflow-auto rounded-xl border border-(--wui-color-border) p-3">
       {Array.from({ length: 20 }, (_, index) => (
         <p key={index} className="m-0 py-1 text-sm">
-          滚动容器第 {index + 1} 行
+          Scroll container row {index + 1}
         </p>
       ))}
       <web-ui-back-top ref={backTopRef} threshold={100} scrollBehavior="auto"></web-ui-back-top>
@@ -173,7 +173,7 @@ export default function Demo() {
 import type { WebUiBackTop } from '@greypan/web-ui'
 import { onMounted, useTemplateRef } from 'vue'
 
-const rows = Array.from({ length: 20 }, (_, index) => `滚动容器第 ${index + 1} 行`)
+const rows = Array.from({ length: 20 }, (_, index) => `Scroll container row ${index + 1}`)
 const box = useTemplateRef<HTMLDivElement>('box')
 const backTop = useTemplateRef<WebUiBackTop>('backTop')
 
@@ -187,39 +187,39 @@ onMounted(() => {
 
 ### Props
 
-| 名称              | 说明                                                                                    | 类型                    | 默认值                      |
-| ----------------- | --------------------------------------------------------------------------------------- | ----------------------- | --------------------------- |
-| `aria-label`      | button 名称。宿主值优先；否则使用 slot 内容的可访问名称，默认内容回退为 `Back to top`。 | `string`                | `'Back to top'`（默认内容） |
-| `scroll-behavior` | 滚动行为：`smooth`（默认）或 `auto`；主题要求减少动效时立即滚动。                       | `'smooth' \| 'auto'`    | `'smooth'`                  |
-| `visible`         | 当前可见状态，由滚动位置驱动。                                                          | `boolean`               | `false`                     |
-| `scrollTarget`    | 滚动容器，`window`（默认）或 `HTMLElement`（property）。                                | `HTMLElement \| Window` | `window`                    |
-| `threshold`       | 显示 button 的滚动阈值（px）。                                                          | `number`                | `200`                       |
+| Name              | Description                                                                                                                                  | Type                    | Default                           |
+| ----------------- | -------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------- | --------------------------------- |
+| `aria-label`      | Button name. The host value wins; otherwise the accessible name of the slot content, with the default content falling back to `Back to top`. | `string`                | `'Back to top'` (default content) |
+| `scroll-behavior` | Scroll behavior: `smooth` (default) or `auto`; when the theme requires reduced motion it scrolls immediately.                                | `'smooth' \| 'auto'`    | `'smooth'`                        |
+| `visible`         | Current visibility, driven by the scroll position.                                                                                           | `boolean`               | `false`                           |
+| `scrollTarget`    | Scroll container, `window` (default) or an `HTMLElement` (property).                                                                         | `HTMLElement \| Window` | `window`                          |
+| `threshold`       | Scroll threshold (px) at which the button appears.                                                                                           | `number`                | `200`                             |
 
 ### Slots
 
-| 名称      | 说明                 |
-| --------- | -------------------- |
-| `default` | 自定义 button 内容。 |
+| Name      | Description            |
+| --------- | ---------------------- |
+| `default` | Custom button content. |
 
 ### Methods
 
-| 名称      | 说明                                     |
-| --------- | ---------------------------------------- |
-| `toTop()` | 滚动回顶部；主题要求减少动效时立即滚动。 |
+| Name      | Description                                                                          |
+| --------- | ------------------------------------------------------------------------------------ |
+| `toTop()` | Scrolls back to the top; scrolls immediately when the theme requires reduced motion. |
 
-### 定位
+### Positioning
 
-`scrollTarget` 为 `window` 时 button 固定在视口角落，四个方向的偏移由 `--wui-back-top-top/right/bottom/left` 控制；为 `HTMLElement` 时需将元素放置在容器内部，button 通过 `position: sticky` 悬浮于容器底部角落，水平偏移沿用 `--wui-back-top-left/right`，垂直偏移使用 `--wui-back-top-bottom`，`--wui-back-top-top` 不参与容器定位。
+When `scrollTarget` is `window` the button is fixed in a viewport corner, with the offsets in the four directions controlled by `--wui-back-top-top/right/bottom/left`; when it is an `HTMLElement` the element must be placed inside the container, the button floats in the container's bottom corner via `position: sticky`, the horizontal offsets use `--wui-back-top-left/right`, the vertical offset uses `--wui-back-top-bottom`, and `--wui-back-top-top` takes no part in container positioning.
 
-角色：`button`，默认内容无障碍名称为 `Back to top`；自定义内容时名称来自 slot，宿主 `aria-label` 可显式指定名称。键盘 Enter 与 Space 都触发 back top。
+Role: `button`, with the default content accessible name `Back to top`; with custom content the name comes from the slot, and the host `aria-label` can specify it explicitly. Both keyboard Enter and Space trigger back top.
 
 ### CSS Custom Properties
 
-| 名称                      | 说明                     | 默认值                           |
-| ------------------------- | ------------------------ | -------------------------------- |
-| `--wui-back-top-position` | CSS 定位                 | `fixed`                          |
-| `--wui-back-top-z-index`  | 层级                     | `var(--wui-layer-auxiliary, 20)` |
-| `--wui-back-top-top`      | 上偏移（仅 window 模式） | `auto`                           |
-| `--wui-back-top-right`    | 右偏移                   | `20px`                           |
-| `--wui-back-top-bottom`   | 下偏移                   | `20px`                           |
-| `--wui-back-top-left`     | 左偏移                   | `auto`                           |
+| Name                      | Description                   | Default                          |
+| ------------------------- | ----------------------------- | -------------------------------- |
+| `--wui-back-top-position` | CSS positioning               | `fixed`                          |
+| `--wui-back-top-z-index`  | Layer                         | `var(--wui-layer-auxiliary, 20)` |
+| `--wui-back-top-top`      | Top offset (window mode only) | `auto`                           |
+| `--wui-back-top-right`    | Right offset                  | `20px`                           |
+| `--wui-back-top-bottom`   | Bottom offset                 | `20px`                           |
+| `--wui-back-top-left`     | Left offset                   | `auto`                           |

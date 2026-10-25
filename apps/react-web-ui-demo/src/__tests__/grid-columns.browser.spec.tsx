@@ -6,6 +6,7 @@ import { act } from 'react'
 import { afterEach, describe, expect, it } from 'vite-plus/test'
 
 import { setViewport } from '@/__tests__/viewport'
+import { loadShellLocale, LocaleProvider } from '@/i18n/locale'
 import { routeTree } from '@/routeTree.gen'
 
 /*
@@ -100,7 +101,13 @@ async function mountPage(path: string, waitingForTestId: string) {
    * 仍然会在预算内报 `page not mounted`，判据没有被放宽。
    */
   await router.load()
-  render(<RouterProvider router={router} />)
+  localStorage.setItem('locale', 'zh-CN')
+  await loadShellLocale('zh-CN')
+  render(
+    <LocaleProvider>
+      <RouterProvider router={router} />
+    </LocaleProvider>
+  )
   await waitFor(() => {
     if (!document.querySelector(`[data-testid="${waitingForTestId}"]`)) throw new Error('page not mounted')
   })

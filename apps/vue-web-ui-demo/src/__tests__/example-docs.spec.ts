@@ -24,9 +24,9 @@ const FLAVOR = 'vue' as const
 const FENCE_LANG = FLAVOR_LANG[FLAVOR]
 
 const corpusFiles = readdirSync(docsDir)
-  .filter(file => file.endsWith('.md'))
+  .filter(file => file.endsWith('.CN.md'))
   .sort()
-const docNames = corpusFiles.map(file => file.replace(/\.md$/, ''))
+const docNames = corpusFiles.map(file => file.replace(/\.CN\.md$/, ''))
 const docByName = new Map(exampleDocs.map(doc => [doc.component, doc]))
 
 /** `### 受控值 {#controlled}`：锚点存在即代表这条示例被落成了组件文件。 */
@@ -82,7 +82,7 @@ describe('示例显示与 markdown 围栏同源', () => {
   it('每个示例的高亮 HTML 可见文本逐字等于围栏原文', () => {
     let checked = 0
     for (const name of corpusFiles) {
-      const component = name.replace(/\.md$/, '')
+      const component = name.slice(0, -'.CN.md'.length)
       const doc = docByName.get(component)
       if (!doc) throw new Error(`${name}：生成数据里没有这个 component`)
       const markdown = readFileSync(path.join(docsDir, name), 'utf8')
@@ -112,7 +112,7 @@ describe('带锚点的示例落成可编译文件', () => {
   it('落盘文件与围栏逐字相同（只差行尾换行）', () => {
     let demoCount = 0
     for (const name of corpusFiles) {
-      const component = name.replace(/\.md$/, '')
+      const component = name.slice(0, -'.CN.md'.length)
       const markdown = readFileSync(path.join(docsDir, name), 'utf8')
       const doc = docByName.get(component)
       if (!doc) throw new Error(`${name}：生成数据里没有这个 component`)

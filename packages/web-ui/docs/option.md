@@ -3,20 +3,20 @@ component: option
 tag: web-ui-option
 ---
 
-`<web-ui-select>` 与 `<web-ui-autocomplete>` 的 option 载体：`value` 是选中时提交的值，`label` 是显示文本（缺省时取自身的文本内容），`prefix` / `suffix` 插槽放两端的 icon。
+The option carrier for `<web-ui-select>` and `<web-ui-autocomplete>`: `value` is the value submitted when selected, `label` is the displayed text (defaulting to its own text content), and the `prefix` / `suffix` slots hold icons at either end.
 
-它不派发面向使用方的事件——挂载、更新与卸载时发出的注册握手只由父级容器消费；选中态由容器回写 `selected`。
+It dispatches no events aimed at consumers—the registration handshake emitted on mount, update, and unmount is consumed only by the parent container; the selected state is written back by the container through `selected`.
 
-## 示例
+## Samples
 
-### 基础 option {#basic}
+### Basic option {#basic}
 
-`label` 决定容器里显示什么，`value` 是容器派发出去的值。
+`label` decides what is displayed inside the container, and `value` is the value the container dispatches.
 
 ```tsx
 export default function Demo() {
   return (
-    <web-ui-select placeholder="请选择">
+    <web-ui-select placeholder="Select an option">
       <web-ui-option value="vue" label="Vue"></web-ui-option>
       <web-ui-option value="react" label="React"></web-ui-option>
       <web-ui-option value="svelte" label="Svelte"></web-ui-option>
@@ -27,7 +27,7 @@ export default function Demo() {
 
 ```vue
 <template>
-  <web-ui-select placeholder="请选择">
+  <web-ui-select placeholder="Select an option">
     <web-ui-option value="vue" label="Vue"></web-ui-option>
     <web-ui-option value="react" label="React"></web-ui-option>
     <web-ui-option value="svelte" label="Svelte"></web-ui-option>
@@ -35,23 +35,23 @@ export default function Demo() {
 </template>
 ```
 
-### 前后缀 icon {#prefix-suffix}
+### Prefix and suffix icons {#prefix-suffix}
 
-不写 `label` 时，`label` 取默认插槽的文本；`prefix` 与 `suffix` 不参与这段文本。
+When `label` is omitted, `label` takes the text of the default slot; `prefix` and `suffix` do not take part in that text.
 
 ```tsx
 import { lucideImage, lucideStar } from '@greypan/web-ui/icons'
 
 export default function Demo() {
   return (
-    <web-ui-select placeholder="请选择">
+    <web-ui-select placeholder="Select an option">
       <web-ui-option value="photo">
         <web-ui-icon slot="prefix" size={14} icon={lucideImage}></web-ui-icon>
-        照片
+        Photos
       </web-ui-option>
       <web-ui-option value="starred">
         <web-ui-icon slot="prefix" size={14} icon={lucideStar}></web-ui-icon>
-        收藏
+        Starred
       </web-ui-option>
     </web-ui-select>
   )
@@ -60,14 +60,14 @@ export default function Demo() {
 
 ```vue
 <template>
-  <web-ui-select placeholder="请选择">
+  <web-ui-select placeholder="Select an option">
     <web-ui-option value="photo">
       <web-ui-icon slot="prefix" :size="14" :icon="lucideImage"></web-ui-icon>
-      照片
+      Photos
     </web-ui-option>
     <web-ui-option value="starred">
       <web-ui-icon slot="prefix" :size="14" :icon="lucideStar"></web-ui-icon>
-      收藏
+      Starred
     </web-ui-option>
   </web-ui-select>
 </template>
@@ -77,16 +77,16 @@ import { lucideImage, lucideStar } from '@greypan/web-ui/icons'
 </script>
 ```
 
-### 禁用项 {#disabled}
+### Disabled items {#disabled}
 
-`disabled` 的项留在列表里，但不可选中，键盘导航也会跳过它。
+A `disabled` item stays in the list but cannot be selected, and keyboard navigation skips it.
 
 ```tsx
 export default function Demo() {
   return (
-    <web-ui-select placeholder="请选择">
+    <web-ui-select placeholder="Select an option">
       <web-ui-option value="vue" label="Vue"></web-ui-option>
-      <web-ui-option value="svelte" label="Svelte（暂不可用）" disabled></web-ui-option>
+      <web-ui-option value="svelte" label="Svelte (unavailable)" disabled></web-ui-option>
     </web-ui-select>
   )
 }
@@ -94,9 +94,9 @@ export default function Demo() {
 
 ```vue
 <template>
-  <web-ui-select placeholder="请选择">
+  <web-ui-select placeholder="Select an option">
     <web-ui-option value="vue" label="Vue"></web-ui-option>
-    <web-ui-option value="svelte" label="Svelte（暂不可用）" disabled></web-ui-option>
+    <web-ui-option value="svelte" label="Svelte (unavailable)" disabled></web-ui-option>
   </web-ui-select>
 </template>
 ```
@@ -105,27 +105,27 @@ export default function Demo() {
 
 ### Props
 
-| 名称       | 说明                                                 | 类型      | 默认值  |
-| ---------- | ---------------------------------------------------- | --------- | ------- |
-| `value`    | 选中时提交给容器的值。                               | `string`  | `''`    |
-| `label`    | 显示文本；缺省时取默认插槽的文本内容。               | `string`  | `''`    |
-| `disabled` | 禁用项：留在列表里但不可选中，键盘导航跳过它。       | `boolean` | `false` |
-| `selected` | 选中态，由容器回写；写 `selected` 属性不会通知容器。 | `boolean` | `false` |
+| Name       | Description                                                                                                    | Type      | Default |
+| ---------- | -------------------------------------------------------------------------------------------------------------- | --------- | ------- |
+| `value`    | Value submitted to the container when selected.                                                                | `string`  | `''`    |
+| `label`    | Displayed text; defaults to the default slot's text content.                                                   | `string`  | `''`    |
+| `disabled` | Disabled item: stays in the list but cannot be selected; keyboard navigation skips it.                         | `boolean` | `false` |
+| `selected` | Selected state, written back by the container; setting the `selected` attribute does not notify the container. | `boolean` | `false` |
 
 ### Slots
 
-| 名称      | 说明                                            |
-| --------- | ----------------------------------------------- |
-| `prefix`  | 文本左侧的 icon 或标识。                        |
-| `default` | option 文本；`label` 为空时这段文本就是 label。 |
-| `suffix`  | 文本右侧的 icon 或标识。                        |
+| Name      | Description                                                |
+| --------- | ---------------------------------------------------------- |
+| `prefix`  | Icon or marker to the left of the text.                    |
+| `default` | Option text; when `label` is empty this text is the label. |
+| `suffix`  | Icon or marker to the right of the text.                   |
 
-### 行为说明
+### Behavior
 
-非表单关联组件（父级 select 统一提交）。
+Not a form-associated component (the parent select submits uniformly).
 
 ### CSS Custom Properties
 
-| 名称                         | 说明                        | 默认值  |
-| ---------------------------- | --------------------------- | ------- |
-| `--wui-option-check-display` | 选中勾选 icon 的 display 值 | `block` |
+| Name                         | Description                              | Default |
+| ---------------------------- | ---------------------------------------- | ------- |
+| `--wui-option-check-display` | Display value of the selected check icon | `block` |

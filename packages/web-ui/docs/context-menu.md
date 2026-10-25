@@ -3,19 +3,19 @@ component: context-menu
 tag: web-ui-context-menu
 ---
 
-右键上下文 menu：第一个子元素是触发区域，其余子元素是 menu item（`<web-ui-dropdown-item>` 等）。打开期间 menu 是模态的，点空白只会关掉 menu。
+Right-click context menu: the first child element is the trigger area and the remaining child elements are menu items (`<web-ui-dropdown-item>` and the like). While open the menu is modal, and clicking blank space only closes the menu.
 
-## 示例
+## Samples
 
-### 基础 {#basic}
+### Basic {#basic}
 
-default slot 的第一个元素是触发区域，其余子元素是 menu item：在触发区内右键，menu 从光标位置展开。
+The first element in the default slot is the trigger area and the remaining children are menu items: right-click inside the trigger area and the menu opens from the cursor position.
 
-`prefix` / `suffix` 插槽放 icon 与快捷键提示，`disabled` 的项留在 menu 里但选不中。
+The `prefix` / `suffix` slots hold icons and shortcut hints, and a `disabled` item stays in the menu but cannot be selected.
 
-`open-change` 报告开合，`detail.open` 是当时状态；点空白、按 Escape 或激活某一项都会关掉 menu 并再报一次。
+`open-change` reports opening and closing, with `detail.open` the state at the time; clicking blank space, pressing Escape, or activating an item all close the menu and report once more.
 
-下面那行读数是事件计数与最后一次 `detail.open`。
+The readout line below counts the events and shows the last `detail.open`.
 
 ```tsx
 import { lucideClipboardPaste, lucideCopy, lucideTrash2 } from '@greypan/web-ui/icons'
@@ -35,30 +35,30 @@ export default function Demo() {
         }}
       >
         <div className="flex h-32 w-full items-center justify-center rounded-xl border border-dashed border-(--wui-color-border) bg-(--wui-color-surface-control) text-sm text-(--wui-color-text)">
-          在此区域右键点击
+          Right-click in this area
         </div>
         <web-ui-dropdown-item>
-          <web-ui-icon slot="prefix" size={14} icon={lucideCopy}></web-ui-icon>复制
+          <web-ui-icon slot="prefix" size={14} icon={lucideCopy}></web-ui-icon>Copy
           <span slot="suffix" className="opacity-40">
             ⌘C
           </span>
         </web-ui-dropdown-item>
         <web-ui-dropdown-item>
-          <web-ui-icon slot="prefix" size={14} icon={lucideClipboardPaste}></web-ui-icon>粘贴
+          <web-ui-icon slot="prefix" size={14} icon={lucideClipboardPaste}></web-ui-icon>Paste
           <span slot="suffix" className="opacity-40">
             ⌘V
           </span>
         </web-ui-dropdown-item>
         <web-ui-dropdown-divider></web-ui-dropdown-divider>
         <web-ui-dropdown-item disabled>
-          <web-ui-icon slot="prefix" size={14} icon={lucideTrash2}></web-ui-icon>删除
+          <web-ui-icon slot="prefix" size={14} icon={lucideTrash2}></web-ui-icon>Delete
           <span slot="suffix" className="opacity-40">
             ⌫
           </span>
         </web-ui-dropdown-item>
       </web-ui-context-menu>
       <output className="text-sm text-(--wui-color-text-secondary)">
-        open-change：{count} 次 · 最后一次 detail.open = {last}
+        open-change: {count} times · last detail.open = {last}
       </output>
     </div>
   )
@@ -72,24 +72,24 @@ export default function Demo() {
       <div
         class="flex h-32 w-full items-center justify-center rounded-xl border border-dashed border-(--wui-color-border) bg-(--wui-color-surface-control) text-sm text-(--wui-color-text)"
       >
-        在此区域右键点击
+        Right-click in this area
       </div>
       <web-ui-dropdown-item>
-        <web-ui-icon slot="prefix" :size="14" :icon="lucideCopy"></web-ui-icon>复制
+        <web-ui-icon slot="prefix" :size="14" :icon="lucideCopy"></web-ui-icon>Copy
         <span slot="suffix" class="opacity-40">⌘C</span>
       </web-ui-dropdown-item>
       <web-ui-dropdown-item>
-        <web-ui-icon slot="prefix" :size="14" :icon="lucideClipboardPaste"></web-ui-icon>粘贴
+        <web-ui-icon slot="prefix" :size="14" :icon="lucideClipboardPaste"></web-ui-icon>Paste
         <span slot="suffix" class="opacity-40">⌘V</span>
       </web-ui-dropdown-item>
       <web-ui-dropdown-divider></web-ui-dropdown-divider>
       <web-ui-dropdown-item disabled>
-        <web-ui-icon slot="prefix" :size="14" :icon="lucideTrash2"></web-ui-icon>删除
+        <web-ui-icon slot="prefix" :size="14" :icon="lucideTrash2"></web-ui-icon>Delete
         <span slot="suffix" class="opacity-40">⌫</span>
       </web-ui-dropdown-item>
     </web-ui-context-menu>
     <output class="text-sm text-(--wui-color-text-secondary)">
-      open-change：{{ count }} 次 · 最后一次 detail.open = {{ last }}
+      open-change: {{ count }} times · last detail.open = {{ last }}
     </output>
   </div>
 </template>
@@ -109,13 +109,13 @@ function onOpenChange(event: WebUiEvent<WebUiContextMenu, 'open-change'>) {
 </script>
 ```
 
-### 触屏长按 {#long-press}
+### Touch long press {#long-press}
 
-`long-press` 是触屏 opt-in：按住 `long-press-delay`（这里 600 ms）后打开 menu，从按点向下展开；按住期间位移超过 10px 视为滚动并取消。
+`long-press` is a touch opt-in: holding for `long-press-delay` (600 ms here) opens the menu, expanding downward from the press point; moving more than 10px during the hold is treated as scrolling and cancels it.
 
-它只响应 `pointerType === 'touch'`，鼠标右键仍走原生 `contextmenu`、不受 `long-press` 影响。
+It only responds to `pointerType === 'touch'`; a mouse right-click still goes through the native `contextmenu` and is unaffected by `long-press`.
 
-长按打开后浏览器为同一次触摸补发的 `contextmenu` 与 `click` 会被吸收，既不会重复打开，也不会把刚打开的 menu 立刻关掉。
+After a long-press open, the `contextmenu` and `click` that the browser re-dispatches for the same touch are absorbed, so it neither opens twice nor closes the menu that just opened.
 
 ```tsx
 import { useState } from 'react'
@@ -136,13 +136,13 @@ export default function Demo() {
         }}
       >
         <div className="flex h-32 w-full items-center justify-center rounded-xl border border-dashed border-(--wui-color-border) bg-(--wui-color-surface-control) text-sm text-(--wui-color-text)">
-          在此区域按住 600 ms（触屏）
+          Press and hold for 600 ms in this area (touch)
         </div>
-        <web-ui-dropdown-item>重命名</web-ui-dropdown-item>
-        <web-ui-dropdown-item>移动</web-ui-dropdown-item>
+        <web-ui-dropdown-item>Rename</web-ui-dropdown-item>
+        <web-ui-dropdown-item>Move</web-ui-dropdown-item>
       </web-ui-context-menu>
       <output className="text-sm text-(--wui-color-text-secondary)">
-        open-change：{count} 次 · 最后一次 detail.open = {last}
+        open-change: {count} times · last detail.open = {last}
       </output>
     </div>
   )
@@ -156,13 +156,13 @@ export default function Demo() {
       <div
         class="flex h-32 w-full items-center justify-center rounded-xl border border-dashed border-(--wui-color-border) bg-(--wui-color-surface-control) text-sm text-(--wui-color-text)"
       >
-        在此区域按住 600 ms（触屏）
+        Press and hold for 600 ms in this area (touch)
       </div>
-      <web-ui-dropdown-item>重命名</web-ui-dropdown-item>
-      <web-ui-dropdown-item>移动</web-ui-dropdown-item>
+      <web-ui-dropdown-item>Rename</web-ui-dropdown-item>
+      <web-ui-dropdown-item>Move</web-ui-dropdown-item>
     </web-ui-context-menu>
     <output class="text-sm text-(--wui-color-text-secondary)">
-      open-change：{{ count }} 次 · 最后一次 detail.open = {{ last }}
+      open-change: {{ count }} times · last detail.open = {{ last }}
     </output>
   </div>
 </template>
@@ -181,11 +181,11 @@ function onOpenChange(event: WebUiEvent<WebUiContextMenu, 'open-change'>) {
 </script>
 ```
 
-### 禁用 {#disabled}
+### Disabled {#disabled}
 
-`disabled` 只抑制 menu：右键不打开，触发区本身不置灰、颜色也不变——组件不渲染 menu 面，没有可置灰的对象，禁用 context menu 也不等于禁用触发区。
+`disabled` only suppresses the menu: a right-click does not open it, and the trigger area itself is neither greyed out nor recolored—the component renders no menu surface at all, so there is nothing to grey out, and disabling a context menu is not the same as disabling the trigger area.
 
-下面那个 button 切换 `disabled`，区域文案跟着状态走；读数记录 `open-change`，禁用期间右键不计数，重新启用后照常打开。
+The button below toggles `disabled`, and the area text follows the state; the readout records `open-change`, so right-clicks do not count while disabled, and opening works as usual once it is re-enabled.
 
 ```tsx
 import { useState } from 'react'
@@ -206,17 +206,17 @@ export default function Demo() {
         }}
       >
         <div className="flex h-32 w-full items-center justify-center rounded-xl border border-dashed border-(--wui-color-border) bg-(--wui-color-surface-control) text-sm text-(--wui-color-text)">
-          {disabled ? 'menu 已禁用：右键不打开' : '在此区域右键点击'}
+          {disabled ? 'The menu is disabled: right-click does not open it' : 'Right-click in this area'}
         </div>
-        <web-ui-dropdown-item>编辑</web-ui-dropdown-item>
-        <web-ui-dropdown-item>复制</web-ui-dropdown-item>
+        <web-ui-dropdown-item>Edit</web-ui-dropdown-item>
+        <web-ui-dropdown-item>Copy</web-ui-dropdown-item>
       </web-ui-context-menu>
       <div className="flex flex-wrap items-center gap-3">
         <web-ui-button variant="secondary" onClick={() => setDisabled(value => !value)}>
-          {disabled ? '启用 menu' : '禁用 menu'}
+          {disabled ? 'Enable menu' : 'Disable menu'}
         </web-ui-button>
         <output className="text-sm text-(--wui-color-text-secondary)">
-          disabled = {String(disabled)} · open-change：{count} 次 · 最后一次 detail.open = {last}
+          disabled = {String(disabled)} · open-change: {count} times · last detail.open = {last}
         </output>
       </div>
     </div>
@@ -231,17 +231,17 @@ export default function Demo() {
       <div
         class="flex h-32 w-full items-center justify-center rounded-xl border border-dashed border-(--wui-color-border) bg-(--wui-color-surface-control) text-sm text-(--wui-color-text)"
       >
-        {{ disabled ? 'menu 已禁用：右键不打开' : '在此区域右键点击' }}
+        {{ disabled ? 'The menu is disabled: right-click does not open it' : 'Right-click in this area' }}
       </div>
-      <web-ui-dropdown-item>编辑</web-ui-dropdown-item>
-      <web-ui-dropdown-item>复制</web-ui-dropdown-item>
+      <web-ui-dropdown-item>Edit</web-ui-dropdown-item>
+      <web-ui-dropdown-item>Copy</web-ui-dropdown-item>
     </web-ui-context-menu>
     <div class="flex flex-wrap items-center gap-3">
       <web-ui-button variant="secondary" @click="disabled = !disabled">
-        {{ disabled ? '启用 menu' : '禁用 menu' }}
+        {{ disabled ? 'Enable menu' : 'Disable menu' }}
       </web-ui-button>
       <output class="text-sm text-(--wui-color-text-secondary)">
-        disabled = {{ disabled }} · open-change：{{ count }} 次 · 最后一次 detail.open = {{ last }}
+        disabled = {{ disabled }} · open-change: {{ count }} times · last detail.open = {{ last }}
       </output>
     </div>
   </div>
@@ -266,70 +266,70 @@ function onOpenChange(event: WebUiEvent<WebUiContextMenu, 'open-change'>) {
 
 ### Props
 
-| 名称               | 说明                                                    | 类型      | 默认值  |
-| ------------------ | ------------------------------------------------------- | --------- | ------- |
-| `disabled`         | 右键与 `openAt()` 都不打开 menu，不做视觉置灰。         | `boolean` | `false` |
-| `no-scroll-lock`   | 打开时允许背景滚动。                                    | `boolean` | `false` |
-| `long-press`       | 触屏长按打开 menu（opt-in；鼠标始终走 `contextmenu`）。 | `boolean` | `false` |
-| `long-press-delay` | 长按触发前需按住的时长（ms）。                          | `number`  | `500`   |
+| Name               | Description                                                                                 | Type      | Default |
+| ------------------ | ------------------------------------------------------------------------------------------- | --------- | ------- |
+| `disabled`         | Neither right-click nor `openAt()` opens the menu; no visual greying out.                   | `boolean` | `false` |
+| `no-scroll-lock`   | Allows the background to scroll while open.                                                 | `boolean` | `false` |
+| `long-press`       | Opens the menu on a touch long press (opt-in; the mouse always goes through `contextmenu`). | `boolean` | `false` |
+| `long-press-delay` | How long the press must be held before the long press triggers (ms).                        | `number`  | `500`   |
 
 ### Events
 
-| 名称          | 说明                                  |
-| ------------- | ------------------------------------- |
-| `open-change` | menu 开合，`detail.open` 为当前状态。 |
+| Name          | Description                                                   |
+| ------------- | ------------------------------------------------------------- |
+| `open-change` | The menu opens or closes; `detail.open` is the current state. |
 
 ### Slots
 
-| 名称      | 说明                                         |
-| --------- | -------------------------------------------- |
-| `default` | 第一个元素是触发区域，其余元素是 menu item。 |
+| Name      | Description                                                                      |
+| --------- | -------------------------------------------------------------------------------- |
+| `default` | The first element is the trigger area and the remaining elements are menu items. |
 
 ### Methods
 
-| 名称           | 说明                                                              |
-| -------------- | ----------------------------------------------------------------- |
-| `openAt(x, y)` | 在视口坐标 `(x, y)` 处打开 menu；命令式打开不派发 `open-change`。 |
-| `close()`      | 关闭 menu；命令式关闭不派发 `open-change`。                       |
+| Name           | Description                                                                                      |
+| -------------- | ------------------------------------------------------------------------------------------------ |
+| `openAt(x, y)` | Opens the menu at viewport coordinates `(x, y)`; an imperative open dispatches no `open-change`. |
+| `close()`      | Closes the menu; an imperative close dispatches no `open-change`.                                |
 
 ### CSS Custom Properties
 
-| 名称                                  | 说明                           | 默认值                             |
-| ------------------------------------- | ------------------------------ | ---------------------------------- |
-| `--wui-context-menu-safe-area-bottom` | 触屏 menu 需要让开的底部 inset | `env(safe-area-inset-bottom, 0px)` |
+| Name                                  | Description                                    | Default                            |
+| ------------------------------------- | ---------------------------------------------- | ---------------------------------- |
+| `--wui-context-menu-safe-area-bottom` | Bottom inset that a touch menu must leave free | `env(safe-area-inset-bottom, 0px)` |
 
-### 行为说明
+### Behavior
 
-通过 `contextmenu` 事件打开。menu item：`web-ui-dropdown-item`、`web-ui-dropdown-divider`、`web-ui-dropdown-header`。支持键盘导航和 submenu hover。
+Opens through the `contextmenu` event. Menu items: `web-ui-dropdown-item`, `web-ui-dropdown-divider`, `web-ui-dropdown-header`. Supports keyboard navigation and submenu hover.
 
-menu 打开期间是模态的：它渲染进浏览器 top layer 里一个透明的 `<dialog>`，下层页面拿不到任何命中测试。因此「点外面」只会关掉 menu，不会顺带把下面那一行、那个 checkbox、那个链接一起激活。
+While open the menu is modal: it renders into a transparent `<dialog>` in the browser's top layer, and the page underneath receives no hit testing. So "clicking outside" only closes the menu, and does not also activate the row, checkbox, or link below it.
 
-scrim 刻意保持完全透明——它的职责是吃掉这次命中，不是给页面加一层 scrim。
+The scrim is deliberately kept fully transparent—its job is to eat this hit, not to add a scrim layer to the page.
 
-另有一处需要知道的代价：menu item 激活后约 160ms 的退场过渡里，scrim 已经提前出了 top layer，下层页面在这段时间重新可点，menu 的层级也退回普通流。
+There is another cost worth knowing: during the roughly 160ms exit transition after a menu item is activated, the scrim has already left the top layer, so the page underneath becomes clickable again during that window, and the menu's stacking also falls back to normal flow.
 
-`long-press` 是 opt-in 且只针对触屏：指针按住 `long-press-delay`（默认 `500` ms，与平台原生长按一致）后打开 menu，走与右键完全相同的路径。
+`long-press` is opt-in and touch-only: after the pointer holds for `long-press-delay` (`500` ms by default, matching the platform's native long press) the menu opens, taking exactly the same path as a right-click.
 
-它只响应 `pointerType === 'touch'`；按住期间位移超过 10px 即取消，因此滚动不会误开 menu。
+It only responds to `pointerType === 'touch'`; moving more than 10px during the hold cancels it, so scrolling does not open the menu by mistake.
 
-由于浏览器会把同一次按住也识别为原生手势，长按打开后引擎补发的 `contextmenu` 与 `click` 会被吸收，既不会重复打开，也不会把刚打开的 menu 立刻 light-dismiss 掉。
+Because the browser also recognizes the same hold as a native gesture, after a long-press open the `contextmenu` and `click` that the engine re-dispatches are absorbed, so it neither opens twice nor immediately light-dismisses the menu that just opened.
 
-`long-press` 打开的 menu 从按点**向下**展开：上缘对齐按点 `y`、水平居中于按点 `x`，与 iOS / Android 原生长按 menu 的形态一致。
+A menu opened by `long-press` expands **downward** from the press point: its top edge aligns with the press point's `y` and it is horizontally centered on the press point's `x`, matching the native long-press menus of iOS / Android.
 
-下方空间不够时 panel 翻转到按点上方而不是跑出屏幕，两轴都会被夹回视口内，并让开 `--wui-context-menu-safe-area-bottom`，避免最下面一项落进 home indicator。
+When there is not enough space below, the panel flips above the press point instead of running off screen; both axes are clamped back into the viewport, and `--wui-context-menu-safe-area-bottom` is kept free so the last item does not land in the home indicator.
 
-分流依据是**输入方式**而非视口宽度：窄窗口里的鼠标右键仍然贴着光标左上角展开。两者只有水平对齐量不同 —— 定位走的是同一趟 `computePosition`，因此不会各自漂移。
+The split is based on **input method** rather than viewport width: a mouse right-click in a narrow window still expands from the cursor's top-left corner. The two differ only in the amount of horizontal alignment—positioning goes through the same `computePosition` call, so they cannot drift apart.
 
-`disabled` 只抑制 menu 行为：右键与 `openAt()` 都不打开 menu。
+`disabled` only suppresses menu behavior: neither right-click nor `openAt()` opens the menu.
 
-它不会给 default slot 里的内容置灰或改色——组件自身根本不渲染 menu 面，没有可置灰的对象；禁用 context menu 也不等于禁用触发区。
+It does not grey out or recolor the content in the default slot—the component itself renders no menu surface at all, so there is nothing to grey out; disabling a context menu is not the same as disabling the trigger area.
 
-需要让禁用态在视觉上可读时，请在自己的内容上表达。
+When the disabled state needs to be visually readable, express it on your own content.
 
-menu 打开期间，Consumer可以安全地使用条件渲染（如 Vue `v-if`）切换、移动或删除 menu item，无需重新插入到宿主元素；portal 内的变更会自动 reconcile，关闭时框架锚点随元素迁回宿主，保证后续框架更新正常。
+While the menu is open, the consumer can safely use conditional rendering (such as Vue `v-if`) to switch, move, or remove menu items without re-inserting them into the host element; changes inside the portal are reconciled automatically, and on close the framework anchor migrates back to the host with the element, so subsequent framework updates keep working.
 
-关闭时，焦点会归还给 menu 打开前持焦的元素。这条是浏览器模态 dialog 自带的行为，而不是组件自己实现的——也正因如此，它只在 menu 还在 top layer 时才生效。
+On close, focus returns to the element that held focus before the menu opened. This is behavior built into the browser's modal dialog rather than implemented by the component—which is also why it only applies while the menu is still in the top layer.
 
-menu item 激活是唯一会提前交还焦点的路径：在点击那一刻就还，退场过渡之后不再过问，于是 menu item 回调若把焦点移到别处（例如就地进入编辑态），焦点就留在那里了。
+Menu item activation is the only path that returns focus early: it returns at the moment of the click and does not interfere after the exit transition, so if a menu item callback moves focus elsewhere (for example, entering inline edit mode), focus stays there.
 
-关闭过程不会再把焦点从新的焦点目标上拽走，因此按 blur 提交的那类组件也不会因此提交一次没改过的编辑。
+The closing process no longer pulls focus away from the new focus target, so components that commit on blur will not submit an edit that was never changed.

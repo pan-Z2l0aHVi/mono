@@ -13,6 +13,20 @@ export interface ApiTables {
   columns: Readonly<Record<string, readonly string[]>>
 }
 
+/**
+ * 一个语种的语料怎么认、API 表头长什么样。
+ *
+ * 表头是正文的一部分（`名称` / `Name` 这类列名要跟着翻译走），所以 `apiTables` 跟着语种走，
+ * 不放在 `MdToCompConfig` 顶层。小节标题不在这里登记——它按正文原样成为表头比对的依据。
+ */
+export interface DocsLocale {
+  /** 语种标签（`zh-CN` / `en`），也是 output 声明自己取哪份语料的键。 */
+  locale: string
+  /** 文件名后缀（`.CN.md` / `.md`）。同一个文件命中多个后缀时取最长的那个。 */
+  suffix: string
+  apiTables: ApiTables
+}
+
 /** 一份 markdown 语料怎么解析：文档骨架以外的约定全在这里。 */
 export interface MdToCompConfig {
   /** markdown 源目录（绝对路径）。 */
@@ -23,7 +37,8 @@ export interface MdToCompConfig {
   anchor?: AnchorFn
   /** 一条示例必须齐这几份围栏，顺序即配对顺序；落盘扩展名由 `FLAVOR_LANG` 给出。 */
   flavors: readonly FenceFlavor[]
-  apiTables: ApiTables
+  /** 目录里有哪些语种、各用哪个后缀认领文件。 */
+  locales: readonly DocsLocale[]
   /**
    * 深色外观的祖先选择器。shiki 双主题把颜色写成 CSS 变量，浅色取 `--shiki-light`、
    * 深色取 `--shiki-dark`，由产物里的 CSS 决定当前取哪一边。外观源是宿主的（自定义元素属性、
@@ -37,16 +52,23 @@ export interface MdToCompConfig {
   requireDemo?: boolean
 }
 
-/** 一处产物落点。同一个 input 可以出多份，每份服务一个框架。 */
+/** 一处产物落点。同一个 input 可以出多份，每份服务一个框架与一个语种。 */
 export interface OutputTarget {
   /** `examples.ts` / `examples.css` 与 `dir` 子目录的父目录（绝对路径）。 */
   output: string
   /** 这份产物取哪个 flavor 的围栏落成组件文件、用什么扩展名。 */
   flavor: FenceFlavor
+  /** 这份产物取哪一语种的文档，必须出现在 `locales` 里。 */
+  locale: string
 }
 
 export interface GenerateOptions extends MdToCompConfig {
   outputs: OutputTarget[]
+  /**
+   * `examples.css` 的落点（绝对路径）。样式与语种无关，同一次生成的各份产物本该共用一份；
+   * 省略时退回「每个 output 各写一份」，两者字节相同。
+   */
+  styles?: string
 }
 
 /** 落盘前的内容；`path` 是绝对路径。 */

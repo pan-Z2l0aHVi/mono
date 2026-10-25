@@ -1,0 +1,32 @@
+import { toast } from '@greypan/web-ui'
+import { useEffect, useState } from 'react'
+
+export default function Demo() {
+  const [id, setId] = useState('—')
+
+  useEffect(() => () => toast.clear(), [])
+
+  return (
+    <div className="flex flex-col items-start gap-3">
+      <web-ui-button
+        onClick={() => {
+          setId(
+            toast({
+              heading: 'Saved',
+              message: 'Changes written to the cloud',
+              type: 'info',
+              position: 'bottom-right',
+              duration: 4000,
+              closable: true
+            })
+          )
+        }}
+      >
+        Create a toast with full options
+      </web-ui-button>
+      <output className="text-sm text-(--wui-color-text-secondary)">
+        id: {id} · position: bottom-right · closes automatically after 4 seconds
+      </output>
+    </div>
+  )
+}
