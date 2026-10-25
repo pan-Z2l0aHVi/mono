@@ -19,6 +19,6 @@ export type {
   SamplePayload
 } from './render'
 export { assertSelfContained, demoFileContent, demoFileName, emitsDemoFile } from './sample'
-export type { ApiTables, GeneratedFile, GenerateOptions, MdToCompConfig, OutputTarget } from './types'
-export { createMdToCompVite } from './vite'
-export type { MdToCompViteOptions } from './vite'
+export type { ApiTables, DocsLocale, GeneratedFile, GenerateOptions, MdToCompConfig, OutputTarget } from './types'
+export { createMdToCompVite, resolveGenerateOptions } from './vite'
+export type { MdToCompViteOptions, MdToCompViteOutput } from './vite'

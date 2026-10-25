@@ -3,13 +3,13 @@ component: checkbox-group
 tag: web-ui-checkbox-group
 ---
 
-一组 `<web-ui-checkbox>` 的容器：把成员的选中状态收敛成 `string[]`，变化时统一派发 `input` / `change`，并负责组级禁用与必填校验。属性形式的值是逗号分隔的字符串（`value="apple,cherry"`），JS 侧读到的始终是数组。
+A container for a group of `<web-ui-checkbox>`: it collapses the members' selected state into a `string[]`, dispatches `input` / `change` uniformly when it changes, and handles group-level disabling and required validation. As an attribute the value is a comma-separated string (`value="apple,cherry"`), while the JS side always reads an array.
 
-## 示例
+## Samples
 
-### 多选组 {#basic}
+### Checkbox group {#basic}
 
-组的 `value` 是会选中的那些项，成员按自己是否在数组里决定选中。
+The group's `value` is the set of items that are selected; each member decides its own selected state by whether it is in the array.
 
 ```tsx
 import { useState } from 'react'
@@ -48,16 +48,16 @@ function onInput(event: WebUiEvent<WebUiCheckboxGroup, 'input'>) {
 </script>
 ```
 
-### 排列方向 {#direction}
+### Direction {#direction}
 
-`direction` 决定成员横排还是竖排，默认 `vertical`；非法值也回退到 `vertical`。
+`direction` decides whether members are laid out horizontally or vertically, default `vertical`; invalid values also fall back to `vertical`.
 
 ```tsx
 export default function Demo() {
   return (
     <div className="flex flex-wrap gap-8">
       <div className="flex flex-col gap-2">
-        <span className="text-xs text-(--wui-color-text-secondary)">direction: vertical（默认）</span>
+        <span className="text-xs text-(--wui-color-text-secondary)">direction: vertical (default)</span>
         <web-ui-checkbox-group value={['apple']}>
           <web-ui-checkbox value="apple">Apple</web-ui-checkbox>
           <web-ui-checkbox value="banana">Banana</web-ui-checkbox>
@@ -80,7 +80,7 @@ export default function Demo() {
 <template>
   <div class="flex flex-wrap gap-8">
     <div class="flex flex-col gap-2">
-      <span class="text-xs text-(--wui-color-text-secondary)">direction: vertical（默认）</span>
+      <span class="text-xs text-(--wui-color-text-secondary)">direction: vertical (default)</span>
       <web-ui-checkbox-group :value="['apple']">
         <web-ui-checkbox value="apple">Apple</web-ui-checkbox>
         <web-ui-checkbox value="banana">Banana</web-ui-checkbox>
@@ -98,9 +98,9 @@ export default function Demo() {
 </template>
 ```
 
-### 成员间距 {#gap}
+### Member gap {#gap}
 
-成员之间的间距走 `--wui-checkbox-group-gap`，默认经 `--wui-space-2` 解析成 8px；覆盖它只换间距，不动排列方向。下面两条是同一份成员，只有这个变量不同。
+The gap between members comes from `--wui-checkbox-group-gap`, which by default resolves through `--wui-space-2` to 8px; overriding it changes only the gap, not the layout direction. The two groups below share the same members and differ only in this variable.
 
 ```tsx
 export default function Demo() {
@@ -140,16 +140,16 @@ export default function Demo() {
 </template>
 ```
 
-### 组级禁用与必填 {#disabled-required}
+### Group-level disabled and required {#disabled-required}
 
-`disabled` 关掉整组的交互，这个禁用态会下发给成员；`required` 让原生表单校验在组为空时拦截提交。
+`disabled` turns off interaction for the whole group, and that disabled state is pushed down to the members; `required` makes native form validation block submission while the group is empty.
 
 ```tsx
 export default function Demo() {
   return (
     <web-ui-checkbox-group name="toppings" value={['cheese']} required disabled>
-      <web-ui-checkbox value="cheese">芝士</web-ui-checkbox>
-      <web-ui-checkbox value="bacon">培根</web-ui-checkbox>
+      <web-ui-checkbox value="cheese">Cheese</web-ui-checkbox>
+      <web-ui-checkbox value="bacon">Bacon</web-ui-checkbox>
     </web-ui-checkbox-group>
   )
 }
@@ -158,8 +158,8 @@ export default function Demo() {
 ```vue
 <template>
   <web-ui-checkbox-group name="toppings" :value="['cheese']" required disabled>
-    <web-ui-checkbox value="cheese">芝士</web-ui-checkbox>
-    <web-ui-checkbox value="bacon">培根</web-ui-checkbox>
+    <web-ui-checkbox value="cheese">Cheese</web-ui-checkbox>
+    <web-ui-checkbox value="bacon">Bacon</web-ui-checkbox>
   </web-ui-checkbox-group>
 </template>
 ```
@@ -168,36 +168,36 @@ export default function Demo() {
 
 ### Props
 
-| 名称        | 说明                                     | 类型                         | 默认值       |
-| ----------- | ---------------------------------------- | ---------------------------- | ------------ |
-| `name`      | 表单字段名，每个选中项各占一个同名字段。 | `string`                     | `''`         |
-| `disabled`  | 禁用整组，并把禁用态下发给成员。         | `boolean`                    | `false`      |
-| `required`  | 必填校验：组为空时拦截原生提交。         | `boolean`                    | `false`      |
-| `direction` | 成员排列方向。                           | `'horizontal' \| 'vertical'` | `'vertical'` |
-| `value`     | 当前选中的值集合。                       | `string[]`                   | `[]`         |
+| Name        | Description                                                                 | Type                         | Default      |
+| ----------- | --------------------------------------------------------------------------- | ---------------------------- | ------------ |
+| `name`      | Form field name; each selected item occupies a field of the same name.      | `string`                     | `''`         |
+| `disabled`  | Disables the whole group and pushes the disabled state down to the members. | `boolean`                    | `false`      |
+| `required`  | Required validation: blocks native submission while the group is empty.     | `boolean`                    | `false`      |
+| `direction` | Layout direction of the members.                                            | `'horizontal' \| 'vertical'` | `'vertical'` |
+| `value`     | The currently selected set of values.                                       | `string[]`                   | `[]`         |
 
 ### Events
 
-| 名称     | 说明                                                   |
-| -------- | ------------------------------------------------------ |
-| `input`  | 选中集合变化时触发，`currentTarget.value` 是新的数组。 |
-| `change` | 与 `input` 一起派发，语义上表示一次确认。              |
+| Name     | Description                                                                  |
+| -------- | ---------------------------------------------------------------------------- |
+| `input`  | Fired when the selected set changes; `currentTarget.value` is the new array. |
+| `change` | Dispatched together with `input`, semantically representing a confirmation.  |
 
 ### Slots
 
-| 名称      | 说明                              |
-| --------- | --------------------------------- |
-| `default` | 组内的 `<web-ui-checkbox>` 成员。 |
+| Name      | Description                                       |
+| --------- | ------------------------------------------------- |
+| `default` | The `<web-ui-checkbox>` members inside the group. |
 
-### 行为说明
+### Behavior
 
-同步子 checkbox 的 `checked` 状态。`disabled` 提供继承的有效禁用状态，不改写子项自身的 `disabled` 属性。监听子项 `change` 事件。`direction` 传入非法值时回退为 `vertical`。
+Synchronizes the `checked` state of child checkboxes. `disabled` provides an inherited effective disabled state without rewriting each child's own `disabled` attribute. Listens to child `change` events. An invalid `direction` value falls back to `vertical`.
 
-在 group 元素本身，或同一个 `<web-ui-theme>` 作用域内的祖先元素上设置。
+Set it on the group element itself, or on an ancestor within the same `<web-ui-theme>` scope.
 
-theme 宿主会为自己的子树声明该间距阶，写在 `<web-ui-theme>` 元素之外的覆盖到不了 group。
+The theme host declares that spacing step for its own subtree, so an override written outside the `<web-ui-theme>` element does not reach the group.
 
-它的默认值现在经 `--wui-space-2` 解析，所以在 theme 宿主上覆盖该级会连带改变成员间距；显式设置这个 token 仍然优先于两者。
+Its default now resolves through `--wui-space-2`, so overriding that step on the theme host also changes the member gap; an explicit assignment of this token still takes precedence over both.
 
 ```css
 web-ui-checkbox-group {
@@ -207,6 +207,6 @@ web-ui-checkbox-group {
 
 ### CSS Custom Properties
 
-| 名称                       | 说明                     | 默认值               |
-| -------------------------- | ------------------------ | -------------------- |
-| `--wui-checkbox-group-gap` | 成员 checkbox 之间的间距 | `var(--wui-space-2)` |
+| Name                       | Description                   | Default              |
+| -------------------------- | ----------------------------- | -------------------- |
+| `--wui-checkbox-group-gap` | Gap between member checkboxes | `var(--wui-space-2)` |

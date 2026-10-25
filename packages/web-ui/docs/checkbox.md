@@ -3,13 +3,13 @@ component: checkbox
 tag: web-ui-checkbox
 ---
 
-单个 checkbox，支持 Enter / Space 切换；与原生 `<form>` 集成，选中时把 `value` 提交进 `FormData`。
+A single checkbox that toggles with Enter / Space. It integrates with a native `<form>` and submits `value` into `FormData` when checked.
 
-## 示例
+## Samples
 
-### 基础 {#basic}
+### Basic {#basic}
 
-`checked` 是控件状态，默认插槽是 label 文字；indicator、间距与右侧文案都是触发区，点哪儿都算一次切换。
+`checked` is the control state and the default slot is the label text; the indicator, the gap, and the label on the right are all part of the trigger area, so a click anywhere counts as one toggle.
 
 ```tsx
 import { useState } from 'react'
@@ -26,13 +26,13 @@ export default function Demo() {
   return (
     <div className="flex flex-col items-start gap-3">
       <web-ui-checkbox checked={channels.includes('email')} onChange={() => toggle('email')}>
-        邮件通知
+        Email notifications
       </web-ui-checkbox>
       <web-ui-checkbox checked={channels.includes('sms')} onChange={() => toggle('sms')}>
-        短信通知
+        SMS notifications
       </web-ui-checkbox>
       <output className="text-sm text-(--wui-color-text-secondary)">
-        已选择：{channels.join('、') || '还没有选中项'}
+        Selected: {channels.join(', ') || 'nothing selected yet'}
       </output>
     </div>
   )
@@ -42,10 +42,12 @@ export default function Demo() {
 ```vue
 <template>
   <div class="flex flex-col items-start gap-3">
-    <web-ui-checkbox :checked="channels.includes('email')" @change="toggle('email')">邮件通知</web-ui-checkbox>
-    <web-ui-checkbox :checked="channels.includes('sms')" @change="toggle('sms')">短信通知</web-ui-checkbox>
+    <web-ui-checkbox :checked="channels.includes('email')" @change="toggle('email')">
+      Email notifications
+    </web-ui-checkbox>
+    <web-ui-checkbox :checked="channels.includes('sms')" @change="toggle('sms')">SMS notifications</web-ui-checkbox>
     <output class="text-sm text-(--wui-color-text-secondary)"
-      >已选择：{{ channels.join('、') || '还没有选中项' }}</output
+      >Selected: {{ channels.join(', ') || 'nothing selected yet' }}</output
     >
   </div>
 </template>
@@ -63,18 +65,18 @@ function toggle(channel: string) {
 </script>
 ```
 
-### 禁用 {#disabled}
+### Disabled {#disabled}
 
-`disabled` 关掉交互，按下不动、校验也让路；组级禁用写在 `<web-ui-checkbox-group>` 上，见下面的多选组。
+`disabled` turns interaction off: pressing does nothing and validation is skipped; group-level disabling goes on `<web-ui-checkbox-group>`, see the checkbox group below.
 
 ```tsx
 export default function Demo() {
   return (
     <div className="flex flex-col items-start gap-3">
       <web-ui-checkbox checked disabled>
-        邮件通知（已选中，禁用）
+        Email notifications (checked, disabled)
       </web-ui-checkbox>
-      <web-ui-checkbox disabled>短信通知（禁用）</web-ui-checkbox>
+      <web-ui-checkbox disabled>SMS notifications (disabled)</web-ui-checkbox>
     </div>
   )
 }
@@ -83,15 +85,15 @@ export default function Demo() {
 ```vue
 <template>
   <div class="flex flex-col items-start gap-3">
-    <web-ui-checkbox :checked="true" disabled>邮件通知（已选中，禁用）</web-ui-checkbox>
-    <web-ui-checkbox disabled>短信通知（禁用）</web-ui-checkbox>
+    <web-ui-checkbox :checked="true" disabled>Email notifications (checked, disabled)</web-ui-checkbox>
+    <web-ui-checkbox disabled>SMS notifications (disabled)</web-ui-checkbox>
   </div>
 </template>
 ```
 
-### 表单值 {#form}
+### Form value {#form}
 
-`name` 是字段名、`value` 是选中时提交的值：同一字段名可以挂多项，每个选中项各占一条 `FormData` 条目，未选中的不进表单。`required` 让原生校验在未勾选时拦下提交。
+`name` is the field name and `value` is the value submitted when checked: several checkboxes can share one field name, each checked item contributes its own `FormData` entry, and unchecked ones stay out of the form. `required` lets native validation block submission while the box is unchecked.
 
 ```tsx
 import { useRef, useState } from 'react'
@@ -114,26 +116,26 @@ export default function Demo() {
       }}
     >
       <web-ui-checkbox name="channel" value="email">
-        邮件
+        Email
       </web-ui-checkbox>
       <web-ui-checkbox name="channel" value="sms">
-        短信
+        SMS
       </web-ui-checkbox>
       <web-ui-checkbox name="agreement" value="yes" required>
-        我已阅读并同意服务条款
+        I have read and agree to the terms of service
       </web-ui-checkbox>
       <div className="flex items-center gap-3">
-        <web-ui-button type="submit">提交</web-ui-button>
+        <web-ui-button type="submit">Submit</web-ui-button>
         <web-ui-button
           onClick={() => {
             formRef.current?.reset()
             setSubmitted('')
           }}
         >
-          重置
+          Reset
         </web-ui-button>
         <output className="text-sm text-(--wui-color-text-secondary)">
-          {submitted === '' ? '尚未提交' : submitted}
+          {submitted === '' ? 'Not submitted yet' : submitted}
         </output>
       </div>
     </form>
@@ -144,13 +146,17 @@ export default function Demo() {
 ```vue
 <template>
   <form ref="form" class="flex flex-col items-start gap-3" @submit="onSubmit">
-    <web-ui-checkbox name="channel" value="email">邮件</web-ui-checkbox>
-    <web-ui-checkbox name="channel" value="sms">短信</web-ui-checkbox>
-    <web-ui-checkbox name="agreement" value="yes" required>我已阅读并同意服务条款</web-ui-checkbox>
+    <web-ui-checkbox name="channel" value="email">Email</web-ui-checkbox>
+    <web-ui-checkbox name="channel" value="sms">SMS</web-ui-checkbox>
+    <web-ui-checkbox name="agreement" value="yes" required>
+      I have read and agree to the terms of service
+    </web-ui-checkbox>
     <div class="flex items-center gap-3">
-      <web-ui-button type="submit">提交</web-ui-button>
-      <web-ui-button @click="reset">重置</web-ui-button>
-      <output class="text-sm text-(--wui-color-text-secondary)">{{ submitted === '' ? '尚未提交' : submitted }}</output>
+      <web-ui-button type="submit">Submit</web-ui-button>
+      <web-ui-button @click="reset">Reset</web-ui-button>
+      <output class="text-sm text-(--wui-color-text-secondary)">
+        {{ submitted === '' ? 'Not submitted yet' : submitted }}
+      </output>
     </div>
   </form>
 </template>
@@ -177,67 +183,67 @@ function reset() {
 </script>
 ```
 
-多个独立 checkbox 要收敛成一个 `string[]`、并由组统一派发事件与提交时，用 `<web-ui-checkbox-group>`，见下面的多选组。
+To collapse several independent checkboxes into one `string[]`, with the group dispatching events and submission centrally, use `<web-ui-checkbox-group>`, see the checkbox group below.
 
 ## API
 
 ### Props
 
-| 名称       | 说明                 | 类型      | 默认值  |
-| ---------- | -------------------- | --------- | ------- |
-| `checked`  | 选中状态。           | `boolean` | `false` |
-| `value`    | 选中时提交的表单值。 | `string`  | `''`    |
-| `name`     | 表单字段名。         | `string`  | `''`    |
-| `disabled` | 禁用状态。           | `boolean` | `false` |
-| `required` | 必填校验。           | `boolean` | `false` |
+| Name       | Description                        | Type      | Default |
+| ---------- | ---------------------------------- | --------- | ------- |
+| `checked`  | Checked state.                     | `boolean` | `false` |
+| `value`    | Form value submitted when checked. | `string`  | `''`    |
+| `name`     | Form field name.                   | `string`  | `''`    |
+| `disabled` | Disabled state.                    | `boolean` | `false` |
+| `required` | Required validation.               | `boolean` | `false` |
 
 ### Events
 
-| 名称     | 说明                                              |
-| -------- | ------------------------------------------------- |
-| `input`  | 用户切换选中状态时派发：点击，或按 Enter / 空格。 |
-| `change` | 与 `input` 在同一次用户操作里一起派发。           |
+| Name     | Description                                                               |
+| -------- | ------------------------------------------------------------------------- |
+| `input`  | Fired when the user toggles the checked state: a click, or Enter / Space. |
+| `change` | Dispatched together with `input` in the same user action.                 |
 
 ### Slots
 
-| 名称      | 说明                                                   |
-| --------- | ------------------------------------------------------ |
-| `default` | label 文本；为空时收掉 indicator 与 label 之间的间距。 |
+| Name      | Description                                                                     |
+| --------- | ------------------------------------------------------------------------------- |
+| `default` | Label text; when empty, the gap between the indicator and the label is removed. |
 
-### 行为说明
+### Behavior
 
-Shadow DOM 内的交互 `<span>` 声明 `role="checkbox"`，并同步 `aria-checked`、`aria-disabled` 和 `tabindex`。Enter/Space 键盘切换。
+The interactive `<span>` inside the shadow root declares `role="checkbox"` and keeps `aria-checked`, `aria-disabled`, and `tabindex` in sync. Enter/Space toggles it from the keyboard.
 
-未选中的项不写进 `FormData`；`getFormValue` 在 `value` 为空时退回 `'on'`，与原生 checkbox 一致。
+Unchecked items are not written into `FormData`; `getFormValue` falls back to `'on'` when `value` is empty, matching a native checkbox.
 
-组内成员（`<web-ui-checkbox-group>` 的直接子项）自己派发的 `input` / `change` 不冒泡、不跨 shadow 边界，事件由组在宿主上统一派发一次，所以宿主外面只听到一组事件，不会为每个成员各听一遍。
+The `input` / `change` dispatched by group members (direct children of `<web-ui-checkbox-group>`) do not bubble and do not cross the shadow boundary; the group dispatches the events once on its host, so outside the host there is one set of events rather than one per member.
 
-### 布局
+### Layout
 
-宿主是 inline-flex 盒，高度由内容撑开、不继承页面行高，因此不会在 indicator 上下留出多余缝隙；`--wui-selection-control-size`（`18px`）决定 indicator 宽高，宿主与相邻文字的对齐固定为 `vertical-align: middle`。
+The host is an inline-flex box whose height is set by its content and does not inherit the page line height, so no extra gap appears above or below the indicator; `--wui-selection-control-size` (`18px`) sets the indicator width and height, and alignment with adjacent text is fixed at `vertical-align: middle`.
 
-`<web-ui-radio>` 共用同一套契约。
+`<web-ui-radio>` shares this same contract.
 
-indicator 与 label 之间的 10px 归 label 所有：default slot 没画出东西时（空着，或里面只放了一个视觉隐藏的无障碍名，例如 `.sr-only` 的 span）这段间距一并收起，宿主宽度就等于 indicator。
+The 10px between the indicator and the label belongs to the label: when the default slot draws nothing (it is empty, or holds only a visually hidden accessible name such as an `.sr-only` span), that gap is removed too and the host becomes as wide as the indicator.
 
-空不空按 label 盒子的渲染宽度判定，而不是按 slot 被指派了节点判定——无障碍名正是「有指派、不画盒」的那一种；也不能用 `display: none` 收掉 label，那会把这个名字从无障碍树里拿掉。
+Emptiness is judged by the rendered width of the label box rather than by whether nodes are assigned to the slot—an accessible name is exactly the "assigned, but draws no box" case; nor can the label be removed with `display: none`, since that would take the name out of the accessibility tree.
 
-### 选中动画
+### Check animation
 
-对勾是 `@/icons` 里的描边资产，由嵌套的 `<web-ui-icon>` 渲染在 `<web-ui-svg-draw-lines>` 内，并带 `no-autoplay`，所以挂载时就已勾选的控件显示静态勾。
+The check mark is a stroke asset from `@/icons`, rendered by a nested `<web-ui-icon>` inside `<web-ui-svg-draw-lines>` with `no-autoplay`, so a control that is already checked at mount shows a static check.
 
-勾选时线条从左侧尖端起按恒定笔速画出，时长取 `--wui-duration-trigger`（默认 160ms），在切换当下从已生效的主题解析，和 indicator 底色那条 transition 落在同一拍；取消时沿同一条路径收回到空白，而不是只淡出；主题范围为 `motion="reduced"` 时两者都跳过，两个状态直接切换。
+On check, the line is drawn from the left tip at a constant stroke speed, with a duration taken from `--wui-duration-trigger` (160ms by default) resolved from the effective theme at the moment of the toggle, landing on the same beat as the indicator background transition; on uncheck it retracts along the same path back to empty rather than merely fading out; under a theme scope with `motion="reduced"` both are skipped and the two states switch directly.
 
-描边颜色是 `--wui-color-on-control`，经 `<web-ui-icon>` 的 `--wui-icon-color` 传下去，因为勾选后它背后就是 `--wui-color-accent`。
+The stroke color is `--wui-color-on-control`, passed down through `<web-ui-icon>`'s `--wui-icon-color`, because once checked the background behind it is `--wui-color-accent`.
 
-这个结构带来两条约束：资产必须保持描边（`fill: none` + `stroke: currentColor`），换成实心 icon dash 动画照跑却什么都不画，勾会直接出现；并且它按 `<web-ui-icon>` 自己的默认 18px 渲染，宿主够不到 icon shadow root 里的 `<svg>`，因此不随 `--wui-selection-control-size` 放大。
+This structure brings two constraints: the asset must stay stroked (`fill: none` + `stroke: currentColor`), because a filled icon still runs the dash animation but draws nothing, so the check appears directly; and it renders at the `<web-ui-icon>` default of 18px, since the host cannot reach the `<svg>` inside the icon's shadow root, so it does not grow with `--wui-selection-control-size`.
 
-### 未激活态
+### Inactive state
 
-未选中 indicator 的底色取 `--wui-color-surface-control`（与中性 button 同一档控件底），深色模式下也能和 `--wui-color-page` 分辨开。
+The unchecked indicator takes its background from `--wui-color-surface-control` (the same control surface as the neutral button), which stays distinguishable from `--wui-color-page` in dark mode too.
 
-触发区内任意位置（indicator、间距或右侧 slot label）被 hover 时，该底色再叠 6% 状态层。
+When any part of the trigger area (the indicator, the gap, or the slot label on the right) is hovered, a 6% state layer is overlaid on that background.
 
-hover 只在 `(hover: hover) and (pointer: fine)` 设备上生效；没有按下态，已选中和禁用态保持各自底色。
+Hover applies only on devices matching `(hover: hover) and (pointer: fine)`; there is no pressed state, and the checked and disabled states keep their own backgrounds.
 
-`<web-ui-radio>` 共用同一套状态。
+`<web-ui-radio>` shares this same set of states.

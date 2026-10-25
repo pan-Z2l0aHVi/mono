@@ -34,13 +34,15 @@
     "@vitejs/plugin-basic-ssl": "catalog:",
     "@vitejs/plugin-legacy": "catalog:",
     "@vitejs/plugin-react": "catalog:",
+    "@wuchale/jsx": "catalog:",
     "@tailwindcss/vite": "catalog:",
     "tailwindcss": "catalog:",
     "babel-plugin-react-compiler": "catalog:",
     "@tanstack/router-plugin": "catalog:",
     "@rolldown/plugin-babel": "catalog:",
     "vite": "catalog:",
-    "vite-plus": "catalog:"
+    "vite-plus": "catalog:",
+    "wuchale": "catalog:"
   },
   "browserslist": [
     "Chrome >=111",

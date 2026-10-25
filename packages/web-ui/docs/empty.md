@@ -3,36 +3,36 @@ component: empty
 tag: web-ui-empty
 ---
 
-empty state 占位：`title` 与 `description` 提供文案，`icon` / `action` 插槽补上图形与操作入口，`size` 是唯一缩放旋钮。
+empty state placeholder: `title` and `description` provide the copy, the `icon` / `action` slots add graphics and an action entry point, and `size` is the only scaling knob.
 
-## 示例
+## Samples
 
-### 基础 {#basic}
+### Basic {#basic}
 
-`title` 与 `description` 是两个主要文案位，两个都写就是这套空态最常见的形状。图形区先按 `size` 派生出默认 icon 画出来。
+`title` and `description` are the two main copy slots; writing both is the most common shape of this empty state. The graphic area first draws the default icon derived from `size`.
 
 ```tsx
 export default function Demo() {
-  return <web-ui-empty title="暂无数据" description="创建第一条记录后，这里会显示列表。"></web-ui-empty>
+  return <web-ui-empty title="No data yet" description="The list appears here once a record is created."></web-ui-empty>
 }
 ```
 
 ```vue
 <template>
-  <web-ui-empty title="暂无数据" description="创建第一条记录后，这里会显示列表。"></web-ui-empty>
+  <web-ui-empty title="No data yet" description="The list appears here once a record is created."></web-ui-empty>
 </template>
 ```
 
-### 文案位收起 {#partial}
+### Collapsing copy slots {#partial}
 
-标题、描述、操作区三段各自按「有没有内容」决定占不占位：只给 `title` 就没有描述行，只给 `description` 就没有标题行，三段都空着时只剩图形区。
+Title, description, and action each decide whether to take space based on whether they have content: with only `title` there is no description line, with only `description` there is no title line, and with all three empty only the graphic area remains.
 
 ```tsx
 export default function Demo() {
   return (
     <div className="flex flex-col gap-3">
-      <web-ui-empty title="没有权限"></web-ui-empty>
-      <web-ui-empty description="这一段只有描述，标题位不会占位。"></web-ui-empty>
+      <web-ui-empty title="No permission"></web-ui-empty>
+      <web-ui-empty description="This section only has a description, so no title space is reserved."></web-ui-empty>
       <web-ui-empty></web-ui-empty>
     </div>
   )
@@ -42,23 +42,23 @@ export default function Demo() {
 ```vue
 <template>
   <div class="flex flex-col gap-3">
-    <web-ui-empty title="没有权限"></web-ui-empty>
-    <web-ui-empty description="这一段只有描述，标题位不会占位。"></web-ui-empty>
+    <web-ui-empty title="No permission"></web-ui-empty>
+    <web-ui-empty description="This section only has a description, so no title space is reserved."></web-ui-empty>
     <web-ui-empty></web-ui-empty>
   </div>
 </template>
 ```
 
-### 操作区 {#action}
+### Action area {#action}
 
-`action` 插槽放恢复入口，它没有对应的属性可写，只认插槽内容。一段空态通常只要一个主操作，按钮再多就该换成下面的组合写法。
+The `action` slot holds the recovery entry point; it has no corresponding property and only accepts slot content. An empty state usually needs just one primary action; with more buttons, switch to the composition below.
 
 ```tsx
 export default function Demo() {
   return (
-    <web-ui-empty title="没有搜索结果" description="换个关键词，或者把筛选条件放宽一点。">
+    <web-ui-empty title="No search results" description="Try another keyword, or loosen the filters a little.">
       <web-ui-button slot="action" variant="primary">
-        清空筛选
+        Clear filters
       </web-ui-button>
     </web-ui-empty>
   )
@@ -67,15 +67,15 @@ export default function Demo() {
 
 ```vue
 <template>
-  <web-ui-empty title="没有搜索结果" description="换个关键词，或者把筛选条件放宽一点。">
-    <web-ui-button slot="action" variant="primary">清空筛选</web-ui-button>
+  <web-ui-empty title="No search results" description="Try another keyword, or loosen the filters a little.">
+    <web-ui-button slot="action" variant="primary">Clear filters</web-ui-button>
   </web-ui-empty>
 </template>
 ```
 
-### 插槽内容 {#slots}
+### Slot content {#slots}
 
-四个插槽换掉整组内容：`icon` 换图形，默认插槽换标题，`description` 换描述，`action` 换操作区。插槽内容覆盖同名属性，所以写了插槽就不必再写 `title` / `description`。多个操作套一层自己的容器，操作区只负责它上方的那段间距。
+The four slots replace the whole set of content: `icon` replaces the graphic, the default slot replaces the title, `description` replaces the description, and `action` replaces the action area. Slot content overrides the property of the same name, so once a slot is written there is no need for `title` / `description`. Multiple actions go in a container of their own; the action area only provides the gap above it.
 
 ```tsx
 import { lucideSearch } from '@greypan/web-ui/icons'
@@ -84,11 +84,11 @@ export default function Demo() {
   return (
     <web-ui-empty size={72}>
       <web-ui-icon slot="icon" icon={lucideSearch} size={31}></web-ui-icon>
-      <strong>没有匹配的条目</strong>
-      <span slot="description">试试更短的关键词，或者换一个筛选条件。</span>
+      <strong>No matching entries</strong>
+      <span slot="description">Try a shorter keyword, or switch to another filter.</span>
       <div slot="action" className="flex items-center justify-center gap-3">
-        <web-ui-button variant="secondary">清空筛选</web-ui-button>
-        <web-ui-button variant="primary">返回列表</web-ui-button>
+        <web-ui-button variant="secondary">Clear filters</web-ui-button>
+        <web-ui-button variant="primary">Back to list</web-ui-button>
       </div>
     </web-ui-empty>
   )
@@ -99,11 +99,11 @@ export default function Demo() {
 <template>
   <web-ui-empty :size="72">
     <web-ui-icon slot="icon" :icon="lucideSearch" :size="31"></web-ui-icon>
-    <strong>没有匹配的条目</strong>
-    <span slot="description">试试更短的关键词，或者换一个筛选条件。</span>
+    <strong>No matching entries</strong>
+    <span slot="description">Try a shorter keyword, or switch to another filter.</span>
     <div slot="action" class="flex items-center justify-center gap-3">
-      <web-ui-button variant="secondary">清空筛选</web-ui-button>
-      <web-ui-button variant="primary">返回列表</web-ui-button>
+      <web-ui-button variant="secondary">Clear filters</web-ui-button>
+      <web-ui-button variant="primary">Back to list</web-ui-button>
     </div>
   </web-ui-empty>
 </template>
@@ -113,17 +113,17 @@ import { lucideSearch } from '@greypan/web-ui/icons'
 </script>
 ```
 
-### 尺寸 {#sizes}
+### Sizes {#sizes}
 
-`size` 是唯一的缩放旋钮：它一起决定图形盒、`min-height`、内边距与两行文案的字号，所以大空态不是只把 icon 放大。
+`size` is the only scaling knob: it decides the graphic box, `min-height`, padding, and the font size of both copy lines together, so a large empty state is not just a bigger icon.
 
 ```tsx
 export default function Demo() {
   return (
     <div className="flex flex-col gap-3">
-      <web-ui-empty size={40} title="40 的空态"></web-ui-empty>
-      <web-ui-empty size={56} title="56 的空态（默认）"></web-ui-empty>
-      <web-ui-empty size={72} title="72 的空态"></web-ui-empty>
+      <web-ui-empty size={40} title="Empty state at 40"></web-ui-empty>
+      <web-ui-empty size={56} title="Empty state at 56 (default)"></web-ui-empty>
+      <web-ui-empty size={72} title="Empty state at 72"></web-ui-empty>
     </div>
   )
 }
@@ -132,23 +132,23 @@ export default function Demo() {
 ```vue
 <template>
   <div class="flex flex-col gap-3">
-    <web-ui-empty :size="40" title="40 的空态"></web-ui-empty>
-    <web-ui-empty :size="56" title="56 的空态（默认）"></web-ui-empty>
-    <web-ui-empty :size="72" title="72 的空态"></web-ui-empty>
+    <web-ui-empty :size="40" title="Empty state at 40"></web-ui-empty>
+    <web-ui-empty :size="56" title="Empty state at 56 (default)"></web-ui-empty>
+    <web-ui-empty :size="72" title="Empty state at 72"></web-ui-empty>
   </div>
 </template>
 ```
 
-### 长文案 {#long-copy}
+### Long copy {#long-copy}
 
-标题与描述都按内容宽度换行，长词用 `overflow-wrap: anywhere` 断开，因此一段复制链接或长标识符不会把盒子顶宽，也不会溢出到兄弟段落之外。
+Title and description both wrap to the content width, and long words break with `overflow-wrap: anywhere`, so a pasted URL or a long identifier neither widens the box nor overflows into sibling sections.
 
 ```tsx
 export default function Demo() {
   return (
     <web-ui-empty
-      title="这一段标题写得很长，用来确认它在内容宽度里换行而不是把盒子顶宽"
-      description="描述同样是一段长文案，里面放一个不会自然断开的长标识符 https://example.com/a-very-long-shared-resource-path-that-does-not-fit，用来看 overflow-wrap 的行为。"
+      title="This title is deliberately long, to confirm it wraps within the content width instead of widening the box"
+      description="The description is long copy too, and holds an identifier that does not break naturally, https://example.com/a-very-long-shared-resource-path-that-does-not-fit, to show overflow-wrap."
     ></web-ui-empty>
   )
 }
@@ -157,17 +157,17 @@ export default function Demo() {
 ```vue
 <template>
   <web-ui-empty
-    title="这一段标题写得很长，用来确认它在内容宽度里换行而不是把盒子顶宽"
-    description="描述同样是一段长文案，里面放一个不会自然断开的长标识符 https://example.com/a-very-long-shared-resource-path-that-does-not-fit，用来看 overflow-wrap 的行为。"
+    title="This title is deliberately long, to confirm it wraps within the content width instead of widening the box"
+    description="The description is long copy too, and holds an identifier that does not break naturally, https://example.com/a-very-long-shared-resource-path-that-does-not-fit, to show overflow-wrap."
   ></web-ui-empty>
 </template>
 ```
 
-### CSS 变量 {#css-vars}
+### CSS variables {#css-vars}
 
-八枚 `--wui-empty-*` 始终压在上面：`size` 派生出来的那几项（icon 盒、`min-height`、内边距、两行字号）逐项被覆盖，另外三枚（内容宽度与两个段间距）本来就不随 `size` 动，写变量是改它们的唯一入口。只需要调个别度量时就逐项覆盖，不必回去改 `size`。
+The eight `--wui-empty-*` variables always override what is above: the items derived from `size` (icon box, `min-height`, padding, both font sizes) are overridden one by one, and the other three (content width and the two section gaps) do not follow `size` at all, so writing the variable is the only way to change them. When only a couple of metrics need tuning, override them individually instead of going back to `size`.
 
-注意 `--wui-empty-icon-size` 只改图形盒，默认字形仍按 `size` 算。
+Note that `--wui-empty-icon-size` only changes the graphic box; the default glyph is still computed from `size`.
 
 ```tsx
 export default function Demo() {
@@ -175,31 +175,31 @@ export default function Demo() {
     <div className="grid gap-3 sm:grid-cols-2">
       <web-ui-empty
         className="[--wui-empty-min-height:120px] [--wui-empty-padding:16px_12px]"
-        title="压住高度与内边距"
-        description="这两枚够把空态从占位块压成一条提示。"
+        title="Overriding height and padding"
+        description="These two are enough to squeeze the empty state into a single hint."
       ></web-ui-empty>
 
       <web-ui-empty
         className="[--wui-empty-icon-size:80px] [--wui-empty-title-margin-top:4px]"
         size={40}
-        title="图形盒撑到 80px"
-        description="字形还是按 size 的 3/7 画，所以图形周围会多出空白。"
+        title="Graphic box stretched to 80px"
+        description="The glyph is still drawn at 3/7 of size, so extra space appears around it."
       ></web-ui-empty>
 
       <web-ui-empty
         className="[--wui-empty-content-width:300px] [--wui-empty-action-margin-top:4px]"
-        title="内容宽度收到 300px"
-        description="标题、描述与操作区共用这一个宽度。"
+        title="Content width constrained to 300px"
+        description="Title, description, and action area share this one width."
       >
         <web-ui-button slot="action" variant="secondary">
-          看看间距
+          Check the gaps
         </web-ui-button>
       </web-ui-empty>
 
       <web-ui-empty
         className="[--wui-empty-title-font-size:20px] [--wui-empty-description-font-size:12px]"
-        title="两个字号也能单独改"
-        description="字号默认只有两档台阶，变量始终压在台阶之上。"
+        title="Both font sizes can be changed separately"
+        description="Font sizes only have two steps by default, and the variables always override the steps."
       ></web-ui-empty>
     </div>
   )
@@ -211,29 +211,29 @@ export default function Demo() {
   <div class="grid gap-3 sm:grid-cols-2">
     <web-ui-empty
       class="[--wui-empty-min-height:120px] [--wui-empty-padding:16px_12px]"
-      title="压住高度与内边距"
-      description="这两枚够把空态从占位块压成一条提示。"
+      title="Overriding height and padding"
+      description="These two are enough to squeeze the empty state into a single hint."
     ></web-ui-empty>
 
     <web-ui-empty
       class="[--wui-empty-icon-size:80px] [--wui-empty-title-margin-top:4px]"
       :size="40"
-      title="图形盒撑到 80px"
-      description="字形还是按 size 的 3/7 画，所以图形周围会多出空白。"
+      title="Graphic box stretched to 80px"
+      description="The glyph is still drawn at 3/7 of size, so extra space appears around it."
     ></web-ui-empty>
 
     <web-ui-empty
       class="[--wui-empty-content-width:300px] [--wui-empty-action-margin-top:4px]"
-      title="内容宽度收到 300px"
-      description="标题、描述与操作区共用这一个宽度。"
+      title="Content width constrained to 300px"
+      description="Title, description, and action area share this one width."
     >
-      <web-ui-button slot="action" variant="secondary">看看间距</web-ui-button>
+      <web-ui-button slot="action" variant="secondary">Check the gaps</web-ui-button>
     </web-ui-empty>
 
     <web-ui-empty
       class="[--wui-empty-title-font-size:20px] [--wui-empty-description-font-size:12px]"
-      title="两个字号也能单独改"
-      description="字号默认只有两档台阶，变量始终压在台阶之上。"
+      title="Both font sizes can be changed separately"
+      description="Font sizes only have two steps by default, and the variables always override the steps."
     ></web-ui-empty>
   </div>
 </template>
@@ -243,54 +243,54 @@ export default function Demo() {
 
 ### Props
 
-| 名称          | 说明                                          | 类型     | 默认值 |
-| ------------- | --------------------------------------------- | -------- | ------ |
-| `title`       | 标题文字。                                    | `string` | `''`   |
-| `description` | 描述文字。                                    | `string` | `''`   |
-| `size`        | 版面缩放基准（px）；非法值或非正数回落为 56。 | `number` | `56`   |
+| Name          | Description                                                                     | Type     | Default |
+| ------------- | ------------------------------------------------------------------------------- | -------- | ------- |
+| `title`       | Title text.                                                                     | `string` | `''`    |
+| `description` | Description text.                                                               | `string` | `''`    |
+| `size`        | Layout scale base (px); invalid values or non-positive numbers fall back to 56. | `number` | `56`    |
 
 ### Slots
 
-| 名称          | 说明                                |
-| ------------- | ----------------------------------- |
-| `icon`        | 图形区内容，替代默认 icon。         |
-| `default`     | 标题内容，覆盖 `title` 属性。       |
-| `description` | 描述内容，覆盖 `description` 属性。 |
-| `action`      | 操作区内容，例如主 button。         |
+| Name          | Description                                                 |
+| ------------- | ----------------------------------------------------------- |
+| `icon`        | Graphic area content, replacing the default icon.           |
+| `default`     | Title content, overriding the `title` property.             |
+| `description` | Description content, overriding the `description` property. |
+| `action`      | Action area content, such as a primary button.              |
 
-### 行为说明
+### Behavior
 
-`size` 是整个空态的单一旋钮：它驱动 icon 盒、`min-height`、内边距与标题/描述字号，因此大 icon 不再配 medium 留白：
+`size` is the single knob of the whole empty state: it drives the icon box, `min-height`, padding, and the title/description font sizes, so a large icon no longer comes with medium whitespace:
 
-列依次为 size / icon 盒 / 字形 / min-height / 内边距 块/行 / 标题 / 描述：
+The columns are size / icon box / glyph / min-height / padding block/inline / title / description:
 
 - `40` / `40px` / `17px` / `171px` / `23px/17px` / `14px` / `13px`
 - `56` / `56px` / `24px` / `240px` / `32px/24px` / `16px` / `14px`
 - `72` / `72px` / `31px` / `309px` / `41px/31px` / `16px` / `14px`
 
-派生规则是 `min-height: round(size * 30 / 7)`、`padding-block: round(size * 4 / 7)`、`padding-inline: round(size * 3 / 7)`，默认字形是 `round(size * 3 / 7)`。
+The derivation rules are `min-height: round(size * 30 / 7)`, `padding-block: round(size * 4 / 7)`, `padding-inline: round(size * 3 / 7)`, and the default glyph is `round(size * 3 / 7)`.
 
-字号只有一档台阶而不是连续缩放：低于 `56` 时标题 `14px`、描述 `13px`，`56` 及以上为 `16px` 与 `14px`。更大的空态靠留白撑开，而不是靠字变大。
+Font sizes have two steps rather than continuous scaling: below `56` the title is `14px` and the description `13px`; at `56` and above they are `16px` and `14px`. Larger empty states are opened up with whitespace rather than with bigger text.
 
-`size` 只认有限正数：`NaN`、±Infinity、`0`、负数以及 `size="abc"` 这类解析不出数值的输入都整体回落到默认边长 `56`，整套派生度量跟着一起回到默认档，而不是按 `NaN` 算出失效值。
+`size` accepts only finite positive numbers: `NaN`, ±Infinity, `0`, negative numbers, and inputs that parse to no number such as `size="abc"` all fall back to the default edge length `56`, and the whole derived metric set returns to the default step, rather than computing invalid values from `NaN`.
 
-每一项都覆盖 `size` 派生的值，因此八个属性始终优先——包括两个字号。默认值取默认 `size` 为 `56` 时的取值。
+Each one overrides the value derived from `size`, so the eight properties always win—including the two font sizes. The defaults are the values at the default `size` of `56`.
 
-三段文案位各自判定：标题段看默认插槽有没有内容、再看 `title`，描述段看 `description` 插槽、再看 `description` 属性，操作区段只认 `action` 插槽。
+The three copy segments are decided separately: the title segment checks whether the default slot has content and then `title`; the description segment checks the `description` slot and then the `description` property; the action segment only recognizes the `action` slot.
 
-判的是「有没有内容」而不是「内容画不画得出来」，所以只放一个 `.sr-only` 的 span 也会让那一段照常占位；反过来，图形区不参与这套判定，永远占位——三段文案都空着的空态就只剩图形。
+What is checked is "is there content", not "does the content render", so even a single `.sr-only` span makes that segment take space; conversely, the graphic area does not participate in this check and always takes space—an empty state with all three copy segments empty keeps only the graphic.
 
-`action` 插槽里的多个元素不会自己排成一排，操作区只负责它上方那段间距。
+Multiple elements in the `action` slot do not lay themselves out in a row; the action area only provides the gap above it.
 
-`icon` 插槽的图形要自己带尺寸：默认图形的边长是按 `size` 派生的 `round(size * 3 / 7)`，组件不会去量插槽内容，所以换 icon 时按同一比例写它的 `size`（`size={40}` 配 17、`72` 配 31），或者干脆连 `--wui-empty-icon-size` 一起调。
+Graphics in the `icon` slot must carry their own size: the default graphic's edge length is derived from `size` as `round(size * 3 / 7)`, and the component does not measure slot content, so when swapping the icon write its `size` at the same ratio (`size={40}` with 17, `72` with 31), or adjust `--wui-empty-icon-size` as well.
 
-`title` 复用的是全局 `title` 属性并且会反射回宿主，因此浏览器同时把这段文字当原生 tooltip 在悬停时画出来。不想要这层提示就用默认插槽放标题；这一位的效果是等价的，只是不会被当成 tooltip 文本。
+`title` reuses the global `title` attribute and reflects it to the host, so the browser also draws that text as a native tooltip on hover. To avoid that hint, put the title in the default slot; that position is equivalent, it just is not treated as tooltip text.
 
-### 从 'small' | 'medium' | 'large' 枚举迁移
+### Migrating from the 'small' | 'medium' | 'large' enum
 
-`size` 现在是数字。被删除的档位是手调值，这套比例只能逼近而复现不了——`small` 原本是 `160px` 高、`20px 16px` 内边距，`large` 原本是 `320px` 与 `48px 32px`。段间距与内容宽度从未跟随档位。
+`size` is now a number. The removed steps were hand-tuned values that these ratios can only approximate, not reproduce—`small` was `160px` high with `20px 16px` padding, and `large` was `320px` with `48px 32px`. Section gaps and content width never followed the steps.
 
-列依次为 旧值 / 新值 / 默认字形：
+The columns are old value / new value / default glyph:
 
 - `small` / `40` / `17`
 - `medium` / `56` / `24`
@@ -298,13 +298,13 @@ export default function Demo() {
 
 ### CSS Custom Properties
 
-| 名称                                | 说明                         | 默认值      |
-| ----------------------------------- | ---------------------------- | ----------- |
-| `--wui-empty-min-height`            | 最小高度                     | `240px`     |
-| `--wui-empty-padding`               | 内边距                       | `32px 24px` |
-| `--wui-empty-icon-size`             | icon 容器尺寸，优先于 `size` | `56px`      |
-| `--wui-empty-content-width`         | 标题/描述/操作区最大宽度     | `480px`     |
-| `--wui-empty-title-margin-top`      | icon 与标题之间的间距        | `16px`      |
-| `--wui-empty-title-font-size`       | 标题字号                     | `16px`      |
-| `--wui-empty-description-font-size` | 描述字号                     | `14px`      |
-| `--wui-empty-action-margin-top`     | 操作区上方的间距             | `20px`      |
+| Name                                | Description                                            | Default     |
+| ----------------------------------- | ------------------------------------------------------ | ----------- |
+| `--wui-empty-min-height`            | Minimum height                                         | `240px`     |
+| `--wui-empty-padding`               | Padding                                                | `32px 24px` |
+| `--wui-empty-icon-size`             | Icon container size, takes precedence over `size`      | `56px`      |
+| `--wui-empty-content-width`         | Maximum width of the title / description / action area | `480px`     |
+| `--wui-empty-title-margin-top`      | Gap between the icon and the title                     | `16px`      |
+| `--wui-empty-title-font-size`       | Title font size                                        | `16px`      |
+| `--wui-empty-description-font-size` | Description font size                                  | `14px`      |
+| `--wui-empty-action-margin-top`     | Gap above the action area                              | `20px`      |
