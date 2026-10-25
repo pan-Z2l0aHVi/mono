@@ -14,11 +14,8 @@
   align-items: center;
 
   width: 100%;
-  min-block-size: var(--wui-empty-min-height, var(--wui-internal-empty-min-height, 240px));
-  padding: var(
-    --wui-empty-padding,
-    var(--wui-internal-empty-padding-block, 32px) var(--wui-internal-empty-padding-inline, 24px)
-  );
+  min-block-size: var(--wui-empty-min-height, 240px);
+  padding: var(--wui-empty-padding, 32px 24px);
 
   text-align: center;
 }
@@ -30,20 +27,42 @@
   justify-content: center;
 
   /*
-   * 盒与字形同尺寸：底色退役后隐形内边距只会把图形推离标题（#440）。盒不再比字形大，
-   * 图形与标题之间的距离就正好是 .empty-title 的 margin-top，不需要为补偿留白再调它。
+   * 盒与图形同尺寸：底色退役后隐形内边距只会把图形推离标题（#440）。盒不比图形大，
+   * 图形与标题之间的距离就正好是 .empty-title 的 margin-top。
    */
-  width: var(--wui-empty-icon-size, var(--wui-internal-empty-glyph-size, 40px));
-  height: var(--wui-empty-icon-size, var(--wui-internal-empty-glyph-size, 40px));
+  inline-size: var(--wui-empty-icon-size, 40px);
+  block-size: var(--wui-empty-icon-size, 40px);
 
   /*
    * 纯图形，不绘制底面：盒只负责占位与居中，图形直接坐在它背后那张表面上，
    * 因此这里既不画背景也不画阴影，圆角随之无对象可作用。
    *
-   * 图形色取 secondary 而非 tertiary：无底面时字形就是这一区唯一的图形元素，
-   * tertiary 在浅色 page 上对比度不足 3:1。
+   * 取实色 secondary，不掺 alpha：线框图形的笔画在转角与端点处本来就互相重叠
+   * （填底压在描边上、横线与外轮廓在两端交汇），带 alpha 的颜色会在这些重叠处
+   * 二次合成、局部变深，看起来像"角上笔画发黑"。淡一档由 .empty-glyph 的
+   * group opacity 负责——那是在整颗图形合成之后一次性施加的，重叠处不起变化。
    */
-  color: var(--wui-color-text-secondary, #6a6a6a);
+  color: var(--wui-empty-icon-color, var(--wui-color-text-secondary, #6a6a6a));
+}
+
+/*
+ * 默认图形填满盒：`width` / `height` 属性只兜首帧，尺寸的单一来源是 --wui-empty-icon-size。
+ * 图形资产用 currentColor 描边与填充，颜色因此跟着 .empty-icon 的 color 走。
+ *
+ * 0.75 把整颗默认色压到 secondary 与 tertiary 之间（浅色合成 #8f8f8f ≈ 3.22:1，
+ * 深色合成 #828282 ≈ 3.98:1，两档都守住非文本图形的 3:1），比整颗 secondary 轻，
+ * 又不至于像 tertiary 那样在浅色 page 上只有 2.19:1。
+ *
+ * 关键在这是 group opacity：整颗 SVG 先按不透明合成成一层，再统一按 0.75 落到背景上。
+ * 若改用带 alpha 的颜色，每条绘制指令各自带 0.75，笔画重叠处会叠到 0.94，交角明显发黑。
+ * 只作用于默认图形，`icon` 插槽里的内容由调用方自己控制颜色与深浅。
+ */
+.empty-glyph {
+  display: block;
+  inline-size: 100%;
+  block-size: 100%;
+
+  opacity: var(--wui-empty-icon-opacity, 0.75);
 }
 
 .empty-title,
@@ -53,21 +72,25 @@
 }
 
 .empty-title {
-  margin-top: var(--wui-empty-title-margin-top, var(--wui-space-4, 16px));
+  /*
+   * 图形自身在 40px 见方的框里还带一圈线条留白，视觉间隙因此比数值看着更大，
+   * 收到 space-3（12px）才和标题读成一组。
+   */
+  margin-top: var(--wui-empty-title-margin-top, var(--wui-space-3, 12px));
 
-  font-size: var(--wui-empty-title-font-size, var(--wui-internal-empty-title-font-size, 16px));
+  font-size: var(--wui-empty-title-font-size, 16px);
   font-weight: var(--wui-font-weight-semibold, 600);
   line-height: var(--wui-line-height-normal, 1.5);
-  color: var(--wui-color-text, #1b1b1b);
+  color: var(--wui-empty-title-color, var(--wui-color-text, #1b1b1b));
   overflow-wrap: anywhere;
 }
 
 .empty-description {
   margin-top: 6px;
 
-  font-size: var(--wui-empty-description-font-size, var(--wui-internal-empty-description-font-size, 14px));
+  font-size: var(--wui-empty-description-font-size, 14px);
   line-height: var(--wui-line-height-relaxed, 1.6);
-  color: var(--wui-color-text-secondary, #6a6a6a);
+  color: var(--wui-empty-description-color, var(--wui-color-text-secondary, #6a6a6a));
   overflow-wrap: anywhere;
 }
 

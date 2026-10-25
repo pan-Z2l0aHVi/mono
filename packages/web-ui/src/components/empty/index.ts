@@ -1,53 +1,37 @@
 import '@/components/icon'
 
+import type { IconifyIcon } from '@iconify/types'
 import { html, LitElement, unsafeCSS } from 'lit'
 import { customElement, property, state } from 'lit/decorators.js'
 import { classMap } from 'lit/directives/class-map.js'
+import { unsafeSVG } from 'lit/directives/unsafe-svg.js'
 
-import { lucideInbox } from '@/icons'
+import { andrsrxnInbox } from '@/icons'
 
 import style from './style.css?inline'
 
 /**
- * icon 容器边长默认值（px），也是非法输入的回退目标。
+ * Iconify 规范里画布缺省按 16 计（见 @iconify/types README）。生成资产自带尺寸，
+ * 这条兜底服务的是把默认图形换成手写 IconifyIcon 对象的场景。
  */
-const DEFAULT_SIZE = 56
+const ICONIFY_DEFAULT_CANVAS = 16
 
 /**
- * 派生度量统一除以 7。取 7 是为了让默认档 56 整除出改前 medium 的四个值：字形 5/7 → 40、
- * min-height 30/7 → 240、padding 块 4/7 → 32、padding 行 3/7 → 24。40 与 72 因此落到
- * 171 / 23 / 17 与 309 / 41 / 31，字形 29 与 51。
+ * SVG 的 width/height 属性值，与 CSS 里 `--wui-empty-icon-size` 的默认值一致。
+ * 只负责首帧与 CSS 未生效时的高度，实际边长由 CSS 变量决定。
+ */
+const FALLBACK_ICON_SIZE = 40
+
+/**
+ * 空态图形区。
  *
- * 字形取 5/7 而不是 3/7：圆角矩形底面退役后，字形是这一区唯一的图形（#440）。3/7 的 24
- * 在 56 的隐形盒里显得又小又离标题远，5/7 让图形撑到接近原本底面占的视觉体量。
- */
-const DERIVED_DENOMINATOR = 7
-const GLYPH_NUMERATOR = 5
-const MIN_HEIGHT_NUMERATOR = 30
-const PADDING_BLOCK_NUMERATOR = 4
-const PADDING_INLINE_NUMERATOR = 3
-
-/**
- * 字号只有两档，阈值与默认边长同为 56：低于阈值取改前 small 的字号，其余取改前 medium 的
- * 字号。大尺寸靠留白撑开而不是靠字变大，所以 72 与 56 同档。
- */
-const COMPACT_SIZE_THRESHOLD = 56
-const COMPACT_TITLE_FONT_SIZE = 14
-const COMPACT_DESCRIPTION_FONT_SIZE = 13
-const DEFAULT_TITLE_FONT_SIZE = 16
-const DEFAULT_DESCRIPTION_FONT_SIZE = 14
-
-/**
- * 只做数值合法性判断，不做枚举映射：有限正数原样采用，其余输入（NaN、±Infinity、0、负数）
- * 回退默认边长。
+ * 默认图形直接渲染成 `svg`，不再包 `web-ui-icon`：`web-ui-icon` 的边长是 JS 属性
+ * （`.size`），CSS 变量驱动不了它，而空态的默认图形是固定资产，没有必要为了几个像素
+ * 去读 computed style 再回写属性。样式因此全部落在 CSS 上，调用方换尺寸只写变量。
  *
- * 这一层是必要的：`size` 会同时写进 `--wui-internal-empty-glyph-size`，未守卫时
- * `size="abc"` 会产出失效的 `NaNpx`（盒退回 unset 而涨成 300×300），
- * `size=""` 会产出 `0px`（icon 不可见）。回退的是边长本身，整套派生度量因此一起回到默认档
- * 56，而不是按 `NaN` 算出垃圾值。
+ * 副作用导入 `@/components/icon` 保留：`icon` 插槽的既有写法只 import 图标数据
+ * （`@greypan/web-ui/icons`），组件注册由这里提供。
  */
-const normalizeSize = (value: number): number => (Number.isFinite(value) && value > 0 ? value : DEFAULT_SIZE)
-
 @customElement('web-ui-empty')
 export class WebUiEmpty extends LitElement {
   static override styles = [unsafeCSS(style)]
@@ -56,57 +40,6 @@ export class WebUiEmpty extends LitElement {
 
   @property({ type: String, reflect: true }) description = ''
 
-  /**
-   * 版面缩放基准，单位 px，默认 56。驱动图标与图形、min-height、padding 与标题/描述字号，
-   * 使大 icon 不再配 medium 留白。
-   *
-   * 派生规则：默认字形边长 `round(size * 5 / 7)`，图标盒与字形同尺寸（不再留隐形内边距），
-   * min-height `round(size * 30 / 7)`，padding 块 `round(size * 4 / 7)`、行
-   * `round(size * 3 / 7)`；字号在 56 处分两档，低于 56 为 14px / 13px，56 及以上为
-   * 16px / 14px。段间距与内容宽度不随它变化。
-   *
-   * 派生值全部落在 `--wui-internal-empty-*` 上，`--wui-empty-*` 仍压在其上，所以逐项覆盖
-   * 优先于本属性。非法输入（非有限数、0、负数）回退默认边长 56。
-   */
-  @property({ type: Number, reflect: true })
-  get size(): number {
-    return this._size
-  }
-
-  set size(value: number) {
-    const old = this._size
-    const normalized = normalizeSize(value)
-    if (normalized === old) return
-    this._size = normalized
-    this.requestUpdate('size', old)
-  }
-
-  private _size = DEFAULT_SIZE
-
-  private get _iconSize(): number {
-    return Math.round((this.size * GLYPH_NUMERATOR) / DERIVED_DENOMINATOR)
-  }
-
-  /**
-   * `size` 派生的整套度量。CSS 侧按 `var(--wui-empty-*, var(--wui-internal-empty-*, 默认值))`
-   * 消费，公开 token 因此始终压在派生值之上。
-   */
-  private get _sizeStyle(): Record<string, string> {
-    const size = this.size
-    const compact = size < COMPACT_SIZE_THRESHOLD
-    const scaled = (numerator: number) => `${Math.round((size * numerator) / DERIVED_DENOMINATOR)}px`
-    return {
-      '--wui-internal-empty-glyph-size': `${this._iconSize}px`,
-      '--wui-internal-empty-min-height': scaled(MIN_HEIGHT_NUMERATOR),
-      '--wui-internal-empty-padding-block': scaled(PADDING_BLOCK_NUMERATOR),
-      '--wui-internal-empty-padding-inline': scaled(PADDING_INLINE_NUMERATOR),
-      '--wui-internal-empty-title-font-size': `${compact ? COMPACT_TITLE_FONT_SIZE : DEFAULT_TITLE_FONT_SIZE}px`,
-      '--wui-internal-empty-description-font-size': `${
-        compact ? COMPACT_DESCRIPTION_FONT_SIZE : DEFAULT_DESCRIPTION_FONT_SIZE
-      }px`
-    }
-  }
-
   @state() private _hasTitleSlot = false
   @state() private _hasDescriptionSlot = false
   @state() private _hasActionSlot = false
@@ -114,15 +47,6 @@ export class WebUiEmpty extends LitElement {
   override connectedCallback() {
     super.connectedCallback()
     this._syncSlotContent()
-  }
-
-  protected override updated() {
-    // 无条件写：条件写同样覆盖得到默认实例（实测首次 changedProperties 里带 size）。
-    // 这里换来的不变量是「派生 token 永远与当前 size 一致」——将来新增派生 token 不必
-    // 再补一处 changed 判断，而同值 setProperty 不触发样式失效，代价可忽略。
-    for (const [token, value] of Object.entries(this._sizeStyle)) {
-      this.style.setProperty(token, value)
-    }
   }
 
   private _syncSlotContent = () => {
@@ -142,10 +66,26 @@ export class WebUiEmpty extends LitElement {
     const showTitle = this._hasTitleSlot || Boolean(this.title)
     const showDescription = this._hasDescriptionSlot || Boolean(this.description)
 
+    // 生成物只写下有值的字段，`left` / `top` 缺省即 0（Iconify 规范），所以按 IconifyIcon 读。
+    const glyph: IconifyIcon = andrsrxnInbox
+    const viewBox = `${glyph.left ?? 0} ${glyph.top ?? 0} ${glyph.width ?? ICONIFY_DEFAULT_CANVAS} ${
+      glyph.height ?? ICONIFY_DEFAULT_CANVAS
+    }`
+
     return html`
       <section class="empty">
         <div class="empty-icon" aria-hidden="true">
-          <slot name="icon"><web-ui-icon .icon=${lucideInbox} .size=${this._iconSize}></web-ui-icon></slot>
+          <slot name="icon">
+            <svg
+              class="empty-glyph"
+              viewBox="${viewBox}"
+              width="${FALLBACK_ICON_SIZE}"
+              height="${FALLBACK_ICON_SIZE}"
+              aria-hidden="true"
+            >
+              ${unsafeSVG(andrsrxnInbox.body)}
+            </svg>
+          </slot>
         </div>
         <div class=${classMap({ 'empty-title': true, 'is-hidden': !showTitle })}>
           <slot @slotchange=${this._syncSlotContent}>${this.title}</slot>
