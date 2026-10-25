@@ -250,6 +250,7 @@ export function Root() {
                   size="24"
                   icon
                   variant="ghost"
+                  aria-label="Close banner"
                   onClick={() => setBannerVisible(false)}
                 >
                   <web-ui-icon className="text-(--wui-color-on-accent)" icon={lucideX} size={16}></web-ui-icon>
