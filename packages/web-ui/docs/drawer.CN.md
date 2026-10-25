@@ -951,7 +951,7 @@ const open = ref([false, false, false])
 
 ### CSS variables
 
-背景、圆角与视口留边分别由 `--wui-drawer-bg`、`--wui-drawer-radius`、`--wui-drawer-inset` 控制；置 `--wui-drawer-inset: 0` 得到贴边几何。
+背景、圆角与视口留边分别由 `--wui-drawer-bg`、`--wui-drawer-radius`、`--wui-drawer-inset` 控制；置 `--wui-drawer-inset: 0` 得到贴边几何。白底示例还将 `--wui-color-text` 设为深色、将 `--wui-color-surface-control` 设为浅色，保证深浅主题下的标题和关闭按钮都清晰可读。
 
 ```tsx
 import { useState } from 'react'
@@ -967,7 +967,7 @@ export default function Demo() {
         open={open}
         heading="贴边白色 drawer"
         closable
-        className="[--wui-drawer-bg:#fff] [--wui-drawer-radius:0] [--wui-drawer-inset:0]"
+        className="[--wui-drawer-bg:#fff] [--wui-drawer-radius:0] [--wui-drawer-inset:0] [--wui-color-text:#262626] [--wui-color-surface-control:#e5e5e5]"
         onopen-change={event => setOpen(event.detail.open)}
       >
         <p className="text-neutral-800">背景、圆角与视口留边都由 CSS 变量控制。</p>
@@ -985,7 +985,7 @@ export default function Demo() {
     :open="open"
     heading="贴边白色 drawer"
     closable
-    class="[--wui-drawer-bg:#fff] [--wui-drawer-radius:0] [--wui-drawer-inset:0]"
+    class="[--wui-drawer-bg:#fff] [--wui-drawer-radius:0] [--wui-drawer-inset:0] [--wui-color-text:#262626] [--wui-color-surface-control:#e5e5e5]"
     @open-change="open = $event.detail.open"
   >
     <p class="text-neutral-800">背景、圆角与视口留边都由 CSS 变量控制。</p>
