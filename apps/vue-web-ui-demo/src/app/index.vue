@@ -209,7 +209,14 @@ function isNavActive(path: string) {
           class="flex items-center justify-center gap-2 bg-(--wui-color-accent) px-4 py-2 text-sm text-(--wui-color-on-accent)"
         >
           <span>🎉 Welcome to the web-ui component library!</span>
-          <web-ui-button class="ml-auto" size="24" icon variant="ghost" @click="bannerVisible = false">
+          <web-ui-button
+            class="ml-auto"
+            size="24"
+            icon
+            variant="ghost"
+            aria-label="关闭横幅"
+            @click="bannerVisible = false"
+          >
             <web-ui-icon class="text-(--wui-color-on-accent)" :icon="lucideX" :size="16"></web-ui-icon>
           </web-ui-button>
         </div>
