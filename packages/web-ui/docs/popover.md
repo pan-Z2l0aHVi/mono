@@ -3,15 +3,15 @@ component: popover
 tag: web-ui-popover
 ---
 
-锚定触发元素的弹出层，支持 click / hover / manual 三种触发方式，`trigger` 插槽放 trigger、默认插槽放 panel 内容。
+A popover anchored to a trigger element. It supports three trigger modes, click / hover / manual; the `trigger` slot holds the trigger and the default slot holds the panel content.
 
-## 示例
+## Samples
 
-### 基础 {#basic}
+### Basic {#basic}
 
-click 模式点 trigger 切换，点 panel 外或按 Escape 关闭；trigger 请放入可交互元素（`web-ui-button` 或原生 `button`），开合状态会回写到它的 `aria-expanded` / `aria-controls`。
+In click mode a click on the trigger toggles the panel, and clicking outside the panel or pressing Escape closes it. Put an interactive element in the trigger (`web-ui-button` or a native `button`); the open state is written back to its `aria-expanded` / `aria-controls`.
 
-`open-change` 只在用户来源的开合后派发，程序式写 `open` 不派发；下面那行读数就是最近一次通知的值。
+`open-change` is dispatched only after user-originated open and close actions, and writing `open` programmatically does not dispatch it; the readout below is the value of the latest notification.
 
 ```tsx
 import { useState } from 'react'
@@ -29,15 +29,15 @@ export default function Demo() {
         }}
       >
         <web-ui-button slot="trigger" variant="secondary">
-          显示详情
+          Show details
         </web-ui-button>
         <div className="flex max-w-xs flex-col gap-1 text-sm">
-          <span className="font-semibold">发布详情</span>
-          <span>panel 放任意节点；点 trigger 切换，点外面或按 Escape 关闭。</span>
+          <span className="font-semibold">Release details</span>
+          <span>The panel accepts any node; click the trigger to toggle, click outside or press Escape to close.</span>
         </div>
       </web-ui-popover>
       <output className="text-sm text-(--wui-color-text-secondary)">
-        open-change：{count} 次 · 最后一次 detail.open = {last}
+        open-change: {count} times · last detail.open = {last}
       </output>
     </div>
   )
@@ -48,14 +48,14 @@ export default function Demo() {
 <template>
   <div class="flex w-full max-w-md flex-col items-start gap-3">
     <web-ui-popover @open-change="onOpenChange">
-      <web-ui-button slot="trigger" variant="secondary">显示详情</web-ui-button>
+      <web-ui-button slot="trigger" variant="secondary">Show details</web-ui-button>
       <div class="flex max-w-xs flex-col gap-1 text-sm">
-        <span class="font-semibold">发布详情</span>
-        <span>panel 放任意节点；点 trigger 切换，点外面或按 Escape 关闭。</span>
+        <span class="font-semibold">Release details</span>
+        <span>The panel accepts any node; click the trigger to toggle, click outside or press Escape to close.</span>
       </div>
     </web-ui-popover>
     <output class="text-sm text-(--wui-color-text-secondary)">
-      open-change：{{ count }} 次 · 最后一次 detail.open = {{ last }}
+      open-change: {{ count }} times · last detail.open = {{ last }}
     </output>
   </div>
 </template>
@@ -74,9 +74,9 @@ function onOpenChange(event: WebUiEvent<WebUiPopover, 'open-change'>) {
 </script>
 ```
 
-### Hover 触发 {#hover}
+### Hover trigger {#hover}
 
-`trigger="hover"` 用 `pointerenter` / `pointerleave` 加 100ms 延迟控制开合；指针从 trigger 移进 panel 不会收起。click 与 focus 在这个模式下都不触发，读数同样只跟随用户来源的 `open-change`。
+`trigger="hover"` opens and closes on `pointerenter` / `pointerleave` with a 100ms delay; moving the pointer from the trigger into the panel does not collapse it. Neither click nor focus triggers in this mode, and the readout likewise follows only user-originated `open-change`.
 
 ```tsx
 import { useState } from 'react'
@@ -92,11 +92,13 @@ export default function Demo() {
         onopen-change={event => setLast(event.detail.open ? 'true' : 'false')}
       >
         <web-ui-button slot="trigger" variant="secondary">
-          悬停我
+          Hover me
         </web-ui-button>
-        <div className="max-w-xs text-sm">悬停显示的 panel；移进 panel 内仍然开着，离开 100ms 后才收起。</div>
+        <div className="max-w-xs text-sm">
+          A panel shown on hover; it stays open when the pointer moves into it and closes 100ms after leaving.
+        </div>
       </web-ui-popover>
-      <output className="text-sm text-(--wui-color-text-secondary)">最后一次 detail.open = {last}</output>
+      <output className="text-sm text-(--wui-color-text-secondary)">last detail.open = {last}</output>
     </div>
   )
 }
@@ -106,10 +108,12 @@ export default function Demo() {
 <template>
   <div class="flex w-full max-w-md flex-col items-start gap-3">
     <web-ui-popover trigger="hover" placement="top" @open-change="last = $event.detail.open ? 'true' : 'false'">
-      <web-ui-button slot="trigger" variant="secondary">悬停我</web-ui-button>
-      <div class="max-w-xs text-sm">悬停显示的 panel；移进 panel 内仍然开着，离开 100ms 后才收起。</div>
+      <web-ui-button slot="trigger" variant="secondary">Hover me</web-ui-button>
+      <div class="max-w-xs text-sm">
+        A panel shown on hover; it stays open when the pointer moves into it and closes 100ms after leaving.
+      </div>
     </web-ui-popover>
-    <output class="text-sm text-(--wui-color-text-secondary)">最后一次 detail.open = {{ last }}</output>
+    <output class="text-sm text-(--wui-color-text-secondary)">last detail.open = {{ last }}</output>
   </div>
 </template>
 
@@ -120,13 +124,13 @@ const last = ref('—')
 </script>
 ```
 
-### 受控开合 {#controlled}
+### Controlled open state {#controlled}
 
-`trigger="manual"` 不响应悬停，点 panel 外与 Escape 也不会关闭；开合由外部 button 调用 `show()` / `close()` 或点 trigger 自己切换。
+`trigger="manual"` does not respond to hover, and neither clicking outside the panel nor Escape closes it; the open state is changed by external buttons calling `show()` / `close()`, or by clicking the trigger itself.
 
-`open` 由页面状态持有：程序式调用不派发 `open-change`，所以 button 在调用后自己同步状态；用户点 trigger 时组件切换并派发 `open-change`，handler 把 `detail.open` 回写进同一份状态。
+`open` is owned by the page state: programmatic calls do not dispatch `open-change`, so the buttons sync the state themselves after calling; when the user clicks the trigger the component toggles and dispatches `open-change`, and the handler writes `detail.open` back into the same state.
 
-下面读数就是页面持有的 `open`。
+The readout below is the `open` held by the page.
 
 ```tsx
 import type { WebUiPopover } from '@greypan/web-ui'
@@ -140,11 +144,13 @@ export default function Demo() {
     <div className="flex w-full max-w-md flex-col items-start gap-3">
       <web-ui-popover ref={panel} trigger="manual" open={open} onopen-change={event => setOpen(event.detail.open)}>
         <web-ui-button slot="trigger" variant="secondary">
-          手动开合
+          Manual toggle
         </web-ui-button>
         <div className="flex max-w-xs flex-col gap-1 text-sm">
-          <span className="font-semibold">manual 模式</span>
-          <span>不响应悬停；点击面板外或按 Escape 也不关闭。</span>
+          <span className="font-semibold">manual mode</span>
+          <span>
+            Does not respond to hover; clicking outside the panel or pressing Escape does not close it either.
+          </span>
         </div>
       </web-ui-popover>
       <div className="flex flex-wrap items-center gap-2">
@@ -179,10 +185,10 @@ export default function Demo() {
 <template>
   <div class="flex w-full max-w-md flex-col items-start gap-3">
     <web-ui-popover ref="panel" trigger="manual" :open="open" @open-change="open = $event.detail.open">
-      <web-ui-button slot="trigger" variant="secondary">手动开合</web-ui-button>
+      <web-ui-button slot="trigger" variant="secondary">Manual toggle</web-ui-button>
       <div class="flex max-w-xs flex-col gap-1 text-sm">
-        <span class="font-semibold">manual 模式</span>
-        <span>不响应悬停；点击面板外或按 Escape 也不关闭。</span>
+        <span class="font-semibold">manual mode</span>
+        <span>Does not respond to hover; clicking outside the panel or pressing Escape does not close it either.</span>
       </div>
     </web-ui-popover>
     <div class="flex flex-wrap items-center gap-2">
@@ -216,45 +222,45 @@ function close() {
 
 ### Props
 
-| 名称               | 说明                                           | 类型                             | 默认值     |
-| ------------------ | ---------------------------------------------- | -------------------------------- | ---------- |
-| `open`             | 弹出层可见性。                                 | `boolean`                        | `false`    |
-| `disabled`         | 禁用状态。                                     | `boolean`                        | `false`    |
-| `placement`        | Floating UI 位置。                             | `Placement`                      | `'bottom'` |
-| `offset`           | 与锚点的距离（px）。                           | `number`                         | `8`        |
-| `trigger`          | 触发方式：`click`（默认）、`hover`、`manual`。 | `'click' \| 'hover' \| 'manual'` | `'click'`  |
-| `portal`           | 在 theme-owned overlay root 中渲染。           | `boolean`                        | `false`    |
-| `overlayContainer` | 显式 Portal 容器（property）。                 | `OverlayContainer`               | —          |
+| Name               | Description                                         | Type                             | Default    |
+| ------------------ | --------------------------------------------------- | -------------------------------- | ---------- |
+| `open`             | Popover visibility.                                 | `boolean`                        | `false`    |
+| `disabled`         | Disabled state.                                     | `boolean`                        | `false`    |
+| `placement`        | Floating UI placement.                              | `Placement`                      | `'bottom'` |
+| `offset`           | Distance from the anchor (px).                      | `number`                         | `8`        |
+| `trigger`          | Trigger mode: `click` (default), `hover`, `manual`. | `'click' \| 'hover' \| 'manual'` | `'click'`  |
+| `portal`           | Renders in the theme-owned overlay root.            | `boolean`                        | `false`    |
+| `overlayContainer` | Explicit Portal container (property).               | `OverlayContainer`               | —          |
 
 ### Events
 
-| 名称          | 说明                                   |
-| ------------- | -------------------------------------- |
-| `open-change` | 弹出层开合，`detail.open` 为当前状态。 |
+| Name          | Description                                                      |
+| ------------- | ---------------------------------------------------------------- |
+| `open-change` | The popover opens or closes; `detail.open` is the current state. |
 
 ### Slots
 
-| 名称      | 说明                        |
-| --------- | --------------------------- |
-| `trigger` | trigger，请放入可交互元素。 |
-| `default` | 弹出层内容。                |
+| Name      | Description                                   |
+| --------- | --------------------------------------------- |
+| `trigger` | The trigger; put an interactive element here. |
+| `default` | Popover content.                              |
 
 ### Methods
 
-| 名称       | 说明                                          |
-| ---------- | --------------------------------------------- |
-| `show()`   | 打开弹出层；`disabled` 或已打开时不产生效果。 |
-| `close()`  | 关闭弹出层；已关闭时不产生效果。              |
-| `toggle()` | 按当前 `open` 切换。                          |
+| Name       | Description                                                   |
+| ---------- | ------------------------------------------------------------- |
+| `show()`   | Opens the popover; no effect when `disabled` or already open. |
+| `close()`  | Closes the popover; no effect when already closed.            |
+| `toggle()` | Toggles according to the current `open`.                      |
 
-### 行为说明
+### Behavior
 
-Hover 模式使用 `pointerenter`/`pointerleave` 加延迟控制。
+Hover mode uses `pointerenter`/`pointerleave` with a delay.
 
-Click 模式点击切换。Manual 模式不响应悬停，点击面板外与 Escape 也不关闭；trigger 点击与 `show()` / `close()` 都能改 `open`，其中程序式调用不派发 `open-change`。
+Click mode toggles on click. Manual mode does not respond to hover, and neither clicking outside the panel nor Escape closes it; trigger clicks and `show()` / `close()` all change `open`, and programmatic calls do not dispatch `open-change`.
 
 ### trigger ARIA
 
-开合状态回写到 trigger 元素：`aria-expanded` 与 `aria-controls`（指向 panel）设在 `trigger` slot 的首个 assigned element 上（包装结构上的同名属性保留兼容）。
+The open state is written back to the trigger element: `aria-expanded` and `aria-controls` (pointing at the panel) are set on the first assigned element of the `trigger` slot (attributes of the same name on the wrapper are kept for compatibility).
 
-trigger slot 请放入可交互元素（原生 button、`web-ui-button`）。
+Put an interactive element in the trigger slot (a native button, `web-ui-button`).

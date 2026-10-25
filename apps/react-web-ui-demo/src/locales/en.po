@@ -1,0 +1,148 @@
+msgid ""
+msgstr ""
+"Source-Language: zh-CN\n"
+"Language: en\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=2\n"
+"X-Plurals-Order: one, other\n"
+
+#: src/components/example-doc/index.tsx
+msgid "已复制"
+msgstr "Copied"
+
+#: src/components/example-doc/index.tsx
+msgid "复制失败"
+msgstr "Copy failed"
+
+#: src/components/example-doc/index.tsx
+msgid "复制代码"
+msgstr "Copy code"
+
+#: src/components/example-doc/index.tsx
+msgid "示例代码框架"
+msgstr "Sample code framework"
+
+#: src/components/example-doc/index.tsx
+#: src/components/example-doc/index.tsx
+msgid "收起代码"
+msgstr "Collapse code"
+
+#: src/components/example-doc/index.tsx
+#: src/components/example-doc/index.tsx
+msgid "展开代码"
+msgstr "Expand code"
+
+#: src/components/example-doc/index.tsx
+msgid "示例"
+msgstr "Samples"
+
+#: src/routes/home/-component.tsx
+msgid "查看演示 →"
+msgstr "View demo →"
+
+#: src/routes/home/-component.tsx
+msgid "基于 Web Components 的跨框架现代 UI 组件库。一套轻量、精致的核心设计系统，原生支持 Vue、React 以及任意前端技术栈。"
+msgstr "A cross-framework modern UI component library built on Web Components. One lightweight, refined core design system with native support for Vue, React, and any frontend stack."
+
+#: src/components/not-found/index.tsx
+msgid "你要找的页面不存在"
+msgstr "The page you asked for does not exist"
+
+#: src/components/root/index.tsx
+msgid "🎉 欢迎使用 web-ui 组件库！"
+msgstr "🎉 Welcome to the web-ui component library!"
+
+#: src/components/root/index.tsx
+#: src/components/root/index.tsx
+msgid "完整动效"
+msgstr "Full motion"
+
+#: src/components/root/index.tsx
+#: src/components/root/index.tsx
+msgid "减弱动效"
+msgstr "Reduced motion"
+
+#: src/components/root/index.tsx
+#: src/components/root/index.tsx
+#: src/components/root/index.tsx
+#: src/components/root/index.tsx
+msgid "跟随系统"
+msgstr "Follow system"
+
+#: src/components/root/index.tsx
+msgid "全局动效"
+msgstr "Global motion"
+
+#: src/components/root/index.tsx
+msgid "全局主题"
+msgstr "Global theme"
+
+#: src/components/root/index.tsx
+msgid "全局语言"
+msgstr "Global language"
+
+#: src/components/root/index.tsx
+msgid "主导航"
+msgstr "Main navigation"
+
+#: src/components/root/index.tsx
+msgid "应用导航"
+msgstr "App navigation"
+
+#: src/routes/home/-component.tsx
+msgid "变体、尺寸、图标与加载状态"
+msgstr "Variants, sizes, icons and loading states"
+
+#: src/routes/home/-component.tsx
+msgid "遵循无障碍规范的模态对话框行为"
+msgstr "Modal dialog behavior aligned with accessibility"
+
+#: src/routes/home/-component.tsx
+msgid "手势拖拽关闭与浮动卡片形态"
+msgstr "Gesture drag-to-close and floating card variants"
+
+#: src/routes/home/-component.tsx
+msgid "深浅外观切换与减弱动效"
+msgstr "Light and dark switching with reduced motion"
+
+#: src/routes/home/-component.tsx
+msgid "基于 Floating UI 的下拉浮层与选项"
+msgstr "Floating UI based dropdown layer and options"
+
+#: src/routes/home/-component.tsx
+msgid "轻量、响应式的全局通知"
+msgstr "Lightweight responsive global notifications"
+
+#: src/components/root/root-error-fallback/index.tsx
+msgid "出了点问题"
+msgstr "Something went wrong"
+
+#: src/components/root/root-error-fallback/index.tsx
+msgid "重试"
+msgstr "Retry"
+
+#: src/components/example-doc/index.tsx
+msgid "示例文档"
+msgstr "Example documentation"
+
+#: src/routes/home/-component.tsx
+msgid "Web Components 原生"
+msgstr "Native Web Components"
+
+#: src/routes/home/-component.tsx
+msgid "跨框架无缝适配"
+msgstr "Seamless cross-framework support"
+
+#: src/routes/home/-component.tsx
+msgid "语义化设计 Token"
+msgstr "Semantic design tokens"
+
+#: src/routes/home/-component.tsx
+msgid "深浅色 & 动效偏好"
+msgstr "Light/dark & motion preferences"
+
+#: src/routes/home/-component.tsx
+msgid "常用组件快速预览"
+msgstr "Popular components at a glance"

@@ -3,19 +3,19 @@ component: image-preview
 tag: web-ui-image-preview
 ---
 
-命令式 image preview：通过 `imagePreview()` 打开，用返回的 handle 控制；内部使用原生 `<dialog>`，不传 `container` 时挂到根主题（`web-ui-theme`）的 overlay root，页面里没有主题作用域时回退到全局 fallback root——传 `target` 则改为解析它最近的 theme 作用域。
+Imperative image preview: open it through `imagePreview()` and control it with the returned handle; it uses a native `<dialog>` internally and, when no `container` is passed, mounts into the overlay root of the root theme (`web-ui-theme`), falling back to the global fallback root when the page has no theme scope—passing `target` instead resolves its nearest theme scope.
 
-下面的表分别列 `imagePreview()` 的 option 与返回 handle 的成员。
+The tables below list the `imagePreview()` options and the members of the returned handle.
 
-## 示例
+## Samples
 
-### 基础 {#basic}
+### Basic {#basic}
 
-`imagePreview()` 一调用就把宿主挂到根主题（或 `container` 指定）的 overlay root 上并立即打开，同时返回 handle。
+Calling `imagePreview()` mounts the host into the overlay root of the root theme (or the one `container` names) and opens it immediately, returning a handle.
 
-只传 `images` 时四个展示类 option 保持默认关闭，画面上只有图片本身——方向键切图、滚轮与 `+` / `-` 缩放、`0` 重置、双击在 1x 与 2x 之间切换都照常可用。
+With only `images`, the four display options stay off by default and only the image itself is on screen—arrow keys to switch images, wheel and `+` / `-` to zoom, `0` to reset, and double-click to toggle between 1x and 2x all still work.
 
-点击图片以外的空白处或按 Escape 关闭：关闭请求先播退场过渡，宿主移除后 handle 的 `closed` 才兑现。
+Clicking anywhere outside the image or pressing Escape closes: the close request plays the exit transition first, and the handle's `closed` resolves only after the host is removed.
 
 ```tsx
 import { imagePreview } from '@greypan/web-ui'
@@ -26,19 +26,19 @@ const gradientImage = (label: string, from: string, to: string) =>
   )}`
 
 const IMAGES = [
-  { src: gradientImage('第一张', '#0a84ff', '#5e5ce6'), alt: '蓝色渐变的示例图' },
-  { src: gradientImage('第二张', '#ff375f', '#ff9f0a'), alt: '橙红渐变的示例图' },
-  { src: gradientImage('第三张', '#30d158', '#0a84ff'), alt: '青绿渐变的示例图' }
+  { src: gradientImage('First image', '#0a84ff', '#5e5ce6'), alt: 'Example image with a blue gradient' },
+  { src: gradientImage('Second image', '#ff375f', '#ff9f0a'), alt: 'Example image with an orange-red gradient' },
+  { src: gradientImage('Third image', '#30d158', '#0a84ff'), alt: 'Example image with a teal gradient' }
 ]
 
 export default function Demo() {
-  return <web-ui-button onClick={() => imagePreview({ images: IMAGES })}>打开预览</web-ui-button>
+  return <web-ui-button onClick={() => imagePreview({ images: IMAGES })}>Open preview</web-ui-button>
 }
 ```
 
 ```vue
 <template>
-  <web-ui-button @click="open">打开预览</web-ui-button>
+  <web-ui-button @click="open">Open preview</web-ui-button>
 </template>
 
 <script setup lang="ts">
@@ -50,9 +50,9 @@ const gradientImage = (label: string, from: string, to: string) =>
   )}`
 
 const IMAGES = [
-  { src: gradientImage('第一张', '#0a84ff', '#5e5ce6'), alt: '蓝色渐变的示例图' },
-  { src: gradientImage('第二张', '#ff375f', '#ff9f0a'), alt: '橙红渐变的示例图' },
-  { src: gradientImage('第三张', '#30d158', '#0a84ff'), alt: '青绿渐变的示例图' }
+  { src: gradientImage('First image', '#0a84ff', '#5e5ce6'), alt: 'Example image with a blue gradient' },
+  { src: gradientImage('Second image', '#ff375f', '#ff9f0a'), alt: 'Example image with an orange-red gradient' },
+  { src: gradientImage('Third image', '#30d158', '#0a84ff'), alt: 'Example image with a teal gradient' }
 ]
 
 function open() {
@@ -61,11 +61,11 @@ function open() {
 </script>
 ```
 
-### 展示类 option {#display-options}
+### Display options {#display-options}
 
-`nav`、`toolbar`、`closable`、`indicator` 彼此独立、默认全关，四个都传 `true` 才会把上一张 / 下一张 button、缩放工具条、关闭 button 与「当前 / 总数」indicator 一起带出来。
+`nav`, `toolbar`, `closable`, and `indicator` are independent and all off by default; only passing `true` for all four brings out the previous / next buttons, the zoom toolbar, the close button, and the "current / total" indicator together.
 
-`nav` 只在图片多于一张时渲染；`loop` 默认 `true`，首尾环绕，所以这里的三张图可以一直朝同一个方向翻。
+`nav` is rendered only when there is more than one image; `loop` defaults to `true` and wraps around, so the three images here can be paged in the same direction forever.
 
 ```tsx
 import { imagePreview } from '@greypan/web-ui'
@@ -76,9 +76,9 @@ const gradientImage = (label: string, from: string, to: string) =>
   )}`
 
 const IMAGES = [
-  { src: gradientImage('第一张', '#0a84ff', '#5e5ce6'), alt: '蓝色渐变的示例图' },
-  { src: gradientImage('第二张', '#ff375f', '#ff9f0a'), alt: '橙红渐变的示例图' },
-  { src: gradientImage('第三张', '#30d158', '#0a84ff'), alt: '青绿渐变的示例图' }
+  { src: gradientImage('First image', '#0a84ff', '#5e5ce6'), alt: 'Example image with a blue gradient' },
+  { src: gradientImage('Second image', '#ff375f', '#ff9f0a'), alt: 'Example image with an orange-red gradient' },
+  { src: gradientImage('Third image', '#30d158', '#0a84ff'), alt: 'Example image with a teal gradient' }
 ]
 
 export default function Demo() {
@@ -86,7 +86,7 @@ export default function Demo() {
     <web-ui-button
       onClick={() => imagePreview({ images: IMAGES, nav: true, toolbar: true, closable: true, indicator: true })}
     >
-      打开预览（全部控件）
+      Open preview (all controls)
     </web-ui-button>
   )
 }
@@ -94,7 +94,7 @@ export default function Demo() {
 
 ```vue
 <template>
-  <web-ui-button @click="open">打开预览（全部控件）</web-ui-button>
+  <web-ui-button @click="open">Open preview (all controls)</web-ui-button>
 </template>
 
 <script setup lang="ts">
@@ -106,9 +106,9 @@ const gradientImage = (label: string, from: string, to: string) =>
   )}`
 
 const IMAGES = [
-  { src: gradientImage('第一张', '#0a84ff', '#5e5ce6'), alt: '蓝色渐变的示例图' },
-  { src: gradientImage('第二张', '#ff375f', '#ff9f0a'), alt: '橙红渐变的示例图' },
-  { src: gradientImage('第三张', '#30d158', '#0a84ff'), alt: '青绿渐变的示例图' }
+  { src: gradientImage('First image', '#0a84ff', '#5e5ce6'), alt: 'Example image with a blue gradient' },
+  { src: gradientImage('Second image', '#ff375f', '#ff9f0a'), alt: 'Example image with an orange-red gradient' },
+  { src: gradientImage('Third image', '#30d158', '#0a84ff'), alt: 'Example image with a teal gradient' }
 ]
 
 function open() {
@@ -117,13 +117,13 @@ function open() {
 </script>
 ```
 
-### handle {#handle}
+### Handle {#handle}
 
-handle 的 `index`、`scale`、`images`、`closed` 是只读成员，方法调用后同步读得到新值；预览内部的手势与键盘操作不会回调外部，需要时自己读。
+The handle's `index`, `scale`, `images`, and `closed` are read-only members; after a method call the new values are readable synchronously. Gestures and keyboard operations inside the preview do not call back to the outside; read them yourself when needed.
 
-顺序上先 `goTo(1)` 再 `zoomIn()`：切图会把缩放复位到 1x，反过来写放大就丢了。
+Order matters: call `goTo(1)` before `zoomIn()`; switching images resets the zoom to 1x, so the other order loses the zoom.
 
-示例把读数写进 `<output>`，`closed` 兑现后再改成「预览已关闭」。
+The example writes the readout into `<output>` and switches it to "Preview closed" once `closed` resolves.
 
 ```tsx
 import { imagePreview } from '@greypan/web-ui'
@@ -135,26 +135,26 @@ const gradientImage = (label: string, from: string, to: string) =>
   )}`
 
 const IMAGES = [
-  { src: gradientImage('第一张', '#0a84ff', '#5e5ce6'), alt: '蓝色渐变的示例图' },
-  { src: gradientImage('第二张', '#ff375f', '#ff9f0a'), alt: '橙红渐变的示例图' },
-  { src: gradientImage('第三张', '#30d158', '#0a84ff'), alt: '青绿渐变的示例图' }
+  { src: gradientImage('First image', '#0a84ff', '#5e5ce6'), alt: 'Example image with a blue gradient' },
+  { src: gradientImage('Second image', '#ff375f', '#ff9f0a'), alt: 'Example image with an orange-red gradient' },
+  { src: gradientImage('Third image', '#30d158', '#0a84ff'), alt: 'Example image with a teal gradient' }
 ]
 
 export default function Demo() {
-  const [status, setStatus] = useState('尚未打开')
+  const [status, setStatus] = useState('Not opened yet')
 
   function open() {
     const preview = imagePreview({ images: IMAGES, toolbar: true })
-    // 切图会把缩放复位到 1x，所以先 goTo 再 zoomIn。
+    // Switching images resets the zoom to 1x, so call goTo before zoomIn.
     preview.goTo(1)
     preview.zoomIn()
-    setStatus(`第 ${preview.index + 1} 张 · 缩放 ${Math.round(preview.scale * 100)}%`)
-    void preview.closed.then(() => setStatus('预览已关闭'))
+    setStatus(`Image ${preview.index + 1} · zoom ${Math.round(preview.scale * 100)}%`)
+    void preview.closed.then(() => setStatus('Preview closed'))
   }
 
   return (
     <div className="flex flex-wrap items-center gap-3">
-      <web-ui-button onClick={open}>打开并跳到第 2 张</web-ui-button>
+      <web-ui-button onClick={open}>Open and go to image 2</web-ui-button>
       <output className="text-sm text-(--wui-color-text-secondary)">{status}</output>
     </div>
   )
@@ -164,7 +164,7 @@ export default function Demo() {
 ```vue
 <template>
   <div class="flex flex-wrap items-center gap-3">
-    <web-ui-button @click="open">打开并跳到第 2 张</web-ui-button>
+    <web-ui-button @click="open">Open and go to image 2</web-ui-button>
     <output class="text-sm text-(--wui-color-text-secondary)">{{ status }}</output>
   </div>
 </template>
@@ -179,21 +179,21 @@ const gradientImage = (label: string, from: string, to: string) =>
   )}`
 
 const IMAGES = [
-  { src: gradientImage('第一张', '#0a84ff', '#5e5ce6'), alt: '蓝色渐变的示例图' },
-  { src: gradientImage('第二张', '#ff375f', '#ff9f0a'), alt: '橙红渐变的示例图' },
-  { src: gradientImage('第三张', '#30d158', '#0a84ff'), alt: '青绿渐变的示例图' }
+  { src: gradientImage('First image', '#0a84ff', '#5e5ce6'), alt: 'Example image with a blue gradient' },
+  { src: gradientImage('Second image', '#ff375f', '#ff9f0a'), alt: 'Example image with an orange-red gradient' },
+  { src: gradientImage('Third image', '#30d158', '#0a84ff'), alt: 'Example image with a teal gradient' }
 ]
 
-const status = ref('尚未打开')
+const status = ref('Not opened yet')
 
 function open() {
   const preview = imagePreview({ images: IMAGES, toolbar: true })
-  // 切图会把缩放复位到 1x，所以先 goTo 再 zoomIn。
+  // Switching images resets the zoom to 1x, so call goTo before zoomIn.
   preview.goTo(1)
   preview.zoomIn()
-  status.value = `第 ${preview.index + 1} 张 · 缩放 ${Math.round(preview.scale * 100)}%`
+  status.value = `Image ${preview.index + 1} · zoom ${Math.round(preview.scale * 100)}%`
   void preview.closed.then(() => {
-    status.value = '预览已关闭'
+    status.value = 'Preview closed'
   })
 }
 </script>
@@ -203,45 +203,45 @@ function open() {
 
 ### Options
 
-| 名称              | 说明                                               | 类型                 | 默认值  |
-| ----------------- | -------------------------------------------------- | -------------------- | ------- |
-| `images`          | 图片列表，至少一项；每项为 `{ src, alt? }`。       | `ImagePreviewItem[]` | —       |
-| `index`           | 初始图片索引，越界时钳制到有效区间。               | `number`             | `0`     |
-| `loop`            | 首尾循环切换。                                     | `boolean`            | `true`  |
-| `target`          | 用于解析最近 theme-owned overlay root 的触发元素。 | `Element`            | —       |
-| `container`       | 显式挂载容器，优先级高于主题作用域。               | `HTMLElement`        | —       |
-| `nav`             | 展示上一张 / 下一张 button。                       | `boolean`            | `false` |
-| `toolbar`         | 展示缩放工具条。                                   | `boolean`            | `false` |
-| `closable`        | 展示关闭 button。                                  | `boolean`            | `false` |
-| `indicator`       | 展示「当前 / 总数」indicator。                     | `boolean`            | `false` |
-| `swipe`           | 1x 下允许左右滑动切图。                            | `boolean`            | `false` |
-| `noScrollLock`    | 打开期间不锁定页面滚动。                           | `boolean`            | `false` |
-| `noBackdropClose` | 点击图片以外的空白区域不关闭。                     | `boolean`            | `false` |
+| Name              | Description                                                           | Type                 | Default |
+| ----------------- | --------------------------------------------------------------------- | -------------------- | ------- |
+| `images`          | Image list, at least one item; each item is `{ src, alt? }`.          | `ImagePreviewItem[]` | —       |
+| `index`           | Initial image index; clamped to the valid range when out of bounds.   | `number`             | `0`     |
+| `loop`            | Wrap-around switching between the first and last images.              | `boolean`            | `true`  |
+| `target`          | Trigger element used to resolve the nearest theme-owned overlay root. | `Element`            | —       |
+| `container`       | Explicit mount container; takes precedence over the theme scope.      | `HTMLElement`        | —       |
+| `nav`             | Shows the previous / next buttons.                                    | `boolean`            | `false` |
+| `toolbar`         | Shows the zoom toolbar.                                               | `boolean`            | `false` |
+| `closable`        | Shows the close button.                                               | `boolean`            | `false` |
+| `indicator`       | Shows the "current / total" indicator.                                | `boolean`            | `false` |
+| `swipe`           | Allows left/right swipe to switch images at 1x.                       | `boolean`            | `false` |
+| `noScrollLock`    | Does not lock page scrolling while open.                              | `boolean`            | `false` |
+| `noBackdropClose` | Clicking outside the image does not close.                            | `boolean`            | `false` |
 
 ### Methods
 
-| 名称          | 说明                                                                            |
-| ------------- | ------------------------------------------------------------------------------- |
-| `next()`      | 切到下一张；`loop` 开启时末张回到首张，关闭时已在末张则不动作。                 |
-| `prev()`      | 切到上一张；`loop` 开启时首张回到末张，关闭时已在首张则不动作。                 |
-| `goTo(index)` | 跳到指定索引；`loop` 开启时按图片数取模，关闭时钳制到有效区间，切换后缩放复位。 |
-| `zoomIn()`    | 放大一档（0.5），上限 4。                                                       |
-| `zoomOut()`   | 缩小一档（0.5），下限 1。                                                       |
-| `resetZoom()` | 缩放与平移复位：回到 1x 并居中。                                                |
-| `close()`     | 关闭预览；handle 的 `closed` 在退场结束后兑现。                                 |
+| Name          | Description                                                                                                                                             |
+| ------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `next()`      | Switches to the next image; with `loop` on, the last image returns to the first; with it off, nothing happens at the last image.                        |
+| `prev()`      | Switches to the previous image; with `loop` on, the first image returns to the last; with it off, nothing happens at the first image.                   |
+| `goTo(index)` | Jumps to the given index; with `loop` on it takes the modulo by image count, with it off it clamps to the valid range; the zoom resets after switching. |
+| `zoomIn()`    | Zooms in one step (0.5), up to 4.                                                                                                                       |
+| `zoomOut()`   | Zooms out one step (0.5), down to 1.                                                                                                                    |
+| `resetZoom()` | Resets zoom and pan: back to 1x and centered.                                                                                                           |
+| `close()`     | Closes the preview; the handle's `closed` resolves after the exit transition ends.                                                                      |
 
-### 行为说明
+### Behavior
 
-它不复用 `<web-ui-dialog>` 组件：预览需要自身铺满视口的 dialog（全视口 backdrop 由 dialog 内独立 backdrop 层渲染，dialog 元素自身不做 opacity 过渡，玻璃控件的 backdrop blur 全程连续）与自有指针交互，与 dialog 组件的玻璃卡片 / 插槽契约不同源。
+It does not reuse the `<web-ui-dialog>` component: the preview needs a dialog that fills the viewport itself (the full-viewport backdrop is rendered by a separate backdrop layer inside the dialog, the dialog element itself does not transition opacity, and the glass controls' backdrop blur stays continuous throughout) and has its own pointer interactions, which does not share a source with the dialog component's glass card / slot contract.
 
-两者共享 `native-dialog-presence` 与 `scroll-lock` 两个底层插件，`noScrollLock` / `noBackdropClose` 的命名与语义也对齐同名属性。
+Both share the `native-dialog-presence` and `scroll-lock` plugins, and `noScrollLock` / `noBackdropClose` are named and behave consistently with the attributes of the same names.
 
 ```ts
 import { imagePreview } from '@greypan/web-ui'
 
 function openPreview() {
   const preview = imagePreview({
-    images: [{ src: '/a.jpg', alt: '图 A' }, { src: '/b.jpg' }],
+    images: [{ src: '/a.jpg', alt: 'Image A' }, { src: '/b.jpg' }],
     nav: true,
     toolbar: true,
     closable: true,
@@ -253,48 +253,48 @@ function openPreview() {
 }
 ```
 
-`ImagePreviewItem` 为 `{ src: string; alt?: string }`；`alt` 缺省为空字符串。
+`ImagePreviewItem` is `{ src: string; alt?: string }`; `alt` defaults to an empty string.
 
-展示类 option 默认全关：不传任何 option 时只渲染图片本身，导航、工具条、关闭 button 与 indicator 都需要显式开启。
+Display options are all off by default: with no option passed only the image itself is rendered, and navigation, toolbar, close button, and indicator all need to be enabled explicitly.
 
-### 返回 handle
+### Return handle
 
-| 名称     | 说明                             | 类型                          |
-| -------- | -------------------------------- | ----------------------------- |
-| `index`  | 当前索引，关闭后保留最后一次的值 | `number`                      |
-| `scale`  | 当前缩放倍率，区间 `[1, 4]`      | `number`                      |
-| `images` | 归一化后的图片列表               | `readonly ImagePreviewItem[]` |
-| `closed` | 退场结束且宿主移除后兑现         | `Promise<void>`               |
+| Name     | Description                                                     | Type                          |
+| -------- | --------------------------------------------------------------- | ----------------------------- |
+| `index`  | Current index; keeps the last value after closing               | `number`                      |
+| `scale`  | Current zoom factor, in the range `[1, 4]`                      | `number`                      |
+| `images` | Normalized image list                                           | `readonly ImagePreviewItem[]` |
+| `closed` | Resolves after the exit transition ends and the host is removed | `Promise<void>`               |
 
-### 交互
+### Interaction
 
-方向键始终可切换图片，与 `nav` 无关；`+` / `-` 键和滚轮缩放，`0` 重置。
+Arrow keys always switch images, regardless of `nav`; the `+` / `-` keys and the wheel zoom, and `0` resets.
 
-缩放带锚点：滚轮固定光标下的那一点，双指捏合固定两指中点，工具条 button、键盘快捷键与双击则以视口中心为中心放大。
+Zoom is anchored: the wheel fixes the point under the cursor, a two-finger pinch fixes the midpoint of the two fingers, while toolbar buttons, keyboard shortcuts, and double-click zoom around the viewport center.
 
-按住鼠标拖拽或单指按住拖拽都能平移图片，方向不限，且与倍率无关：放大后是查看被裁切的边缘，1x 是在视口内移动图片。两种情形共用同一个边界——图片与舞台尺寸差的一半，因此图片永远不会被拖出视口；拖到边界后继续拖是钳制而非回弹。
+Holding the mouse and dragging, or holding one finger and dragging, both pan the image in any direction and independently of the zoom factor: when zoomed in it inspects the clipped edges, and at 1x it moves the image within the viewport. Both cases share the same boundary—half the size difference between the image and the stage—so the image can never be dragged out of the viewport; continuing to drag at the boundary clamps rather than bouncing back.
 
-双击图片在 1x 与 2x 之间切换。
+Double-clicking the image toggles between 1x and 2x.
 
-双指缩放始终开启且不提供 option：舞台本身就持有指针交互，没有会冲突的手势。第一根手指照常负责平移 / 滑动，第二根手指落下才进入捏合，并中止进行中的平移或滑动。捏合不会关闭 overlay；混合输入事后可能补发的兼容 `click` 会被吞掉，而不是当作 backdrop 点击。
+Pinch zoom is always on and has no option: the stage itself owns the pointer interaction, so there is no conflicting gesture. The first finger pans / swipes as usual, and only when a second finger lands does it enter pinch, aborting any in-progress pan or swipe. Pinching does not close the overlay; a compatibility `click` that mixed input may dispatch afterwards is swallowed instead of being treated as a backdrop click.
 
-点击图片以外的空白区域或按 Escape 关闭，原生 dialog 始终暴露 `image preview` 这一可访问名称。
+Clicking anywhere outside the image or pressing Escape closes; the native dialog always exposes the accessible name `image preview`.
 
-`swipe` 开启且图片多于一张时，图片排布在单条轮播 track 上：当前图与相邻图各占等宽等高的 slide，舞台裁切溢出，整条 track 随手指平移。
+With `swipe` on and more than one image, the images are laid out on a single carousel track: the current image and its neighbors each occupy a slide of equal width and height, the stage clips the overflow, and the whole track translates with the finger.
 
-松手时越过距离阈值（舞台宽度的 15%，取整）滑入相邻图，位移未达阈值但快速轻扫的采样速度达到 320px/s 以上、或位移至少 16px 且速度（窗口采样或整段平均）达到 160px/s 以上的轻扫同样提交，否则弹回；`loop` 开启时首尾环绕的相邻图恒在当前图两侧，`loop` 关闭时边界方向回弹不越界。
+On release, a slide past the distance threshold (15% of the stage width, rounded) moves into the neighboring image; a quick flick that does not reach the threshold but whose sampled velocity reaches 320px/s or more, or whose displacement is at least 16px with a velocity (window-sampled or averaged over the whole gesture) of 160px/s or more, also commits; otherwise it springs back. With `loop` on, the neighbors that wrap around are always on both sides of the current image; with `loop` off, the boundary direction springs back without crossing.
 
-该手势生效期间接管整个拖拽：1x 下横向拖拽用于切图，纵向位移被完全忽略（不驱平移、不跟手）。放大后拖拽一律平移（纵横都跟），不再切换图片。
+While this gesture is active it takes over the whole drag: at 1x a horizontal drag switches images and vertical displacement is ignored entirely (it neither drives panning nor follows the finger). When zoomed in, dragging always pans (following both axes) and no longer switches images.
 
-由于 1x 也能平移，`resetZoom()` 在「已放大」和「已位移」两种情况下都可用——工具条里的重置 button 对已平移的 1x 图片同样可点。
+Because 1x can pan as well, `resetZoom()` is available both when "zoomed" and when "panned"—the reset button in the toolbar is clickable for a panned 1x image too.
 
-关闭请求不会立刻销毁原生 dialog：它保持在 top layer，等退场过渡结束后才调用 `dialog.close()`，随后宿主从 DOM 移除并兑现 `closed`。打开期间锁定页面滚动，除非 `noScrollLock` 为 `true`。
+A close request does not destroy the native dialog immediately: it stays in the top layer until the exit transition ends, and only then is `dialog.close()` called, after which the host is removed from the DOM and `closed` resolves. While open, page scrolling is locked unless `noScrollLock` is `true`.
 
 ### CSS Custom Properties
 
-| 名称                             | 说明                     | 默认值                           |
-| -------------------------------- | ------------------------ | -------------------------------- |
-| `--wui-image-preview-overlay-bg` | 全视口 backdrop 背景色   | `rgb(0 0 0 / 0.72)`              |
-| `--wui-image-preview-edge-gap`   | 控件到视口边缘的可见距离 | `20px`                           |
-| `--wui-duration-swipe-settle`    | 轮播滑入/回位的过渡时长  | `220ms`                          |
-| `--wui-ease-swipe`               | 轮播滑入/回位的缓动曲线  | `cubic-bezier(0.32, 0.72, 0, 1)` |
+| Name                             | Description                                             | Default                          |
+| -------------------------------- | ------------------------------------------------------- | -------------------------------- |
+| `--wui-image-preview-overlay-bg` | Full-viewport backdrop background color                 | `rgb(0 0 0 / 0.72)`              |
+| `--wui-image-preview-edge-gap`   | Visible distance from the controls to the viewport edge | `20px`                           |
+| `--wui-duration-swipe-settle`    | Transition duration for the carousel sliding in / back  | `220ms`                          |
+| `--wui-ease-swipe`               | Easing curve for the carousel sliding in / back         | `cubic-bezier(0.32, 0.72, 0, 1)` |

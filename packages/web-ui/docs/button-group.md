@@ -3,27 +3,27 @@ component: button-group
 tag: web-ui-button-group
 ---
 
-把若干个 `<web-ui-button>` 并成一组：组只负责成员之间的视觉连体（共享一块 glass 底、相邻 button 之间画分割线）与排列方向，不管选中态，也不改变成员各自的事件与表单行为。成员自己的 `size` 在组内被忽略，一律按 30px 高渲染。
+Groups several `<web-ui-button>` elements into one: the group is responsible only for the visual contiguity between members (a shared glass base, dividers drawn between adjacent buttons) and the layout direction; it does not manage selection state and does not change members' own events or form behavior. A member's own `size` is ignored inside the group, where every member renders 30px high.
 
-## 示例
+## Samples
 
-### 水平组 {#basic}
+### Horizontal group {#basic}
 
-组给整组套一块 glass 底（`.wui-glass` 画在组的内层盒子上），并在相邻两枚成员之间补一条分割线，末尾那枚不补。
+The group puts a glass base under the whole row (`.wui-glass` drawn on the group's inner box) and adds a divider between adjacent members, but not after the last one.
 
-成员的 `variant` 在这里只剩文字色的意义：成员内部那层 `button.is-grouped` 把 `--wui-button-bg` 写成 `transparent`、把 hover / active 换成共用的 state layer。
+A member's `variant` carries only text color here: the `button.is-grouped` layer inside the member writes `--wui-button-bg` as `transparent` and replaces hover / active with a shared state layer.
 
-元素自身的声明恒胜过从 variant 继承来的值，所以 `secondary` / `ghost` / `glass` 三档在组内观感一致（`glass` 那一档入组后连自己那块玻璃底也不画，`wui-glass` 只在没有组上下文时才加），只有 `danger` 的红字留得下来。
+A declaration on the element itself always beats a value inherited from the variant, so `secondary` / `ghost` / `glass` look identical inside the group (`glass` does not even draw its own glass base once grouped, since `wui-glass` is only added without a group context), and only the red text of `danger` survives.
 
-`primary` 则只剩 `var(--wui-color-on-accent)` 那身白字，落在浅色玻璃上几乎读不出来——组内请用 `secondary` 或 `ghost`。
+`primary` keeps only its `var(--wui-color-on-accent)` white text, which is almost unreadable on the light glass—use `secondary` or `ghost` inside a group.
 
 ```tsx
 export default function Demo() {
   return (
     <web-ui-button-group>
-      <web-ui-button variant="secondary">左</web-ui-button>
-      <web-ui-button variant="secondary">中</web-ui-button>
-      <web-ui-button variant="secondary">右</web-ui-button>
+      <web-ui-button variant="secondary">Left</web-ui-button>
+      <web-ui-button variant="secondary">Middle</web-ui-button>
+      <web-ui-button variant="secondary">Right</web-ui-button>
     </web-ui-button-group>
   )
 }
@@ -32,20 +32,20 @@ export default function Demo() {
 ```vue
 <template>
   <web-ui-button-group>
-    <web-ui-button variant="secondary">左</web-ui-button>
-    <web-ui-button variant="secondary">中</web-ui-button>
-    <web-ui-button variant="secondary">右</web-ui-button>
+    <web-ui-button variant="secondary">Left</web-ui-button>
+    <web-ui-button variant="secondary">Middle</web-ui-button>
+    <web-ui-button variant="secondary">Right</web-ui-button>
   </web-ui-button-group>
 </template>
 ```
 
-### 成员内容 {#members}
+### Member content {#members}
 
-成员可以是 icon-only、纯文字，或者用 `prefix` / `suffix` 夹一个 icon，组只把宿主盒子排成一行并居中：`align-items: center` 是写死的，成员高度又统一成 30px，所以混排天然对齐，没有任何一枚被拉伸或压窄。
+A member can be icon-only, text-only, or have an icon wrapped in `prefix` / `suffix`; the group only lays the host boxes in one row and centers them: `align-items: center` is hard-coded and member heights are unified to 30px, so mixed content aligns naturally and no member is stretched or squeezed.
 
-icon-only 成员照旧要写 `aria-label`，否则读屏只念出一个空 button。
+An icon-only member still needs an `aria-label`, otherwise a screen reader announces an empty button.
 
-非 `<web-ui-button>` 的节点也会照常投影进这块玻璃里，但不参与末位与分割线的计算——组只按 `web-ui-button` 认成员。
+Nodes that are not `<web-ui-button>` are still projected into the glass but do not participate in last-position and divider calculation—the group only recognizes `web-ui-button` as members.
 
 ```tsx
 import { lucideChevronLeft, lucideChevronRight } from '@greypan/web-ui/icons'
@@ -54,39 +54,39 @@ export default function Demo() {
   return (
     <div className="flex flex-col items-start gap-5">
       <div className="flex flex-col items-start gap-2">
-        <span className="text-xs text-(--wui-color-text-secondary)">icon-only 成员</span>
+        <span className="text-xs text-(--wui-color-text-secondary)">icon-only member</span>
         <web-ui-button-group>
-          <web-ui-button icon variant="secondary" aria-label="上一页">
+          <web-ui-button icon variant="secondary" aria-label="Previous page">
             <web-ui-icon icon={lucideChevronLeft} size={16}></web-ui-icon>
           </web-ui-button>
-          <web-ui-button icon variant="secondary" aria-label="下一页">
+          <web-ui-button icon variant="secondary" aria-label="Next page">
             <web-ui-icon icon={lucideChevronRight} size={16}></web-ui-icon>
           </web-ui-button>
         </web-ui-button-group>
       </div>
 
       <div className="flex flex-col items-start gap-2">
-        <span className="text-xs text-(--wui-color-text-secondary)">icon 走 prefix / suffix</span>
+        <span className="text-xs text-(--wui-color-text-secondary)">icon via prefix / suffix</span>
         <web-ui-button-group>
           <web-ui-button variant="secondary">
             <web-ui-icon slot="prefix" icon={lucideChevronLeft} size={16}></web-ui-icon>
-            上一页
+            Previous
           </web-ui-button>
           <web-ui-button variant="secondary">
-            下一页
+            Next
             <web-ui-icon slot="suffix" icon={lucideChevronRight} size={16}></web-ui-icon>
           </web-ui-button>
         </web-ui-button-group>
       </div>
 
       <div className="flex flex-col items-start gap-2">
-        <span className="text-xs text-(--wui-color-text-secondary)">文字与 icon 混排</span>
+        <span className="text-xs text-(--wui-color-text-secondary)">Text and icon mixed</span>
         <web-ui-button-group>
-          <web-ui-button icon variant="secondary" aria-label="上一页">
+          <web-ui-button icon variant="secondary" aria-label="Previous page">
             <web-ui-icon icon={lucideChevronLeft} size={16}></web-ui-icon>
           </web-ui-button>
-          <web-ui-button variant="secondary">第 1 / 3 页</web-ui-button>
-          <web-ui-button icon variant="secondary" aria-label="下一页">
+          <web-ui-button variant="secondary">Page 1 / 3</web-ui-button>
+          <web-ui-button icon variant="secondary" aria-label="Next page">
             <web-ui-icon icon={lucideChevronRight} size={16}></web-ui-icon>
           </web-ui-button>
         </web-ui-button-group>
@@ -100,39 +100,39 @@ export default function Demo() {
 <template>
   <div class="flex flex-col items-start gap-5">
     <div class="flex flex-col items-start gap-2">
-      <span class="text-xs text-(--wui-color-text-secondary)">icon-only 成员</span>
+      <span class="text-xs text-(--wui-color-text-secondary)">icon-only member</span>
       <web-ui-button-group>
-        <web-ui-button icon variant="secondary" aria-label="上一页">
+        <web-ui-button icon variant="secondary" aria-label="Previous page">
           <web-ui-icon :icon="lucideChevronLeft" :size="16"></web-ui-icon>
         </web-ui-button>
-        <web-ui-button icon variant="secondary" aria-label="下一页">
+        <web-ui-button icon variant="secondary" aria-label="Next page">
           <web-ui-icon :icon="lucideChevronRight" :size="16"></web-ui-icon>
         </web-ui-button>
       </web-ui-button-group>
     </div>
 
     <div class="flex flex-col items-start gap-2">
-      <span class="text-xs text-(--wui-color-text-secondary)">icon 走 prefix / suffix</span>
+      <span class="text-xs text-(--wui-color-text-secondary)">icon via prefix / suffix</span>
       <web-ui-button-group>
         <web-ui-button variant="secondary">
           <web-ui-icon slot="prefix" :icon="lucideChevronLeft" :size="16"></web-ui-icon>
-          上一页
+          Previous
         </web-ui-button>
         <web-ui-button variant="secondary">
-          下一页
+          Next
           <web-ui-icon slot="suffix" :icon="lucideChevronRight" :size="16"></web-ui-icon>
         </web-ui-button>
       </web-ui-button-group>
     </div>
 
     <div class="flex flex-col items-start gap-2">
-      <span class="text-xs text-(--wui-color-text-secondary)">文字与 icon 混排</span>
+      <span class="text-xs text-(--wui-color-text-secondary)">Text and icon mixed</span>
       <web-ui-button-group>
-        <web-ui-button icon variant="secondary" aria-label="上一页">
+        <web-ui-button icon variant="secondary" aria-label="Previous page">
           <web-ui-icon :icon="lucideChevronLeft" :size="16"></web-ui-icon>
         </web-ui-button>
-        <web-ui-button variant="secondary">第 1 / 3 页</web-ui-button>
-        <web-ui-button icon variant="secondary" aria-label="下一页">
+        <web-ui-button variant="secondary">Page 1 / 3</web-ui-button>
+        <web-ui-button icon variant="secondary" aria-label="Next page">
           <web-ui-icon :icon="lucideChevronRight" :size="16"></web-ui-icon>
         </web-ui-button>
       </web-ui-button-group>
@@ -145,15 +145,15 @@ import { lucideChevronLeft, lucideChevronRight } from '@greypan/web-ui/icons'
 </script>
 ```
 
-### 垂直组 {#vertical}
+### Vertical group {#vertical}
 
-`direction` 决定横排还是竖排，默认 `horizontal`，合法值只有这两个，集合外的值一律回退成 `horizontal`。
+`direction` decides horizontal or vertical layout and defaults to `horizontal`; the only valid values are those two, and any value outside the set falls back to `horizontal`.
 
-这个属性只作为展示上下文（`{ direction, isLast }`）下发给成员，组不改写成员的任何属性。
+This attribute is only handed down to members as a presentation context (`{ direction, isLast }`); the group does not rewrite any member attribute.
 
-竖排时玻璃盒子的宽度固定成 `--wui-control-size`（页面值，默认 36px）、高度改由成员撑开，所以这一方向是给 icon-only 成员准备的：文字成员比 36px 宽，label 又不折行，会从胶囊里凸出去。
+Vertically, the glass box has a fixed width of `--wui-control-size` (the page value, 36px by default) and its height is driven by the members, so this direction is meant for icon-only members: text members are wider than 36px and the label does not wrap, so they would stick out of the pill.
 
-分割线这时画在成员下方，同一条 `--wui-button-group-divider-length` 那次动的是宽度。
+The divider is then drawn below the member, and the same `--wui-button-group-divider-length` now controls the width.
 
 ```tsx
 import { lucideMinus, lucidePlus, lucideSearch } from '@greypan/web-ui/icons'
@@ -161,13 +161,13 @@ import { lucideMinus, lucidePlus, lucideSearch } from '@greypan/web-ui/icons'
 export default function Demo() {
   return (
     <web-ui-button-group direction="vertical">
-      <web-ui-button icon variant="secondary" aria-label="放大">
+      <web-ui-button icon variant="secondary" aria-label="Zoom in">
         <web-ui-icon icon={lucidePlus} size={16}></web-ui-icon>
       </web-ui-button>
-      <web-ui-button icon variant="secondary" aria-label="缩小">
+      <web-ui-button icon variant="secondary" aria-label="Zoom out">
         <web-ui-icon icon={lucideMinus} size={16}></web-ui-icon>
       </web-ui-button>
-      <web-ui-button icon variant="secondary" aria-label="搜索">
+      <web-ui-button icon variant="secondary" aria-label="Search">
         <web-ui-icon icon={lucideSearch} size={16}></web-ui-icon>
       </web-ui-button>
     </web-ui-button-group>
@@ -178,13 +178,13 @@ export default function Demo() {
 ```vue
 <template>
   <web-ui-button-group direction="vertical">
-    <web-ui-button icon variant="secondary" aria-label="放大">
+    <web-ui-button icon variant="secondary" aria-label="Zoom in">
       <web-ui-icon :icon="lucidePlus" :size="16"></web-ui-icon>
     </web-ui-button>
-    <web-ui-button icon variant="secondary" aria-label="缩小">
+    <web-ui-button icon variant="secondary" aria-label="Zoom out">
       <web-ui-icon :icon="lucideMinus" :size="16"></web-ui-icon>
     </web-ui-button>
-    <web-ui-button icon variant="secondary" aria-label="搜索">
+    <web-ui-button icon variant="secondary" aria-label="Search">
       <web-ui-icon :icon="lucideSearch" :size="16"></web-ui-icon>
     </web-ui-button>
   </web-ui-button-group>
@@ -195,33 +195,35 @@ import { lucideMinus, lucidePlus, lucideSearch } from '@greypan/web-ui/icons'
 </script>
 ```
 
-### 成员间距 {#gap}
+### Member gap {#gap}
 
-button-group 没有自己的 gap token：成员之间的间距与玻璃盒子的内衬同读 theme 的间距阶 `--wui-space-1`（默认 4px），所以这一条一动，间距和内衬一起变。
+button-group has no gap token of its own: the gap between members and the inner padding of the glass box both read the theme spacing step `--wui-space-1` (4px by default), so changing that one moves both.
 
-它由 `<web-ui-theme>` 宿主声明在自己那一棵子树上——写在 theme 元素之外的祖先上到不了组，写在组宿主自己身上则恒胜（元素自身的声明胜过继承值）。
+It is declared by the `<web-ui-theme>` host on its own subtree—written on an ancestor outside the theme element it does not reach the group, while writing it on the group host itself always wins (a declaration on the element beats an inherited value).
 
-另一条得知道：分割线钉在成员宿主的 `right: -2px`（竖排换成 `bottom: -2px`），4px 间距时正好落在两枚成员正中，把 `--wui-space-1` 调大之后它不跟着走，会偏向左边那一枚。
+One more thing to know: the divider is pinned at `right: -2px` on the member host (`bottom: -2px` when vertical), which lands exactly in the middle of two members at a 4px gap; after increasing `--wui-space-1` it does not follow and drifts toward the left member.
 
 ```tsx
 export default function Demo() {
   return (
     <div className="flex flex-col items-start gap-5">
       <div className="flex flex-col items-start gap-2">
-        <span className="text-xs text-(--wui-color-text-secondary)">--wui-space-1：4px（默认）</span>
+        <span className="text-xs text-(--wui-color-text-secondary)">--wui-space-1: 4px (default)</span>
         <web-ui-button-group>
-          <web-ui-button variant="secondary">左</web-ui-button>
-          <web-ui-button variant="secondary">中</web-ui-button>
-          <web-ui-button variant="secondary">右</web-ui-button>
+          <web-ui-button variant="secondary">Left</web-ui-button>
+          <web-ui-button variant="secondary">Middle</web-ui-button>
+          <web-ui-button variant="secondary">Right</web-ui-button>
         </web-ui-button-group>
       </div>
 
       <div className="flex flex-col items-start gap-2">
-        <span className="text-xs text-(--wui-color-text-secondary)">--wui-space-1：12px，分割线不跟着走</span>
+        <span className="text-xs text-(--wui-color-text-secondary)">
+          --wui-space-1: 12px, the divider does not follow
+        </span>
         <web-ui-button-group className="[--wui-space-1:12px]">
-          <web-ui-button variant="secondary">左</web-ui-button>
-          <web-ui-button variant="secondary">中</web-ui-button>
-          <web-ui-button variant="secondary">右</web-ui-button>
+          <web-ui-button variant="secondary">Left</web-ui-button>
+          <web-ui-button variant="secondary">Middle</web-ui-button>
+          <web-ui-button variant="secondary">Right</web-ui-button>
         </web-ui-button-group>
       </div>
     </div>
@@ -233,33 +235,33 @@ export default function Demo() {
 <template>
   <div class="flex flex-col items-start gap-5">
     <div class="flex flex-col items-start gap-2">
-      <span class="text-xs text-(--wui-color-text-secondary)">--wui-space-1：4px（默认）</span>
+      <span class="text-xs text-(--wui-color-text-secondary)">--wui-space-1: 4px (default)</span>
       <web-ui-button-group>
-        <web-ui-button variant="secondary">左</web-ui-button>
-        <web-ui-button variant="secondary">中</web-ui-button>
-        <web-ui-button variant="secondary">右</web-ui-button>
+        <web-ui-button variant="secondary">Left</web-ui-button>
+        <web-ui-button variant="secondary">Middle</web-ui-button>
+        <web-ui-button variant="secondary">Right</web-ui-button>
       </web-ui-button-group>
     </div>
 
     <div class="flex flex-col items-start gap-2">
-      <span class="text-xs text-(--wui-color-text-secondary)">--wui-space-1：12px，分割线不跟着走</span>
+      <span class="text-xs text-(--wui-color-text-secondary)">--wui-space-1: 12px, the divider does not follow</span>
       <web-ui-button-group class="[--wui-space-1:12px]">
-        <web-ui-button variant="secondary">左</web-ui-button>
-        <web-ui-button variant="secondary">中</web-ui-button>
-        <web-ui-button variant="secondary">右</web-ui-button>
+        <web-ui-button variant="secondary">Left</web-ui-button>
+        <web-ui-button variant="secondary">Middle</web-ui-button>
+        <web-ui-button variant="secondary">Right</web-ui-button>
       </web-ui-button-group>
     </div>
   </div>
 </template>
 ```
 
-### 分割线 {#divider}
+### Divider {#divider}
 
-分割线由「非末尾」的那枚成员自己渲染，带 `aria-hidden`，末位成员没有那一条。
+The divider is rendered by the "non-last" member itself, carries `aria-hidden`, and the last member has none.
 
-短边恒为 1px，长边取 `--wui-button-group-divider-length`（默认 20px）：横排时这个值是高度，竖排时是宽度；颜色取全局的 `--wui-color-border`，不属于本组件的变量表。
+The short side is always 1px and the long side comes from `--wui-button-group-divider-length` (20px by default): horizontally that value is the height, vertically it is the width; the color comes from the global `--wui-color-border` and is not part of this component's variable table.
 
-theme 不声明这条变量，也只有分割线一处消费点，所以写在组宿主上一个 class 就够；写在单独某一枚成员上，则只影响它自己右侧（或下方）那一条。
+The theme does not declare this variable and the divider is its only consumer, so a class on the group host is enough; written on a single member, it only affects the divider on that member's right (or bottom) side.
 
 ```tsx
 import { lucideMinus, lucidePlus } from '@greypan/web-ui/icons'
@@ -268,21 +270,21 @@ export default function Demo() {
   return (
     <div className="flex flex-col items-start gap-5">
       <div className="flex flex-col items-start gap-2">
-        <span className="text-xs text-(--wui-color-text-secondary)">横排：分割线 12px</span>
+        <span className="text-xs text-(--wui-color-text-secondary)">Horizontal: 12px divider</span>
         <web-ui-button-group className="[--wui-button-group-divider-length:12px]">
-          <web-ui-button variant="secondary">左</web-ui-button>
-          <web-ui-button variant="secondary">中</web-ui-button>
-          <web-ui-button variant="secondary">右</web-ui-button>
+          <web-ui-button variant="secondary">Left</web-ui-button>
+          <web-ui-button variant="secondary">Middle</web-ui-button>
+          <web-ui-button variant="secondary">Right</web-ui-button>
         </web-ui-button-group>
       </div>
 
       <div className="flex flex-col items-start gap-2">
-        <span className="text-xs text-(--wui-color-text-secondary)">竖排：同一条变量给的是宽度</span>
+        <span className="text-xs text-(--wui-color-text-secondary)">Vertical: the same variable sets the width</span>
         <web-ui-button-group className="[--wui-button-group-divider-length:32px]" direction="vertical">
-          <web-ui-button icon variant="secondary" aria-label="放大">
+          <web-ui-button icon variant="secondary" aria-label="Zoom in">
             <web-ui-icon icon={lucidePlus} size={16}></web-ui-icon>
           </web-ui-button>
-          <web-ui-button icon variant="secondary" aria-label="缩小">
+          <web-ui-button icon variant="secondary" aria-label="Zoom out">
             <web-ui-icon icon={lucideMinus} size={16}></web-ui-icon>
           </web-ui-button>
         </web-ui-button-group>
@@ -296,21 +298,21 @@ export default function Demo() {
 <template>
   <div class="flex flex-col items-start gap-5">
     <div class="flex flex-col items-start gap-2">
-      <span class="text-xs text-(--wui-color-text-secondary)">横排：分割线 12px</span>
+      <span class="text-xs text-(--wui-color-text-secondary)">Horizontal: 12px divider</span>
       <web-ui-button-group class="[--wui-button-group-divider-length:12px]">
-        <web-ui-button variant="secondary">左</web-ui-button>
-        <web-ui-button variant="secondary">中</web-ui-button>
-        <web-ui-button variant="secondary">右</web-ui-button>
+        <web-ui-button variant="secondary">Left</web-ui-button>
+        <web-ui-button variant="secondary">Middle</web-ui-button>
+        <web-ui-button variant="secondary">Right</web-ui-button>
       </web-ui-button-group>
     </div>
 
     <div class="flex flex-col items-start gap-2">
-      <span class="text-xs text-(--wui-color-text-secondary)">竖排：同一条变量给的是宽度</span>
+      <span class="text-xs text-(--wui-color-text-secondary)">Vertical: the same variable sets the width</span>
       <web-ui-button-group class="[--wui-button-group-divider-length:32px]" direction="vertical">
-        <web-ui-button icon variant="secondary" aria-label="放大">
+        <web-ui-button icon variant="secondary" aria-label="Zoom in">
           <web-ui-icon :icon="lucidePlus" :size="16"></web-ui-icon>
         </web-ui-button>
-        <web-ui-button icon variant="secondary" aria-label="缩小">
+        <web-ui-button icon variant="secondary" aria-label="Zoom out">
           <web-ui-icon :icon="lucideMinus" :size="16"></web-ui-icon>
         </web-ui-button>
       </web-ui-button-group>
@@ -323,50 +325,50 @@ import { lucideMinus, lucidePlus } from '@greypan/web-ui/icons'
 </script>
 ```
 
-### 成员事件 {#events}
+### Member events {#events}
 
-组不拦截成员的 `click`：`GroupController` 只在宿主上以 capture 监听 `change`，而 button-group 用的是纯展示型上下文，连 `handleChange` 都没实现，于是成员的点击原样冒泡过组宿主。
+The group does not intercept member `click`s: `GroupController` only listens to `change` on the host in the capture phase, and button-group uses a purely presentational context that does not even implement `handleChange`, so member clicks bubble through the group host unchanged.
 
-`event.target` 就是那一枚成员宿主——一个 handler 接住整组，用 `data-id` 区分是哪一枚（button 只把 `aria-label` 委派给内部 button，其余属性留在宿主上、不往 shadow 里复制，`data-*` 于是可以放心当身份标记）。
+`event.target` is that member host—one handler catches the whole group and uses `data-id` to tell which member it was (button delegates only `aria-label` to the inner button and leaves other attributes on the host without copying them into the shadow, so `data-*` is safe as an identity marker).
 
-`disabled` 与 `loading` 的成员照样不产生 click，读数不动。
+Members with `disabled` and `loading` still produce no click, so the readout does not move.
 
-入组也不改表单行为：`type="submit"` 的成员仍然提交外层 `<form>`，所以点「保存」先读到 `点了 保存`，紧接着被 submit 事件改写。
+Grouping does not change form behavior either: a member with `type="submit"` still submits the outer `<form>`, so clicking "Save" first reads `Clicked save` and is then overwritten by the submit event.
 
-button-group 自己没有 `disabled`：要整组禁用，把组放进 `<fieldset disabled>`（成员经表单级禁用一起变灰），或者逐枚写。
+button-group has no `disabled` of its own: to disable the whole group, put it inside `<fieldset disabled>` (members are disabled through form-level disabling and turn gray together), or write it on each member.
 
 ```tsx
 import { useState } from 'react'
 
 export default function Demo() {
-  const [log, setLog] = useState('还没有点击')
+  const [log, setLog] = useState('No clicks yet')
 
   return (
     <form
       className="flex flex-wrap items-center gap-4"
       onSubmit={event => {
         event.preventDefault()
-        setLog('外层 form 收到了 submit')
+        setLog('The outer form received submit')
       }}
     >
-      <web-ui-input name="note" placeholder="备注"></web-ui-input>
+      <web-ui-input name="note" placeholder="Note"></web-ui-input>
       <web-ui-button-group
         onClick={event => {
           const id = (event.target as HTMLElement).dataset.id
-          if (id) setLog(`点了 ${id}`)
+          if (id) setLog(`Clicked ${id}`)
         }}
       >
-        <web-ui-button variant="secondary" type="submit" data-id="保存">
-          保存
+        <web-ui-button variant="secondary" type="submit" data-id="save">
+          Save
         </web-ui-button>
-        <web-ui-button variant="secondary" data-id="复制">
-          复制
+        <web-ui-button variant="secondary" data-id="copy">
+          Copy
         </web-ui-button>
-        <web-ui-button variant="secondary" loading data-id="处理中">
-          处理中
+        <web-ui-button variant="secondary" loading data-id="pending">
+          Pending
         </web-ui-button>
-        <web-ui-button variant="danger" disabled data-id="删除">
-          删除
+        <web-ui-button variant="danger" disabled data-id="delete">
+          Delete
         </web-ui-button>
       </web-ui-button-group>
       <output className="text-sm text-(--wui-color-text-secondary)">{log}</output>
@@ -378,12 +380,12 @@ export default function Demo() {
 ```vue
 <template>
   <form class="flex flex-wrap items-center gap-4" @submit="onSubmit">
-    <web-ui-input name="note" placeholder="备注"></web-ui-input>
+    <web-ui-input name="note" placeholder="Note"></web-ui-input>
     <web-ui-button-group @click="onGroupClick">
-      <web-ui-button variant="secondary" type="submit" data-id="保存">保存</web-ui-button>
-      <web-ui-button variant="secondary" data-id="复制">复制</web-ui-button>
-      <web-ui-button variant="secondary" loading data-id="处理中">处理中</web-ui-button>
-      <web-ui-button variant="danger" disabled data-id="删除">删除</web-ui-button>
+      <web-ui-button variant="secondary" type="submit" data-id="save">Save</web-ui-button>
+      <web-ui-button variant="secondary" data-id="copy">Copy</web-ui-button>
+      <web-ui-button variant="secondary" loading data-id="pending">Pending</web-ui-button>
+      <web-ui-button variant="danger" disabled data-id="delete">Delete</web-ui-button>
     </web-ui-button-group>
     <output class="text-sm text-(--wui-color-text-secondary)">{{ log }}</output>
   </form>
@@ -392,16 +394,16 @@ export default function Demo() {
 <script setup lang="ts">
 import { ref } from 'vue'
 
-const log = ref('还没有点击')
+const log = ref('No clicks yet')
 
 function onGroupClick(event: MouseEvent) {
   const id = (event.target as HTMLElement).dataset.id
-  if (id) log.value = `点了 ${id}`
+  if (id) log.value = `Clicked ${id}`
 }
 
 function onSubmit(event: Event) {
   event.preventDefault()
-  log.value = '外层 form 收到了 submit'
+  log.value = 'The outer form received submit'
 }
 </script>
 ```
@@ -410,42 +412,42 @@ function onSubmit(event: Event) {
 
 ### Props
 
-| 名称        | 说明             | 类型                         | 默认值         |
-| ----------- | ---------------- | ---------------------------- | -------------- |
-| `direction` | 成员的排列方向。 | `'horizontal' \| 'vertical'` | `'horizontal'` |
+| Name        | Description                      | Type                         | Default        |
+| ----------- | -------------------------------- | ---------------------------- | -------------- |
+| `direction` | Layout direction of the members. | `'horizontal' \| 'vertical'` | `'horizontal'` |
 
 ### Slots
 
-| 名称      | 说明                                                |
-| --------- | --------------------------------------------------- |
-| `default` | 组内的 `<web-ui-button>` 成员；其他节点也照常投影。 |
+| Name      | Description                                                                     |
+| --------- | ------------------------------------------------------------------------------- |
+| `default` | `<web-ui-button>` members of the group; other nodes are projected as usual too. |
 
-### 行为说明
+### Behavior
 
-组经 `@lit/context` 向成员下发一份只读的展示上下文 `{ direction, isLast }`，只有这一个下行通道：不持有选中态、值或禁用态，不改写成员的任何属性，也不替成员做排他选择。`direction` 传入集合外的值时回退成 `horizontal`。
+The group hands members a read-only presentation context `{ direction, isLast }` through `@lit/context`; it is the only downstream channel: the group holds no selection, value, or disabled state, rewrites no member attribute, and makes no exclusive choice for members. When `direction` receives a value outside the set, it falls back to `horizontal`.
 
-成员的 `size` 在组内被忽略，高度统一成 30px；成员被移出组时上下文清空、恢复独立控件语义（自己按 variant 画底、按自己的 `size` 定高）。跨组移动是先断连清空、再向新组订阅，所以分割线与末位判定跟着新成员表重算。
+A member's `size` is ignored inside the group and its height is unified to 30px; when a member leaves the group the context is cleared and it regains standalone control semantics (it draws its own background by variant and takes its height from its own `size`). Moving between groups disconnects and clears first, then subscribes to the new group, so dividers and last-position detection are recomputed against the new member list.
 
-`GroupController` 在宿主上以 capture 监听 `change`，但 button-group 用的是展示型生命周期（只有 `sync` / `disconnect`），没有 `handleChange`，因此成员的 `click` 一律原样冒泡出组宿主，`event.target` 是那一枚成员宿主。
+`GroupController` listens to `change` on the host in the capture phase, but button-group uses the presentational lifecycle (only `sync` / `disconnect`) without `handleChange`, so member `click`s always bubble out of the group host unchanged and `event.target` is that member host.
 
-组件自己不派发任何自定义事件，也没有 `disabled` / `required` 之类的组级状态：整组禁用要靠祖先 `<fieldset disabled>`（成员的表单级禁用一起生效）或逐枚写。
+The component dispatches no custom events of its own and has no group-level state such as `disabled` / `required`: disabling the whole group relies on an ancestor `<fieldset disabled>` (members' form-level disabling takes effect together) or is written per member.
 
-分割线由非末尾成员渲染，带 `aria-hidden`；末位成员没有那一条。成员数量或顺序变化由 light DOM 的 `MutationObserver` 与 `slotchange` 触发重算，所以 React 的条件渲染与 Vue 的 `v-if` 留下的注释节点都能被跟住。
+The divider is rendered by non-last members with `aria-hidden`; the last member has none. Member count or order changes trigger a recomputation through a light DOM `MutationObserver` and `slotchange`, so comment nodes left by React conditional rendering and Vue `v-if` are tracked too.
 
-### 布局
+### Layout
 
-宿主是 inline-block，玻璃盒子 `.wui-button-group-inner` 是 flex：横排取 `row` + `width: max-content` + `height: var(--wui-control-size)`（36px）。
+The host is inline-block and the glass box `.wui-button-group-inner` is flex: horizontal uses `row` + `width: max-content` + `height: var(--wui-control-size)` (36px).
 
-竖排由 `:host([direction='vertical'])` 换成 `column` 并把宽高对调（`width: var(--wui-control-size)`、`height: auto`）。
+Vertical switches to `column` through `:host([direction='vertical'])` and swaps width and height (`width: var(--wui-control-size)`, `height: auto`).
 
-两个方向都写死 `align-items: center`，成员既不被拉伸也不被压窄；成员之间的间距与盒子的内衬同取 `--wui-space-1`（4px）。
+Both directions hard-code `align-items: center`, so members are neither stretched nor squeezed; the gap between members and the inner padding of the box both take `--wui-space-1` (4px).
 
-整圈的 `border-radius` 取 `--wui-radius-control`（theme 给的是 `calc(infinity * 1px)`，也就是胶囊），玻璃描边环的光泽半径则另由盒子写成 `calc(var(--wui-control-size) / 2)`，与同一枚圆角同源。
+The all-around `border-radius` takes `--wui-radius-control` (the theme supplies `calc(infinity * 1px)`, i.e. a pill), while the highlight radius of the glass stroke ring is written separately by the box as `calc(var(--wui-control-size) / 2)`, coming from the same source as that radius.
 
-`--wui-control-size` 是本组宽高与那个光泽半径的来源，但它盖不住成员高度：成员那 30px 是以 inline style 写在各自内部 button 上的，所以 36px 的盒子里上下各留 3px。
+`--wui-control-size` is the source of this group's width, height, and that highlight radius, but it does not override member height: the 30px of a member is written as an inline style on its inner button, leaving 3px above and below inside the 36px box.
 
 ### CSS Custom Properties
 
-| 名称                                | 说明                                                             | 默认值 |
-| ----------------------------------- | ---------------------------------------------------------------- | ------ |
-| `--wui-button-group-divider-length` | 相邻成员之间分割线的长边；短边恒为 1px，横排给高度、竖排给宽度。 | `20px` |
+| Name                                | Description                                                                                                                                    | Default |
+| ----------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- | ------- |
+| `--wui-button-group-divider-length` | Long side of the divider between adjacent members; the short side is always 1px, and it sets the height horizontally and the width vertically. | `20px`  |

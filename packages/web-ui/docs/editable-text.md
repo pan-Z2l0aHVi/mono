@@ -3,20 +3,23 @@ component: editable-text
 tag: web-ui-editable-text
 ---
 
-行内纯文本编辑器：点击文字就地编辑，Enter 与 blur 提交，只有 Escape 取消；文本层与编辑层共用一个盒，进入编辑态不会移动像素。
+An inline plain-text editor: click the text to edit it in place, Enter and blur commit, and only Escape cancels; the text layer and the edit layer share one box, so entering edit mode moves nothing by a pixel.
 
-## 示例
+## Samples
 
-### 基础 {#basic}
+### Basic {#basic}
 
-点击文字进入编辑态，光标落在点击处；按 Tab 聚焦时光标落在文本末尾。字体、颜色与对齐全部继承外部上下文，所以编辑前它就是一段普通文字。
+Clicking the text enters edit mode with the caret at the click position; focusing with Tab puts the caret at the end of the text. Font, color, and alignment are inherited entirely from the outer context, so before editing it is just a piece of ordinary text.
 
 ```tsx
 export default function Demo() {
   return (
     <div className="flex flex-col items-start gap-3">
-      <web-ui-editable-text value="点击就地编辑" aria-label="标题"></web-ui-editable-text>
-      <web-ui-editable-text value="这一段把排版继承给编辑层" className="text-lg font-medium"></web-ui-editable-text>
+      <web-ui-editable-text value="Click to edit in place" aria-label="Title"></web-ui-editable-text>
+      <web-ui-editable-text
+        value="This block inherits its typography into the edit layer"
+        className="text-lg font-medium"
+      ></web-ui-editable-text>
     </div>
   )
 }
@@ -25,21 +28,24 @@ export default function Demo() {
 ```vue
 <template>
   <div class="flex flex-col items-start gap-3">
-    <web-ui-editable-text value="点击就地编辑" aria-label="标题"></web-ui-editable-text>
-    <web-ui-editable-text value="这一段把排版继承给编辑层" class="text-lg font-medium"></web-ui-editable-text>
+    <web-ui-editable-text value="Click to edit in place" aria-label="Title"></web-ui-editable-text>
+    <web-ui-editable-text
+      value="This block inherits its typography into the edit layer"
+      class="text-lg font-medium"
+    ></web-ui-editable-text>
   </div>
 </template>
 ```
 
-### 受控值与提交 {#events}
+### Controlled value and commit {#events}
 
-`value` 是当前值，也是表单提交值；`input` 来自编辑层的原生输入，`change` 只在提交点派发一次——Enter 或失焦。要由页面持有这个值就接住 `change` 再写回。
+`value` is the current value and also the form-submitted value; `input` comes from the native input of the edit layer, and `change` is dispatched once at a commit point—Enter or blur. To have the page own the value, handle `change` and write it back.
 
 ```tsx
 import { useState } from 'react'
 
 export default function Demo() {
-  const [title, setTitle] = useState('季度复盘')
+  const [title, setTitle] = useState('Quarterly review')
   const [draft, setDraft] = useState('')
   const [committed, setCommitted] = useState('')
 
@@ -47,8 +53,8 @@ export default function Demo() {
     <div className="flex flex-col items-start gap-3">
       <web-ui-editable-text
         value={title}
-        aria-label="标题"
-        placeholder="未命名"
+        aria-label="Title"
+        placeholder="Untitled"
         onInput={event => setDraft(event.currentTarget.value)}
         onChange={event => {
           setTitle(event.currentTarget.value)
@@ -56,7 +62,7 @@ export default function Demo() {
         }}
       ></web-ui-editable-text>
       <output className="text-sm text-(--wui-color-text-secondary)">
-        input 草稿：{draft || '(还没有输入)'} · change 提交：{committed || '(未提交)'}
+        input draft: {draft || '(nothing typed yet)'} · change commit: {committed || '(not committed)'}
       </output>
     </div>
   )
@@ -68,13 +74,13 @@ export default function Demo() {
   <div class="flex flex-col items-start gap-3">
     <web-ui-editable-text
       :value="title"
-      aria-label="标题"
-      placeholder="未命名"
+      aria-label="Title"
+      placeholder="Untitled"
       @input="onInput"
       @change="onChange"
     ></web-ui-editable-text>
     <output class="text-sm text-(--wui-color-text-secondary)">
-      input 草稿：{{ draft || '(还没有输入)' }} · change 提交：{{ committed || '(未提交)' }}
+      input draft: {{ draft || '(nothing typed yet)' }} · change commit: {{ committed || '(not committed)' }}
     </output>
   </div>
 </template>
@@ -83,7 +89,7 @@ export default function Demo() {
 import type { WebUiEditableText, WebUiEvent } from '@greypan/web-ui'
 import { ref } from 'vue'
 
-const title = ref('季度复盘')
+const title = ref('Quarterly review')
 const draft = ref('')
 const committed = ref('')
 
@@ -99,9 +105,9 @@ function onChange(event: WebUiEvent<WebUiEditableText, 'change'>) {
 </script>
 ```
 
-### Escape 取消 {#cancel}
+### Escape cancels {#cancel}
 
-只有 Escape 走取消：值回到进入编辑时的状态，派发 `cancel` 而不派发 `change`，焦点交还宿主，这次按键也由编辑层消费掉，外层 overlay（drawer、menu）不会因为同一次按键关闭。`cancel` 不冒泡也不组合，一律挂在组件本身监听——React 没有对应的合成事件，只能挂原生监听。
+Only Escape cancels: the value returns to the state it had when editing began, `cancel` is dispatched instead of `change`, focus goes back to the host, and this key press is consumed by the edit layer, so an outer overlay (drawer, menu) does not close on the same key press. `cancel` neither bubbles nor is composed, so listeners always attach to the component itself—React has no synthetic event for it, so a native listener is the only option.
 
 ```tsx
 import type { WebUiEditableText } from '@greypan/web-ui'
@@ -109,19 +115,19 @@ import { useEffect, useRef, useState } from 'react'
 
 export default function Demo() {
   const fieldRef = useRef<WebUiEditableText>(null)
-  const [last, setLast] = useState('还没有操作')
+  const [last, setLast] = useState('No action yet')
 
   useEffect(() => {
     const element = fieldRef.current
     if (!element) return
-    const onCancel = () => setLast('cancel：Escape 已把值恢复成进入编辑时的状态')
+    const onCancel = () => setLast('cancel: Escape restored the value to the state when editing began')
     element.addEventListener('cancel', onCancel)
     return () => element.removeEventListener('cancel', onCancel)
   }, [])
 
   return (
     <div className="flex flex-col items-start gap-3">
-      <web-ui-editable-text ref={fieldRef} value="改几个字，然后按 Escape"></web-ui-editable-text>
+      <web-ui-editable-text ref={fieldRef} value="Change a few characters, then press Escape"></web-ui-editable-text>
       <output className="text-sm text-(--wui-color-text-secondary)">{last}</output>
     </div>
   )
@@ -131,7 +137,7 @@ export default function Demo() {
 ```vue
 <template>
   <div class="flex flex-col items-start gap-3">
-    <web-ui-editable-text value="改几个字，然后按 Escape" @cancel="onCancel"></web-ui-editable-text>
+    <web-ui-editable-text value="Change a few characters, then press Escape" @cancel="onCancel"></web-ui-editable-text>
     <output class="text-sm text-(--wui-color-text-secondary)">{{ last }}</output>
   </div>
 </template>
@@ -139,25 +145,29 @@ export default function Demo() {
 <script setup lang="ts">
 import { ref } from 'vue'
 
-const last = ref('还没有操作')
+const last = ref('No action yet')
 
 function onCancel() {
-  last.value = 'cancel：Escape 已把值恢复成进入编辑时的状态'
+  last.value = 'cancel: Escape restored the value to the state when editing began'
 }
 </script>
 ```
 
-### 空值与占位 {#placeholder}
+### Empty value and placeholder {#placeholder}
 
-`placeholder` 只在值为空时显示，取二级文本色；提交空值也算一次提交，值变空之后文字层回落到占位。空值又没写 `placeholder` 时组件留一个零宽字符，保住行盒与点击进入编辑的地方。
+`placeholder` is shown only when the value is empty, in the secondary text color; submitting an empty value still counts as a commit, and the text layer falls back to the placeholder once the value becomes empty. With an empty value and no `placeholder`, the component keeps a zero-width character to preserve the line box and the place to click into edit mode.
 
 ```tsx
 export default function Demo() {
   return (
     <div className="flex flex-col items-start gap-3">
-      <web-ui-editable-text placeholder="未命名项目" aria-label="空值"></web-ui-editable-text>
-      <web-ui-editable-text value="有值时不显示占位" placeholder="未命名项目" aria-label="有值"></web-ui-editable-text>
-      <web-ui-editable-text aria-label="清空之后"></web-ui-editable-text>
+      <web-ui-editable-text placeholder="Untitled project" aria-label="Empty"></web-ui-editable-text>
+      <web-ui-editable-text
+        value="No placeholder when there is a value"
+        placeholder="Untitled project"
+        aria-label="Has value"
+      ></web-ui-editable-text>
+      <web-ui-editable-text aria-label="After clearing"></web-ui-editable-text>
     </div>
   )
 }
@@ -166,25 +176,31 @@ export default function Demo() {
 ```vue
 <template>
   <div class="flex flex-col items-start gap-3">
-    <web-ui-editable-text placeholder="未命名项目" aria-label="空值"></web-ui-editable-text>
-    <web-ui-editable-text value="有值时不显示占位" placeholder="未命名项目" aria-label="有值"></web-ui-editable-text>
-    <web-ui-editable-text aria-label="清空之后"></web-ui-editable-text>
+    <web-ui-editable-text placeholder="Untitled project" aria-label="Empty"></web-ui-editable-text>
+    <web-ui-editable-text
+      value="No placeholder when there is a value"
+      placeholder="Untitled project"
+      aria-label="Has value"
+    ></web-ui-editable-text>
+    <web-ui-editable-text aria-label="After clearing"></web-ui-editable-text>
   </div>
 </template>
 ```
 
-### 多行 {#multiline}
+### Multiline {#multiline}
 
-值里已有的换行照常成行（`white-space` 默认 `pre-wrap`），第二行文字在盒宽处自然断行；Enter 属于提交，不插入换行，所以多行文案靠值本身带 `\n`。文字层与编辑层同盒同排版，进入编辑不会顶偏像素。
+Newlines already present in the value render as lines as usual (`white-space` defaults to `pre-wrap`), and the second line wraps naturally at the box width; Enter commits rather than inserting a newline, so multiline copy relies on the value containing `\n`. The text layer and the edit layer share the same box and typography, so entering edit mode does not shift a pixel.
 
 ```tsx
 export default function Demo() {
   return (
     <web-ui-editable-text
       className="w-80"
-      value={'第一行按值里的换行成行\n第二行的长文案会在盒宽处折行，文字态与编辑态共用同一个盒'}
-      placeholder="多行占位"
-      aria-label="多行"
+      value={
+        'The first line breaks where the value has a newline\nThe second line of longer copy wraps at the box width; the text state and the edit state share the same box'
+      }
+      placeholder="Multiline placeholder"
+      aria-label="Multiline"
     ></web-ui-editable-text>
   )
 }
@@ -192,25 +208,43 @@ export default function Demo() {
 
 ```vue
 <template>
-  <web-ui-editable-text class="w-80" :value="multiline" placeholder="多行占位" aria-label="多行"></web-ui-editable-text>
+  <web-ui-editable-text
+    class="w-80"
+    :value="multiline"
+    placeholder="Multiline placeholder"
+    aria-label="Multiline"
+  ></web-ui-editable-text>
 </template>
 
 <script setup lang="ts">
-const multiline = '第一行按值里的换行成行\n第二行的长文案会在盒宽处折行，文字态与编辑态共用同一个盒'
+const multiline =
+  'The first line breaks where the value has a newline\nThe second line of longer copy wraps at the box width; the text state and the edit state share the same box'
 </script>
 ```
 
-### 禁用与只读 {#states}
+### Disabled and readonly {#states}
 
-`disabled` 把宿主移出 tab 序列，指针与键盘都进不了编辑，只换 `not-allowed` 光标、不做视觉置灰；`readonly` 仍可聚焦与全选，输入被拒绝，退出编辑态也不派发 `change`。
+`disabled` removes the host from the tab order and blocks editing from both pointer and keyboard, switching only the cursor to `not-allowed` without any visual dimming; `readonly` can still be focused and selected but rejects input, and leaving edit mode dispatches no `change`.
 
 ```tsx
 export default function Demo() {
   return (
     <div className="flex flex-col items-start gap-3">
-      <web-ui-editable-text value="禁用：点不动，也不在 tab 序列里" disabled aria-label="禁用"></web-ui-editable-text>
-      <web-ui-editable-text placeholder="禁用且空值：仍显示占位" disabled aria-label="禁用空值"></web-ui-editable-text>
-      <web-ui-editable-text value="只读：能选中复制，改不动" readonly aria-label="只读"></web-ui-editable-text>
+      <web-ui-editable-text
+        value="Disabled: cannot be clicked and is out of the tab order"
+        disabled
+        aria-label="Disabled"
+      ></web-ui-editable-text>
+      <web-ui-editable-text
+        placeholder="Disabled and empty: still shows the placeholder"
+        disabled
+        aria-label="Disabled empty"
+      ></web-ui-editable-text>
+      <web-ui-editable-text
+        value="Readonly: can select and copy, cannot edit"
+        readonly
+        aria-label="Readonly"
+      ></web-ui-editable-text>
     </div>
   )
 }
@@ -219,16 +253,28 @@ export default function Demo() {
 ```vue
 <template>
   <div class="flex flex-col items-start gap-3">
-    <web-ui-editable-text value="禁用：点不动，也不在 tab 序列里" disabled aria-label="禁用"></web-ui-editable-text>
-    <web-ui-editable-text placeholder="禁用且空值：仍显示占位" disabled aria-label="禁用空值"></web-ui-editable-text>
-    <web-ui-editable-text value="只读：能选中复制，改不动" readonly aria-label="只读"></web-ui-editable-text>
+    <web-ui-editable-text
+      value="Disabled: cannot be clicked and is out of the tab order"
+      disabled
+      aria-label="Disabled"
+    ></web-ui-editable-text>
+    <web-ui-editable-text
+      placeholder="Disabled and empty: still shows the placeholder"
+      disabled
+      aria-label="Disabled empty"
+    ></web-ui-editable-text>
+    <web-ui-editable-text
+      value="Readonly: can select and copy, cannot edit"
+      readonly
+      aria-label="Readonly"
+    ></web-ui-editable-text>
   </div>
 </template>
 ```
 
-### 表单值 {#form}
+### Form value {#form}
 
-`name` 是字段名，提交值就是当前值，空值也照常以空字符串进入 `FormData`。组件没有 `required`，也不转发校验判定，必填请由外层承担；`form.reset()` 回填挂载时的初值。
+`name` is the field name and the submitted value is the current value; an empty value still enters `FormData` as an empty string. The component has no `required` and forwards no validation state, so required checks belong to the outer layer; `form.reset()` restores the value from mount time.
 
 ```tsx
 import { useRef, useState } from 'react'
@@ -245,36 +291,36 @@ export default function Demo() {
         event.preventDefault()
         const fields: string[] = []
         for (const [name, value] of new FormData(event.currentTarget)) {
-          if (typeof value === 'string') fields.push(`${name}=${value.replace(/\n/g, '\\n') || '(空)'}`)
+          if (typeof value === 'string') fields.push(`${name}=${value.replace(/\n/g, '\\n') || '(empty)'}`)
         }
-        setSubmitted(fields.join(' · ') || '(没有字段)')
+        setSubmitted(fields.join(' · ') || '(no fields)')
       }}
     >
       <div className="flex flex-col items-start gap-1">
-        <span className="text-sm text-(--wui-color-text-secondary)">标题</span>
-        <web-ui-editable-text name="title" value="初始标题" aria-label="标题"></web-ui-editable-text>
+        <span className="text-sm text-(--wui-color-text-secondary)">Title</span>
+        <web-ui-editable-text name="title" value="Initial title" aria-label="Title"></web-ui-editable-text>
       </div>
       <div className="flex flex-col items-start gap-1">
-        <span className="text-sm text-(--wui-color-text-secondary)">摘要：可留空</span>
+        <span className="text-sm text-(--wui-color-text-secondary)">Summary: optional</span>
         <web-ui-editable-text
           name="bio"
           className="w-80"
-          placeholder="写一句摘要"
-          aria-label="摘要"
+          placeholder="Write a one-line summary"
+          aria-label="Summary"
         ></web-ui-editable-text>
       </div>
       <div className="flex items-center gap-3">
-        <web-ui-button type="submit">提交</web-ui-button>
+        <web-ui-button type="submit">Submit</web-ui-button>
         <web-ui-button
           onClick={() => {
             formRef.current?.reset()
             setSubmitted('')
           }}
         >
-          重置
+          Reset
         </web-ui-button>
         <output className="text-sm text-(--wui-color-text-secondary)">
-          {submitted === '' ? '尚未提交' : submitted}
+          {submitted === '' ? 'Not submitted yet' : submitted}
         </output>
       </div>
     </form>
@@ -286,17 +332,24 @@ export default function Demo() {
 <template>
   <form ref="form" class="flex w-full flex-col items-start gap-3" @submit="onSubmit">
     <div class="flex flex-col items-start gap-1">
-      <span class="text-sm text-(--wui-color-text-secondary)">标题</span>
-      <web-ui-editable-text name="title" value="初始标题" aria-label="标题"></web-ui-editable-text>
+      <span class="text-sm text-(--wui-color-text-secondary)">Title</span>
+      <web-ui-editable-text name="title" value="Initial title" aria-label="Title"></web-ui-editable-text>
     </div>
     <div class="flex flex-col items-start gap-1">
-      <span class="text-sm text-(--wui-color-text-secondary)">摘要：可留空</span>
-      <web-ui-editable-text name="bio" class="w-80" placeholder="写一句摘要" aria-label="摘要"></web-ui-editable-text>
+      <span class="text-sm text-(--wui-color-text-secondary)">Summary: optional</span>
+      <web-ui-editable-text
+        name="bio"
+        class="w-80"
+        placeholder="Write a one-line summary"
+        aria-label="Summary"
+      ></web-ui-editable-text>
     </div>
     <div class="flex items-center gap-3">
-      <web-ui-button type="submit">提交</web-ui-button>
-      <web-ui-button @click="reset">重置</web-ui-button>
-      <output class="text-sm text-(--wui-color-text-secondary)">{{ submitted === '' ? '尚未提交' : submitted }}</output>
+      <web-ui-button type="submit">Submit</web-ui-button>
+      <web-ui-button @click="reset">Reset</web-ui-button>
+      <output class="text-sm text-(--wui-color-text-secondary)">{{
+        submitted === '' ? 'Not submitted yet' : submitted
+      }}</output>
     </div>
   </form>
 </template>
@@ -311,9 +364,9 @@ function onSubmit(event: Event) {
   event.preventDefault()
   const fields: string[] = []
   for (const [name, value] of new FormData(event.currentTarget as HTMLFormElement)) {
-    if (typeof value === 'string') fields.push(`${name}=${value.replace(/\n/g, '\\n') || '(空)'}`)
+    if (typeof value === 'string') fields.push(`${name}=${value.replace(/\n/g, '\\n') || '(empty)'}`)
   }
-  submitted.value = fields.join(' · ') || '(没有字段)'
+  submitted.value = fields.join(' · ') || '(no fields)'
 }
 
 function reset() {
@@ -323,13 +376,13 @@ function reset() {
 </script>
 ```
 
-### 卸载时保住草稿 {#unmount}
+### Preserving the draft on unmount {#unmount}
 
-编辑到一半的元素被从 DOM 移除时，Chromium 会派发 `blur` 并按提交语义收尾，WebKit 什么都不派发、草稿随组件丢弃——`commit-on-unmount` 就是为后者存在的。
+When an element that is halfway through editing is removed from the DOM, Chromium dispatches `blur` and finishes with commit semantics, while WebKit dispatches nothing and the draft is discarded with the component—`commit-on-unmount` exists for the latter.
 
-开启之后卸载复用同一条提交路径：草稿成为新值、恰好派发一次 `change`，且只在草稿确实与进入编辑时的值不同时才提交。
+Once enabled, unmounting reuses the same commit path: the draft becomes the new value, exactly one `change` is dispatched, and it is only committed when the draft really differs from the value at the start of editing.
 
-移除由组件自己的渲染驱动时 `change` 走不到框架的事件委托根，所以这里挂原生监听从元素上读值，再用微任务把结果交给组件树之外的状态。
+When the removal is driven by the component's own render, `change` cannot reach the framework's event delegation root, so this example attaches a native listener, reads the value from the element, and hands the result to state outside the component tree in a microtask.
 
 ```tsx
 import type { WebUiEditableText } from '@greypan/web-ui'
@@ -340,7 +393,7 @@ export default function Demo() {
   const [mounted, setMounted] = useState(true)
   const [saved, setSaved] = useState('')
 
-  // 卸载由这次 render 驱动，change 到不了 React 的委托根：挂原生监听，从元素上读值
+  // The unmount is driven by this render, so change never reaches React's delegated root: attach a native listener and read the value from the element
   useEffect(() => {
     const element = fieldRef.current
     if (!element) return
@@ -358,16 +411,18 @@ export default function Demo() {
         <web-ui-editable-text
           ref={fieldRef}
           commit-on-unmount
-          value="改几个字，再按下面的卸载按钮"
-          aria-label="可卸载"
+          value="Change a few characters, then click the unmount button below"
+          aria-label="Unmountable"
         ></web-ui-editable-text>
       ) : (
-        <span className="text-sm text-(--wui-color-text-secondary)">这一行已经从 DOM 移除</span>
+        <span className="text-sm text-(--wui-color-text-secondary)">This line has been removed from the DOM</span>
       )}
       <div className="flex flex-wrap items-center gap-3">
-        <web-ui-button onClick={() => setMounted(false)}>卸载这一行</web-ui-button>
-        <web-ui-button onClick={() => setMounted(true)}>重新挂载</web-ui-button>
-        <output className="text-sm text-(--wui-color-text-secondary)">卸载保住：{saved || '(还没有)'}</output>
+        <web-ui-button onClick={() => setMounted(false)}>Unmount this line</web-ui-button>
+        <web-ui-button onClick={() => setMounted(true)}>Mount again</web-ui-button>
+        <output className="text-sm text-(--wui-color-text-secondary)">
+          Preserved on unmount: {saved || '(nothing yet)'}
+        </output>
       </div>
     </div>
   )
@@ -380,15 +435,17 @@ export default function Demo() {
     <web-ui-editable-text
       v-if="mounted"
       commit-on-unmount
-      value="改几个字，再按下面的卸载按钮"
-      aria-label="可卸载"
+      value="Change a few characters, then click the unmount button below"
+      aria-label="Unmountable"
       @change="saveDraft"
     ></web-ui-editable-text>
-    <span v-else class="text-sm text-(--wui-color-text-secondary)">这一行已经从 DOM 移除</span>
+    <span v-else class="text-sm text-(--wui-color-text-secondary)">This line has been removed from the DOM</span>
     <div class="flex flex-wrap items-center gap-3">
-      <web-ui-button @click="mounted = false">卸载这一行</web-ui-button>
-      <web-ui-button @click="mounted = true">重新挂载</web-ui-button>
-      <output class="text-sm text-(--wui-color-text-secondary)">卸载保住：{{ saved || '(还没有)' }}</output>
+      <web-ui-button @click="mounted = false">Unmount this line</web-ui-button>
+      <web-ui-button @click="mounted = true">Mount again</web-ui-button>
+      <output class="text-sm text-(--wui-color-text-secondary)"
+        >Preserved on unmount: {{ saved || '(nothing yet)' }}</output
+      >
     </div>
   </div>
 </template>
@@ -400,7 +457,7 @@ import { ref } from 'vue'
 const mounted = ref(true)
 const saved = ref('')
 
-// 卸载由这次渲染驱动：change 到达时元素正在离开文档，先把值取出来再交给状态
+// The unmount is driven by this render: when change arrives the element is leaving the document, so take the value out first and then hand it to state
 function saveDraft(event: WebUiEvent<WebUiEditableText, 'change'>) {
   const value = event.currentTarget.value
   queueMicrotask(() => (saved.value = value))
@@ -408,9 +465,9 @@ function saveDraft(event: WebUiEvent<WebUiEditableText, 'change'>) {
 </script>
 ```
 
-### 聚焦与全选 {#methods}
+### Focus and select all {#methods}
 
-宿主本身可聚焦（非禁用态带 `tabindex="0"`），`focus()` 聚焦宿主并进入编辑态，`select()` 进入编辑态并全选内容——已在编辑态时只重新全选。两者在 `disabled` 下都不产生效果。
+The host itself is focusable (it carries `tabindex="0"` when not disabled); `focus()` focuses the host and enters edit mode, and `select()` enters edit mode and selects the content—when already in edit mode it only selects again. Neither has any effect when `disabled`.
 
 ```tsx
 import type { WebUiEditableText } from '@greypan/web-ui'
@@ -421,10 +478,14 @@ export default function Demo() {
 
   return (
     <div className="flex flex-col items-start gap-3">
-      <web-ui-editable-text ref={fieldRef} value="全选之后可以直接输入替换" aria-label="替换"></web-ui-editable-text>
+      <web-ui-editable-text
+        ref={fieldRef}
+        value="Type directly to replace after selecting all"
+        aria-label="Replace"
+      ></web-ui-editable-text>
       <div className="flex flex-wrap items-center gap-3">
-        <web-ui-button onClick={() => fieldRef.current?.focus()}>聚焦</web-ui-button>
-        <web-ui-button onClick={() => fieldRef.current?.select()}>全选</web-ui-button>
+        <web-ui-button onClick={() => fieldRef.current?.focus()}>Focus</web-ui-button>
+        <web-ui-button onClick={() => fieldRef.current?.select()}>Select all</web-ui-button>
       </div>
     </div>
   )
@@ -434,10 +495,14 @@ export default function Demo() {
 ```vue
 <template>
   <div class="flex flex-col items-start gap-3">
-    <web-ui-editable-text ref="field" value="全选之后可以直接输入替换" aria-label="替换"></web-ui-editable-text>
+    <web-ui-editable-text
+      ref="field"
+      value="Type directly to replace after selecting all"
+      aria-label="Replace"
+    ></web-ui-editable-text>
     <div class="flex flex-wrap items-center gap-3">
-      <web-ui-button @click="field?.focus()">聚焦</web-ui-button>
-      <web-ui-button @click="field?.select()">全选</web-ui-button>
+      <web-ui-button @click="field?.focus()">Focus</web-ui-button>
+      <web-ui-button @click="field?.select()">Select all</web-ui-button>
     </div>
   </div>
 </template>
@@ -450,22 +515,26 @@ const field = useTemplateRef<WebUiEditableText>('field')
 </script>
 ```
 
-### CSS 变量 {#sizing}
+### CSS variables {#sizing}
 
-两层共用同一组空白与断词变量，覆盖时仍保持一致；光标颜色走共享的 `--wui-color-accent`，自定义属性能穿透 shadow 边界继承，所以在宿主或任意祖先上设都有效。
+Both layers share the same whitespace and word-break variables, so overrides keep them consistent; the caret color comes from the shared `--wui-color-accent`, and since custom properties inherit across the shadow boundary, setting it on the host or any ancestor works.
 
 ```tsx
 export default function Demo() {
   return (
     <div className="flex flex-col items-start gap-3">
-      <web-ui-editable-text value="AAAABBBBCCCCDDDDEEEE" className="w-32" aria-label="长串断词"></web-ui-editable-text>
       <web-ui-editable-text
-        value={'空白按原样保留\n默认就是 pre-wrap'}
-        className="w-40 [--wui-editable-text-white-space:pre]"
-        aria-label="保留空白"
+        value="AAAABBBBCCCCDDDDEEEE"
+        className="w-32"
+        aria-label="Long word breaking"
       ></web-ui-editable-text>
       <web-ui-editable-text
-        value="光标色改到这个 accent"
+        value={'Whitespace is preserved as-is\npre-wrap by default'}
+        className="w-40 [--wui-editable-text-white-space:pre]"
+        aria-label="Preserve whitespace"
+      ></web-ui-editable-text>
+      <web-ui-editable-text
+        value="Caret color changed to this accent"
         className="[--wui-color-accent:#7c3aed]"
       ></web-ui-editable-text>
     </div>
@@ -476,18 +545,25 @@ export default function Demo() {
 ```vue
 <template>
   <div class="flex flex-col items-start gap-3">
-    <web-ui-editable-text value="AAAABBBBCCCCDDDDEEEE" class="w-32" aria-label="长串断词"></web-ui-editable-text>
+    <web-ui-editable-text
+      value="AAAABBBBCCCCDDDDEEEE"
+      class="w-32"
+      aria-label="Long word breaking"
+    ></web-ui-editable-text>
     <web-ui-editable-text
       :value="spacing"
       class="w-40 [--wui-editable-text-white-space:pre]"
-      aria-label="保留空白"
+      aria-label="Preserve whitespace"
     ></web-ui-editable-text>
-    <web-ui-editable-text value="光标色改到这个 accent" class="[--wui-color-accent:#7c3aed]"></web-ui-editable-text>
+    <web-ui-editable-text
+      value="Caret color changed to this accent"
+      class="[--wui-color-accent:#7c3aed]"
+    ></web-ui-editable-text>
   </div>
 </template>
 
 <script setup lang="ts">
-const spacing = '空白按原样保留\n默认就是 pre-wrap'
+const spacing = 'Whitespace is preserved as-is\npre-wrap by default'
 </script>
 ```
 
@@ -495,93 +571,93 @@ const spacing = '空白按原样保留\n默认就是 pre-wrap'
 
 ### Props
 
-| 名称                | 说明                                                                 | 类型             | 默认值  |
-| ------------------- | -------------------------------------------------------------------- | ---------------- | ------- |
-| `name`              | 表单字段名。                                                         | `string`         | `''`    |
-| `placeholder`       | 值为空时显示的占位文本。                                             | `string`         | `''`    |
-| `disabled`          | 禁用状态，只影响行为不做视觉置灰。                                   | `boolean`        | `false` |
-| `readonly`          | 只读状态：仍可聚焦全选，但不能编辑或提交。                           | `boolean`        | `false` |
-| `commit-on-unmount` | 卸载时按提交语义结束编辑态；WebKit 下没有 blur，只有它才能保住草稿。 | `boolean`        | `false` |
-| `aria-label`        | 无障碍名称。                                                         | `string \| null` | `null`  |
-| `value`             | 当前值，也是表单提交值。                                             | `string`         | `''`    |
+| Name                | Description                                                                                                        | Type             | Default |
+| ------------------- | ------------------------------------------------------------------------------------------------------------------ | ---------------- | ------- |
+| `name`              | Form field name.                                                                                                   | `string`         | `''`    |
+| `placeholder`       | Placeholder text shown when the value is empty.                                                                    | `string`         | `''`    |
+| `disabled`          | Disabled state; affects behavior only, without visual dimming.                                                     | `boolean`        | `false` |
+| `readonly`          | Readonly state: can still be focused and selected, but cannot be edited or committed.                              | `boolean`        | `false` |
+| `commit-on-unmount` | Ends edit mode with commit semantics on unmount; under WebKit there is no blur, and only this preserves the draft. | `boolean`        | `false` |
+| `aria-label`        | Accessible name.                                                                                                   | `string \| null` | `null`  |
+| `value`             | Current value, also the form-submitted value.                                                                      | `string`         | `''`    |
 
 ### Events
 
-| 名称     | 说明                                                    |
-| -------- | ------------------------------------------------------- |
-| `input`  | 每次输入时触发，来自编辑层原生 `input` 的冒泡。         |
-| `change` | 提交草稿时触发（Enter 或 blur），一次提交恰好一条。     |
-| `cancel` | Escape 取消时触发，不冒泡不组合：监听一律挂在组件本身。 |
+| Name     | Description                                                                                             |
+| -------- | ------------------------------------------------------------------------------------------------------- |
+| `input`  | Fires on every input, bubbled from the edit layer's native `input`.                                     |
+| `change` | Fires when the draft is committed (Enter or blur); exactly one per commit.                              |
+| `cancel` | Fires when Escape cancels; does not bubble or compose: listeners always attach to the component itself. |
 
 ### Methods
 
-| 名称       | 说明                                                                                                                                                                                                                                                                                                 |
-| ---------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `focus()`  | 组件没有重写它，走原生宿主聚焦：宿主有 tab 位（`tabindex="0"`），聚焦被宿主的 `focus` 监听接住并进入编辑态，光标落在文本末尾；`disabled` 时宿主没有 tab 位，调用不产生效果。                                                                                                                         |
-| `blur()`   | 组件没有重写它，走原生失焦：编辑态下焦点在 shadow 的编辑层上，对宿主调 `blur()` 仍会把焦点从编辑层移走，于是走的就是编辑层自己那条 `blur` 提交路径——草稿成为新值并恰好派发一次 `change`（`readonly` 时只退出编辑、不派发）。不在编辑态时它是空操作；把焦点移往组件之外是同一条路径的另一种触发方式。 |
-| `select()` | 进入编辑态并全选内容；已在编辑态时只重新全选。`disabled` 时不进入编辑。                                                                                                                                                                                                                              |
+| Name       | Description                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               |
+| ---------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `focus()`  | The component does not override it, so this is native host focus: the host has a tab stop (`tabindex="0"`), the host's `focus` listener catches the focus and enters edit mode with the caret at the end of the text; when `disabled` the host has no tab stop and calling it has no effect.                                                                                                                                                                                                              |
+| `blur()`   | The component does not override it, so this is native blurring: in edit mode focus is on the shadow's edit layer, and calling `blur()` on the host still moves focus away from the edit layer, so it goes through the edit layer's own blur commit path—the draft becomes the new value and exactly one `change` is dispatched (under `readonly` it only exits editing without dispatching). Outside edit mode it is a no-op; moving focus outside the component is another way to trigger the same path. |
+| `select()` | Enters edit mode and selects the content; when already in edit mode it only selects again. Does not enter edit mode when `disabled`.                                                                                                                                                                                                                                                                                                                                                                      |
 
-### 行为说明
+### Behavior
 
-点击时光标落在点击处；键盘聚焦时落在文本末尾。
+Clicking puts the caret at the click position; keyboard focus puts it at the end of the text.
 
-`Enter` 与 `blur` 均提交草稿并恰好派发一次 `change`：`Enter` 不插入换行，并把焦点交还宿主；`blur` 不干预焦点，焦点留在用户移往的位置。
+Both `Enter` and `blur` commit the draft and dispatch exactly one `change`: `Enter` inserts no newline and returns focus to the host; `blur` does not touch focus, which stays where the user moved it.
 
-只有 `Escape` 取消：值回到进入编辑时的状态，派发 `cancel` 而不派发 `change`，焦点交还宿主，且按键由编辑层消费，外层 overlay（drawer、menu）不会因同一次按键关闭。
+Only `Escape` cancels: the value returns to the state it had when editing began, `cancel` is dispatched instead of `change`, focus goes back to the host, and the key press is consumed by the edit layer, so an outer overlay (drawer, menu) does not close on the same key press.
 
-`cancel` 不冒泡也不组合，只在组件本身派发：组件被投映在 overlay shadow 内时（如 drawer 标题），它不会触达 overlay 的原生 `cancel` 关闭管线，监听一律挂在组件本身。
+`cancel` neither bubbles nor is composed and is dispatched only on the component itself: when the component is projected inside an overlay shadow root (such as a drawer title), it does not reach the overlay's native `cancel` closing pipeline, so listeners always attach to the component itself.
 
-值里已有的换行仍按多行渲染，只是不能再靠输入 `Enter` 增加换行。空值继续显示 placeholder；编辑层始终按自身内容撑高，因此空草稿或纯空格草稿在宿主自身塌缩的场合（flex 项 `min-width: 0`、表格单元格）也仍有承接光标的位置。
+Newlines already in the value still render as multiple lines; Enter simply can no longer add new lines. An empty value keeps showing the placeholder; the edit layer always grows with its own content, so an empty or whitespace-only draft still has a place to hold the caret even when the host itself collapses (a flex item with `min-width: 0`, a table cell).
 
-编辑态由宿主上的 `editing` 属性表达，`disabled` 时属性不会挂上。
+Edit mode is expressed by the `editing` attribute on the host, and the attribute is not set when `disabled`.
 
-`select()` 进入编辑态并全选内容；已在编辑态时只重新全选。`disabled` 时与 `focus()` 一样不产生效果。
+`select()` enters edit mode and selects the content; when already in edit mode it only selects again. When `disabled` it has no effect, just like `focus()`.
 
-`readonly` 时仍可聚焦和全选，但输入被拒绝，退出编辑态也不派发 `change`。
+When `readonly`, the component can still be focused and selected, but input is rejected and leaving edit mode dispatches no `change`.
 
-共用盒子带来两个约束：`line-height` 需不小于 `1`，更紧凑时原生编辑层内容会高出自身盒子，文字被顶偏 1px；`nowrap` 加固定宽度时，超出盒宽的文案在文字态溢出显示、在编辑态于盒内滚动。
+The shared box brings two constraints: `line-height` must be at least `1`, otherwise the native edit layer's content is taller than its box and the text shifts by 1px; with `nowrap` and a fixed width, copy wider than the box overflows in the text state and scrolls inside the box in the edit state.
 
-### 编辑到一半被卸载
+### Unmounted mid-edit
 
-正在编辑的元素被从 DOM 移除时会发生什么，取决于引擎，这个差异正是本属性存在的理由：
+What happens when an element being edited is removed from the DOM depends on the engine, and that difference is exactly why this property exists:
 
-- **Chromium** 会在编辑层上派发 `blur`，因此纯粹的 `value` 提交今天就已经发生，默认 `false` 不改变这一点。`blur` 与它触发的 `change` 都在卸载回调跑完**之后**同步派发，也就是说提交落在「消费方针对这次移除已经更新完状态」之后。
-- **WebKit（Safari、iOS）** 完全不派发 `blur`。默认 `false` 下什么都不提交，草稿随元素一起丢弃。
-- **Gecko（Firefox）未验证**：实测所用机器上没有任何 Firefox 能启动，因此这里不做任何断言。把 Gecko 当作未知，而不是默认它与上面两列之一相同；需要靠卸载提交来保住草稿时，请开启本属性。
+- **Chromium** dispatches `blur` on the edit layer, so a pure `value` commit already happens today and the default `false` does not change that. `blur` and the `change` it triggers are both dispatched synchronously **after** the unmount callback has run, which means the commit lands after "the consumer has already updated its state for this removal".
+- **WebKit (Safari, iOS)** dispatches no `blur` at all. With the default `false` nothing is committed and the draft is discarded with the element.
+- **Gecko (Firefox) is unverified**: no Firefox could start on the machines used for testing, so nothing is asserted here. Treat Gecko as unknown rather than assuming it matches either column above; enable this property when you rely on unmount commits to preserve drafts.
 
-如果你的代码依赖「行被回收时草稿不丢」，请**开启 `commit-on-unmount`**：在 Safari 与 iOS 上它是唯一能保住草稿的手段，在 Chromium 上它把提交提前到移除自带的 `blur` 之前。
+If your code depends on "the draft survives when a line is recycled", **enable `commit-on-unmount`**: on Safari and iOS it is the only way to preserve the draft, and on Chromium it moves the commit ahead of the `blur` that removal already produces.
 
-两个引擎下，卸载都按提交语义收尾一段开着的编辑会话——草稿成为新值、退出编辑、恰好派发一次 `change`，走的是与 `Enter`、`blur` 同一份实现。
+Under both engines, unmounting finishes an open editing session with commit semantics—the draft becomes the new value, editing ends, and exactly one `change` is dispatched, through the same implementation as `Enter` and `blur`.
 
-结论在 Chromium 与 WebKit 上实测过；浏览器测试套件只跑 Chromium，WebKit 的结果来自一次一次性跨引擎取证、不在 CI 里，Gecko 则完全没有测。
+The conclusion has been verified on Chromium and WebKit; the browser test suite only runs Chromium, the WebKit result comes from a one-off cross-engine investigation outside CI, and Gecko is not tested at all.
 
-`Enter` 与 `blur` 由用户动作触发，一律算提交意图；卸载没有这种意图。因此只有草稿与进入编辑时的值确实不同时才提交——什么都没改的会话不会产生空提交。
+`Enter` and `blur` are triggered by user actions and always count as commit intent; unmounting has no such intent. So it only commits when the draft really differs from the value at the start of editing—a session where nothing changed produces no empty commit.
 
-不在编辑态时没有可提交的内容；`disabled` 或 `readonly` 时与 `blur` 路径一致，都不派发提交事件。但两者对「已经有草稿」的处置不同：`disabled` 下草稿留在组件上，`readonly` 下草稿是真的丢掉。
+Outside edit mode there is nothing to commit; when `disabled` or `readonly` it follows the same path as `blur` and dispatches no commit event. But the two handle "a draft already exists" differently: under `disabled` the draft stays on the component, while under `readonly` the draft is really discarded.
 
-`readonly` 阻止不了先前输入的字，而卸载时已没有 blur 可以兜底提交——WebKit 上连 blur 都没有。可达路径是：可编辑态进入 → 起草稿 → 期间翻 readonly → 卸载。
+`readonly` cannot take back characters typed earlier, and at unmount time there is no blur left to fall back on—on WebKit there is not even a blur. The reachable path is: enter the editable state → type a draft → switch to readonly in the meantime → unmount.
 
-这里不按取消处理——取消的契约是恢复进入编辑时的值，而卸载既没有焦点要交也没有宿主接收结果；用户看到的是「我打的字没了」，既没有 `change` 也没有 `cancel`。
+This is not treated as a cancel—the cancel contract restores the value from the start of editing, whereas unmounting has neither focus to return nor a host to receive the result; what the user sees is "the text I typed is gone", with neither `change` nor `cancel`.
 
-提交发生在卸载回调里，`change` 仍沿组合路径向上派发，因此挂在组件自身或任一祖先上的监听都会执行，**包括自身也正在被卸载的祖先**：派发不要求祖先此刻还在文档里。因此监听器不能假定组件仍在文档中；结果需要活过这次移除时，用 `queueMicrotask` 之类的方式显式转交给宿主树之外的状态。
+The commit happens inside the unmount callback, and `change` still dispatches upward along the composed path, so listeners attached to the component itself or any ancestor run, **including ancestors that are themselves being unmounted**: dispatching does not require the ancestor to still be in the document. Listeners therefore cannot assume the component is still in the document; when the result must outlive this removal, hand it explicitly to state outside the host tree, for example with `queueMicrotask`.
 
-注意这条可达性对「由 React 自身 render 驱动的卸载」并不成立：那种移除走不到 React 的事件委托根，`onChange` 不会触发，只能改为从元素上读值——与上文 `cancel` 的告示同源。
+Note that this reachability does not hold for "an unmount driven by React's own render": that removal never reaches React's delegated event root, so `onChange` does not fire and the value has to be read from the element instead—the same caveat as the `cancel` note above.
 
-在祖先上设 `display: none` 不算移除——两个引擎下组件都仍在文档中、不派发任何事件，那种场合需要消费方主动结束编辑。
+Setting `display: none` on an ancestor does not count as removal—under both engines the component is still in the document and dispatches no event; that situation needs the consumer to end editing explicitly.
 
-宿主是行内级盒子：未设宽度时随内容伸缩，折行后高度按行数增长。字体、颜色、文本对齐与空白处理全部继承外部上下文，因此编辑前它就是一段普通文字。
+The host is an inline-level box: without a set width it sizes to its content, and when lines wrap its height grows with the line count. Font, color, text alignment, and whitespace handling are all inherited from the outer context, so before editing it is just a piece of ordinary text.
 
-光标颜色默认跟随共享语义 token `--wui-color-accent`；在宿主或任意祖先上设置该 token 即可整体改色。两层对长无空格串（连续字母数字）按同一组断行点折行：超出盒宽的长串在盒内断开，文字态不再溢出宿主盒。
+The caret color follows the shared semantic token `--wui-color-accent` by default; setting that token on the host or any ancestor recolors it everywhere. Both layers break long runs without spaces (consecutive letters and digits) at the same set of break points: a run wider than the box breaks inside the box, and the text state no longer overflows the host box.
 
 ### CSS Custom Properties
 
-| 名称                                | 说明                                                             | 默认值     |
-| ----------------------------------- | ---------------------------------------------------------------- | ---------- |
-| `--wui-editable-text-white-space`   | 两层的空白处理方式                                               | `pre-wrap` |
-| `--wui-editable-text-overflow-wrap` | 两层的断词处理方式；默认让长无空格串在盒内断开，与原生编辑层一致 | `anywhere` |
+| Name                                | Description                                                                                                                   | Default    |
+| ----------------------------------- | ----------------------------------------------------------------------------------------------------------------------------- | ---------- |
+| `--wui-editable-text-white-space`   | Whitespace handling for both layers                                                                                           | `pre-wrap` |
+| `--wui-editable-text-overflow-wrap` | Word-break handling for both layers; by default long runs without spaces break inside the box, matching the native edit layer | `anywhere` |
 
-### 交互变更
+### Interaction changes
 
-`blur` 恢复提交：`Enter` 与 `blur` 均提交草稿，只有 `Escape` 取消，值回到进入编辑时的状态。`Enter` 仍不插入换行。
+`blur` commits again: both `Enter` and `blur` commit the draft, only `Escape` cancels and restores the value from the start of editing. `Enter` still inserts no newline.
 
-`cancel` 事件不再冒泡：此前冒泡的自定义 `cancel` 会经 slot 进入外层 overlay shadow 内的 `<dialog>`（`composed` 与否都会），被当成关闭请求一并关掉（issue #159）；监听请挂在组件本身。
+The `cancel` event no longer bubbles: the previously bubbling custom `cancel` traveled through the slot into the `<dialog>` inside an outer overlay shadow root (whether composed or not) and was treated as a close request, closing that overlay as well (issue #159); attach listeners to the component itself.

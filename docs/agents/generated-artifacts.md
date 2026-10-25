@@ -4,20 +4,23 @@
 
 ## 清单
 
-| 产物                   | 路径                                                                                   | generator                                   | 触发方式                                                                                                   |
-| ---------------------- | -------------------------------------------------------------------------------------- | ------------------------------------------- | ---------------------------------------------------------------------------------------------------------- |
-| `web-ui` icon 模块     | `packages/web-ui/src/icons/index.ts`、`packages/web-ui/src/icons/generated/**`         | `packages/web-ui/scripts/generate-icons.ts` | `pnpm --filter @greypan/web-ui generate-icons`，产物入库                                                   |
-| TanStack Router 路由树 | `apps/react-web-ui-demo/src/routeTree.gen.ts`                                          | TanStack Router 的 Vite 插件                | React demo 的 dev 与 build                                                                                 |
-| vue-router 路由类型    | `apps/vue-web-ui-demo/typed-router.d.ts`、`apps/interweave/frontend/typed-router.d.ts` | unplugin-vue-router                         | 对应宿主的 dev 与 build                                                                                    |
-| auto-import 声明       | `apps/vue-web-ui-demo/auto-imports.d.ts`、`apps/interweave/frontend/auto-imports.d.ts` | unplugin-auto-import                        | 对应宿主的 dev 与 build                                                                                    |
-| demo 示例与 API 表     | `apps/react-web-ui-demo/src/generated/**`、`apps/vue-web-ui-demo/src/generated/**`     | `@greypan/md-to-comp` 的 Vite 插件          | 宿主 dev 与 build；输入是 `packages/web-ui/docs/*.md`；CI 在宿主 build 前有只判校验步（`check-generated`） |
-| Wails Go bindings      | `apps/interweave/frontend/bindings/**`                                                 | Wails bindings generator（单一入口）        | `pnpm exec turbo build --filter=@greypan/interweave-frontend`                                              |
+| 产物                   | 路径                                                                                                        | generator                                   | 触发方式                                                                                                                                       |
+| ---------------------- | ----------------------------------------------------------------------------------------------------------- | ------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
+| `web-ui` icon 模块     | `packages/web-ui/src/icons/index.ts`、`packages/web-ui/src/icons/generated/**`                              | `packages/web-ui/scripts/generate-icons.ts` | `pnpm --filter @greypan/web-ui generate-icons`，产物入库                                                                                       |
+| TanStack Router 路由树 | `apps/react-web-ui-demo/src/routeTree.gen.ts`                                                               | TanStack Router 的 Vite 插件                | React demo 的 dev 与 build                                                                                                                     |
+| vue-router 路由类型    | `apps/vue-web-ui-demo/typed-router.d.ts`、`apps/interweave/frontend/typed-router.d.ts`                      | unplugin-vue-router                         | 对应宿主的 dev 与 build                                                                                                                        |
+| auto-import 声明       | `apps/vue-web-ui-demo/auto-imports.d.ts`、`apps/interweave/frontend/auto-imports.d.ts`                      | unplugin-auto-import                        | 对应宿主的 dev 与 build                                                                                                                        |
+| demo 示例与 API 表     | `apps/react-web-ui-demo/src/generated/**`、`apps/vue-web-ui-demo/src/generated/**`                          | `@greypan/md-to-comp` 的 Vite 插件          | 宿主 dev 与 build；输入是 `packages/web-ui/docs/*.md`（中文源 `.CN.md` + 英文译文 `.md`）；CI 在宿主 build 前有只判校验步（`check-generated`） |
+| Wails Go bindings      | `apps/interweave/frontend/bindings/**`                                                                      | Wails bindings generator（单一入口）        | `pnpm exec turbo build --filter=@greypan/interweave-frontend`                                                                                  |
+| 壳文案 catalog         | `apps/react-web-ui-demo/src/locales/.wuchale/**`、`src/locales/*.loader.js`、`src/locales/{data,plural}.js` | `wuchale` 的 Vite 插件与 CLI                | 宿主 dev 与 build 按 PO 重编译；增删壳文案后在应用目录跑 `pnpm exec wuchale --clean` 把 msgid 写进 PO；产物全部 gitignore                      |
 
-`apps/*/src/generated/**` 里是 `examples.ts`、`examples.css` 与 `demos/**` 三类文件，同一次生成一起写盘，不要挑其中某一类单独改。
+`apps/*/src/generated/**` 里是 `examples.css` 与逐语种的 `examples.ts` + `demos/**`，同一次生成一起写盘，不要挑其中某一类单独改。React 站出中英两套（`zh-CN/`、`en/`）共用顶层 `examples.css`；Vue 站本期只出中文，产物仍直接落在 `src/generated/`。
+
+`apps/react-web-ui-demo/src/locales/*.po` 反过来：它是**入库的译文源**，手写（英文由 agent 翻译后写回同一份 PO），不是生成物，也不由 generator 覆盖。PO 与代码抽取的一致性由 `pnpm run check-policy` 的 `shell-i18n-catalog` 检查守护，判据与失败模式见 build.md 的「生成物生命周期」。
 
 ## 怎么判断一个文件是不是生成的
 
-判据只有一条：**能不能由 generator 完整重建**。文件头标记是线索，不是定义——本仓库既有生成物不带任何标记（`packages/web-ui/src/icons/generated/**`、`apps/*/src/generated/demos/**`），也有带 `DO NOT EDIT` 却与本仓 generator 无关的文件（`.agents/skills-vendored/**`、`apps/interweave/build/windows/nsis/**` 是上游产物）。拿不准时按生成物处理：跑一次 generator 的代价远小于手改一次产物。
+判据只有一条：**能不能由 generator 完整重建**。文件头标记是线索，不是定义——本仓库既有生成物不带任何标记（`packages/web-ui/src/icons/generated/**`、`apps/*/src/generated/**/demos/**`），也有带 `DO NOT EDIT` 却与本仓 generator 无关的文件（`.agents/skills-vendored/**`、`apps/interweave/build/windows/nsis/**` 是上游产物）。拿不准时按生成物处理：跑一次 generator 的代价远小于手改一次产物。
 
 按成本从低到高，能定性就停：
 
@@ -42,7 +45,7 @@
 3. **反向验证（最硬）**。把文件挪走，跑 generator，看它是否原样重建：
 
    ```sh
-   mv apps/react-web-ui-demo/src/generated/examples.ts /tmp/
+   mv apps/react-web-ui-demo/src/generated/zh-CN/examples.ts /tmp/
    pnpm exec turbo build --filter=@greypan/react-web-ui-demo   # 让 Vite 插件写盘；dev 也可以
    git status --short apps/react-web-ui-demo/src/generated
    ```
@@ -53,13 +56,15 @@
 
 ## 要更新就跑 generator
 
-生成文件不是 source of truth。跑对应 generator 让工具产生 diff，再核对生成结果与消费者；不要用复制、补丁或格式化工具直接改写输出。`packages/web-ui/docs/*.md` 是 demo 示例与 API 表的唯一输入，改组件 API 必须同时改对应 markdown，generator 只负责把 markdown 落到两端产物。
+生成文件不是 source of truth。跑对应 generator 让工具产生 diff，再核对生成结果与消费者；不要用复制、补丁或格式化工具直接改写输出。`packages/web-ui/docs/*.md` 是 demo 示例与 API 表的唯一输入（中文源 `.CN.md`、英文译文 `.md`），改组件 API 必须同时改对应 markdown，generator 只负责把 markdown 落到两端产物。
 
 `apps/interweave/frontend/bindings/**` 只经单一 generator 入口生成：生成过程不得删除已有文件，并用产出集合守卫防止静默少产出，陈旧文件由人工清理。
 
 ## 机器拦截的覆盖面
 
-`.claude/settings.json` 的 `permissions.deny` 是这些路径的权威名单：上表每一类生成物都有对应条目，另外拦截 `.env` 读取。它只挡工具调用，不挡 generator，所以「跑 generator 产生 diff」的正常路径不受影响；口径与边界见 environments.md。
+`.claude/settings.json` 的 `permissions.deny` 是这些路径的权威名单：上表每一类**入库**生成物都有对应条目，另外拦截 `.env` 读取。它只挡工具调用，不挡 generator，所以「跑 generator 产生 diff」的正常路径不受影响；口径与边界见 environments.md。
+
+已 gitignore 的编译目录不在名单里（wuchale 的 `src/locales/.wuchale/**`、各包 `dist/**`）：它们永远不进 diff，手改的后果由下一次重编译原样收走，拦不住也不必拦。
 
 `**/__screenshots__/` 与 `**/.vitest-attachments/` 是测试证据而不是生成物，故意不进 `deny`：基线由测试运行器写盘，拦手改既拦不彻底，又会挡掉显式更新基线的正当路径。
 

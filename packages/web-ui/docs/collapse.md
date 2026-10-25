@@ -3,19 +3,19 @@ component: collapse
 tag: web-ui-collapse
 ---
 
-collapse panel 把 trigger 与内容装在同一个元素里：trigger 走 default slot，要收起的内容走 `content` slot。
+A collapse panel packs the trigger and the content into one element: the trigger goes into the default slot, and the content to collapse goes into the `content` slot.
 
-用户点 trigger 时组件自己把 `open` 改到位，再派发一次 `open-change` 通知；消费方把 `detail.open` 回写进页面状态，页面上的读数才和面板一致。
+When the user clicks the trigger, the component writes `open` to the new value itself and then dispatches an `open-change` notification; the consumer writes `detail.open` back into page state so that the readout on the page matches the panel.
 
-## 示例
+## Samples
 
-### 基础 {#basic}
+### Basic {#basic}
 
-`open` 是唯一状态源，`content` slot 放要收起的内容，default slot 放 trigger。
+`open` is the single source of truth; the `content` slot holds the content to collapse, and the default slot holds the trigger.
 
-点 trigger 时组件先把 `open` 落到新值再派发 `open-change`，所以 handler 只要把 `detail.open` 回写进页面状态。
+On a trigger click the component first writes `open` to the new value and then dispatches `open-change`, so the handler only has to write `detail.open` back into page state.
 
-下面那行读数是回写后的值，组件内部没有第二份状态。
+The readout below shows the written-back value; the component keeps no second copy of the state.
 
 ```tsx
 import { useState } from 'react'
@@ -30,15 +30,15 @@ export default function Demo() {
           type="button"
           className="w-full cursor-pointer rounded-md bg-(--wui-color-surface-control) px-3 py-2 text-left"
         >
-          展开详情
+          Show details
         </button>
         <div slot="content">
           <div className="p-3 text-sm">
-            <p className="m-0">content slot 支持任意节点：文字、表单、图片，甚至另一条 collapse。</p>
+            <p className="m-0">The content slot accepts any node: text, forms, images, even another collapse.</p>
           </div>
         </div>
       </web-ui-collapse>
-      <output className="text-sm text-(--wui-color-text-secondary)">回写后的 open：{String(open)}</output>
+      <output className="text-sm text-(--wui-color-text-secondary)">open after write-back: {String(open)}</output>
     </div>
   )
 }
@@ -52,15 +52,15 @@ export default function Demo() {
         type="button"
         class="w-full cursor-pointer rounded-md bg-(--wui-color-surface-control) px-3 py-2 text-left"
       >
-        展开详情
+        Show details
       </button>
       <div slot="content">
         <div class="p-3 text-sm">
-          <p class="m-0">content slot 支持任意节点：文字、表单、图片，甚至另一条 collapse。</p>
+          <p class="m-0">The content slot accepts any node: text, forms, images, even another collapse.</p>
         </div>
       </div>
     </web-ui-collapse>
-    <output class="text-sm text-(--wui-color-text-secondary)">回写后的 open：{{ open }}</output>
+    <output class="text-sm text-(--wui-color-text-secondary)">open after write-back: {{ open }}</output>
   </div>
 </template>
 
@@ -71,9 +71,9 @@ const open = ref(false)
 </script>
 ```
 
-### 不绑定 open {#uncontrolled}
+### Without binding open {#uncontrolled}
 
-组件自己会切 `open`，所以完全不绑定也能用：只给 default slot 与 `content` slot 就行。第二条静态写 `open`，表示初始就展开——初始即为 `open` 时直接落展开稳态，不播进入动画。静态写法只在挂载时生效一次，之后组件继续自己切这个属性，页面不再参与。
+The component toggles `open` on its own, so it works with no binding at all: just provide the default slot and the `content` slot. The second one writes `open` statically, meaning it starts expanded—when it is already `open` at mount it lands directly in the expanded resting state and plays no enter animation. A static value only applies once at mount; afterwards the component keeps toggling the property itself and the page is no longer involved.
 
 ```tsx
 export default function Demo() {
@@ -84,11 +84,11 @@ export default function Demo() {
           type="button"
           className="w-full cursor-pointer rounded-md bg-(--wui-color-surface-control) px-3 py-2 text-left"
         >
-          初始收起
+          Collapsed initially
         </button>
         <div slot="content">
           <div className="p-3 text-sm">
-            <p className="m-0">没有绑定 open：点 trigger 由组件自己把属性写到位。</p>
+            <p className="m-0">No open binding: on a trigger click the component writes the property itself.</p>
           </div>
         </div>
       </web-ui-collapse>
@@ -98,11 +98,14 @@ export default function Demo() {
           type="button"
           className="w-full cursor-pointer rounded-md bg-(--wui-color-surface-control) px-3 py-2 text-left"
         >
-          初始展开
+          Expanded initially
         </button>
         <div slot="content">
           <div className="p-3 text-sm">
-            <p className="m-0">挂载时就带 open，直接落展开稳态；再点一次才走收起动画。</p>
+            <p className="m-0">
+              It carries open at mount and lands directly in the expanded resting state; only the next click plays the
+              exit animation.
+            </p>
           </div>
         </div>
       </web-ui-collapse>
@@ -119,11 +122,11 @@ export default function Demo() {
         type="button"
         class="w-full cursor-pointer rounded-md bg-(--wui-color-surface-control) px-3 py-2 text-left"
       >
-        初始收起
+        Collapsed initially
       </button>
       <div slot="content">
         <div class="p-3 text-sm">
-          <p class="m-0">没有绑定 open：点 trigger 由组件自己把属性写到位。</p>
+          <p class="m-0">No open binding: on a trigger click the component writes the property itself.</p>
         </div>
       </div>
     </web-ui-collapse>
@@ -133,11 +136,14 @@ export default function Demo() {
         type="button"
         class="w-full cursor-pointer rounded-md bg-(--wui-color-surface-control) px-3 py-2 text-left"
       >
-        初始展开
+        Expanded initially
       </button>
       <div slot="content">
         <div class="p-3 text-sm">
-          <p class="m-0">挂载时就带 open，直接落展开稳态；再点一次才走收起动画。</p>
+          <p class="m-0">
+            It carries open at mount and lands directly in the expanded resting state; only the next click plays the
+            exit animation.
+          </p>
         </div>
       </div>
     </web-ui-collapse>
@@ -145,15 +151,15 @@ export default function Demo() {
 </template>
 ```
 
-### trigger 类型 {#trigger}
+### Trigger types {#trigger}
 
-交互语义来自 default slot 里那个元素本身：原生 `<button>` 与 `<web-ui-button>` 自带 Enter / Space 激活和焦点，组件把 `aria-expanded` 回写到 default slot 里第一个被指派的元素，并在 `disabled` 时给该元素加上 `disabled`。
+Interaction semantics come from the element in the default slot itself: a native `<button>` and a `<web-ui-button>` already provide Enter / Space activation and focus, and the component writes `aria-expanded` back to the first assigned element in the default slot and adds `disabled` to it while it is disabled.
 
-不回写 `aria-controls`：内容 track 在组件 shadow root 内，IDREF 不能跨 shadow root 解析，写出去在可访问性树里等同悬空引用。展开关系由 `aria-expanded` 表达，`<web-ui-button>` 会把它同步到内部原生 button；禁用态则靠 `disabled` 属性穿透 shadow 边界。
+`aria-controls` is not written back: the content track lives inside the component's shadow root, and an IDREF cannot resolve across a shadow root, so writing it out would be a dangling reference in the accessibility tree. The expanded relationship is expressed by `aria-expanded`, which `<web-ui-button>` syncs to its inner native button; the disabled state travels through the `disabled` attribute instead, which crosses shadow boundaries by nature.
 
-整个 default slot 都落在点击代理范围内，点其中任何一处都算一次开合，所以说明文字别塞进来。
+The whole default slot falls inside the click proxy, so a click anywhere in it counts as a toggle; do not put explanatory text in it.
 
-最后一条放的是纯文本 trigger：点得动，但不可聚焦、没有键盘激活，只用来演示反面写法。
+The last one uses a plain-text trigger: it can be clicked, but it cannot take focus and has no keyboard activation; it only demonstrates the wrong way.
 
 ```tsx
 import { lucideChevronDown } from '@greypan/web-ui/icons'
@@ -166,10 +172,10 @@ export default function Demo() {
           type="button"
           className="w-full cursor-pointer rounded-md bg-(--wui-color-surface-control) px-3 py-2 text-left"
         >
-          原生 button
+          Native button
         </button>
         <div slot="content">
-          <div className="p-3 text-sm">Enter / Space 与焦点都由这个原生 button 自己提供。</div>
+          <div className="p-3 text-sm">Enter / Space and focus are provided by this native button itself.</div>
         </div>
       </web-ui-collapse>
 
@@ -179,24 +185,29 @@ export default function Demo() {
         </web-ui-button>
         <div slot="content">
           <div className="p-3 text-sm">
-            自定义元素也能当 trigger；展开状态会同步到它内部原生 button，供辅助技术读取。
+            A custom element also works as a trigger; the expanded state is synced to its inner native button for
+            assistive technology to read.
           </div>
         </div>
       </web-ui-collapse>
 
       <web-ui-collapse>
         <web-ui-button variant="secondary" full>
-          <web-ui-icon slot="prefix" icon={lucideChevronDown} size={14}></web-ui-icon>带 prefix icon 的 trigger
+          <web-ui-icon slot="prefix" icon={lucideChevronDown} size={14}></web-ui-icon>Trigger with a prefix icon
         </web-ui-button>
         <div slot="content">
-          <div className="p-3 text-sm">被指派的第一件东西仍然是那个 button；展开状态会同步到它内部原生 button。</div>
+          <div className="p-3 text-sm">
+            The first assigned thing is still that button; the expanded state is synced to its inner native button.
+          </div>
         </div>
       </web-ui-collapse>
 
       <web-ui-collapse>
-        纯文本 trigger
+        Plain-text trigger
         <div slot="content">
-          <div className="p-3 text-sm">反面写法：鼠标点得动，但不可聚焦、没有键盘激活。</div>
+          <div className="p-3 text-sm">
+            The wrong way: clickable with a mouse, but not focusable and with no keyboard activation.
+          </div>
         </div>
       </web-ui-collapse>
     </div>
@@ -212,34 +223,41 @@ export default function Demo() {
         type="button"
         class="w-full cursor-pointer rounded-md bg-(--wui-color-surface-control) px-3 py-2 text-left"
       >
-        原生 button
+        Native button
       </button>
       <div slot="content">
-        <div class="p-3 text-sm">Enter / Space 与焦点都由这个原生 button 自己提供。</div>
+        <div class="p-3 text-sm">Enter / Space and focus are provided by this native button itself.</div>
       </div>
     </web-ui-collapse>
 
     <web-ui-collapse>
       <web-ui-button variant="secondary" full>web-ui-button</web-ui-button>
       <div slot="content">
-        <div class="p-3 text-sm">自定义元素也能当 trigger；展开状态会同步到它内部原生 button，供辅助技术读取。</div>
+        <div class="p-3 text-sm">
+          A custom element also works as a trigger; the expanded state is synced to its inner native button for
+          assistive technology to read.
+        </div>
       </div>
     </web-ui-collapse>
 
     <web-ui-collapse>
       <web-ui-button variant="secondary" full>
         <web-ui-icon slot="prefix" :icon="lucideChevronDown" :size="14"></web-ui-icon>
-        带 prefix icon 的 trigger
+        Trigger with a prefix icon
       </web-ui-button>
       <div slot="content">
-        <div class="p-3 text-sm">被指派的第一件东西仍然是那个 button；展开状态会同步到它内部原生 button。</div>
+        <div class="p-3 text-sm">
+          The first assigned thing is still that button; the expanded state is synced to its inner native button.
+        </div>
       </div>
     </web-ui-collapse>
 
     <web-ui-collapse>
-      纯文本 trigger
+      Plain-text trigger
       <div slot="content">
-        <div class="p-3 text-sm">反面写法：鼠标点得动，但不可聚焦、没有键盘激活。</div>
+        <div class="p-3 text-sm">
+          The wrong way: clickable with a mouse, but not focusable and with no keyboard activation.
+        </div>
       </div>
     </web-ui-collapse>
   </div>
@@ -250,11 +268,11 @@ import { lucideChevronDown } from '@greypan/web-ui/icons'
 </script>
 ```
 
-### 禁用 {#disabled}
+### Disabled {#disabled}
 
-`disabled` 让点击被忽略，并给 trigger 元素加上 `disabled`；取消禁用时移除该 attribute，回到 trigger 原本的禁用状态。它不改变已经展开的面板：第二条同时写 `open` 与 `disabled`，内容保持可见——禁用管的是触发，不是当前状态。
+`disabled` makes clicks be ignored and adds `disabled` to the trigger element; removing the disabled state removes that attribute and returns the trigger to its own disabled state. It does not change a panel that is already expanded: the second one sets both `open` and `disabled` and its content stays visible—disabling governs triggering, not the current state.
 
-下面那个 checkbox 在运行时切换第一条的 `disabled`，可以对照 trigger 上 `disabled` 的写入与移除。
+The checkbox below toggles the first one's `disabled` at runtime, so you can compare how `disabled` is written to and removed from the trigger.
 
 ```tsx
 import { useState } from 'react'
@@ -265,7 +283,7 @@ export default function Demo() {
   return (
     <div className="flex w-full max-w-md flex-col items-start gap-3">
       <web-ui-checkbox checked={disabled} onChange={event => setDisabled(event.currentTarget.checked)}>
-        禁用第一条的 trigger
+        Disable the trigger of the first one
       </web-ui-checkbox>
 
       <web-ui-collapse disabled={disabled}>
@@ -273,10 +291,13 @@ export default function Demo() {
           type="button"
           className="w-full cursor-pointer rounded-md bg-(--wui-color-surface-control) px-3 py-2 text-left"
         >
-          随开关禁用
+          Disabled with the checkbox
         </button>
         <div slot="content">
-          <div className="p-3 text-sm">取消勾选就能展开；勾选后点它不动，但这条的内容本来就没展开。</div>
+          <div className="p-3 text-sm">
+            Uncheck to expand; once checked it does not react to clicks, but the content of this one was not expanded to
+            begin with.
+          </div>
         </div>
       </web-ui-collapse>
 
@@ -285,10 +306,12 @@ export default function Demo() {
           type="button"
           className="w-full cursor-pointer rounded-md bg-(--wui-color-surface-control) px-3 py-2 text-left"
         >
-          已展开且禁用
+          Expanded and disabled
         </button>
         <div slot="content">
-          <div className="p-3 text-sm">禁用不会把已展开的内容收掉：这条一直可见，点 trigger 无效。</div>
+          <div className="p-3 text-sm">
+            Disabling does not collapse expanded content: this one stays visible and trigger clicks have no effect.
+          </div>
         </div>
       </web-ui-collapse>
     </div>
@@ -300,7 +323,7 @@ export default function Demo() {
 <template>
   <div class="flex w-full max-w-md flex-col items-start gap-3">
     <web-ui-checkbox :checked="disabled" @change="disabled = $event.target.checked">
-      禁用第一条的 trigger
+      Disable the trigger of the first one
     </web-ui-checkbox>
 
     <web-ui-collapse :disabled="disabled">
@@ -308,10 +331,13 @@ export default function Demo() {
         type="button"
         class="w-full cursor-pointer rounded-md bg-(--wui-color-surface-control) px-3 py-2 text-left"
       >
-        随开关禁用
+        Disabled with the checkbox
       </button>
       <div slot="content">
-        <div class="p-3 text-sm">取消勾选就能展开；勾选后点它不动，但这条的内容本来就没展开。</div>
+        <div class="p-3 text-sm">
+          Uncheck to expand; once checked it does not react to clicks, but the content of this one was not expanded to
+          begin with.
+        </div>
       </div>
     </web-ui-collapse>
 
@@ -320,10 +346,12 @@ export default function Demo() {
         type="button"
         class="w-full cursor-pointer rounded-md bg-(--wui-color-surface-control) px-3 py-2 text-left"
       >
-        已展开且禁用
+        Expanded and disabled
       </button>
       <div slot="content">
-        <div class="p-3 text-sm">禁用不会把已展开的内容收掉：这条一直可见，点 trigger 无效。</div>
+        <div class="p-3 text-sm">
+          Disabling does not collapse expanded content: this one stays visible and trigger clicks have no effect.
+        </div>
       </div>
     </web-ui-collapse>
   </div>
@@ -336,11 +364,11 @@ const disabled = ref(true)
 </script>
 ```
 
-### 事件与方法 {#events}
+### Events and methods {#events}
 
-读数是挂在这条 collapse 宿主上的 `open-change` 计数与最后一次 `detail.open`。点 trigger 会让计数加一：`open-change` 只在用户手势后派发，`detail.open` 是组件已经落到的状态。
+The readout shows the `open-change` count and the last `detail.open`, both taken on this collapse host. A trigger click increments the count: `open-change` is dispatched only after a user gesture, and `detail.open` is the state the component has already landed on.
 
-右边三个按钮走元素实例的 `show()` / `close()` / `toggle()`，它们改同一个 `open`、动画照播，却不派发事件——程序式入口必须静默，否则消费方的回写会和通知形成回环。
+The three buttons on the right call the element instance's `show()` / `close()` / `toggle()`; they change the same `open` and the animation still plays, but they dispatch no event—programmatic entry points must be silent, otherwise the consumer's write-back and the notification would form a loop.
 
 ```tsx
 import type { WebUiCollapse } from '@greypan/web-ui'
@@ -349,7 +377,7 @@ import { useRef, useState } from 'react'
 export default function Demo() {
   const panel = useRef<WebUiCollapse>(null)
   const [count, setCount] = useState(0)
-  const [last, setLast] = useState('还没有派发')
+  const [last, setLast] = useState('Nothing dispatched yet')
 
   return (
     <div className="flex w-full max-w-md flex-col gap-3">
@@ -376,15 +404,17 @@ export default function Demo() {
           type="button"
           className="w-full cursor-pointer rounded-md bg-(--wui-color-surface-control) px-3 py-2 text-left"
         >
-          点击 trigger 开合
+          Click the trigger to toggle
         </button>
         <div slot="content">
-          <div className="p-3 text-sm">上面三个按钮能让面板开合，却不产生计数。</div>
+          <div className="p-3 text-sm">
+            The three buttons above open and close the panel without incrementing the count.
+          </div>
         </div>
       </web-ui-collapse>
 
       <output className="text-sm text-(--wui-color-text-secondary)">
-        open-change：{count} 次 · 最后一次 detail.open = {last}
+        open-change: {count} times · last detail.open = {last}
       </output>
     </div>
   )
@@ -405,15 +435,15 @@ export default function Demo() {
         type="button"
         class="w-full cursor-pointer rounded-md bg-(--wui-color-surface-control) px-3 py-2 text-left"
       >
-        点击 trigger 开合
+        Click the trigger to toggle
       </button>
       <div slot="content">
-        <div class="p-3 text-sm">上面三个按钮能让面板开合，却不产生计数。</div>
+        <div class="p-3 text-sm">The three buttons above open and close the panel without incrementing the count.</div>
       </div>
     </web-ui-collapse>
 
     <output class="text-sm text-(--wui-color-text-secondary)">
-      open-change：{{ count }} 次 · 最后一次 detail.open = {{ last }}
+      open-change: {{ count }} times · last detail.open = {{ last }}
     </output>
   </div>
 </template>
@@ -424,7 +454,7 @@ import { ref, useTemplateRef } from 'vue'
 
 const panel = useTemplateRef<WebUiCollapse>('panel')
 const count = ref(0)
-const last = ref('还没有派发')
+const last = ref('Nothing dispatched yet')
 
 function onOpenChange(event: WebUiEvent<WebUiCollapse, 'open-change'>) {
   count.value += 1
@@ -433,17 +463,17 @@ function onOpenChange(event: WebUiEvent<WebUiCollapse, 'open-change'>) {
 </script>
 ```
 
-### 关闭稳态与滚动位置 {#keep-mounted}
+### Closed resting state and scroll position {#keep-mounted}
 
-两条都停在关闭稳态，可见高度都是 0，差别在内容怎么退出。
+Both stay in the closed resting state and both have a visible height of 0; the difference is how the content exits.
 
-左边是默认：shadow 内的内容容器 `hidden`（`display: none`），内部滚动位置随之丢掉。右边 `keep-mounted`：内容留在 `0fr` track 里并整段 `inert`，滚动位置保住、尺寸仍可测量，代价是关闭态仍留在渲染树里。
+The left one is the default: the content container inside the shadow root is `hidden` (`display: none`), so its inner scroll position is lost along with it. The right one uses `keep-mounted`: the content stays in the `0fr` track and the whole subtree is `inert`, so the scroll position survives and the size stays measurable, at the cost of the closed state remaining in the render tree.
 
-`keep-mounted` 不是「关闭态占一层高度」。做法：把右边滚到中段，收起再展开，位置还在；左边同样操作则回到顶部。
+`keep-mounted` does not mean the closed state occupies a layer of height. Try it: scroll the right one to the middle, collapse and expand it again, and the position is still there; do the same on the left and it returns to the top.
 
 ```tsx
 export default function Demo() {
-  const rows = Array.from({ length: 20 }, (_, index) => `列表项 ${index + 1}`)
+  const rows = Array.from({ length: 20 }, (_, index) => `List item ${index + 1}`)
 
   return (
     <div className="flex w-full flex-col items-start gap-4 sm:flex-row">
@@ -452,7 +482,7 @@ export default function Demo() {
           type="button"
           className="w-full cursor-pointer rounded-md bg-(--wui-color-surface-control) px-3 py-2 text-left"
         >
-          默认关闭稳态
+          Default closed resting state
         </button>
         <div slot="content">
           <div className="max-h-32 overflow-y-auto p-3 text-sm">
@@ -470,7 +500,7 @@ export default function Demo() {
           type="button"
           className="w-full cursor-pointer rounded-md bg-(--wui-color-surface-control) px-3 py-2 text-left"
         >
-          keep-mounted 关闭稳态
+          keep-mounted closed resting state
         </button>
         <div slot="content">
           <div className="max-h-32 overflow-y-auto p-3 text-sm">
@@ -495,7 +525,7 @@ export default function Demo() {
         type="button"
         class="w-full cursor-pointer rounded-md bg-(--wui-color-surface-control) px-3 py-2 text-left"
       >
-        默认关闭稳态
+        Default closed resting state
       </button>
       <div slot="content">
         <div class="max-h-32 overflow-y-auto p-3 text-sm">
@@ -509,7 +539,7 @@ export default function Demo() {
         type="button"
         class="w-full cursor-pointer rounded-md bg-(--wui-color-surface-control) px-3 py-2 text-left"
       >
-        keep-mounted 关闭稳态
+        keep-mounted closed resting state
       </button>
       <div slot="content">
         <div class="max-h-32 overflow-y-auto p-3 text-sm">
@@ -521,17 +551,17 @@ export default function Demo() {
 </template>
 
 <script setup lang="ts">
-const rows = Array.from({ length: 20 }, (_, index) => `列表项 ${index + 1}`)
+const rows = Array.from({ length: 20 }, (_, index) => `List item ${index + 1}`)
 </script>
 ```
 
-### peek 预览带 {#peek}
+### Peek preview band {#peek}
 
-`peek` 让关闭稳态收到固定长度而不是 0，露出的那一段用来提示下面还有内容。它的关闭稳态语义等同 `keep-mounted`：整段 inner 都在 `inert` 子树里，所以露出的部分同样点不动、Tab 也进不去，要交互得先展开。
+`peek` makes the closed resting state collapse to a fixed length instead of 0, and the exposed strip hints that more content follows. Its closed-state semantics equal `keep-mounted`: the whole inner subtree sits inside an `inert` subtree, so the exposed part is likewise not clickable and cannot be reached with Tab; expand first to interact.
 
-第二条的内容比 `peek` 短，收起高度就等于内容高度，不留空白。
+The second one's content is shorter than `peek`, so the collapsed height equals the content height and leaves no blank space.
 
-`peek` 取任何 CSS 长度，写 `rem` 时跟随根字号缩放。
+`peek` accepts any CSS length; written in `rem` it scales with the root font size.
 
 ```tsx
 export default function Demo() {
@@ -542,13 +572,13 @@ export default function Demo() {
           type="button"
           className="w-full cursor-pointer rounded-md bg-(--wui-color-surface-control) px-3 py-2 text-left"
         >
-          peek 80px（内容比它长）
+          peek 80px (content is longer)
         </button>
         <div slot="content">
           <div className="p-3 text-sm">
             {Array.from({ length: 8 }, (_, index) => (
               <p key={index} className="m-0">
-                段落 {index + 1}：关闭时只露出前 80px，露出的这一截也点不动。
+                Paragraph {index + 1}: when closed only the first 80px shows, and that strip is not clickable either.
               </p>
             ))}
           </div>
@@ -560,10 +590,13 @@ export default function Demo() {
           type="button"
           className="w-full cursor-pointer rounded-md bg-(--wui-color-surface-control) px-3 py-2 text-left"
         >
-          peek 200px（内容比它短）
+          peek 200px (content is shorter)
         </button>
         <div slot="content">
-          <div className="p-3 text-sm">内容不足 200px：收起高度取内容实际高度，不会被撑到 200px。</div>
+          <div className="p-3 text-sm">
+            Content is under 200px: the collapsed height takes the actual height of the content and is not stretched to
+            200px.
+          </div>
         </div>
       </web-ui-collapse>
     </div>
@@ -579,7 +612,7 @@ export default function Demo() {
         type="button"
         class="w-full cursor-pointer rounded-md bg-(--wui-color-surface-control) px-3 py-2 text-left"
       >
-        peek 80px（内容比它长）
+        peek 80px (content is longer)
       </button>
       <div slot="content">
         <div class="p-3 text-sm">
@@ -593,10 +626,13 @@ export default function Demo() {
         type="button"
         class="w-full cursor-pointer rounded-md bg-(--wui-color-surface-control) px-3 py-2 text-left"
       >
-        peek 200px（内容比它短）
+        peek 200px (content is shorter)
       </button>
       <div slot="content">
-        <div class="p-3 text-sm">内容不足 200px：收起高度取内容实际高度，不会被撑到 200px。</div>
+        <div class="p-3 text-sm">
+          Content is under 200px: the collapsed height takes the actual height of the content and is not stretched to
+          200px.
+        </div>
       </div>
     </web-ui-collapse>
   </div>
@@ -605,18 +641,18 @@ export default function Demo() {
 <script setup lang="ts">
 const longRows = Array.from(
   { length: 8 },
-  (_, index) => `段落 ${index + 1}：关闭时只露出前 80px，露出的这一截也点不动。`
+  (_, index) => `Paragraph ${index + 1}: when closed only the first 80px shows, and that strip is not clickable either.`
 )
 </script>
 ```
 
-### 边缘渐隐 {#peek-edge}
+### Edge fade {#peek-edge}
 
-露出区域的裁剪边缘自带一段 alpha 渐隐，同一条带上还叠一层背景模糊，长度由 `peek` 推导：默认比例 0.4，并夹在 `--wui-collapse-peek-edge-max`（`112px`）以内。
+The clipping edge of the exposed region carries an alpha fade, and the same band layers a background blur on top; its length is derived from `peek`: a default ratio of 0.4, clamped within `--wui-collapse-peek-edge-max` (`112px`).
 
-第一条 `peek="200px"` 得到 80px 的带子；第二条把 `--wui-collapse-peek-edge-ratio` 提到 0.7，算出的 140px 被上限夹成 112px。
+The first one with `peek="200px"` gets an 80px band; the second raises `--wui-collapse-peek-edge-ratio` to 0.7, and the computed 140px is clamped by the cap to 112px.
 
-这条量的是带子长度与它的推导来源，和示例卡片下方代码区那条折叠各用各的 `peek` 与比例：预览不在代码区的折叠里，两段不会互相遮挡。
+This one is about the band length and where it is derived from; it uses its own `peek` and ratio, separate from the collapse in the code area below the sample card: the preview is not inside the code-area collapse, so the two do not overlap.
 
 ```tsx
 export default function Demo() {
@@ -627,13 +663,13 @@ export default function Demo() {
           type="button"
           className="w-full cursor-pointer rounded-md bg-(--wui-color-surface-control) px-3 py-2 text-left"
         >
-          peek 200px · 默认比例 0.4
+          peek 200px · default ratio 0.4
         </button>
         <div slot="content">
           <div className="p-3 text-sm">
             {Array.from({ length: 6 }, (_, index) => (
               <p key={index} className="m-0">
-                段落 {index + 1}：末端那 80px（200px × 0.4）是渐隐加模糊的带子。
+                Paragraph {index + 1}: the last 80px (200px × 0.4) is the fade-plus-blur band.
               </p>
             ))}
           </div>
@@ -645,13 +681,13 @@ export default function Demo() {
           type="button"
           className="w-full cursor-pointer rounded-md bg-(--wui-color-surface-control) px-3 py-2 text-left"
         >
-          peek 200px · 比例 0.7，被上限夹住
+          peek 200px · ratio 0.7, clamped by the cap
         </button>
         <div slot="content">
           <div className="p-3 text-sm">
             {Array.from({ length: 6 }, (_, index) => (
               <p key={index} className="m-0">
-                段落 {index + 1}：200px × 0.7 = 140px，实际按 112px 上限画。
+                Paragraph {index + 1}: 200px × 0.7 = 140px, but it is drawn at the 112px cap.
               </p>
             ))}
           </div>
@@ -670,7 +706,7 @@ export default function Demo() {
         type="button"
         class="w-full cursor-pointer rounded-md bg-(--wui-color-surface-control) px-3 py-2 text-left"
       >
-        peek 200px · 默认比例 0.4
+        peek 200px · default ratio 0.4
       </button>
       <div slot="content">
         <div class="p-3 text-sm">
@@ -684,7 +720,7 @@ export default function Demo() {
         type="button"
         class="w-full cursor-pointer rounded-md bg-(--wui-color-surface-control) px-3 py-2 text-left"
       >
-        peek 200px · 比例 0.7，被上限夹住
+        peek 200px · ratio 0.7, clamped by the cap
       </button>
       <div slot="content">
         <div class="p-3 text-sm">
@@ -698,22 +734,22 @@ export default function Demo() {
 <script setup lang="ts">
 const derivedRows = Array.from(
   { length: 6 },
-  (_, index) => `段落 ${index + 1}：末端那 80px（200px × 0.4）是渐隐加模糊的带子。`
+  (_, index) => `Paragraph ${index + 1}: the last 80px (200px × 0.4) is the fade-plus-blur band.`
 )
 const cappedRows = Array.from(
   { length: 6 },
-  (_, index) => `段落 ${index + 1}：200px × 0.7 = 140px，实际按 112px 上限画。`
+  (_, index) => `Paragraph ${index + 1}: 200px × 0.7 = 140px, but it is drawn at the 112px cap.`
 )
 </script>
 ```
 
-### CSS 变量 {#theming}
+### CSS variables {#theming}
 
-`--wui-collapse-peek-edge` 显式指定渐变长度，优先于推导值；`--wui-collapse-peek-edge-blur` 是同一条带上背景模糊的半径；`--wui-collapse-peek-edge-color` 是裁剪边缘处的渐变起点色（默认页面底色），向内容方向淡到全透明。
+`--wui-collapse-peek-edge` sets the gradient length explicitly and takes precedence over the derived value; `--wui-collapse-peek-edge-blur` is the radius of the background blur on the same band; `--wui-collapse-peek-edge-color` is the gradient's starting color at the clipping edge (the page background by default), fading to fully transparent towards the content.
 
-`peek` 写成百分比时推导结果不是长度、无法被注册的 `<length>` 属性插值，会静默回落成无渐隐——那种写法想要带子就只能走 `--wui-collapse-peek-edge`。
+When `peek` is a percentage the derived result is not a length and cannot be interpolated by the registered `<length>` property, so it silently falls back to no fade—with that form the only way to get a band is `--wui-collapse-peek-edge`.
 
-两条都停在关闭稳态，第一条的模糊半径被拉到 10px，第二条把边缘色指向共享的 `--wui-color-border`，带子因此与默认的页面色区分得开。
+Both stay in the closed resting state; the first raises the blur radius to 10px, and the second points the edge color at the shared `--wui-color-border`, so the band stands out from the default page color.
 
 ```tsx
 import type { CSSProperties } from 'react'
@@ -734,13 +770,14 @@ export default function Demo() {
           type="button"
           className="w-full cursor-pointer rounded-md bg-(--wui-color-surface-control) px-3 py-2 text-left"
         >
-          显式长度 28px · 模糊 10px
+          Explicit length 28px · blur 10px
         </button>
         <div slot="content">
           <div className="p-3 text-sm">
             {Array.from({ length: 5 }, (_, index) => (
               <p key={index} className="m-0">
-                段落 {index + 1}：带子长度不听 peek 的 0.4 推导，模糊半径也从 4px 提到 10px。
+                Paragraph {index + 1}: the band length ignores the 0.4 derivation of peek, and the blur radius rises
+                from 4px to 10px.
               </p>
             ))}
           </div>
@@ -755,13 +792,14 @@ export default function Demo() {
           type="button"
           className="w-full cursor-pointer rounded-md bg-(--wui-color-surface-control) px-3 py-2 text-left"
         >
-          边缘颜色取共享 border 色
+          Edge color from the shared border color
         </button>
         <div slot="content">
           <div className="p-3 text-sm">
             {Array.from({ length: 5 }, (_, index) => (
               <p key={index} className="m-0">
-                段落 {index + 1}：裁剪边缘的底色换成 border 色，带子从边缘向内淡出。
+                Paragraph {index + 1}: the clipping edge uses the border color as its base, and the band fades from the
+                edge inwards.
               </p>
             ))}
           </div>
@@ -786,7 +824,7 @@ export default function Demo() {
         type="button"
         class="w-full cursor-pointer rounded-md bg-(--wui-color-surface-control) px-3 py-2 text-left"
       >
-        显式长度 28px · 模糊 10px
+        Explicit length 28px · blur 10px
       </button>
       <div slot="content">
         <div class="p-3 text-sm">
@@ -800,7 +838,7 @@ export default function Demo() {
         type="button"
         class="w-full cursor-pointer rounded-md bg-(--wui-color-surface-control) px-3 py-2 text-left"
       >
-        边缘颜色取共享 border 色
+        Edge color from the shared border color
       </button>
       <div slot="content">
         <div class="p-3 text-sm">
@@ -814,22 +852,24 @@ export default function Demo() {
 <script setup lang="ts">
 const blurRows = Array.from(
   { length: 5 },
-  (_, index) => `段落 ${index + 1}：带子长度不听 peek 的 0.4 推导，模糊半径也从 4px 提到 10px。`
+  (_, index) =>
+    `Paragraph ${index + 1}: the band length ignores the 0.4 derivation of peek, and the blur radius rises from 4px to 10px.`
 )
 const edgeColorRows = Array.from(
   { length: 5 },
-  (_, index) => `段落 ${index + 1}：裁剪边缘的底色换成 border 色，带子从边缘向内淡出。`
+  (_, index) =>
+    `Paragraph ${index + 1}: the clipping edge uses the border color as its base, and the band fades from the edge inwards.`
 )
 </script>
 ```
 
-### 水平方向 {#horizontal}
+### Horizontal {#horizontal}
 
-`horizontal` 把动画轴从高度换成宽度，内容沿宽度展开，trigger 与内容排在同一行——宿主自己只是 block 盒，要成行就在宿主上加 flex（这两条都写了 `flex items-center gap-2`）。
+`horizontal` switches the animation axis from height to width, so the content expands along the width and the trigger and content sit on one row—the host itself is only a block box, so add flex on the host to get a row (both of these set `flex items-center gap-2`).
 
-换了动画轴之后 `peek` 也变成宽度，第二条就是 `horizontal` 配 `peek="120px"`，渐隐带落在右边缘。
+After the axis change `peek` also becomes a width; the second one pairs `horizontal` with `peek="120px"`, and its fade band falls on the right edge.
 
-代价是动画期间内容随宽度变化 reflow。
+The cost is that the content reflows as the width changes during the animation.
 
 ```tsx
 import { radixIconsPanelLeftMinimized } from '@greypan/web-ui/icons'
@@ -843,10 +883,12 @@ export default function Demo() {
           className="flex-none cursor-pointer rounded-md bg-(--wui-color-surface-control) px-3 py-2"
         >
           <web-ui-icon className="align-[-2px]" icon={radixIconsPanelLeftMinimized} size={14}></web-ui-icon>
-          展开侧栏
+          Expand sidebar
         </button>
         <div slot="content">
-          <div className="w-64 whitespace-nowrap p-3 text-sm">内容区沿宽度展开，trigger 留在同一行。</div>
+          <div className="w-64 whitespace-nowrap p-3 text-sm">
+            The content area expands along the width, and the trigger stays on the same row.
+          </div>
         </div>
       </web-ui-collapse>
 
@@ -855,10 +897,12 @@ export default function Demo() {
           type="button"
           className="flex-none cursor-pointer rounded-md bg-(--wui-color-surface-control) px-3 py-2"
         >
-          水平 peek
+          Horizontal peek
         </button>
         <div slot="content">
-          <div className="w-64 whitespace-nowrap p-3 text-sm">关闭时沿宽度露出 120px，渐隐带在右边缘。</div>
+          <div className="w-64 whitespace-nowrap p-3 text-sm">
+            When closed it exposes 120px of width, with the fade band on the right edge.
+          </div>
         </div>
       </web-ui-collapse>
     </div>
@@ -872,19 +916,23 @@ export default function Demo() {
     <web-ui-collapse horizontal class="flex items-center gap-2">
       <button type="button" class="flex-none cursor-pointer rounded-md bg-(--wui-color-surface-control) px-3 py-2">
         <web-ui-icon class="align-[-2px]" :icon="radixIconsPanelLeftMinimized" :size="14"></web-ui-icon>
-        展开侧栏
+        Expand sidebar
       </button>
       <div slot="content">
-        <div class="w-64 whitespace-nowrap p-3 text-sm">内容区沿宽度展开，trigger 留在同一行。</div>
+        <div class="w-64 whitespace-nowrap p-3 text-sm">
+          The content area expands along the width, and the trigger stays on the same row.
+        </div>
       </div>
     </web-ui-collapse>
 
     <web-ui-collapse horizontal peek="120px" class="flex items-center gap-2">
       <button type="button" class="flex-none cursor-pointer rounded-md bg-(--wui-color-surface-control) px-3 py-2">
-        水平 peek
+        Horizontal peek
       </button>
       <div slot="content">
-        <div class="w-64 whitespace-nowrap p-3 text-sm">关闭时沿宽度露出 120px，渐隐带在右边缘。</div>
+        <div class="w-64 whitespace-nowrap p-3 text-sm">
+          When closed it exposes 120px of width, with the fade band on the right edge.
+        </div>
       </div>
     </web-ui-collapse>
   </div>
@@ -895,15 +943,15 @@ import { radixIconsPanelLeftMinimized } from '@greypan/web-ui/icons'
 </script>
 ```
 
-### 嵌套 {#nested}
+### Nested {#nested}
 
-内层 collapse 放在外层的 `content` slot 里。展开内层时外层跟着长：展开稳态的 track 停在 `1fr`，高度由内容决定，组件不需要测量内层。
+The inner collapse sits in the outer one's `content` slot. Expanding the inner one makes the outer one grow: the expanded resting track stays at `1fr` and the height is decided by the content, so the component does not need to measure the inner one.
 
-两条折叠互不干扰——点击代理只认自己 trigger wrapper 的冒泡路径，点内层 trigger 不会顺带开合外层。
+The two collapses do not interfere—the click proxy only recognizes the bubbling path of its own trigger wrapper, so clicking the inner trigger does not toggle the outer one as well.
 
-但 `open-change` 是 `bubbles` 且 `composed` 的，内层那次通知会经过外层宿主，所以外层绑 handler 时按 `event.target === event.currentTarget` 过滤，否则内层开合会被读成外层开合。
+However, `open-change` is `bubbles` and `composed`, so the inner notification passes through the outer host; when binding a handler on the outer one, filter by `event.target === event.currentTarget`, otherwise an inner toggle is read as an outer toggle.
 
-这条只有两层、内容都短，不会和示例卡片的代码区叠出两段长折叠。
+This one has only two levels and short content, so it will not stack two long collapses with the code area of the sample card.
 
 ```tsx
 import { useState } from 'react'
@@ -917,7 +965,7 @@ export default function Demo() {
       <web-ui-collapse
         open={outer}
         onopen-change={event => {
-          // 内层的 open-change 会冒泡经过外层宿主：只认派发给自己这一条的。
+          // The inner open-change bubbles through the outer host: only accept the one dispatched to this element.
           if (event.target === event.currentTarget) setOuter(event.detail.open)
         }}
       >
@@ -925,20 +973,22 @@ export default function Demo() {
           type="button"
           className="w-full cursor-pointer rounded-md bg-(--wui-color-surface-control) px-3 py-2 text-left"
         >
-          外层 collapse
+          Outer collapse
         </button>
         <div slot="content">
           <div className="p-3">
-            <p className="m-0 mb-2 text-sm">外层内容，里面再套一条。</p>
+            <p className="m-0 mb-2 text-sm">Outer content, with another one nested inside.</p>
             <web-ui-collapse open={inner} onopen-change={event => setInner(event.detail.open)}>
               <button
                 type="button"
                 className="w-full cursor-pointer rounded-md bg-(--wui-color-surface-raised) px-3 py-2 text-left"
               >
-                内层 collapse
+                Inner collapse
               </button>
               <div slot="content">
-                <div className="p-3 text-sm">内层展开后外层随之变高，两层各自持有 open。</div>
+                <div className="p-3 text-sm">
+                  Expanding the inner one makes the outer one taller; each level holds its own open.
+                </div>
               </div>
             </web-ui-collapse>
           </div>
@@ -946,7 +996,7 @@ export default function Demo() {
       </web-ui-collapse>
 
       <output className="text-sm text-(--wui-color-text-secondary)">
-        外层 {String(outer)} · 内层 {String(inner)}
+        outer {String(outer)} · inner {String(inner)}
       </output>
     </div>
   )
@@ -961,27 +1011,29 @@ export default function Demo() {
         type="button"
         class="w-full cursor-pointer rounded-md bg-(--wui-color-surface-control) px-3 py-2 text-left"
       >
-        外层 collapse
+        Outer collapse
       </button>
       <div slot="content">
         <div class="p-3">
-          <p class="m-0 mb-2 text-sm">外层内容，里面再套一条。</p>
+          <p class="m-0 mb-2 text-sm">Outer content, with another one nested inside.</p>
           <web-ui-collapse :open="inner" @open-change="inner = $event.detail.open">
             <button
               type="button"
               class="w-full cursor-pointer rounded-md bg-(--wui-color-surface-raised) px-3 py-2 text-left"
             >
-              内层 collapse
+              Inner collapse
             </button>
             <div slot="content">
-              <div class="p-3 text-sm">内层展开后外层随之变高，两层各自持有 open。</div>
+              <div class="p-3 text-sm">
+                Expanding the inner one makes the outer one taller; each level holds its own open.
+              </div>
             </div>
           </web-ui-collapse>
         </div>
       </div>
     </web-ui-collapse>
 
-    <output class="text-sm text-(--wui-color-text-secondary)">外层 {{ outer }} · 内层 {{ inner }}</output>
+    <output class="text-sm text-(--wui-color-text-secondary)">outer {{ outer }} · inner {{ inner }}</output>
   </div>
 </template>
 
@@ -993,29 +1045,29 @@ const outer = ref(false)
 const inner = ref(false)
 
 function onOuterChange(event: WebUiEvent<WebUiCollapse, 'open-change'>) {
-  // 内层的 open-change 会冒泡经过外层宿主：只认派发给自己这一条的。
+  // The inner open-change bubbles through the outer host: only accept the one dispatched to this element.
   if (event.target === event.currentTarget) outer.value = event.detail.open
 }
 </script>
 ```
 
-### 多实例并存 {#accordion}
+### Multiple instances {#accordion}
 
-三条面板各自持有 `open`，页面用一个数组当状态源：每条的 `open` 写成「它在不在数组里」，回写走 `open-change` 的 `detail.open`。勾选「同时只留一条」后由页面保证互斥——collapse 没有组契约，互斥是消费方的状态管理，不是组件属性。
+The three panels each hold their own `open`, and the page uses an array as the source of truth: each `open` is written as whether it is in the array, and write-back goes through `open-change`'s `detail.open`. With "Only one at a time" checked, the page guarantees exclusivity—collapse has no group contract; exclusivity is the consumer's state management, not a component property.
 
-同页多实例各自持有 `open` 与各自的 ARIA 回写，互不干扰；展开关系只靠 `aria-expanded` 表达，不存在需要跨实例对齐的 IDREF。
+Multiple instances on the same page each own their `open` and their own ARIA write-back, so they do not interfere with each other; the expanded relationship is expressed by `aria-expanded` alone, and there is no IDREF that would need aligning across instances.
 
 ```tsx
 import { useState } from 'react'
 
 const sections = [
-  { title: '发货', body: '工作日 18:00 前下单当天发出。' },
-  { title: '退换', body: '签收后 7 天内可申请退换。' },
-  { title: '发票', body: '下单时勾选发票，电子票 3 个工作日内开出。' }
+  { title: 'Shipping', body: 'Orders placed before 18:00 on a business day ship the same day.' },
+  { title: 'Returns', body: 'Returns and exchanges can be requested within 7 days of delivery.' },
+  { title: 'Invoices', body: 'Select an invoice at checkout; the e-invoice is issued within 3 business days.' }
 ]
 
 export default function Demo() {
-  const [open, setOpen] = useState(['发货'])
+  const [open, setOpen] = useState(['Shipping'])
   const [exclusive, setExclusive] = useState(true)
 
   function setAt(title: string, value: boolean) {
@@ -1028,7 +1080,7 @@ export default function Demo() {
   return (
     <div className="flex w-full max-w-md flex-col gap-3">
       <web-ui-checkbox checked={exclusive} onChange={event => setExclusive(event.currentTarget.checked)}>
-        同时只留一条
+        Only one at a time
       </web-ui-checkbox>
 
       {sections.map(item => (
@@ -1049,7 +1101,7 @@ export default function Demo() {
         </web-ui-collapse>
       ))}
 
-      <output className="text-sm text-(--wui-color-text-secondary)">展开中：{open.join('、') || '一条都没有'}</output>
+      <output className="text-sm text-(--wui-color-text-secondary)">expanded: {open.join(', ') || 'none'}</output>
     </div>
   )
 }
@@ -1058,7 +1110,9 @@ export default function Demo() {
 ```vue
 <template>
   <div class="flex w-full max-w-md flex-col gap-3">
-    <web-ui-checkbox :checked="exclusive" @change="exclusive = $event.target.checked">同时只留一条</web-ui-checkbox>
+    <web-ui-checkbox :checked="exclusive" @change="exclusive = $event.target.checked"
+      >Only one at a time</web-ui-checkbox
+    >
 
     <web-ui-collapse
       v-for="item in sections"
@@ -1077,7 +1131,7 @@ export default function Demo() {
       </div>
     </web-ui-collapse>
 
-    <output class="text-sm text-(--wui-color-text-secondary)">展开中：{{ open.join('、') || '一条都没有' }}</output>
+    <output class="text-sm text-(--wui-color-text-secondary)">expanded: {{ open.join(', ') || 'none' }}</output>
   </div>
 </template>
 
@@ -1085,12 +1139,12 @@ export default function Demo() {
 import { ref } from 'vue'
 
 const sections = [
-  { title: '发货', body: '工作日 18:00 前下单当天发出。' },
-  { title: '退换', body: '签收后 7 天内可申请退换。' },
-  { title: '发票', body: '下单时勾选发票，电子票 3 个工作日内开出。' }
+  { title: 'Shipping', body: 'Orders placed before 18:00 on a business day ship the same day.' },
+  { title: 'Returns', body: 'Returns and exchanges can be requested within 7 days of delivery.' },
+  { title: 'Invoices', body: 'Select an invoice at checkout; the e-invoice is issued within 3 business days.' }
 ]
 
-const open = ref(['发货'])
+const open = ref(['Shipping'])
 const exclusive = ref(true)
 
 function setAt(title: string, value: boolean) {
@@ -1103,34 +1157,34 @@ function setAt(title: string, value: boolean) {
 </script>
 ```
 
-### 内容高度变化 {#content-height}
+### Content height changes {#content-height}
 
-展开稳态的 track 停在 `1fr`，高度由内容决定：内容自己在面板里变高变矮都不需要组件重新测量，加一行、删一行，面板跟着长缩。只有 `peek` 与展开之间那段「固定长度 ↔ 内容高度」的过渡才要读像素（见 peek 预览带）。
+The expanded resting track stays at `1fr` and the height is decided by the content: the component does not need to re-measure when the content grows or shrinks inside the panel; add or remove a row and the panel grows or shrinks with it. Only the transition between `peek` and expanded—fixed length to content height—needs a pixel read (see Peek preview band).
 
 ```tsx
 import { useState } from 'react'
 
 export default function Demo() {
   const [open, setOpen] = useState(true)
-  const [rows, setRows] = useState(['第 1 行'])
+  const [rows, setRows] = useState(['Row 1'])
 
   return (
     <div className="flex w-full max-w-md flex-col gap-3">
       <div className="flex flex-wrap items-center gap-2">
         <web-ui-button
           variant="secondary"
-          onClick={() => setRows(current => [...current, `第 ${current.length + 1} 行`])}
+          onClick={() => setRows(current => [...current, `Row ${current.length + 1}`])}
         >
-          加一行
+          Add a row
         </web-ui-button>
         <web-ui-button
           variant="secondary"
           disabled={rows.length === 1}
           onClick={() => setRows(current => current.slice(0, -1))}
         >
-          删一行
+          Remove a row
         </web-ui-button>
-        <output className="text-sm text-(--wui-color-text-secondary)">行数：{rows.length}</output>
+        <output className="text-sm text-(--wui-color-text-secondary)">rows: {rows.length}</output>
       </div>
 
       <web-ui-collapse open={open} onopen-change={event => setOpen(event.detail.open)}>
@@ -1138,7 +1192,7 @@ export default function Demo() {
           type="button"
           className="w-full cursor-pointer rounded-md bg-(--wui-color-surface-control) px-3 py-2 text-left"
         >
-          展开着改内容
+          Change content while expanded
         </button>
         <div slot="content">
           <div className="p-3 text-sm">
@@ -1159,9 +1213,9 @@ export default function Demo() {
 <template>
   <div class="flex w-full max-w-md flex-col gap-3">
     <div class="flex flex-wrap items-center gap-2">
-      <web-ui-button variant="secondary" @click="addRow">加一行</web-ui-button>
-      <web-ui-button variant="secondary" :disabled="rows.length === 1" @click="removeRow">删一行</web-ui-button>
-      <output class="text-sm text-(--wui-color-text-secondary)">行数：{{ rows.length }}</output>
+      <web-ui-button variant="secondary" @click="addRow">Add a row</web-ui-button>
+      <web-ui-button variant="secondary" :disabled="rows.length === 1" @click="removeRow">Remove a row</web-ui-button>
+      <output class="text-sm text-(--wui-color-text-secondary)">rows: {{ rows.length }}</output>
     </div>
 
     <web-ui-collapse :open="open" @open-change="open = $event.detail.open">
@@ -1169,7 +1223,7 @@ export default function Demo() {
         type="button"
         class="w-full cursor-pointer rounded-md bg-(--wui-color-surface-control) px-3 py-2 text-left"
       >
-        展开着改内容
+        Change content while expanded
       </button>
       <div slot="content">
         <div class="p-3 text-sm">
@@ -1184,10 +1238,10 @@ export default function Demo() {
 import { ref } from 'vue'
 
 const open = ref(true)
-const rows = ref(['第 1 行'])
+const rows = ref(['Row 1'])
 
 function addRow() {
-  rows.value = [...rows.value, `第 ${rows.value.length + 1} 行`]
+  rows.value = [...rows.value, `Row ${rows.value.length + 1}`]
 }
 
 function removeRow() {
@@ -1200,120 +1254,120 @@ function removeRow() {
 
 ### Props
 
-| 名称           | 说明                                                                                                          | 类型             | 默认值  |
-| -------------- | ------------------------------------------------------------------------------------------------------------- | ---------------- | ------- |
-| `open`         | 展开状态，唯一状态源。用户点 trigger 时组件自己把它改到位，再派发 `open-change`；静态写在模板里只决定初始值。 | `boolean`        | `false` |
-| `disabled`     | 禁用触发：点击忽略，给 trigger 元素加上 `disabled`；已展开内容保持现状。                                      | `boolean`        | `false` |
-| `horizontal`   | 水平方向：沿宽度展开，默认沿高度。                                                                            | `boolean`        | `false` |
-| `keep-mounted` | 关闭稳态保持内容 `inert` 而非 `hidden`，保留滚动位置与可测量性。                                              | `boolean`        | `false` |
-| `peek`         | 关闭稳态露出的尺寸（CSS 长度，如 `120px`、`6rem`）。设置后语义等同 `keep-mounted`。                           | `string \| null` | `null`  |
+| Name           | Description                                                                                                                                                                                                | Type             | Default |
+| -------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------- | ------- |
+| `open`         | Expanded state, the single source of truth. On a trigger click the component writes it to the new value itself, then dispatches `open-change`; a static value in the template only sets the initial state. | `boolean`        | `false` |
+| `disabled`     | Disables triggering: clicks are ignored and `disabled` is added to the trigger element; already-expanded content stays as it is.                                                                           | `boolean`        | `false` |
+| `horizontal`   | Horizontal direction: expands along the width instead of the default height.                                                                                                                               | `boolean`        | `false` |
+| `keep-mounted` | Keeps the content `inert` rather than `hidden` in the closed resting state, preserving scroll position and measurability.                                                                                  | `boolean`        | `false` |
+| `peek`         | Size exposed in the closed resting state (a CSS length such as `120px` or `6rem`). When set, semantics equal `keep-mounted`.                                                                               | `string \| null` | `null`  |
 
 ### Events
 
-| 名称          | 说明                                                                                                                                                                                                                                             |
-| ------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `open-change` | 用户手势开合后的通知：`detail.open` 是组件已经落到的状态，消费方回写 `open` 让页面状态与实际一致。`show()` / `close()` / `toggle()` 与直接写 `open` 都不派发。事件 `bubbles` 且 `composed`，会经过祖先宿主，绑在祖先上要按 `event.target` 过滤。 |
+| Name          | Description                                                                                                                                                                                                                                                                                                                                                                                      |
+| ------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `open-change` | Notification after a user-gesture toggle: `detail.open` is the state the component has already landed on, and the consumer writes it back to `open` so page state matches reality. `show()` / `close()` / `toggle()` and writing `open` directly dispatch nothing. The event is `bubbles` and `composed` and passes through ancestor hosts; when bound on an ancestor, filter by `event.target`. |
 
 ### Slots
 
-| 名称      | 说明                                                                                                                                                                                                             |
-| --------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `default` | trigger。整个 slot 都在点击代理里，点任何一处都算一次开合；`aria-expanded` 回写到其中第一个被指派的元素，`disabled` 时给该元素加上 `disabled`。`<web-ui-button>` 会把两者落到内部原生 button，所以放可交互元素。 |
-| `content` | collapse content。关闭态按 `keep-mounted` / `peek` 决定是 `hidden` 还是 `inert`。                                                                                                                                |
+| Name      | Description                                                                                                                                                                                                                                                                                               |
+| --------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `default` | The trigger. The whole slot is inside the click proxy, so a click anywhere in it counts as a toggle; `aria-expanded` is written to the first assigned element, and `disabled` is added to it while disabled. `<web-ui-button>` lands both on its inner native button, so put an interactive element here. |
+| `content` | Collapse content. In the closed state `keep-mounted` / `peek` decide whether it is `hidden` or `inert`.                                                                                                                                                                                                   |
 
 ### Methods
 
-| 名称       | 说明                                                           |
-| ---------- | -------------------------------------------------------------- |
-| `show()`   | 展开：把 `open` 置为 `true`；程序式变更不派发 `open-change`。  |
-| `close()`  | 收起：把 `open` 置为 `false`；程序式变更不派发 `open-change`。 |
-| `toggle()` | 按当前 `open` 切换展开 / 收起。                                |
+| Name       | Description                                                                        |
+| ---------- | ---------------------------------------------------------------------------------- |
+| `show()`   | Expands: sets `open` to `true`; programmatic changes dispatch no `open-change`.    |
+| `close()`  | Collapses: sets `open` to `false`; programmatic changes dispatch no `open-change`. |
+| `toggle()` | Toggles expansion according to the current `open`.                                 |
 
-### 行为说明
+### Behavior
 
-初始即带 `open` attribute 时直接落展开稳态，不播进入动画；之后的变化才走过渡。动画沿块轴（默认高度，`horizontal` 时宽度）由 shadow 内 `0fr ↔ 1fr` 的 grid track 驱动，展开稳态的高度始终由内容决定，内容自己在展开态里变高变矮不需要组件重新测量。
+With the `open` attribute present initially it lands directly in the expanded resting state and plays no enter animation; only later changes go through the transition. The animation runs along the block axis (height by default, width with `horizontal`) and is driven by a `0fr ↔ 1fr` grid track inside the shadow root; the expanded resting height is always decided by the content, and content that grows or shrinks while expanded needs no re-measurement.
 
-时长取 `--wui-duration-collapse-enter` / `--wui-duration-collapse-exit`（200ms / 160ms，由 `<web-ui-theme>` 定义）；主题 `motion="reduced"` 或系统 `prefers-reduced-motion` 下两者归零，此时组件跳过测量直接落稳态。
+Durations come from `--wui-duration-collapse-enter` / `--wui-duration-collapse-exit` (200ms / 160ms, defined by `<web-ui-theme>`); with theme `motion="reduced"` or the system `prefers-reduced-motion`, both are zero and the component skips measurement to land on the resting state directly.
 
-`open-change` 是通知而不是请求：用户点 trigger 时组件先把 `open` 写到新值，再派发事件（`bubbles` 且 `composed`）；`show()` / `close()` / `toggle()` 与直接写 `open` 都静默，否则消费方的回写会和通知形成回环。
+`open-change` is a notification, not a request: on a trigger click the component first writes `open` to the new value, then dispatches the event (`bubbles` and `composed`); `show()` / `close()` / `toggle()` and writing `open` directly are all silent, otherwise the consumer's write-back and the notification would form a loop.
 
-不回写不会被弹回，但页面的状态就和面板不一致了。
+Not writing it back will not snap the value back, but the page state then disagrees with the panel.
 
-嵌套时点击互不干扰：点击代理只认自己 trigger wrapper 的冒泡路径，内层 trigger 的点击不会顺带开合外层；内层的 `open-change` 却会经过外层宿主，所以外层绑监听要按 `event.target === event.currentTarget` 过滤。
+When nested, clicks do not interfere: the click proxy only recognizes the bubbling path of its own trigger wrapper, so a click on the inner trigger does not toggle the outer one as well; the inner `open-change` does pass through the outer host, so a listener bound on the outer one must filter by `event.target === event.currentTarget`.
 
-### trigger 语义
+### Trigger semantics
 
-交互语义完全来自 default slot 放入的元素——原生 `<button>`、`<web-ui-button>` 或其他可交互元素原生提供 Enter / Space 激活与焦点。
+Interaction semantics come entirely from the element placed in the default slot—a native `<button>`, a `<web-ui-button>`, or another interactive element natively provides Enter / Space activation and focus.
 
-collapse 把 `aria-expanded` 回写到 trigger slot 的首个 assigned element，`disabled` 时给该元素加上 `disabled`；`<web-ui-button>` 会把两者落到内部原生 button（`disabled` 走属性，天然穿透 shadow 边界）。
+collapse writes `aria-expanded` back to the first assigned element of the trigger slot and adds `disabled` to it while it is disabled; `<web-ui-button>` lands both on its inner native button (`disabled` travels as an attribute, so it crosses shadow boundaries by nature).
 
-不回写 `aria-controls`：内容 track 位于 collapse shadow root 内，跨 shadow root 的 IDREF 无法解析，写出去在可访问性树里等同悬空引用。展开关系由 `aria-expanded` 表达。
+`aria-controls` is not written back: the content track sits inside the collapse shadow root, so an IDREF across shadow roots cannot resolve and would be a dangling reference in the accessibility tree. The expanded relationship is expressed by `aria-expanded`.
 
-trigger 请使用可交互元素：纯 `<span>` 可点击但没有键盘 / 焦点语义。
+Use an interactive element as the trigger: a plain `<span>` is clickable but has no keyboard / focus semantics.
 
-default slot 的全部内容都被包进 trigger wrapper，因而都在点击代理里：往 default slot 放说明文字，那段文字点下去同样算一次开合。组件只回写第一个被指派的元素，所以可交互元素要放在最前面。
+All content of the default slot is wrapped in the trigger wrapper and therefore inside the click proxy: explanatory text placed in the default slot also counts as a toggle when clicked. The component only writes back to the first assigned element, so put the interactive element first.
 
-### 关闭稳态语义
+### Closed resting state semantics
 
-消费方的 light DOM 永不移动或卸载，关闭稳态由 shadow 内部三选一落地：默认在内容容器上设 `hidden`（`display: none`，脱离渲染与可访问性树）；`keep-mounted` 时 inner 标 `inert`，留在 `0fr` track 内可测量、滚动位置不丢；`peek` 时同样 `inert`，track 停在裁剪窗口。
+The consumer's light DOM is never moved or unmounted; the closed resting state is implemented inside the shadow root in one of three ways: by default `hidden` is set on the content container (`display: none`, removed from the render and accessibility trees); with `keep-mounted` the inner subtree is marked `inert` and stays in the `0fr` track, measurable and with its scroll position intact; with `peek` it is likewise `inert` and the track stops at the clipping window.
 
-三态的可见高度都是轨道给的量——`keep-mounted` 不会让关闭态占一层高度，它留在渲染树里的代价是保持挂载与可测量。
+The visible height of all three states is whatever the track gives—`keep-mounted` does not make the closed state occupy a layer of height; the price of staying in the render tree is staying mounted and measurable.
 
-开合动画进行中也走 `inert`，落稳态时才按属性决定。
+During a toggle animation the content is `inert` as well; the attributes take over only once the resting state is reached.
 
-### peek 预览带
+### Peek preview band
 
-设置 `peek` 后关闭稳态不再收拢到 0，而是沿动画轴露出内容的头部 `peek` 长度（`horizontal` 时改为宽度）：track 保持在内容高度，裁剪长度落在内部容器上。
+With `peek` set, the closed resting state no longer collapses to 0 but exposes the head of the content along the animation axis for `peek` length (width with `horizontal`): the track stays at the content height and the clipping length applies to the inner container.
 
-其语义等同 `keep-mounted`——内容保留挂载，但整个 inner 被 `inert` 阻断，露出的那一段也一样不可聚焦、不可点击，被裁掉的部分更不用提。
+Its semantics equal `keep-mounted`—the content stays mounted, but the whole inner subtree is blocked by `inert`, so the exposed strip is equally unfocusable and unclickable, and the clipped part even more so.
 
-内容本身不足 `peek` 时按内容实际尺寸收起，不留空白。
+When the content itself is shorter than `peek`, it collapses to the content's actual size and leaves no blank space.
 
-由于固定长度与自适应高度无法由 CSS 插值，`peek` ↔ 展开这两个方向改为读出像素后以显式长度驱动（每次开合测量一次）；其余动画路径仍是零测量的 grid `fr` 过渡。
+Because a fixed length and an intrinsic height cannot be interpolated by CSS, the two directions between `peek` and expanded read pixels and drive an explicit length instead (one measurement per toggle); all other animation paths remain zero-measurement grid `fr` transitions.
 
 ```html
 <web-ui-collapse peek="120px">
-  <button type="button">点击切换</button>
-  <div slot="content">很长的内容——关闭时只露出前 120px</div>
+  <button type="button">Toggle</button>
+  <div slot="content">Very long content—when closed only the first 120px shows</div>
 </web-ui-collapse>
 ```
 
-### 边缘渐隐
+### Edge fade
 
-露出区域的裁剪边缘自带一段 alpha 渐变（`horizontal` 时改为右边），让被裁掉的部分柔和过渡到背景而不是硬切。渐变长度由 `peek` 推导，不需要也没有第二个属性可调——需要时用 CSS 变量微调：
+The clipping edge of the exposed region carries an alpha gradient (on the right with `horizontal`), so the clipped part fades into the background instead of cutting off hard. The gradient length is derived from `peek`; no second attribute is needed or available—fine-tune it with CSS variables when needed:
 
-渐变带由两层组成，直接复用公共 `.wui-glow`（与 layout header 的晕染同一份样式，见 `@greypan/web-ui/classes.css`）：上面那条 alpha 渐隐之外，同一条带上再叠一层真实的 `backdrop-filter` 模糊，被裁掉的内容因此是被**糊掉**的，而不只是被调成半透明。
+The band consists of two layers and reuses the shared `.wui-glow` (the same style as the layout header's glow; see `@greypan/web-ui/classes.css`): on top of the alpha fade, the same band adds a real `backdrop-filter` blur, so the clipped content is actually **blurred**, not merely made semi-transparent.
 
-组件内把两层提升到内容之上（默认 `.wui-glow` 位于内容之下）。模糊强度由本盒自己的 `mask-image` 调制——从带子起点为 0 升到后半段满强度、再在裁剪边缘前回到 0：起点不为 0 会在「突然开始模糊」处留一条接缝，末端不为 0 则会一路糊到裁剪边界。
+Inside the component both layers are raised above the content (`.wui-glow` sits below content by default). The blur strength is modulated by the box's own `mask-image`—rising from 0 at the band start to full strength in the second half, then back to 0 before the clipping edge: a non-zero start would leave a seam where the blur suddenly begins, and a non-zero end would blur all the way to the clipping boundary.
 
-展开态活动长度为 0，各色标塌缩到 100% 而末位色标是全透明，于是这一层什么都不画。
+In the expanded state the active length is 0, all color stops collapse to 100% and the last stop is fully transparent, so this layer draws nothing.
 
-比例设为 `0` 即关闭渐隐。推导是纯 CSS 的 `calc(peek * ratio)`：`peek` 用 rem 时渐变长度自动跟随根字号缩放，JS 侧不需要做任何单位解析。
+Setting the ratio to `0` turns the fade off. The derivation is pure CSS `calc(peek * ratio)`: when `peek` is in rem the gradient length follows the root font size automatically, and the JS side needs no unit parsing.
 
-已知限制：`peek` 取百分比时推导结果不是长度、无法被注册属性插值，会静默回落为「无渐隐」，此时请用 `--wui-collapse-peek-edge` 显式指定长度。
+Known limitation: when `peek` is a percentage the derived result is not a length and cannot be interpolated by the registered property, so it silently falls back to no fade; in that case set the length explicitly with `--wui-collapse-peek-edge`.
 
-内容那条 alpha 渐隐是四段「先陡后缓」而非线性：主体全黑延伸到渐变带起点后，前 30% 距离就降到 60% alpha，65% 处 26%，末端全透明。线性渐变的 alpha 在带子前 40% 几乎贴着 1.0，人眼感知到的虚化远短于声明长度——把下降前置后，带子从起点就明显发虚，同样长度的感知长度接近翻倍。
+The alpha fade over the content uses four stops that drop steeply first and then gently, rather than a linear ramp: the fully opaque body extends to the band start, then the first 30% of the distance drops to 60% alpha, 26% at 65%, and the end is fully transparent. With a linear gradient the alpha stays close to 1.0 over the first 40% of the band, so the perceived fade is far shorter than the declared length—front-loading the drop makes the band visibly fade from its start and nearly doubles the perceived length at the same measured length.
 
-渐变带位置用百分比声明、相对容器的**当前渲染高度**（即 `max-height` 动画的那个高度），因此收起动画期间渐变带逐帧跟随裁剪边缘移动，`mask-image` 字符串本身无需插值。渐变带长度由注册的 `<length>` 自定义属性驱动，随开合动画平滑淡入淡出，而不是等收起动画落稳态才突然出现。
+The band position is declared in percentages relative to the container's **current rendered height** (the same height the `max-height` animation drives), so during the exit animation the band follows the clipping edge frame by frame and the `mask-image` string itself needs no interpolation. The band length is driven by a registered `<length>` custom property, so it fades in and out smoothly with the toggle animation instead of popping in only once the exit animation lands.
 
 ```html
-<!-- 调强渐隐：比例 0.5 → 120px peek 配 60px 渐隐 -->
+<!-- Stronger fade: ratio 0.5 → a 120px peek gets a 60px fade -->
 <web-ui-collapse peek="120px" style="--wui-collapse-peek-edge-ratio: 0.5">
-  <button type="button">点击切换</button>
-  <div slot="content">很长的内容——120px 露出区域的底部渐隐更强</div>
+  <button type="button">Toggle</button>
+  <div slot="content">Very long content—the fade at the bottom of the 120px exposed area is stronger</div>
 </web-ui-collapse>
 ```
 
 ### CSS Custom Properties
 
-| 名称                             | 说明                                     | 默认值                        |
-| -------------------------------- | ---------------------------------------- | ----------------------------- |
-| `--wui-collapse-peek-edge-ratio` | 渐变长度占 `peek` 的比例                 | `0.4`                         |
-| `--wui-collapse-peek-edge-max`   | 长度上限，避免大 `peek` 算出过长的虚化带 | `112px`                       |
-| `--wui-collapse-peek-edge`       | 显式指定长度，优先于推导值               | —                             |
-| `--wui-collapse-peek-edge-color` | 裁剪边缘处的渐变起点色                   | `var(--wui-color-page, #fff)` |
-| `--wui-collapse-peek-edge-blur`  | 同一条渐变带上背景模糊的半径             | `4px`                         |
+| Name                             | Description                                                             | Default                       |
+| -------------------------------- | ----------------------------------------------------------------------- | ----------------------------- |
+| `--wui-collapse-peek-edge-ratio` | Gradient length as a share of `peek`                                    | `0.4`                         |
+| `--wui-collapse-peek-edge-max`   | Length cap, so a large `peek` does not compute an overly long blur band | `112px`                       |
+| `--wui-collapse-peek-edge`       | Explicit length, taking precedence over the derived value               | —                             |
+| `--wui-collapse-peek-edge-color` | Gradient start color at the clipping edge                               | `var(--wui-color-page, #fff)` |
+| `--wui-collapse-peek-edge-blur`  | Radius of the background blur on the same gradient band                 | `4px`                         |
 
-### 已知限制
+### Known limitations
 
-`horizontal` 动画期间内容随宽度变化 reflow。
+During a `horizontal` animation the content reflows as the width changes.

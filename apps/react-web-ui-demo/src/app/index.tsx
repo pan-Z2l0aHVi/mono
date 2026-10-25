@@ -1,6 +1,7 @@
 import { createRouter, RouterProvider } from '@tanstack/react-router'
 import { StrictMode } from 'react'
 
+import { LocaleProvider } from '@/i18n/locale'
 import { routeTree } from '@/routeTree.gen.ts'
 
 // GitHub Pages 子路径 SPA
@@ -33,7 +34,9 @@ declare module '@tanstack/react-router' {
 export default function App() {
   return (
     <StrictMode>
-      <RouterProvider router={router} />
+      <LocaleProvider>
+        <RouterProvider router={router} />
+      </LocaleProvider>
     </StrictMode>
   )
 }
