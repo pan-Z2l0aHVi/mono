@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { local } from '@greypan/browser-kit'
-import type { WebUiEvent, WebUiLayout, WebUiSelect } from '@greypan/web-ui'
+import type { WebUiEvent, WebUiLayout, WebUiSelect, WebUiTheme, WebUiToast } from '@greypan/web-ui'
 import { lucideX } from '@greypan/web-ui/icons'
 import { webUiScrollbarsOptions } from '@greypan/web-ui/scrollbars'
 import { useHead } from '@unhead/vue'
@@ -9,7 +9,7 @@ import {
   useOverlayScrollbars,
   type OverlayScrollbarsComponentRef
 } from 'overlayscrollbars-vue'
-import { computed, onMounted, ref } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { RouterLink, useRoute, useRouter } from 'vue-router'
 
 type ThemeAppearance = 'light' | 'dark' | 'system'
@@ -48,6 +48,9 @@ function getInitialSidebarWidth(): string {
 const themeAppearance = ref(getInitialThemeAppearance())
 const themeMotion = ref(getInitialThemeMotion())
 const bannerVisible = ref(true)
+const toastVisible = ref(false)
+const shadowRootObservers = new Map<ShadowRoot, MutationObserver>()
+let themeObserver: MutationObserver | undefined
 const sidebarCollapsed = ref(false)
 const sidebarOpen = ref(false)
 const mobileSidebarWidth = 'min(320px, 80vw)'
@@ -125,8 +128,56 @@ const navSidebar = ref<OverlayScrollbarsComponentRef>()
 // 只能直接初始化 body。
 const [initPageScrollbars] = useOverlayScrollbars({ options: webUiScrollbarsOptions })
 
+function observeToastVisibility() {
+  const collectThemeScopes = (root: ParentNode, themes: Set<WebUiTheme>, shadowRoots: Set<ShadowRoot>) => {
+    for (const element of root.querySelectorAll<HTMLElement>('*')) {
+      if (element.matches('web-ui-theme')) themes.add(element as WebUiTheme)
+      if (!element.shadowRoot) continue
+
+      shadowRoots.add(element.shadowRoot)
+      collectThemeScopes(element.shadowRoot, themes, shadowRoots)
+    }
+  }
+
+  const updateToastVisibility = () => {
+    const themes = new Set<WebUiTheme>()
+    const shadowRoots = new Set<ShadowRoot>()
+    collectThemeScopes(document.body, themes, shadowRoots)
+
+    for (const [shadowRoot, observer] of shadowRootObservers) {
+      if (shadowRoots.has(shadowRoot)) continue
+      observer.disconnect()
+      shadowRootObservers.delete(shadowRoot)
+    }
+
+    for (const shadowRoot of shadowRoots) {
+      if (shadowRootObservers.has(shadowRoot)) continue
+      const observer = new MutationObserver(updateToastVisibility)
+      observer.observe(shadowRoot, { childList: true, subtree: true })
+      shadowRootObservers.set(shadowRoot, observer)
+    }
+
+    toastVisible.value = Array.from(themes).some(theme =>
+      Array.from(theme.getOverlayRoot()?.querySelectorAll<WebUiToast>('web-ui-toast') ?? []).some(toast =>
+        toast.position.startsWith('top')
+      )
+    )
+  }
+
+  updateToastVisibility()
+  themeObserver = new MutationObserver(updateToastVisibility)
+  themeObserver.observe(document.body, { childList: true, subtree: true })
+}
+
+onBeforeUnmount(() => {
+  themeObserver?.disconnect()
+  for (const observer of shadowRootObservers.values()) observer.disconnect()
+  shadowRootObservers.clear()
+})
+
 onMounted(async () => {
   initPageScrollbars(document.body)
+  observeToastVisibility()
   await router.isReady()
   requestAnimationFrame(() => {
     const link = navSidebar.value?.getElement()?.querySelector('[data-active="true"]')
@@ -205,14 +256,16 @@ function isNavActive(path: string) {
         @mobile-change="updateMobileSidebarViewport"
       >
         <div
-          v-if="bannerVisible"
+          v-if="bannerVisible || toastVisible"
           slot="banner"
-          class="flex items-center justify-center gap-2 bg-(--wui-color-accent) px-4 py-2 text-sm text-(--wui-color-on-accent)"
+          class="grid grid-cols-[24px_minmax(0,1fr)_24px] items-center gap-2 bg-(--wui-color-accent) px-4 py-2 text-sm text-(--wui-color-on-accent)"
+          :class="{ 'invisible pointer-events-none': !bannerVisible }"
+          :aria-hidden="!bannerVisible"
         >
-          <span>🎉 Welcome to the web-ui component library!</span>
-          <web-ui-button class="ml-auto" size="24" icon variant="ghost" @click="bannerVisible = false">
+          <web-ui-button class="mobile:-ml-4" size="24" icon variant="ghost" @click="bannerVisible = false">
             <web-ui-icon class="text-(--wui-color-on-accent)" :icon="lucideX" :size="16"></web-ui-icon>
           </web-ui-button>
+          <span class="text-center">🎉 Welcome to the web-ui component library!</span>
         </div>
         <div slot="header" class="flex h-full w-full items-center justify-end gap-4 px-4 py-2 mobile:w-screen">
           <web-ui-select
