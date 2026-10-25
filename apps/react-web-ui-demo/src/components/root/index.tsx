@@ -1,4 +1,4 @@
-import type { WebUiLayout, WebUiSelect } from '@greypan/web-ui'
+import type { WebUiLayout, WebUiSelect, WebUiToast } from '@greypan/web-ui'
 import { lucideX } from '@greypan/web-ui/icons'
 import { webUiScrollbarsOptions } from '@greypan/web-ui/scrollbars'
 import { Link, Outlet, useRouter, useRouterState } from '@tanstack/react-router'
@@ -140,6 +140,8 @@ export function Root() {
   const [themeAppearance, setThemeAppearance] = useState<ThemeAppearance>(getInitialThemeAppearance)
   const [themeMotion, setThemeMotion] = useState<ThemeMotion>(getInitialThemeMotion)
   const [bannerVisible, setBannerVisible] = useState(true)
+  const [topRightToastSafeBottom, setTopRightToastSafeBottom] = useState(0)
+  const [topRightToastHeaderPaddingTop, setTopRightToastHeaderPaddingTop] = useState(0)
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [desktopSidebarWidth, setDesktopSidebarWidth] = useState<string>(getInitialSidebarWidth)
@@ -166,6 +168,196 @@ export function Root() {
     layout.addEventListener('mobile-change', syncMobileSidebarViewport)
     return () => layout.removeEventListener('mobile-change', syncMobileSidebarViewport)
   }, [])
+  // toast 可落在主题、fallback 或自定义容器；只为视口上缘可见的堆栈给顶栏留安全区。
+  useLayoutEffect(() => {
+    const shadowRootObservers = new Map<ShadowRoot, MutationObserver>()
+    let roots = new Set<Document | ShadowRoot>([document])
+    let hostsWithoutShadowRoot = new Set<HTMLElement>()
+    let observedToasts = new Set<WebUiToast>()
+    let observedContainers = new Set<HTMLElement>()
+    let syncTopRightToasts = () => {}
+    let refreshObservedToasts = () => {}
+    let discoverShadowRoots = () => {}
+    let syncFrame: number | undefined
+    let discoverBeforeSync = false
+    let scheduleSync: (discover?: boolean) => void = () => {}
+    const onViewportChange = () => {
+      let needsRootDiscovery = false
+      for (const host of hostsWithoutShadowRoot) {
+        if (!host.isConnected || !host.shadowRoot) continue
+        needsRootDiscovery = true
+        break
+      }
+      scheduleSync(needsRootDiscovery)
+    }
+    const onScroll = onViewportChange
+    const onResize = onViewportChange
+    const resizeObserver = typeof ResizeObserver === 'undefined' ? undefined : new ResizeObserver(onResize)
+
+    scheduleSync = discover => {
+      discoverBeforeSync ||= discover === true
+      if (syncFrame !== undefined) return
+      if (typeof requestAnimationFrame === 'undefined') {
+        if (discoverBeforeSync) {
+          discoverBeforeSync = false
+          discoverShadowRoots()
+          refreshObservedToasts()
+        }
+        syncTopRightToasts()
+        return
+      }
+      syncFrame = requestAnimationFrame(() => {
+        syncFrame = undefined
+        if (discoverBeforeSync) {
+          discoverBeforeSync = false
+          discoverShadowRoots()
+          refreshObservedToasts()
+        }
+        syncTopRightToasts()
+      })
+    }
+
+    discoverShadowRoots = () => {
+      const nextRoots = new Set<Document | ShadowRoot>([document])
+      const nextHostsWithoutShadowRoot = new Set<HTMLElement>()
+      for (const root of nextRoots) {
+        for (const element of root.querySelectorAll<Element>('*')) {
+          const host = element as HTMLElement
+          if (host.shadowRoot) {
+            nextRoots.add(host.shadowRoot)
+          } else if (host.localName.includes('-') || host.hasAttribute('is')) {
+            nextHostsWithoutShadowRoot.add(host)
+          }
+        }
+      }
+
+      for (const [root, observer] of shadowRootObservers) {
+        if (nextRoots.has(root)) continue
+        observer.disconnect()
+        shadowRootObservers.delete(root)
+      }
+
+      for (const root of nextRoots) {
+        if (!(root instanceof ShadowRoot) || shadowRootObservers.has(root)) continue
+        const observer = new MutationObserver(() => scheduleSync(true))
+        observer.observe(root, {
+          childList: true,
+          subtree: true,
+          attributes: true,
+          attributeFilter: ['position']
+        })
+        shadowRootObservers.set(root, observer)
+      }
+      roots = nextRoots
+      hostsWithoutShadowRoot = nextHostsWithoutShadowRoot
+    }
+
+    refreshObservedToasts = () => {
+      const toasts = [
+        ...new Set([...roots].flatMap(root => [...root.querySelectorAll<WebUiToast>('web-ui-toast')]))
+      ].filter(toast => toast.position === 'top-right')
+      const nextObservedToasts = new Set(toasts)
+      for (const toast of observedToasts) {
+        if (nextObservedToasts.has(toast)) continue
+        resizeObserver?.unobserve(toast)
+      }
+      for (const toast of toasts) {
+        if (observedToasts.has(toast)) continue
+        resizeObserver?.observe(toast)
+      }
+      observedToasts = nextObservedToasts
+
+      const nextObservedContainers = new Set(
+        toasts
+          .map(toast => toast.parentElement)
+          .filter((container): container is HTMLElement => container instanceof HTMLElement)
+      )
+      for (const container of observedContainers) {
+        if (nextObservedContainers.has(container)) continue
+        container.removeEventListener('scroll', onScroll)
+      }
+      for (const container of nextObservedContainers) {
+        if (observedContainers.has(container)) continue
+        container.addEventListener('scroll', onScroll, { passive: true })
+      }
+      observedContainers = nextObservedContainers
+    }
+
+    syncTopRightToasts = () => {
+      const toasts = [...observedToasts]
+      const getParentElement = (element: HTMLElement): HTMLElement | null => {
+        if (element.parentElement instanceof HTMLElement) return element.parentElement
+        const root = element.getRootNode()
+        return root instanceof ShadowRoot && root.host instanceof HTMLElement ? root.host : null
+      }
+      const visibleToasts = toasts.flatMap(toast => {
+        const toastRect = toast.getBoundingClientRect()
+        let top = Math.max(0, toastRect.top)
+        let bottom = Math.min(window.innerHeight, toastRect.bottom)
+        let ancestor = getParentElement(toast)
+        while (ancestor) {
+          if (['auto', 'clip', 'hidden', 'scroll'].includes(getComputedStyle(ancestor).overflowY)) {
+            const ancestorRect = ancestor.getBoundingClientRect()
+            const clipTop = ancestorRect.top + ancestor.clientTop
+            top = Math.max(top, clipTop)
+            bottom = Math.min(bottom, clipTop + ancestor.clientHeight)
+          }
+          ancestor = getParentElement(ancestor)
+        }
+        return bottom > top ? [{ top, bottom }] : []
+      })
+      const visibleStack = visibleToasts.sort((a, b) => a.top - b.top)
+      let safeBottom = visibleStack.some(toast => toast.top < 60) ? 60 : 0
+      for (const toast of visibleStack) {
+        if (toast.top > safeBottom) break
+        safeBottom = Math.max(safeBottom, Math.ceil(toast.bottom + 8))
+      }
+      const header = layoutRef.current?.querySelector<HTMLElement>('[slot="header"]')
+      const headerTop = header?.getBoundingClientRect().top ?? window.innerHeight
+      const requiredHeaderPaddingTop = safeBottom > 0 ? Math.max(8, safeBottom - headerTop) : 8
+      setTopRightToastSafeBottom(safeBottom)
+      setTopRightToastHeaderPaddingTop(requiredHeaderPaddingTop > 8 ? requiredHeaderPaddingTop : 0)
+    }
+
+    const documentObserver = new MutationObserver(() => scheduleSync(true))
+    documentObserver.observe(document.documentElement, {
+      childList: true,
+      subtree: true,
+      attributes: true,
+      attributeFilter: ['position']
+    })
+    window.addEventListener('resize', onResize)
+    window.addEventListener('scroll', onScroll, true)
+    discoverShadowRoots()
+    refreshObservedToasts()
+    syncTopRightToasts()
+
+    return () => {
+      documentObserver.disconnect()
+      window.removeEventListener('resize', onResize)
+      window.removeEventListener('scroll', onScroll, true)
+      if (syncFrame !== undefined) cancelAnimationFrame(syncFrame)
+      for (const observer of shadowRootObservers.values()) observer.disconnect()
+      for (const container of observedContainers) container.removeEventListener('scroll', onScroll)
+      resizeObserver?.disconnect()
+    }
+  }, [])
+  useLayoutEffect(() => {
+    // Safe-area state changes the banner height; remeasure the sticky header after that layout commits.
+    const header = layoutRef.current?.querySelector<HTMLElement>('[slot="header"]')
+    const headerTop = header?.getBoundingClientRect().top ?? window.innerHeight
+    const requiredHeaderPaddingTop = topRightToastSafeBottom > 0 ? Math.max(8, topRightToastSafeBottom - headerTop) : 8
+    setTopRightToastHeaderPaddingTop(requiredHeaderPaddingTop > 8 ? requiredHeaderPaddingTop : 0)
+  }, [bannerVisible, topRightToastSafeBottom])
+
+  const hasTopRightToast = topRightToastSafeBottom > 0
+  const toastSafeAreaStyle = hasTopRightToast
+    ? ({ '--toast-safe-bottom': `${topRightToastSafeBottom}px` } as React.CSSProperties)
+    : undefined
+  const toastHeaderSafeAreaStyle =
+    topRightToastHeaderPaddingTop > 0
+      ? ({ '--toast-header-safe-top': `${topRightToastHeaderPaddingTop}px` } as React.CSSProperties)
+      : undefined
   const sidebarWidth = isMobileSidebar ? 'min(320px, 80vw)' : desktopSidebarWidth
   /*
    * collapse 是桌面端的密度偏好，移动端 drawer 恒以展开态呈现同一份导航：drawer 宽
@@ -258,11 +450,12 @@ export function Root() {
             {bannerVisible ? (
               <div
                 slot="banner"
-                className="flex items-center justify-center gap-2 bg-(--wui-color-accent) px-4 py-2 text-sm text-(--wui-color-on-accent)"
+                style={toastSafeAreaStyle}
+                className={`relative flex items-center justify-center gap-2 bg-(--wui-color-accent) px-4 py-2 text-sm text-(--wui-color-on-accent) ${hasTopRightToast ? 'min-h-[var(--toast-safe-bottom)] max-[1024px]:pt-[var(--toast-safe-bottom)] mobile:pl-12' : ''}`}
               >
                 <span>🎉 欢迎使用 web-ui 组件库！</span>
                 <web-ui-button
-                  className="ml-auto"
+                  className={`ml-auto ${hasTopRightToast ? 'mr-[337px] mobile:absolute mobile:left-0 mobile:top-2 mobile:ml-0 mobile:mr-0 mobile:max-[359px]:top-[var(--toast-safe-bottom)]' : ''}`}
                   size="24"
                   icon
                   variant="ghost"
@@ -273,7 +466,20 @@ export function Root() {
                 </web-ui-button>
               </div>
             ) : null}
-            <div slot="header" className="flex h-full w-full items-center justify-end gap-4 px-4 py-2 mobile:w-screen">
+            {/* Toast 退场前至少保留安全区，避免 header 提前上移到 toast 后面。 */}
+            {!bannerVisible && hasTopRightToast ? (
+              <div
+                aria-hidden="true"
+                slot="banner"
+                style={toastSafeAreaStyle}
+                className="h-[var(--toast-safe-bottom)]"
+              />
+            ) : null}
+            <div
+              slot="header"
+              style={toastHeaderSafeAreaStyle}
+              className={`flex h-full w-full items-center justify-end gap-4 px-4 py-2 mobile:w-screen ${topRightToastHeaderPaddingTop > 0 ? 'pt-[var(--toast-header-safe-top)]' : ''}`}
+            >
               <web-ui-select
                 value={themeMotion}
                 className="[--wui-input-width:120px]"
