@@ -3,17 +3,17 @@ component: layout
 tag: web-ui-layout
 ---
 
-响应式页面布局：可选全宽 Banner、桌面端 collapsible sidebar，移动端默认 drawer。页面本身滚动；Banner 滚出后，桌面端 sidebar 和 header 固定在视口内。
+Responsive page layout: an optional full-width banner, a collapsible sidebar on desktop, and a drawer by default on mobile. The page itself scrolls; once the banner scrolls out, the desktop sidebar and header stay fixed within the viewport.
 
-## 示例
+## Samples
 
-### 基础 {#basic}
+### Basic {#basic}
 
-五个插槽各占一区：`banner` 在主体上方全宽，`header` 是内容区的 sticky header，`sidebar` 是侧边栏卡片内容，默认插槽是主内容区，`tabbar` 是底部栏。
+Five slots each take one region: `banner` spans the full width above the body, `header` is the sticky header of the content area, `sidebar` is the sidebar card content, the default slot is the main content area, and `tabbar` is the bottom bar.
 
-`header-glow` 在 header 插槽内容背后加一层装饰性晕染，它属于背景层，插槽内容始终在它上方。
+`header-glow` adds a decorative glow behind the header slot content; it belongs to the background layer, so the slot content always sits above it.
 
-layout 是应用外壳级的整屏布局，示例把它装进一个限高的滚动容器里，Banner 随内容滚出，header 与 tabbar 各贴在容器上下缘。
+layout is an app-shell-level full-screen layout; the sample puts it inside a height-constrained scroll container, where the banner scrolls out with the content and the header and tabbar stick to the top and bottom edges of the container.
 
 ```tsx
 export default function Demo() {
@@ -24,7 +24,7 @@ export default function Demo() {
           slot="banner"
           className="flex items-center justify-center bg-(--wui-color-accent) px-4 py-2 text-sm text-(--wui-color-on-accent)"
         >
-          全宽 Banner
+          Full-width banner
         </div>
         <div slot="header" className="flex items-center px-4 py-2 text-sm font-medium">
           Header
@@ -35,7 +35,10 @@ export default function Demo() {
           <span className="rounded-md p-2 text-sm">Theme</span>
         </nav>
         <div className="p-4">
-          <p className="m-0 text-sm">正文区随内层滚动条滚动，header 与 tabbar 各贴在容器上下缘。</p>
+          <p className="m-0 text-sm">
+            The body scrolls with the inner scrollbar, while the header and tabbar stick to the top and bottom edges of
+            the container.
+          </p>
           <div className="mt-3 h-[420px] rounded-md bg-(--wui-color-surface-control)" />
         </div>
         <div slot="tabbar" className="flex items-center justify-center px-4 py-2 text-xs">
@@ -55,7 +58,7 @@ export default function Demo() {
         slot="banner"
         class="flex items-center justify-center bg-(--wui-color-accent) px-4 py-2 text-sm text-(--wui-color-on-accent)"
       >
-        全宽 Banner
+        Full-width banner
       </div>
       <div slot="header" class="flex items-center px-4 py-2 text-sm font-medium">Header</div>
       <nav slot="sidebar" class="flex h-full min-h-0 flex-col gap-1 overflow-y-auto p-2">
@@ -64,7 +67,10 @@ export default function Demo() {
         <span class="rounded-md p-2 text-sm">Theme</span>
       </nav>
       <div class="p-4">
-        <p class="m-0 text-sm">正文区随内层滚动条滚动，header 与 tabbar 各贴在容器上下缘。</p>
+        <p class="m-0 text-sm">
+          The body scrolls with the inner scrollbar, while the header and tabbar stick to the top and bottom edges of
+          the container.
+        </p>
         <div class="mt-3 h-[420px] rounded-md bg-(--wui-color-surface-control)" />
       </div>
       <div slot="tabbar" class="flex items-center justify-center px-4 py-2 text-xs">Tabbar</div>
@@ -75,13 +81,13 @@ export default function Demo() {
 
 ### Collapsible sidebar {#collapsible-sidebar}
 
-`sidebar-collapsed` 是桌面端的受控 collapse 状态：它只把桌面端 aside 收窄到 `collapsed-width`，不影响移动端 Drawer。
+`sidebar-collapsed` is the controlled collapse state on desktop: it only narrows the desktop aside to `collapsed-width` and does not affect the mobile Drawer.
 
-桌面端 Toggle 由 layout 自己渲染，Consumer 只负责把 `sidebar-collapsed-change` 的请求值回写。
+The desktop Toggle is rendered by layout itself; the consumer only has to write the requested value from `sidebar-collapsed-change` back.
 
-两条分支渲染的是同一份 `sidebar` 插槽内容，所以内容密度要跟着 collapse 变的 Consumer 必须按 `mobile` 收窄那个条件（例如 `collapsed && !layout.mobile`，或 CSS 的 `web-ui-layout[mobile]`），否则 collapsed state 会一路渲染进 Drawer（issue #195）。
+Both branches render the same `sidebar` slot content, so a consumer whose content density follows collapse must narrow that condition by `mobile` (for example `collapsed && !layout.mobile`, or CSS `web-ui-layout[mobile]`), otherwise the collapsed state renders all the way into the Drawer (issue #195).
 
-本示例的侧边栏不随 collapse 改内容密度，收起后窄 aside 靠 `.sidebar-viewport` 的 `overflow: hidden` 裁掉超出部分。
+The sidebar in this sample does not change content density with collapse; once collapsed, the narrow aside clips the overflow through `overflow: hidden` on `.sidebar-viewport`.
 
 ```tsx
 import { useState } from 'react'
@@ -103,11 +109,14 @@ export default function Demo() {
             <span className="rounded-md p-2 text-sm">Settings</span>
           </nav>
           <div className="p-4">
-            <p className="m-0 text-sm">点侧边栏底部的 Toggle 收起 / 展开，layout 只把桌面端 aside 收窄到 68px。</p>
+            <p className="m-0 text-sm">
+              Click the Toggle at the bottom of the sidebar to collapse / expand; layout only narrows the desktop aside
+              to 68px.
+            </p>
           </div>
         </web-ui-layout>
       </div>
-      <p className="text-sm text-(--wui-color-text-secondary)">sidebar-collapsed：{collapsed ? 'true' : 'false'}</p>
+      <p className="text-sm text-(--wui-color-text-secondary)">sidebar-collapsed: {collapsed ? 'true' : 'false'}</p>
     </div>
   )
 }
@@ -125,11 +134,14 @@ export default function Demo() {
           <span class="rounded-md p-2 text-sm">Settings</span>
         </nav>
         <div class="p-4">
-          <p class="m-0 text-sm">点侧边栏底部的 Toggle 收起 / 展开，layout 只把桌面端 aside 收窄到 68px。</p>
+          <p class="m-0 text-sm">
+            Click the Toggle at the bottom of the sidebar to collapse / expand; layout only narrows the desktop aside to
+            68px.
+          </p>
         </div>
       </web-ui-layout>
     </div>
-    <p class="text-sm text-(--wui-color-text-secondary)">sidebar-collapsed：{{ collapsed ? 'true' : 'false' }}</p>
+    <p class="text-sm text-(--wui-color-text-secondary)">sidebar-collapsed: {{ collapsed ? 'true' : 'false' }}</p>
   </div>
 </template>
 
@@ -140,13 +152,13 @@ const collapsed = ref(false)
 </script>
 ```
 
-### 拖拽调整宽度 {#resizable-sidebar}
+### Resize by dragging {#resizable-sidebar}
 
-开启 `sidebar-resizable` 后，桌面端侧边栏右缘出现调整 handle（collapsed state 隐藏），拖拽实时改宽；键盘聚焦后用 ←/→ 以 16px 步进（Shift 加速到 64px），Home/End 跳到上下限。
+With `sidebar-resizable` enabled, a resize handle appears on the right edge of the desktop sidebar (hidden in the collapsed state), and dragging changes the width in real time; after focusing it with the keyboard, ←/→ step by 16px (Shift accelerates to 64px), and Home/End jump to the lower/upper bound.
 
-拖拽释放或键盘 Enter 提交时派发一次 `sidebar-width-change`，携带最终像素宽度；Consumer 回写后宽度重新由 `sidebar-width` 接管，Escape 撤回未提交的调整。
+Releasing the drag or committing with the keyboard Enter dispatches one `sidebar-width-change` carrying the final pixel width; once the consumer writes it back, the width is taken over by `sidebar-width` again, and Escape reverts an uncommitted adjustment.
 
-`sidebar-min-width` / `sidebar-max-width` 是 px 字面量，上限还受一半视口钳制，内置上限优先于配置值。
+`sidebar-min-width` / `sidebar-max-width` are px literals; the upper bound is also clamped to half the viewport, and the built-in limit takes precedence over the configured value.
 
 ```tsx
 import { useState } from 'react'
@@ -171,12 +183,13 @@ export default function Demo() {
           </nav>
           <div className="p-4">
             <p className="m-0 text-sm">
-              拖桌面端侧边栏右缘的 handle 改宽；聚焦后用 ←/→ 步进、Enter 提交、Escape 撤回未提交的调整。
+              Drag the handle on the right edge of the desktop sidebar to resize; after focusing, use ←/→ to step, Enter
+              to commit, and Escape to revert the uncommitted adjustment.
             </p>
           </div>
         </web-ui-layout>
       </div>
-      <p className="text-sm text-(--wui-color-text-secondary)">sidebar-width：{width}</p>
+      <p className="text-sm text-(--wui-color-text-secondary)">sidebar-width: {width}</p>
     </div>
   )
 }
@@ -200,12 +213,13 @@ export default function Demo() {
         </nav>
         <div class="p-4">
           <p class="m-0 text-sm">
-            拖桌面端侧边栏右缘的 handle 改宽；聚焦后用 ←/→ 步进、Enter 提交、Escape 撤回未提交的调整。
+            Drag the handle on the right edge of the desktop sidebar to resize; after focusing, use ←/→ to step, Enter
+            to commit, and Escape to revert the uncommitted adjustment.
           </p>
         </div>
       </web-ui-layout>
     </div>
-    <p class="text-sm text-(--wui-color-text-secondary)">sidebar-width：{{ width }}</p>
+    <p class="text-sm text-(--wui-color-text-secondary)">sidebar-width: {{ width }}</p>
   </div>
 </template>
 
@@ -216,17 +230,17 @@ const width = ref('240px')
 </script>
 ```
 
-### 移动端 Drawer 与视口判定 {#mobile-drawer}
+### Mobile drawer and viewport detection {#mobile-drawer}
 
-`sidebar-open` 是移动端 Drawer 的受控可见性，与 `sidebar-collapsed` 相互独立。
+`sidebar-open` is the controlled visibility of the mobile Drawer and is independent of `sidebar-collapsed`.
 
-`mobile` 由 layout 独占写入，它、layout 的渲染分支和 CSS 的 `@media (width <= 640px)` 是同一条条件，翻转瞬间三者一起变，还额外派发一次 `mobile-change`。
+`mobile` is written exclusively by layout; it, layout's render branch, and the CSS `@media (width <= 640px)` are the same condition, so all three flip at the same instant, and a `mobile-change` event is dispatched as well.
 
-React 要在 `useLayoutEffect` 里先读 `layout.mobile` 再订阅（挂载那一刻派发的事件早于订阅）；跨断点那次回写用 `flushSync`，否则会有一帧新树已上屏而 Consumer 还是旧值（挂载那次读就在 `useLayoutEffect` 里，`setState` 本身上屏前生效，不必再包一层）。
+In React, read `layout.mobile` inside `useLayoutEffect` before subscribing (the event dispatched at mount time precedes the subscription); write back on a breakpoint crossing with `flushSync`, otherwise there is one frame where the new tree is already on screen while the consumer still holds the old value (the mount read happens inside `useLayoutEffect`, and `setState` itself takes effect before paint, so no extra wrapper is needed there).
 
-Vue 的模板监听在元素插入前挂好，直接绑即可。
+Vue's template listener is attached before the element is inserted, so binding directly is enough.
 
-把视口收窄到 640px 及以下，layout 会切到移动端分支：header 里出现 Toggle，点它经 `sidebar-open-change` 请求打开 Drawer。
+Narrow the viewport to 640px or below and layout switches to the mobile branch: a Toggle appears in the header, and clicking it requests the Drawer to open through `sidebar-open-change`.
 
 ```tsx
 import type { WebUiLayout } from '@greypan/web-ui'
@@ -258,18 +272,19 @@ export default function Demo() {
             Header
           </div>
           <nav slot="sidebar" className="flex h-full min-h-0 flex-col gap-1 overflow-y-auto p-2">
-            <span className="rounded-md p-2 text-sm">导航</span>
-            <span className="rounded-md p-2 text-sm">组件</span>
+            <span className="rounded-md p-2 text-sm">Navigation</span>
+            <span className="rounded-md p-2 text-sm">Components</span>
           </nav>
           <div className="p-4">
             <p className="m-0 text-sm">
-              把视口收窄到 640px 及以下，header 出现 Toggle；点它经 sidebar-open-change 请求打开 Drawer。
+              Narrow the viewport to 640px or below and a Toggle appears in the header; clicking it requests the Drawer
+              to open through sidebar-open-change.
             </p>
           </div>
         </web-ui-layout>
       </div>
       <p className="text-sm text-(--wui-color-text-secondary)">
-        mobile：{mobile ? 'true' : 'false'} · sidebar-open：{open ? 'true' : 'false'}
+        mobile: {mobile ? 'true' : 'false'} · sidebar-open: {open ? 'true' : 'false'}
       </p>
     </div>
   )
@@ -287,18 +302,19 @@ export default function Demo() {
       >
         <div slot="header" class="flex items-center px-4 py-2 text-sm font-medium">Header</div>
         <nav slot="sidebar" class="flex h-full min-h-0 flex-col gap-1 overflow-y-auto p-2">
-          <span class="rounded-md p-2 text-sm">导航</span>
-          <span class="rounded-md p-2 text-sm">组件</span>
+          <span class="rounded-md p-2 text-sm">Navigation</span>
+          <span class="rounded-md p-2 text-sm">Components</span>
         </nav>
         <div class="p-4">
           <p class="m-0 text-sm">
-            把视口收窄到 640px 及以下，header 出现 Toggle；点它经 sidebar-open-change 请求打开 Drawer。
+            Narrow the viewport to 640px or below and a Toggle appears in the header; clicking it requests the Drawer to
+            open through sidebar-open-change.
           </p>
         </div>
       </web-ui-layout>
     </div>
     <p class="text-sm text-(--wui-color-text-secondary)">
-      mobile：{{ mobile ? 'true' : 'false' }} · sidebar-open：{{ open ? 'true' : 'false' }}
+      mobile: {{ mobile ? 'true' : 'false' }} · sidebar-open: {{ open ? 'true' : 'false' }}
     </p>
   </div>
 </template>
@@ -315,83 +331,83 @@ const mobile = ref(false)
 
 ### Props
 
-| 名称                | 说明                                                                                       | 类型      | 默认值    |
-| ------------------- | ------------------------------------------------------------------------------------------ | --------- | --------- |
-| `sidebar-collapsed` | 桌面端侧边栏受控 collapse 状态；只收窄桌面端，不影响移动端 Drawer。                        | `boolean` | `false`   |
-| `sidebar-open`      | 移动端侧边栏 Drawer 受控打开状态。                                                         | `boolean` | `false`   |
-| `header-glow`       | 在 header 插槽内容背后显示装饰性晕染。                                                     | `boolean` | `false`   |
-| `mobile`            | 只读派生值：当前视口是否处于移动端断点及以下；写 attribute 会被恢复，property 赋值不生效。 | `boolean` | `false`   |
-| `sidebar-width`     | 桌面端和移动端展开时的侧边栏宽度。                                                         | `string`  | `'240px'` |
-| `collapsed-width`   | 桌面端 collapse 时的侧边栏宽度。                                                           | `string`  | `'68px'`  |
-| `sidebar-resizable` | 启用桌面端侧边栏右边缘拖拽调整宽度。                                                       | `boolean` | `false`   |
-| `sidebar-min-width` | 拖拽调整的下限（px）；默认回退到 `collapsed-width`。                                       | `string`  | —         |
-| `sidebar-max-width` | 拖拽调整的上限（px）；钳制在视口一半以内，内置上限优先。                                   | `string`  | —         |
+| Name                | Description                                                                                                                                                              | Type      | Default   |
+| ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | --------- | --------- |
+| `sidebar-collapsed` | Controlled collapse state of the desktop sidebar; it only narrows the desktop side and does not affect the mobile Drawer.                                                | `boolean` | `false`   |
+| `sidebar-open`      | Controlled open state of the mobile sidebar Drawer.                                                                                                                      | `boolean` | `false`   |
+| `header-glow`       | Shows a decorative glow behind the header slot content.                                                                                                                  | `boolean` | `false`   |
+| `mobile`            | Read-only derived value: whether the current viewport is at or below the mobile breakpoint; writing the attribute is reverted, and assigning the property has no effect. | `boolean` | `false`   |
+| `sidebar-width`     | Sidebar width when expanded on desktop and mobile.                                                                                                                       | `string`  | `'240px'` |
+| `collapsed-width`   | Sidebar width when collapsed on desktop.                                                                                                                                 | `string`  | `'68px'`  |
+| `sidebar-resizable` | Enables drag resizing on the right edge of the desktop sidebar.                                                                                                          | `boolean` | `false`   |
+| `sidebar-min-width` | Lower bound (px) for drag resizing; falls back to `collapsed-width` by default.                                                                                          | `string`  | —         |
+| `sidebar-max-width` | Upper bound (px) for drag resizing; clamped to half the viewport, with the built-in limit taking precedence.                                                             | `string`  | —         |
 
 ### Events
 
-| 名称                       | 说明                                                                                                   |
-| -------------------------- | ------------------------------------------------------------------------------------------------------ |
-| `sidebar-collapsed-change` | 请求更新桌面端 collapse 状态；`detail.collapsed` 是请求值，Consumer 须回写到 `sidebar-collapsed`。     |
-| `sidebar-open-change`      | 请求更新移动端 Drawer 打开状态；`detail.open` 是请求值。                                               |
-| `sidebar-width-change`     | 拖拽释放或键盘 Enter 提交调整后请求更新宽度；`detail.width` 是最终像素宽度。                           |
-| `mobile-change`            | 不是请求：报告 layout 自己的派生视口状态，`detail.mobile` 与 `mobile` 属性同值，每次跨断点只派发一次。 |
+| Name                       | Description                                                                                                                                                                 |
+| -------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `sidebar-collapsed-change` | Requests an update of the desktop collapse state; `detail.collapsed` is the requested value, and the consumer must write it back to `sidebar-collapsed`.                    |
+| `sidebar-open-change`      | Requests an update of the mobile Drawer open state; `detail.open` is the requested value.                                                                                   |
+| `sidebar-width-change`     | Requests a width update after the drag is released or committed with the keyboard Enter; `detail.width` is the final pixel width.                                           |
+| `mobile-change`            | Not a request: reports layout's own derived viewport state; `detail.mobile` has the same value as the `mobile` property, and it is dispatched once per breakpoint crossing. |
 
 ### Slots
 
-| 名称      | 说明                                                               |
-| --------- | ------------------------------------------------------------------ |
-| `banner`  | 位于布局主体上方的可选全宽 Banner。                                |
-| `header`  | 内容区的 sticky header。                                           |
-| `sidebar` | 侧边栏卡片内容；桌面端内部固定区域与滚动容器由 Consumer 自行定义。 |
-| `default` | 主内容区。                                                         |
-| `tabbar`  | 底部 tabbar。                                                      |
+| Name      | Description                                                                                                          |
+| --------- | -------------------------------------------------------------------------------------------------------------------- |
+| `banner`  | Optional full-width banner above the layout body.                                                                    |
+| `header`  | Sticky header of the content area.                                                                                   |
+| `sidebar` | Sidebar card content; the fixed region and the scroll container inside the desktop side are defined by the consumer. |
+| `default` | Main content area.                                                                                                   |
+| `tabbar`  | Bottom tabbar.                                                                                                       |
 
-### 移动端视口状态
+### Mobile viewport state
 
-`mobile` 是派生输出而不是第二个输入——由 layout 独占写入；property 只读（赋值不生效，严格模式下抛错），写 attribute 会在同一次 reaction 内被恢复、连值一起归位，两种写法都不派发事件。
+`mobile` is a derived output rather than a second input—it is written exclusively by layout; the property is read-only (assignment has no effect and throws in strict mode), and writing the attribute is reverted within the same reaction together with the value; neither form dispatches an event.
 
-它与 layout 的渲染分支、以及 layout CSS 用来隐藏桌面 aside 的媒体查询（`@media (width <= 640px)`）是同一条条件，三者不可能互相错开；翻转不再经 resize 去抖，就发生在媒体查询变化的那一刻。
+It is the same condition as layout's render branch and the media query layout CSS uses to hide the desktop aside (`@media (width <= 640px)`), so the three can never drift apart; the flip is no longer debounced through resize and happens at the moment the media query changes.
 
-`mobile-change` 每次跨断点只派发一次，元素在窄视口挂载时连接那一刻的那次求值也算一次。
+`mobile-change` is dispatched once per breakpoint crossing, and the evaluation at connection time also counts when the element mounts in a narrow viewport.
 
-Consumer 用 `layout.mobile` 读当前值、用 `mobile-change` 收更新即可，CSS 侧可以写 `web-ui-layout[mobile]`。
+Consumers read the current value from `layout.mobile` and receive updates through `mobile-change`; on the CSS side they can write `web-ui-layout[mobile]`.
 
-### 框架侧的消费方式
+### Consuming from frameworks
 
-layout 自身在 microtask 里重渲染，因此**在宏任务上响应的消费者会读到旧值，而新树已经在屏幕上了**：
+layout re-renders itself in a microtask, so **a consumer that reacts on a macrotask reads the old value while the new tree is already on screen**:
 
-- **Vue**：模板里绑 `@mobile-change`，用 `ref` 存值。Vue 在元素插入前就挂上模板监听（因此也能收到连接期那一次），且它的 flush 在 microtask，早于 layout 自己的更新。
-- **React**：用 ref 拿到元素，在 `useLayoutEffect` 里**先读 `layout.mobile` 再订阅**，并用 `flushSync` 回写。先读是为了拿到「挂在插入之后的监听收不到」的挂载初值；`flushSync` 是为了让运行时跨断点抢在 layout 重渲染之前——React 对 DOM 监听里的 setState 走宏任务 flush，否则会出现一帧「drawer 已按新状态渲染、consumer 的值还是旧的」（本仓 React demo 修复前实测 2/221 帧）。
-- **CSS**：直接按 `web-ui-layout[mobile]` 写样式，或把它包成一个变体。Tailwind v4 的 app 可以只写一次这条边界的**移动端那一侧**、而不是每个工具类各写一遍：`@custom-variant mobile (&:where(web-ui-layout[mobile], web-ui-layout[mobile] *));`。两条限制：属性选择器只够得到 layout 子树内的节点，被 overlay portal 到 `document.body` 的内容仍需媒体查询；**不要拿自定义变体做 min-width 那一侧**——Tailwind 把 `@custom-variant` 规则排在主题断点之后，同属性的 `desktop:` 变体会在它之上的每个宽度静默压掉 `md:`/`lg:`。
+- **Vue**: bind `@mobile-change` in the template and store the value in a `ref`. Vue attaches the template listener before the element is inserted (so it also receives the one dispatched at connection time), and its flush runs in a microtask, earlier than layout's own update.
+- **React**: get the element through a ref, **read `layout.mobile` before subscribing** inside `useLayoutEffect`, and write back with `flushSync`. Reading first is for the mount-time initial value that a listener attached after insertion never receives; `flushSync` is for the runtime to win the breakpoint crossing over layout's re-render—React flushes a setState from a DOM listener in a macrotask, which otherwise produces one frame where "the drawer is already rendered in the new state while the consumer's value is still old" (2/221 frames measured in this repo's React demo before the fix).
+- **CSS**: write styles directly against `web-ui-layout[mobile]`, or wrap it into a variant. A Tailwind v4 app can write the **mobile side** of that boundary once instead of repeating it for every utility class: `@custom-variant mobile (&:where(web-ui-layout[mobile], web-ui-layout[mobile] *));`. Two limits: the attribute selector only reaches nodes inside the layout subtree, and content portalled by an overlay to `document.body` still needs a media query; **do not use the custom variant for the min-width side**—Tailwind orders `@custom-variant` rules after the theme breakpoints, so a `desktop:` variant of the same property silently overrides `md:`/`lg:` at every width above it.
 
-### collapse 只作用于桌面端
+### Collapse applies to desktop only
 
-`sidebar-collapsed` 只收窄桌面端侧边栏，布局不对移动端 Drawer 施加任何 collapse 几何。
+`sidebar-collapsed` only narrows the desktop sidebar; the layout applies no collapse geometry to the mobile Drawer.
 
-两条分支承载的是同一份 `sidebar` 插槽内容，所以侧边栏内容密度跟着该属性变的 Consumer 必须按 `mobile` 收窄这个条件（例如 `collapsed && !layout.mobile`，或 CSS 的 `web-ui-layout[mobile]`），否则桌面的 collapse preference 会一路渲染进 Drawer。
+Both branches carry the same `sidebar` slot content, so a consumer whose sidebar content density follows that attribute must narrow the condition by `mobile` (for example `collapsed && !layout.mobile`, or CSS `web-ui-layout[mobile]`), otherwise the desktop collapse preference renders all the way into the Drawer.
 
-见 issue #195。
+See issue #195.
 
-### 侧边栏调整宽度
+### Sidebar resizing
 
-启用 `sidebar-resizable` 后，桌面端侧边栏右边缘会出现调整 handle（collapse 状态下隐藏）；悬停或拖拽时显示 3px 宽的强调色垂直线和 `col-resize` 光标。
+After enabling `sidebar-resizable`, a resize handle appears on the right edge of the desktop sidebar (hidden in the collapsed state); hovering or dragging shows a 3px-wide accent vertical line and a `col-resize` cursor.
 
-- 拖拽时实时更新宽度（禁止过渡动画，限制在 `[min, max]` 和视口范围内）。
-- 释放时触发 `sidebar-width-change` 事件并携带最终像素宽度，Consumer 回写后宽度重新由 `sidebar-width` 属性接管；`pointercancel` 会恢复属性控制的宽度且不触发事件。
-- 键盘操作（WAI-ARIA splitter 模式）：聚焦后用 ←/→ 以 16px 步进调整（Shift 加速到 64px），Home/End 跳到 min/max，Enter 以同一 `sidebar-width-change` 请求提交，Escape 撤回未提交的调整。
-- 移动端 Drawer 始终通过其内置 `draggable` drawer 支持拖拽关闭。
+- Dragging updates the width in real time (transitions are disabled, and the width is limited to `[min, max]` and to the viewport).
+- On release it fires the `sidebar-width-change` event carrying the final pixel width; after the consumer writes it back, the width is taken over by the `sidebar-width` attribute again; `pointercancel` restores the attribute-controlled width and fires no event.
+- Keyboard operation (WAI-ARIA splitter pattern): after focusing, use ←/→ to step by 16px (Shift accelerates to 64px), Home/End to jump to min/max, Enter to commit through the same `sidebar-width-change` request, and Escape to revert an uncommitted adjustment.
+- The mobile Drawer always supports drag-to-close through its built-in `draggable` drawer.
 
-### 行为说明
+### Behavior
 
-`web-ui-layout` 只约束侧边栏卡片的可用空间并管理桌面端 Toggle，不创建桌面端侧边栏 scrollport。
+`web-ui-layout` only constrains the space available to the sidebar card and manages the desktop Toggle; it does not create a scrollport for the desktop sidebar.
 
-若仅让桌面端侧边栏的一部分滚动，请将 `sidebar` 插槽根节点设为 `height: 100%; min-height: 0` 的 flex column，再将 `overflow-y: auto` 设置到目标子元素。
+To scroll only part of the desktop sidebar, make the `sidebar` slot root a flex column with `height: 100%; min-height: 0`, then set `overflow-y: auto` on the target child.
 
-这样 Consumer 可自行固定头部和底部，无需额外的公共 slot：
+That lets the consumer fix a header and footer itself without extra public slots:
 
 ```html
 <div slot="sidebar" class="sidebar-root">
-  <div class="sidebar-title">组件列表</div>
+  <div class="sidebar-title">Components</div>
   <nav class="sidebar-nav">...</nav>
 </div>
 ```
@@ -415,40 +431,40 @@ layout 自身在 microtask 里重渲染，因此**在宏任务上响应的消费
 }
 ```
 
-在 `640px` 及以下——与 `mobile` 报告的正是同一条条件——侧边栏会切换为使用内置 glass body、可滚动 content 和 drag zone 的 `web-ui-drawer`。
+At `640px` and below—the very same condition `mobile` reports—the sidebar switches to a `web-ui-drawer` with the built-in glass body, scrollable content, and drag zone.
 
-Layout 会将 `sidebar-width` 映射为 `--wui-drawer-width`，将 `--wui-layout-sidebar-radius` 映射为 `--wui-drawer-radius`。
+Layout maps `sidebar-width` to `--wui-drawer-width` and `--wui-layout-sidebar-radius` to `--wui-drawer-radius`.
 
-移动端 Toggle 以 glass 变体位于 header 行内。其左缩进默认 `8px`，可通过 `--wui-layout-mobile-toggle-inset` 与 Consumer 自身的 header 内边距对齐。
+The mobile Toggle sits inline in the header row as the glass variant. Its left inset defaults to `8px` and can be aligned with the consumer's own header padding through `--wui-layout-mobile-toggle-inset`.
 
-`header-glow` 会在 header 插槽内容和移动端 Toggle 的背后添加 `pointer-events: none` 的装饰性晕染。它属于 Header 背景而非前景层，因此插槽内容始终位于其上方。
+`header-glow` adds a decorative glow with `pointer-events: none` behind the header slot content and the mobile Toggle. It belongs to the header background rather than the foreground layer, so the slot content always sits above it.
 
-晕染来自共享的 `.wui-glow` 样式（`@greypan/web-ui/classes.css`），布局组件通过 `?inline` 引入同一份源码，因此同一个 class 也能用在任意容器上。
+The glow comes from the shared `.wui-glow` style (`@greypan/web-ui/classes.css`); the layout component imports the same source through `?inline`, so the same class also works on any container.
 
-晕染由两层伪元素合成：`::before` 用 `linear-gradient` 从 `--wui-color-page` 渐变到全透明，`::after` 再叠一层真实的 `backdrop-filter: blur(4px)`，并用 `mask` 让这层模糊的 alpha 沿高度衰减到 0。
+The glow is composed of two pseudo-elements: `::before` uses a `linear-gradient` from `--wui-color-page` to fully transparent, and `::after` layers a real `backdrop-filter: blur(4px)` and uses `mask` to decay that blurred alpha to 0 along the height.
 
-两层职责分开后，模糊强度与颜色浓度互不牵制。
+With the two layers separated, blur strength and color density no longer constrain each other.
 
-默认渐变方向为 `to bottom`；要改颜色，在 `web-ui-layout`、theme 或其上层任意位置覆盖 `--wui-glow-color` 即可，浅色/暗色模式自动跟随。
+The default gradient direction is `to bottom`; to change the color, override `--wui-glow-color` on `web-ui-layout`, the theme, or any ancestor, and light/dark mode follows automatically.
 
-在默认 52px 高的 header 上，模糊层向下探出 `24px`、衰减总长 `36px`，底缘 alpha 约 `0.67`，与旧版向下探出 30px 的底缘强度一致；新版按绝对长度衰减，header 更高时底缘强度不变（旧版的百分比衰减会变淡）。
+On the default 52px-high header, the blur layer extends `24px` downward with a total fade length of `36px` and a bottom-edge alpha of about `0.67`, matching the bottom-edge strength of the previous 30px overhang; the new version decays by absolute length, so the bottom-edge strength stays the same on taller headers (the old percentage decay faded).
 
-横向不越出 header 盒，纵向尾巴会覆盖 header 下方 24px 内的内容。
+It never extends horizontally beyond the header box, while the vertical tail covers content within 24px below the header.
 
-可通过 `--wui-glow-overhang`、`--wui-glow-fade`、`--wui-glow-blur`、`--wui-glow-gradient` 与 `--wui-glow-gradient-direction` 调整；设为 `--wui-glow-gradient: none` 只保留模糊。
+It can be tuned through `--wui-glow-overhang`, `--wui-glow-fade`, `--wui-glow-blur`, `--wui-glow-gradient`, and `--wui-glow-gradient-direction`; setting `--wui-glow-gradient: none` keeps only the blur.
 
-完整 token 表见包根 README 的 Classes 小节。
+See the Classes section of the package README for the full token table.
 
-布局层级顺序为 Header（`10`）< Auxiliary（`20`）< Banner（`30`）< Tabbar（`40`）< Sidebar（`50`）。
+The layout stacking order is Header (`10`) < Auxiliary (`20`) < Banner (`30`) < Tabbar (`40`) < Sidebar (`50`).
 
-侧边栏卡片表面使用 `--wui-color-surface-sidebar`：浅色保持半透明中性分层，深色比 `--wui-color-page` 浅一档、与 `--wui-color-surface` 同级。
+The sidebar card surface uses `--wui-color-surface-sidebar`: light keeps a translucent neutral layer, while dark is one step lighter than `--wui-color-page`, on the same level as `--wui-color-surface`.
 
-它独立成 token，是因为 dialog、drawer 和 toast 共用 `--wui-color-surface-overlay`，可以采用不同表面。
+It is a separate token because dialog, drawer, and toast share `--wui-color-surface-overlay` and can adopt a different surface.
 
 ### CSS Custom Properties
 
-| 名称                                | 说明                                                                     | 默认值 |
-| ----------------------------------- | ------------------------------------------------------------------------ | ------ |
-| `--wui-layout-sidebar-radius`       | 侧边栏卡片圆角（桌面端和移动端共用）                                     | `24px` |
-| `--wui-layout-mobile-toggle-inset`  | 移动端 header Toggle 的左缩进                                            | `8px`  |
-| `--wui-layout-sidebar-toggle-width` | 桌面端侧边栏 collapse Toggle 的宽度，下限为 `--wui-control-size`（36px） | `44px` |
+| Name                                | Description                                                                                  | Default |
+| ----------------------------------- | -------------------------------------------------------------------------------------------- | ------- |
+| `--wui-layout-sidebar-radius`       | Sidebar card radius (shared by desktop and mobile)                                           | `24px`  |
+| `--wui-layout-mobile-toggle-inset`  | Left inset of the mobile header Toggle                                                       | `8px`   |
+| `--wui-layout-sidebar-toggle-width` | Width of the desktop sidebar collapse Toggle; the lower bound is `--wui-control-size` (36px) | `44px`  |

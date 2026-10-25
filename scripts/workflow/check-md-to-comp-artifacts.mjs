@@ -30,13 +30,8 @@ const entry = pkg.exports['.'].import ?? pkg.exports['.'].default
 if (!entry) throw new Error(`@greypan/md-to-comp 的 exports["."] 没有 ESM 入口`)
 const mdToComp = await import(pathToFileURL(path.join(path.dirname(pkgJsonPath), entry)))
 
-// 与 vite.ts 的 resolveOptions 同一解析口径：input/output 相对 Vite root（这里就是 app 目录）。
-const { input, output, ...options } = mdToCompOptions
-const config = {
-  ...options,
-  input: path.resolve(root, input),
-  outputs: [{ output: path.resolve(root, output ?? 'src/generated'), flavor }]
-}
+// 与插件共用同一份解析口径（相对 Vite root 的路径 + 本 flavor）：配置只写一次，解析只写一次。
+const config = mdToComp.resolveGenerateOptions(root, mdToCompOptions, flavor)
 
 try {
   const { files, demosDirs } = await mdToComp.generate(config)

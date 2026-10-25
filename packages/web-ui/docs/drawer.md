@@ -3,13 +3,13 @@ component: drawer
 tag: web-ui-drawer
 ---
 
-侧边 drawer，基于原生 `<dialog>`，自带滑入 / 滑出动画，并可从四周内缘拖拽关闭。适合承载与当前页面相关、但不需要离开上下文的次级任务。
+A side drawer built on the native `<dialog>`, with built-in slide-in / slide-out animations and drag-to-close from the inner edge on any side. It suits secondary tasks that relate to the current page but do not require leaving context.
 
-## 示例
+## Samples
 
-### 基础 {#basic}
+### Basic {#basic}
 
-`placement` 决定滑入方向，`heading` 在没有 `header` 插槽时作为标题回落。点击遮罩或按 Escape 关闭。
+`placement` decides the slide-in direction, and `heading` serves as the title fallback when there is no `header` slot. Click the backdrop or press Escape to close.
 
 ```tsx
 import { useState } from 'react'
@@ -17,17 +17,17 @@ import { useState } from 'react'
 type Placement = 'right' | 'left' | 'top' | 'bottom'
 
 const placements: { label: string; value: Placement }[] = [
-  { label: '右侧', value: 'right' },
-  { label: '左侧', value: 'left' },
-  { label: '顶部', value: 'top' },
-  { label: '底部', value: 'bottom' }
+  { label: 'Right', value: 'right' },
+  { label: 'Left', value: 'left' },
+  { label: 'Top', value: 'top' },
+  { label: 'Bottom', value: 'bottom' }
 ]
 
 const labels: Record<Placement, string> = {
-  right: '右侧',
-  left: '左侧',
-  top: '顶部',
-  bottom: '底部'
+  right: 'right',
+  left: 'left',
+  top: 'top',
+  bottom: 'bottom'
 }
 
 export default function Demo() {
@@ -52,10 +52,10 @@ export default function Demo() {
       <web-ui-drawer
         open={open}
         placement={placement}
-        heading="设置"
+        heading="Settings"
         onopen-change={event => setOpen(event.detail.open)}
       >
-        <p>从{labels[placement]}滑入。按 Escape 或点击遮罩关闭。</p>
+        <p>Slides in from the {labels[placement]}. Press Escape or click the backdrop to close.</p>
       </web-ui-drawer>
     </>
   )
@@ -70,8 +70,8 @@ export default function Demo() {
     </web-ui-button>
   </div>
 
-  <web-ui-drawer :open="open" :placement="placement" heading="设置" @open-change="open = $event.detail.open">
-    <p>从{{ labels[placement] }}滑入。按 Escape 或点击遮罩关闭。</p>
+  <web-ui-drawer :open="open" :placement="placement" heading="Settings" @open-change="open = $event.detail.open">
+    <p>Slides in from the {{ labels[placement] }}. Press Escape or click the backdrop to close.</p>
   </web-ui-drawer>
 </template>
 
@@ -81,17 +81,17 @@ import { ref } from 'vue'
 type Placement = 'right' | 'left' | 'top' | 'bottom'
 
 const placements: { label: string; value: Placement }[] = [
-  { label: '右侧', value: 'right' },
-  { label: '左侧', value: 'left' },
-  { label: '顶部', value: 'top' },
-  { label: '底部', value: 'bottom' }
+  { label: 'Right', value: 'right' },
+  { label: 'Left', value: 'left' },
+  { label: 'Top', value: 'top' },
+  { label: 'Bottom', value: 'bottom' }
 ]
 
 const labels: Record<Placement, string> = {
-  right: '右侧',
-  left: '左侧',
-  top: '顶部',
-  bottom: '底部'
+  right: 'right',
+  left: 'left',
+  top: 'top',
+  bottom: 'bottom'
 }
 
 const open = ref(false)
@@ -104,9 +104,9 @@ function openFrom(next: Placement) {
 </script>
 ```
 
-### 命令式 {#imperative}
+### Imperative {#imperative}
 
-不绑定 `open`，通过元素实例的 `show()` / `close()` 控制。适合由命令式流程触发的场景；程序式开合不派发 `open-change`。
+Without binding `open`, control it through the element instance's `show()` / `close()`. This suits scenes triggered by imperative flows; programmatic opening and closing dispatches no `open-change`.
 
 ```tsx
 import type { WebUiDrawer } from '@greypan/web-ui'
@@ -117,12 +117,12 @@ export default function Demo() {
 
   return (
     <>
-      <web-ui-button onClick={() => drawer.current?.show()}>打开 drawer</web-ui-button>
+      <web-ui-button onClick={() => drawer.current?.show()}>Open drawer</web-ui-button>
 
-      <web-ui-drawer ref={drawer} heading="命令式 drawer" closable>
-        <p>由 show() 打开；右上角关闭按钮、Escape 与遮罩都会关闭它。</p>
+      <web-ui-drawer ref={drawer} heading="Imperative drawer" closable>
+        <p>Opened by show(); the close button in the top-right corner, Escape, and the backdrop all close it.</p>
         <web-ui-button slot="footer" variant="secondary" full onClick={() => drawer.current?.close()}>
-          调用 close()
+          Call close()
         </web-ui-button>
       </web-ui-drawer>
     </>
@@ -132,11 +132,11 @@ export default function Demo() {
 
 ```vue
 <template>
-  <web-ui-button @click="drawer?.show()">打开 drawer</web-ui-button>
+  <web-ui-button @click="drawer?.show()">Open drawer</web-ui-button>
 
-  <web-ui-drawer ref="drawer" heading="命令式 drawer" closable>
-    <p>由 show() 打开；右上角关闭按钮、Escape 与遮罩都会关闭它。</p>
-    <web-ui-button slot="footer" variant="secondary" full @click="drawer?.close()">调用 close()</web-ui-button>
+  <web-ui-drawer ref="drawer" heading="Imperative drawer" closable>
+    <p>Opened by show(); the close button in the top-right corner, Escape, and the backdrop all close it.</p>
+    <web-ui-button slot="footer" variant="secondary" full @click="drawer?.close()">Call close()</web-ui-button>
   </web-ui-drawer>
 </template>
 
@@ -148,9 +148,9 @@ const drawer = useTemplateRef<WebUiDrawer>('drawer')
 </script>
 ```
 
-### 自定义尺寸 {#size}
+### Custom size {#size}
 
-左右方向的尺寸由 `--wui-drawer-width` 控制，上下方向由 `--wui-drawer-height` 控制。
+The size along the left / right directions is controlled by `--wui-drawer-width`, and along the top / bottom directions by `--wui-drawer-height`.
 
 ```tsx
 import type { CSSProperties } from 'react'
@@ -159,10 +159,10 @@ import { useState } from 'react'
 type Placement = 'right' | 'left' | 'top' | 'bottom'
 
 const sizes: { label: string; placement: Placement; size: string }[] = [
-  { label: '右侧 400px', placement: 'right', size: '400px' },
-  { label: '左侧 260px', placement: 'left', size: '260px' },
-  { label: '顶部 400px', placement: 'top', size: '400px' },
-  { label: '底部 160px', placement: 'bottom', size: '160px' }
+  { label: 'Right 400px', placement: 'right', size: '400px' },
+  { label: 'Left 260px', placement: 'left', size: '260px' },
+  { label: 'Top 400px', placement: 'top', size: '400px' },
+  { label: 'Bottom 160px', placement: 'bottom', size: '160px' }
 ]
 
 export default function Demo() {
@@ -199,7 +199,7 @@ export default function Demo() {
           } as CSSProperties
         }
       >
-        <p>当前尺寸：{current.size}</p>
+        <p>Current size: {current.size}</p>
       </web-ui-drawer>
     </>
   )
@@ -224,7 +224,7 @@ export default function Demo() {
     }"
     @open-change="open = $event.detail.open"
   >
-    <p>当前尺寸：{{ current.size }}</p>
+    <p>Current size: {{ current.size }}</p>
   </web-ui-drawer>
 </template>
 
@@ -234,10 +234,10 @@ import { computed, ref } from 'vue'
 type Placement = 'right' | 'left' | 'top' | 'bottom'
 
 const sizes: { label: string; placement: Placement; size: string }[] = [
-  { label: '右侧 400px', placement: 'right', size: '400px' },
-  { label: '左侧 260px', placement: 'left', size: '260px' },
-  { label: '顶部 400px', placement: 'top', size: '400px' },
-  { label: '底部 160px', placement: 'bottom', size: '160px' }
+  { label: 'Right 400px', placement: 'right', size: '400px' },
+  { label: 'Left 260px', placement: 'left', size: '260px' },
+  { label: 'Top 400px', placement: 'top', size: '400px' },
+  { label: 'Bottom 160px', placement: 'bottom', size: '160px' }
 ]
 
 const open = ref(false)
@@ -253,7 +253,7 @@ function openWith(item: (typeof sizes)[number]) {
 
 ### Header {#header}
 
-`header` 插槽完全替换内置标题区；既没有 `heading` 也没有 `header` 时，标题区整体不渲染。`closable` 的关闭按钮独立于 header 内容，固定在右上角。
+The `header` slot completely replaces the built-in title area; when there is neither `heading` nor `header`, the title area is not rendered at all. The `closable` close button is independent of the header content and is fixed in the top-right corner.
 
 ```tsx
 import { useState } from 'react'
@@ -265,20 +265,23 @@ export default function Demo() {
   return (
     <>
       <div className="flex flex-wrap gap-3">
-        <web-ui-button onClick={() => setCustomHeader(true)}>自定义 header</web-ui-button>
-        <web-ui-button onClick={() => setNoHeader(true)}>不渲染 header</web-ui-button>
+        <web-ui-button onClick={() => setCustomHeader(true)}>Custom header</web-ui-button>
+        <web-ui-button onClick={() => setNoHeader(true)}>No header</web-ui-button>
       </div>
 
       <web-ui-drawer open={customHeader} closable onopen-change={event => setCustomHeader(event.detail.open)}>
         <div slot="header" className="flex items-baseline gap-2 px-5 py-4">
-          <strong className="text-lg">账户设置</strong>
-          <span className="text-xs text-(--wui-color-text-secondary)">已保存</span>
+          <strong className="text-lg">Account settings</strong>
+          <span className="text-xs text-(--wui-color-text-secondary)">Saved</span>
         </div>
-        <p>header 插槽的内容完全由消费方决定，关闭按钮仍由组件提供。</p>
+        <p>
+          The content of the header slot is entirely up to the consumer; the close button is still provided by the
+          component.
+        </p>
       </web-ui-drawer>
 
       <web-ui-drawer open={noHeader} onopen-change={event => setNoHeader(event.detail.open)}>
-        <p>没有 heading，也没有 header 插槽，标题区不会占位。</p>
+        <p>With no heading and no header slot, the title area takes no space.</p>
       </web-ui-drawer>
     </>
   )
@@ -288,20 +291,23 @@ export default function Demo() {
 ```vue
 <template>
   <div class="flex flex-wrap gap-3">
-    <web-ui-button @click="customHeader = true">自定义 header</web-ui-button>
-    <web-ui-button @click="noHeader = true">不渲染 header</web-ui-button>
+    <web-ui-button @click="customHeader = true">Custom header</web-ui-button>
+    <web-ui-button @click="noHeader = true">No header</web-ui-button>
   </div>
 
   <web-ui-drawer :open="customHeader" closable @open-change="customHeader = $event.detail.open">
     <div slot="header" class="flex items-baseline gap-2 px-5 py-4">
-      <strong class="text-lg">账户设置</strong>
-      <span class="text-xs text-(--wui-color-text-secondary)">已保存</span>
+      <strong class="text-lg">Account settings</strong>
+      <span class="text-xs text-(--wui-color-text-secondary)">Saved</span>
     </div>
-    <p>header 插槽的内容完全由消费方决定，关闭按钮仍由组件提供。</p>
+    <p>
+      The content of the header slot is entirely up to the consumer; the close button is still provided by the
+      component.
+    </p>
   </web-ui-drawer>
 
   <web-ui-drawer :open="noHeader" @open-change="noHeader = $event.detail.open">
-    <p>没有 heading，也没有 header 插槽，标题区不会占位。</p>
+    <p>With no heading and no header slot, the title area takes no space.</p>
   </web-ui-drawer>
 </template>
 
@@ -313,9 +319,9 @@ const noHeader = ref(false)
 </script>
 ```
 
-### 关闭按钮 {#closable}
+### Close button {#closable}
 
-`closable` 显示内置关闭按钮。按钮固定在 header 右上角，不随正文滚动。
+`closable` shows the built-in close button. The button is fixed in the top-right corner of the header and does not scroll with the body.
 
 ```tsx
 import { useState } from 'react'
@@ -327,19 +333,19 @@ export default function Demo() {
   return (
     <>
       <div className="flex items-center gap-3">
-        <web-ui-button onClick={() => setOpen(true)}>打开 drawer</web-ui-button>
+        <web-ui-button onClick={() => setOpen(true)}>Open drawer</web-ui-button>
         <web-ui-checkbox checked={closable} onChange={event => setClosable(event.currentTarget.checked)}>
-          显示关闭按钮
+          Show close button
         </web-ui-checkbox>
       </div>
 
       <web-ui-drawer
         open={open}
-        heading="关闭按钮"
+        heading="Close button"
         closable={closable}
         onopen-change={event => setOpen(event.detail.open)}
       >
-        <p>关闭按钮由 closable 控制；关闭后可以重新勾选再打开对比。</p>
+        <p>The close button is controlled by closable; after closing, you can check it again and reopen to compare.</p>
       </web-ui-drawer>
     </>
   )
@@ -349,12 +355,14 @@ export default function Demo() {
 ```vue
 <template>
   <div class="flex items-center gap-3">
-    <web-ui-button @click="open = true">打开 drawer</web-ui-button>
-    <web-ui-checkbox :checked="closable" @change="closable = $event.target.checked"> 显示关闭按钮 </web-ui-checkbox>
+    <web-ui-button @click="open = true">Open drawer</web-ui-button>
+    <web-ui-checkbox :checked="closable" @change="closable = $event.target.checked">
+      Show close button
+    </web-ui-checkbox>
   </div>
 
-  <web-ui-drawer :open="open" heading="关闭按钮" :closable="closable" @open-change="open = $event.detail.open">
-    <p>关闭按钮由 closable 控制；关闭后可以重新勾选再打开对比。</p>
+  <web-ui-drawer :open="open" heading="Close button" :closable="closable" @open-change="open = $event.detail.open">
+    <p>The close button is controlled by closable; after closing, you can check it again and reopen to compare.</p>
   </web-ui-drawer>
 </template>
 
@@ -366,9 +374,9 @@ const closable = ref(true)
 </script>
 ```
 
-### Footer 操作 {#footer}
+### Footer actions {#footer}
 
-`footer` 插槽固定在 drawer 底部，正文滚动时保持可见。
+The `footer` slot is fixed to the bottom of the drawer and stays visible while the body scrolls.
 
 ```tsx
 import { useState } from 'react'
@@ -378,23 +386,23 @@ export default function Demo() {
 
   return (
     <>
-      <web-ui-button onClick={() => setOpen(true)}>编辑资料</web-ui-button>
+      <web-ui-button onClick={() => setOpen(true)}>Edit profile</web-ui-button>
 
-      <web-ui-drawer open={open} heading="编辑资料" onopen-change={event => setOpen(event.detail.open)}>
+      <web-ui-drawer open={open} heading="Edit profile" onopen-change={event => setOpen(event.detail.open)}>
         <div className="flex flex-col gap-3">
           {Array.from({ length: 12 }, (_, index) => (
             <p key={index} className="m-0">
-              第 {index + 1} 行内容，用来演示正文滚动。
+              Line {index + 1}, used to demonstrate body scrolling.
             </p>
           ))}
         </div>
 
         <div slot="footer" className="flex gap-3">
           <web-ui-button variant="secondary" full onClick={() => setOpen(false)}>
-            取消
+            Cancel
           </web-ui-button>
           <web-ui-button full onClick={() => setOpen(false)}>
-            保存
+            Save
           </web-ui-button>
         </div>
       </web-ui-drawer>
@@ -405,16 +413,16 @@ export default function Demo() {
 
 ```vue
 <template>
-  <web-ui-button @click="open = true">编辑资料</web-ui-button>
+  <web-ui-button @click="open = true">Edit profile</web-ui-button>
 
-  <web-ui-drawer :open="open" heading="编辑资料" @open-change="open = $event.detail.open">
+  <web-ui-drawer :open="open" heading="Edit profile" @open-change="open = $event.detail.open">
     <div class="flex flex-col gap-3">
-      <p v-for="index in 12" :key="index" class="m-0">第 {{ index }} 行内容，用来演示正文滚动。</p>
+      <p v-for="index in 12" :key="index" class="m-0">Line {{ index }}, used to demonstrate body scrolling.</p>
     </div>
 
     <div slot="footer" class="flex gap-3">
-      <web-ui-button variant="secondary" full @click="open = false">取消</web-ui-button>
-      <web-ui-button full @click="open = false">保存</web-ui-button>
+      <web-ui-button variant="secondary" full @click="open = false">Cancel</web-ui-button>
+      <web-ui-button full @click="open = false">Save</web-ui-button>
     </div>
   </web-ui-drawer>
 </template>
@@ -426,9 +434,9 @@ const open = ref(false)
 </script>
 ```
 
-### 滚动锁定 {#scroll-lock}
+### Scroll lock {#scroll-lock}
 
-drawer 默认在打开期间锁定页面滚动；`no-scroll-lock` 保留背景滚动。
+By default the drawer locks page scrolling while open; `no-scroll-lock` keeps the background scrollable.
 
 ```tsx
 import { useState } from 'react'
@@ -438,15 +446,15 @@ export default function Demo() {
 
   return (
     <>
-      <web-ui-button onClick={() => setOpen(true)}>打开（不锁定滚动）</web-ui-button>
+      <web-ui-button onClick={() => setOpen(true)}>Open (no scroll lock)</web-ui-button>
 
       <web-ui-drawer
         open={open}
         noScrollLock
-        heading="背景仍可滚动"
+        heading="Background still scrolls"
         onopen-change={event => setOpen(event.detail.open)}
       >
-        <p>打开后试着滚动背景页面：no-scroll-lock 不会改写页面滚动。</p>
+        <p>After opening, try scrolling the background page: no-scroll-lock does not rewrite page scrolling.</p>
       </web-ui-drawer>
     </>
   )
@@ -455,10 +463,15 @@ export default function Demo() {
 
 ```vue
 <template>
-  <web-ui-button @click="open = true">打开（不锁定滚动）</web-ui-button>
+  <web-ui-button @click="open = true">Open (no scroll lock)</web-ui-button>
 
-  <web-ui-drawer :open="open" no-scroll-lock heading="背景仍可滚动" @open-change="open = $event.detail.open">
-    <p>打开后试着滚动背景页面：no-scroll-lock 不会改写页面滚动。</p>
+  <web-ui-drawer
+    :open="open"
+    no-scroll-lock
+    heading="Background still scrolls"
+    @open-change="open = $event.detail.open"
+  >
+    <p>After opening, try scrolling the background page: no-scroll-lock does not rewrite page scrolling.</p>
   </web-ui-drawer>
 </template>
 
@@ -469,9 +482,9 @@ const open = ref(false)
 </script>
 ```
 
-### 遮罩点击 {#overlay}
+### Backdrop click {#overlay}
 
-默认点击遮罩关闭；`no-backdrop-close` 后只能通过关闭按钮、footer 操作或 Escape 退出。
+A backdrop click closes the drawer by default; with `no-backdrop-close`, exit only through the close button, footer actions, or Escape.
 
 ```tsx
 import { useState } from 'react'
@@ -481,17 +494,17 @@ export default function Demo() {
 
   return (
     <>
-      <web-ui-button onClick={() => setOpen(true)}>打开（点遮罩不关闭）</web-ui-button>
+      <web-ui-button onClick={() => setOpen(true)}>Open (backdrop does not close)</web-ui-button>
 
       <web-ui-drawer
         open={open}
         noBackdropClose
-        heading="点遮罩不关闭"
+        heading="Backdrop does not close"
         onopen-change={event => setOpen(event.detail.open)}
       >
-        <p>点击遮罩不会关闭；用底部按钮或 Escape 退出。</p>
+        <p>Clicking the backdrop does not close it; exit with the footer button or Escape.</p>
         <web-ui-button slot="footer" variant="secondary" full onClick={() => setOpen(false)}>
-          关闭
+          Close
         </web-ui-button>
       </web-ui-drawer>
     </>
@@ -501,11 +514,16 @@ export default function Demo() {
 
 ```vue
 <template>
-  <web-ui-button @click="open = true">打开（点遮罩不关闭）</web-ui-button>
+  <web-ui-button @click="open = true">Open (backdrop does not close)</web-ui-button>
 
-  <web-ui-drawer :open="open" no-backdrop-close heading="点遮罩不关闭" @open-change="open = $event.detail.open">
-    <p>点击遮罩不会关闭；用底部按钮或 Escape 退出。</p>
-    <web-ui-button slot="footer" variant="secondary" full @click="open = false">关闭</web-ui-button>
+  <web-ui-drawer
+    :open="open"
+    no-backdrop-close
+    heading="Backdrop does not close"
+    @open-change="open = $event.detail.open"
+  >
+    <p>Clicking the backdrop does not close it; exit with the footer button or Escape.</p>
+    <web-ui-button slot="footer" variant="secondary" full @click="open = false">Close</web-ui-button>
   </web-ui-drawer>
 </template>
 
@@ -516,9 +534,9 @@ const open = ref(false)
 </script>
 ```
 
-### 受控关闭 {#controlled}
+### Controlled closing {#controlled}
 
-`controlled` 下，Escape、遮罩与关闭按钮只派发 `open-change(false)`；消费方回写 `open` 后才真正关闭。示例拒绝第一次关闭请求，必须点 footer 的确认按钮。
+With `controlled`, Escape, the backdrop, and the close button only dispatch `open-change(false)`; the drawer really closes only after the consumer writes `open` back. The sample rejects the first close request, so the confirm button in the footer must be clicked.
 
 ```tsx
 import { useState } from 'react'
@@ -529,24 +547,24 @@ export default function Demo() {
 
   return (
     <>
-      <web-ui-button onClick={() => setOpen(true)}>打开受控 drawer</web-ui-button>
+      <web-ui-button onClick={() => setOpen(true)}>Open controlled drawer</web-ui-button>
 
       <web-ui-drawer
         open={open}
         controlled
-        heading="受控关闭"
+        heading="Controlled closing"
         onopen-change={event => {
           if (event.detail.open) {
             setRejected(false)
             setOpen(true)
             return
           }
-          // 不回写 open：drawer 会弹回打开位，消费方因此可以拒绝这次关闭。
+          // Not writing open back: the drawer springs back to the open position, so the consumer can reject this close.
           setRejected(true)
         }}
       >
-        <p>按 Escape、点遮罩或关闭按钮只会发出关闭请求。</p>
-        {rejected ? <p className="text-(--wui-color-danger)">已拒绝关闭请求；请先确认。</p> : null}
+        <p>Pressing Escape, clicking the backdrop, or using the close button only emits a close request.</p>
+        {rejected ? <p className="text-(--wui-color-danger)">Close request rejected; confirm first.</p> : null}
         <web-ui-button
           slot="footer"
           variant="secondary"
@@ -556,7 +574,7 @@ export default function Demo() {
             setOpen(false)
           }}
         >
-          确认关闭
+          Confirm close
         </web-ui-button>
       </web-ui-drawer>
     </>
@@ -566,12 +584,12 @@ export default function Demo() {
 
 ```vue
 <template>
-  <web-ui-button @click="open = true">打开受控 drawer</web-ui-button>
+  <web-ui-button @click="open = true">Open controlled drawer</web-ui-button>
 
-  <web-ui-drawer :open="open" controlled heading="受控关闭" @open-change="onOpenChange">
-    <p>按 Escape、点遮罩或关闭按钮只会发出关闭请求。</p>
-    <p v-if="rejected" class="text-(--wui-color-danger)">已拒绝关闭请求；请先确认。</p>
-    <web-ui-button slot="footer" variant="secondary" full @click="close">确认关闭</web-ui-button>
+  <web-ui-drawer :open="open" controlled heading="Controlled closing" @open-change="onOpenChange">
+    <p>Pressing Escape, clicking the backdrop, or using the close button only emits a close request.</p>
+    <p v-if="rejected" class="text-(--wui-color-danger)">Close request rejected; confirm first.</p>
+    <web-ui-button slot="footer" variant="secondary" full @click="close">Confirm close</web-ui-button>
   </web-ui-drawer>
 </template>
 
@@ -587,7 +605,7 @@ function onOpenChange(event: CustomEvent<{ open: boolean }>) {
     open.value = true
     return
   }
-  // 不回写 open：drawer 会弹回打开位，消费方因此可以拒绝这次关闭。
+  // Not writing open back: the drawer springs back to the open position, so the consumer can reject this close.
   rejected.value = true
 }
 
@@ -600,7 +618,7 @@ function close() {
 
 ### Headless {#headless}
 
-`headless` 只保留原生 dialog、遮罩、动画、滚动锁定与 Escape / 遮罩关闭，不渲染内置 header、关闭按钮或 footer。消费方负责默认插槽内容的完整样式，并必须提供 `dialog-label`。示例同时开启 `draggable`，headless 也支持拖拽关闭。
+`headless` keeps only the native dialog, backdrop, animations, scroll lock, and Escape / backdrop closing, rendering no built-in header, close button, or footer. The consumer is responsible for the full styling of the default slot content and must provide `dialog-label`. The sample also enables `draggable`, and headless supports drag-to-close too.
 
 ```tsx
 import { useState } from 'react'
@@ -610,20 +628,20 @@ export default function Demo() {
 
   return (
     <>
-      <web-ui-button onClick={() => setOpen(true)}>打开 headless drawer</web-ui-button>
+      <web-ui-button onClick={() => setOpen(true)}>Open headless drawer</web-ui-button>
 
       <web-ui-drawer
         open={open}
         placement="left"
         headless
         draggable
-        dialog-label="自定义面板"
+        dialog-label="Custom panel"
         onopen-change={event => setOpen(event.detail.open)}
       >
         <div className="box-border h-full rounded-r-2xl bg-(--wui-color-surface-overlay) p-6 text-(--wui-color-text)">
-          <h2 className="m-0 mb-2 text-xl">自定义面板</h2>
+          <h2 className="m-0 mb-2 text-xl">Custom panel</h2>
           <p className="m-0 text-(--wui-color-text-secondary)">
-            headless 只提供 overlay 行为；内容、背景与圆角都由这里决定。
+            headless provides only overlay behavior; the content, background, and radius are all decided here.
           </p>
         </div>
       </web-ui-drawer>
@@ -634,19 +652,21 @@ export default function Demo() {
 
 ```vue
 <template>
-  <web-ui-button @click="open = true">打开 headless drawer</web-ui-button>
+  <web-ui-button @click="open = true">Open headless drawer</web-ui-button>
 
   <web-ui-drawer
     :open="open"
     placement="left"
     headless
     draggable
-    dialog-label="自定义面板"
+    dialog-label="Custom panel"
     @open-change="open = $event.detail.open"
   >
     <div class="box-border h-full rounded-r-2xl bg-(--wui-color-surface-overlay) p-6 text-(--wui-color-text)">
-      <h2 class="m-0 mb-2 text-xl">自定义面板</h2>
-      <p class="m-0 text-(--wui-color-text-secondary)">headless 只提供 overlay 行为；内容、背景与圆角都由这里决定。</p>
+      <h2 class="m-0 mb-2 text-xl">Custom panel</h2>
+      <p class="m-0 text-(--wui-color-text-secondary)">
+        headless provides only overlay behavior; the content, background, and radius are all decided here.
+      </p>
     </div>
   </web-ui-drawer>
 </template>
@@ -658,9 +678,9 @@ const open = ref(false)
 </script>
 ```
 
-### 拖拽关闭 {#draggable}
+### Drag to close {#draggable}
 
-开启 `draggable` 后，drawer 内缘出现灰色胶囊 drag bar。向关闭方向拖过自身尺寸的一半，或快速甩动后松手即关闭；未达阈值则回弹。方向随 `placement` 适配。
+With `draggable` enabled, a gray pill-shaped drag bar appears on the inner edge of the drawer. Drag past half of its own size toward the closing direction, or fling it quickly and release, to close; below the threshold it springs back. The direction adapts to `placement`.
 
 ```tsx
 import { useState } from 'react'
@@ -672,27 +692,27 @@ export default function Demo() {
   return (
     <>
       <div className="flex flex-wrap gap-3">
-        <web-ui-button onClick={() => setRightOpen(true)}>右侧拖拽关闭</web-ui-button>
-        <web-ui-button onClick={() => setBottomOpen(true)}>底部拖拽关闭</web-ui-button>
+        <web-ui-button onClick={() => setRightOpen(true)}>Drag-close on the right</web-ui-button>
+        <web-ui-button onClick={() => setBottomOpen(true)}>Drag-close at the bottom</web-ui-button>
       </div>
 
       <web-ui-drawer
         open={rightOpen}
         draggable
-        heading="向右拖拽关闭"
+        heading="Drag right to close"
         onopen-change={event => setRightOpen(event.detail.open)}
       >
-        <p>按住左缘的灰色胶囊，向右拖过半或快速甩动即可关闭。</p>
+        <p>Hold the gray pill on the left edge and drag it more than half way to the right, or fling it, to close.</p>
       </web-ui-drawer>
 
       <web-ui-drawer
         open={bottomOpen}
         placement="bottom"
         draggable
-        heading="向下拖拽关闭"
+        heading="Drag down to close"
         onopen-change={event => setBottomOpen(event.detail.open)}
       >
-        <p>按住上缘的灰色胶囊，向下拖过半或快速甩动即可关闭。</p>
+        <p>Hold the gray pill on the top edge and drag it more than half way down, or fling it, to close.</p>
       </web-ui-drawer>
     </>
   )
@@ -702,22 +722,27 @@ export default function Demo() {
 ```vue
 <template>
   <div class="flex flex-wrap gap-3">
-    <web-ui-button @click="rightOpen = true">右侧拖拽关闭</web-ui-button>
-    <web-ui-button @click="bottomOpen = true">底部拖拽关闭</web-ui-button>
+    <web-ui-button @click="rightOpen = true">Drag-close on the right</web-ui-button>
+    <web-ui-button @click="bottomOpen = true">Drag-close at the bottom</web-ui-button>
   </div>
 
-  <web-ui-drawer :open="rightOpen" draggable heading="向右拖拽关闭" @open-change="rightOpen = $event.detail.open">
-    <p>按住左缘的灰色胶囊，向右拖过半或快速甩动即可关闭。</p>
+  <web-ui-drawer
+    :open="rightOpen"
+    draggable
+    heading="Drag right to close"
+    @open-change="rightOpen = $event.detail.open"
+  >
+    <p>Hold the gray pill on the left edge and drag it more than half way to the right, or fling it, to close.</p>
   </web-ui-drawer>
 
   <web-ui-drawer
     :open="bottomOpen"
     placement="bottom"
     draggable
-    heading="向下拖拽关闭"
+    heading="Drag down to close"
     @open-change="bottomOpen = $event.detail.open"
   >
-    <p>按住上缘的灰色胶囊，向下拖过半或快速甩动即可关闭。</p>
+    <p>Hold the gray pill on the top edge and drag it more than half way down, or fling it, to close.</p>
   </web-ui-drawer>
 </template>
 
@@ -729,15 +754,15 @@ const bottomOpen = ref(false)
 </script>
 ```
 
-### 嵌套堆叠 {#nested}
+### Nested stacking {#nested}
 
-同组件声明式嵌套即自动堆叠：后打开的位于顶层全尺寸，下层按 `0.95^n` 缩放并向内偏移，露边宽度按 `A·ln(n)` 分配。层宽不同或乱序时，组件会按上方最大宽度补偿，保证每层左缘都可见；Escape 与遮罩点击只作用于最顶层。
+Declaratively nesting the same component stacks it automatically: the later-opened one sits on top at full size, lower layers scale by `0.95^n` and shift inward, and the exposed edge width is allocated by `A·ln(n)`. When layer widths differ or are out of order, the component compensates by the widest layer above so that the left edge of every layer stays visible; Escape and backdrop clicks act only on the topmost layer.
 
 ```tsx
 import type { CSSProperties } from 'react'
 import { useState } from 'react'
 
-const titles = ['概览', '详情', '设置', '确认']
+const titles = ['Overview', 'Details', 'Settings', 'Confirm']
 const widths = ['300px', '280px', '240px', '320px']
 
 export default function Demo() {
@@ -753,7 +778,7 @@ export default function Demo() {
 
   return (
     <>
-      <web-ui-button onClick={() => openLevel(0)}>打开四层嵌套</web-ui-button>
+      <web-ui-button onClick={() => openLevel(0)}>Open four nested layers</web-ui-button>
 
       <web-ui-drawer
         open={levels[0]}
@@ -764,9 +789,9 @@ export default function Demo() {
           if (event.target === event.currentTarget && !event.detail.open) closeLevel(0)
         }}
       >
-        <p>第 1 层。打开下一层后，这一层会缩放并向左让出边缘。</p>
+        <p>Layer 1. After the next layer opens, this layer scales down and exposes its left edge.</p>
         <web-ui-button slot="footer" variant="secondary" full onClick={() => openLevel(1)}>
-          打开第 2 层
+          Open layer 2
         </web-ui-button>
 
         <web-ui-drawer
@@ -778,9 +803,9 @@ export default function Demo() {
             if (event.target === event.currentTarget && !event.detail.open) closeLevel(1)
           }}
         >
-          <p>第 2 层。层宽与上层不同，堆叠位置会自动补偿。</p>
+          <p>Layer 2. This layer is wider than the one above, so the stacking position compensates automatically.</p>
           <web-ui-button slot="footer" variant="secondary" full onClick={() => openLevel(2)}>
-            打开第 3 层
+            Open layer 3
           </web-ui-button>
 
           <web-ui-drawer
@@ -792,21 +817,21 @@ export default function Demo() {
               if (event.target === event.currentTarget && !event.detail.open) closeLevel(2)
             }}
           >
-            <p>第 3 层。窄层上面再叠宽层时，左缘仍保持可见。</p>
+            <p>Layer 3. When a wider layer stacks on a narrower one, the left edge stays visible.</p>
             <web-ui-button slot="footer" variant="secondary" full onClick={() => openLevel(3)}>
-              打开第 4 层
+              Open layer 4
             </web-ui-button>
 
             <web-ui-drawer
               open={levels[3]}
-              heading={`${titles[3]} (320px, 顶层)`}
+              heading={`${titles[3]} (320px, top layer)`}
               closable
               style={{ '--wui-drawer-width': widths[3] } as CSSProperties}
               onopen-change={event => {
                 if (event.target === event.currentTarget && !event.detail.open) closeLevel(3)
               }}
             >
-              <p>第 4 层，顶层。关闭后逐层恢复原尺寸。</p>
+              <p>Layer 4, the topmost. Closing it restores each layer to its original size.</p>
             </web-ui-drawer>
           </web-ui-drawer>
         </web-ui-drawer>
@@ -818,7 +843,7 @@ export default function Demo() {
 
 ```vue
 <template>
-  <web-ui-button @click="openLevel(0)">打开四层嵌套</web-ui-button>
+  <web-ui-button @click="openLevel(0)">Open four nested layers</web-ui-button>
 
   <web-ui-drawer
     :open="levels[0]"
@@ -827,8 +852,8 @@ export default function Demo() {
     :style="{ '--wui-drawer-width': widths[0] }"
     @open-change="event => event.target === event.currentTarget && !event.detail.open && closeLevel(0)"
   >
-    <p>第 1 层。打开下一层后，这一层会缩放并向左让出边缘。</p>
-    <web-ui-button slot="footer" variant="secondary" full @click="openLevel(1)">打开第 2 层</web-ui-button>
+    <p>Layer 1. After the next layer opens, this layer scales down and exposes its left edge.</p>
+    <web-ui-button slot="footer" variant="secondary" full @click="openLevel(1)">Open layer 2</web-ui-button>
 
     <web-ui-drawer
       :open="levels[1]"
@@ -837,8 +862,8 @@ export default function Demo() {
       :style="{ '--wui-drawer-width': widths[1] }"
       @open-change="event => event.target === event.currentTarget && !event.detail.open && closeLevel(1)"
     >
-      <p>第 2 层。层宽与上层不同，堆叠位置会自动补偿。</p>
-      <web-ui-button slot="footer" variant="secondary" full @click="openLevel(2)">打开第 3 层</web-ui-button>
+      <p>Layer 2. This layer is wider than the one above, so the stacking position compensates automatically.</p>
+      <web-ui-button slot="footer" variant="secondary" full @click="openLevel(2)">Open layer 3</web-ui-button>
 
       <web-ui-drawer
         :open="levels[2]"
@@ -847,17 +872,17 @@ export default function Demo() {
         :style="{ '--wui-drawer-width': widths[2] }"
         @open-change="event => event.target === event.currentTarget && !event.detail.open && closeLevel(2)"
       >
-        <p>第 3 层。窄层上面再叠宽层时，左缘仍保持可见。</p>
-        <web-ui-button slot="footer" variant="secondary" full @click="openLevel(3)">打开第 4 层</web-ui-button>
+        <p>Layer 3. When a wider layer stacks on a narrower one, the left edge stays visible.</p>
+        <web-ui-button slot="footer" variant="secondary" full @click="openLevel(3)">Open layer 4</web-ui-button>
 
         <web-ui-drawer
           :open="levels[3]"
-          :heading="`${titles[3]} (320px, 顶层)`"
+          :heading="`${titles[3]} (320px, top layer)`"
           closable
           :style="{ '--wui-drawer-width': widths[3] }"
           @open-change="event => event.target === event.currentTarget && !event.detail.open && closeLevel(3)"
         >
-          <p>第 4 层，顶层。关闭后逐层恢复原尺寸。</p>
+          <p>Layer 4, the topmost. Closing it restores each layer to its original size.</p>
         </web-ui-drawer>
       </web-ui-drawer>
     </web-ui-drawer>
@@ -867,7 +892,7 @@ export default function Demo() {
 <script setup lang="ts">
 import { ref } from 'vue'
 
-const titles = ['概览', '详情', '设置', '确认']
+const titles = ['Overview', 'Details', 'Settings', 'Confirm']
 const widths = ['300px', '280px', '240px', '320px']
 
 const levels = ref([false, false, false, false])
@@ -882,9 +907,9 @@ function closeLevel(index: number) {
 </script>
 ```
 
-### 同级堆叠 {#siblings}
+### Sibling stacking {#siblings}
 
-多个 drawer 作为同级节点挂载，依次打开后由组件自动管理层序：先打开的缩放并偏移，后打开的在顶层；按任意顺序关闭，剩余层级会重新排列。
+Multiple drawers mounted as sibling nodes are managed automatically by the component once opened in sequence: earlier ones scale and shift, the later one sits on top; close them in any order and the remaining layers rearrange.
 
 ```tsx
 import { useState } from 'react'
@@ -901,7 +926,7 @@ export default function Demo() {
       <div className="flex flex-wrap gap-3">
         {open.map((_, index) => (
           <web-ui-button key={index} onClick={() => setAt(index, true)}>
-            打开 drawer {index + 1}
+            Open drawer {index + 1}
           </web-ui-button>
         ))}
       </div>
@@ -910,11 +935,11 @@ export default function Demo() {
         <web-ui-drawer
           key={index}
           open={value}
-          heading={`同级 drawer ${index + 1}`}
+          heading={`Sibling drawer ${index + 1}`}
           closable
           onopen-change={event => setAt(index, event.detail.open)}
         >
-          <p>第 {index + 1} 个同级 drawer。打开下一个，观察这一层缩放并让出边缘。</p>
+          <p>Sibling drawer {index + 1}. Open the next one and watch this layer scale down and expose its edge.</p>
         </web-ui-drawer>
       ))}
     </>
@@ -926,7 +951,7 @@ export default function Demo() {
 <template>
   <div class="flex flex-wrap gap-3">
     <web-ui-button v-for="(value, index) in open" :key="index" @click="open[index] = true">
-      打开 drawer {{ index + 1 }}
+      Open drawer {{ index + 1 }}
     </web-ui-button>
   </div>
 
@@ -934,11 +959,11 @@ export default function Demo() {
     v-for="(value, index) in open"
     :key="index"
     :open="value"
-    :heading="`同级 drawer ${index + 1}`"
+    :heading="`Sibling drawer ${index + 1}`"
     closable
     @open-change="open[index] = $event.detail.open"
   >
-    <p>第 {{ index + 1 }} 个同级 drawer。打开下一个，观察这一层缩放并让出边缘。</p>
+    <p>Sibling drawer {{ index + 1 }}. Open the next one and watch this layer scale down and expose its edge.</p>
   </web-ui-drawer>
 </template>
 
@@ -949,9 +974,9 @@ const open = ref([false, false, false])
 </script>
 ```
 
-### CSS 变量 {#theming}
+### CSS variables {#theming}
 
-背景、圆角与视口留边分别由 `--wui-drawer-bg`、`--wui-drawer-radius`、`--wui-drawer-inset` 控制；置 `--wui-drawer-inset: 0` 得到贴边几何。白底示例还将 `--wui-color-text` 设为深色、将 `--wui-color-surface-control` 设为浅色，避免标题和关闭按钮继承深色主题的配色。
+The background, radius, and viewport inset are controlled by `--wui-drawer-bg`, `--wui-drawer-radius`, and `--wui-drawer-inset` respectively; setting `--wui-drawer-inset: 0` gives edge-to-edge geometry. The white-background example also sets `--wui-color-text` to a dark color and `--wui-color-surface-control` to a light color so the heading and close button stay readable in both themes.
 
 ```tsx
 import { useState } from 'react'
@@ -961,16 +986,18 @@ export default function Demo() {
 
   return (
     <>
-      <web-ui-button onClick={() => setOpen(true)}>打开贴边白色 drawer</web-ui-button>
+      <web-ui-button onClick={() => setOpen(true)}>Open edge-to-edge white drawer</web-ui-button>
 
       <web-ui-drawer
         open={open}
-        heading="贴边白色 drawer"
+        heading="Edge-to-edge white drawer"
         closable
         className="[--wui-drawer-bg:#fff] [--wui-drawer-radius:0] [--wui-drawer-inset:0] [--wui-color-text:#262626] [--wui-color-surface-control:#e5e5e5]"
         onopen-change={event => setOpen(event.detail.open)}
       >
-        <p className="text-neutral-800">背景、圆角与视口留边都由 CSS 变量控制。</p>
+        <p className="text-neutral-800">
+          The background, radius, and viewport inset are all controlled by CSS variables.
+        </p>
       </web-ui-drawer>
     </>
   )
@@ -979,16 +1006,16 @@ export default function Demo() {
 
 ```vue
 <template>
-  <web-ui-button @click="open = true">打开贴边白色 drawer</web-ui-button>
+  <web-ui-button @click="open = true">Open edge-to-edge white drawer</web-ui-button>
 
   <web-ui-drawer
     :open="open"
-    heading="贴边白色 drawer"
+    heading="Edge-to-edge white drawer"
     closable
     class="[--wui-drawer-bg:#fff] [--wui-drawer-radius:0] [--wui-drawer-inset:0] [--wui-color-text:#262626] [--wui-color-surface-control:#e5e5e5]"
     @open-change="open = $event.detail.open"
   >
-    <p class="text-neutral-800">背景、圆角与视口留边都由 CSS 变量控制。</p>
+    <p class="text-neutral-800">The background, radius, and viewport inset are all controlled by CSS variables.</p>
   </web-ui-drawer>
 </template>
 
@@ -1003,125 +1030,125 @@ const open = ref(false)
 
 ### Props
 
-| 名称                | 说明                                                  | 类型              | 默认值    |
-| ------------------- | ----------------------------------------------------- | ----------------- | --------- |
-| `open`              | drawer 可见性。                                       | `boolean`         | `false`   |
-| `no-scroll-lock`    | 打开时不锁定页面滚动。                                | `boolean`         | `false`   |
-| `no-backdrop-close` | 禁止点击 backdrop 关闭。                              | `boolean`         | `false`   |
-| `controlled`        | 用户关闭仅请求 `open=false`，由消费方回写。           | `boolean`         | `false`   |
-| `placement`         | 滑入方向：`right`（默认）、`left`、`top`、`bottom`。  | `DrawerPlacement` | `'right'` |
-| `heading`           | 标题文字，`header` 插槽为空时的回落。                 | `string`          | `''`      |
-| `closable`          | 显示内置关闭按钮。                                    | `boolean`         | `false`   |
-| `headless`          | 仅保留 overlay 行为，默认插槽不渲染内置 drawer UI。   | `boolean`         | `false`   |
-| `dialog-label`      | 内部原生 dialog 的可访问名称；`headless` 下必须提供。 | `string`          | `''`      |
-| `draggable`         | 在 drawer 内缘显示 drag bar，支持拖拽关闭手势。       | `boolean`         | `false`   |
+| Name                | Description                                                                             | Type              | Default   |
+| ------------------- | --------------------------------------------------------------------------------------- | ----------------- | --------- |
+| `open`              | Drawer visibility.                                                                      | `boolean`         | `false`   |
+| `no-scroll-lock`    | Does not lock page scrolling while open.                                                | `boolean`         | `false`   |
+| `no-backdrop-close` | Prevents closing on a backdrop click.                                                   | `boolean`         | `false`   |
+| `controlled`        | User-initiated closing only requests `open=false`, written back by the consumer.        | `boolean`         | `false`   |
+| `placement`         | Slide-in direction: `right` (default), `left`, `top`, `bottom`.                         | `DrawerPlacement` | `'right'` |
+| `heading`           | Heading text, the fallback when the `header` slot is empty.                             | `string`          | `''`      |
+| `closable`          | Shows the built-in close button.                                                        | `boolean`         | `false`   |
+| `headless`          | Keeps only overlay behavior; the default slot renders no built-in drawer UI.            | `boolean`         | `false`   |
+| `dialog-label`      | Accessible name of the inner native dialog; required under `headless`.                  | `string`          | `''`      |
+| `draggable`         | Shows a drag bar on the inner edge of the drawer and enables the drag-to-close gesture. | `boolean`         | `false`   |
 
 ### Events
 
-| 名称          | 说明                                                                    |
-| ------------- | ----------------------------------------------------------------------- |
-| `open-change` | 用户请求开合；`detail.open` 为目标状态。受控模式下由消费方回写 `open`。 |
+| Name          | Description                                                                                                              |
+| ------------- | ------------------------------------------------------------------------------------------------------------------------ |
+| `open-change` | User requests opening or closing; `detail.open` is the target state. In controlled mode the consumer writes `open` back. |
 
 ### Slots
 
-| 名称      | 说明         |
-| --------- | ------------ |
-| `default` | 正文内容。   |
-| `header`  | 顶部标题区。 |
-| `footer`  | 底部操作区。 |
+| Name      | Description         |
+| --------- | ------------------- |
+| `default` | Body content.       |
+| `header`  | Top title area.     |
+| `footer`  | Bottom action area. |
 
 ### Methods
 
-| 名称      | 说明                            |
-| --------- | ------------------------------- |
-| `show()`  | 打开 drawer；已打开时为 no-op。 |
-| `close()` | 关闭 drawer；已关闭时为 no-op。 |
+| Name      | Description                                     |
+| --------- | ----------------------------------------------- |
+| `show()`  | Opens the drawer; a no-op when already open.    |
+| `close()` | Closes the drawer; a no-op when already closed. |
 
-### 行为说明
+### Behavior
 
-`headless` 保留原生 dialog、backdrop、placement 动画、Escape/backdrop 关闭行为和滚动锁定，但不渲染内置 glass 主体、header、关闭按钮或 footer；消费方负责完整定义默认插槽内容的样式，并且必须提供 `dialog-label`，确保原生 dialog 具有可访问名称。
+`headless` keeps the native dialog, backdrop, placement animation, Escape / backdrop closing behavior, and scroll lock, but renders no built-in glass surface, header, close button, or footer; the consumer is responsible for fully defining the styles of the default slot content and must provide `dialog-label` so that the native dialog has an accessible name.
 
-关闭时保留原生 dialog 的 top layer，待退出过渡完成后调用 `dialog.close()`。Escape 始终走此关闭路径；`no-backdrop-close` 仅控制 backdrop 点击。
+When closing, the native dialog stays in the top layer, and `dialog.close()` is called after the exit transition finishes. Escape always takes this closing path; `no-backdrop-close` only controls backdrop clicks.
 
-启用 `closable` 时，内置关闭按钮固定在 header 右上角（默认顶部 `16px`、右侧 `16px`），不会再拉伸到 drawer 中间。
+With `closable` enabled, the built-in close button is fixed in the top-right corner of the header (`16px` from the top and `16px` from the right by default) and never stretches into the middle of the drawer.
 
-顶部 `16px` 经 `--wui-space-4` 解析，因此与 drawer 的 header padding 同源；右侧 `16px` 是按钮自身到 panel 右边沿的偏移，它并不等于 header 的水平内边距（`20px`），因此保持字面量。
+The top `16px` resolves through `--wui-space-4`, so it shares its source with the drawer's header padding; the right `16px` is the offset from the button itself to the right edge of the panel, which does not equal the header's horizontal padding (`20px`), so it stays a literal value.
 
-`--wui-drawer-nested-peek-base` 不需要消费方声明：默认值 `43.2px` 是组件用 `CSS.registerProperty` 注册该属性时的 `initialValue`（`components/drawer/index.ts`）。
+`--wui-drawer-nested-peek-base` does not need to be declared by the consumer: its default `43.2px` is the `initialValue` used when the component registers the property with `CSS.registerProperty` (`components/drawer/index.ts`).
 
-窄视口的 `28.8px` 基准来自 `components/drawer/style.css` 的 `@media (width <= 640px)` 规则——这两处就是内置基准的所在地。
+The `28.8px` base for narrow viewports comes from the `@media (width <= 640px)` rule in `components/drawer/style.css`—these two places are where the built-in bases live.
 
-在宿主或任意祖先上设置该 token 可同时覆盖两者，在任何视口宽度下都生效。
+Setting this token on the host or any ancestor overrides both at once and applies at any viewport width.
 
-按内置基准，四层 `320px` 等宽堆叠逐层露边在桌面端为 `29.94px` / `17.52px` / `12.43px`、窄视口为 `19.96px` / `11.68px` / `8.29px`，对应总堆叠宽度 `59.89px` 与 `39.93px`。
+With the built-in bases, the per-layer exposed edges of a four-layer `320px` equal-width stack are `29.94px` / `17.52px` / `12.43px` on desktop and `19.96px` / `11.68px` / `8.29px` on narrow viewports, for total stack widths of `59.89px` and `39.93px`.
 
-单层始终不动，因为 `ln(1)` 为 `0`。
+A single layer never moves, because `ln(1)` is `0`.
 
-### 拖拽关闭
+### Drag to close
 
-启用 `draggable` 后，打开的 drawer 在内缘显示灰色胶囊 drag bar（默认 4×56px，视觉中线距内缘 10px；`right` 在左缘、`left` 在右缘、`top` 在下缘、`bottom` 在上缘）：
+With `draggable` enabled, an open drawer shows a gray pill-shaped drag bar on its inner edge (4×56px by default, with the visual center line 10px from the inner edge; `right` puts it on the left edge, `left` on the right edge, `top` on the bottom edge, and `bottom` on the top edge):
 
-中线跟随 `--wui-drawer-content-padding` 的半值，并以「半个胶囊厚度 + 4px 呼吸间距」兜底：把该 padding 归零、让内容贴边铺满时，胶囊仍留可见内缩，既不会越出 panel 内缘，也不会贴死 panel 边缘。
+The center line follows half of `--wui-drawer-content-padding`, with a floor of “half the pill thickness + a 4px gap”: when that padding is zeroed and the content fills edge to edge, the pill still keeps a visible inset, so it neither crosses the inner edge of the panel nor sticks to the panel edge.
 
-胶囊是纯视觉件：`pointer-events: none`，本身不吃任何一次按下。真正被按下的是命中层。
+The pill is purely visual: `pointer-events: none`, so it never receives a press itself. What is actually pressed is the hit layer.
 
-左右 placement 只有 drag zone；上下 placement 有三层——拖拽 drag zone、沿可抓取边缘的一条端头 drag edge（宽度与胶囊等宽，厚度不小于 `--wui-drawer-drag-edge-size`），以及整块的 header（`placement=bottom`）或 footer（`placement=top`）。
+Left / right placements have only the drag zone; top / bottom placements have three layers—the drag zone, an end drag edge along the grabbable edge (as wide as the pill, no thinner than `--wui-drawer-drag-edge-size`), and the whole header (`placement=bottom`) or footer (`placement=top`).
 
-drag edge 的高度取「胶囊外沿」与该 token 的较大者，按构造覆盖胶囊所在的带，所以在四个 placement 上，按住胶囊能开始拖拽、悬停胶囊会点亮它。
+The drag edge height takes the larger of the pill's outer edge and that token, and by construction covers the band where the pill sits, so in all four placements pressing the pill starts a drag and hovering the pill highlights it.
 
-让开 header（`placement=bottom`）或 footer（`placement=top`）的是 drag zone 本身，因此那一节不会把胶囊推离 panel 边缘；而那一节改由**自己**接拖拽，不再整块按不动：在它里面任意一点起手都能开始拖拽，标题文字同样在内。
+It is the drag zone itself that makes way for the header (`placement=bottom`) or footer (`placement=top`), so that section does not push the pill away from the panel edge; instead, that section now handles dragging **itself** and is no longer entirely inert: a drag can start anywhere inside it, including on the title text.
 
-控件的让开是**逐个控件、在事件层**做的，不是把命中面几何切开。
+Making way for controls is done **per control, at the event layer**, not by geometrically cutting the hit surface.
 
-按下路径上只要出现可点元素，这一次按下就交给控件、不起拖拽。可点元素包括：
+If any clickable element appears on the press path, that press is handed to the control and no drag starts. Clickable elements include:
 
-- 原生 `button` / `input` / `select` / `textarea` / `label` / `a[href]` / `summary`
-- 任何 `contenteditable`
-- 交互语义 `role`（`button`、`checkbox`、`switch`、`tab`、`menuitem`、`option`、`slider` 等）
-- 任何显式 `tabindex` 且不为 `-1`
+- Native `button` / `input` / `select` / `textarea` / `label` / `a[href]` / `summary`
+- Any `contenteditable`
+- An interactive semantic `role` (`button`, `checkbox`, `switch`, `tab`, `menuitem`, `option`, `slider`, and so on)
+- Any explicit `tabindex` other than `-1`
 
-自绘控件若本身不是原生可交互元素，需要带上其中之一才会被认出来；补 `role` 或 `tabindex` 就是入口，而它本身也是无障碍上该做的事。
+If a custom-drawn control is not itself a native interactive element, it needs one of these to be recognized; adding `role` or `tabindex` is the entry point, and it is also what accessibility requires anyway.
 
-几何切割是被有意否掉的：它必须测量每个控件的位置，控件一动就失效，而且只是把 A6 那条缺陷换了个位置。
+Geometric cutting was intentionally rejected: it would have to measure the position of every control, breaks as soon as a control moves, and merely relocates the A6 defect.
 
-代价是明说的：内置关闭按钮贴着 panel 右缘、在胶囊跨度之外，仍可点击；落在胶囊水平跨度内的控件，其顶部到 drag edge 高度之间仍被拖拽面盖住。
+The cost is stated plainly: the built-in close button sits against the right edge of the panel, outside the pill's span, and remains clickable; controls that fall within the pill's horizontal span are still covered by the drag surface between their top and the drag edge height.
 
-「drag bar 占位」自带一条推论：落在这条跨度内、顶边又落在 drag edge 高度（`--wui-drawer-drag-edge-size`，默认 20px；胶囊外沿更厚时以胶囊为准）之内的控件，上部会被拖拽面盖住——drag bar 就画在那里，起手必须从 drag bar 所在的位置开始。
+“Drag bar occupancy” comes with a corollary: controls that fall within this span and whose top edge lies within the drag edge height (`--wui-drawer-drag-edge-size`, 20px by default; the pill wins when its outer edge is thicker) are covered by the drag surface on their upper part—the drag bar is drawn right there, and a gesture must start from where the drag bar is.
 
-抬 `z-index` 没用（Chromium 里 drag edge 始终压在 slotted 内容之上），量得着的杠杆是 `--wui-drawer-drag-bar-length`（同时决定胶囊长度与 drag edge 宽度）与 `--wui-drawer-drag-edge-size`（drag edge 厚度）。
+Raising `z-index` does not help (in Chromium the drag edge always sits above slotted content); the levers that do measure are `--wui-drawer-drag-bar-length` (which decides both the pill length and the drag edge width) and `--wui-drawer-drag-edge-size` (the drag edge thickness).
 
-- 拖拽实时跟手，backdrop 透明度按比例淡出。
-- backdrop 点击关闭只认**轻点链路**：按下起点在 backdrop 上、且按-放位移在轻点量级内的 click 才关闭。浏览器对「按下 → 拖动 → 松手」生成的 click 落在起点与松手点的共同祖先（dialog）上——从 panel 内容或 backdrop 上开始拖拽、松手落在 backdrop 时，click 的 target 同样是 dialog；组件在 `pointerdown` 记录起点与坐标做回溯校验，这类拖拽松手一律弹回。`detail` 为 0 的 click（键盘/程序化来源）不消费指针记录。
-- 松手时自抓取瞬间起的**净位移**超过 drawer 尺寸的一半（下限 10px）或快速甩动即关闭，否则弹回打开位；方向随 placement 适配。判定的每一环都与 Base UI `useSwipeDismiss` 对齐：
-  - 位移零点与判定时钟都在**首个 `pointermove`** 处重置，用来吸收「按下 → 首个 move」之间的空隙；该次 move 的整程位移被整体丢弃，因此一次手势至少要两个 move 才可能累积出位移。
-  - 甩动看的是**整段手势**的平均速度（净位移 ÷ 手势时长，分母下限 50ms）**达到** 500px/s，不是释放瞬间的瞬时速度。滑窗只描述最后一小段轨迹；在整段平均速度下，「先往边缘拖出、再快速扫回」不再能凑成甩动。时长为 0 时速度取 0 而不是按 50ms 兜底，因此测不到时长的手势永远不会被读成甩动。
-  - 净位移没有朝闭合方向的松手一律弹回打开位。
-  - 距离判据同样用净位移：从弹回途中抓取后不再拖动就松手，不会被当成「已经拖过一半」。
-  - 自「方向确认点」起反向回撤满 10px 即取消本次甩动，因此拖出后回扫不会关闭。位移重新越过距离阈值会清除该标记，所以「已经拖过一半」不受小幅回撤影响。上游有同一个守卫（`cancelledSwipe`），但在 drawer 这条路径上永远走不到——`DrawerViewport.onRelease` 必然返回一个决定。
-  - 朝打开方向的拖拽按平方根压缩（`sign(d) · |d| ** 0.5`），对齐 `applyDirectionalDamping`。阻尼作用于本次手势的**增量**、叠加在抓取瞬间的位移之上，因此自限幅而不需要固定的位移上限。
-- 释放速度只决定收尾过渡的时长（180–420ms）；收尾本身是一次交还 CSS 的 `transform` 过渡，不再创建 WAAPI 动画。
-- 启用 `controlled` 后，超过阈值松手仅派发 `open-change(false)`；drawer 在闭合位短暂等待（120ms 回写窗口），消费方拒绝或超时未回写时弹回打开位。
-- 不支持拖拽打开——关闭态的 drawer 在原生 dialog 之外没有任何渲染物。
-- `prefers-reduced-motion` 下松手即时到位，不播放收尾过渡。
+- Dragging tracks the pointer in real time, and the backdrop fades proportionally.
+- A backdrop click only closes on the **tap path**: only a click whose press started on the backdrop and whose press-release displacement stays within tap magnitude closes. For a “press → drag → release” sequence, the browser puts the click on the common ancestor of the press and release points (the dialog)—when a drag starts on the panel content or the backdrop and is released over the backdrop, the click target is likewise the dialog; the component records the press point and coordinates on `pointerdown` and validates them retroactively, so releasing such a drag always springs back. Clicks with `detail` of 0 (keyboard or programmatic sources) do not consume the pointer record.
+- On release, the drawer closes if the **net displacement** since the moment it was grabbed exceeds half of its size (minimum 10px) or if it was flung quickly; otherwise it springs back to the open position. The direction adapts to placement. Every step of the decision matches Base UI's `useSwipeDismiss`:
+  - The displacement origin and the decision clock are both reset at the **first `pointermove`**, which absorbs the gap between “press → first move”; the whole displacement of that move is discarded, so a gesture needs at least two moves before any displacement can accumulate.
+  - A fling is judged by the **whole-gesture** average velocity (net displacement ÷ gesture duration, with a 50ms floor on the denominator) **reaching** 500px/s, not by the instantaneous velocity at release. A sliding window only describes the last short stretch of the trajectory; with whole-gesture average velocity, “drag out toward the edge, then sweep quickly back” no longer adds up to a fling. When the duration is 0 the velocity is taken as 0 rather than defaulting to 50ms, so a gesture whose duration cannot be measured is never read as a fling.
+  - A release whose net displacement does not point toward the closing direction always springs back to the open position.
+  - The distance criterion also uses net displacement: grabbing during the spring-back and releasing without further dragging is not treated as “already dragged past half”.
+  - Retracting 10px or more in the opposite direction from the “direction confirmation point” cancels the fling, so sweeping back after dragging out does not close. Displacement crossing the distance threshold again clears that flag, so “already dragged past half” is unaffected by a small retraction. Upstream has the same guard (`cancelledSwipe`), but it is never reached on the drawer path—`DrawerViewport.onRelease` always returns a decision.
+  - Dragging toward the open direction is compressed by a square root (`sign(d) · |d| ** 0.5`), matching `applyDirectionalDamping`. Damping applies to the **increment** of the current gesture and is added on top of the displacement at the moment of grabbing, so it self-limits and needs no fixed displacement cap.
+- The release velocity only decides the duration of the settling transition (180–420ms); the settling itself is a `transform` transition handed back to CSS and creates no WAAPI animation.
+- With `controlled` enabled, releasing past the threshold only dispatches `open-change(false)`; the drawer waits briefly at the closed position (a 120ms write-back window) and springs back to the open position if the consumer rejects or does not write back in time.
+- Drag-to-open is not supported—a closed drawer renders nothing outside the native dialog.
+- Under `prefers-reduced-motion`, release snaps into place immediately without playing the settling transition.
 
 ### CSS Custom Properties
 
-| 名称                              | 说明                                                                                                                                                                      | 默认值                             |
-| --------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------- |
-| `--wui-drawer-width`              | drawer 宽度                                                                                                                                                               | `320px`                            |
-| `--wui-drawer-height`             | drawer 高度（上/下）                                                                                                                                                      | `300px`                            |
-| `--wui-drawer-bg`                 | drawer 背景色                                                                                                                                                             | `var(--wui-color-surface-overlay)` |
-| `--wui-drawer-radius`             | 浮动卡片圆角（非 headless）                                                                                                                                               | `var(--wui-radius-overlay, 28px)`  |
-| `--wui-drawer-inset`              | 浮动卡片视口留边（非 headless）；置 `0` 为贴边几何                                                                                                                        | `8px`                              |
-| `--wui-drawer-nested-peek-base`   | 嵌套堆叠露边基准 `A`（`width <= 640px` 时为 `28.8px`）；堆叠总宽按 `A · ln(n)` 增长，单层因此完全不动，每多一层新增的露边递减。置 `0` 关闭露边。详见下方说明              | `43.2px`                           |
-| `--wui-drawer-overlay-bg`         | backdrop 背景色                                                                                                                                                           | `rgb(0 0 0 / 0.12)`                |
-| `--wui-drawer-drag-zone-size`     | Drag-to-close 命中 drag zone 厚度（draggable）                                                                                                                            | `20px`                             |
-| `--wui-drawer-drag-zone-inset`    | 拖拽 drag zone 与它避让的那一节（`placement=bottom` 的 header / `placement=top` 的 footer）之间的呼吸间距；该节不存在时为 0                                               | `var(--wui-space-1, 4px)`          |
-| `--wui-drawer-drag-bar-thickness` | Drag bar 胶囊厚度（短轴）                                                                                                                                                 | `4px`                              |
-| `--wui-drawer-drag-bar-length`    | Drag bar 胶囊长度（沿 drawer 边缘）                                                                                                                                       | `56px`                             |
-| `--wui-drawer-drag-edge-size`     | 胶囊命中带沿可抓取边缘的厚度（仅上下 placement）。以胶囊外沿兜底，胶囊所在的带恒被覆盖；默认值与 `--wui-drawer-drag-zone-size` 同值，于是 drag bar 不会比旁边的带子更难按 | `20px`                             |
-| `--wui-drawer-header-padding`     | Header 区域 padding                                                                                                                                                       | `16px 20px`                        |
-| `--wui-drawer-close-top`          | 内置关闭按钮相对 header 顶部的偏移                                                                                                                                        | `16px`                             |
-| `--wui-drawer-close-right`        | 内置关闭按钮相对 drawer 右缘的偏移                                                                                                                                        | `16px`                             |
-| `--wui-drawer-content-padding`    | 内容区 padding；同时驱动 drag bar 视觉中线（取半值，不低于半个胶囊厚度 + 4px）                                                                                            | `20px`                             |
-| `--wui-drawer-footer-padding`     | Footer 区域 padding                                                                                                                                                       | `16px 20px`                        |
+| Name                              | Description                                                                                                                                                                                                                                                                                              | Default                            |
+| --------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------- |
+| `--wui-drawer-width`              | Drawer width                                                                                                                                                                                                                                                                                             | `320px`                            |
+| `--wui-drawer-height`             | Drawer height (top / bottom)                                                                                                                                                                                                                                                                             | `300px`                            |
+| `--wui-drawer-bg`                 | Drawer background color                                                                                                                                                                                                                                                                                  | `var(--wui-color-surface-overlay)` |
+| `--wui-drawer-radius`             | Floating card radius (non-headless)                                                                                                                                                                                                                                                                      | `var(--wui-radius-overlay, 28px)`  |
+| `--wui-drawer-inset`              | Floating card viewport inset (non-headless); set to `0` for edge-to-edge geometry                                                                                                                                                                                                                        | `8px`                              |
+| `--wui-drawer-nested-peek-base`   | Exposed-edge base `A` for nested stacking (`28.8px` when `width <= 640px`); the total stack width grows as `A · ln(n)`, so a single layer never moves and each additional layer adds a smaller exposed edge. Set to `0` to disable the exposed edge. See the notes above                                 | `43.2px`                           |
+| `--wui-drawer-overlay-bg`         | Backdrop background color                                                                                                                                                                                                                                                                                | `rgb(0 0 0 / 0.12)`                |
+| `--wui-drawer-drag-zone-size`     | Thickness of the drag zone that hit-tests drag-to-close (draggable)                                                                                                                                                                                                                                      | `20px`                             |
+| `--wui-drawer-drag-zone-inset`    | Gap between the drag zone and the section it makes way for (the header when `placement=bottom` / the footer when `placement=top`); 0 when that section does not exist                                                                                                                                    | `var(--wui-space-1, 4px)`          |
+| `--wui-drawer-drag-bar-thickness` | Drag bar pill thickness (short axis)                                                                                                                                                                                                                                                                     | `4px`                              |
+| `--wui-drawer-drag-bar-length`    | Drag bar pill length (along the drawer edge)                                                                                                                                                                                                                                                             | `56px`                             |
+| `--wui-drawer-drag-edge-size`     | Thickness of the pill's hit band along the grabbable edge (top / bottom placements only). It falls back to the pill's outer edge, so the band where the pill sits is always covered; the default matches `--wui-drawer-drag-zone-size`, so the drag bar is never harder to press than the band beside it | `20px`                             |
+| `--wui-drawer-header-padding`     | Header area padding                                                                                                                                                                                                                                                                                      | `16px 20px`                        |
+| `--wui-drawer-close-top`          | Offset of the built-in close button from the top of the header                                                                                                                                                                                                                                           | `16px`                             |
+| `--wui-drawer-close-right`        | Offset of the built-in close button from the right edge of the drawer                                                                                                                                                                                                                                    | `16px`                             |
+| `--wui-drawer-content-padding`    | Content area padding; also drives the drag bar's visual center line (half the value, no less than half the pill thickness + 4px)                                                                                                                                                                         | `20px`                             |
+| `--wui-drawer-footer-padding`     | Footer area padding                                                                                                                                                                                                                                                                                      | `16px 20px`                        |

@@ -3,15 +3,15 @@ component: switch
 tag: web-ui-switch
 ---
 
-开关，声明 `role="switch"` 与 `aria-checked`；点击即时开合，也支持按住 track 横拖与甩动定值，空格与 Enter 都能键盘切换。
+Switch, declaring `role="switch"` and `aria-checked`; a click toggles it immediately, and holding the track to drag horizontally or flicking it also sets the value, with both Space and Enter toggling from the keyboard.
 
-默认插槽的子文本会作为可见标签和默认 accessible name；也可以在 host 上设置 `aria-label` 或 `aria-labelledby`。
+Text children of the default slot become the visible label and the default accessible name; `aria-label` or `aria-labelledby` can also be set on the host.
 
-## 示例
+## Samples
 
-### 基础 {#basic}
+### Basic {#basic}
 
-`checked` 是开合状态。组件没有 slot：写在 `<web-ui-switch>` 里的文字不会渲染，label 放在宿主外面。由页面持有这个值时，接住 `change` 再写回 `checked`。
+`checked` is the on/off state. Text written inside `<web-ui-switch>` renders as the visible label next to the switch (see Slots); when you do not want a visible label, keep the label outside the host. When the page owns this value, catch `change` and write it back to `checked`.
 
 ```tsx
 import { useState } from 'react'
@@ -22,7 +22,7 @@ export default function Demo() {
   return (
     <div className="flex items-center gap-3">
       <web-ui-switch checked={enabled} onChange={event => setEnabled(event.currentTarget.checked)}></web-ui-switch>
-      <span className="text-sm text-(--wui-color-text-secondary)">{enabled ? '已开启' : '已关闭'}</span>
+      <span className="text-sm text-(--wui-color-text-secondary)">{enabled ? 'On' : 'Off'}</span>
     </div>
   )
 }
@@ -32,7 +32,7 @@ export default function Demo() {
 <template>
   <div class="flex items-center gap-3">
     <web-ui-switch :checked="enabled" @change="onChange"></web-ui-switch>
-    <span class="text-sm text-(--wui-color-text-secondary)">{{ enabled ? '已开启' : '已关闭' }}</span>
+    <span class="text-sm text-(--wui-color-text-secondary)">{{ enabled ? 'On' : 'Off' }}</span>
   </div>
 </template>
 
@@ -48,11 +48,11 @@ function onChange(event: WebUiEvent<WebUiSwitch, 'change'>) {
 </script>
 ```
 
-### 禁用与加载 {#states}
+### Disabled and loading {#states}
 
-`disabled` 与 `loading` 都阻断交互、都走同一条禁用外观。
+`disabled` and `loading` both block interaction and both use the same disabled appearance.
 
-区别在语义与画面，也区别在校验：`loading` 在 thumb 里画一个旋转 icon，表示结果未定，`checked` 保持不动，适合"提交中"的等待态；`required` 的判定只认 `disabled`（含表单级禁用），`loading` 时未选中照旧上报 `valueMissing` 并拦下提交。
+The difference is in semantics and visuals, and also in validation: `loading` draws a spinning icon in the thumb to say the result is undecided while `checked` stays put, suiting a "submitting" wait; the `required` check honors only `disabled` (including form-level disabling), so while `loading` an unchecked switch still reports `valueMissing` and blocks submission.
 
 ```tsx
 export default function Demo() {
@@ -60,11 +60,13 @@ export default function Demo() {
     <div className="flex flex-col gap-3">
       <div className="flex items-center gap-3">
         <web-ui-switch checked disabled></web-ui-switch>
-        <span className="text-sm text-(--wui-color-text-secondary)">disabled：开着但改不动</span>
+        <span className="text-sm text-(--wui-color-text-secondary)">disabled: on, but cannot be changed</span>
       </div>
       <div className="flex items-center gap-3">
         <web-ui-switch checked loading></web-ui-switch>
-        <span className="text-sm text-(--wui-color-text-secondary)">loading：保持当前值等结果</span>
+        <span className="text-sm text-(--wui-color-text-secondary)">
+          loading: keeps the current value while waiting
+        </span>
       </div>
     </div>
   )
@@ -76,19 +78,19 @@ export default function Demo() {
   <div class="flex flex-col gap-3">
     <div class="flex items-center gap-3">
       <web-ui-switch checked disabled></web-ui-switch>
-      <span class="text-sm text-(--wui-color-text-secondary)">disabled：开着但改不动</span>
+      <span class="text-sm text-(--wui-color-text-secondary)">disabled: on, but cannot be changed</span>
     </div>
     <div class="flex items-center gap-3">
       <web-ui-switch checked loading></web-ui-switch>
-      <span class="text-sm text-(--wui-color-text-secondary)">loading：保持当前值等结果</span>
+      <span class="text-sm text-(--wui-color-text-secondary)">loading: keeps the current value while waiting</span>
     </div>
   </div>
 </template>
 ```
 
-### 事件节奏 {#events}
+### Event timing {#events}
 
-事件只在用户操作后派发：点击、Enter 与空格都由组件派发 `input` 加 `change` 两条。程序写入 `checked` 两条都不派发——下面这个按钮走的正是这条路。
+Events are dispatched only after user action: a click, Enter, and Space all make the component dispatch both `input` and `change`. Writing `checked` programmatically dispatches neither—that is exactly the path the button below takes.
 
 ```tsx
 import type { WebUiSwitch } from '@greypan/web-ui'
@@ -112,10 +114,10 @@ export default function Demo() {
           if (field) field.checked = !field.checked
         }}
       >
-        程序写入 checked
+        Write checked programmatically
       </web-ui-button>
       <output className="text-sm text-(--wui-color-text-secondary)">
-        input {inputs} 次 · change {changes} 次
+        input {inputs} times · change {changes} times
       </output>
     </div>
   )
@@ -126,8 +128,10 @@ export default function Demo() {
 <template>
   <div class="flex flex-wrap items-center gap-3">
     <web-ui-switch ref="field" @input="inputs = inputs + 1" @change="changes = changes + 1"></web-ui-switch>
-    <web-ui-button @click="writeChecked">程序写入 checked</web-ui-button>
-    <output class="text-sm text-(--wui-color-text-secondary)">input {{ inputs }} 次 · change {{ changes }} 次</output>
+    <web-ui-button @click="writeChecked">Write checked programmatically</web-ui-button>
+    <output class="text-sm text-(--wui-color-text-secondary)"
+      >input {{ inputs }} times · change {{ changes }} times</output
+    >
   </div>
 </template>
 
@@ -146,13 +150,13 @@ function writeChecked() {
 </script>
 ```
 
-### 拖拽与甩动 {#drag}
+### Drag and flick {#drag}
 
-按下之后横向移动超过 6px 才进入拖拽，thumb 跟着指针走；松手时位移过半就定值，横向速度超过 ±300 px/s 则按甩动方向定值，不看落点。
+After pressing, the switch enters dragging only once horizontal movement exceeds 6px, and the thumb follows the pointer; on release, moving past half the distance sets the value, and a horizontal velocity beyond ±300 px/s sets it in the flick direction regardless of where the pointer landed.
 
-一次拖拽只算一次取值变更，`input` 与 `change` 各派发一次，紧随其后的 click 被拖拽标记吞掉，不会二次翻转。
+One drag counts as one value change, with `input` and `change` dispatched once each; the click that immediately follows is swallowed by the drag flag and does not flip the switch a second time.
 
-宿主 `touch-action: none`，竖屏滚动不会抢走这个手势。
+The host has `touch-action: none`, so vertical page scrolling does not steal this gesture.
 
 ```tsx
 import { useState } from 'react'
@@ -168,10 +172,12 @@ export default function Demo() {
     <div className="flex w-full flex-col items-start gap-3">
       <div className="flex items-center gap-3">
         <web-ui-switch onInput={() => record('input')} onChange={() => record('change')}></web-ui-switch>
-        <span className="text-sm text-(--wui-color-text-secondary)">按住整块拖，跨过中点或甩手即定值</span>
+        <span className="text-sm text-(--wui-color-text-secondary)">
+          Press and drag the whole control; crossing the midpoint or flicking sets the value
+        </span>
       </div>
       <output className="text-sm text-(--wui-color-text-secondary)">
-        {log.length === 0 ? '等待操作' : log.join(' → ')}
+        {log.length === 0 ? 'Waiting for interaction' : log.join(' → ')}
       </output>
     </div>
   )
@@ -183,10 +189,12 @@ export default function Demo() {
   <div class="flex w-full flex-col items-start gap-3">
     <div class="flex items-center gap-3">
       <web-ui-switch @input="record('input')" @change="record('change')"></web-ui-switch>
-      <span class="text-sm text-(--wui-color-text-secondary)">按住整块拖，跨过中点或甩手即定值</span>
+      <span class="text-sm text-(--wui-color-text-secondary)">
+        Press and drag the whole control; crossing the midpoint or flicking sets the value
+      </span>
     </div>
     <output class="text-sm text-(--wui-color-text-secondary)">
-      {{ log.length === 0 ? '等待操作' : log.join(' → ') }}
+      {{ log.length === 0 ? 'Waiting for interaction' : log.join(' → ') }}
     </output>
   </div>
 </template>
@@ -202,13 +210,13 @@ function record(name: string) {
 </script>
 ```
 
-### 表单值 {#form}
+### Form value {#form}
 
-`name` 是字段名，`value` 是提交值，留空时提交 `'on'`。
+`name` is the field name and `value` is the submitted value, which defaults to `'on'` when left empty.
 
-未选中时这个字段整个不进 `FormData`；`required` 在未选中时拦下提交（`valueMissing`），外层 `<fieldset disabled>` 禁用时校验一并退让。
+When unchecked the field does not enter `FormData` at all; `required` blocks submission while unchecked (`valueMissing`), and validation yields as well when an outer `<fieldset disabled>` disables it.
 
-可见标签同时命名 switch；`aria-label` 或 `aria-labelledby` 可覆盖默认名称。
+The visible label also names the switch; `aria-label` or `aria-labelledby` can override the default name.
 
 ```tsx
 import { useRef, useState } from 'react'
@@ -227,21 +235,23 @@ export default function Demo() {
         for (const [name, value] of new FormData(event.currentTarget)) {
           if (typeof value === 'string') fields.push(`${name}=${value}`)
         }
-        setSubmitted(fields.join(' · ') || '(没有字段)')
+        setSubmitted(fields.join(' · ') || '(no fields)')
       }}
     >
       <web-ui-switch name="newsletter" value="yes" required></web-ui-switch>
-      <span className="text-sm text-(--wui-color-text-secondary)">订阅邮件：必填</span>
-      <web-ui-button type="submit">提交</web-ui-button>
+      <span className="text-sm text-(--wui-color-text-secondary)">Newsletter subscription: required</span>
+      <web-ui-button type="submit">Submit</web-ui-button>
       <web-ui-button
         onClick={() => {
           formRef.current?.reset()
           setSubmitted('')
         }}
       >
-        重置
+        Reset
       </web-ui-button>
-      <output className="text-sm text-(--wui-color-text-secondary)">{submitted === '' ? '尚未提交' : submitted}</output>
+      <output className="text-sm text-(--wui-color-text-secondary)">
+        {submitted === '' ? 'Not submitted yet' : submitted}
+      </output>
     </form>
   )
 }
@@ -251,10 +261,12 @@ export default function Demo() {
 <template>
   <form ref="form" class="flex flex-wrap items-center gap-4" @submit="onSubmit">
     <web-ui-switch name="newsletter" value="yes" required></web-ui-switch>
-    <span class="text-sm text-(--wui-color-text-secondary)">订阅邮件：必填</span>
-    <web-ui-button type="submit">提交</web-ui-button>
-    <web-ui-button @click="reset">重置</web-ui-button>
-    <output class="text-sm text-(--wui-color-text-secondary)">{{ submitted === '' ? '尚未提交' : submitted }}</output>
+    <span class="text-sm text-(--wui-color-text-secondary)">Newsletter subscription: required</span>
+    <web-ui-button type="submit">Submit</web-ui-button>
+    <web-ui-button @click="reset">Reset</web-ui-button>
+    <output class="text-sm text-(--wui-color-text-secondary)">
+      {{ submitted === '' ? 'Not submitted yet' : submitted }}
+    </output>
   </form>
 </template>
 
@@ -270,7 +282,7 @@ function onSubmit(event: Event) {
   for (const [name, value] of new FormData(event.currentTarget as HTMLFormElement)) {
     if (typeof value === 'string') fields.push(`${name}=${value}`)
   }
-  submitted.value = fields.join(' · ') || '(没有字段)'
+  submitted.value = fields.join(' · ') || '(no fields)'
 }
 
 function reset() {
@@ -284,64 +296,64 @@ function reset() {
 
 ### Props
 
-| 名称       | 说明                                                               | 类型      | 默认值  |
-| ---------- | ------------------------------------------------------------------ | --------- | ------- |
-| `checked`  | 开合状态；不是观察属性，程序写入生效但不反射成属性、也不派发事件。 | `boolean` | `false` |
-| `name`     | 表单字段名。                                                       | `string`  | `''`    |
-| `value`    | 表单提交值，留空时提交 `'on'`；未选中时字段不提交。                | `string`  | `''`    |
-| `disabled` | 禁用状态，阻断交互并让校验退让。                                   | `boolean` | `false` |
-| `required` | 必填校验：未选中时拦下提交。                                       | `boolean` | `false` |
-| `loading`  | 加载状态：阻断交互，thumb 内显示旋转 icon，当前值保持不动。        | `boolean` | `false` |
+| Name       | Description                                                                                                                                   | Type      | Default |
+| ---------- | --------------------------------------------------------------------------------------------------------------------------------------------- | --------- | ------- |
+| `checked`  | On/off state; it is not an observed attribute, so a programmatic write takes effect without reflecting to an attribute or dispatching events. | `boolean` | `false` |
+| `name`     | Form field name.                                                                                                                              | `string`  | `''`    |
+| `value`    | Form submission value, `'on'` when left empty; the field is not submitted while unchecked.                                                    | `string`  | `''`    |
+| `disabled` | Disabled state; blocks interaction and makes validation yield.                                                                                | `boolean` | `false` |
+| `required` | Required validation: blocks submission while unchecked.                                                                                       | `boolean` | `false` |
+| `loading`  | Loading state: blocks interaction, shows a spinning icon in the thumb, and keeps the current value.                                           | `boolean` | `false` |
 
 ### Slots
 
-| 名称      | 说明                                                                   |
-| --------- | ---------------------------------------------------------------------- |
-| `default` | 可见标签文本，并作为 switch 的 accessible name；为空时不增加额外间距。 |
+| Name      | Description                                                                                                  |
+| --------- | ------------------------------------------------------------------------------------------------------------ |
+| `default` | Visible label text, which also serves as the switch's accessible name; no extra spacing is added when empty. |
 
 ### Events
 
-| 名称     | 说明                                                                |
-| -------- | ------------------------------------------------------------------- |
-| `input`  | 用户切换时派发：点击、Enter、空格与拖拽定值，四条路径都由组件派发。 |
-| `change` | 与 `input` 同一批提交点派发；程序写入 `checked` 不派发。            |
+| Name     | Description                                                                                                            |
+| -------- | ---------------------------------------------------------------------------------------------------------------------- |
+| `input`  | Dispatched when the user toggles: click, Enter, Space, and drag-to-set—all four paths are dispatched by the component. |
+| `change` | Dispatched at the same commit points as `input`; a programmatic write to `checked` dispatches nothing.                 |
 
-### 行为说明
+### Behavior
 
-`checked` 不是观察属性，而是内部状态上的一对 getter / setter：原生标签上写下的 `checked` 只在挂载时被读一次，之后 Lit 不再看这个属性；框架的动态绑定落到 property 上才会随渲染更新。
+`checked` is not an observed attribute but a getter / setter pair over internal state: a `checked` written on the native tag is read only once at mount, after which Lit no longer looks at the attribute; a framework's dynamic binding updates it only when it lands on the property.
 
-直接写 `el.checked = true` 生效，但不反射成属性，也不派发任何事件。
+Writing `el.checked = true` directly takes effect, but does not reflect to an attribute and dispatches no events.
 
-要跟着页面走就接住 `change` 再写回，见上面的基础示例。
+To follow the page, catch `change` and write it back, as in the basic sample above.
 
-三条激活路径的最终出口相同：点击、Space / Enter 与拖拽定值都经组件写入新值，并在宿主上派发 `input` 与 `change` 两条 `composed` 事件。
+The three activation paths end at the same place: click, Space / Enter, and drag-to-set all write the new value through the component and dispatch both `input` and `change` as `composed` events on the host.
 
-host 自己承接 click 与 keydown（Space / Enter `preventDefault()` 后切换，不依赖内部原生控件），所以三条路径不再有冒泡与转发之分，程序写入 `checked` 仍不派发。
+The host handles click and keydown itself (calling `preventDefault()` on Space / Enter before toggling, without relying on an inner native control), so the three paths no longer differ in bubbling or forwarding, and a programmatic write to `checked` still dispatches nothing.
 
-`disabled` 与 `loading` 共用同一条禁用路径：`_isDisabled`（含表单级禁用）或 `loading` 时，点击、键盘与拖拽三条入口都在处理函数最前面返回，thumb 停在当前值。
+`disabled` and `loading` share one disabled path: when `_isDisabled` (including form-level disabling) or `loading` is true, all three entry points—click, keyboard, and drag—return at the top of their handlers, and the thumb stays at the current value.
 
-校验只走一半：`required` 的 `valueMissing` 判定读的是 `_isDisabled`，因此 `disabled` 上报干净状态、`loading` 不上报。
+Validation only goes halfway: the `valueMissing` check for `required` reads `_isDisabled`, so `disabled` reports a clean state while `loading` does not report.
 
-键盘焦点落在 host 上（可用态 `tabindex=0`），焦点环靠 `:host(:focus-visible)` 画在 track 上；鼠标触发的焦点不画环，交给共享的 pointer focus 抑制机制。
+Keyboard focus lands on the host (`tabindex=0` when enabled), and the focus ring is drawn on the track via `:host(:focus-visible)`; focus triggered by the mouse draws no ring and is left to the shared pointer focus suppression mechanism.
 
-`disabled` 或 `loading` 时 host 的 `tabindex` 被压成 `-1`（原值记下、恢复时还原），整块离开 tab 序列，焦点环也就无从出现。
+When `disabled` or `loading`, the host's `tabindex` is pressed to `-1` (the original value is recorded and restored on recovery), so the whole control leaves the tab sequence and the focus ring has no way to appear.
 
-accessible name：默认插槽内容就是可见标签，同时也是 switch 的 accessible name；需要引用外部 label 时在 `web-ui-switch` host 上设置 `aria-labelledby`，或直接设置 `aria-label`。
+accessible name: the default slot content is the visible label and also the switch's accessible name; to reference an external label, set `aria-labelledby` on the `web-ui-switch` host, or set `aria-label` directly.
 
-host 上的 `role="switch"`、`aria-checked` 与 `aria-disabled` 由组件同步维护。
+`role="switch"`, `aria-checked`, and `aria-disabled` on the host are maintained by the component.
 
-### 布局
+### Layout
 
-标签与 track 之间默认间距为 `8px`；default slot 没有可渲染宽度时（空槽位或只放了视觉隐藏的无障碍名）间距收起，宿主宽度不会超过 track。
+The default spacing between the label and the track is `8px`; when the default slot has no renderable width (an empty slot, or only a visually hidden accessible name), the spacing collapses and the host width does not exceed the track.
 
-track 是 40×20 的胶囊盒，圆角取 `--wui-radius-control`，底色取 `--wui-color-surface-track`，打开时换成 `--wui-color-accent`。
+The track is a 40×20 pill box, taking its radius from `--wui-radius-control` and its background from `--wui-color-surface-track`, switching to `--wui-color-accent` when on.
 
-thumb 是 16×16 圆点，静止态用 `--wui-color-on-control` 实心加阴影，按压与拖拽时换成 glass 表面并加宽到 20px、`scale(1.5)`，两条形态切换由 transition 衔接。
+The thumb is a 16×16 dot; at rest it is solid `--wui-color-on-control` with a shadow, and when pressed or dragged it switches to the glass surface and widens to 20px with `scale(1.5)`, with a transition bridging the two forms.
 
-打开态位移 20px（按压态 16px，配合放大后的视觉位置一致）。
+The on state is offset by 20px (16px in the pressed state, matching the enlarged visual position).
 
-拖拽期间的位置走内联的 `--wui-switch-drag-offset`，同时关掉 transition 让它跟手——这个变量由组件自己驱动，不要当样式钩子写。
+Position during a drag goes through an inline `--wui-switch-drag-offset`, with transitions turned off so it follows the hand—this variable is driven by the component itself; do not use it as a style hook.
 
-宿主与 track 都是 `touch-action: none`，`user-select: none` 只写在 track 上；禁用与加载落到 `.is-disabled`，整块降到四成不透明度并换 `not-allowed` 光标。
+Both the host and the track are `touch-action: none`, and `user-select: none` is written on the track only; disabled and loading land on `.is-disabled`, dropping the whole control to forty percent opacity and switching to a `not-allowed` cursor.
 
-组件没有自有的尺寸或颜色 token，全部走主题共享 token，因此这里不列 CSS Custom Properties 表：宽度与颜色要改，改的是 `--wui-color-surface-track` 与 `--wui-color-accent` 这类主题变量本身，作用范围是所有控件。
+The component has no size or color tokens of its own; everything goes through shared theme tokens, so there is no CSS Custom Properties table here: to change the width or colors, change the theme variables themselves, such as `--wui-color-surface-track` and `--wui-color-accent`, and the effect covers every control.
