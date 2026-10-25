@@ -3,13 +3,13 @@ component: autocomplete
 tag: web-ui-autocomplete
 ---
 
-可输入并过滤候选的单值选择器：输入文本按 `option` 的 label 过滤候选，选中后把 label 回填到 input，并把该项的 value 暴露为只读的 `selected-value`。
+A single-value selector that accepts input and filters candidates: typed text filters candidates by `option` label, and a selection fills the label back into the input and exposes that option's value as the readonly `selected-value`.
 
-## 示例
+## Samples
 
-### 基础 {#basic}
+### Basic {#basic}
 
-`value` 是当前输入文本，由页面持有：键入按 label 过滤候选（默认 `contains`），没有匹配项时 panel 保持关闭；选中后文本回填为该项 label，`selected-value` 给出该项的 value。
+`value` is the current input text and is owned by the page: typing filters candidates by label (default `contains`), and the panel stays closed when nothing matches; after a selection the text is filled back with that option's label and `selected-value` gives that option's value.
 
 ```tsx
 import { useState } from 'react'
@@ -24,7 +24,7 @@ export default function Demo() {
     <div className="flex flex-col items-start gap-3">
       <web-ui-autocomplete
         value={text}
-        placeholder="输入框架名"
+        placeholder="Type a framework name"
         onInput={event => setText(event.currentTarget.value)}
         onChange={event => {
           setText(event.currentTarget.value)
@@ -36,7 +36,7 @@ export default function Demo() {
         ))}
       </web-ui-autocomplete>
       <output className="text-sm text-(--wui-color-text-secondary)">
-        输入：{text || '(空)'} · selected-value：{picked || '(空)'}
+        input: {text || '(empty)'} · selected-value: {picked || '(empty)'}
       </output>
     </div>
   )
@@ -46,11 +46,11 @@ export default function Demo() {
 ```vue
 <template>
   <div class="flex flex-col items-start gap-3">
-    <web-ui-autocomplete :value="text" placeholder="输入框架名" @input="onInput" @change="onChange">
+    <web-ui-autocomplete :value="text" placeholder="Type a framework name" @input="onInput" @change="onChange">
       <web-ui-option v-for="name in frameworks" :key="name" :value="name" :label="name"></web-ui-option>
     </web-ui-autocomplete>
     <output class="text-sm text-(--wui-color-text-secondary)">
-      输入：{{ text || '(空)' }} · selected-value：{{ picked || '(空)' }}
+      input: {{ text || '(empty)' }} · selected-value: {{ picked || '(empty)' }}
     </output>
   </div>
 </template>
@@ -74,9 +74,9 @@ function onChange(event: WebUiEvent<WebUiAutocomplete, 'change'>) {
 </script>
 ```
 
-### 过滤模式 {#filter}
+### Filter modes {#filter}
 
-`filter` 取 `contains`（默认）、`prefix` 或 `none`：前两者按 label 包含或前缀匹配，`none` 关闭过滤、候选始终全量列出。
+`filter` takes `contains` (default), `prefix`, or `none`: the first two match labels by substring or prefix, while `none` turns filtering off and always lists all candidates.
 
 ```tsx
 import { useState } from 'react'
@@ -100,9 +100,9 @@ export default function Demo() {
           <web-ui-option value="prefix" label="prefix"></web-ui-option>
           <web-ui-option value="none" label="none"></web-ui-option>
         </web-ui-select>
-        <output className="text-sm text-(--wui-color-text-secondary)">当前模式：{mode}</output>
+        <output className="text-sm text-(--wui-color-text-secondary)">Current mode: {mode}</output>
       </div>
-      <web-ui-autocomplete filter={mode} placeholder="输入框架名">
+      <web-ui-autocomplete filter={mode} placeholder="Type a framework name">
         {frameworks.map(name => (
           <web-ui-option key={name} value={name} label={name}></web-ui-option>
         ))}
@@ -121,9 +121,9 @@ export default function Demo() {
         <web-ui-option value="prefix" label="prefix"></web-ui-option>
         <web-ui-option value="none" label="none"></web-ui-option>
       </web-ui-select>
-      <output class="text-sm text-(--wui-color-text-secondary)">当前模式：{{ mode }}</output>
+      <output class="text-sm text-(--wui-color-text-secondary)">Current mode: {{ mode }}</output>
     </div>
-    <web-ui-autocomplete :filter="mode" placeholder="输入框架名">
+    <web-ui-autocomplete :filter="mode" placeholder="Type a framework name">
       <web-ui-option v-for="name in frameworks" :key="name" :value="name" :label="name"></web-ui-option>
     </web-ui-autocomplete>
   </div>
@@ -144,18 +144,18 @@ function onModeChange(event: WebUiEvent<WebUiSelect, 'change'>) {
 </script>
 ```
 
-### change 与 selected-value {#change-selected-value}
+### change and selected-value {#change-selected-value}
 
-选中候选后 `selected-value` 是该项的 value；输入不再精确匹配任何 label 时它清空——它由组件在更新周期里派生，所以在 `input` 里读它要等一拍（`requestAnimationFrame`），`change` 里读到的才是当次提交的值。
+After a candidate is selected, `selected-value` is that option's value; it clears when the input no longer exactly matches any label—it is derived by the component during its update cycle, so reading it in `input` takes one tick (`requestAnimationFrame`), while `change` sees the value committed by that interaction.
 
 ```tsx
 import { useState } from 'react'
 
 const cities = [
-  { label: '北京', value: 'beijing' },
-  { label: '上海', value: 'shanghai' },
-  { label: '广州', value: 'guangzhou' },
-  { label: '深圳', value: 'shenzhen' }
+  { label: 'Beijing', value: 'beijing' },
+  { label: 'Shanghai', value: 'shanghai' },
+  { label: 'Guangzhou', value: 'guangzhou' },
+  { label: 'Shenzhen', value: 'shenzhen' }
 ]
 
 export default function Demo() {
@@ -166,11 +166,11 @@ export default function Demo() {
   return (
     <div className="flex flex-col items-start gap-3">
       <web-ui-autocomplete
-        placeholder="选中北京后再删掉一个字"
+        placeholder="Select Beijing, then delete one character"
         onInput={event => {
           const host = event.currentTarget
           setText(host.value)
-          // selected-value 在组件的更新周期里派生，下一帧读到的才是与当前文本对应的值
+          // selected-value is derived during the component's update cycle; only the next frame reads the value matching the current text
           requestAnimationFrame(() => setLiveSelected(host.selectedValue))
         }}
         onChange={event => {
@@ -184,10 +184,10 @@ export default function Demo() {
         ))}
       </web-ui-autocomplete>
       <output className="text-sm text-(--wui-color-text-secondary)">
-        输入：{text || '(空)'} · selected-value：{liveSelected || '(空)'}
+        input: {text || '(empty)'} · selected-value: {liveSelected || '(empty)'}
       </output>
       <output className="text-sm text-(--wui-color-text-secondary)">
-        最近一次 change 的 selected-value：{committed || '(空)'}
+        selected-value of the latest change: {committed || '(empty)'}
       </output>
     </div>
   )
@@ -197,14 +197,14 @@ export default function Demo() {
 ```vue
 <template>
   <div class="flex flex-col items-start gap-3">
-    <web-ui-autocomplete placeholder="选中北京后再删掉一个字" @input="onInput" @change="onChange">
+    <web-ui-autocomplete placeholder="Select Beijing, then delete one character" @input="onInput" @change="onChange">
       <web-ui-option v-for="city in cities" :key="city.value" :value="city.value" :label="city.label"></web-ui-option>
     </web-ui-autocomplete>
     <output class="text-sm text-(--wui-color-text-secondary)">
-      输入：{{ text || '(空)' }} · selected-value：{{ liveSelected || '(空)' }}
+      input: {{ text || '(empty)' }} · selected-value: {{ liveSelected || '(empty)' }}
     </output>
     <output class="text-sm text-(--wui-color-text-secondary)">
-      最近一次 change 的 selected-value：{{ committed || '(空)' }}
+      selected-value of the latest change: {{ committed || '(empty)' }}
     </output>
   </div>
 </template>
@@ -214,10 +214,10 @@ import type { WebUiAutocomplete, WebUiEvent } from '@greypan/web-ui'
 import { ref } from 'vue'
 
 const cities = [
-  { label: '北京', value: 'beijing' },
-  { label: '上海', value: 'shanghai' },
-  { label: '广州', value: 'guangzhou' },
-  { label: '深圳', value: 'shenzhen' }
+  { label: 'Beijing', value: 'beijing' },
+  { label: 'Shanghai', value: 'shanghai' },
+  { label: 'Guangzhou', value: 'guangzhou' },
+  { label: 'Shenzhen', value: 'shenzhen' }
 ]
 const text = ref('')
 const liveSelected = ref('')
@@ -226,7 +226,7 @@ const committed = ref('')
 function onInput(event: WebUiEvent<WebUiAutocomplete, 'input'>) {
   const host = event.currentTarget
   text.value = host.value
-  // selected-value 在组件的更新周期里派生，下一帧读到的才是与当前文本对应的值
+  // selected-value is derived during the component's update cycle; only the next frame reads the value matching the current text
   requestAnimationFrame(() => (liveSelected.value = host.selectedValue))
 }
 
@@ -238,11 +238,11 @@ function onChange(event: WebUiEvent<WebUiAutocomplete, 'change'>) {
 </script>
 ```
 
-### 自定义 trigger {#custom-trigger}
+### Custom trigger {#custom-trigger}
 
-把可编辑组件放进 `trigger` 插槽即可替换默认 input：多行 trigger 保留 Enter 换行语义，关闭 panel 改用 Escape 或 blur；这里同时用 `filter="none"` 让候选始终全量列出。
+Put an editable component into the `trigger` slot to replace the default input: a multiline trigger keeps Enter as a newline and closes the panel with Escape or blur; this example also uses `filter="none"` so that all candidates are always listed.
 
-`focus()` 委托给当前 trigger，落在 `web-ui-textarea` 内部的原生控件上。
+`focus()` delegates to the current trigger and lands on the native control inside `web-ui-textarea`.
 
 ```tsx
 import type { WebUiAutocomplete } from '@greypan/web-ui'
@@ -258,12 +258,12 @@ export default function Demo() {
           slot="trigger"
           rows={3}
           className="[--wui-textarea-width:20rem]"
-          placeholder="多行 trigger：Enter 换行，Escape 或失焦关闭 panel"
+          placeholder="Multiline trigger: Enter inserts a newline, Escape or blur closes the panel"
         ></web-ui-textarea>
-        <web-ui-option value="bug" label="缺陷"></web-ui-option>
-        <web-ui-option value="feature" label="需求"></web-ui-option>
+        <web-ui-option value="bug" label="Bug"></web-ui-option>
+        <web-ui-option value="feature" label="Feature"></web-ui-option>
       </web-ui-autocomplete>
-      <web-ui-button onClick={() => fieldRef.current?.focus()}>聚焦 trigger</web-ui-button>
+      <web-ui-button onClick={() => fieldRef.current?.focus()}>Focus the trigger</web-ui-button>
     </div>
   )
 }
@@ -277,12 +277,12 @@ export default function Demo() {
         slot="trigger"
         :rows="3"
         class="[--wui-textarea-width:20rem]"
-        placeholder="多行 trigger：Enter 换行，Escape 或失焦关闭 panel"
+        placeholder="Multiline trigger: Enter inserts a newline, Escape or blur closes the panel"
       ></web-ui-textarea>
-      <web-ui-option value="bug" label="缺陷"></web-ui-option>
-      <web-ui-option value="feature" label="需求"></web-ui-option>
+      <web-ui-option value="bug" label="Bug"></web-ui-option>
+      <web-ui-option value="feature" label="Feature"></web-ui-option>
     </web-ui-autocomplete>
-    <web-ui-button @click="field?.focus()">聚焦 trigger</web-ui-button>
+    <web-ui-button @click="field?.focus()">Focus the trigger</web-ui-button>
   </div>
 </template>
 
@@ -294,9 +294,9 @@ const field = useTemplateRef<WebUiAutocomplete>('field')
 </script>
 ```
 
-### 允许自定义值 {#custom-value}
+### Allow custom values {#custom-value}
 
-开启 `allow-custom-value` 后，输入不在候选中的文本也能提交：按 Enter 把输入原文作为 custom value，panel 随之关闭，`change` 触发，`selected-value` 保持为空；过滤后没有候选时 panel 不展开，Enter 仍可提交。
+With `allow-custom-value` on, text that is not among the candidates can still be submitted: pressing Enter takes the raw input as a custom value, the panel closes, `change` fires, and `selected-value` stays empty; when filtering leaves no candidates the panel does not open, and Enter still submits.
 
 ```tsx
 import { useState } from 'react'
@@ -311,7 +311,7 @@ export default function Demo() {
     <div className="flex flex-col items-start gap-3">
       <web-ui-autocomplete
         allowCustomValue
-        placeholder="输入候选之外的文本后按 Enter"
+        placeholder="Type text outside the candidates, then press Enter"
         onChange={event => {
           setSubmitted(event.currentTarget.value)
           setSelected(event.currentTarget.selectedValue)
@@ -322,7 +322,7 @@ export default function Demo() {
         ))}
       </web-ui-autocomplete>
       <output className="text-sm text-(--wui-color-text-secondary)">
-        最近提交：{submitted || '(空)'} · selected-value：{selected || '(空)'}
+        Last submitted: {submitted || '(empty)'} · selected-value: {selected || '(empty)'}
       </output>
     </div>
   )
@@ -332,11 +332,15 @@ export default function Demo() {
 ```vue
 <template>
   <div class="flex flex-col items-start gap-3">
-    <web-ui-autocomplete allow-custom-value placeholder="输入候选之外的文本后按 Enter" @change="onChange">
+    <web-ui-autocomplete
+      allow-custom-value
+      placeholder="Type text outside the candidates, then press Enter"
+      @change="onChange"
+    >
       <web-ui-option v-for="name in frameworks" :key="name" :value="name" :label="name"></web-ui-option>
     </web-ui-autocomplete>
     <output class="text-sm text-(--wui-color-text-secondary)">
-      最近提交：{{ submitted || '(空)' }} · selected-value：{{ selected || '(空)' }}
+      Last submitted: {{ submitted || '(empty)' }} · selected-value: {{ selected || '(empty)' }}
     </output>
   </div>
 </template>
@@ -356,9 +360,9 @@ function onChange(event: WebUiEvent<WebUiAutocomplete, 'change'>) {
 </script>
 ```
 
-### 禁用与只读 {#disabled-readonly}
+### Disabled and readonly {#disabled-readonly}
 
-`disabled` 与 `readonly` 都不接受输入、不展开 panel，预填的 `value` 仍照常显示；两者在必填校验上都按通过处理。
+Neither `disabled` nor `readonly` accepts input or opens the panel, while a prefilled `value` is still displayed as usual; both count as passing required validation.
 
 ```tsx
 const frameworks = ['Vue', 'React', 'Svelte', 'Angular']
@@ -366,12 +370,12 @@ const frameworks = ['Vue', 'React', 'Svelte', 'Angular']
 export default function Demo() {
   return (
     <div className="flex flex-col items-start gap-3">
-      <web-ui-autocomplete value="Vue" disabled placeholder="禁用">
+      <web-ui-autocomplete value="Vue" disabled placeholder="Disabled">
         {frameworks.map(name => (
           <web-ui-option key={name} value={name} label={name}></web-ui-option>
         ))}
       </web-ui-autocomplete>
-      <web-ui-autocomplete value="Vue" readonly placeholder="只读">
+      <web-ui-autocomplete value="Vue" readonly placeholder="Readonly">
         {frameworks.map(name => (
           <web-ui-option key={name} value={name} label={name}></web-ui-option>
         ))}
@@ -384,10 +388,10 @@ export default function Demo() {
 ```vue
 <template>
   <div class="flex flex-col items-start gap-3">
-    <web-ui-autocomplete value="Vue" disabled placeholder="禁用">
+    <web-ui-autocomplete value="Vue" disabled placeholder="Disabled">
       <web-ui-option v-for="name in frameworks" :key="name" :value="name" :label="name"></web-ui-option>
     </web-ui-autocomplete>
-    <web-ui-autocomplete value="Vue" readonly placeholder="只读">
+    <web-ui-autocomplete value="Vue" readonly placeholder="Readonly">
       <web-ui-option v-for="name in frameworks" :key="name" :value="name" :label="name"></web-ui-option>
     </web-ui-autocomplete>
   </div>
@@ -402,97 +406,97 @@ const frameworks = ['Vue', 'React', 'Svelte', 'Angular']
 
 ### Props
 
-| 名称                 | 说明                                                           | 类型                  | 默认值       |
-| -------------------- | -------------------------------------------------------------- | --------------------- | ------------ |
-| `placeholder`        | input 占位文本。                                               | `string`              | `''`         |
-| `borderless`         | ghost 形态：移除边框、背景与阴影，保留 padding 与 focus ring。 | `boolean`             | `false`      |
-| `disabled`           | 禁用态，不可输入、不可展开下拉。                               | `boolean`             | `false`      |
-| `readonly`           | 只读态：不可输入、不可展开下拉。                               | `boolean`             | `false`      |
-| `required`           | 必填校验。                                                     | `boolean`             | `false`      |
-| `portal`             | 在 theme-owned overlay root 中渲染下拉 panel。                 | `boolean`             | `false`      |
-| `no-scroll-lock`     | 打开时不锁定页面滚动。                                         | `boolean`             | `false`      |
-| `allow-custom-value` | 允许 Enter 提交不在候选中的输入原文。                          | `boolean`             | `false`      |
-| `overlayContainer`   | 显式 Portal 容器（property，不是 attribute）。                 | `OverlayContainer`    | —            |
-| `name`               | 表单字段名。                                                   | `string`              | `''`         |
-| `aria-label`         | 无障碍名称。                                                   | `string \| null`      | `null`       |
-| `aria-labelledby`    | 无障碍名称引用。                                               | `string \| undefined` | —            |
-| `filter`             | 候选过滤模式：`contains`（默认）、`prefix` 或 `none`。         | `FilterMode`          | `'contains'` |
-| `value`              | 当前输入文本，也是表单提交值。                                 | `string`              | `''`         |
+| Name                 | Description                                                                                      | Type                  | Default      |
+| -------------------- | ------------------------------------------------------------------------------------------------ | --------------------- | ------------ |
+| `placeholder`        | Input placeholder text.                                                                          | `string`              | `''`         |
+| `borderless`         | Ghost form: removes the border, background, and shadow while keeping padding and the focus ring. | `boolean`             | `false`      |
+| `disabled`           | Disabled state: no input, no dropdown.                                                           | `boolean`             | `false`      |
+| `readonly`           | Readonly state: no input, no dropdown.                                                           | `boolean`             | `false`      |
+| `required`           | Required validation.                                                                             | `boolean`             | `false`      |
+| `portal`             | Renders the dropdown panel in the theme-owned overlay root.                                      | `boolean`             | `false`      |
+| `no-scroll-lock`     | Does not lock page scrolling while open.                                                         | `boolean`             | `false`      |
+| `allow-custom-value` | Allows Enter to submit input text that is not among the candidates.                              | `boolean`             | `false`      |
+| `overlayContainer`   | Explicit portal container (property, not attribute).                                             | `OverlayContainer`    | —            |
+| `name`               | Form field name.                                                                                 | `string`              | `''`         |
+| `aria-label`         | Accessible name.                                                                                 | `string \| null`      | `null`       |
+| `aria-labelledby`    | Accessible name reference.                                                                       | `string \| undefined` | —            |
+| `filter`             | Candidate filtering mode: `contains` (default), `prefix`, or `none`.                             | `FilterMode`          | `'contains'` |
+| `value`              | Current input text, also the form-submitted value.                                               | `string`              | `''`         |
 
 ### Events
 
-| 名称          | 说明                                        |
-| ------------- | ------------------------------------------- |
-| `input`       | 输入时触发，`value` 为当前文本。            |
-| `change`      | 选中候选或提交 custom value 时触发。        |
-| `focus`       | trigger 获得焦点时触发。                    |
-| `blur`        | trigger 失去焦点时触发。                    |
-| `open-change` | 下拉 panel 开合，`detail.open` 为当前状态。 |
+| Name          | Description                                                             |
+| ------------- | ----------------------------------------------------------------------- |
+| `input`       | Fires on input; `value` is the current text.                            |
+| `change`      | Fires when a candidate is selected or a custom value is submitted.      |
+| `focus`       | Fires when the trigger gains focus.                                     |
+| `blur`        | Fires when the trigger loses focus.                                     |
+| `open-change` | The dropdown panel opens or closes; `detail.open` is the current state. |
 
 ### Slots
 
-| 名称      | 说明                                 |
-| --------- | ------------------------------------ |
-| `trigger` | 自定义触发区域内容，替换默认 input。 |
-| `default` | 投影 `<web-ui-option>` 候选。        |
+| Name      | Description                                                       |
+| --------- | ----------------------------------------------------------------- |
+| `trigger` | Custom content for the trigger area, replacing the default input. |
+| `default` | Projects `<web-ui-option>` candidates.                            |
 
 ### Methods
 
-| 名称      | 说明                                                                                                                                                   |
-| --------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `focus()` | 聚焦当前 trigger：`web-ui-input` / `web-ui-textarea` trigger 把焦点交给内部原生控件，没有自己的 focus 重定向的自定义 trigger 则聚焦 trigger 元素自身。 |
-| `blur()`  | 让当前 trigger 失焦。                                                                                                                                  |
+| Name      | Description                                                                                                                                                                                                           |
+| --------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `focus()` | Focuses the current trigger: a `web-ui-input` / `web-ui-textarea` trigger hands focus to its inner native control, while a custom trigger without its own focus redirection gets focus on the trigger element itself. |
+| `blur()`  | Blurs the current trigger.                                                                                                                                                                                            |
 
-### 行为说明
+### Behavior
 
-键入时按 label 过滤候选（`contains` 或 `prefix`，`none` 关闭过滤）。
+Typing filters candidates by label (`contains` or `prefix`; `none` turns filtering off).
 
-没有匹配项时下拉 panel 保持关闭；删除字符后重新出现匹配项时，panel 会再次打开。
+When nothing matches, the dropdown panel stays closed; when deleting characters brings matches back, the panel opens again.
 
-选择 option 时文本回填为该项 label，`selected-value` 暴露该项的 value；`change` 在选择提交时触发。
+Selecting an option fills the text back with that option's label and exposes that option's value as `selected-value`; `change` fires when the selection is committed.
 
-支持 ArrowDown/ArrowUp/Enter/Escape 键盘导航。
+ArrowDown/ArrowUp/Enter/Escape keyboard navigation is supported.
 
-Portal panel 创建时会镜像 host 上解析后的这些变量；更新 host 后需重新打开 Portal panel 才会生效。
+When a portal panel is created, it mirrors these variables as resolved on the host; after updating the host, the portal panel must be reopened for the change to take effect.
 
-### trigger
+### Trigger
 
-默认 trigger 是 shadow 内的 `web-ui-input`。
+The default trigger is the `web-ui-input` inside the shadow root.
 
-把任意可编辑组件放进 `trigger` slot 即可替换它——包装 div 继续承载 combobox ARIA，并以 `data-custom-trigger` 标记当前使用自定义 trigger，overlay 始终以 trigger 元素为锚点。
+Put any editable component into the `trigger` slot to replace it—the wrapper div keeps carrying the combobox ARIA, marks the custom trigger with `data-custom-trigger`, and the overlay always anchors to the trigger element.
 
-组件的 `focus()` / `blur()` 委托到当前生效的 trigger：`web-ui-input` 与 `web-ui-textarea` 会把焦点落到内部原生控件；自定义 trigger 没有自己的 focus 重定向时，聚焦 trigger 元素自身。
+The component's `focus()` / `blur()` delegate to the trigger currently in effect: `web-ui-input` and `web-ui-textarea` land focus on their inner native control; a custom trigger without its own focus redirection gets focus on the trigger element itself.
 
 ```html
-<web-ui-autocomplete placeholder="描述问题">
+<web-ui-autocomplete placeholder="Describe the problem">
   <web-ui-textarea slot="trigger" rows="3"></web-ui-textarea>
-  <web-ui-option value="bug" label="缺陷"></web-ui-option>
-  <web-ui-option value="feature" label="需求"></web-ui-option>
+  <web-ui-option value="bug" label="Bug"></web-ui-option>
+  <web-ui-option value="feature" label="Feature"></web-ui-option>
 </web-ui-autocomplete>
 ```
 
-自定义 trigger 与默认 trigger 共用同一份契约：字符串 `value` 承载文本、可聚焦，并派发组件委托监听的事件（`input`、`click`、`focus`、`blur`）。
+Custom triggers share the same contract as the default trigger: a string `value` carries the text, the trigger is focusable, and it dispatches the events the component listens to by delegation (`input`, `click`, `focus`, `blur`).
 
-`web-ui-input` 与 `web-ui-textarea` 开箱即用；自定义元素只要暴露字符串 `value` property 即可接入。
+`web-ui-input` and `web-ui-textarea` work out of the box; a custom element only has to expose a string `value` property to plug in.
 
-包装 div 不占 tab 位（`tabindex="-1"`）：顺序焦点归 trigger 自身，自定义 trigger 必须可聚焦，键盘用户才能到达 combobox。
+The wrapper div takes no tab stop (`tabindex="-1"`): sequential focus belongs to the trigger itself, and a custom trigger must be focusable so that keyboard users can reach the combobox.
 
-多行 trigger（可编辑元素为 `<textarea>`）保留 Enter 换行语义：Enter 不会选中高亮项，也不会提交 custom value，关闭 panel 用 Escape 或 blur。选择 option 仍会把该项 label 回写到 trigger。
+A multiline trigger (an editable `<textarea>`) keeps Enter as a newline: Enter neither selects the highlighted option nor submits a custom value, and the panel is closed with Escape or blur. Selecting an option still writes that option's label back into the trigger.
 
-单行自定义 trigger 保持默认的 Enter 语义。
+A single-line custom trigger keeps the default Enter semantics.
 
-panel 打开时 ArrowUp/ArrowDown 适用同一例外：方向键移动文本光标而不导航候选，该状态下键盘无法导航 option——用指针点击选择。panel 关闭时 ArrowDown/ArrowUp 仍可打开 panel。
+While the panel is open, ArrowUp/ArrowDown follow the same exception: the arrow keys move the text caret instead of navigating candidates, and in that state the keyboard cannot navigate options—select with a pointer instead. While the panel is closed, ArrowDown/ArrowUp can still open it.
 
-启用 `allow-custom-value` 后，无匹配且无活动 option 时，Enter 会把当前输入原文作为 custom value 提交并关闭 panel；`change` 会触发，`selected-value` 保持为空。
+With `allow-custom-value` enabled, when there is no match and no active option, Enter submits the current raw input as a custom value and closes the panel; `change` fires and `selected-value` stays empty.
 
-过滤后没有任何候选时 panel 不展开（已展开则收起），此时 Enter 仍走同一条提交路径。
+When filtering leaves no candidates at all, the panel does not open (and collapses if it is open), and Enter still takes the same submission path.
 
-组件不会自动创建 option，也不会 trim 原文。命中禁用 option 的文本不会绕过禁用语义，也不会派生为已选 option。
+The component never creates options on its own and never trims the raw text. Text that hits a disabled option does not bypass the disabled semantics and is not derived into a selected option.
 
 ### CSS Custom Properties
 
-| 名称                            | 说明                 | 默认值  |
-| ------------------------------- | -------------------- | ------- |
-| `--wui-autocomplete-max-width`  | 下拉框最大宽度       | `500px` |
-| `--wui-autocomplete-max-height` | 下拉滚动区域最大高度 | `200px` |
-| `--wui-overlay-min-width`       | 下拉框最小宽度       | `200px` |
+| Name                            | Description                                | Default |
+| ------------------------------- | ------------------------------------------ | ------- |
+| `--wui-autocomplete-max-width`  | Dropdown maximum width                     | `500px` |
+| `--wui-autocomplete-max-height` | Maximum height of the dropdown scroll area | `200px` |
+| `--wui-overlay-min-width`       | Dropdown minimum width                     | `200px` |

@@ -3,13 +3,13 @@ component: svg-draw-lines
 tag: web-ui-svg-draw-lines
 ---
 
-SVG 线条绘制动画：基于 `stroke-dashoffset` 在原元素上动画，不克隆、不操作 DOM；默认画入，`replay({ reverse: true })` 沿原路收回。
+An SVG line-drawing animation: it animates the original elements via `stroke-dashoffset` without cloning or touching the DOM; by default it draws in, and `replay({ reverse: true })` retracts along the same path.
 
-## 示例
+## Samples
 
-### 基础 {#basic}
+### Basic {#basic}
 
-默认插槽放需要动画的 SVG 内容，内容第一次稳定时自动播放一次画入。`duration` 是这一笔的毫秒数，默认 `1000`。
+The default slot holds the SVG content to animate, and it plays a single draw-in automatically the first time the content is stable. `duration` is the number of milliseconds for that stroke and defaults to `1000`.
 
 ```tsx
 export default function Demo() {
@@ -29,7 +29,7 @@ export default function Demo() {
           <path d="M4 12 L10 18 L20 6"></path>
         </svg>
       </web-ui-svg-draw-lines>
-      <span className="text-xs text-(--wui-color-text-secondary)">挂载后自动画入一次</span>
+      <span className="text-xs text-(--wui-color-text-secondary)">Draws in once automatically after mount</span>
     </div>
   )
 }
@@ -52,16 +52,16 @@ export default function Demo() {
         <path d="M4 12 L10 18 L20 6"></path>
       </svg>
     </web-ui-svg-draw-lines>
-    <span class="text-xs text-(--wui-color-text-secondary)">挂载后自动画入一次</span>
+    <span class="text-xs text-(--wui-color-text-secondary)">Draws in once automatically after mount</span>
   </div>
 </template>
 ```
 
-### 描边形态 {#geometry}
+### Stroked geometry {#geometry}
 
-收集的是选择器 `path, rect, circle, line, polyline, polygon, ellipse` 命中的几何元素，一次播放里它们同时起播、并行推进 —— 组件没有延迟或错峰的入口，逐条排队的效果要靠拆成多个实例。
+It collects the geometry elements matched by the selector `path, rect, circle, line, polyline, polygon, ellipse`; within one playback they all start and advance in parallel—the component offers no entry point for delays or staggering, so a one-by-one effect requires splitting into multiple instances.
 
-以 `Z` 收尾的闭合 `path` 会在播放期间被临时补一小段，让收尾那笔真的画出来，收尾后恢复原 `d`。
+A closed `path` ending with `Z` is temporarily given a short extra segment during playback so that the closing stroke is really drawn, and its original `d` is restored afterwards.
 
 ```tsx
 export default function Demo() {
@@ -104,7 +104,7 @@ export default function Demo() {
             <ellipse cx="76" cy="28" rx="18" ry="11"></ellipse>
           </svg>
         </web-ui-svg-draw-lines>
-        <span className="text-xs text-(--wui-color-text-secondary)">闭合 path（Z 收尾）+ ellipse</span>
+        <span className="text-xs text-(--wui-color-text-secondary)">Closed path (ending with Z) + ellipse</span>
       </div>
     </div>
   )
@@ -151,19 +151,19 @@ export default function Demo() {
           <ellipse cx="76" cy="28" rx="18" ry="11"></ellipse>
         </svg>
       </web-ui-svg-draw-lines>
-      <span class="text-xs text-(--wui-color-text-secondary)">闭合 path（Z 收尾）+ ellipse</span>
+      <span class="text-xs text-(--wui-color-text-secondary)">Closed path (ending with Z) + ellipse</span>
     </div>
   </div>
 </template>
 ```
 
-### 时长与缓动 {#duration-easing}
+### Duration and easing {#duration-easing}
 
-`duration` 会被收进 0–30000 毫秒，非数值回落 `1000`；`easing` 原样交给 `element.animate()`，默认 `linear`。
+`duration` is clamped to 0–30000 milliseconds, and a non-numeric value falls back to `1000`; `easing` is passed to `element.animate()` as-is and defaults to `linear`.
 
-两个值都在每次起播那一刻读取，所以动画跑起来之后再改属性不影响正在跑的那一段，下一次 `replay()` 才生效。
+Both values are read at the moment each playback starts, so changing the properties while an animation is running does not affect the segment in flight; the next `replay()` picks it up.
 
-三条画的是同一段曲线，只有时长与缓动不同。
+The three samples draw the same curve and differ only in duration and easing.
 
 ```tsx
 import type { WebUiSvgDrawLines } from '@greypan/web-ui'
@@ -189,7 +189,7 @@ export default function Demo() {
               <path d="M5 30 Q25 0 50 30 T95 30"></path>
             </svg>
           </web-ui-svg-draw-lines>
-          <span className="text-xs text-(--wui-color-text-secondary)">400ms · linear（默认）</span>
+          <span className="text-xs text-(--wui-color-text-secondary)">400ms · linear (default)</span>
         </div>
 
         <div className="flex flex-col items-center gap-2">
@@ -207,12 +207,14 @@ export default function Demo() {
               <path d="M5 30 Q25 0 50 30 T95 30"></path>
             </svg>
           </web-ui-svg-draw-lines>
-          <span className="text-xs text-(--wui-color-text-secondary)">1600ms · 越过端点的曲线</span>
+          <span className="text-xs text-(--wui-color-text-secondary)">
+            1600ms · curve that overshoots the endpoints
+          </span>
         </div>
       </div>
 
       <web-ui-button variant="secondary" onClick={replayAll}>
-        重播三条
+        Replay all three
       </web-ui-button>
     </div>
   )
@@ -229,7 +231,7 @@ export default function Demo() {
             <path d="M5 30 Q25 0 50 30 T95 30"></path>
           </svg>
         </web-ui-svg-draw-lines>
-        <span class="text-xs text-(--wui-color-text-secondary)">400ms · linear（默认）</span>
+        <span class="text-xs text-(--wui-color-text-secondary)">400ms · linear (default)</span>
       </div>
 
       <div class="flex flex-col items-center gap-2">
@@ -247,11 +249,11 @@ export default function Demo() {
             <path d="M5 30 Q25 0 50 30 T95 30"></path>
           </svg>
         </web-ui-svg-draw-lines>
-        <span class="text-xs text-(--wui-color-text-secondary)">1600ms · 越过端点的曲线</span>
+        <span class="text-xs text-(--wui-color-text-secondary)">1600ms · curve that overshoots the endpoints</span>
       </div>
     </div>
 
-    <web-ui-button variant="secondary" @click="replayAll">重播三条</web-ui-button>
+    <web-ui-button variant="secondary" @click="replayAll">Replay all three</web-ui-button>
   </div>
 </template>
 
@@ -271,9 +273,9 @@ function replayAll() {
 </script>
 ```
 
-### 多条路径与嵌套 {#many-paths}
+### Multiple paths and nesting {#many-paths}
 
-每次 `replay()` 重新收集子树，范围是宿主的全部 light DOM 后代：同一个 `<svg>` 里的多条 `<path>`、并排的多个 `<svg>`、任意层 `<g>` 嵌套都算进同一批，一起起播、一起收尾。条数不会让动画排队，实例也没有并发上限或「逐条播放」的开关。
+Each `replay()` collects the subtree again, covering all light DOM descendants of the host: multiple `<path>`s inside one `<svg>`, several `<svg>`s side by side, and `<g>` nesting at any depth all count as one batch and start and finish together. The number of paths never queues animations, and the instance has no concurrency limit and no "play one by one" switch.
 
 ```tsx
 import type { WebUiSvgDrawLines } from '@greypan/web-ui'
@@ -299,7 +301,7 @@ export default function Demo() {
         </svg>
       </web-ui-svg-draw-lines>
       <web-ui-button variant="secondary" onClick={() => lines.current?.replay()}>
-        重播
+        Replay
       </web-ui-button>
     </div>
   )
@@ -323,7 +325,7 @@ export default function Demo() {
         </g>
       </svg>
     </web-ui-svg-draw-lines>
-    <web-ui-button variant="secondary" @click="lines?.replay()">重播</web-ui-button>
+    <web-ui-button variant="secondary" @click="lines?.replay()">Replay</web-ui-button>
   </div>
 </template>
 
@@ -335,11 +337,11 @@ const lines = useTemplateRef<WebUiSvgDrawLines>('lines')
 </script>
 ```
 
-### 嵌套 Shadow Root {#shadow-dom}
+### Nested shadow roots {#shadow-dom}
 
-遍历会递归进入**开放**的 shadow root，所以 `<web-ui-icon>` 里的 `<path>` 和宿主 light DOM 的 `<svg>` 落在同一批目标里一起动画；闭合的 shadow root 被跳过。
+The traversal recurses into **open** shadow roots, so a `<path>` inside `<web-ui-icon>` and an `<svg>` in the host's light DOM land in the same batch and animate together; closed shadow roots are skipped.
 
-也正因为会走进嵌套的 shadow root，两层实例不得覆盖同一批几何元素（见「收回末态」）。
+Precisely because it walks into nested shadow roots, two instances must not cover the same geometry elements (see End state after a rewind).
 
 ```tsx
 import type { WebUiSvgDrawLines } from '@greypan/web-ui'
@@ -367,9 +369,11 @@ export default function Demo() {
         <web-ui-icon icon={lucideStar} size={40}></web-ui-icon>
       </web-ui-svg-draw-lines>
       <web-ui-button variant="secondary" onClick={() => lines.current?.replay()}>
-        重播
+        Replay
       </web-ui-button>
-      <span className="text-xs text-(--wui-color-text-secondary)">左边是 light DOM，右边是 icon 的 shadow root</span>
+      <span className="text-xs text-(--wui-color-text-secondary)">
+        Left is the light DOM, right is the shadow root of the icon
+      </span>
     </div>
   )
 }
@@ -393,8 +397,10 @@ export default function Demo() {
       </svg>
       <web-ui-icon :icon="lucideStar" :size="40"></web-ui-icon>
     </web-ui-svg-draw-lines>
-    <web-ui-button variant="secondary" @click="lines?.replay()">重播</web-ui-button>
-    <span class="text-xs text-(--wui-color-text-secondary)">左边是 light DOM，右边是 icon 的 shadow root</span>
+    <web-ui-button variant="secondary" @click="lines?.replay()">Replay</web-ui-button>
+    <span class="text-xs text-(--wui-color-text-secondary)"
+      >Left is the light DOM, right is the shadow root of the icon</span
+    >
   </div>
 </template>
 
@@ -407,11 +413,11 @@ const lines = useTemplateRef<WebUiSvgDrawLines>('lines')
 </script>
 ```
 
-### 关闭自动播放 {#no-autoplay}
+### Disabling autoplay {#no-autoplay}
 
-`no-autoplay` 关掉「首次内容稳定时自动播放一次」，内容停在资产原样 —— 完整描边、看得见，且不写任何内联 dash；`replay()` 照旧可用，什么时候播由调用方决定。`<web-ui-checkbox>` 正是靠它避免挂载时就已勾选的勾在页面首帧画出来。
+`no-autoplay` turns off "play once when the content first becomes stable", and the content stays as the asset is—fully stroked, visible, and with no inline dash written; `replay()` still works, and the caller decides when to play. `<web-ui-checkbox>` relies on it to avoid drawing an already-checked check on the page's first frame.
 
-下面这条挂载时静止，点 `replay()` 才画入。
+The sample below is static on mount and draws in only when `replay()` is clicked.
 
 ```tsx
 import type { WebUiSvgDrawLines } from '@greypan/web-ui'
@@ -429,7 +435,7 @@ export default function Demo() {
       <web-ui-button variant="secondary" onClick={() => lines.current?.replay()}>
         replay()
       </web-ui-button>
-      <span className="text-xs text-(--wui-color-text-secondary)">挂载时静止在完整描边</span>
+      <span className="text-xs text-(--wui-color-text-secondary)">Static at the full stroke on mount</span>
     </div>
   )
 }
@@ -442,7 +448,7 @@ export default function Demo() {
       <web-ui-icon :icon="lucideCheck" :size="48"></web-ui-icon>
     </web-ui-svg-draw-lines>
     <web-ui-button variant="secondary" @click="lines?.replay()">replay()</web-ui-button>
-    <span class="text-xs text-(--wui-color-text-secondary)">挂载时静止在完整描边</span>
+    <span class="text-xs text-(--wui-color-text-secondary)">Static at the full stroke on mount</span>
   </div>
 </template>
 
@@ -455,11 +461,11 @@ const lines = useTemplateRef<WebUiSvgDrawLines>('lines')
 </script>
 ```
 
-### 手工重播 {#replay}
+### Manual replay {#replay}
 
-`replay()` 取消当前动画并重新收集几何元素，从空白画满；`replay({ reverse: true })` 沿原路收回，收尾的空白作为 DOM 状态留在内联样式上，要重新显示只能再调用一次 `replay()`。
+`replay()` cancels the current animation and collects the geometry elements again, drawing from empty to full; `replay({ reverse: true })` retracts along the same path, and the trailing blank is left in the inline styles as DOM state—showing it again requires calling `replay()` once more.
 
-返回的 Promise 在这一次的全部动画结束后兑现，无目标或当前主题范围启用 reduced motion 时立即兑现。
+The returned promise settles after all animations of that playback finish, and settles immediately when there are no targets or when reduced motion is enabled in the current theme scope.
 
 ```tsx
 import type { WebUiSvgDrawLines } from '@greypan/web-ui'
@@ -477,10 +483,10 @@ export default function Demo() {
         </svg>
       </web-ui-svg-draw-lines>
       <web-ui-button variant="secondary" onClick={() => lines.current?.replay()}>
-        画入
+        Draw in
       </web-ui-button>
       <web-ui-button variant="secondary" onClick={() => lines.current?.replay({ reverse: true })}>
-        reverse 收回
+        reverse retracts
       </web-ui-button>
     </div>
   )
@@ -496,8 +502,8 @@ export default function Demo() {
         <path d="M7.5 12.5 L10.5 15.5 L16.5 9"></path>
       </svg>
     </web-ui-svg-draw-lines>
-    <web-ui-button variant="secondary" @click="lines?.replay()">画入</web-ui-button>
-    <web-ui-button variant="secondary" @click="lines?.replay({ reverse: true })">reverse 收回</web-ui-button>
+    <web-ui-button variant="secondary" @click="lines?.replay()">Draw in</web-ui-button>
+    <web-ui-button variant="secondary" @click="lines?.replay({ reverse: true })">reverse retracts</web-ui-button>
   </div>
 </template>
 
@@ -513,40 +519,40 @@ const lines = useTemplateRef<WebUiSvgDrawLines>('lines')
 
 ### Props
 
-| 名称          | 说明                                                                              | 类型      | 默认值     |
-| ------------- | --------------------------------------------------------------------------------- | --------- | ---------- |
-| `duration`    | 动画时长（毫秒），限制在 0–30000。                                                | `number`  | `1000`     |
-| `easing`      | 浏览器支持注册长度型自定义属性插值时传给 `element.animate()`；否则使用 `linear`。 | `string`  | `'linear'` |
-| `no-autoplay` | 关闭内容首次出现时的自动播放。                                                    | `boolean` | `false`    |
+| Name          | Description                                                                                                                                     | Type      | Default    |
+| ------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- | --------- | ---------- |
+| `duration`    | Animation duration (milliseconds), clamped to 0–30000.                                                                                          | `number`  | `1000`     |
+| `easing`      | Passed to `element.animate()` when the browser supports interpolation of registered length-typed custom properties; otherwise `linear` is used. | `string`  | `'linear'` |
+| `no-autoplay` | Turns off automatic playback when the content first appears.                                                                                    | `boolean` | `false`    |
 
 ### Slots
 
-| 名称      | 说明                  |
-| --------- | --------------------- |
-| `default` | 需要动画的 SVG 内容。 |
+| Name      | Description             |
+| --------- | ----------------------- |
+| `default` | SVG content to animate. |
 
 ### Methods
 
-| 名称               | 说明                                                                                                                                                                                            |
-| ------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `replay(options?)` | 停止当前播放并重新开始，每次调用重新收集子树里的几何元素；`options.reverse` 为 `true` 时沿原路径收回。返回的 Promise 在动画全部结束后兑现，无目标或当前主题范围启用 reduced motion 时立即兑现。 |
+| Name               | Description                                                                                                                                                                                                                                                                                                                                                |
+| ------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `replay(options?)` | Stops the current playback and starts over, collecting the geometry elements in the subtree on every call; when `options.reverse` is `true` it retracts along the original path. The returned promise settles after all animations finish, and settles immediately when there are no targets or when reduced motion is enabled in the current theme scope. |
 
-### 行为说明
+### Behavior
 
-三个属性均会反射（reflected）。
+All three properties are reflected.
 
-递归遍历 light DOM 和所有开放 Shadow Root，查找 `path`、`rect`、`circle`、`line`、`polyline`、`polygon`、`ellipse` 元素。
+It traverses the light DOM and all open shadow roots recursively, looking for `path`, `rect`, `circle`, `line`, `polyline`, `polygon`, and `ellipse` elements.
 
-以 `Z`/`z` 结尾的 `<path>` 会临时应用缺口修复逻辑确保闭合段正确渲染。画入段完成或取消后恢复所有内联样式。
+A `<path>` ending with `Z`/`z` temporarily gets gap-fix logic applied so that the closing segment renders correctly. All inline styles are restored once the draw-in segment completes or is cancelled.
 
-### 自动播放
+### Autoplay
 
-slot 内容第一次稳定时自动播放一次画入。设置 `no-autoplay` 后保持资产原样、由调用方决定何时播放 —— `<web-ui-checkbox>` 正是靠它避免挂载时就已勾选的勾在页面首帧画出来。
+It plays a draw-in once the first time the slot content is stable. With `no-autoplay` set, the asset stays as-is and the caller decides when to play—`<web-ui-checkbox>` relies on it to avoid drawing an already-checked check on the page's first frame.
 
-### 收回末态
+### End state after a rewind
 
-收回留下的空白是写在被动画的几何元素上的内联样式，包括嵌套开放 Shadow Root（如 `<web-ui-icon>`）里的节点。
+The blank left by a rewind lives in inline styles on the animated geometry elements, including nodes inside nested open shadow roots (such as `<web-ui-icon>`).
 
-克隆这些节点（`cloneNode`、`innerHTML` 往返）会把空白一起带走；把节点摘下来再挂回去，描边也仍然是隐去的 —— 收回结束是一个 DOM 状态而不是一条还活着的动画，没有留下任何东西去复原它。要重新显示就调用 `replay()`。
+Cloning these nodes (`cloneNode`, an `innerHTML` round trip) carries the blank along with them; detaching and reattaching the node also leaves the stroke hidden—the end of a rewind is a DOM state rather than a still-running animation, and nothing is left to restore it. Call `replay()` to show it again.
 
-由于组件会递归进入嵌套的开放 Shadow Root，两层 `<web-ui-svg-draw-lines>` 不得覆盖同一批几何元素：每个实例只在第一次动画某个元素时记录它的内联 dash 值，内层留下的空白会被外层当成「消费者自己写的值」。
+Because the component recurses into nested open shadow roots, two `<web-ui-svg-draw-lines>` layers must not cover the same geometry elements: each instance records an element's inline dash value only the first time it animates it, so a blank left by the inner layer is treated by the outer layer as "a value the consumer wrote".
