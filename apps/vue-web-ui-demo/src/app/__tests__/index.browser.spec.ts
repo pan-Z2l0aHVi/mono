@@ -38,6 +38,22 @@ function bannerCloseButton() {
   return button
 }
 
+/** userEvent targets directly, so first confirm the button wins hit-testing at its center. */
+async function clickBannerCloseButtonAtCenter() {
+  const button = bannerCloseButton()
+  const bounds = button.getBoundingClientRect()
+  const x = bounds.left + bounds.width / 2
+  const y = bounds.top + bounds.height / 2
+  const hitTarget = document.elementFromPoint(x, y)
+
+  expect(
+    hitTarget === button || (hitTarget !== null && button.contains(hitTarget)),
+    `banner close button center (${x}, ${y}) should hit the button or its contents`
+  ).toBe(true)
+  if (!hitTarget) throw new Error('banner close button center had no hit target')
+  await userEvent.click(hitTarget as HTMLElement)
+}
+
 function globalSelectTrigger(label: string) {
   const trigger = document
     .querySelector(`web-ui-select[aria-label="${label}"]`)
@@ -144,7 +160,7 @@ describe('应用外壳（浏览器）：导航 collapsed state 不跨视口泄�
 
   it('右上角 toast 显示与隐藏时 banner 关闭按钮都可用', async () => {
     await mountAppShell()
-    await userEvent.click(bannerCloseButton())
+    await clickBannerCloseButtonAtCenter()
     await vi.waitFor(() => {
       if (document.querySelector('[slot="banner"]')) throw new Error('banner stayed open without a toast')
     })
@@ -164,7 +180,7 @@ describe('应用外壳（浏览器）：导航 collapsed state 不跨视口泄�
       if (!toastElement) throw new Error('persistent toast did not mount')
     })
 
-    await userEvent.click(bannerCloseButton())
+    await clickBannerCloseButtonAtCenter()
     await vi.waitFor(() => {
       const banner = document.querySelector<HTMLElement>('[slot="banner"]')
       if (!banner || getComputedStyle(banner).visibility !== 'hidden') {
