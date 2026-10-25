@@ -141,6 +141,7 @@ export function Root() {
   const [themeMotion, setThemeMotion] = useState<ThemeMotion>(getInitialThemeMotion)
   const [bannerVisible, setBannerVisible] = useState(true)
   const [topRightToastSafeBottom, setTopRightToastSafeBottom] = useState(0)
+  const [topRightToastHeaderPaddingTop, setTopRightToastHeaderPaddingTop] = useState(0)
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [desktopSidebarWidth, setDesktopSidebarWidth] = useState<string>(getInitialSidebarWidth)
@@ -269,7 +270,11 @@ export function Root() {
         if (toast.top > safeBottom) break
         safeBottom = Math.max(safeBottom, Math.ceil(toast.bottom + 8))
       }
+      const header = layoutRef.current?.querySelector<HTMLElement>('[slot="header"]')
+      const headerTop = header?.getBoundingClientRect().top ?? window.innerHeight
+      const requiredHeaderPaddingTop = safeBottom > 0 ? Math.max(8, safeBottom - headerTop) : 8
       setTopRightToastSafeBottom(safeBottom)
+      setTopRightToastHeaderPaddingTop(requiredHeaderPaddingTop > 8 ? requiredHeaderPaddingTop : 0)
     }
 
     const documentObserver = new MutationObserver(scheduleSync)
@@ -292,6 +297,10 @@ export function Root() {
   const toastSafeAreaStyle = hasTopRightToast
     ? ({ '--toast-safe-bottom': `${topRightToastSafeBottom}px` } as React.CSSProperties)
     : undefined
+  const toastHeaderSafeAreaStyle =
+    topRightToastHeaderPaddingTop > 0
+      ? ({ '--toast-header-safe-top': `${topRightToastHeaderPaddingTop}px` } as React.CSSProperties)
+      : undefined
   const sidebarWidth = isMobileSidebar ? 'min(320px, 80vw)' : desktopSidebarWidth
   /*
    * collapse 是桌面端的密度偏好，移动端 drawer 恒以展开态呈现同一份导航：drawer 宽
@@ -408,7 +417,11 @@ export function Root() {
                 className="h-[var(--toast-safe-bottom)]"
               />
             ) : null}
-            <div slot="header" className="flex h-full w-full items-center justify-end gap-4 px-4 py-2 mobile:w-screen">
+            <div
+              slot="header"
+              style={toastHeaderSafeAreaStyle}
+              className={`flex h-full w-full items-center justify-end gap-4 px-4 py-2 mobile:w-screen ${topRightToastHeaderPaddingTop > 0 ? 'pt-[var(--toast-header-safe-top)]' : ''}`}
+            >
               <web-ui-select
                 value={themeMotion}
                 className="[--wui-input-width:120px]"
