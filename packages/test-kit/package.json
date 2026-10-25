@@ -8,9 +8,6 @@
     "url": "git+https://github.com/pan-Z2l0aHVi/mono.git"
   },
   "type": "module",
-  "files": [
-    "dist"
-  ],
   "sideEffects": false,
   "exports": {
     ".": {

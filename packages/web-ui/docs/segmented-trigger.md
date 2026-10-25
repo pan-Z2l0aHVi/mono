@@ -3,15 +3,15 @@ component: segmented-trigger
 tag: web-ui-segmented-trigger
 ---
 
-`<web-ui-segmented>` 的分段 button：`value` 是它代表的分段值，选中由父级 segmented 回写 `checked`，表单提交归父级。
+A segment button of `<web-ui-segmented>`: `value` is the segment value it represents, the selected state is written back by the parent segmented through `checked`, and form submission belongs to the parent.
 
-点击或 Enter / Space 派发 `change`——在组内该事件不冒泡，由父级统一派发一次组级事件；脱离组时才冒泡并穿透 shadow。
+A click or Enter / Space dispatches `change`—inside a group the event does not bubble, and the parent dispatches one group-level event instead; only outside a group does it bubble and cross the shadow boundary.
 
-## 示例
+## Samples
 
-### 基础 {#basic}
+### Basic {#basic}
 
-`value` 决定哪个 trigger 是当前项，容器按它回写 `checked`；默认插槽里的文本就是 button 内容。
+`value` decides which trigger is the current one, and the container writes `checked` back according to it; the text in the default slot is the button content.
 
 ```tsx
 import { useState } from 'react'
@@ -21,9 +21,9 @@ export default function Demo() {
 
   return (
     <web-ui-segmented value={view} onInput={event => setView(event.currentTarget.value)}>
-      <web-ui-segmented-trigger value="day">日</web-ui-segmented-trigger>
-      <web-ui-segmented-trigger value="week">周</web-ui-segmented-trigger>
-      <web-ui-segmented-trigger value="month">月</web-ui-segmented-trigger>
+      <web-ui-segmented-trigger value="day">Day</web-ui-segmented-trigger>
+      <web-ui-segmented-trigger value="week">Week</web-ui-segmented-trigger>
+      <web-ui-segmented-trigger value="month">Month</web-ui-segmented-trigger>
     </web-ui-segmented>
   )
 }
@@ -32,9 +32,9 @@ export default function Demo() {
 ```vue
 <template>
   <web-ui-segmented :value="view" @input="view = $event.currentTarget.value">
-    <web-ui-segmented-trigger value="day">日</web-ui-segmented-trigger>
-    <web-ui-segmented-trigger value="week">周</web-ui-segmented-trigger>
-    <web-ui-segmented-trigger value="month">月</web-ui-segmented-trigger>
+    <web-ui-segmented-trigger value="day">Day</web-ui-segmented-trigger>
+    <web-ui-segmented-trigger value="week">Week</web-ui-segmented-trigger>
+    <web-ui-segmented-trigger value="month">Month</web-ui-segmented-trigger>
   </web-ui-segmented>
 </template>
 
@@ -45,9 +45,9 @@ const view = ref('day')
 </script>
 ```
 
-### 单独禁用 {#disabled}
+### Individual disabling {#disabled}
 
-`disabled` 加在 trigger 上只禁这一项：它留在 track 里，但不可选中，键盘导航也跳过它。加在 `<web-ui-segmented>` 上则是禁用全部 trigger。
+`disabled` on a trigger disables only that item: it stays in the track but cannot be selected, and keyboard navigation skips it. On `<web-ui-segmented>` it disables every trigger.
 
 ```tsx
 import { useState } from 'react'
@@ -57,9 +57,9 @@ export default function Demo() {
 
   return (
     <web-ui-segmented value={view} onInput={event => setView(event.currentTarget.value)}>
-      <web-ui-segmented-trigger value="list">列表</web-ui-segmented-trigger>
+      <web-ui-segmented-trigger value="list">List</web-ui-segmented-trigger>
       <web-ui-segmented-trigger value="grid" disabled>
-        网格
+        Grid
       </web-ui-segmented-trigger>
     </web-ui-segmented>
   )
@@ -69,8 +69,8 @@ export default function Demo() {
 ```vue
 <template>
   <web-ui-segmented :value="view" @input="view = $event.currentTarget.value">
-    <web-ui-segmented-trigger value="list">列表</web-ui-segmented-trigger>
-    <web-ui-segmented-trigger value="grid" disabled>网格</web-ui-segmented-trigger>
+    <web-ui-segmented-trigger value="list">List</web-ui-segmented-trigger>
+    <web-ui-segmented-trigger value="grid" disabled>Grid</web-ui-segmented-trigger>
   </web-ui-segmented>
 </template>
 
@@ -85,32 +85,32 @@ const view = ref('list')
 
 ### Props
 
-| 名称       | 说明                                                | 类型      | 默认值  |
-| ---------- | --------------------------------------------------- | --------- | ------- |
-| `value`    | 分段值。                                            | `string`  | `''`    |
-| `checked`  | 当前选中；由父级 segmented 回写，单独写不通知容器。 | `boolean` | `false` |
-| `disabled` | 单独禁用该 trigger。                                | `boolean` | `false` |
+| Name       | Description                                                                                               | Type      | Default |
+| ---------- | --------------------------------------------------------------------------------------------------------- | --------- | ------- |
+| `value`    | Segment value.                                                                                            | `string`  | `''`    |
+| `checked`  | Currently selected; written back by the parent segmented, setting it alone does not notify the container. | `boolean` | `false` |
+| `disabled` | Disables this trigger individually.                                                                       | `boolean` | `false` |
 
 ### Events
 
-| 名称     | 说明                                                                                    |
-| -------- | --------------------------------------------------------------------------------------- |
-| `change` | 点击或 Enter / Space 激活未选中的 trigger 时派发；已是当前项时不派发，且不带 `detail`。 |
+| Name     | Description                                                                                                                                            |
+| -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `change` | Dispatched when a click or Enter / Space activates a trigger that is not selected; not dispatched when it is already current, and carries no `detail`. |
 
 ### Slots
 
-| 名称      | 说明                                                                 |
-| --------- | -------------------------------------------------------------------- |
-| `default` | button 内容；trigger 没有 label 属性，这段内容就是它的全部显示内容。 |
+| Name      | Description                                                                             |
+| --------- | --------------------------------------------------------------------------------------- |
+| `default` | Button content; the trigger has no label attribute, so this content is all it displays. |
 
-### 行为说明
+### Behavior
 
-非表单关联组件（父级 segmented 统一提交）。
+Not a form-associated component (the parent segmented submits uniformly).
 
 ### CSS Custom Properties
 
-| 名称                                | 说明             | 默认值                           |
-| ----------------------------------- | ---------------- | -------------------------------- |
-| `--wui-segmented-trigger-px`        | 水平内边距       | `12px`                           |
-| `--wui-segmented-trigger-bg-hover`  | Trigger 悬停背景 | `--wui-color-state-layer-hover`  |
-| `--wui-segmented-trigger-bg-active` | Trigger 按下背景 | `--wui-color-state-layer-active` |
+| Name                                | Description                | Default                          |
+| ----------------------------------- | -------------------------- | -------------------------------- |
+| `--wui-segmented-trigger-px`        | Horizontal padding         | `12px`                           |
+| `--wui-segmented-trigger-bg-hover`  | Trigger hover background   | `--wui-color-state-layer-hover`  |
+| `--wui-segmented-trigger-bg-active` | Trigger pressed background | `--wui-color-state-layer-active` |

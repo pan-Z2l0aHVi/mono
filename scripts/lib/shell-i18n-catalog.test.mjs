@@ -1,0 +1,78 @@
+import assert from 'node:assert/strict'
+import fs from 'node:fs'
+import os from 'node:os'
+import path from 'node:path'
+
+import { parsePo, run } from './shell-i18n-catalog.mjs'
+
+const header = 'msgid ""\nmsgstr ""\n"Language: en\\n"\n\n'
+
+function entry(msgid, msgstr) {
+  return `#: src/a.tsx\nmsgid ${JSON.stringify(msgid)}\nmsgstr ${JSON.stringify(msgstr)}\n\n`
+}
+
+// parsePo 是门禁唯一的读取路径：它读漏一条，空译文就永远判不出来。
+{
+  const parsed = parsePo(
+    `${header}${entry('已复制', 'Copied')}${entry('重试', '')}${entry('多行', 'line one\nline two')}`
+  )
+  assert.equal(parsed.entries.get('已复制'), 'Copied')
+  assert.equal(parsed.entries.get('重试'), '')
+  assert.equal(parsed.entries.get('多行'), 'line one\nline two')
+  assert.equal(parsed.entries.has(''), false, 'PO header must not count as a message')
+  assert.deepEqual(parsed.obsolete, [])
+}
+
+// `#~` 块是「代码里已经没有了」的条目，它必须单独报出来，不能混进正常文案数里。
+{
+  const parsed = parsePo(`${header}${entry('留着', 'Kept')}#~ msgid "废弃"\n#~ msgstr "Dropped"\n\n`)
+  assert.equal(parsed.entries.get('留着'), 'Kept')
+  assert.deepEqual(parsed.obsolete, ['废弃'])
+}
+
+// 复数条目按 msgstr[n] 写；空的那一格同样算没翻译。
+{
+  const parsed = parsePo(`${header}msgid "个文件"\nmsgid_plural "个文件"\nmsgstr[0] ""\nmsgstr[1] ""\n\n`)
+  assert.equal(parsed.entries.get('个文件'), '')
+}
+
+function fixture(messages) {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'shell-i18n-fixture-'))
+  const locales = path.join(root, 'apps', 'react-web-ui-demo', 'src', 'locales')
+  fs.mkdirSync(locales, { recursive: true })
+  const zh = `${header}${messages.map(([zhText]) => entry(zhText, zhText)).join('')}`
+  const en = `${header}${messages.map(([zhText, enText]) => entry(zhText, enText)).join('')}`
+  fs.writeFileSync(path.join(locales, 'zh-CN.po'), zh)
+  fs.writeFileSync(path.join(locales, 'en.po'), en)
+  return root
+}
+
+// 空 msgstr 是这条门禁存在的首要理由：英文站会静默退回中文。
+{
+  const root = fixture([['已复制', '']])
+  try {
+    await assert.rejects(() => run({ root }), /空译文/)
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true })
+  }
+}
+
+// 源语料有、译文没有：英文运行时按 msgid 回落，同样静默。
+{
+  const root = fixture([['已复制', 'Copied']])
+  const enFile = path.join(root, 'apps', 'react-web-ui-demo', 'src', 'locales', 'en.po')
+  fs.writeFileSync(enFile, `${header}${entry('别的', 'Other')}`)
+  try {
+    await assert.rejects(() => run({ root }), /缺 1 条译文/)
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true })
+  }
+}
+
+// 真 app 的语料必须过同一条判据；跑不过就是这次的改动没做完。
+{
+  const detail = await run({ root: path.resolve(import.meta.dirname, '../..') })
+  assert.match(detail, /条壳文案/)
+}
+
+process.stdout.write('shell-i18n-catalog tests passed\n')

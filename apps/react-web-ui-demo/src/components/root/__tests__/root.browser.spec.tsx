@@ -8,6 +8,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { userEvent } from 'vite-plus/test/browser'
 
 import { setViewport } from '@/__tests__/viewport'
+import { loadShellLocale, LocaleProvider } from '@/i18n/locale'
 
 import { Root } from '..'
 
@@ -30,7 +31,7 @@ function layoutRoot() {
 }
 
 function navRoot() {
-  const element = document.querySelector('[aria-label="App navigation"]')
+  const element = document.querySelector('[slot="sidebar"]')
   if (!element) throw new Error('sidebar nav not found')
   return element
 }
@@ -68,7 +69,13 @@ function buildRouter() {
 }
 
 async function mountAppShell() {
-  render(<RouterProvider router={buildRouter()} />)
+  localStorage.setItem('locale', 'zh-CN')
+  await loadShellLocale('zh-CN')
+  render(
+    <LocaleProvider>
+      <RouterProvider router={buildRouter()} />
+    </LocaleProvider>
+  )
   await waitFor(() => {
     if (!document.querySelector('web-ui-layout')) throw new Error('layout not mounted')
   })
@@ -164,6 +171,34 @@ describe('应用外壳（浏览器）：导航 collapsed state 不跨视口泄�
     expect(collapsed).not.toEqual(expanded)
     expect(collapsed.rowJustify).toBe('center')
     expect(collapsed.labelAlign).toBe('center')
+  })
+
+  it('1440px 桌面折叠态显示唯一短标签和全名提示，展开态显示完整名称', async () => {
+    await changeViewport({ width: 1440, height: 900 })
+    await mountAppShell()
+
+    const expandedLinks = [...navRoot().querySelectorAll<HTMLAnchorElement>('a')]
+    const fullLabels = expandedLinks.map(link => link.getAttribute('aria-label'))
+    expect(expandedLinks).toHaveLength(32)
+    expect(expandedLinks.map(link => link.querySelector('span')?.textContent?.trim())).toEqual(fullLabels)
+    expect(expandedLinks.every(link => link.title === '')).toBe(true)
+
+    await requestCollapse(true)
+
+    const collapsedLinks = [...navRoot().querySelectorAll<HTMLAnchorElement>('a')]
+    const shortLabels = collapsedLinks.map(link => link.querySelector('span')?.textContent?.trim() ?? '')
+    expect(new Set(shortLabels).size).toBe(32)
+    expect(shortLabels.every(label => label.length > 0 && label.length <= 2)).toBe(true)
+    expect(collapsedLinks.map(link => link.title)).toEqual(fullLabels)
+    expect(
+      collapsedLinks.every(link => {
+        const label = link.querySelector('span')
+        return !!label && label.scrollWidth <= label.clientWidth
+      })
+    ).toBe(true)
+
+    await requestCollapse(false)
+    expect([...navRoot().querySelectorAll('a span')].map(label => label.textContent?.trim())).toEqual(fullLabels)
   })
 
   it('移动端断点下 drawer 里的导航回到 expanded state，而不是桌面 collapsed state', async () => {

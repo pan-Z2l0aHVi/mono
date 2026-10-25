@@ -98,35 +98,47 @@ describe('WebUiButton 组件', () => {
       cleanupElement(el)
     })
 
-    it('将展开和禁用状态映射到内部 button，但不跨 shadow root 转发 aria-controls', async () => {
+    it('将展开状态映射到内部 button，但不跨 shadow root 转发 aria-controls', async () => {
       const panel = document.createElement('div')
       panel.id = 'panel-id'
       document.body.append(panel)
 
       const el = createButton()
-      el.setAttribute('aria-disabled', 'true')
       el.setAttribute('aria-expanded', 'false')
       el.setAttribute('aria-controls', 'panel-id')
       await waitForUpdate(el)
 
       const inner = el.shadowRoot?.querySelector('button')
-      expect(inner?.getAttribute('aria-disabled')).toBe('true')
       expect(inner?.getAttribute('aria-expanded')).toBe('false')
       expect(el.getAttribute('aria-controls')).toBe('panel-id')
       expect(inner?.hasAttribute('aria-controls')).toBe(false)
 
       el.setAttribute('aria-expanded', 'true')
-      el.removeAttribute('aria-disabled')
       await waitForUpdate(el)
       expect(inner?.getAttribute('aria-expanded')).toBe('true')
-      expect(inner?.hasAttribute('aria-disabled')).toBe(false)
       cleanupElement(el)
       panel.remove()
     })
 
-    it('aria-disabled=true 也阻止从组件宿主派发的 click', async () => {
+    // 禁用只有 disabled 一条路径：aria-disabled 既不转发也不参与行为判断。
+    it('不转发 aria-disabled，也不因此阻断 click', async () => {
       const el = createButton()
       el.setAttribute('aria-disabled', 'true')
+      await waitForUpdate(el)
+
+      const inner = el.shadowRoot?.querySelector('button')
+      expect(inner?.hasAttribute('aria-disabled')).toBe(false)
+      expect(inner?.disabled).toBe(false)
+
+      const [events] = spyEvents(el, 'click')
+      inner?.click()
+      expect(events).toHaveLength(1)
+      cleanupElement(el)
+    })
+
+    it('disabled=true 也阻止从组件宿主派发的 click', async () => {
+      const el = createButton()
+      el.disabled = true
       await waitForUpdate(el)
 
       const wrapper = document.createElement('div')
@@ -137,7 +149,7 @@ describe('WebUiButton 组件', () => {
       el.click()
       expect(bubbledClicks).toBe(0)
 
-      el.setAttribute('aria-disabled', 'false')
+      el.disabled = false
       await waitForUpdate(el)
       el.click()
       expect(bubbledClicks).toBe(1)

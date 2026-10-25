@@ -3,17 +3,17 @@ component: tooltip
 tag: web-ui-tooltip
 ---
 
-tooltip，支持指针与焦点触发；`content` 属性提供纯文本，`content` 插槽可放更丰富的内容。
+tooltip shows on pointer and focus; the `content` attribute supplies plain text and the `content` slot can hold richer content.
 
-## 示例
+## Samples
 
-### 基础 {#basic}
+### Basic {#basic}
 
-默认插槽是 trigger，`content` 属性给出纯文本提示。
+The default slot is the trigger, and the `content` attribute gives the plain-text hint.
 
-指针进入按 `show-delay` 延迟显示，键盘聚焦（`:focus-visible`）立即显示；指针离开按 `hide-delay` 收起，失焦则立即收起。
+Pointer entry shows it after the `show-delay`; keyboard focus (`:focus-visible`) shows it immediately. Pointer exit hides it after the `hide-delay`, while losing focus hides it immediately.
 
-`open-change` 只在用户来源的开合后派发，`detail.open` 是组件已经落到的状态；下面那行读数就是最近一次通知的值。
+`open-change` is dispatched only after user-originated open and close actions, and `detail.open` is the state the component has already settled into; the readout below is the value of the latest notification.
 
 ```tsx
 import { useState } from 'react'
@@ -25,16 +25,16 @@ export default function Demo() {
   return (
     <div className="flex w-full max-w-md flex-col items-start gap-3">
       <web-ui-tooltip
-        content="保存当前更改"
+        content="Save current changes"
         onopen-change={event => {
           setCount(value => value + 1)
           setLast(event.detail.open ? 'true' : 'false')
         }}
       >
-        <web-ui-button variant="secondary">保存</web-ui-button>
+        <web-ui-button variant="secondary">Save</web-ui-button>
       </web-ui-tooltip>
       <output className="text-sm text-(--wui-color-text-secondary)">
-        open-change：{count} 次 · 最后一次 detail.open = {last}
+        open-change: {count} times · last detail.open = {last}
       </output>
     </div>
   )
@@ -44,11 +44,11 @@ export default function Demo() {
 ```vue
 <template>
   <div class="flex w-full max-w-md flex-col items-start gap-3">
-    <web-ui-tooltip content="保存当前更改" @open-change="onOpenChange">
-      <web-ui-button variant="secondary">保存</web-ui-button>
+    <web-ui-tooltip content="Save current changes" @open-change="onOpenChange">
+      <web-ui-button variant="secondary">Save</web-ui-button>
     </web-ui-tooltip>
     <output class="text-sm text-(--wui-color-text-secondary)">
-      open-change：{{ count }} 次 · 最后一次 detail.open = {{ last }}
+      open-change: {{ count }} times · last detail.open = {{ last }}
     </output>
   </div>
 </template>
@@ -67,11 +67,11 @@ function onOpenChange(event: WebUiEvent<WebUiTooltip, 'open-change'>) {
 </script>
 ```
 
-### 富内容 {#rich-content}
+### Rich content {#rich-content}
 
-`content` 插槽替代纯文本，可以放多行、加粗或行内代码。插槽元素必须是 tooltip 的直接子节点并带 `slot="content"`；默认插槽里的 trigger 不要写 slot 属性。
+The `content` slot replaces the plain text and can hold multiple lines, bold text, or inline code. The slot element must be a direct child of the tooltip with `slot="content"`; the trigger in the default slot should not carry a slot attribute.
 
-trigger 用带 `aria-label` 的 icon button，保持可聚焦，键盘用户也能看到提示。
+Use an icon button with an `aria-label` as the trigger so it stays focusable and keyboard users see the hint too.
 
 ```tsx
 import { lucideInfo } from '@greypan/web-ui/icons'
@@ -84,20 +84,20 @@ export default function Demo() {
     <div className="flex w-full max-w-md flex-col items-start gap-3">
       <div className="flex flex-wrap items-center gap-3">
         <web-ui-tooltip onopen-change={event => setLast(event.detail.open ? 'true' : 'false')}>
-          <web-ui-button icon variant="ghost" aria-label="查看快捷键">
+          <web-ui-button icon variant="ghost" aria-label="View shortcuts">
             <web-ui-icon icon={lucideInfo} size={16}></web-ui-icon>
           </web-ui-button>
           <div slot="content" className="flex flex-col gap-1 text-sm">
-            <span className="font-semibold">快捷键提示</span>
+            <span className="font-semibold">Keyboard shortcuts</span>
             <span>
-              按 <kbd className="rounded border border-(--wui-color-border) px-1 font-mono text-xs">⌘K</kbd>{' '}
-              打开命令面板
+              Press <kbd className="rounded border border-(--wui-color-border) px-1 font-mono text-xs">⌘K</kbd> to open
+              the command palette
             </span>
           </div>
         </web-ui-tooltip>
-        <span className="text-sm text-(--wui-color-text-secondary)">悬停或聚焦图标按钮</span>
+        <span className="text-sm text-(--wui-color-text-secondary)">Hover or focus the icon button</span>
       </div>
-      <output className="text-sm text-(--wui-color-text-secondary)">最后一次 detail.open = {last}</output>
+      <output className="text-sm text-(--wui-color-text-secondary)">last detail.open = {last}</output>
     </div>
   )
 }
@@ -108,20 +108,20 @@ export default function Demo() {
   <div class="flex w-full max-w-md flex-col items-start gap-3">
     <div class="flex flex-wrap items-center gap-3">
       <web-ui-tooltip @open-change="last = $event.detail.open ? 'true' : 'false'">
-        <web-ui-button icon variant="ghost" aria-label="查看快捷键">
+        <web-ui-button icon variant="ghost" aria-label="View shortcuts">
           <web-ui-icon :icon="lucideInfo" :size="16"></web-ui-icon>
         </web-ui-button>
         <div slot="content" class="flex flex-col gap-1 text-sm">
-          <span class="font-semibold">快捷键提示</span>
+          <span class="font-semibold">Keyboard shortcuts</span>
           <span>
-            按 <kbd class="rounded border border-(--wui-color-border) px-1 font-mono text-xs">⌘K</kbd>
-            打开命令面板
+            Press <kbd class="rounded border border-(--wui-color-border) px-1 font-mono text-xs">⌘K</kbd>
+            to open the command palette
           </span>
         </div>
       </web-ui-tooltip>
-      <span class="text-sm text-(--wui-color-text-secondary)">悬停或聚焦图标按钮</span>
+      <span class="text-sm text-(--wui-color-text-secondary)">Hover or focus the icon button</span>
     </div>
-    <output class="text-sm text-(--wui-color-text-secondary)">最后一次 detail.open = {{ last }}</output>
+    <output class="text-sm text-(--wui-color-text-secondary)">last detail.open = {{ last }}</output>
   </div>
 </template>
 
@@ -133,9 +133,9 @@ const last = ref('—')
 </script>
 ```
 
-### 延迟 {#delay}
+### Delay {#delay}
 
-`show-delay` / `hide-delay` 控制指针进出时的显示与隐藏延迟，`0` 表示不等待。`disabled` 关闭触发：指针与焦点都不再让提示出现，已经显示的提示不会被这条属性收掉。第二条始终不显示，读数只跟随第一条；禁用状态不派发 `open-change`。
+`show-delay` / `hide-delay` control the show and hide delays as the pointer enters and leaves, and `0` means no wait. `disabled` turns triggering off: neither pointer nor focus makes the hint appear, while a hint already shown is not taken down by this attribute. The second tooltip never shows, so the readout follows only the first one; the disabled state dispatches no `open-change`.
 
 ```tsx
 import { useState } from 'react'
@@ -147,19 +147,19 @@ export default function Demo() {
     <div className="flex w-full max-w-md flex-col items-start gap-3">
       <div className="flex flex-wrap items-center gap-3">
         <web-ui-tooltip
-          content="立即出现"
+          content="Appears instantly"
           show-delay={0}
           hide-delay={0}
           onopen-change={event => setLast(event.detail.open ? 'true' : 'false')}
         >
-          <web-ui-button variant="secondary">即时提示</web-ui-button>
+          <web-ui-button variant="secondary">Instant tooltip</web-ui-button>
         </web-ui-tooltip>
-        <web-ui-tooltip content="禁用后不会出现" disabled>
-          <web-ui-button variant="secondary">禁用提示</web-ui-button>
+        <web-ui-tooltip content="Does not appear when disabled" disabled>
+          <web-ui-button variant="secondary">Disabled tooltip</web-ui-button>
         </web-ui-tooltip>
       </div>
       <output className="text-sm text-(--wui-color-text-secondary)">
-        即时提示最近一次 detail.open = {last} · 禁用提示不派发
+        Instant tooltip last detail.open = {last} · the disabled one dispatches nothing
       </output>
     </div>
   )
@@ -171,19 +171,19 @@ export default function Demo() {
   <div class="flex w-full max-w-md flex-col items-start gap-3">
     <div class="flex flex-wrap items-center gap-3">
       <web-ui-tooltip
-        content="立即出现"
+        content="Appears instantly"
         :show-delay="0"
         :hide-delay="0"
         @open-change="last = $event.detail.open ? 'true' : 'false'"
       >
-        <web-ui-button variant="secondary">即时提示</web-ui-button>
+        <web-ui-button variant="secondary">Instant tooltip</web-ui-button>
       </web-ui-tooltip>
-      <web-ui-tooltip content="禁用后不会出现" disabled>
-        <web-ui-button variant="secondary">禁用提示</web-ui-button>
+      <web-ui-tooltip content="Does not appear when disabled" disabled>
+        <web-ui-button variant="secondary">Disabled tooltip</web-ui-button>
       </web-ui-tooltip>
     </div>
     <output class="text-sm text-(--wui-color-text-secondary)">
-      即时提示最近一次 detail.open = {{ last }} · 禁用提示不派发
+      Instant tooltip last detail.open = {{ last }} · the disabled one dispatches nothing
     </output>
   </div>
 </template>
@@ -199,40 +199,40 @@ const last = ref('—')
 
 ### Props
 
-| 名称               | 说明                                      | 类型               | 默认值  |
-| ------------------ | ----------------------------------------- | ------------------ | ------- |
-| `placement`        | Floating UI 位置，默认 `top`。            | `Placement`        | `'top'` |
-| `show-delay`       | 显示延迟（毫秒）。                        | `number`           | `200`   |
-| `hide-delay`       | 隐藏延迟（毫秒）。                        | `number`           | `100`   |
-| `disabled`         | 禁用状态。                                | `boolean`          | `false` |
-| `offset`           | 与 trigger 的距离（px）。                 | `number`           | `6`     |
-| `content`          | 提示文本，是 `content` 插槽的纯文本替代。 | `string`           | `''`    |
-| `open`             | 可见性。                                  | `boolean`          | `false` |
-| `portal`           | 在 theme-owned overlay root 中渲染。      | `boolean`          | `false` |
-| `overlayContainer` | 显式 Portal 容器（property）。            | `OverlayContainer` | —       |
+| Name               | Description                                                  | Type               | Default |
+| ------------------ | ------------------------------------------------------------ | ------------------ | ------- |
+| `placement`        | Floating UI placement, `top` by default.                     | `Placement`        | `'top'` |
+| `show-delay`       | Show delay (milliseconds).                                   | `number`           | `200`   |
+| `hide-delay`       | Hide delay (milliseconds).                                   | `number`           | `100`   |
+| `disabled`         | Disabled state.                                              | `boolean`          | `false` |
+| `offset`           | Distance from the trigger (px).                              | `number`           | `6`     |
+| `content`          | Hint text, the plain-text alternative to the `content` slot. | `string`           | `''`    |
+| `open`             | Visibility.                                                  | `boolean`          | `false` |
+| `portal`           | Renders in the theme-owned overlay root.                     | `boolean`          | `false` |
+| `overlayContainer` | Explicit Portal container (property).                        | `OverlayContainer` | —       |
 
 ### Events
 
-| 名称          | 说明                                 |
-| ------------- | ------------------------------------ |
-| `open-change` | 提示开合，`detail.open` 为当前状态。 |
+| Name          | Description                                                      |
+| ------------- | ---------------------------------------------------------------- |
+| `open-change` | The tooltip opens or closes; `detail.open` is the current state. |
 
 ### Slots
 
-| 名称      | 说明                                   |
-| --------- | -------------------------------------- |
-| `default` | trigger。                              |
-| `content` | 提示 panel 内容，替代 `content` 属性。 |
+| Name      | Description                                               |
+| --------- | --------------------------------------------------------- |
+| `default` | The trigger.                                              |
+| `content` | Tooltip panel content, replacing the `content` attribute. |
 
-### 行为说明
+### Behavior
 
-`open` 是自管理的可见性属性。指针/焦点触发会更新它，直接赋值 property 也会同步本地或 Portal panel；`open-change` 仅用户来源的 toggle 时派发。
+`open` is a self-managed visibility property. Pointer and focus triggers update it, and assigning the property directly also syncs the local or Portal panel; `open-change` is dispatched only for user-originated toggles.
 
-第一个 Tooltip 显示后，相邻 Tooltip 会立即切换；其余 pointer/focus 触发使用延迟计时器。
+Once the first tooltip is shown, an adjacent tooltip switches immediately; other pointer/focus triggers use the delay timers.
 
 ### CSS Custom Properties
 
-| 名称                      | 说明         | 默认值  |
-| ------------------------- | ------------ | ------- |
-| `--wui-tooltip-max-width` | 提示最大宽度 | `240px` |
-| `--wui-tooltip-font-size` | 提示字号     | `13px`  |
+| Name                      | Description           | Default |
+| ------------------------- | --------------------- | ------- |
+| `--wui-tooltip-max-width` | Maximum tooltip width | `240px` |
+| `--wui-tooltip-font-size` | Tooltip font size     | `13px`  |

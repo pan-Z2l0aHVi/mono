@@ -11,6 +11,8 @@ import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { flushSync } from 'react-dom'
 import { ErrorBoundary } from 'react-error-boundary'
 
+import { useLocale } from '@/i18n/locale'
+
 import { RootErrorFallback } from './root-error-fallback'
 
 type ThemeAppearance = 'light' | 'dark' | 'system'
@@ -22,6 +24,13 @@ const SIDEBAR_WIDTH_STORAGE_KEY = 'sidebar-width'
 const DEFAULT_SIDEBAR_WIDTH = '240px'
 const THEME_APPEARANCES = new Set<ThemeAppearance>(['light', 'dark', 'system'])
 const THEME_MOTIONS = new Set<ThemeMotion>(['full', 'reduced', 'system'])
+// 外观档位名是技术术语，中英两版都保持英文，因此不进入 wuchale 语料。
+const LIGHT_LABEL = 'Light'
+const DARK_LABEL = 'Dark'
+// 语种名按该语言自己的写法给出，两版都不译：误切到读不懂的界面语言时，靠「简体中文」四个字
+// 就能找回母语，不必先读懂当前界面上的 "Simplified Chinese"。
+const ZH_CN_LABEL = '简体中文'
+const EN_LABEL = 'English'
 
 function isThemeAppearance(appearance: unknown): appearance is ThemeAppearance {
   return typeof appearance === 'string' && THEME_APPEARANCES.has(appearance as ThemeAppearance)
@@ -80,41 +89,42 @@ function isOwnLayoutEvent(event: Event): boolean {
 interface NavItem {
   path: string
   label: string
+  collapsedLabel: string
 }
 
 const navItems: NavItem[] = [
-  { path: '/home', label: 'Home' },
-  { path: '/components/avatar', label: 'Avatar' },
-  { path: '/components/badge', label: 'Badge' },
-  { path: '/components/button', label: 'Button' },
-  { path: '/components/icon', label: 'Icon' },
-  { path: '/components/input', label: 'Input' },
-  { path: '/components/textarea', label: 'Textarea' },
-  { path: '/components/editable-text', label: 'EditableText' },
-  { path: '/components/theme', label: 'Theme' },
-  { path: '/components/input-number', label: 'InputNumber' },
-  { path: '/components/select', label: 'Select' },
-  { path: '/components/autocomplete', label: 'Autocomplete' },
-  { path: '/components/dropdown', label: 'Dropdown' },
-  { path: '/components/collapse', label: 'Collapse' },
-  { path: '/components/dialog', label: 'Dialog' },
-  { path: '/components/drawer', label: 'Drawer' },
-  { path: '/components/image-preview', label: 'ImagePreview' },
-  { path: '/components/empty', label: 'Empty' },
-  { path: '/components/middle-ellipsis', label: 'MiddleEllipsis' },
-  { path: '/components/tooltip', label: 'Tooltip' },
-  { path: '/components/switch', label: 'Switch' },
-  { path: '/components/slider', label: 'Slider' },
-  { path: '/components/radio', label: 'Radio' },
-  { path: '/components/checkbox', label: 'Checkbox' },
-  { path: '/components/segmented', label: 'Segmented' },
-  { path: '/components/spinner', label: 'Spinner' },
-  { path: '/components/popover', label: 'Popover' },
-  { path: '/components/context-menu', label: 'ContextMenu' },
-  { path: '/components/toast', label: 'Toast' },
-  { path: '/components/svg-draw-lines', label: 'SVGDrawLines' },
-  { path: '/components/back-top', label: 'BackTop' },
-  { path: '/components/layout', label: 'Layout' }
+  { path: '/home', label: 'Home', collapsedLabel: 'Ho' },
+  { path: '/components/avatar', label: 'Avatar', collapsedLabel: 'Av' },
+  { path: '/components/badge', label: 'Badge', collapsedLabel: 'Ba' },
+  { path: '/components/button', label: 'Button', collapsedLabel: 'Bu' },
+  { path: '/components/icon', label: 'Icon', collapsedLabel: 'Ic' },
+  { path: '/components/input', label: 'Input', collapsedLabel: 'Ip' },
+  { path: '/components/textarea', label: 'Textarea', collapsedLabel: 'Ta' },
+  { path: '/components/editable-text', label: 'EditableText', collapsedLabel: 'Et' },
+  { path: '/components/theme', label: 'Theme', collapsedLabel: 'Th' },
+  { path: '/components/input-number', label: 'InputNumber', collapsedLabel: 'In' },
+  { path: '/components/select', label: 'Select', collapsedLabel: 'Se' },
+  { path: '/components/autocomplete', label: 'Autocomplete', collapsedLabel: 'Au' },
+  { path: '/components/dropdown', label: 'Dropdown', collapsedLabel: 'Do' },
+  { path: '/components/collapse', label: 'Collapse', collapsedLabel: 'Co' },
+  { path: '/components/dialog', label: 'Dialog', collapsedLabel: 'Di' },
+  { path: '/components/drawer', label: 'Drawer', collapsedLabel: 'Dr' },
+  { path: '/components/image-preview', label: 'ImagePreview', collapsedLabel: 'Im' },
+  { path: '/components/empty', label: 'Empty', collapsedLabel: 'Em' },
+  { path: '/components/middle-ellipsis', label: 'MiddleEllipsis', collapsedLabel: 'Me' },
+  { path: '/components/tooltip', label: 'Tooltip', collapsedLabel: 'To' },
+  { path: '/components/switch', label: 'Switch', collapsedLabel: 'Sw' },
+  { path: '/components/slider', label: 'Slider', collapsedLabel: 'Sl' },
+  { path: '/components/radio', label: 'Radio', collapsedLabel: 'Ra' },
+  { path: '/components/checkbox', label: 'Checkbox', collapsedLabel: 'Ch' },
+  { path: '/components/segmented', label: 'Segmented', collapsedLabel: 'Sg' },
+  { path: '/components/spinner', label: 'Spinner', collapsedLabel: 'Sp' },
+  { path: '/components/popover', label: 'Popover', collapsedLabel: 'Po' },
+  { path: '/components/context-menu', label: 'ContextMenu', collapsedLabel: 'Cm' },
+  { path: '/components/toast', label: 'Toast', collapsedLabel: 'Ts' },
+  { path: '/components/svg-draw-lines', label: 'SVGDrawLines', collapsedLabel: 'Sv' },
+  { path: '/components/back-top', label: 'BackTop', collapsedLabel: 'Bk' },
+  { path: '/components/layout', label: 'Layout', collapsedLabel: 'La' }
 ]
 
 // active 底色浅色取设计给定的 #d5d7d7；深色不跟——sidebar 在深色是 #2c2c2e，亮灰会读成一条高亮带，仍走 control 档。
@@ -126,6 +136,7 @@ function isNavActive(pathname: string, path: string) {
 }
 
 export function Root() {
+  const { locale, setLocale } = useLocale()
   const [themeAppearance, setThemeAppearance] = useState<ThemeAppearance>(getInitialThemeAppearance)
   const [themeMotion, setThemeMotion] = useState<ThemeMotion>(getInitialThemeMotion)
   const [bannerVisible, setBannerVisible] = useState(true)
@@ -197,6 +208,11 @@ export function Root() {
     commitThemeAppearance(appearance)
   }
 
+  const updateLocale = (event: React.ChangeEvent<WebUiSelect>) => {
+    const next = event.currentTarget.value
+    if (next === 'zh-CN' || next === 'en') setLocale(next)
+  }
+
   const updateThemeMotion = (event: React.ChangeEvent<WebUiSelect>) => {
     const motion = event.currentTarget.value
     if (!isThemeMotion(motion)) return
@@ -244,7 +260,7 @@ export function Root() {
                 slot="banner"
                 className="flex items-center justify-center gap-2 bg-(--wui-color-accent) px-4 py-2 text-sm text-(--wui-color-on-accent)"
               >
-                <span>🎉 Welcome to the web-ui component library!</span>
+                <span>🎉 欢迎使用 web-ui 组件库！</span>
                 <web-ui-button
                   className="ml-auto"
                   size="24"
@@ -260,33 +276,46 @@ export function Root() {
               <web-ui-select
                 value={themeMotion}
                 className="[--wui-input-width:120px]"
-                aria-label="Global motion"
+                aria-label="全局动效"
                 onChange={updateThemeMotion}
               >
-                <web-ui-option value="full" label="Full motion">
-                  Full motion
+                <web-ui-option value="full" label="完整动效">
+                  完整动效
                 </web-ui-option>
-                <web-ui-option value="reduced" label="Reduced motion">
-                  Reduced motion
+                <web-ui-option value="reduced" label="减弱动效">
+                  减弱动效
                 </web-ui-option>
-                <web-ui-option value="system" label="Follow system">
-                  Follow system
+                <web-ui-option value="system" label="跟随系统">
+                  跟随系统
                 </web-ui-option>
               </web-ui-select>
               <web-ui-select
                 value={themeAppearance}
                 className="[--wui-input-width:120px]"
-                aria-label="Global theme"
+                aria-label="全局主题"
                 onChange={updateThemeAppearance}
               >
-                <web-ui-option value="light" label="Light">
-                  Light
+                <web-ui-option value="light" label={LIGHT_LABEL}>
+                  {LIGHT_LABEL}
                 </web-ui-option>
-                <web-ui-option value="dark" label="Dark">
-                  Dark
+                <web-ui-option value="dark" label={DARK_LABEL}>
+                  {DARK_LABEL}
                 </web-ui-option>
-                <web-ui-option value="system" label="Follow system">
-                  Follow system
+                <web-ui-option value="system" label="跟随系统">
+                  跟随系统
+                </web-ui-option>
+              </web-ui-select>
+              <web-ui-select
+                value={locale}
+                className="[--wui-input-width:120px]"
+                aria-label="全局语言"
+                onChange={updateLocale}
+              >
+                <web-ui-option value="zh-CN" label={ZH_CN_LABEL}>
+                  {ZH_CN_LABEL}
+                </web-ui-option>
+                <web-ui-option value="en" label={EN_LABEL}>
+                  {EN_LABEL}
                 </web-ui-option>
               </web-ui-select>
             </div>
@@ -295,9 +324,9 @@ export function Root() {
               ref={navSidebarRef}
               options={webUiScrollbarsOptions}
               className="relative z-20 h-full min-h-0 overflow-y-auto p-2 mobile:px-0"
-              aria-label="App navigation"
+              aria-label="应用导航"
             >
-              <nav className="grid gap-1" aria-label="Main navigation">
+              <nav className="grid gap-1" aria-label="主导航">
                 {navItems.map(item => {
                   const active = isNavActive(pathname, item.path)
                   return (
@@ -312,6 +341,7 @@ export function Root() {
                       data-active={active}
                       aria-current={active ? 'page' : undefined}
                       aria-label={item.label}
+                      title={navCollapsed ? item.label : undefined}
                       onClick={() => setSidebarOpen(false)}
                     >
                       <span
@@ -319,7 +349,7 @@ export function Root() {
                           navCollapsed ? 'w-full truncate text-center text-sm' : 'min-w-0 flex-1 truncate text-sm'
                         }
                       >
-                        {item.label}
+                        {navCollapsed ? item.collapsedLabel : item.label}
                       </span>
                     </Link>
                   )
