@@ -1,0 +1,9 @@
+* text=auto eol=lf
+
+# Git hooks and shell scripts are executed by sh; CRLF would turn them into "bad interpreter" failures.
+*.sh text eol=lf
+.vite-hooks/* text eol=lf
+
+# Go sources and module files are consumed by the Go toolchain on every platform.
+*.go text eol=lf
+go.mod text eol=lf
