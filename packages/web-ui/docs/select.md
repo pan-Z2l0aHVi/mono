@@ -7,7 +7,7 @@ Select dropdown: the default slot projects `<web-ui-option>` candidates, and the
 
 ## Samples
 
-### Basic {#basic}
+### Basic
 
 `value` is owned by the page: after a selection, `change` hands `event.currentTarget.value` back, and once it is written to `value` the trigger text follows; when `value` is not set, the trigger shows `placeholder`.
 
@@ -75,7 +75,7 @@ const framework = ref('vue')
 </script>
 ```
 
-### Option decoration {#option-decoration}
+### Option decoration
 
 The `prefix` / `suffix` slots put icons and notes on either side of the label; within one option the order is check → prefix → label → suffix. A `disabled` item stays in the list but cannot be selected, and keyboard navigation skips it.
 
@@ -131,7 +131,7 @@ import { lucideFileText, lucideFilm, lucideImage } from '@greypan/web-ui/icons'
 </script>
 ```
 
-### Custom trigger {#custom-trigger}
+### Custom trigger
 
 The `trigger` slot replaces the default label text; the shell, arrow, and open/close behavior still come from the component. The slot content is ordinary nodes rendered by the page, so writing its text from page state makes it follow the selection.
 
@@ -180,7 +180,7 @@ const lang = ref('en')
 </script>
 ```
 
-### Open-change notification {#open-change}
+### Open-change notification
 
 `open-change` only notifies: the component applies the open state first, then reports the result through `detail.open`. select's `open` is a read-only getter with no writable controlled property, so the page just follows the event readout.
 
@@ -238,7 +238,7 @@ function onOpenChange(event: WebUiEvent<WebUiSelect, 'open-change'>) {
 </script>
 ```
 
-### Form value {#form}
+### Form value
 
 `name` makes the selected value enter `FormData` under that field name; when the value is empty, `required` reports `valueMissing` and native submission is blocked. `form.reset()` returns the value to the initial value at mount, and the trigger goes back to `placeholder` with it.
 
@@ -320,7 +320,7 @@ function reset() {
 </script>
 ```
 
-### Portal rendering {#portal}
+### Portal rendering
 
 By default the panel renders in select's own shadow tree and is positioned absolutely, so an ancestor's `overflow` clips it; `portal` hands the panel to the theme-owned overlay root and positions it fixed, where no container can clip it.
 

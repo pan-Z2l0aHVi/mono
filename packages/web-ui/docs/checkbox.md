@@ -7,7 +7,7 @@ A single checkbox that toggles with Enter / Space. It integrates with a native `
 
 ## Samples
 
-### Basic {#basic}
+### Basic
 
 `checked` is the control state and the default slot is the label text; the indicator, the gap, and the label on the right are all part of the trigger area, so a click anywhere counts as one toggle.
 
@@ -65,7 +65,7 @@ function toggle(channel: string) {
 </script>
 ```
 
-### Disabled {#disabled}
+### Disabled
 
 `disabled` turns interaction off: pressing does nothing and validation is skipped; group-level disabling goes on `<web-ui-checkbox-group>`, see the checkbox group below.
 
@@ -91,7 +91,7 @@ export default function Demo() {
 </template>
 ```
 
-### Form value {#form}
+### Form value
 
 `name` is the field name and `value` is the value submitted when checked: several checkboxes can share one field name, each checked item contributes its own `FormData` entry, and unchecked ones stay out of the form. `required` lets native validation block submission while the box is unchecked.
 

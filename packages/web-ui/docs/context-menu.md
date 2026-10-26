@@ -7,7 +7,7 @@ Right-click context menu: the first child element is the trigger area and the re
 
 ## Samples
 
-### Basic {#basic}
+### Basic
 
 The first element in the default slot is the trigger area and the remaining children are menu items: right-click inside the trigger area and the menu opens from the cursor position.
 
@@ -34,7 +34,7 @@ export default function Demo() {
           setLast(event.detail.open ? 'true' : 'false')
         }}
       >
-        <div className="flex h-32 w-full items-center justify-center rounded-xl border border-dashed border-(--wui-color-border) bg-(--wui-color-surface-control) text-sm text-(--wui-color-text-secondary)">
+        <div className="flex h-32 w-full items-center justify-center rounded-xl border border-dashed border-(--wui-color-border) bg-(--wui-color-surface-control) text-sm text-(--wui-color-text)">
           Right-click in this area
         </div>
         <web-ui-dropdown-item>
@@ -70,7 +70,7 @@ export default function Demo() {
   <div class="flex w-full flex-col items-start gap-3">
     <web-ui-context-menu class="w-full" @open-change="onOpenChange">
       <div
-        class="flex h-32 w-full items-center justify-center rounded-xl border border-dashed border-(--wui-color-border) bg-(--wui-color-surface-control) text-sm text-(--wui-color-text-secondary)"
+        class="flex h-32 w-full items-center justify-center rounded-xl border border-dashed border-(--wui-color-border) bg-(--wui-color-surface-control) text-sm text-(--wui-color-text)"
       >
         Right-click in this area
       </div>
@@ -109,7 +109,7 @@ function onOpenChange(event: WebUiEvent<WebUiContextMenu, 'open-change'>) {
 </script>
 ```
 
-### Touch long press {#long-press}
+### Touch long press
 
 `long-press` is a touch opt-in: holding for `long-press-delay` (600 ms here) opens the menu, expanding downward from the press point; moving more than 10px during the hold is treated as scrolling and cancels it.
 
@@ -135,7 +135,7 @@ export default function Demo() {
           setLast(event.detail.open ? 'true' : 'false')
         }}
       >
-        <div className="flex h-32 w-full items-center justify-center rounded-xl border border-dashed border-(--wui-color-border) bg-(--wui-color-surface-control) text-sm text-(--wui-color-text-secondary)">
+        <div className="flex h-32 w-full items-center justify-center rounded-xl border border-dashed border-(--wui-color-border) bg-(--wui-color-surface-control) text-sm text-(--wui-color-text)">
           Press and hold for 600 ms in this area (touch)
         </div>
         <web-ui-dropdown-item>Rename</web-ui-dropdown-item>
@@ -154,7 +154,7 @@ export default function Demo() {
   <div class="flex w-full flex-col items-start gap-3">
     <web-ui-context-menu class="w-full" long-press :long-press-delay="600" @open-change="onOpenChange">
       <div
-        class="flex h-32 w-full items-center justify-center rounded-xl border border-dashed border-(--wui-color-border) bg-(--wui-color-surface-control) text-sm text-(--wui-color-text-secondary)"
+        class="flex h-32 w-full items-center justify-center rounded-xl border border-dashed border-(--wui-color-border) bg-(--wui-color-surface-control) text-sm text-(--wui-color-text)"
       >
         Press and hold for 600 ms in this area (touch)
       </div>
@@ -181,7 +181,7 @@ function onOpenChange(event: WebUiEvent<WebUiContextMenu, 'open-change'>) {
 </script>
 ```
 
-### Disabled {#disabled}
+### Disabled
 
 `disabled` only suppresses the menu: a right-click does not open it, and the trigger area itself is neither greyed out nor recolored—the component renders no menu surface at all, so there is nothing to grey out, and disabling a context menu is not the same as disabling the trigger area.
 
@@ -205,7 +205,7 @@ export default function Demo() {
           setLast(event.detail.open ? 'true' : 'false')
         }}
       >
-        <div className="flex h-32 w-full items-center justify-center rounded-xl border border-dashed border-(--wui-color-border) bg-(--wui-color-surface-control) text-sm text-(--wui-color-text-secondary)">
+        <div className="flex h-32 w-full items-center justify-center rounded-xl border border-dashed border-(--wui-color-border) bg-(--wui-color-surface-control) text-sm text-(--wui-color-text)">
           {disabled ? 'The menu is disabled: right-click does not open it' : 'Right-click in this area'}
         </div>
         <web-ui-dropdown-item>Edit</web-ui-dropdown-item>
@@ -229,7 +229,7 @@ export default function Demo() {
   <div class="flex w-full flex-col items-start gap-3">
     <web-ui-context-menu class="w-full" :disabled="disabled" @open-change="onOpenChange">
       <div
-        class="flex h-32 w-full items-center justify-center rounded-xl border border-dashed border-(--wui-color-border) bg-(--wui-color-surface-control) text-sm text-(--wui-color-text-secondary)"
+        class="flex h-32 w-full items-center justify-center rounded-xl border border-dashed border-(--wui-color-border) bg-(--wui-color-surface-control) text-sm text-(--wui-color-text)"
       >
         {{ disabled ? 'The menu is disabled: right-click does not open it' : 'Right-click in this area' }}
       </div>

@@ -7,7 +7,7 @@ A single radio button that shares the selection-control box contract with `<web-
 
 ## Samples
 
-### Basic {#basic}
+### Basic
 
 The default slot is the label text. A radio control only ever selects and stays selected; clicking an already selected item does not deselect it. When used standalone, the page therefore owns the value and writes `checked` as a comparison result.
 
@@ -47,7 +47,7 @@ const plan = ref('basic')
 </script>
 ```
 
-### Disabled {#disabled}
+### Disabled
 
 `disabled` turns off interaction: an already selected item stays selected, pressing it changes nothing, and validation steps aside; group-level disabling is written on `<web-ui-radio-group>`, see the radio group docs.
 
@@ -73,7 +73,7 @@ export default function Demo() {
 </template>
 ```
 
-### Form value {#form}
+### Form value
 
 The selected item enters `FormData` with `name` as the field name and `value` as the value, while unselected ones do not. When `value` is left empty, `'on'` is submitted. When two items with the same name exist independently, whichever is clicked is the one submitted, so keeping a single selection is the page's job—use `<web-ui-radio-group>` to let the component do it.
 

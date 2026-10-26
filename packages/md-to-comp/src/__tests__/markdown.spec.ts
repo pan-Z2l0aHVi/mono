@@ -5,7 +5,7 @@ import { parseMarkdown, type ParsedDoc } from '../markdown'
 import type { ApiTables } from '../types'
 
 /*
- * markdown 面的契约：`### 标题 {#id}` 的锚点、`## Samples` 与可省的 `## API`、围栏与表格的形状，
+ * markdown 面的契约：`### 标题` 派生出的示例 id、`## Samples` 与可省的 `## API`、围栏与表格的形状，
  * 以及 `## API` 下「表头登记在配置里的是表、其余按散文渲染」这条分岔。
  * 这里量的是「解析器认不认」——产物落盘对不对由 `emit.spec.ts` 与仓库根的完整生成断言管。
  * 分队的原则是：能在纯函数上判死的规则，别等到跑一遍生成器才知道。
@@ -39,7 +39,7 @@ const REACT_FENCE = [
 const VUE_FENCE = ['```vue', '<template>', '  <web-ui-slider :min="0"></web-ui-slider>', '</template>', '```'].join(
   '\n'
 )
-const SAMPLE = ['### 基础 {#basic}', '', '`min` 约束取值范围。', '', REACT_FENCE, '', VUE_FENCE, ''].join('\n')
+const SAMPLE = ['### Basic', '', '`min` 约束取值范围。', '', REACT_FENCE, '', VUE_FENCE, ''].join('\n')
 
 const PROPS_HEAD = '| 名称 | 说明 | 类型 | 默认值 |'
 const PROPS_SEP = '| ---- | ---- | ---- | ---- |'
@@ -91,7 +91,7 @@ function proseOf(doc: ParsedDoc, key: string) {
 }
 
 describe('parseMarkdown', () => {
-  it('锚点、标题、围栏原文与 API 表各归其位', () => {
+  it('标题、派生 id、围栏原文与 API 表各归其位', () => {
     const doc = parseMarkdown(DOC, 'slider.md', CONFIG)
 
     expect(doc.component).toBe('slider')
@@ -100,7 +100,7 @@ describe('parseMarkdown', () => {
 
     expect(doc.samples).toHaveLength(1)
     const sample = doc.samples[0]
-    expect(sample?.title).toBe('基础')
+    expect(sample?.title).toBe('Basic')
     expect(sample?.id).toBe('basic')
     expect(sample?.descriptionHtml).toContain('<code>min</code>')
     // 围栏里就是将被编译执行的那份源码，所以这里连换行都要原样。
@@ -184,23 +184,23 @@ describe('parseMarkdown', () => {
     expect(parseMarkdown(source, 'slider.md', CONFIG).api.map(section => section.key)).toEqual(['slots', 'events'])
   })
 
-  it('没写锚点的示例 id 为 null，仍然正常出内容', () => {
-    const doc = parseMarkdown(DOC.replace('### 基础 {#basic}', '### 基础'), 'button.md', CONFIG)
-    expect(doc.samples[0]?.id).toBeNull()
-    expect(doc.samples[0]?.title).toBe('基础')
+  it('标题即身份：短语里的标点与空白折成 kebab-case id', () => {
+    const doc = parseMarkdown(DOC.replace('### Basic', '### Prefix and suffix'), 'button.md', CONFIG)
+    expect(doc.samples[0]?.title).toBe('Prefix and suffix')
+    expect(doc.samples[0]?.id).toBe('prefix-and-suffix')
   })
 
-  it('换一个 anchor 函数就换一套锚点约定', () => {
+  it('换一个 anchor 函数就换一套派生约定', () => {
     const squareAnchor = (heading: string) => {
       const match = heading.match(/^(.*?)\s*\[([^\]]+)\]\s*$/)
-      return match ? { title: match[1].trim(), id: match[2].trim() } : { title: heading.trim(), id: null }
+      return match ? { title: match[1].trim(), id: match[2].trim() } : { title: heading.trim(), id: 'fallback' }
     }
-    const source = DOC.replace('### 基础 {#basic}', '### 基础 [basic]')
-    // 默认的 braceAnchor 认不出 `[basic]`，这条示例就不落盘。
-    expect(parseMarkdown(source, 'slider.md', CONFIG).samples[0]?.id).toBeNull()
+    const source = DOC.replace('### Basic', '### Tick marks [marks]')
+    // 默认实现不认方括号约定：它把整串标题折成 id，方括号内容照进不误。
+    expect(parseMarkdown(source, 'slider.md', CONFIG).samples[0]?.id).toBe('tick-marks-marks')
     const doc = parseMarkdown(source, 'slider.md', { ...CONFIG, anchor: squareAnchor })
-    expect(doc.samples[0]?.id).toBe('basic')
-    expect(doc.samples[0]?.title).toBe('基础')
+    expect(doc.samples[0]?.id).toBe('marks')
+    expect(doc.samples[0]?.title).toBe('Tick marks')
   })
 
   it('整段省略 ## API 时，产物里没有任何 API 小节', () => {
@@ -212,13 +212,25 @@ describe('parseMarkdown', () => {
   })
 
   it.each([
-    ['锚点不是 kebab-case', parseWith(source => source.replace('{#basic}', '{#Basic}')), /kebab-case/],
+    // id 由标题派生，标题是中文就折不出东西。
+    ['示例标题是中文', parseWith(source => source.replace('### Basic', '### 基础')), /派生不出 id/],
+    // 半迁的语料：锚点写法留着会被折进标题，产物文件名跟着变歪，所以直接拒。
+    ['标题里还写着锚点', parseWith(source => source.replace('### Basic', '### Basic {#basic}')), /还写着/],
     [
-      '同一篇里锚点重复',
+      '注入的 anchor 交回非法 id',
+      () =>
+        parseMarkdown(DOC, 'slider.md', {
+          ...CONFIG,
+          anchor: (heading: string) => ({ title: heading.trim(), id: 'Basic' })
+        }),
+      /必须是小写字母数字加连字符/
+    ],
+    [
+      '两条标题折成同一个 id',
       parseWith(source =>
-        source.replace('## API', ['### 又一条 {#basic}', '', REACT_FENCE, '', VUE_FENCE, '', '## API'].join('\n'))
+        source.replace('## API', ['### basic', '', REACT_FENCE, '', VUE_FENCE, '', '## API'].join('\n'))
       ),
-      /重复/
+      /与前面的示例重复/
     ],
     ['出现不认识的一级小节', parseWith(source => `${source}\n## 注意事项\n\n写着玩的。\n`), /不认识的小节/],
     // 旧中文小节名不再是契约的一部分：语料分语种之后骨架名只有一套，`## 示例` 是写法错误。

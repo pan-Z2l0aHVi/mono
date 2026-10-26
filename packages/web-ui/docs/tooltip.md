@@ -7,7 +7,7 @@ tooltip shows on pointer and focus; the `content` attribute supplies plain text 
 
 ## Samples
 
-### Basic {#basic}
+### Basic
 
 The default slot is the trigger, and the `content` attribute gives the plain-text hint.
 
@@ -67,7 +67,7 @@ function onOpenChange(event: WebUiEvent<WebUiTooltip, 'open-change'>) {
 </script>
 ```
 
-### Rich content {#rich-content}
+### Rich content
 
 The `content` slot replaces the plain text and can hold multiple lines, bold text, or inline code. The slot element must be a direct child of the tooltip with `slot="content"`; the trigger in the default slot should not carry a slot attribute.
 
@@ -133,7 +133,7 @@ const last = ref('—')
 </script>
 ```
 
-### Delay {#delay}
+### Delay
 
 `show-delay` / `hide-delay` control the show and hide delays as the pointer enters and leaves, and `0` means no wait. `disabled` turns triggering off: neither pointer nor focus makes the hint appear, while a hint already shown is not taken down by this attribute. The second tooltip never shows, so the readout follows only the first one; the disabled state dispatches no `open-change`.
 

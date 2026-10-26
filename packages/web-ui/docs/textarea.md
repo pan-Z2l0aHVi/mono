@@ -7,7 +7,7 @@ A multiline text input with a clear button, autosize, and prefix/suffix slots; f
 
 ## Samples
 
-### Basic {#basic}
+### Basic
 
 `rows` sets the initial number of visible rows (3 by default), and `placeholder` is shown when the value is empty; when `input` is not handled, the component holds the content itself—to sync it from the page, write `value` and handle `input`, as in Controlled value and character count below.
 
@@ -33,7 +33,7 @@ export default function Demo() {
 </template>
 ```
 
-### Autosize {#autosize}
+### Autosize
 
 `autosize` makes the height follow the content: the component writes the height as an inline value and turns off the native resize handle at the same time, so the two sources of height never coexist.
 
@@ -77,7 +77,7 @@ export default function Demo() {
 </template>
 ```
 
-### Prefix and suffix {#prefix-suffix}
+### Prefix and suffix
 
 The `prefix` / `suffix` slots hold an icon or text and are top-aligned with the first line of text; without a visible label, use `aria-label` to provide the accessible name (see Behavior below for the limits of `aria-labelledby`).
 
@@ -117,7 +117,7 @@ import { lucideFileText } from '@greypan/web-ui/icons'
 </script>
 ```
 
-### Controlled value and character count {#events}
+### Controlled value and character count
 
 `value` is the input value and also the form-submitted value; `input` is dispatched on every keystroke (including newlines), and `change` aligns with the inner native control and is forwarded once when the value has changed and the field loses focus. `maxlength` limits the length that can be typed, and the counter is computed by the page from `value`.
 
@@ -180,7 +180,7 @@ const committed = ref('')
 </script>
 ```
 
-### Clear button {#clearable}
+### Clear button
 
 `clearable` draws the clear button only when there is a value and neither `disabled` nor `readonly` is set; an empty value, disabled, or readonly draws nothing. The clear button is aligned with the first line rather than centered vertically in the whole box; clicking it clears the value and dispatches `input`. `full` makes the control fill the parent's width, and `--wui-textarea-width` only takes effect when `full` is not set.
 
@@ -214,7 +214,7 @@ export default function Demo() {
 </template>
 ```
 
-### Disabled and readonly {#states}
+### Disabled and readonly
 
 `disabled` turns off typing, validation, and clearing, and drops the whole host to forty percent opacity; `readonly` keeps the content readable, selectable, and copyable and still lets the user drag the bottom-right corner to change the height, but rejects input and hides the clear button.
 
@@ -260,7 +260,7 @@ export default function Demo() {
 </template>
 ```
 
-### Borderless {#borderless}
+### Borderless
 
 `borderless` removes the border, background, blur, and glass ring, leaving only padding and the focus ring; the radius still comes from `--wui-radius-menu`. Use this form when an outer layer draws its own container.
 
@@ -296,7 +296,7 @@ export default function Demo() {
 </template>
 ```
 
-### Form value {#form}
+### Form value
 
 `name` is the field name and the submitted value is the current content. `required` blocks submission when the field is empty (`valueMissing`), and `minlength` blocks it when the text is too short (`tooShort`); both checks are forwarded to the host `<form>` through ElementInternals.
 
@@ -388,7 +388,7 @@ function reset() {
 </script>
 ```
 
-### Focus and select all {#methods}
+### Focus and select all
 
 `focus()` / `blur()` delegate to the native textarea inside the shadow root, and `select()` selects the current content; none of the three has any effect when `disabled`. The host itself has no tab stop, so pressing Tab always lands on the focus of the inner control.
 
@@ -442,7 +442,7 @@ const field = useTemplateRef<WebUiTextarea>('field')
 </script>
 ```
 
-### CSS variables {#sizing}
+### CSS variables
 
 `--wui-textarea-width` sets the input area width (taken over by `100%` under `full`), and `--wui-textarea-clear-color` sets the clear button color.
 

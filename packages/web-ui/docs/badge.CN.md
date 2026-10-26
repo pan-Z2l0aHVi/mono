@@ -7,7 +7,7 @@ badge / 通知计数：把 `count` 角标叠加在默认插槽内容的一角，
 
 ## Samples
 
-### 基础 {#basic}
+### Basic
 
 默认插槽是要装饰的内容，`count` 就是角标上的数字；`count` 为 0 时角标不画，被装饰的内容照常显示，要让 0 也占位就写 `show-zero`。图形（icon）和控件（button）都能当内容被包住。
 
@@ -63,7 +63,7 @@ import { lucideBell } from '@greypan/web-ui/icons'
 </script>
 ```
 
-### 数字上限 {#max}
+### Number limit
 
 `count` 超过 `max` 时画 `max+` 而不是把位数摊开；`max` 默认 99，三位数就已经是上限的形状。
 
@@ -105,7 +105,7 @@ export default function Demo() {
 </template>
 ```
 
-### 点模式 {#dot}
+### Dot mode
 
 `dot` 只画一枚圆点、不画数字，用来表示「有事发生但不计件」。它是显示层的优先级最高的开关：写了 `dot` 就恒显示，`count` 是多少都不参与判定。
 
@@ -147,7 +147,7 @@ export default function Demo() {
 </template>
 ```
 
-### 位置 {#placement}
+### Placement
 
 `placement` 把角标钉在内容盒的四个角之一，默认 `top-right`。非法值不参与渲染：组件把它规范回 `top-right`，宿主 attribute 也随之修正。
 
@@ -197,7 +197,7 @@ export default function Demo() {
 </template>
 ```
 
-### 偏移 {#offset}
+### Offset
 
 `offset-x` / `offset-y` 在 `placement` 选中的角上做像素微调，负值往内容内侧收、正值往外推。圆角或带描边的内容常常需要收回来一点，角标才不会挂在轮廓外面。
 
@@ -239,7 +239,7 @@ export default function Demo() {
 </template>
 ```
 
-### 独立使用 {#standalone}
+### Standalone use
 
 默认插槽空着时没有「内容的一角」可钉，角标回到行内流，自己就是一枚可读的数字或圆点，适合和文字并排出现在列表项、标签页标题这类位置。
 
@@ -267,7 +267,7 @@ export default function Demo() {
 </template>
 ```
 
-### 隐藏 {#hidden}
+### Hidden
 
 `badge-hidden` 让角标整个不画，内容照常显示。它压过 `dot` 与 `count`：数字或未读还留在状态里，只是这一次不给看。
 
@@ -309,7 +309,7 @@ export default function Demo() {
 </template>
 ```
 
-### 受控计数 {#controlled}
+### Controlled count
 
 `count` 是普通属性，值由页面持有：数字涨到超过 `max` 就显示 `max+`，归 0 时角标自己消失，不需要页面额外条件渲染。
 

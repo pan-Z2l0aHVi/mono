@@ -7,7 +7,7 @@ avatar draws an image from `src`; when there is no image or the image fails to l
 
 ## Samples
 
-### Image {#image}
+### Image
 
 `src` is the image URL, `alt` supplies both the image alternative text and the accessible name, and `size` sets the avatar's edge length (px).
 
@@ -43,7 +43,7 @@ const photo =
 </script>
 ```
 
-### Initials fallback {#initials}
+### Initials fallback
 
 Without `src`, no image is drawn and initials are taken from `name`: the name is split on whitespace, at most the first two words are used, and the first character of each is uppercased, so `Grey Pan` gives GP, `Ada` gives only A, and `John Michael Doe` is truncated to JM. `name` also serves as the accessible name.
 
@@ -69,7 +69,7 @@ export default function Demo() {
 </template>
 ```
 
-### Icon fallback {#icon-fallback}
+### Icon fallback
 
 When `src` and `name` are both empty and the `default` slot is empty too, it falls back to the built-in `<web-ui-icon>` person icon. That icon has no name to announce, so the whole avatar is treated as decorative content (see Behavior below).
 
@@ -95,7 +95,7 @@ export default function Demo() {
 </template>
 ```
 
-### Sizes {#sizes}
+### Sizes
 
 `size` is the only size knob: it is written as the inline width and height of the square box and mirrored into `--wui-avatar-size` for use inside the shadow root, and the highlight radius of the circle shape is derived from half of it (the square shape is fixed at 12px).
 
@@ -131,7 +131,7 @@ export default function Demo() {
 </template>
 ```
 
-### Square {#square}
+### Square
 
 `shape="square"` pulls the radius in to a 12px square, and image, initials, and the default icon all share this shape. Invalid values take no part in rendering and are normalized to `circle`.
 
@@ -167,7 +167,7 @@ const photo =
 </script>
 ```
 
-### Load failure {#error}
+### Load failure
 
 After the image reports `error`, the component treats it as a fallback: initials if there is a `name`, otherwise the default icon, never a broken image. The fallback decision applies per `src`—replacing `src` clears the previous failure record.
 
@@ -191,7 +191,7 @@ export default function Demo() {
 </template>
 ```
 
-### Custom fallback content {#slot}
+### Custom fallback content
 
 The `default` slot replaces the initials or the default icon, for example to fill the spot with an employee ID or a rank marker. Slot content is judged by element children: a single element is enough to take effect, and it wins over `name`.
 

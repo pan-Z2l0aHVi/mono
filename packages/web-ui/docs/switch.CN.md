@@ -9,7 +9,7 @@ tag: web-ui-switch
 
 ## Samples
 
-### 基础 {#basic}
+### Basic
 
 `checked` 是开合状态。写在 `<web-ui-switch>` 里的文字渲染成开关旁的可见标签（见 Slots）；不要可见标签时，把 label 放在宿主外面。由页面持有这个值时，接住 `change` 再写回 `checked`。
 
@@ -48,7 +48,7 @@ function onChange(event: WebUiEvent<WebUiSwitch, 'change'>) {
 </script>
 ```
 
-### 禁用与加载 {#states}
+### Disabled and loading
 
 `disabled` 与 `loading` 都阻断交互、都走同一条禁用外观。
 
@@ -86,7 +86,7 @@ export default function Demo() {
 </template>
 ```
 
-### 事件节奏 {#events}
+### Event timing
 
 事件只在用户操作后派发：点击、Enter 与空格都由组件派发 `input` 加 `change` 两条。程序写入 `checked` 两条都不派发——下面这个按钮走的正是这条路。
 
@@ -146,7 +146,7 @@ function writeChecked() {
 </script>
 ```
 
-### 拖拽与甩动 {#drag}
+### Drag and flick
 
 按下之后横向移动超过 6px 才进入拖拽，thumb 跟着指针走；松手时位移过半就定值，横向速度超过 ±300 px/s 则按甩动方向定值，不看落点。
 
@@ -202,7 +202,7 @@ function record(name: string) {
 </script>
 ```
 
-### 表单值 {#form}
+### Form value
 
 `name` 是字段名，`value` 是提交值，留空时提交 `'on'`。
 

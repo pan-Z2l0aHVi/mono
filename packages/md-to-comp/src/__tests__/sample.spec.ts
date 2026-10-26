@@ -1,11 +1,9 @@
 import { describe, expect, it } from 'vite-plus/test'
 
-import { assertSelfContained, demoFileContent, demoFileName, emitsDemoFile } from '../sample'
+import { assertSelfContained, demoFileContent, demoFileName } from '../sample'
 
 describe('示例落成文件的编译期规定', () => {
-  it('只有带锚点的示例才落成文件，文件名是 <组件>--<id>.<扩展名>', () => {
-    expect(emitsDemoFile(null)).toBe(false)
-    expect(emitsDemoFile('basic')).toBe(true)
+  it('每条示例都落成文件，文件名是 <组件>--<id>.<扩展名>', () => {
     expect(demoFileName('slider', 'basic', 'react')).toBe('slider--basic.tsx')
     expect(demoFileName('slider', 'basic', 'vue')).toBe('slider--basic.vue')
   })

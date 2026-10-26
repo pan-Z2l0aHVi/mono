@@ -7,7 +7,7 @@ icon rendering component; the input is an Iconify data object (`@greypan/web-ui/
 
 ## Samples
 
-### Basic {#basic}
+### Basic
 
 `icon` is declared as `attribute: false`, so it only accepts property bindings and takes an Iconify data object rather than an icon name. Without `icon`, the component draws nothing—not even an `<svg>`.
 
@@ -57,7 +57,7 @@ import { lucideFolderOpen, lucideSearch, lucideSettings } from '@greypan/web-ui/
 </script>
 ```
 
-### Bring your own icon data {#raw}
+### Bring your own icon data
 
 The only input shape the component accepts is `IconifyIcon`: `body` is required and is a fragment of inner SVG markup; `width` / `height` / `left` / `top` describe the canvas. A hand-built object renders just as well; an icon does not have to live in `@greypan/web-ui/icons` first.
 
@@ -107,7 +107,7 @@ const clock = {
 </script>
 ```
 
-### Size {#size}
+### Size
 
 `size` is a pixel number written into both the `<svg>`'s `width` and `height`; the `viewBox` comes from the asset's own canvas, so the graphic scales proportionally by viewBox rather than being stretched. The default is `18`.
 
@@ -147,7 +147,7 @@ const sizes = [14, 18, 24, 32]
 </script>
 ```
 
-### Color {#color}
+### Color
 
 Three sources in priority order: `color` becomes an inline style on the `<svg>` and beats everything; next is `--wui-icon-color` on the host; if neither is set, the icon follows the text color—the asset draws with `stroke="currentColor"`. The last one has both of the first two, and the inline style wins.
 
@@ -187,7 +187,7 @@ import { lucideHeart } from '@greypan/web-ui/icons'
 </script>
 ```
 
-### Spin {#spin}
+### Spin
 
 `spin` puts an infinite rotation on the `<svg>`, with the period taken from `--wui-duration-spin` (`600ms`). Under the `motion="reduced"` theme or a system reduce preference, the token slows to `1600ms` instead of stopping: a stopped loading indicator reads as a frozen interface.
 
@@ -225,7 +225,7 @@ const spinning = ref(true)
 </script>
 ```
 
-### Combined with button {#button}
+### Combined with button
 
 button's `prefix` / `suffix` slots hold icons; the icon and the label sit on the same flex line and share the label's text color. An icon-only button turns on `icon` and writes an `aria-label`: the icon is `aria-hidden` itself, so when the button has no other visible content it is the only clue.
 

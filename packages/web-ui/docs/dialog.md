@@ -7,7 +7,7 @@ Modal dialog based on the native `<dialog>`'s `showModal()`; supports a built-in
 
 ## Samples
 
-### Basic {#basic}
+### Basic
 
 `open` is held by the page: a button sets it to true; Escape, backdrop click, and the built-in close button (`closable`) close it from the component side, which then hands the result back through `open-change`, and the page writes it back from `detail.open`.
 
@@ -83,7 +83,7 @@ function onOpenChange(event: WebUiEvent<WebUiDialog, 'open-change'>) {
 </script>
 ```
 
-### Controlled closing {#controlled-close}
+### Controlled closing
 
 `controlled` hands the closing decision to the page: Escape, backdrop click, and the closable button no longer change `open`; they only dispatch `open-change` to request closing.
 
@@ -144,7 +144,7 @@ function onOpenChange(event: WebUiEvent<WebUiDialog, 'open-change'>) {
 </script>
 ```
 
-### Headless {#headless}
+### Headless
 
 `headless` keeps only the overlay infrastructure—backdrop, enter/exit animations, scroll lock, and native `<dialog>` semantics; the built-in chrome bar, content area, and footer are not rendered at all, and the default slot lands directly in the scrolling layer inside the card.
 

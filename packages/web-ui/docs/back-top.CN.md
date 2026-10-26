@@ -11,7 +11,7 @@ tag: web-ui-back-top
 
 ## Samples
 
-### 自定义滚动容器 {#container}
+### Custom scroll container
 
 `scrollTarget` 是 element property 而不是 attribute，所以只能在挂载后赋值：先用 `ref` 拿到容器与 `<web-ui-back-top>`，再在 `useEffect` / `onMounted` 里把容器交给它。
 
@@ -67,7 +67,7 @@ onMounted(() => {
 </script>
 ```
 
-### 自定义内容 {#custom-content}
+### Custom content
 
 default slot 整体替换 button 的视觉内容，交互语义仍由组件提供：内层 wrapper 是 `role="button"`、`tabindex="0"`，指针点击、Enter 与 Space 都触发 `toTop()`。
 
@@ -127,7 +127,7 @@ onMounted(() => {
 </script>
 ```
 
-### 立即回到顶部 {#instant}
+### Jump to top immediately
 
 `scroll-behavior="auto"` 不请求平滑滚动，点击直接跳到顶部。
 

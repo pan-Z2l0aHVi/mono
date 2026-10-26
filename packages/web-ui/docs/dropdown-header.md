@@ -7,7 +7,7 @@ A group title inside a menu: a piece of small text that takes no part in interac
 
 ## Samples
 
-### Group title {#basic}
+### Group title
 
 The title gives a set of menu items a name; it is not focusable and not clickable, and the up / down arrow keys skip it.
 

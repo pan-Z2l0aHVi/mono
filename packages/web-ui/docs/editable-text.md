@@ -7,7 +7,7 @@ An inline plain-text editor: click the text to edit it in place, Enter and blur 
 
 ## Samples
 
-### Basic {#basic}
+### Basic
 
 Clicking the text enters edit mode with the caret at the click position; focusing with Tab puts the caret at the end of the text. Font, color, and alignment are inherited entirely from the outer context, so before editing it is just a piece of ordinary text.
 
@@ -37,7 +37,7 @@ export default function Demo() {
 </template>
 ```
 
-### Controlled value and commit {#events}
+### Controlled value and commit
 
 `value` is the current value and also the form-submitted value; `input` comes from the native input of the edit layer, and `change` is dispatched once at a commit point—Enter or blur. To have the page own the value, handle `change` and write it back.
 
@@ -105,7 +105,7 @@ function onChange(event: WebUiEvent<WebUiEditableText, 'change'>) {
 </script>
 ```
 
-### Escape cancels {#cancel}
+### Escape cancels
 
 Only Escape cancels: the value returns to the state it had when editing began, `cancel` is dispatched instead of `change`, focus goes back to the host, and this key press is consumed by the edit layer, so an outer overlay (drawer, menu) does not close on the same key press. `cancel` neither bubbles nor is composed, so listeners always attach to the component itself—React has no synthetic event for it, so a native listener is the only option.
 
@@ -153,7 +153,7 @@ function onCancel() {
 </script>
 ```
 
-### Empty value and placeholder {#placeholder}
+### Empty value and placeholder
 
 `placeholder` is shown only when the value is empty, in the secondary text color; submitting an empty value still counts as a commit, and the text layer falls back to the placeholder once the value becomes empty. With an empty value and no `placeholder`, the component keeps a zero-width character to preserve the line box and the place to click into edit mode.
 
@@ -187,7 +187,7 @@ export default function Demo() {
 </template>
 ```
 
-### Multiline {#multiline}
+### Multiline
 
 Newlines already present in the value render as lines as usual (`white-space` defaults to `pre-wrap`), and the second line wraps naturally at the box width; Enter commits rather than inserting a newline, so multiline copy relies on the value containing `\n`. The text layer and the edit layer share the same box and typography, so entering edit mode does not shift a pixel.
 
@@ -222,7 +222,7 @@ const multiline =
 </script>
 ```
 
-### Disabled and readonly {#states}
+### Disabled and readonly
 
 `disabled` removes the host from the tab order and blocks editing from both pointer and keyboard, switching only the cursor to `not-allowed` without any visual dimming; `readonly` can still be focused and selected but rejects input, and leaving edit mode dispatches no `change`.
 
@@ -272,7 +272,7 @@ export default function Demo() {
 </template>
 ```
 
-### Form value {#form}
+### Form value
 
 `name` is the field name and the submitted value is the current value; an empty value still enters `FormData` as an empty string. The component has no `required` and forwards no validation state, so required checks belong to the outer layer; `form.reset()` restores the value from mount time.
 
@@ -376,7 +376,7 @@ function reset() {
 </script>
 ```
 
-### Preserving the draft on unmount {#unmount}
+### Preserving the draft on unmount
 
 When an element that is halfway through editing is removed from the DOM, Chromium dispatches `blur` and finishes with commit semantics, while WebKit dispatches nothing and the draft is discarded with the component—`commit-on-unmount` exists for the latter.
 
@@ -465,7 +465,7 @@ function saveDraft(event: WebUiEvent<WebUiEditableText, 'change'>) {
 </script>
 ```
 
-### Focus and select all {#methods}
+### Focus and select all
 
 The host itself is focusable (it carries `tabindex="0"` when not disabled); `focus()` focuses the host and enters edit mode, and `select()` enters edit mode and selects the content—when already in edit mode it only selects again. Neither has any effect when `disabled`.
 
@@ -515,7 +515,7 @@ const field = useTemplateRef<WebUiEditableText>('field')
 </script>
 ```
 
-### CSS variables {#sizing}
+### CSS variables
 
 Both layers share the same whitespace and word-break variables, so overrides keep them consistent; the caret color comes from the shared `--wui-color-accent`, and since custom properties inherit across the shadow boundary, setting it on the host or any ancestor works.
 

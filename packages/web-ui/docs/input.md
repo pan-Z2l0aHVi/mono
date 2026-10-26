@@ -7,7 +7,7 @@ A text input with a clear button and prefix/suffix slots that integrates with th
 
 ## Samples
 
-### Basic {#basic}
+### Basic
 
 `placeholder` is shown only when the value is empty, and `value` is both the displayed value and the value submitted with the form. When `input` is not handled, the component holds the typed content itself; to sync the value from the page, write `value` and handle `input`, as in Controlled value and events below.
 
@@ -31,7 +31,7 @@ export default function Demo() {
 </template>
 ```
 
-### Input types {#types}
+### Input types
 
 `type` is forwarded as-is to the native input inside, and masking and format validation both come from the native type: `password` masks the content, and `email` validates the format on form submit.
 
@@ -57,7 +57,7 @@ export default function Demo() {
 </template>
 ```
 
-### Prefix and suffix {#prefix-suffix}
+### Prefix and suffix
 
 The `prefix` / `suffix` slots place an icon or text on either side of the input area; a side with no assigned nodes collapses entirely and leaves no `gap`. An input with no visible label uses `aria-label` to provide the accessible name.
 
@@ -97,7 +97,7 @@ import { lucideSearch } from '@greypan/web-ui/icons'
 </script>
 ```
 
-### Clear button {#clearable}
+### Clear button
 
 `clearable` draws the clear button only when there is a value and neither `disabled` nor `readonly` is set; an empty value, disabled, or readonly draws nothing. Clicking the clear button clears the value and **dispatches both `input` and `change`**—clearing is a committed discrete change rather than continuous typing, so consumers that listen only to `change` must receive it too. `full` makes the control fill the parent's width.
 
@@ -121,7 +121,7 @@ export default function Demo() {
 </template>
 ```
 
-### Disabled and readonly {#states}
+### Disabled and readonly
 
 `disabled` turns off typing, validation, and clearing, and drops the whole host to forty percent opacity; `readonly` keeps the content readable, selectable, and copyable but rejects input and hides the clear button—clearing would change the value, which conflicts with readonly semantics.
 
@@ -157,7 +157,7 @@ import { lucideSearch } from '@greypan/web-ui/icons'
 </script>
 ```
 
-### Borderless {#borderless}
+### Borderless
 
 `borderless` removes the border, background, blur, and glass ring, leaving only padding and the focus ring, for an outer container to draw its own; the input area width still comes from `--wui-input-width`.
 
@@ -197,7 +197,7 @@ import { lucideSearch } from '@greypan/web-ui/icons'
 </script>
 ```
 
-### Controlled value and events {#events}
+### Controlled value and events
 
 `input` is dispatched on every keystroke; `change` aligns with the inner native control and is forwarded once when the value has changed and the field loses focus. Both carry only the event itself; read the host's `value` for the value.
 
@@ -251,7 +251,7 @@ const committed = ref('')
 </script>
 ```
 
-### Form value {#form}
+### Form value
 
 `name` is the field name and the submitted value is the current content; `required` blocks native submission when the field is empty (`valueMissing`), and a malformed `type="email"` value blocks it as well (`typeMismatch`). Validation is forwarded to the host `<form>` through ElementInternals, so the native validation bubble points at this control.
 
@@ -341,7 +341,7 @@ function reset() {
 </script>
 ```
 
-### Focus and select all {#methods}
+### Focus and select all
 
 `focus()` / `blur()` delegate to the native input inside the shadow root, and `select()` selects the current value; `focus()` and `select()` have no effect when `disabled`, while `blur()` has no such guard—the inner control in the disabled state simply cannot take focus anyway.
 
@@ -383,7 +383,7 @@ const field = useTemplateRef<WebUiInput>('field')
 </script>
 ```
 
-### CSS variables {#sizing}
+### CSS variables
 
 `--wui-input-width` sets the input area width (taken over by 100% under `full`), and `--wui-input-clear-color` sets the clear button color, which defaults to the tertiary text color.
 
