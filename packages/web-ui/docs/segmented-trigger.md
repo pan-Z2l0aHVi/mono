@@ -9,7 +9,7 @@ A click or Enter / Space dispatches `change`—inside a group the event does not
 
 ## Samples
 
-### Basic {#basic}
+### Basic
 
 `value` decides which trigger is the current one, and the container writes `checked` back according to it; the text in the default slot is the button content.
 
@@ -45,7 +45,7 @@ const view = ref('day')
 </script>
 ```
 
-### Individual disabling {#disabled}
+### Individual disabling
 
 `disabled` on a trigger disables only that item: it stays in the track but cannot be selected, and keyboard navigation skips it. On `<web-ui-segmented>` it disables every trigger.
 

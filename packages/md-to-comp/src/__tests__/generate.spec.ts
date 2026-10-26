@@ -4,7 +4,6 @@ import path from 'node:path'
 
 import { afterEach, describe, expect, it } from 'vite-plus/test'
 
-import { braceAnchor } from '../anchor'
 import { checkArtifacts, writeArtifacts } from '../emit'
 import { generate } from '../generate'
 import type { GenerateOptions } from '../types'
@@ -21,7 +20,6 @@ import type { GenerateOptions } from '../types'
 
 const CONFIG = {
   dir: 'demos',
-  anchor: braceAnchor,
   flavors: ['react', 'vue'],
   locales: [
     {
@@ -69,7 +67,7 @@ const DOC = [
   '',
   '## Samples',
   '',
-  '### 基础 {#basic}',
+  '### Basic',
   '',
   REACT_FENCE,
   '',
@@ -107,9 +105,10 @@ function scratch(): string {
   return dir
 }
 
-/** 中文源的对应译文：同一组示例与 API 表，只有散文与列名换成了英文。 */
+/**
+ * 中文源的对应译文：示例标题两侧同文（它就是派生 id 的那一份身份），换掉的只有散文与 API 列名。
+ */
 const EN_DOC = DOC.replace('范围 slider，支持刻度标记。', 'A range slider with tick marks.')
-  .replace('### 基础 {#basic}', '### Basic {#basic}')
   .replace('| 名称 | 说明 | 类型 | 默认值 |', '| Name | Description | Type | Default |')
   .replace('| `min` | 最小值。 | `number` | `0` |', '| `min` | Minimum value. | `number` | `0` |')
   .replace('| 名称 | 说明 |', '| Name | Description |')
@@ -187,17 +186,10 @@ describe('generate', () => {
     expect(() => checkArtifacts(files, demosDirs)).not.toThrow()
   })
 
-  it('requireDemo 开启后，没有锚点的示例在生成阶段失败', async () => {
-    const { input, outputs } = layout(source => source.replace('### 基础 {#basic}', '### 基础'))
-    await expect(generate({ ...CONFIG, requireDemo: true, input, outputs })).rejects.toThrow(
-      /slider\.CN\.md：示例「基础」没有 `\{#id\}` 锚点/
-    )
-  })
-
-  it('requireDemo 开启时，全部示例都有锚点就照常生成', async () => {
-    const { input, outputs } = layout()
-    const { files } = await generate({ ...CONFIG, requireDemo: true, input, outputs })
-    expect(files.some(file => file.path.endsWith('slider--basic.vue'))).toBe(true)
+  it('标题派生不出 id 时整次生成中断，不落半套产物', async () => {
+    const { input, outputs } = layout(source => source.replace('### Basic', '### Basic {#basic}'))
+    await expect(generate({ ...CONFIG, input, outputs })).rejects.toThrow(/还写着 `\{#\.\.\.\}` 锚点/)
+    expect(existsSync(path.join(outputs[0].output))).toBe(false)
   })
 
   it('语料本身的错在读到它的那一刻就失败', async () => {
@@ -233,10 +225,12 @@ describe('generate', () => {
 
     const zh = readFileSync(path.join(root, 'react-zh', 'examples.ts'), 'utf8')
     const en = readFileSync(path.join(root, 'react-en', 'examples.ts'), 'utf8')
-    expect(zh).toContain('"title": "基础"')
+    // 示例标题两侧同文：它现在就是派生 id 的那份身份，译文把它改成别的串等于换掉文件名。
+    expect(zh).toContain('"title": "Basic"')
     expect(en).toContain('"title": "Basic"')
-    // 译文语料不该把中文标题带进产物：分语种的意义就是两份数据各说各的语言。
-    expect(en).not.toContain('基础')
+    // 分语种落在简介与表头上：译文语料不该把中文简介带进产物。
+    expect(zh).toContain('范围 slider')
+    expect(en).not.toContain('范围 slider')
     // 同一语种的两个 output 是「同一份来源」：跨框架的数据必须逐字节一致。
     expect(readFileSync(path.join(root, 'vue-zh', 'examples.ts'), 'utf8')).toBe(zh)
 
@@ -245,7 +239,7 @@ describe('generate', () => {
     expect(existsSync(path.join(root, 'react-zh', 'examples.css'))).toBe(false)
     expect(existsSync(path.join(root, 'react-en', 'examples.css'))).toBe(false)
 
-    // 两个语种各自落 demo：component 与锚点同名，目录不同，互不覆盖。
+    // 两个语种各自落 demo：component 与派生 id 同串，目录不同，互不覆盖。
     expect(existsSync(path.join(root, 'react-zh', 'demos', 'slider--basic.tsx'))).toBe(true)
     expect(existsSync(path.join(root, 'react-en', 'demos', 'slider--basic.tsx'))).toBe(true)
   })

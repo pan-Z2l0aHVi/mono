@@ -7,7 +7,7 @@ SVG 线条绘制动画：基于 `stroke-dashoffset` 在原元素上动画，不�
 
 ## Samples
 
-### 基础 {#basic}
+### Basic
 
 默认插槽放需要动画的 SVG 内容，内容第一次稳定时自动播放一次画入。`duration` 是这一笔的毫秒数，默认 `1000`。
 
@@ -57,7 +57,7 @@ export default function Demo() {
 </template>
 ```
 
-### 描边形态 {#geometry}
+### Stroked geometry
 
 收集的是选择器 `path, rect, circle, line, polyline, polygon, ellipse` 命中的几何元素，一次播放里它们同时起播、并行推进 —— 组件没有延迟或错峰的入口，逐条排队的效果要靠拆成多个实例。
 
@@ -157,7 +157,7 @@ export default function Demo() {
 </template>
 ```
 
-### 时长与缓动 {#duration-easing}
+### Duration and easing
 
 `duration` 会被收进 0–30000 毫秒，非数值回落 `1000`；`easing` 原样交给 `element.animate()`，默认 `linear`。
 
@@ -271,7 +271,7 @@ function replayAll() {
 </script>
 ```
 
-### 多条路径与嵌套 {#many-paths}
+### Multiple paths and nesting
 
 每次 `replay()` 重新收集子树，范围是宿主的全部 light DOM 后代：同一个 `<svg>` 里的多条 `<path>`、并排的多个 `<svg>`、任意层 `<g>` 嵌套都算进同一批，一起起播、一起收尾。条数不会让动画排队，实例也没有并发上限或「逐条播放」的开关。
 
@@ -335,7 +335,7 @@ const lines = useTemplateRef<WebUiSvgDrawLines>('lines')
 </script>
 ```
 
-### 嵌套 Shadow Root {#shadow-dom}
+### Nested shadow roots
 
 遍历会递归进入**开放**的 shadow root，所以 `<web-ui-icon>` 里的 `<path>` 和宿主 light DOM 的 `<svg>` 落在同一批目标里一起动画；闭合的 shadow root 被跳过。
 
@@ -407,7 +407,7 @@ const lines = useTemplateRef<WebUiSvgDrawLines>('lines')
 </script>
 ```
 
-### 关闭自动播放 {#no-autoplay}
+### Disabling autoplay
 
 `no-autoplay` 关掉「首次内容稳定时自动播放一次」，内容停在资产原样 —— 完整描边、看得见，且不写任何内联 dash；`replay()` 照旧可用，什么时候播由调用方决定。`<web-ui-checkbox>` 正是靠它避免挂载时就已勾选的勾在页面首帧画出来。
 
@@ -455,7 +455,7 @@ const lines = useTemplateRef<WebUiSvgDrawLines>('lines')
 </script>
 ```
 
-### 手工重播 {#replay}
+### Manual replay
 
 `replay()` 取消当前动画并重新收集几何元素，从空白画满；`replay({ reverse: true })` 沿原路收回，收尾的空白作为 DOM 状态留在内联样式上，要重新显示只能再调用一次 `replay()`。
 

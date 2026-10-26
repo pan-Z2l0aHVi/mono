@@ -7,7 +7,7 @@ tag: web-ui-dialog
 
 ## Samples
 
-### 基础 {#basic}
+### Basic
 
 `open` 由页面持有：button 把它置真；Escape、backdrop 点击与内置关闭 button（`closable`）由组件自己关到位，再用 `open-change` 把结果交回来，页面按 `detail.open` 回写。
 
@@ -83,7 +83,7 @@ function onOpenChange(event: WebUiEvent<WebUiDialog, 'open-change'>) {
 </script>
 ```
 
-### 受控关闭 {#controlled-close}
+### Controlled closing
 
 `controlled` 把关闭的决定权交给页面：Escape、backdrop 点击与 closable button 都不再改 `open`，只派发 `open-change` 请求关闭。
 
@@ -144,7 +144,7 @@ function onOpenChange(event: WebUiEvent<WebUiDialog, 'open-change'>) {
 </script>
 ```
 
-### Headless {#headless}
+### Headless
 
 `headless` 只保留 overlay 基础设施——backdrop、进出场动画、滚动锁与原生 `<dialog>` 语义；内置 chrome 带、正文区与 footer 一概不渲染，默认插槽直接落进卡片内的滚动层。
 

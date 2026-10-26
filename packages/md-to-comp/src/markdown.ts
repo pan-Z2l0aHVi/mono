@@ -5,7 +5,7 @@ import remarkParse from 'remark-parse'
 import remarkRehype from 'remark-rehype'
 import { unified } from 'unified'
 
-import { braceAnchor } from './anchor'
+import { titleSlug } from './anchor'
 import { fail } from './errors'
 import { FLAVOR_LANG } from './highlight'
 import type { ApiColumnKind, ExampleApiColumn, ExampleApiSection } from './render'
@@ -13,8 +13,8 @@ import type { ApiTables, MdToCompConfig } from './types'
 
 export interface SampleBlock {
   title: string
-  /** 示例标题里的显式锚点 id；存在即代表这一条示例要落成可交互的组件文件。 */
-  id: string | null
+  /** 由标题派生出的 id；它同时是落盘组件文件的文件名后缀。 */
+  id: string
   descriptionHtml: string
   /** flavor → 围栏原文。键集就是配置的 flavors，取的是各自那种围栏语言（`FLAVOR_LANG`）写成的块。 */
   fences: Record<string, string>
@@ -81,9 +81,9 @@ function textContent(node: MdNode): string {
 }
 
 interface Section {
-  /** 标题原文，`{#id}` 尾巴还在。 */
+  /** 标题在 mdast 里的纯文本（未去首尾空白）；派生 id 与「还写着 `{#...}`」都判这一份。 */
   rawTitle: string
-  /** 去锚点、去空白之后的标题。 */
+  /** 去空白之后的标题，也就是页面上显示的那一份。 */
   title: string
   nodes: MdNode[]
   /** 本小节正文在源文件里的字节范围（不含 `###` 那一行），表格按它取原文。 */
@@ -91,12 +91,15 @@ interface Section {
   rawEnd: number
 }
 
-/** 锚点成了落盘文件名，所以合法性是引擎的判据，不归锚点函数管。 */
+/** 派生出的 id 要成为落盘文件名，所以合法性是引擎的判据，不归锚点函数管。 */
 function anchorId(raw: string, title: string, file: string): string {
   const id = raw.trim()
-  if (!id) fail(`${file}：示例「${title}」的锚点 id 是空的`)
+  if (!id)
+    fail(
+      `${file}：示例标题「${title}」派生不出 id；\`## ${SAMPLES_SECTION}\` 里的示例标题要写成英文（id 由标题折成 kebab-case）`
+    )
   if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(id))
-    fail(`${file}：示例「${title}」的锚点 id \`${id}\` 必须是 kebab-case 的小写字母数字加连字符`)
+    fail(`${file}：示例标题「${title}」派生出的 id \`${id}\` 必须是小写字母数字加连字符`)
   return id
 }
 
@@ -221,7 +224,8 @@ function parseProse(section: Section, source: string, file: string): string {
 
 /**
  * 按 `depth` 级标题把 children 切成小节，并给每节算出正文的源文件字节范围。
- * `titleOf` 决定标题取哪一部分（顶层小节去掉可能存在的锚点尾巴，示例小节按宿主的锚点函数取）。
+ * `titleOf` 决定标题取哪一部分——按注入的 anchor 函数那一份（默认 `titleSlug` 就是去首尾空白；
+ * 换成查表或剥前缀的约定时，标题里属于 id 的那一段在这里被摘掉）。
  * `end` 是这批 children 覆盖到的最远偏移，用于收尾小节的 rawEnd。
  */
 function groupByHeading(
@@ -263,7 +267,7 @@ function groupByHeading(
 type ParseConfig = Pick<MdToCompConfig, 'anchor' | 'flavors'> & { apiTables: ApiTables }
 
 export function parseMarkdown(source: string, file: string, config: ParseConfig): ParsedDoc {
-  const anchorOf = config.anchor ?? braceAnchor
+  const anchorOf = config.anchor ?? titleSlug
   const tree = parser.parse(source) as unknown as MdNode
   const nodes = (tree.children ?? []).filter(node => !FRONTMATTER_TYPES.has(node.type))
   const { component, tag } = parseFrontmatter(tree.children?.[0], file)
@@ -299,14 +303,19 @@ export function parseMarkdown(source: string, file: string, config: ParseConfig)
   const fenceHint = config.flavors.map(flavor => `${flavor} 用 \`\`\`${FLAVOR_LANG[flavor]}`).join('，')
   for (const sub of sampleGroups ? sampleGroups.sections : []) {
     if (!sub.title) fail(`${file}：\`## ${SAMPLES_SECTION}\` 里有一个 \`###\` 标题是空的`)
-    const id = anchorOf(sub.rawTitle).id
+    if (/\{#[^}]*\}/.test(sub.rawTitle))
+      fail(`${file}：示例标题「${sub.title}」还写着 \`{#...}\` 锚点：id 现在由标题派生，删掉锚点，标题本身写成英文`)
+    const checked = anchorId(anchorOf(sub.rawTitle).id, sub.title, file)
+    if (ids.has(checked))
+      fail(`${file}：示例标题「${sub.title}」派生出的 id \`#${checked}\` 与前面的示例重复，落盘文件名会撞车`)
+    ids.add(checked)
     const fences = sub.nodes.filter(node => node.type === 'code')
     for (const fence of fences) {
       if (!config.flavors.some(flavor => FLAVOR_LANG[flavor] === fence.lang))
         fail(`${file}：示例「${sub.title}」里的代码块语言必须是 ${fenceHint}，收到 \`${fence.lang ?? '(无)'}\``)
       if (fence.meta)
         fail(
-          `${file}：示例「${sub.title}」的 \`\`\`${fence.lang} 带了未支持的元信息 \`${fence.meta}\`；示例 id 写在 ### 标题里`
+          `${file}：示例「${sub.title}」的 \`\`\`${fence.lang} 带了未支持的元信息 \`${fence.meta}\`；示例 id 由 ### 标题派生`
         )
     }
     const fencesByFlavor: Record<string, string> = {}
@@ -320,14 +329,9 @@ export function parseMarkdown(source: string, file: string, config: ParseConfig)
       fail(
         `${file}：示例「${sub.title}」必须为每个 flavor 各有一个代码块（${fenceHint}），收到 ${JSON.stringify(counts)}`
       )
-    if (id !== null) {
-      const checked = anchorId(id, sub.title, file)
-      if (ids.has(checked)) fail(`${file}：示例 id \`#${checked}\` 重复，落盘文件名会撞车`)
-      ids.add(checked)
-    }
     samples.push({
       title: sub.title,
-      id: id === null ? null : id.trim(),
+      id: checked,
       descriptionHtml: renderInline(sub.nodes.filter(node => node.type !== 'code')).trim(),
       fences: fencesByFlavor
     })

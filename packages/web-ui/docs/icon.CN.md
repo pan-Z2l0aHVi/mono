@@ -7,7 +7,7 @@ icon 渲染组件，输入是 Iconify 数据对象（`@greypan/web-ui/icons` 按
 
 ## Samples
 
-### 基础 {#basic}
+### Basic
 
 `icon` 声明为 `attribute: false`，只认 property 绑定，传的是 Iconify 数据对象而不是图标名字。不传 `icon` 时组件什么都不画，连 `<svg>` 也不产生。
 
@@ -57,7 +57,7 @@ import { lucideFolderOpen, lucideSearch, lucideSettings } from '@greypan/web-ui/
 </script>
 ```
 
-### 自带图标数据 {#raw}
+### Bring your own icon data
 
 组件认的输入只有 `IconifyIcon` 这一种形状：`body` 必填，是一段 SVG 内部标记；`width` / `height` / `left` / `top` 描述画布。自己拼一个同样能渲染，图标不必先进 `@greypan/web-ui/icons`。
 
@@ -107,7 +107,7 @@ const clock = {
 </script>
 ```
 
-### 尺寸 {#size}
+### Size
 
 `size` 是像素数值，同时写进 `<svg>` 的 `width` 与 `height`；`viewBox` 取资产自己的画布，所以图形按 viewBox 等比缩放，不是被拉伸。默认 `18`。
 
@@ -147,7 +147,7 @@ const sizes = [14, 18, 24, 32]
 </script>
 ```
 
-### 颜色 {#color}
+### Color
 
 三条来源按优先级排：`color` 写成 `<svg>` 的内联 style，压过一切；其次是宿主上的 `--wui-icon-color`；都没有就跟着文字颜色走——资产画的是 `stroke="currentColor"`。最后一个是前两条同时给，内联 style 赢了。
 
@@ -187,7 +187,7 @@ import { lucideHeart } from '@greypan/web-ui/icons'
 </script>
 ```
 
-### 旋转 {#spin}
+### Spin
 
 `spin` 给 `<svg>` 挂一条无限循环的 rotation，周期取 `--wui-duration-spin`（`600ms`）。主题 `motion="reduced"` 或系统 reduce 偏好下这条 token 放慢到 `1600ms` 而不停：加载指示停掉会被读成界面卡死。
 
@@ -225,7 +225,7 @@ const spinning = ref(true)
 </script>
 ```
 
-### 与按钮组合 {#button}
+### Combined with button
 
 button 的 `prefix` / `suffix` 插槽放 icon，图标与 label 走同一条 flex 线、共用 label 的字体色。纯图标按钮打开 `icon` 并写 `aria-label`：图标自己 `aria-hidden`，按钮里没有别的可见内容时它是唯一的线索。
 

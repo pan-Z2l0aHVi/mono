@@ -7,7 +7,7 @@ segmented（单选 button group），子项是 `<web-ui-segmented-trigger>`；`v
 
 ## Samples
 
-### 基础受控 {#basic}
+### Basic controlled
 
 默认插槽投影 segmented-trigger，`value` 决定哪一项选中；点击（或 Enter / Space）后由 `input` 带回新值，页面把它写回 `value` 维持受控。
 
@@ -55,7 +55,7 @@ const day = ref('wed')
 </script>
 ```
 
-### 变体对比 {#variants}
+### Variant comparison
 
 `variant` 选择 track 与 indicator 的材质：`inset`（默认）把 indicator 嵌进带常驻环与投影的 track，`raised` 是经典浮起形态。两个变体的交互、按压态与文字色一致，只有静止面不同。
 
@@ -129,7 +129,7 @@ const raisedView = ref('week')
 </script>
 ```
 
-### 单项禁用与组级禁用 {#disabled}
+### Item and group disabled
 
 `disabled` 加在 trigger 上只禁这一项，其余项照常切换；加在 `<web-ui-segmented>` 上禁用整组，子项自身的 `disabled` 属性不变，但全部退出 Tab 序列并停止响应点击。
 
@@ -201,7 +201,7 @@ const lockedView = ref('list')
 </script>
 ```
 
-### 表单字段 {#form}
+### Form field
 
 `name` 让当前选中值以该字段名进入 `FormData`，未选中任何项时不提交该字段。组件通过 ElementInternals 接入 `<form>`，`form.reset()` 会把 `value` 退回挂载时的初始值。
 
@@ -297,7 +297,7 @@ function reset() {
 </script>
 ```
 
-### input 与 change {#events}
+### input and change
 
 每次用户切换（点击、Enter / Space 或拖拽）都会先 `input` 再 `change` 各派发一次，点击已是当前项的 trigger 不派发。下面的按钮直接改 `value` 走程序化路径：indicator 会移动，两个计数都不变。
 

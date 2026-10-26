@@ -9,7 +9,7 @@ tag: web-ui-option
 
 ## Samples
 
-### 基础 option {#basic}
+### Basic option
 
 `label` 决定容器里显示什么，`value` 是容器派发出去的值。
 
@@ -35,7 +35,7 @@ export default function Demo() {
 </template>
 ```
 
-### 前后缀 icon {#prefix-suffix}
+### Prefix and suffix icons
 
 不写 `label` 时，`label` 取默认插槽的文本；`prefix` 与 `suffix` 不参与这段文本。
 
@@ -77,7 +77,7 @@ import { lucideImage, lucideStar } from '@greypan/web-ui/icons'
 </script>
 ```
 
-### 禁用项 {#disabled}
+### Disabled items
 
 `disabled` 的项留在列表里，但不可选中，键盘导航也会跳过它。
 

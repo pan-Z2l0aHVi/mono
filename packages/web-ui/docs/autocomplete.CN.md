@@ -7,7 +7,7 @@ tag: web-ui-autocomplete
 
 ## Samples
 
-### 基础 {#basic}
+### Basic
 
 `value` 是当前输入文本，由页面持有：键入按 label 过滤候选（默认 `contains`），没有匹配项时 panel 保持关闭；选中后文本回填为该项 label，`selected-value` 给出该项的 value。
 
@@ -74,7 +74,7 @@ function onChange(event: WebUiEvent<WebUiAutocomplete, 'change'>) {
 </script>
 ```
 
-### 过滤模式 {#filter}
+### Filter modes
 
 `filter` 取 `contains`（默认）、`prefix` 或 `none`：前两者按 label 包含或前缀匹配，`none` 关闭过滤、候选始终全量列出。
 
@@ -144,7 +144,7 @@ function onModeChange(event: WebUiEvent<WebUiSelect, 'change'>) {
 </script>
 ```
 
-### change 与 selected-value {#change-selected-value}
+### change and selected-value
 
 选中候选后 `selected-value` 是该项的 value；输入不再精确匹配任何 label 时它清空——它由组件在更新周期里派生，所以在 `input` 里读它要等一拍（`requestAnimationFrame`），`change` 里读到的才是当次提交的值。
 
@@ -238,7 +238,7 @@ function onChange(event: WebUiEvent<WebUiAutocomplete, 'change'>) {
 </script>
 ```
 
-### 自定义 trigger {#custom-trigger}
+### Custom trigger
 
 把可编辑组件放进 `trigger` 插槽即可替换默认 input：多行 trigger 保留 Enter 换行语义，关闭 panel 改用 Escape 或 blur；这里同时用 `filter="none"` 让候选始终全量列出。
 
@@ -294,7 +294,7 @@ const field = useTemplateRef<WebUiAutocomplete>('field')
 </script>
 ```
 
-### 允许自定义值 {#custom-value}
+### Allow custom values
 
 开启 `allow-custom-value` 后，输入不在候选中的文本也能提交：按 Enter 把输入原文作为 custom value，panel 随之关闭，`change` 触发，`selected-value` 保持为空；过滤后没有候选时 panel 不展开，Enter 仍可提交。
 
@@ -356,7 +356,7 @@ function onChange(event: WebUiEvent<WebUiAutocomplete, 'change'>) {
 </script>
 ```
 
-### 禁用与只读 {#disabled-readonly}
+### Disabled and readonly
 
 `disabled` 与 `readonly` 都不接受输入、不展开 panel，预填的 `value` 仍照常显示；两者在必填校验上都按通过处理。
 

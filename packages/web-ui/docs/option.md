@@ -9,7 +9,7 @@ It dispatches no events aimed at consumers—the registration handshake emitted 
 
 ## Samples
 
-### Basic option {#basic}
+### Basic option
 
 `label` decides what is displayed inside the container, and `value` is the value the container dispatches.
 
@@ -35,7 +35,7 @@ export default function Demo() {
 </template>
 ```
 
-### Prefix and suffix icons {#prefix-suffix}
+### Prefix and suffix icons
 
 When `label` is omitted, `label` takes the text of the default slot; `prefix` and `suffix` do not take part in that text.
 
@@ -77,7 +77,7 @@ import { lucideImage, lucideStar } from '@greypan/web-ui/icons'
 </script>
 ```
 
-### Disabled items {#disabled}
+### Disabled items
 
 A `disabled` item stays in the list but cannot be selected, and keyboard navigation skips it.
 

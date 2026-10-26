@@ -9,7 +9,7 @@ Text children of the default slot become the visible label and the default acces
 
 ## Samples
 
-### Basic {#basic}
+### Basic
 
 `checked` is the on/off state. Text written inside `<web-ui-switch>` renders as the visible label next to the switch (see Slots); when you do not want a visible label, keep the label outside the host. When the page owns this value, catch `change` and write it back to `checked`.
 
@@ -48,7 +48,7 @@ function onChange(event: WebUiEvent<WebUiSwitch, 'change'>) {
 </script>
 ```
 
-### Disabled and loading {#states}
+### Disabled and loading
 
 `disabled` and `loading` both block interaction and both use the same disabled appearance.
 
@@ -88,7 +88,7 @@ export default function Demo() {
 </template>
 ```
 
-### Event timing {#events}
+### Event timing
 
 Events are dispatched only after user action: a click, Enter, and Space all make the component dispatch both `input` and `change`. Writing `checked` programmatically dispatches neither—that is exactly the path the button below takes.
 
@@ -150,7 +150,7 @@ function writeChecked() {
 </script>
 ```
 
-### Drag and flick {#drag}
+### Drag and flick
 
 After pressing, the switch enters dragging only once horizontal movement exceeds 6px, and the thumb follows the pointer; on release, moving past half the distance sets the value, and a horizontal velocity beyond ±300 px/s sets it in the flick direction regardless of where the pointer landed.
 
@@ -210,7 +210,7 @@ function record(name: string) {
 </script>
 ```
 
-### Form value {#form}
+### Form value
 
 `name` is the field name and `value` is the submitted value, which defaults to `'on'` when left empty.
 

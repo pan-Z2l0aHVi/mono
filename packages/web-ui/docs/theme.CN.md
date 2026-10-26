@@ -7,7 +7,7 @@ tag: web-ui-theme
 
 ## Samples
 
-### 浅色与暗色 {#appearance}
+### Light and dark
 
 `appearance` 决定这一层作用域解析出哪一套颜色与阴影 token，`light` 与 `dark` 在同一页可以并存。
 
@@ -69,7 +69,7 @@ const labels: Record<(typeof appearances)[number], string> = {
 </script>
 ```
 
-### 切换外观 {#toggle}
+### Switching appearance
 
 把 `appearance` 绑到页面状态上就是主题切换，`system` 由 `prefers-color-scheme` 解析。
 
@@ -173,7 +173,7 @@ function pick(value: string) {
 </script>
 ```
 
-### 派生输出 {#resolved}
+### Derived output
 
 `resolved-appearance`（同时以 `resolvedAppearance` property 暴露）恒为 `light` 或 `dark`：显式 `appearance` 直接透传，`system` 从 `prefers-color-scheme` 解析并在 OS 翻转时实时更新，未设置 `appearance` 时输出默认值 `light`。
 
@@ -237,7 +237,7 @@ function inspect() {
 </script>
 ```
 
-### 嵌套作用域 {#nested}
+### Nested scopes
 
 主题可以层层嵌套，每一层解析自己的 token：内层覆盖外层，离开内层又回到外层的值，两层的 `resolved-appearance` 各自输出。
 
@@ -357,7 +357,7 @@ const innerValue = ref('a')
 </script>
 ```
 
-### 动效档位 {#motion}
+### Motion presets
 
 `motion` 管的是这一层的动效档位：`reduced` 把转场时长归零（两个无限加载循环不停，只放慢到 `1600ms`），`full` 始终播放，`system` 跟随 `prefers-reduced-motion`。
 
@@ -476,7 +476,7 @@ function inspect() {
 </script>
 ```
 
-### overlay root 与 portal {#overlay}
+### Overlay root and portal
 
 每个 active 主题同时是它自己的 theme-owned overlay root：`getOverlayRoot()` 返回它，未设置 `appearance` 的主题不创建、返回 `undefined`。
 
@@ -597,7 +597,7 @@ function inspect() {
 </script>
 ```
 
-### 作用域内覆盖 token {#tokens}
+### Overriding tokens within a scope
 
 token 的默认值由 `<web-ui-theme>` 为自己的子树声明，覆盖点因此要落在作用域内的元素上：抬 `--wui-control-size` 与 `--wui-input-width` 改控件的高度与宽度。
 

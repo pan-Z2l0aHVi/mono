@@ -7,7 +7,7 @@ Responsive page layout: an optional full-width banner, a collapsible sidebar on 
 
 ## Samples
 
-### Basic {#basic}
+### Basic
 
 Five slots each take one region: `banner` spans the full width above the body, `header` is the sticky header of the content area, `sidebar` is the sidebar card content, the default slot is the main content area, and `tabbar` is the bottom bar.
 
@@ -79,7 +79,7 @@ export default function Demo() {
 </template>
 ```
 
-### Collapsible sidebar {#collapsible-sidebar}
+### Collapsible sidebar
 
 `sidebar-collapsed` is the controlled collapse state on desktop: it only narrows the desktop aside to `collapsed-width` and does not affect the mobile Drawer.
 
@@ -152,7 +152,7 @@ const collapsed = ref(false)
 </script>
 ```
 
-### Resize by dragging {#resizable-sidebar}
+### Resize by dragging
 
 With `sidebar-resizable` enabled, a resize handle appears on the right edge of the desktop sidebar (hidden in the collapsed state), and dragging changes the width in real time; after focusing it with the keyboard, ←/→ step by 16px (Shift accelerates to 64px), and Home/End jump to the lower/upper bound.
 
@@ -230,7 +230,7 @@ const width = ref('240px')
 </script>
 ```
 
-### Mobile drawer and viewport detection {#mobile-drawer}
+### Mobile drawer and viewport detection
 
 `sidebar-open` is the controlled visibility of the mobile Drawer and is independent of `sidebar-collapsed`.
 

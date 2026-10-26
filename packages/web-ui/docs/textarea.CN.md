@@ -7,7 +7,7 @@ tag: web-ui-textarea
 
 ## Samples
 
-### 基础 {#basic}
+### Basic
 
 `rows` 决定初始显示行数（默认 3 行），`placeholder` 在空值时显示；不接 `input` 时组件自己持有内容，要由页面同步就写 `value` 并接住 `input`，见下面的受控值与事件。
 
@@ -33,7 +33,7 @@ export default function Demo() {
 </template>
 ```
 
-### 自动高度 {#autosize}
+### Autosize
 
 `autosize` 让高度跟着内容走：组件把高度写成内联值，同时关掉原生拖拽手柄，两套高度来源不并存。
 
@@ -59,7 +59,7 @@ export default function Demo() {
 </template>
 ```
 
-### 前后缀 {#prefix-suffix}
+### Prefix and suffix
 
 `prefix` / `suffix` 插槽放 icon 或文字，它们与首行文字顶对齐；没有可见 label 时用 `aria-label` 给出无障碍名称（`aria-labelledby` 的限制见下面的行为说明）。
 
@@ -99,7 +99,7 @@ import { lucideFileText } from '@greypan/web-ui/icons'
 </script>
 ```
 
-### 受控值与字数 {#events}
+### Controlled value and character count
 
 `value` 是输入值也是表单提交值；`input` 每敲一个字（含换行）派发一次，`change` 与内部原生控件对齐，值改动后失焦时转发一次。`maxlength` 限制可输入长度，计数器由页面按 `value` 自己算。
 
@@ -159,7 +159,7 @@ const committed = ref('')
 </script>
 ```
 
-### 清除 button {#clearable}
+### Clear button
 
 `clearable` 只在有值且未设置 `disabled` 或 `readonly` 时画出清除 button；空值、禁用或只读时不画。清除 button 对齐首行而不是整框垂直居中；点它清空值并派发 `input`。`full` 让控件占满父容器宽度，`--wui-textarea-width` 只在非 `full` 时生效。
 
@@ -183,7 +183,7 @@ export default function Demo() {
 </template>
 ```
 
-### 禁用与只读 {#states}
+### Disabled and readonly
 
 `disabled` 关掉输入、校验与清除操作，宿主整体降到四成不透明度；`readonly` 保留可读、可全选与可复制，仍可拖拽右下角改高度，但不接受输入，并收起清除 button。
 
@@ -207,7 +207,7 @@ export default function Demo() {
 </template>
 ```
 
-### 无边框 {#borderless}
+### Borderless
 
 `borderless` 移除边框、背景、模糊与 glass 描边环，只留 padding 与 focus ring，圆角仍取 `--wui-radius-menu`；外层自己画容器时用这一形态。
 
@@ -231,7 +231,7 @@ export default function Demo() {
 </template>
 ```
 
-### 表单值 {#form}
+### Form value
 
 `name` 是字段名，提交值就是当前内容。`required` 在未填时拦下提交（`valueMissing`），`minlength` 在字数不够时拦下（`tooShort`）；两条判定都经 ElementInternals 转发给宿主 `<form>`。
 
@@ -321,7 +321,7 @@ function reset() {
 </script>
 ```
 
-### 聚焦与全选 {#methods}
+### Focus and select all
 
 `focus()` / `blur()` 委托到 shadow 内的原生 textarea，`select()` 全选当前内容；三条在 `disabled` 下都不产生效果。宿主自身没有 tab 位，按 Tab 进来的始终是内部控件的焦点。
 
@@ -365,7 +365,7 @@ const field = useTemplateRef<WebUiTextarea>('field')
 </script>
 ```
 
-### CSS 变量 {#sizing}
+### CSS variables
 
 `--wui-textarea-width` 决定输入区宽度（`full` 时被 `100%` 接管），`--wui-textarea-clear-color` 决定清除 button 的颜色。
 

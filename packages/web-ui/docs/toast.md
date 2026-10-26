@@ -7,7 +7,7 @@ Imperative toast: call `toast()` to create one and get its id, then `toast.close
 
 ## Samples
 
-### Shortcuts {#shortcuts}
+### Shortcuts
 
 `toast.success` / `info` / `warning` / `error` are shorthands for `toast()` plus `type`, and each call returns the final id of that toast; `error` defaults to a duration of `5000`, longer than the `3000` of the other types.
 
@@ -77,7 +77,7 @@ onBeforeUnmount(() => toast.clear())
 </script>
 ```
 
-### Full options {#options}
+### Full options
 
 `toast()` accepts the full set of options: `heading` is the bold title, `message` is the body, `position` decides which corner container it lands in (here `bottom-right`), `duration` is the auto-close time in milliseconds, and `closable` controls whether a close button is rendered. The returned id is written into the readout.
 
@@ -147,7 +147,7 @@ onBeforeUnmount(() => toast.clear())
 </script>
 ```
 
-### Merging into one toast {#upsert}
+### Merging into one toast
 
 A subsequent call with the same `id` updates that toast and does not add a new one. The first step passes an explicit `duration: 0` and does not auto-close; the next two steps pass no `duration`, so the countdown stays put; only the last step passes an explicit `3000` and restarts it.
 
@@ -230,7 +230,7 @@ onBeforeUnmount(() => toast.clear())
 </script>
 ```
 
-### Closing {#close}
+### Closing
 
 Every call returns the final id; `toast.close(id)` closes the given toast and `toast.clear()` takes away all current ones. Here a toast with `duration: 0` that never auto-closes is created first, then closed in both ways, and `<output>` records the last action.
 

@@ -18,9 +18,9 @@ import { reactIcon, vueIcon } from './flavor-icons'
  * 由示例文档 markdown 生成的页面主体：组件标题、简介、逐示例预览、双框架源码与 API 表。
  *
  * 数据全部来自 `packages/web-ui/docs/<name><suffix>.md`，按当前语种取生成产物：中文源在
- * `src/generated/zh-CN/`、英文译文在 `src/generated/en/`。带 `{#id}` 锚点的示例由生成器落成
+ * `src/generated/zh-CN/`、英文译文在 `src/generated/en/`。每条示例按标题派生的 id 由生成器落成
  * `src/generated/<locale>/demos/<component>--<id>.tsx`，预览执行的字节与代码区显示的字节同源；
- * 没有锚点的语料只展示代码。
+ * 标题两侧同文（英文专业术语），页面显示的也是它。
  *
  * 预览只运行当前站点框架；代码区始终提供 Vue / React 两份完整源码。
  */
@@ -108,10 +108,6 @@ function ExampleDoc({ component, nativeFlavor = 'react', level }: ExampleDocProp
   const sampleHeading = (level === 'secondary' ? 'h4' : 'h3') as 'h3' | 'h4'
   const SectionHeading = sectionHeading
   const SampleHeading = sampleHeading
-
-  function sampleKey(sample: { id: string | null }, index: number) {
-    return sample.id ?? `sample-${index}`
-  }
 
   function activeFlavor(key: string): Flavor {
     return activeFlavors[key] ?? nativeFlavor
@@ -220,10 +216,10 @@ function ExampleDoc({ component, nativeFlavor = 'react', level }: ExampleDocProp
       <section className="flex flex-col gap-6">
         <SectionHeading className="mdc-heading">示例</SectionHeading>
 
-        {doc.samples.map((sample, index) => {
-          const key = sampleKey(sample, index)
+        {doc.samples.map(sample => {
+          const key = sample.id
           const flavor = activeFlavor(key)
-          const Demo = sample.demoKey ? demoComponents.get(`${locale}/${component}--${sample.demoKey}`) : undefined
+          const Demo = demoComponents.get(`${locale}/${component}--${sample.demoKey}`)
           const isExpanded = expanded[key] ?? false
           return (
             <article className="flex flex-col gap-3" data-sample={sample.title} key={key}>
@@ -253,7 +249,7 @@ function ExampleDoc({ component, nativeFlavor = 'react', level }: ExampleDocProp
                 {Demo ? (
                   <div
                     className="relative z-20 flex flex-wrap items-center gap-3 px-4 py-8"
-                    data-sample-preview={sample.demoKey ?? undefined}
+                    data-sample-preview={sample.demoKey}
                   >
                     <Suspense fallback={null}>
                       <Demo />
