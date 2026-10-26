@@ -34,7 +34,7 @@ export default function Demo() {
           setLast(event.detail.open ? 'true' : 'false')
         }}
       >
-        <div className="flex h-32 w-full items-center justify-center rounded-xl border border-dashed border-(--wui-color-border) bg-(--wui-color-surface-control) text-sm text-(--wui-color-text-secondary)">
+        <div className="flex h-32 w-full items-center justify-center rounded-xl border border-dashed border-(--wui-color-border) bg-(--wui-color-surface-control) text-sm text-(--wui-color-text)">
           在此区域右键点击
         </div>
         <web-ui-dropdown-item>
@@ -70,7 +70,7 @@ export default function Demo() {
   <div class="flex w-full flex-col items-start gap-3">
     <web-ui-context-menu class="w-full" @open-change="onOpenChange">
       <div
-        class="flex h-32 w-full items-center justify-center rounded-xl border border-dashed border-(--wui-color-border) bg-(--wui-color-surface-control) text-sm text-(--wui-color-text-secondary)"
+        class="flex h-32 w-full items-center justify-center rounded-xl border border-dashed border-(--wui-color-border) bg-(--wui-color-surface-control) text-sm text-(--wui-color-text)"
       >
         在此区域右键点击
       </div>
@@ -135,7 +135,7 @@ export default function Demo() {
           setLast(event.detail.open ? 'true' : 'false')
         }}
       >
-        <div className="flex h-32 w-full items-center justify-center rounded-xl border border-dashed border-(--wui-color-border) bg-(--wui-color-surface-control) text-sm text-(--wui-color-text-secondary)">
+        <div className="flex h-32 w-full items-center justify-center rounded-xl border border-dashed border-(--wui-color-border) bg-(--wui-color-surface-control) text-sm text-(--wui-color-text)">
           在此区域按住 600 ms（触屏）
         </div>
         <web-ui-dropdown-item>重命名</web-ui-dropdown-item>
@@ -154,7 +154,7 @@ export default function Demo() {
   <div class="flex w-full flex-col items-start gap-3">
     <web-ui-context-menu class="w-full" long-press :long-press-delay="600" @open-change="onOpenChange">
       <div
-        class="flex h-32 w-full items-center justify-center rounded-xl border border-dashed border-(--wui-color-border) bg-(--wui-color-surface-control) text-sm text-(--wui-color-text-secondary)"
+        class="flex h-32 w-full items-center justify-center rounded-xl border border-dashed border-(--wui-color-border) bg-(--wui-color-surface-control) text-sm text-(--wui-color-text)"
       >
         在此区域按住 600 ms（触屏）
       </div>
@@ -205,7 +205,7 @@ export default function Demo() {
           setLast(event.detail.open ? 'true' : 'false')
         }}
       >
-        <div className="flex h-32 w-full items-center justify-center rounded-xl border border-dashed border-(--wui-color-border) bg-(--wui-color-surface-control) text-sm text-(--wui-color-text-secondary)">
+        <div className="flex h-32 w-full items-center justify-center rounded-xl border border-dashed border-(--wui-color-border) bg-(--wui-color-surface-control) text-sm text-(--wui-color-text)">
           {disabled ? 'menu 已禁用：右键不打开' : '在此区域右键点击'}
         </div>
         <web-ui-dropdown-item>编辑</web-ui-dropdown-item>
@@ -229,7 +229,7 @@ export default function Demo() {
   <div class="flex w-full flex-col items-start gap-3">
     <web-ui-context-menu class="w-full" :disabled="disabled" @open-change="onOpenChange">
       <div
-        class="flex h-32 w-full items-center justify-center rounded-xl border border-dashed border-(--wui-color-border) bg-(--wui-color-surface-control) text-sm text-(--wui-color-text-secondary)"
+        class="flex h-32 w-full items-center justify-center rounded-xl border border-dashed border-(--wui-color-border) bg-(--wui-color-surface-control) text-sm text-(--wui-color-text)"
       >
         {{ disabled ? 'menu 已禁用：右键不打开' : '在此区域右键点击' }}
       </div>
