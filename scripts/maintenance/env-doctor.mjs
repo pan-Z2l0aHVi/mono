@@ -4,7 +4,7 @@
 // 是显式 opt-in 的写操作。覆盖本会话实测踩过的环境坑：
 // dist 截断（vp build --watch 清空 d.ts）、watch 进程污染、turbo 缓存未生效、
 // mise env 未激活（TURBO_CACHE_DIR 未注入、node 版本不符）、
-// node_modules 链接失效、git worktree 残留。
+// node_modules 链接失效、git worktree 残留、git hook 未安装（pre-commit 静默空转）。
 //
 // 用法：pnpm run agent:env-doctor [--json] [--fix] [--kill-watchers]
 //   --json           机器可读输出（人类可读走 stdout 文本）
@@ -17,6 +17,7 @@ import { execFileSync, spawnSync } from 'node:child_process'
 import fs from 'node:fs'
 import path from 'node:path'
 
+import { inspectGitHooks } from '../lib/git-hooks-status.mjs'
 import { resolveTurboCacheDir } from '../lib/turbo-cache-dir.mjs'
 
 const scriptRoot = path.resolve(import.meta.dirname, '../..')
@@ -253,12 +254,23 @@ function worktreeResidueCheck() {
   record('worktree-residue', 'warn', `stale worktree admin entries (use --fix to prune):\n${prune.stdout}`)
 }
 
+// ===== git hook 安装状态 =====
+// 事故复盘：core.hooksPath 被设成 .vite-hooks 之外的外部路径后，vite-plus 只打一行日志就放弃
+// 接管，而兜底安装脚本当时也只处理 commit-msg，于是五项 pre-commit 检查静默空转。
+// 判定逻辑放在 scripts/lib/git-hooks-status.mjs，便于用临时 Git 仓库覆盖 fail 分支；
+// 修复命令只打印，不自动改写 Git 配置。
+function gitHooksCheck() {
+  const { level, detail } = inspectGitHooks(root)
+  record('git-hooks', level, detail)
+}
+
 distAudit()
 watcherDetection()
 turboCacheCheck()
 nodeVersionCheck()
 nodeModulesCheck()
 worktreeResidueCheck()
+gitHooksCheck()
 
 if (fix && results.some(result => result.id === 'dist-audit' && result.level === 'fail')) {
   const build = sh('pnpm', ['exec', 'turbo', 'run', 'build', '--force'])

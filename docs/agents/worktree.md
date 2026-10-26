@@ -56,4 +56,6 @@ Codex 线程能不能写共享 Turbo cache，取决于客户端的权限配置�
 echo "${TURBO_CACHE_DIR:-<unset>}"
 ```
 
+让 `mise` 本体可解析和让 shim 生效是两件事：`mise` 本体只在包管理器目录（macOS 上常见 `/opt/homebrew/bin`），钉住的工具链在 `$HOME/.local/share/mise/shims`。为了让 `mise` 可解析而把 `/opt/homebrew/bin` 放到 PATH 最前，会让 Homebrew 的 node 抢在 shim 之前，于是裸跑的 `pnpm` 用的是另一版 node；确实需要两者都在场时，把 shims 放在 Homebrew 之前，或直接用 `mise exec --`。
+
 为什么不能靠 turbo 兜底：它的 hash 只记录 `package.json` 里 `engines` 的版本**范围**，不记录真实工具链，所以宿主 PATH 上另一版 node 跑出的构建与钉住版本跑出的构建落在同一个 hash 上。由此有两种各自成立的失效，正是要分开防的两件事——env 没注入时 turbo 落到默认缓存位置，命中不了共享缓存；env 指向共享缓存而 node 不是钉住那一版时，会在同一 hash 下写进工具链不符的产物，之后的命中把它当有效缓存恢复出来。`pnpm run agent:env-doctor` 把这两条事实变成可检测断言：本地 `TURBO_CACHE_DIR` 必须等于路径 helper 计算的 canonical 临时缓存路径，当前 node 必须等于 `[tools]` 钉住的版本，不符即 fail。

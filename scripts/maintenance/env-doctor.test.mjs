@@ -51,4 +51,8 @@ assert.equal(entry(runDoctor({ TURBO_CACHE_DIR: path.join(root, '.turbo') }), 't
 const expectedNodeLevel = process.version.replace(/^v/, '') === pinnedNode ? 'ok' : 'fail'
 assert.equal(entry(runDoctor({}), 'node-version').level, expectedNodeLevel)
 
+// git-hooks 的判定分支由 scripts/lib/git-hooks-status.test.mjs 覆盖；这里只钉住 env-doctor
+// 把它接进了输出，避免测试里重复实现判定逻辑、变成自证式断言。
+assert.ok(['ok', 'warn', 'fail'].includes(entry(runDoctor({}), 'git-hooks').level))
+
 console.log('scripts/maintenance/env-doctor.test.mjs: all assertions passed')
