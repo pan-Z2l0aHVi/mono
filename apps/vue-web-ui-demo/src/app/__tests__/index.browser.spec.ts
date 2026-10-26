@@ -1,6 +1,6 @@
 import '@/assets/global.css'
 
-import type { WebUiLayout } from '@greypan/web-ui'
+import { toast, type WebUiLayout, type WebUiTheme } from '@greypan/web-ui'
 import { createHead } from '@unhead/vue/client'
 import { mount, type VueWrapper } from '@vue/test-utils'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
@@ -30,6 +30,40 @@ function layoutRoot() {
     | null
   if (!element) throw new Error('web-ui-layout not found')
   return element
+}
+
+function bannerCloseButton() {
+  const button = document.querySelector('[slot="banner"] web-ui-button')
+  if (!button) throw new Error('banner close button not found')
+  return button
+}
+
+/** userEvent targets directly, so first confirm the button wins hit-testing at its center. */
+async function clickBannerCloseButtonAtCenter() {
+  const button = bannerCloseButton()
+  const bounds = button.getBoundingClientRect()
+  const x = bounds.left + bounds.width / 2
+  const y = bounds.top + bounds.height / 2
+  const hitTarget = document.elementFromPoint(x, y)
+
+  expect(
+    hitTarget === button || (hitTarget !== null && button.contains(hitTarget)),
+    `banner close button center (${x}, ${y}) should hit the button or its contents`
+  ).toBe(true)
+  if (!hitTarget) throw new Error('banner close button center had no hit target')
+  await userEvent.click(hitTarget as HTMLElement)
+}
+
+function globalSelectTrigger(label: string) {
+  const trigger = document
+    .querySelector(`web-ui-select[aria-label="${label}"]`)
+    ?.shadowRoot?.querySelector<HTMLElement>('[role="combobox"]')
+  if (!trigger) throw new Error(`${label} select trigger not found`)
+  return trigger
+}
+
+function themeOverlayRoot(theme = document.querySelector('web-ui-theme')) {
+  return (theme as WebUiTheme | null)?.getOverlayRoot()
 }
 
 function navRoot() {
@@ -118,9 +152,106 @@ describe('应用外壳（浏览器）：导航 collapsed state 不跨视口泄�
   })
 
   afterEach(async () => {
+    toast.clear()
     wrapper?.unmount()
     wrapper = null
     await setViewport(DESKTOP_VIEWPORT.width, DESKTOP_VIEWPORT.height)
+  })
+
+  it('右上角 toast 显示与隐藏时 banner 关闭按钮都可用', async () => {
+    await mountAppShell()
+    await clickBannerCloseButtonAtCenter()
+    await vi.waitFor(() => {
+      if (document.querySelector('[slot="banner"]')) throw new Error('banner stayed open without a toast')
+    })
+    expect(document.querySelector('[slot="banner"]')).toBeNull()
+
+    wrapper?.unmount()
+    wrapper = null
+    await mountAppShell()
+
+    const toastId = toast.info('Persistent toast for the banner test', {
+      id: 'vue-banner-close-regression',
+      duration: 0
+    })
+    expect(toastId).toBe('vue-banner-close-regression')
+    await vi.waitFor(() => {
+      const toastElement = themeOverlayRoot()?.querySelector('web-ui-toast')
+      if (!toastElement) throw new Error('persistent toast did not mount')
+    })
+
+    await clickBannerCloseButtonAtCenter()
+    await vi.waitFor(() => {
+      const banner = document.querySelector<HTMLElement>('[slot="banner"]')
+      if (!banner || getComputedStyle(banner).visibility !== 'hidden') {
+        throw new Error('banner stayed visible with a toast')
+      }
+    })
+
+    expect(document.querySelector('[slot="banner"]')).not.toBeNull()
+    expect(themeOverlayRoot()?.querySelector('web-ui-toast')).not.toBeNull()
+
+    for (const label of ['Global motion', 'Global theme']) {
+      const trigger = globalSelectTrigger(label)
+      await userEvent.click(trigger)
+      expect(trigger.getAttribute('aria-expanded')).toBe('true')
+      await userEvent.keyboard('{Escape}')
+      expect(trigger.getAttribute('aria-expanded')).toBe('false')
+    }
+
+    toast.clear()
+    await vi.waitFor(() => {
+      if (document.querySelector('[slot="banner"]')) throw new Error('empty banner space stayed after toast closed')
+    })
+
+    toast.info('Bottom toast should not reserve banner space', {
+      id: 'vue-bottom-banner-close-regression',
+      duration: 0,
+      position: 'bottom-right'
+    })
+    await vi.waitFor(() => {
+      if (!themeOverlayRoot()?.querySelector('web-ui-toast')) throw new Error('bottom toast did not mount')
+      if (document.querySelector('[slot="banner"]')) throw new Error('bottom toast reserved banner space')
+    })
+    toast.clear()
+    await vi.waitFor(() => {
+      if (themeOverlayRoot()?.querySelector('web-ui-toast')) throw new Error('bottom toast stayed mounted')
+    })
+
+    const shadowHost = document.createElement('div')
+    const shadowRoot = shadowHost.attachShadow({ mode: 'open' })
+    const nestedTheme = document.createElement('web-ui-theme') as WebUiTheme
+    const target = document.createElement('button')
+    nestedTheme.append(target)
+    shadowRoot.append(nestedTheme)
+    document.body.append(shadowHost)
+    await nestedTheme.updateComplete
+    await vi.waitFor(() => expect(document.querySelector('[slot="banner"]')).toBeNull())
+
+    nestedTheme.setAttribute('appearance', 'dark')
+    await nestedTheme.updateComplete
+    await vi.waitFor(() => expect(document.querySelector('[slot="banner"]')).toBeNull())
+
+    toast.info('Persistent scoped toast for the banner test', {
+      id: 'vue-scoped-banner-close-regression',
+      duration: 0,
+      target
+    })
+    await vi.waitFor(() => {
+      if (!nestedTheme.getOverlayRoot()?.querySelector('web-ui-toast')) {
+        throw new Error('scoped toast did not mount in the nested theme')
+      }
+      const banner = document.querySelector<HTMLElement>('[slot="banner"]')
+      if (!banner || getComputedStyle(banner).visibility !== 'hidden') {
+        throw new Error('nested scoped toast did not reserve banner space')
+      }
+    })
+
+    toast.clear()
+    await vi.waitFor(() => {
+      if (nestedTheme.getOverlayRoot()?.querySelector('web-ui-toast')) throw new Error('scoped toast stayed mounted')
+    })
+    shadowHost.remove()
   })
 
   it('桌面端 collapsed state 使用唯一短标签，并通过 title 提供完整 label', async () => {
