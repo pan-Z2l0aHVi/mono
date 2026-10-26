@@ -43,6 +43,8 @@ T0 必须 review 的要求不变，形态改变：编排层为 review 开一条�
 
 `workflow.md`「预授权操作」清单因此**不动**：push 仍需逐次授权，编排层不能因为要开 review 线程就替 owner push。
 
+（2026-10-26 注记：本节「reviewer 不进入 owner 的 worktree」收窄为「不写入、不切换、不覆盖」。编排层仍优先分配独立 worktree；无法分配时，reviewer 可以在工作树无未提交改动、HEAD 等于 PR head、被审内容一律取自 merge-base..head 的 Git 对象的前提下只读复用已有 worktree。对并发写入的排斥不变：需要写盘的验证只在专属 worktree 或系统临时目录的一次性 worktree 中进行。该放宽同样适用于 T1，表述以 `review.md`「固定输入与范围」为准。）
+
 ### 4. 不把编排层写进仓库，也不在仓库里复活它
 
 编排层的实现、角色契约与派发协议留在 herdr-projects 侧，不进本仓版本控制。仓库文档只写它承担的职责与它交付到仓库边界上的那几个值（worktree 路径、base SHA、owner 标识），不复制它的实现。
