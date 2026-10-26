@@ -1,5 +1,21 @@
 # @greypan/web-ui
 
+## 11.2.0
+
+### Minor Changes
+
+- be69536: `web-ui-empty` drops its `size` prop and hands the whole layout to CSS variables.
+  
+  - `size` is gone. It was the only JS knob and drove four unrelated channels at once (glyph, `min-height`, padding, and both font sizes). Each channel now has its own variable: `--wui-empty-icon-size`, `--wui-empty-icon-color`, `--wui-empty-icon-opacity`, `--wui-empty-title-font-size`, `--wui-empty-title-color`, `--wui-empty-description-font-size` and `--wui-empty-description-color`, alongside the already public `--wui-empty-min-height`, `--wui-empty-padding`, `--wui-empty-content-width`, `--wui-empty-title-margin-top` and `--wui-empty-action-margin-top`. The defaults are the old 56 slot: 40px glyph, 240px `min-height`, `32px 24px` padding, 16px / 14px type. A leftover `size` attribute renders nothing.
+  - The default glyph is now `andrsrxn:inbox` instead of `lucide:inbox`, drawn as a plain `svg` inside the icon box rather than a `web-ui-icon` element. `web-ui-icon` takes its edge length from a JS property, which a CSS variable cannot reach, and the empty glyph is a fixed asset that does not need that indirection. The asset paints with `currentColor`, so `--wui-empty-icon-color` reaches it.
+  - Colour and weight are now two variables instead of one. `--wui-empty-icon-color` takes a plain, opaque colour (default `--wui-color-text-secondary`) and `--wui-empty-icon-opacity` (default `0.75`) dims the glyph as a group. They cannot be folded into a single alpha colour: a line glyph's strokes genuinely overlap at corners, line ends and across the tinted fill, so an alpha colour composites twice there and the corners come out visibly darker. Group opacity applies once, after the glyph is flattened. Set `--wui-empty-icon-opacity: 1` for the full-strength colour.
+  - Migrating an old `size`: `40` becomes `--wui-empty-icon-size: 29px` with `--wui-empty-min-height: 171px`, `--wui-empty-padding: 23px 17px`, title 14px and description 13px; `56` is the default; `72` becomes `51px` / `309px` / `41px 31px` with 16px / 14px type. The docs keep the full table.
+- be69536: `disabled` 成为唯一的禁用入口，`aria-disabled` 不再参与任何行为：
+  
+  - `web-ui-button` 不再委派 `aria-disabled` 到内部原生 button，也不再因 `aria-disabled="true"` 阻断 click / 表单动作。「看起来禁用但仍可聚焦」的语义移除，需要禁用请用 `disabled`（内部 button 真的禁用、退出 tab 序列）。
+  - `web-ui-collapse` 的 `disabled` 改为给 trigger 元素加 `disabled`（取消禁用时还原），替代原来的 `aria-disabled` 回写——后者在 `<web-ui-button>` 上只落在宿主，属性不跨 shadow 转发，AT 读不到。
+  - `web-ui-collapse` 不再向 trigger 回写 `aria-controls`：目标 id 在组件 shadow root 内，IDREF 跨 shadow root 不解析，写出去等同悬空引用。展开关系只由 `aria-expanded` 表达，内容 track 也不再生成无引用的 id。
+
 ## 11.1.0
 
 ### Minor Changes
