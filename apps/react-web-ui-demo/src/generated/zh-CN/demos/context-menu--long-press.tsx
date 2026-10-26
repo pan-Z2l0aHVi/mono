@@ -15,7 +15,7 @@ export default function Demo() {
           setLast(event.detail.open ? 'true' : 'false')
         }}
       >
-        <div className="flex h-32 w-full items-center justify-center rounded-xl border border-dashed border-(--wui-color-border) bg-(--wui-color-surface-control) text-sm text-(--wui-color-text-secondary)">
+        <div className="flex h-32 w-full items-center justify-center rounded-xl border border-dashed border-(--wui-color-border) bg-(--wui-color-surface-control) text-sm text-(--wui-color-text)">
           在此区域按住 600 ms（触屏）
         </div>
         <web-ui-dropdown-item>重命名</web-ui-dropdown-item>
