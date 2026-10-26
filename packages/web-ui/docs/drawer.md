@@ -911,7 +911,7 @@ function closeLevel(index: number) {
 
 ### Sibling stacking
 
-Multiple drawers mounted as sibling nodes are managed automatically by the component once opened in sequence: earlier ones scale and shift, the later one sits on top; close them in any order and the remaining layers rearrange.
+Three drawers are mounted as sibling nodes. Open drawer 1 with the page button, then open the next layer from the current drawer's footer. The component manages order automatically: earlier drawers scale and shift while later ones sit on top; close them in any order and the remaining layers rearrange.
 
 ```tsx
 import { useState } from 'react'
@@ -925,13 +925,7 @@ export default function Demo() {
 
   return (
     <>
-      <div className="flex flex-wrap gap-3">
-        {open.map((_, index) => (
-          <web-ui-button key={index} onClick={() => setAt(index, true)}>
-            Open drawer {index + 1}
-          </web-ui-button>
-        ))}
-      </div>
+      <web-ui-button onClick={() => setAt(0, true)}>Open drawer 1</web-ui-button>
 
       {open.map((value, index) => (
         <web-ui-drawer
@@ -941,7 +935,17 @@ export default function Demo() {
           closable
           onopen-change={event => setAt(index, event.detail.open)}
         >
-          <p>Sibling drawer {index + 1}. Open the next one and watch this layer scale down and expose its edge.</p>
+          <p>
+            Sibling drawer {index + 1}.
+            {index < open.length - 1
+              ? ' Open the next drawer from the footer.'
+              : ' Close to see the remaining layers rearrange.'}
+          </p>
+          {index < open.length - 1 && (
+            <web-ui-button slot="footer" variant="secondary" full onClick={() => setAt(index + 1, true)}>
+              Open drawer {index + 2}
+            </web-ui-button>
+          )}
         </web-ui-drawer>
       ))}
     </>
@@ -951,11 +955,7 @@ export default function Demo() {
 
 ```vue
 <template>
-  <div class="flex flex-wrap gap-3">
-    <web-ui-button v-for="(value, index) in open" :key="index" @click="open[index] = true">
-      Open drawer {{ index + 1 }}
-    </web-ui-button>
-  </div>
+  <web-ui-button @click="open[0] = true">Open drawer 1</web-ui-button>
 
   <web-ui-drawer
     v-for="(value, index) in open"
@@ -965,7 +965,23 @@ export default function Demo() {
     closable
     @open-change="open[index] = $event.detail.open"
   >
-    <p>Sibling drawer {{ index + 1 }}. Open the next one and watch this layer scale down and expose its edge.</p>
+    <p>
+      Sibling drawer {{ index + 1 }}.
+      {{
+        index < open.length - 1
+          ? 'Open the next drawer from the footer.'
+          : 'Close to see the remaining layers rearrange.'
+      }}
+    </p>
+    <web-ui-button
+      v-if="index < open.length - 1"
+      slot="footer"
+      variant="secondary"
+      full
+      @click="open[index + 1] = true"
+    >
+      Open drawer {{ index + 2 }}
+    </web-ui-button>
   </web-ui-drawer>
 </template>
 
