@@ -3,17 +3,17 @@ component: toast
 tag: web-ui-toast
 ---
 
-命令式 toast：通过 `toast()` 创建一条并拿到它的 id，用 `toast.close(id)` 关闭；同一个 `id` 再次调用是更新那一条，而不是新建。下面的表分别列 `toast()` 的 option、命令式入口，以及 `<web-ui-toast>` 元素自身的属性、事件与方法。
+Imperative toast: call `toast()` to create one and get its id, then `toast.close(id)` to close it; calling again with the same `id` updates that toast instead of creating a new one. The tables below list the options of `toast()`, the imperative entry points, and the attributes, events, and methods of the `<web-ui-toast>` element itself.
 
-## 示例
+## Samples
 
-### 快捷方法 {#shortcuts}
+### Shortcuts {#shortcuts}
 
-`toast.success` / `info` / `warning` / `error` 是 `toast()` 加 `type` 的快捷写法，每次调用返回这条 toast 的最终 id；`error` 的默认时长是 `5000`，比其余类型的 `3000` 长。
+`toast.success` / `info` / `warning` / `error` are shorthands for `toast()` plus `type`, and each call returns the final id of that toast; `error` defaults to a duration of `5000`, longer than the `3000` of the other types.
 
-四条都落在默认的 `top-right`。
+All four land in the default `top-right`.
 
-示例卸载时 `toast.clear()`，避免留下的 toast 影响页面上其他示例。
+The sample calls `toast.clear()` on unmount so leftover toasts do not affect other samples on the page.
 
 ```tsx
 import { toast } from '@greypan/web-ui'
@@ -27,12 +27,12 @@ export default function Demo() {
   return (
     <div className="flex flex-col items-start gap-3">
       <div className="flex flex-wrap gap-2">
-        <web-ui-button onClick={() => setLast(toast.success('操作成功'))}>success</web-ui-button>
-        <web-ui-button onClick={() => setLast(toast.info('提示信息'))}>info</web-ui-button>
-        <web-ui-button onClick={() => setLast(toast.warning('请注意'))}>warning</web-ui-button>
-        <web-ui-button onClick={() => setLast(toast.error('出错了'))}>error</web-ui-button>
+        <web-ui-button onClick={() => setLast(toast.success('Operation succeeded'))}>success</web-ui-button>
+        <web-ui-button onClick={() => setLast(toast.info('Informational message'))}>info</web-ui-button>
+        <web-ui-button onClick={() => setLast(toast.warning('Please note'))}>warning</web-ui-button>
+        <web-ui-button onClick={() => setLast(toast.error('Something went wrong'))}>error</web-ui-button>
       </div>
-      <output className="text-sm text-(--wui-color-text-secondary)">最近创建的 id：{last}</output>
+      <output className="text-sm text-(--wui-color-text-secondary)">Last created id: {last}</output>
     </div>
   )
 }
@@ -47,7 +47,7 @@ export default function Demo() {
       <web-ui-button @click="showWarning">warning</web-ui-button>
       <web-ui-button @click="showError">error</web-ui-button>
     </div>
-    <output class="text-sm text-(--wui-color-text-secondary)">最近创建的 id：{{ last }}</output>
+    <output class="text-sm text-(--wui-color-text-secondary)">Last created id: {{ last }}</output>
   </div>
 </template>
 
@@ -58,28 +58,28 @@ import { onBeforeUnmount, ref } from 'vue'
 const last = ref('—')
 
 function showSuccess() {
-  last.value = toast.success('操作成功')
+  last.value = toast.success('Operation succeeded')
 }
 
 function showInfo() {
-  last.value = toast.info('提示信息')
+  last.value = toast.info('Informational message')
 }
 
 function showWarning() {
-  last.value = toast.warning('请注意')
+  last.value = toast.warning('Please note')
 }
 
 function showError() {
-  last.value = toast.error('出错了')
+  last.value = toast.error('Something went wrong')
 }
 
 onBeforeUnmount(() => toast.clear())
 </script>
 ```
 
-### 完整 option {#options}
+### Full options {#options}
 
-`toast()` 接受完整 option：`heading` 是粗体标题，`message` 是正文，`position` 决定落进哪个角的容器（这里是 `bottom-right`），`duration` 是自动关闭的毫秒数，`closable` 控制是否渲染关闭 button。返回的 id 写进读数。
+`toast()` accepts the full set of options: `heading` is the bold title, `message` is the body, `position` decides which corner container it lands in (here `bottom-right`), `duration` is the auto-close time in milliseconds, and `closable` controls whether a close button is rendered. The returned id is written into the readout.
 
 ```tsx
 import { toast } from '@greypan/web-ui'
@@ -96,8 +96,8 @@ export default function Demo() {
         onClick={() => {
           setId(
             toast({
-              heading: '已保存',
-              message: '更改已写入云端',
+              heading: 'Saved',
+              message: 'Changes written to the cloud',
               type: 'info',
               position: 'bottom-right',
               duration: 4000,
@@ -106,10 +106,10 @@ export default function Demo() {
           )
         }}
       >
-        创建完整 option 的 toast
+        Create a toast with full options
       </web-ui-button>
       <output className="text-sm text-(--wui-color-text-secondary)">
-        id：{id} · 位置：bottom-right · 4 秒后自动关闭
+        id: {id} · position: bottom-right · closes automatically after 4 seconds
       </output>
     </div>
   )
@@ -119,9 +119,9 @@ export default function Demo() {
 ```vue
 <template>
   <div class="flex flex-col items-start gap-3">
-    <web-ui-button @click="notify">创建完整 option 的 toast</web-ui-button>
+    <web-ui-button @click="notify">Create a toast with full options</web-ui-button>
     <output class="text-sm text-(--wui-color-text-secondary)">
-      id：{{ id }} · 位置：bottom-right · 4 秒后自动关闭
+      id: {{ id }} · position: bottom-right · closes automatically after 4 seconds
     </output>
   </div>
 </template>
@@ -134,8 +134,8 @@ const id = ref('—')
 
 function notify() {
   id.value = toast({
-    heading: '已保存',
-    message: '更改已写入云端',
+    heading: 'Saved',
+    message: 'Changes written to the cloud',
     type: 'info',
     position: 'bottom-right',
     duration: 4000,
@@ -147,9 +147,9 @@ onBeforeUnmount(() => toast.clear())
 </script>
 ```
 
-### 合并同一条 {#upsert}
+### Merging into one toast {#upsert}
 
-同一个 `id` 的后续调用更新那一条，不会新增。第一步显式传 `duration: 0`，不自动关闭；后两步不传 `duration`，倒计时保持不动；最后一步显式传 `3000` 才重新开始计时。
+A subsequent call with the same `id` updates that toast and does not add a new one. The first step passes an explicit `duration: 0` and does not auto-close; the next two steps pass no `duration`, so the countdown stays put; only the last step passes an explicit `3000` and restarts it.
 
 ```tsx
 import { toast } from '@greypan/web-ui'
@@ -158,34 +158,34 @@ import { useEffect, useState } from 'react'
 const UPLOAD_ID = 'demo-upload'
 
 export default function Demo() {
-  const [step, setStep] = useState('尚未开始')
+  const [step, setStep] = useState('Not started yet')
 
   useEffect(() => () => toast.clear(), [])
 
   function start() {
     setStep('0%')
-    toast.info('上传中 0%', { id: UPLOAD_ID, duration: 0 })
+    toast.info('Uploading 0%', { id: UPLOAD_ID, duration: 0 })
   }
 
   function progress() {
     setStep('60%')
-    toast.info('上传中 60%', { id: UPLOAD_ID })
+    toast.info('Uploading 60%', { id: UPLOAD_ID })
   }
 
   function finish() {
-    setStep('完成')
-    toast.success('上传完成', { id: UPLOAD_ID, duration: 3000 })
+    setStep('Done')
+    toast.success('Upload complete', { id: UPLOAD_ID, duration: 3000 })
   }
 
   return (
     <div className="flex flex-col items-start gap-3">
       <div className="flex flex-wrap gap-2">
-        <web-ui-button onClick={start}>开始上传</web-ui-button>
-        <web-ui-button onClick={progress}>进度 60%</web-ui-button>
-        <web-ui-button onClick={finish}>完成</web-ui-button>
+        <web-ui-button onClick={start}>Start upload</web-ui-button>
+        <web-ui-button onClick={progress}>Progress 60%</web-ui-button>
+        <web-ui-button onClick={finish}>Done</web-ui-button>
       </div>
       <output className="text-sm text-(--wui-color-text-secondary)">
-        id：{UPLOAD_ID} · 当前：{step}
+        id: {UPLOAD_ID} · current: {step}
       </output>
     </div>
   )
@@ -196,11 +196,11 @@ export default function Demo() {
 <template>
   <div class="flex flex-col items-start gap-3">
     <div class="flex flex-wrap gap-2">
-      <web-ui-button @click="start">开始上传</web-ui-button>
-      <web-ui-button @click="progress">进度 60%</web-ui-button>
-      <web-ui-button @click="finish">完成</web-ui-button>
+      <web-ui-button @click="start">Start upload</web-ui-button>
+      <web-ui-button @click="progress">Progress 60%</web-ui-button>
+      <web-ui-button @click="finish">Done</web-ui-button>
     </div>
-    <output class="text-sm text-(--wui-color-text-secondary)">id：{{ UPLOAD_ID }} · 当前：{{ step }}</output>
+    <output class="text-sm text-(--wui-color-text-secondary)">id: {{ UPLOAD_ID }} · current: {{ step }}</output>
   </div>
 </template>
 
@@ -209,30 +209,30 @@ import { toast } from '@greypan/web-ui'
 import { onBeforeUnmount, ref } from 'vue'
 
 const UPLOAD_ID = 'demo-upload'
-const step = ref('尚未开始')
+const step = ref('Not started yet')
 
 function start() {
   step.value = '0%'
-  toast.info('上传中 0%', { id: UPLOAD_ID, duration: 0 })
+  toast.info('Uploading 0%', { id: UPLOAD_ID, duration: 0 })
 }
 
 function progress() {
   step.value = '60%'
-  toast.info('上传中 60%', { id: UPLOAD_ID })
+  toast.info('Uploading 60%', { id: UPLOAD_ID })
 }
 
 function finish() {
-  step.value = '完成'
-  toast.success('上传完成', { id: UPLOAD_ID, duration: 3000 })
+  step.value = 'Done'
+  toast.success('Upload complete', { id: UPLOAD_ID, duration: 3000 })
 }
 
 onBeforeUnmount(() => toast.clear())
 </script>
 ```
 
-### 关闭 {#close}
+### Closing {#close}
 
-每次调用都返回最终 id；`toast.close(id)` 关掉指定的一条，`toast.clear()` 收走当前全部。这里先建一条 `duration: 0`、不会自动关闭的 toast，再分别用两种方式关闭，`<output>` 记录最后一次操作。
+Every call returns the final id; `toast.close(id)` closes the given toast and `toast.clear()` takes away all current ones. Here a toast with `duration: 0` that never auto-closes is created first, then closed in both ways, and `<output>` records the last action.
 
 ```tsx
 import { toast } from '@greypan/web-ui'
@@ -246,7 +246,7 @@ export default function Demo() {
   useEffect(() => () => toast.clear(), [])
 
   function create() {
-    setLast(`创建 ${toast.info('这条 toast 不会自动关闭', { id: DEMO_ID, duration: 0 })}`)
+    setLast(`Created ${toast.info('This toast does not close automatically', { id: DEMO_ID, duration: 0 })}`)
   }
 
   function closeOne() {
@@ -262,15 +262,15 @@ export default function Demo() {
   return (
     <div className="flex flex-col items-start gap-3">
       <div className="flex flex-wrap gap-2">
-        <web-ui-button onClick={create}>创建一条</web-ui-button>
+        <web-ui-button onClick={create}>Create one</web-ui-button>
         <web-ui-button variant="secondary" onClick={closeOne}>
-          关闭这一条
+          Close this one
         </web-ui-button>
         <web-ui-button variant="secondary" onClick={clearAll}>
-          清空全部
+          Clear all
         </web-ui-button>
       </div>
-      <output className="text-sm text-(--wui-color-text-secondary)">最近操作：{last}</output>
+      <output className="text-sm text-(--wui-color-text-secondary)">Last action: {last}</output>
     </div>
   )
 }
@@ -280,11 +280,11 @@ export default function Demo() {
 <template>
   <div class="flex flex-col items-start gap-3">
     <div class="flex flex-wrap gap-2">
-      <web-ui-button @click="create">创建一条</web-ui-button>
-      <web-ui-button variant="secondary" @click="closeOne">关闭这一条</web-ui-button>
-      <web-ui-button variant="secondary" @click="clearAll">清空全部</web-ui-button>
+      <web-ui-button @click="create">Create one</web-ui-button>
+      <web-ui-button variant="secondary" @click="closeOne">Close this one</web-ui-button>
+      <web-ui-button variant="secondary" @click="clearAll">Clear all</web-ui-button>
     </div>
-    <output class="text-sm text-(--wui-color-text-secondary)">最近操作：{{ last }}</output>
+    <output class="text-sm text-(--wui-color-text-secondary)">Last action: {{ last }}</output>
   </div>
 </template>
 
@@ -296,7 +296,7 @@ const DEMO_ID = 'demo-close'
 const last = ref('—')
 
 function create() {
-  last.value = `创建 ${toast.info('这条 toast 不会自动关闭', { id: DEMO_ID, duration: 0 })}`
+  last.value = `Created ${toast.info('This toast does not close automatically', { id: DEMO_ID, duration: 0 })}`
 }
 
 function closeOne() {
@@ -317,135 +317,135 @@ onBeforeUnmount(() => toast.clear())
 
 ### Options
 
-| 名称        | 说明                                                        | 类型            | 默认值        |
-| ----------- | ----------------------------------------------------------- | --------------- | ------------- |
-| `message`   | 通知文本。                                                  | `string`        | —             |
-| `type`      | 类型：`success`、`info`、`warning`、`error`。               | `ToastType`     | `'info'`      |
-| `duration`  | 自动关闭时间（ms），0 表示不自动关闭；`error` 默认 `5000`。 | `number`        | `3000`        |
-| `closable`  | 展示关闭 button。                                           | `boolean`       | `true`        |
-| `id`        | 合并键：同一个 `id` 再次调用是更新那一条。                  | `string`        | 自动生成      |
-| `heading`   | 粗体标题。                                                  | `string`        | `''`          |
-| `position`  | 屏幕位置。                                                  | `ToastPosition` | `'top-right'` |
-| `target`    | 用于查找最近 theme-owned overlay root。                     | `Element`       | —             |
-| `container` | 显式挂载容器（最高优先级）。                                | `HTMLElement`   | —             |
+| Name        | Description                                                              | Type            | Default        |
+| ----------- | ------------------------------------------------------------------------ | --------------- | -------------- |
+| `message`   | Notification text.                                                       | `string`        | —              |
+| `type`      | Type: `success`, `info`, `warning`, `error`.                             | `ToastType`     | `'info'`       |
+| `duration`  | Auto-close time (ms); 0 means no auto-close; `error` defaults to `5000`. | `number`        | `3000`         |
+| `closable`  | Shows the close button.                                                  | `boolean`       | `true`         |
+| `id`        | Merge key: another call with the same `id` updates that toast.           | `string`        | Auto-generated |
+| `heading`   | Bold title.                                                              | `string`        | `''`           |
+| `position`  | Screen position.                                                         | `ToastPosition` | `'top-right'`  |
+| `target`    | Used to find the nearest theme-owned overlay root.                       | `Element`       | —              |
+| `container` | Explicit mount container (highest precedence).                           | `HTMLElement`   | —              |
 
 ### Methods
 
-| 名称                               | 说明                                                                   |
-| ---------------------------------- | ---------------------------------------------------------------------- |
-| `toast(options)`                   | 创建或更新一条 toast，返回这条 toast 的最终 id。                       |
-| `toast.success(message, options?)` | 创建一条 `success` 类型的 toast。                                      |
-| `toast.info(message, options?)`    | 创建一条 `info` 类型的 toast。                                         |
-| `toast.warning(message, options?)` | 创建一条 `warning` 类型的 toast。                                      |
-| `toast.error(message, options?)`   | 创建一条 `error` 类型的 toast；它的默认时长是 `5000`，比其余类型更长。 |
-| `toast.close(id)`                  | 关闭指定 id 的那条 toast，覆盖它出现的每个阶段。                       |
-| `toast.clear()`                    | 一次关闭当前全部 toast。                                               |
+| Name                               | Description                                                                                   |
+| ---------------------------------- | --------------------------------------------------------------------------------------------- |
+| `toast(options)`                   | Creates or updates a toast and returns the final id of that toast.                            |
+| `toast.success(message, options?)` | Creates a toast of type `success`.                                                            |
+| `toast.info(message, options?)`    | Creates a toast of type `info`.                                                               |
+| `toast.warning(message, options?)` | Creates a toast of type `warning`.                                                            |
+| `toast.error(message, options?)`   | Creates a toast of type `error`; its default duration is `5000`, longer than the other types. |
+| `toast.close(id)`                  | Closes the toast with the given id in every phase it appears in.                              |
+| `toast.clear()`                    | Closes all current toasts at once.                                                            |
 
-### 行为说明
+### Behavior
 
-命令式入口之下没有别的必经步骤：`toast()` 自行把 toast 元素挂到最近的 theme-owned overlay root（没有主题作用域时回退到全局 fallback root），`target` 用来解析最近的主题作用域，`container` 显式指定挂载容器并优先于主题作用域。
+There is no other mandatory step beneath the imperative entry: `toast()` mounts the toast element into the nearest theme-owned overlay root itself (falling back to the global fallback root when there is no theme scope), `target` is used to resolve the nearest theme scope, and `container` explicitly specifies the mount container and takes precedence over the theme scope.
 
-同一个微任务里的多条 toast 先入队、再一次性挂载，因此待挂载的条目在落地前还能被同 id 的调用改写。
+Multiple toasts in the same microtask are queued first and mounted at once, so pending entries can still be rewritten by a call with the same id before they land.
 
-悬停暂停自动关闭计时器（使用 `pointerenter`/`pointerleave`），指针离开后**续跑剩余时间**，而不是重新计满。
+Hovering pauses the auto-close timer (through `pointerenter`/`pointerleave`), and after the pointer leaves it **resumes the remaining time** instead of restarting the full count.
 
-暂停期间漏掉 `pointerleave`（指针拖出窗口、元素在悬停中被搬迁或摘出）时，由 document 级 `pointerover`/`pointerout`/`pointerleave` 兜底恢复，不会永久停在屏幕上。
+If `pointerleave` is missed during the pause (the pointer is dragged out of the window, or the element is moved or removed while hovered), document-level `pointerover`/`pointerout`/`pointerleave` recover it, so it never stays on screen forever.
 
 ```ts
 import { toast } from '@greypan/web-ui'
 
-// 创建
-toast.success('操作成功')
-toast.error('出错了', { duration: 5000 })
-toast.info('提示信息')
-toast.warning('请注意')
+// Create
+toast.success('Operation succeeded')
+toast.error('Something went wrong', { duration: 5000 })
+toast.info('Informational message')
+toast.warning('Please note')
 
-// 带 option
-const id = toast({ message: '自定义', type: 'info', position: 'bottom-right', duration: 4000, closable: true })
+// With options
+const id = toast({ message: 'Custom', type: 'info', position: 'bottom-right', duration: 4000, closable: true })
 
-// 关闭
+// Close
 toast.close(id)
 toast.clear()
 
-// upsert：同一 id 再次调用是更新那一条，而不是再建一条
-toast.error('网络连接中断，正在重试…', { id: 'network' })
-toast.error('网络连接中断（第 2 次重试）', { id: 'network' })
+// upsert: another call with the same id updates that toast instead of creating another
+toast.error('Network connection lost, retrying…', { id: 'network' })
+toast.error('Network connection lost (retry 2)', { id: 'network' })
 
-// 一条 toast 走完整个生命周期
-toast.info('上传中 0%', { id: 'upload', duration: 0 })
-toast.info('上传中 60%', { id: 'upload' }) // 省略 duration，计时不动
-toast.success('上传完成', { id: 'upload', duration: 3000 }) // 换 type，重新开始倒计时
+// One toast through its whole lifecycle
+toast.info('Uploading 0%', { id: 'upload', duration: 0 })
+toast.info('Uploading 60%', { id: 'upload' }) // duration omitted, the timer stays put
+toast.success('Upload complete', { id: 'upload', duration: 3000 }) // type changed, countdown restarts
 ```
 
-每次调用都返回这条 toast 的最终 id，调用方无需区分新建还是更新。
+Every call returns the final id of that toast, so callers do not need to distinguish creation from update.
 
-### upsert 语义
+### upsert semantics
 
-同一 `id` 再次调用的结果：
+The result of calling again with the same `id`:
 
-列依次为 目标状态 / 结果：
+The columns are target state / result in order:
 
-- 已挂载 / 返回同一个 id；给出的字段覆盖，未给出的保持原值
-- 同 tick 内仍在待挂载 / patch 待挂载的 options，挂载后生效，不产生第二条
-- 已关闭或正在退场 / 新建一条；正在离场的那条自行走完退场动画
+- Mounted / returns the same id; the given fields are overwritten and the rest keep their values
+- Still pending in the same tick / the pending options are patched and take effect after mounting, without producing a second toast
+- Closed or leaving / a new toast is created; the one that is leaving plays out its own exit animation
 
-`duration` 只有显式传入才重启倒计时（悬停暂停期间是例外：只记新值不点火，指针离开后按新时长计满）；`message`、`heading`、`type` 是普通属性，不碰计时。
+`duration` restarts the countdown only when it is passed explicitly (the exception is an active hover pause: the new value is recorded but not started, and the pointer leaving counts the full new duration); `message`, `heading`, and `type` are ordinary attributes and do not touch the timer.
 
-`toast.error` 的 5000 默认值在**创建时**兜底，不算显式传入，因此重复调用 `toast.error(msg, { id })` 不会重置倒计时。
+The `5000` default of `toast.error` is applied **at creation time** and does not count as explicit, so repeated `toast.error(msg, { id })` calls do not reset the countdown.
 
-`position` 变化会把元素搬到新容器并保住剩余计时（支持 `moveBefore` 的引擎直接搬，其余走暂停/续跑降级）；若倒计时在主线程被占用期间已经到期，降级路径会在续跑时直接退场，而不是让它一直挂着。
+A change of `position` moves the element to the new container and preserves the remaining time (engines supporting `moveBefore` move it directly, others fall back to pause/resume); if the countdown already expired while the main thread was busy, the fallback path exits directly on resume instead of keeping it hanging.
 
-`container` 与 `target` 以首次调用为准，不支持把已存在的 toast 换到另一个 overlay root。
+`container` and `target` are fixed on the first call; moving an existing toast to another overlay root is not supported.
 
-### 关闭语义
+### Close semantics
 
-`toast.close(id)` 覆盖 toast 出现的每个阶段，包括「还没开始显示」的两种：
+`toast.close(id)` covers every phase a toast can be in, including the two where it is not shown yet:
 
-列依次为 目标状态 / 结果：
+The columns are target state / result in order:
 
-- 已显示 / 播放退场动画，结束后派发 `toast-close`
-- 已挂载、`show()` 未跑 / 没有退场动画可播，立即派发 `toast-close`
-- 同 tick 仍在待挂载 / 挂载前出队：不会出现，也不派发事件
-- 已在退场 / 空操作，由那条 toast 自己走完退场
+- Shown / plays the exit animation and dispatches `toast-close` afterwards
+- Mounted, `show()` not run / there is no exit animation to play, so `toast-close` is dispatched immediately
+- Still pending in the same tick / dequeued before mounting: it never appears and no event is dispatched
+- Already leaving / no-op; that toast plays out its own exit
 
-`toast.clear()` 的口径相同：队列条目一并取消，已挂载的全部关闭。
+`toast.clear()` follows the same rules: queued entries are cancelled as well, and everything mounted is closed.
 
 ### Props
 
-| 名称              | 说明                                                                     | 类型            | 默认值        |
-| ----------------- | ------------------------------------------------------------------------ | --------------- | ------------- |
-| `type`            | 类型：`success`、`info`、`warning`、`error`。                            | `ToastType`     | `'info'`      |
-| `position`        | 屏幕位置。                                                               | `ToastPosition` | `'top-right'` |
-| `heading`         | 粗体标题。                                                               | `string`        | `''`          |
-| `message`         | 通知文本。                                                               | `string`        | `''`          |
-| `duration`        | 自动关闭时间（ms），0 表示不自动关闭；`error` 由 manager 兜底为 `5000`。 | `number`        | `3000`        |
-| `no-close-button` | 隐藏关闭 button。                                                        | `boolean`       | `false`       |
-| `visible`         | 是否可见。                                                               | `boolean`       | `false`       |
-| `toastId`         | 合并键；只作为属性存在（`attribute: false`），由 manager 写入。          | `string`        | `''`          |
+| Name              | Description                                                                                | Type            | Default       |
+| ----------------- | ------------------------------------------------------------------------------------------ | --------------- | ------------- |
+| `type`            | Type: `success`, `info`, `warning`, `error`.                                               | `ToastType`     | `'info'`      |
+| `position`        | Screen position.                                                                           | `ToastPosition` | `'top-right'` |
+| `heading`         | Bold title.                                                                                | `string`        | `''`          |
+| `message`         | Notification text.                                                                         | `string`        | `''`          |
+| `duration`        | Auto-close time (ms); 0 means no auto-close; for `error` the manager falls back to `5000`. | `number`        | `3000`        |
+| `no-close-button` | Hides the close button.                                                                    | `boolean`       | `false`       |
+| `visible`         | Whether it is visible.                                                                     | `boolean`       | `false`       |
+| `toastId`         | Merge key; exists as a property only (`attribute: false`), written by the manager.         | `string`        | `''`          |
 
 ### Events
 
-| 名称          | 说明                                           |
-| ------------- | ---------------------------------------------- |
-| `toast-close` | 退场结束后派发，`detail` 含 `id` 与 `reason`。 |
+| Name          | Description                                                              |
+| ------------- | ------------------------------------------------------------------------ |
+| `toast-close` | Dispatched after the exit finishes; `detail` contains `id` and `reason`. |
 
-### 元素属性与方法
+### Element properties and methods
 
-命令式入口下，`<web-ui-toast>` 的属性由 manager 写入：合并键落在 `toastId` 上（只作为属性存在，`attribute: false`），其余属性与上面的 Props 表一一对应。
+Under the imperative entry, the attributes of `<web-ui-toast>` are written by the manager: the merge key lands on `toastId` (it exists as a property only, `attribute: false`), and the other attributes correspond one-to-one with the Props table above.
 
-元素自身还公开一组实例方法：`show()` 播放入场（`visible` 置真）并在 `duration` 大于 0 时开始计时。
+The element also exposes a set of instance methods: `show()` plays the entrance (sets `visible` to true) and starts the timer when `duration` is greater than 0.
 
-`dismiss(reason?)` 关闭并派发 `toast-close`，已显示时先播退场动画，未显示时立即派发，`reason` 取 `ToastCloseReason`，默认 `'programmatic'`。
+`dismiss(reason?)` closes the toast and dispatches `toast-close`; when shown it plays the exit animation first, otherwise it dispatches immediately, and `reason` takes a `ToastCloseReason`, defaulting to `'programmatic'`.
 
-`setDuration(ms)` 更新 `duration` 并按新值重排计时，`ms` 为 0 表示不再自动关闭。
+`setDuration(ms)` updates `duration` and re-schedules the timer with the new value; an `ms` of 0 means no more auto-close.
 
-`pauseAutoClose()` 记下剩余时间并停表，与 `resumeAutoClose()` 成对续跑。
+`pauseAutoClose()` records the remaining time and stops the clock, and works as a pair with `resumeAutoClose()`.
 
-`startAutoClose()` 按当前 `duration` 重排自动关闭计时。
+`startAutoClose()` re-schedules the auto-close timer according to the current `duration`.
 
 ### CSS Custom Properties
 
-| 名称                            | 说明                       | 默认值 |
-| ------------------------------- | -------------------------- | ------ |
-| `--wui-toast-viewport-gap`      | Toast 到视口边缘的可见距离 | `16px` |
-| `--wui-toast-container-padding` | 容器预留的扩散阴影绘制空间 | `40px` |
+| Name                            | Description                                                    | Default |
+| ------------------------------- | -------------------------------------------------------------- | ------- |
+| `--wui-toast-viewport-gap`      | Visible distance from the toast to the viewport edge           | `16px`  |
+| `--wui-toast-container-padding` | Room reserved in the container for the diffuse shadow to paint | `40px`  |

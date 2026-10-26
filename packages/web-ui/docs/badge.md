@@ -3,13 +3,13 @@ component: badge
 tag: web-ui-badge
 ---
 
-badge / 通知计数：把 `count` 角标叠加在默认插槽内容的一角，`dot` 模式只显示一个圆点。
+badge / notification count: stacks a `count` corner badge on one corner of the default slot content; `dot` mode shows only a dot.
 
-## 示例
+## Samples
 
-### 基础 {#basic}
+### Basic {#basic}
 
-默认插槽是要装饰的内容，`count` 就是角标上的数字；`count` 为 0 时角标不画，被装饰的内容照常显示，要让 0 也占位就写 `show-zero`。图形（icon）和控件（button）都能当内容被包住。
+The default slot is the content to decorate, and `count` is the number on the corner badge; when `count` is 0 the badge is not drawn and the decorated content shows as usual—use `show-zero` to keep a placeholder for 0 as well. Both graphics (icons) and controls (buttons) can be wrapped as content.
 
 ```tsx
 import { lucideBell } from '@greypan/web-ui/icons'
@@ -18,7 +18,7 @@ export default function Demo() {
   return (
     <div className="flex flex-wrap items-center gap-8">
       <web-ui-badge count={5}>
-        <web-ui-button variant="secondary">消息</web-ui-button>
+        <web-ui-button variant="secondary">Messages</web-ui-button>
       </web-ui-badge>
 
       <web-ui-badge count={7}>
@@ -26,11 +26,11 @@ export default function Demo() {
       </web-ui-badge>
 
       <web-ui-badge count={0}>
-        <web-ui-button variant="secondary">草稿（count 为 0）</web-ui-button>
+        <web-ui-button variant="secondary">Drafts (count is 0)</web-ui-button>
       </web-ui-badge>
 
       <web-ui-badge count={0} show-zero>
-        <web-ui-button variant="secondary">收件箱（show-zero）</web-ui-button>
+        <web-ui-button variant="secondary">Inbox (show-zero)</web-ui-button>
       </web-ui-badge>
     </div>
   )
@@ -41,7 +41,7 @@ export default function Demo() {
 <template>
   <div class="flex flex-wrap items-center gap-8">
     <web-ui-badge :count="5">
-      <web-ui-button variant="secondary">消息</web-ui-button>
+      <web-ui-button variant="secondary">Messages</web-ui-button>
     </web-ui-badge>
 
     <web-ui-badge :count="7">
@@ -49,11 +49,11 @@ export default function Demo() {
     </web-ui-badge>
 
     <web-ui-badge :count="0">
-      <web-ui-button variant="secondary">草稿（count 为 0）</web-ui-button>
+      <web-ui-button variant="secondary">Drafts (count is 0)</web-ui-button>
     </web-ui-badge>
 
     <web-ui-badge :count="0" show-zero>
-      <web-ui-button variant="secondary">收件箱（show-zero）</web-ui-button>
+      <web-ui-button variant="secondary">Inbox (show-zero)</web-ui-button>
     </web-ui-badge>
   </div>
 </template>
@@ -63,24 +63,24 @@ import { lucideBell } from '@greypan/web-ui/icons'
 </script>
 ```
 
-### 数字上限 {#max}
+### Number limit {#max}
 
-`count` 超过 `max` 时画 `max+` 而不是把位数摊开；`max` 默认 99，三位数就已经是上限的形状。
+When `count` exceeds `max`, `max+` is drawn instead of spilling the extra digits; `max` defaults to 99, and three digits already take the shape of the limit.
 
 ```tsx
 export default function Demo() {
   return (
     <div className="flex flex-wrap items-center gap-8">
       <web-ui-badge count={128}>
-        <web-ui-button variant="secondary">默认上限 99</web-ui-button>
+        <web-ui-button variant="secondary">Default limit 99</web-ui-button>
       </web-ui-badge>
 
       <web-ui-badge count={10} max={9}>
-        <web-ui-button variant="secondary">max 为 9</web-ui-button>
+        <web-ui-button variant="secondary">max is 9</web-ui-button>
       </web-ui-badge>
 
       <web-ui-badge count={99999} max={9999}>
-        <web-ui-button variant="secondary">max 为 9999</web-ui-button>
+        <web-ui-button variant="secondary">max is 9999</web-ui-button>
       </web-ui-badge>
     </div>
   )
@@ -91,38 +91,38 @@ export default function Demo() {
 <template>
   <div class="flex flex-wrap items-center gap-8">
     <web-ui-badge :count="128">
-      <web-ui-button variant="secondary">默认上限 99</web-ui-button>
+      <web-ui-button variant="secondary">Default limit 99</web-ui-button>
     </web-ui-badge>
 
     <web-ui-badge :count="10" :max="9">
-      <web-ui-button variant="secondary">max 为 9</web-ui-button>
+      <web-ui-button variant="secondary">max is 9</web-ui-button>
     </web-ui-badge>
 
     <web-ui-badge :count="99999" :max="9999">
-      <web-ui-button variant="secondary">max 为 9999</web-ui-button>
+      <web-ui-button variant="secondary">max is 9999</web-ui-button>
     </web-ui-badge>
   </div>
 </template>
 ```
 
-### 点模式 {#dot}
+### Dot mode {#dot}
 
-`dot` 只画一枚圆点、不画数字，用来表示「有事发生但不计件」。它是显示层的优先级最高的开关：写了 `dot` 就恒显示，`count` 是多少都不参与判定。
+`dot` draws only a dot and no number, for "something happened but it is not countable". It is the highest-priority switch at the display layer: once `dot` is set the badge is always drawn, and `count` takes no part in the decision.
 
 ```tsx
 export default function Demo() {
   return (
     <div className="flex flex-wrap items-center gap-8">
       <web-ui-badge dot>
-        <web-ui-button variant="secondary">新消息</web-ui-button>
+        <web-ui-button variant="secondary">New messages</web-ui-button>
       </web-ui-badge>
 
       <web-ui-badge count={5} dot>
-        <web-ui-button variant="secondary">dot 优先于数字</web-ui-button>
+        <web-ui-button variant="secondary">dot takes precedence over the number</web-ui-button>
       </web-ui-badge>
 
       <web-ui-badge count={0} dot>
-        <web-ui-button variant="secondary">count 为 0 也照画</web-ui-button>
+        <web-ui-button variant="secondary">Still drawn when count is 0</web-ui-button>
       </web-ui-badge>
     </div>
   )
@@ -133,30 +133,30 @@ export default function Demo() {
 <template>
   <div class="flex flex-wrap items-center gap-8">
     <web-ui-badge dot>
-      <web-ui-button variant="secondary">新消息</web-ui-button>
+      <web-ui-button variant="secondary">New messages</web-ui-button>
     </web-ui-badge>
 
     <web-ui-badge :count="5" dot>
-      <web-ui-button variant="secondary">dot 优先于数字</web-ui-button>
+      <web-ui-button variant="secondary">dot takes precedence over the number</web-ui-button>
     </web-ui-badge>
 
     <web-ui-badge :count="0" dot>
-      <web-ui-button variant="secondary">count 为 0 也照画</web-ui-button>
+      <web-ui-button variant="secondary">Still drawn when count is 0</web-ui-button>
     </web-ui-badge>
   </div>
 </template>
 ```
 
-### 位置 {#placement}
+### Placement {#placement}
 
-`placement` 把角标钉在内容盒的四个角之一，默认 `top-right`。非法值不参与渲染：组件把它规范回 `top-right`，宿主 attribute 也随之修正。
+`placement` pins the badge to one of the four corners of the content box, `top-right` by default. Invalid values take no part in rendering: the component normalizes them back to `top-right`, and the host attribute is corrected along with it.
 
 ```tsx
 export default function Demo() {
   return (
     <div className="flex flex-wrap items-center gap-8">
       <web-ui-badge count={1} placement="top-right">
-        <web-ui-button variant="secondary">top-right（默认）</web-ui-button>
+        <web-ui-button variant="secondary">top-right (default)</web-ui-button>
       </web-ui-badge>
 
       <web-ui-badge count={2} placement="top-left">
@@ -179,7 +179,7 @@ export default function Demo() {
 <template>
   <div class="flex flex-wrap items-center gap-8">
     <web-ui-badge :count="1" placement="top-right">
-      <web-ui-button variant="secondary">top-right（默认）</web-ui-button>
+      <web-ui-button variant="secondary">top-right (default)</web-ui-button>
     </web-ui-badge>
 
     <web-ui-badge :count="2" placement="top-left">
@@ -197,24 +197,24 @@ export default function Demo() {
 </template>
 ```
 
-### 偏移 {#offset}
+### Offset {#offset}
 
-`offset-x` / `offset-y` 在 `placement` 选中的角上做像素微调，负值往内容内侧收、正值往外推。圆角或带描边的内容常常需要收回来一点，角标才不会挂在轮廓外面。
+`offset-x` / `offset-y` fine-tune in pixels at the corner chosen by `placement`; negative values pull the badge toward the content and positive values push it outward. Rounded or outlined content often needs the badge pulled back a little so it does not hang outside the outline.
 
 ```tsx
 export default function Demo() {
   return (
     <div className="flex flex-wrap items-center gap-8">
       <web-ui-badge count={8} offset-x={-4} offset-y={4}>
-        <web-ui-button variant="secondary">数字往内收</web-ui-button>
+        <web-ui-button variant="secondary">Number pulled inward</web-ui-button>
       </web-ui-badge>
 
       <web-ui-badge dot offset-x={-6} offset-y={6}>
-        <web-ui-button variant="secondary">圆点同样吃偏移</web-ui-button>
+        <web-ui-button variant="secondary">The dot takes the offset too</web-ui-button>
       </web-ui-badge>
 
       <web-ui-badge count={8} offset-x={10} offset-y={-10}>
-        <web-ui-button variant="secondary">向外推开</web-ui-button>
+        <web-ui-button variant="secondary">Pushed outward</web-ui-button>
       </web-ui-badge>
     </div>
   )
@@ -225,23 +225,23 @@ export default function Demo() {
 <template>
   <div class="flex flex-wrap items-center gap-8">
     <web-ui-badge :count="8" :offset-x="-4" :offset-y="4">
-      <web-ui-button variant="secondary">数字往内收</web-ui-button>
+      <web-ui-button variant="secondary">Number pulled inward</web-ui-button>
     </web-ui-badge>
 
     <web-ui-badge dot :offset-x="-6" :offset-y="6">
-      <web-ui-button variant="secondary">圆点同样吃偏移</web-ui-button>
+      <web-ui-button variant="secondary">The dot takes the offset too</web-ui-button>
     </web-ui-badge>
 
     <web-ui-badge :count="8" :offset-x="10" :offset-y="-10">
-      <web-ui-button variant="secondary">向外推开</web-ui-button>
+      <web-ui-button variant="secondary">Pushed outward</web-ui-button>
     </web-ui-badge>
   </div>
 </template>
 ```
 
-### 独立使用 {#standalone}
+### Standalone use {#standalone}
 
-默认插槽空着时没有「内容的一角」可钉，角标回到行内流，自己就是一枚可读的数字或圆点，适合和文字并排出现在列表项、标签页标题这类位置。
+When the default slot is empty there is no "corner of content" to pin to, so the badge returns to inline flow and is itself a readable number or dot, suitable for sitting next to text in places such as list items and tab titles.
 
 ```tsx
 export default function Demo() {
@@ -267,24 +267,24 @@ export default function Demo() {
 </template>
 ```
 
-### 隐藏 {#hidden}
+### Hidden {#hidden}
 
-`badge-hidden` 让角标整个不画，内容照常显示。它压过 `dot` 与 `count`：数字或未读还留在状态里，只是这一次不给看。
+`badge-hidden` stops the badge from being drawn at all while the content shows as usual. It overrides `dot` and `count`: the number or unread state is still there, it is just not shown this time.
 
 ```tsx
 export default function Demo() {
   return (
     <div className="flex flex-wrap items-center gap-8">
       <web-ui-badge count={5}>
-        <web-ui-button variant="secondary">未读 5 条</web-ui-button>
+        <web-ui-button variant="secondary">5 unread</web-ui-button>
       </web-ui-badge>
 
       <web-ui-badge count={5} badge-hidden>
-        <web-ui-button variant="secondary">同样 5 条，角标隐藏</web-ui-button>
+        <web-ui-button variant="secondary">Same 5, badge hidden</web-ui-button>
       </web-ui-badge>
 
       <web-ui-badge dot badge-hidden>
-        <web-ui-button variant="secondary">dot 也一起隐藏</web-ui-button>
+        <web-ui-button variant="secondary">dot is hidden too</web-ui-button>
       </web-ui-badge>
     </div>
   )
@@ -295,23 +295,23 @@ export default function Demo() {
 <template>
   <div class="flex flex-wrap items-center gap-8">
     <web-ui-badge :count="5">
-      <web-ui-button variant="secondary">未读 5 条</web-ui-button>
+      <web-ui-button variant="secondary">5 unread</web-ui-button>
     </web-ui-badge>
 
     <web-ui-badge :count="5" badge-hidden>
-      <web-ui-button variant="secondary">同样 5 条，角标隐藏</web-ui-button>
+      <web-ui-button variant="secondary">Same 5, badge hidden</web-ui-button>
     </web-ui-badge>
 
     <web-ui-badge dot badge-hidden>
-      <web-ui-button variant="secondary">dot 也一起隐藏</web-ui-button>
+      <web-ui-button variant="secondary">dot is hidden too</web-ui-button>
     </web-ui-badge>
   </div>
 </template>
 ```
 
-### 受控计数 {#controlled}
+### Controlled count {#controlled}
 
-`count` 是普通属性，值由页面持有：数字涨到超过 `max` 就显示 `max+`，归 0 时角标自己消失，不需要页面额外条件渲染。
+`count` is a plain property whose value the page owns: when the number grows past `max` the badge shows `max+`, and when it returns to 0 the badge disappears on its own, with no extra conditional rendering in the page.
 
 ```tsx
 import { useState } from 'react'
@@ -323,11 +323,11 @@ export default function Demo() {
     <div className="flex flex-wrap items-center gap-6">
       <web-ui-badge count={count}>
         <web-ui-button variant="secondary" onClick={() => setCount(value => value + 1)}>
-          收件箱
+          Inbox
         </web-ui-button>
       </web-ui-badge>
 
-      <web-ui-button onClick={() => setCount(0)}>清空未读</web-ui-button>
+      <web-ui-button onClick={() => setCount(0)}>Clear unread</web-ui-button>
       <output className="text-sm text-(--wui-color-text-secondary)">count={count}</output>
     </div>
   )
@@ -338,10 +338,10 @@ export default function Demo() {
 <template>
   <div class="flex flex-wrap items-center gap-6">
     <web-ui-badge :count="count">
-      <web-ui-button variant="secondary" @click="count += 1">收件箱</web-ui-button>
+      <web-ui-button variant="secondary" @click="count += 1">Inbox</web-ui-button>
     </web-ui-badge>
 
-    <web-ui-button @click="count = 0">清空未读</web-ui-button>
+    <web-ui-button @click="count = 0">Clear unread</web-ui-button>
     <output class="text-sm text-(--wui-color-text-secondary)">count={{ count }}</output>
   </div>
 </template>
@@ -357,47 +357,47 @@ const count = ref(3)
 
 ### Props
 
-| 名称           | 说明                                                                         | 类型                                                           | 默认值        |
-| -------------- | ---------------------------------------------------------------------------- | -------------------------------------------------------------- | ------------- |
-| `count`        | 显示数字。                                                                   | `number`                                                       | `0`           |
-| `max`          | 数字上限，超过时显示 `max+`。                                                | `number`                                                       | `99`          |
-| `dot`          | 点模式，只显示圆点不显示数字。                                               | `boolean`                                                      | `false`       |
-| `show-zero`    | `count` 为 0 时也显示。                                                      | `boolean`                                                      | `false`       |
-| `badge-hidden` | 完全隐藏 badge。                                                             | `boolean`                                                      | `false`       |
-| `offset-x`     | 水平偏移（px）。                                                             | `number`                                                       | `0`           |
-| `offset-y`     | 垂直偏移（px）。                                                             | `number`                                                       | `0`           |
-| `placement`    | badge 位置：`top-right`（默认）、`top-left`、`bottom-right`、`bottom-left`。 | `'top-right' \| 'top-left' \| 'bottom-right' \| 'bottom-left'` | `'top-right'` |
+| Name           | Description                                                                       | Type                                                           | Default       |
+| -------------- | --------------------------------------------------------------------------------- | -------------------------------------------------------------- | ------------- |
+| `count`        | Number to display.                                                                | `number`                                                       | `0`           |
+| `max`          | Numeric limit; above it `max+` is shown.                                          | `number`                                                       | `99`          |
+| `dot`          | Dot mode; shows only a dot and no number.                                         | `boolean`                                                      | `false`       |
+| `show-zero`    | Also shows when `count` is 0.                                                     | `boolean`                                                      | `false`       |
+| `badge-hidden` | Hides the badge entirely.                                                         | `boolean`                                                      | `false`       |
+| `offset-x`     | Horizontal offset (px).                                                           | `number`                                                       | `0`           |
+| `offset-y`     | Vertical offset (px).                                                             | `number`                                                       | `0`           |
+| `placement`    | Badge position: `top-right` (default), `top-left`, `bottom-right`, `bottom-left`. | `'top-right' \| 'top-left' \| 'bottom-right' \| 'bottom-left'` | `'top-right'` |
 
 ### Slots
 
-| 名称      | 说明                                 |
-| --------- | ------------------------------------ |
-| `default` | 被装饰的内容，badge 叠加在它的一角。 |
+| Name      | Description                                                        |
+| --------- | ------------------------------------------------------------------ |
+| `default` | The decorated content; the badge is stacked on one of its corners. |
 
-### 行为说明
+### Behavior
 
-显示判定只有一条优先级链：`badge-hidden` 最先，写了就不画；其次 `dot`，写了就恒画；剩下才轮到 `count > 0 || show-zero`。数字同理，`dot` 下画空白，否则取 `count > max ? 'max+' : count`。
+Display is decided by a single priority chain: `badge-hidden` first—if set, nothing is drawn; then `dot`—if set, always drawn; only then `count > 0 || show-zero`. The number follows the same rule: empty under `dot`, otherwise `count > max ? 'max+' : count`.
 
-`count` 与 `max` 走同一套数值规范化：非有限数（`NaN`、±Infinity）与非数值回落到各自默认值 `0` / `99`，负数与超出 `Number.MAX_SAFE_INTEGER` 的值按区间裁剪，所以 `count={-5}` 落回 0（角标随之消失）。
+`count` and `max` go through the same numeric normalization: non-finite numbers (`NaN`, ±Infinity) and non-numeric values fall back to their defaults `0` / `99`, while negative values and values beyond `Number.MAX_SAFE_INTEGER` are clamped to the range, so `count={-5}` falls back to 0 (and the badge disappears with it).
 
-`placement` 走字面量白名单，不在四个角里的值（含空串）回落到 `top-right`，并立即把宿主 attribute 修正成规范后的值。
+`placement` goes through a literal whitelist; values outside the four corners (including the empty string) fall back to `top-right`, and the host attribute is immediately corrected to the normalized value.
 
-角标是 `role="status"` 的活跃区域，`aria-label` 由组件按状态给出固定文案：`dot` 报 `Unread`，`count` 大于 0 报 `<count> unread messages`，`show-zero` 报 `No unread messages`；`badge-hidden` 时这个节点整个不渲染，无障碍树里不再有播报。
+The badge is a `role="status"` live region, and the component supplies a fixed `aria-label` per state: `dot` announces `Unread`, a `count` greater than 0 announces `<count> unread messages`, and `show-zero` announces `No unread messages`; with `badge-hidden` the node is not rendered at all, so nothing is announced in the accessibility tree.
 
-文案是组件内置的英文，不提供可配的无障碍名称属性，要自定义语义就别用 `badge-hidden` 之外的隐藏手段。
+The text is built-in English and no configurable accessible name property is provided; to customize the semantics, use no hiding mechanism other than `badge-hidden`.
 
-### 布局
+### Layout
 
-宿主是 inline-block，包裹层是 inline-flex。
+The host is inline-block and the wrapper is inline-flex.
 
-有内容时包裹层转成 `position: relative`、角标绝对定位到选中的角，`translate` 的基准由 `placement` 给（数字是 ±50%、圆点是 ±40%，让角标压出轮廓而不是贴在边线上），`offset-x` / `offset-y` 作为内部变量叠在这条 translate 上。
+When there is content, the wrapper becomes `position: relative` and the badge is positioned absolutely at the chosen corner; the `translate` baseline comes from `placement` (±50% for the number and ±40% for the dot, so the badge presses past the outline instead of sitting on the edge line), and `offset-x` / `offset-y` stack on top of that translate as internal variables.
 
-内容判的是元素子节点的个数：只放了纯文本时不算有内容，角标会留在行内流里，所以「包住一段文字」这种写法请给文字套一个元素。
+Content is judged by the number of element child nodes: plain text alone does not count as content, so the badge stays in inline flow—when wrapping a piece of text, wrap that text in an element.
 
-角标没有对外暴露的尺寸与颜色旋钮：底色取 `--wui-color-danger`、文字取 `--wui-color-on-accent`、描边取 `--wui-color-page`（1px，用来把角标从深色内容上切出来）。
+The badge exposes no size or color knobs: the background uses `--wui-color-danger`, the text uses `--wui-color-on-accent`, and the outline uses `--wui-color-page` (1px, to cut the badge out of dark content).
 
-圆角走 `--wui-radius-control`（默认是 pill），高度 18px、最小宽度 18px、左右内边距 `--wui-space-1`、字号 `--wui-font-size-caption`。
+The radius comes from `--wui-radius-control` (pill by default); the height is 18px, the minimum width is 18px, the horizontal padding is `--wui-space-1`, and the font size is `--wui-font-size-caption`.
 
-`dot` 只把宽高收到 8px 并去掉内边距。
+`dot` only shrinks the width and height to 8px and removes the padding.
 
-要换颜色请改这几枚语义 token 的作用域，而不是找角标上的属性。
+To change the colors, change the scope of these semantic tokens rather than looking for a property on the badge.

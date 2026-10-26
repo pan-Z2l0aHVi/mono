@@ -1,13 +1,14 @@
 import '@/assets/global.css'
 
-import type { WebUiLayout } from '@greypan/web-ui'
+import { toast, type WebUiLayout, type WebUiToast } from '@greypan/web-ui'
 import { createMemoryHistory, createRootRoute, createRoute, createRouter, RouterProvider } from '@tanstack/react-router'
 import { cleanup, render, waitFor } from '@testing-library/react'
 import { act } from 'react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
-import { userEvent } from 'vite-plus/test/browser'
+import { page, userEvent } from 'vite-plus/test/browser'
 
 import { setViewport } from '@/__tests__/viewport'
+import { loadShellLocale, LocaleProvider } from '@/i18n/locale'
 
 import { Root } from '..'
 
@@ -29,8 +30,24 @@ function layoutRoot() {
   return element
 }
 
+function findToast(id: string): WebUiToast | undefined {
+  const roots = new Set<Document | ShadowRoot>([document])
+  for (const root of roots) {
+    for (const element of root.querySelectorAll<HTMLElement>('*')) {
+      if (element.shadowRoot) roots.add(element.shadowRoot)
+    }
+  }
+  return Array.from(roots)
+    .flatMap(root => Array.from(root.querySelectorAll<WebUiToast>('web-ui-toast')))
+    .find(toast => toast.toastId === id)
+}
+
+function nextFrame(): Promise<void> {
+  return new Promise(resolve => requestAnimationFrame(() => resolve()))
+}
+
 function navRoot() {
-  const element = document.querySelector('[aria-label="App navigation"]')
+  const element = document.querySelector('[slot="sidebar"]')
   if (!element) throw new Error('sidebar nav not found')
   return element
 }
@@ -68,7 +85,13 @@ function buildRouter() {
 }
 
 async function mountAppShell() {
-  render(<RouterProvider router={buildRouter()} />)
+  localStorage.setItem('locale', 'zh-CN')
+  await loadShellLocale('zh-CN')
+  render(
+    <LocaleProvider>
+      <RouterProvider router={buildRouter()} />
+    </LocaleProvider>
+  )
   await waitFor(() => {
     if (!document.querySelector('web-ui-layout')) throw new Error('layout not mounted')
   })
@@ -192,6 +215,106 @@ describe('应用外壳（浏览器）：导航 collapsed state 不跨视口泄�
 
     await requestCollapse(false)
     expect([...navRoot().querySelectorAll('a span')].map(label => label.textContent?.trim())).toEqual(fullLabels)
+  })
+
+  it('挂载时已有 toast，banner 扩高后 header 保持默认纵向间距', async () => {
+    const toastId = 'root-mount-toast'
+
+    try {
+      await act(async () => {
+        toast.info('持续显示', { id: toastId, position: 'top-right', duration: 0 })
+        await Promise.resolve()
+        await nextFrame()
+        await nextFrame()
+      })
+      await mountAppShell()
+      const header = layoutRoot().querySelector<HTMLElement>('[slot="header"]')
+      const banner = layoutRoot().querySelector<HTMLElement>('[slot="banner"]')
+      if (!header) throw new Error('header not found')
+      if (!banner) throw new Error('banner not found')
+
+      await waitFor(() => {
+        const toastElement = findToast(toastId)
+        if (!toastElement?.visible) throw new Error('top-right toast not visible')
+        expect(banner.getBoundingClientRect().bottom).toBeGreaterThanOrEqual(
+          toastElement.getBoundingClientRect().bottom
+        )
+        const computedStyle = getComputedStyle(header)
+        expect(computedStyle.paddingTop).toBe(computedStyle.paddingBottom)
+      })
+    } finally {
+      await act(async () => {
+        toast.clear()
+        await Promise.resolve()
+        await nextFrame()
+      })
+      await waitFor(() => {
+        if (findToast(toastId)) throw new Error('toast did not close')
+      })
+    }
+  })
+
+  it('右上角 toast 显示时滚过 banner，sticky header 控件仍避开 toast', async () => {
+    await mountAppShell()
+    const toastId = 'root-sticky-header-toast'
+
+    try {
+      await act(async () => {
+        toast.info('持续显示', { id: toastId, position: 'top-right', duration: 0 })
+        await Promise.resolve()
+        await nextFrame()
+        await nextFrame()
+      })
+      const content = layoutRoot().querySelector<HTMLDivElement>(':scope > div:not([slot])')
+      if (!content) throw new Error('layout content not found')
+      const filler = document.createElement('div')
+      filler.style.height = '1800px'
+      content.append(filler)
+
+      await waitFor(() => {
+        if (!findToast(toastId)?.visible) throw new Error('top-right toast not visible')
+      })
+      const header = layoutRoot().querySelector<HTMLElement>('[slot="header"]')
+      if (!header) throw new Error('header not found')
+      await waitFor(() => {
+        const computedStyle = getComputedStyle(header)
+        expect(computedStyle.paddingTop).toBe(computedStyle.paddingBottom)
+      })
+      const bannerCloseButton = layoutRoot().querySelector<HTMLElement>('[slot="banner"] web-ui-button')
+      if (!bannerCloseButton) throw new Error('banner close button not found')
+      await act(async () => page.elementLocator(bannerCloseButton).click())
+      await waitFor(() => {
+        expect(layoutRoot().querySelector('[slot="banner"]')?.getAttribute('aria-hidden')).toBe('true')
+      })
+      await act(async () => {
+        window.scrollTo(0, 500)
+        await nextFrame()
+      })
+
+      await waitFor(() => {
+        const toastElement = findToast(toastId)
+        const header = layoutRoot().querySelector<HTMLElement>('[slot="header"]')
+        if (!toastElement || !header) throw new Error('toast or sticky header not found')
+
+        const toastRect = toastElement.getBoundingClientRect()
+        const overlappingSelects = Array.from(header.querySelectorAll('web-ui-select')).filter(select => {
+          const rect = select.getBoundingClientRect()
+          return rect.left < toastRect.right && rect.right > toastRect.left
+        })
+        expect(overlappingSelects.length).toBeGreaterThan(0)
+        expect(overlappingSelects.every(select => select.getBoundingClientRect().top >= toastRect.bottom)).toBe(true)
+      })
+    } finally {
+      await act(async () => {
+        toast.clear()
+        await Promise.resolve()
+        await nextFrame()
+      })
+      await waitFor(() => {
+        if (findToast(toastId)) throw new Error('toast did not close')
+      })
+      window.scrollTo(0, 0)
+    }
   })
 
   it('移动端断点下 drawer 里的导航回到 expanded state，而不是桌面 collapsed state', async () => {

@@ -9,7 +9,7 @@ import { braceAnchor } from './anchor'
 import { fail } from './errors'
 import { FLAVOR_LANG } from './highlight'
 import type { ApiColumnKind, ExampleApiColumn, ExampleApiSection } from './render'
-import type { MdToCompConfig } from './types'
+import type { ApiTables, MdToCompConfig } from './types'
 
 export interface SampleBlock {
   title: string
@@ -43,8 +43,11 @@ interface MdNode {
   position?: MdPosition
 }
 
-/** 文档骨架：这两节的名字、以及 `###` 是示例小节，都是本引擎的约定，不随宿主改。 */
-const SAMPLES_SECTION = '示例'
+/**
+ * 文档骨架：这两节的名字、以及 `###` 是示例小节，都是本引擎的约定，不随宿主改，也不随语种改——
+ * 语料按语种分文件，骨架名字只有一套，翻译不碰它。
+ */
+const SAMPLES_SECTION = 'Samples'
 const API_SECTION = 'API'
 
 // `mdast-util-frontmatter` 产出的节点类型是格式名本身（`yaml` / `toml`），不是 `frontmatter`。
@@ -256,7 +259,8 @@ function groupByHeading(
   return { lead, sections }
 }
 
-type ParseConfig = Pick<MdToCompConfig, 'anchor' | 'flavors' | 'apiTables'>
+/** 解析一篇语料只需要这些：锚点规则、围栏集合、以及这一语种的 API 表头。 */
+type ParseConfig = Pick<MdToCompConfig, 'anchor' | 'flavors'> & { apiTables: ApiTables }
 
 export function parseMarkdown(source: string, file: string, config: ParseConfig): ParsedDoc {
   const anchorOf = config.anchor ?? braceAnchor
@@ -283,7 +287,7 @@ export function parseMarkdown(source: string, file: string, config: ParseConfig)
 
   const samplesSection = named.get(SAMPLES_SECTION)
   const sampleGroups = samplesSection ? groupByHeading(samplesSection.nodes, 3, samplesSection.rawEnd, terse) : null
-  // 与旧实现的「静默丢弃」相反：`### 示例` 之前写正文会直接报。那段文字谁都不渲染，
+  // 与旧实现的「静默丢弃」相反：第一个 `###` 之前写正文会直接报。那段文字谁都不渲染，
   // 留着只会让人以为它出现在页面上。
   if (sampleGroups?.lead.length)
     fail(`${file}：\`## ${SAMPLES_SECTION}\` 里第一个 \`###\` 之前有正文，这段内容不会被渲染：把它并进某个示例小节`)
@@ -328,7 +332,7 @@ export function parseMarkdown(source: string, file: string, config: ParseConfig)
       fences: fencesByFlavor
     })
   }
-  if (samples.length === 0) fail(`${file}：\`## ${SAMPLES_SECTION}\` 小节里至少要有一个 \`### 示例\``)
+  if (samples.length === 0) fail(`${file}：\`## ${SAMPLES_SECTION}\` 小节里至少要有一个 \`###\` 示例小节`)
 
   const columns = config.apiTables.columns
   const apiBody = named.get(API_SECTION)
@@ -338,7 +342,7 @@ export function parseMarkdown(source: string, file: string, config: ParseConfig)
   // 没写——小节一旦存在，就必须有内容。
   if (apiBody) {
     const apiSections = groupByHeading(apiBody.nodes, 3, apiBody.rawEnd, terse)
-    // 与 `## 示例` 同一条规矩：`###` 之前那段正文谁都不渲染。
+    // 与 `## Samples` 同一条规矩：`###` 之前那段正文谁都不渲染。
     if (apiSections.lead.length)
       fail(`${file}：\`## ${API_SECTION}\` 里第一个 \`###\` 之前有正文，这段内容不会被渲染：把它并进某个小节`)
     const seen = new Set<string>()

@@ -52,9 +52,14 @@ export class WebUiButton extends FormAssociated(LitElement) {
   }
   private _type: (typeof ALLOWED_TYPES)[number] = 'button'
 
-  // Explicitly delegated ARIA attributes.
+  /*
+   * Explicitly delegated ARIA attributes.
+   *
+   * `aria-disabled` 不在其中：禁用只有 `disabled` 一条路径，它把内部原生 button 真的置为
+   * disabled（不可点、不进 tab 序列）。`aria-disabled` 那套「看起来禁用但仍可聚焦」的
+   * 语义不提供，因此既不读取也不转发——写上去只留在宿主，对行为零影响。
+   */
   @property({ type: String, attribute: 'aria-label' }) override ariaLabel: string | null = null
-  @property({ type: String, attribute: 'aria-disabled' }) override ariaDisabled: string | null = null
   @property({ type: String, attribute: 'aria-expanded' }) override ariaExpanded: string | null = null
 
   private readonly _groupManagement = defineGroupManaged<ButtonGroupContext>(this, {
@@ -110,7 +115,7 @@ export class WebUiButton extends FormAssociated(LitElement) {
   }
 
   private handleClick(e: Event) {
-    if (this._isDisabled || this.ariaDisabled === 'true') {
+    if (this._isDisabled) {
       e.preventDefault()
       e.stopPropagation()
       return
@@ -133,7 +138,7 @@ export class WebUiButton extends FormAssociated(LitElement) {
   }
 
   private readonly _handleHostClick = (event: Event) => {
-    if (event.composedPath()[0] !== this || (!this._isDisabled && this.ariaDisabled !== 'true')) return
+    if (event.composedPath()[0] !== this || !this._isDisabled) return
     event.preventDefault()
     event.stopPropagation()
   }
@@ -153,7 +158,6 @@ export class WebUiButton extends FormAssociated(LitElement) {
       <button
         type=${this.type}
         aria-label=${ifDefined(this.ariaLabel)}
-        aria-disabled=${ifDefined(this.ariaDisabled)}
         aria-expanded=${ifDefined(this.ariaExpanded)}
         class=${classMap(btnClass)}
         part="button"

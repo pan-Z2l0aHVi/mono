@@ -44,16 +44,21 @@ function registerPeekEdgeActive() {
 
 registerPeekEdgeActive()
 
-let collapseIdCounter = 0
-
 /**
  * 文档流内 collapse panel：trigger 经默认 slot 提供，内容经 `slot="content"` 提供。
  *
  * trigger 语义完全来自 slot 进来的交互元素（原生 button / web-ui-button 等）：
  * Enter/Space 激活走该元素的原生 click，不做 role="button" 补齐；组件把
- * `aria-expanded` / `aria-controls` / `aria-disabled` 回写到首个 assigned
- * element（与 popover trigger 的既定回写模式一致）。wrapper 仅负责点击代理，
- * 不可聚焦，不承载 ARIA。
+ * `aria-expanded` 回写到首个 assigned element，并在 `disabled` 时把该元素置为
+ * `disabled`。wrapper 仅负责点击代理，不可聚焦，不承载 ARIA。
+ *
+ * 不回写 `aria-controls`：目标 track 在组件 shadow root 内，IDREF 不能跨 shadow
+ * root 解析（Chrome 的 AX 树里该属性会被当作悬空引用丢弃），写出去只是死属性。
+ * 展开关系由 `aria-expanded` 表达，这也是 AT 实际依赖的那一条。
+ *
+ * 禁用也走 `disabled` 而不是 `aria-disabled`：后者在 `<web-ui-button>` 上只会落在
+ * 宿主（属性不跨 shadow 转发），AT 读不到；`disabled` 是真禁用，原生 button 与
+ * web-ui-button 都能生效。
  *
  * 内容区在 shadow 内以 grid `0fr ↔ 1fr` track 过渡驱动高度/宽度动画（ADR-0030
  * 选型保留）。关闭稳态三态（消费者 light DOM 永不移动，hidden 全部命令式管理，
@@ -73,7 +78,7 @@ export class WebUiCollapse extends LitElement {
   /** 展开状态；严格受控，唯一状态源。 */
   @property({ type: Boolean, reflect: true }) open = false
 
-  /** 禁用触发：点击忽略、aria-disabled 写入 trigger 元素；已展开内容保持现状。 */
+  /** 禁用触发：点击忽略、`disabled` 写入 trigger 元素；已展开内容保持现状。 */
   @property({ type: Boolean, reflect: true }) disabled = false
 
   /** 水平方向：true 时沿宽度展开，默认沿高度。 */
@@ -100,18 +105,15 @@ export class WebUiCollapse extends LitElement {
 
   @query('.wui-collapse-trigger-wrapper') private _triggerWrapper!: HTMLElement
 
-  private _contentId = `wui-collapse-content-${++collapseIdCounter}`
-
   private readonly _userOpenChange = new UserChangeController()
 
   private _exitTimer?: ReturnType<typeof setTimeout>
   // 动画代际：每次管线启动自增，旧管线的 transitionend/兜底定时器/rAF 全部失效。
   private _generation = 0
   private _lastOpen?: boolean
-  private _triggerAriaSnapshot?: {
+  private _triggerSnapshot?: {
     trigger: HTMLElement
     expanded: string | null
-    controls: string | null
     disabled: string | null
   }
 
@@ -134,12 +136,12 @@ export class WebUiCollapse extends LitElement {
   override disconnectedCallback() {
     super.disconnectedCallback()
     this._clearExitTimer()
-    this._restoreTriggerAriaSnapshot()
+    this._restoreTriggerSnapshot()
   }
 
   protected override updated(changed: Map<string, unknown>) {
-    // ARIA 回写不依赖 open 分支，任何渲染后都保持与宿主状态同步。
-    this._syncTriggerAria()
+    // trigger 状态回写不依赖 open 分支，任何渲染后都保持与宿主状态同步。
+    this._syncTriggerState()
     // peek 的稳态长度与动画写入共用 track 内联样式，先同步再落稳态，避免被稳态清除。
     this._syncPeek()
 
@@ -207,46 +209,46 @@ export class WebUiCollapse extends LitElement {
 
   /*
    * slot 内容增删不触发宿主响应式更新：显式请求一轮渲染，由 updated() 的
-   * ARIA 回写覆盖晚到的 trigger 元素（slotchange 在 jsdom 不派发，无法监听）。
+   * trigger 状态回写覆盖晚到的 trigger 元素（slotchange 在 jsdom 不派发，无法监听）。
    */
   private readonly _onTriggerSlotChange = () => {
     this.requestUpdate()
   }
 
-  private _restoreTriggerAriaSnapshot() {
-    const snapshot = this._triggerAriaSnapshot
+  private _restoreTriggerSnapshot() {
+    const snapshot = this._triggerSnapshot
     if (!snapshot) return
 
     for (const [attribute, value] of Object.entries({
       'aria-expanded': snapshot.expanded,
-      'aria-controls': snapshot.controls,
-      'aria-disabled': snapshot.disabled
+      disabled: snapshot.disabled
     })) {
       if (value === null) snapshot.trigger.removeAttribute(attribute)
       else snapshot.trigger.setAttribute(attribute, value)
     }
-    this._triggerAriaSnapshot = undefined
+    this._triggerSnapshot = undefined
   }
 
-  // ARIA 状态回写到 trigger 元素本身（wrapper 不可聚焦，AT 读不到）。
-  private _syncTriggerAria() {
+  /*
+   * 状态回写到 trigger 元素本身（wrapper 不可聚焦，AT 读不到）：展开态用
+   * `aria-expanded`，禁用态用 `disabled`——后者是唯一能穿透 `<web-ui-button>`
+   * shadow 边界的表达（属性会被内部原生 button 读到），且与「真禁用」语义一致。
+   */
+  private _syncTriggerState() {
     const trigger = this._queryTrigger()
-    if (this._triggerAriaSnapshot?.trigger !== trigger) {
-      this._restoreTriggerAriaSnapshot()
+    if (this._triggerSnapshot?.trigger !== trigger) {
+      this._restoreTriggerSnapshot()
       if (trigger) {
-        this._triggerAriaSnapshot = {
+        this._triggerSnapshot = {
           trigger,
           expanded: trigger.getAttribute('aria-expanded'),
-          controls: trigger.getAttribute('aria-controls'),
-          disabled: trigger.getAttribute('aria-disabled')
+          disabled: trigger.getAttribute('disabled')
         }
       }
     }
     if (!trigger) return
     trigger.setAttribute('aria-expanded', String(this.open))
-    trigger.setAttribute('aria-controls', this._contentId)
-    if (this.disabled) trigger.setAttribute('aria-disabled', 'true')
-    else trigger.removeAttribute('aria-disabled')
+    trigger.toggleAttribute('disabled', this.disabled)
   }
 
   // ===== 内容区动画管线（三态语义自 ADR-0030 迁移） =====
@@ -496,7 +498,7 @@ export class WebUiCollapse extends LitElement {
     return html`
       <div class="wui-collapse-trigger-wrapper" @slotchange=${this._onTriggerSlotChange}><slot></slot></div>
       <div class="wui-collapse-content">
-        <div class=${classMap(trackClass)} id=${this._contentId}>
+        <div class=${classMap(trackClass)}>
           <div class=${classMap({ 'wui-collapse-inner': true, 'wui-glow': this._peeks })}>
             <slot name="content"></slot>
           </div>

@@ -115,6 +115,11 @@ blob-report/
 # 9. 框架自动生成
 # -----------------------------------------------------------------------------
 .tanstack/
+# wuchale：`*.po` 是译文源，入库；编译目录与 loader/proxy 由 Vite 插件按 PO 重建。
+apps/react-web-ui-demo/src/locales/.wuchale/
+apps/react-web-ui-demo/src/locales/*.loader.js
+apps/react-web-ui-demo/src/locales/data.js
+apps/react-web-ui-demo/src/locales/plural.js
 # 仓库根不应存在 src/，偶被外部工具误建
 /src
 

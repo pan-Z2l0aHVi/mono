@@ -10,6 +10,8 @@ import { describe, expect, it } from 'vite-plus/test'
 // 生成器那侧的判据在 `@greypan/md-to-comp` 的单测里。
 const root = path.resolve(import.meta.dirname, '../../../..')
 const reactGenerated = path.join(root, 'apps', 'react-web-ui-demo', 'src', 'generated')
+const reactZh = path.join(reactGenerated, 'zh-CN')
+const reactEn = path.join(reactGenerated, 'en')
 const vueGenerated = path.join(root, 'apps', 'vue-web-ui-demo', 'src', 'generated')
 const reactRoutes = path.join(root, 'apps', 'react-web-ui-demo', 'src', 'routes', 'components')
 const vuePages = path.join(root, 'apps', 'vue-web-ui-demo', 'src', 'pages', 'components')
@@ -18,11 +20,12 @@ const only = (a: string[], b: string[]) => a.filter(value => !b.includes(value))
 const sameSet = (a: string[], b: string[]) => a.length === b.length && a.every(value => b.includes(value))
 
 describe('两端生成物同源', () => {
-  const reactModule = readFileSync(path.join(reactGenerated, 'examples.ts'), 'utf8')
+  const reactModule = readFileSync(path.join(reactZh, 'examples.ts'), 'utf8')
+  const reactEnModule = readFileSync(path.join(reactEn, 'examples.ts'), 'utf8')
   const vueModule = readFileSync(path.join(vueGenerated, 'examples.ts'), 'utf8')
 
-  it('examples.ts 逐字节一致', () => {
-    expect(reactModule, 'react 与 vue demo 的生成数据必须逐字节一致').toBe(vueModule)
+  it('中文语种的 examples.ts 逐字节一致', () => {
+    expect(reactModule, 'react 的中文数据与 vue demo 的生成数据必须逐字节一致').toBe(vueModule)
   })
 
   it('examples.css 逐字节一致', () => {
@@ -30,6 +33,17 @@ describe('两端生成物同源', () => {
       readFileSync(path.join(reactGenerated, 'examples.css'), 'utf8'),
       'react 与 vue demo 的生成样式必须逐字节一致'
     ).toBe(readFileSync(path.join(vueGenerated, 'examples.css'), 'utf8'))
+  })
+
+  // 英文译文逐篇手写到 `<name>.md`，机器不判译文质量，但「哪篇有译文」是集合关系：中文有而英文没有
+  // 会让英文站整页空白，英文有而中文没有会让英文产物多出没有源语料的孤儿。
+  it('英文语种与中文语种收同一批文档，且单独成一份', () => {
+    const componentsOf = (module: string) => [...module.matchAll(/"component": "([^"]+)"/g)].map(m => m[1])
+    expect(reactEnModule, '英文语种应有自己的生成数据').not.toBe(reactModule)
+    expect(
+      componentsOf(reactEnModule),
+      `英文缺译文：${only(componentsOf(reactModule), componentsOf(reactEnModule)).join(', ')}`
+    ).toEqual(componentsOf(reactModule))
   })
 
   // 断言的是「手写的值列从 markdown 的表格一路走到产物」这件事本身：md 里写的是

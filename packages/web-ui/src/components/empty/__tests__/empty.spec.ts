@@ -1,6 +1,5 @@
 import { describe, expect, it } from 'vite-plus/test'
 
-import type { WebUiIcon } from '@/components/icon'
 import {
   cleanupElement,
   contractReflection,
@@ -19,55 +18,47 @@ const createEmpty = (attrs?: Record<string, string>, content?: string): WebUiEmp
 const renderedText = (el: WebUiEmpty): string => el.shadowRoot?.textContent?.trim() ?? ''
 
 /**
- * 默认 icon 是 icon slot 的 fallback 内容。`web-ui-icon` 是公开组件、`size` 是它的公开
- * property，所以读它不算摸内部实现。
+ * 默认图形是 icon slot 的 fallback：一个直出的 `svg`。这里只读结构与颜色关键字，
+ * 不摸实现细节——尺寸与颜色都是 CSS 的事，交给 browser 档去量。
  */
-const defaultIcon = (el: WebUiEmpty): WebUiIcon | null =>
-  el.shadowRoot?.querySelector('web-ui-icon') as WebUiIcon | null
+const defaultGlyph = (el: WebUiEmpty): SVGSVGElement | null => el.shadowRoot?.querySelector('.empty-glyph') ?? null
 
 describe('WebUiEmpty 组件', () => {
   contractReflection('property 写入后同步到宿主 attribute', () => createEmpty(), [
     ['title', '暂无内容', 'title', '暂无内容'],
-    ['description', '暂无可展示的数据', 'description', '暂无可展示的数据'],
-    ['size', 40, 'size', '40']
+    ['description', '暂无可展示的数据', 'description', '暂无可展示的数据']
   ])
 
-  describe('size 数值', () => {
-    it.each([40, 56, 72])('size=%i 作为数字读取并反射回同值', async size => {
-      const el = createEmpty({ size: String(size) })
+  describe('默认图形', () => {
+    it('渲染一个 aria-hidden 的 svg，画布 24×24', async () => {
+      const el = createEmpty()
       await waitForUpdate(el)
 
-      expect(el.size).toBe(size)
-      expect(typeof el.size).toBe('number')
-      expect(el.getAttribute('size')).toBe(String(size))
+      const glyph = defaultGlyph(el)
+      expect(glyph).not.toBeNull()
+      expect(glyph?.getAttribute('viewBox')).toBe('0 0 24 24')
+      expect(glyph?.getAttribute('aria-hidden')).toBe('true')
       cleanupElement(el)
     })
 
-    // size 会同时写进 CSS 自定义属性：`"abc"` 产出失效的 `NaNpx`（盒退回 unset），
-    // `"0"` 产出 `0px`（icon 不可见）。回退边长本身，整套派生度量因此一起回默认档 56；
-    // 只回退边长而留白按 NaN 计算，盒与排版都会变成垃圾值。
-    it.each([
-      ['非数值', 'abc'],
-      ['空串', ''],
-      ['零', '0'],
-      ['负数', '-5'],
-      ['Infinity', 'Infinity'],
-      ['NaN', 'NaN']
-    ])('非法 size="%s" 回退到默认档 56', async (_label, raw) => {
-      const el = createEmpty({ size: raw })
+    // 图形资产用 currentColor 描边与填充，颜色才能只由 CSS 的 color 决定；
+    // 资产若写成固定色，--wui-empty-icon-color 会静默失效。
+    it('图形用 currentColor 绘制', async () => {
+      const el = createEmpty()
       await waitForUpdate(el)
 
-      expect(el.size).toBe(56)
-      expect(defaultIcon(el)?.size).toBe(24)
-      expect(el.getAttribute('size')).toBe('56')
+      expect(defaultGlyph(el)?.innerHTML).toContain('currentColor')
       cleanupElement(el)
     })
 
-    it('有限小数边长原样采用，不被夹到整数或默认值', async () => {
-      const el = createEmpty({ size: '40.5' })
+    // `size` 已移除：它以前同时驱动图形、留白与字号，是唯一需要 JS 的旋钮。
+    // 现在整套版面归 CSS 变量，写 size 属性不该再有任何作用。
+    it('不再声明 size 属性，写 size="72" 也不改图形边长', async () => {
+      const el = createEmpty({ size: '72' })
       await waitForUpdate(el)
 
-      expect(el.size).toBe(40.5)
+      expect('size' in el).toBe(false)
+      expect(defaultGlyph(el)?.getAttribute('width')).toBe('40')
       cleanupElement(el)
     })
   })
