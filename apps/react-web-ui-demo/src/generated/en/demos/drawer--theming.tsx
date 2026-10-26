@@ -11,7 +11,7 @@ export default function Demo() {
         open={open}
         heading="Edge-to-edge white drawer"
         closable
-        className="[--wui-drawer-bg:#fff] [--wui-drawer-radius:0] [--wui-drawer-inset:0]"
+        className="[--wui-drawer-bg:#fff] [--wui-drawer-radius:0] [--wui-drawer-inset:0] [--wui-color-text:#262626] [--wui-color-surface-control:#e5e5e5]"
         onopen-change={event => setOpen(event.detail.open)}
       >
         <p className="text-neutral-800">
