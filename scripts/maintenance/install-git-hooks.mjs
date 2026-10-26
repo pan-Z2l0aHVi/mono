@@ -134,6 +134,12 @@ async function installDispatcher(hooksDir, hookName) {
 
   const dispatcher = renderDispatcher(hookName)
   if (managedContents === dispatcher) {
+    const { mode } = await lstat(target)
+    if ((mode & 0o777) !== 0o755) {
+      await chmod(target, 0o755)
+      console.log(`Restored ${hookName} dispatcher permissions at ${target}`)
+      return
+    }
     console.log(`${hookName} dispatcher is already current at ${target}`)
     return
   }

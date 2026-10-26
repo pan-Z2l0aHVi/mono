@@ -125,6 +125,25 @@ exec sh "$hook" "$@"
     assert.equal(fs.statSync(dispatcherPath).mode & 0o111, 0o111)
   }
 
+  // 旧版 marker 形态（# mono-managed-commit-msg-dispatcher）同样必须升级；否则已装旧版的仓库
+  // 在 merge 后会一直打印 "Preserving existing ..."，五项 pre-commit 检查继续静默空转。
+  fs.writeFileSync(dispatcherPath, '#!/bin/sh\n# mono-managed-commit-msg-dispatcher\n\nprintf legacy\n', {
+    mode: 0o755
+  })
+  const markerUpgradeResult = install(repo)
+  assertSuccess(markerUpgradeResult, 'upgrade legacy marker dispatcher')
+  assert.match(markerUpgradeResult.stdout, /Updated managed commit-msg dispatcher/)
+  assert.match(fs.readFileSync(dispatcherPath, 'utf8'), /mono-managed-git-hook-dispatcher: commit-msg/)
+
+  // 内容已最新但执行位丢失时也要恢复权限，否则 env-doctor 的 "not executable" 会变成永久 fail。
+  if (process.platform !== 'win32') {
+    fs.chmodSync(dispatcherPath, 0o644)
+    const permissionResult = install(repo)
+    assertSuccess(permissionResult, 'restore dispatcher permissions')
+    assert.match(permissionResult.stdout, /Restored commit-msg dispatcher permissions/)
+    assert.equal(fs.statSync(dispatcherPath).mode & 0o111, 0o111)
+  }
+
   assertSuccess(run('git', ['-C', repo, 'worktree', 'add', '-b', 'linked', linked]), 'fixture linked worktree')
   assert.equal(
     run('git', ['-C', linked, 'ls-tree', 'HEAD', '.vite-hooks/commit-msg']).stdout.split(' ')[0],
@@ -170,6 +189,17 @@ exec sh "$hook" "$@"
   const commentOnlyResult = runVersionedCommitHook('#319 radio/checkbox 把 role 挂在 label 上\n')
   assert.notEqual(commentOnlyResult.status, 0, 'reject a commit message with only comment lines')
   assert.match(commentOnlyResult.stderr, /commit message must contain non-comment content/)
+
+  // 缺 mise 时必须给出可读原因并以非零退出，而不是只留下 127。
+  if (process.platform !== 'win32') {
+    const trackedPreCommit = path.resolve(import.meta.dirname, '../../.vite-hooks/pre-commit')
+    const noMise = spawnSync('sh', [trackedPreCommit], {
+      env: { PATH: '/usr/bin:/bin' },
+      encoding: 'utf8'
+    })
+    assert.equal(noMise.status, 1, 'pre-commit must fail when mise is not on PATH')
+    assert.match(noMise.stderr, /needs mise on PATH/)
+  }
 
   fs.unlinkSync(mainMarker)
   fs.unlinkSync(linkedMarker)
