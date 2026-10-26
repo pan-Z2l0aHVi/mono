@@ -3,6 +3,8 @@ import { randomBytes } from 'node:crypto'
 import { chmod, link, lstat, mkdir, readFile, rename, unlink, writeFile } from 'node:fs/promises'
 import path from 'node:path'
 
+import { requiredGitHooks } from '../lib/git-hooks-status.mjs'
+
 function gitOutput(args, cwd, description) {
   const result = spawnSync('git', args, { cwd, encoding: 'utf8' })
   if (result.error) throw new Error(`${description}: ${result.error.message}`)
@@ -57,7 +59,7 @@ async function readRegularFile(file) {
 }
 
 // 受版本控制的 hook 是唯一事实来源：`.vite-hooks` 里有哪个，就兜底哪个。
-const hookNames = ['commit-msg', 'pre-commit']
+const hookNames = requiredGitHooks
 
 function dispatcherMarker(hookName) {
   return `# mono-managed-git-hook-dispatcher: ${hookName}`
@@ -134,11 +136,14 @@ async function installDispatcher(hooksDir, hookName) {
 
   const dispatcher = renderDispatcher(hookName)
   if (managedContents === dispatcher) {
-    const { mode } = await lstat(target)
-    if ((mode & 0o777) !== 0o755) {
-      await chmod(target, 0o755)
-      console.log(`Restored ${hookName} dispatcher permissions at ${target}`)
-      return
+    // Windows 的 stat.mode 不表达 Unix 权限位；按 0755 比较只会每轮误报 Restored。
+    if (process.platform !== 'win32') {
+      const { mode } = await lstat(target)
+      if ((mode & 0o777) !== 0o755) {
+        await chmod(target, 0o755)
+        console.log(`Restored ${hookName} dispatcher permissions at ${target}`)
+        return
+      }
     }
     console.log(`${hookName} dispatcher is already current at ${target}`)
     return

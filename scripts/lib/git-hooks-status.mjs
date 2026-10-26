@@ -19,16 +19,20 @@ function runGit(root, args) {
 
 // 安装脚本与已装 dispatcher 都遵循这些开关；体检必须先认同一语义，否则用户按偏好关掉 hook 后
 // env-doctor 会持续报 fail，并建议运行一个同样会跳过的安装器。
-export function gitHooksDisabledBy(root, env = process.env) {
-  if (disableEnvironmentVariables.some(name => env[name] === '0')) return 'the environment'
-  const preference = runGit(root, ['config', '--bool', '--get', 'vp.hooks.disabled'])
-  if (preference.status === 0 && preference.stdout === 'true') return 'the local Vite+ preference'
-  return null
+function readDisabledPreference(root) {
+  const result = runGit(root, ['config', '--bool', '--get', 'vp.hooks.disabled'])
+  if (result.status === 0) return { disabled: result.stdout === 'true' }
+  if (result.status === 1) return { disabled: false }
+  return { disabled: false, error: result.stderr || `git config exited ${result.status}` }
 }
 
 export function inspectGitHooks(root, env = process.env) {
-  const disabledBy = gitHooksDisabledBy(root, env)
-  if (disabledBy) return { level: 'ok', detail: `Git hooks are disabled by ${disabledBy}` }
+  if (disableEnvironmentVariables.some(name => env[name] === '0')) {
+    return { level: 'ok', detail: 'Git hooks are disabled by the environment' }
+  }
+  const preference = readDisabledPreference(root)
+  if (preference.error) return { level: 'warn', detail: `cannot read vp.hooks.disabled: ${preference.error}` }
+  if (preference.disabled) return { level: 'ok', detail: 'Git hooks are disabled by the local Vite+ preference' }
 
   const configured = runGit(root, ['config', '--get', 'core.hooksPath'])
   if (configured.status !== 0 && configured.status !== 1) {

@@ -8,6 +8,19 @@ import { inspectGitHooks } from './git-hooks-status.mjs'
 
 const fixtureRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'git-hooks-status-'))
 
+// 隔离 global/system Git 配置：开发者可能把 vp.hooks.disabled 写进全局配置，测试不能受它影响。
+const globalConfig = path.join(fixtureRoot, 'gitconfig')
+fs.writeFileSync(globalConfig, '')
+process.env.GIT_CONFIG_GLOBAL = globalConfig
+process.env.GIT_CONFIG_NOSYSTEM = '1'
+process.env.HOME = path.join(fixtureRoot, 'home')
+process.env.XDG_CONFIG_HOME = path.join(fixtureRoot, 'xdg')
+for (const name of Object.keys(process.env)) {
+  if (name.startsWith('GIT_CONFIG_') && !['GIT_CONFIG_GLOBAL', 'GIT_CONFIG_NOSYSTEM'].includes(name)) {
+    delete process.env[name]
+  }
+}
+
 function git(repo, args) {
   const result = spawnSync('git', args, { cwd: repo, encoding: 'utf8' })
   assert.equal(result.status, 0, `git ${args.join(' ')} failed: ${result.stderr}`)
@@ -89,9 +102,29 @@ try {
 
   const environmentRepo = initRepo('environment')
   git(environmentRepo, ['config', 'core.hooksPath', path.join(fixtureRoot, 'environment-hooks')])
-  const environment = inspectGitHooks(environmentRepo, { HUSKY: '0' })
-  assert.equal(environment.level, 'ok')
-  assert.match(environment.detail, /disabled by the environment/)
+  for (const name of ['HUSKY', 'VP_GIT_HOOKS', 'VITE_GIT_HOOKS']) {
+    const environment = inspectGitHooks(environmentRepo, { [name]: '0' })
+    assert.equal(environment.level, 'ok', `${name}=0 must disable the check`)
+    assert.match(environment.detail, /disabled by the environment/)
+  }
+
+  // hook 路径被目录占用：必须是 fail，而不是被当成文件通过。
+  const directoryRepo = initRepo('directory')
+  const directoryHooks = path.join(fixtureRoot, 'directory-hooks')
+  installHooks(directoryHooks, ['pre-commit'])
+  fs.mkdirSync(path.join(directoryHooks, 'commit-msg'))
+  git(directoryRepo, ['config', 'core.hooksPath', directoryHooks])
+  const directory = inspectGitHooks(directoryRepo, {})
+  assert.equal(directory.level, 'fail')
+  assert.match(directory.detail, /commit-msg \(not a file\)/)
+
+  // 非法布尔值：安装脚本会直接报错，体检至少给 warn，不能静默当作未禁用。
+  const invalidRepo = initRepo('invalid')
+  git(invalidRepo, ['config', 'core.hooksPath', path.join(fixtureRoot, 'invalid-hooks')])
+  git(invalidRepo, ['config', 'vp.hooks.disabled', 'maybe'])
+  const invalid = inspectGitHooks(invalidRepo, {})
+  assert.equal(invalid.level, 'warn')
+  assert.match(invalid.detail, /cannot read vp\.hooks\.disabled/)
 
   console.log('git-hooks-status tests passed')
 } finally {
