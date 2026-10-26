@@ -7,7 +7,7 @@ tag: web-ui-select
 
 ## Samples
 
-### 基础 {#basic}
+### Basic
 
 `value` 由页面持有：选中后 `change` 把 `event.currentTarget.value` 交回来，写回 `value` 后 trigger 的文本跟着走；不写 `value` 时 trigger 显示 `placeholder`。
 
@@ -75,7 +75,7 @@ const framework = ref('vue')
 </script>
 ```
 
-### option 装饰 {#option-decoration}
+### Option decoration
 
 `prefix` / `suffix` 插槽在 label 两侧放 icon 与说明，一条 option 里的顺序是 check → prefix → label → suffix；`disabled` 的项留在列表里但选不中，键盘导航也会跳过它。
 
@@ -131,7 +131,7 @@ import { lucideFileText, lucideFilm, lucideImage } from '@greypan/web-ui/icons'
 </script>
 ```
 
-### 自定义 trigger {#custom-trigger}
+### Custom trigger
 
 `trigger` 插槽替换默认的 label 文本，外壳、箭头与开合行为仍由组件提供。插槽内容是页面侧渲染的普通节点，用页面状态写它的文本，它就会跟着选择变。
 
@@ -180,7 +180,7 @@ const lang = ref('en')
 </script>
 ```
 
-### 开合通知 {#open-change}
+### Open-change notification
 
 `open-change` 只通知：组件自己先把开合改到位，再用 `detail.open` 报告结果。select 的 `open` 是只读 getter，没有可回写的受控属性，页面跟着事件读数即可。
 
@@ -238,7 +238,7 @@ function onOpenChange(event: WebUiEvent<WebUiSelect, 'open-change'>) {
 </script>
 ```
 
-### 表单取值 {#form}
+### Form value
 
 `name` 让选中值以该字段名进入 `FormData`；值为空时 `required` 上报 `valueMissing`，原生提交被拦下。`form.reset()` 把值退回挂载时的初值，trigger 随之回到 `placeholder`。
 
@@ -320,7 +320,7 @@ function reset() {
 </script>
 ```
 
-### Portal 渲染 {#portal}
+### Portal rendering
 
 默认 panel 渲染在 select 自己的 shadow 树里、按 absolute 定位，祖先的 `overflow` 会把它裁掉；`portal` 把 panel 交给 theme-owned overlay root 并按 fixed 定位，容器裁不到它。
 

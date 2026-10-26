@@ -7,7 +7,7 @@ tag: web-ui-input-number
 
 ## Samples
 
-### 基础 {#basic}
+### Basic
 
 不接 `value` 时组件自己持有数值，默认 `0`。`value` 恒为数字、没有空态，所以 `placeholder` 只在编辑中把内容清空时露出来：内部控件绑的是编辑草稿，草稿为空才让占位文本显形。
 
@@ -33,7 +33,7 @@ export default function Demo() {
 </template>
 ```
 
-### 取值范围 {#range}
+### Value range
 
 `min` / `max` 收住取值，`step` 决定步进幅度。落在端点时对应那一侧的步进 button 自己变禁用；编辑中可以写出越界文本，越界值在提交那一刻被拉回范围。
 
@@ -59,7 +59,7 @@ export default function Demo() {
 </template>
 ```
 
-### 小数精度 {#precision}
+### Decimal precision
 
 `precision` 决定读取与提交时保留的小数位数，赋值时不抹掉原始小数——`value={1.5}` 与 `precision={1}` 的书写顺序不影响结果。
 
@@ -89,7 +89,7 @@ export default function Demo() {
 </template>
 ```
 
-### 受控值与事件 {#events}
+### Controlled value and events
 
 `value` 是受控值，接住 `input` 才能跟着输入与步进走。
 
@@ -147,7 +147,7 @@ const committed = ref(1)
 </script>
 ```
 
-### 禁用与只读 {#states}
+### Disabled and readonly
 
 `disabled` 关掉输入与步进，校验一并退让，宿主整体降到四成不透明度。`readonly` 保留可读与可复制，两个步进 button 直接画成禁用态，ArrowUp / ArrowDown 无响应，失焦提交也不转发 `change`。
 
@@ -171,7 +171,7 @@ export default function Demo() {
 </template>
 ```
 
-### 表单值 {#form}
+### Form value
 
 `name` 是字段名，提交值是 `String(value)`。`required` 在编辑中清空时拦下提交（`valueMissing`），`form.reset()` 回填挂载时的初值。表单里的 `input-number` 请保持整数 `step`，理由写在下面的行为说明。
 
@@ -243,7 +243,7 @@ function reset() {
 </script>
 ```
 
-### CSS 变量 {#sizing}
+### CSS variables
 
 宽度取 `--wui-input-width`（与 `<web-ui-input>` 同一个 token），`input-number` 自己没有 `full`；再窄也会被 `--wui-control-size` 兜住最小宽度。
 

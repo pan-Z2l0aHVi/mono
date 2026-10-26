@@ -7,7 +7,7 @@ tag: web-ui-button-group
 
 ## Samples
 
-### 水平组 {#basic}
+### Horizontal group
 
 组给整组套一块 glass 底（`.wui-glass` 画在组的内层盒子上），并在相邻两枚成员之间补一条分割线，末尾那枚不补。
 
@@ -39,7 +39,7 @@ export default function Demo() {
 </template>
 ```
 
-### 成员内容 {#members}
+### Member content
 
 成员可以是 icon-only、纯文字，或者用 `prefix` / `suffix` 夹一个 icon，组只把宿主盒子排成一行并居中：`align-items: center` 是写死的，成员高度又统一成 30px，所以混排天然对齐，没有任何一枚被拉伸或压窄。
 
@@ -145,7 +145,7 @@ import { lucideChevronLeft, lucideChevronRight } from '@greypan/web-ui/icons'
 </script>
 ```
 
-### 垂直组 {#vertical}
+### Vertical group
 
 `direction` 决定横排还是竖排，默认 `horizontal`，合法值只有这两个，集合外的值一律回退成 `horizontal`。
 
@@ -195,7 +195,7 @@ import { lucideMinus, lucidePlus, lucideSearch } from '@greypan/web-ui/icons'
 </script>
 ```
 
-### 成员间距 {#gap}
+### Member gap
 
 button-group 没有自己的 gap token：成员之间的间距与玻璃盒子的内衬同读 theme 的间距阶 `--wui-space-1`（默认 4px），所以这一条一动，间距和内衬一起变。
 
@@ -253,7 +253,7 @@ export default function Demo() {
 </template>
 ```
 
-### 分割线 {#divider}
+### Divider
 
 分割线由「非末尾」的那枚成员自己渲染，带 `aria-hidden`，末位成员没有那一条。
 
@@ -323,7 +323,7 @@ import { lucideMinus, lucidePlus } from '@greypan/web-ui/icons'
 </script>
 ```
 
-### 成员事件 {#events}
+### Member events
 
 组不拦截成员的 `click`：`GroupController` 只在宿主上以 capture 监听 `change`，而 button-group 用的是纯展示型上下文，连 `handleChange` 都没实现，于是成员的点击原样冒泡过组宿主。
 

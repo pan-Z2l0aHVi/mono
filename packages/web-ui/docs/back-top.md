@@ -11,7 +11,7 @@ By default it follows page scrolling; after pointing `scrollTarget` at a scroll 
 
 ## Samples
 
-### Custom scroll container {#container}
+### Custom scroll container
 
 `scrollTarget` is an element property rather than an attribute, so it can only be assigned after mount: take a `ref` to the container and to `<web-ui-back-top>`, then hand the container over inside `useEffect` / `onMounted`.
 
@@ -67,7 +67,7 @@ onMounted(() => {
 </script>
 ```
 
-### Custom content {#custom-content}
+### Custom content
 
 The default slot replaces the whole visual content of the button, while the component still provides the interaction semantics: the inner wrapper is `role="button"` with `tabindex="0"`, and pointer clicks, Enter, and Space all call `toTop()`.
 
@@ -127,7 +127,7 @@ onMounted(() => {
 </script>
 ```
 
-### Jump to top immediately {#instant}
+### Jump to top immediately
 
 `scroll-behavior="auto"` does not request smooth scrolling, so a click jumps straight to the top.
 

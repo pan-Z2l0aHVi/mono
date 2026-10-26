@@ -7,7 +7,7 @@ A container for a group of `<web-ui-radio>`: it collapses the members' selected 
 
 ## Samples
 
-### Single radio group {#basic}
+### Single radio group
 
 The group holds the only value: `value` decides which member is selected, the selected state of members is pushed down by the group, and the page only reads the group's value.
 
@@ -50,7 +50,7 @@ function onInput(event: WebUiEvent<WebUiRadioGroup, 'input'>) {
 </script>
 ```
 
-### Direction {#direction}
+### Direction
 
 `direction` decides whether members are laid out horizontally or vertically, default `vertical`; invalid values also fall back to `vertical`.
 
@@ -100,7 +100,7 @@ export default function Demo() {
 </template>
 ```
 
-### Member gap {#gap}
+### Member gap
 
 The gap between members comes from `--wui-radio-group-gap`, which by default resolves through `--wui-space-2` to 8px; overriding it changes only the gap, not the layout direction. The two groups below share the same members and differ only in this variable.
 
@@ -142,7 +142,7 @@ export default function Demo() {
 </template>
 ```
 
-### Group-level disabled and required {#disabled-required}
+### Group-level disabled and required
 
 `disabled` turns off interaction for the whole group, and that disabled state is pushed down to the members; `required` makes native form validation block submission while the group has no value.
 

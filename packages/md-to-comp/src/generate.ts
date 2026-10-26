@@ -5,7 +5,7 @@ import { fail } from './errors'
 import { highlight, type FenceFlavor } from './highlight'
 import { parseMarkdown, type ParsedDoc } from './markdown'
 import { renderCss, renderModule, type ExampleDocPayload, type SamplePayload } from './render'
-import { assertSelfContained, demoFileContent, demoFileName, emitsDemoFile } from './sample'
+import { assertSelfContained, demoFileContent, demoFileName } from './sample'
 import type { DocsLocale, GenerateOptions, GeneratedFile, MdToCompConfig } from './types'
 
 export interface GenerateResult {
@@ -135,15 +135,6 @@ export async function generate(options: GenerateOptions): Promise<GenerateResult
     if ((docsByLocale.get(output.locale)?.length ?? 0) === 0)
       fail(`output ${output.output} 的语种 \`${output.locale}\` 没有任何 markdown 文件`)
 
-  if (options.requireDemo)
-    for (const docs of docsByLocale.values())
-      for (const doc of docs)
-        for (const sample of doc.samples)
-          if (!emitsDemoFile(sample.id))
-            fail(
-              `${doc.sourceFile}：示例「${sample.title}」没有 \`{#id}\` 锚点；requireDemo 开启时每条示例都要落成组件文件`
-            )
-
   // 只给有 output 的语种生成模块：没有落点的语种（例如 Vue 侧只出中文，但语料目录里还有英文）
   // 不渲染高亮，省掉一半无消费者的计算。
   const modules = new Map<string, string>()
@@ -166,7 +157,6 @@ export async function generate(options: GenerateOptions): Promise<GenerateResult
     if (!options.styles) files.push({ path: path.join(output.output, 'examples.css'), content: css })
     for (const doc of docsByLocale.get(output.locale) ?? []) {
       for (const sample of doc.samples) {
-        if (!emitsDemoFile(sample.id)) continue
         const code = sample.fences[output.flavor] ?? ''
         assertSelfContained(code, output.flavor, sample.title, doc.sourceFile)
         files.push({
@@ -188,7 +178,7 @@ export async function generate(options: GenerateOptions): Promise<GenerateResult
   for (const file of cssFiles)
     if (file.content !== cssFiles[0]?.content) fail(`多个 output 的 examples.css 不一致：样式与语种无关`)
 
-  // 同名产物会互相覆盖，且覆盖结果取决于输出顺序；锚点重复、output 目录配重都会走到这里。
+  // 同名产物会互相覆盖，且覆盖结果取决于输出顺序；两条标题派生出同一个 id、output 目录配重都会走到这里。
   const paths = new Set<string>()
   for (const file of files) {
     if (paths.has(file.path)) fail(`产物路径重复：${file.path}（两个来源写出了同一个文件）`)

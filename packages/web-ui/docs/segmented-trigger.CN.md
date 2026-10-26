@@ -9,7 +9,7 @@ tag: web-ui-segmented-trigger
 
 ## Samples
 
-### 基础 {#basic}
+### Basic
 
 `value` 决定哪个 trigger 是当前项，容器按它回写 `checked`；默认插槽里的文本就是 button 内容。
 
@@ -45,7 +45,7 @@ const view = ref('day')
 </script>
 ```
 
-### 单独禁用 {#disabled}
+### Individual disabling
 
 `disabled` 加在 trigger 上只禁这一项：它留在 track 里，但不可选中，键盘导航也跳过它。加在 `<web-ui-segmented>` 上则是禁用全部 trigger。
 

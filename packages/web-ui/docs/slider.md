@@ -7,7 +7,7 @@ Range slider with tick marks and a vertical orientation; dragging uses pointer c
 
 ## Samples
 
-### Basic {#basic}
+### Basic
 
 With no attributes the range is `0`–`100` with a step of `1`; `min` / `max` / `step` constrain the value range and the step size, and `disabled` takes the track and thumb out of interaction.
 
@@ -33,7 +33,7 @@ export default function Demo() {
 </template>
 ```
 
-### Tick marks {#marks}
+### Tick marks
 
 `marks` draws tick points along the track, spaced by `step`, so tick density is decided by the step; at most 100 segments are drawn, and when `step` is too dense relative to `min`–`max` only the first 100 segments are drawn instead of filling the track.
 
@@ -57,7 +57,7 @@ export default function Demo() {
 </template>
 ```
 
-### Vertical orientation {#vertical}
+### Vertical orientation
 
 `vertical` stands the track up and values grow from bottom to top; `aria-orientation` becomes `vertical` accordingly, and the arrow keys still adjust with the up and down keys.
 
@@ -131,7 +131,7 @@ const volume = ref(30)
 </script>
 ```
 
-### input and change {#events}
+### input and change
 
 During a drag `input` fires continuously, and on release a single `change` is dispatched only after the value has really changed; with the keyboard, each press of an adjustment key that changes the value produces `input` and then `change`. Clicking an empty spot on the track also counts as one value change.
 
@@ -189,7 +189,7 @@ const changeValue = ref(40)
 </script>
 ```
 
-### Form value {#form}
+### Form value
 
 `name` makes the current value enter `FormData` under that field name; the component joins the host `<form>` through ElementInternals, so `form.reset()` returns the value to its initial value.
 
@@ -259,7 +259,7 @@ function reset() {
 </script>
 ```
 
-### CSS variables {#sizing}
+### CSS variables
 
 `--wui-slider-width` / `--wui-slider-vertical-height` decide the host's axis length, `--wui-slider-track-size` is the track thickness, and the thumb thickness and the long edge of its pressed state each use their own variable.
 

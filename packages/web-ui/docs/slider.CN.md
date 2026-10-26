@@ -7,7 +7,7 @@ tag: web-ui-slider
 
 ## Samples
 
-### 基础 {#basic}
+### Basic
 
 不写属性时范围是 `0`–`100`、步进 `1`；`min` / `max` / `step` 约束取值范围与步进幅度，`disabled` 让 track 与 thumb 退出交互。
 
@@ -33,7 +33,7 @@ export default function Demo() {
 </template>
 ```
 
-### 刻度标记 {#marks}
+### Tick marks
 
 `marks` 沿 track 画出刻度点，刻度间距取 `step`，所以刻度密度由步进决定；刻度最多画 100 段，`step` 相对 `min`–`max` 太密时只画前 100 段，不铺满 track。
 
@@ -57,7 +57,7 @@ export default function Demo() {
 </template>
 ```
 
-### 垂直方向 {#vertical}
+### Vertical orientation
 
 `vertical` 让 track 竖起来，数值由下往上增长；`aria-orientation` 随之变成 `vertical`，方向键仍用上下键调节。
 
@@ -131,7 +131,7 @@ const volume = ref(30)
 </script>
 ```
 
-### input 与 change {#events}
+### input and change
 
 拖拽过程中 `input` 连续触发，松手时只在数值真的变过之后派发一次 `change`；键盘每按一次调节键，值变了就先 `input` 再 `change`。点击 track 的空白处也算一次取值变更。
 
@@ -189,7 +189,7 @@ const changeValue = ref(40)
 </script>
 ```
 
-### 表单取值 {#form}
+### Form value
 
 `name` 让当前值以该字段名进入 `FormData`；组件通过 ElementInternals 接入宿主 `<form>`，所以 `form.reset()` 会把值退回初始值。
 
@@ -259,7 +259,7 @@ function reset() {
 </script>
 ```
 
-### CSS 变量 {#sizing}
+### CSS variables
 
 `--wui-slider-width` / `--wui-slider-vertical-height` 决定 host 的轴长，`--wui-slider-track-size` 是 track 厚度，thumb 的厚度与按压态长边各走一个变量。
 

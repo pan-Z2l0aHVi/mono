@@ -9,7 +9,7 @@ collapse panel 把 trigger 与内容装在同一个元素里：trigger 走 defau
 
 ## Samples
 
-### 基础 {#basic}
+### Basic
 
 `open` 是唯一状态源，`content` slot 放要收起的内容，default slot 放 trigger。
 
@@ -71,7 +71,7 @@ const open = ref(false)
 </script>
 ```
 
-### 不绑定 open {#uncontrolled}
+### Without binding open
 
 组件自己会切 `open`，所以完全不绑定也能用：只给 default slot 与 `content` slot 就行。第二条静态写 `open`，表示初始就展开——初始即为 `open` 时直接落展开稳态，不播进入动画。静态写法只在挂载时生效一次，之后组件继续自己切这个属性，页面不再参与。
 
@@ -145,7 +145,7 @@ export default function Demo() {
 </template>
 ```
 
-### trigger 类型 {#trigger}
+### Trigger types
 
 交互语义来自 default slot 里那个元素本身：原生 `<button>` 与 `<web-ui-button>` 自带 Enter / Space 激活和焦点，组件把 `aria-expanded` 回写到 default slot 里第一个被指派的元素，并在 `disabled` 时给该元素加上 `disabled`。
 
@@ -250,7 +250,7 @@ import { lucideChevronDown } from '@greypan/web-ui/icons'
 </script>
 ```
 
-### 禁用 {#disabled}
+### Disabled
 
 `disabled` 让点击被忽略，并给 trigger 元素加上 `disabled`；取消禁用时移除该 attribute，回到 trigger 原本的禁用状态。它不改变已经展开的面板：第二条同时写 `open` 与 `disabled`，内容保持可见——禁用管的是触发，不是当前状态。
 
@@ -336,7 +336,7 @@ const disabled = ref(true)
 </script>
 ```
 
-### 事件与方法 {#events}
+### Events and methods
 
 读数是挂在这条 collapse 宿主上的 `open-change` 计数与最后一次 `detail.open`。点 trigger 会让计数加一：`open-change` 只在用户手势后派发，`detail.open` 是组件已经落到的状态。
 
@@ -433,7 +433,7 @@ function onOpenChange(event: WebUiEvent<WebUiCollapse, 'open-change'>) {
 </script>
 ```
 
-### 关闭稳态与滚动位置 {#keep-mounted}
+### Closed resting state and scroll position
 
 两条都停在关闭稳态，可见高度都是 0，差别在内容怎么退出。
 
@@ -525,7 +525,7 @@ const rows = Array.from({ length: 20 }, (_, index) => `列表项 ${index + 1}`)
 </script>
 ```
 
-### peek 预览带 {#peek}
+### Peek preview band
 
 `peek` 让关闭稳态收到固定长度而不是 0，露出的那一段用来提示下面还有内容。它的关闭稳态语义等同 `keep-mounted`：整段 inner 都在 `inert` 子树里，所以露出的部分同样点不动、Tab 也进不去，要交互得先展开。
 
@@ -610,7 +610,7 @@ const longRows = Array.from(
 </script>
 ```
 
-### 边缘渐隐 {#peek-edge}
+### Edge fade
 
 露出区域的裁剪边缘自带一段 alpha 渐隐，同一条带上还叠一层背景模糊，长度由 `peek` 推导：默认比例 0.4，并夹在 `--wui-collapse-peek-edge-max`（`112px`）以内。
 
@@ -707,7 +707,7 @@ const cappedRows = Array.from(
 </script>
 ```
 
-### CSS 变量 {#theming}
+### CSS variables
 
 `--wui-collapse-peek-edge` 显式指定渐变长度，优先于推导值；`--wui-collapse-peek-edge-blur` 是同一条带上背景模糊的半径；`--wui-collapse-peek-edge-color` 是裁剪边缘处的渐变起点色（默认页面底色），向内容方向淡到全透明。
 
@@ -823,7 +823,7 @@ const edgeColorRows = Array.from(
 </script>
 ```
 
-### 水平方向 {#horizontal}
+### Horizontal
 
 `horizontal` 把动画轴从高度换成宽度，内容沿宽度展开，trigger 与内容排在同一行——宿主自己只是 block 盒，要成行就在宿主上加 flex（这两条都写了 `flex items-center gap-2`）。
 
@@ -895,7 +895,7 @@ import { radixIconsPanelLeftMinimized } from '@greypan/web-ui/icons'
 </script>
 ```
 
-### 嵌套 {#nested}
+### Nested
 
 内层 collapse 放在外层的 `content` slot 里。展开内层时外层跟着长：展开稳态的 track 停在 `1fr`，高度由内容决定，组件不需要测量内层。
 
@@ -999,7 +999,7 @@ function onOuterChange(event: WebUiEvent<WebUiCollapse, 'open-change'>) {
 </script>
 ```
 
-### 多实例并存 {#accordion}
+### Multiple instances
 
 三条面板各自持有 `open`，页面用一个数组当状态源：每条的 `open` 写成「它在不在数组里」，回写走 `open-change` 的 `detail.open`。勾选「同时只留一条」后由页面保证互斥——collapse 没有组契约，互斥是消费方的状态管理，不是组件属性。
 
@@ -1103,7 +1103,7 @@ function setAt(title: string, value: boolean) {
 </script>
 ```
 
-### 内容高度变化 {#content-height}
+### Content height changes
 
 展开稳态的 track 停在 `1fr`，高度由内容决定：内容自己在面板里变高变矮都不需要组件重新测量，加一行、删一行，面板跟着长缩。只有 `peek` 与展开之间那段「固定长度 ↔ 内容高度」的过渡才要读像素（见 peek 预览带）。
 

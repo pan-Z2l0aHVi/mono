@@ -9,7 +9,7 @@ tag: web-ui-image-preview
 
 ## Samples
 
-### 基础 {#basic}
+### Basic
 
 `imagePreview()` 一调用就把宿主挂到根主题（或 `container` 指定）的 overlay root 上并立即打开，同时返回 handle。
 
@@ -61,7 +61,7 @@ function open() {
 </script>
 ```
 
-### 展示类 option {#display-options}
+### Display options
 
 `nav`、`toolbar`、`closable`、`indicator` 彼此独立、默认全关，四个都传 `true` 才会把上一张 / 下一张 button、缩放工具条、关闭 button 与「当前 / 总数」indicator 一起带出来。
 
@@ -117,7 +117,7 @@ function open() {
 </script>
 ```
 
-### handle {#handle}
+### Handle
 
 handle 的 `index`、`scale`、`images`、`closed` 是只读成员，方法调用后同步读得到新值；预览内部的手势与键盘操作不会回调外部，需要时自己读。
 

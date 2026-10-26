@@ -9,7 +9,7 @@ It dispatches no events of its own, and `value` is not consumed by the menu—it
 
 ## Samples
 
-### Basic menu {#basic}
+### Basic menu
 
 A menu item is a child of the host and is moved into the overlay panel when opened; a `disabled` item stays in the list but cannot be selected.
 
@@ -41,7 +41,7 @@ export default function Demo() {
 </template>
 ```
 
-### Icons and shortcuts {#decorated}
+### Icons and shortcuts
 
 `prefix` / `suffix` are the two decoration slots; `pl` writes the left padding onto the item itself, so that a plain text item lines up with an item carrying a 14px icon (8px padding + 14px icon + 8px gap).
 
@@ -89,7 +89,7 @@ import { lucideCopy, lucideTrash2 } from '@greypan/web-ui/icons'
 </script>
 ```
 
-### Items with a submenu {#submenu}
+### Items with a submenu
 
 `submenu` turns the item into an entry to the menu level below it: menu items nested inside it become the next level, an expand arrow grows on the right, and both hovering and the arrow keys enter it.
 
