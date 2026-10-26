@@ -79,15 +79,15 @@ describe('WebUiCollapse 组件（浏览器）', () => {
     el.disabled = true
     await el.updateComplete
     await el.querySelector('web-ui-button')!.updateComplete
-    expect(button.getAttribute('aria-disabled')).toBe('true')
+    expect(button.disabled).toBe(true)
 
     el.disabled = false
     await el.updateComplete
     await el.querySelector('web-ui-button')!.updateComplete
-    expect(button.hasAttribute('aria-disabled')).toBe(false)
+    expect(button.disabled).toBe(false)
   })
 
-  it('替换 disabled trigger 会还原旧 web-ui-button 的 ARIA 状态', async () => {
+  it('替换 disabled trigger 会还原旧 web-ui-button 的状态', async () => {
     const el = createCollapse('<web-ui-button>Trigger</web-ui-button><div slot="content">Content</div>')
     el.disabled = true
     await el.updateComplete
@@ -95,12 +95,12 @@ describe('WebUiCollapse 组件（浏览器）', () => {
     const trigger = el.querySelector('web-ui-button')!
     await trigger.updateComplete
     const button = trigger.shadowRoot!.querySelector<HTMLButtonElement>('button[part="button"]')!
-    expect(button.getAttribute('aria-disabled')).toBe('true')
+    expect(button.disabled).toBe(true)
 
     let clickCount = 0
     trigger.addEventListener('click', () => clickCount++)
     trigger.remove()
-    await waitFor(() => !trigger.hasAttribute('aria-disabled'))
+    await waitFor(() => !trigger.hasAttribute('disabled'))
     await trigger.updateComplete
 
     expect(trigger.hasAttribute('aria-expanded')).toBe(false)

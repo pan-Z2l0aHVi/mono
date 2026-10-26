@@ -978,7 +978,7 @@ const open = ref([false, false, false])
 
 ### CSS variables {#theming}
 
-The background, radius, and viewport inset are controlled by `--wui-drawer-bg`, `--wui-drawer-radius`, and `--wui-drawer-inset` respectively; setting `--wui-drawer-inset: 0` gives edge-to-edge geometry.
+The background, radius, and viewport inset are controlled by `--wui-drawer-bg`, `--wui-drawer-radius`, and `--wui-drawer-inset` respectively; setting `--wui-drawer-inset: 0` gives edge-to-edge geometry. The white-background example also sets `--wui-color-text` to a dark color and `--wui-color-surface-control` to a light color so the heading and close button stay readable in both themes.
 
 ```tsx
 import { useState } from 'react'
@@ -994,7 +994,7 @@ export default function Demo() {
         open={open}
         heading="Edge-to-edge white drawer"
         closable
-        className="[--wui-drawer-bg:#fff] [--wui-drawer-radius:0] [--wui-drawer-inset:0]"
+        className="[--wui-drawer-bg:#fff] [--wui-drawer-radius:0] [--wui-drawer-inset:0] [--wui-color-text:#262626] [--wui-color-surface-control:#e5e5e5]"
         onopen-change={event => setOpen(event.detail.open)}
       >
         <p className="text-neutral-800">
@@ -1014,7 +1014,7 @@ export default function Demo() {
     :open="open"
     heading="Edge-to-edge white drawer"
     closable
-    class="[--wui-drawer-bg:#fff] [--wui-drawer-radius:0] [--wui-drawer-inset:0]"
+    class="[--wui-drawer-bg:#fff] [--wui-drawer-radius:0] [--wui-drawer-inset:0] [--wui-color-text:#262626] [--wui-color-surface-control:#e5e5e5]"
     @open-change="open = $event.detail.open"
   >
     <p class="text-neutral-800">The background, radius, and viewport inset are all controlled by CSS variables.</p>

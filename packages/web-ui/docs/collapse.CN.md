@@ -147,9 +147,9 @@ export default function Demo() {
 
 ### trigger 类型 {#trigger}
 
-交互语义来自 default slot 里那个元素本身：原生 `<button>` 与 `<web-ui-button>` 自带 Enter / Space 激活和焦点，组件把 `aria-expanded` / `aria-controls` / `aria-disabled` 回写到 default slot 里第一个被指派的元素。
+交互语义来自 default slot 里那个元素本身：原生 `<button>` 与 `<web-ui-button>` 自带 Enter / Space 激活和焦点，组件把 `aria-expanded` 回写到 default slot 里第一个被指派的元素，并在 `disabled` 时给该元素加上 `disabled`。
 
-`<web-ui-button>` 会把 `aria-expanded` 和 `aria-disabled` 同步到内部原生 button；`aria-controls` 留在宿主上，不复制到另一个 shadow root，因为 IDREF 不能跨 shadow root 解析。
+不回写 `aria-controls`：内容 track 在组件 shadow root 内，IDREF 不能跨 shadow root 解析，写出去在可访问性树里等同悬空引用。展开关系由 `aria-expanded` 表达，`<web-ui-button>` 会把它同步到内部原生 button；禁用态则靠 `disabled` 属性穿透 shadow 边界。
 
 整个 default slot 都落在点击代理范围内，点其中任何一处都算一次开合，所以说明文字别塞进来。
 
@@ -252,9 +252,9 @@ import { lucideChevronDown } from '@greypan/web-ui/icons'
 
 ### 禁用 {#disabled}
 
-`disabled` 让点击被忽略，并把 `aria-disabled` 写到 trigger 元素上；取消禁用时移除该 attribute。它不改变已经展开的面板：第二条同时写 `open` 与 `disabled`，内容保持可见——禁用管的是触发，不是当前状态。
+`disabled` 让点击被忽略，并给 trigger 元素加上 `disabled`；取消禁用时移除该 attribute，回到 trigger 原本的禁用状态。它不改变已经展开的面板：第二条同时写 `open` 与 `disabled`，内容保持可见——禁用管的是触发，不是当前状态。
 
-下面那个 checkbox 在运行时切换第一条的 `disabled`，可以对照 `aria-disabled` 的写入与移除。
+下面那个 checkbox 在运行时切换第一条的 `disabled`，可以对照 trigger 上 `disabled` 的写入与移除。
 
 ```tsx
 import { useState } from 'react'
@@ -1003,7 +1003,7 @@ function onOuterChange(event: WebUiEvent<WebUiCollapse, 'open-change'>) {
 
 三条面板各自持有 `open`，页面用一个数组当状态源：每条的 `open` 写成「它在不在数组里」，回写走 `open-change` 的 `detail.open`。勾选「同时只留一条」后由页面保证互斥——collapse 没有组契约，互斥是消费方的状态管理，不是组件属性。
 
-每条的 `aria-controls` 指向 shadow 内自己的 track，id 由组件生成，同页多实例不会撞车。
+同页多实例各自持有 `open` 与各自的 ARIA 回写，互不干扰；展开关系只靠 `aria-expanded` 表达，不存在需要跨实例对齐的 IDREF。
 
 ```tsx
 import { useState } from 'react'
@@ -1203,7 +1203,7 @@ function removeRow() {
 | 名称           | 说明                                                                                                          | 类型             | 默认值  |
 | -------------- | ------------------------------------------------------------------------------------------------------------- | ---------------- | ------- |
 | `open`         | 展开状态，唯一状态源。用户点 trigger 时组件自己把它改到位，再派发 `open-change`；静态写在模板里只决定初始值。 | `boolean`        | `false` |
-| `disabled`     | 禁用触发：点击忽略，`aria-disabled` 写到 trigger 元素上；已展开内容保持现状。                                 | `boolean`        | `false` |
+| `disabled`     | 禁用触发：点击忽略，给 trigger 元素加上 `disabled`；已展开内容保持现状。                                      | `boolean`        | `false` |
 | `horizontal`   | 水平方向：沿宽度展开，默认沿高度。                                                                            | `boolean`        | `false` |
 | `keep-mounted` | 关闭稳态保持内容 `inert` 而非 `hidden`，保留滚动位置与可测量性。                                              | `boolean`        | `false` |
 | `peek`         | 关闭稳态露出的尺寸（CSS 长度，如 `120px`、`6rem`）。设置后语义等同 `keep-mounted`。                           | `string \| null` | `null`  |
@@ -1216,10 +1216,10 @@ function removeRow() {
 
 ### Slots
 
-| 名称      | 说明                                                                                                                                                                                                                                             |
-| --------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `default` | trigger。整个 slot 都在点击代理里，点任何一处都算一次开合；`aria-expanded` / `aria-controls` / `aria-disabled` 回写到其中第一个被指派的元素。`<web-ui-button>` 会把 `aria-expanded` 与 `aria-disabled` 同步到内部原生 button，所以放可交互元素。 |
-| `content` | collapse content。关闭态按 `keep-mounted` / `peek` 决定是 `hidden` 还是 `inert`。                                                                                                                                                                |
+| 名称      | 说明                                                                                                                                                                                                             |
+| --------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `default` | trigger。整个 slot 都在点击代理里，点任何一处都算一次开合；`aria-expanded` 回写到其中第一个被指派的元素，`disabled` 时给该元素加上 `disabled`。`<web-ui-button>` 会把两者落到内部原生 button，所以放可交互元素。 |
+| `content` | collapse content。关闭态按 `keep-mounted` / `peek` 决定是 `hidden` 还是 `inert`。                                                                                                                                |
 
 ### Methods
 
@@ -1245,9 +1245,9 @@ function removeRow() {
 
 交互语义完全来自 default slot 放入的元素——原生 `<button>`、`<web-ui-button>` 或其他可交互元素原生提供 Enter / Space 激活与焦点。
 
-collapse 把 `aria-expanded` / `aria-controls`（指向内容 track）与 `aria-disabled` 回写到 trigger slot 的首个 assigned element；`<web-ui-button>` 将 `aria-expanded` 与 `aria-disabled` 同步到内部原生 button。
+collapse 把 `aria-expanded` 回写到 trigger slot 的首个 assigned element，`disabled` 时给该元素加上 `disabled`；`<web-ui-button>` 会把两者落到内部原生 button（`disabled` 走属性，天然穿透 shadow 边界）。
 
-`aria-controls` 留在宿主上，因为指向 collapse shadow root 的 IDREF 不能在另一个 shadow root 中解析。
+不回写 `aria-controls`：内容 track 位于 collapse shadow root 内，跨 shadow root 的 IDREF 无法解析，写出去在可访问性树里等同悬空引用。展开关系由 `aria-expanded` 表达。
 
 trigger 请使用可交互元素：纯 `<span>` 可点击但没有键盘 / 焦点语义。
 

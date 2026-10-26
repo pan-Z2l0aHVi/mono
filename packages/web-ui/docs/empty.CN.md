@@ -3,13 +3,13 @@ component: empty
 tag: web-ui-empty
 ---
 
-empty state 占位：`title` 与 `description` 提供文案，`icon` / `action` 插槽补上图形与操作入口，`size` 是唯一缩放旋钮。
+empty state 占位：`title` 与 `description` 提供文案，`icon` / `action` 插槽补上图形与操作入口。组件不设 JS 旋钮——图形、文案、留白的尺寸与颜色全部走 `--wui-empty-*` 变量。
 
 ## Samples
 
 ### 基础 {#basic}
 
-`title` 与 `description` 是两个主要文案位，两个都写就是这套空态最常见的形状。图形区先按 `size` 派生出默认 icon 画出来。
+`title` 与 `description` 是两个主要文案位，两个都写就是这套空态最常见的形状。默认图形（`andrsrxn:inbox`）由组件自带，边长与颜色各有一枚变量。
 
 ```tsx
 export default function Demo() {
@@ -82,8 +82,8 @@ import { lucideSearch } from '@greypan/web-ui/icons'
 
 export default function Demo() {
   return (
-    <web-ui-empty size={72}>
-      <web-ui-icon slot="icon" icon={lucideSearch} size={31}></web-ui-icon>
+    <web-ui-empty className="[--wui-empty-icon-size:51px]">
+      <web-ui-icon slot="icon" icon={lucideSearch} size={51}></web-ui-icon>
       <strong>没有匹配的条目</strong>
       <span slot="description">试试更短的关键词，或者换一个筛选条件。</span>
       <div slot="action" className="flex items-center justify-center gap-3">
@@ -97,8 +97,8 @@ export default function Demo() {
 
 ```vue
 <template>
-  <web-ui-empty :size="72">
-    <web-ui-icon slot="icon" :icon="lucideSearch" :size="31"></web-ui-icon>
+  <web-ui-empty class="[--wui-empty-icon-size:51px]">
+    <web-ui-icon slot="icon" :icon="lucideSearch" :size="51"></web-ui-icon>
     <strong>没有匹配的条目</strong>
     <span slot="description">试试更短的关键词，或者换一个筛选条件。</span>
     <div slot="action" class="flex items-center justify-center gap-3">
@@ -113,17 +113,24 @@ import { lucideSearch } from '@greypan/web-ui/icons'
 </script>
 ```
 
-### 尺寸 {#sizes}
+### 尺寸与颜色 {#tokens}
 
-`size` 是唯一的缩放旋钮：它一起决定图形盒、`min-height`、内边距与两行文案的字号，所以大空态不是只把 icon 放大。
+没有 `size` 属性：图形边长、两行字号、颜色与留白是四组独立变量，要一起放大就一起写——只放大图形会留下与字号不匹配的空白。
 
 ```tsx
 export default function Demo() {
   return (
     <div className="flex flex-col gap-3">
-      <web-ui-empty size={40} title="40 的空态"></web-ui-empty>
-      <web-ui-empty size={56} title="56 的空态（默认）"></web-ui-empty>
-      <web-ui-empty size={72} title="72 的空态"></web-ui-empty>
+      <web-ui-empty
+        className="[--wui-empty-icon-size:24px] [--wui-empty-title-font-size:14px] [--wui-empty-description-font-size:13px] [--wui-empty-min-height:120px] [--wui-empty-padding:20px_16px]"
+        title="紧凑空态"
+      ></web-ui-empty>
+      <web-ui-empty title="默认空态"></web-ui-empty>
+      <web-ui-empty
+        className="[--wui-empty-icon-size:64px] [--wui-empty-title-font-size:20px] [--wui-empty-icon-color:var(--wui-color-accent)] [--wui-empty-icon-opacity:1]"
+        title="醒目空态"
+        description="颜色与深浅是两枚变量：换掉颜色，再让图形回到整颗原色。"
+      ></web-ui-empty>
     </div>
   )
 }
@@ -132,9 +139,16 @@ export default function Demo() {
 ```vue
 <template>
   <div class="flex flex-col gap-3">
-    <web-ui-empty :size="40" title="40 的空态"></web-ui-empty>
-    <web-ui-empty :size="56" title="56 的空态（默认）"></web-ui-empty>
-    <web-ui-empty :size="72" title="72 的空态"></web-ui-empty>
+    <web-ui-empty
+      class="[--wui-empty-icon-size:24px] [--wui-empty-title-font-size:14px] [--wui-empty-description-font-size:13px] [--wui-empty-min-height:120px] [--wui-empty-padding:20px_16px]"
+      title="紧凑空态"
+    ></web-ui-empty>
+    <web-ui-empty title="默认空态"></web-ui-empty>
+    <web-ui-empty
+      class="[--wui-empty-icon-size:64px] [--wui-empty-title-font-size:20px] [--wui-empty-icon-color:var(--wui-color-accent)] [--wui-empty-icon-opacity:1]"
+      title="醒目空态"
+      description="颜色与深浅是两枚变量：换掉颜色，再让图形回到整颗原色。"
+    ></web-ui-empty>
   </div>
 </template>
 ```
@@ -163,11 +177,9 @@ export default function Demo() {
 </template>
 ```
 
-### CSS 变量 {#css-vars}
+### 逐项覆盖 {#css-vars}
 
-八枚 `--wui-empty-*` 始终压在上面：`size` 派生出来的那几项（icon 盒、`min-height`、内边距、两行字号）逐项被覆盖，另外三枚（内容宽度与两个段间距）本来就不随 `size` 动，写变量是改它们的唯一入口。只需要调个别度量时就逐项覆盖，不必回去改 `size`。
-
-注意 `--wui-empty-icon-size` 只改图形盒，默认字形仍按 `size` 算。
+上面的例子按组合给了几套写法，单枚变量也能单独改：`--wui-empty-icon-size` 是盒与图形共用的边长（图形填满盒，两者永远同步），`--wui-empty-content-width` 与两个段间距不参与任何组合，只能靠变量调。
 
 ```tsx
 export default function Demo() {
@@ -180,10 +192,9 @@ export default function Demo() {
       ></web-ui-empty>
 
       <web-ui-empty
-        className="[--wui-empty-icon-size:80px] [--wui-empty-title-margin-top:4px]"
-        size={40}
-        title="图形盒撑到 80px"
-        description="字形还是按 size 的 3/7 画，所以图形周围会多出空白。"
+        className="[--wui-empty-icon-size:56px] [--wui-empty-icon-color:var(--wui-color-accent)]"
+        title="图形放大并换色"
+        description="只换颜色不碰 opacity，图形仍是默认的淡一档。"
       ></web-ui-empty>
 
       <web-ui-empty
@@ -197,9 +208,9 @@ export default function Demo() {
       </web-ui-empty>
 
       <web-ui-empty
-        className="[--wui-empty-title-font-size:20px] [--wui-empty-description-font-size:12px]"
-        title="两个字号也能单独改"
-        description="字号默认只有两档台阶，变量始终压在台阶之上。"
+        className="[--wui-empty-title-color:var(--wui-color-accent)] [--wui-empty-description-color:var(--wui-color-text-tertiary)] [--wui-empty-title-font-size:20px]"
+        title="标题与描述各自换色"
+        description="颜色与字号是四条互不相干的通道。"
       ></web-ui-empty>
     </div>
   )
@@ -216,10 +227,9 @@ export default function Demo() {
     ></web-ui-empty>
 
     <web-ui-empty
-      class="[--wui-empty-icon-size:80px] [--wui-empty-title-margin-top:4px]"
-      :size="40"
-      title="图形盒撑到 80px"
-      description="字形还是按 size 的 3/7 画，所以图形周围会多出空白。"
+      class="[--wui-empty-icon-size:56px] [--wui-empty-icon-color:var(--wui-color-accent)]"
+      title="图形放大并换色"
+      description="只换颜色不碰 opacity，图形仍是默认的淡一档。"
     ></web-ui-empty>
 
     <web-ui-empty
@@ -231,9 +241,9 @@ export default function Demo() {
     </web-ui-empty>
 
     <web-ui-empty
-      class="[--wui-empty-title-font-size:20px] [--wui-empty-description-font-size:12px]"
-      title="两个字号也能单独改"
-      description="字号默认只有两档台阶，变量始终压在台阶之上。"
+      class="[--wui-empty-title-color:var(--wui-color-accent)] [--wui-empty-description-color:var(--wui-color-text-tertiary)] [--wui-empty-title-font-size:20px]"
+      title="标题与描述各自换色"
+      description="颜色与字号是四条互不相干的通道。"
     ></web-ui-empty>
   </div>
 </template>
@@ -243,11 +253,10 @@ export default function Demo() {
 
 ### Props
 
-| 名称          | 说明                                          | 类型     | 默认值 |
-| ------------- | --------------------------------------------- | -------- | ------ |
-| `title`       | 标题文字。                                    | `string` | `''`   |
-| `description` | 描述文字。                                    | `string` | `''`   |
-| `size`        | 版面缩放基准（px）；非法值或非正数回落为 56。 | `number` | `56`   |
+| 名称          | 说明       | 类型     | 默认值 |
+| ------------- | ---------- | -------- | ------ |
+| `title`       | 标题文字。 | `string` | `''`   |
+| `description` | 描述文字。 | `string` | `''`   |
 
 ### Slots
 
@@ -260,21 +269,15 @@ export default function Demo() {
 
 ### 行为说明
 
-`size` 是整个空态的单一旋钮：它驱动 icon 盒、`min-height`、内边距与标题/描述字号，因此大 icon 不再配 medium 留白：
+图形盒与图形同尺寸：底色退役后不再留隐形内边距，图形与标题之间的距离就是 `--wui-empty-title-margin-top`（默认 12px）。
 
-列依次为 size / icon 盒 / 字形 / min-height / 内边距 块/行 / 标题 / 描述：
+版面各通道互不联动——图形边长、两行字号、颜色、留白各是一组变量。要把空态整体放大，就得同时写几枚；只写 `--wui-empty-icon-size` 会得到一个图形很大、标题很小的空态。
 
-- `40` / `40px` / `17px` / `171px` / `23px/17px` / `14px` / `13px`
-- `56` / `56px` / `24px` / `240px` / `32px/24px` / `16px` / `14px`
-- `72` / `72px` / `31px` / `309px` / `41px/31px` / `16px` / `14px`
+默认图形是 `andrsrxn:inbox`，24×24 画布，描边与填充都用 `currentColor`，所以颜色只由 `color` 决定，`--wui-empty-icon-color` 不会被图形资产里的固定色盖掉。
 
-派生规则是 `min-height: round(size * 30 / 7)`、`padding-block: round(size * 4 / 7)`、`padding-inline: round(size * 3 / 7)`，默认字形是 `round(size * 3 / 7)`。
+深浅与色相落在两枚变量上：`--wui-empty-icon-color` 给的是**实色**，淡一档由 `--wui-empty-icon-opacity`（默认 `0.75`）负责。两者不能合并成「带 alpha 的颜色」—— 线框图形的笔画在转角、端点与填底处本来就互相压着，带 alpha 的颜色会在这些重叠处二次合成、局部变深，看着像角上的笔画发黑。group opacity 是整颗图形合成之后一次性施加的，重叠处不起变化。要让图形回到整颗原色，写 `--wui-empty-icon-opacity: 1`。
 
-字号只有两档台阶而不是连续缩放：低于 `56` 时标题 `14px`、描述 `13px`，`56` 及以上为 `16px` 与 `14px`。更大的空态靠留白撑开，而不是靠字变大。
-
-`size` 只认有限正数：`NaN`、±Infinity、`0`、负数以及 `size="abc"` 这类解析不出数值的输入都整体回落到默认边长 `56`，整套派生度量跟着一起回到默认档，而不是按 `NaN` 算出失效值。
-
-每一项都覆盖 `size` 派生的值，因此八个属性始终优先——包括两个字号。默认值取默认 `size` 为 `56` 时的取值。
+`--wui-empty-icon-opacity` 只作用于默认图形，`icon` 插槽里的内容不跟着变淡。
 
 三段文案位各自判定：标题段看默认插槽有没有内容、再看 `title`，描述段看 `description` 插槽、再看 `description` 属性，操作区段只认 `action` 插槽。
 
@@ -282,29 +285,33 @@ export default function Demo() {
 
 `action` 插槽里的多个元素不会自己排成一排，操作区只负责它上方那段间距。
 
-`icon` 插槽的图形要自己带尺寸：默认图形的边长是按 `size` 派生的 `round(size * 3 / 7)`，组件不会去量插槽内容，所以换 icon 时按同一比例写它的 `size`（`size={40}` 配 17、`72` 配 31），或者干脆连 `--wui-empty-icon-size` 一起调。
+`icon` 插槽的图形要自己带尺寸：组件只把插槽内容摆进 `--wui-empty-icon-size` 那个盒里居中，不去量它、也不缩放它。默认边长 `40px`，换 `web-ui-icon` 时按同一数值写它的 `size`，或者连 `--wui-empty-icon-size` 一起调。
 
 `title` 复用的是全局 `title` 属性并且会反射回宿主，因此浏览器同时把这段文字当原生 tooltip 在悬停时画出来。不想要这层提示就用默认插槽放标题；这一位的效果是等价的，只是不会被当成 tooltip 文本。
 
-### 从 'small' | 'medium' | 'large' 枚举迁移
+### 从 `size` 属性迁移
 
-`size` 现在是数字。被删除的档位是手调值，这套比例只能逼近而复现不了——`small` 原本是 `160px` 高、`20px 16px` 内边距，`large` 原本是 `320px` 与 `48px 32px`。段间距与内容宽度从未跟随档位。
+`size` 已移除。它以前是唯一缩放旋钮，同时驱动图形、`min-height`、内边距与两行字号；现在这几项各是一枚变量，要复现原档位就按下面的值一起写。
 
-列依次为 旧值 / 新值 / 默认字形：
+列依次为 旧 size / 图形 / `min-height` / 内边距 / 标题 / 描述：
 
-- `small` / `40` / `17`
-- `medium` / `56` / `24`
-- `large` / `72` / `31`
+- `40` / `29px` / `171px` / `23px 17px` / `14px` / `13px`
+- `56`（默认）/ `40px` / `240px` / `32px 24px` / `16px` / `14px`
+- `72` / `51px` / `309px` / `41px 31px` / `16px` / `14px`
 
 ### CSS Custom Properties
 
-| 名称                                | 说明                         | 默认值      |
-| ----------------------------------- | ---------------------------- | ----------- |
-| `--wui-empty-min-height`            | 最小高度                     | `240px`     |
-| `--wui-empty-padding`               | 内边距                       | `32px 24px` |
-| `--wui-empty-icon-size`             | icon 容器尺寸，优先于 `size` | `56px`      |
-| `--wui-empty-content-width`         | 标题/描述/操作区最大宽度     | `480px`     |
-| `--wui-empty-title-margin-top`      | icon 与标题之间的间距        | `16px`      |
-| `--wui-empty-title-font-size`       | 标题字号                     | `16px`      |
-| `--wui-empty-description-font-size` | 描述字号                     | `14px`      |
-| `--wui-empty-action-margin-top`     | 操作区上方的间距             | `20px`      |
+| 名称                                | 说明                         | 默认值                       |
+| ----------------------------------- | ---------------------------- | ---------------------------- |
+| `--wui-empty-min-height`            | 最小高度                     | `240px`                      |
+| `--wui-empty-padding`               | 内边距                       | `32px 24px`                  |
+| `--wui-empty-icon-size`             | 图形边长，盒与图形同尺寸     | `40px`                       |
+| `--wui-empty-icon-color`            | 图形颜色（实色，不掺 alpha） | `--wui-color-text-secondary` |
+| `--wui-empty-icon-opacity`          | 图形整体深浅                 | `0.75`                       |
+| `--wui-empty-content-width`         | 标题/描述/操作区最大宽度     | `480px`                      |
+| `--wui-empty-title-margin-top`      | icon 与标题之间的间距        | `12px`                       |
+| `--wui-empty-title-font-size`       | 标题字号                     | `16px`                       |
+| `--wui-empty-title-color`           | 标题颜色                     | `--wui-color-text`           |
+| `--wui-empty-description-font-size` | 描述字号                     | `14px`                       |
+| `--wui-empty-description-color`     | 描述颜色                     | `--wui-color-text-secondary` |
+| `--wui-empty-action-margin-top`     | 操作区上方的间距             | `20px`                       |

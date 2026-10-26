@@ -11,6 +11,7 @@ catalog:
   '@cspell/dict-lorem-ipsum': ^4.0.5
   '@floating-ui/dom': ^1.8.0
   '@iconify-json/akar-icons': ^1.2.7
+  '@iconify-json/andrsrxn': ^1.2.2
   '@iconify-json/bi': ^1.2.7
   '@iconify-json/fluent': ^1.2.58
   '@iconify-json/heroicons': ^1.2.3
@@ -22,7 +23,6 @@ catalog:
   '@iconify-json/si': ^1.2.17
   '@iconify-json/tabler': ^1.2.38
   '@iconify/types': ^2.0.0
-  '@rolldown/plugin-babel': ^0.2.3
   '@shadcn/lint': ^0.2.0
   '@shikijs/transformers': ^4.5.0
   '@tailwindcss/vite': ^4.3.2
@@ -49,7 +49,6 @@ catalog:
   '@wailsio/runtime': 3.0.0-beta.25
   '@wuchale/jsx': ^0.13.0
   '@lit/context': ^1.1.6
-  babel-plugin-react-compiler: ^1.0.0
   browserslist: ^4.28.5
   change-case: ^5.4.4
   commitizen: ^4.3.2
@@ -67,6 +66,11 @@ catalog:
   overlayscrollbars: ^2.16.0
   overlayscrollbars-react: ^0.5.6
   overlayscrollbars-vue: ^0.5.10
+  # oxc 的 React Compiler（Rust）实现，由 @vitejs/plugin-react 的 `compiler` 选项按需加载。
+  # 独立 native 二进制，和 rolldown/vite-plus 内置的 oxc 不同源，不必对齐版本；但
+  # plugin-react@6.1.1 的 peer 段写的是 `^0.145.0`（0.x 的 caret 只覆盖 0.145.x），这里装的
+  # 0.155.0 已超出该段——上游每个 minor 都发新版、peer 声明滞后，实测可用；升级前先看 peer 是否已放宽。
+  oxc-transform-react: ^0.155.0
   pinia: ^4.0.2
   playwright: ^1.61.1
   postcss-html: ^2.0.0
