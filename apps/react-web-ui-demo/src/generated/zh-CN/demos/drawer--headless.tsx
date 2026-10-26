@@ -15,7 +15,7 @@ export default function Demo() {
         dialog-label="自定义面板"
         onopen-change={event => setOpen(event.detail.open)}
       >
-        <div className="box-border h-full rounded-r-2xl bg-(--wui-color-surface-overlay) p-6 text-(--wui-color-text)">
+        <div className="box-border h-full w-[min(320px,100vw)] rounded-r-2xl bg-(--wui-color-surface-overlay) p-6 text-(--wui-color-text)">
           <h2 className="m-0 mb-2 text-xl">自定义面板</h2>
           <p className="m-0 text-(--wui-color-text-secondary)">
             headless 只提供 overlay 行为；内容、背景与圆角都由这里决定。
