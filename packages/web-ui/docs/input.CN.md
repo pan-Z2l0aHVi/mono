@@ -16,7 +16,7 @@ export default function Demo() {
   return (
     <div className="flex flex-col items-start gap-3">
       <web-ui-input placeholder="请输入昵称"></web-ui-input>
-      <web-ui-input value="web-ui"></web-ui-input>
+      <web-ui-input aria-label="已有昵称" value="web-ui"></web-ui-input>
     </div>
   )
 }
@@ -26,7 +26,7 @@ export default function Demo() {
 <template>
   <div class="flex flex-col items-start gap-3">
     <web-ui-input placeholder="请输入昵称"></web-ui-input>
-    <web-ui-input value="web-ui"></web-ui-input>
+    <web-ui-input aria-label="已有昵称" value="web-ui"></web-ui-input>
   </div>
 </template>
 ```
@@ -105,7 +105,7 @@ import { lucideSearch } from '@greypan/web-ui/icons'
 export default function Demo() {
   return (
     <div className="flex w-full flex-col gap-3">
-      <web-ui-input full clearable value="web-ui"></web-ui-input>
+      <web-ui-input full clearable aria-label="可清除的内容" value="web-ui"></web-ui-input>
       <web-ui-input full clearable placeholder="还没有内容，所以没有清除 button"></web-ui-input>
     </div>
   )
@@ -115,7 +115,7 @@ export default function Demo() {
 ```vue
 <template>
   <div class="flex w-full flex-col gap-3">
-    <web-ui-input full clearable value="web-ui"></web-ui-input>
+    <web-ui-input full clearable aria-label="可清除的内容" value="web-ui"></web-ui-input>
     <web-ui-input full clearable placeholder="还没有内容，所以没有清除 button"></web-ui-input>
   </div>
 </template>
@@ -132,8 +132,8 @@ export default function Demo() {
   return (
     <div className="flex flex-col items-start gap-3">
       <web-ui-input disabled placeholder="禁用"></web-ui-input>
-      <web-ui-input disabled value="禁用且有值"></web-ui-input>
-      <web-ui-input readonly clearable value="只读：可选中复制，不能改">
+      <web-ui-input disabled aria-label="禁用且有值的输入框" value="禁用且有值"></web-ui-input>
+      <web-ui-input readonly clearable aria-label="只读输入框" value="只读：可选中复制，不能改">
         <web-ui-icon slot="prefix" icon={lucideSearch} size={16}></web-ui-icon>
       </web-ui-input>
     </div>
@@ -145,8 +145,8 @@ export default function Demo() {
 <template>
   <div class="flex flex-col items-start gap-3">
     <web-ui-input disabled placeholder="禁用"></web-ui-input>
-    <web-ui-input disabled value="禁用且有值"></web-ui-input>
-    <web-ui-input readonly clearable value="只读：可选中复制，不能改">
+    <web-ui-input disabled aria-label="禁用且有值的输入框" value="禁用且有值"></web-ui-input>
+    <web-ui-input readonly clearable aria-label="只读输入框" value="只读：可选中复制，不能改">
       <web-ui-icon slot="prefix" :icon="lucideSearch" :size="16"></web-ui-icon>
     </web-ui-input>
   </div>
@@ -168,7 +168,7 @@ export default function Demo() {
   return (
     <div className="flex flex-col items-start gap-3">
       <web-ui-input borderless placeholder="无边框输入"></web-ui-input>
-      <web-ui-input borderless value="无边框且有值"></web-ui-input>
+      <web-ui-input borderless aria-label="无边框输入框" value="无边框且有值"></web-ui-input>
       <web-ui-input borderless aria-label="搜索" placeholder="无边框带 icon">
         <web-ui-icon slot="prefix" icon={lucideSearch} size={16}></web-ui-icon>
       </web-ui-input>
@@ -181,7 +181,7 @@ export default function Demo() {
 <template>
   <div class="flex flex-col items-start gap-3">
     <web-ui-input borderless placeholder="无边框输入"></web-ui-input>
-    <web-ui-input borderless value="无边框且有值"></web-ui-input>
+    <web-ui-input borderless aria-label="无边框输入框" value="无边框且有值"></web-ui-input>
     <web-ui-input borderless aria-label="搜索" placeholder="无边框带 icon">
       <web-ui-icon slot="prefix" :icon="lucideSearch" :size="16"></web-ui-icon>
     </web-ui-input>
@@ -342,7 +342,7 @@ export default function Demo() {
 
   return (
     <div className="flex flex-wrap items-center gap-3">
-      <web-ui-input ref={fieldRef} value="把焦点交给它"></web-ui-input>
+      <web-ui-input aria-label="待聚焦的输入框" ref={fieldRef} value="把焦点交给它"></web-ui-input>
       <web-ui-button onClick={() => fieldRef.current?.focus()}>聚焦</web-ui-button>
       <web-ui-button onClick={() => fieldRef.current?.select()}>全选</web-ui-button>
       <web-ui-button onClick={() => fieldRef.current?.blur()}>失焦</web-ui-button>
@@ -354,7 +354,7 @@ export default function Demo() {
 ```vue
 <template>
   <div class="flex flex-wrap items-center gap-3">
-    <web-ui-input ref="field" value="把焦点交给它"></web-ui-input>
+    <web-ui-input aria-label="待聚焦的输入框" ref="field" value="把焦点交给它"></web-ui-input>
     <web-ui-button @click="field?.focus()">聚焦</web-ui-button>
     <web-ui-button @click="field?.select()">全选</web-ui-button>
     <web-ui-button @click="field?.blur()">失焦</web-ui-button>
@@ -379,10 +379,16 @@ export default function Demo() {
     <div className="flex flex-wrap items-center gap-3">
       <web-ui-input
         clearable
+        aria-label="较宽的输入框"
         value="宽一档、清除色改 danger"
         className="[--wui-input-width:280px] [--wui-input-clear-color:var(--wui-color-danger)]"
       ></web-ui-input>
-      <web-ui-input clearable value="窄一档" className="[--wui-input-width:120px]"></web-ui-input>
+      <web-ui-input
+        clearable
+        aria-label="较窄的输入框"
+        value="窄一档"
+        className="[--wui-input-width:120px]"
+      ></web-ui-input>
     </div>
   )
 }
@@ -393,10 +399,11 @@ export default function Demo() {
   <div class="flex flex-wrap items-center gap-3">
     <web-ui-input
       clearable
+      aria-label="较宽的输入框"
       value="宽一档、清除色改 danger"
       class="[--wui-input-width:280px] [--wui-input-clear-color:var(--wui-color-danger)]"
     ></web-ui-input>
-    <web-ui-input clearable value="窄一档" class="[--wui-input-width:120px]"></web-ui-input>
+    <web-ui-input clearable aria-label="较窄的输入框" value="窄一档" class="[--wui-input-width:120px]"></web-ui-input>
   </div>
 </template>
 ```

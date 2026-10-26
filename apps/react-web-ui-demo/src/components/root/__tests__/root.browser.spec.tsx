@@ -217,6 +217,22 @@ describe('应用外壳（浏览器）：导航 collapsed state 不跨视口泄�
     expect([...navRoot().querySelectorAll('a span')].map(label => label.textContent?.trim())).toEqual(fullLabels)
   })
 
+  it('375px 移动视口内全局语言选择器可见', async () => {
+    await mountAppShell()
+    await changeViewport({ width: 375, height: 812 })
+    await settleViewport(true)
+
+    const controls = ['全局动效', '全局主题', '全局语言'].map(label => {
+      const control = document.querySelector<HTMLElement>(`[aria-label="${label}"]`)
+      if (!control) throw new Error(`missing global control: ${label}`)
+      return control.getBoundingClientRect()
+    })
+
+    expect(controls.every(bounds => bounds.width > 0 && bounds.left >= 0 && bounds.right <= window.innerWidth)).toBe(
+      true
+    )
+  })
+
   it('挂载时已有 toast，banner 扩高后 header 保持默认纵向间距', async () => {
     const toastId = 'root-mount-toast'
 

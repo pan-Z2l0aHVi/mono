@@ -17,7 +17,7 @@ export default function Demo() {
     <div className="flex flex-col gap-3">
       <web-ui-textarea placeholder="Three rows by default"></web-ui-textarea>
       <web-ui-textarea rows={6} placeholder="Six rows tall"></web-ui-textarea>
-      <web-ui-textarea rows={3} value="Content already written"></web-ui-textarea>
+      <web-ui-textarea aria-label="Filled multiline text" rows={3} value="Content already written"></web-ui-textarea>
     </div>
   )
 }
@@ -28,7 +28,7 @@ export default function Demo() {
   <div class="flex flex-col gap-3">
     <web-ui-textarea placeholder="Three rows by default"></web-ui-textarea>
     <web-ui-textarea :rows="6" placeholder="Six rows tall"></web-ui-textarea>
-    <web-ui-textarea :rows="3" value="Content already written"></web-ui-textarea>
+    <web-ui-textarea aria-label="Filled multiline text" :rows="3" value="Content already written"></web-ui-textarea>
   </div>
 </template>
 ```
@@ -188,7 +188,12 @@ const committed = ref('')
 export default function Demo() {
   return (
     <div className="flex w-full flex-col gap-3">
-      <web-ui-textarea full clearable value="This block can be cleared in one go"></web-ui-textarea>
+      <web-ui-textarea
+        full
+        clearable
+        aria-label="Clearable multiline text"
+        value="This block can be cleared in one go"
+      ></web-ui-textarea>
       <web-ui-textarea full clearable placeholder="No clear button when the value is empty"></web-ui-textarea>
     </div>
   )
@@ -198,7 +203,12 @@ export default function Demo() {
 ```vue
 <template>
   <div class="flex w-full flex-col gap-3">
-    <web-ui-textarea full clearable value="This block can be cleared in one go"></web-ui-textarea>
+    <web-ui-textarea
+      full
+      clearable
+      aria-label="Clearable multiline text"
+      value="This block can be cleared in one go"
+    ></web-ui-textarea>
     <web-ui-textarea full clearable placeholder="No clear button when the value is empty"></web-ui-textarea>
   </div>
 </template>
@@ -212,8 +222,19 @@ export default function Demo() {
 export default function Demo() {
   return (
     <div className="flex w-full flex-col gap-3">
-      <web-ui-textarea full disabled value="Disabled: readable, not editable"></web-ui-textarea>
-      <web-ui-textarea full readonly clearable value="Readonly: the clear button is hidden"></web-ui-textarea>
+      <web-ui-textarea
+        full
+        disabled
+        aria-label="Disabled multiline text"
+        value="Disabled: readable, not editable"
+      ></web-ui-textarea>
+      <web-ui-textarea
+        full
+        readonly
+        clearable
+        aria-label="Readonly multiline text"
+        value="Readonly: the clear button is hidden"
+      ></web-ui-textarea>
     </div>
   )
 }
@@ -222,8 +243,19 @@ export default function Demo() {
 ```vue
 <template>
   <div class="flex w-full flex-col gap-3">
-    <web-ui-textarea full disabled value="Disabled: readable, not editable"></web-ui-textarea>
-    <web-ui-textarea full readonly clearable value="Readonly: the clear button is hidden"></web-ui-textarea>
+    <web-ui-textarea
+      full
+      disabled
+      aria-label="Disabled multiline text"
+      value="Disabled: readable, not editable"
+    ></web-ui-textarea>
+    <web-ui-textarea
+      full
+      readonly
+      clearable
+      aria-label="Readonly multiline text"
+      value="Readonly: the clear button is hidden"
+    ></web-ui-textarea>
   </div>
 </template>
 ```
@@ -240,6 +272,7 @@ export default function Demo() {
       <web-ui-textarea
         full
         borderless
+        aria-label="Borderless multiline text"
         rows={4}
         value="Borderless with a value; the outer layer owns the container"
       ></web-ui-textarea>
@@ -255,6 +288,7 @@ export default function Demo() {
     <web-ui-textarea
       full
       borderless
+      aria-label="Borderless multiline text"
       :rows="4"
       value="Borderless with a value; the outer layer owns the container"
     ></web-ui-textarea>
@@ -367,7 +401,12 @@ export default function Demo() {
 
   return (
     <div className="flex flex-col gap-3">
-      <web-ui-textarea ref={fieldRef} rows={3} value="Type directly to replace after selecting all"></web-ui-textarea>
+      <web-ui-textarea
+        aria-label="Multiline text to select"
+        ref={fieldRef}
+        rows={3}
+        value="Type directly to replace after selecting all"
+      ></web-ui-textarea>
       <div className="flex flex-wrap items-center gap-3">
         <web-ui-button onClick={() => fieldRef.current?.focus()}>Focus</web-ui-button>
         <web-ui-button onClick={() => fieldRef.current?.select()}>Select all</web-ui-button>
@@ -381,7 +420,12 @@ export default function Demo() {
 ```vue
 <template>
   <div class="flex flex-col gap-3">
-    <web-ui-textarea ref="field" :rows="3" value="Type directly to replace after selecting all"></web-ui-textarea>
+    <web-ui-textarea
+      aria-label="Multiline text to select"
+      ref="field"
+      :rows="3"
+      value="Type directly to replace after selecting all"
+    ></web-ui-textarea>
     <div class="flex flex-wrap items-center gap-3">
       <web-ui-button @click="field?.focus()">Focus</web-ui-button>
       <web-ui-button @click="field?.select()">Select all</web-ui-button>
@@ -408,10 +452,16 @@ export default function Demo() {
     <div className="flex flex-wrap items-start gap-3">
       <web-ui-textarea
         clearable
+        aria-label="Wider multiline text"
         value="One step wider, clear color set to danger"
         className="[--wui-textarea-width:280px] [--wui-textarea-clear-color:var(--wui-color-danger)]"
       ></web-ui-textarea>
-      <web-ui-textarea clearable value="One step narrower" className="[--wui-textarea-width:120px]"></web-ui-textarea>
+      <web-ui-textarea
+        clearable
+        aria-label="Narrower multiline text"
+        value="One step narrower"
+        className="[--wui-textarea-width:120px]"
+      ></web-ui-textarea>
     </div>
   )
 }
@@ -422,10 +472,16 @@ export default function Demo() {
   <div class="flex flex-wrap items-start gap-3">
     <web-ui-textarea
       clearable
+      aria-label="Wider multiline text"
       value="One step wider, clear color set to danger"
       class="[--wui-textarea-width:280px] [--wui-textarea-clear-color:var(--wui-color-danger)]"
     ></web-ui-textarea>
-    <web-ui-textarea clearable value="One step narrower" class="[--wui-textarea-width:120px]"></web-ui-textarea>
+    <web-ui-textarea
+      clearable
+      aria-label="Narrower multiline text"
+      value="One step narrower"
+      class="[--wui-textarea-width:120px]"
+    ></web-ui-textarea>
   </div>
 </template>
 ```

@@ -6,7 +6,12 @@ export default function Demo() {
 
   return (
     <div className="flex flex-col gap-3">
-      <web-ui-textarea ref={fieldRef} rows={3} value="Type directly to replace after selecting all"></web-ui-textarea>
+      <web-ui-textarea
+        aria-label="Multiline text to select"
+        ref={fieldRef}
+        rows={3}
+        value="Type directly to replace after selecting all"
+      ></web-ui-textarea>
       <div className="flex flex-wrap items-center gap-3">
         <web-ui-button onClick={() => fieldRef.current?.focus()}>Focus</web-ui-button>
         <web-ui-button onClick={() => fieldRef.current?.select()}>Select all</web-ui-button>
