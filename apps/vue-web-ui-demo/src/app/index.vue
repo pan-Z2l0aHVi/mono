@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { local } from '@greypan/browser-kit'
 import type { WebUiEvent, WebUiLayout, WebUiSelect, WebUiTheme, WebUiToast } from '@greypan/web-ui'
+import { toast } from '@greypan/web-ui'
 import { lucideX } from '@greypan/web-ui/icons'
 import { webUiScrollbarsOptions } from '@greypan/web-ui/scrollbars'
 import { useHead } from '@unhead/vue'
@@ -11,6 +12,26 @@ import {
 } from 'overlayscrollbars-vue'
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { RouterLink, useRoute, useRouter } from 'vue-router'
+
+import { bootDegraded, currentLocale, loadDemoLocale, localePending } from '@/i18n/locale'
+
+const LIGHT_LABEL = 'Light'
+const DARK_LABEL = 'Dark'
+const ZH_LABEL = '简体中文'
+const EN_LABEL = 'English'
+
+async function updateLocale(event: WebUiEvent<WebUiSelect, 'change'>) {
+  const value = event.currentTarget.value
+  if (value !== 'zh-CN' && value !== 'en') return
+  // 选择器是受控宿主，准备期间及失败后保持已提交值。
+  event.currentTarget.value = currentLocale.value
+  try {
+    await loadDemoLocale(value)
+  } catch (error) {
+    console.error(error)
+    toast.error('语言切换失败，请刷新页面后重试')
+  }
+}
 
 type ThemeAppearance = 'light' | 'dark' | 'system'
 type ThemeMotion = 'full' | 'reduced' | 'system'
@@ -178,6 +199,10 @@ onBeforeUnmount(() => {
 onMounted(async () => {
   initPageScrollbars(document.body)
   observeToastVisibility()
+  if (bootDegraded.value) {
+    toast.warning('目标语种加载失败，暂时使用简体中文')
+    bootDegraded.value = false
+  }
   await router.isReady()
   requestAnimationFrame(() => {
     const link = navSidebar.value?.getElement()?.querySelector('[data-active="true"]')
@@ -262,41 +287,60 @@ function isNavActive(path: string) {
           :class="{ 'invisible pointer-events-none': !bannerVisible }"
           :aria-hidden="!bannerVisible"
         >
-          <web-ui-button class="mobile:-ml-4" size="24" icon variant="ghost" @click="bannerVisible = false">
+          <web-ui-button
+            class="mobile:-ml-4"
+            aria-label="关闭横幅"
+            size="24"
+            icon
+            variant="ghost"
+            @click="bannerVisible = false"
+          >
             <web-ui-icon class="text-(--wui-color-on-accent)" :icon="lucideX" :size="16"></web-ui-icon>
           </web-ui-button>
-          <span class="text-center">🎉 Welcome to the web-ui component library!</span>
+          <span class="text-center">🎉 欢迎使用 web-ui 组件库！</span>
         </div>
-        <div slot="header" class="flex h-full w-full items-center justify-end gap-4 px-4 py-2 mobile:w-screen">
+        <div slot="header" class="flex h-full w-full items-center justify-end gap-2 px-4 py-2 mobile:w-screen">
           <web-ui-select
             :value="themeMotion"
-            class="[--wui-input-width:120px]"
-            aria-label="Global motion"
+            class="[--wui-input-width:120px] mobile:[--wui-input-width:90px]"
+            aria-label="全局动效"
             @change="updateThemeMotion"
           >
-            <web-ui-option value="full" label="Full motion">Full motion</web-ui-option>
-            <web-ui-option value="reduced" label="Reduced motion">Reduced motion</web-ui-option>
-            <web-ui-option value="system" label="Follow system">Follow system</web-ui-option>
+            <web-ui-option value="full" label="完整动效">完整动效</web-ui-option>
+            <web-ui-option value="reduced" label="减弱动效">减弱动效</web-ui-option>
+            <web-ui-option value="system" label="跟随系统">跟随系统</web-ui-option>
           </web-ui-select>
           <web-ui-select
             :value="themeAppearance"
-            class="[--wui-input-width:120px]"
-            aria-label="Global theme"
+            class="[--wui-input-width:120px] mobile:[--wui-input-width:90px]"
+            aria-label="全局主题"
             @change="updateThemeAppearance"
           >
-            <web-ui-option value="light" label="Light">Light</web-ui-option>
-            <web-ui-option value="dark" label="Dark">Dark</web-ui-option>
-            <web-ui-option value="system" label="Follow system">Follow system</web-ui-option>
+            <web-ui-option value="light" :label="LIGHT_LABEL">{{ LIGHT_LABEL }}</web-ui-option>
+            <web-ui-option value="dark" :label="DARK_LABEL">{{ DARK_LABEL }}</web-ui-option>
+            <web-ui-option value="system" label="跟随系统">跟随系统</web-ui-option>
           </web-ui-select>
+          <web-ui-select
+            :value="currentLocale"
+            :disabled="localePending"
+            :aria-busy="localePending"
+            class="[--wui-input-width:120px] mobile:[--wui-input-width:90px]"
+            aria-label="全局语言"
+            @change="updateLocale"
+          >
+            <web-ui-option value="zh-CN" :label="ZH_LABEL">{{ ZH_LABEL }}</web-ui-option>
+            <web-ui-option value="en" :label="EN_LABEL">{{ EN_LABEL }}</web-ui-option>
+          </web-ui-select>
+          <span v-if="localePending" class="sr-only" role="status">正在加载语言</span>
         </div>
         <OverlayScrollbarsComponent
           slot="sidebar"
           ref="navSidebar"
           :options="webUiScrollbarsOptions"
           class="relative z-20 h-full min-h-0 overflow-y-auto p-2 mobile:px-0"
-          aria-label="App navigation"
+          aria-label="应用导航"
         >
-          <nav class="grid gap-1" aria-label="Main navigation">
+          <nav class="grid gap-1" aria-label="主导航">
             <RouterLink
               v-for="item in navItems"
               :key="item.path"

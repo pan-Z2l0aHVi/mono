@@ -12,21 +12,24 @@ import { OverlayScrollbarsComponent } from 'overlayscrollbars-vue'
 import type { Component } from 'vue'
 import { computed, defineAsyncComponent, onBeforeUnmount, reactive, ref } from 'vue'
 
-import { exampleDocs } from '@/generated/examples'
+import { currentDocs, currentLocale } from '@/i18n/locale'
 
 import { reactIcon, vueIcon } from './flavor-icons'
 
 /**
  * 由示例文档 markdown 生成的页面主体：组件标题、简介、逐示例预览、双框架源码与 API 表。
  *
- * 数据全部来自 `packages/web-ui/docs/<name>.CN.md`（本站只出中文源语种）。每条示例按标题派生的 id
- * 由生成器落成 `src/generated/demos/<component>--<id>.vue`，预览执行的字节与代码区显示的字节同源；
+ * 数据来自 `packages/web-ui/docs/<name>.CN.md` 与 `<name>.md`，由当前语言选择。每条示例按标题派生的 id
+ * 由生成器落成对应语言目录下的 `demos/<component>--<id>.vue`，预览执行的字节与代码区显示的字节同源；
  * 标题两侧同文（英文专业术语），页面显示的也是它。
  *
  * 预览只运行当前站点框架；代码区始终提供 Vue / React 两份完整源码。
  */
-const demoModules = import.meta.glob<{ default: Component }>('../../generated/demos/*.vue')
-const DEMO_PREFIX = '../../generated/demos/'
+const demoModules = import.meta.glob<{ default: Component }>([
+  '../../generated/demos/*.vue',
+  '../../generated/en/demos/*.vue'
+])
+const DEMO_PREFIX = '../../generated/'
 
 // 异步组件在模块作用域建一次：setup 里每次新建会让示例被反复卸载重建，交互中途的状态会丢失。
 const demoComponents = new Map(
@@ -55,7 +58,7 @@ const props = defineProps<{
 const nativeFlavor = computed<Flavor>(() => props.nativeFlavor ?? 'vue')
 // 本站框架在前：segmented 的第一项就是这份代码默认展示的运行时。
 const flavors = computed<Flavor[]>(() => (nativeFlavor.value === 'vue' ? ['vue', 'react'] : ['react', 'vue']))
-const doc = computed(() => exampleDocs.find(candidate => candidate.component === props.component))
+const doc = computed(() => currentDocs.value.find(candidate => candidate.component === props.component))
 
 const ABBREVIATIONS: Record<string, string> = { api: 'API', svg: 'SVG', ui: 'UI' }
 // 「没有默认值」在语料里落成 em dash 占位符，它是散文不是字面量，所以即便落在值列也不实行内代码。
@@ -90,7 +93,7 @@ function panelId(key: string) {
 }
 
 function demoComponent(demoKey: string) {
-  return demoComponents.get(`${props.component}--${demoKey}`)
+  return demoComponents.get(`${currentLocale.value === 'en' ? 'en/' : ''}demos/${props.component}--${demoKey}`)
 }
 
 /*
@@ -245,7 +248,7 @@ function copyAnnouncement(key: string) {
             class="relative z-20 flex flex-wrap items-center gap-3 px-4 py-8"
             :data-sample-preview="sample.demoKey"
           >
-            <component :is="demoComponent(sample.demoKey)" />
+            <component :is="demoComponent(sample.demoKey)" :key="`${currentLocale}:${sample.demoKey}`" />
           </div>
 
           <!--

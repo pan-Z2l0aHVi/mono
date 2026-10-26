@@ -130,16 +130,15 @@ describe('Vue SFC 静态文案', () => {
     expect(onWarn).not.toHaveBeenCalled()
   })
 
-  it.each([
-    ['嵌套富文本', '<template><p>Read <strong>this</strong> now</p></template>'],
-    ['组件子节点', '<template><CustomCard title="Card title">Card content</CustomCard></template>'],
-    ['slot', '<template><slot>Fallback text</slot></template>']
-  ])('%s 不发生局部翻译', async (_name, source) => {
-    const { result, code, onWarn } = await transform(source)
-    expect(result.txts).toEqual([])
-    expect(code).toBe(source)
-    expect(onWarn).toHaveBeenCalled()
-  })
+  it.each([['嵌套富文本', '<template><p>Read <strong>this</strong> now</p></template>']])(
+    '%s 不发生局部翻译',
+    async (_name, source) => {
+      const { result, code, onWarn } = await transform(source)
+      expect(result.txts).toEqual([])
+      expect(code).toBe(source)
+      expect(onWarn).toHaveBeenCalled()
+    }
+  )
 
   it('v-pre、原始 HTML 与保留空白的元素不被转换', async () => {
     const source =

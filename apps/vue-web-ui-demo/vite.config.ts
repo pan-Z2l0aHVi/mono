@@ -1,3 +1,5 @@
+import { fileURLToPath } from 'node:url'
+
 import depsReload from '@greypan/deps-reload/vite'
 import type { MdToCompViteOptions } from '@greypan/md-to-comp'
 import mdToCompVue from '@greypan/md-to-comp/vue'
@@ -12,15 +14,17 @@ import { searchForWorkspaceRoot, type UserConfig } from 'vite-plus'
 import { playwright } from 'vite-plus/test/browser-playwright'
 import { VueRouterAutoImports } from 'vue-router/unplugin'
 import vueRouter from 'vue-router/vite'
+import { wuchale } from 'wuchale/vite'
 
 // 具名导出供 scripts/workflow/check-md-to-comp-artifacts.mjs 复用：CI 在 Build 步之前以这份配置
 // 只判不改地校验生成物。配置只有这一份，不另抄。
 export const mdToCompOptions: MdToCompViteOptions = {
   input: '../../packages/web-ui/docs',
-  // 中文是源语种。Vue 站本期只出中文：产物仍落在 `src/generated`，页面与测试的路径不变。
-  // 英文语种照样登记，是为了让 `.md` 译文有归属、不被当成认领不到后缀的孤儿文件；没有 output
-  // 的语种不渲染高亮。
-  outputs: [{ locale: 'zh-CN', output: 'src/generated' }],
+  // 中文保留现有根目录，英文独立输出；两套正文与运行示例由同一份 corpus 生成。
+  outputs: [
+    { locale: 'zh-CN', output: 'src/generated' },
+    { locale: 'en', output: 'src/generated/en' }
+  ],
   // 样式与语种无关（高亮双主题 + Markdown 正文版式），只写一份。
   styles: 'src/generated/examples.css',
   dir: 'demos',
@@ -123,7 +127,7 @@ export default {
         test: {
           name: 'jsdom',
           environment: 'jsdom',
-          setupFiles: ['./test-helper.ts'],
+          setupFiles: ['./test-helper.ts', './src/i18n/__tests__/setup.ts'],
           include: ['src/**/*.spec.ts'],
           exclude: ['src/**/*.browser.spec.ts']
         }
@@ -132,6 +136,7 @@ export default {
         extends: true,
         test: {
           name: 'browser',
+          setupFiles: ['./src/i18n/__tests__/setup.ts'],
           // 断点与 collapsed state 都是真实浏览器才成立的东西：jsdom 里 media query 是替身、
           // 工具类是一串不生效的字符串。这一档在 Chromium 里读回渲染结果。
           include: ['src/**/*.browser.spec.ts'],
@@ -151,6 +156,7 @@ export default {
     ]
   },
   plugins: [
+    wuchale({ configPath: fileURLToPath(new URL('./wuchale.config.js', import.meta.url)) }),
     // 示例文档：markdown 是唯一来源，dev 与 build 都由这个插件生成 `src/generated/**`。
     // 生成物同样受版本控制，测试档只判不改（不一致就让这次的测试红）；CI 在 Build 步之前还经
     // `check-generated` 任务以 mdToCompOptions 只判不改地复验一次（Build 的写盘会把失步产物

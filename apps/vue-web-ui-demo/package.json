@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "build": "vue-tsc --build && vp build",
+    "build": "vue-tsc --build && vp build --mode build",
     "dev": "vp dev",
     "preview": "vp preview",
     "test": "vp test run",
@@ -22,7 +22,8 @@
     "pinia": "catalog:",
     "vee-validate": "catalog:",
     "vue": "catalog:",
-    "vue-router": "catalog:"
+    "vue-router": "catalog:",
+    "wuchale": "catalog:"
   },
   "devDependencies": {
     "@greypan/deps-reload": "workspace:*",
@@ -39,7 +40,8 @@
     "unplugin-auto-import": "catalog:",
     "vue-tsc": "catalog:",
     "vite": "catalog:",
-    "vite-plus": "catalog:"
+    "vite-plus": "catalog:",
+    "@greypan/wuchale-vue": "workspace:*"
   },
   "browserslist": [
     "Chrome >=111",

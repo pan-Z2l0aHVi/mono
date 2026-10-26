@@ -1,0 +1,6 @@
+<template>
+  <div class="flex w-full flex-col gap-3">
+    <web-ui-textarea full clearable value="This block can be cleared in one go"></web-ui-textarea>
+    <web-ui-textarea full clearable placeholder="No clear button when the value is empty"></web-ui-textarea>
+  </div>
+</template>

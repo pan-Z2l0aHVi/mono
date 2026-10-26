@@ -1,13 +1,9 @@
 // cspell:words txts
-import {
-  ElementTypes,
-  NodeTypes,
-  type ElementNode,
-  type SourceLocation,
-  type TemplateChildNode
-} from '@vue/compiler-dom'
+import { NodeTypes, type ElementNode, type SourceLocation, type TemplateChildNode } from '@vue/compiler-dom'
 import { babelParse, MagicString, parse } from '@vue/compiler-sfc'
 import { getKey, type HeuristicFunc, type Scope, type Text, type TransformCtx, type TransformOutput } from 'wuchale'
+
+import { visitStrings } from './script'
 
 import type { VueDiagnostic } from './index'
 
@@ -65,7 +61,8 @@ function hasVPre(node: ElementNode, source: string): boolean {
 export function transformVue(
   ctx: TransformCtx,
   heuristic: HeuristicFunc,
-  onWarn: (diagnostic: VueDiagnostic) => void
+  onWarn: (diagnostic: VueDiagnostic) => void,
+  componentAttributes: Record<string, string[]>
 ): TransformOutput {
   const { content, filename, index } = ctx
   const unchanged = (): TransformOutput => ({ txts: [], output: () => ({}) })
@@ -155,6 +152,44 @@ export function transformVue(
     return index.get(getKey(body))
   }
 
+  const location = (start: number, end: number): SourceLocation => {
+    const position = (offset: number) => {
+      const lines = content.slice(0, offset).split('\n')
+      return { offset, line: lines.length, column: lines[lines.length - 1].length + 1 }
+    }
+    return { start: position(start), end: position(end), source: content.slice(start, end) }
+  }
+  const strings = (source: string, offset: number, expression: boolean, parents: Scope[]) => {
+    const pending: Edit[] = []
+    try {
+      visitStrings(
+        source,
+        scriptSetup?.lang === 'ts',
+        expression,
+        (body, start, end, scopes) => {
+          const loc = location(offset + start, offset + end)
+          const id = message(body, [...parents, ...scopes], loc)
+          if (id != null)
+            pending.push({ start: loc.start.offset, end: loc.end.offset, replacement: `${runtime}(${id})` })
+        },
+        (start, end) =>
+          report(
+            'unsupported-template',
+            '脚本插值模板字符串暂不转换；保留原文。',
+            location(offset + start, offset + end)
+          )
+      )
+      edits.push(...pending)
+    } catch (error) {
+      report(
+        'parse-error',
+        error instanceof Error ? error.message : String(error),
+        location(offset, offset + source.length)
+      )
+    }
+  }
+  if (scriptSetup) strings(scriptSetup.content, scriptSetup.loc.start.offset, false, [])
+
   const visit = (node: TemplateChildNode, parents: Scope[]) => {
     if (node.type !== NodeTypes.ELEMENT) return
     if (
@@ -165,8 +200,8 @@ export function transformVue(
       report('unsupported-template', '跳过 v-pre、原始内容或保留空白的元素。', node.loc)
       return
     }
-    if (node.tagType !== ElementTypes.ELEMENT || node.ns !== 0) {
-      report('unsupported-template', '组件、slot、template 或非 HTML 元素暂不转换。', node.loc)
+    if (node.ns !== 0) {
+      report('unsupported-template', '非 HTML 元素暂不转换。', node.loc)
       return
     }
     const nonEmpty = node.children.filter(child => child.type !== NodeTypes.TEXT || child.content.trim())
@@ -175,14 +210,37 @@ export function transformVue(
     const textOnly = node.children.every(
       child => child.type === NodeTypes.TEXT || child.type === NodeTypes.INTERPOLATION
     )
-    const mixed = (hasText || hasInterpolation) && !textOnly
+    const decorationOnly = node.children.every(
+      child => child.type === NodeTypes.TEXT || (child.type === NodeTypes.ELEMENT && child.children.length === 0)
+    )
+    const mixed = (hasText || hasInterpolation) && !textOnly && !decorationOnly
     if (mixed) {
       report('unsupported-template', '嵌套富文本或注释混合句暂不转换；保留整个元素。', node.loc)
       return
     }
     const path: Scope[] = [...parents, { type: 'element', name: node.tag }]
     for (const prop of node.props) {
-      if (prop.type !== NodeTypes.ATTRIBUTE || !attributes.has(prop.name) || !prop.value) continue
+      if (
+        prop.type === NodeTypes.DIRECTIVE &&
+        prop.name === 'bind' &&
+        prop.arg?.type === NodeTypes.SIMPLE_EXPRESSION &&
+        prop.arg.isStatic &&
+        (attributes.has(prop.arg.content) || componentAttributes[node.tag]?.includes(prop.arg.content)) &&
+        prop.exp?.type === NodeTypes.SIMPLE_EXPRESSION
+      ) {
+        if (prop.exp.content === prop.exp.loc.source)
+          strings(prop.exp.content, prop.exp.loc.start.offset, true, [
+            ...path,
+            { type: 'attribute', name: prop.arg.content }
+          ])
+        else report('unsupported-template', '编码的绑定表达式保留原文。', prop.loc)
+      }
+      if (
+        prop.type !== NodeTypes.ATTRIBUTE ||
+        !(attributes.has(prop.name) || componentAttributes[node.tag]?.includes(prop.name)) ||
+        !prop.value
+      )
+        continue
       const bound = node.props.some(
         sibling =>
           sibling.type === NodeTypes.DIRECTIVE &&
@@ -209,7 +267,16 @@ export function transformVue(
       })
     }
     if (hasInterpolation) {
-      if (!hasText) return
+      if (!hasText) {
+        for (const child of node.children) {
+          if (child.type === NodeTypes.INTERPOLATION && child.content.type === NodeTypes.SIMPLE_EXPRESSION) {
+            if (child.content.content === child.content.loc.source)
+              strings(child.content.content, child.content.loc.start.offset, true, path)
+            else report('unsupported-template', '编码的插值表达式保留原文。', child.loc)
+          }
+        }
+        return
+      }
       const placeholders: Text['placeholders'] = []
       const args: string[] = []
       let body = ''
@@ -249,6 +316,13 @@ export function transformVue(
           replacement: `${leading}{{ ${runtime}(${id}) }}${trailing}`
         })
       } else {
+        if (
+          child.type === NodeTypes.INTERPOLATION &&
+          child.content.type === NodeTypes.SIMPLE_EXPRESSION &&
+          child.content.content === child.content.loc.source
+        ) {
+          strings(child.content.content, child.content.loc.start.offset, true, path)
+        }
         visit(child, path)
       }
     }

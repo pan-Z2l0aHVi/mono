@@ -756,6 +756,9 @@ importers:
       vue-router:
         specifier: 'catalog:'
         version: 5.3.1(@voidzero-dev/vite-plus-core@0.3.2(@types/node@26.4.1)(jiti@2.7.0)(terser@5.51.2)(typescript@6.0.3)(yaml@2.9.0))(@vue/compiler-sfc@3.5.42)(pinia@4.0.3(@vue/devtools-api@8.2.1)(typescript@6.0.3)(vue@3.5.42(typescript@6.0.3)))(rolldown@1.2.7)(rollup@4.63.1)(vue@3.5.42(typescript@6.0.3))(webpack@5.110.3(lightningcss@1.33.0)(postcss@8.5.28))
+      wuchale:
+        specifier: 'catalog:'
+        version: 0.26.7
     devDependencies:
       '@greypan/deps-reload':
         specifier: workspace:*
@@ -769,6 +772,9 @@ importers:
       '@greypan/unplugin-web-components':
         specifier: workspace:*
         version: link:../../packages/unplugin-web-components
+      '@greypan/wuchale-vue':
+        specifier: workspace:*
+        version: link:../../packages/wuchale-vue
       '@tailwindcss/vite':
         specifier: 'catalog:'
         version: 4.3.3(@voidzero-dev/vite-plus-core@0.3.2(@types/node@26.4.1)(jiti@2.7.0)(terser@5.51.2)(typescript@6.0.3)(yaml@2.9.0))

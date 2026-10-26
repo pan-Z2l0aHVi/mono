@@ -28,9 +28,11 @@ CI 在 Build 步之前经两端 demo 的 `check-generated` turbo 任务以同一
 
 这些语料必须进入本包 `build` 与 `test` 的 turbo inputs：根配置排除 Markdown，包级 `turbo.json` 重新纳入，并由 `pnpm run check-policy` 中的 `web-ui-docs-inputs` 检查守护。
 
-React demo 的**壳文案**（组件之外、写在 TSX 里的界面文字）走另一条链：`wuchale` 从源码抽取 msgid，中文为源、英文为译文，落进 `apps/react-web-ui-demo/src/locales/<locale>.po`。PO 是入库的译文源、手写不生成；catalog 与 loader（`src/locales/.wuchale/**`、`*.loader.js`、`data.js`、`plural.js`）由 Vite 插件按 PO 重编译，全部 gitignore。dev 与 build 只编译不抽取，所以**增删壳文案必须显式在应用目录跑 `pnpm exec wuchale --clean`** 把新 msgid 写进 PO，否则构建默默用旧语料出页面。`--clean` 会顺带移除代码里已不再引用的条目；不得用 `--modify`——它把译文写回源码，而源码里的中文才是唯一原文。PO 是 tracked 文件，天然在 `$TURBO_DEFAULT$` 里，不需要像 Markdown 那样重新纳入。
+React 与 Vue demo 的**壳文案**（TSX / SFC 中的界面文字）走另一条链：`wuchale` 从源码抽取 msgid，中文为源、英文为译文，落进 `apps/{react,vue}-web-ui-demo/src/locales/<locale>.po`。PO 是入库的译文源、手写不生成；catalog 与 loader（`src/locales/.wuchale/**`、`*.loader.js`、`data.js`、`plural.js`）由 Vite 插件按 PO 重编译，全部 gitignore。dev 与 build 只编译不抽取，所以**增删壳文案必须显式在应用目录跑 `pnpm exec wuchale --clean`** 把新 msgid 写进 PO，否则构建默默用旧语料出页面。`--clean` 会顺带移除代码里已不再引用的条目；不得用 `--modify`——它把译文写回源码，而源码里的中文才是唯一原文。PO 是 tracked 文件，天然在 `$TURBO_DEFAULT$` 里，不需要像 Markdown 那样重新纳入。
 
-壳文案的一致性由 `pnpm run check-policy` 中的 `shell-i18n-catalog` 守护：它把两份 PO 复制到临时目录、按 `wuchale.config.js` 的 glob 重跑一次抽取，然后判五件事——en 有空译文、en 与 zh 的 msgid 集合不等（缺译或多译）、PO 里残留 `#~` 废弃条目、代码里有中文没进语料、语料里有中文代码里已不再引用。`wuchale status` 与 `check` 只看 PO 自身，看不见新加的源码文案，也判不出空译文，所以这条检查补的是它够不到的那一半。
+壳文案的一致性由 `pnpm run check-policy` 中的 `shell-i18n-catalog` 守护：它分别把每个应用的两份 PO 复制到临时目录、按 `wuchale.config.js` 的 glob 重跑一次抽取，然后判五件事——en 有空译文、en 与 zh 的 msgid 集合不等（缺译或多译）、PO 里残留 `#~` 废弃条目、代码里有中文没进语料、语料里有中文代码里已不再引用。`wuchale status` 与 `check` 只看 PO 自身，看不见新加的源码文案，也判不出空译文，所以这条检查补的是它够不到的那一半。
+
+Vue demo 通过私有 `@greypan/wuchale-vue` 在 Vue 编译前转换 SFC。`wuchale.config.js` 只提取手写壳文案，排除 `src/generated/**`；正文与运行示例继续由 md-to-comp 生成双语输出。语言控制器先准备 catalog 与文档，再统一提交；不修改 wuchale 核心。安装版 wuchale 按 Vite mode 判定 build，Vue build 脚本显式使用 `--mode build`。
 
 `apps/interweave/frontend/bindings/**` 的生成过程不得删除已有文件，并用产出集合守卫防止静默少产出；陈旧文件由人工清理。frontend 的 turbo inputs 由 Go 源、Go 模块文件与 bindings generator 构成。
 

@@ -3,7 +3,7 @@ import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 
-import { parsePo, run } from './shell-i18n-catalog.mjs'
+import { checkApp, parsePo, run } from './shell-i18n-catalog.mjs'
 
 const header = 'msgid ""\nmsgstr ""\n"Language: en\\n"\n\n'
 
@@ -36,9 +36,9 @@ function entry(msgid, msgstr) {
   assert.equal(parsed.entries.get('个文件'), '')
 }
 
-function fixture(messages) {
+function fixture(messages, app = 'react-web-ui-demo') {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'shell-i18n-fixture-'))
-  const locales = path.join(root, 'apps', 'react-web-ui-demo', 'src', 'locales')
+  const locales = path.join(root, 'apps', app, 'src', 'locales')
   fs.mkdirSync(locales, { recursive: true })
   const zh = `${header}${messages.map(([zhText]) => entry(zhText, zhText)).join('')}`
   const en = `${header}${messages.map(([zhText, enText]) => entry(zhText, enText)).join('')}`
@@ -69,10 +69,21 @@ function fixture(messages) {
   }
 }
 
+// Vue 使用同一空译文判据，不能只在聚合输出中列出名字。
+{
+  const root = fixture([['复制代码', '']], 'vue-web-ui-demo')
+  try {
+    await assert.rejects(() => checkApp({ root, app: 'apps/vue-web-ui-demo' }), /空译文/)
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true })
+  }
+}
+
 // 真 app 的语料必须过同一条判据；跑不过就是这次的改动没做完。
 {
   const detail = await run({ root: path.resolve(import.meta.dirname, '../..') })
-  assert.match(detail, /条壳文案/)
+  assert.match(detail, /react-web-ui-demo:.*条壳文案/)
+  assert.match(detail, /vue-web-ui-demo:.*条壳文案/)
 }
 
 process.stdout.write('shell-i18n-catalog tests passed\n')

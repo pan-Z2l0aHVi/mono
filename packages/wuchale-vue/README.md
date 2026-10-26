@@ -2,7 +2,7 @@
 
 mono 内部的 private Vue SFC adapter，当前验证版本为 wuchale 0.26.7、Vue/compiler-sfc 3.5.42、plugin-vue 6.0.8。
 
-支持原生 HTML 元素的静态模板文本、文字与普通插值组成的整句，以及 `title`、`alt`、`placeholder`、`aria-label`、`aria-description` 静态属性。源码直接写自然文本，无须翻译函数、包装组件或注释标记。
+支持 HTML 与组件/slot 容器内的模板文本、文字与普通插值组成的整句，以及 `title`、`alt`、`placeholder`、`aria-label`、`aria-description` 文案属性。JS/TS setup 函数内的字符串和受控模板表达式也参与提取。源码直接写自然文本，无须翻译函数、包装组件或注释标记。
 
 ```vue
 <script setup>
@@ -29,6 +29,7 @@ export default defineConfig({
   locales: ['en', 'fr'],
   adapters: {
     main: adapter({
+      componentAttributes: { 'web-ui-option': ['label'], 'web-ui-tooltip': ['content'] },
       files: {
         include: 'src/**/*.vue',
         ignore: ['src/generated/**', '**/__tests__/**']
@@ -77,9 +78,11 @@ createApp(App).mount('#app')
 
 - 支持 inline HTML template、JS/TS `<script setup>` 和无 script 的 SFC。无 script 时按需增加 `<script setup>`。
 - 运行时复用 wuchale 的编译后 catalog、索引查找与插值函数，并增加 Vue 响应式状态；没有运行时源码扫描或字符串全局替换。
-- 支持原生元素的纯文本/插值子节点；只有动态表达式且没有静态文案时不构造消息。嵌套元素或注释打断整句时保留整个元素并警告。
-- 普通 script、双 script、外部 template、模板预处理器、嵌套富文本、组件/slot、SVG/MathML 保留原文并警告。`v-pre`、`v-html`、`v-text`、`pre`、`code`、`textarea`、`script`、`style` 子树也跳过。
-- 只处理上述白名单静态属性。动态绑定、URL、`id`、class、data 属性和脚本字符串不参与提取。默认使用标准 `{{ }}` delimiter 和 Vue 的默认 whitespace 规则；自定义模板编译选项尚不支持。
+- 遍历原生元素、组件、template 和 slot 容器。空图标元素旁的文本可以单独提取；有内容的嵌套元素或注释打断整句时保留整个元素并警告。纯插值中的字符串字面量参与提取，普通动态数据保持原样。
+- 普通 script、双 script、外部 template、模板预处理器、嵌套富文本、SVG/MathML 保留原文并警告。`v-pre`、`v-html`、`v-text`、`pre`、`code`、`textarea`、`script`、`style` 子树也跳过。
+- 处理上述白名单属性和它们的 `v-bind` 表达式；`componentAttributes` 按 tag 开放额外文案属性。编码后的绑定表达式无法可靠映射源码时跳过并警告。URL、`id`、class、data 属性不参与提取。默认使用标准 `{{ }}` delimiter 和 Vue 的默认 whitespace 规则；自定义模板编译选项尚不支持。
+- JS/TS setup 中仅转换函数体内的字符串、无插值模板字符串，以及 TS 断言包裹的这些表达式。顶层 setup 字符串保持快照语义；需随语言更新的数据可写成渲染时调用的函数或 computed getter。事件回调中的提示文案在调用时读取当前语言。
+- 对象键、成员索引、比较值、switch case 测试、类型、函数参数、编译宏参数与 console 调用保持原样。已知对象键 API（Object.hasOwn、Reflect 等）及 localStorage/sessionStorage 调用不提取。脚本内的插值模板字符串、tagged template 保留并警告；脚本字符串拼接和构造器参数暂不提取。候选仍须通过 wuchale heuristic，业务协议值应由消费端 heuristic 限定。
 - 静态属性与同名显式 `v-bind` 共存时，保留该静态属性并警告，避免生成重复 directive 或改变覆盖语义。
 - script 中出现 `_w_` 开头的 identifier 时保留整个 SFC，避免与核心生成的 loader/header 绑定冲突。
 - 生成的 runtime 绑定同时避让原始源码与 AST 解码后的名称。静态文案若包含 wuchale 保留的 `{数字}`、`<数字>` 或 `<数字/>` 语法，会保留原文并警告，避免被误编译为占位符。属性前后空白单独保留，不参与消息索引。

@@ -19,13 +19,15 @@ export type VueAdapterOptions = DeepPartial<
   heuristic?: HeuristicFunc
   /** 接收保留原文的原因；省略时使用 console.warn。 */
   onWarn?: (diagnostic: VueDiagnostic) => void
+  /** 按组件 tag 明确允许额外的文案属性，例如 label/content。 */
+  componentAttributes?: Record<string, string[]>
 }
 
 const loaderPath = loaderPathResolver(import.meta.url, '../src/loaders', 'js')
 
 /** 创建 Vue SFC adapter，在构建时转换模板文案，不修改磁盘上的 SFC。 */
 export function adapter(options: VueAdapterOptions = {}): Adapter {
-  const { heuristic = defaultHeuristic, onWarn = warn, ...args } = options
+  const { heuristic = defaultHeuristic, onWarn = warn, componentAttributes = {}, ...args } = options
   const config = fillDefaults<Pick<AdapterPassThruOpts, 'sourceLocale' | 'files' | 'storage' | 'loading'>>(args, {
     files: { include: 'src/**/*.vue', ignore: [] },
     storage: pofile(),
@@ -33,7 +35,7 @@ export function adapter(options: VueAdapterOptions = {}): Adapter {
   })
   return {
     ...config,
-    transform: ctx => transformVue(ctx, heuristic, onWarn),
+    transform: ctx => transformVue(ctx, heuristic, onWarn, componentAttributes),
     loaderExts: ['.js', '.ts'],
     defaultLoaderPath: loaderPath(config.loading.direct ? 'bundle' : 'vue'),
     addImports: ['wuchale/dev'],
