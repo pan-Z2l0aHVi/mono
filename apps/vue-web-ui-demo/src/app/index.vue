@@ -48,9 +48,8 @@ function getInitialSidebarWidth(): string {
 const themeAppearance = ref(getInitialThemeAppearance())
 const themeMotion = ref(getInitialThemeMotion())
 const bannerVisible = ref(true)
-const toastVisible = ref(false)
-const shadowRootObservers = new Map<ShadowRoot, MutationObserver>()
-let themeObserver: MutationObserver | undefined
+const topToastBottom = ref(0)
+let stopObservingToastBounds: (() => void) | undefined
 const sidebarCollapsed = ref(false)
 const sidebarOpen = ref(false)
 const mobileSidebarWidth = 'min(320px, 80vw)'
@@ -128,7 +127,34 @@ const navSidebar = ref<OverlayScrollbarsComponentRef>()
 // 只能直接初始化 body。
 const [initPageScrollbars] = useOverlayScrollbars({ options: webUiScrollbarsOptions })
 
-function observeToastVisibility() {
+function observeToastBounds() {
+  const topToasts = new Set<WebUiToast>()
+  const containers = new Set<HTMLElement>()
+  const shadowRootObservers = new Map<ShadowRoot, MutationObserver>()
+  let measureFrame: number | undefined
+  const updateToastBottom = () => {
+    let bottom = 0
+    for (const toast of topToasts) {
+      const bounds = toast.getBoundingClientRect()
+      const clip = toast.parentElement?.getBoundingClientRect()
+      if (!clip) continue
+      // 堆栈可滚动，不能给被容器或视口裁掉的 toast 预留空间。
+      const visibleBottom = Math.min(bounds.bottom, clip.bottom, window.innerHeight)
+      const visibleTop = Math.max(bounds.top, clip.top, 0)
+      if (visibleBottom > visibleTop) bottom = Math.max(bottom, visibleBottom)
+    }
+    topToastBottom.value = bottom
+  }
+  // 留到下一帧更新 banner，避免在 ResizeObserver 派发中再次触发布局尺寸通知。
+  const scheduleMeasurement = () => {
+    if (measureFrame !== undefined) return
+    measureFrame = requestAnimationFrame(() => {
+      measureFrame = undefined
+      updateToastBottom()
+    })
+  }
+  const resizeObserver = new ResizeObserver(scheduleMeasurement)
+
   const collectThemeScopes = (root: ParentNode, themes: Set<WebUiTheme>, shadowRoots: Set<ShadowRoot>) => {
     for (const element of root.querySelectorAll<HTMLElement>('*')) {
       if (element.matches('web-ui-theme')) themes.add(element as WebUiTheme)
@@ -139,7 +165,7 @@ function observeToastVisibility() {
     }
   }
 
-  const updateToastVisibility = () => {
+  const updateToasts = () => {
     const themes = new Set<WebUiTheme>()
     const shadowRoots = new Set<ShadowRoot>()
     collectThemeScopes(document.body, themes, shadowRoots)
@@ -152,32 +178,71 @@ function observeToastVisibility() {
 
     for (const shadowRoot of shadowRoots) {
       if (shadowRootObservers.has(shadowRoot)) continue
-      const observer = new MutationObserver(updateToastVisibility)
-      observer.observe(shadowRoot, { childList: true, subtree: true })
+      const observer = new MutationObserver(updateToasts)
+      observer.observe(shadowRoot, { childList: true, subtree: true, attributes: true, attributeFilter: ['position'] })
       shadowRootObservers.set(shadowRoot, observer)
     }
 
-    toastVisible.value = Array.from(themes).some(theme =>
-      Array.from(theme.getOverlayRoot()?.querySelectorAll<WebUiToast>('web-ui-toast') ?? []).some(toast =>
-        toast.position.startsWith('top')
+    const nextTopToasts = new Set(
+      Array.from(themes).flatMap(theme =>
+        Array.from(theme.getOverlayRoot()?.querySelectorAll<WebUiToast>('web-ui-toast') ?? []).filter(toast =>
+          toast.position.startsWith('top')
+        )
       )
     )
+    for (const toast of topToasts) {
+      if (nextTopToasts.has(toast)) continue
+      resizeObserver.unobserve(toast)
+      topToasts.delete(toast)
+    }
+    for (const toast of nextTopToasts) {
+      if (topToasts.has(toast)) continue
+      topToasts.add(toast)
+      resizeObserver.observe(toast)
+    }
+    const nextContainers = new Set(
+      Array.from(nextTopToasts, toast => toast.parentElement).filter((element): element is HTMLElement => !!element)
+    )
+    for (const container of containers) {
+      if (nextContainers.has(container)) continue
+      container.removeEventListener('scroll', scheduleMeasurement)
+      resizeObserver.unobserve(container)
+      containers.delete(container)
+    }
+    for (const container of nextContainers) {
+      if (containers.has(container)) continue
+      containers.add(container)
+      container.addEventListener('scroll', scheduleMeasurement, { passive: true })
+      resizeObserver.observe(container)
+    }
+    updateToastBottom()
   }
 
-  updateToastVisibility()
-  themeObserver = new MutationObserver(updateToastVisibility)
-  themeObserver.observe(document.body, { childList: true, subtree: true })
+  updateToasts()
+  const themeObserver = new MutationObserver(updateToasts)
+  themeObserver.observe(document.body, {
+    childList: true,
+    subtree: true,
+    attributes: true,
+    attributeFilter: ['position']
+  })
+  window.addEventListener('resize', scheduleMeasurement, { passive: true })
+
+  return () => {
+    themeObserver.disconnect()
+    resizeObserver.disconnect()
+    if (measureFrame !== undefined) cancelAnimationFrame(measureFrame)
+    for (const observer of shadowRootObservers.values()) observer.disconnect()
+    for (const container of containers) container.removeEventListener('scroll', scheduleMeasurement)
+    window.removeEventListener('resize', scheduleMeasurement)
+  }
 }
 
-onBeforeUnmount(() => {
-  themeObserver?.disconnect()
-  for (const observer of shadowRootObservers.values()) observer.disconnect()
-  shadowRootObservers.clear()
-})
+onBeforeUnmount(() => stopObservingToastBounds?.())
 
 onMounted(async () => {
   initPageScrollbars(document.body)
-  observeToastVisibility()
+  stopObservingToastBounds = observeToastBounds()
   await router.isReady()
   requestAnimationFrame(() => {
     const link = navSidebar.value?.getElement()?.querySelector('[data-active="true"]')
@@ -256,11 +321,12 @@ function isNavActive(path: string) {
         @mobile-change="updateMobileSidebarViewport"
       >
         <div
-          v-if="bannerVisible || toastVisible"
+          v-if="bannerVisible || topToastBottom > 0"
           slot="banner"
           class="grid grid-cols-[24px_minmax(0,1fr)_24px] items-center gap-2 bg-(--wui-color-accent) px-4 py-2 text-sm text-(--wui-color-on-accent)"
           :class="{ 'invisible pointer-events-none': !bannerVisible }"
           :aria-hidden="!bannerVisible"
+          :style="{ minHeight: `${topToastBottom}px` }"
         >
           <web-ui-button
             class="mobile:-ml-4"
