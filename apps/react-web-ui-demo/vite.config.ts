@@ -141,8 +141,9 @@ export default {
     ]
   },
   plugins: [
-    // 壳文案编译期抽取/替换。必须排在 react() 之前：它按 AST 改写源码并把文案换成运行时调用，
-    // 让 JSX 先被 React 插件转译后就再也认不出来了。
+    // 壳文案编译期抽取/替换。wuchale 的 transform 声明了 `order: 'pre'`，所以无论它在这个数组里
+    // 注册在哪，transform 都排在 React 插件（`enforce: 'pre'`）之前；它按 AST 改写源码并把文案
+    // 换成运行时调用，JSX 一旦被 React 降级就再也认不出来了。
     wuchale(),
     // 示例文档：markdown 是唯一来源，dev 与 build 都由这个插件生成 `src/generated/**`。
     // 生成物同样受版本控制，测试档只判不改（不一致就让这次的测试红）；CI 在 Build 步之前还经

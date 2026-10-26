@@ -51,4 +51,18 @@ assert.equal(entry(runDoctor({ TURBO_CACHE_DIR: path.join(root, '.turbo') }), 't
 const expectedNodeLevel = process.version.replace(/^v/, '') === pinnedNode ? 'ok' : 'fail'
 assert.equal(entry(runDoctor({}), 'node-version').level, expectedNodeLevel)
 
+// git hook 档位同样随机器而变：判据按 Git 实际解析出的 hooks 目录当场算，而不是写死本机状态。
+// 这样裸 shell（还没跑过 pnpm install / 本机 hooks 被删）报 fail，装好后报 ok。
+const hooksPath = spawnSync('git', ['rev-parse', '--git-path', 'hooks'], { cwd: root, encoding: 'utf8' }).stdout.trim()
+const hooksDir = path.isAbsolute(hooksPath) ? hooksPath : path.resolve(root, hooksPath)
+const hooksRunnable = ['commit-msg', 'pre-commit'].every(name => {
+  try {
+    fs.accessSync(path.join(hooksDir, name), fs.constants.X_OK)
+    return true
+  } catch {
+    return false
+  }
+})
+assert.equal(entry(runDoctor({}), 'git-hooks').level, hooksRunnable ? 'ok' : 'fail')
+
 console.log('scripts/maintenance/env-doctor.test.mjs: all assertions passed')

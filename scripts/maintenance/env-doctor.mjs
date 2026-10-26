@@ -4,7 +4,7 @@
 // 是显式 opt-in 的写操作。覆盖本会话实测踩过的环境坑：
 // dist 截断（vp build --watch 清空 d.ts）、watch 进程污染、turbo 缓存未生效、
 // mise env 未激活（TURBO_CACHE_DIR 未注入、node 版本不符）、
-// node_modules 链接失效、git worktree 残留。
+// node_modules 链接失效、git worktree 残留、git hook 未安装（pre-commit 静默空转）。
 //
 // 用法：pnpm run agent:env-doctor [--json] [--fix] [--kill-watchers]
 //   --json           机器可读输出（人类可读走 stdout 文本）
@@ -253,12 +253,67 @@ function worktreeResidueCheck() {
   record('worktree-residue', 'warn', `stale worktree admin entries (use --fix to prune):\n${prune.stdout}`)
 }
 
+// ===== git hook 安装状态 =====
+// 事故复盘：core.hooksPath 被设成 .vite-hooks 之外的外部路径后，vite-plus 只打一行日志就放弃
+// 接管，而兜底安装脚本当时也只处理 commit-msg，于是五项 pre-commit 检查静默空转。
+// 这里把「受版本控制的 hook 是否真的装上且可执行」变成可观察断言；修复命令只打印，不自动改写 Git 配置。
+const requiredGitHooks = ['commit-msg', 'pre-commit']
+
+function gitHooksCheck() {
+  const configured = sh('git', ['config', '--get', 'core.hooksPath'])
+  if (configured.status !== 0 && configured.status !== 1) {
+    record('git-hooks', 'warn', `cannot read core.hooksPath: ${configured.stderr}`)
+    return
+  }
+  const resolved = sh('git', ['rev-parse', '--git-path', 'hooks'])
+  if (resolved.status !== 0) {
+    record('git-hooks', 'warn', `cannot resolve the Git hooks directory: ${resolved.stderr}`)
+    return
+  }
+  const hooksDir = path.isAbsolute(resolved.stdout) ? resolved.stdout : path.resolve(root, resolved.stdout)
+  if (hooksDir === '/dev/null') {
+    record('git-hooks', 'ok', 'Git hooks are disabled by core.hooksPath=/dev/null')
+    return
+  }
+  const missing = []
+  for (const name of requiredGitHooks) {
+    const file = path.join(hooksDir, name)
+    let stats
+    try {
+      stats = fs.statSync(file)
+    } catch {
+      missing.push(`${name} (missing)`)
+      continue
+    }
+    if (!stats.isFile()) {
+      missing.push(`${name} (not a file)`)
+      continue
+    }
+    try {
+      fs.accessSync(file, fs.constants.X_OK)
+    } catch {
+      missing.push(`${name} (not executable)`)
+    }
+  }
+  if (missing.length === 0) {
+    record('git-hooks', 'ok', `commit-msg and pre-commit dispatchers run from ${hooksDir}`)
+    return
+  }
+  const directoryNote = fs.existsSync(hooksDir) ? '' : ' (the hooks directory itself does not exist)'
+  record(
+    'git-hooks',
+    'fail',
+    `git hooks are not runnable from ${hooksDir}${directoryNote}: ${missing.join(', ')}. Run \`pnpm install\` (its prepare script installs the dispatchers) or \`node scripts/maintenance/install-git-hooks.mjs\`; when core.hooksPath points outside .vite-hooks, vp config leaves that path alone and only the installer repairs it.`
+  )
+}
+
 distAudit()
 watcherDetection()
 turboCacheCheck()
 nodeVersionCheck()
 nodeModulesCheck()
 worktreeResidueCheck()
+gitHooksCheck()
 
 if (fix && results.some(result => result.id === 'dist-audit' && result.level === 'fail')) {
   const build = sh('pnpm', ['exec', 'turbo', 'run', 'build', '--force'])

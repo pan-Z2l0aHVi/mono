@@ -57,11 +57,18 @@ try {
   const messagePath = path.join(fixtureRoot, 'message')
   const mainMarker = path.join(fixtureRoot, 'main-hook-ran')
   const linkedMarker = path.join(fixtureRoot, 'linked-hook-ran')
+  const mainPreCommitMarker = path.join(fixtureRoot, 'main-pre-commit-ran')
+  const linkedPreCommitMarker = path.join(fixtureRoot, 'linked-pre-commit-ran')
   initRepo(repo)
   fs.mkdirSync(path.join(repo, '.vite-hooks'), { recursive: true })
   fs.writeFileSync(
     path.join(repo, '.vite-hooks', 'commit-msg'),
     '#!/bin/sh\nprintf \'%s\\n\' "$1" > "$HOOK_MARKER"\n',
+    { mode: 0o644 }
+  )
+  fs.writeFileSync(
+    path.join(repo, '.vite-hooks', 'pre-commit'),
+    '#!/bin/sh\nprintf pre-commit > "$PRE_COMMIT_MARKER"\n',
     { mode: 0o644 }
   )
   fs.writeFileSync(path.join(repo, 'tracked-file'), 'fixture\n')
@@ -76,9 +83,12 @@ try {
   )
   assertSuccess(install(path.join(repo, 'subdir')), 'install custom hooksPath dispatcher from a subdirectory')
   const dispatcherPath = path.join(sharedHooks, 'commit-msg')
-  assert.match(fs.readFileSync(dispatcherPath, 'utf8'), /mono-managed-commit-msg-dispatcher/)
+  const preCommitDispatcherPath = path.join(sharedHooks, 'pre-commit')
+  assert.match(fs.readFileSync(dispatcherPath, 'utf8'), /mono-managed-git-hook-dispatcher: commit-msg/)
+  assert.match(fs.readFileSync(preCommitDispatcherPath, 'utf8'), /mono-managed-git-hook-dispatcher: pre-commit/)
   if (process.platform !== 'win32') {
     assert.equal(fs.statSync(dispatcherPath).mode & 0o111, 0o111)
+    assert.equal(fs.statSync(preCommitDispatcherPath).mode & 0o111, 0o111)
   }
   fs.chmodSync(sharedHooks, 0o555)
   try {
@@ -123,9 +133,9 @@ exec sh "$hook" "$@"
   )
   fs.writeFileSync(messagePath, 'chore(root): fixture message\n')
 
-  for (const [worktree, marker] of [
-    [repo, mainMarker],
-    [linked, linkedMarker]
+  for (const [worktree, marker, preCommitMarker] of [
+    [repo, mainMarker, mainPreCommitMarker],
+    [linked, linkedMarker, linkedPreCommitMarker]
   ]) {
     assertSuccess(
       run('git', ['-C', worktree, 'hook', 'run', 'commit-msg', '--', messagePath], {
@@ -134,6 +144,13 @@ exec sh "$hook" "$@"
       `run dispatcher in ${worktree}`
     )
     assert.equal(fs.readFileSync(marker, 'utf8'), `${messagePath}\n`)
+    assertSuccess(
+      run('git', ['-C', worktree, 'hook', 'run', 'pre-commit'], {
+        env: { PRE_COMMIT_MARKER: preCommitMarker }
+      }),
+      `run pre-commit dispatcher in ${worktree}`
+    )
+    assert.equal(fs.readFileSync(preCommitMarker, 'utf8'), 'pre-commit')
   }
 
   const versionedCommitHook = path.join(repoRoot, '.vite-hooks', 'commit-msg')
@@ -156,13 +173,15 @@ exec sh "$hook" "$@"
 
   fs.unlinkSync(mainMarker)
   fs.unlinkSync(linkedMarker)
+  fs.unlinkSync(mainPreCommitMarker)
+  fs.unlinkSync(linkedPreCommitMarker)
   assertSuccess(
     run('git', ['-C', repo, 'config', 'vp.hooks.disabled', 'true']),
     'disable Vite+ hooks after dispatcher installation'
   )
-  for (const [worktree, marker] of [
-    [repo, mainMarker],
-    [linked, linkedMarker]
+  for (const [worktree, marker, preCommitMarker] of [
+    [repo, mainMarker, mainPreCommitMarker],
+    [linked, linkedMarker, linkedPreCommitMarker]
   ]) {
     assertSuccess(
       run('git', ['-C', worktree, 'hook', 'run', 'commit-msg', '--', messagePath], {
@@ -171,33 +190,53 @@ exec sh "$hook" "$@"
       `respect disabled preference in ${worktree}`
     )
     assert.equal(fs.existsSync(marker), false, 'disabled preference must skip the versioned hook')
+    assertSuccess(
+      run('git', ['-C', worktree, 'hook', 'run', 'pre-commit'], {
+        env: { PRE_COMMIT_MARKER: preCommitMarker }
+      }),
+      `respect disabled preference for pre-commit in ${worktree}`
+    )
+    assert.equal(fs.existsSync(preCommitMarker), false, 'disabled preference must skip the versioned pre-commit hook')
   }
 
   assertSuccess(
     run('git', ['-C', repo, 'config', '--unset', 'vp.hooks.disabled']),
     're-enable Vite+ hooks for idempotency check'
   )
-  const existingHook = dispatcherPath
-  const installedContents = fs.readFileSync(existingHook, 'utf8')
+  const installedContents = fs.readFileSync(dispatcherPath, 'utf8')
+  const installedPreCommitContents = fs.readFileSync(preCommitDispatcherPath, 'utf8')
   assertSuccess(install(repo), 'repeat custom hooksPath installation')
-  assert.equal(fs.readFileSync(existingHook, 'utf8'), installedContents, 'installer must be idempotent')
+  assert.equal(fs.readFileSync(dispatcherPath, 'utf8'), installedContents, 'installer must be idempotent')
+  assert.equal(
+    fs.readFileSync(preCommitDispatcherPath, 'utf8'),
+    installedPreCommitContents,
+    'pre-commit dispatcher must be idempotent too'
+  )
 
   const customRepo = path.join(fixtureRoot, 'repo with custom hook')
   const customHooks = path.join(fixtureRoot, 'custom hooks')
   initRepo(customRepo)
   fs.mkdirSync(path.join(customRepo, '.vite-hooks'), { recursive: true })
   fs.writeFileSync(path.join(customRepo, '.vite-hooks', 'commit-msg'), '#!/bin/sh\nexit 0\n')
+  fs.writeFileSync(path.join(customRepo, '.vite-hooks', 'pre-commit'), '#!/bin/sh\nexit 0\n')
   fs.mkdirSync(customHooks)
   const customHookPath = path.join(customHooks, 'commit-msg')
+  const customPreCommitPath = path.join(customHooks, 'pre-commit')
   fs.writeFileSync(customHookPath, '#!/bin/sh\nprintf custom\n')
+  fs.writeFileSync(customPreCommitPath, '#!/bin/sh\nprintf custom pre-commit\n')
   assertSuccess(run('git', ['-C', customRepo, 'config', 'core.hooksPath', customHooks]), 'custom hook config')
   fs.chmodSync(customHooks, 0o555)
+  let customInstall
   try {
-    assertSuccess(install(customRepo), 'preserve an existing custom hook in a read-only hooks directory')
+    customInstall = install(customRepo)
+    assertSuccess(customInstall, 'preserve existing custom hooks in a read-only hooks directory')
   } finally {
     fs.chmodSync(customHooks, 0o755)
   }
+  assert.match(customInstall.stdout, /Preserving existing commit-msg hook/)
+  assert.match(customInstall.stdout, /Preserving existing pre-commit hook/)
   assert.equal(fs.readFileSync(customHookPath, 'utf8'), '#!/bin/sh\nprintf custom\n')
+  assert.equal(fs.readFileSync(customPreCommitPath, 'utf8'), '#!/bin/sh\nprintf custom pre-commit\n')
 
   const unrelatedRepo = path.join(fixtureRoot, 'unrelated repo')
   const unrelatedMarker = path.join(fixtureRoot, 'unrelated-hook-ran')
@@ -223,7 +262,7 @@ exec sh "$hook" "$@"
   assertSuccess(run('git', ['-C', disabledRepo, 'config', 'core.hooksPath', '/dev/null']), 'disabled hooks config')
   const disabledInstall = install(disabledRepo)
   assertSuccess(disabledInstall, 'install with hooks disabled')
-  assert.match(disabledInstall.stdout, /skipping commit-msg dispatcher/)
+  assert.match(disabledInstall.stdout, /skipping git hook setup/)
 
   const preferenceRepo = path.join(fixtureRoot, 'repo with disabled preference')
   initRepo(preferenceRepo)
