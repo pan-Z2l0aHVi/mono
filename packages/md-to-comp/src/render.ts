@@ -36,13 +36,13 @@ export type ExampleApiSection = ExampleApiTableSection | ExampleApiProseSection
 
 /** 落进产物模块的一条示例；形状与 `markdown.ts` 的 `SampleBlock` 对应，序列化后由宿主消费。 */
 export interface SamplePayload {
-  /** 示例标题里的锚点 id；null 表示这条示例只展示代码。 */
-  id: string | null
+  /** 由标题派生的 id，宿主用它当渲染键。 */
+  id: string
   title: string
   descriptionHtml: string
   html: Record<FenceFlavor, string>
-  /** 非 null 时 `dir/demoKey` 已被发出，宿主可以直接挂成真组件。 */
-  demoKey: string | null
+  /** `dir/demoKey` 那份组件文件的键；每一条示例都有，宿主可以直接挂成真组件。 */
+  demoKey: string
 }
 
 export interface ExampleDocPayload {
@@ -82,11 +82,11 @@ export interface ExampleApiProseSection {
 export type ExampleApiSection = ExampleApiTableSection | ExampleApiProseSection
 
 export interface Sample {
-  id: string | null
+  id: string
   title: string
   descriptionHtml: string
   html: { react: string; vue: string }
-  demoKey: string | null
+  demoKey: string
 }
 
 export interface ExampleDoc {

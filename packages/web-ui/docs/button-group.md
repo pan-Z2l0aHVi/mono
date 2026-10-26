@@ -7,7 +7,7 @@ Groups several `<web-ui-button>` elements into one: the group is responsible onl
 
 ## Samples
 
-### Horizontal group {#basic}
+### Horizontal group
 
 The group puts a glass base under the whole row (`.wui-glass` drawn on the group's inner box) and adds a divider between adjacent members, but not after the last one.
 
@@ -39,7 +39,7 @@ export default function Demo() {
 </template>
 ```
 
-### Member content {#members}
+### Member content
 
 A member can be icon-only, text-only, or have an icon wrapped in `prefix` / `suffix`; the group only lays the host boxes in one row and centers them: `align-items: center` is hard-coded and member heights are unified to 30px, so mixed content aligns naturally and no member is stretched or squeezed.
 
@@ -145,7 +145,7 @@ import { lucideChevronLeft, lucideChevronRight } from '@greypan/web-ui/icons'
 </script>
 ```
 
-### Vertical group {#vertical}
+### Vertical group
 
 `direction` decides horizontal or vertical layout and defaults to `horizontal`; the only valid values are those two, and any value outside the set falls back to `horizontal`.
 
@@ -195,7 +195,7 @@ import { lucideMinus, lucidePlus, lucideSearch } from '@greypan/web-ui/icons'
 </script>
 ```
 
-### Member gap {#gap}
+### Member gap
 
 button-group has no gap token of its own: the gap between members and the inner padding of the glass box both read the theme spacing step `--wui-space-1` (4px by default), so changing that one moves both.
 
@@ -255,7 +255,7 @@ export default function Demo() {
 </template>
 ```
 
-### Divider {#divider}
+### Divider
 
 The divider is rendered by the "non-last" member itself, carries `aria-hidden`, and the last member has none.
 
@@ -325,7 +325,7 @@ import { lucideMinus, lucidePlus } from '@greypan/web-ui/icons'
 </script>
 ```
 
-### Member events {#events}
+### Member events
 
 The group does not intercept member `click`s: `GroupController` only listens to `change` on the host in the capture phase, and button-group uses a purely presentational context that does not even implement `handleChange`, so member clicks bubble through the group host unchanged.
 

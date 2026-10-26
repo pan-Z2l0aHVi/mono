@@ -7,7 +7,7 @@ A side drawer built on the native `<dialog>`, with built-in slide-in / slide-out
 
 ## Samples
 
-### Basic {#basic}
+### Basic
 
 `placement` decides the slide-in direction, and `heading` serves as the title fallback when there is no `header` slot. Click the backdrop or press Escape to close.
 
@@ -104,7 +104,7 @@ function openFrom(next: Placement) {
 </script>
 ```
 
-### Imperative {#imperative}
+### Imperative
 
 Without binding `open`, control it through the element instance's `show()` / `close()`. This suits scenes triggered by imperative flows; programmatic opening and closing dispatches no `open-change`.
 
@@ -148,7 +148,7 @@ const drawer = useTemplateRef<WebUiDrawer>('drawer')
 </script>
 ```
 
-### Custom size {#size}
+### Custom size
 
 The size along the left / right directions is controlled by `--wui-drawer-width`, and along the top / bottom directions by `--wui-drawer-height`.
 
@@ -251,7 +251,7 @@ function openWith(item: (typeof sizes)[number]) {
 </script>
 ```
 
-### Header {#header}
+### Header
 
 The `header` slot completely replaces the built-in title area; when there is neither `heading` nor `header`, the title area is not rendered at all. The `closable` close button is independent of the header content and is fixed in the top-right corner.
 
@@ -319,7 +319,7 @@ const noHeader = ref(false)
 </script>
 ```
 
-### Close button {#closable}
+### Close button
 
 `closable` shows the built-in close button. The button is fixed in the top-right corner of the header and does not scroll with the body.
 
@@ -374,7 +374,7 @@ const closable = ref(true)
 </script>
 ```
 
-### Footer actions {#footer}
+### Footer actions
 
 The `footer` slot is fixed to the bottom of the drawer and stays visible while the body scrolls.
 
@@ -434,7 +434,7 @@ const open = ref(false)
 </script>
 ```
 
-### Scroll lock {#scroll-lock}
+### Scroll lock
 
 By default the drawer locks page scrolling while open; `no-scroll-lock` keeps the background scrollable.
 
@@ -482,7 +482,7 @@ const open = ref(false)
 </script>
 ```
 
-### Backdrop click {#overlay}
+### Backdrop click
 
 A backdrop click closes the drawer by default; with `no-backdrop-close`, exit only through the close button, footer actions, or Escape.
 
@@ -534,7 +534,7 @@ const open = ref(false)
 </script>
 ```
 
-### Controlled closing {#controlled}
+### Controlled closing
 
 With `controlled`, Escape, the backdrop, and the close button only dispatch `open-change(false)`; the drawer really closes only after the consumer writes `open` back. The sample rejects the first close request, so the confirm button in the footer must be clicked.
 
@@ -616,7 +616,7 @@ function close() {
 </script>
 ```
 
-### Headless {#headless}
+### Headless
 
 `headless` keeps only the native dialog, backdrop, animations, scroll lock, and Escape / backdrop closing, rendering no built-in header, close button, or footer. The consumer is responsible for the full styling of the default slot content and must provide `dialog-label`. The sample also enables `draggable`, and headless supports drag-to-close too.
 
@@ -678,7 +678,7 @@ const open = ref(false)
 </script>
 ```
 
-### Drag to close {#draggable}
+### Drag to close
 
 With `draggable` enabled, a gray pill-shaped drag bar appears on the inner edge of the drawer. Drag past half of its own size toward the closing direction, or fling it quickly and release, to close; below the threshold it springs back. The direction adapts to `placement`.
 
@@ -754,7 +754,7 @@ const bottomOpen = ref(false)
 </script>
 ```
 
-### Nested stacking {#nested}
+### Nested stacking
 
 Declaratively nesting the same component stacks it automatically: the later-opened one sits on top at full size, lower layers scale by `0.95^n` and shift inward, and the exposed edge width is allocated by `A·ln(n)`. When layer widths differ or are out of order, the component compensates by the widest layer above so that the left edge of every layer stays visible; Escape and backdrop clicks act only on the topmost layer.
 
@@ -907,7 +907,7 @@ function closeLevel(index: number) {
 </script>
 ```
 
-### Sibling stacking {#siblings}
+### Sibling stacking
 
 Three drawers are mounted as sibling nodes. Open drawer 1 with the page button, then open the next layer from the current drawer's footer. The component manages order automatically: earlier drawers scale and shift while later ones sit on top; close them in any order and the remaining layers rearrange.
 
@@ -990,7 +990,7 @@ const open = ref([false, false, false])
 </script>
 ```
 
-### CSS variables {#theming}
+### CSS variables
 
 The background, radius, and viewport inset are controlled by `--wui-drawer-bg`, `--wui-drawer-radius`, and `--wui-drawer-inset` respectively; setting `--wui-drawer-inset: 0` gives edge-to-edge geometry. The white-background example also sets `--wui-color-text` to a dark color and `--wui-color-surface-control` to a light color so the heading and close button stay readable in both themes.
 

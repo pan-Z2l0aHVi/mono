@@ -19,9 +19,9 @@ import { reactIcon, vueIcon } from './flavor-icons'
 /**
  * 由示例文档 markdown 生成的页面主体：组件标题、简介、逐示例预览、双框架源码与 API 表。
  *
- * 数据全部来自 `packages/web-ui/docs/<name>.CN.md`（本站只出中文源语种）。带 `{#id}` 锚点的示例由
- * 生成器落成 `src/generated/demos/<component>--<id>.vue`，预览执行的字节与代码区显示的字节同源；
- * 没有锚点的语料只展示代码。
+ * 数据全部来自 `packages/web-ui/docs/<name>.CN.md`（本站只出中文源语种）。每条示例按标题派生的 id
+ * 由生成器落成 `src/generated/demos/<component>--<id>.vue`，预览执行的字节与代码区显示的字节同源；
+ * 标题两侧同文（英文专业术语），页面显示的也是它。
  *
  * 预览只运行当前站点框架；代码区始终提供 Vue / React 两份完整源码。
  */
@@ -77,10 +77,6 @@ let copyTimer: ReturnType<typeof setTimeout> | undefined
 
 onBeforeUnmount(() => clearTimeout(copyTimer))
 
-function sampleKey(sample: { id: string | null }, index: number) {
-  return sample.id ?? `sample-${index}`
-}
-
 function activeFlavor(key: string): Flavor {
   return activeFlavors[key] ?? nativeFlavor.value
 }
@@ -93,8 +89,8 @@ function panelId(key: string) {
   return `${props.component}-${key}-panel`
 }
 
-function demoComponent(demoKey: string | null) {
-  return demoKey ? demoComponents.get(`${props.component}--${demoKey}`) : undefined
+function demoComponent(demoKey: string) {
+  return demoComponents.get(`${props.component}--${demoKey}`)
 }
 
 /*
@@ -223,12 +219,7 @@ function copyAnnouncement(key: string) {
     <section class="flex flex-col gap-6">
       <component :is="`h${sectionHeadingLevel}`" class="mdc-heading">示例</component>
 
-      <article
-        v-for="(sample, index) in doc.samples"
-        :key="sampleKey(sample, index)"
-        class="flex flex-col gap-3"
-        :data-sample="sample.title"
-      >
+      <article v-for="sample in doc.samples" :key="sample.id" class="flex flex-col gap-3" :data-sample="sample.title">
         <component :is="`h${sampleHeadingLevel}`" class="mdc-heading">{{ sample.title }}</component>
         <!-- 说明也是生成器渲染好的 HTML 片段，不是运行时拼的用户输入。 -->
         <div class="mdc-markdown mdc-markdown-secondary" v-html="sample.descriptionHtml"></div>
@@ -248,11 +239,11 @@ function copyAnnouncement(key: string) {
           要跨过卡片上沿 17px 才摆得下，落到这块同色实底后面就被拦腰截断——看着像被裁剪，
           实际整条祖先链上连一个 `overflow: hidden` 都没有。
         -->
-        <div class="isolate" :data-current-flavor="activeFlavor(sampleKey(sample, index))">
+        <div class="isolate" :data-current-flavor="activeFlavor(sample.id)">
           <div
             v-if="demoComponent(sample.demoKey)"
             class="relative z-20 flex flex-wrap items-center gap-3 px-4 py-8"
-            :data-sample-preview="sample.demoKey ?? undefined"
+            :data-sample-preview="sample.demoKey"
           >
             <component :is="demoComponent(sample.demoKey)" />
           </div>
@@ -274,11 +265,11 @@ function copyAnnouncement(key: string) {
               class="relative z-10 flex flex-wrap items-center justify-between gap-3 rounded-t-4xl bg-(--wui-color-page) px-4 pt-4 pb-2"
             >
               <web-ui-segmented
-                :value="activeFlavor(sampleKey(sample, index))"
+                :value="activeFlavor(sample.id)"
                 variant="inset"
                 data-flavor-switch
                 aria-label="示例代码框架"
-                @input="onFlavorInput($event, sampleKey(sample, index))"
+                @input="onFlavorInput($event, sample.id)"
               >
                 <web-ui-segmented-trigger v-for="flavor in flavors" :key="flavor" :value="flavor">
                   <span class="flex items-center gap-1.5">
@@ -293,19 +284,19 @@ function copyAnnouncement(key: string) {
               </web-ui-segmented>
 
               <div class="flex items-center">
-                <span class="sr-only" aria-live="polite">{{ copyAnnouncement(sampleKey(sample, index)) }}</span>
+                <span class="sr-only" aria-live="polite">{{ copyAnnouncement(sample.id) }}</span>
                 <web-ui-button-group>
-                  <web-ui-tooltip :content="copyLabel(sampleKey(sample, index))">
+                  <web-ui-tooltip :content="copyLabel(sample.id)">
                     <web-ui-button
                       icon
                       variant="ghost"
                       data-copy
-                      :aria-label="copyLabel(sampleKey(sample, index))"
-                      @click="copyCode($event, sampleKey(sample, index))"
+                      :aria-label="copyLabel(sample.id)"
+                      @click="copyCode($event, sample.id)"
                     >
                       <!-- 成功态才包进描边宿主：`web-ui-svg-draw-lines` 在 slot 内容稳定时自动播一次，
                          所以每次复制都会重新画出勾与圆，而不是淡入一张现成的图。 -->
-                      <web-ui-svg-draw-lines v-if="copyState(sampleKey(sample, index)) === 'copied'" :duration="300">
+                      <web-ui-svg-draw-lines v-if="copyState(sample.id) === 'copied'" :duration="300">
                         <web-ui-icon
                           :icon="akarIconsCircleCheck"
                           :size="15"
@@ -314,24 +305,24 @@ function copyAnnouncement(key: string) {
                       </web-ui-svg-draw-lines>
                       <web-ui-icon
                         v-else
-                        :icon="copyIcon(sampleKey(sample, index))"
+                        :icon="copyIcon(sample.id)"
                         :size="15"
-                        :class="copyState(sampleKey(sample, index)) === 'failed' ? 'text-(--wui-color-danger)' : ''"
+                        :class="copyState(sample.id) === 'failed' ? 'text-(--wui-color-danger)' : ''"
                       ></web-ui-icon>
                     </web-ui-button>
                   </web-ui-tooltip>
-                  <web-ui-tooltip :content="expanded[sampleKey(sample, index)] ? '收起代码' : '展开代码'">
+                  <web-ui-tooltip :content="expanded[sample.id] ? '收起代码' : '展开代码'">
                     <web-ui-button
                       icon
                       variant="ghost"
                       data-toggle-code
-                      :aria-label="expanded[sampleKey(sample, index)] ? '收起代码' : '展开代码'"
-                      :aria-expanded="expanded[sampleKey(sample, index)] ?? false"
-                      :aria-controls="panelId(sampleKey(sample, index))"
-                      @click="toggleExpanded($event, sampleKey(sample, index))"
+                      :aria-label="expanded[sample.id] ? '收起代码' : '展开代码'"
+                      :aria-expanded="expanded[sample.id] ?? false"
+                      :aria-controls="panelId(sample.id)"
+                      @click="toggleExpanded($event, sample.id)"
                     >
                       <web-ui-icon
-                        :icon="expanded[sampleKey(sample, index)] ? lucideChevronUp : lucideChevronDown"
+                        :icon="expanded[sample.id] ? lucideChevronUp : lucideChevronDown"
                         :size="15"
                       ></web-ui-icon>
                     </web-ui-button>
@@ -359,20 +350,20 @@ function copyAnnouncement(key: string) {
               收尾（末端 alpha 归零），落不到圆角上。
             -->
             <web-ui-collapse
-              :open="expanded[sampleKey(sample, index)] ?? false"
+              :open="expanded[sample.id] ?? false"
               peek="128px"
               class="rounded-b-4xl bg-(--wui-color-page) [--wui-collapse-peek-edge-ratio:0.6]"
-              @click="expandFromPeek($event, sampleKey(sample, index))"
+              @click="expandFromPeek($event, sample.id)"
             >
               <div slot="content">
                 <OverlayScrollbarsComponent
-                  :id="panelId(sampleKey(sample, index))"
+                  :id="panelId(sample.id)"
                   :options="webUiScrollbarsOptions"
                   :events="codeScrollbarsEvents"
                   class="max-h-[32rem] overflow-auto rounded-b-4xl bg-(--wui-color-page) px-4 pt-3 pb-4 font-mono text-xs leading-6"
                   data-code
                 >
-                  <div v-html="sample.html[activeFlavor(sampleKey(sample, index))]"></div>
+                  <div v-html="sample.html[activeFlavor(sample.id)]"></div>
                 </OverlayScrollbarsComponent>
               </div>
             </web-ui-collapse>

@@ -7,7 +7,7 @@ empty state 占位：`title` 与 `description` 提供文案，`icon` / `action` 
 
 ## Samples
 
-### 基础 {#basic}
+### Basic
 
 `title` 与 `description` 是两个主要文案位，两个都写就是这套空态最常见的形状。默认图形（`andrsrxn:inbox`）由组件自带，边长与颜色各有一枚变量。
 
@@ -23,7 +23,7 @@ export default function Demo() {
 </template>
 ```
 
-### 文案位收起 {#partial}
+### Collapsing copy slots
 
 标题、描述、操作区三段各自按「有没有内容」决定占不占位：只给 `title` 就没有描述行，只给 `description` 就没有标题行，三段都空着时只剩图形区。
 
@@ -49,7 +49,7 @@ export default function Demo() {
 </template>
 ```
 
-### 操作区 {#action}
+### Action area
 
 `action` 插槽放恢复入口，它没有对应的属性可写，只认插槽内容。一段空态通常只要一个主操作，按钮再多就该换成下面的组合写法。
 
@@ -73,7 +73,7 @@ export default function Demo() {
 </template>
 ```
 
-### 插槽内容 {#slots}
+### Slot content
 
 四个插槽换掉整组内容：`icon` 换图形，默认插槽换标题，`description` 换描述，`action` 换操作区。插槽内容覆盖同名属性，所以写了插槽就不必再写 `title` / `description`。多个操作套一层自己的容器，操作区只负责它上方的那段间距。
 
@@ -113,7 +113,7 @@ import { lucideSearch } from '@greypan/web-ui/icons'
 </script>
 ```
 
-### 尺寸与颜色 {#tokens}
+### Size and color
 
 没有 `size` 属性：图形边长、两行字号、颜色与留白是四组独立变量，要一起放大就一起写——只放大图形会留下与字号不匹配的空白。
 
@@ -153,7 +153,7 @@ export default function Demo() {
 </template>
 ```
 
-### 长文案 {#long-copy}
+### Long copy
 
 标题与描述都按内容宽度换行，长词用 `overflow-wrap: anywhere` 断开，因此一段复制链接或长标识符不会把盒子顶宽，也不会溢出到兄弟段落之外。
 
@@ -177,7 +177,7 @@ export default function Demo() {
 </template>
 ```
 
-### 逐项覆盖 {#css-vars}
+### Overriding one variable at a time
 
 上面的例子按组合给了几套写法，单枚变量也能单独改：`--wui-empty-icon-size` 是盒与图形共用的边长（图形填满盒，两者永远同步），`--wui-empty-content-width` 与两个段间距不参与任何组合，只能靠变量调。
 

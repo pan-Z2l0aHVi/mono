@@ -7,7 +7,7 @@ empty state placeholder: `title` and `description` provide the copy, and the `ic
 
 ## Samples
 
-### Basic {#basic}
+### Basic
 
 `title` and `description` are the two main copy slots; writing both is the most common shape of this empty state. The default graphic (`andrsrxn:inbox`) ships with the component, and its edge length and color each have a variable of their own.
 
@@ -23,7 +23,7 @@ export default function Demo() {
 </template>
 ```
 
-### Collapsing copy slots {#partial}
+### Collapsing copy slots
 
 Title, description, and action each decide whether to take space based on whether they have content: with only `title` there is no description line, with only `description` there is no title line, and with all three empty only the graphic area remains.
 
@@ -49,7 +49,7 @@ export default function Demo() {
 </template>
 ```
 
-### Action area {#action}
+### Action area
 
 The `action` slot holds the recovery entry point; it has no corresponding property and only accepts slot content. An empty state usually needs just one primary action; with more buttons, switch to the composition below.
 
@@ -73,7 +73,7 @@ export default function Demo() {
 </template>
 ```
 
-### Slot content {#slots}
+### Slot content
 
 The four slots replace the whole set of content: `icon` replaces the graphic, the default slot replaces the title, `description` replaces the description, and `action` replaces the action area. Slot content overrides the property of the same name, so once a slot is written there is no need for `title` / `description`. Multiple actions go in a container of their own; the action area only provides the gap above it.
 
@@ -113,7 +113,7 @@ import { lucideSearch } from '@greypan/web-ui/icons'
 </script>
 ```
 
-### Size and color {#tokens}
+### Size and color
 
 There is no `size` property: the graphic's edge length, the two font sizes, the colors, and the whitespace are four independent groups of variables. To scale the whole empty state, write them together—enlarging only the graphic leaves whitespace that does not match the type.
 
@@ -153,7 +153,7 @@ export default function Demo() {
 </template>
 ```
 
-### Long copy {#long-copy}
+### Long copy
 
 Title and description both wrap to the content width, and long words break with `overflow-wrap: anywhere`, so a pasted URL or a long identifier neither widens the box nor overflows into sibling sections.
 
@@ -177,7 +177,7 @@ export default function Demo() {
 </template>
 ```
 
-### Overriding one variable at a time {#css-vars}
+### Overriding one variable at a time
 
 The examples above spell out a few combinations; a single variable can also be changed on its own. `--wui-empty-icon-size` is the edge length shared by the box and the graphic (the graphic fills the box, so the two always move together), while `--wui-empty-content-width` and the two section gaps belong to no combination and are reachable only through variables.
 

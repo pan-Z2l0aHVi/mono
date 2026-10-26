@@ -7,7 +7,7 @@ An SVG line-drawing animation: it animates the original elements via `stroke-das
 
 ## Samples
 
-### Basic {#basic}
+### Basic
 
 The default slot holds the SVG content to animate, and it plays a single draw-in automatically the first time the content is stable. `duration` is the number of milliseconds for that stroke and defaults to `1000`.
 
@@ -57,7 +57,7 @@ export default function Demo() {
 </template>
 ```
 
-### Stroked geometry {#geometry}
+### Stroked geometry
 
 It collects the geometry elements matched by the selector `path, rect, circle, line, polyline, polygon, ellipse`; within one playback they all start and advance in parallel—the component offers no entry point for delays or staggering, so a one-by-one effect requires splitting into multiple instances.
 
@@ -157,7 +157,7 @@ export default function Demo() {
 </template>
 ```
 
-### Duration and easing {#duration-easing}
+### Duration and easing
 
 `duration` is clamped to 0–30000 milliseconds, and a non-numeric value falls back to `1000`; `easing` is passed to `element.animate()` as-is and defaults to `linear`.
 
@@ -273,7 +273,7 @@ function replayAll() {
 </script>
 ```
 
-### Multiple paths and nesting {#many-paths}
+### Multiple paths and nesting
 
 Each `replay()` collects the subtree again, covering all light DOM descendants of the host: multiple `<path>`s inside one `<svg>`, several `<svg>`s side by side, and `<g>` nesting at any depth all count as one batch and start and finish together. The number of paths never queues animations, and the instance has no concurrency limit and no "play one by one" switch.
 
@@ -337,7 +337,7 @@ const lines = useTemplateRef<WebUiSvgDrawLines>('lines')
 </script>
 ```
 
-### Nested shadow roots {#shadow-dom}
+### Nested shadow roots
 
 The traversal recurses into **open** shadow roots, so a `<path>` inside `<web-ui-icon>` and an `<svg>` in the host's light DOM land in the same batch and animate together; closed shadow roots are skipped.
 
@@ -413,7 +413,7 @@ const lines = useTemplateRef<WebUiSvgDrawLines>('lines')
 </script>
 ```
 
-### Disabling autoplay {#no-autoplay}
+### Disabling autoplay
 
 `no-autoplay` turns off "play once when the content first becomes stable", and the content stays as the asset is—fully stroked, visible, and with no inline dash written; `replay()` still works, and the caller decides when to play. `<web-ui-checkbox>` relies on it to avoid drawing an already-checked check on the page's first frame.
 
@@ -461,7 +461,7 @@ const lines = useTemplateRef<WebUiSvgDrawLines>('lines')
 </script>
 ```
 
-### Manual replay {#replay}
+### Manual replay
 
 `replay()` cancels the current animation and collects the geometry elements again, drawing from empty to full; `replay({ reverse: true })` retracts along the same path, and the trailing blank is left in the inline styles as DOM state—showing it again requires calling `replay()` once more.
 

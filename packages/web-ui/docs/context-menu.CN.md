@@ -7,7 +7,7 @@ tag: web-ui-context-menu
 
 ## Samples
 
-### 基础 {#basic}
+### Basic
 
 default slot 的第一个元素是触发区域，其余子元素是 menu item：在触发区内右键，menu 从光标位置展开。
 
@@ -34,7 +34,7 @@ export default function Demo() {
           setLast(event.detail.open ? 'true' : 'false')
         }}
       >
-        <div className="flex h-32 w-full items-center justify-center rounded-xl border border-dashed border-(--wui-color-border) bg-(--wui-color-surface-control) text-sm text-(--wui-color-text-secondary)">
+        <div className="flex h-32 w-full items-center justify-center rounded-xl border border-dashed border-(--wui-color-border) bg-(--wui-color-surface-control) text-sm text-(--wui-color-text)">
           在此区域右键点击
         </div>
         <web-ui-dropdown-item>
@@ -70,7 +70,7 @@ export default function Demo() {
   <div class="flex w-full flex-col items-start gap-3">
     <web-ui-context-menu class="w-full" @open-change="onOpenChange">
       <div
-        class="flex h-32 w-full items-center justify-center rounded-xl border border-dashed border-(--wui-color-border) bg-(--wui-color-surface-control) text-sm text-(--wui-color-text-secondary)"
+        class="flex h-32 w-full items-center justify-center rounded-xl border border-dashed border-(--wui-color-border) bg-(--wui-color-surface-control) text-sm text-(--wui-color-text)"
       >
         在此区域右键点击
       </div>
@@ -109,7 +109,7 @@ function onOpenChange(event: WebUiEvent<WebUiContextMenu, 'open-change'>) {
 </script>
 ```
 
-### 触屏长按 {#long-press}
+### Touch long press
 
 `long-press` 是触屏 opt-in：按住 `long-press-delay`（这里 600 ms）后打开 menu，从按点向下展开；按住期间位移超过 10px 视为滚动并取消。
 
@@ -135,7 +135,7 @@ export default function Demo() {
           setLast(event.detail.open ? 'true' : 'false')
         }}
       >
-        <div className="flex h-32 w-full items-center justify-center rounded-xl border border-dashed border-(--wui-color-border) bg-(--wui-color-surface-control) text-sm text-(--wui-color-text-secondary)">
+        <div className="flex h-32 w-full items-center justify-center rounded-xl border border-dashed border-(--wui-color-border) bg-(--wui-color-surface-control) text-sm text-(--wui-color-text)">
           在此区域按住 600 ms（触屏）
         </div>
         <web-ui-dropdown-item>重命名</web-ui-dropdown-item>
@@ -154,7 +154,7 @@ export default function Demo() {
   <div class="flex w-full flex-col items-start gap-3">
     <web-ui-context-menu class="w-full" long-press :long-press-delay="600" @open-change="onOpenChange">
       <div
-        class="flex h-32 w-full items-center justify-center rounded-xl border border-dashed border-(--wui-color-border) bg-(--wui-color-surface-control) text-sm text-(--wui-color-text-secondary)"
+        class="flex h-32 w-full items-center justify-center rounded-xl border border-dashed border-(--wui-color-border) bg-(--wui-color-surface-control) text-sm text-(--wui-color-text)"
       >
         在此区域按住 600 ms（触屏）
       </div>
@@ -181,7 +181,7 @@ function onOpenChange(event: WebUiEvent<WebUiContextMenu, 'open-change'>) {
 </script>
 ```
 
-### 禁用 {#disabled}
+### Disabled
 
 `disabled` 只抑制 menu：右键不打开，触发区本身不置灰、颜色也不变——组件不渲染 menu 面，没有可置灰的对象，禁用 context menu 也不等于禁用触发区。
 
@@ -205,7 +205,7 @@ export default function Demo() {
           setLast(event.detail.open ? 'true' : 'false')
         }}
       >
-        <div className="flex h-32 w-full items-center justify-center rounded-xl border border-dashed border-(--wui-color-border) bg-(--wui-color-surface-control) text-sm text-(--wui-color-text-secondary)">
+        <div className="flex h-32 w-full items-center justify-center rounded-xl border border-dashed border-(--wui-color-border) bg-(--wui-color-surface-control) text-sm text-(--wui-color-text)">
           {disabled ? 'menu 已禁用：右键不打开' : '在此区域右键点击'}
         </div>
         <web-ui-dropdown-item>编辑</web-ui-dropdown-item>
@@ -229,7 +229,7 @@ export default function Demo() {
   <div class="flex w-full flex-col items-start gap-3">
     <web-ui-context-menu class="w-full" :disabled="disabled" @open-change="onOpenChange">
       <div
-        class="flex h-32 w-full items-center justify-center rounded-xl border border-dashed border-(--wui-color-border) bg-(--wui-color-surface-control) text-sm text-(--wui-color-text-secondary)"
+        class="flex h-32 w-full items-center justify-center rounded-xl border border-dashed border-(--wui-color-border) bg-(--wui-color-surface-control) text-sm text-(--wui-color-text)"
       >
         {{ disabled ? 'menu 已禁用：右键不打开' : '在此区域右键点击' }}
       </div>

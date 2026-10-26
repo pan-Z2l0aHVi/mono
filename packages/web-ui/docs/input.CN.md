@@ -7,7 +7,7 @@ tag: web-ui-input
 
 ## Samples
 
-### 基础 {#basic}
+### Basic
 
 `placeholder` 只在空值时显示，`value` 既是显示值也是表单提交值。不接 `input` 时组件自己持有输入内容；要由页面同步这个值就写 `value` 并接住 `input`，见下面的受控值与事件。
 
@@ -31,7 +31,7 @@ export default function Demo() {
 </template>
 ```
 
-### 输入类型 {#types}
+### Input types
 
 `type` 原样透传给内部原生 input，掩码与格式判定都由原生类型提供：`password` 掩码输入内容，`email` 在表单提交时校验格式。
 
@@ -57,7 +57,7 @@ export default function Demo() {
 </template>
 ```
 
-### 前后缀 {#prefix-suffix}
+### Prefix and suffix
 
 `prefix` / `suffix` 插槽在输入区两侧放 icon 或文字；哪一侧没有指派节点就整块收起，不留 `gap` 的间距。没有可见 label 的输入用 `aria-label` 提供无障碍名称。
 
@@ -97,7 +97,7 @@ import { lucideSearch } from '@greypan/web-ui/icons'
 </script>
 ```
 
-### 清除 button {#clearable}
+### Clear button
 
 `clearable` 只在有值且未设置 `disabled` 或 `readonly` 时画出清除 button；空值、禁用或只读时不画。点击清除 button 会清空值，并**同时派发 `input` 与 `change`**——清空是一次已提交的离散变更，不是连续输入，只监听 `change` 的消费者也必须收到。`full` 让控件占满父容器宽度。
 
@@ -121,7 +121,7 @@ export default function Demo() {
 </template>
 ```
 
-### 禁用与只读 {#states}
+### Disabled and readonly
 
 `disabled` 关掉输入、校验与清除操作，宿主整体降到四成不透明度；`readonly` 保留可读、可全选与可复制，但不接受输入，并收起清除 button——清除会改值，与只读语义冲突。
 
@@ -157,7 +157,7 @@ import { lucideSearch } from '@greypan/web-ui/icons'
 </script>
 ```
 
-### 无边框 {#borderless}
+### Borderless
 
 `borderless` 移除边框、背景、模糊与 glass 描边环，只留 padding 与 focus ring，供外层自己画容器；输入区宽度仍走 `--wui-input-width`。
 
@@ -193,7 +193,7 @@ import { lucideSearch } from '@greypan/web-ui/icons'
 </script>
 ```
 
-### 受控值与事件 {#events}
+### Controlled value and events
 
 `input` 每敲一个字派发一次，`change` 与内部原生控件对齐：值改动后失焦时转发一次。两者都只带事件本身，取值读宿主的 `value`。
 
@@ -247,7 +247,7 @@ const committed = ref('')
 </script>
 ```
 
-### 表单值 {#form}
+### Form value
 
 `name` 是字段名，提交值就是当前输入内容；`required` 在未填时拦下原生提交（`valueMissing`），`type="email"` 的格式不符同样拦下（`typeMismatch`）。判定经 ElementInternals 转发给宿主 `<form>`，所以原生校验气泡指向的是这个控件。
 
@@ -327,7 +327,7 @@ function reset() {
 </script>
 ```
 
-### 聚焦与全选 {#methods}
+### Focus and select all
 
 `focus()` / `blur()` 委托到 shadow 内的原生 input，`select()` 全选当前值；`focus()` 与 `select()` 在 `disabled` 下不产生效果，`blur()` 没有这道守卫，只是禁用态的内部控件本来就拿不到焦点。
 
@@ -369,7 +369,7 @@ const field = useTemplateRef<WebUiInput>('field')
 </script>
 ```
 
-### CSS 变量 {#sizing}
+### CSS variables
 
 `--wui-input-width` 决定输入区宽度（`full` 下由 100% 接管），`--wui-input-clear-color` 决定清除 button 的颜色，默认取三级文本色。
 

@@ -15,14 +15,14 @@ export default function Demo() {
           setLast(event.detail.open ? 'true' : 'false')
         }}
       >
-        <div className="flex h-32 w-full items-center justify-center rounded-xl border border-dashed border-(--wui-color-border) bg-(--wui-color-surface-control) text-sm text-(--wui-color-text-secondary)">
-          Press and hold for 600 ms in this area (touch)
+        <div className="flex h-32 w-full items-center justify-center rounded-xl border border-dashed border-(--wui-color-border) bg-(--wui-color-surface-control) text-sm text-(--wui-color-text)">
+          在此区域按住 600 ms（触屏）
         </div>
-        <web-ui-dropdown-item>Rename</web-ui-dropdown-item>
-        <web-ui-dropdown-item>Move</web-ui-dropdown-item>
+        <web-ui-dropdown-item>重命名</web-ui-dropdown-item>
+        <web-ui-dropdown-item>移动</web-ui-dropdown-item>
       </web-ui-context-menu>
       <output className="text-sm text-(--wui-color-text-secondary)">
-        open-change: {count} times · last detail.open = {last}
+        open-change：{count} 次 · 最后一次 detail.open = {last}
       </output>
     </div>
   )

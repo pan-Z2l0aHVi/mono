@@ -7,7 +7,7 @@ tag: web-ui-radio-group
 
 ## Samples
 
-### 单选组 {#basic}
+### Single radio group
 
 组持有唯一的值：`value` 决定谁被选中，成员的选中态由组下发，页面只读组的值。
 
@@ -50,7 +50,7 @@ function onInput(event: WebUiEvent<WebUiRadioGroup, 'input'>) {
 </script>
 ```
 
-### 排列方向 {#direction}
+### Direction
 
 `direction` 决定成员横排还是竖排，默认 `vertical`；非法值也回退到 `vertical`。
 
@@ -100,7 +100,7 @@ export default function Demo() {
 </template>
 ```
 
-### 成员间距 {#gap}
+### Member gap
 
 成员之间的间距走 `--wui-radio-group-gap`，默认经 `--wui-space-2` 解析成 8px；覆盖它只换间距，不动排列方向。下面两条是同一份成员，只有这个变量不同。
 
@@ -142,7 +142,7 @@ export default function Demo() {
 </template>
 ```
 
-### 组级禁用与必填 {#disabled-required}
+### Group-level disabled and required
 
 `disabled` 关掉整组的交互，这个禁用态会下发给成员；`required` 让原生表单校验在组没有值时拦截提交。
 

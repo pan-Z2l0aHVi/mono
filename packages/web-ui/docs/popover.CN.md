@@ -7,7 +7,7 @@ tag: web-ui-popover
 
 ## Samples
 
-### 基础 {#basic}
+### Basic
 
 click 模式点 trigger 切换，点 panel 外或按 Escape 关闭；trigger 请放入可交互元素（`web-ui-button` 或原生 `button`），开合状态会回写到它的 `aria-expanded` / `aria-controls`。
 
@@ -74,7 +74,7 @@ function onOpenChange(event: WebUiEvent<WebUiPopover, 'open-change'>) {
 </script>
 ```
 
-### Hover 触发 {#hover}
+### Hover trigger
 
 `trigger="hover"` 用 `pointerenter` / `pointerleave` 加 100ms 延迟控制开合；指针从 trigger 移进 panel 不会收起。click 与 focus 在这个模式下都不触发，读数同样只跟随用户来源的 `open-change`。
 
@@ -120,7 +120,7 @@ const last = ref('—')
 </script>
 ```
 
-### 受控开合 {#controlled}
+### Controlled open state
 
 `trigger="manual"` 不响应悬停，点 panel 外与 Escape 也不会关闭；开合由外部 button 调用 `show()` / `close()` 或点 trigger 自己切换。
 

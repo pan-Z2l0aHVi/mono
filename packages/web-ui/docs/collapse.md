@@ -9,7 +9,7 @@ When the user clicks the trigger, the component writes `open` to the new value i
 
 ## Samples
 
-### Basic {#basic}
+### Basic
 
 `open` is the single source of truth; the `content` slot holds the content to collapse, and the default slot holds the trigger.
 
@@ -71,7 +71,7 @@ const open = ref(false)
 </script>
 ```
 
-### Without binding open {#uncontrolled}
+### Without binding open
 
 The component toggles `open` on its own, so it works with no binding at all: just provide the default slot and the `content` slot. The second one writes `open` statically, meaning it starts expanded—when it is already `open` at mount it lands directly in the expanded resting state and plays no enter animation. A static value only applies once at mount; afterwards the component keeps toggling the property itself and the page is no longer involved.
 
@@ -151,7 +151,7 @@ export default function Demo() {
 </template>
 ```
 
-### Trigger types {#trigger}
+### Trigger types
 
 Interaction semantics come from the element in the default slot itself: a native `<button>` and a `<web-ui-button>` already provide Enter / Space activation and focus, and the component writes `aria-expanded` back to the first assigned element in the default slot and adds `disabled` to it while it is disabled.
 
@@ -268,7 +268,7 @@ import { lucideChevronDown } from '@greypan/web-ui/icons'
 </script>
 ```
 
-### Disabled {#disabled}
+### Disabled
 
 `disabled` makes clicks be ignored and adds `disabled` to the trigger element; removing the disabled state removes that attribute and returns the trigger to its own disabled state. It does not change a panel that is already expanded: the second one sets both `open` and `disabled` and its content stays visible—disabling governs triggering, not the current state.
 
@@ -364,7 +364,7 @@ const disabled = ref(true)
 </script>
 ```
 
-### Events and methods {#events}
+### Events and methods
 
 The readout shows the `open-change` count and the last `detail.open`, both taken on this collapse host. A trigger click increments the count: `open-change` is dispatched only after a user gesture, and `detail.open` is the state the component has already landed on.
 
@@ -463,7 +463,7 @@ function onOpenChange(event: WebUiEvent<WebUiCollapse, 'open-change'>) {
 </script>
 ```
 
-### Closed resting state and scroll position {#keep-mounted}
+### Closed resting state and scroll position
 
 Both stay in the closed resting state and both have a visible height of 0; the difference is how the content exits.
 
@@ -555,7 +555,7 @@ const rows = Array.from({ length: 20 }, (_, index) => `List item ${index + 1}`)
 </script>
 ```
 
-### Peek preview band {#peek}
+### Peek preview band
 
 `peek` makes the closed resting state collapse to a fixed length instead of 0, and the exposed strip hints that more content follows. Its closed-state semantics equal `keep-mounted`: the whole inner subtree sits inside an `inert` subtree, so the exposed part is likewise not clickable and cannot be reached with Tab; expand first to interact.
 
@@ -646,7 +646,7 @@ const longRows = Array.from(
 </script>
 ```
 
-### Edge fade {#peek-edge}
+### Edge fade
 
 The clipping edge of the exposed region carries an alpha fade, and the same band layers a background blur on top; its length is derived from `peek`: a default ratio of 0.4, clamped within `--wui-collapse-peek-edge-max` (`112px`).
 
@@ -743,7 +743,7 @@ const cappedRows = Array.from(
 </script>
 ```
 
-### CSS variables {#theming}
+### CSS variables
 
 `--wui-collapse-peek-edge` sets the gradient length explicitly and takes precedence over the derived value; `--wui-collapse-peek-edge-blur` is the radius of the background blur on the same band; `--wui-collapse-peek-edge-color` is the gradient's starting color at the clipping edge (the page background by default), fading to fully transparent towards the content.
 
@@ -863,7 +863,7 @@ const edgeColorRows = Array.from(
 </script>
 ```
 
-### Horizontal {#horizontal}
+### Horizontal
 
 `horizontal` switches the animation axis from height to width, so the content expands along the width and the trigger and content sit on one row—the host itself is only a block box, so add flex on the host to get a row (both of these set `flex items-center gap-2`).
 
@@ -943,7 +943,7 @@ import { radixIconsPanelLeftMinimized } from '@greypan/web-ui/icons'
 </script>
 ```
 
-### Nested {#nested}
+### Nested
 
 The inner collapse sits in the outer one's `content` slot. Expanding the inner one makes the outer one grow: the expanded resting track stays at `1fr` and the height is decided by the content, so the component does not need to measure the inner one.
 
@@ -1051,7 +1051,7 @@ function onOuterChange(event: WebUiEvent<WebUiCollapse, 'open-change'>) {
 </script>
 ```
 
-### Multiple instances {#accordion}
+### Multiple instances
 
 The three panels each hold their own `open`, and the page uses an array as the source of truth: each `open` is written as whether it is in the array, and write-back goes through `open-change`'s `detail.open`. With "Only one at a time" checked, the page guarantees exclusivity—collapse has no group contract; exclusivity is the consumer's state management, not a component property.
 
@@ -1157,7 +1157,7 @@ function setAt(title: string, value: boolean) {
 </script>
 ```
 
-### Content height changes {#content-height}
+### Content height changes
 
 The expanded resting track stays at `1fr` and the height is decided by the content: the component does not need to re-measure when the content grows or shrinks inside the panel; add or remove a row and the panel grows or shrinks with it. Only the transition between `peek` and expanded—fixed length to content height—needs a pixel read (see Peek preview band).
 

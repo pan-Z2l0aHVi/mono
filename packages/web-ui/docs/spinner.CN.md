@@ -7,7 +7,7 @@ tag: web-ui-spinner
 
 ## Samples
 
-### 基础 {#basic}
+### Basic
 
 `size` 是像素尺寸，只改旋转器本体的宽高。宿主在 connect 时补上 `role="status"` 与 `aria-label`，已经有就不改写，所以按语境换名直接写在元素上。
 
@@ -51,7 +51,7 @@ export default function Demo() {
 </template>
 ```
 
-### 说明文字 {#description}
+### Description text
 
 说明有两条通道：`description` 属性由组件画一段带样式的文字，`description` 插槽把内容交给你自己排版。两者同时给就画两行——组件不判互斥。声明式实例是 inline-flex 盒，说明排在旋转器**右侧**；全屏实例排在**下方**。
 
@@ -81,7 +81,7 @@ export default function Demo() {
 </template>
 ```
 
-### 全屏实例 {#imperative}
+### Full-screen instance
 
 `show()` 在当前主题的 overlay root（没有主题作用域时回退到 body 的 fallback overlay root）挂一个全屏实例，`size` / `description` / `color` 覆盖外观，`duration` 大于 0 时到期自动 `hide()`。
 
@@ -145,7 +145,7 @@ function showWithDescription() {
 </script>
 ```
 
-### 转速 {#speed}
+### Speed
 
 叶片追光的周期是 `--wui-duration-spinner`（`800ms`），在宿主上覆盖它就能改转速。主题 `motion="reduced"` 或系统 reduce 偏好下这个 token 放慢到 `1600ms` 而不停：加载指示停掉会被读成界面卡死。
 

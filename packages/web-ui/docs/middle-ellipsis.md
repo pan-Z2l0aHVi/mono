@@ -7,7 +7,7 @@ Single-line middle ellipsis: keep both ends, drop the middle, `very-long-file-�
 
 ## Samples
 
-### Keep both ends {#basic}
+### Keep both ends
 
 The two lines are **the same string**; they differ only in the truncation mechanism. `text-overflow: ellipsis` can only preserve the head, so a long filename loses the extension that actually distinguishes it; middle ellipsis puts the ellipsis in the middle and keeps both head and tail. Both approaches require a single line with a definite inline size.
 
@@ -49,7 +49,7 @@ const FILENAME = 'very-long-file-name-abcdefghij.txt'
 </script>
 ```
 
-### Mixed CJK and ASCII {#cjk}
+### Mixed CJK and ASCII
 
 Han characters and ASCII mixed in one string is the norm: the head is a Chinese title and the tail is the extension. Each Han character is a full-width grapheme cluster, so the cut moves one cell at a time and never slices a character in half. Both lines are the same string; the second line uses `marker-position: 80` to give the budget to the tail.
 
@@ -91,7 +91,7 @@ const CJK_TITLE = '海外增长与留存复盘报告-2026年第二季度终稿-v
 </script>
 ```
 
-### Long strings without spaces and grapheme clusters {#clusters}
+### Long strings without spaces and grapheme clusters
 
 The first line is 120 `a` characters with no spaces: no wrapping, and it is cut to exactly what the measured width can hold.
 
@@ -139,7 +139,7 @@ const CLUSTERS = `${'\u{1F469}\u200D\u{1F4BB}'.repeat(16)}${'\u{26A0}\uFE0F}'.re
 </script>
 ```
 
-### Marker {#marker}
+### Marker
 
 `marker` replaces the ellipsis in the middle. The third line uses an empty `marker`: it is really truncated, it just gives no visible signal—hover it and the `title` holds the full original text.
 
@@ -189,7 +189,7 @@ const FILENAME = 'very-long-file-name-abcdefghij.txt'
 </script>
 ```
 
-### Marker position {#marker-position}
+### Marker position
 
 `marker-position` is the horizontal ratio, 0–100, at which the marker sits, default `50`: `0` keeps only the head (equivalent to end ellipsis) and `100` keeps only the tail. When the head is path noise and the tail is the extension, use a value above 50.
 
@@ -227,7 +227,7 @@ const POSITIONS = [0, 50, 80, 100]
 </script>
 ```
 
-### Container width {#container}
+### Container width
 
 The width comes from the container and is recomputed when the container changes: narrower cuts harder, wider takes truncation back. The two boxes below have percentage widths, each with a cap—the cap guarantees overflow even on a wide screen, otherwise the whole string fits once the window is wide enough and nothing is visible in the box. Drag the window width to watch both lines re-cut.
 
