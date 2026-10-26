@@ -43,6 +43,8 @@ catalog:
   # 必须与 vite-plus 内置的 vitest 版本一字不差，禁止 semver 漂移（否则双 runner 共存）
   '@vitest/browser-playwright': 4.1.11
   '@vue/devtools-api': ^8.0.0
+  '@vue/compiler-dom': ^3.5.42
+  '@vue/compiler-sfc': ^3.5.42
   '@vue/test-utils': ^2.4.11
   '@vue/tsconfig': ^0.9.1
   '@vueuse/core': ^15.0.0
