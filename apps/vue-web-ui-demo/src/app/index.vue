@@ -262,7 +262,14 @@ function isNavActive(path: string) {
           :class="{ 'invisible pointer-events-none': !bannerVisible }"
           :aria-hidden="!bannerVisible"
         >
-          <web-ui-button class="mobile:-ml-4" size="24" icon variant="ghost" @click="bannerVisible = false">
+          <web-ui-button
+            class="mobile:-ml-4"
+            size="24"
+            icon
+            variant="ghost"
+            aria-label="关闭横幅"
+            @click="bannerVisible = false"
+          >
             <web-ui-icon class="text-(--wui-color-on-accent)" :icon="lucideX" :size="16"></web-ui-icon>
           </web-ui-button>
           <span class="text-center">🎉 Welcome to the web-ui component library!</span>
