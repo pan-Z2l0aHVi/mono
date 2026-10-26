@@ -7,7 +7,7 @@ A single-value selector that accepts input and filters candidates: typed text fi
 
 ## Samples
 
-### Basic {#basic}
+### Basic
 
 `value` is the current input text and is owned by the page: typing filters candidates by label (default `contains`), and the panel stays closed when nothing matches; after a selection the text is filled back with that option's label and `selected-value` gives that option's value.
 
@@ -74,7 +74,7 @@ function onChange(event: WebUiEvent<WebUiAutocomplete, 'change'>) {
 </script>
 ```
 
-### Filter modes {#filter}
+### Filter modes
 
 `filter` takes `contains` (default), `prefix`, or `none`: the first two match labels by substring or prefix, while `none` turns filtering off and always lists all candidates.
 
@@ -144,7 +144,7 @@ function onModeChange(event: WebUiEvent<WebUiSelect, 'change'>) {
 </script>
 ```
 
-### change and selected-value {#change-selected-value}
+### change and selected-value
 
 After a candidate is selected, `selected-value` is that option's value; it clears when the input no longer exactly matches any label—it is derived by the component during its update cycle, so reading it in `input` takes one tick (`requestAnimationFrame`), while `change` sees the value committed by that interaction.
 
@@ -238,7 +238,7 @@ function onChange(event: WebUiEvent<WebUiAutocomplete, 'change'>) {
 </script>
 ```
 
-### Custom trigger {#custom-trigger}
+### Custom trigger
 
 Put an editable component into the `trigger` slot to replace the default input: a multiline trigger keeps Enter as a newline and closes the panel with Escape or blur; this example also uses `filter="none"` so that all candidates are always listed.
 
@@ -294,7 +294,7 @@ const field = useTemplateRef<WebUiAutocomplete>('field')
 </script>
 ```
 
-### Allow custom values {#custom-value}
+### Allow custom values
 
 With `allow-custom-value` on, text that is not among the candidates can still be submitted: pressing Enter takes the raw input as a custom value, the panel closes, `change` fires, and `selected-value` stays empty; when filtering leaves no candidates the panel does not open, and Enter still submits.
 
@@ -360,7 +360,7 @@ function onChange(event: WebUiEvent<WebUiAutocomplete, 'change'>) {
 </script>
 ```
 
-### Disabled and readonly {#disabled-readonly}
+### Disabled and readonly
 
 Neither `disabled` nor `readonly` accepts input or opens the panel, while a prefilled `value` is still displayed as usual; both count as passing required validation.
 

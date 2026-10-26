@@ -7,7 +7,7 @@ badge / notification count: stacks a `count` corner badge on one corner of the d
 
 ## Samples
 
-### Basic {#basic}
+### Basic
 
 The default slot is the content to decorate, and `count` is the number on the corner badge; when `count` is 0 the badge is not drawn and the decorated content shows as usual—use `show-zero` to keep a placeholder for 0 as well. Both graphics (icons) and controls (buttons) can be wrapped as content.
 
@@ -63,7 +63,7 @@ import { lucideBell } from '@greypan/web-ui/icons'
 </script>
 ```
 
-### Number limit {#max}
+### Number limit
 
 When `count` exceeds `max`, `max+` is drawn instead of spilling the extra digits; `max` defaults to 99, and three digits already take the shape of the limit.
 
@@ -105,7 +105,7 @@ export default function Demo() {
 </template>
 ```
 
-### Dot mode {#dot}
+### Dot mode
 
 `dot` draws only a dot and no number, for "something happened but it is not countable". It is the highest-priority switch at the display layer: once `dot` is set the badge is always drawn, and `count` takes no part in the decision.
 
@@ -147,7 +147,7 @@ export default function Demo() {
 </template>
 ```
 
-### Placement {#placement}
+### Placement
 
 `placement` pins the badge to one of the four corners of the content box, `top-right` by default. Invalid values take no part in rendering: the component normalizes them back to `top-right`, and the host attribute is corrected along with it.
 
@@ -197,7 +197,7 @@ export default function Demo() {
 </template>
 ```
 
-### Offset {#offset}
+### Offset
 
 `offset-x` / `offset-y` fine-tune in pixels at the corner chosen by `placement`; negative values pull the badge toward the content and positive values push it outward. Rounded or outlined content often needs the badge pulled back a little so it does not hang outside the outline.
 
@@ -239,7 +239,7 @@ export default function Demo() {
 </template>
 ```
 
-### Standalone use {#standalone}
+### Standalone use
 
 When the default slot is empty there is no "corner of content" to pin to, so the badge returns to inline flow and is itself a readable number or dot, suitable for sitting next to text in places such as list items and tab titles.
 
@@ -267,7 +267,7 @@ export default function Demo() {
 </template>
 ```
 
-### Hidden {#hidden}
+### Hidden
 
 `badge-hidden` stops the badge from being drawn at all while the content shows as usual. It overrides `dot` and `count`: the number or unread state is still there, it is just not shown this time.
 
@@ -309,7 +309,7 @@ export default function Demo() {
 </template>
 ```
 
-### Controlled count {#controlled}
+### Controlled count
 
 `count` is a plain property whose value the page owns: when the number grows past `max` the badge shows `max+`, and when it returns to 0 the badge disappears on its own, with no extra conditional rendering in the page.
 

@@ -7,7 +7,7 @@ tag: web-ui-toast
 
 ## Samples
 
-### 快捷方法 {#shortcuts}
+### Shortcuts
 
 `toast.success` / `info` / `warning` / `error` 是 `toast()` 加 `type` 的快捷写法，每次调用返回这条 toast 的最终 id；`error` 的默认时长是 `5000`，比其余类型的 `3000` 长。
 
@@ -77,7 +77,7 @@ onBeforeUnmount(() => toast.clear())
 </script>
 ```
 
-### 完整 option {#options}
+### Full options
 
 `toast()` 接受完整 option：`heading` 是粗体标题，`message` 是正文，`position` 决定落进哪个角的容器（这里是 `bottom-right`），`duration` 是自动关闭的毫秒数，`closable` 控制是否渲染关闭 button。返回的 id 写进读数。
 
@@ -147,7 +147,7 @@ onBeforeUnmount(() => toast.clear())
 </script>
 ```
 
-### 合并同一条 {#upsert}
+### Merging into one toast
 
 同一个 `id` 的后续调用更新那一条，不会新增。第一步显式传 `duration: 0`，不自动关闭；后两步不传 `duration`，倒计时保持不动；最后一步显式传 `3000` 才重新开始计时。
 
@@ -230,7 +230,7 @@ onBeforeUnmount(() => toast.clear())
 </script>
 ```
 
-### 关闭 {#close}
+### Closing
 
 每次调用都返回最终 id；`toast.close(id)` 关掉指定的一条，`toast.clear()` 收走当前全部。这里先建一条 `duration: 0`、不会自动关闭的 toast，再分别用两种方式关闭，`<output>` 记录最后一次操作。
 

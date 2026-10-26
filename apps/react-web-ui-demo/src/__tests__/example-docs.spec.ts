@@ -11,7 +11,7 @@ import { exampleDocs as enExampleDocs, type ExampleDoc as ExampleDocData } from 
 import { exampleDocs as zhExampleDocs } from '../generated/zh-CN/examples'
 import { loadExampleDocs, loadShellLocale, LocaleProvider } from '../i18n/locale'
 
-// 语料 join 的 React 侧：「示例显示 == markdown 围栏」「带锚点的示例落成可编译文件」「页面 ↔ 语料
+// 语料 join 的 React 侧：「示例显示 == markdown 围栏」「每条示例落成可编译文件」「页面 ↔ 语料
 // 不互为孤儿」三条由本包持有；生成器那侧的判据（篡改 / 孤儿 / 表格形状）在 `@greypan/md-to-comp`
 // 的单测里；跨 app 的另一半（两端生成数据逐字节一致、路由名集合 == Vue 页面名集合）由 web-ui 包的
 // generated-parity.spec.ts 持有。「手写装饰件同源」那条住在两侧各自的 spec 里而不是 web-ui：
@@ -67,12 +67,27 @@ const localeSurfaces: LocaleSurface[] = [
 const docNames = corpusOf('.CN.md').map(file => file.replace(/\.CN\.md$/, ''))
 const docByName = new Map(zhExampleDocs.map(doc => [doc.component, doc]))
 
-/** `### 受控值 {#controlled}`：锚点存在即代表这条示例被落成了组件文件。 */
-function anchoredSamples(markdown: string) {
-  return [...markdown.matchAll(/^###\s+(.+?)\s+\{#([a-z0-9-]+)\}\s*$/gm)].map(match => ({
-    title: match[1],
-    id: match[2]
-  }))
+/**
+ * `## Samples` 里的 `###` 标题，按出现次序。标题就是示例的身份（id 由生成器从它派生），所以这份
+ * 序列是 markdown 与生成数据之间可比的那个轴；`## API` 的小节标题不参与，它们不是示例。
+ */
+function sampleTitlesOf(markdown: string) {
+  const titles: string[] = []
+  let inSamples = false
+  let fenced = false
+  for (const line of markdown.split('\n')) {
+    if (line.startsWith('```')) {
+      fenced = !fenced
+      continue
+    }
+    if (fenced) continue
+    if (/^##\s+/.test(line)) {
+      inSamples = /^##\s+Samples\s*$/.test(line)
+      continue
+    }
+    if (inSamples && /^###\s+/.test(line)) titles.push(line.replace(/^###\s+/, '').trim())
+  }
+  return titles
 }
 
 function fencesOf(markdown: string, lang: string) {
@@ -148,105 +163,74 @@ describe('示例显示与 markdown 围栏同源', () => {
   }
 })
 
-describe('带锚点的示例落成可编译文件', () => {
+describe('每条示例落成可编译文件', () => {
   for (const locale of localeSurfaces) {
-    it(`${locale.label}：落盘文件与围栏逐字相同（只差行尾换行）`, () => {
+    it(`${locale.label}：标题序列与生成数据同串，落盘文件与围栏逐字相同（只差行尾换行）`, () => {
       let demoCount = 0
       for (const name of locale.files) {
         const component = name.slice(0, -locale.suffix.length)
         const markdown = readFileSync(path.join(docsDir, name), 'utf8')
         const doc = locale.docsByName.get(component)
         if (!doc) throw new Error(`${name}：生成数据里没有这个 component`)
-        for (const anchor of anchoredSamples(markdown)) {
+        expect(sampleTitlesOf(markdown), `${name}：markdown 里 \`## Samples\` 的标题序列与生成数据不是同一串`).toEqual(
+          doc.samples.map(sample => sample.title)
+        )
+        const fences = fencesOf(markdown, FENCE_LANG)
+        doc.samples.forEach((sample, index) => {
           demoCount += 1
-          const sample = doc.samples.find(candidate => candidate.title === anchor.title)
-          if (!sample) throw new Error(`${name}：带锚点的示例「${anchor.title}」没进生成数据`)
-          expect(sample.demoKey, `${name}/${anchor.title}：生成数据里的 demoKey 不是锚点`).toBe(anchor.id)
-          const fence = fencesOf(markdown, FENCE_LANG)[doc.samples.indexOf(sample)]
-          const file = path.join(locale.demosDir, demoFileName(component, anchor.id, FLAVOR))
-          expect(
-            existsSync(file),
-            `${file} 不存在：带 \`### ${anchor.title} {#${anchor.id}}\` 的示例必须落成组件文件`
-          ).toBe(true)
+          const file = path.join(locale.demosDir, demoFileName(component, sample.demoKey, FLAVOR))
+          expect(existsSync(file), `${file} 不存在：示例「${sample.title}」必须落成组件文件`).toBe(true)
           expect(
             readFileSync(file, 'utf8'),
             `${file} 与 markdown 围栏不是同一份源码：显示的那份和被执行的那份漂移了`
-          ).toBe(demoFileContent(fence))
-        }
+          ).toBe(demoFileContent(fences[index]))
+        })
       }
-      expect(demoCount, '一篇带锚点的示例都没有：「示例落成可编译文件」这条通道等于没被任何断言覆盖').toBeGreaterThan(0)
+      expect(demoCount, '一篇示例都没有：「示例落成可编译文件」这条通道等于没被任何断言覆盖').toBeGreaterThan(0)
     })
   }
 })
 
-// 过渡期清单：已迁到「docs 全量生成」的文档。每迁完一篇就加进来；全部迁完后删除本清单，
-// 并在生成配置里开启 requireDemo，让漏锚点直接在生成阶段失败。清单里的文档断言的是「每条
-// 示例都有锚点」，补上锚点测试天然覆盖不到的那半边。
-const migratedDocs = [
-  'autocomplete',
-  'avatar',
-  'back-top',
-  'badge',
-  'button',
-  'checkbox',
-  'collapse',
-  'context-menu',
-  'dialog',
-  'drawer',
-  'dropdown',
-  'editable-text',
-  'empty',
-  'icon',
-  'image-preview',
-  'input',
-  'input-number',
-  'layout',
-  'middle-ellipsis',
-  'popover',
-  'radio',
-  'segmented',
-  'select',
-  'slider',
-  'spinner',
-  'svg-draw-lines',
-  'switch',
-  'textarea',
-  'theme',
-  'toast',
-  'tooltip'
-]
-
-describe('已迁移文档的每条示例都能渲染', () => {
-  it('迁移清单里没有漏掉锚点的示例', () => {
-    for (const component of migratedDocs) {
-      const doc = docByName.get(component)
-      if (!doc) throw new Error(`${component}：生成数据里没有这个 component`)
-      expect(doc.samples.length, `${component}：已迁移文档一条示例都没有`).toBeGreaterThan(0)
-      for (const sample of doc.samples) {
-        if (!sample.demoKey) throw new Error(`${component}/${sample.title}：已迁移文档里的示例必须带 \`{#id}\` 锚点`)
-        const file = path.join(zhDemosDir, demoFileName(component, sample.demoKey, FLAVOR))
-        expect(existsSync(file), `${file} 不存在：已迁移文档的示例必须落成可预览的组件文件`).toBe(true)
-      }
-    }
-  })
-
-  it('已迁移文档的页面只剩 <ExampleDoc>，手写 demo 已删除', () => {
-    for (const component of migratedDocs) {
-      const route = path.join(routesDir, `${component}.tsx`)
-      const extras = demoImports(readFileSync(route, 'utf8'))
-      expect(extras, `${route}：迁移后的页面只渲染 <ExampleDoc>，仍引入 ${extras.join('、')}`).toEqual([])
-      const demoDir = path.resolve(import.meta.dirname, '../components', `${component}-demo`)
-      expect(existsSync(demoDir), `${demoDir} 还在：迁移后没有消费者的手写 demo 必须删掉`).toBe(false)
+// 标题就是示例的身份（两侧各有一份语料，id 从它派生）。这一条只有 React 侧能判：Vue 站本期只出
+// 中文，两份语料都在它的 input 目录里，但只落了一套产物。
+describe('示例标题两侧同文', () => {
+  it('CN 与 EN 的 `## Samples` 标题逐字相同', () => {
+    for (const name of docNames) {
+      const cn = sampleTitlesOf(readFileSync(path.join(docsDir, `${name}.CN.md`), 'utf8'))
+      const en = sampleTitlesOf(readFileSync(path.join(docsDir, `${name}.md`), 'utf8'))
+      expect(cn, `${name}：中文语料的示例标题与英文那一份不同文，两侧会派生出两套 demo 文件名`).toEqual(en)
     }
   })
 })
 
-// 壳映射判在 jsdom（不挂真组件，只判壳真的把带锚点的示例接上了生成的 demo）：预览区由壳自己的
+// 迁移已经完成，所以这里不再有清单：`-demo` 目录按全量语料判不存在（任何一篇重新长出宿主外的
+// 手写 demo 都会被抓住），「页面只剩 <ExampleDoc>」按实际存在的路由文件判——子组件文档（
+// `button-group` 那 8 篇）挂在宿主路由里，本就没有自己的路由文件。
+describe('页面只剩 <ExampleDoc>', () => {
+  const surface = surfaceOf(routesDir, '.tsx')
+
+  it('全量语料都没有 `<组件>-demo` 手写目录', () => {
+    for (const component of docNames) {
+      const demoDir = path.resolve(import.meta.dirname, '../components', `${component}-demo`)
+      expect(existsSync(demoDir), `${demoDir} 还在：没有消费者的手写 demo 必须删掉`).toBe(false)
+    }
+  })
+
+  it('每个路由只渲染 <ExampleDoc>，不引任何手写 demo', () => {
+    for (const name of surface.names) {
+      const route = path.join(routesDir, `${name}.tsx`)
+      const extras = demoImports(readFileSync(route, 'utf8'))
+      expect(extras, `${route}：页面只渲染 <ExampleDoc>，仍引入 ${extras.join('、')}`).toEqual([])
+    }
+  })
+})
+
+// 壳映射判在 jsdom（不挂真组件，只判壳真的把每条示例接上了生成的 demo）：预览区由壳自己的
 // `import.meta.glob` 映射渲染，产物加载失败不影响判据；demo 真挂得出宿主由人工验收兜底，这里不重复。
-describe('已迁移文档的壳映射（ExampleDoc）', () => {
+describe('全量语料的壳映射（ExampleDoc）', () => {
   // 先把全部 demo 模块收进模块缓存：壳的 lazy 加载只结算缓存命中的 promise，用例结束时
   // 不会留下在途 import 拖住 run 收尾。
-  // 逐篇挂 31 篇语料的壳，本地亚秒级；CI runner 慢机实测越过默认 5s（与被删的全量遍历用例
+  // 逐篇挂全量语料的壳，本地亚秒级；CI runner 慢机实测越过默认 5s（与被删的全量遍历用例
   // 同一类慢，那时给的是 120s），beforeAll 的批量预载同理。给足余量但只作用于这一条链路。
   const allDemos = import.meta.glob('../generated/zh-CN/demos/*.tsx')
   beforeAll(async () => {
@@ -260,8 +244,8 @@ describe('已迁移文档的壳映射（ExampleDoc）', () => {
     ])
   }, 30_000)
 
-  it('带锚点的示例由壳挂出预览区，顺序与生成数据的锚点序一致', async () => {
-    for (const component of migratedDocs) {
+  it('每条示例由壳挂出预览区，顺序与生成数据的 demoKey 序一致', async () => {
+    for (const component of docNames) {
       const doc = docByName.get(component)
       if (!doc) throw new Error(`${component}：生成数据里没有这个 component`)
       const { container, unmount } = render(
@@ -281,7 +265,7 @@ describe('已迁移文档的壳映射（ExampleDoc）', () => {
       // 会每篇告警一条「not wrapped in act」。放在卸载后的一次空 act 里消化，既不告警也不会让
       // demo 真的渲染进 jsdom（React 19 的 render 不能包进外层 act，实测提交为空树）。
       await act(async () => {})
-      expect(keys, `${component}：预览区与生成数据的锚点不是同一串（壳的 glob 映射或 demoKey 漂了）`).toEqual(
+      expect(keys, `${component}：预览区与生成数据的 demoKey 不是同一串（壳的 glob 映射漂了）`).toEqual(
         doc.samples.map(sample => sample.demoKey)
       )
     }

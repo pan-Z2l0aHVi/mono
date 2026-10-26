@@ -7,7 +7,7 @@ A popover anchored to a trigger element. It supports three trigger modes, click 
 
 ## Samples
 
-### Basic {#basic}
+### Basic
 
 In click mode a click on the trigger toggles the panel, and clicking outside the panel or pressing Escape closes it. Put an interactive element in the trigger (`web-ui-button` or a native `button`); the open state is written back to its `aria-expanded` / `aria-controls`.
 
@@ -74,7 +74,7 @@ function onOpenChange(event: WebUiEvent<WebUiPopover, 'open-change'>) {
 </script>
 ```
 
-### Hover trigger {#hover}
+### Hover trigger
 
 `trigger="hover"` opens and closes on `pointerenter` / `pointerleave` with a 100ms delay; moving the pointer from the trigger into the panel does not collapse it. Neither click nor focus triggers in this mode, and the readout likewise follows only user-originated `open-change`.
 
@@ -124,7 +124,7 @@ const last = ref('—')
 </script>
 ```
 
-### Controlled open state {#controlled}
+### Controlled open state
 
 `trigger="manual"` does not respond to hover, and neither clicking outside the panel nor Escape closes it; the open state is changed by external buttons calling `show()` / `close()`, or by clicking the trigger itself.
 

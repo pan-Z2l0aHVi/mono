@@ -7,7 +7,7 @@ A loading spinner: place it declaratively in the page, or mount a full-screen in
 
 ## Samples
 
-### Basic {#basic}
+### Basic
 
 `size` is a pixel dimension and only changes the width and height of the spinner itself. On connect the host adds `role="status"` and `aria-label`; values that already exist are not overwritten, so to rename it for a context, write it on the element directly.
 
@@ -51,7 +51,7 @@ export default function Demo() {
 </template>
 ```
 
-### Description text {#description}
+### Description text
 
 The description has two channels: the `description` attribute renders a styled line of text, while the `description` slot leaves the layout to you. Supplying both renders two lines—the component does not treat them as mutually exclusive. A declarative instance is an inline-flex box and places the description to the **right** of the spinner; a full-screen instance places it **below**.
 
@@ -81,7 +81,7 @@ export default function Demo() {
 </template>
 ```
 
-### Full-screen instance {#imperative}
+### Full-screen instance
 
 `show()` mounts a full-screen instance in the overlay root of the current theme (falling back to the body's fallback overlay root when there is no theme scope); `size` / `description` / `color` override the appearance, and when `duration` is greater than 0 the instance calls `hide()` automatically on expiry.
 
@@ -147,7 +147,7 @@ function showWithDescription() {
 </script>
 ```
 
-### Speed {#speed}
+### Speed
 
 The chase cycle of the blades is `--wui-duration-spinner` (`800ms`); overriding it on the host changes the speed. Under the theme's `motion="reduced"` or a system reduce preference this token slows to `1600ms` instead of stopping: a stopped loading indicator reads as a frozen interface.
 

@@ -7,7 +7,7 @@ tag: web-ui-checkbox
 
 ## Samples
 
-### 基础 {#basic}
+### Basic
 
 `checked` 是控件状态，默认插槽是 label 文字；indicator、间距与右侧文案都是触发区，点哪儿都算一次切换。
 
@@ -63,7 +63,7 @@ function toggle(channel: string) {
 </script>
 ```
 
-### 禁用 {#disabled}
+### Disabled
 
 `disabled` 关掉交互，按下不动、校验也让路；组级禁用写在 `<web-ui-checkbox-group>` 上，见下面的多选组。
 
@@ -89,7 +89,7 @@ export default function Demo() {
 </template>
 ```
 
-### 表单值 {#form}
+### Form value
 
 `name` 是字段名、`value` 是选中时提交的值：同一字段名可以挂多项，每个选中项各占一条 `FormData` 条目，未选中的不进表单。`required` 让原生校验在未勾选时拦下提交。
 

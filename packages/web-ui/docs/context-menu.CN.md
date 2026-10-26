@@ -7,7 +7,7 @@ tag: web-ui-context-menu
 
 ## Samples
 
-### 基础 {#basic}
+### Basic
 
 default slot 的第一个元素是触发区域，其余子元素是 menu item：在触发区内右键，menu 从光标位置展开。
 
@@ -109,7 +109,7 @@ function onOpenChange(event: WebUiEvent<WebUiContextMenu, 'open-change'>) {
 </script>
 ```
 
-### 触屏长按 {#long-press}
+### Touch long press
 
 `long-press` 是触屏 opt-in：按住 `long-press-delay`（这里 600 ms）后打开 menu，从按点向下展开；按住期间位移超过 10px 视为滚动并取消。
 
@@ -181,7 +181,7 @@ function onOpenChange(event: WebUiEvent<WebUiContextMenu, 'open-change'>) {
 </script>
 ```
 
-### 禁用 {#disabled}
+### Disabled
 
 `disabled` 只抑制 menu：右键不打开，触发区本身不置灰、颜色也不变——组件不渲染 menu 面，没有可置灰的对象，禁用 context menu 也不等于禁用触发区。
 

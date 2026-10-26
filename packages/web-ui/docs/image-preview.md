@@ -9,7 +9,7 @@ The tables below list the `imagePreview()` options and the members of the return
 
 ## Samples
 
-### Basic {#basic}
+### Basic
 
 Calling `imagePreview()` mounts the host into the overlay root of the root theme (or the one `container` names) and opens it immediately, returning a handle.
 
@@ -61,7 +61,7 @@ function open() {
 </script>
 ```
 
-### Display options {#display-options}
+### Display options
 
 `nav`, `toolbar`, `closable`, and `indicator` are independent and all off by default; only passing `true` for all four brings out the previous / next buttons, the zoom toolbar, the close button, and the "current / total" indicator together.
 
@@ -117,7 +117,7 @@ function open() {
 </script>
 ```
 
-### Handle {#handle}
+### Handle
 
 The handle's `index`, `scale`, `images`, and `closed` are read-only members; after a method call the new values are readable synchronously. Gestures and keyboard operations inside the preview do not call back to the outside; read them yourself when needed.
 

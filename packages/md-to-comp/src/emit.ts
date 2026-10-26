@@ -17,7 +17,7 @@ export function writeIfChanged(file: GeneratedFile): boolean {
 }
 
 /**
- * 组件示例目录归生成器独占：改了锚点或删掉一条示例，上一轮那份文件必须跟着走。留在盘上的孤儿
+ * 组件示例目录归生成器独占：改了示例标题或删掉一条示例，上一轮那份文件必须跟着走。留在盘上的孤儿
  * 没有任何 markdown 引用它，因此也不被「围栏 == 落盘」那组断言覆盖，却照样被宿主的
  * 按需加载通道收进依赖图——编译得进构建、页面上永远不出现的一个死组件。
  * 判据按本轮产出集合而不是文件名或扩展名猜测：本轮没写出的那个文件，就是陈旧的。
@@ -55,7 +55,7 @@ export function writeArtifacts(files: GeneratedFile[], demosDirs: string[]): voi
  */
 export function checkArtifacts(files: GeneratedFile[], demosDirs: string[]): void {
   const stale = staleDemoFiles(demosDirs, files)
-  // 孤儿先报：改了锚点时「新文件不存在」那条一定会撞上来，可它只说得出缺哪份，说不出上一轮那份
+  // 孤儿先报：改了示例标题时「新文件不存在」那条一定会撞上来，可它只说得出缺哪份，说不出上一轮那份
   // 还赖在盘上。先报孤儿，一次运行就把改名这件事的两侧都讲完。
   if (stale.length > 0)
     fail(

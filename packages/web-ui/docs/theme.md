@@ -7,7 +7,7 @@ Theme provider: defines foundation, color, layer, shadow, and motion tokens with
 
 ## Samples
 
-### Light and dark {#appearance}
+### Light and dark
 
 `appearance` decides which set of color and shadow tokens this scope resolves, and `light` and `dark` can coexist on the same page.
 
@@ -73,7 +73,7 @@ const labels: Record<(typeof appearances)[number], string> = {
 </script>
 ```
 
-### Switching appearance {#toggle}
+### Switching appearance
 
 Binding `appearance` to page state is theme switching; `system` is resolved from `prefers-color-scheme`.
 
@@ -181,7 +181,7 @@ function pick(value: string) {
 </script>
 ```
 
-### Derived output {#resolved}
+### Derived output
 
 `resolved-appearance` (also exposed as the `resolvedAppearance` property) is always `light` or `dark`: an explicit `appearance` is passed through as-is, `system` is resolved from `prefers-color-scheme` and updates live when the OS flips, and when `appearance` is not set the output defaults to `light`.
 
@@ -247,7 +247,7 @@ function inspect() {
 </script>
 ```
 
-### Nested scopes {#nested}
+### Nested scopes
 
 Themes can be nested layer by layer, and each layer resolves its own tokens: the inner layer overrides the outer one, leaving the inner layer returns to the outer values, and the two layers output their own `resolved-appearance`.
 
@@ -369,7 +369,7 @@ const innerValue = ref('a')
 </script>
 ```
 
-### Motion presets {#motion}
+### Motion presets
 
 `motion` controls the motion preset of this layer: `reduced` zeroes transition durations (the two infinite loading loops do not stop, they only slow to `1600ms`), `full` always plays, and `system` follows `prefers-reduced-motion`.
 
@@ -496,7 +496,7 @@ function inspect() {
 </script>
 ```
 
-### Overlay root and portal {#overlay}
+### Overlay root and portal
 
 Every active theme is also its own theme-owned overlay root: `getOverlayRoot()` returns it, and a theme without `appearance` set creates none and returns `undefined`.
 
@@ -621,7 +621,7 @@ function inspect() {
 </script>
 ```
 
-### Overriding tokens within a scope {#tokens}
+### Overriding tokens within a scope
 
 `<web-ui-theme>` declares the token defaults for its own subtree, so overrides must land on elements inside the scope: raising `--wui-control-size` and `--wui-input-width` changes the height and width of controls.
 

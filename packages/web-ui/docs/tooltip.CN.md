@@ -7,7 +7,7 @@ tooltip，支持指针与焦点触发；`content` 属性提供纯文本，`conte
 
 ## Samples
 
-### 基础 {#basic}
+### Basic
 
 默认插槽是 trigger，`content` 属性给出纯文本提示。
 
@@ -67,7 +67,7 @@ function onOpenChange(event: WebUiEvent<WebUiTooltip, 'open-change'>) {
 </script>
 ```
 
-### 富内容 {#rich-content}
+### Rich content
 
 `content` 插槽替代纯文本，可以放多行、加粗或行内代码。插槽元素必须是 tooltip 的直接子节点并带 `slot="content"`；默认插槽里的 trigger 不要写 slot 属性。
 
@@ -133,7 +133,7 @@ const last = ref('—')
 </script>
 ```
 
-### 延迟 {#delay}
+### Delay
 
 `show-delay` / `hide-delay` 控制指针进出时的显示与隐藏延迟，`0` 表示不等待。`disabled` 关闭触发：指针与焦点都不再让提示出现，已经显示的提示不会被这条属性收掉。第二条始终不显示，读数只跟随第一条；禁用状态不派发 `open-change`。
 

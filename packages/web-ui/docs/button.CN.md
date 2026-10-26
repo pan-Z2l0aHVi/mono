@@ -9,7 +9,7 @@ button 触发一个即时操作：提交表单、打开 dialog、切换状态。
 
 ## Samples
 
-### 变体 {#variants}
+### Variants
 
 `variant` 决定视觉层级，合法值只有 `primary` / `secondary` / `ghost` / `danger` / `glass`，集合外的值一律回退到 `glass`。`glass` 与页面背景融合，适合工具栏；`primary` 一页只应有一个。
 
@@ -41,7 +41,7 @@ export default function Demo() {
 </template>
 ```
 
-### 尺寸 {#sizes}
+### Sizes
 
 `size` 接受裸数字或 CSS 长度：裸数字按 px 解释（`size="28"` 即 `--wui-control-size: 28px`），带单位的写法（`32px`、`1.5rem`）原样使用；只决定高度；留空时高度由 theme 的 `--wui-control-size`（36px）给出。
 
@@ -87,7 +87,7 @@ import { lucideSearch } from '@greypan/web-ui/icons'
 </script>
 ```
 
-### 宽度 {#width}
+### Width
 
 宽度只有两条路：`full` 让宿主变成 block 并把内部 button 铺满父容器，`--wui-button-width` 给内部 button 一个确定宽度（默认 `max-content`）。
 
@@ -141,7 +141,7 @@ export default function Demo() {
 </template>
 ```
 
-### 前后缀 {#prefix-suffix}
+### Prefix and suffix
 
 默认插槽是 label 文字（内部包一层 span），`prefix` / `suffix` 命名插槽排在它两侧，三段之间的间距走 `--wui-button-gap`。
 
@@ -207,7 +207,7 @@ import { lucideChevronLeft, lucideChevronRight, lucideSearch } from '@greypan/we
 </script>
 ```
 
-### icon 模式 {#icon}
+### Icon mode
 
 `icon` 把内边距归零、`min-width` 与高度同值，宿主于是是一个正方形；默认插槽整体当作 icon 内容，不再包那层 label span，`prefix` / `suffix` 这时不渲染。
 
@@ -283,7 +283,7 @@ import { lucideSearch } from '@greypan/web-ui/icons'
 </script>
 ```
 
-### 禁用与加载 {#disabled-loading}
+### Disabled and loading
 
 `disabled` 与 `loading` 都会把内部原生 button 真的置为 disabled：既不派发 `click`，也退出 tab 序，两个标记同时写还是同一个结果。禁用态整块降到四成不透明度并让出 hover / 按下态。
 
@@ -353,7 +353,7 @@ const pending = ref(false)
 </script>
 ```
 
-### 点击与按下态 {#click}
+### Click and pressed state
 
 button 没有自定义事件，宿主要接的就是原生 `click`：它在 shadow 内的原生 button 上产生，组合并冒泡出来，`event.target` 重定向到宿主，所以 React 与 Vue 都能在 `<web-ui-button>` 上直接写 handler。
 
@@ -403,7 +403,7 @@ const clicks = ref(0)
 </script>
 ```
 
-### 表单提交与重置 {#form}
+### Form submit and reset
 
 `type` 只有 `button` / `submit` / `reset` 三个合法值，非法值规范化成 `button`。
 
@@ -490,7 +490,7 @@ function onCancelledClick(event: MouseEvent) {
 </script>
 ```
 
-### CSS 变量 {#theming}
+### CSS variables
 
 表里这七个变量都写在 `<web-ui-button>` 宿主自己身上。`--wui-button-width` / `--wui-button-px` / `--wui-button-gap` 三条别处没人声明，挂在宿主上的一个 class 就够（下面第一枚）。
 
