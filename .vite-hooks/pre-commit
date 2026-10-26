@@ -1,1 +1,7 @@
-mise exec -- pnpm run check-pre-commit
+#!/bin/sh
+if ! command -v mise >/dev/null 2>&1; then
+  printf '%s\n' 'pre-commit needs mise on PATH: install mise or put its shim/bin directory on PATH, then retry the commit' >&2
+  exit 1
+fi
+
+exec mise exec -- pnpm run check-pre-commit
