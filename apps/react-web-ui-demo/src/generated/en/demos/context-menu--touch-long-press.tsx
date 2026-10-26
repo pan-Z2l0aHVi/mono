@@ -15,7 +15,7 @@ export default function Demo() {
           setLast(event.detail.open ? 'true' : 'false')
         }}
       >
-        <div className="flex h-32 w-full items-center justify-center rounded-xl border border-dashed border-(--wui-color-border) bg-(--wui-color-surface-control) text-sm text-(--wui-color-text-secondary)">
+        <div className="flex h-32 w-full items-center justify-center rounded-xl border border-dashed border-(--wui-color-border) bg-(--wui-color-surface-control) text-sm text-(--wui-color-text)">
           Press and hold for 600 ms in this area (touch)
         </div>
         <web-ui-dropdown-item>Rename</web-ui-dropdown-item>
