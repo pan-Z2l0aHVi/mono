@@ -109,10 +109,6 @@ function ExampleDoc({ component, nativeFlavor = 'react', level }: ExampleDocProp
   const SectionHeading = sectionHeading
   const SampleHeading = sampleHeading
 
-  function sampleKey(sample: { id: string | null }, index: number) {
-    return sample.id ?? `sample-${index}`
-  }
-
   function activeFlavor(key: string): Flavor {
     return activeFlavors[key] ?? nativeFlavor
   }
@@ -220,8 +216,8 @@ function ExampleDoc({ component, nativeFlavor = 'react', level }: ExampleDocProp
       <section className="flex flex-col gap-6">
         <SectionHeading className="mdc-heading">示例</SectionHeading>
 
-        {doc.samples.map((sample, index) => {
-          const key = sampleKey(sample, index)
+        {doc.samples.map(sample => {
+          const key = sample.id
           const flavor = activeFlavor(key)
           const Demo = demoComponents.get(`${locale}/${component}--${sample.demoKey}`)
           const isExpanded = expanded[key] ?? false
