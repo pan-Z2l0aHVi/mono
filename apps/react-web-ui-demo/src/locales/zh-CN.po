@@ -146,3 +146,7 @@ msgstr "深浅色 & 动效偏好"
 #: src/routes/home/-component.tsx
 msgid "常用组件快速预览"
 msgstr "常用组件快速预览"
+
+#: src/components/root/index.tsx
+msgid "关闭横幅"
+msgstr "关闭横幅"
