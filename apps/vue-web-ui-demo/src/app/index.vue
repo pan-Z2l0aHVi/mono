@@ -436,7 +436,7 @@ function isNavActive(path: string) {
             </RouterLink>
           </nav>
         </OverlayScrollbarsComponent>
-        <div class="p-3">
+        <div class="p-3 sm:px-6 md:px-8 lg:px-10">
           <!-- 正文 gutter 归 shell 所有：web-ui-layout 的 main 不带 padding，逐页加会漏页。 -->
           <RouterView />
         </div>
