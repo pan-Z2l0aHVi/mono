@@ -113,13 +113,13 @@ describe('Vue SFC 静态文案', () => {
     expect(onWarn).toHaveBeenCalledWith(expect.objectContaining({ filename: 'src/Example.vue' }))
   })
 
-  it('未支持的插值与嵌套富文本整段跳过，不将一条消息拆成碎片', async () => {
+  it('插值与嵌套富文本提取成一条消息', async () => {
     const source =
       '<script setup>const name = "Ada"</script><template><p>Hello {{ name }}<strong>!</strong></p></template>'
     const { result, code, onWarn } = await transform(source)
-    expect(result.txts).toEqual([])
-    expect(code).toBe(source)
-    expect(onWarn).toHaveBeenCalled()
+    expect(result.txts.map(text => text.body)).toEqual(['Hello {0}<0>!</0>'])
+    expect(compile(code).template.errors).toEqual([])
+    expect(onWarn).not.toHaveBeenCalled()
   })
 
   it('没有候选文案时不注入 helper', async () => {
@@ -130,7 +130,7 @@ describe('Vue SFC 静态文案', () => {
     expect(onWarn).not.toHaveBeenCalled()
   })
 
-  it.each([['嵌套富文本', '<template><p>Read <strong>this</strong> now</p></template>']])(
+  it.each([['块级嵌套富文本', '<template><div>Read <p>this</p> now</div></template>']])(
     '%s 不发生局部翻译',
     async (_name, source) => {
       const { result, code, onWarn } = await transform(source)

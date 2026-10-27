@@ -3,6 +3,7 @@ import { NodeTypes, type ElementNode, type SourceLocation, type TemplateChildNod
 import { babelParse, MagicString, parse } from '@vue/compiler-sfc'
 import { getKey, type HeuristicFunc, type Scope, type Text, type TransformCtx, type TransformOutput } from 'wuchale'
 
+import { richMessage, richRuntime } from './rich'
 import { visitStrings } from './script'
 
 import type { VueDiagnostic } from './index'
@@ -127,6 +128,15 @@ export function transformVue(
   const runtime = uniqueName('_w_runtime_')
   const display = uniqueName('_w_display_')
   let usesDisplay = false
+  let usesPlural = false
+  let usesRich = false
+  const rich = uniqueName('W_w_rich_')
+  const richContent = uniqueName('W_w_content_')
+  const richChildren = uniqueName('_w_children_')
+  const composite = uniqueName('_w_message_')
+  const clone = uniqueName('_w_clone_')
+  const plural = uniqueName('_w_plural_')
+  const locale = uniqueName('_w_locale_')
   const txts: Text[] = []
   const edits: Edit[] = []
 
@@ -139,12 +149,19 @@ export function transformVue(
     return true
   }
   const message = (
-    body: string,
+    body: string | string[],
     path: Scope[],
     loc: SourceLocation,
-    placeholders: Text['placeholders'] = []
+    placeholders: Text['placeholders'] = [],
+    structured = false
   ): number | null => {
-    if (!body || (!placeholders.length && !literalAllowed(body, loc))) return null
+    if (
+      !body.length ||
+      (!structured &&
+        !placeholders.length &&
+        !(Array.isArray(body) ? body : [body]).every(part => literalAllowed(part, loc)))
+    )
+      return null
     const text: Text = { body, path, placeholders, type: 'message' }
     if (heuristic(text, filename) !== 'message') return null
     if (!index.has(getKey(body))) return null
@@ -159,27 +176,37 @@ export function transformVue(
     }
     return { start: position(start), end: position(end), source: content.slice(start, end) }
   }
-  const strings = (source: string, offset: number, expression: boolean, parents: Scope[]) => {
+  const strings = (source: string, offset: number, expression: boolean, parents: Scope[], destination = edits) => {
     const pending: Edit[] = []
     try {
       visitStrings(
         source,
         scriptSetup?.lang === 'ts',
         expression,
-        (body, start, end, scopes) => {
+        (body, start, end, scopes, args = [], pluralCall) => {
           const loc = location(offset + start, offset + end)
-          const id = message(body, [...parents, ...scopes], loc)
-          if (id != null)
-            pending.push({ start: loc.start.offset, end: loc.end.offset, replacement: `${runtime}(${id})` })
+          const id = message(
+            body,
+            [...parents, ...scopes],
+            loc,
+            args.map((arg, i) => [String(i), arg])
+          )
+          if (id != null) {
+            if (pluralCall) usesPlural = true
+            const replacement = pluralCall
+              ? `${pluralCall.callee}(${pluralCall.count}, ${plural}(${id}), ${locale}())`
+              : `${runtime}(${id}${args.length ? `, [${args.join(', ')}]` : ''})`
+            pending.push({ start: loc.start.offset, end: loc.end.offset, replacement })
+          }
         },
         (start, end) =>
           report(
             'unsupported-template',
-            '脚本插值模板字符串暂不转换；保留原文。',
+            '无法静态解析的复数或 tagged template；整体保留原文。',
             location(offset + start, offset + end)
           )
       )
-      edits.push(...pending)
+      destination.push(...pending)
     } catch (error) {
       report(
         'parse-error',
@@ -190,35 +217,7 @@ export function transformVue(
   }
   if (scriptSetup) strings(scriptSetup.content, scriptSetup.loc.start.offset, false, [])
 
-  const visit = (node: TemplateChildNode, parents: Scope[]) => {
-    if (node.type !== NodeTypes.ELEMENT) return
-    if (
-      hasVPre(node, content) ||
-      ignoredElements.has(node.tag) ||
-      node.props.some(prop => prop.type === NodeTypes.DIRECTIVE && ['html', 'text'].includes(prop.name))
-    ) {
-      report('unsupported-template', '跳过 v-pre、原始内容或保留空白的元素。', node.loc)
-      return
-    }
-    if (node.ns !== 0) {
-      report('unsupported-template', '非 HTML 元素暂不转换。', node.loc)
-      return
-    }
-    const nonEmpty = node.children.filter(child => child.type !== NodeTypes.TEXT || child.content.trim())
-    const hasInterpolation = nonEmpty.some(child => child.type === NodeTypes.INTERPOLATION)
-    const hasText = nonEmpty.some(child => child.type === NodeTypes.TEXT)
-    const textOnly = node.children.every(
-      child => child.type === NodeTypes.TEXT || child.type === NodeTypes.INTERPOLATION
-    )
-    const decorationOnly = node.children.every(
-      child => child.type === NodeTypes.TEXT || (child.type === NodeTypes.ELEMENT && child.children.length === 0)
-    )
-    const mixed = (hasText || hasInterpolation) && !textOnly && !decorationOnly
-    if (mixed) {
-      report('unsupported-template', '嵌套富文本或注释混合句暂不转换；保留整个元素。', node.loc)
-      return
-    }
-    const path: Scope[] = [...parents, { type: 'element', name: node.tag }]
+  const properties = (node: ElementNode, path: Scope[], destination = edits) => {
     for (const prop of node.props) {
       if (
         prop.type === NodeTypes.DIRECTIVE &&
@@ -229,10 +228,13 @@ export function transformVue(
         prop.exp?.type === NodeTypes.SIMPLE_EXPRESSION
       ) {
         if (prop.exp.content === prop.exp.loc.source)
-          strings(prop.exp.content, prop.exp.loc.start.offset, true, [
-            ...path,
-            { type: 'attribute', name: prop.arg.content }
-          ])
+          strings(
+            prop.exp.content,
+            prop.exp.loc.start.offset,
+            true,
+            [...path, { type: 'attribute', name: prop.arg.content }],
+            destination
+          )
         else report('unsupported-template', '编码的绑定表达式保留原文。', prop.loc)
       }
       if (
@@ -260,12 +262,76 @@ export function transformVue(
         .filter(Boolean)
         .join(' + ')
         .replaceAll('"', '&quot;')
-      edits.push({
+      destination.push({
         start: prop.loc.start.offset,
         end: prop.loc.end.offset,
         replacement: `:${prop.name}="${expression}"`
       })
     }
+  }
+
+  const visit = (node: TemplateChildNode, parents: Scope[]) => {
+    if (node.type !== NodeTypes.ELEMENT) return
+    if (
+      hasVPre(node, content) ||
+      ignoredElements.has(node.tag) ||
+      node.props.some(prop => prop.type === NodeTypes.DIRECTIVE && ['html', 'text'].includes(prop.name))
+    ) {
+      report('unsupported-template', '跳过 v-pre、原始内容或保留空白的元素。', node.loc)
+      return
+    }
+    if (node.ns !== 0) {
+      report('unsupported-template', '非 HTML 元素暂不转换。', node.loc)
+      return
+    }
+    const nonEmpty = node.children.filter(child => child.type !== NodeTypes.TEXT || child.content.trim())
+    const hasInterpolation = nonEmpty.some(child => child.type === NodeTypes.INTERPOLATION)
+    const hasText = nonEmpty.some(child => child.type === NodeTypes.TEXT)
+    const textOnly = node.children.every(
+      child => child.type === NodeTypes.TEXT || child.type === NodeTypes.INTERPOLATION
+    )
+    const decorationOnly = node.children.every(
+      child => child.type === NodeTypes.TEXT || (child.type === NodeTypes.ELEMENT && child.children.length === 0)
+    )
+    const mixed = (hasText || hasInterpolation) && !textOnly && !decorationOnly
+    const path: Scope[] = [...parents, { type: 'element', name: node.tag }]
+    if (mixed) {
+      const sentence = richMessage(node, content, display, richContent, richChildren, child => hasVPre(child, content))
+      if (!sentence) {
+        report('unsupported-template', '富文本包含不支持的结构、指令或保留内容；保留整个元素。', node.loc)
+        return
+      }
+      const parts = textParts(sentence.body)
+      const id = message(parts.body, path, node.loc, sentence.placeholders, true)
+      if (id == null) return
+      usesRich = true
+      usesDisplay ||= sentence.args.length > 0
+      const attribute = (value: string) => value.replaceAll('&', '&amp;').replaceAll('"', '&quot;')
+      const args = attribute(`[${sentence.args.join(', ')}]`)
+      const fallback = attribute(JSON.stringify(sentence.fallback))
+      properties(node, path)
+      const slots = sentence.slots
+        .map(slot => {
+          const local: Edit[] = []
+          properties(slot.node, [...path, ...slot.path.map(name => ({ type: 'element' as const, name }))], local)
+          const original = new MagicString(slot.original)
+          for (const edit of local)
+            original.overwrite(
+              edit.start - slot.node.loc.start.offset,
+              edit.end - slot.node.loc.start.offset,
+              edit.replacement
+            )
+          return `<template #w${slot.id}="{ children: ${richChildren} }">${original.toString()}</template>`
+        })
+        .join('')
+      edits.push({
+        start: node.children[0].loc.start.offset,
+        end: node.children[node.children.length - 1].loc.end.offset,
+        replacement: `${parts.leading}<${rich} :message="${composite}(${id})" :args="${args}" :parents="${JSON.stringify(sentence.parents)}" :fallback="${fallback}">${slots}</${rich}>${parts.trailing}`
+      })
+      return
+    }
+    properties(node, path)
     if (hasInterpolation) {
       if (!hasText) {
         for (const child of node.children) {
@@ -338,10 +404,19 @@ export function transformVue(
     output(header) {
       const source = new MagicString(content)
       for (const edit of edits) source.overwrite(edit.start, edit.end, edit.replacement)
-      const displayImport = usesDisplay ? `import { toDisplayString as ${display} } from 'vue'\n` : ''
+      const imports = [usesDisplay && `toDisplayString as ${display}`, usesRich && `cloneVNode as ${clone}`].filter(
+        Boolean
+      )
+      const displayImport = imports.length ? `import { ${imports.join(', ')} } from 'vue'\n` : ''
       const params = scriptSetup?.lang === 'ts' ? 'id: number, args?: string[]' : 'id, args'
       // 每次 render 才读取 getter，保持 Vue tracking，并兼容核心的 HMR Runtime 包装器。
-      const init = `${header}\n${displayImport}const ${runtime} = (${params}) => ${ctx.expr.reactive}(id, args)\n`
+      const pluralInit = usesPlural
+        ? `const ${plural} = (id${scriptSetup?.lang === 'ts' ? ': number' : ''}) => ${ctx.expr.reactive}.p(id)\nconst ${locale} = () => ${ctx.expr.reactive}.l\n`
+        : ''
+      const richInit = usesRich
+        ? `const ${composite} = id => ${ctx.expr.reactive}.c(id)\n${richRuntime(rich, richContent, clone)}`
+        : ''
+      const init = `${header}\n${displayImport}const ${runtime} = (${params}) => ${ctx.expr.reactive}(id, args)\n${pluralInit}${richInit}`
       if (scriptSetup) source.appendLeft(scriptSetup.loc.start.offset, `\n${init}`)
       else source.prepend(`<script setup>\n${init}</script>\n`)
       return {

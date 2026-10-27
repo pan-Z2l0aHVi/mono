@@ -150,3 +150,11 @@ msgstr "常用组件快速预览"
 #: src/components/root/index.tsx
 msgid "关闭横幅"
 msgstr "关闭横幅"
+
+#: src/components/root/index.tsx
+msgid "语言切换失败，请刷新页面后重试"
+msgstr "语言切换失败，请刷新页面后重试"
+
+#: src/components/root/index.tsx
+msgid "正在切换语言"
+msgstr "正在切换语言"

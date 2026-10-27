@@ -1,7 +1,10 @@
-import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from 'react'
-import { loadLocale } from 'wuchale/load-utils'
+import { createContext, useContext, useEffect, useMemo, useState, useSyncExternalStore, type ReactNode } from 'react'
+import { commitLocale, loadLocale } from 'wuchale/load-utils'
 
 import type { ExampleDoc } from '@/generated/zh-CN/examples'
+
+import { createLocaleController } from './controller'
+import { prepareExamples } from './examples'
 
 /**
  * demo 站的语言以本机为准：localStorage 记着用户选过的那一档，没有就按 `navigator.languages`
@@ -73,35 +76,59 @@ export function loadShellLocale(locale: Locale): Promise<void> {
 
 interface LocaleContextValue {
   locale: Locale
-  setLocale: (locale: Locale) => void
+  docs: ExampleDoc[]
+  pending: boolean
+  setLocale: (locale: Locale) => Promise<void>
+  register: (component: string) => () => void
 }
 
 const LocaleContext = createContext<LocaleContextValue | null>(null)
 
 export function LocaleProvider({ children }: { children: ReactNode }) {
-  const [locale, setLocaleState] = useState<Locale>(detectLocale)
+  const [controller] = useState(() =>
+    createLocaleController({
+      loadCatalog: locale => loadLocale(locale, false),
+      loadDocs: loadExampleDocs,
+      prepareExamples,
+      commitCatalog: commitLocale,
+      setDocumentLanguage: locale => {
+        document.documentElement.lang = locale
+      },
+      persist: locale => {
+        try {
+          localStorage.setItem(STORAGE_KEY, locale)
+        } catch (error) {
+          console.warn('Unable to persist language preference', error)
+        }
+      }
+    })
+  )
+  const snapshot = useSyncExternalStore(controller.subscribe, controller.getSnapshot)
 
   useEffect(() => {
-    document.documentElement.lang = locale
-    // 中文源 catalog 已在入口预载；这里负责首帧之后的换语种。
-    void loadShellLocale(locale)
-  }, [locale])
+    let active = true
+    const target = detectLocale()
+    void controller.change(target, false).catch(async error => {
+      console.error('Unable to initialize preferred language', error)
+      if (active && target !== 'zh-CN') {
+        await controller.change('zh-CN', false).catch(fallbackError => {
+          console.error('Unable to load fallback language', fallbackError)
+        })
+      }
+    })
+    return () => {
+      active = false
+    }
+  }, [controller])
 
   const value = useMemo<LocaleContextValue>(
     () => ({
-      locale,
-      setLocale: next => {
-        setLocaleState(next)
-        try {
-          localStorage.setItem(STORAGE_KEY, next)
-        } catch {
-          // 存储被禁时只丢持久化，切换本身照常生效。
-        }
-      }
+      ...snapshot,
+      setLocale: controller.change,
+      register: controller.register
     }),
-    [locale]
+    [controller, snapshot]
   )
-
   return <LocaleContext.Provider value={value}>{children}</LocaleContext.Provider>
 }
 
@@ -111,26 +138,9 @@ export function useLocale(): LocaleContextValue {
   return value
 }
 
-/**
- * 文档随语种异步到达。语种与数据一起存：切换那一帧在渲染里就判定「这一语种还没有文档」，
- * 不必在 effect 里同步清空，上一语种的正文因此闪不了一帧；在途的慢请求落地时语种已不符，
- * 同样不采信。
- */
+/** 文档与语种来自同一次提交；注册当前页供切换时按需准备运行示例。 */
 export function useExampleDoc(component: string): ExampleDoc | null {
-  const { locale } = useLocale()
-  const [docs, setDocs] = useState<{ locale: Locale; items: ExampleDoc[] } | null>(null)
-
-  useEffect(() => {
-    if (docs?.locale === locale) return
-    let cancelled = false
-    void loadExampleDocs(locale).then(items => {
-      if (!cancelled) setDocs({ locale, items })
-    })
-    return () => {
-      cancelled = true
-    }
-  }, [locale, docs])
-
-  const items = docs?.locale === locale ? docs.items : null
-  return items?.find(doc => doc.component === component) ?? null
+  const { docs, register } = useLocale()
+  useEffect(() => register(component), [component, register])
+  return docs.find(doc => doc.component === component) ?? null
 }

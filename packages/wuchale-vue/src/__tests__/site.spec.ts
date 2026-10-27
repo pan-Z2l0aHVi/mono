@@ -56,13 +56,13 @@ function label(value: string) {
   expect(code).toContain("default: '技术协议'")
 })
 
-it('函数内插值模板字符串安全保留并报告诊断', async () => {
+it('函数内插值模板字符串按整句提取', async () => {
   const { bodies, code, onWarn } = await run(
     '<script setup>function label(name) { return `你好 ${name}` }</script><template><p>{{ label("Ada") }}</p></template>'
   )
-  expect(bodies).not.toContain('你好 {0}')
-  expect(code).toContain('`你好 ${name}`')
-  expect(onWarn).toHaveBeenCalledWith(expect.objectContaining({ code: 'unsupported-template' }))
+  expect(bodies).toContain('你好 {0}')
+  expect(code).not.toContain('`你好 ${name}`')
+  expect(onWarn).not.toHaveBeenCalled()
 })
 
 it('tagged模板保持语法，optional member的计算key与console参数不翻译', async () => {
