@@ -1,6 +1,6 @@
 <template>
   <div class="text-center">
     <h1>404 Not Found</h1>
-    <p>The page you asked for does not exist</p>
+    <p>你要找的页面不存在</p>
   </div>
 </template>

@@ -61,7 +61,7 @@ function layoutRoot() {
 }
 
 function navRoot() {
-  const element = document.querySelector('[aria-label="应用导航"]')
+  const element = document.querySelector('[aria-label="App navigation"]')
   if (!element) throw new Error('sidebar nav not found')
   return element
 }

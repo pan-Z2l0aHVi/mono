@@ -9,6 +9,7 @@ import { defineComponent, nextTick } from 'vue'
 import { createMemoryHistory, createRouter, type Router } from 'vue-router'
 
 import { setViewport } from '@/__tests__/viewport'
+import { loadDemoLocale } from '@/i18n/locale'
 
 import AppShell from '../index.vue'
 
@@ -66,7 +67,7 @@ function globalSelectTrigger(label: string) {
 }
 
 async function clickGlobalSelectsAtTopEdge() {
-  for (const label of ['全局动效', '全局主题']) {
+  for (const label of ['Global motion', 'Global theme']) {
     const select = document.querySelector<HTMLElement>(`web-ui-select[aria-label="${label}"]`)
     if (!select) throw new Error(`${label} select not found`)
     await vi.waitFor(() => {
@@ -102,7 +103,7 @@ function themeOverlayRoot(theme = document.querySelector('web-ui-theme')) {
 }
 
 function navRoot() {
-  const element = document.querySelector('[aria-label="应用导航"]')
+  const element = document.querySelector('[aria-label="App navigation"]')
   if (!element) throw new Error('sidebar nav not found')
   return element
 }
@@ -224,24 +225,24 @@ describe('应用外壳（浏览器）：导航 collapsed state 不跨视口泄�
     const toastElement = await persistentTopToast(SHORT_TOAST_MESSAGE)
     await clickBannerCloseButtonAtCenter()
     await clickGlobalSelectsAtTopEdge()
-    const shortTop = globalSelectTrigger('全局主题').getBoundingClientRect().top
+    const shortTop = globalSelectTrigger('Global theme').getBoundingClientRect().top
     const shortHeight = toastElement.getBoundingClientRect().height
 
     toast.info(LONG_TOAST_MESSAGE, { id: toastElement.toastId })
     await vi.waitFor(() => expect(toastElement.getBoundingClientRect().height).toBeGreaterThan(shortHeight))
     await clickGlobalSelectsAtTopEdge()
-    const longTop = globalSelectTrigger('全局主题').getBoundingClientRect().top
+    const longTop = globalSelectTrigger('Global theme').getBoundingClientRect().top
     expect(longTop).toBeGreaterThan(shortTop)
     const longHeight = toastElement.getBoundingClientRect().height
 
     toastElement.style.setProperty('--wui-font-size', '24px')
     await vi.waitFor(() => expect(toastElement.getBoundingClientRect().height).toBeGreaterThan(longHeight))
     await clickGlobalSelectsAtTopEdge()
-    expect(globalSelectTrigger('全局主题').getBoundingClientRect().top).toBeGreaterThan(longTop)
+    expect(globalSelectTrigger('Global theme').getBoundingClientRect().top).toBeGreaterThan(longTop)
 
     toastElement.style.removeProperty('--wui-font-size')
     toast.info(SHORT_TOAST_MESSAGE, { id: toastElement.toastId })
-    await vi.waitFor(() => expect(globalSelectTrigger('全局主题').getBoundingClientRect().top).toBe(shortTop))
+    await vi.waitFor(() => expect(globalSelectTrigger('Global theme').getBoundingClientRect().top).toBe(shortTop))
     await clickGlobalSelectsAtTopEdge()
   })
 
@@ -299,7 +300,7 @@ describe('应用外壳（浏览器）：导航 collapsed state 不跨视口泄�
     expect(document.querySelector('[slot="banner"]')).not.toBeNull()
     expect(themeOverlayRoot()?.querySelector('web-ui-toast')).not.toBeNull()
 
-    for (const label of ['全局动效', '全局主题']) {
+    for (const label of ['Global motion', 'Global theme']) {
       const trigger = globalSelectTrigger(label)
       await userEvent.click(trigger)
       expect(trigger.getAttribute('aria-expanded')).toBe('true')
@@ -388,8 +389,8 @@ describe('应用外壳（浏览器）：导航 collapsed state 不跨视口泄�
   it('全局选择器与导航暴露本地化的可访问名称和选项', async () => {
     await mountAppShell()
     const expectedOptions: Record<string, string[]> = {
-      全局动效: ['完整动效', '减弱动效', '跟随系统'],
-      全局主题: ['浅色', '深色', '跟随系统']
+      'Global motion': ['Full motion', 'Reduced motion', 'Follow system'],
+      'Global theme': ['Light', 'Dark', 'Follow system']
     }
 
     for (const [label, options] of Object.entries(expectedOptions)) {
@@ -401,8 +402,12 @@ describe('应用外壳（浏览器）：导航 collapsed state 不跨视口泄�
       globalSelectTrigger(label)
     }
 
-    expect(navRoot().getAttribute('aria-label')).toBe('应用导航')
+    expect(navRoot().getAttribute('aria-label')).toBe('App navigation')
+    expect(document.querySelector('nav[aria-label="Main navigation"]')).not.toBeNull()
+    await loadDemoLocale('zh-CN', false)
+    await nextTick()
     expect(document.querySelector('nav[aria-label="主导航"]')).not.toBeNull()
+    expect(document.querySelector('web-ui-select[aria-label="全局动效"]')).not.toBeNull()
   })
 
   it('桌面端 collapsed state 沿用完整导航名、超出部分省略，并通过 title 提供完整 label', async () => {

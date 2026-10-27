@@ -1,0 +1,36 @@
+{
+  "name": "@greypan/wuchale-vue",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.mts",
+      "import": "./dist/index.mjs"
+    }
+  },
+  "sideEffects": false,
+  "scripts": {
+    "build": "vp pack",
+    "test": "vp test run"
+  },
+  "dependencies": {
+    "@vue/compiler-dom": "catalog:",
+    "@vue/compiler-sfc": "catalog:"
+  },
+  "devDependencies": {
+    "@greypan/tsconfig": "workspace:*",
+    "@vitejs/plugin-vue": "catalog:",
+    "vite": "catalog:",
+    "vite-plus": "catalog:",
+    "vue": "catalog:",
+    "wuchale": "catalog:"
+  },
+  "peerDependencies": {
+    "vue": "catalog:",
+    "wuchale": "catalog:"
+  },
+  "engines": {
+    "node": ">=24.18.0"
+  }
+}

@@ -1,0 +1,14 @@
+{
+  "$schema": "https://turbo.build/schema.json",
+  "extends": ["//"],
+  "tasks": {
+    "test": {
+      "inputs": [
+        "$TURBO_DEFAULT$",
+        "!**/*.md",
+        "$TURBO_ROOT$/scripts/lib/shell-i18n-catalog.mjs",
+        "$TURBO_ROOT$/scripts/lib/exec.mjs"
+      ]
+    }
+  }
+}
