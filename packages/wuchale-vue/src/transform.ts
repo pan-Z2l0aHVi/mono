@@ -101,12 +101,19 @@ export function transformVue(
     report('unsupported-sfc', '当前仅支持 inline HTML template 与 JS/TS script setup；保留整个 SFC。', template.loc)
     return unchanged()
   }
+  const templatePluralNames = new Set<string>()
   if (scriptSetup) {
     try {
       const scriptAst = babelParse(scriptSetup.content, {
         sourceType: 'module',
         plugins: scriptSetup.lang === 'ts' ? ['typescript'] : []
       })
+      for (const statement of scriptAst.program.body) {
+        if (statement.type !== 'ImportDeclaration' || !/(?:^|\/)plural\.js$/.test(statement.source.value)) continue
+        for (const specifier of statement.specifiers) {
+          if (specifier.type === 'ImportDefaultSpecifier') templatePluralNames.add(specifier.local.name)
+        }
+      }
       if (hasReservedIdentifier(scriptAst)) {
         report('binding-collision', 'script 使用了 wuchale 保留的 _w_ identifier；保留整个 SFC。', scriptSetup.loc)
         return unchanged()
@@ -204,7 +211,8 @@ export function transformVue(
             'unsupported-template',
             '无法静态解析的复数或 tagged template；整体保留原文。',
             location(offset + start, offset + end)
-          )
+          ),
+        expression ? templatePluralNames : []
       )
       destination.push(...pending)
     } catch (error) {

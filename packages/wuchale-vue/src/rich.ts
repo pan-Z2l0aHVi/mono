@@ -1,4 +1,12 @@
-import { ElementTypes, NodeTypes, type ElementNode, type TemplateChildNode } from '@vue/compiler-dom'
+import {
+  createRoot,
+  createTransformContext,
+  ElementTypes,
+  isMemberExpression,
+  NodeTypes,
+  type ElementNode,
+  type TemplateChildNode
+} from '@vue/compiler-dom'
 import type { Text } from 'wuchale'
 import { compileTranslation } from 'wuchale/compiler'
 
@@ -34,12 +42,17 @@ export function richMessage(
   children: string,
   hasVPre: (node: ElementNode) => boolean
 ) {
+  const expressionContext = createTransformContext(createRoot([]), { expressionPlugins: ['typescript'] })
   const hasInterpolation = (node: TemplateChildNode): boolean =>
     node.type === NodeTypes.INTERPOLATION || (node.type === NodeTypes.ELEMENT && node.children.some(hasInterpolation))
   const bindings = (node: TemplateChildNode): number =>
     node.type === NodeTypes.ELEMENT
-      ? node.props.filter(prop => prop.type === NodeTypes.DIRECTIVE && prop.name !== 'on' && prop.exp).length +
-        node.children.reduce((count, child) => count + bindings(child), 0)
+      ? node.props.filter(prop => {
+          if (prop.type !== NodeTypes.DIRECTIVE) return false
+          if (prop.arg && (prop.arg.type !== NodeTypes.SIMPLE_EXPRESSION || !prop.arg.isStatic)) return true
+          if (prop.name === 'on' && prop.arg) return prop.exp != null && isMemberExpression(prop.exp, expressionContext)
+          return prop.exp != null
+        }).length + node.children.reduce((count, child) => count + bindings(child), 0)
       : 0
   const bindingCount = root.children.reduce((count, child) => count + bindings(child), 0)
   // Slot 工厂在译文顺序下执行；不提升与绑定交错的插值，也不改变多个绑定的相对求值顺序。

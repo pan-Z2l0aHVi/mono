@@ -11,7 +11,10 @@ it.each([
   `<p>Read {{ mark('before') }} <span :title="mark('attribute')">{{ mark('inside') }}</span> {{ mark('after') }} now.</p>`,
   `<p>Read <Card>{{ mark('slot') }}</Card> now.</p>`,
   `<p>Read <Card><span :title="mark('slot')">this</span></Card> now.</p>`,
-  `<p>Read <a :title="mark('first')">this</a> and <a :title="mark('second')">that</a> now.</p>`
+  `<p>Read <a :title="mark('first')">this</a> and <a :title="mark('second')">that</a> now.</p>`,
+  `<p>Read <a v-on="mark('events')">this</a> {{ mark('after') }} now.</p>`,
+  `<p>Read <a @[mark('event')]="mark('handler')">this</a> {{ mark('after') }} now.</p>`,
+  `<p>Read <Card><a v-on="mark('events')">this</a></Card> now.</p>`
 ])('无法保留求值顺序或 slot 惰性时，整句保留并警告：%s', async template => {
   const source = `<script setup>function mark(value) { return value }</script><template>${template}</template>`
   const result = await transform(source)

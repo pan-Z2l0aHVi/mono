@@ -24,7 +24,8 @@ export function visitStrings(
     args?: string[],
     plural?: { callee: string; count: string }
   ) => void,
-  unsupported: (start: number, end: number) => void
+  unsupported: (start: number, end: number) => void,
+  templatePluralNames: Iterable<string> = []
 ) {
   const ast = babelParse(expression ? `(${source})` : source, {
     sourceType: 'module',
@@ -39,7 +40,7 @@ export function visitStrings(
       }
     }
   }
-  const pluralNames = new Set(pluralImports)
+  const pluralNames = new Set([...pluralImports, ...templatePluralNames])
   // 遇到同名局部绑定时不冒充作用域解析器，整个文件内的该 helper 保守跳过。
   const binding = (value: unknown): void => {
     if (Array.isArray(value)) {
@@ -56,9 +57,19 @@ export function visitStrings(
       return
     }
     if (!node(value) || value.type === 'ImportDeclaration') return
-    if (['VariableDeclarator', 'FunctionDeclaration'].includes(value.type) && node(value.id)) {
+    if (
+      [
+        'VariableDeclarator',
+        'FunctionDeclaration',
+        'FunctionExpression',
+        'ClassDeclaration',
+        'ClassExpression'
+      ].includes(value.type) &&
+      node(value.id)
+    ) {
       binding(value.id)
     }
+    if (value.type === 'CatchClause') binding(value.param)
     if (Array.isArray(value.params)) binding(value.params)
     Object.values(value).forEach(shadowed)
   }

@@ -88,7 +88,7 @@ function quantity(count) {
 </template>
 ```
 
-候选数量按源语种的 plural categories 编写。仅识别来自生成 `plural.js` 的 default import，支持 import 别名；同名局部绑定、动态候选、spread 或显式第三参数整体保留并警告。模板字符串按整句提取，每个表达式沿用 JavaScript 模板插值的字符串化语义、求值顺序和次数；setup 快照仍需 computed 或渲染时函数才能随语种更新。
+候选数量按源语种的 plural categories 编写。在 script setup 的渲染时函数内识别生成 `plural.js` 的 default import，支持 import 别名；同名局部绑定、动态候选、spread 或显式第三参数整体保留并警告。模板直接调用 helper 也整体跳过并警告，应像上例放入渲染时函数。模板字符串按整句提取，每个表达式沿用 JavaScript 模板插值的字符串化语义、求值顺序和次数；setup 快照仍需 computed 或渲染时函数才能随语种更新。
 
 富文本提取为 `Read <0>this guide</0> now.`，译文可移动节点占位符。原节点的属性、事件与文案属性仍由 SFC 编译；生成的小型 Vue renderer 消费核心已编译的 composite，不解析译文 HTML。支持原生内联元素、链接、简单组件及普通插值；同一父节点内重排保留组件状态。为保留表达式求值顺序，插值与动态绑定混用、多个占位节点的动态绑定，以及组件默认 slot 内的插值或动态绑定整句跳过；单个链接绑定与事件仍可使用。scoped slot、`v-if/v-for`、Transition/TransitionGroup/KeepAlive/Teleport/Suspense 等复杂内建、块级结构和原始内容也安全跳过并警告。译文移除、重复或跨父节点移动节点时警告并回退源句结构。
 

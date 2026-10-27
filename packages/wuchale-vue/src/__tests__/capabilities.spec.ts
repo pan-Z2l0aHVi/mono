@@ -5,6 +5,23 @@ import * as Vue from 'vue'
 import { component, transform } from './helpers'
 
 describe('Vue 脚本消息能力', () => {
+  it.each([
+    `function text() { try { throw () => {} } catch (quantity) { return quantity(2, ['One item', '# items']) } }`,
+    `const text = function quantity(n, choices) { return n ? quantity(0, ['One item', '# items']) : choices.join('/') }`
+  ])('catch 或具名函数遮蔽复数 helper 时整体保留并警告', async script => {
+    const source = `<script setup>import quantity from './locales/plural.js'\n${script}</script><template><p>{{ text(2) }}</p></template>`
+    const result = await transform(source)
+    expect(result.bodies).toEqual([])
+    expect(result.code).toBe(source)
+    expect(result.warn).toHaveBeenCalled()
+  })
+  it.each(['plural', 'quantity'])('模板中直接调用 %s 复数 helper 整体保留并警告', async name => {
+    const source = `<script setup>import ${name} from './locales/plural.js'</script><template><p>{{ ${name}(2, ['One item', '# items']) }}</p></template>`
+    const result = await transform(source)
+    expect(result.bodies).toEqual([])
+    expect(result.code).toBe(source)
+    expect(result.warn).toHaveBeenCalled()
+  })
   it('插值模板整句提取，按原顺序字符串化每个表达式一次', async () => {
     const result = await transform(
       '<script setup>function label(first, second) { return `Hello ${first()} / ${second()}!` }</script><template><p>{{ label(first, second) }}</p></template>'
