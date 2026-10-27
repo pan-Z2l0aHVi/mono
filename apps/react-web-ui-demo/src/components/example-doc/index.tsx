@@ -8,7 +8,7 @@ import {
 import { webUiScrollbarsOptions } from '@greypan/web-ui/scrollbars'
 import { OverlayScrollbars } from 'overlayscrollbars'
 import { OverlayScrollbarsComponent } from 'overlayscrollbars-react'
-import { Suspense, useEffect, useRef, useState, type MouseEvent } from 'react'
+import { Suspense, useEffect, useRef, useState, type MouseEvent, type ComponentType } from 'react'
 
 import { getDemo } from '@/i18n/examples'
 import { useExampleDoc, useLocale } from '@/i18n/locale'
@@ -74,11 +74,35 @@ interface ExampleDocProps {
   component: string
   /** 预览与默认代码 tab 使用的框架；默认 React 站。 */
   nativeFlavor?: Flavor
+  /** 锚点映射测试只检查预览容器时，跳过文档主体与演示组件。 */
+  previewAnchorsOnly?: boolean
   /** 主文档用 primary，多文档页的后续文档用 secondary；不传时不渲染组件标题。 */
   level?: 'primary' | 'secondary'
 }
 
-function ExampleDoc({ component, nativeFlavor = 'react', level }: ExampleDocProps) {
+function ExamplePreview({
+  Demo,
+  demoKey,
+  renderDemoComponent = true
+}: {
+  Demo: ComponentType | undefined
+  demoKey: string | null | undefined
+  renderDemoComponent?: boolean
+}) {
+  if (!Demo || !demoKey) return null
+
+  return (
+    <div className="relative z-20 flex flex-wrap items-center gap-3 px-4 py-8" data-sample-preview={demoKey}>
+      {renderDemoComponent ? (
+        <Suspense fallback={null}>
+          <Demo />
+        </Suspense>
+      ) : null}
+    </div>
+  )
+}
+
+function ExampleDoc({ component, nativeFlavor = 'react', previewAnchorsOnly = false, level }: ExampleDocProps) {
   const doc = useExampleDoc(component)
   const { locale } = useLocale()
   const [activeFlavors, setActiveFlavors] = useState<Record<string, Flavor>>({})
@@ -97,6 +121,28 @@ function ExampleDoc({ component, nativeFlavor = 'react', level }: ExampleDocProp
   const sampleHeading = (level === 'secondary' ? 'h4' : 'h3') as 'h3' | 'h4'
   const SectionHeading = sectionHeading
   const SampleHeading = sampleHeading
+
+  function sampleKey(sample: { id: string | null }, index: number) {
+    return sample.id ?? `sample-${index}`
+  }
+
+  if (previewAnchorsOnly) {
+    return (
+      <section data-example-doc={doc.component}>
+        {doc.samples.map((sample, index) => {
+          const Demo = sample.demoKey ? getDemo(locale, component, sample.demoKey) : undefined
+          return (
+            <ExamplePreview
+              key={sampleKey(sample, index)}
+              Demo={Demo}
+              demoKey={sample.demoKey}
+              renderDemoComponent={false}
+            />
+          )
+        })}
+      </section>
+    )
+  }
 
   function activeFlavor(key: string): Flavor {
     return activeFlavors[key] ?? nativeFlavor
@@ -235,16 +281,7 @@ function ExampleDoc({ component, nativeFlavor = 'react', level }: ExampleDocProp
                 实际整条祖先链上连一个 `overflow: hidden` 都没有。
               */}
               <div className="isolate" data-current-flavor={flavor}>
-                {Demo ? (
-                  <div
-                    className="relative z-20 flex flex-wrap items-center gap-3 px-4 py-8"
-                    data-sample-preview={sample.demoKey}
-                  >
-                    <Suspense fallback={null}>
-                      <Demo />
-                    </Suspense>
-                  </div>
-                ) : null}
+                <ExamplePreview Demo={Demo} demoKey={sample.demoKey} />
 
                 {/*
                   这一层只画边框和圆角，**不裁剪**：工具条里的 segmented 才能把按压态画全。

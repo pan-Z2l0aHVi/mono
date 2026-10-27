@@ -158,24 +158,42 @@ apps/vue-web-ui-demo/src/locales/plural.js
 !.claude/rules
 !.claude/skills
 
-# Gemini CLI / OpenCode / Continue / Aider
+# Codex（策略同 Claude Code：忽略本地态，放行仓级配置）
+.codex/*
+!.codex/config.toml
+
+# 其余 Agent（本地态与规则目录；共享指令统一放 .agents/ 与 AGENTS.md）
 .gemini/*
 .opencode/*
 .continue/*
 .aider*/
-
-# Cursor / Windsurf
 .cursor/
 .windsurf/
-
-# 工具侧本地会话与记忆数据
 .workbuddy/
 .codebuddy/
 .zcode/
-
-# Codex（策略同 Claude Code：忽略本地态，放行仓级配置）
-.codex/*
-!.codex/config.toml
+.qoder/
+.trae/
+.qwen/
+.lingma/
+.comate/
+.codegeex/
+.codeartsdoer/
+.minimax/
+.iflow/
+.kiro/
+.roo/
+.cline/
+.clinerules/
+.goose/
+.openhands/
+.crush/
+.augment/
+.junie/
+.devin/
+.rovodev/
+.codeium/
+.tabnine/
 
 # -----------------------------------------------------------------------------
 # 12. 仓库特定放行（入库的生成物）

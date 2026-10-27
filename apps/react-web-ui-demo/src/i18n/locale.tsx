@@ -48,31 +48,46 @@ export function loadExampleDocs(locale: Locale): Promise<ExampleDoc[]> {
   return docsLoaders[locale]().then(module => module.exampleDocs)
 }
 
-let shellLocale: Locale | null = null
-const shellLoads = new Map<Locale, Promise<void>>()
+/** 创建串行提交 catalog 的 loader，确保最后请求的语种最终生效。 */
+export function createShellLocaleLoader(loadLocale: (locale: Locale) => Promise<void>) {
+  let shellLocale: Locale | null = null
+  let shellLoadQueue: Promise<void> = Promise.resolve()
+  let pendingLoads = 0
+  let latestRequest: { locale: Locale; promise: Promise<void> } | null = null
 
-/**
- * 装壳文案的 catalog。同一语种只提交一次：重复调用会在 Provider 挂载后多换一次语种，
- * 把运行时订阅者一起重渲染。
- */
-export function loadShellLocale(locale: Locale): Promise<void> {
-  if (shellLocale === locale) return Promise.resolve()
-  let pending = shellLoads.get(locale)
-  if (!pending) {
-    pending = loadLocale(locale).then(
-      () => {
+  return function loadShellLocale(locale: Locale): Promise<void> {
+    if (latestRequest?.locale === locale) return latestRequest.promise
+    if (pendingLoads === 0 && shellLocale === locale) return Promise.resolve()
+
+    pendingLoads += 1
+    const pending = shellLoadQueue
+      .then(() => loadLocale(locale))
+      .then(() => {
         shellLocale = locale
-        shellLoads.delete(locale)
+      })
+    shellLoadQueue = pending.then(
+      () => {
+        pendingLoads -= 1
       },
-      error => {
-        shellLoads.delete(locale)
-        throw error
+      () => {
+        pendingLoads -= 1
       }
     )
-    shellLoads.set(locale, pending)
+    latestRequest = { locale, promise: pending }
+    void pending.catch(() => {
+      if (latestRequest?.promise === pending) latestRequest = null
+    })
+    return pending
   }
-  return pending
 }
+
+const loadShellLocale = createShellLocaleLoader(loadLocale)
+
+/**
+ * 串行提交壳文案 catalog。快速切换时把新请求排在旧请求之后，保证最后提交的是当前选择；
+ * 同一语种的重复调用共用同一个 promise。
+ */
+export { loadShellLocale }
 
 interface LocaleContextValue {
   locale: Locale

@@ -2,14 +2,20 @@ import { existsSync, readdirSync, readFileSync } from 'node:fs'
 import path from 'node:path'
 
 import { demoFileContent, demoFileName, FLAVOR_LANG, visibleText } from '@greypan/md-to-comp'
-import { act, render, waitFor } from '@testing-library/react'
+import { render, waitFor } from '@testing-library/react'
 import { createElement } from 'react'
-import { beforeAll, describe, expect, it } from 'vite-plus/test'
+import { describe, expect, it, vi } from 'vite-plus/test'
 
 import ExampleDoc from '../components/example-doc'
 import { exampleDocs as enExampleDocs, type ExampleDoc as ExampleDocData } from '../generated/en/examples'
 import { exampleDocs as zhExampleDocs } from '../generated/zh-CN/examples'
 import { loadExampleDocs, loadShellLocale, LocaleProvider } from '../i18n/locale'
+
+// 本文件只验证生成清单与预览锚点映射，保留真实 getDemo，不加载全站运行示例。
+vi.mock('../i18n/examples', async importOriginal => ({
+  ...(await importOriginal<typeof import('../i18n/examples')>()),
+  prepareExamples: async () => {}
+}))
 
 // 语料 join 的 React 侧：「示例显示 == markdown 围栏」「每条示例落成可编译文件」「页面 ↔ 语料
 // 不互为孤儿」三条由本包持有；生成器那侧的判据（篡改 / 孤儿 / 表格形状）在 `@greypan/md-to-comp`
@@ -65,7 +71,6 @@ const localeSurfaces: LocaleSurface[] = [
 }))
 
 const docNames = corpusOf('.CN.md').map(file => file.replace(/\.CN\.md$/, ''))
-const docByName = new Map(zhExampleDocs.map(doc => [doc.component, doc]))
 
 /**
  * `## Samples` 里的 `###` 标题，按出现次序。标题就是示例的身份（id 由生成器从它派生），所以这份
@@ -191,8 +196,7 @@ describe('每条示例落成可编译文件', () => {
   }
 })
 
-// 标题就是示例的身份（两侧各有一份语料，id 从它派生）。这一条只有 React 侧能判：Vue 站本期只出
-// 中文，两份语料都在它的 input 目录里，但只落了一套产物。
+// 标题就是示例的身份，两份语料必须派生出相同的 demo 文件名。
 describe('示例标题两侧同文', () => {
   it('CN 与 EN 的 `## Samples` 标题逐字相同', () => {
     for (const name of docNames) {
@@ -227,47 +231,42 @@ describe('页面只剩 <ExampleDoc>', () => {
 
 // 壳映射判在 jsdom（不挂真组件，只判壳真的把每条示例接上了生成的 demo）：预览区由壳自己的
 // `import.meta.glob` 映射渲染，产物加载失败不影响判据；demo 真挂得出宿主由人工验收兜底，这里不重复。
-describe('全量语料的壳映射（ExampleDoc）', () => {
-  // 先把全部 demo 模块收进模块缓存：壳的 lazy 加载只结算缓存命中的 promise，用例结束时
-  // 不会留下在途 import 拖住 run 收尾。
-  // 逐篇挂全量语料的壳，本地亚秒级；CI runner 慢机实测越过默认 5s（与被删的全量遍历用例
-  // 同一类慢，那时给的是 120s），beforeAll 的批量预载同理。给足余量但只作用于这一条链路。
-  const allDemos = import.meta.glob('../generated/zh-CN/demos/*.tsx')
-  beforeAll(async () => {
-    // 文档现在按语种异步加载，壳挂载后要等它落地；测试固定成中文源语种。
-    localStorage.setItem('locale', 'zh-CN')
-    await Promise.all([
-      ...Object.values(allDemos).map(load => load()),
-      loadExampleDocs('zh-CN'),
-      // 壳里的抽取文案由 wuchale 运行时求值，首帧前必须已有 catalog。
-      loadShellLocale('zh-CN')
-    ])
-  }, 30_000)
+describe('语料的壳映射（ExampleDoc）', () => {
+  it('带锚点的示例由壳挂出预览区，顺序与生成数据的锚点序一致', async () => {
+    for (const surface of localeSurfaces) {
+      const locale = surface.label as 'zh-CN' | 'en'
+      localStorage.setItem('locale', locale)
+      await Promise.all([loadExampleDocs(locale), loadShellLocale(locale)])
 
-  it('每条示例由壳挂出预览区，顺序与生成数据的 demoKey 序一致', async () => {
-    for (const component of docNames) {
-      const doc = docByName.get(component)
-      if (!doc) throw new Error(`${component}：生成数据里没有这个 component`)
       const { container, unmount } = render(
-        createElement(LocaleProvider, null, createElement(ExampleDoc, { component }))
+        createElement(
+          LocaleProvider,
+          null,
+          createElement(
+            'div',
+            null,
+            docNames.map(component =>
+              createElement(ExampleDoc, { component, key: component, previewAnchorsOnly: true })
+            )
+          )
+        )
       )
-      await waitFor(() =>
-        expect(
-          container.querySelector('[data-sample-preview]'),
-          `${component}：文档数据没有到达，壳没挂出任何预览区`
-        ).not.toBeNull()
-      )
-      const keys = [...container.querySelectorAll('[data-sample-preview]')].map(node =>
-        node.getAttribute('data-sample-preview')
+      await waitFor(() => expect(container.querySelectorAll('[data-example-doc]')).toHaveLength(docNames.length))
+      const previewsByComponent = new Map(
+        [...container.querySelectorAll<HTMLElement>('[data-example-doc]')].map(section => [
+          section.dataset.exampleDoc!,
+          [...section.querySelectorAll('[data-sample-preview]')].map(node => node.getAttribute('data-sample-preview'))
+        ])
       )
       unmount()
-      // lazy 的 payload 在 render 之后才结算；容器已卸载，结算落不到任何 DOM 上，但 act 记账开着
-      // 会每篇告警一条「not wrapped in act」。放在卸载后的一次空 act 里消化，既不告警也不会让
-      // demo 真的渲染进 jsdom（React 19 的 render 不能包进外层 act，实测提交为空树）。
-      await act(async () => {})
-      expect(keys, `${component}：预览区与生成数据的 demoKey 不是同一串（壳的 glob 映射漂了）`).toEqual(
-        doc.samples.map(sample => sample.demoKey)
-      )
+      for (const component of docNames) {
+        const doc = surface.docsByName.get(component)
+        if (!doc) throw new Error(`${locale}/${component}：生成数据里没有这个 component`)
+        expect(
+          previewsByComponent.get(component),
+          `${locale}/${component}：预览区与生成数据的锚点不是同一串（壳的 glob 映射或 demoKey 漂了）`
+        ).toEqual(doc.samples.map(sample => sample.demoKey))
+      }
     }
   }, 30_000)
 })

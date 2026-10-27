@@ -5,10 +5,16 @@ import path from 'node:path'
 
 import { checkApp, parsePo, run } from './shell-i18n-catalog.mjs'
 
-const header = 'msgid ""\nmsgstr ""\n"Language: en\\n"\n\n'
+const header = 'msgid ""\nmsgstr ""\n"Language: en\\n"\n"Plural-Forms: nplurals=2; plural=(n != 1);\\n"\n\n'
 
 function entry(msgid, msgstr) {
   return `#: src/a.tsx\nmsgid ${JSON.stringify(msgid)}\nmsgstr ${JSON.stringify(msgstr)}\n\n`
+}
+
+function pluralEntry(msgid, plural, translations) {
+  return `#: src/a.tsx\nmsgid ${JSON.stringify(msgid)}\nmsgid_plural ${JSON.stringify(plural)}\n${translations
+    .map((translation, index) => `msgstr[${index}] ${JSON.stringify(translation)}`)
+    .join('\n')}\n\n`
 }
 
 // parsePo 是门禁唯一的读取路径：它读漏一条，空译文就永远判不出来。
@@ -30,10 +36,28 @@ function entry(msgid, msgstr) {
   assert.deepEqual(parsed.obsolete, ['废弃'])
 }
 
-// 复数条目按 msgstr[n] 写；空的那一格同样算没翻译。
+// 复数条目中的 msgid_plural 属于同一条；msgstr[n] 各自保留，不能把空表单与非空表单拼成一条。
 {
-  const parsed = parsePo(`${header}msgid "个文件"\nmsgid_plural "个文件"\nmsgstr[0] ""\nmsgstr[1] ""\n\n`)
-  assert.equal(parsed.entries.get('个文件'), '')
+  const parsed = parsePo(`${header}${pluralEntry('文件', '多个文件', ['File', 'Files'])}`)
+  assert.deepEqual(parsed.entries.get('文件'), ['File', 'Files'])
+  assert.equal(parsed.pluralCount, 2)
+  assert.deepEqual(parsePo(`${header}${pluralEntry('文件', '多个文件', ['', 'Files'])}`).entries.get('文件'), [
+    '',
+    'Files'
+  ])
+}
+
+// 目标语种必须填满 header 声明的每个复数表单。
+{
+  const root = fixture([])
+  const locales = path.join(root, 'apps', 'react-web-ui-demo', 'src', 'locales')
+  fs.writeFileSync(path.join(locales, 'zh-CN.po'), `${header}${pluralEntry('文件', '多个文件', ['文件', '多个文件'])}`)
+  fs.writeFileSync(path.join(locales, 'en.po'), `${header}${pluralEntry('文件', '多个文件', ['File', ''])}`)
+  try {
+    await assert.rejects(() => run({ root }), /空译文/)
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true })
+  }
 }
 
 function fixture(messages, app = 'react-web-ui-demo') {

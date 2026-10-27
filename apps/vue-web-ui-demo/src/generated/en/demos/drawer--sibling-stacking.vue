@@ -1,9 +1,5 @@
 <template>
-  <div class="flex flex-wrap gap-3">
-    <web-ui-button v-for="(value, index) in open" :key="index" @click="open[index] = true">
-      Open drawer {{ index + 1 }}
-    </web-ui-button>
-  </div>
+  <web-ui-button @click="open[0] = true">Open drawer 1</web-ui-button>
 
   <web-ui-drawer
     v-for="(value, index) in open"
@@ -13,7 +9,23 @@
     closable
     @open-change="open[index] = $event.detail.open"
   >
-    <p>Sibling drawer {{ index + 1 }}. Open the next one and watch this layer scale down and expose its edge.</p>
+    <p>
+      Sibling drawer {{ index + 1 }}.
+      {{
+        index < open.length - 1
+          ? 'Open the next drawer from the footer.'
+          : 'Close to see the remaining layers rearrange.'
+      }}
+    </p>
+    <web-ui-button
+      v-if="index < open.length - 1"
+      slot="footer"
+      variant="secondary"
+      full
+      @click="open[index + 1] = true"
+    >
+      Open drawer {{ index + 2 }}
+    </web-ui-button>
   </web-ui-drawer>
 </template>
 

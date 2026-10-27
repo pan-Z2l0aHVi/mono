@@ -17,7 +17,7 @@ export default function Demo() {
     <div className="flex flex-col gap-3">
       <web-ui-textarea placeholder="默认三行"></web-ui-textarea>
       <web-ui-textarea rows={6} placeholder="六行高"></web-ui-textarea>
-      <web-ui-textarea rows={3} value="已经写好的内容"></web-ui-textarea>
+      <web-ui-textarea aria-label="已填写的多行文本" rows={3} value="已经写好的内容"></web-ui-textarea>
     </div>
   )
 }
@@ -28,7 +28,7 @@ export default function Demo() {
   <div class="flex flex-col gap-3">
     <web-ui-textarea placeholder="默认三行"></web-ui-textarea>
     <web-ui-textarea :rows="6" placeholder="六行高"></web-ui-textarea>
-    <web-ui-textarea :rows="3" value="已经写好的内容"></web-ui-textarea>
+    <web-ui-textarea aria-label="已填写的多行文本" :rows="3" value="已经写好的内容"></web-ui-textarea>
   </div>
 </template>
 ```
@@ -167,7 +167,7 @@ const committed = ref('')
 export default function Demo() {
   return (
     <div className="flex w-full flex-col gap-3">
-      <web-ui-textarea full clearable value="这一段可以一次清掉"></web-ui-textarea>
+      <web-ui-textarea full clearable aria-label="可清除的多行文本" value="这一段可以一次清掉"></web-ui-textarea>
       <web-ui-textarea full clearable placeholder="空值时没有清除 button"></web-ui-textarea>
     </div>
   )
@@ -177,7 +177,7 @@ export default function Demo() {
 ```vue
 <template>
   <div class="flex w-full flex-col gap-3">
-    <web-ui-textarea full clearable value="这一段可以一次清掉"></web-ui-textarea>
+    <web-ui-textarea full clearable aria-label="可清除的多行文本" value="这一段可以一次清掉"></web-ui-textarea>
     <web-ui-textarea full clearable placeholder="空值时没有清除 button"></web-ui-textarea>
   </div>
 </template>
@@ -191,8 +191,14 @@ export default function Demo() {
 export default function Demo() {
   return (
     <div className="flex w-full flex-col gap-3">
-      <web-ui-textarea full disabled value="禁用：读得到，改不动"></web-ui-textarea>
-      <web-ui-textarea full readonly clearable value="只读：清除 button 已收起"></web-ui-textarea>
+      <web-ui-textarea full disabled aria-label="禁用的多行文本" value="禁用：读得到，改不动"></web-ui-textarea>
+      <web-ui-textarea
+        full
+        readonly
+        clearable
+        aria-label="只读的多行文本"
+        value="只读：清除 button 已收起"
+      ></web-ui-textarea>
     </div>
   )
 }
@@ -201,8 +207,14 @@ export default function Demo() {
 ```vue
 <template>
   <div class="flex w-full flex-col gap-3">
-    <web-ui-textarea full disabled value="禁用：读得到，改不动"></web-ui-textarea>
-    <web-ui-textarea full readonly clearable value="只读：清除 button 已收起"></web-ui-textarea>
+    <web-ui-textarea full disabled aria-label="禁用的多行文本" value="禁用：读得到，改不动"></web-ui-textarea>
+    <web-ui-textarea
+      full
+      readonly
+      clearable
+      aria-label="只读的多行文本"
+      value="只读：清除 button 已收起"
+    ></web-ui-textarea>
   </div>
 </template>
 ```
@@ -216,7 +228,13 @@ export default function Demo() {
   return (
     <div className="flex w-full flex-col gap-3">
       <web-ui-textarea full borderless placeholder="无边框输入"></web-ui-textarea>
-      <web-ui-textarea full borderless rows={4} value="无边框且有值，容器由外层负责"></web-ui-textarea>
+      <web-ui-textarea
+        full
+        borderless
+        aria-label="无边框多行文本"
+        rows={4}
+        value="无边框且有值，容器由外层负责"
+      ></web-ui-textarea>
     </div>
   )
 }
@@ -226,7 +244,13 @@ export default function Demo() {
 <template>
   <div class="flex w-full flex-col gap-3">
     <web-ui-textarea full borderless placeholder="无边框输入"></web-ui-textarea>
-    <web-ui-textarea full borderless :rows="4" value="无边框且有值，容器由外层负责"></web-ui-textarea>
+    <web-ui-textarea
+      full
+      borderless
+      aria-label="无边框多行文本"
+      :rows="4"
+      value="无边框且有值，容器由外层负责"
+    ></web-ui-textarea>
   </div>
 </template>
 ```
@@ -334,7 +358,12 @@ export default function Demo() {
 
   return (
     <div className="flex flex-col gap-3">
-      <web-ui-textarea ref={fieldRef} rows={3} value="全选之后可以直接输入替换"></web-ui-textarea>
+      <web-ui-textarea
+        aria-label="待全选的多行文本"
+        ref={fieldRef}
+        rows={3}
+        value="全选之后可以直接输入替换"
+      ></web-ui-textarea>
       <div className="flex flex-wrap items-center gap-3">
         <web-ui-button onClick={() => fieldRef.current?.focus()}>聚焦</web-ui-button>
         <web-ui-button onClick={() => fieldRef.current?.select()}>全选</web-ui-button>
@@ -348,7 +377,12 @@ export default function Demo() {
 ```vue
 <template>
   <div class="flex flex-col gap-3">
-    <web-ui-textarea ref="field" :rows="3" value="全选之后可以直接输入替换"></web-ui-textarea>
+    <web-ui-textarea
+      aria-label="待全选的多行文本"
+      ref="field"
+      :rows="3"
+      value="全选之后可以直接输入替换"
+    ></web-ui-textarea>
     <div class="flex flex-wrap items-center gap-3">
       <web-ui-button @click="field?.focus()">聚焦</web-ui-button>
       <web-ui-button @click="field?.select()">全选</web-ui-button>
@@ -375,10 +409,16 @@ export default function Demo() {
     <div className="flex flex-wrap items-start gap-3">
       <web-ui-textarea
         clearable
+        aria-label="较宽的多行文本"
         value="宽一档、清除色改 danger"
         className="[--wui-textarea-width:280px] [--wui-textarea-clear-color:var(--wui-color-danger)]"
       ></web-ui-textarea>
-      <web-ui-textarea clearable value="窄一档" className="[--wui-textarea-width:120px]"></web-ui-textarea>
+      <web-ui-textarea
+        clearable
+        aria-label="较窄的多行文本"
+        value="窄一档"
+        className="[--wui-textarea-width:120px]"
+      ></web-ui-textarea>
     </div>
   )
 }
@@ -389,10 +429,16 @@ export default function Demo() {
   <div class="flex flex-wrap items-start gap-3">
     <web-ui-textarea
       clearable
+      aria-label="较宽的多行文本"
       value="宽一档、清除色改 danger"
       class="[--wui-textarea-width:280px] [--wui-textarea-clear-color:var(--wui-color-danger)]"
     ></web-ui-textarea>
-    <web-ui-textarea clearable value="窄一档" class="[--wui-textarea-width:120px]"></web-ui-textarea>
+    <web-ui-textarea
+      clearable
+      aria-label="较窄的多行文本"
+      value="窄一档"
+      class="[--wui-textarea-width:120px]"
+    ></web-ui-textarea>
   </div>
 </template>
 ```

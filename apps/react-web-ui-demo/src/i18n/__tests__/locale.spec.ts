@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it } from 'vite-plus/test'
 
-import { detectLocale, loadShellLocale } from '../locale'
+import { createShellLocaleLoader, detectLocale, loadShellLocale } from '../locale'
 
 // 语种选择的判据只有两条：用户选过的优先，没选过才按浏览器习惯推。这两条错了，整站会对着
 // 用错语言首屏呈现，而 URL 不带语种、没有任何链接能把它纠回来，所以在这里钉住。
@@ -56,5 +56,27 @@ describe('壳文案 catalog 装载', () => {
     await first
     // 已装载过的那一档不再重复提交：再调一次应立即完成，且不会换第二次语种。
     await expect(loadShellLocale('en')).resolves.toBeUndefined()
+  })
+
+  it('快速切换时按请求顺序提交 catalog', async () => {
+    const calls: string[] = []
+    let finishEnglish!: () => void
+    const englishLoad = new Promise<void>(resolve => {
+      finishEnglish = resolve
+    })
+    const load = createShellLocaleLoader(locale => {
+      calls.push(locale)
+      return locale === 'en' ? englishLoad : Promise.resolve()
+    })
+
+    await load('zh-CN')
+    const english = load('en')
+    const chinese = load('zh-CN')
+    await Promise.resolve()
+    expect(calls).toEqual(['zh-CN', 'en'])
+
+    finishEnglish()
+    await Promise.all([english, chinese])
+    expect(calls).toEqual(['zh-CN', 'en', 'zh-CN'])
   })
 })

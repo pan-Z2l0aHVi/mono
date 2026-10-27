@@ -16,7 +16,7 @@ export default function Demo() {
   return (
     <div className="flex flex-col items-start gap-3">
       <web-ui-input placeholder="Enter a nickname"></web-ui-input>
-      <web-ui-input value="web-ui"></web-ui-input>
+      <web-ui-input aria-label="Filled nickname" value="web-ui"></web-ui-input>
     </div>
   )
 }
@@ -26,7 +26,7 @@ export default function Demo() {
 <template>
   <div class="flex flex-col items-start gap-3">
     <web-ui-input placeholder="Enter a nickname"></web-ui-input>
-    <web-ui-input value="web-ui"></web-ui-input>
+    <web-ui-input aria-label="Filled nickname" value="web-ui"></web-ui-input>
   </div>
 </template>
 ```
@@ -105,7 +105,7 @@ import { lucideSearch } from '@greypan/web-ui/icons'
 export default function Demo() {
   return (
     <div className="flex w-full flex-col gap-3">
-      <web-ui-input full clearable value="web-ui"></web-ui-input>
+      <web-ui-input full clearable aria-label="Clearable value" value="web-ui"></web-ui-input>
       <web-ui-input full clearable placeholder="No content yet, so there is no clear button"></web-ui-input>
     </div>
   )
@@ -115,7 +115,7 @@ export default function Demo() {
 ```vue
 <template>
   <div class="flex w-full flex-col gap-3">
-    <web-ui-input full clearable value="web-ui"></web-ui-input>
+    <web-ui-input full clearable aria-label="Clearable value" value="web-ui"></web-ui-input>
     <web-ui-input full clearable placeholder="No content yet, so there is no clear button"></web-ui-input>
   </div>
 </template>
@@ -132,8 +132,8 @@ export default function Demo() {
   return (
     <div className="flex flex-col items-start gap-3">
       <web-ui-input disabled placeholder="Disabled"></web-ui-input>
-      <web-ui-input disabled value="Disabled with a value"></web-ui-input>
-      <web-ui-input readonly clearable value="Readonly: can select and copy, cannot edit">
+      <web-ui-input disabled aria-label="Disabled input with a value" value="Disabled with a value"></web-ui-input>
+      <web-ui-input readonly clearable aria-label="Readonly input" value="Readonly: can select and copy, cannot edit">
         <web-ui-icon slot="prefix" icon={lucideSearch} size={16}></web-ui-icon>
       </web-ui-input>
     </div>
@@ -145,8 +145,8 @@ export default function Demo() {
 <template>
   <div class="flex flex-col items-start gap-3">
     <web-ui-input disabled placeholder="Disabled"></web-ui-input>
-    <web-ui-input disabled value="Disabled with a value"></web-ui-input>
-    <web-ui-input readonly clearable value="Readonly: can select and copy, cannot edit">
+    <web-ui-input disabled aria-label="Disabled input with a value" value="Disabled with a value"></web-ui-input>
+    <web-ui-input readonly clearable aria-label="Readonly input" value="Readonly: can select and copy, cannot edit">
       <web-ui-icon slot="prefix" :icon="lucideSearch" :size="16"></web-ui-icon>
     </web-ui-input>
   </div>
@@ -168,7 +168,11 @@ export default function Demo() {
   return (
     <div className="flex flex-col items-start gap-3">
       <web-ui-input borderless placeholder="Borderless input"></web-ui-input>
-      <web-ui-input borderless value="Borderless with a value"></web-ui-input>
+      <web-ui-input
+        borderless
+        aria-label="Borderless input with a value"
+        value="Borderless with a value"
+      ></web-ui-input>
       <web-ui-input borderless aria-label="Search" placeholder="Borderless with an icon">
         <web-ui-icon slot="prefix" icon={lucideSearch} size={16}></web-ui-icon>
       </web-ui-input>
@@ -181,7 +185,7 @@ export default function Demo() {
 <template>
   <div class="flex flex-col items-start gap-3">
     <web-ui-input borderless placeholder="Borderless input"></web-ui-input>
-    <web-ui-input borderless value="Borderless with a value"></web-ui-input>
+    <web-ui-input borderless aria-label="Borderless input with a value" value="Borderless with a value"></web-ui-input>
     <web-ui-input borderless aria-label="Search" placeholder="Borderless with an icon">
       <web-ui-icon slot="prefix" :icon="lucideSearch" :size="16"></web-ui-icon>
     </web-ui-input>
@@ -352,7 +356,7 @@ export default function Demo() {
 
   return (
     <div className="flex flex-wrap items-center gap-3">
-      <web-ui-input ref={fieldRef} value="Hand focus to it"></web-ui-input>
+      <web-ui-input aria-label="Input to focus" ref={fieldRef} value="Hand focus to it"></web-ui-input>
       <web-ui-button onClick={() => fieldRef.current?.focus()}>Focus</web-ui-button>
       <web-ui-button onClick={() => fieldRef.current?.select()}>Select all</web-ui-button>
       <web-ui-button onClick={() => fieldRef.current?.blur()}>Blur</web-ui-button>
@@ -364,7 +368,7 @@ export default function Demo() {
 ```vue
 <template>
   <div class="flex flex-wrap items-center gap-3">
-    <web-ui-input ref="field" value="Hand focus to it"></web-ui-input>
+    <web-ui-input aria-label="Input to focus" ref="field" value="Hand focus to it"></web-ui-input>
     <web-ui-button @click="field?.focus()">Focus</web-ui-button>
     <web-ui-button @click="field?.select()">Select all</web-ui-button>
     <web-ui-button @click="field?.blur()">Blur</web-ui-button>
@@ -389,10 +393,16 @@ export default function Demo() {
     <div className="flex flex-wrap items-center gap-3">
       <web-ui-input
         clearable
+        aria-label="Wider input"
         value="One step wider, clear color set to danger"
         className="[--wui-input-width:280px] [--wui-input-clear-color:var(--wui-color-danger)]"
       ></web-ui-input>
-      <web-ui-input clearable value="One step narrower" className="[--wui-input-width:120px]"></web-ui-input>
+      <web-ui-input
+        clearable
+        aria-label="Narrower input"
+        value="One step narrower"
+        className="[--wui-input-width:120px]"
+      ></web-ui-input>
     </div>
   )
 }
@@ -403,10 +413,16 @@ export default function Demo() {
   <div class="flex flex-wrap items-center gap-3">
     <web-ui-input
       clearable
+      aria-label="Wider input"
       value="One step wider, clear color set to danger"
       class="[--wui-input-width:280px] [--wui-input-clear-color:var(--wui-color-danger)]"
     ></web-ui-input>
-    <web-ui-input clearable value="One step narrower" class="[--wui-input-width:120px]"></web-ui-input>
+    <web-ui-input
+      clearable
+      aria-label="Narrower input"
+      value="One step narrower"
+      class="[--wui-input-width:120px]"
+    ></web-ui-input>
   </div>
 </template>
 ```

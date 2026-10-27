@@ -4,6 +4,7 @@
     <web-ui-textarea
       full
       borderless
+      aria-label="Borderless multiline text"
       :rows="4"
       value="Borderless with a value; the outer layer owns the container"
     ></web-ui-textarea>

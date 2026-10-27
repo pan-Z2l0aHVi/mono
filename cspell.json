@@ -133,6 +133,7 @@
     // 壳文案 i18n：库名与 Gettext PO 的字段名（msgid / msgstr 由字典放行）。
     "wuchale",
     "msgctxt",
+    "nplurals",
     "pofile",
     // 英文译文语料里的散文用词（`unhover` / `unacked` 同一类构词）：它们随 `examples.ts` 进
     // cspell 的检查面，是笔误之外的合法英文，登记而不是改写。

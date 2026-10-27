@@ -138,6 +138,15 @@ let setMediaMatches: (query: string, matches: boolean) => void
 describe('应用外壳：导航 collapsed state 不跨视口泄漏', () => {
   beforeEach(() => {
     setMediaMatches = createMatchMediaStub()
+    // jsdom 没有布局与 ResizeObserver；toast 尺寸变化由 browser spec 验证。
+    vi.stubGlobal(
+      'ResizeObserver',
+      class {
+        observe() {}
+        unobserve() {}
+        disconnect() {}
+      }
+    )
   })
 
   afterEach(() => {

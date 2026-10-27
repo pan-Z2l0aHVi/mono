@@ -1,6 +1,6 @@
 <template>
   <div class="flex flex-wrap items-center gap-3">
-    <web-ui-input ref="field" value="Hand focus to it"></web-ui-input>
+    <web-ui-input aria-label="Input to focus" ref="field" value="Hand focus to it"></web-ui-input>
     <web-ui-button @click="field?.focus()">Focus</web-ui-button>
     <web-ui-button @click="field?.select()">Select all</web-ui-button>
     <web-ui-button @click="field?.blur()">Blur</web-ui-button>

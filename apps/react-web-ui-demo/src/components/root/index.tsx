@@ -481,10 +481,11 @@ export function Root() {
                 className="h-[var(--toast-safe-bottom)]"
               />
             ) : null}
+            {/* 移动端为前置的 36px 导航按钮、8px 外缩和 8px header 间距预留 52px。 */}
             <div
               slot="header"
               style={toastHeaderSafeAreaStyle}
-              className={`flex h-full w-full items-center justify-end gap-4 px-4 py-2 mobile:w-screen ${topRightToastHeaderPaddingTop > 0 ? 'pt-[var(--toast-header-safe-top)]' : ''}`}
+              className={`flex h-full w-full items-center justify-end gap-4 px-4 py-2 mobile:flex-wrap mobile:w-[calc(100vw-52px)] ${topRightToastHeaderPaddingTop > 0 ? 'pt-[var(--toast-header-safe-top)]' : ''}`}
             >
               <web-ui-select
                 value={themeMotion}

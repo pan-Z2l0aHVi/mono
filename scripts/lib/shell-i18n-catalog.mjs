@@ -20,21 +20,37 @@ function poString(literal) {
 
 /**
  * 只解析这份门禁需要的部分：`msgid` → `msgstr` 的配对，以及 `#~` 开头的废弃条目。
- * 复数条目按 `msgstr[n]` 出现与否参与「译文是否为空」的判断，值本身不比对。
+ * 复数条目保留每个 `msgstr[n]`，按 header 里的 `nplurals` 校验所有必需的译文。
  */
 export function parsePo(text) {
   const entries = new Map()
   const obsolete = []
+  const pluralCount = Number(text.match(/Plural-Forms:\s*nplurals\s*=\s*(\d+)/)?.[1] ?? 1)
   let current = null
   let field = null
+  let pluralIndex = null
   let isObsolete = false
 
   const close = () => {
-    if (current && current.msgid !== '' && !isObsolete) entries.set(current.msgid, current.msgstr)
+    if (current && current.msgid !== '' && !isObsolete) {
+      const isPlural = current.msgidPlural !== '' || current.pluralForms.size > 0
+      if (isPlural) {
+        const highestIndex = Math.max(-1, ...current.pluralForms.keys())
+        entries.set(
+          current.msgid,
+          Array.from({ length: highestIndex + 1 }, (_, index) => current.pluralForms.get(index) ?? '')
+        )
+      } else {
+        entries.set(current.msgid, current.msgstr)
+      }
+    }
     if (current && current.msgid !== '' && isObsolete) obsolete.push(current.msgid)
     current = null
     field = null
+    pluralIndex = null
   }
+
+  const newEntry = () => ({ msgid: '', msgidPlural: '', msgstr: '', pluralForms: new Map() })
 
   for (const rawLine of text.split('\n')) {
     const line = rawLine.trimEnd()
@@ -49,35 +65,56 @@ export function parsePo(text) {
     const quoted = body.match(/"(.*)"\s*$/)
     if (quoted) {
       const head = body.slice(0, body.length - quoted[0].length).trim()
-      if (head === 'msgid' || head === 'msgid_plural') {
-        if (current && current.msgstr !== undefined && !obsoleteLine) close()
-        current ??= { msgid: '', msgstr: '' }
+      if (head === 'msgid') {
+        if (current && current.msgid !== '') close()
+        current ??= newEntry()
         isObsolete = obsoleteLine
-        field = head === 'msgid' ? 'msgid' : 'msgstr'
-        current[field] += poString(quoted[0])
+        field = 'msgid'
+        current.msgid += poString(quoted[0])
         continue
       }
-      if (head === 'msgstr' || /^msgstr\[\d+\]$/.test(head)) {
-        current ??= { msgid: '', msgstr: '' }
+      if (head === 'msgid_plural') {
+        current ??= newEntry()
+        isObsolete = obsoleteLine
+        field = 'msgidPlural'
+        current.msgidPlural += poString(quoted[0])
+        continue
+      }
+      if (head === 'msgstr') {
+        current ??= newEntry()
         isObsolete = obsoleteLine
         field = 'msgstr'
         current.msgstr += poString(quoted[0])
         continue
       }
+      const pluralMatch = head.match(/^msgstr\[(\d+)\]$/)
+      if (pluralMatch) {
+        current ??= newEntry()
+        isObsolete = obsoleteLine
+        field = 'pluralForm'
+        pluralIndex = Number(pluralMatch[1])
+        current.pluralForms.set(pluralIndex, (current.pluralForms.get(pluralIndex) ?? '') + poString(quoted[0]))
+        continue
+      }
       if (field && current) {
-        current[field] += poString(quoted[0])
+        const value = poString(quoted[0])
+        if (field === 'pluralForm' && pluralIndex !== null) {
+          current.pluralForms.set(pluralIndex, (current.pluralForms.get(pluralIndex) ?? '') + value)
+        } else {
+          current[field] += value
+        }
         continue
       }
     }
     if (body.startsWith('msgctxt')) {
       if (current) close()
-      current = { msgid: '', msgstr: '' }
+      current = newEntry()
       isObsolete = obsoleteLine
       field = null
     }
   }
   close()
-  return { entries, obsolete }
+  return { entries, obsolete, pluralCount }
 }
 
 function poFile(appDir, locale) {
@@ -134,7 +171,13 @@ export async function checkApp({ root, app }) {
     if (missing.length) {
       throw new Error(`${locale} 语料缺 ${missing.length} 条译文：${missing.map(id => `"${id}"`).join('、')}`)
     }
-    const empty = [...target.entries].filter(([, msgstr]) => msgstr.trim() === '').map(([msgid]) => msgid)
+    const empty = [...target.entries]
+      .filter(([, translations]) =>
+        Array.isArray(translations)
+          ? translations.length !== target.pluralCount || translations.some(value => value.trim() === '')
+          : translations.trim() === ''
+      )
+      .map(([msgid]) => msgid)
     if (empty.length) {
       throw new Error(`${locale} 语料有 ${empty.length} 条空译文：${empty.map(id => `"${id}"`).join('、')}`)
     }
