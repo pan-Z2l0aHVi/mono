@@ -272,6 +272,12 @@ catalogs:
     '@vitest/browser-playwright':
       specifier: 4.1.11
       version: 4.1.11
+    '@vue/compiler-dom':
+      specifier: ^3.5.42
+      version: 3.5.42
+    '@vue/compiler-sfc':
+      specifier: ^3.5.42
+      version: 3.5.42
     '@vue/devtools-api':
       specifier: ^8.0.0
       version: 8.2.1
@@ -759,6 +765,9 @@ importers:
       vue-router:
         specifier: 'catalog:'
         version: 5.3.1(@voidzero-dev/vite-plus-core@0.3.2(@types/node@26.4.1)(jiti@2.7.0)(terser@5.51.2)(typescript@6.0.3)(yaml@2.9.0))(@vue/compiler-sfc@3.5.42)(pinia@4.0.3(@vue/devtools-api@8.2.1)(typescript@6.0.3)(vue@3.5.42(typescript@6.0.3)))(rolldown@1.2.7)(rollup@4.63.1)(vue@3.5.42(typescript@6.0.3))(webpack@5.110.3(lightningcss@1.33.0)(postcss@8.5.28))
+      wuchale:
+        specifier: 'catalog:'
+        version: 0.26.7
     devDependencies:
       '@greypan/deps-reload':
         specifier: workspace:*
@@ -772,6 +781,9 @@ importers:
       '@greypan/unplugin-web-components':
         specifier: workspace:*
         version: link:../../packages/unplugin-web-components
+      '@greypan/wuchale-vue':
+        specifier: workspace:*
+        version: link:../../packages/wuchale-vue
       '@tailwindcss/vite':
         specifier: 'catalog:'
         version: 4.3.3(@voidzero-dev/vite-plus-core@0.3.2(@types/node@26.4.1)(jiti@2.7.0)(terser@5.51.2)(typescript@6.0.3)(yaml@2.9.0))
@@ -1068,6 +1080,34 @@ importers:
       vue:
         specifier: 'catalog:'
         version: 3.5.42(typescript@6.0.3)
+
+  packages/wuchale-vue:
+    dependencies:
+      '@vue/compiler-dom':
+        specifier: 'catalog:'
+        version: 3.5.42
+      '@vue/compiler-sfc':
+        specifier: 'catalog:'
+        version: 3.5.42
+    devDependencies:
+      '@greypan/tsconfig':
+        specifier: workspace:*
+        version: link:../tsconfig
+      '@vitejs/plugin-vue':
+        specifier: 'catalog:'
+        version: 6.0.8(@voidzero-dev/vite-plus-core@0.3.2(@types/node@26.4.1)(jiti@2.7.0)(terser@5.51.2)(typescript@6.0.3)(yaml@2.9.0))(vue@3.5.42(typescript@6.0.3))
+      vite:
+        specifier: npm:@voidzero-dev/vite-plus-core@0.3.2
+        version: '@voidzero-dev/vite-plus-core@0.3.2(@types/node@26.4.1)(jiti@2.7.0)(terser@5.51.2)(typescript@6.0.3)(yaml@2.9.0)'
+      vite-plus:
+        specifier: 'catalog:'
+        version: 0.3.2(@types/node@26.4.1)(@vitest/browser-playwright@4.1.11)(jiti@2.7.0)(jsdom@30.0.1)(msw@2.15.0(@types/node@26.4.1)(typescript@6.0.3))(terser@5.51.2)(typescript@6.0.3)(yaml@2.9.0)
+      vue:
+        specifier: 'catalog:'
+        version: 3.5.42(typescript@6.0.3)
+      wuchale:
+        specifier: 'catalog:'
+        version: 0.26.7
 
 packages:
 

@@ -5,6 +5,8 @@ import { demoFileContent, demoFileName, FLAVOR_LANG, visibleText } from '@greypa
 import { mount } from '@vue/test-utils'
 import { beforeAll, describe, expect, it } from 'vite-plus/test'
 
+import { loadDemoLocale } from '@/i18n/locale'
+
 import ExampleDoc from '../components/example-doc/index.vue'
 import { exampleDocs } from '../generated/examples'
 
@@ -183,7 +185,8 @@ describe('全量语料的壳映射（ExampleDoc）', () => {
     await Promise.all(Object.values(allDemos).map(load => load()))
   }, 30_000)
 
-  it('每条示例由壳挂出预览区，顺序与生成数据的 demoKey 序一致', () => {
+  it('每条示例由壳挂出预览区，顺序与生成数据的 demoKey 序一致', async () => {
+    await loadDemoLocale('zh-CN', false)
     for (const component of docNames) {
       const doc = docByName.get(component)
       if (!doc) throw new Error(`${component}：生成数据里没有这个 component`)
