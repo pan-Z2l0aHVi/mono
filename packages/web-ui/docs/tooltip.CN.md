@@ -230,6 +230,8 @@ const last = ref('—')
 
 第一个 Tooltip 显示后，相邻 Tooltip 会立即切换；其余 pointer/focus 触发使用延迟计时器。
 
+打开时把提示文本写到 trigger 可聚焦元素（含 shadow DOM 内部的原生控件）的 `aria-description`，关闭时还原原值；面板同时带唯一 `id`。面板与 trigger 通常分处不同 shadow root，`aria-describedby` 的 IDREF 无法跨边界解析，因此不用它承担读屏描述。
+
 ### CSS Custom Properties
 
 | 名称                      | 说明         | 默认值  |

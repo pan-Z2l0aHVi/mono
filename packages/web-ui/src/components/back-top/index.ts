@@ -6,6 +6,7 @@ import { html, LitElement, nothing, type PropertyValues, unsafeCSS } from 'lit'
 import { customElement, property, state } from 'lit/decorators.js'
 
 import { lucideArrowUpToLine } from '@/icons'
+import { LocaleController, resolveBuiltinLabel } from '@/shared/locale/builtin-labels'
 import { normalizeLiteral, normalizeNumber } from '@/shared/normalize'
 import { prefersReducedMotion } from '@/shared/theme/reduced-motion'
 
@@ -41,6 +42,7 @@ export class WebUiBackTop extends LitElement {
   private _threshold = 200
 
   @state() private eventController?: AbortController
+  private readonly _locale = new LocaleController(this)
   // `slotchange` 不覆盖同一个 Text 节点的内容变化，需要同步重新计算 fallback name。
   private readonly slottedTextObserver = new MutationObserver(() => this.requestUpdate())
   private readonly onSlotChange = () => this.requestUpdate()
@@ -145,7 +147,8 @@ export class WebUiBackTop extends LitElement {
   }
 
   override render() {
-    const ariaLabel = this.ariaLabel?.trim() || (this.hasDefaultSlotContent() ? nothing : 'Back to top')
+    const ariaLabel =
+      this.ariaLabel?.trim() || (this.hasDefaultSlotContent() ? nothing : resolveBuiltinLabel(this, 'backToTop'))
 
     return html`
       <div

@@ -289,6 +289,8 @@ export default function Demo() {
 | `precision`       | Normalizes to this value when set explicitly; when set to `null` or the attribute is removed, it is derived from `step`. | `number \| null` | `0`        |
 | `aria-label`      | Accessible name of the input.                                                                                            | `string`         | —          |
 | `aria-labelledby` | Accessible name reference, used to name the inner input.                                                                 | `string`         | —          |
+| `decrease-label`  | Accessible name of the decrease button; follows the nearest `lang` by default.                                           | `string`         | `''`       |
+| `increase-label`  | Accessible name of the increase button; follows the nearest `lang` by default.                                           | `string`         | `''`       |
 
 ### Events
 

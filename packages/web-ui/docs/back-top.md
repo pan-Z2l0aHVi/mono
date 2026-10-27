@@ -187,13 +187,13 @@ onMounted(() => {
 
 ### Props
 
-| Name              | Description                                                                                                                                  | Type                    | Default                           |
-| ----------------- | -------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------- | --------------------------------- |
-| `aria-label`      | Button name. The host value wins; otherwise the accessible name of the slot content, with the default content falling back to `Back to top`. | `string`                | `'Back to top'` (default content) |
-| `scroll-behavior` | Scroll behavior: `smooth` (default) or `auto`; when the theme requires reduced motion it scrolls immediately.                                | `'smooth' \| 'auto'`    | `'smooth'`                        |
-| `visible`         | Current visibility, driven by the scroll position.                                                                                           | `boolean`               | `false`                           |
-| `scrollTarget`    | Scroll container, `window` (default) or an `HTMLElement` (property).                                                                         | `HTMLElement \| Window` | `window`                          |
-| `threshold`       | Scroll threshold (px) at which the button appears.                                                                                           | `number`                | `200`                             |
+| Name              | Description                                                                                                                                                    | Type                    | Default                             |
+| ----------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------- | ----------------------------------- |
+| `aria-label`      | Button name. The host value wins; otherwise the accessible name of the slot content, with the default content following `lang` (`Back to top` / 「回到顶部」). | `string`                | `'Back to top'` (English documents) |
+| `scroll-behavior` | Scroll behavior: `smooth` (default) or `auto`; when the theme requires reduced motion it scrolls immediately.                                                  | `'smooth' \| 'auto'`    | `'smooth'`                          |
+| `visible`         | Current visibility, driven by the scroll position.                                                                                                             | `boolean`               | `false`                             |
+| `scrollTarget`    | Scroll container, `window` (default) or an `HTMLElement` (property).                                                                                           | `HTMLElement \| Window` | `window`                            |
+| `threshold`       | Scroll threshold (px) at which the button appears.                                                                                                             | `number`                | `200`                               |
 
 ### Slots
 
