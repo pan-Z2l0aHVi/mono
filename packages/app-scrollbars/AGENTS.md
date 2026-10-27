@@ -6,3 +6,4 @@
 - 不用 `::-webkit-scrollbar`：它会放弃平台的覆盖式 scrollbar 并固定占一条布局宽度。
 - 样式由入口 `import './style.css'` 带入，`vp pack` 的 `css.inject` 保留这条 import；不提供 `./style.css` subpath，也不要让 app 单独引用样式。
 - 改 API 或 token 时同步 `README.md`、`README.CN.md` 与 app 侧调用点。
+- 单测会读 `../web-ui/src/components/theme/style.css` 校验静止档回退值；该文件已列入 `turbo.json` 的 test inputs，改 web-ui 的 token 会重跑本包测试。
