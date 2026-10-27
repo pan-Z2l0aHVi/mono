@@ -98,8 +98,8 @@ async function openDrawerDialog(): Promise<HTMLDialogElement> {
 // 轮询到确定性信号为止，避免固定 sleep 的竞态；panel 定位是异步完成的
 // （Floating UI promise + presence 翻转），需等待 left/top 写入且 presence 翻转。
 async function waitFor<T>(poll: () => T | null | undefined, ready: (value: T) => boolean, message: string): Promise<T> {
-  // 原来按 1000ms 墙钟 + 单帧 rAF 自轮询：10 包并发跑全仓测试时帧间隔被拉长，
-  // 这条预算被吃光过一次（唯一一次全量失败）。改用共享轮询：5000ms 预算、
+  // 1000ms 墙钟 + 单帧 rAF 自轮询的预算不够：10 包并发跑全仓测试时帧间隔被拉长，
+  // 这条预算被吃光过一次（唯一一次全量失败）。这里用共享轮询：5000ms 预算、
   // 每步跨 rAF + 宏任务，超时信息带 waited/frames/budget。
   await pollUntil(() => {
     const value = poll()
@@ -153,7 +153,7 @@ function getContextMenuPanel(selector: string): HTMLElement | null {
 }
 
 /**
- * 取代 `expectVisibleInDialog` 对 context-menu 的适用性：模态化后「panel 在宿主 dialog 内」
+ * context-menu 不适用 `expectVisibleInDialog`：模态化后「panel 在宿主 dialog 内」
  * 恰恰是**被反转**的那半条契约，所以这里额外断言它不再成立 —— 只断言前半条会让
  * 「panel 掉回宿主 dialog」这种真实回归伪装成通过。
  */
@@ -444,7 +444,7 @@ describe('Portal overlay 在已打开原生 dialog 内（top layer）', () => {
 
     // 悬停普通项触发关闭（非即时，panel 进 closing 缓存），同帧悬停回父项重开：
     // 复用同一 panel 发起第二次定位并先行完成；随后放行被扣的首次定位——
-    // 旧实现下迟到的旧写入会把 panel 推离触发项、顶出视口。
+    // 迟到的旧写入会把 panel 推离触发项、顶出视口。
     const copyItem = mainPanel.querySelectorAll<HTMLElement>('web-ui-dropdown-item')[1]
     copyItem?.dispatchEvent(new PointerEvent('pointerenter'))
     parentItem?.dispatchEvent(new PointerEvent('pointerenter'))

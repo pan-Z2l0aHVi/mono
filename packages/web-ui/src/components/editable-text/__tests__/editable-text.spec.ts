@@ -33,9 +33,9 @@ const typeDraft = (el: WebUiEditableText, draft: string): void => {
  * 提交/取消事件模型与 input/textarea 不同，因此不并入 `text-control-contract` 共有矩阵；
  * 原生 FormData 与 reset 语义 jsdom 不触发表单关联回调，由 browser spec 覆盖。
  *
- * `select()` 空闲/编辑态/disabled、Enter 提交、空草稿 blur 这五条原先两个环境各写一份，
- * 判据同一条；浏览器版用真实焦点迁移与真实按键（换行是否插入 textarea 就是 preventDefault
- * 的可观察结果）覆盖同一契约且更宽，jsdom 侧的副本已删。这里只留浏览器没有的条目：空值
+ * `select()` 空闲/编辑态/disabled、Enter 提交、空草稿 blur 这五条由 browser spec 覆盖，判据
+ * 同一条；浏览器版用真实焦点迁移与真实按键（换行是否插入 textarea 就是 preventDefault
+ * 的可观察结果）覆盖同一契约且更宽。这里只留浏览器没有的条目：空值
  * `select()` 的全选区间为 [0,0]、readonly 态 Enter 的消费，以及 commit-on-unmount 竞态矩阵。
  */
 describe('WebUiEditableText 组件契约', () => {
@@ -501,7 +501,7 @@ describe('WebUiEditableText 组件契约', () => {
   it('Enter 提交后的 blur 不再次派发 change', async () => {
     /*
      * 提交路径先退出编辑再交还焦点：focus 触发的 blur 到达时 _editing 已为 false。
-     * blur 改为提交后，这条早退是「各恰好一次 change」的另一半——退出与焦点迁移的
+     * 这条早退是「各恰好一次 change」的另一半——退出与焦点迁移的
      * 次序一旦反了，同一次提交会拿到两次 change。spy 编辑层的 blur 计数：证明
      * 这次 blur 真的到达过，断言不恒真。
      */
@@ -733,7 +733,7 @@ describe('WebUiEditableText 组件契约', () => {
 
   it('commit-on-unmount：可编辑态进入并起草稿，期间变 readonly，卸载不提交', async () => {
     /*
-     * 覆盖 readonly 用例原先缺的一段：不是「一进入编辑就是 readonly」，而是可编辑态进入、
+     * 本用例覆盖的不是「一进入编辑就是 readonly」，而是可编辑态进入、
      * 起草稿之后属性才翻成 readonly。此时 `_editBase` 是进入编辑时的旧值、`_value` 是草稿，
      * 两者不同——若 `_isDisabled` 缺席，仅靠「草稿≠基线」这条判据就会提交，而 blur 路径在
      * 同样的状态下是拒绝提交的。禁用与草稿判定两条守卫因此必须都在。

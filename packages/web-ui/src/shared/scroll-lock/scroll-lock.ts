@@ -19,7 +19,7 @@ export interface ScrollLockLease {
  * 按窗口偏移定位的虚拟列表因此渲染出第 0 行却仍带旧的 `top` 偏移，表现为整屏空白。
  *
  * 阻止滚动本身（`overflow`）与抑制橡皮筋/下拉刷新（`overscroll-behavior`）是两件事：
- * 旧实现用 fixed body 同时覆盖两者，现在拆成两个根元素属性。macOS 已实测
+ * 拆成两个根元素属性分别覆盖。macOS 已实测
  * `overscroll-behavior: none` 有效；iOS 侧尚无真机证据，属待验收项。
  */
 export function lockScroll() {

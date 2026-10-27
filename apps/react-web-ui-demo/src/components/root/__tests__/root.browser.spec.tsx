@@ -15,7 +15,7 @@ import { Root } from '..'
 /*
  * 应用自己的全局样式必须真的进页面：这一档量的是渲染后的结果，样式没到就只剩一串不生效的
  * 类名，和 jsdom 层没有区别。走与 `main.tsx` 相同的普通 `import`，browser mode 会把样式注入
- * 测试页；`import` 失败曾经看起来是「CSS 进不去」，实际是下面 vite.config 里那条
+ * 测试页；`import` 失败会看起来是「CSS 进不去」，实际是下面 vite.config 里那条
  * `optimizeDeps.include` 清单不全导致的 mid-run reload（连带把测试模块自己那次 fetch 打掉）。
  */
 

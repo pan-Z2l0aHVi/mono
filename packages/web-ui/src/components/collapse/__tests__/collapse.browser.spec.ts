@@ -31,7 +31,7 @@ function queryTrack(el: WebUiCollapse): HTMLElement {
   return el.shadowRoot!.querySelector<HTMLElement>('.wui-collapse-track')!
 }
 
-// 轮询确定性信号；预算与超时诊断由共享 pollUntil 承担（本地副本原先只给 2000ms，
+// 轮询确定性信号；预算与超时诊断由共享 pollUntil 承担（2000ms 的预算在
 // 并行跑全仓时被 CPU 竞争吃光过一次，属于假红而不是行为错）。
 /*
  * 落稳态观察面用 Web Animations API，不读内部状态标记：

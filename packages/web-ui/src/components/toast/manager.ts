@@ -204,8 +204,8 @@ function removeToastElement(el: WebUiToast) {
 }
 
 /**
- * id 不在 Map 里时仍要清掉同 id 的残留节点：早先的按 id 删除路径在这里直接 return，
- * 重复挂载留下的孤儿 toast 因此连自关闭、close() 和 clear() 都收不走，会永久留在
+ * id 不在 Map 里时仍要清掉同 id 的残留节点：按 id 删除的路径若在这里直接 return，
+ * 重复挂载留下的孤儿 toast 就连自关闭、close() 和 clear() 都收不走，会永久留在
  * role="log" 容器里。强删不派发 `toast-close`，但对不可从管理器触达的元素来说没有消费方状态可言。
  */
 function removeStray(id: string) {

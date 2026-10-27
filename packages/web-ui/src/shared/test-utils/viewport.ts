@@ -65,7 +65,7 @@ export async function scrollWindowTo(top: number, timeoutMs = 5000): Promise<voi
  *
  * 目标可滚动量不足时浏览器会停在最大值，此时 `scrollTop` 到不了目标值——
  * 那是「内容不够长」的测试前提问题，本函数如实报错，不改成「等到不动为止」
- * （那正是本轮要消除的假稳定形态）。
+ * （那正是要消除的假稳定形态）。
  */
 export async function scrollElementTo(el: Element, top: number, timeoutMs = 5000): Promise<void> {
   el.scrollTop = top

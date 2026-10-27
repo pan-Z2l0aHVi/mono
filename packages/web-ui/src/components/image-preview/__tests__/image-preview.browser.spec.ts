@@ -602,7 +602,7 @@ describe('imagePreview 命令式 API（浏览器）', () => {
     /*
      * 弹回过渡在松手后的**下一帧**才注册：位移由 Lit 渲染提交，松手同帧读
      * `getAnimations()` 还是 0。先让一帧过去再读 WAAPI，并断言「确实启动了
-     * 一条过渡」——否则下面等它收敛就是空转（原实现若把 track 位移直接落位、
+     * 一条过渡」——否则下面等它收敛就是空转（若把 track 位移直接落位、
      * 不跑过渡，这里会响亮失败）。
      */
     await waitForFrame()
@@ -675,7 +675,7 @@ describe('imagePreview 命令式 API（浏览器）', () => {
 /*
  * 相对 src 的加载淡入。
  *
- * 缺陷本体：settle 时曾登记 `image.src` —— 那是 IDL 属性，相对 src 会被解析成绝对 URL；
+ * 缺陷本体：settle 若登记 `image.src` —— 那是 IDL 属性，相对 src 会被解析成绝对 URL；
  * 而 render 侧 `is-loaded` 查的是 `this.images[i].src`（调用方原始串）。相对 src 下两者
  * 永不相等 → `is-loaded` 永不施加 → 图片停在 `opacity: 0`，尽管 img 早已 complete。
  * 表现是「图片加载了但整块空白」，本文件的其余 fixture 全是 data: URI（原始串 == 解析后

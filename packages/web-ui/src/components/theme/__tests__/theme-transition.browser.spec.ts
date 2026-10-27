@@ -280,10 +280,10 @@ describe('theme transition（浏览器）', () => {
   })
 
   /*
-   * 局部揭示要求宿主有盒，而它默认 `display: contents`，所以飞行期间被临时抬成 block。盒一多，
-   * 父级 flex 的 item 就从「作用域内那个 width:100% 的子元素」换成了宿主自己，子元素的宽度基准
-   * 跟着换成宿主的 shrink-to-fit——内容在揭示期间跳窄、结束后再跳回来（demo 里表现为深色区宽度
-   * 跳变）。这里钉的是行为：换了盒，宽度不许动。
+   * 局部揭示要求宿主有盒，而它默认 `display: contents`，所以飞行期间被临时抬成 block。宿主
+   * display: contents 时父级 flex 的 item 是作用域内那个 width:100% 的子元素；盒一多、宿主当
+   * item，子元素的宽度基准就跟着换成宿主的 shrink-to-fit——内容在揭示期间跳窄、结束后再跳回来
+   * （demo 里表现为深色区宽度跳变）。这里钉的是行为：换了盒，宽度不许动。
    */
   it('嵌套主题在揭示期间不改变内容宽度', async () => {
     const wrapper = wrapStartViewTransition()

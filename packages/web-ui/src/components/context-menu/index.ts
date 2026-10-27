@@ -131,7 +131,7 @@ export class WebUiContextMenu extends LitElement {
    * 长按手势结束（pointerup）的时刻，补发事件窗口的起点。
    *
    * 为 null 表示「这次长按的手势还没结束」——窗口退回以 menu 打开时刻为起点。手势被
-   * pointercancel 打断、或组件在抬手前就被卸载时都会走到这条兜底，行为与此前一致。
+   * pointercancel 打断、或组件在抬手前就被卸载时都会走到这条兜底。
    */
   private _longPressGestureEndedAt: number | null = null
   // submenu dialog 定位的唯一写者代数（按 panel 键控）：同帧关闭→重开复用同一 panel
@@ -392,7 +392,7 @@ export class WebUiContextMenu extends LitElement {
            * 两个原因都指向「太早」：
            *
            * 1. `showModal()` 的 dialog focusing steps 由 UA 排队执行，会在我们已经聚焦首项
-           *    **之后**再把焦点挪到 dialog 上 —— 模态化之前没有这一步，也就没有这场竞争。
+           *    **之后**再把焦点挪到 dialog 上 —— 这场竞争正来自这一步。
            * 2. `_setupMenuItems()` 刚创建的 `web-ui-dropdown-item` 尚未完成 Lit 的 shadow
            *    渲染，`focusItem()` 此刻还找不到 `.item-inner`，静默无操作。
            *
@@ -544,16 +544,13 @@ export class WebUiContextMenu extends LitElement {
    *
    * 两条入口现在只差「触发点的 x/y 从哪来」，布局契约完全一致：
    * `bottom-start` 表达「panel 上缘 == 触发点 y、向下展开」，水平以触发点 x 为基准。
-   * 之前有一条手写的贴底分支（先按点、再按视口下缘算 `top`），那是把「贴视口底」硬编码
-   * 成算术；真机反馈证明它错（menu 跑到屏幕最底部，与手指按下的位置完全脱节）。现在
-   * 落点交给 `flip` / `shift` 按**实际空间**决定，`placement` 只表达意图。
+   * 落点交给 `flip` / `shift` 按**实际空间**决定，`placement` 只表达意图：把「贴视口底」硬编码
+   * 成算术，真机反馈证明那是错的（menu 跑到屏幕最底部，与手指按下的位置完全脱节）。
    *
-   * 不再按「是否触屏」分流：窄视口的鼠标右键同样期望 menu 贴着光标出现，按输入类型或视口
-   * 宽度分流会让同一块屏幕上的两种输入拿到两套布局。分流所需的 `_anchorAtPressPoint`
-   * 连同 `_positionMenuInViewport` / `_positionMenuAtPressPoint` 两个方法一起删掉 ——
-   * panel 恒为 open scrim `<dialog>` 的直接子节点（`createMenuPortalOverlay` 第三参传入
-   * scrim，`menu-portal.ts` 里 `container = scrim ?? …`），所以旧代码那条
-   * 「非 dialog 容器」的分支对 context-menu 本来就不可达。
+   * 不按「是否触屏」分流：窄视口的鼠标右键同样期望 menu 贴着光标出现，按输入类型或视口
+   * 宽度分流会让同一块屏幕上的两种输入拿到两套布局。panel 恒为 open scrim `<dialog>` 的
+   * 直接子节点（`createMenuPortalOverlay` 第三参传入 scrim，`menu-portal.ts` 里
+   * `container = scrim ?? …`），所以「非 dialog 容器」的分支对 context-menu 不可达。
    *
    * 算出来的 left/top 是**视口坐标**。panel 是 `position: fixed`，而 scrim 刻意不带
    * transform / filter / contain（见 style.css），因此不构成 fixed 的包含块 ——
@@ -568,10 +565,9 @@ export class WebUiContextMenu extends LitElement {
      * 先读安全区，再碰 panel：`getComputedStyle` 会强制一次同步布局，让它发生在 panel 进入
      * 「可测」状态之前，而不是夹在「panel 刚可测」与「Floating UI 量它」之间。
      *
-     * 需要说清楚的是，**这不是** viewport-fit 那条横向断言里 2px 抖动的成因。把这一行移到
-     * 最前面实测并没有让那个偏差消失（改前改后都是 204 对期望 206）。那个 2px 来自 flip 的
-     * reset 会多跑一轮测量：那一刻 panel 宽 202px、落定后 200px。相关用例已经不再钉与视口
-     * 边界的精确距离。
+     * 需要说清楚的是，**这不是** viewport-fit 那条横向断言里 2px 抖动的成因：那个 2px 来自
+     * flip 的 reset 会多跑一轮测量——那一刻 panel 宽 202px、落定后 200px。相关用例不再钉与
+     * 视口边界的精确距离。
      */
     const safeAreaBottom = this._safeAreaBottom()
 
@@ -667,9 +663,9 @@ export class WebUiContextMenu extends LitElement {
   /**
    * 视口下缘的安全区高度（px）。
    *
-   * 改按压点展开之后它**仍然必需**，而且不再只服务触屏：menu 默认从触发点向下长，触发点
-   * 落在屏幕下半部时 panel 下缘会进入 home indicator 区域。它现在折进 flip 与 shift 共用的
-   * 边界 padding（见 `_positionMenu`），不再需要单独一条 `maxBottom` 算术。
+   * 它**仍然必需**，而且不只服务触屏：menu 默认从触发点向下长，触发点
+   * 落在屏幕下半部时 panel 下缘会进入 home indicator 区域。它折进 flip 与 shift 共用的
+   * 边界 padding（见 `_positionMenu`），不需要单独一条 `maxBottom` 算术。
    *
    * 读宿主的自定义属性而不是 `env()`：自定义属性读回的是**计算后**的解析值，
    * 而 `env()` 在 JS 里没有对应的求值入口，只能间接经由声明它的属性取。
@@ -801,7 +797,7 @@ export class WebUiContextMenu extends LitElement {
    * 深色外观下 menu 是一块浅色玻璃（app 侧的 `dark:` 变体也够不到它）。挂进 theme overlay root
    * 之后，panel 与 scrim 跟 dropdown / select 一样吃同一份 token。
    *
-   * 无主题时保持历史行为挂在 `document.body`：那条路径本来就没有 token 作用域可继承，改用
+   * 无主题时挂在 `document.body`：那条路径本来就没有 token 作用域可继承，改用
    * fallback overlay root 只会改变既有测试与消费者的观察面，不换来任何东西。
    */
   private _scrimParent(): HTMLElement {
@@ -843,10 +839,9 @@ export class WebUiContextMenu extends LitElement {
    * 落点判据之所以只能是这两个，是模态给的：menu 打开期间下层收不到命中，事件只可能
    * 落在 scrim 或 panel 上，两者都由本组件判定。
    *
-   * 更早的实现在 document 捕获阶段挂 click 监听，把「点外面」理解成「命中测试落在 menu
-   * panel 之外」—— 宿主 light DOM 的每一行都满足这个条件，于是判定与行激活成了同一个
-   * click 的两个后果，中间没有任何仲裁，下层目标先被激活。那条监听器连同它的实现已一并
-   * 删除：模态化之后它没有任何还能生效的场景，别再挂回来。
+   * 落点判据不能理解成「命中测试落在 menu panel 之外」—— 宿主 light DOM 的每一行都满足这
+   * 个条件，于是判定与行激活就成了同一个 click 的两个后果，中间没有任何仲裁，下层目标
+   * 先被激活。模态化之后这条路没有任何还能生效的场景，别再挂回来。
    */
   private _onScrimClick = (e: MouseEvent) => {
     if (e.target !== this._scrim) return
@@ -879,7 +874,7 @@ export class WebUiContextMenu extends LitElement {
     /*
      * 先关 scrim 再摘 panel，顺序不能反。
      *
-     * 焦点归还是 `showModal()` / `close()` 的 UA 行为，不再由组件自己实现：UA 记的是
+     * 焦点归还是 `showModal()` / `close()` 的 UA 行为，不由组件自己实现：UA 记的是
      * `showModal()` 之前的 `document.activeElement`，`close()` 时还回去。反过来做就成了
      * 实测里那条「open 中直接移除 dialog → 焦点丢到 body，不归还」——panel 先脱离文档，
      * 焦点链断了，UA 的还原目标也就落空。
@@ -887,7 +882,7 @@ export class WebUiContextMenu extends LitElement {
      * menu item 激活那条路径的 scrim 早在 `close()` 里就出了顶层（`_releaseScrimModality`），
      * 这里的 `close()` 对它是幂等空转，摘除照常发生。
      *
-     * 「关闭期间焦点被外部接管时不抢回」那道防护不是被删除，是被**移到了更早的位置**：
+     * 「关闭期间焦点被外部接管时不抢回」那道防护落在 menu item 激活那一刻：
      * UA 自己没有这个分支（实测：外部接管后 close，焦点必被抢回 opener，`close()` /
      * `remove()` / `open = false` / 摘 `open` / 置 `display:none` / opener 移除或不可聚焦，
      * 十种写法全都照旧夺焦点）。所以只能在焦点**还没被送走**的时候就把顶层让掉 ——
@@ -957,8 +952,7 @@ export class WebUiContextMenu extends LitElement {
     this._activeSubmenuItems[level] = item
     /*
      * 子层进根 handle 的子树，默认不是独立候选 —— 「它在树里、但不参与这一层裁决」由此
-     * 表达。原先按 level===0 选择根 panel 还是上一层子 panel 的父级判断随之消失：contains
-     * 沿子树递归，拍平与嵌套对任何现有查询结果等价。
+     * 表达。父级判断由 contains 沿子树递归完成，拍平与嵌套对任何现有查询结果等价。
      */
     if (this._menuHandle) this._submenuHandles.set(submenu.panel, this._menuHandle.adopt(submenu.panel))
     item.setAttribute('active', '')
@@ -1041,7 +1035,7 @@ export class WebUiContextMenu extends LitElement {
     /*
      * scrim 不在模态态时的手算分支。
      *
-     * 这条分支**是活的**，不是历史遗留：menu item 激活走 `_releaseScrimModality()` 把 scrim `close()` 掉，
+     * 这条分支**是活的**：menu item 激活走 `_releaseScrimModality()` 把 scrim `close()` 掉，
      * 但元素留在 DOM、`_scrim` 也没清（摘除只在 `_closeScrim()`）；这次关闭的退场若被重开打断，
      * `_closeMenuAfterPresence` 提前退出而 `_menu` 存活，`updated()` 的 `if (!this._menu)` 便不再建新
      * scrim —— menu 开着、scrim 却 `open === false`，上面那条守卫为假。窗口是一次退场过渡（默认 160ms，
@@ -1088,7 +1082,7 @@ export class WebUiContextMenu extends LitElement {
         // 触屏长按：panel 上缘对齐按点、向下展开，水平居中于按点（判据见 `_centerOnPressPoint`）。
         if (this._openAt(origin.x, origin.y, false, true, true)) this._userOpenChange.mark()
       },
-      // 属性已被 normalizeNumber 钳到 [0, 5000]，这里直接用；不再二次 Math.max。
+      // 属性已被 normalizeNumber 钳到 [0, 5000]，这里直接用；不做二次 Math.max。
       this.longPressDelay
     )
   }

@@ -5,7 +5,7 @@
  * 宿主读它就够，存一份派生值只会带来两份真相。
  *
  * 持久化走 @greypan/browser-kit 的 local，与两个 demo（react/vue-web-ui-demo）同一套读写，
- * 不再手写第三份裸 localStorage 包装。两个 demo 都在用 `watch` 之外的读 + 写两段式，
+ * 不另写一份裸 localStorage 包装。两个 demo 都在用 `watch` 之外的读 + 写两段式，
  * 这里跟着走：设置是本 tab 的即时偏好，跨 tab 联动不是本应用的需求。
  */
 import { local } from '@greypan/browser-kit'
@@ -32,8 +32,8 @@ const THEME_APPEARANCES = new Set<ThemeAppearance>(['light', 'dark', 'system'])
  * WCAG AA 4.5:1；这些是常规字重正文，不是大字。
  *
  * 绿与橙因此**不是** Apple system 色：#30d158 只有 2.02:1、#ff9f0a 只有 2.06:1，都不达标，
- * 换成同色相的深一档 #1d8348（4.78:1）与 #c64600（4.91:1）。其余四色与蓝色预设值保持原样；
- * 它们的主题配对问题不在这次修改范围内。
+ * 用同色相的深一档 #1d8348（4.78:1）与 #c64600（4.91:1）。其余四色与蓝色预设值保持原样；
+ * 它们的主题配对问题另行处理。
  *
  * 「蓝」保留 #0a84ff。web-ui 的 light 默认值现为 #0071e3，dark 默认值仍为 #0a84ff。
  */

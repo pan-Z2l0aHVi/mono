@@ -32,8 +32,8 @@ function getPortalPanel(theme: HTMLElement): HTMLElement | null {
  * 裸取 `getPortalPanel()` 不会 —— CI run 37726205609 上就报
  * `TypeError: Cannot read properties of null (reading 'querySelectorAll')`。
  *
- * 这里把「读」换成「等到出现再读」：判据不变（panel 存在且内容逐项相等），panel 始终不出现时
- * 仍然在 pollUntil 的预算内抛错 —— 只是不再因为晚一帧而假红。
+ * 判据不变（panel 存在且内容逐项相等），panel 始终不出现时
+ * 仍然在 pollUntil 的预算内抛错 —— 只是不会因为晚一帧而假红。
  */
 async function waitForPortalPanel(theme: HTMLElement): Promise<HTMLElement> {
   await pollUntil(() => getPortalPanel(theme) !== null, 'Expected the autocomplete portal panel to be created')
@@ -987,7 +987,7 @@ describe('WebUiAutocomplete 组件（浏览器）', () => {
     expect(el.hasAttribute('focused')).toBe(false)
   })
 
-  // 默认 trigger 重构为 web-ui-input：玻璃胶囊的度量（--wui-control-size / --wui-input-width）
+  // 默认 trigger 是 web-ui-input：玻璃胶囊的度量（--wui-control-size / --wui-input-width）
   // 必须与独立使用 web-ui-input 完全一致，否则默认用法外观就等于变了。
   it('默认 trigger 与独立 web-ui-input 的控件度量一致', async () => {
     const el = document.createElement('web-ui-autocomplete')

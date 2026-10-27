@@ -65,7 +65,7 @@ describe('WebUiLayout 组件（浏览器）', () => {
       expect(requested).toEqual([true])
       expect(layout.sidebarCollapsed).toBe(true)
       /*
-       * 名字翻没翻，判两条：新名挂着，旧名不再挂在任何 toggle 上。原来这里写的是
+       * 名字翻没翻，判两条：新名挂着，旧名不再挂在任何 toggle 上。不能写成
        * `byLabel(layout, 'Expand sidebar').getAttribute('aria-label')`——byLabel 的选择器就是
        * `[aria-label="Expand sidebar"]`，读回来的取值由选择器钉死，组件怎么渲染都红不了。
        */
@@ -769,7 +769,7 @@ describe('WebUiLayout 组件（浏览器）', () => {
     })
 
     /*
-     * 直接订阅媒体查询之后，翻转不再经 window resize：旧实现有 100ms 去抖，跨断点的那
+     * 直接订阅媒体查询，翻转不经 window resize：翻转慢于 CSS 媒体查询时，跨断点的那
      * ≤100ms 里 TS 还渲染着桌面树、CSS 却已经藏起 aside（layout/style.css 的
      * `@media (width <= 640px)`），侧栏会整块消失。这条用例造出「innerWidth 说移动端、
      * 媒体查询说桌面」的分裂输入，翻转只应来自媒体查询，且要落在去抖窗口之内。

@@ -3,7 +3,7 @@
  *
  * indicator 只有 18px。宿主一旦走 inline-block，页面行高会在宿主内生成匿名行盒，把盒子撑到
  * 行高（Tailwind preflight 下是 24px），且多出的空隙落在哪一侧取决于内部基线落点，radio 与
- * checkbox 因此一个贴顶一个贴底。改成 inline-flex 后宿主高度由内容决定，行高不再参与，
+ * checkbox 因此一个贴顶一个贴底。宿主用 inline-flex 时高度由内容决定，行高不参与，
  * 与相邻文字的对齐交给 vertical-align 显式声明。
  */
 *,

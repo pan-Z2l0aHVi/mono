@@ -18,8 +18,7 @@ import { getMenuPanels, queryA11y, spyEvents, waitForUpdate } from '@/shared/tes
  * **程序式变更（属性或公开方法）静默；只有用户手势才派发 `open-change`，
  * 且 `detail.open` 是变更后的值。**
  *
- * 本矩阵把这条契约收敛到一处（原先在 popover / tooltip / dropdown / context-menu
- * 四个 spec 里各自重写一遍）。各组件 spec 只保留自身特有的触发路径与边界，
+ * 本矩阵把这条契约收敛到一处。各组件 spec 只保留自身特有的触发路径与边界，
  * 例如 popover 的「hover 重入不让后续命令式关闭派发残留事件」。
  */
 

@@ -74,12 +74,12 @@ export async function run(context) {
   }
 
   // 入口面必须存在；其余门禁钉通用 context 能力：断链、锚点、frontmatter、skill/role 出处、入口指针与软链。
-  // 被删掉的是「指令文档语料必须存在」——它会随内容演进膨胀，反而阻止删减；被引用的文档由断链检查负责。
+  // 「指令文档语料必须存在」这道门禁不设：它会随内容演进膨胀，反而阻止删减；被引用的文档由断链检查负责。
   if (!exists('AGENTS.md')) addError('missing required context file: AGENTS.md')
 
   // AGENTS.md 的章节标题与叙述措辞不再是契约。入口断言只保留必经链接；
   // 具体命令由 task-ledger skill 与 CLI 承担。
-  // 结构不变量锚点（<!-- invariant:... -->）是惰性注释，保留供人工检索，不再有机器校验（audit:instructions 已删除，见 ADR-0014）。
+  // 结构不变量锚点（<!-- invariant:... -->）是惰性注释，保留供人工检索，没有机器校验（见 ADR-0014）。
   if (exists('AGENTS.md')) {
     const agents = read('AGENTS.md')
     for (const marker of ['docs/agents/workflow.md', '.agents/skills/task-ledger/SKILL.md']) {
@@ -87,7 +87,7 @@ export async function run(context) {
     }
   }
 
-  // 根目录不再有客户端适配文件。实测 Claude Code 2.1.283 已原生发现 AGENTS.md，但只要根目录存在 CLAUDE.md，
+  // 根目录没有客户端适配文件。实测 Claude Code 2.1.283 已原生发现 AGENTS.md，但只要根目录存在 CLAUDE.md，
   // 它的原生发现就整条不生效：默认的 claude-md-or-agents-md 只在项目没有 CLAUDE.md 时才读 AGENTS.md，显式声明
   // claude-md-and-agents-md 也救不回来（两种模式下包级 AGENTS.md 都不再按需注入）。根入口因此只保留 AGENTS.md，
   // Claude Code 与 Codex 读同一份层级文件。这道断言拦住的是「放回一行 @AGENTS.md shim」——它看起来是零副作用的
@@ -166,7 +166,7 @@ export async function run(context) {
     if (!fs.existsSync(absolute)) continue
 
     // workspace 的局部约束必须有家：它自己的 AGENTS.md，或最近一个含 AGENTS.md 的祖先目录。
-    // 包级约束不再集中收进 ARCHITECTURE.md 的表，所以这里没有「表格豁免」退路——缺文件就是路由缺口。
+    // 包级约束不收进 ARCHITECTURE.md 的表，所以这里没有「表格豁免」退路——缺文件就是路由缺口。
     // 用递归而非直接子目录：嵌套 workspace（如 apps/interweave/frontend）同样必须可定位。
     // 嵌套 workspace 的约束可并回最近的有 AGENTS.md 的祖先（如 apps/interweave/frontend 并入 apps/interweave/AGENTS.md）。
     // 根目录 AGENTS.md 是全部 workspace 的公共入口，不能算「最近祖先」，否则所有包都会走此豁免、这道校验被静默关闭。
@@ -253,7 +253,7 @@ export async function run(context) {
     }
   }
 
-  // `.claude/agents` 不属于本仓契约：会话角色由客户端与会话本身承担，不再注册仓库内的 role 契约。
+  // `.claude/agents` 不属于本仓契约：会话角色由客户端与会话本身承担，仓库内不注册 role 契约。
   try {
     if (fs.lstatSync(path.join(root, '.claude/agents')).isSymbolicLink())
       addError('.claude/agents must not be a symlink; the repo ships no session-role contracts')

@@ -22,7 +22,7 @@
 
 /*
  * trigger 包装 div：持 combobox ARIA、slot[name="trigger"] 与事件委托监听。
- * 玻璃胶囊由默认 trigger web-ui-input 自带（与重构前的 .input-wrapper 同一套 token
+ * 玻璃胶囊由默认 trigger web-ui-input 自带（token
  * 与度量：--wui-input-width / --wui-control-size / --wui-radius-control），这里只定义
  * 容器宽度与自定义 trigger 时的自适应。
  */
@@ -59,8 +59,7 @@
   outline-offset: 2px;
 }
 
-/* 禁用态：宿主已整体降透明度，默认 trigger 自身的 disabled 降透明度在此抵消，
-   保持与重构前（宿主 × 内部 input 两层）一致的观感 */
+/* 禁用态：宿主已整体降透明度，默认 trigger 自身的 disabled 降透明度在此抵消 */
 :host([disabled]) .autocomplete-trigger web-ui-input {
   opacity: 1;
 }

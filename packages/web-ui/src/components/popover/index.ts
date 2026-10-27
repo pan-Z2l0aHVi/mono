@@ -69,9 +69,9 @@ export class WebUiPopover extends LitElement {
   private _panelId = `wui-popover-panel-${++popoverIdCounter}`
   private _portal?: OverlayPortal
   /**
-   * 开启态 overlay（issue #120 Block 1）：本组件不再自行监听 keydown，只声明「我开着」，
-   * 由唯一仲裁者决定一次 Escape 关谁。实例作用域的帧事务入口也在这里（合并了原
-   * lifecycle）—— 它的 lifetime 长于一次开合（跨 `suspend()`/`resume()`），
+   * 开启态 overlay（issue #120 Block 1）：本组件不自行监听 keydown，只声明「我开着」，
+   * 由唯一仲裁者决定一次 Escape 关谁。实例作用域的帧事务入口也在这里
+   * —— 它的 lifetime 长于一次开合（跨 `suspend()`/`resume()`），
    * 但不长于实例本身。
    */
   private readonly _overlay = defineOpenOverlay().make({
@@ -205,8 +205,8 @@ export class WebUiPopover extends LitElement {
 
   /*
    * `manual` trigger 的 popover 不由用户关闭，但仍是候选：Escape 被它吞掉（同时压掉
-   * 原生 cancel），只是不走关闭入口。与旧的「跳过候选」语义不同 —— 旧语义放任 Escape
-   * 落到下层 overlay，把外层一起关掉。trigger 可在开启期间改写，所以走动态通道同步。
+   * 原生 cancel），只是不走关闭入口：Escape 不落到下层 overlay，不会把外层一起关掉。
+   * trigger 可在开启期间改写，所以走动态通道同步。
    */
   private _syncOverlayInert() {
     this._panel.getHandle()?.setInert(this.trigger === 'manual')
@@ -215,9 +215,9 @@ export class WebUiPopover extends LitElement {
   private _openOverlay(isInstant = false) {
     /*
      * 登记与仲裁归属由 anchored panel 完成（claim 要求 panel 已就位，祖先链才判得对）。
-     * 原实现在这里额外以宿主为 owner 再登记一次：anchor 是宿主 shadow 内的
+     * 不必再以宿主为 owner 额外登记一次：anchor 是宿主 shadow 内的
      * `.popover-trigger` 包装 div（不是会被 slot 重定向的 trigger 内容），其祖先链上
-     * 首个已开启 overlay 与从宿主上溯结果一致，因此那一次是冗余的。
+     * 首个已开启 overlay 与从宿主上溯结果一致，多出的那次登记是冗余的。
      */
     this._panel.open(isInstant)
     this._syncOverlayInert()

@@ -154,8 +154,8 @@
 /* 按压/拖拽时 indicator 转为玻璃态：静止态关掉的玻璃输出在这一态全部打开——backdrop blur、
    ::before 描边环、inset 高光，投影叠加更实一档并放大 1.5x。
    底色全透明：track 实体化后 indicator 的采样面拿到的是均匀实色（条纹底实测内部 std 归零），
-   本体可感知性由实色 track 与 1.5x 放大/环/投影共同承担，不再需要 tint 打底，也不需要
-   为采样痕迹去压制 track 的边缘装饰——那些按压态特判已全部移除，track 装饰全状态恒定。
+   本体可感知性由实色 track 与 1.5x 放大/环/投影共同承担，不需要 tint 打底，也不需要
+   为采样痕迹去压制 track 的边缘装饰——track 装饰全状态恒定。
    transition 不含 background-color：按下即落到全透明，不产生灰→透明的插值中间帧；
    松开回到静止态规则，由那里的 background-color 过渡把透明平滑淡回实体底。
    backdrop-filter 直接写死值（与 drawer/dialog/toast 的玻璃态同法）：静止态是 none，

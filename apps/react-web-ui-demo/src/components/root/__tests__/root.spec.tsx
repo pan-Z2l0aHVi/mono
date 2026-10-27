@@ -9,7 +9,7 @@ import { loadShellLocale, LocaleProvider } from '@/i18n/locale'
 import { Root } from '..'
 
 // 必须与 `web-ui-layout` 的 `MOBILE_VIEWPORT_QUERY`（`components/layout/index.ts`）逐字相同：
-// 断点判定自 ADR-0023 起由 layout 独占、app 不再自持媒体查询，所以这个替身要驱动的是 layout 那条。
+// 断点判定由 layout 独占（ADR-0023）、app 不自持媒体查询，所以这个替身要驱动的是 layout 那条。
 const MOBILE_QUERY = '(width <= 640px)'
 const DESKTOP_WIDTH = 1280
 const MOBILE_WIDTH = 568

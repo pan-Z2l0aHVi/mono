@@ -258,7 +258,7 @@ describe('WebUiDialog 组件（浏览器）', () => {
     expect(events).toHaveLength(0)
   })
   it('modal 固定在视口内：页面滚动后仍完整可见，且处于 :modal 层', async () => {
-    // 历史回归：单层重构曾把 dialog 覆盖成 `position: relative`，导致 top layer 里的 modal
+    // dialog 必须是 fixed：top layer 里的 modal 一旦覆盖成 `position: relative`，就会
     // 回到文档流——出现在页面顶部且跟随页面滚动，用户看到「残影」与「没有固定居中」。
     //
     // 判据只取行为约束「滚动后不离开视口」与平台语义 `:modal`，不锁任何像素或计算样式。

@@ -50,7 +50,7 @@ export function writeArtifacts(files: GeneratedFile[], demosDirs: string[]): voi
  *
  * 存在的理由是开发与测试拿的是同一份配置。若改成「另写一个新鲜度 spec」，那个 spec 要么
  * `import` 宿主的 vite config（ES module 整文件求值，插件工厂会被无谓地跑一遍），要么把配置
- * 抄第二份（两份配置必然漂移）。改成在这里分叉，配置只有一份，断言贴在真正会漂移的那个动作上。
+ * 抄第二份（两份配置必然漂移）。在这里分叉，配置只有一份，断言贴在真正会漂移的那个动作上。
  * 测试期不改盘还有第二个好处：`?raw` 与页面上的 `<pre>` 钉的就是 git 里那份字节，不是刚生成的。
  */
 export function checkArtifacts(files: GeneratedFile[], demosDirs: string[]): void {

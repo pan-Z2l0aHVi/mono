@@ -317,7 +317,7 @@ func TestSourceAddChecksExistenceBeforeFetch(t *testing.T) {
 	}
 }
 
-// 钉住 LIKE 通配符转义：查询中的 % 与 _ 只按字面匹配，不再退化为全匹配。
+// 钉住 LIKE 通配符转义：查询中的 % 与 _ 只按字面匹配。
 func TestSearchEscapesLikeWildcards(t *testing.T) {
 	db, cleanup := setupTestDB(t)
 	defer cleanup()

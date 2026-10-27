@@ -10,9 +10,9 @@ import type { WebUiDialog } from '..'
 /*
  * dialog 的高度约束下移到内容区（见 style.css「高度约束下移到内容区」）。
  *
- * 改动前宿主必须复述一个会变的 chrome 高度，footer 那一项就是 --wui-control-size，
- * 触摸端媒体查询会把它从 36 抬到 40，于是宿主的常数立刻腐坏：卡片比 dialog 盒子高
- * 出一大截，内容被裁掉。现在 header / footer 完全由内容撑开，上限只落在内容区。
+ * 宿主不应复述一个会变的 chrome 高度，footer 那一项就是 --wui-control-size，
+ * 触摸端媒体查询会把它从 36 抬到 40：宿主一旦写死这个常数，它立刻腐坏——卡片比
+ * dialog 盒子高出一大截，内容被裁掉。header / footer 完全由内容撑开，上限只落在内容区。
  *
  * 判据统一取**用户后果**——「内容有没有被裁掉」「卡片有没有溢出」「控件的 focus ring
  * 有没有被裁成残条」「宿主拿到的可用宽度有没有被改窄」——不钉具体像素，也不读
@@ -88,8 +88,8 @@ function buildTitleMode(contentHeight: number): WebUiDialog {
 describe('dialog 内容区高度约束（浏览器）', () => {
   describe('chrome 由内容撑开', () => {
     it('内容区的上限与 chrome 高低无关：footer 变高时卡片等量长高，内容区不变', async () => {
-      // 内容远高于 token，内容区被夹住——这才是宿主的真实工况，也正是改动前
-      // `calc(560px - 108px)` 会失配的那一档（108 里含 --wui-control-size）。
+      // 内容远高于 token，内容区被夹住——这才是宿主的真实工况，也正是上限若按 chrome
+      // 高度复述会失配的那一档（chrome 高 108，其中含 --wui-control-size）。
       const component = buildTitleMode(3000)
       component.style.setProperty('--wui-dialog-max-height', '560px')
       await openAndSettle(component)
@@ -231,9 +231,9 @@ describe('dialog 内容区高度约束（浏览器）', () => {
       expect(descRect.bottom - gridRect.bottom).toBeGreaterThanOrEqual(RING)
 
       /*
-       * Q2-2：卡片的 inline padding 移进了 .desc，滚动口（.desc 的 border box，也是
-       * overflow 的裁剪边）与卡片内沿重合——右侧不再有落在外面的 padding。横向余量
-       * 由 .desc 自带的 padding-inline 承担，且跟随 --wui-dialog-inline-padding。
+       * Q2-2：卡片的 inline padding 归零、由 .desc 自带的 padding-inline 承担，滚动口
+       * （.desc 的 border box，也是 overflow 的裁剪边）与卡片内沿重合——右侧没有落在外面的
+       * padding。横向余量跟随 --wui-dialog-inline-padding。
        */
       expect(descRect.left - cardRect.left).toBeCloseTo(0, 0)
       expect(cardRect.right - descRect.right).toBeCloseTo(0, 0)
@@ -242,8 +242,8 @@ describe('dialog 内容区高度约束（浏览器）', () => {
       expect(gridRect.left - descRect.left).toBeCloseTo(Number.parseFloat(descStyles.paddingInlineStart), 0)
 
       /*
-       * 可用宽度仍是内容区的 content box（与改动前逐像素相同），否则 AddDialog 那种
-       * 两栏 grid 的 drop zone 会换行。
+       * 可用宽度仍是内容区的 content box（.desc 承担与卡片同档的 inline padding，宿主拿到的
+       * 宽度不变），否则 AddDialog 那种两栏 grid 的 drop zone 会换行。
        */
       const descContent = desc.clientWidth - parseFloat(descStyles.paddingLeft) - parseFloat(descStyles.paddingRight)
       expect(gridRect.width).toBeCloseTo(descContent, 1)

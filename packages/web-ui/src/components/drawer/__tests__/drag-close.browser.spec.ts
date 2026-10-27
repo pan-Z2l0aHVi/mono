@@ -17,13 +17,13 @@ async function waitForOpenTransition(el: WebUiDrawer) {
   )
 }
 
-// 轮询条件直至满足：弹簧等 WAAPI 动画在并行负载下完成时间不可预测，
+// 轮询条件直至满足：WAAPI 动画在并行负载下完成时间不可预测，
 // 固定 sleep 会偶发超时，这里以条件收敛代替固定等待。
 async function waitFor(condition: () => boolean, timeoutMs = 5000): Promise<void> {
   await pollUntil(condition, `Expected the drawer state to settle (budget ${timeoutMs}ms)`, timeoutMs)
 }
 
-/** 等 dialog 上的动画全部收敛（替代原先「读位移是否归零」的几何轮询）。 */
+/** 等 dialog 上的动画全部收敛。 */
 function settled(el: WebUiDrawer): Promise<void> {
   return waitFor(() => getDialog(el).getAnimations({ subtree: true }).length === 0, 5000)
 }
@@ -69,7 +69,7 @@ async function dragAndRelease(el: WebUiDrawer, delta: Delta, steps = 10) {
   const zone = getDragZone(el)
   const startX = 500
   const startY = 300
-  // 判定读事件 timeStamp：逐段显式给 32ms 间隔，「慢拖」不再依赖真实墙钟，
+  // 判定读事件 timeStamp：逐段显式给 32ms 间隔，「慢拖」不依赖真实墙钟，
   // 也就不会因为负载把间隔拉长/压短而改变速度判定。
   const fire = (type: string, x: number, y: number, at: number) => {
     const event = new PointerEvent(type, { bubbles: true, pointerId: 1, isPrimary: true, clientX: x, clientY: y })
@@ -129,9 +129,8 @@ afterEach(() => document.body.replaceChildren())
  * **归宿**（焦点、原生 dialog 的 open、事件次数），删掉拖动过程中的 `transform` 位移量、
  * backdrop opacity 插值、橡皮筋钳位值、以及 `is-dragging` 状态类断言（§12 C1/C3）。
  *
- * 原先还用 `vi.spyOn(dialog, 'animate')` 断言弹簧的调用次数与 `fill: 'both'` option——
- * 那是对 `Element.animate` 这一 DOM 方法的实现细节打桩（不是公开契约），删；
- * 「弹回后回到打开位」由 `el.open` + 原生 `dialog.open` 承担。
+ * `Element.animate` 的调用次数与 `fill: 'both'` option 属于实现细节打桩（不是公开契约），
+ * 不做断言；「弹回后回到打开位」由 `el.open` + 原生 `dialog.open` 承担。
  */
 describe('WebUiDrawer 拖拽关闭（浏览器）', () => {
   it('drawer panel 自身不夺焦，内置关闭 button 仍可聚焦', async () => {
@@ -312,7 +311,7 @@ describe('WebUiDrawer 拖拽关闭（浏览器）', () => {
      * panel 此刻停在「已越过距离阈值」的位置上。在原位重新抓取（不做任何拖动）再松手：
      * 判定用的是**净位移**（自抓取瞬间起算），
      * 所以这次松手既不满足距离判据也不满足甩动判据 → 弹回。
-     * 若按绝对位置判（`_dragOffset > 阈值`，本仓旧行为），抓取瞬间的位置本身就过阈值，
+     * 若按绝对位置判（`_dragOffset > 阈值`），抓取瞬间的位置本身就过阈值，
      * 会立刻再派发一次 open-change(false)。
      */
     const zone = getDragZone(el)
@@ -357,7 +356,7 @@ describe('WebUiDrawer 拖拽关闭（浏览器）', () => {
     await waitFor(() => !getDialog(el).open)
     expect(el.open).toBe(false)
 
-    // 迟到的 pointerup 不再触发弹簧或事件（原实现断言 `is-dragging` 内部状态类）
+    // 迟到的 pointerup 不触发收尾或事件（内部状态类不作断言）
     zone.dispatchEvent(
       new PointerEvent('pointerup', { bubbles: true, pointerId: 1, isPrimary: true, clientX: 560, clientY: 300 })
     )
@@ -386,7 +385,7 @@ describe('WebUiDrawer 拖拽关闭（浏览器）', () => {
      * 净位移 132px < 距离阈值（尺寸的一半 = 160px），整段平均速度 = 132px / 66ms =
      * 2000px/s ≥ 500px/s，单看甩动判据会关闭；但回扫让「自折返点起的位移」（42px）比
      * 方向确认时的位移（90px）少 48px ≥ 10px，本次手势被标记为「改主意」→ 弹回。
-     * 旧实现用的是释放瞬间的 100ms 滑窗速度（16ms 内回扫 42px ⇒ 2600px/s）同样会误关。
+     * 用释放瞬间的 100ms 滑窗速度（16ms 内回扫 42px ⇒ 2600px/s）同样会误关。
      */
     await dragPath(el, [
       { x: 500, at: 1000 },
@@ -493,7 +492,7 @@ describe('WebUiDrawer 拖拽关闭（浏览器）', () => {
 
   /*
    * slow-drag-then-flick（issue #140 路径①）：整段手势净位移很慢，但最后 100ms 滑窗内是一次
-   * 快 flick。PR137 把甩动判定从「释放瞬间的 100ms 滑窗速度」改为「整段手势的平均速度」
+   * 快 flick。甩动判定用「整段手势的平均速度」
    * （drag-gesture.ts:13 的 VELOCITY_WINDOW_MS 只用于 info.velocity 的滑窗估算），这一路正是
    * 两种口径分歧之处：滑窗只看见末尾快扫，平均速度却被前面的慢拖稀释。现有 dragAndRelease
    * 用例刻意分多段慢走来**回避**被判为 flick（:76/:183 注释），本条真正构造「慢拖 + 快 flick」
@@ -540,7 +539,7 @@ describe('WebUiDrawer 拖拽关闭（浏览器）', () => {
     /*
      * 按下点在 500、首个 move 已到 560：这 60px 被基准校准吸收，判定只认
      * 560 → 700 的 140px < 160px。
-     * 若从按下点起算（本仓旧行为），位移 200px 会越过阈值而关闭。
+     * 若从按下点起算，位移 200px 会越过阈值而关闭。
      * 整段耗时 400ms ⇒ 平均速度 350px/s < 500px/s，排除甩动分支的干扰。
      */
     await dragPath(el, [
@@ -566,7 +565,7 @@ describe('WebUiDrawer 拖拽关闭（浏览器）', () => {
     /*
      * 判定时长为 0：首个 move（校准点）与松手取同一个 timeStamp。位移 100px 落在
      * 「能以甩动关闭、但不足以过距离阈值」的区间（尺寸的一半 = 160px）。
-     * durationMs === 0 时速度算作 0；本仓旧写法用
+     * durationMs === 0 时速度算作 0；用
      * 50ms 兜底做分母，会把 100px 放大成 2000px/s 而误关。本用例只构造了「首尾 timeStamp
      * 相同」这一种不可测来源；倒退会先在共享层被钳到 0（`Math.max(0, …)`）再走同一条
      * 守卫，属同一分支，故不再另立用例。
@@ -679,8 +678,8 @@ describe('WebUiDrawer 拖拽关闭（浏览器）', () => {
   })
 
   /*
-   * issue #123：释放后的收尾（弹回打开位 / 滑出到闭合位）已从 WAAPI 弹簧迁移为
-   * CSS transition。判据只取公开 DOM 面（transitionstart / getAnimations）与最终的
+   * issue #123：释放后的收尾（弹回打开位 / 滑出到闭合位）由 CSS transition 承担。
+   * 判据只取公开 DOM 面（transitionstart / getAnimations）与最终的
    * open 归宿 —— `is-settling`、内联 `transform`、`--wui-internal-settle-*` 这些
    * 收尾参数与状态类是内部实现，断言它们等于把实现抄回测试（政策第 6 条）。
    *

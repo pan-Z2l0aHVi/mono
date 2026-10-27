@@ -407,8 +407,8 @@ onScopeDispose(() => clearTimeout(copiedRevertTimer))
         </div>
 
         <!--
-        空备注同样渲染 input：原先的 v-if="resource.note" 只在已有备注时挂载，字段一旦
-        可编辑就必须常驻，否则没有备注的资源永远没有入口去写。换行、滚动与 autosize
+        空备注同样渲染 input：字段一旦可编辑就必须常驻，否则没有备注的资源永远没有入口去写。
+        换行、滚动与 autosize
         高度仍由组件统一管，Drawer 不自己算 line-height。borderless 让输入区直接坐在
         分组底色上，不在组内再叠一层自己的边框与圆角。rows=1 是 iOS 备注的常态：空备注
         只占一行，autosize 在用户真正输入后才把行数顶上去。可见标题已移除，字段身份

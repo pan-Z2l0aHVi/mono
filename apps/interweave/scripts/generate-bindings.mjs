@@ -16,7 +16,7 @@
 //      改了 clean 语义、或有人把 `-clean` 又拨回 `true`，也不会静默丢文件。
 //
 // 代价（同步写进 docs/agents/build.md 与 changeset）：
-//   - 不再清理陈旧生成物：`-clean=false` 不删任何文件，重命名 / 删掉一个 Service 后旧文件会留在
+//   - 不清理陈旧生成物：`-clean=false` 不删任何文件，重命名 / 删掉一个 Service 后旧文件会留在
 //     `bindings/` 里，需要人工 `git rm`。这是刻意取舍——留下旧文件可恢复，静默删除不可恢复。
 //   - 直接写 `bindings/`（而不是临时目录 + 同步）在 dev server 开着时会有 HMR 事件；但因为没有
 //     delete + recreate 环，chokidar 不会因此进入重命名循环（那套临时目录机制正是为避开该循环）。

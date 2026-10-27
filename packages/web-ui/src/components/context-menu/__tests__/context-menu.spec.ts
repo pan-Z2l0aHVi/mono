@@ -50,7 +50,7 @@ async function waitForMenuItemTexts(expected: string[], read: () => string[]) {
 }
 
 // 根 panel / submenu panel 都以公开语义 role="menu" + aria-label 挂载于 overlay 容器，
-// 用 @/shared/test-utils 的共享定位器按 aria-label 区分（不再自建 root shadow 直查）。
+// 用 @/shared/test-utils 的共享定位器按 aria-label 区分。
 function getMenu(): HTMLElement | null {
   return getMenuPanels('Context menu')[0] ?? null
 }

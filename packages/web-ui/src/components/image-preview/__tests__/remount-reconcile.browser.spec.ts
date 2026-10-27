@@ -103,7 +103,7 @@ describe('image-preview 重挂载对账（浏览器）', () => {
 
     overlayContainer().append(host)
     await host.updateComplete
-    // 修复前：open 属性残留但已脱离 top layer（`:modal` 恒 false）
+    // 重挂载的坑：open 属性残留但已脱离 top layer（`:modal` 恒 false）
     await pollUntil(() => dialogElement().matches(':modal'), 'dialog should re-enter top layer after remount')
 
     expect(host.isConnected).toBe(true)
@@ -132,7 +132,7 @@ describe('image-preview 重挂载对账（浏览器）', () => {
     await host.updateComplete
     await pollUntil(() => dialogElement().matches(':modal'), 'dialog should re-enter top layer after remount')
 
-    // 修复前：`_pinch` 已随 disconnect 销毁且不再重挂，缩放永远停在 1
+    // 重挂载的坑：`_pinch` 已随 disconnect 销毁且不再重挂，缩放永远停在 1
     await pinchZoomOut()
     expect(handle.scale).toBeGreaterThan(1)
   })

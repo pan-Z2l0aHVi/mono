@@ -10,8 +10,8 @@ import type { WebUiContextMenu } from '..'
 /*
  * 贴视口边缘打开时，menu 不得越出视口（浏览器）。
  *
- * 缺陷形态（实测，非推理）：定位当时用 `panel.getBoundingClientRect()` 取宽高来算夹取，
- * 但 panel 此刻正带着进场动画 `transform: scale(var(--wui-scale-enter, 0.9))`
+ * 缺陷形态（实测，非推理）：若用 `panel.getBoundingClientRect()` 取宽高来算夹取，
+ * 而 panel 此刻正带着进场动画 `transform: scale(var(--wui-scale-enter, 0.9))`
  * （assets/overlay-motion.css:40）。
  * rect 含 transform，于是夹取按**缩小 10%** 的尺寸来算：
  *
@@ -21,12 +21,12 @@ import type { WebUiContextMenu } from '..'
  *   → 越出视口下缘 896px 共 37.6px
  *
  * 上列数字按 `--wui-scale-enter: 0.9` 换算得出。实测的是同一组输入（456px menu、896px
- * 视口、8px 边距）与缺陷形态，算式也没变，只是缩放档位从 5% 变成 10%。
+ * 视口、8px 边距）与缺陷形态，算式也没变。
  *
  * panel 自身 `overflow-y: hidden`，越出去的那一截不会被滚动救回来——最下面一项直接点不到。
  *
  * **横向是同一个缺陷**：夹取的宽高取自同一个 rect，所以贴右缘打开时横向也少算了 10% 宽度，
- * 右缘同样越界。两个方向各有守卫——只钉纵向的话，改回 getBoundingClientRect 时横向回归
+ * 右缘同样越界。两个方向各有守卫——只钉纵向的话，用 getBoundingClientRect 算夹取时横向回归
  * 无人发现（而横向确实发生过，见用例）。
  *
  * 判据取「panel 底边不超过视口下缘」这条行为约束，不钉某个像素值：padding 是 8px 的实现常量，
@@ -34,13 +34,13 @@ import type { WebUiContextMenu } from '..'
  *
  * 必须 browser mode：整个缺陷就是 transform 污染 rect 读数，jsdom 既无布局也无 transform。
  *
- * 定位改成 Floating UI（`computePosition` + `flip` / `shift`）之后「夹取」不再由本组件
- * 手算，而是翻转到触发点上方、下缘精确对齐触发点。这批断言按**新契约**改写：竖直方向
- * 的等式从「贴视口下缘 − 边距」换成「下缘 == 触发点 y」，横向的等式不变（仍由 shift 夹取）。
+ * 定位走 Floating UI（`computePosition` + `flip` / `shift`）：「夹取」不由本组件手算，
+ * 而是翻转到触发点上方、下缘精确对齐触发点。竖直方向的等式是「下缘 == 触发点 y」，
+ * 横向的等式仍由 shift 夹取。
  */
 afterEach(() => document.body.replaceChildren())
 
-/** 边距，与 `_positionMenuInViewport` 的夹取常量同源，仅用于给断言留容差。 */
+/** 边距，与组件的夹取常量同源，仅用于给断言留容差。 */
 const EDGE_PADDING = 8
 
 function menuItems(count: number): string {
@@ -81,7 +81,7 @@ describe('WebUiContextMenu 贴视口边缘的夹取（浏览器）', () => {
   it('放不下时翻转到触发点上方，下缘按未缩放的尺寸精确对齐触发点', async () => {
     const { rect, anchor } = await openAtEdge(14, 200, window.innerHeight - 10)
 
-    // 新契约：panel 下缘 == 触发点 y（flip 到 top-start 的直接后果）。
+    // 契约：panel 下缘 == 触发点 y（flip 到 top-start 的直接后果）。
     // 进场 scale 若被算进夹取，落定后的下缘会落到 `触发点 + 0.1 × menu 高`——
     // 实测 456px 高的 menu 按此偏低 0.1 × 456 = 45.6px，正好压在触发点上、盖住用户按的那一行。
     //
@@ -167,10 +167,10 @@ describe('WebUiContextMenu 贴视口边缘的夹取（浏览器）', () => {
   it('横向夹取按未缩放的宽度算，而不是按进场 transform 缩小后的宽度', async () => {
     const { rect } = await openAtEdge(14, window.innerWidth - 10, 200)
 
-    // 判据改成「夹取结果**不是**按缩小尺寸算出来的那个」，不再钉死与视口边界的精确距离。
+    // 判据是「夹取结果**不是**按缩小尺寸算出来的那个」，不钉死与视口边界的精确距离。
     //
-    // 原来这里钉的是 `左缘 == 视口右缘 − 实际宽 − 边距`。它把边距常量也钉进了测试，而且对
-    // 「测量时的宽度」与「落定后的宽度」之间的抖动零容忍：flip 会多跑一轮测量，实测那一刻
+    // 不钉「左缘 == 视口右缘 − 实际宽 − 边距」：那会把边距常量也钉进测试，而且对
+    // 「测量时的宽度」与「落定后的宽度」之间的抖动零容忍——flip 会多跑一轮测量，实测那一刻
     // panel 宽 202px、落定后 200px，左缘因此差 2px。那 2px 与本条要守的性质无关。
     //
     // 按 0.9 倍进场宽度夹取会得到 `视口右缘 − 边距 − 0.9 × 实际宽`，与正确结果相差

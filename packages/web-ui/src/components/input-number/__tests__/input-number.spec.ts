@@ -509,9 +509,8 @@ describe('WebUiInputNumber 组件特有契约', () => {
       cleanupElement(el)
     })
 
-    // 原实现断言「precision 变化不恢复设值时已按旧精度舍入的值」，等价于接受
-    // 赋值即销毁原始小数（#340 的同一根因）。现改为：原始值保留，读取时按当前
-    // precision 规整，故精度提上来之后 1.234 应回到 1.23。
+    // 原始值保留，读取时按当前 precision 规整，故精度提上来之后 1.234 应回到 1.23：
+    // 赋值不销毁原始小数（#340 的同一根因）。
     it('precision 提升后按新精度重新规整原始值', async () => {
       const el = createNumber()
       el.value = 1.234

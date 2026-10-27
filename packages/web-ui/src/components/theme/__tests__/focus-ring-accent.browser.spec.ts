@@ -11,9 +11,9 @@ import type { WebUiTheme } from '@/components/theme'
  * 断言的是**关系**：换一个自定义 `--wui-color-accent`，聚焦态 outline 颜色必须随之改变。
  * 因此这里不含任何颜色字面量，也不逐个 preset 验算——主题改调色板、换 accent 默认值都应成立。
  *
- * 读的是**组件自己的计算样式**，不在测试里抄一份 fallback 表达式。早先版本把
- * `var(--wui-color-focus-ring, color-mix(...))` 写在测试里，结果把 `button/style.css` 的
- * fallback 改成硬编码色时那条依然是绿的——它断言的是自己的副本，不是组件真正生效的值。
+ * 读的是**组件自己的计算样式**，不在测试里抄一份 fallback 表达式：把
+ * `var(--wui-color-focus-ring, color-mix(...))` 写在测试里时，把 `button/style.css` 的
+ * fallback 改成硬编码色那条依然是绿的——它断言的是自己的副本，不是组件真正生效的值。
  */
 afterEach(() => document.body.replaceChildren())
 

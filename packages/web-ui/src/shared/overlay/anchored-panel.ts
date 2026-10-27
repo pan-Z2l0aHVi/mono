@@ -12,7 +12,7 @@ export interface AnchoredPanelOptions {
   isPortal(): boolean
   createPortal(): OverlayPortal
   /**
-   * 承载「本 panel 是一次开启态 overlay」的实例：登记与 Escape 归属由它完成，本模块不再
+   * 承载「本 panel 是一次开启态 overlay」的实例：登记与 Escape 归属由它完成，本模块不
    * 自己维护逻辑父子关系。
    *
    * 必须是**调用方持有的那个实例**（而不是这里新建一个）——调用方同时要用它的帧
@@ -117,7 +117,7 @@ export const defineAnchoredPanel = () =>
          * 第三态「可见但暂缓仲裁」：退场等待期间 panel 仍在场，登记不撤，但不再走关闭
          * 入口——它已经在关的路上了。撤销推迟到动画结束，或被 `open()` 以新会话取代。
          *
-         * 旧实现在这里立即 `releaseHandle()`，于是两条提前返回的路径都把还看得见的 panel
+         * 若在这里立即 `releaseHandle()`，两条提前返回的路径都会把还看得见的 panel
          * 留在未登记状态：未登记即不参与「谁是最内层」的仲裁，直到下一次 `open()` 才
          * 恢复（issue #138）。
          *

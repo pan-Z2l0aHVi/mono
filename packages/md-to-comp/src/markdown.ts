@@ -174,8 +174,7 @@ function parseTable(section: Section, labels: readonly string[], source: string,
       fail(`${file}：### ${section.title} 的正文里有一行不是表格行（每行的行首要写 \`|\`）：${trimmed.slice(0, 40)}`)
   }
   const rows = readTableLines(body)
-  // 只有标题、没有表格行：这一形状从前一路走到「这一节不存在」，而表格现在是这份契约的唯一来源，
-  // 所以它必须是错误，而不是产物里少一张表。
+  // 只有标题、没有表格行：表格是这份契约的唯一来源，所以它必须是错误，而不是产物里少一张表。
   if (rows.length < 2)
     fail(`${file}：### ${section.title} 有标题但没有表格（表头加至少一行数据）；这张表不该存在就删掉这个小节标题`)
   const [head, ...rest] = rows

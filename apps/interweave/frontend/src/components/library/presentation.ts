@@ -58,8 +58,7 @@ export const DEFAULT_TAG_CLASS = 'bg-black/5 text-gray-500 dark:bg-white/10 dark
 /**
  * 持久化颜色 key → chip 样式。
  *
- * class 对照原样取自此前的「标签名 → 样式」映射，只是把 key 从标签名换成颜色 key，
- * 因此随机色只会落在此前就已经在用、且浅深两态对比度都验过的颜色上。
+ * class 与「标签名 → 样式」映射逐项一致，因此随机色只会落在浅深两态对比度都验过的颜色上。
  *
  * 穷尽 Record<TagColor, string> 是与后端闭集的编译期契约：新增颜色而这里漏了样式
  * 会直接类型报错。TagColor.$zero（Go 零值 ""）对应「库内还没有颜色」，与运行期

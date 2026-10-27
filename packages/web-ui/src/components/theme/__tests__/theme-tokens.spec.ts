@@ -61,7 +61,7 @@ function mixColors(first: string, second: string, firstWeight: number): string {
 
 /*
  * 已删除的旧 token 清单一处定义：主题定义侧与文档侧各有一条用例在读它。
- * 两份抄本曾经漂移过——`--wui-ease-out` 只留在文档那份，于是 CSS 侧少守了一枚。
+ * 两份抄本各写一份时会漂移——`--wui-ease-out` 只留在文档那份，于是 CSS 侧少守了一枚。
  */
 const REMOVED_TOKENS = [
   '--wui-color-text-muted',
@@ -80,7 +80,7 @@ const REMOVED_TOKENS = [
   '--wui-duration-menu-exit',
   '--wui-duration-overlay-enter',
   '--wui-duration-overlay-exit',
-  // 只存在于未发布 changeset 里的过渡版本，已被两个 group 各自的 gap token 取代
+  // 已被两个 group 各自的 gap token 取代的过渡版本
   '--wui-selection-group-gap',
   // 玻璃环按「画在哪一层」改名后的三枚旧名：环底色 / 角部受光 / 角部背光
   '--wui-color-glass-border',
@@ -190,7 +190,7 @@ describe('WebUiTheme token contract', () => {
   })
 
   /*
-   * 改名只被 theme 定义侧守卫是不够的：三枚 token 的唯一消费点是 classes/glass.css，
+   * 新名只被 theme 定义侧守卫是不够的：三枚 token 的唯一消费点是 classes/glass.css，
    * 而 assets/*.css 被 fallback 守卫显式排除。写错 var 名或改回旧名时浏览器会静默
    * 回落到字面量默认值——明色下 shade / sheen 的字面量恰好等于目标值，改错了在明色
    * 完全看不出来。这里把「新名被引用、旧名不再被引用」钉死。

@@ -14,8 +14,8 @@ function queryPanel(el: WebUiToast): HTMLElement {
 
 /*
  * 动效观察面用 Web Animations API：`getAnimations()` 对
- * 「有动效 vs 没有动效」有完全区分力；而入场起点的 scale（`--wui-scale-enter`）取值属
- * 计算样式读取，已按契约化重构判据删除。
+ * 「有动效 vs 没有动效」有完全区分力；入场起点的 scale（`--wui-scale-enter`）取值属计算样式读取，
+ * 不作为判据。
  */
 function runningTransitions(el: WebUiToast): string[] {
   return queryPanel(el)

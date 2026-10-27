@@ -128,8 +128,8 @@ describe('WebUiTheme 组件', () => {
 
     /*
      * 「prop 不再被读取」必须由一对反向证据共同归因，单取任何一半都没有区分力：
-     * 上半（motion=full 且不写 transition）—— 旧实现没有 transition 就不会启动，
-     *   现在仍然启动，说明揭示不再需要该 prop 授权；
+     * 上半（motion=full 且不写 transition）—— 不写 transition 仍然启动，
+     *   说明揭示不需要该 prop 授权；
      * 下半（motion=reduced 且写了 transition）—— reduced 档本身就会短路
      *   _shouldAnimateAppearance，单独看这一条即使 prop 仍在被读取也会绿，
      *   只有和上半配对才能证明「写了也开不了」。
@@ -402,9 +402,9 @@ describe('WebUiTheme 组件', () => {
     /*
      * 解析值本身（显式直通、system 跟随 OS、缺省回落 light、OS 翻转实时更新）以
      * resolved-appearance.browser.spec.ts 为准：那份用 CDP 真改 prefers-color-scheme，
-     * 覆盖 light/dark × 显式/system/缺省 的整张矩阵。这里原先各写一份 matchMedia 桩副本，
-     * 判据同一条且其中一条只断言「桩被查询过几次」（实现细节），副本已删；留下的是
-     * 浏览器那份没有的通道——外部篡改派生属性后被恢复。
+     * 覆盖 light/dark × 显式/system/缺省 的整张矩阵。matchMedia 桩副本的判据同一条，且其中
+     * 一条只断言「桩被查询过几次」（实现细节），判别力不如浏览器那份，这里不另立一份；
+     * 留下的是浏览器那份没有的通道——外部篡改派生属性后被恢复。
      */
     it('外部改动 resolved-appearance 会恢复为派生值', async () => {
       const theme = createTheme('light')
@@ -483,7 +483,7 @@ describe('WebUiTheme 组件', () => {
        * 1. **scrim 在最近主题的 overlay root 里。** `--wui-color-*` 写在 `<web-ui-theme>` 的
        *    `:host` 上、只沿 DOM 树向下继承；scrim 若落在 `document.body`（theme 宿主的**父**
        *    节点），继承链就断，panel 与 scrim 一起退回浅色字面量 fallback —— 深色外观下的
-       *    实测症状。挂在 `document.body` 是这次修复前的行为，这里改钉它必须在 overlay root。
+       *    实测症状。挂在 `document.body` 就会断掉继承链，所以这里钉的是它必须在 overlay root。
        * 2. **panel 在 scrim 里。** panel 必须与 scrim 同处 top layer 才在模态期间可点；只满足
        *    第 1 条而把 panel 留在 overlay root，模态期间它自己就不可点。
        *

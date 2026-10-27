@@ -75,8 +75,8 @@ export function EventTypingFixture() {
       {/* @ts-expect-error onFoo 不是合法事件绑定 */}
       <web-ui-button onFoo={() => {}}>A</web-ui-button>
 
-      {/* 4c. lowercase 标准事件别名已移除，oninput 被拒绝 */}
-      {/* @ts-expect-error oninput 已移除，标准事件用 onInput */}
+      {/* 4c. lowercase 标准事件别名不在类型面上，oninput 被拒绝 */}
+      {/* @ts-expect-error oninput 不在类型面上，标准事件用 onInput */}
       <web-ui-input oninput={() => {}} />
 
       {/* 4d. 属性类型错误被拒绝 */}

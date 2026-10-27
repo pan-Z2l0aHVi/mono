@@ -25,7 +25,7 @@ const FALLBACK_ICON_SIZE = 40
 /**
  * 空态图形区。
  *
- * 默认图形直接渲染成 `svg`，不再包 `web-ui-icon`：`web-ui-icon` 的边长是 JS 属性
+ * 默认图形直接渲染成 `svg`，不包 `web-ui-icon`：`web-ui-icon` 的边长是 JS 属性
  * （`.size`），CSS 变量驱动不了它，而空态的默认图形是固定资产，没有必要为了几个像素
  * 去读 computed style 再回写属性。样式因此全部落在 CSS 上，调用方换尺寸只写变量。
  *

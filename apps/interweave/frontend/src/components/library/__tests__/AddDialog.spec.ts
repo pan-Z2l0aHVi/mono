@@ -224,9 +224,8 @@ describe('AddDialog', () => {
   })
 
   /*
-   * 回归（#188）：paste 事件原先只派发 requestFilePaths、不带剪贴板文本，页面拿不到
-   * 链接。工具栏 button 那条路径本来就没有文本（走 OS 剪贴板文件接口），因此只有事件路径
-   * 需要把文本带上去。
+   * 回归（#188）：paste 事件要带上剪贴板文本，否则页面拿不到链接。工具栏 button 那条路径
+   * 本来就没有文本（走 OS 剪贴板文件接口），因此只有事件路径需要把文本带上去。
    */
   it('paste 事件把剪贴板文本交给页面，弹窗关闭时不响应', async () => {
     const requestFilePaths = vi.fn<(clipboardText?: string) => void>()
@@ -429,6 +428,6 @@ describe('AddDialog', () => {
     }
   })
 
-  // 高度契约（--wui-dialog-max-height 语义）不再在 jsdom 里钉 CSS 值：具体高度由浏览器
+  // 高度契约（--wui-dialog-max-height 语义）不在 jsdom 里钉 CSS 值：具体高度由浏览器
   // 验证与 packages/web-ui 的 dialog-content-height.browser.spec.ts 覆盖（test-authoring §4）。
 })

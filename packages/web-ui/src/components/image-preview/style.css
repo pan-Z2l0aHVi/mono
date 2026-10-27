@@ -44,7 +44,7 @@ dialog {
   background: transparent;
 }
 
-/* backdrop 层：承接原先 dialog 背景的淡入淡出，自身 opacity 过渡不构成 backdrop root。 */
+/* backdrop 层：承接 dialog 背景的淡入淡出，自身 opacity 过渡不构成 backdrop root。 */
 .wui-image-preview-backdrop {
   pointer-events: none;
 

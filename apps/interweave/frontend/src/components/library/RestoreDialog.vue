@@ -99,13 +99,12 @@ function submit() {
     </p>
 
     <!--
-      内层不再自己算高度：`--wui-dialog-max-height` 的语义已从「整卡高度」改成
-      「内容区高度」（见 @greypan/web-ui 的 dialog），去掉的不只是那个 108，还有
-      整条 height 计算——上限改由组件的 `.desc` 承担。
+      内层不自己算高度：`--wui-dialog-max-height` 的语义是「内容区高度」（不是「整卡高度」，
+      见 @greypan/web-ui 的 dialog），上限由组件的 `.desc` 承担。
 
       这里用 var(--wui-dialog-max-height) 而不是 height: 100%：后者在内容不足时会让
       `.desc` 收缩到内容高，整张卡片跟着变矮，队列有无时又跳一次。token 直接当内层高度，
-      固定高度这个性质才与改动前一致（两个栏恒等高）。
+      固定高度这个性质才成立（两个栏恒等高）。
       token 声明在外层 web-ui-dialog 上，内层作为后代继承得到，两个数不会走散。
 
       token 里减掉的 142 是本 dialog 的 chrome 实测值（Chrome/Chromium，1017×503）：

@@ -16,7 +16,7 @@ const clickChild = (checkbox: WebUiCheckbox) => {
 }
 
 describe('CheckboxGroup 跨组移动成员（浏览器）', () => {
-  // 回归：晚连接组的移除同步曾覆写早连接组刚安装的托管上下文，
+  // 回归：晚连接组的移除同步一旦晚到就会覆写早连接组刚安装的托管上下文，
   // 子项移动后 change 直接冒泡出组外且 group.value 不更新。
   it('从后连接的组移入先连接的组后仍受新组托管', async () => {
     const groupA = document.createElement('web-ui-checkbox-group') as WebUiCheckboxGroup

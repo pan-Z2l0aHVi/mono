@@ -11,8 +11,8 @@ import type { DrawerPlacement, WebUiDrawer } from '..'
 /*
  * 上下 placement 的 header / footer **整块**是拖拽起手区（A6 的反向修法）。
  *
- * 缺陷形态：A6 把 drag zone 让开 header（`top: var(--wui-internal-drawer-header-inset)`）修对了
- * 「drag zone 压住 header button」，代价是整条 header 不再可拖。实测 390×844 / placement=bottom /
+ * 让开 header 的做法（`top: var(--wui-internal-drawer-header-inset)`）避免了「drag zone 压住
+ * header button」，代价是整条 header 不再可拖。实测 390×844 / placement=bottom /
  * 56px header：端头 drag edge [0,12]、drag zone [60,92]，**中间 48px 完全不可拖**，用户反馈
  * 「header 面积太小，很难拖动到」。
  *
@@ -23,7 +23,7 @@ import type { DrawerPlacement, WebUiDrawer } from '..'
  * - **命中层判据**（几何）：从指针落点反查顶层元素，落在 header 盒内的点必须解析到
  *   一个可拖表面。只断言「元素存在」会漏掉压在上面挡着的透明层——那正是 A6 的病根。
  * - **行为判据**（真实输入）：用 CDP 派真实鼠标事件。合成 PointerEvent 不走命中测试，
- *   在一个「控件被 drag zone 盖住」的缺陷下照样绿，是上一轮翻车的写法之一。
+ *   在一个「控件被 drag zone 盖住」的缺陷下照样绿。
  *
  * 命中测试一律走 `shadowRoot.elementFromPoint`：`document.elementFromPoint` 穿透
  * shadow root 只返回宿主，会把真实重叠测成 0%。
@@ -126,14 +126,13 @@ async function mountDrawer(options: {
 /**
  * 等拖拽面的几何定版再取样——命中测试的前提。
  *
- * 旧写法只等比 dialog 矩形两次相等，两个方向都不够：
+ * 只等比 dialog 矩形两次相等，两个方向都不够：
  * - 进场过渡的进度只在渲染步进里推进，`getBoundingClientRect()` 的强制重算不推它，
  *   于是「相等」也可以意味着过渡还没起跑：量到的是过渡前那一帧的矩形。
  * - 让位量由 ResizeObserver 写回宿主样式，移动的是 drag zone/drag edge 而不是 dialog 矩形，
  *   等 dialog 矩形稳定推不出 drag zone 已到位。
  * 共享 helper 把这两件事都变成因果条件（过渡跑完 + RO 抽干），收尾再验矩形真的定版。
- * 这也取代了原先手写的 `settleFrames(3)`：那条是按帧数等，本质是赌让位量在几帧内
- * 落定；抽干 ResizeObserver 等的是尺寸回调真的派发过。
+ * 抽干 ResizeObserver 等的是尺寸回调真的派发过，不按帧数赌让位量在几帧内落定。
  */
 async function settleGeometry(el: WebUiDrawer) {
   const targets = [getDialog(el), query(el, '.wui-drawer-drag-zone'), query(el, '.wui-drawer-body')]

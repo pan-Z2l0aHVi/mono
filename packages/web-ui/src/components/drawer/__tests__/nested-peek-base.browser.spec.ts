@@ -24,7 +24,7 @@ import type { WebUiDrawer } from '..'
  * 「有没有真的按新基准重算」这个问题上，大小比较**没有区分力**。实测去掉
  * matchMedia 监听后，栈仍停在旧基准，此时 mobileStep 与 desktopStep 只差
  * 3e-5 px 的浮点尾数，`expect(mobileStep).toBeLessThan(desktopStep)` 照样通过——
- * 断言被噪声满足，是一条假绿。改成比值后，未重算时 step/base 停在
+ * 断言被噪声满足，是一条假绿。取比值判据时，未重算时 step/base 停在
  * 43.2·ln2/28.8 ≈ 1.040，而两端都重算时应同为 ln2 ≈ 0.693，高 50%，稳定变红。
  * （这个比值只是「旧基准 / 新基准」的倍数关系，与 A 的具体取值无关：桌面:窄屏
  * 恒为 3:2，所以未重算时永远比 ln2 高出固定比例，判据不随 A 调参失效。）
@@ -54,13 +54,13 @@ function createDrawer(heading: string): WebUiDrawer {
  * 实测四层栈在 turbo 并行负载下，per-test 的 30s 先于内部 deadline 触发，报出来
  * 的是无信息量的 'Test timed out in 30000ms'，而不是「哪一层没收敛」。
  *
- * 改成共享绝对预算后，无论链有多深，总耗时上限就是预算本身，超时也能指到具体
+ * 用共享绝对预算时，无论链有多深，总耗时上限就是预算本身，超时也能指到具体
  * 是哪一步等不动。仍然是**有界**轮询：真的不收敛照样失败。
  *
  * 数值只决定「愿意等多久」，不参与任何断言——判据全是关系式的，放宽预算不会让
  * 测试变松，只是不再把机器慢当成行为错。空载下最慢的用例约 2.8s（开 4 层 + 关
  * 3 层，走完整条 450ms 过渡链），这里给到十几倍余量吸收并行抢 CPU。同轮被 turbo
- * 压出负载型 flake 的还有本 task 未触碰的 editable-text 与 overlay-in-dialog，
+ * 压出负载型 flake 的还有 editable-text 与 overlay-in-dialog 这两条用例，
  * 单独重跑均全绿，佐证这不是本文件的行为缺陷。
  */
 interface Budget {
@@ -151,8 +151,7 @@ function readLefts(drawers: WebUiDrawer[]): number[] {
  * 有界轮询：跨断点的重算由 matchMedia 的 change 事件异步驱动，不是同步发生。
  * 轮询「几何是否已按新基准收敛」，超时即失败——这正是区分力的来源：
  * 实测去掉 matchMedia 监听后 step/base 停在 43.2·ln2/28.8 ≈ 1.040，比应有的 ln2 ≈ 0.693
- * 高 50%，永远不会收敛。（早先写成 `mobileStep < desktopStep` 无效：未重算时两者
- * 只差 3e-5 px 的浮点尾数，断言照样通过。）
+ * 高 50%，永远不会收敛。
  */
 async function waitForConvergence(probe: () => boolean, message: string, budget: Budget) {
   while (!budget.expired()) {
@@ -180,7 +179,7 @@ function leftEdges(drawers: WebUiDrawer[]): number[] {
  *
  * shift 是朝屏幕内侧的负向 translate，所以越深的层左缘越靠左；步进取正值后
  * 等宽下即 base · ln(1 + 1/d)：d=1 是 base·ln2，d=2 是 base·ln(3/2)，d=3 是 base·ln(4/3)，
- * 单调递减。旧的线性实现给出的是全等序列。
+ * 单调递减。线性实现给出的是全等序列。
  */
 function steps(lefts: number[]): number[] {
   // 反转：lefts 由深到浅，d=1 的那一步在序列末尾。
@@ -248,9 +247,6 @@ describe('WebUiDrawer 嵌套层叠对数基准（浏览器）', () => {
      * 因此这是纯关系式断言（不锁任何像素）。区分力来自比值的量级差——真重算时
      * 两端都 ≈ 0.693；停在旧基准时是 43.2·ln2 / 28.8 ≈ 1.040，比 ln(2) 高 50%，
      * 远超浮点噪声。
-     *
-     * （早先写成 `mobileStep < desktopStep` 是无效判据：未重算时两者只差 3e-5 px
-     * 的浮点尾数，断言照样通过。重算后 step 从 29.94 掉到 19.96，差 33%。）
      */
     const measureMobileStep = () => steps(leftEdges([lower, top]))[0]
     await waitForConvergence(
@@ -276,7 +272,7 @@ describe('WebUiDrawer 嵌套层叠对数基准（浏览器）', () => {
      *
      * 写自定义属性本身**不**触发重算——只有 register / unregister / close 与
      * matchMedia change 四条路径会调 applyLayers。所以这里必须制造一次真实重算，
-     * 否则断言读到的仍是打开时的旧几何、恒真（review 指出过的空转判据）。
+     * 否则断言读到的仍是打开时的旧几何、恒真的空转判据。
      * 做法是跨一次断点：外层宿主上的 200px 声明压过 shadow 内的 `@media` 规则，
      * 基准保持 200px 不变，但 applyLayers 确实重跑了一遍——这正是要验的场景。
      */

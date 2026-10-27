@@ -11,8 +11,8 @@
 dialog {
   /*
    * 胶囊中线的唯一定义处。drag zone 与胶囊是 dialog 的两个直接子节点，定义在 dialog 上
-   * 才能被双方读到——早前它定义在 .wui-drawer-drag-zone 上，靠「胶囊是 drag zone 后代」才读得到；
-   * 两者拆成兄弟后那个定义位置就断了（胶囊读不到值，定位用的 calc 整条失效）。
+   * 才能被双方读到——胶囊不是 drag zone 的后代，定义在 .wui-drawer-drag-zone 上读不到值，
+   * 定位用的 calc 会整条失效。
    * 自定义属性沿树继承，drag zone 仍然读得到它，诊断输出不受影响。
    *
    * 胶囊中线跟随内容区 padding，consumer 覆盖 --wui-drawer-content-padding 后拖拽条自动居中；
@@ -137,11 +137,11 @@ dialog[open].is-visible::backdrop {
  * 上下两条还要**让开开头尾两节**：drag zone 是 dialog 的绝对定位兄弟节点，压在 panel 的端头上，
  * 而那一端上正有 header（bottom）或 footer（top）——button 与点击都落在 drag zone 底下。让开量由
  * index.ts 用 ResizeObserver 量出该节的 border-box 高度写成 --wui-internal-drawer-*-inset，
- * 两者都不存在时为 0，drag zone 回到修复前的边缘位置。
+ * 两者都不存在时为 0，drag zone 回到 panel 边缘。
  *
  * 胶囊与 drag zone 因此**不共用一套偏移**：两者都是 dialog 的直接子节点（兄弟，不是父子），
- * 胶囊恒定相对 dialog 定位、贴住可抓取边缘，drag zone 独自承担让开量。早前胶囊是 drag zone 的后代，
- * `top` 相对 drag zone 算，于是被动继承了那 60px 让位量、被一起推离 panel 边缘（实测内缩 68px）。
+ * 胶囊恒定相对 dialog 定位、贴住可抓取边缘，drag zone 独自承担让开量。胶囊不是 drag zone 的后代，
+ * `top` 相对 dialog 算，不会被那 60px 让位量一起推离 panel 边缘。
  * 让开量是 drag zone 一方的约束，不该外溢到纯视觉的胶囊上；反过来把 drag zone 推回 0 又会让 A6 的
  * header 遮挡立刻回归。两个约束只有靠结构解耦才同时成立，调数值必然牺牲其一。
  *
@@ -211,13 +211,13 @@ dialog.is-nested-lower .wui-drawer-drag-zone {
  *
  * **足迹不得超过它所代表的胶囊**：宽度取胶囊长度、水平居中，与胶囊同一套 left。
  * 这一条是本元素唯一真正的不变量，也是关 button 与消费侧 header 控件的安全保证——
- * 早前它是满宽的，于是横扫 header 整个宽度：实测 consumer 把 `--wui-drawer-drag-bar-thickness`
+ * 满宽会横扫 header 整个宽度：实测 consumer 把 `--wui-drawer-drag-bar-thickness`
  * 调到 24px 时内置关闭 button 与消费侧左右 button 各被吃 40%、40px 时各 100%。
  * 关 button 从来不是特例，**满宽才是病根**。收窄后关 button 贴右缘、胶囊居中，
  * 只要胶囊自己没伸到 button 所在的位置，两者就永不相交——对所有 thickness / space-4
  * 组合都成立（断言按 8 组组合逐一量相交面积），且完全不依赖 close-top。
  *
- * 代价明说：触摸命中面积从满宽收到胶囊长度（默认 390×12 → 56×12）。可接受——
+ * 代价明说：触摸命中面积只有胶囊长度（默认 56×12）。可接受——
  * **drag zone 本身没动**（满宽 20–32px 仍在让开位上），大面积起手能力并未丢失，
  * drag edge 只负责兑现「你看到的那个 drag bar 按得动」。
  *
@@ -234,7 +234,7 @@ dialog.is-nested-lower .wui-drawer-drag-zone {
  * 高度取两条来源的 **max()**：
  * - `中线 + 半个厚度` 恰是胶囊的外沿；
  * - `--wui-drawer-drag-edge-size`（默认 20px）是给手指的命中厚度。
- * 加这条是因为端头原本只有 12px（＝中线 10 + 半个厚度 2），真机反馈「很难拖动到」。
+ * 加这条是因为端头只有 12px（＝中线 10 + 半个厚度 2）时真机反馈「很难拖动到」。
  * 默认值取 20px 的依据：与主 drag zone `--wui-drawer-drag-zone-size` 的默认厚度同值，
  * 于是**胶囊的命中带恒不窄于主 drag zone**，「按你看到的 drag bar」不会比「按旁边的带子」更难。
  * 再往上加会开始吃掉 header 里控件的位置（端头整块可拖后，那一节是要放控件的）。
@@ -317,8 +317,8 @@ dialog.is-nested-lower .wui-drawer-drag-edge {
 }
 
 /*
- * 嵌套下层时整套拖拽提示一起退场，drag zone 与胶囊一起。胶囊曾被 drag zone 那条规则顺带盖住
- * （它是 drag zone 的后代，opacity 作用于它的渲染）；拆成兄弟后必须显式列出，否则下层 drawer
+ * 嵌套下层时整套拖拽提示一起退场，drag zone 与胶囊一起。胶囊是 drag zone 的兄弟而非后代，
+ * drag zone 那条规则的 opacity 作用不到它，必须显式列出，否则下层 drawer
  * 会剩一条没人操作的悬空胶囊。放在基础规则之后，保住 no-descending-specificity 的升序。
  */
 dialog.is-nested-lower .wui-drawer-drag-bar {
@@ -356,8 +356,8 @@ dialog.is-nested-lower .wui-drawer-drag-bar {
  * 通用兄弟选择器：胶囊排在这两个 drag zone 之后（index.ts 的 render 里同一个模板表达式产出
  * 这三个节点），`~` 因此在**所有 placement** 上都成立，且与「drag edge 是否存在」无关——
  * 上下 placement 多一条 drag edge、左右 placement 只有一条，写成 `+` 会让 drag edge 那条静默失配。
- * 这两条规则早前写成后代选择器（.zone:hover .bar），胶囊拆成兄弟后不再满足——不报错、
- * 只是静默不变色，是本结构改动最隐蔽的一处回归。
+ * 这两条规则写成后代选择器（.zone:hover .bar）就不满足当前结构——不报错、
+ * 只是静默不变色，是本结构最隐蔽的一处回归。
  */
 .wui-drawer-drag-edge:hover ~ .wui-drawer-drag-bar,
 .wui-drawer-drag-edge:active ~ .wui-drawer-drag-bar,
@@ -367,7 +367,7 @@ dialog.is-nested-lower .wui-drawer-drag-bar {
 }
 
 /*
- * 达到关闭阈值的确认态：比拖拽静息态更实的中性灰，取代原来的 accent 蓝。
+ * 达到关闭阈值的确认态：比拖拽静息态更实的中性灰。
  * 55% 这一档是看着真浏览器定的：拖拽全程 capture 使 hover/active 恒成立，40% 那档
  * 在拖拽中始终可见，确认态必须明显压过它——试过的 25%（比静息态还淡）越过阈值
  * 读成「变弱」，24% 的静息灰与它几乎无法区分。55% 相对静息 40% 有可辨的一档
@@ -675,15 +675,15 @@ dialog.is-dragging .wui-drawer-drag-zone {
 }
 
 /*
- * 窄视口的层叠基准：同一个 `--wui-drawer-nested-peek-base` 换成更小的 A。
+ * 窄视口的层叠基准：同一个 `--wui-drawer-nested-peek-base` 用更小的 A。
  * 桌面基准（43.2px）来自 index.ts 的 `CSS.registerProperty` initialValue，这里只覆盖窄视口，
  * 因此 A 的桌面真相源仍只有注册项一处。
  *
- * 28.8px 沿用桌面:窄屏 3:2，窄屏随桌面同比缩小：桌面 54→43.2，窄屏 36→28.8，3:2 不变。
- * 第一跳仍是 28.8·ln2 = 19.96px，高于旧的 12px 线性步进；四层总宽 39.93px。
+ * 28.8px 沿用桌面:窄屏 3:2，窄屏随桌面同比缩小：桌面 43.2px、窄屏 28.8px，3:2 不变。
+ * 第一跳仍是 28.8·ln2 = 19.96px，高于 12px 的线性步进；四层总宽 39.93px。
  *
- * 屏内余量不再是定 3:2 的理由：390px 视口上单层左缘有 390 − 8 − 320 = 62px，
- * 桌面基准的四层总宽 43.2·ln4 = 59.89px 也放得下（54px 一档的 74.86px 才会溢出）。
+ * 屏内余量不是定 3:2 的理由：390px 视口上单层左缘有 390 − 8 − 320 = 62px，
+ * 桌面基准的四层总宽 43.2·ln4 = 59.89px 也放得下（总宽 74.86px 才会溢出）。
  * 保留窄屏档是为了不改变既定比例关系，同时给窄屏留出更宽的 drawer 可视区。
  *
  * 断点字面量与 shared/overlay/nested-drawer-layers.ts 的 matchMedia 查询各有一份：

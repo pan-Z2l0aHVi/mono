@@ -84,7 +84,7 @@ export function resolvePreviewTarget(
     return { mode: 'url', source, mediaUrl: null, externalTarget: source.location, emptyReason: null }
   }
 
-  // 失效的本地文件交给系统只会报错，不再提供外跳入口。
+  // 失效的本地文件交给系统只会报错，不提供外跳入口。
   if (!source.available) return emptyTarget(source, 'source-unavailable')
 
   const mode = filePreviewMode(resource.kind, fileExtension(source.location))

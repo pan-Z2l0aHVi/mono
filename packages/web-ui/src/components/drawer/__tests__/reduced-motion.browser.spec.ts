@@ -104,8 +104,8 @@ afterEach(() => document.body.replaceChildren())
  * 实现下也可能成立（如果恰好同步），真正的区分点是**弹簧动画有没有跑**，而对照组
  * （显式 `motion='full'`）必须证明「同样的手势在没有 reduce 时会走弹簧」。
  *
- * 原实现读 `getComputedStyle(dialog).transform` 的 m41/m42 断言「reduced 下零位移」——
- * 那是几何取值（§12 C1），已换成 `getAnimations()`：无弹簧 == 一条动画都没有。
+ * 判据只取 `getAnimations()`：无弹簧 == 一条动画都没有。（读 `getComputedStyle(dialog).transform`
+ * 的 m41/m42 是几何取值，§12 C1。）
  */
 describe('减少动效下的 Drawer 拖拽关闭（浏览器）', () => {
   it('超过阈值松手：不走收尾过渡，open 立即落 false（对照组 full 会等收尾）', async () => {
@@ -126,15 +126,14 @@ describe('减少动效下的 Drawer 拖拽关闭（浏览器）', () => {
 
   it('未达阈值松手：即时弹回打开位且无残留动画', async () => {
     /*
-     * 收尾已交还 CSS transition（issue #123）。逐帧采样的窗口在 CI 高负载下会整个错过
+     * 收尾由 CSS transition 承担（issue #123）。逐帧采样的窗口在 CI 高负载下会整个错过
      * 最短 180ms 的收尾，所以改用 transitionstart 监听——与帧率解耦，直接回答
      *「有没有真的跑过渡」。
      *
-     * 本例不再带 motion='full' 对照组：本文件跑在 `browser-reduced-motion` 工程，系统
+     * 本例不带 motion='full' 对照组：本文件跑在 `browser-reduced-motion` 工程，系统
      * reduce 生效，而 reduce 媒体查询以 `transform: none !important` 对所有位移归零
      *（enter/exit 同样如此）；theme 的 motion 只影响 JS 侧收尾时序，改不动这条 CSS
-     * 规则。旧实现之所以能在 full 下观察到动画，是因为 WAAPI 不受 CSS 管辖——实现副作用，
-     * 不是契约。「full 下确实在等收尾」的对照由上面的「超过阈值松手」用例承担。
+     * 规则。「full 下确实在等收尾」的对照由上面的「超过阈值松手」用例承担。
      */
     const seenTransform = (el: WebUiDrawer) => {
       const seen: string[] = []

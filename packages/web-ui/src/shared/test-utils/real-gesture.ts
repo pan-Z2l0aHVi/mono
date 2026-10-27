@@ -160,7 +160,7 @@ export async function realDragSelectText(node: Node): Promise<void> {
  *     进场过渡尚未创建时量到的正是过渡前那一帧的盒子（胶囊落在视口外、
  *     `elementFromPoint` 返回 null 那一类 flaky）。
  *
- * **panel 本身还没渲染出来时要先等它出现**，不能拿宿主顶上去。旧的
+ * **panel 本身还没渲染出来时要先等它出现**，不能拿宿主顶上去——
  * `dialog ? [el, dialog] : el` 在 `dialog` 为 null 时只观察宿主，于是
  * 「panel 尚未渲染」被当成「panel 没有动画」——这个 helper 的用途正是等**panel**的进场
  * 过渡收敛，那种情况下它返回的时刻不代表任何东西落定。轮询条件只问「shadow root

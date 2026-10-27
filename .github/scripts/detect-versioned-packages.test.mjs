@@ -5,7 +5,7 @@ import os from 'node:os'
 import path from 'node:path'
 
 // 这条测试钉的是发布检测的判据：git 默认开启改名检测，所以包目录改名在 `--name-status` 里是 `R`，
-// 只挑 A/M 的旧实现会整笔丢掉它 —— 换了 npm 名字的包永远不会被发布，而 CI 全绿。判据收在
+// 只挑 A/M 会整笔丢掉它 —— 换了 npm 名字的包永远不会被发布，而 CI 全绿。判据收在
 // (name, version) 身份上：名字变了要发，纯目录搬迁不发。删除与私有包同样要在清单里保持沉默而不是炸。
 // 测试与被测脚本同址；执行端是根 `test-scripts` 的全仓 glob（`*.test.mjs`）。
 const repoRoot = path.resolve(import.meta.dirname, '../..')
@@ -75,7 +75,7 @@ try {
   fs.writeFileSync(path.join(fixture, 'README.md'), 'fixture\n')
   commit('base')
 
-  // 1. 改名 + 改 npm 名字，版本不动：旧实现这里返回空清单，正是那条静默跳过。
+  // 1. 改名 + 改 npm 名字，版本不动：必须返回非空清单，只挑 A/M 就会整笔静默跳过。
   git('mv', 'packages/rename-me', 'packages/renamed')
   writePackage('packages/renamed', '@greypan/renamed', '1.0.0')
   commit('rename')

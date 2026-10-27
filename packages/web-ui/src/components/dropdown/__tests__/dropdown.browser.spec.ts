@@ -46,11 +46,11 @@ async function waitFor(predicate: () => boolean, message: string | (() => string
  *
  * 条件到不了就带读数抛错，不会静默通过。
  *
- * **它只在「数量会变」的场合比原来的固定帧数等待更强。** `waitFor` 在第一次
+ * **它只在「数量会变」的场合比固定帧数等待更强。** `waitFor` 在第一次
  * `await waitForFrame()` **之前**就检查条件，所以条件在 t0 已成立时本函数只让出一帧——
- * 比原先那两帧（或四帧）**少**。因此适用面是「等数量到达 N」，不是「给后续断言多留
- * 沉降时间」：数量在 t0 就已经等于 N 的地方，轮询是空转，应当保留原来的固定帧数等待。
- * 三处这样的点已按此还原，见本文件里带「同帧卸载」「收尾栈」注释的那几条。
+ * 比固定帧数等待的两帧（或四帧）**少**。因此适用面是「等数量到达 N」，不是「给后续断言多留
+ * 沉降时间」：数量在 t0 就已经等于 N 的地方，轮询是空转，应当保留固定帧数等待。
+ * 三处这样的点见本文件里带「同帧卸载」「收尾栈」注释的那几条。
  *
  * **断言不放在这里**是刻意的：本仓门禁 `vitest/expect-expect` 只看**语法上有无
  * `expect(...)`**（见 `shared/test-utils/index.ts` 里 `contractEvent` 那段说明），
@@ -1114,7 +1114,7 @@ describe('WebUiDropdown 组件（浏览器）', () => {
 
     // 同帧卸载：`suspend()` 取消了待执行的建 panel 帧，panel 从未被建出来，
     // `toHaveLength(0)` 从一开始就成立。这是**否定断言**（它「本就不该」出现），
-    // 轮询只会把快速失败变成 1s 超时，所以保留原来的固定帧数等待。
+    // 轮询只会把快速失败变成 1s 超时，所以保留固定帧数等待。
     menu.open = true
     await menu.updateComplete
     menu.remove()
@@ -1139,7 +1139,7 @@ describe('WebUiDropdown 组件（浏览器）', () => {
     await waitFor(() => getMenuPanels().length === 1, '根 menu panel 应挂载')
 
     // `disconnectedCallback` → `_disposeAll` → `overlay.remove()` 是同步的，数量在 t0
-    // 就已是 0，轮询它是空转。与下面两处「同帧卸载」同理，保留原来的固定帧数等待。
+    // 就已是 0，轮询它是空转。与下面两处「同帧卸载」同理，保留固定帧数等待。
     menu.remove()
     await waitForFrame()
 
@@ -1428,7 +1428,7 @@ describe('WebUiDropdown 组件（浏览器）', () => {
     const submenuControl = focusedControl(requireItemIn(submenuPanel, 'submenu'))!
     submenuControl.focus()
     // 收尾栈里的 ArrowLeft：断的是「panel**仍在场**」，数量从头到尾就是 2，
-    // 等它变成 2 是空转。保留原来的固定帧数等待。
+    // 等它变成 2 是空转。保留固定帧数等待。
     submenuControl.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowLeft', bubbles: true, composed: true }))
     await waitForFrame()
     await waitForFrame()

@@ -369,9 +369,8 @@ describe('WebUiButton 组件', () => {
   })
 
   describe('事件: click', () => {
-    // 存活覆盖：内联 button 的 click 冒泡成宿主 click 只判一次。此前 `describe('键盘操作')`
-    // 里有一条 act（点内部 button）与 assert（事件数为 1）完全相同的副本，却不在键盘语境下
-    // 做任何事——同一条契约写两遍等于把「整组可被删掉而不被发现」的口子留在测试里。
+    // 存活覆盖：内联 button 的 click 冒泡成宿主 click 只判一次。同一条契约只写一遍，
+    // 否则等于把「整组可被删掉而不被发现」的口子留在测试里。
     it('点击内部 button 派发一次宿主 click', async () => {
       const el = createButton('OK')
       await waitForUpdate(el)
@@ -390,7 +389,7 @@ describe('WebUiButton 组件', () => {
       el.innerHTML = '<span data-role="mine">Click Me</span>'
       await waitForUpdate(el)
 
-      // 原来判的是 `el.textContent` 等于刚写进去的那串：读回自己写的 light DOM，组件怎么改都红不了。
+      // 断言不读回自己写的 light DOM（`el.textContent` 等于刚写进去的那串，组件怎么改都红不了）。
       // 消费者真正依赖的是内容被投影进 shadow 的默认 slot。
       expect(projectsMine(el)).toBe(true)
 

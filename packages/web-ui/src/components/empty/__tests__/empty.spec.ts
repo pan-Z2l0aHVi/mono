@@ -51,8 +51,8 @@ describe('WebUiEmpty 组件', () => {
       cleanupElement(el)
     })
 
-    // `size` 已移除：它以前同时驱动图形、留白与字号，是唯一需要 JS 的旋钮。
-    // 现在整套版面归 CSS 变量，写 size 属性不该再有任何作用。
+    // `size` 不是公开属性：图形、留白与字号都由 CSS 变量决定。
+    // 写 size 属性不该有任何作用。
     it('不再声明 size 属性，写 size="72" 也不改图形边长', async () => {
       const el = createEmpty({ size: '72' })
       const baseline = createEmpty()

@@ -114,7 +114,7 @@ describe('WebUiSvgDrawLines reduced motion（浏览器）', () => {
 
   /*
    * 撤销只认我们自己写进去的那一份：消费者在收回之后动过内联的任一个值，就不再算数。
-   * 只比 dasharray 的旧写法会把消费者改过的 offset 一起抹回资产值，这条即红。
+   * 只比 dasharray 就会把消费者改过的 offset 一起抹回资产值，这条即红。
    */
   it('收回后消费者只改过 dashoffset：reduced 下 replay 两个值都不碰', async () => {
     const el = await mountInsideTheme('full')

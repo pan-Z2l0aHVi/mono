@@ -27,10 +27,9 @@
  * - `--wui-glow-overhang`：模糊层向盒下探的高度，默认 `24px`。
  * - `--wui-glow-fade`：从全强度到 0 的衰减总长度，默认 `36px`，应不小于 overhang。
  *
- * 盒底缘的 alpha = overhang / fade。旧版对 52px header 是向下外扩 30px、衰减约 45px，
- * 底缘 alpha ≈ 0.67；24 / 36 在同样高度上保持这个强度，盒内曲线与原版基本重合，盒外
- * 只剩 24px 的模糊尾巴。旧版的百分比 mask 会让更高的 header 底缘更淡；新版改用绝对
- * 长度，底缘强度不随容器高度变化。fade 小于 overhang 时，全强度段会延伸到盒外。
+ * 盒底缘的 alpha = overhang / fade。默认 24 / 36 对应 alpha ≈ 0.67 的底缘强度，盒外
+ * 只剩 24px 的模糊尾巴。mask 用绝对长度，底缘强度不随容器高度变化。fade 小于
+ * overhang 时，全强度段会延伸到盒外。
  *
  * 端点用裸 `transparent`（即 rgb(0 0 0 / 0)）而不是与起点色做 color-mix：后者按
  * 预乘 alpha 混色会得到完全不透明的原色，终点没有羽化。裸 transparent 在渐变插值

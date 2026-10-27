@@ -505,7 +505,7 @@ describe('WebUiEditableText 布局契约（浏览器）', () => {
 
   it('光标颜色组件级默认跟随 --wui-color-accent，可被消费方覆盖', async () => {
     /*
-     * caret 此前只有 interweave 页面级设置，其他消费方拿到浏览器默认黑。组件级
+     * caret 缺了组件级默认时，消费方拿到的是浏览器默认黑。组件级
      * 默认落在共享语义 token 上：自定义属性穿透 shadow 边界继承，消费方在宿主或
      * 任意祖先上设 --wui-color-accent 即可整体改色。
      *
@@ -663,7 +663,7 @@ describe('WebUiEditableText 交互契约（浏览器）', () => {
     /*
      * Methods 表里 `blur()` 那一行声称组件没有重写它、编辑态下对宿主调它仍会把焦点从编辑层
      * 移走，于是走提交。上面那条用「焦点移往组件之外」触发同一段提交，宿主自己 `blur()`
-     * 这条一直没有断言，语料那句因此没有机器判据兜着（它曾经写反过）。
+     * 这条一直没有断言，语料那句因此没有机器判据兜着。
      */
     const el = mount({ value: 'hello' })
     await startDraft(el)
@@ -686,7 +686,7 @@ describe('WebUiEditableText 交互契约（浏览器）', () => {
   })
 
   it('readonly 时宿主 blur() 只退出编辑，不派发 change', async () => {
-    // readonly 的「不派发」此前只在卸载路径上钉过；`blur()` 那一行写的是同一条 readonly 分支。
+    // 本用例把 readonly 的「不派发」钉在 blur() 路径上，卸载路径钉的是同一条 readonly 分支。
     const el = mount({ value: 'hello', readonly: '' })
     await waitForUpdate(el)
     el.focus()

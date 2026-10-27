@@ -449,10 +449,10 @@ function rectsEqual(a: DOMRect, b: DOMRect): boolean {
  *   第二个步进会读到它，计数器归零重来。
  *
  * 于是「确实没动画、不必等」这条快路径在**本函数里根本不存在**——每次调用至少花掉两个
- * 渲染步进。之前它是隐形的：读到空集合立刻返回。调用方自己确知没有动画、想省掉这两个
- * 步进的话，直接跳过本函数即可（不要拿「第一次读到空」当跳过的判据）。
+ * 渲染步进。调用方自己确知没有动画、想省掉这两个步进的话，直接跳过本函数即可
+ * （不要拿「第一次读到空」当跳过的判据）。
  *
- * 取多个根而不是单个元素：旧实现只查调用方给的**第一个** target，其余 target 上的动画
+ * 取多个根而不是单个元素：只查调用方给的**第一个** target 时，其余 target 上的动画
  * 一概看不到（`getAnimations({subtree:true})` 覆盖自身与后代，但不覆盖祖先，也不覆盖
  * 与第一个 target 互不为祖先/后代的兄弟节点）。`finished` 在动画被取消时会 reject，
  * 这里吞掉——取消意味着「它不再跑了」，正是本函数要等到的状态，不该变成一次未处理的
@@ -467,8 +467,8 @@ function rectsEqual(a: DOMRect, b: DOMRect): boolean {
  * 「什么都没读到」与「已经稳定」在读数上无法区分，而调用方写下这行时想的是
  * 「等这些元素上的动画收敛」。`Array.isArray` 的判据是刻意的（类型签名只收
  * `Element` 或真数组），所以 NodeList / HTMLCollection / `arguments` 会被包成
- * `[roots]` 再被过滤成空——过去那正是「误传类数组 ⇒ 安静宣布稳定」的入口，
- * 现在它会带着可读的报错停下来，调用点必须传元素而不是类数组。
+ * `[roots]` 再被过滤成空——这正是「误传类数组 ⇒ 安静宣布稳定」的入口，
+ * 它会带着可读的报错停下来，调用点必须传元素而不是类数组。
  */
 export async function waitForAnimationsToFinish(
   roots: Element | ReadonlyArray<Element | null | undefined>,

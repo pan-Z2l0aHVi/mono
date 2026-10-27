@@ -46,20 +46,20 @@ afterEach(() => document.body.replaceChildren())
  * 对应一种已经在这个模块里存在过的静默返回——
  *
  *  1. 目标还没挂上 ⇒ 「没有可量的目标」必须等期待值，等不到就抛错，不能宣布定版。
- *     反事实（改前红）：`if (observed.length === 0) return` 在期待值**之前**执行，
+ *     反事实（缺这道守卫时红）：`if (observed.length === 0) return` 在期待值**之前**执行，
  *     于是本用例的第一个断言成立前 helper 就已经返回。
  *  2. 过渡没跑完而预算耗尽 ⇒ `waitForAnimationsToFinish` 的返回值必须是承重的，
- *     settle 要把「没等到」判成失败。反事实（改前红）：旧实现 `Promise<void>`，
+ *     settle 要把「没等到」判成失败。反事实（返回值只有 `Promise<void>` 时红）：
  *     settle 拿不到信号，预算耗尽照进度样取样。
  *  3. 一个可观察的根都没有 ⇒ 低层等待也要抛错，不能把「什么都没读到」当「已经稳定」。
- *     反事实（改前红）：旧实现 `if (observed.length === 0) return`。
+ *     反事实（缺这道守卫时红）：`if (observed.length === 0) return`。
  *  4. panel 尚未渲染 ⇒ `waitForOpenTransition` 轮询到 `dialog` 出现，不拿宿主顶替。
- *     反事实（改前红）：旧实现 `dialog ? [el, dialog] : el`，dialog 为 null 时只观察宿主，
+ *     反事实（拿宿主顶替时红）：`dialog ? [el, dialog] : el`，dialog 为 null 时只观察宿主，
  *     两个渲染步进就返回，那时 panel 还不存在。
  */
 describe('settle 等待原语（浏览器）', () => {
   it('期待值成立前、目标还没挂上时不宣布定版', async () => {
-    // 目标此刻**未连接**：旧实现在进函数那一刻就把 `observed` 算成空然后返回。
+    // 目标此刻**未连接**：进函数那一刻就把 `observed` 算成空然后返回的话，helper 会提前返回。
     const box = makeBox()
     const targets = [box]
     expect(box.isConnected).toBe(false)
@@ -130,7 +130,7 @@ describe('settle 等待原语（浏览器）', () => {
     })
 
     // `stableFrames: 0` 把「几何不再变化」这道收尾关掉，剩下的就只有动画信号。
-    // 旧实现里动画那一步 `Promise<void>`：预算耗尽静默返回，本调用会**通过**——
+    // 动画那一步只返回 `Promise<void>`：预算耗尽静默返回，本调用会**通过**——
     // 于是调用方在一个还在跑的过渡上量盒子。
     let message = ''
     try {
@@ -184,7 +184,7 @@ describe('settle 等待原语（浏览器）', () => {
     const dialog = document.createElement('dialog')
     shadow.append(dialog)
 
-    // panel 出现之前不得已经返回：旧实现只用宿主观察，两个空闲步进就宣布收敛。
+    // panel 出现之前不得已经返回：只观察宿主的话，两个空闲步进就宣布收敛。
     expect(helperResolved).toBe(false)
 
     await transition
