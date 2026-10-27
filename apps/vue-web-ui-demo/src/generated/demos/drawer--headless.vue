@@ -6,7 +6,7 @@
     placement="left"
     headless
     draggable
-    dialog-label="自定义面板"
+    aria-dialog-label="自定义面板"
     @open-change="open = $event.detail.open"
   >
     <div

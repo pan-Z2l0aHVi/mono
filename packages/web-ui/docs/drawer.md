@@ -618,7 +618,7 @@ function close() {
 
 ### Headless
 
-`headless` keeps only the native dialog, backdrop, animations, scroll lock, and Escape / backdrop closing, rendering no built-in header, close button, or footer. The consumer is responsible for the full styling of the default slot content and must provide `dialog-label`. The sample also enables `draggable`, and headless supports drag-to-close too.
+`headless` keeps only the native dialog, backdrop, animations, scroll lock, and Escape / backdrop closing, rendering no built-in header, close button, or footer. The consumer is responsible for the full styling of the default slot content and must provide `aria-dialog-label`. The sample also enables `draggable`, and headless supports drag-to-close too.
 
 ```tsx
 import { useState } from 'react'
@@ -635,7 +635,7 @@ export default function Demo() {
         placement="left"
         headless
         draggable
-        dialog-label="Custom panel"
+        aria-dialog-label="Custom panel"
         onopen-change={event => setOpen(event.detail.open)}
       >
         <div className="box-border h-full w-[min(320px,100vw)] rounded-r-2xl bg-(--wui-color-surface-overlay) p-6 text-(--wui-color-text)">
@@ -659,7 +659,7 @@ export default function Demo() {
     placement="left"
     headless
     draggable
-    dialog-label="Custom panel"
+    aria-dialog-label="Custom panel"
     @open-change="open = $event.detail.open"
   >
     <div
@@ -1048,19 +1048,19 @@ const open = ref(false)
 
 ### Props
 
-| Name                | Description                                                                             | Type              | Default   |
-| ------------------- | --------------------------------------------------------------------------------------- | ----------------- | --------- |
-| `open`              | Drawer visibility.                                                                      | `boolean`         | `false`   |
-| `no-scroll-lock`    | Does not lock page scrolling while open.                                                | `boolean`         | `false`   |
-| `no-backdrop-close` | Prevents closing on a backdrop click.                                                   | `boolean`         | `false`   |
-| `controlled`        | User-initiated closing only requests `open=false`, written back by the consumer.        | `boolean`         | `false`   |
-| `placement`         | Slide-in direction: `right` (default), `left`, `top`, `bottom`.                         | `DrawerPlacement` | `'right'` |
-| `heading`           | Heading text, the fallback when the `header` slot is empty.                             | `string`          | `''`      |
-| `closable`          | Shows the built-in close button.                                                        | `boolean`         | `false`   |
-| `headless`          | Keeps only overlay behavior; the default slot renders no built-in drawer UI.            | `boolean`         | `false`   |
-| `dialog-label`      | Accessible name of the inner native dialog; required under `headless`.                  | `string`          | `''`      |
-| `close-label`       | Accessible name of the built-in close button; follows the nearest `lang` by default.    | `string`          | `''`      |
-| `draggable`         | Shows a drag bar on the inner edge of the drawer and enables the drag-to-close gesture. | `boolean`         | `false`   |
+| Name                | Description                                                                                      | Type              | Default   |
+| ------------------- | ------------------------------------------------------------------------------------------------ | ----------------- | --------- |
+| `open`              | Drawer visibility.                                                                               | `boolean`         | `false`   |
+| `no-scroll-lock`    | Does not lock page scrolling while open.                                                         | `boolean`         | `false`   |
+| `no-backdrop-close` | Prevents closing on a backdrop click.                                                            | `boolean`         | `false`   |
+| `controlled`        | User-initiated closing only requests `open=false`, written back by the consumer.                 | `boolean`         | `false`   |
+| `placement`         | Slide-in direction: `right` (default), `left`, `top`, `bottom`.                                  | `DrawerPlacement` | `'right'` |
+| `heading`           | Heading text, the fallback when the `header` slot is empty.                                      | `string`          | `''`      |
+| `closable`          | Shows the built-in close button.                                                                 | `boolean`         | `false`   |
+| `headless`          | Keeps only overlay behavior; the default slot renders no built-in drawer UI.                     | `boolean`         | `false`   |
+| `aria-dialog-label` | Accessible name of the inner native dialog; required under `headless`.                           | `string`          | `''`      |
+| `aria-close-label`  | Accessible name of the built-in close button; falls back to the built-in English copy (`Close`). | `string`          | `''`      |
+| `draggable`         | Shows a drag bar on the inner edge of the drawer and enables the drag-to-close gesture.          | `boolean`         | `false`   |
 
 ### Events
 
@@ -1085,7 +1085,7 @@ const open = ref(false)
 
 ### Behavior
 
-`headless` keeps the native dialog, backdrop, placement animation, Escape / backdrop closing behavior, and scroll lock, but renders no built-in glass surface, header, close button, or footer; the consumer is responsible for fully defining the styles of the default slot content and must provide `dialog-label` so that the native dialog has an accessible name.
+`headless` keeps the native dialog, backdrop, placement animation, Escape / backdrop closing behavior, and scroll lock, but renders no built-in glass surface, header, close button, or footer; the consumer is responsible for fully defining the styles of the default slot content and must provide `aria-dialog-label` so that the native dialog has an accessible name.
 
 When closing, the native dialog stays in the top layer, and `dialog.close()` is called after the exit transition finishes. Escape always takes this closing path; `no-backdrop-close` only controls backdrop clicks.
 

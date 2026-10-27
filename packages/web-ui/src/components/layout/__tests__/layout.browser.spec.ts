@@ -102,6 +102,24 @@ describe('WebUiLayout 组件（浏览器）', () => {
     })
   })
 
+  describe('ariaLabels 覆盖', () => {
+    it('未覆盖时回退内置英文；覆盖后桌面 toggle 与 resize handle 用覆盖值', async () => {
+      const layout = createLayout()
+      layout.sidebarResizable = true
+      await layout.updateComplete
+
+      const toggle = layout.shadowRoot?.querySelector<HTMLElement>('.sidebar-toggle')
+      expect(toggle?.getAttribute('aria-label')).toBe('Collapse sidebar')
+
+      layout.ariaLabels = { collapseSidebar: '收起侧栏', resizeSidebar: '调宽' }
+      await layout.updateComplete
+
+      expect(toggle?.getAttribute('aria-label')).toBe('收起侧栏')
+      const handle = layout.shadowRoot?.querySelector<HTMLElement>('[role="separator"]')
+      expect(handle?.getAttribute('aria-label')).toBe('调宽')
+    })
+  })
+
   describe('移动端 drawer', () => {
     // 640px 两侧切换两套 DOM：桌面渲染 aside + 常驻侧栏，移动端渲染受控 drawer。
     it('移动端改用受控 drawer，不再渲染桌面 aside', async () => {
@@ -112,7 +130,7 @@ describe('WebUiLayout 组件（浏览器）', () => {
       expect(queryA11y(layout, 'aside')).toBeFalsy()
       const drawer = queryA11y(layout, 'web-ui-drawer')
       expect(drawer).toBeTruthy()
-      expect(drawer?.getAttribute('dialog-label')).toBe('Main navigation')
+      expect(drawer?.getAttribute('aria-dialog-label')).toBe('Main navigation')
       expect(drawer?.hasAttribute('draggable')).toBe(true)
     })
 

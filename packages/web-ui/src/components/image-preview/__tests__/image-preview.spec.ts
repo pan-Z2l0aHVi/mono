@@ -424,6 +424,23 @@ describe('imagePreview 命令式 API', () => {
       await handle.closed
     })
 
+    it('ariaLabels 覆盖内置英文文案', async () => {
+      const handle = await openPreview({
+        closable: true,
+        toolbar: true,
+        ariaLabels: { close: '关闭预览', resetZoom: '重置缩放' }
+      })
+      const host = hostElement()
+
+      expect(queryA11y(host, '[aria-label="关闭预览"]')).not.toBeNull()
+      expect(queryA11y(host, '[aria-label="重置缩放"]')).not.toBeNull()
+      // 未覆盖的 key 仍走内置英文回退。
+      expect(queryA11y(host, '[aria-label="Zoom in"]')).not.toBeNull()
+
+      handle.close()
+      await handle.closed
+    })
+
     it('closable 时点击关闭 button 关闭 overlay', async () => {
       const handle = await openPreview({ closable: true })
 

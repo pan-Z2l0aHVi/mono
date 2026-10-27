@@ -109,7 +109,7 @@ describe('WebUiDialog header chrome', () => {
 
 /*
  * accessible name 的接线（与 drawer 同形）：
- * - 显式 dialog-label 优先，直接写原生 dialog 的 aria-label；
+ * - 显式 aria-dialog-label 优先，直接写原生 dialog 的 aria-label；
  * - 否则非 headless 且带可见时，aria-labelledby 指向带（id="wui-dialog-heading"）；
  * - headless 没有可自动关联的内置标题，两个属性都不写——名字由 Consumer 负责。
  * 判据读的是原生 <dialog> 上的 attribute，不是内部 id，后者是接线细节。
@@ -146,9 +146,9 @@ describe('WebUiDialog accessible name', () => {
     cleanupElement(el)
   })
 
-  it('dialog-label 优先于带，直接写 aria-label', async () => {
+  it('aria-dialog-label 优先于带，直接写 aria-label', async () => {
     const el = createDialog('<span slot="header">设置</span>')
-    el.dialogLabel = '设置'
+    el.ariaDialogLabel = '设置'
     await flushSlotChange(el)
 
     expect(nativeDialog(el).getAttribute('aria-label')).toBe('设置')
@@ -167,10 +167,10 @@ describe('WebUiDialog accessible name', () => {
     cleanupElement(el)
   })
 
-  it('headless 下 Consumer 仍可用 dialog-label 提供名字', async () => {
+  it('headless 下 Consumer 仍可用 aria-dialog-label 提供名字', async () => {
     const el = createDialog('<section>自定义主体</section>')
     el.headless = true
-    el.dialogLabel = '自定义主体'
+    el.ariaDialogLabel = '自定义主体'
     await waitForUpdate(el)
 
     expect(nativeDialog(el).getAttribute('aria-label')).toBe('自定义主体')
