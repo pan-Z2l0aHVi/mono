@@ -1,4 +1,5 @@
 ---
+'@greypan/interweave': patch
 '@greypan/web-ui': minor
 ---
 
@@ -6,3 +7,4 @@ Keep the dialog and drawer Tab loop inside the dialog instead of letting focus w
 Associate an open tooltip with its trigger through `aria-description`.
 Localize built-in accessible names (close, clear, decrease, increase, back to top, sidebar toggle and main navigation) from the document language, with `close-label`, `clear-label`, `decrease-label` and `increase-label` overrides.
 Forward `aria-label` to the segmented control's internal listbox.
+Label the resource "Open with" entry with the real system default application name in Interweave.

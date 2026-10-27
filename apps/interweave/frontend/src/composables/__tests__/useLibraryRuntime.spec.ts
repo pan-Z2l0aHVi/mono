@@ -336,4 +336,17 @@ describe('useLibraryRuntime', () => {
     ).resolves.toBeUndefined()
     expect(controller.error.value).toBe('探测失败')
   })
+
+  it('defaultOpenWith：后端报无关联时回落空串，不把拒绝抛给调用方', async () => {
+    const controller = useLibraryRuntime(
+      createRuntime({
+        defaultOpenWith: async () => {
+          throw new Error('no association found')
+        }
+      })
+    )
+
+    await expect(controller.defaultOpenWith('/tmp/report.pdf')).resolves.toBe('')
+    expect(controller.error.value).toBe('')
+  })
 })
