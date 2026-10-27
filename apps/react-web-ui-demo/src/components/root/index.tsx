@@ -1,5 +1,5 @@
 import appScrollbarsOptions from '@greypan/app-scrollbars'
-import type { WebUiLayout, WebUiSelect, WebUiToast } from '@greypan/web-ui'
+import { toast, type WebUiLayout, type WebUiSelect, type WebUiToast } from '@greypan/web-ui'
 import { lucideX } from '@greypan/web-ui/icons'
 import { Link, Outlet, useRouter, useRouterState } from '@tanstack/react-router'
 import {
@@ -135,7 +135,7 @@ function isNavActive(pathname: string, path: string) {
 }
 
 export function Root() {
-  const { locale, setLocale } = useLocale()
+  const { locale, setLocale, pending: localePending } = useLocale()
   const [themeAppearance, setThemeAppearance] = useState<ThemeAppearance>(getInitialThemeAppearance)
   const [themeMotion, setThemeMotion] = useState<ThemeMotion>(getInitialThemeMotion)
   const [bannerVisible, setBannerVisible] = useState(true)
@@ -401,7 +401,13 @@ export function Root() {
 
   const updateLocale = (event: React.ChangeEvent<WebUiSelect>) => {
     const next = event.currentTarget.value
-    if (next === 'zh-CN' || next === 'en') setLocale(next)
+    event.currentTarget.value = locale
+    if (next === 'zh-CN' || next === 'en') {
+      void setLocale(next).catch(error => {
+        console.error('Language switch failed', error)
+        toast.error('语言切换失败，请刷新页面后重试')
+      })
+    }
   }
 
   const updateThemeMotion = (event: React.ChangeEvent<WebUiSelect>) => {
@@ -514,6 +520,8 @@ export function Root() {
               </web-ui-select>
               <web-ui-select
                 value={locale}
+                disabled={localePending}
+                aria-busy={localePending ? 'true' : 'false'}
                 className="[--wui-input-width:120px]"
                 aria-label="全局语言"
                 onChange={updateLocale}
@@ -525,6 +533,9 @@ export function Root() {
                   {EN_LABEL}
                 </web-ui-option>
               </web-ui-select>
+              <span className="sr-only" role="status">
+                {localePending ? '正在切换语言' : ''}
+              </span>
             </div>
             <OverlayScrollbarsComponent
               slot="sidebar"

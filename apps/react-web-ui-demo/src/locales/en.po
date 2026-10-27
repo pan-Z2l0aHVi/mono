@@ -150,3 +150,11 @@ msgstr "Popular components at a glance"
 #: src/components/root/index.tsx
 msgid "关闭横幅"
 msgstr "Close banner"
+
+#: src/components/root/index.tsx
+msgid "语言切换失败，请刷新页面后重试"
+msgstr "Language switch failed. Refresh the page and try again."
+
+#: src/components/root/index.tsx
+msgid "正在切换语言"
+msgstr "Switching language"

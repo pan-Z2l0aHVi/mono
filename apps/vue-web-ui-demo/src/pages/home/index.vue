@@ -17,12 +17,12 @@ import {
 import { RouterLink } from 'vue-router'
 
 const quickLinks = [
-  { path: '/components/button', label: 'Button', desc: '变体、尺寸、图标与加载状态' },
-  { path: '/components/dialog', label: 'Dialog', desc: '对齐无障碍语义的模态对话框' },
-  { path: '/components/drawer', label: 'Drawer', desc: '手势拖拽关闭与浮层卡片变体' },
-  { path: '/components/theme', label: 'Theme', desc: '深浅色切换与减少动效' },
-  { path: '/components/select', label: 'Select', desc: '基于 Floating UI 的下拉浮层与选项' },
-  { path: '/components/toast', label: 'Toast', desc: '轻量、响应式的全局通知' }
+  { path: '/components/button', label: 'Button', desc: () => '变体、尺寸、图标与加载状态' },
+  { path: '/components/dialog', label: 'Dialog', desc: () => '遵循无障碍规范的模态对话框行为' },
+  { path: '/components/drawer', label: 'Drawer', desc: () => '手势拖拽关闭与浮动卡片形态' },
+  { path: '/components/theme', label: 'Theme', desc: () => '深浅外观切换与减弱动效' },
+  { path: '/components/select', label: 'Select', desc: () => '基于 Floating UI 的下拉浮层与选项' },
+  { path: '/components/toast', label: 'Toast', desc: () => '轻量、响应式的全局通知' }
 ]
 
 // 子路径部署（GITHUB_BASE_PATH）下写死的绝对路径会 404，logo 必须带上 base 前缀。
@@ -94,7 +94,7 @@ const logoSrc = `${import.meta.env.BASE_URL}bo-transparent.png`
               {{ link.label }}
             </div>
             <div class="text-xs text-(--wui-color-text-secondary) mt-1.5 line-clamp-2">
-              {{ link.desc }}
+              {{ link.desc() }}
             </div>
           </div>
           <div

@@ -8,8 +8,9 @@ import {
 } from '@greypan/web-ui/icons'
 import { OverlayScrollbars } from 'overlayscrollbars'
 import { OverlayScrollbarsComponent } from 'overlayscrollbars-react'
-import { lazy, Suspense, useEffect, useRef, useState, type ComponentType, type MouseEvent } from 'react'
+import { Suspense, useEffect, useRef, useState, type MouseEvent, type ComponentType } from 'react'
 
+import { getDemo } from '@/i18n/examples'
 import { useExampleDoc, useLocale } from '@/i18n/locale'
 
 import { reactIcon, vueIcon } from './flavor-icons'
@@ -24,18 +25,6 @@ import { reactIcon, vueIcon } from './flavor-icons'
  *
  * 预览只运行当前站点框架；代码区始终提供 Vue / React 两份完整源码。
  */
-const demoModules = import.meta.glob<{ default: ComponentType }>('../../generated/*/demos/*.tsx')
-const DEMO_PATTERN = /^\.\.\/\.\.\/generated\/([^/]+)\/demos\/(.+)\.tsx$/
-
-// lazy 组件在模块作用域建一次：在 render 里调 lazy() 每帧换一个组件身份，交互中途的状态会丢失。
-const demoComponents = new Map(
-  Object.entries(demoModules).map(([file, load]) => {
-    const match = DEMO_PATTERN.exec(file)
-    if (!match) throw new Error(`无法从生成物路径解析语种与示例名：${file}`)
-    return [`${match[1]}/${match[2]}`, lazy(load)]
-  })
-)
-
 type Flavor = 'react' | 'vue'
 
 const FLAVOR_LABELS: Record<Flavor, string> = { vue: 'Vue', react: 'React' }
@@ -141,7 +130,7 @@ function ExampleDoc({ component, nativeFlavor = 'react', previewAnchorsOnly = fa
     return (
       <section data-example-doc={doc.component}>
         {doc.samples.map((sample, index) => {
-          const Demo = sample.demoKey ? demoComponents.get(`${locale}/${component}--${sample.demoKey}`) : undefined
+          const Demo = sample.demoKey ? getDemo(locale, component, sample.demoKey) : undefined
           return (
             <ExamplePreview
               key={sampleKey(sample, index)}
@@ -265,7 +254,7 @@ function ExampleDoc({ component, nativeFlavor = 'react', previewAnchorsOnly = fa
         {doc.samples.map(sample => {
           const key = sample.id
           const flavor = activeFlavor(key)
-          const Demo = demoComponents.get(`${locale}/${component}--${sample.demoKey}`)
+          const Demo = getDemo(locale, component, sample.demoKey)
           const isExpanded = expanded[key] ?? false
           return (
             <article className="flex flex-col gap-3" data-sample={sample.title} key={key}>

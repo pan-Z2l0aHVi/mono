@@ -120,6 +120,10 @@ apps/react-web-ui-demo/src/locales/.wuchale/
 apps/react-web-ui-demo/src/locales/*.loader.js
 apps/react-web-ui-demo/src/locales/data.js
 apps/react-web-ui-demo/src/locales/plural.js
+apps/vue-web-ui-demo/src/locales/.wuchale/
+apps/vue-web-ui-demo/src/locales/*.loader.js
+apps/vue-web-ui-demo/src/locales/data.js
+apps/vue-web-ui-demo/src/locales/plural.js
 # 仓库根不应存在 src/，偶被外部工具误建
 /src
 

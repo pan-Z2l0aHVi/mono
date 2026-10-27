@@ -4,12 +4,18 @@ import path from 'node:path'
 import { demoFileContent, demoFileName, FLAVOR_LANG, visibleText } from '@greypan/md-to-comp'
 import { render, waitFor } from '@testing-library/react'
 import { createElement } from 'react'
-import { describe, expect, it } from 'vite-plus/test'
+import { describe, expect, it, vi } from 'vite-plus/test'
 
 import ExampleDoc from '../components/example-doc'
 import { exampleDocs as enExampleDocs, type ExampleDoc as ExampleDocData } from '../generated/en/examples'
 import { exampleDocs as zhExampleDocs } from '../generated/zh-CN/examples'
 import { loadExampleDocs, loadShellLocale, LocaleProvider } from '../i18n/locale'
+
+// 本文件只验证生成清单与预览锚点映射，保留真实 getDemo，不加载全站运行示例。
+vi.mock('../i18n/examples', async importOriginal => ({
+  ...(await importOriginal<typeof import('../i18n/examples')>()),
+  prepareExamples: async () => {}
+}))
 
 // 语料 join 的 React 侧：「示例显示 == markdown 围栏」「每条示例落成可编译文件」「页面 ↔ 语料
 // 不互为孤儿」三条由本包持有；生成器那侧的判据（篡改 / 孤儿 / 表格形状）在 `@greypan/md-to-comp`
@@ -190,8 +196,7 @@ describe('每条示例落成可编译文件', () => {
   }
 })
 
-// 标题就是示例的身份（两侧各有一份语料，id 从它派生）。这一条只有 React 侧能判：Vue 站本期只出
-// 中文，两份语料都在它的 input 目录里，但只落了一套产物。
+// 标题就是示例的身份，两份语料必须派生出相同的 demo 文件名。
 describe('示例标题两侧同文', () => {
   it('CN 与 EN 的 `## Samples` 标题逐字相同', () => {
     for (const name of docNames) {
