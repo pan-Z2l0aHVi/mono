@@ -1,5 +1,6 @@
 import '@/assets/global.css'
 
+import { local } from '@greypan/browser-kit'
 import type { WebUiSelect, WebUiTheme } from '@greypan/web-ui'
 import { createHead } from '@unhead/vue/client'
 import { flushPromises, mount } from '@vue/test-utils'
@@ -89,9 +90,10 @@ it('首页通过全局选择器切换壳文案，更新偏好并保留路由和�
 })
 
 it('组件页切换文档、API、运行示例与双框架源码，保留当前路由和主题', async () => {
+  local.set('theme-appearance', 'dark')
   const { router, wrapper } = await mountShell('/home')
-  const appearance = (wrapper.find('web-ui-theme').element as WebUiTheme).appearance
   try {
+    expect(wrapper.find('web-ui-theme').element as WebUiTheme).toHaveProperty('appearance', 'dark')
     await router.push('/components/button')
     const en = englishDocs.find(doc => doc.component === 'button')!
     await vi.waitFor(() => expect(wrapper.find('[data-example-intro]').element.textContent).toBe(textOf(en.introHtml)))
@@ -132,7 +134,7 @@ it('组件页切换文档、API、运行示例与双框架源码，保留当前�
     expect(document.documentElement.lang).toBe('zh-CN')
     expect(localStorage.getItem('locale')).toBe('zh-CN')
     expect(router.currentRoute.value.path).toBe('/components/button')
-    expect(wrapper.find('web-ui-theme').element as WebUiTheme).toHaveProperty('appearance', appearance)
+    expect(wrapper.find('web-ui-theme').element as WebUiTheme).toHaveProperty('appearance', 'dark')
   } finally {
     wrapper.unmount()
     document.body.innerHTML = ''
