@@ -120,7 +120,7 @@ function handleOpenChange(event: WebUiEvent<WebUiDrawer, 'open-change'>) {
   <web-ui-drawer
     :open="open"
     :placement="placement"
-    dialog-label="资源预览"
+    aria-dialog-label="资源预览"
     draggable
     controlled
     class="mobile:[--wui-drawer-height:80vh] mobile:[--wui-drawer-inset:0px] mobile:[--wui-drawer-radius:28px_28px_0_0] mobile:[--wui-drawer-header-padding:0px] [--wui-drawer-width:max(60vw,320px)] [--wui-drawer-content-padding:20px] [--wui-drawer-drag-zone-size:32px]"

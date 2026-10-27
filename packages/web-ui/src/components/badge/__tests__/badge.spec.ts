@@ -59,6 +59,33 @@ describe('WebUiBadge 组件', () => {
     })
   })
 
+  describe('aria-label 覆盖', () => {
+    it('计数态回退内置英文并带 {count} 插值', async () => {
+      const el = createBadge({ count: '5' })
+      await waitForUpdate(el)
+
+      expect(statusOf(el)?.getAttribute('aria-label')).toBe('5 unread messages')
+      cleanupElement(el)
+    })
+
+    it('宿主 aria-label 设置后三种状态都用它（支持 {count} 占位）', async () => {
+      const dot = createBadge({ dot: '', 'aria-label': '新通知' })
+      await waitForUpdate(dot)
+      expect(statusOf(dot)?.getAttribute('aria-label')).toBe('新通知')
+      cleanupElement(dot)
+
+      const counted = createBadge({ count: '7', 'aria-label': '{count} 条新通知' })
+      await waitForUpdate(counted)
+      expect(statusOf(counted)?.getAttribute('aria-label')).toBe('7 条新通知')
+      cleanupElement(counted)
+
+      const zero = createBadge({ count: '0', 'show-zero': '', 'aria-label': '没有新通知' })
+      await waitForUpdate(zero)
+      expect(statusOf(zero)?.getAttribute('aria-label')).toBe('没有新通知')
+      cleanupElement(zero)
+    })
+  })
+
   describe('dot / show-zero / badge-hidden', () => {
     it('dot 模式显示无文本圆点并标注「未读」', async () => {
       const el = createBadge({ dot: '' })

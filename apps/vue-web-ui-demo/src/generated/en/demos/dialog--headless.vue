@@ -2,7 +2,7 @@
   <div class="flex flex-col items-start gap-3">
     <web-ui-button @click="open = true">Open image details</web-ui-button>
     <output class="text-sm text-(--wui-color-text-secondary)"> headless dialog: {{ open ? 'open' : 'closed' }} </output>
-    <web-ui-dialog :open="open" headless dialog-label="Image details" @open-change="open = $event.detail.open">
+    <web-ui-dialog :open="open" headless aria-dialog-label="Image details" @open-change="open = $event.detail.open">
       <div class="flex flex-col gap-4">
         <div class="flex items-start justify-between gap-3">
           <div class="flex flex-col gap-1">

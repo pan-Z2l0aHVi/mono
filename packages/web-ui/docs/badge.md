@@ -357,16 +357,17 @@ const count = ref(3)
 
 ### Props
 
-| Name           | Description                                                                       | Type                                                           | Default       |
-| -------------- | --------------------------------------------------------------------------------- | -------------------------------------------------------------- | ------------- |
-| `count`        | Number to display.                                                                | `number`                                                       | `0`           |
-| `max`          | Numeric limit; above it `max+` is shown.                                          | `number`                                                       | `99`          |
-| `dot`          | Dot mode; shows only a dot and no number.                                         | `boolean`                                                      | `false`       |
-| `show-zero`    | Also shows when `count` is 0.                                                     | `boolean`                                                      | `false`       |
-| `badge-hidden` | Hides the badge entirely.                                                         | `boolean`                                                      | `false`       |
-| `offset-x`     | Horizontal offset (px).                                                           | `number`                                                       | `0`           |
-| `offset-y`     | Vertical offset (px).                                                             | `number`                                                       | `0`           |
-| `placement`    | Badge position: `top-right` (default), `top-left`, `bottom-right`, `bottom-left`. | `'top-right' \| 'top-left' \| 'bottom-right' \| 'bottom-left'` | `'top-right'` |
+| Name           | Description                                                                                                                                                                                | Type                                                           | Default       |
+| -------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | -------------------------------------------------------------- | ------------- |
+| `count`        | Number to display.                                                                                                                                                                         | `number`                                                       | `0`           |
+| `max`          | Numeric limit; above it `max+` is shown.                                                                                                                                                   | `number`                                                       | `99`          |
+| `dot`          | Dot mode; shows only a dot and no number.                                                                                                                                                  | `boolean`                                                      | `false`       |
+| `show-zero`    | Also shows when `count` is 0.                                                                                                                                                              | `boolean`                                                      | `false`       |
+| `badge-hidden` | Hides the badge entirely.                                                                                                                                                                  | `boolean`                                                      | `false`       |
+| `offset-x`     | Horizontal offset (px).                                                                                                                                                                    | `number`                                                       | `0`           |
+| `offset-y`     | Vertical offset (px).                                                                                                                                                                      | `number`                                                       | `0`           |
+| `aria-label`   | Accessible name of the badge status; once set it applies to all three states (dot / count / zero, supports the `{count}` placeholder). Falls back to the built-in English copy when unset. | `string \| null`                                               | `null`        |
+| `placement`    | Badge position: `top-right` (default), `top-left`, `bottom-right`, `bottom-left`.                                                                                                          | `'top-right' \| 'top-left' \| 'bottom-right' \| 'bottom-left'` | `'top-right'` |
 
 ### Slots
 

@@ -73,7 +73,7 @@ The default slot replaces the whole visual content of the button, while the comp
 
 The default content is an up-arrow icon wrapped in `web-ui-button`; swapping in a primary button leaves the appearance timing, the threshold, and the scroll behavior unchanged.
 
-The button's accessible name comes from the slot content by default; the default icon content falls back to a name derived from `lang` (`Back to top` in English, 「回到顶部」 in Chinese). Set `aria-label` on the host to specify a name; when set, it should include the visible label text. When the custom content itself has no accessible name, the host `aria-label` should be set as well.
+The button's accessible name comes from the slot content by default; the default icon content falls back to the built-in English copy (`Back to top`), independent of the document `lang`. Set `aria-label` on the host to specify a name; when set, it should include the visible label text. When the custom content itself has no accessible name, the host `aria-label` should be set as well.
 
 ```tsx
 import type { WebUiBackTop } from '@greypan/web-ui'
@@ -187,13 +187,13 @@ onMounted(() => {
 
 ### Props
 
-| Name              | Description                                                                                                                                                    | Type                    | Default                             |
-| ----------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------- | ----------------------------------- |
-| `aria-label`      | Button name. The host value wins; otherwise the accessible name of the slot content, with the default content following `lang` (`Back to top` / 「回到顶部」). | `string`                | `'Back to top'` (English documents) |
-| `scroll-behavior` | Scroll behavior: `smooth` (default) or `auto`; when the theme requires reduced motion it scrolls immediately.                                                  | `'smooth' \| 'auto'`    | `'smooth'`                          |
-| `visible`         | Current visibility, driven by the scroll position.                                                                                                             | `boolean`               | `false`                             |
-| `scrollTarget`    | Scroll container, `window` (default) or an `HTMLElement` (property).                                                                                           | `HTMLElement \| Window` | `window`                            |
-| `threshold`       | Scroll threshold (px) at which the button appears.                                                                                                             | `number`                | `200`                               |
+| Name              | Description                                                                                                                                                       | Type                    | Default                             |
+| ----------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------- | ----------------------------------- |
+| `aria-label`      | Button name. The host value wins; otherwise the accessible name of the slot content, with the default content falling back to the built-in English `Back to top`. | `string`                | `'Back to top'` (English documents) |
+| `scroll-behavior` | Scroll behavior: `smooth` (default) or `auto`; when the theme requires reduced motion it scrolls immediately.                                                     | `'smooth' \| 'auto'`    | `'smooth'`                          |
+| `visible`         | Current visibility, driven by the scroll position.                                                                                                                | `boolean`               | `false`                             |
+| `scrollTarget`    | Scroll container, `window` (default) or an `HTMLElement` (property).                                                                                              | `HTMLElement \| Window` | `window`                            |
+| `threshold`       | Scroll threshold (px) at which the button appears.                                                                                                                | `number`                | `200`                               |
 
 ### Slots
 
@@ -211,7 +211,7 @@ onMounted(() => {
 
 When `scrollTarget` is `window` the button is fixed in a viewport corner, with the offsets in the four directions controlled by `--wui-back-top-top/right/bottom/left`; when it is an `HTMLElement` the element must be placed inside the container, the button floats in the container's bottom corner via `position: sticky`, the horizontal offsets use `--wui-back-top-left/right`, the vertical offset uses `--wui-back-top-bottom`, and `--wui-back-top-top` takes no part in container positioning.
 
-Role: `button`, with the default content accessible name derived from `lang` (`Back to top` in English, 「回到顶部」 in Chinese); with custom content the name comes from the slot, and the host `aria-label` can specify it explicitly. Both keyboard Enter and Space trigger back top.
+Role: `button`, with the default content accessible name falling back to the built-in English `Back to top`; with custom content the name comes from the slot, and the host `aria-label` can specify it explicitly. Both keyboard Enter and Space trigger back top.
 
 ### CSS Custom Properties
 

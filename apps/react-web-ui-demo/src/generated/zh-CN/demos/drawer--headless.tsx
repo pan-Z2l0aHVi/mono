@@ -12,7 +12,7 @@ export default function Demo() {
         placement="left"
         headless
         draggable
-        dialog-label="自定义面板"
+        aria-dialog-label="自定义面板"
         onopen-change={event => setOpen(event.detail.open)}
       >
         <div className="box-border h-full w-[min(320px,100vw)] rounded-r-2xl bg-(--wui-color-surface-overlay) p-6 text-(--wui-color-text)">

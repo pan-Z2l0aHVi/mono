@@ -161,15 +161,15 @@ describe('WebUiDrawer 属性', () => {
     cleanupElement(el)
   })
 
-  it('headless：dialog-label 提供可访问名称', async () => {
+  it('headless：aria-dialog-label 提供可访问名称', async () => {
     const el = createDrawer()
     el.headless = true
-    el.dialogLabel = 'Main navigation'
+    el.ariaDialogLabel = 'Main navigation'
     await waitForUpdate(el)
 
     const dialog = el.shadowRoot?.querySelector('dialog') as HTMLDialogElement
     // 可访问名称是硬契约（政策第 3 条）：headless drawer 没有可见标题，
-    // 名称只能来自 dialog-label，丢了它屏幕阅读器只报「dialog」。
+    // 名称只能来自 aria-dialog-label，丢了它屏幕阅读器只报「dialog」。
     expect(dialog.getAttribute('aria-label')).toBe('Main navigation')
     expect(dialog.hasAttribute('aria-labelledby')).toBe(false)
     cleanupElement(el)

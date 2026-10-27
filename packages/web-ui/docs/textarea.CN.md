@@ -447,24 +447,25 @@ export default function Demo() {
 
 ### Props
 
-| 名称              | 说明                                                           | 类型                  | 默认值  |
-| ----------------- | -------------------------------------------------------------- | --------------------- | ------- |
-| `placeholder`     | 占位文本。                                                     | `string`              | `''`    |
-| `name`            | 表单字段名。                                                   | `string`              | `''`    |
-| `disabled`        | 禁用状态。                                                     | `boolean`             | `false` |
-| `readonly`        | 只读状态。                                                     | `boolean`             | `false` |
-| `required`        | 必填校验。                                                     | `boolean`             | `false` |
-| `full`            | 占满父容器宽度。                                               | `boolean`             | `false` |
-| `clearable`       | 有值且未设置 `disabled` 或 `readonly` 时显示清除 button。      | `boolean`             | `false` |
-| `borderless`      | ghost 形态：移除边框、背景与阴影，保留 padding 与 focus ring。 | `boolean`             | `false` |
-| `rows`            | 显示行数，也是自动高度的起点。                                 | `number`              | `3`     |
-| `minlength`       | 最小长度校验。                                                 | `number \| undefined` | —       |
-| `maxlength`       | 最大长度校验。                                                 | `number \| undefined` | —       |
-| `autosize`        | 自动调整高度，同时强制 `resize: none`。                        | `boolean`             | `false` |
-| `max-height`      | 自动高度上限（px），0 表示不限制。                             | `number`              | `0`     |
-| `aria-label`      | 无障碍 label。                                                 | `string \| null`      | `null`  |
-| `aria-labelledby` | 无障碍 label 引用。                                            | `string \| undefined` | —       |
-| `value`           | 输入值，也是表单提交值。                                       | `string`              | `''`    |
+| 名称               | 说明                                                            | 类型                  | 默认值  |
+| ------------------ | --------------------------------------------------------------- | --------------------- | ------- |
+| `placeholder`      | 占位文本。                                                      | `string`              | `''`    |
+| `name`             | 表单字段名。                                                    | `string`              | `''`    |
+| `disabled`         | 禁用状态。                                                      | `boolean`             | `false` |
+| `readonly`         | 只读状态。                                                      | `boolean`             | `false` |
+| `required`         | 必填校验。                                                      | `boolean`             | `false` |
+| `full`             | 占满父容器宽度。                                                | `boolean`             | `false` |
+| `clearable`        | 有值且未设置 `disabled` 或 `readonly` 时显示清除 button。       | `boolean`             | `false` |
+| `aria-clear-label` | 清除 button 的无障碍名称；未设置时回退内置英文文案（`Clear`）。 | `string`              | `''`    |
+| `borderless`       | ghost 形态：移除边框、背景与阴影，保留 padding 与 focus ring。  | `boolean`             | `false` |
+| `rows`             | 显示行数，也是自动高度的起点。                                  | `number`              | `3`     |
+| `minlength`        | 最小长度校验。                                                  | `number \| undefined` | —       |
+| `maxlength`        | 最大长度校验。                                                  | `number \| undefined` | —       |
+| `autosize`         | 自动调整高度，同时强制 `resize: none`。                         | `boolean`             | `false` |
+| `max-height`       | 自动高度上限（px），0 表示不限制。                              | `number`              | `0`     |
+| `aria-label`       | 无障碍 label。                                                  | `string \| null`      | `null`  |
+| `aria-labelledby`  | 无障碍 label 引用。                                             | `string \| undefined` | —       |
+| `value`            | 输入值，也是表单提交值。                                        | `string`              | `''`    |
 
 ### Events
 

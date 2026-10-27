@@ -11,7 +11,7 @@ import glass from '@/classes/glass.css?inline'
 import glow from '@/classes/glow.css?inline'
 import { radixIconsPanelLeftMinimized } from '@/icons'
 import { attachDragGesture, clamp, type DragGestureHandle } from '@/shared/gesture'
-import { LocaleController, resolveBuiltinLabel } from '@/shared/locale/builtin-labels'
+import { resolveBuiltinLabelSet } from '@/shared/locale/builtin-labels'
 import { defineVisibleAreaTracker, VisibleAreaController } from '@/shared/visible-area'
 
 import style from './style.css?inline'
@@ -38,6 +38,15 @@ const MOBILE_VIEWPORT_QUERY = '(width <= 640px)'
  * @slot tabbar - 底部 tabbar 区域
  * @slot default - 主内容区
  */
+/** `web-ui-layout` 内置无障碍名的成组覆盖；每个 key 对应一处图标控件的 accessible name。 */
+export interface LayoutAriaLabels {
+  collapseSidebar?: string
+  expandSidebar?: string
+  resizeSidebar?: string
+  openNavigationMenu?: string
+  mainNavigation?: string
+}
+
 @customElement('web-ui-layout')
 export class WebUiLayout extends LitElement {
   static override styles = [unsafeCSS(glass), unsafeCSS(glow), unsafeCSS(style)]
@@ -88,6 +97,9 @@ export class WebUiLayout extends LitElement {
 
   @property({ type: Boolean, attribute: 'header-glow', reflect: true })
   headerGlow = false
+
+  /** 内置无障碍名的成组覆盖；未提供的 key 回退内置英文文案（见 ADR-0029）。 */
+  @property({ attribute: false }) ariaLabels?: LayoutAriaLabels
 
   /*
    * `mobile` 是派生输出，不是第二个输入：像 `web-ui-theme` 的 `resolved-appearance` 一样由组件
@@ -156,7 +168,6 @@ export class WebUiLayout extends LitElement {
   }).make()
 
   private readonly _visibleBannerController = new VisibleAreaController(this, this._visibleBanner)
-  private readonly _locale = new LocaleController(this)
 
   private _toggleSidebar() {
     if (this._mobile) {
@@ -381,7 +392,7 @@ export class WebUiLayout extends LitElement {
       ? {}
       : { width: this._resizeWidth ?? (this.sidebarCollapsed ? this.collapsedWidth : this.sidebarWidth) }
 
-    const toggleLabel = resolveBuiltinLabel(this, isSidebarOpen ? 'collapseSidebar' : 'expandSidebar')
+    const toggleLabel = resolveBuiltinLabelSet(this.ariaLabels, isSidebarOpen ? 'collapseSidebar' : 'expandSidebar')
 
     const desktopToggle = html`
       <web-ui-button
@@ -422,7 +433,7 @@ export class WebUiLayout extends LitElement {
                       role="separator"
                       tabindex="0"
                       aria-orientation="vertical"
-                      aria-label=${resolveBuiltinLabel(this, 'resizeSidebar')}
+                      aria-label=${resolveBuiltinLabelSet(this.ariaLabels, 'resizeSidebar')}
                       @pointerdown=${this._handleResizePointerDown}
                       @keydown=${this._handleResizeKeydown}
                     ></div>
@@ -449,7 +460,7 @@ export class WebUiLayout extends LitElement {
             icon
             variant="glass"
             @click="${this._toggleSidebar}"
-            aria-label=${resolveBuiltinLabel(this, 'openNavigationMenu')}
+            aria-label=${resolveBuiltinLabelSet(this.ariaLabels, 'openNavigationMenu')}
           >
             <web-ui-icon .icon=${radixIconsPanelLeftMinimized}></web-ui-icon>
           </web-ui-button>
@@ -464,7 +475,7 @@ export class WebUiLayout extends LitElement {
         ?open="${this.sidebarOpen}"
         controlled
         draggable
-        dialog-label=${resolveBuiltinLabel(this, 'mainNavigation')}
+        aria-dialog-label=${resolveBuiltinLabelSet(this.ariaLabels, 'mainNavigation')}
         @open-change="${this._onDrawerChange}"
         style="${styleMap({
           '--wui-drawer-width': this.sidebarWidth,

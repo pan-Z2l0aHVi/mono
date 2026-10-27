@@ -126,6 +126,16 @@ describe('WebUiTextarea 组件特有契约', () => {
     cleanupElement(el)
   })
 
+  it('aria-clear-label 覆盖清除 button 的无障碍名称', async () => {
+    const el = createTextarea({ 'aria-clear-label': '清空内容' })
+    el.clearable = true
+    el.value = 'hello'
+    await waitForUpdate(el)
+
+    expect(queryA11y(el, '[aria-label="清空内容"]')).toBeTruthy()
+    cleanupElement(el)
+  })
+
   it('readonly 时不渲染清除 button', async () => {
     const el = createTextarea()
     el.clearable = true

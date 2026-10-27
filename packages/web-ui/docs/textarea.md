@@ -490,24 +490,25 @@ export default function Demo() {
 
 ### Props
 
-| Name              | Description                                                                                      | Type                  | Default |
-| ----------------- | ------------------------------------------------------------------------------------------------ | --------------------- | ------- |
-| `placeholder`     | Placeholder text.                                                                                | `string`              | `''`    |
-| `name`            | Form field name.                                                                                 | `string`              | `''`    |
-| `disabled`        | Disabled state.                                                                                  | `boolean`             | `false` |
-| `readonly`        | Readonly state.                                                                                  | `boolean`             | `false` |
-| `required`        | Required validation.                                                                             | `boolean`             | `false` |
-| `full`            | Fills the parent's width.                                                                        | `boolean`             | `false` |
-| `clearable`       | Shows the clear button when there is a value and neither `disabled` nor `readonly` is set.       | `boolean`             | `false` |
-| `borderless`      | Ghost form: removes the border, background, and shadow while keeping padding and the focus ring. | `boolean`             | `false` |
-| `rows`            | Number of visible rows; also the starting point for autosize.                                    | `number`              | `3`     |
-| `minlength`       | Minimum length validation.                                                                       | `number \| undefined` | —       |
-| `maxlength`       | Maximum length validation.                                                                       | `number \| undefined` | —       |
-| `autosize`        | Adjusts the height automatically and forces `resize: none`.                                      | `boolean`             | `false` |
-| `max-height`      | Upper bound for the automatic height (px); 0 means no limit.                                     | `number`              | `0`     |
-| `aria-label`      | Accessible label.                                                                                | `string \| null`      | `null`  |
-| `aria-labelledby` | Accessible label reference.                                                                      | `string \| undefined` | —       |
-| `value`           | Input value, also the form-submitted value.                                                      | `string`              | `''`    |
+| Name               | Description                                                                                      | Type                  | Default |
+| ------------------ | ------------------------------------------------------------------------------------------------ | --------------------- | ------- |
+| `placeholder`      | Placeholder text.                                                                                | `string`              | `''`    |
+| `name`             | Form field name.                                                                                 | `string`              | `''`    |
+| `disabled`         | Disabled state.                                                                                  | `boolean`             | `false` |
+| `readonly`         | Readonly state.                                                                                  | `boolean`             | `false` |
+| `required`         | Required validation.                                                                             | `boolean`             | `false` |
+| `full`             | Fills the parent's width.                                                                        | `boolean`             | `false` |
+| `clearable`        | Shows the clear button when there is a value and neither `disabled` nor `readonly` is set.       | `boolean`             | `false` |
+| `aria-clear-label` | Accessible name of the clear button; falls back to the built-in English copy (`Clear`).          | `string`              | `''`    |
+| `borderless`       | Ghost form: removes the border, background, and shadow while keeping padding and the focus ring. | `boolean`             | `false` |
+| `rows`             | Number of visible rows; also the starting point for autosize.                                    | `number`              | `3`     |
+| `minlength`        | Minimum length validation.                                                                       | `number \| undefined` | —       |
+| `maxlength`        | Maximum length validation.                                                                       | `number \| undefined` | —       |
+| `autosize`         | Adjusts the height automatically and forces `resize: none`.                                      | `boolean`             | `false` |
+| `max-height`       | Upper bound for the automatic height (px); 0 means no limit.                                     | `number`              | `0`     |
+| `aria-label`       | Accessible label.                                                                                | `string \| null`      | `null`  |
+| `aria-labelledby`  | Accessible label reference.                                                                      | `string \| undefined` | —       |
+| `value`            | Input value, also the form-submitted value.                                                      | `string`              | `''`    |
 
 ### Events
 

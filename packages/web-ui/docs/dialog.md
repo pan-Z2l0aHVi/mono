@@ -148,7 +148,7 @@ function onOpenChange(event: WebUiEvent<WebUiDialog, 'open-change'>) {
 
 `headless` keeps only the overlay infrastructure—backdrop, enter/exit animations, scroll lock, and native `<dialog>` semantics; the built-in chrome bar, content area, and footer are not rendered at all, and the default slot lands directly in the scrolling layer inside the card.
 
-With no built-in heading to associate automatically, `dialog-label` must be provided by the page, and the card appearance and close button are fully self-drawn as well.
+With no built-in heading to associate automatically, `aria-dialog-label` must be provided by the page, and the card appearance and close button are fully self-drawn as well.
 
 ```tsx
 import { useState } from 'react'
@@ -163,7 +163,7 @@ export default function Demo() {
       <web-ui-dialog
         open={open}
         headless
-        dialog-label="Image details"
+        aria-dialog-label="Image details"
         onopen-change={event => setOpen(event.detail.open)}
       >
         <div className="flex flex-col gap-4">
@@ -194,7 +194,7 @@ export default function Demo() {
   <div class="flex flex-col items-start gap-3">
     <web-ui-button @click="open = true">Open image details</web-ui-button>
     <output class="text-sm text-(--wui-color-text-secondary)"> headless dialog: {{ open ? 'open' : 'closed' }} </output>
-    <web-ui-dialog :open="open" headless dialog-label="Image details" @open-change="open = $event.detail.open">
+    <web-ui-dialog :open="open" headless aria-dialog-label="Image details" @open-change="open = $event.detail.open">
       <div class="flex flex-col gap-4">
         <div class="flex items-start justify-between gap-3">
           <div class="flex flex-col gap-1">
@@ -225,19 +225,19 @@ const open = ref(false)
 
 ### Props
 
-| Name                | Description                                                                                          | Type      | Default |
-| ------------------- | ---------------------------------------------------------------------------------------------------- | --------- | ------- |
-| `open`              | Dialog visibility.                                                                                   | `boolean` | `false` |
-| `closable`          | Shows the built-in close button.                                                                     | `boolean` | `false` |
-| `horizontal`        | Lays the footer action buttons out horizontally.                                                     | `boolean` | `false` |
-| `no-scroll-lock`    | Does not lock page scrolling while open.                                                             | `boolean` | `false` |
-| `no-backdrop-close` | Prevents closing by clicking the backdrop.                                                           | `boolean` | `false` |
-| `no-escape-close`   | Prevents closing with the Escape key.                                                                | `boolean` | `false` |
-| `controlled`        | Escape and the backdrop only request `open=false`, which the consumer writes back.                   | `boolean` | `false` |
-| `heading`           | Title text, the fallback when the `header` slot is empty (ignored under `headless`).                 | `string`  | `''`    |
-| `headless`          | Keeps only the overlay behavior; the built-in header bar, content area, and footer are not rendered. | `boolean` | `false` |
-| `dialog-label`      | Accessible name of the inner native dialog; required under `headless`.                               | `string`  | `''`    |
-| `close-label`       | Accessible name of the built-in close button; follows the nearest `lang` by default.                 | `string`  | `''`    |
+| Name                | Description                                                                                                                                                                                | Type      | Default |
+| ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | --------- | ------- |
+| `open`              | Dialog visibility.                                                                                                                                                                         | `boolean` | `false` |
+| `closable`          | Shows the built-in close button.                                                                                                                                                           | `boolean` | `false` |
+| `horizontal`        | Lays the footer action buttons out horizontally.                                                                                                                                           | `boolean` | `false` |
+| `no-scroll-lock`    | Does not lock page scrolling while open.                                                                                                                                                   | `boolean` | `false` |
+| `no-backdrop-close` | Prevents closing by clicking the backdrop.                                                                                                                                                 | `boolean` | `false` |
+| `no-escape-close`   | Prevents closing with the Escape key.                                                                                                                                                      | `boolean` | `false` |
+| `controlled`        | Escape and the backdrop only request `open=false`, which the consumer writes back.                                                                                                         | `boolean` | `false` |
+| `heading`           | Title text, the fallback when the `header` slot is empty (ignored under `headless`).                                                                                                       | `string`  | `''`    |
+| `headless`          | Keeps only the overlay behavior; the built-in header bar, content area, and footer are not rendered.                                                                                       | `boolean` | `false` |
+| `aria-dialog-label` | Accessible name of the inner native dialog; required under `headless`. The legacy name `dialog-label` is deprecated and kept only for compatibility; it will be removed in the next major. | `string`  | `''`    |
+| `aria-close-label`  | Accessible name of the built-in close button; falls back to the built-in English copy (`Close`).                                                                                           | `string`  | `''`    |
 
 ### Events
 
@@ -292,9 +292,9 @@ With `closable` off nothing is rendered—no button and no extra wrapper.
 
 ### Accessible name
 
-When `dialog-label` is set, the inner native `<dialog>` takes its `aria-label` directly; otherwise, in default mode with a visible `header` bar, it takes `aria-labelledby="wui-dialog-heading"` pointing at that bar.
+When `aria-dialog-label` is set, the inner native `<dialog>` takes its `aria-label` directly; otherwise, in default mode with a visible `header` bar, it takes `aria-labelledby="wui-dialog-heading"` pointing at that bar.
 
-`headless` has no built-in heading to point at, so **the name must be provided by the consumer**—`dialog-label`, or a self-drawn heading element that can be associated.
+`headless` has no built-in heading to point at, so **the name must be provided by the consumer**—`aria-dialog-label`, or a self-drawn heading element that can be associated.
 
 ### CSS Custom Properties
 

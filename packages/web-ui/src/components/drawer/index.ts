@@ -12,7 +12,7 @@ import { ElementHeightController } from '@/shared/element-height'
 import { UserChangeController } from '@/shared/events/user-change'
 import { trapTabKey } from '@/shared/focus/tabbable'
 import { attachDragGesture, dampOverscroll, type DragGestureHandle } from '@/shared/gesture'
-import { LocaleController, resolveBuiltinLabel } from '@/shared/locale/builtin-labels'
+import { resolveBuiltinLabel } from '@/shared/locale/builtin-labels'
 import { normalizeLiteral } from '@/shared/normalize'
 import { dispatchOpenChangeEvent } from '@/shared/open-state'
 import { defineNativeDialogPresence } from '@/shared/overlay/native-dialog-presence'
@@ -243,10 +243,24 @@ export class WebUiDrawer extends LitElement {
    * 内部原生 dialog 的 accessible name。headless 模式必须由 Consumer 提供，
    * 因为该模式不会渲染可自动关联的内置 header。
    */
-  @property({ type: String, attribute: 'dialog-label' }) dialogLabel = ''
+  @property({ type: String, attribute: 'aria-dialog-label' }) ariaDialogLabel = ''
 
-  /** 关闭按钮的无障碍名称；默认跟随文档 `lang`。 */
-  @property({ type: String, attribute: 'close-label' }) closeLabel = ''
+  /*
+   * `dialog-label` 自 11.1.0 发布，为已上线消费方保留兼容别名：attribute 仍可写，
+   * 内部转发到 ariaDialogLabel。canonical 名是 aria-dialog-label；两个 attribute 同时
+   * 设置时后处理者生效，文档不推荐这样做。下个 major 移除本别名。
+   */
+  /** @deprecated 用 `aria-dialog-label`。 */
+  @property({ type: String, attribute: 'dialog-label' })
+  get dialogLabel(): string {
+    return this.ariaDialogLabel
+  }
+  set dialogLabel(value: string) {
+    this.ariaDialogLabel = value
+  }
+
+  /** 关闭按钮的无障碍名称；未设置时回退内置英文文案（见 ADR-0029）。 */
+  @property({ type: String, attribute: 'aria-close-label' }) ariaCloseLabel = ''
 
   /**
    * 启用拖拽关闭：打开态在 drawer 内缘渲染 drag bar（灰色胶囊 + 加宽 drag zone），
@@ -261,7 +275,6 @@ export class WebUiDrawer extends LitElement {
 
   private _hasHeaderSlot = false
   private _hasFooterSlot = false
-  private readonly _locale = new LocaleController(this)
   private readonly _userOpenChange = new UserChangeController()
   /*
    * 上下 placement 的拖拽 drag zone 要让开头尾两节（见 style.css 的 --wui-internal-drawer-* 说明）：
@@ -1087,7 +1100,7 @@ export class WebUiDrawer extends LitElement {
 
   override render() {
     const showHeader = this._hasHeaderSlot || !!this.heading
-    const dialogLabel = this.dialogLabel.trim()
+    const dialogLabel = this.ariaDialogLabel.trim()
     const dialogLabelledBy = !dialogLabel && !this.headless && showHeader ? 'wui-drawer-heading' : nothing
 
     // 拖拽 drag zone：仅在打开且 draggable 时渲染；胶囊 + 加宽命中条贴在 drawer 内缘。
@@ -1160,7 +1173,7 @@ export class WebUiDrawer extends LitElement {
                         <web-ui-button
                           class="wui-drawer-close"
                           @click=${this._closeFromUser}
-                          aria-label=${resolveBuiltinLabel(this, 'close', this.closeLabel)}
+                          aria-label=${resolveBuiltinLabel('close', this.ariaCloseLabel)}
                           variant="secondary"
                           icon
                           size="26"
