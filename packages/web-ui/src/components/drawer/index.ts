@@ -280,8 +280,9 @@ export class WebUiDrawer extends LitElement {
    *
    * 间距写成属性值里的 calc 而不是让 CSS 无条件相加，是因为「没有 header」这一态必须精确等于
    * 修复前的几何（让位量 0，drag zone 顶边贴 panel 顶边）。若让间距无条件生效，无 header 的 drawer 会
-   * 平移 4px，胶囊相对内缘的既有内缩（drag-bar-inset.browser.spec.ts 钉住的关系）跟着变，
-   * 这条护栏就不该为了新方案让步。间距本身仍以 token 暴露，真机调参不必回滚代码。
+   * 平移 4px，drag zone 端边与 panel 端边的贴合关系跟着变——那是
+   * `header-drag-surface.browser.spec.ts` 的 R2 钉住的关系，这条护栏不该为了新方案让步。
+   * 间距本身仍以 token 暴露，真机调参不必回滚代码。
    */
   private _setAvoidance(property: string, height: number) {
     this.style.setProperty(

@@ -1,7 +1,16 @@
 import { existsSync, readdirSync, readFileSync } from 'node:fs'
 import path from 'node:path'
 
-import { demoFileContent, demoFileName, FLAVOR_LANG, visibleText } from '@greypan/md-to-comp'
+import {
+  demoFileContent,
+  demoFileName,
+  fencesOf,
+  FLAVOR_LANG,
+  sampleTitlesOf,
+  surfaceOf,
+  visibleText
+} from '@greypan/md-to-comp'
+import type { Surface } from '@greypan/md-to-comp'
 import { render, waitFor } from '@testing-library/react'
 import { createElement } from 'react'
 import { describe, expect, it } from 'vite-plus/test'
@@ -14,7 +23,10 @@ import { loadExampleDocs, loadShellLocale, LocaleProvider } from '../i18n/locale
 // 语料 join 的 React 侧：「示例显示 == markdown 围栏」「每条示例落成可编译文件」「页面 ↔ 语料
 // 不互为孤儿」三条由本包持有；生成器那侧的判据（篡改 / 孤儿 / 表格形状）在 `@greypan/md-to-comp`
 // 的单测里；跨 app 的另一半（两端生成数据逐字节一致、路由名集合 == Vue 页面名集合）由 web-ui 包的
-// generated-parity.spec.ts 持有。「手写装饰件同源」那条住在两侧各自的 spec 里而不是 web-ui：
+// generated-parity.spec.ts 持有。三条语料 / 页面探针（`sampleTitlesOf`、`fencesOf`、`surfaceOf`）
+// 也从 `@greypan/md-to-comp` 引：它们是「语料骨架说什么」的唯一解释，两端各抄一份时任一侧被改歪，
+// 两侧就再也比不出漂移。手边的判据（`rendersOwn` 那组）留在本侧，它们各有反例自证，抄歪了会被
+// 自己的负例抓住。「手写装饰件同源」那条住在两侧各自的 spec 里而不是 web-ui：
 // `@greypan/web-ui#test` 的 turbo 输入只覆盖本包目录，只有 app 抄本漂移时它会命中缓存直接判绿，
 // 断言一次都不跑；放在 app 侧则任一份被改到自己那一份，那一端的套件必然重新执行。
 // 「产物是否新鲜」由 vite.config.ts 里的插件在测试期跑 checkArtifacts
@@ -26,6 +38,8 @@ const routesDir = path.resolve(import.meta.dirname, '../routes/components')
 const FLAVOR = 'react' as const
 /** 语料里的围栏语言由生成器那张表给出（react 写的是 `tsx`），在这里再抄一遍字符串就会跟着契约漂。 */
 const FENCE_LANG = FLAVOR_LANG[FLAVOR]
+/** 本端壳组件的标签名，`surfaceOf` 用它反查每页引用了哪些 `component`。 */
+const SHELL_TAG = 'ExampleDoc'
 
 /** 中文是源语种（`.CN.md`），英文译文的文件名没有语种后缀。 */
 function corpusOf(suffix: string) {
@@ -65,54 +79,6 @@ const localeSurfaces: LocaleSurface[] = [
 }))
 
 const docNames = corpusOf('.CN.md').map(file => file.replace(/\.CN\.md$/, ''))
-
-/**
- * `## Samples` 里的 `###` 标题，按出现次序。标题就是示例的身份（id 由生成器从它派生），所以这份
- * 序列是 markdown 与生成数据之间可比的那个轴；`## API` 的小节标题不参与，它们不是示例。
- */
-function sampleTitlesOf(markdown: string) {
-  const titles: string[] = []
-  let inSamples = false
-  let fenced = false
-  for (const line of markdown.split('\n')) {
-    if (line.startsWith('```')) {
-      fenced = !fenced
-      continue
-    }
-    if (fenced) continue
-    if (/^##\s+/.test(line)) {
-      inSamples = /^##\s+Samples\s*$/.test(line)
-      continue
-    }
-    if (inSamples && /^###\s+/.test(line)) titles.push(line.replace(/^###\s+/, '').trim())
-  }
-  return titles
-}
-
-function fencesOf(markdown: string, lang: string) {
-  return [...markdown.matchAll(new RegExp(`\`\`\`${lang}\\n([\\s\\S]*?)\\n\`\`\``, 'g'))].map(match => match[1])
-}
-
-/** 一侧的清单：页面文件名的有序列表 + 「文件名 → 它渲染的 `<ExampleDoc component>` 列表」。 */
-interface Surface {
-  used: Map<string, string[]>
-}
-
-function surfaceOf(dir: string, ext: string): Surface & { names: string[] } {
-  const files = readdirSync(dir).filter(file => file.endsWith(ext))
-  const bare = (file: string) => file.slice(0, -ext.length)
-  return {
-    names: files.map(bare).sort(),
-    used: new Map(
-      files.map(file => [
-        bare(file),
-        [...readFileSync(path.join(dir, file), 'utf8').matchAll(/<ExampleDoc\s[^>]*component="([^"]+)"/g)].map(
-          match => match[1]
-        )
-      ])
-    )
-  }
-}
 
 // 四条覆盖判据里归本侧的三条写成纯函数，末尾用合成输入过一遍正负例：判据自己写错（例如把
 // `includes` 写成恒真）会让三条同时变哑巴，而页面照样上线。`scripts/lib/web-ui-docs-inputs.mjs`
@@ -206,7 +172,7 @@ describe('示例标题两侧同文', () => {
 // 手写 demo 都会被抓住），「页面只剩 <ExampleDoc>」按实际存在的路由文件判——子组件文档（
 // `button-group` 那 8 篇）挂在宿主路由里，本就没有自己的路由文件。
 describe('页面只剩 <ExampleDoc>', () => {
-  const surface = surfaceOf(routesDir, '.tsx')
+  const surface = surfaceOf(routesDir, '.tsx', SHELL_TAG)
 
   it('全量语料都没有 `<组件>-demo` 手写目录', () => {
     for (const component of docNames) {
@@ -267,7 +233,7 @@ describe('语料的壳映射（ExampleDoc）', () => {
 })
 
 describe('覆盖守卫（React 路由侧）', () => {
-  const surface = surfaceOf(routesDir, '.tsx')
+  const surface = surfaceOf(routesDir, '.tsx', SHELL_TAG)
 
   it('每个路由渲染自己那份 <ExampleDoc>', () => {
     for (const name of surface.names)

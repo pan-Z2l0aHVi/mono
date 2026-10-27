@@ -1,5 +1,7 @@
 export { titleSlug } from './anchor'
 export type { AnchorFn, SampleAnchor } from './anchor'
+export { fencesOf, sampleTitlesOf, surfaceOf } from './corpus-probe'
+export type { Surface } from './corpus-probe'
 export { checkArtifacts, writeArtifacts, writeIfChanged } from './emit'
 export { DocError, fail } from './errors'
 export { demosDirOf, generate } from './generate'
