@@ -246,6 +246,20 @@ export class WebUiDrawer extends LitElement {
    */
   @property({ type: String, attribute: 'aria-dialog-label' }) ariaDialogLabel = ''
 
+  /*
+   * `dialog-label` 自 11.1.0 发布，为已上线消费方保留兼容别名：attribute 仍可写，
+   * 内部转发到 ariaDialogLabel。canonical 名是 aria-dialog-label；两个 attribute 同时
+   * 设置时后处理者生效，文档不推荐这样做。下个 major 移除本别名。
+   */
+  /** @deprecated 用 `aria-dialog-label`。 */
+  @property({ type: String, attribute: 'dialog-label' })
+  get dialogLabel(): string {
+    return this.ariaDialogLabel
+  }
+  set dialogLabel(value: string) {
+    this.ariaDialogLabel = value
+  }
+
   /** 关闭按钮的无障碍名称；未设置时回退内置英文文案（见 ADR-0029）。 */
   @property({ type: String, attribute: 'aria-close-label' }) ariaCloseLabel = ''
 

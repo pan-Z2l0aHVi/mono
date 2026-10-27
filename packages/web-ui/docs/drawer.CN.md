@@ -1016,19 +1016,19 @@ const open = ref(false)
 
 ### Props
 
-| 名称                | 说明                                                                | 类型              | 默认值    |
-| ------------------- | ------------------------------------------------------------------- | ----------------- | --------- |
-| `open`              | drawer 可见性。                                                     | `boolean`         | `false`   |
-| `no-scroll-lock`    | 打开时不锁定页面滚动。                                              | `boolean`         | `false`   |
-| `no-backdrop-close` | 禁止点击 backdrop 关闭。                                            | `boolean`         | `false`   |
-| `controlled`        | 用户关闭仅请求 `open=false`，由消费方回写。                         | `boolean`         | `false`   |
-| `placement`         | 滑入方向：`right`（默认）、`left`、`top`、`bottom`。                | `DrawerPlacement` | `'right'` |
-| `heading`           | 标题文字，`header` 插槽为空时的回落。                               | `string`          | `''`      |
-| `closable`          | 显示内置关闭按钮。                                                  | `boolean`         | `false`   |
-| `headless`          | 仅保留 overlay 行为，默认插槽不渲染内置 drawer UI。                 | `boolean`         | `false`   |
-| `aria-dialog-label` | 内部原生 dialog 的可访问名称；`headless` 下必须提供。               | `string`          | `''`      |
-| `aria-close-label`  | 内置关闭 button 的无障碍名称；未设置时回退内置英文文案（`Close`）。 | `string`          | `''`      |
-| `draggable`         | 在 drawer 内缘显示 drag bar，支持拖拽关闭手势。                     | `boolean`         | `false`   |
+| 名称                | 说明                                                                                                                 | 类型              | 默认值    |
+| ------------------- | -------------------------------------------------------------------------------------------------------------------- | ----------------- | --------- |
+| `open`              | drawer 可见性。                                                                                                      | `boolean`         | `false`   |
+| `no-scroll-lock`    | 打开时不锁定页面滚动。                                                                                               | `boolean`         | `false`   |
+| `no-backdrop-close` | 禁止点击 backdrop 关闭。                                                                                             | `boolean`         | `false`   |
+| `controlled`        | 用户关闭仅请求 `open=false`，由消费方回写。                                                                          | `boolean`         | `false`   |
+| `placement`         | 滑入方向：`right`（默认）、`left`、`top`、`bottom`。                                                                 | `DrawerPlacement` | `'right'` |
+| `heading`           | 标题文字，`header` 插槽为空时的回落。                                                                                | `string`          | `''`      |
+| `closable`          | 显示内置关闭按钮。                                                                                                   | `boolean`         | `false`   |
+| `headless`          | 仅保留 overlay 行为，默认插槽不渲染内置 drawer UI。                                                                  | `boolean`         | `false`   |
+| `aria-dialog-label` | 内部原生 dialog 的可访问名称；`headless` 下必须提供。旧名 `dialog-label` 已废弃，仅为兼容保留，将在下个 major 移除。 | `string`          | `''`      |
+| `aria-close-label`  | 内置关闭 button 的无障碍名称；未设置时回退内置英文文案（`Close`）。                                                  | `string`          | `''`      |
+| `draggable`         | 在 drawer 内缘显示 drag bar，支持拖拽关闭手势。                                                                      | `boolean`         | `false`   |
 
 ### Events
 

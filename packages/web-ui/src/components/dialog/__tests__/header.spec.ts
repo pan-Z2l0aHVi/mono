@@ -156,6 +156,18 @@ describe('WebUiDialog accessible name', () => {
     cleanupElement(el)
   })
 
+  // dialog-label 自 11.1.0 发布，是保留的 deprecated 别名（见 ADR-0029）：
+  // attribute 写入仍要落到原生 <dialog> 的 aria-label，防止别名静默失效。
+  it('旧名 dialog-label 作为 deprecated 别名仍生效', async () => {
+    const el = createDialog('<span slot="header">设置</span>')
+    el.setAttribute('dialog-label', '设置')
+    await waitForUpdate(el)
+
+    expect(nativeDialog(el).getAttribute('aria-label')).toBe('设置')
+    expect(nativeDialog(el).hasAttribute('aria-labelledby')).toBe(false)
+    cleanupElement(el)
+  })
+
   it('headless 不接线：没有可自动关联的内置标题，名字留给 Consumer', async () => {
     const el = createDialog('<section>自定义主体</section>')
     el.headless = true

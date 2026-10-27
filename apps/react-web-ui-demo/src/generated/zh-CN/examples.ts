@@ -2319,7 +2319,7 @@ export const exampleDocs: ExampleDoc[] = [
           ],
           [
             "aria-dialog-label",
-            "<p>内部原生 dialog 的 accessible name；<code>headless</code> 下必填。</p>",
+            "<p>内部原生 dialog 的 accessible name；<code>headless</code> 下必填。旧名 <code>dialog-label</code> 已废弃，仅为兼容保留，将在下个 major 移除。</p>",
             "string",
             "''"
           ],
@@ -2621,7 +2621,7 @@ export const exampleDocs: ExampleDoc[] = [
           ],
           [
             "aria-dialog-label",
-            "<p>内部原生 dialog 的可访问名称；<code>headless</code> 下必须提供。</p>",
+            "<p>内部原生 dialog 的可访问名称；<code>headless</code> 下必须提供。旧名 <code>dialog-label</code> 已废弃，仅为兼容保留，将在下个 major 移除。</p>",
             "string",
             "''"
           ],

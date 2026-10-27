@@ -40,6 +40,6 @@ badge 的宿主 `aria-label` 设置后三种状态（dot/计数/零）共用，�
 ## 后果
 
 - 内置名不再随 `lang` 变化：中文文档默认读到英文可访问名，需要本地化的页面逐组件设置覆盖属性。这是明确接受的取舍——旧方案的 en/zh 之外本来就静默回落英文，新方案把这一点变成一致行为并写进文档。
-- `close-label`/`clear-label`/`decrease-label`/`increase-label`/`dialog-label` 更名为 aria 前缀形态。它们随 #471 引入且尚未发布，无迁移成本；本 ADR 生效后旧名不再存在。
+- `close-label`/`clear-label`/`decrease-label`/`increase-label` 随 #471 引入且尚未发布，直接以 aria 前缀形态发版；`dialog-label` 自 11.1.0 已发布，改名属破坏性变更，因此保留旧 attribute 作为 deprecated 转发别名（canonical 名为 `aria-dialog-label`），下个 major 移除。
 - `src/shared/locale/builtin-labels.ts` 不在包导出面，样表是内部实现；各组件文档的 API 表是它对外的唯一投影。
 - 新增图标控件时必须从样表取词并登记 key（多 key 组件加进对应 `*AriaLabels` 接口），不允许模板内写 aria 文案字面量。

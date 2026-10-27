@@ -1048,19 +1048,19 @@ const open = ref(false)
 
 ### Props
 
-| Name                | Description                                                                                      | Type              | Default   |
-| ------------------- | ------------------------------------------------------------------------------------------------ | ----------------- | --------- |
-| `open`              | Drawer visibility.                                                                               | `boolean`         | `false`   |
-| `no-scroll-lock`    | Does not lock page scrolling while open.                                                         | `boolean`         | `false`   |
-| `no-backdrop-close` | Prevents closing on a backdrop click.                                                            | `boolean`         | `false`   |
-| `controlled`        | User-initiated closing only requests `open=false`, written back by the consumer.                 | `boolean`         | `false`   |
-| `placement`         | Slide-in direction: `right` (default), `left`, `top`, `bottom`.                                  | `DrawerPlacement` | `'right'` |
-| `heading`           | Heading text, the fallback when the `header` slot is empty.                                      | `string`          | `''`      |
-| `closable`          | Shows the built-in close button.                                                                 | `boolean`         | `false`   |
-| `headless`          | Keeps only overlay behavior; the default slot renders no built-in drawer UI.                     | `boolean`         | `false`   |
-| `aria-dialog-label` | Accessible name of the inner native dialog; required under `headless`.                           | `string`          | `''`      |
-| `aria-close-label`  | Accessible name of the built-in close button; falls back to the built-in English copy (`Close`). | `string`          | `''`      |
-| `draggable`         | Shows a drag bar on the inner edge of the drawer and enables the drag-to-close gesture.          | `boolean`         | `false`   |
+| Name                | Description                                                                                                                                                                                | Type              | Default   |
+| ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ----------------- | --------- |
+| `open`              | Drawer visibility.                                                                                                                                                                         | `boolean`         | `false`   |
+| `no-scroll-lock`    | Does not lock page scrolling while open.                                                                                                                                                   | `boolean`         | `false`   |
+| `no-backdrop-close` | Prevents closing on a backdrop click.                                                                                                                                                      | `boolean`         | `false`   |
+| `controlled`        | User-initiated closing only requests `open=false`, written back by the consumer.                                                                                                           | `boolean`         | `false`   |
+| `placement`         | Slide-in direction: `right` (default), `left`, `top`, `bottom`.                                                                                                                            | `DrawerPlacement` | `'right'` |
+| `heading`           | Heading text, the fallback when the `header` slot is empty.                                                                                                                                | `string`          | `''`      |
+| `closable`          | Shows the built-in close button.                                                                                                                                                           | `boolean`         | `false`   |
+| `headless`          | Keeps only overlay behavior; the default slot renders no built-in drawer UI.                                                                                                               | `boolean`         | `false`   |
+| `aria-dialog-label` | Accessible name of the inner native dialog; required under `headless`. The legacy name `dialog-label` is deprecated and kept only for compatibility; it will be removed in the next major. | `string`          | `''`      |
+| `aria-close-label`  | Accessible name of the built-in close button; falls back to the built-in English copy (`Close`).                                                                                           | `string`          | `''`      |
+| `draggable`         | Shows a drag bar on the inner edge of the drawer and enables the drag-to-close gesture.                                                                                                    | `boolean`         | `false`   |
 
 ### Events
 

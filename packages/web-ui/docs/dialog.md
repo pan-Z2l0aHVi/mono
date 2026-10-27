@@ -225,19 +225,19 @@ const open = ref(false)
 
 ### Props
 
-| Name                | Description                                                                                          | Type      | Default |
-| ------------------- | ---------------------------------------------------------------------------------------------------- | --------- | ------- |
-| `open`              | Dialog visibility.                                                                                   | `boolean` | `false` |
-| `closable`          | Shows the built-in close button.                                                                     | `boolean` | `false` |
-| `horizontal`        | Lays the footer action buttons out horizontally.                                                     | `boolean` | `false` |
-| `no-scroll-lock`    | Does not lock page scrolling while open.                                                             | `boolean` | `false` |
-| `no-backdrop-close` | Prevents closing by clicking the backdrop.                                                           | `boolean` | `false` |
-| `no-escape-close`   | Prevents closing with the Escape key.                                                                | `boolean` | `false` |
-| `controlled`        | Escape and the backdrop only request `open=false`, which the consumer writes back.                   | `boolean` | `false` |
-| `heading`           | Title text, the fallback when the `header` slot is empty (ignored under `headless`).                 | `string`  | `''`    |
-| `headless`          | Keeps only the overlay behavior; no longer renders the built-in header bar, content area, or footer. | `boolean` | `false` |
-| `aria-dialog-label` | Accessible name of the inner native dialog; required under `headless`.                               | `string`  | `''`    |
-| `aria-close-label`  | Accessible name of the built-in close button; falls back to the built-in English copy (`Close`).     | `string`  | `''`    |
+| Name                | Description                                                                                                                                                                                | Type      | Default |
+| ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | --------- | ------- |
+| `open`              | Dialog visibility.                                                                                                                                                                         | `boolean` | `false` |
+| `closable`          | Shows the built-in close button.                                                                                                                                                           | `boolean` | `false` |
+| `horizontal`        | Lays the footer action buttons out horizontally.                                                                                                                                           | `boolean` | `false` |
+| `no-scroll-lock`    | Does not lock page scrolling while open.                                                                                                                                                   | `boolean` | `false` |
+| `no-backdrop-close` | Prevents closing by clicking the backdrop.                                                                                                                                                 | `boolean` | `false` |
+| `no-escape-close`   | Prevents closing with the Escape key.                                                                                                                                                      | `boolean` | `false` |
+| `controlled`        | Escape and the backdrop only request `open=false`, which the consumer writes back.                                                                                                         | `boolean` | `false` |
+| `heading`           | Title text, the fallback when the `header` slot is empty (ignored under `headless`).                                                                                                       | `string`  | `''`    |
+| `headless`          | Keeps only the overlay behavior; no longer renders the built-in header bar, content area, or footer.                                                                                       | `boolean` | `false` |
+| `aria-dialog-label` | Accessible name of the inner native dialog; required under `headless`. The legacy name `dialog-label` is deprecated and kept only for compatibility; it will be removed in the next major. | `string`  | `''`    |
+| `aria-close-label`  | Accessible name of the built-in close button; falls back to the built-in English copy (`Close`).                                                                                           | `string`  | `''`    |
 
 ### Events
 

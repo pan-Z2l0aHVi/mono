@@ -2319,7 +2319,7 @@ export const exampleDocs: ExampleDoc[] = [
           ],
           [
             "aria-dialog-label",
-            "<p>Accessible name of the inner native dialog; required under <code>headless</code>.</p>",
+            "<p>Accessible name of the inner native dialog; required under <code>headless</code>. The legacy name <code>dialog-label</code> is deprecated and kept only for compatibility; it will be removed in the next major.</p>",
             "string",
             "''"
           ],
@@ -2621,7 +2621,7 @@ export const exampleDocs: ExampleDoc[] = [
           ],
           [
             "aria-dialog-label",
-            "<p>Accessible name of the inner native dialog; required under <code>headless</code>.</p>",
+            "<p>Accessible name of the inner native dialog; required under <code>headless</code>. The legacy name <code>dialog-label</code> is deprecated and kept only for compatibility; it will be removed in the next major.</p>",
             "string",
             "''"
           ],
