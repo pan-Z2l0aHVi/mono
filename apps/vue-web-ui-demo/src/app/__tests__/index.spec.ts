@@ -61,15 +61,15 @@ function layoutRoot() {
 }
 
 function navRoot() {
-  const element = document.querySelector('[aria-label="App navigation"]')
+  const element = document.querySelector('[aria-label="应用导航"]')
   if (!element) throw new Error('sidebar nav not found')
   return element
 }
 
 /**
- * 这个 jsdom 层不模拟真实布局；短标签、tooltip 与文本布局由 browser spec 验证。
- * 折叠态的公开出口有两条：可见文本切成短标签、完整名称转入 `title`。
- * 两者一起比较，确认桌面 collapsed state 不会泄漏到移动 drawer。
+ * 这个 jsdom 层不模拟真实布局；折叠态的文字省略、tooltip 与文本布局由 browser spec 验证。
+ * 折叠态的公开出口是 `title`：可见文字保持完整名称，折叠时补上同名 `title`。
+ * 可见文字与 `title` 一起比较，确认桌面 collapsed state 不会泄漏到移动 drawer。
  */
 function navItemState() {
   const link = navRoot().querySelector('a')

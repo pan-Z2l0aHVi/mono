@@ -76,6 +76,7 @@ async function mountList(
         runtimeAvailable: true,
         emptyDescription: '没有符合条件的资源',
         mediaUrlFor: () => null,
+        resolveDefaultOpenWith: () => Promise.resolve(''),
         onActivate: (resource: ResourceView) => {
           activeResourceId.value = resource.id
         },
@@ -175,7 +176,8 @@ describe('ResourceList', () => {
           loading: false,
           runtimeAvailable: false,
           emptyDescription: '资源库还是空的',
-          mediaUrlFor: () => null
+          mediaUrlFor: () => null,
+          resolveDefaultOpenWith: () => Promise.resolve('')
         })
     })
 
@@ -1123,6 +1125,40 @@ describe('ResourceList：context menu 的详情入口', () => {
   })
 })
 
+describe('ResourceList：打开方式显示系统默认应用', () => {
+  afterEach(() => {
+    document.body.innerHTML = ''
+  })
+
+  /*
+   * 「打开方式」不再按 kind 拼静态应用名，而是展示后端查到的系统默认应用。
+   * 名字只影响文案：点击发出的仍是 openDefault，由父级调 OpenExternal 交给系统。
+   */
+  it('显示后端返回的默认应用名，点击发出 openDefault', async () => {
+    const openDefault = vi.fn<RowHandler>()
+    const resolveDefaultOpenWith = vi.fn<(resource: ResourceView) => Promise<string>>(async () => 'Google Chrome')
+    const mounted = await mountList([resource()], [], { resolveDefaultOpenWith }, { onOpenDefault: openDefault })
+    try {
+      mounted.rows[0].dispatchEvent(
+        new MouseEvent('contextmenu', { bubbles: true, cancelable: true, clientX: 4, clientY: 4 })
+      )
+      // 名字是异步查出来的：等 promise 落定后的那一轮渲染。
+      await flushRenders()
+
+      expect(resolveDefaultOpenWith).toHaveBeenCalledExactlyOnceWith(expect.objectContaining({ id: 'r1' }))
+      const item = [...mounted.host.querySelectorAll<HTMLElement>('web-ui-dropdown-item')].find(
+        candidate => candidate.textContent?.trim() === 'Google Chrome'
+      )
+      if (!item) throw new Error('默认应用项未渲染')
+      item.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+
+      expect(openDefault).toHaveBeenCalledExactlyOnceWith(expect.objectContaining({ id: 'r1' }))
+    } finally {
+      mounted.unmount()
+    }
+  })
+})
+
 /*
  * 键盘呼出 context menu 这条路的回归。web-ui-context-menu 自己在宿主元素上听 ContextMenu 键与
  * Shift+F10，并且只按 document.activeElement 的 rect 摆 panel——它不看 menu item gate 的
@@ -1152,9 +1188,8 @@ describe('ResourceList：键盘呼出 context menu', () => {
   }
 
   /*
-   * 只读顶层项、且只读项自己的文字。「打开方式」是 submenu，textContent 会把它下面的
-   * 「系统默认应用」「看图」等一起吞进来——那样就既认不出「打开方式」这一项，也会把 submenu
-   * 里的「预览 看图」误当成顶层的「预览」。子节点里的文本不算这一项的。
+   * 只读顶层项、且只读项自己的文字。「打开方式」是 submenu，textContent 会把子项里的
+   * 默认应用名一起吞进来——那样就认不出「打开方式」这一项。子节点里的文本不算这一项的。
    */
   function labelsOf(host: HTMLElement) {
     return [...host.querySelectorAll('web-ui-context-menu > .contents > web-ui-dropdown-item')].map(item =>
@@ -2018,7 +2053,8 @@ describe('ResourceList：编辑态与虚拟窗口的关系', () => {
           loading: false,
           runtimeAvailable: true,
           emptyDescription: '',
-          mediaUrlFor: () => null
+          mediaUrlFor: () => null,
+          resolveDefaultOpenWith: () => Promise.resolve('')
         })
     })
     app.mount(host)
@@ -2072,7 +2108,8 @@ describe('ResourceList：顺序变化后的行位', () => {
           loading: false,
           runtimeAvailable: true,
           emptyDescription: '',
-          mediaUrlFor: () => null
+          mediaUrlFor: () => null,
+          resolveDefaultOpenWith: () => Promise.resolve('')
         })
     })
     app.mount(host)

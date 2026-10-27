@@ -104,6 +104,7 @@ function createRuntime(overrides: Partial<LibraryRuntime> = {}): LibraryRuntime 
       source: source(),
       outcome: SourceProbeOutcome.SourceProbeOutcomeAvailable
     }),
+    defaultOpenWith: async () => '',
     openExternal: async () => {},
     resourceMediaURL: () => null,
     pendingFilePreviewURL: () => null,
@@ -273,6 +274,35 @@ describe('LibraryPage：可用性感知接线', () => {
       expect(drawerOpen(mounted.host, '资源预览')).toBe(true)
       expect(drawerOpen(mounted.host, '资源详情')).toBe(false)
       expect(probeURLSourceOnOpen).not.toHaveBeenCalled()
+    } finally {
+      await mounted.close()
+    }
+  })
+
+  /*
+   * 进入选择态后筛选按钮被隐藏，展开中的筛选 panel 必须一起收起——否则它既失去可回退的
+   * 开关，又继续压缩列表可视高度。jsdom 里 web-ui-collapse 不保证已升级，open 既可能是
+   * 属性字符串（未升级）也可能是 reflect 出来的空串/缺失（已升级），两种情况一起判。
+   */
+  it('进入选择态时筛选面板自动收起', async () => {
+    const mounted = await mountPage()
+
+    const collapseOpen = () => {
+      const attribute = mounted.host.querySelector('web-ui-collapse')?.getAttribute('open')
+      return attribute !== null && attribute !== 'false'
+    }
+
+    try {
+      const filterButton = mounted.host.querySelector<HTMLElement>('web-ui-button[aria-label="筛选和排序"]')
+      if (!filterButton) throw new Error('筛选 button 未渲染')
+      filterButton.click()
+      await nextTick()
+      expect(collapseOpen()).toBe(true)
+
+      button(mounted.host, '选择').click()
+      await nextTick()
+
+      expect(collapseOpen()).toBe(false)
     } finally {
       await mounted.close()
     }

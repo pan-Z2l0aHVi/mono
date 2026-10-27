@@ -271,20 +271,22 @@ export default function Demo() {
 
 ### Props
 
-| 名称              | 说明                                                              | 类型             | 默认值     |
-| ----------------- | ----------------------------------------------------------------- | ---------------- | ---------- |
-| `placeholder`     | 占位文本；只在编辑中清空内容时露出。                              | `string`         | `''`       |
-| `name`            | 表单字段名。                                                      | `string`         | `''`       |
-| `disabled`        | 禁用状态。                                                        | `boolean`        | `false`    |
-| `readonly`        | 只读状态；步进 button 与键盘增减一并让路。                        | `boolean`        | `false`    |
-| `required`        | 必填校验。                                                        | `boolean`        | `false`    |
-| `value`           | 当前值，也是表单提交值；越界写入会收敛到范围端点。                | `number`         | `0`        |
-| `min`             | 最小值。                                                          | `number`         | `0`        |
-| `max`             | 最大值。                                                          | `number`         | `Infinity` |
-| `step`            | 步进幅度；未显式设置 `precision` 时，其小数位数决定默认规整精度。 | `number`         | `1`        |
-| `precision`       | 显式设置时按该值规整；设为 `null` 或移除属性时按 `step` 推导。    | `number \| null` | `0`        |
-| `aria-label`      | 输入框的无障碍名称。                                              | `string`         | —          |
-| `aria-labelledby` | 无障碍名称引用，用于命名内部输入框。                              | `string`         | —          |
+| 名称              | 说明                                                                | 类型             | 默认值     |
+| ----------------- | ------------------------------------------------------------------- | ---------------- | ---------- |
+| `placeholder`     | 占位文本；只在编辑中清空内容时露出。                                | `string`         | `''`       |
+| `name`            | 表单字段名。                                                        | `string`         | `''`       |
+| `disabled`        | 禁用状态。                                                          | `boolean`        | `false`    |
+| `readonly`        | 只读状态；步进 button 与键盘增减一并让路。                          | `boolean`        | `false`    |
+| `required`        | 必填校验。                                                          | `boolean`        | `false`    |
+| `value`           | 当前值，也是表单提交值；越界写入会收敛到范围端点。                  | `number`         | `0`        |
+| `min`             | 最小值。                                                            | `number`         | `0`        |
+| `max`             | 最大值。                                                            | `number`         | `Infinity` |
+| `step`            | 步进幅度；未显式设置 `precision` 时，其小数位数决定默认规整精度。   | `number`         | `1`        |
+| `precision`       | 显式设置时按该值规整；设为 `null` 或移除属性时按 `step` 推导。      | `number \| null` | `0`        |
+| `aria-label`      | 输入框的无障碍名称。                                                | `string`         | —          |
+| `aria-labelledby` | 无障碍名称引用，用于命名内部输入框。                                | `string`         | —          |
+| `decrease-label`  | 减少 button 的无障碍名称；默认跟随最近的 `lang`（中文为「减少」）。 | `string`         | `''`       |
+| `increase-label`  | 增加 button 的无障碍名称；默认跟随最近的 `lang`（中文为「增加」）。 | `string`         | `''`       |
 
 ### Events
 

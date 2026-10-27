@@ -940,6 +940,7 @@ Hover/active background feedback switches immediately with no transition animati
 | `--wui-color-info`                    | Info                                                               | `#2563eb`                                                               | `#64d2ff`                                                                             |
 | `--wui-color-backdrop`                | Modal backdrop                                                     | `rgb(0 0 0 / 0.12)`                                                     | `rgb(0 0 0 / 0.48)`                                                                   |
 | `--wui-color-focus-ring`              | Focus indicator color, derived from accent                         | `color-mix(in srgb, var(--wui-color-accent, #0071e3) 40%, transparent)` | `color-mix(in srgb, var(--wui-color-accent, #0a84ff) 62%, var(--wui-color-text) 38%)` |
+| `--wui-scrollbar-handle`              | Native scrollbar thumb colour                                      | `rgb(0 0 0 / 0.39)`                                                     | `rgb(255 255 255 / 0.5)`                                                              |
 
 ### Shadow tokens
 

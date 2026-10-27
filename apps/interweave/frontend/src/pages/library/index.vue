@@ -57,6 +57,8 @@ const {
   chooseFilePaths,
   chooseFilePath,
   getClipboardFilePaths,
+  defaultOpenWith,
+  openExternal,
   resourceMediaURL,
   subscribeToDroppedFiles,
   subscribeToPasteFileRequest,
@@ -186,6 +188,24 @@ function previewResource(resource: ResourceView) {
 }
 
 /*
+ * 「打开方式」只呈现系统默认应用的真实名字，不枚举候选应用：名字仅用于文案，打开动作仍交给
+ * openExternal，由操作系统按默认关联执行。查不到名字（或不可用资源没有可信位置）时回落到
+ * 空串，由调用方显示通用文案。
+ */
+function resolveDefaultOpenWith(resource: ResourceView) {
+  if (!resource.available) return Promise.resolve('')
+  const target = resource.preferred?.location
+  if (!target) return Promise.resolve('')
+  return defaultOpenWith(target)
+}
+
+async function openResource(resource: ResourceView) {
+  const target = resource.preferred?.location
+  if (!resource.available || !target) return
+  await openExternal(target)
+}
+
+/*
  * 右键「重命名」要把目标行置成激活行。
  *
  * 与另两条入口同一个理由：被操作的那一条就是当前工作对象。名字编辑器还占着焦点、
@@ -212,6 +232,9 @@ function toggleSelectionMode() {
   if (selectionMode.value) {
     stopResourceRename()
     setDetailOpen(false)
+    // 选择态里筛选按钮收起，筛选 panel 必须跟着收起：留在展开状态时它既没有开关可回退，
+    // 又会继续压缩列表的可视高度。
+    filterOpen.value = false
   } else {
     checkedIds.value = []
   }
@@ -606,6 +629,8 @@ onMounted(() => {
         :runtime-available="runtime.isAvailable"
         :empty-description="emptyDescription"
         :media-url-for="resourceMediaURL"
+        :resolve-default-open-with="resolveDefaultOpenWith"
+        @open-default="openResource"
         @select="selectResource"
         @preview="previewResource"
         @detail="openResourceDetail"
@@ -628,7 +653,9 @@ onMounted(() => {
       :editing-name-key="editingNameKey"
       :editor-ref="setNameEditorRef(DRAWER_TITLE_EDITOR_KEY)"
       :replacing-source-ids="replacingSourceIds"
+      :resolve-default-open-with="resolveDefaultOpenWith"
       @update:open="setDetailOpen"
+      @open-default="openResource"
       @start-rename="startResourceRename($event, 'drawer')"
       @rename-change="handleResourceNameChange"
       @cancel-rename="stopResourceRename"

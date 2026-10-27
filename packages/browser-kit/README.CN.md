@@ -2,7 +2,7 @@
 
 > 浏览器工具函数库，提供存储、埋点、环境检测等功能
 
-[English](./README.md) | 简体中文
+[English](https://github.com/pan-Z2l0aHVi/mono/blob/main/packages/browser-kit/README.md) | 简体中文
 
 ## 功能
 
@@ -13,7 +13,7 @@
 - **DOM**：视口尺寸和滚动位置工具
 - **File**：文件下载、base64 转换、图片信息、文件类型校验
 - **Copy**：跨浏览器剪贴板 API，支持 Blob
-- **Shortcut**：事件辅助（`on`/`off`）、异步辅助（`sleep`/`sleepSync`/`defer`）
+- **Shortcut**：类型化的 `on`/`off`，用于 `window` 与 `document` 事件
 
 ## 安装
 
@@ -76,7 +76,7 @@ const tracker = defineTracker({ url: '/api/track' })
 tracker.track({ event: 'page_view', path: '/' })
 ```
 
-完整 option 表（含 `transport` 与 `transform`）、flush/outbox 语义与 page-error 事件契约见 [`src/tracker/README.md`](./src/tracker/README.md)。
+完整 option 表（含 `transport` 与 `transform`）、flush/outbox 语义与 page-error 事件契约见 [`src/tracker/README.md`](https://github.com/pan-Z2l0aHVi/mono/blob/main/packages/browser-kit/src/tracker/README.md)。
 
 ## API
 
@@ -88,7 +88,7 @@ tracker.track({ event: 'page_view', path: '/' })
 | ----------- | -------- | ------ | ---------------- |
 | `namespace` | `string` | `''`   | 存储命名空间前缀 |
 
-TTL 语义、`watch` 跨 tab 行为与存储降级细节见 [`src/storage/README.md`](./src/storage/README.md)。
+TTL 语义、`watch` 跨 tab 行为与存储降级细节见 [`src/storage/README.md`](https://github.com/pan-Z2l0aHVi/mono/blob/main/packages/browser-kit/src/storage/README.md)。
 
 ### `local` / `session`
 
@@ -118,34 +118,21 @@ TTL 语义、`watch` 跨 tab 行为与存储降级细节见 [`src/storage/README
 | `env.isIos`            | iOS 系统          |
 | `env.isIpadOs`         | iPadOS 系统       |
 
+完整判断条件与预渲染注意事项见 [`src/env/README.md`](https://github.com/pan-Z2l0aHVi/mono/blob/main/packages/browser-kit/src/env/README.md)。
+
 ### `getViewportSize()`
 
 获取当前视口尺寸。
 
+**返回：** `{ width: number; height: number }`。`window` 不可用时返回 0。
+
 ### `getRootScrollTop()` / `getRootScrollLeft()`
 
-获取文档滚动位置。
-
-### `getFileExtension(filename)`
-
-从文件名中提取扩展名。
-
-| 参数       | 类型     | 默认值 | 说明   |
-| ---------- | -------- | ------ | ------ |
-| `filename` | `string` | -      | 文件名 |
-
-### `formatFileSize(bytes, decimals?)`
-
-将字节数格式化为可读字符串。
-
-| 参数       | 类型     | 默认值 | 说明     |
-| ---------- | -------- | ------ | -------- |
-| `bytes`    | `number` | -      | 字节数   |
-| `decimals` | `number` | `2`    | 小数位数 |
+获取文档滚动位置。在浏览器外返回 `0`。
 
 ### `downloadFile(arg, filename?, onProgress?)`
 
-下载文件。支持 File、Blob 或 URL 字符串，可选进度回调。
+下载文件。支持 File、Blob 或 URL 字符串。远程 URL 下载时，`onProgress` 收到下载百分比。
 
 | 参数         | 类型                        | 默认值 | 说明                  |
 | ------------ | --------------------------- | ------ | --------------------- |
@@ -161,9 +148,11 @@ TTL 语义、`watch` 跨 tab 行为与存储降级细节见 [`src/storage/README
 | -------- | ------------------------ | ------ | -------- |
 | `source` | `File \| Blob \| string` | -      | 图片来源 |
 
+**返回：** `Promise<{ width: number; height: number }>`。
+
 ### `isValidBase64(str)`
 
-检查字符串是否为有效的 base64 编码。
+检查字符串是否为有效的 base64 编码。原始 base64 与 `data:` URL 都接受。
 
 | 参数  | 类型     | 默认值 | 说明           |
 | ----- | -------- | ------ | -------------- |
@@ -171,7 +160,7 @@ TTL 语义、`watch` 跨 tab 行为与存储降级细节见 [`src/storage/README
 
 ### `base64ToFile(base64, filename?)`
 
-将 base64 字符串转换为 File 对象。
+将 base64 字符串或 `data:` URL 转换为 File 对象。`filename` 没有扩展名时，从 MIME 类型推导一个。
 
 | 参数       | 类型     | 默认值   | 说明          |
 | ---------- | -------- | -------- | ------------- |
@@ -180,23 +169,29 @@ TTL 语义、`watch` 跨 tab 行为与存储降级细节见 [`src/storage/README
 
 ### `fileToBase64(file)`
 
-将 File 或 Blob 转换为 base64 字符串。
+将 File 或 Blob 转换为 base64 `data:` URL。
 
 | 参数   | 类型           | 默认值 | 说明         |
 | ------ | -------------- | ------ | ------------ |
 | `file` | `File \| Blob` | -      | 待转换的文件 |
 
+**返回：** `Promise<string>`。
+
 ### `isSameFileType(...files)`
 
-基于 Magic Number 检查文件类型是否一致。
+基于 Magic Number 判断文件是否属于同一真实类型。只传一个文件或不传时返回 `true`。
 
 | 参数       | 类型     | 默认值 | 说明         |
 | ---------- | -------- | ------ | ------------ |
 | `...files` | `File[]` | -      | 待比较的文件 |
 
+**返回：** `Promise<boolean>`。
+
+Magic Number 比较方式与错误行为见 [`src/file/README.md`](https://github.com/pan-Z2l0aHVi/mono/blob/main/packages/browser-kit/src/file/README.md)。
+
 ### `copyToClipboard(content, options?)`
 
-将文本或 Blob 写入系统剪贴板。支持 text/plain 和 text/html。
+将文本或 Blob 写入系统剪贴板。支持 `text/plain` 和 `text/html`。复制失败由底层降级链处理，不会重新抛出。
 
 | 参数      | 类型                                   | 默认值 | 说明          |
 | --------- | -------------------------------------- | ------ | ------------- |
@@ -205,35 +200,21 @@ TTL 语义、`watch` 跨 tab 行为与存储降级细节见 [`src/storage/README
 
 ### `on(element, event, handler, options?)`
 
-添加事件监听器，断开连接时自动清理。
+给 `window` 或 `document` 添加事件监听器。
 
 | 参数      | 类型                      | 默认值 | 说明          |
 | --------- | ------------------------- | ------ | ------------- |
-| `element` | `EventTarget`             | -      | 目标元素      |
+| `element` | `Window \| Document`      | -      | 事件目标      |
 | `event`   | `string`                  | -      | 事件名称      |
 | `handler` | `Function`                | -      | 事件处理函数  |
 | `options` | `AddEventListenerOptions` | -      | 监听器 option |
 
 ### `off(element, event, handler, options?)`
 
-移除事件监听器。
-
-### `sleep(ms)` / `sleepSync(ms)`
-
-异步/同步延迟辅助函数。
-
-| 参数 | 类型     | 默认值 | 说明       |
-| ---- | -------- | ------ | ---------- |
-| `ms` | `number` | -      | 延迟毫秒数 |
-
-### `defer(fn)`
-
-在下一个微任务中执行函数。
-
-| 参数 | 类型         | 默认值 | 说明             |
-| ---- | ------------ | ------ | ---------------- |
-| `fn` | `() => void` | -      | 待延迟执行的函数 |
+移除由 `on` 添加的监听器。
 
 ### `defineHistoryNav(options?)`
 
-通过 Navigation API 只读子集（`canGoBack` / `canGoForward` / `currentEntry` / `entries()` / `currententrychange`）跟踪用户在真实浏览器历史中能否前进/后退。幂等单例；完整 API 与已知限制见 [`src/history-nav/README.md`](./src/history-nav/README.md)。
+通过 Navigation API 只读子集（`canGoBack` / `canGoForward` / `currentEntry` / `entries()` / `currententrychange`）跟踪用户在真实浏览器历史中能否前进/后退。它只把 `pushState` / `replaceState` 当作旁路记录，同时处理 `popstate` 和 `hashchange`；首次调用返回幂等单例。完整 API 与已知限制见 [`src/history-nav/README.md`](https://github.com/pan-Z2l0aHVi/mono/blob/main/packages/browser-kit/src/history-nav/README.md)。
+
+> `getFileExtension` 与 `formatFileSize` 这类字符串与数字辅助函数位于 [`@greypan/js-kit`](https://github.com/pan-Z2l0aHVi/mono/blob/main/packages/js-kit/README.CN.md)，不在本包内。

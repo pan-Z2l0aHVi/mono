@@ -11,6 +11,7 @@ import glass from '@/classes/glass.css?inline'
 import glow from '@/classes/glow.css?inline'
 import { radixIconsPanelLeftMinimized } from '@/icons'
 import { attachDragGesture, clamp, type DragGestureHandle } from '@/shared/gesture'
+import { LocaleController, resolveBuiltinLabel } from '@/shared/locale/builtin-labels'
 import { defineVisibleAreaTracker, VisibleAreaController } from '@/shared/visible-area'
 
 import style from './style.css?inline'
@@ -155,6 +156,7 @@ export class WebUiLayout extends LitElement {
   }).make()
 
   private readonly _visibleBannerController = new VisibleAreaController(this, this._visibleBanner)
+  private readonly _locale = new LocaleController(this)
 
   private _toggleSidebar() {
     if (this._mobile) {
@@ -379,7 +381,7 @@ export class WebUiLayout extends LitElement {
       ? {}
       : { width: this._resizeWidth ?? (this.sidebarCollapsed ? this.collapsedWidth : this.sidebarWidth) }
 
-    const toggleLabel = isSidebarOpen ? 'Collapse sidebar' : 'Expand sidebar'
+    const toggleLabel = resolveBuiltinLabel(this, isSidebarOpen ? 'collapseSidebar' : 'expandSidebar')
 
     const desktopToggle = html`
       <web-ui-button
@@ -387,7 +389,7 @@ export class WebUiLayout extends LitElement {
         icon
         variant="secondary"
         @click="${this._toggleSidebar}"
-        aria-label="${toggleLabel}"
+        aria-label=${toggleLabel}
       >
         <web-ui-icon .icon=${radixIconsPanelLeftMinimized}></web-ui-icon>
       </web-ui-button>
@@ -420,7 +422,7 @@ export class WebUiLayout extends LitElement {
                       role="separator"
                       tabindex="0"
                       aria-orientation="vertical"
-                      aria-label="Resize sidebar"
+                      aria-label=${resolveBuiltinLabel(this, 'resizeSidebar')}
                       @pointerdown=${this._handleResizePointerDown}
                       @keydown=${this._handleResizeKeydown}
                     ></div>
@@ -447,7 +449,7 @@ export class WebUiLayout extends LitElement {
             icon
             variant="glass"
             @click="${this._toggleSidebar}"
-            aria-label="Open navigation menu"
+            aria-label=${resolveBuiltinLabel(this, 'openNavigationMenu')}
           >
             <web-ui-icon .icon=${radixIconsPanelLeftMinimized}></web-ui-icon>
           </web-ui-button>
@@ -462,7 +464,7 @@ export class WebUiLayout extends LitElement {
         ?open="${this.sidebarOpen}"
         controlled
         draggable
-        dialog-label="Main navigation"
+        dialog-label=${resolveBuiltinLabel(this, 'mainNavigation')}
         @open-change="${this._onDrawerChange}"
         style="${styleMap({
           '--wui-drawer-width': this.sidebarWidth,

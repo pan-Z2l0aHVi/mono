@@ -51,6 +51,19 @@ function mirroredInlineToken(): string {
   return document.documentElement.style.getPropertyValue('--wui-color-page').trim()
 }
 
+function readRootScrollbarHandle(): string {
+  return document.documentElement.style.getPropertyValue('--wui-scrollbar-handle')
+}
+
+/** 消费方契约：文档级 scrollbar 读镜像到 `html` 的 thumb token。 */
+function applyHtmlScrollbarRule(): HTMLStyleElement {
+  const style = document.createElement('style')
+  style.textContent = 'html { scrollbar-color: var(--wui-scrollbar-handle) transparent; }'
+  style.setAttribute('data-root-sync-fixture', '')
+  document.head.append(style)
+  return style
+}
+
 function bodyBackground(): string {
   return getComputedStyle(document.body).backgroundColor
 }
@@ -99,6 +112,7 @@ afterEach(async () => {
   document.body.replaceChildren()
   for (const style of Array.from(document.querySelectorAll('style[data-root-sync-fixture]'))) style.remove()
   document.documentElement.style.removeProperty('--wui-color-page')
+  document.documentElement.style.removeProperty('--wui-scrollbar-handle')
   await emulateColorScheme('light')
 })
 
@@ -110,6 +124,21 @@ describe('theme 根节点 page 色同步（浏览器）', () => {
 
     expect(rootPageColor(), 'root 应结算出主题作用域里的 page 色').toBe(pageColor(theme))
     expect(bodyBackground(), 'body 背景应取到同一枚镜像值').toBe(pageColor(theme))
+  })
+
+  it('scrollbar thumb token 一并镜像到 documentElement，html 规则据此取色', async () => {
+    applyHtmlScrollbarRule()
+    const theme = await mountTheme('light')
+
+    // 镜像值必须等于主题自己的计算值；自定义属性的序列化形态（Chromium 落成短 hex）不属于契约。
+    // 消费方看到的是 `scrollbar-color` 解析后的颜色，那一层单独断言。
+    expect(readRootScrollbarHandle()).toBe(getComputedStyle(theme).getPropertyValue('--wui-scrollbar-handle').trim())
+    expect(getComputedStyle(document.documentElement).scrollbarColor).toContain('rgba(0, 0, 0, 0.39)')
+
+    theme.setAttribute('appearance', 'dark')
+    await theme.updateComplete
+    expect(readRootScrollbarHandle()).toBe(getComputedStyle(theme).getPropertyValue('--wui-scrollbar-handle').trim())
+    expect(getComputedStyle(document.documentElement).scrollbarColor).toContain('rgba(255, 255, 255, 0.5)')
   })
 
   it('appearance 切换后 root 值与 body 背景同步更新', async () => {

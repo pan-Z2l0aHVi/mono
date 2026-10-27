@@ -43,6 +43,7 @@ function mountDrawer(resource: ResourceView, listeners: Record<string, unknown> 
         editingNameKey: null,
         editorRef: () => () => {},
         replacingSourceIds: [],
+        resolveDefaultOpenWith: () => Promise.resolve(''),
         ...listeners
       })
   })
@@ -91,6 +92,31 @@ describe('DetailDrawer', () => {
       button(mounted.host, '重命名').click()
       expect(startRename).toHaveBeenCalledOnce()
       expect(startRename).toHaveBeenCalledWith(resource)
+    } finally {
+      mounted.close()
+    }
+  })
+
+  it('打开方式显示系统默认应用名，点击发出 openDefault', async () => {
+    const resource = resourceView()
+    const openDefault = vi.fn<(target: ResourceView) => void>()
+    const mounted = mountDrawer(resource, {
+      resolveDefaultOpenWith: async () => 'Preview',
+      onOpenDefault: openDefault
+    })
+
+    try {
+      // 名字是异步查出来的：等 promise 落定后的渲染。
+      await nextTick()
+      await nextTick()
+
+      const item = [...mounted.host.querySelectorAll<HTMLElement>('web-ui-dropdown-item')].find(
+        candidate => candidate.textContent?.trim() === 'Preview'
+      )
+      if (!item) throw new Error('默认应用项未渲染')
+      item.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+
+      expect(openDefault).toHaveBeenCalledExactlyOnceWith(resource)
     } finally {
       mounted.close()
     }

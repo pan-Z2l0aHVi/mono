@@ -13,6 +13,7 @@ import {
   FormAssociationController
 } from '@/shared/form-association'
 import { createFieldId } from '@/shared/form-association/field-id'
+import { LocaleController, resolveBuiltinLabel } from '@/shared/locale/builtin-labels'
 import { normalizeNumber } from '@/shared/normalize'
 
 import style from './style.css?inline'
@@ -171,6 +172,10 @@ export class WebUiInputNumber extends FormAssociated(LitElement) {
   @property({ type: Boolean, reflect: true }) required = false
   @property({ type: String, attribute: 'aria-label' }) override ariaLabel: string | null = null
   @property({ type: String, attribute: 'aria-labelledby' }) ariaLabelledby: string | undefined
+  /** 减少按钮的无障碍名称；默认跟随文档 `lang`。 */
+  @property({ type: String, attribute: 'decrease-label' }) decreaseLabel = ''
+  /** 增加按钮的无障碍名称；默认跟随文档 `lang`。 */
+  @property({ type: String, attribute: 'increase-label' }) increaseLabel = ''
   @property({ type: Number })
   get precision(): number {
     return this._precision
@@ -209,6 +214,7 @@ export class WebUiInputNumber extends FormAssociated(LitElement) {
   private _precision = 0
   private _precisionWasSet = false
   private readonly _fieldId = createFieldId('web-ui-input-number')
+  private readonly _locale = new LocaleController(this)
   private _labelledbyObserver: MutationObserver | null = null
   private _releaseLabelledbyReferences: (() => void) | null = null
   private _labelledbyAncestorObserver: MutationObserver | null = null
@@ -758,7 +764,7 @@ export class WebUiInputNumber extends FormAssociated(LitElement) {
       <div class="wui-glass wui-input-inner">
         <button
           class="num-btn"
-          aria-label="Decrease"
+          aria-label=${resolveBuiltinLabel(this, 'decrease', this.decreaseLabel)}
           ?disabled=${this._isDisabled || this.readonly || this.atMin}
           @click=${() => this.handleStep(-1)}
         >
@@ -784,7 +790,7 @@ export class WebUiInputNumber extends FormAssociated(LitElement) {
         />
         <button
           class="num-btn"
-          aria-label="Increase"
+          aria-label=${resolveBuiltinLabel(this, 'increase', this.increaseLabel)}
           ?disabled=${this._isDisabled || this.readonly || this.atMax}
           @click=${() => this.handleStep(1)}
         >

@@ -440,6 +440,7 @@ export default function Demo() {
 | `readonly`    | Readonly state.                                                                                  | `boolean`        | `false`  |
 | `required`    | Required validation.                                                                             | `boolean`        | `false`  |
 | `clearable`   | Shows the clear button when there is a value and neither `disabled` nor `readonly` is set.       | `boolean`        | `false`  |
+| `clear-label` | Accessible name of the clear button; follows the nearest `lang` by default.                      | `string`         | `''`     |
 | `full`        | Fills the parent's width.                                                                        | `boolean`        | `false`  |
 | `borderless`  | Ghost form: removes the border, background, and shadow while keeping padding and the focus ring. | `boolean`        | `false`  |
 | `aria-label`  | Accessible label.                                                                                | `string \| null` | `null`   |

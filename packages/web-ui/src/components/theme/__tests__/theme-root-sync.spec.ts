@@ -72,6 +72,7 @@ afterEach(() => {
   for (const theme of Array.from(document.querySelectorAll('web-ui-theme'))) theme.remove()
   document.getElementById(FIXTURE_STYLE_ID)?.remove()
   document.documentElement.style.removeProperty('--wui-color-page')
+  document.documentElement.style.removeProperty('--wui-scrollbar-handle')
 })
 
 describe('WebUiTheme 根节点 page 色同步', () => {

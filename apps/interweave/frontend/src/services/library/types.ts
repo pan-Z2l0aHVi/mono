@@ -33,6 +33,7 @@ export interface LibraryRuntime {
   releaseFilePreview(token: string): Promise<void>
   findResourceLocationMatches(input: string, sourceType: SourceType): Promise<ResourceLocationMatchDTO[]>
   probeURLSourceOnOpen(sourceId: string): Promise<SourceProbeResultDTO>
+  defaultOpenWith(target: string): Promise<string>
   openExternal(target: string): Promise<void>
   resourceMediaURL(sourceId: string): string | null
   pendingFilePreviewURL(token: string): string | null

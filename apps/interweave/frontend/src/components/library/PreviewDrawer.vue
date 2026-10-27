@@ -1,6 +1,6 @@
 <script setup lang="ts">
+import appScrollbarsOptions from '@greypan/app-scrollbars'
 import type { WebUiDrawer, WebUiEvent } from '@greypan/web-ui'
-import { webUiScrollbarsOptions } from '@greypan/web-ui/scrollbars'
 import { OverlayScrollbarsComponent } from 'overlayscrollbars-vue'
 import { computed, onBeforeUnmount, ref, watch } from 'vue'
 
@@ -153,7 +153,7 @@ function handleOpenChange(event: WebUiEvent<WebUiDrawer, 'open-change'>) {
         的实测对照）。里层用 min-h-full / h-full 把「至少和滚动口一样高」这条接回来——viewport
         的高度是确定的，百分比因此能解析。
       -->
-      <OverlayScrollbarsComponent v-if="emptyState" :options="webUiScrollbarsOptions" class="min-h-0 overflow-y-auto">
+      <OverlayScrollbarsComponent v-if="emptyState" :options="appScrollbarsOptions" class="min-h-0 overflow-y-auto">
         <div class="grid min-h-full place-items-center p-5">
           <web-ui-empty :size="72" :title="emptyState.title" :description="emptyState.description">
             <web-ui-icon slot="icon" :icon="resourceIcon(resource.kind)" :size="40" />
@@ -163,7 +163,7 @@ function handleOpenChange(event: WebUiEvent<WebUiDrawer, 'open-change'>) {
 
       <OverlayScrollbarsComponent
         v-else-if="target.mode === 'image'"
-        :options="webUiScrollbarsOptions"
+        :options="appScrollbarsOptions"
         class="min-h-0 overflow-auto"
       >
         <!--
@@ -223,7 +223,7 @@ function handleOpenChange(event: WebUiEvent<WebUiDrawer, 'open-change'>) {
           >
             {{ textNotice }}
           </p>
-          <OverlayScrollbarsComponent :options="webUiScrollbarsOptions" class="overflow-auto">
+          <OverlayScrollbarsComponent :options="appScrollbarsOptions" class="overflow-auto">
             <!--
               滚动接在外层宿主上、`pre` 留在里面：适配包会在宿主里插一层内容 div，宿主若就是
               `pre`，那层 div 会成为它的直接子节点——与 <ul>/<ol> 那条同一个形状。

@@ -201,7 +201,7 @@ export class WebUiTheme extends LitElement {
     // 是否动画统一由 motion 决定，因此连接期间始终记录圆心来源，真正是否动画仍看
     // _shouldAnimateAppearance。
     this._syncTransitionOriginListeners(true)
-    this._syncRootPageColorSync()
+    this._syncRootTokens()
     this._warnWhenAppearanceIsMissing()
   }
 
@@ -217,7 +217,7 @@ export class WebUiTheme extends LitElement {
 
   protected override updated() {
     this._warnWhenAppearanceIsMissing()
-    this._syncRootPageColorSync()
+    this._syncRootTokens()
   }
 
   override attributeChangedCallback(name: string, oldValue: string | null, newValue: string | null) {
@@ -227,11 +227,11 @@ export class WebUiTheme extends LitElement {
   }
 
   /*
-   * root page 色同步的登记态：只有 active（有 appearance）的主题参与，
+   * root token 同步的登记态：只有 active（有 appearance）的主题参与，
    * appearance 被清掉时撤销登记、把同步权顺延给下一个已连接实例。
    * updated() 里重复登记是幂等的，因此这里同时承担「appearance 变化后刷新 root 值」。
    */
-  private _syncRootPageColorSync() {
+  private _syncRootTokens() {
     if (this._hasAppearance()) registerThemeRootSync(this)
     else unregisterThemeRootSync(this)
   }

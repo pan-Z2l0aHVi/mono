@@ -13,6 +13,8 @@ The default slot projects segmented-trigger, and `value` decides which item is s
 
 Holding and dragging horizontally on the current item also switches continuously; on release the indicator snaps to the trigger closest to its center, and a fast fling switches by velocity.
 
+The inner `role="listbox"` lives in the shadow DOM and does not inherit the host's `aria-label`, so the component forwards it to the listbox; the sample uses `aria-label` to name the group "Weekday". `aria-labelledby` IDREFs cannot resolve across the shadow boundary, so express a visible label through `aria-label`.
+
 ```tsx
 import { useState } from 'react'
 
@@ -21,7 +23,7 @@ export default function Demo() {
 
   return (
     <div className="flex flex-col items-start gap-3">
-      <web-ui-segmented value={day} onInput={event => setDay(event.currentTarget.value)}>
+      <web-ui-segmented aria-label="Weekday" value={day} onInput={event => setDay(event.currentTarget.value)}>
         <web-ui-segmented-trigger value="mon">Mon</web-ui-segmented-trigger>
         <web-ui-segmented-trigger value="tue">Tue</web-ui-segmented-trigger>
         <web-ui-segmented-trigger value="wed">Wed</web-ui-segmented-trigger>
@@ -37,7 +39,7 @@ export default function Demo() {
 ```vue
 <template>
   <div class="flex flex-col items-start gap-3">
-    <web-ui-segmented :value="day" @input="day = $event.currentTarget.value">
+    <web-ui-segmented aria-label="Weekday" :value="day" @input="day = $event.currentTarget.value">
       <web-ui-segmented-trigger value="mon">Mon</web-ui-segmented-trigger>
       <web-ui-segmented-trigger value="tue">Tue</web-ui-segmented-trigger>
       <web-ui-segmented-trigger value="wed">Wed</web-ui-segmented-trigger>
@@ -374,13 +376,14 @@ function onChange(event: WebUiEvent<WebUiSegmented, 'change'>) {
 
 ### Props
 
-| Name       | Description                                          | Type                  | Default   |
-| ---------- | ---------------------------------------------------- | --------------------- | --------- |
-| `name`     | Form field name.                                     | `string`              | `''`      |
-| `variant`  | Material variant: `inset` (default) or `raised`.     | `'inset' \| 'raised'` | `'inset'` |
-| `disabled` | Disables every trigger.                              | `boolean`             | `false`   |
-| `required` | Reflects the attribute only; not part of validation. | `boolean`             | `false`   |
-| `value`    | Currently selected value.                            | `string`              | `''`      |
+| Name         | Description                                                                                        | Type                  | Default   |
+| ------------ | -------------------------------------------------------------------------------------------------- | --------------------- | --------- |
+| `name`       | Form field name.                                                                                   | `string`              | `''`      |
+| `variant`    | Material variant: `inset` (default) or `raised`.                                                   | `'inset' \| 'raised'` | `'inset'` |
+| `disabled`   | Disables every trigger.                                                                            | `boolean`             | `false`   |
+| `required`   | Reflects the attribute only; not part of validation.                                               | `boolean`             | `false`   |
+| `aria-label` | Accessible name of the inner listbox; `aria-labelledby` cannot resolve across the shadow boundary. | `string`              | —         |
+| `value`      | Currently selected value.                                                                          | `string`              | `''`      |
 
 ### Events
 

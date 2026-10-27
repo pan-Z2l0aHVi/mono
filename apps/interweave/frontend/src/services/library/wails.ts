@@ -116,6 +116,10 @@ class WailsLibraryRuntime implements LibraryRuntime {
     return requireSourceProbeResultDTO(await SourceService.ProbeURLSourceOnOpen(sourceId), '探测 URL Source')
   }
 
+  async defaultOpenWith(target: string) {
+    return OSService.DefaultOpenWith(target)
+  }
+
   async openExternal(target: string) {
     await OSService.OpenExternal(target)
   }

@@ -66,7 +66,7 @@ function globalSelectTrigger(label: string) {
 }
 
 async function clickGlobalSelectsAtTopEdge() {
-  for (const label of ['Global motion', 'Global theme']) {
+  for (const label of ['全局动效', '全局主题']) {
     const select = document.querySelector<HTMLElement>(`web-ui-select[aria-label="${label}"]`)
     if (!select) throw new Error(`${label} select not found`)
     await vi.waitFor(() => {
@@ -102,7 +102,7 @@ function themeOverlayRoot(theme = document.querySelector('web-ui-theme')) {
 }
 
 function navRoot() {
-  const element = document.querySelector('[aria-label="App navigation"]')
+  const element = document.querySelector('[aria-label="应用导航"]')
   if (!element) throw new Error('sidebar nav not found')
   return element
 }
@@ -111,7 +111,7 @@ function isDrawerMode() {
   return !!layoutRoot().shadowRoot?.querySelector('web-ui-drawer')
 }
 
-/** collapsed state 居中显示短标签，expanded state 左对齐完整 label。 */
+/** collapsed state 居中显示完整导航名（放不下由 CSS 省略），expanded state 左对齐。 */
 function navItemAlignment() {
   const link = navRoot().querySelector('a')
   if (!link) throw new Error('nav link not found')
@@ -224,24 +224,24 @@ describe('应用外壳（浏览器）：导航 collapsed state 不跨视口泄�
     const toastElement = await persistentTopToast(SHORT_TOAST_MESSAGE)
     await clickBannerCloseButtonAtCenter()
     await clickGlobalSelectsAtTopEdge()
-    const shortTop = globalSelectTrigger('Global theme').getBoundingClientRect().top
+    const shortTop = globalSelectTrigger('全局主题').getBoundingClientRect().top
     const shortHeight = toastElement.getBoundingClientRect().height
 
     toast.info(LONG_TOAST_MESSAGE, { id: toastElement.toastId })
     await vi.waitFor(() => expect(toastElement.getBoundingClientRect().height).toBeGreaterThan(shortHeight))
     await clickGlobalSelectsAtTopEdge()
-    const longTop = globalSelectTrigger('Global theme').getBoundingClientRect().top
+    const longTop = globalSelectTrigger('全局主题').getBoundingClientRect().top
     expect(longTop).toBeGreaterThan(shortTop)
     const longHeight = toastElement.getBoundingClientRect().height
 
     toastElement.style.setProperty('--wui-font-size', '24px')
     await vi.waitFor(() => expect(toastElement.getBoundingClientRect().height).toBeGreaterThan(longHeight))
     await clickGlobalSelectsAtTopEdge()
-    expect(globalSelectTrigger('Global theme').getBoundingClientRect().top).toBeGreaterThan(longTop)
+    expect(globalSelectTrigger('全局主题').getBoundingClientRect().top).toBeGreaterThan(longTop)
 
     toastElement.style.removeProperty('--wui-font-size')
     toast.info(SHORT_TOAST_MESSAGE, { id: toastElement.toastId })
-    await vi.waitFor(() => expect(globalSelectTrigger('Global theme').getBoundingClientRect().top).toBe(shortTop))
+    await vi.waitFor(() => expect(globalSelectTrigger('全局主题').getBoundingClientRect().top).toBe(shortTop))
     await clickGlobalSelectsAtTopEdge()
   })
 
@@ -299,7 +299,7 @@ describe('应用外壳（浏览器）：导航 collapsed state 不跨视口泄�
     expect(document.querySelector('[slot="banner"]')).not.toBeNull()
     expect(themeOverlayRoot()?.querySelector('web-ui-toast')).not.toBeNull()
 
-    for (const label of ['Global motion', 'Global theme']) {
+    for (const label of ['全局动效', '全局主题']) {
       const trigger = globalSelectTrigger(label)
       await userEvent.click(trigger)
       expect(trigger.getAttribute('aria-expanded')).toBe('true')
@@ -362,7 +362,50 @@ describe('应用外壳（浏览器）：导航 collapsed state 不跨视口泄�
     shadowHost.remove()
   })
 
-  it('桌面端 collapsed state 使用唯一短标签，并通过 title 提供完整 label', async () => {
+  it('banner 关闭按钮桌面端靠右、移动端靠左', async () => {
+    await mountAppShell()
+    const banner = document.querySelector<HTMLElement>('[slot="banner"]')
+    if (!banner) throw new Error('banner not found')
+    const button = bannerCloseButton()
+
+    // 距中线的有符号距离：靠右取按钮左边减中线，靠左取中线减按钮右边，都应为正。
+    const expectSide = (side: 'left' | 'right') =>
+      vi.waitFor(() => {
+        const bannerBounds = banner.getBoundingClientRect()
+        const buttonBounds = button.getBoundingClientRect()
+        const midpoint = bannerBounds.left + bannerBounds.width / 2
+        const distance = side === 'right' ? buttonBounds.left - midpoint : midpoint - buttonBounds.right
+        expect(distance).toBeGreaterThan(0)
+      })
+
+    await expectSide('right')
+
+    await setViewport(MOBILE_VIEWPORT.width, MOBILE_VIEWPORT.height)
+    await settleViewport(true)
+    await expectSide('left')
+  })
+
+  it('全局选择器与导航暴露本地化的可访问名称和选项', async () => {
+    await mountAppShell()
+    const expectedOptions: Record<string, string[]> = {
+      全局动效: ['完整动效', '减弱动效', '跟随系统'],
+      全局主题: ['浅色', '深色', '跟随系统']
+    }
+
+    for (const [label, options] of Object.entries(expectedOptions)) {
+      const select = document.querySelector<HTMLElement>(`web-ui-select[aria-label="${label}"]`)
+      if (!select) throw new Error(`${label} select not found`)
+      expect(
+        Array.from(select.querySelectorAll('web-ui-option')).map(option => option.textContent?.trim() ?? '')
+      ).toEqual(options)
+      globalSelectTrigger(label)
+    }
+
+    expect(navRoot().getAttribute('aria-label')).toBe('应用导航')
+    expect(document.querySelector('nav[aria-label="主导航"]')).not.toBeNull()
+  })
+
+  it('桌面端 collapsed state 沿用完整导航名、超出部分省略，并通过 title 提供完整 label', async () => {
     await mountAppShell()
     const links = [...navRoot().querySelectorAll<HTMLAnchorElement>('a')]
     const expandedLabels = links.map(link => link.querySelector('span')?.textContent?.trim() ?? '')
@@ -377,18 +420,20 @@ describe('应用外壳（浏览器）：导航 collapsed state 不跨视口泄�
         accessibleName: link.getAttribute('aria-label'),
         visibleLabel: label?.textContent?.trim() ?? '',
         labelClientWidth: label?.clientWidth ?? 0,
-        labelScrollWidth: label?.scrollWidth ?? 0,
+        labelRight: label?.getBoundingClientRect().right ?? 0,
+        linkRight: link.getBoundingClientRect().right,
         tooltip: link.getAttribute('title')
       }
     })
 
-    expect(new Set(collapsedEntries.map(entry => entry.visibleLabel)).size).toBe(links.length)
-    expect(
-      collapsedEntries.every(entry => entry.labelClientWidth > 0 && entry.labelScrollWidth <= entry.labelClientWidth)
-    ).toBe(true)
+    // 折叠导轨不再另设两套短名：可见文字仍是完整导航名，放不下交给 CSS 省略，文字不越出导轨。
+    expect(collapsedEntries.map(entry => entry.visibleLabel)).toEqual(expandedLabels)
+    expect(collapsedEntries.every(entry => entry.labelClientWidth > 0)).toBe(true)
+    expect(collapsedEntries.every(entry => entry.labelRight <= entry.linkRight + 0.5)).toBe(true)
     expect(
       collapsedEntries.every(
-        entry => entry.visibleLabel && entry.accessibleName && entry.tooltip === entry.accessibleName
+        entry =>
+          entry.visibleLabel && entry.accessibleName === entry.visibleLabel && entry.tooltip === entry.accessibleName
       )
     ).toBe(true)
 

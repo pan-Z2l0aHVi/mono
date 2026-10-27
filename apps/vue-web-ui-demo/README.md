@@ -1,17 +1,10 @@
 # Vue Web UI Demo
 
-这是 `@greypan/web-ui` 的 Vue 集成和预览表面，不是公共组件契约的权威来源。公共属性、slot、事件和类型以 `packages/web-ui` 的源码、README、测试和相关 ADR 为准。
+这是 `@greypan/web-ui` 的 Vue 集成和预览表面，不是公共组件契约的权威来源。公共属性、slot、事件和类型以 [`packages/web-ui`](../../packages/web-ui) 的源码、README、测试和相关 ADR 为准。
 
-## 结构
+应用负责验证 web-ui 在真实 Vue 应用中的消费方式，并提供组件的可交互预览。目录、路由、生成产物与集成细节会随 web-ui 迭代调整，以本目录源码、配置和 [`AGENTS.md`](./AGENTS.md) 为准，不在 README 中逐项列举。
 
-- `src/app/`：应用入口和全局布局。
-- `src/components/`：仅属于 demo 的组合与展示组件。
-- `src/pages/`：页面级集成表面。
-- `src/stores/`：demo 的 Pinia 状态。
-- `src/type-fixtures/`：Vue 事件和组件类型集成样例。
-- `auto-imports.d.ts`、`typed-router.d.ts`：由 Vite plugins 派生的类型；生命周期见 [`docs/agents/build.md`](../../docs/agents/build.md)。
-
-## Commands
+## 运行
 
 在仓库根目录启动该 demo 及其 workspace 依赖的开发进程：
 
@@ -19,7 +12,7 @@
 pnpm dev:vue-web-ui-demo
 ```
 
-不要只运行包内 `pnpm dev` 来验证跨包集成；它不会编排本地依赖包的构建和监听。
+不要只运行包内 `pnpm dev` 来验证跨包集成；它不会编排本地依赖包的构建和监听。环境准备与通用命令见 [`CONTRIBUTING.md`](../../CONTRIBUTING.md)。
 
 ## Agent 入口
 

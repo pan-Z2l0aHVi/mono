@@ -916,6 +916,7 @@ hover/active 背景反馈即时切换、无过渡动画；选中态、按压与 
 | `--wui-color-info`                    | 信息                                               | `#2563eb`                                                               | `#64d2ff`                                                                             |
 | `--wui-color-backdrop`                | Modal backdrop                                     | `rgb(0 0 0 / 0.12)`                                                     | `rgb(0 0 0 / 0.48)`                                                                   |
 | `--wui-color-focus-ring`              | Focus indicator 颜色，由 accent 派生               | `color-mix(in srgb, var(--wui-color-accent, #0071e3) 40%, transparent)` | `color-mix(in srgb, var(--wui-color-accent, #0a84ff) 62%, var(--wui-color-text) 38%)` |
+| `--wui-scrollbar-handle`              | 原生 scrollbar 的 thumb 颜色                       | `rgb(0 0 0 / 0.39)`                                                     | `rgb(255 255 255 / 0.5)`                                                              |
 
 ### Shadow tokens
 
