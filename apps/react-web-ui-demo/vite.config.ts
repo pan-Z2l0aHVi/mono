@@ -173,6 +173,10 @@ export default {
     }),
     depsReload([
       {
+        name: '@greypan/app-scrollbars',
+        path: '../../packages/app-scrollbars'
+      },
+      {
         name: '@greypan/web-ui',
         path: '../../packages/web-ui'
       },

@@ -67,8 +67,8 @@ html {
 }
 ```
 
-- `scrollbar-color` and `scrollbar-width` are inherited, so this one rule also reaches scroll containers inside
-  component shadow roots.
+- The rule above themes the document scroll container. Component scroll containers set their own
+  `scrollbar-color` from the same token inside their shadow roots, so both stay in sync.
 - Native scrollbars expose no hover or active states; the token only controls the resting thumb colour.
 - `::-webkit-scrollbar` is deliberately not used. Declaring it opts out of the platform's overlay scrollbar and
   reserves a layout gutter, which these scrollbars must not do.

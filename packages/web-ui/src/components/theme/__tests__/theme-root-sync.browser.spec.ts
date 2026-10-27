@@ -99,14 +99,14 @@ describe('theme 根节点 page 色同步（浏览器）', () => {
     applyHtmlScrollbarRule()
     const theme = await mountTheme('light')
 
-    // 自定义属性的计算值按 Chromium 的序列化规则落成短 hex（`rgb(0 0 0 / 0.39)` → `#00000063`）；
-    // 消费方看到的是 `scrollbar-color` 解析后的颜色，两条一起断言。
-    expect(readRootScrollbarHandle()).toBe('#00000063')
+    // 镜像值必须等于主题自己的计算值；自定义属性的序列化形态（Chromium 落成短 hex）不属于契约。
+    // 消费方看到的是 `scrollbar-color` 解析后的颜色，那一层单独断言。
+    expect(readRootScrollbarHandle()).toBe(getComputedStyle(theme).getPropertyValue('--wui-scrollbar-handle').trim())
     expect(getComputedStyle(document.documentElement).scrollbarColor).toContain('rgba(0, 0, 0, 0.39)')
 
     theme.setAttribute('appearance', 'dark')
     await theme.updateComplete
-    expect(readRootScrollbarHandle()).toBe('#ffffff80')
+    expect(readRootScrollbarHandle()).toBe(getComputedStyle(theme).getPropertyValue('--wui-scrollbar-handle').trim())
     expect(getComputedStyle(document.documentElement).scrollbarColor).toContain('rgba(255, 255, 255, 0.5)')
   })
 

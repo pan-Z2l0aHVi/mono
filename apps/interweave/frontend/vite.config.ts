@@ -109,6 +109,7 @@ export default {
       sideEffects: true
     }),
     depsReload([
+      { name: '@greypan/app-scrollbars', path: '../../../packages/app-scrollbars' },
       { name: '@greypan/web-ui', path: '../../../packages/web-ui' },
       { name: '@greypan/js-kit', path: '../../../packages/js-kit' },
       { name: '@greypan/browser-kit', path: '../../../packages/browser-kit' }

@@ -9,9 +9,19 @@ const style = readFileSync('src/style.css', 'utf8')
 // 断言只看声明：注释里为了讲清楚会提到这些属性名，不能被当成声明命中。
 const declarations = style.replace(/\/\*[\s\S]*?\*\//g, '')
 
+// 静止档的权威值在 web-ui 的 theme 里。本包的回退字面量必须与它同值，否则无主题时
+// 覆盖式 scrollbar 会停在旧颜色上；这条跨包不变量只能在这里守。
+const webUiTheme = readFileSync('../web-ui/src/components/theme/style.css', 'utf8')
+
 /** 取一条自定义属性的值。 */
 function varValue(source: string, name: string): string {
   return new RegExp(`--${name}\\s*:\\s*([^;]+)`).exec(source)?.[1]?.trim() ?? ''
+}
+
+/** 取 web-ui theme 浅色分支里的一枚 token。 */
+function webUiLightVar(name: string): string {
+  const block = /:host\(\[appearance='light'\]\)[\s\S]*?\{([\s\S]*?)\}/.exec(webUiTheme)?.[1] ?? ''
+  return varValue(block, name)
 }
 
 describe('应用级 scrollbar 配置', () => {
@@ -51,6 +61,19 @@ describe('应用级 scrollbar 配置', () => {
     expect(varValue(declarations, 'os-handle-bg-active')).toBe('var(--app-scrollbar-handle-active, rgb(0 0 0 / 0.63))')
     expect(declarations).toContain('--app-scrollbar-handle-hover: rgb(255 255 255 / 0.62)')
     expect(declarations).toContain('--app-scrollbar-handle-active: rgb(255 255 255 / 0.74)')
+  })
+
+  it('浅色档显式覆盖两档状态，不靠继承深色值', () => {
+    // 少了浅色块，浅色主题嵌在深色页面里时会继续继承白色 hover / active。
+    expect(declarations).toMatch(/web-ui-theme\[resolved-appearance='light'\]\s*\{/)
+    expect(declarations).toContain('--app-scrollbar-handle-hover: rgb(0 0 0 / 0.51)')
+    expect(declarations).toContain('--app-scrollbar-handle-active: rgb(0 0 0 / 0.63)')
+  })
+
+  it('无主题时的静止档回退值与 web-ui 的浅色 token 一致', () => {
+    // 静止档 token 由 web-ui 定义、本包只读；两边都是手写字面量，改一边漏另一边就会漂移。
+    const fallback = /var\(--wui-scrollbar-handle,\s*(.+)\)$/.exec(varValue(declarations, 'os-handle-bg'))?.[1]?.trim()
+    expect(fallback).toBe(webUiLightVar('wui-scrollbar-handle'))
   })
 
   it('深色档同时覆盖主题子树与文档级 scrollbar', () => {

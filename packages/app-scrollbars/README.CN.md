@@ -12,6 +12,8 @@
 `@greypan/web-ui` 不依赖本包。组件内部的滚动容器使用原生 CSS 与 `web-ui-theme` 提供的
 `--wui-scrollbar-handle`。
 
+`overlayscrollbars` 走 workspace catalog，因此这里打包的结构样式与各 app 使用的运行时实例保持同一版本。
+
 ## 用法
 
 ```ts

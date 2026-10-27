@@ -12,6 +12,9 @@ macOS theme, so there is one copy instead of one per app.
 `@greypan/web-ui` does not depend on it. Components theme their own scroll containers with native CSS and the
 `--wui-scrollbar-handle` token from `web-ui-theme`.
 
+`overlayscrollbars` is resolved through the workspace catalog, so the structural CSS bundled here and the runtime
+instance used by each app stay on the same version.
+
 ## Usage
 
 ```ts

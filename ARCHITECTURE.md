@@ -16,6 +16,8 @@
  React demo      Vue demo       interweave-frontend    interweave (Wails APP)
 ```
 
+`web-ui` 与 `app-scrollbars` 是并列的 app 依赖，彼此没有构建依赖。
+
 ## 1. Workspace 目录索引
 
 | 路径                                                                                                         | 角色                                                                                                               | 先看什么                                                                                                                                                      |

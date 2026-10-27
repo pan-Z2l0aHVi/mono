@@ -65,8 +65,8 @@ html {
 }
 ```
 
-- `scrollbar-color` 与 `scrollbar-width` 都是继承属性，这一条规则也会作用到组件 shadow root 内的
-  滚动容器。
+- 上面这条规则作用于文档级滚动容器；组件内部的滚动容器在 shadow root 里用同一个 token 声明自己的
+  `scrollbar-color`，两处因此保持同色。
 - 原生 scrollbar 没有 hover / active 状态，token 只控制静止态的 thumb 颜色。
 - 刻意不用 `::-webkit-scrollbar`：声明它会让引擎放弃平台的覆盖式 scrollbar、固定占一条布局宽度，
   而这些 scrollbar 不能占宽度。
