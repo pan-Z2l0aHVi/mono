@@ -203,20 +203,21 @@ function open() {
 
 ### Options
 
-| 名称              | 说明                                               | 类型                 | 默认值  |
-| ----------------- | -------------------------------------------------- | -------------------- | ------- |
-| `images`          | 图片列表，至少一项；每项为 `{ src, alt? }`。       | `ImagePreviewItem[]` | —       |
-| `index`           | 初始图片索引，越界时钳制到有效区间。               | `number`             | `0`     |
-| `loop`            | 首尾循环切换。                                     | `boolean`            | `true`  |
-| `target`          | 用于解析最近 theme-owned overlay root 的触发元素。 | `Element`            | —       |
-| `container`       | 显式挂载容器，优先级高于主题作用域。               | `HTMLElement`        | —       |
-| `nav`             | 展示上一张 / 下一张 button。                       | `boolean`            | `false` |
-| `toolbar`         | 展示缩放工具条。                                   | `boolean`            | `false` |
-| `closable`        | 展示关闭 button。                                  | `boolean`            | `false` |
-| `indicator`       | 展示「当前 / 总数」indicator。                     | `boolean`            | `false` |
-| `swipe`           | 1x 下允许左右滑动切图。                            | `boolean`            | `false` |
-| `noScrollLock`    | 打开期间不锁定页面滚动。                           | `boolean`            | `false` |
-| `noBackdropClose` | 点击图片以外的空白区域不关闭。                     | `boolean`            | `false` |
+| 名称              | 说明                                                                               | 类型                     | 默认值  |
+| ----------------- | ---------------------------------------------------------------------------------- | ------------------------ | ------- |
+| `images`          | 图片列表，至少一项；每项为 `{ src, alt? }`。                                       | `ImagePreviewItem[]`     | —       |
+| `index`           | 初始图片索引，越界时钳制到有效区间。                                               | `number`                 | `0`     |
+| `loop`            | 首尾循环切换。                                                                     | `boolean`                | `true`  |
+| `target`          | 用于解析最近 theme-owned overlay root 的触发元素。                                 | `Element`                | —       |
+| `container`       | 显式挂载容器，优先级高于主题作用域。                                               | `HTMLElement`            | —       |
+| `nav`             | 展示上一张 / 下一张 button。                                                       | `boolean`                | `false` |
+| `toolbar`         | 展示缩放工具条。                                                                   | `boolean`                | `false` |
+| `closable`        | 展示关闭 button。                                                                  | `boolean`                | `false` |
+| `indicator`       | 展示「当前 / 总数」indicator。                                                     | `boolean`                | `false` |
+| `swipe`           | 1x 下允许左右滑动切图。                                                            | `boolean`                | `false` |
+| `noScrollLock`    | 打开期间不锁定页面滚动。                                                           | `boolean`                | `false` |
+| `noBackdropClose` | 点击图片以外的空白区域不关闭。                                                     | `boolean`                | `false` |
+| `ariaLabels`      | 内置无障碍名（关闭/前后切换/缩放/重置）的成组覆盖；未提供的 key 回退内置英文文案。 | `ImagePreviewAriaLabels` | —       |
 
 ### Methods
 

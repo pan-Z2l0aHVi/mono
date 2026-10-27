@@ -10,7 +10,7 @@ import glass from '@/classes/glass.css?inline'
 import { oouiClose } from '@/icons'
 import { UserChangeController } from '@/shared/events/user-change'
 import { trapTabKey } from '@/shared/focus/tabbable'
-import { LocaleController, resolveBuiltinLabel } from '@/shared/locale/builtin-labels'
+import { resolveBuiltinLabel } from '@/shared/locale/builtin-labels'
 import { dispatchOpenChangeEvent } from '@/shared/open-state'
 import { defineNativeDialogPresence } from '@/shared/overlay/native-dialog-presence'
 import { defineOpenOverlay, type OpenOverlayHandle } from '@/shared/overlay/open-overlay'
@@ -49,7 +49,7 @@ export class WebUiDialog extends LitElement {
    * `.wui-dialog-content`，视觉交给 Consumer。形态与 `<web-ui-drawer>` 的 `headless` 一致。
    *
    * 该模式没有可自动关联的内置标题，内部原生 dialog 的 accessible name 必须由 Consumer
-   * 用 `dialog-label`（或自绘标题 + 自己的 `aria-labelledby`）提供。
+   * 用 `aria-dialog-label`（或自绘标题 + 自己的 `aria-labelledby`）提供。
    */
   @property({ type: Boolean, reflect: true }) headless = false
 
@@ -57,13 +57,26 @@ export class WebUiDialog extends LitElement {
    * 内部原生 dialog 的 accessible name。`headless` 模式必须由 Consumer 提供，
    * 因为该模式不会渲染可自动关联的内置 chrome 带。
    */
-  @property({ type: String, attribute: 'dialog-label' }) dialogLabel = ''
+  @property({ type: String, attribute: 'aria-dialog-label' }) ariaDialogLabel = ''
 
-  /** 关闭按钮的无障碍名称；默认跟随文档 `lang`。 */
-  @property({ type: String, attribute: 'close-label' }) closeLabel = ''
+  /*
+   * `dialog-label` 自 11.1.0 发布，为已上线消费方保留兼容别名：attribute 仍可写，
+   * 内部转发到 ariaDialogLabel。canonical 名是 aria-dialog-label；两个 attribute 同时
+   * 设置时后处理者生效，文档不推荐这样做。下个 major 移除本别名。
+   */
+  /** @deprecated 用 `aria-dialog-label`。 */
+  @property({ type: String, attribute: 'dialog-label' })
+  get dialogLabel(): string {
+    return this.ariaDialogLabel
+  }
+  set dialogLabel(value: string) {
+    this.ariaDialogLabel = value
+  }
+
+  /** 关闭按钮的无障碍名称；未设置时回退内置英文文案（见 ADR-0029）。 */
+  @property({ type: String, attribute: 'aria-close-label' }) ariaCloseLabel = ''
 
   @state() private _hasHeader = false
-  private readonly _locale = new LocaleController(this)
   private readonly _userOpenChange = new UserChangeController()
 
   /*
@@ -283,7 +296,7 @@ export class WebUiDialog extends LitElement {
       <web-ui-button
         class="wui-dialog-close"
         @click=${this._closeFromUser}
-        aria-label=${resolveBuiltinLabel(this, 'close', this.closeLabel)}
+        aria-label=${resolveBuiltinLabel('close', this.ariaCloseLabel)}
         variant="secondary"
         icon
         size="26"
@@ -296,11 +309,11 @@ export class WebUiDialog extends LitElement {
   override render() {
     const showHeader = this._showHeader
     /*
-     * accessible name：显式 `dialog-label` 优先；否则（非 headless 且带可见时）把原生 dialog
+     * accessible name：显式 `aria-dialog-label` 优先；否则（非 headless 且带可见时）把原生 dialog
      * 的 `aria-labelledby` 指向 chrome 带——与 drawer 同形。headless 模式没有可自动关联的
      * 内置标题，名字留给 Consumer。
      */
-    const dialogLabel = this.dialogLabel.trim()
+    const dialogLabel = this.ariaDialogLabel.trim()
     const dialogLabelledBy = !dialogLabel && !this.headless && showHeader ? 'wui-dialog-heading' : nothing
 
     return html`

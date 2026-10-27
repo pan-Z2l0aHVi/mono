@@ -4,7 +4,7 @@ import '@/components/dialog'
 import { afterEach, describe, expect, it } from 'vite-plus/test'
 
 import type { WebUiDialog } from '@/components/dialog'
-import { waitForFrame, waitForUpdate } from '@/shared/test-utils'
+import { waitForUpdate } from '@/shared/test-utils'
 
 import type { WebUiInput } from '..'
 
@@ -30,35 +30,23 @@ function clearButton(input: WebUiInput): HTMLElement {
   return button!
 }
 
-describe('内置无障碍文案跟随语言（浏览器）', () => {
-  it('中文文档下 input 清除按钮与 dialog 关闭按钮输出中文', async () => {
+describe('内置无障碍文案（浏览器）', () => {
+  it('未设置覆盖时回退内置英文，不随文档 lang 变化', async () => {
     document.documentElement.lang = 'zh-CN'
     const input = await mountInput()
-    expect(clearButton(input).getAttribute('aria-label')).toBe('清除')
+    expect(clearButton(input).getAttribute('aria-label')).toBe('Clear')
 
     const dialog = document.createElement('web-ui-dialog') as WebUiDialog
     dialog.closable = true
     document.body.append(dialog)
     await waitForUpdate(dialog)
     const close = dialog.shadowRoot?.querySelector('web-ui-button.wui-dialog-close')
-    expect(close?.getAttribute('aria-label')).toBe('关闭')
+    expect(close?.getAttribute('aria-label')).toBe('Close')
   })
 
-  it('文档语言运行期切换后重渲染', async () => {
-    document.documentElement.lang = 'en'
+  it('aria-clear-label 覆盖内置英文', async () => {
     const input = await mountInput()
-    expect(clearButton(input).getAttribute('aria-label')).toBe('Clear')
-
-    document.documentElement.lang = 'zh-CN'
-    await waitForFrame()
-    await waitForUpdate(input)
-    expect(clearButton(input).getAttribute('aria-label')).toBe('清除')
-  })
-
-  it('显式 clear-label 覆盖语言默认值', async () => {
-    document.documentElement.lang = 'zh-CN'
-    const input = await mountInput()
-    input.setAttribute('clear-label', '清空输入')
+    input.setAttribute('aria-clear-label', '清空输入')
     await waitForUpdate(input)
     expect(clearButton(input).getAttribute('aria-label')).toBe('清空输入')
   })

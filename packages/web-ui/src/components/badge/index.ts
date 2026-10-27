@@ -5,6 +5,7 @@ import { ifDefined } from 'lit/directives/if-defined.js'
 import { styleMap } from 'lit/directives/style-map.js'
 
 import glass from '@/classes/glass.css?inline'
+import { formatBuiltinLabel, resolveBuiltinLabel } from '@/shared/locale/builtin-labels'
 import { normalizeLiteral, normalizeNumber } from '@/shared/normalize'
 
 import style from './style.css?inline'
@@ -68,6 +69,12 @@ export class WebUiBadge extends LitElement {
   @property({ type: Number, reflect: true, attribute: 'offset-x' }) offsetX = 0
   @property({ type: Number, reflect: true, attribute: 'offset-y' }) offsetY = 0
 
+  /**
+   * 徽标 status 的无障碍名称；设置后点/计数/零三种状态都用它（支持 `{count}` 占位）。
+   * 未设置时回退内置英文文案（见 ADR-0029）。
+   */
+  @property({ type: String, attribute: 'aria-label' }) override ariaLabel: string | null = null
+
   @property({ type: String, reflect: true })
   set placement(value: string) {
     const normalized = normalizeLiteral(value, ALLOWED_PLACEMENTS, 'top-right')
@@ -114,13 +121,15 @@ export class WebUiBadge extends LitElement {
   override render() {
     const showBadge = this.badgeHidden ? false : this.dot ? true : this.count > 0 || this.showZero
     const display = this.dot ? '' : this.count > this.max ? `${this.max}+` : String(this.count)
-    const ariaLabel = this.dot
-      ? 'Unread'
+    const fallback = this.dot
+      ? resolveBuiltinLabel('unread')
       : this.count > 0
-        ? `${this.count} unread messages`
+        ? resolveBuiltinLabel('unreadCount')
         : this.showZero
-          ? 'No unread messages'
+          ? resolveBuiltinLabel('noUnread')
           : undefined
+    const raw = this.ariaLabel?.trim() || fallback
+    const ariaLabel = raw === undefined ? undefined : formatBuiltinLabel(raw, { count: this.count })
     const wrapperClass = { 'badge-wrapper': true, 'badge-wrapper-fixed': this._hasContent }
     const badgeClass = { badge: true, 'badge-dot': this.dot, 'badge-fixed': this._hasContent }
     const badgeStyle = {
