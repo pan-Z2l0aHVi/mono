@@ -1,5 +1,5 @@
 ---
-'@greypan/web-ui': patch
+'@greypan/web-ui': minor
 ---
 
 Keep the dialog and drawer Tab loop inside the dialog instead of letting focus wrap to `<body>`.

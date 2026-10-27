@@ -73,7 +73,7 @@ default slot 整体替换 button 的视觉内容，交互语义仍由组件提�
 
 默认内容是 `web-ui-button` 包着的上箭头 icon；换成一条 primary button 后，出现时机、阈值与滚动行为都不变。
 
-button 的无障碍名称默认来自 slot 内容；默认 icon 内容回退为 `Back to top`。可在宿主设置 `aria-label` 指定名称；设置时应包含可见标签文本。自定义内容本身没有可访问名称时，也应设置宿主 `aria-label`。
+button 的无障碍名称默认来自 slot 内容；默认 icon 内容回退为跟随 `lang` 的名称（中文「回到顶部」，英文 `Back to top`）。可在宿主设置 `aria-label` 指定名称；设置时应包含可见标签文本。自定义内容本身没有可访问名称时，也应设置宿主 `aria-label`。
 
 ```tsx
 import type { WebUiBackTop } from '@greypan/web-ui'
@@ -211,7 +211,7 @@ onMounted(() => {
 
 `scrollTarget` 为 `window` 时 button 固定在视口角落，四个方向的偏移由 `--wui-back-top-top/right/bottom/left` 控制；为 `HTMLElement` 时需将元素放置在容器内部，button 通过 `position: sticky` 悬浮于容器底部角落，水平偏移沿用 `--wui-back-top-left/right`，垂直偏移使用 `--wui-back-top-bottom`，`--wui-back-top-top` 不参与容器定位。
 
-角色：`button`，默认内容无障碍名称为 `Back to top`；自定义内容时名称来自 slot，宿主 `aria-label` 可显式指定名称。键盘 Enter 与 Space 都触发 back top。
+角色：`button`，默认内容无障碍名称跟随 `lang`（中文「回到顶部」，英文 `Back to top`）；自定义内容时名称来自 slot，宿主 `aria-label` 可显式指定名称。键盘 Enter 与 Space 都触发 back top。
 
 ### CSS Custom Properties
 
