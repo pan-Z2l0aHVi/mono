@@ -88,9 +88,8 @@ describe('WebUiDialog 组件（浏览器）', () => {
     component.append(button)
 
     /*
-     * 「panel 自身不夺焦」要判的是开启那一刻焦点去了哪，所以焦点必须从一个宿主之外的起点开始。
-     * 原写法先 `dialog.focus()` 再 `button.focus()`，然后断言 activeElement 是 button——两个结论
-     * 都由测试自己写下，被断言的那件事（开启时的焦点归属）从头到尾没被触发过。
+     * 「panel 自身不夺焦」要判的是开启那一刻焦点去了哪，所以焦点必须从一个宿主之外的起点开始：
+     * 先 focus 一个宿主之外的 button，再打开 dialog，断言 activeElement 是打开那一刻真正被聚焦的节点。
      */
     const outside = document.createElement('button')
     outside.textContent = '外部'

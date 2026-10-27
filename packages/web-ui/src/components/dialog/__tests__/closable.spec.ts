@@ -46,7 +46,7 @@ describe('WebUiDialog closable', () => {
     await waitForUpdate(el)
 
     // closeButton 只认「非空 aria-label 的元素」，所以这条 truthy 已经把可访问名那半
-    // 一起判掉了；它是不是真的可按由下面两条点击用例负责，这里不再钉标签名。
+    // 一起判掉了；它是不是真的可按由下面两条点击用例负责，这里不钉标签名。
     expect(closeButton(el)).toBeTruthy()
     cleanupElement(el)
   })
@@ -175,6 +175,24 @@ describe('WebUiDialog headless', () => {
     el.headless = false
     await flushSlotChange(el)
     expect(defaultSlotCount(el)).toBe(1)
+    cleanupElement(el)
+  })
+
+  /*
+   * headless 不渲染内置 chrome 带：header / footer 槽一概不存在，heading 也一并失效。
+   *
+   * 判据落在公开的组合面上——槽是调用方写内容的入口，槽不在场就意味着消费者的 header /
+   * footer 内容不参与渲染；heading 的文字则不出现在组件里任何一个地方。
+   */
+  it('headless 不渲染内置 chrome 带：header / footer 槽与 heading 都不在场', async () => {
+    const el = createDialog('<span slot="header">槽标题</span><section id="body">自定义主体</section>')
+    el.heading = '属性标题'
+    el.headless = true
+    await flushSlotChange(el)
+
+    expect(el.shadowRoot?.querySelector('slot[name="header"]')).toBeNull()
+    expect(el.shadowRoot?.querySelector('slot[name="footer"]')).toBeNull()
+    expect(el.shadowRoot?.textContent).not.toContain('属性标题')
     cleanupElement(el)
   })
 })

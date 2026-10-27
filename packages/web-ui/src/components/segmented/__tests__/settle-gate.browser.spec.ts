@@ -32,25 +32,26 @@ afterEach(() => document.body.replaceChildren())
 const EPS = 0.5
 
 /*
+ * indicator 移动时长。用例自己把它写在宿主上：组件的落定窗口读的是这个 token
+ * （`segmented/index.ts` 的 `triggerDuration()`），CSS 里 left / width 那两条过渡读的也是
+ * 同一个，两边因此永远同值——不在测试里另抄一份数字，否则 token 一改就成了第二个真相来源。
+ */
+const TRIGGER_DURATION = '160ms'
+
+/*
  * 「飞行窗口过期」只能靠时间判定：窗口是组件内部一个 `setTimeout`，没有公开观测面，而
  * 直接落定的分支根本没有过渡可等（等动画收敛会在约两帧后返回，比窗口还短）。
  *
- * 时长取 indicator 上 `left` 那条过渡的计算值，不在测试里抄一份 160：组件的落定窗口与
- * CSS 的过渡按契约同值（`segmented/index.ts` 的 `triggerDuration` 读同一个 token、兜底同
- * 一个数）。抄死了就成了第二个真相来源，token 一改，窗口还没过期也照样「等够」。
+ * 时长从宿主上的 `--wui-duration-trigger` 读，而不是从 indicator 的计算样式里读过渡时长：
+ * 落定门生效时组件会把 left / width 从过渡列表里摘掉（style.css 的 `.is-settling`），
+ * 那时读过渡时长只会读到剩下的几条按压过渡，量出来的窗口与组件自己的窗口无关。
  * 系数 1.6 是给真实计时器漂移留的余量，不参与契约。
  */
-function settleWindowMs(indicator: HTMLElement): number {
-  const styles = getComputedStyle(indicator)
-  const index = styles.transitionProperty
-    .split(',')
-    .map(name => name.trim())
-    .indexOf('left')
-  const duration = parseDuration(index === -1 ? '' : (styles.transitionDuration.split(',')[index] ?? ''))
+function settleWindowMs(segmented: HTMLElement): number {
+  const raw = getComputedStyle(segmented).getPropertyValue('--wui-duration-trigger').trim()
+  const duration = parseDuration(raw)
   if (duration === null || duration <= 0) {
-    throw new Error(
-      `indicator has no usable "left" transition: property="${styles.transitionProperty}" duration="${styles.transitionDuration}"`
-    )
+    throw new Error(`宿主上读不到可用的 --wui-duration-trigger：raw="${raw}"`)
   }
   return Math.ceil(duration * 1.6)
 }
@@ -68,6 +69,7 @@ async function mount(): Promise<{
 }> {
   const segmented = document.createElement('web-ui-segmented') as WebUiSegmented
   segmented.value = 'a'
+  segmented.style.setProperty('--wui-duration-trigger', TRIGGER_DURATION)
   const triggers = (['a', 'b', 'c'] as const).map(value => {
     const trigger = document.createElement('web-ui-segmented-trigger') as WebUiSegmentedTrigger
     trigger.value = value
@@ -170,7 +172,7 @@ describe('WebUiSegmented indicator 落定门（浏览器）', () => {
     // 先来一次快速连点（打开落定门），等窗口过期。
     await tap(segmented, triggers[1])
     await tap(segmented, triggers[2])
-    await new Promise(resolve => setTimeout(resolve, settleWindowMs(indicator)))
+    await new Promise(resolve => setTimeout(resolve, settleWindowMs(segmented)))
     await sampleLeft(indicator)
 
     // 再切一次：这一趟必须走完整过渡。

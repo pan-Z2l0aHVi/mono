@@ -12,7 +12,7 @@ import { resolveColor, waitForUpdate } from '@/shared/test-utils'
  * 组件把它落到盒、图形、字号、颜色与留白上。
  *
  * 每条用例的期望值都来自用例自己写进去的输入，不抄样式表里的默认字面量——默认值是设计
- * 值，改版时该跟着变的是它们，不是这份契约。默认色取哪枚主题 token 由倒数第二条用例守。
+ * 值，改版时该跟着变的是它们，不是这份契约。默认色取哪枚主题 token 由最后一条用例守。
  */
 afterEach(() => document.body.replaceChildren())
 
@@ -137,11 +137,12 @@ describe('web-ui-empty 的 CSS 变量契约（浏览器）', () => {
     expect(computed(el, '.empty-action', 'marginTop')).toBe('4px')
   })
 
-  it('标题与描述的默认色取主题的 text / secondary，两行不能同色', async () => {
+  it('默认色分别取主题的 text / secondary：标题取 text，描述与图形取 secondary', async () => {
     const el = await mountEmpty()
 
     expect(computed(el, '.empty-title', 'color')).toBe(themeColor(el, '--wui-color-text'))
     expect(computed(el, '.empty-description', 'color')).toBe(themeColor(el, '--wui-color-text-secondary'))
+    expect(computed(el, '.empty-icon', 'color')).toBe(themeColor(el, '--wui-color-text-secondary'))
     expect(computed(el, '.empty-title', 'color')).not.toBe(computed(el, '.empty-description', 'color'))
   })
 })

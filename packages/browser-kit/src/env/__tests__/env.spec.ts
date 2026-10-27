@@ -15,7 +15,7 @@ describe('env 测试', () => {
    * （index.ts:44-46），那条式子对任意 UA 恒成立，改坏移动判定也红不了。而 env 在模块作用域
    * 快照 ua（见下面那条用例），运行中改写 navigator.userAgent 也拿不到第二个实例，于是这里
    * 改为按本包 browser-mode 环境（桌面 Chromium）应该走的那一侧，把两个取值各判一次：移动
-   * 判定把测试 UA 认成移动设备、或 `isDesktop` 不再等于移动判定的反面，都会在这里变红。
+   * 判定把测试 UA 认成移动设备、或 `isDesktop` 不等于移动判定的反面，都会在这里变红。
    */
   it('桌面 Chromium 环境走桌面分支：isMobile 假、isDesktop 真', () => {
     // 环境前提：这条用例判的是「桌面 UA 落桌面分支」，runner 一旦换成移动 UA 就该先在这里说清楚

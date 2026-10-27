@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, it } from 'vite-plus/test'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 
 import type { ThemeAppearance } from '..'
 import { WebUiTheme } from '..'
@@ -248,5 +248,21 @@ describe('WebUiTheme 根节点 page 色同步', () => {
     theme.appearance = 'dark'
     await theme.updateComplete
     expect(readRootPage()).toBe(FIXTURE_PAGE)
+  })
+
+  /*
+   * 同步只写「值变了」的 token：同值重写会让 documentElement 每次主题更新都做一次无谓的
+   * 样式失效。这里数的就是那次写入——值没变时不该再写。
+   */
+  it('值未变化时不重复写入 documentElement', async () => {
+    const theme = await mountTheme('light')
+    const setter = vi.spyOn(document.documentElement.style, 'setProperty')
+    try {
+      theme.motion = 'reduced'
+      await theme.updateComplete
+      expect(setter).not.toHaveBeenCalledWith('--wui-color-page', expect.anything())
+    } finally {
+      setter.mockRestore()
+    }
   })
 })

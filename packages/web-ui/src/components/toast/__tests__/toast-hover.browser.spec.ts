@@ -52,9 +52,8 @@ function createAwayTarget(): HTMLElement {
 
 // ── 可观察状态 helpers ──────────────────────────────────────────────
 // 只看公开面：`visible` / `hoverPaused` 与 toast 是否还在 DOM 里。内部计时字段
-// （remaining / close timer / deadline）不是契约，去掉它们后仍能守住「悬停暂停、
-// 移开后恢复自动关闭」这一用户可见行为；精确到毫秒的「续跑 vs 重启」没有公开观测口，
-// 不再作为断言主题。
+// （remaining / close timer / deadline）不是契约——用户能观察到的是「悬停暂停、
+// 移开后恢复自动关闭」，而精确到毫秒的「续跑 vs 重启」没有公开观测口。
 
 afterEach(() => {
   toast._reset()

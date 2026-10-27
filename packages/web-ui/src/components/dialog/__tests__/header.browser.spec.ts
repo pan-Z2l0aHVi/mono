@@ -123,4 +123,22 @@ describe('WebUiDialog chrome 带（浏览器几何）', () => {
     expect(desc.scrollTop).toBeGreaterThan(0)
     expect(band.getBoundingClientRect().top).toBeCloseTo(before, 1)
   })
+
+  /*
+   * headless 不渲染内置 chrome 带，用户后果是消费者写在 header / footer 槽里的内容不显示，
+   * 卡片里只剩消费者自己的正文。判据取渲染结果（有没有布局盒），不取内部容器类名。
+   */
+  it('headless 下消费者写在 header / footer 槽里的内容不显示', async () => {
+    const component = build('<span slot="header">槽标题</span><span slot="footer">槽操作</span><p>正文</p>')
+    component.headless = true
+    await openAndSettle(component)
+
+    // 正文照常在卡片里：判据不是「整张卡片空着」。
+    const content = component.querySelector('p') as HTMLElement
+    expect(content.getBoundingClientRect().height).toBeGreaterThan(0)
+
+    for (const node of component.querySelectorAll<HTMLElement>('[slot]')) {
+      expect(node.getClientRects().length, `headless 下 ${node.getAttribute('slot')} 槽的内容不该显示`).toBe(0)
+    }
+  })
 })

@@ -40,22 +40,6 @@ const registered = new Set<HTMLElement>()
 let schemeQuery: MediaQueryList | undefined
 const schemeSubscribers = new Set<() => void>()
 
-/*
- * dev 期测试钩子：登记表尺寸。
- *
- * 「组件卸载后忘了撤销登记」是这层唯一的结构性风险，而 `registered` 无法从公开面观察——
- * 调用方只看见 documentElement 上的值，看不到注册表。有了它，泄漏在测试里是一个可直接断言的
- * 数字。`import.meta.env.DEV` 是编译期常量，生产构建里整段消失。
- */
-declare global {
-  // eslint-disable-next-line no-var
-  var __webUiThemeRootSyncCount: () => number
-}
-
-if (import.meta.env.DEV) {
-  globalThis.__webUiThemeRootSyncCount = () => registered.size
-}
-
 function isRootSyncOwner(host: HTMLElement): boolean {
   return registered.values().next().value === host
 }
