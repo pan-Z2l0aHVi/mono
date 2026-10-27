@@ -7,6 +7,8 @@
         sidebar-min-width="160px"
         sidebar-max-width="360px"
         @sidebar-width-change="width = $event.detail.width"
+        :sidebarOpen="open"
+        @sidebar-open-change="open = $event.detail.open"
       >
         <nav slot="sidebar" class="flex h-full min-h-0 flex-col gap-1 overflow-y-auto p-2">
           <span class="rounded-md p-2 text-sm">Overview</span>
@@ -28,4 +30,5 @@
 import { ref } from 'vue'
 
 const width = ref('240px')
+const open = ref(false)
 </script>

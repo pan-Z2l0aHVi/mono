@@ -2,6 +2,7 @@ import { useState } from 'react'
 
 export default function Demo() {
   const [collapsed, setCollapsed] = useState(false)
+  const [open, setOpen] = useState(false)
 
   return (
     <div className="flex flex-col gap-3">
@@ -9,6 +10,8 @@ export default function Demo() {
         <web-ui-layout
           sidebarCollapsed={collapsed}
           onsidebar-collapsed-change={event => setCollapsed(event.detail.collapsed)}
+          sidebarOpen={open}
+          onsidebar-open-change={event => setOpen(event.detail.open)}
         >
           <nav slot="sidebar" className="flex h-full min-h-0 flex-col gap-1 overflow-y-auto p-2">
             <span className="rounded-md p-2 text-sm">Overview</span>

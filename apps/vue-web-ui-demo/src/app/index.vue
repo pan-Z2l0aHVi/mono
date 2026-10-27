@@ -49,6 +49,8 @@ const themeAppearance = ref(getInitialThemeAppearance())
 const themeMotion = ref(getInitialThemeMotion())
 const bannerVisible = ref(true)
 const topToastBottom = ref(0)
+// 桌面端关闭按钮在 banner 右端，与默认 top-right toast 的位置重叠：按 toast 实际左缘给它让位。
+const topRightToastInset = ref(0)
 let stopObservingToastBounds: (() => void) | undefined
 const sidebarCollapsed = ref(false)
 const sidebarOpen = ref(false)
@@ -134,6 +136,7 @@ function observeToastBounds() {
   let measureFrame: number | undefined
   const updateToastBottom = () => {
     let bottom = 0
+    let rightInset = 0
     for (const toast of topToasts) {
       const bounds = toast.getBoundingClientRect()
       const clip = toast.parentElement?.getBoundingClientRect()
@@ -141,9 +144,14 @@ function observeToastBounds() {
       // 堆栈可滚动，不能给被容器或视口裁掉的 toast 预留空间。
       const visibleBottom = Math.min(bounds.bottom, clip.bottom, window.innerHeight)
       const visibleTop = Math.max(bounds.top, clip.top, 0)
-      if (visibleBottom > visibleTop) bottom = Math.max(bottom, visibleBottom)
+      if (visibleBottom <= visibleTop) continue
+      bottom = Math.max(bottom, visibleBottom)
+      if (toast.position === 'top-right') {
+        rightInset = Math.max(rightInset, window.innerWidth - Math.max(bounds.left, 0) + 8)
+      }
     }
     topToastBottom.value = bottom
+    topRightToastInset.value = rightInset
   }
   // 留到下一帧更新 banner，避免在 ResizeObserver 派发中再次触发布局尺寸通知。
   const scheduleMeasurement = () => {
@@ -253,42 +261,41 @@ onMounted(async () => {
 interface NavItem {
   path: string
   label: string
-  shortLabel: string
 }
 
 const navItems: NavItem[] = [
-  { path: '/home', label: 'Home', shortLabel: 'Ho' },
-  { path: '/components/avatar', label: 'Avatar', shortLabel: 'Av' },
-  { path: '/components/badge', label: 'Badge', shortLabel: 'Ba' },
-  { path: '/components/button', label: 'Button', shortLabel: 'Bu' },
-  { path: '/components/icon', label: 'Icon', shortLabel: 'Ic' },
-  { path: '/components/input', label: 'Input', shortLabel: 'In' },
-  { path: '/components/textarea', label: 'Textarea', shortLabel: 'Tx' },
-  { path: '/components/editable-text', label: 'EditableText', shortLabel: 'Et' },
-  { path: '/components/theme', label: 'Theme', shortLabel: 'Th' },
-  { path: '/components/input-number', label: 'InputNumber', shortLabel: 'Nu' },
-  { path: '/components/select', label: 'Select', shortLabel: 'Se' },
-  { path: '/components/autocomplete', label: 'Autocomplete', shortLabel: 'Ac' },
-  { path: '/components/dropdown', label: 'Dropdown', shortLabel: 'Dd' },
-  { path: '/components/collapse', label: 'Collapse', shortLabel: 'Cl' },
-  { path: '/components/dialog', label: 'Dialog', shortLabel: 'Di' },
-  { path: '/components/drawer', label: 'Drawer', shortLabel: 'Dr' },
-  { path: '/components/image-preview', label: 'ImagePreview', shortLabel: 'Ip' },
-  { path: '/components/empty', label: 'Empty', shortLabel: 'Em' },
-  { path: '/components/middle-ellipsis', label: 'MiddleEllipsis', shortLabel: 'Me' },
-  { path: '/components/tooltip', label: 'Tooltip', shortLabel: 'Tp' },
-  { path: '/components/switch', label: 'Switch', shortLabel: 'Sw' },
-  { path: '/components/slider', label: 'Slider', shortLabel: 'Sl' },
-  { path: '/components/radio', label: 'Radio', shortLabel: 'Ra' },
-  { path: '/components/checkbox', label: 'Checkbox', shortLabel: 'Ch' },
-  { path: '/components/segmented', label: 'Segmented', shortLabel: 'Sg' },
-  { path: '/components/spinner', label: 'Spinner', shortLabel: 'Sp' },
-  { path: '/components/popover', label: 'Popover', shortLabel: 'Po' },
-  { path: '/components/context-menu', label: 'ContextMenu', shortLabel: 'Cm' },
-  { path: '/components/toast', label: 'Toast', shortLabel: 'To' },
-  { path: '/components/svg-draw-lines', label: 'SVGDrawLines', shortLabel: 'Sd' },
-  { path: '/components/back-top', label: 'BackTop', shortLabel: 'Bt' },
-  { path: '/components/layout', label: 'Layout', shortLabel: 'Ly' }
+  { path: '/home', label: 'Home' },
+  { path: '/components/avatar', label: 'Avatar' },
+  { path: '/components/badge', label: 'Badge' },
+  { path: '/components/button', label: 'Button' },
+  { path: '/components/icon', label: 'Icon' },
+  { path: '/components/input', label: 'Input' },
+  { path: '/components/textarea', label: 'Textarea' },
+  { path: '/components/editable-text', label: 'EditableText' },
+  { path: '/components/theme', label: 'Theme' },
+  { path: '/components/input-number', label: 'InputNumber' },
+  { path: '/components/select', label: 'Select' },
+  { path: '/components/autocomplete', label: 'Autocomplete' },
+  { path: '/components/dropdown', label: 'Dropdown' },
+  { path: '/components/collapse', label: 'Collapse' },
+  { path: '/components/dialog', label: 'Dialog' },
+  { path: '/components/drawer', label: 'Drawer' },
+  { path: '/components/image-preview', label: 'ImagePreview' },
+  { path: '/components/empty', label: 'Empty' },
+  { path: '/components/middle-ellipsis', label: 'MiddleEllipsis' },
+  { path: '/components/tooltip', label: 'Tooltip' },
+  { path: '/components/switch', label: 'Switch' },
+  { path: '/components/slider', label: 'Slider' },
+  { path: '/components/radio', label: 'Radio' },
+  { path: '/components/checkbox', label: 'Checkbox' },
+  { path: '/components/segmented', label: 'Segmented' },
+  { path: '/components/spinner', label: 'Spinner' },
+  { path: '/components/popover', label: 'Popover' },
+  { path: '/components/context-menu', label: 'ContextMenu' },
+  { path: '/components/toast', label: 'Toast' },
+  { path: '/components/svg-draw-lines', label: 'SVGDrawLines' },
+  { path: '/components/back-top', label: 'BackTop' },
+  { path: '/components/layout', label: 'Layout' }
 ]
 
 // active 底色浅色取设计给定的 #d5d7d7；深色不跟——sidebar 在深色是 #2c2c2e，亮灰会读成一条高亮带，仍走 control 档。
@@ -323,13 +330,14 @@ function isNavActive(path: string) {
         <div
           v-if="bannerVisible || topToastBottom > 0"
           slot="banner"
-          class="grid grid-cols-[24px_minmax(0,1fr)_24px] items-center gap-2 bg-(--wui-color-accent) px-4 py-2 text-sm text-(--wui-color-on-accent)"
+          class="relative grid grid-cols-[24px_minmax(0,1fr)_24px] items-center gap-2 bg-(--wui-color-accent) px-4 py-2 text-sm text-(--wui-color-on-accent)"
           :class="{ 'invisible pointer-events-none': !bannerVisible }"
           :aria-hidden="!bannerVisible"
           :style="{ minHeight: `${topToastBottom}px` }"
         >
           <web-ui-button
-            class="mobile:-ml-4"
+            class="absolute top-1/2 -translate-y-1/2 mobile:left-0"
+            :style="{ right: isMobileSidebarViewport ? 'auto' : `${16 + topRightToastInset}px` }"
             size="24"
             icon
             variant="ghost"
@@ -338,28 +346,28 @@ function isNavActive(path: string) {
           >
             <web-ui-icon class="text-(--wui-color-on-accent)" :icon="lucideX" :size="16"></web-ui-icon>
           </web-ui-button>
-          <span class="text-center">🎉 Welcome to the web-ui component library!</span>
+          <span class="col-start-2 text-center">🎉 欢迎使用 web-ui 组件库！</span>
         </div>
         <div slot="header" class="flex h-full w-full items-center justify-end gap-4 px-4 py-2 mobile:w-screen">
           <web-ui-select
             :value="themeMotion"
             class="[--wui-input-width:120px]"
-            aria-label="Global motion"
+            aria-label="全局动效"
             @change="updateThemeMotion"
           >
-            <web-ui-option value="full" label="Full motion">Full motion</web-ui-option>
-            <web-ui-option value="reduced" label="Reduced motion">Reduced motion</web-ui-option>
-            <web-ui-option value="system" label="Follow system">Follow system</web-ui-option>
+            <web-ui-option value="full" label="完整动效">完整动效</web-ui-option>
+            <web-ui-option value="reduced" label="减弱动效">减弱动效</web-ui-option>
+            <web-ui-option value="system" label="跟随系统">跟随系统</web-ui-option>
           </web-ui-select>
           <web-ui-select
             :value="themeAppearance"
             class="[--wui-input-width:120px]"
-            aria-label="Global theme"
+            aria-label="全局主题"
             @change="updateThemeAppearance"
           >
-            <web-ui-option value="light" label="Light">Light</web-ui-option>
-            <web-ui-option value="dark" label="Dark">Dark</web-ui-option>
-            <web-ui-option value="system" label="Follow system">Follow system</web-ui-option>
+            <web-ui-option value="light" label="浅色">浅色</web-ui-option>
+            <web-ui-option value="dark" label="深色">深色</web-ui-option>
+            <web-ui-option value="system" label="跟随系统">跟随系统</web-ui-option>
           </web-ui-select>
         </div>
         <OverlayScrollbarsComponent
@@ -367,9 +375,9 @@ function isNavActive(path: string) {
           ref="navSidebar"
           :options="webUiScrollbarsOptions"
           class="relative z-20 h-full min-h-0 overflow-y-auto p-2 mobile:px-0"
-          aria-label="App navigation"
+          aria-label="应用导航"
         >
-          <nav class="grid gap-1" aria-label="Main navigation">
+          <nav class="grid gap-1" aria-label="主导航">
             <RouterLink
               v-for="item in navItems"
               :key="item.path"
@@ -385,8 +393,8 @@ function isNavActive(path: string) {
               :title="navCollapsed ? item.label : undefined"
               @click="sidebarOpen = false"
             >
-              <span :class="navCollapsed ? 'w-full text-center text-sm' : 'min-w-0 flex-1 truncate text-sm'">
-                {{ navCollapsed ? item.shortLabel : item.label }}
+              <span :class="navCollapsed ? 'w-full truncate text-center text-sm' : 'min-w-0 flex-1 truncate text-sm'">
+                {{ item.label }}
               </span>
             </RouterLink>
           </nav>
