@@ -39,8 +39,7 @@ vi.mock('@/generated/en/examples', async importOriginal => {
   }
 })
 
-it('通过全局选择器切换壳、文档、API、运行示例与双框架源码，并保留路由和主题', async () => {
-  await loadDemoLocale('zh-CN', false)
+async function mountShell(path: string) {
   const router = createRouter({
     history: createMemoryHistory(),
     routes: [
@@ -49,23 +48,31 @@ it('通过全局选择器切换壳、文档、API、运行示例与双框架源�
       { path: '/:pathMatch(.*)*', component: Home }
     ]
   })
-  await router.push('/home')
+  await router.push(path)
   const wrapper = mount(AppShell, { attachTo: document.body, global: { plugins: [router, createHead()] } })
-  async function select(label: string, value: string) {
-    const host = document.querySelector<WebUiSelect>(`web-ui-select[aria-label="${label}"]`)!
-    await host.updateComplete
-    const trigger = host.shadowRoot!.querySelector<HTMLElement>('[role="combobox"]')!
-    await userEvent.click(trigger)
-    await vi.waitFor(() => expect(trigger.getAttribute('aria-expanded')).toBe('true'))
-    await userEvent.click(host.querySelector<HTMLElement>(`web-ui-option[value="${value}"]`)!)
-    await vi.waitFor(() => expect(host.value).toBe(value))
-    await nextTick()
-  }
-  const textOf = (html: string) => {
-    const el = document.createElement('div')
-    el.innerHTML = html
-    return el.textContent
-  }
+  return { router, wrapper }
+}
+
+async function select(label: string, value: string) {
+  const host = document.querySelector<WebUiSelect>(`web-ui-select[aria-label="${label}"]`)!
+  await host.updateComplete
+  const trigger = host.shadowRoot!.querySelector<HTMLElement>('[role="combobox"]')!
+  await userEvent.click(trigger)
+  await vi.waitFor(() => expect(trigger.getAttribute('aria-expanded')).toBe('true'))
+  await userEvent.click(host.querySelector<HTMLElement>(`web-ui-option[value="${value}"]`)!)
+  await vi.waitFor(() => expect(host.value).toBe(value))
+  await nextTick()
+}
+
+function textOf(html: string) {
+  const el = document.createElement('div')
+  el.innerHTML = html
+  return el.textContent
+}
+
+it('首页通过全局选择器切换壳文案，更新偏好并保留路由和主题', async () => {
+  await loadDemoLocale('zh-CN', false)
+  const { router, wrapper } = await mountShell('/home')
   try {
     await select('全局主题', 'dark')
     await select('全局语言', 'en')
@@ -74,6 +81,17 @@ it('通过全局选择器切换壳、文档、API、运行示例与双框架源�
     expect(localStorage.getItem('locale')).toBe('en')
     expect(router.currentRoute.value.path).toBe('/home')
     expect(wrapper.find('web-ui-theme').element as WebUiTheme).toHaveProperty('appearance', 'dark')
+  } finally {
+    wrapper.unmount()
+    document.body.innerHTML = ''
+    localStorage.clear()
+  }
+})
+
+it('组件页切换文档、API、运行示例与双框架源码，保留当前路由和主题', async () => {
+  const { router, wrapper } = await mountShell('/home')
+  const appearance = (wrapper.find('web-ui-theme').element as WebUiTheme).appearance
+  try {
     await router.push('/components/button')
     const en = englishDocs.find(doc => doc.component === 'button')!
     await vi.waitFor(() => expect(wrapper.find('[data-example-intro]').element.textContent).toBe(textOf(en.introHtml)))
@@ -111,8 +129,10 @@ it('通过全局选择器切换壳、文档、API、运行示例与双框架源�
     await vi.waitFor(() => expect(source()).toContain('<template>'))
     expect(source()).toContain('默认 36')
     expect(buttonDoc.text()).toContain('名称')
+    expect(document.documentElement.lang).toBe('zh-CN')
+    expect(localStorage.getItem('locale')).toBe('zh-CN')
     expect(router.currentRoute.value.path).toBe('/components/button')
-    expect(wrapper.find('web-ui-theme').element as WebUiTheme).toHaveProperty('appearance', 'dark')
+    expect(wrapper.find('web-ui-theme').element as WebUiTheme).toHaveProperty('appearance', appearance)
   } finally {
     wrapper.unmount()
     document.body.innerHTML = ''
