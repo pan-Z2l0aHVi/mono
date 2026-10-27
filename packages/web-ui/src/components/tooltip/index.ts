@@ -1,10 +1,11 @@
 import type { Placement } from '@floating-ui/dom'
-import { html, LitElement, unsafeCSS } from 'lit'
+import { html, LitElement, nothing, unsafeCSS } from 'lit'
 import { customElement, property } from 'lit/decorators.js'
 
 import overlayMotion from '@/assets/overlay-motion.css?inline'
 import glass from '@/classes/glass.css?inline'
 import { UserChangeController } from '@/shared/events/user-change'
+import { findFocusTarget } from '@/shared/focus/tabbable'
 import { normalizeLiteral, normalizeNumber } from '@/shared/normalize'
 import { dispatchOpenChangeEvent } from '@/shared/open-state'
 import { defineAnchoredPanel } from '@/shared/overlay/anchored-panel'
@@ -15,6 +16,7 @@ import { defineOverlayPortal, type OverlayContainer, type OverlayPortal } from '
 import style from './style.css?inline'
 
 let visibleTooltipCount = 0
+let tooltipIdCounter = 0
 
 @customElement('web-ui-tooltip')
 export class WebUiTooltip extends LitElement {
@@ -78,6 +80,14 @@ export class WebUiTooltip extends LitElement {
   private readonly _userOpenChange = new UserChangeController()
   private _shouldOpenInstantly = true
   private _portal?: OverlayPortal
+  private readonly _panelId = `wui-tooltip-panel-${++tooltipIdCounter}`
+  /*
+   * 面板在 shadow DOM 里，而 trigger 的可聚焦元素可能在更内层的 shadow root：
+   * `aria-describedby` 的 IDREF 无法跨 shadow 边界解析，面板 id 因此只能供消费者自行引用，
+   * 读屏可达性由 `aria-description` 承担（打开时写入、关闭时按原值还原）。
+   * 保存原值是为了不吞掉消费者自己写在 trigger 上的描述。
+   */
+  private readonly _descriptionTargets = new Map<HTMLElement, string | null>()
   /**
    * 实例作用域的帧事务入口。`requestClose` 是关闭入口的唯一接线：panel 的
    * `arbitration: 'none'` 让 tooltip 在组合树里但永不成候选，因此这条**现在不会被
@@ -127,6 +137,7 @@ export class WebUiTooltip extends LitElement {
     // 停止帧调度；撤销登记由 _panel.dispose() 完成（handle 归它持有）。
     this._overlay.suspend()
     this._syncVisibleTooltipCount(false)
+    this._clearDescription()
     this._panel.dispose()
   }
 
@@ -134,6 +145,7 @@ export class WebUiTooltip extends LitElement {
     if (this.open) {
       this._openOverlay(this._shouldOpenInstantly)
       this._shouldOpenInstantly = true
+      this._syncDescription()
     }
   }
 
@@ -159,13 +171,18 @@ export class WebUiTooltip extends LitElement {
         clearTimeout(this._hideTimer)
         this._openOverlay(this._shouldOpenInstantly)
         this._shouldOpenInstantly = true
+        this._syncDescription()
       } else {
         this._overlay.invalidate()
+        this._clearDescription()
         void this._closeOverlay()
       }
       if (this._userOpenChange.consume()) this._dispatchChange(this.open)
     }
-    if (changed.has('content')) this._syncPortalContent()
+    if (changed.has('content')) {
+      this._syncPortalContent()
+      if (this.open) this._syncDescription()
+    }
   }
 
   private _onPointerEnter = (e: PointerEvent) => {
@@ -235,6 +252,7 @@ export class WebUiTooltip extends LitElement {
       portal.panel.append(text)
     } else portal.moveContent(Array.from(this.querySelectorAll('[slot="content"]')))
     portal.panel.setAttribute('role', 'tooltip')
+    portal.panel.id = this._panelId
     return portal
   }
 
@@ -268,6 +286,69 @@ export class WebUiTooltip extends LitElement {
     dispatchOpenChangeEvent(this, open)
   }
 
+  private _getDescriptionTargets(): HTMLElement[] {
+    const slot = this.shadowRoot?.querySelector<HTMLSlotElement>('.tooltip-trigger > slot')
+    const targets: HTMLElement[] = []
+    for (const element of slot?.assignedElements({ flatten: true }) ?? []) {
+      if (!(element instanceof HTMLElement)) continue
+      targets.push(findFocusTarget(element) ?? element)
+    }
+    return targets
+  }
+
+  private _readDescription(): string {
+    if (this.content) return this.content.trim()
+    const portalText = this.portal ? (this._portal?.panel.textContent ?? '').trim() : ''
+    if (portalText) return portalText
+    const slot = this.shadowRoot?.querySelector<HTMLSlotElement>('.tooltip-panel > slot[name="content"]')
+    return (slot?.assignedNodes({ flatten: true }) ?? [])
+      .map(node => node.textContent ?? '')
+      .join('')
+      .trim()
+  }
+
+  private _syncDescription() {
+    if (!this.open) {
+      this._clearDescription()
+      return
+    }
+    const description = this._readDescription()
+    if (!description) {
+      this._clearDescription()
+      return
+    }
+    const targets = new Set(this._getDescriptionTargets())
+    for (const [target, previous] of this._descriptionTargets) {
+      if (targets.has(target)) continue
+      this._restoreDescription(target, previous)
+      this._descriptionTargets.delete(target)
+    }
+    for (const target of targets) {
+      if (!this._descriptionTargets.has(target)) {
+        this._descriptionTargets.set(target, target.getAttribute('aria-description'))
+      }
+      target.setAttribute('aria-description', description)
+    }
+  }
+
+  private _clearDescription() {
+    for (const [target, previous] of this._descriptionTargets) this._restoreDescription(target, previous)
+    this._descriptionTargets.clear()
+  }
+
+  private _restoreDescription(target: HTMLElement, previous: string | null) {
+    if (previous === null) target.removeAttribute('aria-description')
+    else target.setAttribute('aria-description', previous)
+  }
+
+  private _onTriggerSlotChange = () => {
+    if (this.open) this._syncDescription()
+  }
+
+  private _onContentSlotChange = () => {
+    if (this.open) this._syncDescription()
+  }
+
   private _syncVisibleTooltipCount(isVisible: boolean) {
     if (isVisible && !this._isCountedVisible) {
       visibleTooltipCount += 1
@@ -281,9 +362,18 @@ export class WebUiTooltip extends LitElement {
   override render() {
     return html`
       <div class="tooltip-anchor">
-        <div class="tooltip-trigger"><slot></slot></div>
-        <div class="tooltip-panel wui-floating-panel wui-glass" hidden role="tooltip">
-          ${this.content ? html`<span class="tooltip-text">${this.content}</span>` : html`<slot name="content"></slot>`}
+        <div class="tooltip-trigger"><slot @slotchange=${this._onTriggerSlotChange}></slot></div>
+        <div
+          class="tooltip-panel wui-floating-panel wui-glass"
+          hidden
+          role="tooltip"
+          id=${this.portal ? nothing : this._panelId}
+        >
+          ${
+            this.content
+              ? html`<span class="tooltip-text">${this.content}</span>`
+              : html`<slot name="content" @slotchange=${this._onContentSlotChange}></slot>`
+          }
         </div>
       </div>
     `

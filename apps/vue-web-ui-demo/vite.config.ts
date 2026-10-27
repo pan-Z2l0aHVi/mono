@@ -183,6 +183,12 @@ export default {
     }),
     depsReload([
       {
+        name: '@greypan/app-scrollbars',
+        path: '../../packages/app-scrollbars',
+        // 包入口是 .mjs，默认的 .js 过滤匹配不到它
+        extensions: ['.mjs', '.css']
+      },
+      {
         name: '@greypan/web-ui',
         path: '../../packages/web-ui'
       },

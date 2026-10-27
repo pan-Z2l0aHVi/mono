@@ -76,9 +76,9 @@ db.query('SELECT 1')
 
 Batched event emitter. Collects events and flushes them as a batch after a delay.
 
-| Parameter           | Type                   | Default | Description                    |
-| ------------------- | ---------------------- | ------- | ------------------------------ |
-| `options.onFlushed` | `(items: S[]) => void` | -       | Callback when batch is flushed |
+| Parameter           | Type                                    | Default | Description                    |
+| ------------------- | --------------------------------------- | ------- | ------------------------------ |
+| `options.onFlushed` | `(items: S[]) => void \| Promise<void>` | -       | Callback when batch is flushed |
 
 ```ts
 import { defineBatchEmitter } from '@greypan/js-kit'
@@ -88,9 +88,8 @@ const batch = defineBatchEmitter<{ id: number }>({
 })
 
 const ctx = batch.make()
-ctx.emit({ id: 1 })
-ctx.emit({ id: 2 })
-// After batchDelay ms, onFlushed is called with [{ id: 1 }, { id: 2 }]
+await Promise.all([ctx.batchEmit({ id: 1 }, 100), ctx.batchEmit({ id: 2 }, 100)])
+// After the delay, onFlushed is called once with [{ id: 1 }, { id: 2 }]
 ```
 
 ### `defineQueue<T>(options)`

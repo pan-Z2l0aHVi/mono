@@ -2,7 +2,7 @@
 
 > 基于 Lit 的 Web Components，支持 React、Vue 和原生 HTML
 
-[English](./README.md) | 简体中文
+[English](https://github.com/pan-Z2l0aHVi/mono/blob/main/packages/web-ui/README.md) | 简体中文
 
 ## 演示
 
@@ -16,7 +16,8 @@
 npm install @greypan/web-ui
 ```
 
-需要 `lit` 作为依赖。
+`lit` 是必需的 peer dependency；`vue >= 3.5` 与 `@types/react >= 19` 是可选 peer，仅用于各自的
+框架类型适配。
 
 ## 快速开始
 
@@ -31,34 +32,44 @@ subpath 导入只注册它点名的那个组件，页面用到的每个 tag 都�
 <web-ui-button variant="primary">点击我</web-ui-button> <web-ui-icon .icon="${lucidePlus}"></web-ui-icon>
 ```
 
-## scrollbar
+## Icons
 
-`@greypan/web-ui/scrollbars` 承载全仓统一的 [OverlayScrollbars](https://github.com/KingSora/OverlayScrollbars)
-scrollbar 行为：对齐 macOS 的主题、滚动时出现并自动隐去、点击 track 滚动到该位置。样式表每份文档导入一次，
-option 传给所用的适配包。
+`@greypan/web-ui/icons` 导出组件所用图标的 [Iconify](https://iconify.design/) 数据对象，消费方不需要
+额外的图标包或网络请求。命名是 camelCase 的 `<set><Name>`：`lucideSearch` 对应 `lucide:search`。
 
 ```js
-import '@greypan/web-ui/scrollbars.css'
-import { webUiScrollbarsOptions } from '@greypan/web-ui/scrollbars'
-import { OverlayScrollbarsComponent } from 'overlayscrollbars-vue' // 或 overlayscrollbars-react
-
-<OverlayScrollbarsComponent :options="webUiScrollbarsOptions">{children}</OverlayScrollbarsComponent>
+import { lucideSearch } from '@greypan/web-ui/icons'
 ```
 
-- `overlayscrollbars` 是可选 peer dependency，只有这个 subpath 需要它。样式表里已经包含库自己的结构样式，
-  它替代 `import 'overlayscrollbars/overlayscrollbars.css'`。
-- 容器自己的 `overflow` 声明（`overflow-y-auto` 等）要保留：OverlayScrollbars 接管后会覆盖它，但接管之前
-  靠它维持可滚动。
-- 目标必须是「纯粹的滚动容器」。OverlayScrollbars 会把宿主变成 flex 行、把子节点搬进它生成的 viewport，
-  所以宿主自身的布局一旦承重（grid、居中盒子、`ul`/`ol`）就会坏。
-- OverlayScrollbars 只改变它被初始化到的那个元素，子元素保持原生 scrollbar。要覆盖文档 scrollbar 就初始化
-  `document.body`——在那里 `window.scrollY` / `window.scrollTo` 保持原生语义。
-- 自带滚动容器的组件（`select`、`autocomplete`、dropdown / context-menu panel、`dialog`、`drawer`、
-  `toast`）在各自的 shadow root 内给**组件内部**scrollbar 上主题。OverlayScrollbars 进不了 shadow
-  root——它的结构样式与主题类都是文档级选择器——所以组件改为在原生 scrollbar 上读同一组继承的
-  `--wui-scrollbar-*` 颜色（`scrollbar-color` / `scrollbar-width`），并刻意不用 `::-webkit-scrollbar`：
-  声明它会让引擎放弃平台的覆盖式 scrollbar、固定占一条布局宽度，而组件内部 scrollbar 正是不能占宽度。
-  导入本样式表，组件内部 scrollbar 才会跟随外观，与整页 scrollbar 同一机制。
+```html
+<web-ui-icon .icon="${lucideSearch}"></web-ui-icon>
+```
+
+`web-ui-icon` 通过 `icon` property（不是 attribute）接收 Iconify 对象，任何 Iconify 数据对象都可用，
+包括内置的或自己的。内置列表由 `icons.used.json` 生成；新增条目后运行
+`pnpm --filter @greypan/web-ui generate-icons` 即可扩展。
+
+## scrollbar
+
+滚动条使用原生 CSS。`web-ui-theme` 把 thumb 颜色暴露为 `--wui-scrollbar-handle`；自带滚动容器的组件
+（`select`、`autocomplete`、dropdown / context-menu panel、`dialog`、`drawer`、`toast`）在各自的
+shadow root 内通过 `scrollbar-color` 与 `scrollbar-width` 读取它。不需要 scrollbar 库，也不需要额外
+导入样式表。
+
+要让文档级滚动条也使用同一主题，在 `html` 上读同一个 token——最外层主题会把它镜像到 `documentElement`：
+
+```css
+html {
+  scrollbar-color: var(--wui-scrollbar-handle) transparent;
+  scrollbar-width: thin;
+}
+```
+
+- 上面这条规则作用于文档级滚动容器；组件内部的滚动容器在 shadow root 里用同一个 token 声明自己的
+  `scrollbar-color`，两处因此保持同色。
+- 原生 scrollbar 没有 hover / active 状态，token 只控制静止态的 thumb 颜色。
+- 刻意不用 `::-webkit-scrollbar`：声明它会让引擎放弃平台的覆盖式 scrollbar、固定占一条布局宽度，
+  而这些 scrollbar 不能占宽度。
 
 ## Classes
 
@@ -367,46 +378,46 @@ dropdown、tooltip）不需要它。
 
 ## 所有组件
 
-每个组件都有自己的文档页，API 参考、行为说明和可交互示例都在 [`docs/`](./docs/) 下。下面的表只是索引。
+每个组件都有自己的文档页，API 参考、行为说明和可交互示例都在 [`docs/`](https://github.com/pan-Z2l0aHVi/mono/tree/main/packages/web-ui/docs) 下。下面的表只是索引。
 
-| 分类                  | 组件                                                           |
-| --------------------- | -------------------------------------------------------------- |
-| **表单控件**          | [`<web-ui-input>`](./docs/input.CN.md)                         |
-|                       | [`<web-ui-textarea>`](./docs/textarea.CN.md)                   |
-|                       | [`<web-ui-editable-text>`](./docs/editable-text.CN.md)         |
-|                       | [`<web-ui-input-number>`](./docs/input-number.CN.md)           |
-|                       | [`<web-ui-select>`](./docs/select.CN.md)                       |
-|                       | [`<web-ui-autocomplete>`](./docs/autocomplete.CN.md)           |
-|                       | [`<web-ui-slider>`](./docs/slider.CN.md)                       |
-|                       | [`<web-ui-checkbox>`](./docs/checkbox.CN.md)                   |
-|                       | [`<web-ui-radio>`](./docs/radio.CN.md)                         |
-|                       | [`<web-ui-switch>`](./docs/switch.CN.md)                       |
-|                       | [`<web-ui-segmented>`](./docs/segmented.CN.md)                 |
-|                       | [`<web-ui-checkbox-group>`](./docs/checkbox-group.CN.md)       |
-|                       | [`<web-ui-radio-group>`](./docs/radio-group.CN.md)             |
-| **button**            | [`<web-ui-button>`](./docs/button.CN.md)                       |
-|                       | [`<web-ui-button-group>`](./docs/button-group.CN.md)           |
-| **overlay / 模态**    | [`<web-ui-dialog>`](./docs/dialog.CN.md)                       |
-|                       | [`<web-ui-drawer>`](./docs/drawer.CN.md)                       |
-|                       | [`imagePreview()`](./docs/image-preview.CN.md)                 |
-| **文档流 Disclosure** | [`<web-ui-collapse>`](./docs/collapse.CN.md)                   |
-| **浮动**              | [`<web-ui-popover>`](./docs/popover.CN.md)                     |
-|                       | [`<web-ui-tooltip>`](./docs/tooltip.CN.md)                     |
-|                       | [`<web-ui-context-menu>`](./docs/context-menu.CN.md)           |
-| **menu**              | [`<web-ui-dropdown>`](./docs/dropdown.CN.md)                   |
-|                       | [`<web-ui-dropdown-item>`](./docs/dropdown-item.CN.md)         |
-|                       | [`<web-ui-dropdown-divider>`](./docs/dropdown-divider.CN.md)   |
-|                       | [`<web-ui-dropdown-header>`](./docs/dropdown-header.CN.md)     |
-| **数据展示**          | [`<web-ui-avatar>`](./docs/avatar.CN.md)                       |
-|                       | [`<web-ui-badge>`](./docs/badge.CN.md)                         |
-|                       | [`<web-ui-empty>`](./docs/empty.CN.md)                         |
-|                       | [`<web-ui-middle-ellipsis>`](./docs/middle-ellipsis.CN.md)     |
-|                       | [`<web-ui-icon>`](./docs/icon.CN.md)                           |
-|                       | [`<web-ui-spinner>`](./docs/spinner.CN.md)                     |
-| **布局与工具**        | [`<web-ui-layout>`](./docs/layout.CN.md)                       |
-|                       | [`<web-ui-back-top>`](./docs/back-top.CN.md)                   |
-|                       | [`<web-ui-svg-draw-lines>`](./docs/svg-draw-lines.CN.md)       |
-|                       | [`<web-ui-theme>`](./docs/theme.CN.md)                         |
-| **通知**              | [`<web-ui-toast>`](./docs/toast.CN.md)                         |
-| **子项**              | [`<web-ui-option>`](./docs/option.CN.md)                       |
-|                       | [`<web-ui-segmented-trigger>`](./docs/segmented-trigger.CN.md) |
+| 分类                  | 组件                                                                                                                        |
+| --------------------- | --------------------------------------------------------------------------------------------------------------------------- |
+| **表单控件**          | [`<web-ui-input>`](https://github.com/pan-Z2l0aHVi/mono/blob/main/packages/web-ui/docs/input.CN.md)                         |
+|                       | [`<web-ui-textarea>`](https://github.com/pan-Z2l0aHVi/mono/blob/main/packages/web-ui/docs/textarea.CN.md)                   |
+|                       | [`<web-ui-editable-text>`](https://github.com/pan-Z2l0aHVi/mono/blob/main/packages/web-ui/docs/editable-text.CN.md)         |
+|                       | [`<web-ui-input-number>`](https://github.com/pan-Z2l0aHVi/mono/blob/main/packages/web-ui/docs/input-number.CN.md)           |
+|                       | [`<web-ui-select>`](https://github.com/pan-Z2l0aHVi/mono/blob/main/packages/web-ui/docs/select.CN.md)                       |
+|                       | [`<web-ui-autocomplete>`](https://github.com/pan-Z2l0aHVi/mono/blob/main/packages/web-ui/docs/autocomplete.CN.md)           |
+|                       | [`<web-ui-slider>`](https://github.com/pan-Z2l0aHVi/mono/blob/main/packages/web-ui/docs/slider.CN.md)                       |
+|                       | [`<web-ui-checkbox>`](https://github.com/pan-Z2l0aHVi/mono/blob/main/packages/web-ui/docs/checkbox.CN.md)                   |
+|                       | [`<web-ui-radio>`](https://github.com/pan-Z2l0aHVi/mono/blob/main/packages/web-ui/docs/radio.CN.md)                         |
+|                       | [`<web-ui-switch>`](https://github.com/pan-Z2l0aHVi/mono/blob/main/packages/web-ui/docs/switch.CN.md)                       |
+|                       | [`<web-ui-segmented>`](https://github.com/pan-Z2l0aHVi/mono/blob/main/packages/web-ui/docs/segmented.CN.md)                 |
+|                       | [`<web-ui-checkbox-group>`](https://github.com/pan-Z2l0aHVi/mono/blob/main/packages/web-ui/docs/checkbox-group.CN.md)       |
+|                       | [`<web-ui-radio-group>`](https://github.com/pan-Z2l0aHVi/mono/blob/main/packages/web-ui/docs/radio-group.CN.md)             |
+| **button**            | [`<web-ui-button>`](https://github.com/pan-Z2l0aHVi/mono/blob/main/packages/web-ui/docs/button.CN.md)                       |
+|                       | [`<web-ui-button-group>`](https://github.com/pan-Z2l0aHVi/mono/blob/main/packages/web-ui/docs/button-group.CN.md)           |
+| **overlay / 模态**    | [`<web-ui-dialog>`](https://github.com/pan-Z2l0aHVi/mono/blob/main/packages/web-ui/docs/dialog.CN.md)                       |
+|                       | [`<web-ui-drawer>`](https://github.com/pan-Z2l0aHVi/mono/blob/main/packages/web-ui/docs/drawer.CN.md)                       |
+|                       | [`imagePreview()`](https://github.com/pan-Z2l0aHVi/mono/blob/main/packages/web-ui/docs/image-preview.CN.md)                 |
+| **文档流 Disclosure** | [`<web-ui-collapse>`](https://github.com/pan-Z2l0aHVi/mono/blob/main/packages/web-ui/docs/collapse.CN.md)                   |
+| **浮动**              | [`<web-ui-popover>`](https://github.com/pan-Z2l0aHVi/mono/blob/main/packages/web-ui/docs/popover.CN.md)                     |
+|                       | [`<web-ui-tooltip>`](https://github.com/pan-Z2l0aHVi/mono/blob/main/packages/web-ui/docs/tooltip.CN.md)                     |
+|                       | [`<web-ui-context-menu>`](https://github.com/pan-Z2l0aHVi/mono/blob/main/packages/web-ui/docs/context-menu.CN.md)           |
+| **menu**              | [`<web-ui-dropdown>`](https://github.com/pan-Z2l0aHVi/mono/blob/main/packages/web-ui/docs/dropdown.CN.md)                   |
+|                       | [`<web-ui-dropdown-item>`](https://github.com/pan-Z2l0aHVi/mono/blob/main/packages/web-ui/docs/dropdown-item.CN.md)         |
+|                       | [`<web-ui-dropdown-divider>`](https://github.com/pan-Z2l0aHVi/mono/blob/main/packages/web-ui/docs/dropdown-divider.CN.md)   |
+|                       | [`<web-ui-dropdown-header>`](https://github.com/pan-Z2l0aHVi/mono/blob/main/packages/web-ui/docs/dropdown-header.CN.md)     |
+| **数据展示**          | [`<web-ui-avatar>`](https://github.com/pan-Z2l0aHVi/mono/blob/main/packages/web-ui/docs/avatar.CN.md)                       |
+|                       | [`<web-ui-badge>`](https://github.com/pan-Z2l0aHVi/mono/blob/main/packages/web-ui/docs/badge.CN.md)                         |
+|                       | [`<web-ui-empty>`](https://github.com/pan-Z2l0aHVi/mono/blob/main/packages/web-ui/docs/empty.CN.md)                         |
+|                       | [`<web-ui-middle-ellipsis>`](https://github.com/pan-Z2l0aHVi/mono/blob/main/packages/web-ui/docs/middle-ellipsis.CN.md)     |
+|                       | [`<web-ui-icon>`](https://github.com/pan-Z2l0aHVi/mono/blob/main/packages/web-ui/docs/icon.CN.md)                           |
+|                       | [`<web-ui-spinner>`](https://github.com/pan-Z2l0aHVi/mono/blob/main/packages/web-ui/docs/spinner.CN.md)                     |
+| **布局与工具**        | [`<web-ui-layout>`](https://github.com/pan-Z2l0aHVi/mono/blob/main/packages/web-ui/docs/layout.CN.md)                       |
+|                       | [`<web-ui-back-top>`](https://github.com/pan-Z2l0aHVi/mono/blob/main/packages/web-ui/docs/back-top.CN.md)                   |
+|                       | [`<web-ui-svg-draw-lines>`](https://github.com/pan-Z2l0aHVi/mono/blob/main/packages/web-ui/docs/svg-draw-lines.CN.md)       |
+|                       | [`<web-ui-theme>`](https://github.com/pan-Z2l0aHVi/mono/blob/main/packages/web-ui/docs/theme.CN.md)                         |
+| **通知**              | [`<web-ui-toast>`](https://github.com/pan-Z2l0aHVi/mono/blob/main/packages/web-ui/docs/toast.CN.md)                         |
+| **子项**              | [`<web-ui-option>`](https://github.com/pan-Z2l0aHVi/mono/blob/main/packages/web-ui/docs/option.CN.md)                       |
+|                       | [`<web-ui-segmented-trigger>`](https://github.com/pan-Z2l0aHVi/mono/blob/main/packages/web-ui/docs/segmented-trigger.CN.md) |

@@ -1,13 +1,14 @@
 /**
- * 根节点 page 色同步 —— 「哪一层最外层」的唯一拥有者。
+ * 根节点 token 同步 —— 「哪一层最外层」的唯一拥有者。
  *
  * macOS 橡皮筋回弹露白的成因不在 body 而在画布：body 的背景只覆盖滚动范围，回弹时被扯出来的
  * 那一圈用的是 documentElement 的画布背景。而 `--wui-color-page` 定义在 `<web-ui-theme>` 的
  * shadow 作用域里，自定义属性的继承链到 documentElement 就断了，所以消费方写
  * `body { background: var(--wui-color-page) }` 也管不到回弹区。
  *
- * 本模块补上这一环：最外层 active theme 把自己计算出的 `--wui-color-page` 写到 documentElement
- * 的行内自定义属性上，消费方仍然只需要那一行 body 规则。
+ * 原生 scrollbar 同理：`<html>` 在 theme 元素之外，拿不到它 `:host` 上的
+ * `--wui-scrollbar-handle`。本模块把这两个 token 一起镜像到 documentElement，消费方于是可以直接
+ * 写 `html { scrollbar-color: var(--wui-scrollbar-handle) transparent }`。
  *
  * 为什么按 connect 顺序取「第一个 active 实例」，而不是去判「DOM 上最外层的那一个」：
  * 组件无法可靠地回答后者——portal、shadow host 与 slot 都会让「谁包着谁」的物理关系和主题
@@ -30,7 +31,8 @@
  *   必然触发它，不存在 open-overlay 那种「panel 被 portal 搬运」需要惰性兜底回收的形状。
  */
 
-const ROOT_PAGE_TOKEN = '--wui-color-page'
+/** 需要镜像到 documentElement 的 token：页面背景与原生 scrollbar thumb。 */
+const ROOT_TOKENS = ['--wui-color-page', '--wui-scrollbar-handle'] as const
 
 /** 按 connect 顺序排列的已登记 active 实例；队首持有 root 同步权。 */
 const registered = new Set<HTMLElement>()
@@ -58,29 +60,28 @@ function isRootSyncOwner(host: HTMLElement): boolean {
   return registered.values().next().value === host
 }
 
-/** 计算值可能为空（jsdom、未激活作用域、已断开），空值不写入也不删除既有值。 */
-function readPageColor(host: HTMLElement): string {
-  return getComputedStyle(host).getPropertyValue(ROOT_PAGE_TOKEN).trim()
-}
-
-function syncRootPageColor(): void {
+function syncRootTokens(): void {
   const owner = registered.values().next().value as HTMLElement | undefined
   if (!owner) return
   // 已断开的所有者不能再写 root：整棵子树一起卸载时，队首顺延到的实例已经不在文档里
   // （浏览器对 detached 元素取不到计算值，jsdom 却仍按选择器匹配返回旧值），
   // 不设这道坎就会在两种环境里得到不同的 root 末值。
   if (!owner.isConnected) return
-  const value = readPageColor(owner)
-  if (!value) return
+  const computed = getComputedStyle(owner)
   const style = document.documentElement.style
-  // 与当前行内值比较而不是与模块记忆的上次写入比较：消费者中途覆写时，下一次同步仍然夺回
-  // 归属权，而值没变时不做无谓的样式写入。
-  if (style.getPropertyValue(ROOT_PAGE_TOKEN) === value) return
-  style.setProperty(ROOT_PAGE_TOKEN, value)
+  for (const token of ROOT_TOKENS) {
+    // 计算值可能为空（jsdom、未激活作用域、已断开），空值不写入也不删除既有值。
+    const value = computed.getPropertyValue(token).trim()
+    if (!value) continue
+    // 与当前行内值比较而不是与模块记忆的上次写入比较：消费者中途覆写时，下一次同步仍然夺回
+    // 归属权，而值没变时不做无谓的样式写入。
+    if (style.getPropertyValue(token) === value) continue
+    style.setProperty(token, value)
+  }
 }
 
 function handleSchemeChange(): void {
-  syncRootPageColor()
+  syncRootTokens()
   for (const subscriber of schemeSubscribers) subscriber()
 }
 
@@ -123,12 +124,12 @@ export function registerThemeRootSync(host: HTMLElement): void {
   syncSchemeListener()
   // 嵌套实例的变更按契约不影响 root 值；顺延不到新实例时 root 值同样不变。
   if (!isRootSyncOwner(host)) return
-  syncRootPageColor()
+  syncRootTokens()
 }
 
 /** 撤销登记。移交同步权时由新的队首实例立即接管 root 值。 */
 export function unregisterThemeRootSync(host: HTMLElement): void {
   if (!registered.delete(host)) return
   syncSchemeListener()
-  syncRootPageColor()
+  syncRootTokens()
 }

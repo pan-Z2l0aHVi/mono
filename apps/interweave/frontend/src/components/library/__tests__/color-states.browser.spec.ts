@@ -83,6 +83,7 @@ async function mountList(
         runtimeAvailable: true,
         emptyDescription: '没有符合条件的资源',
         mediaUrlFor: () => null,
+        resolveDefaultOpenWith: () => Promise.resolve(''),
         onActivate: (r: ResourceView) => {
           activeId.value = r.id
         }

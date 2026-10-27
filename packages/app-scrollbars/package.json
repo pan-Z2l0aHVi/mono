@@ -1,0 +1,34 @@
+{
+  "name": "@greypan/app-scrollbars",
+  "version": "0.0.0",
+  "description": "Private app-level OverlayScrollbars configuration and macOS theme",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/pan-Z2l0aHVi/mono.git"
+  },
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.mts",
+      "import": "./dist/index.mjs"
+    },
+    "./package.json": "./package.json"
+  },
+  "scripts": {
+    "build": "vp pack",
+    "test": "vp test run",
+    "dev": "vp pack --watch --clean=false"
+  },
+  "dependencies": {
+    "overlayscrollbars": "catalog:"
+  },
+  "devDependencies": {
+    "@greypan/tsconfig": "workspace:*",
+    "vite-plus": "catalog:"
+  },
+  "private": true,
+  "engines": {
+    "node": ">=20.11.0"
+  }
+}

@@ -11,6 +11,7 @@
     "check-generated": "node ../../scripts/workflow/check-md-to-comp-artifacts.mjs . react"
   },
   "dependencies": {
+    "@greypan/app-scrollbars": "workspace:*",
     "@greypan/js-kit": "workspace:*",
     "@greypan/web-ui": "workspace:*",
     "@tanstack/react-router": "catalog:",

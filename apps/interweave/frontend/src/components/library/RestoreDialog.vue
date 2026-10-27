@@ -1,7 +1,7 @@
 <script setup lang="ts">
+import appScrollbarsOptions from '@greypan/app-scrollbars'
 import type { WebUiDialog, WebUiEvent, WebUiInput } from '@greypan/web-ui'
 import { lucideFile, lucideFolderOpen, lucideGlobe, lucideUndo2 } from '@greypan/web-ui/icons'
-import { webUiScrollbarsOptions } from '@greypan/web-ui/scrollbars'
 import { OverlayScrollbarsComponent } from 'overlayscrollbars-vue'
 import { ref, watch } from 'vue'
 
@@ -173,7 +173,7 @@ function submit() {
 
         <OverlayScrollbarsComponent
           v-if="queue.length"
-          :options="webUiScrollbarsOptions"
+          :options="appScrollbarsOptions"
           class="h-full min-h-0 overflow-y-auto rounded-3xl bg-white dark:bg-(--wui-color-surface-raised)"
         >
           <!--

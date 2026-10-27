@@ -5,9 +5,9 @@ import { customElement, property, state } from 'lit/decorators.js'
 import { ifDefined } from 'lit/directives/if-defined.js'
 
 import overlayMotion from '@/assets/overlay-motion.css?inline'
+import scrollbarStyle from '@/assets/scrollbar.css?inline'
 import glass from '@/classes/glass.css?inline'
 import type { WebUiOption } from '@/components/option'
-import internalScrollbars from '@/scrollbars/internal.css?inline'
 import { FormAssociated, defineFormAssociation, FormAssociationController } from '@/shared/form-association'
 import { normalizeLiteral } from '@/shared/normalize'
 import { dispatchOpenChangeEvent } from '@/shared/open-state'
@@ -60,7 +60,7 @@ function isEmptySlotNode(node: Node): node is Element {
  */
 @customElement('web-ui-autocomplete')
 export class WebUiAutocomplete extends FormAssociated(LitElement) {
-  static override styles = [unsafeCSS(glass), unsafeCSS(overlayMotion), unsafeCSS(internalScrollbars), unsafeCSS(style)]
+  static override styles = [unsafeCSS(glass), unsafeCSS(overlayMotion), unsafeCSS(scrollbarStyle), unsafeCSS(style)]
 
   @property({ type: String, reflect: true }) placeholder = ''
   @property({ type: Boolean, reflect: true }) borderless = false
@@ -755,7 +755,7 @@ export class WebUiAutocomplete extends FormAssociated(LitElement) {
     const portal = defineOverlayPortal().make({
       container: this.overlayContainer,
       target: this,
-      style: `${glass}\n${overlayMotion}\n${internalScrollbars}\n${style}`,
+      style: `${glass}\n${overlayMotion}\n${scrollbarStyle}\n${style}`,
       className: 'wui-glass autocomplete-overlay portal wui-floating-panel',
       onContentChange: () => {
         this._optionPortal.scheduleRefresh()

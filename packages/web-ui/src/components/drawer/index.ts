@@ -5,12 +5,14 @@ import { html, LitElement, nothing, type PropertyValues, unsafeCSS } from 'lit'
 import { customElement, property } from 'lit/decorators.js'
 
 import modalSurface from '@/assets/modal-surface.css?inline'
+import scrollbarStyle from '@/assets/scrollbar.css?inline'
 import glass from '@/classes/glass.css?inline'
 import { oouiClose } from '@/icons'
-import internalScrollbars from '@/scrollbars/internal.css?inline'
 import { ElementHeightController } from '@/shared/element-height'
 import { UserChangeController } from '@/shared/events/user-change'
+import { trapTabKey } from '@/shared/focus/tabbable'
 import { attachDragGesture, dampOverscroll, type DragGestureHandle } from '@/shared/gesture'
+import { LocaleController, resolveBuiltinLabel } from '@/shared/locale/builtin-labels'
 import { normalizeLiteral } from '@/shared/normalize'
 import { dispatchOpenChangeEvent } from '@/shared/open-state'
 import { defineNativeDialogPresence } from '@/shared/overlay/native-dialog-presence'
@@ -203,7 +205,7 @@ if (typeof CSS !== 'undefined' && 'registerProperty' in CSS) {
 
 @customElement('web-ui-drawer')
 export class WebUiDrawer extends LitElement {
-  static override styles = [unsafeCSS(glass), unsafeCSS(modalSurface), unsafeCSS(internalScrollbars), unsafeCSS(style)]
+  static override styles = [unsafeCSS(glass), unsafeCSS(modalSurface), unsafeCSS(scrollbarStyle), unsafeCSS(style)]
 
   @property({ type: Boolean, reflect: true }) open = false
   @property({ type: Boolean, reflect: true, attribute: 'no-scroll-lock' }) noScrollLock = false
@@ -244,6 +246,9 @@ export class WebUiDrawer extends LitElement {
    */
   @property({ type: String, attribute: 'dialog-label' }) dialogLabel = ''
 
+  /** 关闭按钮的无障碍名称；默认跟随文档 `lang`。 */
+  @property({ type: String, attribute: 'close-label' }) closeLabel = ''
+
   /**
    * 启用拖拽关闭：打开态在 drawer 内缘渲染 drag bar（灰色胶囊 + 加宽 drag zone），
    * 指针拖拽实时跟手，松手按位移与甩动速度判定关闭或弹回。
@@ -257,6 +262,7 @@ export class WebUiDrawer extends LitElement {
 
   private _hasHeaderSlot = false
   private _hasFooterSlot = false
+  private readonly _locale = new LocaleController(this)
   private readonly _userOpenChange = new UserChangeController()
   /*
    * 上下 placement 的拖拽 drag zone 要让开头尾两节（见 style.css 的 --wui-internal-drawer-* 说明）：
@@ -929,7 +935,19 @@ export class WebUiDrawer extends LitElement {
     if (e.propertyName === 'transform') this._finishSettle()
   }
 
+  private _isNestedDialogEvent(e: KeyboardEvent): boolean {
+    const path = e.composedPath()
+    const ownDialogIndex = path.indexOf(e.currentTarget as Node)
+    return ownDialogIndex > 0 && path.slice(0, ownDialogIndex).some(node => node instanceof HTMLDialogElement)
+  }
+
   private handleKeydown(e: KeyboardEvent) {
+    if (e.key === 'Tab') {
+      if (e.defaultPrevented || this._isNestedDialogEvent(e)) return
+      const dialog = this.dialog
+      if (dialog) trapTabKey(e, dialog)
+      return
+    }
     if (e.key !== 'Escape') return
     /*
      * Escape 的归属由共享仲裁者在 document 捕获阶段判定（issue #120 Block 1）；命中后
@@ -948,12 +966,7 @@ export class WebUiDrawer extends LitElement {
      * keydown composed 冒泡路径会再次经过本层 dialog（事件路径含 slot 宿主链）。
      * 若事件传播路径在本层 dialog 之前已存在其他 <dialog>，说明该事件来自子层，本层忽略。
      */
-    const path = e.composedPath()
-    const ownDialogIndex = path.indexOf(e.currentTarget as Node)
-    if (ownDialogIndex > 0) {
-      const hasChildDialog = path.slice(0, ownDialogIndex).some(n => n instanceof HTMLDialogElement)
-      if (hasChildDialog) return
-    }
+    if (this._isNestedDialogEvent(e)) return
     // 拖拽进行中忽略 ESC，避免手势与关闭管线竞争。
     if (this._isDragging()) {
       e.preventDefault()
@@ -1149,7 +1162,7 @@ export class WebUiDrawer extends LitElement {
                         <web-ui-button
                           class="wui-drawer-close"
                           @click=${this._closeFromUser}
-                          aria-label="Close"
+                          aria-label=${resolveBuiltinLabel(this, 'close', this.closeLabel)}
                           variant="secondary"
                           icon
                           size="26"

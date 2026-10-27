@@ -553,6 +553,9 @@ importers:
 
   apps/interweave/frontend:
     dependencies:
+      '@greypan/app-scrollbars':
+        specifier: workspace:*
+        version: link:../../../packages/app-scrollbars
       '@greypan/browser-kit':
         specifier: workspace:*
         version: link:../../../packages/browser-kit
@@ -632,6 +635,9 @@ importers:
 
   apps/react-web-ui-demo:
     dependencies:
+      '@greypan/app-scrollbars':
+        specifier: workspace:*
+        version: link:../../packages/app-scrollbars
       '@greypan/js-kit':
         specifier: workspace:*
         version: link:../../packages/js-kit
@@ -720,6 +726,9 @@ importers:
 
   apps/vue-web-ui-demo:
     dependencies:
+      '@greypan/app-scrollbars':
+        specifier: workspace:*
+        version: link:../../packages/app-scrollbars
       '@greypan/browser-kit':
         specifier: workspace:*
         version: link:../../packages/browser-kit
@@ -808,6 +817,19 @@ importers:
       vue-tsc:
         specifier: 'catalog:'
         version: 3.3.11(typescript@6.0.3)
+
+  packages/app-scrollbars:
+    dependencies:
+      overlayscrollbars:
+        specifier: 'catalog:'
+        version: 2.16.0
+    devDependencies:
+      '@greypan/tsconfig':
+        specifier: workspace:*
+        version: link:../tsconfig
+      vite-plus:
+        specifier: 'catalog:'
+        version: 0.3.2(@types/node@26.4.1)(@vitest/browser-playwright@4.1.11)(jiti@2.7.0)(jsdom@30.0.1)(msw@2.15.0(@types/node@26.4.1)(typescript@6.0.3))(terser@5.51.2)(typescript@6.0.3)(yaml@2.9.0)
 
   packages/browser-kit:
     dependencies:
@@ -1040,9 +1062,6 @@ importers:
       lit:
         specifier: 'catalog:'
         version: 3.3.3
-      overlayscrollbars:
-        specifier: 'catalog:'
-        version: 2.16.0
       react:
         specifier: 'catalog:'
         version: 19.2.8

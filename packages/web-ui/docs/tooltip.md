@@ -230,6 +230,8 @@ const last = ref('—')
 
 Once the first tooltip is shown, an adjacent tooltip switches immediately; other pointer/focus triggers use the delay timers.
 
+While open, the tooltip text is written to `aria-description` on the trigger's focusable element (including native controls inside its shadow DOM) and restored on close; the panel also carries a unique `id`. The panel and trigger usually live in different shadow roots, where `aria-describedby` IDREFs cannot resolve, so it does not carry the screen-reader description.
+
 ### CSS Custom Properties
 
 | Name                      | Description           | Default |

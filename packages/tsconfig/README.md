@@ -2,18 +2,18 @@
 
 > Shared TypeScript configuration profiles for the monorepo
 
-English | [简体中文](./README.CN.md)
+English | [简体中文](https://github.com/pan-Z2l0aHVi/mono/blob/main/packages/tsconfig/README.CN.md)
 
 ## Profiles
 
-| Profile      | Layer | Used by                                                                                      | Extends                            |
-| ------------ | ----- | -------------------------------------------------------------------------------------------- | ---------------------------------- |
-| `base.json`  | 0     | All profiles internally                                                                      | —                                  |
-| `core.json`  | 1     | Pure JS libraries (js-kit)                                                                   | `./base.json`                      |
-| `node.json`  | 2     | Node.js packages (deps-reload, unplugin-web-components, test-kit) + all `tsconfig.node.json` | `@tsconfig/node24` + `./base.json` |
-| `dom.json`   | 3     | Browser/DOM packages (browser-kit, web-ui)                                                   | `./base.json`                      |
-| `react.json` | 4     | React app (react-web-ui-demo)                                                                | `./dom.json`                       |
-| `vue.json`   | 4     | Vue apps (vue-web-ui-demo, interweave frontend)                                              | `@vue/tsconfig` + `./dom.json`     |
+| Profile      | Layer | Used by                                                                                                  | Extends                            |
+| ------------ | ----- | -------------------------------------------------------------------------------------------------------- | ---------------------------------- |
+| `base.json`  | 0     | All profiles internally                                                                                  | —                                  |
+| `core.json`  | 1     | Pure JS libraries (js-kit)                                                                               | `./base.json`                      |
+| `node.json`  | 2     | Node.js packages (deps-reload, md-to-comp, unplugin-web-components, test-kit) + all `tsconfig.node.json` | `@tsconfig/node24` + `./base.json` |
+| `dom.json`   | 3     | Browser/DOM packages (browser-kit, web-ui)                                                               | `./base.json`                      |
+| `react.json` | 4     | React app (react-web-ui-demo)                                                                            | `./dom.json`                       |
+| `vue.json`   | 4     | Vue apps (vue-web-ui-demo, interweave frontend)                                                          | `@vue/tsconfig` + `./dom.json`     |
 
 ## Why separate profiles?
 

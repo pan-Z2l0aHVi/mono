@@ -237,6 +237,7 @@ const open = ref(false)
 | `heading`           | Title text, the fallback when the `header` slot is empty (ignored under `headless`).                 | `string`  | `''`    |
 | `headless`          | Keeps only the overlay behavior; no longer renders the built-in header bar, content area, or footer. | `boolean` | `false` |
 | `dialog-label`      | Accessible name of the inner native dialog; required under `headless`.                               | `string`  | `''`    |
+| `close-label`       | Accessible name of the built-in close button; follows the nearest `lang` by default.                 | `string`  | `''`    |
 
 ### Events
 

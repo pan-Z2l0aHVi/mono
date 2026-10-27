@@ -224,18 +224,19 @@ const open = ref(false)
 
 ### Props
 
-| 名称                | 说明                                                           | 类型      | 默认值  |
-| ------------------- | -------------------------------------------------------------- | --------- | ------- |
-| `open`              | dialog 可见性。                                                | `boolean` | `false` |
-| `closable`          | 显示内置关闭 button。                                          | `boolean` | `false` |
-| `horizontal`        | Footer 操作按钮横向排列。                                      | `boolean` | `false` |
-| `no-scroll-lock`    | 打开时不锁定页面滚动。                                         | `boolean` | `false` |
-| `no-backdrop-close` | 禁止点击 backdrop 关闭。                                       | `boolean` | `false` |
-| `no-escape-close`   | 禁止按 Escape 关闭。                                           | `boolean` | `false` |
-| `controlled`        | Escape 与 backdrop 仅请求 `open=false`，由消费方回写。         | `boolean` | `false` |
-| `heading`           | 标题文字，`header` 插槽为空时的回落（`headless` 下忽略）。     | `string`  | `''`    |
-| `headless`          | 只保留 overlay 行为，不再渲染内置 header 带、内容区与 footer。 | `boolean` | `false` |
-| `dialog-label`      | 内部原生 dialog 的 accessible name；`headless` 下必填。        | `string`  | `''`    |
+| 名称                | 说明                                                                    | 类型      | 默认值  |
+| ------------------- | ----------------------------------------------------------------------- | --------- | ------- |
+| `open`              | dialog 可见性。                                                         | `boolean` | `false` |
+| `closable`          | 显示内置关闭 button。                                                   | `boolean` | `false` |
+| `horizontal`        | Footer 操作按钮横向排列。                                               | `boolean` | `false` |
+| `no-scroll-lock`    | 打开时不锁定页面滚动。                                                  | `boolean` | `false` |
+| `no-backdrop-close` | 禁止点击 backdrop 关闭。                                                | `boolean` | `false` |
+| `no-escape-close`   | 禁止按 Escape 关闭。                                                    | `boolean` | `false` |
+| `controlled`        | Escape 与 backdrop 仅请求 `open=false`，由消费方回写。                  | `boolean` | `false` |
+| `heading`           | 标题文字，`header` 插槽为空时的回落（`headless` 下忽略）。              | `string`  | `''`    |
+| `headless`          | 只保留 overlay 行为，不再渲染内置 header 带、内容区与 footer。          | `boolean` | `false` |
+| `dialog-label`      | 内部原生 dialog 的 accessible name；`headless` 下必填。                 | `string`  | `''`    |
+| `close-label`       | 内置关闭 button 的无障碍名称；默认跟随最近的 `lang`（中文为「关闭」）。 | `string`  | `''`    |
 
 ### Events
 

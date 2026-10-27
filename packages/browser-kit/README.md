@@ -2,7 +2,7 @@
 
 > Browser utility functions for storage, tracking, environment detection, and more
 
-English | [简体中文](./README.CN.md)
+English | [简体中文](https://github.com/pan-Z2l0aHVi/mono/blob/main/packages/browser-kit/README.CN.md)
 
 ## Features
 
@@ -13,7 +13,7 @@ English | [简体中文](./README.CN.md)
 - **DOM**: Viewport size and scroll position helpers
 - **File**: Download, base64 conversion, image info, file type validation
 - **Copy**: Cross-browser clipboard API with Blob support
-- **Shortcut**: Event helpers (`on`/`off`), async helpers (`sleep`/`sleepSync`/`defer`)
+- **Shortcut**: Typed `on`/`off` helpers for `window` and `document` events
 
 ## Install
 
@@ -76,7 +76,7 @@ const tracker = defineTracker({ url: '/api/track' })
 tracker.track({ event: 'page_view', path: '/' })
 ```
 
-See [`src/tracker/README.md`](./src/tracker/README.md) for the full option tables (including `transport` and `transform`), flush/outbox semantics, and the page-error payload contract.
+See [`src/tracker/README.md`](https://github.com/pan-Z2l0aHVi/mono/blob/main/packages/browser-kit/src/tracker/README.md) for the full option tables (including `transport` and `transform`), flush/outbox semantics, and the page-error payload contract.
 
 ## API
 
@@ -88,7 +88,7 @@ Create namespaced localStorage/sessionStorage instances. Returns singleton per n
 | ----------- | -------- | ------- | ------------------------ |
 | `namespace` | `string` | `''`    | Storage namespace prefix |
 
-Full TTL semantics, `watch` cross-tab behavior, and storage-degradation details: see [`src/storage/README.md`](./src/storage/README.md).
+Full TTL semantics, `watch` cross-tab behavior, and storage-degradation details: see [`src/storage/README.md`](https://github.com/pan-Z2l0aHVi/mono/blob/main/packages/browser-kit/src/storage/README.md).
 
 ### `local` / `session`
 
@@ -118,34 +118,21 @@ Environment detection object with getter properties.
 | `env.isIos`            | iOS OS                  |
 | `env.isIpadOs`         | iPadOS                  |
 
+Full flag conditions and pre-render caveats: see [`src/env/README.md`](https://github.com/pan-Z2l0aHVi/mono/blob/main/packages/browser-kit/src/env/README.md).
+
 ### `getViewportSize()`
 
 Get current viewport dimensions.
 
+**Returns:** `{ width: number; height: number }`. Returns zeros when `window` is unavailable.
+
 ### `getRootScrollTop()` / `getRootScrollLeft()`
 
-Get document scroll position.
-
-### `getFileExtension(filename)`
-
-Extract file extension from filename.
-
-| Parameter  | Type     | Default | Description     |
-| ---------- | -------- | ------- | --------------- |
-| `filename` | `string` | -       | Filename string |
-
-### `formatFileSize(bytes, decimals?)`
-
-Format byte count to human-readable string.
-
-| Parameter  | Type     | Default | Description    |
-| ---------- | -------- | ------- | -------------- |
-| `bytes`    | `number` | -       | Byte count     |
-| `decimals` | `number` | `2`     | Decimal places |
+Get the document scroll position. Returns `0` outside the browser.
 
 ### `downloadFile(arg, filename?, onProgress?)`
 
-Download a file. Supports File, Blob, or URL string. Optional progress callback.
+Download a file. Supports File, Blob, or URL string. For a remote URL, `onProgress` receives the download percentage.
 
 | Parameter    | Type                        | Default | Description               |
 | ------------ | --------------------------- | ------- | ------------------------- |
@@ -155,15 +142,17 @@ Download a file. Supports File, Blob, or URL string. Optional progress callback.
 
 ### `getImageInfo(source)`
 
-Get image width and height. Supports File, Blob, or URL string.
+Resolve image width and height. Supports File, Blob, or URL string.
 
 | Parameter | Type                     | Default | Description  |
 | --------- | ------------------------ | ------- | ------------ |
 | `source`  | `File \| Blob \| string` | -       | Image source |
 
+**Returns:** `Promise<{ width: number; height: number }>`.
+
 ### `isValidBase64(str)`
 
-Check if a string is valid base64.
+Check if a string is valid base64. Both raw base64 and `data:` URLs are accepted.
 
 | Parameter | Type     | Default | Description        |
 | --------- | -------- | ------- | ------------------ |
@@ -171,7 +160,7 @@ Check if a string is valid base64.
 
 ### `base64ToFile(base64, filename?)`
 
-Convert base64 string to File object.
+Convert a base64 string or `data:` URL to a File object. When `filename` has no extension, one is derived from the MIME type.
 
 | Parameter  | Type     | Default  | Description     |
 | ---------- | -------- | -------- | --------------- |
@@ -180,23 +169,29 @@ Convert base64 string to File object.
 
 ### `fileToBase64(file)`
 
-Convert File or Blob to base64 string.
+Convert File or Blob to a base64 `data:` URL.
 
 | Parameter | Type           | Default | Description             |
 | --------- | -------------- | ------- | ----------------------- |
 | `file`    | `File \| Blob` | -       | File or Blob to convert |
 
+**Returns:** `Promise<string>`.
+
 ### `isSameFileType(...files)`
 
-Check if files have the same type based on Magic Number.
+Check whether files share the same real type based on their Magic Number. A single file, or no files, returns `true`.
 
 | Parameter  | Type     | Default | Description      |
 | ---------- | -------- | ------- | ---------------- |
 | `...files` | `File[]` | -       | Files to compare |
 
+**Returns:** `Promise<boolean>`.
+
+Magic Number comparison and error behavior: see [`src/file/README.md`](https://github.com/pan-Z2l0aHVi/mono/blob/main/packages/browser-kit/src/file/README.md).
+
 ### `copyToClipboard(content, options?)`
 
-Copy text or Blob to system clipboard. Supports text/plain and text/html.
+Copy text or Blob to the system clipboard. Supports `text/plain` and `text/html`. Failures are handled by the underlying fallback chain and are not rethrown.
 
 | Parameter | Type                                   | Default | Description       |
 | --------- | -------------------------------------- | ------- | ----------------- |
@@ -205,35 +200,21 @@ Copy text or Blob to system clipboard. Supports text/plain and text/html.
 
 ### `on(element, event, handler, options?)`
 
-Add event listener with automatic cleanup on disconnect.
+Add an event listener to `window` or `document`.
 
 | Parameter | Type                      | Default | Description      |
 | --------- | ------------------------- | ------- | ---------------- |
-| `element` | `EventTarget`             | -       | Target element   |
+| `element` | `Window \| Document`      | -       | Event target     |
 | `event`   | `string`                  | -       | Event name       |
 | `handler` | `Function`                | -       | Event handler    |
 | `options` | `AddEventListenerOptions` | -       | Listener options |
 
 ### `off(element, event, handler, options?)`
 
-Remove event listener.
-
-### `sleep(ms)` / `sleepSync(ms)`
-
-Async/sync delay helpers.
-
-| Parameter | Type     | Default | Description           |
-| --------- | -------- | ------- | --------------------- |
-| `ms`      | `number` | -       | Delay in milliseconds |
-
-### `defer(fn)`
-
-Execute a function on the next microtask.
-
-| Parameter | Type         | Default | Description       |
-| --------- | ------------ | ------- | ----------------- |
-| `fn`      | `() => void` | -       | Function to defer |
+Remove a listener added with `on`.
 
 ### `defineHistoryNav(options?)`
 
-Track whether the user can go back / forward in the real browser history via a read-only subset of the Navigation API (`canGoBack` / `canGoForward` / `currentEntry` / `entries()` / `currententrychange`). Idempotent singleton; see [`src/history-nav/README.md`](./src/history-nav/README.md) for the full API and known limitations.
+Track whether the user can go back / forward in the real browser history via a read-only subset of the Navigation API (`canGoBack` / `canGoForward` / `currentEntry` / `entries()` / `currententrychange`). It patches `pushState` / `replaceState` only as a side record and also handles `popstate` and `hashchange`; the first call returns an idempotent singleton. See [`src/history-nav/README.md`](https://github.com/pan-Z2l0aHVi/mono/blob/main/packages/browser-kit/src/history-nav/README.md) for the full API and known limitations.
+
+> String and number helpers such as `getFileExtension` and `formatFileSize` live in [`@greypan/js-kit`](https://github.com/pan-Z2l0aHVi/mono/blob/main/packages/js-kit/README.md), not in this package.

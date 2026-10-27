@@ -1,7 +1,12 @@
 <template>
   <div class="flex flex-col gap-3">
     <div class="h-[420px] overflow-auto rounded-lg border border-(--wui-color-border)">
-      <web-ui-layout :sidebarCollapsed="collapsed" @sidebar-collapsed-change="collapsed = $event.detail.collapsed">
+      <web-ui-layout
+        :sidebarCollapsed="collapsed"
+        @sidebar-collapsed-change="collapsed = $event.detail.collapsed"
+        :sidebarOpen="open"
+        @sidebar-open-change="open = $event.detail.open"
+      >
         <nav slot="sidebar" class="flex h-full min-h-0 flex-col gap-1 overflow-y-auto p-2">
           <span class="rounded-md p-2 text-sm">Overview</span>
           <span class="rounded-md p-2 text-sm">Components</span>
@@ -24,4 +29,5 @@
 import { ref } from 'vue'
 
 const collapsed = ref(false)
+const open = ref(false)
 </script>

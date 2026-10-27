@@ -1,6 +1,6 @@
 # 验证选择与测试执行
 
-本文件回答两个问题：这次改动该跑哪些验证，以及那些验证怎么执行。运行时证据本身怎么取（真实浏览器、原生应用、引擎级取证、证据档位）由 [`runtime-verification.md`](./runtime-verification.md) 承担；测试用例编写策略见 [`.agents/skills/test-authoring/SKILL.md`](../../.agents/skills/test-authoring/SKILL.md)；受版本控制的生成物清单见 [`generated-artifacts.md`](./generated-artifacts.md)，其完成证据见 build.md。
+本文件回答两个问题：这次改动该跑哪些验证，以及那些验证怎么执行。运行时证据本身怎么取（真实浏览器、原生应用、引擎级取证、证据档位）由 [`runtime-verification.md`](./runtime-verification.md) 承担；浏览器进程与 profile 的归属和回收由 [`browser-resources.md`](./browser-resources.md) 承担；测试用例编写策略见 [`.agents/skills/test-authoring/SKILL.md`](../../.agents/skills/test-authoring/SKILL.md)；受版本控制的生成物清单见 [`generated-artifacts.md`](./generated-artifacts.md)，其完成证据见 build.md。
 
 ## 从变更路径到验证计划
 
@@ -14,15 +14,12 @@ PR CI 对当前 base/head 复检 required checks，不替代实施阶段已要�
 
 ## 提交前的运行时资源核对
 
-涉及真实浏览器运行时验证时，提交前逐项核对验证记录：
+只要任务启动过浏览器——包括非 UI 的调研、截图、下载或经 MCP / CLI 间接驱动——提交前都要按 [`browser-resources.md`](./browser-resources.md) 核对：
 
-- 记录本任务 worktree 的物理路径、MCP/启动服务 PID 与 CWD、浏览器主进程 PID 和 PPID，以及专用 profile 的完整路径；确认从 worktree 到服务、再到浏览器的归属链可复核。
-- 记录本任务启动过的独立浏览器实例总数和峰值并发数。同一实例跨多次验证复用时只计一次；逐一列出每个实例的 profile、浏览器主进程 PID、启动与回收情况。额外实例要注明原因和不再需要它的时点。
-- 逐个记录实例的回收方式，以及按“关闭页面 → 结束浏览器进程 → 确认 profile 已无进程”完成的检查结果。
-- 本次没有启动浏览器时，明确标为“不适用”。
-- 服务退出后，归属链须有启动时记录；无法唯一确认进程归属时，按 [`workflow.md`](./workflow.md#怎么取得这个授权) 取得授权并确认目标，或将清理列为未完成；不得把无法确认的进程记作已回收。
-
-回收步骤与归属判据见 [`runtime-verification.md`](./runtime-verification.md#隔离与资源)。
+- 按 [`browser-resources.md`](./browser-resources.md) 的启动记录与归属核验，记录 worktree、启动器 PID / CWD、浏览器 PID / PPID 与专用 profile；再记录实例总数与峰值并发，同一实例跨多次验证复用只计一次。额外实例注明原因和不再需要它的时点。
+- 每个实例记录专用 profile、浏览器 PID / PPID、关闭方式与退出核验结果；没有启动浏览器时写「不适用」。
+- 测试运行器管理的浏览器按 [`browser-resources.md`](./browser-resources.md) 只记录命令与残留核验，不按实例计数。
+- 无法唯一确认归属时不要猜测回收；按 [`workflow.md`](./workflow.md#怎么取得这个授权) 取得授权并确认目标，或把清理列为未完成。不得把无法确认的进程记作已回收。
 
 ## 测试环境与命令
 

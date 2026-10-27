@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import appScrollbarsOptions from '@greypan/app-scrollbars'
 import {
   akarIconsCircleCheck,
   lucideChevronDown,
@@ -6,7 +7,6 @@ import {
   lucideCircleAlert,
   lucideCopy
 } from '@greypan/web-ui/icons'
-import { webUiScrollbarsOptions } from '@greypan/web-ui/scrollbars'
 import { OverlayScrollbars } from 'overlayscrollbars'
 import { OverlayScrollbarsComponent } from 'overlayscrollbars-vue'
 import { computed, onBeforeUnmount, reactive, ref, watchEffect } from 'vue'
@@ -348,7 +348,7 @@ function copyAnnouncement(key: string) {
               <div slot="content">
                 <OverlayScrollbarsComponent
                   :id="panelId(sample.id)"
-                  :options="webUiScrollbarsOptions"
+                  :options="appScrollbarsOptions"
                   :events="codeScrollbarsEvents"
                   class="max-h-[32rem] overflow-auto rounded-b-4xl bg-(--wui-color-page) px-4 pt-3 pb-4 font-mono text-xs leading-6"
                   data-code

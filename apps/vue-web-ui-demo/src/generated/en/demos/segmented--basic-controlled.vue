@@ -1,6 +1,6 @@
 <template>
   <div class="flex flex-col items-start gap-3">
-    <web-ui-segmented :value="day" @input="day = $event.currentTarget.value">
+    <web-ui-segmented aria-label="Weekday" :value="day" @input="day = $event.currentTarget.value">
       <web-ui-segmented-trigger value="mon">Mon</web-ui-segmented-trigger>
       <web-ui-segmented-trigger value="tue">Tue</web-ui-segmented-trigger>
       <web-ui-segmented-trigger value="wed">Wed</web-ui-segmented-trigger>

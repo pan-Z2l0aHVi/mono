@@ -1059,6 +1059,7 @@ const open = ref(false)
 | `closable`          | Shows the built-in close button.                                                        | `boolean`         | `false`   |
 | `headless`          | Keeps only overlay behavior; the default slot renders no built-in drawer UI.            | `boolean`         | `false`   |
 | `dialog-label`      | Accessible name of the inner native dialog; required under `headless`.                  | `string`          | `''`      |
+| `close-label`       | Accessible name of the built-in close button; follows the nearest `lang` by default.    | `string`          | `''`      |
 | `draggable`         | Shows a drag bar on the inner edge of the drawer and enables the drag-to-close gesture. | `boolean`         | `false`   |
 
 ### Events

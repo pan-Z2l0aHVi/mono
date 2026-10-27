@@ -11,6 +11,7 @@
     "check-generated": "node ../../scripts/workflow/check-md-to-comp-artifacts.mjs . vue"
   },
   "dependencies": {
+    "@greypan/app-scrollbars": "workspace:*",
     "@greypan/browser-kit": "workspace:*",
     "@greypan/js-kit": "workspace:*",
     "@greypan/web-ui": "workspace:*",

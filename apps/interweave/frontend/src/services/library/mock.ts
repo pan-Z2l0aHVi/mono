@@ -382,6 +382,9 @@ export function createMockLibraryRuntime(): LibraryRuntime {
     resourceMediaURL: sourceId => mediaBySourceId.get(sourceId) ?? null,
     pendingFilePreviewURL: () => null,
 
+    // 浏览器没有「系统默认应用」这个概念：返回空名，UI 回落到通用文案。
+    defaultOpenWith: () => Promise.resolve(''),
+
     // 浏览器里唯一能真实生效的动作就是开新标签；file 入口没有对应的系统打开方式。
     openExternal: target => {
       if (/^https?:\/\//.test(target)) window.open(target, '_blank', 'noopener,noreferrer')

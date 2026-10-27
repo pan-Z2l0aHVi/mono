@@ -1,0 +1,75 @@
+/*
+ * 结构样式（scrollbar 元素的布局、显隐、drag zone）由库自带，主题只覆盖它的 CSS 自定义属性。
+ * 两条 import 合成一个文件，顺序因此固定：库的初值在前，主题的覆盖在后——两边特异性都是
+ * (0,1,0)，全靠在源顺序上胜出，拆成两个 import 就无法保证这个顺序。
+ */
+@import 'overlayscrollbars/overlayscrollbars.css';
+
+/*
+ * macOS 覆盖式 scrollbar 主题。
+ *
+ * 覆盖式 scrollbar 浮在内容之上：不占布局宽度、无 track 底色、thumb 两端全圆角。--os-* 是一组
+ * 由 OverlayScrollbars 在 .os-scrollbar 上读取的自定义属性，这里把库默认主题
+ * （os-theme-dark / os-theme-light）的值整套换成 macOS 的度量。库在 .os-scrollbar 上
+ * 给的初值是 0/none，只在本主题缺项时才会露出来，所以这里每一项都要写全。
+ *
+ * 尺寸：--os-size 是 scrollbar 整条 drag zone 宽度，--os-padding-perpendicular 是垂直轴向的内边距，
+ * thumb 实宽 = size - 2 * padding。13 - 2 * 3 = 7px，正好是 macOS thumb 宽度与它离窗口边缘
+ * 的 3px 间隙。--os-padding-axis 是轴向两端留白，macOS 的 thumb 行程不到最边缘。
+ *
+ * 静止档颜色不属于本包：`@greypan/web-ui` 的 theme 拥有 `--wui-scrollbar-handle`，组件内部的
+ * 原生 scrollbar 与这里读的是同一个值。最外层主题还会把它镜像到 `documentElement`，所以挂在
+ * `<body>` 下、位于主题元素之外的文档级 scrollbar 也拿得到。本包只补 hover / active 两档——
+ * 原生 scrollbar 没有这两个状态，web-ui 因此不定义它们，而覆盖式 scrollbar 需要同样的按压反馈。
+ *
+ * 静止档的数值是对着 macOS 原生覆盖式 scrollbar**量**出来的，不是估的：AppKit 探针把
+ * `NSAppearance` 钉死成 aqua、用 `flashScrollers()` 把原生 thumb 逼到完全不透明，再对 drag zone 中心
+ * 逐列采样。浅色档在白底（255）上读到 rgb(155,155,155)；深色档在暗底（30）上读到
+ * rgb(154,154,154)——原生 thumb 在两个外观下渲染出的灰阶几乎相同，差异在 1 个 8-bit 阶以内。
+ * 于是静止档按「不透明度等于原生」反推，本包的回退值与 web-ui theme 的默认值一致。
+ *
+ * hover 与 active 的颜色加重没有原生对照物（探针只取得到静止档；原生的 hover 反馈不在颜色上），
+ * 所以沿用原来的绝对档距 +0.12 / +0.24 重新锚定，只保证「按下去比悬停深、悬停比静止深」
+ * 这条可读的关系。`src/__tests__/index.spec.ts` 把这几条都钉住了。
+ */
+
+.os-theme-macos {
+  --os-size: 13px;
+  --os-padding-perpendicular: 3px;
+  --os-padding-axis: 2px;
+  --os-track-border-radius: 100px;
+  --os-handle-border-radius: 100px;
+  --os-handle-interactive-area-offset: 4px;
+  --os-track-bg: none;
+  --os-track-bg-hover: none;
+  --os-track-bg-active: none;
+  --os-handle-bg: var(--wui-scrollbar-handle, rgb(0 0 0 / 0.39));
+  --os-handle-bg-hover: var(--app-scrollbar-handle-hover, rgb(0 0 0 / 0.51));
+  --os-handle-bg-active: var(--app-scrollbar-handle-active, rgb(0 0 0 / 0.63));
+  box-sizing: border-box;
+}
+
+/*
+ * 外观分支写在 web-ui-theme 输出的 resolved-appearance 上，与各 app 的 `dark:` 变体同源：
+ * 跟随系统只是 appearance="system" 的一种解析结果，用户显式选择的外观才是权威。
+ *
+ * 两档都要显式写。只写深色档的话，深色页面里嵌一个浅色主题时，那个子树会继续继承外层的
+ * 深色值——自定义属性是继承来的，「没写」不等于「回到浅色」。
+ *
+ * 两条规则分别覆盖两类消费面：主题子树内的滚动容器，以及挂在 <body> 下、位于主题元素之外的
+ * 文档级 scrollbar——后者只有 `html:has()` 够得到。`html:has()` 那条带 `:not(web-ui-theme *)`，
+ * 问的是「**最外层**主题是不是深色」：少了它，浅色页面里嵌一个深色 panel 就会把整页的文档级
+ * scrollbar 也染成浅色 thumb。嵌套在别的主题里的深色主题不参与这个判断，它的影响止于自己那棵子树。
+ *
+ * 浅色档的文档级 hover/active 不写在 `html` 上：回退字面量就是浅色值，与静止档同一条回退策略。
+ */
+web-ui-theme[resolved-appearance='light'] {
+  --app-scrollbar-handle-hover: rgb(0 0 0 / 0.51);
+  --app-scrollbar-handle-active: rgb(0 0 0 / 0.63);
+}
+
+web-ui-theme[resolved-appearance='dark'],
+html:has(web-ui-theme[resolved-appearance='dark']:not(web-ui-theme *)) {
+  --app-scrollbar-handle-hover: rgb(255 255 255 / 0.62);
+  --app-scrollbar-handle-active: rgb(255 255 255 / 0.74);
+}
