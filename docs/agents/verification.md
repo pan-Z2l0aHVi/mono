@@ -18,6 +18,7 @@ PR CI 对当前 base/head 复检 required checks，不替代实施阶段已要�
 
 - 按 [`browser-resources.md`](./browser-resources.md) 的启动记录与归属核验，记录 worktree、启动器 PID / CWD、浏览器 PID / PPID 与专用 profile；再记录实例总数与峰值并发，同一实例跨多次验证复用只计一次。额外实例注明原因和不再需要它的时点。
 - 每个实例记录专用 profile、浏览器 PID / PPID、关闭方式与退出核验结果；没有启动浏览器时写「不适用」。
+- 测试运行器管理的浏览器按 [`browser-resources.md`](./browser-resources.md) 只记录命令与残留核验，不按实例计数。
 - 无法唯一确认归属时不要猜测回收；按 [`workflow.md`](./workflow.md#怎么取得这个授权) 取得授权并确认目标，或把清理列为未完成。不得把无法确认的进程记作已回收。
 
 ## 测试环境与命令

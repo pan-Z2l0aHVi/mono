@@ -19,7 +19,7 @@
 - 只需要隔离 cookie 与 storage 时，用工具提供的隔离 context，不要另起浏览器进程。
 - 不得附加或控制用户的日常浏览器会话。归属判据是本任务独占的专用 profile，不是用了哪个工具。
 - 超出上述实例数的浏览器必须有明确原因，并在不再需要它的时点立即回收。
-- 测试运行器的并发与 profile 由测试命令管理；下文的单实例、复用与实例计数规则只针对 agent 直接启动的浏览器。测试命令结束后只核验没有残留进程。
+- 测试运行器的并发与 profile 由测试命令管理；本文的单实例、复用与实例计数规则只针对 agent 直接启动的浏览器。测试命令结束后只核验没有残留进程。
 
 ## 启动记录
 
@@ -46,14 +46,14 @@
 1. 关闭本次验证打开且不再复用的页面；
 2. 结束浏览器主进程，或让启动器代为结束；
 3. 用专用 profile 的完整路径做全进程扫描，确认没有进程仍在使用；不要只检查主 PID；
-4. 若进程仍在，发送 `TERM`；等待 10 秒，重新做第 3 步；只有进程仍在且 PID、完整 profile 再次确认匹配时，才发送 `KILL`；
+4. 若进程仍在，发送 `TERM`；等待 10 秒，重新做第 3 步。对第 3 步列出的每个已确认 PID 重复这一步；只有进程仍在且 PID、完整 profile 再次确认匹配时，才发送 `KILL`；
 5. 记录每一步的结果。
 
 ## 归属核验
 
 从本任务 worktree 定位唯一的启动器 / MCP 服务，再逐级核对到浏览器主进程。共享父进程、浏览器 CWD 或 PID 与 profile 自洽，都不足以单独建立归属。
 
-以下命令以 Chromium 系为例；其他引擎用等价的 profile 参数。
+以下命令以 macOS / POSIX shell 上的 Chromium 系为例；其他引擎与平台使用等价的进程和 profile 查询方式。
 
 ```sh
 worktree="$(cd "$(git rev-parse --show-toplevel)" && pwd -P)"
@@ -64,7 +64,7 @@ lsof -a -p "$launcher_pid" -d cwd -Fn
 ps -ww -p "$browser_pid" -o pid=,ppid=,command=
 ```
 
-`lsof` 的 `n` 路径必须与 `$worktree` 相同，且候选服务唯一。命令行必须包含本任务记录的完整 `--user-data-dir`。
+`lsof` 的 `n` 路径必须与 `$worktree` 相同，且候选服务唯一。命令行必须包含本任务记录的完整 `--user-data-dir`（其他引擎为等价的 profile 参数）。
 
 确认专用 profile 是否仍被任何进程使用时，按完整路径做边界匹配，避免前缀误伤（例如 `/tmp/p` 与 `/tmp/p2`）：
 
@@ -87,8 +87,8 @@ ps -ww -axo pid=,command= | VERIFY_BROWSER_PROFILE="$browser_profile" awk '
 ## Profile 与磁盘
 
 - 工具若声明会在正常关闭时删除临时 / isolated profile，仍以进程与 profile 核验为准；崩溃、强制结束或客户端异常退出可能留下目录。
-- 只删除本任务在启动记录中写明的专用 profile，且位于系统临时目录或工具文档声明的临时 / isolated 路径。
-- 工具默认 profile、命名持久 `--profile` 路径、用户日常浏览器数据和其他任务的 profile 一律只报告，不删除。确需删除不属于本任务的 profile 时，按 [`workflow.md`](./workflow.md#怎么取得这个授权) 取得逐次授权。
+- 只删除本任务在启动记录中写明的专用 profile，且位于系统临时目录，或工具文档明确声明会自动清理的临时 / isolated 路径；isolated 本身不等于可丢弃。
+- 工具默认 profile、命名持久会话（`--profile`、`--session`、`--restore` 等）、用户日常浏览器数据和其他任务的 profile 一律只报告，不删除。确需删除不属于本任务的 profile 时，按 [`workflow.md`](./workflow.md#怎么取得这个授权) 取得逐次授权。
 - 删除前用上面的 profile 查询确认没有进程使用；不要按目录年龄或前缀匹配删除。
 - 定期清理是异常退出的兜底，不替代正常关闭。
 
