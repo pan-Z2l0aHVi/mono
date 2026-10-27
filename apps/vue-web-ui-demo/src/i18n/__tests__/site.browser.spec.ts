@@ -17,6 +17,28 @@ import Home from '@/pages/home/index.vue'
 import { prepareExamples } from '../examples'
 import { loadDemoLocale } from '../locale'
 
+// 保留真实双语数据与示例模块，只缩小此交互回归的语料；覆盖同文档多例和跨文档准备。
+vi.mock('@/generated/examples', async importOriginal => {
+  const module = await importOriginal<typeof import('@/generated/examples')>()
+  return {
+    ...module,
+    exampleDocs: module.exampleDocs.map(doc => ({
+      ...doc,
+      samples: doc.samples.slice(0, doc.component === 'button' ? 2 : 1)
+    }))
+  }
+})
+vi.mock('@/generated/en/examples', async importOriginal => {
+  const module = await importOriginal<typeof import('@/generated/en/examples')>()
+  return {
+    ...module,
+    exampleDocs: module.exampleDocs.map(doc => ({
+      ...doc,
+      samples: doc.samples.slice(0, doc.component === 'button' ? 2 : 1)
+    }))
+  }
+})
+
 it('通过全局选择器切换壳、文档、API、运行示例与双框架源码，并保留路由和主题', async () => {
   await loadDemoLocale('zh-CN', false)
   const router = createRouter({
@@ -57,21 +79,38 @@ it('通过全局选择器切换壳、文档、API、运行示例与双框架源�
     await vi.waitFor(() => expect(wrapper.find('[data-example-intro]').element.textContent).toBe(textOf(en.introHtml)))
     expect(wrapper.text()).toContain('Samples')
     expect(wrapper.find('web-ui-button[aria-label="Copy code"]').exists()).toBe(true)
-    const first = wrapper.find('[data-sample-preview]')
-    await prepareExamples('en', [en], ['button'])
+    const buttonDoc = wrapper.find('[data-example-doc="button"]')
+    const first = buttonDoc.find('[data-sample-preview]')
+    await prepareExamples('en', englishDocs, ['button', 'button-group'])
     await flushPromises()
     expect(first.find('web-ui-button').exists()).toBe(true)
     const oldPreview = first.element.firstElementChild
-    expect(wrapper.find('[data-example-doc="button"]').text()).toContain('Name')
-    const source = () => wrapper.findAll('[data-code] pre')[1]!.element.textContent
+    expect(buttonDoc.text()).toContain('Name')
+    expect(first.text()).toContain('No variant (also glass)')
+    expect(wrapper.find('[data-example-doc="button-group"] [data-sample-preview]').text()).toContain('Left')
+    const sizes = buttonDoc.findAll('[data-sample]')[1]!
+    const source = () => sizes.find('[data-code] pre').element.textContent
+    expect(sizes.find('[data-sample-preview]').text()).toContain('Default 36')
     expect(source()).toContain('Default 36')
+    expect(source()).toContain('<template>')
+    await userEvent.click(
+      sizes.findAll('web-ui-segmented-trigger').find(trigger => trigger.text() === 'React')!.element
+    )
+    await vi.waitFor(() => expect(source()).toContain('export default function Demo()'))
     await select('Global language', 'zh-CN')
     const zh = chineseDocs.find(doc => doc.component === 'button')!
     await vi.waitFor(() => expect(wrapper.find('[data-example-intro]').element.textContent).toBe(textOf(zh.introHtml)))
     await vi.waitFor(() => expect(first.find('web-ui-button').exists()).toBe(true))
     await vi.waitFor(() => expect(first.element.firstElementChild).not.toBe(oldPreview))
+    expect(first.text()).toContain('没写 variant（同样是 glass）')
+    expect(wrapper.find('[data-example-doc="button-group"] [data-sample-preview]').text()).toContain('左')
+    expect(sizes.find('[data-sample-preview]').text()).toContain('默认 36')
     expect(source()).toContain('默认 36')
-    expect(wrapper.find('[data-example-doc="button"]').text()).toContain('名称')
+    expect(source()).toContain('export default function Demo()')
+    await userEvent.click(sizes.findAll('web-ui-segmented-trigger').find(trigger => trigger.text() === 'Vue')!.element)
+    await vi.waitFor(() => expect(source()).toContain('<template>'))
+    expect(source()).toContain('默认 36')
+    expect(buttonDoc.text()).toContain('名称')
     expect(router.currentRoute.value.path).toBe('/components/button')
     expect(wrapper.find('web-ui-theme').element as WebUiTheme).toHaveProperty('appearance', 'dark')
   } finally {
