@@ -24,8 +24,11 @@ func defaultOpenWithName(_ context.Context, target string, isURL bool) (string, 
 	association := target
 	if isURL {
 		parsed, err := url.Parse(target)
-		if err != nil || parsed.Scheme == "" {
+		if err != nil {
 			return "", fmt.Errorf("parse URL %q: %w", target, err)
+		}
+		if parsed.Scheme == "" {
+			return "", fmt.Errorf("URL %q has no scheme", target)
 		}
 		association = parsed.Scheme
 	} else {
