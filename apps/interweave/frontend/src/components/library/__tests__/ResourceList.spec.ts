@@ -1632,7 +1632,8 @@ describe('ResourceList：键盘导航与预览入口', () => {
       row.dispatchEvent(new MouseEvent('mouseleave'))
 
       // hover 的预览入口已下线（#187）：预览改由键盘空格触发。hover 的底色反馈是视觉
-      // 契约，由浏览器取证负责，这里只守「hover 不再开预览」这一条。
+      // 契约，由同目录的 color-states.browser.spec.ts 取证；这里只守「hover 不再开预览」
+      // 这一条。
       expect(preview).not.toHaveBeenCalled()
     } finally {
       mounted.unmount()

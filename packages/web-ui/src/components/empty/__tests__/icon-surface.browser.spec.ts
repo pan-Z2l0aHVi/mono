@@ -8,14 +8,21 @@ import type { WebUiTheme } from '@/components/theme'
 import { waitForUpdate } from '@/shared/test-utils'
 
 /**
- * 空态默认图形与它背后表面的可辨度（WCAG 对比度 ≥ 3:1）。
+ * 空态 icon 区**不绘制任何底面**，图形色是实色，两者共同保证图形直接坐在它背后那张
+ * 表面上。
  *
- * 图形深浅走 group opacity，颜色按自身 alpha 先与背景合成；两侧都由主题 token 决定，
- * 本用例不含颜色字面量，主题改调色板时关系仍然成立。
+ * 断言的全是关系与「没有」：icon 盒的底面必须透明、图形色不带 alpha、图形与背后表面的
+ * 对比度 ≥ 3。钉一个具体色值只能证明「不是那一档灰」，钉「透明」才证明没有底面——底面若
+ * 换成任何一档中性色（包括半透明），这个用例都会红。
+ *
+ * 图形色不带 alpha 这条也不是洁癖：线框图形的笔画在转角、端点与填底处本来就互相压着，
+ * 颜色自带 alpha 会在重叠处二次合成、局部变深，视觉上就是「角上笔画发黑」。淡一档由
+ * group opacity 负责，那是在整颗图形合成之后一次性施加的，重叠处不起变化。
  */
 afterEach(() => document.body.replaceChildren())
 
 interface Mounted {
+  icon: HTMLElement
   backdrop: string
   color: string
   opacity: number
@@ -40,6 +47,7 @@ async function mountEmpty(appearance: 'light' | 'dark'): Promise<Mounted> {
   const glyph = el.shadowRoot?.querySelector<SVGSVGElement>('.empty-glyph')
   if (!icon || !glyph) throw new Error('web-ui-empty shadow root 缺少 .empty-icon / .empty-glyph')
   return {
+    icon,
     backdrop: getComputedStyle(theme).backgroundColor,
     color: getComputedStyle(icon).color,
     opacity: Number(getComputedStyle(glyph).opacity)
@@ -90,8 +98,21 @@ function contrastRatio(foreground: string, backdrop: string, extraOpacity = 1): 
   return (hi + 0.05) / (lo + 0.05)
 }
 
-describe('web-ui-empty 默认图形的可辨度（浏览器）', () => {
+/** 全透明在两种序列化下都写作这四种形式之一。 */
+const TRANSPARENT = new Set(['transparent', 'rgba(0, 0, 0, 0)', 'rgba(0,0,0,0)'])
+
+describe('web-ui-empty 的 icon 区不绘制底面（浏览器）', () => {
   for (const appearance of ['light', 'dark'] as const) {
+    it(`${appearance} 下 icon 盒不绘制底面`, async () => {
+      const { icon } = await mountEmpty(appearance)
+      expect(TRANSPARENT.has(getComputedStyle(icon).backgroundColor)).toBe(true)
+    })
+
+    it(`${appearance} 下图形色是实色，不带 alpha`, async () => {
+      const { color } = await mountEmpty(appearance)
+      expect(parseColor(color)[3], `图形色带了 alpha，笔画重叠处会发黑：${color}`).toBe(1)
+    })
+
     it(`${appearance} 下图形与它背后的表面对比度 ≥ 3:1`, async () => {
       const { color, opacity, backdrop } = await mountEmpty(appearance)
       const ratio = contrastRatio(color, backdrop, opacity)

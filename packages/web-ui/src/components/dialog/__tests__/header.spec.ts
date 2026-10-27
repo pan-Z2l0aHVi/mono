@@ -56,6 +56,21 @@ describe('WebUiDialog accessible name', () => {
     cleanupElement(el)
   })
 
+  it('heading 清空后 accessible name 随带一起消失', async () => {
+    const el = createDialog('<p>正文</p>')
+    el.heading = '设置'
+    await waitForUpdate(el)
+    expect(nativeDialog(el).getAttribute('aria-labelledby')).toBe('wui-dialog-heading')
+
+    // 带随 heading 一起退场，名字不能还挂在一个已经不存在的带。
+    el.heading = ''
+    await waitForUpdate(el)
+
+    expect(nativeDialog(el).hasAttribute('aria-labelledby')).toBe(false)
+    expect(nativeDialog(el).hasAttribute('aria-label')).toBe(false)
+    cleanupElement(el)
+  })
+
   it('dialog-label 优先于带，直接写 aria-label', async () => {
     const el = createDialog('<span slot="header">设置</span>')
     el.dialogLabel = '设置'
@@ -95,10 +110,9 @@ describe('WebUiDialog accessible name', () => {
     el.querySelector('[slot="header"]')!.remove()
     await flushSlotChange(el)
 
-    // 槽空后带由 heading 填充：用户看到（并由 aria-labelledby 读到）的标题换成属性值。
+    // 槽空后带由 heading 填充：带重新成为可命名的对象。带里读到的是哪段文字由浏览器
+    // 的槽分发决定（jsdom 不排版），渲染面在同目录的 header.browser.spec.ts 取证。
     expect(nativeDialog(el).getAttribute('aria-labelledby')).toBe('wui-dialog-heading')
-    expect(el.shadowRoot?.textContent).toContain('属性标题')
-    expect(el.shadowRoot?.textContent).not.toContain('槽标题')
     cleanupElement(el)
   })
 })

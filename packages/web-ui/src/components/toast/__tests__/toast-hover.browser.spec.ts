@@ -223,6 +223,14 @@ describe('toast 悬停暂停（浏览器）', () => {
     el!.dispatchEvent(new PointerEvent('pointerenter', { pointerType: 'mouse' }))
     expect(el!.hoverPaused).toBe(true)
 
+    /*
+     * 降级搬迁的两个相位由用例自己掌握时刻：拦截 appendChild 时只把「重插」这一步存下来，
+     * 摘出照做；相位一断言完再显式发起重插。
+     *
+     * 不用定时器把重插推后：定时器窗口（哪怕只有 60ms）会让「此刻已摘出」变成一条隐含
+     * 前提——合成帧机会被负载拉长时窗口先到期、元素已经重插，断言就在核对一个假前提。
+     */
+    let reinsert: (() => void) | undefined
     const restoreMove = disableMoveBefore()
     const originalAppend = Node.prototype.appendChild as (this: Node, node: Node) => Node
     const appendDesc = Object.getOwnPropertyDescriptor(Node.prototype, 'appendChild')
@@ -230,10 +238,11 @@ describe('toast 悬停暂停（浏览器）', () => {
       configurable: true,
       writable: true,
       value: function appendChildWithLegacyMove(this: Node, node: Node): Node {
-        // 只拦截本条 toast 的降级搬迁：先真正摘出（disconnect），插入推迟到它的
-        // reactions 刷新之后（connect），复现老引擎「摘出重插」的两个相位。
+        // 只拦截本条 toast 的降级搬迁：先真正摘出（disconnect），重插留给用例在相位一
+        // 之后显式发起（connect），复现老引擎「摘出重插」的两个相位。
         if (node === el && node.parentElement?.isConnected) {
-          setTimeout(() => originalAppend.call(this, node), 60)
+          // 箭头函数继承外层函数的 this：调用 appendChild 的那个节点就是重插的目标。
+          reinsert = () => originalAppend.call(this, node)
           ;(node as ChildNode).remove()
           return node
         }
@@ -247,10 +256,11 @@ describe('toast 悬停暂停（浏览器）', () => {
       else Reflect.deleteProperty(Node.prototype, 'appendChild')
       restoreMove()
     }
-    // custom element reactions 在微任务 checkpoint 刷新，等一帧再断言：
-    // 帧边界是确定性的，`setTimeout(0)` 只是「大概轮到过了」。
+    if (!reinsert) throw new Error('降级搬迁没有走到 appendChild 路径')
+
+    // 摘出引发的 reactions 先刷完：兜底监听的摘除与计时的清空都在这一拍落地，之后
+    // document 上才真的没人受理 pointerover。
     await el!.updateComplete
-    await waitForFrame()
 
     /*
      * 相位一：摘出已发生（disconnectedCallback 跑过，document 兜底随之摘掉）——此刻
@@ -265,7 +275,9 @@ describe('toast 悬停暂停（浏览器）', () => {
      * 相位二：重插落地（connectedCallback 跑过）；暂停态保持
      *（resumeAutoClose 在悬停中提前 return，计时器保持熄灭）。
      */
-    await pollUntil(() => el!.isConnected, 'degraded relocate did not re-insert the toast')
+    reinsert()
+    await el!.updateComplete
+    expect(el!.isConnected).toBe(true)
     expect(el!.hoverPaused).toBe(true)
 
     /*
