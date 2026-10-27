@@ -2,7 +2,7 @@
 
 > Web Components 自动导入插件，支持 React、Vue 与 Vite HTML 入口
 
-[English](./README.md) | 简体中文
+[English](https://github.com/pan-Z2l0aHVi/mono/blob/main/packages/unplugin-web-components/README.md) | 简体中文
 
 ## 功能
 

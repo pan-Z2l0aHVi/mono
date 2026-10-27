@@ -2,7 +2,7 @@
 
 > Vitest 浏览器模式下的测试基础设施插件，基于 MSW
 
-[English](./README.md) | 简体中文
+[English](https://github.com/pan-Z2l0aHVi/mono/blob/main/packages/test-kit/README.md) | 简体中文
 
 ## 功能
 
@@ -101,12 +101,12 @@ await ctx.stopMsw()
 
 **返回：** `MswContext`，包含：
 
-| 属性       | 类型                  | 说明                    |
-| ---------- | --------------------- | ----------------------- |
-| `worker`   | `SetupWorker`         | MSW service worker 实例 |
-| `startMsw` | `() => Promise<void>` | 启动 service worker     |
-| `stopMsw`  | `() => void`          | 停止 service worker     |
-| `resetMsw` | `() => void`          | 重置所有处理器为默认值  |
+| 属性       | 类型                     | 说明                    |
+| ---------- | ------------------------ | ----------------------- |
+| `worker`   | `SetupWorker`            | MSW service worker 实例 |
+| `startMsw` | `() => Promise<unknown>` | 启动 service worker     |
+| `stopMsw`  | `() => void`             | 停止 service worker     |
+| `resetMsw` | `() => void`             | 重置所有处理器为默认值  |
 
 ### `defineCapturedRequests()`
 

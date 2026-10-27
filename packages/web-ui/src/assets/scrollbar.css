@@ -1,0 +1,24 @@
+/*
+ * 组件内部滚动容器的原生 scrollbar 主题。
+ *
+ * 结构与几何交给平台，这里只把 thumb 换成 `web-ui-theme` 提供的 `--wui-scrollbar-handle`，
+ * 让 shadow 里的滚动条与页面滚动条同色。自定义属性跨 shadow 边界继承，是唯一能穿过去的东西，
+ * 所以颜色走 var()，不写死字面量。
+ *
+ * 刻意**不写 `::-webkit-scrollbar`**：一旦给某条 scrollbar 声明了自定义 webkit 伪元素，引擎就会
+ * 放弃平台自带的覆盖式 scrollbar，改用经典 scrollbar 并固定占一条布局宽度。实测（macOS Chromium，
+ * 一条 `width: 7px` 的 `::-webkit-scrollbar`）：同尺寸容器的 `offsetWidth - clientWidth` 从 0 变成 7。
+ * `scrollbar-color` / `scrollbar-width` 不触发这个切换：覆盖式平台上 scrollbar 保持零宽覆盖，
+ * 经典平台上才按它们上色、收窄。
+ *
+ * 覆盖式平台（macOS、无头 Chromium）上这条规则几乎不可见——原生的覆盖 scrollbar 由系统绘制，
+ * 并不看这两个属性；它真正的用处在经典 scrollbar 的平台（Windows / Linux）。
+ *
+ * `scrollbar-color` 与 `scrollbar-width` 都是**继承属性**，写一次即可作用于容器自身及其后代；
+ * 调用方只在组件自己的 shadow 里 adopted 本文件（见各组件的 `static styles`），所以样式天然隔离，
+ * 不会漏到文档层。
+ */
+.wui-scroll {
+  scrollbar-color: var(--wui-scrollbar-handle, rgb(0 0 0 / 0.39)) transparent;
+  scrollbar-width: thin;
+}

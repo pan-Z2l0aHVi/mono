@@ -2,7 +2,7 @@
 
 > Lit-based web components for React, Vue, and vanilla JS
 
-English | [简体中文](./README.CN.md)
+English | [简体中文](https://github.com/pan-Z2l0aHVi/mono/blob/main/packages/web-ui/README.CN.md)
 
 ## Demo
 
@@ -16,7 +16,8 @@ English | [简体中文](./README.CN.md)
 npm install @greypan/web-ui
 ```
 
-Requires `lit` as a dependency.
+`lit` is a required peer dependency; `vue >= 3.5` and `@types/react >= 19` are optional peers used
+only by their framework type adapters.
 
 ## Quick Start
 
@@ -31,38 +32,46 @@ A subpath import registers only the component it names, so import every tag the 
 <web-ui-button variant="primary">Click me</web-ui-button> <web-ui-icon .icon="${lucidePlus}"></web-ui-icon>
 ```
 
-## Scrollbars
+## Icons
 
-`@greypan/web-ui/scrollbars` carries the repo-wide scrollbar behavior for [OverlayScrollbars](https://github.com/KingSora/OverlayScrollbars)
-hosts: a macOS-aligned theme, auto-hide that reveals the bar while scrolling, and clicking the track scrolling to that spot.
-Import the stylesheet once per document and pass the options to whichever adapter you initialize with.
+`@greypan/web-ui/icons` exports bundled [Iconify](https://iconify.design/) data objects for the icons the
+components use, so consumers do not need an icon package or a network request. Names are
+`<set><Name>` in camelCase: `lucideSearch` is `lucide:search`.
 
 ```js
-import '@greypan/web-ui/scrollbars.css'
-import { webUiScrollbarsOptions } from '@greypan/web-ui/scrollbars'
-import { OverlayScrollbarsComponent } from 'overlayscrollbars-react' // or overlayscrollbars-vue
-
-;<OverlayScrollbarsComponent options={webUiScrollbarsOptions}>{children}</OverlayScrollbarsComponent>
+import { lucideSearch } from '@greypan/web-ui/icons'
 ```
 
-- `overlayscrollbars` is an optional peer dependency and is only needed by this subpath. The stylesheet already
-  contains the library's structural styles, so it replaces `import 'overlayscrollbars/overlayscrollbars.css'`.
-- Keep the container's own `overflow` declaration (`overflow-y-auto`, …). OverlayScrollbars overrides it once it
-  takes over, but it is what keeps the container scrollable until then.
-- The target must be a plain scroll container. OverlayScrollbars turns the host into a flex row and moves its
-  children into a generated viewport, so a host whose own layout carries meaning — a grid, a centred box, a `ul`/`ol`
-  — loses it.
-- OverlayScrollbars only changes the element it is initialized on; children keep their native scrollbars. To cover
-  the document scroller, initialize `document.body` — `window.scrollY` / `window.scrollTo` keep their native
-  semantics there.
-- Components that own a scroll container (`select`, `autocomplete`, the dropdown / context-menu panels,
-  `dialog`, `drawer`, `toast`) theme that container's **internal** scrollbar inside their own shadow root.
-  OverlayScrollbars cannot reach a shadow root — its structural styles and theme classes are document-level
-  selectors — so the components read the same inherited `--wui-scrollbar-*` colours through `scrollbar-color`
-  / `scrollbar-width` on the native scrollbar instead. `::-webkit-scrollbar` is deliberately not used: styling
-  it opts out of the platform's overlay scrollbar and reserves a layout gutter, which these scrollbars must
-  not do. Import this stylesheet for the internal scrollbars to follow the appearance, just like the
-  page-level ones.
+```html
+<web-ui-icon .icon="${lucideSearch}"></web-ui-icon>
+```
+
+`web-ui-icon` receives the Iconify object through the `icon` property, not an attribute, and any Iconify
+data object works — bundled or your own. The bundled list is generated from `icons.used.json`; add an
+entry and run `pnpm --filter @greypan/web-ui generate-icons` to extend it.
+
+## Scrollbars
+
+Scrollbars are native CSS. `web-ui-theme` exposes the thumb colour as `--wui-scrollbar-handle`, and components
+that own a scroll container (`select`, `autocomplete`, the dropdown / context-menu panels, `dialog`, `drawer`,
+`toast`) read it through `scrollbar-color` and `scrollbar-width` inside their shadow roots. No scrollbar library
+or extra stylesheet is required.
+
+To theme the document scroll container as well, read the same token on `html` — the outermost theme mirrors it to
+`documentElement`:
+
+```css
+html {
+  scrollbar-color: var(--wui-scrollbar-handle) transparent;
+  scrollbar-width: thin;
+}
+```
+
+- `scrollbar-color` and `scrollbar-width` are inherited, so this one rule also reaches scroll containers inside
+  component shadow roots.
+- Native scrollbars expose no hover or active states; the token only controls the resting thumb colour.
+- `::-webkit-scrollbar` is deliberately not used. Declaring it opts out of the platform's overlay scrollbar and
+  reserves a layout gutter, which these scrollbars must not do.
 
 ## Classes
 
@@ -408,46 +417,46 @@ All form controls participate in native `FormData`, constraint validation, `form
 
 ## All Components
 
-Every component has its own doc page: API reference, behavior notes and interactive examples all live under [`docs/`](./docs/). The table below is just the index.
+Every component has its own doc page: API reference, behavior notes and interactive examples all live under [`docs/`](https://github.com/pan-Z2l0aHVi/mono/tree/main/packages/web-ui/docs). The table below is just the index.
 
-| Category               | Component                                                   |
-| ---------------------- | ----------------------------------------------------------- |
-| **Form Controls**      | [`<web-ui-input>`](./docs/input.md)                         |
-|                        | [`<web-ui-textarea>`](./docs/textarea.md)                   |
-|                        | [`<web-ui-editable-text>`](./docs/editable-text.md)         |
-|                        | [`<web-ui-input-number>`](./docs/input-number.md)           |
-|                        | [`<web-ui-select>`](./docs/select.md)                       |
-|                        | [`<web-ui-autocomplete>`](./docs/autocomplete.md)           |
-|                        | [`<web-ui-slider>`](./docs/slider.md)                       |
-|                        | [`<web-ui-checkbox>`](./docs/checkbox.md)                   |
-|                        | [`<web-ui-radio>`](./docs/radio.md)                         |
-|                        | [`<web-ui-switch>`](./docs/switch.md)                       |
-|                        | [`<web-ui-segmented>`](./docs/segmented.md)                 |
-|                        | [`<web-ui-checkbox-group>`](./docs/checkbox-group.md)       |
-|                        | [`<web-ui-radio-group>`](./docs/radio-group.md)             |
-| **Buttons**            | [`<web-ui-button>`](./docs/button.md)                       |
-|                        | [`<web-ui-button-group>`](./docs/button-group.md)           |
-| **Overlay / Modal**    | [`<web-ui-dialog>`](./docs/dialog.md)                       |
-|                        | [`<web-ui-drawer>`](./docs/drawer.md)                       |
-|                        | [`imagePreview()`](./docs/image-preview.md)                 |
-| **In-flow Disclosure** | [`<web-ui-collapse>`](./docs/collapse.md)                   |
-| **Floating**           | [`<web-ui-popover>`](./docs/popover.md)                     |
-|                        | [`<web-ui-tooltip>`](./docs/tooltip.md)                     |
-|                        | [`<web-ui-context-menu>`](./docs/context-menu.md)           |
-| **Menu**               | [`<web-ui-dropdown>`](./docs/dropdown.md)                   |
-|                        | [`<web-ui-dropdown-item>`](./docs/dropdown-item.md)         |
-|                        | [`<web-ui-dropdown-divider>`](./docs/dropdown-divider.md)   |
-|                        | [`<web-ui-dropdown-header>`](./docs/dropdown-header.md)     |
-| **Data Display**       | [`<web-ui-avatar>`](./docs/avatar.md)                       |
-|                        | [`<web-ui-badge>`](./docs/badge.md)                         |
-|                        | [`<web-ui-empty>`](./docs/empty.md)                         |
-|                        | [`<web-ui-middle-ellipsis>`](./docs/middle-ellipsis.md)     |
-|                        | [`<web-ui-icon>`](./docs/icon.md)                           |
-|                        | [`<web-ui-spinner>`](./docs/spinner.md)                     |
-| **Layout & Utility**   | [`<web-ui-layout>`](./docs/layout.md)                       |
-|                        | [`<web-ui-back-top>`](./docs/back-top.md)                   |
-|                        | [`<web-ui-svg-draw-lines>`](./docs/svg-draw-lines.md)       |
-|                        | [`<web-ui-theme>`](./docs/theme.md)                         |
-| **Notification**       | [`<web-ui-toast>`](./docs/toast.md)                         |
-| **Sub-items**          | [`<web-ui-option>`](./docs/option.md)                       |
-|                        | [`<web-ui-segmented-trigger>`](./docs/segmented-trigger.md) |
+| Category               | Component                                                                                                                |
+| ---------------------- | ------------------------------------------------------------------------------------------------------------------------ |
+| **Form Controls**      | [`<web-ui-input>`](https://github.com/pan-Z2l0aHVi/mono/blob/main/packages/web-ui/docs/input.md)                         |
+|                        | [`<web-ui-textarea>`](https://github.com/pan-Z2l0aHVi/mono/blob/main/packages/web-ui/docs/textarea.md)                   |
+|                        | [`<web-ui-editable-text>`](https://github.com/pan-Z2l0aHVi/mono/blob/main/packages/web-ui/docs/editable-text.md)         |
+|                        | [`<web-ui-input-number>`](https://github.com/pan-Z2l0aHVi/mono/blob/main/packages/web-ui/docs/input-number.md)           |
+|                        | [`<web-ui-select>`](https://github.com/pan-Z2l0aHVi/mono/blob/main/packages/web-ui/docs/select.md)                       |
+|                        | [`<web-ui-autocomplete>`](https://github.com/pan-Z2l0aHVi/mono/blob/main/packages/web-ui/docs/autocomplete.md)           |
+|                        | [`<web-ui-slider>`](https://github.com/pan-Z2l0aHVi/mono/blob/main/packages/web-ui/docs/slider.md)                       |
+|                        | [`<web-ui-checkbox>`](https://github.com/pan-Z2l0aHVi/mono/blob/main/packages/web-ui/docs/checkbox.md)                   |
+|                        | [`<web-ui-radio>`](https://github.com/pan-Z2l0aHVi/mono/blob/main/packages/web-ui/docs/radio.md)                         |
+|                        | [`<web-ui-switch>`](https://github.com/pan-Z2l0aHVi/mono/blob/main/packages/web-ui/docs/switch.md)                       |
+|                        | [`<web-ui-segmented>`](https://github.com/pan-Z2l0aHVi/mono/blob/main/packages/web-ui/docs/segmented.md)                 |
+|                        | [`<web-ui-checkbox-group>`](https://github.com/pan-Z2l0aHVi/mono/blob/main/packages/web-ui/docs/checkbox-group.md)       |
+|                        | [`<web-ui-radio-group>`](https://github.com/pan-Z2l0aHVi/mono/blob/main/packages/web-ui/docs/radio-group.md)             |
+| **Buttons**            | [`<web-ui-button>`](https://github.com/pan-Z2l0aHVi/mono/blob/main/packages/web-ui/docs/button.md)                       |
+|                        | [`<web-ui-button-group>`](https://github.com/pan-Z2l0aHVi/mono/blob/main/packages/web-ui/docs/button-group.md)           |
+| **Overlay / Modal**    | [`<web-ui-dialog>`](https://github.com/pan-Z2l0aHVi/mono/blob/main/packages/web-ui/docs/dialog.md)                       |
+|                        | [`<web-ui-drawer>`](https://github.com/pan-Z2l0aHVi/mono/blob/main/packages/web-ui/docs/drawer.md)                       |
+|                        | [`imagePreview()`](https://github.com/pan-Z2l0aHVi/mono/blob/main/packages/web-ui/docs/image-preview.md)                 |
+| **In-flow Disclosure** | [`<web-ui-collapse>`](https://github.com/pan-Z2l0aHVi/mono/blob/main/packages/web-ui/docs/collapse.md)                   |
+| **Floating**           | [`<web-ui-popover>`](https://github.com/pan-Z2l0aHVi/mono/blob/main/packages/web-ui/docs/popover.md)                     |
+|                        | [`<web-ui-tooltip>`](https://github.com/pan-Z2l0aHVi/mono/blob/main/packages/web-ui/docs/tooltip.md)                     |
+|                        | [`<web-ui-context-menu>`](https://github.com/pan-Z2l0aHVi/mono/blob/main/packages/web-ui/docs/context-menu.md)           |
+| **Menu**               | [`<web-ui-dropdown>`](https://github.com/pan-Z2l0aHVi/mono/blob/main/packages/web-ui/docs/dropdown.md)                   |
+|                        | [`<web-ui-dropdown-item>`](https://github.com/pan-Z2l0aHVi/mono/blob/main/packages/web-ui/docs/dropdown-item.md)         |
+|                        | [`<web-ui-dropdown-divider>`](https://github.com/pan-Z2l0aHVi/mono/blob/main/packages/web-ui/docs/dropdown-divider.md)   |
+|                        | [`<web-ui-dropdown-header>`](https://github.com/pan-Z2l0aHVi/mono/blob/main/packages/web-ui/docs/dropdown-header.md)     |
+| **Data Display**       | [`<web-ui-avatar>`](https://github.com/pan-Z2l0aHVi/mono/blob/main/packages/web-ui/docs/avatar.md)                       |
+|                        | [`<web-ui-badge>`](https://github.com/pan-Z2l0aHVi/mono/blob/main/packages/web-ui/docs/badge.md)                         |
+|                        | [`<web-ui-empty>`](https://github.com/pan-Z2l0aHVi/mono/blob/main/packages/web-ui/docs/empty.md)                         |
+|                        | [`<web-ui-middle-ellipsis>`](https://github.com/pan-Z2l0aHVi/mono/blob/main/packages/web-ui/docs/middle-ellipsis.md)     |
+|                        | [`<web-ui-icon>`](https://github.com/pan-Z2l0aHVi/mono/blob/main/packages/web-ui/docs/icon.md)                           |
+|                        | [`<web-ui-spinner>`](https://github.com/pan-Z2l0aHVi/mono/blob/main/packages/web-ui/docs/spinner.md)                     |
+| **Layout & Utility**   | [`<web-ui-layout>`](https://github.com/pan-Z2l0aHVi/mono/blob/main/packages/web-ui/docs/layout.md)                       |
+|                        | [`<web-ui-back-top>`](https://github.com/pan-Z2l0aHVi/mono/blob/main/packages/web-ui/docs/back-top.md)                   |
+|                        | [`<web-ui-svg-draw-lines>`](https://github.com/pan-Z2l0aHVi/mono/blob/main/packages/web-ui/docs/svg-draw-lines.md)       |
+|                        | [`<web-ui-theme>`](https://github.com/pan-Z2l0aHVi/mono/blob/main/packages/web-ui/docs/theme.md)                         |
+| **Notification**       | [`<web-ui-toast>`](https://github.com/pan-Z2l0aHVi/mono/blob/main/packages/web-ui/docs/toast.md)                         |
+| **Sub-items**          | [`<web-ui-option>`](https://github.com/pan-Z2l0aHVi/mono/blob/main/packages/web-ui/docs/option.md)                       |
+|                        | [`<web-ui-segmented-trigger>`](https://github.com/pan-Z2l0aHVi/mono/blob/main/packages/web-ui/docs/segmented-trigger.md) |

@@ -1,8 +1,8 @@
 <script setup lang="ts">
+import appScrollbarsOptions from '@greypan/app-scrollbars'
 import { local } from '@greypan/browser-kit'
 import type { WebUiEvent, WebUiLayout, WebUiSelect, WebUiTheme, WebUiToast } from '@greypan/web-ui'
 import { lucideX } from '@greypan/web-ui/icons'
-import { webUiScrollbarsOptions } from '@greypan/web-ui/scrollbars'
 import { useHead } from '@unhead/vue'
 import {
   OverlayScrollbarsComponent,
@@ -125,7 +125,7 @@ const navSidebar = ref<OverlayScrollbarsComponentRef>()
 
 // 整页 scrollbar 接管的是 document 的滚动元素，不是某个 DOM 容器，所以没有可渲染的宿主元素，
 // 只能直接初始化 body。
-const [initPageScrollbars] = useOverlayScrollbars({ options: webUiScrollbarsOptions })
+const [initPageScrollbars] = useOverlayScrollbars({ options: appScrollbarsOptions })
 
 function observeToastBounds() {
   const topToasts = new Set<WebUiToast>()
@@ -365,7 +365,7 @@ function isNavActive(path: string) {
         <OverlayScrollbarsComponent
           slot="sidebar"
           ref="navSidebar"
-          :options="webUiScrollbarsOptions"
+          :options="appScrollbarsOptions"
           class="relative z-20 h-full min-h-0 overflow-y-auto p-2 mobile:px-0"
           aria-label="App navigation"
         >

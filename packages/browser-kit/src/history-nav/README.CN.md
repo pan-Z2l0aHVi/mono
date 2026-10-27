@@ -9,7 +9,7 @@
 `vue-router` 只在 `router.push()` 时维护 `history.state.back/forward`；地址栏输入、浏览器前进/后退创建的 entry 会克隆旧 state，导致 `back/forward` 恒为 `null`，无法用来判断能否后退/前进。本模块以 **entry 栈 + 当前索引** 自行跟踪浏览器历史位置：
 
 - 全局 patch `history.pushState` / `history.replaceState`，但只在旁路记录，**不向 `history.state` 注入任何元数据**
-- 通过 `popstate` 处理浏览器前进/后退与地址栏导航，在栈内按 URL 定位
+- 通过 `popstate` 处理浏览器前进/后退与地址栏导航，在栈内按 URL 定位；`hashchange` 兜底 fragment 导航（`location.hash` 赋值、同页锚点）
 - 复用 `storage` 模块经 `sessionStorage` 持久化，刷新后仍能恢复
 - 存储被禁（隐私模式、受限 webview）时静默降级为内存栈
 
@@ -48,7 +48,7 @@ interface HistoryNavEntry {
   readonly key: string // replace 后保持不变
   readonly index: number // 栈内位置
   readonly url: string | null
-  readonly sameDocument: true // 恒为 true：只跟踪同文档导航
+  readonly sameDocument: boolean // 当前恒为 true：只跟踪同文档导航
   getState(): unknown // 捕获的 history.state 深克隆
 }
 ```

@@ -10,7 +10,8 @@
    │      │              │              │
  browser  test-kit      unplugin       deps-reload
    │
- web-ui                  Lit components + Shadow DOM + framework types
+ web-ui            Lit components + Shadow DOM + framework types
+ app-scrollbars    app 级 OverlayScrollbars 配置 + macOS 主题
    ├──────────────┬──────────────┬────────────────┐
  React demo      Vue demo       interweave-frontend    interweave (Wails APP)
 ```
@@ -25,6 +26,7 @@
 | [`packages/unplugin-web-components`](packages/unplugin-web-components)（`@greypan/unplugin-web-components`） | Vite/Webpack 模块转换与 Vite HTML 注入                                                                             | [`src`](packages/unplugin-web-components/src) 的 Vite/Webpack adapter                                                                                         |
 | [`packages/deps-reload`](packages/deps-reload)（`@greypan/deps-reload`）                                     | 开发期 workspace `dist` watcher                                                                                    | [`src/vite.ts`](packages/deps-reload/src/vite.ts)、[`src/webpack.ts`](packages/deps-reload/src/webpack.ts)                                                    |
 | [`packages/web-ui`](packages/web-ui)（`@greypan/web-ui`）                                                    | Lit components、tokens、icons、overlay、框架类型                                                                   | [`docs/agents/web-ui.md`](docs/agents/web-ui.md)、[组件 README](packages/web-ui/README.md)、[示例文档语料](packages/web-ui/docs)、相关 ADR                    |
+| [`packages/app-scrollbars`](packages/app-scrollbars)（`@greypan/app-scrollbars`）                            | 私有的 app 级 OverlayScrollbars 配置与 macOS 主题                                                                  | [`AGENTS.md`](packages/app-scrollbars/AGENTS.md)、[`README.md`](packages/app-scrollbars/README.md)                                                            |
 | [`packages/md-to-comp`](packages/md-to-comp)（`@greypan/md-to-comp`）                                        | 通用示例文档引擎：markdown → 示例数据 + 高亮 HTML + 可编译的示例组件文件，带 `/react` 与 `/vue` 两个 Vite 插件入口 | [`AGENTS.md`](packages/md-to-comp/AGENTS.md)、[`src/generate.ts`](packages/md-to-comp/src/generate.ts)、[`src/vite.ts`](packages/md-to-comp/src/vite.ts)      |
 | [`packages/tsconfig`](packages/tsconfig)（`@greypan/tsconfig`）                                              | 私有、供 workspace 内 `extends` 的 TypeScript profiles                                                             | 目录下的 `*.json`                                                                                                                                             |
 | [`apps/react-web-ui-demo`](apps/react-web-ui-demo)（`@greypan/react-web-ui-demo`）                           | React 集成和预览                                                                                                   | [`src/routes`](apps/react-web-ui-demo/src/routes)、[`src/components`](apps/react-web-ui-demo/src/components)、[`README.md`](apps/react-web-ui-demo/README.md) |
@@ -35,7 +37,7 @@
 ## 2. 依赖、构建与发布边界
 
 - Workspace 只有 `apps/**` 和 `packages/**` 两类；版本尽量走 workspace `catalog`。
-- `packages/browser-kit`、`deps-reload`、`js-kit`、`unplugin-web-components` 与 `web-ui` 是公开 npm 包；`test-kit`（测试基础设施）、`tsconfig`（配置 profiles）和 `md-to-comp`（构建期 Vite 插件引擎）是 workspace 内部私有包。私有包仍参与 Changesets 版本计算，发布边界见 [`docs/agents/release.md`](docs/agents/release.md)。
+- `packages/browser-kit`、`deps-reload`、`js-kit`、`unplugin-web-components` 与 `web-ui` 是公开 npm 包；`test-kit`（测试基础设施）、`tsconfig`（配置 profiles）、`md-to-comp`（构建期 Vite 插件引擎）和 `app-scrollbars`（app 级 OverlayScrollbars 配置）是 workspace 内部私有包。私有包仍参与 Changesets 版本计算，发布边界见 [`docs/agents/release.md`](docs/agents/release.md)。
 - 自撰 agent skills 不走 npm，只在 GitHub 分发；实体在 [`skills/`](./skills)，说明见 [`skills/README.md`](skills/README.md)。
 - `apps/*` 都是 `private` 的集成或交付应用，不是公共 API 的权威来源。
 - [`apps/interweave/frontend`](apps/interweave/frontend) 是独立 `private` workspace，属 Wails 前端集成面；Go host 在 [`apps/interweave`](apps/interweave)。

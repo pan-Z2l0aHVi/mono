@@ -251,6 +251,7 @@
   --wui-shadow-glass:
     0 0 1px rgb(0 0 0 / 0.02), 0 0 8px rgb(0 0 0 / 0.03), 0 2px 16px rgb(0 0 0 / 0.025), 0 8px 32px rgb(0 0 0 / 0.015);
   --wui-color-focus-ring: color-mix(in srgb, var(--wui-color-accent, #0071e3) 40%, transparent);
+  --wui-scrollbar-handle: rgb(0 0 0 / 0.39);
   color-scheme: light;
 }
 
@@ -311,6 +312,7 @@
   --wui-shadow-panel: 0 4px 16px rgb(0 0 0 / 0.32);
   --wui-shadow-glass: 0 8px 24px rgb(0 0 0 / 0.08);
   --wui-color-focus-ring: color-mix(in srgb, var(--wui-color-accent, #0a84ff) 62%, var(--wui-color-text) 38%);
+  --wui-scrollbar-handle: rgb(255 255 255 / 0.5);
   color-scheme: dark;
 }
 
@@ -355,6 +357,7 @@
     --wui-shadow-panel: 0 4px 16px rgb(0 0 0 / 0.32);
     --wui-shadow-glass: 0 8px 24px rgb(0 0 0 / 0.08);
     --wui-color-focus-ring: color-mix(in srgb, var(--wui-color-accent, #0a84ff) 62%, var(--wui-color-text) 38%);
+    --wui-scrollbar-handle: rgb(255 255 255 / 0.5);
     color-scheme: dark;
   }
 }

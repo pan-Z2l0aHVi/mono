@@ -2,7 +2,7 @@
 
 > A build plugin that watches dist output for changes and reloads the page, with Vite and Webpack entries
 
-English | [简体中文](./README.CN.md)
+English | [简体中文](https://github.com/pan-Z2l0aHVi/mono/blob/main/packages/deps-reload/README.CN.md)
 
 ## Features
 

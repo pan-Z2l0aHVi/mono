@@ -36,8 +36,13 @@ parseUrl('/relative/path?foo=bar')
 // { base: '/relative/path', query: { foo: 'bar' }, hash: '' }
 
 parseUrl('')
-// { base: '', query: {}, hash: '' }
+// { base: '/', query: {}, hash: '' }
+
+parseUrl('//cdn.example.com/a.js')
+// { base: '//cdn.example.com/a.js', query: {}, hash: '' }
 ```
+
+协议相对 URL（`//host/path`）保留 `//host/path` 形式，不会被补成 `http:` 前缀。
 
 ### `stringifyUrl(opts, omitNil?)`
 
@@ -73,6 +78,8 @@ stringifyUrl({ base: '/page' })
 ## 注意事项
 
 - 相对路径解析时临时使用 `http://n.n` 作为 base
+- 协议相对 URL（`//host/path`）保留 `//host/path` 形式
 - `parseUrl` 对格式错误的 URL 抛出 `Error('Invalid URL.')`
 - `stringifyUrl` 会自动为 hash 补全 `#`
-- 当 `base` 已包含 `?` 时，`stringifyUrl` 使用 `&` 连接
+- 查询参数值会先字符串化，因此数字与布尔值可以和字符串混用
+- `base` 以 `?` 结尾时直接拼接参数；`base` 其他位置已包含 `?` 时用 `&` 连接

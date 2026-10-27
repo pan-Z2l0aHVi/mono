@@ -36,8 +36,13 @@ parseUrl('/relative/path?foo=bar')
 // { base: '/relative/path', query: { foo: 'bar' }, hash: '' }
 
 parseUrl('')
-// { base: '', query: {}, hash: '' }
+// { base: '/', query: {}, hash: '' }
+
+parseUrl('//cdn.example.com/a.js')
+// { base: '//cdn.example.com/a.js', query: {}, hash: '' }
 ```
+
+Protocol-relative URLs (`//host/path`) keep their `//host/path` form instead of gaining an `http:` prefix.
 
 ### `stringifyUrl(opts, omitNil?)`
 
@@ -73,6 +78,8 @@ stringifyUrl({ base: '/page' })
 ## Notes
 
 - Relative URLs use `http://n.n` as a temporary base for parsing
+- Protocol-relative URLs (`//host/path`) keep their `//host/path` form
 - `parseUrl` throws `Error('Invalid URL.')` for malformed URLs
 - `stringifyUrl` auto-completes hash with `#` if missing
-- When `base` already contains `?`, `stringifyUrl` uses `&` instead of `?`
+- Query values are stringified, so numbers and booleans work alongside strings
+- When `base` ends with `?`, `stringifyUrl` appends parameters directly; a `base` that already contains `?` elsewhere uses `&`
