@@ -15,11 +15,17 @@ Five slots each take one region: `banner` spans the full width above the body, `
 
 layout is an app-shell-level full-screen layout; the sample puts it inside a height-constrained scroll container, where the banner scrolls out with the content and the header and tabbar stick to the top and bottom edges of the container.
 
+The mobile Toggle only requests opening through `sidebar-open-change`; the sample writes that back to `sidebar-open`, so clicking it opens the Drawer.
+
 ```tsx
+import { useState } from 'react'
+
 export default function Demo() {
+  const [open, setOpen] = useState(false)
+
   return (
     <div className="h-[420px] overflow-auto rounded-lg border border-(--wui-color-border)">
-      <web-ui-layout header-glow>
+      <web-ui-layout header-glow sidebarOpen={open} onsidebar-open-change={event => setOpen(event.detail.open)}>
         <div
           slot="banner"
           className="flex items-center justify-center bg-(--wui-color-accent) px-4 py-2 text-sm text-(--wui-color-on-accent)"
@@ -53,7 +59,7 @@ export default function Demo() {
 ```vue
 <template>
   <div class="h-[420px] overflow-auto rounded-lg border border-(--wui-color-border)">
-    <web-ui-layout header-glow>
+    <web-ui-layout header-glow :sidebarOpen="open" @sidebar-open-change="open = $event.detail.open">
       <div
         slot="banner"
         class="flex items-center justify-center bg-(--wui-color-accent) px-4 py-2 text-sm text-(--wui-color-on-accent)"
@@ -77,6 +83,12 @@ export default function Demo() {
     </web-ui-layout>
   </div>
 </template>
+
+<script setup lang="ts">
+import { ref } from 'vue'
+
+const open = ref(false)
+</script>
 ```
 
 ### Collapsible sidebar
@@ -94,6 +106,7 @@ import { useState } from 'react'
 
 export default function Demo() {
   const [collapsed, setCollapsed] = useState(false)
+  const [open, setOpen] = useState(false)
 
   return (
     <div className="flex flex-col gap-3">
@@ -101,6 +114,8 @@ export default function Demo() {
         <web-ui-layout
           sidebarCollapsed={collapsed}
           onsidebar-collapsed-change={event => setCollapsed(event.detail.collapsed)}
+          sidebarOpen={open}
+          onsidebar-open-change={event => setOpen(event.detail.open)}
         >
           <nav slot="sidebar" className="flex h-full min-h-0 flex-col gap-1 overflow-y-auto p-2">
             <span className="rounded-md p-2 text-sm">Overview</span>
@@ -126,7 +141,12 @@ export default function Demo() {
 <template>
   <div class="flex flex-col gap-3">
     <div class="h-[420px] overflow-auto rounded-lg border border-(--wui-color-border)">
-      <web-ui-layout :sidebarCollapsed="collapsed" @sidebar-collapsed-change="collapsed = $event.detail.collapsed">
+      <web-ui-layout
+        :sidebarCollapsed="collapsed"
+        @sidebar-collapsed-change="collapsed = $event.detail.collapsed"
+        :sidebarOpen="open"
+        @sidebar-open-change="open = $event.detail.open"
+      >
         <nav slot="sidebar" class="flex h-full min-h-0 flex-col gap-1 overflow-y-auto p-2">
           <span class="rounded-md p-2 text-sm">Overview</span>
           <span class="rounded-md p-2 text-sm">Components</span>
@@ -149,6 +169,7 @@ export default function Demo() {
 import { ref } from 'vue'
 
 const collapsed = ref(false)
+const open = ref(false)
 </script>
 ```
 
@@ -165,6 +186,7 @@ import { useState } from 'react'
 
 export default function Demo() {
   const [width, setWidth] = useState('240px')
+  const [open, setOpen] = useState(false)
 
   return (
     <div className="flex flex-col gap-3">
@@ -175,6 +197,8 @@ export default function Demo() {
           sidebar-min-width="160px"
           sidebar-max-width="360px"
           onsidebar-width-change={event => setWidth(event.detail.width)}
+          sidebarOpen={open}
+          onsidebar-open-change={event => setOpen(event.detail.open)}
         >
           <nav slot="sidebar" className="flex h-full min-h-0 flex-col gap-1 overflow-y-auto p-2">
             <span className="rounded-md p-2 text-sm">Overview</span>
@@ -205,6 +229,8 @@ export default function Demo() {
         sidebar-min-width="160px"
         sidebar-max-width="360px"
         @sidebar-width-change="width = $event.detail.width"
+        :sidebarOpen="open"
+        @sidebar-open-change="open = $event.detail.open"
       >
         <nav slot="sidebar" class="flex h-full min-h-0 flex-col gap-1 overflow-y-auto p-2">
           <span class="rounded-md p-2 text-sm">Overview</span>
@@ -227,6 +253,7 @@ export default function Demo() {
 import { ref } from 'vue'
 
 const width = ref('240px')
+const open = ref(false)
 </script>
 ```
 

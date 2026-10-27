@@ -1,6 +1,7 @@
 import { html, LitElement, unsafeCSS } from 'lit'
 import { customElement, property, state } from 'lit/decorators.js'
 import { classMap } from 'lit/directives/class-map.js'
+import { ifDefined } from 'lit/directives/if-defined.js'
 
 import glass from '@/classes/glass.css?inline'
 import { installPointerFocusSuppression } from '@/shared/focus/pointer-focus'
@@ -72,6 +73,12 @@ export class WebUiSegmented extends FormAssociated(LitElement) {
 
   @property({ type: Boolean, reflect: true }) disabled = false
   @property({ type: Boolean, reflect: true }) required = false
+
+  /**
+   * 内部 `role="listbox"` 的可访问名称。分组语义的宿主在 light DOM，而 listbox 在 shadow DOM
+   * 内部，宿主上的 `aria-label` 不会自动继承，必须显式转发。
+   */
+  @property({ type: String, attribute: 'aria-label' }) override ariaLabel: string | null = null
 
   @state() private _value = ''
   @state() private _indicatorReady = false
@@ -484,6 +491,7 @@ export class WebUiSegmented extends FormAssociated(LitElement) {
         })}
         role="listbox"
         aria-orientation="horizontal"
+        aria-label=${ifDefined(this.ariaLabel)}
         @keydown=${this.handleKeyDown}
         @pointerdown=${this.handlePointerDown}
         @pointerup=${this.handlePointerUp}

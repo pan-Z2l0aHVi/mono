@@ -89,42 +89,41 @@ function isOwnLayoutEvent(event: Event): boolean {
 interface NavItem {
   path: string
   label: string
-  collapsedLabel: string
 }
 
 const navItems: NavItem[] = [
-  { path: '/home', label: 'Home', collapsedLabel: 'Ho' },
-  { path: '/components/avatar', label: 'Avatar', collapsedLabel: 'Av' },
-  { path: '/components/badge', label: 'Badge', collapsedLabel: 'Ba' },
-  { path: '/components/button', label: 'Button', collapsedLabel: 'Bu' },
-  { path: '/components/icon', label: 'Icon', collapsedLabel: 'Ic' },
-  { path: '/components/input', label: 'Input', collapsedLabel: 'Ip' },
-  { path: '/components/textarea', label: 'Textarea', collapsedLabel: 'Ta' },
-  { path: '/components/editable-text', label: 'EditableText', collapsedLabel: 'Et' },
-  { path: '/components/theme', label: 'Theme', collapsedLabel: 'Th' },
-  { path: '/components/input-number', label: 'InputNumber', collapsedLabel: 'In' },
-  { path: '/components/select', label: 'Select', collapsedLabel: 'Se' },
-  { path: '/components/autocomplete', label: 'Autocomplete', collapsedLabel: 'Au' },
-  { path: '/components/dropdown', label: 'Dropdown', collapsedLabel: 'Do' },
-  { path: '/components/collapse', label: 'Collapse', collapsedLabel: 'Co' },
-  { path: '/components/dialog', label: 'Dialog', collapsedLabel: 'Di' },
-  { path: '/components/drawer', label: 'Drawer', collapsedLabel: 'Dr' },
-  { path: '/components/image-preview', label: 'ImagePreview', collapsedLabel: 'Im' },
-  { path: '/components/empty', label: 'Empty', collapsedLabel: 'Em' },
-  { path: '/components/middle-ellipsis', label: 'MiddleEllipsis', collapsedLabel: 'Me' },
-  { path: '/components/tooltip', label: 'Tooltip', collapsedLabel: 'To' },
-  { path: '/components/switch', label: 'Switch', collapsedLabel: 'Sw' },
-  { path: '/components/slider', label: 'Slider', collapsedLabel: 'Sl' },
-  { path: '/components/radio', label: 'Radio', collapsedLabel: 'Ra' },
-  { path: '/components/checkbox', label: 'Checkbox', collapsedLabel: 'Ch' },
-  { path: '/components/segmented', label: 'Segmented', collapsedLabel: 'Sg' },
-  { path: '/components/spinner', label: 'Spinner', collapsedLabel: 'Sp' },
-  { path: '/components/popover', label: 'Popover', collapsedLabel: 'Po' },
-  { path: '/components/context-menu', label: 'ContextMenu', collapsedLabel: 'Cm' },
-  { path: '/components/toast', label: 'Toast', collapsedLabel: 'Ts' },
-  { path: '/components/svg-draw-lines', label: 'SVGDrawLines', collapsedLabel: 'Sv' },
-  { path: '/components/back-top', label: 'BackTop', collapsedLabel: 'Bk' },
-  { path: '/components/layout', label: 'Layout', collapsedLabel: 'La' }
+  { path: '/home', label: 'Home' },
+  { path: '/components/avatar', label: 'Avatar' },
+  { path: '/components/badge', label: 'Badge' },
+  { path: '/components/button', label: 'Button' },
+  { path: '/components/icon', label: 'Icon' },
+  { path: '/components/input', label: 'Input' },
+  { path: '/components/textarea', label: 'Textarea' },
+  { path: '/components/editable-text', label: 'EditableText' },
+  { path: '/components/theme', label: 'Theme' },
+  { path: '/components/input-number', label: 'InputNumber' },
+  { path: '/components/select', label: 'Select' },
+  { path: '/components/autocomplete', label: 'Autocomplete' },
+  { path: '/components/dropdown', label: 'Dropdown' },
+  { path: '/components/collapse', label: 'Collapse' },
+  { path: '/components/dialog', label: 'Dialog' },
+  { path: '/components/drawer', label: 'Drawer' },
+  { path: '/components/image-preview', label: 'ImagePreview' },
+  { path: '/components/empty', label: 'Empty' },
+  { path: '/components/middle-ellipsis', label: 'MiddleEllipsis' },
+  { path: '/components/tooltip', label: 'Tooltip' },
+  { path: '/components/switch', label: 'Switch' },
+  { path: '/components/slider', label: 'Slider' },
+  { path: '/components/radio', label: 'Radio' },
+  { path: '/components/checkbox', label: 'Checkbox' },
+  { path: '/components/segmented', label: 'Segmented' },
+  { path: '/components/spinner', label: 'Spinner' },
+  { path: '/components/popover', label: 'Popover' },
+  { path: '/components/context-menu', label: 'ContextMenu' },
+  { path: '/components/toast', label: 'Toast' },
+  { path: '/components/svg-draw-lines', label: 'SVGDrawLines' },
+  { path: '/components/back-top', label: 'BackTop' },
+  { path: '/components/layout', label: 'Layout' }
 ]
 
 // active 底色浅色取设计给定的 #d5d7d7；深色不跟——sidebar 在深色是 #2c2c2e，亮灰会读成一条高亮带，仍走 control 档。
@@ -483,7 +482,7 @@ export function Root() {
             >
               <web-ui-select
                 value={themeMotion}
-                className="[--wui-input-width:120px]"
+                className="[--wui-input-width:160px]"
                 aria-label="全局动效"
                 onChange={updateThemeMotion}
               >
@@ -499,7 +498,7 @@ export function Root() {
               </web-ui-select>
               <web-ui-select
                 value={themeAppearance}
-                className="[--wui-input-width:120px]"
+                className="[--wui-input-width:160px]"
                 aria-label="全局主题"
                 onChange={updateThemeAppearance}
               >
@@ -557,7 +556,7 @@ export function Root() {
                           navCollapsed ? 'w-full truncate text-center text-sm' : 'min-w-0 flex-1 truncate text-sm'
                         }
                       >
-                        {navCollapsed ? item.collapsedLabel : item.label}
+                        {item.label}
                       </span>
                     </Link>
                   )

@@ -61,13 +61,13 @@ function layoutRoot() {
 }
 
 function navRoot() {
-  const element = document.querySelector('[aria-label="App navigation"]')
+  const element = document.querySelector('[aria-label="应用导航"]')
   if (!element) throw new Error('sidebar nav not found')
   return element
 }
 
 /**
- * 这个 jsdom 层不模拟真实布局；短标签、tooltip 与文本布局由 browser spec 验证。
+ * 这个 jsdom 层不模拟真实布局；折叠态的文字省略、tooltip 与文本布局由 browser spec 验证。
  * 此处只比较导航项的类变化，确认桌面 collapsed state 不会泄漏到移动 drawer。
  */
 function navItemClasses() {

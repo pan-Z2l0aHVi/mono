@@ -1,7 +1,11 @@
+import { useState } from 'react'
+
 export default function Demo() {
+  const [open, setOpen] = useState(false)
+
   return (
     <div className="h-[420px] overflow-auto rounded-lg border border-(--wui-color-border)">
-      <web-ui-layout header-glow>
+      <web-ui-layout header-glow sidebarOpen={open} onsidebar-open-change={event => setOpen(event.detail.open)}>
         <div
           slot="banner"
           className="flex items-center justify-center bg-(--wui-color-accent) px-4 py-2 text-sm text-(--wui-color-on-accent)"

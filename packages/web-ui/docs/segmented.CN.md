@@ -13,6 +13,8 @@ segmented（单选 button group），子项是 `<web-ui-segmented-trigger>`；`v
 
 按住当前选中项横向拖拽也能连续切换，松手吸附到离 indicator 中心最近的 trigger，快速抛掷按速度切换。
 
+内部 `role="listbox"` 在 shadow DOM 里，不会继承宿主上的 `aria-label`，所以组件把它转发到 listbox；示例用 `aria-label` 说明这组选项是「星期」。`aria-labelledby` 的 IDREF 无法跨 shadow 边界解析，可见文本标签请直接用 `aria-label` 表达。
+
 ```tsx
 import { useState } from 'react'
 
@@ -21,7 +23,7 @@ export default function Demo() {
 
   return (
     <div className="flex flex-col items-start gap-3">
-      <web-ui-segmented value={day} onInput={event => setDay(event.currentTarget.value)}>
+      <web-ui-segmented aria-label="Weekday" value={day} onInput={event => setDay(event.currentTarget.value)}>
         <web-ui-segmented-trigger value="mon">周一</web-ui-segmented-trigger>
         <web-ui-segmented-trigger value="tue">周二</web-ui-segmented-trigger>
         <web-ui-segmented-trigger value="wed">周三</web-ui-segmented-trigger>
@@ -37,7 +39,7 @@ export default function Demo() {
 ```vue
 <template>
   <div class="flex flex-col items-start gap-3">
-    <web-ui-segmented :value="day" @input="day = $event.currentTarget.value">
+    <web-ui-segmented aria-label="Weekday" :value="day" @input="day = $event.currentTarget.value">
       <web-ui-segmented-trigger value="mon">周一</web-ui-segmented-trigger>
       <web-ui-segmented-trigger value="tue">周二</web-ui-segmented-trigger>
       <web-ui-segmented-trigger value="wed">周三</web-ui-segmented-trigger>
@@ -374,13 +376,14 @@ function onChange(event: WebUiEvent<WebUiSegmented, 'change'>) {
 
 ### Props
 
-| 名称       | 说明                                   | 类型                  | 默认值    |
-| ---------- | -------------------------------------- | --------------------- | --------- |
-| `name`     | 表单字段名。                           | `string`              | `''`      |
-| `variant`  | 材质变体：`inset`（默认）或 `raised`。 | `'inset' \| 'raised'` | `'inset'` |
-| `disabled` | 禁用全部 trigger。                     | `boolean`             | `false`   |
-| `required` | 只反射属性，不参与校验。               | `boolean`             | `false`   |
-| `value`    | 当前选中值。                           | `string`              | `''`      |
+| 名称         | 说明                                                                  | 类型                  | 默认值    |
+| ------------ | --------------------------------------------------------------------- | --------------------- | --------- |
+| `name`       | 表单字段名。                                                          | `string`              | `''`      |
+| `variant`    | 材质变体：`inset`（默认）或 `raised`。                                | `'inset' \| 'raised'` | `'inset'` |
+| `disabled`   | 禁用全部 trigger。                                                    | `boolean`             | `false`   |
+| `required`   | 只反射属性，不参与校验。                                              | `boolean`             | `false`   |
+| `aria-label` | 内部 listbox 的可访问名称；`aria-labelledby` 无法跨 shadow 边界解析。 | `string`              | —         |
+| `value`      | 当前选中值。                                                          | `string`              | `''`      |
 
 ### Events
 

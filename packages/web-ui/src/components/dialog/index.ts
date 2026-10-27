@@ -9,6 +9,8 @@ import scrollbarStyle from '@/assets/scrollbar.css?inline'
 import glass from '@/classes/glass.css?inline'
 import { oouiClose } from '@/icons'
 import { UserChangeController } from '@/shared/events/user-change'
+import { trapTabKey } from '@/shared/focus/tabbable'
+import { LocaleController, resolveBuiltinLabel } from '@/shared/locale/builtin-labels'
 import { dispatchOpenChangeEvent } from '@/shared/open-state'
 import { defineNativeDialogPresence } from '@/shared/overlay/native-dialog-presence'
 import { defineOpenOverlay, type OpenOverlayHandle } from '@/shared/overlay/open-overlay'
@@ -57,7 +59,11 @@ export class WebUiDialog extends LitElement {
    */
   @property({ type: String, attribute: 'dialog-label' }) dialogLabel = ''
 
+  /** 关闭按钮的无障碍名称；默认跟随文档 `lang`。 */
+  @property({ type: String, attribute: 'close-label' }) closeLabel = ''
+
   @state() private _hasHeader = false
+  private readonly _locale = new LocaleController(this)
   private readonly _userOpenChange = new UserChangeController()
 
   /*
@@ -195,6 +201,16 @@ export class WebUiDialog extends LitElement {
     this._closeFromUser()
   }
 
+  private handleKeydown(e: KeyboardEvent) {
+    if (e.key !== 'Tab') return
+    // 嵌套 drawer 的 Tab 沿 slot 宿主链冒泡到这里；边界回卷由最内层负责。
+    const path = e.composedPath()
+    const ownIndex = path.indexOf(e.currentTarget as Node)
+    if (ownIndex > 0 && path.slice(0, ownIndex).some(node => node instanceof HTMLDialogElement)) return
+    const dialog = this.dialog
+    if (dialog) trapTabKey(e, dialog)
+  }
+
   /** 用户发起的关闭入口（Escape、backdrop 点击、关闭 button）共用一条路径。 */
   private readonly _closeFromUser = () => {
     if (this.controlled) {
@@ -267,7 +283,7 @@ export class WebUiDialog extends LitElement {
       <web-ui-button
         class="wui-dialog-close"
         @click=${this._closeFromUser}
-        aria-label="Close"
+        aria-label=${resolveBuiltinLabel(this, 'close', this.closeLabel)}
         variant="secondary"
         icon
         size="26"
@@ -294,6 +310,7 @@ export class WebUiDialog extends LitElement {
         @cancel=${this.handleCancel}
         @close=${this._onNativeClose}
         @click=${this.handleBackdropClick}
+        @keydown=${this.handleKeydown}
         @transitionend=${this._onTransitionEnd}
       >
         <div class="wui-dialog-body wui-glass">

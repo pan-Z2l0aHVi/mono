@@ -84,9 +84,9 @@ function buildRouter() {
   })
 }
 
-async function mountAppShell() {
-  localStorage.setItem('locale', 'zh-CN')
-  await loadShellLocale('zh-CN')
+async function mountAppShell(locale: 'zh-CN' | 'en' = 'zh-CN') {
+  localStorage.setItem('locale', locale)
+  await loadShellLocale(locale)
   render(
     <LocaleProvider>
       <RouterProvider router={buildRouter()} />
@@ -169,6 +169,7 @@ describe('应用外壳（浏览器）：导航 collapsed state 不跨视口泄�
 
   afterEach(async () => {
     cleanup()
+    localStorage.removeItem('theme-appearance')
     await changeViewport(DESKTOP_VIEWPORT)
   })
 
@@ -189,27 +190,27 @@ describe('应用外壳（浏览器）：导航 collapsed state 不跨视口泄�
     expect(collapsed.labelAlign).toBe('center')
   })
 
-  it('1440px 桌面折叠态显示唯一短标签和全名提示，展开态显示完整名称', async () => {
+  it('1440px 桌面折叠态沿用完整导航名、超出部分省略，展开态显示完整名称', async () => {
     await changeViewport({ width: 1440, height: 900 })
     await mountAppShell()
 
-    const expandedLinks = [...navRoot().querySelectorAll<HTMLAnchorElement>('a')]
-    const fullLabels = expandedLinks.map(link => link.getAttribute('aria-label'))
-    expect(expandedLinks).toHaveLength(32)
-    expect(expandedLinks.map(link => link.querySelector('span')?.textContent?.trim())).toEqual(fullLabels)
-    expect(expandedLinks.every(link => link.title === '')).toBe(true)
+    const links = [...navRoot().querySelectorAll<HTMLAnchorElement>('a')]
+    const fullLabels = links.map(link => link.getAttribute('aria-label'))
+    expect(links).toHaveLength(32)
+    expect(links.map(link => link.querySelector('span')?.textContent?.trim())).toEqual(fullLabels)
+    expect(links.every(link => link.title === '')).toBe(true)
 
     await requestCollapse(true)
 
+    // 折叠导轨不再另设两套短名：可见文字仍是完整导航名，放不下交给 CSS 省略，
+    // 可访问名与 title 也保持同一个全名。
     const collapsedLinks = [...navRoot().querySelectorAll<HTMLAnchorElement>('a')]
-    const shortLabels = collapsedLinks.map(link => link.querySelector('span')?.textContent?.trim() ?? '')
-    expect(new Set(shortLabels).size).toBe(32)
-    expect(shortLabels.every(label => label.length > 0 && label.length <= 2)).toBe(true)
+    expect(collapsedLinks.map(link => link.querySelector('span')?.textContent?.trim())).toEqual(fullLabels)
     expect(collapsedLinks.map(link => link.title)).toEqual(fullLabels)
     expect(
       collapsedLinks.every(link => {
         const label = link.querySelector('span')
-        return !!label && label.scrollWidth <= label.clientWidth
+        return !!label && label.getBoundingClientRect().right <= link.getBoundingClientRect().right + 0.5
       })
     ).toBe(true)
 
@@ -231,6 +232,21 @@ describe('应用外壳（浏览器）：导航 collapsed state 不跨视口泄�
     expect(controls.every(bounds => bounds.width > 0 && bounds.left >= 0 && bounds.right <= window.innerWidth)).toBe(
       true
     )
+  })
+
+  it('英文界面下全局主题与动效选择器完整显示 Follow system', async () => {
+    localStorage.setItem('theme-appearance', JSON.stringify('system'))
+    await mountAppShell('en')
+
+    for (const label of ['Global motion', 'Global theme']) {
+      const select = document.querySelector<HTMLElement>(`web-ui-select[aria-label="${label}"]`)
+      if (!select) throw new Error(`missing global control: ${label}`)
+      const optionLabel = select.shadowRoot?.querySelector<HTMLElement>('.label')
+      if (!optionLabel) throw new Error(`missing option label: ${label}`)
+
+      expect(optionLabel.textContent?.trim()).toBe('Follow system')
+      expect(optionLabel.scrollWidth).toBeLessThanOrEqual(optionLabel.clientWidth)
+    }
   })
 
   it('挂载时已有 toast，banner 扩高后 header 保持默认纵向间距', async () => {

@@ -104,7 +104,8 @@ function mountList(resources: ResourceView[], activeResourceId: string | null) {
         loading: false,
         runtimeAvailable: true,
         emptyDescription: '',
-        mediaUrlFor: () => null
+        mediaUrlFor: () => null,
+        resolveDefaultOpenWith: () => Promise.resolve('')
       })
   })
   apps.push(app)
@@ -146,6 +147,7 @@ function mountReactiveList(
         runtimeAvailable: true,
         emptyDescription: '',
         mediaUrlFor: () => null,
+        resolveDefaultOpenWith: () => Promise.resolve(''),
         onRenameChange
       })
   })
