@@ -109,6 +109,8 @@ export default {
       sideEffects: true
     }),
     depsReload([
+      // 包入口是 .mjs，默认的 .js 过滤匹配不到它
+      { name: '@greypan/app-scrollbars', path: '../../../packages/app-scrollbars', extensions: ['.mjs', '.css'] },
       { name: '@greypan/web-ui', path: '../../../packages/web-ui' },
       { name: '@greypan/js-kit', path: '../../../packages/js-kit' },
       { name: '@greypan/browser-kit', path: '../../../packages/browser-kit' }

@@ -3,9 +3,6 @@ import '@/components/dialog'
 import '@/components/option'
 import '@/components/select'
 import '@/components/theme'
-// `--wui-scrollbar-*` 的外观分支写在这份文档级样式里（各 app 导入一次），不在 theme 组件内，
-// 所以这里要显式导入，才量得到外观切换后的值。
-import '@/scrollbars/style.css'
 
 import { afterEach, describe, expect, it } from 'vite-plus/test'
 
@@ -17,9 +14,9 @@ import { pollUntil } from '@/shared/test-utils'
 
 /**
  * 组件内部的滚动容器（dialog 的 `.desc`、`.wui-dialog-content`，drawer 的
- * `.wui-dialog-content` 等）靠 `src/scrollbars/internal.css` 的 `.wui-scroll` 接上整页
- * 同一组 `--wui-scrollbar-*`。这一档只能在真实浏览器里量：jsdom 既不算布局，也没有
- * scrollbar 几何。
+ * `.wui-dialog-content` 等）靠 `src/assets/scrollbar.css` 的 `.wui-scroll` 接上
+ * `web-ui-theme` 提供的 `--wui-scrollbar-handle`。这一档只能在真实浏览器里量：jsdom
+ * 既不算布局，也没有 scrollbar 几何。
  *
  * 两条判据各自承重：
  * - 颜色断言证明 `.wui-scroll` 的 `scrollbar-color` 真的读到了主题 token；
@@ -114,6 +111,9 @@ async function waitForPortalScroll(
 
 afterEach(() => {
   document.body.replaceChildren()
+  // root 同步在全部主题断开时**保留最后值**（避免重挂间隙闪回 UA 白底），所以上一个用例的
+  // thumb 色会留在 documentElement 上。这里显式清掉，让每个用例都从「还没有主题」开始。
+  document.documentElement.style.removeProperty('--wui-scrollbar-handle')
 })
 
 describe('组件内部 scrollbar（浏览器）', () => {

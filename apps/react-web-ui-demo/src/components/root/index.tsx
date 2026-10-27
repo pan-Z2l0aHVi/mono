@@ -1,6 +1,6 @@
+import appScrollbarsOptions from '@greypan/app-scrollbars'
 import type { WebUiLayout, WebUiSelect, WebUiToast } from '@greypan/web-ui'
 import { lucideX } from '@greypan/web-ui/icons'
-import { webUiScrollbarsOptions } from '@greypan/web-ui/scrollbars'
 import { Link, Outlet, useRouter, useRouterState } from '@tanstack/react-router'
 import {
   OverlayScrollbarsComponent,
@@ -371,7 +371,7 @@ export function Root() {
 
   // 整页 scrollbar 接管的是 document 的滚动元素，不是某个 DOM 容器，所以没有可渲染的宿主元素，
   // 只能直接初始化 body。
-  const [initPageScrollbars] = useOverlayScrollbars({ options: webUiScrollbarsOptions })
+  const [initPageScrollbars] = useOverlayScrollbars({ options: appScrollbarsOptions })
   useEffect(() => {
     initPageScrollbars(document.body)
   }, [initPageScrollbars])
@@ -530,7 +530,7 @@ export function Root() {
             <OverlayScrollbarsComponent
               slot="sidebar"
               ref={navSidebarRef}
-              options={webUiScrollbarsOptions}
+              options={appScrollbarsOptions}
               className="relative z-20 h-full min-h-0 overflow-y-auto p-2 mobile:px-0"
               aria-label="应用导航"
             >

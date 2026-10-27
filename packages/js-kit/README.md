@@ -2,16 +2,18 @@
 
 > JavaScript utility functions with composable plugin system
 
-English | [简体中文](./README.CN.md)
+English | [简体中文](https://github.com/pan-Z2l0aHVi/mono/blob/main/packages/js-kit/README.CN.md)
 
 ## Features
 
 - **Plugin system**: Composable plugins with `definePlugin`, chainable `.use()` and `.make()`
 - **URL**: Parse and stringify URLs with query params and hash
-- **Number**: Precision rounding and range clamping
-- **Timer**: Debounce with leading/trailing/both timing, controllable interval with pause/resume
+- **Number**: Byte-size formatting and range clamping
+- **String**: File-extension extraction
+- **Timer**: Debounce with leading/trailing/both timing, controllable interval with pause/resume and manual ticks
 - **Shortcut**: Fire-and-forget `safeCall` wrapper
 - **Paradigm**: Rust-style `Result` type utilities
+- **Types**: Shared utility types (`ValueOf`, `DeepPartial`, `Equal`, and more)
 
 ## Install
 
@@ -77,6 +79,12 @@ await ctx.batchEmit({ id: 1 })
 await ctx.batchEmit({ id: 2 })
 ```
 
+`batchEmit(data, delay = 0)` resolves with the batch that was flushed. A delay of `0` or less calls `onFlushed([data])` immediately and resolves with `[data]`; a positive delay batches events until the timer fires. `flush()` emits the current queue immediately.
+
+| Option              | Type                                    | Default | Description                    |
+| ------------------- | --------------------------------------- | ------- | ------------------------------ |
+| `options.onFlushed` | `(items: S[]) => void \| Promise<void>` | -       | Called with each flushed batch |
+
 ### `defineQueue<T>(options)`
 
 A "delivery-is-consumption" queue. It removes an item immediately after calling `onConsume` and does not await a returned Promise, making it suitable for fire-and-forget work.
@@ -85,7 +93,7 @@ A "delivery-is-consumption" queue. It removes an item immediately after calling 
 
 A consumer-acknowledged queue. It removes an item only after the Promise returned by `onConsume` fulfills; a rejection affects only the current item, and failed items can be retried with `resume()` or `flush()`.
 
-Both queues expose `enqueue()`, `pause()`, `resume()`, and asynchronous `flush()`, and support `initialItems`, synchronous `onPersist` snapshot persistence, and `onConsumeError`. See [`src/plugin-system/README.md`](./src/plugin-system/README.md) for the full option table, flush and persist-before-commit semantics, and the circular-wait constraint on calling `flush()` from a consumer.
+Both queues expose `enqueue()`, `pause()`, `resume()`, and asynchronous `flush()`, and support `initialItems`, synchronous `onPersist` snapshot persistence, and `onConsumeError`. See [`src/plugin-system/README.md`](https://github.com/pan-Z2l0aHVi/mono/blob/main/packages/js-kit/src/plugin-system/README.md) for the full option table, flush and persist-before-commit semantics, and the circular-wait constraint on calling `flush()` from a consumer.
 
 ## API
 
@@ -118,7 +126,7 @@ Build a URL string from structured components.
 | `opts`    | `Partial<URLObject>` | -       | URL components: `base`, `query`, `hash` |
 | `omitNil` | `boolean`            | `true`  | Remove nil values from query            |
 
-Full `URLObject` shape, relative-path behavior, and examples: see [`src/url/README.md`](./src/url/README.md).
+Full `URLObject` shape, relative-path behavior, and examples: see [`src/url/README.md`](https://github.com/pan-Z2l0aHVi/mono/blob/main/packages/js-kit/src/url/README.md).
 
 ### `clamp(val, min, max)`
 
@@ -149,20 +157,35 @@ Format byte count to a human-readable string, e.g. `'1.23 KB'`.
 
 ### `defineControllableInterval(options)`
 
-Create a controllable interval with pause/resume support. Returns a plugin with `start`, `pause`, `resume`, `stop` methods.
+Create a controllable interval with pause/resume support. Returns a plugin with `start`, `pause`, `resume`, `stop`, and `tick` methods.
+
+| Method        | Description                                                                |
+| ------------- | -------------------------------------------------------------------------- |
+| `start()`     | Start the interval. A paused timer must be resumed instead.                |
+| `pause()`     | Pause and keep the remaining time of the current cycle.                    |
+| `resume()`    | Resume from the remaining time instead of restarting the full interval.    |
+| `stop()`      | Cancel the interval and reset its state.                                   |
+| `tick(delay)` | Schedule one extra callback after `delay` ms without changing pause state. |
 
 | Parameter | Type                                         | Default | Description         |
 | --------- | -------------------------------------------- | ------- | ------------------- |
 | `options` | `{ callback: () => void; interval: number }` | -       | Timer configuration |
 
+```ts
+const timer = defineControllableInterval({ callback: () => console.log('tick'), interval: 1000 }).make()
+timer.start()
+```
+
 ### `debounce(func, options?)`
 
-Debounce a function with configurable timing mode.
+Debounce a function with configurable timing mode. Returns `call`, `cancel`, `flush`, `isPending`, and `cachedValue`.
 
-| Parameter | Type                                                                                 | Default | Description          |
-| --------- | ------------------------------------------------------------------------------------ | ------- | -------------------- |
-| `func`    | `Function`                                                                           | -       | Function to debounce |
-| `options` | `{ timing?: 'trailing' \| 'leading' \| 'both'; waitMs: number; maxWaitMs?: number }` | -       | Debounce options     |
+| Parameter | Type                                                                                  | Default | Description          |
+| --------- | ------------------------------------------------------------------------------------- | ------- | -------------------- |
+| `func`    | `Function`                                                                            | -       | Function to debounce |
+| `options` | `{ timing?: 'trailing' \| 'leading' \| 'both'; waitMs?: number; maxWaitMs?: number }` | -       | Debounce options     |
+
+`maxWaitMs` cannot be less than `waitMs`; the call throws when it is. A `leading` debounce does not accept `maxWaitMs` in the type surface.
 
 ### `safeCall(fn, options?)`
 
@@ -177,29 +200,32 @@ Fire-and-forget wrapper. Catches sync exceptions and async rejections; silently 
 
 Result type namespace for Rust-style error handling.
 
-| Method           | Description                    |
-| ---------------- | ------------------------------ |
-| `ok(value)`      | Create success result          |
-| `err(error)`     | Create error result            |
-| `isOk(result)`   | Check if result is success     |
-| `isErr(result)`  | Check if result is error       |
-| `to(fn)`         | Wrap function to return Result |
-| `unwrap(result)` | Extract value or throw error   |
-
-**Import path:**
+| Method           | Description                                                  |
+| ---------------- | ------------------------------------------------------------ |
+| `ok(value)`      | Create a success result                                      |
+| `err(error)`     | Create an error result                                       |
+| `isOk(result)`   | Check if a result is a success                               |
+| `isErr(result)`  | Check if a result is an error                                |
+| `to(promise)`    | Resolve a Promise into `Ok`, or capture a rejection as `Err` |
+| `unwrap(result)` | Return the success value or the error payload; never throws  |
 
 ```ts
 import { rust } from '@greypan/js-kit/rust'
+// also available from '@greypan/js-kit'
+
+const result = await rust.to(fetch('/api/user'))
+if (rust.isOk(result)) console.log(result.value)
+else console.error(rust.unwrap(result))
 ```
 
 ### Type Utilities
 
-| Type                    | Description                           |
-| ----------------------- | ------------------------------------- |
-| `ValueOf<T>`            | Union of all value types in an object |
-| `ArrayItem<T>`          | Element type of an array              |
-| `ArgumentType<T>`       | First argument type of a function     |
-| `DeepPartial<T>`        | Recursive partial                     |
-| `DeepRequired<T>`       | Recursive required                    |
-| `ClassPropertyTypes<T>` | Class property types                  |
-| `Equal<X, Y>`           | Type equality check                   |
+| Type                    | Description                                                                 |
+| ----------------------- | --------------------------------------------------------------------------- |
+| `ValueOf<T>`            | Union of all value types in an object                                       |
+| `ArrayItem<T>`          | Element type of an array                                                    |
+| `ArgumentType<T>`       | Parameter element type of a function (a union for multi-argument functions) |
+| `DeepPartial<T>`        | Recursive partial                                                           |
+| `DeepRequired<T>`       | Recursive required                                                          |
+| `ClassPropertyTypes<T>` | Class property types                                                        |
+| `Equal<X, Y>`           | Type equality check                                                         |

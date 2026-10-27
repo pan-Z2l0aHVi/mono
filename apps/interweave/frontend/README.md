@@ -2,20 +2,17 @@
 
 这是 `@greypan/interweave` 的 Vue WebView 集成表面，属于 private workspace；它验证共享 package 在 Wails 桌面应用中的实际消费方式，不是公共组件契约的权威来源。
 
-## 结构
+页面、路由、状态、服务边界与生成的 bindings 会随应用迭代调整，以本目录源码、`vite.config.ts` 和 [`apps/interweave/AGENTS.md`](../AGENTS.md) 为准，不在 README 中逐项列举。前端只使用桌面 Wails API 作为业务数据源；普通浏览器仅用于样式调试，不提供 fixture、demo 或 mock 数据。
 
-- `src/components/`：应用壳（`AppLayout` + `AppNav`）与资源库组件。
-- `src/pages/`：资源库、标签、Map、设置页面。页面是应用壳的子节点，需要占 header slot 时在根节点上写 `slot="header"`，不要自带一套 `web-ui-layout`。
-- `src/composables/`：历史导航、媒体查询与资源库运行时组合式函数。
-- `src/services/library/`：资源库 Wails API adapter；普通浏览器没有 Wails bridge，因此不加载业务数据。
-- `src/stores/`：Pinia 注入与资源库展示状态。
-- `src/main.ts`：应用入口，装配 hash 路由、Pinia 与 `App.vue`；路由表由 `vue-router/vite` 从 `src/pages/**` 生成。
-- `src/assets/`：前端全局基础样式。
-- `bindings/`：Wails 生成的 TypeScript bindings，不手工修改；应用只消费 `backend/library` 与 `backend/native` 暴露的 Interweave Go Service bindings，Wails runtime bindings 不受此业务边界限制。
+## 运行
 
-## 运行时边界
+从仓库根目录启动 Wails host，并同时构建、监听 WebView 的 workspace 依赖：
 
-Interweave 前端只使用桌面 Wails API 作为业务数据源。普通浏览器仅用于样式调试，`/#/library` 在没有 Wails bridge 时显示空态，不提供 fixture、demo 或 mock 数据。
+```bash
+pnpm dev:interweave
+```
+
+本目录不是独立的 npm、Yarn 或 Bun 项目，依赖安装、workspace 构建与发布编排都由根 pnpm 和 Turborepo 负责。完整命令与产物说明见 [`apps/interweave/README.md`](../README.md)。
 
 ## Agent 入口
 

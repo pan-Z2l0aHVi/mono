@@ -31,7 +31,7 @@ export default {
     iconsPlugin(),
     dts({
       tsconfigPath: './tsconfig.app.json',
-      include: ['src/components/**/*', 'src/icons/**/*', 'src/scrollbars/**/*', 'src/types/**/*', 'src/vite/**/*']
+      include: ['src/components/**/*', 'src/icons/**/*', 'src/types/**/*', 'src/vite/**/*']
     })
   ],
   test: {
@@ -91,15 +91,14 @@ export default {
   },
   build: {
     sourcemap: true,
-    // 组件样式走 `?inline` 内联进各自的 shadow，全局只留下 scrollbars 这一份主题样式；
-    // 拆开成模块同路径的 .css，消费方才能按 `./scrollbars.css` 这条 exports 拿到它。
+    // 组件样式走 `?inline` 内联进各自的 shadow，全局只留下 classes 这一份公共样式；
+    // 拆开成模块同路径的 .css，消费方才能按 `./classes.css` 这条 exports 拿到它。
     cssCodeSplit: true,
     lib: {
       entry: {
         'components/index': resolve(import.meta.dirname, 'src/components/index.ts'),
         'classes/style': resolve(import.meta.dirname, 'src/classes/style.css'),
         'icons/index': resolve(import.meta.dirname, 'src/icons/index.ts'),
-        'scrollbars/index': resolve(import.meta.dirname, 'src/scrollbars/index.ts'),
         'vite/index': resolve(import.meta.dirname, 'src/vite/index.ts')
       },
       formats: ['es']
@@ -114,10 +113,6 @@ export default {
 
         /^lit($|\/)/,
         /^@lit($|\/)/,
-
-        // 必须与消费方共用同一份实例：插件注册表在模块作用域里，
-        // 打进来一份副本会让 web-ui 注册的 ClickScrollPlugin 对 app 的实例不可见。
-        /^overlayscrollbars($|\/)/,
 
         /^react($|\/)/,
         /^react-dom($|\/)/,

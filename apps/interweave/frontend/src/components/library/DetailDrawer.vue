@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import appScrollbarsOptions from '@greypan/app-scrollbars'
 import { copyToClipboard } from '@greypan/browser-kit'
 import type { WebUiDrawer, WebUiEditableText, WebUiEvent, WebUiTextarea } from '@greypan/web-ui'
 import {
@@ -10,7 +11,6 @@ import {
   lucideRefreshCw,
   lucideTags
 } from '@greypan/web-ui/icons'
-import { webUiScrollbarsOptions } from '@greypan/web-ui/scrollbars'
 import { OverlayScrollbarsComponent } from 'overlayscrollbars-vue'
 import { computed, onScopeDispose, ref, watch } from 'vue'
 
@@ -224,7 +224,7 @@ onScopeDispose(() => clearTimeout(copiedRevertTimer))
   >
     <OverlayScrollbarsComponent
       v-if="resource"
-      :options="webUiScrollbarsOptions"
+      :options="appScrollbarsOptions"
       class="mobile:h-(--wui-drawer-height) mobile:overflow-y-auto"
     >
       <!--

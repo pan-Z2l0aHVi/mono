@@ -15,6 +15,7 @@ on:
       # 这些 workspace 包来自 frontend package.json 的依赖图闭包（包含 devDependencies）；
       # 拓扑测试按 manifest 图计算闭包，新增依赖若没有对应路径触发会失败。原生 job 会把它们
       # 一并构建后嵌入 .dmg/.exe；ci.yml 的 Build 保留包构建，但不重复跑 Interweave app wrapper。
+      - 'packages/app-scrollbars/**'
       - 'packages/web-ui/**'
       - 'packages/browser-kit/**'
       - 'packages/js-kit/**'
