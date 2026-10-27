@@ -176,7 +176,9 @@ describe('WebUiContextMenu 组件（浏览器）', () => {
     const panel = getMenuPanels('Context menu')[0]
     expect(panel).toBeTruthy()
     // 等入场过渡落定：进场 scale 会污染 getBoundingClientRect() 的读数。
-    for (let attempt = 0; attempt < 20 && panel!.getAnimations().length > 0; attempt++) await waitForFrame()
+    // 原先是「最多 20 帧」的自轮询，帧预算耗尽就照常往下量——量到的可能是动画中途的盒子；
+    // 改成共享轮询后，未落定直接带诊断失败。
+    await pollUntil(() => panel!.getAnimations().length === 0, 'context menu entrance transition never settled')
 
     const rect = panel!.getBoundingClientRect()
     expect(rect.left).toBeCloseTo(120, 0)

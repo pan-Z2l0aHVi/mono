@@ -3,21 +3,9 @@ import '@/components/theme'
 
 import { afterEach, describe, expect, it } from 'vite-plus/test'
 
-import { waitForFrame } from '@/shared/test-utils'
+import { pollUntil, waitForFrame } from '@/shared/test-utils'
 
 import type { WebUiCollapse } from '..'
-
-function waitFor(predicate: () => boolean, message = 'waitFor timeout', timeoutMs = 2000): Promise<void> {
-  return new Promise((resolve, reject) => {
-    const start = performance.now()
-    const step = (): void => {
-      if (predicate()) return resolve()
-      if (performance.now() - start > timeoutMs) return reject(new Error(message))
-      setTimeout(step, 16)
-    }
-    setTimeout(step, 16)
-  })
-}
 
 function queryTrack(el: WebUiCollapse): HTMLElement {
   return el.shadowRoot!.querySelector<HTMLElement>('.wui-collapse-track')!
@@ -99,7 +87,7 @@ describe('减少动效下的 Collapse（浏览器）', () => {
     expect(queryContentContainer(reduced).hidden).toBe(false)
 
     expect(await sampleTransitions(reduced, false)).toHaveLength(0)
-    await waitFor(() => queryContentContainer(reduced).hidden === true, 'content did not hide under reduced motion')
+    await pollUntil(() => queryContentContainer(reduced).hidden === true, 'content did not hide under reduced motion')
 
     // 对照组：显式 full 覆盖系统 reduce → 同一驱动必须采到过渡
     const fullTheme = mountInsideTheme('full', createCollapse())
@@ -124,7 +112,7 @@ describe('减少动效下的 Collapse（浏览器）', () => {
     expect(await sampleTransitions(el, true)).toHaveLength(0)
 
     expect(await sampleTransitions(el, false)).toHaveLength(0)
-    await waitFor(() => queryInner(el).hasAttribute('inert'), 'inner never became inert under reduced motion')
+    await pollUntil(() => queryInner(el).hasAttribute('inert'), 'inner never became inert under reduced motion')
 
     expect(queryContentContainer(el).hidden).toBe(false)
     expect(queryInner(el).hasAttribute('inert')).toBe(true)

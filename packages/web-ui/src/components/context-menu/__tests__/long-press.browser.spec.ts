@@ -35,14 +35,25 @@ async function waitForMenu(el: WebUiContextMenu): Promise<HTMLElement> {
   return panel
 }
 
-async function settle(ms = 250): Promise<void> {
+/*
+ * 组件侧「同一次手势的补发事件」吸收窗（context-menu/index.ts:63 的私有常量；导出它属改
+ * 源码，这里按字面镜像并点名出处）。它给出负向断言该观察多久：补发只可能在窗口内被当成
+ * 用户意图，越过整窗还看不到就是没来——所以等待由它推导，而不是挑一个看着够用的毫秒数。
+ */
+const FOLLOW_UP_WINDOW_MS = 1000
+/** 计时器与调度漂移余量，不参与任何断言。 */
+const WINDOW_SLACK_MS = 300
+const OUTSIDE_FOLLOW_UP_WINDOW_MS = FOLLOW_UP_WINDOW_MS + WINDOW_SLACK_MS
+
+/** 越过吸收窗口后的固定观察窗：用于「没有发生 X」，窗口本身不是判据。 */
+async function settle(ms = OUTSIDE_FOLLOW_UP_WINDOW_MS): Promise<void> {
   await new Promise(resolve => setTimeout(resolve, ms))
 }
 
 /*
  * 量 panel 几何前的等待。
  *
- * 与 `settle()` 的固定 250ms 不同，这里等的是**因果条件**：panel 的位置由
+ * 与 `settle()` 的整窗观察不同，这里等的是**因果条件**：panel 的位置由
  * Floating UI 的 promise 异步写回，高度由 menu item（Lit 异步渲染）决定，
  * 两者都可能在上一次测量之后才落定。等它连续几帧不再变化，再用
  * `getBoundingClientRect()` 量到的才是终态几何。
@@ -276,20 +287,26 @@ describe('context-menu 长按（真实触控管线）', () => {
     await el.updateComplete
 
     await realTouchPress(target, { holdMs: 700 })
-    await waitForMenu(el)
+    // 只等 scrim 挂上，不等 panel 定位：第一相必须落在吸收窗**之内**，而 `waitForMenu` 要等
+    // Floating UI 把 left/top 写回，负载下那一段时间正是从窗口里扣掉的。panel 定位不是这条
+    // 用例的判据；「点击真的命中 scrim」由第二相必须 dismiss 来保证——两相共用同一条 scrim。
+    await pollUntil(
+      () => document.querySelector('dialog[data-wui-menu-scrim]') !== null,
+      'long press never created the modal scrim'
+    )
     expect(el.isOpen).toBe(true)
 
     const scrim = document.querySelector<HTMLElement>('dialog[data-wui-menu-scrim]')
     expect(scrim).toBeTruthy()
 
-    // 第一相：距长按打开还远不到 LONG_PRESS_FOLLOW_UP_WINDOW_MS(1000ms)，这次点击属于
+    // 第一相：距长按打开还远不到 FOLLOW_UP_WINDOW_MS（组件侧的 1000ms 吸收窗），这次点击属于
     // 上一次长按的补发意图，必须被吞掉 —— menu 不能关。
     await realTouchPress(scrim!, { holdMs: 50 })
     expect(el.isOpen).toBe(true)
     expect(getMenuPanels('Context menu')).toHaveLength(1)
 
     // 第二相：越过窗口。同一条 scrim、同一种真实点击，这次必须生效。
-    await new Promise(resolve => setTimeout(resolve, 1400))
+    await settle()
     await realTouchPress(scrim!, { holdMs: 50 })
     await el.updateComplete
     await new Promise(resolve => requestAnimationFrame(resolve))
@@ -322,7 +339,8 @@ describe('context-menu 长按（真实触控管线）', () => {
    * 拉长 `long-press-delay`（公开属性，语义不变）把差值留够，断言一字未改。
    *
    * 代价是取消类的负向断言必须**越过计时器**再判：抬手时若没清掉计时器，它在 4000ms
-   * 才开 menu，250ms 的窗口里什么都看不见——那样这条用例在漏取消的实现下也照样绿。
+   * 才开 menu，只越过吸收窗（`settle()` 的默认观察窗）里什么都看不见——那样这条用例在
+   * 漏取消的实现下也照样绿。
    */
   const CANCELLABLE_PRESS_DELAY_MS = 4000
   const CANCELLABLE_PRESS_DELAY = String(CANCELLABLE_PRESS_DELAY_MS)

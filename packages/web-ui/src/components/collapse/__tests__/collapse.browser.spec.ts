@@ -5,7 +5,7 @@ import '@/components/theme'
 import { afterEach, describe, expect, it } from 'vite-plus/test'
 import { page } from 'vite-plus/test/browser'
 
-import { afterRenderStep } from '@/shared/test-utils'
+import { afterRenderStep, pollUntil } from '@/shared/test-utils'
 import { scrollElementTo } from '@/shared/test-utils/viewport'
 
 import type { WebUiCollapse } from '..'
@@ -31,19 +31,8 @@ function queryTrack(el: WebUiCollapse): HTMLElement {
   return el.shadowRoot!.querySelector<HTMLElement>('.wui-collapse-track')!
 }
 
-// 轮询确定性信号；超时走 promise reject（不能在 promise 外 throw）。
-function waitFor(predicate: () => boolean, message = 'waitFor timeout', timeoutMs = 2000): Promise<void> {
-  return new Promise((resolve, reject) => {
-    const start = performance.now()
-    const step = (): void => {
-      if (predicate()) return resolve()
-      if (performance.now() - start > timeoutMs) return reject(new Error(message))
-      setTimeout(step, 16)
-    }
-    step()
-  })
-}
-
+// 轮询确定性信号；预算与超时诊断由共享 pollUntil 承担（本地副本原先只给 2000ms，
+// 并行跑全仓时被 CPU 竞争吃光过一次，属于假红而不是行为错）。
 /*
  * 落稳态观察面用 Web Animations API，不读内部状态标记：
  * `getAnimations()` 对「有动效 vs 没有动效」有完全区分力，过渡跑完即为空集。
@@ -51,7 +40,7 @@ function waitFor(predicate: () => boolean, message = 'waitFor timeout', timeoutM
  * 而组件本身正确落稳态（实测），等待必须对中断路径健壮。
  */
 function settle(el: WebUiCollapse): Promise<void> {
-  return waitFor(() => queryTrack(el).getAnimations().length === 0, 'collapse transition did not settle')
+  return pollUntil(() => queryTrack(el).getAnimations().length === 0, 'collapse transition did not settle')
 }
 
 afterEach(() => document.body.replaceChildren())
@@ -101,7 +90,7 @@ describe('WebUiCollapse 组件（浏览器）', () => {
     let clickCount = 0
     trigger.addEventListener('click', () => clickCount++)
     trigger.remove()
-    await waitFor(() => !trigger.hasAttribute('disabled'))
+    await pollUntil(() => !trigger.hasAttribute('disabled'), 'detached trigger kept its disabled attribute')
     await trigger.updateComplete
 
     expect(trigger.hasAttribute('aria-expanded')).toBe(false)
@@ -122,7 +111,7 @@ describe('WebUiCollapse 组件（浏览器）', () => {
 
     el.open = false
     await el.updateComplete
-    await waitFor(() => queryContentContainer(el).hidden === true, 'content did not hide again')
+    await pollUntil(() => queryContentContainer(el).hidden === true, 'content did not hide again')
   })
 
   // 过渡被中断时若不续接，panel 会卡在中间态：hidden 泄漏或永久 inert。
@@ -163,7 +152,7 @@ describe('WebUiCollapse 组件（浏览器）', () => {
 
     el.open = false
     await el.updateComplete
-    await waitFor(() => queryInner(el).hasAttribute('inert'), 'inner never became inert')
+    await pollUntil(() => queryInner(el).hasAttribute('inert'), 'inner never became inert')
 
     expect(queryContentContainer(el).hidden).toBe(false)
     expect(innerContent.scrollTop).toBe(42)
@@ -216,7 +205,7 @@ describe('WebUiCollapse 组件（浏览器）', () => {
 
     el.open = false
     await el.updateComplete
-    await waitFor(() => queryContentContainer(el).hidden === true, 'outer content did not hide')
+    await pollUntil(() => queryContentContainer(el).hidden === true, 'outer content did not hide')
 
     expect(inner.open).toBe(true)
   })
@@ -260,7 +249,7 @@ describe('WebUiCollapse 组件（浏览器）', () => {
     el.open = true
     await el.updateComplete
     // peek 展开时 track 自身不产生过渡（两端都是 1fr），渐变带的淡出过渡落在 inner 上，等它跑完。
-    await waitFor(
+    await pollUntil(
       () => getComputedStyle(queryInner(el)).getPropertyValue('--wui-collapse-peek-edge-active') === '0px',
       'peek edge band did not fade out'
     )
@@ -331,7 +320,7 @@ describe('WebUiCollapse 组件（浏览器）', () => {
 
     document.body.append(el)
     await el.updateComplete
-    await waitFor(() => queryContentContainer(el).hidden === true, 'content did not reach the closed steady state')
+    await pollUntil(() => queryContentContainer(el).hidden === true, 'content did not reach the closed steady state')
 
     expect(queryTrack(el).getAnimations()).toHaveLength(0)
     expect(queryInner(el).hasAttribute('inert')).toBe(false)

@@ -88,7 +88,10 @@ func TestProbeURLRespectsIngestBudget(t *testing.T) {
 	hanging := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		select {
 		case <-r.Context().Done():
-		case <-time.After(30 * time.Second):
+		// 挂起上限由本用例装进去的预算推导：它的职责只是「远长于任何预算」，
+		// 写死 30s 就成了第二个数字，预算上调时这个假服务器会提前应答。
+		case <-time.After(20 * ingestBudget):
+			w.WriteHeader(http.StatusOK)
 		}
 	}))
 	defer hanging.Close()
