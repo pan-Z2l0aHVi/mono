@@ -366,7 +366,7 @@ const mobile = ref(false)
 
 `mobile` is a derived output rather than a second input—it is written exclusively by layout; the property is read-only (assignment has no effect and throws in strict mode), and writing the attribute is reverted within the same reaction together with the value; neither form dispatches an event.
 
-It is the same condition as layout's render branch and the media query layout CSS uses to hide the desktop aside (`@media (width <= 640px)`), so the three can never drift apart; the flip is no longer debounced through resize and happens at the moment the media query changes.
+It is the same condition as layout's render branch and the media query layout CSS uses to hide the desktop aside (`@media (width <= 640px)`), so the three can never drift apart; the flip happens at the moment the media query changes, without a resize debounce.
 
 `mobile-change` is dispatched once per breakpoint crossing, and the evaluation at connection time also counts when the element mounts in a narrow viewport.
 
@@ -443,11 +443,11 @@ The glow comes from the shared `.wui-glow` style (`@greypan/web-ui/classes.css`)
 
 The glow is composed of two pseudo-elements: `::before` uses a `linear-gradient` from `--wui-color-page` to fully transparent, and `::after` layers a real `backdrop-filter: blur(4px)` and uses `mask` to decay that blurred alpha to 0 along the height.
 
-With the two layers separated, blur strength and color density no longer constrain each other.
+With the two layers separated, blur strength and color density do not constrain each other.
 
 The default gradient direction is `to bottom`; to change the color, override `--wui-glow-color` on `web-ui-layout`, the theme, or any ancestor, and light/dark mode follows automatically.
 
-On the default 52px-high header, the blur layer extends `24px` downward with a total fade length of `36px` and a bottom-edge alpha of about `0.67`, matching the bottom-edge strength of the previous 30px overhang; the new version decays by absolute length, so the bottom-edge strength stays the same on taller headers (the old percentage decay faded).
+On the default 52px-high header, the blur layer extends `24px` downward with a total fade length of `36px` and a bottom-edge alpha of about `0.67`; the decay is computed by absolute length, so the bottom-edge strength stays the same on taller headers.
 
 It never extends horizontally beyond the header box, while the vertical tail covers content within 24px below the header.
 

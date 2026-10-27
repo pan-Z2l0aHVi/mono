@@ -320,7 +320,7 @@ function reset() {
 
 ### Behavior
 
-`checked` is not an observed attribute but a getter / setter pair over internal state: a `checked` written on the native tag is read only once at mount, after which Lit no longer looks at the attribute; a framework's dynamic binding updates it only when it lands on the property.
+`checked` is not an observed attribute but a getter / setter pair over internal state: a `checked` written on the native tag is read only once at mount, after which the attribute is not observed; a framework's dynamic binding updates it only when it lands on the property.
 
 Writing `el.checked = true` directly takes effect, but does not reflect to an attribute and dispatches no events.
 
@@ -328,7 +328,7 @@ To follow the page, catch `change` and write it back, as in the basic sample abo
 
 The three activation paths end at the same place: click, Space / Enter, and drag-to-set all write the new value through the component and dispatch both `input` and `change` as `composed` events on the host.
 
-The host handles click and keydown itself (calling `preventDefault()` on Space / Enter before toggling, without relying on an inner native control), so the three paths no longer differ in bubbling or forwarding, and a programmatic write to `checked` still dispatches nothing.
+The host handles click and keydown itself (calling `preventDefault()` on Space / Enter before toggling, without relying on an inner native control), so the three paths do not differ in bubbling or forwarding, and a programmatic write to `checked` still dispatches nothing.
 
 `disabled` and `loading` share one disabled path: when `_isDisabled` (including form-level disabling) or `loading` is true, all three entry points—click, keyboard, and drag—return at the top of their handlers, and the thumb stays at the current value.
 

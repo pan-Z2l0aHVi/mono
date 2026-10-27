@@ -73,7 +73,7 @@ const open = ref(false)
 
 ### Without binding open
 
-组件自己会切 `open`，所以完全不绑定也能用：只给 default slot 与 `content` slot 就行。第二条静态写 `open`，表示初始就展开——初始即为 `open` 时直接落展开稳态，不播进入动画。静态写法只在挂载时生效一次，之后组件继续自己切这个属性，页面不再参与。
+组件自己会切 `open`，所以完全不绑定也能用：只给 default slot 与 `content` slot 就行。第二条静态写 `open`，表示初始就展开——初始即为 `open` 时直接落展开稳态，不播进入动画。静态写法只在挂载时生效一次，之后组件继续自己切这个属性，页面不参与。
 
 ```tsx
 export default function Demo() {
@@ -1263,13 +1263,13 @@ default slot 的全部内容都被包进 trigger wrapper，因而都在点击代
 
 ### peek 预览带
 
-设置 `peek` 后关闭稳态不再收拢到 0，而是沿动画轴露出内容的头部 `peek` 长度（`horizontal` 时改为宽度）：track 保持在内容高度，裁剪长度落在内部容器上。
+设置 `peek` 后关闭稳态沿动画轴露出内容的头部 `peek` 长度（`horizontal` 时为宽度），而不是收拢到 0：track 保持在内容高度，裁剪长度落在内部容器上。
 
 其语义等同 `keep-mounted`——内容保留挂载，但整个 inner 被 `inert` 阻断，露出的那一段也一样不可聚焦、不可点击，被裁掉的部分更不用提。
 
 内容本身不足 `peek` 时按内容实际尺寸收起，不留空白。
 
-由于固定长度与自适应高度无法由 CSS 插值，`peek` ↔ 展开这两个方向改为读出像素后以显式长度驱动（每次开合测量一次）；其余动画路径仍是零测量的 grid `fr` 过渡。
+由于固定长度与自适应高度无法由 CSS 插值，`peek` ↔ 展开这两个方向读出像素后以显式长度驱动（每次开合测量一次）；其余动画路径仍是零测量的 grid `fr` 过渡。
 
 ```html
 <web-ui-collapse peek="120px">

@@ -301,7 +301,7 @@ export default function Demo() {
 
 `precision` 不参与赋值，只发生在读取（`get value`）与步进提交两点，所以声明顺序无关；`0.01` 不会被默认设置提前取整成 `0`。
 
-未显式设置 `precision` 时按 `step` 的小数位数推导规整精度，小数场景不再必须显式写 `step={0.01}` 配 `precision`；显式设置后按该值规整，`step` 本身不退化。
+未显式设置 `precision` 时按 `step` 的小数位数推导规整精度，小数场景不必显式写 `step={0.01}` 配 `precision`；显式设置后按该值规整，`step` 本身不退化。
 
 事件分派节奏不一致是组件的现状：文本输入的 `input` 来自内部原生控件冒泡，`change` 因为原生 `change` 不组合、过不了 shadow 边界而由组件在宿主上补发一次；步进 button 只派发 `input`，ArrowUp / ArrowDown 派发 `input` 与 `change` 两条。
 

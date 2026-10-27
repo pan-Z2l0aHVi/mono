@@ -411,7 +411,7 @@ indicator 那一档在浅色与深色下都取 `--wui-color-surface-control` 的
 
 page 已经是深色阶梯最暗的一档，所以「与 page 同色」只能靠把轨道往下开来成立，而不是把 indicator 往上抬。凸起方向仍由「indicator 比 track 亮」读出：两档的 WCAG 亮度比分别是 1.26:1（浅）与 1.16:1（深），同一量级，不会盖过柔投影。
 
-于是深色下两个变体不再共用同一对灰阶：inset 是 `#2c2c2e` track + `#3a3a3c` indicator（选中面比轨道亮，读成按下去的灰面），raised 是 `#17191a` track + `#242628` indicator（选中面与页面同色，读成浮起来的一截页面）。
+于是深色下两个变体用两对不同的灰阶：inset 是 `#2c2c2e` track + `#3a3a3c` indicator（选中面比轨道亮，读成按下去的灰面），raised 是 `#17191a` track + `#242628` indicator（选中面与页面同色，读成浮起来的一截页面）。
 
 这条不变量说的是「与 page 同色」，不是「与所在容器同色」。浅色下 page 与 surface 都是 `#fff`，两句话等价；深色下 surface 是 `#2c2c2e`，所以凸变种放进 surface 卡片里时，chip 会比卡片本身暗一档。
 
@@ -443,9 +443,9 @@ track 在所有状态下都是不透明实体面（`--wui-color-surface`，浅�
 
 静止态 indicator 是 `--wui-color-surface-segmented` 实色底、玻璃输出全部关闭。
 
-按压/拖拽态获得 backdrop blur、随 80ms 过渡淡入的玻璃描边环与 1.5x 放大，底色全透明：indicator 的 blur 采样面整个落在 track 之内，此前的玻璃 track 上全透明 indicator 在均匀深底与相邻 track 仅差 +0.5 阶，条纹底实测 indicator 内部灰度 std 1.89（背景渗透）。
+按压/拖拽态获得 backdrop blur、随 80ms 过渡淡入的玻璃描边环与 1.5x 放大，底色全透明：indicator 的 blur 采样面整个落在 track 之内；玻璃 track 上的全透明 indicator 在均匀深底与相邻 track 仅差 +0.5 阶，条纹底实测 indicator 内部灰度 std 1.89（背景渗透）。
 
-track 实体化后同一采样 std 归零，按压态本体的可感知性由实色 track 与放大/环/投影共同承担，不再需要 tint 打底或压制 track 边缘装饰。
+track 实体化后同一采样 std 归零，按压态本体的可感知性由实色 track 与放大/环/投影共同承担，不需要 tint 打底或压制 track 边缘装饰。
 
 底色不淡入——按下第一帧即落定；松开时 indicator 经 `--wui-duration-press` 淡回实色灰底。
 

@@ -55,7 +55,7 @@ import { OverlayScrollbarsComponent } from 'overlayscrollbars-vue' // 或 overla
   `document.body`——在那里 `window.scrollY` / `window.scrollTo` 保持原生语义。
 - 自带滚动容器的组件（`select`、`autocomplete`、dropdown / context-menu panel、`dialog`、`drawer`、
   `toast`）在各自的 shadow root 内给**组件内部**scrollbar 上主题。OverlayScrollbars 进不了 shadow
-  root——它的结构样式与主题类都是文档级选择器——所以组件改为在原生 scrollbar 上读同一组继承的
+  root——它的结构样式与主题类都是文档级选择器——所以组件在原生 scrollbar 上读同一组继承的
   `--wui-scrollbar-*` 颜色（`scrollbar-color` / `scrollbar-width`），并刻意不用 `::-webkit-scrollbar`：
   声明它会让引擎放弃平台的覆盖式 scrollbar、固定占一条布局宽度，而组件内部 scrollbar 正是不能占宽度。
   导入本样式表，组件内部 scrollbar 才会跟随外观，与整页 scrollbar 同一机制。

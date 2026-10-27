@@ -730,11 +730,9 @@ By specification the event that triggers the skip still targets the document ele
 
 The theme host uses `display: contents` and draws no background: the component library does not paint a background on the host page, and the embedder keeps full control over the surface behind the theme subtree. Custom properties still inherit reliably into slotted content.
 
-### Migrating from the removed transition attribute
+### The `motion` attribute
 
-Remove the attribute and express the intent with `motion`. Themes that previously had `transition` keep the same reveal behavior under the default `motion="system"`; to still play the reveal when the system prefers reduced motion, add `motion="full"`.
-
-Themes that previously had no `transition` now reveal by default; to keep switching without animation, set `motion="reduced"` explicitly.
+Express the intent with `motion`. The default `motion="system"` plays the reveal unless the system prefers reduced motion; `motion="full"` always plays it; `motion="reduced"` switches without any animation.
 
 ### Root page color sync
 

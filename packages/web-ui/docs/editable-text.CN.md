@@ -529,7 +529,7 @@ const spacing = '空白按原样保留\n默认就是 pre-wrap'
 
 只有 `Escape` 取消：值回到进入编辑时的状态，派发 `cancel` 而不派发 `change`，焦点交还宿主，且按键由编辑层消费，外层 overlay（drawer、menu）不会因同一次按键关闭。
 
-`cancel` 不冒泡也不组合，只在组件本身派发：组件被投映在 overlay shadow 内时（如 drawer 标题），它不会触达 overlay 的原生 `cancel` 关闭管线，监听一律挂在组件本身。
+`cancel` 不冒泡也不组合，只在组件本身派发：经 slot 进入外层 overlay shadow 内 `<dialog>` 的自定义 `cancel`（`composed` 与否都会）会被当成关闭请求，把那层 overlay 一并关掉（issue #159），所以监听一律挂在组件本身。
 
 值里已有的换行仍按多行渲染，只是不能再靠输入 `Enter` 增加换行。空值继续显示 placeholder；编辑层始终按自身内容撑高，因此空草稿或纯空格草稿在宿主自身塌缩的场合（flex 项 `min-width: 0`、表格单元格）也仍有承接光标的位置。
 
@@ -571,7 +571,7 @@ const spacing = '空白按原样保留\n默认就是 pre-wrap'
 
 宿主是行内级盒子：未设宽度时随内容伸缩，折行后高度按行数增长。字体、颜色、文本对齐与空白处理全部继承外部上下文，因此编辑前它就是一段普通文字。
 
-光标颜色默认跟随共享语义 token `--wui-color-accent`；在宿主或任意祖先上设置该 token 即可整体改色。两层对长无空格串（连续字母数字）按同一组断行点折行：超出盒宽的长串在盒内断开，文字态不再溢出宿主盒。
+光标颜色默认跟随共享语义 token `--wui-color-accent`；在宿主或任意祖先上设置该 token 即可整体改色。两层对长无空格串（连续字母数字）按同一组断行点折行：超出盒宽的长串在盒内断开，文字态不溢出宿主盒。
 
 ### CSS Custom Properties
 
@@ -579,9 +579,3 @@ const spacing = '空白按原样保留\n默认就是 pre-wrap'
 | ----------------------------------- | ---------------------------------------------------------------- | ---------- |
 | `--wui-editable-text-white-space`   | 两层的空白处理方式                                               | `pre-wrap` |
 | `--wui-editable-text-overflow-wrap` | 两层的断词处理方式；默认让长无空格串在盒内断开，与原生编辑层一致 | `anywhere` |
-
-### 交互变更
-
-`blur` 恢复提交：`Enter` 与 `blur` 均提交草稿，只有 `Escape` 取消，值回到进入编辑时的状态。`Enter` 仍不插入换行。
-
-`cancel` 事件不再冒泡：此前冒泡的自定义 `cancel` 会经 slot 进入外层 overlay shadow 内的 `<dialog>`（`composed` 与否都会），被当成关闭请求一并关掉（issue #159）；监听请挂在组件本身。

@@ -284,7 +284,7 @@ With `swipe` on and more than one image, the images are laid out on a single car
 
 On release, a slide past the distance threshold (15% of the stage width, rounded) moves into the neighboring image; a quick flick that does not reach the threshold but whose sampled velocity reaches 320px/s or more, or whose displacement is at least 16px with a velocity (window-sampled or averaged over the whole gesture) of 160px/s or more, also commits; otherwise it springs back. With `loop` on, the neighbors that wrap around are always on both sides of the current image; with `loop` off, the boundary direction springs back without crossing.
 
-While this gesture is active it takes over the whole drag: at 1x a horizontal drag switches images and vertical displacement is ignored entirely (it neither drives panning nor follows the finger). When zoomed in, dragging always pans (following both axes) and no longer switches images.
+While this gesture is active it takes over the whole drag: at 1x a horizontal drag switches images and vertical displacement is ignored entirely (it neither drives panning nor follows the finger). When zoomed in, dragging always pans (following both axes) and does not switch images.
 
 Because 1x can pan as well, `resetZoom()` is available both when "zoomed" and when "panned"—the reset button in the toolbar is clickable for a panned 1x image too.
 

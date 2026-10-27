@@ -706,11 +706,9 @@ System 配色模式跟随 `prefers-color-scheme`。
 
 主题宿主使用 `display: contents` 且不绘制任何背景：组件库不在宿主页面画背景，嵌入方对主题子树背后的表面保留完全控制权。自定义属性仍可靠继承到 slotted 内容。
 
-### 从已移除的 transition 属性迁移
+### `motion` 属性
 
-删掉该属性，改用 `motion` 表达意图。原先带 `transition` 的主题在默认 `motion="system"` 下揭示行为不变；需要在系统偏好 reduce 时仍播放揭示，则加 `motion="full"`。
-
-原先不带 `transition` 的主题现在默认就会揭示，若要保持无动画直接切换，请显式设置 `motion="reduced"`。
+用 `motion` 表达意图。默认 `motion="system"`：系统未偏好 reduce 时播放揭示，系统偏好 reduce 时不播；`motion="full"` 始终播放；`motion="reduced"` 直接切换，不播任何动画。
 
 ### 根节点 page 色同步
 

@@ -316,7 +316,7 @@ function reset() {
 
 三条激活路径的最终出口相同：点击、Space / Enter 与拖拽定值都经组件写入新值，并在宿主上派发 `input` 与 `change` 两条 `composed` 事件。
 
-host 自己承接 click 与 keydown（Space / Enter `preventDefault()` 后切换，不依赖内部原生控件），所以三条路径不再有冒泡与转发之分，程序写入 `checked` 仍不派发。
+host 自己承接 click 与 keydown（Space / Enter `preventDefault()` 后切换，不依赖内部原生控件），所以三条路径在冒泡与转发上没有区别，程序写入 `checked` 仍不派发。
 
 `disabled` 与 `loading` 共用同一条禁用路径：`_isDisabled`（含表单级禁用）或 `loading` 时，点击、键盘与拖拽三条入口都在处理函数最前面返回，thumb 停在当前值。
 

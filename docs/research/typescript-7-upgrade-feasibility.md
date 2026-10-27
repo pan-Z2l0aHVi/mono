@@ -135,7 +135,7 @@ $ typescript@7.0.2 --noEmit -p ...（同一配置）              # 0 错误，0
 
 原生 TS 7.0.2 对以下 13 个 tsconfig `--noEmit` **全部零错误**（js-kit app/node、browser-kit app/node、web-ui app/node、unplugin-web-components、deps-reload、react demo app/node），与 tsc 6.0.3 输出完全一致——包括含 `experimentalDecorators` 的 web-ui app 配置。
 
-**附带发现（与 TS 7 无关的存量问题）**：`packages/web-ui/tsconfig.vitest.json` 在 tsc 6.0.3 与 7.0.2 下有完全相同的 3 个既有错误（`lib: []` 导致 `Array.prototype.at` 缺失 ×2、`types: ["node"]` 导致 `setTimeout` 返回 `Timeout` ×1）。该配置的错误不进入 `vp check` 门禁，属历史遗留；升级时顺手清理即可。
+**附带发现（与 TS 7 无关的存量问题）**：`packages/web-ui/tsconfig.vitest.json` 在 tsc 6.0.3 与 7.0.2 下有完全相同的 3 个既有错误（`lib: []` 导致 `Array.prototype.at` 缺失 ×2、`types: ["node"]` 导致 `setTimeout` 返回 `Timeout` ×1）。该配置的错误不进入 `vp check` 门禁，属存量问题；升级时顺手清理即可。
 
 （Vue demo 的 `.vue` SFC 需 vue-tsc 虚拟文档，原生 tsc 不适用，未纳入本轮 `--noEmit` 实测。）
 

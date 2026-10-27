@@ -382,7 +382,7 @@ const count = ref(3)
 
 `placement` 走字面量白名单，不在四个角里的值（含空串）回落到 `top-right`，并立即把宿主 attribute 修正成规范后的值。
 
-角标是 `role="status"` 的活跃区域，`aria-label` 由组件按状态给出固定文案：`dot` 报 `Unread`，`count` 大于 0 报 `<count> unread messages`，`show-zero` 报 `No unread messages`；`badge-hidden` 时这个节点整个不渲染，无障碍树里不再有播报。
+角标是 `role="status"` 的活跃区域，`aria-label` 由组件按状态给出固定文案：`dot` 报 `Unread`，`count` 大于 0 报 `<count> unread messages`，`show-zero` 报 `No unread messages`；`badge-hidden` 时这个节点整个不渲染，无障碍树里没有播报。
 
 文案是组件内置的英文，不提供可配的无障碍名称属性，要自定义语义就别用 `badge-hidden` 之外的隐藏手段。
 

@@ -305,7 +305,7 @@ Editing is another layer—the inner control is bound to a draft, and `1.`, an e
 
 `precision` takes no part in assignment; it only happens at two points, reading (`get value`) and the step commit, so declaration order does not matter; `0.01` is not rounded to `0` ahead of time by the default settings.
 
-When `precision` is not set explicitly, the normalization precision is derived from the decimal places of `step`, so fractional cases no longer have to write `step={0.01}` together with `precision`; once set explicitly the value is normalized to it, and `step` itself does not degrade.
+When `precision` is not set explicitly, the normalization precision is derived from the decimal places of `step`, so fractional cases do not have to write `step={0.01}` together with `precision`; once set explicitly the value is normalized to it, and `step` itself does not degrade.
 
 The inconsistent event dispatch rhythm is the component's current state: `input` from text entry comes from the inner native control bubbling up, while `change` is dispatched once by the component on the host because the native `change` is not composed and cannot cross the shadow boundary; the step buttons dispatch only `input`, and ArrowUp / ArrowDown dispatch both `input` and `change`.
 

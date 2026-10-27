@@ -477,7 +477,7 @@ The inner control's native `input` already bubbles and is composed, so the host 
 
 The clear button goes through the same discrete change, dispatching `input` and `change` together, so consumers that only listen to `change`, such as `v-model.lazy`, do not miss the clearing.
 
-`disabled` and form-level disabling (an ancestor `<fieldset disabled>`) both withdraw typing and validation: the `required` and `type="email"` checks (`valueMissing` / `typeMismatch`) are forwarded to the host `<form>` through ElementInternals, and no longer block submission while disabled.
+`disabled` and form-level disabling (an ancestor `<fieldset disabled>`) both withdraw typing and validation: the `required` and `type="email"` checks (`valueMissing` / `typeMismatch`) are forwarded to the host `<form>` through ElementInternals, and do not block submission while disabled.
 
 `readonly` withdraws validation as well, not just typing: per the HTML specification, a readonly native control is barred from constraint validation, so `validity.valid` is always true and the forwarded state is therefore always clean—an empty `required readonly` value does not block submission.
 

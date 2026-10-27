@@ -135,7 +135,7 @@ const last = ref('—')
 
 ### Delay
 
-`show-delay` / `hide-delay` 控制指针进出时的显示与隐藏延迟，`0` 表示不等待。`disabled` 关闭触发：指针与焦点都不再让提示出现，已经显示的提示不会被这条属性收掉。第二条始终不显示，读数只跟随第一条；禁用状态不派发 `open-change`。
+`show-delay` / `hide-delay` 控制指针进出时的显示与隐藏延迟，`0` 表示不等待。`disabled` 关闭触发：指针与焦点都不会让提示出现，已经显示的提示不会被这条属性收掉。第二条始终不显示，读数只跟随第一条；禁用状态不派发 `open-change`。
 
 ```tsx
 import { useState } from 'react'

@@ -269,7 +269,7 @@ export default function Demo() {
 
 ### Behavior
 
-The graphic box and the graphic are the same size: with the surface gone there is no invisible padding left, so the distance between the graphic and the title is exactly `--wui-empty-title-margin-top` (`12px` by default).
+The graphic box and the graphic are the same size: no invisible padding is left, so the distance between the graphic and the title is exactly `--wui-empty-title-margin-top` (`12px` by default).
 
 The layout channels do not move together—edge length, the two font sizes, colors, and whitespace are each a group of variables. Scaling the whole empty state means writing several of them; writing only `--wui-empty-icon-size` gives an empty state with a very large graphic and a very small title.
 
@@ -289,11 +289,11 @@ Graphics in the `icon` slot must carry their own size: the component only centre
 
 `title` reuses the global `title` attribute and reflects it to the host, so the browser also draws that text as a native tooltip on hover. To avoid that hint, put the title in the default slot; that position is equivalent, it just is not treated as tooltip text.
 
-### Migrating from the `size` property
+### Size presets
 
-`size` is gone. It used to be the single scaling knob, driving the graphic, `min-height`, padding, and both font sizes at once; each of those is now a variable of its own, so reproducing an old step means writing the values below together.
+`size` is not a supported property. The graphic, `min-height`, padding, and both font sizes are each controlled by their own variable; the presets below write the values that belong together.
 
-The columns are old size / graphic / `min-height` / padding / title / description:
+The columns are step / graphic / `min-height` / padding / title / description:
 
 - `40` / `29px` / `171px` / `23px 17px` / `14px` / `13px`
 - `56` (default) / `40px` / `240px` / `32px 24px` / `16px` / `14px`

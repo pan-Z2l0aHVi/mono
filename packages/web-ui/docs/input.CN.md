@@ -458,7 +458,7 @@ export default function Demo() {
 
 清除 button 走的是同一次离散变更，`input` 与 `change` 一起派发，`v-model.lazy` 这类只听 `change` 的消费者不会漏掉清空。
 
-`disabled` 与表单级禁用（外层 `<fieldset disabled>`）都让输入与校验退出：`required` 与 `type="email"` 的判定（`valueMissing` / `typeMismatch`）经 ElementInternals 转发给宿主 `<form>`，禁用时不再拦截提交。
+`disabled` 与表单级禁用（外层 `<fieldset disabled>`）都让输入与校验退出：`required` 与 `type="email"` 的判定（`valueMissing` / `typeMismatch`）经 ElementInternals 转发给宿主 `<form>`，禁用时不拦截提交。
 
 `readonly` 同样让校验退出，不只是拦输入：只读的原生控件按 HTML 规范被豁免于约束验证，`validity.valid` 恒为真，转发的状态因此总是干净——`required readonly` 的空值拦不下提交。
 

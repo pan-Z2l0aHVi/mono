@@ -29,7 +29,7 @@
 
 ### 不要用 `settings.local.json` 存命令白名单
 
-Claude 按 git common dir 解析工程设置，不按目录：主仓库 `.claude/settings.local.json` 里的条目会被所有 worktree 会话读到。那里曾经堆了 20 多条 allow，已在本机清空并就地备份（备份目录属机器本地状态，不写进仓库）。要放宽权限就改机器级的权限模式，不要在这种「本地私货」文件里逐条堆命令。
+Claude 按 git common dir 解析工程设置，不按目录：主仓库 `.claude/settings.local.json` 里的条目会被所有 worktree 会话读到。要放宽权限就改机器级的权限模式，不要在这种「本地私货」文件里逐条堆命令。
 
 ### Codex：没有按路径的 deny，别指望仓级拦住文件
 
