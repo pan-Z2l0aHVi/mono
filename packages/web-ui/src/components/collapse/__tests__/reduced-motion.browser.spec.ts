@@ -3,11 +3,9 @@ import '@/components/theme'
 
 import { afterEach, describe, expect, it } from 'vite-plus/test'
 
-import type { WebUiCollapse } from '..'
+import { waitForFrame } from '@/shared/test-utils'
 
-async function nextFrame() {
-  await new Promise(resolve => requestAnimationFrame(resolve))
-}
+import type { WebUiCollapse } from '..'
 
 function waitFor(predicate: () => boolean, message = 'waitFor timeout', timeoutMs = 2000): Promise<void> {
   return new Promise((resolve, reject) => {
@@ -60,7 +58,7 @@ async function sampleTransitions(el: WebUiCollapse, open: boolean, frames = 12):
   const seen: string[] = []
   for (let index = 0; index < frames; index++) {
     seen.push(...runningTransitions(el))
-    await nextFrame()
+    await waitForFrame()
   }
   return seen
 }

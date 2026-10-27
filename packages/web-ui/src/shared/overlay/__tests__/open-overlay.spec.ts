@@ -1,5 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vite-plus/test'
 
+import { waitForFrame } from '@/shared/test-utils'
+
 import { defineOpenOverlay } from '../open-overlay'
 import type { OpenOverlay, OpenOverlayHandle, OverlayClaimOptions } from '../open-overlay'
 
@@ -43,10 +45,6 @@ function pressEscape(): KeyboardEvent {
   const event = new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true })
   document.dispatchEvent(event)
   return event
-}
-
-function nextFrame(): Promise<void> {
-  return new Promise(resolve => requestAnimationFrame(() => resolve()))
 }
 
 afterEach(() => {
@@ -368,7 +366,7 @@ describe('open overlay 的帧事务', () => {
     const callback = vi.fn<() => void>()
     overlay().scheduleFrame(callback)
 
-    await nextFrame()
+    await waitForFrame()
     expect(callback).toHaveBeenCalledTimes(1)
   })
 
@@ -379,7 +377,7 @@ describe('open overlay 的帧事务', () => {
     instance.scheduleFrame(callback, handle)
 
     handle.release()
-    await nextFrame()
+    await waitForFrame()
     expect(callback).not.toHaveBeenCalled()
   })
 
@@ -389,7 +387,7 @@ describe('open overlay 的帧事务', () => {
     instance.scheduleFrame(callback)
 
     instance.invalidate()
-    await nextFrame()
+    await waitForFrame()
     expect(callback).not.toHaveBeenCalled()
   })
 
@@ -399,12 +397,12 @@ describe('open overlay 的帧事务', () => {
 
     instance.suspend()
     instance.scheduleFrame(callback)
-    await nextFrame()
+    await waitForFrame()
     expect(callback).not.toHaveBeenCalled()
 
     instance.resume()
     instance.scheduleFrame(callback)
-    await nextFrame()
+    await waitForFrame()
     expect(callback).toHaveBeenCalledTimes(1)
   })
 })

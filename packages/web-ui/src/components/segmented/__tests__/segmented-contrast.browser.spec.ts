@@ -96,10 +96,13 @@ describe('WebUiSegmented 可辨度（浏览器）', () => {
     it(`${appearance} 下未选中 label 与 track 底的对比度 ≥ 4.5:1`, async () => {
       const { track, triggers } = await mount(appearance)
       const backdrop = getComputedStyle(track).backgroundColor
+      const unselected = triggers.filter(
+        trigger => queryA11y(trigger, '[role="option"]')?.getAttribute('aria-selected') !== 'true'
+      )
+      // 全是选中项时循环零断言空过，先证明这条用例有测量对象。
+      expect(unselected.length, '前置：应存在未选中的 segmented label').toBeGreaterThan(0)
 
-      for (const trigger of triggers) {
-        const surface = queryA11y(trigger, '[role="option"]')
-        if (surface?.getAttribute('aria-selected') === 'true') continue
+      for (const trigger of unselected) {
         const label = trigger.textContent ?? ''
         const ratio = contrastRatio(textColorOf(trigger), backdrop)
         expect(ratio, `「${label}」与 track 底对比度不足：${ratio.toFixed(2)}:1`).toBeGreaterThanOrEqual(4.5)

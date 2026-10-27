@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vite-plus/test'
 
-import { pollUntil } from '@/shared/test-utils'
+import { pollUntil, waitForFrame } from '@/shared/test-utils'
 
 import { defineOverlay } from '../overlay'
 
@@ -16,10 +16,6 @@ function createOverlay(): HTMLElement {
   el.style.cssText = 'position:fixed;width:150px;height:200px;'
   document.body.appendChild(el)
   return el
-}
-
-async function nextFrame() {
-  return new Promise(resolve => requestAnimationFrame(resolve))
 }
 
 /*
@@ -47,7 +43,7 @@ describe('defineOverlay 定位器', () => {
     const ctx = defineOverlay().make({ anchor: trigger, overlay })
 
     ctx.open()
-    await nextFrame()
+    await waitForFrame()
 
     expect(overlay.style.display).not.toBe('none')
     expect(ctx.isOpen()).toBe(true)
@@ -63,17 +59,17 @@ describe('defineOverlay 定位器', () => {
     const ctx = defineOverlay().make({ anchor: trigger, overlay })
 
     ctx.open()
-    await nextFrame()
+    await waitForFrame()
     ctx.close()
-    await nextFrame()
+    await waitForFrame()
     expect(ctx.isOpen()).toBe(false)
 
     ctx.toggle()
-    await nextFrame()
+    await waitForFrame()
     expect(ctx.isOpen()).toBe(true)
 
     ctx.toggle()
-    await nextFrame()
+    await waitForFrame()
     expect(ctx.isOpen()).toBe(false)
 
     ctx.dispose()
@@ -87,7 +83,7 @@ describe('defineOverlay 定位器', () => {
     const ctx = defineOverlay().make({ anchor: trigger, overlay })
 
     ctx.open()
-    await nextFrame()
+    await waitForFrame()
     ctx.dispose()
 
     expect(ctx.isOpen()).toBe(false)
@@ -134,13 +130,13 @@ describe('defineOverlay 定位器', () => {
     const ctx = defineOverlay().make({ anchor: trigger, overlay, minAnchorWidth: true })
 
     ctx.open()
-    await nextFrame()
+    await waitForFrame()
     expect(overlay.style.width).not.toBe('')
 
     // 遗留的 inline width / min-width 会继续约束一个已经不需要宽度接管的 overlay
     // （此后 width 由 matchWidth 或内容决定），且是消费方无法从外部清掉的残留。
     ctx.update({ minAnchorWidth: false })
-    await nextFrame()
+    await waitForFrame()
     expect(overlay.style.width).toBe('')
     expect(overlay.style.minWidth).toBe('')
 

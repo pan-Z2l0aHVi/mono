@@ -1,9 +1,9 @@
 import { afterEach, describe, expect, it } from 'vite-plus/test'
 
+import { waitForFrame } from '@/shared/test-utils'
+
 import { defineNativeDialogPresence } from '../native-dialog-presence'
 import type { NativeDialogPresenceApi } from '../native-dialog-presence'
-
-const nextFrame = () => new Promise<void>(resolve => requestAnimationFrame(() => resolve()))
 
 /*
  * jsdom 未实现原生 dialog 的 modal 语义，这里**逐 spec 局部**补足 showModal/close 对
@@ -65,7 +65,7 @@ describe('native dialog presence', () => {
   it('sync(false) 不立刻离开 top layer，过渡收尾后才关闭，且该关闭被判定为自身排队的', async () => {
     const { dialog, presence, setOpen } = setup()
     presence.sync(true)
-    await nextFrame()
+    await waitForFrame()
 
     setOpen(false)
     presence.sync(false)
@@ -90,8 +90,8 @@ describe('native dialog presence', () => {
     // panel 会瞬间消失而不是滑出。判据是 open ——它在收尾前必须仍然为 true。
     expect(dialog.open).toBe(true)
 
-    await nextFrame()
-    await nextFrame()
+    await waitForFrame()
+    await waitForFrame()
     expect(dialog.open).toBe(true)
 
     settleCloseTransition(dialog, presence)
@@ -101,7 +101,7 @@ describe('native dialog presence', () => {
   it('外部 dialog.close() 被判定为真实外部关闭，交给消费方恢复状态', async () => {
     const { dialog, presence } = setup()
     presence.sync(true)
-    await nextFrame()
+    await waitForFrame()
 
     dialog.close()
     expect(dialog.open).toBe(false)
@@ -115,7 +115,7 @@ describe('native dialog presence', () => {
   it('自身排队的 close 只被消费一次：快速重开后过期事件不会误关刚重开的 dialog', async () => {
     const { dialog, presence, setOpen } = setup()
     presence.sync(true)
-    await nextFrame()
+    await waitForFrame()
 
     // 关闭走完收尾 → 原生 close 事件在「路上」。
     setOpen(false)

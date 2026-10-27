@@ -11,10 +11,9 @@ import type { WebUiTextarea } from '@/components/textarea'
 /**
  * focus ring 过渡契约的公共夹具与观察函数。
  *
- * 被两个 spec 共用：`focus-ring-transition.browser.spec.ts`（`browser` project，
- * 走显式 `motion` 属性）与 `reduced-motion.browser.spec.ts`
- * （`browser-reduced-motion` project，Playwright `reducedMotion: 'reduce'`，走系统偏好）。
- * 两者断言同一契约的两个通道，观察函数必须完全一致，故不各自复制。
+ * 供 `reduced-motion.browser.spec.ts` 使用（`browser-reduced-motion` project，
+ * Playwright `reducedMotion: 'reduce'`，走系统偏好）：断言系统偏好下 focus ring 过渡不启动，
+ * 并用显式 `motion=full` 对照组证明观察函数本身能采到过渡。
  */
 
 export type FixtureElement = WebUiInput | WebUiTextarea | WebUiAutocomplete
@@ -68,9 +67,6 @@ function queryDeep<T extends HTMLElement>(root: ParentNode, selector: string): T
 export function resolveInner(host: HTMLElement, innerSelector: string): HTMLElement {
   return queryDeep<HTMLElement>(host.shadowRoot!, innerSelector)!
 }
-
-/** `--wui-duration-focus` 的默认值（`components/theme/style.css` 基础 `:host` 块）。 */
-export const FOCUS_RING_MS = 200
 
 /**
  * 强制一次样式重算（`getBoundingClientRect()` 先算样式再取几何）。

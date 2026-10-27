@@ -3,7 +3,7 @@ import '..'
 import { afterEach, describe, expect, it } from 'vite-plus/test'
 import { userEvent } from 'vite-plus/test/browser'
 
-import { pollUntil } from '@/shared/test-utils'
+import { flush, pollUntil } from '@/shared/test-utils'
 import { scrollWindowTo, setViewport } from '@/shared/test-utils/viewport'
 
 import type { WebUiDialog } from '..'
@@ -81,19 +81,31 @@ describe('WebUiDialog 组件（浏览器）', () => {
     expect(document.elementFromPoint(window.innerWidth / 2, window.innerHeight / 2)).toBe(centerTarget)
   })
 
-  it('panel 自身不夺焦，内部 button 可聚焦', async () => {
+  it('panel 自身不夺焦，打开时焦点交给内部的 button', async () => {
     const component = createDialog()
     const button = document.createElement('button')
     button.textContent = '打开'
     component.append(button)
+
+    /*
+     * 「panel 自身不夺焦」要判的是开启那一刻焦点去了哪，所以焦点必须从一个宿主之外的起点开始。
+     * 原写法先 `dialog.focus()` 再 `button.focus()`，然后断言 activeElement 是 button——两个结论
+     * 都由测试自己写下，被断言的那件事（开启时的焦点归属）从头到尾没被触发过。
+     */
+    const outside = document.createElement('button')
+    outside.textContent = '外部'
+    document.body.append(outside)
+    outside.focus()
+    expect(document.activeElement).toBe(outside)
+
     component.open = true
     await component.updateComplete
     await new Promise(resolve => requestAnimationFrame(resolve))
 
-    const dialog = component.shadowRoot?.querySelector('dialog') as HTMLDialogElement
-    dialog.focus()
-
-    button.focus()
+    // 焦点没有停在 shadow 里那层 <dialog> 上：面板自己不接焦点。（`:modal` 由下面
+    // 「modal 固定在视口内」那条拥有，这里不重复判。）
+    expect(component.shadowRoot?.activeElement).toBeNull()
+    // 而是交给内容里第一个可聚焦元素——用户 Tab 进来的那一个。
     expect(document.activeElement).toBe(button)
   })
 
@@ -111,7 +123,7 @@ describe('WebUiDialog 组件（浏览器）', () => {
     expect(dialog?.open).toBe(true)
 
     dialog?.dispatchEvent(new TransitionEvent('transitionend', { propertyName: 'transform' }))
-    await new Promise(resolve => setTimeout(resolve))
+    await flush()
     expect(dialog?.open).toBe(false)
   })
 
@@ -204,7 +216,7 @@ describe('WebUiDialog 组件（浏览器）', () => {
     component.open = false
     await component.updateComplete
     dialog?.dispatchEvent(new TransitionEvent('transitionend', { propertyName: 'transform' }))
-    await new Promise(resolve => setTimeout(resolve))
+    await flush()
     expect(component.open).toBe(false)
     expect(dialog?.open).toBe(false)
     expect(events).toHaveLength(2)

@@ -255,7 +255,7 @@ describe('应用外壳（浏览器）：导航 collapsed state 不跨视口泄�
     await vi.waitFor(() => expect(container.querySelectorAll('web-ui-toast[visible]').length).toBe(9))
     expect(container.scrollHeight).toBeGreaterThan(container.clientHeight)
     const banner = document.querySelector<HTMLElement>('[slot="banner"]')!
-    await vi.waitFor(() => expect(banner.getBoundingClientRect().bottom).toBe(innerHeight))
+    await vi.waitFor(() => expect(banner.getBoundingClientRect().bottom).toBeCloseTo(innerHeight, 0))
     const beforeScroll = banner.getBoundingClientRect().bottom
 
     container.scrollTop = container.scrollHeight

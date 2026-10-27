@@ -66,23 +66,50 @@ for (const spec of SPECS) {
   describe(`${spec.label} 与同类文本控件的公共 API 一致性`, () => {
     const mount = (attrs?: Record<string, string>): EditingControl => mountElement<EditingControl>(spec.tag, { attrs })
 
-    it('公开 focus/blur/select，且 value 是可读写字符串', async () => {
+    it('公开 focus/blur/select 的作用，且 value 是可读写字符串', async () => {
       const el = mount()
       const [inputs, detachInputs] = spyEvents(el, 'input')
       const [changes, detachChanges] = spyEvents(el, 'change')
       try {
         await waitForUpdate(el)
-        expect(typeof el.focus).toBe('function')
-        expect(typeof el.blur).toBe('function')
-        expect(typeof el.select).toBe('function')
 
         el.value = 'programmatic'
         await waitForUpdate(el)
 
+        const native = nativeOf(el, spec.native)
         expect(el.value).toBe('programmatic')
-        expect(nativeOf(el, spec.native).value).toBe('programmatic')
+        expect(native.value).toBe('programmatic')
         expect(inputs).toHaveLength(0)
         expect(changes).toHaveLength(0)
+
+        /*
+         * 焦点三件套判的是「宿主调用真的把焦点与选区交给了内部原生控件」，不是 `typeof el.focus`：
+         * focus / blur 继承自 HTMLElement、select 也总是个函数，typeof 那三行对原型链上的默认实现
+         * 同样成立，组件怎么写都红不了。input / textarea 的 focus 是 override（转发给原生控件，
+         * 宿主自己没有 tab 位），editable-text 的 focus 由宿主 tabindex 接住并进入编辑态，
+         * 三条路径的公共可见结果都是原生控件拿到焦点与全选。
+         */
+        el.focus()
+        await waitForUpdate(el)
+        expect(el.shadowRoot?.activeElement).toBe(native)
+
+        el.select()
+        await waitForUpdate(el)
+        expect(native.selectionStart).toBe(0)
+        expect(native.selectionEnd).toBe('programmatic'.length)
+
+        /*
+         * blur 侧判的是「焦点真的能离开这个控件」，用把焦点交给别处的动作来驱动，而不是 `el.blur()`：
+         * editable-text 没有 blur override（宿主自己 tabindex=0 可聚焦），焦点停在内部原生控件上时
+         * 宿主的 blur() 在不同引擎行为不一致（jsdom 直接 no-op，浏览器按重定向后的活动元素处理），
+         * 那是 jsdom 的保真度问题，不是组件的契约。
+         */
+        const outside = document.createElement('button')
+        document.body.append(outside)
+        outside.focus()
+        await waitForUpdate(el)
+        expect(el.shadowRoot?.activeElement).toBeNull()
+        outside.remove()
       } finally {
         detachInputs()
         detachChanges()

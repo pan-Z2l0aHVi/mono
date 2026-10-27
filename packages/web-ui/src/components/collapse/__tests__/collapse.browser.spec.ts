@@ -5,6 +5,7 @@ import '@/components/theme'
 import { afterEach, describe, expect, it } from 'vite-plus/test'
 import { page } from 'vite-plus/test/browser'
 
+import { afterRenderStep } from '@/shared/test-utils'
 import { scrollElementTo } from '@/shared/test-utils/viewport'
 
 import type { WebUiCollapse } from '..'
@@ -220,10 +221,12 @@ describe('WebUiCollapse 组件（浏览器）', () => {
     expect(inner.open).toBe(true)
   })
 
-  // peek 的边缘晕染要真的把背后的画面模糊掉（#221），而 blur 只在下面三件事同时成立时
-  // 才会出现在屏幕上：伪元素存在、盒子落在被裁剪的那一盒上、以及活动长度真的到达了伪元素。
-  // 第三条最脆——--wui-collapse-peek-edge-active 一旦以 inherits: false 注册，伪元素读到的是
-  // initialValue 0px，mask 塌缩、模糊静默消失，而其余渲染一切照旧。所以这里显式读它。
+  // peek 的边缘晕染要真的把背后的画面模糊掉（#221），而 blur 只在下面两件事同时成立时
+  // 才会出现在屏幕上：伪元素存在、以及活动长度真的到达了伪元素。
+  // 第二条最脆——--wui-collapse-peek-edge-active 一旦以 inherits: false 注册，伪元素读到的是
+  // initialValue 0px，mask 塌缩、模糊静默消失，而其余渲染一切照旧（style.css:158 记的就是这条
+  // 约束）。所以这里显式比对伪元素与跟踪元素上的同一枚 token，渐变带的色标写法与盒子像素
+  // 不在这里判：那是表现细节，由视觉基线承担。
   it('peek 边缘晕染：伪元素带真实背景模糊，且活动长度到达伪元素', async () => {
     const el = document.createElement('web-ui-collapse')
     el.peek = '200px'
@@ -234,24 +237,19 @@ describe('WebUiCollapse 组件（浏览器）', () => {
 
     const inner = queryInner(el)
     const overlay = getComputedStyle(inner, '::after')
-    expect(overlay.content).not.toBe('none')
-    expect(overlay.backdropFilter).toMatch(/blur\((\d*\.?\d+)px\)/)
-    expect(overlay.getPropertyValue('--wui-collapse-peek-edge-active')).toBe(
-      getComputedStyle(inner).getPropertyValue('--wui-collapse-peek-edge-active')
-    )
-    // 渐变带必须真的铺在渐变带里：色标位置不是全部塌缩到 100%。
-    expect(overlay.maskImage).not.toMatch(/100%[^)]*100%[^)]*100%\)?$/)
-
-    // 伪元素以 inner 为定位基准，跟着被裁剪的那一盒走（peek 长度而非内容全高）。
-    const overlayBox = getComputedStyle(inner, '::after')
-    expect(overlayBox.top).toBe('0px')
-    expect(parseFloat(overlayBox.height)).toBeCloseTo(inner.getBoundingClientRect().height, 1)
-    expect(inner.getBoundingClientRect().height).toBeCloseTo(200, 1)
+    expect(overlay.content, '晕染伪元素不存在，背后画面无从模糊').not.toBe('none')
+    expect(overlay.backdropFilter, '晕染层没有背景模糊').not.toBe('none')
+    const active = getComputedStyle(inner).getPropertyValue('--wui-collapse-peek-edge-active')
+    expect(active, '收起态活动长度不应是 0').not.toBe('0px')
+    expect(
+      overlay.getPropertyValue('--wui-collapse-peek-edge-active'),
+      'token 没继承到伪元素，渐变会塌缩成不可见'
+    ).toBe(active)
   })
 
-  // 展开态活动长度归 0：mask 的色标全部塌缩到 100%，必须取到「末位色标 = 全透明」那一条，
-  // 伪元素因此什么都不画。取错（取到黑）就会在展开后的内容上蒙一层灰纱。
-  it('展开态不残留晕染层：伪元素 mask 的每个色标都是全透明', async () => {
+  // 展开态活动长度归 0：晕染层随之退场。取错注册参数时伪元素停在 initialValue，
+  // 淡出与归零都看不出区别，因此这里同样以伪元素上的读数为准。
+  it('展开态晕染层退场：伪元素上的活动长度归 0', async () => {
     const el = document.createElement('web-ui-collapse')
     el.peek = '200px'
     el.innerHTML =
@@ -268,14 +266,7 @@ describe('WebUiCollapse 组件（浏览器）', () => {
     )
 
     const overlay = getComputedStyle(queryInner(el), '::after')
-    expect(overlay.getPropertyValue('--wui-collapse-peek-edge-active')).toBe('0px')
-    // 活动长度为 0 时色标位置全部塌缩到 100%，整条渐变取末位色标（CSS Images 4：同一位置
-    // 的连续色标以最后一个为准；Chromium 实测如此，截图里展开态的高频能量与基线逐行相同，
-    // 即伪元素确实什么都没画）。所以承重的是**末位**色标透明，取到黑就会蒙一层灰纱。
-    const stops = overlay.maskImage.match(/rgba?\([^)]*\)/g) ?? []
-    expect(stops.length).toBeGreaterThan(1)
-    expect(overlay.maskImage).toMatch(/100%\)$/)
-    expect(stops[stops.length - 1]).toMatch(/^rgba\(\s*[\d.]+\s*,\s*[\d.]+\s*,\s*[\d.]+\s*,\s*0\s*\)$/)
+    expect(overlay.getPropertyValue('--wui-collapse-peek-edge-active'), '展开后伪元素仍持有活动长度').toBe('0px')
   })
 
   // 水平方向的晕染带在右缘：方向错了模糊就压在错误的一侧。
@@ -312,7 +303,10 @@ describe('WebUiCollapse 组件（浏览器）', () => {
     el.innerHTML = '<button class="trigger">Trigger</button><div slot="content">Content</div>'
     document.body.append(el)
     await el.updateComplete
-    await new Promise(resolve => requestAnimationFrame(resolve))
+    // 单帧不够：ResizeObserver 在 rAF 之后投递，动画可能晚一步才排下。走两个完整渲染步进
+    // 再断言「没有动画」，既能抓住晚排的过渡，也不会把已经开跑的过渡等没。
+    await afterRenderStep()
+    await afterRenderStep()
 
     expect(el.open).toBe(true)
     expect(queryContentContainer(el).hidden).toBe(false)

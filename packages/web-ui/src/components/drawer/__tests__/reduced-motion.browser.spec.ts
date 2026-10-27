@@ -3,11 +3,9 @@ import '@/components/theme'
 
 import { afterEach, describe, expect, it } from 'vite-plus/test'
 
-import type { WebUiDrawer } from '..'
+import { pollUntil, waitForFrame } from '@/shared/test-utils'
 
-async function nextFrame() {
-  await new Promise(resolve => requestAnimationFrame(resolve))
-}
+import type { WebUiDrawer } from '..'
 
 function getDialog(el: WebUiDrawer): HTMLDialogElement {
   return el.shadowRoot?.querySelector('dialog') as HTMLDialogElement
@@ -15,18 +13,6 @@ function getDialog(el: WebUiDrawer): HTMLDialogElement {
 
 function getDragZone(el: WebUiDrawer): HTMLElement {
   return el.shadowRoot?.querySelector('.wui-drawer-drag-zone') as HTMLElement
-}
-
-function waitFor(condition: () => boolean, message: string, timeoutMs = 5000): Promise<void> {
-  const start = performance.now()
-  return new Promise((resolve, reject) => {
-    const tick = () => {
-      if (condition()) return resolve()
-      if (performance.now() - start > timeoutMs) return reject(new Error(message))
-      setTimeout(tick, 25)
-    }
-    tick()
-  })
 }
 
 /**
@@ -37,11 +23,11 @@ function waitFor(condition: () => boolean, message: string, timeoutMs = 5000): P
  */
 async function waitForOpenSettled(el: WebUiDrawer) {
   const dialog = getDialog(el)
-  await waitFor(() => dialog.open, 'drawer did not open')
-  await nextFrame()
-  await nextFrame()
-  await nextFrame()
-  await waitFor(() => dialog.getAnimations().length === 0, 'drawer open transition did not settle')
+  await pollUntil(() => dialog.open, 'drawer did not open')
+  await waitForFrame()
+  await waitForFrame()
+  await waitForFrame()
+  await pollUntil(() => dialog.getAnimations().length === 0, 'drawer open transition did not settle', 10_000)
 }
 
 /** 在 web-ui-theme 作用域内挂载 drawer；motion 为 null 时不套 theme（走系统 reduce）。 */
@@ -103,7 +89,7 @@ async function sampleTransitions(el: WebUiDrawer, frames = 12): Promise<string[]
     for (const animation of dialog.getAnimations()) {
       seen.add((animation as CSSTransition).transitionProperty ?? (animation as CSSAnimation).animationName ?? '?')
     }
-    await nextFrame()
+    await waitForFrame()
   }
   return [...seen]
 }
@@ -135,7 +121,7 @@ describe('减少动效下的 Drawer 拖拽关闭（浏览器）', () => {
     await openDrawer(full)
     await dragToClose(full, 300)
     expect(full.open).toBe(true)
-    await waitFor(() => !full.open, 'drawer did not close after the settle transition', 10_000)
+    await pollUntil(() => !full.open, 'drawer did not close after the settle transition', 10_000)
   })
 
   it('未达阈值松手：即时弹回打开位且无残留动画', async () => {
@@ -162,20 +148,17 @@ describe('减少动效下的 Drawer 拖拽关闭（浏览器）', () => {
 
     // 多段慢拖且净位移（自首个 move 起算）远低于阈值 → 弹回；多段也避免整段速度被判为甩动。
     const dragZone = getDragZone(reduced)
-    dragZone.dispatchEvent(
-      new PointerEvent('pointerdown', { bubbles: true, pointerId: 1, isPrimary: true, clientX: 100, clientY: 300 })
-    )
-    await reduced.updateComplete
-    for (const x of [106, 112, 118, 124, 130]) {
-      dragZone.dispatchEvent(
-        new PointerEvent('pointermove', { bubbles: true, pointerId: 1, isPrimary: true, clientX: x, clientY: 300 })
-      )
-      await new Promise(resolve => setTimeout(resolve, 16))
+    // 判定读事件 timeStamp：显式给 32ms 间隔，慢拖不依赖真实墙钟，负载不会改变速度判定。
+    const fire = (type: string, clientX: number, timeStamp: number) => {
+      const event = new PointerEvent(type, { bubbles: true, pointerId: 1, isPrimary: true, clientX, clientY: 300 })
+      Object.defineProperty(event, 'timeStamp', { value: timeStamp, configurable: true })
+      dragZone.dispatchEvent(event)
     }
+    fire('pointerdown', 100, 0)
     await reduced.updateComplete
-    dragZone.dispatchEvent(
-      new PointerEvent('pointerup', { bubbles: true, pointerId: 1, isPrimary: true, clientX: 130, clientY: 300 })
-    )
+    ;[106, 112, 118, 124, 130].forEach((x, index) => fire('pointermove', x, (index + 1) * 32))
+    await reduced.updateComplete
+    fire('pointerup', 130, 6 * 32)
     await reduced.updateComplete
 
     expect(reduced.open).toBe(true)
@@ -193,7 +176,7 @@ describe('减少动效下的 Drawer 拖拽关闭（浏览器）', () => {
     // 压过 `.is-settling` 的过渡声明），而是 JS 兜底定时器到期后直接落终态，
     // 本用例锁定的是「按收尾时序关闭」这一时序，不是过渡本身。
     expect(full.open).toBe(true)
-    await waitFor(() => !full.open, 'drawer did not close after the settle sequence', 10_000)
+    await pollUntil(() => !full.open, 'drawer did not close after the settle sequence', 10_000)
     expect(getDialog(full).open).toBe(false)
   })
 })

@@ -637,34 +637,38 @@ describe('imagePreview 命令式 API（浏览器）', () => {
   })
 
   it('swipe 距离阈值随舞台宽度按 15% 缩放：不同宽度下越阈提交、未达弹回', async () => {
-    for (const width of [320, 800]) {
-      await setViewport(width, 600)
-      const { handle, host } = await openPreview({ swipe: true })
-      const image = currentImage(host)
-      await pollUntil(() => image.complete && image.offsetWidth > 0, 'image did not load')
-      const stage = stageOf(image)
-      await waitForStageSettled(stage)
+    try {
+      for (const width of [320, 800]) {
+        await setViewport(width, 600)
+        const { handle, host } = await openPreview({ swipe: true })
+        const image = currentImage(host)
+        await pollUntil(() => image.complete && image.offsetWidth > 0, 'image did not load')
+        const stage = stageOf(image)
+        await waitForStageSettled(stage)
 
-      // 舞台宽度只用于换算手势 clientX（驱动，非几何断言）。
-      const threshold = Math.round(stage.clientWidth * 0.15)
-      const below = Math.max(4, threshold - 8)
-      const above = threshold + 8
+        // 舞台宽度只用于换算手势 clientX（驱动，非几何断言）。
+        const threshold = Math.round(stage.clientWidth * 0.15)
+        const below = Math.max(4, threshold - 8)
+        const above = threshold + 8
 
-      stage.dispatchEvent(timedPointer('pointerdown', { clientX: 400, clientY: 300, timeStamp: 0 }))
-      stage.dispatchEvent(timedPointer('pointermove', { clientX: 400 - below, clientY: 300, timeStamp: 300 }))
-      stage.dispatchEvent(timedPointer('pointerup', { clientX: 400 - below, clientY: 300, timeStamp: 600 }))
-      await host.updateComplete
-      expect(handle.index).toBe(0)
+        stage.dispatchEvent(timedPointer('pointerdown', { clientX: 400, clientY: 300, timeStamp: 0 }))
+        stage.dispatchEvent(timedPointer('pointermove', { clientX: 400 - below, clientY: 300, timeStamp: 300 }))
+        stage.dispatchEvent(timedPointer('pointerup', { clientX: 400 - below, clientY: 300, timeStamp: 600 }))
+        await host.updateComplete
+        expect(handle.index).toBe(0)
 
-      stage.dispatchEvent(pointer('pointerdown', { clientX: 400, clientY: 300, pointerId: 2 }))
-      stage.dispatchEvent(pointer('pointermove', { clientX: 400 - above, clientY: 300, pointerId: 2 }))
-      stage.dispatchEvent(pointer('pointerup', { clientX: 400 - above, clientY: 300, pointerId: 2 }))
-      await pollUntil(() => handle.index === 1, `swipe did not commit at ${width}px stage`)
+        stage.dispatchEvent(pointer('pointerdown', { clientX: 400, clientY: 300, pointerId: 2 }))
+        stage.dispatchEvent(pointer('pointermove', { clientX: 400 - above, clientY: 300, pointerId: 2 }))
+        stage.dispatchEvent(pointer('pointerup', { clientX: 400 - above, clientY: 300, pointerId: 2 }))
+        await pollUntil(() => handle.index === 1, `swipe did not commit at ${width}px stage`)
 
-      handle.close()
-      await handle.closed
+        handle.close()
+        await handle.closed
+      }
+    } finally {
+      // 循环中任一断言抛错时也要把视口还回去，否则后续用例带着 320/800px 跑。
+      await setViewport(1280, 720)
     }
-    await setViewport(1280, 720)
   })
 })
 

@@ -3,6 +3,8 @@ import '..'
 import { afterEach, describe, expect, it } from 'vite-plus/test'
 import { page, userEvent } from 'vite-plus/test/browser'
 
+import { afterRenderStep, pollUntil } from '@/shared/test-utils'
+
 import { WebUiSpinner } from '..'
 
 afterEach(() => {
@@ -23,9 +25,9 @@ describe('WebUiSpinner 命令式 overlay（浏览器）', () => {
 
     const spinner = WebUiSpinner.show()
     await spinner.updateComplete
-    await new Promise(resolve => requestAnimationFrame(() => resolve(undefined)))
 
     const overlayRoot = spinner.getRootNode() as ShadowRoot
+    await pollUntil(() => document.activeElement === overlayRoot.host, 'spinner 没有接管焦点')
     expect(document.activeElement).toBe(overlayRoot.host)
 
     WebUiSpinner.hide()
@@ -37,7 +39,6 @@ describe('WebUiSpinner 命令式 overlay（浏览器）', () => {
   it('host 的 aria-label 更新后同步 modal accessible name', async () => {
     const spinner = WebUiSpinner.show()
     await spinner.updateComplete
-    await new Promise(resolve => requestAnimationFrame(() => resolve(undefined)))
 
     const dialog = spinner.shadowRoot?.querySelector('dialog')
     const status = dialog?.querySelector('[role="status"]')
@@ -63,7 +64,6 @@ describe('WebUiSpinner 命令式 overlay（浏览器）', () => {
 
     const spinner = WebUiSpinner.show()
     await spinner.updateComplete
-    await new Promise(resolve => requestAnimationFrame(() => resolve(undefined)))
 
     const rect = button.getBoundingClientRect()
     const x = rect.x + rect.width / 2
@@ -77,7 +77,10 @@ describe('WebUiSpinner 命令式 overlay（浏览器）', () => {
     const overlay = spinner.shadowRoot?.querySelector('.wui-spinner-overlay')
     expect(overlay).not.toBeNull()
     await userEvent.wheel(overlay as HTMLElement, { delta: { y: 300 } })
-    await new Promise(resolve => requestAnimationFrame(() => resolve(undefined)))
+    // 滚轮的效果要到后续渲染步进才可见；spinner 自身是无限动画，不能用等动画结束，
+    // 连过两个渲染步进仍为 0 才算「锁住了」。
+    await afterRenderStep()
+    await afterRenderStep()
     expect(window.scrollY).toBe(0)
   })
 
@@ -91,9 +94,9 @@ describe('WebUiSpinner 命令式 overlay（浏览器）', () => {
 
     const spinner = WebUiSpinner.show()
     await spinner.updateComplete
-    await new Promise(resolve => requestAnimationFrame(() => resolve(undefined)))
 
     const spinnerDialog = spinner.shadowRoot?.querySelector('dialog')
+    await pollUntil(() => spinnerDialog?.matches(':modal') === true, 'spinner dialog 没有进入 top layer')
     expect(spinnerDialog?.matches(':modal')).toBe(true)
     expect(spinnerDialog?.getAttribute('aria-label')).toBe('Loading')
     expect(spinnerDialog?.getAttribute('aria-modal')).toBe('true')

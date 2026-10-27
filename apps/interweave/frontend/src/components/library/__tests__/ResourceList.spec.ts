@@ -94,6 +94,8 @@ async function mountList(
     // 不用 parentElement 顺推。
     container: host.querySelector<HTMLElement>('[role="list"]'),
     contextMenu: host.querySelector('web-ui-context-menu'),
+    // 当前行由父级持有的 activeResourceId 表达：这是组件对外的契约，内部下标不是。
+    activeId: () => activeResourceId.value,
     unmount: () => {
       app.unmount()
       host.remove()
@@ -135,7 +137,8 @@ function pointer(type: string, init: Record<string, unknown> = {}, pointerType =
  * 为 0）。改成有界轮询：条件成立即刻通过，帧预算耗尽才失败，对调度延迟不敏感，也不会
  * 在行为真坏了时把失败拖成超时。
  */
-async function waitForScrollCondition(condition: () => boolean, maxFrames = 60) {
+/** 按帧轮询到条件成立；上限是帧数而不是墙钟时长，慢机器上只会多跑几帧。 */
+async function waitForFrameCondition(condition: () => boolean, maxFrames = 60) {
   for (let i = 0; i < maxFrames; i++) {
     if (condition()) return
     await new Promise(resolve => requestAnimationFrame(() => resolve(null)))
@@ -377,7 +380,7 @@ describe('ResourceList：按住拖动批量勾选', () => {
       hit.pointAt(firstRow)
       // 触摸的 clientY 落在视口内靠边处，边缘带必须仍然给速度
       window.dispatchEvent(pointer('pointermove', { clientX: 2, clientY: VIEWPORT_HEIGHT - 8 }, 'touch'))
-      await waitForScrollCondition(() => currentScrollY() > 0)
+      await waitForFrameCondition(() => currentScrollY() > 0)
       expect(currentScrollY()).toBeGreaterThan(0)
       window.dispatchEvent(pointer('pointerup', {}, 'touch'))
     } finally {
@@ -1300,14 +1303,14 @@ describe('ResourceList：键盘呼出 context menu', () => {
    * 置为被右键的那一行。不调用 focusIndex()——那会 scrollIndexIntoView + row.focus()，会抢走焦点
    * （右键改名时焦点在名字编辑器里）。
    *
-   * 这里的断言是：右键 r2 后，activeResourceId 变为 r2，对应的行获得激活底色（bg-black/8）。
-   * 因为派生 activeIndex 会跟着变，roving tabindex 也会跟着换到 r2。
+   * 判据走公开面：父级收到的 activeResourceId 换成 r2，且 roving tabindex 跟着换到那一行。
    */
   it('右键呼出 menu、不点任何 menu item，被右键的那一行成为当前行', async () => {
     const mounted = await mountList([resource({ id: 'r1' }), resource({ id: 'r2' })])
     try {
-      // 初始无 activeResourceId，activeIndex = 0
-      expect(mounted.container!.dataset.activeIndex).toBe('0')
+      // 初始没有当前行，roving tabindex 停在第一行
+      expect(mounted.activeId()).toBeNull()
+      expect(mounted.rows.map(row => row.getAttribute('tabindex'))).toEqual(['0', '-1'])
 
       // 右键第 2 行
       mounted.rows[1]!.dispatchEvent(
@@ -1315,16 +1318,9 @@ describe('ResourceList：键盘呼出 context menu', () => {
       )
       await nextTick()
 
-      // activeIndex 应变为 1（r2 的下标）
-      expect(mounted.container!.dataset.activeIndex).toBe('1')
-
-      // 第 2 行应获得激活底色类
-      const row2 = mounted.rows[1] as HTMLElement
-      expect(row2.className).toContain('bg-black/8')
-
-      // 第 1 行不应有激活底色
-      const row1 = mounted.rows[0] as HTMLElement
-      expect(row1.className).not.toContain('bg-black/8')
+      // 当前行换成被右键的 r2，roving tabindex 跟着换过去
+      expect(mounted.activeId()).toBe('r2')
+      expect(mounted.rows.map(row => row.getAttribute('tabindex'))).toEqual(['-1', '0'])
     } finally {
       mounted.unmount()
     }
@@ -1735,7 +1731,7 @@ describe('ResourceList：键盘导航与预览入口', () => {
       keydown(first, { key: 'End' })
       await nextTick()
 
-      expect(mounted.container!.dataset.activeIndex).toBe('999')
+      expect(mounted.activeId()).toBe('r999')
     } finally {
       mounted.unmount()
     }
@@ -1767,7 +1763,7 @@ describe('ResourceList：键盘导航与预览入口', () => {
       // 旧实现在窗口底 next === index 直接 return，活动下标会停在窗口末行。
       const endEvent = keydown(first, { key: 'End' })
       await flushRenders()
-      expect(mounted.container!.dataset.activeIndex).toBe('999')
+      expect(mounted.activeId()).toBe('r999')
       expect(endEvent.defaultPrevented).toBe(true)
 
       // 越界那一次仍要推进：ArrowDown 落在窗口末行上时，目标行此刻还在窗口外。
@@ -1777,13 +1773,13 @@ describe('ResourceList：键盘导航与预览入口', () => {
         [...mounted.host.querySelectorAll<HTMLElement>('[data-resource-row]')].at(-1)!
       const homeEvent = keydown(last, { key: 'Home' })
       await flushRenders()
-      expect(mounted.container!.dataset.activeIndex).toBe('0')
+      expect(mounted.activeId()).toBe('r0')
       expect(homeEvent.defaultPrevented).toBe(true)
 
       // 回到窗口底附近再连按两次 ArrowDown，确认下标是「+1」而不是被钉住。
       keydown(mounted.host.querySelector<HTMLElement>('[data-resource-index="0"]')!, { key: 'ArrowDown' })
       await flushRenders()
-      expect(mounted.container!.dataset.activeIndex).toBe('1')
+      expect(mounted.activeId()).toBe('r1')
     } finally {
       mounted.unmount()
     }
@@ -2137,11 +2133,18 @@ describe('ResourceList：连按方向键与卸载后的落焦', () => {
       keydown(firstRow, { key: 'End' })
       // 不等第一轮落定就再按一下：此时焦点仍在第 0 行，第二次请求的目标是第 1 行
       keydown(firstRow, { key: 'ArrowDown' })
-      // 放行足够长的时间让第一轮轮询醒来（16ms 一跳）
-      await new Promise(resolve => setTimeout(resolve, 120))
+
+      // 先等后发的那一轮真的落焦（确定性信号），再按帧给先发的那一轮留出它自己的轮询节奏：
+      // 直接睡 120ms 会把「慢机器上第一轮还没醒」读成通过。
+      await waitForFrameCondition(() => document.activeElement?.getAttribute('data-resource-index') === '1')
+      for (let frame = 0; frame < 8; frame += 1) {
+        await new Promise(resolve => requestAnimationFrame(() => resolve(null)))
+      }
       await flushRenders()
 
-      expect(document.activeElement?.getAttribute('data-resource-index')).toBe('1')
+      expect(document.activeElement?.getAttribute('data-resource-index'), '先发的那一轮把焦点拽回了它自己的目标').toBe(
+        '1'
+      )
     } finally {
       mounted.unmount()
     }

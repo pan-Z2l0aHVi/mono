@@ -64,8 +64,16 @@ describe('WebUiLayout 组件（浏览器）', () => {
 
       expect(requested).toEqual([true])
       expect(layout.sidebarCollapsed).toBe(true)
-      // byLabel 缺失即抛错，所以这里断的是 label 的**取值**而不是存在性。
-      expect(byLabel(layout, 'Expand sidebar').getAttribute('aria-label')).toBe('Expand sidebar')
+      /*
+       * 名字翻没翻，判两条：新名挂着，旧名不再挂在任何 toggle 上。原来这里写的是
+       * `byLabel(layout, 'Expand sidebar').getAttribute('aria-label')`——byLabel 的选择器就是
+       * `[aria-label="Expand sidebar"]`，读回来的取值由选择器钉死，组件怎么渲染都红不了。
+       */
+      expect(
+        queryA11y(layout, '[aria-label="Expand sidebar"]'),
+        '折叠后没有渲染 Expand sidebar 的 toggle'
+      ).not.toBeNull()
+      expect(queryA11y(layout, '[aria-label="Collapse sidebar"]'), '折叠后 toggle 仍叫 Collapse sidebar').toBeNull()
     })
 
     // 受控语义：属性面变更不是用户请求，不该回派事件，否则消费者的回写会形成回环。
@@ -80,7 +88,15 @@ describe('WebUiLayout 组件（浏览器）', () => {
       layout.sidebarCollapsed = true
       await layout.updateComplete
 
-      expect(byLabel(layout, 'Expand sidebar').getAttribute('aria-label')).toBe('Expand sidebar')
+      // 与上一条同判据：属性面变更照样把 toggle 的名字翻过来，而 eventCount 判的是另一件事。
+      expect(
+        queryA11y(layout, '[aria-label="Expand sidebar"]'),
+        '外部置 collapsed 后没有渲染 Expand sidebar'
+      ).not.toBeNull()
+      expect(
+        queryA11y(layout, '[aria-label="Collapse sidebar"]'),
+        '外部置 collapsed 后仍留着 Collapse sidebar'
+      ).toBeNull()
       expect(eventCount).toBe(0)
     })
 
@@ -357,6 +373,9 @@ describe('WebUiLayout 组件（浏览器）', () => {
         widthRequests.push((event as CustomEvent<{ width: string }>).detail.width)
       )
       const handle = handleOf(layout)
+      // 判据是「手势没把手柄的初始宽度带走」，所以参照取手势前的读数，而不是把默认档
+      // 的像素值抄进用例——默认宽度属于设计值，改档时这条用例会跟着改参照一起绿。
+      const widthBeforeGesture = layout.sidebarWidth
 
       handle.dispatchEvent(pointer('pointerdown', { clientX: 0 }))
       await layout.updateComplete
@@ -366,7 +385,7 @@ describe('WebUiLayout 组件（浏览器）', () => {
       await layout.updateComplete
 
       expect(widthRequests).toHaveLength(0)
-      expect(layout.sidebarWidth).toBe('240px')
+      expect(layout.sidebarWidth, 'pointercancel 后侧栏宽度应回到手势前的读数').toBe(widthBeforeGesture)
     })
 
     // 手写的 role=separator 必须自己补 tabindex，否则键盘用户永远到不了调宽 resize handle。
@@ -374,7 +393,8 @@ describe('WebUiLayout 组件（浏览器）', () => {
       const layout = await resizableLayout()
       const handle = handleOf(layout)
 
-      expect(handle.getAttribute('role')).toBe('separator')
+      // role 不在这里判：handleOf 的选择器就是 `[role="separator"]`，取不到就抛错，
+      // 再读一次 getAttribute('role') 读的是选择器自己钉住的那个值。
       expect(handle.getAttribute('tabindex')).toBe('0')
       expect(handle.getAttribute('aria-orientation')).toBe('vertical')
     })

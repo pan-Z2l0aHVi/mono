@@ -29,16 +29,11 @@ async function waitForMenuOpen(el: WebUiContextMenu) {
   await new Promise(resolve => requestAnimationFrame(resolve))
   await el.updateComplete
 
-  const deadline = performance.now() + 1000
-  let menu = getMenu()
-  while (performance.now() < deadline && (!menu?.style.left || !menu?.style.top)) {
-    await new Promise(resolve => requestAnimationFrame(resolve))
-    await el.updateComplete
-    menu = getMenu()
-  }
-  if (!menu?.style.left || !menu?.style.top) {
-    throw new Error('Expected the context menu to be positioned')
-  }
+  await pollUntil(() => {
+    const menu = getMenu()
+    return Boolean(menu?.style.left && menu?.style.top)
+  }, 'Expected the context menu to be positioned')
+  await el.updateComplete
 }
 
 async function waitForMenuClose(el: WebUiContextMenu) {
@@ -447,8 +442,12 @@ describe('WebUiContextMenu 组件', () => {
       try {
         const item = getFirstMenuItem()
         item.dispatchEvent(new PointerEvent('pointerenter'))
-        await vi.advanceTimersByTimeAsync(200)
+        // 「停留 200ms」就是被测的那件事（SUBMENU_HOVER_DELAY）：不先证明阈值前还没开，
+        // 把延时整条删掉的实现也照样绿。
+        await vi.advanceTimersByTimeAsync(199)
+        expect(getSubmenu(), '未到悬停阈值就打开了 submenu').toBeNull()
 
+        await vi.advanceTimersByTimeAsync(1)
         expect(getSubmenu()).toBeTruthy()
 
         cleanupElement(el)

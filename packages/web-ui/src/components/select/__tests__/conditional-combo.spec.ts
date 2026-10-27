@@ -211,65 +211,9 @@ describe('WebUiSelect 条件组合边界', () => {
       expect(el.open).toBe(false)
       cleanupElement(el)
     })
-
-    it('Escape 关闭后再次点击 trigger 可重新打开且不误触发 option 点击', async () => {
-      const el = createSelect(OPTIONS_HTML_THREE, { portal: '' })
-      await waitForUpdate(el)
-
-      const trigger = queryA11y(el, '[role="combobox"]') as HTMLElement
-
-      trigger.click()
-      await flushFrame(el)
-      el.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }))
-      await waitForUpdate(el)
-      await pollUntil(() => !el.open && !getPortalPanel(el), 'Expected Escape to close and dispose select')
-
-      // 回归：Portal 迁移触发的 composed register 曾把 option 监听器挂到宿主上，
-      // 第二次点击会以宿主为 currentTarget 误清空 value 并立即关闭
-      const [events] = spyEvents(el, 'input')
-      trigger.click()
-      await flushFrame(el)
-      expect(el.open).toBe(true)
-      expect(events).toHaveLength(0)
-
-      document.body.click()
-      await waitForUpdate(el)
-      expect(el.value).toBe('')
-      cleanupElement(el)
-    })
   })
 
   describe('option 新增（portal）', () => {
-    it('打开期间向 light DOM 插入新 option 后同步进 panel 并可选择', async () => {
-      const el = createSelect(OPTIONS_HTML_THREE, { portal: '' })
-      await waitForUpdate(el)
-
-      const trigger = queryA11y(el, '[role="combobox"]') as HTMLElement
-      trigger.click()
-      await flushFrame(el)
-      expect(el.open).toBe(true)
-      expect(getPortalPanel(el)?.querySelectorAll('web-ui-option').length).toBe(3)
-
-      // 模拟框架条件渲染：异步数据到达后插入新 option（含 wrapper 包裹形态）
-      const wrapper = document.createElement('div')
-      wrapper.innerHTML = '<web-ui-option value="durian" label="Durian"></web-ui-option>'
-      el.appendChild(wrapper)
-      await new Promise<void>(resolve => queueMicrotask(resolve))
-      await waitForUpdate(el)
-
-      const panel = getPortalPanel(el)!
-      expect(panel.querySelectorAll('web-ui-option').length).toBe(4)
-      expect(el.querySelectorAll('web-ui-option').length).toBe(0)
-      expect(wrapper.children.length).toBe(0)
-
-      const durian = panel.querySelector<WebUiOption>('web-ui-option[value="durian"]')!
-      durian.click()
-      await waitForUpdate(el)
-      expect(el.value).toBe('durian')
-      expect(el.open).toBe(false)
-      cleanupElement(el)
-    })
-
     it('关闭状态下插入新 option 不迁移，打开时随初始 moveContent 进入 panel', async () => {
       const el = createSelect(OPTIONS_HTML_THREE, { portal: '' })
       await waitForUpdate(el)

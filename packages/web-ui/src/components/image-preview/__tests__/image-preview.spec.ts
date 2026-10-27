@@ -171,17 +171,39 @@ describe('imagePreview 命令式 API', () => {
   })
 
   describe('缩放', () => {
-    it('缩放钳制在 [1, 4]，切图与 resetZoom 都回到 1x', async () => {
+    it('缩小不会低于 1x', async () => {
       const handle = await openPreview()
 
       handle.zoomOut()
       expect(handle.scale).toBe(1)
 
+      handle.close()
+      await handle.closed
+    })
+
+    it('放大钳制在 4x', async () => {
+      const handle = await openPreview()
+
       for (let step = 0; step < 20; step += 1) handle.zoomIn()
       expect(handle.scale).toBe(4)
 
+      handle.close()
+      await handle.closed
+    })
+
+    it('切图回到 1x', async () => {
+      const handle = await openPreview()
+
+      handle.zoomIn()
       handle.next()
       expect(handle.scale).toBe(1)
+
+      handle.close()
+      await handle.closed
+    })
+
+    it('resetZoom 回到 1x', async () => {
+      const handle = await openPreview()
 
       handle.zoomIn()
       handle.resetZoom()

@@ -5,11 +5,24 @@ import { afterEach, describe, expect, it } from 'vite-plus/test'
 import { createApp, nextTick, ref } from 'vue/dist/vue.esm-bundler.js'
 
 import type { WebUiOption } from '@/components/option'
-import { getPortalPanel, pollUntil, waitForFrame } from '@/shared/test-utils'
+import { getPortalPanel, pollUntil, waitForFrame, flush } from '@/shared/test-utils'
 
 import type { WebUiSelect } from '..'
 
 afterEach(() => document.body.replaceChildren())
+
+/**
+ * 这些用例只用程序化 click / focus / keydown 驱动，没有真实指针输入。
+ * 无头浏览器的静止光标固定在视口左上角，而 select 直接挂在 body 上会落在光标下：
+ * panel 开合时 Chrome 可能在该点重算 hover，给 option 派发 pointerover 并改写
+ * `aria-activedescendant`。挂载点关掉真实指针命中，保留全部程序化交互。
+ */
+function appendIsolated(node: HTMLElement): void {
+  const mountPoint = document.createElement('div')
+  mountPoint.style.pointerEvents = 'none'
+  mountPoint.append(node)
+  document.body.append(mountPoint)
+}
 
 const OPTIONS_HTML_THREE = `
   <web-ui-option value="apple" label="Apple"></web-ui-option>
@@ -25,7 +38,7 @@ function createSelect(optionsHtml: string, attrs?: Record<string, string>): WebU
     }
   }
   select.innerHTML = optionsHtml
-  document.body.append(select)
+  appendIsolated(select)
   return select
 }
 
@@ -138,7 +151,7 @@ describe('WebUiSelect 条件组合边界（浏览器）', () => {
 
     const apple = getPortalPanel('listbox')!.querySelector<WebUiOption>('web-ui-option[value="apple"]')!
     apple.remove()
-    await new Promise(resolve => setTimeout(resolve, 0))
+    await flush()
     await select.updateComplete
 
     expect(trigger.textContent?.includes('Apple')).toBe(false)
@@ -209,7 +222,7 @@ describe('WebUiSelect 条件组合边界（浏览器）', () => {
 
   it('打开期 v-if 删除中段 option 后跨关闭重开仍保模板序', async () => {
     const mountPoint = document.createElement('div')
-    document.body.append(mountPoint)
+    appendIsolated(mountPoint)
     const show = ref(false)
     const app = createApp({
       setup: () => ({ show }),

@@ -3,17 +3,13 @@ import '@/components/theme'
 
 import { afterEach, describe, expect, it } from 'vite-plus/test'
 
-import { queryA11y } from '@/shared/test-utils'
+import { pollUntil, queryA11y, waitForFrame } from '@/shared/test-utils'
 
 import type { WebUiDrawer } from '..'
 
-async function nextFrame() {
-  await new Promise(resolve => requestAnimationFrame(resolve))
-}
-
 // 等待打开过渡完成；固定 sleep 在 CI 高负载下会把未收敛的位移抓进拖拽起点。
 async function waitForOpenTransition(el: WebUiDrawer) {
-  await nextFrame()
+  await waitForFrame()
   await Promise.all(
     getDialog(el)
       .getAnimations({ subtree: true })
@@ -23,12 +19,8 @@ async function waitForOpenTransition(el: WebUiDrawer) {
 
 // 轮询条件直至满足：弹簧等 WAAPI 动画在并行负载下完成时间不可预测，
 // 固定 sleep 会偶发超时，这里以条件收敛代替固定等待。
-async function waitFor(condition: () => boolean, timeoutMs = 3000): Promise<void> {
-  const start = performance.now()
-  while (!condition()) {
-    if (performance.now() - start > timeoutMs) throw new Error(`waitFor timeout after ${timeoutMs}ms`)
-    await new Promise(resolve => setTimeout(resolve, 25))
-  }
+async function waitFor(condition: () => boolean, timeoutMs = 5000): Promise<void> {
+  await pollUntil(condition, `Expected the drawer state to settle (budget ${timeoutMs}ms)`, timeoutMs)
 }
 
 /** 等 dialog 上的动画全部收敛（替代原先「读位移是否归零」的几何轮询）。 */
@@ -77,33 +69,22 @@ async function dragAndRelease(el: WebUiDrawer, delta: Delta, steps = 10) {
   const zone = getDragZone(el)
   const startX = 500
   const startY = 300
-  zone.dispatchEvent(
-    new PointerEvent('pointerdown', { bubbles: true, pointerId: 1, isPrimary: true, clientX: startX, clientY: startY })
-  )
+  // 判定读事件 timeStamp：逐段显式给 32ms 间隔，「慢拖」不再依赖真实墙钟，
+  // 也就不会因为负载把间隔拉长/压短而改变速度判定。
+  const fire = (type: string, x: number, y: number, at: number) => {
+    const event = new PointerEvent(type, { bubbles: true, pointerId: 1, isPrimary: true, clientX: x, clientY: y })
+    Object.defineProperty(event, 'timeStamp', { value: at, configurable: true })
+    zone.dispatchEvent(event)
+  }
+
+  fire('pointerdown', startX, startY, 0)
   await el.updateComplete
   for (let step = 1; step <= steps; step += 1) {
-    zone.dispatchEvent(
-      new PointerEvent('pointermove', {
-        bubbles: true,
-        pointerId: 1,
-        isPrimary: true,
-        // 分多段走：单次合成 move 的整程速度会被判为 flick 而误关（CI 慢环境）。
-        clientX: startX + (delta.x * step) / steps,
-        clientY: startY + (delta.y * step) / steps
-      })
-    )
-    await new Promise(resolve => setTimeout(resolve, 32))
+    // 分多段走：单次合成 move 的整程速度会被判为 flick 而误关。
+    fire('pointermove', startX + (delta.x * step) / steps, startY + (delta.y * step) / steps, step * 32)
+    await el.updateComplete
   }
-  await el.updateComplete
-  zone.dispatchEvent(
-    new PointerEvent('pointerup', {
-      bubbles: true,
-      pointerId: 1,
-      isPrimary: true,
-      clientX: startX + delta.x,
-      clientY: startY + delta.y
-    })
-  )
+  fire('pointerup', startX + delta.x, startY + delta.y, steps * 32 + 32)
   await el.updateComplete
 }
 
@@ -212,26 +193,19 @@ describe('WebUiDrawer 拖拽关闭（浏览器）', () => {
 
     const events = openChangeEvents(el)
     const zone = getDragZone(el)
-    zone.dispatchEvent(
-      new PointerEvent('pointerdown', { bubbles: true, pointerId: 1, isPrimary: true, clientX: 500, clientY: 300 })
-    )
+    const fire = (type: string, x: number, at: number) => {
+      const event = new PointerEvent(type, { bubbles: true, pointerId: 1, isPrimary: true, clientX: x, clientY: 300 })
+      Object.defineProperty(event, 'timeStamp', { value: at, configurable: true })
+      zone.dispatchEvent(event)
+    }
+    fire('pointerdown', 500, 0)
     await el.updateComplete
     for (let step = 1; step <= 10; step += 1) {
-      zone.dispatchEvent(
-        new PointerEvent('pointermove', {
-          bubbles: true,
-          pointerId: 1,
-          isPrimary: true,
-          clientX: 500 + step * 3,
-          clientY: 300
-        })
-      )
-      await new Promise(resolve => setTimeout(resolve, 32))
+      // 与 dragAndRelease 同一时序：32ms 一段的慢拖。
+      fire('pointermove', 500 + step * 3, step * 32)
     }
     await el.updateComplete
-    zone.dispatchEvent(
-      new PointerEvent('pointercancel', { bubbles: true, pointerId: 1, isPrimary: true, clientX: 530, clientY: 300 })
-    )
+    fire('pointercancel', 530, 352)
     await el.updateComplete
     await settled(el)
 
@@ -676,7 +650,7 @@ describe('WebUiDrawer 拖拽关闭（浏览器）', () => {
         clientY: 393
       })
     )
-    await nextFrame()
+    await waitForFrame()
     document.body.dispatchEvent(
       new PointerEvent('pointermove', {
         bubbles: true,

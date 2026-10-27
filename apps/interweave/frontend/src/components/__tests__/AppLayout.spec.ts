@@ -267,11 +267,13 @@ describe('AppLayout：设置 dialog 接线', () => {
     vi.restoreAllMocks()
   })
 
-  /** dialog 受控于宿主的 ref，Lit 侧属性写入后再等一轮微任务让 shadow 跟上。 */
-  async function flush() {
-    await nextTick()
-    await new Promise(resolve => setTimeout(resolve, 0))
-    await nextTick()
+  /** dialog 受控于宿主的 ref：等它落到期待的状态，而不是假设「一个空 tick」够用。 */
+  async function flushUntil(predicate: () => boolean, message: string) {
+    for (let attempt = 0; attempt < 50 && !predicate(); attempt += 1) {
+      await nextTick()
+      await new Promise(resolve => setTimeout(resolve, 0))
+    }
+    if (!predicate()) throw new Error(message)
   }
 
   function settingsDialog() {
@@ -294,12 +296,12 @@ describe('AppLayout：设置 dialog 接线', () => {
     const trigger = host.querySelector<HTMLElement>('button[aria-label="设置"]')
     if (!trigger) throw new Error('settings trigger not found')
     trigger.click()
-    await flush()
+    await flushUntil(() => settingsDialog().open, '点击设置入口后 dialog 没有打开')
     expect(settingsDialog().open).toBe(true)
 
     // Escape 与 backdrop 点击都走这条 open-change；controlled 下组件不会自行改 open。
     settingsDialog().dispatchEvent(new CustomEvent('open-change', { detail: { open: false } }))
-    await flush()
+    await flushUntil(() => !settingsDialog().open, '关闭请求没有回落到宿主状态')
     expect(settingsDialog().open).toBe(false)
   })
 })

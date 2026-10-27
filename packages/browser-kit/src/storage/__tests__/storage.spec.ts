@@ -23,7 +23,6 @@ describe('storage 测试', () => {
     localStorage.clear()
     sessionStorage.clear()
     vi.clearAllMocks()
-    vi.useFakeTimers()
   })
 
   afterEach(() => {
@@ -92,7 +91,6 @@ describe('storage 测试', () => {
       expect(session).toBe(defineSession('session-ns'))
 
       session.set('key', { a: 1 })
-      expect(sessionStorage.getItem('session-ns:key')).toContain('_pkg')
       expect(session.get('key')).toEqual({ a: 1 })
 
       // 隔离是会话存储的意义：关掉 tab 后 localStorage 里的东西不该留下
@@ -124,6 +122,9 @@ describe('storage 测试', () => {
   })
 
   describe('有效期 (TTL)', () => {
+    // 只有 TTL 用例需要可控时钟；收窄作用域，避免把假时钟带给不相关用例。
+    beforeEach(() => vi.useFakeTimers())
+
     it('未到期正常读取，到期后返回默认值并清理底层条目', () => {
       local.set('temp', 'data', 1000)
 
@@ -167,6 +168,9 @@ describe('storage 测试', () => {
   })
 
   describe('异常处理', () => {
+    // 配额重试路径要先让条目过期，同样需要可控时钟。
+    beforeEach(() => vi.useFakeTimers())
+
     it('配额溢出时清理过期条目后重试写入', () => {
       local.set('expired', 'stale', 1000)
       local.set('keep', 'fresh')

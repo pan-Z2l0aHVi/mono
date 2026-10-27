@@ -28,6 +28,19 @@ import type { WebUiTheme } from '@/components/theme'
  * 必须同时证明周期确实**变了**。故「motion=system 放慢」与「motion=full 回到默认」拆为成对用例，
  * 走同一个 `loopPeriods()` 观察函数——后者即前者的对照组。
  */
+/**
+ * 把颜色值归一成浏览器计算形态。断言只写 token 一次，不在测试里再抄一份 rgb 字面量。
+ */
+function resolvedColor(scope: Element, value: string): string {
+  const probe = document.createElement('span')
+  probe.style.color = value
+  scope.append(probe)
+  const color = getComputedStyle(probe).color
+  probe.remove()
+  if (!color) throw new Error(`无法解析颜色 ${value}`)
+  return color
+}
+
 function mountTheme(motion: string, appearance: 'light' | 'dark' = 'light'): WebUiTheme {
   const theme = document.createElement('web-ui-theme') as WebUiTheme
   theme.appearance = appearance
@@ -73,10 +86,10 @@ describe('系统 prefers-reduced-motion 下无限加载循环的周期（浏览�
     await spinner.updateComplete
 
     expect(theme.getOverlayRoot()?.contains(spinner)).toBe(true)
-    expect(getComputedStyle(spinner).getPropertyValue('--wui-color-text-secondary').trim()).toBe('#a1a1a6')
-    expect(getComputedStyle(spinner.shadowRoot!.querySelector('.spinner-description')!).color).toBe(
-      'rgb(161, 161, 166)'
-    )
+    const tokenColor = getComputedStyle(spinner).getPropertyValue('--wui-color-text-secondary').trim()
+    expect(tokenColor, '前置：spinner 应在主题作用域内解析出文本次级色').not.toBe('')
+    const description = spinner.shadowRoot!.querySelector('.spinner-description')!
+    expect(getComputedStyle(description).color).toBe(resolvedColor(description.parentElement ?? spinner, tokenColor))
 
     const leafPeriods = loopPeriods(spinner, 'wui-spinner-leaf-fade')
     expect(leafPeriods.length).toBeGreaterThan(0)

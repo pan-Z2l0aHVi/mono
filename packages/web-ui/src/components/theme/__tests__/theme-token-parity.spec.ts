@@ -204,10 +204,10 @@ const allChainedSites = componentCssFiles.flatMap(file =>
  * 而代码消费 surface-menu，任何读注释的守卫都会说「声明过了」而放过。清单对着代码比对，
  * 不一致时必然红——它不是完美的第二来源（会过时），但它不会假装自己成立。
  *
- * 与 surface-elevation.browser.spec.ts 互补而非重叠：那份在浏览器里挂载组件、读 computed
- * background 与 token 定义比，是运行时探针；本条是静态清单，零浏览器、零字面量断言。
- * 两份各有对方做不到的事——运行时探针只钉住它显式提到的组件（本条覆盖 8 个里的 6 个它没提），
- * 静态清单则不需要每个组件各写一套挂载样板（dialog/drawer/toast/tooltip 的打开路径各不相同）。
+ * 这份清单只看 CSS 里写了哪枚 token，覆盖面比运行时探针宽（8 个组件，逐个挂载要各写一套
+ * 打开样板），代价是不看层叠结果：声明被别的规则刷掉时这里仍然绿。原先与它配对
+ * 的浏览器探针（挂载组件读 computed background）已移除——那份还把 panel 合成后比 page
+ * 亮几档当契约，那是在钉调色板的设计值，不是归属。
  */
 const surfaceOwnership = new Map<string, string>([
   // menu 族：下拉、overlay 气泡与 tooltip，同一档半透明玻璃底，浮在内容之上。

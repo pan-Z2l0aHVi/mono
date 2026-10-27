@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it } from 'vite-plus/test'
 
+import { waitForFrame } from '@/shared/test-utils'
 import { scrollWindowTo } from '@/shared/test-utils/viewport'
 
 import { lockScroll, unlockScroll } from '../scroll-lock'
@@ -26,17 +27,13 @@ function createSpacer(height: number): HTMLElement {
   return spacer
 }
 
-async function nextFrame() {
-  await new Promise(resolve => requestAnimationFrame(resolve))
-}
-
 afterEach(async () => {
   for (let index = 0; index < heldLocks; index++) unlockScroll()
   heldLocks = 0
   await scrollWindowTo(0)
   document.body.replaceChildren()
   document.body.removeAttribute('style')
-  await nextFrame()
+  await waitForFrame()
 })
 
 describe('scroll lock（浏览器）', () => {
@@ -44,7 +41,7 @@ describe('scroll lock（浏览器）', () => {
     // 视口约 896px，内容需高于 SCROLL_Y + 视口高才能滚到 SCROLL_Y。
     createSpacer(6000)
     await scrollWindowTo(SCROLL_Y)
-    await nextFrame()
+    await waitForFrame()
 
     const before = {
       scrollY: window.scrollY,
@@ -67,7 +64,7 @@ describe('scroll lock（浏览器）', () => {
     document.body.append(row)
     createSpacer(2000)
     await scrollWindowTo(SCROLL_Y)
-    await nextFrame()
+    await waitForFrame()
 
     const documentTop = row.getBoundingClientRect().top + window.scrollY
     expect(documentTop).toBeGreaterThan(SCROLL_Y)

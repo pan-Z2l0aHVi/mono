@@ -227,7 +227,8 @@ describe('组件内部 scrollbar 主题', () => {
     // 实测（macOS Chromium）：给容器一条 `::-webkit-scrollbar { width: 7px }` 后，
     // 同尺寸容器的 `offsetWidth - clientWidth` 从 0 变成 7——而 issue #225 的第 (1) 条
     // 要求 scrollbar 不占布局宽度。这条钉住「不要为了圆角/尺寸 reintroduce webkit 伪元素」。
-    // 运行期几何的守卫在 internal-scrollbars.browser.spec.ts。
+    // 没有另写运行期几何用例：那条判据只在覆盖式 scrollbar 的平台上成立，同一份 CSS 在
+    // 经典 scrollbar 平台上也会量出 > 0，平台差异会盖过 CSS 差异。
     expect(internalDecls).not.toContain('::-webkit-scrollbar')
   })
 

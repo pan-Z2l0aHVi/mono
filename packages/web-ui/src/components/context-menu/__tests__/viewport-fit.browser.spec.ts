@@ -3,7 +3,7 @@ import '@/components/dropdown-item'
 
 import { afterEach, describe, expect, it } from 'vite-plus/test'
 
-import { getMenuPanels, waitForUpdate } from '@/shared/test-utils'
+import { getMenuPanels, pollUntil, waitForSettledLayout, waitForUpdate } from '@/shared/test-utils'
 
 import type { WebUiContextMenu } from '..'
 
@@ -59,12 +59,12 @@ async function openAtEdge(
   await waitForUpdate(el)
 
   el.openAt(x, y)
-  // 等进场过渡落定：缺陷恰恰只在 scale 回到 1 之后才显形，中途量到的是动画帧。
-  await new Promise(resolve => setTimeout(resolve, 400))
-
   // panel 挂在 overlay root 的 shadow 里，document.querySelector 穿不过去，必须用共享定位器。
-  const panel = getMenuPanels('Context menu')[0]
-  if (!panel) throw new Error('上下文 menu panel 未渲染')
+  await pollUntil(() => Boolean(getMenuPanels('Context menu')[0]), '上下文 menu panel 未渲染')
+  const panel = getMenuPanels('Context menu')[0]!
+  // 缺陷恰恰只在进场 scale 回到 1 之后才显形。等过渡与布局定版，不能睡固定时长：
+  // 时长定长了浪费，定短了量到的是动画中途（scale 仍小于 1）的盒子。
+  await waitForSettledLayout([panel])
   return { rect: panel.getBoundingClientRect(), anchor: { x, y } }
 }
 

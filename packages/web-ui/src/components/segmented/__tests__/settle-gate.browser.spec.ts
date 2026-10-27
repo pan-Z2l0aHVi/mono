@@ -4,7 +4,7 @@ import '@/components/segmented-trigger'
 import { afterEach, describe, expect, it } from 'vite-plus/test'
 
 import type { WebUiSegmentedTrigger } from '@/components/segmented-trigger'
-import { pollUntil, queryA11y, waitForUpdate } from '@/shared/test-utils'
+import { pollUntil, queryA11y, waitForFrame, waitForUpdate } from '@/shared/test-utils'
 
 import type { WebUiSegmented } from '..'
 
@@ -61,10 +61,6 @@ async function mount(): Promise<{
   return { segmented, triggers, indicator }
 }
 
-function nextFrame() {
-  return new Promise(resolve => requestAnimationFrame(resolve))
-}
-
 /** 轻点某个 option：走 trigger 自己的 click 路径（与真实轻点同一入口）。 */
 async function tap(segmented: WebUiSegmented, trigger: WebUiSegmentedTrigger) {
   optionSurface(trigger).click()
@@ -81,7 +77,7 @@ async function sampleLeft(indicator: HTMLElement, budgetFrames = 40): Promise<nu
   const samples: number[] = []
   let stable = 0
   for (let frame = 0; frame < budgetFrames && stable < 3; frame += 1) {
-    await nextFrame()
+    await waitForFrame()
     const left = indicator.getBoundingClientRect().left
     samples.push(left)
     stable = samples.length > 1 && Math.abs(left - samples[samples.length - 2]) < 0.5 ? stable + 1 : 0

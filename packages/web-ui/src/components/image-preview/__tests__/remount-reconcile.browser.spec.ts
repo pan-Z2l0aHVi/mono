@@ -17,7 +17,11 @@ const IMAGES = [
   { src: IMAGE_SRC, alt: '图 B' }
 ]
 
-afterEach(() => document.body.replaceChildren())
+afterEach(() => {
+  document.body.replaceChildren()
+  // 用例中途失败时滚动锁可能仍挂着；不复位会把 `overflow: hidden` 带给后续用例。
+  document.documentElement.style.removeProperty('overflow')
+})
 
 /*
  * 重挂载对账（浏览器）。
@@ -135,27 +139,32 @@ describe('image-preview 重挂载对账（浏览器）', () => {
 
   it('关闭态重挂载是无操作', async () => {
     // 公开 API 只提供「创建即打开」的 imagePreview()；先开-关一次引导出 fallback
-    // overlay root，随后关闭态宿主用手动构造（元素已注册、configure 为内部方法），
-    // 验证 reconcile 不会误开关闭态。
+    // overlay root，随后关闭态宿主用手动构造验证 reconcile 不会误开关闭态。
+    // 配置走元素的公开 property，不调用内部 configure 入口。
     const bootstrap = imagePreview({ images: IMAGES })
     bootstrap.close()
     await bootstrap.closed
 
     const host = document.createElement('web-ui-image-preview') as LitElement & {
-      configure(options: ImagePreviewOptions): void
+      images: ImagePreviewOptions['images']
+      loop: boolean
+      nav: boolean
+      toolbar: boolean
+      closable: boolean
+      indicator: boolean
+      swipe: boolean
+      noScrollLock: boolean
+      noBackdropClose: boolean
     }
-    host.configure({
-      images: IMAGES,
-      index: 0,
-      loop: true,
-      nav: false,
-      toolbar: false,
-      closable: false,
-      indicator: false,
-      swipe: false,
-      noScrollLock: false,
-      noBackdropClose: false
-    })
+    host.images = IMAGES
+    host.loop = true
+    host.nav = false
+    host.toolbar = false
+    host.closable = false
+    host.indicator = false
+    host.swipe = false
+    host.noScrollLock = false
+    host.noBackdropClose = false
     overlayContainer().append(host)
     await host.updateComplete
     expect(dialogElement().open).toBe(false)

@@ -4,7 +4,7 @@ import '@/components/dropdown-item'
 import { afterEach, describe, expect, it } from 'vite-plus/test'
 import { createApp, nextTick, ref } from 'vue/dist/vue.esm-bundler.js'
 
-import { getMenuPanels, pollUntil } from '@/shared/test-utils'
+import { getMenuPanels, pollUntil, waitForFrame } from '@/shared/test-utils'
 
 import type { WebUiDropdown } from '..'
 
@@ -19,10 +19,6 @@ const panelItemTexts = (): string[] =>
 
 const hostItemTexts = (mountPoint: HTMLElement): string[] =>
   [...mountPoint.querySelectorAll('web-ui-dropdown-item')].map(el => el.textContent?.trim() ?? '')
-
-async function nextFrame() {
-  await new Promise(resolve => requestAnimationFrame(resolve))
-}
 
 /**
  * 打开期间的框架渲染：menu item 被托管进 overlay panel，`v-for` / `v-if` 的更新必须跟着迁移，
@@ -75,9 +71,9 @@ describe('WebUiDropdown 打开期实时渲染（浏览器）', () => {
 
     // 稳态不增不减：多轮同步周期后项数稳定（防托管节点增殖活锁）。
     expect(panelItemTexts()).toEqual(['cut', 'copy', 'paste'])
-    await nextFrame()
+    await waitForFrame()
     await dropdown.updateComplete
-    await nextFrame()
+    await waitForFrame()
     expect(panelItemTexts(), '稳态下不得增殖或丢失条目').toEqual(['cut', 'copy', 'paste'])
     app.unmount()
   })

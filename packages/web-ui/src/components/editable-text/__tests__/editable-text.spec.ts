@@ -32,6 +32,11 @@ const typeDraft = (el: WebUiEditableText, draft: string): void => {
  * 本文件只覆盖 editable-text 特有的公开契约。`value` 不反射（attribute 是 reset 初值）、
  * 提交/取消事件模型与 input/textarea 不同，因此不并入 `text-control-contract` 共有矩阵；
  * 原生 FormData 与 reset 语义 jsdom 不触发表单关联回调，由 browser spec 覆盖。
+ *
+ * `select()` 空闲/编辑态/disabled、Enter 提交、空草稿 blur 这五条原先两个环境各写一份，
+ * 判据同一条；浏览器版用真实焦点迁移与真实按键（换行是否插入 textarea 就是 preventDefault
+ * 的可观察结果）覆盖同一契约且更宽，jsdom 侧的副本已删。这里只留浏览器没有的条目：空值
+ * `select()` 的全选区间为 [0,0]、readonly 态 Enter 的消费，以及 commit-on-unmount 竞态矩阵。
  */
 describe('WebUiEditableText 组件契约', () => {
   it('属性默认值', async () => {
@@ -141,40 +146,6 @@ describe('WebUiEditableText 组件契约', () => {
     cleanupElement(el)
   })
 
-  it('select() 空闲态进入编辑并全选内容', async () => {
-    const el = create({ value: 'hello' })
-    await waitForUpdate(el)
-
-    el.select()
-    await waitForUpdate(el)
-
-    const editor = editorOf(el)
-    expect(el.hasAttribute('editing')).toBe(true)
-    expect(el.shadowRoot!.activeElement, '焦点落在编辑层').toBe(editor)
-    expect(editor.selectionStart).toBe(0)
-    expect(editor.selectionEnd).toBe(5)
-    expect(el.value).toBe('hello')
-    cleanupElement(el)
-  })
-
-  it('select() 编辑态只重新全选，不改值与编辑态', async () => {
-    const el = create({ value: 'hello' })
-    await waitForUpdate(el)
-    el.focus()
-    await waitForUpdate(el)
-    editorOf(el).setSelectionRange(2, 2)
-
-    el.select()
-    await waitForUpdate(el)
-
-    const editor = editorOf(el)
-    expect(el.hasAttribute('editing')).toBe(true)
-    expect(editor.selectionStart).toBe(0)
-    expect(editor.selectionEnd).toBe(5)
-    expect(el.value).toBe('hello')
-    cleanupElement(el)
-  })
-
   it('空值 select() 进入编辑，全选区间为空', async () => {
     const el = create({ placeholder: '未命名' })
     await waitForUpdate(el)
@@ -187,19 +158,6 @@ describe('WebUiEditableText 组件契约', () => {
     expect(editor.selectionStart).toBe(0)
     expect(editor.selectionEnd).toBe(0)
     expect(el.value).toBe('')
-    cleanupElement(el)
-  })
-
-  it('disabled 时 select() 不进入编辑', async () => {
-    const el = create({ value: 'hello' })
-    el.disabled = true
-    await waitForUpdate(el)
-
-    el.select()
-    await waitForUpdate(el)
-
-    expect(el.hasAttribute('editing')).toBe(false)
-    expect(el.shadowRoot!.activeElement).toBe(null)
     cleanupElement(el)
   })
 
@@ -307,22 +265,6 @@ describe('WebUiEditableText 组件契约', () => {
       detachCancels()
       detachChanges()
     }
-    cleanupElement(el)
-  })
-
-  it('空草稿 blur 提交：空值被提交，文本层回落 placeholder', async () => {
-    const el = create({ value: 'hello', placeholder: '未命名' })
-    await waitForUpdate(el)
-    el.focus()
-    await waitForUpdate(el)
-
-    typeDraft(el, '')
-    await waitForUpdate(el)
-    editorOf(el).blur()
-    await waitForUpdate(el)
-
-    expect(el.value, '空草稿被提交').toBe('')
-    expect(textLayerOf(el).textContent, '文本层回落 placeholder').toBe('未命名')
     cleanupElement(el)
   })
 
@@ -533,40 +475,6 @@ describe('WebUiEditableText 组件契约', () => {
       expect(el.hasAttribute('editing')).toBe(false)
       expect(el.value).toBe('hello')
     } finally {
-      detachChanges()
-    }
-    cleanupElement(el)
-  })
-
-  it('Enter 提交：派发 change、退出编辑、不插入换行', async () => {
-    const el = create({ value: 'hello' })
-    await waitForUpdate(el)
-    el.focus()
-    await waitForUpdate(el)
-
-    const [cancels, detachCancels] = spyEvents(el, 'cancel')
-    const [changes, detachChanges] = spyEvents(el, 'change')
-    // 与 Escape 同套消费策略：按键不外泄，外层表单/overlay 监听不应收到
-    const documentCapture: string[] = []
-    const onDocumentCapture = (e: Event) => {
-      if ((e as KeyboardEvent).key === 'Enter') documentCapture.push('enter')
-    }
-    document.addEventListener('keydown', onDocumentCapture, true)
-    try {
-      const event = new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, composed: true, cancelable: true })
-      editorOf(el).dispatchEvent(event)
-      await waitForUpdate(el)
-      expect(event.defaultPrevented, 'Enter 的换行默认行为被压掉').toBe(true)
-      expect(documentCapture, 'Enter 不穿透到 document 捕获监听').toEqual([])
-      expect(changes, '提交只派发一次 change').toHaveLength(1)
-      expect(cancels).toHaveLength(0)
-      expect(el.value).toBe('hello')
-      expect(editorOf(el).value, '编辑层没有换行符').toBe('hello')
-      expect(el.hasAttribute('editing')).toBe(false)
-      expect(document.activeElement, '焦点回宿主').toBe(el)
-    } finally {
-      document.removeEventListener('keydown', onDocumentCapture, true)
-      detachCancels()
       detachChanges()
     }
     cleanupElement(el)

@@ -114,11 +114,14 @@ describe('library add queue pending previews', () => {
     expect(queue.queue.value).toEqual([])
   })
 
-  it('移除单项与 submit 释放各自 token', async () => {
+  it('移除单项与 releasePreview 释放各自 token', async () => {
     const releaseFilePreview = vi.fn<LibraryRuntime['releaseFilePreview']>(async () => {})
     const queue = createLibraryAddQueue(
       createRuntime({
-        prepareFilePreview: async () => ({ kind: ResourceKind.ResourceKindImage, token: 'opaque-token' }),
+        prepareFilePreview: async location => ({
+          kind: ResourceKind.ResourceKindImage,
+          token: `token-${location}`
+        }),
         releaseFilePreview
       })
     )
@@ -130,7 +133,8 @@ describe('library add queue pending previews', () => {
     await queue.releasePreview(second!.id)
 
     expect(releaseFilePreview).toHaveBeenCalledTimes(2)
-    expect(releaseFilePreview).toHaveBeenCalledWith('opaque-token')
+    expect(releaseFilePreview).toHaveBeenCalledWith('token-/tmp/first.png')
+    expect(releaseFilePreview).toHaveBeenCalledWith('token-/tmp/second.png')
   })
 
   it('预览准备完成前移除单项时释放晚到 token', async () => {

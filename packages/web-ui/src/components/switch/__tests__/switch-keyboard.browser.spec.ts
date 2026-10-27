@@ -192,9 +192,9 @@ describe('WebUiSwitch 键盘契约（浏览器）', () => {
     const named = mount({ 'aria-label': 'Alpha' })
     await Promise.all([waitForUpdate(unnamed), waitForUpdate(named)])
 
-    await expect
-      .poll(() => [unnamed.getBoundingClientRect().width, named.getBoundingClientRect().width])
-      .toEqual([40, 40])
+    // 契约是「没有可见标签时不额外占宽」：两档互等且确实有宽度，不钉当前像素值。
+    await expect.poll(() => named.getBoundingClientRect().width).toBeGreaterThan(0)
+    expect(unnamed.getBoundingClientRect().width).toBeCloseTo(named.getBoundingClientRect().width, 1)
 
     cleanupElement(unnamed)
     cleanupElement(named)
@@ -220,7 +220,8 @@ describe('WebUiSwitch 键盘契约（浏览器）', () => {
     await waitForUpdate(el)
 
     const label = el.shadowRoot!.querySelector('.wui-switch-label')!
-    expect(getComputedStyle(label).opacity).toBe('0.4')
+    // 判据是「变淡」这个方向，具体档位归视觉基线。
+    expect(Number.parseFloat(getComputedStyle(label).opacity)).toBeLessThan(1)
 
     cleanupElement(el)
   })

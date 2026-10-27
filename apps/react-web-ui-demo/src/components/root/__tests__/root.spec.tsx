@@ -78,7 +78,7 @@ function navItemClasses() {
 
 /** 移动端 drawer 是否真的接管了 sidebar slot（不接管就谈不上「drawer 里的导航」）。 */
 function isDrawerMode() {
-  return !!layoutRoot().shadowRoot?.querySelector('web-ui-drawer')
+  return layoutRoot().mobile
 }
 
 /**
@@ -153,6 +153,8 @@ describe('应用外壳：导航 collapsed state 不跨视口泄漏', () => {
 
   afterEach(() => {
     cleanup()
+    // locale 是本应用的持久化输入；留在 origin 上会污染同 origin 的其他 spec。
+    localStorage.removeItem('locale')
     vi.unstubAllGlobals()
     vi.restoreAllMocks()
     innerWidthSpy = null

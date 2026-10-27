@@ -76,7 +76,7 @@ describe('表单关联组件（浏览器）', () => {
     expect(new FormData(form).get('quantity')).toBe('1.3')
   })
 
-  it('仅在选中时提交可勾选控件值，并恢复声明初始状态', async () => {
+  it('仅在选中时提交可勾选控件值', async () => {
     const cases: Array<[string, string]> = [
       ['web-ui-checkbox', 'agree'],
       ['web-ui-radio', 'gender'],
@@ -98,7 +98,9 @@ describe('表单关联组件（浏览器）', () => {
       await control.updateComplete
       expect(new FormData(form).get(name)).toBeNull()
     }
+  })
 
+  it('form.reset 恢复可勾选控件的声明初始状态', async () => {
     const form = document.createElement('form')
     form.innerHTML = `
       <web-ui-checkbox checked></web-ui-checkbox>

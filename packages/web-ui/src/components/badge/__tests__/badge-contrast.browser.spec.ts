@@ -45,7 +45,9 @@ describe('badge 计数文字对比度（浏览器）', () => {
     if (!count) throw new Error(`${appearance} theme 下没有渲染 badge count`)
 
     const style = getComputedStyle(count)
-    expect(style.fontSize, `${appearance} badge count 保持 12px`).toBe('12px')
+    // 不钉字号本身：钉住「仍是 WCAG 常规文字」（< 18px），因为 4.5:1 阈值只在
+    // 常规文字档成立；将来字号升到大号文字档，这条会逼着判据换成 3:1 而不是悄悄错档。
+    expect(parseFloat(style.fontSize), `${appearance} badge count 应停留在 WCAG 常规文字档位`).toBeLessThan(18)
     expect(
       contrastRatio(style.color, style.backgroundColor),
       `${appearance} badge count 应达到 4.5:1`

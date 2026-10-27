@@ -237,7 +237,9 @@ describe('dialog 内容区高度约束（浏览器）', () => {
        */
       expect(descRect.left - cardRect.left).toBeCloseTo(0, 0)
       expect(cardRect.right - descRect.right).toBeCloseTo(0, 0)
-      expect(gridRect.left - descRect.left).toBeCloseTo(30, 0)
+      // 期望值直接取 .desc 自己的 padding-inline-start：断言的是「横向余量确实由这枚
+      // token 承担」，而不是把 fixture 里那个 30 抄第二遍——抄两遍时改 fixture 要改两处。
+      expect(gridRect.left - descRect.left).toBeCloseTo(Number.parseFloat(descStyles.paddingInlineStart), 0)
 
       /*
        * 可用宽度仍是内容区的 content box（与改动前逐像素相同），否则 AddDialog 那种

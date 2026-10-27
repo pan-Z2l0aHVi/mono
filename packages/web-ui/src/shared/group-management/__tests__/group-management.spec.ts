@@ -5,7 +5,7 @@ import { afterEach, describe, expect, it } from 'vite-plus/test'
 
 import type { WebUiCheckbox } from '@/components/checkbox'
 import type { WebUiCheckboxGroup } from '@/components/checkbox-group'
-import { queryA11y, waitForUpdate } from '@/shared/test-utils'
+import { pollUntil, queryA11y, waitForUpdate } from '@/shared/test-utils'
 
 afterEach(() => document.body.replaceChildren())
 
@@ -47,9 +47,11 @@ describe('shared/group-management', () => {
     const added = document.createElement('web-ui-checkbox') as WebUiCheckbox
     added.setAttribute('value', 'c')
     el.appendChild(added)
-    await new Promise(resolve => setTimeout(resolve, 0))
-    await Promise.all([added.updateComplete, waitForUpdate(el)])
-    await new Promise(resolve => setTimeout(resolve, 0))
+    // 继承发生在 MutationObserver 投递之后，等期待值而不是等一个空 tick。
+    await pollUntil(
+      () => added.checked === true && queryA11y(added, '[role="checkbox"]')?.getAttribute('aria-disabled') === 'true',
+      '新插入成员没有继承当前值与禁用态'
+    )
     await added.updateComplete
 
     // 值同步生效；disabled 不写子项属性，经上下文继承表达在 aria 上

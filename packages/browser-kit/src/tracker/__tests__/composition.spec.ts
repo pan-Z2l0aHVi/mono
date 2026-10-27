@@ -1,11 +1,9 @@
-import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 
 import { defineTracker } from '../core'
 import { defineBatchTrack } from '../plugins/batch-track'
 import { defineLastWords } from '../plugins/last-words'
 import { defineOfflineRestore } from '../plugins/offline-restore'
-
-vi.useFakeTimers()
 
 /** 记录条目的 fake transport；替代 sendBeacon 桩与 MSW 捕获。 */
 function createTransportStub() {
@@ -43,12 +41,17 @@ describe('tracker 插件组合测试', () => {
   let transport: ReturnType<typeof createTransportStub>['transport']
 
   beforeEach(() => {
+    vi.useFakeTimers()
     vi.clearAllTimers()
     vi.restoreAllMocks()
     localStorage.clear()
     transport = createTransportStub().transport
     Object.defineProperty(navigator, 'onLine', { value: true, configurable: true })
     setVisibility('visible')
+  })
+
+  afterEach(() => {
+    vi.useRealTimers()
   })
 
   it('推荐顺序 batch → offline → last-words：在线时按批上报', async () => {

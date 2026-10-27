@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it } from 'vite-plus/test'
 
-import { pollUntil } from '@/shared/test-utils'
+import { afterRenderStep, pollUntil } from '@/shared/test-utils'
 import { scrollWindowTo, setViewport } from '@/shared/test-utils/viewport'
 
 import { defineVisibleAreaTracker, type VisibleArea, type VisibleAreaTracker } from '..'
@@ -142,14 +142,17 @@ describe('defineVisibleAreaTracker（浏览器）', () => {
 
     const countAfterTargetChange = areas.length
     first.style.height = '180px'
-    await nextFrame(2)
+    // 缺席判据：连续两个完整渲染步进（含 ResizeObserver 投递）后仍无新增，才算「已停」。
+    await afterRenderStep()
+    await afterRenderStep()
     expect(areas).toHaveLength(countAfterTargetChange)
 
     tracker.disconnect()
     second.style.height = '120px'
     window.dispatchEvent(new Event('scroll'))
     tracker.refresh()
-    await nextFrame(2)
+    await afterRenderStep()
+    await afterRenderStep()
     expect(areas).toHaveLength(countAfterTargetChange)
 
     const countAfterDisconnect = areas.length

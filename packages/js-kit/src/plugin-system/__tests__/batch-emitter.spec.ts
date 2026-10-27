@@ -61,7 +61,9 @@ describe('BatchEmitter 测试', () => {
     const { batchEmit, flush } = defineBatchEmitter<string>().make()
 
     expect(await batchEmit('a', 0)).toEqual(['a'])
-    void batchEmit('b', 100)
+    // 批处理延迟期内的 promise 由 flush 结算；不 await 会掩盖「flush 没有结算队列」。
+    const pending = batchEmit('b', 100)
     expect(() => flush()).not.toThrow()
+    expect(await pending).toEqual(['b'])
   })
 })

@@ -3,11 +3,9 @@ import '@/components/theme'
 
 import { afterEach, describe, expect, it } from 'vite-plus/test'
 
-import type { WebUiToast } from '..'
+import { waitForFrame } from '@/shared/test-utils'
 
-async function nextFrame() {
-  await new Promise(resolve => requestAnimationFrame(resolve))
-}
+import type { WebUiToast } from '..'
 
 // 定位器（非断言）：panel 以 aria-live 标识（它是播报语义的载体），不用 class 名单。
 function queryPanel(el: WebUiToast): HTMLElement {
@@ -36,7 +34,7 @@ async function sampleTransitions(el: WebUiToast, visible: boolean, frames = 12):
   const seen: string[] = []
   for (let index = 0; index < frames; index++) {
     seen.push(...runningTransitions(el))
-    await nextFrame()
+    await waitForFrame()
   }
   return seen
 }

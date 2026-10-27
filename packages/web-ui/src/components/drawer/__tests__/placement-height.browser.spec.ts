@@ -2,6 +2,7 @@ import '..'
 
 import { afterEach, describe, expect, it } from 'vite-plus/test'
 
+import { waitForSettledLayout } from '@/shared/test-utils'
 import { scrollElementToEnd } from '@/shared/test-utils/viewport'
 
 import type { WebUiDrawer } from '..'
@@ -40,7 +41,9 @@ function createDrawer(placement: 'top' | 'bottom', contentHeight: number): WebUi
 async function openDrawer(el: WebUiDrawer): Promise<void> {
   el.open = true
   await el.updateComplete
-  await new Promise(resolve => requestAnimationFrame(resolve))
+  const dialog = getDialog(el)
+  // 入场过渡跑完、尺寸写回后再量，单帧读到的可能还是入场前的盒子。
+  await waitForSettledLayout([dialog], { expect: { check: () => dialog.getBoundingClientRect().height > 0 } })
 }
 
 afterEach(() => document.body.replaceChildren())

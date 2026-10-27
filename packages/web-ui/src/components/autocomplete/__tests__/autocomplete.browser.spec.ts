@@ -91,6 +91,18 @@ function triggerTextarea(el: WebUiAutocomplete): HTMLTextAreaElement {
   return customTrigger(el).shadowRoot!.querySelector<HTMLTextAreaElement>('textarea')!
 }
 
+/**
+ * 键盘/ARIA 用例的挂载点：无头浏览器的静止光标固定 (0,0)，panel 开合时 Chrome 会在光标下
+ * 重算 hover，向 option 派发 pointerover 并改写 aria-activedescendant。这些用例只验证键盘面，
+ * 关掉真实指针命中；仍用程序化 focus/click 驱动。
+ */
+function appendIsolated(node: HTMLElement): void {
+  const mountPoint = document.createElement('div')
+  mountPoint.style.pointerEvents = 'none'
+  mountPoint.append(node)
+  document.body.append(mountPoint)
+}
+
 describe('WebUiAutocomplete 组件（浏览器）', () => {
   it('Portal 打开后 option 移入 theme-owned overlay root 并可点击选择', async () => {
     const theme = document.createElement('web-ui-theme')
@@ -101,7 +113,7 @@ describe('WebUiAutocomplete 组件（浏览器）', () => {
     el.innerHTML =
       '<web-ui-option value="apple" label="Apple"></web-ui-option><web-ui-option value="banana" label="Banana"></web-ui-option>'
     theme.append(el)
-    document.body.append(theme)
+    appendIsolated(theme)
     await theme.updateComplete
     await el.updateComplete
 
@@ -133,7 +145,7 @@ describe('WebUiAutocomplete 组件（浏览器）', () => {
     el.innerHTML =
       '<web-ui-option value="apple" label="Apple"></web-ui-option><web-ui-option value="banana" label="Banana"></web-ui-option>'
     theme.append(el)
-    document.body.append(theme)
+    appendIsolated(theme)
     await theme.updateComplete
     await el.updateComplete
 
@@ -171,7 +183,7 @@ describe('WebUiAutocomplete 组件（浏览器）', () => {
     el.portal = true
     el.innerHTML = '<web-ui-option value="apple" label="Apple"></web-ui-option>'
     theme.append(el)
-    document.body.append(theme)
+    appendIsolated(theme)
     await theme.updateComplete
     await el.updateComplete
 
@@ -464,7 +476,7 @@ describe('WebUiAutocomplete 组件（浏览器）', () => {
     el.portal = true
     el.innerHTML = '<web-ui-option value="apple" label="Apple"></web-ui-option>'
     theme.append(el)
-    document.body.append(theme)
+    appendIsolated(theme)
     await theme.updateComplete
     await el.updateComplete
 
@@ -502,7 +514,7 @@ describe('WebUiAutocomplete 组件（浏览器）', () => {
       (_, index) => `<web-ui-option value="option-${index + 1}" label="Option ${index + 1}"></web-ui-option>`
     ).join('')
     theme.append(el)
-    document.body.append(theme)
+    appendIsolated(theme)
     await theme.updateComplete
     await el.updateComplete
 
@@ -558,7 +570,7 @@ describe('WebUiAutocomplete 组件（浏览器）', () => {
         `<web-ui-option value="Option ${index + 1}" label="Option ${index + 1}"${index < 9 ? ' disabled' : ''}></web-ui-option>`
     ).join('')
     theme.append(el)
-    document.body.append(theme)
+    appendIsolated(theme)
     await theme.updateComplete
     await el.updateComplete
 
@@ -606,7 +618,7 @@ describe('WebUiAutocomplete 组件（浏览器）', () => {
       (_, index) => `<web-ui-option value="option-${index + 1}" label="Option ${index + 1}"></web-ui-option>`
     ).join('')
     theme.append(el)
-    document.body.append(theme)
+    appendIsolated(theme)
     await theme.updateComplete
     await el.updateComplete
 
@@ -644,7 +656,7 @@ describe('WebUiAutocomplete 组件（浏览器）', () => {
     el.innerHTML =
       '<web-ui-option value="apple" label="Apple"></web-ui-option><web-ui-option value="banana" label="Banana"></web-ui-option>'
     theme.append(el)
-    document.body.append(theme)
+    appendIsolated(theme)
     await theme.updateComplete
     await el.updateComplete
 
@@ -736,7 +748,7 @@ describe('WebUiAutocomplete 组件（浏览器）', () => {
     el.portal = true
     el.innerHTML = '<web-ui-option value="apple" label="Apple"></web-ui-option>'
     theme.append(el)
-    document.body.append(theme)
+    appendIsolated(theme)
     await theme.updateComplete
     await el.updateComplete
 
@@ -772,7 +784,7 @@ describe('WebUiAutocomplete 组件（浏览器）', () => {
     el.innerHTML =
       '<web-ui-option value="apple" label="Apple"></web-ui-option><div slot="empty">legacy empty content</div>'
     theme.append(el)
-    document.body.append(theme)
+    appendIsolated(theme)
     await theme.updateComplete
     await el.updateComplete
 
@@ -899,7 +911,7 @@ describe('WebUiAutocomplete 组件（浏览器）', () => {
     el.innerHTML = '<web-ui-option value="apple" label="Apple"></web-ui-option>'
     fieldset.append(el)
     theme.append(fieldset)
-    document.body.append(theme)
+    appendIsolated(theme)
     await theme.updateComplete
     await el.updateComplete
 
@@ -990,8 +1002,9 @@ describe('WebUiAutocomplete 组件（浏览器）', () => {
     const triggerRect = defaultTrigger(el).getBoundingClientRect()
     const standaloneRect = standalone.getBoundingClientRect()
 
-    expect(triggerRect.width).toBe(standaloneRect.width)
-    expect(triggerRect.height).toBe(standaloneRect.height)
+    // 两边量到的是同一套盒模型，允许亚像素取整差，但不允许跨档（4px 级）漂移。
+    expect(triggerRect.width).toBeCloseTo(standaloneRect.width, 0)
+    expect(triggerRect.height).toBeCloseTo(standaloneRect.height, 0)
   })
 
   it('首次渲染即按自定义 trigger 渲染，不出现默认 input 闪现', async () => {

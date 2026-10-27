@@ -3,32 +3,22 @@ import '@/components/theme'
 
 import { afterEach, describe, expect, it } from 'vite-plus/test'
 
-import type { WebUiDrawer } from '..'
+import { pollUntil } from '@/shared/test-utils'
 
-async function nextFrame() {
-  await new Promise(resolve => requestAnimationFrame(resolve))
-}
+import type { WebUiDrawer } from '..'
 
 // 等 drawer 打开并让动画收敛（nested 层变化会让下层 dialog 同步做 450ms translate/scale 过渡）。
 async function waitForOpenTransition(el: WebUiDrawer) {
   const dialog = el.shadowRoot?.querySelector('dialog') as HTMLDialogElement | null
   if (!dialog) throw new Error('Expected the drawer to contain a dialog')
-  const deadline = performance.now() + 5000
-  while (!dialog.open) {
-    if (performance.now() > deadline) throw new Error('Expected the drawer dialog to open')
-    await new Promise(resolve => requestAnimationFrame(resolve))
-  }
+  await pollUntil(() => dialog.open, 'Expected the drawer dialog to open')
   await el.updateComplete
   await Promise.allSettled(document.getAnimations().map(animation => animation.finished))
   await el.updateComplete
 }
 
-async function waitFor(condition: () => boolean, timeoutMs = 3000): Promise<void> {
-  const start = performance.now()
-  while (!condition()) {
-    if (performance.now() - start > timeoutMs) throw new Error(`waitFor timeout after ${timeoutMs}ms`)
-    await new Promise(resolve => setTimeout(resolve, 25))
-  }
+async function waitFor(condition: () => boolean, timeoutMs = 5000): Promise<void> {
+  await pollUntil(condition, `Expected the drawer state to settle (budget ${timeoutMs}ms)`, timeoutMs)
 }
 
 function getDialog(el: WebUiDrawer): HTMLDialogElement {

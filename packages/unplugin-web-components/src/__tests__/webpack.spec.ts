@@ -37,9 +37,9 @@ describe('unplugin-web-components webpack 适配器', () => {
   ])('$name 被规则接纳', ({ resource }) => {
     const rules = applyToWebpack({ tagPrefix: 'web-ui', packageName: '@greypan/web-ui' })
 
-    // 规则未声明 include 时对所有模块生效；use() 对有 resource 的模块返回 loader entry
-    const included = rules[0].include ? rules[0].include(resource) : true
-    expect(included).toBe(true)
+    // 判据只取 `use()`：适配器不声明规则级 include，此前那行
+    // `const included = rules[0].include ? rules[0].include(resource) : true` 在没有 include
+    // 时恒为 true，改不动任何东西。`use()` 才是这条规则的入口——资源被拒时它返回空数组。
     expect(rules[0].use({ resource })).not.toEqual([])
   })
 

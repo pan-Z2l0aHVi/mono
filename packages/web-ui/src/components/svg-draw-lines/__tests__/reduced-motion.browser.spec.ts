@@ -58,11 +58,12 @@ describe('WebUiSvgDrawLines reduced motion（浏览器）', () => {
     const el = await mountInsideTheme('full')
 
     // 不 await：replay() 要等 5s 的动画跑完才 resolve，这里只看它确实起来了。
-    void el.replay()
+    // 取消后 promise 可能以取消原因 reject，挂上 catch 避免变成 unhandled rejection。
+    void el.replay().catch(() => {})
     await expect.poll(() => pathAnimations(el).length).toBeGreaterThan(0)
     pathAnimations(el).forEach(animation => animation.cancel())
 
-    void el.replay({ reverse: true })
+    void el.replay({ reverse: true }).catch(() => {})
     await expect.poll(() => pathAnimations(el).length).toBeGreaterThan(0)
 
     pathAnimations(el).forEach(animation => animation.cancel())

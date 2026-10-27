@@ -7,16 +7,12 @@ import { afterEach, describe, expect, it } from 'vite-plus/test'
 
 import type { WebUiContextMenu } from '@/components/context-menu'
 import type { WebUiPopover } from '@/components/popover'
-import { getMenuPanels, getPortalPanels } from '@/shared/test-utils'
+import { getMenuPanels, getPortalPanels, waitForFrame } from '@/shared/test-utils'
 
 interface ThemedHost extends HTMLElement {
   appearance: string
   updateComplete: Promise<unknown>
   getOverlayRoot(): HTMLElement | undefined
-}
-
-async function nextFrame() {
-  await new Promise(resolve => requestAnimationFrame(resolve))
 }
 
 afterEach(() => document.body.replaceChildren())
@@ -55,7 +51,7 @@ describe('overlay 定位器（带主题，浏览器）', () => {
 
     menu.openAt(100, 100)
     await menu.updateComplete
-    await nextFrame()
+    await waitForFrame()
 
     const menuPanels = getMenuPanels('Context menu')
     expect(menuPanels.length).toBe(1)
@@ -65,7 +61,7 @@ describe('overlay 定位器（带主题，浏览器）', () => {
     expect(nested).toBeTruthy()
     nested!.show()
     await nested!.updateComplete
-    await nextFrame()
+    await waitForFrame()
 
     const portalPanels = getPortalPanels('dialog').filter(panel => panel.textContent?.includes('Nested panel'))
     expect(portalPanels.length).toBe(1)

@@ -151,7 +151,7 @@ describe('generate', () => {
     // Markdown 正文版式也由生成器统一产出：宿主只挂 class，所有 demo 页共用这一份取值。
     expect(style[0]).toContain('.mdc-markdown')
     expect(style[0]).toContain('.mdc-heading')
-    expect(style[0]).toContain('color: #37352f')
+    expect(style[0]).toMatch(/\.mdc-markdown\s*\{[^}]*color:/)
     expect(style[0]).toContain('h2.mdc-heading')
     // 正文字号跟宿主正文 token，不抄 Notion 的 16px：抄回来会让文档正文比组件里的文字还大。
     expect(style[0]).toContain('font-size: var(--wui-font-size, 14px)')

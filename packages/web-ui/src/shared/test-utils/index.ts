@@ -700,3 +700,22 @@ export async function pollUntil(
     `${describe()} (waited ${Math.round(performance.now() - startedAt)}ms / ${frames} render steps, budget ${timeoutMs}ms)`
   )
 }
+
+/**
+ * 把一枚颜色写法结算成浏览器用的 rgb 形式，供「期望值来自输入而不是抄色板」的比对使用。
+ *
+ * 存在理由：`#123456` 落到 caret-color / stroke 上读回来是 `rgb(18, 52, 86)`，两种写法不能
+ * 直接 toBe。用例因此可以断言「这个可观察属性确实等于我传进去的那枚值」，而不必把 rgb
+ * 字面量抄进期望位——抄进去就成了随调色板腐化的设计值断言。
+ *
+ * 探针必须挂在**在渲染树里**的元素上：挂到没有默认槽的自定义元素里，Chrome 会把
+ * `var(...)` 原样回传而不是算出色值。因此这里挂 body，只用于归一化调用方给出的颜色常量。
+ */
+export function resolveColor(color: string): string {
+  const probe = document.createElement('span')
+  probe.style.color = color
+  document.body.append(probe)
+  const value = getComputedStyle(probe).color
+  probe.remove()
+  return value
+}

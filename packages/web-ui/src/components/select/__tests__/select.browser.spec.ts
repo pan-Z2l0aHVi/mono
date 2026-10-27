@@ -5,7 +5,7 @@ import '@/components/option'
 import { afterEach, describe, expect, it } from 'vite-plus/test'
 import { page, userEvent } from 'vite-plus/test/browser'
 
-import { getPortalPanel } from '@/shared/test-utils'
+import { getPortalPanel, pollUntil } from '@/shared/test-utils'
 
 import type { WebUiSelect } from '..'
 
@@ -147,7 +147,10 @@ describe('WebUiSelect 组件（浏览器）', () => {
     await select.updateComplete
 
     select.shadowRoot?.querySelector<HTMLElement>('[role="combobox"]')?.click()
-    await new Promise(resolve => requestAnimationFrame(resolve))
+    await pollUntil(
+      () => Boolean(theme.getOverlayRoot()?.firstElementChild?.shadowRoot?.querySelector('[role="listbox"]')),
+      'portal 面板没有挂载到 theme 的 overlay root'
+    )
     await select.updateComplete
 
     expect(select.open).toBe(true)
@@ -164,12 +167,15 @@ describe('WebUiSelect 组件（浏览器）', () => {
 
     const trigger = select.shadowRoot?.querySelector<HTMLElement>('[role="combobox"]')
     trigger?.click()
-    await new Promise(resolve => requestAnimationFrame(resolve))
+    await pollUntil(() => Boolean(getPortalPanel('listbox')), '首次打开后 portal 面板没有挂载')
 
     document.body.click()
     await select.updateComplete
     trigger?.click()
-    await new Promise(resolve => requestAnimationFrame(resolve))
+    await pollUntil(
+      () => getPortalPanel('listbox')?.hasAttribute('hidden') === false,
+      '重新打开后 portal 面板仍处于隐藏态'
+    )
 
     const panel = getPortalPanel('listbox')
     expect(select.open).toBe(true)

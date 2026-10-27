@@ -12,7 +12,16 @@ import type { WebUiPopover } from '..'
 // React act 要求测试环境显式声明，否则每次 commit 输出告警并可能掩盖真实告警。
 ;(globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true
 
-afterEach(() => document.body.replaceChildren())
+const mountedRoots = new Set<Root>()
+
+afterEach(async () => {
+  // 用例中途失败时末尾的 unmount() 不会执行，React root 会连同监听一起残留。
+  await act(async () => {
+    for (const root of mountedRoots) root.unmount()
+  })
+  mountedRoots.clear()
+  document.body.replaceChildren()
+})
 
 // React 对自定义元素用属性直写（open/portal/trigger 均为 Lit reactive property）。
 // React 通过 commit 时记录的插入父节点增删节点：内容迁移后，裸条件渲染的删除会因
@@ -27,6 +36,7 @@ async function mountReactPopover(children: ReactNode): Promise<{
   const container = document.createElement('div')
   mountPoint.append(container)
   const root: Root = createRoot(container)
+  mountedRoots.add(root)
 
   const commit = (node: ReactNode) =>
     act(async () => {
@@ -50,6 +60,7 @@ async function mountReactPopover(children: ReactNode): Promise<{
     },
     unmount: () =>
       act(async () => {
+        mountedRoots.delete(root)
         root.unmount()
       })
   }

@@ -59,6 +59,35 @@ function mixColors(first: string, second: string, firstWeight: number): string {
   return `#${channels.map(channel => channel.toString(16).padStart(2, '0')).join('')}`
 }
 
+/*
+ * 已删除的旧 token 清单一处定义：主题定义侧与文档侧各有一条用例在读它。
+ * 两份抄本曾经漂移过——`--wui-ease-out` 只留在文档那份，于是 CSS 侧少守了一枚。
+ */
+const REMOVED_TOKENS = [
+  '--wui-color-text-muted',
+  '--wui-color-text-faint',
+  '--wui-color-border-strong',
+  '--wui-button-size',
+  '--wui-layer-base',
+  '--wui-color-surface-raised-mid',
+  '--wui-color-surface-raised-deep',
+  '--wui-shadow-pop',
+  '--wui-layout-sidebar-bg',
+  '--wui-focus-ring:',
+  '--wui-duration-regular',
+  '--wui-ease-out',
+  '--wui-duration-menu-enter',
+  '--wui-duration-menu-exit',
+  '--wui-duration-overlay-enter',
+  '--wui-duration-overlay-exit',
+  // 只存在于未发布 changeset 里的过渡版本，已被两个 group 各自的 gap token 取代
+  '--wui-selection-group-gap',
+  // 玻璃环按「画在哪一层」改名后的三枚旧名：环底色 / 角部受光 / 角部背光
+  '--wui-color-glass-border',
+  '--wui-color-glass-corner',
+  '--wui-color-glass-shade'
+]
+
 describe('WebUiTheme token contract', () => {
   it('light 与 dark 的默认 accent 前景满足常规文字 WCAG AA 对比度', () => {
     for (const [appearance, value] of [
@@ -155,29 +184,7 @@ describe('WebUiTheme token contract', () => {
   })
 
   it('不保留已删除的旧 token', () => {
-    for (const name of [
-      '--wui-color-text-muted',
-      '--wui-color-text-faint',
-      '--wui-color-border-strong',
-      '--wui-button-size',
-      '--wui-layer-base',
-      '--wui-color-surface-raised-mid',
-      '--wui-color-surface-raised-deep',
-      '--wui-shadow-pop',
-      '--wui-layout-sidebar-bg',
-      '--wui-focus-ring:',
-      '--wui-duration-regular',
-      '--wui-duration-menu-enter',
-      '--wui-duration-menu-exit',
-      '--wui-duration-overlay-enter',
-      '--wui-duration-overlay-exit',
-      // 只存在于未发布 changeset 里的过渡版本，已被两个 group 各自的 gap token 取代
-      '--wui-selection-group-gap',
-      // 玻璃环按「画在哪一层」改名后的三枚旧名：环底色 / 角部受光 / 角部背光
-      '--wui-color-glass-border',
-      '--wui-color-glass-corner',
-      '--wui-color-glass-shade'
-    ]) {
+    for (const name of REMOVED_TOKENS) {
       expect(style).not.toContain(name)
     }
   })
@@ -221,30 +228,7 @@ describe('WebUiTheme token contract', () => {
   it('文档不残留已删除的旧 token', () => {
     const doc = fs.readFileSync(`${packageRoot}docs/theme.md`, 'utf8')
 
-    for (const name of [
-      '--wui-color-text-muted',
-      '--wui-color-text-faint',
-      '--wui-color-border-strong',
-      '--wui-button-size',
-      '--wui-layer-base',
-      '--wui-color-surface-raised-mid',
-      '--wui-color-surface-raised-deep',
-      '--wui-shadow-pop',
-      '--wui-layout-sidebar-bg',
-      '--wui-focus-ring:',
-      '--wui-duration-regular',
-      '--wui-ease-out',
-      '--wui-duration-menu-enter',
-      '--wui-duration-menu-exit',
-      '--wui-duration-overlay-enter',
-      '--wui-duration-overlay-exit',
-      // 只存在于未发布 changeset 里的过渡版本，已被两个 group 各自的 gap token 取代
-      '--wui-selection-group-gap',
-      // 玻璃环按「画在哪一层」改名后的三枚旧名
-      '--wui-color-glass-border',
-      '--wui-color-glass-corner',
-      '--wui-color-glass-shade'
-    ]) {
+    for (const name of REMOVED_TOKENS) {
       expect(doc).not.toContain(name)
     }
   })

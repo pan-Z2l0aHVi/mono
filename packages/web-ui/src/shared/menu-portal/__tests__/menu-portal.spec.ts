@@ -1,3 +1,5 @@
+import '@/components/theme'
+
 import { afterEach, describe, expect, it } from 'vite-plus/test'
 
 import { createMenuPortalOverlay } from '../menu-portal'
@@ -15,14 +17,16 @@ describe('menu Portal 容器', () => {
     expect(panel.contains(content)).toBe(true)
   })
 
-  it('省略 target 时挂到 root theme 的 theme-owned overlay root', () => {
+  it('省略 target 时挂到 root theme 的 theme-owned overlay root', async () => {
     const theme = document.createElement('web-ui-theme')
-    const fakeRoot = document.createElement('div')
-    ;(theme as unknown as { getOverlayRoot: () => HTMLElement }).getOverlayRoot = () => fakeRoot
+    theme.setAttribute('appearance', 'light')
     document.body.appendChild(theme)
+    await theme.updateComplete
+    const root = theme.getOverlayRoot()
+    if (!root) throw new Error('Expected the theme to expose an overlay root')
 
     const { panel } = createMenuPortalOverlay('context-menu')
 
-    expect(panel.parentElement).toBe(fakeRoot)
+    expect(root.contains(panel), 'panel 应挂在 theme 自己的 overlay root 内').toBe(true)
   })
 })

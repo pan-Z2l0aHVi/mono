@@ -8,6 +8,22 @@ import { highlight } from '../highlight'
  * 仓库根的完整生成断言有一份独立的同口径解码器，两侧各自被钉。
  */
 
+/** 去掉行号槽与高亮标签、一趟解掉实体，得到读者实际看到的那份源码。 */
+function visibleText(html: string): string {
+  const named: Record<string, string> = { amp: '&', quot: '"' }
+  return html
+    .replace(/<span class="line-number">[^<]*<\/span>/g, '')
+    .replace(/<[^>]*>/g, '')
+    .replace(
+      /&#x([\da-f]+);|&#(\d+);|&([a-z]+);/gi,
+      (whole, hex: string | undefined, dec: string | undefined, name: string | undefined) => {
+        if (hex) return String.fromCodePoint(Number.parseInt(hex, 16))
+        if (dec) return String.fromCodePoint(Number.parseInt(dec, 10))
+        return (name && named[name.toLowerCase()]) || whole
+      }
+    )
+}
+
 describe('highlight 的原文往返', () => {
   it('正文里的尖括号与字面实体都算同一份源码', async () => {
     const code = [
@@ -17,11 +33,14 @@ describe('highlight 的原文往返', () => {
     ].join('\n')
     const html = await highlight(code, 'react', 'button.md')
     expect(html).toContain('mdc-code')
-    expect(html).toContain('&#x3C;')
+    // 往返的判据是可见文本等于围栏原文，而不是输出里出现某个转义串。
+    expect(visibleText(html).replace(/\n$/, '')).toBe(code)
   })
 
   it('vue 的模板片段同样通过往返', async () => {
     const code = [`<template>`, `  <web-ui-slider :min="0" :value="40"></web-ui-slider>`, `</template>`].join('\n')
-    await expect(highlight(code, 'vue', 'slider.md')).resolves.toContain('</pre>')
+    const html = await highlight(code, 'vue', 'slider.md')
+    expect(html).toContain('</pre>')
+    expect(visibleText(html).replace(/\n$/, '')).toBe(code)
   })
 })

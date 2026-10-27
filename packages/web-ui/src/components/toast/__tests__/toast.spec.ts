@@ -804,7 +804,7 @@ describe('toast 命令式 API', () => {
     })
 
     it('clear 关闭 reason 为 clear', async () => {
-      toast.info('clear-test')
+      const id = toast.info('clear-test')
       await waitForToastMounted()
 
       const handler = vi.fn<(e: Event) => void>()
@@ -814,7 +814,8 @@ describe('toast 命令式 API', () => {
       vi.advanceTimersByTime(240)
 
       expect(handler.mock.calls.length).toBeGreaterThan(0)
-      expect(handler.mock.calls[0][0]).toBeDefined()
+      const closeEvent = handler.mock.calls[0][0] as CustomEvent<{ id: string; reason: string }>
+      expect(closeEvent.detail).toEqual({ id, reason: 'clear' })
 
       document.removeEventListener('toast-close', handler)
     })

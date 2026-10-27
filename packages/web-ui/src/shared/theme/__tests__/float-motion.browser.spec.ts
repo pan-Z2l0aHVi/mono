@@ -26,9 +26,6 @@ const fixtures = [
   { tag: 'web-ui-tooltip', role: 'tooltip' }
 ] as const satisfies ReadonlyArray<{ tag: PanelTag; role: string }>
 
-/** `--wui-duration-float-enter` 的默认值。 */
-const FLOAT_ENTER_MS = 240
-
 /**
  * overlay panel 动效契约。
  *
@@ -41,13 +38,24 @@ const FLOAT_ENTER_MS = 240
  *
  * 实测口径（b6，2026-09-16，`motion=full` / `motion=reduced` 各采 4 帧）：
  * - `portal=true`：panel 挂进 theme-owned overlay root，open 时确实启动
- *   `opacity` / `transform` / `backdrop-filter` 三条过渡，时长 240ms；reduced 下一条都不启动。
+ *   `opacity` / `transform` / `backdrop-filter` 三条过渡，时长取自 `--wui-duration-float-enter`；
+ *   reduced 下一条都不启动。
  * - `portal=false`（**本文件不断言**）：本地 panel 打开时 `getAnimations()` 恒为空 —— 它从
  *   `display: none` 变为可见，没有 before-change style，CSS 过渡不会启动。
  *   即"入场动画"只存在于 portal 路径；本地 panel 的**退场**仍走过渡（元素已渲染）。该不对称
  *   记入契约化重构 Batch 6a 发现项，不改产品代码。
  */
-async function openPanel({ tag, role }: (typeof fixtures)[number], motion: string): Promise<HTMLElement> {
+
+/** 把计算后的时长 token（`240ms` / `0.24s`）统一换成毫秒。 */
+function durationMs(token: string): number {
+  const value = Number.parseFloat(token)
+  return token.trim().endsWith('ms') ? value : value * 1000
+}
+
+async function openPanel(
+  { tag, role }: (typeof fixtures)[number],
+  motion: string
+): Promise<{ panel: HTMLElement; theme: ThemedHost }> {
   const theme = document.createElement('web-ui-theme') as ThemedHost
   theme.appearance = 'light'
   theme.motion = motion
@@ -70,7 +78,7 @@ async function openPanel({ tag, role }: (typeof fixtures)[number], motion: strin
   await waitForFrame()
 
   if (panel === null) throw new Error(`${tag} 的 portal panel 缺失`)
-  return panel
+  return { panel, theme }
 }
 
 afterEach(() => document.body.replaceChildren())
@@ -78,7 +86,10 @@ afterEach(() => document.body.replaceChildren())
 describe('overlay panel 动效（浏览器）', () => {
   for (const fixture of fixtures) {
     it(`${fixture.tag} portal 打开时启动 float token 时长的入场过渡`, async () => {
-      const panel = await openPanel(fixture, 'full')
+      const { panel, theme } = await openPanel(fixture, 'full')
+      // 时长从 theme 声明的 token 取，不在测试里复制一份毫秒字面量。
+      const expected = durationMs(getComputedStyle(theme).getPropertyValue('--wui-duration-float-enter'))
+      expect(expected, '前置：theme 应提供正的 --wui-duration-float-enter').toBeGreaterThan(0)
 
       for (const property of ['opacity', 'transform', 'backdrop-filter']) {
         const transition = panel
@@ -86,12 +97,12 @@ describe('overlay panel 动效（浏览器）', () => {
           .map(animation => animation as CSSTransition)
           .find(animation => animation.transitionProperty === property)
         expect(transition, `${fixture.tag} 打开时缺少 ${property} 过渡`).toBeDefined()
-        expect(transition!.effect!.getComputedTiming().duration).toBe(FLOAT_ENTER_MS)
+        expect(transition!.effect!.getComputedTiming().duration).toBe(expected)
       }
     })
 
     it(`${fixture.tag} portal 在 motion=reduced 下不启动入场过渡`, async () => {
-      const panel = await openPanel(fixture, 'reduced')
+      const { panel } = await openPanel(fixture, 'reduced')
       expect(panel.getAnimations()).toHaveLength(0)
     })
   }

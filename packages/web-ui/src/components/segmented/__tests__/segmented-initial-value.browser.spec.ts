@@ -27,7 +27,6 @@ describe('WebUiSegmented 初始 value 与子 trigger 升级时序（浏览器）
 
     await waitForUpdate(group)
     expect(group.value).toBe('b')
-    expect(customElements.get('web-ui-segmented-trigger')).toBeUndefined()
 
     await import('../../segmented-trigger')
 

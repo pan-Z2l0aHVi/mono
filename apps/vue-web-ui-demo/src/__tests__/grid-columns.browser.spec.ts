@@ -113,7 +113,9 @@ async function mountPage(component: object, testId: string) {
  * 仍然抛 `page not mounted`，只是不再因为某一帧的调度延迟而假红。
  */
 async function waitForMounted(testId: string): Promise<void> {
-  const deadline = performance.now() + 1000
+  // 挂载预算是墙钟时间：并发跑全仓测试时单帧间隔会被拉长，1000ms 会假失败。
+  // 本包不能 import web-ui 的 test-utils（不在其 exports 里），故沿用本地轮询。
+  const deadline = performance.now() + 5000
   while (performance.now() < deadline) {
     if (document.querySelector(`[data-testid="${testId}"]`)) return
     await new Promise(resolve => requestAnimationFrame(() => resolve(null)))

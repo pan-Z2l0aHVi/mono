@@ -2,7 +2,7 @@ import '..'
 
 import { afterEach, describe, expect, it } from 'vite-plus/test'
 
-import { pollUntil } from '@/shared/test-utils'
+import { afterRenderStep, pollUntil } from '@/shared/test-utils'
 import { scrollElementToEnd } from '@/shared/test-utils/viewport'
 
 import type { WebUiDialog } from '..'
@@ -25,7 +25,8 @@ async function openAndSettle(component: WebUiDialog): Promise<void> {
     const transform = getComputedStyle(dialog).transform
     return transform === 'none' || transform === 'matrix(1, 0, 0, 1, 0, 0)'
   }, 'enter transform not settled')
-  await new Promise(resolve => requestAnimationFrame(resolve))
+  // transform 落定后还要让这一步的布局结算完，几何断言读到的才是定稿盒子。
+  await afterRenderStep()
 }
 
 function query<T extends HTMLElement>(component: WebUiDialog, selector: string): T {

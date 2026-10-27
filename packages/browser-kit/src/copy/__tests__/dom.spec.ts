@@ -73,7 +73,9 @@ describe('copyToClipboard 测试', () => {
 
     await copyToClipboard('test', { debug: true })
 
-    // 默认静默吞掉失败，开启 debug 才留痕——这是排查「复制没生效」的唯一线索
-    expect(consoleSpy).toHaveBeenCalled()
+    // 默认静默吞掉失败，开启 debug 才留痕——这是排查「复制没生效」的唯一线索；
+    // 断言诊断里带上了原始失败，而不是「随便打了点什么」。
+    const forwarded = consoleSpy.mock.calls.flat()
+    expect(forwarded.some(arg => arg instanceof Error && arg.message === 'Fake Error')).toBe(true)
   })
 })

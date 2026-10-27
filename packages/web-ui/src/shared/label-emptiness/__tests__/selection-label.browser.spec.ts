@@ -52,12 +52,12 @@ describe('选择控件的空 label（浏览器）', () => {
 
     await expect.poll(() => widthOf(checkbox)).toBe(INDICATOR_SIZE)
 
-    // 收掉的只有间距：label 节点仍在渲染树里，display 不是 none，无障碍名不会因此丢掉。
+    // 收掉的只有间距：label 节点仍在渲染树里，无障碍名不会因此丢掉。
+    // 不判 computed position——SR_ONLY_BOX 是那串 position 的写入方，读回来永远是自己写的值。
     const label = checkbox.querySelector('span')
     expect(label).not.toBeNull()
     const labelStyle = label ? getComputedStyle(label) : null
     expect(labelStyle?.display).not.toBe('none')
-    expect(labelStyle?.position).toBe('absolute')
 
     cleanupElement(checkbox)
   })

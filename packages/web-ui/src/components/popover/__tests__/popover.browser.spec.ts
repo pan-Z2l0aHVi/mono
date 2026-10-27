@@ -2,7 +2,7 @@ import '..'
 
 import { afterEach, describe, expect, it } from 'vite-plus/test'
 
-import { getPortalPanel, getPortalPanels, waitForFrame } from '@/shared/test-utils'
+import { getPortalPanel, getPortalPanels, pollUntil, waitForFrame } from '@/shared/test-utils'
 
 import type { WebUiPopover } from '..'
 
@@ -42,7 +42,10 @@ describe('WebUiPopover 组件（浏览器）', () => {
     await popover.updateComplete
     popover.open = true
     await popover.updateComplete
-    await waitForFrame()
+    await pollUntil(() => {
+      const panel = getPortalPanel('dialog')
+      return panel !== null && !panel.hasAttribute('hidden')
+    }, '退出过渡中重新打开后 portal panel 未恢复可见')
 
     const panel = getPortalPanel('dialog')
     expect(panel).not.toBeNull()
@@ -56,8 +59,10 @@ describe('WebUiPopover 组件（浏览器）', () => {
     // detail=0 的 click 是键盘激活（Enter/Space）的语义等价物。
     popover.querySelector<HTMLButtonElement>('button')?.click()
     await popover.updateComplete
-    await waitForFrame()
-    await waitForFrame()
+    await pollUntil(() => {
+      const panel = popover.shadowRoot?.querySelector<HTMLElement>('[role="dialog"]')
+      return panel !== null && panel !== undefined && !panel.hasAttribute('hidden')
+    }, '键盘激活后本地 panel 未打开')
 
     const panel = popover.shadowRoot?.querySelector<HTMLElement>('[role="dialog"]')
     expect(popover.open).toBe(true)
@@ -120,7 +125,10 @@ describe('WebUiPopover 组件（浏览器）', () => {
     await popover.updateComplete
     popover.show()
     await popover.updateComplete
-    await waitForFrame()
+    await pollUntil(() => {
+      const panel = popover.shadowRoot?.querySelector<HTMLElement>('[role="dialog"]')
+      return panel !== null && panel !== undefined && !panel.hasAttribute('hidden')
+    }, 'reconnect 后 show() 未打开本地 panel')
 
     expect(popover.open).toBe(true)
     const panel = popover.shadowRoot?.querySelector<HTMLElement>('[role="dialog"]')
@@ -136,7 +144,7 @@ describe('WebUiPopover 组件（浏览器）', () => {
     popover.portal = true
     popover.open = true
     await popover.updateComplete
-    await waitForFrame()
+    await pollUntil(() => getPortalPanel('dialog')?.textContent === 'Content', 'portal panel 未挂载内容')
 
     const panel = getPortalPanel('dialog')
     expect(panel?.textContent).toBe('Content')
@@ -178,7 +186,10 @@ describe('WebUiPopover 组件（浏览器）', () => {
 
     parent.open = true
     await parent.updateComplete
-    await waitForFrame()
+    await pollUntil(
+      () => getPortalPanels('dialog').some(panel => panel.querySelector('web-ui-popover') !== null),
+      '父 portal panel 中未出现嵌套 popover'
+    )
 
     const child = getPortalPanels('dialog')
       .map(panel => panel.querySelector<WebUiPopover>('web-ui-popover'))
@@ -221,7 +232,10 @@ describe('WebUiPopover 组件（浏览器）', () => {
 
     parent.open = true
     await parent.updateComplete
-    await waitForFrame()
+    await pollUntil(
+      () => getPortalPanels('dialog').some(panel => panel.querySelector('web-ui-popover') !== null),
+      '父 portal panel 中未出现嵌套 popover'
+    )
 
     const child = getPortalPanels('dialog')
       .map(panel => panel.querySelector<WebUiPopover>('web-ui-popover'))

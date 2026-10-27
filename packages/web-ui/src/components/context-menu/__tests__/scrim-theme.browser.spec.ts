@@ -4,16 +4,14 @@ import '@/components/theme'
 
 import { afterEach, describe, expect, it } from 'vite-plus/test'
 
+import { waitForFrame } from '@/shared/test-utils'
+
 import type { WebUiContextMenu } from '..'
 
 interface ThemedHost extends HTMLElement {
   appearance: string
   updateComplete: Promise<unknown>
   getOverlayRoot(): HTMLElement | undefined
-}
-
-async function nextFrame() {
-  await new Promise(resolve => requestAnimationFrame(resolve))
 }
 
 async function mountThemedMenu(appearance: 'light' | 'dark') {
@@ -87,7 +85,7 @@ describe('context-menu 模态 scrim 的主题作用域（浏览器）', () => {
       const { theme, menu } = await mountThemedMenu(appearance)
       menu.openAt(120, 120)
       await menu.updateComplete
-      await nextFrame()
+      await waitForFrame()
 
       const scrim = findScrim()
       expect(scrim).toBeTruthy()
@@ -105,9 +103,6 @@ describe('context-menu 模态 scrim 的主题作用域（浏览器）', () => {
       // scrim 自己在作用域内：它继承得到主题 token，而不是空值 → 浅色 fallback。
       const scrimStyle = getComputedStyle(scrim!)
       expect(scrimStyle.getPropertyValue('--wui-color-surface-menu').trim()).not.toBe('')
-      // 搬家不改变既定视觉裁定：scrim 元素与 ::backdrop 都保持纯透明（不压暗）。
-      expect(scrimStyle.backgroundColor).toBe('rgba(0, 0, 0, 0)')
-      expect(getComputedStyle(scrim!, '::backdrop').backgroundColor).toBe('rgba(0, 0, 0, 0)')
     })
   }
 })

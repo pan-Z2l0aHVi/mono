@@ -2,7 +2,7 @@ import '..'
 
 import { describe, expect, it, vi, afterEach, beforeEach } from 'vite-plus/test'
 
-import { cleanupElement, contractReflection, queryA11y, waitForUpdate } from '@/shared/test-utils'
+import { cleanupElement, contractReflection, queryA11y, waitForFrame, waitForUpdate } from '@/shared/test-utils'
 
 import type { WebUiPopover } from '..'
 
@@ -429,14 +429,13 @@ describe('WebUiPopover 组件', () => {
     it('portal 变更后 Escape 仍不关闭：reconfigure 换会话不得丢掉 manual 惰性', async () => {
       // portal 变更只登记一帧 rAF；fake timers 下这条路径走不到 reconfigure，必须用真实帧。
       vi.useRealTimers()
-      const nextFrame = () => new Promise<void>(resolve => requestAnimationFrame(() => resolve()))
 
       const el = createPopover('Btn', 'Content', { trigger: 'manual' })
       await waitForUpdate(el)
 
       el.open = true
       await el.updateComplete
-      await nextFrame()
+      await waitForFrame()
       await el.updateComplete
       expect(el.isOpen).toBe(true)
 
@@ -445,36 +444,13 @@ describe('WebUiPopover 组件', () => {
       // 本行承重（非备份）：popover 的 reconfigure 不引发渲染，摘掉这行本用例立刻转红。
       el.portal = true
       await el.updateComplete
-      await nextFrame()
-      await nextFrame()
+      await waitForFrame()
+      await waitForFrame()
       await el.updateComplete
       expect(el.isOpen).toBe(true)
 
       document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }))
       await el.updateComplete
-      expect(el.isOpen).toBe(true)
-
-      cleanupElement(el)
-    })
-
-    it('仅由公开 API 或 open prop 控制', async () => {
-      const el = createPopover('Btn', 'Content', { trigger: 'manual' })
-      await waitForUpdate(el)
-
-      el.show()
-      await el.updateComplete
-      vi.advanceTimersToNextFrame()
-      await waitForUpdate(el)
-      expect(el.isOpen).toBe(true)
-
-      el.close()
-      await waitForUpdate(el)
-      expect(el.isOpen).toBe(false)
-
-      el.toggle()
-      await el.updateComplete
-      vi.advanceTimersToNextFrame()
-      await waitForUpdate(el)
       expect(el.isOpen).toBe(true)
 
       cleanupElement(el)
@@ -507,6 +483,11 @@ describe('WebUiPopover 组件', () => {
   describe('公开 API', () => {
     // 命令式 API 与 open 属性走同一条状态机，唯一独立的东西是「命令序列本身能驱动
     // panel 挂出与隐藏」。合进一条：三条各开一个元素的重复用例会让同一契约可被整体删除。
+    //
+    // 这一条也是命令式入口的存活覆盖：show()/close()/toggle() 不读 trigger（源码里它们只写
+    // open），所以 manual 分组下那条「仅由公开 API 或 open prop 控制」的副本判的是同一件事，
+    // 已按等价重复删除。manual 特有的语义留在上面那组：点击 trigger 仍切换（docs/popover 记载）、
+    // 点 panel 外与 Escape 都不关。
     it('show() / toggle() / close() 驱动 panel 挂出与隐藏', async () => {
       const el = createPopover('Btn', 'Content')
       await waitForUpdate(el)

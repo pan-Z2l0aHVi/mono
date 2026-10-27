@@ -1,9 +1,7 @@
-import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 
 import { defineTracker } from '../core'
 import { defineBatchTrack } from '../plugins/batch-track'
-
-vi.useFakeTimers()
 
 /** 记录条目的 fake transport。批量断言只看 transport 收到什么，不关心怎么发出去。 */
 function createTransportStub() {
@@ -32,10 +30,15 @@ describe('defineBatchTrack 测试', () => {
   let transport: ReturnType<typeof createTransportStub>['transport']
 
   beforeEach(() => {
+    vi.useFakeTimers()
     vi.clearAllTimers()
     vi.restoreAllMocks()
     localStorage.clear()
     transport = createTransportStub().transport
+  })
+
+  afterEach(() => {
+    vi.useRealTimers()
   })
 
   it('窗口内的多次 track 合并成一个数组批次，保持入队顺序', async () => {

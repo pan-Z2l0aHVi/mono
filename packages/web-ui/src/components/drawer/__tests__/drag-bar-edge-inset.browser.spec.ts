@@ -132,26 +132,31 @@ async function mountDrawer(options: {
 
 /**
  * **从胶囊坐标起手**、经过真实命中测试的拖拽，拖过关闭阈值后停住不松手
- * （`is-drag-close` 在松手时就被摘掉，确认态必须在手势仍按住时读）。
+ * （拖拽态在松手时就结束，确认态必须在手势仍按住时读）。
  *
  * 早前的写法把合成事件直接派发到 drag zone 元素上，绕过了命中测试 —— 于是「胶囊已经落到
  * drag zone 之外、按不动的死装饰」这种形态照样全绿。这里先问浏览器那个坐标上是谁，
  * 再在**它**身上派发。
+ *
+ * 判据是 panel 在拖拽轴上的实际位移，不是内部状态类：手势没挂上时位移为零，
+ * 与「类名加上了但没跟手」是两件事。
  */
 async function pressDragFromCapsule(el: WebUiDrawer, placement: DrawerPlacement) {
   const { x: startX, y: startY } = capsuleCenter(el)
-  const target = hitTestAt(el, startX, startY)
-  if (!isDragSurface(el, target)) {
+  const hit = hitTestAt(el, startX, startY)
+  if (!isDragSurface(el, hit)) {
     throw new Error(
-      `胶囊坐标 (${startX}, ${startY}) 命中的是 ${target?.className || target?.tagName || 'null'}，` +
+      `胶囊坐标 (${startX}, ${startY}) 命中的是 ${hit?.className || hit?.tagName || 'null'}，` +
         '不是 drag edge/drag zone——胶囊在 placement 之外是死装饰'
     )
   }
+  const target = hit as HTMLElement
   const delta = { right: [1, 0], left: [-1, 0], top: [0, -1], bottom: [0, 1] }[placement]
   const axisSize =
     placement === 'left' || placement === 'right' ? getDialog(el).offsetWidth : getDialog(el).offsetHeight
+  const before = getDialog(el).getBoundingClientRect()
 
-  target!.dispatchEvent(
+  target.dispatchEvent(
     new PointerEvent('pointerdown', {
       bubbles: true,
       composed: true,
@@ -162,9 +167,8 @@ async function pressDragFromCapsule(el: WebUiDrawer, placement: DrawerPlacement)
     })
   )
   await el.updateComplete
-  const enteredDragging = getDialog(el).classList.contains('is-dragging')
   for (let step = 1; step <= 10; step += 1) {
-    target!.dispatchEvent(
+    target.dispatchEvent(
       new PointerEvent('pointermove', {
         bubbles: true,
         composed: true,
@@ -177,13 +181,21 @@ async function pressDragFromCapsule(el: WebUiDrawer, placement: DrawerPlacement)
     await new Promise(resolve => setTimeout(resolve, 32))
   }
   await el.updateComplete
-  return { enteredDragging, target }
+  const after = getDialog(el).getBoundingClientRect()
+  return { displacement: Math.hypot(after.left - before.left, after.top - before.top), target }
 }
 
-function releaseDrag(el: WebUiDrawer) {
-  const zone = getDragZone(el)
-  zone.dispatchEvent(
-    new PointerEvent('pointerup', { bubbles: true, pointerId: 1, isPrimary: true, clientX: 400, clientY: 300 })
+/** 在**起手时命中的那个元素**上松手：手势层只认收到 pointerdown 的目标。 */
+function releaseDrag(target: HTMLElement) {
+  target.dispatchEvent(
+    new PointerEvent('pointerup', {
+      bubbles: true,
+      composed: true,
+      pointerId: 1,
+      isPrimary: true,
+      clientX: 400,
+      clientY: 300
+    })
   )
 }
 
@@ -199,10 +211,13 @@ describe('WebUiDrawer drag bar 命中（浏览器）', () => {
   it('四个 placement 下从胶囊坐标起手都能进入拖拽并越过阈值', async () => {
     for (const placement of PLACEMENTS) {
       const el = await mountDrawer({ placement, header: true, footer: true })
-      const { enteredDragging, target } = await pressDragFromCapsule(el, placement)
-      expect(enteredDragging, `${placement} 从胶囊坐标按下没有开始拖拽（命中 ${target?.className}）`).toBe(true)
-      expect(getDialog(el).classList.contains('is-drag-close'), `${placement} 越过阈值未进入确认态`).toBe(true)
-      releaseDrag(el)
+      const { displacement, target } = await pressDragFromCapsule(el, placement)
+      expect(displacement, `${placement} 从胶囊坐标按下后 panel 没有位移（命中 ${target?.className}）`).toBeGreaterThan(
+        1
+      )
+      releaseDrag(target)
+      // 越过关闭阈值的可观察后果：松手后 drawer 真的关闭。
+      await pollUntil(() => !el.open, `${placement} 越过阈值松手后 drawer 没有关闭`)
       el.remove()
     }
   })
@@ -235,9 +250,9 @@ describe('WebUiDrawer drag bar 命中（浏览器）', () => {
   it('drag bar 加厚到端头 drag edge 之外时，胶囊所在的位置仍可起手', async () => {
     for (const placement of EDGE_PLACEMENTS) {
       const el = await mountDrawer({ placement, header: true, footer: true, thickness: 40 })
-      const { enteredDragging } = await pressDragFromCapsule(el, placement)
-      expect(enteredDragging, `${placement}/thickness=40 从胶囊坐标按下没有开始拖拽`).toBe(true)
-      releaseDrag(el)
+      const { displacement, target } = await pressDragFromCapsule(el, placement)
+      expect(displacement, `${placement}/thickness=40 从胶囊坐标按下后 panel 没有位移`).toBeGreaterThan(1)
+      releaseDrag(target)
       el.remove()
     }
   })
@@ -389,12 +404,14 @@ describe('WebUiDrawer drag bar 配色状态（浏览器）', () => {
       const el = await mountDrawer({ placement })
       const rest = getComputedStyle(getDragBar(el)).backgroundColor
 
-      await pressDragFromCapsule(el, placement)
-      expect(getDialog(el).classList.contains('is-drag-close'), `${placement} 未进入确认态`).toBe(true)
+      const { displacement, target } = await pressDragFromCapsule(el, placement)
+      expect(displacement, `${placement} 按下后 panel 没有位移`).toBeGreaterThan(1)
       const confirmed = getComputedStyle(getDragBar(el)).backgroundColor
-      expect(confirmed, `${placement} 进入确认态但 drag bar 不变色（rest=${rest}）`).not.toBe(rest)
+      expect(confirmed, `${placement} 松手会关闭，但 drag bar 没有换成确认态配色（rest=${rest}）`).not.toBe(rest)
 
-      releaseDrag(el)
+      releaseDrag(target)
+      // 颜色变化的语义由「松手真的关闭」钉住：没越过阈值的拖拽不会换配色。
+      await pollUntil(() => !el.open, `${placement} 确认态下松手没有关闭 drawer`)
       el.remove()
     }
   })
@@ -406,17 +423,23 @@ describe('WebUiDrawer drag bar 配色状态（浏览器）', () => {
   it('悬停与确认态同时成立时确认态胜出', async () => {
     for (const placement of PLACEMENTS) {
       const el = await mountDrawer({ placement })
-      await userEvent.hover(getDragZone(el))
-      expect(getDragZone(el).matches(':hover'), `${placement} 真实指针未落在 drag zone 上`).toBe(true)
+      const { x, y } = capsuleCenter(el)
+      const surface = hitTestAt(el, x, y)!
+      await userEvent.hover(surface)
+      expect(surface.matches(':hover'), `${placement} 真实指针未落在拖拽面上`).toBe(true)
 
       const hovered = getComputedStyle(getDragBar(el)).backgroundColor
 
-      // 直接置上确认态：真实手势造不出「悬停 + 确认态」同时成立的那一帧
-      // （拖拽期间 panel 跟手平移，drag zone 会从静止的指针底下滑走）。
-      getDialog(el).classList.add('is-drag-close')
+      // 悬停之后在同一处起手拖过阈值：合成 move 不移动真实指针，hover 于是仍在原位，
+      // 与确认态在同一帧里同时成立。
+      const { displacement, target } = await pressDragFromCapsule(el, placement)
+      expect(displacement, `${placement} 按下后 panel 没有位移`).toBeGreaterThan(1)
+      expect(surface.matches(':hover'), `${placement} 拖拽期间 hover 已丢失，本用例前提不成立`).toBe(true)
       const confirmed = getComputedStyle(getDragBar(el)).backgroundColor
 
       expect(confirmed, `${placement} 确认态未压过悬停态（两者同为 ${hovered}）`).not.toBe(hovered)
+      releaseDrag(target)
+      await pollUntil(() => !el.open, `${placement} 确认态下松手没有关闭 drawer`)
       el.remove()
     }
   })

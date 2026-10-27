@@ -9,7 +9,7 @@ import type { WebUiBackTop } from '..'
 afterEach(() => document.body.replaceChildren())
 
 describe('WebUiBackTop 容器定位（浏览器）', () => {
-  it('右缘距容器 content box 20px，较大的 top token 不会裁掉按钮', async () => {
+  it('右缘距容器 content box 的偏移跟随 --wui-back-top-right，较大的 top token 不会裁掉按钮', async () => {
     const target = document.createElement('div')
     target.style.cssText = [
       'box-sizing: border-box',
@@ -18,7 +18,8 @@ describe('WebUiBackTop 容器定位（浏览器）', () => {
       'overflow: auto',
       'border: 4px solid',
       'padding: 10px',
-      '--wui-back-top-top: 150px'
+      '--wui-back-top-top: 150px',
+      '--wui-back-top-right: 37px'
     ].join(';')
 
     const content = document.createElement('div')
@@ -47,7 +48,9 @@ describe('WebUiBackTop 容器定位（浏览器）', () => {
     const scrollportBottom = targetRect.bottom - Number.parseFloat(targetStyle.borderBottomWidth)
     const buttonRect = button.getBoundingClientRect()
 
-    expect(buttonRect.right).toBeCloseTo(contentRight - 20, 1)
+    const expectedRight = Number.parseFloat(getComputedStyle(target).getPropertyValue('--wui-back-top-right'))
+    expect(expectedRight, '前置：--wui-back-top-right 必须在容器作用域内解析出值').toBeGreaterThan(0)
+    expect(buttonRect.right).toBeCloseTo(contentRight - expectedRight, 1)
     expect(buttonRect.top).toBeGreaterThanOrEqual(scrollportTop)
     expect(buttonRect.bottom).toBeLessThanOrEqual(scrollportBottom)
   })

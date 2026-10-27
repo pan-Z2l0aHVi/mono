@@ -35,8 +35,8 @@ async function waitForMenu(el: WebUiContextMenu): Promise<HTMLElement> {
   return panel
 }
 
-async function settle() {
-  await new Promise(resolve => setTimeout(resolve, 250))
+async function settle(ms = 250): Promise<void> {
+  await new Promise(resolve => setTimeout(resolve, ms))
 }
 
 /*
@@ -218,34 +218,41 @@ describe('context-menu 长按（真实触控管线）', () => {
 
     let rowClicks = 0
     target.addEventListener('click', () => rowClicks++)
+    // 补发 click 的到达时刻由浏览器任务队列决定（负载下可能晚到 1s 以上），
+    // 用「真的收到了一次 click」作为观测点，而不是睡固定时长后再断言「没收到」。
+    let windowClicks = 0
+    const recordClick = () => windowClicks++
+    window.addEventListener('click', recordClick, { capture: true })
 
     const point = target.getBoundingClientRect()
     const pressX = point.left + point.width / 2
     const pressY = point.top + point.height / 2
 
-    await realTouchPress(target, { holdMs: 700 })
-    const panel = await waitForMenu(el)
-    expect(el.isOpen).toBe(true)
+    try {
+      await realTouchPress(target, { holdMs: 700 })
+      const panel = await waitForMenu(el)
+      expect(el.isOpen).toBe(true)
 
-    // 补发 click 在 touchEnd 后才到，等它真的派发完再断言。
-    await settle()
-    await settle()
+      await pollUntil(() => windowClicks > 0, 'touchend 后浏览器没有补发 compat click')
 
-    // (1) 命中测试：落点被模态 scrim 子树占据，下层目标不在命中链上。
-    const scrim = document.querySelector<HTMLElement>('dialog[data-wui-menu-scrim]')
-    expect(scrim).toBeTruthy()
-    const hit = document.elementFromPoint(pressX, pressY)
-    expect(hit === scrim || scrim!.contains(hit)).toBe(true)
-    expect(hit === target || target.contains(hit)).toBe(false)
+      // (1) 命中测试：落点被模态 scrim 子树占据，下层目标不在命中链上。
+      const scrim = document.querySelector<HTMLElement>('dialog[data-wui-menu-scrim]')
+      expect(scrim).toBeTruthy()
+      const hit = document.elementFromPoint(pressX, pressY)
+      expect(hit === scrim || scrim!.contains(hit)).toBe(true)
+      expect(hit === target || target.contains(hit)).toBe(false)
 
-    // (2) 行为：下层目标零激活。
-    expect(rowClicks).toBe(0)
+      // (2) 行为：下层目标零激活。
+      expect(rowClicks).toBe(0)
 
-    // (3) menu 没被补发 click 关掉。
-    expect(el.isOpen).toBe(true)
-    expect(getMenuPanels('Context menu')).toHaveLength(1)
-    expect(panel.isConnected).toBe(true)
-    cleanupElement(el)
+      // (3) menu 没被补发 click 关掉。
+      expect(el.isOpen).toBe(true)
+      expect(getMenuPanels('Context menu')).toHaveLength(1)
+      expect(panel.isConnected).toBe(true)
+    } finally {
+      window.removeEventListener('click', recordClick, { capture: true })
+      cleanupElement(el)
+    }
   })
 
   /*
@@ -313,15 +320,20 @@ describe('context-menu 长按（真实触控管线）', () => {
    * 时长」这个**时序差**，而负载下 `setTimeout` 的起停都会被拉长（实测一次手势从
    * 700ms 被拖到 1300ms+），固定 500ms 的差值会被抹平——计时器在抬手之前就开 menu。
    * 拉长 `long-press-delay`（公开属性，语义不变）把差值留够，断言一字未改。
+   *
+   * 代价是取消类的负向断言必须**越过计时器**再判：抬手时若没清掉计时器，它在 4000ms
+   * 才开 menu，250ms 的窗口里什么都看不见——那样这条用例在漏取消的实现下也照样绿。
    */
-  const CANCELLABLE_PRESS_DELAY = '4000'
+  const CANCELLABLE_PRESS_DELAY_MS = 4000
+  const CANCELLABLE_PRESS_DELAY = String(CANCELLABLE_PRESS_DELAY_MS)
+  const AFTER_CANCEL_WINDOW_MS = CANCELLABLE_PRESS_DELAY_MS + 300
 
   it('短按不打开 menu', async () => {
     const { el, target } = createMenu({ 'long-press': '', 'long-press-delay': CANCELLABLE_PRESS_DELAY })
     await el.updateComplete
 
     await realTouchPress(target, { holdMs: 150, endWithCancel: true })
-    await settle()
+    await settle(AFTER_CANCEL_WINDOW_MS)
 
     expect(el.isOpen).toBe(false)
     // `toHaveLength(0)` 只证明「查不到 panel」，而查不到也可能是
@@ -336,7 +348,7 @@ describe('context-menu 长按（真实触控管线）', () => {
     await el.updateComplete
 
     await realTouchPress(target, { holdMs: 700, moveBy: 60, moveAfterMs: 200, endWithCancel: true })
-    await settle()
+    await settle(AFTER_CANCEL_WINDOW_MS)
 
     expect(el.isOpen).toBe(false)
     // `toHaveLength(0)` 只证明「查不到 panel」，而查不到也可能是查找器坏了；

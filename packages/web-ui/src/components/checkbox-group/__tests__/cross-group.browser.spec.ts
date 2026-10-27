@@ -4,6 +4,7 @@ import '@/components/checkbox'
 import { afterEach, describe, expect, it } from 'vite-plus/test'
 
 import type { WebUiCheckbox } from '@/components/checkbox'
+import { pollUntil } from '@/shared/test-utils'
 
 import type { WebUiCheckboxGroup } from '..'
 
@@ -36,10 +37,9 @@ describe('CheckboxGroup 跨组移动成员（浏览器）', () => {
 
     const wrapper = groupA.querySelector('div')!
     wrapper.appendChild(checkboxB)
-    await new Promise(resolve => setTimeout(resolve, 0))
+    // 新组的接管是异步的：接管后它会按自己的值清掉移入成员的旧选中态。
+    await pollUntil(() => checkboxB.checked === false, '新组没有接管移入的成员（旧选中态未被清掉）')
     await Promise.all([checkboxB.updateComplete, groupA.updateComplete, groupB.updateComplete])
-    await new Promise(resolve => setTimeout(resolve, 0))
-    await checkboxB.updateComplete
 
     // 先验证事件收敛（不给后续渲染自愈的机会）：managed 子项的 change
     // 由 group 收敛派发，target 为 checkbox 的 change 不冒泡到 body
@@ -95,9 +95,8 @@ describe('CheckboxGroup 跨组移动成员（浏览器）', () => {
 
     const wrapper = groupB.querySelector('div')!
     wrapper.appendChild(checkboxA)
-    await new Promise(resolve => setTimeout(resolve, 0))
+    await pollUntil(() => checkboxA.checked === false, '新组没有接管移入的成员（旧选中态未被清掉）')
     await Promise.all([checkboxA.updateComplete, groupA.updateComplete, groupB.updateComplete])
-    await new Promise(resolve => setTimeout(resolve, 0))
 
     groupB.value = ['a']
     await groupB.updateComplete

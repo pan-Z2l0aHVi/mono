@@ -5,7 +5,7 @@ import '@/assets/global.css'
 import '@greypan/web-ui'
 
 import type { WebUiEditableText, WebUiEvent } from '@greypan/web-ui'
-import { afterEach, describe, expect, it } from 'vite-plus/test'
+import { afterEach, beforeEach, describe, expect, it } from 'vite-plus/test'
 import { createApp, h, nextTick, ref, type ComponentPublicInstance, type Ref } from 'vue'
 
 import type { ResourceView } from '@/stores/library'
@@ -67,6 +67,11 @@ async function waitFor(condition: () => boolean, label: string, maxFrames = 180)
 
 const hosts: HTMLElement[] = []
 const apps: { unmount: () => void }[] = []
+
+beforeEach(async () => {
+  // 行高由文本换行决定：字体没就位时量到的几何会在加载完成后整体跳一次。
+  await document.fonts.ready
+})
 
 afterEach(() => {
   for (const app of apps.splice(0)) app.unmount()

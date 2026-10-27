@@ -2,9 +2,15 @@ import '..'
 
 import { afterEach, describe, expect, it } from 'vite-plus/test'
 
+import { pollUntil } from '@/shared/test-utils'
+
 import type { WebUiDrawer } from '..'
 
-afterEach(() => document.body.replaceChildren())
+afterEach(() => {
+  document.body.replaceChildren()
+  // 用例中途失败时滚动锁可能仍挂着；不复位会把 `overflow: hidden` 带给后续用例。
+  document.documentElement.style.removeProperty('overflow')
+})
 
 function createDrawer(): WebUiDrawer {
   const el = document.createElement('web-ui-drawer') as WebUiDrawer
@@ -17,12 +23,8 @@ function getDialog(el: WebUiDrawer): HTMLDialogElement {
   return el.shadowRoot?.querySelector('dialog') as HTMLDialogElement
 }
 
-async function waitFor(condition: () => boolean, timeoutMs = 3000): Promise<void> {
-  const start = performance.now()
-  while (!condition()) {
-    if (performance.now() - start > timeoutMs) throw new Error(`waitFor timeout after ${timeoutMs}ms`)
-    await new Promise(resolve => setTimeout(resolve, 25))
-  }
+async function waitFor(condition: () => boolean, timeoutMs = 5000): Promise<void> {
+  await pollUntil(condition, `Expected the drawer state to settle (budget ${timeoutMs}ms)`, timeoutMs)
 }
 
 /*

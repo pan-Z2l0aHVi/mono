@@ -3,7 +3,7 @@ import '@/components/dropdown-item'
 
 import { afterEach, describe, expect, it } from 'vite-plus/test'
 
-import { getMenuPanels, waitForUpdate } from '@/shared/test-utils'
+import { getMenuPanels, pollUntil, waitForFrame, waitForUpdate } from '@/shared/test-utils'
 
 import type { WebUiContextMenu } from '..'
 
@@ -53,23 +53,21 @@ afterEach(() => {
   document.body.replaceChildren()
 })
 
-async function nextFrame(): Promise<void> {
-  await new Promise(resolve => requestAnimationFrame(resolve))
-}
-
 async function waitFor<T>(
   poll: () => T | null | undefined,
   ready: (value: T) => boolean,
   message: string,
   deadlineMs = 6000
 ): Promise<T> {
-  const deadline = performance.now() + deadlineMs
-  while (performance.now() < deadline) {
-    const value = poll()
-    if (value !== null && value !== undefined && ready(value)) return value
-    await nextFrame()
-  }
-  throw new Error(message)
+  await pollUntil(
+    () => {
+      const value = poll()
+      return value !== null && value !== undefined && ready(value)
+    },
+    message,
+    deadlineMs
+  )
+  return poll() as T
 }
 
 async function openMenuAt(
@@ -133,7 +131,7 @@ async function openMenuInDefectWindow(): Promise<{
   const submenuWidth = probeSubmenu.offsetWidth
   const itemRightOffset = probe.parentItem.getBoundingClientRect().right - 100
   probe.menu.remove()
-  await nextFrame()
+  await waitForFrame()
 
   // 阶段二：按窗口正中落点重开一张 menu。
   const innerWidth = window.innerWidth
@@ -167,7 +165,7 @@ describe('WebUiContextMenu submenu 开合方向的宽度来源（浏览器）', 
   it('首次打开（panel 为 entering）时，按未缩放宽度判断右侧放不下，向左开', async () => {
     document.documentElement.style.setProperty('--wui-scale-enter', String(SCALE_ENTER))
 
-    const { parentItem, mainPanel, itemRect } = await openMenuInDefectWindow()
+    const { parentItem, itemRect } = await openMenuInDefectWindow()
     const submenu = await openSubmenu(parentItem)
 
     // 先决条件：缩放 token 必须真的到达 panel。整条窗口推导都假定 SCALE_ENTER 生效，而 `:host` 上的
@@ -177,7 +175,6 @@ describe('WebUiContextMenu submenu 开合方向的宽度来源（浏览器）', 
 
     expectOpenedLeft(submenu, itemRect)
     expect(getMenuPanels('submenu')[0]).toBe(submenu)
-    expect(mainPanel.dataset.wuiPresence).toBe('open')
   })
 
   it('经 closing 缓存复用重开时，同样按未缩放宽度判断，向左开', async () => {

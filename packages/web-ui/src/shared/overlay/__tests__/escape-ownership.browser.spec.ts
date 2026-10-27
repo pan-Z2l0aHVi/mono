@@ -31,13 +31,9 @@ const OPTIONS_HTML = `
 `
 
 async function waitForDrawerOpen(el: WebUiDrawer) {
-  const deadline = performance.now() + 5000
   const dialog = el.shadowRoot?.querySelector('dialog') as HTMLDialogElement | null
   if (!dialog) throw new Error('Expected the drawer to contain a dialog')
-  while (!dialog.open) {
-    if (performance.now() > deadline) throw new Error('Expected the drawer dialog to open')
-    await new Promise(resolve => requestAnimationFrame(resolve))
-  }
+  await pollUntil(() => dialog.open, 'Expected the drawer dialog to open')
   await el.updateComplete
   await Promise.allSettled(document.getAnimations().map(animation => animation.finished))
   await el.updateComplete

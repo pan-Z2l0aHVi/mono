@@ -61,7 +61,7 @@ describe('WebUiSwitch 组件特有契约', () => {
     el.loading = true
     await waitForUpdate(el)
 
-    expect(el.shadowRoot?.querySelector('web-ui-icon')?.getAttribute('color')).toBe('var(--wui-color-accent, #0071e3)')
+    expect(el.shadowRoot?.querySelector('web-ui-icon')?.getAttribute('color')).toContain('var(--wui-color-accent')
     cleanupElement(el)
   })
 

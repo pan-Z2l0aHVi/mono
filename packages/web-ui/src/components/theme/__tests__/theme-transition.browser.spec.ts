@@ -3,6 +3,8 @@ import '..'
 import { afterEach, describe, expect, it, vi } from 'vite-plus/test'
 import { cdp } from 'vite-plus/test/browser'
 
+import { pollUntil } from '@/shared/test-utils'
+
 import type { ThemeMotion, WebUiTheme } from '..'
 
 interface CdpSession {
@@ -48,12 +50,8 @@ function dispatchPointer(
   )
 }
 
-async function waitFor(condition: () => boolean, message: string, timeoutMs = 1000): Promise<void> {
-  const deadline = performance.now() + timeoutMs
-  while (!condition()) {
-    if (performance.now() >= deadline) throw new Error(message)
-    await new Promise(resolve => requestAnimationFrame(resolve))
-  }
+async function waitFor(condition: () => boolean, message: string, timeoutMs = 5000): Promise<void> {
+  await pollUntil(condition, message, timeoutMs)
 }
 
 function createNestedTheme(): WebUiTheme {
@@ -89,6 +87,9 @@ function wrapStartViewTransition() {
     get current() {
       return transition
     },
+    get count() {
+      return start.mock.calls.length
+    },
     get skipCount() {
       return skipCount
     },
@@ -103,6 +104,12 @@ afterEach(async () => {
   document.body.replaceChildren()
   await emulateColorScheme('light')
 })
+
+/** 画 circle 动画的那一层必须盖在另一层之上：比大小关系，不把 z-index 数字钉进用例。 */
+function layerAbove(top: string, bottom: string): boolean {
+  const root = document.documentElement
+  return Number(getComputedStyle(root, top).zIndex) > Number(getComputedStyle(root, bottom).zIndex)
+}
 
 describe('theme transition（浏览器）', () => {
   it('OS light 下 light→system 不启动 View Transition', async () => {
@@ -144,8 +151,7 @@ describe('theme transition（浏览器）', () => {
     const frames = (reveal!.effect as KeyframeEffect).getKeyframes()
     expect(frames[0].clipPath as string).toMatch(/^circle\(0px at /)
     expect(frames[1].clipPath as string).toMatch(/^circle\(\d+px at /)
-    expect(getComputedStyle(document.documentElement, '::view-transition-old(root)').zIndex).toBe('1')
-    expect(getComputedStyle(document.documentElement, '::view-transition-new(root)').zIndex).toBe('2')
+    expect(layerAbove('::view-transition-new(root)', '::view-transition-old(root)'), '揭示层应盖在旧快照上').toBe(true)
 
     await transition!.finished
     wrapper.restore()
@@ -159,6 +165,7 @@ describe('theme transition（浏览器）', () => {
     theme.appearance = 'dark'
     const transition = wrapper.current
     expect(transition).toBeDefined()
+    expect(wrapper.count, '一次 appearance 变化应只启动一次 View Transition').toBe(1)
     await transition!.ready
     await Promise.resolve()
     expect(theme.resolvedAppearance).toBe('dark')
@@ -176,16 +183,19 @@ describe('theme transition（浏览器）', () => {
     const revealFrames = effect.getKeyframes()
     expect((revealFrames[0].clipPath as string).startsWith('circle(0px at ')).toBe(true)
     expect(revealFrames[1].clipPath as string).toMatch(/^circle\(\d+px at /)
-    expect(getComputedStyle(document.documentElement, '::view-transition-old(root)').zIndex).toBe('1')
-    expect(getComputedStyle(document.documentElement, '::view-transition-new(root)').zIndex).toBe('2')
+    expect(layerAbove('::view-transition-new(root)', '::view-transition-old(root)'), '揭示层应盖在旧快照上').toBe(true)
     expect(
       document.adoptedStyleSheets.some(sheet =>
         Array.from(sheet.cssRules).some(rule => rule.cssText.includes('::view-transition-image-pair'))
       )
     ).toBe(true)
 
-    await new Promise(resolve => setTimeout(resolve, 650))
-    expect(reveal!.playState).toBe('running')
+    // 过渡要跑够时间，快照才不会被提前拆掉。判据取动画自身的时长而不是睡 650ms 再读状态：
+    // 后者把 wall-clock 当屏障，负载高时先红；这里读同一个数，跑多少帧都不影响结论。
+    expect(reveal!.playState, '揭示动画起跑即被取消').toBe('running')
+    const revealDuration = effect.getComputedTiming().duration
+    expect(typeof revealDuration).toBe('number')
+    expect(revealDuration as number, '主题过渡时长不足以完成圆形揭示').toBeGreaterThanOrEqual(600)
 
     await transition!.finished
 
@@ -209,8 +219,7 @@ describe('theme transition（浏览器）', () => {
     const concealFrames = concealEffect.getKeyframes()
     expect(concealFrames[0].clipPath as string).toMatch(/^circle\(\d+px at /)
     expect((concealFrames[1].clipPath as string).startsWith('circle(0px at ')).toBe(true)
-    expect(getComputedStyle(document.documentElement, '::view-transition-old(root)').zIndex).toBe('2')
-    expect(getComputedStyle(document.documentElement, '::view-transition-new(root)').zIndex).toBe('1')
+    expect(layerAbove('::view-transition-old(root)', '::view-transition-new(root)'), '收合层应盖在新快照上').toBe(true)
     await reverse.finished
 
     expect(document.adoptedStyleSheets.some(sheet => sheet.cssRules.length > 0)).toBe(false)
@@ -259,8 +268,10 @@ describe('theme transition（浏览器）', () => {
       )
     expect(conceal).toBeDefined()
     expect((conceal!.effect as KeyframeEffect).target).toBe(document.documentElement)
-    expect(getComputedStyle(document.documentElement, `::view-transition-old(${reverseName})`).zIndex).toBe('2')
-    expect(getComputedStyle(document.documentElement, `::view-transition-new(${reverseName})`).zIndex).toBe('1')
+    expect(
+      layerAbove(`::view-transition-old(${reverseName})`, `::view-transition-new(${reverseName})`),
+      '收合侧的快照层应盖住另一层'
+    ).toBe(true)
     await reverse.finished
 
     expect(theme.style.getPropertyValue('view-transition-name')).toBe('')
@@ -404,6 +415,7 @@ describe('theme transition（浏览器）', () => {
     theme.appearance = 'dark'
     const transition = wrapper.current
     expect(transition).toBeDefined()
+    expect(wrapper.count, '一次 appearance 变化应只启动一次 View Transition').toBe(1)
     await transition!.ready
     await transition!.finished
 
@@ -418,7 +430,7 @@ describe('theme transition（浏览器）', () => {
 
     theme.appearance = 'dark'
     await theme.updateComplete
-    expect(wrapper.current).toBeUndefined()
+    expect(wrapper.count, 'reduced 档一次都不该启动 View Transition').toBe(0)
     expect(theme.appearance).toBe('dark')
     expect(theme.getAttribute('appearance')).toBe('dark')
 

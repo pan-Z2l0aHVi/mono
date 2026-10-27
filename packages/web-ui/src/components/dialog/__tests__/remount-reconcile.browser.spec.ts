@@ -4,7 +4,11 @@ import { afterEach, describe, expect, it } from 'vite-plus/test'
 
 import type { WebUiDialog } from '..'
 
-afterEach(() => document.body.replaceChildren())
+afterEach(() => {
+  document.body.replaceChildren()
+  // 用例中途失败时滚动锁可能仍挂着；不复位会把 `overflow: hidden` 带给后续用例。
+  document.documentElement.style.removeProperty('overflow')
+})
 
 function createDialog(): WebUiDialog {
   const dialog = document.createElement('web-ui-dialog')

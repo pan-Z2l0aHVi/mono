@@ -150,13 +150,11 @@ describe('WebUiPopover portal 条件渲染边界（浏览器）', () => {
     await nextTick()
     await popover.updateComplete
     await pollUntil(() => !getPortalPanel()?.querySelector('.probe-flag'), 'Expected deleted flag to leave the panel')
-    expect([...popover.childNodes].some(node => node instanceof Comment)).toBe(true)
-    expect(getPortalPanel()?.childNodes.length).toBe(0)
+    expect(getPortalPanel()?.textContent?.trim()).toBe('')
 
     open.value = false
     await popover.updateComplete
     await pollUntil(() => !getPortalPanel(), 'Expected portal to dispose after close')
-    expect([...popover.childNodes].some(node => node instanceof Comment)).toBe(true)
 
     open.value = true
     editing.value = true

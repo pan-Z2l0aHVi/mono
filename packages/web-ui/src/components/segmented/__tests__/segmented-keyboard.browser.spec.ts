@@ -155,11 +155,14 @@ describe('WebUiSegmented 键盘导航（浏览器）', () => {
     expect(triggers.map(trigger => trigger.checked)).toEqual([false, true, false])
     expect(options.map(option => option.getAttribute('tabindex'))).toEqual(['-1', '0', '-1'])
     expect(triggers[1]?.shadowRoot?.activeElement).toBe(options[1])
+    const indicator = group.shadowRoot?.querySelector<HTMLElement>('.wui-segmented-indicator')
+    if (!indicator) throw new Error('未找到 segmented 的 indicator')
+    // 看用户看到的结果：选中高亮覆盖在第二颗（同值的）option 上，而不是内部定位变量等于某个值。
     await pollUntil(() => {
-      const groupRect = group.getBoundingClientRect()
       const selectedRect = triggers[1]?.getBoundingClientRect()
-      const indicatorLeft = Number.parseFloat(group.style.getPropertyValue('--indicator-left'))
-      return selectedRect !== undefined && Math.abs(indicatorLeft - (selectedRect.left - groupRect.left)) < 0.5
+      const indicatorRect = indicator.getBoundingClientRect()
+      const center = (rect: DOMRect) => (rect.left + rect.right) / 2
+      return selectedRect !== undefined && Math.abs(center(indicatorRect) - center(selectedRect)) < 1
     }, 'indicator 未移动到同值 option 中被选中的那一项')
   })
 

@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it } from 'vite-plus/test'
 import { cdp, page } from 'vite-plus/test/browser'
 
+import { pollUntil, waitForFrame } from '@/shared/test-utils'
 import { setViewport } from '@/shared/test-utils/viewport'
 
 import { toast } from '..'
@@ -33,17 +34,10 @@ function findToast(id: string) {
   return Array.from(fallbackRoot()?.querySelectorAll('web-ui-toast') ?? []).find(el => el.toastId === id)
 }
 
-async function nextFrame(): Promise<void> {
-  await new Promise<void>(resolve => requestAnimationFrame(() => resolve()))
-}
-
-async function waitFor(condition: () => boolean, message: string): Promise<void> {
-  const deadline = performance.now() + 3000
-  while (!condition()) {
-    if (performance.now() >= deadline) throw new Error(message)
-    await nextFrame()
-  }
-}
+/**
+ * 挂载批次：批量挂载是微任务，`show()` 在其后的 rAF 里；连续两个 rAF 覆盖
+ * 「微任务 + 首个渲染步进」这条固定链路（不是轮询，没有可等的条件）。
+ */
 
 afterEach(async () => {
   toast._reset()
@@ -75,20 +69,22 @@ describe('WebUiToast 移动端适配（浏览器）', () => {
 
     const id = toast.info('touch close test', { id: 'touch-close', duration: 0 })
     await Promise.resolve()
-    await nextFrame()
-    await nextFrame()
+    await waitForFrame()
+    await waitForFrame()
 
     const toastElement = findToast(id)
-    expect(toastElement).toBeDefined()
+    // 缺元素必须当场红：后面的 `?.addEventListener` 与 `pollUntil` 会把「没挂上」
+    // 伪装成「closeReason 一直是 undefined / 条件永不成立」。
+    expect(toastElement, `toast ${id} 未挂载到 overlay root`).toBeTruthy()
     let closeReason: string | undefined
-    toastElement?.addEventListener('toast-close', event => {
+    toastElement!.addEventListener('toast-close', event => {
       closeReason = (event as CustomEvent<{ reason: string }>).detail.reason
     })
 
     const closeButton = page.getByRole('button', { name: 'Close' })
     expect(closeButton.length).toBe(1)
     await closeButton.click()
-    await waitFor(() => findToast(id) === undefined, 'duration:0 toast did not close from its close control')
+    await pollUntil(() => findToast(id) === undefined, 'duration:0 toast did not close from its close control', 5000)
 
     expect(closeReason).toBe('manual')
   })
