@@ -3,7 +3,7 @@ import '..'
 import { afterEach, describe, expect, it } from 'vite-plus/test'
 import { userEvent } from 'vite-plus/test/browser'
 
-import { pollUntil, waitForSettledLayout } from '@/shared/test-utils'
+import { pollUntil, waitForFrame, waitForSettledLayout } from '@/shared/test-utils'
 import { expectInsideViewport } from '@/shared/test-utils/viewport'
 
 import type { DrawerPlacement, WebUiDrawer } from '..'
@@ -178,7 +178,7 @@ async function pressDragFromCapsule(el: WebUiDrawer, placement: DrawerPlacement)
         clientY: startY + (delta[1] * axisSize * step) / 10
       })
     )
-    await new Promise(resolve => setTimeout(resolve, 32))
+    await waitForFrame()
   }
   await el.updateComplete
   const after = getDialog(el).getBoundingClientRect()

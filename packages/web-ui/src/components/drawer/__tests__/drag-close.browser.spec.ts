@@ -729,7 +729,9 @@ describe('WebUiDrawer 拖拽关闭（浏览器）', () => {
     })
 
     await dragAndRelease(el, { x: 30, y: 0 }, 10)
-    await waitFor(() => snapshot.length > 0, 1000)
+    // 等 transitionstart 真正派发：这是「事件会不会来」的轮询，收紧预算只会让并行负载下
+    // 偶发迟到的派发变成假红，用默认预算。
+    await waitFor(() => snapshot.length > 0)
 
     // 收尾由 CSS transition 驱动时不会有 WAAPI 动画参与；若实现退回逐帧脚本动画，
     // 这里会看到非 CSSTransition 的条目。
@@ -761,7 +763,7 @@ describe('WebUiDrawer 拖拽关闭（浏览器）', () => {
     await waitFor(() => !el.open, 5000)
     // 程序化关闭时 `open` 先落 false，transform 过渡在下一帧才启动，所以必须等
     // transitionstart 真正派发后再断言（直接在 `!el.open` 后断言会读到空数组）。
-    await waitFor(() => started.includes('transform'), 1000)
+    await waitFor(() => started.includes('transform'))
     expect(started).toContain('transform')
   })
 

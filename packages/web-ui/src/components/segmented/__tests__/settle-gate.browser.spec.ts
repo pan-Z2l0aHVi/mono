@@ -5,6 +5,7 @@ import { afterEach, describe, expect, it } from 'vite-plus/test'
 
 import type { WebUiSegmentedTrigger } from '@/components/segmented-trigger'
 import { pollUntil, queryA11y, waitForFrame, waitForUpdate } from '@/shared/test-utils'
+import { parseDuration } from '@/shared/theme/duration'
 
 import type { WebUiSegmented } from '..'
 
@@ -29,8 +30,30 @@ import type { WebUiSegmented } from '..'
 afterEach(() => document.body.replaceChildren())
 
 const EPS = 0.5
-/** 过渡时长（--wui-duration-trigger 默认 160ms）的 1.6 倍，确保飞行窗口确实过期。 */
-const GAP_MS = 260
+
+/*
+ * 「飞行窗口过期」只能靠时间判定：窗口是组件内部一个 `setTimeout`，没有公开观测面，而
+ * 直接落定的分支根本没有过渡可等（等动画收敛会在约两帧后返回，比窗口还短）。
+ *
+ * 时长取 indicator 上 `left` 那条过渡的计算值，不在测试里抄一份 160：组件的落定窗口与
+ * CSS 的过渡按契约同值（`segmented/index.ts` 的 `triggerDuration` 读同一个 token、兜底同
+ * 一个数）。抄死了就成了第二个真相来源，token 一改，窗口还没过期也照样「等够」。
+ * 系数 1.6 是给真实计时器漂移留的余量，不参与契约。
+ */
+function settleWindowMs(indicator: HTMLElement): number {
+  const styles = getComputedStyle(indicator)
+  const index = styles.transitionProperty
+    .split(',')
+    .map(name => name.trim())
+    .indexOf('left')
+  const duration = parseDuration(index === -1 ? '' : (styles.transitionDuration.split(',')[index] ?? ''))
+  if (duration === null || duration <= 0) {
+    throw new Error(
+      `indicator has no usable "left" transition: property="${styles.transitionProperty}" duration="${styles.transitionDuration}"`
+    )
+  }
+  return Math.ceil(duration * 1.6)
+}
 
 function optionSurface(trigger: WebUiSegmentedTrigger): HTMLElement {
   const surface = queryA11y(trigger, '[role="option"]')
@@ -147,7 +170,7 @@ describe('WebUiSegmented indicator 落定门（浏览器）', () => {
     // 先来一次快速连点（打开落定门），等窗口过期。
     await tap(segmented, triggers[1])
     await tap(segmented, triggers[2])
-    await new Promise(resolve => setTimeout(resolve, GAP_MS))
+    await new Promise(resolve => setTimeout(resolve, settleWindowMs(indicator)))
     await sampleLeft(indicator)
 
     // 再切一次：这一趟必须走完整过渡。

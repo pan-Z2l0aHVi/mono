@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it } from 'vite-plus/test'
 import { page } from 'vite-plus/test/browser'
 
-import { pollUntil, waitForFrame } from '@/shared/test-utils'
+import { pollUntil, waitForAnimationsToFinish, waitForFrame } from '@/shared/test-utils'
 
 import { toast } from '..'
 
@@ -32,6 +32,14 @@ async function waitMounted(): Promise<void> {
 function wait(ms: number): Promise<void> {
   return new Promise(resolve => setTimeout(resolve, ms))
 }
+
+/*
+ * 「悬停期间越过原 deadline 仍不退场」这条判据必须真的等过 duration，所以这里的等待时间
+ * 由用例自己传进去的 duration 推导，而不是各写一个字面量：把 3400/1400 改抄成常量就成了
+ * 第二个真相来源，改了 duration 忘记改它时，用例会在还差几百毫秒时就判绿。
+ * OVERDUE_MS 是给真实计时器漂移留的余量，不参与契约。
+ */
+const OVERDUE_MS = 400
 
 // 真实指针需要一处「别处」才能移开：固定定位在左下角，避开 top-right 的 toast。
 function createAwayTarget(): HTMLElement {
@@ -98,7 +106,8 @@ describe('toast 悬停暂停（浏览器）', () => {
   it('悬停期间不关闭，移开后恢复自动关闭', async () => {
     const away = createAwayTarget()
     await page.elementLocator(away).hover()
-    const id = toast.info('悬停我', { id: 'hover', position: 'top-right', duration: 3000 })
+    const duration = 3000
+    const id = toast.info('悬停我', { id: 'hover', position: 'top-right', duration })
     await waitMounted()
 
     const el = findToast(id)
@@ -110,7 +119,7 @@ describe('toast 悬停暂停（浏览器）', () => {
     await waitHoverPaused(el, '真实指针悬停后未进入暂停态')
 
     // 越过整段 duration 后仍应停留 —— 悬停暂停生效。
-    await wait(3400)
+    await wait(duration + OVERDUE_MS)
     expect(findToast(id)?.visible).toBe(true)
 
     // 移开指针后恢复自动关闭。
@@ -154,7 +163,8 @@ describe('toast 悬停暂停（浏览器）', () => {
    */
   it('挂载时指针已压上：入场直接进入悬停暂停，不点火计时', async () => {
     const el = document.createElement('web-ui-toast')
-    el.duration = 1000
+    const duration = 1000
+    el.duration = duration
     el.message = '挂载即悬停'
     document.body.appendChild(el)
     await el.updateComplete
@@ -165,7 +175,7 @@ describe('toast 悬停暂停（浏览器）', () => {
     el.show()
     await el.updateComplete
 
-    await wait(1400)
+    await wait(duration + OVERDUE_MS)
     expect(el.visible).toBe(true)
     expect(el.hoverPaused).toBe(true)
   })
@@ -194,8 +204,12 @@ describe('toast 悬停暂停（浏览器）', () => {
     const el = findToast(id)
     if (!el) throw new Error(`toast ${id} was not mounted into the overlay root`)
 
-    // 等入场完成再建立悬停，确保「悬停中被搬迁」这个前提成立。
-    await wait(400)
+    // 等入场过渡收敛再建立悬停：搬迁的前提是「指针压在已经就位（transform 落定）的 toast
+    // 上」。「等 400ms」只是在赌 `--wui-duration-toast-enter` 的当前值，改 token 就会让这条
+    // 用例在动画中途就取事件；收敛判据可直接观察（subtree 里没有还在跑的过渡）。
+    if (!(await waitForAnimationsToFinish(el))) {
+      throw new Error('toast entrance transition was still running when the budget ran out')
+    }
 
     // 合成 pointerenter 建立悬停暂停：真实光标停在 away，搬迁补发的事件不会来打断。
     el!.dispatchEvent(new PointerEvent('pointerenter', { pointerType: 'mouse' }))
@@ -233,9 +247,10 @@ describe('toast 悬停暂停（浏览器）', () => {
       else Reflect.deleteProperty(Node.prototype, 'appendChild')
       restoreMove()
     }
-    // custom element reactions 在微任务 checkpoint 刷新，等一个更新周期再断言。
+    // custom element reactions 在微任务 checkpoint 刷新，等一帧再断言：
+    // 帧边界是确定性的，`setTimeout(0)` 只是「大概轮到过了」。
     await el!.updateComplete
-    await wait(0)
+    await waitForFrame()
 
     /*
      * 相位一：摘出已发生（disconnectedCallback 跑过，document 兜底随之摘掉）——此刻

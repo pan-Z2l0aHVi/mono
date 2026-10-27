@@ -33,11 +33,20 @@ async function settleMicrotasks(spins = 50): Promise<void> {
   }
 }
 
-/** 等待 MSW 捕获到指定数量的请求；fetch → service worker 往返依赖真实时间。 */
+/**
+ * 等待 MSW 捕获到指定数量的请求；fetch → service worker 往返依赖真实时间。
+ * 到达上限仍不足数就直接失败：静默返回会把失败推迟到后面的载荷断言，
+ * 报错读起来像「payload 不对」，实际是「请求根本没落地」。
+ */
 async function waitForCaptured(minCount: number, timeout = 2000): Promise<void> {
   const start = Date.now()
   while (capturedRequests.length < minCount && Date.now() - start < timeout) {
     await new Promise(resolve => setTimeout(resolve, 10))
+  }
+  if (capturedRequests.length < minCount) {
+    throw new Error(
+      `expected at least ${minCount} captured request(s) within ${timeout}ms, got ${capturedRequests.length}`
+    )
   }
 }
 
