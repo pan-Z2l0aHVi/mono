@@ -53,6 +53,9 @@ function createRuntime(overrides: Partial<LibraryRuntime> = {}): LibraryRuntime 
     probeURLSourceOnOpen: async () => {
       throw new Error('未使用')
     },
+    defaultOpenWith: async () => {
+      throw new Error('未使用')
+    },
     openExternal: async () => {
       throw new Error('未使用')
     },

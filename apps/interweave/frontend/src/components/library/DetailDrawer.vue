@@ -35,6 +35,7 @@ const props = defineProps<{
   editingNameKey: string | null
   editorRef: NameEditorRef
   replacingSourceIds: string[]
+  resolveDefaultOpenWith: (resource: ResourceView) => Promise<string>
 }>()
 
 const emit = defineEmits<{
@@ -47,6 +48,8 @@ const emit = defineEmits<{
   delete: [resource: ResourceView]
   preview: [resource: ResourceView]
   recover: [source: ResourceSourceView]
+  /** 用系统默认应用打开该资源；由父级经由 runtime 交给操作系统。 */
+  openDefault: [resource: ResourceView]
 }>()
 
 const DRAWER_TITLE_NAME_CLASS = 'min-w-0 flex-[1_1_auto] text-[14px] leading-6 wrap-break-word text-(--wui-color-text)'
@@ -134,6 +137,28 @@ function locationButtonColor(source: ResourceSourceView) {
 const placement = computed(() => (props.mobile ? 'bottom' : 'right'))
 const unavailableSource = computed(() => props.resource?.sources.find(source => !source.available) ?? null)
 const editingTitle = computed(() => props.editingNameKey === DRAWER_TITLE_EDITOR_KEY)
+
+/*
+ * 「打开方式」显示系统默认应用的真实名字。drawer 会切资源，异步查询用请求序号作废旧结果；
+ * 名字只影响文案，查不到时回落通用文案，打开动作仍由父级交给系统默认关联。
+ */
+const defaultOpenWithName = ref('')
+let defaultOpenWithRequest = 0
+
+watch(
+  () => [props.open, props.resource?.id] as const,
+  ([open]) => {
+    const request = ++defaultOpenWithRequest
+    defaultOpenWithName.value = ''
+    const resource = props.resource
+    if (!open || !resource) return
+    void props.resolveDefaultOpenWith(resource).then(name => {
+      if (request !== defaultOpenWithRequest) return
+      defaultOpenWithName.value = name
+    })
+  },
+  { immediate: true }
+)
 
 function handleOpenChange(event: WebUiEvent<WebUiDrawer, 'open-change'>) {
   if (event.target !== event.currentTarget) return
@@ -312,13 +337,9 @@ onScopeDispose(() => clearTimeout(copiedRevertTimer))
                 <span slot="suffix" class="flex-1" aria-hidden="true" />
                 <web-ui-icon slot="suffix" :icon="lucideChevronRight" :size="14" :class="CHEVRON_ICON_CLASS" />
               </web-ui-button>
-              <web-ui-dropdown-item>
+              <web-ui-dropdown-item @click="emit('openDefault', resource)">
                 <web-ui-icon slot="prefix" :icon="lucideExternalLink" :size="14" />
-                系统默认应用
-              </web-ui-dropdown-item>
-              <web-ui-dropdown-item>
-                <web-ui-icon slot="prefix" :icon="lucideEye" :size="14" />
-                预览
+                {{ defaultOpenWithName || '系统默认应用' }}
               </web-ui-dropdown-item>
             </web-ui-dropdown>
           </template>

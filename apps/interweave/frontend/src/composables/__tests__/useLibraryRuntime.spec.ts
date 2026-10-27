@@ -77,6 +77,7 @@ function createRuntime(overrides: Partial<LibraryRuntime> = {}): LibraryRuntime 
       source: createResource().sources[0]!,
       outcome: SourceProbeOutcome.SourceProbeOutcomeAvailable
     }),
+    defaultOpenWith: async () => '',
     openExternal: async () => {},
     resourceMediaURL: () => null,
     pendingFilePreviewURL: () => null,

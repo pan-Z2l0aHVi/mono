@@ -226,6 +226,16 @@ export function useLibraryRuntime(injectedRuntime?: LibraryRuntime) {
     return runtime.getClipboardFilePaths()
   }
 
+  async function defaultOpenWith(target: string) {
+    if (!runtime.isAvailable) return ''
+    try {
+      return await runtime.defaultOpenWith(target)
+    } catch {
+      // 查询不到默认应用不是错误：UI 回落到通用「系统默认应用」文案，打开动作照旧可用。
+      return ''
+    }
+  }
+
   async function openExternal(target: string) {
     error.value = ''
     try {
@@ -301,6 +311,7 @@ export function useLibraryRuntime(injectedRuntime?: LibraryRuntime) {
     chooseFilePaths,
     chooseFilePath,
     getClipboardFilePaths,
+    defaultOpenWith,
     openExternal,
     resourceMediaURL,
     subscribeToDroppedFiles,

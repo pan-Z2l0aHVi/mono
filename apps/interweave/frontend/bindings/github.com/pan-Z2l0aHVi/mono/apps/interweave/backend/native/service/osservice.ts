@@ -11,6 +11,16 @@
 import { Call as $Call, CancellablePromise as $CancellablePromise, Create as $Create } from "@wailsio/runtime";
 
 /**
+ * DefaultOpenWith 返回操作系统为 target 选定的默认应用显示名。
+ * 
+ * http/https 链接取默认浏览器，其余按本地文件路径取默认打开方式。只读取系统关联，
+ * 不枚举可选应用，也不启动任何进程；真正打开仍走 OpenExternal。
+ */
+export function DefaultOpenWith(target: string): $CancellablePromise<string> {
+    return $Call.ByID(1589943487, target);
+}
+
+/**
  * GetClipboardFilePaths 返回剪贴板中当前存在的普通文件绝对路径，不读取文件内容。
  */
 export function GetClipboardFilePaths(): $CancellablePromise<string[]> {

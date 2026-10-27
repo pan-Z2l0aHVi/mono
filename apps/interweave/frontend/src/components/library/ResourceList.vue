@@ -1,20 +1,10 @@
 <script setup lang="ts">
 import type { WebUiContextMenu, WebUiEditableText, WebUiEvent } from '@greypan/web-ui'
 import {
-  lucideClapperboard,
-  lucideCode,
   lucideEye,
   lucideExternalLink,
-  lucideFile,
-  lucideFileText,
-  lucideFilm,
-  lucideGlobe,
-  lucideHeadphones,
-  lucideImage,
   lucideInfo,
-  lucideMusic,
   lucidePenLine,
-  lucidePlay,
   lucideRefreshCw,
   lucideTags,
   lucideTrash2
@@ -22,7 +12,7 @@ import {
 import { WindowVirtualizer } from 'virtua/vue'
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 
-import type { ResourceKind, ResourceSourceView, ResourceView } from '@/stores/library'
+import type { ResourceSourceView, ResourceView } from '@/stores/library'
 
 import type { NameEditorRef } from './rename'
 import ResourceRow from './ResourceRow.vue'
@@ -38,6 +28,7 @@ const props = defineProps<{
   runtimeAvailable: boolean
   emptyDescription: string
   mediaUrlFor: (sourceId: string) => string | null
+  resolveDefaultOpenWith: (resource: ResourceView) => Promise<string>
 }>()
 
 const emit = defineEmits<{
@@ -52,6 +43,8 @@ const emit = defineEmits<{
   setChecked: [resourceId: string, checked: boolean]
   renameChange: [resource: ResourceView, event: WebUiEvent<WebUiEditableText, 'change'>]
   cancelRename: []
+  /** 用系统默认应用打开该资源；由父级经由 runtime 交给操作系统。 */
+  openDefault: [resource: ResourceView]
   /** 键盘导航/context menu 请求激活某一行：由父级把 activeResourceId 置为该行资源的 id。 */
   activate: [resource: ResourceView]
 }>()
@@ -844,29 +837,30 @@ function onBeforeUnmountHooks() {
 
 onBeforeUnmount(onBeforeUnmountHooks)
 
-const openWithApps: Partial<Record<ResourceKind, Array<{ label: string; icon: typeof lucideEye }>>> = {
-  image: [
-    { label: '预览', icon: lucideEye },
-    { label: '看图', icon: lucideImage }
-  ],
-  video: [
-    { label: '视频播放器', icon: lucidePlay },
-    { label: 'iMovie', icon: lucideClapperboard }
-  ],
-  audio: [
-    { label: '音乐播放器', icon: lucideMusic },
-    { label: 'GarageBand', icon: lucideHeadphones }
-  ],
-  document: [
-    { label: '文本编辑', icon: lucideFileText },
-    { label: 'Notion', icon: lucidePenLine }
-  ],
-  json: [{ label: 'VS Code', icon: lucideCode }],
-  web: [
-    { label: 'Safari', icon: lucideGlobe },
-    { label: 'Chrome', icon: lucideGlobe }
-  ],
-  file: [{ label: '系统文件', icon: lucideFile }]
+/*
+ * 「打开方式」显示系统默认应用的真实名字。名字是异步查出来的，而右键可以连续落到不同行上，
+ * 因此用请求序号作废旧结果——否则慢的那次查询会把后一行的名字盖回去。
+ * 名字只影响文案：查不到时回落「系统默认应用」，点击仍交给系统按默认关联打开。
+ */
+const defaultOpenWithName = ref('')
+let defaultOpenWithRequest = 0
+
+async function loadDefaultOpenWith(resource: ResourceView | null) {
+  const request = ++defaultOpenWithRequest
+  defaultOpenWithName.value = ''
+  if (!resource) return
+  const name = await props.resolveDefaultOpenWith(resource)
+  if (request !== defaultOpenWithRequest) return
+  defaultOpenWithName.value = name
+}
+
+watch(contextResource, resource => {
+  void loadDefaultOpenWith(resource)
+})
+
+function handleOpenDefault(resource: ResourceView | null) {
+  if (resource) emit('openDefault', resource)
+  closeContextMenu()
 }
 
 async function openContextMenu(resource: ResourceView, event: MouseEvent) {
@@ -1104,16 +1098,9 @@ function handleRenameChange(resource: ResourceView, event: WebUiEvent<WebUiEdita
       <web-ui-dropdown-item v-if="contextResource?.available" submenu>
         <web-ui-icon slot="prefix" :icon="lucideExternalLink" :size="14" />
         打开方式
-        <web-ui-dropdown-item>
+        <web-ui-dropdown-item @click="handleOpenDefault(contextResource)">
           <web-ui-icon slot="prefix" :icon="lucideExternalLink" :size="14" />
-          系统默认应用
-        </web-ui-dropdown-item>
-        <web-ui-dropdown-item
-          v-for="app in contextResource ? (openWithApps[contextResource.kind] ?? []) : []"
-          :key="app.label"
-        >
-          <web-ui-icon slot="prefix" :icon="app.icon" :size="14" />
-          {{ app.label }}
+          {{ defaultOpenWithName || '系统默认应用' }}
         </web-ui-dropdown-item>
       </web-ui-dropdown-item>
       <!--
