@@ -2,7 +2,7 @@ import '@/assets/global.css'
 
 import type { WebUiSelect, WebUiTheme } from '@greypan/web-ui'
 import { createHead } from '@unhead/vue/client'
-import { mount } from '@vue/test-utils'
+import { flushPromises, mount } from '@vue/test-utils'
 import { expect, it, vi } from 'vite-plus/test'
 import { userEvent } from 'vite-plus/test/browser'
 import { nextTick } from 'vue'
@@ -14,6 +14,7 @@ import { exampleDocs as chineseDocs } from '@/generated/examples'
 import ButtonPage from '@/pages/components/button.vue'
 import Home from '@/pages/home/index.vue'
 
+import { prepareExamples } from '../examples'
 import { loadDemoLocale } from '../locale'
 
 it('通过全局选择器切换壳、文档、API、运行示例与双框架源码，并保留路由和主题', async () => {
@@ -57,7 +58,9 @@ it('通过全局选择器切换壳、文档、API、运行示例与双框架源�
     expect(wrapper.text()).toContain('Samples')
     expect(wrapper.find('web-ui-button[aria-label="Copy code"]').exists()).toBe(true)
     const first = wrapper.find('[data-sample-preview]')
-    await vi.waitFor(() => expect(first.find('web-ui-button').exists()).toBe(true))
+    await prepareExamples('en', [en], ['button'])
+    await flushPromises()
+    expect(first.find('web-ui-button').exists()).toBe(true)
     const oldPreview = first.element.firstElementChild
     expect(wrapper.find('[data-example-doc="button"]').text()).toContain('Name')
     const source = () => wrapper.findAll('[data-code] pre')[1]!.element.textContent
