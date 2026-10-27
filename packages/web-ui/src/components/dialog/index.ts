@@ -5,9 +5,9 @@ import { html, LitElement, nothing, type PropertyValues, unsafeCSS } from 'lit'
 import { customElement, property, state } from 'lit/decorators.js'
 
 import modalSurface from '@/assets/modal-surface.css?inline'
+import scrollbarStyle from '@/assets/scrollbar.css?inline'
 import glass from '@/classes/glass.css?inline'
 import { oouiClose } from '@/icons'
-import internalScrollbars from '@/scrollbars/internal.css?inline'
 import { UserChangeController } from '@/shared/events/user-change'
 import { trapTabKey } from '@/shared/focus/tabbable'
 import { LocaleController, resolveBuiltinLabel } from '@/shared/locale/builtin-labels'
@@ -20,7 +20,7 @@ import style from './style.css?inline'
 
 @customElement('web-ui-dialog')
 export class WebUiDialog extends LitElement {
-  static override styles = [unsafeCSS(glass), unsafeCSS(modalSurface), unsafeCSS(internalScrollbars), unsafeCSS(style)]
+  static override styles = [unsafeCSS(glass), unsafeCSS(modalSurface), unsafeCSS(scrollbarStyle), unsafeCSS(style)]
 
   @property({ type: Boolean, reflect: true }) open = false
   @property({ type: Boolean, reflect: true }) closable = false

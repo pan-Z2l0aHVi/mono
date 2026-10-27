@@ -2,7 +2,7 @@
 
 > Unplugin for web components auto-import in React, Vue, and Vite HTML entries
 
-English | [简体中文](./README.CN.md)
+English | [简体中文](https://github.com/pan-Z2l0aHVi/mono/blob/main/packages/unplugin-web-components/README.CN.md)
 
 ## Features
 

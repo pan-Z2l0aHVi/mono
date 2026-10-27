@@ -1,9 +1,5 @@
 /* stylelint-disable custom-property-pattern */
 @import 'tailwindcss';
-
-/* 全局 scrollbar 主题：主题类、库的结构样式与 --os-* 度量都在这里面，一条 import 拿全。
-   只对初始化过 OverlayScrollbars 的元素生效，未接管的容器保持原生 scrollbar。 */
-@import '@greypan/web-ui/scrollbars.css';
 @import '@greypan/web-ui/classes.css';
 
 @custom-variant dark (&:where(web-ui-theme[resolved-appearance='dark'] *));

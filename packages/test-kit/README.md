@@ -2,7 +2,7 @@
 
 > Test infrastructure plugins for Vitest browser mode with MSW
 
-English | [简体中文](./README.CN.md)
+English | [简体中文](https://github.com/pan-Z2l0aHVi/mono/blob/main/packages/test-kit/README.CN.md)
 
 ## Features
 
@@ -101,12 +101,12 @@ Create an MSW lifecycle plugin. Returns a plugin with worker management methods.
 
 **Returns:** `MswContext` with:
 
-| Property   | Type                  | Description                    |
-| ---------- | --------------------- | ------------------------------ |
-| `worker`   | `SetupWorker`         | MSW service worker instance    |
-| `startMsw` | `() => Promise<void>` | Start the service worker       |
-| `stopMsw`  | `() => void`          | Stop the service worker        |
-| `resetMsw` | `() => void`          | Reset all handlers to defaults |
+| Property   | Type                     | Description                    |
+| ---------- | ------------------------ | ------------------------------ |
+| `worker`   | `SetupWorker`            | MSW service worker instance    |
+| `startMsw` | `() => Promise<unknown>` | Start the service worker       |
+| `stopMsw`  | `() => void`             | Stop the service worker        |
+| `resetMsw` | `() => void`             | Reset all handlers to defaults |
 
 ### `defineCapturedRequests()`
 

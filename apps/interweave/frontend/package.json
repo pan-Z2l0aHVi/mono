@@ -13,6 +13,7 @@
     "build:bundle": "vue-tsc --build && vp build --mode production"
   },
   "dependencies": {
+    "@greypan/app-scrollbars": "workspace:*",
     "@greypan/browser-kit": "workspace:*",
     "@greypan/js-kit": "workspace:*",
     "@greypan/web-ui": "workspace:*",

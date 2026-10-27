@@ -2,7 +2,7 @@
 
 > 一个监听 dist 构建产物变化并触发全量刷新的构建插件，提供 Vite 与 Webpack 双入口
 
-[English](./README.md) | 简体中文
+[English](https://github.com/pan-Z2l0aHVi/mono/blob/main/packages/deps-reload/README.md) | 简体中文
 
 ## 功能
 

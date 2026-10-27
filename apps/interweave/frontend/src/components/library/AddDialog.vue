@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import appScrollbarsOptions from '@greypan/app-scrollbars'
 import {
   imagePreview,
   type ImagePreviewHandle,
@@ -15,7 +16,6 @@ import {
   lucideTrash2,
   lucideUpload
 } from '@greypan/web-ui/icons'
-import { webUiScrollbarsOptions } from '@greypan/web-ui/scrollbars'
 import { OverlayScrollbarsComponent } from 'overlayscrollbars-vue'
 import { nextTick, onMounted, onScopeDispose, ref, watch, type ComponentPublicInstance } from 'vue'
 
@@ -336,7 +336,7 @@ function handleRenameChange(item: LibraryQueueItem, event: WebUiEvent<WebUiEdita
 
         <OverlayScrollbarsComponent
           v-if="queue.length"
-          :options="webUiScrollbarsOptions"
+          :options="appScrollbarsOptions"
           class="h-full min-h-0 overflow-y-auto rounded-[18px] border border-black/6 bg-white dark:border-white/8 dark:bg-(--wui-color-surface-raised)"
         >
           <!--

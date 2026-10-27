@@ -1,8 +1,8 @@
 import menuPortalStyle from '@/assets/menu-portal.css?inline'
 import overlayMotion from '@/assets/overlay-motion.css?inline'
+import scrollbarStyle from '@/assets/scrollbar.css?inline'
 import toastContainerStyle from '@/assets/toast-containers.css?inline'
 import glass from '@/classes/glass.css?inline'
-import internalScrollbars from '@/scrollbars/internal.css?inline'
 
 /**
  * Theme-owned overlay root plumbing: applies shared overlay styles to a theme
@@ -10,7 +10,7 @@ import internalScrollbars from '@/scrollbars/internal.css?inline'
  */
 const FALLBACK_ROOT_ATTRIBUTE = 'data-wui-overlay-root'
 
-const overlayStyle = `${glass}\n${toastContainerStyle}\n${menuPortalStyle}\n${overlayMotion}\n${internalScrollbars}`
+const overlayStyle = `${glass}\n${toastContainerStyle}\n${menuPortalStyle}\n${overlayMotion}\n${scrollbarStyle}`
 
 export function applyOverlayRootStyles(root: ShadowRoot) {
   const style = document.createElement('style')

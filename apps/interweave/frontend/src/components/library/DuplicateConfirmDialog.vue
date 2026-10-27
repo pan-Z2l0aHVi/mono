@@ -1,7 +1,7 @@
 <script setup lang="ts">
+import appScrollbarsOptions from '@greypan/app-scrollbars'
 import type { WebUiDialog, WebUiEvent } from '@greypan/web-ui'
 import { lucideCopy, lucideTriangleAlert } from '@greypan/web-ui/icons'
-import { webUiScrollbarsOptions } from '@greypan/web-ui/scrollbars'
 import { OverlayScrollbarsComponent } from 'overlayscrollbars-vue'
 
 import type { LibraryDuplicatePrompt } from './addQueue'
@@ -47,7 +47,7 @@ function handleOpenChange(event: WebUiEvent<WebUiDialog, 'open-change'>) {
     -->
     <OverlayScrollbarsComponent
       v-if="prompt"
-      :options="webUiScrollbarsOptions"
+      :options="appScrollbarsOptions"
       class="mt-3 max-h-56 overflow-y-auto rounded-xl bg-black/3 [&_[data-overlayscrollbars-viewport]:focus-visible]:outline-3 [&_[data-overlayscrollbars-viewport]:focus-visible]:outline-offset-2 [&_[data-overlayscrollbars-viewport]:focus-visible]:outline-(--wui-color-focus-ring,rgb(0_136_255/0.4)) dark:bg-white/5"
     >
       <!--

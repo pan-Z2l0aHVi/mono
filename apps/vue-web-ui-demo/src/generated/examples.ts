@@ -8507,6 +8507,12 @@ export const exampleDocs: ExampleDoc[] = [
             "<p>Focus indicator 颜色，由 accent 派生</p>",
             "color-mix(in srgb, var(--wui-color-accent, #0071e3) 40%, transparent)",
             "color-mix(in srgb, var(--wui-color-accent, #0a84ff) 62%, var(--wui-color-text) 38%)"
+          ],
+          [
+            "--wui-scrollbar-handle",
+            "<p>原生 scrollbar 的 thumb 颜色</p>",
+            "rgb(0 0 0 / 0.39)",
+            "rgb(255 255 255 / 0.5)"
           ]
         ]
       },

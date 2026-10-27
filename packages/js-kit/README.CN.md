@@ -2,16 +2,18 @@
 
 > JavaScript 工具函数库，基于可组合插件系统
 
-[English](./README.md) | 简体中文
+[English](https://github.com/pan-Z2l0aHVi/mono/blob/main/packages/js-kit/README.md) | 简体中文
 
 ## 功能
 
 - **插件系统**：基于 `definePlugin` 的可组合插件，支持 `.use()` 链式组合和 `.make()` 实例化
 - **URL**：解析和构建 URL，支持查询参数和 hash
-- **Number**：精度舍入和范围限制
-- **Timer**：支持 leading/trailing/both 三种模式的防抖，支持暂停/恢复的可控定时器
+- **Number**：字节数格式化与范围限制
+- **String**：文件扩展名提取
+- **Timer**：支持 leading/trailing/both 三种模式的防抖，支持暂停/恢复与手动 tick 的可控定时器
 - **Shortcut**：fire-and-forget 的 `safeCall` 包装器
 - **Paradigm**：Rust 风格的 `Result` 类型工具
+- **Types**：共享类型工具（`ValueOf`、`DeepPartial`、`Equal` 等）
 
 ## 安装
 
@@ -77,6 +79,12 @@ await ctx.batchEmit({ id: 1 })
 await ctx.batchEmit({ id: 2 })
 ```
 
+`batchEmit(data, delay = 0)` 返回本批 flush 出来的数组。`delay` 为 `0` 或负数时立即调用 `onFlushed([data])` 并以 `[data]` resolve；正数则按延迟聚合。`flush()` 立即发出当前队列。
+
+| 参数项              | 类型                                    | 默认值 | 说明              |
+| ------------------- | --------------------------------------- | ------ | ----------------- |
+| `options.onFlushed` | `(items: S[]) => void \| Promise<void>` | -      | 每批 flush 时调用 |
+
 ### `defineQueue<T>(options)`
 
 「交付即消费」的通用队列。调用 `onConsume` 后立即移除条目，不等待消费者返回的 Promise；适合 fire-and-forget 任务。
@@ -85,7 +93,7 @@ await ctx.batchEmit({ id: 2 })
 
 「消费者确认后消费」的通用队列。只有 `onConsume` 返回的 Promise fulfilled 后才移除条目；rejection 只影响当前项，失败项可由 `resume()` 或 `flush()` 再次尝试。
 
-两种队列都提供 `enqueue()`、`pause()`、`resume()` 和异步 `flush()`，并支持 `initialItems`、同步 `onPersist` 快照持久化以及 `onConsumeError`。完整 option 表、flush 与 persist-before-commit 语义、以及在消费者内调用 `flush()` 的循环等待约束见 [`src/plugin-system/README.md`](./src/plugin-system/README.md)。
+两种队列都提供 `enqueue()`、`pause()`、`resume()` 和异步 `flush()`，并支持 `initialItems`、同步 `onPersist` 快照持久化以及 `onConsumeError`。完整 option 表、flush 与 persist-before-commit 语义、以及在消费者内调用 `flush()` 的循环等待约束见 [`src/plugin-system/README.md`](https://github.com/pan-Z2l0aHVi/mono/blob/main/packages/js-kit/src/plugin-system/README.md)。
 
 ## API
 
@@ -118,7 +126,7 @@ await ctx.batchEmit({ id: 2 })
 | `opts`    | `Partial<URLObject>` | -      | URL 组件：`base`、`query`、`hash` |
 | `omitNil` | `boolean`            | `true` | 是否移除查询参数中的空值          |
 
-完整的 `URLObject` 结构、相对路径行为与示例见 [`src/url/README.md`](./src/url/README.md)。
+完整的 `URLObject` 结构、相对路径行为与示例见 [`src/url/README.md`](https://github.com/pan-Z2l0aHVi/mono/blob/main/packages/js-kit/src/url/README.md)。
 
 ### `clamp(val, min, max)`
 
@@ -149,20 +157,35 @@ await ctx.batchEmit({ id: 2 })
 
 ### `defineControllableInterval(options)`
 
-创建可控定时器，支持暂停/恢复。返回包含 `start`、`pause`、`resume`、`stop` 方法的插件。
+创建可控定时器，支持暂停/恢复。返回包含 `start`、`pause`、`resume`、`stop`、`tick` 方法的插件。
+
+| 方法          | 说明                                                  |
+| ------------- | ----------------------------------------------------- |
+| `start()`     | 启动定时器；已暂停的定时器应使用 `resume()`。         |
+| `pause()`     | 暂停并保留当前周期剩余时间。                          |
+| `resume()`    | 从剩余时间继续，而不是重新开始整个周期。              |
+| `stop()`      | 取消定时器并重置状态。                                |
+| `tick(delay)` | 在 `delay` 毫秒后额外触发一次回调，不改变暂停状态机。 |
 
 | 参数      | 类型                                         | 默认值 | 说明       |
 | --------- | -------------------------------------------- | ------ | ---------- |
 | `options` | `{ callback: () => void; interval: number }` | -      | 定时器配置 |
 
+```ts
+const timer = defineControllableInterval({ callback: () => console.log('tick'), interval: 1000 }).make()
+timer.start()
+```
+
 ### `debounce(func, options?)`
 
-防抖函数，支持三种 timing 模式。
+防抖函数，支持三种 timing 模式。返回 `call`、`cancel`、`flush`、`isPending` 与 `cachedValue`。
 
-| 参数      | 类型                                                                                 | 默认值 | 说明         |
-| --------- | ------------------------------------------------------------------------------------ | ------ | ------------ |
-| `func`    | `Function`                                                                           | -      | 待防抖的函数 |
-| `options` | `{ timing?: 'trailing' \| 'leading' \| 'both'; waitMs: number; maxWaitMs?: number }` | -      | 防抖 option  |
+| 参数      | 类型                                                                                  | 默认值 | 说明         |
+| --------- | ------------------------------------------------------------------------------------- | ------ | ------------ |
+| `func`    | `Function`                                                                            | -      | 待防抖的函数 |
+| `options` | `{ timing?: 'trailing' \| 'leading' \| 'both'; waitMs?: number; maxWaitMs?: number }` | -      | 防抖 option  |
+
+`maxWaitMs` 不能小于 `waitMs`，否则调用时抛错。`leading` 模式在类型面上不接受 `maxWaitMs`。
 
 ### `safeCall(fn, options?)`
 
@@ -177,29 +200,32 @@ fire-and-forget 包装器。捕获同步异常和异步 rejection；默认静默
 
 Result 类型命名空间，提供 Rust 风格的错误处理。
 
-| 方法             | 说明                    |
-| ---------------- | ----------------------- |
-| `ok(value)`      | 创建成功结果            |
-| `err(error)`     | 创建错误结果            |
-| `isOk(result)`   | 检查结果是否成功        |
-| `isErr(result)`  | 检查结果是否失败        |
-| `to(fn)`         | 包装函数使其返回 Result |
-| `unwrap(result)` | 提取值或抛出错误        |
-
-**导入路径：**
+| 方法             | 说明                                                |
+| ---------------- | --------------------------------------------------- |
+| `ok(value)`      | 创建成功结果                                        |
+| `err(error)`     | 创建错误结果                                        |
+| `isOk(result)`   | 检查结果是否成功                                    |
+| `isErr(result)`  | 检查结果是否失败                                    |
+| `to(promise)`    | 把 Promise 解析为 `Ok`，或把 rejection 捕获为 `Err` |
+| `unwrap(result)` | 返回成功值或错误载荷；不会抛错                      |
 
 ```ts
 import { rust } from '@greypan/js-kit/rust'
+// 也可以从 '@greypan/js-kit' 导入
+
+const result = await rust.to(fetch('/api/user'))
+if (rust.isOk(result)) console.log(result.value)
+else console.error(rust.unwrap(result))
 ```
 
 ### 类型工具
 
-| 类型                    | 说明                 |
-| ----------------------- | -------------------- |
-| `ValueOf<T>`            | 对象所有值类型的联合 |
-| `ArrayItem<T>`          | 数组元素类型         |
-| `ArgumentType<T>`       | 函数第一个参数的类型 |
-| `DeepPartial<T>`        | 深度可选             |
-| `DeepRequired<T>`       | 深度必选             |
-| `ClassPropertyTypes<T>` | 类属性类型           |
-| `Equal<X, Y>`           | 类型相等性检查       |
+| 类型                    | 说明                                     |
+| ----------------------- | ---------------------------------------- |
+| `ValueOf<T>`            | 对象所有值类型的联合                     |
+| `ArrayItem<T>`          | 数组元素类型                             |
+| `ArgumentType<T>`       | 函数参数的元素类型（多参数时为联合类型） |
+| `DeepPartial<T>`        | 深度可选                                 |
+| `DeepRequired<T>`       | 深度必选                                 |
+| `ClassPropertyTypes<T>` | 类属性类型                               |
+| `Equal<X, Y>`           | 类型相等性检查                           |

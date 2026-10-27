@@ -76,9 +76,9 @@ db.query('SELECT 1')
 
 批量事件发射器。收集事件并在延迟后批量触发。
 
-| 参数                | 类型                   | 默认值 | 说明             |
-| ------------------- | ---------------------- | ------ | ---------------- |
-| `options.onFlushed` | `(items: S[]) => void` | -      | 批量刷新时的回调 |
+| 参数                | 类型                                    | 默认值 | 说明             |
+| ------------------- | --------------------------------------- | ------ | ---------------- |
+| `options.onFlushed` | `(items: S[]) => void \| Promise<void>` | -      | 批量刷新时的回调 |
 
 ```ts
 import { defineBatchEmitter } from '@greypan/js-kit'
@@ -88,9 +88,8 @@ const batch = defineBatchEmitter<{ id: number }>({
 })
 
 const ctx = batch.make()
-ctx.emit({ id: 1 })
-ctx.emit({ id: 2 })
-// 经过 batchDelay 毫秒后，onFlushed 收到 [{ id: 1 }, { id: 2 }]
+await Promise.all([ctx.batchEmit({ id: 1 }, 100), ctx.batchEmit({ id: 2 }, 100)])
+// 延迟结束后，onFlushed 只收到一次 [{ id: 1 }, { id: 2 }]
 ```
 
 ### `defineQueue<T>(options)`
