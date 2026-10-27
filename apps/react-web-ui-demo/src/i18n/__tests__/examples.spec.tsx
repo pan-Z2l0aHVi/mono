@@ -1,9 +1,22 @@
 import { act, useState, type ComponentType } from 'react'
 import { Suspense } from 'react'
 import { createRoot } from 'react-dom/client'
-import { expect, it } from 'vite-plus/test'
+import { expect, it, vi } from 'vite-plus/test'
 
 import { createDemo } from '../examples'
+
+it('运行示例下载失败后允许重新加载，并复用成功的结果', async () => {
+  const module = { default: () => <button>Ready</button> }
+  const load = vi
+    .fn<() => Promise<typeof module>>()
+    .mockRejectedValueOnce(new Error('Offline'))
+    .mockResolvedValue(module)
+  const entry = createDemo(load)
+  await expect(entry.load()).rejects.toThrow('Offline')
+  await expect(entry.load()).resolves.toBe(module)
+  await expect(entry.load()).resolves.toBe(module)
+  expect(load).toHaveBeenCalledTimes(2)
+})
 
 it('初次懒载后重渲染不改变运行示例身份或重置状态', async () => {
   function Counter() {

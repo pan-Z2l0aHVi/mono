@@ -7,6 +7,19 @@ import toRuntime from 'wuchale/runtime'
 
 import { component, transform } from './helpers'
 
+it.each([
+  `<p>Read {{ mark('before') }} <span :title="mark('attribute')">{{ mark('inside') }}</span> {{ mark('after') }} now.</p>`,
+  `<p>Read <Card>{{ mark('slot') }}</Card> now.</p>`,
+  `<p>Read <Card><span :title="mark('slot')">this</span></Card> now.</p>`,
+  `<p>Read <a :title="mark('first')">this</a> and <a :title="mark('second')">that</a> now.</p>`
+])('无法保留求值顺序或 slot 惰性时，整句保留并警告：%s', async template => {
+  const source = `<script setup>function mark(value) { return value }</script><template>${template}</template>`
+  const result = await transform(source)
+  expect(result.bodies).toEqual([])
+  expect(result.code).toBe(source)
+  expect(result.warn).toHaveBeenCalledWith(expect.objectContaining({ code: 'unsupported-template' }))
+})
+
 it('整句重排原生链接与内联组件，保留事件、动态属性和组件状态', async () => {
   const result = await transform(
     '<script setup>import {ref} from "vue"\nconst href="/guide"; const hits=ref(0)</script><template><div><p>Read <a :href="href" @click.prevent="hits++">this</a> and <Counter/> now.</p><output>{{ hits }}</output></div></template>'

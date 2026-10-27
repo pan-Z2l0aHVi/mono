@@ -34,6 +34,16 @@ export function richMessage(
   children: string,
   hasVPre: (node: ElementNode) => boolean
 ) {
+  const hasInterpolation = (node: TemplateChildNode): boolean =>
+    node.type === NodeTypes.INTERPOLATION || (node.type === NodeTypes.ELEMENT && node.children.some(hasInterpolation))
+  const bindings = (node: TemplateChildNode): number =>
+    node.type === NodeTypes.ELEMENT
+      ? node.props.filter(prop => prop.type === NodeTypes.DIRECTIVE && prop.name !== 'on' && prop.exp).length +
+        node.children.reduce((count, child) => count + bindings(child), 0)
+      : 0
+  const bindingCount = root.children.reduce((count, child) => count + bindings(child), 0)
+  // Slot 工厂在译文顺序下执行；不提升与绑定交错的插值，也不改变多个绑定的相对求值顺序。
+  if (bindingCount > 1 || (bindingCount > 0 && hasInterpolation(root))) return null
   function supported(node: TemplateChildNode): boolean {
     if (node.type === NodeTypes.TEXT) return !/\{\d+\}|<\/?\d+\/?>/.test(node.content)
     if (node.type === NodeTypes.INTERPOLATION) return node.content.type === NodeTypes.SIMPLE_EXPRESSION
@@ -46,6 +56,12 @@ export function richMessage(
     )
       return false
     if (hasVPre(node)) return false
+    // 组件可以不调用或多次调用默认 slot，不能提前求值其中的表达式。
+    if (
+      node.tagType === ElementTypes.COMPONENT &&
+      node.children.some(child => hasInterpolation(child) || bindings(child) > 0)
+    )
+      return false
     return node.children.every(supported)
   }
   if (!supported(root)) return null

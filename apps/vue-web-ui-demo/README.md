@@ -35,7 +35,7 @@ pnpm dev:vue-web-ui-demo
 mise exec -- pnpm exec wuchale --clean
 ```
 
-PO 是入库的译文源；loader/catalog 由 wuchale 管理。`check-policy` 的 `shell-i18n-catalog` 同时检查 React 与 Vue 的空译文、消息集合和提取一致性。
+PO 是入库的译文源；loader/catalog 由 wuchale 管理。两端应用的 `catalog.spec.ts` 随 `pnpm run test` 检查空译文、消息集合和提取一致性，复用同一检查实现。
 
 正文、API、双框架源码和 Vue 运行示例来自已有 `.CN.md` / `.md`，由 md-to-comp 分别写入 `src/generated/` 与 `src/generated/en/`，共享顶层样式，不由 wuchale 二次处理。语言切换会重建运行示例，其内部交互状态可以重置；站点主题、侧栏和路由状态保留。
 

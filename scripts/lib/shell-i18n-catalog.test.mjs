@@ -3,7 +3,7 @@ import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 
-import { checkApp, parsePo, run } from './shell-i18n-catalog.mjs'
+import { checkApp, parsePo } from './shell-i18n-catalog.mjs'
 
 const header = 'msgid ""\nmsgstr ""\n"Language: en\\n"\n"Plural-Forms: nplurals=2; plural=(n != 1);\\n"\n\n'
 
@@ -54,7 +54,7 @@ function pluralEntry(msgid, plural, translations) {
   fs.writeFileSync(path.join(locales, 'zh-CN.po'), `${header}${pluralEntry('文件', '多个文件', ['文件', '多个文件'])}`)
   fs.writeFileSync(path.join(locales, 'en.po'), `${header}${pluralEntry('文件', '多个文件', ['File', ''])}`)
   try {
-    await assert.rejects(() => run({ root }), /空译文/)
+    await assert.rejects(() => checkApp({ root, app: 'apps/react-web-ui-demo' }), /空译文/)
   } finally {
     fs.rmSync(root, { recursive: true, force: true })
   }
@@ -75,7 +75,7 @@ function fixture(messages, app = 'react-web-ui-demo') {
 {
   const root = fixture([['已复制', '']])
   try {
-    await assert.rejects(() => run({ root }), /空译文/)
+    await assert.rejects(() => checkApp({ root, app: 'apps/react-web-ui-demo' }), /空译文/)
   } finally {
     fs.rmSync(root, { recursive: true, force: true })
   }
@@ -87,7 +87,7 @@ function fixture(messages, app = 'react-web-ui-demo') {
   const enFile = path.join(root, 'apps', 'react-web-ui-demo', 'src', 'locales', 'en.po')
   fs.writeFileSync(enFile, `${header}${entry('别的', 'Other')}`)
   try {
-    await assert.rejects(() => run({ root }), /缺 1 条译文/)
+    await assert.rejects(() => checkApp({ root, app: 'apps/react-web-ui-demo' }), /缺 1 条译文/)
   } finally {
     fs.rmSync(root, { recursive: true, force: true })
   }
@@ -101,13 +101,6 @@ function fixture(messages, app = 'react-web-ui-demo') {
   } finally {
     fs.rmSync(root, { recursive: true, force: true })
   }
-}
-
-// 真 app 的语料必须过同一条判据；跑不过就是这次的改动没做完。
-{
-  const detail = await run({ root: path.resolve(import.meta.dirname, '../..') })
-  assert.match(detail, /react-web-ui-demo:.*条壳文案/)
-  assert.match(detail, /vue-web-ui-demo:.*条壳文案/)
 }
 
 process.stdout.write('shell-i18n-catalog tests passed\n')

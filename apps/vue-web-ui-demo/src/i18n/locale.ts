@@ -3,11 +3,14 @@ import { commitLocale, loadLocale } from 'wuchale/load-utils'
 
 import type { ExampleDoc } from '@/generated/examples'
 
+import { prepareExamples } from './examples'
+
 export type DemoLocale = 'zh-CN' | 'en'
 interface Dependencies {
   loadCatalog: (locale: DemoLocale) => Promise<void>
   commitCatalog: (locale: DemoLocale) => void
   loadDocs: (locale: DemoLocale) => Promise<ExampleDoc[]>
+  prepareExamples: (locale: DemoLocale, docs: ExampleDoc[], components: string[]) => Promise<void>
   readPreference: () => string | null
   writePreference: (locale: DemoLocale) => void
   languages: () => readonly string[]
@@ -22,6 +25,27 @@ export function createLocaleController(deps: Dependencies) {
   const pending = ref(false)
   let latest = 0
   let queue = Promise.resolve()
+  const components = new Map<string, number>()
+  let revision = 0
+  function register(component: string) {
+    components.set(component, (components.get(component) ?? 0) + 1)
+    revision++
+    return () => {
+      const count = components.get(component)! - 1
+      if (count) components.set(component, count)
+      else components.delete(component)
+      revision++
+    }
+  }
+  async function prepare(value: DemoLocale, docs?: ExampleDoc[]) {
+    docs ??= await deps.loadDocs(value)
+    let version: number
+    do {
+      version = revision
+      await deps.prepareExamples(value, docs, [...components.keys()])
+    } while (version !== revision)
+    return { docs, version }
+  }
   function detect(): DemoLocale {
     try {
       const stored = deps.readPreference()
@@ -41,12 +65,15 @@ export function createLocaleController(deps: Dependencies) {
     const request = queue.then(async () => {
       if (id !== latest) return
       // loadLocale(false) 仍改写上游共享 catalog；必须等两个分支都结束，失败也不能提前推进队列。
-      const [catalog, document] = await Promise.allSettled([deps.loadCatalog(value), deps.loadDocs(value)])
+      const [catalog, document] = await Promise.allSettled([deps.loadCatalog(value), prepare(value)])
       if (id !== latest) return
       if (catalog.status === 'rejected') throw catalog.reason
       if (document.status === 'rejected') throw document.reason
+      let prepared = document.value
+      while (prepared.version !== revision) prepared = await prepare(value, prepared.docs)
+      if (id !== latest) return
       deps.commitCatalog(value)
-      docs.value = document.value
+      docs.value = prepared.docs
       locale.value = value
       deps.setDocumentLanguage(value)
       if (persist) {
@@ -79,12 +106,21 @@ export function createLocaleController(deps: Dependencies) {
       }
     }
   }
-  return { locale: readonly(locale), docs: readonly(docs), pending: readonly(pending), detect, change, bootstrap }
+  return {
+    locale: readonly(locale),
+    docs: readonly(docs),
+    pending: readonly(pending),
+    detect,
+    change,
+    bootstrap,
+    register
+  }
 }
 
 const controller = createLocaleController({
   loadCatalog: locale => loadLocale(locale, false),
   commitCatalog: commitLocale,
+  prepareExamples,
   loadDocs: async locale =>
     (locale === 'en' ? await import('@/generated/en/examples') : await import('@/generated/examples')).exampleDocs,
   readPreference: () => localStorage.getItem('locale'),
@@ -100,3 +136,4 @@ export const localePending = controller.pending
 export const loadDemoLocale = controller.change
 export const bootstrapLocale = controller.bootstrap
 export const bootDegraded = ref(false)
+export const registerExampleDoc = controller.register

@@ -9,10 +9,15 @@ export function createDemo(importModule: () => Promise<{ default: ComponentType 
   let component: ComponentType | undefined
   let pending: Promise<{ default: ComponentType }> | undefined
   const load = () =>
-    (pending ??= importModule().then(module => {
-      component = module.default
-      return module
-    }))
+    (pending ??= importModule()
+      .then(module => {
+        component = module.default
+        return module
+      })
+      .catch(error => {
+        pending = undefined
+        throw error
+      }))
   const Demo = () => createElement(component ?? use(load()).default)
   return { load, get: () => Demo }
 }

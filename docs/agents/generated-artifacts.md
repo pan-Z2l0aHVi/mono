@@ -16,7 +16,7 @@
 
 `apps/*/src/generated/**` 里是 `examples.css` 与逐语种的 `examples.ts` + `demos/**`，同一次生成一起写盘，不要挑其中某一类单独改。React 站出中英两套（`zh-CN/`、`en/`）共用顶层 `examples.css`；Vue 站中文保留在 `src/generated/`，英文落在 `src/generated/en/`，共用顶层 `examples.css`。
 
-`apps/{react,vue}-web-ui-demo/src/locales/*.po` 反过来：它是**入库的译文源**，手写（英文由 agent 翻译后写回同一份 PO），不是生成物，也不由 generator 覆盖。PO 与代码抽取的一致性由 `pnpm run check-policy` 的 `shell-i18n-catalog` 检查守护，判据与失败模式见 build.md 的「生成物生命周期」。
+`apps/{react,vue}-web-ui-demo/src/locales/*.po` 反过来：它是**入库的译文源**，手写（英文由 agent 翻译后写回同一份 PO），不是生成物，也不由 generator 覆盖。PO 与代码抽取的一致性由两端应用的 `catalog.spec.ts` 随 `pnpm run test` 验证，判据与失败模式见 build.md 的「生成物生命周期」。
 
 ## 怎么判断一个文件是不是生成的
 

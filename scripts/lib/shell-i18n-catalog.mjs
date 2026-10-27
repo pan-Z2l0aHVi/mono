@@ -6,10 +6,8 @@ import { exec, pnpm } from './exec.mjs'
 
 // React 与 Vue demo 的壳文案走 wuchale：中文是源语种，英文是 PO 里的译文。构建期的 wuchale 插件只按已有
 // PO 编译，不抽取新文案，所以「代码加了中文却没进语料」和「英文 msgstr 还空着」这两类静默降级
-// 必须在这里判掉——否则英文站的壳会退回显示中文，而没有任何东西变红。
-export const name = 'shell-i18n-catalog'
+// 由应用测试复验，避免构建成功掩盖译文不完整。
 
-const APP_DIRS = ['react-web-ui-demo', 'vue-web-ui-demo'].map(app => path.join('apps', app))
 const SOURCE_LOCALE = 'zh-CN'
 const TARGET_LOCALES = ['en']
 
@@ -222,16 +220,4 @@ export async function checkApp({ root, app }) {
   }
 
   return `${source.entries.size} 条壳文案，${TARGET_LOCALES.join('/')} 译文齐全且与代码抽取一致`
-}
-
-export async function run({ root }) {
-  const details = []
-  for (const app of APP_DIRS) {
-    try {
-      details.push(`${app}: ${await checkApp({ root, app })}`)
-    } catch (error) {
-      throw new Error(`${app}: ${error.message}`, { cause: error })
-    }
-  }
-  return details.join('；')
 }

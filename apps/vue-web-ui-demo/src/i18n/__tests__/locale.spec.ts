@@ -2,6 +2,8 @@ import { setImmediate } from 'node:timers'
 
 import { expect, it, vi } from 'vite-plus/test'
 
+import type { ExampleDoc } from '@/generated/examples'
+
 import { createLocaleController } from '../locale'
 
 function setup() {
@@ -12,6 +14,7 @@ function setup() {
       commits.push(locale)
     },
     loadDocs: vi.fn<(locale: string) => Promise<never[]>>(async () => []),
+    prepareExamples: vi.fn<(locale: string, docs: ExampleDoc[], components: string[]) => Promise<void>>(async () => {}),
     readPreference: () => 'en',
     writePreference: vi.fn<(locale: string) => void>(),
     languages: () => ['zh-TW'],
@@ -27,6 +30,38 @@ it('偏好优先于浏览器，成功准备后一次提交并持久化', async (
   expect(commits).toEqual(['en'])
   expect(state.locale.value).toBe('en')
   expect(deps.writePreference).toHaveBeenCalledWith('en')
+})
+
+it('当前页示例就绪前保留原语言，示例失败不提交偏好', async () => {
+  const { state, deps, commits } = setup()
+  await state.change('zh-CN')
+  const unregister = state.register('button')
+  let fail!: (error: Error) => void
+  let started!: () => void
+  const start = new Promise<void>(resolve => {
+    started = resolve
+  })
+  deps.prepareExamples.mockImplementationOnce(() => {
+    started()
+    return new Promise<void>((_, reject) => {
+      fail = reject
+    })
+  })
+  const request = state.change('en')
+  const result = request.catch(error => error)
+  await start
+  expect(state.pending.value).toBe(true)
+  expect(state.locale.value).toBe('zh-CN')
+  expect(commits).toEqual(['zh-CN'])
+  expect(deps.prepareExamples).toHaveBeenLastCalledWith('en', [], ['button'])
+  fail(new Error('demo unavailable'))
+  expect(await result).toEqual(new Error('demo unavailable'))
+  expect(commits).toEqual(['zh-CN'])
+  expect(deps.writePreference).toHaveBeenCalledTimes(1)
+  expect(state.locale.value).toBe('zh-CN')
+  await state.change('en')
+  expect(state.locale.value).toBe('en')
+  unregister()
 })
 
 it('文档失败不提交catalog或偏好，后续请求可恢复', async () => {
