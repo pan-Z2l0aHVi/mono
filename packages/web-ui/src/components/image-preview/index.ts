@@ -17,6 +17,7 @@ import {
   type PinchMoveInfo,
   type PinchStartInfo
 } from '@/shared/gesture/pinch-gesture'
+import { resolveBuiltinLabelSet } from '@/shared/locale/builtin-labels'
 import { defineNativeDialogPresence } from '@/shared/overlay/native-dialog-presence'
 import { defineOpenOverlay, type OpenOverlayHandle } from '@/shared/overlay/open-overlay'
 import { getFallbackOverlayRoot } from '@/shared/overlay/overlay-root'
@@ -29,6 +30,16 @@ export interface ImagePreviewItem {
   src: string
   /** 无障碍替代文本；也用于图片加载失败时的回退展示。 */
   alt?: string
+}
+
+/** imagePreview 的无障碍名成组覆盖；未提供的 key 回退内置英文文案（见 ADR-0029）。 */
+export interface ImagePreviewAriaLabels {
+  close?: string
+  previousImage?: string
+  nextImage?: string
+  zoomIn?: string
+  zoomOut?: string
+  resetZoom?: string
 }
 
 export interface ImagePreviewOptions {
@@ -59,6 +70,8 @@ export interface ImagePreviewOptions {
   noScrollLock?: boolean
   /** 点击图片以外的空白区域不关闭，语义与 `<web-ui-dialog>` 的 `noBackdropClose` 一致。默认 false。 */
   noBackdropClose?: boolean
+  /** 内置无障碍名成组覆盖；未提供的 key 回退内置英文文案（见 ADR-0029）。 */
+  ariaLabels?: ImagePreviewAriaLabels
 }
 
 export interface ImagePreviewHandle {
@@ -78,7 +91,9 @@ export interface ImagePreviewHandle {
   close(): void
 }
 
-type ResolvedImagePreviewOptions = Required<Omit<ImagePreviewOptions, 'target' | 'container'>>
+type ResolvedImagePreviewOptions = Required<Omit<ImagePreviewOptions, 'target' | 'container' | 'ariaLabels'>> & {
+  ariaLabels?: ImagePreviewAriaLabels
+}
 
 const MIN_SCALE = 1
 const MAX_SCALE = 4
@@ -125,6 +140,7 @@ class WebUiImagePreview extends LitElement {
   @property({ attribute: false }) swipe = false
   @property({ attribute: false }) noScrollLock = false
   @property({ attribute: false }) noBackdropClose = false
+  @property({ attribute: false }) ariaLabels?: ImagePreviewAriaLabels
 
   @state() private _open = false
   @state() private _index = 0
@@ -216,6 +232,7 @@ class WebUiImagePreview extends LitElement {
     this.swipe = options.swipe
     this.noScrollLock = options.noScrollLock
     this.noBackdropClose = options.noBackdropClose
+    this.ariaLabels = options.ariaLabels
     this._index = clamp(options.index, 0, Math.max(0, options.images.length - 1))
   }
 
@@ -909,7 +926,7 @@ class WebUiImagePreview extends LitElement {
                       variant="glass"
                       icon
                       size="36"
-                      aria-label="Close"
+                      aria-label=${resolveBuiltinLabelSet(this.ariaLabels, 'close')}
                       @click=${this.close}
                     >
                       <web-ui-icon size="16" .icon=${oouiClose}></web-ui-icon>
@@ -925,7 +942,7 @@ class WebUiImagePreview extends LitElement {
                       variant="glass"
                       icon
                       size="44"
-                      aria-label="Previous image"
+                      aria-label=${resolveBuiltinLabelSet(this.ariaLabels, 'previousImage')}
                       ?disabled=${!this.loop && this._index === 0}
                       @click=${this.prev}
                     >
@@ -936,7 +953,7 @@ class WebUiImagePreview extends LitElement {
                       variant="glass"
                       icon
                       size="44"
-                      aria-label="Next image"
+                      aria-label=${resolveBuiltinLabelSet(this.ariaLabels, 'nextImage')}
                       ?disabled=${!this.loop && this._index === count - 1}
                       @click=${this.next}
                     >
@@ -953,7 +970,7 @@ class WebUiImagePreview extends LitElement {
                         variant="glass"
                         icon
                         size="30"
-                        aria-label="Zoom out"
+                        aria-label=${resolveBuiltinLabelSet(this.ariaLabels, 'zoomOut')}
                         ?disabled=${this._scale <= MIN_SCALE}
                         @click=${this.zoomOut}
                       >
@@ -964,7 +981,7 @@ class WebUiImagePreview extends LitElement {
                         variant="glass"
                         icon
                         size="30"
-                        aria-label="Zoom in"
+                        aria-label=${resolveBuiltinLabelSet(this.ariaLabels, 'zoomIn')}
                         ?disabled=${this._scale >= MAX_SCALE}
                         @click=${this.zoomIn}
                       >
@@ -974,7 +991,7 @@ class WebUiImagePreview extends LitElement {
                         variant="glass"
                         icon
                         size="30"
-                        aria-label="Reset zoom"
+                        aria-label=${resolveBuiltinLabelSet(this.ariaLabels, 'resetZoom')}
                         ?disabled=${this._scale <= MIN_SCALE && !this._isPanned}
                         @click=${this.resetZoom}
                       >
@@ -1018,7 +1035,8 @@ export function imagePreview(options: ImagePreviewOptions): ImagePreviewHandle {
     indicator: options.indicator ?? false,
     swipe: options.swipe ?? false,
     noScrollLock: options.noScrollLock ?? false,
-    noBackdropClose: options.noBackdropClose ?? false
+    noBackdropClose: options.noBackdropClose ?? false,
+    ariaLabels: options.ariaLabels
   })
 
   let settle: (() => void) | undefined

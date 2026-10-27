@@ -9,7 +9,12 @@ export default function Demo() {
       <output className="text-sm text-(--wui-color-text-secondary)">
         headless dialog：{open ? '已打开' : '已关闭'}
       </output>
-      <web-ui-dialog open={open} headless dialog-label="图片详情" onopen-change={event => setOpen(event.detail.open)}>
+      <web-ui-dialog
+        open={open}
+        headless
+        aria-dialog-label="图片详情"
+        onopen-change={event => setOpen(event.detail.open)}
+      >
         <div className="flex flex-col gap-4">
           <div className="flex items-start justify-between gap-3">
             <div className="flex flex-col gap-1">

@@ -148,7 +148,7 @@ function onOpenChange(event: WebUiEvent<WebUiDialog, 'open-change'>) {
 
 `headless` 只保留 overlay 基础设施——backdrop、进出场动画、滚动锁与原生 `<dialog>` 语义；内置 chrome 带、正文区与 footer 一概不渲染，默认插槽直接落进卡片内的滚动层。
 
-此时没有可自动关联的内置标题，`dialog-label` 必须由页面提供，卡片外观与关闭 button 也全部自绘。
+此时没有可自动关联的内置标题，`aria-dialog-label` 必须由页面提供，卡片外观与关闭 button 也全部自绘。
 
 ```tsx
 import { useState } from 'react'
@@ -162,7 +162,12 @@ export default function Demo() {
       <output className="text-sm text-(--wui-color-text-secondary)">
         headless dialog：{open ? '已打开' : '已关闭'}
       </output>
-      <web-ui-dialog open={open} headless dialog-label="图片详情" onopen-change={event => setOpen(event.detail.open)}>
+      <web-ui-dialog
+        open={open}
+        headless
+        aria-dialog-label="图片详情"
+        onopen-change={event => setOpen(event.detail.open)}
+      >
         <div className="flex flex-col gap-4">
           <div className="flex items-start justify-between gap-3">
             <div className="flex flex-col gap-1">
@@ -193,7 +198,7 @@ export default function Demo() {
     <output class="text-sm text-(--wui-color-text-secondary)">
       headless dialog：{{ open ? '已打开' : '已关闭' }}
     </output>
-    <web-ui-dialog :open="open" headless dialog-label="图片详情" @open-change="open = $event.detail.open">
+    <web-ui-dialog :open="open" headless aria-dialog-label="图片详情" @open-change="open = $event.detail.open">
       <div class="flex flex-col gap-4">
         <div class="flex items-start justify-between gap-3">
           <div class="flex flex-col gap-1">
@@ -224,19 +229,19 @@ const open = ref(false)
 
 ### Props
 
-| 名称                | 说明                                                                    | 类型      | 默认值  |
-| ------------------- | ----------------------------------------------------------------------- | --------- | ------- |
-| `open`              | dialog 可见性。                                                         | `boolean` | `false` |
-| `closable`          | 显示内置关闭 button。                                                   | `boolean` | `false` |
-| `horizontal`        | Footer 操作按钮横向排列。                                               | `boolean` | `false` |
-| `no-scroll-lock`    | 打开时不锁定页面滚动。                                                  | `boolean` | `false` |
-| `no-backdrop-close` | 禁止点击 backdrop 关闭。                                                | `boolean` | `false` |
-| `no-escape-close`   | 禁止按 Escape 关闭。                                                    | `boolean` | `false` |
-| `controlled`        | Escape 与 backdrop 仅请求 `open=false`，由消费方回写。                  | `boolean` | `false` |
-| `heading`           | 标题文字，`header` 插槽为空时的回落（`headless` 下忽略）。              | `string`  | `''`    |
-| `headless`          | 只保留 overlay 行为，不再渲染内置 header 带、内容区与 footer。          | `boolean` | `false` |
-| `dialog-label`      | 内部原生 dialog 的 accessible name；`headless` 下必填。                 | `string`  | `''`    |
-| `close-label`       | 内置关闭 button 的无障碍名称；默认跟随最近的 `lang`（中文为「关闭」）。 | `string`  | `''`    |
+| 名称                | 说明                                                                                                                   | 类型      | 默认值  |
+| ------------------- | ---------------------------------------------------------------------------------------------------------------------- | --------- | ------- |
+| `open`              | dialog 可见性。                                                                                                        | `boolean` | `false` |
+| `closable`          | 显示内置关闭 button。                                                                                                  | `boolean` | `false` |
+| `horizontal`        | Footer 操作按钮横向排列。                                                                                              | `boolean` | `false` |
+| `no-scroll-lock`    | 打开时不锁定页面滚动。                                                                                                 | `boolean` | `false` |
+| `no-backdrop-close` | 禁止点击 backdrop 关闭。                                                                                               | `boolean` | `false` |
+| `no-escape-close`   | 禁止按 Escape 关闭。                                                                                                   | `boolean` | `false` |
+| `controlled`        | Escape 与 backdrop 仅请求 `open=false`，由消费方回写。                                                                 | `boolean` | `false` |
+| `heading`           | 标题文字，`header` 插槽为空时的回落（`headless` 下忽略）。                                                             | `string`  | `''`    |
+| `headless`          | 只保留 overlay 行为，不再渲染内置 header 带、内容区与 footer。                                                         | `boolean` | `false` |
+| `aria-dialog-label` | 内部原生 dialog 的 accessible name；`headless` 下必填。旧名 `dialog-label` 已废弃，仅为兼容保留，将在下个 major 移除。 | `string`  | `''`    |
+| `aria-close-label`  | 内置关闭 button 的无障碍名称；未设置时回退内置英文文案（`Close`）。                                                    | `string`  | `''`    |
 
 ### Events
 
@@ -291,9 +296,9 @@ icon 与 drawer 关闭 button 同为 `ooui:close`。
 
 ### accessible name
 
-设置了 `dialog-label` 时，内部原生 `<dialog>` 直接取它的 `aria-label`；否则在默认模式且 `header` 带可见时，取指向该带的 `aria-labelledby="wui-dialog-heading"`。
+设置了 `aria-dialog-label` 时，内部原生 `<dialog>` 直接取它的 `aria-label`；否则在默认模式且 `header` 带可见时，取指向该带的 `aria-labelledby="wui-dialog-heading"`。
 
-`headless` 没有可指向的内置标题，所以**名字必须由 Consumer 提供**——`dialog-label`，或自绘的可关联标题元素。
+`headless` 没有可指向的内置标题，所以**名字必须由 Consumer 提供**——`aria-dialog-label`，或自绘的可关联标题元素。
 
 ### CSS Custom Properties
 

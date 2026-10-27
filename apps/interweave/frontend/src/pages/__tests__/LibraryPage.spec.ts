@@ -214,7 +214,7 @@ function queueItems(host: HTMLElement) {
 
 /** drawer 的 open 是 reflect 属性，jsdom 里按属性读；没升级成自定义元素时退回读 attribute。 */
 function drawerOpen(host: HTMLElement, label: string) {
-  const drawer = host.querySelector(`web-ui-drawer[dialog-label="${label}"]`) as
+  const drawer = host.querySelector(`web-ui-drawer[aria-dialog-label="${label}"]`) as
     | (HTMLElement & { open?: boolean })
     | null
   if (!drawer) throw new Error(`没有找到「${label}」drawer`)

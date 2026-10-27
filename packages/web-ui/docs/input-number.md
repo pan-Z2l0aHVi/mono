@@ -275,22 +275,22 @@ export default function Demo() {
 
 ### Props
 
-| Name              | Description                                                                                                              | Type             | Default    |
-| ----------------- | ------------------------------------------------------------------------------------------------------------------------ | ---------------- | ---------- |
-| `placeholder`     | Placeholder text; shown only when the content is cleared during editing.                                                 | `string`         | `''`       |
-| `name`            | Form field name.                                                                                                         | `string`         | `''`       |
-| `disabled`        | Disabled state.                                                                                                          | `boolean`        | `false`    |
-| `readonly`        | Read-only state; the step buttons and the keyboard increment/decrement yield as well.                                    | `boolean`        | `false`    |
-| `required`        | Required validation.                                                                                                     | `boolean`        | `false`    |
-| `value`           | Current value, also the form submission value; an out-of-range write converges to a range endpoint.                      | `number`         | `0`        |
-| `min`             | Minimum value.                                                                                                           | `number`         | `0`        |
-| `max`             | Maximum value.                                                                                                           | `number`         | `Infinity` |
-| `step`            | Step size; when `precision` is not set explicitly, its decimal places decide the default normalization precision.        | `number`         | `1`        |
-| `precision`       | Normalizes to this value when set explicitly; when set to `null` or the attribute is removed, it is derived from `step`. | `number \| null` | `0`        |
-| `aria-label`      | Accessible name of the input.                                                                                            | `string`         | —          |
-| `aria-labelledby` | Accessible name reference, used to name the inner input.                                                                 | `string`         | —          |
-| `decrease-label`  | Accessible name of the decrease button; follows the nearest `lang` by default.                                           | `string`         | `''`       |
-| `increase-label`  | Accessible name of the increase button; follows the nearest `lang` by default.                                           | `string`         | `''`       |
+| Name                  | Description                                                                                                              | Type             | Default    |
+| --------------------- | ------------------------------------------------------------------------------------------------------------------------ | ---------------- | ---------- |
+| `placeholder`         | Placeholder text; shown only when the content is cleared during editing.                                                 | `string`         | `''`       |
+| `name`                | Form field name.                                                                                                         | `string`         | `''`       |
+| `disabled`            | Disabled state.                                                                                                          | `boolean`        | `false`    |
+| `readonly`            | Read-only state; the step buttons and the keyboard increment/decrement yield as well.                                    | `boolean`        | `false`    |
+| `required`            | Required validation.                                                                                                     | `boolean`        | `false`    |
+| `value`               | Current value, also the form submission value; an out-of-range write converges to a range endpoint.                      | `number`         | `0`        |
+| `min`                 | Minimum value.                                                                                                           | `number`         | `0`        |
+| `max`                 | Maximum value.                                                                                                           | `number`         | `Infinity` |
+| `step`                | Step size; when `precision` is not set explicitly, its decimal places decide the default normalization precision.        | `number`         | `1`        |
+| `precision`           | Normalizes to this value when set explicitly; when set to `null` or the attribute is removed, it is derived from `step`. | `number \| null` | `0`        |
+| `aria-label`          | Accessible name of the input.                                                                                            | `string`         | —          |
+| `aria-labelledby`     | Accessible name reference, used to name the inner input.                                                                 | `string`         | —          |
+| `aria-decrease-label` | Accessible name of the decrease button; falls back to the built-in English copy (`Decrease`).                            | `string`         | `''`       |
+| `aria-increase-label` | Accessible name of the increase button; falls back to the built-in English copy (`Increase`).                            | `string`         | `''`       |
 
 ### Events
 

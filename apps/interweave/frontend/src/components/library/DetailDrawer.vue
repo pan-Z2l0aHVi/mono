@@ -241,7 +241,7 @@ onScopeDispose(() => clearTimeout(copiedRevertTimer))
   <web-ui-drawer
     :open="open"
     :placement="placement"
-    dialog-label="资源详情"
+    aria-dialog-label="资源详情"
     draggable
     controlled
     class="mobile:[--wui-drawer-height:80vh] mobile:[--wui-drawer-inset:0px] mobile:[--wui-drawer-radius:28px_28px_0_0] mobile:[--wui-drawer-content-padding:0px] [--wui-drawer-width:360px]"

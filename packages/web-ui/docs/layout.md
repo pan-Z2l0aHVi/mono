@@ -358,17 +358,18 @@ const mobile = ref(false)
 
 ### Props
 
-| Name                | Description                                                                                                                                                              | Type      | Default   |
-| ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | --------- | --------- |
-| `sidebar-collapsed` | Controlled collapse state of the desktop sidebar; it only narrows the desktop side and does not affect the mobile Drawer.                                                | `boolean` | `false`   |
-| `sidebar-open`      | Controlled open state of the mobile sidebar Drawer.                                                                                                                      | `boolean` | `false`   |
-| `header-glow`       | Shows a decorative glow behind the header slot content.                                                                                                                  | `boolean` | `false`   |
-| `mobile`            | Read-only derived value: whether the current viewport is at or below the mobile breakpoint; writing the attribute is reverted, and assigning the property has no effect. | `boolean` | `false`   |
-| `sidebar-width`     | Sidebar width when expanded on desktop and mobile.                                                                                                                       | `string`  | `'240px'` |
-| `collapsed-width`   | Sidebar width when collapsed on desktop.                                                                                                                                 | `string`  | `'68px'`  |
-| `sidebar-resizable` | Enables drag resizing on the right edge of the desktop sidebar.                                                                                                          | `boolean` | `false`   |
-| `sidebar-min-width` | Lower bound (px) for drag resizing; falls back to `collapsed-width` by default.                                                                                          | `string`  | —         |
-| `sidebar-max-width` | Upper bound (px) for drag resizing; clamped to half the viewport, with the built-in limit taking precedence.                                                             | `string`  | —         |
+| Name                | Description                                                                                                                                                                                | Type               | Default   |
+| ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------ | --------- |
+| `sidebar-collapsed` | Controlled collapse state of the desktop sidebar; it only narrows the desktop side and does not affect the mobile Drawer.                                                                  | `boolean`          | `false`   |
+| `sidebar-open`      | Controlled open state of the mobile sidebar Drawer.                                                                                                                                        | `boolean`          | `false`   |
+| `header-glow`       | Shows a decorative glow behind the header slot content.                                                                                                                                    | `boolean`          | `false`   |
+| `ariaLabels`        | Grouped overrides for the built-in accessible names (sidebar collapse/expand, resize, open navigation menu, main navigation); keys without a value fall back to the built-in English copy. | `LayoutAriaLabels` | —         |
+| `mobile`            | Read-only derived value: whether the current viewport is at or below the mobile breakpoint; writing the attribute is reverted, and assigning the property has no effect.                   | `boolean`          | `false`   |
+| `sidebar-width`     | Sidebar width when expanded on desktop and mobile.                                                                                                                                         | `string`           | `'240px'` |
+| `collapsed-width`   | Sidebar width when collapsed on desktop.                                                                                                                                                   | `string`           | `'68px'`  |
+| `sidebar-resizable` | Enables drag resizing on the right edge of the desktop sidebar.                                                                                                                            | `boolean`          | `false`   |
+| `sidebar-min-width` | Lower bound (px) for drag resizing; falls back to `collapsed-width` by default.                                                                                                            | `string`           | —         |
+| `sidebar-max-width` | Upper bound (px) for drag resizing; clamped to half the viewport, with the built-in limit taking precedence.                                                                               | `string`           | —         |
 
 ### Events
 

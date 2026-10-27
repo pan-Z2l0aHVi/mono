@@ -15,7 +15,7 @@ import {
   FormAssociationController
 } from '@/shared/form-association'
 import { createFieldId } from '@/shared/form-association/field-id'
-import { LocaleController, resolveBuiltinLabel } from '@/shared/locale/builtin-labels'
+import { resolveBuiltinLabel } from '@/shared/locale/builtin-labels'
 
 import style from './style.css?inline'
 
@@ -33,8 +33,8 @@ export class WebUiInput extends FormAssociated(LitElement) {
   @property({ type: Boolean, reflect: true }) full = false
   @property({ type: Boolean, reflect: true }) borderless = false
   @property({ type: String, attribute: 'aria-label' }) override ariaLabel: string | null = null
-  /** 清除按钮的无障碍名称；默认跟随文档 `lang`。 */
-  @property({ type: String, attribute: 'clear-label' }) clearLabel = ''
+  /** 清除按钮的无障碍名称；未设置时回退内置英文文案（见 ADR-0029）。 */
+  @property({ type: String, attribute: 'aria-clear-label' }) ariaClearLabel = ''
 
   @state() private _value = ''
   @state() private _focused = false
@@ -42,7 +42,6 @@ export class WebUiInput extends FormAssociated(LitElement) {
   @state() private _hasSuffix = false
 
   private readonly _fieldId = createFieldId('web-ui-input')
-  private readonly _locale = new LocaleController(this)
 
   @property({ type: String, reflect: true })
   get value(): string {
@@ -205,7 +204,7 @@ export class WebUiInput extends FormAssociated(LitElement) {
                 icon
                 variant="ghost"
                 size="20"
-                aria-label=${resolveBuiltinLabel(this, 'clear', this.clearLabel)}
+                aria-label=${resolveBuiltinLabel('clear', this.ariaClearLabel)}
                 @pointerdown=${this.preventMouseDownBlur}
                 @click=${this.handleClear}
               >

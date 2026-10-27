@@ -10,7 +10,7 @@ export default function Demo() {
       <web-ui-dialog
         open={open}
         headless
-        dialog-label="Image details"
+        aria-dialog-label="Image details"
         onopen-change={event => setOpen(event.detail.open)}
       >
         <div className="flex flex-col gap-4">
