@@ -566,7 +566,7 @@ export class WebUiContextMenu extends LitElement {
      * 「可测」状态之前，而不是夹在「panel 刚可测」与「Floating UI 量它」之间。
      *
      * 需要说清楚的是，**这不是** viewport-fit 那条横向断言里 2px 抖动的成因：那个 2px 来自
-     * flip 的 reset 会多跑一轮测量——那一刻 panel 宽 202px、落定后 200px。相关用例不再钉与
+     * flip 的 reset 会多跑一轮测量——那一刻 panel 宽 202px、落定后 200px。相关用例不钉与
      * 视口边界的精确距离。
      */
     const safeAreaBottom = this._safeAreaBottom()

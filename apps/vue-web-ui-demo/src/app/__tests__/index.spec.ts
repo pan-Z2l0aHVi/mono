@@ -77,9 +77,12 @@ function navItemState() {
   return { text: link.textContent?.trim() ?? '', title: link.getAttribute('title') }
 }
 
-/** 移动端 drawer 是否真的接管了 sidebar slot（不接管就谈不上「drawer 里的导航」）。 */
+/**
+ * layout 是否处于移动端形态。`mobile` 是公开派生属性，与它渲染哪一套树是同一条条件，
+ * 移动端那份带 drawer。
+ */
 function isDrawerMode() {
-  return !!layoutRoot().shadowRoot?.querySelector('web-ui-drawer')
+  return layoutRoot().mobile
 }
 
 /**

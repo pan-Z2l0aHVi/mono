@@ -205,9 +205,9 @@ const allChainedSites = componentCssFiles.flatMap(file =>
  * 不一致时必然红——它不是完美的第二来源（会过时），但它不会假装自己成立。
  *
  * 这份清单只看 CSS 里写了哪枚 token，覆盖面比运行时探针宽（8 个组件，逐个挂载要各写一套
- * 打开样板），代价是不看层叠结果：声明被别的规则刷掉时这里仍然绿。挂载组件读 computed
- * background 的浏览器探针不在这条守里：那份把 panel 合成后比 page 亮几档当契约，那是在钉
- * 调色板的设计值，不是归属。
+ * 打开样板），代价是不看层叠结果：声明被别的规则刷掉时这里仍然绿。运行时层叠与 panel 相对
+ * page 的明暗档位由同目录的 `surface-elevation.browser.spec.ts` 守：那份挂载组件读 computed
+ * background，把 panel 合成后比 page 亮几档当契约，不是归属。
  */
 const surfaceOwnership = new Map<string, string>([
   // menu 族：下拉、overlay 气泡与 tooltip，同一档半透明玻璃底，浮在内容之上。

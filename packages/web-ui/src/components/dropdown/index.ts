@@ -292,7 +292,7 @@ export class WebUiDropdown extends LitElement {
          */
         this._suppressInitialFocusVisible = true
         /*
-         * release ⟺ 关闭：「已登记」就等于「参与仲裁」，不再由 host.isOpen()
+         * release ⟺ 关闭：「已登记」就等于「参与仲裁」，不依赖 host.isOpen()
          * 兜底过滤，所以必须在这里撤销，不能等到退场动画结束。
          */
         this._handle?.release()
