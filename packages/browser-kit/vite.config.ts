@@ -2,7 +2,6 @@ import { readFileSync } from 'node:fs'
 import { createRequire } from 'node:module'
 import { resolve } from 'node:path'
 
-import dts from 'vite-plugin-dts'
 import { defineConfig, type Plugin } from 'vite-plus'
 import { playwright } from 'vite-plus/test/browser-playwright'
 
@@ -35,12 +34,25 @@ export default defineConfig({
   resolve: {
     tsconfigPaths: true
   },
-  plugins: [
-    mswServiceWorker(),
-    dts({
-      tsconfigPath: './tsconfig.app.json'
-    })
-  ],
+  // 浏览器 spec 与 dev server 都走这里的 Vite 插件；构建见 `pack`。
+  plugins: [mswServiceWorker()],
+  pack: {
+    entry: {
+      index: resolve(import.meta.dirname, 'src/index.ts')
+    },
+    // 产物保持与源码树一一对应：exports 的 `./*` 通配依赖这个目录结构。
+    unbundle: true,
+    root: resolve(import.meta.dirname, 'src'),
+    // pack 在 node 平台默认输出 `.mjs` / `.d.mts`，而 exports 指向 `.js` / `.d.ts`。
+    fixedExtension: false,
+    sourcemap: true,
+    dts: {
+      // 顶层 sourcemap 会给 `.d.ts` 也写 sourceMappingURL，只有同时打开声明映射才不会
+      // 留下指向不存在文件的引用。
+      sourcemap: true
+    },
+    tsconfig: './tsconfig.app.json'
+  },
   test: {
     // Vitest 5 把默认附件目录从 `.vitest-attachments` 改成 `.vitest/attachments`；
     // 仓库在 `.gitignore` 与 docs/agents 里把测试证据路径固定为前者，这里跟着钉住。
@@ -54,22 +66,5 @@ export default defineConfig({
       instances: [{ browser: 'chromium' }]
     },
     setupFiles: ['./test-helper.ts']
-  },
-  build: {
-    sourcemap: true,
-    lib: {
-      entry: resolve(import.meta.dirname, 'src/index.ts'),
-      formats: ['es']
-    },
-    rollupOptions: {
-      external: [/^@greypan\//, 'nanoid', 'remeda', 'copy-to-clipboard', 'msw'],
-      output: {
-        preserveModules: true,
-        // 指定源码根目录，这样 dist 下就不会多出一层 'src' 目录
-        preserveModulesRoot: 'src',
-        dir: 'dist',
-        entryFileNames: '[name].js'
-      }
-    }
   }
 })

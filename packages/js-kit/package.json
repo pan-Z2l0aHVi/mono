@@ -32,16 +32,15 @@
     "registry": "https://registry.npmjs.org/"
   },
   "scripts": {
-    "build": "vp build",
+    "build": "vp pack",
     "test": "vp test run",
-    "dev": "vp build --watch --emptyOutDir=false"
+    "dev": "vp pack --watch --clean=false"
   },
   "dependencies": {
     "remeda": "catalog:"
   },
   "devDependencies": {
     "@greypan/tsconfig": "workspace:*",
-    "vite-plugin-dts": "catalog:",
     "vite": "catalog:",
     "vite-plus": "catalog:"
   },

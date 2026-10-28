@@ -46,7 +46,7 @@ Vue demo 通过私有 `@greypan/wuchale-vue` 在 Vue 编译前转换 SFC。`wuch
 
 ## 库构建模式
 
-公共面是固定入口集合的包用 `vp pack`（基于 tsdown，可以多入口，输出 `.mjs` 与 `.d.mts`，自动生成声明文件并从依赖中外部化）。公共面含通配子路径导出或需要 Vite CSS/资源管线的包用 `vp build`（Vite library 模式配 `preserveModules`，输出 `.js` 与 `.d.ts`，需要手动配置外部化）。具体选择以各包 manifest 与 `vite.config.ts` 为准，入口数量本身不是判据。`packages/tsconfig` 无构建步骤，只提供通过 TypeScript `extends` 消费的 JSON 文件。
+公共面是固定入口集合的包用 `vp pack`（基于 tsdown，可以多入口，输出 `.mjs` 与 `.d.mts`，自动生成声明文件并从依赖中外部化）。公共面含通配子路径导出或需要 Vite CSS/资源管线的包同样用 `vp pack`，按下面三条加配置：`unbundle: true` + `root: 'src'` 让产物与源码树一一对应（子路径导出靠它）；`fixedExtension: false` 把扩展名对齐到 exports 指向的 `.js` / `.d.ts`（node 平台默认是 `.mjs` / `.d.mts`）；CSS 入口走 `pack.css`，浏览器下限由顶层 `target` 同时驱动 JS 语法降级与 LightningCSS 前缀，`css.minify` 打开后与旧 Vite 管线逐字节一致。声明文件由 `pack.dts` 生成：不在 JS 图里的纯类型入口必须显式列进 `pack.entry` 才会产出 `.d.ts`，顶层 `sourcemap: true` 会连带给 `.d.ts` 写 `sourceMappingURL`，所以要同时开 `dts.sourcemap`；`dts.entry` glob 也能补类型入口，但会让 dts 阶段慢数倍，不要用。具体选择以各包 manifest 与 `vite.config.ts` 为准，入口数量本身不是判据。`packages/tsconfig` 无构建步骤，只提供通过 TypeScript `extends` 消费的 JSON 文件。
 
 ## 外部化规则
 
