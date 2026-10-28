@@ -6,12 +6,12 @@ import legacy from '@vitejs/plugin-legacy'
 import vue from '@vitejs/plugin-vue'
 import wails from '@wailsio/runtime/plugins/vite'
 import autoImport from 'unplugin-auto-import/vite'
-import { searchForWorkspaceRoot, type UserConfig } from 'vite-plus'
+import { defineConfig, searchForWorkspaceRoot } from 'vite-plus'
 import { playwright } from 'vite-plus/test/browser-playwright'
 import { VueRouterAutoImports } from 'vue-router/unplugin'
 import vueRouter from 'vue-router/vite'
 
-export default {
+export default defineConfig({
   resolve: {
     tsconfigPaths: true
   },
@@ -31,6 +31,9 @@ export default {
     ]
   },
   test: {
+    // Vitest 5 把默认附件目录从 `.vitest-attachments` 改成 `.vitest/attachments`；
+    // 仓库在 `.gitignore` 与 docs/agents 里把测试证据路径固定为前者，这里跟着钉住。
+    attachmentsDir: '.vitest-attachments',
     projects: [
       {
         extends: true,
@@ -49,30 +52,21 @@ export default {
           include: ['src/**/*.browser.spec.ts'],
           // test-helper 补的是 jsdom 特有的 localStorage 漏洞，浏览器里有真实实现，不加载。
           setupFiles: [],
+          // vitest 5 把 `browser.api` 挪到了 `test.api`，而且要写在 browser project 自己的
+          // `test` 块里：写到根上会连 jsdom project 一起抢这个端口（实测 `Port 63413 is
+          // already in use`）。默认的 63315 会被同机并行的其他 worktree、同一轮 turbo test
+          // 里的 web-ui browser project、以及两个 demo 的 browser project 占住，所以固定到
+          // 本包专用端口（两个 demo 分别占 63411 / 63412）。
+          //
+          // host 必须显式钉回 loopback：api server 绑哪里只看 `api.host`；而
+          // `resolveApiServerConfig` 只在 host 是 loopback 时才默认允许写盘与执行（截图、附件
+          // 要走它们），绑到所有网卡则会关掉写/执行——任何能连到这台机器的人也能经 `/@fs` 读走
+          // 整个 workspace（含 `.herdr-project` 的内部文档）。顶层 `server.host: true` 是给
+          // Wails dev server 的，不要拿它代替这里。
+          api: { host: '127.0.0.1', port: 63413 },
           browser: {
             enabled: true,
             headless: true,
-            // vitest 的 browser server 独占一个端口：默认的 63315 会被同机并行的其他 worktree、
-            // 同一轮 turbo test 里的 web-ui browser project、以及两个 demo 的 browser project
-            // 占住，所以固定到本包专用端口（两个 demo 分别占 63411 / 63412）。
-            //
-            // strictPort: false 必须在这里显式写出来：vitest browser 插件的 `vitest:browser:config`
-            // 钩子构造测试服务器时是 `viteConfig.server = { ...viteConfig.server, port: defaultPort,
-            // ...api, middlewareMode: false, open: false }`——把顶层 `server` 整块铺开、只覆盖
-            // `port`，于是下面那个给 Wails dev server 定的 `strictPort: true` 会被测试服务器一并继承。
-            // dev server 需要它——端口被占就硬失败，否则 Wails 的 webview 会被指向空气；测试服务器
-            // 不需要：vitest 自己起它、再按 `resolvedUrls?.local[0] ?? resolvedUrls?.network[0]`（服务器
-            // 实际监听的地址）把浏览器指过去，端口漂移零代价，被继承的 strictPort 却会让整包 browser
-            // 用例在开跑之前直接判红。
-            // host 必须显式钉回 loopback：`vitest:browser:config` 把顶层 `server` 整块铺开给测试服务器，
-            // 于是给 Wails dev server 用的 `host: true` 会被继承下来，测试服务器绑到所有网卡——任何能
-            // 连到这台机器的人都能经 `/@fs` 读走整个 workspace（含 `.herdr-project` 的内部文档）。
-            // 写在 `api.host` 而不是顶层 `server.host`：vitest 只按 `api.host` 决定测试服务器绑哪里，
-            // 并且只有这一支会走 `resolveApiServerConfig` 里「暴露到网络就默认关掉写/执行」的判据——
-            // 只改顶层 `server.host` 会连带动到 dev server，而完全不写 `api.host` 时那条安全网永远
-            // 不触发（实测日志里没有它的警告）。`allowWrite` / `allowExec` 保持不设：loopback 下
-            // 默认 true 是要的，截图与附件要走它们。
-            api: { host: '127.0.0.1', port: 63413, strictPort: false },
             provider: playwright(),
             instances: [{ browser: 'chromium' }]
           }
@@ -125,4 +119,4 @@ export default {
   css: {
     transformer: 'lightningcss'
   }
-} satisfies UserConfig
+})

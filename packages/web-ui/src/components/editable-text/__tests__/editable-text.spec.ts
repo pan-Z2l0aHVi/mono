@@ -390,6 +390,9 @@ describe('WebUiEditableText 组件契约', () => {
             super()
             const root = this.attachShadow({ mode: 'open' })
             const dialog = document.createElement('dialog')
+            // drawer/dialog 只在打开时才渲染 slot 内容；jsdom 30.1 起按规范把关闭 dialog 的
+            // 内容视为不可聚焦，未打开时 el.focus() 会静默失败（真实浏览器同样如此）。
+            dialog.setAttribute('open', '')
             dialog.addEventListener('cancel', () => {
               this.dialogCancels += 1
             })

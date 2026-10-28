@@ -37,7 +37,6 @@
     "@vitejs/plugin-vue": "catalog:",
     "@tailwindcss/vite": "catalog:",
     "unplugin-auto-import": "catalog:",
-    "vite-plugin-pwa": "catalog:",
     "vue-tsc": "catalog:",
     "vite": "catalog:",
     "vite-plus": "catalog:"

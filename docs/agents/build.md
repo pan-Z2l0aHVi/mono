@@ -46,15 +46,15 @@ Vue demo 通过私有 `@greypan/wuchale-vue` 在 Vue 编译前转换 SFC。`wuch
 
 ## 库构建模式
 
-公共面是固定入口集合的包用 `vp pack`（基于 tsdown，可以多入口，输出 `.mjs` 与 `.d.mts`，自动生成声明文件并从依赖中外部化）。公共面含通配子路径导出或需要 Vite CSS/资源管线的包用 `vp build`（Vite library 模式配 `preserveModules`，输出 `.js` 与 `.d.ts`，需要手动配置外部化）。具体选择以各包 manifest 与 `vite.config.ts` 为准，入口数量本身不是判据。`packages/tsconfig` 无构建步骤，只提供通过 TypeScript `extends` 消费的 JSON 文件。
+公共面是固定入口集合的包用 `vp pack`（基于 tsdown，可以多入口，输出 `.mjs` 与 `.d.mts`，自动生成声明文件并从依赖中外部化）。公共面含通配子路径导出或需要 Vite CSS/资源管线的包同样用 `vp pack`，按下面三条加配置：`unbundle: true` + `root: 'src'` 让产物与源码树一一对应（子路径导出靠它）；`fixedExtension: false` 把扩展名对齐到 exports 指向的 `.js` / `.d.ts`（node 平台默认是 `.mjs` / `.d.mts`），凡是 exports 指向 `.js` 的包都要显式写这一行，不要依赖 `platform: 'browser'` 的默认值碰巧相同；CSS 入口就是 `pack.entry` 里的一项（见 `web-ui` 的 `classes/style`），`pack.css` 只承载 `minify` 这类选项，浏览器下限由顶层 `target` 同时驱动 JS 语法降级与 LightningCSS 前缀，`css.minify` 打开后与旧 Vite 管线逐字节一致。声明文件由 `pack.dts` 生成：不在 JS 图里的纯类型入口必须显式列进 `pack.entry` 才会产出 `.d.ts`，顶层 `sourcemap: true` 会连带给 `.d.ts` 写 `sourceMappingURL`，所以要同时开 `dts.sourcemap`；`dts.entry` glob 也能补类型入口，但会让 dts 阶段慢数倍，不要用。纯转发的 barrel（`export * from './x'`）在 `unbundle` 下会被拍平进叶子模块，没有 `index.js` / `index.d.ts`，所以 `./*` 通配覆盖的子目录要按 `'<dir>/index'` 的键逐个列进 `pack.entry`——产物落点由键决定，写成 `<dir>` 会落到 `dist/<dir>.js`。具体选择以各包 manifest 与 `vite.config.ts` 为准，入口数量本身不是判据。`packages/tsconfig` 无构建步骤，只提供通过 TypeScript `extends` 消费的 JSON 文件。
 
 ## 外部化规则
 
-匹配 `@greypan/*` 的工作区依赖与 Node 内置模块必须外部化，以保证监听模式可解析并避免重复的消费端代码。第三方依赖在设计意图为零配置消费时可以打包，期望消费端自行提供时外部化。优先用正则而非工作区包列表，并让它同时匹配子路径导入。逐包的外部化清单以各包 `vite.config.ts` 为准。
+匹配 `@greypan/*` 的工作区依赖与 Node 内置模块必须外部化，以保证监听模式可解析并避免重复的消费端代码。这条只对真打包的包有配置意义：`unbundle` 的包按定义不合并任何依赖，加 `external` 正则不会改变产物。第三方依赖在设计意图为零配置消费时可以打包，期望消费端自行提供时外部化。优先用正则而非工作区包列表，并让它同时匹配子路径导入。逐包的外部化清单以各包 `vite.config.ts` 为准。
 
 ## 应用
 
-消费方在各自的 `package.json` 声明同一份 browserslist 目标，根 `package.json` 没有目标值；改目标时同步所有声明处，具体清单以 manifest 为准。`web-ui` 是唯一在构建时输出 CSS 的包；静态 `color-mix()` 由 lightningcss 求值，含 `var()` 的 `color-mix()` 保留为运行时 CSS。纯 JavaScript 库包统一声明 `engines`，具体值以各包 `package.json` 为准。
+消费方在各自的 `package.json` 声明同一份 browserslist 目标，根 `package.json` 没有目标值；改目标时同步所有声明处，也就是各 manifest 的 browserslist 与 `web-ui` 的 `pack.target`——产物实际用的是 `pack.target`，manifest 里的 browserslist 只作文档性声明，两者目前手工双写。`web-ui` 是唯一在构建时输出 CSS 的包；静态 `color-mix()` 由 lightningcss 求值，含 `var()` 的 `color-mix()` 保留为运行时 CSS。纯 JavaScript 库包统一声明 `engines`，具体值以各包 `package.json` 为准。
 
 两个 demo 用 `basicSsl()` 为 dev server 提供安全上下文：Service Worker 与 `navigator.clipboard` 只在安全上下文可用，而 demo 设了 `server.host: true`。该插件只作用于 dev server，生产构建不受影响。各 demo 的插件、测试面与构建差异以各应用 `vite.config.ts` 与 [`verification.md`](./verification.md) 为准。`depsReload` 监听库的 `dist/` 目录，本地依赖变化时触发整页刷新。嵌套 WebView 前端遵循对应框架 demo 的 Vite 插件与本地包约定。
 

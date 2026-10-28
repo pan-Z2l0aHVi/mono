@@ -56,11 +56,12 @@ export default {
 在消费者目录显式执行 `mise exec -- pnpm exec wuchale --clean` 提取 PO，再填写译文。生成的 loader/catalog 由 wuchale 管理，不手工编辑。启动时须在创建组件实例前调用 `loadLocale`：
 
 ```ts
+import './locales/main.loader.js'
+
 import { createApp } from 'vue'
 import { loadLocale } from 'wuchale/load-utils'
 
 import App from './App.vue'
-import './locales/main.loader.js'
 
 await loadLocale('fr')
 createApp(App).mount('#app')
