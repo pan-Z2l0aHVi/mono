@@ -14,7 +14,7 @@
 
 本地登记由 task-ledger skill 负责，只记录归属、进度、issue 与 PR 引用；状态为 `open`、`active`、`closed`、`dropped`，不记录 review、approval、验证阶段或 diff hash。`agent:task` 临时 adapter 已删除；`guard`、`freeze`、`review`、`approve`、`verify` 已移除。整理由实施者显式运行 `fix-code`，检查改动后只暂存预期文件。（2026-10-19 注记：分级与记账已提取为通用 task-ledger skill，schema 降为 v1、命令收为 `new/start/status/ref/close/drop`，见 ADR-0028（纯文本）；本 ADR 的 review/approval/验证 gate 退役决策不变。）
 
-仓库政策检查由 `scripts/checks/` 下的只读入口组成，不读取 task 台账；pre-commit 执行 `check-pre-commit`，PR CI 的 policy step 执行 `check-policy`。两个入口的检查集合不完全相同：CI 不含 `format-clean`，其清洁度判定由 `check-code` 覆盖。完整集合、执行顺序与失败语义以 ADR-0027 §1–§2 为准。PR changeset 政策仍由 CI 使用 PR base/head commit 比较，release 主分支豁免由 workflow 表达。登记、检查和整理入口彼此独立，不把检查结果写回 task 状态。
+仓库政策检查由 `scripts/checks/` 下的只读入口组成，不读取 task 台账；pre-commit 执行 `check-pre-commit`，PR CI 的 policy step 执行 `check-policy`。两个入口的检查集合不完全相同：CI 不含 `staged-clean`，其清洁度判定由 `check-code` 覆盖。完整集合、执行顺序与失败语义以 ADR-0027 §1–§2 为准。PR changeset 政策仍由 CI 使用 PR base/head commit 比较，release 主分支豁免由 workflow 表达。登记、检查和整理入口彼此独立，不把检查结果写回 task 状态。
 
 T0/T1 在 PR 阶段由独立的本地 reviewer 检查实际源码、完整差异与验证证据，并将结果和覆盖的 base/head SHA 写入 PR 或持久交付记录。实施者自查、task 台账和 CI 不能替代 review。required check 执行 CI 和仓库硬约束，不等于 review；远端规则集当前要求哪些 context、是否要求 approving review 属于平台状态，以仓库当前规则为准。review 发表及 merge 仍按会话中的授权边界逐次执行。
 

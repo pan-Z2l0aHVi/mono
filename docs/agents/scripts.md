@@ -36,7 +36,7 @@
 
 ### 执行面
 
-根 `scripts/` 按执行面分为 `checks/`（门禁与脚本测试入口）、`workflow/`（提交命令）、`release/`（发布辅助）、`maintenance/`（清理、环境诊断与依赖维护）与 `lib/`（Node 启动前求值的 bootstrap helper）。门禁入口通过 `check-*` 根命令调用；`checks/` 只放薄入口，同一端点的检查由一个入口聚合，检查逻辑在 `@greypan/monorepo-kit` 的 `policy/` 里。包只有一个入口（`exports["."]`），入口引用一律写包名，没有子路径。分类与入口契约见 ADR-0027。
+根 `scripts/` 按执行面分为 `checks/`（门禁与脚本测试入口）、`workflow/`（提交命令）、`release/`（发布辅助）、`maintenance/`（清理、环境诊断与依赖维护）与 `lib/`（Node 启动前求值的 bootstrap helper）。门禁入口通过 `check-*` 根命令调用；`checks/` 只放薄入口，同一端点的检查由一个入口聚合，检查逻辑在 `@greypan/monorepo-kit` 的 `policy/` 里。app 级的 turbo 门禁入口（`check-generated`）同样放 `checks/`，判据由所属包提供。包只有一个入口（`exports["."]`），入口引用一律写包名，没有子路径。分类与入口契约见 ADR-0027。
 
 ### 授权
 

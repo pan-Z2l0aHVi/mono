@@ -17,7 +17,7 @@ import { VueRouterAutoImports } from 'vue-router/unplugin'
 import vueRouter from 'vue-router/vite'
 import { wuchale } from 'wuchale/vite'
 
-// 具名导出供 scripts/workflow/check-md-to-comp-artifacts.mjs 复用：CI 在 Build 步之前以这份配置
+// 具名导出供 scripts/checks/check-md-to-comp-artifacts.mjs 复用：CI 在 Build 步之前以这份配置
 // 只判不改地校验生成物。配置只有这一份，不另抄。
 export const mdToCompOptions: MdToCompViteOptions = {
   input: '../../packages/web-ui/docs',

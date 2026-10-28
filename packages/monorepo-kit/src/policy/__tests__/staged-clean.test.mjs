@@ -4,9 +4,9 @@ import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 
-import { run } from '../format-clean.mjs'
+import { run } from '../staged-clean.mjs'
 
-const root = fs.mkdtempSync(path.join(os.tmpdir(), 'greypan-format-clean-'))
+const root = fs.mkdtempSync(path.join(os.tmpdir(), 'greypan-staged-clean-'))
 const env = {
   ...process.env,
   GIT_AUTHOR_NAME: 'Codex',
@@ -45,7 +45,7 @@ async function failure(promise) {
   } catch (error) {
     return error.message
   }
-  assert.fail('expected format-clean to fail')
+  assert.fail('expected staged-clean to fail')
 }
 
 try {
@@ -135,7 +135,7 @@ try {
   // The test seam is a JSON argv array; a command string must fail instead of reaching a shell.
   assert.match(await failure(check({ AGENT_VP_ARGV: 'pnpm exec vp' })), /AGENT_VP_ARGV must be a JSON array/)
 
-  process.stdout.write('packages/monorepo-kit/src/policy/__tests__/format-clean.test.mjs: all assertions passed\n')
+  process.stdout.write('packages/monorepo-kit/src/policy/__tests__/staged-clean.test.mjs: all assertions passed\n')
 } finally {
   fs.rmSync(root, { recursive: true, force: true })
 }

@@ -1,7 +1,7 @@
 // 包的唯一入口。子路径不再对外导出：消费方一律 `import { … } from '@greypan/monorepo-kit'`。
 //
 // 导出分两类，判据是「模块的导出名是否互相冲突」，不是风格偏好：
-//   - 命名空间导出：检查单元（12 个）全部导出 `name` 与 `run`，平铺会互相覆盖；
+//   - 命名空间导出：检查单元（13 个）全部导出 `name` 与 `run`，平铺会互相覆盖；
 //     `check-runner` 读的正是 `check.name` / `check.run`，所以命名空间是这套协议的载体，
 //     不是规避重名的权宜手段。`contextInvariants` 与 `shellI18nCatalog` 也走命名空间：
 //     前者 12 个 helper 名字过于通用，后者的 `checkApp` 放进平铺面指代不明（哪个 app）。
@@ -14,13 +14,14 @@ export * as changesetStatus from './policy/changeset-status.mjs'
 export * as commandConventions from './policy/command-conventions.mjs'
 export * as contextCorpus from './policy/context-corpus.mjs'
 export * as contextInvariants from './policy/context-invariants.mjs'
-export * as formatClean from './policy/format-clean.mjs'
 export * as goCheck from './policy/go-check.mjs'
 export * as interweaveTurboInputs from './policy/interweave-turbo-inputs.mjs'
 export * as noMutualLinks from './policy/no-mutual-links.mjs'
 export * as packageContract from './policy/package-contract.mjs'
+export * as readmeLocales from './policy/readme-locales.mjs'
 export * as scriptTests from './policy/script-tests.mjs'
 export * as shellI18nCatalog from './policy/shell-i18n-catalog.mjs'
+export * as stagedClean from './policy/staged-clean.mjs'
 export * as turboCacheInvariant from './policy/turbo-cache-invariant.mjs'
 export * as webUiDocsInputs from './policy/web-ui-docs-inputs.mjs'
 

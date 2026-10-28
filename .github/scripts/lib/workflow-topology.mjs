@@ -1,7 +1,7 @@
 export const RELEASE_BRANCH = 'changeset-release/main'
 export const REQUIRED_CONTEXT = 'check'
 
-// `format-clean` 由 `check-code` 的 `vp check` 覆盖，不在 required job 里重复执行。
+// `staged-clean` 由 `check-code` 的 `vp check` 覆盖，不在 required job 里重复执行。
 export const requiredPolicyStep = {
   name: 'Check repository policies',
   job: REQUIRED_CONTEXT,

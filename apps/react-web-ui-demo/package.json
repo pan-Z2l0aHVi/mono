@@ -8,7 +8,7 @@
     "dev": "vp dev",
     "preview": "vp preview",
     "test": "vp test run",
-    "check-generated": "node ../../scripts/workflow/check-md-to-comp-artifacts.mjs . react"
+    "check-generated": "node ../../scripts/checks/check-md-to-comp-artifacts.mjs . react"
   },
   "dependencies": {
     "@greypan/app-scrollbars": "workspace:*",

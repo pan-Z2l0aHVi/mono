@@ -3,11 +3,11 @@ import path from 'node:path'
 
 import { commandOutput, exec } from '../shared/exec.mjs'
 
-// 提交边界的只读格式检查：只判定，不运行 fixer，也不改 index。
+// 提交边界的只读清洁度检查：暂存文件必须过格式、lint 与类型，只判定，不运行 fixer，也不改 index。
 // 文件名来自 index，但工具检查工作区副本；index 与工作区分叉时由作者收敛。
 // 环境变量只覆盖「调用哪条命令」，是 fixture 的测试 seam，不是用户接口。
 // argv 以 JSON 数组传入，避免用 shell 词法拆分命令字符串。
-export const name = 'format-clean'
+export const name = 'staged-clean'
 
 const STYLELINT_FILE = /\.(?:css|scss|less|html|vue)$/
 const GO_FILE = /\.go$/

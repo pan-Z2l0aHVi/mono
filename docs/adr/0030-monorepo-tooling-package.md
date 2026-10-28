@@ -12,6 +12,8 @@
 
 2026-10-28 修订（四）：端口分配数据从 `repo/test-ports.mjs` 移到根 `monorepo.json`，包内只保留读取、校验与偏移；项目名因此退化为 `string`，未知名字在调用时报错并列出可选值，名称集合与调用点的一致性仍由 `test-ports.test.mjs` 守。
 
+2026-10-29 修订（五）：§5 的排除实现从模块内置改为入口传入。哪些测试已由别的执行面承担是仓库事实，写进策略模块会让包名成为硬编码；`policy/script-tests.mjs` 只保留通用的目录排除逻辑，`scripts/checks/test-scripts.mjs` 传入 `packages/monorepo-kit`。行为不变。
+
 ## 背景与取舍
 
 迁移前 `scripts/lib/` 有 22 个实现模块、15 个同名测试、2 个 `.d.mts`、2 个 `.sh`，同时装着三类互不相同的职责：
@@ -42,11 +44,11 @@ ADR-0027 §5 允许 `scripts/lib/` 承载共享实现，因此迁移前的形态
 
 ### 2. 分三个分区，按「换仓库是否重写」划分
 
-| 分区      | 内容                                                                                                                                                                                                                                                                                                                                            | 判据                           |
-| --------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------ |
-| `shared/` | `config`、`exec`、`git`、`workspace-manifests`、`repo-root`                                                                                                                                                                                                                                                                                     | 与仓库无关，可直接复用于别处   |
-| `policy/` | 16 个门禁原子实现：`changeset-policy`、`changeset-status`、`check-runner`、`command-conventions`、`context-corpus`、`context-invariants`、`format-clean`、`git-hooks-status`、`go-check`、`interweave-turbo-inputs`、`no-mutual-links`、`package-contract`、`script-tests`、`shell-i18n-catalog`、`turbo-cache-invariant`、`web-ui-docs-inputs` | 本仓库的门禁策略，换仓库即重写 |
-| `repo/`   | `test-ports`（读取并校验根 `monorepo.json` 的端口分配）                                                                                                                                                                                                                                                                                         | 本仓库编排，被构建配置消费     |
+| 分区      | 内容                                                                                                                                                                                                                                                                                                                                                              | 判据                           |
+| --------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------ |
+| `shared/` | `config`、`exec`、`git`、`workspace-manifests`、`repo-root`                                                                                                                                                                                                                                                                                                       | 与仓库无关，可直接复用于别处   |
+| `policy/` | 17 个门禁原子实现：`changeset-policy`、`changeset-status`、`check-runner`、`command-conventions`、`context-corpus`、`context-invariants`、`git-hooks-status`、`go-check`、`interweave-turbo-inputs`、`no-mutual-links`、`package-contract`、`readme-locales`、`script-tests`、`shell-i18n-catalog`、`staged-clean`、`turbo-cache-invariant`、`web-ui-docs-inputs` | 本仓库的门禁策略，换仓库即重写 |
+| `repo/`   | `test-ports`（读取并校验根 `monorepo.json` 的端口分配）                                                                                                                                                                                                                                                                                                           | 本仓库编排，被构建配置消费     |
 
 分区是目录约定，不是访问控制。`policy/` 与 `repo/` 显式承认自己知道本仓库布局，不假装通用；`shared/` 才是不带仓库假设的部分。
 
@@ -69,7 +71,7 @@ ADR-0027 §5 允许 `scripts/lib/` 承载共享实现，因此迁移前的形态
 ### 5. 测试跟着被测对象，`test-scripts` 显式排除包
 
 - 包内测试放在被测模块旁的 `__tests__/`，`"test": "node --test \"src/**/__tests__/*.test.mjs\""`。glob 必须显式写到 `__tests__/`：直接传目录会按 Node 的默认模式收文件，`repo/test-ports.mjs` 匹配 `test-*`，会被当成空测试再跑一遍——迁移时这一条是实测出来的。类型产物落在 `dist/`，不在这个 glob 里。
-- `policy/script-tests.mjs` 的发现集合排除 `packages/monorepo-kit/**`。`git ls-files '*.test.mjs'` 的 pathspec 里 `*` 跨越目录分隔符，所以它覆盖全仓；不排除会双跑，且失败归属到两个地方。
+- `scripts/checks/test-scripts.mjs` 把 `packages/monorepo-kit` 作为排除目录传给 `policy/script-tests.mjs`；排除是仓库事实，由入口给出，策略模块不认包名。`git ls-files '*.test.mjs'` 的 pathspec 里 `*` 跨越目录分隔符，所以它覆盖全仓；不排除会双跑，且失败归属到两个地方。
 - 需要仓库根的测试（`package-contract`）经 `shared/repo-root.mjs` 向上查找 `pnpm-workspace.yaml` 定位仓库根，不再按目录深度写 `../../..`。迁移期已经在这个维度出过一次错。
 - 包自己的 `turbo.json` 把测试读到的包外文件加进 `test.inputs`：全仓 `vite.config.ts`（调用点扫描）与 `docs/agents/build.md`（端口表副本比对），turbo 只哈希包目录内的文件。`test` 不依赖 `build`，测试直接 import 源码。
 
