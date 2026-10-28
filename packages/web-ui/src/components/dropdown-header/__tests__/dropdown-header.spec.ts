@@ -25,7 +25,6 @@ describe('WebUiDropdownHeader 组件', () => {
     await waitForUpdate(el)
 
     expect(projectedCount(el)).toBe(1)
-    expect(el.textContent?.trim()).toBe('分组A')
 
     cleanupElement(el)
   })

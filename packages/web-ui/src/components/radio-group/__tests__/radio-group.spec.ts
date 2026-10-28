@@ -3,7 +3,14 @@ import '@/components/radio'
 
 import { describe, expect, it } from 'vite-plus/test'
 
-import { waitForUpdate, spyEvents, spyHostEvents, cleanupElement, queryA11y } from '@/shared/test-utils'
+import {
+  waitForUpdate,
+  flushSlotChange,
+  spyEvents,
+  spyHostEvents,
+  cleanupElement,
+  queryA11y
+} from '@/shared/test-utils'
 
 import type { WebUiRadioGroup } from '..'
 import type { WebUiRadio } from '../../radio'
@@ -593,9 +600,8 @@ describe('WebUiRadioGroup 组件', () => {
       newRadio.setAttribute('value', 'c')
       newRadio.textContent = 'C'
       el.appendChild(newRadio)
-      await new Promise(r => setTimeout(r, 0))
-      await Promise.all([newRadio.updateComplete, waitForUpdate(el)])
-      await new Promise(r => setTimeout(r, 0))
+      await flushSlotChange(el)
+      await newRadio.updateComplete
 
       expect(newRadio.checked).toBe(true)
       cleanupElement(el)
@@ -611,9 +617,8 @@ describe('WebUiRadioGroup 组件', () => {
       newRadio.setAttribute('value', 'b')
       newRadio.textContent = 'B'
       el.appendChild(newRadio)
-      await new Promise(r => setTimeout(r, 0))
-      await Promise.all([newRadio.updateComplete, waitForUpdate(el)])
-      await new Promise(r => setTimeout(r, 0))
+      await flushSlotChange(el)
+      await newRadio.updateComplete
 
       expect(newRadio.disabled).toBe(false)
       const control = queryA11y(newRadio, '[role="radio"]')
@@ -674,9 +679,8 @@ describe('WebUiRadioGroup 组件', () => {
       const rc = document.createElement('web-ui-radio') as WebUiRadio
       rc.setAttribute('value', 'z')
       el.append(ra, rb, rc)
-      await new Promise(r => setTimeout(r, 0))
-      await Promise.all([ra.updateComplete, rb.updateComplete, rc.updateComplete, waitForUpdate(el)])
-      await new Promise(r => setTimeout(r, 0))
+      await flushSlotChange(el)
+      await Promise.all([ra.updateComplete, rb.updateComplete, rc.updateComplete])
 
       expect(ra.checked).toBe(false)
       expect(rb.checked).toBe(true)
@@ -830,11 +834,7 @@ describe('WebUiRadioGroup 重复 value', () => {
  * 成员尚未渲染时不得剪：外部预设的初始值要能等到子元素连上。
  */
 describe('WebUiRadioGroup 成员移除后的值剪枝', () => {
-  const settle = async (el: WebUiRadioGroup) => {
-    await waitForUpdate(el)
-    await new Promise(resolve => setTimeout(resolve, 0))
-    await waitForUpdate(el)
-  }
+  const settle = (el: WebUiRadioGroup) => flushSlotChange(el)
 
   it('移除已选成员后 value 归空', async () => {
     const el = createGroup()

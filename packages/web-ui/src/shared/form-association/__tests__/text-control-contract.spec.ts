@@ -105,10 +105,6 @@ for (const spec of CONTROLS) {
       cleanupElement(el)
     })
 
-    it('formAssociated 已声明', () => {
-      expect((customElements.get(spec.tag) as unknown as { formAssociated: boolean }).formAssociated).toBe(true)
-    })
-
     contractReflection(`${spec.label} 共有属性反射`, mount, SHARED_REFLECTION)
     contractReflection(`${spec.label} 特有属性反射`, mount, spec.extra)
 

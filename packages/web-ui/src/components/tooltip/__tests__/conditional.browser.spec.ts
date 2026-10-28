@@ -81,11 +81,10 @@ describe('WebUiTooltip portal 条件渲染边界（浏览器）', () => {
     show.value = true
     await nextTick()
     await tooltip.updateComplete
-    const deadline = performance.now() + 2000
-    while (performance.now() < deadline) {
-      if (getPortalPanel('tooltip')?.querySelector('.probe-flag')) break
-      await new Promise(resolve => requestAnimationFrame(resolve))
-    }
+    await pollUntil(
+      () => Boolean(getPortalPanel('tooltip')?.querySelector('.probe-flag')),
+      'Expected added flag to migrate into the tooltip panel'
+    )
     expect(getPortalPanel('tooltip')?.querySelector('.probe-flag')).not.toBeNull()
     expect(mountPoint.querySelectorAll('.probe-flag').length).toBe(0)
 

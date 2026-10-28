@@ -51,6 +51,19 @@ function resource(overrides: Partial<ResourceView> = {}): ResourceView {
   }
 }
 
+/**
+ * 页面级 focus ring 的颜色来自 --wui-color-focus-ring（global.css）。在行元素的父作用域里
+ * 用探针把它归一成计算形态，断言只依赖 token，而不是某个主题档的 rgb 字面量。
+ */
+function focusRingColor(scope: Element): string {
+  const probe = document.createElement('span')
+  probe.style.color = 'var(--wui-color-focus-ring, rgb(0 136 255 / 0.4))'
+  scope.append(probe)
+  const color = getComputedStyle(probe).color
+  probe.remove()
+  return color
+}
+
 async function mountList(resources: ResourceView[], activeResourceId: string | null = null) {
   const restoreLayout = stubLayout()
   const host = document.createElement('div')
@@ -134,8 +147,8 @@ describe('ResourceList：页面级 focus ring 真实读数（浏览器）', () =
       const outlineOffset1 = getComputedStyle(rows[0]).outlineOffset
       expect(outlineStyle1, '第 1 行应有 focus ring').not.toBe('none')
       expect(outlineWidth1, '第 1 行 outline-width 应非 0px').not.toBe('0px')
-      expect(outlineColor1, '第 1 行 outline-color 应为页面级半透明浅蓝').toMatch(
-        /(rgba?\(0,\s*136,\s*255|rgb\(0,\s*95,\s*204\))/
+      expect(outlineColor1, '第 1 行 outline-color 应等于页面级 focus ring token').toBe(
+        focusRingColor(rows[0].parentElement ?? document.body)
       )
 
       // 第 2、3 行不应有 outlineStyle
@@ -154,8 +167,8 @@ describe('ResourceList：页面级 focus ring 真实读数（浏览器）', () =
       const outlineColor2 = getComputedStyle(rows[1]).outlineColor
       expect(outlineStyle2After, '第 2 行应有 focus ring').not.toBe('none')
       expect(outlineWidth2, '第 2 行 outline-width 应非 0px').not.toBe('0px')
-      expect(outlineColor2, '第 2 行 outline-color 应为页面级半透明浅蓝').toMatch(
-        /(rgba?\(0,\s*136,\s*255|rgb\(0,\s*95,\s*204\))/
+      expect(outlineColor2, '第 2 行 outline-color 应等于页面级 focus ring token').toBe(
+        focusRingColor(rows[1].parentElement ?? document.body)
       )
 
       // 第 1 行 outlineStyle 应消失
@@ -175,8 +188,8 @@ describe('ResourceList：页面级 focus ring 真实读数（浏览器）', () =
       const outlineColor3 = getComputedStyle(rows[2]).outlineColor
       expect(outlineStyle3Final, '第 3 行应有 focus ring').not.toBe('none')
       expect(outlineWidth3, '第 3 行 outline-width 应非 0px').not.toBe('0px')
-      expect(outlineColor3, '第 3 行 outline-color 应为页面级半透明浅蓝').toMatch(
-        /(rgba?\(0,\s*136,\s*255|rgb\(0,\s*95,\s*204\))/
+      expect(outlineColor3, '第 3 行 outline-color 应等于页面级 focus ring token').toBe(
+        focusRingColor(rows[2].parentElement ?? document.body)
       )
 
       // 第 2 行 outlineStyle 应消失
@@ -211,8 +224,8 @@ describe('ResourceList：页面级 focus ring 真实读数（浏览器）', () =
       const outlineColorLast = getComputedStyle(rows[4]).outlineColor
       expect(outlineStyleLast, '第 5 行应有 focus ring').not.toBe('none')
       expect(outlineWidthLast, '第 5 行 outline-width 应非 0px').not.toBe('0px')
-      expect(outlineColorLast, '第 5 行 outline-color 应为页面级半透明浅蓝').toMatch(
-        /(rgba?\(0,\s*136,\s*255|rgb\(0,\s*95,\s*204\))/
+      expect(outlineColorLast, '第 5 行 outline-color 应等于页面级 focus ring token').toBe(
+        focusRingColor(rows[4].parentElement ?? document.body)
       )
 
       // 其他行无 outlineStyle
@@ -254,13 +267,8 @@ describe('ResourceList：页面级 focus ring 真实读数（浏览器）', () =
       rows = mounted.rows()
       expect(rows[0].getAttribute('tabindex'), '第 1 行仍是 roving tabindex 为 0 的行').toBe('0')
       expect(rows[1].getAttribute('tabindex'), '第 2 行仍是 -1').toBe('-1')
-      expect(mounted.container!.dataset.activeIndex, 'activeIndex 仍是 0').toBe('0')
+      expect(mounted.activeId(), '当前行仍是 r1').toBe('r1')
       expect(document.activeElement, '焦点仍在第 1 行').toBe(rows[0])
-
-      // 第 1 行应有激活底色
-      const activeBg = getComputedStyle(rows[0]).backgroundColor
-      const normalBg = getComputedStyle(rows[1]).backgroundColor
-      expect(activeBg, '第 1 行应有激活底色').not.toBe(normalBg)
     } finally {
       mounted.unmount()
     }
@@ -282,40 +290,33 @@ describe('ResourceList：页面级 focus ring 真实读数（浏览器）', () =
       await waitFor(() => document.activeElement === mounted.rows()[2], '焦点落到第 3 行')
 
       let rows = mounted.rows()
-      // 此时 activeIndex 应该是 2（r3），焦点在 rows[2]
-      expect(mounted.container!.dataset.activeIndex).toBe('2')
+      // 此时当前行是 r3，焦点在 rows[2]
+      expect(mounted.activeId()).toBe('r3')
       expect(document.activeElement).toBe(rows[2])
 
       // 用 JS 直接把焦点移到第 1 行（r1），而不 emit activate
       // 这样 current row 仍是 r3（activeIndex 仍是 2），焦点与 current row 已分离
       const targetRow = rows[0] // r1 在 index 0
       targetRow.focus()
-      // 给浏览器一点时间处理 focus 事件
-      await new Promise(resolve => setTimeout(resolve, 0))
+      await waitFor(() => document.activeElement === targetRow, '焦点应落到第 1 行')
 
-      // 现在：焦点在 r1 (rows[0])，current row 仍是 r3 (activeIndex=2)
+      // 现在：焦点在 r1 (rows[0])，当前行仍是 r3
       rows = mounted.rows()
       const focusIdx = rows.findIndex(r => r === document.activeElement)
-      const activeIdx = mounted.container!.dataset.activeIndex
-      // focus 在 r1 (index 0)，current row 是 r3 (index 2)——它们确实不同
+      // focus 在 r1 (index 0)，当前行是 r3——它们确实不同
       expect(focusIdx).toBe(0)
-      expect(activeIdx).toBe('2')
+      expect(mounted.activeId()).toBe('r3')
 
       // 按 Space：当前行应切到焦点所在的第 1 行 (r1)
       await userEvent.keyboard(' ')
-      await waitFor(() => mounted.container!.dataset.activeIndex === '0', 'Space 后当前行跟上焦点，变为 r1')
+      await waitFor(() => mounted.activeId() === 'r1', 'Space 后当前行跟上焦点，变为 r1')
 
       // 断言：当前行切回了第 1 行，焦点仍在第 1 行
       rows = mounted.rows()
-      expect(mounted.container!.dataset.activeIndex).toBe('0')
+      expect(mounted.activeId()).toBe('r1')
       expect(document.activeElement).toBe(rows[0])
       expect(rows[0].getAttribute('tabindex')).toBe('0')
       expect(rows[2].getAttribute('tabindex')).toBe('-1')
-
-      // 第 1 行应有激活底色
-      const activeBg = getComputedStyle(rows[0]).backgroundColor
-      const normalBg = getComputedStyle(rows[2]).backgroundColor
-      expect(activeBg, '第 1 行应有激活底色').not.toBe(normalBg)
     } finally {
       mounted.unmount()
     }

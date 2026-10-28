@@ -5,13 +5,17 @@ import { afterEach, describe, expect, it } from 'vite-plus/test'
 import { page } from 'vite-plus/test/browser'
 
 import type { WebUiTheme } from '@/components/theme'
-import { waitForUpdate } from '@/shared/test-utils'
+import { afterRenderStep, waitForUpdate } from '@/shared/test-utils'
 
 import type { WebUiAvatar } from '..'
 
 afterEach(() => document.body.replaceChildren())
 
 type Rgb = [number, number, number]
+
+/** 截图采样带光栅化/色彩剖面误差，逐通道允许 ±1。 */
+const channelsClose = (actual: Rgb, expected: Rgb): boolean =>
+  actual.every((channel, index) => Math.abs(channel - expected[index]!) <= 1)
 
 /** WCAG 相对亮度比。 */
 function contrastRatio(foreground: Rgb, background: Rgb): number {
@@ -102,16 +106,24 @@ describe('avatar 回退内容对比度（浏览器）', () => {
     plainParent.append(theme)
     document.body.append(plainParent)
 
+    // 首字母的像素取决于字体是否就位，先等字体，再等一个渲染步进落定。
+    await document.fonts.ready
     await waitForUpdate(theme)
     await Promise.all([waitForUpdate(iconAvatar), waitForUpdate(initialsAvatar)])
-    await new Promise(resolve => requestAnimationFrame(resolve))
+    await afterRenderStep()
 
     const expectedBackground = themeSurfaceRaisedColor(themedPage)
     const icon = await renderedColors(iconAvatar)
     const initials = await renderedColors(initialsAvatar)
 
-    expect(icon.background, `${appearance} 默认图标回退底色应匹配主题 surface-raised`).toEqual(expectedBackground)
-    expect(initials.background, `${appearance} 首字母回退底色应匹配主题 surface-raised`).toEqual(expectedBackground)
+    expect(
+      channelsClose(icon.background, expectedBackground),
+      `${appearance} 默认图标回退底色应匹配主题 surface-raised（实测 ${icon.background.join(',')}）`
+    ).toBe(true)
+    expect(
+      channelsClose(initials.background, expectedBackground),
+      `${appearance} 首字母回退底色应匹配主题 surface-raised（实测 ${initials.background.join(',')}）`
+    ).toBe(true)
     expect(icon.contrastRatio, `${appearance} 默认图标对比度应达到 4.5:1`).toBeGreaterThanOrEqual(4.5)
     expect(initials.contrastRatio, `${appearance} 首字母对比度应达到 4.5:1`).toBeGreaterThanOrEqual(4.5)
   })

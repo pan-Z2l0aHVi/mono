@@ -414,7 +414,7 @@ Dark follows the same invariant: the indicator still matches `--wui-color-page` 
 
 The page is already the darkest step of the dark ladder, so "the same color as the page" can only hold by opening the track downward rather than lifting the indicator up. The raised direction still reads from "the indicator is brighter than the track": the WCAG luminance ratios of the two steps are 1.26:1 (light) and 1.16:1 (dark), the same order of magnitude, so neither overpowers the soft shadow.
 
-So in dark mode the two variants no longer share one gray pair: inset is a `#2c2c2e` track + `#3a3a3c` indicator (the selected surface is brighter than the track, reading as a pressed gray), while raised is a `#17191a` track + `#242628` indicator (the selected surface matches the page, reading as a slice of page floating up).
+So in dark mode the two variants use different gray pairs: inset is a `#2c2c2e` track + `#3a3a3c` indicator (the selected surface is brighter than the track, reading as a pressed gray), while raised is a `#17191a` track + `#242628` indicator (the selected surface matches the page, reading as a slice of page floating up).
 
 The invariant says "the same color as the page", not "the same color as the containing element". In light mode the page and surface are both `#fff`, so the two statements are equivalent; in dark mode the surface is `#2c2c2e`, so putting the raised variant inside a surface card makes the chip one step darker than the card itself.
 
@@ -446,9 +446,9 @@ In every state the track is an opaque solid surface (`--wui-color-surface`, i.e.
 
 The resting indicator is a solid `--wui-color-surface-segmented` fill with all glass output turned off.
 
-The pressed / drag state gains a backdrop blur, a glass stroke ring fading in over an 80ms transition, and 1.5x scale, with a fully transparent fill: the indicator's blur sample area lies entirely inside the track, whereas previously a fully transparent indicator over a glass track differed from the adjacent track by only +0.5 steps on a uniformly dark base, and on a striped background the indicator interior measured a gray std of 1.89 (background bleed).
+The pressed / drag state gains a backdrop blur, a glass stroke ring fading in over an 80ms transition, and 1.5x scale, with a fully transparent fill: the indicator's blur sample area lies entirely inside the track. A fully transparent indicator over a glass track differs from the adjacent track by only +0.5 steps on a uniformly dark base, and on a striped background the indicator interior measures a gray std of 1.89 (background bleed).
 
-Once the track is solid, the same sample std drops to zero, and the pressed body's perceptibility comes from the solid track together with the scale / ring / shadow, so no tint base or suppression of the track's edge decoration is needed anymore.
+Once the track is solid, the same sample std drops to zero, and the pressed body's perceptibility comes from the solid track together with the scale / ring / shadow, so no tint base or suppression of the track's edge decoration is needed.
 
 The fill does not fade in—it settles on the first frame of the press; on release the indicator fades back to the solid gray fill over `--wui-duration-press`.
 

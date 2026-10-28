@@ -197,8 +197,8 @@ describe('ResourceList 改名草稿在编辑行被回收时不丢（真实输入
    * disconnectedCallback。默认提交只有 Enter 与 blur 两条——Chromium 移除会补派 blur、
    * change 照常派发；WebKit（Safari / iOS）移除**不派发 blur**，默认路径什么都不提交。
    *
-   * 旧实现靠 keepMounted 把编辑行「并入」渲染窗口回避这件事；virtua 的窗口模式没有
-   * keepMounted，兜底改落在 ResourceRow 显式开启的 commit-on-unmount 上。
+   * virtua 的窗口模式没有 keepMounted，编辑行离开渲染窗口就会被回收，兜底落在 ResourceRow
+   * 显式开启的 commit-on-unmount 上。
    *
    * 只能在真实浏览器跑：jsdom 的 web-ui-editable-text 没有升级成真正的自定义元素，
    * disconnectedCallback 根本不执行。

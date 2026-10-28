@@ -55,8 +55,8 @@ body {
  * 页面级 focus ring 对齐 web-ui 组件的浅蓝样式。
  *
  * web-ui 组件把 ring 写在自己 shadow 内，够不到 light DOM；app 自绘的原生元素
- * （AppNav 导航 button、添加 dialog 里的 button）此前落回 UA 默认蓝环，于是同一页面上
- * 键盘 Tab 时出现两套 focus 语言——组件是半透明浅蓝描边，原生元素是实心系统蓝。
+ * （AppNav 导航 button、添加 dialog 里的 button）不写这条就落回 UA 默认蓝环，同一页面上
+ * 键盘 Tab 时会出现两套 focus 语言——组件是半透明浅蓝描边，原生元素是实心系统蓝。
  *
  * 放在 document 样式表而不是 layout 的 shadow 里：::slotted() 只能命中 slot 的
  * 直接子元素，而 AppNav 的 <button> 嵌在自己的根 div 内，从组件侧根本够不着。

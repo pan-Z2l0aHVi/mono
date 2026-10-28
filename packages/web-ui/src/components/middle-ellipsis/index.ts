@@ -191,7 +191,7 @@ export class WebUiMiddleEllipsis extends LitElement {
   /*
    * 渲染结果用普通字段承载，不用 `@state`：切分只能在渲染之后量到真实宽度才算得出来，也就是说
    * 「改渲染结果」必然发生在更新周期里，而周期内的 `requestUpdate` 会被 Lit 记一条
-   * `change-in-update` 警告——一个实例一条，一张千行的表就是一千条。改成普通字段 + 只在周期外
+   * `change-in-update` 警告——一个实例一条，一张千行的表就是一千条。用普通字段 + 只在周期外
    * （ResizeObserver 回调、微任务）显式 `requestUpdate()`，渲染时机不变，警告消失。
    */
   private _display = ''

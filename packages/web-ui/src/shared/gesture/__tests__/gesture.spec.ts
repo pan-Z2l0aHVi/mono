@@ -1,6 +1,16 @@
 import { describe, expect, it, vi } from 'vite-plus/test'
 
 import { attachDragGesture } from '../drag-gesture'
+
+/**
+ * 手势时长与速度都取 `PointerEvent.timeStamp`。合成事件的默认时间戳是墙钟，
+ * 用真实 `setTimeout` 隔开再断言会随负载漂移（间隔被拉长，阈值断言随机红）。
+ * 这里直接钉事件时间戳，把时序变成输入的一部分。
+ */
+function at<T extends Event>(event: T, timeStamp: number): T {
+  Object.defineProperty(event, 'timeStamp', { value: timeStamp })
+  return event
+}
 import { clamp, dampOverscroll, normalizeProgress, snapToNearest } from '../physics'
 import { attachPinchGesture } from '../pinch-gesture'
 
@@ -73,52 +83,63 @@ describe('shared/gesture attachDragGesture', () => {
 
   // duration 覆盖整段手势（可作「整段平均速度」的分母），而 velocity 只描述最后一小段。
   // 两者混用会把「慢慢拖了很久后快速回甩」判成快速轻扫。
-  it('onEnd 上报整段手势时长：区别于只描述最后一小段的滑动窗口速度', async () => {
+  it('onEnd 上报整段手势时长：区别于只描述最后一小段的滑动窗口速度', () => {
     const el = document.createElement('div')
     document.body.append(el)
 
     const onEnd = vi.fn<(info: { deltaX: number; velocityX: number; duration: number }) => void>()
     const handle = attachDragGesture(el, { axis: 'x', onEnd })
 
-    el.dispatchEvent(new PointerEvent('pointerdown', { pointerId: 1, clientX: 100, clientY: 0, isPrimary: true }))
-    await new Promise(resolve => setTimeout(resolve, 150))
+    el.dispatchEvent(
+      at(new PointerEvent('pointerdown', { pointerId: 1, clientX: 100, clientY: 0, isPrimary: true }), 1000)
+    )
     // 先反向拖出，再一次性快速扫回：滑动窗口只反映这段回扫，时长覆盖整段手势。
-    window.dispatchEvent(new PointerEvent('pointermove', { pointerId: 1, clientX: 60, clientY: 0, isPrimary: true }))
-    await new Promise(resolve => setTimeout(resolve, 30))
-    window.dispatchEvent(new PointerEvent('pointermove', { pointerId: 1, clientX: 200, clientY: 0, isPrimary: true }))
-    window.dispatchEvent(new PointerEvent('pointerup', { pointerId: 1, clientX: 200, clientY: 0, isPrimary: true }))
+    window.dispatchEvent(
+      at(new PointerEvent('pointermove', { pointerId: 1, clientX: 60, clientY: 0, isPrimary: true }), 1150)
+    )
+    window.dispatchEvent(
+      at(new PointerEvent('pointermove', { pointerId: 1, clientX: 200, clientY: 0, isPrimary: true }), 1180)
+    )
+    window.dispatchEvent(
+      at(new PointerEvent('pointerup', { pointerId: 1, clientX: 200, clientY: 0, isPrimary: true }), 1180)
+    )
 
     expect(onEnd).toHaveBeenCalledTimes(1)
     const info = onEnd.mock.calls[0][0]
-    expect(info.duration).toBeGreaterThanOrEqual(150)
+    expect(info.duration).toBe(180)
+    // 100ms 窗口只留下 1150 → 1180 这一段回扫：(200 - 60) / 30ms。
     expect(info.velocityX).toBeGreaterThan(1000)
 
     handle.destroy()
     el.remove()
   })
 
-  it('有意图死区时 duration 从越阈那一刻起算，不含此前的悬停', async () => {
+  it('有意图死区时 duration 从越阈那一刻起算，不含此前的悬停', () => {
     const el = document.createElement('div')
     document.body.append(el)
 
     const onEnd = vi.fn<(info: { duration: number }) => void>()
     const handle = attachDragGesture(el, { axis: 'x', threshold: 10, onEnd })
 
-    el.dispatchEvent(new PointerEvent('pointerdown', { pointerId: 1, clientX: 100, clientY: 0, isPrimary: true }))
+    el.dispatchEvent(
+      at(new PointerEvent('pointerdown', { pointerId: 1, clientX: 100, clientY: 0, isPrimary: true }), 1000)
+    )
     // 死区内的悬停：不属于拖拽轨迹，不应计入 duration。
-    await new Promise(resolve => setTimeout(resolve, 300))
-    window.dispatchEvent(new PointerEvent('pointermove', { pointerId: 1, clientX: 120, clientY: 0, isPrimary: true }))
-    await new Promise(resolve => setTimeout(resolve, 40))
-    window.dispatchEvent(new PointerEvent('pointerup', { pointerId: 1, clientX: 120, clientY: 0, isPrimary: true }))
+    window.dispatchEvent(
+      at(new PointerEvent('pointermove', { pointerId: 1, clientX: 120, clientY: 0, isPrimary: true }), 1400)
+    )
+    window.dispatchEvent(
+      at(new PointerEvent('pointerup', { pointerId: 1, clientX: 120, clientY: 0, isPrimary: true }), 1440)
+    )
 
     expect(onEnd).toHaveBeenCalledTimes(1)
-    expect(onEnd.mock.calls[0][0].duration).toBeLessThan(250)
+    expect(onEnd.mock.calls[0][0].duration).toBe(40)
 
     handle.destroy()
     el.remove()
   })
 
-  it('calibrateOnFirstMove：首个 move 重置零点与时钟，按下到首个 move 之间的位移被吸收', async () => {
+  it('calibrateOnFirstMove：首个 move 重置零点与时钟，按下到首个 move 之间的位移被吸收', () => {
     const el = document.createElement('div')
     document.body.append(el)
 
@@ -131,22 +152,28 @@ describe('shared/gesture attachDragGesture', () => {
       onEnd
     })
 
-    el.dispatchEvent(new PointerEvent('pointerdown', { pointerId: 1, clientX: 100, clientY: 0, isPrimary: true }))
+    el.dispatchEvent(
+      at(new PointerEvent('pointerdown', { pointerId: 1, clientX: 100, clientY: 0, isPrimary: true }), 1000)
+    )
     // 按下 → 首个 move 之间已偏移 60px：校准把它吸收，
     // 首个 move 的 delta 因此为 0，元素不会在首个 move 一次性跳出这 60px。
-    window.dispatchEvent(new PointerEvent('pointermove', { pointerId: 1, clientX: 160, clientY: 0, isPrimary: true }))
-    window.dispatchEvent(new PointerEvent('pointermove', { pointerId: 1, clientX: 220, clientY: 0, isPrimary: true }))
+    window.dispatchEvent(
+      at(new PointerEvent('pointermove', { pointerId: 1, clientX: 160, clientY: 0, isPrimary: true }), 1200)
+    )
+    window.dispatchEvent(
+      at(new PointerEvent('pointermove', { pointerId: 1, clientX: 220, clientY: 0, isPrimary: true }), 1210)
+    )
     expect(deltas).toEqual([0, 60])
 
     // 判定时钟同样自校准点起算：不含「按下 → 首个 move」的耗时。
-    await new Promise(resolve => setTimeout(resolve, 30))
-    window.dispatchEvent(new PointerEvent('pointerup', { pointerId: 1, clientX: 220, clientY: 0, isPrimary: true }))
+    window.dispatchEvent(
+      at(new PointerEvent('pointerup', { pointerId: 1, clientX: 220, clientY: 0, isPrimary: true }), 1240)
+    )
 
     expect(onEnd).toHaveBeenCalledTimes(1)
     const end = onEnd.mock.calls[0][0]
     expect(end.deltaX).toBe(60)
-    expect(end.duration).toBeGreaterThanOrEqual(30)
-    expect(end.duration).toBeLessThan(300)
+    expect(end.duration).toBe(40)
 
     handle.destroy()
     el.remove()

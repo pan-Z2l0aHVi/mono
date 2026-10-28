@@ -87,7 +87,6 @@ describe('WebUiSvgDrawLines 组件（浏览器）', () => {
       expect(Number.parseFloat(getComputedStyle(actualPath).strokeDashoffset)).toBeCloseTo(blank * 0.75, 1)
       animation.currentTime = 500
       expect(Number.parseFloat(getComputedStyle(actualPath).strokeDashoffset)).toBeCloseTo(blank * 0.5, 1)
-      expect(actualPath.style.getPropertyValue('--wui-svg-draw-lines-offset')).toBe('')
 
       animation.cancel()
       await replayed

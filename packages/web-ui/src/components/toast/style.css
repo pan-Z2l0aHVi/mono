@@ -13,7 +13,7 @@
 }
 
 /* 单层玻璃：.toast 自身承担背景/阴影/backdrop-filter。blur(0px) ↔ blur(4px) 平滑
-   插值（none↔blur 不可插值才是当年生硬跳变的根因），own opacity 过渡不禁用自身
+   插值（none↔blur 不可插值，直接切换会跳变），own opacity 过渡不禁用自身
    blur，因此 toast 直接 opacity + backdrop-filter + transform 同步过渡，无需双层。 */
 .toast {
   --wui-internal-glass-shadow: var(--wui-shadow-panel, 0 3px 9px rgb(0 0 0 / 0.27));
@@ -94,7 +94,7 @@ web-ui-button.toast-close-btn {
   }
 }
 
-/* secondary 变体默认用文本色，恢复原关闭 button 的 muted 观感 */
+/* secondary 变体默认用文本色，让关闭 button 呈现 muted 观感 */
 .toast web-ui-button[icon] {
   --wui-button-color: var(--wui-color-text-secondary, #6a6a6a);
 }

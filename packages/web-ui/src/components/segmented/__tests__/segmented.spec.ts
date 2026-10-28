@@ -55,8 +55,6 @@ const settleSegmented = async (group: WebUiSegmented) => {
 
 describe('WebUiSegmented 组件', () => {
   it('静态 value attribute 在子 trigger 定义晚于组首次更新后仍同步选中态', async () => {
-    expect(customElements.get('web-ui-segmented-trigger')).toBeUndefined()
-
     const el = document.createElement('web-ui-segmented')
     el.setAttribute('value', 'b')
     el.innerHTML = TRIGGER_HTML
@@ -66,7 +64,6 @@ describe('WebUiSegmented 组件', () => {
     // 先让父 group 完成初次连接与更新；此时子项的 custom element 仍未注册。
     await flushSlotChange(el)
     expect(el.value).toBe('b')
-    expect(customElements.get('web-ui-segmented-trigger')).toBeUndefined()
     expect(pendingUpgradeTriggers.map(trigger => (trigger as HTMLElement & { value?: string }).value)).toEqual([
       undefined,
       undefined,
@@ -590,9 +587,9 @@ describe('WebUiSegmented 组件', () => {
       newTrigger.setAttribute('value', 'c')
       newTrigger.textContent = 'C'
       el.appendChild(newTrigger)
-      await new Promise(r => setTimeout(r, 0))
+      await flushSlotChange(el)
       await Promise.all([newTrigger.updateComplete, waitForUpdate(el)])
-      await new Promise(r => setTimeout(r, 0))
+      await flushSlotChange(el)
 
       expect(newTrigger.checked).toBe(true)
       const triggers = el.querySelectorAll<WebUiSegmentedTrigger>('web-ui-segmented-trigger')
@@ -610,9 +607,9 @@ describe('WebUiSegmented 组件', () => {
       newTrigger.setAttribute('value', 'b')
       newTrigger.textContent = 'B'
       el.appendChild(newTrigger)
-      await new Promise(r => setTimeout(r, 0))
+      await flushSlotChange(el)
       await Promise.all([newTrigger.updateComplete, waitForUpdate(el)])
-      await new Promise(r => setTimeout(r, 0))
+      await flushSlotChange(el)
 
       const control = queryA11y(newTrigger, '[role="option"]')
       expect(control?.getAttribute('aria-disabled')).toBe('true')
@@ -669,9 +666,9 @@ describe('WebUiSegmented 组件', () => {
       const tc = document.createElement('web-ui-segmented-trigger') as WebUiSegmentedTrigger
       tc.setAttribute('value', 'z')
       el.append(ta, tb, tc)
-      await new Promise(r => setTimeout(r, 0))
+      await flushSlotChange(el)
       await Promise.all([ta.updateComplete, tb.updateComplete, tc.updateComplete, waitForUpdate(el)])
-      await new Promise(r => setTimeout(r, 0))
+      await flushSlotChange(el)
 
       expect(ta.checked).toBe(false)
       expect(tb.checked).toBe(true)

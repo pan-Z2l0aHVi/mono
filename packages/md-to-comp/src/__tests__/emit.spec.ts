@@ -51,7 +51,7 @@ describe('writeArtifacts', () => {
   it('写出产物并把不在本轮产出集合里的组件示例清掉', () => {
     const dir = scratch()
     const { demos, files } = artifacts(dir)
-    // 上一轮遗留的孤儿：改了示例标题后 markdown 里已经没有它了。
+    // 产物集合里已经没有的组件示例：markdown 里没有对应 id，写成孤儿文件。
     mkdirSync(demos, { recursive: true })
     writeFileSync(path.join(demos, 'slider--old.tsx'), 'stale\n')
 

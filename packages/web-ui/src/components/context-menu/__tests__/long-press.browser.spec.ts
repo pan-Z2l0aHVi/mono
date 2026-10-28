@@ -35,14 +35,25 @@ async function waitForMenu(el: WebUiContextMenu): Promise<HTMLElement> {
   return panel
 }
 
-async function settle() {
-  await new Promise(resolve => setTimeout(resolve, 250))
+/*
+ * 组件侧「同一次手势的补发事件」吸收窗（context-menu/index.ts:63 的私有常量；导出它属改
+ * 源码，这里按字面镜像并点名出处）。它给出负向断言该观察多久：补发只可能在窗口内被当成
+ * 用户意图，越过整窗还看不到就是没来——所以等待由它推导，而不是挑一个看着够用的毫秒数。
+ */
+const FOLLOW_UP_WINDOW_MS = 1000
+/** 计时器与调度漂移余量，不参与任何断言。 */
+const WINDOW_SLACK_MS = 300
+const OUTSIDE_FOLLOW_UP_WINDOW_MS = FOLLOW_UP_WINDOW_MS + WINDOW_SLACK_MS
+
+/** 越过吸收窗口后的固定观察窗：用于「没有发生 X」，窗口本身不是判据。 */
+async function settle(ms = OUTSIDE_FOLLOW_UP_WINDOW_MS): Promise<void> {
+  await new Promise(resolve => setTimeout(resolve, ms))
 }
 
 /*
  * 量 panel 几何前的等待。
  *
- * 与 `settle()` 的固定 250ms 不同，这里等的是**因果条件**：panel 的位置由
+ * 与 `settle()` 的整窗观察不同，这里等的是**因果条件**：panel 的位置由
  * Floating UI 的 promise 异步写回，高度由 menu item（Lit 异步渲染）决定，
  * 两者都可能在上一次测量之后才落定。等它连续几帧不再变化，再用
  * `getBoundingClientRect()` 量到的才是终态几何。
@@ -55,16 +66,15 @@ async function settlePanel(panel: HTMLElement) {
 
 describe('context-menu 长按（真实触控管线）', () => {
   /*
-   * R9（新契约）：触屏长按**从按下的位置向下展开，水平居中于按点**。
+   * R9（契约）：触屏长按**从按下的位置向下展开，水平居中于按点**。
    *
-   * 契约反转过三次，这里记清楚当前这一版，免得下一轮又照着旧描述写断言：
-   * 1. 最初「锚定在按下落点」。
-   * 2. 改成「垂直贴视口下缘」—— 真机反馈那是错的：menu 跑到屏幕最底部，和手指按下的
-   *    位置完全脱节，看起来像弹出了另一个 menu。
-   * 3. 垂直改成「panel 上缘对齐按点 y、向下展开」；放不下才翻转到按点上方（见下一条 R7）。
-   * 4. 水平从「左缘对齐按点 x」改成**居中于按点 x**（`placement: 'bottom'`）：
-   *    手指按的是「这块内容在这里」，menu 在它正下方居中展开才是 iOS/Android 原生形态；
-   *    左对齐会让 menu 整体偏到手指右侧，看起来像弹在了别的东西上面。
+   * 契约要点：
+   * 1. 垂直贴视口下缘是错的：真机反馈——menu 跑到屏幕最底部，和手指按下的位置完全脱节，
+   *    看起来像弹出了另一个 menu。
+   * 2. 垂直：「panel 上缘对齐按点 y、向下展开」；放不下才翻转到按点上方（见下一条 R7）。
+   * 3. 水平：**居中于按点 x**（`placement: 'bottom'`）—— 手指按的是「这块内容在这里」，
+   *    menu 在它正下方居中展开才是 iOS/Android 原生形态；左对齐会让 menu 整体偏到手指
+   *    右侧，看起来像弹在了别的东西上面。
    *
    * 精确坐标取 `style.top`（不受进场 scale 污染），可见性取 rect —— 两者都要，
    * 只看 rect 会被动画时刻骗过，只看 style 则证明不了用户真的看得见。
@@ -218,34 +228,41 @@ describe('context-menu 长按（真实触控管线）', () => {
 
     let rowClicks = 0
     target.addEventListener('click', () => rowClicks++)
+    // 补发 click 的到达时刻由浏览器任务队列决定（负载下可能晚到 1s 以上），
+    // 用「真的收到了一次 click」作为观测点，而不是睡固定时长后再断言「没收到」。
+    let windowClicks = 0
+    const recordClick = () => windowClicks++
+    window.addEventListener('click', recordClick, { capture: true })
 
     const point = target.getBoundingClientRect()
     const pressX = point.left + point.width / 2
     const pressY = point.top + point.height / 2
 
-    await realTouchPress(target, { holdMs: 700 })
-    const panel = await waitForMenu(el)
-    expect(el.isOpen).toBe(true)
+    try {
+      await realTouchPress(target, { holdMs: 700 })
+      const panel = await waitForMenu(el)
+      expect(el.isOpen).toBe(true)
 
-    // 补发 click 在 touchEnd 后才到，等它真的派发完再断言。
-    await settle()
-    await settle()
+      await pollUntil(() => windowClicks > 0, 'touchend 后浏览器没有补发 compat click')
 
-    // (1) 命中测试：落点被模态 scrim 子树占据，下层目标不在命中链上。
-    const scrim = document.querySelector<HTMLElement>('dialog[data-wui-menu-scrim]')
-    expect(scrim).toBeTruthy()
-    const hit = document.elementFromPoint(pressX, pressY)
-    expect(hit === scrim || scrim!.contains(hit)).toBe(true)
-    expect(hit === target || target.contains(hit)).toBe(false)
+      // (1) 命中测试：落点被模态 scrim 子树占据，下层目标不在命中链上。
+      const scrim = document.querySelector<HTMLElement>('dialog[data-wui-menu-scrim]')
+      expect(scrim).toBeTruthy()
+      const hit = document.elementFromPoint(pressX, pressY)
+      expect(hit === scrim || scrim!.contains(hit)).toBe(true)
+      expect(hit === target || target.contains(hit)).toBe(false)
 
-    // (2) 行为：下层目标零激活。
-    expect(rowClicks).toBe(0)
+      // (2) 行为：下层目标零激活。
+      expect(rowClicks).toBe(0)
 
-    // (3) menu 没被补发 click 关掉。
-    expect(el.isOpen).toBe(true)
-    expect(getMenuPanels('Context menu')).toHaveLength(1)
-    expect(panel.isConnected).toBe(true)
-    cleanupElement(el)
+      // (3) menu 没被补发 click 关掉。
+      expect(el.isOpen).toBe(true)
+      expect(getMenuPanels('Context menu')).toHaveLength(1)
+      expect(panel.isConnected).toBe(true)
+    } finally {
+      window.removeEventListener('click', recordClick, { capture: true })
+      cleanupElement(el)
+    }
   })
 
   /*
@@ -253,10 +270,9 @@ describe('context-menu 长按（真实触控管线）', () => {
    * 拆成两条就丢掉了「窗内 / 窗外由同一条 `performance.now()` 比较切分」这个事实，
    * 两条可以各自独立地假绿。
    *
-   * 这条原来只活在 jsdom 里（`long-press.spec.ts` 的「吸收窗口过期后，真实点击照常
-   * light-dismiss」），靠 `document.body.dispatchEvent(click)` 触发。那在模态下**不可能**
+   * 合成事件量不到这条：`document.body.dispatchEvent(click)` 在模态下**不可能**
    * 发生 —— scrim 开着时下层收不到命中，而 jsdom 没有 top layer，合成事件照样派发，
-   * 于是它把一条已被模态契约关掉的通道当成了契约。迁到这里用真实命中重写。
+   * 于是它把一条已被模态契约关掉的通道当成了契约。这里用真实命中。
    *
    * 点 scrim 而不是点宿主：宿主上的 pointerdown 会把 `_longPressOpenedAt` 清成 null
    * （`_onPointerDown` 第一行，那正是「下一次按下结束上一次补发窗口」的边界），
@@ -269,20 +285,26 @@ describe('context-menu 长按（真实触控管线）', () => {
     await el.updateComplete
 
     await realTouchPress(target, { holdMs: 700 })
-    await waitForMenu(el)
+    // 只等 scrim 挂上，不等 panel 定位：第一相必须落在吸收窗**之内**，而 `waitForMenu` 要等
+    // Floating UI 把 left/top 写回，负载下那一段时间正是从窗口里扣掉的。panel 定位不是这条
+    // 用例的判据；「点击真的命中 scrim」由第二相必须 dismiss 来保证——两相共用同一条 scrim。
+    await pollUntil(
+      () => document.querySelector('dialog[data-wui-menu-scrim]') !== null,
+      'long press never created the modal scrim'
+    )
     expect(el.isOpen).toBe(true)
 
     const scrim = document.querySelector<HTMLElement>('dialog[data-wui-menu-scrim]')
     expect(scrim).toBeTruthy()
 
-    // 第一相：距长按打开还远不到 LONG_PRESS_FOLLOW_UP_WINDOW_MS(1000ms)，这次点击属于
+    // 第一相：距长按打开还远不到 FOLLOW_UP_WINDOW_MS（组件侧的 1000ms 吸收窗），这次点击属于
     // 上一次长按的补发意图，必须被吞掉 —— menu 不能关。
     await realTouchPress(scrim!, { holdMs: 50 })
     expect(el.isOpen).toBe(true)
     expect(getMenuPanels('Context menu')).toHaveLength(1)
 
     // 第二相：越过窗口。同一条 scrim、同一种真实点击，这次必须生效。
-    await new Promise(resolve => setTimeout(resolve, 1400))
+    await settle()
     await realTouchPress(scrim!, { holdMs: 50 })
     await el.updateComplete
     await new Promise(resolve => requestAnimationFrame(resolve))
@@ -313,15 +335,21 @@ describe('context-menu 长按（真实触控管线）', () => {
    * 时长」这个**时序差**，而负载下 `setTimeout` 的起停都会被拉长（实测一次手势从
    * 700ms 被拖到 1300ms+），固定 500ms 的差值会被抹平——计时器在抬手之前就开 menu。
    * 拉长 `long-press-delay`（公开属性，语义不变）把差值留够，断言一字未改。
+   *
+   * 代价是取消类的负向断言必须**越过计时器**再判：抬手时若没清掉计时器，它在 4000ms
+   * 才开 menu，只越过吸收窗（`settle()` 的默认观察窗）里什么都看不见——那样这条用例在
+   * 漏取消的实现下也照样绿。
    */
-  const CANCELLABLE_PRESS_DELAY = '4000'
+  const CANCELLABLE_PRESS_DELAY_MS = 4000
+  const CANCELLABLE_PRESS_DELAY = String(CANCELLABLE_PRESS_DELAY_MS)
+  const AFTER_CANCEL_WINDOW_MS = CANCELLABLE_PRESS_DELAY_MS + 300
 
   it('短按不打开 menu', async () => {
     const { el, target } = createMenu({ 'long-press': '', 'long-press-delay': CANCELLABLE_PRESS_DELAY })
     await el.updateComplete
 
     await realTouchPress(target, { holdMs: 150, endWithCancel: true })
-    await settle()
+    await settle(AFTER_CANCEL_WINDOW_MS)
 
     expect(el.isOpen).toBe(false)
     // `toHaveLength(0)` 只证明「查不到 panel」，而查不到也可能是
@@ -336,7 +364,7 @@ describe('context-menu 长按（真实触控管线）', () => {
     await el.updateComplete
 
     await realTouchPress(target, { holdMs: 700, moveBy: 60, moveAfterMs: 200, endWithCancel: true })
-    await settle()
+    await settle(AFTER_CANCEL_WINDOW_MS)
 
     expect(el.isOpen).toBe(false)
     // `toHaveLength(0)` 只证明「查不到 panel」，而查不到也可能是查找器坏了；

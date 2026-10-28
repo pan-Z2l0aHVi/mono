@@ -17,96 +17,6 @@ function createDialog(initialHTML = ''): WebUiDialog {
   return el
 }
 
-/** shadow 内的 chrome 带（`.header`）；headless 模式整条不渲染，返回 null。 */
-function headerBand(el: WebUiDialog): HTMLElement | null {
-  return el.shadowRoot?.querySelector('.header') ?? null
-}
-
-/** `heading` 属性的 fallback 节点（带未渲染时不存在）。 */
-function headingNode(el: WebUiDialog): HTMLElement | null {
-  return el.shadowRoot?.querySelector('.wui-dialog-heading') ?? null
-}
-
-/** header 槽的分配元素数：>0 表示槽接管，fallback 被浏览器隐藏。 */
-function assignedHeader(el: WebUiDialog): number {
-  const slot = el.shadowRoot?.querySelector('slot[name="header"]') as HTMLSlotElement | null
-  return slot?.assignedElements().length ?? 0
-}
-
-describe('WebUiDialog header chrome', () => {
-  it('header 槽与 heading 都为空时 chrome 带隐藏', async () => {
-    const el = createDialog('<p>正文</p>')
-    await flushSlotChange(el)
-
-    const band = headerBand(el)
-    expect(band).toBeTruthy()
-    expect(band?.hidden).toBe(true)
-    expect(headingNode(el)).toBeNull()
-    cleanupElement(el)
-  })
-
-  it('heading 属性渲染 .wui-dialog-heading 并让带可见', async () => {
-    const el = createDialog('<p>正文</p>')
-    el.heading = '设置'
-    await waitForUpdate(el)
-
-    expect(headerBand(el)?.hidden).toBe(false)
-    expect(headingNode(el)?.textContent).toBe('设置')
-    cleanupElement(el)
-  })
-
-  it('header 槽有内容时整条接管，heading 被忽略', async () => {
-    const el = createDialog('<span slot="header">槽标题</span>')
-    el.heading = '属性标题'
-    await flushSlotChange(el)
-
-    expect(headerBand(el)?.hidden).toBe(false)
-    // 槽优先于属性：有分配元素时浏览器只渲染槽内容，fallback 被隐藏。
-    expect(assignedHeader(el)).toBe(1)
-    expect(el.querySelector('[slot="header"]')?.textContent).toBe('槽标题')
-    cleanupElement(el)
-  })
-
-  it('运行时移除槽内容后，heading 接管', async () => {
-    const el = createDialog('<span slot="header">槽标题</span>')
-    el.heading = '属性标题'
-    await flushSlotChange(el)
-    expect(assignedHeader(el)).toBe(1)
-
-    el.querySelector('[slot="header"]')!.remove()
-    await flushSlotChange(el)
-
-    expect(assignedHeader(el)).toBe(0)
-    expect(headingNode(el)?.textContent).toBe('属性标题')
-    cleanupElement(el)
-  })
-
-  it('heading 清空且槽为空时带重新隐藏', async () => {
-    const el = createDialog('<p>正文</p>')
-    el.heading = '设置'
-    await waitForUpdate(el)
-    expect(headerBand(el)?.hidden).toBe(false)
-
-    el.heading = ''
-    await waitForUpdate(el)
-    expect(headerBand(el)?.hidden).toBe(true)
-    expect(headingNode(el)).toBeNull()
-    cleanupElement(el)
-  })
-
-  it('headless 模式不渲染 chrome 带，heading 一并失效', async () => {
-    const el = createDialog('<section>自定义主体</section>')
-    el.headless = true
-    el.heading = '设置'
-    await waitForUpdate(el)
-
-    expect(el.shadowRoot?.querySelector('.wui-dialog-content')).toBeTruthy()
-    expect(headerBand(el)).toBeNull()
-    expect(headingNode(el)).toBeNull()
-    cleanupElement(el)
-  })
-})
-
 /*
  * accessible name 的接线（与 drawer 同形）：
  * - 显式 aria-dialog-label 优先，直接写原生 dialog 的 aria-label；
@@ -139,6 +49,21 @@ describe('WebUiDialog accessible name', () => {
 
   it('带为空且无 heading 时不接线，不指向隐藏的带', async () => {
     const el = createDialog('<p>正文</p>')
+    await waitForUpdate(el)
+
+    expect(nativeDialog(el).hasAttribute('aria-labelledby')).toBe(false)
+    expect(nativeDialog(el).hasAttribute('aria-label')).toBe(false)
+    cleanupElement(el)
+  })
+
+  it('heading 清空后 accessible name 随带一起消失', async () => {
+    const el = createDialog('<p>正文</p>')
+    el.heading = '设置'
+    await waitForUpdate(el)
+    expect(nativeDialog(el).getAttribute('aria-labelledby')).toBe('wui-dialog-heading')
+
+    // 带随 heading 一起退场，名字不能还挂在一个已经不存在的带。
+    el.heading = ''
     await waitForUpdate(el)
 
     expect(nativeDialog(el).hasAttribute('aria-labelledby')).toBe(false)
@@ -186,6 +111,20 @@ describe('WebUiDialog accessible name', () => {
     await waitForUpdate(el)
 
     expect(nativeDialog(el).getAttribute('aria-label')).toBe('自定义主体')
+    cleanupElement(el)
+  })
+
+  it('运行时移除槽内容后，heading 接管并被重新接线', async () => {
+    const el = createDialog('<span slot="header">槽标题</span>')
+    el.heading = '属性标题'
+    await flushSlotChange(el)
+
+    el.querySelector('[slot="header"]')!.remove()
+    await flushSlotChange(el)
+
+    // 槽空后带由 heading 填充：带重新成为可命名的对象。带里读到的是哪段文字由浏览器
+    // 的槽分发决定（jsdom 不排版），渲染面在同目录的 header.browser.spec.ts 取证。
+    expect(nativeDialog(el).getAttribute('aria-labelledby')).toBe('wui-dialog-heading')
     cleanupElement(el)
   })
 })

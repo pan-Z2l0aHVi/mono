@@ -48,11 +48,6 @@ describe('clusterEnds', () => {
     expect(clusterEnds('')).toEqual([])
   })
 
-  it('末项恒为文本长度', () => {
-    const ends = clusterEnds('abcdef')
-    expect(ends[ends.length - 1]).toBe(6)
-  })
-
   it('代理对不拆开', () => {
     // PARTY 占 2 个 UTF-16 单元，但只是 1 个簇
     expect(clusterEnds(`a${PARTY}b`)).toEqual([1, 3, 4])

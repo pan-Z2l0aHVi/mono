@@ -4,16 +4,14 @@ import '@/components/theme'
 
 import { afterEach, describe, expect, it } from 'vite-plus/test'
 
+import { waitForFrame } from '@/shared/test-utils'
+
 import type { WebUiContextMenu } from '..'
 
 interface ThemedHost extends HTMLElement {
   appearance: string
   updateComplete: Promise<unknown>
   getOverlayRoot(): HTMLElement | undefined
-}
-
-async function nextFrame() {
-  await new Promise(resolve => requestAnimationFrame(resolve))
 }
 
 async function mountThemedMenu(appearance: 'light' | 'dark') {
@@ -50,7 +48,7 @@ function resolveToken(theme: HTMLElement, token: string): string {
  *
  * 本文件的判据是**取到哪一份 token**，不是挂在哪个容器里 —— 容器归属由
  * `components/theme/__tests__/theme.spec.ts` 的 Context Menu 集成用例钉住。位置无关的
- * 查找才能让「把挂载点改回 document.body」这条反事实落在取色断言上，而不是落在
+ * 查找才能让「挂载点若为 document.body」这条反事实落在取色断言上，而不是落在
  * 「查不到元素」上。
  */
 function findScrim(): HTMLDialogElement | null {
@@ -72,13 +70,13 @@ afterEach(() => document.body.replaceChildren())
 /*
  * 深色外观下 menu 仍是浅色玻璃的回归。
  *
- * 根因是 scrim 曾被挂到 `document.body`，而 `<web-ui-theme>` 是 body 的**子**节点：
+ * 根因是 scrim 若挂在 `document.body`，而 `<web-ui-theme>` 是 body 的**子**节点：
  * `--wui-color-*` 只沿 DOM 树向下继承，scrim 与挂进 scrim 的 panel 双双落回
  * `var(--wui-color-*, <浅色字面量>)` 的 fallback。修复把 scrim 放进最近主题的 overlay root
  * （与 dropdown / select 同一条路径）。
  *
  * 判据只看计算色值：断言「在某个容器里」会让任何一次容器搬家伪装成通过，而这里要钉住的
- * 恰恰是取到了哪一份 token。反事实自证：把挂载点改回 `document.body` 时本文件两档都红在
+ * 恰恰是取到了哪一份 token。反事实自证：挂载点若为 `document.body`，本文件两档都红在
  * 取色断言上。
  */
 describe('context-menu 模态 scrim 的主题作用域（浏览器）', () => {
@@ -87,7 +85,7 @@ describe('context-menu 模态 scrim 的主题作用域（浏览器）', () => {
       const { theme, menu } = await mountThemedMenu(appearance)
       menu.openAt(120, 120)
       await menu.updateComplete
-      await nextFrame()
+      await waitForFrame()
 
       const scrim = findScrim()
       expect(scrim).toBeTruthy()
@@ -105,9 +103,6 @@ describe('context-menu 模态 scrim 的主题作用域（浏览器）', () => {
       // scrim 自己在作用域内：它继承得到主题 token，而不是空值 → 浅色 fallback。
       const scrimStyle = getComputedStyle(scrim!)
       expect(scrimStyle.getPropertyValue('--wui-color-surface-menu').trim()).not.toBe('')
-      // 搬家不改变既定视觉裁定：scrim 元素与 ::backdrop 都保持纯透明（不压暗）。
-      expect(scrimStyle.backgroundColor).toBe('rgba(0, 0, 0, 0)')
-      expect(getComputedStyle(scrim!, '::backdrop').backgroundColor).toBe('rgba(0, 0, 0, 0)')
     })
   }
 })

@@ -9,7 +9,7 @@ import { describe, expect, it } from 'vite-plus/test'
 //    （:host 基础块 + light 块为默认源；dark/motion 块是覆盖，不是 fallback 基准）。
 // 2) theme/style.css 内部的成对块（dark 显式块 vs prefers-color-scheme 媒体块、
 //    motion reduced 显式块 vs prefers-reduced-motion 媒体块）必须逐 token 一致——
-//    这些块语义上必须同步，历史上只靠人工维护。
+//    这些块语义上必须同步，人工维护必然漂移。
 // fallback 字面量本身必须保留（:host 级默认会压过继承的主题值）；被锁住的是"手工同步"。
 
 const here = import.meta.url
@@ -136,7 +136,7 @@ function extractFallbacksIgnoringComments(css: string, file: string): FallbackSi
  * （实测 31 条被比中的链，链尾字面量 28/28 都被那条覆盖）。两条合起来才是完整契约。
  *
  * 只剥「不含 var(」的 fallback：内层一旦带 var() 就递归下去，token 名、嵌套层级与权重都留下。
- * 旧实现把整个 fallback 连内层一起吃掉，于是 `var(--wui-X, var(--wui-Y, 8px))` 与
+ * 若把整个 fallback 连内层一起吃掉，`var(--wui-X, var(--wui-Y, 8px))` 与
  * `var(--wui-X, 8px)` 坍缩成同一个 `var(--wui-X)`，内层 token 名被整个丢掉——那不是宽松，
  * 是把链式契约里最关键的一维（内层引用了谁）变成了不可见。递归单趟左到右，`re.lastIndex`
  * 单调右移保证终止，轮数由嵌套深度决定：固定层数上限会让超限的深链停在半坍缩状态，
@@ -204,10 +204,10 @@ const allChainedSites = componentCssFiles.flatMap(file =>
  * 而代码消费 surface-menu，任何读注释的守卫都会说「声明过了」而放过。清单对着代码比对，
  * 不一致时必然红——它不是完美的第二来源（会过时），但它不会假装自己成立。
  *
- * 与 surface-elevation.browser.spec.ts 互补而非重叠：那份在浏览器里挂载组件、读 computed
- * background 与 token 定义比，是运行时探针；本条是静态清单，零浏览器、零字面量断言。
- * 两份各有对方做不到的事——运行时探针只钉住它显式提到的组件（本条覆盖 8 个里的 6 个它没提），
- * 静态清单则不需要每个组件各写一套挂载样板（dialog/drawer/toast/tooltip 的打开路径各不相同）。
+ * 这份清单只看 CSS 里写了哪枚 token，覆盖面比运行时探针宽（8 个组件，逐个挂载要各写一套
+ * 打开样板），代价是不看层叠结果：声明被别的规则刷掉时这里仍然绿。运行时层叠与 panel 相对
+ * page 的明暗档位由同目录的 `surface-elevation.browser.spec.ts` 守：那份挂载组件读 computed
+ * background，把 panel 合成后比 page 亮几档当契约，不是归属。
  */
 const surfaceOwnership = new Map<string, string>([
   // menu 族：下拉、overlay 气泡与 tooltip，同一档半透明玻璃底，浮在内容之上。
@@ -319,7 +319,7 @@ describe('token fallback 与定义单一来源', () => {
 
   it('浮动表面 token 的归属与清单一致（token 被换掉时红）', () => {
     // 双向比对，两个方向都要抓：
-    //  - 清单有、CSS 消费的不是它 → token 被换成了另一枚（本次要拦的正是这条）
+    //  - 清单有、CSS 消费的不是它 → token 被换成了另一枚（要拦的正是这条）
     //  - CSS 消费了浮动表面 token、清单里没有 → 新增组件忘了登记
     // 只登记集合不比顺序：同一组件可能合法消费多枚，登记的是它**允许**消费的全集。
     const unregistered: string[] = []
@@ -370,7 +370,7 @@ describe('注释不是 fallback 站点', () => {
     const sites = extractFallbacksIgnoringComments(css, 'demo.css')
     expect(sites.map(site => site.token)).toEqual(['--wui-color-accent'])
     expect(sites[0]?.fallback).toBe('#08f')
-    // 剥之前注释里那两条确实会被收进来——这条同时钉住「该缺陷曾真实存在」
+    // 剥之前注释里那两条确实会被收进来——这条同时钉住「该缺陷真实存在」
     expect(extractFallbacks(css, 'demo.css').map(site => site.token)).toEqual([
       '--wui-collapse-peek-edge',
       '--wui-dialog-max-height',
@@ -457,8 +457,8 @@ describe('chainShape 归一化口径', () => {
   })
 
   it('嵌套深度不同则形状不同', () => {
-    // 旧实现把整个 fallback 连内层一起吃掉，`var(--wui-X, var(--wui-Y, 8px))` 与
-    // `var(--wui-X, 8px)` 坍缩成同一个 `var(--wui-X)`——内层 token 名被整个丢掉。
+    // 若把整个 fallback 连内层一起吃掉，`var(--wui-X, var(--wui-Y, 8px))` 与
+    // `var(--wui-X, 8px)` 会坍缩成同一个 `var(--wui-X)`——内层 token 名被整个丢掉。
     const shallow = 'var(--wui-space-2, 8px)'
     const deep = 'var(--wui-space-2, var(--wui-space-1, 4px))'
     expect(chainShape(deep)).not.toBe(chainShape(shallow))
@@ -481,8 +481,8 @@ describe('chainShape 归一化口径', () => {
   })
 
   it('超过旧实现 50 层上限的深链仍坍缩到底（只有真正链式变体才相等）', () => {
-    // 回归钉子：旧实现每轮重新 exec 整串、且上限固定 50 层。超过上限时两条只在深层不同的链
-    // 会停在半坍缩状态而形状相同——无声的假绿。这里 60 层，压在旧上限之外。
+    // 深链必须一路坍缩到底：深链若在中途停住，两条只在深层不同的链会形状相同——无声的假绿。
+    // 这里取 60 层。
     const build = (tail: string, depth: number) => {
       let chain = `var(${tail}, 1px)`
       for (let i = 0; i < depth; i++) chain = `var(--wui-color-text, ${chain})`
@@ -524,7 +524,7 @@ const themeBlocks = {
   dark: tokenPairs(blockBody(themeCss, ":host\\(\\[appearance='dark'\\]\\) \\{"))
 }
 
-// 全局 token 表随组件章节一起从两份 README 搬进 docs/theme.md，由此只剩一份要守的文档。
+// 全局 token 表在 docs/theme.md 一份文档里，由此只剩一份要守的文档。
 const tokenDoc = 'docs/theme.md'
 describe(`${tokenDoc} 全局 token 表数值`, () => {
   const rows = parseDocTokenRows(fs.readFileSync(`${packageRoot}${tokenDoc}`, 'utf8'))

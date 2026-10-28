@@ -80,7 +80,7 @@ export class WebUiDialog extends LitElement {
   private readonly _userOpenChange = new UserChangeController()
 
   /*
-   * 开启态 overlay（issue #120 Block 1）。dialog 的 Escape 原本只走原生 cancel 事件：仲裁者
+   * 开启态 overlay（issue #120 Block 1）。Escape 不走原生 cancel 事件：仲裁者
    * 会在 keydown 上 preventDefault 压掉原生关闭请求并 stopPropagation，因此这里必须
    * 自己表达关闭语义（controlled 只派发请求）。
    */
@@ -174,8 +174,8 @@ export class WebUiDialog extends LitElement {
 
   /*
    * `no-escape-close` 时 dialog 仍是候选（Escape 被吞掉、原生 cancel 被压掉），只是
-   * 不走关闭入口。与旧的「跳过候选」语义不同：旧语义放任事件落到下层 overlay，把外层
-   * 一起关掉。该属性可在开启期间改写，所以每次渲染后读它，而不是在 claim 时固定。
+   * 不走关闭入口：若改成跳过候选，事件会落到下层 overlay，把外层一起关掉。该属性可在开启
+   * 期间改写，所以每次渲染后读它，而不是在 claim 时固定。
    */
   private _syncOverlayInert() {
     this._handle?.setInert(this.noEscapeClose)

@@ -92,7 +92,7 @@ describe('SettingsDialog', () => {
 
       expect(mounted.host.querySelector('[slot="header"]')?.textContent).toContain('设置')
       expect(dialogElement(mounted.host).closable).toBe(true)
-      // 宿主不再自绘 header 关闭 button，也没有 footer「关闭」——标题行那一枚由 web-ui-dialog
+      // 宿主不自绘 header 关闭 button，也没有 footer「关闭」——标题行那一枚由 web-ui-dialog
       // 自己渲染（在其 shadow 内），宿主拿不到那个节点。
       expect(() => buttonByLabel(mounted.host, '关闭设置')).toThrow('button 关闭设置 was not rendered')
       expect(mounted.host.querySelector('[slot="footer"]')).toBeNull()
@@ -118,7 +118,7 @@ describe('SettingsDialog', () => {
       expect(titleChrome, 'title slot 应渲染标题 chrome').toBeTruthy()
       expect(titleChrome?.contains(segmented), '设置分区应落在 title chrome 内').toBe(true)
 
-      // 内容区（默认 slot）里只剩 panel：不再有 OverlayScrollbars / overflow-y-auto 宿主。
+      // 内容区（默认 slot）里只剩 panel：没有 OverlayScrollbars / overflow-y-auto 宿主。
       const panel = dialog.querySelector(':scope > div:not([slot])')
       expect(panel, 'panel 应是 dialog 的直系子节点').toBeTruthy()
       expect(panel?.contains(segmented), 'panel 不应再包住 tab 行').toBe(false)
@@ -318,6 +318,6 @@ describe('SettingsDialog', () => {
     }
   })
 
-  // 高度契约（--wui-dialog-max-height 语义）不再在 jsdom 里钉 CSS 值：具体高度由浏览器
+  // 高度契约（--wui-dialog-max-height 语义）不在 jsdom 里钉 CSS 值：具体高度由浏览器
   // 验证与 packages/web-ui 的 dialog-content-height.browser.spec.ts 覆盖（test-authoring §4）。
 })

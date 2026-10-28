@@ -4,7 +4,7 @@ import '@/components/option'
 import { describe, expect, it } from 'vite-plus/test'
 
 import type { WebUiOption } from '@/components/option'
-import { waitForUpdate, spyEvents, cleanupElement, queryA11y } from '@/shared/test-utils'
+import { cleanupElement, queryA11y, spyEvents, waitForFrame, waitForUpdate } from '@/shared/test-utils'
 
 import type { WebUiSelect } from '..'
 
@@ -280,7 +280,7 @@ describe('WebUiSelect 组件', () => {
       await waitForUpdate(el)
 
       external.focus()
-      await new Promise<void>(resolve => requestAnimationFrame(() => resolve()))
+      await waitForFrame()
 
       expect(el.open).toBe(false)
 
@@ -591,13 +591,21 @@ describe('WebUiSelect 组件', () => {
       const el = createSelect(OPTIONS_HTML)
       await waitForUpdate(el)
 
+      // 激活项与触摸目标要错开：都在同一项时，「保留」与「被改写」量出同一个 id，
+      // 判据就退化成 truthy。ArrowDown 两次 → 激活 banana，触摸滑过 apple。
       el.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true }))
       await waitForUpdate(el)
-      const option = el.querySelector<HTMLElement>('web-ui-option')
-      option?.dispatchEvent(touchPointerEvent('pointerover'))
+      el.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true }))
+      await waitForUpdate(el)
+      const trigger = queryA11y(el, '[role="combobox"]')!
+      const activated = trigger.getAttribute('aria-activedescendant')
+      expect(el.querySelector(`#${activated}`)?.getAttribute('value'), '前置：第二项应为激活项').toBe('banana')
 
-      const trigger = queryA11y(el, '[role="combobox"]')
-      expect(trigger?.getAttribute('aria-activedescendant')).toBeTruthy()
+      el.querySelector<HTMLElement>('web-ui-option')!.dispatchEvent(touchPointerEvent('pointerover'))
+      await waitForUpdate(el)
+
+      // 与上一条（鼠标 hover 清除激活）互为对照：触摸不该改写键盘激活项。
+      expect(trigger.getAttribute('aria-activedescendant'), '触摸 pointerover 改写了键盘激活项').toBe(activated)
 
       cleanupElement(el)
     })
@@ -707,7 +715,7 @@ describe('WebUiSelect 组件', () => {
       const combobox = queryA11y(el, '[role="combobox"]') as HTMLElement
       combobox.click()
       await waitForUpdate(el)
-      await new Promise(resolve => requestAnimationFrame(resolve))
+      await waitForFrame()
       await waitForUpdate(el)
 
       expect(el.open).toBe(true)
@@ -716,7 +724,7 @@ describe('WebUiSelect 组件', () => {
 
       document.body.click()
       await waitForUpdate(el)
-      await new Promise(resolve => requestAnimationFrame(resolve))
+      await waitForFrame()
       await waitForUpdate(el)
 
       expect(el.open).toBe(false)
@@ -758,11 +766,11 @@ describe('WebUiSelect 组件', () => {
       const trigger = queryA11y(el, '[role="combobox"]') as HTMLElement
       trigger.click()
       await waitForUpdate(el)
-      await new Promise(resolve => requestAnimationFrame(resolve))
+      await waitForFrame()
       await waitForUpdate(el)
 
       wrapper.remove()
-      await new Promise(resolve => requestAnimationFrame(resolve))
+      await waitForFrame()
       await waitForUpdate(el)
 
       const [events] = spyEvents(el, 'input')
@@ -884,8 +892,6 @@ describe('WebUiSelect 组件', () => {
    * 保留它是为了不依赖「这条路径必然跟着一次渲染」这个隐含前提。
    */
   it('禁用中 trigger slot 变更后 Escape 仍不关闭：reconfigure 换会话不得丢掉禁用态', async () => {
-    const nextFrame = () => new Promise<void>(resolve => requestAnimationFrame(() => resolve()))
-
     const el = createSelect(OPTIONS_HTML)
     await waitForUpdate(el)
 
@@ -902,7 +908,7 @@ describe('WebUiSelect 组件', () => {
     custom.textContent = 'Custom'
     el.append(custom)
     await waitForUpdate(el)
-    await nextFrame()
+    await waitForFrame()
     await waitForUpdate(el)
     expect(el.open).toBe(true)
 

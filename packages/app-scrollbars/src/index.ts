@@ -39,7 +39,7 @@ OverlayScrollbars.plugin(ClickScrollPlugin)
  *   「距离等于目标距离」。函数形态是必需的：这个 option 只在实现里经过 `isFunction` 分支才会被读到，
  *   直接传对象会被静默忽略。
  * - `clickScrollDuration: 0`：库默认用 200ms 缓动滚到点击处，在渲染虚拟列表的资源列表上会卡顿，
- *   这里改成即时落位。0 是合法时长而不是「非法值被忽略」：`animateNumber` 先用 `Math.max(0, ms)`
+ *   这里取 0 即时落位。0 是合法时长而不是「非法值被忽略」：`animateNumber` 先用 `Math.max(0, ms)`
  *   得到时长 0，首帧（同步执行、不经 rAF）就判定已到期并落到终点。
  */
 export default {

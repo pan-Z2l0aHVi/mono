@@ -3,7 +3,15 @@ import '@/components/checkbox'
 
 import { describe, expect, it } from 'vite-plus/test'
 
-import { waitForUpdate, spyEvents, spyHostEvents, cleanupElement, queryA11y } from '@/shared/test-utils'
+import {
+  waitForUpdate,
+  flush,
+  spyEvents,
+  spyHostEvents,
+  cleanupElement,
+  queryA11y,
+  pollUntil
+} from '@/shared/test-utils'
 
 import type { WebUiCheckboxGroup } from '..'
 import type { WebUiCheckbox } from '../../checkbox'
@@ -379,10 +387,9 @@ describe('WebUiCheckboxGroup 组件', () => {
       newCheckbox.setAttribute('value', 'c')
       newCheckbox.textContent = 'C'
       el.appendChild(newCheckbox)
-      // 等待 microtask + Lit 更新（不手动触发 group sync）
-      await new Promise(r => setTimeout(r, 0))
-      await Promise.all([newCheckbox.updateComplete, waitForUpdate(el)])
-      await new Promise(r => setTimeout(r, 0))
+      // 继承发生在 MutationObserver 投递之后，等期待值而不是等一个空 tick。
+      await pollUntil(() => newCheckbox.checked === true, '新插入的子项没有继承当前 value 的选中态')
+      await newCheckbox.updateComplete
 
       expect(newCheckbox.checked).toBe(true)
       cleanupElement(el)
@@ -398,14 +405,16 @@ describe('WebUiCheckboxGroup 组件', () => {
       newCheckbox.setAttribute('value', 'b')
       newCheckbox.textContent = 'B'
       el.appendChild(newCheckbox)
-      await new Promise(r => setTimeout(r, 0))
-      await Promise.all([newCheckbox.updateComplete, waitForUpdate(el)])
-      await new Promise(r => setTimeout(r, 0))
+      const control = () => queryA11y(newCheckbox, '[role="checkbox"]')
+      await pollUntil(
+        () => control()?.getAttribute('aria-disabled') === 'true',
+        '新插入的子项没有继承 group 的 disabled'
+      )
+      await newCheckbox.updateComplete
 
       expect(newCheckbox.disabled).toBe(false)
-      const control = queryA11y(newCheckbox, '[role="checkbox"]')
-      expect(control?.getAttribute('aria-disabled')).toBe('true')
-      expect(control?.getAttribute('tabindex')).toBe('-1')
+      expect(control()?.getAttribute('aria-disabled')).toBe('true')
+      expect(control()?.getAttribute('tabindex')).toBe('-1')
       cleanupElement(el)
     })
 
@@ -463,9 +472,7 @@ describe('WebUiCheckboxGroup 组件', () => {
       const cz = document.createElement('web-ui-checkbox') as WebUiCheckbox
       cz.setAttribute('value', 'z')
       el.append(cx, cy, cz)
-      await new Promise(r => setTimeout(r, 0))
-      await Promise.all([cx.updateComplete, cy.updateComplete, cz.updateComplete, waitForUpdate(el)])
-      await new Promise(r => setTimeout(r, 0))
+      await pollUntil(() => cx.checked && cy.checked && !cz.checked, '连续插入后子项选中态与 group value 不一致')
 
       expect(cx.checked).toBe(true)
       expect(cy.checked).toBe(true)
@@ -488,6 +495,7 @@ describe('WebUiCheckboxGroup 组件', () => {
       el.appendChild(newCheckbox)
       await waitForUpdate(newCheckbox)
       await waitForUpdate(el)
+      await pollUntil(() => newCheckbox.checked === true, '动态添加的子项没有同步到 group value')
 
       expect(newCheckbox.checked).toBe(true)
 
@@ -544,7 +552,7 @@ describe('WebUiCheckboxGroup 成员移除后的值剪枝', () => {
   const settle = async (el: WebUiCheckboxGroup) => {
     await waitForUpdate(el)
     // MutationObserver 回调在微任务里跑，之后还会触发一轮 requestUpdate
-    await new Promise(resolve => setTimeout(resolve, 0))
+    await flush()
     await waitForUpdate(el)
   }
 

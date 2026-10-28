@@ -332,4 +332,4 @@ On close, focus returns to the element that held focus before the menu opened. T
 
 Menu item activation is the only path that returns focus early: it returns at the moment of the click and does not interfere after the exit transition, so if a menu item callback moves focus elsewhere (for example, entering inline edit mode), focus stays there.
 
-The closing process no longer pulls focus away from the new focus target, so components that commit on blur will not submit an edit that was never changed.
+The closing process does not pull focus away from the new focus target, so components that commit on blur will not submit an edit that was never changed.

@@ -126,9 +126,9 @@ export class WebUiSelect extends FormAssociated(LitElement) {
     }
   })
   /*
-   * 开启态 overlay 承载「我开着吗」（issue #120 Block 1）：本组件不再在 keydown 里自行关闭，
-   * 只声明「我开着」。宿主级监听在 portal 模式下收不到 panel 内的 Escape，正是原实现的
-   * 缺陷来源；改由唯一仲裁者在 document 捕获阶段判定最内层。
+   * 开启态 overlay 承载「我开着吗」（issue #120 Block 1）：本组件不在 keydown 里自行关闭，
+   * 只声明「我开着」。宿主级监听在 portal 模式下收不到 panel 内的 Escape，由唯一仲裁者
+   * 在 document 捕获阶段判定最内层。
    *
    * 宿主接口除 requestClose 外只再提供一个 isConnected（仅供惰性回收读取）：开启状态是
    * 声明而非询问，仲裁时不再回头问 isOpen()。
@@ -196,7 +196,7 @@ export class WebUiSelect extends FormAssociated(LitElement) {
     this._portal = undefined
     this._portalContent = undefined
     this._close()
-    // 撤销登记由 _panel.dispose() 完成（handle 归它持有），不再需要单独 dispose 仲裁者。
+    // 撤销登记由 _panel.dispose() 完成（handle 归它持有）。
     this._panel.dispose()
     this._scrollLock.release()
   }
@@ -233,8 +233,8 @@ export class WebUiSelect extends FormAssociated(LitElement) {
   }
 
   /*
-   * 禁用态不响应 Escape。仲裁者仍在（吞掉按键并压掉原生 cancel），只是不走关闭入口
-   * —— 与旧的「跳过候选」语义不同：旧语义放任事件落到下层 overlay，把外层一起关掉。
+   * 禁用态不响应 Escape。仲裁者仍在（吞掉按键并压掉原生 cancel），只是不走关闭入口：
+   * 事件不落到下层 overlay，不会把外层一起关掉。
    * 每次渲染后同步即可覆盖 disabled 属性与表单禁用两条来源。
    */
   private _syncOverlayInert() {

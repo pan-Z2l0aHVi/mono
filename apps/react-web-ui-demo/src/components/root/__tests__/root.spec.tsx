@@ -9,7 +9,7 @@ import { loadShellLocale, LocaleProvider } from '@/i18n/locale'
 import { Root } from '..'
 
 // 必须与 `web-ui-layout` 的 `MOBILE_VIEWPORT_QUERY`（`components/layout/index.ts`）逐字相同：
-// 断点判定自 ADR-0023 起由 layout 独占、app 不再自持媒体查询，所以这个替身要驱动的是 layout 那条。
+// 断点判定由 layout 独占（ADR-0023）、app 不自持媒体查询，所以这个替身要驱动的是 layout 那条。
 const MOBILE_QUERY = '(width <= 640px)'
 const DESKTOP_WIDTH = 1280
 const MOBILE_WIDTH = 568
@@ -78,7 +78,7 @@ function navItemClasses() {
 
 /** 移动端 drawer 是否真的接管了 sidebar slot（不接管就谈不上「drawer 里的导航」）。 */
 function isDrawerMode() {
-  return !!layoutRoot().shadowRoot?.querySelector('web-ui-drawer')
+  return layoutRoot().mobile
 }
 
 /**
@@ -153,6 +153,8 @@ describe('应用外壳：导航 collapsed state 不跨视口泄漏', () => {
 
   afterEach(() => {
     cleanup()
+    // locale 是本应用的持久化输入；留在 origin 上会污染同 origin 的其他 spec。
+    localStorage.removeItem('locale')
     vi.unstubAllGlobals()
     vi.restoreAllMocks()
     innerWidthSpy = null

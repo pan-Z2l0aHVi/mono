@@ -161,18 +161,14 @@ func waitForReports(t *testing.T, reporter *recordingReporter, want int) {
 	}
 }
 
-// assertNoReport 先等 worker 处理完在途消息再断言「没有上报」，避免假通过。
-func assertNoReport(t *testing.T, reporter *recordingReporter) {
+// assertNoReport 关闭回写队列并等在途回写全部处理完（Handler.Close 等 drainCompleted），
+// 再断言「没有上报」。Close 与 t.Cleanup 里那次是同一 closeOnce，重复调用直接返回。
+// 固定 200ms 缺席窗只在 worker 快于窗口时才成立：worker 被负载拖慢就会假通过。
+func assertNoReport(t *testing.T, handler *Handler, reporter *recordingReporter) {
 	t.Helper()
-	deadline := time.Now().Add(200 * time.Millisecond)
-	for {
-		if got := reporter.recorded(); len(got) != 0 {
-			t.Fatalf("expected no unavailable report, got %v", got)
-		}
-		if time.Now().After(deadline) {
-			return
-		}
-		time.Sleep(10 * time.Millisecond)
+	handler.Close()
+	if got := reporter.recorded(); len(got) != 0 {
+		t.Fatalf("expected no unavailable report, got %d: %q", len(got), got)
 	}
 }
 
@@ -248,7 +244,7 @@ func TestHandlerDoesNotReportPermissionError(t *testing.T) {
 		t.Fatalf("expected 404, got %d", response.Code)
 	}
 
-	assertNoReport(t, reporter)
+	assertNoReport(t, handler, reporter)
 }
 
 // pending 预览还没有 Source 身份，文件不可达时无处回写。
@@ -274,7 +270,7 @@ func TestHandlerDoesNotReportPendingPreview(t *testing.T) {
 		t.Fatalf("expected 404, got %d", response.Code)
 	}
 
-	assertNoReport(t, reporter)
+	assertNoReport(t, handler, reporter)
 }
 
 // 回写失败不能改变 404 响应：媒体请求的结果只取决于文件本身。

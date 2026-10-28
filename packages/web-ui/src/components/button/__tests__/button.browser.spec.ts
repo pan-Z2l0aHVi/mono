@@ -36,6 +36,7 @@ describe('WebUiButton 组件（浏览器）', () => {
   it('接受裸 px 数值与带单位的 CSS 长度，并保持 icon button 正方形', async () => {
     const numeric = mountElement<WebUiButton>('web-ui-button', { attrs: { size: '32' } })
     const decimal = mountElement<WebUiButton>('web-ui-button', { attrs: { size: '.5' } })
+    const fractionalPixels = mountElement<WebUiButton>('web-ui-button', { attrs: { size: '.5px' } })
     const trailingDecimal = mountElement<WebUiButton>('web-ui-button', { attrs: { size: '32.' } })
     const pixels = mountElement<WebUiButton>('web-ui-button', { attrs: { size: '32px' } })
     const rem = mountElement<WebUiButton>('web-ui-button', { attrs: { size: '1.5rem' } })
@@ -43,24 +44,28 @@ describe('WebUiButton 组件（浏览器）', () => {
       attrs: { size: '32px', icon: '', 'aria-label': 'Icon button' }
     })
 
-    await Promise.all([numeric, decimal, trailingDecimal, pixels, rem, icon].map(waitForUpdate))
+    await Promise.all([numeric, decimal, fractionalPixels, trailingDecimal, pixels, rem, icon].map(waitForUpdate))
 
-    expect(numeric.getBoundingClientRect().height).toBe(32)
-    expect(decimal.getBoundingClientRect().height).toBe(0.5)
-    expect(trailingDecimal.getBoundingClientRect().height).toBe(32)
-    expect(pixels.getBoundingClientRect().height).toBe(32)
-    expect(rem.getBoundingClientRect().height).toBe(24)
-    expect(icon.getBoundingClientRect().width).toBe(32)
-    expect(icon.getBoundingClientRect().height).toBe(32)
+    const rootFontSize = Number.parseFloat(getComputedStyle(document.documentElement).fontSize)
+    expect(rootFontSize, '前置：rem 档的期望值来自根字号').toBeGreaterThan(0)
+
+    // 裸数值按 px 处理：与显式 px 档互等，不写死像素值。
+    expect(numeric.getBoundingClientRect().height).toBe(pixels.getBoundingClientRect().height)
+    expect(decimal.getBoundingClientRect().height).toBe(fractionalPixels.getBoundingClientRect().height)
+    expect(trailingDecimal.getBoundingClientRect().height).toBe(pixels.getBoundingClientRect().height)
+    expect(rem.getBoundingClientRect().height).toBeCloseTo(rootFontSize * 1.5, 1)
+    expect(icon.getBoundingClientRect().width).toBe(pixels.getBoundingClientRect().width)
+    expect(icon.getBoundingClientRect().height).toBe(pixels.getBoundingClientRect().height)
   })
 
   it('size 通过数字属性赋值时仍按 px 更新', async () => {
     const button = mountElement<WebUiButton>('web-ui-button')
+    const pixels = mountElement<WebUiButton>('web-ui-button', { attrs: { size: '32px' } })
     ;(button as unknown as { size: unknown }).size = 32
 
-    await waitForUpdate(button)
+    await Promise.all([waitForUpdate(button), waitForUpdate(pixels)])
 
-    expect(button.getBoundingClientRect().height).toBe(32)
+    expect(button.getBoundingClientRect().height).toBe(pixels.getBoundingClientRect().height)
   })
 
   it('数字 size 为 0 时仍按 0px 处理', async () => {
@@ -74,13 +79,16 @@ describe('WebUiButton 组件（浏览器）', () => {
 
   it('移除 size 属性后恢复默认高度', async () => {
     const button = mountElement<WebUiButton>('web-ui-button', { attrs: { size: '32' } })
-    await waitForUpdate(button)
-    expect(button.getBoundingClientRect().height).toBe(32)
+    const defaults = mountElement<WebUiButton>('web-ui-button')
+    await Promise.all([waitForUpdate(button), waitForUpdate(defaults)])
+    expect(button.getBoundingClientRect().height).not.toBe(defaults.getBoundingClientRect().height)
 
     button.removeAttribute('size')
     await waitForUpdate(button)
 
-    expect(button.getBoundingClientRect().height).toBe(36)
+    // 默认高度是视觉常量，不写死数字：与从未设置 size 的实例互等。
+    expect(button.getBoundingClientRect().height).toBe(defaults.getBoundingClientRect().height)
+    expect(button.getBoundingClientRect().height).toBeGreaterThan(0)
   })
 
   it('dark primary 的文字与 accent 背景达到 WCAG AA', async () => {
@@ -387,7 +395,7 @@ describe('WebUiButton 组件（浏览器）', () => {
     expect(document.activeElement).not.toBe(inner)
   })
 
-  it('指针点击后标记 pointer-focus，键盘导航恢复 focus-visible 状态', async () => {
+  it('键盘导航清掉指针聚焦标记，focus ring 恢复绘制', async () => {
     const btn = mountElement<WebUiButton>('web-ui-button')
     btn.textContent = 'Open'
     await waitForUpdate(btn)
@@ -395,20 +403,22 @@ describe('WebUiButton 组件（浏览器）', () => {
     const inner = btn.shadowRoot?.querySelector('button') as HTMLButtonElement
     expect(inner).toBeTruthy()
 
-    // 模拟点击打开 overlay 后的指针自动 focus：pointerdown 后聚焦内部 button
-    inner.dispatchEvent(
-      new PointerEvent('pointerdown', { bubbles: true, composed: true, isPrimary: true, pointerId: 1 })
-    )
-    inner.focus()
+    await userEvent.click(btn)
     await waitForUpdate(btn)
 
-    expect(btn.dataset.wuiPointerFocus).toBe('true')
+    /*
+     * Chromium 在指针点击后不会让 `:focus-visible` 命中（helper 正是为会命中的引擎存在的），
+     * 所以「环被压掉」在这一端没有可观察面，可观察的是下一句：键盘导航清掉标记后环画出来。
+     * 这句前置不是契约本身，是控制组——标记压根没写上时，第二半句也会绿。
+     */
+    expect(btn.hasAttribute('data-wui-pointer-focus'), '前置：真实指针点击后 helper 应已打上标记').toBe(true)
 
-    inner.blur()
-    document.dispatchEvent(new KeyboardEvent('keydown', { bubbles: true, key: 'Tab' }))
-    inner.focus()
+    await userEvent.keyboard('{ArrowUp}')
     await waitForUpdate(btn)
 
-    expect(btn.hasAttribute('data-wui-pointer-focus')).toBe(false)
+    expect(inner.matches(':focus-visible'), '前置：键盘输入后 inner 应进入 :focus-visible').toBe(true)
+    const outline = getComputedStyle(inner)
+    expect(outline.outlineStyle, '键盘导航后环要画出来').not.toBe('none')
+    expect(outline.outlineColor, '标记没被清掉时 ring 颜色仍是透明的').not.toBe('rgba(0, 0, 0, 0)')
   })
 })

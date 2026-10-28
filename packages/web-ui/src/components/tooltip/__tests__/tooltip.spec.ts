@@ -326,47 +326,14 @@ describe('WebUiTooltip 组件', () => {
     })
   })
 
-  describe('焦点进入/离开', () => {
-    it('keyboard focusin 立即显示', async () => {
-      const el = createTooltip({ content: '提示' })
-      await waitForUpdate(el)
-      const trigger = document.createElement('web-ui-button')
-      trigger.textContent = 'Trigger'
-      el.replaceChildren(trigger)
-      await waitForUpdate(trigger)
-      const focusedButton = trigger.shadowRoot?.querySelector('button')
-      expect(focusedButton).toBeTruthy()
-      vi.spyOn(focusedButton!, 'matches').mockReturnValue(true)
-
-      focusedButton!.dispatchEvent(new FocusEvent('focusin', { bubbles: true, composed: true }))
-      await waitForUpdate(el)
-
-      expect(el.isOpen).toBe(true)
-
-      cleanupElement(el)
-    })
-
-    it('pointer focusin 不显示', async () => {
-      const el = createTooltip({ content: '提示' })
-      await waitForUpdate(el)
-      const trigger = el.querySelector('button')!
-      vi.spyOn(trigger, 'matches').mockReturnValue(false)
-
-      trigger.dispatchEvent(new FocusEvent('focusin', { bubbles: true }))
-      await waitForUpdate(el)
-
-      expect(el.isOpen).toBe(false)
-
-      cleanupElement(el)
-    })
-
+  // 焦点可见性（键盘 focusin 显示、指针 focusin 不显示）需要真实引擎判断 `:focus-visible`，
+  // 由同目录 `focus.browser.spec.ts` 覆盖；这里只保留 jsdom 能确定证明的关闭路径。
+  describe('焦点离开', () => {
     it('focusout 立即隐藏', async () => {
       const el = createTooltip({ content: '提示' })
       await waitForUpdate(el)
 
-      const trigger = el.querySelector('button')!
-      vi.spyOn(trigger, 'matches').mockReturnValue(true)
-      trigger.dispatchEvent(new FocusEvent('focusin', { bubbles: true }))
+      el.open = true
       await waitForUpdate(el)
       expect(el.isOpen).toBe(true)
 

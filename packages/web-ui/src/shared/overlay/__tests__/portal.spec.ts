@@ -1,5 +1,7 @@
 import { afterEach, describe, expect, it } from 'vite-plus/test'
 
+import { flush } from '@/shared/test-utils'
+
 import { defineOverlayPortal, resolveOverlayContainer } from '../portal'
 
 afterEach(() => {
@@ -85,11 +87,11 @@ describe('overlay Portal', () => {
     expect(portal.panel.contains(removed)).toBe(true)
 
     // 迁移批次的 observer 回调先独立结算，与真实组件"打开帧迁移、后续帧删除"一致
-    await new Promise(resolve => setTimeout(resolve, 0))
+    await flush()
 
     removed.remove()
     // MutationObserver 回调在微任务中派发
-    await new Promise(resolve => setTimeout(resolve, 0))
+    await flush()
     expect(sawMutations).toBe(true)
 
     portal.restoreContent()

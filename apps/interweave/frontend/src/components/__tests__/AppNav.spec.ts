@@ -77,6 +77,8 @@ describe('AppNav：主导航', () => {
 
   afterEach(() => {
     vi.restoreAllMocks()
+    // 断言失败时用例末尾的 close() 不会执行，宿主会留在 body 里。
+    document.body.replaceChildren()
   })
 
   it('当前路由的导航项标记为 page，非当前项不带 aria-current', async () => {
@@ -116,14 +118,15 @@ describe('AppNav：主导航', () => {
 
   /*
    * 画线动画的重放机制（replay 的触发与时机）由 web-ui 的 svg-draw-lines 组件测试覆盖；
-   * 这里不再 spy 组件原型方法复测一遍。导航自身的职责——aria-current、navigate 分支、
+   * 这里不 spy 组件原型方法复测一遍。导航自身的职责——aria-current、navigate 分支、
    * 设置入口——由其余用例守住。
    */
   it('collapse 时不渲染文字 label，只保留 aria-label', async () => {
     const mounted = await mountNav({ collapsed: true })
 
     expect(mounted.host.textContent).not.toContain('资料库')
-    expect(navItem(mounted.host, '资料库')).toBeTruthy()
+    // 收起态只剩图标：命中项仍在，但它不渲染文字 label。
+    expect(navItem(mounted.host, '资料库').textContent?.trim()).toBe('')
 
     await mounted.close()
   })
@@ -138,6 +141,8 @@ describe('AppNav：设置入口', () => {
 
   afterEach(() => {
     vi.restoreAllMocks()
+    // 断言失败时用例末尾的 close() 不会执行，宿主会留在 body 里。
+    document.body.replaceChildren()
   })
 
   it('点击入口派发 openSettings，不当作导航', async () => {
@@ -159,7 +164,7 @@ describe('AppNav：设置入口', () => {
     const mounted = await mountNav({ collapsed: true })
 
     expect(mounted.host.textContent).not.toContain('设置')
-    expect(navItem(mounted.host, '设置')).toBeTruthy()
+    expect(navItem(mounted.host, '设置').textContent?.trim()).toBe('')
 
     await mounted.close()
   })

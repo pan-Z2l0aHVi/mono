@@ -11,8 +11,8 @@ import type { DrawerPlacement, WebUiDrawer } from '..'
 /*
  * 上下 placement 的 header / footer **整块**是拖拽起手区（A6 的反向修法）。
  *
- * 缺陷形态：A6 把 drag zone 让开 header（`top: var(--wui-internal-drawer-header-inset)`）修对了
- * 「drag zone 压住 header button」，代价是整条 header 不再可拖。实测 390×844 / placement=bottom /
+ * 让开 header 的做法（`top: var(--wui-internal-drawer-header-inset)`）避免了「drag zone 压住
+ * header button」，代价是整条 header 不再可拖。实测 390×844 / placement=bottom /
  * 56px header：端头 drag edge [0,12]、drag zone [60,92]，**中间 48px 完全不可拖**，用户反馈
  * 「header 面积太小，很难拖动到」。
  *
@@ -23,7 +23,7 @@ import type { DrawerPlacement, WebUiDrawer } from '..'
  * - **命中层判据**（几何）：从指针落点反查顶层元素，落在 header 盒内的点必须解析到
  *   一个可拖表面。只断言「元素存在」会漏掉压在上面挡着的透明层——那正是 A6 的病根。
  * - **行为判据**（真实输入）：用 CDP 派真实鼠标事件。合成 PointerEvent 不走命中测试，
- *   在一个「控件被 drag zone 盖住」的缺陷下照样绿，是上一轮翻车的写法之一。
+ *   在一个「控件被 drag zone 盖住」的缺陷下照样绿。
  *
  * 命中测试一律走 `shadowRoot.elementFromPoint`：`document.elementFromPoint` 穿透
  * shadow root 只返回宿主，会把真实重叠测成 0%。
@@ -126,14 +126,13 @@ async function mountDrawer(options: {
 /**
  * 等拖拽面的几何定版再取样——命中测试的前提。
  *
- * 旧写法只等比 dialog 矩形两次相等，两个方向都不够：
+ * 只等比 dialog 矩形两次相等，两个方向都不够：
  * - 进场过渡的进度只在渲染步进里推进，`getBoundingClientRect()` 的强制重算不推它，
  *   于是「相等」也可以意味着过渡还没起跑：量到的是过渡前那一帧的矩形。
  * - 让位量由 ResizeObserver 写回宿主样式，移动的是 drag zone/drag edge 而不是 dialog 矩形，
  *   等 dialog 矩形稳定推不出 drag zone 已到位。
  * 共享 helper 把这两件事都变成因果条件（过渡跑完 + RO 抽干），收尾再验矩形真的定版。
- * 这也取代了原先手写的 `settleFrames(3)`：那条是按帧数等，本质是赌让位量在几帧内
- * 落定；抽干 ResizeObserver 等的是尺寸回调真的派发过。
+ * 抽干 ResizeObserver 等的是尺寸回调真的派发过，不按帧数赌让位量在几帧内落定。
  */
 async function settleGeometry(el: WebUiDrawer) {
   const targets = [getDialog(el), query(el, '.wui-drawer-drag-zone'), query(el, '.wui-drawer-body')]
@@ -194,7 +193,7 @@ async function realClickAt(x: number, y: number): Promise<void> {
 }
 
 /**
- * 从某点起手做一次**真实拖拽**，拖一小段再原路返回后松手，返回过程中的可观测结果。
+ * 从某点起手做一次**真实拖拽**，拖一小段再原路返回后松手，返回拖拽期间的 panel 位移。
  *
  * 原路返回是必要的：CDP 派发的相邻 move 之间几乎无耗时，松手瞬间的净速度会远超
  * `DRAG_FLICK_VELOCITY`（500px/s），几 px 位移就够判成甩动而把 drawer 关掉。回到起点让
@@ -208,17 +207,59 @@ async function probeDrag(
   el: WebUiDrawer,
   x: number,
   y: number,
-  deltaY: number,
+  delta: { x: number; y: number },
   steps = 4
-): Promise<{ dragging: boolean; displacement: number }> {
-  const before = getDialog(el).getBoundingClientRect().top
+): Promise<number> {
+  const before = getDialog(el).getBoundingClientRect()
   await realPressAt(x, y)
-  for (let step = 1; step <= steps; step++) await realMoveTo(x, y + (deltaY * step) / steps)
-  const dragging = getDialog(el).classList.contains('is-dragging')
-  const displacement = getDialog(el).getBoundingClientRect().top - before
-  for (let step = steps - 1; step >= 0; step--) await realMoveTo(x, y + (deltaY * step) / steps)
+  for (let step = 1; step <= steps; step++) {
+    await realMoveTo(x + (delta.x * step) / steps, y + (delta.y * step) / steps)
+  }
+  const after = getDialog(el).getBoundingClientRect()
+  const displacement = Math.hypot(after.left - before.left, after.top - before.top)
+  for (let step = steps - 1; step >= 0; step--) {
+    await realMoveTo(x + (delta.x * step) / steps, y + (delta.y * step) / steps)
+  }
   await realReleaseAt(x, y)
-  return { dragging, displacement }
+  return displacement
+}
+
+/**
+ * 合成事件直达元素、绕过命中测试：嵌套下层时真实指针会被上层模态层截走，到不了下层 header。
+ * 这里只问「事件层还接不接手势」——判据同样是 panel 的实际位移。手势用 pointercancel 收尾，
+ * 避免补发 click 或触发关闭。
+ */
+async function syntheticDragDisplacement(
+  el: WebUiDrawer,
+  target: Element,
+  delta: { x: number; y: number },
+  steps = 4
+): Promise<number> {
+  const rect = target.getBoundingClientRect()
+  const start = { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 }
+  const before = getDialog(el).getBoundingClientRect()
+  const dispatch = (type: string, x: number, y: number) =>
+    target.dispatchEvent(
+      new PointerEvent(type, {
+        bubbles: true,
+        composed: true,
+        isPrimary: true,
+        pointerId: 1,
+        clientX: x,
+        clientY: y
+      })
+    )
+
+  dispatch('pointerdown', start.x, start.y)
+  await el.updateComplete
+  for (let step = 1; step <= steps; step += 1) {
+    dispatch('pointermove', start.x + (delta.x * step) / steps, start.y + (delta.y * step) / steps)
+    await el.updateComplete
+  }
+  const after = getDialog(el).getBoundingClientRect()
+  dispatch('pointercancel', start.x + delta.x, start.y + delta.y)
+  await el.updateComplete
+  return Math.hypot(after.left - before.left, after.top - before.top)
 }
 
 /** 落点是否被已知的拖拽命中面（drag zone / 端头 drag edge）盖住——这两条本身就是拖拽面，不算遮挡。 */
@@ -274,9 +315,11 @@ describe('WebUiDrawer header / footer 整块可拖（浏览器）', () => {
     const points = [center(el.querySelector('#title')!.getBoundingClientRect()), findEmptyPoint(el, rect, controls)]
 
     for (const point of points) {
-      const { dragging, displacement } = await probeDrag(el, point.x, point.y, 12)
-      expect(dragging, `(${point.x.toFixed(1)},${point.y.toFixed(1)}) 按下未进入拖拽`).toBe(true)
-      expect(Math.abs(displacement), '拖动期间 panel 没有位移，手势没有真正挂上').toBeGreaterThan(1)
+      const displacement = await probeDrag(el, point.x, point.y, { x: 0, y: 12 })
+      expect(
+        displacement,
+        `(${point.x.toFixed(1)},${point.y.toFixed(1)}) 按下后 panel 没有位移，手势没有真正挂上`
+      ).toBeGreaterThan(1)
     }
     expect(el.open, '拖拽把 drawer 关掉了（净位移应归零）').toBe(true)
   })
@@ -288,10 +331,8 @@ describe('WebUiDrawer header / footer 整块可拖（浏览器）', () => {
     const control = el.querySelector('#fAct')!.getBoundingClientRect()
 
     const point = findEmptyPoint(el, rect, [control])
-    await realPressAt(point.x, point.y)
-    const dragging = getDialog(el).classList.contains('is-dragging')
-    await realReleaseAt(point.x, point.y)
-    expect(dragging, 'footer 空白处按下未进入拖拽').toBe(true)
+    const displacement = await probeDrag(el, point.x, point.y, { x: 0, y: -12 })
+    expect(displacement, 'footer 空白处按下后 panel 没有位移').toBeGreaterThan(1)
   })
 
   /*
@@ -334,7 +375,6 @@ describe('WebUiDrawer header / footer 整块可拖（浏览器）', () => {
     expect(log.act, '行内 button 没收到真实点击').toBe(1)
     expect(log.pick, '勾选框没收到真实点击').toBe(1)
     expect(el.querySelector('#pick')!.getAttribute('aria-checked')).toBe('true')
-    expect(getDialog(el).classList.contains('is-dragging'), '点击控件时误入了拖拽').toBe(false)
     expect(el.open).toBe(true)
   })
 
@@ -342,9 +382,8 @@ describe('WebUiDrawer header / footer 整块可拖（浏览器）', () => {
     const { el } = await mountDrawer({ placement: 'bottom', header: true })
     for (const sel of ['#rename', '#act', '#pick']) {
       const rect = el.querySelector(sel)!.getBoundingClientRect()
-      const { dragging, displacement } = await probeDrag(el, rect.left + rect.width / 2, rect.top + rect.height / 2, 12)
-      expect(dragging, `在 ${sel} 上起手进入了拖拽`).toBe(false)
-      expect(Math.abs(displacement), `从 ${sel} 起手把 drawer 拖动了 ${displacement}`).toBeLessThanOrEqual(EPS)
+      const displacement = await probeDrag(el, rect.left + rect.width / 2, rect.top + rect.height / 2, { x: 0, y: 12 })
+      expect(displacement, `从 ${sel} 起手把 drawer 拖动了 ${displacement}px`).toBeLessThanOrEqual(EPS)
     }
     // 原路返回的按压-抬起会派发原生 click（控件让开时这是浏览器的正常行为，
     // 与「控件被拖走」无关），所以这里不拿 click 计数当判据。
@@ -369,14 +408,13 @@ describe('WebUiDrawer header / footer 整块可拖（浏览器）', () => {
     for (const placement of ['right', 'left'] as const) {
       const { el } = await mountDrawer({ placement, header: true, footer: true })
 
-      // 左右 placement 的拖拽轴是 x，header 不该起手。判据是「按下没进入拖拽」，
-      // 不是 drag zone 的宽高 —— 后者是精确几何（政策第 6 条）。
+      // 左右 placement 的拖拽轴是 x，header 不该起手。判据是沿拖拽轴移动时 panel
+      // 没有位移，不是 drag zone 的宽高 —— 后者是精确几何（政策第 6 条）。
       const rect = query(el, '.wui-drawer-header').getBoundingClientRect()
       const point = { x: rect.left + rect.width * 0.2, y: rect.top + rect.height / 2 }
-      await realPressAt(point.x, point.y)
-      const dragging = getDialog(el).classList.contains('is-dragging')
-      await realReleaseAt(point.x, point.y)
-      expect(dragging, `${placement} 的 header 错误地接了手势`).toBe(false)
+      const closing = placement === 'right' ? 12 : -12
+      const displacement = await probeDrag(el, point.x, point.y, { x: closing, y: 0 })
+      expect(displacement, `${placement} 的 header 错误地接了手势`).toBeLessThanOrEqual(EPS)
       el.remove()
     }
   })
@@ -384,9 +422,10 @@ describe('WebUiDrawer header / footer 整块可拖（浏览器）', () => {
   /*
    * 嵌套下层时 header 的手势闸同步退场。
    *
-   * 判据只取事件层：下层 drawer 被上层盖住后那里的 header 拖不动，起手必须被拒绝。
-   * `cursor` / `touch-action` 的计算值是观感与实现细节，不作断言 —— 但闸门本身
-   * 关不关得住，事件层是唯一可判定的那一面（且它才是真正吃手势的地方）。
+   * 判据只取事件层：下层 drawer 被上层盖住后那里的 header 拖不动，起手后 panel 不应位移。
+   * 真实指针会被上层模态层截走、根本到不了下层 header，所以这里用合成事件直达元素；
+   * 判据仍是**位移**，不是内部状态类。`cursor` / `touch-action` 的计算值是观感与实现细节，
+   * 不作断言。
    */
   it('嵌套下层时 header 的手势闸关闭：下层起手不进拖拽', async () => {
     // 正控制用另一个 drawer：与 parent 同处一层的 control 不会被标成下层，
@@ -401,19 +440,8 @@ describe('WebUiDrawer header / footer 整块可拖（浏览器）', () => {
     await pollUntil(() => getDialog(control).classList.contains('is-visible'), 'control did not become visible')
 
     const soloHeader = query(control, '.wui-drawer-header')
-    const soloRect = soloHeader.getBoundingClientRect()
-    soloHeader.dispatchEvent(
-      new PointerEvent('pointerdown', {
-        bubbles: true,
-        composed: true,
-        isPrimary: true,
-        pointerId: 1,
-        clientX: soloRect.left + soloRect.width / 2,
-        clientY: soloRect.top + soloRect.height / 2
-      })
-    )
-    await control.updateComplete
-    expect(getDialog(control).classList.contains('is-dragging'), '正控制：非下层时 header 起手没有进入拖拽').toBe(true)
+    const soloDisplacement = await syntheticDragDisplacement(control, soloHeader, { x: 0, y: 12 })
+    expect(soloDisplacement, '正控制：非下层时 header 起手没有拖动 panel').toBeGreaterThan(1)
     control.remove()
 
     const parent = document.createElement('web-ui-drawer') as WebUiDrawer
@@ -435,23 +463,16 @@ describe('WebUiDrawer header / footer 整块可拖（浏览器）', () => {
     child.open = true
     await child.updateComplete
     await pollUntil(() => getDialog(parent).classList.contains('is-nested-lower'), 'lower layer not marked')
-    await new Promise(resolve => setTimeout(resolve, 250))
+    // 让位过渡还在跑时读拖拽位移，会把过渡本身算进手的位移里。等动画清空，而不是睡固定时长。
+    await pollUntil(
+      () => getDialog(parent).getAnimations().length === 0,
+      () => `下层切换的过渡未结束，仍有 ${getDialog(parent).getAnimations().length} 条在跑`
+    )
 
     // 下层起手不进拖拽：那里拖不动，吞下手势只会让用户以为 panel 失灵。
     const lowerHeader = query(parent, '.wui-drawer-header')
-    const rect = lowerHeader.getBoundingClientRect()
-    lowerHeader.dispatchEvent(
-      new PointerEvent('pointerdown', {
-        bubbles: true,
-        composed: true,
-        isPrimary: true,
-        pointerId: 1,
-        clientX: rect.left + rect.width / 2,
-        clientY: rect.top + rect.height / 2
-      })
-    )
-    await parent.updateComplete
-    expect(getDialog(parent).classList.contains('is-dragging'), '下层 drawer 的 header 起手仍进入了拖拽').toBe(false)
+    const lowerDisplacement = await syntheticDragDisplacement(parent, lowerHeader, { x: 0, y: 12 })
+    expect(lowerDisplacement, '下层 drawer 的 header 起手仍拖动了 panel').toBeLessThanOrEqual(EPS)
   })
 
   it('断开期间清空 footer，重连后 drag zone 让位量归零', async () => {

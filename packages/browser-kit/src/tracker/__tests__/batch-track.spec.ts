@@ -1,9 +1,7 @@
-import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 
 import { defineTracker } from '../core'
 import { defineBatchTrack } from '../plugins/batch-track'
-
-vi.useFakeTimers()
 
 /** 记录条目的 fake transport。批量断言只看 transport 收到什么，不关心怎么发出去。 */
 function createTransportStub() {
@@ -32,10 +30,15 @@ describe('defineBatchTrack 测试', () => {
   let transport: ReturnType<typeof createTransportStub>['transport']
 
   beforeEach(() => {
+    vi.useFakeTimers()
     vi.clearAllTimers()
     vi.restoreAllMocks()
     localStorage.clear()
     transport = createTransportStub().transport
+  })
+
+  afterEach(() => {
+    vi.useRealTimers()
   })
 
   it('窗口内的多次 track 合并成一个数组批次，保持入队顺序', async () => {
@@ -123,8 +126,8 @@ describe('defineBatchTrack 测试', () => {
 
   it('超过 maxBatchKB 时二分分片，且分片后条目一条不少', async () => {
     // maxBatchKB 压到 4（≈4KB），用每条 ~600 字节的 padding 让 20 条累计超过阈值：
-    // 分片正确性与条目总量无关，用尽量少的数据触发即可。之前用 2000 条触发分片，
-    // 在 CI 高负载下会撞默认 15s 超时（实测 18.4s），靠加超时参数续命不是修法。
+    // 分片正确性与条目总量无关，用尽量少的数据触发即可：用 2000 条会在 CI 高负载下撞默认
+    // 15s 超时（实测 18.4s），靠加超时参数续命不是修法。
     const tracker = defineTracker({ url: 'https://example.com', transport })
       .use(defineBatchTrack({ defaultBatchDelay: 200, maxBatchKB: 4 }))
       .make()

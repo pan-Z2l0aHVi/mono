@@ -3,7 +3,7 @@ import '..'
 import { afterEach, beforeAll, describe, expect, it } from 'vite-plus/test'
 import { page, userEvent } from 'vite-plus/test/browser'
 
-import { cleanupElement, mountElement, queryA11y, spyEvents, waitForUpdate } from '@/shared/test-utils'
+import { cleanupElement, mountElement, queryA11y, resolveColor, spyEvents, waitForUpdate } from '@/shared/test-utils'
 
 import type { WebUiEditableText } from '..'
 
@@ -49,6 +49,10 @@ const loadParityFont = async (): Promise<void> => {
   await document.fonts.load(`${PARITY_FONT_METRICS.size}px ${PARITY_FONT_FAMILY}`)
   await document.fonts.ready
 }
+
+/** 只作为输入使用的任意色，期望值由 resolveColor 现算，不把 rgb 字面量抄进断言。 */
+const ACCENT_PROBE_A = '#123456'
+const ACCENT_PROBE_B = '#654321'
 
 const mount = (attrs: Record<string, string> = {}): WebUiEditableText =>
   mountElement<WebUiEditableText>('web-ui-editable-text', { attrs: { style: FIXTURE_STYLE, ...attrs } })
@@ -501,9 +505,12 @@ describe('WebUiEditableText 布局契约（浏览器）', () => {
 
   it('光标颜色组件级默认跟随 --wui-color-accent，可被消费方覆盖', async () => {
     /*
-     * caret 此前只有 interweave 页面级设置，其他消费方拿到浏览器默认黑。组件级
+     * caret 缺了组件级默认时，消费方拿到的是浏览器默认黑。组件级
      * 默认落在共享语义 token 上：自定义属性穿透 shadow 边界继承，消费方在宿主或
      * 任意祖先上设 --wui-color-accent 即可整体改色。
+     *
+     * 这里钉的是依赖关系而不是具体色值：默认档是哪支蓝属于设计决策，钉住它只会随调色板
+     * 腐化；用例只证明 caret 不是浏览器默认的 currentColor，并且两次换 token 都跟着换。
      */
     const el = mount({ value: 'hello' })
     await waitForUpdate(el)
@@ -511,11 +518,20 @@ describe('WebUiEditableText 布局契约（浏览器）', () => {
     await waitForUpdate(el)
     const editor = editorOf(el)
 
-    expect(getComputedStyle(editor).caretColor, '默认取 token 兜底值 #0071e3').toBe('rgb(0, 113, 227)')
+    expect(getComputedStyle(editor).caretColor, 'caret 退回了继承文字色，说明组件级默认没落在 token 上').not.toBe(
+      getComputedStyle(editor).color
+    )
 
-    el.style.setProperty('--wui-color-accent', '#ff0000')
+    el.style.setProperty('--wui-color-accent', ACCENT_PROBE_A)
     await waitForUpdate(el)
-    expect(getComputedStyle(editor).caretColor, '消费方覆盖 token 后光标跟随').toBe('rgb(255, 0, 0)')
+    const first = getComputedStyle(editor).caretColor
+    expect(first, '覆盖 token 后光标没有跟随').toBe(resolveColor(ACCENT_PROBE_A))
+
+    el.style.setProperty('--wui-color-accent', ACCENT_PROBE_B)
+    await waitForUpdate(el)
+    const caret = getComputedStyle(editor).caretColor
+    expect(caret, '光标只响应了第一次覆盖').toBe(resolveColor(ACCENT_PROBE_B))
+    expect(caret).not.toBe(first)
     cleanupElement(el)
   })
 })
@@ -647,7 +663,7 @@ describe('WebUiEditableText 交互契约（浏览器）', () => {
     /*
      * Methods 表里 `blur()` 那一行声称组件没有重写它、编辑态下对宿主调它仍会把焦点从编辑层
      * 移走，于是走提交。上面那条用「焦点移往组件之外」触发同一段提交，宿主自己 `blur()`
-     * 这条一直没有断言，语料那句因此没有机器判据兜着（它曾经写反过）。
+     * 这条一直没有断言，语料那句因此没有机器判据兜着。
      */
     const el = mount({ value: 'hello' })
     await startDraft(el)
@@ -670,7 +686,7 @@ describe('WebUiEditableText 交互契约（浏览器）', () => {
   })
 
   it('readonly 时宿主 blur() 只退出编辑，不派发 change', async () => {
-    // readonly 的「不派发」此前只在卸载路径上钉过；`blur()` 那一行写的是同一条 readonly 分支。
+    // 本用例把 readonly 的「不派发」钉在 blur() 路径上，卸载路径钉的是同一条 readonly 分支。
     const el = mount({ value: 'hello', readonly: '' })
     await waitForUpdate(el)
     el.focus()
@@ -1158,11 +1174,11 @@ describe('WebUiEditableText 交互契约（浏览器）', () => {
     rowB.remove()
   })
 
-  it('默认：remove 后同任务重新挂载，change 落到重新挂载之后才被监听器读到', async () => {
+  it('默认：remove 后同任务重新挂载，仍只提交一次', async () => {
     /*
-     * 与上一条对照，把实测到的默认行为固定成契约：blur 排在 disconnectedCallback 之后，
-     * 而它触发的 change 直到组件重新挂载才到达监听器。消费方若依赖这条提交，读到的会是
-     * 一个已经接在别处的节点——这是开启 commit-on-unmount 的实际理由之一。
+     * 不开 commit-on-unmount 时，提交同样发生一次；它与重新挂载的相对时机由引擎的
+     * blur 派发顺序决定，不是本组件承诺的契约，因此这里只钉「提交一次且草稿成为新值」。
+     * 需要确定的事件序时用上一条的 commit-on-unmount。
      */
     const rowA = mountElement('div', { parent: document.body })
     const rowB = mountElement('div', { parent: document.body })
@@ -1170,19 +1186,16 @@ describe('WebUiEditableText 交互契约（浏览器）', () => {
     rowA.append(el)
     await startDraft(el)
 
-    const connectedAtDispatch: boolean[] = []
     const [changes, detachChange] = spyEvents(el, 'change')
-    const onChange = () => connectedAtDispatch.push(el.isConnected)
-    el.addEventListener('change', onChange)
     try {
       rowA.remove()
       rowB.append(el)
       await waitForUpdate(el)
 
       expect(changes, '默认路径仍提交一次').toHaveLength(1)
-      expect(connectedAtDispatch, '监听器收到 change 时组件已经重新挂载').toEqual([true])
+      expect(el.value, '草稿成为新值').toBe('hello world')
+      expect(el.hasAttribute('editing'), '提交后退出编辑态').toBe(false)
     } finally {
-      el.removeEventListener('change', onChange)
       detachChange()
     }
     cleanupElement(el)
@@ -1201,6 +1214,12 @@ describe('WebUiEditableText 交互契约（浏览器）', () => {
     // spy 编辑层 blur：交还焦点触发的那次 blur 必须被早退消费，否则同一次提交
     // 会拿到两次 change（真实浏览器里这次焦点迁移必然发生）
     const [editorBlurs, detachEditorBlurs] = spyEvents(editorOf(el), 'blur')
+    // 与 Escape 同一套消费策略：按键不外泄，外层表单/overlay 的捕获监听不该收到 Enter
+    const documentCapture: string[] = []
+    const onDocumentCapture = (event: Event) => {
+      if ((event as KeyboardEvent).key === 'Enter') documentCapture.push('enter')
+    }
+    document.addEventListener('keydown', onDocumentCapture, true)
     try {
       await userEvent.keyboard('{Enter}')
       await waitForUpdate(el)
@@ -1212,8 +1231,10 @@ describe('WebUiEditableText 交互契约（浏览器）', () => {
       expect(editorBlurs.length, '提交路径上编辑层真的被 blur 过：早退消费了这次 blur').toBeGreaterThanOrEqual(1)
       expect(changes, '提交派发一次 change').toHaveLength(1)
       expect(cancels, '提交不派发 cancel').toHaveLength(0)
+      expect(documentCapture, 'Enter 不穿透到 document 捕获监听').toEqual([])
       expect(document.activeElement, '焦点回宿主').toBe(el)
     } finally {
+      document.removeEventListener('keydown', onDocumentCapture, true)
       detach()
       detachCancel()
       detachEditorBlurs()

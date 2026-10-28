@@ -6,11 +6,11 @@
 
 审计日期 2026-09-16，分支 `release/260917`，范围 `packages/web-ui`。本文件只做风险清单，**不实施**；修复按 Block → Should fix → Watch 拆独立 task。
 
-2026-09-17 补充：Block 1 与 Block 2 已由真实 Chromium 探针实证复现（探针跑完即删，未入库），下文「推断路径」字样已被实测数据替换。Should fix 与 Watch 三项仍为静态结论，未实证。
+2026-09-17 补充：Block 1 与 Block 2 由真实 Chromium 探针实证复现（探针跑完即删，未入库），文中标注「推断路径」的部分以实测数据为准。Should fix 与 Watch 三项仍是静态结论，未实证。
 
-已完成的加固阶段（来自 #120 评论）：`overlay-lifecycle-transaction`、`overlay-composition-ownership`、`overlay-positioning-generation`。本次只审计该三项之后的遗留项，结论全部可追溯到具体代码行。
+已完成的加固阶段（来自 #120 评论）：`overlay-lifecycle-transaction`、`overlay-composition-ownership`、`overlay-positioning-generation`。本文只审计该三项之后的遗留项，结论全部可追溯到具体代码行。
 
-2026-09-18 补充：本文 Block 1（嵌套 overlay Escape 无跨组件归属）已由 `overlay-open-owner-260918` 修复。归属判定收敛到 `shared/overlay/open-overlay.ts`，`overlayComposition` / `escape-dismiss` / `lifecycle` 三个模块被合并进它并删除；组件侧不再各自实现 Escape 判定。原文的 `overlayComposition` 描述与行号属**当时的快照**，不再对应现状，见 ADR-0006 §7。Block 2 仍待处理。
+2026-09-18 补充：本文 Block 1（嵌套 overlay Escape 无跨组件归属）的归属判定归 `shared/overlay/open-overlay.ts` 一个模块：`overlayComposition` / `escape-dismiss` / `lifecycle` 三个模块合并进它，组件侧不各自实现 Escape 判定。原文的 `overlayComposition` 描述与行号只对应当时；现行实现见 ADR-0006 §7。Block 2 仍待处理。
 
 ## Block
 
@@ -30,12 +30,12 @@
 | `true`          | `div < div < dialog[dialog] < web-ui-drawer` | `select.open = true`，`drawer.open = false`  |
 | `false`         | `div < div < web-ui-select < web-ui-drawer`  | `select.open = false`，`drawer.open = false` |
 
-两点与原先的推断不同，且都更糟：
+两点与推断路径的预期不同，且都更糟：
 
 1. `portal=true` 时 panel**确实挂进了 drawer 的 `<dialog>`**（印证 `portal.ts:349` 的 `findEnclosingOpenDialog`，即 §3 的机制），这不是理论假设。
 2. 该配置下结果是**反的**：最内层的 select 没关，外层的 drawer 反而被关。原因是 select 的 keydown 监听在宿主上，而 panel portal 出去后事件路径不再经过宿主 → select 收不到 Escape；drawer 的监听挂在 dialog 上，路径经过 → drawer 关闭。于是按一次 Esc 想关下拉框，结果是整个 drawer 被关、下拉框 panel 随 dialog 的 `display:none` 隐形但仍 `open`（即 §3 的悬挂态）。
 
-`portal=false` 时两者同时关闭（原推断的场景）。两种配置下 drawer 都会被误关。
+`portal=false` 时两者同时关闭（推断路径预期的场景）。两种配置下 drawer 都会被误关。
 
 - 建议修法：Escape 收敛到单一共享模块，用 `overlayComposition` 选出最内层 open panel，只关它并 stopPropagation。修复时必须同时覆盖「panel portal 出宿主后事件不再经过宿主」这一条，否则只加 stopPropagation 会让 portal 场景变成谁都不关。
 - 回归测试：drawer 内打开 portal select，一次 Escape 后断言只有 select 关闭、drawer 未派发 `open-change`；`portal=false` 同样断言一遍。
@@ -106,9 +106,9 @@
 
 # 附：#123 手势回弹 CSS 化的现状核对
 
-结论：**#123 的剩余范围实际只剩 drawer 一处**，issue 里记的 image-preview 已不再适用。
+结论：**#123 的剩余范围实际只剩 drawer 一处**，issue 里记的 image-preview 不在剩余范围内。
 
 - drawer 仍是 WAAPI 弹簧：`drawer/index.ts:9` 导入 `springOffsets` / `SPRING_PRESETS`；`:320`、`:395` 采样轨迹；`:329`、`:406` 用 `dialog.animate(keyframes, { duration, easing: 'linear', fill: 'both' })`；`:335`、`:409` 由 `onfinish` 收尾；`:363-365` 的 reflow 烘焙补丁（绕过 Safari transition before-change style 怪癖）仍在。
 - image-preview 的 swipe settle 已经是 CSS transition 驱动：`image-preview/index.ts:559-586` 只设置 `_swipeOffset` 目标值，`:588-591` 由 `transitionend` 收尾，`:585` 保留无过渡环境的兜底 timer。全组件无 `element.animate()`。
 
-迁移方向（待真机 A/B 由用户拍板后实施，不在本次）：释放速度只用于动态设定 transition 时长与缓动（Base UI `useSwipeDismiss` 形态），删除 `springOffsets` 采样与 `onfinish` 烘焙；取舍是丢掉 overshoot 手感，换取对 Safari 采样怪癖的机制免疫。
+迁移方向（待真机 A/B 由用户拍板后实施）：释放速度只用于动态设定 transition 时长与缓动（Base UI `useSwipeDismiss` 形态），删除 `springOffsets` 采样与 `onfinish` 烘焙；取舍是丢掉 overshoot 手感，换取对 Safari 采样怪癖的机制免疫。

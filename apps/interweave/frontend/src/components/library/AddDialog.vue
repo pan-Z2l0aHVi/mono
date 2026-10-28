@@ -62,7 +62,7 @@ let pendingImagePreview: ImagePreviewHandle | null = null
  * 队列项名称的排版，静态态与编辑态共用同一份（#190）。
  *
  * editable-text 的排版全部继承宿主，两态切换只换 visibility，组件自身不会移动任何一个
- * 像素；排版写在调用点才是唯一能保证两态一致的地方。flex 基准同样要收敛：静态态原本是
+ * 像素；排版写在调用点才是唯一能保证两态一致的地方。flex 基准同样要收敛：静态态是
  * flex-[0_1_auto]、编辑态是 flex-[1_1_auto]，长名称下两态量到的宽度不同。
  *
  * 换行语义靠组件变量对齐：组件默认 pre-wrap + anywhere（为多行编辑准备），而这里是固定
@@ -215,13 +215,12 @@ function handleRenameChange(item: LibraryQueueItem, event: WebUiEvent<WebUiEdita
     </p>
 
     <!--
-      内层不再自己算高度：`--wui-dialog-max-height` 的语义已从「整卡高度」改成
-      「内容区高度」（见 @greypan/web-ui 的 dialog），去掉的不只是那个 108，还有
-      整条 height 计算——上限改由组件的 `.desc` 承担。
+      内层不自己算高度：`--wui-dialog-max-height` 的语义是「内容区高度」（不是「整卡高度」，
+      见 @greypan/web-ui 的 dialog），上限由组件的 `.desc` 承担。
 
       这里用 var(--wui-dialog-max-height) 而不是 height: 100%：后者在内容不足时会让
       `.desc` 收缩到内容高，整张卡片跟着变矮，切 tab / 队列有无时又跳一次。token 直接
-      当内层高度，固定高度这个性质才与改动前一致（两个 drop zone 恒等高）。
+      当内层高度，固定高度这个性质才成立（两个 drop zone 恒等高）。
       token 声明在外层 web-ui-dialog 上，内层作为后代继承得到，两个数不会走散。
 
       token 里减掉的 142 是本 dialog 的 chrome 实测值（Chrome/Chromium，1017×503）：
@@ -453,9 +452,8 @@ function handleRenameChange(item: LibraryQueueItem, event: WebUiEvent<WebUiEdita
             桌面与 mobile: 各断点同样成对。
             高度相等的关键是说明同为两行：两行时两侧都是
             52 + 12 + 22.4 + 12 + (16.8 + 2 + 16.8) = 134px。说明只写一行时右侧会短
-            18.8px、整块被顶高，此前用 pb-[16.8px] 补平；两侧都两行后补偿即失效并已删除。
-            文案里的逗号改成换行同理：左栏 drop 区的支持类型说明已经是两行，右栏跟着
-            两行，两侧才对称。
+            18.8px、整块被顶高；两侧都两行后不需要补平。文案里的逗号用换行：左栏 drop 区的
+            支持类型说明已经是两行，右栏跟着两行，两侧才对称。
 
             关键一项是 --wui-empty-min-height: 0：web-ui-empty 的 `.empty` 默认把内容顶端对齐在
             240px min-block-size 盒内，置 0 后内容才随外层 place-items-center 真正垂直居中。

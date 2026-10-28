@@ -57,14 +57,6 @@ describe('WebUiAvatar 组件', () => {
       expect(node?.getAttribute('aria-hidden')).toBe(expectedLabel ? null : 'true')
       cleanupElement(el)
     })
-
-    it('alt 传给内部 img，图片本身也带同样的替代文本', async () => {
-      const el = createAvatar({ src: '/a.png', alt: '用户 avatar' })
-      await waitForUpdate(el)
-
-      expect(innerOf(el)?.querySelector('img')?.getAttribute('alt')).toBe('用户 avatar')
-      cleanupElement(el)
-    })
   })
 
   describe('回退渲染', () => {
@@ -132,7 +124,11 @@ describe('WebUiAvatar 组件', () => {
       const avatar = wrap.querySelector('web-ui-avatar') as WebUiAvatar
       await waitForUpdate(avatar)
 
-      expect(queryA11y(avatar, '[role="img"]')).toBeTruthy()
+      // 「仍提供 img 语义」包含两半：role 在、可访问名还在。只查 role 时，alt 映射被
+      // 嵌套场景吃掉（读成空名）也照样绿。
+      const node = queryA11y(avatar, '[role="img"]') as HTMLElement | null
+      expect(node, '嵌进 button 后 img 语义丢了').toBeTruthy()
+      expect(node?.getAttribute('aria-label')).toBe('用户')
       cleanupElement(wrap)
     })
   })

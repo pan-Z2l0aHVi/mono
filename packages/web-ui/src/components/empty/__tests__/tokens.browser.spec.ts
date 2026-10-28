@@ -3,15 +3,16 @@ import '@/components/theme'
 
 import { afterEach, describe, expect, it } from 'vite-plus/test'
 
+import type { WebUiEmpty } from '@/components/empty'
 import type { WebUiTheme } from '@/components/theme'
-
-import type { WebUiEmpty } from '..'
+import { resolveColor, waitForUpdate } from '@/shared/test-utils'
 
 /**
- * 空态的整套版面都由 `--wui-empty-*` 驱动：`size` 属性已移除，调用方唯一的旋钮就是这些变量。
+ * `--wui-empty-*` 是 `web-ui-empty` 唯一的公开旋钮：组件不设 JS 属性，调用方写变量，
+ * 组件把它落到盒、图形、字号、颜色与留白上。
  *
- * jsdom 没有布局，只能读到写进 style 的 token 文本；这里在 Chromium 里读回真实计算值，
- * 证明变量确实落在盒、图形、字号与颜色上，而不只是被写在宿主上。
+ * 每条用例的期望值都来自用例自己写进去的输入，不抄样式表里的默认字面量——默认值是设计
+ * 值，改版时该跟着变的是它们，不是这份契约。默认色取哪枚主题 token 由最后一条用例守。
  */
 afterEach(() => document.body.replaceChildren())
 
@@ -22,11 +23,13 @@ async function mountEmpty(tokens: Record<string, string> = {}): Promise<WebUiEmp
   const el = document.createElement('web-ui-empty') as WebUiEmpty
   el.title = '暂无内容'
   el.description = '当前区域还没有可展示的内容。'
+  el.innerHTML = '<button slot="action">重新加载</button>'
   for (const [token, value] of Object.entries(tokens)) el.style.setProperty(token, value)
 
   theme.append(el)
   document.body.append(theme)
-  await el.updateComplete
+  await waitForUpdate(theme)
+  await waitForUpdate(el)
   await new Promise(resolve => requestAnimationFrame(resolve))
   return el
 }
@@ -37,8 +40,23 @@ function part(el: WebUiEmpty, selector: string): HTMLElement {
   return node
 }
 
-/** 用一枚探针读出 token 在该主题下的计算色，避免把 rgb 字面量钉进用例。 */
-function probeColor(el: WebUiEmpty, token: string): string {
+const computed = (
+  el: WebUiEmpty,
+  selector: string,
+  prop:
+    | 'width'
+    | 'fontSize'
+    | 'color'
+    | 'paddingTop'
+    | 'paddingLeft'
+    | 'minHeight'
+    | 'opacity'
+    | 'marginTop'
+    | 'maxWidth'
+) => getComputedStyle(part(el, selector))[prop]
+
+/** 主题 token 的计算色：探针挂在主题里，与组件走同一条继承链。 */
+function themeColor(el: WebUiEmpty, token: string): string {
   const theme = el.parentElement
   if (!theme) throw new Error('web-ui-empty 没有挂在 web-ui-theme 里')
   const probe = document.createElement('span')
@@ -49,58 +67,28 @@ function probeColor(el: WebUiEmpty, token: string): string {
   return value
 }
 
-const computed = (
-  el: WebUiEmpty,
-  selector: string,
-  prop: 'width' | 'fontSize' | 'color' | 'paddingTop' | 'paddingLeft' | 'minHeight' | 'opacity'
-) => getComputedStyle(part(el, selector))[prop]
-
 describe('web-ui-empty 的 CSS 变量契约（浏览器）', () => {
-  it('默认图形 40×40：盒与图形同尺寸，图形填满盒', async () => {
-    const el = await mountEmpty()
-
-    expect(computed(el, '.empty-icon', 'width')).toBe('40px')
-    expect(computed(el, '.empty-glyph', 'width')).toBe('40px')
-  })
-
-  it('--wui-empty-icon-size 同时改盒与图形', async () => {
+  it('--wui-empty-icon-size 同时改盒与图形，两者始终同尺寸', async () => {
     const el = await mountEmpty({ '--wui-empty-icon-size': '64px' })
 
-    expect(computed(el, '.empty-icon', 'width')).toBe('64px')
-    expect(computed(el, '.empty-glyph', 'width')).toBe('64px')
+    const box = computed(el, '.empty-icon', 'width')
+    expect(box).toBe('64px')
+    expect(computed(el, '.empty-glyph', 'width')).toBe(box)
   })
 
   it('--wui-empty-icon-color 决定图形颜色', async () => {
     const el = await mountEmpty({ '--wui-empty-icon-color': 'rgb(255, 0, 0)' })
 
-    expect(computed(el, '.empty-icon', 'color')).toBe('rgb(255, 0, 0)')
+    expect(computed(el, '.empty-icon', 'color')).toBe(resolveColor('rgb(255, 0, 0)'))
   })
 
-  // 深浅与色相是两件事，因此落在两枚变量上：颜色给实色，淡一档走 group opacity。
-  // 两者合成才好看，但写成两个变量调用方才能只调其中一个。
-  it('图形深浅默认 0.75，--wui-empty-icon-opacity 单独覆盖', async () => {
-    const el = await mountEmpty()
-    expect(computed(el, '.empty-glyph', 'opacity')).toBe('0.75')
+  it('--wui-empty-icon-opacity 单独改图形深浅', async () => {
+    const el = await mountEmpty({ '--wui-empty-icon-opacity': '1' })
 
-    const solid = await mountEmpty({ '--wui-empty-icon-opacity': '1' })
-    expect(computed(solid, '.empty-glyph', 'opacity')).toBe('1')
+    expect(computed(el, '.empty-glyph', 'opacity')).toBe('1')
   })
 
-  // 颜色必须落在实色上：带 alpha 的颜色会让笔画在重叠处二次合成。
-  it('--wui-empty-icon-color 的默认值不带 alpha', async () => {
-    const el = await mountEmpty()
-
-    expect(computed(el, '.empty-icon', 'color')).toBe(probeColor(el, '--wui-color-text-secondary'))
-  })
-
-  it('标题与描述默认 16px / 14px', async () => {
-    const el = await mountEmpty()
-
-    expect(computed(el, '.empty-title', 'fontSize')).toBe('16px')
-    expect(computed(el, '.empty-description', 'fontSize')).toBe('14px')
-  })
-
-  it('两个字号变量独立覆盖标题与描述', async () => {
+  it('两枚字号变量各自只改一行文案', async () => {
     const el = await mountEmpty({
       '--wui-empty-title-font-size': '20px',
       '--wui-empty-description-font-size': '12px'
@@ -110,35 +98,17 @@ describe('web-ui-empty 的 CSS 变量契约（浏览器）', () => {
     expect(computed(el, '.empty-description', 'fontSize')).toBe('12px')
   })
 
-  // 默认色跟着主题 token 走：标题是正文色，描述是次级文字色，两者必须不同，
-  // 否则把标题色钉成描述色也不会红。
-  it('标题与描述默认取主题的 text / secondary', async () => {
-    const el = await mountEmpty()
-
-    expect(computed(el, '.empty-title', 'color')).toBe(probeColor(el, '--wui-color-text'))
-    expect(computed(el, '.empty-description', 'color')).toBe(probeColor(el, '--wui-color-text-secondary'))
-    expect(computed(el, '.empty-title', 'color')).not.toBe(computed(el, '.empty-description', 'color'))
-  })
-
-  it('两个颜色变量独立覆盖标题与描述', async () => {
+  it('两枚颜色变量各自只改一行文案', async () => {
     const el = await mountEmpty({
       '--wui-empty-title-color': 'rgb(0, 128, 0)',
       '--wui-empty-description-color': 'rgb(128, 0, 0)'
     })
 
-    expect(computed(el, '.empty-title', 'color')).toBe('rgb(0, 128, 0)')
-    expect(computed(el, '.empty-description', 'color')).toBe('rgb(128, 0, 0)')
+    expect(computed(el, '.empty-title', 'color')).toBe(resolveColor('rgb(0, 128, 0)'))
+    expect(computed(el, '.empty-description', 'color')).toBe(resolveColor('rgb(128, 0, 0)'))
   })
 
-  it('默认留白：min-height 240、内边距 32/24', async () => {
-    const el = await mountEmpty()
-
-    expect(computed(el, '.empty', 'minHeight')).toBe('240px')
-    expect(computed(el, '.empty', 'paddingTop')).toBe('32px')
-    expect(computed(el, '.empty', 'paddingLeft')).toBe('24px')
-  })
-
-  it('--wui-empty-min-height 与 --wui-empty-padding 覆盖留白', async () => {
+  it('--wui-empty-min-height 与 --wui-empty-padding 各自改留白', async () => {
     const el = await mountEmpty({
       '--wui-empty-min-height': '120px',
       '--wui-empty-padding': '16px 12px'
@@ -147,5 +117,32 @@ describe('web-ui-empty 的 CSS 变量契约（浏览器）', () => {
     expect(computed(el, '.empty', 'minHeight')).toBe('120px')
     expect(computed(el, '.empty', 'paddingTop')).toBe('16px')
     expect(computed(el, '.empty', 'paddingLeft')).toBe('12px')
+  })
+
+  it('--wui-empty-content-width 收窄文案与操作区', async () => {
+    const el = await mountEmpty({ '--wui-empty-content-width': '300px' })
+
+    expect(computed(el, '.empty-title', 'maxWidth')).toBe('300px')
+    expect(computed(el, '.empty-description', 'maxWidth')).toBe('300px')
+    expect(computed(el, '.empty-action', 'maxWidth')).toBe('300px')
+  })
+
+  it('两枚段间距变量各自改一段间距', async () => {
+    const el = await mountEmpty({
+      '--wui-empty-title-margin-top': '8px',
+      '--wui-empty-action-margin-top': '4px'
+    })
+
+    expect(computed(el, '.empty-title', 'marginTop')).toBe('8px')
+    expect(computed(el, '.empty-action', 'marginTop')).toBe('4px')
+  })
+
+  it('默认色分别取主题的 text / secondary：标题取 text，描述与图形取 secondary', async () => {
+    const el = await mountEmpty()
+
+    expect(computed(el, '.empty-title', 'color')).toBe(themeColor(el, '--wui-color-text'))
+    expect(computed(el, '.empty-description', 'color')).toBe(themeColor(el, '--wui-color-text-secondary'))
+    expect(computed(el, '.empty-icon', 'color')).toBe(themeColor(el, '--wui-color-text-secondary'))
+    expect(computed(el, '.empty-title', 'color')).not.toBe(computed(el, '.empty-description', 'color'))
   })
 })

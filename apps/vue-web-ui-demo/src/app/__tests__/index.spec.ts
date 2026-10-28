@@ -8,7 +8,7 @@ import { createMemoryHistory, createRouter, type Router } from 'vue-router'
 import AppShell from '../index.vue'
 
 // 必须与 `web-ui-layout` 的 `MOBILE_VIEWPORT_QUERY`（`components/layout/index.ts`）逐字相同：
-// 断点判定自 ADR-0023 起由 layout 独占、app 不再自持媒体查询，所以这个替身要驱动的是 layout 那条。
+// 断点判定由 layout 独占（ADR-0023）、app 不自持媒体查询，所以这个替身要驱动的是 layout 那条。
 const MOBILE_QUERY = '(width <= 640px)'
 const DESKTOP_WIDTH = 1280
 const MOBILE_WIDTH = 568
@@ -68,17 +68,21 @@ function navRoot() {
 
 /**
  * 这个 jsdom 层不模拟真实布局；折叠态的文字省略、tooltip 与文本布局由 browser spec 验证。
- * 此处只比较导航项的类变化，确认桌面 collapsed state 不会泄漏到移动 drawer。
+ * 折叠态的公开出口是 `title`：可见文字保持完整名称，折叠时补上同名 `title`。
+ * 可见文字与 `title` 一起比较，确认桌面 collapsed state 不会泄漏到移动 drawer。
  */
-function navItemClasses() {
+function navItemState() {
   const link = navRoot().querySelector('a')
   if (!link) throw new Error('nav link not found')
-  return [...link.classList].sort()
+  return { text: link.textContent?.trim() ?? '', title: link.getAttribute('title') }
 }
 
-/** 移动端 drawer 是否真的接管了 sidebar slot（不接管就谈不上「drawer 里的导航」）。 */
+/**
+ * layout 是否处于移动端形态。`mobile` 是公开派生属性，与它渲染哪一套树是同一条条件，
+ * 移动端那份带 drawer。
+ */
 function isDrawerMode() {
-  return !!layoutRoot().shadowRoot?.querySelector('web-ui-drawer')
+  return layoutRoot().mobile
 }
 
 /**
@@ -160,24 +164,24 @@ describe('应用外壳：导航 collapsed state 不跨视口泄漏', () => {
   it('桌面端 collapsible sidebar 后导航进入 collapsed state', async () => {
     setViewportWidth(DESKTOP_WIDTH)
     await mountAppShell()
-    const expanded = navItemClasses()
+    const expanded = navItemState()
 
     await requestCollapse(true)
 
     expect(isDrawerMode()).toBe(false)
     expect(layoutRoot().sidebarCollapsed).toBe(true)
-    expect(navItemClasses()).not.toEqual(expanded)
+    expect(navItemState()).not.toEqual(expanded)
   })
 
   it('移动端断点下同一个 collapse preference 不把 drawer 导航压成 collapsed state', async () => {
     setViewportWidth(DESKTOP_WIDTH)
     await mountAppShell()
-    const expanded = navItemClasses()
+    const expanded = navItemState()
 
     await requestCollapse(true)
     // 对照：collapse preference 确实改变了导航项的渲染，否则下面那条「与展开态一致」可能只是因为
     // collapse 从未生效。
-    expect(navItemClasses()).not.toEqual(expanded)
+    expect(navItemState()).not.toEqual(expanded)
 
     setViewportWidth(MOBILE_WIDTH)
     setMediaMatches(MOBILE_QUERY, true)
@@ -186,26 +190,26 @@ describe('应用外壳：导航 collapsed state 不跨视口泄漏', () => {
     // 前提：collapse preference 仍写在 layout 上。不成立的话下面那条「与展开态一致」只是没 collapse 过的假绿
     // （drawer 形态由 settleViewport 保证，不另设断言）。
     expect(layoutRoot().sidebarCollapsed).toBe(true)
-    expect(navItemClasses()).toEqual(expanded)
+    expect(navItemState()).toEqual(expanded)
   })
 
   it('跨断点往返后 collapsed state 在桌面端恢复生效', async () => {
     setViewportWidth(DESKTOP_WIDTH)
     await mountAppShell()
-    const expanded = navItemClasses()
+    const expanded = navItemState()
 
     await requestCollapse(true)
-    const collapsed = navItemClasses()
+    const collapsed = navItemState()
 
     setViewportWidth(MOBILE_WIDTH)
     setMediaMatches(MOBILE_QUERY, true)
     await settleViewport(true)
-    expect(navItemClasses()).toEqual(expanded)
+    expect(navItemState()).toEqual(expanded)
 
     setViewportWidth(DESKTOP_WIDTH)
     setMediaMatches(MOBILE_QUERY, false)
     await settleViewport(false)
 
-    expect(navItemClasses()).toEqual(collapsed)
+    expect(navItemState()).toEqual(collapsed)
   })
 })

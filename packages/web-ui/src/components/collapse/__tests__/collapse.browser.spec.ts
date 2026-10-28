@@ -5,6 +5,7 @@ import '@/components/theme'
 import { afterEach, describe, expect, it } from 'vite-plus/test'
 import { page } from 'vite-plus/test/browser'
 
+import { afterRenderStep, pollUntil } from '@/shared/test-utils'
 import { scrollElementTo } from '@/shared/test-utils/viewport'
 
 import type { WebUiCollapse } from '..'
@@ -30,19 +31,8 @@ function queryTrack(el: WebUiCollapse): HTMLElement {
   return el.shadowRoot!.querySelector<HTMLElement>('.wui-collapse-track')!
 }
 
-// 轮询确定性信号；超时走 promise reject（不能在 promise 外 throw）。
-function waitFor(predicate: () => boolean, message = 'waitFor timeout', timeoutMs = 2000): Promise<void> {
-  return new Promise((resolve, reject) => {
-    const start = performance.now()
-    const step = (): void => {
-      if (predicate()) return resolve()
-      if (performance.now() - start > timeoutMs) return reject(new Error(message))
-      setTimeout(step, 16)
-    }
-    step()
-  })
-}
-
+// 轮询确定性信号；预算与超时诊断由共享 pollUntil 承担（2000ms 的预算在
+// 并行跑全仓时被 CPU 竞争吃光过一次，属于假红而不是行为错）。
 /*
  * 落稳态观察面用 Web Animations API，不读内部状态标记：
  * `getAnimations()` 对「有动效 vs 没有动效」有完全区分力，过渡跑完即为空集。
@@ -50,7 +40,7 @@ function waitFor(predicate: () => boolean, message = 'waitFor timeout', timeoutM
  * 而组件本身正确落稳态（实测），等待必须对中断路径健壮。
  */
 function settle(el: WebUiCollapse): Promise<void> {
-  return waitFor(() => queryTrack(el).getAnimations().length === 0, 'collapse transition did not settle')
+  return pollUntil(() => queryTrack(el).getAnimations().length === 0, 'collapse transition did not settle')
 }
 
 afterEach(() => document.body.replaceChildren())
@@ -100,7 +90,7 @@ describe('WebUiCollapse 组件（浏览器）', () => {
     let clickCount = 0
     trigger.addEventListener('click', () => clickCount++)
     trigger.remove()
-    await waitFor(() => !trigger.hasAttribute('disabled'))
+    await pollUntil(() => !trigger.hasAttribute('disabled'), 'detached trigger kept its disabled attribute')
     await trigger.updateComplete
 
     expect(trigger.hasAttribute('aria-expanded')).toBe(false)
@@ -121,7 +111,7 @@ describe('WebUiCollapse 组件（浏览器）', () => {
 
     el.open = false
     await el.updateComplete
-    await waitFor(() => queryContentContainer(el).hidden === true, 'content did not hide again')
+    await pollUntil(() => queryContentContainer(el).hidden === true, 'content did not hide again')
   })
 
   // 过渡被中断时若不续接，panel 会卡在中间态：hidden 泄漏或永久 inert。
@@ -162,7 +152,7 @@ describe('WebUiCollapse 组件（浏览器）', () => {
 
     el.open = false
     await el.updateComplete
-    await waitFor(() => queryInner(el).hasAttribute('inert'), 'inner never became inert')
+    await pollUntil(() => queryInner(el).hasAttribute('inert'), 'inner never became inert')
 
     expect(queryContentContainer(el).hidden).toBe(false)
     expect(innerContent.scrollTop).toBe(42)
@@ -215,15 +205,17 @@ describe('WebUiCollapse 组件（浏览器）', () => {
 
     el.open = false
     await el.updateComplete
-    await waitFor(() => queryContentContainer(el).hidden === true, 'outer content did not hide')
+    await pollUntil(() => queryContentContainer(el).hidden === true, 'outer content did not hide')
 
     expect(inner.open).toBe(true)
   })
 
-  // peek 的边缘晕染要真的把背后的画面模糊掉（#221），而 blur 只在下面三件事同时成立时
-  // 才会出现在屏幕上：伪元素存在、盒子落在被裁剪的那一盒上、以及活动长度真的到达了伪元素。
-  // 第三条最脆——--wui-collapse-peek-edge-active 一旦以 inherits: false 注册，伪元素读到的是
-  // initialValue 0px，mask 塌缩、模糊静默消失，而其余渲染一切照旧。所以这里显式读它。
+  // peek 的边缘晕染要真的把背后的画面模糊掉（#221），而 blur 只在下面两件事同时成立时
+  // 才会出现在屏幕上：伪元素存在、以及活动长度真的到达了伪元素。
+  // 第二条最脆——--wui-collapse-peek-edge-active 一旦以 inherits: false 注册，伪元素读到的是
+  // initialValue 0px，mask 塌缩、模糊静默消失，而其余渲染一切照旧（style.css:158 记的就是这条
+  // 约束）。所以这里显式比对伪元素与跟踪元素上的同一枚 token，渐变带的色标写法与盒子像素
+  // 不在这里判：那是表现细节，由视觉基线承担。
   it('peek 边缘晕染：伪元素带真实背景模糊，且活动长度到达伪元素', async () => {
     const el = document.createElement('web-ui-collapse')
     el.peek = '200px'
@@ -234,24 +226,19 @@ describe('WebUiCollapse 组件（浏览器）', () => {
 
     const inner = queryInner(el)
     const overlay = getComputedStyle(inner, '::after')
-    expect(overlay.content).not.toBe('none')
-    expect(overlay.backdropFilter).toMatch(/blur\((\d*\.?\d+)px\)/)
-    expect(overlay.getPropertyValue('--wui-collapse-peek-edge-active')).toBe(
-      getComputedStyle(inner).getPropertyValue('--wui-collapse-peek-edge-active')
-    )
-    // 渐变带必须真的铺在渐变带里：色标位置不是全部塌缩到 100%。
-    expect(overlay.maskImage).not.toMatch(/100%[^)]*100%[^)]*100%\)?$/)
-
-    // 伪元素以 inner 为定位基准，跟着被裁剪的那一盒走（peek 长度而非内容全高）。
-    const overlayBox = getComputedStyle(inner, '::after')
-    expect(overlayBox.top).toBe('0px')
-    expect(parseFloat(overlayBox.height)).toBeCloseTo(inner.getBoundingClientRect().height, 1)
-    expect(inner.getBoundingClientRect().height).toBeCloseTo(200, 1)
+    expect(overlay.content, '晕染伪元素不存在，背后画面无从模糊').not.toBe('none')
+    expect(overlay.backdropFilter, '晕染层没有背景模糊').not.toBe('none')
+    const active = getComputedStyle(inner).getPropertyValue('--wui-collapse-peek-edge-active')
+    expect(active, '收起态活动长度不应是 0').not.toBe('0px')
+    expect(
+      overlay.getPropertyValue('--wui-collapse-peek-edge-active'),
+      'token 没继承到伪元素，渐变会塌缩成不可见'
+    ).toBe(active)
   })
 
-  // 展开态活动长度归 0：mask 的色标全部塌缩到 100%，必须取到「末位色标 = 全透明」那一条，
-  // 伪元素因此什么都不画。取错（取到黑）就会在展开后的内容上蒙一层灰纱。
-  it('展开态不残留晕染层：伪元素 mask 的每个色标都是全透明', async () => {
+  // 展开态活动长度归 0：晕染层随之退场。取错注册参数时伪元素停在 initialValue，
+  // 淡出与归零都看不出区别，因此这里同样以伪元素上的读数为准。
+  it('展开态晕染层退场：伪元素上的活动长度归 0', async () => {
     const el = document.createElement('web-ui-collapse')
     el.peek = '200px'
     el.innerHTML =
@@ -262,20 +249,13 @@ describe('WebUiCollapse 组件（浏览器）', () => {
     el.open = true
     await el.updateComplete
     // peek 展开时 track 自身不产生过渡（两端都是 1fr），渐变带的淡出过渡落在 inner 上，等它跑完。
-    await waitFor(
+    await pollUntil(
       () => getComputedStyle(queryInner(el)).getPropertyValue('--wui-collapse-peek-edge-active') === '0px',
       'peek edge band did not fade out'
     )
 
     const overlay = getComputedStyle(queryInner(el), '::after')
-    expect(overlay.getPropertyValue('--wui-collapse-peek-edge-active')).toBe('0px')
-    // 活动长度为 0 时色标位置全部塌缩到 100%，整条渐变取末位色标（CSS Images 4：同一位置
-    // 的连续色标以最后一个为准；Chromium 实测如此，截图里展开态的高频能量与基线逐行相同，
-    // 即伪元素确实什么都没画）。所以承重的是**末位**色标透明，取到黑就会蒙一层灰纱。
-    const stops = overlay.maskImage.match(/rgba?\([^)]*\)/g) ?? []
-    expect(stops.length).toBeGreaterThan(1)
-    expect(overlay.maskImage).toMatch(/100%\)$/)
-    expect(stops[stops.length - 1]).toMatch(/^rgba\(\s*[\d.]+\s*,\s*[\d.]+\s*,\s*[\d.]+\s*,\s*0\s*\)$/)
+    expect(overlay.getPropertyValue('--wui-collapse-peek-edge-active'), '展开后伪元素仍持有活动长度').toBe('0px')
   })
 
   // 水平方向的晕染带在右缘：方向错了模糊就压在错误的一侧。
@@ -312,7 +292,10 @@ describe('WebUiCollapse 组件（浏览器）', () => {
     el.innerHTML = '<button class="trigger">Trigger</button><div slot="content">Content</div>'
     document.body.append(el)
     await el.updateComplete
-    await new Promise(resolve => requestAnimationFrame(resolve))
+    // 单帧不够：ResizeObserver 在 rAF 之后投递，动画可能晚一步才排下。走两个完整渲染步进
+    // 再断言「没有动画」，既能抓住晚排的过渡，也不会把已经开跑的过渡等没。
+    await afterRenderStep()
+    await afterRenderStep()
 
     expect(el.open).toBe(true)
     expect(queryContentContainer(el).hidden).toBe(false)
@@ -337,7 +320,7 @@ describe('WebUiCollapse 组件（浏览器）', () => {
 
     document.body.append(el)
     await el.updateComplete
-    await waitFor(() => queryContentContainer(el).hidden === true, 'content did not reach the closed steady state')
+    await pollUntil(() => queryContentContainer(el).hidden === true, 'content did not reach the closed steady state')
 
     expect(queryTrack(el).getAnimations()).toHaveLength(0)
     expect(queryInner(el).hasAttribute('inert')).toBe(false)

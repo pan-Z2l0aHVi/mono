@@ -309,7 +309,7 @@ export class WebUiAutocomplete extends FormAssociated(LitElement) {
     this._syncScrollInteractionListeners()
     this._portal = undefined
     this._portalContent = undefined
-    // 撤销登记由 _panel.dispose() 完成（handle 归它持有），不再需要单独 dispose 仲裁者。
+    // 撤销登记由 _panel.dispose() 完成（handle 归它持有）。
     this._panel.dispose()
     this._scrollLock.release()
   }
@@ -363,7 +363,7 @@ export class WebUiAutocomplete extends FormAssociated(LitElement) {
 
   /*
    * 禁用/只读态不响应 Escape。仲裁者仍在（吞掉按键并压掉原生 cancel），只是不走关闭
-   * 入口 —— 与旧的「跳过候选」语义不同：旧语义放任事件落到下层 overlay，把外层一起关掉。
+   * 入口：事件不落到下层 overlay，不会把外层一起关掉。
    * 每次渲染后同步即可覆盖 disabled / readonly 属性与表单禁用三条来源。
    */
   private _syncOverlayInert() {

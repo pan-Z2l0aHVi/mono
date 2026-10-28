@@ -68,7 +68,11 @@ function openChangeEvents(el: WebUiDrawer): CustomEvent<{ open: boolean }>[] {
   return events
 }
 
-afterEach(() => document.body.replaceChildren())
+afterEach(() => {
+  // 用例中途失败时不会走到体内的 vi.useRealTimers()，在这里统一复位。
+  vi.useRealTimers()
+  document.body.replaceChildren()
+})
 
 /*
  * 属性契约。
@@ -146,11 +150,14 @@ describe('WebUiDrawer 属性', () => {
     cleanupElement(el)
   })
 
-  it('heading 设置可访问名称来源', async () => {
+  it('heading 成为 dialog 的可访问名称来源', async () => {
     const el = createDrawer()
     el.heading = '我的标题'
     await waitForUpdate(el)
-    expect(el.heading).toBe('我的标题')
+
+    const dialog = el.shadowRoot?.querySelector('dialog')
+    expect(dialog?.getAttribute('aria-labelledby')).toBe('wui-drawer-heading')
+    expect(el.shadowRoot?.getElementById('wui-drawer-heading')?.textContent?.trim()).toBe('我的标题')
     cleanupElement(el)
   })
 

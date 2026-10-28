@@ -63,7 +63,7 @@ const checkedSet = computed(() => new Set(props.checkedIds))
 const ROW_ESTIMATE = 64
 
 /*
- * 渲染窗在视口前后各留的像素。与旧实现的 overscan 4 等价（4 × 64px 估值）：留够滚动时
+ * 渲染窗在视口前后各留的像素。留 4 个估值行高（4 × 64px）：留够滚动时
  * 下一个条目已经量好，又能让窗口外的行尽快卸载。
  */
 const VIRTUAL_BUFFER = 256
@@ -72,7 +72,7 @@ const VIRTUAL_BUFFER = 256
  * activeIndex 是 roving tabindex 与方向键导航的派生下标：由 activeResourceId 在 props.resources
  * 里查出。若 activeResourceId 为 null 或不在列表中，回退到下标 0——这与 enterList 的
  *「没有活动行则给首行」分支一致，也让 fixture（activeResourceId: null）的 tabindex 期望
- *['0','-1','-1'] 成立。不再维护独立 ref，也就不需要那条夹范围的 watch(length) 了。
+ *['0','-1','-1'] 成立。
  */
 const activeIndex = computed(() => {
   if (!props.activeResourceId) return 0
@@ -172,11 +172,11 @@ const editingIndex = computed(() =>
  * 把一个下标滚动到视口里，只在越界时把边界收到刚好装得下这一行；已在视口内则一个字节都不动。
  *
  * 这条替代了库的 scrollToIndex：
- *   - 键盘导航原来用 TanStack 的 align:'auto'（滚到能看见为止）。virtua 的等价物是
+ *   - 键盘导航要滚到能看见为止。virtua 的等价物是
  *     align:'nearest'，但它的可见性判定拿「列表内偏移」去比「原始滚动偏移」，不含 baseOffset；
  *     本列表上方有 sticky header（baseOffset > 0），那套判定会把「其实已经可见、只是靠近顶部」
  *     的行误判成「在上方」，转成 align:'start' 把页面从当前位置拽到行首。所以自己算。
- *   - 编辑行夹取原本就自己算（避免 scrollToIndex 把位置重置到行首），同一份逻辑两处共用。
+ *   - 编辑行夹取也自己算（避免 scrollToIndex 把位置重置到行首），同一份逻辑两处共用。
  *
  * 坐标：virtua 的 getItemOffset(index) 是相对列表起点的偏移，加上 listOffset（列表起点在
  * 文档里的位置）才是文档坐标；window.scrollY 与 window.innerHeight 同为文档/视口坐标，
@@ -206,7 +206,7 @@ function scrollIndexIntoView(index: number) {
 /*
  * 焦点成为 contextResource 的第二个来源。键盘呼出 context menu（ContextMenu 键 / Shift+F10）
  * 由 web-ui-context-menu 自己监听宿主元素，它不看 contextResource、只按 document.activeElement
- * 的 rect 摆 panel；而 menu item 全部 gate 在 contextResource 上，它原本只有行上的 contextmenu
+ * 的 rect 摆 panel；而 menu item 全部 gate 在 contextResource 上，它只有行上的 contextmenu
  * 事件这一个赋值点。纯键盘呼出时 contextResource 仍是 null，弹出来的是一张紧贴该行、
  * 内容却只有「删除」和两条 divider 的 menu：位置在说「这一行」，内容在说别的资源。
  *
@@ -260,8 +260,7 @@ let longPressOpened = false
  *
  * 长按本来就是「按住不放」的手势，menu 弹出之后用户继续按住任意久都完全自然。而补发的
  * click 是在抬手那一刻才到达的，它与「长按到期」的间隔等于「menu 弹出后继续按住的时长」，
- * 由用户决定、上界无限。曾经在这里挂过一个有限窗口（镜像组件的
- * LONG_PRESS_FOLLOW_UP_WINDOW_MS），看起来有组件侧依据，实际上组件那个窗口吸收的是
+ * 由用户决定、上界无限。组件侧的 LONG_PRESS_FOLLOW_UP_WINDOW_MS 看着像依据，但它吸收的是
  * contextmenu——那个事件在长按到期时就派发了，到派发时距锚点已经是 0ms，所以 1000ms
  * 对它成立，对补发的 click 却是给用户可控的时长发通行证：按住超过窗口长度，drawer 照弹。
  *
@@ -310,7 +309,7 @@ function handleRowsPointerCancel() {
 
 function handleContextMenuOpenChange(event: WebUiEvent<WebUiContextMenu, 'open-change'>) {
   if (!event.detail.open) return
-  // menu 关闭不消费标志：补发的 click 恰恰常发生在 menu 已关之后，提前作废它就退回老缺陷。
+  // menu 关闭不消费标志：补发的 click 恰恰常发生在 menu 已关之后，提前作废它这条抑制就失效。
   // 鼠标右键开 menu 时同样派发 open-change，但鼠标点行是合法的，不能吞。
   if (!lastPointerWasTouch) return
   longPressOpened = true
@@ -331,7 +330,7 @@ const ROW_NAVIGATION_KEYS = new Set(['ArrowDown', 'ArrowUp', 'Home', 'End'])
  * Shift+F10：web-ui-context-menu 认的 context-menu 键（见 packages/web-ui/src/components/
  * context-menu/index.ts 的 _onKeydown），焦点在容器上时它照样会开 menu，并把 panel 锚到容器
  * 自己身上。容器不对应任何一条资源，那种情况下弹出来的只会是一张位置在列表、内容与列表
- * 无关的 menu——和这次要修的键盘缺陷是同一个毛病，只是从「行」换成了「列表」。所以这里
+ * 无关的 menu——和行上的键盘缺陷是同一个毛病，只是从「行」换成了「列表」。所以这里
  * 先把焦点交给行：事件继续冒泡到宿主，宿主再读 document.activeElement 时读到的已经是
  * 那一行，menu 于是既锚在行上、也讲这一行的事。
  */
@@ -348,9 +347,9 @@ const ENTER_LIST_KEYS = new Set(['Enter', ' ', 'ArrowDown', 'F10'])
  * 焦点本身不自动开预览，这是被实现逼出来的：预览 drawer 的 web-ui-drawer 内部是原生
  * <dialog> 的 showModal()，打开时浏览器把焦点拉进 dialog、让其后的文档 inert。焦点一落到
  * 行上、drawer 一开，下一行就永远拿不到焦点，Tab 在行间切换这条主路径当场断掉（浏览器实测：
- * drawer 打开后 row.focus() 无响应）。把 drawer 改成非模态要动 web-ui 组件，不在本 task 范围内。
- * 所以焦点在这里的作用是「界定按键的作用域」：空格只作用于焦点所在的那一行，不再需要
- * 「鼠标恰好悬在某一行」这个隐藏判据——#187 的 hover 触发判据就此下线，预览能力留着。
+ * drawer 打开后 row.focus() 无响应）。预览 drawer 是模态的，要改成非模态得动 web-ui 组件。
+ * 所以焦点在这里的作用是「界定按键的作用域」：空格只作用于焦点所在的那一行，预览不由
+ * 「鼠标恰好悬在某一行」这个隐藏判据触发——预览能力留着，触发判据不是悬停。
  */
 function handleRowsKeydown(event: KeyboardEvent) {
   if (event.ctrlKey || event.metaKey || event.altKey) return
@@ -408,7 +407,7 @@ function handleRowKeydown(event: KeyboardEvent, row: HTMLElement) {
  * 方向键在行间移动焦点，Home / End 到首尾。
  *
  * 全程按数据下标算，边界是 resources 的长度而不是「已渲染了几行」——虚拟化之后这两者
- * 差着一整屏，End 停在最后一个已渲染行正是旧实现按 DOM 数组取末位造成的。
+ * 差着一整屏，按已渲染行取末位会让 End 停在最后一屏而不是最后一条资源。
  * 到达首尾时 return 且不 preventDefault，列表不是环，按键交回浏览器。
  */
 function moveRowFocus(event: KeyboardEvent, row: HTMLElement) {
@@ -431,7 +430,7 @@ function moveRowFocus(event: KeyboardEvent, row: HTMLElement) {
 /*
  * 键盘导航到某一行：发出 activate 事件请求父级更新 activeResourceId，再滚动并落焦。
  *
- * 与旧 focusIndex 的区别：不直接写 activeIndex（现为派生值），改为 emit activate 让父级把
+ * 只 emit activate，不直接写 activeIndex（activeIndex 是派生值）：父级把
  * activeResourceId 置为目标资源 id。派生后的 activeIndex 会自动变为目标下标，roving tabindex
  * 与 data-active-index 随之更新。随后 scrollIndexIntoView 滚动到位、focusRowWhenMounted 等行挂载后落焦。
  *
@@ -587,9 +586,9 @@ function rowIdAt(clientX: number, clientY: number) {
 /*
  * 指针停在列表上下边缘时把容器滚一点，让窗口外的行进窗口、elementFromPoint 才够得着。
  *
- * 虚拟化之前整个列表都是 DOM，按住拖到底能一路勾到最后一条；虚拟化之后 elementFromPoint
- * 只认窗口内那十几行，不主动滚就永远勾不过窗口边界——这不是手感问题，是能力被拿掉了。
- * 滚到位之后新行进入窗口，下一次 pointermove 的现查自然就命中了。
+ * elementFromPoint 只认窗口内那十几行（窗口外的行没被渲染，命中不到），不主动滚就永远勾不过
+ * 窗口边界——这不是手感问题，是能力限制。滚到位之后新行进入窗口，下一次 pointermove 的现查
+ * 自然就命中了。
  *
  * 速度按指针离边缘的距离给：贴着边缘慢、越往里越快，滚到窗口跟着跑，手感接近原生拖拽。
  * 用 rAF 而不是 setInterval：滚完一帧就该停，pointerup 之后不留下还在跑的滚动。
@@ -603,7 +602,7 @@ let sweepPointerX = 0
 let sweepPointerY = 0
 
 function sweepEdgeSpeed(clientY: number) {
-  // window 模式：边缘带按视口顶底算，不再按列表容器的 rect——容器此刻不是滚动容器，
+  // window 模式：边缘带按视口顶底算，不按列表容器的 rect——容器此刻不是滚动容器，
   // 它在视口里的位置只反映当前滚动位置，拿它当边界会让手势提前或延后触发。
   //
   // 边缘带取「视口内靠边 N px」而不是「视口外 N px」。触摸的 clientY 按 Pointer Events
@@ -616,7 +615,7 @@ function sweepEdgeSpeed(clientY: number) {
   // 根本停不住——那正好破坏扫选的核心价值。stepSweepScroll 只钳了滚动上限、没钳速度。
   // 顶部那支的 distance 是「离顶边多远」= clientY 本身，不是 ZONE - clientY。写成后者会
   // 把梯度反过来：贴着屏幕顶（clientY=0）速度 0、离顶边 32px 处反而满速，触摸在列表顶部
-  // 会「越靠边越慢」。上轮改判据时把这个方向写反了，本轮一并纠正。
+  // 会「越靠边越慢」。
   const bottom = window.innerHeight
   if (clientY <= SWEEP_EDGE_ZONE) {
     return -edgeRatio(clientY) * SWEEP_MAX_SPEED
@@ -681,7 +680,7 @@ function applySweep(resourceId: string) {
  *
  * 但不能一律拦。手指在视口边缘带内时，用户要的正是「滑到这里继续勾下面那些」——那就是
  * 滚动本身。此处再拦住，等于既不给自动滚、也不给手指滚，扫选在触摸端彻底卡在窗口边界
- * （虚拟化之前列表是全量 DOM，不需要滚就能勾到最后一条，这正是本该消除的退化）。
+ * （列表是虚拟化的，滚不过窗口边界就勾不到下面的行）。
  *
  * 两条共存靠边缘带划界：
  *   - 带内（离视口上下沿 SWEEP_EDGE_ZONE 以内）：放行。手指驱动原生滚动，
@@ -695,7 +694,7 @@ function applySweep(resourceId: string) {
 function blockSweepScroll(event: TouchEvent) {
   if (!sweepActive) return
   const touch = event.touches[0]
-  // 没有触点信息（罕见的合成事件）时按旧语义拦住，保守优先。
+  // 没有触点信息（罕见的合成事件）时直接拦住，保守优先。
   if (!touch) {
     event.preventDefault()
     return
@@ -967,9 +966,9 @@ function handleRenameChange(resource: ResourceView, event: WebUiEvent<WebUiEdita
       固定在容器内切状态，虚拟器实例始终在场，尺寸表也就连续。空态与载入态切到同一容器内
       即可绕开。
 
-      这里**不再**是滚动容器：滚动元素是 window，整页滚动（用户裁决）。所以去掉
-      overflow-y-auto / h-full / min-h-0 / overscroll-contain，保留 tabindex、role 与
-      事件绑定。overscroll-contain 尤其要去掉——它原本用于阻断嵌套滚动的链式传递，
+      这里**不是**滚动容器：滚动元素是 window，整页滚动（用户裁决）。所以容器上只保留
+      tabindex、role 与事件绑定，不带 overflow-y-auto / h-full / min-h-0 / overscroll-contain。
+      overscroll-contain 尤其要去掉——它原本用于阻断嵌套滚动的链式传递，
       window 模式下没有嵌套滚动，留着只会影响移动端的原生回弹手感。
     -->
     <div

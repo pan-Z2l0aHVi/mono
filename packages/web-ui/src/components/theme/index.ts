@@ -198,8 +198,8 @@ export class WebUiTheme extends LitElement {
   override connectedCallback() {
     super.connectedCallback()
     this._syncResolvedAppearance()
-    // reveal toggle 曾由 transition prop 单独控制；现在统一由 motion 决定，
-    // 因此连接期间始终记录圆心来源，真正是否动画仍看 _shouldAnimateAppearance。
+    // 是否动画统一由 motion 决定，因此连接期间始终记录圆心来源，真正是否动画仍看
+    // _shouldAnimateAppearance。
     this._syncTransitionOriginListeners(true)
     this._syncRootTokens()
     this._warnWhenAppearanceIsMissing()
@@ -268,7 +268,7 @@ export class WebUiTheme extends LitElement {
   }
 
   // 宿主 `display: contents` 时不产盒，rect 为 0；要量的是 slotted 子内容的并集宽度。
-  // jsdom 的 Range 没有几何实现，量不到就返回 0——飞行期间退回不钉宽的旧行为。
+  // jsdom 的 Range 没有几何实现，量不到就返回 0——飞行期间不钉宽。
   private _contentWidth(): number {
     try {
       const range = document.createRange()
@@ -359,8 +359,8 @@ export class WebUiTheme extends LitElement {
     const hadTransitionName = transitionName ? this.style.getPropertyValue('view-transition-name') : undefined
     if (transitionName) {
       /*
-       * 抬成 block 同时把宿主塞回父级布局：flex 容器里原本的 flex item 是作用域内那个
-       * `width: 100%` 的子元素，换成宿主当 item 之后宽度基准成了 shrink-to-fit，内容在揭示
+       * 抬成 block 同时把宿主塞回父级布局：宿主 display: contents 时 flex 容器里当 item 的是
+       * 作用域内那个 `width: 100%` 的子元素；宿主当 item 时宽度基准成了 shrink-to-fit，内容在揭示
        * 期间跳窄、结束再跳回来。所以先把内容几何钉在宿主上——换了盒，没换宽度。
        * `display: contents` 时宿主自己的 rect 是 0，量子内容只能靠 Range。
        */

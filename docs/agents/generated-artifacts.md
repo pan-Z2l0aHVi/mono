@@ -70,4 +70,4 @@
 
 ## 新增生成物时
 
-同时更新四处，缺一处就会漂：本文的表格、build.md 的 turbo inputs 与产出集合守卫、`.claude/settings.json` 的 `deny`，以及受影响包的测试。根 `AGENTS.md` 只指向本文，不再复制清单。
+同时更新四处，缺一处就会漂：本文的表格、build.md 的 turbo inputs 与产出集合守卫、`.claude/settings.json` 的 `deny`，以及受影响包的测试。根 `AGENTS.md` 只指向本文，不复制清单。

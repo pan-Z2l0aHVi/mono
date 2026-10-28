@@ -28,7 +28,7 @@ type VueResolvedProps<T extends HTMLElement> = Readonly<VueProps<T>> &
  * - Props: 组件属性 + 局部 HTMLAttributes（含原生 DOM 事件），不污染其他 Vue 组件
  * - Emits: 从 $events 提取的宿主化事件，Volar 可识别 @event 绑定
  * - TypeEl: 模板 ref/$el 类型为具体 Custom Element 实例
- * - 不再全局扩展 ComponentCustomProps
+ * - 不全局扩展 ComponentCustomProps
  */
 export type LitVueWrapper<T extends HTMLElement> = DefineComponent<
   VueProps<T>,

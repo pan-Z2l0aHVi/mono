@@ -2,7 +2,7 @@ import '..'
 
 import { afterEach, describe, expect, it } from 'vite-plus/test'
 
-import { cleanupElement, waitForUpdate } from '@/shared/test-utils'
+import { cleanupElement, flushSlotChange, waitForUpdate } from '@/shared/test-utils'
 
 import type { WebUiDrawer } from '..'
 
@@ -31,8 +31,6 @@ function sectionState(el: WebUiDrawer, name: 'header' | 'footer'): { assigned: n
     hidden: slot.parentElement?.hasAttribute('hidden') ?? false
   }
 }
-
-const flush = () => new Promise<void>(resolve => setTimeout(resolve, 0))
 
 /** 取某个 named slot 的 assigned 节点 —— 重连后的分配是否跟着新的 light DOM 走。 */
 function assigned(el: WebUiDrawer, name: 'header' | 'footer') {
@@ -103,8 +101,7 @@ describe('WebUiDrawer named-slot presence（jsdom）', () => {
     el.querySelector('#old-action')!.replaceWith(newAction)
 
     document.body.append(el)
-    await flush()
-    await waitForUpdate(el)
+    await flushSlotChange(el)
 
     // 重连后分配必须跟着新的 light DOM 走：留在旧内容上，用户会看到换掉的标题没生效。
     expect(assigned(el, 'header')[0].id).toBe('new-title')

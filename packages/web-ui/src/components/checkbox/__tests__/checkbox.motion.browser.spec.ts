@@ -5,7 +5,8 @@ import '@/components/theme'
 import { afterEach, describe, expect, it } from 'vite-plus/test'
 
 import type { WebUiCheckboxGroup } from '@/components/checkbox-group'
-import { cleanupElement, mountElement, waitForFrame, waitForUpdate } from '@/shared/test-utils'
+import type { WebUiTheme } from '@/components/theme'
+import { cleanupElement, mountElement, resolveColor, waitForFrame, waitForUpdate } from '@/shared/test-utils'
 
 import type { WebUiCheckbox } from '..'
 
@@ -28,6 +29,9 @@ function drawAnimations(el: WebUiCheckbox): Animation[] {
 function checkPath(el: WebUiCheckbox): SVGGeometryElement | null {
   return el.shadowRoot?.querySelector('web-ui-icon')?.shadowRoot?.querySelector<SVGGeometryElement>('path') ?? null
 }
+
+/** 只作为输入使用的任意色，期望值由 resolveColor 现算，不把 rgb 字面量抄进断言。 */
+const ON_CONTROL_PROBE = '#123456'
 
 /** 没有动画时得空串，轮询因此不会把「还没起动画」误判成起来或落稳。 */
 const states = (el: WebUiCheckbox): string =>
@@ -53,6 +57,16 @@ function contrastRatio(first: string, second: string): number {
   return (lighter + 0.05) / (darker + 0.05)
 }
 
+/** 某个作用域里那枚颜色 token 结算出的色值：把调色板留在主题里，用例只比对关系。 */
+function tokenColor(scope: Element, token: string): string {
+  const probe = document.createElement('span')
+  probe.style.color = `var(${token})`
+  scope.append(probe)
+  const value = getComputedStyle(probe).color
+  probe.remove()
+  return value
+}
+
 describe('WebUiCheckbox 勾画线（浏览器）', () => {
   it('dark checked fill stays distinguishable from page, surface, and control surfaces', async () => {
     const theme = document.createElement('web-ui-theme')
@@ -68,11 +82,15 @@ describe('WebUiCheckbox 勾画线（浏览器）', () => {
     const box = el.shadowRoot?.querySelector('.wui-checkbox-box')
     expect(box).toBeTruthy()
     const fill = getComputedStyle(box!).backgroundColor
-    for (const surface of ['rgb(36, 38, 40)', 'rgb(44, 44, 46)', 'rgb(58, 58, 60)']) {
-      expect(
-        contrastRatio(fill, surface),
-        `${surface} should remain distinct from the checked fill`
-      ).toBeGreaterThanOrEqual(3)
+    // 三档表面色从主题作用域里读，不把 #242628 这类调色板字面量抄进用例：调色改档时
+    // 这条用例要跟着改字面量才会绿，那就不是在守「勾选底要与背后分得开」这个契约了。
+    const surfaces = ['--wui-color-page', '--wui-color-surface', '--wui-color-surface-control'].map(token =>
+      tokenColor(theme, token)
+    )
+    // token 名写错时探针不会报错，只会退成同一个继承色；先确认三档真的能分辨。
+    expect(new Set(surfaces).size, '三档表面色应能互相分辨').toBe(surfaces.length)
+    for (const surface of surfaces) {
+      expect(contrastRatio(fill, surface), `${surface} 应与勾选底分得开`).toBeGreaterThanOrEqual(3)
     }
   })
 
@@ -99,7 +117,7 @@ describe('WebUiCheckbox 勾画线（浏览器）', () => {
 
   /*
    * 每个方向都是「起来 → 收尾撤销」：收回的空白写在动画名下还是内联样式上，这里都能看出来
-   * （旧的钉住写法会让末态停在一条 finished 动画上）。淡出抢跑的问题由
+   * （钉住动画末态会让收尾停在一条 finished 动画上）。淡出抢跑的问题由
    * `reduced-motion.browser.spec.ts` 的 opacity 观察面负责。
    */
   it('取消勾选沿原路收回，再勾选画入，两段收尾都不留动画', async () => {
@@ -126,6 +144,17 @@ describe('WebUiCheckbox 勾画线（浏览器）', () => {
    * 没有 token 时兜底。
    */
   it('描边时长跟随 --wui-duration-trigger，含秒的写法', async () => {
+    // 兜底值是 theme 声明的时长 token，不在这里再写一份毫秒字面量。
+    const theme = mountElement<WebUiTheme>('web-ui-theme')
+    await waitForUpdate(theme)
+    const fallbackToken = getComputedStyle(theme).getPropertyValue('--wui-duration-trigger').trim()
+    expect(fallbackToken, '前置：theme 应提供 --wui-duration-trigger').not.toBe('')
+    // 自定义属性的计算值可能被序列化成 `160ms` 或 `0.16s`，统一换算成毫秒。
+    const fallback = fallbackToken.endsWith('ms')
+      ? Number.parseFloat(fallbackToken)
+      : Number.parseFloat(fallbackToken) * 1000
+    expect(fallback, '前置：时长 token 必须解析出正毫秒数').toBeGreaterThan(0)
+
     const durationFor = async (token?: string) => {
       let parent: HTMLElement = document.body
       if (token) {
@@ -143,7 +172,7 @@ describe('WebUiCheckbox 勾画线（浏览器）', () => {
     expect(await durationFor('1s')).toBe('1000')
     expect(await durationFor('.3s')).toBe('300')
     expect(await durationFor('250ms')).toBe('250')
-    expect(await durationFor()).toBe('160')
+    expect(await durationFor()).toBe(String(fallback))
   })
 
   /*
@@ -199,18 +228,30 @@ describe('WebUiCheckbox 勾画线（浏览器）', () => {
   })
 
   /*
-   * 画线只作用于 stroke，所以这条钉的是上面全部用例的前提：勾必须是描边资产，且描边取 on-control 档。
-   * 换成实心（fill="currentColor"）资产时 dash 动画照跑、勾却全程满显，收回也看不见；勾选后 indicator 底是
-   * accent，勾留在继承的文字色就是深灰压深蓝。两者都是实测发生过的回归，这里一次钉死。
-   * 没有 web-ui-theme 时 on-control 走 style.css 的 #fff 兜底，断言因此不依赖主题档。
+   * 画线只作用于 stroke，所以这条钉的是上面全部用例的前提：勾必须是描边资产，勾在勾选底上要
+   * 分得开，且描边的颜色确实来自 on-control 档。
+   * 换成实心（fill="currentColor"）资产时 dash 动画照跑、勾却全程满显，收回也看不见；勾选后
+   * indicator 底是 accent，勾留在继承的文字色就是深灰压深蓝。两者都是实测发生过的回归。
+   * 默认档具体是哪支白不由这里钉（那是设计决策，钉住它只会随调色板腐化）：这里钉的是
+   * 「描边跟着这枚 token 换」，用一个显式覆盖值来证明依赖关系。
    */
-  it('勾是描边资产，描边色走 on-control 档', async () => {
+  it('勾是描边资产，描边色取 on-control 档', async () => {
     const el = mountElement<WebUiCheckbox>('web-ui-checkbox', { attrs: { checked: '' } })
     await waitForUpdate(el)
 
     const painted = getComputedStyle(checkPath(el)!)
-    expect(painted.fill).toBe('none')
-    expect(painted.stroke).toBe('rgb(255, 255, 255)')
+    expect(painted.fill, '实心资产上 dash 动画照跑，勾却全程满显').toBe('none')
+
+    const box = el.shadowRoot?.querySelector('.wui-checkbox-box')
+    expect(box).toBeTruthy()
+    const ratio = contrastRatio(painted.stroke, getComputedStyle(box!).backgroundColor)
+    expect(ratio, `勾与勾选底分不开：${ratio.toFixed(2)}:1`).toBeGreaterThanOrEqual(3)
+
+    el.style.setProperty('--wui-color-on-control', ON_CONTROL_PROBE)
+    await waitForUpdate(el)
+    expect(getComputedStyle(checkPath(el)!).stroke, '描边没有取 on-control 档，覆盖 token 不跟着动').toBe(
+      resolveColor(ON_CONTROL_PROBE)
+    )
 
     cleanupElement(el)
   })

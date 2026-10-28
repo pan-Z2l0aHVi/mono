@@ -98,6 +98,11 @@ describe('defineQueue', () => {
     const pending = new Promise<void>(resolve => {
       release = resolve
     })
+    let consumerSettled = false
+    // 只是给 pending 挂一个观测点，链上的值没有消费者：显式 void，不当浮空 promise。
+    void pending.then(() => {
+      consumerSettled = true
+    })
     const queue = defineQueue({
       onConsume: () => pending
     }).make()
@@ -105,14 +110,13 @@ describe('defineQueue', () => {
     queue.pause()
     queue.enqueue('item')
 
-    let flushed = false
-    const flushPromise = queue.flush().then(() => {
-      flushed = true
-    })
+    // flush 若真的等了消费者，这里会挂到 release() 之后；断言的是「flush 已完成而消费仍未结算」。
+    await queue.flush()
+    await Promise.resolve()
+    expect(consumerSettled).toBe(false)
 
-    await flushPromise
-    expect(flushed).toBe(true)
     release()
+    await pending
   })
 
   it('同步异常与异步 rejection 只通知错误观察器，不阻塞后续条目', async () => {

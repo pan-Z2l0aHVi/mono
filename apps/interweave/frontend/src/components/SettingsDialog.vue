@@ -86,9 +86,8 @@ function pickAccent(value: string) {
     的 drawer）是 web-ui-layout 内部的子树，原生 dialog 提升进 top layer 后不受其 overflow、
     transform 与 aside 的 display:none 影响。
 
-    closable：关闭 button 由组件渲染（绝对定位到卡片右上角的 26px icon button，偏移 20/20）。此前这里是
-    宿主自绘的一枚 ghost button 加一条 footer「关闭」button，两条关闭入口各画一遍——自绘那枚还
-    得自己跟窄屏挤不挤、icon 尺寸对齐，现在整套几何归组件，宿主只留标题文字。
+    closable：关闭 button 由组件渲染（绝对定位到卡片右上角的 26px icon button，偏移 20/20）。宿主不另画
+    一条关闭入口——自绘那枚还得自己跟窄屏挤不挤、icon 尺寸对齐，整套几何归组件，宿主只留标题文字。
   -->
   <web-ui-dialog
     :open="open"
@@ -102,8 +101,8 @@ function pickAccent(value: string) {
 
       它不能待在内容区：segmented 按住时胶囊按 scale(1.5) 放大，横向越出 track
       `0.25×胶囊宽 − 4`（最左那颗 52 宽 → 9px），而任何 overflow 非 visible 的祖先都在自己的
-      padding box 上裁剪——组件的 `.desc` 只留 6px，应用此前又套了一层侧向 padding 为 0 的
-      滚动宿主，这 9px 就被切平（t-0081 实测左沿被切 9px，t-0084 复测 9.9px）。
+      padding box 上裁剪——组件的 `.desc` 只留 6px，内容区不套侧向 padding 为 0 的
+      滚动宿主，这 9px 就不会被切平（t-0081 实测左沿被切 9px，t-0084 复测 9.9px）。
       卡片 chrome 的侧向 padding 是 24px，容得下这 9px，搬进来就没有裁剪边了。
     -->
     <div slot="header" class="flex flex-col gap-4 font-normal">
@@ -116,8 +115,8 @@ function pickAccent(value: string) {
     </div>
 
     <!--
-      固定高度：切 tab 不再让 dialog 长高矮。三个 tab 的 panel 高度本来差很多（实测
-      通用 66 / 外观 156 / 资源库 92.4），此前由内容撑高，切一次跳一次。
+      固定高度：切 tab 不让 dialog 长高矮。三个 tab 的 panel 高度本来差很多（实测
+      通用 66 / 外观 156 / 资源库 92.4），高度由内容撑高就会切一次跳一次。
 
       `--wui-dialog-max-height` 的语义是「内容区高度」（见 @greypan/web-ui 的 dialog），
       上限由组件的 `.desc` 承担；这里给 panel 一个 min-height 顶住 token，`.desc` 就不会在

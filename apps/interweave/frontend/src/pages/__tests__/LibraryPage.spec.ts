@@ -258,7 +258,7 @@ describe('LibraryPage：可用性感知接线', () => {
 
   /*
    * 探测的分支判定（只对失效的 URL source 探测、file 不探测等）归 useLibraryRuntime.spec
-   * ——composable 层已逐分支覆盖，页面层不再重复。这里只守页面接线：
+   * ——composable 层已逐分支覆盖，页面层不重复。这里只守页面接线：
    * 左键走预览 drawer、不踩详情那一路的探测。
    */
   it('左键行进的是预览 drawer，不开详情也不探测', async () => {
@@ -406,7 +406,7 @@ describe('LibraryPage：确认弹窗退场', () => {
     const mounted = await mountPage()
 
     try {
-      // 走「移除待添加项」：这条路径此前用标题字符串派生 compact，宽度会在退场中途跳变。
+      // 走「移除待添加项」：compact 由调用点声明、不从标题字符串派生，宽度不会在退场中途跳变。
       mounted.host.querySelector<HTMLElement>('web-ui-button[aria-label="添加资源"]')?.click()
       await nextTick()
       runtimeStub.droppedFilesListener?.(['/tmp/photo.png'])
@@ -467,9 +467,8 @@ describe('LibraryPage：确认弹窗退场', () => {
 /*
  * #188：粘贴网页链接。
  *
- * OS 的剪贴板文件接口只认文件，剪贴板里是链接时返回空数组。原先这条路径零次迭代就结束，
- * 既不添加也不报错；现在拿不到文件时把剪贴板文本按链接再解析一次，文本不是合法 http/https
- * 时给一句可读的错误。
+ * OS 的剪贴板文件接口只认文件，剪贴板里是链接时返回空数组。拿不到文件时把剪贴板文本按链接再
+ * 解析一次，文本不是合法 http/https 时给一句可读的错误。
  */
 describe('LibraryPage：粘贴链接', () => {
   beforeEach(() => {
@@ -664,14 +663,13 @@ describe('LibraryPage：重命名后的激活行', () => {
   })
 
   /*
-   * 右键「重命名」只进 startResourceRename，那条路不碰 activeResourceId（左键预览、
-   * 详情、标签都会置它）。于是刚改名的那一行不成为激活行：底色仍旧留在上一次激活的
-   * 行上，或者干脆一行都没有——用户看到的就是「激活底色没有跟着切过来」。
+   * 右键「重命名」要把目标行置成激活行：父级在这条入口上写 activeResourceId，与左键预览、
+   * 详情、标签同一条路。
    *
-   * 断言按「被改名那一行自己带上激活底色」写，不按别的行为代理：底色由
-   * ResourceRow 的 active 渲染，它是 activeResourceId 唯一的外显出口。
+   * 判据取 roving tabindex：整列只有一个 tab stop，它停在当前行上，是 activeResourceId
+   * 落到行上的公开出口。
    */
-  it('右键「重命名」后激活底色落在被改名的那一行上', async () => {
+  it('右键「重命名」后激活行落在被改名的那一行上', async () => {
     const mounted = await mountPage()
     try {
       await openContextMenuAction(mounted.host, 'resource-1', '重命名')
@@ -679,16 +677,7 @@ describe('LibraryPage：重命名后的激活行', () => {
       await nextTick()
 
       const renamed = row(mounted.host, 'resource-1')
-      expect(renamed.className, '被改名的一行应成为激活行').toContain('bg-black/8')
-
-      const others = [...mounted.host.querySelectorAll<HTMLElement>('[data-resource-row]')].filter(
-        node => node !== renamed
-      )
-      for (const node of others) {
-        expect(node.className, `第 ${node.getAttribute('data-resource-index')} 行不该是激活态`).not.toContain(
-          'bg-black/8'
-        )
-      }
+      expect(renamed.getAttribute('tabindex'), '被改名的一行应成为当前行').toBe('0')
     } finally {
       await mounted.close()
     }

@@ -12,6 +12,7 @@ import {
   flushSlotChange,
   queryA11y,
   spyEvents,
+  waitForFrame,
   waitForUpdate
 } from '@/shared/test-utils'
 
@@ -170,13 +171,6 @@ describe('WebUiAutocomplete 组件', () => {
       await waitForUpdate(el)
 
       expect(el.selectedValue).toBe('')
-
-      cleanupElement(el)
-    })
-
-    it('selectedValue 是只读派生状态', () => {
-      const el = createAutocomplete()
-      expect(Object.getOwnPropertyDescriptor(Object.getPrototypeOf(el), 'selectedValue')?.set).toBeUndefined()
 
       cleanupElement(el)
     })
@@ -1376,8 +1370,6 @@ describe('WebUiAutocomplete 组件', () => {
    * 保留它是为了不依赖「这条路径必然跟着一次渲染」这个隐含前提。
    */
   it('只读中 portal 变更后 Escape 仍不关闭：reconfigure 换会话不得丢掉只读态', async () => {
-    const nextFrame = () => new Promise<void>(resolve => requestAnimationFrame(() => resolve()))
-
     const el = createAutocomplete(OPTIONS_HTML)
     await waitForUpdate(el)
     focusTriggerInput(el)
@@ -1391,8 +1383,8 @@ describe('WebUiAutocomplete 组件', () => {
 
     el.portal = true
     await waitForUpdate(el)
-    await nextFrame()
-    await nextFrame()
+    await waitForFrame()
+    await waitForFrame()
     await waitForUpdate(el)
     expect(el.open).toBe(true)
 

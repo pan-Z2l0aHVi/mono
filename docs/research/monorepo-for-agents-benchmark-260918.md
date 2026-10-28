@@ -11,7 +11,7 @@
 ## 执行摘要
 
 1. 本仓在「文档分层 / 渐进披露 / prompt cache 稳定性 / 影响面查询 / review 独立性 / task 可恢复性」六个维度达到或超过业界公开基准；核心差距集中在三点：**执行隔离无 sandbox、验证证据靠 agent 自述、instruction 体系无行为评测**。
-2. 本仓最大结构风险不是缺实践，而是「大量硬约束是 prose 而非确定性 gate」——业界方向是把约束从文档迁移到 hooks/CI/sandbox（确定性执行），本仓恰好相反（ADR-0014 还删除了机器校验的 instruction 审计）。
+2. 本仓最大结构风险不是缺实践，而是「大量硬约束是 prose 而非确定性 gate」——业界方向是把约束从文档迁移到 hooks/CI/sandbox（确定性执行），本仓恰好相反（本仓没有机器校验的 instruction 审计）。
 3. T0/T1/T2 + freeze/diffHash 状态机在业界公开材料中无对应物，属于超前；但其 done/verify gate 接受自报验证结果，是「超前中的薄弱点」。
 
 ## 一、业界基准盘点

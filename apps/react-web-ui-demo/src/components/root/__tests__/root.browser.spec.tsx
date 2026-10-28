@@ -15,7 +15,7 @@ import { Root } from '..'
 /*
  * 应用自己的全局样式必须真的进页面：这一档量的是渲染后的结果，样式没到就只剩一串不生效的
  * 类名，和 jsdom 层没有区别。走与 `main.tsx` 相同的普通 `import`，browser mode 会把样式注入
- * 测试页；`import` 失败曾经看起来是「CSS 进不去」，实际是下面 vite.config 里那条
+ * 测试页；`import` 失败会看起来是「CSS 进不去」，实际是下面 vite.config 里那条
  * `optimizeDeps.include` 清单不全导致的 mid-run reload（连带把测试模块自己那次 fetch 打掉）。
  */
 
@@ -53,7 +53,7 @@ function navRoot() {
 }
 
 function isDrawerMode() {
-  return !!layoutRoot().shadowRoot?.querySelector('web-ui-drawer')
+  return layoutRoot().mobile
 }
 
 /**
@@ -169,6 +169,8 @@ describe('应用外壳（浏览器）：导航 collapsed state 不跨视口泄�
 
   afterEach(async () => {
     cleanup()
+    // locale 是本应用的持久化输入；留在 origin 上会污染同 origin 的其他 spec。
+    localStorage.removeItem('locale')
     localStorage.removeItem('theme-appearance')
     await changeViewport(DESKTOP_VIEWPORT)
   })
@@ -202,8 +204,7 @@ describe('应用外壳（浏览器）：导航 collapsed state 不跨视口泄�
 
     await requestCollapse(true)
 
-    // 折叠导轨不再另设两套短名：可见文字仍是完整导航名，放不下交给 CSS 省略，
-    // 可访问名与 title 也保持同一个全名。
+    // 折叠导轨的可见文字仍是完整导航名，放不下交给 CSS 省略；可访问名与 title 保持同一个全名。
     const collapsedLinks = [...navRoot().querySelectorAll<HTMLAnchorElement>('a')]
     expect(collapsedLinks.map(link => link.querySelector('span')?.textContent?.trim())).toEqual(fullLabels)
     expect(collapsedLinks.map(link => link.title)).toEqual(fullLabels)

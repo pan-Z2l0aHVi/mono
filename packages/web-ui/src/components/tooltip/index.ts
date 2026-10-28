@@ -109,7 +109,7 @@ export class WebUiTooltip extends LitElement {
     createPortal: () => this._createPortal(),
     openOverlay: this._overlay,
     // tooltip 在逻辑组合树里（panel 迁移后仍要判对「谁在谁里面」），但从不作为 Escape
-    // 候选：按键穿过它落到下层 overlay，与重构前一致。
+    // 候选：按键穿过它落到下层 overlay。
     arbitration: 'none'
   })
 

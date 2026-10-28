@@ -61,7 +61,7 @@ level: t0 18 / t1 102 / t2 121；events[] 合计 1563 条
 
 也就是说：**一半以上的 task 在生命周期里被写 6 次以上**（115/241），而同期整个仓库只有 403 个 commit（`git rev-list --count HEAD`，其中 non-merge 308、merge 95）。两个数量级接近，意味着「每次状态变更配一个 commit」不是给 git 历史增加一点噪声，而是把它变成一个日志文件。
 
-事件日志是 append-only 且不需要手工补记（`scripts/task.mjs:183-185`、`docs/agents/workflow.md:110`），`events[]` 取代了旧体系的 `manualInterventions`（`docs/adr/0014-task-system-v2.md:36`）。这意味着它不是「可裁剪的历史」，而是当前唯一的状态真相载体之一。
+事件日志是 append-only 且不需要手工补记（`scripts/task.mjs:183-185`、`docs/agents/workflow.md:110`），`events[]` 记录全部状态转换（`docs/adr/0014-task-system-v2.md:36`）。这意味着它不是「可裁剪的历史」，而是当前唯一的状态真相载体之一。
 
 ### 1.3 `freeze` 的 diffHash 怎么算、依赖什么
 
@@ -140,7 +140,7 @@ level: t0 18 / t1 102 / t2 121；events[] 合计 1563 条
 **已知坑（本仓特有）**
 
 - `.vite-hooks/` 只跟踪了 `commit-msg` 与 `pre-commit` 两个文件（`git ls-files .vite-hooks`），`_/` 被 `.vite-hooks/_/.gitignore`（内容 `*`）整体忽略、由 `prepare: vp config`（`package.json:7`）生成。要加 `post-commit` 必须新增受版本控制的 `.vite-hooks/post-commit`，并让 21 个 worktree 各自重跑 install/config 才会生效。
-- `migrated` 事件说明历史上做过一次 state 迁移（`<git-common-dir>/tasks/task-system-v2-260918.json` 的 `events[]` 里有一条 `event: "migrated"`，detail 为 "P1/direct state from agent-workflow/ mapped to level t1 under the v2 kernel (ADR-0014 bootstrap)"）。notes 方案没有等价的「迁移」位置——旧 note 挂旧 sha，新方案要重新逐 commit 挂一遍。
+- `migrated` 事件说明做过一次 state 迁移（`<git-common-dir>/tasks/task-system-v2-260918.json` 的 `events[]` 里有一条 `event: "migrated"`，detail 为 "P1/direct state from agent-workflow/ mapped to level t1 under the v2 kernel (ADR-0014 bootstrap)"）。notes 方案没有等价的「迁移」位置——旧 note 挂旧 sha，新方案要重新逐 commit 挂一遍。
 
 ### 3.2 方案 B：commit trailer / message 约定
 
@@ -259,7 +259,7 @@ level: t0 18 / t1 102 / t2 121；events[] 合计 1563 条
 - **`done` 的 211 个**：它们的 `baseSha` 与各次 `headSha` 大多已被 squash 进 main（main 是 squash-only，`docs/agents/build.md:123`），原 commit 对象不可达。要迁到 notes 就得为每一个历史 task 重新构造一个可挂靠的 commit——不存在这样的 commit。
 - **13 个 `approved` + 1 个 `frozen` + 2 个 `active`**：正在进行中的 task，迁移期间必须双写或停机，而 AGENTS.md 的并行实施边界是「一个可变 task 只能有一个实施 worktree 和 owner」，没有停机窗口这个概念。
 - **14 个 `dropped`**：`drop` 是不可逆终态，事件带 `reason` 与 `by`（`scripts/task.mjs:589-604`）。这些是纯审计记录，没有任何 commit 与它们对应（task 被丢弃时往往一个 commit 都没产生）。
-- 历史先例说明迁移是可行的但昂贵：v1 → v2 做过一次，形式是在 state 里插一条 `migrated` 事件（`<git-common-dir>/tasks/task-system-v2-260918.json`）。那次迁移之所以便宜，是因为**载体没变**（还是 JSON 文件），只换了 schema。换成 commit 记录等于同时换载体和换 schema。
+- 先例说明迁移是可行的但昂贵：v1 → v2 做过一次，形式是在 state 里插一条 `migrated` 事件（`<git-common-dir>/tasks/task-system-v2-260918.json`）。那次迁移之所以便宜，是因为**载体没变**（还是 JSON 文件），只换了 schema。换成 commit 记录等于同时换载体和换 schema。
 - 还有一个隐性成本：`scripts/validate-context.mjs:52-60` 钉死了 `pnpm agent:task new` / `guard` / `start` 的字面出现位置，`scripts/task.test.mjs` 有 6 处直接拼接 `.git/tasks/` 路径（`:147`、`:916-921`、`:929-930`）。任何载体变更都要重写这些测试，而它们是 `ci:test-scripts` 的强制项。
 
 ## 五、结论与推荐

@@ -3,7 +3,7 @@ import '@/components/button-group'
 
 import { afterEach, describe, expect, it } from 'vite-plus/test'
 
-import { waitForUpdate } from '@/shared/test-utils'
+import { waitForFrame, waitForUpdate } from '@/shared/test-utils'
 
 import type { WebUiButton } from '../../button'
 
@@ -35,18 +35,19 @@ describe('WebUiButtonGroup 控件尺寸（浏览器）', () => {
       standaloneButton: standalone.getBoundingClientRect().height
     })
 
+    // 组内成员嵌在轨道里（轨道比成员高），与独立按钮同高；轨道始终容纳最高的成员。
     const defaults = geometry()
-    expect(defaults.horizontalButton / defaults.horizontalTrack).toBeCloseTo(5 / 6, 2)
+    expect(defaults.horizontalTrack).toBeGreaterThan(defaults.horizontalButton)
     expect(defaults.verticalTrack).toBeGreaterThanOrEqual(defaults.verticalButtonWidth)
     expect(defaults.verticalTrack).toBeGreaterThan(defaults.horizontalTrack)
     expect(defaults.standaloneButton).toBe(defaults.horizontalTrack)
 
     parent.style.setProperty('--wui-control-size', '48px')
-    await new Promise<void>(resolve => requestAnimationFrame(() => resolve()))
+    await waitForFrame()
 
     const scaled = geometry()
     expect(scaled.horizontalTrack).toBeGreaterThan(defaults.horizontalTrack)
-    expect(scaled.horizontalButton / scaled.horizontalTrack).toBeCloseTo(5 / 6, 2)
+    expect(scaled.horizontalTrack).toBeGreaterThan(scaled.horizontalButton)
     expect(scaled.verticalButton).toBeGreaterThan(defaults.verticalButton)
     expect(scaled.verticalTrack).toBeGreaterThanOrEqual(scaled.verticalButtonWidth)
     expect(scaled.standaloneButton).toBe(scaled.horizontalTrack)

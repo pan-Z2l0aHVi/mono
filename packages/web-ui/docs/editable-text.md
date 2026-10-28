@@ -605,9 +605,9 @@ Both `Enter` and `blur` commit the draft and dispatch exactly one `change`: `Ent
 
 Only `Escape` cancels: the value returns to the state it had when editing began, `cancel` is dispatched instead of `change`, focus goes back to the host, and the key press is consumed by the edit layer, so an outer overlay (drawer, menu) does not close on the same key press.
 
-`cancel` neither bubbles nor is composed and is dispatched only on the component itself: when the component is projected inside an overlay shadow root (such as a drawer title), it does not reach the overlay's native `cancel` closing pipeline, so listeners always attach to the component itself.
+`cancel` neither bubbles nor is composed and is dispatched only on the component itself: a custom `cancel` that reaches the `<dialog>` inside an outer overlay shadow root (whether composed or not) is treated as a close request and closes that overlay as well (issue #159), so listeners always attach to the component itself.
 
-Newlines already in the value still render as multiple lines; Enter simply can no longer add new lines. An empty value keeps showing the placeholder; the edit layer always grows with its own content, so an empty or whitespace-only draft still has a place to hold the caret even when the host itself collapses (a flex item with `min-width: 0`, a table cell).
+Newlines already in the value still render as multiple lines; Enter cannot add new lines. An empty value keeps showing the placeholder; the edit layer always grows with its own content, so an empty or whitespace-only draft still has a place to hold the caret even when the host itself collapses (a flex item with `min-width: 0`, a table cell).
 
 Edit mode is expressed by the `editing` attribute on the host, and the attribute is not set when `disabled`.
 
@@ -647,7 +647,7 @@ Setting `display: none` on an ancestor does not count as removal—under both en
 
 The host is an inline-level box: without a set width it sizes to its content, and when lines wrap its height grows with the line count. Font, color, text alignment, and whitespace handling are all inherited from the outer context, so before editing it is just a piece of ordinary text.
 
-The caret color follows the shared semantic token `--wui-color-accent` by default; setting that token on the host or any ancestor recolors it everywhere. Both layers break long runs without spaces (consecutive letters and digits) at the same set of break points: a run wider than the box breaks inside the box, and the text state no longer overflows the host box.
+The caret color follows the shared semantic token `--wui-color-accent` by default; setting that token on the host or any ancestor recolors it everywhere. Both layers break long runs without spaces (consecutive letters and digits) at the same set of break points: a run wider than the box breaks inside the box, and the text state does not overflow the host box.
 
 ### CSS Custom Properties
 
@@ -655,9 +655,3 @@ The caret color follows the shared semantic token `--wui-color-accent` by defaul
 | ----------------------------------- | ----------------------------------------------------------------------------------------------------------------------------- | ---------- |
 | `--wui-editable-text-white-space`   | Whitespace handling for both layers                                                                                           | `pre-wrap` |
 | `--wui-editable-text-overflow-wrap` | Word-break handling for both layers; by default long runs without spaces break inside the box, matching the native edit layer | `anywhere` |
-
-### Interaction changes
-
-`blur` commits again: both `Enter` and `blur` commit the draft, only `Escape` cancels and restores the value from the start of editing. `Enter` still inserts no newline.
-
-The `cancel` event no longer bubbles: the previously bubbling custom `cancel` traveled through the slot into the `<dialog>` inside an outer overlay shadow root (whether composed or not) and was treated as a close request, closing that overlay as well (issue #159); attach listeners to the component itself.

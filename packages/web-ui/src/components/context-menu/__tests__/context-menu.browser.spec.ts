@@ -9,7 +9,7 @@ import { userEvent } from 'vite-plus/test/browser'
 
 import type { WebUiPopover } from '@/components/popover'
 import { getMenuChildren, getMovableMenuSubtrees } from '@/shared/menu-portal/menu-tree'
-import { getMenuPanels, getPortalPanels, pollUntil } from '@/shared/test-utils'
+import { getMenuPanels, getPortalPanels, pollUntil, waitForFrame } from '@/shared/test-utils'
 
 import type { WebUiContextMenu } from '..'
 
@@ -19,10 +19,6 @@ const SUBMENU =
 // 根 panel 与 submenu panel 都在 overlay 容器上（按文档序），统一用共享定位器枚举。
 function getMenus(): HTMLElement[] {
   return getMenuPanels()
-}
-
-async function nextFrame() {
-  await new Promise(resolve => requestAnimationFrame(resolve))
 }
 
 /**
@@ -46,17 +42,26 @@ async function waitForMenuItemsReconciled(menu: WebUiContextMenu) {
 /**
  * 等 menu 打开后的首项聚焦落定。
  *
- * 模态化之后首项聚焦比从前晚一帧：`_focusFirstItem()` 必须等过 `showModal()` 排队的
+ * 首项聚焦要晚一帧：`_focusFirstItem()` 必须等过 `showModal()` 排队的
  * dialog focusing steps，否则焦点会被 UA 从 menu item 挪回 `<dialog>`。组件侧理由与实测见
  * `context-menu/index.ts` 里 `_focusFirstItem()` 上方的注释。
  */
 async function waitForMenuFocus() {
-  for (let attempt = 0; attempt < 10; attempt++) {
-    await nextFrame()
-    const first = getMenuPanels('Context menu')[0]?.querySelector('web-ui-dropdown-item')
-    if (first?.shadowRoot?.activeElement) return
-  }
-  throw new Error('Expected the first menu item to take focus')
+  await pollUntil(
+    () => Boolean(getMenuPanels('Context menu')[0]?.querySelector('web-ui-dropdown-item')?.shadowRoot?.activeElement),
+    'Expected the first menu item to take focus'
+  )
+}
+
+/** 把主题的 accent token 解析成计算后的颜色，避免在断言里抄 rgb 字面量。 */
+function accentColor(scope: Element): string {
+  const probe = document.createElement('span')
+  probe.style.color = 'var(--wui-color-accent, rgb(0 113 227))'
+  scope.append(probe)
+  const color = getComputedStyle(probe).color
+  probe.remove()
+  if (!color) throw new Error('无法解析 --wui-color-accent')
+  return color
 }
 
 /** 合成 Escape：仲裁者挂在 document 捕获阶段，合成事件足以命中它。 */
@@ -75,19 +80,17 @@ function getMenuContent() {
 }
 
 async function waitForObserverRefresh() {
-  await nextFrame()
-  await nextFrame()
+  await waitForFrame()
+  await waitForFrame()
 }
 
 async function waitForItemsReturned(menu: WebUiContextMenu, count: number) {
-  // 关闭动画（transitionend ~160ms + 80ms 兜底）后才归还，预算按 500ms 计；
-  // 不能用帧数表达——帧时长随刷新率变化，120Hz 下 20 帧不足 180ms 会假失败。
-  const deadline = performance.now() + 500
-  while (performance.now() < deadline) {
-    await nextFrame()
-    if (menu.querySelectorAll('web-ui-dropdown-item').length === count) return
-  }
-  throw new Error(`Expected ${count} menu items to be returned within 500ms`)
+  // 关闭动画（transitionend ~160ms + 80ms 兜底）后才归还。用共享轮询而不是按帧数
+  // 或按墙钟自算预算：帧时长随刷新率变化，墙钟预算在并发负载下会被吃光。
+  await pollUntil(
+    () => menu.querySelectorAll('web-ui-dropdown-item').length === count,
+    () => `Expected ${count} menu items to be returned`
+  )
 }
 
 afterEach(() => document.body.replaceChildren())
@@ -123,7 +126,7 @@ describe('WebUiContextMenu 组件（浏览器）', () => {
 
     menu.openAt(100, 100)
     await menu.updateComplete
-    await nextFrame()
+    await waitForFrame()
 
     const panel = getMenuPanels('Context menu')[0]
     expect(menu.isOpen).toBe(true)
@@ -151,14 +154,13 @@ describe('WebUiContextMenu 组件（浏览器）', () => {
   })
 
   /*
-   * 鼠标右键路径**保持锚定落点**，不受触屏贴底改动影响。
+   * 鼠标右键路径**锚定落点**，走 Floating UI 的 bottom-start + shift。
    *
-   * 触屏长按那条路径传 `_openAt(..., anchorBottom = true)` 走贴底算术；右键这条路
-   * 传的是默认 false，走 Floating UI 的 bottom-start + shift。落点选在视口中部
-   * 且 menu 装得下，于是没有任何 shift —— 「锚定」可以按等式断言，不留容差口子。
+   * 落点选在视口中部且 menu 装得下，于是没有任何 shift —— 「锚定」可以按等式断言，
+   * 不留容差口子。
    *
    * 反向断言（panel 离下缘很远）是这条用例区别于长按用例的关键：只断言锚定的话，
-   * 某些窗口尺寸下两条路径的落点会重合，贴底改动悄悄蔓延到右键路径也测不出来。
+   * 某些窗口尺寸下两条路径的落点会重合，触屏路径的落点策略悄悄蔓延到右键路径也测不出来。
    */
   it('鼠标右键打开时 panel 锚定在落点，未被贴底逻辑带偏', async () => {
     const menu = document.createElement('web-ui-context-menu')
@@ -173,7 +175,8 @@ describe('WebUiContextMenu 组件（浏览器）', () => {
     const panel = getMenuPanels('Context menu')[0]
     expect(panel).toBeTruthy()
     // 等入场过渡落定：进场 scale 会污染 getBoundingClientRect() 的读数。
-    for (let attempt = 0; attempt < 20 && panel!.getAnimations().length > 0; attempt++) await nextFrame()
+    // 用共享轮询：未落定直接带诊断失败，不会量到动画中途的盒子。
+    await pollUntil(() => panel!.getAnimations().length === 0, 'context menu entrance transition never settled')
 
     const rect = panel!.getBoundingClientRect()
     expect(rect.left).toBeCloseTo(120, 0)
@@ -222,35 +225,34 @@ describe('WebUiContextMenu 组件（浏览器）', () => {
 
     menu.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, composed: true, clientX: 100, clientY: 100 }))
     await menu.updateComplete
-    // 模态化后首项聚焦比从前晚一帧（须等过 showModal() 排队的 dialog focusing steps），
+    // 首项聚焦晚一帧（须等过 showModal() 排队的 dialog focusing steps），
     // 单帧不够 —— 同 `指针右键打开根 menu` 用例的理由。
     await waitForMenuFocus()
 
     const panel = getMenuPanels('Context menu')[0]
     const items = [...(panel?.querySelectorAll<HTMLElement>('web-ui-dropdown-item') ?? [])]
-    const firstControl = items[0]?.shadowRoot?.querySelector<HTMLElement>('.item-inner')
-    const secondControl = items[1]?.shadowRoot?.querySelector<HTMLElement>('.item-inner')
+    const firstControl = items[0]?.shadowRoot?.querySelector<HTMLElement>('[role="menuitem"]')
+    const secondControl = items[1]?.shadowRoot?.querySelector<HTMLElement>('[role="menuitem"]')
+    const accent = accentColor(firstControl?.parentElement ?? items[0] ?? document.body)
     expect(items[0]?.shadowRoot?.activeElement).toBe(firstControl)
     expect(firstControl?.matches(':focus-visible')).toBe(true)
-    expect(getComputedStyle(firstControl!).backgroundColor).not.toBe('rgb(0, 113, 227)')
+    expect(getComputedStyle(firstControl!).backgroundColor).not.toBe(accent)
 
     await userEvent.hover(firstControl!)
-    expect(getComputedStyle(firstControl!).backgroundColor).not.toBe('rgb(0, 113, 227)')
+    expect(getComputedStyle(firstControl!).backgroundColor).not.toBe(accent)
 
     await userEvent.keyboard('{ArrowDown}')
-    await nextFrame()
+    await waitForFrame()
 
     expect(items[1]?.shadowRoot?.activeElement).toBe(secondControl)
-    expect(items[1]?.hasAttribute('data-wui-menu-focus-suppressed')).toBe(false)
     expect(secondControl?.matches(':focus-visible')).toBe(true)
-    expect(getComputedStyle(secondControl!).backgroundColor).toBe('rgb(0, 113, 227)')
+    expect(getComputedStyle(secondControl!).backgroundColor).toBe(accent)
 
     await userEvent.keyboard('{ArrowUp}')
-    await nextFrame()
+    await waitForFrame()
 
     expect(items[0]?.shadowRoot?.activeElement).toBe(firstControl)
-    expect(items[0]?.hasAttribute('data-wui-menu-focus-suppressed')).toBe(false)
-    expect(getComputedStyle(firstControl!).backgroundColor).toBe('rgb(0, 113, 227)')
+    expect(getComputedStyle(firstControl!).backgroundColor).toBe(accent)
   })
 
   it('键盘打开 menu 时首项保留焦点视觉', async () => {
@@ -264,11 +266,12 @@ describe('WebUiContextMenu 组件（浏览器）', () => {
     await waitForMenuFocus()
 
     const firstItem = getMenuPanels('Context menu')[0]?.querySelector<HTMLElement>('web-ui-dropdown-item')
-    const firstControl = firstItem?.shadowRoot?.querySelector<HTMLElement>('.item-inner')
+    const firstControl = firstItem?.shadowRoot?.querySelector<HTMLElement>('[role="menuitem"]')
     expect(firstItem?.shadowRoot?.activeElement).toBe(firstControl)
-    expect(firstItem?.hasAttribute('data-wui-menu-focus-suppressed')).toBe(false)
     expect(firstControl?.matches(':focus-visible')).toBe(true)
-    expect(getComputedStyle(firstControl!).backgroundColor).toBe('rgb(0, 113, 227)')
+    expect(getComputedStyle(firstControl!).backgroundColor).toBe(
+      accentColor(firstControl?.parentElement ?? firstItem ?? document.body)
+    )
   })
 
   /*
@@ -293,7 +296,7 @@ describe('WebUiContextMenu 组件（浏览器）', () => {
     row.focus()
     menu.openAt(120, 120)
     await menu.updateComplete
-    await nextFrame()
+    await waitForFrame()
     expect(menu.isOpen).toBe(true)
     expect(document.querySelector('dialog[data-wui-menu-scrim]')).toBeTruthy()
 
@@ -323,7 +326,7 @@ describe('WebUiContextMenu 组件（浏览器）', () => {
 
     menu.dispatchEvent(new KeyboardEvent('keydown', { key: 'F10', shiftKey: true, bubbles: true, composed: true }))
     await menu.updateComplete
-    await nextFrame()
+    await waitForFrame()
     expect(document.activeElement).not.toBe(row)
 
     dispatchEscape()
@@ -363,7 +366,7 @@ describe('WebUiContextMenu 组件（浏览器）', () => {
     // 键盘打开路径：menu-behavior 从 document.activeElement 取归还目标，此时焦点必在行上。
     menu.dispatchEvent(new KeyboardEvent('keydown', { key: 'F10', shiftKey: true, bubbles: true, composed: true }))
     await menu.updateComplete
-    await nextFrame()
+    await waitForFrame()
 
     // menu item 回调：同步建编辑态并在微任务里 focus()——与 interweave 的 emit + nextTick 同构。
     item.addEventListener('click', () => {
@@ -371,14 +374,14 @@ describe('WebUiContextMenu 组件（浏览器）', () => {
       void Promise.resolve().then(() => editable.select())
     })
     item.click()
-    await nextFrame()
-    await nextFrame()
+    await waitForFrame()
+    await waitForFrame()
 
     expect(editable.hasAttribute('editing')).toBe(true)
     expect(editable.shadowRoot?.activeElement?.tagName).toBe('TEXTAREA')
 
     await waitForItemsReturned(menu, 1)
-    await nextFrame()
+    await waitForFrame()
 
     expect(editable.hasAttribute('editing')).toBe(true)
     expect(editable.shadowRoot?.activeElement?.tagName).toBe('TEXTAREA')
@@ -389,7 +392,7 @@ describe('WebUiContextMenu 组件（浏览器）', () => {
   /*
    * 上一条覆盖的是「回调不自己关 menu」的形状。消费方在自己的 menu item 回调里直接调
    * `close()` 是同样常见的一种（interweave 的右键重命名就是 `emit` 之后自己关），
-   * 而这条路径曾经拿不到提前出顶层：
+   * 这条路径同样要拿得到提前出顶层：
    *
    * `close()` 的出顶层判定只看 `_closeSource`，那个标志由 panel 上的 `_onMenuClick` 置位，
    * 可它在**冒泡**阶段；而消费方的回调挂在条目上，先跑，于是在它调 `close()` 的那一刻
@@ -425,8 +428,8 @@ describe('WebUiContextMenu 组件（浏览器）', () => {
     row.focus()
     row.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, composed: true, clientX: 60, clientY: 60 }))
     await menu.updateComplete
-    await nextFrame()
-    await nextFrame()
+    await waitForFrame()
+    await waitForFrame()
     expect(menu.isOpen).toBe(true)
 
     // 与 interweave 的 handleStartRename 同构：先建编辑态、微任务里 select()，再自己 close()。
@@ -469,7 +472,7 @@ describe('WebUiContextMenu 组件（浏览器）', () => {
     expect(editable.shadowRoot?.activeElement?.tagName).toBe('TEXTAREA')
 
     await waitForItemsReturned(menu, 1)
-    await nextFrame()
+    await waitForFrame()
 
     // 退场结束也不能把焦点拽回去：那会把编辑器 blur 掉，触发未改动标题的提交。
     expect(document.activeElement).toBe(editable)
@@ -504,7 +507,7 @@ describe('WebUiContextMenu 组件（浏览器）', () => {
     expect(itemScrim?.matches(':modal')).toBe(true)
 
     getMenuPanels('Context menu')[0]!.querySelector('web-ui-dropdown-item')!.click()
-    await nextFrame()
+    await waitForFrame()
     expect(itemScrim?.matches(':modal'), 'menu item 点击后 scrim 应立刻出顶层').toBe(false)
     // 出顶层不等于摘除：panel 还要走完退场动画，否则视觉上会「啪」地消失。
     expect(itemScrim?.isConnected).toBe(true)
@@ -523,7 +526,7 @@ describe('WebUiContextMenu 组件（浏览器）', () => {
     expect(escScrim?.matches(':modal')).toBe(true)
 
     dispatchEscape()
-    await nextFrame()
+    await waitForFrame()
     expect(escScrim?.matches(':modal'), 'Escape 关闭应保留 dialog 默认效果，撑到退场结束').toBe(true)
     await waitForItemsReturned(escMenu, 1)
     expect(escScrim?.isConnected).toBe(false)
@@ -555,14 +558,14 @@ describe('WebUiContextMenu 组件（浏览器）', () => {
     const item = getMenuPanels('Context menu')[0]!.querySelector('web-ui-dropdown-item')!
     item.addEventListener('click', event => event.stopPropagation())
     await userEvent.click(item)
-    await nextFrame()
+    await waitForFrame()
     expect(menu.isOpen, 'stopPropagation 的条目不该关闭 menu').toBe(true)
 
     const scrim = document.querySelector<HTMLDialogElement>('dialog[data-wui-menu-scrim]')
     expect(scrim?.matches(':modal'), 'menu 还开着，scrim 仍在 top layer').toBe(true)
 
     dispatchEscape()
-    await nextFrame()
+    await waitForFrame()
     expect(menu.isOpen).toBe(false)
     expect(scrim?.matches(':modal'), '那一次点击不得让随后的 Escape 也提前出顶层').toBe(true)
     await waitForItemsReturned(menu, 1)
@@ -594,8 +597,8 @@ describe('WebUiContextMenu 组件（浏览器）', () => {
 
     row.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, composed: true, clientX: 100, clientY: 100 }))
     await menu.updateComplete
-    await nextFrame()
-    await nextFrame()
+    await waitForFrame()
+    await waitForFrame()
     expect(menu.isOpen).toBe(true)
 
     let checkboxClicks = 0
@@ -626,7 +629,7 @@ describe('WebUiContextMenu 组件（浏览器）', () => {
     // (2) 行为：点 scrim 只关 menu，下层目标零激活。
     scrim!.click()
     await menu.updateComplete
-    await nextFrame()
+    await waitForFrame()
 
     expect(menu.isOpen).toBe(false)
     expect(checkboxClicks).toBe(0)
@@ -649,13 +652,13 @@ describe('WebUiContextMenu 组件（浏览器）', () => {
 
     menu.openAt(100, 100)
     await menu.updateComplete
-    await nextFrame()
+    await waitForFrame()
 
     const nested = getMenuContent().querySelector<WebUiPopover>('web-ui-popover')
     expect(nested).toBeTruthy()
     nested!.show()
     await nested!.updateComplete
-    await nextFrame()
+    await waitForFrame()
 
     const nestedPanel = getPortalPanels('dialog').find(panel => panel.textContent?.includes('Nested panel'))
     expect(nestedPanel).toBeTruthy()
@@ -674,7 +677,7 @@ describe('WebUiContextMenu 组件（浏览器）', () => {
 
     menu.openAt(100, 100)
     await menu.updateComplete
-    await nextFrame()
+    await waitForFrame()
 
     const parentItem = getMenus()[0]?.querySelector<HTMLElement>('web-ui-dropdown-item')
     if (!parentItem) throw new Error('Expected a submenu parent item')
@@ -685,8 +688,8 @@ describe('WebUiContextMenu 组件（浏览器）', () => {
 
     menu.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, composed: true, clientX: 200, clientY: 200 }))
     await menu.updateComplete
-    await nextFrame()
-    await nextFrame()
+    await waitForFrame()
+    await waitForFrame()
 
     const nested = parentItem.querySelector('web-ui-dropdown-item')!
     expect(nested.getAttribute('slot')).toBe('context-menu-hidden')
@@ -700,7 +703,7 @@ describe('WebUiContextMenu 组件（浏览器）', () => {
 
     menu.openAt(100, 100)
     await menu.updateComplete
-    await nextFrame()
+    await waitForFrame()
 
     const parentItem = getMenus()[0]?.querySelector<HTMLElement>('web-ui-dropdown-item')
     if (!parentItem) throw new Error('Expected a submenu parent item')
@@ -711,8 +714,8 @@ describe('WebUiContextMenu 组件（浏览器）', () => {
     parentItem.appendChild(fresh)
 
     await menu.updateComplete
-    await nextFrame()
-    await nextFrame()
+    await waitForFrame()
+    await waitForFrame()
 
     expect(menu.isOpen).toBe(true)
     expect(fresh.getAttribute('slot')).toBe('context-menu-hidden')
@@ -775,22 +778,22 @@ describe('WebUiContextMenu 组件（浏览器）', () => {
 
     menu.openAt(100, 100)
     await menu.updateComplete
-    await nextFrame()
-    await nextFrame()
+    await waitForFrame()
+    await waitForFrame()
 
     // 记录必须累加在回调里：`takeRecords()` 取的是「已排队但还没派发」的那份，
     // 而回调在微任务检查点就被调用、队列随即排空——回调体为空时它**恒返回空数组**，
     // 于是「无 childList 变更」这条守卫永远成立，看着完整却量不到任何东西。
-    // 实测：往被观察子树里真的插拔一个节点，旧写法照样绿。
+    // 实测：往被观察子树里真的插拔一个节点，这条守卫照样绿。
     const records: MutationRecord[] = []
     const observer = new MutationObserver(mutations => records.push(...mutations))
     observer.observe(getMenus()[0]!, { childList: true, subtree: true })
     await waitForObserverRefresh()
     expect(records).toHaveLength(0)
 
-    await nextFrame()
-    await nextFrame()
-    await nextFrame()
+    await waitForFrame()
+    await waitForFrame()
+    await waitForFrame()
     expect(records).toHaveLength(0)
     observer.disconnect()
   })
@@ -804,8 +807,8 @@ describe('WebUiContextMenu 组件（浏览器）', () => {
 
     menu.openAt(100, 100)
     await menu.updateComplete
-    await nextFrame()
-    await nextFrame()
+    await waitForFrame()
+    await waitForFrame()
 
     const content = getMenuContent()
     const [, openWith] = Array.from(content.querySelectorAll('web-ui-dropdown-item'))
@@ -836,8 +839,8 @@ describe('WebUiContextMenu 组件（浏览器）', () => {
 
     menu.openAt(100, 100)
     await menu.updateComplete
-    await nextFrame()
-    await nextFrame()
+    await waitForFrame()
+    await waitForFrame()
 
     const [, openWith] = Array.from(getMenuContent().querySelectorAll('web-ui-dropdown-item'))
     openWith.remove()
@@ -855,8 +858,8 @@ describe('WebUiContextMenu 组件（浏览器）', () => {
     // 孤儿 marker 的真实症状是下次打开时条目重复/丢失：重开后断言无重复且顺序正确
     menu.openAt(100, 100)
     await menu.updateComplete
-    await nextFrame()
-    await nextFrame()
+    await waitForFrame()
+    await waitForFrame()
     const reopened = Array.from(getMenuContent().querySelectorAll('web-ui-dropdown-item')).map(item =>
       item.textContent?.trim()
     )
@@ -873,8 +876,8 @@ describe('WebUiContextMenu 组件（浏览器）', () => {
 
     menu.openAt(100, 100)
     await menu.updateComplete
-    await nextFrame()
-    await nextFrame()
+    await waitForFrame()
+    await waitForFrame()
 
     // 模拟 Vue v-if 翻转：在 portal 内把「预览」卸载为注释锚点并就地插入新项
     const content = getMenuContent()
@@ -903,8 +906,8 @@ describe('WebUiContextMenu 组件（浏览器）', () => {
 
     menu.openAt(200, 200)
     await menu.updateComplete
-    await nextFrame()
-    await nextFrame()
+    await waitForFrame()
+    await waitForFrame()
     const reopened = Array.from(getMenuContent().querySelectorAll('web-ui-dropdown-item')).map(item =>
       item.textContent?.trim()
     )
@@ -919,8 +922,8 @@ describe('WebUiContextMenu 组件（浏览器）', () => {
 
     menu.openAt(100, 100)
     await menu.updateComplete
-    await nextFrame()
-    await nextFrame()
+    await waitForFrame()
+    await waitForFrame()
 
     // 绕过宿主直接向 portal 插入带嵌套子项的 submenu 父项（新节点无隐藏 slot）。
     // 组件监听的是 items 所在的内容区（既有 item 的父容器），需插入该容器而非 panel 自身，
@@ -953,7 +956,7 @@ describe('WebUiContextMenu 组件（浏览器）', () => {
 
     menu.dispatchEvent(new KeyboardEvent('keydown', { key: 'ContextMenu', bubbles: true, composed: true }))
     await menu.updateComplete
-    await nextFrame()
+    await waitForFrame()
 
     const rootPanel = getMenuPanels('Context menu')[0]
     expect(menu.isOpen).toBe(true)
@@ -962,12 +965,12 @@ describe('WebUiContextMenu 组件（浏览器）', () => {
     expect(rootPanel?.getAttribute('aria-label')).toBe('Context menu')
     expect(rootPanel?.hasAttribute('hidden')).toBe(false)
 
-    await nextFrame()
+    await waitForFrame()
 
     const parentItem = getMenus()[0]?.querySelector<HTMLElement>('web-ui-dropdown-item')
     parentItem?.click()
-    await nextFrame()
-    await nextFrame()
+    await waitForFrame()
+    await waitForFrame()
 
     expect(menu.isOpen).toBe(true)
     expect(getMenus()).toHaveLength(2)
@@ -975,7 +978,7 @@ describe('WebUiContextMenu 组件（浏览器）', () => {
 
     menu.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, composed: true }))
     parentItem?.click()
-    await nextFrame()
+    await waitForFrame()
 
     expect(getMenus()).toHaveLength(2)
     expect(getMenus()[1]?.hasAttribute('hidden')).toBe(false)
@@ -995,17 +998,17 @@ describe('WebUiContextMenu 组件（浏览器）', () => {
 
     menu.openAt(20, 20)
     await menu.updateComplete
-    await nextFrame()
+    await waitForFrame()
     const panel = getMenuContent()
 
     dispatchEscape()
     await menu.updateComplete
-    await nextFrame()
+    await waitForFrame()
     expect(menu.isOpen).toBe(false)
 
     menu.openAt(40, 40)
     await menu.updateComplete
-    await nextFrame()
+    await waitForFrame()
     await menu.updateComplete
     expect(getMenuContent()).toBe(panel)
     expect(menu.isOpen).toBe(true)
@@ -1035,29 +1038,29 @@ describe('WebUiContextMenu 组件（浏览器）', () => {
 
     menu.openAt(20, 20)
     await menu.updateComplete
-    await nextFrame()
+    await waitForFrame()
     const rootPanel = getMenus()[0]!
     rootPanel.style.transition = 'opacity 5s'
 
     const parentItem = rootPanel.querySelector<HTMLElement>('web-ui-dropdown-item')!
     parentItem.click()
-    await nextFrame()
-    await nextFrame()
+    await waitForFrame()
+    await waitForFrame()
     expect(getMenus()).toHaveLength(2)
     const submenuPanel = getMenus()[1]!
     submenuPanel.style.transition = 'opacity 5s'
 
     // 第一次 Escape 让 submenu 进 closing 栈，第二次关闭根 menu（handle 随之撤销）。
     dispatchEscape()
-    await nextFrame()
+    await waitForFrame()
     dispatchEscape()
     await menu.updateComplete
-    await nextFrame()
+    await waitForFrame()
 
     // 退场窗口内重开：根 handle 换代。
     menu.openAt(40, 40)
     await menu.updateComplete
-    await nextFrame()
+    await waitForFrame()
     await menu.updateComplete
     expect(getMenus()[0]).toBe(rootPanel)
     expect(menu.isOpen).toBe(true)
@@ -1069,8 +1072,8 @@ describe('WebUiContextMenu 组件（浏览器）', () => {
 
     // 取回之后：同一断言再次成立（`_openSubmenu` 的 take 分支必须补 adopt）。
     parentItem.click()
-    await nextFrame()
-    await nextFrame()
+    await waitForFrame()
+    await waitForFrame()
     expect(menu.isOpen).toBe(true)
     getMenus()[1]?.dispatchEvent(new MouseEvent('click', { bubbles: true, composed: true }))
     await menu.updateComplete

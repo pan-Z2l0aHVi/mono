@@ -93,9 +93,8 @@ describe('AppLayout：应用外壳', () => {
       history: createMemoryHistory(),
       routes: [
         { path: '/', redirect: '/library' },
-        // meta.immersive 是已删除的旧机制：库页曾据此绕开 AppLayout 的 layout，自带一套
-        // layout + AppNav，切路由时整个 sidebar 被销毁重建。留着这个 meta 做回归哨兵——
-        // 任何按 route meta 分叉 shell 的写法都会让上面两条用例失败。
+        // meta.immersive 没有组件读它：留着这个 meta 做回归哨兵——按 route meta 分叉 shell 会让
+        // 切路由时整个 sidebar 被销毁重建，上面两条用例因此会失败。
         { path: '/library', component: LibraryPageStub, meta: { immersive: true } },
         { path: '/map', component: MapPageStub }
       ]
@@ -120,7 +119,7 @@ describe('AppLayout：应用外壳', () => {
   })
 
   /*
-   * slot 分配矩阵（sidebar/header/default 各落到哪）不再逐条在此复测：jsdom 只能读
+   * slot 分配矩阵（sidebar/header/default 各落到哪）不在此复测：jsdom 只能读
    * assignedElements，断言的其实是 web-ui-layout 的 slot 机制本身，组件侧已覆盖；
    * 页面与壳的接合由 LibraryPage.spec 的「根节点带 slot="header"」一条守住。
    * 这里保留它，是因为设置 dialog 的挂载位置是本组件自有的接线（见下方用例）。
@@ -132,9 +131,9 @@ describe('AppLayout：应用外壳', () => {
  * 与移动端 drawer。若把 collapsed state 直接透传给 AppNav，移动端 drawer 里的导航会以 collapsed state 渲染
  * （collapsed 为真时不渲染文字 label）。闸门因此必须按 viewport 收窄。
  *
- * 如今只剩一个视口信号：`web-ui-layout` 自己订阅媒体查询，并通过 `mobile-change` 把判定
- * 交给壳。所以拨一次 matchMedia 就同时移动了 layout 的树与壳的 collapse gate——#195 那轮
- * 「两个来源各拨一边」的双信号写法已不再需要，也不再需要等 100ms 去抖。
+ * 视口信号只有一个：`web-ui-layout` 自己订阅媒体查询，并通过 `mobile-change` 把判定
+ * 交给壳。所以拨一次 matchMedia 就同时移动了 layout 的树与壳的 collapse gate，无需等
+ * 100ms 去抖。
  */
 describe('AppLayout：collapse preference 不跨视口泄漏', () => {
   /**
@@ -267,11 +266,13 @@ describe('AppLayout：设置 dialog 接线', () => {
     vi.restoreAllMocks()
   })
 
-  /** dialog 受控于宿主的 ref，Lit 侧属性写入后再等一轮微任务让 shadow 跟上。 */
-  async function flush() {
-    await nextTick()
-    await new Promise(resolve => setTimeout(resolve, 0))
-    await nextTick()
+  /** dialog 受控于宿主的 ref：等它落到期待的状态，而不是假设「一个空 tick」够用。 */
+  async function flushUntil(predicate: () => boolean, message: string) {
+    for (let attempt = 0; attempt < 50 && !predicate(); attempt += 1) {
+      await nextTick()
+      await new Promise(resolve => setTimeout(resolve, 0))
+    }
+    if (!predicate()) throw new Error(message)
   }
 
   function settingsDialog() {
@@ -294,12 +295,12 @@ describe('AppLayout：设置 dialog 接线', () => {
     const trigger = host.querySelector<HTMLElement>('button[aria-label="设置"]')
     if (!trigger) throw new Error('settings trigger not found')
     trigger.click()
-    await flush()
+    await flushUntil(() => settingsDialog().open, '点击设置入口后 dialog 没有打开')
     expect(settingsDialog().open).toBe(true)
 
     // Escape 与 backdrop 点击都走这条 open-change；controlled 下组件不会自行改 open。
     settingsDialog().dispatchEvent(new CustomEvent('open-change', { detail: { open: false } }))
-    await flush()
+    await flushUntil(() => !settingsDialog().open, '关闭请求没有回落到宿主状态')
     expect(settingsDialog().open).toBe(false)
   })
 })

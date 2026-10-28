@@ -277,7 +277,6 @@ describe('WebUiSlider 指针拖拽（浏览器）', () => {
     await el.updateComplete
 
     expect(document.activeElement).toBe(el)
-    expect(el.dataset.wuiPointerFocus).toBe('true')
     const valueAfterClick = el.value
 
     await userEvent.keyboard('{ArrowUp}')
@@ -286,8 +285,9 @@ describe('WebUiSlider 指针拖拽（浏览器）', () => {
     expect(el.value).toBe(valueAfterClick + 1)
     expect(document.activeElement).toBe(el)
     expect(track.matches(':focus-visible')).toBe(true)
-    expect(el.hasAttribute('data-wui-pointer-focus')).toBe(false)
-    expect(getComputedStyle(track).outlineColor).not.toBe('rgba(0, 0, 0, 0)')
+    const outline = getComputedStyle(track)
+    expect(outline.outlineStyle, '键盘调整时 focus ring 必须真的画出来').not.toBe('none')
+    expect(Number.parseFloat(outline.outlineWidth), 'focus ring 宽度应非 0').toBeGreaterThan(0)
     cleanupElement(el)
   })
 

@@ -2,7 +2,7 @@ import '..'
 
 import { afterEach, describe, expect, it } from 'vite-plus/test'
 
-import { getPortalPanel, waitForFrame } from '@/shared/test-utils'
+import { getPortalPanel, pollUntil, waitForFrame } from '@/shared/test-utils'
 
 import type { WebUiTooltip } from '..'
 
@@ -24,7 +24,11 @@ describe('WebUiTooltip 组件（浏览器）', () => {
 
     tooltip.open = true
     await tooltip.updateComplete
-    await waitForFrame()
+    // portal panel 经 rAF 挂载；等它真的带上内容，而不是赌固定帧数。
+    await pollUntil(
+      () => Boolean(getPortalPanel('tooltip')?.textContent?.includes('Portal tooltip')),
+      'tooltip portal panel 未挂载内容'
+    )
 
     const panel = getPortalPanel('tooltip')
     expect(panel?.textContent).toContain('Portal tooltip')
@@ -45,7 +49,10 @@ describe('WebUiTooltip 组件（浏览器）', () => {
     await tooltip.updateComplete
     tooltip.open = true
     await tooltip.updateComplete
-    await waitForFrame()
+    await pollUntil(() => {
+      const panel = getPortalPanel('tooltip')
+      return panel !== null && !panel.hasAttribute('hidden')
+    }, 'tooltip portal panel 未重新可见')
 
     const panel = getPortalPanel('tooltip')
     expect(panel).not.toBeNull()

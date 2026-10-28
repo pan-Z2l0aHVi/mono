@@ -44,7 +44,7 @@ const emptyState = computed(() => {
   return emptyCopy[reason]
 })
 
-// 编码不做嗅探（超出本 task 范围），所以乱码提示对所有文本预览常驻；超限时再补一句截断说明。
+// 编码不做嗅探，所以乱码提示对所有文本预览常驻；超限时再补一句截断说明。
 const textNotice = computed(() =>
   textPreview.value?.truncated
     ? '文件过大，仅显示开头部分。非 UTF-8 编码的文件可能显示为乱码。'

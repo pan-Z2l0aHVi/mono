@@ -2,11 +2,9 @@ import '..'
 
 import { afterEach, describe, expect, it } from 'vite-plus/test'
 
-import type { WebUiDrawer } from '..'
+import { waitForFrame } from '@/shared/test-utils'
 
-async function nextFrame() {
-  await new Promise(resolve => requestAnimationFrame(resolve))
-}
+import type { WebUiDrawer } from '..'
 
 function getDialog(el: WebUiDrawer): HTMLDialogElement {
   return el.shadowRoot?.querySelector('dialog') as HTMLDialogElement
@@ -28,7 +26,7 @@ async function sampleTransitions(el: WebUiDrawer, frames = 20): Promise<string[]
       const property = (animation as CSSTransition).transitionProperty
       seen.add(property ?? (animation as CSSAnimation).animationName ?? 'animation')
     }
-    await nextFrame()
+    await waitForFrame()
   }
   return [...seen]
 }

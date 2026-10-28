@@ -78,7 +78,7 @@ func seedAssemblerFixtures(t *testing.T, ctx context.Context, db *storage.DB) []
 	return fixtures
 }
 
-// 批量装配把来源与标签各收敛为一次 IN 查询；N 个资源不再产生 2N+1 次读取。
+// 批量装配把来源与标签各收敛为一次 IN 查询；N 个资源只产生 2 次读取。
 func TestViewAssemblerBatchesQueries(t *testing.T) {
 	db := openTestDB(t)
 	ctx := context.Background()

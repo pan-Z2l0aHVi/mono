@@ -3,6 +3,8 @@ import '@/components/theme'
 
 import { afterEach, describe, expect, it } from 'vite-plus/test'
 
+import { afterRenderStep } from '@/shared/test-utils'
+
 import type { WebUiTextarea } from '..'
 
 afterEach(() => document.body.replaceChildren())
@@ -19,10 +21,9 @@ function nativeTextarea(el: WebUiTextarea): HTMLTextAreaElement {
   return el.shadowRoot!.querySelector('textarea')!
 }
 
-// 高度是内联 px，跟帧走才稳；autosize 自身同步，但字体与布局要等一帧落定。
-async function nextFrame() {
-  await new Promise(resolve => requestAnimationFrame(resolve))
-}
+// 高度是内联 px，跟一个完整渲染步进走才稳；autosize 自身同步，但字体与布局、
+// ResizeObserver 回调要等这一步落定（裸 rAF 不保证这批通知已投递）。
+const nextFrame = afterRenderStep
 
 const heightOf = (el: WebUiTextarea) => Math.round(el.getBoundingClientRect().height)
 

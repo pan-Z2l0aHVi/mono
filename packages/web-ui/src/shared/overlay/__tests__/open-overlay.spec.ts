@@ -1,5 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vite-plus/test'
 
+import { waitForFrame } from '@/shared/test-utils'
+
 import { defineOpenOverlay } from '../open-overlay'
 import type { OpenOverlay, OpenOverlayHandle, OverlayClaimOptions } from '../open-overlay'
 
@@ -43,10 +45,6 @@ function pressEscape(): KeyboardEvent {
   const event = new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true })
   document.dispatchEvent(event)
   return event
-}
-
-function nextFrame(): Promise<void> {
-  return new Promise(resolve => requestAnimationFrame(() => resolve()))
 }
 
 afterEach(() => {
@@ -132,7 +130,7 @@ describe('open overlay 的 Escape 归属', () => {
 
     expect(event.defaultPrevented).toBe(true)
     expect(closeInner).not.toHaveBeenCalled()
-    // 旧的「跳过候选」语义会放任事件落到外层把它关掉，这里刻意不是。
+    // 「跳过候选」语义会放任事件落到外层把它关掉，这里刻意不是。
     expect(closeOuter).not.toHaveBeenCalled()
   })
 
@@ -368,7 +366,7 @@ describe('open overlay 的帧事务', () => {
     const callback = vi.fn<() => void>()
     overlay().scheduleFrame(callback)
 
-    await nextFrame()
+    await waitForFrame()
     expect(callback).toHaveBeenCalledTimes(1)
   })
 
@@ -379,7 +377,7 @@ describe('open overlay 的帧事务', () => {
     instance.scheduleFrame(callback, handle)
 
     handle.release()
-    await nextFrame()
+    await waitForFrame()
     expect(callback).not.toHaveBeenCalled()
   })
 
@@ -389,7 +387,7 @@ describe('open overlay 的帧事务', () => {
     instance.scheduleFrame(callback)
 
     instance.invalidate()
-    await nextFrame()
+    await waitForFrame()
     expect(callback).not.toHaveBeenCalled()
   })
 
@@ -399,12 +397,12 @@ describe('open overlay 的帧事务', () => {
 
     instance.suspend()
     instance.scheduleFrame(callback)
-    await nextFrame()
+    await waitForFrame()
     expect(callback).not.toHaveBeenCalled()
 
     instance.resume()
     instance.scheduleFrame(callback)
-    await nextFrame()
+    await waitForFrame()
     expect(callback).toHaveBeenCalledTimes(1)
   })
 })
@@ -484,7 +482,7 @@ describe('open overlay 登记表的兜底回收', () => {
   /*
    * claim 路径不跑回收：调用方先 claim 再把 panel 与宿主挂进文档是合法时序，
    * 那一刻两者都还没连上，扫它就会把一个没被给过挂载机会的层判成死层删掉。
-   * 旧实现里这样的层只是暂不参与仲裁，挂载后即恢复。
+   * 这样的层只是暂不参与仲裁，挂载后即恢复。
    */
   it('claim 时 panel 与宿主都未挂载：挂上后照旧参与仲裁', () => {
     const host = hostElement()

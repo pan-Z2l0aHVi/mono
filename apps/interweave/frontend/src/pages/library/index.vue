@@ -33,7 +33,7 @@ interface ConfirmRequest {
   message: string
   confirmLabel: string
   danger: boolean
-  /** 紧凑变体走窄一档的弹窗宽度（320px）。由调用点声明，不再从标题文案反推。 */
+  /** 紧凑变体走窄一档的弹窗宽度（320px）。由调用点声明，不从标题文案反推。 */
   compact?: boolean
   action: () => Promise<void> | void
 }
@@ -208,10 +208,6 @@ async function openResource(resource: ResourceView) {
 /*
  * 右键「重命名」要把目标行置成激活行。
  *
- * activeResourceId 只有左键预览、详情、标签这三条入口会写（selectResource / openResourceDetail /
- * editResourceTags），改名这条路上没有人碰它。于是从 context menu 改名后，底色仍旧停在上一次激活的
- * 那一行上（没人激活过时则一行都没有）——用户看到的就是「激活底色没有跟着切过来」。
- *
  * 与另两条入口同一个理由：被操作的那一条就是当前工作对象。名字编辑器还占着焦点、
  * 且会被 clampEditingRowIntoView 钉在视口里，那一行也正是用户此刻看着的一行。
  */
@@ -349,10 +345,9 @@ function closeConfirmDialog() {
   /*
    * 只翻 open，不清内容（#189）。
    *
-   * dialog 关闭后仍有 260ms 退场动画，期间弹窗保持可见。原先这里在同一个 tick 把
-   * confirmRequest 置空，标题、说明、button 文案一起塌成空串，弹窗高度单帧掉 61.6px；
-   * 紧凑变体还因为宽度从标题字符串派生，从 320px 跳回默认的 360px。内容改到下一次打开时
-   * 整体替换，退场期间没有任何一帧的盒子尺寸变化，也不需要在页面侧复述退场时长。
+   * dialog 关闭后仍有 260ms 退场动画，期间弹窗保持可见。内容必须留到下一次打开时整体替换：
+   * 标题、说明、button 文案一清空，弹窗高度单帧掉 61.6px；紧凑变体还因为宽度从标题字符串派生，
+   * 从 320px 跳回默认的 360px。退场期间没有任何一帧的盒子尺寸变化，也不需要在页面侧复述退场时长。
    */
   confirmOpen.value = false
 }
@@ -379,9 +374,9 @@ function setAddOpen(open: boolean) {
 /*
  * 粘贴（#188）。
  *
- * OS 的剪贴板文件接口只认文件，剪贴板里是网页链接时它返回空数组；原先这条路径零次
- * 迭代就结束，既不添加也不报错。剪贴板文本由 paste 事件带上来，拿不到文件时按链接再试
- * 一次，文本存在又不是合法链接时给一句可读的错误，而不是静默吞掉。
+ * OS 的剪贴板文件接口只认文件，剪贴板里是网页链接时它返回空数组。剪贴板文本由 paste
+ * 事件带上来，拿不到文件时按链接再试一次，文本存在又不是合法链接时给一句可读的错误，
+ * 而不是静默吞掉。
  */
 async function pasteFilePaths(clipboardText = '') {
   try {
@@ -605,7 +600,7 @@ onMounted(() => {
       overflow-y-auto、没有 min-height 补丁、没有 max-h-dvh。
 
       底部留白用 max(4rem, env(safe-area-inset-bottom))：无安全区的设备上就是 4rem(64px)，
-      与改动前的 pb-16 同值；设备有 home indicator 时自动变宽，把最后一行托到安全区上方。
+      与 pb-16 同值；设备有 home indicator 时自动变宽，把最后一行托到安全区上方。
       不能只写固定 px——env() 非零时浏览器不会把固定 px 撑开，base 的 pb-16 因此一直
       没有真正避开安全区（用户已确认接受由此产生的视觉差异）。
       桌面 Chromium 下 env() 解析为 0，两种写法都是 64px，视觉无差异；差异只在真机出现。

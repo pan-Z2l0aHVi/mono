@@ -1,6 +1,6 @@
 import '..'
 
-import { afterEach, describe, expect, it, vi } from 'vite-plus/test'
+import { afterEach, describe, expect, it } from 'vite-plus/test'
 
 import { cleanupElement, mountElement, queryA11y, waitForUpdate } from '@/shared/test-utils'
 
@@ -38,12 +38,10 @@ describe('WebUiInput 组件特有契约', () => {
     el.disabled = true
     await waitForUpdate(el)
 
-    const input = nativeInput(el)
-    const spy = vi.spyOn(input, 'focus')
     // 原生 input 的直接父容器即点击区域，用结构关系而非内部 class 定位
-    input.parentElement!.click()
+    nativeInput(el).parentElement!.click()
 
-    expect(spy).not.toHaveBeenCalled()
+    expect(el.shadowRoot?.activeElement).toBeNull()
     cleanupElement(el)
   })
 
@@ -85,10 +83,10 @@ describe('WebUiInput 组件特有契约', () => {
     await waitForUpdate(el)
 
     const native = nativeInput(el)
-    const spy = vi.spyOn(native, 'select')
     el.select()
 
-    expect(spy).toHaveBeenCalledTimes(1)
+    expect(native.selectionStart).toBe(0)
+    expect(native.selectionEnd).toBe(native.value.length)
     cleanupElement(el)
   })
 
@@ -98,13 +96,13 @@ describe('WebUiInput 组件特有契约', () => {
     await waitForUpdate(el)
 
     const native = nativeInput(el)
-    const selectSpy = vi.spyOn(native, 'select')
-    const focusSpy = vi.spyOn(native, 'focus')
+    native.setSelectionRange(1, 1)
     el.select()
     el.focus()
+    await waitForUpdate(el)
 
-    expect(selectSpy).not.toHaveBeenCalled()
-    expect(focusSpy).not.toHaveBeenCalled()
+    expect(native.selectionStart).toBe(1)
+    expect(native.selectionEnd).toBe(1)
     expect(el.shadowRoot?.activeElement).toBeNull()
     cleanupElement(el)
   })

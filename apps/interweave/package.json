@@ -10,7 +10,8 @@
     "build:macos:app": "wails3 task darwin:package",
     "build:windows": "wails3 build GOOS=windows GOARCH=amd64",
     "dev": "wails3 dev",
-    "sync:version": "node scripts/sync-version.mjs"
+    "sync:version": "node scripts/sync-version.mjs",
+    "test": "go test -race -count=1 ./..."
   },
   "dependencies": {
     "@greypan/interweave-frontend": "workspace:*"

@@ -33,11 +33,20 @@ async function settleMicrotasks(spins = 50): Promise<void> {
   }
 }
 
-/** 等待 MSW 捕获到指定数量的请求；fetch → service worker 往返依赖真实时间。 */
+/**
+ * 等待 MSW 捕获到指定数量的请求；fetch → service worker 往返依赖真实时间。
+ * 到达上限仍不足数就直接失败：静默返回会把失败推迟到后面的载荷断言，
+ * 报错读起来像「payload 不对」，实际是「请求根本没落地」。
+ */
 async function waitForCaptured(minCount: number, timeout = 2000): Promise<void> {
   const start = Date.now()
   while (capturedRequests.length < minCount && Date.now() - start < timeout) {
     await new Promise(resolve => setTimeout(resolve, 10))
+  }
+  if (capturedRequests.length < minCount) {
+    throw new Error(
+      `expected at least ${minCount} captured request(s) within ${timeout}ms, got ${capturedRequests.length}`
+    )
   }
 }
 
@@ -427,10 +436,13 @@ describe('defineTracker 测试', () => {
       tracker.pause()
 
       // 脏数据若被当数组用，发送时会抛在启动路径上，让整个 tracker 建不起来
-      expect(tracker).toBeDefined()
       expect(removeSpy).toHaveBeenCalledWith(key)
       expect(storage.get(key)).toBeNull()
       expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('不是有效的数组'), expect.stringContaining(key))
+
+      // 快照清掉还不够：内存队列也得是干净的，否则 pause 后再写入会把脏条目一起落盘
+      tracker.track({ event: 'fresh' })
+      expect(storage.get(key)).toEqual([{ event: 'fresh' }])
     })
 
     it('恢复快照里的 null 与 primitive 被过滤，合法条目重新持久化', () => {
@@ -442,9 +454,12 @@ describe('defineTracker 测试', () => {
       tracker.pause()
 
       // 脏条目若原样送出，后端收到 null / 数字；这里必须只保留合法对象并落回快照
-      expect(tracker).toBeDefined()
       expect(storage.get(key)).toEqual([{ event: 'valid' }])
       expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('包含无效条目'), expect.stringContaining(key))
+
+      // 过滤必须同时发生在内存队列：落盘快照干净不代表发送侧干净
+      tracker.track({ event: 'fresh' })
+      expect(storage.get(key)).toEqual([{ event: 'valid' }, { event: 'fresh' }])
     })
   })
 })

@@ -185,7 +185,8 @@ func TestProbeURLSourceOnOpenKeepsValueWhenInconclusive(t *testing.T) {
 	hanging := httptest.NewServer(http.HandlerFunc(func(_ http.ResponseWriter, r *http.Request) {
 		select {
 		case <-r.Context().Done():
-		case <-time.After(30 * time.Second):
+		// 挂起上限由本用例装进去的预算推导，不写死 30s：这个数的职责只是「远长于任何预算」。
+		case <-time.After(20 * probeBudgetOnOpen):
 		}
 	}))
 	defer hanging.Close()

@@ -91,10 +91,12 @@ async function mountList(
   return {
     host,
     rows: [...host.querySelectorAll('[data-resource-row]')],
-    // 虚拟化之后行不再直接挂在容器下，中间多了一层撑总高的定位包裹，所以按 role 认容器，
+    // 行不直接挂在容器下，中间多了一层撑总高的定位包裹，所以按 role 认容器，
     // 不用 parentElement 顺推。
     container: host.querySelector<HTMLElement>('[role="list"]'),
     contextMenu: host.querySelector('web-ui-context-menu'),
+    // 当前行由父级持有的 activeResourceId 表达：这是组件对外的契约，内部下标不是。
+    activeId: () => activeResourceId.value,
     unmount: () => {
       app.unmount()
       host.remove()
@@ -133,10 +135,11 @@ function pointer(type: string, init: Record<string, unknown> = {}, pointerType =
 /*
  * rAF 驱动的边缘滚动按帧推进，而帧的节奏由 runner 决定：CI 的 runner 被 browser 用例和
  * 并行任务挤压时，「固定等两帧再断言」可能一次推进都没排上（实测 CI 出现过 scrollY 恒
- * 为 0）。改成有界轮询：条件成立即刻通过，帧预算耗尽才失败，对调度延迟不敏感，也不会
+ * 为 0）。这里用有界轮询：条件成立即刻通过，帧预算耗尽才失败，对调度延迟不敏感，也不会
  * 在行为真坏了时把失败拖成超时。
  */
-async function waitForScrollCondition(condition: () => boolean, maxFrames = 60) {
+/** 按帧轮询到条件成立；上限是帧数而不是墙钟时长，慢机器上只会多跑几帧。 */
+async function waitForFrameCondition(condition: () => boolean, maxFrames = 60) {
   for (let i = 0; i < maxFrames; i++) {
     if (condition()) return
     await new Promise(resolve => requestAnimationFrame(() => resolve(null)))
@@ -226,7 +229,7 @@ describe('ResourceList：按住拖动批量勾选', () => {
    * S3：虚拟化之前整个列表都是 DOM，按住拖到底能一路勾到最后一条；虚拟化之后
    * elementFromPoint 只认窗口内那十几行，不主动把窗口滚下去就永远勾不过边界。
    * 这条用例钉的是「指针停在视口底边时页面自己会滚」，跨窗口的勾选由浏览器取证补。
-   * window 模式下边缘带按 window.innerHeight 算，不再读列表容器的 rect。
+   * window 模式下边缘带按 window.innerHeight 算，不读列表容器的 rect。
    */
   it('指针停在视口底边时页面自动滚动，扫选得以越过窗口边界', async () => {
     const setChecked = vi.fn<SetChecked>()
@@ -256,11 +259,10 @@ describe('ResourceList：按住拖动批量勾选', () => {
   /*
    * 速度上限：指针被拖到视口外很远时，单帧位移不得超过设计上限。
    *
-   * 旧几何每一支都有 `distance >= ZONE ? 0` 的早退，天然把速度钳在 [0, MAX]；改成「视口内
-   * 靠边」的几何时那层钳制丢了，(1 - d/ZONE) 随 d 线性无界增长——clientY=-1000 时算出
-   * 774px/帧、是 SWEEP_MAX_SPEED 的 32 倍，列表直接「飞」过去、大量行被跳过，用户想停在
-   * 某一行上勾它根本停不住。stepSweepScroll 只钳了滚动上限、没钳速度，所以那道钳制必须
-   * 落在 sweepEdgeSpeed 里。
+   * 速度上限由 sweepEdgeSpeed 钳在 SWEEP_MAX_SPEED；「视口内靠边」的距离不早退，
+   * (1 - d/ZONE) 随 d 线性无界增长——clientY=-1000 时算出 774px/帧、是 SWEEP_MAX_SPEED 的
+   * 32 倍，列表直接「飞」过去、大量行被跳过，用户想停在某一行上勾它根本停不住。
+   * stepSweepScroll 只钳了滚动上限、没钳速度，所以那道钳制必须落在 sweepEdgeSpeed 里。
    *
    * 断言用「相对上限的单帧位移」而不是绝对值：上限是实现常量，写死 24 会让调参变成改测试。
    */
@@ -353,11 +355,11 @@ describe('ResourceList：按住拖动批量勾选', () => {
   /*
    * 触摸端扫选（Block 级回归的护栏）。
    *
-   * 缺陷本体：sweepEdgeSpeed 原来按「指针越出视口」给速度，而触摸的 clientY 按 Pointer
+   * 缺陷本体：sweepEdgeSpeed 按「指针越出视口」给速度时，触摸的 clientY 按 Pointer
    * Events 恒落在 [0, innerHeight]（这一条由本组用例守，与上面 mouse 那条分工不同）——
    * 手指接触点不可能在视口之外，于是两个分支都是死代码、
    * speed 恒 0；同时 blockSweepScroll 一律 preventDefault，手指滑动也被拦。净效果是触摸端
-   * 既无边缘自动滚、也滑不动，只能勾到窗口边缘就停住——正是本 task 要消除的能力退化。
+   * 既无边缘自动滚、也滑不动，只能勾到窗口边缘就停住——这是要消除的能力退化。
    *
    * 四条用例分别钉住：边缘带能触发自动滚、长按确认仍能 arm、边缘带内放行带外仍拦、
    * 以及带外手势不被滑动打断（放行过头会让长按判定失效）。
@@ -379,7 +381,7 @@ describe('ResourceList：按住拖动批量勾选', () => {
       hit.pointAt(firstRow)
       // 触摸的 clientY 落在视口内靠边处，边缘带必须仍然给速度
       window.dispatchEvent(pointer('pointermove', { clientX: 2, clientY: VIEWPORT_HEIGHT - 8 }, 'touch'))
-      await waitForScrollCondition(() => currentScrollY() > 0)
+      await waitForFrameCondition(() => currentScrollY() > 0)
       expect(currentScrollY()).toBeGreaterThan(0)
       window.dispatchEvent(pointer('pointerup', {}, 'touch'))
     } finally {
@@ -815,7 +817,7 @@ describe('ResourceList：触屏长按 menu', () => {
    *
    * openAt 单独**不算**长按：它是命令式打开，按组件自己的注释不派发 open-change
    * （context-menu/index.ts 的 openAt：「命令式打开不派发 open-change 事件」）。
-   * 只调 openAt 的用例在换掉判据之后仍会一路绿，却已经不再代表真实事件序列——判据依赖
+   * 只调 openAt 的用例会一路绿，却不代表真实事件序列——判据依赖
    * 「menu 此刻开着没有」时测试看不出问题，正是因为它只造了那个瞬间状态。
    */
   function longPressOpensMenu(menu: WebUiContextMenu, row: Element, pointerType = 'touch') {
@@ -1022,10 +1024,10 @@ describe('ResourceList：触屏长按 menu', () => {
   })
 
   /*
-   * 回归：suppressContextMenu 曾经只在下一次 pointerdown 才清，于是扫过一次之后右键整个失灵。
+   * 回归：suppressContextMenu 若只在下一次 pointerdown 才清，扫过一次之后右键整个失灵。
    *
-   * 它由 armTouchSweep 置位，而 armTouchSweep 只在选择模式下发生；endSweep 当时只清
-   * suppressRowClick。所以「进过一次选择模式并长按扫选」之后，这个标志一直留着，
+   * 它由 armTouchSweep 置位，而 armTouchSweep 只在选择模式下发生；endSweep 必须把它一起清掉，
+   * 否则「进过一次选择模式并长按扫选」之后，这个标志一直留着，
    * openContextMenu 见到它就 preventDefault 直接 return，context menu 再也弹不出来。
    *
    * 观察点是 menu item 内容而不是「menu 有没有开」：被吞掉时 openContextMenu 提前 return，
@@ -1160,7 +1162,7 @@ describe('ResourceList：打开方式显示系统默认应用', () => {
 /*
  * 键盘呼出 context menu 这条路的回归。web-ui-context-menu 自己在宿主元素上听 ContextMenu 键与
  * Shift+F10，并且只按 document.activeElement 的 rect 摆 panel——它不看 menu item gate 的
- * contextResource。contextResource 原本只有行上的 contextmenu 事件这一个赋值点，纯键盘
+ * contextResource。contextResource 只有行上的 contextmenu 事件这一个赋值点，纯键盘
  * 呼出时它是 null，于是弹出一张紧贴该行、内容却只有「删除」和两条 divider 的 menu。行成了
  * tab stop 之后这条路径才可达，所以焦点必须成为 contextResource 的第二个来源。
  *
@@ -1335,14 +1337,14 @@ describe('ResourceList：键盘呼出 context menu', () => {
    * 置为被右键的那一行。不调用 focusIndex()——那会 scrollIndexIntoView + row.focus()，会抢走焦点
    * （右键改名时焦点在名字编辑器里）。
    *
-   * 这里的断言是：右键 r2 后，activeResourceId 变为 r2，对应的行获得激活底色（bg-black/8）。
-   * 因为派生 activeIndex 会跟着变，roving tabindex 也会跟着换到 r2。
+   * 判据走公开面：父级收到的 activeResourceId 换成 r2，且 roving tabindex 跟着换到那一行。
    */
   it('右键呼出 menu、不点任何 menu item，被右键的那一行成为当前行', async () => {
     const mounted = await mountList([resource({ id: 'r1' }), resource({ id: 'r2' })])
     try {
-      // 初始无 activeResourceId，activeIndex = 0
-      expect(mounted.container!.dataset.activeIndex).toBe('0')
+      // 初始没有当前行，roving tabindex 停在第一行
+      expect(mounted.activeId()).toBeNull()
+      expect(mounted.rows.map(row => row.getAttribute('tabindex'))).toEqual(['0', '-1'])
 
       // 右键第 2 行
       mounted.rows[1]!.dispatchEvent(
@@ -1350,16 +1352,9 @@ describe('ResourceList：键盘呼出 context menu', () => {
       )
       await nextTick()
 
-      // activeIndex 应变为 1（r2 的下标）
-      expect(mounted.container!.dataset.activeIndex).toBe('1')
-
-      // 第 2 行应获得激活底色类
-      const row2 = mounted.rows[1] as HTMLElement
-      expect(row2.className).toContain('bg-black/8')
-
-      // 第 1 行不应有激活底色
-      const row1 = mounted.rows[0] as HTMLElement
-      expect(row1.className).not.toContain('bg-black/8')
+      // 当前行换成被右键的 r2，roving tabindex 跟着换过去
+      expect(mounted.activeId()).toBe('r2')
+      expect(mounted.rows.map(row => row.getAttribute('tabindex'))).toEqual(['-1', '0'])
     } finally {
       mounted.unmount()
     }
@@ -1437,7 +1432,7 @@ function rowTop(row: HTMLElement) {
 }
 
 /*
- * 预览的判据从「hover 行 + 空格」换成「焦点进入行」（#187 的 hover 入口已下线）。键盘
+ * 预览的判据是「焦点进入行」（#187 的 hover 入口已下线）。键盘
  * 用户没有 hover，列表的键盘可达性靠 focus 承担，所以 tab stop 与 focus 环一起钉在这里。
  *
  * jsdom 不实现 Tab 键的真实焦点推进（那是浏览器行为），所以「行间可切换」在这里断言
@@ -1484,7 +1479,7 @@ describe('ResourceList：键盘导航与预览入口', () => {
       expect(total).toBeLessThan(allEstimate)
       expect(total).toBeGreaterThan(allMeasured)
 
-      // virtua 给每个条目各建一层绝对定位包裹（top = 条目偏移），行不再共用一个容器。
+      // virtua 给每个条目各建一层绝对定位包裹（top = 条目偏移），行不共用一个容器。
       expect(mounted.rows[0]!.parentElement).not.toBe(mounted.rows[1]!.parentElement)
     } finally {
       mounted.unmount()
@@ -1637,7 +1632,8 @@ describe('ResourceList：键盘导航与预览入口', () => {
       row.dispatchEvent(new MouseEvent('mouseleave'))
 
       // hover 的预览入口已下线（#187）：预览改由键盘空格触发。hover 的底色反馈是视觉
-      // 契约，由浏览器取证负责，这里只守「hover 不再开预览」这一条。
+      // 契约，由同目录的 color-states.browser.spec.ts 取证；这里只守「hover 不再开预览」
+      // 这一条。
       expect(preview).not.toHaveBeenCalled()
     } finally {
       mounted.unmount()
@@ -1662,7 +1658,7 @@ describe('ResourceList：键盘导航与预览入口', () => {
 
   /*
    * 空格接在点击的语义上（父级收到 select 后开预览），这就是 hover 下线后预览的入口：
-   * 判据从「鼠标悬停」换成了「焦点在行上」，功能本身没删。
+   * 判据是「焦点在行上」，功能本身没删。
    */
   it('Space 与点击一致，走 select', async () => {
     const select = vi.fn<RowHandler>()
@@ -1717,7 +1713,7 @@ describe('ResourceList：键盘导航与预览入口', () => {
    * 方向键在行间移动焦点，Home / End 到首尾。
    *
    * 全部按数据下标算，边界是 resources.length 而不是「已渲染了几行」。虚拟化之后这两者
-   * 差着一整屏——旧实现按 querySelectorAll 拿到的行数组取末位，End 只会跳到最后一个已
+   * 差着一整屏——按 querySelectorAll 拿到的行数组取末位，End 只会跳到最后一个已
    * 渲染行，而不是最后一条资源。
    */
   it('方向键在行间移动焦点，Home / End 到首尾', async () => {
@@ -1749,8 +1745,8 @@ describe('ResourceList：键盘导航与预览入口', () => {
   /*
    * 回归：End 必须到**最后一条资源**，不是最后一个已渲染行。
    *
-   * 虚拟窗口一次只渲染十几行，但列表可能有上千条。旧实现对 querySelectorAll 的结果取
-   * length - 1，虚拟化之后那个下标落在窗口末尾，End 按十几次就到头了——列表剩下几百行
+   * 虚拟窗口一次只渲染十几行，但列表可能有上千条。对 querySelectorAll 的结果取
+   * length - 1，那个下标落在窗口末尾，End 按十几次就到头了——列表剩下几百行
    * 根本到不了。这里用 1000 条把窗口撑开，再断言活动下标真的到了 999。
    *
    * 断言读的是容器上的 data-active-index 而不是 DOM：目标行此时还在虚拟窗口之外，
@@ -1770,7 +1766,7 @@ describe('ResourceList：键盘导航与预览入口', () => {
       keydown(first, { key: 'End' })
       await nextTick()
 
-      expect(mounted.container!.dataset.activeIndex).toBe('999')
+      expect(mounted.activeId()).toBe('r999')
     } finally {
       mounted.unmount()
     }
@@ -1779,17 +1775,17 @@ describe('ResourceList：键盘导航与预览入口', () => {
   /*
    * 回归：方向键要能穿过虚拟窗口边界，不能在窗口底卡住。
    *
-   * 旧实现把 indexOf 打在「已渲染行数组」上，ArrowDown 走到数组末尾 next === index 就
-   * return，焦点锁死在窗口底——长按方向键走不出那一屏。现在按数据下标算，只要还有下一条
+   * indexOf 若打在「已渲染行数组」上，ArrowDown 走到数组末尾 next === index 就
+   * return，焦点锁死在窗口底——长按方向键走不出那一屏。这里按数据下标算，只要还有下一条
    * 资源就继续往下。
    *
    * 判据是「下标持续递增直到列表末尾」，因为 jsdom 里的 window.scrollTo 是真实现
    * （见 __tests__/virtualLayout），窗口会跟着 scrollIndexIntoView 滚动并渲染出后续行。
-   * 旧实现在这个场景下会停在首个越界的窗口底，第二个循环体就取不到元素而抛错。
+   * 按已渲染行数组取下标时，这个场景下会停在首个越界的窗口底，第二个循环体就取不到元素而抛错。
    *
    * 按 End 而不是逐格按到底：End 内部同样走 navigateToIndex（emit activate + scrollIndexIntoView），
    * 是同一条路径，但把 998 次按键与渲染压成一次。并用 ArrowDown 单独验「越界那一次仍推进、仍吃掉按键」，
-   * 那是旧实现会 return 的地方。
+   * 那是按已渲染行数组取下标时会 return 的地方。
    */
   it('方向键穿过虚拟窗口边界继续移动，不在窗口底卡住', async () => {
     const ids = Array.from({ length: 1000 }, (_, index) => `r${index}`)
@@ -1799,10 +1795,10 @@ describe('ResourceList：键盘导航与预览入口', () => {
       first.focus()
 
       // 从第 0 行按 End 跨过整个虚拟窗口到第 999 行：中间几百行从未进入过 DOM。
-      // 旧实现在窗口底 next === index 直接 return，活动下标会停在窗口末行。
+      // 按已渲染行数组取下标时，窗口底 next === index 直接 return，活动下标会停在窗口末行。
       const endEvent = keydown(first, { key: 'End' })
       await flushRenders()
-      expect(mounted.container!.dataset.activeIndex).toBe('999')
+      expect(mounted.activeId()).toBe('r999')
       expect(endEvent.defaultPrevented).toBe(true)
 
       // 越界那一次仍要推进：ArrowDown 落在窗口末行上时，目标行此刻还在窗口外。
@@ -1812,13 +1808,13 @@ describe('ResourceList：键盘导航与预览入口', () => {
         [...mounted.host.querySelectorAll<HTMLElement>('[data-resource-row]')].at(-1)!
       const homeEvent = keydown(last, { key: 'Home' })
       await flushRenders()
-      expect(mounted.container!.dataset.activeIndex).toBe('0')
+      expect(mounted.activeId()).toBe('r0')
       expect(homeEvent.defaultPrevented).toBe(true)
 
       // 回到窗口底附近再连按两次 ArrowDown，确认下标是「+1」而不是被钉住。
       keydown(mounted.host.querySelector<HTMLElement>('[data-resource-index="0"]')!, { key: 'ArrowDown' })
       await flushRenders()
-      expect(mounted.container!.dataset.activeIndex).toBe('1')
+      expect(mounted.activeId()).toBe('r1')
     } finally {
       mounted.unmount()
     }
@@ -1958,8 +1954,8 @@ describe('ResourceList：编辑态与虚拟窗口的关系', () => {
    *
    * editable-text 默认的提交只有 Enter 与 blur 两条：Chromium 移除会补派 blur、change 照常
    * 派发、草稿不丢；WebKit（Safari / iOS）移除**不派发 blur**，默认路径什么都不提交，用户
-   * 打的字随行一起静默消失。旧实现靠 keepMounted 把编辑行并入渲染窗口回避回收；virtua 的
-   * 窗口模式没有 keepMounted（只有自建滚动容器的 <Virtualizer> 有），兜底改落在卸载提交上。
+   * 打的字随行一起静默消失。virtua 的窗口模式没有 keepMounted（只有自建滚动容器的
+   * <Virtualizer> 有），编辑行离开渲染窗口就会被回收，兜底落在卸载提交上。
    *
    * jsdom 的 web-ui-editable-text 没有升级成真正的自定义元素，disconnectedCallback 根本不
    * 执行，卸载提交在 jsdom 里无从观察——这里只验「编辑行的编辑器确实带着 commit-on-unmount
@@ -2147,7 +2143,7 @@ describe('ResourceList：顺序变化后的行位', () => {
 })
 
 /*
- * S2：落焦轮询原本没有取消机制，方向键连按时先发的那一轮可能在后一轮落焦之后才等到
+ * S2：落焦轮询缺少取消机制时，方向键连按时先发的那一轮可能在后一轮落焦之后才等到
  * 目标行，把焦点从用户已经移开的行拽回去；组件卸载后还会一路空转到超时上限。
  */
 describe('ResourceList：连按方向键与卸载后的落焦', () => {
@@ -2174,11 +2170,18 @@ describe('ResourceList：连按方向键与卸载后的落焦', () => {
       keydown(firstRow, { key: 'End' })
       // 不等第一轮落定就再按一下：此时焦点仍在第 0 行，第二次请求的目标是第 1 行
       keydown(firstRow, { key: 'ArrowDown' })
-      // 放行足够长的时间让第一轮轮询醒来（16ms 一跳）
-      await new Promise(resolve => setTimeout(resolve, 120))
+
+      // 先等后发的那一轮真的落焦（确定性信号），再按帧给先发的那一轮留出它自己的轮询节奏：
+      // 直接睡 120ms 会把「慢机器上第一轮还没醒」读成通过。
+      await waitForFrameCondition(() => document.activeElement?.getAttribute('data-resource-index') === '1')
+      for (let frame = 0; frame < 8; frame += 1) {
+        await new Promise(resolve => requestAnimationFrame(() => resolve(null)))
+      }
       await flushRenders()
 
-      expect(document.activeElement?.getAttribute('data-resource-index')).toBe('1')
+      expect(document.activeElement?.getAttribute('data-resource-index'), '先发的那一轮把焦点拽回了它自己的目标').toBe(
+        '1'
+      )
     } finally {
       mounted.unmount()
     }

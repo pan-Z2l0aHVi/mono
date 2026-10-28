@@ -31,7 +31,7 @@ ${scrollbarStyle}`
      有没有已打开的 dialog」，而 scrim 是 panel 的**后代方向**，方向相反，查不到。menu panel
  *   又不在 host 的 shadow root 里（它在 `web-ui-theme` 的 overlay root 内），这条路径也断。
  *
- * 省略时行为与从前完全一致 —— dropdown 的 `target` 承重调用点（dropdown-in-dialog）
+ * 省略时行为不变 —— dropdown 的 `target` 承重调用点（dropdown-in-dialog）
  * 一个字都不用改。
  */
 export function createMenuPortalOverlay(className: string, target?: Element, scrim?: HTMLElement): MenuPortalOverlay {

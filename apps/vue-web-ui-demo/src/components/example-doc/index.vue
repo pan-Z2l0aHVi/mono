@@ -86,7 +86,7 @@ function demoComponent(demoKey: string) {
 /*
  * 代码区由 OverlayScrollbars 接管后，`[data-code]` 这一层成了 `overflow: hidden` 的 host，
  * 真正滚动的是实例的 viewport 元素，所以滚动复位必须打在它上面。
- * 实例还没建好（首帧、jsdom）时退回 host 本身，此时 host 上的 `overflow-auto` 就是原来的原生滚动。
+ * 实例还没建好（首帧、jsdom）时退回 host 本身，此时 host 上的 `overflow-auto` 就是它自身的原生滚动。
  */
 function resetCodeScroll(panel: HTMLElement) {
   const scroller = OverlayScrollbars(panel)?.elements().viewport ?? panel
@@ -250,7 +250,7 @@ function copyAnnouncement(key: string) {
                  `relative z-10` 把工具条抬到下方代码区之上：segmented 的投影朝下溢出（凹变种是 track
                  的常驻外投影，凸变种是 indicator 的柔投影），否则后绘制的折叠区会把阴影盖掉一截。
                  这一层只在卡内比较，见上方 `isolate`。
-                 顶部圆角补在这一层：外层不再裁剪，工具条的白底会自己溢出到圆角之外。 -->
+                 顶部圆角补在这一层：外层不裁剪，工具条的白底会自己溢出到圆角之外。 -->
             <div
               class="relative z-10 flex flex-wrap items-center justify-between gap-3 rounded-t-4xl bg-(--wui-color-page) px-4 pt-4 pb-2"
             >

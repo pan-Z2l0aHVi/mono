@@ -251,7 +251,7 @@ export class WebUiCollapse extends LitElement {
     trigger.toggleAttribute('disabled', this.disabled)
   }
 
-  // ===== 内容区动画管线（三态语义自 ADR-0030 迁移） =====
+  // ===== 内容区动画管线（三态语义见 ADR-0030） =====
 
   /** 关闭稳态是否露出部分内容；空值与非空判断避免 `peek=""` 被当作有效长度。 */
   private get _peeks(): boolean {

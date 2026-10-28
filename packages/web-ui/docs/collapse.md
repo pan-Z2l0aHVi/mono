@@ -73,7 +73,7 @@ const open = ref(false)
 
 ### Without binding open
 
-The component toggles `open` on its own, so it works with no binding at all: just provide the default slot and the `content` slot. The second one writes `open` statically, meaning it starts expanded—when it is already `open` at mount it lands directly in the expanded resting state and plays no enter animation. A static value only applies once at mount; afterwards the component keeps toggling the property itself and the page is no longer involved.
+The component toggles `open` on its own, so it works with no binding at all: just provide the default slot and the `content` slot. The second one writes `open` statically, meaning it starts expanded—when it is already `open` at mount it lands directly in the expanded resting state and plays no enter animation. A static value only applies once at mount; afterwards the component keeps toggling the property itself and the page plays no part in it.
 
 ```tsx
 export default function Demo() {
@@ -1317,7 +1317,7 @@ During a toggle animation the content is `inert` as well; the attributes take ov
 
 ### Peek preview band
 
-With `peek` set, the closed resting state no longer collapses to 0 but exposes the head of the content along the animation axis for `peek` length (width with `horizontal`): the track stays at the content height and the clipping length applies to the inner container.
+With `peek` set, the closed resting state exposes the head of the content along the animation axis for `peek` length (width with `horizontal`) instead of collapsing to 0: the track stays at the content height and the clipping length applies to the inner container.
 
 Its semantics equal `keep-mounted`—the content stays mounted, but the whole inner subtree is blocked by `inert`, so the exposed strip is equally unfocusable and unclickable, and the clipped part even more so.
 

@@ -145,7 +145,7 @@ export function useLibraryRuntime(injectedRuntime?: LibraryRuntime) {
       const currentByName = new Map(current.tags.map(tag => [tag.name.toLowerCase(), tag]))
       const nextNames = new Set(normalized.map(tag => tag.toLowerCase()))
 
-      // 单次 Tag mutation 失败时，服务端可能已应用此前的 remove/add；本 task 不做自动回滚。
+      // 单次 Tag mutation 失败时，服务端可能已应用此前的 remove/add；这里不做自动回滚。
       for (const tag of current.tags) {
         if (!nextNames.has(tag.name.toLowerCase())) await runtime.removeTag(resourceId, tag.id)
       }

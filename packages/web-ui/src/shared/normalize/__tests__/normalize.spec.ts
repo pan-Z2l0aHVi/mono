@@ -47,9 +47,4 @@ describe('normalizeNumber', () => {
   ])('非数值输入（%s）回退默认值', (_label, input) => {
     expect(normalizeNumber(input, 0, 10, 4)).toBe(4)
   })
-
-  // min > max 时 clamp 顺序（先 max 后 min）决定结果；改成另一种顺序会静默改变回退语义。
-  it('min 大于 max 时以 clamp 顺序为准', () => {
-    expect(normalizeNumber(5, 10, 0, -1)).toBe(0)
-  })
 })

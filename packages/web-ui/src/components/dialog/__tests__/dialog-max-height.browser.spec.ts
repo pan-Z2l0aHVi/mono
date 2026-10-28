@@ -66,7 +66,7 @@ describe('--wui-dialog-max-height', () => {
     const card = query<HTMLElement>(component, '.wui-dialog-body')
 
     // 约束落在内容区而非整卡：卡片被 dialog 盒子完整容纳。
-    // 历史回归是把上限写在宿主复述的 chrome 常数上，触摸端 --wui-control-size
+    // 上限必须落在内容区：若把上限写成宿主复述的 chrome 常数，触摸端 --wui-control-size
     // 从 36 抬到 40 后卡片比 dialog 盒子高出一截，内容被裁掉。
     expect(card.offsetHeight).toBeLessThanOrEqual(dialog.offsetHeight)
     expect(descContentHeight(component)).toBeLessThanOrEqual(200)

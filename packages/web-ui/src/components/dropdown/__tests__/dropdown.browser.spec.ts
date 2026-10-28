@@ -5,11 +5,11 @@ import '@/components/dropdown-item'
 import '@/components/popover'
 
 import { afterEach, describe, expect, it, vi } from 'vite-plus/test'
-import { userEvent } from 'vite-plus/test/browser'
+import { page, userEvent } from 'vite-plus/test/browser'
 
 import type { WebUiButton } from '@/components/button'
 import type { WebUiPopover } from '@/components/popover'
-import { getMenuPanels, getPortalPanels, queryA11y } from '@/shared/test-utils'
+import { getMenuPanels, getPortalPanels, pollUntil, queryA11y, waitForFrame } from '@/shared/test-utils'
 import { setViewport } from '@/shared/test-utils/viewport'
 
 import type { WebUiDropdown } from '..'
@@ -28,26 +28,17 @@ function openRootItems(): HTMLElement[] {
   return [...(getMenuPanels()[0]?.querySelectorAll<HTMLElement>('web-ui-dropdown-item') ?? [])]
 }
 
-async function nextFrame() {
-  await new Promise(resolve => requestAnimationFrame(resolve))
-}
-
 // drawer/dialog 的入场由多帧 rAF + presence 驱动，时钟时长不可依赖；
 // 轮询到确定性信号（panel 挂载 / 拆卸到位）为止，避免固定 sleep 的竞态。
 // `message` 收函数是有意的：诊断里带上期待值的**当前读数**，比只说「超时了」有用。
 async function waitFor(predicate: () => boolean, message: string | (() => string)): Promise<void> {
-  const deadline = performance.now() + 1000
-  while (performance.now() < deadline) {
-    if (predicate()) return
-    await nextFrame()
-  }
-  throw new Error(typeof message === 'function' ? message() : message)
+  await pollUntil(predicate, message)
 }
 
 /**
  * 等 menu panel 数量到达期待值，返回那批 panel；**断言留给用例体**。
  *
- * 为什么不能只 `await nextFrame()` 若干次再断言：panel 的挂载与拆卸都经由 presence 链
+ * 为什么不能只 `await waitForFrame()` 若干次再断言：panel 的挂载与拆卸都经由 presence 链
  * （进场 rAF + 退出过渡 + `transitionend`）落定，**帧数是赌的**。赌输了的形态是
  * 「断言读到的是上一状态」——CI 上「上一个 panel 还没卸」正是这一条：
  * `expected [ <div …> ] to have a length of 1 but got 2`。
@@ -55,11 +46,11 @@ async function waitFor(predicate: () => boolean, message: string | (() => string
  *
  * 条件到不了就带读数抛错，不会静默通过。
  *
- * **它只在「数量会变」的场合比原来的固定帧数等待更强。** `waitFor` 在第一次
- * `await nextFrame()` **之前**就检查条件，所以条件在 t0 已成立时本函数只让出一帧——
- * 比原先那两帧（或四帧）**少**。因此适用面是「等数量到达 N」，不是「给后续断言多留
- * 沉降时间」：数量在 t0 就已经等于 N 的地方，轮询是空转，应当保留原来的固定帧数等待。
- * 三处这样的点已按此还原，见本文件里带「同帧卸载」「收尾栈」注释的那几条。
+ * **它只在「数量会变」的场合比固定帧数等待更强。** `waitFor` 在第一次
+ * `await waitForFrame()` **之前**就检查条件，所以条件在 t0 已成立时本函数只让出一帧——
+ * 比固定帧数等待的两帧（或四帧）**少**。因此适用面是「等数量到达 N」，不是「给后续断言多留
+ * 沉降时间」：数量在 t0 就已经等于 N 的地方，轮询是空转，应当保留固定帧数等待。
+ * 三处这样的点见本文件里带「同帧卸载」「收尾栈」注释的那几条。
  *
  * **断言不放在这里**是刻意的：本仓门禁 `vitest/expect-expect` 只看**语法上有无
  * `expect(...)`**（见 `shared/test-utils/index.ts` 里 `contractEvent` 那段说明），
@@ -74,13 +65,29 @@ async function waitForMenuPanels(count: number): Promise<HTMLElement[]> {
     () => getMenuPanels().length === count,
     () => `menu panel 数量未到达 ${count}（最新读到 ${getMenuPanels().length} 个）`
   )
-  await nextFrame()
+  await waitForFrame()
   return getMenuPanels()
 }
 
 /** 焦点落点：panel 挂在 overlay root 的 shadow 里，文档级 activeElement 会重定位到那个 root。 */
 const focusedControl = (host: HTMLElement): HTMLElement | null =>
   queryA11y(host, '[role="menuitem"]') as HTMLElement | null
+
+/** 一项当前的底色读数：高亮的有无用「与未被聚焦那一项是否同底」判，不写死色值。 */
+const bgOf = (host: HTMLElement): string => getComputedStyle(focusedControl(host)!).backgroundColor
+
+/*
+ * 游标位置跨用例、跨文件继承，且并行的浏览器文件共用同一个真实游标。它若压在 panel 上，
+ * Chromium 会补发 hover 底色，把「未被聚焦那一项」这枚 Idle 参照污染成高亮同档——
+ * 参照一坏，整条相对判据就失去意义。底色读数前先把指针停到 panel 之外。
+ */
+async function parkPointer(): Promise<void> {
+  const park = document.createElement('div')
+  park.style.cssText = 'position:fixed;right:0;bottom:0;width:8px;height:8px'
+  document.body.append(park)
+  await page.elementLocator(park).hover()
+  await waitForFrame()
+}
 
 function createDropdown(innerHTML: string): WebUiDropdown {
   const menu = document.createElement('web-ui-dropdown')
@@ -124,8 +131,8 @@ describe('WebUiDropdown 组件（浏览器）', () => {
 
     menu.open = true
     await menu.updateComplete
-    await nextFrame()
-    await nextFrame()
+    await waitForFrame()
+    await waitForFrame()
 
     expect(menu.open).toBe(true)
     const panels = await waitForMenuPanels(1)
@@ -136,51 +143,57 @@ describe('WebUiDropdown 组件（浏览器）', () => {
 
   /*
    * menu 打开后焦点落在首项上，但指针点击不该让 focus ring 亮起来——那会让「点开 menu」
-   * 看起来像键盘导航。判定用 `:focus-visible` 匹配与计算背景色，不读抑制标记本身。
+   * 看起来像键盘导航。判定用 `:focus-visible` 匹配与「和未被聚焦的那一项同不同底」这一
+   * 关系，不读抑制标记，也不把某档 accent 的 rgb 字面量钉进用例。
    *
    * 合成的 click 不更新 Chromium 的模态启发式，程序化 focus 仍匹配 :focus-visible ——
-   * 与 WKWebView 实际出问题的渲染条件同构，所以 accent 的有无只可能由抑制逻辑决定。
+   * 与 WKWebView 实际出问题的渲染条件同构，所以高亮的有无只可能由抑制逻辑决定。
    */
   it('指针点击打开时首项抑制 focus-visible accent，方向键后恢复', async () => {
+    await parkPointer()
     const menu = createDropdown(TWO_ITEMS)
     await menu.updateComplete
 
     menu.querySelector<HTMLButtonElement>('button')?.dispatchEvent(clickEvent(1))
     await menu.updateComplete
-    await nextFrame()
-    await nextFrame()
+    await waitForFrame()
+    await waitForFrame()
 
     const items = openRootItems()
     expect(items[0]?.shadowRoot?.activeElement).toBe(focusedControl(items[0]!))
     expect(focusedControl(items[0]!)?.matches(':focus-visible')).toBe(true)
-    expect(getComputedStyle(focusedControl(items[0]!)!).backgroundColor).not.toBe('rgb(0, 113, 227)')
+    // 未被聚焦的项始终是「Idle 底色」这一参照；抑制态与它同底 = 没有高亮。
+    const idle = bgOf(items[1]!)
+    expect(bgOf(items[0]!), '指针打开的首项不该带上高亮').toBe(idle)
 
     await userEvent.keyboard('{ArrowDown}')
-    await nextFrame()
+    await waitForFrame()
 
     expect(items[1]?.shadowRoot?.activeElement).toBe(focusedControl(items[1]!))
-    expect(getComputedStyle(focusedControl(items[1]!)!).backgroundColor).toBe('rgb(0, 113, 227)')
+    const highlighted = bgOf(items[1]!)
+    expect(highlighted, '键盘走到的那一项应带上高亮').not.toBe(idle)
 
     await userEvent.keyboard('{ArrowUp}')
-    await nextFrame()
+    await waitForFrame()
 
     expect(items[0]?.shadowRoot?.activeElement).toBe(focusedControl(items[0]!))
-    expect(getComputedStyle(focusedControl(items[0]!)!).backgroundColor).toBe('rgb(0, 113, 227)')
+    expect(bgOf(items[0]!), '键盘走回首项后仍是同一档高亮').toBe(highlighted)
   })
 
   it('键盘激活打开时首项保留 focus-visible accent', async () => {
+    await parkPointer()
     const menu = createDropdown(TWO_ITEMS)
     await menu.updateComplete
 
     menu.querySelector<HTMLButtonElement>('button')?.dispatchEvent(clickEvent(0))
     await menu.updateComplete
-    await nextFrame()
-    await nextFrame()
+    await waitForFrame()
+    await waitForFrame()
 
     const items = openRootItems()
     expect(items[0]?.shadowRoot?.activeElement).toBe(focusedControl(items[0]!))
     expect(focusedControl(items[0]!)?.matches(':focus-visible')).toBe(true)
-    expect(getComputedStyle(focusedControl(items[0]!)!).backgroundColor).toBe('rgb(0, 113, 227)')
+    expect(bgOf(items[0]!), '键盘打开的首项应带上高亮').not.toBe(bgOf(items[1]!))
   })
 
   it('Escape 关闭后将焦点交还 shadow trigger 并移除 aria-controls', async () => {
@@ -335,8 +348,8 @@ describe('WebUiDropdown 组件（浏览器）', () => {
     )
     trigger.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, composed: true, button: 0, buttons: 1 }))
     trigger.focus()
-    await nextFrame()
-    await nextFrame()
+    await waitForFrame()
+    await waitForFrame()
 
     expect(menu.open).toBe(true)
     expect(trigger.getAttribute('aria-expanded')).toBe('true')
@@ -421,11 +434,11 @@ describe('WebUiDropdown 组件（浏览器）', () => {
     const panel = panels[0]!
     panel.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, composed: true }))
     control.blur()
-    await nextFrame()
+    await waitForFrame()
     expect(menu.open).toBe(true)
     panel.dispatchEvent(new PointerEvent('pointerup', { bubbles: true, composed: true }))
     panel.dispatchEvent(clickEvent(1))
-    await nextFrame()
+    await waitForFrame()
 
     expect(menu.open).toBe(true)
     expect(menu.querySelector('[slot="trigger"]')?.getAttribute('aria-expanded')).toBe('true')
@@ -471,7 +484,7 @@ describe('WebUiDropdown 组件（浏览器）', () => {
     expect(await waitForMenuPanels(1)).toHaveLength(1)
 
     await userEvent.keyboard('{ArrowDown}')
-    await nextFrame()
+    await waitForFrame()
     const items = openRootItems()
     expect(items[1]?.shadowRoot?.activeElement).toBe(focusedControl(items[1]!))
 
@@ -694,7 +707,7 @@ describe('WebUiDropdown 组件（浏览器）', () => {
     const submenuControl = focusedControl(requireItemIn(submenuPanel, 'submenu'))!
     submenuControl.focus()
     submenuControl.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowLeft', bubbles: true, composed: true }))
-    await nextFrame()
+    await waitForFrame()
 
     await userEvent.keyboard('{Tab}')
     await waitFor(() => !menu.open, 'Tab 离开 menu 后应关闭')
@@ -770,8 +783,8 @@ describe('WebUiDropdown 组件（浏览器）', () => {
     const submenuControl = focusedControl(submenuPanel.querySelector<HTMLElement>('web-ui-dropdown-item')!)!
     submenuControl.focus()
 
-    await nextFrame()
-    await nextFrame()
+    await waitForFrame()
+    await waitForFrame()
     await userEvent.hover(otherItem!)
     await waitFor(() => submenuPanel.dataset.wuiPresence === 'closing', 'hover 收起后 submenu 应进入退场状态')
     const submenuItem = submenuPanel.querySelector<HTMLElement>('web-ui-dropdown-item')!
@@ -1011,14 +1024,17 @@ describe('WebUiDropdown 组件（浏览器）', () => {
 
   // 上一会话的手势模态不能漏到下一会话：属性驱动的打开没有手势信息，必须回到默认口径。
   it('声明式 open 打开不沿用上一次键盘会话的 focus 模态', async () => {
+    await parkPointer()
     const menu = createDropdown(TWO_ITEMS)
     await menu.updateComplete
 
     menu.querySelector<HTMLButtonElement>('button')?.dispatchEvent(clickEvent(0))
     await menu.updateComplete
-    await nextFrame()
-    await nextFrame()
-    expect(getComputedStyle(focusedControl(openRootItems()[0]!)!).backgroundColor).toBe('rgb(0, 113, 227)')
+    await waitForFrame()
+    await waitForFrame()
+    const items = openRootItems()
+    const keyboardBg = bgOf(items[0]!)
+    expect(keyboardBg, '键盘打开的首项应带上高亮').not.toBe(bgOf(items[1]!))
 
     menu.closeAll()
     await menu.updateComplete
@@ -1026,10 +1042,12 @@ describe('WebUiDropdown 组件（浏览器）', () => {
 
     menu.open = true
     await menu.updateComplete
-    await nextFrame()
-    await nextFrame()
+    await waitForFrame()
+    await waitForFrame()
 
-    expect(getComputedStyle(focusedControl(openRootItems()[0]!)!).backgroundColor).not.toBe('rgb(0, 113, 227)')
+    const reopened = openRootItems()
+    expect(bgOf(reopened[0]!), '声明式 open 不该沿用上一次键盘会话的高亮').toBe(bgOf(reopened[1]!))
+    expect(bgOf(reopened[0]!)).not.toBe(keyboardBg)
   })
 
   it('指针点击可以打开 submenu', async () => {
@@ -1042,7 +1060,7 @@ describe('WebUiDropdown 组件（浏览器）', () => {
       await menu.updateComplete
       expect(await waitForMenuPanels(1)).toHaveLength(1)
 
-      await nextFrame()
+      await waitForFrame()
       getMenuPanels()[0]?.querySelector<HTMLElement>('web-ui-dropdown-item')?.click()
 
       const opened = await waitForMenuPanels(2)
@@ -1096,12 +1114,12 @@ describe('WebUiDropdown 组件（浏览器）', () => {
 
     // 同帧卸载：`suspend()` 取消了待执行的建 panel 帧，panel 从未被建出来，
     // `toHaveLength(0)` 从一开始就成立。这是**否定断言**（它「本就不该」出现），
-    // 轮询只会把快速失败变成 1s 超时，所以保留原来的固定帧数等待。
+    // 轮询只会把快速失败变成 1s 超时，所以保留固定帧数等待。
     menu.open = true
     await menu.updateComplete
     menu.remove()
-    await nextFrame()
-    await nextFrame()
+    await waitForFrame()
+    await waitForFrame()
 
     expect(getMenuPanels()).toHaveLength(0)
     expect(document.activeElement).toBe(document.body)
@@ -1121,15 +1139,15 @@ describe('WebUiDropdown 组件（浏览器）', () => {
     await waitFor(() => getMenuPanels().length === 1, '根 menu panel 应挂载')
 
     // `disconnectedCallback` → `_disposeAll` → `overlay.remove()` 是同步的，数量在 t0
-    // 就已是 0，轮询它是空转。与下面两处「同帧卸载」同理，保留原来的固定帧数等待。
+    // 就已是 0，轮询它是空转。与下面两处「同帧卸载」同理，保留固定帧数等待。
     menu.remove()
-    await nextFrame()
+    await waitForFrame()
 
     expect(getMenuPanels()).toHaveLength(0)
 
     document.body.append(menu)
     await waitFor(() => getMenuPanels().length === 1, '重挂载后应重建根 menu panel')
-    await nextFrame()
+    await waitForFrame()
 
     const items = openRootItems()
     expect(items).toHaveLength(2)
@@ -1138,7 +1156,7 @@ describe('WebUiDropdown 组件（浏览器）', () => {
     expect(items[0]?.shadowRoot?.activeElement, '重挂载后焦点应回到首个可用 menu item').toBe(firstControl)
 
     firstControl?.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true, composed: true }))
-    await nextFrame()
+    await waitForFrame()
     expect(items[1]?.shadowRoot?.activeElement, 'ArrowDown 应把焦点移到下一项').toBe(focusedControl(items[1]!))
   })
 
@@ -1148,15 +1166,15 @@ describe('WebUiDropdown 组件（浏览器）', () => {
 
     menu.open = true
     await menu.updateComplete
-    await nextFrame()
-    await nextFrame()
+    await waitForFrame()
+    await waitForFrame()
 
     getMenuPanels()[0]?.querySelector<HTMLElement>('web-ui-dropdown-item')?.click()
     await menu.updateComplete
     // 同帧卸载：submenu 那一帧同样被 `suspend()` 取消，拆卸是同步的，数量在 t0 就已是 0。
     menu.remove()
-    await nextFrame()
-    await nextFrame()
+    await waitForFrame()
+    await waitForFrame()
 
     expect(getMenuPanels()).toHaveLength(0)
   })
@@ -1176,14 +1194,14 @@ describe('WebUiDropdown 组件（浏览器）', () => {
 
     menu.open = true
     await menu.updateComplete
-    await nextFrame()
-    await nextFrame()
+    await waitForFrame()
+    await waitForFrame()
 
     const nested = getMenuPanels()[0]?.querySelector<WebUiPopover>('web-ui-popover')
     expect(nested).toBeTruthy()
     nested!.show()
     await nested!.updateComplete
-    await nextFrame()
+    await waitForFrame()
 
     const nestedPanel = getPortalPanels('dialog').find(panel => panel.textContent?.includes('Nested panel'))
     expect(nestedPanel).toBeTruthy()
@@ -1207,8 +1225,8 @@ describe('WebUiDropdown 组件（浏览器）', () => {
 
     menu.querySelector<HTMLButtonElement>('button')?.click()
     await menu.updateComplete
-    await nextFrame()
-    await nextFrame()
+    await waitForFrame()
+    await waitForFrame()
 
     const parentItem = requireRootItem()
     const parentControl = focusedControl(parentItem)!
@@ -1267,14 +1285,14 @@ describe('WebUiDropdown 组件（浏览器）', () => {
 
     menu.querySelector<HTMLButtonElement>('button')?.click()
     await menu.updateComplete
-    await nextFrame()
-    await nextFrame()
+    await waitForFrame()
+    await waitForFrame()
 
     const parentItem = requireRootItem()
     const parentControl = focusedControl(parentItem)!
     parentItem.click()
-    await nextFrame()
-    await nextFrame()
+    await waitForFrame()
+    await waitForFrame()
 
     const submenu = getMenuPanels()[1]
     const submenuControl = focusedControl(requireItemIn(submenu, 'submenu'))!
@@ -1292,7 +1310,7 @@ describe('WebUiDropdown 组件（浏览器）', () => {
       () => getMenuPanels()[1]?.hasAttribute('hidden') === false,
       () => `submenu panel 未就位（当前读到 ${getMenuPanels().length} 个 panel，仍 hidden 或已被移除）`
     )
-    await nextFrame()
+    await waitForFrame()
     const panels = getMenuPanels()
     expect(panels).toHaveLength(2)
     expect(panels[1]?.hasAttribute('hidden')).toBe(false)
@@ -1312,8 +1330,8 @@ describe('WebUiDropdown 组件（浏览器）', () => {
 
     menu.openMenu()
     await menu.updateComplete
-    await nextFrame()
-    await nextFrame()
+    await waitForFrame()
+    await waitForFrame()
     const [rootPanel] = getMenuPanels()
     expect(rootPanel, '根 menu panel 应已挂载').toBeDefined()
     rootPanel!.style.transition = 'opacity 5s'
@@ -1325,13 +1343,13 @@ describe('WebUiDropdown 组件（浏览器）', () => {
 
     menu.closeAll()
     await menu.updateComplete
-    await nextFrame()
+    await waitForFrame()
 
     menu.openMenu()
     await menu.updateComplete
-    await nextFrame()
+    await waitForFrame()
     await menu.updateComplete
-    await nextFrame()
+    await waitForFrame()
 
     expect(getMenuPanels()[0]).toBe(rootPanel)
     expect(getMenuPanels()[1]).toBe(submenuPanel)
@@ -1353,22 +1371,22 @@ describe('WebUiDropdown 组件（浏览器）', () => {
 
     menu.openMenu()
     await menu.updateComplete
-    await nextFrame()
-    await nextFrame()
+    await waitForFrame()
+    await waitForFrame()
     const [rootPanel] = getMenuPanels()
     expect(rootPanel, '根 menu panel 应已挂载').toBeDefined()
     rootPanel!.style.transition = 'opacity 5s'
 
     menu.closeAll()
     await menu.updateComplete
-    await nextFrame()
+    await waitForFrame()
 
     // 框架把 open 绑到响应式属性的常见形态：走 updated() 的 scheduleFrame 分支。
     menu.open = true
     await menu.updateComplete
-    await nextFrame()
+    await waitForFrame()
     await menu.updateComplete
-    await nextFrame()
+    await waitForFrame()
 
     expect(getMenuPanels()[0]).toBe(rootPanel)
     expect(menu.open).toBe(true)
@@ -1392,16 +1410,16 @@ describe('WebUiDropdown 组件（浏览器）', () => {
 
     menu.openMenu()
     await menu.updateComplete
-    await nextFrame()
-    await nextFrame()
+    await waitForFrame()
+    await waitForFrame()
     const [rootPanel] = getMenuPanels()
     expect(rootPanel, '根 menu panel 应已挂载').toBeDefined()
     rootPanel!.style.transition = 'opacity 5s'
 
     // 用 requireRootItem 而非可选链：panel 没到位时要响亮失败，而不是静默跳过点击。
     requireRootItem().click()
-    await nextFrame()
-    await nextFrame()
+    await waitForFrame()
+    await waitForFrame()
     const submenuPanel = getMenuPanels()[1]
     expect(submenuPanel, 'submenu panel 应已挂载').toBeDefined()
     submenuPanel!.style.transition = 'opacity 5s'
@@ -1410,21 +1428,21 @@ describe('WebUiDropdown 组件（浏览器）', () => {
     const submenuControl = focusedControl(requireItemIn(submenuPanel, 'submenu'))!
     submenuControl.focus()
     // 收尾栈里的 ArrowLeft：断的是「panel**仍在场**」，数量从头到尾就是 2，
-    // 等它变成 2 是空转。保留原来的固定帧数等待。
+    // 等它变成 2 是空转。保留固定帧数等待。
     submenuControl.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowLeft', bubbles: true, composed: true }))
-    await nextFrame()
-    await nextFrame()
+    await waitForFrame()
+    await waitForFrame()
     expect(getMenuPanels()).toHaveLength(2)
 
     menu.closeAll()
     await menu.updateComplete
-    await nextFrame()
+    await waitForFrame()
 
     menu.openMenu()
     await menu.updateComplete
-    await nextFrame()
+    await waitForFrame()
     await menu.updateComplete
-    await nextFrame()
+    await waitForFrame()
 
     expect(getMenuPanels()[0]).toBe(rootPanel)
     expect(getMenuPanels()[1]).toBe(submenuPanel)

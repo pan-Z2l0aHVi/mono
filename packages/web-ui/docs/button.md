@@ -209,7 +209,7 @@ import { lucideChevronLeft, lucideChevronRight, lucideSearch } from '@greypan/we
 
 ### Icon mode
 
-`icon` zeroes the padding and makes `min-width` equal the height, so the host becomes a square. The default slot is treated wholesale as icon content and no longer wrapped in the label span; `prefix` / `suffix` are not rendered in this mode.
+`icon` zeroes the padding and makes `min-width` equal the height, so the host becomes a square. The default slot is treated wholesale as icon content, without the label span wrapper; `prefix` / `suffix` are not rendered in this mode.
 
 An icon button with no visible text must have an `aria-label`, otherwise a screen reader announces an empty button.
 
@@ -596,7 +596,7 @@ const fourStates = {
 
 `click` is dispatched by the native button inside the shadow root, bubbles out composed to the host, and `event.target` is retargeted to the host. Enter and Space go through the same native activation, so pointer and keyboard share this one event.
 
-`disabled`, `loading`, and form-level disabling (an ancestor `<fieldset disabled>`) all really disable the inner button: no click is produced and the tab order no longer reaches it.
+`disabled`, `loading`, and form-level disabling (an ancestor `<fieldset disabled>`) all really disable the inner button: no click is produced and the tab order does not reach it.
 
 `aria-label` and `aria-expanded` are explicitly delegated to the native button inside; `aria-controls` and other attributes stay on the host and are not copied automatically, because IDREFs cannot resolve across a shadow root.
 

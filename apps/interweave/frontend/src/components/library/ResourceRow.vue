@@ -36,9 +36,9 @@ const props = defineProps<{
   editingNameKey: string | null
   editorRef: NameEditorRef
   /**
-   * roving tabindex：只有当前活动行是 tab stop，其余是 -1。虚拟化之前每行 tabindex="0"，
-   * Tab 能逐行走完全部资源；虚拟化之后只有窗口内的行在 DOM 里，Tab 会在窗口边界直接跳出
-   * 列表，而视觉上还剩几百行——那是个陷阱。列表改为单一 tab stop，方向键在行间移动焦点。
+   * roving tabindex：只有当前活动行是 tab stop，其余是 -1。列表是虚拟化的，只有窗口内的行在
+   * DOM 里，逐行 tabindex="0" 的话 Tab 会在窗口边界直接跳出列表，而视觉上还剩几百行——那是
+   * 个陷阱。列表用单一 tab stop，方向键在行间移动焦点。
    *
    * 它只管行本身。行内的勾选框与改名编辑器是各自独立的可聚焦元素，不受这个值影响，
    * 两层要分开：把行移出 Tab 序列是为了让「跳过整个列表」和「进列表」这两跳说得清，

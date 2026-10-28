@@ -115,7 +115,7 @@ export class WebUiDropdown extends LitElement {
   @state() private _activePath: number[] = []
 
   private readonly _overlays = new Map<number, MenuOverlay>()
-  /** 实例作用域的帧事务入口（合并了原 lifecycle）。 */
+  /** 实例作用域的帧事务入口。 */
   private readonly _overlay = defineOpenOverlay().make({
     requestClose: () => this._keyboardDelegate.closeDeepestOrAll(),
     isConnected: () => this.isConnected
@@ -292,7 +292,7 @@ export class WebUiDropdown extends LitElement {
          */
         this._suppressInitialFocusVisible = true
         /*
-         * release ⟺ 关闭：新模块里「已登记」就等于「参与仲裁」，不再由 host.isOpen()
+         * release ⟺ 关闭：「已登记」就等于「参与仲裁」，不依赖 host.isOpen()
          * 兜底过滤，所以必须在这里撤销，不能等到退场动画结束。
          */
         this._handle?.release()
@@ -560,7 +560,7 @@ export class WebUiDropdown extends LitElement {
    *
    * 退场被打断时（`_closeRootAfterPresence` 在 `hideOverlayPresence` 返回 false 后提前
    * return）panel 仍在 DOM 里，而关闭分支已经把 handle 撤了。此时重开走的是 `_ensureOverlay`
-   * 的两条复用分支，它们不会重跑 `_buildOverlay`——原先只有 `_buildOverlay` 会 claim/adopt，
+   * 的两条复用分支，它们不会重跑 `_buildOverlay`——claim/adopt 若只挂在 `_buildOverlay` 上，
    * 于是出现「panel 可见 + `open === true` 却没有任何登记」：Escape 关不掉它（仲裁看不到它），
    * 守卫里 `contains` 恒 false，点 panel 内部反被当成外部点击关掉整张 menu。
    *
@@ -582,8 +582,8 @@ export class WebUiDropdown extends LitElement {
     /*
      * 收尾栈里的 submenu panel 同样「可见但已脱离快照」：`_closeSubmenuFrom` 只把它们移出
      * `_overlays`，层仍挂在旧 handle 下、panel 仍在 DOM 里退场。不重挂的话它们会被判成 panel 外，
-     * 点它内部就关掉整张 menu —— base 的 `composition.contains` 走登记树、且退场期间不注销，
-     * 所以这条是相对 base 的行为回归，不是 parity。
+     * 点它内部就关掉整张 menu —— `composition.contains` 走登记树、且退场期间不注销，
+     * 所以收尾栈里的层必须重挂。
      * 新 handle 要写回容器：收尾结束时 adapter.dispose 释放的是 `container.handle`。
      */
     for (const container of this._closingSubmenus.closing()) {
@@ -648,7 +648,7 @@ export class WebUiDropdown extends LitElement {
       } else {
         /*
          * 子层进根 handle 子树，默认不是独立候选 —— 「在树里但不是这一层」由此表达；
-         * 原先按 level 找父 panel 的判断随之消失。用 `_ensureRootHandle()` 而不是 `_handle?.`：
+         * 用 `_ensureRootHandle()` 而不是 `_handle?.`：
          * 后者在 handle 意外缺失时会静默跳过 adopt，留下一棵无人认领的子树。
          */
         const handle = this._ensureRootHandle().adopt(overlay)
@@ -727,7 +727,7 @@ export class WebUiDropdown extends LitElement {
   /*
    * trigger 语义回写（Q9a）：slot 进来的元素是真正的可聚焦交互元素，
    * aria-haspopup / aria-expanded / aria-controls 必须设在它身上；
-   * 组件没有 trigger 包装 div，此前完全没有 ARIA 接线。
+   * 组件没有 trigger 包装 div，ARIA 没有别处可挂。
    */
   private _syncTriggerAria() {
     const trigger = this._queryTriggerAnchor()

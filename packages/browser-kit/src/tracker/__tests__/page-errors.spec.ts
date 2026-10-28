@@ -5,8 +5,6 @@ import { defineBatchTrack } from '../plugins/batch-track'
 import { definePageErrors } from '../plugins/page-errors'
 import type { PageErrorsOptions } from '../plugins/page-errors'
 
-vi.useFakeTimers()
-
 /** 记录条目的 fake transport；替代 sendBeacon 桩与 MSW 捕获。 */
 function createTransportStub() {
   const items: object[] = []
@@ -53,6 +51,7 @@ describe('definePageErrors 测试', () => {
   }) => window.dispatchEvent(new ErrorEvent('error', detail))
 
   beforeEach(() => {
+    vi.useFakeTimers()
     vi.clearAllTimers()
     vi.restoreAllMocks()
     localStorage.clear()
@@ -63,6 +62,7 @@ describe('definePageErrors 测试', () => {
     // 不 stop 会让监听器活到下一个用例，把两个用例的错误混进同一条记录
     for (const tracker of trackers) tracker.stop()
     trackers.length = 0
+    vi.useRealTimers()
   })
 
   it('uncaught error 生成带来源位置的 page_error 事件', async () => {
@@ -228,7 +228,8 @@ describe('definePageErrors 测试', () => {
 
     // 标准字段被覆盖会让后端把一条崩溃记录当成任意事件解析，错误彻底不可用
     expect(payload.event).toBe('page_error')
-    expect(payload.error).not.toBeNull()
+    expect(payload.error).toMatchObject({ category: 'uncaught', message: 'boom' })
+    expect(payload.timestamp).not.toBe(0)
   })
 
   it('reason 无法字符串化时上报占位文案，且不产生二次异常', async () => {

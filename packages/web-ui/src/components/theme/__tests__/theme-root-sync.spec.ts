@@ -7,13 +7,16 @@ import { WebUiTheme } from '..'
  * jsdom 不解析 shadow 树里的 `:host` 规则，所以用一份文档级夹具样式顶替组件内部 CSS 的
  * appearance → page 色映射：这里要验的是注册表的所有权、顺延与写入时机，token 的字面值由
  * theme-root-sync.browser.spec.ts 在真实 Chromium 上对 documentElement 实测。
+ *
+ * `appearance=system` 跟随系统配色翻转也归那份：它用真实 prefers-color-scheme 双向翻转，
+ * 并先自检两档 page 色可分辨，比这里拿 matchMedia 桩断言查询串字面量（`queries` 里必须出现
+ * `(prefers-color-scheme: dark)`，那是实现细节）更强。jsdom 侧的副本已删，桩只留给下面
+ * 「登记表清空后移除系统配色监听」这条数监听器增删的用例。
  */
 const LIGHT_PAGE = '#ffffff'
 const DARK_PAGE = '#242628'
 const FIXTURE_PAGE = '#123456'
 const FIXTURE_STYLE_ID = 'web-ui-theme-root-sync-fixture'
-
-const SCHEME_QUERY = '(prefers-color-scheme: dark)'
 
 function readRootPage(): string {
   return document.documentElement.style.getPropertyValue('--wui-color-page')
@@ -27,16 +30,14 @@ async function mountTheme(appearance?: ThemeAppearance, parent: HTMLElement = do
   return theme
 }
 
-/** 记录 matchMedia 查询与 change 监听，供 system 档用例驱动一次「系统翻转」。 */
+/** 记下 change 监听的增删，供「登记表清空后移除监听」那条用例数监听器。 */
 function stubMatchMedia() {
-  const queries: string[] = []
   const listeners = new Set<() => void>()
   const descriptor = Object.getOwnPropertyDescriptor(window, 'matchMedia')
   Object.defineProperty(window, 'matchMedia', {
     configurable: true,
     writable: true,
     value: (query: string) => {
-      queries.push(query)
       return {
         matches: false,
         media: query,
@@ -48,11 +49,7 @@ function stubMatchMedia() {
     }
   })
   return {
-    queries,
     listenerCount: () => listeners.size,
-    emitSchemeChange() {
-      for (const listener of Array.from(listeners)) listener()
-    },
     restore() {
       if (descriptor) Object.defineProperty(window, 'matchMedia', descriptor)
       else Reflect.deleteProperty(window, 'matchMedia')
@@ -65,9 +62,7 @@ beforeEach(() => {
   style.id = FIXTURE_STYLE_ID
   style.textContent = `
     web-ui-theme[appearance='light'] { --wui-color-page: ${LIGHT_PAGE}; }
-    web-ui-theme[appearance='system'] { --wui-color-page: ${LIGHT_PAGE}; }
     web-ui-theme[appearance='dark'] { --wui-color-page: ${DARK_PAGE}; }
-    web-ui-theme[data-fixture-page] { --wui-color-page: ${FIXTURE_PAGE}; }
   `
   document.head.append(style)
 })
@@ -108,12 +103,10 @@ describe('WebUiTheme 根节点 page 色同步', () => {
     document.body.append(theme)
     await theme.updateComplete
     expect(readRootPage()).toBe('')
-    expect(globalThis.__webUiThemeRootSyncCount()).toBe(0)
 
     theme.appearance = 'dark'
     await theme.updateComplete
     expect(readRootPage()).toBe(DARK_PAGE)
-    expect(globalThis.__webUiThemeRootSyncCount()).toBe(1)
   })
 
   it('appearance 被清空时撤销登记，同步权顺延给下一个实例', async () => {
@@ -123,7 +116,6 @@ describe('WebUiTheme 根节点 page 色同步', () => {
 
     first.appearance = undefined
     await first.updateComplete
-    expect(globalThis.__webUiThemeRootSyncCount()).toBe(1)
     expect(readRootPage()).toBe(DARK_PAGE)
     second.remove()
   })
@@ -169,7 +161,6 @@ describe('WebUiTheme 根节点 page 色同步', () => {
 
     outer.remove()
     expect(readRootPage()).toBe(DARK_PAGE)
-    expect(globalThis.__webUiThemeRootSyncCount()).toBe(1)
   })
 
   it('两个并列主题：先连接的那个断开后由后者接管', async () => {
@@ -183,7 +174,6 @@ describe('WebUiTheme 根节点 page 色同步', () => {
     second.remove()
     // 全部断开：保留最后值，避免 body 背景闪回 UA 白底。
     expect(readRootPage()).toBe(DARK_PAGE)
-    expect(globalThis.__webUiThemeRootSyncCount()).toBe(0)
   })
 
   it('整棵子树一起卸载时保留最后值', async () => {
@@ -191,7 +181,6 @@ describe('WebUiTheme 根节点 page 色同步', () => {
     await mountTheme('dark', outer)
     outer.remove()
     expect(readRootPage()).toBe(LIGHT_PAGE)
-    expect(globalThis.__webUiThemeRootSyncCount()).toBe(0)
   })
 
   /*
@@ -205,23 +194,6 @@ describe('WebUiTheme 根节点 page 色同步', () => {
 
     const second = await mountTheme('light')
     expect(readRootPage()).toBe(LIGHT_PAGE)
-    expect(globalThis.__webUiThemeRootSyncCount()).toBe(1)
-  })
-
-  it('appearance=system 跟随系统配色翻转', async () => {
-    const stub = stubMatchMedia()
-    try {
-      const theme = await mountTheme('system')
-      expect(stub.queries).toContain(SCHEME_QUERY)
-      expect(readRootPage()).toBe(LIGHT_PAGE)
-
-      // 计算值换成另一个字面量，再驱动一次 change：root 值必须被重算。
-      theme.setAttribute('data-fixture-page', '')
-      stub.emitSchemeChange()
-      expect(readRootPage()).toBe(FIXTURE_PAGE)
-    } finally {
-      stub.restore()
-    }
   })
 
   it('登记表清空后移除系统配色监听', async () => {
@@ -278,6 +250,10 @@ describe('WebUiTheme 根节点 page 色同步', () => {
     expect(readRootPage()).toBe(FIXTURE_PAGE)
   })
 
+  /*
+   * 同步只写「值变了」的 token：同值重写会让 documentElement 每次主题更新都做一次无谓的
+   * 样式失效。这里数的就是那次写入——值没变时不该再写。
+   */
   it('值未变化时不重复写入 documentElement', async () => {
     const theme = await mountTheme('light')
     const setter = vi.spyOn(document.documentElement.style, 'setProperty')

@@ -2,9 +2,9 @@
  * Library headless view-model store。
  *
  * 职责边界（ADR-0015：Pinia 不复制 Go 内部规则）：这里只做两类事——
- * 1. DTO → view-model 翻译：与后端契约的词汇在此一次性对齐。早期草稿里的
- *    name / broken / sourceType: 'local'|'link' 等分歧词汇，
- *    对应关系为 name→title、broken→!available、local/link→file/url；页面不得再各自翻译 DTO。
+ * 1. DTO → view-model 翻译：与后端契约的词汇在此一次性对齐。name / broken /
+ *    sourceType: 'local'|'link' 等分歧词汇，对应关系为
+ *    name→title、broken→!available、local/link→file/url；页面不得各自翻译 DTO。
  * 2. 列表展示语义：搜索、过滤、排序与派生标签集合，恰好实现一次。
  * preferred 基数、唯一 Source 删除约束等领域不变量留在 Go core，前端只读。
  *

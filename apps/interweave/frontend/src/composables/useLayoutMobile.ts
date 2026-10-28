@@ -4,7 +4,7 @@ import { inject, provide, readonly, ref, type DeepReadonly, type InjectionKey, t
 /*
  * 移动端判定由 `web-ui-layout` 独占：它同时决定渲染哪一套树（桌面 aside / 移动端 drawer），
  * 对外以 `mobile` 属性与 `mobile-change` 事件暴露同一时刻的值。应用壳只做接线，页面只做读取——
- * app 侧不再出现断点常量，也不会出现「壳已按移动端排版、layout 却还在桌面树」的半拍错位
+ * app 侧没有断点常量，也不会出现「壳已按移动端排版、layout 却还在桌面树」的半拍错位
  * （issue #195 里三份断点判断各自踩坑的根因）。
  */
 const layoutMobileKey: InjectionKey<DeepReadonly<Ref<boolean>>> = Symbol('layout-mobile')

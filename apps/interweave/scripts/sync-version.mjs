@@ -8,11 +8,11 @@
 //
 // 读判据与写落点共用下面同一张表：否则「校验通过」和「写入完成」各自漂移，而 CI 只看得见前者。
 //
-// 不再调用 `wails3 update build-assets`：它按内嵌模板整文件重渲染产物，而版本变更只需要替换版本
+// 不调用 `wails3 update build-assets`：它按内嵌模板整文件重渲染产物，而版本变更只需要替换版本
 // token。窄写法保住产物里的非版本内容，也让版本 job 不必装 Go 与桌面工具链——那次 spawn 曾在版本
 // PR 路径上因缺系统库以 exit 127 炸掉整个发版链。实测（2026-09-22，装机对临时副本跑一次重新脚手架）：
 // 除 `windows/info.json` 外全部字节相同，而它被模板写成 tab 缩进且无结尾换行，`vp check` 判为未格式化
-// ——所以旧写法连版本提交自己的格式 gate 都过不了。只有重新脚手架构建产物（改 icon、加 file
+// ——所以 wails3 那套写法连版本提交自己的格式 gate 都过不了。只有重新脚手架构建产物（改 icon、加 file
 // association）才需要在装机环境跑 `wails3 task common:update:build-assets`。
 //
 // CI 调用点：

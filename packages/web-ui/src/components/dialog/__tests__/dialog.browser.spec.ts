@@ -3,7 +3,7 @@ import '..'
 import { afterEach, describe, expect, it } from 'vite-plus/test'
 import { userEvent } from 'vite-plus/test/browser'
 
-import { pollUntil } from '@/shared/test-utils'
+import { flush, pollUntil } from '@/shared/test-utils'
 import { scrollWindowTo, setViewport } from '@/shared/test-utils/viewport'
 
 import type { WebUiDialog } from '..'
@@ -81,19 +81,30 @@ describe('WebUiDialog 组件（浏览器）', () => {
     expect(document.elementFromPoint(window.innerWidth / 2, window.innerHeight / 2)).toBe(centerTarget)
   })
 
-  it('panel 自身不夺焦，内部 button 可聚焦', async () => {
+  it('panel 自身不夺焦，打开时焦点交给内部的 button', async () => {
     const component = createDialog()
     const button = document.createElement('button')
     button.textContent = '打开'
     component.append(button)
+
+    /*
+     * 「panel 自身不夺焦」要判的是开启那一刻焦点去了哪，所以焦点必须从一个宿主之外的起点开始：
+     * 先 focus 一个宿主之外的 button，再打开 dialog，断言 activeElement 是打开那一刻真正被聚焦的节点。
+     */
+    const outside = document.createElement('button')
+    outside.textContent = '外部'
+    document.body.append(outside)
+    outside.focus()
+    expect(document.activeElement).toBe(outside)
+
     component.open = true
     await component.updateComplete
     await new Promise(resolve => requestAnimationFrame(resolve))
 
-    const dialog = component.shadowRoot?.querySelector('dialog') as HTMLDialogElement
-    dialog.focus()
-
-    button.focus()
+    // 焦点没有停在 shadow 里那层 <dialog> 上：面板自己不接焦点。（`:modal` 由下面
+    // 「modal 固定在视口内」那条拥有，这里不重复判。）
+    expect(component.shadowRoot?.activeElement).toBeNull()
+    // 而是交给内容里第一个可聚焦元素——用户 Tab 进来的那一个。
     expect(document.activeElement).toBe(button)
   })
 
@@ -111,7 +122,7 @@ describe('WebUiDialog 组件（浏览器）', () => {
     expect(dialog?.open).toBe(true)
 
     dialog?.dispatchEvent(new TransitionEvent('transitionend', { propertyName: 'transform' }))
-    await new Promise(resolve => setTimeout(resolve))
+    await flush()
     expect(dialog?.open).toBe(false)
   })
 
@@ -204,7 +215,7 @@ describe('WebUiDialog 组件（浏览器）', () => {
     component.open = false
     await component.updateComplete
     dialog?.dispatchEvent(new TransitionEvent('transitionend', { propertyName: 'transform' }))
-    await new Promise(resolve => setTimeout(resolve))
+    await flush()
     expect(component.open).toBe(false)
     expect(dialog?.open).toBe(false)
     expect(events).toHaveLength(2)
@@ -246,7 +257,7 @@ describe('WebUiDialog 组件（浏览器）', () => {
     expect(events).toHaveLength(0)
   })
   it('modal 固定在视口内：页面滚动后仍完整可见，且处于 :modal 层', async () => {
-    // 历史回归：单层重构曾把 dialog 覆盖成 `position: relative`，导致 top layer 里的 modal
+    // dialog 必须是 fixed：top layer 里的 modal 一旦覆盖成 `position: relative`，就会
     // 回到文档流——出现在页面顶部且跟随页面滚动，用户看到「残影」与「没有固定居中」。
     //
     // 判据只取行为约束「滚动后不离开视口」与平台语义 `:modal`，不锁任何像素或计算样式。

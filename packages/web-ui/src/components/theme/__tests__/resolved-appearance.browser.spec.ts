@@ -3,6 +3,8 @@ import '..'
 import { afterEach, describe, expect, it } from 'vite-plus/test'
 import { cdp } from 'vite-plus/test/browser'
 
+import { pollUntil } from '@/shared/test-utils'
+
 import type { ThemeAppearance, WebUiTheme } from '..'
 
 interface CdpSession {
@@ -24,12 +26,11 @@ async function mountTheme(appearance?: ThemeAppearance): Promise<WebUiTheme> {
 }
 
 async function waitForResolvedAppearance(theme: WebUiTheme, expected: 'light' | 'dark'): Promise<void> {
-  const deadline = performance.now() + 2000
-  while (performance.now() < deadline) {
-    if (theme.getAttribute('resolved-appearance') === expected) return
-    await new Promise(resolve => requestAnimationFrame(resolve))
-  }
-  throw new Error(`resolved appearance did not become ${expected}, still ${theme.getAttribute('resolved-appearance')}`)
+  await pollUntil(
+    () => theme.getAttribute('resolved-appearance') === expected,
+    () =>
+      `resolved appearance did not become ${expected}, still ${theme.getAttribute('resolved-appearance') ?? '(unset)'}`
+  )
 }
 
 afterEach(async () => {

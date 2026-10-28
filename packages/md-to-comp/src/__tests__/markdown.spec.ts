@@ -144,7 +144,7 @@ describe('parseMarkdown', () => {
     expect(vars.columns.map(column => column.kind)).toEqual(['name', 'html', 'code'])
     expect(vars.rows[0]).toEqual(['--wui-input-width', '<p>紧凑控件默认宽度。</p>', '200px'])
 
-    // 浅色/深色是两根并列的值列——这正是旧的四列形状（类型/默认值）表达不了的那一型。
+    // 浅色/深色是两根并列的值列——类型/默认值那种四列形状表达不了这一型。
     const colors = tableOf(doc, 'color tokens')
     expect(colors.columns.map(column => column.kind)).toEqual(['name', 'html', 'code', 'code'])
     expect(colors.rows[0]).toEqual(['--wui-color-page', '<p>页面背景。</p>', '#fff', '#242628'])
@@ -233,7 +233,7 @@ describe('parseMarkdown', () => {
       /与前面的示例重复/
     ],
     ['出现不认识的一级小节', parseWith(source => `${source}\n## 注意事项\n\n写着玩的。\n`), /不认识的小节/],
-    // 旧中文小节名不再是契约的一部分：语料分语种之后骨架名只有一套，`## 示例` 是写法错误。
+    // 中文小节名不是契约的一部分：语料分语种，骨架名只有一套，`## 示例` 是写法错误。
     ['还写着旧的中文小节名', parseWith(source => source.replace('## Samples', '## 示例')), /不认识的小节/],
     ['同一小节写两遍', parseWith(source => source.replace('## API', `## Samples\n\n${SAMPLE}\n## API`)), /出现多次/],
     [
@@ -241,7 +241,7 @@ describe('parseMarkdown', () => {
       parseWith(source => source.replace('## Samples\n\n', '## Samples\n\n这段谁都不渲染。\n\n')),
       /不会被渲染/
     ],
-    // 旧写法（`react` 当围栏语言）归为未支持：格式化器看不见它，落盘的 .tsx 却归格式化器管。
+    // 围栏语言写成 `react` 归为未支持：格式化器看不见它，落盘的 .tsx 却归格式化器管。
     [
       '围栏语言写成 react',
       parseWith(source => source.replace('```tsx', '```react')),

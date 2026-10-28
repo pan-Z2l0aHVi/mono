@@ -251,7 +251,7 @@ export class WebUiSwitch extends FormAssociated(LitElement) {
       'is-disabled': this._isDisabled || this.loading
     }
     // wui-glass 条件化：静止态实体白 thumb，按压/拖拽时切换为玻璃（backdrop blur +
-    // 无填充 + 描边）并放大，回到最初修复不跟手问题时期的视觉结构。
+    // 无填充 + 描边）并放大。
     const thumbCls = {
       'wui-switch-thumb': true,
       'wui-glass': this._pressed || this._isDragging,

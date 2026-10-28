@@ -6,6 +6,8 @@ import { cleanupElement, mountElement, waitForUpdate } from '@/shared/test-utils
 import { WebUiSpinner } from '..'
 
 afterEach(() => {
+  // 用例体里切过假时钟；断言中途失败时不会执行到 useRealTimers，必须先复位。
+  vi.useRealTimers()
   document.body.replaceChildren()
   WebUiSpinner.hide()
 })

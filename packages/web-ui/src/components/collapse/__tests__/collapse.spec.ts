@@ -3,7 +3,7 @@ import '@/components/button'
 
 import { describe, expect, it } from 'vite-plus/test'
 
-import { cleanupElement, spyEvents, waitForUpdate } from '@/shared/test-utils'
+import { cleanupElement, spyEvents, waitForFrame, waitForUpdate } from '@/shared/test-utils'
 
 import type { WebUiCollapse } from '..'
 
@@ -27,9 +27,6 @@ const contentState = (el: WebUiCollapse): 'hidden' | 'inert' | 'interactive' => 
 }
 
 /** peek 的动画写入落在 rAF 回调里；jsdom 无过渡时长，一帧后即落稳态。 */
-async function nextFrame() {
-  await new Promise(resolve => requestAnimationFrame(resolve))
-}
 
 // 点击 slot 进来的 trigger button（click 冒泡穿过 trigger wrapper 代理切换）。
 async function clickTrigger(el: WebUiCollapse) {
@@ -443,10 +440,10 @@ describe('WebUiCollapse 组件', () => {
 
       el.open = true
       await waitForUpdate(el)
-      await nextFrame()
+      await waitForFrame()
       el.open = false
       await waitForUpdate(el)
-      await nextFrame()
+      await waitForFrame()
 
       expect(events).toHaveLength(0)
       cleanupElement(el)

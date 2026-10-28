@@ -82,19 +82,20 @@ function intersectionArea(a: DOMRect, b: DOMRect): number {
 }
 
 describe('WebUiDialog 关闭 button 偏移（浏览器几何）', () => {
-  it('header 模式：默认 top / right 相等，都是 20px', async () => {
-    const el = mount('<span slot="header">设置</span>')
-    await openAndSettle(el)
+  it('header 与 headless 两种模式的默认偏移一致，且 button 落在卡片内', async () => {
+    const titleMode = mount('<span slot="header">设置</span>')
+    const headlessMode = mount('<section>自定义主体</section>')
+    headlessMode.headless = true
+    await openAndSettle(titleMode)
+    await openAndSettle(headlessMode)
 
-    expect(closeOffsets(el)).toEqual({ top: 20, right: 20 })
-  })
-
-  it('headless 模式：默认 top / right 仍是 20px', async () => {
-    const el = mount('<section>自定义主体</section>')
-    el.headless = true
-    await openAndSettle(el)
-
-    expect(closeOffsets(el)).toEqual({ top: 20, right: 20 })
+    // 缺陷形态是两种模式各用一套默认值（header 由 padding 决定，headless 走绝对定位），
+    // 用户可感知的差异是两种模式的偏移不等。默认值本身是视觉常量，不在这里钉数字。
+    const titleOffsets = closeOffsets(titleMode)
+    expect(titleOffsets).toEqual(closeOffsets(headlessMode))
+    for (const offset of [titleOffsets.top, titleOffsets.right]) {
+      expect(offset, '关闭 button 应保留可见的边距').toBeGreaterThan(0)
+    }
   })
 
   it('两种模式都跟随 --wui-dialog-close-top / --wui-dialog-close-right（可不等）', async () => {

@@ -38,51 +38,87 @@ function textContent(host: HTMLElement, text: string) {
   return [...host.querySelectorAll('span')].find(element => element.textContent?.trim() === text)
 }
 
+const TARGET: LibraryQueueItem = {
+  id: 'queue-item',
+  kind: 'file',
+  resourceKind: ResourceKind.ResourceKindImage,
+  title: '待添加图片',
+  location: '/tmp/photo.png',
+  tags: ['设计'],
+  previewToken: 'opaque-token',
+  mediaUrl: '/pending-resource-media/opaque-token'
+}
+
+/** 在 tag autocomplete 里选中一个候选并提交 change。 */
+async function selectCandidate(host: HTMLElement, tagName: string): Promise<void> {
+  const input = host.querySelector<WebUiAutocomplete>('web-ui-autocomplete')
+  if (!input) throw new Error('tag autocomplete was not rendered')
+
+  input.value = tagName
+  input.dispatchEvent(new Event('input', { bubbles: true, composed: true }))
+  input.dispatchEvent(new Event('change', { bubbles: true, composed: true }))
+  await nextTick()
+}
+
+function clickButtonByLabel(host: HTMLElement, label: string): void {
+  const button = host.querySelector<HTMLElement>(`web-ui-button[aria-label="${label}"]`)
+  if (!button) throw new Error(`${label} button was not rendered`)
+  button.click()
+}
+
+function clickButtonByText(host: HTMLElement, text: string): void {
+  const button = [...host.querySelectorAll('web-ui-button')].find(node => node.textContent?.trim() === text)
+  if (!button) throw new Error(`${text} button was not rendered`)
+  ;(button as HTMLElement).click()
+}
+
 describe('EditTagsDialog', () => {
-  it('选中候选只回写 input，确认后才增删并即时保存，完成 button 只关闭', async () => {
-    const target: LibraryQueueItem = {
-      id: 'queue-item',
-      kind: 'file',
-      resourceKind: ResourceKind.ResourceKindImage,
-      title: '待添加图片',
-      location: '/tmp/photo.png',
-      tags: ['设计'],
-      previewToken: 'opaque-token',
-      mediaUrl: '/pending-resource-media/opaque-token'
-    }
+  it('选中候选只回写 input，不直接落入当前标签、不触发保存', async () => {
     const save = vi.fn<(resourceId: string, tagNames: string[]) => void>()
-    const mounted = mountDialog(target, save)
+    const mounted = mountDialog(TARGET, save)
 
     try {
       await nextTick()
       expect(textContent(mounted.host, '设计')).not.toBeUndefined()
 
-      const input = mounted.host.querySelector<WebUiAutocomplete>('web-ui-autocomplete')
-      if (!input) throw new Error('tag autocomplete was not rendered')
-
-      // 选中候选（change）只回写 input，不直接落入当前标签、不触发保存。
-      input.value = '旅行'
-      input.dispatchEvent(new Event('input', { bubbles: true, composed: true }))
-      input.dispatchEvent(new Event('change', { bubbles: true, composed: true }))
-      await nextTick()
+      await selectCandidate(mounted.host, '旅行')
       expect(textContent(mounted.host, '旅行')).toBeUndefined()
       expect(save).not.toHaveBeenCalled()
+    } finally {
+      mounted.close()
+    }
+  })
 
-      // 点确认 button 才把 input 内容加入当前标签，并即时以队列 id 保存。
-      const confirmAdd = mounted.host.querySelector<HTMLElement>('web-ui-button[aria-label="确认添加标签"]')
-      if (!confirmAdd) throw new Error('confirm add button was not rendered')
-      confirmAdd.click()
+  it('点确认才把 input 内容加入当前标签，并以队列 id 即时保存', async () => {
+    const save = vi.fn<(resourceId: string, tagNames: string[]) => void>()
+    const mounted = mountDialog(TARGET, save)
+
+    try {
+      await nextTick()
+      await selectCandidate(mounted.host, '旅行')
+
+      clickButtonByLabel(mounted.host, '确认添加标签')
       await nextTick()
       expect(textContent(mounted.host, '旅行')).not.toBeUndefined()
       expect(save).toHaveBeenCalledOnce()
       expect(save).toHaveBeenCalledWith('queue-item', ['设计', '旅行'])
+    } finally {
+      mounted.close()
+    }
+  })
 
-      // 「完成」只是关闭，不再触发保存。
-      const done = [...mounted.host.querySelectorAll('web-ui-button')].find(
-        button => button.textContent?.trim() === '完成'
-      )
-      if (!done) throw new Error('done button was not rendered')
-      done.click()
+  it('「完成」只是关闭，不再触发保存', async () => {
+    const save = vi.fn<(resourceId: string, tagNames: string[]) => void>()
+    const mounted = mountDialog(TARGET, save)
+
+    try {
+      await nextTick()
+      await selectCandidate(mounted.host, '旅行')
+      clickButtonByLabel(mounted.host, '确认添加标签')
+      await nextTick()
+      expect(save).toHaveBeenCalledOnce()
+
+      clickButtonByText(mounted.host, '完成')
       expect(save).toHaveBeenCalledOnce()
     } finally {
       mounted.close()

@@ -16,6 +16,7 @@ import type { WebUiDialog } from '@/components/dialog'
 import type { WebUiPopover } from '@/components/popover'
 import type { WebUiSelect } from '@/components/select'
 import type { WebUiTooltip } from '@/components/tooltip'
+import { pollUntil, waitForFrame } from '@/shared/test-utils'
 
 // 默认直通 @floating-ui/dom；enabled 时扣住 context-menu/context-submenu panel 的首次定位结果，
 // 供竞态用例以受控顺序放行「迟到的旧定位写入」（真实 dom platform 完成序恒 FIFO）。
@@ -63,10 +64,6 @@ afterEach(() => {
   document.body.replaceChildren()
 })
 
-async function nextFrame() {
-  await new Promise(resolve => requestAnimationFrame(resolve))
-}
-
 async function openDrawerDialog(): Promise<HTMLDialogElement> {
   const drawer = document.createElement('web-ui-drawer')
   document.body.append(drawer)
@@ -81,7 +78,7 @@ async function openDrawerDialog(): Promise<HTMLDialogElement> {
   const deadline = performance.now() + 1000
   while (performance.now() < deadline) {
     if (dialog.open && dialog.classList.contains('is-visible')) break
-    await nextFrame()
+    await waitForFrame()
   }
   if (!dialog.open || !dialog.classList.contains('is-visible')) {
     throw new Error('Expected the drawer dialog to become visible')
@@ -93,7 +90,7 @@ async function openDrawerDialog(): Promise<HTMLDialogElement> {
   while (performance.now() < settleDeadline) {
     const transform = getComputedStyle(dialog).transform
     if (transform === 'none' || transform === 'matrix(1, 0, 0, 1, 0, 0)') return dialog
-    await nextFrame()
+    await waitForFrame()
   }
   throw new Error('Expected the drawer dialog to settle at its open position')
 }
@@ -101,13 +98,14 @@ async function openDrawerDialog(): Promise<HTMLDialogElement> {
 // 轮询到确定性信号为止，避免固定 sleep 的竞态；panel 定位是异步完成的
 // （Floating UI promise + presence 翻转），需等待 left/top 写入且 presence 翻转。
 async function waitFor<T>(poll: () => T | null | undefined, ready: (value: T) => boolean, message: string): Promise<T> {
-  const deadline = performance.now() + 1000
-  while (performance.now() < deadline) {
+  // 1000ms 墙钟 + 单帧 rAF 自轮询的预算不够：10 包并发跑全仓测试时帧间隔被拉长，
+  // 这条预算被吃光过一次（唯一一次全量失败）。这里用共享轮询：5000ms 预算、
+  // 每步跨 rAF + 宏任务，超时信息带 waited/frames/budget。
+  await pollUntil(() => {
     const value = poll()
-    if (value !== null && value !== undefined && ready(value)) return value
-    await nextFrame()
-  }
-  throw new Error(message)
+    return value !== null && value !== undefined && ready(value)
+  }, message)
+  return poll() as T
 }
 
 async function waitForPanelPositioned(panel: HTMLElement | null | undefined, message: string): Promise<HTMLElement> {
@@ -121,13 +119,9 @@ async function waitForPanelPositioned(panel: HTMLElement | null | undefined, mes
 async function waitForPanelAnimationsToSettle(panel: HTMLElement, message: string) {
   // `open` 在 requestAnimationFrame 回调里切换；当帧查询 `getAnimations()` 可能早于浏览器登记 CSS transition。
   // 跨过完整的样式更新后再判断，避免把尚未启动的 transition 当作已结束。
-  await nextFrame()
-  await nextFrame()
-  await waitFor(
-    () => panel.getAnimations().length,
-    count => count === 0,
-    message
-  )
+  await waitForFrame()
+  await waitForFrame()
+  await pollUntil(() => panel.getAnimations().length === 0, message)
 }
 
 function expectVisibleInDialog(panel: HTMLElement | null | undefined, dialog: HTMLDialogElement) {
@@ -159,7 +153,7 @@ function getContextMenuPanel(selector: string): HTMLElement | null {
 }
 
 /**
- * 取代 `expectVisibleInDialog` 对 context-menu 的适用性：模态化后「panel 在宿主 dialog 内」
+ * context-menu 不适用 `expectVisibleInDialog`：模态化后「panel 在宿主 dialog 内」
  * 恰恰是**被反转**的那半条契约，所以这里额外断言它不再成立 —— 只断言前半条会让
  * 「panel 掉回宿主 dialog」这种真实回归伪装成通过。
  */
@@ -182,8 +176,8 @@ describe('Portal overlay 在已打开原生 dialog 内（top layer）', () => {
 
     popover.show()
     await popover.updateComplete
-    await nextFrame()
-    await nextFrame()
+    await waitForFrame()
+    await waitForFrame()
 
     const panel = getPortalPanel(dialog, '.popover-panel')
     expectVisibleInDialog(panel, dialog)
@@ -201,7 +195,7 @@ describe('Portal overlay 在已打开原生 dialog 内（top layer）', () => {
 
     tooltip.open = true
     await tooltip.updateComplete
-    await nextFrame()
+    await waitForFrame()
 
     const panel = getPortalPanel(dialog, '.tooltip-panel')
     expectVisibleInDialog(panel, dialog)
@@ -219,7 +213,7 @@ describe('Portal overlay 在已打开原生 dialog 内（top layer）', () => {
 
     popover.open = true
     await popover.updateComplete
-    await nextFrame()
+    await waitForFrame()
 
     const popoverPanel = getPortalPanel(dialog, '.popover-panel')
     expectVisibleInDialog(popoverPanel, dialog)
@@ -230,7 +224,7 @@ describe('Portal overlay 在已打开原生 dialog 内（top layer）', () => {
     expect(tooltip).toBeTruthy()
     tooltip.open = true
     await tooltip.updateComplete
-    await nextFrame()
+    await waitForFrame()
 
     const tooltipPanel = getPortalPanel(dialog, '.tooltip-panel')
     expectVisibleInDialog(tooltipPanel, dialog)
@@ -247,7 +241,7 @@ describe('Portal overlay 在已打开原生 dialog 内（top layer）', () => {
 
     select.shadowRoot?.querySelector<HTMLElement>('[role="combobox"]')?.click()
     await select.updateComplete
-    await nextFrame()
+    await waitForFrame()
 
     const panel = getPortalPanel(dialog, '.select-overlay')
     expectVisibleInDialog(panel, dialog)
@@ -268,7 +262,7 @@ describe('Portal overlay 在已打开原生 dialog 内（top layer）', () => {
     autocomplete.shadowRoot?.querySelector<HTMLElement>('[role="combobox"]')?.focus()
     autocomplete.shadowRoot?.querySelector<HTMLElement>('[role="combobox"]')?.click()
     await autocomplete.updateComplete
-    await nextFrame()
+    await waitForFrame()
 
     const panel = getPortalPanel(dialog, '.autocomplete-overlay')
     expectVisibleInDialog(panel, dialog)
@@ -287,8 +281,8 @@ describe('Portal overlay 在已打开原生 dialog 内（top layer）', () => {
 
     menu.openAt(80, 80)
     await menu.updateComplete
-    await nextFrame()
-    await nextFrame()
+    await waitForFrame()
+    await waitForFrame()
 
     // 契约已反转：模态化让 context-menu 自建 scrim 接管「点外面关闭」，panel 因此必须
     // 与 scrim 同处 top layer 才能在模态期间保持可点（top layer 只拦自身子树）。
@@ -381,8 +375,8 @@ describe('Portal overlay 在已打开原生 dialog 内（top layer）', () => {
 
     menu.openAt(80, 80)
     await menu.updateComplete
-    await nextFrame()
-    await nextFrame()
+    await waitForFrame()
+    await waitForFrame()
     await waitForPanelPositioned(panel, 'Expected the latest context menu positioning to complete')
 
     const latestLeft = panel.style.left
@@ -391,8 +385,8 @@ describe('Portal overlay 在已打开原生 dialog 内（top layer）', () => {
     expect(latestTop).not.toBe('')
 
     positioningStaleGate.release?.()
-    await nextFrame()
-    await nextFrame()
+    await waitForFrame()
+    await waitForFrame()
 
     expect(panel.style.left).toBe(latestLeft)
     expect(panel.style.top).toBe(latestTop)
@@ -427,7 +421,9 @@ describe('Portal overlay 在已打开原生 dialog 内（top layer）', () => {
     // panel 在重开前就被移出 closing 缓存，竞态前提消失、用例退化成「重建新 panel」的假绿。
     getMenuScrim().style.setProperty('--wui-duration-float-exit', '2000ms')
     const parentItem = mainPanel.querySelector<HTMLElement>('web-ui-dropdown-item')
-    parentItem?.dispatchEvent(new PointerEvent('pointerenter'))
+    // 可选链会把「面板里没有 item」静默成「submenu 一直没出现」，两种成因混成一句报错。
+    if (!parentItem) throw new Error('Expected the context menu panel to contain a dropdown item')
+    parentItem.dispatchEvent(new PointerEvent('pointerenter'))
     await waitFor(
       () => getContextMenuPanel('.context-submenu'),
       submenu => submenu !== null && submenu.dataset.wuiPresence === 'open',
@@ -448,7 +444,7 @@ describe('Portal overlay 在已打开原生 dialog 内（top layer）', () => {
 
     // 悬停普通项触发关闭（非即时，panel 进 closing 缓存），同帧悬停回父项重开：
     // 复用同一 panel 发起第二次定位并先行完成；随后放行被扣的首次定位——
-    // 旧实现下迟到的旧写入会把 panel 推离触发项、顶出视口。
+    // 迟到的旧写入会把 panel 推离触发项、顶出视口。
     const copyItem = mainPanel.querySelectorAll<HTMLElement>('web-ui-dropdown-item')[1]
     copyItem?.dispatchEvent(new PointerEvent('pointerenter'))
     parentItem?.dispatchEvent(new PointerEvent('pointerenter'))
@@ -470,8 +466,8 @@ describe('Portal overlay 在已打开原生 dialog 内（top layer）', () => {
     expect(reopenTop).not.toBe('')
 
     positioningStaleGate.release?.()
-    await nextFrame()
-    await nextFrame()
+    await waitForFrame()
+    await waitForFrame()
 
     // submenu 的 inline left/top 不应因迟到旧定位而改变（代际竞态契约，非几何断言）。
     expect(submenu.style.left).toBe(reopenLeft)
@@ -490,7 +486,7 @@ describe('Portal overlay 在已打开原生 dialog 内（top layer）', () => {
 
     component.showModal()
     await component.updateComplete
-    await nextFrame()
+    await waitForFrame()
 
     const nestedDialog = component.shadowRoot?.querySelector('dialog')
     expect(drawerDialog.matches(':modal')).toBe(true)

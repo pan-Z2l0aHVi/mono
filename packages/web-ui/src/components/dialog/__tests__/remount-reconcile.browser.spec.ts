@@ -4,7 +4,11 @@ import { afterEach, describe, expect, it } from 'vite-plus/test'
 
 import type { WebUiDialog } from '..'
 
-afterEach(() => document.body.replaceChildren())
+afterEach(() => {
+  document.body.replaceChildren()
+  // 用例中途失败时滚动锁可能仍挂着；不复位会把 `overflow: hidden` 带给后续用例。
+  document.documentElement.style.removeProperty('overflow')
+})
 
 function createDialog(): WebUiDialog {
   const dialog = document.createElement('web-ui-dialog')
@@ -46,7 +50,7 @@ describe('WebUiDialog 重挂载对账（浏览器）', () => {
     expect(component.isConnected).toBe(true)
     expect(component.open).toBe(true)
     expect(dialog.open).toBe(true)
-    // 修复前：open 属性残留但已脱离 top layer，backdrop/模态全部失效
+    // 重挂载的坑：open 属性残留但已脱离 top layer，backdrop/模态全部失效
     expect(dialog.matches(':modal')).toBe(true)
     expect(document.documentElement.style.overflow).toBe('hidden')
 

@@ -4,7 +4,7 @@ import '@/components/segmented-trigger'
 import { afterEach, describe, expect, it } from 'vite-plus/test'
 
 import type { WebUiSegmentedTrigger } from '@/components/segmented-trigger'
-import { pollUntil, queryA11y } from '@/shared/test-utils'
+import { afterRenderStep, pollUntil, queryA11y } from '@/shared/test-utils'
 
 import type { WebUiSegmented } from '..'
 
@@ -201,23 +201,29 @@ describe('WebUiSegmented 手势拖拽与吸附（浏览器）', () => {
 
     const inner = gestureSurface(segmented)
 
-    inner.dispatchEvent(pointer('pointerdown', { clientX: t1Rect.left + 10, clientY: t1Rect.top + 10 }))
+    inner.dispatchEvent(
+      timedPointer('pointerdown', { clientX: t1Rect.left + 10, clientY: t1Rect.top + 10, timeStamp: 0 })
+    )
     await segmented.updateComplete
 
-    // 移动距离越过 6px 阈值但未越过中点 (targetDistance * 0.3)。
-    // CI 慢环境渲染会跨毫秒，单次合成 move 的速度会被判 flick（>300px/s）
-    // 误吸附下一项；用间隔 32ms 的多段 move 模拟真实慢拖。
+    // 移动距离越过 6px 阈值但未越过中点 (targetDistance * 0.3)。32ms 一段的慢拖：
+    // 速度判定读事件 timeStamp，注入时间线才不会因调度间隙把同一段位移判成 flick。
     const dragDistance = Math.max(8, targetDistance * 0.3)
     const startX = t1Rect.left + 10
     for (let step = 1; step <= 10; step += 1) {
       window.dispatchEvent(
-        pointer('pointermove', { clientX: startX + (dragDistance * step) / 10, clientY: t1Rect.top + 10 })
+        timedPointer('pointermove', {
+          clientX: startX + (dragDistance * step) / 10,
+          clientY: t1Rect.top + 10,
+          timeStamp: step * 32
+        })
       )
-      await new Promise(resolve => setTimeout(resolve, 32))
     }
     await segmented.updateComplete
 
-    window.dispatchEvent(pointer('pointerup', { clientX: startX + dragDistance, clientY: t1Rect.top + 10 }))
+    window.dispatchEvent(
+      timedPointer('pointerup', { clientX: startX + dragDistance, clientY: t1Rect.top + 10, timeStamp: 352 })
+    )
     await segmented.updateComplete
 
     expect(segmented.value).toBe('daily')
@@ -328,11 +334,12 @@ describe('WebUiSegmented 手势拖拽与吸附（浏览器）', () => {
     // 等首帧定位 rAF（_updateIndicator 在其中提交位置并开启 transition）执行完。
     // 若实现有 bug，transition 会在首帧从 CSS 回退的 0 滑到选中项（160ms），
     // 此刻仍在播放，getAnimations 应能捕获到 left/width。
-    await new Promise<void>(resolve => requestAnimationFrame(() => requestAnimationFrame(() => resolve())))
+    await afterRenderStep()
+    await afterRenderStep()
     await segmented.updateComplete
 
     // indicator 无公开 role，只能按类名定位；本用例整体主题是动效，观察面用 Web Animations API
-    // （非 CSS 取值）。属判据 §8 的动效例外，最终裁定归 b6。
+    // （非 CSS 取值），属动效契约的既定例外。
     const indicator = queryA11y(segmented, '.wui-segmented-indicator') as HTMLElement | null
     expect(indicator, 'indicator 应已渲染').not.toBeNull()
 

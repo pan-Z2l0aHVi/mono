@@ -32,11 +32,11 @@ import Home from '@/pages/home/index.vue'
  *   探针 ：390→2；640/641→sm 3；768→md 4；1024/1280/1440/1536/1920→lg 5（没有 xl/2xl 类）
  * 所以两组数组在高位是平的——那是推导结果，不是抄来的。
  *
- * 为什么第二条不再是某个真实页面：这条链原本挂在手写的 svg 示例页上，那一页现在只渲染由
- * `packages/web-ui/docs/svg-draw-lines.md` 生成的示例，而语料里没有任何 `grid-cols` 类（全仓
- * `lg:grid-cols-*` 随那两个手写 demo 一起消失）。home 的链最高只到 `md`，于是 ≥1024 那段
- * 没有落点；这里就地声明一条 fixture 链，把采样边界补回 lg 档。**代价要说明白**：fixture 不是
- * 应用表面，它守的是生成出来的样式表里的规则次序，不再守某个具体页面的排版。
+ * 第二条不是某个真实页面：svg 示例页只渲染由 `packages/web-ui/docs/svg-draw-lines.md` 生成的
+ * 示例，语料里没有任何 `grid-cols` 类（全仓也没有 `lg:grid-cols-*`）。home 的链最高只到
+ * `md`，于是 ≥1024 那段没有落点；这里就地声明一条 fixture 链，把采样边界补回 lg 档。
+ * **代价要说明白**：fixture 不是应用表面，它守的是生成出来的样式表里的规则次序，不守某个
+ * 具体页面的排版。
  * 类名必须是这个文件里的字面量——Tailwind 靠扫描源码生成这些工具类，把它拼成动态字符串会让
  * 规则消失，量出来恒为 1 列，于是这条以红而不是以绿汇报漂移。
  *
@@ -108,12 +108,14 @@ async function mountPage(component: object, testId: string) {
  *
  * 与 react demo 的 `mountPage` 不同，这里 `mount()` 直接渲染被测组件（路由只是给
  * RouterLink 提供上下文，不经过懒加载路由），挂载是同步的——所以这不是同一个成因，
- * 也不以「消除竞速」自居。但原来的写法是「`nextTick` + 一帧后单点判空就抛」，把一次
- * 调度抖动直接当失败：这里改成有界重试，判据不变（始终是 data-testid 存在），超预算
- * 仍然抛 `page not mounted`，只是不再因为某一帧的调度延迟而假红。
+ * 也不以「消除竞速」自居。单点判空会把一次调度抖动直接当失败，所以用有界重试：判据不变
+ * （始终是 data-testid 存在），超预算仍然抛 `page not mounted`，不会因为某一帧的调度延迟
+ * 而假红。
  */
 async function waitForMounted(testId: string): Promise<void> {
-  const deadline = performance.now() + 1000
+  // 挂载预算是墙钟时间：并发跑全仓测试时单帧间隔会被拉长，1000ms 会假失败。
+  // 本包不能 import web-ui 的 test-utils（不在其 exports 里），故沿用本地轮询。
+  const deadline = performance.now() + 5000
   while (performance.now() < deadline) {
     if (document.querySelector(`[data-testid="${testId}"]`)) return
     await new Promise(resolve => requestAnimationFrame(() => resolve(null)))

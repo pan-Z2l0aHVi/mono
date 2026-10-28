@@ -602,7 +602,7 @@ describe('imagePreview 命令式 API（浏览器）', () => {
     /*
      * 弹回过渡在松手后的**下一帧**才注册：位移由 Lit 渲染提交，松手同帧读
      * `getAnimations()` 还是 0。先让一帧过去再读 WAAPI，并断言「确实启动了
-     * 一条过渡」——否则下面等它收敛就是空转（原实现若把 track 位移直接落位、
+     * 一条过渡」——否则下面等它收敛就是空转（若把 track 位移直接落位、
      * 不跑过渡，这里会响亮失败）。
      */
     await waitForFrame()
@@ -637,41 +637,45 @@ describe('imagePreview 命令式 API（浏览器）', () => {
   })
 
   it('swipe 距离阈值随舞台宽度按 15% 缩放：不同宽度下越阈提交、未达弹回', async () => {
-    for (const width of [320, 800]) {
-      await setViewport(width, 600)
-      const { handle, host } = await openPreview({ swipe: true })
-      const image = currentImage(host)
-      await pollUntil(() => image.complete && image.offsetWidth > 0, 'image did not load')
-      const stage = stageOf(image)
-      await waitForStageSettled(stage)
+    try {
+      for (const width of [320, 800]) {
+        await setViewport(width, 600)
+        const { handle, host } = await openPreview({ swipe: true })
+        const image = currentImage(host)
+        await pollUntil(() => image.complete && image.offsetWidth > 0, 'image did not load')
+        const stage = stageOf(image)
+        await waitForStageSettled(stage)
 
-      // 舞台宽度只用于换算手势 clientX（驱动，非几何断言）。
-      const threshold = Math.round(stage.clientWidth * 0.15)
-      const below = Math.max(4, threshold - 8)
-      const above = threshold + 8
+        // 舞台宽度只用于换算手势 clientX（驱动，非几何断言）。
+        const threshold = Math.round(stage.clientWidth * 0.15)
+        const below = Math.max(4, threshold - 8)
+        const above = threshold + 8
 
-      stage.dispatchEvent(timedPointer('pointerdown', { clientX: 400, clientY: 300, timeStamp: 0 }))
-      stage.dispatchEvent(timedPointer('pointermove', { clientX: 400 - below, clientY: 300, timeStamp: 300 }))
-      stage.dispatchEvent(timedPointer('pointerup', { clientX: 400 - below, clientY: 300, timeStamp: 600 }))
-      await host.updateComplete
-      expect(handle.index).toBe(0)
+        stage.dispatchEvent(timedPointer('pointerdown', { clientX: 400, clientY: 300, timeStamp: 0 }))
+        stage.dispatchEvent(timedPointer('pointermove', { clientX: 400 - below, clientY: 300, timeStamp: 300 }))
+        stage.dispatchEvent(timedPointer('pointerup', { clientX: 400 - below, clientY: 300, timeStamp: 600 }))
+        await host.updateComplete
+        expect(handle.index).toBe(0)
 
-      stage.dispatchEvent(pointer('pointerdown', { clientX: 400, clientY: 300, pointerId: 2 }))
-      stage.dispatchEvent(pointer('pointermove', { clientX: 400 - above, clientY: 300, pointerId: 2 }))
-      stage.dispatchEvent(pointer('pointerup', { clientX: 400 - above, clientY: 300, pointerId: 2 }))
-      await pollUntil(() => handle.index === 1, `swipe did not commit at ${width}px stage`)
+        stage.dispatchEvent(pointer('pointerdown', { clientX: 400, clientY: 300, pointerId: 2 }))
+        stage.dispatchEvent(pointer('pointermove', { clientX: 400 - above, clientY: 300, pointerId: 2 }))
+        stage.dispatchEvent(pointer('pointerup', { clientX: 400 - above, clientY: 300, pointerId: 2 }))
+        await pollUntil(() => handle.index === 1, `swipe did not commit at ${width}px stage`)
 
-      handle.close()
-      await handle.closed
+        handle.close()
+        await handle.closed
+      }
+    } finally {
+      // 循环中任一断言抛错时也要把视口还回去，否则后续用例带着 320/800px 跑。
+      await setViewport(1280, 720)
     }
-    await setViewport(1280, 720)
   })
 })
 
 /*
  * 相对 src 的加载淡入。
  *
- * 缺陷本体：settle 时曾登记 `image.src` —— 那是 IDL 属性，相对 src 会被解析成绝对 URL；
+ * 缺陷本体：settle 若登记 `image.src` —— 那是 IDL 属性，相对 src 会被解析成绝对 URL；
  * 而 render 侧 `is-loaded` 查的是 `this.images[i].src`（调用方原始串）。相对 src 下两者
  * 永不相等 → `is-loaded` 永不施加 → 图片停在 `opacity: 0`，尽管 img 早已 complete。
  * 表现是「图片加载了但整块空白」，本文件的其余 fixture 全是 data: URI（原始串 == 解析后

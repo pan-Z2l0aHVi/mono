@@ -10,9 +10,9 @@
 
 dialog {
   /* 必须显式 position: fixed：UA 的 dialog:modal 默认就是 fixed，但作者样式若出现
-     position: relative（本轮单层重构曾引入）会把它覆盖回文档流——top layer 里的
-     modal dialog 变成按文档流定位：渲染在页面顶部（用户看到的“残影”）且跟随页面
-     滚动（“没有固定居中”）。显式写死 fixed 防御未来任何作者类再覆盖。 */
+     position: relative 会把它覆盖到文档流——top layer 里的 modal dialog 变成按文档流
+     定位：渲染在页面顶部（用户看到的“残影”）且跟随页面滚动（“没有固定居中”）。
+     显式写死 fixed 防御未来任何作者类再覆盖。 */
   position: fixed;
 
   /* 本元素不参与 opacity 过渡：opacity < 1 会让 dialog 成为 backdrop root，后代
@@ -68,25 +68,21 @@ dialog {
 
 /* ===== 高度约束下移到内容区（chrome 由内容撑开） =====
 
-   宿主过去必须复述一个会变的 chrome 高度：AddDialog / RestoreDialog 都写
-   `height: min(calc(82vh - 108px), calc(var(--wui-dialog-max-height, 560px) - 108px))`
-   （改动前的写法，见 base b6b7eb34；这两处宿主已按新语义转换），
-   而那 108 里的 footer 一项就是 --wui-control-size——触摸端
-   `@media (pointer: coarse)` 把它从 36px 抬到 40px，chrome 随之长高，宿主的常数立刻腐坏。
+   宿主不应复述一个会变的 chrome 高度：chrome 里的 footer 一项就是 --wui-control-size——
+   触摸端 `@media (pointer: coarse)` 把它从 36px 抬到 40px，chrome 随之长高，宿主写死的
+   常数立刻腐坏。
 
-   现在 header / footer 完全由内容撑开，上限只落在 .desc。修掉的是「宿主必须知道 chrome
-   才能让内容区滚起来」：改动前 .desc 既没有上限也没有 overflow，内容超高时直接把卡片
-   顶出 dialog 盒子，唯一能滚的地方是宿主自己用 `min(calc(82vh - 108px), …)` 之类的
-   内层 height 撑出来的那一块。现在上限与滚动都归 .desc，宿主不必再为「让它滚」而算。
+   header / footer 完全由内容撑开，上限只落在 .desc：内容超高时滚动发生在内容区内部，
+   而不是把卡片顶出 dialog 盒子。宿主不必为「让它滚」而算。
 
-   但「宿主不再需要知道 chrome 多高」并不成立，改成这样写会误导后人。--wui-dialog-max-height
+   但「宿主不需要知道 chrome 多高」并不成立，这样写会误导后人。--wui-dialog-max-height
    的语义是**内容区**上限：宿主若要给整卡定上限，仍然得自己量出 chrome 再从 token 里减掉
    （AddDialog / RestoreDialog 减 142，SettingsDialog 减 106，三处不能互相照抄）。把整卡
    上限原样写进 token，卡片会比预期高出一个 chrome。
 
    实测（Chromium + WebKit，见 __tests__/dialog-content-height.browser.spec.ts）：本组 CSS
    只对 **默认模式**生效——headless 模式（默认槽渲染进 .wui-dialog-content、没有 .desc）的**卡片尺寸**不变。
-   但位置不保证：`dialog` 的整卡兜底从 min(90vh, 90dvh) 收紧到字面量 100vh，modal dialog
+   但位置不保证：`dialog` 的整卡兜底是字面量 100vh，modal dialog
    按自身盒子在视口里居中、卡片从盒子顶部起画，盒子更高 → 卡片在视口内上移。内容接近视口
    高度时位移可观测（reviewer 实测 52px / 102px / 25.16px），只有内容远矮于视口时位移为 0
    （两个 demo 正是落在这一档，巧合而非保证）。 */
@@ -131,7 +127,7 @@ dialog[open].is-visible::backdrop {
 /* ===== 玻璃卡片主体（样式由 glass.css 提供） ===== */
 
 /* 单层玻璃：卡片自身承担背景/阴影/backdrop-filter。blur(0px) ↔ blur(4px) 平滑插值
-   （none↔blur 不可插值才是当年生硬跳变的根因），own opacity 过渡不禁用自身 blur，
+   （none↔blur 不可插值，直接切换会跳变），own opacity 过渡不禁用自身 blur，
    因此卡片直接 opacity + backdrop-filter 同步过渡即可，无需双层。 */
 .wui-dialog-body {
   --wui-internal-dialog-close-top: var(--wui-dialog-close-top, 20px);
@@ -237,8 +233,8 @@ dialog.is-closing .wui-dialog-body {
    * 实际提供这个上下文的是卡片自带的 .wui-glass（glass.css 的 .wui-glass 已有
    * position: relative），所以这条声明目前是冗余的，写在这里是为了不依赖
    * glass.css 的内部实现——若哪天 glass 改成非定位元素，这条仍然兜得住。
-   * 它不是本轮为 closable 建立的包含块边界：body 上的 wui-glass class 与
-   * static styles 里的 glass 都早于本轮存在。
+   * 它不是 closable 建立的包含块边界：body 上的 wui-glass class 与
+   * static styles 里的 glass 都不依赖 closable。
    */
   position: relative;
 }
@@ -252,9 +248,9 @@ dialog[open].is-visible .wui-dialog-body {
 /* ===== 关闭 button（绝对定位，两种内容模式同一套规则）=====
 
    偏移由公开 token --wui-dialog-close-top / --wui-dialog-close-right 控制，默认都是字面量
-   20px。默认值不再经过 --wui-space-*：这两个 token 的参照系是卡片边缘，而不是相邻元素
-   之间的间距节奏，消费方调整主题间距时不应意外移动关闭 button。dialog 本轮也不再与 drawer
-   的 16/16 对齐；--wui-drawer-close-* 保持不变。
+   20px。默认值不经过 --wui-space-*：这两个 token 的参照系是卡片边缘，而不是相邻元素
+   之间的间距节奏，消费方调整主题间距时不应意外移动关闭 button。dialog 的关闭偏移是 20px，
+   与 drawer 的 16/16 不同；--wui-drawer-close-* 保持不变。
 
    两个公开 token 先在正文容器上解析成同一份内部变量，button 定位和标题避让都读这份结果，
    避免只改一个兜底字面量后 button 与标题各自按不同默认值计算。
@@ -339,13 +335,13 @@ dialog[open].is-visible .wui-dialog-body {
      .desc 既是滚动容器又是裁剪盒（clip），贴在内容区任一沿的控件，其 ring
      （offset 2 + width 3 = 5px）会被 padding box 裁掉；block 轴留 6px 余 1px，配一条
      等量负 margin 把这 6px 从外部间距里扣回去——标题带→内容、内容→footer 的视觉间距
-     与改动前逐像素相同。
+     不受这 6px 影响。
 
-     inline 轴不再走 focus 余量：卡片的 inline padding 整段移进了本容器（padding-inline
-     取 --wui-dialog-inline-padding，卡片的 inline 分量归零，见 .wui-dialog-body），
+     inline 轴不走 focus 余量：卡片的 inline padding 归零，由本容器的 padding-inline 取
+     --wui-dialog-inline-padding 承担（见 .wui-dialog-body），
      滚动口因此与卡片内沿重合（scrollbar 贴边，与 headless 模式 / drawer 一致）。24px 的 inline
-     padding 远大于 5px ring，左右焦点环不再被裁；也无需再配负 margin——content box 的
-     可用宽度与改动前相同（卡片原本也是同一档 inline padding），否则 AddDialog 那种两栏
+     padding 远大于 5px ring，左右焦点环不会被裁；也无需配负 margin——content box 的
+     可用宽度与卡片自带 inline padding 时相同（同一档 inline padding），否则 AddDialog 那种两栏
      grid 的 drop zone 会换行（实测见 __tests__/dialog-content-height.browser.spec.ts 的
      「全宽控件的 focus ring 不被内容区裁掉，且宿主拿到的可用宽度不被改窄」）。
 
@@ -372,7 +368,7 @@ dialog[open].is-visible .wui-dialog-body {
 }
 
 /* `--wui-dialog-max-height` 是公开 token（README 有记录），语义是**内容区**高度。
-   默认值与整卡兜底同族（90vh / dvh），使未覆写的 dialog 视觉高度与改动前一致：
+   默认值与整卡兜底同族（90vh / dvh），未覆写时内容区上限就是 90vh / 90dvh 这一档：
    移动端 90vh 可能大于 90dvh（vh 取大视口高），少了 min() 内容区会探到工具栏下面。
 
    必须紧跟在 `.desc` 之后而非文件开头的 @supports 块里：两者特异度相同（0,1,0），

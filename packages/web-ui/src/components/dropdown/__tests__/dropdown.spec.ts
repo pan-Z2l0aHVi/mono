@@ -3,7 +3,7 @@ import '@/components/dropdown-item'
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 
-import { getMenuPanels, spyEvents, waitForUpdate } from '@/shared/test-utils'
+import { flush, getMenuPanels, spyEvents, waitForFrame, waitForUpdate } from '@/shared/test-utils'
 
 import type { WebUiDropdown } from '..'
 
@@ -26,10 +26,6 @@ function touchPointerEvent(type: string): PointerEvent {
   const event = new PointerEvent(type)
   Object.defineProperty(event, 'pointerType', { value: 'touch' })
   return event
-}
-
-async function nextFrame() {
-  await new Promise(resolve => requestAnimationFrame(resolve))
 }
 
 /** panel 以公开语义 role="menu" 挂载于 overlay 容器（见 @/shared/test-utils 的 getMenuPanels）。 */
@@ -65,7 +61,7 @@ describe('WebUiDropdown 组件', () => {
 
       clickTrigger(el)
       await waitForUpdate(el)
-      await nextFrame()
+      await waitForFrame()
       await waitForUpdate(el)
 
       expect(trigger.getAttribute('aria-expanded')).toBe('true')
@@ -149,7 +145,7 @@ describe('WebUiDropdown 组件', () => {
       el.offset = 12
       el.matchWidth = true
       await waitForUpdate(el)
-      await nextFrame()
+      await waitForFrame()
 
       expect(el.isOpen).toBe(true)
       expect(menuItems()).toHaveLength(2)
@@ -163,7 +159,7 @@ describe('WebUiDropdown 组件', () => {
       el.openMenu()
       await waitForUpdate(el)
 
-      await new Promise(resolve => setTimeout(resolve))
+      await flush()
       document.body.click()
       await waitForUpdate(el)
 
@@ -229,7 +225,7 @@ describe('WebUiDropdown 组件', () => {
       // 同一任务内卸载：open 帧没机会跑，内部仍是空的。
       document.body.removeChild(el)
       await waitForUpdate(el)
-      await nextFrame()
+      await waitForFrame()
 
       document.body.append(el)
       await waitForUpdate(el)
@@ -250,8 +246,8 @@ describe('WebUiDropdown 组件', () => {
       const el = createDropdown({}, SIMPLE)
       await waitForUpdate(el)
       el.openMenu()
-      await nextFrame()
-      await nextFrame()
+      await waitForFrame()
+      await waitForFrame()
       expect(getMenuPanels()).toHaveLength(1)
 
       document.body.removeChild(el)
@@ -259,8 +255,8 @@ describe('WebUiDropdown 组件', () => {
       expect(getMenuPanels()).toHaveLength(0)
 
       document.body.append(el)
-      await nextFrame()
-      await nextFrame()
+      await waitForFrame()
+      await waitForFrame()
 
       expect(getMenuPanels()).toHaveLength(1)
       expect(itemTexts()).toEqual(['a', 'b'])
@@ -270,14 +266,14 @@ describe('WebUiDropdown 组件', () => {
       const el = createDropdown({}, SIMPLE)
       await waitForUpdate(el)
       el.openMenu()
-      await nextFrame()
-      await nextFrame()
+      await waitForFrame()
+      await waitForFrame()
 
       document.body.removeChild(el)
       await waitForUpdate(el)
       document.body.append(el)
-      await nextFrame()
-      await nextFrame()
+      await waitForFrame()
+      await waitForFrame()
       expect(getMenuPanels()).toHaveLength(1)
 
       document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true }))
@@ -293,8 +289,8 @@ describe('WebUiDropdown 组件', () => {
       const el = createDropdown({}, SIMPLE)
       await waitForUpdate(el)
       el.openMenu()
-      await nextFrame()
-      await nextFrame()
+      await waitForFrame()
+      await waitForFrame()
 
       document.body.removeChild(el)
       await waitForUpdate(el)
@@ -302,8 +298,8 @@ describe('WebUiDropdown 组件', () => {
       expect(document.activeElement).toBe(other)
 
       document.body.append(el)
-      await nextFrame()
-      await nextFrame()
+      await waitForFrame()
+      await waitForFrame()
 
       expect(itemTexts()).toEqual(['a', 'b'])
       expect(document.activeElement).toBe(other)
@@ -316,8 +312,8 @@ describe('WebUiDropdown 组件', () => {
       document.body.removeChild(el)
       await waitForUpdate(el)
       document.body.append(el)
-      await nextFrame()
-      await nextFrame()
+      await waitForFrame()
+      await waitForFrame()
 
       expect(getMenuPanels()).toHaveLength(0)
     })
@@ -332,8 +328,8 @@ describe('WebUiDropdown 组件', () => {
       )
       await waitForUpdate(el)
       el.openMenu()
-      await nextFrame()
-      await nextFrame()
+      await waitForFrame()
+      await waitForFrame()
 
       vi.useFakeTimers()
       try {
@@ -370,7 +366,7 @@ describe('WebUiDropdown 组件', () => {
 
       el.openMenu()
       await waitForUpdate(el)
-      await nextFrame()
+      await waitForFrame()
 
       expect(itemTexts()).toEqual(['b', 'a'])
     })
@@ -384,11 +380,11 @@ describe('WebUiDropdown 组件', () => {
       const wrapper = el.querySelector('div')!
       el.openMenu()
       await waitForUpdate(el)
-      await nextFrame()
+      await waitForFrame()
 
       wrapper.remove()
       await waitForUpdate(el)
-      await nextFrame()
+      await waitForFrame()
 
       expect(itemTexts()).toEqual(['a'])
 
@@ -408,16 +404,16 @@ describe('WebUiDropdown 组件', () => {
       const wrapper = el.querySelector('web-ui-dropdown-item div')!
       el.openMenu()
       await waitForUpdate(el)
-      await nextFrame()
+      await waitForFrame()
 
       getMenuPanels()[0]?.querySelector<HTMLElement>('web-ui-dropdown-item[submenu]')?.click()
       await waitForUpdate(el)
-      await nextFrame()
-      await nextFrame()
+      await waitForFrame()
+      await waitForFrame()
 
       wrapper.remove()
       await waitForUpdate(el)
-      await nextFrame()
+      await waitForFrame()
 
       // 子层 panel 里不应残留任何已经不在源侧的条目。
       expect(submenuPanels().flatMap(panel => [...panel.querySelectorAll('web-ui-dropdown-item')])).toEqual([])

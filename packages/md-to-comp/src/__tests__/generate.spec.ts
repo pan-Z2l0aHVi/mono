@@ -13,9 +13,7 @@ import type { GenerateOptions } from '../types'
  * 「表写歪了认不认」，`emit.spec.ts` 用的是合成产物，这里补的是两者之间那一段——真实生成出来的字节
  * 与它们的关系。
  *
- * 这一档替掉了仓库根原来那批「喂一份被篡改的 markdown 副本给 CLI」的 fixture：那时 fixture 要通过
- * 一个已构建的 `dist` 才能跑引擎，dist 陈旧就会静默判旧引擎。就地调 `generate()` 之后，判据与实现
- * 同源，语料也自带，不再依赖仓库里那 39 篇真实文档。
+ * 这一档就地调 `generate()`：判据与实现同源，语料也自带，不依赖仓库里那 39 篇真实文档。
  */
 
 const CONFIG = {
@@ -151,7 +149,7 @@ describe('generate', () => {
     // Markdown 正文版式也由生成器统一产出：宿主只挂 class，所有 demo 页共用这一份取值。
     expect(style[0]).toContain('.mdc-markdown')
     expect(style[0]).toContain('.mdc-heading')
-    expect(style[0]).toContain('color: #37352f')
+    expect(style[0]).toMatch(/\.mdc-markdown\s*\{[^}]*color:/)
     expect(style[0]).toContain('h2.mdc-heading')
     // 正文字号跟宿主正文 token，不抄 Notion 的 16px：抄回来会让文档正文比组件里的文字还大。
     expect(style[0]).toContain('font-size: var(--wui-font-size, 14px)')

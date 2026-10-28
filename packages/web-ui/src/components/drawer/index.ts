@@ -111,10 +111,10 @@ const HEADER_FOOTER_INTERACTIVE_SELECTOR = [
  * 拖拽期间内联 transform + `transition: none`，松手时把终值与过渡参数写入内联并在
  * 同一次样式重算里解除抑制，回弹即唯一的一次 CSS 过渡。全程无 `element.animate()`、
  * 无 fill、无 JS→CSS 动画交接边界，因此不存在 Safari 采不到 before-change style 的
- * 窗口（r3 的 reflow 烘焙补丁随 WAAPI 一并退役）。
+ * 窗口。
  *
- * 代价是失去弹簧的速度感知轨迹：释放速度只用于估算过渡时长，过冲手感由缓动曲线
- * 近似。两条曲线对应原弹簧预设的阻尼比——close（ζ≈1.05）无过冲，
+ * 代价是没有弹簧的速度感知轨迹：释放速度只用于估算过渡时长，过冲手感由缓动曲线
+ * 近似。两条曲线对应弹簧预设的阻尼比——close（ζ≈1.05）无过冲，
  * rebound（ζ≈0.74）保留约 3% 过冲。
  */
 const SETTLE_MIN_MS = 180
@@ -165,14 +165,13 @@ if (typeof CSS !== 'undefined' && 'registerProperty' in CSS) {
    * 窄视口基准由 style.css 的媒体查询覆盖同一 token。消费方写 unitless 的
    * `0` 会在计算值阶段归一成 `0px`（层叠露边归零，而不是让 ln 项算出 NaN）。
    *
-   * A = 43.2px 来自视觉 pass：桌面基准由 54px 调小两成，四层等宽 320px 时逐层露边
-   * 29.94 / 17.52 / 12.43px，总堆叠宽 59.89px（54px 一档是 37.43 / 21.90 / 15.53，
-   * 总宽 74.86px）。
+   * A = 43.2px 来自视觉 pass：四层等宽 320px 时逐层露边
+   * 29.94 / 17.52 / 12.43px，总堆叠宽 59.89px。
    *
    * 取值由**最里层**那一跳决定：对数曲线压得最狠的正是第四层，它只有
-   * A·ln(4/3) = 0.288A。12.43px 仍略高于旧的 12px 线性步进，但余量已经收窄到
-   * 3.5%——继续下调会让最里层那一条边与上一条边难以分辨，A=54 时这一跳有 15.53px，
-   * 余量 29%。若还要更小的基准，应先改 ln 的压缩比而不是只降 A。
+   * A·ln(4/3) = 0.288A。12.43px 略高于 12px 的线性步进，但余量已经收窄到
+   * 3.5%——继续下调会让最里层那一条边与上一条边难以分辨。若还要更小的基准，
+   * 应先改 ln 的压缩比而不是只降 A。
    */
   try {
     CSS.registerProperty({
@@ -298,9 +297,10 @@ export class WebUiDrawer extends LitElement {
    * 让位量 = 该节高度 + 一点呼吸间距，且**只在真有那一节时**才加间距。
    *
    * 间距写成属性值里的 calc 而不是让 CSS 无条件相加，是因为「没有 header」这一态必须精确等于
-   * 修复前的几何（让位量 0，drag zone 顶边贴 panel 顶边）。若让间距无条件生效，无 header 的 drawer 会
-   * 平移 4px，胶囊相对内缘的既有内缩（drag-bar-inset.browser.spec.ts 钉住的关系）跟着变，
-   * 这条护栏就不该为了新方案让步。间距本身仍以 token 暴露，真机调参不必回滚代码。
+   * 让位量 0 的几何（drag zone 顶边贴 panel 顶边）。若让间距无条件生效，无 header 的 drawer 会
+   * 平移 4px，drag zone 端边与 panel 端边的贴合关系跟着变——那是
+   * `header-drag-surface.browser.spec.ts` 的 R2 钉住的关系，这条护栏不该让步。
+   * 间距本身仍以 token 暴露，真机调参不必改代码。
    */
   private _setAvoidance(property: string, height: number) {
     this.style.setProperty(
@@ -325,7 +325,7 @@ export class WebUiDrawer extends LitElement {
    * 仲裁者据此选出最内层。
    *
    * 拖拽进行中不响应 Escape，但**仍是候选**：仲裁者照旧吞掉按键并压掉原生 cancel，
-   * 只是不走关闭入口。这原本由本层 handleKeydown 兜底，现在只有一个执行者。
+   * 只是不走关闭入口。关闭入口只有这一个执行者。
    */
   private readonly _overlay = defineOpenOverlay().make({
     requestClose: () => this._closeFromUser(),
@@ -425,7 +425,7 @@ export class WebUiDrawer extends LitElement {
    * 上下 placement 的 header / footer 自己接拖拽手势。
    *
    * 为什么不是「把 drag zone 铺到 header 上」：那样 header 里的控件会被透明命中层吞掉，
-   * 正是 A6 修掉的那条缺陷。这里改成事件层让开——控件照常收自己的事件，拖拽只在
+   * 正是 A6 修掉的那条缺陷。这里在事件层让开——控件照常收自己的事件，拖拽只在
    * 「落点不是可点控件」时起手。
    *
    * 三道闸门任一不成立就不接管：
@@ -554,8 +554,7 @@ export class WebUiDrawer extends LitElement {
     })
     /*
      * 惰性必须与 attach 同拍。漏掉这里，按下到手势终结之间那一整段里 Escape 仍会关闭
-     * drawer——旧实现用惰性谓词 `isEscapeCloseEnabled: () => !isDragging()` 在仲裁时现算，
-     * 没有这个同步问题；改成 push 通道后每个翻转点都得自己推一次。
+     * drawer——push 通道没有自动同步，每个翻转点自己推一次。
      *
      * `isDragging()` 的翻转点不止 attach 与 onEnd：手势层的 `handlePointerMove` 在越过死区后
      * 若判定轴向冲突（限定了 x 轴却明显纵向移动，或反之）会直接 `cancel()`，
@@ -668,15 +667,14 @@ export class WebUiDrawer extends LitElement {
   private _settleRebound(dialog: HTMLDialogElement, velocity: number, from: number) {
     this._dragOffset = 0
 
-    // 收尾结束必须清掉内联 transform，不能像 WAAPI 时代那样保留 0px：
-    // translateX(0px) 内联会盖住闭合态 CSS transform，之后用 button/backdrop/Esc 关闭时
-    // 计算值恒为 0、开与关都不再触发过渡。
+    // 收尾结束必须清掉内联 transform：translateX(0px) 内联会盖住闭合态 CSS transform，
+    // 之后用 button/backdrop/Esc 关闭时计算值恒为 0、开与关都不再触发过渡。
     const finishRebound = () => {
       this._clearDragStyles(dialog)
     }
 
     if (prefersReducedMotion(this) || Math.abs(from) < 1) {
-      // 无动画路径：直接移除内联回到 CSS 打开位。CSS 化后计算值就是可信的打开位 0，
+      // 无动画路径：直接移除内联回到 CSS 打开位。计算值就是可信的打开位 0，
       // 不存在 WAAPI fill 覆盖，无需强制 reflow「烘焙」。
       dialog.classList.remove('is-dragging')
       finishRebound()
@@ -696,7 +694,7 @@ export class WebUiDrawer extends LitElement {
    * 把释放后的收尾交给 CSS transition：写入终值与「时长/缓动」两个内部变量，并在
    * 同一次样式重算里解除抑制（is-dragging → is-settling）。过渡的 before-change
    * style 就是拖拽期间写入的内联值——没有 WAAPI 覆盖层，各引擎采样一致，这正是
-   * 相对旧弹簧路径对 Safari「不采信 fill 覆盖」怪癖免疫的原因。
+   * 对 Safari「不采信 fill 覆盖」怪癖免疫的原因。
    */
   private _startSettle(
     dialog: HTMLDialogElement,
@@ -968,7 +966,7 @@ export class WebUiDrawer extends LitElement {
      * ① defaultPrevented 说明仲裁者已介入，不再重复关闭；
      * ② 兜底路径仍按原逻辑处理，避免「panel 未登记」时 Escape 失灵。
      *
-     * 本 handler **不是**可随手删掉的迁移残留：仲裁者挂在 document 上，只对能跨 shadow
+     * 本 handler **不是**可随手删掉的：仲裁者挂在 document 上，只对能跨 shadow
      * 边界的事件生效。实测（overlay-open-owner-260918，2026-09-18）摘掉 `@keydown` 后
      * layout.browser.spec.ts 的两例 Escape 用例立刻转红——它们派发的 keydown 没有
      * `composed: true`，事件止步于 shadow root，到不了 document。

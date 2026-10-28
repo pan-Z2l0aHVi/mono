@@ -1,14 +1,14 @@
 /**
  * 开启态 overlay（open overlay）——「哪一层正开着」的唯一拥有者。
  *
- * 合并原先三个各自问一遍「你现在开着吗」的模块：composition（逻辑父子树）、
- * escape-dismiss（最内层仲裁）、lifecycle（帧事务失效）。合并的判据不是三者文件相邻，
- * 而是它们共享同一条不变量：**已登记 ⟺ 在场 ⟺ 有仲裁身份**。
+ * 本模块合并三块职责：composition（逻辑父子树）、escape-dismiss（最内层仲裁）、
+ * lifecycle（帧事务失效）。合并的判据不是三者职责相邻，而是它们共享同一条不变量：
+ * **已登记 ⟺ 在场 ⟺ 有仲裁身份**。
  *
- * 拆成三个模块时这条不变量没有主人，8 个 overlay 组件各自把它拼成三步协议
- * （`registerPanelFromAncestry` + `setPanel` / `unregisterPanel` + `setPanel(null)`）。
- * 结果是「漏撤销」与「重挂载后与仲裁失联」只能靠每个组件自己记得，而
- * `lifecycle` 还得让调用方手工传一个 `expectedOpen` 来复述「我开着吗」。
+ * 这条不变量需要唯一的仲裁者：让 8 个 overlay 组件各自把它拼成三步协议
+ * （`registerPanelFromAncestry` + `setPanel` / `unregisterPanel` + `setPanel(null)`），
+ * 「漏撤销」与「重挂载后与仲裁失联」就只能靠每个组件自己记得，而
+ * `lifecycle` 还要调用方手工传一个 `expectedOpen` 来复述「我开着吗」。
  *
  * 本模块的取舍：
  *
@@ -122,8 +122,8 @@ export interface OpenOverlayHandle {
 export interface OpenOverlay {
   claim(panel: HTMLElement, options?: OverlayClaimOptions): OpenOverlayHandle
   /**
-   * 帧事务调度。`whileLive` handle 一旦 release，回调自动作废 —— 取代原先由调用方
-   * 手工传入 `expectedOpen` 的轮询（那个参数正是「模块还得回头问宿主」的证据）。
+   * 帧事务调度。`whileLive` handle 一旦 release，回调自动作废 —— 调用方不必手工传入
+   * `expectedOpen` 轮询（那个参数正是「模块还得回头问宿主」的证据）。
    */
   scheduleFrame(callback: () => void, whileLive?: OpenOverlayHandle): OverlayFrameHandle
   /** 结束当前事务：取消未执行的 frame，并让旧 generation 的回调失效。 */
@@ -298,7 +298,7 @@ function createLayer(input: {
   /*
    * 先摘死层，再建新层。claim/adopt 是完全合法的「先开启后挂载」时序——调用方那一刻
    * 可能还没把 panel 与宿主挂进文档，两者都失联。回收跑在新层入表**之前**，新层就不
-   * 会被自己的 claim 判成死层；而漏 release 留下的死层依旧在这里被扫掉，与旧实现一致。
+   * 会被自己的 claim 判成死层；而漏 release 留下的死层依旧在这里被扫掉。
    */
   reclaimDisconnectedLayers()
 
@@ -546,7 +546,7 @@ export const defineOpenOverlay = () =>
         if (suspended) return
         suspended = true
         // 停调度之后再撤销在途帧（两者互不依赖，顺序不影响语义）。不能只靠回调内部的
-        // suspended 复查：那会让这些帧白占一个 rAF 周期（旧实现在此处因早退而没有取消）。
+        // suspended 复查：那会让这些帧白占一个 rAF 周期。
         cancelFrames()
       },
 

@@ -1,6 +1,6 @@
 import '..'
 
-import { afterEach, describe, expect, it, vi } from 'vite-plus/test'
+import { afterEach, describe, expect, it } from 'vite-plus/test'
 
 import { cleanupElement, mountElement, queryA11y, waitForUpdate } from '@/shared/test-utils'
 
@@ -34,11 +34,10 @@ describe('WebUiTextarea 组件特有契约', () => {
     await waitForUpdate(el)
 
     const textarea = nativeTextarea(el)
-    const spy = vi.spyOn(textarea, 'focus')
     // 原生 textarea 的直接父容器即点击区域，用结构关系而非内部 class 定位
     textarea.parentElement!.click()
 
-    expect(spy).not.toHaveBeenCalled()
+    expect(el.shadowRoot?.activeElement, 'disabled 组件不得把焦点交给原生控件').toBeNull()
     cleanupElement(el)
   })
 
@@ -46,9 +45,9 @@ describe('WebUiTextarea 组件特有契约', () => {
     const el = createTextarea()
     await waitForUpdate(el)
 
-    const spy = vi.spyOn(nativeTextarea(el), 'focus')
+    const native = nativeTextarea(el)
     el.focus()
-    expect(spy).toHaveBeenCalled()
+    expect(el.shadowRoot?.activeElement).toBe(native)
     cleanupElement(el)
   })
 
@@ -56,9 +55,9 @@ describe('WebUiTextarea 组件特有契约', () => {
     const el = createTextarea()
     await waitForUpdate(el)
 
-    const spy = vi.spyOn(nativeTextarea(el), 'blur')
+    el.focus()
     el.blur()
-    expect(spy).toHaveBeenCalled()
+    expect(el.shadowRoot?.activeElement).toBeNull()
     cleanupElement(el)
   })
 
@@ -67,10 +66,10 @@ describe('WebUiTextarea 组件特有契约', () => {
     await waitForUpdate(el)
 
     const native = nativeTextarea(el)
-    const spy = vi.spyOn(native, 'select')
     el.select()
 
-    expect(spy).toHaveBeenCalledTimes(1)
+    expect(native.selectionStart).toBe(0)
+    expect(native.selectionEnd).toBe(native.value.length)
     cleanupElement(el)
   })
 
@@ -80,13 +79,12 @@ describe('WebUiTextarea 组件特有契约', () => {
     await waitForUpdate(el)
 
     const native = nativeTextarea(el)
-    const selectSpy = vi.spyOn(native, 'select')
-    const focusSpy = vi.spyOn(native, 'focus')
+    native.setSelectionRange(1, 1)
     el.select()
     el.focus()
 
-    expect(selectSpy).not.toHaveBeenCalled()
-    expect(focusSpy).not.toHaveBeenCalled()
+    expect(native.selectionStart, 'disabled 时 select() 不得改动选区').toBe(1)
+    expect(native.selectionEnd).toBe(1)
     expect(el.shadowRoot?.activeElement).toBeNull()
     cleanupElement(el)
   })
@@ -120,7 +118,7 @@ describe('WebUiTextarea 组件特有契约', () => {
     el.addEventListener('input', e => events.push(e))
 
     const clear = queryA11y(el, '[aria-label="Clear"]')
-    expect(clear).toBeTruthy()
+    if (!clear) throw new Error('clearable textarea 有值时应渲染清除 button')
     ;(clear as HTMLElement).click()
 
     expect(events).toHaveLength(1)

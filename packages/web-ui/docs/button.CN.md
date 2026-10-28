@@ -209,7 +209,7 @@ import { lucideChevronLeft, lucideChevronRight, lucideSearch } from '@greypan/we
 
 ### Icon mode
 
-`icon` 把内边距归零、`min-width` 与高度同值，宿主于是是一个正方形；默认插槽整体当作 icon 内容，不再包那层 label span，`prefix` / `suffix` 这时不渲染。
+`icon` 把内边距归零、`min-width` 与高度同值，宿主于是是一个正方形；默认插槽整体当作 icon 内容，不包那层 label span，`prefix` / `suffix` 这时不渲染。
 
 没有可见文字的 icon button 必须写 `aria-label`，否则读屏只念出一个空 button。
 
@@ -590,7 +590,7 @@ const fourStates = {
 
 `click` 由 shadow 内的原生 button 派发，组合并冒泡到宿主，`event.target` 重定向到宿主；Enter 与 空格 走同一次原生 activation，所以指针与键盘共用这一个事件。
 
-`disabled`、`loading` 与表单级禁用（祖先 `<fieldset disabled>`）都会把内部 button 真的置为 disabled，click 不再产生、tab 也进不来。
+`disabled`、`loading` 与表单级禁用（祖先 `<fieldset disabled>`）都会把内部 button 真的置为 disabled，click 不产生、tab 也进不来。
 
 `aria-label` 与 `aria-expanded` 显式委派到内部原生 button；`aria-controls` 及其他属性留在宿主上，不会自动复制，因为 IDREF 不能跨 shadow root 解析。
 
@@ -602,7 +602,7 @@ const fourStates = {
 
 button 不向 `FormData` 贡献值（form state 恒为 `null`）。
 
-禁用只有 `disabled` 一条路径：它会把内部原生 button 真的置为 disabled，click 与表单动作都不再发生。`aria-disabled` 不读取也不转发——「看起来禁用但仍可聚焦」的语义不提供，写上去的 `aria-disabled` 只留在宿主，对行为没有影响。
+禁用只有 `disabled` 一条路径：它会把内部原生 button 真的置为 disabled，click 与表单动作都不发生。`aria-disabled` 不读取也不转发——「看起来禁用但仍可聚焦」的语义不提供，写上去的 `aria-disabled` 只留在宿主，对行为没有影响。
 
 `icon` 与 `loading` 同时开启时只渲染 spinner，默认插槽不投影；非 icon 模式下 spinner 排在 label 之前，与前后缀并存。
 

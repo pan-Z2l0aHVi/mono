@@ -1,8 +1,12 @@
 import { http, HttpResponse } from 'msw'
-import { describe, expect, it } from 'vite-plus/test'
+import { afterEach, describe, expect, it, vi } from 'vite-plus/test'
 
 import { base64ToFile, downloadFile, fileToBase64, getImageInfo, isSameFileType, isValidBase64 } from '..'
 import { worker } from '../../../test-helper'
+
+afterEach(() => {
+  vi.restoreAllMocks()
+})
 
 describe('file 测试', () => {
   // 1×1 透明 PNG
@@ -83,21 +87,33 @@ describe('file 测试', () => {
   })
 
   describe('downloadFile', () => {
+    // 下载名只落在临时 anchor 上，不 spy 就只剩「没抛错」可断言 —— 功能被改成空实现也会绿。
+    const spyAnchorClick = () => vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {})
+    const downloadedName = (click: ReturnType<typeof spyAnchorClick>) =>
+      (click.mock.instances[0] as HTMLAnchorElement | undefined)?.download
+
     it('传入 File 时按其原名触发下载，不报错', async () => {
+      const click = spyAnchorClick()
+
       await expect(downloadFile(new File(['hello'], 'hello.txt', { type: 'text/plain' }))).resolves.toBeUndefined()
+      expect(downloadedName(click)).toBe('hello.txt')
     })
 
     it('传入字符串时用文件名作为下载名', async () => {
       worker.use(http.get('*', () => new HttpResponse('data', { headers: { 'content-type': 'text/plain' } })))
+      const click = spyAnchorClick()
 
       await expect(downloadFile('https://example.com/docs/report.pdf')).resolves.toBeUndefined()
+      expect(downloadedName(click)).toBe('report.pdf')
     })
 
     it('显式 filename 覆盖从 URL 推导出的名字', async () => {
       worker.use(http.get('*', () => new HttpResponse('data')))
+      const click = spyAnchorClick()
 
       // 服务端给的 content-disposition 才是权威名字，这里覆盖的是「URL 推导」这一路
       await expect(downloadFile('https://example.com/a/b/original.bin', 'renamed.bin')).resolves.toBeUndefined()
+      expect(downloadedName(click)).toBe('renamed.bin')
     })
 
     it('非法 URL 在发起请求前就报可读错误', async () => {

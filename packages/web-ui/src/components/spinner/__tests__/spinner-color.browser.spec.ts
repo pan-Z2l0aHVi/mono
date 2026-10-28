@@ -3,6 +3,7 @@ import '@/components/theme'
 import { afterEach, describe, expect, it } from 'vite-plus/test'
 
 import type { WebUiTheme } from '@/components/theme'
+import { pollUntil } from '@/shared/test-utils'
 
 import { WebUiSpinner } from '..'
 
@@ -114,8 +115,7 @@ describe('spinner 色彩（浏览器）', () => {
     if (!overlayRoot) throw new Error('theme should provide its overlay root')
     expect(overlayRoot.contains(spinner)).toBe(true)
 
-    await new Promise<void>(resolve => window.setTimeout(resolve, 150))
-    expect(spinner.isConnected).toBe(false)
-    expect(WebUiSpinner._current).toBeUndefined()
+    // duration 到点后自动关闭：轮询「已摘掉」这个确定性信号，不拿 150ms  wall-clock 当屏障。
+    await pollUntil(() => !spinner.isConnected, 'spinner 没有在 duration 到点后自动关闭')
   })
 })

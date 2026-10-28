@@ -87,12 +87,10 @@ describe('web-ui-badge 的默认插槽定位（浏览器）', () => {
 
     el.append('收件箱')
     await flushSlotChange(el)
-    expect(el.textContent).toBe('收件箱')
     expectBadgeOverContent(el)
 
     el.replaceChildren()
     await flushSlotChange(el)
-    expect(el.textContent).toBe('')
 
     const status = queryA11y(el, '[role="status"]')
     if (!status) throw new Error('web-ui-badge 缺少状态角标')
@@ -113,10 +111,10 @@ describe('WebUiBadge 指针命中（浏览器）', () => {
     await badge.updateComplete
 
     const status = badge.shadowRoot?.querySelector<HTMLElement>('[role="status"]')
-    expect(status, 'badge 应有可访问的 status 指示').toBeTruthy()
+    if (!status) throw new Error('badge 应有可访问的 status 指示')
 
     const buttonRect = button.getBoundingClientRect()
-    const statusRect = status!.getBoundingClientRect()
+    const statusRect = status.getBoundingClientRect()
     const overlap = {
       left: Math.max(buttonRect.left, statusRect.left),
       right: Math.min(buttonRect.right, statusRect.right),

@@ -1,8 +1,8 @@
 /**
  * Floating UI anchored overlay 组件共享的 placement 白名单。
  *
- * 12 个方向成员相同、声明顺序在各组件历史上有差异；normalizeLiteral 只做
- * 成员判定，顺序不参与语义，因此这里以稳定顺序单源化，组件不再各自声明。
+ * 12 个方向成员相同、声明顺序在各组件间有差异；normalizeLiteral 只做
+ * 成员判定，顺序不参与语义，因此这里以稳定顺序单源化，组件统一从这里取。
  */
 export const FLOATING_PLACEMENTS = [
   'top',

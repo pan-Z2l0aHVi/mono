@@ -4,6 +4,7 @@ import '@/components/dropdown-item'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 
 import { toast } from '@/components/toast'
+import { flush } from '@/shared/test-utils'
 
 import { WebUiTheme } from '..'
 
@@ -12,52 +13,6 @@ function createTheme(appearance?: 'light' | 'dark' | 'system'): WebUiTheme {
   if (appearance) theme.appearance = appearance
   document.body.appendChild(theme)
   return theme
-}
-
-/** 让 matchMedia 同时服务 root sync 与 resolved-appearance，并可真实驱动 change。 */
-function stubColorScheme(initial: 'light' | 'dark') {
-  const descriptor = Object.getOwnPropertyDescriptor(window, 'matchMedia')
-  let dark = initial === 'dark'
-  let queryCount = 0
-  const listeners = new Set<(event: MediaQueryListEvent) => void>()
-
-  Object.defineProperty(window, 'matchMedia', {
-    configurable: true,
-    writable: true,
-    value: (query: string) => {
-      queryCount += 1
-      return {
-        get matches() {
-          return query.includes('(prefers-color-scheme: dark)') ? dark : false
-        },
-        media: query,
-        onchange: null,
-        addEventListener: (type: string, handler: EventListenerOrEventListenerObject) => {
-          if (type === 'change') listeners.add(handler as (event: MediaQueryListEvent) => void)
-        },
-        removeEventListener: (type: string, handler: EventListenerOrEventListenerObject) => {
-          if (type === 'change') listeners.delete(handler as (event: MediaQueryListEvent) => void)
-        },
-        dispatchEvent: () => false
-      } as unknown as MediaQueryList
-    }
-  })
-
-  return {
-    get queryCount() {
-      return queryCount
-    },
-    listenerCount: () => listeners.size,
-    setScheme(value: 'light' | 'dark') {
-      dark = value === 'dark'
-      const event = { matches: dark, media: '(prefers-color-scheme: dark)' } as MediaQueryListEvent
-      for (const listener of Array.from(listeners)) listener(event)
-    },
-    restore() {
-      if (descriptor) Object.defineProperty(window, 'matchMedia', descriptor)
-      else Reflect.deleteProperty(window, 'matchMedia')
-    }
-  }
 }
 
 beforeEach(() => {
@@ -77,6 +32,11 @@ describe('WebUiTheme 组件', () => {
      * 改由 motion 三档统一控制 —— full 播放、reduced 直接落地、system 跟随
      * prefers-reduced-motion。jsdom 不解析主题内部 CSS，duration 回退 500ms，
      * 因此这里的判定面是 isReducedMotion() 与 startViewTransition 接线本身。
+     *
+     * 无系统偏好时的三档接线（full 启动 / reduced 不启动 / system 跟随无偏好启动，含
+     * 「一次变化恰好一次启动」）以 theme-transition.browser.spec.ts 为准：那份跑的是真实
+     * startViewTransition，同一判据在 jsdom 里只能对着桩函数复述一遍，副本已删。这里只留
+     * 浏览器项目没有的通道——由 matchMedia 桩注入的系统 reduce 偏好，以及不支持 VT 的退化路径。
      */
     function stubStartViewTransition() {
       const startDescriptor = Object.getOwnPropertyDescriptor(document, 'startViewTransition')
@@ -134,50 +94,6 @@ describe('WebUiTheme 组件', () => {
       }
     }
 
-    it('motion=full 时 appearance 变化启动 View Transition', async () => {
-      const stub = stubStartViewTransition()
-      const theme = createTheme('light')
-      theme.motion = 'full'
-      await theme.updateComplete
-
-      theme.appearance = 'dark'
-      await theme.updateComplete
-      expect(stub.startViewTransition).toHaveBeenCalledTimes(1)
-
-      theme.remove()
-      stub.restore()
-    })
-
-    it('motion=reduced 时不启动 View Transition，直接落地 appearance', async () => {
-      const stub = stubStartViewTransition()
-      const theme = createTheme('light')
-      theme.motion = 'reduced'
-      await theme.updateComplete
-
-      theme.appearance = 'dark'
-      await theme.updateComplete
-      expect(stub.startViewTransition).not.toHaveBeenCalled()
-      expect(theme.appearance).toBe('dark')
-      expect(theme.getAttribute('appearance')).toBe('dark')
-
-      theme.remove()
-      stub.restore()
-    })
-
-    it('motion=system 默认档：无系统 reduce 偏好时启动 View Transition', async () => {
-      const stub = stubStartViewTransition()
-      const theme = createTheme('light')
-      await theme.updateComplete
-      expect(theme.motion).toBe('system')
-
-      theme.appearance = 'dark'
-      await theme.updateComplete
-      expect(stub.startViewTransition).toHaveBeenCalledTimes(1)
-
-      theme.remove()
-      stub.restore()
-    })
-
     it('motion=system 跟随系统 reduce 偏好：不启动 View Transition', async () => {
       const stub = stubStartViewTransition()
       const restore = stubPrefersReducedMotion(true)
@@ -212,8 +128,8 @@ describe('WebUiTheme 组件', () => {
 
     /*
      * 「prop 不再被读取」必须由一对反向证据共同归因，单取任何一半都没有区分力：
-     * 上半（motion=full 且不写 transition）—— 旧实现没有 transition 就不会启动，
-     *   现在仍然启动，说明揭示不再需要该 prop 授权；
+     * 上半（motion=full 且不写 transition）—— 不写 transition 仍然启动，
+     *   说明揭示不需要该 prop 授权；
      * 下半（motion=reduced 且写了 transition）—— reduced 档本身就会短路
      *   _shouldAnimateAppearance，单独看这一条即使 prop 仍在被读取也会绿，
      *   只有和上半配对才能证明「写了也开不了」。
@@ -382,7 +298,7 @@ describe('WebUiTheme 组件', () => {
       try {
         inner.appearance = 'dark'
         // setter 同步抛错 → async fn reject → .catch 微任务；flush 之。
-        await new Promise(resolve => setTimeout(resolve, 0))
+        await flush()
         await inner.updateComplete
 
         // 守卫：确认过渡确已发起并走到 adoptedStyleSheets 写入（否则内联写入从未发生，下面会假绿）。
@@ -483,66 +399,13 @@ describe('WebUiTheme 组件', () => {
   })
 
   describe('属性：resolved-appearance', () => {
-    it.each(['light', 'dark'] as const)('显式 appearance=%s 直通解析结果', async appearance => {
-      const theme = createTheme(appearance)
-      await theme.updateComplete
-
-      expect(theme.resolvedAppearance).toBe(appearance)
-      expect(theme.getAttribute('resolved-appearance')).toBe(appearance)
-      theme.remove()
-    })
-
-    it('appearance=system 从当前 OS 配色解析', async () => {
-      const stub = stubColorScheme('dark')
-      try {
-        const theme = createTheme('system')
-        await theme.updateComplete
-
-        expect(theme.resolvedAppearance).toBe('dark')
-        expect(theme.getAttribute('resolved-appearance')).toBe('dark')
-        expect(stub.queryCount).toBeGreaterThan(0)
-        theme.remove()
-      } finally {
-        stub.restore()
-      }
-    })
-
-    it('appearance=system 的 OS 配色变化实时更新', async () => {
-      const stub = stubColorScheme('light')
-      try {
-        const theme = createTheme('system')
-        await theme.updateComplete
-        expect(theme.getAttribute('resolved-appearance')).toBe('light')
-
-        stub.setScheme('dark')
-        await theme.updateComplete
-        expect(theme.resolvedAppearance).toBe('dark')
-        expect(theme.getAttribute('resolved-appearance')).toBe('dark')
-
-        stub.setScheme('light')
-        await theme.updateComplete
-        expect(theme.resolvedAppearance).toBe('light')
-        expect(theme.getAttribute('resolved-appearance')).toBe('light')
-        theme.remove()
-      } finally {
-        stub.restore()
-      }
-    })
-
-    it('缺少 appearance 时解析结果默认 light', async () => {
-      const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
-      try {
-        const theme = createTheme()
-        await theme.updateComplete
-
-        expect(theme.resolvedAppearance).toBe('light')
-        expect(theme.getAttribute('resolved-appearance')).toBe('light')
-        theme.remove()
-      } finally {
-        warn.mockRestore()
-      }
-    })
-
+    /*
+     * 解析值本身（显式直通、system 跟随 OS、缺省回落 light、OS 翻转实时更新）以
+     * resolved-appearance.browser.spec.ts 为准：那份用 CDP 真改 prefers-color-scheme，
+     * 覆盖 light/dark × 显式/system/缺省 的整张矩阵。matchMedia 桩副本的判据同一条，且其中
+     * 一条只断言「桩被查询过几次」（实现细节），判别力不如浏览器那份，这里不另立一份；
+     * 留下的是浏览器那份没有的通道——外部篡改派生属性后被恢复。
+     */
     it('外部改动 resolved-appearance 会恢复为派生值', async () => {
       const theme = createTheme('light')
       await theme.updateComplete
@@ -620,7 +483,7 @@ describe('WebUiTheme 组件', () => {
        * 1. **scrim 在最近主题的 overlay root 里。** `--wui-color-*` 写在 `<web-ui-theme>` 的
        *    `:host` 上、只沿 DOM 树向下继承；scrim 若落在 `document.body`（theme 宿主的**父**
        *    节点），继承链就断，panel 与 scrim 一起退回浅色字面量 fallback —— 深色外观下的
-       *    实测症状。挂在 `document.body` 是这次修复前的行为，这里改钉它必须在 overlay root。
+       *    实测症状。挂在 `document.body` 就会断掉继承链，所以这里钉的是它必须在 overlay root。
        * 2. **panel 在 scrim 里。** panel 必须与 scrim 同处 top layer 才在模态期间可点；只满足
        *    第 1 条而把 panel 留在 overlay root，模态期间它自己就不可点。
        *

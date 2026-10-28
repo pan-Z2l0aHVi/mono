@@ -182,7 +182,7 @@ describe('监听范围配置', () => {
     const plugin = createVitePlugin([{ ...WEB_UI, outputDir: 'build' }])
     const { server } = createServer()
 
-    // 监听的目录随 outputDir 移动：旧的 dist 不再命中，新的 build 命中
+    // 监听的目录随 outputDir 移动：dist 不再命中，build 命中
     expect(plugin.hotUpdate!(createHotUpdateContext('/repo/packages/web-ui/build/index.js', server))).toEqual([])
     expect(plugin.hotUpdate!(createHotUpdateContext('/repo/packages/web-ui/dist/index.js', server))).toBeUndefined()
   })

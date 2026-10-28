@@ -378,7 +378,7 @@ const mobile = ref(false)
 
 `mobile` 是派生输出而不是第二个输入——由 layout 独占写入；property 只读（赋值不生效，严格模式下抛错），写 attribute 会在同一次 reaction 内被恢复、连值一起归位，两种写法都不派发事件。
 
-它与 layout 的渲染分支、以及 layout CSS 用来隐藏桌面 aside 的媒体查询（`@media (width <= 640px)`）是同一条条件，三者不可能互相错开；翻转不再经 resize 去抖，就发生在媒体查询变化的那一刻。
+它与 layout 的渲染分支、以及 layout CSS 用来隐藏桌面 aside 的媒体查询（`@media (width <= 640px)`）是同一条条件，三者不可能互相错开；翻转就发生在媒体查询变化的那一刻，不经 resize 去抖。
 
 `mobile-change` 每次跨断点只派发一次，元素在窄视口挂载时连接那一刻的那次求值也算一次。
 
@@ -459,7 +459,7 @@ Layout 会将 `sidebar-width` 映射为 `--wui-drawer-width`，将 `--wui-layout
 
 默认渐变方向为 `to bottom`；要改颜色，在 `web-ui-layout`、theme 或其上层任意位置覆盖 `--wui-glow-color` 即可，浅色/暗色模式自动跟随。
 
-在默认 52px 高的 header 上，模糊层向下探出 `24px`、衰减总长 `36px`，底缘 alpha 约 `0.67`，与旧版向下探出 30px 的底缘强度一致；新版按绝对长度衰减，header 更高时底缘强度不变（旧版的百分比衰减会变淡）。
+在默认 52px 高的 header 上，模糊层向下探出 `24px`、衰减总长 `36px`，底缘 alpha 约 `0.67`；衰减按绝对长度计，header 更高时底缘强度不变。
 
 横向不越出 header 盒，纵向尾巴会覆盖 header 下方 24px 内的内容。
 

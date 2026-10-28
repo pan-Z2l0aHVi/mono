@@ -166,8 +166,8 @@ class WebUiImagePreview extends LitElement {
 
   private readonly _scrollLock = defineScrollLockLease().make()
   /*
-   * 开启态 overlay（issue #120 Block 1）。预览的 Escape 原本只走原生 <dialog> 的 cancel 事件，
-   * 自己从不参与登记 —— 于是它既不是仲裁候选、又指望原生 cancel 兜底，而仲裁者一旦命中
+   * 开启态 overlay（issue #120 Block 1）。预览的 Escape 交给仲裁者：只走原生 <dialog> 的
+   * cancel 事件、自己不参与登记时，它既不是仲裁候选、又指望原生 cancel 兜底，而仲裁者一旦命中
    * 别的层就会 preventDefault 压掉那个 cancel：与任何已登记的层同时打开时，一次 Escape
    * 关掉的是下面那层，最上层的预览留在屏幕上。登记之后它与其它层同处一棵逻辑树。
    *

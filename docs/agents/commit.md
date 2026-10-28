@@ -18,7 +18,7 @@ bash scripts/workflow/commit.sh <type> <scope> "<subject>" --dry
 
 确认 message 和文件列表后去掉 `--dry`。`commit.sh` 每一行分别传给 `-m`，正文行间保留空行，不要用 `git commit -F` 绕开脚本。
 
-由 agent 创建 commit 时，author 与 committer 使用实际执行体的官方名称和邮箱，以该 agent 的官方文档或客户端明确提供的署名为准。不得从产品名或模型名推造邮箱，也不得冒用其他 agent 的署名；用户显式指定身份时优先遵循。人类 author 保持本人身份；`Co-authored-by` 只记录实际参与该提交的 agent，并使用该 agent 的官方署名。提交前确认 author 与 committer 符合授权人的预期；无需为这次实施变更修改 Git 配置。
+由 agent 创建 commit 时，author 与 committer 使用实际执行体的官方名称和邮箱，以该 agent 的官方文档或客户端明确提供的署名为准。不得从产品名或模型名推造邮箱，也不得冒用其他 agent 的署名；用户显式指定身份时优先遵循。人类 author 保持本人身份；`Co-authored-by` 只记录实际参与该提交的 agent，并使用该 agent 的官方署名。提交前确认 author 与 committer 符合授权人的预期；不需要为实施变更修改 Git 配置。
 
 ## Pre-commit 与本地 checks
 
