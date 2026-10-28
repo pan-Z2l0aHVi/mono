@@ -109,6 +109,7 @@ export default defineConfig({
     attachmentsDir: '.vitest-attachments',
     // CI runner 上挂载型用例慢一个量级，默认 5s 上限不够；测量见 apps/interweave/frontend/vite.config.ts。
     testTimeout: 15_000,
+    hookTimeout: 30_000,
     projects: [
       {
         extends: true,

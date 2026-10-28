@@ -38,6 +38,8 @@ export default defineConfig({
     // 0.3s，CI 上 vitest 4 是 3.1s、vitest 5 是 7.7s，2~4s 的单条用例会轮流撞上默认 5s 上限。
     // 放宽上限而不改测试，是因为慢在环境：断言里没有靠超时兜底的等待。
     testTimeout: 15_000,
+    // 同一台 runner 上 hook 也会超时：默认 10s 之内加载不完语言包或整页依赖。
+    hookTimeout: 30_000,
     projects: [
       {
         extends: true,
