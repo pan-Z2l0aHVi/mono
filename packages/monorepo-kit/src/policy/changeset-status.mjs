@@ -1,4 +1,4 @@
-import { commandOutput, exec, pnpm } from './exec.mjs'
+import { commandOutput, exec, pnpm } from '../shared/exec.mjs'
 
 export const name = 'changeset-status'
 

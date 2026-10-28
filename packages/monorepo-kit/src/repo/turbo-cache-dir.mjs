@@ -7,6 +7,8 @@ import { execFileSync } from 'node:child_process'
 import fs from 'node:fs'
 import path from 'node:path'
 
+import { findRepoRoot } from '../shared/repo-root.mjs'
+
 function fail(message) {
   throw new Error(`turbo-cache-dir: ${message}`)
 }
@@ -43,7 +45,7 @@ function resolveTempDirectory(env) {
  * @param {NodeJS.ProcessEnv} [env]
  * @returns {string} canonical shared Turbo artifact cache directory
  */
-export function resolveTurboCacheDir(repositoryRoot = path.resolve(import.meta.dirname, '../..'), env = process.env) {
+export function resolveTurboCacheDir(repositoryRoot = findRepoRoot(), env = process.env) {
   const requestedRoot = path.isAbsolute(repositoryRoot) ? repositoryRoot : path.resolve(process.cwd(), repositoryRoot)
   const repoRoot = canonicalDirectory(requestedRoot, 'repository root')
 

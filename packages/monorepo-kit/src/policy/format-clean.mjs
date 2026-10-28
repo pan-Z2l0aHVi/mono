@@ -1,7 +1,7 @@
 import fs from 'node:fs'
 import path from 'node:path'
 
-import { commandOutput, exec } from './exec.mjs'
+import { commandOutput, exec } from '../shared/exec.mjs'
 
 // 提交边界的只读格式检查：只判定，不运行 fixer，也不改 index。
 // 文件名来自 index，但工具检查工作区副本；index 与工作区分叉时由作者收敛。

@@ -123,7 +123,7 @@ try {
   // 围栏外的行数不能因剥离而变化：锚点与报错按行读取时要能对上。
   assert.equal(stripCodeSegments('a\n```\nb\n```\nc').split('\n').length, 5)
 
-  process.stdout.write('scripts/lib/context-invariants.test.mjs: all assertions passed\n')
+  process.stdout.write('packages/monorepo-kit/src/policy/context-invariants.test.mjs: all assertions passed\n')
 } catch (error) {
   process.stderr.write(`${error instanceof Error ? error.stack : String(error)}\n`)
   process.exitCode = 1

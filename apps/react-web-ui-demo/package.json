@@ -24,6 +24,7 @@
     "zustand": "catalog:"
   },
   "devDependencies": {
+    "@greypan/monorepo-kit": "workspace:*",
     "@greypan/unplugin-web-components": "workspace:*",
     "@greypan/deps-reload": "workspace:*",
     "@greypan/md-to-comp": "workspace:*",

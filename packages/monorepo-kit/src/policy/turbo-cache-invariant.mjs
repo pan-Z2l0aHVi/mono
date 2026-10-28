@@ -1,7 +1,7 @@
 import fs from 'node:fs'
 import path from 'node:path'
 
-import { readJsonFile } from './config.mjs'
+import { readJsonFile } from '../shared/config.mjs'
 
 // Turbo cache 的正确性依赖三件事：test 先跑依赖包的 build，build 缓存恢复 dist/**，
 // 以及 test inputs 不显式把 gitignored 的 dist 拉进 key。任何一项被改掉，缓存命中就可能

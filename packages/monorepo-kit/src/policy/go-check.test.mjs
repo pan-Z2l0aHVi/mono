@@ -108,7 +108,7 @@ try {
 
   assert.match(await failure(check({ AGENT_GOFMT_ARGV: 'gofmt' })), /AGENT_GOFMT_ARGV must be a JSON array/)
 
-  process.stdout.write('scripts/lib/go-check.test.mjs: all assertions passed\n')
+  process.stdout.write('packages/monorepo-kit/src/policy/go-check.test.mjs: all assertions passed\n')
 } finally {
   fs.rmSync(root, { recursive: true, force: true })
 }

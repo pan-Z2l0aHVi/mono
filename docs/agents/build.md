@@ -30,7 +30,7 @@ CI 在 Build 步之前经两端 demo 的 `check-generated` turbo 任务以同一
 
 React 与 Vue demo 的**壳文案**（TSX / SFC 中的界面文字）走另一条链：`wuchale` 从源码抽取 msgid，中文为源、英文为译文，落进 `apps/{react,vue}-web-ui-demo/src/locales/<locale>.po`。PO 是入库的译文源、手写不生成；catalog 与 loader（`src/locales/.wuchale/**`、`*.loader.js`、`data.js`、`plural.js`）由 Vite 插件按 PO 重编译，全部 gitignore。dev 与 build 只编译不抽取，所以**增删壳文案必须显式在应用目录跑 `pnpm exec wuchale --clean`** 把新 msgid 写进 PO，否则构建默默用旧语料出页面。`--clean` 会顺带移除代码里已不再引用的条目；不得用 `--modify`——它把译文写回源码，而源码里的中文才是唯一原文。PO 是 tracked 文件，天然在 `$TURBO_DEFAULT$` 里，不需要像 Markdown 那样重新纳入。
 
-壳文案的一致性由两端应用的 `catalog.spec.ts` 随 `pnpm run test` 验证，复用 `scripts/lib/shell-i18n-catalog.mjs`：它分别把每个应用的两份 PO 复制到临时目录、按 `wuchale.config.js` 的 glob 重跑一次抽取，然后判五件事——en 有空译文、en 与 zh 的 msgid 集合不等（缺译或多译）、PO 里残留 `#~` 废弃条目、代码里有中文没进语料、语料里有中文代码里已不再引用。`wuchale status` 与 `check` 只看 PO 自身，看不见新加的源码文案，也判不出空译文，所以这条检查补的是它够不到的那一半。
+壳文案的一致性由两端应用的 `catalog.spec.ts` 随 `pnpm run test` 验证，复用 `@greypan/monorepo-kit` 的 `policy/shell-i18n-catalog`：它分别把每个应用的两份 PO 复制到临时目录、按 `wuchale.config.js` 的 glob 重跑一次抽取，然后判五件事——en 有空译文、en 与 zh 的 msgid 集合不等（缺译或多译）、PO 里残留 `#~` 废弃条目、代码里有中文没进语料、语料里有中文代码里已不再引用。`wuchale status` 与 `check` 只看 PO 自身，看不见新加的源码文案，也判不出空译文，所以这条检查补的是它够不到的那一半。
 
 测试由 Turbo 的 `^build` 先准备适配器产物；两端 test inputs 包含共享检查实现，修改它会使测试缓存失效。政策检查不再加载应用的 wuchale 配置。
 
@@ -60,7 +60,7 @@ Vue demo 通过私有 `@greypan/wuchale-vue` 在 Vue 编译前转换 SFC。`wuch
 
 ## 测试端口分配
 
-浏览器测试的 API 端口从 `scripts/lib/test-ports.mjs` 取，不要在 `vite.config.ts` 里写裸数字。每个项目占一个十位宽的段，留出 Vite 在端口被占时 +1 重试的空间：
+浏览器测试的 API 端口从 `packages/monorepo-kit/src/repo/test-ports.mjs` 取，不要在 `vite.config.ts` 里写裸数字。每个项目占一个十位宽的段，留出 Vite 在端口被占时 +1 重试的空间：
 
 | 项目                               | 基端口 |
 | ---------------------------------- | ------ |
@@ -71,7 +71,7 @@ Vue demo 通过私有 `@greypan/wuchale-vue` 在 Vue 编译前转换 SFC。`wuch
 | `web-ui`（browser-reduced-motion） | 63450  |
 | `browser-kit`                      | 63460  |
 
-新增 browser project 时在同一张表里占一个空闲段。表以 `scripts/lib/test-ports.mjs` 为准，上面这张表只是给人看的副本，改一处要改两处。同一台机器上并行多个 worktree 时，给每个 worktree 导出不同的 `GREYPAN_TEST_PORT_OFFSET`（100 的倍数，如 `100`、`200`）整体错开；不设时为 0，端口就是固定值，不随 worktree 变化。
+新增 browser project 时在同一张表里占一个空闲段。表以 `packages/monorepo-kit/src/repo/test-ports.mjs` 为准，上面这张表只是给人看的副本，改一处要改两处。同一台机器上并行多个 worktree 时，给每个 worktree 导出不同的 `GREYPAN_TEST_PORT_OFFSET`（100 的倍数，如 `100`、`200`）整体错开；不设时为 0，端口就是固定值，不随 worktree 变化。
 
 偏移是整表平移，所以同一 worktree 内的相对间隔不受影响；要守的是**不同 worktree 的两组端口不重叠**，因此步长不得小于全表跨度（当前 `63469 - 63410 + 1 = 60`；取 100 是给后续段位留余量）。模块加载时校验「段间不重叠」与「跨度不超过步长」两条，任一条不成立直接抛错，而不是悄悄和其他 worktree 抢端口。
 
@@ -79,7 +79,7 @@ Vue demo 通过私有 `@greypan/wuchale-vue` 在 Vue 编译前转换 SFC。`wuch
 
 `api.strictPort: false` 只有 Interweave 需要显式写。vitest 5 通过 `resolveApiServerConfig` 与 `vitest:config:server` 把 `api` 合并进测试服务器，顶层 `server` 的 `strictPort: true` 会被一并带过去；Interweave 的 dev server 正需要它（端口被占就硬失败，否则 webview 指向空气），测试服务器不需要——端口被占时它会直接 `Startup Error`，而不是按实际监听地址漂移。另外五个包没有顶层 `strictPort`，继承的是默认 `false`，不必写。
 
-`scripts/lib/test-ports.mjs` 记在根 `turbo.json` 的 `globalDependencies` 里：五条 `test` 任务（六个 browser project）都经各自包的 `vite.config.ts` 读它，而 turbo 只对包目录内的文件做哈希，不列出来就会在改表之后重放上一份缓存的绿色结果。放在根而不是这五个包各自的 `test.inputs`：新增 browser project 时不会漏登记，代价是改这张表会让全部缓存失效，而这张表很少改。
+`packages/monorepo-kit/src/repo/test-ports.mjs` 记在根 `turbo.json` 的 `globalDependencies` 里：五条 `test` 任务（六个 browser project）都经各自包的 `vite.config.ts` 读它，而 turbo 只对包目录内的文件做哈希，不列出来就会在改表之后重放上一份缓存的绿色结果。放在根而不是这五个包各自的 `test.inputs`：新增 browser project 时不会漏登记，代价是改这张表会让全部缓存失效，而这张表很少改。
 
 dev server 不在这张表里：两个 demo 不写端口，Vite 从 5173 起、被占则 +1，实际 URL 会变，脚本与文档不要写死；Interweave 的 9245 带 `strictPort`，端口被占直接失败（Wails 需要确定的前端 URL，静默漂移会让 webview 指向空气），改端口用 `WAILS_VITE_PORT`——Taskfile 与 `vite.config.ts` 读同一个变量。
 

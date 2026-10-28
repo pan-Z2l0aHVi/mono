@@ -87,7 +87,7 @@ try {
   )
   await run({ root: fixtureRoot })
 
-  process.stdout.write('scripts/lib/package-contract.test.mjs: all assertions passed\n')
+  process.stdout.write('packages/monorepo-kit/src/policy/package-contract.test.mjs: all assertions passed\n')
 } finally {
   fs.rmSync(fixtureRoot, { recursive: true, force: true })
 }

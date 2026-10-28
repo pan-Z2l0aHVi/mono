@@ -6,6 +6,8 @@
 
 2026-10-19 修订：task 分级与记账已提取为通用 task-ledger skill（ADR-0028 为纯文本），`scripts/workflow/` 只保留 commit helper；§1 执行面表、§5 目录树与命令面说明已同步。
 
+2026-10-28 修订：门禁实现与仓库编排迁入 workspace 包 `@greypan/monorepo-kit`（ADR-0030），§5 目录树、§6 的共享位置与 §7 的测试发现规则已同步；`scripts/` 只剩入口与 Node 启动前的 bootstrap helper。
+
 ## 背景与取舍
 
 根 `scripts/` 混放检查、agent 工具、发布与运维脚本；`.agents/checks/` 是 task 系统留下的政策检查挂载点；`.github/scripts/` 存放 workflow 与发布编排。同一组检查还被 pre-commit、PR CI、拓扑测试和文档分别硬编码，新增或改名需要同步多处。
@@ -47,7 +49,7 @@
 - CI context step 调用 `pnpm run check-context`。
 - CI package step 调用 `pnpm run check-pack`。
 
-共享的 `scripts/lib/check-runner.mjs` 负责并发调用、错误包装与统一输出；入口只提供检查清单和参数。`Promise.all` 的语义就是本决策要的语义：第一个失败即整体失败，不会出现“部分通过”。它不会取消已经启动的同级检查，因此所有检查必须满足下面的只读不变量；进程在拒绝后退出，未完成的检查被遗弃是安全的。
+共享的 `@greypan/monorepo-kit/policy/check-runner` 负责并发调用、错误包装与统一输出；入口只提供检查清单和参数。`Promise.all` 的语义就是本决策要的语义：第一个失败即整体失败，不会出现“部分通过”。它不会取消已经启动的同级检查，因此所有检查必须满足下面的只读不变量；进程在拒绝后退出，未完成的检查被遗弃是安全的。
 
 `.github/scripts/lib/workflow-topology.mjs` 只断言 workflow 调用了哪个根命令、传了什么参数，不再硬编码单个检查名；pre-commit 的断言同理。
 
@@ -74,7 +76,7 @@
 
 ### 5. `scripts/` 分类
 
-根 `scripts/` 按执行面分为四个入口目录加一个共享实现目录：
+根 `scripts/` 按执行面分为四个入口目录加一个 bootstrap helper 目录：
 
 ```text
 scripts/
@@ -94,38 +96,19 @@ scripts/
     clean.sh
     env-doctor.mjs
     update-skills.mjs
-  lib/                     # 共享实现与原子检查实现，不是入口
-    check-runner.mjs
-    changeset-policy.mjs
-    changeset-status.mjs
-    command-conventions.mjs
-    context-corpus.mjs
-    context-invariants.mjs
-    format-clean.mjs
+  lib/                     # Node 启动前求值的 bootstrap helper，不是入口
     go-cache-dir.sh
-    go-check.mjs
-    interweave-turbo-inputs.mjs
-    no-mutual-links.mjs
-    package-contract.mjs
-    script-tests.mjs
-    turbo-cache-dir.mjs
-    turbo-cache-invariant.mjs
-    web-ui-docs-inputs.mjs
-    workspace-manifests.mjs
-    exec.mjs
-    git.mjs
-    config.mjs
+    go-cache-dir.test.mjs  # 测的是那个 .sh
     turbo-cache-dir.sh
-    *.test.mjs             # 与原子模块同名，可选
 ```
 
-`scripts/lib/` 同时承载跨检查复用的 helper 与各原子检查实现；`scripts/checks/` 只保留入口，避免入口目录重新长出实现。单次使用的解析留在所属检查实现内。workspace 内的 `apps/*/scripts` 与 `packages/*/scripts` 保持原位。根 `package.json` 的命令面以该文件为准：本 PR 内门禁入口统一为无 namespace 的 `check-*`，task 记账入口随 ADR-0028 移出根命令；目标路径同步更新。`.mise.toml` 与 `clean.sh` 对 `turbo-cache-dir.sh` 的引用同步改为 `scripts/lib/turbo-cache-dir.sh`；`env-doctor` 改用等价的 `scripts/lib/turbo-cache-dir.mjs`。
+2026-10-28 修订：门禁原子实现与仓库编排已迁入 `packages/monorepo-kit`（分区、exports 与理由见 ADR-0030）；`scripts/lib/` 只保留 `.mise.toml` 在 Node 可用前执行的两个 POSIX helper。`scripts/checks/` 仍只保留入口，实现经包 specifier 引用，避免入口目录重新长出实现。单次使用的解析留在所属检查实现内。workspace 内的 `apps/*/scripts` 与 `packages/*/scripts` 保持原位。根 `package.json` 的命令面以该文件为准：门禁入口统一为无 namespace 的 `check-*`，task 记账入口随 ADR-0028 移出根命令。`.mise.toml` 与 `clean.sh` 对 `turbo-cache-dir.sh` 的引用仍在 `scripts/lib/`；`env-doctor` 改用包内等价的 `repo/turbo-cache-dir`。
 
 ### 6. 语言与运行时
 
 2026-10-19 修订：本节的 Node 规则只约束检查门禁。其余脚本默认优先 POSIX `sh`，尤其是系统探测、依赖与环境处理、发布编排；只有结构化解析、代码生成、状态机或跨平台路径处理等复杂逻辑才用 Node。选择细则与跨运行时禁令见 [`docs/agents/scripts.md`](../agents/scripts.md#运行时选择)。
 
-- 检查统一使用 Node ESM。理由不是速度，而是可维护性：`JSON.parse` 替代 awk/sed 对 prettier 形状的解析，链接、git 与执行逻辑可以放进 `scripts/lib/` 共享，检查函数可以直接单测。Node 已由 mise 钉住，且在仓库中本来就是必需依赖；入口只启动一次，子进程继承同一工具链。
+- 检查统一使用 Node ESM。理由不是速度，而是可维护性：`JSON.parse` 替代 awk/sed 对 prettier 形状的解析，链接、git 与执行逻辑可以在 `@greypan/monorepo-kit` 的 `shared/` 里共享，检查函数可以直接单测。Node 已由 mise 钉住，且在仓库中本来就是必需依赖；入口只启动一次，子进程继承同一工具链。
 - 不在 `sh` 里拼接执行 Node 源码，也不在 Node 里用 `sh -c` 或启动 `.sh` 辅助脚本完成本可由 argv 表达的工作。外部 CLI 以 argv 调用不属于拼接。
 - bootstrap 例外只来自 `.mise.toml` 在 Node 启动前求值的 `[env]` 模板；每个例外的等价实现、降级行为与测试要求以 `.mise.toml` 与 `docs/agents/worktree.md` 为准。
 - 不再新增 sh 检查；已有 sh 检查随迁移改写为 Node。
@@ -134,7 +117,7 @@ scripts/
 
 - 测试改为可选：没有测试文件合法；一旦存在测试文件，必须与被测文件同目录同名（`foo.mjs` / `foo.ts` / `foo.sh` → `foo.test.mjs`）。
 - 测试只覆盖原子函数与共享实现，不覆盖只做聚合的入口。
-- `test-scripts` 的发现规则不变：运行全仓 tracked 的 `*.test.mjs`。
+- `test-scripts` 运行全仓 tracked 的 `*.test.mjs`，`packages/monorepo-kit/**` 除外——那部分由该包自己的 `test` 脚本在 turbo 图里跑（ADR-0030）。
 - 每个改写后的原子检查用 fixture 覆盖成功、失败与参数边界；聚合入口靠这些原子测试与一次性的新旧差分跑验证。
 - 一次性的新旧差分跑在 fixture 与当前仓库上执行，结论写入 PR 描述，不把临时 harness 提交进仓库。
 - `docs/agents/scripts.md` 的范围扩展到 `scripts/checks/**` 与 `scripts/lib/**`，并改写同名测试政策；`docs/agents/commands.md` 记录 `check-*` 作为门禁入口的命名约定。

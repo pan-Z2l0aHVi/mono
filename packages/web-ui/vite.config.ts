@@ -1,9 +1,8 @@
 import { resolve } from 'node:path'
 
+import { testApiPort } from '@greypan/monorepo-kit/repo/test-ports'
 import { defineConfig } from 'vite-plus'
 import { playwright } from 'vite-plus/test/browser-playwright'
-
-import { testApiPort } from '../../scripts/lib/test-ports.mjs'
 
 import { generateIcons } from './scripts/generate-icons'
 

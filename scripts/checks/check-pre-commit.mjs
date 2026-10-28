@@ -1,11 +1,11 @@
 import path from 'node:path'
 
-import { runEntrypoint } from '../lib/check-runner.mjs'
-import * as commandConventions from '../lib/command-conventions.mjs'
-import * as formatClean from '../lib/format-clean.mjs'
-import * as noMutualLinks from '../lib/no-mutual-links.mjs'
-import * as turboCacheInvariant from '../lib/turbo-cache-invariant.mjs'
-import * as webUiDocsInputs from '../lib/web-ui-docs-inputs.mjs'
+import { runEntrypoint } from '@greypan/monorepo-kit/policy/check-runner'
+import * as commandConventions from '@greypan/monorepo-kit/policy/command-conventions'
+import * as formatClean from '@greypan/monorepo-kit/policy/format-clean'
+import * as noMutualLinks from '@greypan/monorepo-kit/policy/no-mutual-links'
+import * as turboCacheInvariant from '@greypan/monorepo-kit/policy/turbo-cache-invariant'
+import * as webUiDocsInputs from '@greypan/monorepo-kit/policy/web-ui-docs-inputs'
 
 const checks = [commandConventions, formatClean, noMutualLinks, turboCacheInvariant, webUiDocsInputs]
 

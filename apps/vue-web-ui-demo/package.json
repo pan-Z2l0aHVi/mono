@@ -27,6 +27,7 @@
     "wuchale": "catalog:"
   },
   "devDependencies": {
+    "@greypan/monorepo-kit": "workspace:*",
     "@greypan/deps-reload": "workspace:*",
     "@greypan/md-to-comp": "workspace:*",
     "@greypan/unplugin-web-components": "workspace:*",

@@ -30,6 +30,7 @@
     "dev:interweave": "turbo run dev --filter=@greypan/interweave --filter=\"@greypan/interweave-frontend^...\""
   },
   "devDependencies": {
+    "@greypan/monorepo-kit": "workspace:*",
     "@changesets/cli": "catalog:",
     "@commitlint/cli": "catalog:",
     "@commitlint/config-conventional": "catalog:",

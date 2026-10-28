@@ -78,7 +78,8 @@ function collectFiles(root) {
   }
 
   // `.agents/skills-vendored` 中锁定上游件不属于本仓语料；其他 .agents Markdown 保留。
-  for (const file of [...files]) {
+  // 边遍历边删除是 Set 迭代器的定义行为：删掉当前条目不影响后续访问，所以不需要先复制一份。
+  for (const file of files) {
     const parts = file.split('/')
     if (parts[0] === '.agents' && parts[1] === 'skills-vendored' && locked.has(parts[2])) files.delete(file)
   }

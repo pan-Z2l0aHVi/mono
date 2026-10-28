@@ -55,6 +55,7 @@
     "@lit/context": "catalog:"
   },
   "devDependencies": {
+    "@greypan/monorepo-kit": "workspace:*",
     "@greypan/tsconfig": "workspace:*",
     "@iconify-json/akar-icons": "catalog:",
     "@iconify-json/andrsrxn": "catalog:",

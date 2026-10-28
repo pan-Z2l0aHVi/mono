@@ -73,7 +73,7 @@ try {
   fs.writeFileSync(path.join(malformed, 'turbo.json'), '{ nope\n')
   await assert.rejects(run({ root: malformed }), /cannot parse/)
 
-  process.stdout.write('scripts/lib/turbo-cache-invariant.test.mjs: all assertions passed\n')
+  process.stdout.write('packages/monorepo-kit/src/policy/turbo-cache-invariant.test.mjs: all assertions passed\n')
 } finally {
   fs.rmSync(tempRoot, { recursive: true, force: true })
 }

@@ -1,6 +1,7 @@
 import depsReload from '@greypan/deps-reload/vite'
 import type { MdToCompViteOptions } from '@greypan/md-to-comp'
 import mdToCompReact from '@greypan/md-to-comp/react'
+import { testApiPort } from '@greypan/monorepo-kit/repo/test-ports'
 import unpluginWebComponents from '@greypan/unplugin-web-components/vite'
 import tailwindcss from '@tailwindcss/vite'
 import { tanstackRouter } from '@tanstack/router-plugin/vite'
@@ -9,8 +10,6 @@ import react from '@vitejs/plugin-react'
 import { defineConfig, searchForWorkspaceRoot } from 'vite-plus'
 import { playwright } from 'vite-plus/test/browser-playwright'
 import { wuchale } from 'wuchale/vite'
-
-import { testApiPort } from '../../scripts/lib/test-ports.mjs'
 
 // 具名导出供 scripts/workflow/check-md-to-comp-artifacts.mjs 复用：CI 在 Build 步之前以这份配置
 // 只判不改地校验生成物。配置只有这一份，不另抄。
@@ -134,7 +133,7 @@ export default defineConfig({
           // `test` 块里：写到根上会连 jsdom project 一起抢这个端口。默认 63315 会被同机并行的
           // 其他 worktree（或同一轮 turbo test 里其他包的测试进程）占住——同一进程内的多个
           // browser project 倒是会各自递增，不冲突；端口分配与多 worktree 的偏移见
-          // scripts/lib/test-ports.mjs。
+          // packages/monorepo-kit/src/repo/test-ports.mjs。
           //
           // host 必须钉成 loopback。Vite 的可用性探测只绑通配地址（`isPortAvailable` 遍历
           // `wildcardHosts`），看不见只占 127.0.0.1 的进程，所以真正把关的是随后那次绑定。

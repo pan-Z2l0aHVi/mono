@@ -3,7 +3,7 @@ import { randomBytes } from 'node:crypto'
 import { chmod, link, lstat, mkdir, readFile, rename, unlink, writeFile } from 'node:fs/promises'
 import path from 'node:path'
 
-import { requiredGitHooks } from '../lib/git-hooks-status.mjs'
+import { requiredGitHooks } from '@greypan/monorepo-kit/policy/git-hooks-status'
 
 function gitOutput(args, cwd, description) {
   const result = spawnSync('git', args, { cwd, encoding: 'utf8' })

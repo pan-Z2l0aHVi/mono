@@ -20,7 +20,7 @@ worktree 本身是任务隔离边界，不是包名的别名。包清单、依�
 
 ## Turbo artifact cache
 
-`TURBO_CACHE_DIR` 指向系统临时目录下的 `<temp>/greypan/turbo-cache/<repo-id>`。[`scripts/lib/turbo-cache-dir.sh`](../../scripts/lib/turbo-cache-dir.sh) 是 mise 与 `clean.sh` 使用的路径解析器，[`scripts/lib/turbo-cache-dir.mjs`](../../scripts/lib/turbo-cache-dir.mjs) 是 `env-doctor` 使用的等价 Node 实现；两者都把 Git common directory 解析为物理路径，再用 `git hash-object --stdin` 计算稳定 ID，测试断言结果一致。主仓及其 linked worktree 因共用 Git common directory 而复用同一缓存；独立 clone 有不同的 common directory 和缓存 ID。helper 不创建目录、不写 Git 对象，也不读取继承的 `TURBO_CACHE_DIR`。
+`TURBO_CACHE_DIR` 指向系统临时目录下的 `<temp>/greypan/turbo-cache/<repo-id>`。[`scripts/lib/turbo-cache-dir.sh`](../../scripts/lib/turbo-cache-dir.sh) 是 mise 与 `clean.sh` 使用的路径解析器，[`packages/monorepo-kit/src/repo/turbo-cache-dir.mjs`](../../packages/monorepo-kit/src/repo/turbo-cache-dir.mjs) 是 `env-doctor` 使用的等价 Node 实现；两者都把 Git common directory 解析为物理路径，再用 `git hash-object --stdin` 计算稳定 ID，测试断言结果一致。主仓及其 linked worktree 因共用 Git common directory 而复用同一缓存；独立 clone 有不同的 common directory 和缓存 ID。helper 不创建目录、不写 Git 对象，也不读取继承的 `TURBO_CACHE_DIR`。
 
 Turbo artifact cache 保存可恢复的构建产物，包括 `dist` 与声明文件。新路径首次构建时是冷缓存，系统回收临时目录后 Turbo 会重新构建产物。
 

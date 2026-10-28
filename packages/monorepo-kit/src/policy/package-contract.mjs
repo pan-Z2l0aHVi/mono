@@ -2,12 +2,13 @@ import { execFileSync } from 'node:child_process'
 import fs from 'node:fs'
 import path from 'node:path'
 
-import { readJsonFile } from './config.mjs'
-import { listPnpmWorkspaceManifests } from './workspace-manifests.mjs'
+import { readJsonFile } from '../shared/config.mjs'
+import { findRepoRoot } from '../shared/repo-root.mjs'
+import { listPnpmWorkspaceManifests } from '../shared/workspace-manifests.mjs'
 
 export const name = 'check-pack'
 
-const packageManagerRoot = path.resolve(import.meta.dirname, '../..')
+const packageManagerRoot = findRepoRoot()
 const pnpm = process.platform === 'win32' ? 'pnpm.cmd' : 'pnpm'
 
 function walk(directory) {
@@ -94,7 +95,7 @@ export async function run({ root }) {
       }
     }
 
-    for (const target of [...new Set(collectTargets(manifest.exports))]) {
+    for (const target of new Set(collectTargets(manifest.exports))) {
       if (!target.startsWith('./')) {
         errors.push(`${packageName}: export target must be package-relative: ${target}`)
         continue

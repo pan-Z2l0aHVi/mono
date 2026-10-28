@@ -3,6 +3,9 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { pathToFileURL } from 'node:url'
 
+import { byCodeUnit } from '../shared/order.mjs'
+import { listPnpmWorkspaceManifests, readPnpmWorkspacePatterns } from '../shared/workspace-manifests.mjs'
+
 import {
   AUTHORIZATION_POINTER,
   contentDigest,
@@ -17,7 +20,6 @@ import {
   scanVolatilePhrases,
   stripCodeSegments
 } from './context-invariants.mjs'
-import { listPnpmWorkspaceManifests, readPnpmWorkspacePatterns } from './workspace-manifests.mjs'
 
 export const name = 'check-context'
 
@@ -231,9 +233,9 @@ export async function run(context) {
     }
     const declared = new Set(declaredScopes)
     if (declared.size !== declaredScopes.length) addError('commitlint.config.js prompt.scopes has duplicate entries')
-    for (const scope of [...expectedScopes].filter(item => !declared.has(item)).sort())
+    for (const scope of [...expectedScopes].filter(item => !declared.has(item)).sort(byCodeUnit))
       addError(`commitlint.config.js prompt.scopes is missing workspace scope: ${scope}`)
-    for (const scope of [...declared].filter(item => !expectedScopes.has(item)).sort())
+    for (const scope of [...declared].filter(item => !expectedScopes.has(item)).sort(byCodeUnit))
       addError(`commitlint.config.js prompt.scopes lists an unknown scope: ${scope}`)
   }
 
@@ -397,7 +399,7 @@ export async function run(context) {
     }
     for (const match of source.matchAll(/^#{1,6}\s+(.*)$/gm)) {
       let heading = match[1].trim()
-      const explicit = /^(.+?)\s*\{#([^\}]+)\}$/.exec(heading)
+      const explicit = /^(.+?)\s*\{#([^}]+)\}$/.exec(heading)
       anchors.add(explicit ? explicit[2].trim() : ghAnchor(heading))
     }
     return anchors
@@ -463,7 +465,7 @@ export async function run(context) {
   }
   // ADR 的发现性钉在「必须有入站链接」上，而不是「CONTEXT.md 必须逐条索引」：
   // 后者把 CONTEXT.md 的体积变成契约，阻止精简这份文档。
-  for (const file of [...adrDocuments].sort()) {
+  for (const file of [...adrDocuments].sort(byCodeUnit)) {
     if (!inboundTargets.has(file)) addError(`${relative(file)}: no inbound link from the instruction surface`)
   }
   // rules 文件的加载路径同样钉在「必须有入站链接」上：路由那一行被删掉后，断链、锚点、出处检查都不会变红，

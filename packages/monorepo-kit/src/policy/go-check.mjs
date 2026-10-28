@@ -1,7 +1,8 @@
 import fs from 'node:fs'
 import path from 'node:path'
 
-import { commandOutput, exec } from './exec.mjs'
+import { commandOutput, exec } from '../shared/exec.mjs'
+import { byCodeUnit } from '../shared/order.mjs'
 
 // 仓库级 Go 静态检查：格式与 vet。工具失败必须非零退出——gofmt 在解析错误时
 // 可能 stdout 为空，不能只用 `gofmt -l | grep` 判断。
@@ -34,7 +35,7 @@ function collectGoSources(root) {
     }
   }
   visit(root)
-  return { goFiles: goFiles.sort(), moduleDirs: moduleDirs.sort() }
+  return { goFiles: goFiles.sort(byCodeUnit), moduleDirs: moduleDirs.sort(byCodeUnit) }
 }
 
 function failureDetail(result) {

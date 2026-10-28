@@ -2,10 +2,9 @@ import { readFileSync } from 'node:fs'
 import { createRequire } from 'node:module'
 import { resolve } from 'node:path'
 
+import { testApiPort } from '@greypan/monorepo-kit/repo/test-ports'
 import { defineConfig, type Plugin } from 'vite-plus'
 import { playwright } from 'vite-plus/test/browser-playwright'
-
-import { testApiPort } from '../../scripts/lib/test-ports.mjs'
 
 /**
  * Vitest 5 的 `@vitest/browser` 不再把 `/mockServiceWorker.js` 解析到

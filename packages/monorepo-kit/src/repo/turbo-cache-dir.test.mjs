@@ -4,9 +4,11 @@ import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 
+import { findRepoRoot } from '../shared/repo-root.mjs'
+
 import { resolveTurboCacheDir } from './turbo-cache-dir.mjs'
 
-const repoRoot = path.resolve(import.meta.dirname, '../..')
+const repoRoot = findRepoRoot()
 const helper = path.join(repoRoot, 'scripts', 'lib', 'turbo-cache-dir.sh')
 const fixtureRoot = fs.mkdtempSync(path.join(os.tmpdir(), "greypan turbo cache 'fixture'-"))
 
@@ -311,4 +313,4 @@ function miseCache(env) {
   }
 }
 
-console.log('scripts/lib/turbo-cache-dir.test.mjs: all assertions passed')
+console.log('packages/monorepo-kit/src/repo/turbo-cache-dir.test.mjs: all assertions passed')

@@ -39,6 +39,7 @@
     "remeda": "catalog:"
   },
   "devDependencies": {
+    "@greypan/monorepo-kit": "workspace:*",
     "@greypan/test-kit": "workspace:*",
     "@greypan/tsconfig": "workspace:*",
     "msw": "catalog:",

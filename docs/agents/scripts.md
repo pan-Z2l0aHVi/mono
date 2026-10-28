@@ -9,7 +9,9 @@
 - **根 `scripts/`**：由根 `package.json`、Git hook、CI 或流程文档直接调用，影响整个仓库。
 - **workspace 内 `scripts/`**：由所属包或应用的构建、发布或生成流程调用，影响范围限于该 workspace。
 
-`scripts/lib/**` 是共享实现与原子检查实现，不是入口，其行为由调用方与同名测试覆盖。
+`scripts/lib/**` 只放 **Node 启动之前** 要跑的东西：`.mise.toml` 的 `[env]` 模板在 Node 可用前求值，`turbo-cache-dir.sh` 与 `go-cache-dir.sh` 是这条链路的唯一实现，`go-cache-dir.test.mjs` 测的就是后者，跟着留在原处。它不是入口，也不再是通用的共享实现目录。
+
+门禁实现与仓库编排在 workspace 包 [`packages/monorepo-kit`](../../packages/monorepo-kit) 里：源码直出、无构建步骤，按「换仓库是否重写」分三个分区——`shared/` 与仓库无关，`policy/` 是本仓库的门禁策略（换仓库即重写），`repo/` 是本仓库的构建与测试编排（端口表、Turbo 缓存路径）。判据是这段代码描述的是**本仓库的编排事实**还是**可复用的能力**：前者进 `policy/` 或 `repo/`，不假装通用；后者才进 `shared/`。两类都不再放回 `scripts/lib/`，因为它会在 Node 之前被求值这条约束下变成半个 bootstrap 目录。跨 workspace 复用但不是编排事实的测试基建仍单独成包（对比 `@greypan/test-kit` 的 MSW 基建，它对消费方一无所知）。分区判据、迁移理由与代价见 [ADR-0030](../adr/0030-monorepo-tooling-package.md)，端口分配与多 worktree 偏移的具体约定见 [`build.md`](./build.md#测试端口分配)。
 
 ## 准入
 
@@ -23,7 +25,7 @@
 
 ## 运行时选择
 
-默认优先 POSIX `sh`：系统探测、依赖与环境处理、发布编排，以及把外部 CLI 串成流程的脚本。只有复杂逻辑才用 Node ESM：结构化解析（JSON/YAML/Markdown）、代码生成、状态机、跨平台路径处理，或需要复用 `scripts/lib/**` 的原子实现。检查门禁仍统一使用 Node ESM（ADR-0027 §6）；其余脚本在 `sh` 能直接表达时选 `sh`，不要为几行命令串联引入 Node。
+默认优先 POSIX `sh`：系统探测、依赖与环境处理、发布编排，以及把外部 CLI 串成流程的脚本。只有复杂逻辑才用 Node ESM：结构化解析（JSON/YAML/Markdown）、代码生成、状态机、跨平台路径处理，或需要复用 `@greypan/monorepo-kit` 的原子实现。检查门禁仍统一使用 Node ESM（ADR-0027 §6）；其余脚本在 `sh` 能直接表达时选 `sh`，不要为几行命令串联引入 Node。
 
 - 不在 `sh` 里拼接执行 Node 源码：不写 `node -e`、`node - <<EOF`，也不把 JS 存进变量再执行。
 - 不在 Node 里用 `sh -c` 或启动 `.sh` 辅助脚本完成本可由 argv 表达的工作；外部 CLI（`git`、`pnpm`、`gh`、`turbo`、`ps` 等）以 argv 调用不在此列。
@@ -34,7 +36,7 @@
 
 ### 执行面
 
-根 `scripts/` 按执行面分为 `checks/`（门禁与脚本测试入口）、`workflow/`（提交命令）、`release/`（发布辅助）、`maintenance/`（清理、环境诊断与依赖维护）与 `lib/`（共享实现与原子检查实现）。门禁入口通过 `check-*` 根命令调用；`checks/` 只放薄入口，同一端点的检查由一个入口聚合，检查逻辑放在 `lib/` 的原子模块里。分类与入口契约见 ADR-0027。
+根 `scripts/` 按执行面分为 `checks/`（门禁与脚本测试入口）、`workflow/`（提交命令）、`release/`（发布辅助）、`maintenance/`（清理、环境诊断与依赖维护）与 `lib/`（Node 启动前求值的 bootstrap helper）。门禁入口通过 `check-*` 根命令调用；`checks/` 只放薄入口，同一端点的检查由一个入口聚合，检查逻辑在 `@greypan/monorepo-kit` 的 `policy/` 里。分类与入口契约见 ADR-0027。
 
 ### 授权
 
@@ -44,9 +46,14 @@
 
 测试可选：没有测试文件合法。一旦存在测试文件，必须与被测文件同目录同名（`foo.mjs` / `foo.ts` / `foo.sh` → `foo.test.mjs`）；新增或重命名测试文件时，同名关系在同一变更里成立。
 
-测试针对原子函数或共享实现，不针对只做聚合的入口。覆盖按风险选择，至少包括参数解析、成功输出与退出码、失败路径，以及脚本声称的副作用。`scripts/checks/` 只放薄入口，检查实现与同名测试在 `scripts/lib/`；入口本身不要求专属测试。
+测试针对原子函数或共享实现，不针对只做聚合的入口。覆盖按风险选择，至少包括参数解析、成功输出与退出码、失败路径，以及脚本声称的副作用。`scripts/checks/` 只放薄入口，检查实现与同名测试在 `packages/monorepo-kit/src/policy/`；入口本身不要求专属测试。
 
-`test-scripts` 只运行已存在的 tracked `*.test.mjs`，不证明每个入口都有测试；覆盖完整性由 review 检查。共享实现（`scripts/lib/**`）的测试同样可选，存在时必须同名。
+测试有两个发现面，各自覆盖一半，不要在两处都登记同一个文件：
+
+- `test-scripts` 运行全仓 tracked 的 `*.test.mjs`，`packages/monorepo-kit/**` 除外——那份清单覆盖 `.github/scripts`、workspace 脚本与 skills 的测试，不能收窄。
+- `@greypan/monorepo-kit` 的测试由它自己的 `test` 脚本跑（`node --test "src/**/*.test.mjs"`），走 turbo 图，有依赖排序与缓存。glob 必须显式写：直接传目录会按 Node 的默认模式收文件，`repo/test-ports.mjs` 与 `repo/test-ports.d.mts` 都匹配 `test-*`。
+
+两边都不证明每个入口都有测试；覆盖完整性由 review 检查。共享实现的测试同样可选，存在时必须同名。
 
 ### 运行边界
 
@@ -60,5 +67,5 @@ workspace 脚本的影响范围限于所属 workspace，职责是承载该 works
 
 - **授权**：新增或修改 workspace 脚本属于常规实施改动，不需要逐次取得用户授权；新增或调整脚本中的执行超时、等待上限或重试上限，仍须按 [`workflow.md`](./workflow.md#怎么取得这个授权) 逐次取得用户明确授权。脚本触发发布、对外交付或其他不可逆副作用时，执行该操作仍按 [`workflow.md`](./workflow.md#怎么取得这个授权) 单独授权。
 - **测试**：与根脚本一致，测试可选；一旦存在测试文件，必须与被测文件同目录同名（`foo.mjs` / `foo.ts` / `foo.sh` → `foo.test.mjs`）。测试针对脚本本身，至少覆盖参数、成功输出与退出码、失败路径，以及脚本声称的副作用；不能只靠调用方的集成测试替代。
-- **边界**：不得成为其他 workspace 的隐式入口；跨 workspace 复用的逻辑上移到共享包或根 `scripts/lib/**`。
+- **边界**：不得成为其他 workspace 的隐式入口；跨 workspace 复用的逻辑上移到共享包。
 - **运行**：同样必须非交互，失败非零退出；调用被钉工具时按 [`worktree.md`](./worktree.md#mise-exec-与命令外壳) 的 mise 包装规则执行。
