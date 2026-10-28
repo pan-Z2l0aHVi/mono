@@ -90,8 +90,9 @@ export default defineConfig({
     tsconfigPaths: true
   },
   optimizeDeps: {
-    // browser 运行时需要的 `vitest > expect-type` 由 vitest 5 自己注入，本包只需保证
-    // `vitest` 是直接依赖（见 package.json），让那条链能从包根解析。
+    // browser 运行时需要的 `vitest > expect-type` 由 vitest 5 自己注入。`vitest` 随
+    // `vite-plus` 安装，本包不单独声明（也不要在 optimizeDeps 里补），那条链从 vite-plus
+    // 的依赖位置解析。
     //
     // 这里不必并 `webUiOptimizeDeps`：本 app 的扫描入口 `routeTree.gen.ts` 静态 import 了每个路由
     // 模块，而路由模块对 `@greypan/web-ui` 根 barrel 的值导入（spinner / image-preview / toast 等）

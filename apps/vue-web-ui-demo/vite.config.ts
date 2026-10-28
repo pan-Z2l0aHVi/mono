@@ -96,8 +96,9 @@ export default defineConfig({
     tsconfigPaths: true
   },
   optimizeDeps: {
-    // browser 运行时需要的 `vitest > expect-type` 由 vitest 5 自己注入，本包只需保证
-    // `vitest` 是直接依赖（见 package.json），让那条链能从包根解析。
+    // browser 运行时需要的 `vitest > expect-type` 由 vitest 5 自己注入。`vitest` 随
+    // `vite-plus` 安装，本包不单独声明（也不要在 optimizeDeps 里补），那条链从 vite-plus
+    // 的依赖位置解析。
     //
     // web-ui 那一半由 `@greypan/web-ui/vite` 提供，跟随组件库自己的运行时依赖，不要在这里抄一份。
     //

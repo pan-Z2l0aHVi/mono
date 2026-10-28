@@ -42,7 +42,11 @@ export default defineConfig({
           environment: 'jsdom',
           setupFiles: ['./test-helper.ts'],
           include: ['src/**/*.spec.ts'],
-          exclude: ['src/**/*.browser.spec.ts']
+          exclude: ['src/**/*.browser.spec.ts'],
+          // 这套用例挂载整页，CI 的 4 核 runner 比本机慢一个量级：同一份 AppLayout.spec.ts
+          // 在 CI 上是 3.1s（vitest 4）→ 7.7s（vitest 5），本机 0.3s，2~4s 的单个用例会撞上
+          // 默认 5s 上限。放宽上限而不改测试，是因为慢在环境不在断言：断言里没有靠超时兜底的等待。
+          testTimeout: 15_000
         }
       },
       {
