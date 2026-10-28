@@ -33,6 +33,7 @@ const ACCEPTED_SHAPES = [
 ]
 
 export async function run({ root }) {
+  /** @type {{ scripts?: Record<string, string> }} */
   const manifest = readJsonFile(path.join(root, 'package.json'))
   const scripts = manifest.scripts
   if (!scripts || typeof scripts !== 'object' || Array.isArray(scripts))

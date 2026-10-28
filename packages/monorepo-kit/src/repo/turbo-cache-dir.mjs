@@ -9,6 +9,10 @@ import path from 'node:path'
 
 import { findRepoRoot } from '../shared/repo-root.mjs'
 
+/**
+ * @param {string} message
+ * @returns {never}
+ */
 function fail(message) {
   throw new Error(`turbo-cache-dir: ${message}`)
 }

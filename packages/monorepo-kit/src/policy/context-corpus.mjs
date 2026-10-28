@@ -35,6 +35,11 @@ export async function run(context) {
   const exists = file => fs.existsSync(path.join(root, file))
   const read = file => fs.readFileSync(path.join(root, file), 'utf8')
 
+  /**
+   * @param {string} directory
+   * @param {(file: string) => boolean} [predicate]
+   * @returns {string[]}
+   */
   function walk(directory, predicate = () => true) {
     const absolute = path.join(root, directory)
     if (!fs.existsSync(absolute)) return []
@@ -260,7 +265,8 @@ export async function run(context) {
     if (fs.lstatSync(path.join(root, '.claude/agents')).isSymbolicLink())
       addError('.claude/agents must not be a symlink; the repo ships no session-role contracts')
   } catch (error) {
-    if (error.code !== 'ENOENT') addError(`.claude/agents: cannot inspect path: ${error.message}`)
+    const failure = /** @type {NodeJS.ErrnoException} */ (error)
+    if (failure.code !== 'ENOENT') addError(`.claude/agents: cannot inspect path: ${failure.message}`)
   }
 
   const trackedAgents = spawnSync('git', ['ls-files', '--', '.claude/agents'], { cwd: root, encoding: 'utf8' })

@@ -46,7 +46,7 @@ Vue demo 通过私有 `@greypan/wuchale-vue` 在 Vue 编译前转换 SFC。`wuch
 
 ## 库构建模式
 
-公共面是固定入口集合的包用 `vp pack`（基于 tsdown，可以多入口，输出 `.mjs` 与 `.d.mts`，自动生成声明文件并从依赖中外部化）。公共面含通配子路径导出或需要 Vite CSS/资源管线的包同样用 `vp pack`，按下面三条加配置：`unbundle: true` + `root: 'src'` 让产物与源码树一一对应（子路径导出靠它）；`fixedExtension: false` 把扩展名对齐到 exports 指向的 `.js` / `.d.ts`（node 平台默认是 `.mjs` / `.d.mts`），凡是 exports 指向 `.js` 的包都要显式写这一行，不要依赖 `platform: 'browser'` 的默认值碰巧相同；CSS 入口就是 `pack.entry` 里的一项（见 `web-ui` 的 `classes/style`），`pack.css` 只承载 `minify` 这类选项，浏览器下限由顶层 `target` 同时驱动 JS 语法降级与 LightningCSS 前缀，`css.minify` 打开后与旧 Vite 管线逐字节一致。声明文件由 `pack.dts` 生成：不在 JS 图里的纯类型入口必须显式列进 `pack.entry` 才会产出 `.d.ts`，顶层 `sourcemap: true` 会连带给 `.d.ts` 写 `sourceMappingURL`，所以要同时开 `dts.sourcemap`；`dts.entry` glob 也能补类型入口，但会让 dts 阶段慢数倍，不要用。纯转发的 barrel（`export * from './x'`）在 `unbundle` 下会被拍平进叶子模块，没有 `index.js` / `index.d.ts`，所以 `./*` 通配覆盖的子目录要按 `'<dir>/index'` 的键逐个列进 `pack.entry`——产物落点由键决定，写成 `<dir>` 会落到 `dist/<dir>.js`。具体选择以各包 manifest 与 `vite.config.ts` 为准，入口数量本身不是判据。`packages/tsconfig` 无构建步骤，只提供通过 TypeScript `extends` 消费的 JSON 文件。
+公共面是固定入口集合的包用 `vp pack`（基于 tsdown，可以多入口，输出 `.mjs` 与 `.d.mts`，自动生成声明文件并从依赖中外部化）。公共面含通配子路径导出或需要 Vite CSS/资源管线的包同样用 `vp pack`，按下面三条加配置：`unbundle: true` + `root: 'src'` 让产物与源码树一一对应（子路径导出靠它）；`fixedExtension: false` 把扩展名对齐到 exports 指向的 `.js` / `.d.ts`（node 平台默认是 `.mjs` / `.d.mts`），凡是 exports 指向 `.js` 的包都要显式写这一行，不要依赖 `platform: 'browser'` 的默认值碰巧相同；CSS 入口就是 `pack.entry` 里的一项（见 `web-ui` 的 `classes/style`），`pack.css` 只承载 `minify` 这类选项，浏览器下限由顶层 `target` 同时驱动 JS 语法降级与 LightningCSS 前缀，`css.minify` 打开后与旧 Vite 管线逐字节一致。声明文件由 `pack.dts` 生成：不在 JS 图里的纯类型入口必须显式列进 `pack.entry` 才会产出 `.d.ts`，顶层 `sourcemap: true` 会连带给 `.d.ts` 写 `sourceMappingURL`，所以要同时开 `dts.sourcemap`；`dts.entry` glob 也能补类型入口，但会让 dts 阶段慢数倍，不要用。纯转发的 barrel（`export * from './x'`）在 `unbundle` 下会被拍平进叶子模块，没有 `index.js` / `index.d.ts`，所以 `./*` 通配覆盖的子目录要按 `'<dir>/index'` 的键逐个列进 `pack.entry`——产物落点由键决定，写成 `<dir>` 会落到 `dist/<dir>.js`。具体选择以各包 manifest 与 `vite.config.ts` 为准，入口数量本身不是判据。`packages/tsconfig` 无构建步骤，只提供通过 TypeScript `extends` 消费的 JSON 文件。私有仓库工具包 `@greypan/monorepo-kit` 故意不打包运行时（门禁要在 hook 里源码直读），它的 `build` 只跑 `tsc --emitDeclarationOnly`，从 `.mjs` 的 JSDoc 生成 `dist/**/*.d.mts`；`exports.types` 指向它，`import` 仍指向 `src/index.mjs`。
 
 ## 外部化规则
 
@@ -71,7 +71,7 @@ Vue demo 通过私有 `@greypan/wuchale-vue` 在 Vue 编译前转换 SFC。`wuch
 | `web-ui`（browser-reduced-motion） | 63450  |
 | `browser-kit`                      | 63460  |
 
-新增 browser project 时在同一张表里占一个空闲段。表以 `packages/monorepo-kit/src/repo/test-ports.mjs` 为准，上面这张表只是给人看的副本，改一处要改两处。同一台机器上并行多个 worktree 时，给每个 worktree 导出不同的 `GREYPAN_TEST_PORT_OFFSET`（100 的倍数，如 `100`、`200`）整体错开；不设时为 0，端口就是固定值，不随 worktree 变化。
+新增 browser project 时在同一张表里占一个空闲段。表以 `packages/monorepo-kit/src/repo/test-ports.mjs` 为准，上面这张表只是给人看的副本，改一处要改两处。代码表与调用点的一致性由 `test-ports.test.mjs` 守卫：它扫描全仓 `vite.config.ts` 的 `testApiPort` 字面量实参，集合必须与表完全相等，且每个段位只被一个 project 引用；文档副本不在这条守卫里，仍需手动同步。同一台机器上并行多个 worktree 时，给每个 worktree 导出不同的 `GREYPAN_TEST_PORT_OFFSET`（100 的倍数，如 `100`、`200`）整体错开；不设时为 0，端口就是固定值，不随 worktree 变化。
 
 偏移是整表平移，所以同一 worktree 内的相对间隔不受影响；要守的是**不同 worktree 的两组端口不重叠**，因此步长不得小于全表跨度（当前 `63469 - 63410 + 1 = 60`；取 100 是给后续段位留余量）。模块加载时校验「段间不重叠」与「跨度不超过步长」两条，任一条不成立直接抛错，而不是悄悄和其他 worktree 抢端口。
 

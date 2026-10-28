@@ -13,6 +13,10 @@ function parseWorkspacePattern(value, lineNumber) {
   return pattern
 }
 
+/**
+ * @param {string} root
+ * @returns {string[]}
+ */
 export function readPnpmWorkspacePatterns(root) {
   const workspaceFile = path.join(root, 'pnpm-workspace.yaml')
   if (!fs.existsSync(workspaceFile)) throw new Error('missing pnpm-workspace.yaml')
@@ -39,6 +43,10 @@ export function readPnpmWorkspacePatterns(root) {
   return patterns
 }
 
+/**
+ * @param {string} root
+ * @returns {string[]} absolute paths of every workspace package.json
+ */
 export function listPnpmWorkspaceManifests(root) {
   const patterns = readPnpmWorkspacePatterns(root)
   const ignoredPatterns = [

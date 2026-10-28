@@ -3,7 +3,13 @@
   "extends": ["//"],
   "tasks": {
     "test": {
-      "inputs": ["$TURBO_DEFAULT$", "$TURBO_ROOT$/scripts/lib/turbo-cache-dir.sh"]
+      "dependsOn": ["build", "^build"],
+      "inputs": [
+        "$TURBO_DEFAULT$",
+        "$TURBO_ROOT$/scripts/lib/turbo-cache-dir.sh",
+        "$TURBO_ROOT$/apps/**/vite.config.ts",
+        "$TURBO_ROOT$/packages/**/vite.config.ts"
+      ]
     }
   }
 }

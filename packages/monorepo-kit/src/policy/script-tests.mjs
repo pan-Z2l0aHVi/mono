@@ -11,6 +11,10 @@ export const name = 'test-scripts'
 
 const OWN_PACKAGE_PREFIX = 'packages/monorepo-kit/'
 
+/**
+ * @param {string} root
+ * @returns {string[]}
+ */
 export function listTrackedScriptTests(root) {
   const result = spawnSync('git', ['ls-files', '-z', '*.test.mjs'], { cwd: root, encoding: 'utf8' })
   if (result.error) throw new Error(`cannot run git ls-files: ${result.error.message}`)
@@ -22,7 +26,11 @@ export function listTrackedScriptTests(root) {
     .filter(file => !file.startsWith(OWN_PACKAGE_PREFIX))
 }
 
-export async function run({ root, node = process.execPath } = {}) {
+/**
+ * @param {{ root: string, node?: string }} options
+ * @returns {Promise<string>}
+ */
+export async function run({ root, node = process.execPath }) {
   const files = listTrackedScriptTests(root)
   if (files.length === 0) return 'no tracked script tests'
 

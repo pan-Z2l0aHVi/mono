@@ -7,6 +7,10 @@ import path from 'node:path'
 // 「检查不通过」，不能是「检查跑在了错的目录上」。
 const WORKSPACE_FILE = 'pnpm-workspace.yaml'
 
+/**
+ * @param {string} [start]
+ * @returns {string}
+ */
 export function findRepoRoot(start = import.meta.dirname) {
   let directory = path.resolve(start)
   for (;;) {

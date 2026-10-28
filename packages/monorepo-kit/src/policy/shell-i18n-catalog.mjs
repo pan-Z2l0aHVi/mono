@@ -17,15 +17,29 @@ function poString(literal) {
 }
 
 /**
+ * 解析中的单条 PO 记录：复数条目在 `msgstr[n]` 收齐前先攒在 `pluralForms` 里。
+ *
+ * @typedef {{ msgid: string, msgidPlural: string, msgstr: string, pluralForms: Map<number, string> }} PoEntry
+ */
+
+/**
  * 只解析这份门禁需要的部分：`msgid` → `msgstr` 的配对，以及 `#~` 开头的废弃条目。
  * 复数条目保留每个 `msgstr[n]`，按 header 里的 `nplurals` 校验所有必需的译文。
+ *
+ * @param {string} text
+ * @returns {{ entries: Map<string, string | string[]>, obsolete: string[], pluralCount: number }}
  */
 export function parsePo(text) {
+  /** @type {Map<string, string | string[]>} */
   const entries = new Map()
+  /** @type {string[]} */
   const obsolete = []
   const pluralCount = Number(text.match(/Plural-Forms:\s*nplurals\s*=\s*(\d+)/)?.[1] ?? 1)
+  /** @type {PoEntry | null} */
   let current = null
+  /** @type {'msgid' | 'msgidPlural' | 'msgstr' | 'pluralForm' | null} */
   let field = null
+  /** @type {number | null} */
   let pluralIndex = null
   let isObsolete = false
 
@@ -33,10 +47,11 @@ export function parsePo(text) {
     if (current && current.msgid !== '' && !isObsolete) {
       const isPlural = current.msgidPlural !== '' || current.pluralForms.size > 0
       if (isPlural) {
-        const highestIndex = Math.max(-1, ...current.pluralForms.keys())
+        const { msgid, pluralForms } = current
+        const highestIndex = Math.max(-1, ...pluralForms.keys())
         entries.set(
-          current.msgid,
-          Array.from({ length: highestIndex + 1 }, (_, index) => current.pluralForms.get(index) ?? '')
+          msgid,
+          Array.from({ length: highestIndex + 1 }, (_, index) => pluralForms.get(index) ?? '')
         )
       } else {
         entries.set(current.msgid, current.msgstr)
@@ -48,7 +63,7 @@ export function parsePo(text) {
     pluralIndex = null
   }
 
-  const newEntry = () => ({ msgid: '', msgidPlural: '', msgstr: '', pluralForms: new Map() })
+  const newEntry = () => /** @type {PoEntry} */ ({ msgid: '', msgidPlural: '', msgstr: '', pluralForms: new Map() })
 
   for (const rawLine of text.split('\n')) {
     const line = rawLine.trimEnd()
@@ -155,6 +170,12 @@ export default {
 `
 }
 
+/**
+ * 校验一个应用的壳文案语料：译文齐全、与当前源码抽取一致、无废弃条目。
+ *
+ * @param {{ root: string, app: string }} options `app` 是相对仓库根的路径
+ * @returns {Promise<string>} 通过时的摘要
+ */
 export async function checkApp({ root, app }) {
   const appDir = path.join(root, app)
   if (!fs.existsSync(appDir)) throw new Error(`${app} 不存在`)
@@ -200,7 +221,9 @@ export async function checkApp({ root, app }) {
 
     const result = exec(pnpm, ['exec', 'wuchale', '--config', configFile, '--clean'], { cwd: appDir })
     if (!result.ok) {
-      throw new Error(`wuchale 抽取失败（exit ${result.status}）：${result.stderr.trim() || result.stdout.trim()}`)
+      throw new Error(
+        `wuchale 抽取失败（exit ${result.status}）：${(result.stderr ?? '').trim() || result.stdout.trim()}`
+      )
     }
     const fresh = parsePo(fs.readFileSync(path.join(outDir, `${SOURCE_LOCALE}.po`), 'utf8'))
     const freshIds = [...fresh.entries.keys()]

@@ -1,0 +1,15 @@
+{
+  "extends": "@greypan/tsconfig/node.json",
+  "include": ["src/**/*.mjs"],
+  "exclude": ["src/**/*.test.mjs"],
+  "compilerOptions": {
+    "allowJs": true,
+    "checkJs": true,
+    "declaration": true,
+    "emitDeclarationOnly": true,
+    "noEmit": false,
+    "rootDir": "src",
+    "outDir": "dist",
+    "noImplicitAny": false
+  }
+}

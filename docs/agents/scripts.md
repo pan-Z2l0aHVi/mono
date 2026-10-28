@@ -9,9 +9,9 @@
 - **根 `scripts/`**：由根 `package.json`、Git hook、CI 或流程文档直接调用，影响整个仓库。
 - **workspace 内 `scripts/`**：由所属包或应用的构建、发布或生成流程调用，影响范围限于该 workspace。
 
-`scripts/lib/**` 只放 **Node 启动之前** 要跑的东西：`.mise.toml` 的 `[env]` 模板在 Node 可用前求值，`turbo-cache-dir.sh` 与 `go-cache-dir.sh` 是这条链路的唯一实现，`go-cache-dir.test.mjs` 测的就是后者，跟着留在原处。它不是入口，也不再是通用的共享实现目录。
+`scripts/lib/**` 只放 **Node 启动之前** 要跑的东西及其测试：`.mise.toml` 的 `[env]` 模板在 Node 可用前求值，`turbo-cache-dir.sh` 与 `go-cache-dir.sh` 是这条链路的唯一实现，`go-cache-dir.test.mjs` 测的就是后者，跟着留在原处。它不是入口，也不再是通用的共享实现目录。
 
-门禁实现与仓库编排在 workspace 包 [`packages/monorepo-kit`](../../packages/monorepo-kit) 里：源码直出、无构建步骤，按「换仓库是否重写」分三个分区——`shared/` 与仓库无关，`policy/` 是本仓库的门禁策略（换仓库即重写），`repo/` 是本仓库的构建与测试编排（端口表、Turbo 缓存路径）。判据是这段代码描述的是**本仓库的编排事实**还是**可复用的能力**：前者进 `policy/` 或 `repo/`，不假装通用；后者才进 `shared/`。两类都不再放回 `scripts/lib/`，因为它会在 Node 之前被求值这条约束下变成半个 bootstrap 目录。跨 workspace 复用但不是编排事实的测试基建仍单独成包（对比 `@greypan/test-kit` 的 MSW 基建，它对消费方一无所知）。分区判据、迁移理由与代价见 [ADR-0030](../adr/0030-monorepo-tooling-package.md)，端口分配与多 worktree 偏移的具体约定见 [`build.md`](./build.md#测试端口分配)。往包里加模块要同时改三处——模块本身、`src/index.mjs` 的导出、`src/index.d.mts` 的声明，再由 `src/index.test.mjs` 的名字清单钉住，漏一处测试就红。
+门禁实现与仓库编排在 workspace 包 [`packages/monorepo-kit`](../../packages/monorepo-kit) 里：运行时源码直出，类型声明由 `tsc` 生成到 `dist/`，按「换仓库是否重写」分三个分区——`shared/` 与仓库无关，`policy/` 是本仓库的门禁策略（换仓库即重写），`repo/` 是本仓库的构建与测试编排（端口表、Turbo 缓存路径）。判据是这段代码描述的是**本仓库的编排事实**还是**可复用的能力**：前者进 `policy/` 或 `repo/`，不假装通用；后者才进 `shared/`。两类都不再放回 `scripts/lib/`，因为它会在 Node 之前被求值这条约束下变成半个 bootstrap 目录。跨 workspace 复用但不是编排事实的测试基建仍单独成包（对比 `@greypan/test-kit` 的 MSW 基建，它对消费方一无所知）。分区判据、迁移理由与代价见 [ADR-0030](../adr/0030-monorepo-tooling-package.md)，端口分配与多 worktree 偏移的具体约定见 [`build.md`](./build.md#测试端口分配)。往包里加模块要改模块本身与 `src/index.mjs` 的导出，再由 `src/index.test.mjs` 的名字清单钉住，然后重新 build 生成声明。
 
 ## 准入
 
@@ -51,7 +51,7 @@
 测试有两个发现面，各自覆盖一半，不要在两处都登记同一个文件：
 
 - `test-scripts` 运行全仓 tracked 的 `*.test.mjs`，`packages/monorepo-kit/**` 除外——那份清单覆盖 `.github/scripts`、workspace 脚本与 skills 的测试，不能收窄。
-- `@greypan/monorepo-kit` 的测试由它自己的 `test` 脚本跑（`node --test "src/**/*.test.mjs"`），走 turbo 图，有依赖排序与缓存。glob 必须显式写：直接传目录会按 Node 的默认模式收文件，`repo/test-ports.mjs` 与 `repo/test-ports.d.mts` 都匹配 `test-*`。
+- `@greypan/monorepo-kit` 的测试由它自己的 `test` 脚本跑（`node --test "src/**/*.test.mjs"`），走 turbo 图，有依赖排序与缓存。glob 必须显式写：直接传目录会按 Node 的默认模式收文件，`repo/test-ports.mjs` 匹配 `test-*`，会被当成空测试再跑一遍。
 
 两边都不证明每个入口都有测试；覆盖完整性由 review 检查。共享实现的测试同样可选，存在时必须同名。
 

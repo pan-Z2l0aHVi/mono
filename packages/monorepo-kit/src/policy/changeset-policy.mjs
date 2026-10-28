@@ -1,5 +1,6 @@
 import path from 'node:path'
 
+import { errorMessage } from '../shared/errors.mjs'
 import { git } from '../shared/git.mjs'
 
 // PR changeset policy: compare committed PR head content with the merge base and read every blob
@@ -10,7 +11,7 @@ function readBlob(root, commit, file) {
   try {
     return git(root, ['show', `${commit}:${file}`])
   } catch (error) {
-    throw new Error(`cannot read ${file} from PR head ${commit}: ${error.message}`)
+    throw new Error(`cannot read ${file} from PR head ${commit}: ${errorMessage(error)}`)
   }
 }
 
@@ -100,7 +101,7 @@ export async function run({ root, base, head }) {
   try {
     mergeBase = git(root, ['merge-base', baseCommit, headCommit]).trim()
   } catch (error) {
-    throw new Error(`changeset check cannot determine merge-base for the supplied commits: ${error.message}`)
+    throw new Error(`changeset check cannot determine merge-base for the supplied commits: ${errorMessage(error)}`)
   }
 
   // NUL separators preserve spaces and non-ASCII paths; deleted paths are intentionally excluded.

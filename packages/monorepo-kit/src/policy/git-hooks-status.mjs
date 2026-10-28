@@ -4,6 +4,11 @@ import path from 'node:path'
 
 // 与 scripts/maintenance/install-git-hooks.mjs 的 required hooks 保持一致：受版本控制的 hook 是
 // 唯一事实来源，安装脚本装得上两者，体检就必须对两者断言。
+/**
+ * @typedef {{ level: 'ok' | 'warn' | 'fail', detail: string }} HookStatus
+ */
+
+/** @type {readonly string[]} */
 export const requiredGitHooks = ['commit-msg', 'pre-commit']
 
 const disableEnvironmentVariables = ['HUSKY', 'VP_GIT_HOOKS', 'VITE_GIT_HOOKS']
@@ -26,6 +31,11 @@ function readDisabledPreference(root) {
   return { disabled: false, error: result.stderr || `git config exited ${result.status}` }
 }
 
+/**
+ * @param {string} root
+ * @param {Record<string, string | undefined>} [env]
+ * @returns {HookStatus}
+ */
 export function inspectGitHooks(root, env = process.env) {
   if (disableEnvironmentVariables.some(name => env[name] === '0')) {
     return { level: 'ok', detail: 'Git hooks are disabled by the environment' }

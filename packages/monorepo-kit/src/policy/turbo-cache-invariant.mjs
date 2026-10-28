@@ -39,6 +39,7 @@ function requireArray(value, label) {
 export async function run({ root }) {
   const file = path.join(root, 'turbo.json')
   if (!fs.existsSync(file)) throw new Error('turbo.json not found in the repository root')
+  /** @type {{ tasks?: Record<string, { dependsOn?: unknown, outputs?: unknown, inputs?: unknown }> }} */
   const config = readJsonFile(file)
   const test = config.tasks?.test
   const build = config.tasks?.build

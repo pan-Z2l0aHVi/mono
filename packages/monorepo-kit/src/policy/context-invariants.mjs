@@ -39,6 +39,7 @@ const INLINE_CODE = /(`+)([\s\S]*?)\1/g
 
 export function stripCodeSegments(source) {
   const kept = []
+  /** @type {{ char: string, length: number } | null} */
   let fence = null
   for (const line of source.split('\n')) {
     const marker = FENCE.exec(line)

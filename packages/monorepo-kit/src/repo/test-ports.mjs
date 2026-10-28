@@ -25,7 +25,14 @@ const BANDS = {
   'browser-kit': 63460
 }
 
-export const TEST_API_PORT_NAMES = Object.freeze(Object.keys(BANDS))
+/**
+ * 项目名从表本身推导，不另抄一份联合类型：给表加段位就自动进类型。
+ *
+ * @typedef {keyof typeof BANDS} TestApiPortName
+ */
+
+/** @type {readonly TestApiPortName[]} */
+export const TEST_API_PORT_NAMES = Object.freeze(/** @type {TestApiPortName[]} */ (Object.keys(BANDS)))
 
 const bases = Object.values(BANDS).sort((a, b) => a - b)
 for (const [index, base] of bases.entries()) {
@@ -42,8 +49,15 @@ if (SPAN > OFFSET_STRIDE) {
   throw new Error(`test-ports: 端口表跨度 ${SPAN} 超过偏移步长 ${OFFSET_STRIDE}，不同偏移会重叠`)
 }
 
+/**
+ * 取某个项目的基端口；偏移只做整表平移，不改段内间隔。
+ *
+ * @param {TestApiPortName} name
+ * @param {NodeJS.ProcessEnv} [env]
+ * @returns {number}
+ */
 export function testApiPort(name, env = process.env) {
-  const base = BANDS[name]
+  const base = /** @type {number | undefined} */ (BANDS[name])
   if (base === undefined) throw new Error(`test-ports: 未知项目 "${name}"`)
 
   const raw = env.GREYPAN_TEST_PORT_OFFSET

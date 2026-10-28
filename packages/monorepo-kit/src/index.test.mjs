@@ -5,9 +5,10 @@ import path from 'node:path'
 import * as barrel from './index.mjs'
 import { byCodeUnit } from './shared/order.mjs'
 
-// 入口有两个文件：index.mjs 是运行时，index.d.mts 是给 TS 消费方的声明。
-// 名字清单写死在这里，任一侧单独变动都会失败——这是「加了导出却忘了写声明」的唯一拦截点。
-// 增删导出要同时改三处：模块本身、index.mjs、index.d.mts，然后改这张表。
+// 入口有两个文件：index.mjs 是运行时，dist/index.d.mts 是 `tsc` 从运行时生成的声明。
+// 名字清单写死在这里，任一侧单独变动都会失败——运行时的出口由这张表看守，声明侧则由
+// 「构建产物必须与运行时同名」看守。增删导出只改两处：模块本身与 index.mjs，然后改这张表；
+// 声明由 `pnpm run build` 重新生成，不要手写。
 const EXPECTED = Object.freeze([
   'BAND_WIDTH',
   'OFFSET_STRIDE',
@@ -44,7 +45,12 @@ const EXPECTED = Object.freeze([
 ])
 
 // 行注释先剥掉：声明文件里用注释举例子时，不能被当成真的导出。
-const declaration = (await readFile(path.join(import.meta.dirname, 'index.d.mts'), 'utf8'))
+const declarationFile = path.join(import.meta.dirname, '..', 'dist', 'index.d.mts')
+const declaration = (
+  await readFile(declarationFile, 'utf8').catch(error => {
+    throw new Error(`${declarationFile} 不存在：先跑 pnpm --filter @greypan/monorepo-kit build`, { cause: error })
+  })
+)
   .split('\n')
   .map(line => (line.trimStart().startsWith('//') ? '' : line))
   .join('\n')

@@ -1,4 +1,11 @@
 import assert from 'node:assert/strict'
+import fs from 'node:fs'
+import path from 'node:path'
+
+import { globSync } from 'glob'
+
+import { byCodeUnit } from '../shared/order.mjs'
+import { findRepoRoot } from '../shared/repo-root.mjs'
 
 import { BAND_WIDTH, OFFSET_STRIDE, TEST_API_PORT_NAMES, testApiPort } from './test-ports.mjs'
 
@@ -53,5 +60,36 @@ assert.throws(() => testApiPort('web-ui', { GREYPAN_TEST_PORT_OFFSET: 'abc' }), 
 assert.throws(() => testApiPort('web-ui', { GREYPAN_TEST_PORT_OFFSET: '1.5' }), /非负整数/)
 assert.throws(() => testApiPort('web-ui', { GREYPAN_TEST_PORT_OFFSET: '10' }), /100 的倍数/)
 assert.throws(() => testApiPort('web-ui', { GREYPAN_TEST_PORT_OFFSET: '65500' }), /超出端口上限/)
+
+// 表是手写的，调用点分散在各 workspace 的 vite.config.ts：新增 browser project 忘了登记段位，
+// 或改名后表里留下死条目，两边都不会在运行时报错——只会悄悄落到别人的端口上。这里要求两边
+// 完全相等：多、少、重复都失败。非字面量实参（如传变量）会让调用数与字面量匹配数不等，
+// 同样失败，避免加一层入口后守卫自己失效。
+const root = findRepoRoot()
+const configs = globSync('{apps,packages}/**/vite.config.ts', {
+  cwd: root,
+  nodir: true,
+  posix: true,
+  ignore: ['**/node_modules/**']
+})
+assert.ok(configs.length > 0, '仓库里没有找到 vite.config.ts')
+
+const usage = new Map()
+for (const file of configs) {
+  const source = fs.readFileSync(path.join(root, file), 'utf8')
+  const calls = [...source.matchAll(/testApiPort\s*\(/g)].length
+  const names = [...source.matchAll(/testApiPort\s*\(\s*(['"])([^'"]+)\1/g)].map(match => match[2])
+  assert.equal(names.length, calls, `${file}: testApiPort 的实参必须是字符串字面量`)
+  for (const name of names) usage.set(name, (usage.get(name) ?? 0) + 1)
+}
+
+assert.deepEqual(
+  [...usage.keys()].sort(byCodeUnit),
+  [...TEST_API_PORT_NAMES].sort(byCodeUnit),
+  'vite.config.ts 里的 testApiPort 调用与端口表不一致'
+)
+for (const [name, count] of usage) {
+  assert.equal(count, 1, `${name} 被 ${count} 个 project 引用；一个段位只能给一个 project`)
+}
 
 console.log('test-ports.test.mjs passed')

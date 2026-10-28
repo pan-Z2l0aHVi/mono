@@ -103,6 +103,7 @@ export async function run({ root }) {
   const turboFile = path.join(packageRoot, 'turbo.json')
   if (!fs.existsSync(turboFile))
     throw new Error(`${PACKAGE_DIR}/turbo.json does not exist: without it the corpus is not an input to build or test`)
+  /** @type {{ extends?: unknown, tasks?: Record<string, { inputs?: unknown }> }} */
   const turbo = readJsonFile(turboFile)
   if (JSON.stringify(turbo.extends) !== '["//"]')
     throw new Error(`${PACKAGE_DIR}/turbo.json extends must be ["//"], otherwise the override drops task definitions`)

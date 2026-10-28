@@ -9,6 +9,12 @@ import { listPnpmWorkspaceManifests } from '../shared/workspace-manifests.mjs'
 export const name = 'check-pack'
 const pnpm = process.platform === 'win32' ? 'pnpm.cmd' : 'pnpm'
 
+/**
+ * 本检查读到的 package.json 字段；其余字段不参与检查，保持 unknown。
+ *
+ * @typedef {{ name?: string, private?: boolean, files?: string[], sideEffects?: unknown, exports?: unknown }} PackageManifest
+ */
+
 function walk(directory) {
   if (!fs.existsSync(directory)) return []
   const files = []
@@ -67,6 +73,7 @@ export async function run({ root }) {
 
   for (const manifestFile of listPnpmWorkspaceManifests(root)) {
     const packageRoot = path.dirname(manifestFile)
+    /** @type {PackageManifest} */
     const manifest = readJsonFile(manifestFile)
     const packageName = manifest.name ?? path.relative(root, packageRoot).split(path.sep).join('/')
 
