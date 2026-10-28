@@ -10,6 +10,8 @@ import { defineConfig, searchForWorkspaceRoot } from 'vite-plus'
 import { playwright } from 'vite-plus/test/browser-playwright'
 import { wuchale } from 'wuchale/vite'
 
+import { testApiPort } from '../../scripts/lib/test-ports.mjs'
+
 // 具名导出供 scripts/workflow/check-md-to-comp-artifacts.mjs 复用：CI 在 Build 步之前以这份配置
 // 只判不改地校验生成物。配置只有这一份，不另抄。
 export const mdToCompOptions: MdToCompViteOptions = {
@@ -129,11 +131,18 @@ export default defineConfig({
           // 滚动替身绝不能进真实浏览器——那会掩盖真实滚动行为，所以只挂 act-setup。
           setupFiles: ['./act-setup.ts'],
           // vitest 5 把 `browser.api` 挪到了 `test.api`，而且要写在 browser project 自己的
-          // `test` 块里：写到根上会连 jsdom project 一起抢这个端口。默认端口 63315 会被同机
-          // 并行的其他 worktree（或同一轮 turbo test 里 web-ui 的 browser project）占住，而它的
-          // 端口可用性检查不区分地址族：拿到冲突端口时页面会被导到别人的服务器上，症状是
-          // ERR_SSL_PROTOCOL_ERROR / ERR_EMPTY_RESPONSE / browser runtime 永不连回。
-          api: { port: 63411 },
+          // `test` 块里：写到根上会连 jsdom project 一起抢这个端口。默认 63315 会被同机并行的
+          // 其他 worktree（或同一轮 turbo test 里其他包的测试进程）占住——同一进程内的多个
+          // browser project 倒是会各自递增，不冲突；端口分配与多 worktree 的偏移见
+          // scripts/lib/test-ports.mjs。
+          //
+          // host 必须钉成 loopback。Vite 的可用性探测只绑通配地址（`isPortAvailable` 遍历
+          // `wildcardHosts`），看不见只占 127.0.0.1 的进程，所以真正把关的是随后那次绑定。
+          // 本应用顶层 `server.host` 是 `true`，不写 `api.host` 时测试服务器会继承成通配绑定：
+          // 别的进程占着 127.0.0.1 上的同号端口不会让它失败，两个服务器同号并行，页面可能被
+          // 导到别人的服务器（ERR_SSL_PROTOCOL_ERROR / ERR_EMPTY_RESPONSE / runtime 永不连回）。
+          // 钉成 127.0.0.1 后绑定目标与占用者同址，才出 EADDRINUSE 并前进到下一个端口。
+          api: { host: '127.0.0.1', port: testApiPort('react-web-ui-demo') },
           browser: {
             enabled: true,
             headless: true,

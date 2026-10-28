@@ -3,6 +3,8 @@ import { resolve } from 'node:path'
 import { defineConfig } from 'vite-plus'
 import { playwright } from 'vite-plus/test/browser-playwright'
 
+import { testApiPort } from '../../scripts/lib/test-ports.mjs'
+
 import { generateIcons } from './scripts/generate-icons'
 
 export default defineConfig({
@@ -77,6 +79,11 @@ export default defineConfig({
           name: 'browser',
           include: ['src/**/*.browser.spec.ts'],
           exclude: ['src/**/reduced-motion.browser.spec.ts'],
+          // 两个 browser project 显式占两个相邻段：同一进程内 vitest 会给它们各自递增默认端口
+          // （63315 / 63316），但它们挡不住同一轮 turbo test 里其他包的测试进程、以及同机并行
+          // 的其他 worktree——那些都从 63315 起。分配表、偏移与 host 的约定见
+          // docs/agents/build.md 的「测试端口分配」。
+          api: { host: '127.0.0.1', port: testApiPort('web-ui') },
           browser: {
             enabled: true,
             headless: true,
@@ -100,6 +107,8 @@ export default defineConfig({
         test: {
           name: 'browser-reduced-motion',
           include: ['src/**/reduced-motion.browser.spec.ts'],
+          // 与上面的 browser project 同时跑，端口必须错开；见那一段注释。
+          api: { host: '127.0.0.1', port: testApiPort('web-ui-reduced-motion') },
           browser: {
             enabled: true,
             headless: true,
