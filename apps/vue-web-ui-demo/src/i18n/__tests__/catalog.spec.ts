@@ -1,10 +1,10 @@
 import path from 'node:path'
 
-import { checkApp } from '@greypan/monorepo-kit/policy/shell-i18n-catalog'
+import { shellI18nCatalog } from '@greypan/monorepo-kit'
 import { expect, it } from 'vite-plus/test'
 
 it('壳文案译文完整，且与当前源码抽取一致', async () => {
-  const detail = await checkApp({
+  const detail = await shellI18nCatalog.checkApp({
     root: path.resolve(import.meta.dirname, '../../../../..'),
     app: 'apps/vue-web-ui-demo'
   })

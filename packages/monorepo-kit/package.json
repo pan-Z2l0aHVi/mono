@@ -9,9 +9,7 @@
   },
   "type": "module",
   "exports": {
-    "./shared/*": "./src/shared/*.mjs",
-    "./policy/*": "./src/policy/*.mjs",
-    "./repo/*": "./src/repo/*.mjs",
+    ".": "./src/index.mjs",
     "./package.json": "./package.json"
   },
   "scripts": {

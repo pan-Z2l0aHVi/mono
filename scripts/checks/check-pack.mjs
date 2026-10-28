@@ -1,6 +1,6 @@
 import path from 'node:path'
 
-import { run } from '@greypan/monorepo-kit/policy/package-contract'
+import { packageContract } from '@greypan/monorepo-kit'
 
 const args = process.argv.slice(2)
 const rootOptionIndex = args.indexOf('--root')
@@ -12,7 +12,7 @@ if (rootOptionIndex >= 0 && !args[rootOptionIndex + 1]) {
 const root =
   rootOptionIndex >= 0 ? path.resolve(args[rootOptionIndex + 1] ?? '') : path.resolve(import.meta.dirname, '../..')
 try {
-  const detail = await run({ root })
+  const detail = await packageContract.run({ root })
   if (!quiet) console.log(`check-pack passed (${detail})`)
 } catch (error) {
   if (!quiet)

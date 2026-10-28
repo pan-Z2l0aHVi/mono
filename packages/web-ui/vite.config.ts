@@ -1,6 +1,6 @@
 import { resolve } from 'node:path'
 
-import { testApiPort } from '@greypan/monorepo-kit/repo/test-ports'
+import { testApiPort } from '@greypan/monorepo-kit'
 import { defineConfig } from 'vite-plus'
 import { playwright } from 'vite-plus/test/browser-playwright'
 

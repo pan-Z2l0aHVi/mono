@@ -7,8 +7,6 @@ import { findRepoRoot } from '../shared/repo-root.mjs'
 import { listPnpmWorkspaceManifests } from '../shared/workspace-manifests.mjs'
 
 export const name = 'check-pack'
-
-const packageManagerRoot = findRepoRoot()
 const pnpm = process.platform === 'win32' ? 'pnpm.cmd' : 'pnpm'
 
 function walk(directory) {
@@ -42,6 +40,9 @@ function collectTargets(value) {
 }
 
 function getPackedFiles(packageRoot, packageName, errors) {
+  // 仓库根在这里求值而不是模块顶层：入口是统一再导出，模块层的查找会跟着入口一起
+  // 落到每个消费者身上，包括只需要端口表的 `vite.config.ts`。
+  const packageManagerRoot = findRepoRoot()
   try {
     const output = execFileSync(pnpm, ['--dir', packageRoot, 'pack', '--dry-run', '--json'], {
       cwd: packageManagerRoot,

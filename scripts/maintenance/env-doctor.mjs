@@ -17,8 +17,7 @@ import { execFileSync, spawnSync } from 'node:child_process'
 import fs from 'node:fs'
 import path from 'node:path'
 
-import { inspectGitHooks } from '@greypan/monorepo-kit/policy/git-hooks-status'
-import { resolveTurboCacheDir } from '@greypan/monorepo-kit/repo/turbo-cache-dir'
+import { inspectGitHooks, resolveTurboCacheDir } from '@greypan/monorepo-kit'
 
 const scriptRoot = path.resolve(import.meta.dirname, '../..')
 // env-doctor 体检的是「当前环境」：优先以调用方 cwd（worktree）为根，

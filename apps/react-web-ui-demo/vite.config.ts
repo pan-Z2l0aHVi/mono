@@ -1,7 +1,7 @@
 import depsReload from '@greypan/deps-reload/vite'
 import type { MdToCompViteOptions } from '@greypan/md-to-comp'
 import mdToCompReact from '@greypan/md-to-comp/react'
-import { testApiPort } from '@greypan/monorepo-kit/repo/test-ports'
+import { testApiPort } from '@greypan/monorepo-kit'
 import unpluginWebComponents from '@greypan/unplugin-web-components/vite'
 import tailwindcss from '@tailwindcss/vite'
 import { tanstackRouter } from '@tanstack/router-plugin/vite'

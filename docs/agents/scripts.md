@@ -11,7 +11,7 @@
 
 `scripts/lib/**` 只放 **Node 启动之前** 要跑的东西：`.mise.toml` 的 `[env]` 模板在 Node 可用前求值，`turbo-cache-dir.sh` 与 `go-cache-dir.sh` 是这条链路的唯一实现，`go-cache-dir.test.mjs` 测的就是后者，跟着留在原处。它不是入口，也不再是通用的共享实现目录。
 
-门禁实现与仓库编排在 workspace 包 [`packages/monorepo-kit`](../../packages/monorepo-kit) 里：源码直出、无构建步骤，按「换仓库是否重写」分三个分区——`shared/` 与仓库无关，`policy/` 是本仓库的门禁策略（换仓库即重写），`repo/` 是本仓库的构建与测试编排（端口表、Turbo 缓存路径）。判据是这段代码描述的是**本仓库的编排事实**还是**可复用的能力**：前者进 `policy/` 或 `repo/`，不假装通用；后者才进 `shared/`。两类都不再放回 `scripts/lib/`，因为它会在 Node 之前被求值这条约束下变成半个 bootstrap 目录。跨 workspace 复用但不是编排事实的测试基建仍单独成包（对比 `@greypan/test-kit` 的 MSW 基建，它对消费方一无所知）。分区判据、迁移理由与代价见 [ADR-0030](../adr/0030-monorepo-tooling-package.md)，端口分配与多 worktree 偏移的具体约定见 [`build.md`](./build.md#测试端口分配)。
+门禁实现与仓库编排在 workspace 包 [`packages/monorepo-kit`](../../packages/monorepo-kit) 里：源码直出、无构建步骤，按「换仓库是否重写」分三个分区——`shared/` 与仓库无关，`policy/` 是本仓库的门禁策略（换仓库即重写），`repo/` 是本仓库的构建与测试编排（端口表、Turbo 缓存路径）。判据是这段代码描述的是**本仓库的编排事实**还是**可复用的能力**：前者进 `policy/` 或 `repo/`，不假装通用；后者才进 `shared/`。两类都不再放回 `scripts/lib/`，因为它会在 Node 之前被求值这条约束下变成半个 bootstrap 目录。跨 workspace 复用但不是编排事实的测试基建仍单独成包（对比 `@greypan/test-kit` 的 MSW 基建，它对消费方一无所知）。分区判据、迁移理由与代价见 [ADR-0030](../adr/0030-monorepo-tooling-package.md)，端口分配与多 worktree 偏移的具体约定见 [`build.md`](./build.md#测试端口分配)。往包里加模块要同时改三处——模块本身、`src/index.mjs` 的导出、`src/index.d.mts` 的声明，再由 `src/index.test.mjs` 的名字清单钉住，漏一处测试就红。
 
 ## 准入
 
@@ -36,7 +36,7 @@
 
 ### 执行面
 
-根 `scripts/` 按执行面分为 `checks/`（门禁与脚本测试入口）、`workflow/`（提交命令）、`release/`（发布辅助）、`maintenance/`（清理、环境诊断与依赖维护）与 `lib/`（Node 启动前求值的 bootstrap helper）。门禁入口通过 `check-*` 根命令调用；`checks/` 只放薄入口，同一端点的检查由一个入口聚合，检查逻辑在 `@greypan/monorepo-kit` 的 `policy/` 里。分类与入口契约见 ADR-0027。
+根 `scripts/` 按执行面分为 `checks/`（门禁与脚本测试入口）、`workflow/`（提交命令）、`release/`（发布辅助）、`maintenance/`（清理、环境诊断与依赖维护）与 `lib/`（Node 启动前求值的 bootstrap helper）。门禁入口通过 `check-*` 根命令调用；`checks/` 只放薄入口，同一端点的检查由一个入口聚合，检查逻辑在 `@greypan/monorepo-kit` 的 `policy/` 里。包只有一个入口（`exports["."]`），入口引用一律写包名，没有子路径。分类与入口契约见 ADR-0027。
 
 ### 授权
 

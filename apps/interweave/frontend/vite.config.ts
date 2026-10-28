@@ -1,5 +1,5 @@
 import depsReload from '@greypan/deps-reload/vite'
-import { testApiPort } from '@greypan/monorepo-kit/repo/test-ports'
+import { testApiPort } from '@greypan/monorepo-kit'
 import unpluginWebComponents from '@greypan/unplugin-web-components/vite'
 import { webUiOptimizeDeps } from '@greypan/web-ui/vite'
 import tailwindcss from '@tailwindcss/vite'

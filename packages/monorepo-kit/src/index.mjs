@@ -1,0 +1,38 @@
+// 包的唯一入口。子路径不再对外导出：消费方一律 `import { … } from '@greypan/monorepo-kit'`。
+//
+// 导出分两类，判据是「模块的导出名是否互相冲突」，不是风格偏好：
+//   - 命名空间导出：检查单元（12 个）全部导出 `name` 与 `run`，平铺会互相覆盖；
+//     `check-runner` 读的正是 `check.name` / `check.run`，所以命名空间是这套协议的载体，
+//     不是规避重名的权宜手段。`contextInvariants` 与 `shellI18nCatalog` 也走命名空间：
+//     前者 12 个 helper 名字过于通用，后者的 `checkApp` 放进平铺面指代不明（哪个 app）。
+//   - 平铺导出：叶子函数与常量，包内名字唯一，平铺后调用点最短。
+//
+// 包内模块之间仍然用相对路径互相 import；写成 `@greypan/monorepo-kit` 会绕回本文件形成环。
+
+export * as changesetPolicy from './policy/changeset-policy.mjs'
+export * as changesetStatus from './policy/changeset-status.mjs'
+export * as commandConventions from './policy/command-conventions.mjs'
+export * as contextCorpus from './policy/context-corpus.mjs'
+export * as contextInvariants from './policy/context-invariants.mjs'
+export * as formatClean from './policy/format-clean.mjs'
+export * as goCheck from './policy/go-check.mjs'
+export * as interweaveTurboInputs from './policy/interweave-turbo-inputs.mjs'
+export * as noMutualLinks from './policy/no-mutual-links.mjs'
+export * as packageContract from './policy/package-contract.mjs'
+export * as scriptTests from './policy/script-tests.mjs'
+export * as shellI18nCatalog from './policy/shell-i18n-catalog.mjs'
+export * as turboCacheInvariant from './policy/turbo-cache-invariant.mjs'
+export * as webUiDocsInputs from './policy/web-ui-docs-inputs.mjs'
+
+export { runChecks, runEntrypoint } from './policy/check-runner.mjs'
+export { inspectGitHooks, requiredGitHooks } from './policy/git-hooks-status.mjs'
+
+export { readJsonFile } from './shared/config.mjs'
+export { commandOutput, exec, pnpm } from './shared/exec.mjs'
+export { git } from './shared/git.mjs'
+export { byCodeUnit } from './shared/order.mjs'
+export { findRepoRoot } from './shared/repo-root.mjs'
+export { listPnpmWorkspaceManifests, readPnpmWorkspacePatterns } from './shared/workspace-manifests.mjs'
+
+export { resolveTurboCacheDir } from './repo/turbo-cache-dir.mjs'
+export { BAND_WIDTH, OFFSET_STRIDE, TEST_API_PORT_NAMES, testApiPort } from './repo/test-ports.mjs'

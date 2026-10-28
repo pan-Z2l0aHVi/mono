@@ -49,7 +49,7 @@
 - CI context step 调用 `pnpm run check-context`。
 - CI package step 调用 `pnpm run check-pack`。
 
-共享的 `@greypan/monorepo-kit/policy/check-runner` 负责并发调用、错误包装与统一输出；入口只提供检查清单和参数。`Promise.all` 的语义就是本决策要的语义：第一个失败即整体失败，不会出现“部分通过”。它不会取消已经启动的同级检查，因此所有检查必须满足下面的只读不变量；进程在拒绝后退出，未完成的检查被遗弃是安全的。
+共享的 `@greypan/monorepo-kit` 导出的 `runEntrypoint` 负责并发调用、错误包装与统一输出；入口只提供检查清单和参数。`Promise.all` 的语义就是本决策要的语义：第一个失败即整体失败，不会出现“部分通过”。它不会取消已经启动的同级检查，因此所有检查必须满足下面的只读不变量；进程在拒绝后退出，未完成的检查被遗弃是安全的。
 
 `.github/scripts/lib/workflow-topology.mjs` 只断言 workflow 调用了哪个根命令、传了什么参数，不再硬编码单个检查名；pre-commit 的断言同理。
 
@@ -102,7 +102,7 @@ scripts/
     turbo-cache-dir.sh
 ```
 
-2026-10-28 修订：门禁原子实现与仓库编排已迁入 `packages/monorepo-kit`（分区、exports 与理由见 ADR-0030）；`scripts/lib/` 只保留 `.mise.toml` 在 Node 可用前执行的两个 POSIX helper。`scripts/checks/` 仍只保留入口，实现经包 specifier 引用，避免入口目录重新长出实现。单次使用的解析留在所属检查实现内。workspace 内的 `apps/*/scripts` 与 `packages/*/scripts` 保持原位。根 `package.json` 的命令面以该文件为准：门禁入口统一为无 namespace 的 `check-*`，task 记账入口随 ADR-0028 移出根命令。`.mise.toml` 与 `clean.sh` 对 `turbo-cache-dir.sh` 的引用仍在 `scripts/lib/`；`env-doctor` 改用包内等价的 `repo/turbo-cache-dir`。
+2026-10-28 修订：门禁原子实现与仓库编排已迁入 `packages/monorepo-kit`（分区、exports 与理由见 ADR-0030）；`scripts/lib/` 只保留 `.mise.toml` 在 Node 可用前执行的两个 POSIX helper。`scripts/checks/` 仍只保留入口，实现经包名引用（包只有一个入口，没有子路径），避免入口目录重新长出实现。单次使用的解析留在所属检查实现内。workspace 内的 `apps/*/scripts` 与 `packages/*/scripts` 保持原位。根 `package.json` 的命令面以该文件为准：门禁入口统一为无 namespace 的 `check-*`，task 记账入口随 ADR-0028 移出根命令。`.mise.toml` 与 `clean.sh` 对 `turbo-cache-dir.sh` 的引用仍在 `scripts/lib/`；`env-doctor` 改用包内等价的 `resolveTurboCacheDir`。
 
 ### 6. 语言与运行时
 
