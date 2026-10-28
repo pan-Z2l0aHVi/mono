@@ -17,7 +17,7 @@ import { execFileSync, spawnSync } from 'node:child_process'
 import fs from 'node:fs'
 import path from 'node:path'
 
-import { inspectGitHooks, resolveTurboCacheDir } from '@greypan/monorepo-kit'
+import { inspectGitHooks } from '@greypan/monorepo-kit'
 
 const scriptRoot = path.resolve(import.meta.dirname, '../..')
 // env-doctor 体检的是「当前环境」：优先以调用方 cwd（worktree）为根，
@@ -139,7 +139,14 @@ function watcherDetection() {
 }
 
 // ===== mise env：turbo 缓存位置 =====
-// 预期值由 Node 与 sh 共用的同一公式计算；turbo-cache-dir.test.mjs 断言两者一致。
+function turboCacheDir() {
+  const helper = path.join(scriptRoot, 'scripts', 'lib', 'turbo-cache-dir.sh')
+  const result = sh('sh', [helper, '--root', root])
+  if (result.status !== 0) throw new Error(result.stderr || `helper exited ${result.status}`)
+  return result.stdout
+}
+
+// 预期值直接来自 mise 用的那个 POSIX helper，不在这里重算一遍。
 // 不会读取 TURBO_CACHE_DIR，避免 CI 覆盖值自我满足。缓存目录可以尚未创建，
 // 首次 Turbo 构建会创建它。
 function turboCacheCheck() {
@@ -150,7 +157,7 @@ function turboCacheCheck() {
   }
   let expected
   try {
-    expected = resolveTurboCacheDir(root)
+    expected = turboCacheDir()
   } catch (error) {
     record('turbo-cache', 'fail', `cannot resolve the canonical Turbo cache path: ${error.message}`)
     return

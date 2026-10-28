@@ -3,7 +3,7 @@ import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 
-import { run } from './go-check.mjs'
+import { run } from '../go-check.mjs'
 
 const root = fs.mkdtempSync(path.join(os.tmpdir(), 'greypan-go-check-'))
 const log = path.join(root, 'tool-calls.log')
@@ -108,7 +108,7 @@ try {
 
   assert.match(await failure(check({ AGENT_GOFMT_ARGV: 'gofmt' })), /AGENT_GOFMT_ARGV must be a JSON array/)
 
-  process.stdout.write('packages/monorepo-kit/src/policy/go-check.test.mjs: all assertions passed\n')
+  process.stdout.write('packages/monorepo-kit/src/policy/__tests__/go-check.test.mjs: all assertions passed\n')
 } finally {
   fs.rmSync(root, { recursive: true, force: true })
 }

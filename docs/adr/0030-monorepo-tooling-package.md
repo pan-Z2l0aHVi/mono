@@ -8,6 +8,10 @@
 
 2026-10-28 修订（二）：§1 与 §4 的手写声明被推翻，改为 `tsc` 从源码生成声明到 `dist/`。运行时仍然源码直出——被否决的是「运行时要构建」，不是「类型要有产物」。
 
+2026-10-28 修订（三）：包内测试收进各分区的 `__tests__/`，`src/index.test.mjs` 删除（入口与声明的逐名比对退场，声明由同一份源码生成，不再有第二份真相）；`turbo-cache-dir` 只保留 `scripts/lib/turbo-cache-dir.sh` 一份实现，`env-doctor` 改为调用它，Node 等价实现与一致性测试一并删除。
+
+2026-10-28 修订（四）：端口分配数据从 `repo/test-ports.mjs` 移到根 `monorepo.json`，包内只保留读取、校验与偏移；项目名因此退化为 `string`，未知名字在调用时报错并列出可选值，名称集合与调用点的一致性仍由 `test-ports.test.mjs` 守。
+
 ## 背景与取舍
 
 迁移前 `scripts/lib/` 有 22 个实现模块、15 个同名测试、2 个 `.d.mts`、2 个 `.sh`，同时装着三类互不相同的职责：
@@ -33,16 +37,16 @@ ADR-0027 §5 允许 `scripts/lib/` 承载共享实现，因此迁移前的形态
 - `"type": "module"`，`exports` 只有 `"."`（`types` → `./dist/index.d.mts`，`import` → `./src/index.mjs`）与 `"./package.json"`。运行时没有 JS 构建产物：`build` 脚本只跑 `tsc --emitDeclarationOnly`，把声明写进 gitignore 的 `dist/`。
 - 消费者全是 Node 运行时（git hook、CI 入口、`vite.config.ts`），没有浏览器打包需求，为运行时代码建打包步骤只带来成本。
 - 决定性理由：门禁必须在 hook 里源码直读。一旦运行时也要构建，`check-pre-commit` 就跑在上一次产物上，「改了检查逻辑但忘了 build 仍然放行」是门禁最不能接受的失效。类型产物没有这条约束：它只影响 `vp check` 的解析结果，CI 的 Build 步也在类型检查之前。
-- 声明从源码生成，不手写：`tsconfig.json` 开 `allowJs` + `checkJs`，`tsc` 按 JSDoc 与推断写出 `dist/**/*.d.mts`。公共签名靠 JSDoc 表达（`testApiPort` 的项目名联合类型直接从端口表推导）；`noImplicitAny` 暂留 `false`，包内参数还没有逐个标注，声明里对应位置是 `any`。
+- 声明从源码生成，不手写：`tsconfig.json` 开 `allowJs` + `checkJs`，`tsc` 按 JSDoc 与推断写出 `dist/**/*.d.mts`。公共签名靠 JSDoc 表达；`noImplicitAny` 暂留 `false`，包内参数还没有逐个标注，声明里对应位置是 `any`。端口分配是配置数据，`testApiPort` 的项目名只能是 `string`，未知名字在调用时报错并附可选名单。
 - 不依赖 `vite` / `vitest`；`engines.node` 写 `>=24.18.0`，与根 `package.json` 一致，测试脚本用的 glob 形式在 Node 24 可用。
 
 ### 2. 分三个分区，按「换仓库是否重写」划分
 
-| 分区      | 内容                                                                                                                                                                                                                                                                                                                                            | 判据                                    |
-| --------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------- |
-| `shared/` | `config`、`exec`、`git`、`workspace-manifests`、`repo-root`                                                                                                                                                                                                                                                                                     | 与仓库无关，可直接复用于别处            |
-| `policy/` | 16 个门禁原子实现：`changeset-policy`、`changeset-status`、`check-runner`、`command-conventions`、`context-corpus`、`context-invariants`、`format-clean`、`git-hooks-status`、`go-check`、`interweave-turbo-inputs`、`no-mutual-links`、`package-contract`、`script-tests`、`shell-i18n-catalog`、`turbo-cache-invariant`、`web-ui-docs-inputs` | 本仓库的门禁策略，换仓库即重写          |
-| `repo/`   | `test-ports`、`turbo-cache-dir`                                                                                                                                                                                                                                                                                                                 | 本仓库编排，被构建配置与 bootstrap 消费 |
+| 分区      | 内容                                                                                                                                                                                                                                                                                                                                            | 判据                           |
+| --------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------ |
+| `shared/` | `config`、`exec`、`git`、`workspace-manifests`、`repo-root`                                                                                                                                                                                                                                                                                     | 与仓库无关，可直接复用于别处   |
+| `policy/` | 16 个门禁原子实现：`changeset-policy`、`changeset-status`、`check-runner`、`command-conventions`、`context-corpus`、`context-invariants`、`format-clean`、`git-hooks-status`、`go-check`、`interweave-turbo-inputs`、`no-mutual-links`、`package-contract`、`script-tests`、`shell-i18n-catalog`、`turbo-cache-invariant`、`web-ui-docs-inputs` | 本仓库的门禁策略，换仓库即重写 |
+| `repo/`   | `test-ports`（读取并校验根 `monorepo.json` 的端口分配）                                                                                                                                                                                                                                                                                         | 本仓库编排，被构建配置消费     |
 
 分区是目录约定，不是访问控制。`policy/` 与 `repo/` 显式承认自己知道本仓库布局，不假装通用；`shared/` 才是不带仓库假设的部分。
 
@@ -50,7 +54,7 @@ ADR-0027 §5 允许 `scripts/lib/` 承载共享实现，因此迁移前的形态
 
 - `turbo-cache-dir.sh`、`go-cache-dir.sh` 由 `.mise.toml` 的 `[env]` 模板在 Node 可用之前执行，属于 bootstrap 面，不进 Node 工具包，留在 `scripts/lib/`。`go-cache-dir.test.mjs` 测的就是那个 `.sh`，跟着留下。
 - 其余 22 个实现模块、14 个同名测试与 2 个 `.d.mts` 全部迁走。此后 `scripts/lib/` 只剩这两个 `.sh` 与一个测试，职责可以一句话说完。
-- 代价：`turbo-cache-dir` 的一对实现分处两地（`.sh` 在 `scripts/lib/`，等价 `.mjs` 在包内）。一致性由包内的 `turbo-cache-dir.test.mjs` 钉住，它从仓库根解析 `.sh` 路径。
+- `turbo-cache-dir` 只有一份实现：Node 消费者（`env-doctor`）调用同一个 `.sh`，不再维护等价实现。
 
 ### 4. 单一入口，没有子路径
 
@@ -59,19 +63,19 @@ ADR-0027 §5 允许 `scripts/lib/` 承载共享实现，因此迁移前的形态
 - 入口分两类导出，判据是模块导出名是否互相冲突，不是风格偏好：检查单元全部导出 `name` 与 `run`（`check-runner` 读的就是这两个），平铺必然互相覆盖，因此以命名空间给出（`commandConventions`、`goCheck`…）；其余叶子函数与常量平铺（`testApiPort`、`runEntrypoint`、`findRepoRoot`…）。
 - 代价是加载面变成整包：端口表在配置求值期只读一次也能把整包图带进来。这笔成本被接受——它相对 `vp dev` / `vp test` 的启动时间可忽略，且成本摊在整个图上而不是单个重模块，因此没有为它做惰性加载或分片入口。
 - 顺带修掉一个被入口放大的隐患：`policy/package-contract.mjs` 原先在模块顶层调 `findRepoRoot()`，统一入口后这个查找会跟着落到每个消费者身上，现在移进 `getPackedFiles`。
-- 类型声明由 `tsc` 生成到 `dist/`；`src/index.test.mjs` 逐名比对运行时入口与构建出的声明，`dist` 缺失时直接提示先跑 `build`。声明与实现之间不再有第二份手写真相。
+- 类型声明由 `tsc` 生成到 `dist/`，声明与实现之间没有第二份手写真相。
 - 依赖边写进根 `package.json` 与五个消费 workspace 的 `devDependencies`（`workspace:*`）。入口收成一个 specifier 之后，这条边比按子路径引用时更值得保留：`pnpm why @greypan/monorepo-kit` 是「谁在用端口表」的唯一可靠答案。
 
 ### 5. 测试跟着被测对象，`test-scripts` 显式排除包
 
-- 包内 `"test": "node --test \"src/**/*.test.mjs\""`。glob 必须显式：直接传目录会按 Node 的默认模式收文件，`repo/test-ports.mjs` 匹配 `test-*`，会被当成空测试再跑一遍——迁移时这一条是实测出来的。类型产物落在 `dist/`，不在这个 glob 里。
+- 包内测试放在被测模块旁的 `__tests__/`，`"test": "node --test \"src/**/__tests__/*.test.mjs\""`。glob 必须显式写到 `__tests__/`：直接传目录会按 Node 的默认模式收文件，`repo/test-ports.mjs` 匹配 `test-*`，会被当成空测试再跑一遍——迁移时这一条是实测出来的。类型产物落在 `dist/`，不在这个 glob 里。
 - `policy/script-tests.mjs` 的发现集合排除 `packages/monorepo-kit/**`。`git ls-files '*.test.mjs'` 的 pathspec 里 `*` 跨越目录分隔符，所以它覆盖全仓；不排除会双跑，且失败归属到两个地方。
-- 需要仓库根的测试（`turbo-cache-dir`、`package-contract`）经 `shared/repo-root.mjs` 向上查找 `pnpm-workspace.yaml` 定位仓库根，不再按目录深度写 `../../..`。迁移期已经在这个维度出过一次错。
-- 包自己的 `turbo.json` 把 `scripts/lib/turbo-cache-dir.sh` 加进 `test.inputs`：那个测试读包外文件，而 turbo 只哈希包目录内的文件。
+- 需要仓库根的测试（`package-contract`）经 `shared/repo-root.mjs` 向上查找 `pnpm-workspace.yaml` 定位仓库根，不再按目录深度写 `../../..`。迁移期已经在这个维度出过一次错。
+- 包自己的 `turbo.json` 把测试读到的包外文件加进 `test.inputs`：全仓 `vite.config.ts`（调用点扫描）与 `docs/agents/build.md`（端口表副本比对），turbo 只哈希包目录内的文件。`test` 不依赖 `build`，测试直接 import 源码。
 
 ### 6. turbo 与 changeset
 
-- 根 `turbo.json` 的 `globalDependencies` 保留，路径改为 `packages/monorepo-kit/src/repo/test-ports.mjs`。§1 给了这个包 `build` 之后，`^build` 已经把这张表的变更传播到消费者：改端口表会改 `monorepo-kit#build` 的哈希，消费者的 `test` 随之失去缓存。这条登记仍然保留，作为不依赖传播语义的第二道保险——源码直出意味着消费者经 `node_modules` 软链直接读源码，而 turbo 只对包目录内的文件做哈希；代价是改这张表会让全仓缓存失效，而它很少改。
+- 根 `turbo.json` 的 `globalDependencies` 保留，登记 `monorepo.json` 与读取它的 `packages/monorepo-kit/src/repo/test-ports.mjs`。§1 给了这个包 `build` 之后，`^build` 已经把这份配置的变更传播到消费者：改端口分配会改 `monorepo-kit#build` 的哈希，消费者的 `test` 随之失去缓存。这条登记仍然保留，作为不依赖传播语义的第二道保险——源码直出意味着消费者经 `node_modules` 软链直接读源码，而 turbo 只对包目录内的文件做哈希；代价是改这份配置会让全仓缓存失效，而它很少改。
 - `.changeset/config.json` 不把新包加入 `ignore`：门禁行为的变更值得留变更记录。代价是改检查逻辑要写一条带包名的 changeset，「空 changeset」这条捷径在门禁变更上不再可用。
 
 ## 后果
@@ -105,11 +109,11 @@ ADR-0027 §5 允许 `scripts/lib/` 承载共享实现，因此迁移前的形态
 ## 验收
 
 - `packages/monorepo-kit` 的 `build` 只产出类型：没有 JS 产物，`dist/` 被 gitignore。`exports` 只有 `"."` 与 `"./package.json"`，全仓不存在 `@greypan/monorepo-kit/` 开头的子路径引用。
-- `src/index.test.mjs` 与包内其余测试一起通过；运行时的出口与名字清单不一致时失败，`dist/` 缺失时给出「先 build」的明确提示。
-- `scripts/lib/` 只剩 `turbo-cache-dir.sh`、`go-cache-dir.sh` 与 `go-cache-dir.test.mjs`。
+- 包内测试全部位于各分区的 `__tests__/`，`turbo run test --filter=@greypan/monorepo-kit` 通过且不需要先 build。
+- `scripts/lib/` 只剩 `turbo-cache-dir.sh`、`go-cache-dir.sh` 与两个同名测试。
 - 全仓对 `scripts/lib/` 的引用只剩 bootstrap 路径与历史 ADR / 研究记录。
 - `pnpm run check-pre-commit`、`check-policy`、`check-context`、`check-pack` 通过。
 - `turbo run test --filter=@greypan/monorepo-kit` 通过，且第二次运行命中缓存。
 - `pnpm run test-scripts` 的输出里不出现 `packages/monorepo-kit/`。
-- 改动 `src/repo/test-ports.mjs` 后，`turbo run test --filter=@greypan/web-ui --dry=json` 显示哈希变化。
+- 改动 `monorepo.json` 后，`turbo run test --filter=@greypan/web-ui --dry=json` 显示哈希变化。
 - 五个 `vite.config.ts` 的测试端口行为与迁移前逐字一致（默认偏移 0 下仍为 63410–63460）。

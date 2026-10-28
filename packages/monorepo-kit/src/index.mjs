@@ -34,5 +34,4 @@ export { byCodeUnit } from './shared/order.mjs'
 export { findRepoRoot } from './shared/repo-root.mjs'
 export { listPnpmWorkspaceManifests, readPnpmWorkspacePatterns } from './shared/workspace-manifests.mjs'
 
-export { resolveTurboCacheDir } from './repo/turbo-cache-dir.mjs'
-export { BAND_WIDTH, OFFSET_STRIDE, TEST_API_PORT_NAMES, testApiPort } from './repo/test-ports.mjs'
+export { testApiPort, testApiPortNames } from './repo/test-ports.mjs'

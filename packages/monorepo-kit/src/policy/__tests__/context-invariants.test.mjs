@@ -5,7 +5,7 @@ import {
   parseLocalLinkTarget,
   readInlineLinkTarget,
   stripCodeSegments
-} from './context-invariants.mjs'
+} from '../context-invariants.mjs'
 
 try {
   // 远程与协议链接不判定可触达性：离线无法验证，域名失效也不是本仓漂移。
@@ -123,7 +123,9 @@ try {
   // 围栏外的行数不能因剥离而变化：锚点与报错按行读取时要能对上。
   assert.equal(stripCodeSegments('a\n```\nb\n```\nc').split('\n').length, 5)
 
-  process.stdout.write('packages/monorepo-kit/src/policy/context-invariants.test.mjs: all assertions passed\n')
+  process.stdout.write(
+    'packages/monorepo-kit/src/policy/__tests__/context-invariants.test.mjs: all assertions passed\n'
+  )
 } catch (error) {
   process.stderr.write(`${error instanceof Error ? error.stack : String(error)}\n`)
   process.exitCode = 1

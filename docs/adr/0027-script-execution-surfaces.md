@@ -102,7 +102,7 @@ scripts/
     turbo-cache-dir.sh
 ```
 
-2026-10-28 修订：门禁原子实现与仓库编排已迁入 `packages/monorepo-kit`（分区、exports 与理由见 ADR-0030）；`scripts/lib/` 只保留 `.mise.toml` 在 Node 可用前执行的两个 POSIX helper。`scripts/checks/` 仍只保留入口，实现经包名引用（包只有一个入口，没有子路径），避免入口目录重新长出实现。单次使用的解析留在所属检查实现内。workspace 内的 `apps/*/scripts` 与 `packages/*/scripts` 保持原位。根 `package.json` 的命令面以该文件为准：门禁入口统一为无 namespace 的 `check-*`，task 记账入口随 ADR-0028 移出根命令。`.mise.toml` 与 `clean.sh` 对 `turbo-cache-dir.sh` 的引用仍在 `scripts/lib/`；`env-doctor` 改用包内等价的 `resolveTurboCacheDir`。
+2026-10-28 修订：门禁原子实现与仓库编排已迁入 `packages/monorepo-kit`（分区、exports 与理由见 ADR-0030）；`scripts/lib/` 只保留 `.mise.toml` 在 Node 可用前执行的两个 POSIX helper。`scripts/checks/` 仍只保留入口，实现经包名引用（包只有一个入口，没有子路径），避免入口目录重新长出实现。单次使用的解析留在所属检查实现内。workspace 内的 `apps/*/scripts` 与 `packages/*/scripts` 保持原位。根 `package.json` 的命令面以该文件为准：门禁入口统一为无 namespace 的 `check-*`，task 记账入口随 ADR-0028 移出根命令。`.mise.toml`、`clean.sh` 与 `env-doctor` 都调用 `scripts/lib/turbo-cache-dir.sh`，它是这条链路唯一的实现。
 
 ### 6. 语言与运行时
 

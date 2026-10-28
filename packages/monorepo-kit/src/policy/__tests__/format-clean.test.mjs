@@ -4,7 +4,7 @@ import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 
-import { run } from './format-clean.mjs'
+import { run } from '../format-clean.mjs'
 
 const root = fs.mkdtempSync(path.join(os.tmpdir(), 'greypan-format-clean-'))
 const env = {
@@ -135,7 +135,7 @@ try {
   // The test seam is a JSON argv array; a command string must fail instead of reaching a shell.
   assert.match(await failure(check({ AGENT_VP_ARGV: 'pnpm exec vp' })), /AGENT_VP_ARGV must be a JSON array/)
 
-  process.stdout.write('packages/monorepo-kit/src/policy/format-clean.test.mjs: all assertions passed\n')
+  process.stdout.write('packages/monorepo-kit/src/policy/__tests__/format-clean.test.mjs: all assertions passed\n')
 } finally {
   fs.rmSync(root, { recursive: true, force: true })
 }

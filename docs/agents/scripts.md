@@ -9,9 +9,9 @@
 - **根 `scripts/`**：由根 `package.json`、Git hook、CI 或流程文档直接调用，影响整个仓库。
 - **workspace 内 `scripts/`**：由所属包或应用的构建、发布或生成流程调用，影响范围限于该 workspace。
 
-`scripts/lib/**` 只放 **Node 启动之前** 要跑的东西及其测试：`.mise.toml` 的 `[env]` 模板在 Node 可用前求值，`turbo-cache-dir.sh` 与 `go-cache-dir.sh` 是这条链路的唯一实现，`go-cache-dir.test.mjs` 测的就是后者，跟着留在原处。它不是入口，也不再是通用的共享实现目录。
+`scripts/lib/**` 只放 **Node 启动之前** 要跑的东西及其测试：`.mise.toml` 的 `[env]` 模板在 Node 可用前求值，`turbo-cache-dir.sh` 与 `go-cache-dir.sh` 是这条链路的唯一实现，同名测试跟着留在原处。它不是入口，也不再是通用的共享实现目录。
 
-门禁实现与仓库编排在 workspace 包 [`packages/monorepo-kit`](../../packages/monorepo-kit) 里：运行时源码直出，类型声明由 `tsc` 生成到 `dist/`，按「换仓库是否重写」分三个分区——`shared/` 与仓库无关，`policy/` 是本仓库的门禁策略（换仓库即重写），`repo/` 是本仓库的构建与测试编排（端口表、Turbo 缓存路径）。判据是这段代码描述的是**本仓库的编排事实**还是**可复用的能力**：前者进 `policy/` 或 `repo/`，不假装通用；后者才进 `shared/`。两类都不再放回 `scripts/lib/`，因为它会在 Node 之前被求值这条约束下变成半个 bootstrap 目录。跨 workspace 复用但不是编排事实的测试基建仍单独成包（对比 `@greypan/test-kit` 的 MSW 基建，它对消费方一无所知）。分区判据、迁移理由与代价见 [ADR-0030](../adr/0030-monorepo-tooling-package.md)，端口分配与多 worktree 偏移的具体约定见 [`build.md`](./build.md#测试端口分配)。往包里加模块要改模块本身与 `src/index.mjs` 的导出，再由 `src/index.test.mjs` 的名字清单钉住，然后重新 build 生成声明。
+门禁实现与仓库编排在 workspace 包 [`packages/monorepo-kit`](../../packages/monorepo-kit) 里：运行时源码直出，类型声明由 `tsc` 生成到 `dist/`，按「换仓库是否重写」分三个分区——`shared/` 与仓库无关，`policy/` 是本仓库的门禁策略（换仓库即重写），`repo/` 是本仓库的构建与测试编排（读取根 `monorepo.json` 的端口分配）。判据是这段代码描述的是**本仓库的编排事实**还是**可复用的能力**：前者进 `policy/` 或 `repo/`，不假装通用；后者才进 `shared/`。两类都不再放回 `scripts/lib/`，因为它会在 Node 之前被求值这条约束下变成半个 bootstrap 目录。跨 workspace 复用但不是编排事实的测试基建仍单独成包（对比 `@greypan/test-kit` 的 MSW 基建，它对消费方一无所知）。分区判据、迁移理由与代价见 [ADR-0030](../adr/0030-monorepo-tooling-package.md)，端口分配与多 worktree 偏移的具体约定见 [`build.md`](./build.md#测试端口分配)。往包里加模块要改模块本身与 `src/index.mjs` 的导出，然后重新 build 生成声明；包内测试放在模块旁的 `__tests__/`。
 
 ## 准入
 
@@ -30,7 +30,7 @@
 - 不在 `sh` 里拼接执行 Node 源码：不写 `node -e`、`node - <<EOF`，也不把 JS 存进变量再执行。
 - 不在 Node 里用 `sh -c` 或启动 `.sh` 辅助脚本完成本可由 argv 表达的工作；外部 CLI（`git`、`pnpm`、`gh`、`turbo`、`ps` 等）以 argv 调用不在此列。
 - 测试为验证 shell 行为而启动 `sh` 是允许的；禁令针对实现代码，不针对测试夹具。
-- bootstrap 例外只允许来自 `.mise.toml` 在 Node 可用前求值的 `[env]` 模板；每个例外的等价实现、降级行为与测试要求见 `.mise.toml` 与 [`worktree.md`](./worktree.md)。新增同类场景必须同时提供等价实现并证明一致，无法提供时登记为明确例外，不要假装存在等价实现。
+- bootstrap 例外只允许来自 `.mise.toml` 在 Node 可用前求值的 `[env]` 模板；helper 是唯一实现，Node 消费者直接调用它，不另写等价实现。只有调用不了 helper 的场合才允许提供等价实现，并同时证明两者结果一致；降级行为与测试要求见 `.mise.toml` 与 [`worktree.md`](./worktree.md)。
 
 ## 根脚本
 
@@ -46,12 +46,12 @@
 
 测试可选：没有测试文件合法。一旦存在测试文件，必须与被测文件同目录同名（`foo.mjs` / `foo.ts` / `foo.sh` → `foo.test.mjs`）；新增或重命名测试文件时，同名关系在同一变更里成立。
 
-测试针对原子函数或共享实现，不针对只做聚合的入口。覆盖按风险选择，至少包括参数解析、成功输出与退出码、失败路径，以及脚本声称的副作用。`scripts/checks/` 只放薄入口，检查实现与同名测试在 `packages/monorepo-kit/src/policy/`；入口本身不要求专属测试。
+测试针对原子函数或共享实现，不针对只做聚合的入口。覆盖按风险选择，至少包括参数解析、成功输出与退出码、失败路径，以及脚本声称的副作用。`scripts/checks/` 只放薄入口，检查实现与测试在 `packages/monorepo-kit/src/policy/`（测试在该目录的 `__tests__/`）；入口本身不要求专属测试。
 
 测试有两个发现面，各自覆盖一半，不要在两处都登记同一个文件：
 
 - `test-scripts` 运行全仓 tracked 的 `*.test.mjs`，`packages/monorepo-kit/**` 除外——那份清单覆盖 `.github/scripts`、workspace 脚本与 skills 的测试，不能收窄。
-- `@greypan/monorepo-kit` 的测试由它自己的 `test` 脚本跑（`node --test "src/**/*.test.mjs"`），走 turbo 图，有依赖排序与缓存。glob 必须显式写：直接传目录会按 Node 的默认模式收文件，`repo/test-ports.mjs` 匹配 `test-*`，会被当成空测试再跑一遍。
+- `@greypan/monorepo-kit` 的测试由它自己的 `test` 脚本跑（`node --test "src/**/__tests__/*.test.mjs"`），走 turbo 图，有依赖排序与缓存。glob 必须显式写到 `__tests__/`：直接传目录时 Node 的默认模式会把 `test-*.mjs` 当成空测试收进来。
 
 两边都不证明每个入口都有测试；覆盖完整性由 review 检查。共享实现的测试同样可选，存在时必须同名。
 

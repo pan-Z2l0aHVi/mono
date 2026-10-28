@@ -4,12 +4,9 @@ import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 
-import { findRepoRoot } from '../shared/repo-root.mjs'
-
-import { resolveTurboCacheDir } from './turbo-cache-dir.mjs'
-
-const repoRoot = findRepoRoot()
-const helper = path.join(repoRoot, 'scripts', 'lib', 'turbo-cache-dir.sh')
+// bootstrap helper 的测试与被测脚本同址，由根 `test-scripts` 收进全仓 glob。
+const repoRoot = path.resolve(import.meta.dirname, '../..')
+const helper = path.join(import.meta.dirname, 'turbo-cache-dir.sh')
 const fixtureRoot = fs.mkdtempSync(path.join(os.tmpdir(), "greypan turbo cache 'fixture'-"))
 
 function run(command, args, options = {}) {
@@ -101,22 +98,6 @@ try {
   assertSuccess(clonePath, 'separate clone cache resolution')
   assert.notEqual(clonePath.stdout.trim(), mainCache, 'a separate clone must use a separate cache namespace')
 
-  assert.equal(
-    resolveTurboCacheDir(source, { TMPDIR: tempWithQuotes }),
-    mainCache,
-    'Node and POSIX resolvers must agree for the main worktree'
-  )
-  assert.equal(
-    resolveTurboCacheDir(worktree, { TMPDIR: tempWithQuotes }),
-    mainCache,
-    'Node and POSIX resolvers must agree for a linked worktree'
-  )
-  assert.notEqual(
-    resolveTurboCacheDir(clone, { TMPDIR: tempWithQuotes }),
-    mainCache,
-    'the Node resolver must keep a separate clone namespace'
-  )
-
   const defaultRoot = run('/bin/sh', [helper], {
     cwd: fixtureRoot,
     encoding: 'utf8',
@@ -129,11 +110,6 @@ try {
     defaultRoot.stdout.trim(),
     repositoryCache.stdout.trim(),
     'default root must come from the helper location'
-  )
-  assert.equal(
-    resolveTurboCacheDir(undefined, { TMPDIR: tempWithQuotes }),
-    repositoryCache.stdout.trim(),
-    'the Node resolver default root must match the helper default root'
   )
 
   const symlinkTemp = resolveCache(source, { TMPDIR: tempLink })
@@ -160,22 +136,6 @@ try {
   assertSuccess(defaultTemp, 'default system temp fallback')
   assert.ok(defaultTemp.stdout.trim().startsWith(`${fs.realpathSync('/tmp')}/greypan/turbo-cache/`))
 
-  assert.equal(
-    resolveTurboCacheDir(source, { TMPDIR: '', TMP: tempFallback, TEMP: tempFallback2 }),
-    tmpFallbackPath.stdout.trim(),
-    'the Node resolver must follow the same TMP fallback'
-  )
-  assert.equal(
-    resolveTurboCacheDir(source, { TMPDIR: '', TMP: '', TEMP: tempFallback2 }),
-    tempFallbackPath.stdout.trim(),
-    'the Node resolver must follow the same TEMP fallback'
-  )
-  assert.equal(
-    resolveTurboCacheDir(source, { TMPDIR: '', TMP: '', TEMP: '' }),
-    defaultTemp.stdout.trim(),
-    'the Node resolver must use the same default system temp'
-  )
-
   const relativeTemp = resolveCache(source, { TMPDIR: 'relative-temp', TMP: tempFallback })
   assert.notEqual(relativeTemp.status, 0)
   assert.match(relativeTemp.stderr, /TMPDIR must be an absolute/)
@@ -183,24 +143,11 @@ try {
   assert.notEqual(missingTemp.status, 0)
   assert.match(missingTemp.stderr, /TMPDIR is not an existing directory/)
 
-  assert.throws(
-    () => resolveTurboCacheDir(source, { TMPDIR: 'relative-temp', TMP: tempFallback }),
-    /TMPDIR must be an absolute existing directory/
-  )
-  assert.throws(
-    () => resolveTurboCacheDir(source, { TMPDIR: path.join(fixtureRoot, 'missing-temp'), TMP: tempFallback }),
-    /TMPDIR is not an existing directory/
-  )
-
   const nonRepository = path.join(fixtureRoot, 'not a repository')
   fs.mkdirSync(nonRepository)
   const noGit = resolveCache(nonRepository, { TMPDIR: tempWithQuotes })
   assert.notEqual(noGit.status, 0)
   assert.match(noGit.stderr, /cannot resolve the Git common directory/)
-  assert.throws(
-    () => resolveTurboCacheDir(nonRepository, { TMPDIR: tempWithQuotes }),
-    /cannot resolve the Git common directory/
-  )
 
   const objectsDirectory = path.join(source, '.git', 'objects')
   const objectsBefore = fs.readdirSync(objectsDirectory).sort()
@@ -313,4 +260,4 @@ function miseCache(env) {
   }
 }
 
-console.log('packages/monorepo-kit/src/repo/turbo-cache-dir.test.mjs: all assertions passed')
+console.log('scripts/lib/turbo-cache-dir.test.mjs: all assertions passed')

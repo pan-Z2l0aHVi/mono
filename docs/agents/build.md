@@ -60,26 +60,26 @@ Vue demo 通过私有 `@greypan/wuchale-vue` 在 Vue 编译前转换 SFC。`wuch
 
 ## 测试端口分配
 
-浏览器测试的 API 端口从 `packages/monorepo-kit/src/repo/test-ports.mjs` 取，不要在 `vite.config.ts` 里写裸数字。每个项目占一个十位宽的段，留出 Vite 在端口被占时 +1 重试的空间：
+浏览器测试的 API 端口从根 `monorepo.json` 的 `testPorts.ports` 取，不要在 `vite.config.ts` 里写裸数字。每个项目占一个 `bandWidth` 宽的段，留出 Vite 在端口被占时 +1 重试的空间：
 
-| 项目                               | 基端口 |
-| ---------------------------------- | ------ |
-| `react-web-ui-demo`                | 63410  |
-| `vue-web-ui-demo`                  | 63420  |
-| `interweave-frontend`              | 63430  |
-| `web-ui`（browser）                | 63440  |
-| `web-ui`（browser-reduced-motion） | 63450  |
-| `browser-kit`                      | 63460  |
+| 项目                    | 基端口 |
+| ----------------------- | ------ |
+| `react-web-ui-demo`     | 63410  |
+| `vue-web-ui-demo`       | 63420  |
+| `interweave-frontend`   | 63430  |
+| `web-ui`                | 63440  |
+| `web-ui-reduced-motion` | 63450  |
+| `browser-kit`           | 63460  |
 
-新增 browser project 时在同一张表里占一个空闲段。表以 `packages/monorepo-kit/src/repo/test-ports.mjs` 为准，上面这张表只是给人看的副本，改一处要改两处。代码表与调用点的一致性由 `test-ports.test.mjs` 守卫：它扫描全仓 `vite.config.ts` 的 `testApiPort` 字面量实参，集合必须与表完全相等，且每个段位只被一个 project 引用；文档副本不在这条守卫里，仍需手动同步。同一台机器上并行多个 worktree 时，给每个 worktree 导出不同的 `GREYPAN_TEST_PORT_OFFSET`（100 的倍数，如 `100`、`200`）整体错开；不设时为 0，端口就是固定值，不随 worktree 变化。
+新增 browser project 时在 `monorepo.json` 里占一个空闲段。配置是唯一事实，上面这张表只是给人看的副本。配置与调用点的一致性由 `test-ports.test.mjs` 守卫：它扫描全仓 `vite.config.ts` 的 `testApiPort` 字面量实参，集合必须与配置完全相等，且每个段位只被一个 project 引用；这份文档副本也由它逐项比对。同一台机器上并行多个 worktree 时，给每个 worktree 导出不同的 `GREYPAN_TEST_PORT_OFFSET`（`offsetStride` 的倍数，如 `100`、`200`）整体错开；不设时为 0，端口就是固定值，不随 worktree 变化。
 
-偏移是整表平移，所以同一 worktree 内的相对间隔不受影响；要守的是**不同 worktree 的两组端口不重叠**，因此步长不得小于全表跨度（当前 `63469 - 63410 + 1 = 60`；取 100 是给后续段位留余量）。模块加载时校验「段间不重叠」与「跨度不超过步长」两条，任一条不成立直接抛错，而不是悄悄和其他 worktree 抢端口。
+偏移是整表平移，所以同一 worktree 内的相对间隔不受影响；要守的是**不同 worktree 的两组端口不重叠**，因此偏移步长 `offsetStride` 不得小于全表跨度（当前 `63469 - 63410 + 1 = 60`；取 100 是给后续段位留余量）。读取配置时校验「段间不重叠」与「跨度不超过步长」两条，任一条不成立直接抛错，而不是悄悄和其他 worktree 抢端口。
 
 `api.host` 统一钉成 `127.0.0.1`。Vite 的可用性探测只绑通配地址（`isPortAvailable` 遍历的是 `wildcardHosts`），看不见只占 `127.0.0.1` 的进程——macOS 上通配绑定与具体地址上的监听可以共存；真正把关的是随后的那次绑定。两个 demo 与 Interweave 的顶层 `server.host` 是 `true`，不写 `api.host` 时测试服务器会继承成通配绑定：别的进程占着 `127.0.0.1` 上的同号端口不会让它失败，两个服务器同号并行，页面可能落到别人的服务器上，症状是 `ERR_SSL_PROTOCOL_ERROR` / `ERR_EMPTY_RESPONSE` / browser runtime 永不连回。钉成 `127.0.0.1` 后绑定目标与占用者同址，才出 EADDRINUSE，非 strict 分支才会 +1 前进，vitest 再按实际监听地址把浏览器指过去。`web-ui` 与 `browser-kit` 没有顶层 `server`，默认是 `localhost`；仍显式写出来，是为了六个项目同一种行为、不被顶层配置的增删悄悄改变。
 
 `api.strictPort: false` 只有 Interweave 需要显式写。vitest 5 通过 `resolveApiServerConfig` 与 `vitest:config:server` 把 `api` 合并进测试服务器，顶层 `server` 的 `strictPort: true` 会被一并带过去；Interweave 的 dev server 正需要它（端口被占就硬失败，否则 webview 指向空气），测试服务器不需要——端口被占时它会直接 `Startup Error`，而不是按实际监听地址漂移。另外五个包没有顶层 `strictPort`，继承的是默认 `false`，不必写。
 
-`packages/monorepo-kit/src/repo/test-ports.mjs` 记在根 `turbo.json` 的 `globalDependencies` 里：五条 `test` 任务（六个 browser project）都经各自包的 `vite.config.ts` 读它，而 turbo 只对包目录内的文件做哈希，不列出来就会在改表之后重放上一份缓存的绿色结果。放在根而不是这五个包各自的 `test.inputs`：新增 browser project 时不会漏登记，代价是改这张表会让全部缓存失效，而这张表很少改。
+`monorepo.json` 与读取它的 `packages/monorepo-kit/src/repo/test-ports.mjs` 都记在根 `turbo.json` 的 `globalDependencies` 里：五条 `test` 任务（六个 browser project）都经各自包的 `vite.config.ts` 读它们，而 turbo 只对包目录内的文件做哈希，不列出来就会在改配置之后重放上一份缓存的绿色结果。放在根而不是这五个包各自的 `test.inputs`：新增 browser project 时不会漏登记，代价是改这份配置会让全部缓存失效，而它很少改。
 
 dev server 不在这张表里：两个 demo 不写端口，Vite 从 5173 起、被占则 +1，实际 URL 会变，脚本与文档不要写死；Interweave 的 9245 带 `strictPort`，端口被占直接失败（Wails 需要确定的前端 URL，静默漂移会让 webview 指向空气），改端口用 `WAILS_VITE_PORT`——Taskfile 与 `vite.config.ts` 读同一个变量。
 

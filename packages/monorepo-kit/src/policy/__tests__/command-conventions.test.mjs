@@ -3,7 +3,7 @@ import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 
-import { run } from './command-conventions.mjs'
+import { run } from '../command-conventions.mjs'
 
 const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'greypan-command-conventions-'))
 let fixture = 0
@@ -39,7 +39,9 @@ try {
   fs.writeFileSync(path.join(notObject, 'package.json'), JSON.stringify({ scripts: [] }) + '\n')
   await assert.rejects(run({ root: notObject }), /no scripts object/)
 
-  process.stdout.write('packages/monorepo-kit/src/policy/command-conventions.test.mjs: all assertions passed\n')
+  process.stdout.write(
+    'packages/monorepo-kit/src/policy/__tests__/command-conventions.test.mjs: all assertions passed\n'
+  )
 } finally {
   fs.rmSync(tempRoot, { recursive: true, force: true })
 }

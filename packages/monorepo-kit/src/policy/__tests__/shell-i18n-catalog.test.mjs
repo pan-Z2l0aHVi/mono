@@ -3,7 +3,7 @@ import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 
-import { checkApp, parsePo } from './shell-i18n-catalog.mjs'
+import { checkApp, parsePo } from '../shell-i18n-catalog.mjs'
 
 const header = 'msgid ""\nmsgstr ""\n"Language: en\\n"\n"Plural-Forms: nplurals=2; plural=(n != 1);\\n"\n\n'
 

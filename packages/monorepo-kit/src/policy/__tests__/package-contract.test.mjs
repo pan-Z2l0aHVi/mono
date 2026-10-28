@@ -3,7 +3,7 @@ import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 
-import { run } from './package-contract.mjs'
+import { run } from '../package-contract.mjs'
 
 const fixtureRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'greypan-contract-'))
 
@@ -87,7 +87,7 @@ try {
   )
   await run({ root: fixtureRoot })
 
-  process.stdout.write('packages/monorepo-kit/src/policy/package-contract.test.mjs: all assertions passed\n')
+  process.stdout.write('packages/monorepo-kit/src/policy/__tests__/package-contract.test.mjs: all assertions passed\n')
 } finally {
   fs.rmSync(fixtureRoot, { recursive: true, force: true })
 }

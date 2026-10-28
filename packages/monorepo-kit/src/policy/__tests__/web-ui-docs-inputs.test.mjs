@@ -3,7 +3,7 @@ import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 
-import { run } from './web-ui-docs-inputs.mjs'
+import { run } from '../web-ui-docs-inputs.mjs'
 
 const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'greypan-web-ui-docs-'))
 let fixture = 0
@@ -73,7 +73,9 @@ try {
   })
   await assert.rejects(run({ root: unsupported.root }), /covers the docs\/ corpus/)
 
-  process.stdout.write('packages/monorepo-kit/src/policy/web-ui-docs-inputs.test.mjs: all assertions passed\n')
+  process.stdout.write(
+    'packages/monorepo-kit/src/policy/__tests__/web-ui-docs-inputs.test.mjs: all assertions passed\n'
+  )
 } finally {
   fs.rmSync(tempRoot, { recursive: true, force: true })
 }

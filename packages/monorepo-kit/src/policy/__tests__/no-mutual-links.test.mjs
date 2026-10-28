@@ -3,7 +3,7 @@ import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 
-import { run } from './no-mutual-links.mjs'
+import { run } from '../no-mutual-links.mjs'
 
 const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'greypan-mutual-links-'))
 let fixture = 0
@@ -50,7 +50,7 @@ try {
   fs.rmSync(path.join(noLock, 'skills-lock.json'))
   await assert.rejects(run({ root: noLock }), /skills-lock\.json is missing/)
 
-  process.stdout.write('packages/monorepo-kit/src/policy/no-mutual-links.test.mjs: all assertions passed\n')
+  process.stdout.write('packages/monorepo-kit/src/policy/__tests__/no-mutual-links.test.mjs: all assertions passed\n')
 } finally {
   fs.rmSync(tempRoot, { recursive: true, force: true })
 }

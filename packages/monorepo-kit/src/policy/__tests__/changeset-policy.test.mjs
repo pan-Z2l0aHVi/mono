@@ -4,7 +4,7 @@ import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 
-import { run } from './changeset-policy.mjs'
+import { run } from '../changeset-policy.mjs'
 
 const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'greypan-changeset-'))
 const gitEnv = {
@@ -177,7 +177,7 @@ try {
   await assert.rejects(check(single, 'deadbeefdeadbeefdeadbeefdeadbeefdeadbeef', singleHead), /base .* is not a commit/)
   await assert.rejects(run({ root: single.root, head: singleHead }), /missing required option --base/)
 
-  process.stdout.write('packages/monorepo-kit/src/policy/changeset-policy.test.mjs: all assertions passed\n')
+  process.stdout.write('packages/monorepo-kit/src/policy/__tests__/changeset-policy.test.mjs: all assertions passed\n')
 } finally {
   fs.rmSync(tempRoot, { recursive: true, force: true })
 }

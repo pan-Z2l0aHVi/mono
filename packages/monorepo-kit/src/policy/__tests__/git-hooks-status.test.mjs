@@ -4,7 +4,7 @@ import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 
-import { inspectGitHooks } from './git-hooks-status.mjs'
+import { inspectGitHooks } from '../git-hooks-status.mjs'
 
 const fixtureRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'git-hooks-status-'))
 

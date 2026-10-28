@@ -145,7 +145,7 @@ export default defineConfig({
           // `test` 块里：写到根上会连 jsdom project 一起抢这个端口。默认 63315 会被同机并行的
           // 其他 worktree（或同一轮 turbo test 里其他包的测试进程）占住——同一进程内的多个
           // browser project 倒是会各自递增，不冲突；端口分配与多 worktree 的偏移见
-          // packages/monorepo-kit/src/repo/test-ports.mjs。host 钉成 loopback 的理由见
+          // 根 monorepo.json 与 GREYPAN_TEST_PORT_OFFSET。host 钉成 loopback 的理由见
           // apps/react-web-ui-demo/vite.config.ts。
           api: { host: '127.0.0.1', port: testApiPort('vue-web-ui-demo') },
           browser: {

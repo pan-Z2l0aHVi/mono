@@ -4,7 +4,7 @@ import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 
-import { run } from './script-tests.mjs'
+import { run } from '../script-tests.mjs'
 
 const root = fs.mkdtempSync(path.join(os.tmpdir(), 'greypan-script-tests-'))
 const nonGitRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'greypan-script-tests-nongit-'))
@@ -32,7 +32,7 @@ try {
   await assert.rejects(run({ root: nonGitRoot }), /git ls-files failed/)
   assert.equal(fs.existsSync(path.join(nonGitRoot, '.git')), false)
 
-  process.stdout.write('packages/monorepo-kit/src/policy/script-tests.test.mjs: all assertions passed\n')
+  process.stdout.write('packages/monorepo-kit/src/policy/__tests__/script-tests.test.mjs: all assertions passed\n')
 } finally {
   fs.rmSync(root, { recursive: true, force: true })
   fs.rmSync(nonGitRoot, { recursive: true, force: true })

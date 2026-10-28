@@ -3,7 +3,7 @@ import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 
-import { findRepoRoot } from './repo-root.mjs'
+import { findRepoRoot } from '../repo-root.mjs'
 
 const root = findRepoRoot()
 // 根不能在断言里写死成 `mono`：worktree 的目录名是分支派生的，同一个仓库会有多个根路径。
@@ -23,4 +23,4 @@ try {
   fs.rmSync(outside, { recursive: true, force: true })
 }
 
-process.stdout.write('src/shared/repo-root.test.mjs: all assertions passed\n')
+process.stdout.write('src/shared/__tests__/repo-root.test.mjs: all assertions passed\n')

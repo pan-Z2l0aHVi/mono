@@ -3,7 +3,7 @@ import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 
-import { run } from './turbo-cache-invariant.mjs'
+import { run } from '../turbo-cache-invariant.mjs'
 
 const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'greypan-turbo-invariant-'))
 let fixture = 0
@@ -73,7 +73,9 @@ try {
   fs.writeFileSync(path.join(malformed, 'turbo.json'), '{ nope\n')
   await assert.rejects(run({ root: malformed }), /cannot parse/)
 
-  process.stdout.write('packages/monorepo-kit/src/policy/turbo-cache-invariant.test.mjs: all assertions passed\n')
+  process.stdout.write(
+    'packages/monorepo-kit/src/policy/__tests__/turbo-cache-invariant.test.mjs: all assertions passed\n'
+  )
 } finally {
   fs.rmSync(tempRoot, { recursive: true, force: true })
 }
