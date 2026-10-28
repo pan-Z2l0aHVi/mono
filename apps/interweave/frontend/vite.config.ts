@@ -11,6 +11,8 @@ import { playwright } from 'vite-plus/test/browser-playwright'
 import { VueRouterAutoImports } from 'vue-router/unplugin'
 import vueRouter from 'vue-router/vite'
 
+import { testApiPort } from '../../../scripts/lib/test-ports.mjs'
+
 export default defineConfig({
   resolve: {
     tsconfigPaths: true
@@ -53,17 +55,22 @@ export default defineConfig({
           // test-helper 补的是 jsdom 特有的 localStorage 漏洞，浏览器里有真实实现，不加载。
           setupFiles: [],
           // vitest 5 把 `browser.api` 挪到了 `test.api`，而且要写在 browser project 自己的
-          // `test` 块里：写到根上会连 jsdom project 一起抢这个端口（实测 `Port 63413 is
-          // already in use`）。默认的 63315 会被同机并行的其他 worktree、同一轮 turbo test
-          // 里的 web-ui browser project、以及两个 demo 的 browser project 占住，所以固定到
-          // 本包专用端口（两个 demo 分别占 63411 / 63412）。
+          // `test` 块里：写到根上会连 jsdom project 一起抢这个端口。默认的 63315 会被同机并行的
+          // 其他 worktree、同一轮 turbo test 里其他包的测试进程占住，所以端口从
+          // scripts/lib/test-ports.mjs 的分配表取，多 worktree 时用 GREYPAN_TEST_PORT_OFFSET 错开。
           //
           // host 必须显式钉回 loopback：api server 绑哪里只看 `api.host`；而
-          // `resolveApiServerConfig` 只在 host 是 loopback 时才默认允许写盘与执行（截图、附件
-          // 要走它们），绑到所有网卡则会关掉写/执行——任何能连到这台机器的人也能经 `/@fs` 读走
-          // 整个 workspace（含 `.herdr-project` 的内部文档）。顶层 `server.host: true` 是给
-          // Wails dev server 的，不要拿它代替这里。
-          api: { host: '127.0.0.1', port: 63413 },
+          // `resolveApiServerConfig` 只在 `api.host` 是字面量 `localhost` / `127.0.0.1`（或不设）
+          // 时才默认允许写盘与执行（截图、附件要走它们），设成其他值会关掉写/执行——反过来，
+          // 绑到所有网卡时任何能连到这台机器的人也能经 `/@fs` 读走整个 workspace（含
+          // `.herdr-project` 的内部文档）。顶层 `server.host: true` 是给 Wails dev server 的，
+          // 不要拿它代替这里。
+          // strictPort: false 必须显式写出来：vitest 5 的 `vitest:config:server` 把 `api` 合并进
+          // 测试服务器，同时顶层 `server` 的 `strictPort: true` 会被一并带过去——实测占住本包基
+          // 端口后直接 `Startup Error: Port N is already in use`，整包 browser 用例在开跑之前判
+          // 红。dev server 需要它（端口被占就硬失败，否则 webview 指向空气），测试服务器不需要：
+          // vitest 按实际监听地址把浏览器指向过去，端口漂移零代价。
+          api: { host: '127.0.0.1', port: testApiPort('interweave-frontend'), strictPort: false },
           browser: {
             enabled: true,
             headless: true,

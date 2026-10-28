@@ -5,6 +5,8 @@ import { resolve } from 'node:path'
 import { defineConfig, type Plugin } from 'vite-plus'
 import { playwright } from 'vite-plus/test/browser-playwright'
 
+import { testApiPort } from '../../scripts/lib/test-ports.mjs'
+
 /**
  * Vitest 5 的 `@vitest/browser` 不再把 `/mockServiceWorker.js` 解析到
  * `msw/mockServiceWorker.js`（v4 内置这条映射，v5 移除了 MSW 集成）。缺少这个脚本时
@@ -64,6 +66,11 @@ export default defineConfig({
     attachmentsDir: '.vitest-attachments',
     // Tracker specs share browser globals and one MSW service worker.
     fileParallelism: false,
+    // 端口与 host 的理由见 docs/agents/build.md 的「测试端口分配」。本包没有顶层 `server`，
+    // 不写 `api.host` 时默认就是 localhost；显式写出来是为了让绑定落在 loopback——探测只绑
+    // 通配地址、看不见 127.0.0.1 上的占用者，只有绑定同址才会 EADDRINUSE 并前进到下一个端口
+    // ——并且和其他 browser project 用同一套表，多 worktree 并行时能被 offset 一起平移。
+    api: { host: '127.0.0.1', port: testApiPort('browser-kit') },
     browser: {
       provider: playwright(),
       enabled: true,
