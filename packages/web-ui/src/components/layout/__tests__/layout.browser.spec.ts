@@ -136,6 +136,66 @@ describe('WebUiLayout 组件（浏览器）', () => {
     })
   })
 
+  describe('无 sidebar 模式', () => {
+    // 与 collapse 不同：collapse 只收窄桌面 aside，`no-sidebar` 把侧边栏结构整棵移出树。
+    it('桌面端只渲染内容列：无 aside、无 Toggle，sidebar slot 内容仍留在 light DOM', async () => {
+      await setViewport(DESKTOP_VIEWPORT.width, DESKTOP_VIEWPORT.height)
+      const layout = createLayout()
+      layout.noSidebar = true
+      await layout.updateComplete
+
+      expect(layout.hasAttribute('no-sidebar')).toBe(true)
+      expect(queryA11y(layout, 'aside')).toBeFalsy()
+      expect(queryA11y(layout, '.sidebar-toggle')).toBeFalsy()
+      expect(queryA11y(layout, 'slot[name="sidebar"]')).toBeFalsy()
+      expect(queryA11y(layout, 'main')).toBeTruthy()
+      expect(queryA11y(layout, 'slot[name="header"]')).toBeTruthy()
+      // 只是不渲染：消费方的 light DOM 节点不被移除，撤下属性即可回到原布局。
+      expect(layout.querySelector('[slot="sidebar"]')).toBeTruthy()
+    })
+
+    it('移动端不渲染 header Toggle 与 Drawer，mobile 仍按视口派生', async () => {
+      await setViewport(MOBILE_VIEWPORT.width, MOBILE_VIEWPORT.height)
+      const layout = createLayout()
+      layout.noSidebar = true
+      await layout.updateComplete
+
+      expect(layout.mobile).toBe(true)
+      expect(queryA11y(layout, '[aria-label="Open navigation menu"]')).toBeFalsy()
+      expect(queryA11y(layout, 'web-ui-drawer')).toBeFalsy()
+      expect(queryA11y(layout, 'aside')).toBeFalsy()
+      expect(queryA11y(layout, 'main')).toBeTruthy()
+    })
+
+    it('撤下属性恢复原布局，并清理未提交的调宽临时宽度', async () => {
+      await setViewport(DESKTOP_VIEWPORT.width, DESKTOP_VIEWPORT.height)
+      const layout = createLayout()
+      layout.sidebarResizable = true
+      await layout.updateComplete
+      await waitForFrame()
+
+      const handle = layout.shadowRoot?.querySelector<HTMLElement>('[role="separator"]')
+      expect(handle).toBeTruthy()
+      handle?.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight' }))
+      await layout.updateComplete
+
+      const aside = layout.shadowRoot?.querySelector<HTMLElement>('aside')
+      if (!aside) throw new Error('Expected the desktop aside to be rendered')
+      const tempWidth = aside.style.width
+      expect(tempWidth).not.toBe('240px')
+
+      layout.noSidebar = true
+      await layout.updateComplete
+      expect(queryA11y(layout, 'aside')).toBeFalsy()
+
+      layout.noSidebar = false
+      await layout.updateComplete
+      const restored = layout.shadowRoot?.querySelector<HTMLElement>('aside')
+      expect(restored?.style.width).toBe('240px')
+      expect(restored?.querySelector('[role="separator"]')).toBeTruthy()
+    })
+  })
+
   describe('移动端 drawer', () => {
     // 640px 两侧切换两套 DOM：桌面渲染 aside + 常驻侧栏，移动端渲染受控 drawer。
     it('移动端改用受控 drawer，不再渲染桌面 aside', async () => {
