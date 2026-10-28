@@ -121,10 +121,6 @@ export default defineConfig({
     // Vitest 5 把默认附件目录从 `.vitest-attachments` 改成 `.vitest/attachments`；
     // 仓库在 `.gitignore` 与 docs/agents 里把测试证据路径固定为前者，这里跟着钉住。
     attachmentsDir: '.vitest-attachments',
-    // CI runner 上挂载型用例慢一个量级，默认 5s 上限不够；测量见 apps/interweave/frontend/vite.config.ts。
-    testTimeout: 15_000,
-    // `src/i18n/__tests__/setup.ts` 的 beforeEach 真实加载语言包，在 CI 上会超过 hook 的 10s 默认值。
-    hookTimeout: 30_000,
     projects: [
       {
         extends: true,

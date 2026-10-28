@@ -34,12 +34,6 @@ export default defineConfig({
     // Vitest 5 把默认附件目录从 `.vitest-attachments` 改成 `.vitest/attachments`；
     // 仓库在 `.gitignore` 与 docs/agents 里把测试证据路径固定为前者，这里跟着钉住。
     attachmentsDir: '.vitest-attachments',
-    // 挂载整页的用例在 CI 的 4 核 runner 上比本机慢一个量级：同一份 AppLayout.spec.ts 本机
-    // 0.3s，CI 上 vitest 4 是 3.1s、vitest 5 是 7.7s，2~4s 的单条用例会轮流撞上默认 5s 上限。
-    // 放宽上限而不改测试，是因为慢在环境：断言里没有靠超时兜底的等待。
-    testTimeout: 15_000,
-    // 同一台 runner 上 hook 也会超时：默认 10s 之内加载不完语言包或整页依赖。
-    hookTimeout: 30_000,
     projects: [
       {
         extends: true,
