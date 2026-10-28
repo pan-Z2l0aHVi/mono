@@ -71,7 +71,7 @@ ADR-0027 §5 允许 `scripts/lib/` 承载共享实现，因此迁移前的形态
 
 ### 6. turbo 与 changeset
 
-- 根 `turbo.json` 的 `globalDependencies` 保留，路径改为 `packages/monorepo-kit/src/repo/test-ports.mjs`。**不能删**：源码直出时消费者经 `node_modules` 软链读源码，而 turbo 只对包目录内的文件做哈希，又没有 `^build` 传播，改端口表不会让 `web-ui` 的 `test` 缓存失效。
+- 根 `turbo.json` 的 `globalDependencies` 保留，路径改为 `packages/monorepo-kit/src/repo/test-ports.mjs`。§1 给了这个包 `build` 之后，`^build` 已经把这张表的变更传播到消费者：改端口表会改 `monorepo-kit#build` 的哈希，消费者的 `test` 随之失去缓存。这条登记仍然保留，作为不依赖传播语义的第二道保险——源码直出意味着消费者经 `node_modules` 软链直接读源码，而 turbo 只对包目录内的文件做哈希；代价是改这张表会让全仓缓存失效，而它很少改。
 - `.changeset/config.json` 不把新包加入 `ignore`：门禁行为的变更值得留变更记录。代价是改检查逻辑要写一条带包名的 changeset，「空 changeset」这条捷径在门禁变更上不再可用。
 
 ## 后果
