@@ -288,7 +288,7 @@ export class WebUiLayout extends LitElement {
   }
 
   // 终结进行中的拖拽：清手势状态、移除跟手 class，宽度过渡回 prop 管辖，不派发事件。
-  // pointer cancel 与视口跨越移动端断点（handle 随桌面 layout 卸载）共用此收尾。
+  // pointer cancel、跨越移动端断点和切入 no-sidebar 时共用此收尾。
   private _resetActiveResize() {
     this._resizeGesture?.destroy()
     this._resizeGesture = null

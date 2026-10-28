@@ -4965,7 +4965,7 @@ export const exampleDocs: ExampleDoc[] = [
         "rows": [
           [
             "no-sidebar",
-            "<p>Renders no sidebar structure: desktop aside and Toggle, mobile header Toggle and Drawer; the <code>sidebar</code> slot is no longer rendered.</p>",
+            "<p>Renders no sidebar structure: desktop aside, collapse Toggle and resize handle, mobile header Toggle and Drawer; the <code>sidebar</code> slot is no longer rendered.</p>",
             "boolean",
             "false"
           ],
@@ -5123,7 +5123,7 @@ export const exampleDocs: ExampleDoc[] = [
         "kind": "prose",
         "key": "sidebar-less layout",
         "title": "Sidebar-less layout",
-        "html": "<p>With <code>no-sidebar</code> set, desktop renders no aside, collapse Toggle, or resize handle, and mobile renders no header Toggle or Drawer; the <code>banner</code>, <code>header</code>, default content, and <code>tabbar</code> regions keep their layout and scrolling behavior, and the content column fills the row.</p>\n<p>The <code>sidebar</code> slot has no render outlet, while consumer nodes stay in the light DOM. In this mode <code>sidebar-collapsed</code>, <code>sidebar-open</code>, <code>sidebar-width</code>, and the other <code>sidebar-*</code> attributes and events have no visible effect; the sidebar-related <code>ariaLabels</code> keys and CSS custom properties are not rendered either.</p>\n<p><code>mobile</code> and <code>mobile-change</code> still derive from the viewport as usual. Switching into this mode terminates an in-flight drag gesture and any uncommitted resize width, and removing the attribute returns to the layout governed by the <code>sidebar-*</code> attributes.</p>"
+        "html": "<p>With <code>no-sidebar</code> set, desktop renders no aside, collapse Toggle, or resize handle, and mobile renders no header Toggle or Drawer; the <code>banner</code>, <code>header</code>, default content, and <code>tabbar</code> regions keep their layout and scrolling behavior, and the content column fills the row.</p>\n<p>The <code>sidebar</code> slot has no render outlet, while consumer nodes stay in the light DOM. In this mode <code>sidebar-collapsed</code>, <code>sidebar-open</code>, <code>sidebar-width</code>, and the other <code>sidebar-*</code> attributes and events have no visible effect; sidebar-related <code>ariaLabels</code> keys and CSS custom properties have no visible effect either.</p>\n<p><code>mobile</code> and <code>mobile-change</code> still derive from the viewport as usual. Switching into this mode terminates an in-flight drag gesture and any uncommitted resize width, and removing the attribute returns to the layout governed by the <code>sidebar-*</code> attributes.</p>"
       },
       {
         "kind": "prose",

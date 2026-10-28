@@ -116,22 +116,27 @@ function setViewportWidth(width: number) {
   window.dispatchEvent(new Event('resize'))
 }
 
-async function mountAppShell() {
+async function mountAppShell(mark: (stage: string) => void = () => {}) {
   // 固定到中文源语种，避免 Provider 挂载后再异步换一次壳文案。
   localStorage.setItem('locale', 'zh-CN')
+  mark('load locale')
   await loadShellLocale('zh-CN')
+  mark('render shell')
   const router = buildRouter()
   render(
     <LocaleProvider>
       <RouterProvider router={router} />
     </LocaleProvider>
   )
+  mark('wait for layout')
   await waitFor(() => {
     if (!document.querySelector('web-ui-layout')) throw new Error('layout not mounted')
   })
+  mark('wait for layout update')
   await act(async () => {
     await layoutRoot().updateComplete
   })
+  mark('layout ready')
 }
 
 /** 复刻 layout 侧边栏 Toggle 的请求链路：layout 只派发请求，宿主回写受控属性。 */
@@ -160,12 +165,18 @@ describe('应用外壳：导航 collapsed state 不跨视口泄漏', () => {
     innerWidthSpy = null
   })
 
-  it('桌面端 collapsible sidebar 后导航进入 collapsed state', async () => {
+  it('桌面端 collapsible sidebar 后导航进入 collapsed state', async ({ onTestFailed }) => {
+    const started = performance.now()
+    const stages: string[] = []
+    const mark = (stage: string) => stages.push(`${stage}: ${Math.round(performance.now() - started)}ms`)
+    onTestFailed(() => console.error(`sidebar test stages: ${stages.join(', ')}`))
     setViewportWidth(DESKTOP_WIDTH)
-    await mountAppShell()
+    await mountAppShell(mark)
     const expanded = navItemClasses()
 
+    mark('request collapse')
     await requestCollapse(true)
+    mark('collapse complete')
 
     expect(isDrawerMode()).toBe(false)
     expect(layoutRoot().sidebarCollapsed).toBe(true)

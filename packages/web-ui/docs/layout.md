@@ -406,7 +406,7 @@ const mobile = ref(false)
 
 | Name                | Description                                                                                                                                                                                                                                              | Type               | Default   |
 | ------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------ | --------- |
-| `no-sidebar`        | Renders no sidebar structure: desktop aside and Toggle, mobile header Toggle and Drawer; the `sidebar` slot is no longer rendered.                                                                                                                       | `boolean`          | `false`   |
+| `no-sidebar`        | Renders no sidebar structure: desktop aside, collapse Toggle and resize handle, mobile header Toggle and Drawer; the `sidebar` slot is no longer rendered.                                                                                               | `boolean`          | `false`   |
 | `sidebar-collapsed` | Controlled collapse state of the desktop sidebar; it only narrows the desktop side and does not affect the mobile Drawer.                                                                                                                                | `boolean`          | `false`   |
 | `sidebar-open`      | Controlled open state of the mobile sidebar Drawer.                                                                                                                                                                                                      | `boolean`          | `false`   |
 | `header-glow`       | Shows a decorative glow behind the header slot content.                                                                                                                                                                                                  | `boolean`          | `false`   |
@@ -467,7 +467,7 @@ See issue #195.
 
 With `no-sidebar` set, desktop renders no aside, collapse Toggle, or resize handle, and mobile renders no header Toggle or Drawer; the `banner`, `header`, default content, and `tabbar` regions keep their layout and scrolling behavior, and the content column fills the row.
 
-The `sidebar` slot has no render outlet, while consumer nodes stay in the light DOM. In this mode `sidebar-collapsed`, `sidebar-open`, `sidebar-width`, and the other `sidebar-*` attributes and events have no visible effect; the sidebar-related `ariaLabels` keys and CSS custom properties are not rendered either.
+The `sidebar` slot has no render outlet, while consumer nodes stay in the light DOM. In this mode `sidebar-collapsed`, `sidebar-open`, `sidebar-width`, and the other `sidebar-*` attributes and events have no visible effect; sidebar-related `ariaLabels` keys and CSS custom properties have no visible effect either.
 
 `mobile` and `mobile-change` still derive from the viewport as usual. Switching into this mode terminates an in-flight drag gesture and any uncommitted resize width, and removing the attribute returns to the layout governed by the `sidebar-*` attributes.
 

@@ -386,7 +386,7 @@ const mobile = ref(false)
 
 | 名称                | 说明                                                                                                                                         | 类型               | 默认值    |
 | ------------------- | -------------------------------------------------------------------------------------------------------------------------------------------- | ------------------ | --------- |
-| `no-sidebar`        | 不渲染任何侧边栏结构：桌面端 aside 与 Toggle、移动端 header Toggle 与 Drawer；`sidebar` slot 内容随之不渲染。                                | `boolean`          | `false`   |
+| `no-sidebar`        | 不渲染任何侧边栏结构：桌面端 aside、collapse Toggle 与 resize handle，移动端 header Toggle 与 Drawer；`sidebar` slot 内容随之不渲染。        | `boolean`          | `false`   |
 | `sidebar-collapsed` | 桌面端侧边栏受控 collapse 状态；只收窄桌面端，不影响移动端 Drawer。                                                                          | `boolean`          | `false`   |
 | `sidebar-open`      | 移动端侧边栏 Drawer 受控打开状态。                                                                                                           | `boolean`          | `false`   |
 | `header-glow`       | 在 header 插槽内容背后显示装饰性晕染。                                                                                                       | `boolean`          | `false`   |
@@ -447,7 +447,7 @@ layout 自身在 microtask 里重渲染，因此**在宏任务上响应的消费
 
 `no-sidebar` 置位后，桌面端不渲染 aside、collapse Toggle 与 resize handle，移动端不渲染 header Toggle 与 Drawer；`banner`、`header`、默认内容与 `tabbar` 的分区与滚动行为不变，内容列直接占满整行。
 
-`sidebar` slot 没有渲染出口，但消费方节点仍留在 light DOM。该模式下 `sidebar-collapsed`、`sidebar-open`、`sidebar-width` 等属性与 `sidebar-*` 事件都不产生可见效果；侧边栏相关的 `ariaLabels` key 与 CSS Custom Properties 也不会被渲染。
+`sidebar` slot 没有渲染出口，但消费方节点仍留在 light DOM。该模式下 `sidebar-collapsed`、`sidebar-open`、`sidebar-width` 等属性与 `sidebar-*` 事件都不产生可见效果；侧边栏相关的 `ariaLabels` key 与 CSS Custom Properties 也不产生可见效果。
 
 `mobile` 与 `mobile-change` 照常按视口派生。切换进该模式时，in-flight 的拖拽手势与未提交的调宽宽度会被终结，撤下属性后回到 `sidebar-*` 属性管辖的布局。
 

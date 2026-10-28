@@ -150,6 +150,8 @@ describe('WebUiLayout 组件（浏览器）', () => {
       expect(queryA11y(layout, 'slot[name="sidebar"]')).toBeFalsy()
       expect(queryA11y(layout, 'main')).toBeTruthy()
       expect(queryA11y(layout, 'slot[name="header"]')).toBeTruthy()
+      expect(queryA11y(layout, 'slot[name="banner"]')).toBeTruthy()
+      expect(queryA11y(layout, 'slot[name="tabbar"]')).toBeTruthy()
       // 只是不渲染：消费方的 light DOM 节点不被移除，撤下属性即可回到原布局。
       expect(layout.querySelector('[slot="sidebar"]')).toBeTruthy()
     })
@@ -182,7 +184,7 @@ describe('WebUiLayout 组件（浏览器）', () => {
       const aside = layout.shadowRoot?.querySelector<HTMLElement>('aside')
       if (!aside) throw new Error('Expected the desktop aside to be rendered')
       const tempWidth = aside.style.width
-      expect(tempWidth).not.toBe('240px')
+      expect(tempWidth).not.toBe(layout.sidebarWidth)
 
       layout.noSidebar = true
       await layout.updateComplete
@@ -191,7 +193,7 @@ describe('WebUiLayout 组件（浏览器）', () => {
       layout.noSidebar = false
       await layout.updateComplete
       const restored = layout.shadowRoot?.querySelector<HTMLElement>('aside')
-      expect(restored?.style.width).toBe('240px')
+      expect(restored?.style.width).toBe(layout.sidebarWidth)
       expect(restored?.querySelector('[role="separator"]')).toBeTruthy()
     })
   })
@@ -778,6 +780,37 @@ describe('WebUiLayout 组件（浏览器）', () => {
       layout.sidebarCollapsed = false
       await layout.updateComplete
       expect(queryA11y(layout, '[role="separator"]')).toBeTruthy()
+    })
+
+    it('拖拽中隐藏 sidebar 会取消手势，恢复后可以重新拖拽', async () => {
+      const layout = await resizableLayout()
+      const widthRequests: string[] = []
+      layout.addEventListener('sidebar-width-change', event =>
+        widthRequests.push((event as CustomEvent<{ width: string }>).detail.width)
+      )
+
+      const handle = handleOf(layout)
+      handle.dispatchEvent(pointer('pointerdown', { clientX: 0 }))
+      handle.dispatchEvent(pointer('pointermove', { clientX: 60 }))
+      await layout.updateComplete
+      const aside = queryA11y(layout, 'aside') as HTMLElement
+      expect(aside.style.width).not.toBe(layout.sidebarWidth)
+
+      layout.noSidebar = true
+      await layout.updateComplete
+      expect(queryA11y(layout, 'aside')).toBeFalsy()
+      expect(widthRequests).toEqual([])
+
+      layout.noSidebar = false
+      await layout.updateComplete
+      const restoredHandle = handleOf(layout)
+      restoredHandle.dispatchEvent(pointer('pointerdown', { clientX: 0 }))
+      restoredHandle.dispatchEvent(pointer('pointermove', { clientX: 60 }))
+      await layout.updateComplete
+      restoredHandle.dispatchEvent(pointer('pointerup', { clientX: 60 }))
+      await layout.updateComplete
+      expect(widthRequests).toHaveLength(1)
+      expect(parseFloat(widthRequests[0])).toBeCloseTo(parseFloat(layout.sidebarWidth) + 60, 0)
     })
 
     // 跨越断点会卸载桌面 layout（resize handle 随之消失）。悬挂的手势若不终结，切回桌面后

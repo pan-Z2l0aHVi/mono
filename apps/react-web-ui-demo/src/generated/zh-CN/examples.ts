@@ -4965,7 +4965,7 @@ export const exampleDocs: ExampleDoc[] = [
         "rows": [
           [
             "no-sidebar",
-            "<p>不渲染任何侧边栏结构：桌面端 aside 与 Toggle、移动端 header Toggle 与 Drawer；<code>sidebar</code> slot 内容随之不渲染。</p>",
+            "<p>不渲染任何侧边栏结构：桌面端 aside、collapse Toggle 与 resize handle，移动端 header Toggle 与 Drawer；<code>sidebar</code> slot 内容随之不渲染。</p>",
             "boolean",
             "false"
           ],
@@ -5123,7 +5123,7 @@ export const exampleDocs: ExampleDoc[] = [
         "kind": "prose",
         "key": "无 sidebar 布局",
         "title": "无 sidebar 布局",
-        "html": "<p><code>no-sidebar</code> 置位后，桌面端不渲染 aside、collapse Toggle 与 resize handle，移动端不渲染 header Toggle 与 Drawer；<code>banner</code>、<code>header</code>、默认内容与 <code>tabbar</code> 的分区与滚动行为不变，内容列直接占满整行。</p>\n<p><code>sidebar</code> slot 没有渲染出口，但消费方节点仍留在 light DOM。该模式下 <code>sidebar-collapsed</code>、<code>sidebar-open</code>、<code>sidebar-width</code> 等属性与 <code>sidebar-*</code> 事件都不产生可见效果；侧边栏相关的 <code>ariaLabels</code> key 与 CSS Custom Properties 也不会被渲染。</p>\n<p><code>mobile</code> 与 <code>mobile-change</code> 照常按视口派生。切换进该模式时，in-flight 的拖拽手势与未提交的调宽宽度会被终结，撤下属性后回到 <code>sidebar-*</code> 属性管辖的布局。</p>"
+        "html": "<p><code>no-sidebar</code> 置位后，桌面端不渲染 aside、collapse Toggle 与 resize handle，移动端不渲染 header Toggle 与 Drawer；<code>banner</code>、<code>header</code>、默认内容与 <code>tabbar</code> 的分区与滚动行为不变，内容列直接占满整行。</p>\n<p><code>sidebar</code> slot 没有渲染出口，但消费方节点仍留在 light DOM。该模式下 <code>sidebar-collapsed</code>、<code>sidebar-open</code>、<code>sidebar-width</code> 等属性与 <code>sidebar-*</code> 事件都不产生可见效果；侧边栏相关的 <code>ariaLabels</code> key 与 CSS Custom Properties 也不产生可见效果。</p>\n<p><code>mobile</code> 与 <code>mobile-change</code> 照常按视口派生。切换进该模式时，in-flight 的拖拽手势与未提交的调宽宽度会被终结，撤下属性后回到 <code>sidebar-*</code> 属性管辖的布局。</p>"
       },
       {
         "kind": "prose",
