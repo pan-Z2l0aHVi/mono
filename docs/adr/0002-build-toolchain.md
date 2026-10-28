@@ -26,5 +26,5 @@
 ## 后果
 
 - Web workspace 的构建、测试、lint 和格式化委托给 `vp`；Interweave 的 Go 静态检查与格式化使用 Go 工具链
-- 工作区依赖必须外部化（推荐使用正则），以确保 dev watch 模式正常工作；`pack` 默认外部化 manifest 里的 `dependencies` 与 `peerDependencies`，其余用 `deps.neverBundle` 补齐
+- 工作区依赖必须外部化（推荐使用正则），以确保 dev watch 模式正常工作；`pack` 默认外部化 manifest 里的 `dependencies` 与 `peerDependencies`（`unbundle` 的包天然满足这条），真打包的包用 `deps.neverBundle` 补齐
 - web-ui 中的 CSS 嵌套需要 LightningCSS 转译：`pack.css` 复用顶层 `target` 做特性降级，`css.minify` 与 Vite 管线的产物逐字节一致

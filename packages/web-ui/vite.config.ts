@@ -25,6 +25,9 @@ export default defineConfig({
     unbundle: true,
     root: resolve(import.meta.dirname, 'src'),
     platform: 'browser',
+    // `platform: 'browser'` 已经让默认值等于 `false`，这里仍然显式写出：扩展名是 exports
+    // 契约的一部分，不该由一个只在平台语义上顺带成立的默认值决定。
+    fixedExtension: false,
     // 与 package.json 的 `browserslist` 同一组下限。顶层 target 同时驱动 JS 语法降级和
     // CSS 的 lightningcss 前缀/特性降级，`classes/style.css` 因此与 Vite 管线逐字节一致。
     target: ['chrome111', 'edge111', 'safari16.4', 'ios16.4', 'firefox128'],
