@@ -348,39 +348,42 @@ describe('应用外壳（浏览器）：导航 collapsed state 不跨视口泄�
     })
 
     const shadowHost = document.createElement('div')
-    const shadowRoot = shadowHost.attachShadow({ mode: 'open' })
-    const nestedTheme = document.createElement('web-ui-theme') as WebUiTheme
-    const target = document.createElement('button')
-    nestedTheme.append(target)
-    shadowRoot.append(nestedTheme)
-    document.body.append(shadowHost)
-    await nestedTheme.updateComplete
-    await vi.waitFor(() => expect(document.querySelector('[slot="banner"]')).toBeNull())
+    try {
+      const shadowRoot = shadowHost.attachShadow({ mode: 'open' })
+      const nestedTheme = document.createElement('web-ui-theme') as WebUiTheme
+      const target = document.createElement('button')
+      nestedTheme.append(target)
+      shadowRoot.append(nestedTheme)
+      document.body.append(shadowHost)
+      await nestedTheme.updateComplete
+      await vi.waitFor(() => expect(document.querySelector('[slot="banner"]')).toBeNull())
 
-    nestedTheme.setAttribute('appearance', 'dark')
-    await nestedTheme.updateComplete
-    await vi.waitFor(() => expect(document.querySelector('[slot="banner"]')).toBeNull())
+      nestedTheme.setAttribute('appearance', 'dark')
+      await nestedTheme.updateComplete
+      await vi.waitFor(() => expect(document.querySelector('[slot="banner"]')).toBeNull())
 
-    toast.info('Persistent scoped toast for the banner test', {
-      id: 'vue-scoped-banner-close-regression',
-      duration: 0,
-      target
-    })
-    await vi.waitFor(() => {
-      if (!nestedTheme.getOverlayRoot()?.querySelector('web-ui-toast')) {
-        throw new Error('scoped toast did not mount in the nested theme')
-      }
-      const banner = document.querySelector<HTMLElement>('[slot="banner"]')
-      if (!banner || getComputedStyle(banner).visibility !== 'hidden') {
-        throw new Error('nested scoped toast did not reserve banner space')
-      }
-    })
+      toast.info('Persistent scoped toast for the banner test', {
+        id: 'vue-scoped-banner-close-regression',
+        duration: 0,
+        target
+      })
+      await vi.waitFor(() => {
+        if (!nestedTheme.getOverlayRoot()?.querySelector('web-ui-toast')) {
+          throw new Error('scoped toast did not mount in the nested theme')
+        }
+        const banner = document.querySelector<HTMLElement>('[slot="banner"]')
+        if (!banner || getComputedStyle(banner).visibility !== 'hidden') {
+          throw new Error('nested scoped toast did not reserve banner space')
+        }
+      })
 
-    toast.clear()
-    await vi.waitFor(() => {
-      if (nestedTheme.getOverlayRoot()?.querySelector('web-ui-toast')) throw new Error('scoped toast stayed mounted')
-    })
-    shadowHost.remove()
+      toast.clear()
+      await vi.waitFor(() => {
+        if (nestedTheme.getOverlayRoot()?.querySelector('web-ui-toast')) throw new Error('scoped toast stayed mounted')
+      })
+    } finally {
+      shadowHost.remove()
+    }
   })
 
   it('banner 关闭按钮桌面端靠右、移动端靠左', async () => {

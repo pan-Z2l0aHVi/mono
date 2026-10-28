@@ -236,9 +236,9 @@ async function openDetailFromMenu(host: HTMLElement) {
   await nextTick()
 }
 
-/** 入队链和确认动作都是多段 await：nextTick 只排一次渲染，这里把微任务队列排空。 */
+/** fixture 的 runtime 返回链只派生 microtask；deferred 的完成仍由各用例显式放行。 */
 async function flush() {
-  for (let index = 0; index < 20; index += 1) await Promise.resolve()
+  await new Promise<void>(resolve => setImmediate(resolve))
   await nextTick()
 }
 

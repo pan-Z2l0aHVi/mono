@@ -243,9 +243,7 @@ describe('ResourceList：按住拖动批量勾选', () => {
       // 就能触发」——触摸为什么必须这样判、clientY 为什么恒在视口内，由下面那条 touch 用例守。
       hit.pointAt(firstRow)
       window.dispatchEvent(pointer('pointermove', { clientX: 2, clientY: VIEWPORT_HEIGHT - 8 }))
-      // 让 rAF 回调跑起来：边缘滚动是按帧推进的
-      await new Promise(resolve => requestAnimationFrame(() => resolve(null)))
-      await new Promise(resolve => requestAnimationFrame(() => resolve(null)))
+      await waitForFrameCondition(() => currentScrollY() > 0)
       await flushRenders()
 
       expect(currentScrollY()).toBeGreaterThan(0)
@@ -2152,15 +2150,29 @@ describe('ResourceList：连按方向键与卸载后的落焦', () => {
   })
 
   /*
-   * 竞态的形状：先按 End 落焦到第 999 行，那一行此刻还没挂载，轮询在等；不等它落定又按
+   * 竞态的形状：先按 End 落焦到末行，查询被扣住，轮询在等；不等它落定又按
    * 一下方向键，第二次请求把焦点交给第 1 行。第一轮醒来时如果没有请求号可核对，就会把
-   * 焦点从第 1 行拽回第 999 行——方向键连按（最常见的键盘用法）最忌讳这个。
+   * 焦点从第 1 行拽回末行。显式放行旧轮询的下一跳，才能观察到这种迟到写入。
    */
   it('连按方向键时，先发的那一轮不会把焦点拽回它自己的目标', async () => {
-    const resources = Array.from({ length: 1000 }, (_, i) => resource({ id: `r${i}` }))
+    const resources = ['a', 'b', 'c'].map(id => resource({ id }))
     const mounted = await mountList(resources)
+    const container = mounted.container!
+    const querySelector = container.querySelector.bind(container)
+    let holdTarget = true
+    const query = vi.spyOn(container, 'querySelector').mockImplementation(selector => {
+      return holdTarget && selector === '[data-resource-index="2"]' ? null : querySelector(selector)
+    })
+    const scheduled: (() => void)[] = []
+    const originalSetTimeout = globalThis.setTimeout
+    const timer = vi.spyOn(globalThis, 'setTimeout').mockImplementation(((fn: () => void, delay: number) => {
+      if (delay === 16) {
+        scheduled.push(fn)
+        return 0
+      }
+      return originalSetTimeout(fn, delay)
+    }) as typeof setTimeout)
     try {
-      const container = mounted.container!
       container.focus()
       keydown(container, { key: 'Enter' })
       await flushRenders()
@@ -2168,21 +2180,23 @@ describe('ResourceList：连按方向键与卸载后的落焦', () => {
       expect(document.activeElement).toBe(firstRow)
 
       keydown(firstRow, { key: 'End' })
-      // 不等第一轮落定就再按一下：此时焦点仍在第 0 行，第二次请求的目标是第 1 行
+      await nextTick()
+      expect(scheduled, '先发请求必须已进入轮询').toHaveLength(1)
+      // 此时焦点仍在第 0 行，第二次请求的目标是第 1 行。
       keydown(firstRow, { key: 'ArrowDown' })
-
-      // 先等后发的那一轮真的落焦（确定性信号），再按帧给先发的那一轮留出它自己的轮询节奏：
-      // 直接睡 120ms 会把「慢机器上第一轮还没醒」读成通过。
-      await waitForFrameCondition(() => document.activeElement?.getAttribute('data-resource-index') === '1')
-      for (let frame = 0; frame < 8; frame += 1) {
-        await new Promise(resolve => requestAnimationFrame(() => resolve(null)))
-      }
-      await flushRenders()
+      await nextTick()
+      expect(document.activeElement?.getAttribute('data-resource-index')).toBe('1')
+      holdTarget = false
+      scheduled.shift()!()
+      await Promise.resolve()
+      expect(scheduled).toHaveLength(0)
 
       expect(document.activeElement?.getAttribute('data-resource-index'), '先发的那一轮把焦点拽回了它自己的目标').toBe(
         '1'
       )
     } finally {
+      timer.mockRestore()
+      query.mockRestore()
       mounted.unmount()
     }
   })
@@ -2192,30 +2206,35 @@ describe('ResourceList：连按方向键与卸载后的落焦', () => {
     const mounted = await mountList(resources)
     const container = mounted.container!
     container.focus()
-    // End 要滚过整段列表才落焦，轮询在目标行出现之前会先排上好几跳
-    keydown(container, { key: 'End' })
-    await flushRenders()
-
-    // 假定时器：把已排出去的跳握在手里，逐个唤醒，看它还排不排新的
+    // 暂不挂载目标行，保证请求停在真实的落焦轮询中。
+    const querySelector = container.querySelector.bind(container)
+    const query = vi.spyOn(container, 'querySelector').mockImplementation(selector => {
+      return selector === '[data-resource-index="2"]' ? null : querySelector(selector)
+    })
     const scheduled: (() => void)[] = []
     const originalSetTimeout = globalThis.setTimeout
-    globalThis.setTimeout = ((fn: () => void) => {
-      scheduled.push(fn)
-      return 0
-    }) as unknown as typeof setTimeout
-    let drained = 0
-    try {
-      mounted.unmount()
-      // 唤醒全部已排的跳，直到不再有新跳。没有取消机制时这会一直排到 1000ms 上限。
-      while (scheduled.length) {
-        const fn = scheduled.shift()!
-        drained++
-        if (drained > 200) break
-        fn()
+    const timer = vi.spyOn(globalThis, 'setTimeout').mockImplementation(((fn: () => void, delay: number) => {
+      if (delay === 16) {
+        scheduled.push(fn)
+        return 0
       }
-      expect(drained).toBeLessThanOrEqual(1)
+      return originalSetTimeout(fn, delay)
+    }) as typeof setTimeout)
+    let unmounted = false
+    try {
+      keydown(mounted.rows[0]!, { key: 'End' })
+      await nextTick()
+      expect(scheduled, '必须先观察到在途轮询，才能验证卸载取消').toHaveLength(1)
+      mounted.unmount()
+      unmounted = true
+      scheduled.shift()!()
+      // 唤醒的正是生产代码 await 的 Promise；其 continuation 必须停止排队。
+      await Promise.resolve()
+      expect(scheduled).toHaveLength(0)
     } finally {
-      globalThis.setTimeout = originalSetTimeout
+      timer.mockRestore()
+      query.mockRestore()
+      if (!unmounted) mounted.unmount()
     }
   })
 })

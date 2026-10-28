@@ -57,7 +57,7 @@ describe('toast upsert（浏览器）', () => {
     // 停靠游标到中性位置，避免继承的游标落在 top-right 挂载点触发挂载暂停。
     const park = createNeutralPark()
     await page.elementLocator(park).hover()
-    const id = toast.info('搬运中', { id: 'move', position: 'top-right', duration: 3000 })
+    const id = toast.info('搬运中', { id: 'move', position: 'top-right', duration: 0 })
     await waitMounted()
 
     const movedTo = (el: Element) => {
@@ -70,6 +70,8 @@ describe('toast upsert（浏览器）', () => {
     if (!before) throw new Error(`toast ${id} was not mounted into the overlay root`)
     expect(movedTo(before), '搬运前应在右上角').toBe(false)
 
+    // 准备完成后，在同一同步段启动倒计时并搬迁，保留原生 moveBefore 的在途计时契约。
+    toast({ id, message: '搬运中', duration: 3000 })
     toast({ id, message: '搬运中', position: 'bottom-left' })
     await pollUntil(
       () => {

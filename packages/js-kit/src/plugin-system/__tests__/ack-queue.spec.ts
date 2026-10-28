@@ -2,9 +2,9 @@ import { describe, expect, it, vi } from 'vite-plus/test'
 
 import { defineAckQueue } from '../plugins/ack-queue'
 
-const settleMicrotasks = async () => {
-  for (let i = 0; i < 12; i++) await Promise.resolve()
-}
+// fixture 的 drain 只派生 microtask；在持有 consumer gate 时，跨 task 观察本轮调度。
+// 此边界不表示 consumer fulfilled，后者必须释放并等待对应的 deferred 或 flush Promise。
+const afterDispatchTurn = () => new Promise<void>(resolve => setImmediate(resolve))
 
 describe('defineAckQueue', () => {
   it('普通 drain 会串行等待 fulfilled，并继续处理后续条目', async () => {
@@ -25,11 +25,11 @@ describe('defineAckQueue', () => {
     queue.enqueue(2)
     queue.enqueue(3)
 
-    await settleMicrotasks()
+    await afterDispatchTurn()
     expect(calls).toEqual([1])
 
     releaseFirst()
-    await settleMicrotasks()
+    await afterDispatchTurn()
     expect(calls).toEqual([1, 2, 3])
   })
 
@@ -64,7 +64,7 @@ describe('defineAckQueue', () => {
       onConsumeError: (_error, item) => errors.push(item)
     }).make()
 
-    await settleMicrotasks()
+    await afterDispatchTurn()
     expect(calls).toEqual([1, 2, 3])
     expect(errors).toEqual([1])
 
@@ -87,11 +87,11 @@ describe('defineAckQueue', () => {
       }
     }).make()
 
-    await settleMicrotasks()
+    await afterDispatchTurn()
     expect(calls).toEqual([1, 2, 3])
 
     queue.resume()
-    await settleMicrotasks()
+    await afterDispatchTurn()
     expect(calls).toEqual([1, 2, 3, 1])
   })
 
@@ -118,18 +118,18 @@ describe('defineAckQueue', () => {
     queue.enqueue(2)
 
     const flushPromise = queue.flush()
-    await settleMicrotasks()
+    await afterDispatchTurn()
     expect(calls).toEqual([1, 2])
 
     let settled = false
     void flushPromise.then(() => {
       settled = true
     })
-    await settleMicrotasks()
+    await afterDispatchTurn()
     expect(settled).toBe(false)
 
     releaseFirst()
-    await settleMicrotasks()
+    await afterDispatchTurn()
     expect(settled).toBe(false)
 
     releaseSecond()
@@ -151,16 +151,16 @@ describe('defineAckQueue', () => {
     }).make()
 
     queue.enqueue(1)
-    await settleMicrotasks()
+    await afterDispatchTurn()
 
     const flushPromise = queue.flush()
     queue.enqueue(2)
-    await settleMicrotasks()
+    await afterDispatchTurn()
     expect(calls).toEqual([1])
 
     release()
     await flushPromise
-    await settleMicrotasks()
+    await afterDispatchTurn()
     expect(calls).toEqual([1, 2])
   })
 
@@ -232,7 +232,7 @@ describe('defineAckQueue', () => {
     await expect(queue.flush()).rejects.toThrow('temporary')
     shouldFail = false
     queue.resume()
-    await settleMicrotasks()
+    await afterDispatchTurn()
 
     expect(persisted).toEqual([[], [1], []])
     expect(calls).toEqual([1, 1])
@@ -248,7 +248,7 @@ describe('defineAckQueue', () => {
       onConsumeError
     }).make()
 
-    await settleMicrotasks()
+    await afterDispatchTurn()
     await queue.flush()
     expect(onConsumeError).toHaveBeenCalledTimes(2)
   })

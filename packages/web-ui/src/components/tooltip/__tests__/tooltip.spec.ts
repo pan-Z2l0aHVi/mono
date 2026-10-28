@@ -283,7 +283,10 @@ describe('WebUiTooltip 组件', () => {
       await waitForUpdate(el)
 
       el.dispatchEvent(new PointerEvent('pointerenter'))
-      vi.advanceTimersByTime(200)
+      vi.advanceTimersByTime(el.showDelay - 1)
+      await waitForUpdate(el)
+      expect(el.isOpen).toBe(false)
+      vi.advanceTimersByTime(1)
       await waitForUpdate(el)
 
       expect(el.isOpen).toBe(true)

@@ -34,6 +34,8 @@
 
 新增 instruction、rule、skill 提示或 hook 之前，必须先判断代码边界、类型、测试、lint 或脚本能否更可靠地表达该约束。只有无法自动验证、且确实影响工程选择的约束才写入 instruction system。
 
+**2026-10-28 补充**：测试完成与隔离的编写纪律由 `skills/test-authoring/SKILL.md` 承担，本仓 flaky 调查与性能证据由 `docs/agents/verification.md` 承担，独立核查由 `docs/agents/review.md` 承担。helper 的 deadline、失败分支和清理优先由实现及回归测试表达；文档保留完成信号含义、有限观察的证明边界和测试分层取舍。这些判断不能由关键词扫描可靠裁决，重复运行也不能提供永久稳定保证。沿用现有层级与单一权威，不为同一 concern 再建平行指南。
+
 ## 后果
 
 - 根入口从详细操作手册收敛为稳定导航层，局部任务的初始 context 更小。

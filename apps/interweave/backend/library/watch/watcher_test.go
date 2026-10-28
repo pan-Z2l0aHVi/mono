@@ -7,6 +7,7 @@ import (
 	"runtime"
 	"sync"
 	"testing"
+	"testing/synctest"
 	"time"
 
 	"github.com/fsnotify/fsnotify"
@@ -224,6 +225,14 @@ func waitForStableCount(t *testing.T, read func() int, want int, quiet time.Dura
 	}
 }
 
+// 先让事件消费者停在下一个输入，再推进生产 debounce，最后等 worker 处理完该批。
+// 只用于 fakeFS 的 synctest bubble；真实 fsnotify 仍由真实集成测试验证。
+func advanceProbeWindow() {
+	synctest.Wait()
+	time.Sleep(probeDebounce)
+	synctest.Wait()
+}
+
 // useFakeFS 装入假事件源并在用例结束后还原，使同包内的集成测试能用真实 fsnotify。
 func useFakeFS(t *testing.T, fs *fakeFS) {
 	t.Helper()
@@ -365,167 +374,208 @@ func TestWatcherReconcileRestoresLostWatch(t *testing.T) {
 // 按设计会把它们收进同一批，批次数在 1 与 2 之间都是合法结果，拿它做等值断言
 // 就是在断言调度器的运气。收敛性由「每条路径一次」表达。
 func TestWatcherDebounceCoalescesStorm(t *testing.T) {
-	fs := newFakeFS()
-	useFakeFS(t, fs)
-	useDebounce(t, 20*time.Millisecond)
-	useServabilityProbe(t, true)
-	directory := "/library/storm"
-	first := filepath.Join(directory, "first.mp4")
-	second := filepath.Join(directory, "second.mp4")
-	sink := newFakeSink([]string{first, second})
-	watcher, err := NewWatcher(sink, func(core.AvailabilityChange) {})
-	if err != nil {
-		t.Fatalf("NewWatcher error: %v", err)
-	}
-	t.Cleanup(watcher.Stop)
-	if err := watcher.Start(context.Background()); err != nil {
-		t.Fatalf("Start error: %v", err)
-	}
+	synctest.Test(t, func(t *testing.T) {
+		fs := newFakeFS()
+		useFakeFS(t, fs)
+		useDebounce(t, 20*time.Millisecond)
+		useServabilityProbe(t, true)
+		directory := "/library/storm"
+		first := filepath.Join(directory, "first.mp4")
+		second := filepath.Join(directory, "second.mp4")
+		sink := newFakeSink([]string{first, second})
+		watcher, err := NewWatcher(sink, func(core.AvailabilityChange) {})
+		if err != nil {
+			t.Fatalf("NewWatcher error: %v", err)
+		}
+		t.Cleanup(watcher.Stop)
+		if err := watcher.Start(context.Background()); err != nil {
+			t.Fatalf("Start error: %v", err)
+		}
 
-	for _, path := range []string{first, second} {
-		for i := 0; i < 50; i++ {
-			fs.events <- fsnotify.Event{Name: path, Op: fsnotify.Write}
+		for _, path := range []string{first, second} {
+			for i := 0; i < 50; i++ {
+				fs.events <- fsnotify.Event{Name: path, Op: fsnotify.Write}
+			}
 		}
-	}
-	waitForStableCount(t, sink.totalProbeCount, 2, 300*time.Millisecond)
-	for _, path := range []string{first, second} {
-		if got := sink.probeCountFor(path); got != 1 {
-			t.Fatalf("expected %s to be probed exactly once under the storm, got %d", path, got)
+		advanceProbeWindow()
+		if got := sink.totalProbeCount(); got != 2 {
+			t.Fatalf("expected 2 completed probes/batches, got %d", got)
 		}
-	}
-	if batches := sink.batchCount(); batches < 1 || batches > 2 {
-		t.Fatalf("expected the storm to coalesce into at most 2 probe batches, got %d", batches)
-	}
+		for _, path := range []string{first, second} {
+			if got := sink.probeCountFor(path); got != 1 {
+				t.Fatalf("expected %s to be probed exactly once under the storm, got %d", path, got)
+			}
+		}
+		if batches := sink.batchCount(); batches < 1 || batches > 2 {
+			t.Fatalf("expected the storm to coalesce into at most 2 probe batches, got %d", batches)
+		}
+
+	})
 }
 
 // Chmod 与被监听目录自身的事件都不产生探测：前者与可用性无关，
 // 后者的旧路径已无法定位库内位置。
 func TestWatcherIgnoresChmodAndWatchedDirEvents(t *testing.T) {
-	fs := newFakeFS()
-	useFakeFS(t, fs)
-	useDebounce(t, 20*time.Millisecond)
-	useServabilityProbe(t, true)
-	directory := "/library/dir-events"
-	file := filepath.Join(directory, "one.mp4")
-	sink := newFakeSink([]string{file})
-	// 从失效起步：Create 带来的「恢复」必须产生一次真实翻转。
-	sink.setAvailability("source-a", false)
-	watcher, err := NewWatcher(sink, func(core.AvailabilityChange) {})
-	if err != nil {
-		t.Fatalf("NewWatcher error: %v", err)
-	}
-	t.Cleanup(watcher.Stop)
-	if err := watcher.Start(context.Background()); err != nil {
-		t.Fatalf("Start error: %v", err)
-	}
+	synctest.Test(t, func(t *testing.T) {
+		fs := newFakeFS()
+		useFakeFS(t, fs)
+		useDebounce(t, 20*time.Millisecond)
+		useServabilityProbe(t, true)
+		directory := "/library/dir-events"
+		file := filepath.Join(directory, "one.mp4")
+		sink := newFakeSink([]string{file})
+		// 从失效起步：Create 带来的「恢复」必须产生一次真实翻转。
+		sink.setAvailability("source-a", false)
+		watcher, err := NewWatcher(sink, func(core.AvailabilityChange) {})
+		if err != nil {
+			t.Fatalf("NewWatcher error: %v", err)
+		}
+		t.Cleanup(watcher.Stop)
+		if err := watcher.Start(context.Background()); err != nil {
+			t.Fatalf("Start error: %v", err)
+		}
 
-	fs.events <- fsnotify.Event{Name: file, Op: fsnotify.Chmod}
-	fs.events <- fsnotify.Event{Name: directory, Op: fsnotify.Remove}
-	waitForStableCount(t, sink.batchCount, 0, 200*time.Millisecond)
+		fs.events <- fsnotify.Event{Name: file, Op: fsnotify.Chmod}
+		fs.events <- fsnotify.Event{Name: directory, Op: fsnotify.Remove}
+		advanceProbeWindow()
+		if got := sink.batchCount(); got != 0 {
+			t.Fatalf("expected 0 completed probes/batches, got %d", got)
+		}
 
-	// 证明管线本身是通的：真正相关的 Create 必须恰好产生一次探测。
-	fs.events <- fsnotify.Event{Name: file, Op: fsnotify.Create}
-	waitForStableCount(t, sink.batchCount, 1, 200*time.Millisecond)
-	if got := sink.changeCount(); got != 1 {
-		t.Fatalf("expected 1 recorded availability flip, got %d", got)
-	}
+		// 证明管线本身是通的：真正相关的 Create 必须恰好产生一次探测。
+		fs.events <- fsnotify.Event{Name: file, Op: fsnotify.Create}
+		advanceProbeWindow()
+		if got := sink.batchCount(); got != 1 {
+			t.Fatalf("expected 1 completed probes/batches, got %d", got)
+		}
+		if got := sink.changeCount(); got != 1 {
+			t.Fatalf("expected 1 recorded availability flip, got %d", got)
+		}
+
+	})
 }
 
 // 不可用方向要两次确认：单次失败可能是 iCloud 物化或原子保存的瞬态。
 // 若没有确认机制，这里会在第一个批次就翻转，batchCount 会停在 1。
 func TestWatcherConfirmsUnavailableTwice(t *testing.T) {
-	fs := newFakeFS()
-	useFakeFS(t, fs)
-	useDebounce(t, 20*time.Millisecond)
-	useServabilityProbe(t, false)
-	file := filepath.Join("/library/vanishing", "one.mp4")
-	sink := newFakeSink([]string{file})
-	watcher, err := NewWatcher(sink, func(core.AvailabilityChange) {})
-	if err != nil {
-		t.Fatalf("NewWatcher error: %v", err)
-	}
-	t.Cleanup(watcher.Stop)
-	if err := watcher.Start(context.Background()); err != nil {
-		t.Fatalf("Start error: %v", err)
-	}
+	synctest.Test(t, func(t *testing.T) {
+		fs := newFakeFS()
+		useFakeFS(t, fs)
+		useDebounce(t, 20*time.Millisecond)
+		useServabilityProbe(t, false)
+		file := filepath.Join("/library/vanishing", "one.mp4")
+		sink := newFakeSink([]string{file})
+		watcher, err := NewWatcher(sink, func(core.AvailabilityChange) {})
+		if err != nil {
+			t.Fatalf("NewWatcher error: %v", err)
+		}
+		t.Cleanup(watcher.Stop)
+		if err := watcher.Start(context.Background()); err != nil {
+			t.Fatalf("Start error: %v", err)
+		}
 
-	fs.events <- fsnotify.Event{Name: file, Op: fsnotify.Remove}
-	waitForStableCount(t, sink.batchCount, 2, 300*time.Millisecond)
-	if got := sink.changeCount(); got != 1 {
-		t.Fatalf("expected exactly 1 flip after two confirmed failures, got %d", got)
-	}
-	if sink.availabilityOf("source-a") {
-		t.Fatal("expected the source to be recorded as unavailable")
-	}
+		fs.events <- fsnotify.Event{Name: file, Op: fsnotify.Remove}
+		advanceProbeWindow()
+		if got := sink.changeCount(); got != 0 {
+			t.Fatalf("first failed probe must not commit, got %d", got)
+		}
+		advanceProbeWindow()
+		if got := sink.batchCount(); got != 2 {
+			t.Fatalf("expected 2 completed probes/batches, got %d", got)
+		}
+		if got := sink.changeCount(); got != 1 {
+			t.Fatalf("expected exactly 1 flip after two confirmed failures, got %d", got)
+		}
+		if sink.availabilityOf("source-a") {
+			t.Fatal("expected the source to be recorded as unavailable")
+		}
+
+	})
 }
 
 // 第一次失败后文件自愈时不得写入失效：可用方向不需要确认。
 func TestWatcherSelfHealWithinOneEventDoesNotWriteUnavailable(t *testing.T) {
-	fs := newFakeFS()
-	useFakeFS(t, fs)
-	useDebounce(t, 20*time.Millisecond)
-	original := probeFileServable
-	var probes int
-	probeFileServable = func(string) (bool, *int64) {
-		probes++
-		if probes == 1 {
-			return false, nil
+	synctest.Test(t, func(t *testing.T) {
+		fs := newFakeFS()
+		useFakeFS(t, fs)
+		useDebounce(t, 20*time.Millisecond)
+		original := probeFileServable
+		var probes int
+		probeFileServable = func(string) (bool, *int64) {
+			probes++
+			if probes == 1 {
+				return false, nil
+			}
+			size := int64(1)
+			return true, &size
 		}
-		size := int64(1)
-		return true, &size
-	}
-	t.Cleanup(func() { probeFileServable = original })
-	file := filepath.Join("/library/flaky", "one.mp4")
-	sink := newFakeSink([]string{file})
-	watcher, err := NewWatcher(sink, func(core.AvailabilityChange) {})
-	if err != nil {
-		t.Fatalf("NewWatcher error: %v", err)
-	}
-	t.Cleanup(watcher.Stop)
-	if err := watcher.Start(context.Background()); err != nil {
-		t.Fatalf("Start error: %v", err)
-	}
+		t.Cleanup(func() { probeFileServable = original })
+		file := filepath.Join("/library/flaky", "one.mp4")
+		sink := newFakeSink([]string{file})
+		watcher, err := NewWatcher(sink, func(core.AvailabilityChange) {})
+		if err != nil {
+			t.Fatalf("NewWatcher error: %v", err)
+		}
+		t.Cleanup(watcher.Stop)
+		if err := watcher.Start(context.Background()); err != nil {
+			t.Fatalf("Start error: %v", err)
+		}
 
-	fs.events <- fsnotify.Event{Name: file, Op: fsnotify.Remove}
-	waitForStableCount(t, sink.batchCount, 2, 300*time.Millisecond)
-	if got := sink.changeCount(); got != 0 {
-		t.Fatalf("expected no flip when the file reappears, got %d", got)
-	}
+		fs.events <- fsnotify.Event{Name: file, Op: fsnotify.Remove}
+		advanceProbeWindow()
+		if got := sink.changeCount(); got != 0 {
+			t.Fatalf("first failed probe must not commit, got %d", got)
+		}
+		advanceProbeWindow()
+		if got := sink.batchCount(); got != 2 {
+			t.Fatalf("expected 2 completed probes/batches, got %d", got)
+		}
+		if got := sink.changeCount(); got != 0 {
+			t.Fatalf("expected no flip when the file reappears, got %d", got)
+		}
+
+	})
 }
 
 // 只在库内真的翻转时才发事件：事件先到、DB 未落不可能发生。
 func TestWatcherEmitsOnlyOnRealFlips(t *testing.T) {
-	fs := newFakeFS()
-	useFakeFS(t, fs)
-	useDebounce(t, 20*time.Millisecond)
-	useServabilityProbe(t, true)
-	file := filepath.Join("/library/stable", "one.mp4")
-	sink := newFakeSink([]string{file})
-	var emitMu sync.Mutex
-	emitted := 0
-	watcher, err := NewWatcher(sink, func(core.AvailabilityChange) {
+	synctest.Test(t, func(t *testing.T) {
+		fs := newFakeFS()
+		useFakeFS(t, fs)
+		useDebounce(t, 20*time.Millisecond)
+		useServabilityProbe(t, true)
+		file := filepath.Join("/library/stable", "one.mp4")
+		sink := newFakeSink([]string{file})
+		var emitMu sync.Mutex
+		emitted := 0
+		watcher, err := NewWatcher(sink, func(core.AvailabilityChange) {
+			emitMu.Lock()
+			defer emitMu.Unlock()
+			emitted++
+		})
+		if err != nil {
+			t.Fatalf("NewWatcher error: %v", err)
+		}
+		t.Cleanup(watcher.Stop)
+		if err := watcher.Start(context.Background()); err != nil {
+			t.Fatalf("Start error: %v", err)
+		}
+
+		fs.events <- fsnotify.Event{Name: file, Op: fsnotify.Write}
+		fs.events <- fsnotify.Event{Name: file, Op: fsnotify.Write}
+		advanceProbeWindow()
+		if got := sink.batchCount(); got != 1 {
+			t.Fatalf("expected 1 completed probes/batches, got %d", got)
+		}
+
 		emitMu.Lock()
-		defer emitMu.Unlock()
-		emitted++
+		got := emitted
+		emitMu.Unlock()
+		if got != 0 {
+			t.Fatalf("expected no event when availability does not flip, got %d", got)
+		}
+
 	})
-	if err != nil {
-		t.Fatalf("NewWatcher error: %v", err)
-	}
-	t.Cleanup(watcher.Stop)
-	if err := watcher.Start(context.Background()); err != nil {
-		t.Fatalf("Start error: %v", err)
-	}
-
-	fs.events <- fsnotify.Event{Name: file, Op: fsnotify.Write}
-	fs.events <- fsnotify.Event{Name: file, Op: fsnotify.Write}
-	waitForStableCount(t, sink.batchCount, 1, 300*time.Millisecond)
-
-	emitMu.Lock()
-	got := emitted
-	emitMu.Unlock()
-	if got != 0 {
-		t.Fatalf("expected no event when availability does not flip, got %d", got)
-	}
 }
 
 func requireRealFS(t *testing.T) {
@@ -584,11 +634,15 @@ func TestWatcherDetectsRemovalAndSelfHeal(t *testing.T) {
 		}
 		return src.Available
 	}
-	waitForAvailability := func(want bool, reason string) {
+	waitForAvailability := func(want bool, wantEvents int, reason string) {
 		t.Helper()
 		deadline := time.Now().Add(5 * time.Second)
 		for time.Now().Before(deadline) {
-			if readAvailability() == want {
+			changesMu.Lock()
+			emitted := changes
+			changesMu.Unlock()
+			// 落库先于 emit，DB 可见本身不能证明消费端已收到翻转。
+			if readAvailability() == want && emitted == wantEvents {
 				return
 			}
 			time.Sleep(20 * time.Millisecond)
@@ -599,12 +653,13 @@ func TestWatcherDetectsRemovalAndSelfHeal(t *testing.T) {
 	if err := os.Remove(mediaPath); err != nil {
 		t.Fatalf("remove fixture: %v", err)
 	}
-	waitForAvailability(false, "file was deleted")
+	waitForAvailability(false, 1, "file was deleted")
 
 	if err := os.WriteFile(mediaPath, []byte("0123456789"), 0o600); err != nil {
 		t.Fatalf("restore fixture: %v", err)
 	}
-	waitForAvailability(true, "file was restored")
+	waitForAvailability(true, 2, "file was restored")
+	watcher.Stop()
 
 	changesMu.Lock()
 	emitted := changes

@@ -2,6 +2,7 @@ package remote_test
 
 import (
 	"context"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -70,10 +71,9 @@ func TestFetcher_FetchURL_NonHTML(t *testing.T) {
 	}
 }
 
-func TestFetcher_FetchURL_TimeoutOrError(t *testing.T) {
+func TestFetcher_FetchURL_TimeoutIsUnknown(t *testing.T) {
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		time.Sleep(100 * time.Millisecond)
-		w.WriteHeader(http.StatusOK)
+		<-r.Context().Done()
 	}))
 	defer ts.Close()
 
@@ -85,8 +85,8 @@ func TestFetcher_FetchURL_TimeoutOrError(t *testing.T) {
 	if reachability != remote.ReachabilityUnknown {
 		t.Errorf("expected ReachabilityUnknown on timeout/cancellation, got %v", reachability)
 	}
-	if err == nil {
-		t.Errorf("expected error on timeout")
+	if !errors.Is(err, context.DeadlineExceeded) {
+		t.Errorf("expected deadline exceeded, got %v", err)
 	}
 }
 

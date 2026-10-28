@@ -11,11 +11,15 @@ import { on } from '@/shortcut'
 
 import type { FlushCapability } from '../capabilities'
 
+import { composeStop, type StopCapability } from './lifecycle'
+
 export function defineLastWords() {
   // flush 是可选能力：组合 batch-track 时覆盖为批量冲刷，未组合时回落 core 的 flush。
-  return definePlugin((ctx: Partial<FlushCapability>) => {
+  return definePlugin((ctx: Partial<FlushCapability & StopCapability>) => {
     // SSR / 非浏览器环境无 window 与 document，插件空转，避免 ReferenceError
-    if (typeof window === 'undefined' || typeof document === 'undefined') return {}
+    if (typeof window === 'undefined' || typeof document === 'undefined') {
+      return { stop: composeStop(ctx.stop?.bind(ctx), () => {}) }
+    }
 
     const controller = new AbortController()
     const { signal } = controller
@@ -43,6 +47,6 @@ export function defineLastWords() {
       { signal }
     )
 
-    return {}
+    return { stop: composeStop(ctx.stop?.bind(ctx), () => controller.abort()) }
   })
 }
