@@ -280,9 +280,9 @@ keyed `v-for` 列表做中段 splice 或重排不受支持——Vue 的 keyed ch
 进行，或只做尾部追加/删除。
 
 ```ts
+import unpluginWebComponents from '@greypan/unplugin-web-components/vite'
 // vite.config.ts
 import vue from '@vitejs/plugin-vue'
-import unpluginWebComponents from '@greypan/unplugin-web-components/vite'
 
 export default {
   plugins: [

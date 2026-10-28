@@ -1,7 +1,7 @@
 import { resolve } from 'node:path'
 
 import dts from 'vite-plugin-dts'
-import type { Plugin, UserConfig } from 'vite-plus'
+import { defineConfig, type Plugin } from 'vite-plus'
 import { playwright } from 'vite-plus/test/browser-playwright'
 
 import { generateIcons } from './scripts/generate-icons'
@@ -16,16 +16,9 @@ function iconsPlugin(): Plugin {
   }
 }
 
-export default {
+export default defineConfig({
   resolve: {
     tsconfigPaths: true
-  },
-  optimizeDeps: {
-    // workspace 依赖未构建（fresh clone）时 dep scan 会失败并跳过预打包；
-    // expect-type 是 browser 运行时当前已知唯一的 CJS 依赖，必须显式预打包，
-    // 否则浏览器直接加载裸 CJS 报 "does not provide an export named 'expectTypeOf'" 并挂起。
-    // vitest 仅由 vite-plus 间接提供，需要从 vite-plus 上下文逐级解析。
-    include: ['vite-plus > vitest > expect-type']
   },
   plugins: [
     iconsPlugin(),
@@ -35,6 +28,9 @@ export default {
     })
   ],
   test: {
+    // Vitest 5 把默认附件目录从 `.vitest-attachments` 改成 `.vitest/attachments`；
+    // 仓库在 `.gitignore` 与 docs/agents 里把测试证据路径固定为前者，这里跟着钉住。
+    attachmentsDir: '.vitest-attachments',
     projects: [
       {
         extends: true,
@@ -128,4 +124,4 @@ export default {
       }
     }
   }
-} satisfies UserConfig
+})

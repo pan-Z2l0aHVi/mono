@@ -6,7 +6,7 @@ import tailwindcss from '@tailwindcss/vite'
 import { tanstackRouter } from '@tanstack/router-plugin/vite'
 import basicSsl from '@vitejs/plugin-basic-ssl'
 import react from '@vitejs/plugin-react'
-import { searchForWorkspaceRoot, type UserConfig } from 'vite-plus'
+import { defineConfig, searchForWorkspaceRoot } from 'vite-plus'
 import { playwright } from 'vite-plus/test/browser-playwright'
 import { wuchale } from 'wuchale/vite'
 
@@ -85,14 +85,13 @@ export const mdToCompOptions: MdToCompViteOptions = {
   darkSelector: "web-ui-theme[resolved-appearance='dark']"
 }
 
-export default {
+export default defineConfig({
   resolve: {
     tsconfigPaths: true
   },
   optimizeDeps: {
-    // browser mode 下浏览器直接加载裸 CJS 时会报 "does not provide an export named
-    // 'expectTypeOf'" 并挂起；expect-type 是该运行时已知唯一的 CJS 依赖，必须显式预打包。
-    // vitest 仅由 vite-plus 间接提供，需要从 vite-plus 上下文逐级解析。
+    // browser 运行时需要的 `vitest > expect-type` 由 vitest 5 自己注入，本包只需保证
+    // `vitest` 是直接依赖（见 package.json），让那条链能从包根解析。
     //
     // 这里不必并 `webUiOptimizeDeps`：本 app 的扫描入口 `routeTree.gen.ts` 静态 import 了每个路由
     // 模块，而路由模块对 `@greypan/web-ui` 根 barrel 的值导入（spinner / image-preview / toast 等）
@@ -101,9 +100,12 @@ export default {
     // 冷缓存（CI fresh clone）下 `react-dom/client` 会被 browser 运行时在中段才发现并预打包，
     // 触发整页 reload，把已挂载的示例全部清空（"示例「基础」没有渲染"连锁失败）。
     // 启动扫描只覆盖路由图，覆盖不到 spec 直接 import 的生成 demo 图，所以这里显式列出。
-    include: ['vite-plus > vitest > expect-type', 'react-dom/client']
+    include: ['react-dom/client']
   },
   test: {
+    // Vitest 5 把默认附件目录从 `.vitest-attachments` 改成 `.vitest/attachments`；
+    // 仓库在 `.gitignore` 与 docs/agents 里把测试证据路径固定为前者，这里跟着钉住。
+    attachmentsDir: '.vitest-attachments',
     projects: [
       {
         extends: true,
@@ -125,14 +127,15 @@ export default {
           // 这一档同样要 act switch（spec 直接 import react 的 `act`）；但 test-helper.ts 里的
           // 滚动替身绝不能进真实浏览器——那会掩盖真实滚动行为，所以只挂 act-setup。
           setupFiles: ['./act-setup.ts'],
+          // vitest 5 把 `browser.api` 挪到了 `test.api`，而且要写在 browser project 自己的
+          // `test` 块里：写到根上会连 jsdom project 一起抢这个端口。默认端口 63315 会被同机
+          // 并行的其他 worktree（或同一轮 turbo test 里 web-ui 的 browser project）占住，而它的
+          // 端口可用性检查不区分地址族：拿到冲突端口时页面会被导到别人的服务器上，症状是
+          // ERR_SSL_PROTOCOL_ERROR / ERR_EMPTY_RESPONSE / browser runtime 永不连回。
+          api: { port: 63411 },
           browser: {
             enabled: true,
             headless: true,
-            // vitest 的默认端口 63315 会被同机并行的其他 worktree（或同一轮 turbo test 里
-            // web-ui 的 browser project）占住，而它的端口可用性检查不区分地址族：拿到
-            // 冲突端口时页面会被导到别人的服务器上，症状是 ERR_SSL_PROTOCOL_ERROR /
-            // ERR_EMPTY_RESPONSE / browser runtime 永不连回。固定到本包的专用端口。
-            api: { port: 63411 },
             provider: playwright(),
             instances: [{ browser: 'chromium' }]
           }
@@ -212,4 +215,4 @@ export default {
       allow: [searchForWorkspaceRoot(process.cwd())]
     }
   }
-} satisfies UserConfig
+})
