@@ -31,29 +31,27 @@ afterEach(() => document.body.replaceChildren())
 describe('native dialog presence close path', () => {
   it('starts the drawer exit transition after the visible state is established', { timeout: 30_000 }, async () => {
     const drawer = createDrawer()
+    await drawer.updateComplete
+    const dialog = getDialog(drawer)
+    let enterEnded = false
+    let exitStarted = false
+    const onTransition = (event: TransitionEvent) => {
+      if (event.target !== dialog || event.propertyName !== 'transform') return
+      if (event.type === 'transitionend' && drawer.open) enterEnded = true
+      if (event.type === 'transitionrun' && !drawer.open) exitStarted = true
+    }
+    dialog.addEventListener('transitionend', onTransition)
+    dialog.addEventListener('transitionrun', onTransition)
+
     drawer.open = true
     await drawer.updateComplete
-
-    const dialog = getDialog(drawer)
-    await waitFor(() => dialog.getAnimations({ subtree: true }).length > 0, 'drawer enter transition did not start')
-    await waitFor(() => dialog.getAnimations({ subtree: true }).length === 0, 'drawer enter transition did not settle')
+    await waitFor(() => enterEnded, 'drawer enter transition did not finish')
 
     drawer.open = false
     await drawer.updateComplete
-
     expect(dialog.open).toBe(true)
-    await waitFor(
-      () =>
-        dialog
-          .getAnimations({ subtree: true })
-          .some(animation => animation instanceof CSSTransition && animation.transitionProperty === 'transform'),
-      'drawer exit transition did not start'
-    )
-    expect(
-      dialog
-        .getAnimations({ subtree: true })
-        .some(animation => animation instanceof CSSTransition && animation.transitionProperty === 'transform')
-    ).toBe(true)
+    await waitFor(() => exitStarted, 'drawer exit transition did not start')
+    expect(exitStarted).toBe(true)
     await waitFor(() => !dialog.open, 'drawer did not close after the exit transition', 10_000)
   })
 })

@@ -25,18 +25,27 @@ function runningTransitions(el: WebUiToast): string[] {
 
 /*
  * 统一切换驱动：先同步结算一次样式建立 before-change 样式（否则过渡不启动，"0 条"会假绿），
- * 再切换 visible 并在随后的若干帧内**持续采样**。采样窗口 12 帧 ≈ 200ms，覆盖一次完整过渡。
+ * 再切换 visible 并在随后的若干帧内**持续采样**。提前订阅 transitionrun，避免过渡在两次采样之间结束而漏检。
  */
 async function sampleTransitions(el: WebUiToast, visible: boolean, frames = 12): Promise<string[]> {
-  queryPanel(el).getBoundingClientRect()
-  el.visible = visible
-  await el.updateComplete
+  const target = queryPanel(el)
   const seen: string[] = []
-  for (let index = 0; index < frames; index++) {
-    seen.push(...runningTransitions(el))
-    await waitForFrame()
+  const onTransition = (event: TransitionEvent) => {
+    if (event.target === target) seen.push(event.propertyName)
   }
-  return seen
+  target.addEventListener('transitionrun', onTransition)
+  try {
+    target.getBoundingClientRect()
+    el.visible = visible
+    await el.updateComplete
+    for (let index = 0; index < frames; index++) {
+      seen.push(...runningTransitions(el))
+      await waitForFrame()
+    }
+    return seen
+  } finally {
+    target.removeEventListener('transitionrun', onTransition)
+  }
 }
 
 // 一律挂到 theme 作用域内：reduce 是 theme 施加的（`motion` 省略 → 'system'）。

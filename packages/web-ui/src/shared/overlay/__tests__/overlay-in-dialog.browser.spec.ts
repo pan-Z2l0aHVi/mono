@@ -318,6 +318,8 @@ describe('Portal overlay 在已打开原生 dialog 内（top layer）', () => {
     // 不因空间不足翻转朝左（翻转朝左会走另一条分支）。
     menu.openAt(8, 60)
     await menu.updateComplete
+    // 本用例用合成事件控制 hover；隔离无头浏览器的真实指针，避免它取消打开计时器。
+    getMenuScrim().style.pointerEvents = 'none'
     const mainPanel = await waitForPanelPositioned(
       getContextMenuPanel('.context-menu'),
       'Expected the context menu to be positioned'

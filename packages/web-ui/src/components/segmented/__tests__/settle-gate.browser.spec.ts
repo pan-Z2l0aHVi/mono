@@ -1,11 +1,10 @@
 import '..'
 import '@/components/segmented-trigger'
 
-import { afterEach, describe, expect, it } from 'vite-plus/test'
+import { afterEach, describe, expect, it, vi } from 'vite-plus/test'
 
 import type { WebUiSegmentedTrigger } from '@/components/segmented-trigger'
 import { pollUntil, queryA11y, waitForFrame, waitForUpdate } from '@/shared/test-utils'
-import { parseDuration } from '@/shared/theme/duration'
 
 import type { WebUiSegmented } from '..'
 
@@ -18,13 +17,13 @@ import type { WebUiSegmented } from '..'
  *
  * 修复：飞行中到达的新值直接落定（不排队、不重启插值）。
  *
- * 判据取**indicator 的逐帧几何**，两个方向都必须有，缺一不可：
- *   - 快速连点 → 采样序列上不得出现中间值（不重跑多段插值）
- *   - 间隔 >200ms 的正常切换 → 采样序列上**必须**出现中间值（门没把正常过渡也关掉）
+ * 两个方向都必须验证，缺一不可：
+ *   - 快速连点 → 直接到终值，且没有继续运行的 left 过渡
+ *   - 正常切换 → 必须启动 left 过渡（门没把正常过渡也关掉）
  * 只测前者的话，一个「把过渡全关掉」的实现同样能过：那样连点确实直接落定，但正常点击
  * 之间的 indicator 移动也没了，正是这个门要避免的副作用。
  *
- * 必须 browser mode：这里量的是 CSS 过渡的逐帧插值，jsdom 没有布局也没有过渡。
+ * 必须 browser mode：这里验证 CSS 过渡生命周期与布局，jsdom 不提供这些浏览器行为。
  */
 
 afterEach(() => document.body.replaceChildren())
@@ -36,25 +35,8 @@ const EPS = 0.5
  * （`segmented/index.ts` 的 `triggerDuration()`），CSS 里 left / width 那两条过渡读的也是
  * 同一个，两边因此永远同值——不在测试里另抄一份数字，否则 token 一改就成了第二个真相来源。
  */
-const TRIGGER_DURATION = '160ms'
-
-/*
- * 「飞行窗口过期」只能靠时间判定：窗口是组件内部一个 `setTimeout`，没有公开观测面，而
- * 直接落定的分支根本没有过渡可等（等动画收敛会在约两帧后返回，比窗口还短）。
- *
- * 时长从宿主上的 `--wui-duration-trigger` 读，而不是从 indicator 的计算样式里读过渡时长：
- * 落定门生效时组件会把 left / width 从过渡列表里摘掉（style.css 的 `.is-settling`），
- * 那时读过渡时长只会读到剩下的几条按压过渡，量出来的窗口与组件自己的窗口无关。
- * 系数 1.6 是给真实计时器漂移留的余量，不参与契约。
- */
-function settleWindowMs(segmented: HTMLElement): number {
-  const raw = getComputedStyle(segmented).getPropertyValue('--wui-duration-trigger').trim()
-  const duration = parseDuration(raw)
-  if (duration === null || duration <= 0) {
-    throw new Error(`宿主上读不到可用的 --wui-duration-trigger：raw="${raw}"`)
-  }
-  return Math.ceil(duration * 1.6)
-}
+const TRIGGER_DURATION_MS = 160
+const TRIGGER_DURATION = `${TRIGGER_DURATION_MS}ms`
 
 function optionSurface(trigger: WebUiSegmentedTrigger): HTMLElement {
   const surface = queryA11y(trigger, '[role="option"]')
@@ -92,96 +74,68 @@ async function tap(segmented: WebUiSegmented, trigger: WebUiSegmentedTrigger) {
   await waitForUpdate(segmented)
 }
 
-/**
- * 逐帧采样 indicator 左缘，直到超过 budget 帧或位置连续 3 帧不再变化。
- *
- * 不按固定时长采样：过渡在并行负载下完成时间不可预测。连续若干帧不变即视为已停稳
- *（插值结束或根本没有插值，两种都算停稳）。
- */
-async function sampleLeft(indicator: HTMLElement, budgetFrames = 40): Promise<number[]> {
-  const samples: number[] = []
-  let stable = 0
-  for (let frame = 0; frame < budgetFrames && stable < 3; frame += 1) {
-    await waitForFrame()
-    const left = indicator.getBoundingClientRect().left
-    samples.push(left)
-    stable = samples.length > 1 && Math.abs(left - samples[samples.length - 2]) < 0.5 ? stable + 1 : 0
-  }
-  return samples
-}
-
-/** 采样序列里是否存在严格处于两端之间的中间值（插值确实发生过）。 */
-function hasIntermediateValue(samples: number[], from: number, to: number): boolean {
-  const lo = Math.min(from, to)
-  const hi = Math.max(from, to)
-  const span = hi - lo
-  if (span < 1) return false
-  // 两端各留 5% 的余量：直落终值的实现只会取到两端，取不到带内；
-  // 而负载重的 runner 上过渡只被采到一帧时，这一帧可能落在过渡的靠后段
-  // （CI 上实测首帧已在 87% 处），留 15% 的带子会把真实插值判成直落。
-  return samples.some(value => value > lo + span * 0.05 && value < hi - span * 0.05)
-}
-
 describe('WebUiSegmented indicator 落定门（浏览器）', () => {
   it('快速连点直接落定终值，不重跑多段插值', async () => {
     const { segmented, triggers, indicator } = await mount()
-    const startLeft = indicator.getBoundingClientRect().left
     const finalLeft = triggers[2].getBoundingClientRect().left
 
-    // 连点：a → b → c，间隔远小于 160ms 的过渡时长。
-    await tap(segmented, triggers[1])
-    await tap(segmented, triggers[2])
-    const samples = await sampleLeft(indicator)
+    // 保持飞行窗口开启，并让第一笔定位进入浏览器的样式计算。
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] })
+    try {
+      await tap(segmented, triggers[1])
+      await waitForFrame()
+      indicator.getBoundingClientRect()
 
-    // 核心判据：整段采样里没有中间值——indicator 一步就停到终值。
-    expect(
-      hasIntermediateValue(samples, startLeft, finalLeft),
-      `连点采样=${samples.map(v => v.toFixed(1)).join(',')}`
-    ).toBe(false)
-    // 并且真的停在了终值（不是「没有中间值」因为压根没动）。
-    expect(
-      Math.abs(samples[samples.length - 1] - finalLeft),
-      `末帧=${samples[samples.length - 1]} 终值=${finalLeft}`
-    ).toBeLessThanOrEqual(EPS)
+      await tap(segmented, triggers[2])
+      await waitForFrame()
+      await waitForUpdate(segmented)
+      expect(Math.abs(indicator.getBoundingClientRect().left - finalLeft)).toBeLessThanOrEqual(EPS)
+      const leftTransitions = indicator
+        .getAnimations()
+        .filter(animation => animation instanceof CSSTransition && animation.transitionProperty === 'left')
+      expect(leftTransitions).toHaveLength(0)
+    } finally {
+      vi.useRealTimers()
+    }
   })
 
-  it('间隔超过过渡时长的正常切换仍走完整过渡（门没把过渡也关掉）', async () => {
+  it('正常切换仍启动过渡（门没把过渡也关掉）', async () => {
     const { segmented, triggers, indicator } = await mount()
-    const startLeft = indicator.getBoundingClientRect().left
     const targetLeft = triggers[1].getBoundingClientRect().left
+    let leftTransitionEnded = false
+    indicator.addEventListener('transitionend', event => {
+      if (event.target === indicator && event.propertyName === 'left') leftTransitionEnded = true
+    })
 
-    // 采样必须与轻点同时起跑：先轻点再采样，采样循环的第一帧可能落在过渡的后段
-    // （CI runner 上实测首帧已在 87% 处），插值就量不到了。
-    const sampling = sampleLeft(indicator)
     await tap(segmented, triggers[1])
-    const samples = await sampling
-
-    expect(
-      hasIntermediateValue(samples, startLeft, targetLeft),
-      `正常切换采样=${samples.map(v => v.toFixed(1)).join(',')}`
-    ).toBe(true)
-    expect(
-      Math.abs(samples[samples.length - 1] - targetLeft),
-      `末帧=${samples[samples.length - 1]} 目标=${targetLeft}`
-    ).toBeLessThanOrEqual(EPS)
+    await pollUntil(() => leftTransitionEnded, '正常切换未完成 left 过渡')
+    expect(Math.abs(indicator.getBoundingClientRect().left - targetLeft)).toBeLessThanOrEqual(EPS)
   })
 
   it('窗口过期后的下一次切换重新拿到完整过渡（世代号没把门永久焊死）', async () => {
     const { segmented, triggers, indicator } = await mount()
 
-    // 先来一次快速连点（打开落定门），等窗口过期。
-    await tap(segmented, triggers[1])
-    await tap(segmented, triggers[2])
-    await new Promise(resolve => setTimeout(resolve, settleWindowMs(segmented)))
-    await sampleLeft(indicator)
+    // 只控制组件的计时器，保留真实渲染帧。逐帧提交两次点击后推进窗口回调。
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] })
+    try {
+      await tap(segmented, triggers[1])
+      await waitForFrame()
+      await tap(segmented, triggers[2])
+      await waitForFrame()
+      vi.advanceTimersByTime(TRIGGER_DURATION_MS)
+      await waitForUpdate(segmented)
+    } finally {
+      vi.useRealTimers()
+    }
+    await waitForFrame()
 
-    // 再切一次：这一趟必须走完整过渡。
-    const from = indicator.getBoundingClientRect().left
-    const to = triggers[0].getBoundingClientRect().left
-    const sampling = sampleLeft(indicator)
+    // 再切一次：这一趟必须启动过渡。
+    let leftTransitionStarted = false
+    indicator.addEventListener('transitionrun', event => {
+      if (event.target === indicator && event.propertyName === 'left') leftTransitionStarted = true
+    })
     await tap(segmented, triggers[0])
-    const samples = await sampling
-
-    expect(hasIntermediateValue(samples, from, to), `过期后采样=${samples.map(v => v.toFixed(1)).join(',')}`).toBe(true)
+    await pollUntil(() => leftTransitionStarted, '窗口过期后的切换未启动 left 过渡')
+    expect(leftTransitionStarted).toBe(true)
   })
 })

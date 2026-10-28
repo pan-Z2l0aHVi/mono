@@ -2,8 +2,6 @@ import '..'
 
 import { afterEach, describe, expect, it } from 'vite-plus/test'
 
-import { waitForFrame } from '@/shared/test-utils'
-
 import type { WebUiDrawer } from '..'
 
 function getDialog(el: WebUiDrawer): HTMLDialogElement {
@@ -14,21 +12,17 @@ function getDragZone(el: WebUiDrawer): HTMLElement {
   return el.shadowRoot?.querySelector('.wui-drawer-drag-zone') as HTMLElement
 }
 
-/**
- * 在若干帧内采样 dialog 上出现过的过渡属性（§10 S2：动效一律用 WAAPI 观察，
- * 不读 `getComputedStyle().transform` 的矩阵分量）。
- */
-async function sampleTransitions(el: WebUiDrawer, frames = 20): Promise<string[]> {
-  const dialog = getDialog(el)
-  const seen = new Set<string>()
-  for (let i = 0; i < frames; i += 1) {
-    for (const animation of dialog.getAnimations({ subtree: true })) {
-      const property = (animation as CSSTransition).transitionProperty
-      seen.add(property ?? (animation as CSSAnimation).animationName ?? 'animation')
-    }
-    await waitForFrame()
-  }
-  return [...seen]
+/** 在触发状态变更前订阅，避免错过渲染很慢时已经结束的过渡。 */
+function observeTransformTransition(dialog: HTMLDialogElement) {
+  let started = false
+  let ended = false
+  dialog.addEventListener('transitionrun', event => {
+    if (event.target === dialog && event.propertyName === 'transform') started = true
+  })
+  dialog.addEventListener('transitionend', event => {
+    if (event.target === dialog && event.propertyName === 'transform') ended = true
+  })
+  return { started: () => started, ended: () => ended }
 }
 
 function waitFor(condition: () => boolean, message: string, timeoutMs = 5000): Promise<void> {
@@ -41,14 +35,6 @@ function waitFor(condition: () => boolean, message: string, timeoutMs = 5000): P
     }
     tick()
   })
-}
-
-// 打开过渡收敛：先等它真的启动（presence 在 rAF 后才翻转，f0 可能还没有动画），再等它结束。
-async function waitForOpenSettled(el: WebUiDrawer) {
-  const dialog = getDialog(el)
-  await waitFor(() => dialog.open, 'drawer did not open')
-  await waitFor(() => dialog.getAnimations({ subtree: true }).length > 0, 'drawer open transition did not start')
-  await waitFor(() => dialog.getAnimations({ subtree: true }).length === 0, 'drawer open transition did not settle')
 }
 
 function createDrawer(): WebUiDrawer {
@@ -76,19 +62,20 @@ describe('WebUiDrawer 连续 tap 后过渡动画（浏览器）', () => {
   it('快速 6 次 tap 拖拽区后，后续 toggle 仍触发 transform 过渡（回归锁）', { timeout: 30_000 }, async () => {
     const el = createDrawer()
     el.draggable = true
+    await el.updateComplete
+    const dialog = getDialog(el)
+    const opening = observeTransformTransition(dialog)
     el.open = true
     await el.updateComplete
-    await waitForOpenSettled(el)
+    await waitFor(opening.ended, 'drawer open transform transition did not finish')
 
-    const dialog = getDialog(el)
     const dragZone = getDragZone(el)
 
-    // 快速 6 次 tap：pointerdown + ~60ms 后 pointerup（用户真机复现路径）。
+    // 六次无位移的 pointerdown / pointerup 触发 tap 收尾。
     for (let i = 0; i < 6; i += 1) {
       dragZone.dispatchEvent(
         new PointerEvent('pointerdown', { bubbles: true, pointerId: i + 1, isPrimary: true, clientX: 10, clientY: 300 })
       )
-      await new Promise(resolve => setTimeout(resolve, 60))
       dragZone.dispatchEvent(
         new PointerEvent('pointerup', { bubbles: true, pointerId: i + 1, isPrimary: true, clientX: 10, clientY: 300 })
       )
@@ -96,16 +83,18 @@ describe('WebUiDrawer 连续 tap 后过渡动画（浏览器）', () => {
     }
 
     // 关闭：必须真的跑一条 transform 过渡（不是直接落位）。
+    const closing = observeTransformTransition(dialog)
     el.open = false
     await el.updateComplete
-    const closing = await sampleTransitions(el)
-    expect(closing).toContain('transform')
+    await waitFor(closing.started, 'drawer close transform transition did not start')
+    expect(closing.started()).toBe(true)
     await waitFor(() => !dialog.open, 'drawer did not close', 10_000)
 
+    const reopening = observeTransformTransition(dialog)
     el.open = true
     await el.updateComplete
-    const reopening = await sampleTransitions(el)
-    expect(reopening).toContain('transform')
+    await waitFor(reopening.started, 'drawer reopen transform transition did not start')
+    expect(reopening.started()).toBe(true)
     await waitFor(() => dialog.open, 'drawer did not reopen', 15_000)
   })
 })

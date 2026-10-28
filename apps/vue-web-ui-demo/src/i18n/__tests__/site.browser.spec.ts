@@ -60,7 +60,14 @@ async function select(label: string, value: string) {
   const trigger = host.shadowRoot!.querySelector<HTMLElement>('[role="combobox"]')!
   await userEvent.click(trigger)
   await vi.waitFor(() => expect(trigger.getAttribute('aria-expanded')).toBe('true'))
-  await userEvent.click(host.querySelector<HTMLElement>(`web-ui-option[value="${value}"]`)!)
+  const options = Array.from(host.querySelectorAll<HTMLElement>('web-ui-option'))
+  const optionIndex = options.findIndex(option => option.getAttribute('value') === value)
+  if (optionIndex < 0) throw new Error(`Option ${value} not found in ${label}`)
+  // 键盘路径验证选择器与应用的接线，不依赖选项入场过渡期间的命中几何。
+  await userEvent.keyboard('{Home}')
+  for (let index = 0; index < optionIndex; index += 1) await userEvent.keyboard('{ArrowDown}')
+  await vi.waitFor(() => expect(trigger.getAttribute('aria-activedescendant')).toBe(options[optionIndex].id))
+  await userEvent.keyboard('{Enter}')
   await vi.waitFor(() => expect(host.value).toBe(value))
   await nextTick()
 }

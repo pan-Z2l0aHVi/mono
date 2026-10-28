@@ -1,7 +1,7 @@
 import '..'
 import '../../theme'
 
-import { afterEach, describe, expect, it } from 'vite-plus/test'
+import { afterEach, describe, expect, it, vi } from 'vite-plus/test'
 import { userEvent } from 'vite-plus/test/browser'
 
 import { pollUntil, queryA11y, waitForFrame } from '@/shared/test-utils'
@@ -812,8 +812,6 @@ describe('WebUiLayout 组件（浏览器）', () => {
   })
 
   describe('移动端状态对外暴露', () => {
-    const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms))
-
     // property、反射 attribute、派发的事件与渲染的树是同一个判定：任何一处落后半拍，
     // 消费者（三处 app 外壳）就会与组件错开，而 #195 那类问题正是这么来的。
     it('跨断点时 mobile、反射 attribute 与渲染的树一起翻转', async () => {
@@ -846,85 +844,49 @@ describe('WebUiLayout 组件（浏览器）', () => {
       expect(queryA11y(layout, 'web-ui-drawer')).toBeFalsy()
     })
 
-    /*
-     * 直接订阅媒体查询，翻转不经 window resize：翻转慢于 CSS 媒体查询时，跨断点的那
-     * ≤100ms 里 TS 还渲染着桌面树、CSS 却已经藏起 aside（layout/style.css 的
-     * `@media (width <= 640px)`），侧栏会整块消失。这条用例造出「innerWidth 说移动端、
-     * 媒体查询说桌面」的分裂输入，翻转只应来自媒体查询，且要落在去抖窗口之内。
-     */
-    it('翻转只由媒体查询驱动，且不等 100ms 去抖窗口', async () => {
+    // 断点翻转必须在媒体查询的 change 回调中同步生效，而不是等待 resize 去抖。
+    it('翻转只由媒体查询驱动，并在 change 回调中同步完成', async () => {
       await setViewport(DESKTOP_VIEWPORT.width, DESKTOP_VIEWPORT.height)
-      const layout = createLayout()
-      await layout.updateComplete
-
-      const changes: boolean[] = []
-      layout.addEventListener('mobile-change', () => changes.push(true))
-
-      const innerWidthDescriptor = Object.getOwnPropertyDescriptor(window, 'innerWidth')
-      Object.defineProperty(window, 'innerWidth', {
-        configurable: true,
-        get: () => MOBILE_VIEWPORT.width
+      const matchMedia = window.matchMedia.bind(window)
+      let layoutQuery: MediaQueryList | undefined
+      const matchMediaSpy = vi.spyOn(window, 'matchMedia').mockImplementation(query => {
+        const result = matchMedia(query)
+        if (query === '(width <= 640px)') layoutQuery = result
+        return result
       })
       try {
-        window.dispatchEvent(new Event('resize'))
-        await delay(150)
+        const layout = createLayout()
+        await layout.updateComplete
+        if (!layoutQuery) throw new Error('Expected layout to subscribe to the mobile media query')
 
-        expect(layout.mobile).toBe(false)
-        expect(changes).toEqual([])
-      } finally {
-        if (innerWidthDescriptor) Object.defineProperty(window, 'innerWidth', innerWidthDescriptor)
-      }
+        const changes: boolean[] = []
+        layout.addEventListener('mobile-change', event => {
+          changes.push((event as CustomEvent<{ mobile: boolean }>).detail.mobile)
+        })
+        const innerWidthDescriptor = Object.getOwnPropertyDescriptor(window, 'innerWidth')
+        Object.defineProperty(window, 'innerWidth', { configurable: true, get: () => MOBILE_VIEWPORT.width })
+        vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] })
+        try {
+          window.dispatchEvent(new Event('resize'))
+          vi.advanceTimersByTime(150)
+          expect(layout.mobile).toBe(false)
+          expect(changes).toEqual([])
+        } finally {
+          vi.useRealTimers()
+          if (innerWidthDescriptor) Object.defineProperty(window, 'innerWidth', innerWidthDescriptor)
+          else Reflect.deleteProperty(window, 'innerWidth')
+        }
 
-      // 同一个判定在真实跨断点时立刻翻转：给 80ms 预算，低于旧实现的 100ms 去抖。
-      //
-      // 预算从**视口真正生效**（resize 事件）起算，而不是从换视口的调用起算。
-      // `setViewport` 要等 iframe 按新尺寸重排完才返回，那时 matchMedia 的 change 已经
-      // 派发、组件已经翻过 `mobile`——此时再开一个 80ms 的窗等于什么都没断，而且那段
-      // 窗还会被 `setViewport` 自己的渲染步进吃掉，负载一拉长这条守卫就名存实亡。
-      // 在 resize 事件上起算，量的才是「去抖」本身，与等待 helper 的开销无关。
-      let resizedAt = 0
-      let flippedAt = 0
-      const markResize = () => {
-        resizedAt = performance.now()
-      }
-      const markFlip = () => {
-        flippedAt = performance.now()
-      }
-      window.addEventListener('resize', markResize)
-      layout.addEventListener('mobile-change', markFlip)
-      try {
+        // 监听同一个 MediaQueryList：组件先注册，我们在同一次 change 派发中观察结果。
+        const observed: Array<{ matches: boolean; mobile: boolean; changes: boolean[] }> = []
+        layoutQuery.addEventListener('change', event => {
+          observed.push({ matches: event.matches, mobile: layout.mobile, changes: [...changes] })
+        })
         await setViewport(MOBILE_VIEWPORT.width, MOBILE_VIEWPORT.height)
+        expect(observed).toEqual([{ matches: true, mobile: true, changes: [true] }])
       } finally {
-        window.removeEventListener('resize', markResize)
-        layout.removeEventListener('mobile-change', markFlip)
+        matchMediaSpy.mockRestore()
       }
-      expect(resizedAt, '换视口没有触发 resize，视口根本没生效').toBeGreaterThan(0)
-      // 80ms 的窗从 resize 起算：`setViewport` 自己已经花掉的那段要从预算里扣掉，
-      // 否则「视口生效」到「helper 返回」之间的时间会被白算进守卫，而那段时间里
-      // matchMedia 的 change 早已派发、组件早已翻过——窗里其实什么都没发生。
-      const flipBudgetMs = Math.max(resizedAt + 80 - performance.now(), 0)
-      await pollUntil(
-        () => layout.mobile,
-        () =>
-          `跨断点后 80ms 内没有翻转（resize 起已过 ${Math.round(performance.now() - resizedAt)}ms）：` +
-          '100ms 去抖被重新引入了',
-        flipBudgetMs
-      )
-      expect(flippedAt, '换视口后没有发生 mobile-change，判定没有翻转').toBeGreaterThan(0)
-      // Chromium 里 `resize` 先于 matchMedia 的 `change` 派发，所以翻转不可能早于 resize。
-      // 一旦读到反序（例如之后又来了一次 resize 覆盖了起点），`Math.max(…, 0)` 会把它
-      // 抹成 0 并静默通过——所以反序本身要在这里变成一条可读的失败。
-      expect(flippedAt, '翻转时刻早于 resize 时刻，起点被覆盖了').toBeGreaterThanOrEqual(resizedAt)
-      // 断言的是 **flip 时刻 - resize 时刻**，不是「断言时刻 - resize 时刻」。
-      // 后者会把 `setViewport` 在 resize 之后那段的延迟也算进来，而那段时间与去抖无关
-      // ——本机实测它能超过 84ms，于是即使去抖是零也会误报。
-      // Chromium 把 `performance.now()` 的分辨率钳到 100µs，零延迟翻转时两个时间戳会
-      // 落在同一个桶里逐字相等，所以用 `Math.max(…, 0)` 而不是断言 `>`。
-      expect(
-        Math.max(flippedAt - resizedAt, 0),
-        `resize 到 mobile-change 用了 ${Math.round(flippedAt - resizedAt)}ms，100ms 去抖被重新引入了`
-      ).toBeLessThanOrEqual(80)
-      expect(changes).toEqual([true])
     })
 
     // 同一侧内的宽度变化不是断点跨越，不该给消费者发通知（否则外壳会做无谓的重渲染）。

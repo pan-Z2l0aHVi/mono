@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 
 import { defineLocal } from '@/storage'
 
-import { capturedRequests, clearCapturedRequests, settleCapturedRequests, worker } from '../../../test-helper'
+import { capturedRequests, clearCapturedRequests, worker } from '../../../test-helper'
 import { defineTracker } from '../core'
 
 /** 记录条目的 fake transport；替代 sendBeacon 桩、MSW 捕获与真实时间轮询。 */
@@ -33,31 +33,12 @@ async function settleMicrotasks(spins = 50): Promise<void> {
   }
 }
 
-/**
- * 等待 MSW 捕获到指定数量的请求；fetch → service worker 往返依赖真实时间。
- * 到达上限仍不足数就直接失败：静默返回会把失败推迟到后面的载荷断言，
- * 报错读起来像「payload 不对」，实际是「请求根本没落地」。
- */
-async function waitForCaptured(minCount: number, timeout = 2000): Promise<void> {
-  const start = Date.now()
-  while (capturedRequests.length < minCount && Date.now() - start < timeout) {
-    await new Promise(resolve => setTimeout(resolve, 10))
-  }
-  if (capturedRequests.length < minCount) {
-    throw new Error(
-      `expected at least ${minCount} captured request(s) within ${timeout}ms, got ${capturedRequests.length}`
-    )
-  }
-}
-
 describe('defineTracker 测试', () => {
   describe('默认传输适配器（sendBeacon → fetch keepalive 降级）', () => {
     let sendBeaconSpy: ReturnType<typeof vi.fn<Navigator['sendBeacon']>>
 
-    beforeEach(async () => {
+    beforeEach(() => {
       vi.restoreAllMocks()
-      // 上一用例的在途请求可能在本用例断言窗口才落地，排空后再清空
-      await settleCapturedRequests()
       vi.clearAllMocks()
       clearCapturedRequests()
       localStorage.clear()
@@ -74,11 +55,12 @@ describe('defineTracker 测试', () => {
     it('优先用 sendBeacon 上报，并交出可解析的载荷', async () => {
       const tracker = defineTracker({ url: 'https://example.com' }).make()
       tracker.track({ event: 'page view' })
-      await waitForCaptured(1)
+      await tracker.flush()
 
       // sendBeacon 在页面卸载时仍能送达，是 unload 路径唯一可靠的投递方式
       expect(sendBeaconSpy).toHaveBeenCalledTimes(1)
       expect(JSON.parse(sendBeaconSpy.mock.calls[0][1] as string)).toEqual({ event: 'page view' })
+      expect(capturedRequests).toHaveLength(1)
     })
 
     it('sendBeacon 被接受时不再额外发 fetch，避免同一条数据上报两次', async () => {
@@ -86,7 +68,7 @@ describe('defineTracker 测试', () => {
 
       const tracker = defineTracker({ url: 'https://example.com' }).make()
       tracker.track({ event: 'accepted' })
-      await settleCapturedRequests()
+      await tracker.flush()
 
       expect(capturedRequests).toHaveLength(0)
     })
@@ -98,7 +80,7 @@ describe('defineTracker 测试', () => {
 
       const tracker = defineTracker({ url: 'https://example.com' }).make()
       tracker.track({ event: 'error' })
-      await waitForCaptured(1)
+      await tracker.flush()
 
       // 降级后数据仍要送达，只换传输方式不换内容
       expect(JSON.stringify(capturedRequests[0].body)).toContain('error')
@@ -114,6 +96,7 @@ describe('defineTracker 测试', () => {
 
       // 上报是旁路能力：它的失败不该冒泡成业务异常打断用户操作
       expect(() => tracker.track({ event: 'fail' })).not.toThrow()
+      await tracker.flush()
     })
   })
 
