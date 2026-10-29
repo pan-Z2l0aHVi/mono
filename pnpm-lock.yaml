@@ -936,6 +936,9 @@ importers:
 
   packages/monorepo-kit:
     dependencies:
+      '@greypan/js-kit':
+        specifier: workspace:*
+        version: link:../js-kit
       glob:
         specifier: 'catalog:'
         version: 13.0.6

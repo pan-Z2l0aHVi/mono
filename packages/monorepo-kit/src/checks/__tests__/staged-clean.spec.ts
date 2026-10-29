@@ -6,7 +6,8 @@ import path from 'node:path'
 
 import { afterAll, it } from 'vite-plus/test'
 
-import { run } from '../staged-clean'
+import type { ToolchainStep } from '../../plugins/toolchain'
+import { defineStagedClean } from '../staged-clean'
 
 const root = fs.mkdtempSync(path.join(os.tmpdir(), 'greypan-staged-clean-'))
 const env = {
@@ -21,12 +22,45 @@ const log = path.join(root, 'format-tool-calls.log')
 const failMarker = path.join(root, 'format-stub-fail')
 const dirtyGoMarker = path.join(root, 'format-stub-dirty-go')
 
+// 步骤表是消费仓库的事实，测试自带一份：这里钉的是 check 的匹配、判据与信息组装，
+// 真实工具表由 `scripts/policies/staged-clean.mjs` 决定，并由门禁本身的运行来兑现。
+const steps: ToolchainStep[] = [
+  {
+    name: 'vp check',
+    match: /./,
+    seam: 'AGENT_VP_ARGV',
+    command: ['sh', toolStub, 'vp'],
+    args: ['check', '--no-error-on-unmatched-pattern'],
+    failOn: 'exit',
+    hint: 'vp hint line'
+  },
+  {
+    name: 'stylelint',
+    match: /\.(?:css|scss|less|html|vue)$/,
+    seam: 'AGENT_STYLELINT_ARGV',
+    command: ['sh', toolStub, 'stylelint'],
+    args: ['--allow-empty-input'],
+    failOn: 'exit',
+    hint: 'stylelint hint line'
+  },
+  {
+    name: 'gofmt',
+    match: /\.go$/,
+    seam: 'AGENT_GOFMT_ARGV',
+    command: ['sh', toolStub, 'gofmt'],
+    args: ['-l'],
+    failOn: 'stdout',
+    hint: 'gofmt hint line'
+  }
+]
+const stagedClean = defineStagedClean({ steps, installHint: 'install the tools' })
+
 function git(...args: string[]): string {
   return execFileSync('git', ['-C', root, ...args], { env, encoding: 'utf8' }).trim()
 }
 
-function check(extraEnv: NodeJS.ProcessEnv = {}): Promise<string> {
-  return run({
+async function check(extraEnv: NodeJS.ProcessEnv = {}): Promise<string> {
+  const detail = await stagedClean.run({
     root,
     env: {
       ...env,
@@ -39,9 +73,11 @@ function check(extraEnv: NodeJS.ProcessEnv = {}): Promise<string> {
       ...extraEnv
     }
   })
+  assert.ok(detail, 'staged-clean returned no detail')
+  return detail
 }
 
-async function failure(promise: Promise<string>): Promise<string> {
+async function failure(promise: Promise<unknown>): Promise<string> {
   try {
     await promise
   } catch (error) {
@@ -104,8 +140,8 @@ it('staged-clean', async () => {
   fs.writeFileSync(failMarker, 'stub fails\n')
   const vpMessage = await failure(check())
   assert.match(vpMessage, /stub: vp found issues/)
-  assert.match(vpMessage, /formatting, lint or types/)
-  assert.match(vpMessage, /never a type error/)
+  assert.match(vpMessage, /formatting, lint or types \(vp check\)/)
+  assert.match(vpMessage, /vp hint line/)
   fs.rmSync(failMarker)
   fs.rmSync(log, { force: true })
 
@@ -131,8 +167,8 @@ it('staged-clean', async () => {
   git('add', 'probe-two.go')
   const goMessage = await failure(check())
   assert.match(goMessage, /probe-two\.go/)
-  assert.match(goMessage, /formatting, lint or types/)
-  assert.match(goMessage, /gofmt -w <files>/)
+  assert.match(goMessage, /formatting, lint or types \(gofmt\)/)
+  assert.match(goMessage, /gofmt hint line/)
 
   // The test seam is a JSON argv array; a command string must fail instead of reaching a shell.
   assert.match(await failure(check({ AGENT_VP_ARGV: 'pnpm exec vp' })), /AGENT_VP_ARGV must be a JSON array/)

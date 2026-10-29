@@ -2,6 +2,7 @@ import { execFileSync } from 'node:child_process'
 
 export interface GitOptions {
   cwd?: string
+  env?: NodeJS.ProcessEnv
   timeout?: number
 }
 

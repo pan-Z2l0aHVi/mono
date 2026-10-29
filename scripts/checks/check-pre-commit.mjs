@@ -5,10 +5,11 @@ import {
   noMutualLinks,
   readmeLocales,
   runEntrypoint,
-  stagedClean,
   turboCacheInvariant,
   webUiDocsInputs
 } from '@greypan/monorepo-kit'
+
+import { stagedClean } from '../policies/staged-clean.mjs'
 
 const checks = [commandConventions, stagedClean, noMutualLinks, readmeLocales, turboCacheInvariant, webUiDocsInputs]
 

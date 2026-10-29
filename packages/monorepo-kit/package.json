@@ -20,6 +20,7 @@
     "test": "vp test run"
   },
   "dependencies": {
+    "@greypan/js-kit": "workspace:*",
     "glob": "catalog:"
   },
   "devDependencies": {

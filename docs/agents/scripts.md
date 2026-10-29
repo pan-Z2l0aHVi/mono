@@ -11,7 +11,7 @@
 
 `scripts/lib/**` 只放 **Node 启动之前** 要跑的东西及其测试：`.mise.toml` 的 `[env]` 模板在 Node 可用前求值，`turbo-cache-dir.sh` 与 `go-cache-dir.sh` 是这条链路的唯一实现，同名测试跟着留在原处。它不是入口，也不再是通用的共享实现目录。
 
-门禁实现与仓库编排在 workspace 包 [`packages/monorepo-kit`](../../packages/monorepo-kit) 里：运行时源码直出，类型声明由 `tsc` 生成到 `dist/`，按「换仓库是否重写」分三个分区——`shared/` 与仓库无关，`policy/` 是本仓库的门禁策略（换仓库即重写），`repo/` 是本仓库的构建与测试编排（读取根 `monorepo.json` 的端口分配）。判据是这段代码描述的是**本仓库的编排事实**还是**可复用的能力**：前者进 `policy/` 或 `repo/`，不假装通用；后者才进 `shared/`。两类都不再放回 `scripts/lib/`，因为它会在 Node 之前被求值这条约束下变成半个 bootstrap 目录。跨 workspace 复用但不是编排事实的测试基建仍单独成包（对比 `@greypan/test-kit` 的 MSW 基建，它对消费方一无所知）。分区判据、迁移理由与代价见 [ADR-0030](../adr/0030-monorepo-tooling-package.md)，端口分配与多 worktree 偏移的具体约定见 [`build.md`](./build.md#测试端口分配)。往包里加模块要改模块本身与 `src/index.mjs` 的导出，然后重新 build 生成声明；包内测试放在模块旁的 `__tests__/`。
+门禁实现与仓库编排在 workspace 包 [`packages/monorepo-kit`](../../packages/monorepo-kit) 里：源码是 TypeScript，`build` 跑 `vp pack` 产出 `dist/`，门禁、CI 与 workspace 配置经包名读产物，新鲜度由根 `check-pre-commit` 的前置 build 与 CI 保证。包按 [ADR-0031](../adr/0031-monorepo-kit-generic-plugins.md) 收敛为能力（`plugins/`）、判定（`checks/`）、协议（`runner/`）与纯工具（`shared/`），尚未迁完的检查暂留在 `policy/`、`repo/`。**本仓库的门禁事实住在根 `scripts/policies/`**：一个检查一个文件，导出配置好的检查实例，例如 `staged-clean.mjs` 里就是这个仓库提交边界要跑的工具链。判据是这段代码是否知道本仓库的名字、路径或数据：知道的是策略，放 `scripts/policies/`；不知道的才是包里的能力。跨 workspace 复用但不是编排事实的测试基建仍单独成包（对比 `@greypan/test-kit` 的 MSW 基建，它对消费方一无所知）。包边界与迁移理由见 [ADR-0030](../adr/0030-monorepo-tooling-package.md)，端口分配与多 worktree 偏移的具体约定见 [`build.md`](./build.md#测试端口分配)。往包里加模块要改模块本身与 `src/index.ts` 的导出，然后重新 build；包内测试放在模块旁的 `__tests__/`。
 
 ## 准入
 
@@ -46,7 +46,7 @@
 
 测试可选：没有测试文件合法。一旦存在测试文件，必须与被测文件同目录同名（`foo.mjs` / `foo.ts` / `foo.sh` → `foo.test.mjs`）；新增或重命名测试文件时，同名关系在同一变更里成立。
 
-测试针对原子函数或共享实现，不针对只做聚合的入口。覆盖按风险选择，至少包括参数解析、成功输出与退出码、失败路径，以及脚本声称的副作用。`scripts/checks/` 只放薄入口，检查实现与测试在 `packages/monorepo-kit/src/policy/`（测试在该目录的 `__tests__/`）；入口本身不要求专属测试。
+测试针对原子函数或共享实现，不针对只做聚合的入口。覆盖按风险选择，至少包括参数解析、成功输出与退出码、失败路径，以及脚本声称的副作用。`scripts/checks/` 只放薄入口：它 import `scripts/policies/` 里配置好的检查实例，实现与测试在 `packages/monorepo-kit`（测试放在模块旁的 `__tests__/`）；入口本身不要求专属测试。
 
 测试有两个发现面，各自覆盖一半，不要在两处都登记同一个文件：
 
