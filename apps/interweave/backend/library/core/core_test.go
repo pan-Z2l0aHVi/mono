@@ -10,7 +10,6 @@ import (
 	"strings"
 	"sync/atomic"
 	"testing"
-	"time"
 
 	"github.com/pan-Z2l0aHVi/mono/apps/interweave/backend/library/core"
 	"github.com/pan-Z2l0aHVi/mono/apps/interweave/backend/library/storage"
@@ -68,8 +67,11 @@ func TestCoreSeamRules(t *testing.T) {
 	if err != nil {
 		t.Fatalf("AddTagToResource error: %v", err)
 	}
-	// 跨过毫秒边界，使复用路径回传的 CreatedAt 可与首次创建时间区分。
-	time.Sleep(2 * time.Millisecond)
+	// 给既有行设置独立于当前时钟的时间，复用若重新生成 CreatedAt 必定可区分。
+	const createdAt int64 = 1
+	if _, err := db.SqlDB().ExecContext(ctx, "UPDATE tags SET created_at = ? WHERE id = ?", createdAt, tag1.ID); err != nil {
+		t.Fatalf("seed tag timestamp: %v", err)
+	}
 	tag2, err := tagService.AddTagToResource(ctx, view.Resource.ID, "Tokyo")
 	if err != nil {
 		t.Fatalf("AddTagToResource duplicate error: %v", err)
@@ -77,8 +79,8 @@ func TestCoreSeamRules(t *testing.T) {
 	if tag1.ID != tag2.ID {
 		t.Errorf("expected same tag ID for identical name, got %s and %s", tag1.ID, tag2.ID)
 	}
-	if tag1.CreatedAt != tag2.CreatedAt {
-		t.Errorf("expected reused tag to report original CreatedAt %d, got %d", tag1.CreatedAt, tag2.CreatedAt)
+	if createdAt != tag2.CreatedAt {
+		t.Errorf("expected reused tag to report original CreatedAt %d, got %d", createdAt, tag2.CreatedAt)
 	}
 
 	reloaded, err := resService.GetResource(ctx, view.Resource.ID)
@@ -254,11 +256,15 @@ func TestFindResourceLocationMatchesOrdersNewestFirst(t *testing.T) {
 	if err != nil {
 		t.Fatalf("AddFileResource error: %v", err)
 	}
-	// 跨过毫秒边界，使两个 Resource 的纳入时间可区分，不依赖 ID 兜底排序。
-	time.Sleep(2 * time.Millisecond)
 	newer, err := resService.AddFileResource(ctx, path)
 	if err != nil {
 		t.Fatalf("AddFileResource error: %v", err)
+	}
+
+	for id, createdAt := range map[string]int64{older.Resource.ID: 1, newer.Resource.ID: 2} {
+		if _, err := db.SqlDB().ExecContext(ctx, "UPDATE resources SET created_at = ? WHERE id = ?", createdAt, id); err != nil {
+			t.Fatalf("seed resource timestamp: %v", err)
+		}
 	}
 
 	matches, err := resService.FindResourceLocationMatches(ctx, path, storage.SourceTypeFile)

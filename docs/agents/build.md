@@ -24,6 +24,8 @@ Interweave 由 Wails 宿主管理嵌套前端，其 alias 只启动 Wails host�
 
 [`packages/web-ui/docs/*.md`](../../packages/web-ui/docs/) 是 demo 示例与 API 表的唯一输入（中文源是 `<name>.CN.md`，英文译文是 `<name>.md`）。generator 在 dev 与 build 时写盘，测试期只判不改；两个 demo 与 `web-ui` 的 parity 测试保证产物与 markdown 一致、同语种两端产物逐字节一致。改动组件 API 必须同时改对应 markdown。生成器的输入契约与校验规则以 `@greypan/md-to-comp` 的测试为准。
 
+同一份输入与配置必须生成同一份完整字节；机器负载或调度耗时不得决定着色、解析等生成结果。预热和复跑通过不能证明确定性，涉及时间预算或部分结果降级的生成链要用可控调度验证完整产物；仅校验可见文本无法证明着色 HTML 一致。
+
 CI 在 Build 步之前经两端 demo 的 `check-generated` turbo 任务以同一份插件配置只判不改地校验产物：Build 的写盘会把失步产物原地治愈，测试档里的判据到那时永远空转，所以检测必须抢在 healing 之前。判据与测试档同源（`@greypan/md-to-comp` 的 `checkArtifacts`），配置直接 import 各 demo `vite.config.ts` 的 `mdToCompOptions` 具名导出，不抄第二份。
 
 这些语料必须进入本包 `build` 与 `test` 的 turbo inputs：根配置排除 Markdown，包级 `turbo.json` 重新纳入，并由 `pnpm run check-policy` 中的 `web-ui-docs-inputs` 检查守护。
@@ -37,6 +39,8 @@ React 与 Vue demo 的**壳文案**（TSX / SFC 中的界面文字）走另一�
 Vue demo 通过私有 `@greypan/wuchale-vue` 在 Vue 编译前转换 SFC。`wuchale.config.js` 只提取手写壳文案，排除 `src/generated/**`；正文与运行示例继续由 md-to-comp 生成双语输出。语言控制器先准备 catalog、文档与当前页示例，再统一提交；不修改 wuchale 核心。安装版 wuchale 按 Vite mode 判定 build，Vue build 脚本显式使用 `--mode build`。
 
 `apps/interweave/frontend/bindings/**` 的生成过程不得删除已有文件，并用产出集合守卫防止静默少产出；陈旧文件由人工清理。frontend 的 turbo inputs 由 Go 源、Go 模块文件与 bindings generator 构成。
+
+读取生成物的测试与会改写同一路径的生成任务必须有明确的执行依赖，不能并行读写。生成器由本 workspace `build` 承担时，`test` 须依赖该 `build`，同时保留适用的上游依赖。`inputs` 只影响缓存哈希，不建立执行先后，不能替代 `dependsOn`。
 
 `**/__screenshots__/` 与 `**/.vitest-attachments/` 是测试证据，不是应用代码生成物。除非任务明确要求并已完成对应的视觉或浏览器验证，不要创建、手改或提交。根 [`AGENTS.md`](../../AGENTS.md#不可绕过的仓库边界)在入口层声明同一约束，本节承载处方。
 

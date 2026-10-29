@@ -2,7 +2,7 @@ import '@/components/button'
 import '@/components/drawer'
 import '@/components/icon'
 
-import { html, LitElement, nothing, unsafeCSS } from 'lit'
+import { html, LitElement, nothing, type PropertyValues, unsafeCSS } from 'lit'
 import { customElement, property, state } from 'lit/decorators.js'
 import { classMap } from 'lit/directives/class-map.js'
 import { styleMap } from 'lit/directives/style-map.js'
@@ -26,7 +26,7 @@ import style from './style.css?inline'
 const MOBILE_VIEWPORT_QUERY = '(width <= 640px)'
 
 /**
- * Layout 组件 - 提供页面布局框架，支持 collapsible sidebar
+ * Layout 组件 - 提供页面布局框架，支持 collapsible sidebar 与无 sidebar 模式
  *
  * @fires sidebar-collapsed-change - 桌面端侧边栏 collapse 状态变更请求时触发
  * @fires sidebar-open-change - 移动端侧边栏 Drawer toggle 请求时触发
@@ -34,7 +34,7 @@ const MOBILE_VIEWPORT_QUERY = '(width <= 640px)'
  * @fires mobile-change - 视口跨越移动端断点、`mobile` 翻转时触发（派生状态通知）
  * @slot banner - 顶部 Banner 区域（全宽，随页面滚动，可选）
  * @slot header - 内容区顶部 header（sticky）
- * @slot sidebar - 侧边栏内容；Consumer 决定其内部固定区域与滚动容器
+ * @slot sidebar - 侧边栏内容；Consumer 决定其内部固定区域与滚动容器；`no-sidebar` 置位时不渲染
  * @slot tabbar - 底部 tabbar 区域
  * @slot default - 主内容区
  */
@@ -50,6 +50,16 @@ export interface LayoutAriaLabels {
 @customElement('web-ui-layout')
 export class WebUiLayout extends LitElement {
   static override styles = [unsafeCSS(glass), unsafeCSS(glow), unsafeCSS(style)]
+
+  /**
+   * 关闭整块 sidebar：桌面端不渲染 aside 与 collapse Toggle，移动端不渲染 header Toggle 与 Drawer。
+   *
+   * 它是布局模式而不是 collapse 的别名：`sidebar-collapsed` 只收窄桌面 aside，本属性把侧边栏
+   * 结构本身从树里去掉。`sidebar` slot 随之不渲染（消费方节点仍留在 light DOM），
+   * 侧边栏相关事件与属性在该模式下不产生可见效果。
+   */
+  @property({ type: Boolean, attribute: 'no-sidebar', reflect: true })
+  noSidebar = false
 
   /**
    * 桌面端 Sidebar 的持久布局偏好。
@@ -278,7 +288,7 @@ export class WebUiLayout extends LitElement {
   }
 
   // 终结进行中的拖拽：清手势状态、移除跟手 class，宽度过渡回 prop 管辖，不派发事件。
-  // pointer cancel 与视口跨越移动端断点（handle 随桌面 layout 卸载）共用此收尾。
+  // pointer cancel、跨越移动端断点和切入 no-sidebar 时共用此收尾。
   private _resetActiveResize() {
     this._resizeGesture?.destroy()
     this._resizeGesture = null
@@ -385,7 +395,17 @@ export class WebUiLayout extends LitElement {
     this._visibleBanner.setTarget(hasBanner ? banner : null)
   }
 
+  /*
+   * 切到无 sidebar 模式会卸载 aside；先终结进行中的拖拽与未提交的临时宽度，
+   * 否则手势悬挂，切回桌面后新拖拽会在 `_isResizing()` 入口被拦下。
+   */
+  protected override willUpdate(changed: PropertyValues) {
+    super.willUpdate(changed)
+    if (changed.has('noSidebar') && this.noSidebar) this._resetActiveResize()
+  }
+
   override render() {
+    const showSidebar = !this.noSidebar
     const isSidebarOpen = !this.sidebarCollapsed
     // 拖拽中的临时宽度优先于 prop 宽度；移动端宽度由 Drawer 内部变量管理。
     const sidebarStyle = this._mobile
@@ -409,6 +429,35 @@ export class WebUiLayout extends LitElement {
     const sidebarViewport = html`
       <div class="sidebar-viewport">
         <slot name="sidebar"></slot>
+      </div>
+    `
+
+    const header = html`
+      <header class="${classMap({ 'wui-glow': this.headerGlow })}">
+        ${
+          this._mobile && showSidebar
+            ? html`
+                <web-ui-button
+                  class="mobile-toggle"
+                  icon
+                  variant="glass"
+                  @click="${this._toggleSidebar}"
+                  aria-label=${resolveBuiltinLabelSet(this.ariaLabels, 'openNavigationMenu')}
+                >
+                  <web-ui-icon .icon=${radixIconsPanelLeftMinimized}></web-ui-icon>
+                </web-ui-button>
+              `
+            : nothing
+        }
+        <slot name="header"></slot>
+      </header>
+    `
+
+    const contentLayout = html`
+      <div class="layout-content">
+        ${header}
+        <main><slot></slot></main>
+        <footer><slot name="tabbar"></slot></footer>
       </div>
     `
 
@@ -442,34 +491,11 @@ export class WebUiLayout extends LitElement {
             }
           </aside>
         </div>
-        <div class="layout-content">
-          <header class="${classMap({ 'wui-glow': this.headerGlow })}">
-            <slot name="header"></slot>
-          </header>
-          <main><slot></slot></main>
-          <footer><slot name="tabbar"></slot></footer>
-        </div>
+        ${contentLayout}
       </div>
     `
 
-    const mobileLayout = html`
-      <div class="layout-content">
-        <header class="${classMap({ 'wui-glow': this.headerGlow })}">
-          <web-ui-button
-            class="mobile-toggle"
-            icon
-            variant="glass"
-            @click="${this._toggleSidebar}"
-            aria-label=${resolveBuiltinLabelSet(this.ariaLabels, 'openNavigationMenu')}
-          >
-            <web-ui-icon .icon=${radixIconsPanelLeftMinimized}></web-ui-icon>
-          </web-ui-button>
-          <slot name="header"></slot>
-        </header>
-        <main><slot></slot></main>
-        <footer><slot name="tabbar"></slot></footer>
-      </div>
-
+    const mobileDrawer = html`
       <web-ui-drawer
         placement="left"
         ?open="${this.sidebarOpen}"
@@ -486,12 +512,22 @@ export class WebUiLayout extends LitElement {
       </web-ui-drawer>
     `
 
+    /*
+     * 无 sidebar 模式只留内容列：桌面 aside 与移动端 Toggle / Drawer 都不进树，
+     * `sidebar` slot 因而没有渲染出口（消费方节点仍留在 light DOM）。
+     */
+    const layoutBody = showSidebar
+      ? this._mobile
+        ? html`${contentLayout}${mobileDrawer}`
+        : desktopLayout
+      : contentLayout
+
     return html`
       <div class="layout-page">
         <div class="layout-banner">
           <slot name="banner" @slotchange="${this._onBannerSlotChange}"></slot>
         </div>
-        ${this._mobile ? mobileLayout : desktopLayout}
+        ${layoutBody}
       </div>
     `
   }

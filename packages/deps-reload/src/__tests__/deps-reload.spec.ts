@@ -2,7 +2,7 @@ import { resolve } from 'node:path'
 
 import type { UnpluginContextMeta, UnpluginOptions } from 'unplugin'
 import type { HmrContext, ViteDevServer } from 'vite-plus'
-import { afterEach, describe, expect, it, vi } from 'vite-plus/test'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import type { Compilation, Compiler } from 'webpack'
 
 import { depsReloadFactory, type Dep } from '../factory'
@@ -53,7 +53,9 @@ const createHotUpdateContext = (file: string, server: ViteDevServer): HmrContext
 /** 推进过防抖窗口，让 reload 真正发出。 */
 const settleDebounce = () => vi.advanceTimersByTimeAsync(300)
 
+beforeEach(() => vi.useFakeTimers())
 afterEach(() => {
+  vi.clearAllTimers()
   vi.useRealTimers()
 })
 

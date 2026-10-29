@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vite-plus/test'
+import { describe, expect, it, vi } from 'vite-plus/test'
 
 import { highlight } from '../highlight'
 
@@ -25,6 +25,21 @@ function visibleText(html: string): string {
 }
 
 describe('highlight 的原文往返', () => {
+  it.each(['react', 'vue'] as const)('调度耗时不改变 %s 的高亮产物字节', async flavor => {
+    const code =
+      flavor === 'react'
+        ? 'export default () => <x-demo onChange={event => console.log(event.currentTarget.value)} />'
+        : '<template><x-demo :disabled="false" @change="onChange"></x-demo></template>'
+    const expected = await highlight(code, flavor, 'example.md')
+    let clock = Date.now()
+    const now = vi.spyOn(Date, 'now').mockImplementation(() => (clock += 600))
+    try {
+      expect(await highlight(code, flavor, 'example.md')).toBe(expected)
+    } finally {
+      now.mockRestore()
+    }
+  })
+
   it('正文里的尖括号与字面实体都算同一份源码', async () => {
     const code = [
       `export default function Demo() {`,

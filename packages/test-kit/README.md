@@ -6,7 +6,7 @@ English | [简体中文](https://github.com/pan-Z2l0aHVi/mono/blob/main/packages
 
 ## Features
 
-- **MSW test env**: One `createMswTestEnv()` call wires the worker lifecycle, automatic request capture, and in-flight settle
+- **MSW test env**: One `createMswTestEnv()` call wires the worker lifecycle, automatic request capture, and completion tracking
 - **MSW lifecycle**: Start/stop/reset Mock Service Worker with plugin composition
 - **Request capture**: Record and assert intercepted HTTP requests
 - **Plugin composition**: Built on js-kit's plugin system for composable test infrastructure
@@ -15,7 +15,7 @@ English | [简体中文](https://github.com/pan-Z2l0aHVi/mono/blob/main/packages
 
 This is private test infrastructure for the `mono` workspace and is not published by this repository. Add it to an in-repository package with the `workspace:*` protocol.
 
-> Requires `msw` as a peer dependency. `settle` also uses the Vitest APIs re-exported by `vite-plus/test`.
+> Requires `msw` as a peer dependency.
 
 ## Quick Start
 
@@ -33,14 +33,15 @@ afterEach(() => {
 afterAll(env.stop)
 
 it('tracks a request', async () => {
-  doTracking({ event: 'page_view' }) // fire-and-forget POST
-
-  await env.settle() // waits until in-flight requests have landed
+  const completion = fetch('/api/track', { method: 'POST', body: JSON.stringify({ event: 'page_view' }) })
+  await env.settle(completion)
 
   expect(env.capturedRequests).toHaveLength(1)
   expect(env.capturedRequests[0].url).toBe('/api/track')
 })
 ```
+
+Pass the promise that represents the entire operation, such as the return value of `fetch()` or a queue flush. `settle` cannot detect work that the caller does not provide. With fake timers, its timeout advances with the fake clock.
 
 Captured requests fill automatically: the env installs its own catch-all recording handler (it responds `{ ok: true }`), so there is no need to hand-write one. Requests handled by custom handlers take precedence over the recorder; pass them via `createMswTestEnv({ handlers })`.
 
@@ -81,15 +82,15 @@ Create a complete MSW test environment with automatic request capture.
 
 **Returns:** `MswTestEnv` with:
 
-| Property                | Type                            | Description                                                                                         |
-| ----------------------- | ------------------------------- | --------------------------------------------------------------------------------------------------- |
-| `worker`                | `SetupWorker`                   | MSW service worker instance                                                                         |
-| `start`                 | `() => Promise<unknown>`        | Start the service worker (`beforeAll(env.start)`)                                                   |
-| `stop`                  | `() => void`                    | Stop the service worker (`afterAll(env.stop)`)                                                      |
-| `reset`                 | `() => void`                    | Reset handlers to defaults (`afterEach`)                                                            |
-| `capturedRequests`      | `CapturedRequest[]`             | Requests captured by the built-in recorder; `url` is the request URL pathname                       |
-| `clearCapturedRequests` | `() => void`                    | Clear all captured requests                                                                         |
-| `settle`                | `(timeout?: number) => Promise` | Drain in-flight requests (stable window of ~60 ms, default `timeout` 300 ms). Preserves fake timers |
+| Property                | Type                                                                    | Description                                                                                       |
+| ----------------------- | ----------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------- |
+| `worker`                | `SetupWorker`                                                           | MSW service worker instance                                                                       |
+| `start`                 | `() => Promise<unknown>`                                                | Start the service worker (`beforeAll(env.start)`)                                                 |
+| `stop`                  | `() => void`                                                            | Stop the service worker (`afterAll(env.stop)`)                                                    |
+| `reset`                 | `() => void`                                                            | Reset handlers to defaults (`afterEach`)                                                          |
+| `capturedRequests`      | `CapturedRequest[]`                                                     | Requests captured by the built-in recorder; `url` is the request URL pathname                     |
+| `clearCapturedRequests` | `() => void`                                                            | Clear all captured requests                                                                       |
+| `settle`                | `(completion: PromiseLike<unknown>, timeout?: number) => Promise<void>` | Await the supplied completion signal; reject if it fails or exceeds the timeout (default 300 ms). |
 
 ### `defineMsw(handlers)`
 

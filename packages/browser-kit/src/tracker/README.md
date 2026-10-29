@@ -4,6 +4,8 @@ Data tracking and analytics with batch aggregation, page errors, offline restore
 
 English | [简体中文](./README.CN.md)
 
+Composing a listener plugin provides an idempotent `stop()` that releases all composed offline, page-exit, and page-error listeners. It does not pause, clear, or flush the outbox. Call it when the instance is no longer needed.
+
 ## Overview
 
 Tracker is a composable tracking system built on the plugin architecture. It maintains one pending transport outbox for data that the browser transport has not accepted yet.

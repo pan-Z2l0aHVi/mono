@@ -20,35 +20,40 @@ interface Loader {
 
 async function setup(direct = false) {
   const root = await realpath(await mkdtemp(join(tmpdir(), 'wuchale-vue-loader-')))
-  await symlink(resolve(import.meta.dirname, '../../node_modules'), join(root, 'node_modules'), 'dir')
-  await mkdir(join(root, 'src/locales'), { recursive: true })
-  await writeFile(join(root, 'package.json'), '{"type":"module"}')
-  await writeFile(join(root, 'src/App.vue'), '<template><p>Hello world!</p></template>')
-  await writeFile(
-    join(root, 'src/locales/fr.po'),
-    [
-      'msgid ""',
-      'msgstr ""',
-      '"Content-Type: text/plain; charset=UTF-8\\n"',
-      '"Language: fr\\n"',
-      '',
-      'msgid "Hello world!"',
-      'msgstr "Bonjour le monde!"',
-      ''
-    ].join('\n')
-  )
-  const hub = await Hub.create(
-    'cli',
-    {
-      ...defaultConfig,
-      locales: ['en', 'fr'],
-      adapters: { main: adapter({ loading: { direct } }) },
-      ai: null,
-      logLevel: 'error'
-    },
-    root
-  )
-  await hub.directVisit(true, false, false)
+  try {
+    await symlink(resolve(import.meta.dirname, '../../node_modules'), join(root, 'node_modules'), 'dir')
+    await mkdir(join(root, 'src/locales'), { recursive: true })
+    await writeFile(join(root, 'package.json'), '{"type":"module"}')
+    await writeFile(join(root, 'src/App.vue'), '<template><p>Hello world!</p></template>')
+    await writeFile(
+      join(root, 'src/locales/fr.po'),
+      [
+        'msgid ""',
+        'msgstr ""',
+        '"Content-Type: text/plain; charset=UTF-8\\n"',
+        '"Language: fr\\n"',
+        '',
+        'msgid "Hello world!"',
+        'msgstr "Bonjour le monde!"',
+        ''
+      ].join('\n')
+    )
+    const hub = await Hub.create(
+      'cli',
+      {
+        ...defaultConfig,
+        locales: ['en', 'fr'],
+        adapters: { main: adapter({ loading: { direct } }) },
+        ai: null,
+        logLevel: 'error'
+      },
+      root
+    )
+    await hub.directVisit(true, false, false)
+  } catch (error) {
+    await rm(root, { recursive: true, force: true })
+    throw error
+  }
   return root
 }
 

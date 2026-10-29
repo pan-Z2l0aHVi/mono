@@ -11,6 +11,8 @@ import { on } from '@/shortcut'
 
 import type { TrackCapability } from '../capabilities'
 
+import { composeStop, type StopCapability } from './lifecycle'
+
 export type PageErrorCategory = 'uncaught' | 'unhandled_rejection'
 
 export interface PageErrorDetail {
@@ -84,11 +86,9 @@ function resolveMetadata(options: PageErrorsOptions): object | undefined {
 }
 
 export function definePageErrors(options: PageErrorsOptions = {}) {
-  return definePlugin((ctx: TrackCapability) => {
-    const stopNoop = () => {}
-
+  return definePlugin((ctx: TrackCapability & Partial<StopCapability>) => {
     // SSR / 非浏览器环境没有全局错误事件；保持 stop() 契约一致，便于调用方无条件释放。
-    if (typeof window === 'undefined') return { stop: stopNoop }
+    if (typeof window === 'undefined') return { stop: composeStop(ctx.stop?.bind(ctx), () => {}) }
 
     // 不展开 options：metadata 可能是 throwing getter，插件初始化不能因此失败。
     const config: typeof DEFAULT_OPTIONS = {
@@ -177,9 +177,7 @@ export function definePageErrors(options: PageErrorsOptions = {}) {
     )
 
     return {
-      stop() {
-        controller.abort()
-      }
+      stop: composeStop(ctx.stop?.bind(ctx), () => controller.abort())
     }
   })
 }

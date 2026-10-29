@@ -21,7 +21,7 @@
 import { page } from 'vite-plus/test/browser'
 
 import type { SettleExpectation } from './index'
-import { afterRenderStep, pollUntil } from './index'
+import { afterRenderStep, pollUntil, renderStepUntil } from './index'
 
 /**
  * 换视口并等它**真的生效**。
@@ -35,13 +35,22 @@ import { afterRenderStep, pollUntil } from './index'
  * 尺寸生效后的下一次渲染步进里才把状态写回，第 2 步等的就是那个写回。
  */
 export async function setViewport(width: number, height: number, timeoutMs = 5000): Promise<void> {
+  // RPC 由 runner 预算管理；本预算覆盖尺寸生效与最后的渲染步进。
   await page.viewport(width, height)
-  await pollUntil(
-    () => window.innerWidth === width && window.innerHeight === height,
-    () => `viewport did not reach ${width}x${height} (read ${window.innerWidth}x${window.innerHeight})`,
-    timeoutMs
-  )
-  await afterRenderStep()
+  const startedAt = performance.now()
+  const deadline = startedAt + timeoutMs
+  let steps = 0
+  const step = async (stage: 'dimensions' | 'render') => {
+    if (!(await renderStepUntil(deadline))) {
+      throw new Error(
+        `viewport did not settle at ${width}x${height} (stage=${stage}, read ${window.innerWidth}x${window.innerHeight}, ` +
+          `waited ${Math.round(performance.now() - startedAt)}ms / ${steps} render steps, budget ${timeoutMs}ms)`
+      )
+    }
+    steps++
+  }
+  while (window.innerWidth !== width || window.innerHeight !== height) await step('dimensions')
+  await step('render')
 }
 
 /**

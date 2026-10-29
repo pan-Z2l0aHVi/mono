@@ -5,6 +5,8 @@ import { defineBatchTrack } from '../plugins/batch-track'
 import { definePageErrors } from '../plugins/page-errors'
 import type { PageErrorsOptions } from '../plugins/page-errors'
 
+import { expectAfterDispatch, afterDispatchTurn } from './dispatch-turn'
+
 /** 记录条目的 fake transport；替代 sendBeacon 桩与 MSW 捕获。 */
 function createTransportStub() {
   const items: object[] = []
@@ -12,24 +14,6 @@ function createTransportStub() {
     items.push(item)
   })
   return { items, transport }
-}
-
-/**
- * 注入 fake transport 后队列调度只经过 microtask，自旋等待即可收敛，不依赖真实时间。
- * 上限兜底：未收敛时以超时信息失败，而不是挂到 vitest 的默认超时。
- */
-async function waitUntil(predicate: () => boolean, maxSpins = 1000): Promise<void> {
-  for (let spin = 0; spin < maxSpins && !predicate(); spin += 1) {
-    await Promise.resolve()
-  }
-  expect(predicate(), '等待队列调度收敛超时').toBe(true)
-}
-
-/** 排空已调度的 microtask，用于「没有发生 X」类断言前的收敛。 */
-async function settleMicrotasks(spins = 50): Promise<void> {
-  for (let spin = 0; spin < spins; spin += 1) {
-    await Promise.resolve()
-  }
 }
 
 describe('definePageErrors 测试', () => {
@@ -78,7 +62,7 @@ describe('definePageErrors 测试', () => {
       error: new Error('boom')
     })
 
-    await waitUntil(() => transport.mock.calls.length === 1)
+    await expectAfterDispatch(() => transport.mock.calls.length === 1)
     const payload = transport.mock.calls[0][0] as Record<string, unknown>
 
     // 定位崩溃需要 filename/lineno/colno，少一个都会让用户报的错没法查
@@ -103,7 +87,7 @@ describe('definePageErrors 测试', () => {
       new PromiseRejectionEvent('unhandledrejection', { promise: Promise.resolve(), reason: new Error('rejected') })
     )
 
-    await waitUntil(() => transport.mock.calls.length === 1)
+    await expectAfterDispatch(() => transport.mock.calls.length === 1)
     const payload = transport.mock.calls[0][0] as Record<string, unknown>
 
     // 两类错误要能被后端分开统计，否则无法判断该修哪条链路
@@ -123,14 +107,14 @@ describe('definePageErrors 测试', () => {
 
     dispatchSame()
     dispatchSame()
-    await waitUntil(() => transport.mock.calls.length === 1)
+    await expectAfterDispatch(() => transport.mock.calls.length === 1)
 
     // 循环里抛同一个错会淹没上报配额：去重按「同类错误只报一次」
     expect(transport.mock.calls.length).toBe(1)
 
     vi.advanceTimersByTime(5000)
     dispatchSame()
-    await waitUntil(() => transport.mock.calls.length === 2)
+    await expectAfterDispatch(() => transport.mock.calls.length === 2)
   })
 
   it('达到 maxErrors 后丢弃新错误', async () => {
@@ -141,10 +125,10 @@ describe('definePageErrors 测试', () => {
     )
 
     dispatchUncaught({ message: 'first', error: new Error('first') })
-    await waitUntil(() => transport.mock.calls.length === 1)
+    await expectAfterDispatch(() => transport.mock.calls.length === 1)
 
     dispatchUncaught({ message: 'second', error: new Error('second') })
-    await settleMicrotasks()
+    await afterDispatchTurn()
 
     // 上限存在是为了保护上报通道本身不被错误风暴打垮
     expect(transport.mock.calls.length).toBe(1)
@@ -161,7 +145,7 @@ describe('definePageErrors 测试', () => {
     error.stack = 's'.repeat(30)
     dispatchUncaught({ message: error.message, error })
 
-    await waitUntil(() => transport.mock.calls.length === 1)
+    await expectAfterDispatch(() => transport.mock.calls.length === 1)
     const payload = transport.mock.calls[0][0] as { error: { message: string; stack?: string } }
 
     // 截断是为了控制单次载荷体积；写死不截断会让上报请求本身超限
@@ -181,7 +165,7 @@ describe('definePageErrors 测试', () => {
     )
 
     dispatchUncaught({ message: 'boom', error: new Error('boom') })
-    await waitUntil(() => transport.mock.calls.length === 1)
+    await expectAfterDispatch(() => transport.mock.calls.length === 1)
 
     const payload = transport.mock.calls[0][0] as Record<string, unknown>
 
@@ -205,7 +189,7 @@ describe('definePageErrors 测试', () => {
     ).not.toThrow()
 
     dispatchUncaught({ message: 'boom', error: new Error('boom') })
-    await waitUntil(() => transport.mock.calls.length === 1)
+    await expectAfterDispatch(() => transport.mock.calls.length === 1)
 
     const payload = transport.mock.calls[0][0] as Record<string, unknown>
     expect(payload.event).toBe('page_error')
@@ -222,7 +206,7 @@ describe('definePageErrors 测试', () => {
     )
 
     dispatchUncaught({ message: 'boom', error: new Error('boom') })
-    await waitUntil(() => transport.mock.calls.length === 1)
+    await expectAfterDispatch(() => transport.mock.calls.length === 1)
 
     const payload = transport.mock.calls[0][0] as Record<string, unknown>
 
@@ -247,11 +231,11 @@ describe('definePageErrors 测试', () => {
       )
     ).not.toThrow()
 
-    await waitUntil(() => transport.mock.calls.length === 1)
+    await expectAfterDispatch(() => transport.mock.calls.length === 1)
     const payload = transport.mock.calls[0][0] as { error: { message: string } }
     expect(payload.error.message).toBe('Unknown unhandled rejection')
 
-    await settleMicrotasks()
+    await afterDispatchTurn()
     expect(transport.mock.calls.length).toBe(1)
   })
 
@@ -259,11 +243,11 @@ describe('definePageErrors 测试', () => {
     const tracker = makeTracker(defineTracker({ url: 'https://example.com', transport }).use(definePageErrors()))
 
     dispatchUncaught({ message: 'first', error: new Error('first') })
-    await waitUntil(() => transport.mock.calls.length === 1)
+    await expectAfterDispatch(() => transport.mock.calls.length === 1)
 
     tracker.stop()
     dispatchUncaught({ message: 'second', error: new Error('second') })
-    await settleMicrotasks()
+    await afterDispatchTurn()
 
     // stop 之后仍上报：被卸载的组件会继续制造噪音
     expect(transport.mock.calls.length).toBe(1)
@@ -278,11 +262,11 @@ describe('definePageErrors 测试', () => {
       )
 
     dispatchRejection('before stop')
-    await waitUntil(() => transport.mock.calls.length === 1)
+    await expectAfterDispatch(() => transport.mock.calls.length === 1)
 
     tracker.stop()
     dispatchRejection('after stop')
-    await settleMicrotasks()
+    await afterDispatchTurn()
 
     expect(transport.mock.calls.length).toBe(1)
   })
@@ -295,7 +279,7 @@ describe('definePageErrors 测试', () => {
     dispatchUncaught({ message: 'batched', error: new Error('batched') })
     vi.advanceTimersByTime(500)
 
-    await waitUntil(() => transport.mock.calls.length === 1)
+    await expectAfterDispatch(() => transport.mock.calls.length === 1)
 
     // 组合 batch-track 时错误走数组载荷：形状不一致会让后端整批解析失败，
     // 结果是崩溃记录一条都进不去

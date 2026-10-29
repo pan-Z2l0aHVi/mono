@@ -97,10 +97,10 @@ func TestApplyFileAvailabilitySameValueKeepsUpdatedAt(t *testing.T) {
 	writeFixture(t, present)
 	seedSource(t, db, "source-stable", storage.SourceTypeFile, present, true, true, "")
 	svc := NewSourceService(db, remote.NewFetcher())
+	if _, err := db.SqlDB().ExecContext(context.Background(), "UPDATE sources SET updated_at = 1 WHERE id = ?", "source-stable"); err != nil {
+		t.Fatalf("seed source timestamp: %v", err)
+	}
 	before := readSource(t, db, "source-stable")
-
-	// 跨过毫秒边界，使任何实际写入都会留下可辨认的时间戳差异。
-	time.Sleep(2 * time.Millisecond)
 	change, err := svc.ApplyFileAvailability(context.Background(), "source-stable", true)
 	if err != nil {
 		t.Fatalf("ApplyFileAvailability error: %v", err)

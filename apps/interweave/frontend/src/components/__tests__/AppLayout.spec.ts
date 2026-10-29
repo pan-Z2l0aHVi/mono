@@ -298,7 +298,7 @@ describe('AppLayout：设置 dialog 接线', () => {
     await flushUntil(() => settingsDialog().open, '点击设置入口后 dialog 没有打开')
     expect(settingsDialog().open).toBe(true)
 
-    // Escape 与 backdrop 点击都走这条 open-change；controlled 下组件不会自行改 open。
+    // 模拟 dialog 发出的受控关闭请求；组件不会自行改 open。
     settingsDialog().dispatchEvent(new CustomEvent('open-change', { detail: { open: false } }))
     await flushUntil(() => !settingsDialog().open, '关闭请求没有回落到宿主状态')
     expect(settingsDialog().open).toBe(false)

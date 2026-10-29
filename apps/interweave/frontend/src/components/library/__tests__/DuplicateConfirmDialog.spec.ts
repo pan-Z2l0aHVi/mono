@@ -50,7 +50,7 @@ function footerButton(host: HTMLElement, label: string) {
 }
 
 describe('DuplicateConfirmDialog', () => {
-  it('Escape 关闭时按取消裁决', async () => {
+  it('收到 open-change(false) 时按取消裁决', async () => {
     const onCancel = vi.fn<() => void>()
     const onAccept = vi.fn<() => void>()
     const mounted = mountDialog({ onAccept, onCancel })

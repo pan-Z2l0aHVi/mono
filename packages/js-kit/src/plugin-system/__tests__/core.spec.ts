@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 
 import { definePlugin, type PluginMade } from '../core'
 
@@ -18,11 +18,15 @@ describe('definePlugin 测试', () => {
       }
     }
   })()
-  vi.stubGlobal('localStorage', localStorageMock)
-
   beforeEach(() => {
+    vi.stubGlobal('localStorage', localStorageMock)
     localStorage.clear()
     vi.clearAllMocks()
+  })
+
+  afterEach(() => {
+    vi.restoreAllMocks()
+    vi.unstubAllGlobals()
   })
 
   describe('make', () => {

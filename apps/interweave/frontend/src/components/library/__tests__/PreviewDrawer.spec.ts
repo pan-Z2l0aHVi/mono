@@ -88,8 +88,9 @@ async function mountDrawer(initial: ResourceView | null, options: MountOptions =
   return entry
 }
 
-async function flush(times = 8): Promise<void> {
-  for (let index = 0; index < times; index++) await Promise.resolve()
+// fixture 的 fetch/Response 链只派生 microtask；跨 task 后再等 Vue 提交。
+async function flush(): Promise<void> {
+  await new Promise<void>(resolve => setImmediate(resolve))
   await nextTick()
 }
 

@@ -24,6 +24,7 @@ const positioningStaleGate = vi.hoisted(() => ({
   // 计数门控：enabled 时目标 panel 的第 1 次定位被扣住，第 2 次起直通，
   // 供竞态用例构造「旧定位迟到、新定位先落位」的受控完成序。
   enabled: false,
+  target: 'context-menu',
   offset: { x: 0, y: 0 },
   release: null as null | (() => void)
 }))
@@ -36,7 +37,7 @@ vi.mock('@floating-ui/dom', async importOriginal => {
     if (
       !positioningStaleGate.enabled ||
       !(floating instanceof HTMLElement) ||
-      (!floating.classList.contains('context-menu') && !floating.classList.contains('context-submenu'))
+      !floating.classList.contains(positioningStaleGate.target)
     ) {
       return promise
     }
@@ -60,6 +61,7 @@ vi.mock('@floating-ui/dom', async importOriginal => {
 
 afterEach(() => {
   positioningStaleGate.enabled = false
+  positioningStaleGate.release?.()
   positioningStaleGate.release = null
   document.body.replaceChildren()
 })
@@ -318,6 +320,8 @@ describe('Portal overlay 在已打开原生 dialog 内（top layer）', () => {
     // 不因空间不足翻转朝左（翻转朝左会走另一条分支）。
     menu.openAt(8, 60)
     await menu.updateComplete
+    // 本用例用合成事件控制 hover；隔离无头浏览器的真实指针，避免它取消打开计时器。
+    getMenuScrim().style.pointerEvents = 'none'
     const mainPanel = await waitForPanelPositioned(
       getContextMenuPanel('.context-menu'),
       'Expected the context menu to be positioned'
@@ -364,6 +368,7 @@ describe('Portal overlay 在已打开原生 dialog 内（top layer）', () => {
     // 扣住首次 dialog 定位，随后快速换坐标触发第二次定位并先行完成；
     // 再放行旧 promise，验证迟到的旧写入不会覆盖最新 left/top。
     positioningStaleGate.enabled = true
+    positioningStaleGate.target = 'context-menu'
     positioningStaleGate.offset = { x: 400, y: 400 }
     menu.openAt(20, 20)
     await menu.updateComplete
@@ -405,12 +410,15 @@ describe('Portal overlay 在已打开原生 dialog 内（top layer）', () => {
     // submenu 打开走 hover 延时路径（modal dialog 内 focus() 受 :modal 焦点约束，
     // 键盘导航不可用），全程不依赖焦点即可构造同帧关闭→重开。
     positioningStaleGate.enabled = true
+    positioningStaleGate.target = 'context-submenu'
     positioningStaleGate.offset = { x: 300, y: 0 }
     // 拉长退出过渡：hover 关闭走 200ms 定时器重开，需保证重开时 panel 仍在 closing
     // 缓存内（默认 160ms 出场 + 80ms 兜底会在重开前完成收尾并移除 panel，复用不成立）。
     // 注意「声明 2000ms」不等于「实际 2000ms」——必须同时等入场过渡跑完，见下方注释。
     menu.openAt(8, 60)
     await menu.updateComplete
+    // 本用例只控制合成 hover 的完成顺序，真实指针不得取消 submenu 的打开计时器。
+    getMenuScrim().style.pointerEvents = 'none'
     const mainPanel = await waitForPanelPositioned(
       getContextMenuPanel('.context-menu'),
       'Expected the context menu to be positioned'
@@ -445,9 +453,11 @@ describe('Portal overlay 在已打开原生 dialog 内（top layer）', () => {
     // 悬停普通项触发关闭（非即时，panel 进 closing 缓存），同帧悬停回父项重开：
     // 复用同一 panel 发起第二次定位并先行完成；随后放行被扣的首次定位——
     // 迟到的旧写入会把 panel 推离触发项、顶出视口。
-    const copyItem = mainPanel.querySelectorAll<HTMLElement>('web-ui-dropdown-item')[1]
-    copyItem?.dispatchEvent(new PointerEvent('pointerenter'))
-    parentItem?.dispatchEvent(new PointerEvent('pointerenter'))
+    const copyItem = parentItem.nextElementSibling
+    if (!copyItem) throw new Error('Expected the Copy item next to the submenu parent')
+    copyItem.dispatchEvent(new PointerEvent('pointerenter'))
+    expect(panelBeforeClose?.dataset.wuiPresence).toBe('closing')
+    parentItem.dispatchEvent(new PointerEvent('pointerenter'))
     // 竞态断言落在动态解析出的当前活跃 submenu panel 上；panel 身份则必须**仍是同一个** ——
     // 换成重建 panel 就说明 2000ms 声明没生效、closing 缓存没命中，竞态从未发生，
     // 后面那条「坐标不被迟到写入覆盖」会变成恒真断言。这条即 R18 的负向对照。

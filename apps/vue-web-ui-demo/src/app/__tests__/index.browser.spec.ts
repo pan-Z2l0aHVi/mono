@@ -3,7 +3,7 @@ import '@/assets/global.css'
 import { toast, type WebUiLayout, type WebUiTheme, type WebUiToast } from '@greypan/web-ui'
 import { createHead } from '@unhead/vue/client'
 import { mount, type VueWrapper } from '@vue/test-utils'
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
+import { afterEach, beforeEach, describe, expect, it, onTestFailed, vi } from 'vite-plus/test'
 import { userEvent } from 'vite-plus/test/browser'
 import { defineComponent, nextTick } from 'vue'
 import { createMemoryHistory, createRouter, type Router } from 'vue-router'
@@ -66,8 +66,9 @@ function globalSelectTrigger(label: string) {
   return trigger
 }
 
-async function clickGlobalSelectsAtTopEdge() {
+async function clickGlobalSelectsAtTopEdge(mark: (step: string) => void = () => {}) {
   for (const label of ['Global motion', 'Global theme']) {
+    mark(`${label}: hit test`)
     const select = document.querySelector<HTMLElement>(`web-ui-select[aria-label="${label}"]`)
     if (!select) throw new Error(`${label} select not found`)
     await vi.waitFor(() => {
@@ -77,11 +78,14 @@ async function clickGlobalSelectsAtTopEdge() {
     })
 
     const bounds = select.getBoundingClientRect()
+    mark(`${label}: click`)
     await userEvent.click(select, { position: { x: bounds.width / 2, y: 1 } })
     const trigger = globalSelectTrigger(label)
     expect(trigger.getAttribute('aria-expanded')).toBe('true')
+    mark(`${label}: Escape`)
     await userEvent.keyboard('{Escape}')
     expect(trigger.getAttribute('aria-expanded')).toBe('false')
+    mark(`${label}: closed`)
   }
 }
 
@@ -184,6 +188,7 @@ async function openDrawer() {
 
 describe('应用外壳（浏览器）：导航 collapsed state 不跨视口泄漏', () => {
   beforeEach(async () => {
+    await loadDemoLocale('en', false)
     await setViewport(DESKTOP_VIEWPORT.width, DESKTOP_VIEWPORT.height)
   })
 
@@ -194,29 +199,45 @@ describe('应用外壳（浏览器）：导航 collapsed state 不跨视口泄�
     await setViewport(DESKTOP_VIEWPORT.width, DESKTOP_VIEWPORT.height)
   })
 
-  it.each([
+  const toastCases = [
     { width: 1280, message: SHORT_TOAST_MESSAGE, multiline: false },
     { width: 1280, message: LONG_TOAST_MESSAGE, multiline: true },
     { width: 390, message: SHORT_TOAST_MESSAGE, multiline: false },
     { width: 390, message: LONG_TOAST_MESSAGE, multiline: true }
-  ])(
-    '$width px 下 top toast multiline=$multiline 时两个全局 select 上缘可点击',
-    async ({ width, message, multiline }) => {
+  ]
+  const toastStages = ['banner-visible', 'banner-closed', 'toast-cleared'] as const
+
+  it.each(toastCases.flatMap(testCase => toastStages.map(stage => ({ ...testCase, stage }))))(
+    '$width px 下 top toast multiline=$multiline、$stage 时两个全局 select 上缘可点击',
+    async ({ width, message, multiline, stage }) => {
+      const started = performance.now()
+      const stages: string[] = []
+      const mark = (step: string) => stages.push(`${step}: ${Math.round(performance.now() - started)}ms`)
+      onTestFailed(() => console.error(`top toast test stages: ${stages.join(', ')}`))
+
+      mark('set viewport')
       await setViewport(width, DESKTOP_VIEWPORT.height)
+      mark('mount shell')
       await mountAppShell()
+      mark('show toast')
       const toastElement = await persistentTopToast(message)
       const messageElement = toastElement.shadowRoot?.querySelector<HTMLElement>('.toast-message')
       if (!messageElement) throw new Error('toast message not found')
       const lineHeight = Number.parseFloat(getComputedStyle(messageElement).lineHeight)
       expect(messageElement.getBoundingClientRect().height > lineHeight * 1.5).toBe(multiline)
 
-      await clickGlobalSelectsAtTopEdge()
-      await clickBannerCloseButtonAtCenter()
-      await clickGlobalSelectsAtTopEdge()
-
-      toast.clear()
-      await vi.waitFor(() => expect(document.querySelector('[slot="banner"]')).toBeNull())
-      await clickGlobalSelectsAtTopEdge()
+      if (stage !== 'banner-visible') {
+        mark('close banner')
+        await clickBannerCloseButtonAtCenter()
+      }
+      if (stage === 'toast-cleared') {
+        mark('clear toast')
+        toast.clear()
+        await vi.waitFor(() => {
+          if (document.querySelector('[slot="banner"]')) throw new Error('banner did not close')
+        })
+      }
+      await clickGlobalSelectsAtTopEdge(mark)
     }
   )
 
@@ -328,39 +349,42 @@ describe('应用外壳（浏览器）：导航 collapsed state 不跨视口泄�
     })
 
     const shadowHost = document.createElement('div')
-    const shadowRoot = shadowHost.attachShadow({ mode: 'open' })
-    const nestedTheme = document.createElement('web-ui-theme') as WebUiTheme
-    const target = document.createElement('button')
-    nestedTheme.append(target)
-    shadowRoot.append(nestedTheme)
-    document.body.append(shadowHost)
-    await nestedTheme.updateComplete
-    await vi.waitFor(() => expect(document.querySelector('[slot="banner"]')).toBeNull())
+    try {
+      const shadowRoot = shadowHost.attachShadow({ mode: 'open' })
+      const nestedTheme = document.createElement('web-ui-theme') as WebUiTheme
+      const target = document.createElement('button')
+      nestedTheme.append(target)
+      shadowRoot.append(nestedTheme)
+      document.body.append(shadowHost)
+      await nestedTheme.updateComplete
+      await vi.waitFor(() => expect(document.querySelector('[slot="banner"]')).toBeNull())
 
-    nestedTheme.setAttribute('appearance', 'dark')
-    await nestedTheme.updateComplete
-    await vi.waitFor(() => expect(document.querySelector('[slot="banner"]')).toBeNull())
+      nestedTheme.setAttribute('appearance', 'dark')
+      await nestedTheme.updateComplete
+      await vi.waitFor(() => expect(document.querySelector('[slot="banner"]')).toBeNull())
 
-    toast.info('Persistent scoped toast for the banner test', {
-      id: 'vue-scoped-banner-close-regression',
-      duration: 0,
-      target
-    })
-    await vi.waitFor(() => {
-      if (!nestedTheme.getOverlayRoot()?.querySelector('web-ui-toast')) {
-        throw new Error('scoped toast did not mount in the nested theme')
-      }
-      const banner = document.querySelector<HTMLElement>('[slot="banner"]')
-      if (!banner || getComputedStyle(banner).visibility !== 'hidden') {
-        throw new Error('nested scoped toast did not reserve banner space')
-      }
-    })
+      toast.info('Persistent scoped toast for the banner test', {
+        id: 'vue-scoped-banner-close-regression',
+        duration: 0,
+        target
+      })
+      await vi.waitFor(() => {
+        if (!nestedTheme.getOverlayRoot()?.querySelector('web-ui-toast')) {
+          throw new Error('scoped toast did not mount in the nested theme')
+        }
+        const banner = document.querySelector<HTMLElement>('[slot="banner"]')
+        if (!banner || getComputedStyle(banner).visibility !== 'hidden') {
+          throw new Error('nested scoped toast did not reserve banner space')
+        }
+      })
 
-    toast.clear()
-    await vi.waitFor(() => {
-      if (nestedTheme.getOverlayRoot()?.querySelector('web-ui-toast')) throw new Error('scoped toast stayed mounted')
-    })
-    shadowHost.remove()
+      toast.clear()
+      await vi.waitFor(() => {
+        if (nestedTheme.getOverlayRoot()?.querySelector('web-ui-toast')) throw new Error('scoped toast stayed mounted')
+      })
+    } finally {
+      shadowHost.remove()
+    }
   })
 
   it('banner 关闭按钮桌面端靠右、移动端靠左', async () => {

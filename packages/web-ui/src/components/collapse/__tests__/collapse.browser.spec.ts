@@ -5,7 +5,7 @@ import '@/components/theme'
 import { afterEach, describe, expect, it } from 'vite-plus/test'
 import { page } from 'vite-plus/test/browser'
 
-import { afterRenderStep, pollUntil } from '@/shared/test-utils'
+import { afterRenderStep, pollUntil, waitForAnimationsToFinish } from '@/shared/test-utils'
 import { scrollElementTo } from '@/shared/test-utils/viewport'
 
 import type { WebUiCollapse } from '..'
@@ -31,16 +31,15 @@ function queryTrack(el: WebUiCollapse): HTMLElement {
   return el.shadowRoot!.querySelector<HTMLElement>('.wui-collapse-track')!
 }
 
-// 轮询确定性信号；预算与超时诊断由共享 pollUntil 承担（2000ms 的预算在
-// 并行跑全仓时被 CPU 竞争吃光过一次，属于假红而不是行为错）。
+// 目标 track 连续两次渲染步进空闲后才宣布收敛，中断或取消交由 WAAPI 完成语义处理。
 /*
  * 落稳态观察面用 Web Animations API，不读内部状态标记：
  * `getAnimations()` 对「有动效 vs 没有动效」有完全区分力，过渡跑完即为空集。
  * 不用 `transitionend`：同帧 close→reopen 会取消过渡（净样式无变化），事件不触发，
  * 而组件本身正确落稳态（实测），等待必须对中断路径健壮。
  */
-function settle(el: WebUiCollapse): Promise<void> {
-  return pollUntil(() => queryTrack(el).getAnimations().length === 0, 'collapse transition did not settle')
+async function settle(el: WebUiCollapse): Promise<void> {
+  if (!(await waitForAnimationsToFinish(queryTrack(el), 5000))) throw new Error('collapse transition did not settle')
 }
 
 afterEach(() => document.body.replaceChildren())

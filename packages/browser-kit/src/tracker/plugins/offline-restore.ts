@@ -10,10 +10,12 @@ import { on } from '@/shortcut'
 
 import type { PauseCapability } from '../capabilities'
 
+import { composeStop, type StopCapability } from './lifecycle'
+
 export function defineOfflineRestore() {
-  return definePlugin((ctx: PauseCapability) => {
+  return definePlugin((ctx: PauseCapability & Partial<StopCapability>) => {
     // SSR / 非浏览器环境无 navigator 与 window，插件空转，避免 ReferenceError
-    if (typeof window === 'undefined') return {}
+    if (typeof window === 'undefined') return { stop: composeStop(ctx.stop?.bind(ctx), () => {}) }
 
     if (!navigator.onLine) {
       ctx.pause()
@@ -35,6 +37,6 @@ export function defineOfflineRestore() {
       { signal }
     )
 
-    return {}
+    return { stop: composeStop(ctx.stop?.bind(ctx), () => controller.abort()) }
   })
 }

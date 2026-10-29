@@ -4,7 +4,7 @@ import { local } from '@greypan/browser-kit'
 import type { WebUiSelect, WebUiTheme } from '@greypan/web-ui'
 import { createHead } from '@unhead/vue/client'
 import { flushPromises, mount } from '@vue/test-utils'
-import { expect, it, vi } from 'vite-plus/test'
+import { beforeEach, expect, it, vi } from 'vite-plus/test'
 import { userEvent } from 'vite-plus/test/browser'
 import { nextTick } from 'vue'
 import { createMemoryHistory, createRouter } from 'vue-router'
@@ -60,7 +60,14 @@ async function select(label: string, value: string) {
   const trigger = host.shadowRoot!.querySelector<HTMLElement>('[role="combobox"]')!
   await userEvent.click(trigger)
   await vi.waitFor(() => expect(trigger.getAttribute('aria-expanded')).toBe('true'))
-  await userEvent.click(host.querySelector<HTMLElement>(`web-ui-option[value="${value}"]`)!)
+  const options = Array.from(host.querySelectorAll<HTMLElement>('web-ui-option'))
+  const optionIndex = options.findIndex(option => option.getAttribute('value') === value)
+  if (optionIndex < 0) throw new Error(`Option ${value} not found in ${label}`)
+  // 键盘路径验证选择器与应用的接线，不依赖选项入场过渡期间的命中几何。
+  await userEvent.keyboard('{Home}')
+  for (let index = 0; index < optionIndex; index += 1) await userEvent.keyboard('{ArrowDown}')
+  await vi.waitFor(() => expect(trigger.getAttribute('aria-activedescendant')).toBe(options[optionIndex].id))
+  await userEvent.keyboard('{Enter}')
   await vi.waitFor(() => expect(host.value).toBe(value))
   await nextTick()
 }
@@ -70,6 +77,10 @@ function textOf(html: string) {
   el.innerHTML = html
   return el.textContent
 }
+
+beforeEach(async () => {
+  await loadDemoLocale('en', false)
+})
 
 it('首页通过全局选择器切换壳文案，更新偏好并保留路由和主题', async () => {
   await loadDemoLocale('zh-CN', false)

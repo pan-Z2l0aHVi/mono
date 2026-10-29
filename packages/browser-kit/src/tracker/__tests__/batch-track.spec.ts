@@ -3,6 +3,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { defineTracker } from '../core'
 import { defineBatchTrack } from '../plugins/batch-track'
 
+import { expectAfterDispatch } from './dispatch-turn'
+
 /** 记录条目的 fake transport。批量断言只看 transport 收到什么，不关心怎么发出去。 */
 function createTransportStub() {
   const items: object[] = []
@@ -10,17 +12,6 @@ function createTransportStub() {
     items.push(item)
   })
   return { items, transport }
-}
-
-/**
- * 注入 fake transport 后队列调度只经过 microtask，自旋等待即可收敛，不依赖真实时间。
- * 上限兜底：未收敛时以超时信息失败，而不是挂到 vitest 的默认超时。
- */
-async function waitUntil(predicate: () => boolean, maxSpins = 1000): Promise<void> {
-  for (let spin = 0; spin < maxSpins && !predicate(); spin += 1) {
-    await Promise.resolve()
-  }
-  expect(predicate(), '等待队列调度收敛超时').toBe(true)
 }
 
 const deliveredCount = (transport: ReturnType<typeof createTransportStub>['transport']) =>
@@ -53,7 +44,7 @@ describe('defineBatchTrack 测试', () => {
     expect(transport).not.toHaveBeenCalled()
 
     vi.advanceTimersByTime(200)
-    await waitUntil(() => transport.mock.calls.length === 1)
+    await expectAfterDispatch(() => transport.mock.calls.length === 1)
 
     expect(transport.mock.calls[0][0]).toEqual([{ event: 'click' }, { event: 'view' }])
   })
@@ -65,7 +56,7 @@ describe('defineBatchTrack 测试', () => {
 
     tracker.track({ event: 'single' })
     vi.advanceTimersByTime(200)
-    await waitUntil(() => transport.mock.calls.length === 1)
+    await expectAfterDispatch(() => transport.mock.calls.length === 1)
 
     // 始终发数组：后端按一种格式解析，混发对象会让服务端分支漏掉单条事件
     expect(transport.mock.calls[0][0]).toEqual([{ event: 'single' }])
@@ -77,23 +68,23 @@ describe('defineBatchTrack 测试', () => {
       .make()
 
     tracker.track({ event: 'immediate' }, 0)
-    await waitUntil(() => transport.mock.calls.length === 1)
+    await expectAfterDispatch(() => transport.mock.calls.length === 1)
 
     expect(transport.mock.calls[0][0]).toEqual({ event: 'immediate' })
   })
 
-  it('defaultBatchDelay 为 0 时按 setTimeout(0) 逐次发送', async () => {
+  it('defaultBatchDelay 为 0 时逐条直发', async () => {
     const tracker = defineTracker({ url: 'https://example.com', transport })
       .use(defineBatchTrack({ defaultBatchDelay: 0 }))
       .make()
 
     tracker.track({ event: 'instant-1' })
-    vi.advanceTimersByTime(1)
-    await waitUntil(() => transport.mock.calls.length === 1)
+    expect(transport).toHaveBeenCalledTimes(1)
+    await expectAfterDispatch(() => transport.mock.calls.length === 1)
 
     tracker.track({ event: 'instant-2' })
-    vi.advanceTimersByTime(1)
-    await waitUntil(() => transport.mock.calls.length === 2)
+    expect(transport).toHaveBeenCalledTimes(2)
+    await expectAfterDispatch(() => transport.mock.calls.length === 2)
 
     expect(transport).toHaveBeenCalledTimes(2)
   })
@@ -119,7 +110,7 @@ describe('defineBatchTrack 测试', () => {
     tracker.track({ event: 'b' })
     tracker.track({ event: 'c' })
     vi.advanceTimersByTime(200)
-    await waitUntil(() => transport.mock.calls.length === 1)
+    await expectAfterDispatch(() => transport.mock.calls.length === 1)
 
     expect(transport.mock.calls[0][0]).toHaveLength(3)
   })
@@ -139,7 +130,7 @@ describe('defineBatchTrack 测试', () => {
     }
 
     vi.advanceTimersByTime(200)
-    await waitUntil(() => deliveredCount(transport) >= totalCount)
+    await expectAfterDispatch(() => deliveredCount(transport) >= totalCount)
 
     // 分片数 > 1 且累计条数守恒：sendBeacon 有 64KB 上限，
     // 静默截断会让用户行为数据静默丢失且不可见
@@ -157,7 +148,7 @@ describe('defineBatchTrack 测试', () => {
 
     tracker.track({ event: 'oversized', padding: 'x'.repeat(500) })
     vi.advanceTimersByTime(200)
-    await waitUntil(() => transport.mock.calls.length === 1)
+    await expectAfterDispatch(() => transport.mock.calls.length === 1)
 
     // 单条无法再切分；best-effort 投递优于丢事件或栈溢出
     expect(transport.mock.calls[0][0]).toEqual([{ event: 'oversized', padding: 'x'.repeat(500) }])
@@ -174,7 +165,7 @@ describe('defineBatchTrack 测试', () => {
 
     tracker.track({ event: 'click' })
     vi.advanceTimersByTime(200)
-    await waitUntil(() => transport.mock.calls.length === 1)
+    await expectAfterDispatch(() => transport.mock.calls.length === 1)
 
     // transform 拿到的输入是 batch-track 合并后的数组（不是逐条）：core 的
     // onConsume 只在最终载荷上跑一次 transform。写死成逐条会静默产出

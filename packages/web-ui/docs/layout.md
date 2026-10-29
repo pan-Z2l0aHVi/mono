@@ -3,7 +3,7 @@ component: layout
 tag: web-ui-layout
 ---
 
-Responsive page layout: an optional full-width banner, a collapsible sidebar on desktop, and a drawer by default on mobile. The page itself scrolls; once the banner scrolls out, the desktop sidebar and header stay fixed within the viewport.
+Responsive page layout: an optional full-width banner, a collapsible sidebar on desktop, and a drawer by default on mobile; set `no-sidebar` to drop the entire sidebar and keep the content-only layout. The page itself scrolls; once the banner scrolls out, the desktop sidebar and header stay fixed within the viewport.
 
 ## Samples
 
@@ -89,6 +89,52 @@ import { ref } from 'vue'
 
 const open = ref(false)
 </script>
+```
+
+### No sidebar
+
+`no-sidebar` removes the sidebar structure from the layout entirely: desktop has no aside or collapse Toggle, and narrow viewports have no header Toggle or Drawer either, leaving only the `banner` / `header` / default content / `tabbar` regions.
+
+The `sidebar` slot is no longer rendered, but consumer nodes stay in the light DOM; removing the attribute restores the previous layout.
+
+```tsx
+export default function Demo() {
+  return (
+    <div className="h-[420px] overflow-auto rounded-lg border border-(--wui-color-border)">
+      <web-ui-layout no-sidebar header-glow>
+        <div slot="header" className="flex items-center px-4 py-2 text-sm font-medium">
+          Header
+        </div>
+        <div className="p-4">
+          <p className="m-0 text-sm">
+            With no-sidebar there is no aside, Toggle, or Drawer, so the content column fills the row.
+          </p>
+          <div className="mt-3 h-[420px] rounded-md bg-(--wui-color-surface-control)" />
+        </div>
+        <div slot="tabbar" className="flex items-center justify-center px-4 py-2 text-xs">
+          Tabbar
+        </div>
+      </web-ui-layout>
+    </div>
+  )
+}
+```
+
+```vue
+<template>
+  <div class="h-[420px] overflow-auto rounded-lg border border-(--wui-color-border)">
+    <web-ui-layout no-sidebar header-glow>
+      <div slot="header" class="flex items-center px-4 py-2 text-sm font-medium">Header</div>
+      <div class="p-4">
+        <p class="m-0 text-sm">
+          With no-sidebar there is no aside, Toggle, or Drawer, so the content column fills the row.
+        </p>
+        <div class="mt-3 h-[420px] rounded-md bg-(--wui-color-surface-control)" />
+      </div>
+      <div slot="tabbar" class="flex items-center justify-center px-4 py-2 text-xs">Tabbar</div>
+    </web-ui-layout>
+  </div>
+</template>
 ```
 
 ### Collapsible sidebar
@@ -358,18 +404,19 @@ const mobile = ref(false)
 
 ### Props
 
-| Name                | Description                                                                                                                                                                                | Type               | Default   |
-| ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------ | --------- |
-| `sidebar-collapsed` | Controlled collapse state of the desktop sidebar; it only narrows the desktop side and does not affect the mobile Drawer.                                                                  | `boolean`          | `false`   |
-| `sidebar-open`      | Controlled open state of the mobile sidebar Drawer.                                                                                                                                        | `boolean`          | `false`   |
-| `header-glow`       | Shows a decorative glow behind the header slot content.                                                                                                                                    | `boolean`          | `false`   |
-| `ariaLabels`        | Grouped overrides for the built-in accessible names (sidebar collapse/expand, resize, open navigation menu, main navigation); keys without a value fall back to the built-in English copy. | `LayoutAriaLabels` | —         |
-| `mobile`            | Read-only derived value: whether the current viewport is at or below the mobile breakpoint; writing the attribute is reverted, and assigning the property has no effect.                   | `boolean`          | `false`   |
-| `sidebar-width`     | Sidebar width when expanded on desktop and mobile.                                                                                                                                         | `string`           | `'240px'` |
-| `collapsed-width`   | Sidebar width when collapsed on desktop.                                                                                                                                                   | `string`           | `'68px'`  |
-| `sidebar-resizable` | Enables drag resizing on the right edge of the desktop sidebar.                                                                                                                            | `boolean`          | `false`   |
-| `sidebar-min-width` | Lower bound (px) for drag resizing; falls back to `collapsed-width` by default.                                                                                                            | `string`           | —         |
-| `sidebar-max-width` | Upper bound (px) for drag resizing; clamped to half the viewport, with the built-in limit taking precedence.                                                                               | `string`           | —         |
+| Name                | Description                                                                                                                                                                                                                                              | Type               | Default   |
+| ------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------ | --------- |
+| `no-sidebar`        | Renders no sidebar structure: desktop aside, collapse Toggle and resize handle, mobile header Toggle and Drawer; the `sidebar` slot is no longer rendered.                                                                                               | `boolean`          | `false`   |
+| `sidebar-collapsed` | Controlled collapse state of the desktop sidebar; it only narrows the desktop side and does not affect the mobile Drawer.                                                                                                                                | `boolean`          | `false`   |
+| `sidebar-open`      | Controlled open state of the mobile sidebar Drawer.                                                                                                                                                                                                      | `boolean`          | `false`   |
+| `header-glow`       | Shows a decorative glow behind the header slot content.                                                                                                                                                                                                  | `boolean`          | `false`   |
+| `ariaLabels`        | Grouped overrides for the built-in accessible names (sidebar collapse/expand, resize, open navigation menu, main navigation); keys without a value fall back to the built-in English copy, and sidebar-related keys are not rendered under `no-sidebar`. | `LayoutAriaLabels` | —         |
+| `mobile`            | Read-only derived value: whether the current viewport is at or below the mobile breakpoint; writing the attribute is reverted, and assigning the property has no effect.                                                                                 | `boolean`          | `false`   |
+| `sidebar-width`     | Sidebar width when expanded on desktop and mobile.                                                                                                                                                                                                       | `string`           | `'240px'` |
+| `collapsed-width`   | Sidebar width when collapsed on desktop.                                                                                                                                                                                                                 | `string`           | `'68px'`  |
+| `sidebar-resizable` | Enables drag resizing on the right edge of the desktop sidebar.                                                                                                                                                                                          | `boolean`          | `false`   |
+| `sidebar-min-width` | Lower bound (px) for drag resizing; falls back to `collapsed-width` by default.                                                                                                                                                                          | `string`           | —         |
+| `sidebar-max-width` | Upper bound (px) for drag resizing; clamped to half the viewport, with the built-in limit taking precedence.                                                                                                                                             | `string`           | —         |
 
 ### Events
 
@@ -382,13 +429,13 @@ const mobile = ref(false)
 
 ### Slots
 
-| Name      | Description                                                                                                          |
-| --------- | -------------------------------------------------------------------------------------------------------------------- |
-| `banner`  | Optional full-width banner above the layout body.                                                                    |
-| `header`  | Sticky header of the content area.                                                                                   |
-| `sidebar` | Sidebar card content; the fixed region and the scroll container inside the desktop side are defined by the consumer. |
-| `default` | Main content area.                                                                                                   |
-| `tabbar`  | Bottom tabbar.                                                                                                       |
+| Name      | Description                                                                                                                                                 |
+| --------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `banner`  | Optional full-width banner above the layout body.                                                                                                           |
+| `header`  | Sticky header of the content area.                                                                                                                          |
+| `sidebar` | Sidebar card content; the fixed region and the scroll container inside the desktop side are defined by the consumer; not rendered when `no-sidebar` is set. |
+| `default` | Main content area.                                                                                                                                          |
+| `tabbar`  | Bottom tabbar.                                                                                                                                              |
 
 ### Mobile viewport state
 
@@ -415,6 +462,14 @@ layout re-renders itself in a microtask, so **a consumer that reacts on a macrot
 Both branches carry the same `sidebar` slot content, so a consumer whose sidebar content density follows that attribute must narrow the condition by `mobile` (for example `collapsed && !layout.mobile`, or CSS `web-ui-layout[mobile]`), otherwise the desktop collapse preference renders all the way into the Drawer.
 
 See issue #195.
+
+### Sidebar-less layout
+
+With `no-sidebar` set, desktop renders no aside, collapse Toggle, or resize handle, and mobile renders no header Toggle or Drawer; the `banner`, `header`, default content, and `tabbar` regions keep their layout and scrolling behavior, and the content column fills the row.
+
+The `sidebar` slot has no render outlet, while consumer nodes stay in the light DOM. In this mode `sidebar-collapsed`, `sidebar-open`, `sidebar-width`, and the other `sidebar-*` attributes and events have no visible effect; sidebar-related `ariaLabels` keys and CSS custom properties have no visible effect either.
+
+`mobile` and `mobile-change` still derive from the viewport as usual. Switching into this mode terminates an in-flight drag gesture and any uncommitted resize width, and removing the attribute returns to the layout governed by the `sidebar-*` attributes.
 
 ### Sidebar resizing
 

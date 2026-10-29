@@ -3,7 +3,7 @@ import '@/components/theme'
 
 import { afterEach, describe, expect, it } from 'vite-plus/test'
 
-import { pollUntil } from '@/shared/test-utils'
+import { pollUntil, waitForAnimationsToFinish } from '@/shared/test-utils'
 
 import type { WebUiDrawer } from '..'
 
@@ -13,7 +13,9 @@ async function waitForOpenTransition(el: WebUiDrawer) {
   if (!dialog) throw new Error('Expected the drawer to contain a dialog')
   await pollUntil(() => dialog.open, 'Expected the drawer dialog to open')
   await el.updateComplete
-  await Promise.allSettled(document.getAnimations().map(animation => animation.finished))
+  const roots = Array.from(document.querySelectorAll('web-ui-drawer')).flatMap(drawer => [drawer, getDialog(drawer)])
+  if (!(await waitForAnimationsToFinish(roots, 5000)))
+    throw new Error('Expected the nested drawer animations to settle')
   await el.updateComplete
 }
 
