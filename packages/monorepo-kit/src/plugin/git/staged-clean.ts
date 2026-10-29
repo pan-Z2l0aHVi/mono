@@ -1,10 +1,11 @@
 import fs from 'node:fs'
 import path from 'node:path'
 
-import { defineExec } from '../plugins/exec'
-import { defineGit } from '../plugins/git'
-import { defineToolchain, type ToolchainStep } from '../plugins/toolchain'
-import type { CheckUnit } from '../runner/check-runner'
+import type { CheckUnit } from '../../runner/check-runner'
+import { defineExec } from '../exec/exec'
+import { defineToolchain, type ToolchainStep } from '../toolchain/toolchain'
+
+import { defineGit } from './git'
 
 export interface StagedCleanOptions {
   /** 提交边界要过哪些命令，属于消费仓库的工具链事实 */

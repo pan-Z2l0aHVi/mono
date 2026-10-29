@@ -8,7 +8,7 @@
 
 2026-10-28 修订：门禁实现与仓库编排迁入 workspace 包 `@greypan/monorepo-kit`（ADR-0030），§5 目录树、§6 的共享位置与 §7 的测试发现规则已同步；`scripts/` 只剩入口与 Node 启动前的 bootstrap helper。
 
-2026-10-29 修订：`scripts/release/` 撤除，`publish-new-pack.sh` 并入 `scripts/workflow/`——一个文件的目录不再占一层执行面分类，§1 执行面表与 §5 目录树已同步。同一批里 `changeset-policy` 改名 `changeset-required`：这条门槛钉的是「PR 必须带有效声明」，`policy` 与旁边的 `changeset-status` 从名字上分不开。
+2026-10-29 修订：`scripts/release/` 撤除，`publish-new-pack.sh` 并入 `scripts/workflow/`——一个文件的目录不再占一层执行面分类，§1 执行面表与 §5 目录树已同步。同一批里 `changeset-policy` 改名 `changeset-required`：这条门槛钉的是「PR 必须带有效声明」，`policy` 与旁边的 `changeset-status` 从名字上分不开。`@greypan/monorepo-kit` 内部同时改为按能力竖切（ADR-0031 修订（二）），§6 的共享位置相应写作 `plugin/`，本 ADR 只管根 `scripts/`，没有目录要跟着改。
 
 ## 背景与取舍
 
@@ -110,7 +110,7 @@ scripts/
 
 2026-10-19 修订：本节的 Node 规则只约束检查门禁。其余脚本默认优先 POSIX `sh`，尤其是系统探测、依赖与环境处理、发布编排；只有结构化解析、代码生成、状态机或跨平台路径处理等复杂逻辑才用 Node。选择细则与跨运行时禁令见 [`docs/agents/scripts.md`](../agents/scripts.md#运行时选择)。
 
-- 检查统一使用 Node ESM。理由不是速度，而是可维护性：`JSON.parse` 替代 awk/sed 对 prettier 形状的解析，链接、git 与执行逻辑可以在 `@greypan/monorepo-kit` 的 `plugins/` 里共享，检查函数可以直接单测。Node 已由 mise 钉住，且在仓库中本来就是必需依赖；入口只启动一次，子进程继承同一工具链。
+- 检查统一使用 Node ESM。理由不是速度，而是可维护性：`JSON.parse` 替代 awk/sed 对 prettier 形状的解析，链接、git 与执行逻辑可以在 `@greypan/monorepo-kit` 的 `plugin/` 里共享，检查函数可以直接单测。Node 已由 mise 钉住，且在仓库中本来就是必需依赖；入口只启动一次，子进程继承同一工具链。
 - 不在 `sh` 里拼接执行 Node 源码，也不在 Node 里用 `sh -c` 或启动 `.sh` 辅助脚本完成本可由 argv 表达的工作。外部 CLI 以 argv 调用不属于拼接。
 - bootstrap 例外只来自 `.mise.toml` 在 Node 启动前求值的 `[env]` 模板；每个例外的等价实现、降级行为与测试要求以 `.mise.toml` 与 `docs/agents/worktree.md` 为准。
 - 不再新增 sh 检查；已有 sh 检查随迁移改写为 Node。

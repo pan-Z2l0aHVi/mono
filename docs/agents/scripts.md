@@ -11,7 +11,7 @@
 
 `scripts/lib/**` 只放 **Node 启动之前** 要跑的东西及其测试：`.mise.toml` 的 `[env]` 模板在 Node 可用前求值，`turbo-cache-dir.sh` 与 `go-cache-dir.sh` 是这条链路的唯一实现，同名测试跟着留在原处。它不是入口，也不再是通用的共享实现目录。
 
-门禁实现与仓库编排在 workspace 包 [`packages/monorepo-kit`](../../packages/monorepo-kit) 里：源码是 TypeScript，`build` 跑 `vp pack` 产出 `dist/`，门禁、CI 与 workspace 配置经包名读产物，新鲜度由根 `check-pre-commit` 的前置 build 与 CI 保证。包按 [ADR-0031](../adr/0031-monorepo-kit-generic-plugins.md) 收敛为能力（`plugins/`）、判定（`checks/`）、协议（`runner/`）与纯工具（`shared/`）。**本仓库的门禁事实住在根 `scripts/policies/`**：一个检查一个文件，导出配置好的检查实例，例如 `staged-clean.mjs` 里就是这个仓库提交边界要跑的工具链。判据是这段代码是否知道本仓库的名字、路径或数据：知道的是策略，放 `scripts/policies/`；不知道的才是包里的能力。跨 workspace 复用但不是编排事实的测试基建仍单独成包（对比 `@greypan/test-kit` 的 MSW 基建，它对消费方一无所知）。包边界与迁移理由见 [ADR-0030](../adr/0030-monorepo-tooling-package.md)，端口分配与多 worktree 偏移的具体约定见 [`build.md`](./build.md#测试端口分配)。往包里加模块要改模块本身与 `src/index.ts` 的导出，然后重新 build；包内测试放在模块旁的 `__tests__/`。
+门禁实现与仓库编排在 workspace 包 [`packages/monorepo-kit`](../../packages/monorepo-kit) 里：源码是 TypeScript，`build` 跑 `vp pack` 产出 `dist/`，门禁、CI 与 workspace 配置经包名读产物，新鲜度由根 `check-pre-commit` 的前置 build 与 CI 保证。包按 [ADR-0031](../adr/0031-monorepo-kit-generic-plugins.md) 分为能力竖切（`plugin/<能力>/`，能力插件与它承载的参数化判定同目录）、协议（`runner/`）与纯工具（`shared/`）。**本仓库的门禁事实住在根 `scripts/policies/`**：一个检查一个文件，导出配置好的检查实例，例如 `staged-clean.mjs` 里就是这个仓库提交边界要跑的工具链。判据是这段代码是否知道本仓库的名字、路径或数据：知道的是策略，放 `scripts/policies/`；不知道的才是包里的能力。跨 workspace 复用但不是编排事实的测试基建仍单独成包（对比 `@greypan/test-kit` 的 MSW 基建，它对消费方一无所知）。包边界与迁移理由见 [ADR-0030](../adr/0030-monorepo-tooling-package.md)，端口分配与多 worktree 偏移的具体约定见 [`build.md`](./build.md#测试端口分配)。往包里加模块要改模块本身与 `src/index.ts` 的导出，然后重新 build；包内测试放在所属能力目录的 `__tests__/`。
 
 ## 准入
 

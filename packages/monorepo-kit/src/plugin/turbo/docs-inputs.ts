@@ -1,9 +1,10 @@
 import fs from 'node:fs'
 import path from 'node:path'
 
-import { defineTurbo } from '../plugins/turbo'
-import type { CheckUnit } from '../runner/check-runner'
-import { byCodeUnit } from '../shared/order'
+import type { CheckUnit } from '../../runner/check-runner'
+import { byCodeUnit } from '../../shared/order'
+
+import { defineTurbo } from './turbo'
 
 // 文档语料住在被发布包里的仓库：那批示例 md 是 build 与 test 的真输入。根 turbo.json 的
 // `!**/*.md` 把这批 md 排掉，包级 turbo.json 必须重新纳入，并按名字排掉散文 md。本检查守两个

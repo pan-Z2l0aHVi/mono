@@ -3,7 +3,7 @@ import path from 'node:path'
 
 import { definePlugin } from '@greypan/js-kit'
 
-import { readJsonFile } from '../shared/config'
+import { readJsonFile } from '../../shared/config'
 
 export interface TurboContext {
   readonly root: string

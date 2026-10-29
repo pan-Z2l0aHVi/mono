@@ -6,7 +6,7 @@ import path from 'node:path'
 
 import { afterAll, it } from 'vite-plus/test'
 
-import type { ToolchainStep } from '../../plugins/toolchain'
+import type { ToolchainStep } from '../../toolchain/toolchain'
 import { defineStagedClean } from '../staged-clean'
 
 const root = fs.mkdtempSync(path.join(os.tmpdir(), 'greypan-staged-clean-'))

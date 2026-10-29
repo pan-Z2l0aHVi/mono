@@ -1,8 +1,8 @@
 import fs from 'node:fs'
 import path from 'node:path'
 
-import type { CheckUnit } from '../runner/check-runner'
-import { byCodeUnit } from '../shared/order'
+import type { CheckUnit } from '../../runner/check-runner'
+import { byCodeUnit } from '../../shared/order'
 
 // 指令面互指图守卫：只解析行内 Markdown `[label](target)` 链接，引用式 `[label][id]` 不纳入既定判据。
 // 扫描面、方向规则与上游件清单都是消费仓库的事实，经 options 传入；判据本身见

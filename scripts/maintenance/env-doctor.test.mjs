@@ -51,7 +51,7 @@ assert.equal(entry(runDoctor({ TURBO_CACHE_DIR: path.join(root, '.turbo') }), 't
 const expectedNodeLevel = process.version.replace(/^v/, '') === pinnedNode ? 'ok' : 'fail'
 assert.equal(entry(runDoctor({}), 'node-version').level, expectedNodeLevel)
 
-// git-hooks 的判定分支由 packages/monorepo-kit/src/checks/__tests__/git-hooks-status.spec.ts 覆盖；这里只钉住 env-doctor
+// git-hooks 的判定分支由 packages/monorepo-kit/src/plugin/git/__tests__/git-hooks-status.spec.ts 覆盖；这里只钉住 env-doctor
 // 把它接进了输出，避免测试里重复实现判定逻辑、变成自证式断言。
 assert.ok(['ok', 'warn', 'fail'].includes(entry(runDoctor({}), 'git-hooks').level))
 

@@ -1,5 +1,6 @@
-import { defineTurbo } from '../plugins/turbo'
-import type { CheckUnit } from '../runner/check-runner'
+import type { CheckUnit } from '../../runner/check-runner'
+
+import { defineTurbo } from './turbo'
 
 // Turbo cache 的正确性依赖三件事：test 先跑依赖包的 build，build 缓存恢复 dist/**，
 // 以及 test inputs 不显式把 gitignored 的 dist 拉进 key。任何一项被改掉，缓存命中就可能

@@ -6,6 +6,8 @@
 
 2026-10-29 修订（一）：能从仓库配置派生的常量不再手抄第二份。git hook 名单改由 `scripts/policies/git-hooks.mjs` 的 `versionedGitHooks(root)` 从 `.vite-hooks/` 现读，安装器与 `git-hooks-status` 共用同一份派生结果；workspace 容器目录改由包内叶子函数 `readPnpmWorkspaceDirectories(root)` 从 `pnpm-workspace.yaml` 的 `dir/**` 模式派生，`context-corpus`、`no-mutual-links`、`test-port-call-sites`、`env-doctor` 与 workflow 拓扑测试共用。§4 的实例统一经 `scripts/policies/repo-root.mjs` 按 `pnpm-workspace.yaml` 定位仓库根，不按目录深度写 `../..`。
 
+2026-10-29 修订（二）：§1 的「能力」与「判定」不再按横切面分成 `plugins/`、`checks/` 两个目录，而是按能力竖切成 `plugin/<能力>/`——一份判定与承载它的那份能力同住，读一个能力时不必在两个顶层目录之间来回。分区从四个减为三个，判据、导出面与检查协议都不变。
+
 ## 背景与取舍
 
 ADR-0030 把门禁实现与仓库编排收进 `@greypan/monorepo-kit`，解决了相对路径深度、测试归属与依赖边三个问题。但它的分区判据是「换仓库是否重写」，于是包里同时存在两种东西：`shared/` 里真正与仓库无关的工具，以及 `policy/`、`repo/` 里写着本仓路径、项目名、语料位置与端口表的策略。
@@ -16,19 +18,20 @@ ADR-0030 把门禁实现与仓库编排收进 `@greypan/monorepo-kit`，解决�
 
 ## 决策
 
-### 1. 包内四分区：能力、判定、协议、工具
+### 1. 包内三分区：能力竖切、协议、工具
 
 ```text
 packages/monorepo-kit/src/
-  plugins/   # 能力插件，defineXxx(options) → 可组合插件
-  checks/    # 检查单元，defineXxx(options) → { name, run }
-  runner/    # runChecks / runEntrypoint
-  shared/    # 与领域无关的纯函数：readJsonFile、排序
+  plugin/      # 一个能力一个目录：<能力>.ts 是插件，同目录的其余模块是它承载的检查单元
+  runner/      # runChecks / runEntrypoint
+  shared/      # 与领域无关的纯函数：readJsonFile、排序
 ```
 
 原先 `policy/`、`repo/` 两个分区取消。判据从「换仓库是否重写」改成一条更窄的：**这段代码是否知道本仓的任何名字、路径或数据**。知道的，去根 `scripts/policies/`；不知道的，留在包里。
 
 `shared/` 收缩成纯工具。`exec`、`git`、`workspace-manifests` 并入对应插件，`repo-root`（按 `pnpm-workspace.yaml` 向上定位仓库根）并入 workspace 插件——那是 pnpm 知识，不是通用文件工具。
+
+能力与判定也不按形态分家。检查单元不再住进顶层 `checks/`，而是进 `plugin/<能力>/`，与它依赖的那份能力同目录；目录名与 §2 的插件名一一对应。一份判定归谁的判据是**它的权威输入由谁拥有**，不是它 import 了几个能力：`docs-inputs` 读的是 `turbo.json` 的 `inputs`，归 `turbo`；`git-hooks-status` 读的是 `.vite-hooks/` 与 Git 配置，归 `git`。目录因此最多七个，不会出现没有插件、只为了放两三个函数而新造的目录。
 
 ### 2. 七个能力插件
 
@@ -99,7 +102,7 @@ scripts/
 
 - 包内测试改 `src/**/__tests__/*.spec.ts`，由 `vp test run` 执行，配一份 `tsconfig.vitest.json`。命名为 `.spec.ts` 与 `js-kit` 一致，也让测试进入类型检查。
 - `test` 仍不依赖 `build`：测试 import 源码。dist 的正确性由构建步骤与门禁自身的运行来兑现，不额外写「dist 可导入」的测试。
-- 包内不再有 `*.test.mjs`，`checks/script-tests.ts` 的 `exclude` 参数因此失去消费者。收尾切片删除该参数、对应测试断言，以及 ADR-0030 修订（五）。
+- 包内不再有 `*.test.mjs`，`plugin/exec/script-tests.ts` 的 `exclude` 参数因此失去消费者。收尾切片删除该参数、对应测试断言，以及 ADR-0030 修订（五）。
 
 ### 7. 增量迁移，垂直切片
 
@@ -136,7 +139,7 @@ scripts/
 ## 验收
 
 - `packages/monorepo-kit` 内不出现本仓的包名、应用路径、locale 列表、端口数据或语料路径；全部经 `defineXxx(options)` 由 `scripts/policies/` 传入。
-- 包内分区只剩 `plugins/`、`checks/`、`runner/`、`shared/`；`exports` 只有 `"."`，指向 dist。
+- 包内分区只剩 `plugin/`、`runner/`、`shared/`；`plugin/` 下每个目录对应 §2 的一个能力，插件与它的检查单元同目录；`exports` 只有 `"."`，指向 dist。
 - `packages/monorepo-kit` 的 `build` 产出 `dist/index.js` 与 `dist/index.d.ts`，`dist/` 被 gitignore。
 - 干净 clone 上 `pnpm install` 通过，不触发构建；`pnpm run check-pre-commit` 在无 dist 时先构建再判定。
 - `pnpm run check-pre-commit`、`check-policy`、`check-context`、`check-pack`、`check-changeset`、`check-go`、`test-scripts` 通过。

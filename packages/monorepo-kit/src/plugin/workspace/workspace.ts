@@ -4,8 +4,8 @@ import path from 'node:path'
 import { definePlugin } from '@greypan/js-kit'
 import { globSync } from 'glob'
 
-import { readJsonFile } from '../shared/config'
-import { byCodeUnit } from '../shared/order'
+import { readJsonFile } from '../../shared/config'
+import { byCodeUnit } from '../../shared/order'
 
 // 仓库根的唯一定义：向上查找 pnpm-workspace.yaml。
 // 按目录深度写 `../..` 在文件搬家时会静默指向别处——迁移期已经在这个维度上错过一次

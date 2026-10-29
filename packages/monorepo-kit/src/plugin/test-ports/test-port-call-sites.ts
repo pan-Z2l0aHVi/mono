@@ -3,9 +3,10 @@ import path from 'node:path'
 
 import { globSync } from 'glob'
 
-import { defineTestPorts } from '../plugins/test-ports'
-import type { CheckUnit } from '../runner/check-runner'
-import { byCodeUnit } from '../shared/order'
+import type { CheckUnit } from '../../runner/check-runner'
+import { byCodeUnit } from '../../shared/order'
+
+import { defineTestPorts } from './test-ports'
 
 // 端口表与调用点的一致性：分配在根配置里，调用散落在各 workspace 的 `vite.config.ts`。
 // 漏登记、改名后残留的调用或两个 project 抢同一段位都不会在运行时报错——只会悄悄落到相邻

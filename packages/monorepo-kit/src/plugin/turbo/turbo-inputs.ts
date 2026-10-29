@@ -2,9 +2,10 @@ import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 
-import { defineExec } from '../plugins/exec'
-import { defineTurbo } from '../plugins/turbo'
-import type { CheckUnit } from '../runner/check-runner'
+import type { CheckUnit } from '../../runner/check-runner'
+import { defineExec } from '../exec/exec'
+
+import { defineTurbo } from './turbo'
 
 // 包构建会读包目录之外的输入（工具链生成物、共享配置），它们的缓存键必须同时覆盖这些输入，
 // 又不能被文档与测试文件污染。本检查在隔离的 workspace 副本里跑 Turbo 的 `--dry=json`，

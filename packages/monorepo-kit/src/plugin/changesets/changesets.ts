@@ -2,10 +2,9 @@ import path from 'node:path'
 
 import { definePlugin } from '@greypan/js-kit'
 
-import { errorMessage } from '../shared/errors'
-
-import { defineExec } from './exec'
-import { defineGit } from './git'
+import { errorMessage } from '../../shared/errors'
+import { defineExec } from '../exec/exec'
+import { defineGit } from '../git/git'
 
 export interface ChangesetsOptions {
   /** changeset 目录，Changesets 的约定 */

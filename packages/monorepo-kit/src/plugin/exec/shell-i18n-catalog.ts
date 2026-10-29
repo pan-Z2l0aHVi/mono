@@ -2,8 +2,9 @@ import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 
-import { defineExec } from '../plugins/exec'
-import type { CheckUnit } from '../runner/check-runner'
+import type { CheckUnit } from '../../runner/check-runner'
+
+import { defineExec } from './exec'
 
 // React 与 Vue demo 的壳文案走 wuchale：中文是源语种，英文是 PO 里的译文。构建期的 wuchale 插件只按已有
 // PO 编译，不抽取新文案，所以「代码加了中文却没进语料」和「英文 msgstr 还空着」这两类静默降级

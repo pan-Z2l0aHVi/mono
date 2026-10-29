@@ -3,7 +3,7 @@ import path from 'node:path'
 
 import { definePlugin } from '@greypan/js-kit'
 
-import { findRepoRoot } from './workspace'
+import { findRepoRoot } from '../workspace/workspace'
 
 // 浏览器测试的 API 端口分配。谁占哪个段是本仓库的编排事实，数据在根 `monorepo.json`；
 // 这里只做读取、校验与偏移。

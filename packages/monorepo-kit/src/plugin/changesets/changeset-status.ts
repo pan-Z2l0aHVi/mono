@@ -1,5 +1,6 @@
-import { defineChangesets, type ChangesetsOptions } from '../plugins/changesets'
-import type { CheckUnit } from '../runner/check-runner'
+import type { CheckUnit } from '../../runner/check-runner'
+
+import { defineChangesets, type ChangesetsOptions } from './changesets'
 
 export function defineChangesetStatus(options: ChangesetsOptions = {}): CheckUnit {
   const changesets = defineChangesets(options)

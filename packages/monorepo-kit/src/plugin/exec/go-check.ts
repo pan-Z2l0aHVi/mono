@@ -1,9 +1,10 @@
 import fs from 'node:fs'
 import path from 'node:path'
 
-import { defineExec, type ExecResult } from '../plugins/exec'
-import type { CheckUnit } from '../runner/check-runner'
-import { byCodeUnit } from '../shared/order'
+import type { CheckUnit } from '../../runner/check-runner'
+import { byCodeUnit } from '../../shared/order'
+
+import { defineExec, type ExecResult } from './exec'
 
 // 仓库级 Go 静态检查：格式与 vet。工具失败必须非零退出——gofmt 在解析错误时
 // 可能 stdout 为空，不能只用 `gofmt -l | grep` 判断。

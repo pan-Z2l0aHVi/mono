@@ -1,7 +1,8 @@
-import { defineChangesets, type ChangesetsOptions } from '../plugins/changesets'
-import { defineGit } from '../plugins/git'
-import type { CheckUnit } from '../runner/check-runner'
-import { errorMessage } from '../shared/errors'
+import type { CheckUnit } from '../../runner/check-runner'
+import { errorMessage } from '../../shared/errors'
+import { defineGit } from '../git/git'
+
+import { defineChangesets, type ChangesetsOptions } from './changesets'
 
 // PR changeset requirement: compare committed PR head content with the merge base and read every
 // blob from head. Staged or unstaged changes are intentionally invisible to this check.

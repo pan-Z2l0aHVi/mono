@@ -1,9 +1,10 @@
 import fs from 'node:fs'
 import path from 'node:path'
 
-import { defineExec } from '../plugins/exec'
-import { defineWorkspace } from '../plugins/workspace'
-import type { CheckUnit } from '../runner/check-runner'
+import type { CheckUnit } from '../../runner/check-runner'
+import { defineExec } from '../exec/exec'
+
+import { defineWorkspace } from './workspace'
 
 /**
  * 本检查读到的 package.json 字段；其余字段不参与检查，保持 unknown。

@@ -3,9 +3,8 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { pathToFileURL } from 'node:url'
 
-import { listPnpmWorkspaceManifests, readPnpmWorkspacePatterns } from '../plugins/workspace'
-import type { CheckUnit } from '../runner/check-runner'
-import { byCodeUnit } from '../shared/order'
+import type { CheckUnit } from '../../runner/check-runner'
+import { byCodeUnit } from '../../shared/order'
 
 import {
   contentDigest,
@@ -20,6 +19,7 @@ import {
   scanVolatilePhrases,
   stripCodeSegments
 } from './context-invariants'
+import { listPnpmWorkspaceManifests, readPnpmWorkspacePatterns } from './workspace'
 
 // 指令文档语料的结构不变量。判据都在这里，语料根、workspace 目录、skill 出处、软链对应表与
 // commit scope 来源是消费仓库的事实，经 options 传入；组合点见 `docs/agents/agent-context.md`
