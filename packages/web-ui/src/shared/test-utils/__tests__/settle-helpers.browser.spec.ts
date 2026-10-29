@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it } from 'vite-plus/test'
+import { afterEach, describe, expect, it, vi } from 'vite-plus/test'
 
 import type { SettleExpectation } from '@/shared/test-utils'
 import { afterRenderStep, waitForAnimationsToFinish, waitForSettledLayout } from '@/shared/test-utils'
@@ -36,7 +36,10 @@ function expectInsideViewport(targets: ReadonlyArray<Element | null | undefined>
   }
 }
 
-afterEach(() => document.body.replaceChildren())
+afterEach(() => {
+  vi.restoreAllMocks()
+  document.body.replaceChildren()
+})
 
 /*
  * 等待原语自身的守卫。
@@ -118,7 +121,7 @@ describe('settle 等待原语（浏览器）', () => {
       animation.cancel()
     }
 
-    expect(message).toContain('animations were still running')
+    expect(message).toContain('stage=animations')
   })
 
   it('不要求稳定帧时，动画收敛信号是唯一守卫：耗尽预算仍然失败', async () => {
@@ -141,7 +144,7 @@ describe('settle 等待原语（浏览器）', () => {
       animation.cancel()
     }
 
-    expect(message).toContain('animations were still running')
+    expect(message).toContain('stage=animations')
   })
 
   it('一个可观察的根都没有时，等待动画也要抛错', async () => {
@@ -223,6 +226,35 @@ describe('settle 等待原语（浏览器）', () => {
     await transition
     expect(helperResolved).toBe(true)
     await animation.finished.catch(() => undefined)
+  })
+
+  it('打开过渡耗尽预算时不丢失失败信号', async () => {
+    const host = document.createElement('div')
+    document.body.append(host)
+    const panel = document.createElement('dialog')
+    host.attachShadow({ mode: 'open' }).append(panel)
+    const animation = panel.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 60_000, iterations: Infinity })
+    let now = 0
+    const clock = vi.spyOn(performance, 'now').mockImplementation(() => now)
+    let outcome = 'pending'
+    const waiting = waitForOpenTransition(host).then(
+      () => {
+        outcome = 'success'
+      },
+      error => {
+        outcome = error.message
+      }
+    )
+    try {
+      await Promise.resolve()
+      now = 5001
+      await afterRenderStep()
+      await waiting
+      expect(outcome).toContain('opening animations did not finish')
+    } finally {
+      clock.mockRestore()
+      animation.cancel()
+    }
   })
 
   it('panel 始终不出现时，waitForOpenTransition 带着读数报错', async () => {

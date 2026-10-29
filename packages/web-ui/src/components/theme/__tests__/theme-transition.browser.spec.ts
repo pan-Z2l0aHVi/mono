@@ -68,21 +68,18 @@ function wrapStartViewTransition() {
   const original = document.startViewTransition
   let transition: ViewTransition | undefined
   let skipCount = 0
-  const start = vi.fn<(update?: () => void | Promise<void>) => ViewTransition>(
-    (update?: () => void | Promise<void>) => {
-      transition = original.call(document, update)
-      const skip = transition.skipTransition.bind(transition)
-      Object.defineProperty(transition, 'skipTransition', {
-        configurable: true,
-        value: () => {
-          skipCount += 1
-          skip()
-        }
-      })
-      return transition
-    }
-  )
-  document.startViewTransition = start
+  const start = vi.spyOn(document, 'startViewTransition').mockImplementation(update => {
+    transition = original.call(document, update)
+    const skip = transition.skipTransition.bind(transition)
+    Object.defineProperty(transition, 'skipTransition', {
+      configurable: true,
+      value: () => {
+        skipCount += 1
+        skip()
+      }
+    })
+    return transition
+  })
   return {
     get current() {
       return transition
@@ -92,14 +89,12 @@ function wrapStartViewTransition() {
     },
     get skipCount() {
       return skipCount
-    },
-    restore() {
-      document.startViewTransition = original
     }
   }
 }
 
 afterEach(async () => {
+  vi.restoreAllMocks()
   window.dispatchEvent(new KeyboardEvent('keydown'))
   document.body.replaceChildren()
   await emulateColorScheme('light')
@@ -124,7 +119,6 @@ describe('theme transition（浏览器）', () => {
     expect(wrapper.current).toBeUndefined()
     expect(theme.appearance).toBe('system')
     expect(theme.resolvedAppearance).toBe('light')
-    wrapper.restore()
   })
 
   it('OS dark 下 light→system 使用 dark 扩大方向', async () => {
@@ -154,7 +148,6 @@ describe('theme transition（浏览器）', () => {
     expect(layerAbove('::view-transition-new(root)', '::view-transition-old(root)'), '揭示层应盖在旧快照上').toBe(true)
 
     await transition!.finished
-    wrapper.restore()
   })
 
   it('根主题在 ::view-transition-new(root) 上创建圆形揭示并在结束后清理', async () => {
@@ -225,7 +218,6 @@ describe('theme transition（浏览器）', () => {
     expect(document.adoptedStyleSheets.some(sheet => sheet.cssRules.length > 0)).toBe(false)
     expect(theme.style.getPropertyValue('view-transition-name')).toBe('')
     expect(theme.style.getPropertyValue('display')).toBe('')
-    wrapper.restore()
   })
 
   it('嵌套主题使用唯一 capture name 并只清理该飞行状态', async () => {
@@ -276,7 +268,6 @@ describe('theme transition（浏览器）', () => {
 
     expect(theme.style.getPropertyValue('view-transition-name')).toBe('')
     expect(theme.style.getPropertyValue('display')).toBe('')
-    wrapper.restore()
   })
 
   /*
@@ -322,7 +313,6 @@ describe('theme transition（浏览器）', () => {
     expect(content.getBoundingClientRect().width).toBe(before)
     expect(inner.style.getPropertyValue('width')).toBe('')
     expect(inner.style.getPropertyValue('display')).toBe('')
-    wrapper.restore()
   })
 
   it('pointermove 与 pointerup 不触发 skip，pointerdown 立即恢复 hit-test', async () => {
@@ -368,7 +358,6 @@ describe('theme transition（浏览器）', () => {
     expect(document.adoptedStyleSheets.some(sheet => sheet.cssRules.length > 0)).toBe(false)
     expect(theme.style.getPropertyValue('view-transition-name')).toBe('')
     expect(theme.style.getPropertyValue('display')).toBe('')
-    wrapper.restore()
   })
 
   it('wheel 立即触发 skip 并恢复 hit-test', async () => {
@@ -399,7 +388,6 @@ describe('theme transition（浏览器）', () => {
     expect(document.adoptedStyleSheets.some(sheet => sheet.cssRules.length > 0)).toBe(false)
     expect(theme.style.getPropertyValue('view-transition-name')).toBe('')
     expect(theme.style.getPropertyValue('display')).toBe('')
-    wrapper.restore()
   })
 
   /*
@@ -420,7 +408,6 @@ describe('theme transition（浏览器）', () => {
     await transition!.finished
 
     expect(theme.appearance).toBe('dark')
-    wrapper.restore()
   })
 
   it('motion=reduced 时不启动 View Transition，直接落地 appearance', async () => {
@@ -433,7 +420,5 @@ describe('theme transition（浏览器）', () => {
     expect(wrapper.count, 'reduced 档一次都不该启动 View Transition').toBe(0)
     expect(theme.appearance).toBe('dark')
     expect(theme.getAttribute('appearance')).toBe('dark')
-
-    wrapper.restore()
   })
 })

@@ -5,6 +5,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { defineComponent, nextTick } from 'vue'
 import { createMemoryHistory, createRouter, type Router } from 'vue-router'
 
+import { loadDemoLocale } from '@/i18n/locale'
+
 import AppShell from '../index.vue'
 
 // 必须与 `web-ui-layout` 的 `MOBILE_VIEWPORT_QUERY`（`components/layout/index.ts`）逐字相同：
@@ -140,7 +142,8 @@ async function requestCollapse(collapsed: boolean) {
 let setMediaMatches: (query: string, matches: boolean) => void
 
 describe('应用外壳：导航 collapsed state 不跨视口泄漏', () => {
-  beforeEach(() => {
+  beforeEach(async () => {
+    await loadDemoLocale('en', false)
     setMediaMatches = createMatchMediaStub()
     // jsdom 没有布局与 ResizeObserver；toast 尺寸变化由 browser spec 验证。
     vi.stubGlobal(

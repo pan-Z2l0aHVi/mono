@@ -399,29 +399,33 @@ export async function waitForFrame(): Promise<void> {
   await new Promise(resolve => requestAnimationFrame(resolve))
 }
 
-/**
- * 等「一个渲染步进真的过去了」，而不只是等 rAF 回调被调用。
- *
- * 差别是 ResizeObserver：它在渲染步进里、**rAF 回调之后**投递通知。
- * 因此 `await waitForFrame()` 返回时，那一批尺寸回调可能一个都还没派发，
- * 组件按尺寸写回的让位量此刻还没进布局——这正是「连续两帧读数相同」证明不了
- * 「已经就位」的机制来源：两帧读到的都是**旧**值。
- *
- * rAF 之后再让出一个宏任务，该宏任务只可能在步进（含 ResizeObserver 投递）
- * 结束后才被调度，于是它返回时样式计算、布局与本批尺寸回调都已落地。
- * 这是 settle / poll 系 helper 的统一底座。
- */
+/** 让出一次 rAF 及其后的 task；只代表该次渲染步进，不代表任意异步工作已完成。 */
 export async function afterRenderStep(): Promise<void> {
-  await new Promise<void>(resolve => requestAnimationFrame(() => setTimeout(resolve, 0)))
+  await renderStepUntil(Infinity)
 }
 
-/**
- * 两个矩形是否逐边相等（精度与既有 spec 的 settleGeometry 同口径）。
- *
- * 容差 0.01px 不是随手取的：`getBoundingClientRect()` 返回的是 LayoutUnit 量化值，
- * 同一几何在不同引擎/不同缩放下能差一个 1/64 px。零容差会把「同一个盒子」判成
- * 「还在动」。
- */
+export async function renderStepUntil(deadline: number): Promise<boolean> {
+  if (performance.now() >= deadline) return false
+  return new Promise(resolve => {
+    let done = false
+    let frame = 0
+    let task: ReturnType<typeof setTimeout> | undefined
+    let watchdog: ReturnType<typeof setTimeout> | undefined
+    const finish = (completed: boolean) => {
+      if (done) return
+      done = true
+      cancelAnimationFrame(frame)
+      clearTimeout(task)
+      clearTimeout(watchdog)
+      resolve(completed)
+    }
+    if (Number.isFinite(deadline)) watchdog = setTimeout(() => finish(false), deadline - performance.now())
+    frame = requestAnimationFrame(() => {
+      task = setTimeout(() => finish(performance.now() < deadline), 0)
+    })
+  })
+}
+
 function rectsEqual(a: DOMRect, b: DOMRect): boolean {
   return (
     Math.abs(a.top - b.top) < 0.01 &&
@@ -431,274 +435,242 @@ function rectsEqual(a: DOMRect, b: DOMRect): boolean {
   )
 }
 
-/**
- * 等元素上正在跑的过渡 / 动画真的结束。
- *
- * 为什么不能只等「矩形两次取样相等」：过渡进度只在渲染步进（update the rendering）里
- * 推进，而 `getBoundingClientRect()` 触发的强制样式重算**不**推进它。于是负载下
- * 「连续两次取样相等」既可能表示已经定版，也可能表示过渡还没起跑——后者量到的是
- * 过渡前那一帧的矩形，元素可能整个还在视口外。CI 上 drawer 的那几条 flaky 正是
- * 这个形态：胶囊坐标落在视口上方，`elementFromPoint` 返回 null。
- *
- * 为什么这里**不在第一次读到空集合时直接返回**：空集合有三种来源——已跑完、从未起跑、
- * 以及「这一帧还没跑到」。第三种与第一种在读数上无法区分，所以「读到空」不等于
- * 「已稳定」。本实现要求**连续两个渲染步进**都读到空才返回：
- * - 第一次取样之前先让出一个完整渲染步进，已排下但尚未提交的 class 变更此刻才被计算，
- *   过渡对象也才存在（处在 `delay` 中的过渡同样在集合里）；
- * - 若某个 ResizeObserver 回调或另一段脚本在第一个空步进之后又起了一个过渡，
- *   第二个步进会读到它，计数器归零重来。
- *
- * 于是「确实没动画、不必等」这条快路径在**本函数里根本不存在**——每次调用至少花掉两个
- * 渲染步进。调用方自己确知没有动画、想省掉这两个步进的话，直接跳过本函数即可
- * （不要拿「第一次读到空」当跳过的判据）。
- *
- * 取多个根而不是单个元素：只查调用方给的**第一个** target 时，其余 target 上的动画
- * 一概看不到（`getAnimations({subtree:true})` 覆盖自身与后代，但不覆盖祖先，也不覆盖
- * 与第一个 target 互不为祖先/后代的兄弟节点）。`finished` 在动画被取消时会 reject，
- * 这里吞掉——取消意味着「它不再跑了」，正是本函数要等到的状态，不该变成一次未处理的
- * rejection。
- *
- * 返回值是**是否真的收敛**：预算耗尽时仍有动画在跑会返回 `false`，而不是把
- * 「没等到」说成「已稳定」。低层调用方可以自己决定拿这个信号怎么办，但必须拿得到
- * ——`waitForSettledLayout` 就是靠它拒绝在过渡中途取样的。与 `pollUntil` 的取向
- * 也一致：后者是「轮询一个明确的期待值」，那里超时必须抛。
- *
- * **一个可观察的根都没有时抛错**，不静默返回。这正是本函数要消灭的形态：
- * 「什么都没读到」与「已经稳定」在读数上无法区分，而调用方写下这行时想的是
- * 「等这些元素上的动画收敛」。`Array.isArray` 的判据是刻意的（类型签名只收
- * `Element` 或真数组），所以 NodeList / HTMLCollection / `arguments` 会被包成
- * `[roots]` 再被过滤成空——这正是「误传类数组 ⇒ 安静宣布稳定」的入口，
- * 它会带着可读的报错停下来，调用点必须传元素而不是类数组。
- */
+function connectedRoots(roots: Element | ReadonlyArray<Element | null | undefined>): Element[] {
+  const passed = Array.isArray(roots) ? roots : [roots]
+  const observed = passed.filter((root): root is Element => !!root && root.isConnected)
+  if (observed.length === 0) {
+    throw new Error(`waitForAnimationsToFinish: no connected root to observe (${passed.length} passed, 0 connected)`)
+  }
+  return observed
+}
+
+/** 两个连续渲染步进均无未完成动画才成功；预算耗尽返回 false。 */
 export async function waitForAnimationsToFinish(
   roots: Element | ReadonlyArray<Element | null | undefined>,
   timeoutMs = 5000
 ): Promise<boolean> {
-  const observed = (Array.isArray(roots) ? roots : [roots]).filter(
-    (root): root is Element => !!root && root.isConnected
-  )
-  if (observed.length === 0) {
-    const passed = Array.isArray(roots) ? roots.length : 1
-    throw new Error(
-      `waitForAnimationsToFinish: no connected root to observe (${passed} passed, 0 connected). ` +
-        'Pass Elements rather than a NodeList/HTMLCollection, and make sure the target is mounted.'
-    )
-  }
-
-  const deadline = performance.now() + timeoutMs
-  const idleFramesRequired = 2
-  let idleFrames = 0
-
-  while (performance.now() < deadline) {
-    // 完整渲染步进：样式计算 + 布局 + ResizeObserver 投递都过去了才取样。
-    await afterRenderStep()
-
-    const running = new Set<Animation>()
-    for (const root of observed) for (const animation of root.getAnimations({ subtree: true })) running.add(animation)
-
-    if (running.size === 0) {
-      if (++idleFrames >= idleFramesRequired) return true
-      continue
-    }
-
-    idleFrames = 0
-    const remaining = deadline - performance.now()
-    await Promise.race([
-      Promise.all([...running].map(animation => animation.finished.catch(() => undefined))),
-      new Promise(resolve => setTimeout(resolve, Math.max(remaining, 0)))
-    ])
-  }
-
-  // 走到这里说明预算先耗尽了——循环从未攒够 `idleFramesRequired` 个空闲步进。
-  // 最后取一次样只为区分两件事：此刻仍有动画在跑（没等到，返回 false），还是
-  // 只是没来得及凑满两帧（此时动画确实已经不在，取样足够支撑调用方的判断）。
-  for (const root of observed) {
-    if (root.getAnimations({ subtree: true }).length > 0) return false
-  }
-  return true
+  return animationsUntil(connectedRoots(roots), performance.now() + timeoutMs)
 }
 
-/**
- * 抽干一次 ResizeObserver 批次。
- *
- * 组件把尺寸写回宿主样式走的是 ResizeObserver（如 drawer 的 header / footer 让位量）。
- * 那一步移动的是**另一个盒子**：量 dialog 矩形量不到它，所以「dialog 矩形稳定了」
- * 推不出让位量已生效。用一个新观察者观察这些目标并等一次回调即可——更早注册的
- * 观察者（组件的共享实例）在同一批次里先派发，本回调触发时它已经跑完。
- * ResizeObserver 在开始观察时必定投递一次初始观测，所以这条等待不会因为
- * 「之后没有尺寸变化」而空转到超时。
- *
- * `timeoutMs` 必须是**本函数自己那份预算**，不能是调用方 deadline 的余量：那个
- * `setTimeout(finish, timeoutMs)` 兜底是「页面不再渲染时不能死等」的唯一出口，
- * 余量很小的话它会先于 RO 的初始投递触发，于是本函数假装排干了就返回——把这次
- * 改动要消灭的「超时即通过」原样搬到下一层。调用方的总预算由它自己的 deadline 管。
- *
- * 末尾那一步让写回的样式进布局，它同样在兜底之内：隐藏 / 被遮挡的文档里 rAF 不
- * 触发，所以它与 `timeoutMs` 对跑，而不是无条件等待。
- */
+interface AnimationWaitState {
+  waitingFor: 'render-step'
+  renderSteps: number
+  lastRenderMs: number
+  maxRenderMs: number
+  lastAnimationEnumeration: { enumeratedAt: number; total: number; animations: Animation[] } | null
+}
+
+const ANIMATION_DIAGNOSTIC_LIMIT = 12
+
+function animationWaitState(): AnimationWaitState {
+  return {
+    waitingFor: 'render-step',
+    renderSteps: 0,
+    lastRenderMs: 0,
+    maxRenderMs: 0,
+    lastAnimationEnumeration: null
+  }
+}
+
+function describeAnimationWait(state: AnimationWaitState): string {
+  try {
+    return JSON.stringify({
+      ...state,
+      visibility: document.visibilityState,
+      lastAnimationEnumeration: state.lastAnimationEnumeration
+        ? {
+            enumeratedAt: state.lastAnimationEnumeration.enumeratedAt,
+            diagnosticsCapturedAt: performance.now(),
+            total: state.lastAnimationEnumeration.total,
+            included: state.lastAnimationEnumeration.animations.length,
+            truncated: state.lastAnimationEnumeration.total - state.lastAnimationEnumeration.animations.length,
+            animations: state.lastAnimationEnumeration.animations.map(animation => {
+              const effect = animation.effect as KeyframeEffect | null
+              const timing = effect?.getComputedTiming()
+              return {
+                playState: animation.playState,
+                pending: animation.pending,
+                currentTime: String(animation.currentTime),
+                startTime: String(animation.startTime),
+                timelineTime: String(animation.timeline?.currentTime),
+                target: effect?.target?.tagName,
+                targetClass: effect?.target?.getAttribute('class'),
+                pseudoElement: effect?.pseudoElement,
+                transitionProperty: 'transitionProperty' in animation ? animation.transitionProperty : undefined,
+                duration: String(timing?.duration),
+                endTime: String(timing?.endTime),
+                progress: timing?.progress
+              }
+            })
+          }
+        : null
+    })
+  } catch {
+    return '<animation diagnostics failed>'
+  }
+}
+
+async function animationsUntil(
+  observed: readonly Element[],
+  deadline: number,
+  state = animationWaitState()
+): Promise<boolean> {
+  let idleFrames = 0
+  while (true) {
+    state.waitingFor = 'render-step'
+    const started = performance.now()
+    const rendered = await renderStepUntil(deadline)
+    state.lastRenderMs = Math.round(performance.now() - started)
+    state.maxRenderMs = Math.max(state.maxRenderMs, state.lastRenderMs)
+    if (!rendered) return false
+    state.renderSteps++
+    if (observed.some(root => !root.isConnected)) throw new Error('observed target disconnected during animation wait')
+    const running = new Set(
+      observed
+        .flatMap(root => root.getAnimations({ subtree: true }))
+        .filter(animation => animation.playState !== 'finished' && animation.playState !== 'idle')
+    )
+    state.lastAnimationEnumeration = {
+      enumeratedAt: performance.now(),
+      total: running.size,
+      animations: [...running].slice(0, ANIMATION_DIAGNOSTIC_LIMIT)
+    }
+    if (running.size === 0) {
+      if (++idleFrames === 2) return true
+      continue
+    }
+    idleFrames = 0
+    // 逐次渲染读取实际状态；完成通知的投递不决定视觉动画是否已经结束。
+  }
+}
+
+/** 等待目标的初始 RO 投递及其后一次渲染步进；缺少投递时失败，不能宣称已排干。 */
 export async function drainResizeObserver(
   targets: ReadonlyArray<Element | null | undefined>,
   timeoutMs = 5000
 ): Promise<void> {
   const observed = targets.filter((target): target is Element => !!target && target.isConnected)
   if (observed.length === 0) return
-  const deadline = performance.now() + timeoutMs
-  await new Promise<void>(resolve => {
-    let done = false
-    const finish = () => {
-      if (done) return
-      done = true
-      observer.disconnect()
-      resolve()
-    }
-    const observer = new ResizeObserver(finish)
-    for (const target of observed) observer.observe(target, { box: 'border-box' })
-    // 观察者只在渲染步进里派发；页面完全不再渲染时不能死等。
-    setTimeout(finish, timeoutMs)
-  })
-  // 观察者回调里写回的样式要再过一个渲染步进才进布局；rAF 在隐藏文档里不触发，
-  // 所以同样与 deadline 对跑。
-  await Promise.race([
-    afterRenderStep(),
-    new Promise(resolve => setTimeout(resolve, Math.max(deadline - performance.now(), 0)))
-  ])
+  await resizeObserverUntil(observed, performance.now() + timeoutMs)
 }
 
-/** `waitForSettledLayout` / `pollUntil` 的期待条件与诊断。 */
+async function resizeObserverUntil(observed: readonly Element[], deadline: number): Promise<void> {
+  const failure = () => new Error('ResizeObserver did not deliver before the deadline')
+  await new Promise<void>((resolve, reject) => {
+    const observer = new ResizeObserver(() => {
+      observer.disconnect()
+      clearTimeout(timer)
+      if (observed.some(root => !root.isConnected)) reject(new Error('observed target disconnected during RO wait'))
+      else resolve()
+    })
+    const timer = setTimeout(
+      () => {
+        observer.disconnect()
+        reject(failure())
+      },
+      Math.max(0, deadline - performance.now())
+    )
+    try {
+      for (const target of observed) observer.observe(target, { box: 'border-box' })
+    } catch (error) {
+      observer.disconnect()
+      clearTimeout(timer)
+      reject(error)
+    }
+  })
+  if (!(await renderStepUntil(deadline))) throw failure()
+}
+
 export interface SettleExpectation {
-  /** 期待值是否已到位。到位之前不进入帧驱动收尾。 */
   readonly check: () => boolean
-  /** 期待值的当前读数，写进超时诊断——「读数停在 X」比「超时了」有用得多。 */
   readonly describe?: () => string
 }
 
-/**
- * 等矩定版：命中测试 / 几何断言取样前的前提。
- *
- * **期待驱动为主，帧驱动兜底。** 两段各管一件不同的事：
- *
- * 1. 期待驱动：给了 `expect` 就先等它成立。这是唯一能区分「已经就位」与
- *    「还没开始动」的信号——「连续两帧读数相同」在视口没生效、滚动没落定、
- *    定位还没写回时同样成立，两帧读到的都是同一个**旧**值。
- * 2. 帧驱动兜底：过渡确实结束（`waitForAnimationsToFinish`，内部要求连续两个
- *    渲染步进都没有动画）、ResizeObserver 批次已投递、随后连续 `stableFrames`
- *    个渲染步进里所有 targets 的矩形逐边相等。
- *
- * 顺序是因果链，不是「多睡几帧」：
- *   1. 等期待值到位（可选）；
- *   2. 等过渡跑完（否则量到的是动画中途、甚至动画尚未起跑那一帧的盒子）；
- *   3. 抽干 ResizeObserver（否则由尺寸写回的让位量还没生效）；
- *   4. 连续 `stableFrames` 个渲染步进里矩形逐边相等才算定版。
- *
- * 第 4 步单独不够（它正是既有 flaky 的来源），但作为收尾仍然必要——前两步保证
- * 「不会再变」，它保证「已经变了的那一次也量到了」。
- *
- * **期待值先于「没有可量的目标」这条快路径。** 目标没挂上 / 被换掉时，「没有可量的
- * 目标」与「已经定版」在读数上完全一样，而前者会直接毁掉本函数的用途：调用方写下
- * `expect: expectInsideViewport(targets)` 恰恰是在说「这些东西到位之前不许往下走」。
- * 所以顺序固定为：先等期待值 → 再取一次已连接目标 → 取不到就抛错。
- *
- * 目标清单因此在期待值之后**重新取一次**而不是复用进入函数时那份快照：期待值本身
- * 就可能在等挂载，而快照会把「等待期间才连上的元素」永远算成缺失。
- */
+/** 先等目标条件，再等动画、RO 和连续稳定矩形。所有阶段共享一个失败预算。 */
 export async function waitForSettledLayout(
   targets: ReadonlyArray<Element | null | undefined>,
   options: { stableFrames?: number; timeoutMs?: number; expect?: SettleExpectation } = {}
 ): Promise<void> {
   const { stableFrames = 2, timeoutMs = 5000, expect } = options
-  const deadline = performance.now() + timeoutMs
   const startedAt = performance.now()
-
-  const diagnose = (stage: string) => {
-    const reading = expect?.describe?.() ?? 'n/a'
-    return (
-      `waitForSettledLayout: ${stage} after ${Math.round(performance.now() - startedAt)}ms ` +
-      `(budget ${timeoutMs}ms, expectation=${reading})`
-    )
+  const deadline = startedAt + timeoutMs
+  let stage = 'expectation'
+  let stageStartedAt = startedAt
+  const phases: string[] = []
+  const enter = (next: string) => {
+    const now = performance.now()
+    phases.push(`${stage}=${Math.round(now - stageStartedAt)}ms`)
+    stageStartedAt = now
+    stage = next
   }
-
-  if (expect) {
-    while (!expect.check()) {
-      if (performance.now() >= deadline) throw new Error(diagnose('expectation never became true'))
-      await afterRenderStep()
+  const failure = (detail: string, cause?: unknown) => {
+    let description = 'n/a'
+    try {
+      description = expect?.describe?.() ?? description
+    } catch {
+      description = '<describe failed>'
     }
-  }
-
-  // 期待值之后重取：挂载可能就发生在刚才那段等待里。
-  const observed = targets.filter((target): target is Element => !!target && target.isConnected)
-  if (observed.length === 0) {
-    throw new Error(
-      diagnose(
-        `no connected target to settle (${targets.length} passed, 0 connected — ` +
-          'a target that is not mounted yet is not a settled target)'
-      )
+    return new Error(
+      `waitForSettledLayout: ${detail} after ${Math.round(performance.now() - startedAt)}ms ` +
+        `(budget ${timeoutMs}ms, stage=${stage}, phases=${phases.join(',')}, expectation=${description})`,
+      { cause }
     )
   }
-
-  // 各步拿的是**总预算**，不是 deadline 的余量：期待条件若吃光了预算，后面两步会拿到 0
-  // 而各自静默返回，等于把「什么都没等到」伪装成「已经排干」。余量只用来决定何时抛错——
-  // 那是下面稳定帧循环的职责，它带着读数诊断。
-  //
-  // 动画那一步的返回值在这里是承重的：false 表示预算耗尽时过渡仍在跑，此时继续往下
-  // 量到的就是动画中途的盒子——「超时即通过」正是本模块要消灭的形态。
-  const animationsSettled = await waitForAnimationsToFinish(observed, timeoutMs)
-  if (!animationsSettled) {
-    throw new Error(diagnose(`animations were still running when the ${timeoutMs}ms budget ran out`))
+  const step = async () => {
+    if (!(await renderStepUntil(deadline))) throw failure('render step did not complete')
   }
-  await drainResizeObserver(observed, timeoutMs)
-
-  await Promise.race([
-    afterRenderStep(),
-    new Promise(resolve => setTimeout(resolve, Math.max(deadline - performance.now(), 0)))
-  ])
+  if (expect) while (!expect.check()) await step()
+  const observed = targets.filter((target): target is Element => !!target && target.isConnected)
+  if (!observed.length) throw failure(`no connected target to settle (${targets.length} passed, 0 connected)`)
+  enter('animations')
+  const animationState = animationWaitState()
+  try {
+    if (!(await animationsUntil(observed, deadline, animationState))) {
+      throw new Error(`animations did not settle: ${describeAnimationWait(animationState)}`)
+    }
+  } catch (error) {
+    throw failure(error instanceof Error ? error.message : String(error), error)
+  }
+  enter('resize-observer')
+  try {
+    await resizeObserverUntil(observed, deadline)
+  } catch (error) {
+    throw failure(error instanceof Error ? error.message : String(error), error)
+  }
+  enter('stable-frames')
+  if (expect) while (!expect.check()) await step()
+  if (observed.some(target => !target.isConnected)) throw failure('observed target disconnected')
   let previous = observed.map(target => target.getBoundingClientRect())
   let stable = 0
   while (stable < stableFrames) {
-    if (performance.now() >= deadline) {
-      throw new Error(diagnose(`layout did not settle within ${timeoutMs}ms`))
-    }
-    await afterRenderStep()
+    await step()
+    if (observed.some(target => !target.isConnected)) throw failure('observed target disconnected')
     const current = observed.map(target => target.getBoundingClientRect())
-    stable = current.every((rect, index) => rectsEqual(rect, previous[index])) ? stable + 1 : 0
+    stable =
+      (!expect || expect.check()) && current.every((rect, index) => rectsEqual(rect, previous[index])) ? stable + 1 : 0
     previous = current
   }
 }
 
-/**
- * 轮询到期待值成立为止，用于消费 MutationObserver / presence 过渡的异步链路。
- *
- * 每轮让出的是**一个完整渲染步进**而不是裸 rAF：ResizeObserver 与
- * MutationObserver 都在渲染步进里投递，裸 rAF 只保证回调被调用过，
- * 不保证这一批通知已经送到。
- *
- * 预算默认 5s（原 2s）。轮询的进度单位是**帧**，而帧在负载下会被拉长：
- * 2s 的墙钟预算在繁忙的 CI 上只够跑十几帧，期待值需要的帧数一旦超过它，
- * 「等到了但被判超时」就会以随机的方式红。放宽的是等待预算，不是断言——
- * 条件不成立时仍然会红，只是红得更晚一点、诊断里带着帧数与最终读数。
- * 等待对象本身带较长延迟（如 spec 自定义的 SHOW_DELAY）时可显式传入更大预算。
- *
- * `message` 收函数是有意的：诊断里带上期待值的**当前读数**，
- * 「读数停在 952」比「超时了」有用得多。
- */
+/** 轮询目标条件；预算覆盖每个渲染步进，超时包含最后读数。 */
 export async function pollUntil(
   check: () => boolean,
   message: string | (() => string),
   timeoutMs = 5000
 ): Promise<void> {
-  const describe = typeof message === 'function' ? message : () => message
-  const deadline = performance.now() + timeoutMs
   const startedAt = performance.now()
+  const deadline = startedAt + timeoutMs
   let frames = 0
-  while (performance.now() < deadline) {
-    if (check()) return
-    await afterRenderStep()
-    frames += 1
+  while (!check()) {
+    if (!(await renderStepUntil(deadline))) {
+      if (check()) return
+      const reading = typeof message === 'function' ? message() : message
+      throw new Error(
+        `${reading} (waited ${Math.round(performance.now() - startedAt)}ms / ${frames} render steps, budget ${timeoutMs}ms)`
+      )
+    }
+    frames++
   }
-  // 最后一轮：预算正好在条件成立的那一步耗尽时不该误报。
-  if (check()) return
-  throw new Error(
-    `${describe()} (waited ${Math.round(performance.now() - startedAt)}ms / ${frames} render steps, budget ${timeoutMs}ms)`
-  )
 }
 
 /**

@@ -16,6 +16,8 @@ GitHub `pull_request` 的 CI 默认 checkout 是 base/head 的临时合并对象
 
 检查需求和验收是否实现、行为与失败路径、公共契约、兼容性、测试质量、权限与用户输入安全、竞态、资源管理，以及文档与机检的一致性。指令或 context 改动另核四问：这段是稳定不变量还是外部状态快照？这个 concern 是否只有一个权威？这个 chunk 单独被检索时是否自包含？是否写入了会漂移的命令、路径、版本或实现清单？对每个发现给 `Block`、`Should fix` 或 `Nit`，并列当前文件行、影响、复现条件和证据。Block 未处理时不能给可合并结论；Should fix 若不修，须由维护者留下处置理由；Nit 不冒充阻断问题。无发现也要记录审查范围、验证证据和未覆盖风险。
 
+异步测试或 helper 变化时，按 [test-authoring](../../.agents/skills/test-authoring/SKILL.md#异步完成与隔离) 核对完成信号、失败语义、负向断言边界和退出清理。精简或迁移时核对行为承接与原生集成证据；历史 flaky 的结案和性能对比按 [verification.md](./verification.md#flaky-调查与性能对比) 核对，重复全绿不替代根因证据。
+
 ## 报告、回写与复审
 
 持久报告至少记录 PR URL、base/head SHA、reviewer 执行体、审查范围、发现及处置、验证命令与实际结果、未覆盖风险、结论，以及上一轮报告和本轮修复的对应关系。报告写入 PR review/comment 或编排器明确提供的持久交付记录；不得只留在临时目录，也不要提交到被审分支。

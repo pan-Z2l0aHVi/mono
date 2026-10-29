@@ -4,9 +4,19 @@ import { cleanup, render, waitFor } from '@testing-library/react'
 import { act } from 'react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 
-import { loadShellLocale, LocaleProvider } from '@/i18n/locale'
+import { loadShellLocale } from '@/i18n/locale'
 
 import { Root } from '..'
+
+// collapsed 接线与文档初始化无关。真实 Provider 留在 browser 集成；本 fixture 固定 locale，
+// 避免每次挂载额外启动 catalog/docs 请求，并在测试结束后继续更新 React。
+vi.mock('@/i18n/locale', async importOriginal => {
+  const actual = await importOriginal<typeof import('@/i18n/locale')>()
+  return {
+    ...actual,
+    useLocale: () => ({ locale: 'zh-CN', pending: false, setLocale: async () => {} })
+  }
+})
 
 // 必须与 `web-ui-layout` 的 `MOBILE_VIEWPORT_QUERY`（`components/layout/index.ts`）逐字相同：
 // 断点判定由 layout 独占（ADR-0023）、app 不自持媒体查询，所以这个替身要驱动的是 layout 那条。
@@ -94,6 +104,15 @@ async function settleViewport(drawerMode: boolean) {
   })
 }
 
+async function changeViewport(width: number, mobile: boolean) {
+  await act(async () => {
+    setViewportWidth(width)
+    setMediaMatches(MOBILE_QUERY, mobile)
+    await layoutRoot().updateComplete
+  })
+  await settleViewport(mobile)
+}
+
 function buildRouter() {
   const rootRoute = createRootRoute({ component: Root })
   const indexRoute = createRoute({
@@ -116,22 +135,23 @@ function setViewportWidth(width: number) {
   window.dispatchEvent(new Event('resize'))
 }
 
-async function mountAppShell() {
+async function mountAppShell(mark: (stage: string) => void = () => {}) {
   // 固定到中文源语种，避免 Provider 挂载后再异步换一次壳文案。
   localStorage.setItem('locale', 'zh-CN')
+  mark('load locale')
   await loadShellLocale('zh-CN')
+  mark('render shell')
   const router = buildRouter()
-  render(
-    <LocaleProvider>
-      <RouterProvider router={router} />
-    </LocaleProvider>
-  )
+  render(<RouterProvider router={router} />)
+  mark('wait for layout')
   await waitFor(() => {
     if (!document.querySelector('web-ui-layout')) throw new Error('layout not mounted')
   })
+  mark('wait for layout update')
   await act(async () => {
     await layoutRoot().updateComplete
   })
+  mark('layout ready')
 }
 
 /** 复刻 layout 侧边栏 Toggle 的请求链路：layout 只派发请求，宿主回写受控属性。 */
@@ -160,12 +180,18 @@ describe('应用外壳：导航 collapsed state 不跨视口泄漏', () => {
     innerWidthSpy = null
   })
 
-  it('桌面端 collapsible sidebar 后导航进入 collapsed state', async () => {
+  it('桌面端 collapsible sidebar 后导航进入 collapsed state', async ({ onTestFailed }) => {
+    const started = performance.now()
+    const stages: string[] = []
+    const mark = (stage: string) => stages.push(`${stage}: ${Math.round(performance.now() - started)}ms`)
+    onTestFailed(() => console.error(`sidebar test stages: ${stages.join(', ')}`))
     setViewportWidth(DESKTOP_WIDTH)
-    await mountAppShell()
+    await mountAppShell(mark)
     const expanded = navItemClasses()
 
+    mark('request collapse')
     await requestCollapse(true)
+    mark('collapse complete')
 
     expect(isDrawerMode()).toBe(false)
     expect(layoutRoot().sidebarCollapsed).toBe(true)
@@ -182,9 +208,7 @@ describe('应用外壳：导航 collapsed state 不跨视口泄漏', () => {
     // collapse 从未生效。
     expect(navItemClasses()).not.toEqual(expanded)
 
-    setViewportWidth(MOBILE_WIDTH)
-    setMediaMatches(MOBILE_QUERY, true)
-    await settleViewport(true)
+    await changeViewport(MOBILE_WIDTH, true)
 
     // 前提：collapse preference 仍写在 layout 上。不成立的话下面那条「与展开态一致」只是没 collapse 过的假绿
     // （drawer 形态由 settleViewport 保证，不另设断言）。
@@ -200,14 +224,10 @@ describe('应用外壳：导航 collapsed state 不跨视口泄漏', () => {
     await requestCollapse(true)
     const collapsed = navItemClasses()
 
-    setViewportWidth(MOBILE_WIDTH)
-    setMediaMatches(MOBILE_QUERY, true)
-    await settleViewport(true)
+    await changeViewport(MOBILE_WIDTH, true)
     expect(navItemClasses()).toEqual(expanded)
 
-    setViewportWidth(DESKTOP_WIDTH)
-    setMediaMatches(MOBILE_QUERY, false)
-    await settleViewport(false)
+    await changeViewport(DESKTOP_WIDTH, false)
 
     expect(navItemClasses()).toEqual(collapsed)
   })

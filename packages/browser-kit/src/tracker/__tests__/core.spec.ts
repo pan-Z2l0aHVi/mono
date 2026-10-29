@@ -1,10 +1,12 @@
 import { http, HttpResponse } from 'msw'
-import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 
 import { defineLocal } from '@/storage'
 
-import { capturedRequests, clearCapturedRequests, settleCapturedRequests, worker } from '../../../test-helper'
+import { capturedRequests, clearCapturedRequests, worker } from '../../../test-helper'
 import { defineTracker } from '../core'
+
+import { expectAfterDispatch, afterDispatchTurn } from './dispatch-turn'
 
 /** 记录条目的 fake transport；替代 sendBeacon 桩、MSW 捕获与真实时间轮询。 */
 function createTransportStub() {
@@ -15,49 +17,21 @@ function createTransportStub() {
   return { items, transport }
 }
 
-/**
- * 注入 fake transport 后队列调度只经过 microtask，自旋等待即可收敛，不依赖真实时间。
- * 上限兜底：未收敛时以超时信息失败，而不是挂到 vitest 的默认超时。
- */
-async function waitUntil(predicate: () => boolean, maxSpins = 1000): Promise<void> {
-  for (let spin = 0; spin < maxSpins && !predicate(); spin += 1) {
-    await Promise.resolve()
-  }
-  expect(predicate(), '等待队列调度收敛超时').toBe(true)
-}
-
-/** 排空已调度的 microtask，用于「没有发生 X」类断言前的收敛。 */
-async function settleMicrotasks(spins = 50): Promise<void> {
-  for (let spin = 0; spin < spins; spin += 1) {
-    await Promise.resolve()
-  }
-}
-
-/**
- * 等待 MSW 捕获到指定数量的请求；fetch → service worker 往返依赖真实时间。
- * 到达上限仍不足数就直接失败：静默返回会把失败推迟到后面的载荷断言，
- * 报错读起来像「payload 不对」，实际是「请求根本没落地」。
- */
-async function waitForCaptured(minCount: number, timeout = 2000): Promise<void> {
-  const start = Date.now()
-  while (capturedRequests.length < minCount && Date.now() - start < timeout) {
-    await new Promise(resolve => setTimeout(resolve, 10))
-  }
-  if (capturedRequests.length < minCount) {
-    throw new Error(
-      `expected at least ${minCount} captured request(s) within ${timeout}ms, got ${capturedRequests.length}`
-    )
-  }
-}
-
 describe('defineTracker 测试', () => {
+  const originalSendBeacon = Object.getOwnPropertyDescriptor(navigator, 'sendBeacon')
+
+  afterEach(() => {
+    vi.restoreAllMocks()
+    if (originalSendBeacon) Object.defineProperty(navigator, 'sendBeacon', originalSendBeacon)
+    else Reflect.deleteProperty(navigator, 'sendBeacon')
+    localStorage.clear()
+  })
+
   describe('默认传输适配器（sendBeacon → fetch keepalive 降级）', () => {
     let sendBeaconSpy: ReturnType<typeof vi.fn<Navigator['sendBeacon']>>
 
-    beforeEach(async () => {
+    beforeEach(() => {
       vi.restoreAllMocks()
-      // 上一用例的在途请求可能在本用例断言窗口才落地，排空后再清空
-      await settleCapturedRequests()
       vi.clearAllMocks()
       clearCapturedRequests()
       localStorage.clear()
@@ -74,11 +48,12 @@ describe('defineTracker 测试', () => {
     it('优先用 sendBeacon 上报，并交出可解析的载荷', async () => {
       const tracker = defineTracker({ url: 'https://example.com' }).make()
       tracker.track({ event: 'page view' })
-      await waitForCaptured(1)
+      await tracker.flush()
 
       // sendBeacon 在页面卸载时仍能送达，是 unload 路径唯一可靠的投递方式
       expect(sendBeaconSpy).toHaveBeenCalledTimes(1)
       expect(JSON.parse(sendBeaconSpy.mock.calls[0][1] as string)).toEqual({ event: 'page view' })
+      expect(capturedRequests).toHaveLength(1)
     })
 
     it('sendBeacon 被接受时不再额外发 fetch，避免同一条数据上报两次', async () => {
@@ -86,7 +61,7 @@ describe('defineTracker 测试', () => {
 
       const tracker = defineTracker({ url: 'https://example.com' }).make()
       tracker.track({ event: 'accepted' })
-      await settleCapturedRequests()
+      await tracker.flush()
 
       expect(capturedRequests).toHaveLength(0)
     })
@@ -98,7 +73,7 @@ describe('defineTracker 测试', () => {
 
       const tracker = defineTracker({ url: 'https://example.com' }).make()
       tracker.track({ event: 'error' })
-      await waitForCaptured(1)
+      await tracker.flush()
 
       // 降级后数据仍要送达，只换传输方式不换内容
       expect(JSON.stringify(capturedRequests[0].body)).toContain('error')
@@ -114,6 +89,7 @@ describe('defineTracker 测试', () => {
 
       // 上报是旁路能力：它的失败不该冒泡成业务异常打断用户操作
       expect(() => tracker.track({ event: 'fail' })).not.toThrow()
+      await tracker.flush()
     })
   })
 
@@ -131,7 +107,7 @@ describe('defineTracker 测试', () => {
 
       tracker.track(null as unknown as object)
       tracker.track(undefined as unknown as object)
-      await settleMicrotasks()
+      await afterDispatchTurn()
 
       // 空载荷发出去会让后端收到一条无意义的记录
       expect(transport).not.toHaveBeenCalled()
@@ -153,11 +129,11 @@ describe('defineTracker 测试', () => {
       tracker.track({ event: 'second' })
 
       // 串行而非并发：后端看到的顺序必须与用户操作顺序一致
-      await waitUntil(() => transport.mock.calls.length === 1)
+      await expectAfterDispatch(() => transport.mock.calls.length === 1)
       expect(order).toEqual(['first'])
 
       releaseFirst()
-      await waitUntil(() => transport.mock.calls.length === 2)
+      await expectAfterDispatch(() => transport.mock.calls.length === 2)
       expect(order).toEqual(['first', 'second'])
     })
 
@@ -172,13 +148,13 @@ describe('defineTracker 测试', () => {
       expect(transport).toHaveBeenCalledTimes(2)
 
       tracker.track({ event: 'third' })
-      await settleMicrotasks()
+      await afterDispatchTurn()
 
       // 但 flush 不等于 resume：否则一次卸载就会永久破坏离线/暂停策略
       expect(transport).toHaveBeenCalledTimes(2)
 
       tracker.resume()
-      await waitUntil(() => transport.mock.calls.length === 3)
+      await expectAfterDispatch(() => transport.mock.calls.length === 3)
     })
 
     it('transform 在 track 之后、transport 之前改写载荷', async () => {
@@ -189,7 +165,7 @@ describe('defineTracker 测试', () => {
       }).make()
 
       tracker.track({ event: 'click' })
-      await waitUntil(() => transport.mock.calls.length === 1)
+      await expectAfterDispatch(() => transport.mock.calls.length === 1)
 
       expect(transport.mock.calls[0][0]).toEqual({ event: 'click', extra: true })
     })
@@ -204,10 +180,10 @@ describe('defineTracker 测试', () => {
 
       const tracker = defineTracker({ url: 'https://example.com', transport }).make()
       tracker.track({ event: 'retry' })
-      await waitUntil(() => attempts === 1)
+      await expectAfterDispatch(() => attempts === 1)
 
       tracker.resume()
-      await waitUntil(() => attempts === 2)
+      await expectAfterDispatch(() => attempts === 2)
 
       expect(attempts).toBe(2)
     })
@@ -218,8 +194,8 @@ describe('defineTracker 测试', () => {
 
       const tracker = defineTracker({ url: 'https://example.com', transport }).make()
       tracker.track({ event: 'sticky' })
-      await waitUntil(() => defineLocal('tracker').get('queue:https://example.com') !== null)
-      await settleMicrotasks()
+      await expectAfterDispatch(() => defineLocal('tracker').get('queue:https://example.com') !== null)
+      await afterDispatchTurn()
 
       // 失败即丢等于用户行为数据静默消失；保留是重试的前提
       expect(defineLocal('tracker').get('queue:https://example.com')).toEqual([{ event: 'sticky' }])
@@ -240,13 +216,13 @@ describe('defineTracker 测试', () => {
 
       const tracker = defineTracker({ url: 'https://example.com', transport }).make()
       tracker.track({ event: 'retry-after-resume' })
-      await waitUntil(() => transport.mock.calls.length === 1)
+      await expectAfterDispatch(() => transport.mock.calls.length === 1)
 
       tracker.resume()
       releaseFirst()
 
       // resume 发生在请求在途时：这条竞态曾导致失败条目被当作已确认而丢弃
-      await waitUntil(() => transport.mock.calls.length === 2)
+      await expectAfterDispatch(() => transport.mock.calls.length === 2)
       expect(transport).toHaveBeenCalledTimes(2)
     })
 
@@ -269,12 +245,12 @@ describe('defineTracker 测试', () => {
       // 故意不等：让 flush 保持请求在途，再触发 resume
       void tracker.flush()
 
-      await waitUntil(() => transport.mock.calls.length === 1)
+      await expectAfterDispatch(() => transport.mock.calls.length === 1)
       tracker.resume()
       releaseFirst()
 
-      await waitUntil(() => transport.mock.calls.length === 2)
-      await waitUntil(() => defineLocal('tracker').get('queue:https://example.com') === null)
+      await expectAfterDispatch(() => transport.mock.calls.length === 2)
+      await expectAfterDispatch(() => defineLocal('tracker').get('queue:https://example.com') === null)
       expect(transport).toHaveBeenCalledTimes(2)
     })
   })
@@ -302,7 +278,7 @@ describe('defineTracker 测试', () => {
       storage.set('queue:https://example.com', [{ event: 'restored' }])
 
       defineTracker({ url: 'https://example.com', transport }).make()
-      await waitUntil(() => storage.get('queue:https://example.com') === null)
+      await expectAfterDispatch(() => storage.get('queue:https://example.com') === null)
 
       // 关掉页面再打开仍要补发；恢复后必须清空，否则每次启动都重复上报
       expect(transport.mock.calls[0][0]).toEqual({ event: 'restored' })
@@ -314,7 +290,7 @@ describe('defineTracker 测试', () => {
       vi.spyOn(console, 'warn').mockImplementation(() => {})
 
       defineTracker({ url: 'https://example.com', transport }).make()
-      await settleMicrotasks()
+      await afterDispatchTurn()
 
       expect(storage.get('queue:https://example.com')).toEqual([{ event: 'sticky' }])
     })
@@ -331,7 +307,7 @@ describe('defineTracker 测试', () => {
       expect(storage.get('queue:https://example.com')).toEqual([data, data])
 
       tracker.resume()
-      await waitUntil(() => transport.mock.calls.length === 2)
+      await expectAfterDispatch(() => transport.mock.calls.length === 2)
     })
 
     it('入队时固定数据快照，不受调用方后续修改影响', async () => {
@@ -353,7 +329,7 @@ describe('defineTracker 测试', () => {
       expect(storage.get('queue:snapshot')).toEqual([{ event: 'before', meta: { source: 'original' } }])
 
       tracker.resume()
-      await waitUntil(() => transport.mock.calls.length === 1)
+      await expectAfterDispatch(() => transport.mock.calls.length === 1)
 
       expect(transport.mock.calls[0][0]).toEqual(expected)
     })
@@ -363,7 +339,7 @@ describe('defineTracker 测试', () => {
       tracker.track({ event: 'click' })
 
       // 清空是恢复逻辑的前提：不清空会让下次启动重复上报同一批数据
-      await waitUntil(() => storage.get('queue:https://example.com') === null)
+      await expectAfterDispatch(() => storage.get('queue:https://example.com') === null)
       expect(storage.get('queue:https://example.com')).toBeNull()
     })
 
@@ -398,7 +374,7 @@ describe('defineTracker 测试', () => {
       const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
 
       defineTracker({ url: 'https://example.com', persistenceKey: 'remove-failure', transport }).make()
-      await waitUntil(() => transport.mock.calls.length === 1)
+      await expectAfterDispatch(() => transport.mock.calls.length === 1)
 
       // 内存条目已移除但快照还在，下次启动会重复上报同一批数据；
       // 告警必须带 key，否则这个残留无从排查

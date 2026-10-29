@@ -177,7 +177,9 @@ export async function waitForOpenTransition(el: Element): Promise<void> {
   // 宿主与内层 dialog 都在观察范围内，两个根都带上（过渡既可能挂在 dialog 上做进场
   // transform，也可能挂在宿主上由 open 属性引发外层动画，只传一个会漏掉另一个）。
   const dialog = readDialog() as Element
-  await waitForAnimationsToFinish([el, dialog])
+  if (!(await waitForAnimationsToFinish([el, dialog]))) {
+    throw new Error(`${el.tagName.toLowerCase()} opening animations did not finish`)
+  }
 }
 
 export interface RealTouchPressOptions {

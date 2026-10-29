@@ -3,6 +3,7 @@ import '..'
 import { afterEach, describe, expect, it } from 'vite-plus/test'
 
 import { NESTED_PEEK_BASE_FALLBACK, PEEK_BASE_VARIABLE } from '@/shared/overlay/nested-drawer-layers'
+import { renderStepUntil, waitForAnimationsToFinish } from '@/shared/test-utils'
 import { setViewport } from '@/shared/test-utils/viewport'
 
 import type { WebUiDrawer } from '..'
@@ -64,13 +65,15 @@ function createDrawer(heading: string): WebUiDrawer {
  * 单独重跑均全绿，佐证这不是本文件的行为缺陷。
  */
 interface Budget {
-  /** 预算是否已耗尽。所有有界轮询共用这一个时钟。 */
+  /** 所有阶段共用这一个绝对 deadline，不重新发放预算。 */
+  remaining(): number
   expired(): boolean
 }
 
 function createBudget(totalMs: number): Budget {
   const deadline = performance.now() + totalMs
   return {
+    remaining: () => Math.max(0, deadline - performance.now()),
     expired: () => performance.now() >= deadline
   }
 }
@@ -102,7 +105,8 @@ async function settle(drawers: WebUiDrawer[], budget: Budget) {
     const dialog = getDialog(drawer)
     while (!dialog.open || !dialog.classList.contains('is-visible')) {
       if (budget.expired()) throw new Error('Expected the drawer dialog to reach its open position')
-      await new Promise(resolve => requestAnimationFrame(resolve))
+      if (!(await renderStepUntil(performance.now() + budget.remaining())))
+        throw new Error('Expected the drawer open frame')
     }
     await drawer.updateComplete
   }
@@ -122,9 +126,13 @@ async function settle(drawers: WebUiDrawer[], budget: Budget) {
 async function stabilize(drawers: WebUiDrawer[], budget: Budget) {
   let previous = readLefts(drawers)
   while (!budget.expired()) {
-    await new Promise(resolve => requestAnimationFrame(resolve))
-    await Promise.allSettled(document.getAnimations().map(animation => animation.finished))
-    await new Promise(resolve => requestAnimationFrame(resolve))
+    if (!(await renderStepUntil(performance.now() + budget.remaining())))
+      throw new Error('Expected the drawer stack frame')
+    const roots = drawers.flatMap(drawer => [drawer, getDialog(drawer)])
+    if (!(await waitForAnimationsToFinish(roots, budget.remaining())))
+      throw new Error('Expected the drawer stack animations')
+    if (!(await renderStepUntil(performance.now() + budget.remaining())))
+      throw new Error('Expected the drawer stack frame')
     const current = readLefts(drawers)
     /*
      * 「已进入视口」是第四条条件，补的是上面第 2 条剩下的那个洞：过渡诞生之前没有任何
@@ -136,7 +144,12 @@ async function stabilize(drawers: WebUiDrawer[], budget: Budget) {
      * 所以「左缘 < innerWidth」就是「已经进来」。仍然是公开几何，不读内部状态。
      */
     const entered = current.every(left => left < window.innerWidth - 1)
-    const settled = entered && !document.getAnimations().length && current.join() === previous.join()
+    const animating = drawers.some(drawer =>
+      [drawer, getDialog(drawer)].some(root =>
+        root.getAnimations({ subtree: true }).some(animation => animation.pending || animation.playState === 'running')
+      )
+    )
+    const settled = entered && !animating && current.join() === previous.join()
     previous = current
     if (settled) return
   }
@@ -156,7 +169,8 @@ function readLefts(drawers: WebUiDrawer[]): number[] {
 async function waitForConvergence(probe: () => boolean, message: string, budget: Budget) {
   while (!budget.expired()) {
     if (probe()) return
-    await new Promise(resolve => requestAnimationFrame(resolve))
+    if (!(await renderStepUntil(performance.now() + budget.remaining())))
+      throw new Error('Expected the drawer stack frame')
   }
   throw new Error(message)
 }
@@ -200,7 +214,8 @@ async function closeTop(drawers: WebUiDrawer[], budget: Budget) {
   await top.updateComplete
   while (getDialog(top).open) {
     if (budget.expired()) throw new Error('Expected the top drawer dialog to close')
-    await new Promise(resolve => requestAnimationFrame(resolve))
+    if (!(await renderStepUntil(performance.now() + budget.remaining())))
+      throw new Error('Expected the drawer stack frame')
   }
   await settle(drawers.slice(0, -1), budget)
 }

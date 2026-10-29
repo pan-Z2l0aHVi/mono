@@ -47,6 +47,7 @@ export class WebUiToast extends LitElement {
   @property({ type: Boolean, reflect: true }) visible = false
 
   private _closeTimer?: ReturnType<typeof setTimeout>
+  private _cancelDismiss?: () => void
   private _deadline = 0
   /**
    * 暂停自动关闭时记下的剩余时间。`undefined` 表示暂停时本来就没有计时器（`duration` 为 0、
@@ -86,6 +87,7 @@ export class WebUiToast extends LitElement {
     this.removeEventListener('pointerleave', this._onPointerLeave)
     this._detachHoverFallback()
     this._clearTimer()
+    this._cancelDismiss?.()
   }
 
   /**
@@ -175,6 +177,7 @@ export class WebUiToast extends LitElement {
 
   // 由 manager 调用：播放入场动画后自动开始计时
   show() {
+    this._cancelDismiss?.()
     this._dismissing = false
     this.visible = true
     // 挂载时指针已经压在上面（光标停在 toast 将要出现的位置）：入场后直接进入暂停，
@@ -194,6 +197,7 @@ export class WebUiToast extends LitElement {
     // 元素会继续持有「指针还在上面」的状态。
     this._hoverPaused = false
     this._detachHoverFallback()
+    this._clearTimer()
     if (!this.visible) {
       // 尚未 show()（manager 挂载之后、rAF 之前）或从未显示过：没有退场动画可播，立即派发，
       // 由 manager 的 toast-close 监听摘除元素。若在这里早退，close()/clear() 落在这段窗口
@@ -202,15 +206,28 @@ export class WebUiToast extends LitElement {
       return
     }
     this.visible = false
-    this._clearTimer()
-    const onEnd = () => {
-      this.removeEventListener('transitionend', onEnd)
+    // transitionend 不穿过 shadow 边界；仅接受承担退场过渡的面板自身完成。
+    const panel = this.shadowRoot?.querySelector<HTMLElement>('.toast') ?? this
+    let completed = false
+    let fallback: ReturnType<typeof setTimeout> | undefined
+    const cancel = () => {
+      if (completed) return
+      completed = true
+      panel.removeEventListener('transitionend', onEnd)
+      clearTimeout(fallback)
+      this._cancelDismiss = undefined
+    }
+    const onEnd = (event?: Event) => {
+      if (completed || (event && event.target !== panel)) return
+      cancel()
       this._dispatchClose(reason)
     }
-    this.addEventListener('transitionend', onEnd)
-    // fallback: transitionend 不触发时（display:none 等）
-    const toast = this.shadowRoot?.querySelector<HTMLElement>('.toast')
-    setTimeout(onEnd, getTransitionDuration(toast ?? this) + 80)
+    this._cancelDismiss = cancel
+    panel.addEventListener('transitionend', onEnd)
+    // [visible] 反射后才应用退出时长；取消须覆盖等待 Lit 提交的这段窗口。
+    void this.updateComplete.then(() => {
+      if (!completed) fallback = setTimeout(onEnd, getTransitionDuration(panel) + 80)
+    })
   }
 
   private _clearTimer() {

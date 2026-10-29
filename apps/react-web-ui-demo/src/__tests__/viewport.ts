@@ -29,8 +29,26 @@ import { page } from 'vite-plus/test/browser'
  * 依赖视口的组件（断点切换、滚动锁定、可见区计算）在视口尺寸生效后的**下一次**
  * 渲染步进里才把状态写回，所以尺寸到位之后还要再让出一个渲染步进。
  */
-async function afterRenderStep(): Promise<void> {
-  await new Promise<void>(resolve => requestAnimationFrame(() => setTimeout(resolve, 0)))
+async function renderStepUntil(deadline: number): Promise<boolean> {
+  if (performance.now() >= deadline) return false
+  return new Promise(resolve => {
+    let done = false
+    let frame = 0
+    let task: ReturnType<typeof setTimeout> | undefined
+    let watchdog: ReturnType<typeof setTimeout> | undefined
+    const finish = (completed: boolean) => {
+      if (done) return
+      done = true
+      cancelAnimationFrame(frame)
+      clearTimeout(task)
+      clearTimeout(watchdog)
+      resolve(completed)
+    }
+    if (Number.isFinite(deadline)) watchdog = setTimeout(() => finish(false), deadline - performance.now())
+    frame = requestAnimationFrame(() => {
+      task = setTimeout(() => finish(performance.now() < deadline), 0)
+    })
+  })
 }
 
 /**
@@ -41,19 +59,20 @@ async function afterRenderStep(): Promise<void> {
  *  2. 再让出一个完整渲染步进——media query 监听与它们引起的样式重算在下一步派发。
  */
 export async function setViewport(width: number, height: number, timeoutMs = 5000): Promise<void> {
+  // RPC 由 runner 预算管理；本预算覆盖尺寸生效与最后的渲染步进。
   await page.viewport(width, height)
-  const deadline = performance.now() + timeoutMs
   const startedAt = performance.now()
+  const deadline = startedAt + timeoutMs
   let steps = 0
-  while (window.innerWidth !== width || window.innerHeight !== height) {
-    if (performance.now() >= deadline) {
+  const step = async (stage: 'dimensions' | 'render') => {
+    if (!(await renderStepUntil(deadline))) {
       throw new Error(
-        `viewport did not reach ${width}x${height} (read ${window.innerWidth}x${window.innerHeight}, ` +
+        `viewport did not settle at ${width}x${height} (stage=${stage}, read ${window.innerWidth}x${window.innerHeight}, ` +
           `waited ${Math.round(performance.now() - startedAt)}ms / ${steps} render steps, budget ${timeoutMs}ms)`
       )
     }
-    await afterRenderStep()
-    steps += 1
+    steps++
   }
-  await afterRenderStep()
+  while (window.innerWidth !== width || window.innerHeight !== height) await step('dimensions')
+  await step('render')
 }

@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it } from 'vite-plus/test'
 import { page } from 'vite-plus/test/browser'
 
-import { pollUntil, waitForAnimationsToFinish, waitForFrame } from '@/shared/test-utils'
+import { pollUntil, waitForAnimationsToFinish } from '@/shared/test-utils'
 
 import { toast } from '..'
 
@@ -19,27 +19,10 @@ function isInBottomLeft(el: Element): boolean {
   return rect.top + rect.height / 2 > innerHeight / 2 && rect.left < innerWidth / 2
 }
 
-/**
- * 批量挂载是微任务，`show()` 在其后的 rAF 里：连续两个 rAF 覆盖「微任务 + 首个渲染
- * 步进」这条固定链路，没有可等的条件，因此不是轮询。
- */
-async function waitMounted(): Promise<void> {
-  await Promise.resolve()
-  await waitForFrame()
-  await waitForFrame()
+/** 等 manager 已挂载并完成 show，生命周期计时由轻层 fake clock 验证。 */
+async function waitMounted(id: string): Promise<void> {
+  await pollUntil(() => findToast(id)?.visible === true, `toast ${id} did not become visible`)
 }
-
-function wait(ms: number): Promise<void> {
-  return new Promise(resolve => setTimeout(resolve, ms))
-}
-
-/*
- * 「悬停期间越过原 deadline 仍不退场」这条判据必须真的等过 duration，所以这里的等待时间
- * 由用例自己传进去的 duration 推导，而不是各写一个字面量：把 3400/1400 改抄成常量就成了
- * 第二个真相来源，改了 duration 忘记改它时，用例会在还差几百毫秒时就判绿。
- * OVERDUE_MS 是给真实计时器漂移留的余量，不参与契约。
- */
-const OVERDUE_MS = 400
 
 // 真实指针需要一处「别处」才能移开：固定定位在左下角，避开 top-right 的 toast。
 function createAwayTarget(): HTMLElement {
@@ -86,10 +69,7 @@ function disableMoveBefore(): () => void {
 /*
  * jsdom 里只能合成 pointerenter/pointerleave，事件序列和真实指针不是一回事（真实指针离开时
  * 还有 document 级的 pointerout/pointerleave）。这里用真实鼠标复现用户报的场景：
- * hover 上去再移开，倒计时必须在悬停期间停住、移开后继续走完，而不是永久停留或立刻关闭。
- *
- * 「移开后按剩余时间而不是满时长续跑」没有公开观测口；本文件不读内部计时字段，只守住
- * 用户能看到的结果：悬停期间越过原 deadline 仍不退场，移开后恢复自动关闭。
+ * hover 上去再移开，必须正确进入和结束暂停，并恢复自动关闭。
  *
  * CI 上游标位置继承自上一个测试文件：若停在 toast 将出现的位置，挂载后 Chromium 命中测试
  * 补发 pointerenter → 暂停。每条用例在创建 toast 前先把指针停靠到无关的 away 目标，使
@@ -105,9 +85,9 @@ describe('toast 悬停暂停（浏览器）', () => {
   it('悬停期间不关闭，移开后恢复自动关闭', async () => {
     const away = createAwayTarget()
     await page.elementLocator(away).hover()
-    const duration = 3000
-    const id = toast.info('悬停我', { id: 'hover', position: 'top-right', duration })
-    await waitMounted()
+    const duration = 300
+    const id = toast.info('悬停我', { id: 'hover', position: 'top-right', duration: 0 })
+    await waitMounted(id)
 
     const el = findToast(id)
     // 缺元素当场红：否则 `el as Element` 把 undefined 交给 hover()，失败点漂到后面的
@@ -117,8 +97,9 @@ describe('toast 悬停暂停（浏览器）', () => {
     await page.elementLocator(el).hover()
     await waitHoverPaused(el, '真实指针悬停后未进入暂停态')
 
-    // 越过整段 duration 后仍应停留 —— 悬停暂停生效。
-    await wait(duration + OVERDUE_MS)
+    // 在指针已就位后启用自动关闭，避免 hover 准备本身耗尽 duration。
+    toast({ id, message: '悬停我', duration })
+    expect(el.hoverPaused).toBe(true)
     expect(findToast(id)?.visible).toBe(true)
 
     // 移开指针后恢复自动关闭。
@@ -134,8 +115,8 @@ describe('toast 悬停暂停（浏览器）', () => {
   it('悬停期间搬迁：不消失，悬停结束后仍能自动关闭', async () => {
     const away = createAwayTarget()
     await page.elementLocator(away).hover()
-    const id = toast.info('悬停并搬迁', { id: 'hover-move', position: 'top-right', duration: 3000 })
-    await waitMounted()
+    const id = toast.info('悬停并搬迁', { id: 'hover-move', position: 'top-right', duration: 0 })
+    await waitMounted(id)
 
     const hovered = findToast(id)
     if (!hovered) throw new Error(`toast ${id} was not mounted into the overlay root`)
@@ -151,6 +132,8 @@ describe('toast 悬停暂停（浏览器）', () => {
 
     expect(findToast(id)?.visible).toBe(true)
     await page.elementLocator(away).hover()
+    await pollUntil(() => findToast(id)?.hoverPaused === false, 'relocation did not end native hover')
+    toast({ id, message: '悬停并搬迁', duration: 300 })
     await pollUntil(() => findToast(id) === undefined, 'toast did not leave the DOM after hover ended')
   })
 
@@ -158,7 +141,7 @@ describe('toast 悬停暂停（浏览器）', () => {
    * 挂载时指针已压在 toast 将出现的位置（issue #140 路径②）：入场后 show() 见到悬停态已置位，
    * 直接进入暂停、不点火计时。用真实鼠标把指针移到（尚未 show、opacity:0 的）元素上建立
    * 悬停态，再手动调用 show()（等价于 manager 在 rAF 里的那次 show），确定性地命中该分支。
-   * 「不点火计时」的可观察后果是：越过整段 duration 仍未退场。
+   * 浏览器层证明真实指针在 show 之前进入暂停，计时不启动由 jsdom 的 fake clock 承接。
    */
   it('挂载时指针已压上：入场直接进入悬停暂停，不点火计时', async () => {
     const el = document.createElement('web-ui-toast')
@@ -174,7 +157,6 @@ describe('toast 悬停暂停（浏览器）', () => {
     el.show()
     await el.updateComplete
 
-    await wait(duration + OVERDUE_MS)
     expect(el.visible).toBe(true)
     expect(el.hoverPaused).toBe(true)
   })
@@ -198,8 +180,8 @@ describe('toast 悬停暂停（浏览器）', () => {
     // 真实指针停到无关位置：搬迁时元素若在光标底下，Chromium 补发的 pointerleave 会提前
     // 结束悬停，「悬停中被搬迁」这个前提就构造不出来。
     await page.elementLocator(away).hover()
-    const id = toast.info('降级搬迁', { id: 'fallback-move', position: 'top-right', duration: 3000 })
-    await waitMounted()
+    const id = toast.info('降级搬迁', { id: 'fallback-move', position: 'top-right', duration: 0 })
+    await waitMounted(id)
     const el = findToast(id)
     if (!el) throw new Error(`toast ${id} was not mounted into the overlay root`)
 
@@ -284,6 +266,8 @@ describe('toast 悬停暂停（浏览器）', () => {
      * 少了这一步，搬迁后 document 监听已随 disconnectedCallback 摘掉，这个合成
      * pointerover 无人受理，悬停永不结束、toast 永不自动退场。
      */
+    toast({ id, message: '降级搬迁', position: 'bottom-left', duration: 300 })
+    await el.updateComplete
     document.body.dispatchEvent(new PointerEvent('pointerover', { pointerType: 'mouse', bubbles: true }))
     expect(el!.hoverPaused).toBe(false)
     await pollUntil(() => findToast(id) === undefined, 'auto-close did not resume after fallback reattach')

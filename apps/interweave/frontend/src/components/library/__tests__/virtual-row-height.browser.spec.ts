@@ -162,13 +162,13 @@ function mountReactiveList(
 }
 
 /** 连续若干帧行几何完全一致，才算测量收敛。RO 的回调落在布局之后、下一帧之前。 */
-async function waitForGeometriesSettled(host: HTMLElement, stableFrames = 4) {
+async function waitForGeometriesSettled(host: HTMLElement, ready: () => boolean = () => true, stableFrames = 4) {
   let previous = ''
   let stable = 0
   for (let i = 0; i < 240; i++) {
     const rows = rowGeometries(host)
-    const signature = rows.map(row => `${row.index}:${row.top.toFixed(1)}:${row.height.toFixed(1)}`).join('|')
-    if (signature && signature === previous) stable += 1
+    const signature = JSON.stringify(rows)
+    if (ready() && rows.length > 0 && signature === previous) stable += 1
     else stable = 0
     previous = signature
     if (stable >= stableFrames) return
@@ -320,9 +320,14 @@ describe('ResourceList：行高测量（真实浏览器）', () => {
     // 2. Enter 提交：组件派发 change，宿主落库。两次 props 变动（退出编辑态、store 落库）
     //    之间隔着一次微任务，与生产里 await 后端的那一步同形。
     textarea.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, composed: true }))
-    await nextTick()
-    await nextTick()
-    await waitForGeometriesSettled(host)
+    await waitForGeometriesSettled(host, () => {
+      const first = host.querySelector('[data-resource-index="0"]')
+      return (
+        editingNameKey.value === null &&
+        first?.getAttribute('data-resource-id') === 'r2' &&
+        first.textContent?.includes(LONG_TITLE) === true
+      )
+    })
 
     const rows = rowGeometries(host)
     const sorted = [...rows].sort((a, b) => a.index - b.index)

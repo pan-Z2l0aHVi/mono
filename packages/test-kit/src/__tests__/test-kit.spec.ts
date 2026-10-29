@@ -168,34 +168,56 @@ describe('createMswTestEnv worker 生命周期', () => {
 })
 
 describe('createMswTestEnv settle', () => {
-  it('等待在途请求落地后才返回', async () => {
+  it('等待调用方提供的完成信号', async () => {
     const env = createMswTestEnv()
+    let release!: () => void
+    const completion = new Promise<void>(resolve => {
+      release = resolve
+    })
+    let settled = false
+    const result = env.settle(completion).then(() => {
+      settled = true
+    })
+    await Promise.resolve()
+    expect(settled).toBe(false)
 
-    // 模拟 fire-and-forget 请求：用例已清空记录后才落地
-    setTimeout(() => {
-      env.capturedRequests.push({ url: '/api/late', body: {}, method: 'POST', timestamp: 0 })
-    }, 10)
-    await env.settle(500)
-
-    // settle 前落地，这条残留记录就会被下一个用例的断言看到
-    expect(env.capturedRequests).toHaveLength(1)
+    release()
+    await result
+    expect(settled).toBe(true)
   })
 
-  it('保留调用前的计时器状态', async () => {
+  it('在 fake timers 下保留计时器状态及已登记的计时器', async () => {
     const env = createMswTestEnv()
     vi.useFakeTimers()
+    const pending = vi.fn<() => void>()
+    setTimeout(pending, 100)
 
-    await env.settle(50)
-
+    await env.settle(Promise.resolve())
     expect(vi.isFakeTimers()).toBe(true)
+    vi.advanceTimersByTime(100)
+    expect(pending).toHaveBeenCalledOnce()
   })
 
-  it('真实计时器下调用后仍是真实计时器', async () => {
+  it('未提供完成信号时明确失败', async () => {
     const env = createMswTestEnv()
+    await expect(env.settle(undefined as unknown as PromiseLike<unknown>)).rejects.toThrow(
+      'MSW operation requires a completion promise'
+    )
+  })
 
-    await expect(env.settle(100)).resolves.toBeUndefined()
+  it('完成信号失败时保留原始错误', async () => {
+    const env = createMswTestEnv()
+    const error = new Error('request failed')
+    await expect(env.settle(Promise.reject(error))).rejects.toBe(error)
+  })
 
-    expect(vi.isFakeTimers()).toBe(false)
+  it('达到原有上限时明确报告尚未完成', async () => {
+    const env = createMswTestEnv()
+    vi.useFakeTimers()
+    const completion = new Promise<void>(() => {})
+    const result = env.settle(completion).catch((error: unknown) => error)
+    await vi.advanceTimersByTimeAsync(300)
+    expect(await result).toEqual(new Error('MSW operation did not finish within 300ms'))
   })
 })
 
@@ -210,14 +232,20 @@ describe('defineCapturedRequests', () => {
   })
 
   it('多个实例互不共享记录', () => {
-    const first = defineCapturedRequests().make()
-    const second = defineCapturedRequests().make()
+    const plugin = defineCapturedRequests()
+    const first = plugin.make()
+    const second = plugin.make()
 
     first.capturedRequests.push({ url: '/api/test', body: {}, method: 'POST', timestamp: 0 })
 
-    // 共享同一个数组会让两个环境互相污染对方的断言
     expect(first.capturedRequests).toHaveLength(1)
     expect(second.capturedRequests).toHaveLength(0)
+
+    second.capturedRequests.push({ url: '/api/second', body: {}, method: 'POST', timestamp: 1 })
+    first.clearCapturedRequests()
+
+    expect(first.capturedRequests).toHaveLength(0)
+    expect(second.capturedRequests).toHaveLength(1)
   })
 })
 

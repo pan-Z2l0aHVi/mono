@@ -4,18 +4,9 @@ import '@/components/theme'
 import { afterEach, describe, expect, it } from 'vite-plus/test'
 
 import { pollUntil, queryA11y, waitForFrame } from '@/shared/test-utils'
+import { waitForOpenTransition } from '@/shared/test-utils/real-gesture'
 
 import type { WebUiDrawer } from '..'
-
-// 等待打开过渡完成；固定 sleep 在 CI 高负载下会把未收敛的位移抓进拖拽起点。
-async function waitForOpenTransition(el: WebUiDrawer) {
-  await waitForFrame()
-  await Promise.all(
-    getDialog(el)
-      .getAnimations({ subtree: true })
-      .map(animation => animation.finished)
-  )
-}
 
 // 轮询条件直至满足：WAAPI 动画在并行负载下完成时间不可预测，
 // 固定 sleep 会偶发超时，这里以条件收敛代替固定等待。
@@ -582,36 +573,33 @@ describe('WebUiDrawer 拖拽关闭（浏览器）', () => {
     expect(events).toHaveLength(0)
   })
 
-  it('闭合方向随 placement：沿闭合方向拖过阈值关闭，反向拖弹回不关闭', async () => {
-    const cases = [
-      { placement: 'right', close: { x: 600, y: 0 } },
-      { placement: 'left', close: { x: -600, y: 0 } },
-      { placement: 'bottom', close: { x: 0, y: 600 } },
-      { placement: 'top', close: { x: 0, y: -600 } }
-    ] as const
+  it.each([
+    { placement: 'right', close: { x: 600, y: 0 } },
+    { placement: 'left', close: { x: -600, y: 0 } },
+    { placement: 'bottom', close: { x: 0, y: 600 } },
+    { placement: 'top', close: { x: 0, y: -600 } }
+  ] as const)('闭合方向随 $placement：沿闭合方向拖过阈值关闭，反向拖弹回不关闭', async ({ placement, close }) => {
+    const closing = createDrawer()
+    closing.placement = placement
+    closing.draggable = true
+    closing.open = true
+    await closing.updateComplete
+    await waitForOpenTransition(closing)
+    await dragAndRelease(closing, close, 8)
+    await waitFor(() => !closing.open, 5000)
+    expect(closing.open).toBe(false)
+    closing.remove()
 
-    for (const { placement, close } of cases) {
-      const closing = createDrawer()
-      closing.placement = placement
-      closing.draggable = true
-      closing.open = true
-      await closing.updateComplete
-      await waitForOpenTransition(closing)
-      await dragAndRelease(closing, close, 8)
-      await waitFor(() => !closing.open, 5000)
-      expect(closing.open).toBe(false)
-
-      const opening = createDrawer()
-      opening.placement = placement
-      opening.draggable = true
-      opening.open = true
-      await opening.updateComplete
-      await waitForOpenTransition(opening)
-      await dragAndRelease(opening, { x: -close.x, y: -close.y }, 8)
-      await settled(opening)
-      expect(opening.open).toBe(true)
-      expect(getDialog(opening).open).toBe(true)
-    }
+    const opening = createDrawer()
+    opening.placement = placement
+    opening.draggable = true
+    opening.open = true
+    await opening.updateComplete
+    await waitForOpenTransition(opening)
+    await dragAndRelease(opening, { x: -close.x, y: -close.y }, 8)
+    await settled(opening)
+    expect(opening.open).toBe(true)
+    expect(getDialog(opening).open).toBe(true)
   })
 
   it('capture 提前丢失后：window 捕获层接管拖拽，松手收尾仍能关闭', async () => {

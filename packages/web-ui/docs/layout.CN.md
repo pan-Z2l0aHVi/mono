@@ -3,7 +3,7 @@ component: layout
 tag: web-ui-layout
 ---
 
-响应式页面布局：可选全宽 Banner、桌面端 collapsible sidebar，移动端默认 drawer。页面本身滚动；Banner 滚出后，桌面端 sidebar 和 header 固定在视口内。
+响应式页面布局：可选全宽 Banner、桌面端 collapsible sidebar，移动端默认 drawer；设置 `no-sidebar` 可关闭整块侧边栏，只保留内容布局。页面本身滚动；Banner 滚出后，桌面端 sidebar 和 header 固定在视口内。
 
 ## Samples
 
@@ -83,6 +83,48 @@ import { ref } from 'vue'
 
 const open = ref(false)
 </script>
+```
+
+### No sidebar
+
+`no-sidebar` 把侧边栏结构整块从布局里去掉：桌面端没有 aside 与 collapse Toggle，窄视口也没有 header Toggle 与 Drawer，只留下 `banner` / `header` / 默认内容 / `tabbar` 四个分区。
+
+`sidebar` slot 随之不渲染，但消费方节点仍留在 light DOM；撤下属性即恢复原布局。
+
+```tsx
+export default function Demo() {
+  return (
+    <div className="h-[420px] overflow-auto rounded-lg border border-(--wui-color-border)">
+      <web-ui-layout no-sidebar header-glow>
+        <div slot="header" className="flex items-center px-4 py-2 text-sm font-medium">
+          Header
+        </div>
+        <div className="p-4">
+          <p className="m-0 text-sm">no-sidebar 下没有 aside、Toggle 和 Drawer，内容列占满整行。</p>
+          <div className="mt-3 h-[420px] rounded-md bg-(--wui-color-surface-control)" />
+        </div>
+        <div slot="tabbar" className="flex items-center justify-center px-4 py-2 text-xs">
+          Tabbar
+        </div>
+      </web-ui-layout>
+    </div>
+  )
+}
+```
+
+```vue
+<template>
+  <div class="h-[420px] overflow-auto rounded-lg border border-(--wui-color-border)">
+    <web-ui-layout no-sidebar header-glow>
+      <div slot="header" class="flex items-center px-4 py-2 text-sm font-medium">Header</div>
+      <div class="p-4">
+        <p class="m-0 text-sm">no-sidebar 下没有 aside、Toggle 和 Drawer，内容列占满整行。</p>
+        <div class="mt-3 h-[420px] rounded-md bg-(--wui-color-surface-control)" />
+      </div>
+      <div slot="tabbar" class="flex items-center justify-center px-4 py-2 text-xs">Tabbar</div>
+    </web-ui-layout>
+  </div>
+</template>
 ```
 
 ### Collapsible sidebar
@@ -342,18 +384,19 @@ const mobile = ref(false)
 
 ### Props
 
-| 名称                | 说明                                                                                                 | 类型               | 默认值    |
-| ------------------- | ---------------------------------------------------------------------------------------------------- | ------------------ | --------- |
-| `sidebar-collapsed` | 桌面端侧边栏受控 collapse 状态；只收窄桌面端，不影响移动端 Drawer。                                  | `boolean`          | `false`   |
-| `sidebar-open`      | 移动端侧边栏 Drawer 受控打开状态。                                                                   | `boolean`          | `false`   |
-| `header-glow`       | 在 header 插槽内容背后显示装饰性晕染。                                                               | `boolean`          | `false`   |
-| `ariaLabels`        | 内置无障碍名（侧栏折叠/展开、调宽、打开导航菜单、主导航）的成组覆盖；未提供的 key 回退内置英文文案。 | `LayoutAriaLabels` | —         |
-| `mobile`            | 只读派生值：当前视口是否处于移动端断点及以下；写 attribute 会被恢复，property 赋值不生效。           | `boolean`          | `false`   |
-| `sidebar-width`     | 桌面端和移动端展开时的侧边栏宽度。                                                                   | `string`           | `'240px'` |
-| `collapsed-width`   | 桌面端 collapse 时的侧边栏宽度。                                                                     | `string`           | `'68px'`  |
-| `sidebar-resizable` | 启用桌面端侧边栏右边缘拖拽调整宽度。                                                                 | `boolean`          | `false`   |
-| `sidebar-min-width` | 拖拽调整的下限（px）；默认回退到 `collapsed-width`。                                                 | `string`           | —         |
-| `sidebar-max-width` | 拖拽调整的上限（px）；钳制在视口一半以内，内置上限优先。                                             | `string`           | —         |
+| 名称                | 说明                                                                                                                                         | 类型               | 默认值    |
+| ------------------- | -------------------------------------------------------------------------------------------------------------------------------------------- | ------------------ | --------- |
+| `no-sidebar`        | 不渲染任何侧边栏结构：桌面端 aside、collapse Toggle 与 resize handle，移动端 header Toggle 与 Drawer；`sidebar` slot 内容随之不渲染。        | `boolean`          | `false`   |
+| `sidebar-collapsed` | 桌面端侧边栏受控 collapse 状态；只收窄桌面端，不影响移动端 Drawer。                                                                          | `boolean`          | `false`   |
+| `sidebar-open`      | 移动端侧边栏 Drawer 受控打开状态。                                                                                                           | `boolean`          | `false`   |
+| `header-glow`       | 在 header 插槽内容背后显示装饰性晕染。                                                                                                       | `boolean`          | `false`   |
+| `ariaLabels`        | 内置无障碍名（侧栏折叠/展开、调宽、打开导航菜单、主导航）的成组覆盖；未提供的 key 回退内置英文文案，`no-sidebar` 下侧栏相关 key 不参与渲染。 | `LayoutAriaLabels` | —         |
+| `mobile`            | 只读派生值：当前视口是否处于移动端断点及以下；写 attribute 会被恢复，property 赋值不生效。                                                   | `boolean`          | `false`   |
+| `sidebar-width`     | 桌面端和移动端展开时的侧边栏宽度。                                                                                                           | `string`           | `'240px'` |
+| `collapsed-width`   | 桌面端 collapse 时的侧边栏宽度。                                                                                                             | `string`           | `'68px'`  |
+| `sidebar-resizable` | 启用桌面端侧边栏右边缘拖拽调整宽度。                                                                                                         | `boolean`          | `false`   |
+| `sidebar-min-width` | 拖拽调整的下限（px）；默认回退到 `collapsed-width`。                                                                                         | `string`           | —         |
+| `sidebar-max-width` | 拖拽调整的上限（px）；钳制在视口一半以内，内置上限优先。                                                                                     | `string`           | —         |
 
 ### Events
 
@@ -366,13 +409,13 @@ const mobile = ref(false)
 
 ### Slots
 
-| 名称      | 说明                                                               |
-| --------- | ------------------------------------------------------------------ |
-| `banner`  | 位于布局主体上方的可选全宽 Banner。                                |
-| `header`  | 内容区的 sticky header。                                           |
-| `sidebar` | 侧边栏卡片内容；桌面端内部固定区域与滚动容器由 Consumer 自行定义。 |
-| `default` | 主内容区。                                                         |
-| `tabbar`  | 底部 tabbar。                                                      |
+| 名称      | 说明                                                                                          |
+| --------- | --------------------------------------------------------------------------------------------- |
+| `banner`  | 位于布局主体上方的可选全宽 Banner。                                                           |
+| `header`  | 内容区的 sticky header。                                                                      |
+| `sidebar` | 侧边栏卡片内容；桌面端内部固定区域与滚动容器由 Consumer 自行定义；`no-sidebar` 置位时不渲染。 |
+| `default` | 主内容区。                                                                                    |
+| `tabbar`  | 底部 tabbar。                                                                                 |
 
 ### 移动端视口状态
 
@@ -399,6 +442,14 @@ layout 自身在 microtask 里重渲染，因此**在宏任务上响应的消费
 两条分支承载的是同一份 `sidebar` 插槽内容，所以侧边栏内容密度跟着该属性变的 Consumer 必须按 `mobile` 收窄这个条件（例如 `collapsed && !layout.mobile`，或 CSS 的 `web-ui-layout[mobile]`），否则桌面的 collapse preference 会一路渲染进 Drawer。
 
 见 issue #195。
+
+### 无 sidebar 布局
+
+`no-sidebar` 置位后，桌面端不渲染 aside、collapse Toggle 与 resize handle，移动端不渲染 header Toggle 与 Drawer；`banner`、`header`、默认内容与 `tabbar` 的分区与滚动行为不变，内容列直接占满整行。
+
+`sidebar` slot 没有渲染出口，但消费方节点仍留在 light DOM。该模式下 `sidebar-collapsed`、`sidebar-open`、`sidebar-width` 等属性与 `sidebar-*` 事件都不产生可见效果；侧边栏相关的 `ariaLabels` key 与 CSS Custom Properties 也不产生可见效果。
+
+`mobile` 与 `mobile-change` 照常按视口派生。切换进该模式时，in-flight 的拖拽手势与未提交的调宽宽度会被终结，撤下属性后回到 `sidebar-*` 属性管辖的布局。
 
 ### 侧边栏调整宽度
 

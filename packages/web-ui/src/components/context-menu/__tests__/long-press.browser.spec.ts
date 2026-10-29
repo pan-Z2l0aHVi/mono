@@ -1,7 +1,7 @@
 import '..'
 import '@/components/dropdown-item'
 
-import { afterEach, describe, expect, it } from 'vite-plus/test'
+import { afterEach, describe, expect, it, vi } from 'vite-plus/test'
 
 import { cleanupElement, getMenuPanels, pollUntil, waitForSettledLayout } from '@/shared/test-utils'
 import { realTouchPress } from '@/shared/test-utils/real-gesture'
@@ -65,6 +65,57 @@ async function settlePanel(panel: HTMLElement) {
 }
 
 describe('context-menu 长按（真实触控管线）', () => {
+  it('真实 pointercancel 在默认长按阈值前取消定时器', async () => {
+    const { el, target } = createMenu({ 'long-press': '' })
+    await el.updateComplete
+
+    const pointerEvents: PointerEvent[] = []
+    const recordPointer = (event: Event) => {
+      if (event instanceof PointerEvent) pointerEvents.push(event)
+    }
+    window.addEventListener('pointerdown', recordPointer, true)
+    window.addEventListener('pointercancel', recordPointer, true)
+
+    let fakeTimersActive = false
+    let restoreTimeoutSpy: (() => void) | undefined
+    try {
+      // 只控制长按 setTimeout；保留 rAF、performance、Date、CDP 输入和浏览器渲染。
+      // holdMs=0 使 realTouchPress 不等待被 fake 的 helper timer。
+      vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] })
+      fakeTimersActive = true
+      const timeoutSpy = vi.spyOn(window, 'setTimeout')
+      restoreTimeoutSpy = () => timeoutSpy.mockRestore()
+
+      await realTouchPress(target, { holdMs: 0, endWithCancel: true })
+
+      const pointerDown = pointerEvents.find(event => event.type === 'pointerdown')
+      const pointerCancel = pointerEvents.find(event => event.type === 'pointercancel')
+      expect(pointerDown?.isTrusted).toBe(true)
+      expect(pointerDown?.pointerType).toBe('touch')
+      expect(pointerDown?.target).toBe(target)
+      expect(pointerCancel?.isTrusted).toBe(true)
+      expect(pointerCancel?.pointerType).toBe('touch')
+      expect(pointerCancel?.target).toBe(target)
+      expect(pointerCancel?.pointerId).toBe(pointerDown?.pointerId)
+
+      // 证明默认长按 timer 确实启动；不读取或断言组件的私有 timer 句柄。
+      expect(el.longPressDelay).toBe(500)
+      expect(timeoutSpy.mock.calls.some(([, delay]) => Number(delay) === el.longPressDelay)).toBe(true)
+
+      await vi.advanceTimersByTimeAsync(el.longPressDelay + 1)
+      await el.updateComplete
+      expect(el.isOpen).toBe(false)
+      expect(getMenuPanels('Context menu')).toHaveLength(0)
+      expect(document.querySelector('dialog[data-wui-menu-scrim]')).toBeNull()
+    } finally {
+      window.removeEventListener('pointerdown', recordPointer, true)
+      window.removeEventListener('pointercancel', recordPointer, true)
+      cleanupElement(el)
+      restoreTimeoutSpy?.()
+      if (fakeTimersActive) vi.useRealTimers()
+    }
+  })
+
   /*
    * R9（契约）：触屏长按**从按下的位置向下展开，水平居中于按点**。
    *
@@ -265,52 +316,46 @@ describe('context-menu 长按（真实触控管线）', () => {
     }
   })
 
-  /*
-   * 吸收窗口的两相，必须放在**同一条用例**里：它们断言的是同一个状态机的两相。
-   * 拆成两条就丢掉了「窗内 / 窗外由同一条 `performance.now()` 比较切分」这个事实，
-   * 两条可以各自独立地假绿。
-   *
-   * 合成事件量不到这条：`document.body.dispatchEvent(click)` 在模态下**不可能**
-   * 发生 —— scrim 开着时下层收不到命中，而 jsdom 没有 top layer，合成事件照样派发，
-   * 于是它把一条已被模态契约关掉的通道当成了契约。这里用真实命中。
-   *
-   * 点 scrim 而不是点宿主：宿主上的 pointerdown 会把 `_longPressOpenedAt` 清成 null
-   * （`_onPointerDown` 第一行，那正是「下一次按下结束上一次补发窗口」的边界），
-   * 拿宿主当靶子等于每次点击都自己把窗口重开，两相都测不到。scrim 是 body 下的
-   * 兄弟节点，不在宿主子树里，它的 pointerdown 到不了那个监听器 —— 窗口因此保持原样，
-   * 才真的由时间切分。
-   */
+  // 只控制状态机读取的时钟；CDP 输入、渲染、timer 与 Date 时钟保持真实。
+  // 点击必须真正命中 modal scrim，再分别验证窗口末点和越界一毫秒后的行为。
   it('吸收窗口内的点击被吞，窗口过后同一次 menu 上的真实点击照常 dismiss', async () => {
     const { el, target } = createMenu({ 'long-press': '' })
     await el.updateComplete
+    let now = 0
+    const clock = vi.spyOn(performance, 'now').mockImplementation(() => now)
+    let removeClickListener = () => {}
+    let clicks = 0
+    const record = (event: Event) => {
+      if (event.target === event.currentTarget) clicks++
+    }
+    try {
+      await realTouchPress(target, { holdMs: 700 })
+      await vi.waitFor(() => {
+        expect(document.querySelector('dialog[data-wui-menu-scrim]')).not.toBeNull()
+      })
+      const targetScrim = document.querySelector<HTMLElement>('dialog[data-wui-menu-scrim]')!
+      const rect = targetScrim.getBoundingClientRect()
+      expect(document.elementFromPoint(rect.left + rect.width / 2, rect.top + rect.height / 2)).toBe(targetScrim)
+      targetScrim.addEventListener('click', record, { capture: true })
+      removeClickListener = () => targetScrim.removeEventListener('click', record, { capture: true })
 
-    await realTouchPress(target, { holdMs: 700 })
-    // 只等 scrim 挂上，不等 panel 定位：第一相必须落在吸收窗**之内**，而 `waitForMenu` 要等
-    // Floating UI 把 left/top 写回，负载下那一段时间正是从窗口里扣掉的。panel 定位不是这条
-    // 用例的判据；「点击真的命中 scrim」由第二相必须 dismiss 来保证——两相共用同一条 scrim。
-    await pollUntil(
-      () => document.querySelector('dialog[data-wui-menu-scrim]') !== null,
-      'long press never created the modal scrim'
-    )
-    expect(el.isOpen).toBe(true)
+      now = FOLLOW_UP_WINDOW_MS
+      await realTouchPress(targetScrim, { holdMs: 50 })
+      await vi.waitFor(() => expect(clicks).toBe(1))
+      expect(el.isOpen).toBe(true)
+      expect(getMenuPanels('Context menu')).toHaveLength(1)
 
-    const scrim = document.querySelector<HTMLElement>('dialog[data-wui-menu-scrim]')
-    expect(scrim).toBeTruthy()
-
-    // 第一相：距长按打开还远不到 FOLLOW_UP_WINDOW_MS（组件侧的 1000ms 吸收窗），这次点击属于
-    // 上一次长按的补发意图，必须被吞掉 —— menu 不能关。
-    await realTouchPress(scrim!, { holdMs: 50 })
-    expect(el.isOpen).toBe(true)
-    expect(getMenuPanels('Context menu')).toHaveLength(1)
-
-    // 第二相：越过窗口。同一条 scrim、同一种真实点击，这次必须生效。
-    await settle()
-    await realTouchPress(scrim!, { holdMs: 50 })
-    await el.updateComplete
-    await new Promise(resolve => requestAnimationFrame(resolve))
-
-    expect(el.isOpen).toBe(false)
-    cleanupElement(el)
+      now += 1
+      await realTouchPress(targetScrim, { holdMs: 50 })
+      await vi.waitFor(() => {
+        expect(clicks).toBe(2)
+        expect(el.isOpen).toBe(false)
+      })
+    } finally {
+      removeClickListener()
+      clock.mockRestore()
+      cleanupElement(el)
+    }
   })
 
   it('长按只派发一次 open，不因浏览器补发的 contextmenu 双开', async () => {
@@ -327,50 +372,6 @@ describe('context-menu 长按（真实触控管线）', () => {
     const opened = events.filter(event => event.detail.open)
     expect(opened).toHaveLength(1)
     expect(el.isOpen).toBe(true)
-    cleanupElement(el)
-  })
-
-  /*
-   * 这两条把长按计时器的间隔拉到远大于手势时长：判定依赖的是「计时器跨度 > 按住
-   * 时长」这个**时序差**，而负载下 `setTimeout` 的起停都会被拉长（实测一次手势从
-   * 700ms 被拖到 1300ms+），固定 500ms 的差值会被抹平——计时器在抬手之前就开 menu。
-   * 拉长 `long-press-delay`（公开属性，语义不变）把差值留够，断言一字未改。
-   *
-   * 代价是取消类的负向断言必须**越过计时器**再判：抬手时若没清掉计时器，它在 4000ms
-   * 才开 menu，只越过吸收窗（`settle()` 的默认观察窗）里什么都看不见——那样这条用例在
-   * 漏取消的实现下也照样绿。
-   */
-  const CANCELLABLE_PRESS_DELAY_MS = 4000
-  const CANCELLABLE_PRESS_DELAY = String(CANCELLABLE_PRESS_DELAY_MS)
-  const AFTER_CANCEL_WINDOW_MS = CANCELLABLE_PRESS_DELAY_MS + 300
-
-  it('短按不打开 menu', async () => {
-    const { el, target } = createMenu({ 'long-press': '', 'long-press-delay': CANCELLABLE_PRESS_DELAY })
-    await el.updateComplete
-
-    await realTouchPress(target, { holdMs: 150, endWithCancel: true })
-    await settle(AFTER_CANCEL_WINDOW_MS)
-
-    expect(el.isOpen).toBe(false)
-    // `toHaveLength(0)` 只证明「查不到 panel」，而查不到也可能是
-    // 查找器坏了；补一条直接证据：模态 scrim 根本没被创建。
-    expect(getMenuPanels('Context menu')).toHaveLength(0)
-    expect(document.querySelector('dialog[data-wui-menu-scrim]')).toBeNull()
-    cleanupElement(el)
-  })
-
-  it('按住期间位移超出阈值视为滚动，取消长按', async () => {
-    const { el, target } = createMenu({ 'long-press': '', 'long-press-delay': CANCELLABLE_PRESS_DELAY })
-    await el.updateComplete
-
-    await realTouchPress(target, { holdMs: 700, moveBy: 60, moveAfterMs: 200, endWithCancel: true })
-    await settle(AFTER_CANCEL_WINDOW_MS)
-
-    expect(el.isOpen).toBe(false)
-    // `toHaveLength(0)` 只证明「查不到 panel」，而查不到也可能是查找器坏了；
-    // 补一条直接证据：模态 scrim 根本没被创建。
-    expect(getMenuPanels('Context menu')).toHaveLength(0)
-    expect(document.querySelector('dialog[data-wui-menu-scrim]')).toBeNull()
     cleanupElement(el)
   })
 

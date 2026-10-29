@@ -37,32 +37,10 @@ const LINE_NUMBER_SPAN = new RegExp(`<span class="${LINE_NUMBER_CLASS}">[^<]*</s
 /** 预加载哪些语法由 `FLAVOR_LANG` 推出：手抄第二份，加 flavor 时它就成了没人提醒的第四处。 */
 const LANGS = [...new Set(Object.values(FLAVOR_LANG))]
 
-/**
- * 预热用的样例：每种语法各来一小段带自定义元素 tag 与成员调用的代码。冷启动那份错乱落在的正是这类
- * 记号上（tag 名与成员访问的 scope 划得跟稳定形态不一样）。
- */
-const WARMUP: Record<(typeof LANGS)[number], string> = {
-  tsx: '<x-demo onChange={event => console.log(event.currentTarget.value)}></x-demo>',
-  vue: '<template><x-demo @change="onChange"></x-demo></template>'
-}
-
 let ready: Promise<Highlighter> | undefined
 
-/**
- * 自建高亮器并等到它就绪，而不是用 shiki 的 `codeToHtml` 快捷方式：快捷方式背后是懒加载单例，模块冷启动
- * 后的**第一次**调用会返回一份着色错乱的 HTML——同一份围栏在同一进程、同一份输入下能给出两种字节。
- * 产物校验比的是字节，于是「生成物与 markdown 不一致」会随机报在一份没被改过的产物上。
- *
- * 判据来自实测：给每次调用记录输入/输出哈希后，出过别样字节的**只有每代的第 1 次**（第 2 次起逐字节
- * 一致），产物里坏掉的也永远只有第 0 个代码块。修复前的七轮全量运行里五轮报过这条不一致（第 2–5 与第
- * 7 轮），修复后的三轮为零。所以这里把这一次消耗在一个丢弃的预热结果上，之后的每次调用都落在稳定形态上。
- */
 function highlighter(): Promise<Highlighter> {
-  return (ready ??= createHighlighter({ themes: Object.values(THEMES), langs: LANGS }).then(hl => {
-    for (const lang of LANGS)
-      hl.codeToHtml(WARMUP[lang], { lang, themes: THEMES, defaultColor: false, transformers: TRANSFORMERS })
-    return hl
-  }))
+  return (ready ??= createHighlighter({ themes: Object.values(THEMES), langs: LANGS }))
 }
 
 /**
@@ -73,7 +51,14 @@ function highlighter(): Promise<Highlighter> {
 export async function highlight(code: string, flavor: FenceFlavor, file: string): Promise<string> {
   const lang = FLAVOR_LANG[flavor]
   const hl = await highlighter()
-  const html = hl.codeToHtml(code, { lang, themes: THEMES, defaultColor: false, transformers: TRANSFORMERS })
+  // 仓库文档的生成结果必须完整、可重建；分词不按机器负载截断着色。
+  const html = hl.codeToHtml(code, {
+    lang,
+    themes: THEMES,
+    defaultColor: false,
+    tokenizeTimeLimit: 0,
+    transformers: TRANSFORMERS
+  })
   // 外框（圆角、底色、滚动）归宿主自己的样式管，这里只把类名并到 shiki 的 <pre> 上。
   const framed = html.replace(/^<pre class="([^"]*)"/, '<pre class="$1 mdc-code"')
   if (framed === html) fail(`${file}：shiki 输出的 <pre> 形状变了，类名并不上：${html.slice(0, 80)}`)

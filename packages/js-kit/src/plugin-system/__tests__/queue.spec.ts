@@ -2,9 +2,9 @@ import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 
 import { defineQueue, type QueueController } from '../plugins/queue'
 
-const settleMicrotasks = async () => {
-  for (let i = 0; i < 12; i++) await Promise.resolve()
-}
+// fixture 的 drain 只派生 microtask；在持有 consumer gate 时，跨 task 观察本轮调度。
+// 此边界不表示 consumer fulfilled，后者必须释放并等待对应的 deferred 或 flush Promise。
+const afterDispatchTurn = () => new Promise<void>(resolve => setImmediate(resolve))
 
 describe('defineQueue', () => {
   beforeEach(() => {
@@ -30,7 +30,9 @@ describe('defineQueue', () => {
     defineQueue({ initialItems: items, onConsume }).make()
 
     expect(onConsume).not.toHaveBeenCalled()
-    await settleMicrotasks()
+    await new Promise<void>(resolve => queueMicrotask(resolve))
+    expect(onConsume).toHaveBeenNthCalledWith(1, items[0])
+    await afterDispatchTurn()
     expect(onConsume).toHaveBeenNthCalledWith(1, items[0])
     expect(onConsume).toHaveBeenNthCalledWith(2, items[1])
   })
@@ -47,7 +49,7 @@ describe('defineQueue', () => {
     queue.enqueue(3)
 
     expect(consumed).toEqual([])
-    await settleMicrotasks()
+    await afterDispatchTurn()
     expect(consumed).toEqual([1, 2, 3])
   })
 
@@ -65,7 +67,7 @@ describe('defineQueue', () => {
     expect(consumed).toEqual([])
 
     queue.resume()
-    await settleMicrotasks()
+    await afterDispatchTurn()
     expect(consumed).toEqual([1, 2])
   })
 
@@ -85,11 +87,11 @@ describe('defineQueue', () => {
     expect(consumed).toEqual([1, 2])
 
     queue.enqueue(3)
-    await settleMicrotasks()
+    await afterDispatchTurn()
     expect(consumed).toEqual([1, 2])
 
     queue.resume()
-    await settleMicrotasks()
+    await afterDispatchTurn()
     expect(consumed).toEqual([1, 2, 3])
   })
 
@@ -132,7 +134,7 @@ describe('defineQueue', () => {
       onConsumeError: (error, item) => errors.push({ error, item })
     }).make()
 
-    await settleMicrotasks()
+    await afterDispatchTurn()
     expect(consumed).toEqual([3])
     expect(errors.map(({ item }) => item)).toEqual([1, 2])
   })
@@ -150,7 +152,7 @@ describe('defineQueue', () => {
       }
     }).make()
 
-    await settleMicrotasks()
+    await afterDispatchTurn()
     expect(consumed).toEqual([2])
     await queue.flush()
   })
@@ -237,7 +239,7 @@ describe('defineQueue', () => {
     }).make()
     holder.instance = instance
 
-    await settleMicrotasks()
+    await afterDispatchTurn()
 
     expect(errors).toHaveLength(1)
     expect(errors[0]).toEqual(

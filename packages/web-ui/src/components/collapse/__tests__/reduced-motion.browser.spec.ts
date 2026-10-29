@@ -37,18 +37,27 @@ function runningTransitions(el: WebUiCollapse): string[] {
  *    过渡要到那之后 1~2 帧才启动；同帧断言恒为空集，会把被测组写成空转断言。
  * ② 切换前要强制一次同步样式结算，给元素建立 before-change 样式；否则过渡根本不会启动，
  *    对照组会红而「0 条」会假绿。
- * 采样窗口 12 帧 ≈ 200ms，正好覆盖一次完整过渡。
+ * 提前订阅 transitionrun，避免过渡在两次采样之间结束而漏检。
  */
 async function sampleTransitions(el: WebUiCollapse, open: boolean, frames = 12): Promise<string[]> {
-  queryTrack(el).getBoundingClientRect()
-  el.open = open
-  await el.updateComplete
+  const target = queryTrack(el)
   const seen: string[] = []
-  for (let index = 0; index < frames; index++) {
-    seen.push(...runningTransitions(el))
-    await waitForFrame()
+  const onTransition = (event: TransitionEvent) => {
+    if (event.target === target) seen.push(event.propertyName)
   }
-  return seen
+  target.addEventListener('transitionrun', onTransition)
+  try {
+    target.getBoundingClientRect()
+    el.open = open
+    await el.updateComplete
+    for (let index = 0; index < frames; index++) {
+      seen.push(...runningTransitions(el))
+      await waitForFrame()
+    }
+    return seen
+  } finally {
+    target.removeEventListener('transitionrun', onTransition)
+  }
 }
 
 // 挂载到 theme 作用域内；`motion` 省略即 'system'（本文件跑在 browser-reduced-motion

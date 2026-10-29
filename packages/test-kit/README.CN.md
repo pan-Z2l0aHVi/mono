@@ -6,7 +6,7 @@
 
 ## 功能
 
-- **MSW 测试环境**：一次 `createMswTestEnv()` 接线 worker 生命周期、自动请求捕获和在途排空
+- **MSW 测试环境**：一次 `createMswTestEnv()` 接线 worker 生命周期、自动请求捕获和完成信号等待
 - **MSW 生命周期**：通过插件组合管理 Mock Service Worker 的启动/停止/重置
 - **请求捕获**：记录并断言拦截到的 HTTP 请求
 - **插件组合**：基于 js-kit 插件系统的可组合测试基础设施
@@ -15,7 +15,7 @@
 
 这是 `mono` workspace 的私有测试基础设施，本仓库不会发布它。在仓库内的 package manifest 中使用 `workspace:*` 协议依赖它。
 
-> 需要 `msw` 作为 peer dependency。`settle` 还依赖 `vite-plus/test` 再导出的 Vitest API。
+> 需要 `msw` 作为 peer dependency。
 
 ## 快速开始
 
@@ -33,14 +33,15 @@ afterEach(() => {
 afterAll(env.stop)
 
 it('上报一次请求', async () => {
-  doTracking({ event: 'page_view' }) // fire-and-forget POST
-
-  await env.settle() // 等待在途请求全部落地
+  const completion = fetch('/api/track', { method: 'POST', body: JSON.stringify({ event: 'page_view' }) })
+  await env.settle(completion)
 
   expect(env.capturedRequests).toHaveLength(1)
   expect(env.capturedRequests[0].url).toBe('/api/track')
 })
 ```
+
+传入代表整个操作完成的 Promise，例如 `fetch()` 的返回值或队列的 flush。`settle` 无法发现调用方没有提供的工作；使用 fake timers 时，超时跟随 fake clock 推进。
 
 捕获是自动的：env 会安装自己的 catch-all 记录 handler（以 `{ ok: true }` 应答），无需手写。业务 handler 的应答优先于记录 handler；通过 `createMswTestEnv({ handlers })` 传入。
 
@@ -81,15 +82,15 @@ await ctx.stopMsw()
 
 **返回：** `MswTestEnv`，包含：
 
-| 属性                    | 类型                            | 说明                                                                          |
-| ----------------------- | ------------------------------- | ----------------------------------------------------------------------------- |
-| `worker`                | `SetupWorker`                   | MSW service worker 实例                                                       |
-| `start`                 | `() => Promise<unknown>`        | 启动 service worker（`beforeAll(env.start)`）                                 |
-| `stop`                  | `() => void`                    | 停止 service worker（`afterAll(env.stop)`）                                   |
-| `reset`                 | `() => void`                    | 重置所有处理器为默认值（`afterEach`）                                         |
-| `capturedRequests`      | `CapturedRequest[]`             | 内置记录 handler 捕获的请求；`url` 为请求 URL 的 pathname                     |
-| `clearCapturedRequests` | `() => void`                    | 清空所有捕获的请求                                                            |
-| `settle`                | `(timeout?: number) => Promise` | 排空在途请求（约 60ms 稳定窗口，默认 `timeout` 300ms）；保持 fake timers 状态 |
+| 属性                    | 类型                                                                    | 说明                                                      |
+| ----------------------- | ----------------------------------------------------------------------- | --------------------------------------------------------- |
+| `worker`                | `SetupWorker`                                                           | MSW service worker 实例                                   |
+| `start`                 | `() => Promise<unknown>`                                                | 启动 service worker（`beforeAll(env.start)`）             |
+| `stop`                  | `() => void`                                                            | 停止 service worker（`afterAll(env.stop)`）               |
+| `reset`                 | `() => void`                                                            | 重置所有处理器为默认值（`afterEach`）                     |
+| `capturedRequests`      | `CapturedRequest[]`                                                     | 内置记录 handler 捕获的请求；`url` 为请求 URL 的 pathname |
+| `clearCapturedRequests` | `() => void`                                                            | 清空所有捕获的请求                                        |
+| `settle`                | `(completion: PromiseLike<unknown>, timeout?: number) => Promise<void>` | 等待提供的完成信号；失败或超时则 reject（默认 300ms）     |
 
 ### `defineMsw(handlers)`
 

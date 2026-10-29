@@ -1,6 +1,5 @@
 import { http, HttpResponse, type RequestHandler } from 'msw'
 import { setupWorker, type SetupWorker } from 'msw/browser'
-import { vi } from 'vite-plus/test'
 
 import { defineCapturedRequests, type CapturedRequest } from './captured-requests'
 import { defineMsw } from './msw'
@@ -17,7 +16,7 @@ export interface MswTestEnv {
   reset: () => void
   capturedRequests: CapturedRequest[]
   clearCapturedRequests: () => void
-  settle: (timeout?: number) => Promise<void>
+  settle: (completion: PromiseLike<unknown>, timeout?: number) => Promise<void>
 }
 
 /** 请求体可能是任意类型；JSON 解析失败时退回原始文本，无体请求返回 null。 */
@@ -43,36 +42,29 @@ function createRecordingHandler(capturedRequests: CapturedRequest[]): RequestHan
   })
 }
 
-/**
- * 等待在途 MSW 请求全部落地。fire-and-forget 请求可能在用例清空后才落地并
- * push，从而污染下一个用例的断言（典型：离线用例断言 toHaveLength(0) 时收到
- * 上一条残留请求）。在用例 beforeEach 中调用，等残留请求落地后再进入新用例。
- * 兼容 fake timers：调用前后保持原有计时器状态。
- */
-async function settleCapturedRequests(capturedRequests: readonly CapturedRequest[], timeout = 300): Promise<void> {
-  const hadFakeTimers = vi.isFakeTimers()
-  vi.useRealTimers()
-  const start = Date.now()
-  let last = capturedRequests.length
-  let stableWindows = 0
-  while (Date.now() - start < timeout) {
-    await new Promise(resolve => setTimeout(resolve, 20))
-    if (capturedRequests.length === last) {
-      // 连续多个稳定窗口（约 60ms 无新增）才认为在途请求已排空；
-      // 单一 20ms 窗口在 CI 负载下可能因 fetch 落地耗时 > 20ms 而误判。
-      stableWindows += 1
-      if (stableWindows >= 3) break
-    } else {
-      stableWindows = 0
-      last = capturedRequests.length
-    }
+/** 等待调用方提供的完成信号；超时不会伪装成请求已结束。 */
+function settleCompletion(completion: PromiseLike<unknown>, timeout = 300): Promise<void> {
+  if (!completion || typeof completion.then !== 'function') {
+    return Promise.reject(new TypeError('MSW operation requires a completion promise'))
   }
-  if (hadFakeTimers) vi.useFakeTimers()
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error(`MSW operation did not finish within ${timeout}ms`)), timeout)
+    Promise.resolve(completion).then(
+      () => {
+        clearTimeout(timer)
+        resolve()
+      },
+      error => {
+        clearTimeout(timer)
+        reject(error)
+      }
+    )
+  })
 }
 
 /**
  * 一站式 MSW 测试环境：自动捕获所有拦截到的请求（`url` 为 pathname），无需
- * 消费者手写 catch-all handler；`settle` 排空在途请求；`start`/`stop`/`reset`
+ * 消费者手写 catch-all handler；`settle` 等待调用方的完成信号；`start`/`stop`/`reset`
  * 包装 worker 生命周期，由消费者在 beforeAll/afterEach/afterAll 中各接一行。
  */
 export function createMswTestEnv(options: MswTestEnvOptions = {}): MswTestEnv {
@@ -93,6 +85,6 @@ export function createMswTestEnv(options: MswTestEnvOptions = {}): MswTestEnv {
     reset: () => resetMsw(),
     capturedRequests,
     clearCapturedRequests,
-    settle: (timeout?: number) => settleCapturedRequests(capturedRequests, timeout)
+    settle: (completion, timeout) => settleCompletion(completion, timeout)
   }
 }

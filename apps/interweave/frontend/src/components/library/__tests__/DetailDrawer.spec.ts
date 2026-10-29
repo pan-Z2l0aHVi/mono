@@ -155,7 +155,7 @@ describe('DetailDrawer', () => {
     }
   })
 
-  it('Escape 关闭把 resource 置空时，补提交未落库的备注', async () => {
+  it('resource 清空时补提交未落库的备注', async () => {
     const resource = resourceView()
     const noteChange = vi.fn<NoteChangeHandler>()
     const mounted = mountDrawer(resource, { onNoteChange: noteChange })

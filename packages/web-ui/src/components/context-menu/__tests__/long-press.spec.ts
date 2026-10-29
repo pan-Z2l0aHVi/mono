@@ -193,13 +193,13 @@ describe('context-menu 长按（jsdom 逻辑）', () => {
     cleanupElement(el)
   })
 
-  it('抬手早于延迟则取消', async () => {
+  it.each(['pointerup', 'pointercancel'])('%s 早于延迟则取消长按', async event => {
     vi.useFakeTimers()
     const el = createMenu({ 'long-press': '' })
     await waitForUpdate(el)
 
     press(el)
-    press(el, 'pointerup')
+    press(el, event)
     await vi.advanceTimersByTimeAsync(600)
     await waitForUpdate(el)
 
