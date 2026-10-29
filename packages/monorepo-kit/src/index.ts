@@ -6,7 +6,7 @@
 //     不是规避重名的权宜手段。`contextInvariants` 与 `shellI18nCatalog` 也走命名空间：
 //     前者 12 个 helper 名字过于通用，后者的 `checkApp` 放进平铺面指代不明（哪个 app）。
 //   - 平铺导出：叶子函数与常量，包内名字唯一，平铺后调用点最短。
-//   - 参数化检查导出工厂（`defineStagedClean`），实例由消费仓库的 `scripts/policies/` 建好再交给入口。
+//   - 参数化检查导出工厂（`defineXxx`），实例由消费仓库的 `scripts/policies/` 建好再交给入口。
 //
 // 包内模块之间仍然用相对路径互相 import；写成 `@greypan/monorepo-kit` 会绕回本文件形成环。
 
@@ -17,7 +17,6 @@ export * as contextInvariants from './policy/context-invariants'
 export * as goCheck from './policy/go-check'
 export * as interweaveTurboInputs from './policy/interweave-turbo-inputs'
 export * as packageContract from './policy/package-contract'
-export * as readmeLocales from './policy/readme-locales'
 export * as scriptTests from './policy/script-tests'
 export * as shellI18nCatalog from './policy/shell-i18n-catalog'
 export * as turboCacheInvariant from './policy/turbo-cache-invariant'
@@ -27,6 +26,8 @@ export { defineCommandConventions } from './checks/command-conventions'
 export type { CommandConventionsOptions } from './checks/command-conventions'
 export { defineNoMutualLinks } from './checks/no-mutual-links'
 export type { NoMutualLinksOptions } from './checks/no-mutual-links'
+export { defineReadmeLocales } from './checks/readme-locales'
+export type { ReadmeLocalesOptions } from './checks/readme-locales'
 export { defineStagedClean } from './checks/staged-clean'
 export type { StagedCleanOptions } from './checks/staged-clean'
 export type { ToolchainStep } from './plugins/toolchain'
