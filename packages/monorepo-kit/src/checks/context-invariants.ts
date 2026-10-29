@@ -24,7 +24,6 @@ const VOLATILE_PHRASES: readonly { pattern: RegExp; label: string }[] = Object.f
 // 按词根匹配会把大部分文档误判成写操作流程。
 const REMOTE_WRITE =
   /\b(?:git push|gh pr (?:create|merge|comment|review|edit)|npm publish|pnpm publish|git tag|gh release|wails3 package)\b/
-export const AUTHORIZATION_POINTER = 'workflow.md#怎么取得这个授权'
 const REFERENCE_MARKER = '<!-- corpus-status: reference -->'
 const REFERENCE_BANNER = '状态：非权威参考'
 
@@ -144,26 +143,41 @@ export function scanVolatilePhrases(entries: readonly CorpusEntry[]): { file: st
   return violations
 }
 
-export function findUnroutedAgentDocs(agentsSource: string, files: readonly string[]): string[] {
+export function findUnroutedAgentDocs(agentsSource: string, files: readonly string[], agentDocs: string): string[] {
   return files
-    .filter(file => file.startsWith('docs/agents/') && file.endsWith('.md'))
+    .filter(file => file.startsWith(`${agentDocs}/`) && file.endsWith('.md'))
     .filter(file => !agentsSource.includes(file))
     .sort()
 }
 
-export function findMissingAuthorizationPointers(entries: readonly CorpusEntry[]): string[] {
+// 远端写命令所在文档必须指向授权入口；入口文档自己指向自己会形成自指，由 `owner` 豁免。
+export interface AuthorizationScope {
+  /** 授权机制的入口，含锚点 */
+  readonly pointer: string
+  /** `pointer` 所在文档；它自身不要求指向自己 */
+  readonly owner: string
+  /** agent 入口文件名；包级同名文档同样纳入 */
+  readonly entry: string
+  readonly agentDocs: string
+  readonly rules: string
+}
+
+export function findMissingAuthorizationPointers(
+  entries: readonly CorpusEntry[],
+  { pointer, owner, entry, agentDocs, rules }: AuthorizationScope
+): string[] {
   return (
     entries
       .filter(
         ({ file }) =>
-          file === 'AGENTS.md' ||
-          file.endsWith('AGENTS.md') ||
-          file.startsWith('docs/agents/') ||
-          file.startsWith('.agents/rules/')
+          file === entry ||
+          file.endsWith(`/${entry}`) ||
+          file.startsWith(`${agentDocs}/`) ||
+          file.startsWith(`${rules}/`)
       )
-      // workflow.md 是授权机制的 owner；要求它指向自己会形成自指。
-      .filter(({ file }) => file !== 'docs/agents/workflow.md')
-      .filter(({ source }) => REMOTE_WRITE.test(source) && !source.includes(AUTHORIZATION_POINTER))
+      // owner 文档定义授权机制；要求它指向自己会形成自指。
+      .filter(({ file }) => file !== owner)
+      .filter(({ source }) => REMOTE_WRITE.test(source) && !source.includes(pointer))
       .map(({ file }) => file)
       .sort()
   )
@@ -180,11 +194,12 @@ export function findUnmarkedReferenceDocs(entries: readonly CorpusEntry[]): stri
 const RETIRED_SECTION = [/^#{1,6}\s+.*(?:已废止|已删除)/, /(?:本节|此节|该节|以下|以上)[^\n]{0,20}(?:已废止|已删除)/]
 
 export function findRetiredAdrMarkers(
-  entries: readonly CorpusEntry[]
+  entries: readonly CorpusEntry[],
+  adrDocs: string
 ): { file: string; line: number; phrase: string }[] {
   const markers: { file: string; line: number; phrase: string }[] = []
   for (const { file, source } of entries) {
-    if (!file.startsWith('docs/adr/')) continue
+    if (!file.startsWith(`${adrDocs}/`)) continue
     source.split('\n').forEach((line, index) => {
       if (!RETIRED_SECTION.some(pattern => pattern.test(line))) return
       markers.push({ file, line: index + 1, phrase: line.includes('已废止') ? '已废止' : '已删除' })

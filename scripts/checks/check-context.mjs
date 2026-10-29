@@ -1,6 +1,8 @@
 import path from 'node:path'
 
-import { contextCorpus, runEntrypoint } from '@greypan/monorepo-kit'
+import { runEntrypoint } from '@greypan/monorepo-kit'
+
+import { contextCorpus } from '../policies/context-corpus.mjs'
 
 await runEntrypoint([contextCorpus], {
   root: path.resolve(import.meta.dirname, '../..'),

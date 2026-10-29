@@ -1,18 +1,16 @@
 // 包的唯一入口。子路径不再对外导出：消费方一律 `import { … } from '@greypan/monorepo-kit'`。
 //
 // 导出分两类，判据是「模块的导出名是否互相冲突」，不是风格偏好：
-//   - 命名空间导出：检查单元全部导出 `name` 与 `run`，平铺会互相覆盖；
+//   - 命名空间导出：尚未参数化的检查单元全部导出 `name` 与 `run`，平铺会互相覆盖；
 //     `check-runner` 读的正是 `check.name` / `check.run`，所以命名空间是这套协议的载体，
-//     不是规避重名的权宜手段。`contextInvariants` 也走命名空间：它的 helper 名字过于通用。
-//   - 平铺导出：叶子函数与常量，包内名字唯一，平铺后调用点最短。
-//   - 参数化检查导出工厂（`defineXxx`），实例由消费仓库的 `scripts/policies/` 建好再交给入口。
+//     不是规避重名的权宜手段。
+//   - 平铺导出：叶子函数、常量与参数化检查工厂，包内名字唯一，平铺后调用点最短；
+//     参数化检查（`defineXxx`）的实例由消费仓库的 `scripts/policies/` 建好再交给入口。
 //
 // 包内模块之间仍然用相对路径互相 import；写成 `@greypan/monorepo-kit` 会绕回本文件形成环。
 
 export * as changesetPolicy from './policy/changeset-policy'
 export * as changesetStatus from './policy/changeset-status'
-export * as contextCorpus from './policy/context-corpus'
-export * as contextInvariants from './policy/context-invariants'
 export * as goCheck from './policy/go-check'
 export * as interweaveTurboInputs from './policy/interweave-turbo-inputs'
 export * as packageContract from './policy/package-contract'
@@ -22,6 +20,8 @@ export * as webUiDocsInputs from './policy/web-ui-docs-inputs'
 
 export { defineCommandConventions } from './checks/command-conventions'
 export type { CommandConventionsOptions } from './checks/command-conventions'
+export { defineContextCorpus } from './checks/context-corpus'
+export type { ContextCorpusOptions, SkillsSurface } from './checks/context-corpus'
 export { defineNoMutualLinks } from './checks/no-mutual-links'
 export type { NoMutualLinksOptions } from './checks/no-mutual-links'
 export { defineReadmeLocales } from './checks/readme-locales'

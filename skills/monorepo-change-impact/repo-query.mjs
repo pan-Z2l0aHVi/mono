@@ -514,7 +514,8 @@ const hasContextChange = normalizedPaths.some(
     file.startsWith('docs/agents/') ||
     file.startsWith('docs/adr/') ||
     file.startsWith('scripts/checks/check-context') ||
-    file.startsWith('packages/monorepo-kit/src/policy/context-corpus') ||
+    file.startsWith('scripts/policies/context-corpus') ||
+    file.startsWith('packages/monorepo-kit/src/checks/context-') ||
     file.startsWith('packages/monorepo-kit/src/shared/workspace-manifests') ||
     selfAuthoredSkillPaths.some(prefix => file.startsWith(prefix))
 )
@@ -695,7 +696,7 @@ if (hasWailsPublicApiChange)
 if (hasContextChange)
   addEvidence(
     'context-system',
-    'packages/monorepo-kit/src/policy/context-corpus.ts + current diff',
+    'packages/monorepo-kit/src/checks/context-corpus.ts + scripts/policies/context-corpus.mjs + current diff',
     'context 改动必须检查加载路径、链接、索引和重复风险。'
   )
 
