@@ -2,7 +2,6 @@ import path from 'node:path'
 
 import {
   interweaveTurboInputs,
-  noMutualLinks,
   readmeLocales,
   runEntrypoint,
   turboCacheInvariant,
@@ -10,6 +9,7 @@ import {
 } from '@greypan/monorepo-kit'
 
 import { commandConventions } from '../policies/command-conventions.mjs'
+import { noMutualLinks } from '../policies/no-mutual-links.mjs'
 
 const checks = [
   commandConventions,
