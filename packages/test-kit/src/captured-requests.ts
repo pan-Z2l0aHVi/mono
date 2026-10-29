@@ -18,12 +18,14 @@ export interface CapturedRequestsContext {
  * 通常与 defineMsw 配合使用，在 MSW handler 中 push 请求记录
  */
 export function defineCapturedRequests() {
-  const captured: CapturedRequest[] = []
+  return definePlugin<CapturedRequestsContext, object>(() => {
+    const captured: CapturedRequest[] = []
 
-  return definePlugin<CapturedRequestsContext, object>(() => ({
-    capturedRequests: captured,
-    clearCapturedRequests: () => {
-      captured.length = 0
+    return {
+      capturedRequests: captured,
+      clearCapturedRequests: () => {
+        captured.length = 0
+      }
     }
-  }))
+  })
 }

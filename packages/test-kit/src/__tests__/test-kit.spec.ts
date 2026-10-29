@@ -232,14 +232,20 @@ describe('defineCapturedRequests', () => {
   })
 
   it('多个实例互不共享记录', () => {
-    const first = defineCapturedRequests().make()
-    const second = defineCapturedRequests().make()
+    const plugin = defineCapturedRequests()
+    const first = plugin.make()
+    const second = plugin.make()
 
     first.capturedRequests.push({ url: '/api/test', body: {}, method: 'POST', timestamp: 0 })
 
-    // 共享同一个数组会让两个环境互相污染对方的断言
     expect(first.capturedRequests).toHaveLength(1)
     expect(second.capturedRequests).toHaveLength(0)
+
+    second.capturedRequests.push({ url: '/api/second', body: {}, method: 'POST', timestamp: 1 })
+    first.clearCapturedRequests()
+
+    expect(first.capturedRequests).toHaveLength(0)
+    expect(second.capturedRequests).toHaveLength(1)
   })
 })
 

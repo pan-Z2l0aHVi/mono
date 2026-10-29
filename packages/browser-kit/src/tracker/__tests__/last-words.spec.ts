@@ -139,8 +139,8 @@ describe('defineLastWords 测试', () => {
     expect(transport).toHaveBeenCalledTimes(1)
   })
 
-  it('未组合 flush 能力的插件时退出路径不报错', () => {
-    // last-words 通过 ctx.flush?.() 调能力；没有 flush 时必须空转而不是抛错
+  it('未组合 batch-track 时退出路径不报错', () => {
+    // 仅组合 core 与 last-words，退出时使用 core 提供的 flush。
     expect(() => {
       using(defineTracker({ url: 'https://example.com', transport }).use(defineLastWords()).make())
       window.dispatchEvent(new Event('beforeunload'))

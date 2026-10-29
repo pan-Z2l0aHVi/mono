@@ -1,5 +1,5 @@
 import { http, HttpResponse } from 'msw'
-import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 
 import { defineLocal } from '@/storage'
 
@@ -18,6 +18,15 @@ function createTransportStub() {
 }
 
 describe('defineTracker 测试', () => {
+  const originalSendBeacon = Object.getOwnPropertyDescriptor(navigator, 'sendBeacon')
+
+  afterEach(() => {
+    vi.restoreAllMocks()
+    if (originalSendBeacon) Object.defineProperty(navigator, 'sendBeacon', originalSendBeacon)
+    else Reflect.deleteProperty(navigator, 'sendBeacon')
+    localStorage.clear()
+  })
+
   describe('默认传输适配器（sendBeacon → fetch keepalive 降级）', () => {
     let sendBeaconSpy: ReturnType<typeof vi.fn<Navigator['sendBeacon']>>
 
