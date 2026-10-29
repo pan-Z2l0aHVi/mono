@@ -12,7 +12,6 @@
 
 export * as changesetPolicy from './policy/changeset-policy'
 export * as changesetStatus from './policy/changeset-status'
-export * as commandConventions from './policy/command-conventions'
 export * as contextCorpus from './policy/context-corpus'
 export * as contextInvariants from './policy/context-invariants'
 export * as goCheck from './policy/go-check'
@@ -25,6 +24,8 @@ export * as shellI18nCatalog from './policy/shell-i18n-catalog'
 export * as turboCacheInvariant from './policy/turbo-cache-invariant'
 export * as webUiDocsInputs from './policy/web-ui-docs-inputs'
 
+export { defineCommandConventions } from './checks/command-conventions'
+export type { CommandConventionsOptions } from './checks/command-conventions'
 export { defineStagedClean } from './checks/staged-clean'
 export type { StagedCleanOptions } from './checks/staged-clean'
 export type { ToolchainStep } from './plugins/toolchain'

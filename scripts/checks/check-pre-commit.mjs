@@ -1,7 +1,6 @@
 import path from 'node:path'
 
 import {
-  commandConventions,
   noMutualLinks,
   readmeLocales,
   runEntrypoint,
@@ -9,6 +8,7 @@ import {
   webUiDocsInputs
 } from '@greypan/monorepo-kit'
 
+import { commandConventions } from '../policies/command-conventions.mjs'
 import { stagedClean } from '../policies/staged-clean.mjs'
 
 const checks = [commandConventions, stagedClean, noMutualLinks, readmeLocales, turboCacheInvariant, webUiDocsInputs]

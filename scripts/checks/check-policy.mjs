@@ -1,7 +1,6 @@
 import path from 'node:path'
 
 import {
-  commandConventions,
   interweaveTurboInputs,
   noMutualLinks,
   readmeLocales,
@@ -9,6 +8,8 @@ import {
   turboCacheInvariant,
   webUiDocsInputs
 } from '@greypan/monorepo-kit'
+
+import { commandConventions } from '../policies/command-conventions.mjs'
 
 const checks = [
   commandConventions,
