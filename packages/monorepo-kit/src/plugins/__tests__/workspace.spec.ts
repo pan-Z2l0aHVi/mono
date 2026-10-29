@@ -5,7 +5,7 @@ import path from 'node:path'
 
 import { it } from 'vite-plus/test'
 
-import { findRepoRoot } from '../repo-root'
+import { findRepoRoot } from '../workspace'
 
 it('repo-root', () => {
   const root = findRepoRoot()

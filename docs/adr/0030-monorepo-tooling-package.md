@@ -12,8 +12,6 @@
 
 2026-10-28 修订（四）：端口分配数据从 `repo/test-ports.mjs` 移到根 `monorepo.json`，包内只保留读取、校验与偏移；项目名因此退化为 `string`，未知名字在调用时报错并列出可选值，名称集合与调用点的一致性仍由 `test-ports.test.mjs` 守。
 
-2026-10-29 修订（五）：§5 的排除实现从模块内置改为入口传入。哪些测试已由别的执行面承担是仓库事实，写进策略模块会让包名成为硬编码；`policy/script-tests.mjs` 只保留通用的目录排除逻辑，`scripts/checks/test-scripts.mjs` 传入 `packages/monorepo-kit`。行为不变。
-
 2026-10-29 修订（六）：ADR-0031 替代本 ADR 的 §1、§2 与 §5 的测试排除。§1 的「运行时源码直出、`build` 只产出类型」被推翻：包改为 TypeScript 源码经 `vp pack` 产出 `dist/`，门禁与配置消费产物，新鲜度由根 `check-pre-commit` 的前置 build 与 CI 重排保障。§2 的 `policy/` / `repo/` 两分区取消，仓库事实退回根 `scripts/policies/`。§5 的测试运行形态（`node --test`、`*.test.mjs`）改由 `vp test run` 跑 `*.spec.ts`，`exclude` 参数随包内 `*.test.mjs` 消失而删除，由 ADR-0031 的收尾切片执行。§6 的 `globalDependencies` 只保留 `.mise.toml` 与 `monorepo.json`，删去 `test-ports.ts` 的登记：该文件在包目录内，`monorepo-kit#build` 的哈希与 `dist/` 的 `^build` 传播已经覆盖它；而端口表是运行时从仓库根读的、不随构建产物变化，仍须由这份根登记失效消费者的 `test`。
 
 ## 背景与取舍

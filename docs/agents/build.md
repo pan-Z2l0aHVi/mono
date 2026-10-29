@@ -79,7 +79,7 @@ Vue demo 通过私有 `@greypan/wuchale-vue` 在 Vue 编译前转换 SFC。`wuch
 
 `api.strictPort: false` 只有 Interweave 需要显式写。vitest 5 通过 `resolveApiServerConfig` 与 `vitest:config:server` 把 `api` 合并进测试服务器，顶层 `server` 的 `strictPort: true` 会被一并带过去；Interweave 的 dev server 正需要它（端口被占就硬失败，否则 webview 指向空气），测试服务器不需要——端口被占时它会直接 `Startup Error`，而不是按实际监听地址漂移。另外五个包没有顶层 `strictPort`，继承的是默认 `false`，不必写。
 
-`monorepo.json` 记在根 `turbo.json` 的 `globalDependencies` 里：五条 `test` 任务（六个 browser project）都经各自包的 `vite.config.ts` 读它，而 turbo 只对包目录内的文件做哈希，不列出来就会在改配置之后重放上一份缓存的绿色结果。放在根而不是这五个包各自的 `test.inputs`：新增 browser project 时不会漏登记，代价是改这份配置会让全部缓存失效，而它很少改。读取它的 `packages/monorepo-kit/src/repo/test-ports.ts` 不登记：它在 `@greypan/monorepo-kit` 包目录内，`monorepo-kit#build` 的哈希与 `dist/` 经 `^build` 的传播已经覆盖它。两者失效的路径不同——表变而代码不变时构建哈希不动，只有这份根登记能失效消费者的 `test`。
+`monorepo.json` 记在根 `turbo.json` 的 `globalDependencies` 里：五条 `test` 任务（六个 browser project）都经各自包的 `vite.config.ts` 读它，而 turbo 只对包目录内的文件做哈希，不列出来就会在改配置之后重放上一份缓存的绿色结果。放在根而不是这五个包各自的 `test.inputs`：新增 browser project 时不会漏登记，代价是改这份配置会让全部缓存失效，而它很少改。读取它的 `packages/monorepo-kit/src/plugins/test-ports.ts` 不登记：它在 `@greypan/monorepo-kit` 包目录内，`monorepo-kit#build` 的哈希与 `dist/` 经 `^build` 的传播已经覆盖它。两者失效的路径不同——表变而代码不变时构建哈希不动，只有这份根登记能失效消费者的 `test`。
 
 dev server 不在这张表里：两个 demo 不写端口，Vite 从 5173 起、被占则 +1，实际 URL 会变，脚本与文档不要写死；Interweave 的 9245 带 `strictPort`，端口被占直接失败（Wails 需要确定的前端 URL，静默漂移会让 webview 指向空气），改端口用 `WAILS_VITE_PORT`——Taskfile 与 `vite.config.ts` 读同一个变量。
 

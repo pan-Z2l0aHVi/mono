@@ -2,7 +2,7 @@ import fs from 'node:fs'
 import path from 'node:path'
 
 import { defineWorkspace } from '../plugins/workspace'
-import type { CheckUnit } from '../policy/check-runner'
+import type { CheckUnit } from '../runner/check-runner'
 
 // 发布包的根 README 就是 npm 包页，英文版与中文版各是一半读者的入口：缺一份，或只有单向链接，
 // 另一侧读者就没有路。私有包与应用不要求多语言——内部文档的语言由仓库规则统一——但只要多语言版

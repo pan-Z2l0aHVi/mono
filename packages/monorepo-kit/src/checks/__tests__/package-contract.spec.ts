@@ -5,9 +5,17 @@ import path from 'node:path'
 
 import { afterAll, it } from 'vite-plus/test'
 
-import { run } from '../package-contract'
+import { definePackageContract } from '../package-contract'
+
+const packageContract = definePackageContract()
 
 const fixtureRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'greypan-contract-'))
+
+async function detail(result: Promise<string | void>): Promise<string> {
+  const value = await result
+  assert.ok(value, 'package-contract returned no detail')
+  return value
+}
 
 it('package-contract', async () => {
   fs.writeFileSync(path.join(fixtureRoot, 'pnpm-workspace.yaml'), "packages:\n  - 'packages/*'\n")
@@ -25,7 +33,7 @@ it('package-contract', async () => {
       exports: { '.': { import: './dist/index.js', types: './dist/index.d.ts' } }
     })
   )
-  assert.match(await run({ root: fixtureRoot }), /published package exports/)
+  assert.match(await detail(packageContract.run({ root: fixtureRoot })), /published package exports/)
 
   const privatePackageRoot = path.join(fixtureRoot, 'packages', 'private-fixture')
   fs.mkdirSync(privatePackageRoot, { recursive: true })
@@ -33,7 +41,7 @@ it('package-contract', async () => {
     path.join(privatePackageRoot, 'package.json'),
     JSON.stringify({ name: '@greypan/private-fixture', version: '9.9.9', private: true })
   )
-  await run({ root: fixtureRoot })
+  await packageContract.run({ root: fixtureRoot })
 
   fs.writeFileSync(
     path.join(fixturePackageRoot, 'package.json'),
@@ -44,7 +52,7 @@ it('package-contract', async () => {
       exports: { '.': { import: './dist/index.js', types: './dist/index.d.ts' } }
     })
   )
-  await assert.rejects(run({ root: fixtureRoot }), /packed artifact/)
+  await assert.rejects(packageContract.run({ root: fixtureRoot }), /packed artifact/)
 
   fs.writeFileSync(
     path.join(fixturePackageRoot, 'package.json'),
@@ -56,7 +64,7 @@ it('package-contract', async () => {
       exports: { '.': { import: './dist/index.js', types: './dist/index.d.ts' } }
     })
   )
-  await assert.rejects(run({ root: fixtureRoot }), /sideEffects pattern has no matching/)
+  await assert.rejects(packageContract.run({ root: fixtureRoot }), /sideEffects pattern has no matching/)
 
   fs.writeFileSync(
     path.join(fixturePackageRoot, 'package.json'),
@@ -68,13 +76,13 @@ it('package-contract', async () => {
     })
   )
   fs.rmSync(path.join(fixturePackageRoot, 'dist', 'index.js'))
-  await assert.rejects(run({ root: fixtureRoot }), /missing from the packed artifact/)
+  await assert.rejects(packageContract.run({ root: fixtureRoot }), /missing from the packed artifact/)
 
   fs.writeFileSync(
     path.join(fixturePackageRoot, 'package.json'),
     JSON.stringify({ name: '@greypan/fixture', exports: { '.': { import: './dist/index.js' } } })
   )
-  await assert.rejects(run({ root: fixtureRoot }), /non-empty files allowlist/)
+  await assert.rejects(packageContract.run({ root: fixtureRoot }), /non-empty files allowlist/)
 
   // A package that was public can become private while its version changes. Private metadata must remove it from pack validation.
   fs.writeFileSync(
@@ -87,7 +95,7 @@ it('package-contract', async () => {
       exports: { '.': { import: './missing.js' } }
     })
   )
-  await run({ root: fixtureRoot })
+  await packageContract.run({ root: fixtureRoot })
 })
 
 afterAll(() => {

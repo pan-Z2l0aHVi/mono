@@ -1,6 +1,6 @@
 import path from 'node:path'
 
-import type { CheckUnit } from '../policy/check-runner'
+import type { CheckUnit } from '../runner/check-runner'
 import { readJsonFile } from '../shared/config'
 
 // 根命令面支持分组 CLI（以管理对象命名，动作由子命令提供）和单动作 CLI；单动作命名为

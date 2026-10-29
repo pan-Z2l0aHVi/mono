@@ -7,8 +7,7 @@
         "$TURBO_DEFAULT$",
         "!**/*.md",
         "$TURBO_ROOT$/packages/monorepo-kit/src/checks/shell-i18n-catalog.ts",
-        "$TURBO_ROOT$/packages/monorepo-kit/src/plugins/exec.ts",
-        "$TURBO_ROOT$/packages/monorepo-kit/src/shared/exec.ts"
+        "$TURBO_ROOT$/packages/monorepo-kit/src/plugins/exec.ts"
       ]
     }
   }

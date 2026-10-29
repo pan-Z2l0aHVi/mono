@@ -6,7 +6,9 @@ import path from 'node:path'
 
 import { afterAll, it } from 'vite-plus/test'
 
-import { run } from '../changeset-policy'
+import { defineChangesetPolicy } from '../changeset-policy'
+
+const policy = defineChangesetPolicy()
 
 const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'greypan-changeset-'))
 const gitEnv = {
@@ -47,12 +49,14 @@ function makeRepo(
   return { root, base: commit(root, 'base fixture') }
 }
 
-function check(repo: Fixture, base: string = repo.base, head = 'HEAD'): Promise<string> {
-  return run({ root: repo.root, base, head })
+function check(repo: Fixture, base: string = repo.base, head = 'HEAD'): Promise<string | void> {
+  return policy.run({ root: repo.root, base, head })
 }
 
 async function pass(repo: Fixture, base: string = repo.base, head = 'HEAD'): Promise<string> {
-  return check(repo, base, head)
+  const detail = await check(repo, base, head)
+  assert.ok(detail, 'changeset-policy returned no detail')
+  return detail
 }
 
 async function fails(repo: Fixture, pattern: RegExp, base: string = repo.base, head = 'HEAD'): Promise<void> {
@@ -186,7 +190,7 @@ it('changeset-policy', async () => {
   await fails(invalidConfig, /must contain an ignore array/, invalidConfig.base, invalidConfigHead)
 
   await assert.rejects(check(single, 'deadbeefdeadbeefdeadbeefdeadbeefdeadbeef', singleHead), /base .* is not a commit/)
-  await assert.rejects(run({ root: single.root, head: singleHead }), /missing required option --base/)
+  await assert.rejects(policy.run({ root: single.root, head: singleHead }), /missing required option --base/)
 })
 
 afterAll(() => {

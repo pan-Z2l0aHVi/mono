@@ -1,8 +1,6 @@
 import { definePlugin } from '@greypan/js-kit'
 
-import type { ExecResult } from '../shared/exec'
-
-import { defineExec } from './exec'
+import { defineExec, type ExecResult } from './exec'
 
 export interface ToolchainStep {
   /** 步骤名，失败信息里用它标出是哪条命令 */

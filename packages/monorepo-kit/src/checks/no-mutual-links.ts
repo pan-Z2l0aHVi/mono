@@ -1,7 +1,7 @@
 import fs from 'node:fs'
 import path from 'node:path'
 
-import type { CheckUnit } from '../policy/check-runner'
+import type { CheckUnit } from '../runner/check-runner'
 import { byCodeUnit } from '../shared/order'
 
 // 指令面互指图守卫：只解析行内 Markdown `[label](target)` 链接，引用式 `[label][id]` 不纳入既定判据。

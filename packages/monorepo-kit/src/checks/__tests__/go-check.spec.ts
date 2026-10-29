@@ -5,7 +5,9 @@ import path from 'node:path'
 
 import { afterAll, it } from 'vite-plus/test'
 
-import { run } from '../go-check'
+import { defineGoCheck } from '../go-check'
+
+const checkGo = defineGoCheck({ fixCommand: 'pnpm run fix-go' })
 
 const root = fs.mkdtempSync(path.join(os.tmpdir(), 'greypan-go-check-'))
 const log = path.join(root, 'tool-calls.log')
@@ -20,8 +22,8 @@ function writeStub(file: string, body: string): void {
   fs.chmodSync(file, 0o755)
 }
 
-function check(extraEnv: NodeJS.ProcessEnv = {}): Promise<string> {
-  return run({
+function check(extraEnv: NodeJS.ProcessEnv = {}): Promise<string | void> {
+  return checkGo.run({
     root,
     env: {
       ...process.env,
@@ -36,13 +38,19 @@ function check(extraEnv: NodeJS.ProcessEnv = {}): Promise<string> {
   })
 }
 
-async function failure(promise: Promise<string>): Promise<string> {
+async function failure(promise: Promise<unknown>): Promise<string> {
   try {
     await promise
   } catch (error) {
     return error instanceof Error ? error.message : String(error)
   }
   assert.fail('expected check-go to fail')
+}
+
+async function detail(result: Promise<string | void>): Promise<string> {
+  const value = await result
+  assert.ok(value, 'check-go returned no detail')
+  return value
 }
 
 it('go-check', async () => {
@@ -84,7 +92,7 @@ it('go-check', async () => {
   fs.writeFileSync(path.join(root, 'node_modules', 'ghost', 'go.mod'), 'module ghost\n')
   fs.writeFileSync(path.join(root, 'node_modules', 'ghost', 'ghost.go'), 'package ghost\n')
 
-  assert.match(await check(), /3 Go file\(s\) checked; 2 module\(s\) vetted/)
+  assert.match(await detail(check()), /3 Go file\(s\) checked; 2 module\(s\) vetted/)
   const calls = fs.readFileSync(log, 'utf8').trim().split('\n')
   assert.ok(calls.includes('gofmt|-l modA/main.go modB/sub/x.go untracked.go'))
   // sh 会报告解析过符号链接的物理路径（macOS 的 /var -> /private/var）。

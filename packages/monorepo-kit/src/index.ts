@@ -1,47 +1,61 @@
 // 包的唯一入口。子路径不再对外导出：消费方一律 `import { … } from '@greypan/monorepo-kit'`。
 //
-// 导出分两类，判据是「模块的导出名是否互相冲突」，不是风格偏好：
-//   - 命名空间导出：尚未参数化的检查单元全部导出 `name` 与 `run`，平铺会互相覆盖；
-//     `check-runner` 读的正是 `check.name` / `check.run`，所以命名空间是这套协议的载体，
-//     不是规避重名的权宜手段。
-//   - 平铺导出：叶子函数、常量与参数化检查工厂，包内名字唯一，平铺后调用点最短；
-//     参数化检查（`defineXxx`）的实例由消费仓库的 `scripts/policies/` 建好再交给入口。
+// 导出分三类：
+//   - 能力插件：`defineXxx(options)` 返回插件，`.use()` 组合、`.make(ctx)` 得到能力对象；
+//   - 检查单元：`defineXxx(options)` 返回 `{ name, run }`，仓库事实只经 options 进入，实例由
+//     消费仓库的 `scripts/policies/` 建好再交给入口；
+//   - 叶子函数与常量：包内名字唯一，平铺后调用点最短。
 //
 // 包内模块之间仍然用相对路径互相 import；写成 `@greypan/monorepo-kit` 会绕回本文件形成环。
 
-export * as changesetPolicy from './policy/changeset-policy'
-export * as changesetStatus from './policy/changeset-status'
-export * as goCheck from './policy/go-check'
-export * as interweaveTurboInputs from './policy/interweave-turbo-inputs'
-export * as packageContract from './policy/package-contract'
-export * as scriptTests from './policy/script-tests'
-export * as turboCacheInvariant from './policy/turbo-cache-invariant'
-export * as webUiDocsInputs from './policy/web-ui-docs-inputs'
-
+export { defineChangesetPolicy } from './checks/changeset-policy'
+export { defineChangesetStatus } from './checks/changeset-status'
 export { defineCommandConventions } from './checks/command-conventions'
 export type { CommandConventionsOptions } from './checks/command-conventions'
 export { defineContextCorpus } from './checks/context-corpus'
 export type { ContextCorpusOptions, SkillsSurface } from './checks/context-corpus'
+export { defineDocsInputs } from './checks/docs-inputs'
+export type { DocsInputsOptions } from './checks/docs-inputs'
+export { defineGitHooksStatus } from './checks/git-hooks-status'
+export type { GitHooksStatus, GitHooksStatusOptions, HookStatus } from './checks/git-hooks-status'
+export { defineGoCheck } from './checks/go-check'
+export type { GoCheckOptions } from './checks/go-check'
 export { defineNoMutualLinks } from './checks/no-mutual-links'
 export type { NoMutualLinksOptions } from './checks/no-mutual-links'
+export { definePackageContract } from './checks/package-contract'
 export { defineReadmeLocales } from './checks/readme-locales'
 export type { ReadmeLocalesOptions } from './checks/readme-locales'
+export { defineScriptTests } from './checks/script-tests'
 export { defineShellI18nCatalog } from './checks/shell-i18n-catalog'
 export type { ShellI18nCatalogOptions } from './checks/shell-i18n-catalog'
 export { defineStagedClean } from './checks/staged-clean'
 export type { StagedCleanOptions } from './checks/staged-clean'
-export type { ToolchainStep } from './plugins/toolchain'
+export { defineTurboCacheInvariant } from './checks/turbo-cache-invariant'
+export { defineTurboInputs } from './checks/turbo-inputs'
+export type { TurboInput, TurboInputsOptions } from './checks/turbo-inputs'
 
-export { runChecks, runEntrypoint } from './policy/check-runner'
-export type { CheckContext, CheckResult, CheckUnit } from './policy/check-runner'
-export { inspectGitHooks } from './policy/git-hooks-status'
-export type { HookStatus, InspectOptions } from './policy/git-hooks-status'
+export { defineChangesets } from './plugins/changesets'
+export type { ChangesetsApi, ChangesetsOptions } from './plugins/changesets'
+export { commandOutput, defineExec, exec, pnpm } from './plugins/exec'
+export type { ExecApi, ExecOptions, ExecResult } from './plugins/exec'
+export { defineGit } from './plugins/git'
+export type { ChangedFilesOptions, GitApi } from './plugins/git'
+export { defineTestPorts, testApiPort, testApiPortNames } from './plugins/test-ports'
+export type { TestPortsApi, TestPortsOptions } from './plugins/test-ports'
+export { defineToolchain } from './plugins/toolchain'
+export type { ToolchainStep } from './plugins/toolchain'
+export { defineTurbo } from './plugins/turbo'
+export type { TurboApi } from './plugins/turbo'
+export {
+  defineWorkspace,
+  findRepoRoot,
+  listPnpmWorkspaceManifests,
+  readPnpmWorkspacePatterns
+} from './plugins/workspace'
+export type { WorkspaceApi } from './plugins/workspace'
+
+export { runChecks, runEntrypoint } from './runner/check-runner'
+export type { CheckContext, CheckResult, CheckUnit } from './runner/check-runner'
 
 export { readJsonFile } from './shared/config'
-export { commandOutput, exec, pnpm } from './shared/exec'
-export { git } from './shared/git'
 export { byCodeUnit } from './shared/order'
-export { findRepoRoot } from './shared/repo-root'
-export { listPnpmWorkspaceManifests, readPnpmWorkspacePatterns } from './shared/workspace-manifests'
-
-export { testApiPort, testApiPortNames } from './repo/test-ports'

@@ -46,7 +46,7 @@ const docNames = corpusFiles.map(file => file.replace(/\.CN\.md$/, ''))
 const docByName = new Map(exampleDocs.map(doc => [doc.component, doc]))
 
 // 覆盖判据里归本侧的三条写成纯函数，末尾用合成输入过一遍正负例：判据自己写错（例如把
-// `includes` 写成恒真）会让三条同时变哑巴，而页面照样上线。`packages/monorepo-kit/src/policy/web-ui-docs-inputs.ts`
+// `includes` 写成恒真）会让三条同时变哑巴，而页面照样上线。`packages/monorepo-kit/src/checks/docs-inputs.ts`
 // 的 `coversCorpus` 是同一口径。
 const rendersOwn = (surface: Surface, name: string) => surface.used.get(name)?.includes(name) ?? false
 const unresolvedRefs = (surface: Surface, docs: string[]) =>

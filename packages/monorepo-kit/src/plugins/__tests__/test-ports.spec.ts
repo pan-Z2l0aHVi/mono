@@ -6,8 +6,8 @@ import { globSync } from 'glob'
 import { it } from 'vite-plus/test'
 
 import { byCodeUnit } from '../../shared/order'
-import { findRepoRoot } from '../../shared/repo-root'
 import { testApiPort, testApiPortNames } from '../test-ports'
+import { findRepoRoot } from '../workspace'
 
 it('test-ports', () => {
   const root = findRepoRoot()

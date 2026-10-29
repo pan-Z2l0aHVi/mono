@@ -1,6 +1,6 @@
 import path from 'node:path'
 
-import { packageContract } from '@greypan/monorepo-kit'
+import { packageContract } from '../policies/package-contract.mjs'
 
 const args = process.argv.slice(2)
 const rootOptionIndex = args.indexOf('--root')

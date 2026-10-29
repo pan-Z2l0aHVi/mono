@@ -3,9 +3,9 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { pathToFileURL } from 'node:url'
 
-import type { CheckUnit } from '../policy/check-runner'
+import { listPnpmWorkspaceManifests, readPnpmWorkspacePatterns } from '../plugins/workspace'
+import type { CheckUnit } from '../runner/check-runner'
 import { byCodeUnit } from '../shared/order'
-import { listPnpmWorkspaceManifests, readPnpmWorkspacePatterns } from '../shared/workspace-manifests'
 
 import {
   contentDigest,
@@ -231,7 +231,7 @@ export function defineContextCorpus(options: ContextCorpusOptions): CheckUnit {
 
         // workspace 的局部约束必须有家：它自己的入口文档，或最近一个含入口文档的祖先目录。
         // 包级约束不收进架构索引的表，所以这里没有「表格豁免」退路——缺文件就是路由缺口。
-        // 用递归而非直接子目录：嵌套 workspace（如 apps/interweave/frontend）同样必须可定位。
+        // 用递归而非直接子目录：嵌套 workspace（包目录比顶层 workspace 再深一层）同样必须可定位。
         // 嵌套 workspace 的约束可并回最近的有入口文档的祖先。根目录入口是全部 workspace 的公共入口，
         // 不能算「最近祖先」，否则所有包都会走此豁免、这道校验被静默关闭。
         function coveredByAncestorEntry(workspaceRoot: string): boolean {

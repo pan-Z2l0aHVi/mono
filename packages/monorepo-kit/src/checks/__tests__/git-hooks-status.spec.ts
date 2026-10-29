@@ -6,13 +6,18 @@ import path from 'node:path'
 
 import { afterAll, it } from 'vite-plus/test'
 
-import { inspectGitHooks } from '../git-hooks-status'
+import { defineGitHooksStatus } from '../git-hooks-status'
 
 const fixtureRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'git-hooks-status-'))
 
 const required = ['commit-msg', 'pre-commit']
+const gitHooks = defineGitHooksStatus({
+  required,
+  installHint:
+    'Run `node scripts/maintenance/install-git-hooks.mjs` directly; a plain `pnpm install` only runs prepare when the lockfile or node_modules change (`pnpm install --force` also works). When core.hooksPath points outside .vite-hooks, vp config leaves that path alone and only the installer repairs it.'
+})
 // env 只用于关闭开关的探测，默认给空对象：测试不能受开发者 shell 里的 HUSKY 等变量影响。
-const inspect = (repo: string, env: NodeJS.ProcessEnv = {}) => inspectGitHooks(repo, { env, required })
+const inspect = (repo: string, env: NodeJS.ProcessEnv = {}) => gitHooks.inspect(repo, { env })
 
 // 隔离 global/system Git 配置：开发者可能把 vp.hooks.disabled 写进全局配置，测试不能受它影响。
 const globalConfig = path.join(fixtureRoot, 'gitconfig')

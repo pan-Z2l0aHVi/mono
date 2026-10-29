@@ -92,7 +92,7 @@ function getGitPaths(gitArgs) {
   }
 }
 
-// --- self-contained pnpm workspace loading（等价于宿主仓 packages/monorepo-kit/src/shared/workspace-manifests.ts，
+// --- self-contained pnpm workspace loading（等价于宿主仓 packages/monorepo-kit/src/plugins/workspace.ts，
 //     但用内置的正则 glob 匹配替代 glob 依赖，保持零外部依赖） ---
 
 function readPnpmWorkspacePatterns(root) {
@@ -516,7 +516,7 @@ const hasContextChange = normalizedPaths.some(
     file.startsWith('scripts/checks/check-context') ||
     file.startsWith('scripts/policies/context-corpus') ||
     file.startsWith('packages/monorepo-kit/src/checks/context-') ||
-    file.startsWith('packages/monorepo-kit/src/shared/workspace-manifests') ||
+    file.startsWith('packages/monorepo-kit/src/plugins/workspace') ||
     selfAuthoredSkillPaths.some(prefix => file.startsWith(prefix))
 )
 const hasAgentToolChange = normalizedPaths.some(
@@ -531,7 +531,7 @@ const hasAgentToolChange = normalizedPaths.some(
     (file.startsWith('scripts/') && file.endsWith('.test.mjs'))
 )
 const hasContractToolChange = normalizedPaths.some(
-  file => file.startsWith('scripts/checks/check-pack') || file.startsWith('packages/monorepo-kit/src/policy/package-contract')
+  file => file.startsWith('scripts/checks/check-pack') || file.startsWith('packages/monorepo-kit/src/checks/package-contract')
 )
 const hasPackageContractChange = normalizedPaths.some(file =>
   directlyChanged.some(workspace => isPackageContractChange(file, workspace))

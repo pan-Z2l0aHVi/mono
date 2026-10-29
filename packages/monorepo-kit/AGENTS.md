@@ -4,9 +4,10 @@
 
 - **单一入口**：`exports` 只有 `.`。新增公共导出就改 `src/index.ts`，再跑 `pnpm --filter @greypan/monorepo-kit build`；只给包内用的模块不进入口。
 - **包内引用用相对路径**：写成 `@greypan/monorepo-kit` 会绕回入口形成环。
+- **插件 API 的键不得与 context 同名**（`root`、`env`）：`definePlugin` 的 `use` 合并时 API 覆盖 context 且不报错，下游拿到的是 `root()` 函数而不是仓库根字符串。
 - **导出形状看名字冲突**：检查单元（`name` + `run`，由 `check-runner` 消费）以命名空间导出，其余叶子函数与常量平铺。
 - **模块顶层无副作用**：只做纯计算与常量校验；不读写文件、不起子进程、不查仓库根、不写 stdout/stderr。入口是整包再导出，任何顶层副作用都会在每个消费者身上执行一次。
-- **分区判据是「这段代码是否知道本仓库的名字、路径或数据」**：`plugins/` 是能力，`checks/` 是参数化判定（`defineXxx(options)` → `{ name, run }`），`shared/` 是与仓库无关的纯工具；本仓库的策略实例住在根 `scripts/policies/`，由组合点传参（见 ADR-0031）。还留在 `policy/`、`repo/` 里的检查是待迁移项，不要往这两个分区新增东西。本仓库的编排数据放在根 `monorepo.json`（目前是端口分配）。
-- **测试放模块旁的 `__tests__/`**，文件名是 `*.spec.ts`，由包自己的 `test`（`vp test run`）运行；`test-scripts` 已排除本包，不要在两处登记。测试 import 源码，`test` 不依赖 `build`，因此不需要先构建产物。
-- **需要仓库根时用 `shared/repo-root.ts`**，不要按目录深度写 `../..`。
+- **分区判据是「这段代码是否知道本仓库的名字、路径或数据」**：`plugins/` 是能力，`checks/` 是参数化判定（`defineXxx(options)` → `{ name, run }`），`shared/` 是与仓库无关的纯工具；本仓库的策略实例住在根 `scripts/policies/`，由组合点传参（见 ADR-0031）。本仓库的编排数据放在根 `monorepo.json`（目前是端口分配）。
+- **测试放模块旁的 `__tests__/`**，文件名是 `*.spec.ts`，由包自己的 `test`（`vp test run`）运行；`test-scripts` 只跑全仓 `*.test.mjs`，不要在两处登记。测试 import 源码，`test` 不依赖 `build`，因此不需要先构建产物。
+- **需要仓库根时用 `plugins/workspace.ts` 的 `findRepoRoot`**，不要按目录深度写 `../..`。
 - 本包同时被 pre-commit、PR CI 与各 workspace 构建配置消费；改动后跑根 `check-pre-commit`、`check-policy` 与本包的 `build` + `test`。

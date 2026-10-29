@@ -72,7 +72,8 @@ packages/monorepo-kit/src/
 scripts/
   policies/                # 本仓的仓库事实与配置好的检查实例
     readme-locales.mjs     # export const readmeLocales = defineReadmeLocales({ locales: ['CN'], … })
-    git-hooks.mjs          # hook 名单 + 配置好的 git-hooks-status
+    git-hooks.mjs          # hook 名单，不 import 包（安装期要读）
+    git-hooks-status.mjs   # 上面那份名单 + 指引，配置好的 git-hooks-status
     …
   checks/                  # 仍只做入口：import 实例 + runEntrypoint
 ```
@@ -95,7 +96,7 @@ scripts/
 
 - 包内测试改 `src/**/__tests__/*.spec.ts`，由 `vp test run` 执行，配一份 `tsconfig.vitest.json`。命名为 `.spec.ts` 与 `js-kit` 一致，也让测试进入类型检查。
 - `test` 仍不依赖 `build`：测试 import 源码。dist 的正确性由构建步骤与门禁自身的运行来兑现，不额外写「dist 可导入」的测试。
-- 包内不再有 `*.test.mjs`，`policy/script-tests.mjs` 的 `exclude` 参数因此失去消费者。收尾切片删除该参数、对应测试断言，以及 ADR-0030 修订（五）。
+- 包内不再有 `*.test.mjs`，`checks/script-tests.ts` 的 `exclude` 参数因此失去消费者。收尾切片删除该参数、对应测试断言，以及 ADR-0030 修订（五）。
 
 ### 7. 增量迁移，垂直切片
 

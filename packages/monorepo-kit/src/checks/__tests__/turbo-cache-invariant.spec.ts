@@ -5,7 +5,9 @@ import path from 'node:path'
 
 import { afterAll, it } from 'vite-plus/test'
 
-import { run } from '../turbo-cache-invariant'
+import { defineTurboCacheInvariant } from '../turbo-cache-invariant'
+
+const turboCacheInvariant = defineTurboCacheInvariant()
 
 const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'greypan-turbo-invariant-'))
 let fixture = 0
@@ -16,9 +18,11 @@ function config() {
   return root
 }
 
-function writeTurbo(root: string, turbo: unknown): Promise<string> {
+async function writeTurbo(root: string, turbo: unknown): Promise<string> {
   fs.writeFileSync(path.join(root, 'turbo.json'), JSON.stringify(turbo, null, 2) + '\n')
-  return run({ root })
+  const value = await turboCacheInvariant.run({ root })
+  assert.ok(value, 'turbo-cache-invariant returned no detail')
+  return value
 }
 
 async function fails(turbo: unknown, pattern: RegExp): Promise<void> {
@@ -69,11 +73,11 @@ it('turbo-cache-invariant', async () => {
   )
 
   const missing = config()
-  await assert.rejects(run({ root: missing }), /turbo.json not found/)
+  await assert.rejects(turboCacheInvariant.run({ root: missing }), /turbo.json not found/)
 
   const malformed = config()
   fs.writeFileSync(path.join(malformed, 'turbo.json'), '{ nope\n')
-  await assert.rejects(run({ root: malformed }), /cannot parse/)
+  await assert.rejects(turboCacheInvariant.run({ root: malformed }), /cannot parse/)
 })
 
 afterAll(() => {

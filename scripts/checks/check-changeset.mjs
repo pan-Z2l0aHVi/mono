@@ -1,6 +1,9 @@
 import path from 'node:path'
 
-import { changesetPolicy, changesetStatus, runEntrypoint } from '@greypan/monorepo-kit'
+import { runEntrypoint } from '@greypan/monorepo-kit'
+
+import { changesetPolicy } from '../policies/changeset-policy.mjs'
+import { changesetStatus } from '../policies/changeset-status.mjs'
 
 function parseOptions(argv) {
   const options = {}

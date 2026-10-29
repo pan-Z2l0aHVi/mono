@@ -109,7 +109,7 @@ scripts/
 
 2026-10-19 修订：本节的 Node 规则只约束检查门禁。其余脚本默认优先 POSIX `sh`，尤其是系统探测、依赖与环境处理、发布编排；只有结构化解析、代码生成、状态机或跨平台路径处理等复杂逻辑才用 Node。选择细则与跨运行时禁令见 [`docs/agents/scripts.md`](../agents/scripts.md#运行时选择)。
 
-- 检查统一使用 Node ESM。理由不是速度，而是可维护性：`JSON.parse` 替代 awk/sed 对 prettier 形状的解析，链接、git 与执行逻辑可以在 `@greypan/monorepo-kit` 的 `shared/` 里共享，检查函数可以直接单测。Node 已由 mise 钉住，且在仓库中本来就是必需依赖；入口只启动一次，子进程继承同一工具链。
+- 检查统一使用 Node ESM。理由不是速度，而是可维护性：`JSON.parse` 替代 awk/sed 对 prettier 形状的解析，链接、git 与执行逻辑可以在 `@greypan/monorepo-kit` 的 `plugins/` 里共享，检查函数可以直接单测。Node 已由 mise 钉住，且在仓库中本来就是必需依赖；入口只启动一次，子进程继承同一工具链。
 - 不在 `sh` 里拼接执行 Node 源码，也不在 Node 里用 `sh -c` 或启动 `.sh` 辅助脚本完成本可由 argv 表达的工作。外部 CLI 以 argv 调用不属于拼接。
 - bootstrap 例外只来自 `.mise.toml` 在 Node 启动前求值的 `[env]` 模板；每个例外的等价实现、降级行为与测试要求以 `.mise.toml` 与 `docs/agents/worktree.md` 为准。
 - 不再新增 sh 检查；已有 sh 检查随迁移改写为 Node。

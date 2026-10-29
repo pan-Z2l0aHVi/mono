@@ -1,8 +1,7 @@
 import path from 'node:path'
 
-import { runEntrypoint, scriptTests } from '@greypan/monorepo-kit'
+import { runEntrypoint } from '@greypan/monorepo-kit'
 
-await runEntrypoint([scriptTests], {
-  root: path.resolve(import.meta.dirname, '../..'),
-  exclude: ['packages/monorepo-kit']
-})
+import { scriptTests } from '../policies/script-tests.mjs'
+
+await runEntrypoint([scriptTests], { root: path.resolve(import.meta.dirname, '../..') })
