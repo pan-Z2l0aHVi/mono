@@ -5,7 +5,13 @@ import path from 'node:path'
 
 import { it } from 'vite-plus/test'
 
-import { checkApp, parsePo } from '../shell-i18n-catalog'
+import { defineShellI18nCatalog, parsePo } from '../shell-i18n-catalog'
+
+// 语种与 PO 目录是消费方的事实，测试自带一份；两端应用的真实取值写在各自的 `catalog.spec.ts`。
+const shellI18nCatalog = defineShellI18nCatalog({
+  locales: { source: 'zh-CN', targets: ['en'] },
+  directory: 'src/locales'
+})
 
 const header = 'msgid ""\nmsgstr ""\n"Language: en\\n"\n"Plural-Forms: nplurals=2; plural=(n != 1);\\n"\n\n'
 
@@ -56,7 +62,7 @@ it('target locale must fill every plural form', async () => {
   fs.writeFileSync(path.join(locales, 'zh-CN.po'), `${header}${pluralEntry('文件', '多个文件', ['文件', '多个文件'])}`)
   fs.writeFileSync(path.join(locales, 'en.po'), `${header}${pluralEntry('文件', '多个文件', ['File', ''])}`)
   try {
-    await assert.rejects(() => checkApp({ root, app: 'apps/react-web-ui-demo' }), /空译文/)
+    await assert.rejects(() => shellI18nCatalog.run({ root, app: 'apps/react-web-ui-demo' }), /空译文/)
   } finally {
     fs.rmSync(root, { recursive: true, force: true })
   }
@@ -77,7 +83,7 @@ function fixture(messages: readonly (readonly [string, string?])[], app = 'react
 it('empty msgstr fails the check', async () => {
   const root = fixture([['已复制', '']])
   try {
-    await assert.rejects(() => checkApp({ root, app: 'apps/react-web-ui-demo' }), /空译文/)
+    await assert.rejects(() => shellI18nCatalog.run({ root, app: 'apps/react-web-ui-demo' }), /空译文/)
   } finally {
     fs.rmSync(root, { recursive: true, force: true })
   }
@@ -89,7 +95,7 @@ it('missing translation fails the check', async () => {
   const enFile = path.join(root, 'apps', 'react-web-ui-demo', 'src', 'locales', 'en.po')
   fs.writeFileSync(enFile, `${header}${entry('别的', 'Other')}`)
   try {
-    await assert.rejects(() => checkApp({ root, app: 'apps/react-web-ui-demo' }), /缺 1 条译文/)
+    await assert.rejects(() => shellI18nCatalog.run({ root, app: 'apps/react-web-ui-demo' }), /缺 1 条译文/)
   } finally {
     fs.rmSync(root, { recursive: true, force: true })
   }
@@ -99,7 +105,25 @@ it('missing translation fails the check', async () => {
 it('vue app uses the same empty-translation rule', async () => {
   const root = fixture([['复制代码', '']], 'vue-web-ui-demo')
   try {
-    await assert.rejects(() => checkApp({ root, app: 'apps/vue-web-ui-demo' }), /空译文/)
+    await assert.rejects(() => shellI18nCatalog.run({ root, app: 'apps/vue-web-ui-demo' }), /空译文/)
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true })
+  }
+})
+
+// options 是消费方的事实：换一组语种与目录，判据跟着变，不会回头读本仓的 `src/locales`。
+it('options drive locales and the PO directory', async () => {
+  const root = fixture([['已复制', 'Copied']])
+  const directory = path.join(root, 'apps', 'react-web-ui-demo', 'i18n', 'messages')
+  fs.mkdirSync(directory, { recursive: true })
+  fs.writeFileSync(path.join(directory, 'zh-CN.po'), `${header}${entry('已复制', '已复制')}`)
+  fs.writeFileSync(path.join(directory, 'ja.po'), `${header}${entry('已复制', '')}`)
+  const check = defineShellI18nCatalog({
+    locales: { source: 'zh-CN', targets: ['ja'] },
+    directory: 'i18n/messages'
+  })
+  try {
+    await assert.rejects(check.run({ root, app: 'apps/react-web-ui-demo' }), /ja 语料有 1 条空译文/)
   } finally {
     fs.rmSync(root, { recursive: true, force: true })
   }

@@ -3,8 +3,7 @@
 // 导出分两类，判据是「模块的导出名是否互相冲突」，不是风格偏好：
 //   - 命名空间导出：检查单元全部导出 `name` 与 `run`，平铺会互相覆盖；
 //     `check-runner` 读的正是 `check.name` / `check.run`，所以命名空间是这套协议的载体，
-//     不是规避重名的权宜手段。`contextInvariants` 与 `shellI18nCatalog` 也走命名空间：
-//     前者 12 个 helper 名字过于通用，后者的 `checkApp` 放进平铺面指代不明（哪个 app）。
+//     不是规避重名的权宜手段。`contextInvariants` 也走命名空间：它的 helper 名字过于通用。
 //   - 平铺导出：叶子函数与常量，包内名字唯一，平铺后调用点最短。
 //   - 参数化检查导出工厂（`defineXxx`），实例由消费仓库的 `scripts/policies/` 建好再交给入口。
 //
@@ -18,7 +17,6 @@ export * as goCheck from './policy/go-check'
 export * as interweaveTurboInputs from './policy/interweave-turbo-inputs'
 export * as packageContract from './policy/package-contract'
 export * as scriptTests from './policy/script-tests'
-export * as shellI18nCatalog from './policy/shell-i18n-catalog'
 export * as turboCacheInvariant from './policy/turbo-cache-invariant'
 export * as webUiDocsInputs from './policy/web-ui-docs-inputs'
 
@@ -28,6 +26,8 @@ export { defineNoMutualLinks } from './checks/no-mutual-links'
 export type { NoMutualLinksOptions } from './checks/no-mutual-links'
 export { defineReadmeLocales } from './checks/readme-locales'
 export type { ReadmeLocalesOptions } from './checks/readme-locales'
+export { defineShellI18nCatalog } from './checks/shell-i18n-catalog'
+export type { ShellI18nCatalogOptions } from './checks/shell-i18n-catalog'
 export { defineStagedClean } from './checks/staged-clean'
 export type { StagedCleanOptions } from './checks/staged-clean'
 export type { ToolchainStep } from './plugins/toolchain'
