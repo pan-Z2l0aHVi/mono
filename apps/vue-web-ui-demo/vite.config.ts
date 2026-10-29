@@ -10,11 +10,13 @@ import basicSsl from '@vitejs/plugin-basic-ssl'
 import legacy from '@vitejs/plugin-legacy'
 import vue from '@vitejs/plugin-vue'
 import autoImport from 'unplugin-auto-import/vite'
-import { searchForWorkspaceRoot, type UserConfig } from 'vite-plus'
+import { defineConfig, searchForWorkspaceRoot } from 'vite-plus'
 import { playwright } from 'vite-plus/test/browser-playwright'
 import { VueRouterAutoImports } from 'vue-router/unplugin'
 import vueRouter from 'vue-router/vite'
 import { wuchale } from 'wuchale/vite'
+
+import { testApiPort } from '../../scripts/lib/test-ports.mjs'
 
 // 具名导出供 scripts/workflow/check-md-to-comp-artifacts.mjs 复用：CI 在 Build 步之前以这份配置
 // 只判不改地校验生成物。配置只有这一份，不另抄。
@@ -91,17 +93,14 @@ export const mdToCompOptions: MdToCompViteOptions = {
   darkSelector: "web-ui-theme[resolved-appearance='dark']"
 }
 
-export default {
+export default defineConfig({
   resolve: {
     tsconfigPaths: true
   },
   optimizeDeps: {
-    // browser mode 下浏览器直接加载裸 CJS 时会报 "does not provide an export named
-    // 'expectTypeOf'" 并挂起；expect-type 是该运行时已知唯一的 CJS 依赖，必须显式预打包。
-    // vitest 仅由 vite-plus 间接提供，需要从 vite-plus 上下文逐级解析。
-    //
-    // 启动时还会打印 "Failed to resolve dependency: vitest > expect-type" 一类：那不是这条
-    // 清单，是 vitest 自己注入的条目在本 pnpm 布局下解析不到，无害。
+    // browser 运行时需要的 `vitest > expect-type` 由 vitest 5 自己注入。`vitest` 随
+    // `vite-plus` 安装，本包不单独声明（也不要在 optimizeDeps 里补），那条链从 vite-plus
+    // 的依赖位置解析。
     //
     // web-ui 那一半由 `@greypan/web-ui/vite` 提供，跟随组件库自己的运行时依赖，不要在这里抄一份。
     //
@@ -118,9 +117,12 @@ export default {
     // 机制（下面是解释，不是本文件验证过的判据）：重打包让页面同时存在两份 Vue runtime，dev 模式下
     // 冻结的 `EMPTY_OBJ` 两边不是同一个对象，`i.refs === EMPTY_OBJ` 认不出对面那份，转而往对面那份
     // 冻结对象上 `defineProperty`，带模板 ref 的示例整块挂不上。
-    include: ['vite-plus > vitest > expect-type', 'pinia', ...webUiOptimizeDeps]
+    include: ['pinia', ...webUiOptimizeDeps]
   },
   test: {
+    // Vitest 5 把默认附件目录从 `.vitest-attachments` 改成 `.vitest/attachments`；
+    // 仓库在 `.gitignore` 与 docs/agents 里把测试证据路径固定为前者，这里跟着钉住。
+    attachmentsDir: '.vitest-attachments',
     projects: [
       {
         extends: true,
@@ -140,14 +142,16 @@ export default {
           // 断点与 collapsed state 都是真实浏览器才成立的东西：jsdom 里 media query 是替身、
           // 工具类是一串不生效的字符串。这一档在 Chromium 里读回渲染结果。
           include: ['src/**/*.browser.spec.ts'],
+          // vitest 5 把 `browser.api` 挪到了 `test.api`，而且要写在 browser project 自己的
+          // `test` 块里：写到根上会连 jsdom project 一起抢这个端口。默认 63315 会被同机并行的
+          // 其他 worktree（或同一轮 turbo test 里其他包的测试进程）占住——同一进程内的多个
+          // browser project 倒是会各自递增，不冲突；端口分配与多 worktree 的偏移见
+          // scripts/lib/test-ports.mjs。host 钉成 loopback 的理由见
+          // apps/react-web-ui-demo/vite.config.ts。
+          api: { host: '127.0.0.1', port: testApiPort('vue-web-ui-demo') },
           browser: {
             enabled: true,
             headless: true,
-            // vitest 的默认端口 63315 会被同机并行的其他 worktree（或同一轮 turbo test 里
-            // web-ui 的 browser project）占住，而它的端口可用性检查不区分地址族：拿到
-            // 冲突端口时页面会被导到别人的服务器上，症状是 ERR_SSL_PROTOCOL_ERROR /
-            // ERR_EMPTY_RESPONSE / browser runtime 永不连回。固定到本包的专用端口。
-            api: { port: 63412 },
             provider: playwright(),
             instances: [{ browser: 'chromium' }]
           }
@@ -223,4 +227,4 @@ export default {
       allow: [searchForWorkspaceRoot(process.cwd())]
     }
   }
-} satisfies UserConfig
+})

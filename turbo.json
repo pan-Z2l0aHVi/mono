@@ -1,7 +1,7 @@
 {
   "$schema": "https://turbo.build/schema.json",
   "ui": "tui",
-  "globalDependencies": [".mise.toml"],
+  "globalDependencies": [".mise.toml", "scripts/lib/test-ports.mjs"],
   "tasks": {
     "build": {
       "dependsOn": ["^build"],

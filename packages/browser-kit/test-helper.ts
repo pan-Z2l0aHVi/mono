@@ -1,19 +1,34 @@
 import { createMswTestEnv } from '@greypan/test-kit'
 import { afterAll, afterEach, beforeAll } from 'vite-plus/test'
 
-/**
- * browser-kit 测试共享的 MSW 环境：捕获 handler 记录所有未命中用例内
- * handler 的请求（`url` 为 pathname）并以 `{ ok: true }` 应答。
+interface SharedMswEnv {
+  env: ReturnType<typeof createMswTestEnv>
+  hooksRegistered: boolean
+}
+
+const sharedKey = Symbol.for('@greypan/browser-kit/shared-msw-env')
+
+/*
+ * setupFiles 由 Vitest 以带 `?import&browserv` 的 URL 载入，与 spec 里 `../../../test-helper`
+ * 解析出的模块是两个实例；同一个 spec 文件因此会执行两遍本模块。MSW 3 的 WebSocket 拦截器
+ * 禁止两个 worker 同时生效（第二个 start 会抛 "already replaced"），而两份 worker 还会
+ * 各注册一套捕获 handler。所以 env 与 hook 注册都挂到 globalThis，只保留一份。
  */
-const env = createMswTestEnv()
-
-beforeAll(() => env.start())
-afterEach(() => {
-  env.reset()
-  env.clearCapturedRequests()
+const shared = ((globalThis as typeof globalThis & { [sharedKey]?: SharedMswEnv })[sharedKey] ??= {
+  env: createMswTestEnv(),
+  hooksRegistered: false
 })
-afterAll(() => env.stop())
 
-export const capturedRequests = env.capturedRequests
-export const clearCapturedRequests = env.clearCapturedRequests
-export const worker = env.worker
+if (!shared.hooksRegistered) {
+  shared.hooksRegistered = true
+  beforeAll(() => shared.env.start())
+  afterEach(() => {
+    shared.env.reset()
+    shared.env.clearCapturedRequests()
+  })
+  afterAll(() => shared.env.stop())
+}
+
+export const capturedRequests = shared.env.capturedRequests
+export const clearCapturedRequests = shared.env.clearCapturedRequests
+export const worker = shared.env.worker

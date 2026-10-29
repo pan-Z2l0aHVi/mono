@@ -43,9 +43,9 @@
     "registry": "https://registry.npmjs.org/"
   },
   "scripts": {
-    "build": "vp build",
+    "build": "vp pack",
     "test": "vp test run",
-    "dev": "vp build --watch --emptyOutDir=false",
+    "dev": "vp pack --watch --clean=false",
     "generate-icons": "node --experimental-strip-types scripts/generate-icons.ts"
   },
   "dependencies": {
@@ -74,7 +74,6 @@
     "lit": "catalog:",
     "react": "catalog:",
     "react-dom": "catalog:",
-    "vite-plugin-dts": "catalog:",
     "vue": "catalog:",
     "vite": "catalog:",
     "vite-plus": "catalog:"

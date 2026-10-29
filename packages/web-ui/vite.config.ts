@@ -1,40 +1,67 @@
 import { resolve } from 'node:path'
 
-import dts from 'vite-plugin-dts'
-import type { Plugin, UserConfig } from 'vite-plus'
+import { defineConfig } from 'vite-plus'
 import { playwright } from 'vite-plus/test/browser-playwright'
+
+import { testApiPort } from '../../scripts/lib/test-ports.mjs'
 
 import { generateIcons } from './scripts/generate-icons'
 
-function iconsPlugin(): Plugin {
-  return {
-    name: 'generate-icons',
-    async buildStart() {
-      const count = await generateIcons(import.meta.dirname)
-      this.info(`generated ${count} icons`)
-    }
-  }
-}
-
-export default {
+export default defineConfig({
   resolve: {
     tsconfigPaths: true
   },
-  optimizeDeps: {
-    // workspace 依赖未构建（fresh clone）时 dep scan 会失败并跳过预打包；
-    // expect-type 是 browser 运行时当前已知唯一的 CJS 依赖，必须显式预打包，
-    // 否则浏览器直接加载裸 CJS 报 "does not provide an export named 'expectTypeOf'" 并挂起。
-    // vitest 仅由 vite-plus 间接提供，需要从 vite-plus 上下文逐级解析。
-    include: ['vite-plus > vitest > expect-type']
+  pack: {
+    entry: {
+      'components/index': resolve(import.meta.dirname, 'src/components/index.ts'),
+      'classes/style': resolve(import.meta.dirname, 'src/classes/style.css'),
+      'icons/index': resolve(import.meta.dirname, 'src/icons/index.ts'),
+      'vite/index': resolve(import.meta.dirname, 'src/vite/index.ts'),
+      // `./types/*` 是对外类型入口，这些文件不在 JS 图里，必须显式列为入口才会产出 `.d.ts`。
+      'types/iconify': resolve(import.meta.dirname, 'src/types/iconify.ts'),
+      'types/react': resolve(import.meta.dirname, 'src/types/react.ts'),
+      'types/utils': resolve(import.meta.dirname, 'src/types/utils.ts'),
+      'types/vue': resolve(import.meta.dirname, 'src/types/vue.ts')
+    },
+    // 产物保持与源码树一一对应：`./components/*` 这类通配导出依赖这个目录结构。
+    unbundle: true,
+    root: resolve(import.meta.dirname, 'src'),
+    platform: 'browser',
+    // `platform: 'browser'` 已经让默认值等于 `false`，这里仍然显式写出：扩展名是 exports
+    // 契约的一部分，不该由一个只在平台语义上顺带成立的默认值决定。
+    fixedExtension: false,
+    // 与 package.json 的 `browserslist` 同一组下限。顶层 target 同时驱动 JS 语法降级和
+    // CSS 的 lightningcss 前缀/特性降级，`classes/style.css` 因此与 Vite 管线逐字节一致。
+    target: ['chrome111', 'edge111', 'safari16.4', 'ios16.4', 'firefox128'],
+    css: {
+      minify: true
+    },
+    sourcemap: true,
+    dts: {
+      // 顶层 sourcemap 会给 `.d.ts` 也写 sourceMappingURL，只有同时打开声明映射才不会
+      // 留下指向不存在文件的引用。
+      sourcemap: true
+    },
+    tsconfig: './tsconfig.app.json',
+    deps: {
+      // `types/iconify.ts` 只是 `export type *`，打包会让 rolldown 把依赖里的
+      // `@iconify/types` 声明文件按 node_modules 路径写进产物。
+      neverBundle: ['@iconify/types']
+    },
+    plugins: [
+      {
+        name: 'generate-icons',
+        async buildStart() {
+          const count = await generateIcons(import.meta.dirname)
+          this.info(`generated ${count} icons`)
+        }
+      }
+    ]
   },
-  plugins: [
-    iconsPlugin(),
-    dts({
-      tsconfigPath: './tsconfig.app.json',
-      include: ['src/components/**/*', 'src/icons/**/*', 'src/types/**/*', 'src/vite/**/*']
-    })
-  ],
   test: {
+    // Vitest 5 把默认附件目录从 `.vitest-attachments` 改成 `.vitest/attachments`；
+    // 仓库在 `.gitignore` 与 docs/agents 里把测试证据路径固定为前者，这里跟着钉住。
+    attachmentsDir: '.vitest-attachments',
     projects: [
       {
         extends: true,
@@ -52,6 +79,11 @@ export default {
           name: 'browser',
           include: ['src/**/*.browser.spec.ts'],
           exclude: ['src/**/reduced-motion.browser.spec.ts'],
+          // 两个 browser project 显式占两个相邻段：同一进程内 vitest 会给它们各自递增默认端口
+          // （63315 / 63316），但它们挡不住同一轮 turbo test 里其他包的测试进程、以及同机并行
+          // 的其他 worktree——那些都从 63315 起。分配表、偏移与 host 的约定见
+          // docs/agents/build.md 的「测试端口分配」。
+          api: { host: '127.0.0.1', port: testApiPort('web-ui') },
           browser: {
             enabled: true,
             headless: true,
@@ -75,6 +107,8 @@ export default {
         test: {
           name: 'browser-reduced-motion',
           include: ['src/**/reduced-motion.browser.spec.ts'],
+          // 与上面的 browser project 同时跑，端口必须错开；见那一段注释。
+          api: { host: '127.0.0.1', port: testApiPort('web-ui-reduced-motion') },
           browser: {
             enabled: true,
             headless: true,
@@ -86,46 +120,8 @@ export default {
       }
     ]
   },
+  // 测试与 dev server 仍走 Vite 的 CSS 管线（组件 `?inline` 样式在测试里要用同一套转换）。
   css: {
     transformer: 'lightningcss'
-  },
-  build: {
-    sourcemap: true,
-    // 组件样式走 `?inline` 内联进各自的 shadow，全局只留下 classes 这一份公共样式；
-    // 拆开成模块同路径的 .css，消费方才能按 `./classes.css` 这条 exports 拿到它。
-    cssCodeSplit: true,
-    lib: {
-      entry: {
-        'components/index': resolve(import.meta.dirname, 'src/components/index.ts'),
-        'classes/style': resolve(import.meta.dirname, 'src/classes/style.css'),
-        'icons/index': resolve(import.meta.dirname, 'src/icons/index.ts'),
-        'vite/index': resolve(import.meta.dirname, 'src/vite/index.ts')
-      },
-      formats: ['es']
-    },
-    rollupOptions: {
-      external: [
-        /^@greypan\//,
-
-        // 运行时依赖全部外部化：与 js-kit / browser-kit 一致，消费方从 web-ui 的依赖树
-        // 解析到同一份实例，避免打包副本。
-        /^@floating-ui\/dom($|\/)/,
-
-        /^lit($|\/)/,
-        /^@lit($|\/)/,
-
-        /^react($|\/)/,
-        /^react-dom($|\/)/,
-
-        /^vue($|\/)/
-      ],
-      output: {
-        preserveModules: true,
-        // 指定源码根目录，这样 dist 下就不会多出一层 'src' 目录
-        preserveModulesRoot: 'src',
-        dir: 'dist',
-        entryFileNames: '[name].js'
-      }
-    }
   }
-} satisfies UserConfig
+})

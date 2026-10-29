@@ -53,6 +53,66 @@ function box(animations: Animation[] = []) {
 }
 
 describe('settle 的失败预算与清理', () => {
+  it.each([
+    { renderSteps: 0, animationCount: 1, expectedEnumeration: null },
+    {
+      renderSteps: 1,
+      animationCount: 14,
+      expectedEnumeration: {
+        enumeratedAt: expect.any(Number),
+        diagnosticsCapturedAt: expect.any(Number),
+        total: 14,
+        included: 12,
+        truncated: 2,
+        animations: Array.from({ length: 12 }, (_, index) => ({
+          playState: 'running',
+          currentTime: String(index),
+          startTime: '0',
+          timelineTime: 'undefined',
+          duration: 'undefined',
+          endTime: 'undefined'
+        }))
+      }
+    }
+  ])(
+    '已投递 $renderSteps 次渲染后缺帧，失败保留最近动画枚举',
+    async ({ renderSteps, animationCount, expectedEnumeration }) => {
+      const animations = Array.from(
+        { length: animationCount },
+        (_, index) =>
+          ({
+            playState: 'running',
+            finished: new Promise<void>(() => {}),
+            currentTime: index,
+            startTime: 0,
+            effect: null,
+            timeline: null
+          }) as unknown as Animation
+      )
+      let failure: unknown
+      const waiting = waitForSettledLayout([box(animations)]).catch(error => {
+        failure = error
+      })
+      if (renderSteps) await render()
+      await vi.advanceTimersByTimeAsync(5001)
+      await waiting
+      expect(failure).toBeInstanceOf(Error)
+      if (!(failure instanceof Error) || !('cause' in failure) || !(failure.cause instanceof Error)) {
+        throw new Error('expected animation deadline failure with cause')
+      }
+      const diagnosticPrefix = 'animations did not settle: '
+      expect(failure.cause.message).toContain(diagnosticPrefix)
+      const diagnostic = JSON.parse(failure.cause.message.slice(diagnosticPrefix.length)) as unknown
+      expect(diagnostic).toMatchObject({
+        waitingFor: 'render-step',
+        renderSteps,
+        lastAnimationEnumeration: expectedEnumeration
+      })
+      expect(vi.getTimerCount()).toBe(0)
+      expect(frames.size).toBe(0)
+    }
+  )
+
   it('诊断描述抛错时仍保留原始 RO 失败与 cause', async () => {
     const original = new Error('ResizeObserver observe failed')
     vi.stubGlobal(
@@ -197,16 +257,30 @@ describe('settle 的失败预算与清理', () => {
     expect(settled).toBe(true)
   })
 
-  it('已 finished 但仍保留填充效果的动画不阻塞完成', async () => {
-    const finished = { playState: 'finished', finished: Promise.resolve() } as unknown as Animation
+  it('动画进入 finished 后不被尚未投递的完成 Promise 阻塞', async () => {
+    let complete!: () => void
+    const animation = {
+      playState: 'running',
+      finished: new Promise<void>(resolve => {
+        complete = resolve
+      })
+    }
     let outcome: boolean | 'pending' = 'pending'
-    void waitForAnimationsToFinish(box([finished])).then(value => {
+    const waiting = waitForAnimationsToFinish(box([animation as unknown as Animation])).then(value => {
       outcome = value
     })
-    await render()
-    await render()
-    expect(outcome).toBe(true)
-    expect(vi.getTimerCount()).toBe(0)
-    expect(frames.size).toBe(0)
+    try {
+      await render()
+      animation.playState = 'finished'
+      await render()
+      await render()
+      expect(outcome).toBe(true)
+      expect(vi.getTimerCount()).toBe(0)
+      expect(frames.size).toBe(0)
+    } finally {
+      complete()
+      await vi.advanceTimersByTimeAsync(5001)
+      await waiting
+    }
   })
 })

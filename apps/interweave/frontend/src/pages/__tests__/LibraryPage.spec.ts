@@ -45,6 +45,57 @@ vi.mock('@/services/library', () => ({
   }
 }))
 
+vi.mock('@greypan/web-ui', () => ({
+  imagePreview: () => {
+    throw new Error('图片预览由 AddDialog 组件用例覆盖')
+  }
+}))
+
+// 页面用例验证事件接线；真实滚动容器的挂载保留在 PreviewDrawer / DetailDrawer 组件用例。
+vi.mock('overlayscrollbars-vue', async () => {
+  const { defineComponent, h } = await import('vue')
+  return {
+    OverlayScrollbarsComponent: defineComponent({
+      inheritAttrs: false,
+      props: ['options'],
+      setup:
+        (_, { attrs, slots }) =>
+        () =>
+          h('div', attrs, slots.default?.())
+    })
+  }
+})
+
+// 页面通过宿主 click 接线；button 的 shadow DOM 和原生命中由 web-ui 组件用例覆盖。
+vi.mock('@greypan/web-ui/components/button', () => {
+  class WebUiButton extends HTMLElement {
+    disabled = false
+    loading = false
+    override click() {
+      if (!this.disabled && !this.loading) super.click()
+    }
+  }
+  customElements.define('web-ui-button', WebUiButton)
+  return { WebUiButton }
+})
+
+// 页面验证 controlled open 与内容保留；模态、动画和命中由 web-ui 的浏览器用例覆盖。
+vi.mock('@greypan/web-ui/components/dialog', () => {
+  class WebUiDialog extends HTMLElement {
+    open = false
+  }
+  customElements.define('web-ui-dialog', WebUiDialog)
+  return { WebUiDialog }
+})
+
+vi.mock('@greypan/web-ui/components/drawer', () => {
+  class WebUiDrawer extends HTMLElement {
+    open = false
+  }
+  customElements.define('web-ui-drawer', WebUiDrawer)
+  return { WebUiDrawer }
+})
+
 function source(overrides: Partial<SourceDTO> = {}): SourceDTO {
   return {
     id: 'source-1',
@@ -139,23 +190,58 @@ vi.mock('vue-router', () => ({
   useRouter: () => router
 }))
 
-async function mountPage() {
+const mountedPages = new Set<() => void>()
+
+async function mountPage(mark: (stage: string) => void = () => {}) {
   // 页面里的资源列表是虚拟滚动的，jsdom 没有布局时它算不出窗口、一行都不渲染。见
   // components/library/__tests__/virtualLayout。
   const restoreLayout = stubLayout()
   const host = document.createElement('div')
   document.body.append(host)
   const app = createApp(LibraryPage)
-  app.use(createPinia())
-  app.mount(host)
-  await nextTick()
-  await nextTick()
+  let closed = false
+  const close = () => {
+    if (closed) return
+    closed = true
+    mark('unmount:start')
+    try {
+      app.unmount()
+      mark('unmount:end')
+    } finally {
+      try {
+        host.remove()
+      } finally {
+        try {
+          restoreLayout()
+          mark('layout:restored')
+        } finally {
+          mountedPages.delete(close)
+        }
+      }
+    }
+  }
+  mountedPages.add(close)
+  try {
+    app.use(createPinia())
+    mark('mount:start')
+    app.mount(host)
+    mark('mount:end')
+    await nextTick()
+    mark('mount:tick1')
+    await nextTick()
+    mark('mount:tick2')
+  } catch (error) {
+    try {
+      close()
+    } catch (cleanupError) {
+      throw new AggregateError([error, cleanupError], 'LibraryPage mount and cleanup failed')
+    }
+    throw error
+  }
   return {
     host,
     async close() {
-      app.unmount()
-      host.remove()
-      restoreLayout()
+      close()
     }
   }
 }
@@ -253,7 +339,16 @@ describe('LibraryPage：可用性感知接线', () => {
   })
 
   afterEach(() => {
+    const errors: unknown[] = []
+    for (const close of mountedPages) {
+      try {
+        close()
+      } catch (error) {
+        errors.push(error)
+      }
+    }
     runtimeStub.current = null
+    if (errors.length) throw new AggregateError(errors, 'LibraryPage fixture cleanup failed')
   })
 
   /*
@@ -261,19 +356,37 @@ describe('LibraryPage：可用性感知接线', () => {
    * ——composable 层已逐分支覆盖，页面层不重复。这里只守页面接线：
    * 左键走预览 drawer、不踩详情那一路的探测。
    */
-  it('左键行进的是预览 drawer，不开详情也不探测', async () => {
+  it('左键行进的是预览 drawer，不开详情也不探测', async ({ onTestFailed }) => {
+    const started = performance.now()
+    const stages: { stage: string; elapsed: number }[] = []
+    const mark = (stage: string) => stages.push({ stage, elapsed: Math.round(performance.now() - started) })
+    onTestFailed(() => console.error('LibraryPage first-case phases', JSON.stringify(stages)))
     const probeURLSourceOnOpen = vi.fn<LibraryRuntime['probeURLSourceOnOpen']>()
-    runtimeStub.current = createRuntime({ probeURLSourceOnOpen })
-    const mounted = await mountPage()
+    runtimeStub.current = createRuntime({
+      probeURLSourceOnOpen,
+      listResources: async () => {
+        mark('listResources:return')
+        return [resource()]
+      }
+    })
+    const mounted = await mountPage(mark)
 
     try {
+      mark('click:start')
       row(mounted.host, 'resource-1').click()
+      mark('click:end')
       await nextTick()
+      mark('click:tick1')
       await nextTick()
+      mark('click:tick2')
 
       expect(drawerOpen(mounted.host, '资源预览')).toBe(true)
       expect(drawerOpen(mounted.host, '资源详情')).toBe(false)
+      expect(mounted.host.querySelector('web-ui-drawer[aria-dialog-label="资源预览"] h2')?.textContent?.trim()).toBe(
+        '失效链接'
+      )
       expect(probeURLSourceOnOpen).not.toHaveBeenCalled()
+      mark('assertions:end')
     } finally {
       await mounted.close()
     }
@@ -394,7 +507,7 @@ describe('LibraryPage：确认弹窗退场', () => {
       await nextTick()
 
       expect(dialog.open).toBe(false)
-      // 退场期间仍可见：内容一旦清空，盒子会在第一帧塌陷。
+      // 关闭状态回写后保留内容；实际退场的可见性和时序由浏览器用例验证。
       expect(dialog.textContent).toContain('删除「失效链接」后无法恢复。')
       expect(dialog.querySelector('[role="alert"]')).toBeNull()
     } finally {
@@ -423,7 +536,7 @@ describe('LibraryPage：确认弹窗退场', () => {
       button(dialog, '取消').click()
       await nextTick()
 
-      // 退场动画有 260ms，期间弹窗一直可见：内容一旦清空，盒子会在第一帧塌陷。
+      // compact 变体同样在关闭状态回写后保留确认内容。
       expect(dialog.open).toBe(false)
       expect(dialog.textContent).toContain('移除「photo」后不会加入资源库。')
       expect(dialog.querySelector('[role="alert"]')).toBeNull()

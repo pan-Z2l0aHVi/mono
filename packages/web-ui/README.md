@@ -310,9 +310,9 @@ lost, regardless of compilation path (compiled templates included). Apply such l
 is closed, or keep to appends/removals at the list tail.
 
 ```ts
+import unpluginWebComponents from '@greypan/unplugin-web-components/vite'
 // vite.config.ts
 import vue from '@vitejs/plugin-vue'
-import unpluginWebComponents from '@greypan/unplugin-web-components/vite'
 
 export default {
   plugins: [

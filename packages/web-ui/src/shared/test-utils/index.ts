@@ -452,34 +452,96 @@ export async function waitForAnimationsToFinish(
   return animationsUntil(connectedRoots(roots), performance.now() + timeoutMs)
 }
 
-async function animationsUntil(observed: readonly Element[], deadline: number): Promise<boolean> {
+interface AnimationWaitState {
+  waitingFor: 'render-step'
+  renderSteps: number
+  lastRenderMs: number
+  maxRenderMs: number
+  lastAnimationEnumeration: { enumeratedAt: number; total: number; animations: Animation[] } | null
+}
+
+const ANIMATION_DIAGNOSTIC_LIMIT = 12
+
+function animationWaitState(): AnimationWaitState {
+  return {
+    waitingFor: 'render-step',
+    renderSteps: 0,
+    lastRenderMs: 0,
+    maxRenderMs: 0,
+    lastAnimationEnumeration: null
+  }
+}
+
+function describeAnimationWait(state: AnimationWaitState): string {
+  try {
+    return JSON.stringify({
+      ...state,
+      visibility: document.visibilityState,
+      lastAnimationEnumeration: state.lastAnimationEnumeration
+        ? {
+            enumeratedAt: state.lastAnimationEnumeration.enumeratedAt,
+            diagnosticsCapturedAt: performance.now(),
+            total: state.lastAnimationEnumeration.total,
+            included: state.lastAnimationEnumeration.animations.length,
+            truncated: state.lastAnimationEnumeration.total - state.lastAnimationEnumeration.animations.length,
+            animations: state.lastAnimationEnumeration.animations.map(animation => {
+              const effect = animation.effect as KeyframeEffect | null
+              const timing = effect?.getComputedTiming()
+              return {
+                playState: animation.playState,
+                pending: animation.pending,
+                currentTime: String(animation.currentTime),
+                startTime: String(animation.startTime),
+                timelineTime: String(animation.timeline?.currentTime),
+                target: effect?.target?.tagName,
+                targetClass: effect?.target?.getAttribute('class'),
+                pseudoElement: effect?.pseudoElement,
+                transitionProperty: 'transitionProperty' in animation ? animation.transitionProperty : undefined,
+                duration: String(timing?.duration),
+                endTime: String(timing?.endTime),
+                progress: timing?.progress
+              }
+            })
+          }
+        : null
+    })
+  } catch {
+    return '<animation diagnostics failed>'
+  }
+}
+
+async function animationsUntil(
+  observed: readonly Element[],
+  deadline: number,
+  state = animationWaitState()
+): Promise<boolean> {
   let idleFrames = 0
-  while (await renderStepUntil(deadline)) {
+  while (true) {
+    state.waitingFor = 'render-step'
+    const started = performance.now()
+    const rendered = await renderStepUntil(deadline)
+    state.lastRenderMs = Math.round(performance.now() - started)
+    state.maxRenderMs = Math.max(state.maxRenderMs, state.lastRenderMs)
+    if (!rendered) return false
+    state.renderSteps++
     if (observed.some(root => !root.isConnected)) throw new Error('observed target disconnected during animation wait')
     const running = new Set(
       observed
         .flatMap(root => root.getAnimations({ subtree: true }))
         .filter(animation => animation.playState !== 'finished' && animation.playState !== 'idle')
     )
+    state.lastAnimationEnumeration = {
+      enumeratedAt: performance.now(),
+      total: running.size,
+      animations: [...running].slice(0, ANIMATION_DIAGNOSTIC_LIMIT)
+    }
     if (running.size === 0) {
       if (++idleFrames === 2) return true
       continue
     }
     idleFrames = 0
-    let timer: ReturnType<typeof setTimeout> | undefined
-    try {
-      const finished = await Promise.race([
-        Promise.all([...running].map(animation => animation.finished.catch(() => undefined))).then(() => true),
-        new Promise<boolean>(resolve => {
-          timer = setTimeout(() => resolve(false), Math.max(0, deadline - performance.now()))
-        })
-      ])
-      if (!finished) return false
-    } finally {
-      clearTimeout(timer)
-    }
+    // 逐次渲染读取实际状态；完成通知的投递不决定视觉动画是否已经结束。
   }
-  return false
 }
 
 /** 等待目标的初始 RO 投递及其后一次渲染步进；缺少投递时失败，不能宣称已排干。 */
@@ -561,8 +623,11 @@ export async function waitForSettledLayout(
   const observed = targets.filter((target): target is Element => !!target && target.isConnected)
   if (!observed.length) throw failure(`no connected target to settle (${targets.length} passed, 0 connected)`)
   enter('animations')
+  const animationState = animationWaitState()
   try {
-    if (!(await animationsUntil(observed, deadline))) throw new Error('animations did not settle')
+    if (!(await animationsUntil(observed, deadline, animationState))) {
+      throw new Error(`animations did not settle: ${describeAnimationWait(animationState)}`)
+    }
   } catch (error) {
     throw failure(error instanceof Error ? error.message : String(error), error)
   }

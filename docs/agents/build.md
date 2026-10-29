@@ -24,6 +24,8 @@ Interweave 由 Wails 宿主管理嵌套前端，其 alias 只启动 Wails host�
 
 [`packages/web-ui/docs/*.md`](../../packages/web-ui/docs/) 是 demo 示例与 API 表的唯一输入（中文源是 `<name>.CN.md`，英文译文是 `<name>.md`）。generator 在 dev 与 build 时写盘，测试期只判不改；两个 demo 与 `web-ui` 的 parity 测试保证产物与 markdown 一致、同语种两端产物逐字节一致。改动组件 API 必须同时改对应 markdown。生成器的输入契约与校验规则以 `@greypan/md-to-comp` 的测试为准。
 
+同一份输入与配置必须生成同一份完整字节；机器负载或调度耗时不得决定着色、解析等生成结果。预热和复跑通过不能证明确定性，涉及时间预算或部分结果降级的生成链要用可控调度验证完整产物；仅校验可见文本无法证明着色 HTML 一致。
+
 CI 在 Build 步之前经两端 demo 的 `check-generated` turbo 任务以同一份插件配置只判不改地校验产物：Build 的写盘会把失步产物原地治愈，测试档里的判据到那时永远空转，所以检测必须抢在 healing 之前。判据与测试档同源（`@greypan/md-to-comp` 的 `checkArtifacts`），配置直接 import 各 demo `vite.config.ts` 的 `mdToCompOptions` 具名导出，不抄第二份。
 
 这些语料必须进入本包 `build` 与 `test` 的 turbo inputs：根配置排除 Markdown，包级 `turbo.json` 重新纳入，并由 `pnpm run check-policy` 中的 `web-ui-docs-inputs` 检查守护。
@@ -38,6 +40,8 @@ Vue demo 通过私有 `@greypan/wuchale-vue` 在 Vue 编译前转换 SFC。`wuch
 
 `apps/interweave/frontend/bindings/**` 的生成过程不得删除已有文件，并用产出集合守卫防止静默少产出；陈旧文件由人工清理。frontend 的 turbo inputs 由 Go 源、Go 模块文件与 bindings generator 构成。
 
+读取生成物的测试与会改写同一路径的生成任务必须有明确的执行依赖，不能并行读写。生成器由本 workspace `build` 承担时，`test` 须依赖该 `build`，同时保留适用的上游依赖。`inputs` 只影响缓存哈希，不建立执行先后，不能替代 `dependsOn`。
+
 `**/__screenshots__/` 与 `**/.vitest-attachments/` 是测试证据，不是应用代码生成物。除非任务明确要求并已完成对应的视觉或浏览器验证，不要创建、手改或提交。根 [`AGENTS.md`](../../AGENTS.md#不可绕过的仓库边界)在入口层声明同一约束，本节承载处方。
 
 ## TypeScript 配置
@@ -46,17 +50,42 @@ Vue demo 通过私有 `@greypan/wuchale-vue` 在 Vue 编译前转换 SFC。`wuch
 
 ## 库构建模式
 
-公共面是固定入口集合的包用 `vp pack`（基于 tsdown，可以多入口，输出 `.mjs` 与 `.d.mts`，自动生成声明文件并从依赖中外部化）。公共面含通配子路径导出或需要 Vite CSS/资源管线的包用 `vp build`（Vite library 模式配 `preserveModules`，输出 `.js` 与 `.d.ts`，需要手动配置外部化）。具体选择以各包 manifest 与 `vite.config.ts` 为准，入口数量本身不是判据。`packages/tsconfig` 无构建步骤，只提供通过 TypeScript `extends` 消费的 JSON 文件。
+公共面是固定入口集合的包用 `vp pack`（基于 tsdown，可以多入口，输出 `.mjs` 与 `.d.mts`，自动生成声明文件并从依赖中外部化）。公共面含通配子路径导出或需要 Vite CSS/资源管线的包同样用 `vp pack`，按下面三条加配置：`unbundle: true` + `root: 'src'` 让产物与源码树一一对应（子路径导出靠它）；`fixedExtension: false` 把扩展名对齐到 exports 指向的 `.js` / `.d.ts`（node 平台默认是 `.mjs` / `.d.mts`），凡是 exports 指向 `.js` 的包都要显式写这一行，不要依赖 `platform: 'browser'` 的默认值碰巧相同；CSS 入口就是 `pack.entry` 里的一项（见 `web-ui` 的 `classes/style`），`pack.css` 只承载 `minify` 这类选项，浏览器下限由顶层 `target` 同时驱动 JS 语法降级与 LightningCSS 前缀，`css.minify` 打开后与旧 Vite 管线逐字节一致。声明文件由 `pack.dts` 生成：不在 JS 图里的纯类型入口必须显式列进 `pack.entry` 才会产出 `.d.ts`，顶层 `sourcemap: true` 会连带给 `.d.ts` 写 `sourceMappingURL`，所以要同时开 `dts.sourcemap`；`dts.entry` glob 也能补类型入口，但会让 dts 阶段慢数倍，不要用。纯转发的 barrel（`export * from './x'`）在 `unbundle` 下会被拍平进叶子模块，没有 `index.js` / `index.d.ts`，所以 `./*` 通配覆盖的子目录要按 `'<dir>/index'` 的键逐个列进 `pack.entry`——产物落点由键决定，写成 `<dir>` 会落到 `dist/<dir>.js`。具体选择以各包 manifest 与 `vite.config.ts` 为准，入口数量本身不是判据。`packages/tsconfig` 无构建步骤，只提供通过 TypeScript `extends` 消费的 JSON 文件。
 
 ## 外部化规则
 
-匹配 `@greypan/*` 的工作区依赖与 Node 内置模块必须外部化，以保证监听模式可解析并避免重复的消费端代码。第三方依赖在设计意图为零配置消费时可以打包，期望消费端自行提供时外部化。优先用正则而非工作区包列表，并让它同时匹配子路径导入。逐包的外部化清单以各包 `vite.config.ts` 为准。
+匹配 `@greypan/*` 的工作区依赖与 Node 内置模块必须外部化，以保证监听模式可解析并避免重复的消费端代码。这条只对真打包的包有配置意义：`unbundle` 的包按定义不合并任何依赖，加 `external` 正则不会改变产物。第三方依赖在设计意图为零配置消费时可以打包，期望消费端自行提供时外部化。优先用正则而非工作区包列表，并让它同时匹配子路径导入。逐包的外部化清单以各包 `vite.config.ts` 为准。
 
 ## 应用
 
-消费方在各自的 `package.json` 声明同一份 browserslist 目标，根 `package.json` 没有目标值；改目标时同步所有声明处，具体清单以 manifest 为准。`web-ui` 是唯一在构建时输出 CSS 的包；静态 `color-mix()` 由 lightningcss 求值，含 `var()` 的 `color-mix()` 保留为运行时 CSS。纯 JavaScript 库包统一声明 `engines`，具体值以各包 `package.json` 为准。
+消费方在各自的 `package.json` 声明同一份 browserslist 目标，根 `package.json` 没有目标值；改目标时同步所有声明处，也就是各 manifest 的 browserslist 与 `web-ui` 的 `pack.target`——产物实际用的是 `pack.target`，manifest 里的 browserslist 只作文档性声明，两者目前手工双写。`web-ui` 是唯一在构建时输出 CSS 的包；静态 `color-mix()` 由 lightningcss 求值，含 `var()` 的 `color-mix()` 保留为运行时 CSS。纯 JavaScript 库包统一声明 `engines`，具体值以各包 `package.json` 为准。
 
 两个 demo 用 `basicSsl()` 为 dev server 提供安全上下文：Service Worker 与 `navigator.clipboard` 只在安全上下文可用，而 demo 设了 `server.host: true`。该插件只作用于 dev server，生产构建不受影响。各 demo 的插件、测试面与构建差异以各应用 `vite.config.ts` 与 [`verification.md`](./verification.md) 为准。`depsReload` 监听库的 `dist/` 目录，本地依赖变化时触发整页刷新。嵌套 WebView 前端遵循对应框架 demo 的 Vite 插件与本地包约定。
+
+## 测试端口分配
+
+浏览器测试的 API 端口从 `scripts/lib/test-ports.mjs` 取，不要在 `vite.config.ts` 里写裸数字。每个项目占一个十位宽的段，留出 Vite 在端口被占时 +1 重试的空间：
+
+| 项目                               | 基端口 |
+| ---------------------------------- | ------ |
+| `react-web-ui-demo`                | 63410  |
+| `vue-web-ui-demo`                  | 63420  |
+| `interweave-frontend`              | 63430  |
+| `web-ui`（browser）                | 63440  |
+| `web-ui`（browser-reduced-motion） | 63450  |
+| `browser-kit`                      | 63460  |
+
+新增 browser project 时在同一张表里占一个空闲段。表以 `scripts/lib/test-ports.mjs` 为准，上面这张表只是给人看的副本，改一处要改两处。同一台机器上并行多个 worktree 时，给每个 worktree 导出不同的 `GREYPAN_TEST_PORT_OFFSET`（100 的倍数，如 `100`、`200`）整体错开；不设时为 0，端口就是固定值，不随 worktree 变化。
+
+偏移是整表平移，所以同一 worktree 内的相对间隔不受影响；要守的是**不同 worktree 的两组端口不重叠**，因此步长不得小于全表跨度（当前 `63469 - 63410 + 1 = 60`；取 100 是给后续段位留余量）。模块加载时校验「段间不重叠」与「跨度不超过步长」两条，任一条不成立直接抛错，而不是悄悄和其他 worktree 抢端口。
+
+`api.host` 统一钉成 `127.0.0.1`。Vite 的可用性探测只绑通配地址（`isPortAvailable` 遍历的是 `wildcardHosts`），看不见只占 `127.0.0.1` 的进程——macOS 上通配绑定与具体地址上的监听可以共存；真正把关的是随后的那次绑定。两个 demo 与 Interweave 的顶层 `server.host` 是 `true`，不写 `api.host` 时测试服务器会继承成通配绑定：别的进程占着 `127.0.0.1` 上的同号端口不会让它失败，两个服务器同号并行，页面可能落到别人的服务器上，症状是 `ERR_SSL_PROTOCOL_ERROR` / `ERR_EMPTY_RESPONSE` / browser runtime 永不连回。钉成 `127.0.0.1` 后绑定目标与占用者同址，才出 EADDRINUSE，非 strict 分支才会 +1 前进，vitest 再按实际监听地址把浏览器指过去。`web-ui` 与 `browser-kit` 没有顶层 `server`，默认是 `localhost`；仍显式写出来，是为了六个项目同一种行为、不被顶层配置的增删悄悄改变。
+
+`api.strictPort: false` 只有 Interweave 需要显式写。vitest 5 通过 `resolveApiServerConfig` 与 `vitest:config:server` 把 `api` 合并进测试服务器，顶层 `server` 的 `strictPort: true` 会被一并带过去；Interweave 的 dev server 正需要它（端口被占就硬失败，否则 webview 指向空气），测试服务器不需要——端口被占时它会直接 `Startup Error`，而不是按实际监听地址漂移。另外五个包没有顶层 `strictPort`，继承的是默认 `false`，不必写。
+
+`scripts/lib/test-ports.mjs` 记在根 `turbo.json` 的 `globalDependencies` 里：五条 `test` 任务（六个 browser project）都经各自包的 `vite.config.ts` 读它，而 turbo 只对包目录内的文件做哈希，不列出来就会在改表之后重放上一份缓存的绿色结果。放在根而不是这五个包各自的 `test.inputs`：新增 browser project 时不会漏登记，代价是改这张表会让全部缓存失效，而这张表很少改。
+
+dev server 不在这张表里：两个 demo 不写端口，Vite 从 5173 起、被占则 +1，实际 URL 会变，脚本与文档不要写死；Interweave 的 9245 带 `strictPort`，端口被占直接失败（Wails 需要确定的前端 URL，静默漂移会让 webview 指向空气），改端口用 `WAILS_VITE_PORT`——Taskfile 与 `vite.config.ts` 读同一个变量。
 
 ## CI 门控与 workflow 拓扑
 
