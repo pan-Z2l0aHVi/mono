@@ -8,7 +8,7 @@
 //
 // 包内模块之间仍然用相对路径互相 import；写成 `@greypan/monorepo-kit` 会绕回本文件形成环。
 
-export { defineChangesetPolicy } from './checks/changeset-policy'
+export { defineChangesetRequired } from './checks/changeset-required'
 export { defineChangesetStatus } from './checks/changeset-status'
 export { defineCommandConventions } from './checks/command-conventions'
 export type { CommandConventionsOptions } from './checks/command-conventions'
@@ -30,6 +30,8 @@ export { defineShellI18nCatalog } from './checks/shell-i18n-catalog'
 export type { ShellI18nCatalogOptions } from './checks/shell-i18n-catalog'
 export { defineStagedClean } from './checks/staged-clean'
 export type { StagedCleanOptions } from './checks/staged-clean'
+export { defineTestPortCallSites } from './checks/test-port-call-sites'
+export type { TestPortCallSitesOptions } from './checks/test-port-call-sites'
 export { defineTurboCacheInvariant } from './checks/turbo-cache-invariant'
 export { defineTurboInputs } from './checks/turbo-inputs'
 export type { TurboInput, TurboInputsOptions } from './checks/turbo-inputs'
@@ -50,6 +52,7 @@ export {
   defineWorkspace,
   findRepoRoot,
   listPnpmWorkspaceManifests,
+  readPnpmWorkspaceDirectories,
   readPnpmWorkspacePatterns
 } from './plugins/workspace'
 export type { WorkspaceApi } from './plugins/workspace'

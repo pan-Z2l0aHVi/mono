@@ -6,7 +6,7 @@
 import { defineReadmeLocales, runEntrypoint } from '@greypan/monorepo-kit'
 ```
 
-没有子路径，`exports` 只有 `.` 与 `./package.json`。入口分三类导出：能力插件（`defineExec`、`defineGit`…）、参数化检查（`defineReadmeLocales(options)` → `{ name, run }`）、以及平铺的叶子函数与类型。
+没有子路径，`exports` 只有 `.`。入口分三类导出：能力插件（`defineExec`、`defineGit`…）、参数化检查（`defineReadmeLocales(options)` → `{ name, run }`）、以及平铺的叶子函数与类型。
 
 | 分区       | 内容                                                                                   | 消费者                                             |
 | ---------- | -------------------------------------------------------------------------------------- | -------------------------------------------------- |

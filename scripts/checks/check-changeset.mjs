@@ -2,7 +2,7 @@ import path from 'node:path'
 
 import { runEntrypoint } from '@greypan/monorepo-kit'
 
-import { changesetPolicy } from '../policies/changeset-policy.mjs'
+import { changesetRequired } from '../policies/changeset-required.mjs'
 import { changesetStatus } from '../policies/changeset-status.mjs'
 
 function parseOptions(argv) {
@@ -21,10 +21,13 @@ function parseOptions(argv) {
 }
 
 const root = path.resolve(import.meta.dirname, '../..')
+// 传参坏了（exit 2，要修 workflow）与门禁没过（exit 1，要补 changeset）是两种失效；
+// 判据失败由 runEntrypoint 就地写成一行 stderr 并置 exitCode，不在这里兜。
+let options
 try {
-  const options = parseOptions(process.argv.slice(2))
-  await runEntrypoint([changesetStatus, changesetPolicy], { root, ...options, mode: 'ci' })
+  options = parseOptions(process.argv.slice(2))
 } catch (error) {
-  process.stderr.write(`check-changeset failed: ${error instanceof Error ? error.message : String(error)}\n`)
-  process.exitCode = 1
+  process.stderr.write(`check-changeset: ${error instanceof Error ? error.message : String(error)}\n`)
+  process.exit(2)
 }
+await runEntrypoint([changesetStatus, changesetRequired], { root, ...options, mode: 'ci' })

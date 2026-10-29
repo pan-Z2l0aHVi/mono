@@ -8,6 +8,8 @@
 
 2026-10-28 修订：门禁实现与仓库编排迁入 workspace 包 `@greypan/monorepo-kit`（ADR-0030），§5 目录树、§6 的共享位置与 §7 的测试发现规则已同步；`scripts/` 只剩入口与 Node 启动前的 bootstrap helper。
 
+2026-10-29 修订：`scripts/release/` 撤除，`publish-new-pack.sh` 并入 `scripts/workflow/`——一个文件的目录不再占一层执行面分类，§1 执行面表与 §5 目录树已同步。同一批里 `changeset-policy` 改名 `changeset-required`：这条门槛钉的是「PR 必须带有效声明」，`policy` 与旁边的 `changeset-status` 从名字上分不开。
+
 ## 背景与取舍
 
 根 `scripts/` 混放检查、agent 工具、发布与运维脚本；`.agents/checks/` 是 task 系统留下的政策检查挂载点；`.github/scripts/` 存放 workflow 与发布编排。同一组检查还被 pre-commit、PR CI、拓扑测试和文档分别硬编码，新增或改名需要同步多处。
@@ -24,16 +26,16 @@
 
 端点按“谁触发、输入是什么、失败意味着什么”划分，而不是只按 `pull_request` 这个触发事件划分。同一端点的多个判断收敛为一个薄入口；不同端点即使都在 CI 里运行，也不强行合并。五个门禁入口全部通过根命令调用：
 
-| 执行面          | 根命令             | 入口                                  | 聚合内容                                                                                                                             | 失败语义                               |
-| --------------- | ------------------ | ------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------ | -------------------------------------- |
-| git hook        | `check-pre-commit` | `scripts/checks/check-pre-commit.mjs` | `command-conventions`、`no-mutual-links`、`readme-locales`、`staged-clean`、`turbo-cache-invariant`、`web-ui-docs-inputs`            | 任一检查失败即非零退出，阻止提交       |
-| PR CI policy    | `check-policy`     | `scripts/checks/check-policy.mjs`     | `command-conventions`、`interweave-turbo-inputs`、`no-mutual-links`、`readme-locales`、`turbo-cache-invariant`、`web-ui-docs-inputs` | 任一检查失败即 job 失败                |
-| PR CI changeset | `check-changeset`  | `scripts/checks/check-changeset.mjs`  | `changeset status --since` 与 `changeset-policy`                                                                                     | 任一检查失败即 job 失败                |
-| CI context      | `check-context`    | `scripts/checks/check-context.mjs`    | context invariants，保留 `--report` 模式                                                                                             | 链接、路由、语料漂移失败即非零         |
-| CI package      | `check-pack`       | `scripts/checks/check-pack.mjs`       | 发布包契约                                                                                                                           | 发布契约失败即非零                     |
-| 提交辅助        | —                  | `scripts/workflow/commit.sh`          | 提交辅助                                                                                                                             | 命令自身退出码                         |
-| 发布            | `publish-new-pack` | `scripts/release/publish-new-pack.sh` | 发布辅助                                                                                                                             | 不可逆操作，按发布授权与 workflow 约束 |
-| 运维            | `clean`            | `scripts/maintenance/clean.sh`        | 清理与运维                                                                                                                           | 命令自身退出码                         |
+| 执行面          | 根命令             | 入口                                   | 聚合内容                                                                                                                             | 失败语义                               |
+| --------------- | ------------------ | -------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------ | -------------------------------------- |
+| git hook        | `check-pre-commit` | `scripts/checks/check-pre-commit.mjs`  | `command-conventions`、`no-mutual-links`、`readme-locales`、`staged-clean`、`turbo-cache-invariant`、`web-ui-docs-inputs`            | 任一检查失败即非零退出，阻止提交       |
+| PR CI policy    | `check-policy`     | `scripts/checks/check-policy.mjs`      | `command-conventions`、`interweave-turbo-inputs`、`no-mutual-links`、`readme-locales`、`turbo-cache-invariant`、`web-ui-docs-inputs` | 任一检查失败即 job 失败                |
+| PR CI changeset | `check-changeset`  | `scripts/checks/check-changeset.mjs`   | `changeset status --since` 与 `changeset-required`                                                                                   | 任一检查失败即 job 失败                |
+| CI context      | `check-context`    | `scripts/checks/check-context.mjs`     | context invariants，保留 `--report` 模式                                                                                             | 链接、路由、语料漂移失败即非零         |
+| CI package      | `check-pack`       | `scripts/checks/check-pack.mjs`        | 发布包契约                                                                                                                           | 发布契约失败即非零                     |
+| 提交辅助        | —                  | `scripts/workflow/commit.sh`           | 提交辅助                                                                                                                             | 命令自身退出码                         |
+| 发布            | `publish-new-pack` | `scripts/workflow/publish-new-pack.sh` | 发布辅助                                                                                                                             | 不可逆操作，按发布授权与 workflow 约束 |
+| 运维            | `clean`            | `scripts/maintenance/clean.sh`         | 清理与运维                                                                                                                           | 命令自身退出码                         |
 
 `check-context` 与 `check-pack` 保持独立入口，不并入 `check-policy`：前者有 `--report` 模式，后者依赖构建产物，它们的输入和生命周期与快速政策检查不同。`check-changeset` 合并原来的外部 `changeset status --since` 与自定义内容检查，使 CI 的 changeset step 只有一个命令。
 
@@ -89,9 +91,8 @@ scripts/
     check-go.mjs           # Go 格式与 vet 入口
     test-scripts.mjs       # 脚本测试入口
     check-md-to-comp-artifacts.mjs  # demo 生成物新鲜度门禁（turbo check-generated 入口）
-  workflow/                # 提交命令
+  workflow/                # 提交与发布辅助
     commit.sh
-  release/                 # 发布辅助
     publish-new-pack.sh
   maintenance/             # 清理与运维
     clean.sh

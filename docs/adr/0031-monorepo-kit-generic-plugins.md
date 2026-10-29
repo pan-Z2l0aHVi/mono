@@ -4,6 +4,8 @@
 - **Status**: 已接受
 - **Relates to**: [ADR-0030](./0030-monorepo-tooling-package.md)（包边界与分区，本 ADR 替代其 §1、§2 与 §5 的测试排除）、[ADR-0027](./0027-script-execution-surfaces.md)（脚本执行面分类、`scripts/` 目录职责）
 
+2026-10-29 修订（一）：能从仓库配置派生的常量不再手抄第二份。git hook 名单改由 `scripts/policies/git-hooks.mjs` 的 `versionedGitHooks(root)` 从 `.vite-hooks/` 现读，安装器与 `git-hooks-status` 共用同一份派生结果；workspace 容器目录改由包内叶子函数 `readPnpmWorkspaceDirectories(root)` 从 `pnpm-workspace.yaml` 的 `dir/**` 模式派生，`context-corpus`、`no-mutual-links`、`test-port-call-sites`、`env-doctor` 与 workflow 拓扑测试共用。§4 的实例统一经 `scripts/policies/repo-root.mjs` 按 `pnpm-workspace.yaml` 定位仓库根，不按目录深度写 `../..`。
+
 ## 背景与取舍
 
 ADR-0030 把门禁实现与仓库编排收进 `@greypan/monorepo-kit`，解决了相对路径深度、测试归属与依赖边三个问题。但它的分区判据是「换仓库是否重写」，于是包里同时存在两种东西：`shared/` 里真正与仓库无关的工具，以及 `policy/`、`repo/` 里写着本仓路径、项目名、语料位置与端口表的策略。
@@ -40,7 +42,7 @@ packages/monorepo-kit/src/
 | `turbo`      | 读 `turbo.json`、解析任务输入与缓存目录                                   |
 | `changesets` | `.changeset/` 目录、config 与 `changeset status` 的只读封装               |
 | `toolchain`  | 有序步骤列表 `{ name, match, command, args, failOn: 'exit' \| 'stdout' }` |
-| `test-ports` | 读取根 `monorepo.json` 的端口分配、校验与偏移                             |
+| `test-ports` | 读取端口分配配置（默认 `monorepo.json`）、校验与偏移                      |
 
 `toolchain` 之所以是插件而不是检查内联逻辑：`staged-clean` 需要在同一份步骤表上做「按 staged 文件匹配」与「并发执行」两件事，换仓库时变的是步骤表，不是匹配与汇总语义。
 
@@ -59,7 +61,8 @@ packages/monorepo-kit/src/
 | `context-corpus` / `-invariants`            | 语料根、commit scope 来源、符号链接对应表 |
 | `git-hooks-status`                          | `required` hook 名单                      |
 | `script-tests`                              | glob、排除目录                            |
-| `test-ports`                                | 端口表数据（仍读根 `monorepo.json`）      |
+| `test-ports`                                | 端口表文件名（默认 `monorepo.json`）      |
+| `test-port-call-sites`                      | 扫描 glob、调用名                         |
 | `package-contract`、`turbo-cache-invariant` | 无（本就与仓库无关）                      |
 
 检查协议不变：仍导出 `name` 与 `run(ctx)`，仍由 `runEntrypoint` 并发聚合。`run` 收到的是完整组合对象，检查自行解构所需能力；不引入「检查声明所需能力」的注册机制——那会换来一层运行时求值约定，而当前隔离失效的真实代价只是 review 时多看一眼。
@@ -84,7 +87,7 @@ scripts/
 
 ### 5. 构建形态改为 TS + `vp pack`，门禁前保障产物新鲜
 
-- 源码改为 TypeScript，走 `@greypan/tsconfig/node.json`（`strict: true`）；`vp pack` 单入口产出 `dist/index.js` 与 `dist/index.d.ts`。`exports` 仍只有 `"."` 与 `"./package.json"`，指向 dist。
+- 源码改为 TypeScript，走 `@greypan/tsconfig/node.json`（`strict: true`）；`vp pack` 单入口产出 `dist/index.js` 与 `dist/index.d.ts`。`exports` 只有 `"."`，指向 dist。
 - 门禁与配置消费 dist。ADR-0030 §1 否决「运行时也要构建」的理由是「hook 会跑在上一次产物上」。本次不为产物放弃判定，而是把这个前置条件逐处落实：
   - 根 `check-pre-commit` 脚本前置 `turbo run build --filter=@greypan/monorepo-kit`。命中缓存约 0.2 秒；只有真的改了门禁源码才走完整构建（约 3 秒），而那正是必须重建的时候。hook 与手动运行同一条命令，覆盖两处。
   - CI 把 `turbo run build` 提到所有门禁之前（`check-context`、`check-policy`、`check-changeset`、`check-pack`），干净 runner 上先有 dist；生成物新鲜度检查仍排在 build 之前。
@@ -133,7 +136,7 @@ scripts/
 ## 验收
 
 - `packages/monorepo-kit` 内不出现本仓的包名、应用路径、locale 列表、端口数据或语料路径；全部经 `defineXxx(options)` 由 `scripts/policies/` 传入。
-- 包内分区只剩 `plugins/`、`checks/`、`runner/`、`shared/`；`exports` 只有 `"."` 与 `"./package.json"`，指向 dist。
+- 包内分区只剩 `plugins/`、`checks/`、`runner/`、`shared/`；`exports` 只有 `"."`，指向 dist。
 - `packages/monorepo-kit` 的 `build` 产出 `dist/index.js` 与 `dist/index.d.ts`，`dist/` 被 gitignore。
 - 干净 clone 上 `pnpm install` 通过，不触发构建；`pnpm run check-pre-commit` 在无 dist 时先构建再判定。
 - `pnpm run check-pre-commit`、`check-policy`、`check-context`、`check-pack`、`check-changeset`、`check-go`、`test-scripts` 通过。

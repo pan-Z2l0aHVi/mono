@@ -17,6 +17,8 @@ import { execFileSync, spawnSync } from 'node:child_process'
 import fs from 'node:fs'
 import path from 'node:path'
 
+import { readPnpmWorkspaceDirectories } from '@greypan/monorepo-kit'
+
 import { gitHooksStatus } from '../policies/git-hooks-status.mjs'
 
 const scriptRoot = path.resolve(import.meta.dirname, '../..')
@@ -56,7 +58,7 @@ function resolveExportTarget(packageDir, target) {
 }
 
 function collectPackageDirs() {
-  const workspaceGlobs = ['apps', 'packages']
+  const workspaceGlobs = readPnpmWorkspaceDirectories(root)
   const dirs = []
   const visit = directory => {
     if (path.basename(directory) === 'node_modules') return

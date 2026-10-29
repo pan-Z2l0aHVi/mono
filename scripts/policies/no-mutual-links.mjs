@@ -1,7 +1,9 @@
 import fs from 'node:fs'
 import path from 'node:path'
 
-import { defineNoMutualLinks } from '@greypan/monorepo-kit'
+import { defineNoMutualLinks, readPnpmWorkspaceDirectories } from '@greypan/monorepo-kit'
+
+import { repoRoot } from './repo-root.mjs'
 
 /** 上游件的锁定清单；缺失或不可读时 fail-closed。 */
 function lockedSkills(root) {
@@ -11,6 +13,13 @@ function lockedSkills(root) {
     throw new Error('cannot run: skills-lock.json is missing or unreadable')
   }
 }
+
+/** 每个 workspace 容器目录都按同一套文档层次收 README 与包级入口。 */
+const workspaceDocs = readPnpmWorkspaceDirectories(repoRoot).map(directory => ({
+  directory,
+  deep: ['AGENTS.md'],
+  shallow: ['README.md']
+}))
 
 /** 指令面语料与链接方向的仓库事实，扫描面见 `docs/agents/agent-context.md`「链接面与指令面」。 */
 export const noMutualLinks = defineNoMutualLinks({
@@ -25,10 +34,7 @@ export const noMutualLinks = defineNoMutualLinks({
     '.agents',
     'skills/README.md'
   ],
-  workspaces: [
-    { directory: 'packages', deep: ['AGENTS.md'], shallow: ['README.md'] },
-    { directory: 'apps', deep: ['AGENTS.md'], shallow: ['README.md'] }
-  ],
+  workspaces: workspaceDocs,
   mirror: {
     entity: 'skills',
     surface: '.agents/skills',

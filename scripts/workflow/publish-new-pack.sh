@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
-# scripts/release/publish-new-pack.sh — 新增子包的首次发版（直接发布 1.0.0）
+# scripts/workflow/publish-new-pack.sh — 新增子包的首次发版（直接发布 1.0.0）
 #
 # 用法:
-#   bash scripts/release/publish-new-pack.sh <package-dir>
+#   bash scripts/workflow/publish-new-pack.sh <package-dir>
 #
 # 示例:
-#   bash scripts/release/publish-new-pack.sh my-new-kit
+#   bash scripts/workflow/publish-new-pack.sh my-new-kit
 #
 # 前提: 已执行 npm login --registry https://registry.npmjs.org/
 # 或本地 .npmrc 已配置 Automation token。
@@ -18,7 +18,7 @@ YELLOW='\033[1;33m'
 NC='\033[0m'
 
 if [ $# -lt 1 ]; then
-  echo "用法: bash scripts/release/publish-new-pack.sh <package-dir>" >&2
+  echo "用法: bash scripts/workflow/publish-new-pack.sh <package-dir>" >&2
   exit 1
 fi
 

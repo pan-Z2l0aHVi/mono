@@ -14,6 +14,8 @@
 
 2026-10-29 修订（六）：ADR-0031 替代本 ADR 的 §1、§2 与 §5 的测试排除。§1 的「运行时源码直出、`build` 只产出类型」被推翻：包改为 TypeScript 源码经 `vp pack` 产出 `dist/`，门禁与配置消费产物，新鲜度由根 `check-pre-commit` 的前置 build 与 CI 重排保障。§2 的 `policy/` / `repo/` 两分区取消，仓库事实退回根 `scripts/policies/`。§5 的测试运行形态（`node --test`、`*.test.mjs`）改由 `vp test run` 跑 `*.spec.ts`，`exclude` 参数随包内 `*.test.mjs` 消失而删除，由 ADR-0031 的收尾切片执行。§6 的 `globalDependencies` 只保留 `.mise.toml` 与 `monorepo.json`，删去 `test-ports.ts` 的登记：该文件在包目录内，`monorepo-kit#build` 的哈希与 `dist/` 的 `^build` 传播已经覆盖它；而端口表是运行时从仓库根读的、不随构建产物变化，仍须由这份根登记失效消费者的 `test`。
 
+2026-10-29 修订（七）：端口表的文档副本从 `docs/agents/build.md` 删除，唯一事实是根 `monorepo.json`；「分配与调用点一致」改由 `scripts/policies/test-port-call-sites.mjs` 组合出的 `test-port-call-sites` 检查在 `check-policy` 里守护，包内测试改为夹具驱动、不再读包外文件，`packages/monorepo-kit/turbo.json` 随之删除。修订（四）提到的 `test-ports.test.mjs`、§5 的包级 `test.inputs` 与 §6 的 build.md 副本比对均以此为准。
+
 ## 背景与取舍
 
 迁移前 `scripts/lib/` 有 22 个实现模块、15 个同名测试、2 个 `.d.mts`、2 个 `.sh`，同时装着三类互不相同的职责：
@@ -36,7 +38,7 @@ ADR-0027 §5 允许 `scripts/lib/` 承载共享实现，因此迁移前的形态
 
 ### 1. 新建 `packages/monorepo-kit`，运行时源码直出，类型产物由 `tsc` 生成
 
-- `"type": "module"`，`exports` 只有 `"."`（`types` → `./dist/index.d.mts`，`import` → `./src/index.mjs`）与 `"./package.json"`。运行时没有 JS 构建产物：`build` 脚本只跑 `tsc --emitDeclarationOnly`，把声明写进 gitignore 的 `dist/`。
+- `"type": "module"`，`exports` 只有 `"."`（`types` → `./dist/index.d.mts`，`import` → `./src/index.mjs`）。运行时没有 JS 构建产物：`build` 脚本只跑 `tsc --emitDeclarationOnly`，把声明写进 gitignore 的 `dist/`。
 - 消费者全是 Node 运行时（git hook、CI 入口、`vite.config.ts`），没有浏览器打包需求，为运行时代码建打包步骤只带来成本。
 - 决定性理由：门禁必须在 hook 里源码直读。一旦运行时也要构建，`check-pre-commit` 就跑在上一次产物上，「改了检查逻辑但忘了 build 仍然放行」是门禁最不能接受的失效。类型产物没有这条约束：它只影响 `vp check` 的解析结果，CI 的 Build 步也在类型检查之前。
 - 声明从源码生成，不手写：`tsconfig.json` 开 `allowJs` + `checkJs`，`tsc` 按 JSDoc 与推断写出 `dist/**/*.d.mts`。公共签名靠 JSDoc 表达；`noImplicitAny` 暂留 `false`，包内参数还没有逐个标注，声明里对应位置是 `any`。端口分配是配置数据，`testApiPort` 的项目名只能是 `string`，未知名字在调用时报错并附可选名单。
@@ -61,7 +63,8 @@ ADR-0027 §5 允许 `scripts/lib/` 承载共享实现，因此迁移前的形态
 ### 4. 单一入口，没有子路径
 
 - 所有消费点都改成包名：`scripts/checks/*.mjs` 从 `../lib/x.mjs` 改为 `@greypan/monorepo-kit`，五个 `vite.config.ts` 与两个 demo 的 `catalog.spec.ts` 同样。
-- `exports` 只留 `"."`（→ `./src/index.mjs`）与 `"./package.json"`。没有子路径，就没有「子路径拼错」和「新增分区忘了加通配」这两类错误；分区仍是目录约定，但不再是导入面。
+- `exports` 只留 `"."`（→ `./src/index.mjs`）。没有子路径，就没有「子路径拼错」和「新增分区忘了加通配」这两类错误；分区仍是目录约定，但不再是导入面。
+- 包不为读元数据开放 `"./package.json"`：仓库内没有消费者，留着只会让后来者把它当成必需项。需要读 manifest 的脚本按仓库路径读取，不经过包名解析。
 - 入口分两类导出，判据是模块导出名是否互相冲突，不是风格偏好：检查单元全部导出 `name` 与 `run`（`check-runner` 读的就是这两个），平铺必然互相覆盖，因此以命名空间给出（`commandConventions`、`goCheck`…）；其余叶子函数与常量平铺（`testApiPort`、`runEntrypoint`、`findRepoRoot`…）。
 - 代价是加载面变成整包：端口表在配置求值期只读一次也能把整包图带进来。这笔成本被接受——它相对 `vp dev` / `vp test` 的启动时间可忽略，且成本摊在整个图上而不是单个重模块，因此没有为它做惰性加载或分片入口。
 - 顺带修掉一个被入口放大的隐患：`policy/package-contract.mjs` 原先在模块顶层调 `findRepoRoot()`，统一入口后这个查找会跟着落到每个消费者身上，现在移进 `getPackedFiles`。
@@ -110,7 +113,7 @@ ADR-0027 §5 允许 `scripts/lib/` 承载共享实现，因此迁移前的形态
 
 ## 验收
 
-- `packages/monorepo-kit` 的 `build` 只产出类型：没有 JS 产物，`dist/` 被 gitignore。`exports` 只有 `"."` 与 `"./package.json"`，全仓不存在 `@greypan/monorepo-kit/` 开头的子路径引用。
+- `packages/monorepo-kit` 的 `build` 只产出类型：没有 JS 产物，`dist/` 被 gitignore。`exports` 只有 `"."`，全仓不存在 `@greypan/monorepo-kit/` 开头的子路径引用。
 - 包内测试全部位于各分区的 `__tests__/`，`turbo run test --filter=@greypan/monorepo-kit` 通过且不需要先 build。
 - `scripts/lib/` 只剩 `turbo-cache-dir.sh`、`go-cache-dir.sh` 与两个同名测试。
 - 全仓对 `scripts/lib/` 的引用只剩 bootstrap 路径与历史 ADR / 研究记录。

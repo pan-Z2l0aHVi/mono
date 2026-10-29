@@ -6,7 +6,6 @@
 // 整文件求值会把各插件工厂无谓地跑一遍，一次性进程里可接受。
 
 import { readFileSync } from 'node:fs'
-import { createRequire } from 'node:module'
 import path from 'node:path'
 import { pathToFileURL } from 'node:url'
 
@@ -17,18 +16,18 @@ if (!appDir || (flavor !== 'react' && flavor !== 'vue')) {
 }
 
 const root = path.resolve(appDir)
-const require = createRequire(path.join(root, 'package.json'))
+const repoRoot = path.resolve(import.meta.dirname, '../..')
 
 const { mdToCompOptions } = await import(pathToFileURL(path.join(root, 'vite.config.ts')))
 if (!mdToCompOptions) throw new Error(`${root}/vite.config.ts 没有导出 mdToCompOptions`)
 
-// md-to-comp 的 exports 只放行 import 条件，CJS require 解析不到 "."；"package.json" 有独立
-// 子导出，用它定到包目录，再按包自己声明的 ESM 入口动态 import——不硬编码 dist 路径。
-const pkgJsonPath = require.resolve('@greypan/md-to-comp/package.json')
-const pkg = JSON.parse(readFileSync(pkgJsonPath, 'utf8'))
+// md-to-comp 的 exports 只放行 import 条件，CJS require 解析不到 "."；直接读仓库内的 manifest，
+// 按包自己声明的 ESM 入口动态 import——不硬编码 dist 路径，也不要求包为读元数据放开子导出。
+const pkgDir = path.join(repoRoot, 'packages/md-to-comp')
+const pkg = JSON.parse(readFileSync(path.join(pkgDir, 'package.json'), 'utf8'))
 const entry = pkg.exports['.'].import ?? pkg.exports['.'].default
 if (!entry) throw new Error(`@greypan/md-to-comp 的 exports["."] 没有 ESM 入口`)
-const mdToComp = await import(pathToFileURL(path.join(path.dirname(pkgJsonPath), entry)))
+const mdToComp = await import(pathToFileURL(path.join(pkgDir, entry)))
 
 // 与插件共用同一份解析口径（相对 Vite root 的路径 + 本 flavor）：配置只写一次，解析只写一次。
 const config = mdToComp.resolveGenerateOptions(root, mdToCompOptions, flavor)

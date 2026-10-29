@@ -6,9 +6,9 @@ import path from 'node:path'
 
 import { afterAll, it } from 'vite-plus/test'
 
-import { defineChangesetPolicy } from '../changeset-policy'
+import { defineChangesetRequired } from '../changeset-required'
 
-const policy = defineChangesetPolicy()
+const required = defineChangesetRequired()
 
 const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'greypan-changeset-'))
 const gitEnv = {
@@ -50,12 +50,12 @@ function makeRepo(
 }
 
 function check(repo: Fixture, base: string = repo.base, head = 'HEAD'): Promise<string | void> {
-  return policy.run({ root: repo.root, base, head })
+  return required.run({ root: repo.root, base, head })
 }
 
 async function pass(repo: Fixture, base: string = repo.base, head = 'HEAD'): Promise<string> {
   const detail = await check(repo, base, head)
-  assert.ok(detail, 'changeset-policy returned no detail')
+  assert.ok(detail, 'changeset-required returned no detail')
   return detail
 }
 
@@ -63,7 +63,7 @@ async function fails(repo: Fixture, pattern: RegExp, base: string = repo.base, h
   await assert.rejects(check(repo, base, head), pattern)
 }
 
-it('changeset-policy', async () => {
+it('changeset-required', async () => {
   const missing = makeRepo('missing')
   fs.writeFileSync(path.join(missing.root, 'README.md'), '# feature\n')
   const missingHead = commit(missing.root, 'source change')
@@ -190,7 +190,7 @@ it('changeset-policy', async () => {
   await fails(invalidConfig, /must contain an ignore array/, invalidConfig.base, invalidConfigHead)
 
   await assert.rejects(check(single, 'deadbeefdeadbeefdeadbeefdeadbeefdeadbeef', singleHead), /base .* is not a commit/)
-  await assert.rejects(policy.run({ root: single.root, head: singleHead }), /missing required option --base/)
+  await assert.rejects(required.run({ root: single.root, head: singleHead }), /missing required option --base/)
 })
 
 afterAll(() => {

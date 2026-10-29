@@ -5,6 +5,7 @@ import { definePlugin } from '@greypan/js-kit'
 import { globSync } from 'glob'
 
 import { readJsonFile } from '../shared/config'
+import { byCodeUnit } from '../shared/order'
 
 // 仓库根的唯一定义：向上查找 pnpm-workspace.yaml。
 // 按目录深度写 `../..` 在文件搬家时会静默指向别处——迁移期已经在这个维度上错过一次
@@ -55,6 +56,21 @@ export function readPnpmWorkspacePatterns(root: string): string[] {
     throw new Error(`${WORKSPACE_FILE} packages list must include a positive pattern`)
 
   return patterns
+}
+
+/**
+ * `pnpm-workspace.yaml` 里 `dir/**` 或 `dir/*` 形态的模式所指向的容器目录，按码位排序。
+ * 只读配置、不扫盘：逐包列举的模式（如 `tools/cli`）不以某个目录为容器，不产生结果。
+ */
+export function readPnpmWorkspaceDirectories(root: string): string[] {
+  const directories = readPnpmWorkspacePatterns(root)
+    .filter(pattern => !pattern.startsWith('!'))
+    .flatMap(pattern => {
+      const segments = pattern.replace(/\/+$/, '').split('/')
+      const glob = segments.findIndex(segment => segment.includes('*'))
+      return glob > 0 ? [segments.slice(0, glob).join('/')] : []
+    })
+  return [...new Set(directories)].sort(byCodeUnit)
 }
 
 /** 返回每个 workspace `package.json` 的绝对路径。 */

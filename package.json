@@ -9,7 +9,7 @@
     "build": "turbo build",
     "test": "turbo test",
     "commit": "git-cz",
-    "publish-new-pack": "bash scripts/release/publish-new-pack.sh",
+    "publish-new-pack": "bash scripts/workflow/publish-new-pack.sh",
     "check-pre-commit": "turbo run build --filter=@greypan/monorepo-kit && node scripts/checks/check-pre-commit.mjs",
     "check-policy": "node scripts/checks/check-policy.mjs",
     "check-changeset": "node scripts/checks/check-changeset.mjs",

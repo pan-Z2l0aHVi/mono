@@ -5,7 +5,24 @@ import path from 'node:path'
 
 import { it } from 'vite-plus/test'
 
-import { findRepoRoot } from '../workspace'
+import { findRepoRoot, readPnpmWorkspaceDirectories } from '../workspace'
+
+function workspaceFixture(packages: readonly string[]): string {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'greypan-workspace-'))
+  const entries = packages.map(value => `  - "${value}"`).join('\n')
+  fs.writeFileSync(path.join(root, 'pnpm-workspace.yaml'), `packages:\n${entries}\n`)
+  return root
+}
+
+it('workspace directories follow the package patterns', () => {
+  const root = workspaceFixture(['apps/**', 'packages/*', 'services/api/**', '!apps/legacy', 'tools/cli', '**/pkgs'])
+  try {
+    // 只取 glob 之前的容器目录：嵌套容器保留整段，逐包列举与 glob 开头的模式不产生目录。
+    assert.deepEqual(readPnpmWorkspaceDirectories(root), ['apps', 'packages', 'services/api'])
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true })
+  }
+})
 
 it('repo-root', () => {
   const root = findRepoRoot()

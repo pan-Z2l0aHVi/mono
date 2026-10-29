@@ -3,8 +3,8 @@ import { defineGit } from '../plugins/git'
 import type { CheckUnit } from '../runner/check-runner'
 import { errorMessage } from '../shared/errors'
 
-// PR changeset policy: compare committed PR head content with the merge base and read every blob
-// from head. Staged or unstaged changes are intentionally invisible to this check.
+// PR changeset requirement: compare committed PR head content with the merge base and read every
+// blob from head. Staged or unstaged changes are intentionally invisible to this check.
 
 function requireCommit(resolve: (ref: string) => string, label: string, value: string | undefined): string {
   if (!value) throw new Error(`missing required option --${label} <sha-or-ref>`)
@@ -65,11 +65,11 @@ function inspectChangeset(file: string, blob: string, ignoredPackages: readonly 
   }
 }
 
-export function defineChangesetPolicy(options: ChangesetsOptions = {}): CheckUnit {
+export function defineChangesetRequired(options: ChangesetsOptions = {}): CheckUnit {
   const plugins = defineGit().use(defineChangesets(options))
 
   return {
-    name: 'changeset-policy',
+    name: 'changeset-required',
     async run({
       root,
       base,

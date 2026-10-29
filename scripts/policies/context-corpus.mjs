@@ -1,4 +1,6 @@
-import { defineContextCorpus } from '@greypan/monorepo-kit'
+import { defineContextCorpus, readPnpmWorkspaceDirectories } from '@greypan/monorepo-kit'
+
+import { repoRoot } from './repo-root.mjs'
 
 /**
  * 本仓的 context 语料事实：语料根、skill 出处、workspace 目录、软链对应表与 commit scope 来源。
@@ -31,7 +33,8 @@ export const contextCorpus = defineContextCorpus({
     vendored: '.agents/skills-vendored',
     facades: ['skills/README.md']
   },
-  workspaces: ['packages', 'apps'],
+  workspaces: readPnpmWorkspaceDirectories(repoRoot),
+  // 哪些容器目录放应用是语义划分，`pnpm-workspace.yaml` 里没有这一层，只能手写。
   applicationDirs: ['apps'],
   referenceDirs: ['docs/research', 'docs/design'],
   requiredScripts: ['check-context', 'check-pack', 'test-scripts'],
