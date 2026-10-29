@@ -19,6 +19,8 @@ import path from 'node:path'
 
 import { inspectGitHooks } from '@greypan/monorepo-kit'
 
+import { requiredGitHooks } from '../policies/git-hooks.mjs'
+
 const scriptRoot = path.resolve(import.meta.dirname, '../..')
 // env-doctor 体检的是「当前环境」：优先以调用方 cwd（worktree）为根，
 // 仅当 cwd 不是本仓库 workspace 时才退回脚本所在仓库。
@@ -263,10 +265,10 @@ function worktreeResidueCheck() {
 // ===== git hook 安装状态 =====
 // 事故复盘：core.hooksPath 被设成 .vite-hooks 之外的外部路径后，vite-plus 只打一行日志就放弃
 // 接管，而兜底安装脚本当时也只处理 commit-msg，于是五项 pre-commit 检查静默空转。
-// 判定逻辑放在 packages/monorepo-kit/src/policy/git-hooks-status.mjs，便于用临时 Git 仓库覆盖 fail 分支；
+// 判定逻辑放在 packages/monorepo-kit/src/policy/git-hooks-status.ts，便于用临时 Git 仓库覆盖 fail 分支；
 // 修复命令只打印，不自动改写 Git 配置。
 function gitHooksCheck() {
-  const { level, detail } = inspectGitHooks(root)
+  const { level, detail } = inspectGitHooks(root, { required: requiredGitHooks })
   record('git-hooks', level, detail)
 }
 

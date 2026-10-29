@@ -6,8 +6,8 @@
       "inputs": [
         "$TURBO_DEFAULT$",
         "!**/*.md",
-        "$TURBO_ROOT$/packages/monorepo-kit/src/policy/shell-i18n-catalog.mjs",
-        "$TURBO_ROOT$/packages/monorepo-kit/src/shared/exec.mjs"
+        "$TURBO_ROOT$/packages/monorepo-kit/src/policy/shell-i18n-catalog.ts",
+        "$TURBO_ROOT$/packages/monorepo-kit/src/shared/exec.ts"
       ]
     }
   }

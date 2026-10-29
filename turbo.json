@@ -1,7 +1,7 @@
 {
   "$schema": "https://turbo.build/schema.json",
   "ui": "tui",
-  "globalDependencies": [".mise.toml", "monorepo.json", "packages/monorepo-kit/src/repo/test-ports.mjs"],
+  "globalDependencies": [".mise.toml", "monorepo.json", "packages/monorepo-kit/src/repo/test-ports.ts"],
   "tasks": {
     "build": {
       "dependsOn": ["^build"],

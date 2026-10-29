@@ -92,7 +92,7 @@ function getGitPaths(gitArgs) {
   }
 }
 
-// --- self-contained pnpm workspace loading（等价于宿主仓 packages/monorepo-kit/src/shared/workspace-manifests.mjs，
+// --- self-contained pnpm workspace loading（等价于宿主仓 packages/monorepo-kit/src/shared/workspace-manifests.ts，
 //     但用内置的正则 glob 匹配替代 glob 依赖，保持零外部依赖） ---
 
 function readPnpmWorkspacePatterns(root) {
@@ -695,7 +695,7 @@ if (hasWailsPublicApiChange)
 if (hasContextChange)
   addEvidence(
     'context-system',
-    'packages/monorepo-kit/src/policy/context-corpus.mjs + current diff',
+    'packages/monorepo-kit/src/policy/context-corpus.ts + current diff',
     'context 改动必须检查加载路径、链接、索引和重复风险。'
   )
 

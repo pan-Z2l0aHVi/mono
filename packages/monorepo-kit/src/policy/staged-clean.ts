@@ -1,0 +1,130 @@
+import fs from 'node:fs'
+import path from 'node:path'
+
+import { commandOutput, exec, type ExecResult } from '../shared/exec'
+
+// 提交边界的只读清洁度检查：暂存文件必须过格式、lint 与类型，只判定，不运行 fixer，也不改 index。
+// 文件名来自 index，但工具检查工作区副本；index 与工作区分叉时由作者收敛。
+// 环境变量只覆盖「调用哪条命令」，是 fixture 的测试 seam，不是用户接口。
+// argv 以 JSON 数组传入，避免用 shell 词法拆分命令字符串。
+export const name = 'staged-clean'
+
+const STYLELINT_FILE = /\.(?:css|scss|less|html|vue)$/
+const GO_FILE = /\.go$/
+
+function argvFromEnv(value: string | undefined, fallback: string[], name: string): string[] {
+  if (value === undefined) return fallback
+  let parsed: unknown
+  try {
+    parsed = JSON.parse(value)
+  } catch {
+    throw new Error(`${name} must be a JSON array of non-empty strings`)
+  }
+  if (!Array.isArray(parsed) || parsed.length === 0 || parsed.some(item => typeof item !== 'string' || item === '')) {
+    throw new Error(`${name} must be a JSON array of non-empty strings`)
+  }
+  return parsed as string[]
+}
+
+function tool(command: readonly string[], args: readonly string[], root: string, env: NodeJS.ProcessEnv): ExecResult {
+  return exec(command[0], [...command.slice(1), ...args], { cwd: root, env })
+}
+
+function requireTool(command: readonly string[], root: string, env: NodeJS.ProcessEnv): void {
+  if (!tool(command, ['--help'], root, env).ok)
+    throw new Error(
+      `cannot run: '${command.join(' ')}' is unavailable\nits launcher is missing from PATH, or the toolchain behind it is not installed (mise install; pnpm install for Node deps)`
+    )
+}
+
+function report(reason: string): string {
+  return (
+    `staged files are not clean — formatting, lint or types (${reason})\n` +
+    'fix it yourself and re-stage, then retry — this check only judges, it never rewrites on your behalf'
+  )
+}
+
+function stagedFiles(root: string, env: NodeJS.ProcessEnv): string[] {
+  const result = exec('git', ['-c', 'core.quotePath=false', 'diff', '--cached', '--name-only', '--diff-filter=ACMR'], {
+    cwd: root,
+    env
+  })
+  if (!result.ok) throw new Error(`cannot run: git diff --cached failed in ${root}`)
+  return result.stdout.split(/\r?\n/).filter(Boolean)
+}
+
+export async function run({ root, env = process.env }: { root: string; env?: NodeJS.ProcessEnv }): Promise<string> {
+  const vpCommand = argvFromEnv(env.AGENT_VP_ARGV, ['pnpm', 'exec', 'vp'], 'AGENT_VP_ARGV')
+  const stylelintCommand = argvFromEnv(env.AGENT_STYLELINT_ARGV, ['pnpm', 'exec', 'stylelint'], 'AGENT_STYLELINT_ARGV')
+  const gofmtCommand = argvFromEnv(env.AGENT_GOFMT_ARGV, ['gofmt'], 'AGENT_GOFMT_ARGV')
+
+  const staged = stagedFiles(root, env)
+  if (staged.length === 0) return 'no staged files'
+
+  const vpFiles: string[] = []
+  const stylelintFiles: string[] = []
+  const goFiles: string[] = []
+  for (const file of staged) {
+    // 两类名字先 fail-closed：以 - 开头的路径会被工具当成 flag，被 git C-引号化的路径在磁盘上不存在。
+    if (file.startsWith('-'))
+      throw new Error(
+        `cannot run: staged path '${file}' starts with '-' and would be parsed\n` +
+          'as an option by a fixer; rename it, or commit from a worktree without that path'
+      )
+    if (file.startsWith('"'))
+      throw new Error(
+        `cannot run: git C-quoted a staged path (${file})\n` +
+          'such a name contains a quote, a backslash or a newline, so it cannot be handed to a formatter safely; rename it'
+      )
+    let stat: fs.Stats
+    try {
+      stat = fs.statSync(path.join(root, file))
+    } catch {
+      continue
+    }
+    if (!stat.isFile()) continue
+    vpFiles.push(file)
+    if (STYLELINT_FILE.test(file)) stylelintFiles.push(file)
+    if (GO_FILE.test(file)) goFiles.push(file)
+  }
+
+  if (vpFiles.length > 0) requireTool(vpCommand, root, env)
+  if (stylelintFiles.length > 0) requireTool(stylelintCommand, root, env)
+  if (goFiles.length > 0) requireTool(gofmtCommand, root, env)
+
+  const failures: string[] = []
+
+  if (vpFiles.length > 0) {
+    const result = tool(vpCommand, ['check', '--no-error-on-unmatched-pattern', ...vpFiles], root, env)
+    if (!result.ok) {
+      failures.push(
+        `${report('vp check')}${commandOutput(result) ? `\n${commandOutput(result)}` : ''}\n` +
+          'vp check --fix <files> repairs formatting and autofixable lint, never a type error'
+      )
+    }
+  }
+
+  if (stylelintFiles.length > 0) {
+    const result = tool(stylelintCommand, ['--allow-empty-input', ...stylelintFiles], root, env)
+    if (!result.ok) {
+      failures.push(
+        `${report('stylelint')}${commandOutput(result) ? `\n${commandOutput(result)}` : ''}\n` +
+          'stylelint <files>; pnpm run fix-stylelint fixes the whole repo'
+      )
+    }
+  }
+
+  if (goFiles.length > 0) {
+    const result = tool(gofmtCommand, ['-l', ...goFiles], root, env)
+    if (!result.ok) {
+      failures.push(`${report('gofmt')}${commandOutput(result) ? `\n${commandOutput(result)}` : ''}`)
+    } else if (result.stdout.trim()) {
+      failures.push(
+        `${report('gofmt')}\n${result.stdout.trim()}\ngofmt -w <files>; pnpm run fix-go fixes the whole repo`
+      )
+    }
+  }
+
+  if (failures.length > 0) throw new Error(failures.join('\n'))
+  return `${vpFiles.length} staged file(s) checked`
+}

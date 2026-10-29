@@ -51,7 +51,7 @@
 测试有两个发现面，各自覆盖一半，不要在两处都登记同一个文件：
 
 - `test-scripts` 运行全仓 tracked 的 `*.test.mjs`，`packages/monorepo-kit/**` 除外——那份清单覆盖 `.github/scripts`、workspace 脚本与 skills 的测试，不能收窄。
-- `@greypan/monorepo-kit` 的测试由它自己的 `test` 脚本跑（`node --test "src/**/__tests__/*.test.mjs"`），走 turbo 图，有依赖排序与缓存。glob 必须显式写到 `__tests__/`：直接传目录时 Node 的默认模式会把 `test-*.mjs` 当成空测试收进来。
+- `@greypan/monorepo-kit` 的测试由它自己的 `test` 脚本跑（`vp test run`），文件是 `src/**/__tests__/*.spec.ts`，随包的类型检查；走 turbo 图，有依赖排序与缓存。
 
 两边都不证明每个入口都有测试；覆盖完整性由 review 检查。共享实现的测试同样可选，存在时必须同名。
 
