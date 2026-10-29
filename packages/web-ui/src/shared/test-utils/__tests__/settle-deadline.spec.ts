@@ -53,6 +53,42 @@ function box(animations: Animation[] = []) {
 }
 
 describe('settle 的失败预算与清理', () => {
+  it('诊断描述抛错时仍保留原始 RO 失败与 cause', async () => {
+    const original = new Error('ResizeObserver observe failed')
+    vi.stubGlobal(
+      'ResizeObserver',
+      class {
+        observe() {
+          throw original
+        }
+        disconnect = disconnect
+      }
+    )
+    let failure: unknown
+    const waiting = waitForSettledLayout([box()], {
+      expect: {
+        check: () => true,
+        describe: () => {
+          throw new Error('diagnostic unavailable')
+        }
+      }
+    }).catch(error => {
+      failure = error
+    })
+    await render()
+    await render()
+    await waiting
+    expect(failure).toBeInstanceOf(Error)
+    if (!(failure instanceof Error) || !('cause' in failure)) throw new Error('expected the RO failure with cause')
+    expect(failure.message).toContain('ResizeObserver observe failed')
+    expect(failure.message).toContain('stage=resize-observer')
+    expect(failure.message).toContain('<describe failed>')
+    expect(failure.cause).toBe(original)
+    expect(disconnect).toHaveBeenCalledOnce()
+    expect(vi.getTimerCount()).toBe(0)
+    expect(frames.size).toBe(0)
+  })
+
   it('RO 没有投递时失败，不能把 deadline 当作完成', async () => {
     let outcome = 'pending'
     void drainResizeObserver([box()]).then(

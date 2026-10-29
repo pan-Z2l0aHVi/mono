@@ -541,11 +541,19 @@ export async function waitForSettledLayout(
     stageStartedAt = now
     stage = next
   }
-  const failure = (detail: string) =>
-    new Error(
+  const failure = (detail: string, cause?: unknown) => {
+    let description = 'n/a'
+    try {
+      description = expect?.describe?.() ?? description
+    } catch {
+      description = '<describe failed>'
+    }
+    return new Error(
       `waitForSettledLayout: ${detail} after ${Math.round(performance.now() - startedAt)}ms ` +
-        `(budget ${timeoutMs}ms, stage=${stage}, phases=${phases.join(',')}, expectation=${expect?.describe?.() ?? 'n/a'})`
+        `(budget ${timeoutMs}ms, stage=${stage}, phases=${phases.join(',')}, expectation=${description})`,
+      { cause }
     )
+  }
   const step = async () => {
     if (!(await renderStepUntil(deadline))) throw failure('render step did not complete')
   }
@@ -556,13 +564,13 @@ export async function waitForSettledLayout(
   try {
     if (!(await animationsUntil(observed, deadline))) throw new Error('animations did not settle')
   } catch (error) {
-    throw failure(error instanceof Error ? error.message : String(error))
+    throw failure(error instanceof Error ? error.message : String(error), error)
   }
   enter('resize-observer')
   try {
     await resizeObserverUntil(observed, deadline)
   } catch (error) {
-    throw failure(error instanceof Error ? error.message : String(error))
+    throw failure(error instanceof Error ? error.message : String(error), error)
   }
   enter('stable-frames')
   if (expect) while (!expect.check()) await step()
