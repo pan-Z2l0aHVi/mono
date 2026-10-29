@@ -188,6 +188,7 @@ async function openDrawer() {
 
 describe('应用外壳（浏览器）：导航 collapsed state 不跨视口泄漏', () => {
   beforeEach(async () => {
+    await loadDemoLocale('en', false)
     await setViewport(DESKTOP_VIEWPORT.width, DESKTOP_VIEWPORT.height)
   })
 

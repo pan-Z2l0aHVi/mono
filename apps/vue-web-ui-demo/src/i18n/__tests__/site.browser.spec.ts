@@ -4,7 +4,7 @@ import { local } from '@greypan/browser-kit'
 import type { WebUiSelect, WebUiTheme } from '@greypan/web-ui'
 import { createHead } from '@unhead/vue/client'
 import { flushPromises, mount } from '@vue/test-utils'
-import { expect, it, vi } from 'vite-plus/test'
+import { beforeEach, expect, it, vi } from 'vite-plus/test'
 import { userEvent } from 'vite-plus/test/browser'
 import { nextTick } from 'vue'
 import { createMemoryHistory, createRouter } from 'vue-router'
@@ -77,6 +77,10 @@ function textOf(html: string) {
   el.innerHTML = html
   return el.textContent
 }
+
+beforeEach(async () => {
+  await loadDemoLocale('en', false)
+})
 
 it('首页通过全局选择器切换壳文案，更新偏好并保留路由和主题', async () => {
   await loadDemoLocale('zh-CN', false)
