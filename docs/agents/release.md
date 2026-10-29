@@ -21,7 +21,7 @@ PR CI 对 PR base/head 执行 changeset gate；main 已有的 changeset、删除
 
 ## 步骤
 
-1. 确认 Task Packet（见 `task-ledger` skill）描述实际交付内容；需要本地仓库政策检查时按 [`commit.md`](./commit.md) 运行六项只读检查，pre-commit 会在提交时执行同一组。
+1. 确认 Task Packet（见 `task-ledger` skill）描述实际交付内容；需要本地仓库政策检查时按 [`commit.md`](./commit.md) 运行七项只读检查，pre-commit 会在提交时执行同一组。
 2. 按 [`verification.md`](./verification.md) 选择并实际运行相关测试、构建、契约与必要的浏览器验证。
 3. 创建 PR 后确认 required `check` 覆盖当前 base/head 且 `changeset-required` 通过；再按 [`review.md`](./review.md) 完成独立 review。CI 成功不能代替 review 报告。
 4. merge 需用户明确授权，机制见 [`workflow.md`](./workflow.md#怎么取得这个授权)。合并后如需复检 main CI，手动触发；有版本变更时，再验证 changesets 版本 PR、合并与 npm / Wails 发布链。

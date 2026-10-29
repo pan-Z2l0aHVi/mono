@@ -26,20 +26,20 @@
 
 端点按“谁触发、输入是什么、失败意味着什么”划分，而不是只按 `pull_request` 这个触发事件划分。同一端点的多个判断收敛为一个薄入口；不同端点即使都在 CI 里运行，也不强行合并。五个门禁入口全部通过根命令调用：
 
-| 执行面          | 根命令             | 入口                                   | 聚合内容                                                                                                                             | 失败语义                               |
-| --------------- | ------------------ | -------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------ | -------------------------------------- |
-| git hook        | `check-pre-commit` | `scripts/checks/check-pre-commit.mjs`  | `command-conventions`、`no-mutual-links`、`readme-locales`、`staged-clean`、`turbo-cache-invariant`、`web-ui-docs-inputs`            | 任一检查失败即非零退出，阻止提交       |
-| PR CI policy    | `check-policy`     | `scripts/checks/check-policy.mjs`      | `command-conventions`、`interweave-turbo-inputs`、`no-mutual-links`、`readme-locales`、`turbo-cache-invariant`、`web-ui-docs-inputs` | 任一检查失败即 job 失败                |
-| PR CI changeset | `check-changeset`  | `scripts/checks/check-changeset.mjs`   | `changeset status --since` 与 `changeset-required`                                                                                   | 任一检查失败即 job 失败                |
-| CI context      | `check-context`    | `scripts/checks/check-context.mjs`     | context invariants，保留 `--report` 模式                                                                                             | 链接、路由、语料漂移失败即非零         |
-| CI package      | `check-pack`       | `scripts/checks/check-pack.mjs`        | 发布包契约                                                                                                                           | 发布契约失败即非零                     |
-| 提交辅助        | —                  | `scripts/workflow/commit.sh`           | 提交辅助                                                                                                                             | 命令自身退出码                         |
-| 发布            | `publish-new-pack` | `scripts/workflow/publish-new-pack.sh` | 发布辅助                                                                                                                             | 不可逆操作，按发布授权与 workflow 约束 |
-| 运维            | `clean`            | `scripts/maintenance/clean.sh`         | 清理与运维                                                                                                                           | 命令自身退出码                         |
+| 执行面          | 根命令             | 入口                                   | 聚合内容                                                                                                                                                  | 失败语义                               |
+| --------------- | ------------------ | -------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------- |
+| git hook        | `check-pre-commit` | `scripts/checks/check-pre-commit.mjs`  | `command-conventions`、`no-mutual-links`、`readme-locales`、`staged-clean`、`turbo-cache-invariant`、`turbo-input-paths`、`web-ui-docs-inputs`            | 任一检查失败即非零退出，阻止提交       |
+| PR CI policy    | `check-policy`     | `scripts/checks/check-policy.mjs`      | `command-conventions`、`interweave-turbo-inputs`、`no-mutual-links`、`readme-locales`、`turbo-cache-invariant`、`turbo-input-paths`、`web-ui-docs-inputs` | 任一检查失败即 job 失败                |
+| PR CI changeset | `check-changeset`  | `scripts/checks/check-changeset.mjs`   | `changeset status --since` 与 `changeset-required`                                                                                                        | 任一检查失败即 job 失败                |
+| CI context      | `check-context`    | `scripts/checks/check-context.mjs`     | context invariants，保留 `--report` 模式                                                                                                                  | 链接、路由、语料漂移失败即非零         |
+| CI package      | `check-pack`       | `scripts/checks/check-pack.mjs`        | 发布包契约                                                                                                                                                | 发布契约失败即非零                     |
+| 提交辅助        | —                  | `scripts/workflow/commit.sh`           | 提交辅助                                                                                                                                                  | 命令自身退出码                         |
+| 发布            | `publish-new-pack` | `scripts/workflow/publish-new-pack.sh` | 发布辅助                                                                                                                                                  | 不可逆操作，按发布授权与 workflow 约束 |
+| 运维            | `clean`            | `scripts/maintenance/clean.sh`         | 清理与运维                                                                                                                                                | 命令自身退出码                         |
 
 `check-context` 与 `check-pack` 保持独立入口，不并入 `check-policy`：前者有 `--report` 模式，后者依赖构建产物，它们的输入和生命周期与快速政策检查不同。`check-changeset` 合并原来的外部 `changeset status --since` 与自定义内容检查，使 CI 的 changeset step 只有一个命令。
 
-迁移时检查集合与位置不变：`format-clean` 只出现在 hook 面，CI 的 `check-code` 已经对全仓做格式、lint、类型与 Go 检查；`changeset` 只出现在 CI 面，它需要 PR base/head，本地提交没有这个输入。后续新增的 `interweave-turbo-inputs` 只进入 policy 面：它要跑多次 Turbo dry-run，属于 PR 政策成本，不进入提交边界。
+迁移时检查集合与位置不变：`format-clean` 只出现在 hook 面，CI 的 `check-code` 已经对全仓做格式、lint、类型与 Go 检查；`changeset` 只出现在 CI 面，它需要 PR base/head，本地提交没有这个输入。后续新增的 `interweave-turbo-inputs` 只进入 policy 面：它要跑多次 Turbo dry-run，属于 PR 政策成本，不进入提交边界。同批新增的 `turbo-input-paths` 两端都进：它不启动 Turbo，只对 `turbo.json` 里已经写下的 `$TURBO_ROOT$` 条目判能否命中文件，2026-10-29 本机实测 73 毫秒，提交边界承受得起。
 
 ### 2. 入口与调用方
 

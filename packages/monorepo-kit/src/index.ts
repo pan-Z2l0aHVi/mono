@@ -33,6 +33,7 @@ export type { StagedCleanOptions } from './plugin/git/staged-clean'
 export { defineTestPortCallSites } from './plugin/test-ports/test-port-call-sites'
 export type { TestPortCallSitesOptions } from './plugin/test-ports/test-port-call-sites'
 export { defineTurboCacheInvariant } from './plugin/turbo/turbo-cache-invariant'
+export { defineTurboInputPaths } from './plugin/turbo/turbo-input-paths'
 export { defineTurboInputs } from './plugin/turbo/turbo-inputs'
 export type { TurboInput, TurboInputsOptions } from './plugin/turbo/turbo-inputs'
 

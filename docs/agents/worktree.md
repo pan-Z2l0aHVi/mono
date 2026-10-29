@@ -36,6 +36,8 @@ Codex 线程能不能写共享 Turbo cache，取决于客户端的权限配置�
 
 `turbo-cache-invariant` 检查（经 `pnpm run check-policy` 执行）要求 `test.dependsOn` 含 `^build`、`build.outputs` 含 `dist/**` 且没有可能排除 `dist` 的负模式，并且 `test.inputs` 不含会显式收进 `dist` 的正模式。不能靠把 `dist/**` 加进 `inputs` 解决缓存问题：`dist` 是 gitignored，`$TURBO_DEFAULT$` 本来不会收它，显式正模式反而让尚无 `dist` 的新 worktree 全部 miss，却不增加产出恢复的正确性。
 
+同一族的 `turbo-input-paths`（`check-pre-commit` 与 `check-policy` 都跑）钉另一个方向：`turbo.json` 里指向不存在文件的正模式不报错，只是收不进任何文件，任务因此静默停止失效——被改动的实现或配置不再让缓存键变化，测试却看起来仍然绿。它从 `pnpm-workspace.yaml` 列出根与每个 workspace 的 `turbo.json`，逐个判 `$TURBO_ROOT$` 条目能否命中。排除项不判：排除项打偏只会多算输入，方向是保守的。
+
 ## Go 缓存探测与共享
 
 `.mise.toml` 的 `[env]` 里 `GOCACHE` 通过 `exec` 模板在 `HERDR_ENV=1` 时运行一段探测：先按平台试默认缓存目录（macOS 为 `~/Library/Caches/go-build`，Linux 为 `~/.cache/go-build`），再试另一平台的路径，都不可写才回落到 `$TMPDIR/greypan/go-build`。探测由 [`scripts/lib/go-cache-dir.sh`](../../scripts/lib/go-cache-dir.sh) 实现，是 `.mise.toml` bootstrap 的明确例外（只有 shell 实现）；[`go-cache-dir.test.mjs`](../../scripts/lib/go-cache-dir.test.mjs) 钉住平台优先、单行输出、exit 0 与探测文件清理。目的是让各工作区共享同一份 Go 缓存，而不是各自散在临时目录里。

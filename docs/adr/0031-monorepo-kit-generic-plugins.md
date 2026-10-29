@@ -53,20 +53,20 @@ packages/monorepo-kit/src/
 
 每个检查都以 `defineXxx(options)` 导出，仓库事实只能经 options 进入：
 
-| 检查                                        | 由组合点传入的仓库事实                    |
-| ------------------------------------------- | ----------------------------------------- |
-| `readme-locales`                            | `locales`、跳过的目录                     |
-| `web-ui-docs-inputs`                        | `packageDir`、prose 文件名集合            |
-| `interweave-turbo-inputs`                   | 前端目录、包名、额外输入文件              |
-| `shell-i18n-catalog`                        | `locales`、扫描目录                       |
-| `command-conventions`                       | 命名空间集合                              |
-| `no-mutual-links`                           | 互链检查的根集合                          |
-| `context-corpus` / `-invariants`            | 语料根、commit scope 来源、符号链接对应表 |
-| `git-hooks-status`                          | `required` hook 名单                      |
-| `script-tests`                              | glob、排除目录                            |
-| `test-ports`                                | 端口表文件名（默认 `monorepo.json`）      |
-| `test-port-call-sites`                      | 扫描 glob、调用名                         |
-| `package-contract`、`turbo-cache-invariant` | 无（本就与仓库无关）                      |
+| 检查                                                             | 由组合点传入的仓库事实                                        |
+| ---------------------------------------------------------------- | ------------------------------------------------------------- |
+| `readme-locales`                                                 | `locales`、跳过的目录                                         |
+| `web-ui-docs-inputs`                                             | `packageDir`、prose 文件名集合                                |
+| `interweave-turbo-inputs`                                        | 前端目录、包名、额外输入文件                                  |
+| `shell-i18n-catalog`                                             | `locales`、扫描目录                                           |
+| `command-conventions`                                            | 命名空间集合                                                  |
+| `no-mutual-links`                                                | 互链检查的根集合                                              |
+| `context-corpus` / `-invariants`                                 | 语料根、commit scope 来源、符号链接对应表                     |
+| `git-hooks-status`                                               | `required` hook 名单                                          |
+| `script-tests`                                                   | glob、排除目录                                                |
+| `test-ports`                                                     | 端口表文件名（默认 `monorepo.json`）                          |
+| `test-port-call-sites`                                           | 扫描 glob、调用名                                             |
+| `package-contract`、`turbo-cache-invariant`、`turbo-input-paths` | 无（仓库事实从 `turbo.json` 与 `pnpm-workspace.yaml` 读出来） |
 
 检查协议不变：仍导出 `name` 与 `run(ctx)`，仍由 `runEntrypoint` 并发聚合。`run` 收到的是完整组合对象，检查自行解构所需能力；不引入「检查声明所需能力」的注册机制——那会换来一层运行时求值约定，而当前隔离失效的真实代价只是 review 时多看一眼。
 
