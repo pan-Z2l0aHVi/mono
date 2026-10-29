@@ -65,6 +65,57 @@ async function settlePanel(panel: HTMLElement) {
 }
 
 describe('context-menu 长按（真实触控管线）', () => {
+  it('真实 pointercancel 在默认长按阈值前取消定时器', async () => {
+    const { el, target } = createMenu({ 'long-press': '' })
+    await el.updateComplete
+
+    const pointerEvents: PointerEvent[] = []
+    const recordPointer = (event: Event) => {
+      if (event instanceof PointerEvent) pointerEvents.push(event)
+    }
+    window.addEventListener('pointerdown', recordPointer, true)
+    window.addEventListener('pointercancel', recordPointer, true)
+
+    let fakeTimersActive = false
+    let restoreTimeoutSpy: (() => void) | undefined
+    try {
+      // 只控制长按 setTimeout；保留 rAF、performance、Date、CDP 输入和浏览器渲染。
+      // holdMs=0 使 realTouchPress 不等待被 fake 的 helper timer。
+      vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] })
+      fakeTimersActive = true
+      const timeoutSpy = vi.spyOn(window, 'setTimeout')
+      restoreTimeoutSpy = () => timeoutSpy.mockRestore()
+
+      await realTouchPress(target, { holdMs: 0, endWithCancel: true })
+
+      const pointerDown = pointerEvents.find(event => event.type === 'pointerdown')
+      const pointerCancel = pointerEvents.find(event => event.type === 'pointercancel')
+      expect(pointerDown?.isTrusted).toBe(true)
+      expect(pointerDown?.pointerType).toBe('touch')
+      expect(pointerDown?.target).toBe(target)
+      expect(pointerCancel?.isTrusted).toBe(true)
+      expect(pointerCancel?.pointerType).toBe('touch')
+      expect(pointerCancel?.target).toBe(target)
+      expect(pointerCancel?.pointerId).toBe(pointerDown?.pointerId)
+
+      // 证明默认长按 timer 确实启动；不读取或断言组件的私有 timer 句柄。
+      expect(el.longPressDelay).toBe(500)
+      expect(timeoutSpy.mock.calls.some(([, delay]) => Number(delay) === el.longPressDelay)).toBe(true)
+
+      await vi.advanceTimersByTimeAsync(el.longPressDelay + 1)
+      await el.updateComplete
+      expect(el.isOpen).toBe(false)
+      expect(getMenuPanels('Context menu')).toHaveLength(0)
+      expect(document.querySelector('dialog[data-wui-menu-scrim]')).toBeNull()
+    } finally {
+      window.removeEventListener('pointerdown', recordPointer, true)
+      window.removeEventListener('pointercancel', recordPointer, true)
+      cleanupElement(el)
+      restoreTimeoutSpy?.()
+      if (fakeTimersActive) vi.useRealTimers()
+    }
+  })
+
   /*
    * R9（契约）：触屏长按**从按下的位置向下展开，水平居中于按点**。
    *
