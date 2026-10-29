@@ -67,8 +67,18 @@ async function select(label: string, value: string) {
   await userEvent.keyboard('{Home}')
   for (let index = 0; index < optionIndex; index += 1) await userEvent.keyboard('{ArrowDown}')
   await vi.waitFor(() => expect(trigger.getAttribute('aria-activedescendant')).toBe(options[optionIndex].id))
+  // 提交的那一次读得到期望值：`change` 在 `_selectActiveOption` 写完 `value` 之后同步派发，捕获阶段
+  // 跑在应用的 handler 前面。应用把 `:value` 绑到 locale 状态上，随后的渲染会先把旧值刷回去，等新
+  // locale 加载完才收敛——轮询 `host.value` 等的是那次收敛，1 秒窗口在慢机器上会落在收敛之前。
+  // 接线判据因此取提交本身；页面收敛由每个用例自己的 waitFor 负责。
+  let committed: string | undefined
+  const recordCommit = () => {
+    committed = host.value
+  }
+  host.addEventListener('change', recordCommit, { capture: true })
   await userEvent.keyboard('{Enter}')
-  await vi.waitFor(() => expect(host.value).toBe(value))
+  host.removeEventListener('change', recordCommit, { capture: true })
+  expect(committed, `${label}：Enter 没有提交 ${value}（没有收到 change）`).toBe(value)
   await nextTick()
 }
 
