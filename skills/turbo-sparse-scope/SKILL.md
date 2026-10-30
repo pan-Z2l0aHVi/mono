@@ -15,12 +15,12 @@ description: 按 Turborepo 依赖图把当前 worktree 的 git sparse checkout �
 
 ## 运行
 
-在 worktree 根目录运行（脚本只依赖 Node 内置模块）：
+在 worktree 根目录运行（脚本只依赖 Node 内置模块）。同步依赖需要 `pnpm` 在 PATH 上，未激活 mise 的 shell 用 `mise exec -- node ...` 调用：
 
 ```sh
-node .agents/skills/turbo-sparse-scope/sparse-scope.mjs <package-name|package-path>... [--dry-run] [--add|--reset] [--json]
-node .agents/skills/turbo-sparse-scope/sparse-scope.mjs --status [--json]
-node .agents/skills/turbo-sparse-scope/sparse-scope.mjs --restore [--json]
+mise exec -- node .agents/skills/turbo-sparse-scope/sparse-scope.mjs <package-name|package-path>... [--dry-run] [--add|--reset] [--json]
+mise exec -- node .agents/skills/turbo-sparse-scope/sparse-scope.mjs --status [--json]
+mise exec -- node .agents/skills/turbo-sparse-scope/sparse-scope.mjs --restore [--json]
 ```
 
 | 参数         | 作用                                                                     |
@@ -69,7 +69,7 @@ node .agents/skills/turbo-sparse-scope/sparse-scope.mjs --restore [--json]
 4. **任务扩展时用 `--add`。** 不扩大范围就用 `--reset` 或默认动作重建，不要手写路径。
 5. **不要在稀疏树里用 `turbo run` 期待全仓结果。** 需要全仓图时先 `--restore`。
 6. **提交照常进行。** cone 外的已跟踪文件只是没检出，不影响 commit；合并、rebase、切换分支前先 `--restore`，避免 cone 外路径的冲突要手工处理。
-7. **收缩后不要再跑不带 `--frozen-lockfile` 的 `pnpm install`。** 它只看到 cone 内的 workspace，会把 `pnpm-lock.yaml` 重写成缩小的图（隐藏 workspace 与只被它们使用的 catalog 条目会被删掉）。更隐蔽的是 pnpm 12 的隐式安装：收缩删掉了隐藏包的目录和 `node_modules` 后，`pnpm run` / `pnpm exec` 发现 install 状态与当前 workspace 集不一致，会在跑命令前自动做一次**非 frozen** 安装，hook 仍然 exit 0，锁文件却已被改写。脚本在收缩后自动做的 frozen 安装就是为了消除这个不一致，让后续脚本不再触发隐式安装；报告里 `dependencies: skipped` 时先手动跑 `pnpm install --frozen-lockfile` 再执行任何 pnpm 脚本。要真正重装依赖就先 `--restore`。
+7. **收缩后不要再跑不带 `--frozen-lockfile` 的 `pnpm install`。** 它只看到 cone 内的 workspace，会把 `pnpm-lock.yaml` 重写成缩小的图（隐藏 workspace 与只被它们使用的 catalog 条目会被删掉）。更隐蔽的是 pnpm 在 `pnpm run` 前的隐式安装（`verifyDepsBeforeRun`）：收缩删掉了隐藏包的目录和 `node_modules` 后，它发现 install 状态与当前 workspace 集不一致，会在跑命令前自动做一次**非 frozen** 安装，hook 仍然 exit 0，锁文件却已被改写。脚本在收缩后自动做的 frozen 安装就是为了消除这个不一致，让后续脚本不再触发隐式安装；报告里 `dependencies: skipped` 时先手动跑 `pnpm install --frozen-lockfile` 再执行任何 pnpm 脚本。要真正重装依赖就先 `--restore`。
 8. **`--restore` 之后补装依赖并重建。** 被隐藏包的目录里没有未跟踪文件时，整个目录（含被忽略的 `node_modules`、`dist`）随 cone 一起删除；有未跟踪文件时只删已跟踪文件，目录与其中的忽略内容保留（git 打 warning）。`--restore` 只带回已跟踪文件，恢复后要重跑 `pnpm install --frozen-lockfile` 与 `pnpm build`，缓存命中时都很快。
 9. **`.changeset/` 不在 cone 内。** 改到发布包时仍要新建 changeset 文件（目录被删除就重新创建；新建的是未跟踪文件，不会被后续收缩删除）；changeset gate 只在 CI 跑，本地门禁不会提醒。
 

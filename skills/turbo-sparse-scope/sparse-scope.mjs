@@ -205,6 +205,7 @@ export function listHiddenPackages(packages, cone) {
 }
 
 const DEPENDENCY_SYNC = ['install', '--frozen-lockfile']
+const PNPM_BIN = process.platform === 'win32' ? 'pnpm.cmd' : 'pnpm'
 
 export function dependencySyncPlan({ hasWorkspaceFile, pnpmAvailable }) {
   if (!hasWorkspaceFile) return { mode: 'skip', reason: 'no pnpm-workspace.yaml at the repository root' }
@@ -357,9 +358,11 @@ function applyCone(root, cone) {
 }
 
 function resolveDependencyPlan(root) {
+  const hasWorkspaceFile = fs.existsSync(path.join(root, 'pnpm-workspace.yaml'))
+  if (!hasWorkspaceFile) return dependencySyncPlan({ hasWorkspaceFile, pnpmAvailable: false })
   return dependencySyncPlan({
-    hasWorkspaceFile: fs.existsSync(path.join(root, 'pnpm-workspace.yaml')),
-    pnpmAvailable: spawnSync('pnpm', ['--version'], { cwd: root, encoding: 'utf8' }).status === 0
+    hasWorkspaceFile,
+    pnpmAvailable: spawnSync(PNPM_BIN, ['--version'], { cwd: root, encoding: 'utf8' }).status === 0
   })
 }
 
@@ -367,7 +370,7 @@ function resolveDependencyPlan(root) {
 // 安装并重写 lockfile；收缩后先做一次 frozen 安装，后续 pnpm 脚本与 hook 就不会再触发它。
 function syncDependencies(root, plan) {
   if (plan.mode === 'skip') return { status: 'skipped', reason: plan.reason }
-  const result = spawnSync('pnpm', DEPENDENCY_SYNC, { cwd: root, encoding: 'utf8' })
+  const result = spawnSync(PNPM_BIN, DEPENDENCY_SYNC, { cwd: root, encoding: 'utf8' })
   if (result.error)
     throw new ScopeError(`cannot run pnpm install --frozen-lockfile: ${result.error.message}`, EXIT_FAILURE)
   if (result.status !== 0)
@@ -379,19 +382,25 @@ function syncDependencies(root, plan) {
   return { status: 'synced' }
 }
 
-function restorePreviousState(root, previousCone, applied, error) {
+function restorePreviousState(root, previousCone, { applied, synced }, error) {
   // 稀疏起步时在重算前就 disable 了，即使还没 apply 也必须装回旧 cone。
   if (!previousCone && !applied) return
   try {
-    if (previousCone) applyCone(root, previousCone)
-    else disableSparse(root)
-    if (error instanceof ScopeError)
-      error.detail =
-        `${error.detail}\nnote: ${previousCone ? 'previous sparse cone restored' : 'sparse checkout disabled; the worktree is full'}`.trim()
+    const notes = []
+    if (previousCone) {
+      const warnings = applyCone(root, previousCone)
+      notes.push('note: previous sparse cone restored', ...warnings)
+    } else {
+      disableSparse(root)
+      notes.push('note: sparse checkout disabled; the worktree is full')
+    }
+    if (applied && !synced) notes.push('note: dependencies may be stale; run pnpm install --frozen-lockfile')
+    if (error instanceof ScopeError) error.detail = `${error.detail}\n${notes.join('\n')}`.trim()
+    else process.stderr.write(`${notes.join('\n')}\n`)
   } catch (restoreError) {
-    if (error instanceof ScopeError)
-      error.detail =
-        `${error.detail}\nnote: the previous worktree state could not be restored: ${restoreError.message}`.trim()
+    const note = `note: the previous worktree state could not be restored: ${restoreError.message}`
+    if (error instanceof ScopeError) error.detail = `${error.detail}\n${note}`.trim()
+    else process.stderr.write(`${note}\n`)
   }
 }
 
@@ -507,6 +516,7 @@ function applyScope(root, options) {
   if (previousCone) disableSparse(root)
 
   let applied = false
+  let synced = false
   try {
     const packages = listPackages(root, turbo)
     const unknownTargets = findUnknownTargets(options.targets, packages)
@@ -560,6 +570,7 @@ function applyScope(root, options) {
       ['git', 'sparse-checkout', 'init', '--cone'],
       ['git', 'sparse-checkout', 'set', '--cone', ...targetCone]
     ]
+    if (dependencyPlan.mode === 'sync') commands.push([PNPM_BIN, ...DEPENDENCY_SYNC])
 
     if (options.dryRun) {
       writeReport(
@@ -589,6 +600,7 @@ function applyScope(root, options) {
     applied = true
     warnings.push(...applyCone(root, targetCone))
     const dependencies = syncDependencies(root, dependencyPlan)
+    synced = dependencies.status === 'synced'
     if (dependencies.status === 'skipped')
       warnings.push(
         `dependencies were not synced (${dependencies.reason}); run pnpm install --frozen-lockfile before pnpm scripts or hooks`
@@ -617,7 +629,7 @@ function applyScope(root, options) {
     )
     return EXIT_OK
   } catch (error) {
-    restorePreviousState(root, previousCone, applied, error)
+    restorePreviousState(root, previousCone, { applied, synced }, error)
     throw error
   }
 }

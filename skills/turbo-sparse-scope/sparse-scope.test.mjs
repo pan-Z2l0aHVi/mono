@@ -289,10 +289,12 @@ const fakeTurbo = [
   'process.stdout.write(JSON.stringify({ packages: { count: items.length, items } }) + "\\n")'
 ].join('\n')
 
-// 假 pnpm 只关心 `--version` 与 frozen install：前者用于可用性探测，后者记录收缩后是否真的同步了依赖。
+// 假 pnpm 只关心 `--version` 与 frozen install：前者用于可用性探测，后者记录安装发生在哪种检出状态，
+// 以锁住「先收缩、后同步」的顺序（先在满树上安装会让 node_modules 与缩小后的 workspace 集再次不一致）。
 const fakePnpm = [
   '#!/usr/bin/env node',
   "const fs = require('node:fs')",
+  "const { spawnSync } = require('node:child_process')",
   'const args = process.argv.slice(2)',
   "if (args[0] === '--version') {",
   "  console.log('12.4.0-fake')",
@@ -304,7 +306,8 @@ const fakePnpm = [
   '    process.exit(1)',
   '  }',
   '  const marker = process.env.FAKE_PNPM_MARKER',
-  "  if (marker) fs.appendFileSync(marker, args.join(' ') + '\\n')",
+  "  const state = spawnSync('git', ['sparse-checkout', 'list'], { encoding: 'utf8' }).status === 0 ? 'sparse' : 'full'",
+  "  if (marker) fs.appendFileSync(marker, args.join(' ') + ' ' + state + '\\n')",
   '  process.exit(0)',
   '}',
   "console.error('unexpected pnpm args: ' + args.join(' '))",
@@ -361,7 +364,7 @@ try {
   assert.equal(fs.existsSync(path.join(repoRoot, 'scripts/check.sh')), true)
   assert.equal(fs.existsSync(path.join(repoRoot, 'monorepo.json')), true)
   assert.equal(firstReport.dependencies.status, 'synced')
-  assert.deepEqual(fs.readFileSync(pnpmMarker, 'utf8').trim().split('\n'), ['install --frozen-lockfile'])
+  assert.deepEqual(fs.readFileSync(pnpmMarker, 'utf8').trim().split('\n'), ['install --frozen-lockfile sparse'])
 
   const installsBeforeRepeat = fs.readFileSync(pnpmMarker, 'utf8')
   const repeat = runScope(['@scope/b'])
@@ -420,6 +423,10 @@ try {
   assert.equal(dryReport.dryRun, true)
   assert.deepEqual(dryReport.cone, ['apps/a', 'packages/lib', 'packages/tool', 'packages/tool-dep', 'scripts', 'skills'])
   assert.equal(dryReport.dependencies.status, 'would-sync')
+  assert.ok(
+    dryReport.commands.some(command => command.join(' ') === 'pnpm install --frozen-lockfile'),
+    'dry-run previews the dependency install it would run'
+  )
   assert.equal(currentCone(), null, 'dry-run does not touch the worktree')
   assert.equal(fs.existsSync(path.join(repoRoot, 'apps/b/src/index.js')), true)
   assert.equal(fs.readFileSync(pnpmMarker, 'utf8'), installsBeforeDryRun, 'dry-run must not install')
@@ -448,6 +455,7 @@ try {
   assert.equal(failedFull.status, 1)
   assert.match(failedFull.stderr, /pnpm install --frozen-lockfile failed/)
   assert.match(failedFull.stderr, /sparse checkout disabled; the worktree is full/)
+  assert.match(failedFull.stderr, /dependencies may be stale; run pnpm install --frozen-lockfile/)
   assert.equal(currentCone(), null)
   assert.equal(fs.existsSync(path.join(repoRoot, 'apps/b/src/index.js')), true)
 
@@ -460,6 +468,7 @@ try {
   const failedReset = runScope(['@scope/b', '--reset'])
   assert.equal(failedReset.status, 1)
   assert.match(failedReset.stderr, /previous sparse cone restored/)
+  assert.match(failedReset.stderr, /dependencies may be stale; run pnpm install --frozen-lockfile/)
   assert.doesNotMatch(failedReset.stderr, /worktree is full/)
   assert.deepEqual(currentCone(), ['apps/a', 'packages/lib', 'packages/tool', 'packages/tool-dep', 'scripts', 'skills'])
   assert.equal(fs.existsSync(path.join(repoRoot, 'apps/a/src/index.js')), true)
@@ -467,6 +476,27 @@ try {
 
   const restoredAfterFailure = runScope(['--restore'])
   assert.equal(restoredAfterFailure.status, 0, restoredAfterFailure.stderr)
+  assert.equal(currentCone(), null)
+
+  // 没有 workspace 文件时跳过同步，但必须在报告与 warning 里要求手动 frozen 安装。
+  const workspaceFile = path.join(repoRoot, 'pnpm-workspace.yaml')
+  fs.renameSync(workspaceFile, `${workspaceFile}.bak`)
+  const installsBeforeSkip = fs.readFileSync(pnpmMarker, 'utf8')
+  const skippedText = runScope(['@scope/b'])
+  assert.equal(skippedText.status, 0, skippedText.stderr)
+  assert.match(skippedText.stdout, /dependencies: skipped \(no pnpm-workspace\.yaml at the repository root\)/)
+  const skippedJson = runScope(['@scope/a', '--reset', '--json'])
+  assert.equal(skippedJson.status, 0, skippedJson.stderr)
+  const skippedReport = JSON.parse(skippedJson.stdout)
+  assert.deepEqual(skippedReport.dependencies, {
+    status: 'skipped',
+    reason: 'no pnpm-workspace.yaml at the repository root'
+  })
+  assert.match(skippedReport.warnings.join('\n'), /dependencies were not synced .*pnpm install --frozen-lockfile/)
+  assert.equal(fs.readFileSync(pnpmMarker, 'utf8'), installsBeforeSkip, 'a skipped plan must not install')
+  fs.renameSync(`${workspaceFile}.bak`, workspaceFile)
+  const restoredAfterSkip = runScope(['--restore'])
+  assert.equal(restoredAfterSkip.status, 0, restoredAfterSkip.stderr)
   assert.equal(currentCone(), null)
 
   const noopRestore = runScope(['--restore', '--json'])
