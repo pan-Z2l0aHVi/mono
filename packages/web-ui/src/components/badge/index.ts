@@ -71,7 +71,7 @@ export class WebUiBadge extends LitElement {
 
   /**
    * 徽标 status 的无障碍名称；设置后点/计数/零三种状态都用它（支持 `{count}` 占位）。
-   * 未设置时回退内置英文文案（见 ADR-0029）。
+   * 未设置时回退内置英文文案（见 ADR-0016）。
    */
   @property({ type: String, attribute: 'aria-label' }) override ariaLabel: string | null = null
 

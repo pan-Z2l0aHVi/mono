@@ -86,7 +86,8 @@ it('context-corpus', async () => {
     /a\.md: remote write commands require the authorization pointer workflow\.md#custom/
   )
 
-  write(unauthorized, 'docs/agents/a.md', '# a\n\n执行 git push 前先读 workflow.md#custom。\n')
+  // pointer 命中即通过；文档名写成链接，因为裸文本引用本身已被语料门禁判红。
+  write(unauthorized, 'docs/agents/a.md', '# a\n\n执行 git push 前先读 [workflow.md](./workflow.md#custom)。\n')
   await detail(contextCorpus.run({ root: unauthorized }))
 
   const otherPointer = defineContextCorpus({

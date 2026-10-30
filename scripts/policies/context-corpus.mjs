@@ -4,7 +4,7 @@ import { repoRoot } from './repo-root.mjs'
 
 /**
  * 本仓的 context 语料事实：语料根、skill 出处、workspace 目录、软链对应表与 commit scope 来源。
- * 判据在包的 `check-context` 里，取舍见 ADR-0026，扫描面见 `docs/agents/agent-context.md`。
+ * 判据在包的 `check-context` 里，取舍见 ADR-0013，扫描面见 `docs/agents/agent-context.md`。
  *
  * 根目录不放客户端适配文件。实测 Claude Code 2.1.283 已原生发现 AGENTS.md，但只要根目录存在 CLAUDE.md，
  * 它的原生发现就整条不生效：默认的 claude-md-or-agents-md 只在项目没有 CLAUDE.md 时才读 AGENTS.md，

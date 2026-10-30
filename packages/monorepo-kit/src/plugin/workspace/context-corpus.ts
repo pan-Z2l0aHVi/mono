@@ -11,6 +11,7 @@ import {
   countNonWhitespace,
   findMissingAuthorizationPointers,
   findRetiredAdrMarkers,
+  findUnlinkedAgentDocReferences,
   findUnmarkedReferenceDocs,
   findUnroutedAgentDocs,
   isUnqualifiedRelativeTarget,
@@ -23,7 +24,7 @@ import { listPnpmWorkspaceManifests, readPnpmWorkspacePatterns } from './workspa
 
 // 指令文档语料的结构不变量。判据都在这里，语料根、workspace 目录、skill 出处、软链对应表与
 // commit scope 来源是消费仓库的事实，经 options 传入；组合点见 `docs/agents/agent-context.md`
-// 「语料门禁」「链接面与指令面」，取舍见 ADR-0026。
+// 「语料门禁」「链接面与指令面」，取舍见 ADR-0013。
 export interface SkillsSurface {
   /** 上游件的锁定清单，JSON 里 `skills` 对象的键 */
   readonly lockFile: string
@@ -143,7 +144,7 @@ export function defineContextCorpus(options: ContextCorpusOptions): CheckUnit {
 
       // 入口的章节标题与叙述措辞不再是契约。入口断言只保留必经链接；
       // 具体命令由 task-ledger skill 与 CLI 承担。
-      // 结构不变量锚点（<!-- invariant:... -->）是惰性注释，保留供人工检索，没有机器校验（见 ADR-0014）。
+      // 结构不变量锚点（<!-- invariant:... -->）是惰性注释，保留供人工检索，没有机器校验。
       if (exists(options.entry)) {
         const entry = read(options.entry)
         for (const marker of options.entryMarkers) {
@@ -370,9 +371,11 @@ export function defineContextCorpus(options: ContextCorpusOptions): CheckUnit {
             : []
         )
       ]
-      // 语料门禁只检查可客观判定的漂移属性（ADR-0026）：路由完整性、外部状态快照、授权指针与非权威标记。
+      // 语料门禁只检查可客观判定的漂移属性（ADR-0013）：路由完整性、外部状态快照、授权指针与非权威标记。
       // 文风与 concern 归属不在此列，交给 review。
       const corpus = [...new Set(markdownFiles.map(relativePosix))].sort().map(file => ({ file, source: read(file) }))
+      for (const { file, name } of findUnlinkedAgentDocReferences(corpus))
+        addError(`${file}: reference to ${name} must be a Markdown link`)
       // 研究记录与设计资产不在指令面的链接/命令扫描内，但属于 RAG 语料：必须有非权威标记，并进入内容指纹。
       const referenceCorpus = options.referenceDirs
         .flatMap(directory => walk(directory, file => file.endsWith('.md')))

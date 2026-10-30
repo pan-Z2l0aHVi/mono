@@ -14,7 +14,7 @@ import { defineReadmeLocales, runEntrypoint } from '@greypan/monorepo-kit'
 | `runner/`        | `runChecks` / `runEntrypoint`：输出格式、首个失败的归因、非零退出                                                                                                                                                         | [`scripts/checks/`](../../scripts/checks) 的薄入口 |
 | `shared/`        | 与仓库无关的纯工具：`config`、`errors`、`order`                                                                                                                                                                           | 包内其他分区                                       |
 
-分区判据与迁移理由见 [ADR-0031](../../docs/adr/0031-monorepo-kit-generic-plugins.md)，包内约束见 [AGENTS.md](./AGENTS.md)。
+分区判据与迁移理由见 [ADR-0018](../../docs/adr/0018-monorepo-kit-generic-plugins.md)，包内约束见 [AGENTS.md](./AGENTS.md)。
 
 ```bash
 pnpm --filter @greypan/monorepo-kit build   # 产出 dist/

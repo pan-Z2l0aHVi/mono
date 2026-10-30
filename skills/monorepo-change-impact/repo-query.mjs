@@ -524,7 +524,7 @@ const hasAgentToolChange = normalizedPaths.some(
     file === 'pnpm-workspace.yaml' ||
     file.startsWith('scripts/checks/check-context') ||
     file.startsWith('scripts/checks/test-scripts') ||
-    // 门禁实现整体在 monorepo-kit 里（ADR-0030）：改这个包的任何分区都算改 agent 工具，
+    // 门禁实现整体在 monorepo-kit 里（ADR-0017）：改这个包的任何分区都算改 agent 工具，
     // 测试运行器、context 语料与发布契约都从那里读。
     file.startsWith('packages/monorepo-kit/') ||
     selfAuthoredSkillPaths.some(prefix => file.startsWith(prefix)) ||

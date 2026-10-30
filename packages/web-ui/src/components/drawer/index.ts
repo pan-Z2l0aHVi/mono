@@ -259,7 +259,7 @@ export class WebUiDrawer extends LitElement {
     this.ariaDialogLabel = value
   }
 
-  /** 关闭按钮的无障碍名称；未设置时回退内置英文文案（见 ADR-0029）。 */
+  /** 关闭按钮的无障碍名称；未设置时回退内置英文文案（见 ADR-0016）。 */
   @property({ type: String, attribute: 'aria-close-label' }) ariaCloseLabel = ''
 
   /**

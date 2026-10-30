@@ -172,9 +172,9 @@ export class WebUiInputNumber extends FormAssociated(LitElement) {
   @property({ type: Boolean, reflect: true }) required = false
   @property({ type: String, attribute: 'aria-label' }) override ariaLabel: string | null = null
   @property({ type: String, attribute: 'aria-labelledby' }) ariaLabelledby: string | undefined
-  /** 减少按钮的无障碍名称；未设置时回退内置英文文案（见 ADR-0029）。 */
+  /** 减少按钮的无障碍名称；未设置时回退内置英文文案（见 ADR-0016）。 */
   @property({ type: String, attribute: 'aria-decrease-label' }) ariaDecreaseLabel = ''
-  /** 增加按钮的无障碍名称；未设置时回退内置英文文案（见 ADR-0029）。 */
+  /** 增加按钮的无障碍名称；未设置时回退内置英文文案（见 ADR-0016）。 */
   @property({ type: String, attribute: 'aria-increase-label' }) ariaIncreaseLabel = ''
   @property({ type: Number })
   get precision(): number {

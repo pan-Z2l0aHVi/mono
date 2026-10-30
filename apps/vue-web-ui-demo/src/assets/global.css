@@ -8,7 +8,7 @@
  * `mobile:` 跟随 `web-ui-layout` 的移动端判定，断点值不在这里另写一遍 640px。
  *
  * layout 的判定（`matchMedia('(width <= 640px)')`）与它自己的 CSS 是同一条条件，并通过
- * `mobile` 属性反射出来（ADR-0023），所以这里只需要选择器本身：断点在哪、什么时候翻，
+ * `mobile` 属性反射出来（ADR-0011），所以这里只需要选择器本身：断点在哪、什么时候翻，
  * 由 layout 一处决定，max-width 那一侧统一用 `mobile:`。
  *
  * 两条边界得记住：

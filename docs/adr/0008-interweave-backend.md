@@ -1,4 +1,4 @@
-# ADR-0008: Interweave Backend Architecture
+# ADR-0008: Interweave 后端架构
 
 - **Date**: 2026-08-15
 - **Status**: 已接受
@@ -44,7 +44,7 @@
 - `core` 领域类型：`Resource`/`Source`/`Tag`/`TagAggregate`/`TagEdge`
 - 装配视图：`ResourceView`/`GlobalMap`/`LocalMap`
 - service 侧 DTO 为 Wails JSON 契约（`types.go`）
-- Wails 公开方法签名与 DTO 演进遵循「前端消费面建立之前、有 ADR 记录」的原则
+- Wails 公开方法签名与 DTO 的变更需要同步生成 bindings、消费者与验证。
 
 ## 后果
 

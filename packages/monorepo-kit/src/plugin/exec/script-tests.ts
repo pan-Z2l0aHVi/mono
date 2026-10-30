@@ -3,7 +3,7 @@ import { defineGit } from '../git/git'
 
 import { defineExec } from './exec'
 
-// 运行全仓 tracked 的 *.test.mjs。发现规则见 ADR-0027：git 失败必须非零退出，
+// 运行全仓 tracked 的 *.test.mjs。发现规则见 ADR-0014：git 失败必须非零退出，
 // 不能把「没有测试」和「git 不可用」都当成成功。
 //
 // `git ls-files '*.test.mjs'` 的 pathspec 里 `*` 跨越目录分隔符，所以这条命令覆盖全仓——

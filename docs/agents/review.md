@@ -6,9 +6,9 @@
 
 ## 固定输入与范围
 
-由编排层提供 PR URL 与仓库，并负责分配 reviewer worktree；无法分配时，reviewer 按下文只读复用已有 worktree。审查开始时记录 PR 当前 base 与 head 的完整 SHA、目标分支、作者、状态、draft、文件数及合并对象，并读取完整 diff、已有 inline review、review 和普通评论。文件、评论或提交对象无法完整读取时，报告覆盖不完整，不给出「无问题」或可合并结论。
+由编排层提供 PR URL 与仓库，并负责分配 reviewer worktree；无法分配时，reviewer 按下文只读复用已有 worktree。审查开始时记录 PR 当前 base 与 head 的完整 SHA、目标分支、作者、状态、draft、文件数及合并对象，并读取已有 inline review、review 和普通评论。首次 review 读取完整 diff；符合下述复审条件时读取增量 diff。文件、评论或提交对象无法完整读取时，报告覆盖不完整，不给出「无问题」或可合并结论。
 
-reviewer 不得切换、覆盖或修改实施者 worktree；除自己专属的 reviewer worktree 外，不修改任何工作树的文件，也不修改被审分支或 Git 索引。需要写盘的验证只使用专属 reviewer worktree，或在系统临时目录中从 PR head 检出的一次性 worktree；后者用完即移除。专属 reviewer worktree 与只读复用的已有 worktree 都要满足：工作树无未提交改动、origin 指向 PR base 仓库、HEAD 等于 PR head、base/head 对象存在。复用已有 worktree 时，被审内容一律取自 merge-base..head 的 Git 对象，不把该工作树里未提交的内容当作 PR 内容；审查完整改动，而不是只看最新 commit。审查开始和提交报告前都要重新读取 PR base/head 与复用 worktree 的 HEAD；head 变化后旧报告只覆盖旧提交。force push、rebase、base 更新或范围变化后，重新求 merge-base 并检查完整受影响面。复用条件不满足时，报告无法开始或继续审查，不迁就当前状态。
+reviewer 不得切换、覆盖或修改实施者 worktree；除自己专属的 reviewer worktree 外，不修改任何工作树的文件，也不修改被审分支或 Git 索引。需要写盘的验证只使用专属 reviewer worktree，或在系统临时目录中从 PR head 检出的一次性 worktree；后者用完即移除。专属 reviewer worktree 与只读复用的已有 worktree 都要满足：工作树无未提交改动、origin 指向 PR base 仓库、HEAD 等于 PR head、base/head 对象存在。复用已有 worktree 时，被审内容一律取自 merge-base..head 的 Git 对象，不把该工作树里未提交的内容当作 PR 内容；首次审查完整改动；复审以此前已审查 head 到当前 head 的完整增量为范围，而不是只看最新 commit。审查开始和提交报告前都要重新读取 PR base/head 与复用 worktree 的 HEAD；head 变化后旧报告只覆盖旧提交。force push、rebase、base 更新或范围变化后，重新求 merge-base 并判断旧证据是否仍适用，检查完整受影响范围；无法确定范围时重新完整审查。复用条件不满足时，报告无法开始或继续审查，不迁就当前状态。
 
 GitHub `pull_request` 的 CI 默认 checkout 是 base/head 的临时合并对象，代码 review 固定在 PR head。不能把 Actions run/check 关联用的 PR head SHA 当作 runner 实际测试的 checkout SHA。`gh pr checks --json` 不提供 head SHA；改用 run/check 对象或 check-runs API 核对关联的 head。required `check` 必须关联当前 PR head，并在实际执行快照与政策检查后成功；关联 SHA、base/head 或 step 结果不符时，不能证明当前输入已通过 CI。
 
@@ -24,7 +24,7 @@ GitHub `pull_request` 的 CI 默认 checkout 是 base/head 的临时合并对象
 
 没有用户对 PR 外部写入的明确授权时，只交付本地报告，不调用写 API；授权机制见 [`workflow.md`](./workflow.md#怎么取得这个授权)。获得授权后使用绑定 reviewed head 的 `COMMENT` review，不自动 `APPROVE` 或 `REQUEST_CHANGES`。调用前重新读取 PR base/head，确认仍等于报告覆盖的 SHA；已漂移则先补审。检查 API 响应的 `commit_id`、state 与 `html_url`，并重读远端 base/head；失败或漂移时报告仍为待发布或旧版本。请求超时或中断时，先分页读取现有 reviews 并核对 `commit_id`、正文和 `html_url`，确认没有重复 review 后才重试。
 
-实施者修复 Block/Should fix 后运行相关验证并推送需另获用户授权，机制见 [`workflow.md`](./workflow.md#怎么取得这个授权)。Reviewer 在新 head 上对照前一报告检查修复及受影响行为，更新完整 PR 结论和验证记录；未处理的 Block 不能靠 CI 变绿消除。
+实施者修复 Block/Should fix 后运行相关验证并推送需另获用户授权，机制见 [`workflow.md`](./workflow.md#怎么取得这个授权)。Reviewer 在新 head 上复用仍有效的完整审查，以前次已审 head 到当前 head 的 diff 为增量，检查全部新改动、前轮发现的处置及其受影响行为，并更新完整 PR 结论和验证记录。报告写明前后 SHA 与沿用的报告；缺少可信基线、证据不完整或历史与 base 变化使覆盖范围无法确定时重新完整审查。未处理的 Block 不能靠 CI 变绿消除。
 
 ## 合并前与恢复
 

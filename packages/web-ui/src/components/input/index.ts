@@ -33,7 +33,7 @@ export class WebUiInput extends FormAssociated(LitElement) {
   @property({ type: Boolean, reflect: true }) full = false
   @property({ type: Boolean, reflect: true }) borderless = false
   @property({ type: String, attribute: 'aria-label' }) override ariaLabel: string | null = null
-  /** 清除按钮的无障碍名称；未设置时回退内置英文文案（见 ADR-0029）。 */
+  /** 清除按钮的无障碍名称；未设置时回退内置英文文案（见 ADR-0016）。 */
   @property({ type: String, attribute: 'aria-clear-label' }) ariaClearLabel = ''
 
   @state() private _value = ''

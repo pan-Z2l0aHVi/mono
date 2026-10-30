@@ -6,12 +6,12 @@
 
 本文件覆盖两类可执行入口，按影响范围划分：
 
-- **根 `scripts/`**：由根 `package.json`、Git hook、CI 或流程文档直接调用，影响整个仓库。
+- **根 `scripts/`**：由根 [`package.json`](../../package.json)、Git hook、CI 或流程文档直接调用，影响整个仓库。
 - **workspace 内 `scripts/`**：由所属包或应用的构建、发布或生成流程调用，影响范围限于该 workspace。
 
 `scripts/lib/**` 只放 **Node 启动之前** 要跑的东西及其测试：`.mise.toml` 的 `[env]` 模板在 Node 可用前求值，`turbo-cache-dir.sh` 与 `go-cache-dir.sh` 是这条链路的唯一实现，同名测试跟着留在原处。它不是入口，也不再是通用的共享实现目录。
 
-门禁实现与仓库编排在 workspace 包 [`packages/monorepo-kit`](../../packages/monorepo-kit) 里：源码是 TypeScript，`build` 跑 `vp pack` 产出 `dist/`，门禁、CI 与 workspace 配置经包名读产物，新鲜度由根 `check-pre-commit` 的前置 build 与 CI 保证。包按 [ADR-0031](../adr/0031-monorepo-kit-generic-plugins.md) 分为能力竖切（`plugin/<能力>/`，能力插件与它承载的参数化判定同目录）、协议（`runner/`）与纯工具（`shared/`）。**本仓库的门禁事实住在根 `scripts/policies/`**：一个检查一个文件，导出配置好的检查实例，例如 `staged-clean.mjs` 里就是这个仓库提交边界要跑的工具链。判据是这段代码是否知道本仓库的名字、路径或数据：知道的是策略，放 `scripts/policies/`；不知道的才是包里的能力。跨 workspace 复用但不是编排事实的测试基建仍单独成包（对比 `@greypan/test-kit` 的 MSW 基建，它对消费方一无所知）。包边界与迁移理由见 [ADR-0030](../adr/0030-monorepo-tooling-package.md)，端口分配与多 worktree 偏移的具体约定见 [`build.md`](./build.md#测试端口分配)。往包里加模块要改模块本身与 `src/index.ts` 的导出，然后重新 build；包内测试放在所属能力目录的 `__tests__/`。
+门禁实现与仓库编排在 workspace 包 [`packages/monorepo-kit`](../../packages/monorepo-kit) 里：源码是 TypeScript，`build` 跑 `vp pack` 产出 `dist/`，门禁、CI 与 workspace 配置经包名读产物，新鲜度由根 `check-pre-commit` 的前置 build 与 CI 保证。包按 [ADR-0018](../adr/0018-monorepo-kit-generic-plugins.md) 分为能力竖切（`plugin/<能力>/`，能力插件与它承载的参数化判定同目录）、协议（`runner/`）与纯工具（`shared/`）。**本仓库的门禁事实住在根 `scripts/policies/`**：一个检查一个文件，导出配置好的检查实例，例如 `staged-clean.mjs` 里就是这个仓库提交边界要跑的工具链。判据是这段代码是否知道本仓库的名字、路径或数据：知道的是策略，放 `scripts/policies/`；不知道的才是包里的能力。跨 workspace 复用但不是编排事实的测试基建仍单独成包（对比 `@greypan/test-kit` 的 MSW 基建，它对消费方一无所知）。包边界与迁移理由见 [ADR-0017](../adr/0017-monorepo-tooling-package.md)，端口分配与多 worktree 偏移的具体约定见 [`build.md`](./build.md#测试端口分配)。往包里加模块要改模块本身与 `src/index.ts` 的导出，然后重新 build；包内测试放在所属能力目录的 `__tests__/`。
 
 ## 准入
 
@@ -25,18 +25,18 @@
 
 ## 运行时选择
 
-默认优先 POSIX `sh`：系统探测、依赖与环境处理、发布编排，以及把外部 CLI 串成流程的脚本。只有复杂逻辑才用 Node ESM：结构化解析（JSON/YAML/Markdown）、代码生成、状态机、跨平台路径处理，或需要复用 `@greypan/monorepo-kit` 的原子实现。检查门禁仍统一使用 Node ESM（ADR-0027 §6）；其余脚本在 `sh` 能直接表达时选 `sh`，不要为几行命令串联引入 Node。
+默认优先 POSIX `sh`：系统探测、依赖与环境处理、发布编排，以及把外部 CLI 串成流程的脚本。只有复杂逻辑才用 Node ESM：结构化解析（JSON/YAML/Markdown）、代码生成、状态机、跨平台路径处理，或需要复用 `@greypan/monorepo-kit` 的原子实现。检查门禁仍统一使用 Node ESM；其余脚本在 `sh` 能直接表达时选 `sh`，不要为几行命令串联引入 Node。
 
 - 不在 `sh` 里拼接执行 Node 源码：不写 `node -e`、`node - <<EOF`，也不把 JS 存进变量再执行。
 - 不在 Node 里用 `sh -c` 或启动 `.sh` 辅助脚本完成本可由 argv 表达的工作；外部 CLI（`git`、`pnpm`、`gh`、`turbo`、`ps` 等）以 argv 调用不在此列。
 - 测试为验证 shell 行为而启动 `sh` 是允许的；禁令针对实现代码，不针对测试夹具。
-- bootstrap 例外只允许来自 `.mise.toml` 在 Node 可用前求值的 `[env]` 模板；helper 是唯一实现，Node 消费者直接调用它，不另写等价实现。只有调用不了 helper 的场合才允许提供等价实现，并同时证明两者结果一致；降级行为与测试要求见 `.mise.toml` 与 [`worktree.md`](./worktree.md)。
+- bootstrap 例外只允许来自 [`.mise.toml`](../../.mise.toml) 在 Node 可用前求值的 `[env]` 模板；helper 是唯一实现，Node 消费者直接调用它，不另写等价实现。只有调用不了 helper 的场合才允许提供等价实现，并同时证明两者结果一致；降级行为与测试要求见 [`.mise.toml`](../../.mise.toml) 与 [`worktree.md`](./worktree.md)。
 
 ## 根脚本
 
 ### 执行面
 
-根 `scripts/` 按执行面分为 `checks/`（门禁与脚本测试入口）、`policies/`（本仓的门禁事实与配置好的检查实例）、`workflow/`（提交与发布辅助）、`maintenance/`（清理、环境诊断与依赖维护）与 `lib/`（Node 启动前求值的 bootstrap helper）。门禁入口通过 `check-*` 根命令调用；`checks/` 只放薄入口，同一端点的检查由一个入口聚合，检查逻辑与能力在 `@greypan/monorepo-kit`，本仓的包名、路径与语料数据只在 `policies/` 里出现。app 级的 turbo 门禁入口（`check-generated`）同样放 `checks/`，判据由所属包提供。包只有一个入口（`exports["."]`），入口引用一律写包名，没有子路径。分类与入口契约见 ADR-0027，分区判据见 ADR-0031。
+根 `scripts/` 按执行面分为 `checks/`（门禁与脚本测试入口）、`policies/`（本仓的门禁事实与配置好的检查实例）、`workflow/`（提交与发布辅助）、`maintenance/`（清理、环境诊断与依赖维护）与 `lib/`（Node 启动前求值的 bootstrap helper）。门禁入口通过 `check-*` 根命令调用；`checks/` 只放薄入口，同一端点的检查由一个入口聚合，检查逻辑与能力在 `@greypan/monorepo-kit`，本仓的包名、路径与语料数据只在 `policies/` 里出现。app 级的 turbo 门禁入口（`check-generated`）同样放 `checks/`，判据由所属包提供。包只有一个入口（`exports["."]`），入口引用一律写包名，没有子路径。分类与入口契约见 ADR-0014，分区判据见 ADR-0018。
 
 ### 授权
 

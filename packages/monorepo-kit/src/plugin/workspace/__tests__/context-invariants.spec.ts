@@ -3,6 +3,7 @@ import assert from 'node:assert/strict'
 import { it } from 'vite-plus/test'
 
 import {
+  findUnlinkedAgentDocReferences,
   isUnqualifiedRelativeTarget,
   parseLocalLinkTarget,
   readInlineLinkTarget,
@@ -124,4 +125,15 @@ it('context-invariants', () => {
 
   // 围栏外的行数不能因剥离而变化：锚点与报错按行读取时要能对上。
   assert.equal(stripCodeSegments('a\n```\nb\n```\nc').split('\n').length, 5)
+
+  // 文档名的裸文本与「整段只是一个文件名的行内 code」都要进互指图；命令片段与代码块不算引用。
+  const docReferences = (source: string) =>
+    findUnlinkedAgentDocReferences([
+      { file: 'docs/agents/a.md', source },
+      { file: 'docs/agents/workflow.md', source: '' }
+    ])
+  assert.deepEqual(docReferences('参见 workflow.md'), [{ file: 'docs/agents/a.md', name: 'workflow.md' }])
+  assert.deepEqual(docReferences('参见 `workflow.md`'), [{ file: 'docs/agents/a.md', name: 'workflow.md' }])
+  assert.deepEqual(docReferences('参见 [workflow.md](./workflow.md)'), [])
+  assert.deepEqual(docReferences('`cat workflow.md`\n```sh\ncat workflow.md\n```'), [])
 })

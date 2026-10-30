@@ -1,22 +1,22 @@
 # 生成物清单
 
-这份文档只回答一个问题：仓库里哪些文件是生成的、由谁生成、怎么重新生成。生成物的生命周期规则（构建期写盘、测试期只判不改、turbo inputs 与产出集合守卫）在 build.md，验证命令在 verification.md，这里不重复。
+这份文档只回答一个问题：仓库里哪些文件是生成的、由谁生成、怎么重新生成。生成物的生命周期与验证由对应构建和测试流程维护。
 
 ## 清单
 
-| 产物                   | 路径                                                                                                              | generator                                   | 触发方式                                                                                                                                       |
-| ---------------------- | ----------------------------------------------------------------------------------------------------------------- | ------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
-| `web-ui` icon 模块     | `packages/web-ui/src/icons/index.ts`、`packages/web-ui/src/icons/generated/**`                                    | `packages/web-ui/scripts/generate-icons.ts` | `pnpm --filter @greypan/web-ui generate-icons`，产物入库                                                                                       |
-| TanStack Router 路由树 | `apps/react-web-ui-demo/src/routeTree.gen.ts`                                                                     | TanStack Router 的 Vite 插件                | React demo 的 dev 与 build                                                                                                                     |
-| vue-router 路由类型    | `apps/vue-web-ui-demo/typed-router.d.ts`、`apps/interweave/frontend/typed-router.d.ts`                            | unplugin-vue-router                         | 对应宿主的 dev 与 build                                                                                                                        |
-| auto-import 声明       | `apps/vue-web-ui-demo/auto-imports.d.ts`、`apps/interweave/frontend/auto-imports.d.ts`                            | unplugin-auto-import                        | 对应宿主的 dev 与 build                                                                                                                        |
-| demo 示例与 API 表     | `apps/react-web-ui-demo/src/generated/**`、`apps/vue-web-ui-demo/src/generated/**`                                | `@greypan/md-to-comp` 的 Vite 插件          | 宿主 dev 与 build；输入是 `packages/web-ui/docs/*.md`（中文源 `.CN.md` + 英文译文 `.md`）；CI 在宿主 build 前有只判校验步（`check-generated`） |
-| Wails Go bindings      | `apps/interweave/frontend/bindings/**`                                                                            | Wails bindings generator（单一入口）        | `pnpm exec turbo build --filter=@greypan/interweave-frontend`                                                                                  |
-| 壳文案 catalog         | `apps/{react,vue}-web-ui-demo/src/locales/.wuchale/**`、`src/locales/*.loader.js`、`src/locales/{data,plural}.js` | `wuchale` 的 Vite 插件与 CLI                | 宿主 dev 与 build 按 PO 重编译；增删壳文案后在应用目录跑 `pnpm exec wuchale --clean` 把 msgid 写进 PO；产物全部 gitignore                      |
+| 产物                   | 路径                                                                                                                                                                                       | generator                                                                                      | 触发方式                                                                                                                                       |
+| ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
+| `web-ui` icon 模块     | [`packages/web-ui/src/icons/index.ts`](../../packages/web-ui/src/icons/index.ts)、`packages/web-ui/src/icons/generated/**`                                                                 | [`packages/web-ui/scripts/generate-icons.ts`](../../packages/web-ui/scripts/generate-icons.ts) | `pnpm --filter @greypan/web-ui generate-icons`，产物入库                                                                                       |
+| TanStack Router 路由树 | [`apps/react-web-ui-demo/src/routeTree.gen.ts`](../../apps/react-web-ui-demo/src/routeTree.gen.ts)                                                                                         | TanStack Router 的 Vite 插件                                                                   | React demo 的 dev 与 build                                                                                                                     |
+| vue-router 路由类型    | [`apps/vue-web-ui-demo/typed-router.d.ts`](../../apps/vue-web-ui-demo/typed-router.d.ts)、[`apps/interweave/frontend/typed-router.d.ts`](../../apps/interweave/frontend/typed-router.d.ts) | unplugin-vue-router                                                                            | 对应宿主的 dev 与 build                                                                                                                        |
+| auto-import 声明       | [`apps/vue-web-ui-demo/auto-imports.d.ts`](../../apps/vue-web-ui-demo/auto-imports.d.ts)、[`apps/interweave/frontend/auto-imports.d.ts`](../../apps/interweave/frontend/auto-imports.d.ts) | unplugin-auto-import                                                                           | 对应宿主的 dev 与 build                                                                                                                        |
+| demo 示例与 API 表     | `apps/react-web-ui-demo/src/generated/**`、`apps/vue-web-ui-demo/src/generated/**`                                                                                                         | `@greypan/md-to-comp` 的 Vite 插件                                                             | 宿主 dev 与 build；输入是 `packages/web-ui/docs/*.md`（中文源 `.CN.md` + 英文译文 `.md`）；CI 在宿主 build 前有只判校验步（`check-generated`） |
+| Wails Go bindings      | `apps/interweave/frontend/bindings/**`                                                                                                                                                     | Wails bindings generator（单一入口）                                                           | `pnpm exec turbo build --filter=@greypan/interweave-frontend`                                                                                  |
+| 壳文案 catalog         | `apps/{react,vue}-web-ui-demo/src/locales/.wuchale/**`、`src/locales/*.loader.js`、`src/locales/{data,plural}.js`                                                                          | `wuchale` 的 Vite 插件与 CLI                                                                   | 宿主 dev 与 build 按 PO 重编译；增删壳文案后在应用目录跑 `pnpm exec wuchale --clean` 把 msgid 写进 PO；产物全部 gitignore                      |
 
 `apps/*/src/generated/**` 里是 `examples.css` 与逐语种的 `examples.ts` + `demos/**`，同一次生成一起写盘，不要挑其中某一类单独改。React 站出中英两套（`zh-CN/`、`en/`）共用顶层 `examples.css`；Vue 站中文保留在 `src/generated/`，英文落在 `src/generated/en/`，共用顶层 `examples.css`。
 
-`apps/{react,vue}-web-ui-demo/src/locales/*.po` 反过来：它是**入库的译文源**，手写（英文由 agent 翻译后写回同一份 PO），不是生成物，也不由 generator 覆盖。PO 与代码抽取的一致性由两端应用的 `catalog.spec.ts` 随 `pnpm run test` 验证，判据与失败模式见 build.md 的「生成物生命周期」。
+`apps/{react,vue}-web-ui-demo/src/locales/*.po` 反过来：它是**入库的译文源**，手写（英文由 agent 翻译后写回同一份 PO），不是生成物，也不由 generator 覆盖。PO 与代码抽取的一致性由两端应用的 `catalog.spec.ts` 随 `pnpm run test` 验证。
 
 ## 怎么判断一个文件是不是生成的
 
@@ -52,7 +52,7 @@
 
    重建出来且 `git status` 干净 = 生成物且 generator 幂等。icon 脚本实测如此：移走一个 `icons/generated/*.ts`，`pnpm --filter @greypan/web-ui generate-icons` 原样补回，无 diff。没重建只有两种解释：不是生成物，或 generator 不负责它——回第 2 层确认，不要因为没重建就手写补回。
 
-**看起来像但不是**：`apps/*/env.d.ts`（手写，只有 reference types）、`dist/**`（构建产物，已 gitignore）、`**/__screenshots__/` 与 `**/.vitest-attachments/`（测试证据，二进制）、`pnpm-lock.yaml`（工具写盘但属 source of truth，只能由 pnpm 改）。
+**看起来像但不是**：`apps/*/env.d.ts`（手写，只有 reference types）、`dist/**`（构建产物，已 gitignore）、`**/__screenshots__/` 与 `**/.vitest-attachments/`（测试证据，二进制）、[`pnpm-lock.yaml`](../../pnpm-lock.yaml)（工具写盘但属 source of truth，只能由 pnpm 改）。
 
 ## 要更新就跑 generator
 
@@ -62,7 +62,7 @@
 
 ## 机器拦截的覆盖面
 
-`.claude/settings.json` 的 `permissions.deny` 是这些路径的权威名单：上表每一类**入库**生成物都有对应条目，另外拦截 `.env` 读取。它只挡工具调用，不挡 generator，所以「跑 generator 产生 diff」的正常路径不受影响；口径与边界见 environments.md。
+[`.claude/settings.json`](../../.claude/settings.json) 的 `permissions.deny` 是这些路径的权威名单：上表每一类**入库**生成物都有对应条目，另外拦截 `.env` 读取。它只挡工具调用，不挡 generator，所以「跑 generator 产生 diff」的正常路径不受影响。
 
 已 gitignore 的编译目录不在名单里（wuchale 的 `src/locales/.wuchale/**`、各包 `dist/**`）：它们永远不进 diff，手改的后果由下一次重编译原样收走，拦不住也不必拦。
 
@@ -70,4 +70,4 @@
 
 ## 新增生成物时
 
-同时更新四处，缺一处就会漂：本文的表格、build.md 的 turbo inputs 与产出集合守卫、`.claude/settings.json` 的 `deny`，以及受影响包的测试。根 `AGENTS.md` 只指向本文，不复制清单。
+同时更新四处，缺一处就会漂：本文的表格、turbo inputs 与产出集合守卫、[`.claude/settings.json`](../../.claude/settings.json) 的 `deny`，以及受影响包的测试。根 [`AGENTS.md`](../../AGENTS.md) 只指向本文，不复制清单。

@@ -11,7 +11,7 @@ Changesets 同时管理 npm 包、私有 app 与桌面端 release 驱动版本�
 - 桌面端应用：声明其版本驱动 release；被 ignore 的 frontend 或 demo 包永不声明。
 - 只有 docs / test / chore 或根路径改动：写空壳 changeset。
 
-不要声明 `.changeset/config.json` 的 `ignore` 表；被忽略的声明不会 bump 版本，也不会被版本 PR 删除。`private: true` 只关闭 npm 发布，不等于退出 Changesets 版本管理。Changeset 描述使用英文，因为它会进入面向 npm 用户的 CHANGELOG。空壳 changeset 只含两行 `---`；退役公开包时另用不声明包的正文点名。
+不要声明 [`.changeset/config.json`](../../.changeset/config.json) 的 `ignore` 表；被忽略的声明不会 bump 版本，也不会被版本 PR 删除。`private: true` 只关闭 npm 发布，不等于退出 Changesets 版本管理。Changeset 描述使用英文，因为它会进入面向 npm 用户的 CHANGELOG。空壳 changeset 只含两行 `---`；退役公开包时另用不声明包的正文点名。
 
 PR CI 对 PR base/head 执行 changeset gate；main 已有的 changeset、删除的文件、staged 或未提交文件都不构成声明。版本分支由 workflow 豁免；本地 pre-commit 政策检查不运行该检查。
 
@@ -21,7 +21,7 @@ PR CI 对 PR base/head 执行 changeset gate；main 已有的 changeset、删除
 
 ## 步骤
 
-1. 确认 Task Packet（见 `task-ledger` skill）描述实际交付内容；需要本地仓库政策检查时按 [`commit.md`](./commit.md) 运行七项只读检查，pre-commit 会在提交时执行同一组。
+1. 确认 Task Packet（见 `task-ledger` skill）描述实际交付内容；需要本地仓库政策检查时按 [`commit.md`](./commit.md) 运行只读政策检查，pre-commit 会在提交时执行同一组。
 2. 按 [`verification.md`](./verification.md) 选择并实际运行相关测试、构建、契约与必要的浏览器验证。
 3. 创建 PR 后确认 required `check` 覆盖当前 base/head 且 `changeset-required` 通过；再按 [`review.md`](./review.md) 完成独立 review。CI 成功不能代替 review 报告。
 4. merge 需用户明确授权，机制见 [`workflow.md`](./workflow.md#怎么取得这个授权)。合并后如需复检 main CI，手动触发；有版本变更时，再验证 changesets 版本 PR、合并与 npm / Wails 发布链。

@@ -19,7 +19,7 @@ function createDialog(initialHTML = ''): WebUiDialog {
  * 关闭 button 按「有可访问名」定位，不按内部 class。
  *
  * 刻意**不**钉住名字的字面量（`aria-label="Close"`）：可访问名必须存在是 AT 契约，
- * 具体文案走内置英文回退（ADR-0029），可用 `aria-close-label` 覆盖——钉字面量会让
+ * 具体文案走内置英文回退（ADR-0016），可用 `aria-close-label` 覆盖——钉字面量会让
  * 回退文案的调整误伤本批测试。
  */
 function closeButton(el: WebUiDialog): HTMLElement | null {

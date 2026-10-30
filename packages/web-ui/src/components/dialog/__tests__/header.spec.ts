@@ -81,7 +81,7 @@ describe('WebUiDialog accessible name', () => {
     cleanupElement(el)
   })
 
-  // dialog-label 自 11.1.0 发布，是保留的 deprecated 别名（见 ADR-0029）：
+  // dialog-label 自 11.1.0 发布，是保留的 deprecated 别名（见 ADR-0016）：
   // attribute 写入仍要落到原生 <dialog> 的 aria-label，防止别名静默失效。
   it('旧名 dialog-label 作为 deprecated 别名仍生效', async () => {
     const el = createDialog('<span slot="header">设置</span>')
