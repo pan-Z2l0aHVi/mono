@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict'
 
 import {
+  findUnlinkedAgentDocReferences,
   isUnqualifiedRelativeTarget,
   parseLocalLinkTarget,
   readInlineLinkTarget,
@@ -8,6 +9,16 @@ import {
 } from './context-invariants.mjs'
 
 try {
+  const docReferences = source =>
+    findUnlinkedAgentDocReferences([
+      { file: 'docs/agents/a.md', source },
+      { file: 'docs/agents/workflow.md', source: '' }
+    ])
+  assert.deepEqual(docReferences('参见 workflow.md'), [{ file: 'docs/agents/a.md', name: 'workflow.md' }])
+  assert.deepEqual(docReferences('参见 `workflow.md`'), [{ file: 'docs/agents/a.md', name: 'workflow.md' }])
+  assert.deepEqual(docReferences('参见 [workflow.md](./workflow.md)'), [])
+  assert.deepEqual(docReferences('`cat workflow.md`\n```sh\ncat workflow.md\n```'), [])
+
   // 远程与协议链接不判定可触达性：离线无法验证，域名失效也不是本仓漂移。
   for (const remote of [
     'https://example.com/dead',

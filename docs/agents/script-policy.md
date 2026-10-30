@@ -6,7 +6,7 @@
 
 本文件覆盖两类可执行入口，按影响范围划分：
 
-- **根 `scripts/`**：由根 `package.json`、Git hook、CI 或流程文档直接调用，影响整个仓库。
+- **根 `scripts/`**：由根 [`package.json`](../../package.json)、Git hook、CI 或流程文档直接调用，影响整个仓库。
 - **workspace 内 `scripts/`**：由所属包或应用的构建、发布或生成流程调用，影响范围限于该 workspace。
 
 `scripts/lib/**` 是共享实现与原子检查实现，不是入口，其行为由调用方与同名测试覆盖。
@@ -23,18 +23,18 @@
 
 ## 运行时选择
 
-默认优先 POSIX `sh`：系统探测、依赖与环境处理、发布编排，以及把外部 CLI 串成流程的脚本。只有复杂逻辑才用 Node ESM：结构化解析（JSON/YAML/Markdown）、代码生成、状态机、跨平台路径处理，或需要复用 `scripts/lib/**` 的原子实现。检查门禁仍统一使用 Node ESM（ADR-0014）；其余脚本在 `sh` 能直接表达时选 `sh`，不要为几行命令串联引入 Node。
+默认优先 POSIX `sh`：系统探测、依赖与环境处理、发布编排，以及把外部 CLI 串成流程的脚本。只有复杂逻辑才用 Node ESM：结构化解析（JSON/YAML/Markdown）、代码生成、状态机、跨平台路径处理，或需要复用 `scripts/lib/**` 的原子实现。检查门禁仍统一使用 Node ESM；其余脚本在 `sh` 能直接表达时选 `sh`，不要为几行命令串联引入 Node。
 
 - 不在 `sh` 里拼接执行 Node 源码：不写 `node -e`、`node - <<EOF`，也不把 JS 存进变量再执行。
 - 不在 Node 里用 `sh -c` 或启动 `.sh` 辅助脚本完成本可由 argv 表达的工作；外部 CLI（`git`、`pnpm`、`gh`、`turbo`、`ps` 等）以 argv 调用不在此列。
 - 测试为验证 shell 行为而启动 `sh` 是允许的；禁令针对实现代码，不针对测试夹具。
-- bootstrap 例外只允许来自 `.mise.toml` 在 Node 可用前求值的 `[env]` 模板；每个例外的等价实现、降级行为与测试要求见 `.mise.toml` 与 [`worktree.md`](./worktree.md)。新增同类场景必须同时提供等价实现并证明一致，无法提供时登记为明确例外，不要假装存在等价实现。
+- bootstrap 例外只允许来自 [`.mise.toml`](../../.mise.toml) 在 Node 可用前求值的 `[env]` 模板；每个例外的等价实现、降级行为与测试要求见 [`.mise.toml`](../../.mise.toml) 与 [`worktree.md`](./worktree.md)。新增同类场景必须同时提供等价实现并证明一致，无法提供时登记为明确例外，不要假装存在等价实现。
 
 ## 根脚本
 
 ### 执行面
 
-根 `scripts/` 按执行面分为 `checks/`（门禁与脚本测试入口）、`workflow/`（提交命令）、`release/`（发布辅助）、`maintenance/`（清理、环境诊断与依赖维护）与 `lib/`（共享实现与原子检查实现）。门禁入口通过 `check-*` 根命令调用；`checks/` 只放薄入口，同一端点的检查由一个入口聚合，检查逻辑放在 `lib/` 的原子模块里。分类与入口契约见 ADR-0014。
+根 `scripts/` 按执行面分为 `checks/`（门禁与脚本测试入口）、`workflow/`（提交命令）、`release/`（发布辅助）、`maintenance/`（清理、环境诊断与依赖维护）与 `lib/`（共享实现与原子检查实现）。门禁入口通过 `check-*` 根命令调用；`checks/` 只放薄入口，同一端点的检查由一个入口聚合，检查逻辑放在 `lib/` 的原子模块里。
 
 ### 授权
 

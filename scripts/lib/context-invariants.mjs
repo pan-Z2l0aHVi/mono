@@ -69,6 +69,28 @@ export function stripCodeSegments(source) {
   return kept.join('\n')
 }
 
+// 文档名以纯文本或单独的行内 code 出现时不会进入互指图；命令片段和代码块不属于文档引用。
+export function findUnlinkedAgentDocReferences(entries) {
+  const names = entries
+    .filter(({ file }) => file.startsWith('docs/agents/'))
+    .map(({ file }) => path.posix.basename(file))
+  const violations = []
+  for (const { file, source } of entries) {
+    if (!file.startsWith('docs/agents/')) continue
+    const withoutLinks = source.replace(/!?\[[^\]\n]*\]\([^\n)]*\)/g, '')
+    const exposed = withoutLinks.replace(/`([^`\n]+)`/g, (whole, code) =>
+      /^(?:\.\.?\/|docs\/agents\/)?[\w-]+\.md$/.test(code) ? code : whole
+    )
+    const prose = stripCodeSegments(exposed)
+    for (const name of names) {
+      if (name === path.posix.basename(file)) continue
+      const escaped = name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+      if (new RegExp(`(?<![\\w.-])${escaped}(?![\\w.-])`).test(prose)) violations.push({ file, name })
+    }
+  }
+  return violations
+}
+
 // 链接 target 归一为 `{ location, fragment }`；返回 null 表示「不需要判定文件可触达性」：
 //   - 远程与协议链接（http(s)、mailto、tel、vscode…）离线无法判定，域名失效也不是本仓漂移；
 //   - 纯锚点（`#foo`）只指向本文件，不存在文件可达性问题；

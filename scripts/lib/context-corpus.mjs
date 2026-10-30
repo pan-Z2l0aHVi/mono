@@ -10,6 +10,7 @@ import {
   findMissingAuthorizationPointers,
   findRetiredAdrMarkers,
   findUnmarkedReferenceDocs,
+  findUnlinkedAgentDocReferences,
   findUnroutedAgentDocs,
   isUnqualifiedRelativeTarget,
   parseLocalLinkTarget,
@@ -302,6 +303,8 @@ export async function run(context) {
   // 语料门禁只检查可客观判定的漂移属性（ADR-0013）：路由完整性、外部状态快照、授权指针与非权威标记。
   // 文风与 concern 归属不在此列，交给 review。
   const corpus = [...new Set(markdownFiles.map(relativePosix))].sort().map(file => ({ file, source: read(file) }))
+  for (const { file, name } of findUnlinkedAgentDocReferences(corpus))
+    addError(`${file}: reference to ${name} must be a Markdown link`)
   // 研究记录与设计资产不在指令面的链接/命令扫描内，但属于 RAG 语料：必须有非权威标记，并进入内容指纹。
   const referenceCorpus = [
     ...walk('docs/research', file => file.endsWith('.md')),

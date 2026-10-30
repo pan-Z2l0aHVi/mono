@@ -11,7 +11,7 @@
 
 Web workspace 使用 Vite Plus（`vp`）作为构建、开发、测试、lint 和格式化的统一入口。库包使用 `vp pack` 生成 JavaScript 与声明文件，应用使用 `vp build`。Go 代码继续使用 Go 工具链。
 
-库包的 workspace 依赖保持 external，使消费者加载各自的依赖实例，开发时也能观察依赖包的变化。构建模式、CSS 处理与声明文件配置以各包配置和 build.md 为准。
+库包的 workspace 依赖保持 external，使消费者加载各自的依赖实例，开发时也能观察依赖包的变化。构建模式、CSS 处理与声明文件配置以各包配置和 [build.md](../agents/build.md) 为准。
 
 ## 后果
 

@@ -1,6 +1,6 @@
 # 根命令面
 
-本文件规定根命令的命名与 namespace 归属。短约束见 .agents/rules/commands.md；完整命令面以根 `package.json` 为准，工具参数与契约查询接口见 monorepo-change-impact skill 的 SKILL.md。
+本文件规定根命令的命名与 namespace 归属。完整命令面以根 [`package.json`](../../package.json) 为准，工具参数与契约查询接口见 monorepo-change-impact skill 的 SKILL.md。
 
 ## 命名约定
 

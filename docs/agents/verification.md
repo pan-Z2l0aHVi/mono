@@ -1,6 +1,6 @@
 # 验证选择与测试执行
 
-本文件回答两个问题：这次改动该跑哪些验证，以及那些验证怎么执行。运行时证据本身怎么取（真实浏览器、原生应用、引擎级取证、证据档位）由 [`runtime-verification.md`](./runtime-verification.md) 承担；浏览器进程与 profile 的归属和回收由 [`browser-resources.md`](./browser-resources.md) 承担；测试用例编写策略见 [`.agents/skills/test-authoring/SKILL.md`](../../.agents/skills/test-authoring/SKILL.md)；受版本控制的生成物清单见 [`generated-artifacts.md`](./generated-artifacts.md)，其完成证据见 build.md。
+本文件回答两个问题：这次改动该跑哪些验证，以及那些验证怎么执行。运行时证据本身怎么取（真实浏览器、原生应用、引擎级取证、证据档位）由 [`runtime-verification.md`](./runtime-verification.md) 承担；浏览器进程与 profile 的归属和回收由 [`browser-resources.md`](./browser-resources.md) 承担；测试用例编写策略见 [`.agents/skills/test-authoring/SKILL.md`](../../.agents/skills/test-authoring/SKILL.md)；受版本控制的生成物清单见 [`generated-artifacts.md`](./generated-artifacts.md)。
 
 ## 从变更路径到验证计划
 
@@ -41,7 +41,7 @@ PR CI 对当前 base/head 复检 required checks，不替代实施阶段已要�
 
 全局 setup 只承担各 spec 共同需要的环境准备。真实 catalog、生成文档和应用启动等业务初始化，由依赖它的集成 spec 在自己的 hook 内显式等待；使用 factory 或注入依赖的单元测试不应因此加载真实应用状态。收窄 setup 时逐文件核对初始状态和清理责任，保留集成测试所需的真实初始化，不把它移出 hook 预算来规避超时。
 
-Demo 的网格列数基线由各自的 `grid-columns.browser.spec.*` 钉住，守的是 Tailwind v4 自定义变体的排序陷阱；具体视口与列数见 spec。生成物清单见 [`generated-artifacts.md`](./generated-artifacts.md)，语料与缓存输入见 build.md。
+Demo 的网格列数基线由各自的 `grid-columns.browser.spec.*` 钉住，守的是 Tailwind v4 自定义变体的排序陷阱；具体视口与列数见 spec。生成物清单见 [`generated-artifacts.md`](./generated-artifacts.md)。
 
 ## 本地复现与浏览器 spec 隔离
 

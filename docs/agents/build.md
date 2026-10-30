@@ -10,7 +10,7 @@
 
 ## Demo 开发
 
-各 demo 与 Interweave 的开发命令以根 `package.json` 的 `dev:` namespace 为准。根目录 aliases 通过 Turbo `dev` task 构建上游工作区包，并启动每个包的持久 `dev` 进程。
+各 demo 与 Interweave 的开发命令以根 [`package.json`](../../package.json) 的 `dev:` namespace 为准。根目录 aliases 通过 Turbo `dev` task 构建上游工作区包，并启动每个包的持久 `dev` 进程。
 
 不要改用 `turbo watch`：包级 Vite 与 tsdown 监听器已经会重建源文件变更，`turbo watch` 还会监控 Git 控制文件，编辑器或 agent 工具更新工作树时可能重启全部 dev 进程。修改包图、lockfile 或 Turbo 配置后需重启开发命令；普通源文件变更由包级监听器继续处理。
 
@@ -28,13 +28,13 @@ Interweave 由 Wails 宿主管理嵌套前端，其 alias 只启动 Wails host�
 
 CI 在 Build 步之前经两端 demo 的 `check-generated` turbo 任务以同一份插件配置只判不改地校验产物：Build 的写盘会把失步产物原地治愈，测试档里的判据到那时永远空转，所以检测必须抢在 healing 之前。判据与测试档同源（`@greypan/md-to-comp` 的 `checkArtifacts`），配置直接 import 各 demo `vite.config.ts` 的 `mdToCompOptions` 具名导出，不抄第二份。
 
-这些语料必须进入本包 `build` 与 `test` 的 turbo inputs：根配置排除 Markdown，包级 `turbo.json` 重新纳入，并由 `pnpm run check-policy` 中的 `web-ui-docs-inputs` 检查守护。
+这些语料必须进入本包 `build` 与 `test` 的 turbo inputs：根配置排除 Markdown，包级 [`turbo.json`](../../turbo.json) 重新纳入，并由 `pnpm run check-policy` 中的 `web-ui-docs-inputs` 检查守护。
 
 React 与 Vue demo 的**壳文案**（TSX / SFC 中的界面文字）走另一条链：`wuchale` 从源码抽取 msgid，中文为源、英文为译文，落进 `apps/{react,vue}-web-ui-demo/src/locales/<locale>.po`。PO 是入库的译文源、手写不生成；catalog 与 loader（`src/locales/.wuchale/**`、`*.loader.js`、`data.js`、`plural.js`）由 Vite 插件按 PO 重编译，全部 gitignore。dev 与 build 只编译不抽取，所以**增删壳文案必须显式在应用目录跑 `pnpm exec wuchale --clean`** 把新 msgid 写进 PO，否则构建默默用旧语料出页面。`--clean` 会顺带移除代码里已不再引用的条目；不得用 `--modify`——它把译文写回源码，而源码里的中文才是唯一原文。PO 是 tracked 文件，天然在 `$TURBO_DEFAULT$` 里，不需要像 Markdown 那样重新纳入。
 
-壳文案的一致性由两端应用的 `catalog.spec.ts` 随 `pnpm run test` 验证，复用 `scripts/lib/shell-i18n-catalog.mjs`：它分别把每个应用的两份 PO 复制到临时目录、按 `wuchale.config.js` 的 glob 重跑一次抽取，然后判五件事——en 有空译文、en 与 zh 的 msgid 集合不等（缺译或多译）、PO 里残留 `#~` 废弃条目、代码里有中文没进语料、语料里有中文代码里已不再引用。`wuchale status` 与 `check` 只看 PO 自身，看不见新加的源码文案，也判不出空译文，所以这条检查补的是它够不到的那一半。
+壳文案的一致性由两端应用的 `catalog.spec.ts` 随 `pnpm run test` 验证，复用 [`scripts/lib/shell-i18n-catalog.mjs`](../../scripts/lib/shell-i18n-catalog.mjs)：它分别把每个应用的两份 PO 复制到临时目录、按 `wuchale.config.js` 的 glob 重跑一次抽取，然后判五件事——en 有空译文、en 与 zh 的 msgid 集合不等（缺译或多译）、PO 里残留 `#~` 废弃条目、代码里有中文没进语料、语料里有中文代码里已不再引用。`wuchale status` 与 `check` 只看 PO 自身，看不见新加的源码文案，也判不出空译文，所以这条检查补的是它够不到的那一半。
 
-测试由 Turbo 的 `^build` 先准备适配器产物；两端 test inputs 包含共享检查实现，修改它会使测试缓存失效。政策检查不再加载应用的 wuchale 配置。
+测试由 Turbo 的 `^build` 先准备适配器产物；两端 test inputs 包含共享检查实现，修改它会使测试缓存失效。
 
 Vue demo 通过私有 `@greypan/wuchale-vue` 在 Vue 编译前转换 SFC。`wuchale.config.js` 只提取手写壳文案，排除 `src/generated/**`；正文与运行示例继续由 md-to-comp 生成双语输出。语言控制器先准备 catalog、文档与当前页示例，再统一提交；不修改 wuchale 核心。安装版 wuchale 按 Vite mode 判定 build，Vue build 脚本显式使用 `--mode build`。
 
@@ -50,7 +50,7 @@ Vue demo 通过私有 `@greypan/wuchale-vue` 在 Vue 编译前转换 SFC。`wuch
 
 ## 库构建模式
 
-公共面是固定入口集合的包用 `vp pack`（基于 tsdown，可以多入口，输出 `.mjs` 与 `.d.mts`，自动生成声明文件并从依赖中外部化）。公共面含通配子路径导出或需要 Vite CSS/资源管线的包同样用 `vp pack`，按下面三条加配置：`unbundle: true` + `root: 'src'` 让产物与源码树一一对应（子路径导出靠它）；`fixedExtension: false` 把扩展名对齐到 exports 指向的 `.js` / `.d.ts`（node 平台默认是 `.mjs` / `.d.mts`），凡是 exports 指向 `.js` 的包都要显式写这一行，不要依赖 `platform: 'browser'` 的默认值碰巧相同；CSS 入口就是 `pack.entry` 里的一项（见 `web-ui` 的 `classes/style`），`pack.css` 只承载 `minify` 这类选项，浏览器下限由顶层 `target` 同时驱动 JS 语法降级与 LightningCSS 前缀，`css.minify` 打开后与旧 Vite 管线逐字节一致。声明文件由 `pack.dts` 生成：不在 JS 图里的纯类型入口必须显式列进 `pack.entry` 才会产出 `.d.ts`，顶层 `sourcemap: true` 会连带给 `.d.ts` 写 `sourceMappingURL`，所以要同时开 `dts.sourcemap`；`dts.entry` glob 也能补类型入口，但会让 dts 阶段慢数倍，不要用。纯转发的 barrel（`export * from './x'`）在 `unbundle` 下会被拍平进叶子模块，没有 `index.js` / `index.d.ts`，所以 `./*` 通配覆盖的子目录要按 `'<dir>/index'` 的键逐个列进 `pack.entry`——产物落点由键决定，写成 `<dir>` 会落到 `dist/<dir>.js`。具体选择以各包 manifest 与 `vite.config.ts` 为准，入口数量本身不是判据。`packages/tsconfig` 无构建步骤，只提供通过 TypeScript `extends` 消费的 JSON 文件。
+公共面是固定入口集合的包用 `vp pack`（基于 tsdown，可以多入口，输出 `.mjs` 与 `.d.mts`，自动生成声明文件并从依赖中外部化）。公共面含通配子路径导出或需要 Vite CSS/资源管线的包同样用 `vp pack`，按下面三条加配置：`unbundle: true` + `root: 'src'` 让产物与源码树一一对应（子路径导出靠它）；`fixedExtension: false` 把扩展名对齐到 exports 指向的 `.js` / `.d.ts`（node 平台默认是 `.mjs` / `.d.mts`），凡是 exports 指向 `.js` 的包都要显式写这一行，不要依赖 `platform: 'browser'` 的默认值碰巧相同；CSS 入口就是 `pack.entry` 里的一项（见 `web-ui` 的 `classes/style`），`pack.css` 只承载 `minify` 这类选项，浏览器下限由顶层 `target` 同时驱动 JS 语法降级与 LightningCSS 前缀。声明文件由 `pack.dts` 生成：不在 JS 图里的纯类型入口必须显式列进 `pack.entry` 才会产出 `.d.ts`，顶层 `sourcemap: true` 会连带给 `.d.ts` 写 `sourceMappingURL`，所以要同时开 `dts.sourcemap`；`dts.entry` glob 也能补类型入口，但会让 dts 阶段慢数倍，不要用。纯转发的 barrel（`export * from './x'`）在 `unbundle` 下会被拍平进叶子模块，没有 `index.js` / `index.d.ts`，所以 `./*` 通配覆盖的子目录要按 `'<dir>/index'` 的键逐个列进 `pack.entry`——产物落点由键决定，写成 `<dir>` 会落到 `dist/<dir>.js`。具体选择以各包 manifest 与 `vite.config.ts` 为准，入口数量本身不是判据。`packages/tsconfig` 无构建步骤，只提供通过 TypeScript `extends` 消费的 JSON 文件。
 
 ## 外部化规则
 
@@ -58,46 +58,29 @@ Vue demo 通过私有 `@greypan/wuchale-vue` 在 Vue 编译前转换 SFC。`wuch
 
 ## 应用
 
-消费方在各自的 `package.json` 声明同一份 browserslist 目标，根 `package.json` 没有目标值；改目标时同步所有声明处，也就是各 manifest 的 browserslist 与 `web-ui` 的 `pack.target`——产物实际用的是 `pack.target`，manifest 里的 browserslist 只作文档性声明，两者目前手工双写。`web-ui` 是唯一在构建时输出 CSS 的包；静态 `color-mix()` 由 lightningcss 求值，含 `var()` 的 `color-mix()` 保留为运行时 CSS。纯 JavaScript 库包统一声明 `engines`，具体值以各包 `package.json` 为准。
+消费方在各自的 package manifest 中声明同一份 browserslist 目标，根 [`package.json`](../../package.json) 没有目标值；改目标时同步所有声明处，也就是各 manifest 的 browserslist 与 `web-ui` 的 `pack.target`——产物实际用的是 `pack.target`，manifest 里的 browserslist 只作文档性声明，两者目前手工双写。`web-ui` 是唯一在构建时输出 CSS 的包；静态 `color-mix()` 由 lightningcss 求值，含 `var()` 的 `color-mix()` 保留为运行时 CSS。纯 JavaScript 库包统一声明 `engines`，具体值以各包 manifest 为准。
 
 两个 demo 用 `basicSsl()` 为 dev server 提供安全上下文：Service Worker 与 `navigator.clipboard` 只在安全上下文可用，而 demo 设了 `server.host: true`。该插件只作用于 dev server，生产构建不受影响。各 demo 的插件、测试面与构建差异以各应用 `vite.config.ts` 与 [`verification.md`](./verification.md) 为准。`depsReload` 监听库的 `dist/` 目录，本地依赖变化时触发整页刷新。嵌套 WebView 前端遵循对应框架 demo 的 Vite 插件与本地包约定。
 
 ## 测试端口分配
 
-浏览器测试的 API 端口从 `scripts/lib/test-ports.mjs` 取，不要在 `vite.config.ts` 里写裸数字。每个项目占一个十位宽的段，留出 Vite 在端口被占时 +1 重试的空间：
+浏览器测试的 API 端口由 [`scripts/lib/test-ports.mjs`](../../scripts/lib/test-ports.mjs) 分配。新增 browser project 时在该文件分配不重叠的端口段，不要在配置中写裸数字。并行 worktree 使用不同的 `GREYPAN_TEST_PORT_OFFSET`；模块校验段间不重叠以及偏移步长。
 
-| 项目                               | 基端口 |
-| ---------------------------------- | ------ |
-| `react-web-ui-demo`                | 63410  |
-| `vue-web-ui-demo`                  | 63420  |
-| `interweave-frontend`              | 63430  |
-| `web-ui`（browser）                | 63440  |
-| `web-ui`（browser-reduced-motion） | 63450  |
-| `browser-kit`                      | 63460  |
+测试服务器的 `api.host` 使用 `127.0.0.1`。Interweave dev server 使用固定端口，而测试服务器允许在端口占用时选择下一个端口。Wails 的 dev server 端口由 `WAILS_VITE_PORT` 配置。
 
-新增 browser project 时在同一张表里占一个空闲段。表以 `scripts/lib/test-ports.mjs` 为准，上面这张表只是给人看的副本，改一处要改两处。同一台机器上并行多个 worktree 时，给每个 worktree 导出不同的 `GREYPAN_TEST_PORT_OFFSET`（100 的倍数，如 `100`、`200`）整体错开；不设时为 0，端口就是固定值，不随 worktree 变化。
-
-偏移是整表平移，所以同一 worktree 内的相对间隔不受影响；要守的是**不同 worktree 的两组端口不重叠**，因此步长不得小于全表跨度（当前 `63469 - 63410 + 1 = 60`；取 100 是给后续段位留余量）。模块加载时校验「段间不重叠」与「跨度不超过步长」两条，任一条不成立直接抛错，而不是悄悄和其他 worktree 抢端口。
-
-`api.host` 统一钉成 `127.0.0.1`。Vite 的可用性探测只绑通配地址（`isPortAvailable` 遍历的是 `wildcardHosts`），看不见只占 `127.0.0.1` 的进程——macOS 上通配绑定与具体地址上的监听可以共存；真正把关的是随后的那次绑定。两个 demo 与 Interweave 的顶层 `server.host` 是 `true`，不写 `api.host` 时测试服务器会继承成通配绑定：别的进程占着 `127.0.0.1` 上的同号端口不会让它失败，两个服务器同号并行，页面可能落到别人的服务器上，症状是 `ERR_SSL_PROTOCOL_ERROR` / `ERR_EMPTY_RESPONSE` / browser runtime 永不连回。钉成 `127.0.0.1` 后绑定目标与占用者同址，才出 EADDRINUSE，非 strict 分支才会 +1 前进，vitest 再按实际监听地址把浏览器指过去。`web-ui` 与 `browser-kit` 没有顶层 `server`，默认是 `localhost`；仍显式写出来，是为了六个项目同一种行为、不被顶层配置的增删悄悄改变。
-
-`api.strictPort: false` 只有 Interweave 需要显式写。vitest 5 通过 `resolveApiServerConfig` 与 `vitest:config:server` 把 `api` 合并进测试服务器，顶层 `server` 的 `strictPort: true` 会被一并带过去；Interweave 的 dev server 正需要它（端口被占就硬失败，否则 webview 指向空气），测试服务器不需要——端口被占时它会直接 `Startup Error`，而不是按实际监听地址漂移。另外五个包没有顶层 `strictPort`，继承的是默认 `false`，不必写。
-
-`scripts/lib/test-ports.mjs` 记在根 `turbo.json` 的 `globalDependencies` 里：五条 `test` 任务（六个 browser project）都经各自包的 `vite.config.ts` 读它，而 turbo 只对包目录内的文件做哈希，不列出来就会在改表之后重放上一份缓存的绿色结果。放在根而不是这五个包各自的 `test.inputs`：新增 browser project 时不会漏登记，代价是改这张表会让全部缓存失效，而这张表很少改。
-
-dev server 不在这张表里：两个 demo 不写端口，Vite 从 5173 起、被占则 +1，实际 URL 会变，脚本与文档不要写死；Interweave 的 9245 带 `strictPort`，端口被占直接失败（Wails 需要确定的前端 URL，静默漂移会让 webview 指向空气），改端口用 `WAILS_VITE_PORT`——Taskfile 与 `vite.config.ts` 读同一个变量。
+端口分配文件纳入根 [`turbo.json`](../../turbo.json) 的 `globalDependencies`，修改后使相关测试缓存失效。测试端口不能当作 dev server URL 使用。
 
 ## CI 门控与 workflow 拓扑
 
-workflow 的真实触发面、`permissions`、job `needs` / `if`、step `id`、构建矩阵与安装面以 YAML 本身为权威。`.github/scripts/lib/workflow-topology.mjs` 只声明跨 workflow 的少量不变量（发布分支、required context 与 policy step），同目录的 `workflow-topology.test.mjs` 读取真实 YAML 逐项比对，包括两个 Wails workflow 的原生构建矩阵必须一致，并通过 `test-scripts` 与 CI 的 `check` 强制执行。改 workflow 或该声明而不同步，`check` 会失败；不要在本文件复制这些细节。
+workflow 的真实触发面、`permissions`、job `needs` / `if`、step `id`、构建矩阵与安装面以 YAML 本身为权威。[`.github/scripts/lib/workflow-topology.mjs`](../../.github/scripts/lib/workflow-topology.mjs) 只声明跨 workflow 的少量不变量（发布分支、required context 与 policy step），同目录的 [`workflow-topology.test.mjs`](../../.github/scripts/lib/workflow-topology.test.mjs) 读取真实 YAML 逐项比对，包括两个 Wails workflow 的原生构建矩阵必须一致，并通过 `test-scripts` 与 CI 的 `check` 强制执行。改 workflow 或该声明而不同步，`check` 会失败；不要在本文件复制这些细节。
 
 workflow/job 的 `timeout-minutes` 以及构建和脚本中的超时、重试上限按 [workflow.md#预授权操作](./workflow.md#预授权操作) 取得授权。
 
-CI 构建 workspace 包并跳过 Interweave app wrapper；Wails verify / release 在原生 runner 上构建 frontend 依赖闭包并打包应用。workflow 的 path filter 由 frontend package manifests 的传递依赖图校验。npm 发布通过 Trusted Publishing 绑定 workflow 文件路径，重命名 `npm-publish.yml` 需同步更新 npm 注册。
+CI 构建 workspace 包并跳过 Interweave app wrapper；Wails verify / release 在原生 runner 上构建 frontend 依赖闭包并打包应用。workflow 的 path filter 由 frontend package manifests 的传递依赖图校验。npm 发布通过 Trusted Publishing 绑定 workflow 文件路径，重命名 [`npm-publish.yml`](../../.github/workflows/npm-publish.yml) 需同步更新 npm 注册。
 
 合并门控只放行 required checks 通过的 PR；具体 context 集合与 strict 策略属于远端规则集状态，以仓库当前规则为准。`GITHUB_TOKEN` 创建的版本 PR 可能需要人工批准挂起的 run；不归属到具体用户的改动需要额外 approval，且 PR 作者不能批准自己的改动。此 access-control approval 不等于独立 review，review 规则见 [`review.md`](./review.md)；挂起与发布恢复的操作细节见 [`release.md`](./release.md)。
 
-`deploy-pages.yml` 只发布 `DEMO_APPS` 列出的 demo 应用到 `/mono/<name>/`，不遍历全部 `apps/<name>`，也没有根落地页。History 路由的深层链接依赖 404 回退：应用必须在创建路由器之前恢复 `redirect`，未知路径保持 404。
+[`deploy-pages.yml`](../../.github/workflows/deploy-pages.yml) 只发布 `DEMO_APPS` 列出的 demo 应用到 `/mono/<name>/`，不遍历全部 `apps/<name>`，也没有根落地页。History 路由的深层链接依赖 404 回退：应用必须在创建路由器之前恢复 `redirect`，未知路径保持 404。
 
 未经用户授权不执行发布。取得授权的机制见 [`workflow.md`](./workflow.md#怎么取得这个授权)。不得直接运行 `npm publish`，首次发布用 `pnpm publish-new-pack <package-dir>`。Git 检查的绕过禁令见 [`commit.md`](./commit.md)。
 
@@ -107,4 +90,4 @@ CI 的 check 仍需在 mise 安装前准备 Wails Linux 开发包。mise 从 Go 
 
 PR changeset gate 由 CI 对 PR base/head 执行 `pnpm run check-changeset`（含 `changeset status` 与自定义内容检查）；本地 pre-commit 政策检查不运行该检查。版本 PR 按条件豁免。required check 覆盖 CI 与仓库硬约束，不等于 PR review；review 规则见 [`review.md`](./review.md)。
 
-`ci.yml` 对 PR `opened`、`synchronize`、`reopened` 与 `edited` 事件运行；PR 标题检查位于依赖安装之前，并用 PR base 提交中的 `commitlint.config.js` 规则检查标题，避免提案分支替换现行语言规则。标题先从事件负载读取；fork PR 负载不含完整 PR 对象时，用仅有 `pull-requests: read` 权限的 `GITHUB_TOKEN` 通过 `gh api` 读取标题与 base SHA。API token 只提供给读取步骤，标题检查脚本本身不接收 token。Herdr board 目前把中文任务标题用作 PR 标题；改成英文会写远端 PR 元数据，按 [`workflow.md` 的授权流程](./workflow.md#怎么取得这个授权)取得授权后，用 `gh pr edit <number> --title "<English title>"` 修改。`edited` 事件会触发完整 CI 重跑；若标题保持中文，required check 会失败。其他 PR 元数据编辑也会触发完整重跑。
+[`ci.yml`](../../.github/workflows/ci.yml) 对 PR `opened`、`synchronize`、`reopened` 与 `edited` 事件运行；PR 标题检查位于依赖安装之前，并用 PR base 提交中的 [`commitlint.config.js`](../../commitlint.config.js) 规则检查标题，避免提案分支替换现行语言规则。标题先从事件负载读取；fork PR 负载不含完整 PR 对象时，用仅有 `pull-requests: read` 权限的 `GITHUB_TOKEN` 通过 `gh api` 读取标题与 base SHA。API token 只提供给读取步骤，标题检查脚本本身不接收 token。修改 PR 标题属于远端写操作，须按 [`workflow.md`](./workflow.md#怎么取得这个授权) 取得授权。`edited` 事件会触发完整 CI 重跑；若标题保持中文，required check 会失败。其他 PR 元数据编辑也会触发完整重跑。
