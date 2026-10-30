@@ -15,11 +15,15 @@ Changesets 同时管理 npm 包、私有 app 与桌面端 release 驱动版本�
 
 PR CI 对 PR base/head 执行 changeset gate；main 已有的 changeset、删除的文件、staged 或未提交文件都不构成声明。版本分支由 workflow 豁免；本地 pre-commit 政策检查不运行该检查。
 
+## 包页与多语言 README
+
+发布到 npm 的包必须同时有 `README.md` 与 `README.CN.md`，两份互相链接：包页的英文与中文读者各占一半，缺一份或只有单向链接都会让另一侧没有入口。私有包与应用不要求译文，但只要译文存在，它与主版就必须互相链接。链接可以写相对路径，也可以写 GitHub 文件页的绝对地址；`readme-locales` 检查在 `check-policy` 与 `check-pre-commit` 里守护这条规则。
+
 ## 步骤
 
-1. 确认 Task Packet（见 `task-ledger` skill）描述实际交付内容；需要本地仓库政策检查时按 [`commit.md`](./commit.md) 运行五项只读检查，pre-commit 会在提交时执行同一组。
+1. 确认 Task Packet（见 `task-ledger` skill）描述实际交付内容；需要本地仓库政策检查时按 [`commit.md`](./commit.md) 运行七项只读检查，pre-commit 会在提交时执行同一组。
 2. 按 [`verification.md`](./verification.md) 选择并实际运行相关测试、构建、契约与必要的浏览器验证。
-3. 创建 PR 后确认 required `check` 覆盖当前 base/head 且 changeset policy 通过；再按 [`review.md`](./review.md) 完成独立 review。CI 成功不能代替 review 报告。
+3. 创建 PR 后确认 required `check` 覆盖当前 base/head 且 `changeset-required` 通过；再按 [`review.md`](./review.md) 完成独立 review。CI 成功不能代替 review 报告。
 4. merge 需用户明确授权，机制见 [`workflow.md`](./workflow.md#怎么取得这个授权)。合并后如需复检 main CI，手动触发；有版本变更时，再验证 changesets 版本 PR、合并与 npm / Wails 发布链。
 5. 按 `task-ledger` skill 更新本地台账；`close` 不代替 CI、review 或发布证据。
 

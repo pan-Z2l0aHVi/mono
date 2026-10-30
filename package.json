@@ -9,8 +9,8 @@
     "build": "turbo build",
     "test": "turbo test",
     "commit": "git-cz",
-    "publish-new-pack": "bash scripts/release/publish-new-pack.sh",
-    "check-pre-commit": "node scripts/checks/check-pre-commit.mjs",
+    "publish-new-pack": "bash scripts/workflow/publish-new-pack.sh",
+    "check-pre-commit": "turbo run build --filter=@greypan/monorepo-kit && node scripts/checks/check-pre-commit.mjs",
     "check-policy": "node scripts/checks/check-policy.mjs",
     "check-changeset": "node scripts/checks/check-changeset.mjs",
     "check-context": "node scripts/checks/check-context.mjs",
@@ -30,6 +30,7 @@
     "dev:interweave": "turbo run dev --filter=@greypan/interweave --filter=\"@greypan/interweave-frontend^...\""
   },
   "devDependencies": {
+    "@greypan/monorepo-kit": "workspace:*",
     "@changesets/cli": "catalog:",
     "@commitlint/cli": "catalog:",
     "@commitlint/config-conventional": "catalog:",
@@ -42,7 +43,6 @@
     "commitizen": "catalog:",
     "cspell": "catalog:",
     "cz-git": "catalog:",
-    "glob": "catalog:",
     "jsdom": "catalog:",
     "lightningcss": "catalog:",
     "playwright": "catalog:",

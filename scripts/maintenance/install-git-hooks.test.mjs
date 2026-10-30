@@ -71,6 +71,8 @@ try {
     '#!/bin/sh\nprintf pre-commit > "$PRE_COMMIT_MARKER"\n',
     { mode: 0o644 }
   )
+  // 名单从目录派生：多一个受版本控制的 hook，就该多一个 dispatcher。
+  fs.writeFileSync(path.join(repo, '.vite-hooks', 'post-merge'), '#!/bin/sh\nprintf post-merge\n', { mode: 0o644 })
   fs.writeFileSync(path.join(repo, 'tracked-file'), 'fixture\n')
   assertSuccess(run('git', ['-C', repo, 'add', '.']), 'fixture stage')
   assertSuccess(run('git', ['-C', repo, 'commit', '-m', 'chore(root): create fixture']), 'fixture commit')
@@ -86,6 +88,11 @@ try {
   const preCommitDispatcherPath = path.join(sharedHooks, 'pre-commit')
   assert.match(fs.readFileSync(dispatcherPath, 'utf8'), /mono-managed-git-hook-dispatcher: commit-msg/)
   assert.match(fs.readFileSync(preCommitDispatcherPath, 'utf8'), /mono-managed-git-hook-dispatcher: pre-commit/)
+  assert.match(
+    fs.readFileSync(path.join(sharedHooks, 'post-merge'), 'utf8'),
+    /mono-managed-git-hook-dispatcher: post-merge/,
+    'every versioned hook must get a dispatcher, not a fixed list'
+  )
   if (process.platform !== 'win32') {
     assert.equal(fs.statSync(dispatcherPath).mode & 0o111, 0o111)
     assert.equal(fs.statSync(preCommitDispatcherPath).mode & 0o111, 0o111)

@@ -16,8 +16,7 @@
     "./vue": {
       "types": "./dist/vue.d.mts",
       "import": "./dist/vue.mjs"
-    },
-    "./package.json": "./package.json"
+    }
   },
   "sideEffects": false,
   "scripts": {

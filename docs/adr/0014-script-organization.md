@@ -9,7 +9,7 @@
 
 ## 决策
 
-根 `scripts/` 按执行面组织：`checks/` 提供检查入口，`lib/` 承载共享实现，`workflow/`、`release/` 与 `maintenance/` 分别承载提交、发布和维护操作。pre-commit 与 CI 各有入口并复用原子检查；两者的检查集合可不同，实际集合以入口实现为准。
+根 `scripts/` 按执行面组织：`checks/` 提供门禁薄入口，`policies/` 承载与本仓事实绑定的检查实现，跨仓可复用的实现收在 workspace 包 `@greypan/monorepo-kit`，`workflow/` 与 `maintenance/` 分别承载提交发布与维护操作，`lib/` 只放 Node 启动前求值的 bootstrap helper。pre-commit 与 CI 各有入口并复用原子检查；两者的检查集合可不同，实际集合以入口实现为准。
 
 检查只读取状态并在失败时返回非零，不在检查阶段修复文件。检查门禁使用 Node ESM；其他脚本按复杂度选择 POSIX `sh` 或 Node。目录布局、语言选择和调用方法以 [script-policy.md](../agents/script-policy.md) 为准。
 

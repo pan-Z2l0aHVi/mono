@@ -39,6 +39,8 @@ ADR 只记录技术选型、架构设计与工程化决策；具体实现细节�
 | [0014](docs/adr/0014-script-organization.md)                    | 脚本按执行面分类与统一入口                                    | 修改政策检查集合、pre-commit / CI policy 入口或脚本目录布局              |
 | [0015](docs/adr/0015-task-ledger.md)                            | Task 分级与记账提取为通用 skill                               | 修改 task 分级判据、台账命令、状态目录或跨项目复用方式                   |
 | [0016](docs/adr/0016-accessible-names.md)                       | web-ui 内置无障碍文案固定英文回退，覆盖 prop 统一挂 aria 前缀 | 修改 web-ui 内置 aria 文案、label 覆盖 prop 或 builtin-labels 样表       |
+| [0017](docs/adr/0017-monorepo-tooling-package.md)               | 门禁与仓库工具收敛到 workspace 包                             | 修改 monorepo-kit 的包边界、产物形态或 `scripts/` 与包的分工             |
+| [0018](docs/adr/0018-monorepo-kit-generic-plugins.md)           | monorepo-kit 收敛为参数化能力包                               | 修改 monorepo-kit 的分区、插件面、检查参数或构建形态                     |
 
 ## 已知边界
 

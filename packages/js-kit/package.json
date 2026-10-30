@@ -24,8 +24,7 @@
     "./rust": {
       "types": "./dist/paradigm/rust.d.ts",
       "import": "./dist/paradigm/rust.js"
-    },
-    "./package.json": "./package.json"
+    }
   },
   "publishConfig": {
     "access": "public",

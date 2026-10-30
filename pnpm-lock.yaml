@@ -469,6 +469,9 @@ importers:
       '@cspell/dict-lorem-ipsum':
         specifier: 'catalog:'
         version: 4.0.5
+      '@greypan/monorepo-kit':
+        specifier: workspace:*
+        version: link:packages/monorepo-kit
       '@shadcn/lint':
         specifier: 'catalog:'
         version: 0.2.3
@@ -493,9 +496,6 @@ importers:
       cz-git:
         specifier: 'catalog:'
         version: 1.14.0
-      glob:
-        specifier: 'catalog:'
-        version: 13.0.6
       jsdom:
         specifier: 'catalog:'
         version: 30.1.3
@@ -596,6 +596,9 @@ importers:
       '@greypan/deps-reload':
         specifier: workspace:*
         version: link:../../../packages/deps-reload
+      '@greypan/monorepo-kit':
+        specifier: workspace:*
+        version: link:../../../packages/monorepo-kit
       '@greypan/tsconfig':
         specifier: workspace:*
         version: link:../../../packages/tsconfig
@@ -666,6 +669,9 @@ importers:
       '@greypan/md-to-comp':
         specifier: workspace:*
         version: link:../../packages/md-to-comp
+      '@greypan/monorepo-kit':
+        specifier: workspace:*
+        version: link:../../packages/monorepo-kit
       '@greypan/tsconfig':
         specifier: workspace:*
         version: link:../../packages/tsconfig
@@ -763,6 +769,9 @@ importers:
       '@greypan/md-to-comp':
         specifier: workspace:*
         version: link:../../packages/md-to-comp
+      '@greypan/monorepo-kit':
+        specifier: workspace:*
+        version: link:../../packages/monorepo-kit
       '@greypan/tsconfig':
         specifier: workspace:*
         version: link:../../packages/tsconfig
@@ -831,6 +840,9 @@ importers:
         specifier: 'catalog:'
         version: 2.54.1
     devDependencies:
+      '@greypan/monorepo-kit':
+        specifier: workspace:*
+        version: link:../monorepo-kit
       '@greypan/test-kit':
         specifier: workspace:*
         version: link:../test-kit
@@ -922,6 +934,28 @@ importers:
         specifier: 'catalog:'
         version: 1.4.0(@types/node@26.6.5)(@vitest/browser-playwright@5.0.5)(@vitest/ui@5.0.5)(@volar/typescript@2.4.30(typescript@6.0.3))(@vue/language-core@3.3.13)(jiti@2.7.0)(jsdom@30.1.3)(msw@2.15.0(@types/node@26.6.5)(typescript@6.0.3))(playwright@1.64.1)(terser@5.51.2)(typescript@6.0.3)(vue-tsc@3.3.13(typescript@6.0.3))(yaml@2.9.1)
 
+  packages/monorepo-kit:
+    dependencies:
+      '@greypan/js-kit':
+        specifier: workspace:*
+        version: link:../js-kit
+      glob:
+        specifier: 'catalog:'
+        version: 13.0.6
+    devDependencies:
+      '@greypan/tsconfig':
+        specifier: workspace:*
+        version: link:../tsconfig
+      '@types/node':
+        specifier: 'catalog:'
+        version: 26.6.5
+      vite:
+        specifier: npm:@voidzero-dev/vite-plus-core@1.4.0
+        version: '@voidzero-dev/vite-plus-core@1.4.0(@types/node@26.6.5)(@volar/typescript@2.4.30(typescript@6.0.3))(@vue/language-core@3.3.13)(jiti@2.7.0)(terser@5.51.2)(typescript@6.0.3)(vue-tsc@3.3.13(typescript@6.0.3))(yaml@2.9.1)'
+      vite-plus:
+        specifier: 'catalog:'
+        version: 1.4.0(@types/node@26.6.5)(@vitest/browser-playwright@5.0.5)(@vitest/ui@5.0.5)(@volar/typescript@2.4.30(typescript@6.0.3))(@vue/language-core@3.3.13)(jiti@2.7.0)(jsdom@30.1.3)(msw@3.0.3(@types/node@26.6.5)(@voidzero-dev/vite-plus-core@1.4.0(@types/node@26.6.5)(@volar/typescript@2.4.30(typescript@6.0.3))(@vue/language-core@3.3.13)(jiti@2.7.0)(terser@5.51.2)(typescript@6.0.3)(vue-tsc@3.3.13(typescript@6.0.3))(yaml@2.9.1))(graphql@16.14.2)(supports-color@10.2.2)(typescript@6.0.3))(playwright@1.64.1)(terser@5.51.2)(typescript@6.0.3)(vue-tsc@3.3.13(typescript@6.0.3))(yaml@2.9.1)
+
   packages/test-kit:
     dependencies:
       '@greypan/js-kit':
@@ -990,6 +1024,9 @@ importers:
         specifier: 'catalog:'
         version: 1.1.6
     devDependencies:
+      '@greypan/monorepo-kit':
+        specifier: workspace:*
+        version: link:../monorepo-kit
       '@greypan/tsconfig':
         specifier: workspace:*
         version: link:../tsconfig

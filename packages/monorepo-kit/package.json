@@ -1,0 +1,35 @@
+{
+  "name": "@greypan/monorepo-kit",
+  "version": "0.0.0",
+  "description": "Composable gates, policy checks and build orchestration helpers for pnpm monorepos",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/pan-Z2l0aHVi/mono.git"
+  },
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "vp pack",
+    "test": "vp test run"
+  },
+  "dependencies": {
+    "@greypan/js-kit": "workspace:*",
+    "glob": "catalog:"
+  },
+  "devDependencies": {
+    "@greypan/tsconfig": "workspace:*",
+    "@types/node": "catalog:",
+    "vite": "catalog:",
+    "vite-plus": "catalog:"
+  },
+  "engines": {
+    "node": ">=24.18.0"
+  },
+  "private": true
+}

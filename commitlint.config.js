@@ -3,7 +3,7 @@
  * 长度、大小写——管不到语言，而 `docs/agents/commit.md` 明说 commitlint 的规则以本文件为准、
  * 不在正文复述，所以这条本地规则同时承担「机检」和「规定」两个角色。
  *
- * 放在这里而不是 `scripts/checks/` 或 `scripts/lib/`：pre-commit 与 required check job 的 policy checks
+ * 放在这里而不是 `scripts/checks/` 或 `packages/monorepo-kit/src/plugin/`：pre-commit 与 required check job 的 policy checks
  * 都拿不到 commit message；`check-changeset` 仅由 PR CI 调用。
  * `commit-msg` 钩子本来就跑 commitlint，规则挂在这里即生效。
  *
@@ -75,7 +75,7 @@ export default {
   },
   prompt: {
     // 与 workspace 的包名去 `@greypan/` 前缀后一致；新增或删除包时同步这份清单，
-    // scripts/lib/context-corpus.mjs 会用 workspace manifests 比对，漂移会让 check-context 失败。
+    // check-context 会用 workspace manifests 比对，漂移会让门禁失败。
     scopes: [
       'root',
       'interweave',
@@ -87,6 +87,7 @@ export default {
       'deps-reload',
       'js-kit',
       'md-to-comp',
+      'monorepo-kit',
       'test-kit',
       'tsconfig',
       'unplugin-web-components',
