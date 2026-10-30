@@ -185,6 +185,8 @@ const env = {
   FAKE_TURBO_MARKER: turboMarker,
   PATH: `${turboBinDir}${path.delimiter}${process.env.PATH ?? ''}`
 }
+// 外层 git hook 或测试运行器可能注入这些变量，把临时仓的 git 调用重定向到别处。
+for (const key of ['GIT_DIR', 'GIT_WORK_TREE', 'GIT_INDEX_FILE', 'GIT_COMMON_DIR']) delete env[key]
 
 function writeRepoFile(relativePath, content) {
   const file = path.join(repoRoot, relativePath)
@@ -222,7 +224,8 @@ function runScope(args, { viaSymlink = false } = {}) {
   })
 }
 
-// 假 turbo 按 @scope/a → @scope/lib、@scope/b → @scope/lib 的依赖回答 `ls --filter`。
+// 假 turbo 按 @scope/a → @scope/lib、@scope/b → @scope/lib 的依赖回答 `ls --filter`；
+// @scope/tool 不被任何目标依赖，只能靠 keepPackages 闭包进入 cone。
 // 它在稀疏树上收到 `ls` 就记一行：计算闭包必须发生在恢复全树之后，这条记录为空即契约成立。
 const fakeTurbo = [
   '#!/usr/bin/env node',
@@ -236,9 +239,10 @@ const fakeTurbo = [
   'const packages = [',
   "  { name: '@scope/a', path: 'apps/a' },",
   "  { name: '@scope/b', path: 'apps/b' },",
-  "  { name: '@scope/lib', path: 'packages/lib' }",
+  "  { name: '@scope/lib', path: 'packages/lib' },",
+  "  { name: '@scope/tool', path: 'packages/tool' }",
   ']',
-  "const deps = { '@scope/a': ['@scope/lib'], '@scope/b': ['@scope/lib'], '@scope/lib': [] }",
+  "const deps = { '@scope/a': ['@scope/lib'], '@scope/b': ['@scope/lib'], '@scope/lib': [], '@scope/tool': [] }",
   'const filters = []',
   'for (let index = 0; index < args.length; index += 1) {',
   "  if (args[index] === '--filter') filters.push(args[index + 1].replace(/\\.\\.\\.$/, ''))",
@@ -269,12 +273,13 @@ try {
   gitChecked(['-c', 'init.defaultBranch=main', 'init'])
   writeRepoFile(
     'monorepo.json',
-    `${JSON.stringify({ sparseScope: { keepDirs: ['scripts', 'skills'], keepPackages: ['@scope/lib'] } }, null, 2)}\n`
+    `${JSON.stringify({ sparseScope: { keepDirs: ['scripts', 'skills'], keepPackages: ['@scope/lib', '@scope/tool'] } }, null, 2)}\n`
   )
   writeRepoFile('scripts/check.sh', '#!/bin/sh\necho ok\n')
   writeRepoFile('apps/a/src/index.js', 'export const a = 1\n')
   writeRepoFile('apps/b/src/index.js', 'export const b = 1\n')
   writeRepoFile('packages/lib/src/index.js', 'export const lib = 1\n')
+  writeRepoFile('packages/tool/src/index.js', 'export const tool = 1\n')
   fs.mkdirSync(path.dirname(scopeScript), { recursive: true })
   fs.copyFileSync(fileURLToPath(new URL('./sparse-scope.mjs', import.meta.url)), scopeScript)
   gitChecked(['add', '.'])
@@ -285,28 +290,34 @@ try {
   assert.equal(currentCone(), null, 'a fresh worktree is not sparse')
 
   // 经 .agents/skills 软链调用也要真的执行，而不是被入口判断静默跳过。
-  const first = runScope(['@scope/a'], { viaSymlink: true })
+  const first = runScope(['@scope/a', '--json'], { viaSymlink: true })
   assert.equal(first.status, 0, first.stderr)
-  assert.deepEqual(currentCone(), ['apps/a', 'packages/lib', 'scripts', 'skills'])
+  const firstReport = JSON.parse(first.stdout)
+  assert.deepEqual(new Set(firstReport.cone), new Set(['apps/a', 'packages/lib', 'packages/tool', 'scripts', 'skills']))
+  assert.deepEqual(
+    firstReport.hiddenPackages.map(pkg => pkg.name),
+    ['@scope/b']
+  )
+  assert.deepEqual(currentCone(), ['apps/a', 'packages/lib', 'packages/tool', 'scripts', 'skills'])
   assert.equal(fs.existsSync(path.join(repoRoot, 'apps/b/src/index.js')), false)
   assert.equal(fs.existsSync(path.join(repoRoot, 'apps/a/src/index.js')), true)
+  assert.equal(fs.existsSync(path.join(repoRoot, 'packages/tool/src/index.js')), true)
   assert.equal(fs.existsSync(path.join(repoRoot, 'scripts/check.sh')), true)
   assert.equal(fs.existsSync(path.join(repoRoot, 'monorepo.json')), true)
-  assert.match(first.stdout, /hiddenPackages:[\s\S]*@scope\/b \(apps\/b\)/)
 
   const repeat = runScope(['@scope/b'])
   assert.equal(repeat.status, 2)
   assert.match(repeat.stderr, /already sparse/)
   assert.match(repeat.stderr, /current cone:\napps\/a/)
-  assert.deepEqual(currentCone(), ['apps/a', 'packages/lib', 'scripts', 'skills'])
+  assert.deepEqual(currentCone(), ['apps/a', 'packages/lib', 'packages/tool', 'scripts', 'skills'])
 
   const added = runScope(['@scope/b', '--add'])
   assert.equal(added.status, 0, added.stderr)
-  assert.deepEqual(currentCone(), ['apps/a', 'apps/b', 'packages/lib', 'scripts', 'skills'])
+  assert.deepEqual(currentCone(), ['apps/a', 'apps/b', 'packages/lib', 'packages/tool', 'scripts', 'skills'])
 
   const reset = runScope(['@scope/b', '--reset'])
   assert.equal(reset.status, 0, reset.stderr)
-  assert.deepEqual(currentCone(), ['apps/b', 'packages/lib', 'scripts', 'skills'])
+  assert.deepEqual(currentCone(), ['apps/b', 'packages/lib', 'packages/tool', 'scripts', 'skills'])
   assert.equal(fs.existsSync(path.join(repoRoot, 'apps/a/src/index.js')), false)
 
   const status = runScope(['--status', '--json'])
@@ -316,7 +327,7 @@ try {
   assert.equal(statusReport.config.present, true)
   assert.deepEqual(
     [...statusReport.cone].sort((a, b) => (a < b ? -1 : a > b ? 1 : 0)),
-    ['apps/b', 'packages/lib', 'scripts', 'skills']
+    ['apps/b', 'packages/lib', 'packages/tool', 'scripts', 'skills']
   )
 
   // 未知目标在恢复全树之后才报错，错误里要说明工作区已经不再是稀疏树。
@@ -331,7 +342,7 @@ try {
   assert.equal(dryRun.status, 0, dryRun.stderr)
   const dryReport = JSON.parse(dryRun.stdout)
   assert.equal(dryReport.dryRun, true)
-  assert.deepEqual(dryReport.cone, ['apps/a', 'packages/lib', 'scripts', 'skills'])
+  assert.deepEqual(dryReport.cone, ['apps/a', 'packages/lib', 'packages/tool', 'scripts', 'skills'])
   assert.equal(currentCone(), null, 'dry-run does not touch the worktree')
   assert.equal(fs.existsSync(path.join(repoRoot, 'apps/b/src/index.js')), true)
 

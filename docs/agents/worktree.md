@@ -22,7 +22,7 @@ worktree 本身是任务隔离边界，不是包名的别名。包清单、依�
 
 三步准备完成后、任务交给实施 agent 前，编排层可以按任务目标把 sparse checkout 收缩到目标包及其 turbo 依赖闭包，减少无关代码的上下文占用。顺序不能颠倒：闭包来自 turbo 图，`turbo ls` 在未安装依赖的 worktree 里跑不起来。
 
-调用方式与稀疏树里的搜索、gate、install 规则见 [`.agents/skills/turbo-sparse-scope/SKILL.md`](../../.agents/skills/turbo-sparse-scope/SKILL.md)。对这里的环境准备只有一条后果需要记住：隐藏包的整个目录（含 `node_modules`、`dist`）会被删除，`--restore` 只带回已跟踪文件，恢复后要重跑 `pnpm install --frozen-lockfile` 与 `pnpm run build`。
+调用方式与稀疏树里的搜索、gate、install 规则见 [`.agents/skills/turbo-sparse-scope/SKILL.md`](../../.agents/skills/turbo-sparse-scope/SKILL.md)。对这里的环境准备只有一条后果需要记住：被隐藏包的目录里没有未跟踪文件时，整个目录（含被忽略的 `node_modules`、`dist`）随 cone 删除；`--restore` 只带回已跟踪文件，恢复后要重跑 `pnpm install --frozen-lockfile` 与 `pnpm run build`。
 
 ## Turbo artifact cache
 
