@@ -73,7 +73,7 @@ async function select(label: string, value: string) {
   // 抢在它的 handler 前面——那要依赖同节点 capture 与 bubble 的相对次序，是引擎实现细节而不是构造保证。
   // 取 `input` 就不用抢：那一轮派发跑完时应用还没被通知过，读到的必然是提交值。
   // 轮询 `host.value` 等的是那次收敛，1 秒预算在慢机器上会落在收敛之前；接线判据因此取提交本身，
-  // 页面收敛由用例切完语言后 `await localeSettled()` 负责。
+  // 页面收敛由用例切完语言后 `await localeSettled()` 与 `nextTick()` 负责。
   let committed: string | undefined
   const recordCommit = () => {
     committed = host.value

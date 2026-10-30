@@ -86,7 +86,7 @@ export function createLocaleController(deps: Dependencies) {
       }
     })
     queue = request.catch(() => {}) // 仅恢复队列；下面 await 仍传播本次错误。
-    // 供测试等待「界面触发的那次切换」落定，不必轮询渲染文案猜加载是否结束。
+    // 记录最近一次切换请求，测试据此等待落定，不必轮询渲染文案猜加载是否结束。
     latestRequest = request
     try {
       await request
