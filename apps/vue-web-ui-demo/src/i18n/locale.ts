@@ -25,6 +25,7 @@ export function createLocaleController(deps: Dependencies) {
   const pending = ref(false)
   let latest = 0
   let queue = Promise.resolve()
+  let latestRequest = Promise.resolve()
   const components = new Map<string, number>()
   let revision = 0
   function register(component: string) {
@@ -85,6 +86,8 @@ export function createLocaleController(deps: Dependencies) {
       }
     })
     queue = request.catch(() => {}) // 仅恢复队列；下面 await 仍传播本次错误。
+    // 记录最近一次切换请求，测试据此等待落定，不必轮询渲染文案猜加载是否结束。
+    latestRequest = request
     try {
       await request
     } finally {
@@ -112,6 +115,7 @@ export function createLocaleController(deps: Dependencies) {
     pending: readonly(pending),
     detect,
     change,
+    settled: () => latestRequest,
     bootstrap,
     register
   }
@@ -134,6 +138,7 @@ export const currentLocale = controller.locale
 export const currentDocs = controller.docs
 export const localePending = controller.pending
 export const loadDemoLocale = controller.change
+export const localeSettled = controller.settled
 export const bootstrapLocale = controller.bootstrap
 export const bootDegraded = ref(false)
 export const registerExampleDoc = controller.register
