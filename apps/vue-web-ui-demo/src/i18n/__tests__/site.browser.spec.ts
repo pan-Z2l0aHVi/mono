@@ -67,19 +67,24 @@ async function select(label: string, value: string) {
   await userEvent.keyboard('{Home}')
   for (let index = 0; index < optionIndex; index += 1) await userEvent.keyboard('{ArrowDown}')
   await vi.waitFor(() => expect(trigger.getAttribute('aria-activedescendant')).toBe(options[optionIndex].id))
-  // 提交的那一次读得到期望值：`change` 在 `_selectActiveOption` 写完 `value` 之后同步派发，捕获阶段
-  // 跑在应用的 handler 前面。应用把 `:value` 绑到 locale 状态上，随后的渲染会先把旧值刷回去，等新
-  // locale 加载完才收敛——轮询 `host.value` 等的是那次收敛，1 秒窗口在慢机器上会落在收敛之前。
-  // 接线判据因此取提交本身；页面收敛由每个用例自己的 waitFor 负责。
+  // 提交时刻读得到期望值：`_selectActiveOption` 先写 `value`，再依次派发 `input` 与 `change`
+  // （`select/index.ts:528-529`）。应用的 `@change` handler 在同一个 `change` 派发里、首个 await 之前
+  // 就把旧值同步刷回去（`app/index.vue:27`），等新 locale 加载完才收敛，所以 `change` 上的观测点必须
+  // 抢在它的 handler 前面——那要依赖同节点 capture 与 bubble 的相对次序，是引擎实现细节而不是构造保证。
+  // 取 `input` 就不用抢：那一轮派发跑完时应用还没被通知过，读到的必然是提交值。
+  // 轮询 `host.value` 等的是那次收敛，1 秒预算在慢机器上会落在收敛之前；接线判据因此取提交本身，
+  // 页面收敛由每个用例自己的 waitFor 负责。
   let committed: string | undefined
   const recordCommit = () => {
     committed = host.value
   }
-  host.addEventListener('change', recordCommit, { capture: true })
+  host.addEventListener('input', recordCommit, { once: true })
   await userEvent.keyboard('{Enter}')
-  host.removeEventListener('change', recordCommit, { capture: true })
-  expect(committed, `${label}：Enter 没有提交 ${value}（没有收到 change）`).toBe(value)
+  host.removeEventListener('input', recordCommit)
+  if (committed === undefined) throw new Error(`${label}：Enter 没有提交 ${value}（没有派发 input）`)
+  expect(committed, `${label}：Enter 提交的值不是 ${value}`).toBe(value)
   await nextTick()
+  return host
 }
 
 function textOf(html: string) {
@@ -97,8 +102,10 @@ it('首页通过全局选择器切换壳文案，更新偏好并保留路由和�
   const { router, wrapper } = await mountShell('/home')
   try {
     await select('全局主题', 'dark')
-    await select('全局语言', 'en')
+    const language = await select('全局语言', 'en')
     await vi.waitFor(() => expect(wrapper.text()).toContain('Variants, sizes, icons and loading states'))
+    // 语料已就位，这次渲染也必然把受控的 `:value` 写回提交值；在这里读，不与异步加载赛跑。
+    expect(language.value, '受控回写收敛到已提交语言').toBe('en')
     expect(document.documentElement.lang).toBe('en')
     expect(localStorage.getItem('locale')).toBe('en')
     expect(router.currentRoute.value.path).toBe('/home')
@@ -138,9 +145,11 @@ it('组件页切换文档、API、运行示例与双框架源码，保留当前�
       sizes.findAll('web-ui-segmented-trigger').find(trigger => trigger.text() === 'React')!.element
     )
     await vi.waitFor(() => expect(source()).toContain('export default function Demo()'))
-    await select('Global language', 'zh-CN')
+    const language = await select('Global language', 'zh-CN')
     const zh = chineseDocs.find(doc => doc.component === 'button')!
     await vi.waitFor(() => expect(wrapper.find('[data-example-intro]').element.textContent).toBe(textOf(zh.introHtml)))
+    // 语料已就位，这次渲染也必然把受控的 `:value` 写回提交值；在这里读，不与异步加载赛跑。
+    expect(language.value, '受控回写收敛到已提交语言').toBe('zh-CN')
     await vi.waitFor(() => expect(first.find('web-ui-button').exists()).toBe(true))
     await vi.waitFor(() => expect(first.element.firstElementChild).not.toBe(oldPreview))
     expect(first.text()).toContain('没写 variant（同样是 glass）')
