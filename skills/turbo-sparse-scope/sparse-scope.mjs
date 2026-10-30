@@ -412,7 +412,7 @@ function printStatus(root, json) {
   const dirty = sparseCone ? listDirtyOutsideCone(readDirtyFiles(root), sparseCone) : []
   if (dirty.length > 0)
     warnings.push(
-      `${dirty.length} uncommitted file(s) outside the cone; staged new files may leave the worktree until --restore`
+      `${dirty.length} uncommitted file(s) outside the cone; staged changes may leave the worktree until --restore`
     )
   const report = {
     action: 'status',
@@ -506,7 +506,7 @@ function applyScope(root, options) {
   const warnings = []
   if (dirtyOutsideCone.length > 0)
     warnings.push(
-      `${dirtyOutsideCone.length} uncommitted file(s) outside the cone are no longer part of the cone; staged new files may leave the worktree until --restore`
+      `${dirtyOutsideCone.length} uncommitted file(s) outside the cone are no longer part of the cone; staged changes may leave the worktree until --restore`
     )
   if (hidden.length === 0) warnings.push('no package would be hidden; this scope does not shrink the worktree')
 
