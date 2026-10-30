@@ -1,5 +1,12 @@
 # @greypan/interweave
 
+## 0.1.4
+
+### Patch Changes
+
+- aebf774: Label the resource "Open with" entry with the real system default application name, resolved from the operating system instead of a hard-coded app list.
+- @greypan/interweave-frontend@0.0.0
+
 ## 0.1.3
 
 ### Patch Changes

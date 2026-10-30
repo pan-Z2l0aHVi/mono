@@ -1,6 +1,6 @@
 {
   "name": "@greypan/app-scrollbars",
-  "version": "0.0.0",
+  "version": "0.0.1",
   "description": "Private app-level OverlayScrollbars configuration and macOS theme",
   "license": "MIT",
   "repository": {

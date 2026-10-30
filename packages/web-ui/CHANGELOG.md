@@ -1,5 +1,36 @@
 # @greypan/web-ui
 
+## 12.0.0
+
+### Major Changes
+
+- 137c540: Remove the `@greypan/web-ui/scrollbars` and `@greypan/web-ui/scrollbars.css` subpaths and the optional `overlayscrollbars` peer dependency. Scrollbars are native CSS now: `web-ui-theme` exposes `--wui-scrollbar-handle`, components read it inside their shadow roots through `scrollbar-color` / `scrollbar-width`, and the outermost theme mirrors the token to `documentElement` so `html { scrollbar-color: var(--wui-scrollbar-handle) transparent }` themes the document scroll container.
+
+### Minor Changes
+
+- aebf774: Keep the dialog and drawer Tab loop inside the dialog instead of letting focus wrap to `<body>`.
+  Associate an open tooltip with its trigger through `aria-description`.
+  Forward `aria-label` to the segmented control's internal listbox.
+  Unify the built-in accessible names behind one fixed-English fallback table with `aria`-prefixed override props (ADR-0029):
+  
+  - Every icon-only control now has an accessible name: the hardcoded English literals in `badge`, `image-preview` and `textarea` move into the shared table, joining `dialog`, `drawer`, `input`, `input-number`, `back-top` and `layout`.
+  - The fallback no longer follows the document `lang`, and the `LocaleController` observer is gone. Pages that need another language set the override props: `aria-close-label` / `aria-dialog-label` (dialog, drawer), `aria-clear-label` (input, textarea), `aria-decrease-label` / `aria-increase-label` (input-number), and the host `aria-label` (back-top, badge — the latter with `{count}` interpolation across its dot / count / zero states).
+  - `image-preview` takes an `ariaLabels` option covering close / previousImage / nextImage / zoomIn / zoomOut / resetZoom; `layout` takes an `ariaLabels` property covering collapseSidebar / expandSidebar / resizeSidebar / openNavigationMenu / mainNavigation.
+  - `close-label`, `clear-label`, `decrease-label` and `increase-label` were added in this release and ship under their `aria-`-prefixed names directly.
+  - `dialog-label` (shipping since 11.1.0) is renamed to `aria-dialog-label`; the old attribute stays as a deprecated alias that forwards to the new property, to be removed in the next major.
+- 9787a15: 移除各包 `exports` 里的 `"./package.json"`。仓库内没有任何消费方；这一项只为按包名读元数据重新放开入口，留着会让后来者把它当成必需项。唯一需要读 manifest 的 `check-md-to-comp-artifacts` 改为按仓库路径读取。已发布包按 minor 处理：升级后经包名解析元数据会报 `ERR_PACKAGE_PATH_NOT_EXPORTED`，目前没有已知的外部消费者。
+- 8cb3f56: Add `no-sidebar` to `web-ui-layout`: when set, the component renders no desktop aside, collapse Toggle, resize handle, mobile header Toggle, or Drawer, leaving the banner, header, content, and tabbar regions only. The `sidebar` slot is not rendered while consumer nodes stay in the light DOM.
+
+### Patch Changes
+
+- 8cb3f56: Release offline, page-exit, and page-error listeners through a composable, idempotent tracker stop method.
+  
+  Complete toast dismissal once from its panel transition or fallback, and cancel pending dismissal when disconnected or shown again.
+- Updated dependencies [9787a15]
+- Updated dependencies [8cb3f56]
+  - @greypan/js-kit@3.1.0
+  - @greypan/browser-kit@3.1.0
+
 ## 11.2.0
 
 ### Minor Changes
