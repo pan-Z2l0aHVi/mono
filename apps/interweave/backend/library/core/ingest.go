@@ -143,7 +143,7 @@ type ingestResult struct {
 }
 
 // write 是所有纳入路径共享的事务写入：在单一事务内分配身份与时间戳，并维持
-// AGENTS.md「首选 Source」的“至少一个 Source 且恰有一个首选”不变量与「Resource 标题」的标题所有权。
+// AGENTS.md「首选 Source」的“每个 Resource 至少有一个 Source，且恰有一个首选”不变量与「Resource 标题」的标题所有权。
 func (ing *ingestion) write(ctx context.Context, w ingestWrite) (ingestResult, error) {
 	now := time.Now().UnixMilli()
 	result := ingestResult{resourceID: w.resourceID, sourceID: w.sourceID}
