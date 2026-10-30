@@ -379,15 +379,19 @@ function syncDependencies(root, plan) {
   return { status: 'synced' }
 }
 
-function restorePreviousCone(root, previousCone, error) {
-  if (!previousCone) return
+function restorePreviousState(root, previousCone, applied, error) {
+  // 稀疏起步时在重算前就 disable 了，即使还没 apply 也必须装回旧 cone。
+  if (!previousCone && !applied) return
   try {
-    applyCone(root, previousCone)
-    if (error instanceof ScopeError) error.detail = `${error.detail}\nnote: previous sparse cone restored`.trim()
+    if (previousCone) applyCone(root, previousCone)
+    else disableSparse(root)
+    if (error instanceof ScopeError)
+      error.detail =
+        `${error.detail}\nnote: ${previousCone ? 'previous sparse cone restored' : 'sparse checkout disabled; the worktree is full'}`.trim()
   } catch (restoreError) {
     if (error instanceof ScopeError)
       error.detail =
-        `${error.detail}\nnote: sparse checkout was disabled before recomputation and the previous cone could not be restored: ${restoreError.message}`.trim()
+        `${error.detail}\nnote: the previous worktree state could not be restored: ${restoreError.message}`.trim()
   }
 }
 
@@ -502,6 +506,7 @@ function applyScope(root, options) {
   // Hidden packages are absent from turbo's graph, so any recomputation needs the full tree first.
   if (previousCone) disableSparse(root)
 
+  let applied = false
   try {
     const packages = listPackages(root, turbo)
     const unknownTargets = findUnknownTargets(options.targets, packages)
@@ -581,6 +586,7 @@ function applyScope(root, options) {
       return EXIT_OK
     }
 
+    applied = true
     warnings.push(...applyCone(root, targetCone))
     const dependencies = syncDependencies(root, dependencyPlan)
     if (dependencies.status === 'skipped')
@@ -611,7 +617,7 @@ function applyScope(root, options) {
     )
     return EXIT_OK
   } catch (error) {
-    restorePreviousCone(root, previousCone, error)
+    restorePreviousState(root, previousCone, applied, error)
     throw error
   }
 }

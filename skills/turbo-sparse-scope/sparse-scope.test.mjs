@@ -299,6 +299,10 @@ const fakePnpm = [
   '  process.exit(0)',
   '}',
   "if (args[0] === 'install') {",
+  "  if (process.env.FAKE_PNPM_FAIL_INSTALL === '1') {",
+  "    console.error('fake pnpm: frozen install failed')",
+  '    process.exit(1)',
+  '  }',
   '  const marker = process.env.FAKE_PNPM_MARKER',
   "  if (marker) fs.appendFileSync(marker, args.join(' ') + '\\n')",
   '  process.exit(0)',
@@ -437,6 +441,33 @@ try {
   assert.equal(restoredAfterDirty.status, 0, restoredAfterDirty.stderr)
   assert.equal(currentCone(), null)
   assert.equal(fs.existsSync(path.join(repoRoot, 'apps/a/src/index.js')), true)
+
+  // 同步依赖失败时也要回到失败前的状态：全树起步就保持全树，稀疏起步就装回旧 cone。
+  env.FAKE_PNPM_FAIL_INSTALL = '1'
+  const failedFull = runScope(['@scope/a'])
+  assert.equal(failedFull.status, 1)
+  assert.match(failedFull.stderr, /pnpm install --frozen-lockfile failed/)
+  assert.match(failedFull.stderr, /sparse checkout disabled; the worktree is full/)
+  assert.equal(currentCone(), null)
+  assert.equal(fs.existsSync(path.join(repoRoot, 'apps/b/src/index.js')), true)
+
+  delete env.FAKE_PNPM_FAIL_INSTALL
+  const reseeded = runScope(['@scope/a'])
+  assert.equal(reseeded.status, 0, reseeded.stderr)
+  assert.deepEqual(currentCone(), ['apps/a', 'packages/lib', 'packages/tool', 'packages/tool-dep', 'scripts', 'skills'])
+
+  env.FAKE_PNPM_FAIL_INSTALL = '1'
+  const failedReset = runScope(['@scope/b', '--reset'])
+  assert.equal(failedReset.status, 1)
+  assert.match(failedReset.stderr, /previous sparse cone restored/)
+  assert.doesNotMatch(failedReset.stderr, /worktree is full/)
+  assert.deepEqual(currentCone(), ['apps/a', 'packages/lib', 'packages/tool', 'packages/tool-dep', 'scripts', 'skills'])
+  assert.equal(fs.existsSync(path.join(repoRoot, 'apps/a/src/index.js')), true)
+  delete env.FAKE_PNPM_FAIL_INSTALL
+
+  const restoredAfterFailure = runScope(['--restore'])
+  assert.equal(restoredAfterFailure.status, 0, restoredAfterFailure.stderr)
+  assert.equal(currentCone(), null)
 
   const noopRestore = runScope(['--restore', '--json'])
   assert.equal(noopRestore.status, 0, noopRestore.stderr)
