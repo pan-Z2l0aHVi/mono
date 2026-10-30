@@ -208,7 +208,8 @@ export function assertActionAllowed({ sparseCone, action, dryRun }) {
   if (dryRun && sparseCone) {
     throw new ScopeError(
       'dry-run needs a full worktree: hidden packages are missing from the turbo graph; run --restore first',
-      EXIT_USAGE
+      EXIT_USAGE,
+      `current cone:\n${sparseCone.join('\n')}`
     )
   }
   if (sparseCone && action === 'set') {
@@ -325,7 +326,8 @@ function readSparseCone(root) {
 
 function readDirtyFiles(root) {
   const result = runGit(root, ['status', '--porcelain', '-z'])
-  if (result.status !== 0) return []
+  if (result.status !== 0)
+    throw new ScopeError('git status failed', EXIT_FAILURE, preview(result.stderr))
   return parsePorcelainZ(result.stdout)
 }
 
@@ -491,7 +493,8 @@ function applyScope(root, options) {
   if (!isPathInCone(skillDir, cone))
     throw new ScopeError(
       `the computed cone would hide this skill (${skillDir}); add its parent directory to ${CONFIG_KEY}.keepDirs`,
-      EXIT_FAILURE
+      EXIT_FAILURE,
+      previousCone ? 'note: sparse checkout was disabled before recomputation; the worktree is now full' : ''
     )
 
   const targetCone = options.action === 'add' && previousCone ? buildCone([...previousCone, ...cone]) : cone

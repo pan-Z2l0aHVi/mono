@@ -1,6 +1,6 @@
 # Worktree 执行环境与共享缓存
 
-本文件拥有三件互相关联的事：在一个新 worktree 里把工具链准备好、让各 worktree 共享同一份构建缓存、以及在未激活 mise 的 shell 里正确执行命令。它们的共同线索是「拿到一个 worktree 之后怎么正确执行命令」，所以放在一起。
+本文件拥有 worktree 准备与执行环境的几件互相关联的事：在一个新 worktree 里把工具链准备好、按任务收缩视野、让各 worktree 共享同一份构建缓存、以及在未激活 mise 的 shell 里正确执行命令。它们的共同线索是「拿到一个 worktree 之后怎么正确执行命令」，所以放在一起。
 
 worktree 本身是任务隔离边界，不是包名的别名。包清单、依赖边界与发布边界以 [`ARCHITECTURE.md`](../../ARCHITECTURE.md) 为权威；客户端权限边界见 [`environments.md`](./environments.md)；mise/turbo 的 env 注入由本文承担；提交边界的授权口径见 [`commit.md`](./commit.md)。
 
@@ -20,11 +20,9 @@ worktree 本身是任务隔离边界，不是包名的别名。包清单、依�
 
 ## 按任务收缩视野
 
-三步准备完成后、任务交给实施 agent 前，编排层可以按任务目标把 sparse checkout 收缩到目标包及其 turbo 依赖闭包，减少无关代码的上下文占用。顺序不能颠倒：闭包来自 turbo 图，而 `turbo ls` 在未安装依赖的 worktree 里跑不起来；收缩后也仍依赖已完成 install/build 的 `node_modules` 与 `dist`。
+三步准备完成后、任务交给实施 agent 前，编排层可以按任务目标把 sparse checkout 收缩到目标包及其 turbo 依赖闭包，减少无关代码的上下文占用。顺序不能颠倒：闭包来自 turbo 图，`turbo ls` 在未安装依赖的 worktree 里跑不起来。
 
-脚本、参数与稀疏树里的安全规则见 [`.agents/skills/turbo-sparse-scope/SKILL.md`](../../.agents/skills/turbo-sparse-scope/SKILL.md)。三条口径固定：全仓 gate、影响面分析与合并前验证要先 `--restore` 恢复全树（或交给 CI）；全局引用搜索用 `git grep <pattern> HEAD`，本地 `rg`/`grep -r` 只能看到 cone 内的文件；稀疏树里不要跑不带 `--frozen-lockfile` 的 `pnpm install`，它按缩小的 workspace 图重写 `pnpm-lock.yaml`。
-
-收缩会连同被隐藏包的目录删除其 `node_modules` 与 `dist`，`--restore` 只带回已跟踪文件，所以恢复后要重跑 `pnpm install --frozen-lockfile` 与 `pnpm run build`；缓存命中时两者都很快。
+调用方式与稀疏树里的搜索、gate、install 规则见 [`.agents/skills/turbo-sparse-scope/SKILL.md`](../../.agents/skills/turbo-sparse-scope/SKILL.md)。对这里的环境准备只有一条后果需要记住：隐藏包的整个目录（含 `node_modules`、`dist`）会被删除，`--restore` 只带回已跟踪文件，恢复后要重跑 `pnpm install --frozen-lockfile` 与 `pnpm run build`。
 
 ## Turbo artifact cache
 

@@ -33,14 +33,14 @@ node .agents/skills/turbo-sparse-scope/sparse-scope.mjs --restore [--json]
 | `--status`   | 只读：当前 cone、配置状态、cone 外的未提交文件、提醒                     |
 | `--json`     | stdout 输出机器可读报告；被隐藏的包列在 `hiddenPackages`                 |
 
-退出码：`0` 成功，`1` 环境或运行失败（缺配置、turbo 失败、git 失败），`2` 用法或目标错误（未知参数、未知包、稀疏树上做了不允许的动作）。
+退出码：`0` 成功，`1` 环境或运行失败（缺配置、turbo 失败、git 失败），`2` 用法或目标错误（未知参数、未知包、稀疏树上做了不允许的动作）。`--status` 只诊断不失败：配置问题写进报告的 `config` 与 `warnings`，仍 exit 0。
 
 ## 范围怎么算
 
 - cone = 目标闭包目录 + `keepPackages` 闭包目录 + `keepDirs` + 目标目录本身，去重排序后一次性 `git sparse-checkout set --cone`。
 - 已经稀疏时，脚本先 `git sparse-checkout disable` 恢复全树再重算：turbo 图在稀疏树里会静默截断，没有全树就没有可信闭包。随后按 `--add`（旧 cone 与新 cone 取并集）或 `--reset`（替换）落盘。稀疏树上的默认动作和 `--dry-run` 直接拒绝，并把当前 cone 打在错误里。
 - 未提交的改动不会被删除，但落在 cone 外的文件会留在工作区、不再属于 cone；脚本把它们列在 `dirtyOutsideCone` 里。`hiddenPackages` 按路径判断，因此 `--add` 保留的包不会误报为隐藏。
-- 每次先 `init --cone` 再 `set --cone`，脚本是幂等的；不需要，也不要手改 `.git/info/sparse-checkout`。
+- 每次先 `init --cone` 再 `set --cone`；`--reset` 重复应用同一闭包结果不变，默认动作在已稀疏时按上面的规则拒绝。不需要，也不要手改 `.git/info/sparse-checkout`。
 
 ## 配置
 
@@ -66,8 +66,9 @@ node .agents/skills/turbo-sparse-scope/sparse-scope.mjs --restore [--json]
 4. **任务扩展时用 `--add`。** 不扩大范围就用 `--reset` 或默认动作重建，不要手写路径。
 5. **不要在稀疏树里用 `turbo run` 期待全仓结果。** 需要全仓图时先 `--restore`。
 6. **提交照常进行。** cone 外的已跟踪文件只是没检出，不影响 commit；合并、rebase、切换分支前先 `--restore`，避免 cone 外路径的冲突要手工处理。
-7. **稀疏树里不要跑不带 `--frozen-lockfile` 的 `pnpm install`。** 它只看到 cone 内的 workspace（本仓报告 7 个项目而非 16 个），会把 `pnpm-lock.yaml` 重写成缩小的图（实测删掉约 7.5k 行）。要装依赖就先 `--restore`；只是校验环境时用 `--frozen-lockfile`。
+7. **稀疏树里不要跑不带 `--frozen-lockfile` 的 `pnpm install`。** 它只看到 cone 内的 workspace，会把 `pnpm-lock.yaml` 重写成缩小的图（隐藏 workspace 与只被它们使用的 catalog 条目会被删掉）。要装依赖就先 `--restore`；只是校验环境时用 `--frozen-lockfile`。
 8. **`--restore` 之后补装依赖并重建。** 被隐藏包的整个目录（含 `node_modules`、`dist`）随 cone 一起删除，恢复只带回已跟踪文件；重跑 `pnpm install --frozen-lockfile` 与 `pnpm build`，缓存命中时都很快。
+9. **`.changeset/` 不在 cone 内。** 改到发布包时仍要新建 changeset 文件（目录可能已被删除，重新创建即可；未跟踪文件不会随 cone 删除）；changeset gate 只在 CI 跑，本地门禁不会提醒。
 
 ## 已知边界
 
