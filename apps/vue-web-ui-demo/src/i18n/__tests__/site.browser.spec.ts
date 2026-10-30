@@ -16,7 +16,7 @@ import ButtonPage from '@/pages/components/button.vue'
 import Home from '@/pages/home/index.vue'
 
 import { prepareExamples } from '../examples'
-import { loadDemoLocale } from '../locale'
+import { loadDemoLocale, localeSettled } from '../locale'
 
 // 保留真实双语数据与示例模块，只缩小此交互回归的语料；覆盖同文档多例和跨文档准备。
 vi.mock('@/generated/examples', async importOriginal => {
@@ -73,7 +73,7 @@ async function select(label: string, value: string) {
   // 抢在它的 handler 前面——那要依赖同节点 capture 与 bubble 的相对次序，是引擎实现细节而不是构造保证。
   // 取 `input` 就不用抢：那一轮派发跑完时应用还没被通知过，读到的必然是提交值。
   // 轮询 `host.value` 等的是那次收敛，1 秒预算在慢机器上会落在收敛之前；接线判据因此取提交本身，
-  // 页面收敛由每个用例自己的 waitFor 负责。
+  // 页面收敛由用例切完语言后 `await localeSettled()` 负责。
   let committed: string | undefined
   const recordCommit = () => {
     committed = host.value
@@ -103,7 +103,9 @@ it('首页通过全局选择器切换壳文案，更新偏好并保留路由和�
   try {
     await select('全局主题', 'dark')
     const language = await select('全局语言', 'en')
-    await vi.waitFor(() => expect(wrapper.text()).toContain('Variants, sizes, icons and loading states'))
+    await localeSettled()
+    await nextTick()
+    expect(wrapper.text()).toContain('Variants, sizes, icons and loading states')
     // 语料已就位，这次渲染也必然把受控的 `:value` 写回提交值；在这里读，不与异步加载赛跑。
     expect(language.value, '受控回写收敛到已提交语言').toBe('en')
     expect(document.documentElement.lang).toBe('en')
@@ -146,8 +148,10 @@ it('组件页切换文档、API、运行示例与双框架源码，保留当前�
     )
     await vi.waitFor(() => expect(source()).toContain('export default function Demo()'))
     const language = await select('Global language', 'zh-CN')
+    await localeSettled()
+    await nextTick()
     const zh = chineseDocs.find(doc => doc.component === 'button')!
-    await vi.waitFor(() => expect(wrapper.find('[data-example-intro]').element.textContent).toBe(textOf(zh.introHtml)))
+    expect(wrapper.find('[data-example-intro]').element.textContent).toBe(textOf(zh.introHtml))
     // 语料已就位，这次渲染也必然把受控的 `:value` 写回提交值；在这里读，不与异步加载赛跑。
     expect(language.value, '受控回写收敛到已提交语言').toBe('zh-CN')
     await vi.waitFor(() => expect(first.find('web-ui-button').exists()).toBe(true))
