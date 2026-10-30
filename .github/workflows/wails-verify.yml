@@ -21,6 +21,9 @@ on:
       - 'packages/js-kit/**'
       - 'packages/deps-reload/**'
       - 'packages/test-kit/**'
+      # 构建配置期依赖，不进产物；闭包按 manifest 图算，包含 devDependencies，所以它也在这份
+      # 清单里。想让它不触发原生构建，得改拓扑测试的闭包判据，而不是从这里删掉。
+      - 'packages/monorepo-kit/**'
       - 'packages/tsconfig/**'
       - 'packages/unplugin-web-components/**'
   workflow_dispatch:

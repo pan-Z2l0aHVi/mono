@@ -17,8 +17,9 @@ import { execFileSync, spawnSync } from 'node:child_process'
 import fs from 'node:fs'
 import path from 'node:path'
 
-import { inspectGitHooks } from '../lib/git-hooks-status.mjs'
-import { resolveTurboCacheDir } from '../lib/turbo-cache-dir.mjs'
+import { readPnpmWorkspaceDirectories } from '@greypan/monorepo-kit'
+
+import { gitHooksStatus } from '../policies/git-hooks-status.mjs'
 
 const scriptRoot = path.resolve(import.meta.dirname, '../..')
 // env-doctor 体检的是「当前环境」：优先以调用方 cwd（worktree）为根，
@@ -57,7 +58,7 @@ function resolveExportTarget(packageDir, target) {
 }
 
 function collectPackageDirs() {
-  const workspaceGlobs = ['apps', 'packages']
+  const workspaceGlobs = readPnpmWorkspaceDirectories(root)
   const dirs = []
   const visit = directory => {
     if (path.basename(directory) === 'node_modules') return
@@ -140,7 +141,14 @@ function watcherDetection() {
 }
 
 // ===== mise env：turbo 缓存位置 =====
-// 预期值由 Node 与 sh 共用的同一公式计算；turbo-cache-dir.test.mjs 断言两者一致。
+function turboCacheDir() {
+  const helper = path.join(scriptRoot, 'scripts', 'lib', 'turbo-cache-dir.sh')
+  const result = sh('sh', [helper, '--root', root])
+  if (result.status !== 0) throw new Error(result.stderr || `helper exited ${result.status}`)
+  return result.stdout
+}
+
+// 预期值直接来自 mise 用的那个 POSIX helper，不在这里重算一遍。
 // 不会读取 TURBO_CACHE_DIR，避免 CI 覆盖值自我满足。缓存目录可以尚未创建，
 // 首次 Turbo 构建会创建它。
 function turboCacheCheck() {
@@ -151,7 +159,7 @@ function turboCacheCheck() {
   }
   let expected
   try {
-    expected = resolveTurboCacheDir(root)
+    expected = turboCacheDir()
   } catch (error) {
     record('turbo-cache', 'fail', `cannot resolve the canonical Turbo cache path: ${error.message}`)
     return
@@ -257,10 +265,10 @@ function worktreeResidueCheck() {
 // ===== git hook 安装状态 =====
 // 事故复盘：core.hooksPath 被设成 .vite-hooks 之外的外部路径后，vite-plus 只打一行日志就放弃
 // 接管，而兜底安装脚本当时也只处理 commit-msg，于是五项 pre-commit 检查静默空转。
-// 判定逻辑放在 scripts/lib/git-hooks-status.mjs，便于用临时 Git 仓库覆盖 fail 分支；
-// 修复命令只打印，不自动改写 Git 配置。
+// 判定逻辑放在 packages/monorepo-kit/src/plugin/git/git-hooks-status.ts，便于用临时 Git 仓库覆盖 fail 分支；
+// hook 名单与安装指引的实例在 scripts/policies/git-hooks-status.mjs。修复命令只打印，不自动改写 Git 配置。
 function gitHooksCheck() {
-  const { level, detail } = inspectGitHooks(root)
+  const { level, detail } = gitHooksStatus.inspect(root)
   record('git-hooks', level, detail)
 }
 

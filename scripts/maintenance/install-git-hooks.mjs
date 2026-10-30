@@ -3,7 +3,7 @@ import { randomBytes } from 'node:crypto'
 import { chmod, link, lstat, mkdir, readFile, rename, unlink, writeFile } from 'node:fs/promises'
 import path from 'node:path'
 
-import { requiredGitHooks } from '../lib/git-hooks-status.mjs'
+import { versionedGitHooks } from '../policies/git-hooks.mjs'
 
 function gitOutput(args, cwd, description) {
   const result = spawnSync('git', args, { cwd, encoding: 'utf8' })
@@ -57,9 +57,6 @@ async function readRegularFile(file) {
     throw error
   }
 }
-
-// 受版本控制的 hook 是唯一事实来源：`.vite-hooks` 里有哪个，就兜底哪个。
-const hookNames = requiredGitHooks
 
 function dispatcherMarker(hookName) {
   return `# mono-managed-git-hook-dispatcher: ${hookName}`
@@ -201,10 +198,7 @@ async function install() {
     return
   }
 
-  const versionedHooks = []
-  for (const hookName of hookNames) {
-    if (await pathExists(path.join(repoRoot, '.vite-hooks', hookName))) versionedHooks.push(hookName)
-  }
+  const versionedHooks = versionedGitHooks(repoRoot)
   if (!versionedHooks.includes('commit-msg')) {
     throw new Error(`cannot find the versioned commit-msg hook at ${path.join(repoRoot, '.vite-hooks', 'commit-msg')}`)
   }

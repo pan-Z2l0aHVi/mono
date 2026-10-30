@@ -3,6 +3,7 @@ import { fileURLToPath } from 'node:url'
 import depsReload from '@greypan/deps-reload/vite'
 import type { MdToCompViteOptions } from '@greypan/md-to-comp'
 import mdToCompVue from '@greypan/md-to-comp/vue'
+import { testApiPort } from '@greypan/monorepo-kit'
 import unpluginWebComponents from '@greypan/unplugin-web-components/vite'
 import { webUiOptimizeDeps } from '@greypan/web-ui/vite'
 import tailwindcss from '@tailwindcss/vite'
@@ -16,9 +17,7 @@ import { VueRouterAutoImports } from 'vue-router/unplugin'
 import vueRouter from 'vue-router/vite'
 import { wuchale } from 'wuchale/vite'
 
-import { testApiPort } from '../../scripts/lib/test-ports.mjs'
-
-// 具名导出供 scripts/workflow/check-md-to-comp-artifacts.mjs 复用：CI 在 Build 步之前以这份配置
+// 具名导出供 scripts/checks/check-md-to-comp-artifacts.mjs 复用：CI 在 Build 步之前以这份配置
 // 只判不改地校验生成物。配置只有这一份，不另抄。
 export const mdToCompOptions: MdToCompViteOptions = {
   input: '../../packages/web-ui/docs',
@@ -146,7 +145,7 @@ export default defineConfig({
           // `test` 块里：写到根上会连 jsdom project 一起抢这个端口。默认 63315 会被同机并行的
           // 其他 worktree（或同一轮 turbo test 里其他包的测试进程）占住——同一进程内的多个
           // browser project 倒是会各自递增，不冲突；端口分配与多 worktree 的偏移见
-          // scripts/lib/test-ports.mjs。host 钉成 loopback 的理由见
+          // 根 monorepo.json 与 GREYPAN_TEST_PORT_OFFSET。host 钉成 loopback 的理由见
           // apps/react-web-ui-demo/vite.config.ts。
           api: { host: '127.0.0.1', port: testApiPort('vue-web-ui-demo') },
           browser: {

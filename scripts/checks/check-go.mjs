@@ -1,6 +1,7 @@
 import path from 'node:path'
 
-import { runEntrypoint } from '../lib/check-runner.mjs'
-import { name, run } from '../lib/go-check.mjs'
+import { runEntrypoint } from '@greypan/monorepo-kit'
 
-await runEntrypoint([{ name, run }], { root: path.resolve(import.meta.dirname, '../..') })
+import { goCheck } from '../policies/go-check.mjs'
+
+await runEntrypoint([goCheck], { root: path.resolve(import.meta.dirname, '../..') })

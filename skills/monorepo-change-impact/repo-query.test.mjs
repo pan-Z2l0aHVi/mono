@@ -216,7 +216,7 @@ assert.ok(testAuthoringPlan.verification.some(item => item.command === 'pnpm run
 assert.ok(testAuthoringPlan.verification.some(item => item.command === 'pnpm run test-scripts'))
 
 // 修改测试运行器本身必须触发 test-scripts；否则改坏「哪些测试会被跑」不会有任何自检。
-for (const runnerPath of ['scripts/checks/test-scripts.mjs', 'scripts/lib/script-tests.mjs']) {
+for (const runnerPath of ['scripts/checks/test-scripts.mjs', 'packages/monorepo-kit/src/plugin/exec/script-tests.ts']) {
   const runnerPlan = JSON.parse(run('verify', '--json', runnerPath))
   assert.ok(
     runnerPlan.verification.some(item => item.command === 'pnpm run test-scripts'),
@@ -227,7 +227,9 @@ for (const runnerPath of ['scripts/checks/test-scripts.mjs', 'scripts/lib/script
 const workspaceConfigPlan = JSON.parse(run('verify', '--json', 'pnpm-workspace.yaml'))
 assert.ok(workspaceConfigPlan.verification.some(item => item.command === 'pnpm run test-scripts'))
 
-const workspaceManifestToolPlan = JSON.parse(run('verify', '--json', 'scripts/lib/workspace-manifests.mjs'))
+const workspaceManifestToolPlan = JSON.parse(
+  run('verify', '--json', 'packages/monorepo-kit/src/plugin/workspace/workspace.ts')
+)
 assert.ok(workspaceManifestToolPlan.verification.some(item => item.command === 'pnpm run test-scripts'))
 
 const tsconfigPlan = JSON.parse(run('verify', '--json', 'packages/tsconfig/base.json'))

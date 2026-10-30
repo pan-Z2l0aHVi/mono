@@ -1,4 +1,5 @@
 import depsReload from '@greypan/deps-reload/vite'
+import { testApiPort } from '@greypan/monorepo-kit'
 import unpluginWebComponents from '@greypan/unplugin-web-components/vite'
 import { webUiOptimizeDeps } from '@greypan/web-ui/vite'
 import tailwindcss from '@tailwindcss/vite'
@@ -10,8 +11,6 @@ import { defineConfig, searchForWorkspaceRoot } from 'vite-plus'
 import { playwright } from 'vite-plus/test/browser-playwright'
 import { VueRouterAutoImports } from 'vue-router/unplugin'
 import vueRouter from 'vue-router/vite'
-
-import { testApiPort } from '../../../scripts/lib/test-ports.mjs'
 
 export default defineConfig({
   resolve: {
@@ -57,7 +56,7 @@ export default defineConfig({
           // vitest 5 把 `browser.api` 挪到了 `test.api`，而且要写在 browser project 自己的
           // `test` 块里：写到根上会连 jsdom project 一起抢这个端口。默认的 63315 会被同机并行的
           // 其他 worktree、同一轮 turbo test 里其他包的测试进程占住，所以端口从
-          // scripts/lib/test-ports.mjs 的分配表取，多 worktree 时用 GREYPAN_TEST_PORT_OFFSET 错开。
+          // 根 monorepo.json 的分配表取，多 worktree 时用 GREYPAN_TEST_PORT_OFFSET 错开。
           //
           // host 必须显式钉回 loopback：api server 绑哪里只看 `api.host`；而
           // `resolveApiServerConfig` 只在 `api.host` 是字面量 `localhost` / `127.0.0.1`（或不设）

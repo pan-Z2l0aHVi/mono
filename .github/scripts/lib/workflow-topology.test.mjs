@@ -4,6 +4,8 @@ import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 
+import { readPnpmWorkspaceDirectories } from '@greypan/monorepo-kit'
+
 import { RELEASE_BRANCH, REQUIRED_CONTEXT, parseWorkflow, requiredPolicyStep } from './workflow-topology.mjs'
 
 const repoRoot = path.resolve(import.meta.dirname, '../../..')
@@ -466,7 +468,7 @@ for (const [file, workflow] of Object.entries(parsed)) {
 // The native verification trigger is derived from the frontend's transitive workspace dependency closure.
 function collectWorkspacePackages(root) {
   const packages = new Map()
-  for (const area of ['apps', 'packages']) {
+  for (const area of readPnpmWorkspaceDirectories(root)) {
     const areaRoot = path.join(root, area)
     if (!fs.existsSync(areaRoot)) continue
     const visit = directory => {

@@ -20,7 +20,7 @@ worktree 本身是任务隔离边界，不是包名的别名。包清单、依�
 
 ## Turbo artifact cache
 
-`TURBO_CACHE_DIR` 指向系统临时目录下的 `<temp>/greypan/turbo-cache/<repo-id>`。[`scripts/lib/turbo-cache-dir.sh`](../../scripts/lib/turbo-cache-dir.sh) 是 mise 与 `clean.sh` 使用的路径解析器，[`scripts/lib/turbo-cache-dir.mjs`](../../scripts/lib/turbo-cache-dir.mjs) 是 `env-doctor` 使用的等价 Node 实现；两者都把 Git common directory 解析为物理路径，再用 `git hash-object --stdin` 计算稳定 ID，测试断言结果一致。主仓及其 linked worktree 因共用 Git common directory 而复用同一缓存；独立 clone 有不同的 common directory 和缓存 ID。helper 不创建目录、不写 Git 对象，也不读取继承的 `TURBO_CACHE_DIR`。
+`TURBO_CACHE_DIR` 指向系统临时目录下的 `<temp>/greypan/turbo-cache/<repo-id>`。[`scripts/lib/turbo-cache-dir.sh`](../../scripts/lib/turbo-cache-dir.sh) 是唯一的路径解析器，`.mise.toml`、`clean.sh` 与 `env-doctor` 都调用它：它把 Git common directory 解析为物理路径，再用 `git hash-object --stdin` 计算稳定 ID。主仓及其 linked worktree 因共用 Git common directory 而复用同一缓存；独立 clone 有不同的 common directory 和缓存 ID。helper 不创建目录、不写 Git 对象，也不读取继承的 `TURBO_CACHE_DIR`。
 
 Turbo artifact cache 保存可恢复的构建产物，包括 `dist` 与声明文件。新路径首次构建时是冷缓存，系统回收临时目录后 Turbo 会重新构建产物。
 
@@ -35,6 +35,8 @@ Codex 线程能不能写共享 Turbo cache，取决于客户端的权限配置�
 ### 缓存可信链
 
 `turbo-cache-invariant` 检查（经 `pnpm run check-policy` 执行）要求 `test.dependsOn` 含 `^build`、`build.outputs` 含 `dist/**` 且没有可能排除 `dist` 的负模式，并且 `test.inputs` 不含会显式收进 `dist` 的正模式。不能靠把 `dist/**` 加进 `inputs` 解决缓存问题：`dist` 是 gitignored，`$TURBO_DEFAULT$` 本来不会收它，显式正模式反而让尚无 `dist` 的新 worktree 全部 miss，却不增加产出恢复的正确性。
+
+同一族的 `turbo-input-paths`（`check-pre-commit` 与 `check-policy` 都跑）钉另一个方向：`turbo.json` 里指向不存在文件的正模式不报错，只是收不进任何文件，任务因此静默停止失效——被改动的实现或配置不再让缓存键变化，测试却看起来仍然绿。它从 `pnpm-workspace.yaml` 列出根与每个 workspace 的 `turbo.json`，逐个判 `$TURBO_ROOT$` 条目能否命中。排除项不判：排除项打偏只会多算输入，方向是保守的。
 
 ## Go 缓存探测与共享
 

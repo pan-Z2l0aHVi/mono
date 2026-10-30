@@ -1,0 +1,14 @@
+{
+  "testPorts": {
+    "bandWidth": 10,
+    "offsetStride": 100,
+    "ports": {
+      "react-web-ui-demo": 63410,
+      "vue-web-ui-demo": 63420,
+      "interweave-frontend": 63430,
+      "web-ui": 63440,
+      "web-ui-reduced-motion": 63450,
+      "browser-kit": 63460
+    }
+  }
+}

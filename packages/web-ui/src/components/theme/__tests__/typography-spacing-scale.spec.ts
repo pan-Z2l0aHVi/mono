@@ -160,7 +160,7 @@ describe('排版族防漂移', () => {
       //
       // 本规则是**全面禁止**简写，不只是禁带字面量的：`font: var(--a) var(--b)/1.4 …`
       // 同样让下面三条长写守卫看不见它，照样红。行首锚定的依据与长写规则相同——`vp fmt`
-      // 会把内联规则展开成每条声明独占一行，`check-code` 与 pre-commit 的 `format-clean`
+      // 会把内联规则展开成每条声明独占一行，`check-code` 与 pre-commit 的 `staged-clean`
       // 都强制该形态。`i` 标志则让大写 `FONT:` 无需依赖格式化器归一化就落网。
       for (const match of css.matchAll(/^[ \t]*font[ \t]*:[ \t]*([^;]+);/gim)) {
         const value = match[1].replace(/\s+/g, ' ').trim()

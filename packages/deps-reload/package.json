@@ -19,8 +19,7 @@
     "./webpack": {
       "types": "./dist/webpack.d.mts",
       "import": "./dist/webpack.mjs"
-    },
-    "./package.json": "./package.json"
+    }
   },
   "sideEffects": false,
   "publishConfig": {
