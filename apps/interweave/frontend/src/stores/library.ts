@@ -1,7 +1,7 @@
 /**
  * Library headless view-model store。
  *
- * 职责边界（ADR-0015：Pinia 不复制 Go 内部规则）：这里只做两类事——
+ * 职责边界（apps/interweave/AGENTS.md 的「不在前端复制领域规则」：Pinia 不复制 Go 内部规则）：这里只做两类事——
  * 1. DTO → view-model 翻译：与后端契约的词汇在此一次性对齐。name / broken /
  *    sourceType: 'local'|'link' 等分歧词汇，对应关系为
  *    name→title、broken→!available、local/link→file/url；页面不得各自翻译 DTO。

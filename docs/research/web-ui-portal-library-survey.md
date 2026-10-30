@@ -3,27 +3,28 @@
 # Web UI Portal 层调研：现成库 vs 手写
 
 > 状态：非权威参考（时点性研究）。结论以现行 ADR、源码与测试为准。
+> 文中行号、实测数值与「当前实现」类描述均为写作时点，不随实现同步；现行权威见所引 ADR、源码与测试。
 
-> 针对 `packages/web-ui` 的 portal 层（调用链：Lit 组件 → `src/shared` 封装 → 底层库）能否用现成成熟库替代的调研。结论先行，所有论断附一手来源（官方文档原文、GitHub 源码、npm registry 数据）。本调研已考虑 release/260909 worktree 的未提交优化影响（select 的 trigger-slot 迁移过滤），portal 基础设施（`portal.ts` / `menu-portal.ts`）在该 worktree 未改动。
+> 针对 `packages/web-ui` 的 portal 层（调用链：Lit 组件 → `src/shared` 封装 → 底层库）能否用现成成熟库替代的调研。结论先行，所有论断附一手来源（官方文档原文、GitHub 源码、npm registry 数据）。本调研已考虑 release/260909 worktree 的未提交优化影响（select 的 trigger-slot 迁移过滤），portal 基础设施（`portal.ts` / `menu-portal.ts`）在该 worktree 未改动。（2026-10-30 核验：release/260909 的 select trigger-slot 过滤现已入仓，证据 `packages/web-ui/src/components/select/index.ts` 里的 `child.slot !== 'trigger'`）
 
 ---
 
 ## 结论
 
-**维持手写。** 本仓库 portal 需求面中真正有难度的条目——theme overlay root 解析、open native dialog（top layer）内容器解析、Shadow DOM CSS 自定义属性镜像、消费者节点**选择性**迁移（含 slot 归属边界）、menu 族关闭态 slot 属性隐藏、presence 进出场协调——全部是本仓库领域语义，没有任何候选库覆盖；而「通用 portal 语义」部分（append 到容器 + 移除恢复）我们的 `defineOverlayPortal` 核心只有约 50 行，引入库收益趋近于零。生态侧证据：Floating UI 官方明确 portal 不是定位库职责（React 包装层才有 `FloatingPortal`）；Lit 官方（`@lit-labs` 全部 14 个包）无 portal/overlay 原语；npm 上无活跃维护的独立 Web Component / Lit portal 库（`lit-portal` 停滞于 2023-04，`@lion/overlays` 停滞于 2022-09）。成熟组件库的做法也佐证手写是常态：Radix / React Aria 的 portal 只是 React 内建 `createPortal` 的薄封装（Web Components 没有等价物，我们的手写 portal 恰是其等价物）；Vaadin 整条 overlay 栈自研；Shoelace / Web Awesome 干脆不 portal（popup 原地渲染）。
+**维持手写。** 本仓库 portal 需求面中真正有难度的条目——theme overlay root 解析、open native dialog（top layer）内容器解析、Shadow DOM CSS 自定义属性镜像、消费者节点**选择性**迁移（含 slot 归属边界）、menu 族关闭态 slot 属性隐藏、presence 进出场协调——全部是本仓库领域语义，没有任何候选库覆盖；而「通用 portal 语义」部分（append 到容器 + 移除恢复）我们的 `defineOverlayPortal` 核心只有约 50 行，引入库收益趋近于零。（2026-10-30 核验：现宿主文件 `packages/web-ui/src/shared/overlay/portal.ts` 为 365 行，`applyOverlayVariables` 等已迁入同文件；「通用语义占比小」的结论仍成立，数值属时点）生态侧证据：Floating UI 官方明确 portal 不是定位库职责（React 包装层才有 `FloatingPortal`）；Lit 官方（`@lit-labs` 全部 14 个包）无 portal/overlay 原语；npm 上无活跃维护的独立 Web Component / Lit portal 库（`lit-portal` 停滞于 2023-04，`@lion/overlays` 停滞于 2022-09）。成熟组件库的做法也佐证手写是常态：Radix / React Aria 的 portal 只是 React 内建 `createPortal` 的薄封装（Web Components 没有等价物，我们的手写 portal 恰是其等价物）；Vaadin 整条 overlay 栈自研；Shoelace / Web Awesome 干脆不 portal（popup 原地渲染）。
 
 ---
 
 ## 1. 本仓库 portal 需求面（评估候选库的标尺）
 
-| #   | 需求条目                                                                                                                                                                                                                                                                                             | 实现位置                                                                                                                                                      | 语义类别                                    |
-| --- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------- |
-| 1   | 容器解析策略链：显式 `overlayContainer` → open native `<dialog>`（top layer）内解析（跨 shadow host、`slot.assignedNodes()` 判定归属）→ 最近 `web-ui-theme` 的 `getOverlayRoot()`（`preferRootTheme` 时用 root theme）→ 惰性 fallback root（`data-wui-overlay-root` + shadow root + 共享样式预注入） | `src/shared/overlay/portal.ts`（`resolveOverlayContainer`、`findEnclosingOpenDialog`）、`src/shared/theme/theme-scope.ts`、`src/shared/theme/overlay-root.ts` | **领域**                                    |
-| 2   | Shadow DOM 样式边界：portal host `display: contents` + open shadow root，panel 在 shadow 内；组件级 style 注入                                                                                                                                                                                       | `portal.ts`                                                                                                                                                   | 领域（通用库假设 light DOM）                |
-| 3   | CSS 自定义属性跨 shadow 镜像（宿主解析后的变量不沿渲染树继承到 panel）                                                                                                                                                                                                                               | `portal.ts`（`applyOverlayVariables`，select/autocomplete 使用）                                                                                              | **领域**                                    |
-| 4   | 消费者节点**选择性**迁移：打开迁入、关闭迁回原位；节点身份追踪；必须尊重命名 slot 归属——popover 过滤 `slot === 'trigger'`；select 在 release/260909 新增 `child.slot !== 'trigger'` 过滤（自定义 trigger 留在宿主）；autocomplete 按节点分拣不同目标                                                 | `portal.ts`（`moveContent`/`appendContent`/`restoreContent`）、`popover/index.ts:209`、`select/index.ts`（worktree diff）、`autocomplete/index.ts:619`        | **领域**（多数通用 portal 只做整体 append） |
+| #   | 需求条目                                                                                                                                                                                                                                                                                             | 实现位置                                                                                                                                                                  | 语义类别                                    |
+| --- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------- |
+| 1   | 容器解析策略链：显式 `overlayContainer` → open native `<dialog>`（top layer）内解析（跨 shadow host、`slot.assignedNodes()` 判定归属）→ 最近 `web-ui-theme` 的 `getOverlayRoot()`（`preferRootTheme` 时用 root theme）→ 惰性 fallback root（`data-wui-overlay-root` + shadow root + 共享样式预注入） | `src/shared/overlay/portal.ts`（`resolveOverlayContainer`、`findEnclosingOpenDialog`）、`src/shared/overlay/theme-overlay-scope.ts`、`src/shared/overlay/overlay-root.ts` | **领域**                                    |
+| 2   | Shadow DOM 样式边界：portal host `display: contents` + open shadow root，panel 在 shadow 内；组件级 style 注入                                                                                                                                                                                       | `portal.ts`                                                                                                                                                               | 领域（通用库假设 light DOM）                |
+| 3   | CSS 自定义属性跨 shadow 镜像（宿主解析后的变量不沿渲染树继承到 panel）                                                                                                                                                                                                                               | `portal.ts`（`applyOverlayVariables`，select/autocomplete 使用）                                                                                                          | **领域**                                    |
+| 4   | 消费者节点**选择性**迁移：打开迁入、关闭迁回原位；节点身份追踪；必须尊重命名 slot 归属——popover 过滤 `slot === 'trigger'`；select 在 release/260909 新增 `child.slot !== 'trigger'` 过滤（自定义 trigger 留在宿主）；autocomplete 按节点分拣不同目标                                                 | `portal.ts`（`moveContent`/`appendContent`/`restoreContent`）、`popover/index.ts:209`、`select/index.ts`（worktree diff）、`autocomplete/index.ts:619`                    | **领域**（多数通用 portal 只做整体 append） |
 
-release/260909 worktree 的 select diff（未提交，本调研已纳入需求面）：
+release/260909 worktree 的 select diff（未提交，本调研已纳入需求面）：（2026-10-30 核验：现已入仓，见文首注）
 
 ```ts
 // 自定义 trigger 必须留在宿主内，不能随 options 迁入 portal panel
@@ -34,17 +35,17 @@ portal.moveContent(
 ```
 
 | 5 | 与消费者框架 vdom 的冲突补偿：`onContentChange` MutationObserver → `scheduleRefresh`；已删除节点 `removeContent` 防关闭时「复活」 | `select/index.ts:437,589`、`select/__tests__/conditional-combo.spec.ts` | 领域（React/Vue 内建 portal 由 vdom 拥有节点，无此问题） |
-| 6 | menu 族专用形态：无 shadow 共享 panel（复用容器预注入样式）；dialog 容器例外自注入；submenu 独立 overlay；关闭态 slot 属性隐藏（`context-menu-hidden` / `web-ui-menu-level-*-hidden`） | `src/shared/menu-portal/menu-portal.ts`、ADR-0033 | **领域** |
+| 6 | menu 族专用形态：无 shadow 共享 panel（复用容器预注入样式）；dialog 容器例外自注入；submenu 独立 overlay；关闭态 slot 属性隐藏（`context-menu-hidden` / `web-ui-menu-level-*-hidden`） | `src/shared/menu-portal/menu-portal.ts`、ADR-0006 §4「覆盖层内容迁移」 | **领域** |
 | 7 | presence 进出场协调：`data-wuiPresence` 状态机（entering/open/closing）、可中断、transitionend + duration+80ms 兜底、jsdom 短路；native dialog top layer 退出动画生命周期 | `src/shared/overlay/presence.ts`、`native-dialog-presence.ts` | 领域 |
-| 8 | 与定位引擎分层：portal 只管容器与内容归属，定位由 `defineOverlay`（`@floating-ui/dom`）负责，`defineAnchoredPanel` 组合三者 | `src/shared/overlay/anchored-panel.ts`、ADR-0038 | 通用（该分层正是业界共识） |
+| 8 | 与定位引擎分层：portal 只管容器与内容归属，定位由 `defineOverlay`（`@floating-ui/dom`）负责，`defineAnchoredPanel` 组合三者 | `src/shared/overlay/anchored-panel.ts`、ADR-0006 §2「Overlay 定位引擎」 | 通用（该分层正是业界共识） |
 
-ADR-0033 还约束了组件对消费者节点的写入边界（仅位置移动 + menu 关闭态 slot 属性两类）——需求 #4 的契约化表述。
+ADR-0006 §4「覆盖层内容迁移」还约束了组件对消费者节点的写入边界（仅位置移动 + menu 关闭态 slot 属性两类）——需求 #4 的契约化表述。
 
 ## 2. Floating UI：明确不提供 portal（官方立场）
 
 - Getting Started（官网文档仓库 MDX 源文）列出两大能力：**Positioning** 与 **Interactions**；且 Interactions 明确是 "Floating UI's **React package** offers a toolkit of primitive Hooks"——vanilla 包（`@floating-ui/dom`）只有定位。https://github.com/floating-ui/floating-ui/blob/master/website/pages/docs/getting-started.mdx
 - `FloatingPortal` 文档原文："**Portals the floating element into a given container element** — by default, outside of the app root and into the body. … `<PackageLimited>@floating-ui/react only</PackageLimited>`"。https://floating-ui.com/docs/floatingPortal （源文 https://github.com/floating-ui/floating-ui/blob/master/website/pages/docs/FloatingPortal.mdx ）
-- 即官方立场：**portal 属于渲染层（框架包装）的职责，定位库不做**。本仓库 ADR-0038 的分层与此一致。
+- 即官方立场：**portal 属于渲染层（框架包装）的职责，定位库不做**。本仓库 ADR-0006 §2「Overlay 定位引擎」的分层与此一致。
 
 ## 3. Lit 官方生态：无 portal/overlay 原语
 
@@ -85,8 +86,8 @@ npm registry 搜索（`lit portal`、`web components portal`、`dom portal`、`l
 
 1. **需求面错位**：通用库只覆盖 §1 中的「通用」行（约 1/8），且我们已有等价物；「领域」行全部要自写适配层，引入库反而多一层间接。
 2. **生态空位**：Lit 官方无原语（§3），npm 无活跃独立库（§4），没有「现成成熟」可选。
-3. **架构分层已正确**：ADR-0038 已把定位交给 `@floating-ui/dom`（Shoelace/Web Awesome 同款策略），portal 独立成层与 Floating UI 官方立场（§2）一致。
-4. **演进方向是更细的所有权边界**：release/260909 的 select trigger-slot 过滤表明需求在向「选择性迁移 + slot 归属」深化（ADR-0033 的写入边界约束），这类细粒度控制没有任何通用 portal 库预置。
+3. **架构分层已正确**：ADR-0006 §2「Overlay 定位引擎」已把定位交给 `@floating-ui/dom`（Shoelace/Web Awesome 同款策略），portal 独立成层与 Floating UI 官方立场（§2）一致。
+4. **演进方向是更细的所有权边界**：release/260909 的 select trigger-slot 过滤表明需求在向「选择性迁移 + slot 归属」深化（ADR-0006 §4「覆盖层内容迁移」的写入边界约束），这类细粒度控制没有任何通用 portal 库预置。
 5. **可借鉴而非引入**：Radix/React Aria 的「薄 portal + a11y/scroll-lock 关注点分离」、Vaadin 的 renderer 式内容归属、Shoelace 的 `composed-offset-position` Shadow DOM 修正，均为后续 portal 层演进时的参考模式，不需要以依赖形式获得。
 
 ## 8. 来源与方法说明

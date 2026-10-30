@@ -214,7 +214,7 @@ func (s *SourceService) RefreshURLSource(ctx context.Context, sourceID string) (
 		return Source{}, ErrOnlyURLSourceRefreshable
 	}
 
-	// 位置在纳入时已归一化，刷新直接探测原位置，不回写 Resource 标题（ADR-0015）。
+	// 位置在纳入时已归一化，刷新直接探测原位置，不回写 Resource 标题（AGENTS.md「Resource 标题」）。
 	outcome := s.ingest.probe(ctx, src.Location, storage.SourceTypeURL)
 	_, err = s.ingest.write(ctx, ingestWrite{
 		mode:     ingestRefreshSource,

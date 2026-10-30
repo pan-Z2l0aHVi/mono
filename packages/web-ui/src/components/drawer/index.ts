@@ -515,7 +515,7 @@ export class WebUiDrawer extends LitElement {
         this._dragOffset = this._dragInitialOffset + dampOverscroll(dragDelta)
         this._trackSwipeCancel(this._dragAxis === 'x' ? info.clientX : info.clientY, dragDelta)
 
-        // 达到关闭阈值时胶囊换成更实的中性灰作视觉确认（ADR-0027）。与距离分支共用同一量
+        // 达到关闭阈值时胶囊换成更实的中性灰作视觉确认。与距离分支共用同一量
         //（自抓取瞬间起的净位移）与同一阈值，视觉确认与实际判定不会漂移。
         const dragSize = this._measureDragSize()
         const dragDisplacement = this._dragOffset - this._dragInitialOffset

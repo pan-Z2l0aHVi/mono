@@ -4,6 +4,8 @@
 
 > 状态：非权威参考（时点性研究）。结论以现行 ADR、源码与测试为准。
 
+> 文中行号、实测数值与「当前实现」类描述均为写作时点，不随实现同步；现行权威见所引 ADR、源码与测试。
+
 > 回答「JS 基础层（面广）+ TS 特化层（面窄）在两套配置块命中同一文件时，行业惯例的正确先后顺序是什么」。调研日期 2026-10-09。官方论断追溯 eslint.org / oxc.rs / typescript-eslint.io 与上游源码；真实仓库论断追溯 GitHub 默认分支原始文件（ref = 抓取时 HEAD，2026-10-09）。逐条标注「官方文档 / 源码事实 / 推断」。三套体系（ESLint flat config、ESLint legacy eslintrc、oxlint overrides）覆盖语义分别说明。
 
 ---
@@ -16,7 +18,7 @@
 
 3. **oxlint 官方文档只显式写了 `extends` 的「first → last，后者覆盖前者」，没有明文写多个 `overrides` 之间的先后**；但 oxlint 源码 `Config::apply_overrides` 按 `overrides` 数组顺序逐条 `insert`/`remove`，因此**后者覆盖前者是源码事实**（见 §5）。
 
-4. **本仓库现状是反的**：`vite.config.ts` 里 override 1（TS 特化层，`files: ['**/*.{ts,tsx,vue}']`，窄）排在前、override 2（JS 基础层，`files: ['**/*.{js,mjs,cjs,jsx,ts,tsx,vue}']`，广）排在后。按「后者覆盖前者」，override 2 的 `error` 把 override 1 的 `off` 全部盖掉，override 1 沦为死配置。修法是把**基础层整体挪到特化层之前**（顺序对调或合并），与 §4、§6 的惯例一致。
+4. **本仓库现状是反的**：`vite.config.ts` 里 override 1（TS 特化层，`files: ['**/*.{ts,tsx,vue}']`，窄）排在前、override 2（JS 基础层，`files: ['**/*.{js,mjs,cjs,jsx,ts,tsx,vue}']`，广）排在后。按「后者覆盖前者」，override 2 的 `error` 把 override 1 的 `off` 全部盖掉，override 1 沦为死配置。修法是把**基础层整体挪到特化层之前**（顺序对调或合并），与 §4、§6 的惯例一致。（2026-10-30 核验：本仓库现状已变，修法已落地——宽基础层 `files: ['**/*.{js,mjs,cjs,jsx,ts,tsx,vue}']` 现为 `vite.config.ts:26`，即 overrides[0]；窄 TS 特化层 `files: ['**/*.{ts,tsx,vue}']` 现为 `vite.config.ts:96`，即 overrides[1]。）
 
 ---
 
@@ -27,7 +29,9 @@
 - **override 1**（`files: ['**/*.{ts,tsx,vue}']`，窄）：typescript-eslint 风格的 TS 特化层——把一批 ESLint core 规则设 `off`（`constructor-super`、`getter-return`、`no-dupe-keys`、`no-undef`、`no-unreachable` 等），并打开一批 `@typescript-eslint/*` 规则。
 - **override 2**（`files: ['**/*.{js,mjs,cjs,jsx,ts,tsx,vue}']`，广）：ESLint core recommended 基础层——把同一批 core 规则设 `error`（`no-undef`/`no-unused-vars`/`no-redeclare` 设 `off`）。
 
-override 1 的 glob 是 override 2 的子集，且 override 1 排在**前面**。已实测确认 oxlint 的 override 是「后者覆盖前者」，于是 override 1 里的 `off` 全被 override 2 的 `error` 盖掉。核心待验证的问题：**业内处理「基础层 + TS 特化层」的正确先后顺序惯例是什么？** 本文把这个问题拆到三套配置体系和 8 个真实仓库上逐一核对。
+（2026-10-30 核验：上文两块的先后为写作时点，现已对调——宽基础层 `files: ['**/*.{js,mjs,cjs,jsx,ts,tsx,vue}']` 现为 `vite.config.ts:26`，即 overrides[0]；窄 TS 特化层 `files: ['**/*.{ts,tsx,vue}']` 现为 `vite.config.ts:96`，即 overrides[1]。）
+
+override 1 的 glob 是 override 2 的子集，且 override 1 排在**前面**。已实测确认 oxlint 的 override 是「后者覆盖前者」（2026-10-30 核验：该实测基于当时捆绑的 oxlint 版本，现 vite-plus 已升 1.4.0，见 `pnpm-workspace.yaml:102-103`，实测值属时点），于是 override 1 里的 `off` 全被 override 2 的 `error` 盖掉。核心待验证的问题：**业内处理「基础层 + TS 特化层」的正确先后顺序惯例是什么？** 本文把这个问题拆到三套配置体系和 8 个真实仓库上逐一核对。
 
 ---
 
@@ -109,7 +113,7 @@ legacy 侧同序：`extends: ['eslint:recommended', 'plugin:@typescript-eslint/r
 - **设为 `error`（TS 允许的现代写法）**：`no-var`、`prefer-const`、`prefer-rest-params`、`prefer-spread`。
 - 生效 glob（flat config / minimatch）：`['**/*.ts', '**/*.tsx', '**/*.mts', '**/*.cts']`；legacy glob：`['*.ts', '*.tsx', '*.mts', '*.cts']`。
 
-> 与本仓库对照：override 1 里被设 `off` 的规则（`constructor-super`、`getter-return`、`no-dupe-keys`、`no-class-assign`、`no-const-assign`、`no-dupe-class-members`、`no-func-assign`、`no-import-assign`、`no-new-native-nonconstructor`、`no-obj-calls`、`no-setter-return`、`no-this-before-super`、`no-undef`、`no-unreachable`、`no-unsafe-negation`、`no-with`）几乎逐条对应 typescript-eslint `eslint-recommended` 的关闭清单。也就是说 override 1 想复刻的就是这个特化层——但顺序反了，导致它被基础层覆盖。
+> 与本仓库对照：override 1 里被设 `off` 的规则（`constructor-super`、`getter-return`、`no-dupe-keys`、`no-class-assign`、`no-const-assign`、`no-dupe-class-members`、`no-func-assign`、`no-import-assign`、`no-new-native-nonconstructor`、`no-obj-calls`、`no-setter-return`、`no-this-before-super`、`no-undef`、`no-unreachable`、`no-unsafe-negation`、`no-with`）几乎逐条对应 typescript-eslint `eslint-recommended` 的关闭清单。也就是说 override 1 想复刻的就是这个特化层——但顺序反了，导致它被基础层覆盖。（2026-10-30 核验：「顺序反了」属当时现状，修法已落地——宽基础层现为 `vite.config.ts:26`，即 overrides[0]；窄 TS 特化层现为 `vite.config.ts:96`，即 overrides[1]。）
 
 ---
 
@@ -191,7 +195,9 @@ if *severity == AllowWarnDeny::Allow {
 - **等价替代**：也可把两层并入**同一个** override 对象（先展开 core recommended、再展开 TS 特化），顺序在对象内部先基础后特化——与 TanStack shared config 的 `{ ...javascriptRules, ...typescriptRules }` 同一手法，可规避「跨 override 先后靠位置决定」的隐式耦合。
 - **注意面差**：`js`/`jsx` 文件只命中基础层（override 1 的 glob 不含它们），因此对这两类文件行为不变；只有 `ts/tsx/vue` 会因顺序调整而恢复 override 1 的本意。
 
-> 注：本调研只做结论与判据，不实施任何配置修改。调整 `vite.config.ts` 的 override 顺序属独立变更任务，需按仓库 workflow 立项，并用 `vp check` 验证调整后 override 1 的规则确实生效（例如确认 `constructor-super` 等对 `.ts` 文件恢复 `off`）。
+（2026-10-30 核验：本节判据已实施——宽基础层现为 `vite.config.ts:26`，即 overrides[0]；窄 TS 特化层现为 `vite.config.ts:96`，即 overrides[1]；「现状问题」与「惯例修法」两段描述的是写作时点的配置。）
+
+> 注：本调研只做结论与判据，不实施任何配置修改。调整 `vite.config.ts` 的 override 顺序属独立变更任务，需按仓库 workflow 立项，并用 `vp check` 验证调整后 override 1 的规则确实生效（例如确认 `constructor-super` 等对 `.ts` 文件恢复 `off`）。（2026-10-30 核验：该变更任务已按此完成，对调后的两块现见 `vite.config.ts:26` 与 `vite.config.ts:96`。）
 
 ---
 
@@ -229,4 +235,4 @@ if *severity == AllowWarnDeny::Allow {
 
 **本仓库源码事实**
 
-- 根 `vite.config.ts` 的 `lint.overrides`（override 1 = `**/*.{ts,tsx,vue}` 的 TS 特化层；override 2 = `**/*.{js,mjs,cjs,jsx,ts,tsx,vue}` 的 core recommended 基础层，且排在 override 1 之后）。
+- 根 `vite.config.ts` 的 `lint.overrides`（override 1 = `**/*.{ts,tsx,vue}` 的 TS 特化层；override 2 = `**/*.{js,mjs,cjs,jsx,ts,tsx,vue}` 的 core recommended 基础层，且排在 override 1 之后）。（2026-10-30 核验：两块现已对调——宽基础层为 `vite.config.ts:26`，即 overrides[0]；窄 TS 特化层为 `vite.config.ts:96`，即 overrides[1]。）

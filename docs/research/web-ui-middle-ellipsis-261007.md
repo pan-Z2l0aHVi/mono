@@ -3,6 +3,7 @@
 # 单行文本中间省略（issue #198）调研
 
 > 状态：非权威参考（时点性研究）。结论以现行 ADR、源码与测试为准。
+> 文中行号、实测数值与「当前实现」类描述均为写作时点，不随实现同步；现行权威见所引 ADR、源码与测试。
 
 > 结论先行，论断附一手来源。实测日期 2026-10-06/07，worktree `hp/mono/t-0056-research-198`，
 > 被测浏览器 Google Chrome 154.0.0.0（macOS，`agent-verify` 与 chrome-devtools MCP 各自拉起）。
@@ -62,7 +63,7 @@ el.style.textOverflow // ""（整条声明被判非法丢弃）
 
 被判非法之后 `text-overflow` 回退到初始值 `clip`——**连末尾省略都没有了**，文本直接硬裁。
 本仓 `browserslist` 是 `Chrome >=111 / Safari >=16.4 / Firefox >=128`，双值语法在这三家里只有 Firefox 有，
-而它给的方向又是反的。
+而它给的方向又是反的。（2026-10-30 核验：现为 6 项，另含 `Edge >=111`、`iOS >=16.4`、`not dead`，证据 `packages/web-ui/package.json:94-101`）
 
 ### 1.3 `direction: rtl` 技巧：只是「开头省略」，而且会重排内容
 
@@ -209,7 +210,7 @@ CSSWG 提案文档把「JS 方案复制不到原文」列为缺点的那个问�
 （Windows 高对比）下 `color: transparent` 可能被覆盖成系统色、把中间那段显出来。改用
 `position: absolute` + `clip-path` 的 `sr-only` 形态能躲开这两条，但会改变拖选时能否自然跨段的行为。
 两者都要额外的真实浏览器取证（含强制颜色模式），不适合塞进这次的范围。**这是留给用户的决定**，
-见报告。当前实现的选择是：DOM 里就是屏幕上那串，全文经 `title` 提供，并在 README 里明写这条限制。
+见报告。当前实现的选择是：DOM 里就是屏幕上那串，全文经 `title` 提供，并在 README 里明写这条限制。（2026-10-30 核验：该限制实际写在 `packages/web-ui/docs/middle-ellipsis.md:325`（「The original text is provided through `title`」）与 `packages/web-ui/src/components/middle-ellipsis/index.ts:136-138` 的注释，`README.md` 只在组件表列了条目）
 
 ---
 

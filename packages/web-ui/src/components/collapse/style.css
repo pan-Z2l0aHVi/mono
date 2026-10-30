@@ -5,8 +5,8 @@
 }
 
 /*
- * :host 仅限 display/contain（ADR-0003）。
- * headless 内核（ADR-0039）：不携带视觉样式，trigger 与内容的排版由消费者
+ * :host 仅限 display/contain。
+ * headless 内核：不携带视觉样式，trigger 与内容的排版由消费者
  * 提供；这里只保留动画与三态关闭稳态必需的结构规则。
  */
 :host {
@@ -14,7 +14,7 @@
 }
 
 /*
- * grid 0fr↔1fr 高度动画（ADR-0038 选型）：
+ * grid 0fr↔1fr 高度动画：
  * track 行高在 0fr（收起）与 1fr（展开）间过渡，内容高度自适应、零 JS 测量；
  * inner 的 min-height/min-width 归零是 track 能收缩到 0 的必要条件，
  * overflow hidden 负责裁剪收起中的内容。

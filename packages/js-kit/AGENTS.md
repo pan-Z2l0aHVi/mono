@@ -6,7 +6,7 @@
 
 ## 队列词汇
 
-完整决策与行为边界以 [ADR-0007](../../docs/adr/0007-plugin-system.md) 的「队列能力补充」为权威；以下是跨包一致的术语。
+插件系统的整体决策见 [ADR-0007](../../docs/adr/0007-plugin-system.md)；队列的完整行为边界以 [`src/plugin-system/README.md`](./src/plugin-system/README.md) 的 `defineQueue` / `defineAckQueue` 小节为权威。以下是跨包一致的术语。
 
 **待消费队列（消费队列）**：队列项在交给消费者前仍属于队列；交付动作完成后即视为消费完成，消费者后续执行失败不会自动恢复该项。持久化此类队列只恢复尚未交付的项。
 _Avoid_: 确认队列、服务端已确认队列

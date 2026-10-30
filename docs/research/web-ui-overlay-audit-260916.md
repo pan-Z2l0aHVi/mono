@@ -3,6 +3,7 @@
 # web-ui overlay 审计（issue #120 遗留项）
 
 > 状态：非权威参考（时点性研究）。结论以现行 ADR、源码与测试为准。
+> 文中行号、实测数值与「当前实现」类描述均为写作时点，不随实现同步；现行权威见所引 ADR、源码与测试。
 
 审计日期 2026-09-16，分支 `release/260917`，范围 `packages/web-ui`。本文件只做风险清单，**不实施**；修复按 Block → Should fix → Watch 拆独立 task。
 
@@ -10,7 +11,7 @@
 
 已完成的加固阶段（来自 #120 评论）：`overlay-lifecycle-transaction`、`overlay-composition-ownership`、`overlay-positioning-generation`。本文只审计该三项之后的遗留项，结论全部可追溯到具体代码行。
 
-2026-09-18 补充：本文 Block 1（嵌套 overlay Escape 无跨组件归属）的归属判定归 `shared/overlay/open-overlay.ts` 一个模块：`overlayComposition` / `escape-dismiss` / `lifecycle` 三个模块合并进它，组件侧不各自实现 Escape 判定。原文的 `overlayComposition` 描述与行号只对应当时；现行实现见 ADR-0006 §7。Block 2 仍待处理。
+2026-09-18 补充：本文 Block 1（嵌套 overlay Escape 无跨组件归属）的归属判定归 `shared/overlay/open-overlay.ts` 一个模块：`overlayComposition` / `escape-dismiss` / `lifecycle` 三个模块合并进它，组件侧不各自实现 Escape 判定。原文的 `overlayComposition` 描述与行号只对应当时；现行实现见 ADR-0006 §7。Block 2 仍待处理。（2026-10-30 核验：已修，`packages/web-ui/src/components/dialog/index.ts:143` 与 `packages/web-ui/src/components/drawer/index.ts:771` 的 `connectedCallback` 做重挂载对账，并有 remount-reconcile browser spec 钉住）
 
 ## Block
 
@@ -42,13 +43,13 @@
 
 ### 2. dialog / drawer 打开态被 remove 再 append 后不对账
 
-- `dialog/index.ts:53-58` 只有 `disconnectedCallback`（`_presence.dispose()` + `_scrollLock.release()`），**整个文件没有 `connectedCallback`**；`updated()`（`:44-51`）开头是 `if (!this.isConnected) return`。
+- `dialog/index.ts:53-58` 只有 `disconnectedCallback`（`_presence.dispose()` + `_scrollLock.release()`），**整个文件没有 `connectedCallback`**；`updated()`（`:44-51`）开头是 `if (!this.isConnected) return`。（2026-10-30 核验：与现行矛盾，现 `dialog/index.ts:143` 有 `connectedCallback`）
 - `drawer/index.ts:442-446` 的 `connectedCallback` 只重算 header/footer slot 标志，不恢复 presence / scrollLock / nestedLayers。
 - Lit 重连只 `setConnected(true)`，不 requestUpdate；`open` 未变化时 `updated()` 也不进入 → `_presence.sync()` 与 `_syncScrollLock()` 永不补跑。
 
-后果：框架条件渲染把打开中的 dialog/drawer 摘下再挂回，`open` 仍为 `true`，但滚动锁已释放（`scroll-lock.ts:65-67`）、presence panel 状态停留在 dispose 之后。
+后果：框架条件渲染把打开中的 dialog/drawer 摘下再挂回，`open` 仍为 `true`，但滚动锁已释放（`src/shared/scroll-lock/scroll-lock.ts:65-67`）、presence panel 状态停留在 dispose 之后。
 
-**实测（2026-09-17，真实 Chromium，探针已删）**：drawer 打开后摘下再挂回，观察 `documentElement.style.overflow`（滚动锁的公开面，`scroll-lock.ts:20` 写 `hidden`）：
+**实测（2026-09-17，真实 Chromium，探针已删）**：drawer 打开后摘下再挂回，观察 `documentElement.style.overflow`（滚动锁的公开面，`src/shared/scroll-lock/scroll-lock.ts:20` 写 `hidden`）：
 
 | 阶段             | `html.style.overflow` | `drawer.open` | `dialog.open` |
 | ---------------- | --------------------- | ------------- | ------------- |
@@ -82,12 +83,14 @@
 - 建议修法：`connectedCallback` 里做 open 收敛（已连接且 `open` 为真则重建 panel 并把焦点落回首个可用项），并同步订正上面那条用例。
 - 回归测试：browser 用例「`open=true` 卸载 → 重挂载，断言 panel 重建且 `activeElement` 为首个可用 menu item」。
 
+（2026-10-30 核验：已按建议修复，`packages/web-ui/src/components/dropdown/index.ts:223-243`，「重挂载对账」注释在 `:236`。）
+
 ## Watch
 
 ### 5. tooltip 的 slot 内容切换存在同步缺口（非孤儿泄漏）
 
 - 已闭环的部分：`tooltip/index.ts:209-211` 注册了 `migrateAddedNodes`，打开期新增的 `slot="content"` 会实时迁入；marker 与游离注释的清理由 `portal.ts:118`、`:162-195`、`:277`、`:286` 覆盖。
-- 缺口：`portal.ts:226` 的 hostObserver 只订阅 `{ childList: true }`，**无 `subtree`、无 `characterData`**（对比 `dropdown/index.ts:170` 有 `subtree: true`）；tooltip 全量无 `slotchange` 处理（对比 `dropdown/index.ts:178`、`popover/index.ts:107`）；`tooltip/index.ts:150` 只在 `changed.has('content')` 时同步。
+- 缺口：`portal.ts:226` 的 hostObserver 只订阅 `{ childList: true }`，**无 `subtree`、无 `characterData`**（对比 `dropdown/index.ts:170` 有 `subtree: true`）；tooltip 全量无 `slotchange` 处理（对比 `dropdown/index.ts:178`、`popover/index.ts:107`）；`tooltip/index.ts:150` 只在 `changed.has('content')` 时同步。（2026-10-30 核验：`slotchange` 已补，现 trigger 与 content 两处 `@slotchange`（`packages/web-ui/src/components/tooltip/index.ts:365`、`:375`）；hostObserver 缺 `subtree` 的半个缺口仍属实）
 
 后果：框架把内容插进宿主内的 wrapper、或只替换文本节点时观察不到 → panel 内容不更新（视觉陈旧），不是节点泄漏。
 
@@ -96,7 +99,7 @@
 
 ### 6. 真实浏览器定位 / update 覆盖缺口
 
-有真实引擎定位断言的只有：`shared/overlay/__tests__/overlay-in-dialog.browser.spec.ts`（`:279-289`、`:318-319`、`:425-436`）与 `autocomplete.browser.spec.ts:798`。`popover`、`tooltip`、`select`、`context-menu` 的 browser 用例定位断言为 0；`dropdown` 的 `conditional.browser.spec.ts:48,117` 只是 `pollUntil(style.left)` 的前置等待，不是断言。
+有真实引擎定位断言的只有：`shared/overlay/__tests__/overlay-in-dialog.browser.spec.ts`（`:279-289`、`:318-319`、`:425-436`）与 `autocomplete.browser.spec.ts:798`。`popover`、`tooltip`、`select`、`context-menu` 的 browser 用例定位断言为 0；`dropdown` 的 `conditional.browser.spec.ts:48,117` 只是 `pollUntil(style.left)` 的前置等待，不是断言。（2026-10-30 核验：context-menu 现有 viewport-fit、submenu-reopen-fit 等含定位断言的 browser 用例）
 
 影响：`positioning-generation` 的代数守卫目前只在共享层与 autocomplete 上有真实引擎证据，其余组件只有 jsdom。
 
@@ -108,7 +111,7 @@
 
 结论：**#123 的剩余范围实际只剩 drawer 一处**，issue 里记的 image-preview 不在剩余范围内。
 
-- drawer 仍是 WAAPI 弹簧：`drawer/index.ts:9` 导入 `springOffsets` / `SPRING_PRESETS`；`:320`、`:395` 采样轨迹；`:329`、`:406` 用 `dialog.animate(keyframes, { duration, easing: 'linear', fill: 'both' })`；`:335`、`:409` 由 `onfinish` 收尾；`:363-365` 的 reflow 烘焙补丁（绕过 Safari transition before-change style 怪癖）仍在。
+- drawer 仍是 WAAPI 弹簧：`drawer/index.ts:9` 导入 `springOffsets` / `SPRING_PRESETS`；`:320`、`:395` 采样轨迹；`:329`、`:406` 用 `dialog.animate(keyframes, { duration, easing: 'linear', fill: 'both' })`；`:335`、`:409` 由 `onfinish` 收尾；`:363-365` 的 reflow 烘焙补丁（绕过 Safari transition before-change style 怪癖）仍在。（2026-10-30 核验：迁移已实施，`springOffsets` 全 src 0 命中；现 `packages/web-ui/src/components/drawer/index.ts:112` 明写「回弹即唯一的一次 CSS 过渡。全程无 element.animate()」；image-preview 一条仍真）
 - image-preview 的 swipe settle 已经是 CSS transition 驱动：`image-preview/index.ts:559-586` 只设置 `_swipeOffset` 目标值，`:588-591` 由 `transitionend` 收尾，`:585` 保留无过渡环境的兜底 timer。全组件无 `element.animate()`。
 
 迁移方向（待真机 A/B 由用户拍板后实施）：释放速度只用于动态设定 transition 时长与缓动（Base UI `useSwipeDismiss` 形态），删除 `springOffsets` 采样与 `onfinish` 烘焙；取舍是丢掉 overshoot 手感，换取对 Safari 采样怪癖的机制免疫。

@@ -3,8 +3,10 @@
 # 主题切换过渡复核（issue #105）：View Transitions 在当前 Chrome 的真实表现
 
 > 状态：非权威参考（时点性研究）。结论以现行 ADR、源码与测试为准。
+> 文中行号、实测数值与「当前实现」类描述均为写作时点，不随实现同步；现行权威见所引 ADR、源码与测试。
+> 现状（2026-10-30 核验）：该功能已实施并发布于 `packages/web-ui` 的 `web-ui-theme` 组件，不在 demo 侧；下文「挂起」「如果决定恢复」均为写作时点表述。
 
-复核日期 2026-09-17，工作区 `release/260917`，被测分支 `origin/feat/theme-transition`（tip `92d0ad47`），被测浏览器 Google Chrome 153.0.8010.48（macOS，headed 与 headless=new 各跑一轮）。本文件只做事实核验，**不实施任何代码修改**。
+复核日期 2026-09-17，工作区 `release/260917`，被测分支 `origin/feat/theme-transition`（tip `92d0ad47`），被测浏览器 Google Chrome 153.0.8010.48（macOS，headed 与 headless=new 各跑一轮）。本文件只做事实核验，**不实施任何代码修改**。（2026-10-30 核验：分支 `release/260917`、`origin/feat/theme-transition` 与 tip `92d0ad47` 均已不可解析（squash 合并后消失），文末据此写的复现命令随之失效；本文的实测叙述只能作为当时的记录阅读）
 
 ## 结论
 
@@ -18,20 +20,20 @@ issue #105 记录的三条挂起理由，在当前 Chrome 上**都不成立**：
 
 真正可复现的缺陷有两条，都在分支自带的参数与交互选择里，与 Chrome 无关：
 
-1. **动画时长 `4.6s linear`**。规范范例与 antd 线上取值都是 `500ms` + `ease-in`，分支写的 4.6s 是它的 9.2 倍。4.6s 的圆形揭示在观感上接近「页面卡住」，不是主题过渡。
+1. **动画时长 `4.6s linear`**。规范范例与 antd 线上取值都是 `500ms` + `ease-in`，分支写的 4.6s 是它的 9.2 倍。4.6s 的圆形揭示在观感上接近「页面卡住」，不是主题过渡。（2026-10-30 核验：这条对照已被逐条采纳为 token——`--wui-theme-transition-duration`（缺省 500）与 `--wui-theme-transition-easing`（`ease-in`），见 `packages/web-ui/src/components/theme/index.ts:303,304`）
 2. **transition 期间整页输入被吞**。规范明确要求 rendering suppression 期间「all pointer hit testing must target its document element, ignoring all other elements」（[css-view-transitions-1 §7.1.1](https://www.w3.org/TR/css-view-transitions-1/)），实测在 transition 未结束前点 `web-ui-select` panel 不展开（`optionW=0`、`aria-expanded=false`），`document.elementFromPoint(400,400)` 只返回 `HTML`。把时长写成 4.6s，等于每次切主题后 UI 死掉 4.6 秒——「点没反应 → 再点一次 → 页面还冻着」正好会被记成「不稳定」。
 
-另有两条与 issue 记载不符的事实需要更正：分支相对 `main` 的 3 个 commit 里只有 `92d0ad47` 是主题过渡，另两个是 stylelint/deps 清理；`apps/vue-web-ui-demo/src/assets/theme-transition.css` 与 `apps/react-web-ui-demo/src/assets/theme-transition.css` 两个文件在分支上**没有任何 import**（`git grep theme-transition.css 92d0ad47 -- apps` 无输出），真正生效的只有 `index.vue` 里的非 scoped `<style>` 块。
+另有两条与 issue 记载不符的事实需要更正：分支相对 `main` 的 3 个 commit 里只有 `92d0ad47` 是主题过渡，另两个是 stylelint/deps 清理；`apps/vue-web-ui-demo/src/assets/theme-transition.css` 与 `apps/react-web-ui-demo/src/assets/theme-transition.css` 两个文件在分支上**没有任何 import**（`git grep theme-transition.css 92d0ad47 -- apps` 无输出），真正生效的只有 `index.vue` 里的非 scoped `<style>` 块。（2026-10-30 核验：两个 CSS 文件均已删除——`find apps packages -name 'theme-transition*'` 现只剩 `packages/web-ui/src/components/theme/__tests__/theme-transition.browser.spec.ts`，即「建议 4」已落地；生效实现也已从 demo 迁到 `packages/web-ui`；tip `92d0ad47` 不可解析，本段的 `git grep … 92d0ad47` 配方随之失效）
 
 ## 分支实现的静态事实
 
-`apps/vue-web-ui-demo/src/app/index.vue`（`92d0ad47`）：
+`apps/vue-web-ui-demo/src/app/index.vue`（`92d0ad47`）：（2026-10-30 核验：该文件现已无任何 view-transition/theme-transition 代码，生效实现迁到了 `packages/web-ui/src/components/theme/`；下列各条是当时分支里的写法）
 
 - 半径取 `Math.ceil(Math.hypot(window.innerWidth, window.innerHeight))`，与点击位置无关；规范示例取 `Math.hypot(Math.max(x, w-x), Math.max(y, h-y))`（到最远角）。结果只是半径偏大，不影响正确性。
-- 时长 `animation: theme-transition-reveal 4.6s linear both`，`to-light` 方向用 `reverse`。
+- 时长 `animation: theme-transition-reveal 4.6s linear both`，`to-light` 方向用 `reverse`。（2026-10-30 核验：现行实现已不用 CSS `@keyframes`，改用 WAAPI `document.documentElement.animate(...)` 挂 `pseudoElement`，时长来自 token，见 `packages/web-ui/src/components/theme/index.ts:421-441`）
 - 显式关闭 `::view-transition-group(root)` 与两个快照伪元素的 UA 动画，只保留自己的 `clip-path` 关键帧，并用 `z-index: 2/1` 决定新旧层级。
 - 起点来自 `pointermove`/`pointerdown`/`click` 三处监听写入的 `themeTransitionOrigin`，缺省回落到视口中心。
-- 降级判断只有 `reducedMotion || !document.startViewTransition`，没有 `transition.ready` 失败分支——实测未触发，不构成缺陷。
+- 降级判断只有 `reducedMotion || !document.startViewTransition`，没有 `transition.ready` 失败分支——实测未触发，不构成缺陷。（2026-10-30 核验：该缺口已补——现行实现有 `.catch(() => undefined)`（`packages/web-ui/src/components/theme/index.ts:442`）与 `duration <= 0` 提前返回（`:407`））
 
 ## 实测一：真实 app（分支代码，Chrome 153）
 
@@ -85,7 +87,7 @@ issue #105 记录的三条挂起理由，在当前 Chrome 上**都不成立**：
 
 `keepAlive` 只负责把 `z-index` 从 999 收尾到 -1；真正的揭示由 WAAPI 挂在伪元素上：`clip-path: circle(0px at 1325px 143px) → circle(1526px at 1325px 143px)`，`duration: 500ms`，`easing: ease-in`，目标伪元素 `::view-transition-new(root)`（深→浅时换成 `::view-transition-old(root)`，方向反过来）。group 保留 UA 动画 `-ua-view-transition-group-anim-root`（250ms）但 `transform` 仍是 identity。生命周期 `updateCallbackDone` 124ms、`ready` 166ms、`finished` 790ms，两个方向都干净收尾（`html` class 变成 `dark` / `light`）。在第一段 transition 未结束时再触发一次 `startViewTransition`，前一条按规范被跳过（`finished` 315ms），后一条正常播完，无 reject。
 
-仓库里那两个未被引用的 `theme-transition.css`（`@keyframes keep-alive` + `.dark` 层级交换 + 注释「对齐 ant.design 实现」）就是 antd 这套 CSS 的直译；线上真正的差异在 JS 侧的 500ms/ease-in 与「动画挂在哪个伪元素」，而分支最终改用 CSS `@keyframes` + 4.6s linear。
+仓库里那两个未被引用的 `theme-transition.css`（`@keyframes keep-alive` + `.dark` 层级交换 + 注释「对齐 ant.design 实现」）就是 antd 这套 CSS 的直译；线上真正的差异在 JS 侧的 500ms/ease-in 与「动画挂在哪个伪元素」，而分支最终改用 CSS `@keyframes` + 4.6s linear。（2026-10-30 核验：那两个 CSS 文件已删除，现行实现见 `packages/web-ui/src/components/theme/index.ts`）
 
 ## 规范与状态事实（一手来源）
 
@@ -103,10 +105,12 @@ issue #105 记录的三条挂起理由，在当前 Chrome 上**都不成立**：
 
 ## 如果决定恢复该功能（判据，不实施）
 
+（2026-10-30 核验：本节判据已被逐条采纳，功能已实施并发布——现行实现见 `packages/web-ui/src/components/theme/index.ts`，下面的「不实施」是写作时点表述。）
+
 1. 时长与缓动对齐既有事实：`500ms` + `ease-in`，半径取到最远角；`to-light` 保持挂 `::view-transition-old(root)`。
 2. 半径/圆心只在 `startViewTransition` 前一次性写死，`to-*` class 与自定义属性在 `transition.finished` 后清理——分支现有逻辑已满足，保留。
 3. 明确接受「transition 期间整页不可点」这条规范约束：时长压到 500ms 后它不再是可感问题，但不要在 transition 中排队等待第二次切换；如需连点，走 `skipTransition()`。
-4. 删除两个未引用的 `theme-transition.css`，或改为真正单一来源并让 `index.vue` 引用它——现状是「看起来有实现文件、实际生效在 `<style>` 块」。
+4. 删除两个未引用的 `theme-transition.css`，或改为真正单一来源并让 `index.vue` 引用它——现状是「看起来有实现文件、实际生效在 `<style>` 块」。（2026-10-30 核验：本条已落地，两个文件均已删除——`find apps packages -name 'theme-transition*'` 现只剩 `packages/web-ui/src/components/theme/__tests__/theme-transition.browser.spec.ts`）
 5. 浏览器验证按 [`docs/agents/runtime-verification.md`](../agents/runtime-verification.md) 补齐 react/vue 两个 demo 的双向切换与 reduced-motion 分支。
 
 ## 复现方法
@@ -117,6 +121,8 @@ cd ../mono-worktrees/verify-theme-transition-105 && pnpm install --frozen-lockfi
 pnpm turbo build --filter '@greypan/vue-web-ui-demo^...'
 pnpm --filter @greypan/vue-web-ui-demo dev   # https://localhost:5174/
 ```
+
+（2026-10-30 核验：`git worktree add … origin/feat/theme-transition` 这条复现命令已无法执行——分支与 tip `92d0ad47` 均已不可解析（squash 后消失）。`https://localhost:5174/` 是那次运行的实测端口，本仓并未固定它（`apps/vue-web-ui-demo/vite.config.ts:223-228` 的 server 块没有 `port`）。）
 
 探针核心两步：包装 `document.startViewTransition` 记录 `updateCallbackDone`/`ready`/`finished` 与 `ready:reject`；`await transition.ready` 后 `document.getAnimations().forEach(a => a.pause())`，按 `currentTime = duration * f` 定位到任意进度，再读 `getComputedStyle(document.documentElement, '::view-transition-group(root)')` 与 `::view-transition-{old,new}(root)` 的 `transform`/`transform-origin`/`clip-path` 并截图。伪元素动画在 `document.getAnimations()` 里以 `effect.pseudoElement` 标识，不需要 CDP 扩展。
 

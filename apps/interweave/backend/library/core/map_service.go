@@ -79,7 +79,7 @@ func (s *MapService) GetLocalMap(ctx context.Context, tagID string) (*LocalMap, 
 	}
 
 	// 装配失败必须让整次探索失败：静默丢弃资源会呈现缺少关系依据的残缺网络，
-	// 破坏 ADR-0014 要求的“任意关系可解释”。
+	// 破坏 AGENTS.md「资源关系地图（Map）」的“任意关系可解释”：关系只从标签归属派生。
 	resList, err := s.views.assembleByIDs(ctx, s.db.SqlDB(), resIDs)
 	if err != nil {
 		return nil, err
