@@ -1,5 +1,11 @@
 # @greypan/web-ui
 
+## 12.0.1
+
+### Patch Changes
+
+- 334a2df: Point the dangling ADR numbers in collapse/drawer/overlay/group-management comments at ADRs that resolve today, or drop them; the doc comments shipped in the generated `.d.ts` change with it.
+
 ## 12.0.0
 
 ### Major Changes
