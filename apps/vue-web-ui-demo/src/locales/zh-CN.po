@@ -116,6 +116,14 @@ msgid "轻量、响应式的全局通知"
 msgstr "轻量、响应式的全局通知"
 
 #: src/pages/home/index.vue
+msgid "确定进度与不可确定状态"
+msgstr "确定进度与不可确定状态"
+
+#: src/pages/home/index.vue
+msgid "受控输入、清除与前缀后缀"
+msgstr "受控输入、清除与前缀后缀"
+
+#: src/pages/home/index.vue
 msgid "Web Components 原生"
 msgstr "Web Components 原生"
 

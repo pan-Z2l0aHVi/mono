@@ -142,8 +142,11 @@ describe('generate', () => {
     expect(readFileSync(vueDemo, 'utf8')).toBe(`${VUE_BODY}\n`)
 
     const data = outputs.map(output => readFileSync(path.join(output.output, 'examples.ts'), 'utf8'))
+    const manifests = outputs.map(output => readFileSync(path.join(output.output, 'demo-manifest.ts'), 'utf8'))
     const style = outputs.map(output => readFileSync(path.join(output.output, 'examples.css'), 'utf8'))
     expect(data[0]).toBe(data[1])
+    expect(manifests[0]).toBe(manifests[1])
+    expect(manifests[0]).toContain("'slider--basic'")
     expect(style[0]).toBe(style[1])
     expect(style[0]).toContain(CONFIG.darkSelector)
     // Markdown 正文版式也由生成器统一产出：宿主只挂 class，所有 demo 页共用这一份取值。

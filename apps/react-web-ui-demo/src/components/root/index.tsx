@@ -118,6 +118,7 @@ const navItems: NavItem[] = [
   { path: '/components/checkbox', label: 'Checkbox' },
   { path: '/components/segmented', label: 'Segmented' },
   { path: '/components/spinner', label: 'Spinner' },
+  { path: '/components/progress', label: 'Progress' },
   { path: '/components/popover', label: 'Popover' },
   { path: '/components/context-menu', label: 'ContextMenu' },
   { path: '/components/toast', label: 'Toast' },
@@ -484,11 +485,11 @@ export function Root() {
             <div
               slot="header"
               style={toastHeaderSafeAreaStyle}
-              className={`flex h-full w-full items-center justify-end gap-4 px-4 py-2 mobile:flex-wrap mobile:w-[calc(100vw-52px)] ${topRightToastHeaderPaddingTop > 0 ? 'pt-[var(--toast-header-safe-top)]' : ''}`}
+              className={`flex h-full w-full items-center justify-end gap-4 px-4 py-2 mobile:grid mobile:w-[calc(100vw-52px)] mobile:grid-cols-3 mobile:gap-1.5 mobile:px-2 mobile:py-1 ${topRightToastHeaderPaddingTop > 0 ? 'pt-[var(--toast-header-safe-top)]' : ''}`}
             >
               <web-ui-select
                 value={themeMotion}
-                className="[--wui-input-width:160px]"
+                className="[--wui-input-width:160px] mobile:w-full mobile:[--wui-input-width:100%]"
                 aria-label="全局动效"
                 onChange={updateThemeMotion}
               >
@@ -504,7 +505,7 @@ export function Root() {
               </web-ui-select>
               <web-ui-select
                 value={themeAppearance}
-                className="[--wui-input-width:160px]"
+                className="[--wui-input-width:160px] mobile:w-full mobile:[--wui-input-width:100%]"
                 aria-label="全局主题"
                 onChange={updateThemeAppearance}
               >
@@ -522,7 +523,7 @@ export function Root() {
                 value={locale}
                 disabled={localePending}
                 aria-busy={localePending ? 'true' : 'false'}
-                className="[--wui-input-width:120px]"
+                className="[--wui-input-width:120px] mobile:w-full mobile:[--wui-input-width:100%]"
                 aria-label="全局语言"
                 onChange={updateLocale}
               >

@@ -178,6 +178,13 @@ declare module 'vue-router/auto-routes' {
       Record<never, never>,
       | never
     >,
+    '/components/progress': RouteRecordInfo<
+      '/components/progress',
+      '/components/progress',
+      Record<never, never>,
+      Record<never, never>,
+      | never
+    >,
     '/components/radio': RouteRecordInfo<
       '/components/radio',
       '/components/radio',
@@ -438,6 +445,14 @@ declare module 'vue-router/auto-routes' {
     'src/pages/components/popover.vue': {
       routes:
         | '/components/popover'
+      views:
+        | never
+      pathParamNames:
+        | never
+    }
+    'src/pages/components/progress.vue': {
+      routes:
+        | '/components/progress'
       views:
         | never
       pathParamNames:

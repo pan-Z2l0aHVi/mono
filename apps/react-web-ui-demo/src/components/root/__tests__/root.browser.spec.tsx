@@ -198,7 +198,7 @@ describe('应用外壳（浏览器）：导航 collapsed state 不跨视口泄�
 
     const links = [...navRoot().querySelectorAll<HTMLAnchorElement>('a')]
     const fullLabels = links.map(link => link.getAttribute('aria-label'))
-    expect(links).toHaveLength(32)
+    expect(links).toHaveLength(33)
     expect(links.map(link => link.querySelector('span')?.textContent?.trim())).toEqual(fullLabels)
     expect(links.every(link => link.title === '')).toBe(true)
 
@@ -233,6 +233,23 @@ describe('应用外壳（浏览器）：导航 collapsed state 不跨视口泄�
     expect(controls.every(bounds => bounds.width > 0 && bounds.left >= 0 && bounds.right <= window.innerWidth)).toBe(
       true
     )
+  })
+
+  it('320px 移动视口内三个全局选择器全部留在视口内，page 不产生横向滚动', async () => {
+    await mountAppShell()
+    await changeViewport({ width: 320, height: 700 })
+    await settleViewport(true)
+
+    const controls = ['全局动效', '全局主题', '全局语言'].map(label => {
+      const control = document.querySelector<HTMLElement>(`[aria-label="${label}"]`)
+      if (!control) throw new Error(`missing global control: ${label}`)
+      return control.getBoundingClientRect()
+    })
+
+    expect(controls.every(bounds => bounds.width > 0 && bounds.left >= 0 && bounds.right <= window.innerWidth)).toBe(
+      true
+    )
+    expect(document.documentElement.scrollWidth).toBe(document.documentElement.clientWidth)
   })
 
   it('英文界面下全局主题与动效选择器完整显示 Follow system', async () => {

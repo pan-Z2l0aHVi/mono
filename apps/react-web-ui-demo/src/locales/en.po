@@ -115,6 +115,14 @@ msgstr "Floating UI based dropdown layer and options"
 msgid "轻量、响应式的全局通知"
 msgstr "Lightweight responsive global notifications"
 
+#: src/routes/home/-component.tsx
+msgid "确定进度与不可确定状态"
+msgstr "Determinate and indeterminate progress"
+
+#: src/routes/home/-component.tsx
+msgid "受控输入、清除与前缀后缀"
+msgstr "Controlled input, clear, prefix and suffix"
+
 #: src/components/root/root-error-fallback/index.tsx
 msgid "出了点问题"
 msgstr "Something went wrong"

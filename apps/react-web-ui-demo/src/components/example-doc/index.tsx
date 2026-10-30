@@ -70,6 +70,35 @@ const codeScrollbarsEvents = {
   }
 }
 
+interface TableScrollbarEvents {
+  initialized: (instance: OverlayScrollbars) => void
+  updated: (instance: OverlayScrollbars) => void
+}
+
+const tableScrollbarsEventCache = new Map<string, TableScrollbarEvents>()
+
+function decorateTableScrollViewport(instance: OverlayScrollbars, headingId: string) {
+  const viewport = instance.elements().viewport
+  viewport.tabIndex = 0
+  viewport.setAttribute('role', 'region')
+  viewport.setAttribute('aria-labelledby', headingId)
+}
+
+function tableScrollbarsEvents(headingId: string): TableScrollbarEvents {
+  const cached = tableScrollbarsEventCache.get(headingId)
+  if (cached) return cached
+  const events = {
+    initialized: (instance: OverlayScrollbars) => decorateTableScrollViewport(instance, headingId),
+    updated: (instance: OverlayScrollbars) => decorateTableScrollViewport(instance, headingId)
+  }
+  tableScrollbarsEventCache.set(headingId, events)
+  return events
+}
+
+function apiHeadingId(component: string, key: string) {
+  return `${component}-api-${key}`
+}
+
 interface ExampleDocProps {
   component: string
   /** 预览与默认代码 tab 使用的框架；默认 React 站。 */
@@ -424,38 +453,47 @@ function ExampleDoc({ component, nativeFlavor = 'react', previewAnchorsOnly = fa
               `.mdc-markdown` 也挂在这一层：散文与表格共用同一套 Notion 标签样式。 */}
           {doc.api.map(section => (
             <div className="mdc-markdown flex flex-col gap-3" data-example-api={section.key} key={section.key}>
-              <SampleHeading className="mdc-heading">{section.title}</SampleHeading>
+              <SampleHeading id={apiHeadingId(component, section.key)} className="mdc-heading">
+                {section.title}
+              </SampleHeading>
               {section.kind === 'prose' ? (
                 // 散文正文是生成器渲染好的 HTML 片段，不是运行时拼的用户输入。
                 <div dangerouslySetInnerHTML={{ __html: section.html }} />
               ) : (
-                <table>
-                  <thead>
-                    <tr>
-                      {section.columns.map(column => (
-                        <th key={column.title}>{column.title}</th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {section.rows.map(row => (
-                      <tr key={row[0]}>
-                        {section.columns.map((column, index) =>
-                          column.kind === 'html' ? (
-                            <td key={column.title} dangerouslySetInnerHTML={{ __html: row[index] ?? '' }} />
-                          ) : column.kind === 'code' && row[index] !== NO_DEFAULT_VALUE ? (
-                            // 值列（类型 / 默认值）由生成器标成 'code'：它们是字面量，不是散文。
-                            <td key={column.title}>
-                              <code>{row[index]}</code>
-                            </td>
-                          ) : (
-                            <td key={column.title}>{row[index]}</td>
-                          )
-                        )}
+                <OverlayScrollbarsComponent
+                  options={appScrollbarsOptions}
+                  events={tableScrollbarsEvents(apiHeadingId(component, section.key))}
+                  className="overflow-x-auto"
+                  data-api-table-scroll
+                >
+                  <table className="min-w-[36rem]">
+                    <thead>
+                      <tr>
+                        {section.columns.map(column => (
+                          <th key={column.title}>{column.title}</th>
+                        ))}
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
+                    </thead>
+                    <tbody>
+                      {section.rows.map(row => (
+                        <tr key={row[0]}>
+                          {section.columns.map((column, index) =>
+                            column.kind === 'html' ? (
+                              <td key={column.title} dangerouslySetInnerHTML={{ __html: row[index] ?? '' }} />
+                            ) : column.kind === 'code' && row[index] !== NO_DEFAULT_VALUE ? (
+                              // 值列（类型 / 默认值）由生成器标成 'code'：它们是字面量，不是散文。
+                              <td key={column.title}>
+                                <code>{row[index]}</code>
+                              </td>
+                            ) : (
+                              <td key={column.title}>{row[index]}</td>
+                            )
+                          )}
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </OverlayScrollbarsComponent>
               )}
             </div>
           ))}

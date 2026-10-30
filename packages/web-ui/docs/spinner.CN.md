@@ -98,9 +98,7 @@ export default function Demo() {
       <web-ui-button onClick={() => WebUiSpinner.show()}>show()</web-ui-button>
       <web-ui-button onClick={() => WebUiSpinner.hide()}>hide()</web-ui-button>
       <web-ui-button onClick={() => WebUiSpinner.show({ size: 16 })}>小（16px）</web-ui-button>
-      <web-ui-button onClick={() => WebUiSpinner.show({ size: 64, duration: 2000 })}>
-        大（64px），2 秒后自己收
-      </web-ui-button>
+      <web-ui-button onClick={() => WebUiSpinner.show({ size: 64, duration: 2000 })}>大（64px）</web-ui-button>
       <web-ui-button onClick={() => WebUiSpinner.show({ description: '正在同步云端文件，约 10 秒', duration: 10000 })}>
         带说明，10 秒
       </web-ui-button>
@@ -115,7 +113,7 @@ export default function Demo() {
     <web-ui-button @click="show">show()</web-ui-button>
     <web-ui-button @click="hide">hide()</web-ui-button>
     <web-ui-button @click="showSmall">小（16px）</web-ui-button>
-    <web-ui-button @click="showLarge">大（64px），2 秒后自己收</web-ui-button>
+    <web-ui-button @click="showLarge">大（64px）</web-ui-button>
     <web-ui-button @click="showWithDescription">带说明，10 秒</web-ui-button>
   </div>
 </template>

@@ -18,10 +18,10 @@ export default function Demo() {
         Wider padding and slot gap
       </web-ui-button>
       <web-ui-button variant="primary" style={successOnly}>
-        Only the background changes; hover and pressed deepen with it
+        Background only
       </web-ui-button>
       <web-ui-button variant="secondary" style={fourStates}>
-        Each of the four states points to a token
+        Four state colors
       </web-ui-button>
     </div>
   )

@@ -1,6 +1,6 @@
 # Worktree 执行环境与共享缓存
 
-本文件拥有三件互相关联的事：在一个新 worktree 里把工具链准备好、让各 worktree 共享同一份构建缓存、以及在未激活 mise 的 shell 里正确执行命令。它们的共同线索是「拿到一个 worktree 之后怎么正确执行命令」，所以放在一起。
+本文件拥有四件互相关联的事：在一个新 worktree 里把工具链准备好、让各 worktree 共享同一份构建缓存、让各 worktree 共用一份本机 HTTPS 证书，以及在未激活 mise 的 shell 里正确执行命令。它们的共同线索是「拿到一个 worktree 之后怎么正确执行命令」，所以放在一起。
 
 worktree 本身是任务隔离边界，不是包名的别名。包清单、依赖边界与发布边界以 [`ARCHITECTURE.md`](../../ARCHITECTURE.md) 为权威；客户端权限边界见 [`environments.md`](./environments.md)；mise/turbo 的 env 注入由本文承担；提交边界的授权口径见 [`commit.md`](./commit.md)。
 
@@ -17,6 +17,23 @@ worktree 本身是任务隔离边界，不是包名的别名。包清单、依�
 `mise install` 排第一，因为工具链版本由 [`.mise.toml`](../../.mise.toml) 钉住，不同分支可能钉不同版本；它幂等，装过就是一次快速 no-op。
 
 显式运行根 `fix-code` 或 `check-code` 前需要 `node_modules`；完整环境还须构建 workspace 包的 `dist` 类型产物。缺少产物时，`vp check` 会把跨包 import 报成假 `TS2307`，类型感知验证随之不可用。`fix-code` 会修改工作树内容，但不会自动暂存；整理后先检查 diff，再选择要暂存的文件。
+
+## 本地 HTTPS 证书
+
+两个 demo 的 dev/preview 通过本机 mkcert 证书提供 HTTPS。证书放在用户目录 `~/.config/greypan/dev-certs/`，同一台机器的所有 worktree 共用一份；它不随 checkout 复制，也不入库。上面的三步准备不包含这一步，因为它是每台机器一次的本地信任配置。
+
+首次使用或换机器时运行：
+
+```sh
+mkcert -install
+mkdir -p ~/.config/greypan/dev-certs
+mkcert \
+  -cert-file ~/.config/greypan/dev-certs/localhost.pem \
+  -key-file ~/.config/greypan/dev-certs/localhost-key.pem \
+  localhost 127.0.0.1 ::1
+```
+
+`mkcert -install` 会把 mkcert 的本地 CA 加入系统信任库，ChatGPT app 的内嵌浏览器因此能通过 TLS 校验。证书缺失时 dev/preview 直接失败并打印上述命令；测试档在 CI 没有证书时保持 HTTP，Playwright 自身忽略证书错误。需要换目录时设置 `GREYPAN_DEV_CERT_DIR`；两个 demo 的 `vite.config.ts` 读同一个变量。
 
 ## Turbo artifact cache
 

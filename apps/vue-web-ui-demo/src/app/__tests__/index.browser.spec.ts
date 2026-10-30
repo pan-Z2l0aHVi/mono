@@ -434,6 +434,21 @@ describe('应用外壳（浏览器）：导航 collapsed state 不跨视口泄�
     expect(document.querySelector('web-ui-select[aria-label="全局动效"]')).not.toBeNull()
   })
 
+  it('320px 下三个全局选择器全部留在视口内，page 不产生横向滚动', async () => {
+    await setViewport(320, 700)
+    await mountAppShell()
+
+    const selects = [...document.querySelectorAll<HTMLElement>('web-ui-select')]
+    expect(selects).toHaveLength(3)
+    for (const select of selects) {
+      const bounds = select.getBoundingClientRect()
+      expect(bounds.width).toBeGreaterThan(0)
+      expect(bounds.left).toBeGreaterThanOrEqual(0)
+      expect(bounds.right).toBeLessThanOrEqual(document.documentElement.clientWidth + 0.5)
+    }
+    expect(document.documentElement.scrollWidth).toBe(document.documentElement.clientWidth)
+  })
+
   it('桌面端 collapsed state 沿用完整导航名、超出部分省略，并通过 title 提供完整 label', async () => {
     await mountAppShell()
     const links = [...navRoot().querySelectorAll<HTMLAnchorElement>('a')]

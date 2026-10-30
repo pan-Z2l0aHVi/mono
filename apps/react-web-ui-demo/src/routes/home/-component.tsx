@@ -17,7 +17,9 @@ const quickLinks = [
   { path: '/components/drawer', label: 'Drawer' },
   { path: '/components/theme', label: 'Theme' },
   { path: '/components/select', label: 'Select' },
-  { path: '/components/toast', label: 'Toast' }
+  { path: '/components/toast', label: 'Toast' },
+  { path: '/components/progress', label: 'Progress' },
+  { path: '/components/input', label: 'Input' }
 ]
 
 // 描述在渲染期取，切语种时随 Home 的运行时重新求值；放在模块顶层会让文案被抽成非响应式常量。
@@ -35,6 +37,10 @@ function quickLinkDescription(path: string) {
       return '基于 Floating UI 的下拉浮层与选项'
     case '/components/toast':
       return '轻量、响应式的全局通知'
+    case '/components/progress':
+      return '确定进度与不可确定状态'
+    case '/components/input':
+      return '受控输入、清除与前缀后缀'
     default:
       return ''
   }
@@ -100,7 +106,7 @@ function Home() {
                   {quickLinkDescription(link.path)}
                 </div>
               </div>
-              <div className="mt-3 text-xs font-medium text-(--wui-color-accent) flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+              <div className="mt-3 text-xs font-medium text-(--wui-color-accent) flex items-center gap-1 opacity-70 group-hover:opacity-100 transition-opacity">
                 查看演示 →
               </div>
             </Link>

@@ -115,6 +115,14 @@ msgstr "基于 Floating UI 的下拉浮层与选项"
 msgid "轻量、响应式的全局通知"
 msgstr "轻量、响应式的全局通知"
 
+#: src/routes/home/-component.tsx
+msgid "确定进度与不可确定状态"
+msgstr "确定进度与不可确定状态"
+
+#: src/routes/home/-component.tsx
+msgid "受控输入、清除与前缀后缀"
+msgstr "受控输入、清除与前缀后缀"
+
 #: src/components/root/root-error-fallback/index.tsx
 msgid "出了点问题"
 msgstr "出了点问题"

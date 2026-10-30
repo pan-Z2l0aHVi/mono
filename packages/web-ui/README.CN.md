@@ -413,6 +413,7 @@ dropdown、tooltip）不需要它。
 |                       | [`<web-ui-empty>`](https://github.com/pan-Z2l0aHVi/mono/blob/main/packages/web-ui/docs/empty.CN.md)                         |
 |                       | [`<web-ui-middle-ellipsis>`](https://github.com/pan-Z2l0aHVi/mono/blob/main/packages/web-ui/docs/middle-ellipsis.CN.md)     |
 |                       | [`<web-ui-icon>`](https://github.com/pan-Z2l0aHVi/mono/blob/main/packages/web-ui/docs/icon.CN.md)                           |
+|                       | [`<web-ui-progress>`](https://github.com/pan-Z2l0aHVi/mono/blob/main/packages/web-ui/docs/progress.CN.md)                   |
 |                       | [`<web-ui-spinner>`](https://github.com/pan-Z2l0aHVi/mono/blob/main/packages/web-ui/docs/spinner.CN.md)                     |
 | **布局与工具**        | [`<web-ui-layout>`](https://github.com/pan-Z2l0aHVi/mono/blob/main/packages/web-ui/docs/layout.CN.md)                       |
 |                       | [`<web-ui-back-top>`](https://github.com/pan-Z2l0aHVi/mono/blob/main/packages/web-ui/docs/back-top.CN.md)                   |

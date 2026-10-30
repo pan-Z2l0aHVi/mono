@@ -116,6 +116,14 @@ msgid "轻量、响应式的全局通知"
 msgstr "Lightweight responsive global notifications"
 
 #: src/pages/home/index.vue
+msgid "确定进度与不可确定状态"
+msgstr "Determinate and indeterminate progress"
+
+#: src/pages/home/index.vue
+msgid "受控输入、清除与前缀后缀"
+msgstr "Controlled input, clear, prefix and suffix"
+
+#: src/pages/home/index.vue
 msgid "Web Components 原生"
 msgstr "Native Web Components"
 

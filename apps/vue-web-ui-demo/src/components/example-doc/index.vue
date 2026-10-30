@@ -105,6 +105,35 @@ const codeScrollbarsEvents = {
   }
 }
 
+interface TableScrollbarEvents {
+  initialized: (instance: OverlayScrollbars) => void
+  updated: (instance: OverlayScrollbars) => void
+}
+
+const tableScrollbarsEventCache = new Map<string, TableScrollbarEvents>()
+
+function decorateTableScrollViewport(instance: OverlayScrollbars, headingId: string) {
+  const viewport = instance.elements().viewport
+  viewport.tabIndex = 0
+  viewport.setAttribute('role', 'region')
+  viewport.setAttribute('aria-labelledby', headingId)
+}
+
+function tableScrollbarsEvents(headingId: string): TableScrollbarEvents {
+  const cached = tableScrollbarsEventCache.get(headingId)
+  if (cached) return cached
+  const events = {
+    initialized: (instance: OverlayScrollbars) => decorateTableScrollViewport(instance, headingId),
+    updated: (instance: OverlayScrollbars) => decorateTableScrollViewport(instance, headingId)
+  }
+  tableScrollbarsEventCache.set(headingId, events)
+  return events
+}
+
+function apiHeadingId(key: string) {
+  return `${props.component}-api-${key}`
+}
+
 function onFlavorInput(event: Event, key: string) {
   const value = (event.currentTarget as { value?: string } | null)?.value
   if (value === 'vue' || value === 'react') selectFlavor(key, value)
@@ -373,30 +402,40 @@ function copyAnnouncement(key: string) {
         class="mdc-markdown flex flex-col gap-3"
         :data-example-api="section.key"
       >
-        <component :is="`h${sampleHeadingLevel}`" class="mdc-heading">{{ section.title }}</component>
+        <component :is="`h${sampleHeadingLevel}`" :id="apiHeadingId(section.key)" class="mdc-heading">
+          {{ section.title }}
+        </component>
         <!-- 散文正文是生成器渲染好的 HTML 片段，不是运行时拼的用户输入。 -->
         <div v-if="section.kind === 'prose'" v-html="section.html"></div>
-        <table v-else>
-          <thead>
-            <tr>
-              <th v-for="column in section.columns" :key="column.title">
-                {{ column.title }}
-              </th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr v-for="row in section.rows" :key="row[0]">
-              <template v-for="(column, index) in section.columns" :key="column.title">
-                <!-- 值列（类型 / 默认值）由生成器标成 'code'：它们是字面量，不是散文。 -->
-                <td v-if="column.kind === 'html'" v-html="row[index]"></td>
-                <td v-else-if="column.kind === 'code' && row[index] !== NO_DEFAULT_VALUE">
-                  <code>{{ row[index] }}</code>
-                </td>
-                <td v-else>{{ row[index] }}</td>
-              </template>
-            </tr>
-          </tbody>
-        </table>
+        <OverlayScrollbarsComponent
+          v-else
+          :options="appScrollbarsOptions"
+          :events="tableScrollbarsEvents(apiHeadingId(section.key))"
+          class="overflow-x-auto"
+          data-api-table-scroll
+        >
+          <table class="min-w-[36rem]">
+            <thead>
+              <tr>
+                <th v-for="column in section.columns" :key="column.title">
+                  {{ column.title }}
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="row in section.rows" :key="row[0]">
+                <template v-for="(column, index) in section.columns" :key="column.title">
+                  <!-- 值列（类型 / 默认值）由生成器标成 'code'：它们是字面量，不是散文。 -->
+                  <td v-if="column.kind === 'html'" v-html="row[index]"></td>
+                  <td v-else-if="column.kind === 'code' && row[index] !== NO_DEFAULT_VALUE">
+                    <code>{{ row[index] }}</code>
+                  </td>
+                  <td v-else>{{ row[index] }}</td>
+                </template>
+              </tr>
+            </tbody>
+          </table>
+        </OverlayScrollbarsComponent>
       </div>
     </section>
   </section>

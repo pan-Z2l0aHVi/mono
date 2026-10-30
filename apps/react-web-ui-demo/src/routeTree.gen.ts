@@ -30,6 +30,7 @@ import { Route as ComponentsInputNumberRouteImport } from './routes/components/i
 import { Route as ComponentsLayoutRouteImport } from './routes/components/layout'
 import { Route as ComponentsMiddleEllipsisRouteImport } from './routes/components/middle-ellipsis'
 import { Route as ComponentsPopoverRouteImport } from './routes/components/popover'
+import { Route as ComponentsProgressRouteImport } from './routes/components/progress'
 import { Route as ComponentsRadioRouteImport } from './routes/components/radio'
 import { Route as ComponentsSegmentedRouteImport } from './routes/components/segmented'
 import { Route as ComponentsSelectRouteImport } from './routes/components/select'
@@ -149,6 +150,11 @@ const ComponentsPopoverRoute = ComponentsPopoverRouteImport.update({
   path: '/components/popover',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ComponentsProgressRoute = ComponentsProgressRouteImport.update({
+  id: '/components/progress',
+  path: '/components/progress',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ComponentsRadioRoute = ComponentsRadioRouteImport.update({
   id: '/components/radio',
   path: '/components/radio',
@@ -232,6 +238,7 @@ export interface FileRoutesByFullPath {
   '/components/layout': typeof ComponentsLayoutRoute
   '/components/middle-ellipsis': typeof ComponentsMiddleEllipsisRoute
   '/components/popover': typeof ComponentsPopoverRoute
+  '/components/progress': typeof ComponentsProgressRoute
   '/components/radio': typeof ComponentsRadioRoute
   '/components/segmented': typeof ComponentsSegmentedRoute
   '/components/select': typeof ComponentsSelectRoute
@@ -267,6 +274,7 @@ export interface FileRoutesByTo {
   '/components/layout': typeof ComponentsLayoutRoute
   '/components/middle-ellipsis': typeof ComponentsMiddleEllipsisRoute
   '/components/popover': typeof ComponentsPopoverRoute
+  '/components/progress': typeof ComponentsProgressRoute
   '/components/radio': typeof ComponentsRadioRoute
   '/components/segmented': typeof ComponentsSegmentedRoute
   '/components/select': typeof ComponentsSelectRoute
@@ -303,6 +311,7 @@ export interface FileRoutesById {
   '/components/layout': typeof ComponentsLayoutRoute
   '/components/middle-ellipsis': typeof ComponentsMiddleEllipsisRoute
   '/components/popover': typeof ComponentsPopoverRoute
+  '/components/progress': typeof ComponentsProgressRoute
   '/components/radio': typeof ComponentsRadioRoute
   '/components/segmented': typeof ComponentsSegmentedRoute
   '/components/select': typeof ComponentsSelectRoute
@@ -340,6 +349,7 @@ export interface FileRouteTypes {
     | '/components/layout'
     | '/components/middle-ellipsis'
     | '/components/popover'
+    | '/components/progress'
     | '/components/radio'
     | '/components/segmented'
     | '/components/select'
@@ -375,6 +385,7 @@ export interface FileRouteTypes {
     | '/components/layout'
     | '/components/middle-ellipsis'
     | '/components/popover'
+    | '/components/progress'
     | '/components/radio'
     | '/components/segmented'
     | '/components/select'
@@ -410,6 +421,7 @@ export interface FileRouteTypes {
     | '/components/layout'
     | '/components/middle-ellipsis'
     | '/components/popover'
+    | '/components/progress'
     | '/components/radio'
     | '/components/segmented'
     | '/components/select'
@@ -446,6 +458,7 @@ export interface RootRouteChildren {
   ComponentsLayoutRoute: typeof ComponentsLayoutRoute
   ComponentsMiddleEllipsisRoute: typeof ComponentsMiddleEllipsisRoute
   ComponentsPopoverRoute: typeof ComponentsPopoverRoute
+  ComponentsProgressRoute: typeof ComponentsProgressRoute
   ComponentsRadioRoute: typeof ComponentsRadioRoute
   ComponentsSegmentedRoute: typeof ComponentsSegmentedRoute
   ComponentsSelectRoute: typeof ComponentsSelectRoute
@@ -609,6 +622,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ComponentsPopoverRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/components/progress': {
+      id: '/components/progress'
+      path: '/components/progress'
+      fullPath: '/components/progress'
+      preLoaderRoute: typeof ComponentsProgressRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/components/radio': {
       id: '/components/radio'
       path: '/components/radio'
@@ -718,6 +738,7 @@ const rootRouteChildren: RootRouteChildren = {
   ComponentsLayoutRoute: ComponentsLayoutRoute,
   ComponentsMiddleEllipsisRoute: ComponentsMiddleEllipsisRoute,
   ComponentsPopoverRoute: ComponentsPopoverRoute,
+  ComponentsProgressRoute: ComponentsProgressRoute,
   ComponentsRadioRoute: ComponentsRadioRoute,
   ComponentsSegmentedRoute: ComponentsSegmentedRoute,
   ComponentsSelectRoute: ComponentsSelectRoute,

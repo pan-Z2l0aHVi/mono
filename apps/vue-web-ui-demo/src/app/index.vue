@@ -315,6 +315,7 @@ const navItems: NavItem[] = [
   { path: '/components/checkbox', label: 'Checkbox' },
   { path: '/components/segmented', label: 'Segmented' },
   { path: '/components/spinner', label: 'Spinner' },
+  { path: '/components/progress', label: 'Progress' },
   { path: '/components/popover', label: 'Popover' },
   { path: '/components/context-menu', label: 'ContextMenu' },
   { path: '/components/toast', label: 'Toast' },
@@ -373,10 +374,13 @@ function isNavActive(path: string) {
           </web-ui-button>
           <span class="col-start-2 text-center">🎉 欢迎使用 web-ui 组件库！</span>
         </div>
-        <div slot="header" class="flex h-full w-full items-center justify-end gap-2 px-4 py-2 mobile:w-screen">
+        <div
+          slot="header"
+          class="flex h-full w-full items-center justify-end gap-2 px-4 py-2 mobile:grid mobile:w-[calc(100vw-52px)] mobile:grid-cols-3 mobile:gap-1.5 mobile:px-2 mobile:py-1"
+        >
           <web-ui-select
             :value="themeMotion"
-            class="[--wui-input-width:120px] mobile:[--wui-input-width:90px]"
+            class="[--wui-input-width:120px] mobile:w-full mobile:[--wui-input-width:100%]"
             aria-label="全局动效"
             @change="updateThemeMotion"
           >
@@ -386,7 +390,7 @@ function isNavActive(path: string) {
           </web-ui-select>
           <web-ui-select
             :value="themeAppearance"
-            class="[--wui-input-width:120px] mobile:[--wui-input-width:90px]"
+            class="[--wui-input-width:120px] mobile:w-full mobile:[--wui-input-width:100%]"
             aria-label="全局主题"
             @change="updateThemeAppearance"
           >
@@ -398,7 +402,7 @@ function isNavActive(path: string) {
             :value="currentLocale"
             :disabled="localePending"
             :aria-busy="localePending"
-            class="[--wui-input-width:120px] mobile:[--wui-input-width:90px]"
+            class="[--wui-input-width:120px] mobile:w-full mobile:[--wui-input-width:100%]"
             aria-label="全局语言"
             @change="updateLocale"
           >

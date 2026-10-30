@@ -22,7 +22,9 @@ const quickLinks = [
   { path: '/components/drawer', label: 'Drawer', desc: () => '手势拖拽关闭与浮动卡片形态' },
   { path: '/components/theme', label: 'Theme', desc: () => '深浅外观切换与减弱动效' },
   { path: '/components/select', label: 'Select', desc: () => '基于 Floating UI 的下拉浮层与选项' },
-  { path: '/components/toast', label: 'Toast', desc: () => '轻量、响应式的全局通知' }
+  { path: '/components/toast', label: 'Toast', desc: () => '轻量、响应式的全局通知' },
+  { path: '/components/progress', label: 'Progress', desc: () => '确定进度与不可确定状态' },
+  { path: '/components/input', label: 'Input', desc: () => '受控输入、清除与前缀后缀' }
 ]
 
 // 子路径部署（GITHUB_BASE_PATH）下写死的绝对路径会 404，logo 必须带上 base 前缀。
@@ -98,7 +100,7 @@ const logoSrc = `${import.meta.env.BASE_URL}bo-transparent.png`
             </div>
           </div>
           <div
-            class="mt-3 text-xs font-medium text-(--wui-color-accent) flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity"
+            class="mt-3 text-xs font-medium text-(--wui-color-accent) flex items-center gap-1 opacity-70 group-hover:opacity-100 transition-opacity"
           >
             查看演示 →
           </div>
