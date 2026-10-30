@@ -1,6 +1,6 @@
 {
   "name": "@greypan/monorepo-kit",
-  "version": "0.0.0",
+  "version": "0.0.1",
   "description": "Composable gates, policy checks and build orchestration helpers for pnpm monorepos",
   "license": "MIT",
   "repository": {
