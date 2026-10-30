@@ -18,6 +18,14 @@ worktree 本身是任务隔离边界，不是包名的别名。包清单、依�
 
 显式运行根 `fix-code` 或 `check-code` 前需要 `node_modules`；完整环境还须构建 workspace 包的 `dist` 类型产物。缺少产物时，`vp check` 会把跨包 import 报成假 `TS2307`，类型感知验证随之不可用。`fix-code` 会修改工作树内容，但不会自动暂存；整理后先检查 diff，再选择要暂存的文件。
 
+## 按任务收缩视野
+
+三步准备完成后、任务交给实施 agent 前，编排层可以按任务目标把 sparse checkout 收缩到目标包及其 turbo 依赖闭包，减少无关代码的上下文占用。顺序不能颠倒：闭包来自 turbo 图，而 `turbo ls` 在未安装依赖的 worktree 里跑不起来；收缩后也仍依赖已完成 install/build 的 `node_modules` 与 `dist`。
+
+脚本、参数与稀疏树里的安全规则见 [`.agents/skills/turbo-sparse-scope/SKILL.md`](../../.agents/skills/turbo-sparse-scope/SKILL.md)。三条口径固定：全仓 gate、影响面分析与合并前验证要先 `--restore` 恢复全树（或交给 CI）；全局引用搜索用 `git grep <pattern> HEAD`，本地 `rg`/`grep -r` 只能看到 cone 内的文件；稀疏树里不要跑不带 `--frozen-lockfile` 的 `pnpm install`，它按缩小的 workspace 图重写 `pnpm-lock.yaml`。
+
+收缩会连同被隐藏包的目录删除其 `node_modules` 与 `dist`，`--restore` 只带回已跟踪文件，所以恢复后要重跑 `pnpm install --frozen-lockfile` 与 `pnpm run build`；缓存命中时两者都很快。
+
 ## Turbo artifact cache
 
 `TURBO_CACHE_DIR` 指向系统临时目录下的 `<temp>/greypan/turbo-cache/<repo-id>`。[`scripts/lib/turbo-cache-dir.sh`](../../scripts/lib/turbo-cache-dir.sh) 是唯一的路径解析器，`.mise.toml`、`clean.sh` 与 `env-doctor` 都调用它：它把 Git common directory 解析为物理路径，再用 `git hash-object --stdin` 计算稳定 ID。主仓及其 linked worktree 因共用 Git common directory 而复用同一缓存；独立 clone 有不同的 common directory 和缓存 ID。helper 不创建目录、不写 Git 对象，也不读取继承的 `TURBO_CACHE_DIR`。
