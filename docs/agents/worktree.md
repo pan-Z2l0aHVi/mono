@@ -1,6 +1,6 @@
 # Worktree 执行环境与共享缓存
 
-本文件拥有三件互相关联的事：在一个新 worktree 里把工具链准备好、让各 worktree 共享同一份构建缓存、以及在未激活 mise 的 shell 里正确执行命令。它们的共同线索是「拿到一个 worktree 之后怎么正确执行命令」，所以放在一起。
+本文件拥有 worktree 准备与执行环境的几件互相关联的事：在一个新 worktree 里把工具链准备好、按任务收缩视野、让各 worktree 共享同一份构建缓存、以及在未激活 mise 的 shell 里正确执行命令。它们的共同线索是「拿到一个 worktree 之后怎么正确执行命令」，所以放在一起。
 
 worktree 本身是任务隔离边界，不是包名的别名。包清单、依赖边界与发布边界以 [`ARCHITECTURE.md`](../../ARCHITECTURE.md) 为权威；客户端权限边界见 [`environments.md`](./environments.md)；mise/turbo 的 env 注入由本文承担；提交边界的授权口径见 [`commit.md`](./commit.md)。
 
@@ -17,6 +17,12 @@ worktree 本身是任务隔离边界，不是包名的别名。包清单、依�
 `mise install` 排第一，因为工具链版本由 [`.mise.toml`](../../.mise.toml) 钉住，不同分支可能钉不同版本；它幂等，装过就是一次快速 no-op。
 
 显式运行根 `fix-code` 或 `check-code` 前需要 `node_modules`；完整环境还须构建 workspace 包的 `dist` 类型产物。缺少产物时，`vp check` 会把跨包 import 报成假 `TS2307`，类型感知验证随之不可用。`fix-code` 会修改工作树内容，但不会自动暂存；整理后先检查 diff，再选择要暂存的文件。
+
+## 按任务收缩视野
+
+三步准备完成后、任务交给实施 agent 前，编排层可以按任务目标把 sparse checkout 收缩到目标包及其 turbo 依赖闭包，减少无关代码的上下文占用。顺序不能颠倒：闭包来自 turbo 图，`turbo ls` 在未安装依赖的 worktree 里跑不起来。
+
+调用方式与稀疏树里的搜索、gate、install 规则见 [`.agents/skills/turbo-sparse-scope/SKILL.md`](../../.agents/skills/turbo-sparse-scope/SKILL.md)。对这里的环境准备只有一条后果需要记住：被隐藏包的目录里没有未跟踪文件时，整个目录（含被忽略的 `node_modules`、`dist`）随 cone 删除；`--restore` 只带回已跟踪文件，恢复后要重跑 `pnpm install --frozen-lockfile` 与 `pnpm run build`。
 
 ## Turbo artifact cache
 
