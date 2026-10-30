@@ -445,7 +445,8 @@ The element also exposes a set of instance methods: `show()` plays the entrance 
 
 ### CSS Custom Properties
 
-| Name                            | Description                                                    | Default |
-| ------------------------------- | -------------------------------------------------------------- | ------- |
-| `--wui-toast-viewport-gap`      | Visible distance from the toast to the viewport edge           | `16px`  |
-| `--wui-toast-container-padding` | Room reserved in the container for the diffuse shadow to paint | `40px`  |
+| Name                            | Description                                                                                                          | Default |
+| ------------------------------- | -------------------------------------------------------------------------------------------------------------------- | ------- |
+| `--wui-toast-viewport-gap`      | Visible distance from the toast to the viewport edge                                                                 | `16px`  |
+| `--wui-toast-container-padding` | Room reserved in the container for the diffuse shadow to paint                                                       | `40px`  |
+| `--wui-toast-top-offset`        | Extra top offset for top-positioned toast containers, used to clear fixed app chrome; only affects `top-*` positions | `0px`   |

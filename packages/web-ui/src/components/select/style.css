@@ -86,16 +86,6 @@
   color: var(--wui-color-text-secondary, #6a6a6a);
 }
 
-::slotted([slot='trigger']) {
-  overflow: hidden;
-  flex: 1;
-
-  font-size: var(--wui-font-size, 14px);
-  color: var(--wui-color-text, #1b1b1b);
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
 .arrow {
   flex-shrink: 0;
   color: var(--wui-color-text-secondary, #6a6a6a);

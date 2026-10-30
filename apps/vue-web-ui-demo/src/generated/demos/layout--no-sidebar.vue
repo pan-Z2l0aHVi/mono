@@ -1,5 +1,7 @@
 <template>
-  <div class="h-[420px] overflow-auto rounded-lg border border-(--wui-color-border)">
+  <div
+    class="h-[420px] overflow-auto rounded-lg border border-(--wui-color-border) [--wui-layout-viewport-height:420px]"
+  >
     <web-ui-layout no-sidebar header-glow>
       <div slot="header" class="flex items-center px-4 py-2 text-sm font-medium">Header</div>
       <div class="p-4">

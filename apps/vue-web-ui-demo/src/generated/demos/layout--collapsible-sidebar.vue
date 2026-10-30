@@ -1,6 +1,8 @@
 <template>
   <div class="flex flex-col gap-3">
-    <div class="h-[420px] overflow-auto rounded-lg border border-(--wui-color-border)">
+    <div
+      class="h-[420px] overflow-auto rounded-lg border border-(--wui-color-border) [--wui-layout-viewport-height:420px]"
+    >
       <web-ui-layout
         :sidebarCollapsed="collapsed"
         @sidebar-collapsed-change="collapsed = $event.detail.collapsed"

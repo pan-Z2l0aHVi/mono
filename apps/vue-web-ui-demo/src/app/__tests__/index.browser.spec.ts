@@ -241,7 +241,7 @@ describe('应用外壳（浏览器）：导航 collapsed state 不跨视口泄�
     }
   )
 
-  it('已显示的 top toast 文案和字号变化时预留空间跟随，缩短后复原', async () => {
+  it('top toast 文案和字号变化不改变 header 位置', async () => {
     await mountAppShell()
     const toastElement = await persistentTopToast(SHORT_TOAST_MESSAGE)
     await clickBannerCloseButtonAtCenter()
@@ -253,13 +253,13 @@ describe('应用外壳（浏览器）：导航 collapsed state 不跨视口泄�
     await vi.waitFor(() => expect(toastElement.getBoundingClientRect().height).toBeGreaterThan(shortHeight))
     await clickGlobalSelectsAtTopEdge()
     const longTop = globalSelectTrigger('Global theme').getBoundingClientRect().top
-    expect(longTop).toBeGreaterThan(shortTop)
+    expect(longTop).toBeCloseTo(shortTop)
     const longHeight = toastElement.getBoundingClientRect().height
 
     toastElement.style.setProperty('--wui-font-size', '24px')
     await vi.waitFor(() => expect(toastElement.getBoundingClientRect().height).toBeGreaterThan(longHeight))
     await clickGlobalSelectsAtTopEdge()
-    expect(globalSelectTrigger('Global theme').getBoundingClientRect().top).toBeGreaterThan(longTop)
+    expect(globalSelectTrigger('Global theme').getBoundingClientRect().top).toBeCloseTo(shortTop)
 
     toastElement.style.removeProperty('--wui-font-size')
     toast.info(SHORT_TOAST_MESSAGE, { id: toastElement.toastId })
@@ -267,28 +267,28 @@ describe('应用外壳（浏览器）：导航 collapsed state 不跨视口泄�
     await clickGlobalSelectsAtTopEdge()
   })
 
-  it('top toast 堆栈溢出时只预留可见区域，滚动后重新测量', async () => {
-    await setViewport(DESKTOP_VIEWPORT.width, 400)
+  it('top toast 堆栈增长时不改变 banner 和 header 高度，并从 header 下方开始', async () => {
     await mountAppShell()
-    const firstToast = await persistentTopToast(LONG_TOAST_MESSAGE)
-    await userEvent.hover(firstToast)
-    for (let index = 0; index < 8; index++) toast.info(LONG_TOAST_MESSAGE, { duration: 0 })
-    const container = firstToast.parentElement!
-    await vi.waitFor(() => expect(container.querySelectorAll('web-ui-toast[visible]').length).toBe(9))
-    expect(container.scrollHeight).toBeGreaterThan(container.clientHeight)
     const banner = document.querySelector<HTMLElement>('[slot="banner"]')!
-    await vi.waitFor(() => expect(banner.getBoundingClientRect().bottom).toBeCloseTo(innerHeight, 0))
-    const beforeScroll = banner.getBoundingClientRect().bottom
+    const bannerHeight = banner.getBoundingClientRect().height
+    const header = layoutRoot().querySelector<HTMLElement>('[slot="header"]')!
+    const headerHeight = header.getBoundingClientRect().height
+    const firstToast = await persistentTopToast(LONG_TOAST_MESSAGE)
+    toast.info(LONG_TOAST_MESSAGE, { duration: 0 })
+    const container = firstToast.parentElement!
+    await vi.waitFor(() => expect(container.querySelectorAll('web-ui-toast[visible]').length).toBe(2))
 
-    container.scrollTop = container.scrollHeight
-    await vi.waitFor(() => expect(banner.getBoundingClientRect().bottom).toBeLessThan(beforeScroll))
-    const bottom = Math.max(
-      ...Array.from(container.querySelectorAll('web-ui-toast'), element => element.getBoundingClientRect().bottom)
-    )
-    expect(banner.getBoundingClientRect().bottom).toBeCloseTo(bottom)
+    expect(banner.getBoundingClientRect().height).toBeCloseTo(bannerHeight)
+    expect(header.getBoundingClientRect().height).toBeCloseTo(headerHeight)
+    await vi.waitFor(() => {
+      const toastTop = Math.min(
+        ...Array.from(container.querySelectorAll('web-ui-toast'), element => element.getBoundingClientRect().top)
+      )
+      expect(toastTop).toBeGreaterThanOrEqual(header.getBoundingClientRect().bottom)
+    })
   })
 
-  it('右上角 toast 显示与隐藏时 banner 关闭按钮都可用', async () => {
+  it('banner 关闭后 toast 显示与隐藏都不会重新占位', async () => {
     await mountAppShell()
     await clickBannerCloseButtonAtCenter()
     await vi.waitFor(() => {
@@ -312,22 +312,11 @@ describe('应用外壳（浏览器）：导航 collapsed state 不跨视口泄�
 
     await clickBannerCloseButtonAtCenter()
     await vi.waitFor(() => {
-      const banner = document.querySelector<HTMLElement>('[slot="banner"]')
-      if (!banner || getComputedStyle(banner).visibility !== 'hidden') {
-        throw new Error('banner stayed visible with a toast')
-      }
+      if (document.querySelector('[slot="banner"]')) throw new Error('banner stayed visible with a toast')
     })
 
-    expect(document.querySelector('[slot="banner"]')).not.toBeNull()
     expect(themeOverlayRoot()?.querySelector('web-ui-toast')).not.toBeNull()
-
-    for (const label of ['Global motion', 'Global theme']) {
-      const trigger = globalSelectTrigger(label)
-      await userEvent.click(trigger)
-      expect(trigger.getAttribute('aria-expanded')).toBe('true')
-      await userEvent.keyboard('{Escape}')
-      expect(trigger.getAttribute('aria-expanded')).toBe('false')
-    }
+    await clickGlobalSelectsAtTopEdge()
 
     toast.clear()
     await vi.waitFor(() => {
@@ -372,10 +361,7 @@ describe('应用外壳（浏览器）：导航 collapsed state 不跨视口泄�
         if (!nestedTheme.getOverlayRoot()?.querySelector('web-ui-toast')) {
           throw new Error('scoped toast did not mount in the nested theme')
         }
-        const banner = document.querySelector<HTMLElement>('[slot="banner"]')
-        if (!banner || getComputedStyle(banner).visibility !== 'hidden') {
-          throw new Error('nested scoped toast did not reserve banner space')
-        }
+        if (document.querySelector('[slot="banner"]')) throw new Error('nested scoped toast reserved banner space')
       })
 
       toast.clear()

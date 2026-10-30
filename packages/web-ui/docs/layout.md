@@ -13,7 +13,7 @@ Five slots each take one region: `banner` spans the full width above the body, `
 
 `header-glow` adds a decorative glow behind the header slot content; it belongs to the background layer, so the slot content always sits above it.
 
-layout is an app-shell-level full-screen layout; the sample puts it inside a height-constrained scroll container, where the banner scrolls out with the content and the header and tabbar stick to the top and bottom edges of the container.
+layout is an app-shell-level full-screen layout. The sample places it in a height-constrained scroll container and sets `--wui-layout-viewport-height` to the same height (`420px`), keeping the banner, header, tabbar, and desktop sidebar inside the sample container.
 
 The mobile Toggle only requests opening through `sidebar-open-change`; the sample writes that back to `sidebar-open`, so clicking it opens the Drawer.
 
@@ -24,7 +24,7 @@ export default function Demo() {
   const [open, setOpen] = useState(false)
 
   return (
-    <div className="h-[420px] overflow-auto rounded-lg border border-(--wui-color-border)">
+    <div className="h-[420px] overflow-auto rounded-lg border border-(--wui-color-border) [--wui-layout-viewport-height:420px]">
       <web-ui-layout header-glow sidebarOpen={open} onsidebar-open-change={event => setOpen(event.detail.open)}>
         <div
           slot="banner"
@@ -58,7 +58,9 @@ export default function Demo() {
 
 ```vue
 <template>
-  <div class="h-[420px] overflow-auto rounded-lg border border-(--wui-color-border)">
+  <div
+    class="h-[420px] overflow-auto rounded-lg border border-(--wui-color-border) [--wui-layout-viewport-height:420px]"
+  >
     <web-ui-layout header-glow :sidebarOpen="open" @sidebar-open-change="open = $event.detail.open">
       <div
         slot="banner"
@@ -100,7 +102,7 @@ The `sidebar` slot is no longer rendered, but consumer nodes stay in the light D
 ```tsx
 export default function Demo() {
   return (
-    <div className="h-[420px] overflow-auto rounded-lg border border-(--wui-color-border)">
+    <div className="h-[420px] overflow-auto rounded-lg border border-(--wui-color-border) [--wui-layout-viewport-height:420px]">
       <web-ui-layout no-sidebar header-glow>
         <div slot="header" className="flex items-center px-4 py-2 text-sm font-medium">
           Header
@@ -122,7 +124,9 @@ export default function Demo() {
 
 ```vue
 <template>
-  <div class="h-[420px] overflow-auto rounded-lg border border-(--wui-color-border)">
+  <div
+    class="h-[420px] overflow-auto rounded-lg border border-(--wui-color-border) [--wui-layout-viewport-height:420px]"
+  >
     <web-ui-layout no-sidebar header-glow>
       <div slot="header" class="flex items-center px-4 py-2 text-sm font-medium">Header</div>
       <div class="p-4">
@@ -156,7 +160,7 @@ export default function Demo() {
 
   return (
     <div className="flex flex-col gap-3">
-      <div className="h-[420px] overflow-auto rounded-lg border border-(--wui-color-border)">
+      <div className="h-[420px] overflow-auto rounded-lg border border-(--wui-color-border) [--wui-layout-viewport-height:420px]">
         <web-ui-layout
           sidebarCollapsed={collapsed}
           onsidebar-collapsed-change={event => setCollapsed(event.detail.collapsed)}
@@ -186,7 +190,9 @@ export default function Demo() {
 ```vue
 <template>
   <div class="flex flex-col gap-3">
-    <div class="h-[420px] overflow-auto rounded-lg border border-(--wui-color-border)">
+    <div
+      class="h-[420px] overflow-auto rounded-lg border border-(--wui-color-border) [--wui-layout-viewport-height:420px]"
+    >
       <web-ui-layout
         :sidebarCollapsed="collapsed"
         @sidebar-collapsed-change="collapsed = $event.detail.collapsed"
@@ -236,7 +242,7 @@ export default function Demo() {
 
   return (
     <div className="flex flex-col gap-3">
-      <div className="h-[420px] overflow-auto rounded-lg border border-(--wui-color-border)">
+      <div className="h-[420px] overflow-auto rounded-lg border border-(--wui-color-border) [--wui-layout-viewport-height:420px]">
         <web-ui-layout
           sidebar-resizable
           sidebarWidth={width}
@@ -268,7 +274,9 @@ export default function Demo() {
 ```vue
 <template>
   <div class="flex flex-col gap-3">
-    <div class="h-[420px] overflow-auto rounded-lg border border-(--wui-color-border)">
+    <div
+      class="h-[420px] overflow-auto rounded-lg border border-(--wui-color-border) [--wui-layout-viewport-height:420px]"
+    >
       <web-ui-layout
         sidebar-resizable
         :sidebarWidth="width"
@@ -339,7 +347,7 @@ export default function Demo() {
 
   return (
     <div className="flex flex-col gap-3">
-      <div className="h-[420px] overflow-auto rounded-lg border border-(--wui-color-border)">
+      <div className="h-[420px] overflow-auto rounded-lg border border-(--wui-color-border) [--wui-layout-viewport-height:420px]">
         <web-ui-layout ref={layoutRef} sidebarOpen={open} onsidebar-open-change={event => setOpen(event.detail.open)}>
           <div slot="header" className="flex items-center px-4 py-2 text-sm font-medium">
             Header
@@ -367,7 +375,9 @@ export default function Demo() {
 ```vue
 <template>
   <div class="flex flex-col gap-3">
-    <div class="h-[420px] overflow-auto rounded-lg border border-(--wui-color-border)">
+    <div
+      class="h-[420px] overflow-auto rounded-lg border border-(--wui-color-border) [--wui-layout-viewport-height:420px]"
+    >
       <web-ui-layout
         :sidebarOpen="open"
         @sidebar-open-change="open = $event.detail.open"
@@ -546,8 +556,9 @@ It is a separate token because dialog, drawer, and toast share `--wui-color-surf
 
 ### CSS Custom Properties
 
-| Name                                | Description                                                                                  | Default |
-| ----------------------------------- | -------------------------------------------------------------------------------------------- | ------- |
-| `--wui-layout-sidebar-radius`       | Sidebar card radius (shared by desktop and mobile)                                           | `24px`  |
-| `--wui-layout-mobile-toggle-inset`  | Left inset of the mobile header Toggle                                                       | `8px`   |
-| `--wui-layout-sidebar-toggle-width` | Width of the desktop sidebar collapse Toggle; the lower bound is `--wui-control-size` (36px) | `44px`  |
+| Name                                | Description                                                                                                  | Default            |
+| ----------------------------------- | ------------------------------------------------------------------------------------------------------------ | ------------------ |
+| `--wui-layout-viewport-height`      | Available layout viewport height; set it to the container height when embedding layout in a fixed-height box | `100vh` / `100dvh` |
+| `--wui-layout-sidebar-radius`       | Sidebar card radius (shared by desktop and mobile)                                                           | `24px`             |
+| `--wui-layout-mobile-toggle-inset`  | Left inset of the mobile header Toggle                                                                       | `8px`              |
+| `--wui-layout-sidebar-toggle-width` | Width of the desktop sidebar collapse Toggle; the lower bound is `--wui-control-size` (36px)                 | `44px`             |

@@ -621,8 +621,11 @@ export class WebUiSelect extends FormAssociated(LitElement) {
           aria-activedescendant=${activeDescendant}
           aria-label=${ifDefined(this.ariaLabel)}
         >
-          <slot name="trigger" @slotchange=${this._onTriggerSlotChange}></slot>
-          ${!this._hasTriggerSlot ? html`<span class="label">${this._selectedLabel}</span>` : nothing}
+          <span class="label">
+            <slot name="trigger" @slotchange=${this._onTriggerSlotChange}>
+              ${this._hasTriggerSlot ? nothing : this._selectedLabel}
+            </slot>
+          </span>
           <web-ui-icon class="arrow" .icon=${lucideChevronDown}></web-ui-icon>
         </div>
         <div class="select-overlay wui-floating-panel wui-glass" hidden role="listbox" id=${listboxId}>

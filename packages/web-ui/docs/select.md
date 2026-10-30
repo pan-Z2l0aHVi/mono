@@ -133,7 +133,7 @@ import { lucideFileText, lucideFilm, lucideImage } from '@greypan/web-ui/icons'
 
 ### Custom trigger
 
-The `trigger` slot replaces the default label text; the shell, arrow, and open/close behavior still come from the component. The slot content is ordinary nodes rendered by the page, so writing its text from page state makes it follow the selection.
+The `trigger` slot replaces the default label text; the shell, arrow, and open/close behavior still come from the component. The component provides the label container around the trigger but does not directly override the font, color, or size of slotted nodes. Writing the slot content from page state makes it follow the selection.
 
 ```tsx
 import { lucideGlobe } from '@greypan/web-ui/icons'

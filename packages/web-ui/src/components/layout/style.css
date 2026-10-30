@@ -6,6 +6,7 @@
 
 :host {
   --wui-layout-visible-banner-height: 0px;
+  --wui-internal-layout-viewport-height: var(--wui-layout-viewport-height, 100vh);
 
   display: block;
 }
@@ -14,8 +15,7 @@
 .layout-page {
   display: flex;
   flex-direction: column;
-  min-height: 100vh;
-  min-height: 100dvh;
+  min-height: var(--wui-internal-layout-viewport-height);
 }
 
 .layout-banner {
@@ -54,10 +54,8 @@ aside {
   flex-shrink: 0;
 
   max-width: 50vw;
-  height: calc(100vh - var(--wui-layout-visible-banner-height));
-  height: calc(100dvh - var(--wui-layout-visible-banner-height));
-  max-height: calc(100vh - var(--wui-layout-visible-banner-height));
-  max-height: calc(100dvh - var(--wui-layout-visible-banner-height));
+  height: calc(var(--wui-internal-layout-viewport-height) - var(--wui-layout-visible-banner-height));
+  max-height: calc(var(--wui-internal-layout-viewport-height) - var(--wui-layout-visible-banner-height));
   padding: var(--wui-space-2, 8px) 0 var(--wui-space-2, 8px) var(--wui-space-2, 8px);
 
   transition: width var(--wui-duration-layout, 200ms) var(--wui-ease-enter, cubic-bezier(0.23, 1, 0.32, 1));
@@ -100,6 +98,12 @@ aside {
     .sidebar-viewport {
       overflow: hidden;
     }
+  }
+}
+
+@supports (height: 100dvh) {
+  :host {
+    --wui-internal-layout-viewport-height: var(--wui-layout-viewport-height, 100dvh);
   }
 }
 

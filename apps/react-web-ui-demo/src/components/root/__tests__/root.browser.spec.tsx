@@ -175,6 +175,14 @@ describe('应用外壳（浏览器）：导航 collapsed state 不跨视口泄�
     await changeViewport(DESKTOP_VIEWPORT)
   })
 
+  it('中文主题选择器使用中文外观名称', async () => {
+    await mountAppShell('zh-CN')
+    const labels = Array.from(document.querySelectorAll('web-ui-select[aria-label="全局主题"] web-ui-option')).map(
+      option => option.textContent?.trim()
+    )
+    expect(labels).toEqual(expect.arrayContaining(['浅色模式', '深色模式', '跟随系统']))
+  })
+
   it('桌面端 collapse 后导航文字居中，expanded state 左对齐', async () => {
     await mountAppShell()
     const expanded = navItemAlignment()
@@ -267,10 +275,19 @@ describe('应用外壳（浏览器）：导航 collapsed state 不跨视口泄�
     }
   })
 
-  it('挂载时已有 toast，banner 扩高后 header 保持默认纵向间距', async () => {
+  it('挂载时已有 toast，banner 和 header 保持原高度且 toast 从 header 下方开始', async () => {
     const toastId = 'root-mount-toast'
 
     try {
+      await mountAppShell()
+      const naturalBanner = layoutRoot().querySelector<HTMLElement>('[slot="banner"]')
+      const naturalHeader = layoutRoot().querySelector<HTMLElement>('[slot="header"]')
+      if (!naturalBanner) throw new Error('banner not found')
+      if (!naturalHeader) throw new Error('header not found')
+      const naturalBannerHeight = naturalBanner.getBoundingClientRect().height
+      const naturalHeaderHeight = naturalHeader.getBoundingClientRect().height
+      cleanup()
+
       await act(async () => {
         toast.info('持续显示', { id: toastId, position: 'top-right', duration: 0 })
         await Promise.resolve()
@@ -286,11 +303,9 @@ describe('应用外壳（浏览器）：导航 collapsed state 不跨视口泄�
       await waitFor(() => {
         const toastElement = findToast(toastId)
         if (!toastElement?.visible) throw new Error('top-right toast not visible')
-        expect(banner.getBoundingClientRect().bottom).toBeGreaterThanOrEqual(
-          toastElement.getBoundingClientRect().bottom
-        )
-        const computedStyle = getComputedStyle(header)
-        expect(computedStyle.paddingTop).toBe(computedStyle.paddingBottom)
+        expect(banner.getBoundingClientRect().height).toBeCloseTo(naturalBannerHeight)
+        expect(header.getBoundingClientRect().height).toBeCloseTo(naturalHeaderHeight)
+        expect(toastElement.getBoundingClientRect().top).toBeGreaterThanOrEqual(header.getBoundingClientRect().bottom)
       })
     } finally {
       await act(async () => {
@@ -304,7 +319,7 @@ describe('应用外壳（浏览器）：导航 collapsed state 不跨视口泄�
     }
   })
 
-  it('右上角 toast 显示时滚过 banner，sticky header 控件仍避开 toast', async () => {
+  it('右上角 toast 显示时滚过 banner，仍从 sticky header 下方开始', async () => {
     await mountAppShell()
     const toastId = 'root-sticky-header-toast'
 
@@ -326,15 +341,12 @@ describe('应用外壳（浏览器）：导航 collapsed state 不跨视口泄�
       })
       const header = layoutRoot().querySelector<HTMLElement>('[slot="header"]')
       if (!header) throw new Error('header not found')
-      await waitFor(() => {
-        const computedStyle = getComputedStyle(header)
-        expect(computedStyle.paddingTop).toBe(computedStyle.paddingBottom)
-      })
+      const headerHeight = header.getBoundingClientRect().height
       const bannerCloseButton = layoutRoot().querySelector<HTMLElement>('[slot="banner"] web-ui-button')
       if (!bannerCloseButton) throw new Error('banner close button not found')
       await act(async () => page.elementLocator(bannerCloseButton).click())
       await waitFor(() => {
-        expect(layoutRoot().querySelector('[slot="banner"]')?.getAttribute('aria-hidden')).toBe('true')
+        if (layoutRoot().querySelector('[slot="banner"]')) throw new Error('banner stayed mounted after close')
       })
       await act(async () => {
         window.scrollTo(0, 500)
@@ -346,13 +358,8 @@ describe('应用外壳（浏览器）：导航 collapsed state 不跨视口泄�
         const header = layoutRoot().querySelector<HTMLElement>('[slot="header"]')
         if (!toastElement || !header) throw new Error('toast or sticky header not found')
 
-        const toastRect = toastElement.getBoundingClientRect()
-        const overlappingSelects = Array.from(header.querySelectorAll('web-ui-select')).filter(select => {
-          const rect = select.getBoundingClientRect()
-          return rect.left < toastRect.right && rect.right > toastRect.left
-        })
-        expect(overlappingSelects.length).toBeGreaterThan(0)
-        expect(overlappingSelects.every(select => select.getBoundingClientRect().top >= toastRect.bottom)).toBe(true)
+        expect(header.getBoundingClientRect().height).toBeCloseTo(headerHeight)
+        expect(toastElement.getBoundingClientRect().top).toBeGreaterThanOrEqual(header.getBoundingClientRect().bottom)
       })
     } finally {
       await act(async () => {

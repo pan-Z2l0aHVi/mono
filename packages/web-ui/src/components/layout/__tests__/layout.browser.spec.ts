@@ -46,6 +46,25 @@ afterEach(async () => {
 })
 
 describe('WebUiLayout 组件（浏览器）', () => {
+  it('--wui-layout-viewport-height 把内嵌 layout 与侧边栏限制在容器高度内', async () => {
+    await setViewport(DESKTOP_VIEWPORT.width, DESKTOP_VIEWPORT.height)
+    const container = document.createElement('div')
+    container.style.cssText = 'height: 420px; overflow: auto; --wui-layout-viewport-height: 420px'
+    const layout = document.createElement('web-ui-layout')
+    layout.innerHTML = `
+      <div slot="header">Header</div>
+      <div slot="sidebar" style="height: 100%">Sidebar</div>
+      <main style="height: 2000px">Content</main>
+    `
+    container.append(layout)
+    document.body.append(container)
+    await layout.updateComplete
+
+    const aside = layout.shadowRoot?.querySelector<HTMLElement>('aside')
+    expect(aside).toBeTruthy()
+    expect(aside!.getBoundingClientRect().height).toBeCloseTo(420)
+  })
+
   describe('桌面端 sidebar collapse', () => {
     it('Toggle 请求受控 collapse，回写后 aria-label 反映新状态', async () => {
       await setViewport(DESKTOP_VIEWPORT.width, DESKTOP_VIEWPORT.height)

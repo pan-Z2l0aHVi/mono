@@ -166,3 +166,13 @@ msgstr "Language switch failed. Refresh the page and try again."
 #: src/components/root/index.tsx
 msgid "正在切换语言"
 msgstr "Switching language"
+
+#: src/components/root/index.tsx
+#: src/components/root/index.tsx
+msgid "浅色模式"
+msgstr "Light"
+
+#: src/components/root/index.tsx
+#: src/components/root/index.tsx
+msgid "深色模式"
+msgstr "Dark"

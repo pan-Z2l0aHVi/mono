@@ -101,10 +101,19 @@ it('首页通过全局选择器切换壳文案，更新偏好并保留路由和�
   await loadDemoLocale('zh-CN', false)
   const { router, wrapper } = await mountShell('/home')
   try {
+    const chineseThemeOptions = Array.from(
+      document.querySelectorAll('web-ui-select[aria-label="全局主题"] web-ui-option')
+    ).map(option => option.textContent?.trim())
+    expect(chineseThemeOptions).toEqual(expect.arrayContaining(['浅色模式', '深色模式', '跟随系统']))
+
     await select('全局主题', 'dark')
     const language = await select('全局语言', 'en')
     await localeSettled()
     await nextTick()
+    const englishThemeOptions = Array.from(
+      document.querySelectorAll('web-ui-select[aria-label="Global theme"] web-ui-option')
+    ).map(option => option.textContent?.trim())
+    expect(englishThemeOptions).toEqual(expect.arrayContaining(['Light', 'Dark', 'Follow system']))
     expect(wrapper.text()).toContain('Variants, sizes, icons and loading states')
     // 语料已就位，这次渲染也必然把受控的 `:value` 写回提交值；在这里读，不与异步加载赛跑。
     expect(language.value, '受控回写收敛到已提交语言').toBe('en')

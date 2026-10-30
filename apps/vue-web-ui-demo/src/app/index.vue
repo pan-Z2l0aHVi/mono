@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import appScrollbarsOptions from '@greypan/app-scrollbars'
 import { local } from '@greypan/browser-kit'
-import type { WebUiEvent, WebUiLayout, WebUiSelect, WebUiTheme, WebUiToast } from '@greypan/web-ui'
+import type { WebUiEvent, WebUiLayout, WebUiSelect } from '@greypan/web-ui'
 import { toast } from '@greypan/web-ui'
 import { lucideX } from '@greypan/web-ui/icons'
 import { useHead } from '@unhead/vue'
@@ -10,13 +10,11 @@ import {
   useOverlayScrollbars,
   type OverlayScrollbarsComponentRef
 } from 'overlayscrollbars-vue'
-import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { RouterLink, useRoute, useRouter } from 'vue-router'
 
 import { bootDegraded, currentLocale, loadDemoLocale, localePending } from '@/i18n/locale'
 
-const LIGHT_LABEL = 'Light'
-const DARK_LABEL = 'Dark'
 const ZH_LABEL = '简体中文'
 const EN_LABEL = 'English'
 
@@ -69,10 +67,9 @@ function getInitialSidebarWidth(): string {
 const themeAppearance = ref(getInitialThemeAppearance())
 const themeMotion = ref(getInitialThemeMotion())
 const bannerVisible = ref(true)
-const topToastBottom = ref(0)
-// 桌面端关闭按钮在 banner 右端，与默认 top-right toast 的位置重叠：按 toast 实际左缘给它让位。
-const topRightToastInset = ref(0)
-let stopObservingToastBounds: (() => void) | undefined
+let stopObservingToastTopOffset: (() => void) | undefined
+let refreshToastTopOffset: (() => void) | undefined
+const shellLayout = ref<WebUiLayout | null>(null)
 const sidebarCollapsed = ref(false)
 const sidebarOpen = ref(false)
 const mobileSidebarWidth = 'min(320px, 80vw)'
@@ -150,128 +147,51 @@ const navSidebar = ref<OverlayScrollbarsComponentRef>()
 // 只能直接初始化 body。
 const [initPageScrollbars] = useOverlayScrollbars({ options: appScrollbarsOptions })
 
-function observeToastBounds() {
-  const topToasts = new Set<WebUiToast>()
-  const containers = new Set<HTMLElement>()
-  const shadowRootObservers = new Map<ShadowRoot, MutationObserver>()
-  let measureFrame: number | undefined
-  const updateToastBottom = () => {
-    let bottom = 0
-    let rightInset = 0
-    for (const toast of topToasts) {
-      const bounds = toast.getBoundingClientRect()
-      const clip = toast.parentElement?.getBoundingClientRect()
-      if (!clip) continue
-      // 堆栈可滚动，不能给被容器或视口裁掉的 toast 预留空间。
-      const visibleBottom = Math.min(bounds.bottom, clip.bottom, window.innerHeight)
-      const visibleTop = Math.max(bounds.top, clip.top, 0)
-      if (visibleBottom <= visibleTop) continue
-      bottom = Math.max(bottom, visibleBottom)
-      if (toast.position === 'top-right') {
-        rightInset = Math.max(rightInset, window.innerWidth - Math.max(bounds.left, 0) + 8)
-      }
-    }
-    topToastBottom.value = bottom
-    topRightToastInset.value = rightInset
+function observeToastTopOffset() {
+  let frame: number | undefined
+  const update = () => {
+    const header = shellLayout.value?.querySelector<HTMLElement>('[slot="header"]')
+    document.documentElement.style.setProperty(
+      '--wui-toast-top-offset',
+      `${Math.max(0, Math.ceil(header?.getBoundingClientRect().bottom ?? 0))}px`
+    )
   }
-  // 留到下一帧更新 banner，避免在 ResizeObserver 派发中再次触发布局尺寸通知。
-  const scheduleMeasurement = () => {
-    if (measureFrame !== undefined) return
-    measureFrame = requestAnimationFrame(() => {
-      measureFrame = undefined
-      updateToastBottom()
+  const schedule = () => {
+    if (frame !== undefined) return
+    frame = requestAnimationFrame(() => {
+      frame = undefined
+      update()
     })
   }
-  const resizeObserver = new ResizeObserver(scheduleMeasurement)
+  const resizeObserver = typeof ResizeObserver === 'undefined' ? undefined : new ResizeObserver(schedule)
+  if (shellLayout.value) resizeObserver?.observe(shellLayout.value)
+  window.addEventListener('resize', schedule, { passive: true })
+  window.addEventListener('scroll', schedule, { passive: true, capture: true })
+  update()
 
-  const collectThemeScopes = (root: ParentNode, themes: Set<WebUiTheme>, shadowRoots: Set<ShadowRoot>) => {
-    for (const element of root.querySelectorAll<HTMLElement>('*')) {
-      if (element.matches('web-ui-theme')) themes.add(element as WebUiTheme)
-      if (!element.shadowRoot) continue
-
-      shadowRoots.add(element.shadowRoot)
-      collectThemeScopes(element.shadowRoot, themes, shadowRoots)
-    }
-  }
-
-  const updateToasts = () => {
-    const themes = new Set<WebUiTheme>()
-    const shadowRoots = new Set<ShadowRoot>()
-    collectThemeScopes(document.body, themes, shadowRoots)
-
-    for (const [shadowRoot, observer] of shadowRootObservers) {
-      if (shadowRoots.has(shadowRoot)) continue
-      observer.disconnect()
-      shadowRootObservers.delete(shadowRoot)
-    }
-
-    for (const shadowRoot of shadowRoots) {
-      if (shadowRootObservers.has(shadowRoot)) continue
-      const observer = new MutationObserver(updateToasts)
-      observer.observe(shadowRoot, { childList: true, subtree: true, attributes: true, attributeFilter: ['position'] })
-      shadowRootObservers.set(shadowRoot, observer)
-    }
-
-    const nextTopToasts = new Set(
-      Array.from(themes).flatMap(theme =>
-        Array.from(theme.getOverlayRoot()?.querySelectorAll<WebUiToast>('web-ui-toast') ?? []).filter(toast =>
-          toast.position.startsWith('top')
-        )
-      )
-    )
-    for (const toast of topToasts) {
-      if (nextTopToasts.has(toast)) continue
-      resizeObserver.unobserve(toast)
-      topToasts.delete(toast)
-    }
-    for (const toast of nextTopToasts) {
-      if (topToasts.has(toast)) continue
-      topToasts.add(toast)
-      resizeObserver.observe(toast)
-    }
-    const nextContainers = new Set(
-      Array.from(nextTopToasts, toast => toast.parentElement).filter((element): element is HTMLElement => !!element)
-    )
-    for (const container of containers) {
-      if (nextContainers.has(container)) continue
-      container.removeEventListener('scroll', scheduleMeasurement)
-      resizeObserver.unobserve(container)
-      containers.delete(container)
-    }
-    for (const container of nextContainers) {
-      if (containers.has(container)) continue
-      containers.add(container)
-      container.addEventListener('scroll', scheduleMeasurement, { passive: true })
-      resizeObserver.observe(container)
-    }
-    updateToastBottom()
-  }
-
-  updateToasts()
-  const themeObserver = new MutationObserver(updateToasts)
-  themeObserver.observe(document.body, {
-    childList: true,
-    subtree: true,
-    attributes: true,
-    attributeFilter: ['position']
-  })
-  window.addEventListener('resize', scheduleMeasurement, { passive: true })
-
-  return () => {
-    themeObserver.disconnect()
-    resizeObserver.disconnect()
-    if (measureFrame !== undefined) cancelAnimationFrame(measureFrame)
-    for (const observer of shadowRootObservers.values()) observer.disconnect()
-    for (const container of containers) container.removeEventListener('scroll', scheduleMeasurement)
-    window.removeEventListener('resize', scheduleMeasurement)
+  return {
+    stop: () => {
+      resizeObserver?.disconnect()
+      if (frame !== undefined) cancelAnimationFrame(frame)
+      document.documentElement.style.removeProperty('--wui-toast-top-offset')
+      window.removeEventListener('resize', schedule)
+      window.removeEventListener('scroll', schedule, { capture: true })
+    },
+    refresh: schedule
   }
 }
 
-onBeforeUnmount(() => stopObservingToastBounds?.())
+onBeforeUnmount(() => stopObservingToastTopOffset?.())
+watch(bannerVisible, async () => {
+  await nextTick()
+  refreshToastTopOffset?.()
+})
 
 onMounted(async () => {
   initPageScrollbars(document.body)
-  stopObservingToastBounds = observeToastBounds()
+  const toastOffset = observeToastTopOffset()
+  stopObservingToastTopOffset = toastOffset.stop
+  refreshToastTopOffset = toastOffset.refresh
   if (bootDegraded.value) {
     toast.warning('目标语种加载失败，暂时使用简体中文')
     bootDegraded.value = false
@@ -341,6 +261,7 @@ function isNavActive(path: string) {
         kebab-case（:sidebar-collapsed）会写字符串 attribute，布尔属性存在即 true，无法表达 false。
       -->
       <web-ui-layout
+        ref="shellLayout"
         header-glow
         :sidebarCollapsed="sidebarCollapsed"
         :sidebarOpen="sidebarOpen"
@@ -354,16 +275,12 @@ function isNavActive(path: string) {
         @mobile-change="updateMobileSidebarViewport"
       >
         <div
-          v-if="bannerVisible || topToastBottom > 0"
+          v-if="bannerVisible"
           slot="banner"
           class="relative grid grid-cols-[24px_minmax(0,1fr)_24px] items-center gap-2 bg-(--wui-color-accent) px-4 py-2 text-sm text-(--wui-color-on-accent)"
-          :class="{ 'invisible pointer-events-none': !bannerVisible }"
-          :aria-hidden="!bannerVisible"
-          :style="{ minHeight: `${topToastBottom}px` }"
         >
           <web-ui-button
-            class="absolute top-1/2 -translate-y-1/2 mobile:left-0"
-            :style="{ right: isMobileSidebarViewport ? 'auto' : `${16 + topRightToastInset}px` }"
+            class="absolute top-1/2 right-4 -translate-y-1/2 mobile:left-0 mobile:right-auto"
             size="24"
             icon
             variant="ghost"
@@ -394,8 +311,9 @@ function isNavActive(path: string) {
             aria-label="全局主题"
             @change="updateThemeAppearance"
           >
-            <web-ui-option value="light" :label="LIGHT_LABEL">{{ LIGHT_LABEL }}</web-ui-option>
-            <web-ui-option value="dark" :label="DARK_LABEL">{{ DARK_LABEL }}</web-ui-option>
+            <!-- 外观名称由 Wuchale 壳文案统一翻译成 Light / Dark。 -->
+            <web-ui-option value="light" label="浅色模式">浅色模式</web-ui-option>
+            <web-ui-option value="dark" label="深色模式">深色模式</web-ui-option>
             <web-ui-option value="system" label="跟随系统">跟随系统</web-ui-option>
           </web-ui-select>
           <web-ui-select

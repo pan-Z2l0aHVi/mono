@@ -445,7 +445,8 @@ toast.success('上传完成', { id: 'upload', duration: 3000 }) // 换 type，�
 
 ### CSS Custom Properties
 
-| 名称                            | 说明                       | 默认值 |
-| ------------------------------- | -------------------------- | ------ |
-| `--wui-toast-viewport-gap`      | Toast 到视口边缘的可见距离 | `16px` |
-| `--wui-toast-container-padding` | 容器预留的扩散阴影绘制空间 | `40px` |
+| 名称                            | 说明                                                                  | 默认值 |
+| ------------------------------- | --------------------------------------------------------------------- | ------ |
+| `--wui-toast-viewport-gap`      | Toast 到视口边缘的可见距离                                            | `16px` |
+| `--wui-toast-container-padding` | 容器预留的扩散阴影绘制空间                                            | `40px` |
+| `--wui-toast-top-offset`        | 顶部 Toast 容器的额外下移量，用于避让固定 header；只影响 `top-*` 位置 | `0px`  |

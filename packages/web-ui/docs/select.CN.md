@@ -133,7 +133,7 @@ import { lucideFileText, lucideFilm, lucideImage } from '@greypan/web-ui/icons'
 
 ### Custom trigger
 
-`trigger` 插槽替换默认的 label 文本，外壳、箭头与开合行为仍由组件提供。插槽内容是页面侧渲染的普通节点，用页面状态写它的文本，它就会跟着选择变。
+`trigger` 插槽替换默认的 label 文本，外壳、箭头与开合行为仍由组件提供。组件只提供承载 trigger 的 label 容器，不直接覆盖 slotted 节点的字体、颜色或尺寸；插槽内容用页面状态写文本，它就会跟着选择变。
 
 ```tsx
 import { lucideGlobe } from '@greypan/web-ui/icons'

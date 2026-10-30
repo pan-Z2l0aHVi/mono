@@ -158,3 +158,13 @@ msgstr "Loading language"
 #: src/app/index.vue
 msgid "语言切换失败，请刷新页面后重试"
 msgstr "Unable to switch language. Refresh the page and try again."
+
+#: src/app/index.vue
+#: src/app/index.vue
+msgid "浅色模式"
+msgstr "Light"
+
+#: src/app/index.vue
+#: src/app/index.vue
+msgid "深色模式"
+msgstr "Dark"

@@ -47,6 +47,28 @@ afterEach(async () => {
 })
 
 describe('WebUiToast 移动端适配（浏览器）', () => {
+  it('--wui-toast-top-offset 只把顶部 toast 下移指定距离', async () => {
+    const baseId = toast.info('base offset', { id: 'base-offset', duration: 0 })
+    await Promise.resolve()
+    await waitForFrame()
+    await waitForFrame()
+    const baseTop = findToast(baseId)?.getBoundingClientRect().top
+    if (baseTop === undefined) throw new Error('base toast not mounted')
+
+    toast._reset()
+    document.documentElement.style.setProperty('--wui-toast-top-offset', '72px')
+    try {
+      const shiftedId = toast.info('shifted offset', { id: 'shifted-offset', duration: 0 })
+      await Promise.resolve()
+      await waitForFrame()
+      await waitForFrame()
+      const shiftedTop = findToast(shiftedId)?.getBoundingClientRect().top
+      expect(shiftedTop).toBeCloseTo(baseTop + 72)
+    } finally {
+      document.documentElement.style.removeProperty('--wui-toast-top-offset')
+    }
+  })
+
   it('窄视口下不撑出横向滚动', async () => {
     await setViewport(320, 568)
     const el = document.createElement('web-ui-toast')
