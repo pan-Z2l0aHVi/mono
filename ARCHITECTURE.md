@@ -41,11 +41,11 @@
 ## 2. 依赖、构建与发布边界
 
 - Workspace 只有 `apps/**` 和 `packages/**` 两类；版本尽量走 workspace `catalog`。
-- `packages/browser-kit`、`deps-reload`、`js-kit`、`unplugin-web-components` 与 `web-ui` 是公开 npm 包；`test-kit`（测试基础设施）、`tsconfig`（配置 profiles）、`md-to-comp`（构建期 Vite 插件引擎）、`app-scrollbars`（app 级 OverlayScrollbars 配置）、`wuchale-vue`（Vue SFC adapter）与 `monorepo-kit`（门禁与构建编排）是 workspace 内部私有包。私有包仍参与 Changesets 版本计算，发布边界见 [`docs/agents/release.md`](docs/agents/release.md)。`monorepo-kit` 的运行时源码直出：`exports.import` 指向 `src/`，`build` 只生成 `dist/` 里的类型声明。
+- `packages/browser-kit`、`deps-reload`、`js-kit`、`unplugin-web-components` 与 `web-ui` 是公开 npm 包；`test-kit`（测试基础设施）、`tsconfig`（配置 profiles）、`md-to-comp`（构建期 Vite 插件引擎）、`app-scrollbars`（app 级 OverlayScrollbars 配置）、`wuchale-vue`（Vue SFC adapter）与 `monorepo-kit`（门禁与构建编排）是 workspace 内部私有包。私有包仍参与 Changesets 版本计算，发布边界见 [`docs/agents/release.md`](docs/agents/release.md)。`monorepo-kit` 的源码是 TypeScript，`build` 跑 `vp pack` 产出 `dist/`，`exports.import` 指向产物。
 - 自撰 agent skills 不走 npm，只在 GitHub 分发；实体在 [`skills/`](./skills)，说明见 [`skills/README.md`](skills/README.md)。
 - `apps/*` 都是 `private` 的集成或交付应用，不是公共 API 的权威来源。
 - [`apps/interweave/frontend`](apps/interweave/frontend) 是独立 `private` workspace，属 Wails 前端集成面；Go host 在 [`apps/interweave`](apps/interweave)。
 
 ## 3. Agent 工具与仓库政策
 
-根 `scripts/` 只是入口面与 bootstrap helper，实现住在 [`packages/monorepo-kit`](packages/monorepo-kit)。该包运行时源码直出（`build` 只产出 `dist/` 类型声明），但依赖边出现在每个消费方的 `package.json` 里；仓库级命令面以根 `package.json` 为准。task 登记由 [`.agents/skills/task-ledger/SKILL.md`](.agents/skills/task-ledger/SKILL.md) 提供，只写系统临时目录；政策检查只读，两者都不改写源码或 Git index；职责与恢复边界分别见该 skill 和 [`docs/agents/commit.md`](docs/agents/commit.md)。workflow 的触发面与 job 拓扑以 YAML 为权威，`.github/scripts/lib/workflow-topology.mjs` 只保留跨 workflow 的不变量并由其测试读取 YAML 校验；本文不复制命令、检查集合或 workflow 细节。
+根 `scripts/` 只是入口面与 bootstrap helper，实现住在 [`packages/monorepo-kit`](packages/monorepo-kit)。该包经 `vp pack` 产出 `dist/`，门禁与配置经包名读产物，依赖边出现在每个消费方的 `package.json` 里；仓库级命令面以根 `package.json` 为准。task 登记由 [`.agents/skills/task-ledger/SKILL.md`](.agents/skills/task-ledger/SKILL.md) 提供，只写系统临时目录；政策检查只读，两者都不改写源码或 Git index；职责与恢复边界分别见该 skill 和 [`docs/agents/commit.md`](docs/agents/commit.md)。workflow 的触发面与 job 拓扑以 YAML 为权威，`.github/scripts/lib/workflow-topology.mjs` 只保留跨 workflow 的不变量并由其测试读取 YAML 校验；本文不复制命令、检查集合或 workflow 细节。
