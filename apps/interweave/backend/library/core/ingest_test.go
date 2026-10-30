@@ -15,14 +15,14 @@ import (
 	"github.com/pan-Z2l0aHVi/mono/apps/interweave/backend/remote"
 )
 
-// ADR-0014 的 10 秒预算只存在于 ingestBudget：全部 URL 纳入与刷新路径都经 probe 共享它。
+// 10 秒预算（AGENTS.md「Source 可用性」）只存在于 ingestBudget：全部 URL 纳入与刷新路径都经 probe 共享它。
 func TestIngestBudgetIsSingleClock(t *testing.T) {
 	if ingestBudget != 10*time.Second {
-		t.Fatalf("expected ADR-0014 ingest budget of 10s, got %v", ingestBudget)
+		t.Fatalf("expected the 10s ingest budget from AGENTS.md, got %v", ingestBudget)
 	}
 }
 
-// 文件探测只做轻量 stat：结果只决定 available，默认标题取文件名（ADR-0014/0023）。
+// 文件探测只做轻量 stat：结果只决定 available，默认标题取文件名（AGENTS.md「Resource 标题」）。
 func TestProbeFileAvailability(t *testing.T) {
 	ing := &ingestion{}
 	ctx := context.Background()

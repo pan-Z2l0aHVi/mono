@@ -4,6 +4,8 @@
 
 > 状态：非权威参考（时点性研究）。结论以现行 ADR、源码与测试为准。
 
+> 文中行号、实测数值与「当前实现」类描述均为写作时点，不随实现同步；现行权威见所引 ADR、源码与测试。
+
 > 回答「根 `tsconfig.json` 用 solution style（`{"files": [], "references": [...]}`）在 monorepo 里是否有真实价值；主流开源 monorepo 实际怎么组织根 tsconfig 与 TypeScript project references」。调研日期 2026-10-09。官方论断追溯 typescriptlang.org / devblogs.microsoft.com；真实仓库论断追溯 GitHub 默认分支（main/master）的原始文件（ref = 抓取时的分支 HEAD）；本仓库行为在 TS 6.0.3 下用受控例程实测。逐条标注「官方文档 / 源码事实 / 实测 / 推断」。
 
 ---
@@ -26,7 +28,7 @@
 
 4. **根 solution tsconfig 真正买到的东西**只有三件：① 编辑器跨工程跳转/重命名（依赖 `declarationMap`）；② `tsc -b` 的增量构建图（依赖 `composite` + `declaration`）；③ CI 里一个 `tsc -b` 单入口。**三者都不需要时，它就是纯 vestigial（残留物）。**
 
-5. **对本仓库的结论：DELETE（删除根 `tsconfig.json`）**。理由：没有任何脚本 / CI / hook 跑 `tsc -b`（源码事实）；类型检查已由 `vp check`（oxlint + tsgolint，TS 7 引擎）与各 app 的 `vue-tsc --build` 承担；被引用工程无 `composite`，构建图无增量价值；references 已漂移（缺 `apps/interweave/frontend`、`packages/test-kit`）；本仓库所用工具 Turborepo 官方建议就是「不要根 tsconfig、不要 project references」。若某天想保留「单一 `tsc -b` 入口」，才需要按 §5 的 REPAIR 条件补 `composite`、`declarationMap`、修 references 并接入脚本——但那与现有 `vp check` 工具链是**并行重复的第二个类型检查器**，收益为负。
+5. **对本仓库的结论：DELETE（删除根 `tsconfig.json`）**。理由：没有任何脚本 / CI / hook 跑 `tsc -b`（源码事实）；类型检查已由 `vp check`（oxlint + tsgolint，TS 7 引擎）与各 app 的 `vue-tsc --build` 承担；被引用工程无 `composite`，构建图无增量价值；references 已漂移（缺 `apps/interweave/frontend`、`packages/test-kit`）；本仓库所用工具 Turborepo 官方建议就是「不要根 tsconfig、不要 project references」。若某天想保留「单一 `tsc -b` 入口」，才需要按 §5 的 REPAIR 条件补 `composite`、`declarationMap`、修 references 并接入脚本——但那与现有 `vp check` 工具链是**并行重复的第二个类型检查器**，收益为负。（2026-10-30 核验：本 DELETE 建议已被后续变更实施，仓库根 `tsconfig.json` 现已不存在；现行成文事实见 `docs/adr/0018-monorepo-kit-generic-plugins.md`，其中「仓库根没有 `tsconfig.json`」约在 :73。）
 
 ---
 
@@ -89,7 +91,7 @@
 **结论（实测）**：
 
 - `composite` / `may not disable emit` 的校验**只在「会编译源码的工程」声明 `references` 时执行**；**纯 solution 工程（`files: []`）的 `references` 不触发校验**。
-- 本仓库所有带 `references` 的配置都是纯 solution（根 `tsconfig.json`，以及 `packages/{js-kit,browser-kit,web-ui}/tsconfig.json`、`apps/{react-web-ui-demo,vue-web-ui-demo,interweave/frontend}/tsconfig.json` 都是 `{"files": [], "references": [...]}`）；叶子 `tsconfig.{node,app,vitest}.json` 只有 `include`、没有 `references`。因此没有任何「会编译的工程」声明 references → 校验永不触发 → `tsc -b` 表面「能用」。
+- 本仓库所有带 `references` 的配置都是纯 solution（根 `tsconfig.json`，以及 `packages/{js-kit,browser-kit,web-ui}/tsconfig.json`、`apps/{react-web-ui-demo,vue-web-ui-demo,interweave/frontend}/tsconfig.json` 都是 `{"files": [], "references": [...]}`）；叶子 `tsconfig.{node,app,vitest}.json` 只有 `include`、没有 `references`。因此没有任何「会编译的工程」声明 references → 校验永不触发 → `tsc -b` 表面「能用」。（2026-10-30 核验：上述工程清单缺 `packages/monorepo-kit`——后来新增的类型化 workspace 包，见 `docs/adr/0017-monorepo-tooling-package.md` 与 `docs/adr/0018-monorepo-kit-generic-plugins.md`；清单里的「根 `tsconfig.json`」一项也已随该文件删除而失效。）
 - 这是**未文档化的实现行为**（官方文档仍写 `must have composite`），**不要依赖**：只要把某个跨包依赖从「workspace package name」改成「TS `references`」，或给任一有源码的 tsconfig 加 `references`，`tsc -b` 立即报 `TS6306`/`TS6310`。
 - `tsc -b --dry` 不能当门禁（不校验 composite/emit）。
 
@@ -154,11 +156,11 @@
 
 ### 5.1 本仓库现状（源码事实）
 
-- 根 `tsconfig.json` = `{"files": [], "references": [5 个 package + 2 个 app]}`。
-- **无任何脚本/CI/hook 跑 `tsc -b`**：根 `package.json` 的 `check-code` = `check-cspell && vp check && check-go && check-stylelint`；直接 `tsc` 调用为零。
+- 根 `tsconfig.json` = `{"files": [], "references": [5 个 package + 2 个 app]}`。（2026-10-30 核验：该文件已被后续变更删除，仓库根现已不存在 `tsconfig.json`；现行成文事实见 `docs/adr/0018-monorepo-kit-generic-plugins.md`「仓库根没有 `tsconfig.json`」，:73。）
+- **无任何脚本/CI/hook 跑 `tsc -b`**：根 `package.json` 的 `check-code` = `check-cspell && vp check && check-go && check-stylelint`；直接 `tsc` 调用为零。（2026-10-30 核验：`check-code` 现文本为 `pnpm run check-cspell && vp check && pnpm run check-go && pnpm run check-stylelint`，语义等价，仅写法不同。）
 - 类型检查实际由：`vp check`（oxlint + tsgolint，typescript-go / TS 7 引擎，**自行发现 tsconfig**）、各 app 的 `vue-tsc --build`（`apps/vue-web-ui-demo`、`apps/interweave/frontend`）承担。
 - 全仓 **0 处 `composite`**；被引用工程也无 `declarationMap`。
-- references 已漂移：`apps/interweave/frontend`、`packages/test-kit` **未列入**根 references（与 §2 结论呼应：反正不触发校验，漂移无人察觉）。
+- references 已漂移：`apps/interweave/frontend`、`packages/test-kit` **未列入**根 references（与 §2 结论呼应：反正不触发校验，漂移无人察觉）。（2026-10-30 核验：根 `tsconfig.json` 已随 DELETE 建议的实施而不复存在，这份 references 清单本身已无载体；见 `docs/adr/0018-monorepo-kit-generic-plugins.md`，:73。）
 - 包以 **compiled package** 形态暴露类型（如 `@greypan/js-kit` 的 `exports.types` → `./dist/*.d.ts`），消费走 `dist` 声明文件，不经 `references`。
 
 ### 5.2 判定表
@@ -181,7 +183,7 @@
 
 **若未来真需要「一个 `tsc -b` 入口」**（例如想在 CI 里跑一次全图类型检查、或把类型检查从 `vp check` 迁到原生 `tsc`），才按 REPAIR 做全套：加 `composite`、加 `declarationMap`、修 references、写脚本，并**移除并行的重复检查**——否则不要保留一个没人调用、无法触发机制的 solution 壳。
 
-> 注：本调研只做结论与判据，不实施删除或修复；删除根 `tsconfig.json` 属独立变更任务，需按仓库 workflow 立项并验证 `vp check` / 各 app `vue-tsc --build` 不受影响。
+> 注：本调研只做结论与判据，不实施删除或修复；删除根 `tsconfig.json` 属独立变更任务，需按仓库 workflow 立项并验证 `vp check` / 各 app `vue-tsc --build` 不受影响。（2026-10-30 核验：该删除已作为独立变更实施完毕，仓库根 `tsconfig.json` 现已不存在；见 `docs/adr/0018-monorepo-kit-generic-plugins.md`，:73。）
 
 ---
 
@@ -217,5 +219,5 @@
 
 **本仓库源码事实与实测**
 
-- 源码：根 `tsconfig.json`；`packages/{js-kit,browser-kit,web-ui,unplugin-web-components,deps-reload,test-kit}/tsconfig*.json`；`apps/{react-web-ui-demo,vue-web-ui-demo,interweave/frontend}/tsconfig*.json`；`packages/tsconfig/base.json`；根 `package.json`（`check-code` 等脚本）；`packages/js-kit/package.json`（`exports.types` → `dist`）；`node_modules` 中 vite-plus `docs/guide/check.md`（tsconfig 自动发现）。
+- 源码：根 `tsconfig.json`；`packages/{js-kit,browser-kit,web-ui,unplugin-web-components,deps-reload,test-kit}/tsconfig*.json`；`apps/{react-web-ui-demo,vue-web-ui-demo,interweave/frontend}/tsconfig*.json`；`packages/tsconfig/base.json`；根 `package.json`（`check-code` 等脚本）；`packages/js-kit/package.json`（`exports.types` → `dist`）；`node_modules` 中 vite-plus `docs/guide/check.md`（tsconfig 自动发现）。（2026-10-30 核验：这份源码清单缺 `packages/monorepo-kit`——后来新增的类型化 workspace 包，见 `docs/adr/0017-monorepo-tooling-package.md` 与 `docs/adr/0018-monorepo-kit-generic-plugins.md`；其中「根 `tsconfig.json`」一项已随该文件删除而失效。）
 - 实测（TS 6.0.3，darwin-arm64，2026-10-09）：`pnpm exec tsc --version` = 6.0.3；`/tmp/tsref`、`/tmp/tsref2`、`/tmp/tsref3` 受控例程见 §2 表。

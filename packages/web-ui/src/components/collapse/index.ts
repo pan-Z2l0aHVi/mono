@@ -60,8 +60,8 @@ registerPeekEdgeActive()
  * 宿主（属性不跨 shadow 转发），AT 读不到；`disabled` 是真禁用，原生 button 与
  * web-ui-button 都能生效。
  *
- * 内容区在 shadow 内以 grid `0fr ↔ 1fr` track 过渡驱动高度/宽度动画（ADR-0030
- * 选型保留）。关闭稳态三态（消费者 light DOM 永不移动，hidden 全部命令式管理，
+ * 内容区在 shadow 内以 grid `0fr ↔ 1fr` track 过渡驱动高度/宽度动画。
+ * 关闭稳态三态（消费者 light DOM 永不移动，hidden 全部命令式管理，
  * 避免渲染绑定在关闭动画起点抢先 display:none）：
  * - 默认：content 容器 `hidden`（display:none，脱离渲染与可访问性树）；
  * - `keep-mounted`：inner `inert`（保留在 0fr track 内，滚动位置与布局可测量）；
@@ -251,7 +251,7 @@ export class WebUiCollapse extends LitElement {
     trigger.toggleAttribute('disabled', this.disabled)
   }
 
-  // ===== 内容区动画管线（三态语义见 ADR-0030） =====
+  // ===== 内容区动画管线（三态语义见本文件顶部注释） =====
 
   /** 关闭稳态是否露出部分内容；空值与非空判断避免 `peek=""` 被当作有效长度。 */
   private get _peeks(): boolean {

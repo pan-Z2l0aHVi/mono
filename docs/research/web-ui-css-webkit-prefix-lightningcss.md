@@ -3,17 +3,18 @@
 # web-ui 手写 -webkit- 前缀与 lightningcss 自动前缀调研（iOS 16.4+）
 
 > 状态：非权威参考（时点性研究）。结论以现行 ADR、源码与测试为准。
+> 文中行号、实测数值与「当前实现」类描述均为写作时点，不随实现同步；现行权威见所引 ADR、源码与测试。
 
-> 回答「vite-plus 的 lightningcss 能否为 `*.css?inline` 导入自动生成 `-webkit-` 前缀，从而删掉 web-ui 里手写的前缀」。调研日期 2026-09-14。所有论断追溯一手来源：`@voidzero-dev/vite-plus-core@0.3.0` 源码（本仓库 `node_modules/vite`）、`lightningcss@1.33.0` 源码/README/类型声明、MDN Browser Compat Data 8.1.1、Vite 官方文档（vite.dev）；关键行为在本机实测。标注：「源码事实 / 官方文档 / 实测 / 推断」。
+> 回答「vite-plus 的 lightningcss 能否为 `*.css?inline` 导入自动生成 `-webkit-` 前缀，从而删掉 web-ui 里手写的前缀」。调研日期 2026-09-14。所有论断追溯一手来源：`@voidzero-dev/vite-plus-core@0.3.0` 源码（本仓库 `node_modules/vite`）、`lightningcss@1.33.0` 源码/README/类型声明、MDN Browser Compat Data 8.1.1、Vite 官方文档（vite.dev）；关键行为在本机实测。标注：「源码事实 / 官方文档 / 实测 / 推断」。（2026-10-30 核验：现 catalog 钉 `@voidzero-dev/vite-plus-core@1.4.0`（`pnpm-workspace.yaml:102-103`），机制复验仍成立）
 
 ---
 
 ## 结论（TL;DR）
 
-1. **能，且当前工具链已经在自动生成**。在本仓库工具链（vite-plus 0.3.0 / `@voidzero-dev/vite-plus-core` 0.3.0 / lightningcss 1.33.0）下，`*.css?inline` 导入**会经过** lightningcss 变换管线（不是绕过），并按默认 targets 自动生成 `-webkit-` 前缀。`glass.css` 里「lightningcss 对 ?inline 导入不做自动前缀，需手动写前缀版本」的注释已不准确，属于可以删除手写前缀的场景。
-2. **默认 targets 恰好覆盖 iOS 16.4+**：fork 在 `css.transformer: 'lightningcss'` 时默认 targets = `ESBUILD_BASELINE_WIDELY_AVAILABLE_TARGET` = `["chrome111","edge111","firefox114","safari16.4","ios16.4"]`（注释：Baseline Widely Available on 2025-05-01）。web-ui 的 `vite.config.ts` 只设了 `css: { transformer: 'lightningcss' }`、未覆盖 targets，因此该默认值生效。
+1. **能，且当前工具链已经在自动生成**。在本仓库工具链（vite-plus 0.3.0 / `@voidzero-dev/vite-plus-core` 0.3.0 / lightningcss 1.33.0）下，`*.css?inline` 导入**会经过** lightningcss 变换管线（不是绕过），并按默认 targets 自动生成 `-webkit-` 前缀。`glass.css` 里「lightningcss 对 ?inline 导入不做自动前缀，需手动写前缀版本」的注释已不准确，属于可以删除手写前缀的场景。（2026-10-30 核验：catalog 现钉 `@voidzero-dev/vite-plus-core@1.4.0`（`pnpm-workspace.yaml:102-103`）；`glass.css` 已迁至 `src/classes/glass.css`，其注释亦已按本篇结论更正，现 :26 写「前缀由 lightningcss 按 ?inline 管线默认 targets（含 ios16.4）自动生成，无需手写」）
+2. **默认 targets 恰好覆盖 iOS 16.4+**：fork 在 `css.transformer: 'lightningcss'` 时默认 targets = `ESBUILD_BASELINE_WIDELY_AVAILABLE_TARGET` = `["chrome111","edge111","firefox114","safari16.4","ios16.4"]`（注释：Baseline Widely Available on 2025-05-01）。web-ui 的 `vite.config.ts` 只设了 `css: { transformer: 'lightningcss' }`、未覆盖 targets，因此该默认值生效。（2026-10-30 核验：现 `packages/web-ui/vite.config.ts:34` 显式 `target: ['chrome111','edge111','safari16.4','ios16.4','firefox128']`，注释说明顶层 target 同时驱动 CSS lightningcss 前缀）
 3. **实测验证**：用该 fork 的 JS API 构建一个 `?inline` 导入（内容含 `backdrop-filter`、`user-select`、`mask`、`mask-composite`、`text-size-adjust`）的产物，自动带 `-webkit-backdrop-filter`、`-webkit-user-select`、`-webkit-mask-*` 全族、`-webkit-mask-composite:xor`、`-webkit-text-size-adjust`。
-4. **可以删掉手写版**（lightningcss 自动生成）：`-webkit-backdrop-filter`（14 处）、`-webkit-mask` / `-webkit-mask-composite`（glass.css）、`-webkit-text-size-adjust`（如以后出现）。
+4. **可以删掉手写版**（lightningcss 自动生成）：`-webkit-backdrop-filter`（14 处）、`-webkit-mask` / `-webkit-mask-composite`（glass.css）、`-webkit-text-size-adjust`（如以后出现）。（2026-10-30 核验：实施时证实 lightningcss 不改写 transition 属性列表，toast/dialog/overlay-motion 的 transition 列表仍需手写 `-webkit-` 前缀，证据 `packages/web-ui/src/components/toast/style.css:40`、`packages/web-ui/src/components/dialog/style.css:149`、`packages/web-ui/src/assets/overlay-motion.css:24`（三处都带解释注释））
 5. **必须保留手写 / 不会被自动生成**：
    - `-webkit-line-clamp` + `display:-webkit-box` + `-webkit-box-orient`（toast/style.css）：标准 `line-clamp` 属性在 iOS 16.4 不受支持，且 lightningcss 不会把标准 `line-clamp` 展开成 `-webkit-box` 技术（实测）；
    - `-webkit-user-drag`（image-preview）：非标准属性、无标准等价物，lightningcss 无从生成（但也不会删除，实测保留原样）；
@@ -48,6 +49,8 @@ if (resolved.transformer === 'lightningcss') {
 - 同版本 0.2.7 源码也相同，说明该注释至少在 0.2.7 起就已与工具链行为不符。
 
 ## 3. lightningcss 前缀能力（源码/README 事实，1.33.0）
+
+（2026-10-30 核验：catalog 为 `^1.32.0`（`pnpm-workspace.yaml:64`），`1.33.0` 属时点数值。）
 
 - README：「Vendor prefixing – Lightning CSS accepts a list of browser targets, and automatically adds (and removes) vendor prefixes.」「Browserslist configuration – … opt-in browserslist configuration discovery …」。
 - `TransformOptions`（`node/index.d.ts`）只有 `targets?: Targets`、`include?: number`、`exclude?: number`，**没有 `browserslist` option**；要接 browserslist 必须用 `browserslistToTargets(browserslist(...))` 转成 `Targets`。
@@ -111,7 +114,9 @@ if (resolved.transformer === 'lightningcss') {
 | `components/image-preview/style.css`                                                                                                  | `-webkit-user-drag: none`                                         | 保留（非标准属性）                                                             |
 | `components/input-number/style.css`                                                                                                   | `::-webkit-inner-spin-button`、`::-webkit-outer-spin-button`      | 保留（WebKit 私有伪元素）                                                      |
 
-删除手写前缀时，同步移除相邻的 `stylelint-disable-next-line property-no-vendor-prefix` 注释（`property-no-vendor-prefix` 由 `stylelint-config-standard` 开启，`packages/web-ui/.stylelintrc.json` 未覆盖该规则）。
+（2026-10-30 核验：表中 `assets/glass.css` 现路径为 `src/classes/glass.css`。）
+
+删除手写前缀时，同步移除相邻的 `stylelint-disable-next-line property-no-vendor-prefix` 注释（`property-no-vendor-prefix` 由 `stylelint-config-standard` 开启，`packages/web-ui/.stylelintrc.json` 未覆盖该规则）。（2026-10-30 核验：`packages/web-ui/.stylelintrc.json` 已不存在，stylelint 配置已上移到仓库根 `.stylelintrc.json`，仍 extends `stylelint-config-standard`，结论不变）
 
 另外：`?inline` 在 dev server（serve）模式同样经过 `compileCSS` → lightningcss（`vite:css` 的 transform 在 serve/build 共用），所以 dev 下也带前缀，行为一致。
 

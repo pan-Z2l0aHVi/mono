@@ -4,6 +4,8 @@
 
 > 状态：非权威参考（时点性研究）。结论以现行 ADR、源码与测试为准。
 
+> 文中行号、实测数值与「当前实现」类描述均为写作时点，不随实现同步；现行权威见所引 ADR、源码与测试。
+
 > 回答「本 monorepo 能否整体升级到最新的 TypeScript 7」。调研日期 2026-09-09。官方事实（发布状态、破坏性变更、生态适配）均追溯一手来源（devblogs.microsoft.com、GitHub、npm registry），来源逐条标注；仓库事实来自当前源码与 manifest；另附本机原生 TS 7.0.2 的实测结果。「源码事实 / 实测 / 推断」按要求标注。
 
 ---
@@ -13,7 +15,7 @@
 **可以升级，且本仓库是极少数「已经半只脚在 TS 7 上」的仓库；但正确形态是「混合态」而非单编译器一刀切。**
 
 1. **类型检查早已在 TS 7 引擎上运行**（源码事实）：`vp check` 的 typecheck / type-aware lint 由 vite-plus 捆绑的 `oxlint-tsgolint@7.0.2001` 承担，其 README 明确写着"using [typescript-go] for full compatibility with the TypeScript type system, and targets **TypeScript 7**"。TS 7 就是 typescript-go 的正式版。
-2. **`typescript` npm 包（当前 catalog `~6.0.3`）只剩三个消费者**（源码事实）：`vue-tsc --build`（Vue demo 构建门禁）、`vite-plugin-dts → unplugin-dts` 的 `.d.ts` 生成（js-kit / browser-kit / web-ui）、编辑器 LSP。TS 7.0 不提供 JS API，这三个消费者短期内必须留在 TS 6 JS API 上。
+2. **`typescript` npm 包（当前 catalog `~6.0.3`）只剩三个消费者**（源码事实）：`vue-tsc --build`（Vue demo 构建门禁）、`vite-plugin-dts → unplugin-dts` 的 `.d.ts` 生成（js-kit / browser-kit / web-ui）、编辑器 LSP。TS 7.0 不提供 JS API，这三个消费者短期内必须留在 TS 6 JS API 上。（2026-10-30 核验：三者中的 dts 一项已不存在——`vite-plugin-dts` → `unplugin-dts` 依赖链已整体移除，`pnpm-lock.yaml` 里 0 命中；`web-ui`/`browser-kit`/`js-kit`/`unplugin-web-components`/`deps-reload`/`monorepo-kit` 的 build 一律 `vp pack`，dts 由 vite-plus 内置 `pack.dts` 产出，见 `packages/web-ui/vite.config.ts:39` 与 `docs/agents/build.md:53`。）
 3. **配置面已完全兼容**（源码事实 + 实测）：共享 tsconfig 已经是 `module: preserve` + `moduleResolution: bundler` + `verbatimModuleSyntax` + `strict` + `types: []` 显式声明；全仓无 `baseUrl` / `outFile` / `node10` / AMD / `ignoreDeprecations` 等 TS 7 移除项。Lit 的 `experimentalDecorators + useDefineForClassFields: false` 在 TS 7 下受支持且已显式声明，避开默认值翻转陷阱。
 4. **实测**（2026-09-09，本机 darwin-arm64）：原生 `typescript@7.0.2` 对全部 13 个非 Vue tsconfig `--noEmit` 零错误，与本地 tsc 6.0.3 输出一致；web-ui 包上 0.36s vs 1.56s（约 4x，小包）。
 5. **建议路径**：维持 `typescript@6.0.x` 服务 JS API 消费者 → 编辑器与（可选）CI 影子检查切换原生 TS 7 → 等 7.1 新 API 落地后再收敛为纯 7.x。**不要**把 catalog `typescript` 直接跳到 7.x——会打断 unplugin-dts / vue-tsc。
@@ -37,6 +39,8 @@ vite-plus@0.3.0
 └── oxfmt@0.64.0
 ```
 
+（2026-10-30 核验：外层 `vp toolchain` 现为 vite-plus 1.4.0，见 `pnpm-workspace.yaml:102-103`；上方代码块里的内部捆绑版本属当时的命令输出快照，不可由仓库文件复核。）
+
 | 环节                                   | 执行者                                                                                                     | 是否依赖 `typescript` JS 包 |
 | -------------------------------------- | ---------------------------------------------------------------------------------------------------------- | --------------------------- |
 | TS 转译（build/dev/test）              | vite 8.2.2 / oxc                                                                                           | 否                          |
@@ -47,12 +51,16 @@ vite-plus@0.3.0
 | 仓库脚本（repo-query / check-pack 等） | 纯 Node mjs，无 TS 编译器 API 使用（grep 验证）                                                            | 否                          |
 | 直接 `tsc` 调用                        | 无（CI、scripts、hooks 均无；唯一 build 门禁是 Vue demo 的 `vue-tsc --build`）                             | —                           |
 
+（2026-10-30 核验：上表「`.d.ts` 生成（子路径导出包）」一行已失效——`vite-plugin-dts` → `unplugin-dts` 依赖链已整体移除，`pnpm-lock.yaml` 里 0 命中；`web-ui`/`browser-kit`/`js-kit`/`unplugin-web-components`/`deps-reload`/`monorepo-kit` 的 build 一律 `vp pack`，dts 由 vite-plus 内置 `pack.dts` 产出，见 `packages/web-ui/vite.config.ts:39` 与 `docs/agents/build.md:53`。）
+
+（2026-10-30 核验：上表「仓库脚本（repo-query / check-pack 等）」一行中，`repo-query` 现居 `skills/monorepo-change-impact/repo-query.mjs`；门禁主体已迁进类型化的 workspace 包 `packages/monorepo-kit`，见 `docs/adr/0018-monorepo-kit-generic-plugins.md`。）
+
 `typescript` 在 catalog 中只有一处声明（`typescript: ~6.0.3`），没有任何包在运行时 import `typescript` API。
 
 ### 1.2 TS 配置面（源码事实）
 
 - `packages/tsconfig/base.json`：`module: preserve`、`moduleResolution: bundler`、`noEmit`、`strict`、`verbatimModuleSyntax`、`isolatedModules`、`noUncheckedSideEffectImports`、`esModuleInterop: true`。
-- 唯一的非默认语言特性配置：`web-ui/tsconfig.app.json` 的 `experimentalDecorators: true` + `useDefineForClassFields: false`（Lit 37 个组件文件使用装饰器）。
+- 唯一的非默认语言特性配置：`web-ui/tsconfig.app.json` 的 `experimentalDecorators: true` + `useDefineForClassFields: false`（Lit 37 个组件文件使用装饰器）。（2026-10-30 核验：现实测 39，复算命令 `grep -rl '@customElement' packages/web-ui/src/components | wc -l`；该计数属易漂移量，结论不受影响。）
 - 不可擦除语法面极小：无 `enum`；仅 `web-ui/src/types/react.ts` 一处 ambient `declare module 'react'` 内的 `namespace JSX`（TS 7 允许；被移除的是 `module Foo {}` 写法）；无构造器参数属性。`react.json` 已启用 `erasableSyntaxOnly`。
 - 全部 tsconfig 中无 `baseUrl`、`outFile`、`downlevelIteration`、`ignoreDeprecations`、`moduleResolution: node10`、AMD/UMD（grep 验证）；`@tsconfig/node24` 使用 `nodenext/node16`（TS 7 保留）。
 
@@ -119,6 +127,8 @@ vite-plus@0.3.0
 | 自写 AST 脚本                                    | 无                                                                       | —                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             | 无风险                                                                                                              |
 | 编辑器 LSP                                       | workspace typescript 6.0.3                                               | TS 7 LSP 已 GA（VS Code 内置可选原生版）                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      | 建议切换，收益最直接                                                                                                |
 
+（2026-10-30 核验：上表「`vp build` dts（vite-plugin-dts → unplugin-dts）」一行已失效——该依赖链已整体移除，`pnpm-lock.yaml` 里 0 命中；子路径导出包的 dts 现同样由 `vp pack` 内置的 `pack.dts` 产出，见 `packages/web-ui/vite.config.ts:39` 与 `docs/agents/build.md:53`。）
+
 来源：[tsgolint README](https://www.npmjs.com/package/oxlint-tsgolint)（node_modules 实读）、[Lit decorators 文档](https://lit.dev/docs/components/decorators/)、[vuejs/language-tools#5381](https://github.com/vuejs/language-tools/issues/5381)、[typescript-eslint dependency-versions](https://typescript-eslint.io/users/dependency-versions/)、[typescript-eslint#10940](https://github.com/typescript-eslint/typescript-eslint/issues/10940)、[Vite 8 博客](https://vite.dev/blog/announcing-vite8)。
 
 ---
@@ -135,7 +145,7 @@ $ typescript@7.0.2 --noEmit -p ...（同一配置）              # 0 错误，0
 
 原生 TS 7.0.2 对以下 13 个 tsconfig `--noEmit` **全部零错误**（js-kit app/node、browser-kit app/node、web-ui app/node、unplugin-web-components、deps-reload、react demo app/node），与 tsc 6.0.3 输出完全一致——包括含 `experimentalDecorators` 的 web-ui app 配置。
 
-**附带发现（与 TS 7 无关的存量问题）**：`packages/web-ui/tsconfig.vitest.json` 在 tsc 6.0.3 与 7.0.2 下有完全相同的 3 个既有错误（`lib: []` 导致 `Array.prototype.at` 缺失 ×2、`types: ["node"]` 导致 `setTimeout` 返回 `Timeout` ×1）。该配置的错误不进入 `vp check` 门禁，属存量问题；升级时顺手清理即可。
+**附带发现（与 TS 7 无关的存量问题）**：`packages/web-ui/tsconfig.vitest.json` 在 tsc 6.0.3 与 7.0.2 下有完全相同的 3 个既有错误（`lib: []` 导致 `Array.prototype.at` 缺失 ×2、`types: ["node"]` 导致 `setTimeout` 返回 `Timeout` ×1）。该配置的错误不进入 `vp check` 门禁，属存量问题；升级时顺手清理即可。（2026-10-30 核验：该配置的 `types` 现为 `["node","jsdom","vite/client"]`，见 `packages/web-ui/tsconfig.vitest.json:8-11`；`lib: []` 仍在。）
 
 （Vue demo 的 `.vue` SFC 需 vue-tsc 虚拟文档，原生 tsc 不适用，未纳入本轮 `--noEmit` 实测。）
 

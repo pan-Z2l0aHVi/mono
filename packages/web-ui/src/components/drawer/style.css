@@ -550,14 +550,14 @@ dialog.is-dragging .wui-drawer-drag-zone {
   max-width: none;
 }
 
-/* ===== 浮动卡片视觉语言（ADR-0036） ===== */
+/* ===== 浮动卡片视觉语言 ===== */
 
 /*
  * 非 headless 时 drawer 是四周留边的圆角卡片，与 layout sidebar 的设计语言一致；
  * 弹性拖拽使边距变化（8px → 更大）是合法状态而非渲染缺口。
  * headless 保持贴边几何，视觉由 Consumer 自绘。
  *
- * 留边经公开 token --wui-drawer-inset 暴露（默认 8px，ADR-0036 修订）；
+ * 留边经公开 token --wui-drawer-inset 暴露（默认 8px）；
  * 置 0 即贴边几何（与 headless 相同），通常与 --wui-drawer-radius: 0 搭配。
  *
  * 闭合位移需要越过留边才能完全滑出视口，因此闭合态 transform 以
@@ -701,7 +701,7 @@ dialog.is-dragging .wui-drawer-drag-zone {
   /*
    * reduce 下：位移一律归零、transform 不参与过渡（仅 opacity 反馈）。
    * 全部 !important：压过开放守卫（嵌套层叠变量的特异性猫鼠不可维护），
-   * 排除 .is-dragging —— reduce 下拖拽仍需实时跟手（ADR-0035）。
+   * 排除 .is-dragging —— reduce 下拖拽仍需实时跟手。
    * JS 收尾移除内联 transform 后立即为终态，无 280ms 过渡尾巴。
    */
   dialog:not(.is-dragging) {
