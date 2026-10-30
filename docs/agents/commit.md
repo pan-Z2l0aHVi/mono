@@ -22,7 +22,7 @@ bash scripts/workflow/commit.sh <type> <scope> "<subject>" --dry
 
 ## Pre-commit 与本地 checks
 
-[`.vite-hooks/commit-msg`](../../.vite-hooks/commit-msg) 拒绝只有注释的 message，并通过 commitlint 检查。[`.vite-hooks/pre-commit`](../../.vite-hooks/pre-commit) 调用 `check-pre-commit`，只读取状态，不修复或暂存文件。具体检查集合以入口实现为准。
+[`.vite-hooks/commit-msg`](../../.vite-hooks/commit-msg) 拒绝只有注释的 message，并通过 commitlint 检查。[`.vite-hooks/pre-commit`](../../.vite-hooks/pre-commit) 调用 `check-pre-commit`，只读取状态，不修复或暂存文件。检查从当前 Git worktree 运行，不读取 task state 或 `AGENT_TASK_*`；具体检查集合以入口实现为准。
 
 `pnpm install` 的 prepare 安装 hook dispatcher。用 `git hook run <hook>` 和 `pnpm run agent:env-doctor` 检查实际状态；缺少 dispatcher 时运行 `node scripts/maintenance/install-git-hooks.mjs`。不得修改 Git 配置或绕过 hook。
 
