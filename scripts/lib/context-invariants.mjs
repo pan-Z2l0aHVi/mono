@@ -2,7 +2,7 @@ import crypto from 'node:crypto'
 import path from 'node:path'
 
 // 只收已观测到的漂移短语。泛化的「当前」「目前」会把合法的过程描述一起判红，
-// 而文风 lint 不在门禁职责内（ADR-0026）。
+// 而文风 lint 不在门禁职责内（ADR-0013）。
 const VOLATILE_PHRASES = Object.freeze([
   { pattern: /当前规则集/, label: '当前规则集' },
   { pattern: /当前\s*GitHub\s*ruleset/, label: '当前 GitHub ruleset' },

@@ -18,7 +18,7 @@
  * `mobile:` 跟随 `web-ui-layout` 的移动端判定，不再自己写一遍 640px。
  *
  * layout 的判定（`matchMedia('(width <= 640px)')`）与它自己的 CSS 是同一条条件，并由
- * `mobile` 属性反射出来（见 packages/web-ui 的 ADR-0023），所以 app 侧只需要一个选择器：
+ * `mobile` 属性反射出来（见 packages/web-ui 的 ADR-0011），所以 app 侧只需要一个选择器：
  * 断点在哪、什么时候翻，都由 layout 一处决定。写成属性选择器而不是媒体查询**有代价**：
  * 它只对 layout 子树内的节点生效，被 overlay 的 portal 搬到 `document.body` 的内容够不到
  * （menu/option、popover、tooltip、select、autocomplete、image-preview、toast 都走那条路径）。

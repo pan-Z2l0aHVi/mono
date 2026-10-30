@@ -4,7 +4,7 @@
  *
  * fallback 固定英文，不跟随运行环境语言；需要其他语言时经覆盖通道改写——
  * 单标签组件用专用 attribute（`aria-close-label` 这类），多 key 成套组件用
- * `ariaLabels` 对象 property。分界规则见 ADR-0029。
+ * `ariaLabels` 对象 property。分界规则见 ADR-0016。
  */
 export type BuiltinLabelKey =
   | 'clear'

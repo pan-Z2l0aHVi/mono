@@ -7,7 +7,7 @@
 - 共享状态和行为使用 `defineXxx(...).make(...)` 的 `definePlugin` factory。Lit、Shadow DOM、属性绑定和框架事件类型沿用既有模式。
 - browser-mode 测试覆盖无法由 jsdom 证明的原生行为。UI、UX 和交互改动还必须在真实浏览器验证。
 - 受管组合的成员追踪、下行广播与上行写回统一走 `GroupController`，不要绕开它手搓成员管理。`select` 与 `autocomplete` 的 option 成员走 [`src/shared/option-portal`](./src/shared/option-portal/)，不要把两者的成员管理混写。
-- slot-trigger 组件（popover/dropdown/collapse）的 ARIA 状态（如 `aria-expanded`）不挂在 trigger 包装结构上，按 [ADR-0005](../../docs/adr/0005-web-ui-component-architecture.md) 回写。
+- slot-trigger 组件（popover/dropdown/collapse）的 ARIA 状态（如 `aria-expanded`）不挂在 trigger 包装结构上，按 [ADR-0005](../../docs/adr/0005-web-ui-components.md) 回写。
 - 框架动态绑定布尔属性必须用 camelCase Property；组件内不加 attribute 字符串解析兜底，保持原生 HTML 布尔存在语义。
 
 ## 组件组合词汇

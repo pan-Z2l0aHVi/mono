@@ -32,7 +32,7 @@ export interface ImagePreviewItem {
   alt?: string
 }
 
-/** imagePreview 的无障碍名成组覆盖；未提供的 key 回退内置英文文案（见 ADR-0029）。 */
+/** imagePreview 的无障碍名成组覆盖；未提供的 key 回退内置英文文案（见 ADR-0016）。 */
 export interface ImagePreviewAriaLabels {
   close?: string
   previousImage?: string
@@ -70,7 +70,7 @@ export interface ImagePreviewOptions {
   noScrollLock?: boolean
   /** 点击图片以外的空白区域不关闭，语义与 `<web-ui-dialog>` 的 `noBackdropClose` 一致。默认 false。 */
   noBackdropClose?: boolean
-  /** 内置无障碍名成组覆盖；未提供的 key 回退内置英文文案（见 ADR-0029）。 */
+  /** 内置无障碍名成组覆盖；未提供的 key 回退内置英文文案（见 ADR-0016）。 */
   ariaLabels?: ImagePreviewAriaLabels
 }
 

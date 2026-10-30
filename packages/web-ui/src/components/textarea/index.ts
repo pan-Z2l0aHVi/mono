@@ -31,7 +31,7 @@ export class WebUiTextarea extends FormAssociated(LitElement) {
   @property({ type: Boolean, reflect: true }) required = false
   @property({ type: Boolean, reflect: true }) full = false
   @property({ type: Boolean, reflect: true }) clearable = false
-  /** 清除按钮的无障碍名称；未设置时回退内置英文文案（见 ADR-0029）。 */
+  /** 清除按钮的无障碍名称；未设置时回退内置英文文案（见 ADR-0016）。 */
   @property({ type: String, attribute: 'aria-clear-label' }) ariaClearLabel = ''
   @property({ type: Boolean, reflect: true }) borderless = false
   @property({ type: Number, reflect: true }) rows = 3

@@ -108,7 +108,7 @@ export class WebUiLayout extends LitElement {
   @property({ type: Boolean, attribute: 'header-glow', reflect: true })
   headerGlow = false
 
-  /** 内置无障碍名的成组覆盖；未提供的 key 回退内置英文文案（见 ADR-0029）。 */
+  /** 内置无障碍名的成组覆盖；未提供的 key 回退内置英文文案（见 ADR-0016）。 */
   @property({ attribute: false }) ariaLabels?: LayoutAriaLabels
 
   /*

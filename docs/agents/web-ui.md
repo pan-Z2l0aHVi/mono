@@ -4,11 +4,11 @@
 
 ## 权威来源
 
-- Lit、Shadow DOM 和框架无关组件边界：[ADR-0005](../adr/0005-web-ui-component-architecture.md)。
-- 公共组件契约、原生事件、表单行为、跨框架 API 约定和 ARIA 回写：[ADR-0005](../adr/0005-web-ui-component-architecture.md)；面向消费者的 API 文档是 `packages/web-ui/docs/<component>.md`，包根 README 只是索引。
-- Overlay 交互/定位/内容迁移、布局层级、design token 和 @lit/context 组合模式：[ADR-0006](../adr/0006-web-ui-composition-rendering-architecture.md)。
-- React/Vue 类型适配、`$events` 和复合控件事件边界：[ADR-0005](../adr/0005-web-ui-component-architecture.md)。
-- icon manifest、生成器和导出：[ADR-0005](../adr/0005-web-ui-component-architecture.md)。
+- Lit、Shadow DOM 和框架无关组件边界：[ADR-0005](../adr/0005-web-ui-components.md)。
+- 公共组件契约、原生事件、表单行为、跨框架 API 约定和 ARIA 回写：[ADR-0005](../adr/0005-web-ui-components.md)；面向消费者的 API 文档是 `packages/web-ui/docs/<component>.md`，包根 README 只是索引。
+- Overlay 交互/定位/内容迁移、布局层级、design token 和 @lit/context 组合模式：[ADR-0006](../adr/0006-web-ui-composition.md)。
+- React/Vue 类型适配、`$events` 和复合控件事件边界：[ADR-0005](../adr/0005-web-ui-components.md)。
+- icon manifest、生成器和导出：[ADR-0005](../adr/0005-web-ui-components.md)。
 
 ## 修改前路由
 

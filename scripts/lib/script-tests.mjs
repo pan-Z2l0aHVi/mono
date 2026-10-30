@@ -1,6 +1,6 @@
 import { spawnSync } from 'node:child_process'
 
-// 运行全仓 tracked 的 *.test.mjs。发现规则见 ADR-0027：git 失败必须非零退出，
+// 运行全仓 tracked 的 *.test.mjs。发现规则见 ADR-0014：git 失败必须非零退出，
 // 不能把「没有测试」和「git 不可用」都当成成功。
 export const name = 'test-scripts'
 

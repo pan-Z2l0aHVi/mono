@@ -1,4 +1,4 @@
-# ADR-0005: Web UI Component Architecture
+# ADR-0005: Web UI 组件架构
 
 - **Date**: 2026-07-21
 - **Status**: 已接受
@@ -7,9 +7,7 @@
 
 `@greypan/web-ui` 将组件构建为**带有 Shadow DOM 的 Lit 自定义元素**。
 
-- `:host` CSS 选择器仅限于 `display` 和 `contain` —— 所有其他样式放在 shadow root 内部
-- 单一实现即可服务于所有框架
-- 外部 CSS 重置样式（Tailwind）无法穿透 Shadow DOM —— 只有 `:host` 属性会受到影响
+组件内部样式位于 shadow root，`:host` 定义宿主所需的样式。外部 CSS 可作用于宿主，但不能直接选择 shadow root 内部节点。单一 custom element 实现可供不同框架使用。
 
 ## 2. 公共 API 约定
 
@@ -43,7 +41,7 @@
 
 ### 2.5 原生表单关联
 
-13 个表单控件实现 `static formAssociated = true` + `ElementInternals`：input, textarea, input-number, select, slider, checkbox, radio, switch, segmented, checkbox-group, radio-group, autocomplete, editable-text。
+需要参与原生表单的组件通过共享 form-association mixin 和 `ElementInternals` 接入表单。具体组件和行为以实现及浏览器测试为准。
 
 ### 2.6 slot-trigger ARIA 回写
 
@@ -61,13 +59,13 @@ slot-trigger 组件（popover、dropdown、collapse、context-menu）把 `aria-e
 
 ### 3.3 Vue 适配
 
-删除全局 `ComponentCustomProps extends HTMLAttributes`；每个 `LitVueWrapper` 局部合并 `HTMLAttributes` 并排除与 emit 重名的 handler。使用 Vue 3.5 element 类型参数声明实际 Custom Element host。
+每个 `LitVueWrapper` 局部合并 `HTMLAttributes` 并排除与 emit 重名的 handler。使用 Vue 3.5 element 类型参数声明实际 Custom Element host。
 
 ### 3.4 框架版本基线
 
 `@types/react` peer `>=19`，`vue` peer `>=3.5`。
 
-## 4. Icon System
+## 4. Icon 系统
 
 在构建时从 Iconify JSON 包生成带类型的 icon 数据模块。
 
@@ -77,22 +75,9 @@ slot-trigger 组件（popover、dropdown、collapse、context-menu）把 `aria-e
 - icon 是带类型的、可 Tree Shaking 的模块，无运行时查找依赖
 - `iconify-icon` 不是 `web-ui` 的运行时依赖
 
-## 5. 公开契约测试
+## 5. 契约验证
 
-测试从验证 shadowRoot 内部结构转向验证公开契约：
-
-- 宿主属性默认值和反射、公开方法调用、派发事件及其 detail
-- 语义角色和 aria-* 属性、FormData 集成（formAssociated 组件）、slot 投影
-- **禁止测试** shadowRoot 内部 class、私有字段、CSS 样式、实现顺序
-
-双层测试配置：jsdom 层覆盖所有组件契约；Chromium 层（Vitest Browser Mode + Playwright）覆盖 Pointer 事件、键盘导航、焦点管理、portal、原生 dialog。
-
-## 6. 运行时参数规范化
-
-引入 `src/shared/normalize/index.ts`：
-
-- `normalizeLiteral(value, allowed, default)` — 字面量属性校验
-- `normalizeNumber(value, min, max, default)` — 数值范围校验
+公共 API 和框架适配由契约测试验证；依赖真实浏览器的焦点、键盘、pointer 与 overlay 行为使用浏览器测试。具体用例和测试范围以测试代码与仓库验证指南为准。
 
 ## 后果
 

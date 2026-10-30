@@ -79,7 +79,7 @@ export async function run(context) {
 
   // AGENTS.md 的章节标题与叙述措辞不再是契约。入口断言只保留必经链接；
   // 具体命令由 task-ledger skill 与 CLI 承担。
-  // 结构不变量锚点（<!-- invariant:... -->）是惰性注释，保留供人工检索，没有机器校验（见 ADR-0014）。
+  // 结构不变量锚点（<!-- invariant:... -->）是惰性注释，保留供人工检索，没有机器校验。
   if (exists('AGENTS.md')) {
     const agents = read('AGENTS.md')
     for (const marker of ['docs/agents/workflow.md', '.agents/skills/task-ledger/SKILL.md']) {
@@ -299,7 +299,7 @@ export async function run(context) {
         : []
     )
   ]
-  // 语料门禁只检查可客观判定的漂移属性（ADR-0026）：路由完整性、外部状态快照、授权指针与非权威标记。
+  // 语料门禁只检查可客观判定的漂移属性（ADR-0013）：路由完整性、外部状态快照、授权指针与非权威标记。
   // 文风与 concern 归属不在此列，交给 review。
   const corpus = [...new Set(markdownFiles.map(relativePosix))].sort().map(file => ({ file, source: read(file) }))
   // 研究记录与设计资产不在指令面的链接/命令扫描内，但属于 RAG 语料：必须有非权威标记，并进入内容指纹。
