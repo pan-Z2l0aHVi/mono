@@ -23,6 +23,8 @@ node skills/monorepo-change-impact/repo-query.mjs contract [--json] <published-p
 node skills/monorepo-change-impact/repo-query.mjs contract-diff --json --base <git-ref>
 ```
 
+manifest 图以工作区内容为准，并会从 Git 索引补读稀疏检出隐藏的 manifest，因此 manifest 级影响面不要求全树检出。package 内的源文件与跨包引用不在该图里，仍要搜索完整索引（如 `git grep <pattern> HEAD`），不能只看已检出的文件或子包文档。
+
 ## 流程
 
 1. 先对改动路径运行 `verify`。在 review 或变更集审查中，按范围改用 `--base <git-ref>`、`--staged` 或 `--worktree`。以输出的 workspace、风险、required evidence 和验证建议作为后续工作的起点。

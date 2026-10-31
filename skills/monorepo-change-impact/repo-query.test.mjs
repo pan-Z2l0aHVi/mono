@@ -358,4 +358,114 @@ const worktreePlan = JSON.parse(run('verify', '--json', '--worktree'))
 assert.ok(Array.isArray(worktreePlan.changedPaths))
 assert.ok(Array.isArray(worktreePlan.verification))
 
+// --- 稀疏 worktree：被 skip-worktree 隐藏的 manifest 仍要进入 workspace 图 ---
+// 独立临时仓库里复制被测脚本，避免依赖真实仓库的包布局；隐藏一个依赖者后，
+// 消费者图与影响面都不能因为它从磁盘消失而漏报。
+const sparseFixture = fs.mkdtempSync(path.join(os.tmpdir(), 'greypan-repo-query-sparse-'))
+try {
+  const fixtureGit = (...args) =>
+    execFileSync('git', args, {
+      cwd: sparseFixture,
+      encoding: 'utf8',
+      env: {
+        ...process.env,
+        GIT_AUTHOR_NAME: 'repo-query fixture',
+        GIT_AUTHOR_EMAIL: 'repo-query@example.com',
+        GIT_COMMITTER_NAME: 'repo-query fixture',
+        GIT_COMMITTER_EMAIL: 'repo-query@example.com'
+      }
+    })
+  const writeJson = (relativePath, value) => {
+    const file = path.join(sparseFixture, relativePath)
+    fs.mkdirSync(path.dirname(file), { recursive: true })
+    fs.writeFileSync(file, `${JSON.stringify(value, null, 2)}\n`)
+  }
+  const writeText = (relativePath, content) => {
+    const file = path.join(sparseFixture, relativePath)
+    fs.mkdirSync(path.dirname(file), { recursive: true })
+    fs.writeFileSync(file, content)
+  }
+
+  writeText('pnpm-workspace.yaml', "packages:\n  - 'apps/*'\n  - 'packages/*'\n")
+  writeJson('package.json', { name: 'fixture-root', private: true })
+  writeJson('apps/visible/package.json', {
+    name: '@fixture/visible',
+    dependencies: { '@fixture/lib': 'workspace:*' }
+  })
+  writeJson('apps/hidden/package.json', {
+    name: '@fixture/hidden',
+    dependencies: { '@fixture/lib': 'workspace:*' }
+  })
+  writeJson('apps/deleted/package.json', { name: '@fixture/deleted' })
+  writeJson('packages/lib/package.json', {
+    name: '@fixture/lib',
+    exports: { '.': './dist/index.js' },
+    sideEffects: false
+  })
+  writeText('apps/visible/src/index.ts', 'export const visible = true\n')
+  writeText('apps/hidden/src/index.ts', 'export const hidden = true\n')
+  writeText('packages/lib/src/index.ts', 'export const lib = true\n')
+
+  fs.mkdirSync(path.join(sparseFixture, 'skills/monorepo-change-impact'), { recursive: true })
+  fs.copyFileSync(script, path.join(sparseFixture, script))
+
+  fixtureGit('init', '-b', 'main')
+  fixtureGit('add', '.')
+  fixtureGit('commit', '-m', 'fixture')
+  fixtureGit('sparse-checkout', 'init', '--cone')
+  // skills/ 放脚本副本，必须留在 cone 内；apps/hidden 被隐藏才是被测场景。
+  fixtureGit('sparse-checkout', 'set', '--cone', 'apps/visible', 'apps/deleted', 'packages/lib', 'skills')
+
+  assert.equal(
+    fs.existsSync(path.join(sparseFixture, 'apps/hidden/package.json')),
+    false,
+    'fixture setup must hide apps/hidden from the working tree'
+  )
+  assert.match(
+    fixtureGit('ls-files', '-t', '--', 'apps/hidden/package.json'),
+    /^S /,
+    'fixture setup must mark the hidden manifest as skip-worktree'
+  )
+
+  const runFixture = (...args) =>
+    execFileSync(process.execPath, [path.join(sparseFixture, script), ...args], {
+      cwd: sparseFixture,
+      encoding: 'utf8'
+    })
+
+  const sparseContract = JSON.parse(runFixture('contract', '--json', '@fixture/lib'))
+  assert.ok(
+    sparseContract.directConsumers.includes('@fixture/hidden'),
+    'a skip-worktree hidden manifest must still contribute its dependency edges'
+  )
+  assert.ok(sparseContract.directConsumers.includes('@fixture/visible'))
+
+  const sparsePlan = JSON.parse(runFixture('verify', '--json', 'packages/lib/src/index.ts'))
+  assert.ok(sparsePlan.affectedWorkspaces.includes('@fixture/hidden'))
+  assert.ok(sparsePlan.affectedWorkspaces.includes('@fixture/visible'))
+
+  // 可见 manifest 的未提交修改优先于索引；未跟踪的新 manifest 仍由磁盘枚举发现。
+  writeJson('apps/visible/package.json', { name: '@fixture/visible', dependencies: {} })
+  writeJson('packages/new/package.json', {
+    name: '@fixture/new',
+    dependencies: { '@fixture/lib': 'workspace:*' }
+  })
+  const overlayContract = JSON.parse(runFixture('contract', '--json', '@fixture/lib'))
+  assert.deepEqual(overlayContract.directConsumers, ['@fixture/hidden', '@fixture/new'])
+
+  // 工作区里未暂存删除的已跟踪 manifest 不能被索引补读复活。
+  fs.rmSync(path.join(sparseFixture, 'apps/deleted/package.json'))
+  assert.throws(
+    () =>
+      execFileSync(
+        process.execPath,
+        [path.join(sparseFixture, script), 'contract', '--json', '@fixture/deleted'],
+        { cwd: sparseFixture, encoding: 'utf8', stdio: 'pipe' }
+      ),
+    error => /unknown workspace @fixture\/deleted/.test(String(error.stderr))
+  )
+} finally {
+  fs.rmSync(sparseFixture, { recursive: true, force: true })
+}
+
 console.log('repo-query tests passed')
