@@ -81,24 +81,26 @@ orchestration.<repo-key>.rejection.<content-hash>
 进度与注入的摘要会是两份数据。
 
 两个约束合起来意味着「跨 worktree 共享」只能在文件系统层做。`session_start` 时
-[`src/board/share.ts`](./src/board/share.ts) 保证 linked worktree 的 `.pi` 是指向主 checkout
-`.pi` 的 symlink：
+[`src/board/share.ts`](./src/board/share.ts) 让**所有** checkout 的 `.pi` 指向仓库外的共享目录
+`~/.pi/task-boards/<repo-key>/`：
 
-- 主 checkout 自己就是真身，不做任何事。
-- worktree 没有 `.pi`：建立 symlink，之后 `/board` 与注入都落到主 checkout 那份文件。
-- worktree 已有真实 `.pi` 且里面只有 `task-board.json`（及 `.lock` / `.tmp` / `.bak` 伴生文件）：
-  把两边 board 按 panel id / task id 合并进主 checkout 那份，旧目录改名为 `.pi.bak-<timestamp>`
-  保留（不删除用户数据），再建立 symlink；会话启动时会通知备份路径。
-- 已是主 checkout 的 symlink 但目标 `.pi` 被删除：重建目标目录并通知（`repaired`）。不重建的话
-  `pi-task-board` 写盘会 ENOENT，任务静默丢失。
+- `.pi` 不存在：建立 symlink（`linked`）。
+- 已是共享目录的 symlink：重复调用是 no-op（`already-shared`）；目标被删则重建（`repaired`）——
+  不重建的话 `pi-task-board` 写盘会 ENOENT，任务静默丢失。
+- `.pi` 是真实目录且只有 board 文件：把 board 按 panel id / task id 合并进共享目录，然后把旧目录
+  换成 symlink（`migrated`）。迁移**不留备份目录**：旧目录先改名为一次性的 `.pi-migrating` 中转，
+  链接建好后删除，建链失败则改回去。
 - `.pi` 里有其他条目，或已是指向别处的 symlink：只提示不迁移，文件系统保持不变。
-- 任何文件系统错误都折算成通知，不阻塞会话启动。
 
-合并策略是**按 id 去重，冲突时主 checkout 版本胜出**：同 id 的 panel / task 以主 checkout 那条为准，
-本地冲突内容只保留在 `.pi.bak-<timestamp>` 里。注意多个 worktree 各自从 `T-1` 开始建板时 id 会重复，
-后合并的一方，其同 id 任务会被挤出活板（仍留在它自己的备份目录里），需要人工确认后再补回。
+数据在仓库外有两个直接好处：仓库目录不再有任何本地状态，且系统重启（`/var/folders` 会清空）
+不会丢看板。
 
-`.gitignore` 忽略 `.pi/*`、symlink 形态的 `.pi` 与 `.pi.bak-*/`；`.pi/settings.json` 仍可入库。
+合并策略是**按 id 去重，冲突时共享目录那份胜出**：同 id 的 panel / task 以共享目录里已有的那条为准，
+被顶掉的本地条目**不再保留**——迁移不产生备份目录。因此多个 worktree 各自从 `T-1` 开始建板时，
+后合并一方的同 id 任务会从活板上消失且无处找回；需要保留时先手工把 id 改开再合并。
+
+`.gitignore` 忽略 symlink 形态的 `.pi`、`.pi/*` 内容与 `.pi.bak-*/`。注意 `.pi` 现在是 symlink，
+所以 `.pi/settings.json` 这种方式不再可用——项目级 Pi 配置要放在别处。
 
 不 symlink 单个 `task-board.json`：`pi-task-board` 用 `writeFileSync(tmp)` + `renameSync(tmp, path)`
 落盘，`rename` 会替换 symlink 本身；symlink 整个目录时 `rename` 发生在目标目录内，链接不会被破坏。
@@ -263,7 +265,7 @@ herdr pane zoom <pane> --off                                          # 被 zoom
 - Pi ≥ 1.4.0，Herdr ≥ 0.7.5，`herdr integration install pi` 已执行。
 - `pi install npm:@pedro_klein/pi-memory`：记忆后端。它提供的工具名是 `memory_remember` / `memory_search` / `memory_pin` / `memory_forget` / `memory_stats`，scope 闭集是 `current` / `global` / `all`。
 - `pi install npm:@ret2hell/pi-herdr-orchestrator`：被桥接的编排层。它的配置根是 `~/.pi/agent/pi-herdr-orchestrator/config.json`，role 是 `explorer` / `builder` / `verifier`，reviewer 是同级独立字段。
-- `pi install npm:pi-task-board`：任务板。数据在 `<cwd>/.pi/task-board.json`（`version: 2`），`/board` 打开面板。linked worktree 的 `.pi` 由本扩展链接到主 checkout，因此整仓共用一块板。board 不可用时该段不注入。
+- `pi install npm:pi-task-board`：任务板。它把数据写在 `<cwd>/.pi/task-board.json`（`version: 2`），`/board` 打开面板。本扩展把每个 checkout 的 `.pi` 链接到 `~/.pi/task-boards/<repo-key>/`，因此整仓共用一块板且数据不落在仓库里。board 不可用时该段不注入。
 
 ### orchestrator 的 `config.json` 示例
 
@@ -292,8 +294,10 @@ reviewer 若配成 `kind: "pi"`，它会在自己的 pane 里加载本扩展；�
 
 - **`herdr agent list` 探测**：启动时一次子进程（约 50–100ms），超时 4s。Herdr 不在 `PATH` 时按 fail closed 处理，需要 `HERDR_BIN_PATH` 指向真实二进制。
 - **board schema 耦合**：读 `pi-task-board` 的 `version: 2` 文件格式。它升版后摘要会退化为不显示（不报错）。改用其 `task_board` 工具在 `before_agent_start` 里是不可能的——那里没有 `executeTool`。
-- **共享板依赖 symlink**：worktree 的 `.pi` 是指向主 checkout `.pi` 的目录 symlink；文件系统不支持 symlink、或 `.pi` 已真实存在且含 board 以外的条目时不会共享，只会在会话启动时提示原因。迁移留下的旧目录是 `.pi.bak-<timestamp>`，确认无用后可手动删除。
-- **迁移先写主板、后改名旧目录**：合并结果先落进主 checkout 的 board，再把旧目录改名为 `.pi.bak-<timestamp>`。改名失败时结果返回 `failed`（通知里带原因），但主 checkout 的 board 已经写入了合并结果——没有数据丢失，旧目录仍在原处，重新运行是幂等的（同一份数据再次合并得到同样结果）。
+- **共享板依赖 symlink**：每个 checkout 的 `.pi` 是指向 `~/.pi/task-boards/<repo-key>/` 的目录 symlink。
+  文件系统不支持 symlink、或 `.pi` 已真实存在且含 board 以外的条目时不会共享，只在会话启动时提示原因。
+  也因为 `.pi` 是链接，项目级 `.pi/settings.json` 不再可用。
+- **迁移先写共享目录、后换链接**：合并结果先落进 `~/.pi/task-boards/<repo-key>/`，再把旧 `.pi` 改名为一次性的 `.pi-migrating` 中转，然后建 symlink。改名或建链失败时返回 `failed`（通知里带原因），但共享目录里已经写入了合并结果——没有数据丢失，旧目录仍在（改回原名），重新运行是幂等的。中转目录在成功后立即删除，不留备份。
 - **额外模型回合**：每个锚点多一轮 API 调用，这是「写入必须经 `executeTool`」的直接代价。同一锚点最多被追加 3 轮；写入持续失败（例如 `pi-memory` 未安装）时它会被丢弃并提示原因，已成功写入的部分不受影响。
 - **repo-key 归一化**：目录名归一到 `[a-z0-9._-]`（空格、CJK 等折成连字符，归一后为空退回 `default`），非 Git 目录也带短哈希（`<name>-<hash6>`）。含空格或 CJK 的目录名因此得到 `my-projects-1a2b3c` 这类键——这是「键必须能被 `memory_search` 的文本行解析」的代价。
 - **记忆不自动注入**：见上一节。lead 必须在 `herdr_plan` 之前调 `orchestration_memory_recall`。

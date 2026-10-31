@@ -162,17 +162,17 @@ apps/vue-web-ui-demo/src/locales/plural.js
 .codex/*
 !.codex/config.toml
 
-# Pi（策略同 Claude Code：忽略本地态，放行项目级配置）
-# `.pi/task-board.json` 与 `.pi/orchestration-memory.json` 是机器本地状态，不入库。
-# `.pi/*` 只匹配目录里的内容；worktree 的 `.pi` 是 symlink，必须用不带斜杠的 `.pi` 单独忽略。
-# 但 `.pi` 一旦作为目录被排除，`!.pi/settings.json` 就无法再放行（git 不进入被排除的目录），
-# 所以下面的顺序是：忽略内容 → 放行 settings.json → 忽略 `.pi` → 用带斜杠的 `!.pi/` 只把
-# 目录形态放行。`!.pi/` 只匹配目录，symlink 形态保持被忽略。
+# Pi（策略同 Claude Code：忽略本地态）
+# `.pi` 现在是每个 checkout 指向 `~/.pi/task-boards/<repo-key>/` 的目录 symlink（由本仓的
+# pi-orchestrator-memory-bridge 维护），看板数据本身不在仓库里。
+# `.pi` 不带斜杠匹配 symlink 与目录两种形态；`!.pi/` 只放行目录形态，用于旧布局的兼容。
+# `.pi/*` 与 `!.pi/settings.json` 保留给「尚未迁移成 symlink」的 checkout。
+# 迁移不产生备份目录，所以这里的 `.pi.bak-*/` 只用于人工遗留物。
 .pi/*
 !.pi/settings.json
 .pi
 !.pi/
-# `ensureSharedBoard` 迁移后留下的旧目录（worktree 的 `.pi` 被改名成 `.pi.bak-<timestamp>`）。
+# 迁移本身不留备份（用一次性的 `.pi-migrating` 中转，成功后删除）；这条只清人工遗留的旧备份。
 .pi.bak-*/
 
 # pi-herdr-orchestrator 的运行时 ledger：worker brief、终端输出、review 全文。

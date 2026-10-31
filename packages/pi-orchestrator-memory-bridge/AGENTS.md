@@ -12,7 +12,7 @@
 - 编排记忆**不自动注入**：`before_agent_start` 拿不到 `executeTool`，查不了 `pi-memory`。lead 必须调 `orchestration_memory_recall`。不要为了「自动注入」重新引入本地缓存——那会让两份数据漂移。
 - `ctx.executeTool()` 返回 `{ toolCall, result: { content }, isError }`，**不是**扁平的 `{ content }`。读错层级的表现是「写入成功但读取恒空」，已被 `callToolVia` 的用例钉住。
 - 不要 fork `pi-task-board`：写入经它的 `task_board` 工具落 `ctx.cwd/.pi/task-board.json`，桥接的读侧因此也必须取 cwd 那份——改成主 checkout 会让 `/board` 与注入看到两个不同的文件。
-- 任务板共享只在文件系统层做（[`src/board/share.ts`](./src/board/share.ts)）：`session_start` 保证 linked worktree 的 `.pi` 是指向主 checkout `.pi` 的 symlink。不要改成 symlink 单个 `task-board.json`——`pi-task-board` 的 `rename(tmp, path)` 会替换 symlink 本身，第一次写入就断链。迁移前只允许 `.pi` 里有 board 与 `.lock` / `.tmp` / `.bak` 伴生文件；其他条目、指向别处的 symlink 一律拒绝并只通知，不修改文件系统。改这里前先读 `src/__tests__/share.spec.ts`。
+- 任务板共享只在文件系统层做（[`src/board/share.ts`](./src/board/share.ts)）：`session_start` 保证每个 checkout（主 checkout 与 linked worktree 一视同仁）的 `.pi` 是指向仓库外 `~/.pi/task-boards/<repo-key>/` 的 symlink；经由别的 symlink 间接到达的两跳链接会被归一成直接指向，否则主 checkout 的 `.pi` 一被删，worktree 的链接就悬空且拒绝自愈。不要改成 symlink 单个 `task-board.json`——`pi-task-board` 的 `rename(tmp, path)` 会替换 symlink 本身，第一次写入就断链。迁移前只允许 `.pi` 里有 board 与 `.lock` / `.tmp` / `.bak` 伴生文件；其他条目、指向别处的 symlink 一律拒绝并只通知，不修改文件系统。迁移**不留备份目录**（旧目录改名为一次性的 `.pi-migrating`，链接建好即删），代价是冲突的同 id 条目不再可找回。改这里前先读 `src/__tests__/share.spec.ts`。
 - 改身份解析前先读 `src/__tests__/repo-identity.spec.ts`：它用真实 `git init` 与 `git worktree add` 建仓，不是伪造 `.git` 文件。手写 fixture 会掩盖 linked worktree 的 `gitdir:` / `commondir` 布局差异。
 - `.herdr-runs/` 是有意留在仓库级的：它是 worker 的逐步证据，属于某次执行，不需要跨 worktree 读。
 - `/shepherd` 的约束是**物理 + 指令**两层：`setActiveTools` 摘掉 `edit`/`write`，`tool_call` 钩子兜底拦截（工具声明在请求前生成，可能滞后一轮）。只改指令文本不算约束。退出与 `dispose` 都必须还原工具集，否则 `/reload` 之后 `edit`/`write` 会永久消失。

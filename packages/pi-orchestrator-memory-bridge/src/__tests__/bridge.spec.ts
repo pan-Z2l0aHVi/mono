@@ -12,11 +12,11 @@
  */
 
 import { execFileSync } from 'node:child_process'
-import { lstat, mkdtemp, mkdir, writeFile } from 'node:fs/promises'
+import { lstat, mkdtemp, mkdir, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
-import { describe, expect, it } from 'vite-plus/test'
+import { afterAll, describe, expect, it } from 'vite-plus/test'
 
 import {
   MAX_SETTLE_APPENDS,
@@ -29,6 +29,21 @@ import {
 import type { Activation } from '../contracts'
 
 import { createExecuteTool, createMockPi, type MockContext } from './pi-mock'
+
+/**
+ * 整套测试的共享板目录隔离。
+ *
+ * `session_start` 会调 `ensureSharedBoard(ctx.cwd)`，而它默认写到 `~/.pi/task-boards/`。
+ * 没有这条隔离，跑一次测试就会在用户家目录下留一堆 `demo-*` 空目录——实测一次全量测试
+ * 能造出几十个。`PI_TASK_BOARD_DIR` 必须在这里设，晚于任何一次 session_start。
+ */
+const TEST_BOARD_ROOT = await mkdtemp(join(tmpdir(), 'board-root-spec-'))
+process.env.PI_TASK_BOARD_DIR = TEST_BOARD_ROOT
+
+afterAll(async () => {
+  delete process.env.PI_TASK_BOARD_DIR
+  await rm(TEST_BOARD_ROOT, { recursive: true, force: true })
+})
 
 const ACTIVE: Activation = { active: true, paneId: 'w1:p1' }
 const INACTIVE: Activation = { active: false, reason: 'worker-pane' }

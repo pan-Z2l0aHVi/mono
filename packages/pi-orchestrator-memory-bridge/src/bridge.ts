@@ -240,7 +240,7 @@ function describeSharedBoard(outcome: SharedBoardResult): string | undefined {
     case 'linked':
       return `task board shared across worktrees: ${outcome.target}`
     case 'migrated':
-      return `task board shared across worktrees: merged into ${outcome.target}; previous .pi kept at ${outcome.backupPath}`
+      return `task board shared across worktrees: merged into ${outcome.target}; the local .pi was replaced by a link`
     case 'repaired':
       return `task board shared across worktrees: recreated missing ${outcome.target}`
     case 'refused':

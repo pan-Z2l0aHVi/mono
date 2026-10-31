@@ -29,13 +29,13 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 /**
  * pi-task-board 的文件位置。
  *
- * 与 `pi-task-board` 自己保持一致，取 **cwd** 的 `.pi/task-board.json`，不取主 checkout 的：
- * 写入经 `task_board` 工具落盘，而那个工具把存储固定在 `ctx.cwd`（`pi-task-board` 没有
- * path 参数）。在 linked worktree 里两者是不同的路径，读侧若直接指向主 checkout，就会读不到
- * 本会话刚写进去的任务——用户在 `/board` 里看到的进度与桥接注入的摘要会永远是两份。
+ * 与 `pi-task-board` 自己保持一致，取 **cwd** 的 `.pi/task-board.json`：写入经 `task_board`
+ * 工具落盘，而那个工具把存储固定在 `ctx.cwd`（`pi-task-board` 没有 path 参数）。读侧也走同一
+ * 路径，否则 `/board` 与注入会看到两份不同的文件。
  *
- * 跨 worktree 共享由文件系统层完成：`ensureSharedBoard`（`share.ts`）把 worktree 的 `.pi`
- * 链接到主 checkout 的 `.pi`，所以这里仍然只认 cwd，路径一致性与共享互不冲突。
+ * 跨 worktree 共享由 `share.ts` 在文件系统层完成：每个 checkout 的 `.pi` 都是指向
+ * `~/.pi/task-boards/<repo-key>/` 的 symlink，于是 cwd 路径自然落到仓库外的同一份数据。
+ * 这里因此不需要（也不应该）自己拼主 checkout 的路径。
  */
 export function boardPath(cwd: string): string {
   return join(cwd, '.pi', 'task-board.json')
