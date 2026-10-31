@@ -105,6 +105,9 @@
     "cooccurring",
     "vnode",
     "herdr",
+    // Pi 扩展的宿主包名与它拖入的 provider 包名：出现在扩展文档与类型声明里，是真实标识符。
+    "earendil",
+    "genai",
     "akar",
     "alac",
     "HDROP",

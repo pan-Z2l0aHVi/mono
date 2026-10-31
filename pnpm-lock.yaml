@@ -956,6 +956,15 @@ importers:
         specifier: 'catalog:'
         version: 1.4.0(@types/node@26.6.5)(@vitest/browser-playwright@5.0.5)(@vitest/ui@5.0.5)(@volar/typescript@2.4.30(typescript@6.0.3))(@vue/language-core@3.3.13)(jiti@2.7.0)(jsdom@30.1.3)(msw@3.0.3(@types/node@26.6.5)(@voidzero-dev/vite-plus-core@1.4.0(@types/node@26.6.5)(@volar/typescript@2.4.30(typescript@6.0.3))(@vue/language-core@3.3.13)(jiti@2.7.0)(terser@5.51.2)(typescript@6.0.3)(vue-tsc@3.3.13(typescript@6.0.3))(yaml@2.9.1))(graphql@16.14.2)(supports-color@10.2.2)(typescript@6.0.3))(playwright@1.64.1)(terser@5.51.2)(typescript@6.0.3)(vue-tsc@3.3.13(typescript@6.0.3))(yaml@2.9.1)
 
+  packages/pi-orchestrator-memory-bridge:
+    devDependencies:
+      '@greypan/tsconfig':
+        specifier: workspace:*
+        version: link:../tsconfig
+      vite-plus:
+        specifier: 'catalog:'
+        version: 1.4.0(@types/node@26.6.5)(@vitest/browser-playwright@5.0.5)(@vitest/ui@5.0.5)(@volar/typescript@2.4.30(typescript@6.0.3))(@vue/language-core@3.3.13)(jiti@2.7.0)(jsdom@30.1.3)(msw@3.0.3(@types/node@26.6.5)(@voidzero-dev/vite-plus-core@1.4.0(@types/node@26.6.5)(@volar/typescript@2.4.30(typescript@6.0.3))(@vue/language-core@3.3.13)(jiti@2.7.0)(terser@5.51.2)(typescript@6.0.3)(vue-tsc@3.3.13(typescript@6.0.3))(yaml@2.9.1))(graphql@16.14.2)(supports-color@10.2.2)(typescript@6.0.3))(playwright@1.64.1)(terser@5.51.2)(typescript@6.0.3)(vue-tsc@3.3.13(typescript@6.0.3))(yaml@2.9.1)
+
   packages/test-kit:
     dependencies:
       '@greypan/js-kit':
