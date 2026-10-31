@@ -39,7 +39,7 @@ mkcert \
   localhost 127.0.0.1 ::1
 ```
 
-`mkcert -install` 会把 mkcert 的本地 CA 加入系统信任库，ChatGPT app 的内嵌浏览器因此能通过 TLS 校验。证书缺失时 dev/preview 直接失败并打印上述命令；测试档在 CI 没有证书时保持 HTTP，Playwright 自身忽略证书错误。需要换目录时设置 `GREYPAN_DEV_CERT_DIR`；两个 demo 的 `vite.config.ts` 读同一个变量。
+`mkcert -install` 会把 mkcert 的本地 CA 加入系统信任库，内嵌浏览器与自定义客户端因此能通过 TLS 校验。证书缺失时 dev/preview 直接失败并打印上述命令；测试档在 CI 没有证书时保持 HTTP，Playwright 自身忽略证书错误。需要换目录时设置 `GREYPAN_DEV_CERT_DIR`；两个 demo 的 `vite.config.ts` 读同一个变量。
 
 ## Turbo artifact cache
 
