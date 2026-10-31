@@ -16,7 +16,8 @@ import {
   boardActionForReview,
   boardActionForWatch,
   enqueueBoardAction,
-  taskTitle
+  taskTitle,
+  type BoardAction
 } from '../board/sync'
 
 const dispatchDetails = (overrides: Record<string, unknown> = {}) => ({
@@ -54,7 +55,8 @@ describe('dispatch → 建任务', () => {
       kind: 'add_task',
       title: taskTitle('bridge-worker'),
       status: 'in_progress',
-      description: 'role: builder | pane: w1:p7 | ledger: /repo/.herdr-runs/bridge-worker.md'
+      description: 'role: builder | pane: w1:p7 | ledger: /repo/.herdr-runs/bridge-worker.md',
+      intent: 'dispatch'
     })
   })
 
@@ -78,7 +80,8 @@ describe('watch → 反映 worker 终态', () => {
     expect(action).toEqual({
       kind: 'move_task',
       title: taskTitle('bridge-worker'),
-      status: 'in_review'
+      status: 'in_review',
+      intent: 'watch'
     })
   })
 
@@ -114,7 +117,8 @@ describe('review → 移动任务', () => {
       kind: 'move_task',
       title: taskTitle('bridge-worker'),
       status: 'in_review',
-      description: 'review approved: criteria met'
+      description: 'review approved: criteria met',
+      intent: 'review'
     })
   })
 
@@ -451,6 +455,123 @@ describe('applyBoardAction', () => {
     expect(board.calls.map(c => c.args.action)).not.toContain('move_task')
   })
 
+  /**
+   * 队列里的旧意图不能把板上更新的状态降级。
+   *
+   * 动作要等下一次 flush 才执行，期间 watch 的 done 可能已经把任务推到 in_review；仍留在队
+   * 里的 add_task(in_progress) 若按「状态不等就移动」执行会把它打回 in_progress。add_task
+   * 只推进，回退只由 review 的结论（move_task）触发。
+   */
+  it('板上已 in_review 时到达旧的 add_task(in_progress) 不移动，保持 in_review', async () => {
+    const board = fakeBoard({
+      panel: true,
+      tasks: [{ id: 'T-1', title: taskTitle('s1'), status: 'in_review', description: 'review approved: criteria met' }]
+    })
+    const outcome = await applyBoardAction(board.call, {
+      kind: 'add_task',
+      title: taskTitle('s1'),
+      status: 'in_progress',
+      description: 'role: builder | pane: w1:p7'
+    })
+
+    expect(outcome.ok).toBe(true)
+    expect(board.state.tasks[0]?.status).toBe('in_review')
+    expect(board.calls.map(c => c.args.action)).not.toContain('move_task')
+    // 过期意图的描述也不能把 review 的结论顶掉。
+    expect(board.state.tasks[0]?.description).toBe('review approved: criteria met')
+  })
+
+  it('缺陷复现：watch done 先移到 in_review，队里旧的 add_task(in_progress) 不会把它打回', async () => {
+    const board = fakeBoard({
+      panel: true,
+      tasks: [{ id: 'T-1', title: taskTitle('s1'), status: 'in_progress', description: 'role: builder' }]
+    })
+    await applyBoardAction(board.call, boardActionForWatch(watchDetails({ name: 's1' }))!)
+    expect(board.state.tasks[0]?.status).toBe('in_review')
+
+    await applyBoardAction(board.call, boardActionForDispatch(dispatchDetails({ name: 's1' }))!)
+
+    expect(board.state.tasks[0]?.status).toBe('in_review')
+    expect(board.state.tasks[0]?.description).toBe('role: builder')
+  })
+
+  it('板上已 todo 时 add_task(in_progress) 照常推进', async () => {
+    const board = fakeBoard({ panel: true, tasks: [{ id: 'T-1', title: taskTitle('s1'), status: 'todo' }] })
+    const outcome = await applyBoardAction(board.call, {
+      kind: 'add_task',
+      title: taskTitle('s1'),
+      status: 'in_progress'
+    })
+
+    expect(outcome.ok).toBe(true)
+    expect(board.state.tasks[0]?.status).toBe('in_progress')
+  })
+
+  it('板上已 in_progress 时 watch done 的 move_task 推进到 in_review', async () => {
+    const board = fakeBoard({ panel: true, tasks: [{ id: 'T-1', title: taskTitle('s1'), status: 'in_progress' }] })
+    await applyBoardAction(board.call, boardActionForWatch(watchDetails({ name: 's1' }))!)
+
+    expect(board.state.tasks[0]?.status).toBe('in_review')
+  })
+
+  it('板上已 in_review 时 review REJECT 的 move_task 仍能回退到 todo', async () => {
+    const board = fakeBoard({ panel: true, tasks: [{ id: 'T-1', title: taskTitle('s1'), status: 'in_review' }] })
+    await applyBoardAction(
+      board.call,
+      boardActionForReview(reviewDetails({ slice: 's1', verdict: 'REJECT', reason: 'gaps' }))!
+    )
+
+    expect(board.state.tasks[0]?.status).toBe('todo')
+    expect(board.state.tasks[0]?.description).toBe('REJECT: gaps')
+  })
+
+  /**
+   * 回退保护看动作来源意图，不看合并后的 kind。
+   *
+   * 同轮 dispatch + review REJECT 在队列里合并成一条 `add_task(todo)`——kind 必须保留 `add_task`
+   * 才能「不存在就创建」。若回退保护按 kind 判断，这条 review 结论会被误判成陈旧的 dispatch
+   * 而整条 no-op：状态不回退，REJECT 原因也不落盘。
+   */
+  const mergedDispatchThenReject = (slice = 's1', reason = 'gaps') => {
+    const queue: BoardAction[] = []
+    enqueueBoardAction(queue, boardActionForDispatch(dispatchDetails({ name: slice }))!)
+    enqueueBoardAction(queue, boardActionForReview(reviewDetails({ slice, verdict: 'REJECT', reason }))!)
+    return queue[0]!
+  }
+
+  for (const status of ['in_progress', 'in_review'] as const) {
+    it(`同轮 dispatch + review REJECT 合并后，板上已 ${status} 仍退回 todo 并写入原因`, async () => {
+      const board = fakeBoard({
+        panel: true,
+        tasks: [{ id: 'T-1', title: taskTitle('s1'), status, description: 'role: builder' }]
+      })
+      const action = mergedDispatchThenReject()
+      // 前提：合并后的 kind 仍是 add_task，状态是 review 的结论。
+      expect(action.kind).toBe('add_task')
+      expect(action.status).toBe('todo')
+
+      const outcome = await applyBoardAction(board.call, action)
+
+      expect(outcome.ok).toBe(true)
+      expect(board.state.tasks[0]?.status).toBe('todo')
+      expect(board.state.tasks[0]?.description).toBe('REJECT: gaps')
+    })
+  }
+
+  it('跨轮：dispatch 先落盘 in_progress，随后的 review REJECT 退回 todo 并写入原因', async () => {
+    const board = fakeBoard()
+    await applyBoardAction(board.call, boardActionForDispatch(dispatchDetails({ name: 's1' }))!)
+    expect(board.state.tasks[0]?.status).toBe('in_progress')
+
+    await applyBoardAction(
+      board.call,
+      boardActionForReview(reviewDetails({ slice: 's1', verdict: 'REJECT', reason: 'gaps' }))!
+    )
+
+    expect(board.state.tasks[0]?.status).toBe('todo')
+    expect(board.state.tasks[0]?.description).toBe('REJECT: gaps')
+  })
+
   it('board 工具失败时返回 ok:false 并带上原因', async () => {
     const call = async () => ({ ok: false, text: 'board file is corrupt' })
     const outcome = await applyBoardAction(call, { kind: 'add_task', title: taskTitle('s1'), status: 'todo' })
@@ -518,6 +639,23 @@ describe('enqueueBoardAction', () => {
     enqueueBoardAction(queue, review())
 
     expect(queue[0]?.kind).toBe('add_task')
+  })
+
+  it('合并后仍保留 review 的回退意图（kind 是 add_task，意图仍是 review）', () => {
+    const queue: ReturnType<typeof dispatch>[] = []
+    enqueueBoardAction(queue, dispatch())
+    enqueueBoardAction(queue, review({ verdict: 'REJECT', reason: 'gaps' }))
+
+    expect(queue[0]?.kind).toBe('add_task')
+    expect(queue[0]?.intent).toBe('review')
+  })
+
+  it('dispatch + watch 合并后意图是 watch', () => {
+    const queue: ReturnType<typeof dispatch>[] = []
+    enqueueBoardAction(queue, dispatch())
+    enqueueBoardAction(queue, watch())
+
+    expect(queue[0]?.intent).toBe('watch')
   })
 
   it('只有 review 时保持 move_task', () => {

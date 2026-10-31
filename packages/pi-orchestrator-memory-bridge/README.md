@@ -245,6 +245,14 @@ reviewer 若配成 `kind: "pi"`，它会在自己的 pane 里加载本扩展；�
   `in_review`（worker 说完了，等验收）。真正的验收结论由 `herdr_review` 写入：APPROVE 保持
   `in_review`，REJECT / RE_PLAN 退回 `todo`。只 dispatch + watch 不走 review 的 slice 会停在
   `in_review`，这是刻意的——它表示「无人验收」。
+- **回退由 review 的结论触发，dispatch 的建任务动作只推进**：状态顺序是
+  `backlog < todo < in_progress < in_review`。队列里的动作要等下一次 flush 才执行，期间
+  `herdr_watch` 的 `done` 可能已经把任务推到 `in_review`；此时仍留在队里的旧 `add_task(in_progress)`
+  只在目标状态更靠后时移动，不会把任务打回 `in_progress`，也不会覆盖板上更新的描述。判断依据是
+  动作来源意图而不是合并后的 kind：同轮 dispatch + review 在队列里会合并成一条 `add_task`，
+  只有 `intent === 'review'` 的动作允许回退，所以 REJECT / RE_PLAN 仍能把 `in_progress` /
+  `in_review` 退回 `todo` 并写入原因。`move_task` 保持显式意图语义，不做顺序限制；板上出现
+  不认识的状态时无法比较，维持原来的移动行为。
 
 ## 快速验证（15 行内）
 

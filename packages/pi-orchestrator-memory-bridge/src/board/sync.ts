@@ -19,6 +19,15 @@
 /** 任务板的状态闭集，与 pi-task-board v2 对齐。 */
 export type BoardStatus = 'backlog' | 'todo' | 'in_progress' | 'in_review'
 
+/**
+ * 动作来源意图。
+ *
+ * `kind` 在执行层会因「不存在就创建」而保留 `add_task`，合并后无法再区分这条动作最初是谁产生的。
+ * 回退保护需要这个区分：只有 `review` 的结论可以把任务往回退（REJECT / RE_PLAN），
+ * `dispatch` 建的 `add_task` 与 `watch` 的终态都只反映进度，不能把板上更新的状态降级。
+ */
+export type BoardIntent = 'dispatch' | 'watch' | 'review'
+
 /** 一次要执行的任务板动作。`title` 用作任务身份——pi-task-board 没有按标题查询的接口。 */
 export type BoardAction = {
   readonly kind: 'add_task' | 'move_task'
@@ -27,6 +36,8 @@ export type BoardAction = {
   readonly description?: string
   /** `move_task` 专用：把描述追加到任务已有描述之后，而不是整段替换。 */
   readonly appendDescription?: boolean
+  /** 产生这条动作的事件来源；回退保护按它判断能否把任务打回更早的状态。 */
+  readonly intent?: BoardIntent
 }
 
 /** dispatch 的 details 形状（只取用到的字段）。 */
@@ -97,7 +108,8 @@ export function boardActionForDispatch(details: unknown): BoardAction | undefine
     kind: 'add_task',
     title: taskTitle(name),
     status: 'in_progress',
-    description: aspects.join(' | ')
+    description: aspects.join(' | '),
+    intent: 'dispatch'
   }
 }
 
@@ -121,7 +133,7 @@ export function boardActionForWatch(details: unknown): BoardAction | undefined {
 
   const status = value.status?.trim().toLowerCase()
   if (status === 'done') {
-    return { kind: 'move_task', title: taskTitle(name), status: 'in_review' }
+    return { kind: 'move_task', title: taskTitle(name), status: 'in_review', intent: 'watch' }
   }
   if (status && WATCH_STUCK.has(status)) {
     return {
@@ -129,7 +141,8 @@ export function boardActionForWatch(details: unknown): BoardAction | undefined {
       title: taskTitle(name),
       status: 'in_progress',
       description: `watch: ${status}`,
-      appendDescription: true
+      appendDescription: true,
+      intent: 'watch'
     }
   }
   return undefined
@@ -164,7 +177,8 @@ export function boardActionForReview(
       kind: 'move_task',
       title: taskTitle(slice),
       status: 'in_review',
-      ...(reason ? { description: `review approved: ${reason}` } : {})
+      ...(reason ? { description: `review approved: ${reason}` } : {}),
+      intent: 'review'
     }
   }
   if (verdict === 'REJECT' || verdict === 'RE_PLAN') {
@@ -172,7 +186,8 @@ export function boardActionForReview(
       kind: 'move_task',
       title: taskTitle(slice),
       status: 'todo',
-      description: `${verdict}: ${reason || '(no reason recorded)'}`
+      description: `${verdict}: ${reason || '(no reason recorded)'}`,
+      intent: 'review'
     }
   }
   return undefined
@@ -239,11 +254,16 @@ export function enqueueBoardAction(queue: BoardAction[], action: BoardAction): v
   // 合并出来的描述已经是完整内容（旧描述已含在内），执行层整段替换即可；
   // 只有旧动作没有描述可合并时，才让执行层读板上已有描述再追加。
   const append = action.appendDescription === true && !previous.description
+  // 意图跟着最新动作走：合并后的状态与描述都取最新动作的，回退许可也应由它决定。
+  // dispatch + review REJECT 合并后 kind 仍是 add_task，但 intent 是 review——执行层的回退保护
+  // 靠这个字段把「review 的结论」和「陈旧的 dispatch」区分开，否则 REJECT 会被整条吞掉。
+  const intent = action.intent ?? previous.intent
   queue[index] = {
     kind: previous.kind === 'add_task' && action.kind === 'move_task' ? 'add_task' : action.kind,
     title: action.title,
     status: action.status,
     ...(description ? { description } : {}),
-    ...(append ? { appendDescription: true } : {})
+    ...(append ? { appendDescription: true } : {}),
+    ...(intent ? { intent } : {})
   }
 }

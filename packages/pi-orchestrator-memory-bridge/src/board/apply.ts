@@ -133,6 +133,38 @@ export function appendedDescription(existing: string | undefined, added: string,
 }
 
 /**
+ * 推进方向上的状态顺序。`add_task` 只沿这个方向移动，回退只能由 review 的结论触发。
+ */
+const STATUS_ORDER: readonly BoardStatus[] = ['backlog', 'todo', 'in_progress', 'in_review']
+
+/** 状态在推进方向上的位置；板上出现了不认识的状态时返回 `undefined`。 */
+function statusRank(status: string | undefined): number | undefined {
+  if (!status) return undefined
+  const index = STATUS_ORDER.findIndex(item => item === status)
+  return index === -1 ? undefined : index
+}
+
+/**
+ * 这条动作是否会把任务往回退。
+ *
+ * 队列里的动作要等下一次 flush 才执行，期间 watch 的 `done` 可能已经把任务推到
+ * `in_review`。此时仍留在队里的 `add_task(in_progress)` 按「状态不等就移动」执行，会把任务
+ * 打回 `in_progress`。`add_task` 表达的是「这个 slice 开始干活了」，不是「把它打回去」，所以
+ * 它只推进。回退是 `herdr_review` 的显式结论（REJECT / RE_PLAN）。
+ *
+ * 判据是动作来源意图而不是 kind：dispatch + review 在队列里会合并成一条 `add_task(todo)`
+ * （kind 必须保留 `add_task` 才能「不存在就创建」），按 kind 判断会把 review 的结论误当成
+ * 陈旧 dispatch。`intent === 'review'` 的动作永远允许回退；板上状态不认识时无法比较，
+ * 维持原来的移动行为。
+ */
+function regresses(action: BoardAction, current: string | undefined): boolean {
+  if (action.kind !== 'add_task' || action.intent === 'review') return false
+  const from = statusRank(current)
+  const to = statusRank(action.status)
+  return from !== undefined && to !== undefined && to < from
+}
+
+/**
  * 执行一个 board 动作。
  *
  * 两条路径都以「最终板上一 slice 一行、状态为目标状态」为准，而不是「恰好发了几次调用」。
@@ -159,12 +191,17 @@ export async function applyBoardAction(
     return { ok: true, detail: created.text }
   }
 
+  // 过期的 `add_task` 保持板上现状：既不移动，也不拿 dispatch 的元信息覆盖当前描述
+  // （那会把 review 的结论顶掉）。带 review 意图的动作不在此列——它就是来改状态的。
+  const regressed = regresses(action, existing.status)
+  const target = regressed ? existing.status : action.status
+
   // 状态已经一致也要跑一次 dedupe：上一轮可能已经产生了重复。
-  if (existing.status !== action.status) {
+  if (existing.status !== target) {
     const moved = await call('task_board', {
       action: 'move_task',
       taskId: existing.id,
-      status: action.status
+      status: target
     })
     if (!moved.ok) return { ok: false, detail: moved.text }
   }
@@ -173,23 +210,25 @@ export async function applyBoardAction(
   // - 追加语义（watch 的卡住原因）：先去掉板上过期的 watch 原因，再把新原因接在 role /
   //   ledger 行后面；同一原因重复上报时不重复追加。
   // - 新动作没有描述但状态变了：追加过的 watch 原因已经过期，清掉它，其余元信息保留。
-  let description: string | undefined
-  if (action.description) {
-    const base = action.appendDescription === true ? withoutWatchReasons(existing.description) : existing.description
-    description = appendedDescription(base, action.description, action.appendDescription === true)
-  } else if (existing.status !== action.status) {
-    description = withoutWatchReasons(existing.description)
-  }
-  if (description !== undefined && description !== existing.description) {
-    await call('task_board', {
-      action: 'update_task',
-      taskId: existing.id,
-      description
-    })
+  if (!regressed) {
+    let description: string | undefined
+    if (action.description) {
+      const base = action.appendDescription === true ? withoutWatchReasons(existing.description) : existing.description
+      description = appendedDescription(base, action.description, action.appendDescription === true)
+    } else if (existing.status !== target) {
+      description = withoutWatchReasons(existing.description)
+    }
+    if (description !== undefined && description !== existing.description) {
+      await call('task_board', {
+        action: 'update_task',
+        taskId: existing.id,
+        description
+      })
+    }
   }
 
   await dedupe(call, action.title)
-  return { ok: true, detail: `${existing.id} -> ${action.status}` }
+  return { ok: true, detail: `${existing.id} -> ${target}` }
 }
 
 export { taskTitle }
