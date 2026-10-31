@@ -88,6 +88,7 @@ export default {
       'js-kit',
       'md-to-comp',
       'monorepo-kit',
+      'pi-orchestrator-memory-bridge',
       'test-kit',
       'tsconfig',
       'unplugin-web-components',

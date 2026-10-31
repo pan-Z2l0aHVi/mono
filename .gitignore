@@ -162,6 +162,14 @@ apps/vue-web-ui-demo/src/locales/plural.js
 .codex/*
 !.codex/config.toml
 
+# Pi（策略同 Claude Code：忽略本地态，放行项目级配置）
+# `.pi/task-board.json` 与 `.pi/orchestration-memory.json` 是机器本地状态，不入库。
+.pi/*
+!.pi/settings.json
+
+# pi-herdr-orchestrator 的运行时 ledger：worker brief、终端输出、review 全文。
+.herdr-runs/
+
 # 其余 Agent（本地态与规则目录；共享指令统一放 .agents/ 与 AGENTS.md）
 .gemini/*
 .opencode/*

@@ -1,0 +1,18 @@
+# pi-orchestrator-memory-bridge
+
+- 私有 Pi 扩展，只服务 Herdr 里运行的 Pi **lead** 会话。运行时由 Pi 的 jiti 直接加载 [`src/index.ts`](./src/index.ts)，不经 Vite 打包；因此 `src/` 里不能出现只有构建期才注入的东西（`import.meta.env` 等）。
+- 不引入外部运行时依赖。Pi 宿主 API 的类型声明在本包的 [`src/pi-types.ts`](./src/pi-types.ts)，不是 `devDependencies` 里的包——把 `@earendil-works/pi-coding-agent` 装进来会拖入整个 provider 闭包并需要改根 `pnpm.yaml` 的 `allowBuilds`，那是仓库级共享配置变更。
+- 激活门槛靠 `herdr agent list` 的 `name` 字段区分 lead 与 worker。Herdr 不提供角色字段，而 worker 与 reviewer 可能同样是 `kind: "pi"`，会加载同一个扩展。**不要**把门槛退回成「只看 `HERDR_ENV` 与 `HERDR_PANE_ID`」，那会让桥接在 worker pane 里跑起来。
+- 写入时序依赖一条硬事实：事件钩子的 ctx 没有 `executeTool`，只有工具 `execute()` 有。改动 [`src/bridge.ts`](./src/bridge.ts) 的时序前先读 README 的「读写时序」。
+- 记忆不存 worker 终端输出、代码 diff 与文件内容；只存决策要点与拒绝原因。注入只进 `sections.orchestration`，不追加 transcript，不覆盖 `pi-memory` 自己的 `sections.memory`。
+- 改任何与 `pi-task-board` 文件格式耦合的解析时，保持「不认识就当作没有」：版本不符、字段缺失、JSON 损坏都必须降级成 `undefined`，不能让异常进 `before_agent_start`。
+- 测试不引入 `test-kit`（msw / Playwright 基建与本包无关），`ExtensionAPI` 的 mock 在 [`src/__tests__/pi-mock.ts`](./src/__tests__/pi-mock.ts)。
+- 编排按**仓库**分区，不按目录：`mono` 及所有 worktree 共享同一份编排记忆与同一块板。`<repo-key>` 由 `src/repo-identity.ts` 从 Git common directory 解析。
+- 编排记忆只存 `pi-memory`，键**不以 `project.` 开头**（`orchestration.<repo-key>.<kind>.<slot>`）。`pi-memory` 只校验 `project.*` 键，而它的 slug 在 worktree 里是 worktree 名——用该前缀会把同一仓库切开。改键格式前先读 `src/__tests__/recall.spec.ts`。
+- 编排记忆**不自动注入**：`before_agent_start` 拿不到 `executeTool`，查不了 `pi-memory`。lead 必须调 `orchestration_memory_recall`。不要为了「自动注入」重新引入本地缓存——那会让两份数据漂移。
+- `ctx.executeTool()` 返回 `{ toolCall, result: { content }, isError }`，**不是**扁平的 `{ content }`。读错层级的表现是「写入成功但读取恒空」，已被 `callToolVia` 的用例钉住。
+- 不要 fork `pi-task-board`：它的 `/board` 在 worktree 里打开该 worktree 自己的板，桥接只统一读写主 checkout 那份。
+- 改身份解析前先读 `src/__tests__/repo-identity.spec.ts`：它用真实 `git init` 与 `git worktree add` 建仓，不是伪造 `.git` 文件。手写 fixture 会掩盖 linked worktree 的 `gitdir:` / `commondir` 布局差异。
+- `.herdr-runs/` 是有意留在仓库级的：它是 worker 的逐步证据，属于某次执行，不需要跨 worktree 读。
+- `/shepherd` 的约束是**物理 + 指令**两层：`setActiveTools` 摘掉 `edit`/`write`，`tool_call` 钩子兜底拦截（工具声明在请求前生成，可能滞后一轮）。只改指令文本不算约束。退出与 `dispose` 都必须还原工具集，否则 `/reload` 之后 `edit`/`write` 会永久消失。
+- `bash` 有意不摘掉（协调者要只读探查），这是已知漏洞：`bash` 能写文件，只靠指令约束。不要为了「补漏」摘掉它——协调者会失去几乎所有能力。
