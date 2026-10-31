@@ -3,7 +3,14 @@
   "extends": ["//"],
   "tasks": {
     "build": {
-      "inputs": ["$TURBO_DEFAULT$", "!**/*.md", "$TURBO_ROOT$/packages/web-ui/CHANGELOG.md"]
+      "inputs": [
+        "$TURBO_DEFAULT$",
+        "!**/*.md",
+        "!**/*.spec.ts",
+        "!**/*.test.ts",
+        "!**/__tests__/**",
+        "$TURBO_ROOT$/packages/web-ui/CHANGELOG.md"
+      ]
     },
     "test": {
       "inputs": [
