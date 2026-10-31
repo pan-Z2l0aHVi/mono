@@ -1,6 +1,13 @@
 import '@/assets/global.css'
 
-import { toast, type WebUiLayout, type WebUiTheme, type WebUiToast } from '@greypan/web-ui'
+import { toast, type WebUiIcon, type WebUiLayout, type WebUiTheme, type WebUiToast } from '@greypan/web-ui'
+import {
+  antDesignSyncOutlined,
+  icOutlineMotionPhotosOn,
+  lucideContrast,
+  lucideLanguages,
+  lucideSun
+} from '@greypan/web-ui/icons'
 import { createHead } from '@unhead/vue/client'
 import { mount, type VueWrapper } from '@vue/test-utils'
 import { afterEach, beforeEach, describe, expect, it, onTestFailed, vi } from 'vite-plus/test'
@@ -42,18 +49,22 @@ function bannerCloseButton() {
   return button
 }
 
-/** userEvent targets directly, so first confirm the button wins hit-testing at its center. */
+/** userEvent targets directly, so wait until the button wins hit-testing at its center. */
 async function clickBannerCloseButtonAtCenter() {
   const button = bannerCloseButton()
   const bounds = button.getBoundingClientRect()
   const x = bounds.left + bounds.width / 2
   const y = bounds.top + bounds.height / 2
-  const hitTarget = document.elementFromPoint(x, y)
 
-  expect(
-    hitTarget === button || (hitTarget !== null && button.contains(hitTarget)),
-    `banner close button center (${x}, ${y}) should hit the button or its contents`
-  ).toBe(true)
+  await vi.waitFor(() => {
+    const hitTarget = document.elementFromPoint(x, y)
+    expect(
+      hitTarget === button || (hitTarget !== null && button.contains(hitTarget)),
+      `banner close button center (${x}, ${y}) should hit the button or its contents`
+    ).toBe(true)
+  })
+
+  const hitTarget = document.elementFromPoint(x, y)
   if (!hitTarget) throw new Error('banner close button center had no hit target')
   await userEvent.click(hitTarget as HTMLElement)
 }
@@ -241,7 +252,7 @@ describe('应用外壳（浏览器）：导航 collapsed state 不跨视口泄�
     }
   )
 
-  it('已显示的 top toast 文案和字号变化时预留空间跟随，缩短后复原', async () => {
+  it('top toast 文案和字号变化不改变 header 位置', async () => {
     await mountAppShell()
     const toastElement = await persistentTopToast(SHORT_TOAST_MESSAGE)
     await clickBannerCloseButtonAtCenter()
@@ -253,13 +264,13 @@ describe('应用外壳（浏览器）：导航 collapsed state 不跨视口泄�
     await vi.waitFor(() => expect(toastElement.getBoundingClientRect().height).toBeGreaterThan(shortHeight))
     await clickGlobalSelectsAtTopEdge()
     const longTop = globalSelectTrigger('Global theme').getBoundingClientRect().top
-    expect(longTop).toBeGreaterThan(shortTop)
+    expect(longTop).toBeCloseTo(shortTop)
     const longHeight = toastElement.getBoundingClientRect().height
 
     toastElement.style.setProperty('--wui-font-size', '24px')
     await vi.waitFor(() => expect(toastElement.getBoundingClientRect().height).toBeGreaterThan(longHeight))
     await clickGlobalSelectsAtTopEdge()
-    expect(globalSelectTrigger('Global theme').getBoundingClientRect().top).toBeGreaterThan(longTop)
+    expect(globalSelectTrigger('Global theme').getBoundingClientRect().top).toBeCloseTo(shortTop)
 
     toastElement.style.removeProperty('--wui-font-size')
     toast.info(SHORT_TOAST_MESSAGE, { id: toastElement.toastId })
@@ -267,28 +278,28 @@ describe('应用外壳（浏览器）：导航 collapsed state 不跨视口泄�
     await clickGlobalSelectsAtTopEdge()
   })
 
-  it('top toast 堆栈溢出时只预留可见区域，滚动后重新测量', async () => {
-    await setViewport(DESKTOP_VIEWPORT.width, 400)
+  it('top toast 堆栈增长时不改变 banner 和 header 高度，并从 header 下方开始', async () => {
     await mountAppShell()
-    const firstToast = await persistentTopToast(LONG_TOAST_MESSAGE)
-    await userEvent.hover(firstToast)
-    for (let index = 0; index < 8; index++) toast.info(LONG_TOAST_MESSAGE, { duration: 0 })
-    const container = firstToast.parentElement!
-    await vi.waitFor(() => expect(container.querySelectorAll('web-ui-toast[visible]').length).toBe(9))
-    expect(container.scrollHeight).toBeGreaterThan(container.clientHeight)
     const banner = document.querySelector<HTMLElement>('[slot="banner"]')!
-    await vi.waitFor(() => expect(banner.getBoundingClientRect().bottom).toBeCloseTo(innerHeight, 0))
-    const beforeScroll = banner.getBoundingClientRect().bottom
+    const bannerHeight = banner.getBoundingClientRect().height
+    const header = layoutRoot().querySelector<HTMLElement>('[slot="header"]')!
+    const headerHeight = header.getBoundingClientRect().height
+    const firstToast = await persistentTopToast(LONG_TOAST_MESSAGE)
+    toast.info(LONG_TOAST_MESSAGE, { duration: 0 })
+    const container = firstToast.parentElement!
+    await vi.waitFor(() => expect(container.querySelectorAll('web-ui-toast[visible]').length).toBe(2))
 
-    container.scrollTop = container.scrollHeight
-    await vi.waitFor(() => expect(banner.getBoundingClientRect().bottom).toBeLessThan(beforeScroll))
-    const bottom = Math.max(
-      ...Array.from(container.querySelectorAll('web-ui-toast'), element => element.getBoundingClientRect().bottom)
-    )
-    expect(banner.getBoundingClientRect().bottom).toBeCloseTo(bottom)
+    expect(banner.getBoundingClientRect().height).toBeCloseTo(bannerHeight)
+    expect(header.getBoundingClientRect().height).toBeCloseTo(headerHeight)
+    await vi.waitFor(() => {
+      const toastTop = Math.min(
+        ...Array.from(container.querySelectorAll('web-ui-toast'), element => element.getBoundingClientRect().top)
+      )
+      expect(toastTop).toBeGreaterThanOrEqual(header.getBoundingClientRect().bottom)
+    })
   })
 
-  it('右上角 toast 显示与隐藏时 banner 关闭按钮都可用', async () => {
+  it('banner 关闭后 toast 显示与隐藏都不会重新占位', async () => {
     await mountAppShell()
     await clickBannerCloseButtonAtCenter()
     await vi.waitFor(() => {
@@ -312,22 +323,11 @@ describe('应用外壳（浏览器）：导航 collapsed state 不跨视口泄�
 
     await clickBannerCloseButtonAtCenter()
     await vi.waitFor(() => {
-      const banner = document.querySelector<HTMLElement>('[slot="banner"]')
-      if (!banner || getComputedStyle(banner).visibility !== 'hidden') {
-        throw new Error('banner stayed visible with a toast')
-      }
+      if (document.querySelector('[slot="banner"]')) throw new Error('banner stayed visible with a toast')
     })
 
-    expect(document.querySelector('[slot="banner"]')).not.toBeNull()
     expect(themeOverlayRoot()?.querySelector('web-ui-toast')).not.toBeNull()
-
-    for (const label of ['Global motion', 'Global theme']) {
-      const trigger = globalSelectTrigger(label)
-      await userEvent.click(trigger)
-      expect(trigger.getAttribute('aria-expanded')).toBe('true')
-      await userEvent.keyboard('{Escape}')
-      expect(trigger.getAttribute('aria-expanded')).toBe('false')
-    }
+    await clickGlobalSelectsAtTopEdge()
 
     toast.clear()
     await vi.waitFor(() => {
@@ -372,10 +372,7 @@ describe('应用外壳（浏览器）：导航 collapsed state 不跨视口泄�
         if (!nestedTheme.getOverlayRoot()?.querySelector('web-ui-toast')) {
           throw new Error('scoped toast did not mount in the nested theme')
         }
-        const banner = document.querySelector<HTMLElement>('[slot="banner"]')
-        if (!banner || getComputedStyle(banner).visibility !== 'hidden') {
-          throw new Error('nested scoped toast did not reserve banner space')
-        }
+        if (document.querySelector('[slot="banner"]')) throw new Error('nested scoped toast reserved banner space')
       })
 
       toast.clear()
@@ -428,10 +425,91 @@ describe('应用外壳（浏览器）：导航 collapsed state 不跨视口泄�
 
     expect(navRoot().getAttribute('aria-label')).toBe('App navigation')
     expect(document.querySelector('nav[aria-label="Main navigation"]')).not.toBeNull()
+    expect(
+      [...document.querySelectorAll('nav[aria-label="Main navigation"] h2')].map(heading => heading.textContent?.trim())
+    ).toEqual(['General', 'Layout', 'Forms', 'Display', 'Feedback'])
+    expect(
+      [...document.querySelectorAll('nav[aria-label="Main navigation"] [role="group"]')].map(group => [
+        group.querySelector('h2')?.textContent?.trim(),
+        [...group.querySelectorAll('a')].map(link => link.getAttribute('aria-label'))
+      ])
+    ).toEqual([
+      ['General', ['Button', 'Icon']],
+      ['Layout', ['Layout', 'BackTop', 'Theme']],
+      [
+        'Forms',
+        [
+          'Input',
+          'Textarea',
+          'InputNumber',
+          'Select',
+          'Autocomplete',
+          'Dropdown',
+          'Switch',
+          'Slider',
+          'Radio',
+          'Checkbox',
+          'Segmented'
+        ]
+      ],
+      ['Display', ['Collapse', 'EditableText', 'Empty', 'MiddleEllipsis', 'SVGDrawLines', 'Avatar', 'Badge']],
+      [
+        'Feedback',
+        ['Dialog', 'Drawer', 'Tooltip', 'Popover', 'ContextMenu', 'Toast', 'ImagePreview', 'Spinner', 'Progress']
+      ]
+    ])
     await loadDemoLocale('zh-CN', false)
     await nextTick()
     expect(document.querySelector('nav[aria-label="主导航"]')).not.toBeNull()
+    expect(
+      [...document.querySelectorAll('nav[aria-label="主导航"] h2')].map(heading => heading.textContent?.trim())
+    ).toEqual(['通用', '布局', '表单', '展示', '反馈'])
     expect(document.querySelector('web-ui-select[aria-label="全局动效"]')).not.toBeNull()
+  })
+
+  it('全局图标触发器与选中值同步', async () => {
+    await mountAppShell()
+
+    const selectOf = (label: string) => {
+      const select = document.querySelector<HTMLElement & { value: string }>(`web-ui-select[aria-label="${label}"]`)
+      if (!select) throw new Error(`${label} select not found`)
+      return select
+    }
+    const iconOf = (label: string) => selectOf(label).querySelector<WebUiIcon>('[slot="trigger"]')
+    const pick = async (label: string, value: string) => {
+      const select = selectOf(label)
+      select.value = value
+      select.dispatchEvent(new Event('change', { bubbles: true }))
+      await nextTick()
+    }
+
+    await pick('Global motion', 'full')
+    expect(iconOf('Global motion')?.icon).toBe(icOutlineMotionPhotosOn)
+
+    await pick('Global motion', 'system')
+    expect(iconOf('Global motion')?.icon).toBe(antDesignSyncOutlined)
+
+    await pick('Global theme', 'system')
+    expect(iconOf('Global theme')?.icon).toBe(lucideContrast)
+    expect(iconOf('Global language')?.icon).toBe(lucideLanguages)
+
+    await pick('Global theme', 'light')
+    expect(iconOf('Global theme')?.icon).toBe(lucideSun)
+  })
+
+  it('320px 下三个全局选择器全部留在视口内，page 不产生横向滚动', async () => {
+    await setViewport(320, 700)
+    await mountAppShell()
+
+    const selects = [...document.querySelectorAll<HTMLElement>('web-ui-select')]
+    expect(selects).toHaveLength(3)
+    for (const select of selects) {
+      const bounds = select.getBoundingClientRect()
+      expect(bounds.width).toBeGreaterThan(0)
+      expect(bounds.left).toBeGreaterThanOrEqual(0)
+      expect(bounds.right).toBeLessThanOrEqual(document.documentElement.clientWidth + 0.5)
+    }
+    expect(document.documentElement.scrollWidth).toBe(document.documentElement.clientWidth)
   })
 
   it('桌面端 collapsed state 沿用完整导航名、超出部分省略，并通过 title 提供完整 label', async () => {
@@ -469,7 +547,8 @@ describe('应用外壳（浏览器）：导航 collapsed state 不跨视口泄�
     await requestCollapse(false)
 
     expect(links.map(link => link.querySelector('span')?.textContent?.trim() ?? '')).toEqual(expandedLabels)
-    expect(links.every(link => !link.hasAttribute('title'))).toBe(true)
+    expect(links.slice(2).every(link => !link.hasAttribute('title'))).toBe(true)
+    expect(links.slice(0, 2).map(link => link.getAttribute('title'))).toEqual(['Components', 'Changelog'])
   })
 
   it('桌面端 collapse 后导航文字居中，expanded state 左对齐', async () => {

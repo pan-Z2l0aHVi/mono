@@ -1,5 +1,7 @@
 import { createElement, use, type ComponentType } from 'react'
 
+import { demoManifest as enDemoManifest } from '@/generated/en/demo-manifest'
+import { demoManifest as zhDemoManifest } from '@/generated/zh-CN/demo-manifest'
 import type { ExampleDoc } from '@/generated/zh-CN/examples'
 
 import type { Locale } from './locale'
@@ -28,6 +30,15 @@ const demos = new Map(
     return [key, createDemo(importModule)] as const
   })
 )
+for (const [locale, keys] of [
+  ['zh-CN', zhDemoManifest],
+  ['en', enDemoManifest]
+] as const) {
+  for (const key of keys) {
+    if (!demos.has(`${locale}/${key}`))
+      throw new Error(`Generated demo module is missing from glob: ${locale}/demos/${key}.tsx`)
+  }
+}
 
 export function getDemo(locale: Locale, component: string, key: string) {
   return demos.get(`${locale}/${component}--${key}`)?.get()

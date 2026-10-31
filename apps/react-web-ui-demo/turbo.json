@@ -2,10 +2,21 @@
   "$schema": "https://turbo.build/schema.json",
   "extends": ["//"],
   "tasks": {
+    "build": {
+      "inputs": [
+        "$TURBO_DEFAULT$",
+        "!**/*.md",
+        "!**/*.spec.ts",
+        "!**/*.test.ts",
+        "!**/__tests__/**",
+        "$TURBO_ROOT$/packages/web-ui/CHANGELOG.md"
+      ]
+    },
     "test": {
       "inputs": [
         "$TURBO_DEFAULT$",
         "!**/*.md",
+        "$TURBO_ROOT$/packages/web-ui/CHANGELOG.md",
         "$TURBO_ROOT$/packages/monorepo-kit/src/plugin/exec/shell-i18n-catalog.ts",
         "$TURBO_ROOT$/packages/monorepo-kit/src/plugin/exec/exec.ts"
       ]

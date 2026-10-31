@@ -1,6 +1,6 @@
 # Worktree 执行环境与共享缓存
 
-本文件拥有 worktree 准备与执行环境的几件互相关联的事：在一个新 worktree 里把工具链准备好、按任务收缩视野、让各 worktree 共享同一份构建缓存、以及在未激活 mise 的 shell 里正确执行命令。它们的共同线索是「拿到一个 worktree 之后怎么正确执行命令」，所以放在一起。
+本文件拥有 worktree 准备与执行环境的几件互相关联的事：在一个新 worktree 里把工具链准备好、按任务收缩视野、让各 worktree 共用一份本机 HTTPS 证书、让各 worktree 共享同一份构建缓存，以及在未激活 mise 的 shell 里正确执行命令。它们的共同线索是「拿到一个 worktree 之后怎么正确执行命令」，所以放在一起。
 
 worktree 本身是任务隔离边界，不是包名的别名。包清单、依赖边界与发布边界以 [`ARCHITECTURE.md`](../../ARCHITECTURE.md) 为权威；客户端权限边界见 [`environments.md`](./environments.md)；mise/turbo 的 env 注入由本文承担；提交边界的授权口径见 [`commit.md`](./commit.md)。
 
@@ -23,6 +23,23 @@ worktree 本身是任务隔离边界，不是包名的别名。包清单、依�
 三步准备完成后、任务交给实施 agent 前，编排层可以按任务目标把 sparse checkout 收缩到目标包及其 turbo 依赖闭包，减少无关代码的上下文占用。顺序不能颠倒：闭包来自 turbo 图，`turbo ls` 在未安装依赖的 worktree 里跑不起来。
 
 调用方式与稀疏树里的搜索、gate、install 规则见 [`.agents/skills/turbo-sparse-scope/SKILL.md`](../../.agents/skills/turbo-sparse-scope/SKILL.md)。对这里的环境准备有两条后果需要记住：收缩成功后脚本会立即跑一次 `pnpm install --frozen-lockfile`，把 `node_modules` 对齐到缩小后的 workspace 集，否则后续 `pnpm run` / `pnpm exec` 会自行做非 frozen 安装并重写 `pnpm-lock.yaml`；根目录没有 `pnpm-workspace.yaml` 或 `pnpm` 不在 PATH 时这一步跳过并告警，需要在跑 pnpm 脚本前手动补上。被隐藏包的目录里没有未跟踪文件时，整个目录（含被忽略的 `node_modules`、`dist`）随 cone 删除，`--restore` 只带回已跟踪文件，恢复后要重跑 `pnpm install --frozen-lockfile` 与 `pnpm run build`。
+
+## 本地 HTTPS 证书
+
+两个 demo 的 dev/preview 通过本机 mkcert 证书提供 HTTPS。证书放在用户目录 `~/.config/greypan/dev-certs/`，同一台机器的所有 worktree 共用一份；它不随 checkout 复制，也不入库。上面的三步准备不包含这一步，因为它是每台机器一次的本地信任配置。
+
+首次使用或换机器时运行：
+
+```sh
+mkcert -install
+mkdir -p ~/.config/greypan/dev-certs
+mkcert \
+  -cert-file ~/.config/greypan/dev-certs/localhost.pem \
+  -key-file ~/.config/greypan/dev-certs/localhost-key.pem \
+  localhost 127.0.0.1 ::1
+```
+
+`mkcert -install` 会把 mkcert 的本地 CA 加入系统信任库，内嵌浏览器与自定义客户端因此能通过 TLS 校验。证书缺失时 dev/preview 直接失败并打印上述命令；测试档在 CI 没有证书时保持 HTTP，Playwright 自身忽略证书错误。需要换目录时设置 `GREYPAN_DEV_CERT_DIR`；两个 demo 的 `vite.config.ts` 读同一个变量。
 
 ## Turbo artifact cache
 

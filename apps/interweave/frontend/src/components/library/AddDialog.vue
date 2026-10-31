@@ -199,7 +199,7 @@ function handleRenameChange(item: LibraryQueueItem, event: WebUiEvent<WebUiEdita
     :open="open"
     controlled
     no-backdrop-close
-    horizontal
+    footer-orientation="horizontal"
     :style="{ '--wui-dialog-footer-justify': mobile ? undefined : 'flex-end' }"
     class="[--wui-dialog-width:min(90vw,880px)] [--wui-dialog-max-height:calc(min(82vh,560px)_-_142px)]"
     @open-change="handleOpenChange"

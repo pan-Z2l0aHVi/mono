@@ -38,14 +38,6 @@ msgstr "Expand code"
 msgid "示例"
 msgstr "Samples"
 
-#: src/pages/home/index.vue
-msgid "查看演示 →"
-msgstr "View demo →"
-
-#: src/pages/home/index.vue
-msgid "基于 Web Components 的跨框架现代 UI 组件库。一套轻量、精致的核心设计系统，原生支持 Vue、React 以及任意前端技术栈。"
-msgstr "A cross-framework modern UI component library built on Web Components. One lightweight, refined core design system with native support for Vue, React, and any frontend stack."
-
 #: src/pages/[...all]/index.vue
 msgid "你要找的页面不存在"
 msgstr "The page you asked for does not exist"
@@ -92,48 +84,8 @@ msgid "应用导航"
 msgstr "App navigation"
 
 #: src/pages/home/index.vue
-msgid "变体、尺寸、图标与加载状态"
-msgstr "Variants, sizes, icons and loading states"
-
-#: src/pages/home/index.vue
-msgid "遵循无障碍规范的模态对话框行为"
-msgstr "Modal dialog behavior aligned with accessibility"
-
-#: src/pages/home/index.vue
-msgid "手势拖拽关闭与浮动卡片形态"
-msgstr "Gesture drag-to-close and floating card variants"
-
-#: src/pages/home/index.vue
-msgid "深浅外观切换与减弱动效"
-msgstr "Light and dark switching with reduced motion"
-
-#: src/pages/home/index.vue
-msgid "基于 Floating UI 的下拉浮层与选项"
-msgstr "Floating UI based dropdown layer and options"
-
-#: src/pages/home/index.vue
 msgid "轻量、响应式的全局通知"
-msgstr "Lightweight responsive global notifications"
-
-#: src/pages/home/index.vue
-msgid "Web Components 原生"
-msgstr "Native Web Components"
-
-#: src/pages/home/index.vue
-msgid "跨框架无缝适配"
-msgstr "Seamless cross-framework support"
-
-#: src/pages/home/index.vue
-msgid "语义化设计 Token"
-msgstr "Semantic design tokens"
-
-#: src/pages/home/index.vue
-msgid "深浅色 & 动效偏好"
-msgstr "Light/dark & motion preferences"
-
-#: src/pages/home/index.vue
-msgid "常用组件快速预览"
-msgstr "Popular components at a glance"
+msgstr "Lightweight, responsive global notifications"
 
 #: src/app/index.vue
 msgid "关闭横幅"
@@ -150,3 +102,170 @@ msgstr "Loading language"
 #: src/app/index.vue
 msgid "语言切换失败，请刷新页面后重试"
 msgstr "Unable to switch language. Refresh the page and try again."
+
+#: src/app/index.vue
+#: src/app/index.vue
+msgid "浅色模式"
+msgstr "Light"
+
+#: src/app/index.vue
+#: src/app/index.vue
+msgid "深色模式"
+msgstr "Dark"
+
+#: src/pages/home/index.vue
+msgid "基础控件"
+msgstr "Core controls"
+
+#: src/pages/home/index.vue
+msgid "查看演示 →"
+msgstr "View demo →"
+
+#: src/pages/home/index.vue
+msgid "交互与浮层"
+msgstr "Interaction & overlays"
+
+#: src/pages/home/index.vue
+msgid "丝滑动效"
+msgstr "Silky motion"
+
+#: src/pages/home/index.vue
+msgid "命令式组件"
+msgstr "Imperative components"
+
+#: src/pages/home/index.vue
+msgid "加载中的等待提示"
+msgstr "Loading feedback while content loads"
+
+#: src/pages/home/index.vue
+msgid "响应式布局"
+msgstr "Responsive layout"
+
+#: src/pages/home/index.vue
+msgid "无障碍"
+msgstr "Accessibility"
+
+#: src/pages/home/index.vue
+msgid "以 Web Components 为内核的跨框架 UI 组件库。轻量、精致，适配 React、Vue。"
+msgstr "A cross-framework UI component library built on Web Components. Lightweight and refined, with support for React and Vue."
+
+#: src/pages/home/index.vue
+msgid "快速预览"
+msgstr "Quick preview"
+
+#: src/pages/home/index.vue
+msgid "跨框架一致"
+msgstr "Cross-framework"
+
+#: src/pages/home/index.vue
+msgid "键盘友好"
+msgstr "Keyboard-friendly"
+
+#: src/pages/home/index.vue
+msgid "点击、输入、选择、切换"
+msgstr "Click, input, select, switch"
+
+#: src/pages/home/index.vue
+msgid "变体、尺寸、图标、加载状态"
+msgstr "Variants, sizes, icons, loading states"
+
+#: src/pages/home/index.vue
+msgid "输入、清除、前后缀"
+msgstr "Input, clear, affixes"
+
+#: src/pages/home/index.vue
+msgid "开关状态、拖拽切换"
+msgstr "Toggle state, drag switching"
+
+#: src/pages/home/index.vue
+msgid "分段选择、拖拽切换"
+msgstr "Segmented selection, drag switching"
+
+#: src/pages/home/index.vue
+msgid "对话框、抽屉、浮层"
+msgstr "Dialogs, drawers, floating layers"
+
+#: src/pages/home/index.vue
+msgid "弹窗、确认、信息展示"
+msgstr "Modals, confirmations, information"
+
+#: src/pages/home/index.vue
+msgid "侧滑面板、拖拽关闭"
+msgstr "Side panel, drag to close"
+
+#: src/pages/home/index.vue
+msgid "下拉选择、键盘导航"
+msgstr "Dropdown selection, keyboard navigation"
+
+#: src/pages/home/index.vue
+msgid "悬停提示、焦点说明"
+msgstr "Hover hints, focus labels"
+
+#: src/pages/home/index.vue
+msgid "函数调用触发的全局反馈"
+msgstr "Global feedback triggered by function calls"
+
+#: src/pages/home/index.vue
+msgid "多图预览、滑动切换、手势缩放"
+msgstr "Multi-image preview, swipe switching, gesture zoom"
+
+#: src/pages/home/index.vue
+msgid "应用基础"
+msgstr "App foundations"
+
+#: src/pages/home/index.vue
+msgid "页面骨架、外观偏好"
+msgstr "Page shell, appearance preferences"
+
+#: src/pages/home/index.vue
+msgid "深浅外观、动效偏好"
+msgstr "Light and dark appearance, motion preferences"
+
+#: src/pages/home/index.vue
+msgid "TypeScript 类型安全"
+msgstr "TypeScript type safety"
+
+#: src/pages/home/index.vue
+msgid "原子化组件"
+msgstr "Atomic components"
+
+#: src/pages/home/index.vue
+msgid "响应式设计"
+msgstr "Responsive design"
+
+#: src/app/index.vue
+msgid "通用"
+msgstr "General"
+
+#: src/app/index.vue
+msgid "布局"
+msgstr "Layout"
+
+#: src/app/index.vue
+msgid "表单"
+msgstr "Forms"
+
+#: src/app/index.vue
+msgid "展示"
+msgstr "Display"
+
+#: src/app/index.vue
+msgid "反馈"
+msgstr "Feedback"
+
+#: src/app/index.vue
+#: src/app/index.vue
+#: src/app/index.vue
+msgid "组件总览"
+msgstr "Components"
+
+#: src/app/index.vue
+#: src/app/index.vue
+#: src/app/index.vue
+#: src/pages/changelog.vue
+msgid "更新日志"
+msgstr "Changelog"
+
+#: src/pages/changelog.vue
+msgid "组件库各版本的变更记录。"
+msgstr "Release notes for each version of the component library."

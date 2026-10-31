@@ -18,7 +18,7 @@ function createDialog(): WebUiDialog {
 }
 
 describe('WebUiDialog 组件（浏览器）', () => {
-  it('horizontal 让 footer 操作按钮同行，关闭后恢复纵向排列', async () => {
+  it('footer-orientation=horizontal 让操作按钮同行，vertical 恢复纵向排列', async () => {
     const component = createDialog()
     const buttons = ['Cancel', 'Save'].map(text => {
       const button = document.createElement('web-ui-button')
@@ -29,22 +29,22 @@ describe('WebUiDialog 组件（浏览器）', () => {
       return button
     })
 
-    component.horizontal = true
+    component.footerOrientation = 'horizontal'
     component.open = true
     await component.updateComplete
     await new Promise(resolve => requestAnimationFrame(resolve))
 
     const [firstButton, secondButton] = buttons
-    expect(component.hasAttribute('horizontal')).toBe(true)
+    expect(component.getAttribute('footer-orientation')).toBe('horizontal')
     expect(Math.abs(secondButton!.getBoundingClientRect().top - firstButton!.getBoundingClientRect().top)).toBeLessThan(
       1
     )
 
-    component.horizontal = false
+    component.footerOrientation = 'vertical'
     await component.updateComplete
     await new Promise(resolve => requestAnimationFrame(resolve))
 
-    expect(component.hasAttribute('horizontal')).toBe(false)
+    expect(component.getAttribute('footer-orientation')).toBe('vertical')
     expect(secondButton!.getBoundingClientRect().top).toBeGreaterThan(firstButton!.getBoundingClientRect().top)
   })
 

@@ -34,4 +34,18 @@ describe('WebUiSegmented listbox 可访问名称（浏览器）', () => {
     await waitForUpdate(segmented)
     expect(queryA11y(segmented, '[role="listbox"]')?.hasAttribute('aria-label')).toBe(false)
   })
+
+  it('trigger 的 aria-label 转发到内部 option，纯图标项因此有可访问名', async () => {
+    const segmented = await createSegmented()
+    const trigger = segmented.querySelector('web-ui-segmented-trigger')!
+    expect(queryA11y(trigger, '[role="option"]')?.hasAttribute('aria-label')).toBe(false)
+
+    trigger.setAttribute('aria-label', 'Grid view')
+    await waitForUpdate(trigger)
+    expect(queryA11y(trigger, '[role="option"]')?.getAttribute('aria-label')).toBe('Grid view')
+
+    trigger.removeAttribute('aria-label')
+    await waitForUpdate(trigger)
+    expect(queryA11y(trigger, '[role="option"]')?.hasAttribute('aria-label')).toBe(false)
+  })
 })

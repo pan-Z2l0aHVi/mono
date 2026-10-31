@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vite-plus/test'
 
 import type { FenceFlavor } from '../highlight'
-import { parseMarkdown, type ParsedDoc } from '../markdown'
+import { markdownToHtml, parseMarkdown, type ParsedDoc } from '../markdown'
 import type { ApiTables } from '../types'
 
 /*
@@ -343,5 +343,12 @@ describe('parseMarkdown', () => {
     expect(() => parseMarkdown(DOC, 'slider.md', { ...CONFIG, flavors: ['react'] })).toThrow(
       /代码块语言必须是 react 用 ```tsx，收到 `vue`/
     )
+  })
+
+  it('markdownToHtml 渲染独立 Markdown 文档', () => {
+    const html = markdownToHtml('# Changelog\n\n- Added **icons**\n- Fixed `select`\n')
+    expect(html).toContain('<h1>Changelog</h1>')
+    expect(html).toContain('<strong>icons</strong>')
+    expect(html).toContain('<code>select</code>')
   })
 })

@@ -15,7 +15,7 @@ export default function Demo() {
           setLast(event.detail.open ? 'true' : 'false')
         }}
       >
-        <div className="flex h-32 w-full items-center justify-center rounded-xl border border-dashed border-(--wui-color-border) bg-(--wui-color-surface-control) text-sm text-(--wui-color-text)">
+        <div className="flex h-32 w-full items-center justify-center rounded-xl border border-dashed border-(--wui-color-border) bg-(--wui-color-state-layer-hover) text-sm text-(--wui-color-text)">
           {disabled ? 'The menu is disabled: right-click does not open it' : 'Right-click in this area'}
         </div>
         <web-ui-dropdown-item>Edit</web-ui-dropdown-item>

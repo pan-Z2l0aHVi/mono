@@ -203,6 +203,56 @@ const lockedView = ref('list')
 </script>
 ```
 
+### Icon-only
+
+纯图标 trigger 仍需要自己的可访问名：内部 `role="option"` 没有文本，所以给每个 `<web-ui-segmented-trigger>` 写 `aria-label`。分组仍保持同一套单选、拖拽与键盘行为。
+
+```tsx
+import { lucideLayoutGrid, lucideList, lucideSettings } from '@greypan/web-ui/icons'
+import { useState } from 'react'
+
+export default function Demo() {
+  const [view, setView] = useState('grid')
+
+  return (
+    <web-ui-segmented aria-label="View mode" value={view} onInput={event => setView(event.currentTarget.value)}>
+      <web-ui-segmented-trigger value="grid" aria-label="Grid view">
+        <web-ui-icon icon={lucideLayoutGrid} size={16}></web-ui-icon>
+      </web-ui-segmented-trigger>
+      <web-ui-segmented-trigger value="list" aria-label="List view">
+        <web-ui-icon icon={lucideList} size={16}></web-ui-icon>
+      </web-ui-segmented-trigger>
+      <web-ui-segmented-trigger value="settings" aria-label="Settings view">
+        <web-ui-icon icon={lucideSettings} size={16}></web-ui-icon>
+      </web-ui-segmented-trigger>
+    </web-ui-segmented>
+  )
+}
+```
+
+```vue
+<template>
+  <web-ui-segmented aria-label="View mode" :value="view" @input="view = $event.currentTarget.value">
+    <web-ui-segmented-trigger value="grid" aria-label="Grid view">
+      <web-ui-icon :icon="lucideLayoutGrid" :size="16"></web-ui-icon>
+    </web-ui-segmented-trigger>
+    <web-ui-segmented-trigger value="list" aria-label="List view">
+      <web-ui-icon :icon="lucideList" :size="16"></web-ui-icon>
+    </web-ui-segmented-trigger>
+    <web-ui-segmented-trigger value="settings" aria-label="Settings view">
+      <web-ui-icon :icon="lucideSettings" :size="16"></web-ui-icon>
+    </web-ui-segmented-trigger>
+  </web-ui-segmented>
+</template>
+
+<script setup lang="ts">
+import { lucideLayoutGrid, lucideList, lucideSettings } from '@greypan/web-ui/icons'
+import { ref } from 'vue'
+
+const view = ref('grid')
+</script>
+```
+
 ### Form field
 
 `name` 让当前选中值以该字段名进入 `FormData`，未选中任何项时不提交该字段。组件通过 ElementInternals 接入 `<form>`，`form.reset()` 会把 `value` 退回挂载时的初始值。

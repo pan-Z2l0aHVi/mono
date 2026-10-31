@@ -18,10 +18,10 @@ export default function Demo() {
         内边距与插槽间距都放宽
       </web-ui-button>
       <web-ui-button variant="primary" style={successOnly}>
-        只换底色，hover 与按下跟着变深
+        只换底色
       </web-ui-button>
       <web-ui-button variant="secondary" style={fourStates}>
-        四档配色各指一枚 token
+        四档配色
       </web-ui-button>
     </div>
   )

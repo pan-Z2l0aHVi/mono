@@ -343,6 +343,7 @@ produces the string `"false"`, which is truthy. Binding the camelCase name (`:si
 ```vue
 <web-ui-layout
   header-glow
+  sidebar-collapsible
   :sidebarCollapsed="sidebarCollapsed"
   :sidebarOpen="sidebarOpen"
   @sidebar-collapsed-change="sidebarCollapsed = $event.detail.collapsed"
@@ -452,6 +453,7 @@ Every component has its own doc page: API reference, behavior notes and interact
 |                        | [`<web-ui-empty>`](https://github.com/pan-Z2l0aHVi/mono/blob/main/packages/web-ui/docs/empty.md)                         |
 |                        | [`<web-ui-middle-ellipsis>`](https://github.com/pan-Z2l0aHVi/mono/blob/main/packages/web-ui/docs/middle-ellipsis.md)     |
 |                        | [`<web-ui-icon>`](https://github.com/pan-Z2l0aHVi/mono/blob/main/packages/web-ui/docs/icon.md)                           |
+|                        | [`<web-ui-progress>`](https://github.com/pan-Z2l0aHVi/mono/blob/main/packages/web-ui/docs/progress.md)                   |
 |                        | [`<web-ui-spinner>`](https://github.com/pan-Z2l0aHVi/mono/blob/main/packages/web-ui/docs/spinner.md)                     |
 | **Layout & Utility**   | [`<web-ui-layout>`](https://github.com/pan-Z2l0aHVi/mono/blob/main/packages/web-ui/docs/layout.md)                       |
 |                        | [`<web-ui-back-top>`](https://github.com/pan-Z2l0aHVi/mono/blob/main/packages/web-ui/docs/back-top.md)                   |

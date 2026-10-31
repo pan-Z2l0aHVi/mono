@@ -1,0 +1,64 @@
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+:host {
+  display: block;
+  width: 100%;
+  min-width: 0;
+}
+
+.wui-progress {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: var(--wui-space-2, 8px);
+  align-items: center;
+}
+
+.wui-progress-track {
+  overflow: hidden;
+
+  width: 100%;
+  height: var(--wui-progress-height, 8px);
+  border-radius: var(--wui-progress-radius, var(--wui-radius-control, calc(infinity * 1px)));
+
+  background-color: var(--wui-progress-track-color, var(--wui-color-surface-track, #e5e5ea));
+}
+
+.wui-progress-indicator {
+  width: var(--wui-progress-percent, 0%);
+  height: 100%;
+  border-radius: inherit;
+
+  background-color: var(--wui-progress-fill-color, var(--wui-color-accent, #0071e3));
+
+  transition: width var(--wui-duration-trigger, 160ms) var(--wui-ease-enter, cubic-bezier(0.23, 1, 0.32, 1));
+}
+
+:host([indeterminate]) .wui-progress-indicator {
+  width: 38%;
+  animation: wui-progress-indeterminate var(--wui-progress-indeterminate-duration, var(--wui-duration-spinner, 800ms))
+    var(--wui-ease-enter, cubic-bezier(0.23, 1, 0.32, 1)) infinite;
+}
+
+.wui-progress-value {
+  min-width: 3ch;
+
+  font-size: var(--wui-font-size-caption, 12px);
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+  color: var(--wui-color-text, #1b1b1b);
+  text-align: end;
+}
+
+@keyframes wui-progress-indeterminate {
+  from {
+    transform: translate3d(-120%, 0, 0);
+  }
+
+  to {
+    transform: translate3d(360%, 0, 0);
+  }
+}

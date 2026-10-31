@@ -4,8 +4,8 @@
       <web-ui-icon slot="prefix" :icon="lucideUpload" :size="16"></web-ui-icon>
       内边距与插槽间距都放宽
     </web-ui-button>
-    <web-ui-button :style="successOnly" variant="primary">只换底色，hover 与按下跟着变深</web-ui-button>
-    <web-ui-button :style="fourStates" variant="secondary">四档配色各指一枚 token</web-ui-button>
+    <web-ui-button :style="successOnly" variant="primary">只换底色</web-ui-button>
+    <web-ui-button :style="fourStates" variant="secondary">四档配色</web-ui-button>
   </div>
 </template>
 

@@ -32,6 +32,23 @@ describe('WebUiSelect 组件（浏览器）', () => {
     expect(root.getByRole('combobox', { name: 'Global theme' }).length).toBe(1)
   })
 
+  it('icon trigger 保留右侧箭头，左侧 slot 保持图标尺寸', async () => {
+    const select = document.createElement('web-ui-select')
+    select.trigger = 'icon'
+    select.innerHTML = `
+      <span slot="trigger">T</span>
+      <web-ui-option value="a" label="A"></web-ui-option>
+    `
+    document.body.append(select)
+    await select.updateComplete
+
+    const trigger = select.shadowRoot!.querySelector<HTMLElement>('.select-trigger')!
+    const arrow = select.shadowRoot!.querySelector<HTMLElement>('.arrow')!
+    expect(trigger.getBoundingClientRect().width).toBeGreaterThan(36)
+    expect(getComputedStyle(arrow).display).not.toBe('none')
+    expect(select.querySelector('[slot="trigger"]')?.textContent).toContain('T')
+  })
+
   it('真实键盘输入可打开、导航、typeahead 并提交选择', async () => {
     const mountPoint = mountKeyboardIsolated()
     const select = document.createElement('web-ui-select')
