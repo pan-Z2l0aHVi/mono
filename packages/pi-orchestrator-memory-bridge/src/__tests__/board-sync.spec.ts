@@ -2,17 +2,19 @@
  * 任务板同步。
  *
  * 守的是「编排进度在 board 上可见」这条用户可感知的契约：
- * dispatch 建任务并进入 in_progress，review APPROVE 推进到 in_review，REJECT 退回 todo
- * 并带上原因。以及两条稳定性要求——同一 slice 重放不重复建任务、board 工具失败不阻塞记忆。
+ * dispatch 建任务并进入 in_progress，watch 到 done 推进到 in_review、卡住时记录原因，
+ * review APPROVE 推进到 in_review，REJECT 退回 todo 并带上原因。以及两条稳定性要求——
+ * 同一 slice 重放不重复建任务、board 工具失败不阻塞记忆。
  */
 
 import { describe, expect, it } from 'vite-plus/test'
 
-import { applyBoardAction, parsePanelTasks } from '../board/apply'
+import { appendedDescription, applyBoardAction, parsePanelTasks } from '../board/apply'
 import {
   BOARD_PANEL_TITLE,
   boardActionForDispatch,
   boardActionForReview,
+  boardActionForWatch,
   enqueueBoardAction,
   taskTitle
 } from '../board/sync'
@@ -32,6 +34,15 @@ const reviewDetails = (overrides: Record<string, unknown> = {}) => ({
   slice: 'bridge-worker',
   verdict: 'APPROVE',
   reason: 'criteria met',
+  ...overrides
+})
+
+const watchDetails = (overrides: Record<string, unknown> = {}) => ({
+  action: 'watch',
+  name: 'bridge-worker',
+  status: 'done',
+  elapsedMs: 1234,
+  ledgerText: 'DONE: all good',
   ...overrides
 })
 
@@ -57,6 +68,41 @@ describe('dispatch → 建任务', () => {
   it('缺少 name 时不产生动作', () => {
     expect(boardActionForDispatch(dispatchDetails({ name: undefined }))).toBeUndefined()
     expect(boardActionForDispatch(dispatchDetails({ name: '   ' }))).toBeUndefined()
+  })
+})
+
+describe('watch → 反映 worker 终态', () => {
+  it('done 进 in_review，表示等验收', () => {
+    const action = boardActionForWatch(watchDetails())
+
+    expect(action).toEqual({
+      kind: 'move_task',
+      title: taskTitle('bridge-worker'),
+      status: 'in_review'
+    })
+  })
+
+  for (const status of ['blocked', 'timeout', 'lost']) {
+    it(`${status} 留在 in_progress 并记录原因`, () => {
+      const action = boardActionForWatch(watchDetails({ status }))
+
+      expect(action?.status).toBe('in_progress')
+      expect(action?.description).toBe(`watch: ${status}`)
+      expect(action?.appendDescription).toBe(true)
+    })
+  }
+
+  it('轮询中间态不产生动作（status 是 agent 实时状态，不是终态）', () => {
+    expect(boardActionForWatch(watchDetails({ waiting: true, status: 'blocked' }))).toBeUndefined()
+  })
+
+  it('缺少 name、未知状态或非 watch 都不产生动作', () => {
+    expect(boardActionForWatch(watchDetails({ name: undefined }))).toBeUndefined()
+    expect(boardActionForWatch(watchDetails({ name: '   ' }))).toBeUndefined()
+    expect(boardActionForWatch(watchDetails({ status: 'idle' }))).toBeUndefined()
+    expect(boardActionForWatch({ action: 'dispatch', name: 'bridge-worker', status: 'done' })).toBeUndefined()
+    expect(boardActionForWatch(undefined)).toBeUndefined()
+    expect(boardActionForWatch('watch')).toBeUndefined()
   })
 })
 
@@ -152,11 +198,40 @@ describe('parsePanelTasks', () => {
     expect(tasks).toEqual([{ id: 'T-1', title: 'a', status: 'todo' }])
   })
 
+  it('取任务的 description', () => {
+    const tasks = parsePanelTasks(
+      JSON.stringify({ tasks: [{ id: 'T-1', title: 'a', status: 'todo', description: 'role: builder' }] })
+    )
+
+    expect(tasks).toEqual([{ id: 'T-1', title: 'a', status: 'todo', description: 'role: builder' }])
+  })
+
   it('非 JSON 或形状不符时返回空数组', () => {
     expect(parsePanelTasks('')).toEqual([])
     expect(parsePanelTasks('No panels yet')).toEqual([])
     expect(parsePanelTasks(JSON.stringify({ tasks: 'nope' }))).toEqual([])
     expect(parsePanelTasks(JSON.stringify({ tasks: [{ id: 'T-1' }] }))).toEqual([])
+  })
+})
+
+describe('appendedDescription', () => {
+  it('默认整段替换', () => {
+    expect(appendedDescription('role: builder', 'watch: blocked', false)).toBe('watch: blocked')
+  })
+
+  it('追加时保留已有描述', () => {
+    expect(appendedDescription('role: builder', 'watch: blocked', true)).toBe('role: builder\nwatch: blocked')
+  })
+
+  it('已有描述为空时直接写新内容', () => {
+    expect(appendedDescription(undefined, 'watch: blocked', true)).toBe('watch: blocked')
+    expect(appendedDescription('   ', 'watch: blocked', true)).toBe('watch: blocked')
+  })
+
+  it('同一行已经存在时不重复追加', () => {
+    expect(appendedDescription('role: builder\nwatch: blocked', ' watch: blocked ', true)).toBe(
+      'role: builder\nwatch: blocked'
+    )
   })
 })
 
@@ -172,8 +247,11 @@ describe('applyBoardAction', () => {
     args: Record<string, unknown>
   }
 
-  /** 造一个内存态 task_board：支持 list_panels / add_panel / get_panel / add_task / move_task。 */
-  const fakeBoard = (initial?: { panel?: boolean; tasks?: Array<{ id: string; title: string; status: string }> }) => {
+  /** 造一个内存态 task_board：支持 list_panels / add_panel / get_panel / add_task / move_task / update_task。 */
+  const fakeBoard = (initial?: {
+    panel?: boolean
+    tasks?: Array<{ id: string; title: string; status: string; description?: string }>
+  }) => {
     const calls: Call[] = []
     const state = {
       hasPanel: initial?.panel ?? false,
@@ -202,7 +280,12 @@ describe('applyBoardAction', () => {
       }
       if (action === 'add_task') {
         const id = `T-${state.nextId++}`
-        state.tasks.push({ id, title: String(args.title), status: String(args.status) })
+        state.tasks.push({
+          id,
+          title: String(args.title),
+          status: String(args.status),
+          ...(typeof args.description === 'string' ? { description: args.description } : {})
+        })
         return { ok: true, text: `Created ${id}` }
       }
       if (action === 'move_task') {
@@ -211,7 +294,12 @@ describe('applyBoardAction', () => {
         task.status = String(args.status)
         return { ok: true, text: `Moved ${task.id}` }
       }
-      if (action === 'update_task') return { ok: true, text: 'updated' }
+      if (action === 'update_task') {
+        const task = state.tasks.find(item => item.id === args.taskId)
+        if (!task) return { ok: false, text: 'task not found' }
+        if (typeof args.description === 'string') task.description = args.description
+        return { ok: true, text: 'updated' }
+      }
       return { ok: false, text: `unknown action ${String(action)}` }
     }
     return { call, calls, state }
@@ -256,6 +344,71 @@ describe('applyBoardAction', () => {
 
     expect(board.state.tasks).toHaveLength(1)
     expect(board.state.tasks[0]?.status).toBe('in_progress')
+  })
+
+  it('watch 的卡住原因追加到已有描述，不覆盖 dispatch 写入的元信息', async () => {
+    const board = fakeBoard({
+      panel: true,
+      tasks: [{ id: 'T-1', title: taskTitle('s1'), status: 'in_progress', description: 'role: builder' }]
+    })
+    const action = boardActionForWatch(watchDetails({ name: 's1', status: 'blocked' }))!
+    await applyBoardAction(board.call, action)
+
+    expect(board.state.tasks[0]?.status).toBe('in_progress')
+    expect(board.state.tasks[0]?.description).toBe('role: builder\nwatch: blocked')
+  })
+
+  it('重复上报同一卡住原因不重复追加', async () => {
+    const board = fakeBoard({
+      panel: true,
+      tasks: [{ id: 'T-1', title: taskTitle('s1'), status: 'in_progress', description: 'role: builder' }]
+    })
+    const action = boardActionForWatch(watchDetails({ name: 's1', status: 'timeout' }))!
+    await applyBoardAction(board.call, action)
+    await applyBoardAction(board.call, action)
+
+    expect(board.state.tasks[0]?.description).toBe('role: builder\nwatch: timeout')
+    expect(board.calls.filter(c => c.args.action === 'update_task')).toHaveLength(1)
+  })
+
+  it('新的卡住原因取代旧的，不把两种原因都留在板上', async () => {
+    const board = fakeBoard({
+      panel: true,
+      tasks: [{ id: 'T-1', title: taskTitle('s1'), status: 'in_progress', description: 'role: builder' }]
+    })
+    await applyBoardAction(board.call, boardActionForWatch(watchDetails({ name: 's1', status: 'blocked' }))!)
+    await applyBoardAction(board.call, boardActionForWatch(watchDetails({ name: 's1', status: 'timeout' }))!)
+
+    expect(board.state.tasks[0]?.description).toBe('role: builder\nwatch: timeout')
+  })
+
+  it('跨轮 blocked → done 清掉过期的 watch 原因并进 in_review', async () => {
+    const board = fakeBoard({
+      panel: true,
+      tasks: [{ id: 'T-1', title: taskTitle('s1'), status: 'in_progress', description: 'role: builder' }]
+    })
+    await applyBoardAction(board.call, boardActionForWatch(watchDetails({ name: 's1', status: 'blocked' }))!)
+    expect(board.state.tasks[0]?.description).toBe('role: builder\nwatch: blocked')
+
+    await applyBoardAction(board.call, boardActionForWatch(watchDetails({ name: 's1', status: 'done' }))!)
+
+    expect(board.state.tasks[0]?.status).toBe('in_review')
+    expect(board.state.tasks[0]?.description).toBe('role: builder')
+    expect(board.state.tasks[0]?.description).not.toContain('blocked')
+  })
+
+  it('watch done 进 in_review，之后的 review REJECT 能打回 todo', async () => {
+    const board = fakeBoard()
+    await applyBoardAction(board.call, boardActionForWatch(watchDetails({ name: 's1' }))!)
+    expect(board.state.tasks[0]?.status).toBe('in_review')
+
+    await applyBoardAction(
+      board.call,
+      boardActionForReview(reviewDetails({ slice: 's1', verdict: 'REJECT', reason: 'gaps' }))!
+    )
+
+    expect(board.state.tasks[0]?.status).toBe('todo')
+    expect(board.state.tasks[0]?.description).toBe('REJECT: gaps')
   })
 
   it('review 移动已有任务并写入原因', async () => {
@@ -316,6 +469,7 @@ describe('applyBoardAction', () => {
 describe('enqueueBoardAction', () => {
   const dispatch = () => boardActionForDispatch(dispatchDetails())!
   const review = (overrides: Record<string, unknown> = {}) => boardActionForReview(reviewDetails(overrides))!
+  const watch = (overrides: Record<string, unknown> = {}) => boardActionForWatch(watchDetails(overrides))!
 
   it('同一 slice 的 dispatch + review 只留一条', () => {
     const queue: ReturnType<typeof dispatch>[] = []
@@ -379,5 +533,89 @@ describe('enqueueBoardAction', () => {
     enqueueBoardAction(queue, review({ verdict: 'APPROVE', reason: '' }))
 
     expect(queue[0]?.description).toBe('role: builder | pane: w1:p7 | ledger: /repo/.herdr-runs/bridge-worker.md')
+  })
+
+  it('dispatch 与 watch done 合并成一条 in_review', () => {
+    const queue: ReturnType<typeof dispatch>[] = []
+    enqueueBoardAction(queue, dispatch())
+    enqueueBoardAction(queue, watch())
+
+    expect(queue).toHaveLength(1)
+    expect(queue[0]?.status).toBe('in_review')
+    expect(queue[0]?.kind).toBe('add_task')
+    // done 不带描述，dispatch 写的 role/pane/ledger 保留。
+    expect(queue[0]?.description).toContain('role: builder')
+  })
+
+  it('watch done 之后的 review REJECT 仍能打回 todo', () => {
+    const queue: ReturnType<typeof dispatch>[] = []
+    enqueueBoardAction(queue, watch())
+    enqueueBoardAction(queue, review({ verdict: 'REJECT', reason: 'no tests' }))
+
+    expect(queue).toHaveLength(1)
+    expect(queue[0]?.status).toBe('todo')
+    expect(queue[0]?.description).toBe('REJECT: no tests')
+    expect(queue[0]?.appendDescription).toBeUndefined()
+  })
+
+  it('watch 的 in_review 不覆盖后续 review 的 verdict 结果', () => {
+    const queue: ReturnType<typeof dispatch>[] = []
+    enqueueBoardAction(queue, watch())
+    enqueueBoardAction(queue, review({ verdict: 'APPROVE', reason: 'criteria met' }))
+
+    expect(queue[0]?.status).toBe('in_review')
+    expect(queue[0]?.description).toBe('review approved: criteria met')
+  })
+
+  for (const status of ['blocked', 'timeout', 'lost']) {
+    it(`同轮 dispatch + watch ${status} 合并后同时保留元信息与卡住原因`, () => {
+      const queue: ReturnType<typeof dispatch>[] = []
+      enqueueBoardAction(queue, dispatch())
+      enqueueBoardAction(queue, watch({ status }))
+
+      expect(queue).toHaveLength(1)
+      expect(queue[0]?.status).toBe('in_progress')
+      // dispatch 写的 role/pane/ledger 与 watch 的卡住原因同时留在板上。
+      expect(queue[0]?.description).toBe(
+        `role: builder | pane: w1:p7 | ledger: /repo/.herdr-runs/bridge-worker.md\nwatch: ${status}`
+      )
+      // 合并后的描述已是完整内容，执行层整段替换，不需要再追加。
+      expect(queue[0]?.appendDescription).toBeUndefined()
+    })
+  }
+
+  it('同轮 dispatch + watch done 不残留 watch 原因', () => {
+    const queue: ReturnType<typeof dispatch>[] = []
+    enqueueBoardAction(queue, dispatch())
+    enqueueBoardAction(queue, watch())
+
+    expect(queue[0]?.status).toBe('in_review')
+    expect(queue[0]?.description).toBe('role: builder | pane: w1:p7 | ledger: /repo/.herdr-runs/bridge-worker.md')
+    expect(queue[0]?.description).not.toContain('watch:')
+    expect(queue[0]?.description).not.toContain('blocked')
+  })
+
+  it('同轮 blocked → done 后不残留过期的 blocked 原因', () => {
+    const queue: ReturnType<typeof dispatch>[] = []
+    enqueueBoardAction(queue, dispatch())
+    enqueueBoardAction(queue, watch({ status: 'blocked' }))
+    enqueueBoardAction(queue, watch({ status: 'done' }))
+
+    expect(queue).toHaveLength(1)
+    expect(queue[0]?.status).toBe('in_review')
+    expect(queue[0]?.description).toBe('role: builder | pane: w1:p7 | ledger: /repo/.herdr-runs/bridge-worker.md')
+    expect(queue[0]?.description).not.toContain('blocked')
+  })
+
+  it('同轮多个卡住原因只保留最新的那个', () => {
+    const queue: ReturnType<typeof dispatch>[] = []
+    enqueueBoardAction(queue, dispatch())
+    enqueueBoardAction(queue, watch({ status: 'blocked' }))
+    enqueueBoardAction(queue, watch({ status: 'timeout' }))
+
+    expect(queue[0]?.description).toBe(
+      'role: builder | pane: w1:p7 | ledger: /repo/.herdr-runs/bridge-worker.md\nwatch: timeout'
+    )
+    expect(queue[0]?.description).not.toContain('blocked')
   })
 })

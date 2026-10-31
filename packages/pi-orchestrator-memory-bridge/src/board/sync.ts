@@ -2,10 +2,14 @@
  * 把编排事件映射成任务板动作。
  *
  * 数据源是 orchestrator 的 tool result：`herdr_plan` 给出切片数量与 ledger，`herdr_dispatch`
- * 给出 worker 名与角色，`herdr_review` 给出 slice 与 verdict。映射规则：
+ * 给出 worker 名与角色，`herdr_watch` 给出 worker 的终态，`herdr_review` 给出 slice 与
+ * verdict。映射规则：
  *
  * - plan 获批：不建任务（那时还没有 worker，切片名也不在 details 里）
  * - dispatch：为该 slice 建任务，状态 `in_progress`
+ * - watch done：移到 `in_review`——worker 说完了，等验收；很多 slice 不经 review 就结束，
+ *   这一步让看板反映真实进度
+ * - watch blocked / timeout / lost：留在 `in_progress`，把原因追加到描述里
  * - review APPROVE：移到 `in_review`
  * - review REJECT / RE_PLAN：退回 `todo`，描述里写上拒绝原因
  *
@@ -16,9 +20,14 @@
 export type BoardStatus = 'backlog' | 'todo' | 'in_progress' | 'in_review'
 
 /** 一次要执行的任务板动作。`title` 用作任务身份——pi-task-board 没有按标题查询的接口。 */
-export type BoardAction =
-  | { readonly kind: 'add_task'; readonly title: string; readonly status: BoardStatus; readonly description?: string }
-  | { readonly kind: 'move_task'; readonly title: string; readonly status: BoardStatus; readonly description?: string }
+export type BoardAction = {
+  readonly kind: 'add_task' | 'move_task'
+  readonly title: string
+  readonly status: BoardStatus
+  readonly description?: string
+  /** `move_task` 专用：把描述追加到任务已有描述之后，而不是整段替换。 */
+  readonly appendDescription?: boolean
+}
 
 /** dispatch 的 details 形状（只取用到的字段）。 */
 interface DispatchDetails {
@@ -37,6 +46,22 @@ interface ReviewBoardDetails {
   verdict?: string
   reason?: string
 }
+
+/**
+ * watch 的 details 形状（只取用到的字段）。
+ *
+ * 轮询过程中 orchestrator 会发 `waiting: true` 的中间态，它的 `status` 是 agent 的实时状态
+ * （可能是 `blocked`），不是 watch 的终态——必须按 `waiting` 过滤掉。
+ */
+interface WatchBoardDetails {
+  action?: string
+  name?: string
+  status?: string
+  waiting?: boolean
+}
+
+/** watch 的终态里表示「卡住」的那几种，都留在 `in_progress` 并记录原因。 */
+const WATCH_STUCK = new Set(['blocked', 'timeout', 'lost'])
 
 /** 面板名固定，避免每次编排在 board 里堆一个新面板。 */
 export const BOARD_PANEL_TITLE = 'orchestration'
@@ -74,6 +99,40 @@ export function boardActionForDispatch(details: unknown): BoardAction | undefine
     status: 'in_progress',
     description: aspects.join(' | ')
   }
+}
+
+/**
+ * watch → 反映 worker 的终态。
+ *
+ * `done` 表示 worker 自己说完了，任务进 `in_review` 等人验收——很多 slice 到这里就结束，
+ * 不走 `herdr_review`，所以这一步是看板反映真实进度的唯一来源。`blocked` / `timeout` /
+ * `lost` 仍留在 `in_progress`，把原因追加到描述后面，用户能看出卡在哪。
+ *
+ * 描述只写 `watch: <status>`：`output` 是终端原文，可能很长，不适合塞进看板。
+ */
+export function boardActionForWatch(details: unknown): BoardAction | undefined {
+  if (!isRecord(details)) return undefined
+  const value = details as WatchBoardDetails
+  if (value.action !== 'watch') return undefined
+  // 轮询中间态的 status 是 agent 实时状态，不是终态。
+  if (value.waiting === true) return undefined
+  const name = value.name?.trim()
+  if (!name) return undefined
+
+  const status = value.status?.trim().toLowerCase()
+  if (status === 'done') {
+    return { kind: 'move_task', title: taskTitle(name), status: 'in_review' }
+  }
+  if (status && WATCH_STUCK.has(status)) {
+    return {
+      kind: 'move_task',
+      title: taskTitle(name),
+      status: 'in_progress',
+      description: `watch: ${status}`,
+      appendDescription: true
+    }
+  }
+  return undefined
 }
 
 /**
@@ -120,6 +179,42 @@ export function boardActionForReview(
 }
 
 /**
+ * 去掉描述里由 watch 追加的原因行。
+ *
+ * `watch: blocked` 一类原因描述的是 worker 当时的终态；状态一旦推进（done / review），
+ * 这些行就过期了。dispatch 写的 role / pane / ledger 行不属于原因，保留。
+ */
+export function withoutWatchReasons(description: string | undefined): string | undefined {
+  if (!description) return undefined
+  return description
+    .split('\n')
+    .filter(line => !/^\s*watch:/i.test(line))
+    .join('\n')
+    .trim()
+}
+
+/**
+ * 合成同一 slice 的旧动作与新动作的描述。
+ *
+ * - 追加语义（watch 的卡住原因）：旧描述在前、新原因在后，dispatch 写的元信息不丢；同一条
+ *   slice 上一轮的原因已经被新原因取代，先去掉再拼，避免 blocked 与 timeout 同时挂在板上。
+ * - 新动作没带描述：状态没变就沿用旧描述；状态变了，追加过的 watch 原因已经过期，清掉它，
+ *   dispatch 的元信息保留。
+ * - 默认整段替换：review 的结论比 dispatch 的元信息更值得留在板上。
+ */
+function mergeDescriptions(previous: BoardAction, action: BoardAction): string | undefined {
+  const added = action.description?.trim()
+  if (added) {
+    if (!action.appendDescription) return action.description
+    const kept = withoutWatchReasons(previous.description)
+    return kept ? `${kept}\n${added}` : added
+  }
+  if (!previous.description) return undefined
+  if (action.status === previous.status) return previous.description
+  return withoutWatchReasons(previous.description)
+}
+
+/**
  * 把新动作并入待执行队列。
  *
  * 同一 slice 在队列里只保留**一个**动作，且状态取最新的：`dispatch`（in_progress）之后紧跟
@@ -137,14 +232,18 @@ export function enqueueBoardAction(queue: BoardAction[], action: BoardAction): v
     return
   }
   const previous = queue[index]
+  if (!previous) return
   // 状态可能回退（REJECT 把 in_review 打回 todo），所以永远以最新动作为准。
-  // 描述也以最新为准：review 的拒绝原因比 dispatch 的 role 更值得留在板上；
-  // 新动作没带描述时保留旧的那条，避免 dispatch 写的 role/pane/ledger 被清空。
-  const description = action.description ?? previous?.description
+  // 描述按 mergeDescriptions 的语义合成：追加动作不再覆盖 dispatch 写的 role/pane/ledger。
+  const description = mergeDescriptions(previous, action)
+  // 合并出来的描述已经是完整内容（旧描述已含在内），执行层整段替换即可；
+  // 只有旧动作没有描述可合并时，才让执行层读板上已有描述再追加。
+  const append = action.appendDescription === true && !previous.description
   queue[index] = {
-    kind: previous?.kind === 'add_task' && action.kind === 'move_task' ? 'add_task' : action.kind,
+    kind: previous.kind === 'add_task' && action.kind === 'move_task' ? 'add_task' : action.kind,
     title: action.title,
     status: action.status,
-    ...(description ? { description } : {})
+    ...(description ? { description } : {}),
+    ...(append ? { appendDescription: true } : {})
   }
 }

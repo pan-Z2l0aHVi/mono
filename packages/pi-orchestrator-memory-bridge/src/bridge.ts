@@ -7,7 +7,7 @@
  * - `before_agent_start`：只把 board 摘要渲染进 `sections.orchestration`。编排记忆**不自动注入**
  *   ——钩子拿不到 `executeTool`，查不了 `pi-memory`；要读过 `orchestration_memory_recall`。
  * - `tool_result`：识别 `herdr_plan` / `herdr_review` 的锚点，压入 pending 队列；同时把
- *   dispatch / review 事件映射成任务板动作，压进同一个队列。
+ *   dispatch / watch / review 事件映射成任务板动作，压进同一个队列。
  * - `agent_before_settle`：有 pending 时追加一轮指令，让模型调用保存工具。
  * - 保存 / 召回工具的 `execute()`：唯一拿得到 `executeTool` 的地方，负责落 pi-memory 与任务板。
  *
@@ -19,7 +19,13 @@ import { createPendingQueue, type PendingQueue } from './anchors/pending'
 import { readReviewConclusion } from './anchors/review-verdict'
 import { applyBoardAction } from './board/apply'
 import { ensureSharedBoard, type SharedBoardResult } from './board/share'
-import { boardActionForDispatch, boardActionForReview, enqueueBoardAction, type BoardAction } from './board/sync'
+import {
+  boardActionForDispatch,
+  boardActionForReview,
+  boardActionForWatch,
+  enqueueBoardAction,
+  type BoardAction
+} from './board/sync'
 import { readBoardSummary } from './board/task-board'
 import type { Activation, MemoryBackend, OrchestrationFact, PendingAnchor } from './contracts'
 import { renderInjection } from './memory/inject'
@@ -345,7 +351,7 @@ export function createBridge(pi: BridgePi, options: BridgeOptions): { dispose: (
   })
 
   // 任务板同步单独挂一个钩子：它与记忆锚点是两条独立关注点，dispatch 不产生记忆但必须建任务，
-  // 而 review 的 APPROVE 只在 board 侧有动作。放在同一个 handler 里会让两件事的失败互相牵连。
+  // 而 watch / review 的结论只在 board 侧有动作。放在同一个 handler 里会让两件事的失败互相牵连。
   pi.on('tool_result', async event => {
     const typed = event as { toolName?: string; details?: unknown }
     if (!typed.toolName || !state) return undefined
@@ -355,6 +361,15 @@ export function createBridge(pi: BridgePi, options: BridgeOptions): { dispose: (
       if (action) {
         enqueueBoardAction(boardQueue, action)
         // 新事件带来新目标状态：该 slice 的重试预算重新开始。
+        settleAttempts.delete(settleKeyForBoard(action))
+      }
+      return undefined
+    }
+    // 很多 slice 在 watch 到 DONE 后直接结束、不经过 review，所以 watch 也要推进看板。
+    if (typed.toolName === 'herdr_watch') {
+      const action = boardActionForWatch(typed.details)
+      if (action) {
+        enqueueBoardAction(boardQueue, action)
         settleAttempts.delete(settleKeyForBoard(action))
       }
       return undefined

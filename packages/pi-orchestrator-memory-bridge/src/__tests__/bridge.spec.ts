@@ -296,6 +296,37 @@ describe('tool_result 只入队', () => {
     expect(settleText).not.toContain('rejection')
   })
 
+  it('herdr_watch done 把对应 slice 推进 in_review', async () => {
+    const { repo, pi } = await withStart()
+
+    await pi.emit(
+      'tool_result',
+      { toolName: 'herdr_watch', details: { action: 'watch', name: 'worker-a', status: 'done', elapsedMs: 5 } },
+      baseCtx(repo)
+    )
+    const settle = (await pi.emit('agent_before_settle', { type: 'agent_before_settle' }, baseCtx(repo))) as
+      | { continue?: boolean; entries?: Array<{ content: string }> }
+      | undefined
+
+    expect(settle?.continue).toBe(true)
+    expect(settle?.entries?.[0]?.content).toContain('board move_task "slice: worker-a" -> in_review')
+  })
+
+  it('herdr_watch blocked 留在 in_progress', async () => {
+    const { repo, pi } = await withStart()
+
+    await pi.emit(
+      'tool_result',
+      { toolName: 'herdr_watch', details: { action: 'watch', name: 'worker-a', status: 'blocked', elapsedMs: 5 } },
+      baseCtx(repo)
+    )
+    const settle = (await pi.emit('agent_before_settle', { type: 'agent_before_settle' }, baseCtx(repo))) as
+      | { continue?: boolean; entries?: Array<{ content: string }> }
+      | undefined
+
+    expect(settle?.entries?.[0]?.content).toContain('board move_task "slice: worker-a" -> in_progress')
+  })
+
   it('其他工具不产生锚点', async () => {
     const { repo, pi } = await withStart()
 

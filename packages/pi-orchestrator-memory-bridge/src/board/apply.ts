@@ -13,7 +13,7 @@
  *    把同标题的冗余任务清掉——代价是一次额外读取，换的是看板上不会出现两条同一 slice。
  */
 
-import { BOARD_PANEL_TITLE, taskTitle, type BoardAction, type BoardStatus } from './sync'
+import { BOARD_PANEL_TITLE, taskTitle, withoutWatchReasons, type BoardAction, type BoardStatus } from './sync'
 
 /** 与 `bridge.ts` 的 `callToolVia` 同形：只回 `{ ok, text }`。 */
 export type BoardToolCaller = (name: string, args: Record<string, unknown>) => Promise<{ ok: boolean; text: string }>
@@ -22,6 +22,7 @@ interface PanelTask {
   readonly id: string
   readonly title: string
   readonly status?: string
+  readonly description?: string
 }
 
 /**
@@ -46,8 +47,14 @@ export function parsePanelTasks(text: string): PanelTask[] {
     const id = (item as { id?: unknown }).id
     const title = (item as { title?: unknown }).title
     const status = (item as { status?: unknown }).status
+    const description = (item as { description?: unknown }).description
     if (typeof id !== 'string' || typeof title !== 'string') continue
-    result.push({ id, title, ...(typeof status === 'string' ? { status } : {}) })
+    result.push({
+      id,
+      title,
+      ...(typeof status === 'string' ? { status } : {}),
+      ...(typeof description === 'string' ? { description } : {})
+    })
   }
   return result
 }
@@ -112,6 +119,20 @@ function pickExisting(tasks: readonly PanelTask[], title: string): PanelTask | u
 }
 
 /**
+ * 算出要写进任务的描述。
+ *
+ * 默认整段替换（review 的结论比 dispatch 的元信息更值得留在板上）。`append` 为真时把新行
+ * 接在已有描述后面，并跳过已经出现过的那一行——watch 可能对同一 slice 重复上报同一原因。
+ */
+export function appendedDescription(existing: string | undefined, added: string, append: boolean): string {
+  const current = existing?.trim()
+  if (!append || !current) return added
+  const line = added.trim()
+  if (current.split('\n').some(item => item.trim() === line)) return current
+  return `${current}\n${line}`
+}
+
+/**
  * 执行一个 board 动作。
  *
  * 两条路径都以「最终板上一 slice 一行、状态为目标状态」为准，而不是「恰好发了几次调用」。
@@ -148,12 +169,22 @@ export async function applyBoardAction(
     if (!moved.ok) return { ok: false, detail: moved.text }
   }
 
+  // `move_task` 不接受 description，用 update_task 补写描述。
+  // - 追加语义（watch 的卡住原因）：先去掉板上过期的 watch 原因，再把新原因接在 role /
+  //   ledger 行后面；同一原因重复上报时不重复追加。
+  // - 新动作没有描述但状态变了：追加过的 watch 原因已经过期，清掉它，其余元信息保留。
+  let description: string | undefined
   if (action.description) {
-    // `move_task` 不接受 description，用 update_task 补写原因。
+    const base = action.appendDescription === true ? withoutWatchReasons(existing.description) : existing.description
+    description = appendedDescription(base, action.description, action.appendDescription === true)
+  } else if (existing.status !== action.status) {
+    description = withoutWatchReasons(existing.description)
+  }
+  if (description !== undefined && description !== existing.description) {
     await call('task_board', {
       action: 'update_task',
       taskId: existing.id,
-      description: action.description
+      description
     })
   }
 

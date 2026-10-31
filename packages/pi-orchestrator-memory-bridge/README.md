@@ -237,6 +237,15 @@ reviewer 若配成 `kind: "pi"`，它会在自己的 pane 里加载本扩展；�
 - **不覆盖 `pi-memory` 的 pinned 注入**：本扩展写 `sections.orchestration`，不碰 `sections.memory`。
 - **worker 只说不写时 `herdr_watch` 空转**：`@ret2hell/pi-herdr-orchestrator` 的内置模板把「写 ledger」写成并列的 Evidence 条目之一，worker 在对话里给出结论就停时，ledger 只剩 3 行头；`herdr_watch` 只看 ledger 里的 `DONE:` / `BLOCKED:` 标记，于是看不到完成，一直轮询到超时。把 `~/.pi/agent/pi-herdr-orchestrator/templates/<kind>.md` 换成强化完成判据的覆盖模板可以压低复发概率（模板要求 ledger 最后一行以 `DONE:` 开头，并禁止只在对话里回答），但这仍是提示词约束，没有代码级强制，watch 也没有「agent 已空闲但 ledger 无标记」的检测。
 
+- **worker 可能绕过 `task_board` 工具直接改板**：板数据是 JSON，worker 有 `bash` 时能自己读改写，
+  或像本轮那样把 `pi-task-board` 的实现复制到临时目录直接调 `TaskBoardService`。这样写出来的
+  结果通常仍然一致（它复用了同一套锁与 rename 语义），但绕过了工具的校验与并发保护。桥接自己
+  始终经 `task_board` 工具写；发现板被外部改动时没有检测机制。
+- **`herdr_watch` 到 `herdr_review` 之间的状态**：`herdr_watch` 返回 `done` 只把任务移到
+  `in_review`（worker 说完了，等验收）。真正的验收结论由 `herdr_review` 写入：APPROVE 保持
+  `in_review`，REJECT / RE_PLAN 退回 `todo`。只 dispatch + watch 不走 review 的 slice 会停在
+  `in_review`，这是刻意的——它表示「无人验收」。
+
 ## 快速验证（15 行内）
 
 ```sh
