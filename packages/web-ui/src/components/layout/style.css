@@ -87,7 +87,7 @@ aside {
      * 走可覆盖的 var：`.sidebar-toggle` 自身声明的 `--wui-button-width` 优先于从
      * 祖先继承的同名变量，app 侧无法直接改写它。要让 collapsed state 的 toggle 跟着 collapsed width
      * 一起变，只能由这里显式接一个出口。取值由 app 决定，本组件不假设 collapsed width。
-     * 默认值 44px；app 侧不覆盖时就是这个宽度。
+     * 默认值 36px；app 侧不覆盖时就是这个宽度。
      */
     --wui-button-width: var(--wui-layout-sidebar-toggle-width, 36px);
 

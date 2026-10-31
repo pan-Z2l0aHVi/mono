@@ -61,7 +61,7 @@ function isDrawerMode() {
  * 导航项的对齐方式。collapsed state 在 demo 里只体现为排布，所以判据是渲染出来的对齐方式本身：
  * collapsed state 那一行把内容居中、label 自身也居中；expanded state 两者都靠左。
  *
- * 不量像素：collapsed 导轨只有 44px，label 放不下会被截断，截断后的文字落点既不是设计契约，也会随字体
+ * 不量像素：collapsed 导轨只有 60px，label 放不下会被截断，截断后的文字落点既不是设计契约，也会随字体
  * 与文案变化——用例守的是「collapsed state 换成居中排布、expanded state 保持左对齐」这个结构，不是某个具体像素值。
  */
 function navItemAlignment() {
