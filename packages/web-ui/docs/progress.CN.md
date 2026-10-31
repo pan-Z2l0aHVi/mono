@@ -42,7 +42,7 @@ export default function Demo() {
   return (
     <div className="grid w-full max-w-xl gap-5">
       <web-ui-progress aria-label="已选条目" max={40} value={12} showValue></web-ui-progress>
-      <web-ui-progress aria-label="存储空间" max={256} value={192} showValue></web-ui-progress>
+      <web-ui-progress aria-label="已用存储空间" max={256} value={192} showValue></web-ui-progress>
     </div>
   )
 }
@@ -52,7 +52,7 @@ export default function Demo() {
 <template>
   <div class="grid w-full max-w-xl gap-5">
     <web-ui-progress aria-label="已选条目" :max="40" :value="12" show-value></web-ui-progress>
-    <web-ui-progress aria-label="存储空间" :max="256" :value="192" show-value></web-ui-progress>
+    <web-ui-progress aria-label="已用存储空间" :max="256" :value="192" show-value></web-ui-progress>
   </div>
 </template>
 ```
@@ -90,7 +90,7 @@ export default function Demo() {
   return (
     <div className="grid w-full max-w-xl gap-5">
       <web-ui-progress
-        aria-label="高对比度进度"
+        aria-label="成功色进度"
         className="[--wui-progress-height:12px] [--wui-progress-fill-color:var(--wui-color-success)]"
         value={72}
         showValue
@@ -109,7 +109,7 @@ export default function Demo() {
 <template>
   <div class="grid w-full max-w-xl gap-5">
     <web-ui-progress
-      aria-label="高对比度进度"
+      aria-label="成功色进度"
       class="[--wui-progress-height:12px] [--wui-progress-fill-color:var(--wui-color-success)]"
       :value="72"
       show-value

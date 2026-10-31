@@ -151,7 +151,7 @@ import { lucideChevronLeft, lucideChevronRight } from '@greypan/web-ui/icons'
 
 这个属性只作为展示上下文（`{ direction, isLast }`）下发给成员，组不改写成员的任何属性。
 
-竖排时玻璃盒子至少宽 `--wui-control-size`（页面值，默认 36px）、高度改由成员撑开。纯图标成员因此得到 36px 的方形轨道；文字成员的 label 不折行，仍可撑宽轨道。
+竖排时玻璃盒子最小宽 `--wui-control-size`（页面值，默认 36px）、高度改由成员撑开。成员仍按组内统一的 30px 渲染，所以纯图标成员是 30px 方形、两侧各留 3px，而不是被撑成 36px 方形；文字成员的 label 不折行，仍可撑宽轨道。
 
 分割线这时画在成员下方，同一条 `--wui-button-group-divider-length` 那次动的是宽度。
 
@@ -436,7 +436,7 @@ function onSubmit(event: Event) {
 
 宿主是 inline-block，玻璃盒子 `.wui-button-group-inner` 是 flex：横排取 `row` + `width: max-content` + `height: var(--wui-control-size)`（36px）。
 
-竖排由 `:host([direction='vertical'])` 换成 `column` 并把宽高对调（`width: var(--wui-control-size)`、`height: auto`）。
+竖排由 `:host([direction='vertical'])` 换成 `column`，把定宽换成 `min-width: var(--wui-control-size)`、高度交给 `auto`，内衬也跟着转到上下。
 
 两个方向都写死 `align-items: center`，成员既不被拉伸也不被压窄；成员之间的间距与盒子的内衬同取 `--wui-space-1`（4px）。
 

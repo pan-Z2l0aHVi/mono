@@ -343,6 +343,7 @@ produces the string `"false"`, which is truthy. Binding the camelCase name (`:si
 ```vue
 <web-ui-layout
   header-glow
+  sidebar-collapsible
   :sidebarCollapsed="sidebarCollapsed"
   :sidebarOpen="sidebarOpen"
   @sidebar-collapsed-change="sidebarCollapsed = $event.detail.collapsed"

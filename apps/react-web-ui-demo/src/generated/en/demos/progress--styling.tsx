@@ -2,7 +2,7 @@ export default function Demo() {
   return (
     <div className="grid w-full max-w-xl gap-5">
       <web-ui-progress
-        aria-label="Success progress"
+        aria-label="Success-colored progress"
         className="[--wui-progress-height:12px] [--wui-progress-fill-color:var(--wui-color-success)]"
         value={72}
         showValue

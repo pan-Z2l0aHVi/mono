@@ -151,7 +151,7 @@ import { lucideChevronLeft, lucideChevronRight } from '@greypan/web-ui/icons'
 
 This attribute is only handed down to members as a presentation context (`{ direction, isLast }`); the group does not rewrite any member attribute.
 
-Vertically, the glass box is at least `--wui-control-size` wide (the page value, 36px by default) and its height is driven by the members. Icon-only members therefore get a square 36px track; a text member can still widen the track because its label does not wrap.
+Vertically, the glass box is at least `--wui-control-size` wide (the page value, 36px by default) and its height is driven by the members. Members still render at the group-wide 30px, so an icon-only member stays a 30px square with 3px of slack on each side rather than being stretched to 36px; a text member can still widen the track because its label does not wrap.
 
 The divider is then drawn below the member, and the same `--wui-button-group-divider-length` now controls the width.
 
@@ -438,7 +438,7 @@ The divider is rendered by non-last members with `aria-hidden`; the last member 
 
 The host is inline-block and the glass box `.wui-button-group-inner` is flex: horizontal uses `row` + `width: max-content` + `height: var(--wui-control-size)` (36px).
 
-Vertical switches to `column` through `:host([direction='vertical'])` and swaps width and height (`width: var(--wui-control-size)`, `height: auto`).
+Vertical switches to `column` through `:host([direction='vertical'])`, replaces the fixed width with `min-width: var(--wui-control-size)`, hands the height to `auto`, and rotates the inner padding to top and bottom.
 
 Both directions hard-code `align-items: center`, so members are neither stretched nor squeezed; the gap between members and the inner padding of the box both take `--wui-space-1` (4px).
 

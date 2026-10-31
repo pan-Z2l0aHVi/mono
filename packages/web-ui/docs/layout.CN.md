@@ -13,7 +13,7 @@ tag: web-ui-layout
 
 `header-glow` 在 header 插槽内容背后加一层装饰性晕染，它属于背景层，插槽内容始终在它上方。
 
-layout 是应用外壳级的整屏布局，示例把它装进一个限高的滚动容器里，并把 `--wui-layout-viewport-height` 设为同一高度（`420px`），因此 Banner、header、tabbar 与桌面端侧边栏都被限制在示例容器内。
+layout 是应用外壳级的整屏布局，示例把它装进一个限高的滚动容器里，并把 `--wui-layout-viewport-height` 设为同一高度（`420px`），因此页面最小高度与桌面端侧边栏都被限制在示例容器内。
 
 移动端 Toggle 只派发 `sidebar-open-change` 请求，示例把 `sidebar-open` 回写，点它才会打开 Drawer。
 
@@ -396,20 +396,20 @@ const mobile = ref(false)
 
 ### Props
 
-| 名称                  | 说明                                                                                                                                         | 类型               | 默认值    |
-| --------------------- | -------------------------------------------------------------------------------------------------------------------------------------------- | ------------------ | --------- |
-| `no-sidebar`          | 不渲染任何侧边栏结构：桌面端 aside、collapse Toggle 与 resize handle，移动端 header Toggle 与 Drawer；`sidebar` slot 内容随之不渲染。        | `boolean`          | `false`   |
-| `sidebar-collapsible` | 渲染桌面端收起 / 展开 Toggle。未声明时侧边栏保持展开宽度，也不产生 `sidebar-collapsed-change` 请求；移动端 Drawer 的 Toggle 不受影响。       | `boolean`          | `false`   |
-| `sidebar-collapsed`   | 桌面端侧边栏受控 collapse 状态；只收窄桌面端，不影响移动端 Drawer。                                                                          | `boolean`          | `false`   |
-| `sidebar-open`        | 移动端侧边栏 Drawer 受控打开状态。                                                                                                           | `boolean`          | `false`   |
-| `header-glow`         | 在 header 插槽内容背后显示装饰性晕染。                                                                                                       | `boolean`          | `false`   |
-| `ariaLabels`          | 内置无障碍名（侧栏折叠/展开、调宽、打开导航菜单、主导航）的成组覆盖；未提供的 key 回退内置英文文案，`no-sidebar` 下侧栏相关 key 不参与渲染。 | `LayoutAriaLabels` | —         |
-| `mobile`              | 只读派生值：当前视口是否处于移动端断点及以下；写 attribute 会被恢复，property 赋值不生效。                                                   | `boolean`          | `false`   |
-| `sidebar-width`       | 桌面端和移动端展开时的侧边栏宽度。                                                                                                           | `string`           | `'240px'` |
-| `collapsed-width`     | 桌面端 collapse 时的侧边栏宽度。                                                                                                             | `string`           | `'60px'`  |
-| `sidebar-resizable`   | 启用桌面端侧边栏右边缘拖拽调整宽度。                                                                                                         | `boolean`          | `false`   |
-| `sidebar-min-width`   | 拖拽调整的下限（px）；默认回退到 `collapsed-width`。                                                                                         | `string`           | —         |
-| `sidebar-max-width`   | 拖拽调整的上限（px）；钳制在视口一半以内，内置上限优先。                                                                                     | `string`           | —         |
+| 名称                  | 说明                                                                                                                                                                             | 类型               | 默认值    |
+| --------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------ | --------- |
+| `no-sidebar`          | 不渲染任何侧边栏结构：桌面端 aside、collapse Toggle 与 resize handle，移动端 header Toggle 与 Drawer；`sidebar` slot 内容随之不渲染。                                            | `boolean`          | `false`   |
+| `sidebar-collapsible` | 渲染桌面端收起 / 展开 Toggle。未声明时不渲染 Toggle，也不会因点击产生 `sidebar-collapsed-change` 请求；桌面宽度仍由 `sidebar-collapsed` 控制，移动端 Drawer 的 Toggle 不受影响。 | `boolean`          | `false`   |
+| `sidebar-collapsed`   | 桌面端侧边栏受控 collapse 状态；只收窄桌面端，不影响移动端 Drawer。                                                                                                              | `boolean`          | `false`   |
+| `sidebar-open`        | 移动端侧边栏 Drawer 受控打开状态。                                                                                                                                               | `boolean`          | `false`   |
+| `header-glow`         | 在 header 插槽内容背后显示装饰性晕染。                                                                                                                                           | `boolean`          | `false`   |
+| `ariaLabels`          | 内置无障碍名（侧栏折叠/展开、调宽、打开导航菜单、主导航）的成组覆盖；未提供的 key 回退内置英文文案，`no-sidebar` 下侧栏相关 key 不参与渲染。                                     | `LayoutAriaLabels` | —         |
+| `mobile`              | 只读派生值：当前视口是否处于移动端断点及以下；写 attribute 会被恢复，property 赋值不生效。                                                                                       | `boolean`          | `false`   |
+| `sidebar-width`       | 桌面端和移动端展开时的侧边栏宽度。                                                                                                                                               | `string`           | `'240px'` |
+| `collapsed-width`     | 桌面端 collapse 时的侧边栏宽度。                                                                                                                                                 | `string`           | `'60px'`  |
+| `sidebar-resizable`   | 启用桌面端侧边栏右边缘拖拽调整宽度。                                                                                                                                             | `boolean`          | `false`   |
+| `sidebar-min-width`   | 拖拽调整的下限（px）；默认回退到 `collapsed-width`。                                                                                                                             | `string`           | —         |
+| `sidebar-max-width`   | 拖拽调整的上限（px）；钳制在视口一半以内，内置上限优先。                                                                                                                         | `string`           | —         |
 
 ### Events
 

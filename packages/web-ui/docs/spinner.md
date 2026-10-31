@@ -219,7 +219,7 @@ export default function Demo() {
 | Name                          | Description                                                                                                                                                                                                                                                                                                                    |
 | ----------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | `WebUiSpinner.show(options?)` | Mounts a full-screen instance in the theme overlay root (the body's fallback overlay root when there is no theme) and returns it; the instance is non-modal and does not block page interaction or scrolling. A new instance removes the previous imperative instance on connect, and on `duration` expiry `hide()` is called. |
-| `WebUiSpinner.hide()`         | Releases the scroll lock, clears the `duration` timer, and removes the instance mounted by `show()`; a no-op when there is none.                                                                                                                                                                                               |
+| `WebUiSpinner.hide()`         | Closes the instance's dialog, clears the `duration` timer, and removes the instance mounted by `show()` from the overlay root; a no-op when there is none.                                                                                                                                                                     |
 
 ### Behavior
 
@@ -233,7 +233,7 @@ An imperative instance is mounted in the theme's overlay root (the body's fallba
 
 Only without a theme scope do they fall back to the literal values `#6a6a6a` / `800ms` / `300` in the component styles.
 
-The component does not clean up for you: when `duration` is omitted or `0` the instance stays up, and only `hide()`, replacement by a new instance, or explicit removal takes it down; when the instance is removed it releases the scroll lock and the overlay placeholder.
+The component does not clean up for you: when `duration` is omitted or `0` the instance stays up, and only `hide()`, replacement by a new instance, or explicit removal takes it down; when it is taken down the dialog closes and the instance leaves the overlay root with no placeholder behind. The imperative instance is non-modal and does not lock page scrolling.
 
 ### Color
 

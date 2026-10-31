@@ -13,7 +13,7 @@ Five slots each take one region: `banner` spans the full width above the body, `
 
 `header-glow` adds a decorative glow behind the header slot content; it belongs to the background layer, so the slot content always sits above it.
 
-layout is an app-shell-level full-screen layout. The sample places it in a height-constrained scroll container and sets `--wui-layout-viewport-height` to the same height (`420px`), keeping the banner, header, tabbar, and desktop sidebar inside the sample container.
+layout is an app-shell-level full-screen layout. The sample places it in a height-constrained scroll container and sets `--wui-layout-viewport-height` to the same height (`420px`), constraining the page minimum height and the desktop sidebar to the sample container.
 
 The mobile Toggle only requests opening through `sidebar-open-change`; the sample writes that back to `sidebar-open`, so clicking it opens the Drawer.
 
@@ -419,7 +419,7 @@ const mobile = ref(false)
 | Name                  | Description                                                                                                                                                                                                                                              | Type               | Default   |
 | --------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------ | --------- |
 | `no-sidebar`          | Renders no sidebar structure: desktop aside, collapse Toggle and resize handle, mobile header Toggle and Drawer; the `sidebar` slot is no longer rendered.                                                                                               | `boolean`          | `false`   |
-| `sidebar-collapsible` | Renders the desktop collapse / expand Toggle. Without it the sidebar keeps its expanded width and no `sidebar-collapsed-change` request is produced; the mobile drawer Toggle is unaffected.                                                             | `boolean`          | `false`   |
+| `sidebar-collapsible` | Renders the desktop collapse / expand Toggle. Without it no Toggle is rendered and no `sidebar-collapsed-change` request is produced by clicking; the desktop width is still driven by `sidebar-collapsed`, and the mobile drawer Toggle is unaffected.  | `boolean`          | `false`   |
 | `sidebar-collapsed`   | Controlled collapse state of the desktop sidebar; it only narrows the desktop side and does not affect the mobile Drawer.                                                                                                                                | `boolean`          | `false`   |
 | `sidebar-open`        | Controlled open state of the mobile sidebar Drawer.                                                                                                                                                                                                      | `boolean`          | `false`   |
 | `header-glow`         | Shows a decorative glow behind the header slot content.                                                                                                                                                                                                  | `boolean`          | `false`   |
