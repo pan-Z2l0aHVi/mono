@@ -177,7 +177,7 @@ export default function Demo() {
           <div className="p-4">
             <p className="m-0 text-sm">
               Click the Toggle at the bottom of the sidebar to collapse / expand; layout only narrows the desktop aside
-              to 68px.
+              to 60px.
             </p>
           </div>
         </web-ui-layout>
@@ -210,7 +210,7 @@ export default function Demo() {
         <div class="p-4">
           <p class="m-0 text-sm">
             Click the Toggle at the bottom of the sidebar to collapse / expand; layout only narrows the desktop aside to
-            68px.
+            60px.
           </p>
         </div>
       </web-ui-layout>
@@ -426,7 +426,7 @@ const mobile = ref(false)
 | `ariaLabels`          | Grouped overrides for the built-in accessible names (sidebar collapse/expand, resize, open navigation menu, main navigation); keys without a value fall back to the built-in English copy, and sidebar-related keys are not rendered under `no-sidebar`. | `LayoutAriaLabels` | —         |
 | `mobile`              | Read-only derived value: whether the current viewport is at or below the mobile breakpoint; writing the attribute is reverted, and assigning the property has no effect.                                                                                 | `boolean`          | `false`   |
 | `sidebar-width`       | Sidebar width when expanded on desktop and mobile.                                                                                                                                                                                                       | `string`           | `'240px'` |
-| `collapsed-width`     | Sidebar width when collapsed on desktop.                                                                                                                                                                                                                 | `string`           | `'68px'`  |
+| `collapsed-width`     | Sidebar width when collapsed on desktop.                                                                                                                                                                                                                 | `string`           | `'60px'`  |
 | `sidebar-resizable`   | Enables drag resizing on the right edge of the desktop sidebar.                                                                                                                                                                                          | `boolean`          | `false`   |
 | `sidebar-min-width`   | Lower bound (px) for drag resizing; falls back to `collapsed-width` by default.                                                                                                                                                                          | `string`           | —         |
 | `sidebar-max-width`   | Upper bound (px) for drag resizing; clamped to half the viewport, with the built-in limit taking precedence.                                                                                                                                             | `string`           | —         |
@@ -564,4 +564,4 @@ It is a separate token because dialog, drawer, and toast share `--wui-color-surf
 | `--wui-layout-viewport-height`      | Available layout viewport height; set it to the container height when embedding layout in a fixed-height box | `100vh` / `100dvh` |
 | `--wui-layout-sidebar-radius`       | Sidebar card radius (shared by desktop and mobile)                                                           | `24px`             |
 | `--wui-layout-mobile-toggle-inset`  | Left inset of the mobile header Toggle                                                                       | `8px`              |
-| `--wui-layout-sidebar-toggle-width` | Width of the desktop sidebar collapse Toggle; the lower bound is `--wui-control-size` (36px)                 | `44px`             |
+| `--wui-layout-sidebar-toggle-width` | Width of the desktop sidebar collapse Toggle; the lower bound is `--wui-control-size` (36px)                 | `36px`             |

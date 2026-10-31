@@ -21,7 +21,7 @@ export default function Demo() {
             <span className="rounded-md p-2 text-sm">Settings</span>
           </nav>
           <div className="p-4">
-            <p className="m-0 text-sm">点侧边栏底部的 Toggle 收起 / 展开，layout 只把桌面端 aside 收窄到 68px。</p>
+            <p className="m-0 text-sm">点侧边栏底部的 Toggle 收起 / 展开，layout 只把桌面端 aside 收窄到 60px。</p>
           </div>
         </web-ui-layout>
       </div>

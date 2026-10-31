@@ -9,7 +9,7 @@ import { styleMap } from 'lit/directives/style-map.js'
 
 import glass from '@/classes/glass.css?inline'
 import glow from '@/classes/glow.css?inline'
-import { radixIconsPanelLeftMinimized } from '@/icons'
+import { icRoundMenuOpen, radixIconsPanelLeftMinimized } from '@/icons'
 import { attachDragGesture, clamp, type DragGestureHandle } from '@/shared/gesture'
 import { resolveBuiltinLabelSet } from '@/shared/locale/builtin-labels'
 import { defineVisibleAreaTracker, VisibleAreaController } from '@/shared/visible-area'
@@ -88,7 +88,7 @@ export class WebUiLayout extends LitElement {
   sidebarWidth = '240px'
 
   @property({ type: String, attribute: 'collapsed-width', reflect: true })
-  collapsedWidth = '68px'
+  collapsedWidth = '60px'
 
   /** 启用桌面端 Sidebar 拖拽调宽（collapsed state 隐藏 handle）。 */
   @property({ type: Boolean, attribute: 'sidebar-resizable', reflect: true })
@@ -428,11 +428,15 @@ export class WebUiLayout extends LitElement {
           <web-ui-button
             class="sidebar-toggle"
             icon
-            variant="secondary"
+            variant="ghost"
             @click="${this._toggleSidebar}"
             aria-label=${toggleLabel}
           >
-            <web-ui-icon .icon=${radixIconsPanelLeftMinimized}></web-ui-icon>
+            <web-ui-icon
+              class="sidebar-toggle-icon"
+              .icon=${icRoundMenuOpen}
+              style=${styleMap({ transform: isSidebarOpen ? 'none' : 'scaleX(-1)' })}
+            ></web-ui-icon>
           </web-ui-button>
         `
       : nothing

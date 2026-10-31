@@ -23,7 +23,7 @@ export default function Demo() {
           <div className="p-4">
             <p className="m-0 text-sm">
               Click the Toggle at the bottom of the sidebar to collapse / expand; layout only narrows the desktop aside
-              to 68px.
+              to 60px.
             </p>
           </div>
         </web-ui-layout>

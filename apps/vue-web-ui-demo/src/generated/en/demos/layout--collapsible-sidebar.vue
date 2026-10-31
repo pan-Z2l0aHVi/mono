@@ -19,7 +19,7 @@
         <div class="p-4">
           <p class="m-0 text-sm">
             Click the Toggle at the bottom of the sidebar to collapse / expand; layout only narrows the desktop aside to
-            68px.
+            60px.
           </p>
         </div>
       </web-ui-layout>

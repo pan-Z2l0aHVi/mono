@@ -165,7 +165,7 @@ export default function Demo() {
             <span className="rounded-md p-2 text-sm">Settings</span>
           </nav>
           <div className="p-4">
-            <p className="m-0 text-sm">点侧边栏底部的 Toggle 收起 / 展开，layout 只把桌面端 aside 收窄到 68px。</p>
+            <p className="m-0 text-sm">点侧边栏底部的 Toggle 收起 / 展开，layout 只把桌面端 aside 收窄到 60px。</p>
           </div>
         </web-ui-layout>
       </div>
@@ -195,7 +195,7 @@ export default function Demo() {
           <span class="rounded-md p-2 text-sm">Settings</span>
         </nav>
         <div class="p-4">
-          <p class="m-0 text-sm">点侧边栏底部的 Toggle 收起 / 展开，layout 只把桌面端 aside 收窄到 68px。</p>
+          <p class="m-0 text-sm">点侧边栏底部的 Toggle 收起 / 展开，layout 只把桌面端 aside 收窄到 60px。</p>
         </div>
       </web-ui-layout>
     </div>
@@ -406,7 +406,7 @@ const mobile = ref(false)
 | `ariaLabels`          | 内置无障碍名（侧栏折叠/展开、调宽、打开导航菜单、主导航）的成组覆盖；未提供的 key 回退内置英文文案，`no-sidebar` 下侧栏相关 key 不参与渲染。 | `LayoutAriaLabels` | —         |
 | `mobile`              | 只读派生值：当前视口是否处于移动端断点及以下；写 attribute 会被恢复，property 赋值不生效。                                                   | `boolean`          | `false`   |
 | `sidebar-width`       | 桌面端和移动端展开时的侧边栏宽度。                                                                                                           | `string`           | `'240px'` |
-| `collapsed-width`     | 桌面端 collapse 时的侧边栏宽度。                                                                                                             | `string`           | `'68px'`  |
+| `collapsed-width`     | 桌面端 collapse 时的侧边栏宽度。                                                                                                             | `string`           | `'60px'`  |
 | `sidebar-resizable`   | 启用桌面端侧边栏右边缘拖拽调整宽度。                                                                                                         | `boolean`          | `false`   |
 | `sidebar-min-width`   | 拖拽调整的下限（px）；默认回退到 `collapsed-width`。                                                                                         | `string`           | —         |
 | `sidebar-max-width`   | 拖拽调整的上限（px）；钳制在视口一半以内，内置上限优先。                                                                                     | `string`           | —         |
@@ -544,4 +544,4 @@ Layout 会将 `sidebar-width` 映射为 `--wui-drawer-width`，将 `--wui-layout
 | `--wui-layout-viewport-height`      | layout 使用的可用视口高度；嵌入限高容器时设为容器高度                    | `100vh` / `100dvh` |
 | `--wui-layout-sidebar-radius`       | 侧边栏卡片圆角（桌面端和移动端共用）                                     | `24px`             |
 | `--wui-layout-mobile-toggle-inset`  | 移动端 header Toggle 的左缩进                                            | `8px`              |
-| `--wui-layout-sidebar-toggle-width` | 桌面端侧边栏 collapse Toggle 的宽度，下限为 `--wui-control-size`（36px） | `44px`             |
+| `--wui-layout-sidebar-toggle-width` | 桌面端侧边栏 collapse Toggle 的宽度，下限为 `--wui-control-size`（36px） | `36px`             |

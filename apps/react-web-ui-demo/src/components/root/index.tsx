@@ -367,10 +367,10 @@ export function Root() {
                 </web-ui-button>
               </div>
             ) : null}
-            {/* 移动端为前置的 36px 导航按钮、8px 外缩和 8px header 间距预留 52px。 */}
+            {/* 移动端为前置导航区预留 60px，与 collapsed sidebar 使用同一基准。 */}
             <div
               slot="header"
-              className="flex h-full w-full items-center justify-end gap-4 px-4 py-2 mobile:grid mobile:w-[calc(100vw-52px)] mobile:grid-cols-3 mobile:gap-1.5 mobile:px-2 mobile:py-1"
+              className="flex h-full w-full items-center justify-end gap-4 px-4 py-2 mobile:grid mobile:w-[calc(100vw-60px)] mobile:grid-cols-3 mobile:gap-1.5 mobile:px-2 mobile:py-1"
             >
               <web-ui-select
                 trigger="icon"

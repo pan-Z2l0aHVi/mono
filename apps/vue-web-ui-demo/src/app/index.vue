@@ -336,7 +336,7 @@ function isNavActive(path: string) {
         </div>
         <div
           slot="header"
-          class="flex h-full w-full items-center justify-end gap-2 px-4 py-2 mobile:grid mobile:w-[calc(100vw-52px)] mobile:grid-cols-3 mobile:gap-1.5 mobile:px-2 mobile:py-1"
+          class="flex h-full w-full items-center justify-end gap-2 px-4 py-2 mobile:grid mobile:w-[calc(100vw-60px)] mobile:grid-cols-3 mobile:gap-1.5 mobile:px-2 mobile:py-1"
         >
           <web-ui-select
             trigger="icon"
