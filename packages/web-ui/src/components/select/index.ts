@@ -42,8 +42,9 @@ export class WebUiSelect extends FormAssociated(LitElement) {
   @property({ type: Boolean, reflect: true }) disabled = false
 
   /**
-   * 触发器外观：`label` 为默认的带选中文本与箭头；`icon` 收成方形图标触发器，
-   * 隐藏箭头并居中 `trigger` slot 内容。图标模式需要消费方提供 `trigger` slot 与 `aria-label`。
+   * 触发器外观：`label` 为默认的带选中文本与箭头；`icon` 保留右侧箭头，只把 `trigger` slot
+   * 的内容换成左侧图标区，触发器尺寸不变。
+   * 图标模式需要消费方提供 `trigger` slot 与 `aria-label`。
    */
   @property({ type: String, reflect: true })
   get trigger(): 'label' | 'icon' {

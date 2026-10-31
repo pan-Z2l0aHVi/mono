@@ -64,8 +64,9 @@ export class WebUiLayout extends LitElement {
   /**
    * 启用桌面端 Sidebar 的 collapse 入口。
    *
-   * 只有声明了本属性，layout 才渲染收起 / 展开 Toggle；否则侧边栏保持固定宽度，
-   * 也不派发 `sidebar-collapsed-change`。移动端 Drawer 的 header Toggle 不受影响。
+   * 只有声明了本属性，layout 才渲染收起 / 展开 Toggle，也才会因为点击而派发
+   * `sidebar-collapsed-change`。桌面宽度仍由受控属性 `sidebar-collapsed` 决定，
+   * 未声明本属性不会阻止它收窄；移动端 Drawer 的 header Toggle 不受影响。
    */
   @property({ type: Boolean, attribute: 'sidebar-collapsible', reflect: true })
   sidebarCollapsible = false
@@ -433,7 +434,6 @@ export class WebUiLayout extends LitElement {
             aria-label=${toggleLabel}
           >
             <web-ui-icon
-              class="sidebar-toggle-icon"
               .icon=${icRoundMenuOpen}
               style=${styleMap({ transform: isSidebarOpen ? 'none' : 'scaleX(-1)' })}
             ></web-ui-icon>
