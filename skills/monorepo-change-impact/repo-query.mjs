@@ -1,8 +1,9 @@
 // monorepo-change-impact skill 的内置查询脚本，self-contained：不 import 本仓任何脚本，
 // 只依赖 Node 内置模块。workspace 图完全从宿主仓库的 pnpm-workspace.yaml 与各
 // package.json 派生（内部依赖 = 依赖名命中 workspace 名集合；可发布 = manifest 未标
-// private），不硬编码 scope 或目录布局。标记为 host policy 的段落是宿主仓库的 context
-// 与验证策略，其他 monorepo 采纳本 skill 时按自己的约定调整这一段。
+// private），不硬编码 scope 或目录布局。manifest 以工作区内容为准；稀疏检出的
+// skip-worktree 条目从 Git 索引补读，因此消费者图不要求全树检出。标记为 host policy
+// 的段落是宿主仓库的 context 与验证策略，其他 monorepo 采纳本 skill 时按自己的约定调整。
 //
 // Usage:
 //   node skills/monorepo-change-impact/repo-query.mjs verify [--json] [--base <git-ref> | --staged | --worktree] <changed-path>...
@@ -14,6 +15,7 @@ import fs from 'node:fs'
 import path from 'node:path'
 
 const root = path.resolve(import.meta.dirname, '../..')
+const GIT_MAX_BUFFER = 64 * 1024 * 1024
 const rawArgs = process.argv.slice(2)
 const command = rawArgs.shift() ?? 'verify'
 const options = parseOptions(rawArgs)
@@ -146,25 +148,100 @@ function walkFiles(directory, emit) {
   }
 }
 
+function matchWorkspaceDirectory(relativePath, ignored, matchers) {
+  // pattern 约定的是 workspace 目录；把 manifest 路径剥掉 package.json 再按目录匹配
+  const directoryPath = relativePath.replace(/\/package\.json$/, '')
+  if (ignored.some(regex => regex.test(directoryPath))) return false
+  return matchers.some(regex => regex.test(directoryPath))
+}
+
+function isMissingGitRepository(error) {
+  const stderr = error && typeof error === 'object' && 'stderr' in error ? String(error.stderr) : ''
+  return /not a git repository/i.test(stderr)
+}
+
+// 稀疏检出把 cone 外的文件标成 skip-worktree 并从工作区移除，但索引里仍有内容。
+// 只从 Git 补这些隐藏条目：未暂存删除的普通条目不会因此被复活。
+function listTrackedManifests(root) {
+  let output
+  try {
+    output = execFileSync('git', ['ls-files', '-z', '-t', '--', ':(glob)**/package.json'], {
+      cwd: root,
+      encoding: 'utf8',
+      maxBuffer: GIT_MAX_BUFFER,
+      stdio: ['ignore', 'pipe', 'pipe']
+    })
+  } catch (error) {
+    // 非 git 目录仍可用磁盘枚举；其余失败（索引损坏、输出过大等）必须暴露，
+    // 否则会静默返回漏掉隐藏 workspace 的图。
+    if (isMissingGitRepository(error)) return new Map()
+    throw error
+  }
+
+  const manifests = new Map()
+  for (const entry of output.split('\0')) {
+    const separator = entry.indexOf(' ')
+    if (separator < 0) continue
+    const tag = entry.slice(0, separator)
+    const file = entry.slice(separator + 1)
+    if (!file.endsWith('/package.json') || file.split('/').includes('node_modules')) continue
+    manifests.set(file, tag === 'S')
+  }
+  return manifests
+}
+
+function readIndexedManifest(file) {
+  for (const ref of [`:${file}`, `HEAD:${file}`]) {
+    let text
+    try {
+      text = execFileSync('git', ['show', ref], {
+        cwd: root,
+        encoding: 'utf8',
+        maxBuffer: GIT_MAX_BUFFER,
+        stdio: ['ignore', 'pipe', 'pipe']
+      })
+    } catch {
+      // 索引里读不到时回退 HEAD；两者都失败由调用方报错
+      continue
+    }
+    try {
+      return JSON.parse(text)
+    } catch (error) {
+      const detail = error instanceof Error ? error.message : String(error)
+      throw new Error(`invalid manifest ${file}: ${detail}`)
+    }
+  }
+  throw new Error(`cannot read hidden manifest ${file} from the Git index or HEAD`)
+}
+
 function listWorkspaceManifests(root) {
   const patterns = readPnpmWorkspacePatterns(root)
   const ignored = patterns.filter(pattern => pattern.startsWith('!')).map(pattern => globToRegExp(pattern.slice(1)))
   const matchers = patterns.filter(pattern => !pattern.startsWith('!')).map(globToRegExp)
-  const manifests = new Set()
+  const manifests = new Map()
+
   walkFiles(root, filePath => {
     if (!filePath.endsWith(`${path.sep}package.json`)) return
-    // pattern 约定的是 workspace 目录；把 manifest 路径剥掉 package.json 再按目录匹配
     const relativePath = path.relative(root, filePath).split(path.sep).join('/')
-    const directoryPath = relativePath.replace(/\/package\.json$/, '')
-    if (ignored.some(regex => regex.test(directoryPath))) return
-    if (matchers.some(regex => regex.test(directoryPath))) manifests.add(filePath)
+    if (!matchWorkspaceDirectory(relativePath, ignored, matchers)) return
+    manifests.set(relativePath, { file: filePath, manifest: readJson(filePath) })
   })
-  return [...manifests].sort()
+
+  for (const [relativePath, hidden] of listTrackedManifests(root)) {
+    if (!hidden || manifests.has(relativePath)) continue
+    if (!matchWorkspaceDirectory(relativePath, ignored, matchers)) continue
+    manifests.set(relativePath, {
+      file: path.join(root, relativePath),
+      manifest: readIndexedManifest(relativePath)
+    })
+  }
+
+  return [...manifests.values()].sort((left, right) => left.file.localeCompare(right.file))
 }
 
 let manifests
 try {
-  manifests = listWorkspaceManifests(root).map(file => ({ file, manifest: readJson(file) }))
+  manifests = listWorkspaceManifests(root)
 } catch (error) {
   const detail = error instanceof Error ? error.message : String(error)
   console.error(`repo-query: cannot load pnpm workspace manifests: ${detail}`)

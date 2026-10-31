@@ -10,5 +10,9 @@
       "web-ui-reduced-motion": 63450,
       "browser-kit": 63460
     }
+  },
+  "sparseScope": {
+    "keepDirs": ["docs", ".agents", ".claude", "skills", "scripts", ".vite-hooks", ".github"],
+    "keepPackages": ["@greypan/monorepo-kit"]
   }
 }
