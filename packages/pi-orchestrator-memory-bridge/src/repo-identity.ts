@@ -18,9 +18,12 @@
  * 而本扩展只需要一个身份，所以直接解析 `.git` 指针，不 spawn git——`herdr_plan` 的批准
  * 回调在热路径上，起子进程不值得。
  *
- * 身份键取「拥有该 common dir 的 checkout 的目录名」，撞名时补短哈希：
- * `mono`、`mono-7f3a2b`。只留目录名是为了让键可读，加哈希是为了让 `~/work/mono` 与
- * `~/oss/mono` 不互相覆盖。
+ * 身份键取「拥有该 common dir 的 checkout 的目录名」并补短哈希：`mono-7f3a2b`。只留目录名
+ * 是为了让键可读，加哈希是为了让 `~/work/mono` 与 `~/oss/mono` 不互相覆盖。
+ *
+ * 目录名先归一到 `[a-z0-9._-]`：键会被 `pi-memory` 的 `memory_search` 文本行解析
+ * （`^(?<key>[A-Za-z0-9._-]+):`），含空格或 CJK 的目录名会让整条召回解析失败。非 Git 目录
+ * 同样补哈希——只有目录名时 `foo` 与 `foo.bar` 会退化成前缀关系，两个目录的编排记忆互相污染。
  */
 
 import { createHash } from 'node:crypto'
@@ -29,18 +32,43 @@ import { basename, dirname, join, resolve } from 'node:path'
 
 /** 解析结果。`key` 是稳定的机器级分区名，`root` 是拥有该仓库的主 checkout。 */
 export interface RepoIdentity {
-  /** 分区键：`<name>` 或 `<name>-<hash6>`。 */
+  /** 分区键：归一化目录名 + `<hash6>`。 */
   readonly key: string
   /** 主 checkout 的绝对路径；非 Git 目录时就是 cwd。 */
   readonly root: string
-  /** 仓库目录名（未加哈希）。 */
+  /** 归一化后的目录名（未加哈希）；目录名归一后为空时是 `default`。 */
   readonly name: string
-  /** 是否在 Git 仓库内。false 时 key 只用目录名。 */
+  /** 是否在 Git 仓库内。false 时 key 仍取 `<name>-<hash6>`。 */
   readonly isGit: boolean
 }
 
 /** 短哈希长度。6 位十六进制 ≈ 1600 万，同机撞名概率可以忽略。 */
 const HASH_LENGTH = 6
+
+/** 归一化目录名的最大长度；超过后截断，避免键长无上限。 */
+const MAX_NAME_LENGTH = 48
+
+/** 目录名归一后为空时的 fallback。 */
+const DEFAULT_NAME = 'default'
+
+/**
+ * 把目录名归一到 `[a-z0-9._-]`。
+ *
+ * `memory_search` 的文本行只认 `^(?<key>[A-Za-z0-9._-]+):`，所以键里不能出现空格、CJK 或
+ * 其他符号——那会让整条召回记录解析失败。无法识别的字符折成 `-`，折叠连续分隔符，去掉
+ * 首尾分隔符，超长截断；结果为空时退回 `default`，而不是生成一个只有哈希的键。
+ */
+export function normalizeRepoKey(raw: string): string {
+  const normalized = raw
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9._-]+/g, '-')
+    .replace(/-{2,}/g, '-')
+    .replace(/^[-.]+|[-.]+$/g, '')
+    .slice(0, MAX_NAME_LENGTH)
+    .replace(/[-.]+$/, '')
+  return normalized || DEFAULT_NAME
+}
 
 /**
  * 从 `.git` 文件里解出共享的 common dir。
@@ -129,16 +157,14 @@ function canonical(path: string): string {
 /**
  * 解析仓库身份。
  *
- * `disambiguate` 为 true 时总是补哈希。默认只在「仓库名与目录名不同」或调用方显式要求时
- * 才补——但那需要全局索引，不值得，所以策略是：Git 仓库一律带哈希，非 Git 目录只用目录名。
- *
- * 这条取舍的理由：Git 仓库之间撞名是真实风险（同名 fork 并存很常见），而带哈希后键仍可读
- * （`mono-7f3a2b`）；非 Git 目录通常只有一个，加哈希只会让键难读。
+ * 两种目录都补短哈希：Git 仓库之间撞名是真实风险（同名 fork 并存很常见），非 Git 目录则
+ * 只有目录名——`foo` 与 `foo.bar` 会退化成前缀关系，`orchestration.foo.` 是
+ * `orchestration.foo.bar.` 的前缀，两个目录的召回互相污染。带哈希后键仍可读
+ * （`mono-7f3a2b`），代价只是非 Git 目录的键形态变了（本扩展尚未发布，可接受）。
  */
 export function resolveRepoIdentity(cwd: string): RepoIdentity {
   const { root, isGit } = findRepoRoot(cwd)
   const canonicalRoot = canonical(root)
-  const name = basename(canonicalRoot).toLowerCase() || 'default'
-  if (!isGit) return { key: name, root: canonicalRoot, name, isGit }
+  const name = normalizeRepoKey(basename(canonicalRoot))
   return { key: `${name}-${shortHash(canonicalRoot)}`, root: canonicalRoot, name, isGit }
 }

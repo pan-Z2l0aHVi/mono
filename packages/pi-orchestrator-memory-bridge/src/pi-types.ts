@@ -39,6 +39,28 @@ export interface PiToolResult {
   isError?: boolean
 }
 
+/** `ctx.executeTool()` 结果里的载荷；`content` 可能为空，真正的产出也可能在 `structuredContent` 或 `details.summary`。 */
+export interface ToolCallPayload {
+  readonly content?: ReadonlyArray<{ type?: string; text?: string }>
+  readonly details?: unknown
+  readonly structuredContent?: unknown
+  readonly isError?: boolean
+}
+
+/**
+ * `ctx.executeTool()` 的真实返回。
+ *
+ * 形状是 `{ toolCall, result: { content, details, structuredContent? }, isError, durationMs }`
+ * ——内容在 `result` 之下，**不是**顶层的 `{ content, isError }`。读错层级的表现是「写入成功
+ * 但读取恒空」，非常隐蔽。顶层的 `content` / `details` / `structuredContent` 只是兼容少数
+ * 直接回扁平结果的宿主或版本，读取时必须优先取 `result`。
+ */
+export interface AgentToolCallOutcome extends ToolCallPayload {
+  readonly toolCall?: unknown
+  readonly result?: ToolCallPayload
+  readonly durationMs?: number
+}
+
 /** `pi.registerTool()` 接受的形状；`execute` 的 ctx 携带 `executeTool`。 */
 export interface PiToolDefinition {
   name: string
@@ -77,10 +99,7 @@ export interface ExtensionContext {
     /** 状态栏常驻一行；`undefined` 清除。非交互模式下可能缺失。 */
     setStatus?(key: string, text: string | undefined): void
   }
-  executeTool?: (
-    name: string,
-    args: Record<string, unknown>
-  ) => Promise<{ isError?: boolean; content?: ReadonlyArray<{ type: string; text?: string }> }>
+  executeTool?: (name: string, args: Record<string, unknown>) => Promise<AgentToolCallOutcome>
 }
 
 /** 扩展工厂收到的 API。 */

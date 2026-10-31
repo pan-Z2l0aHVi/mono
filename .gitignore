@@ -164,8 +164,16 @@ apps/vue-web-ui-demo/src/locales/plural.js
 
 # Pi（策略同 Claude Code：忽略本地态，放行项目级配置）
 # `.pi/task-board.json` 与 `.pi/orchestration-memory.json` 是机器本地状态，不入库。
+# `.pi/*` 只匹配目录里的内容；worktree 的 `.pi` 是 symlink，必须用不带斜杠的 `.pi` 单独忽略。
+# 但 `.pi` 一旦作为目录被排除，`!.pi/settings.json` 就无法再放行（git 不进入被排除的目录），
+# 所以下面的顺序是：忽略内容 → 放行 settings.json → 忽略 `.pi` → 用带斜杠的 `!.pi/` 只把
+# 目录形态放行。`!.pi/` 只匹配目录，symlink 形态保持被忽略。
 .pi/*
 !.pi/settings.json
+.pi
+!.pi/
+# `ensureSharedBoard` 迁移后留下的旧目录（worktree 的 `.pi` 被改名成 `.pi.bak-<timestamp>`）。
+.pi.bak-*/
 
 # pi-herdr-orchestrator 的运行时 ledger：worker brief、终端输出、review 全文。
 .herdr-runs/

@@ -12,6 +12,7 @@
  */
 
 import type { AnchorKind } from '../contracts'
+import { normalizeRepoKey } from '../repo-identity'
 
 /** 所有编排键的公共前缀。不用 `project.`，理由见文件头。 */
 const ROOT = 'orchestration'
@@ -33,9 +34,14 @@ export function orchestrationKey(repoKey: string, kind: AnchorKind, slot: string
   return `${orchestrationPrefix(repoKey)}${kind}.${normalized}`
 }
 
-/** `<root>.<repo-key>.` —— 本仓库全部编排键的公共前缀。 */
+/**
+ * `<root>.<repo-key>.` —— 本仓库全部编排键的公共前缀。
+ *
+ * `repoKey` 在这里再归一一次：身份解析已归一，但键一旦带空格或 CJK，`memory_search` 的
+ * 文本行（`^(?<key>[A-Za-z0-9._-]+):`）就解析不出整条记录，召回会恒为空。归一是幂等的。
+ */
 export function orchestrationPrefix(repoKey: string): string {
-  return `${ROOT}.${repoKey}.`
+  return `${ROOT}.${normalizeRepoKey(repoKey)}.`
 }
 
 /** 判断一个键是否属于当前仓库的编排记忆。 */

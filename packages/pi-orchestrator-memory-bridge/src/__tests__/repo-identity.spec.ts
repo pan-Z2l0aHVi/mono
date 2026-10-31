@@ -98,13 +98,75 @@ describe('身份键的形状', () => {
     expect(resolveRepoIdentity(dir).key.startsWith('mixedcase-')).toBe(true)
   })
 
-  it('非 Git 目录只用目录名，不加哈希', async () => {
+  it('非 Git 目录也带 `<name>-<hash6>`', async () => {
     const dir = await mkdtemp(join(tmpdir(), 'plain-'))
     const id = resolveRepoIdentity(dir)
 
     expect(id.isGit).toBe(false)
-    expect(id.key).toBe(id.name)
-    expect(id.key).not.toMatch(/-[0-9a-f]{6}$/)
+    expect(id.key).toBe(`${id.name}-${id.key.split('-').at(-1)}`)
+    expect(id.key).toMatch(/^plain-[a-z0-9]{6}-[0-9a-f]{6}$/)
+  })
+})
+
+describe('repo-key 归一化', () => {
+  /** 造一个非 Git 子目录；名称由调用方给，用来覆盖非常规字符。 */
+  const plainDir = async (name: string): Promise<string> => {
+    const root = await mkdtemp(join(tmpdir(), 'normalize-'))
+    const dir = join(root, name)
+    await mkdir(dir, { recursive: true })
+    return dir
+  }
+
+  it('目录名含空格：折成连字符', async () => {
+    const id = resolveRepoIdentity(await plainDir('My Projects'))
+
+    expect(id.name).toBe('my-projects')
+    expect(id.key).toMatch(/^my-projects-[0-9a-f]{6}$/)
+  })
+
+  it('目录名含 CJK：归一后为空时退回 default', async () => {
+    const id = resolveRepoIdentity(await plainDir('代码'))
+
+    expect(id.name).toBe('default')
+    expect(id.key).toMatch(/^default-[0-9a-f]{6}$/)
+  })
+
+  it('目录名含点：点保留，键仍可被 memory_search 的文本行解析', async () => {
+    const id = resolveRepoIdentity(await plainDir('foo.bar'))
+
+    expect(id.name).toBe('foo.bar')
+    expect(id.key).toMatch(/^foo\.bar-[0-9a-f]{6}$/)
+    // parseSearchText 的 key 字符集：`^[A-Za-z0-9._-]+:`
+    expect(/^[A-Za-z0-9._-]+:/.test(`orchestration.${id.key}.decision.abc: v`)).toBe(true)
+  })
+
+  it('纯符号目录名退回 default', async () => {
+    const id = resolveRepoIdentity(await plainDir('+++'))
+
+    expect(id.name).toBe('default')
+    expect(id.key).toMatch(/^default-[0-9a-f]{6}$/)
+  })
+
+  it('超长目录名截断到 48 字符', async () => {
+    const id = resolveRepoIdentity(await plainDir('a'.repeat(80)))
+
+    expect(id.name).toHaveLength(48)
+    expect(id.key).toMatch(/^a{48}-[0-9a-f]{6}$/)
+  })
+
+  it('foo 与 foo.bar 的键互不为前缀', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'collide-'))
+    const foo = join(root, 'foo')
+    const fooBar = join(root, 'foo.bar')
+    await mkdir(foo, { recursive: true })
+    await mkdir(fooBar, { recursive: true })
+
+    const a = resolveRepoIdentity(foo)
+    const b = resolveRepoIdentity(fooBar)
+
+    expect(a.key).not.toBe(b.key)
+    expect(b.key.startsWith(a.key)).toBe(false)
+    expect(a.key.startsWith(b.key)).toBe(false)
   })
 })
 

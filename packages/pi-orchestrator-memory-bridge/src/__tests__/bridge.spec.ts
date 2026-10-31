@@ -12,13 +12,13 @@
  */
 
 import { execFileSync } from 'node:child_process'
-import { mkdtemp, mkdir, writeFile } from 'node:fs/promises'
+import { lstat, mkdtemp, mkdir, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
 import { describe, expect, it } from 'vite-plus/test'
 
-import { RECALL_TOOL_NAME, SAVE_TOOL_NAME, callToolVia, createBridge } from '../bridge'
+import { MAX_SETTLE_APPENDS, RECALL_TOOL_NAME, SAVE_TOOL_NAME, callToolVia, createBridge } from '../bridge'
 import type { Activation } from '../contracts'
 
 import { createExecuteTool, createMockPi, type MockContext } from './pi-mock'
@@ -54,6 +54,35 @@ const makeRepo = async (name = 'demo'): Promise<string> => {
 
 const baseCtx = (cwd: string): MockContext => ({ cwd, hasUI: false })
 
+/** 主 checkout + linked worktree；共享板用例需要真实 worktree 布局。 */
+const makeRepoWithWorktree = async (): Promise<{ main: string; worktree: string }> => {
+  const root = await mkdtemp(join(tmpdir(), 'bridge-wt-spec-'))
+  const main = join(root, 'demo-repo')
+  await mkdir(main, { recursive: true })
+  execFileSync('git', ['init', '-q'], { cwd: main })
+  execFileSync('git', ['config', 'user.email', 'spec@example.com'], { cwd: main })
+  execFileSync('git', ['config', 'user.name', 'spec'], { cwd: main })
+  await writeFile(join(main, 'README.md'), '# demo\n', 'utf8')
+  execFileSync('git', ['add', '.'], { cwd: main })
+  execFileSync('git', ['commit', '-q', '-m', 'init'], { cwd: main })
+
+  const worktree = join(root, 'wt-branch')
+  execFileSync('git', ['worktree', 'add', '-q', '-b', 'branch', worktree], { cwd: main })
+  return { main, worktree }
+}
+
+/** 直接调用已注册的工具，绕开 Pi 的调度。 */
+const runTool = async (
+  pi: ReturnType<typeof createMockPi>,
+  name: string,
+  ctx: MockContext,
+  params: Record<string, unknown>
+) => {
+  const tool = pi.tools.get(name)
+  if (!tool) throw new Error(`tool not registered: ${name}`)
+  return tool.execute('call-1', params as never, undefined, undefined, ctx as never)
+}
+
 describe('未激活时零注册', () => {
   it('不注册任何钩子、工具或命令', () => {
     const pi = createMockPi()
@@ -76,12 +105,13 @@ describe('未激活时零注册', () => {
 })
 
 describe('激活后注册', () => {
-  it('注册四个钩子、保存与召回工具、诊断命令', () => {
+  it('注册全部钩子、保存与召回工具、诊断命令', () => {
     const pi = createMockPi()
     createBridge(pi, { activation: ACTIVE })
 
     expect(pi.events).toEqual([
       'session_start',
+      'session_shutdown',
       'before_agent_start',
       'tool_call',
       'tool_result',
@@ -120,6 +150,31 @@ describe('session_start', () => {
     const text = pi.notifications.join('\n')
     expect(text).toContain('active')
     expect(text).toMatch(/repo: demo-[0-9a-f]{6}/)
+  })
+
+  it('在 linked worktree 里建共享板并通知', async () => {
+    const { worktree } = await makeRepoWithWorktree()
+    const pi = createMockPi()
+    createBridge(pi, { activation: ACTIVE })
+
+    await pi.emit('session_start', { type: 'session_start' }, baseCtx(worktree))
+
+    expect(pi.notifications.join('\n')).toContain('task board shared across worktrees')
+    expect((await lstat(join(worktree, '.pi'))).isSymbolicLink()).toBe(true)
+  })
+
+  it('.pi 里有其他条目时只提示不迁移', async () => {
+    const { main, worktree } = await makeRepoWithWorktree()
+    await mkdir(join(worktree, '.pi'), { recursive: true })
+    await writeFile(join(worktree, '.pi', 'settings.json'), '{}\n', 'utf8')
+    const pi = createMockPi()
+    createBridge(pi, { activation: ACTIVE })
+
+    await pi.emit('session_start', { type: 'session_start' }, baseCtx(worktree))
+
+    expect(pi.notifications.join('\n')).toContain('task board not shared')
+    expect((await lstat(join(worktree, '.pi'))).isDirectory()).toBe(true)
+    await expect(lstat(join(main, '.pi'))).rejects.toThrow(/ENOENT/)
   })
 })
 
@@ -289,6 +344,67 @@ describe('agent_before_settle', () => {
     expect(result.entries?.[0]?.display).toBe(false)
     expect(result.entries?.[0]?.content).toContain(SAVE_TOOL_NAME)
   })
+
+  /**
+   * 失败路径：`pi-memory` 缺失时 `memory_remember` 是未知工具，保存工具每次都失败，
+   * pending 永远非空。Pi 的 run 循环没有次数上限，不设上限就会一直追加模型回合。
+   */
+  it('写入持续失败时，超过追加上限后丢弃 pending 并停止追加回合', async () => {
+    const repo = await makeRepo('demo')
+    const pi = createMockPi()
+    createBridge(pi, { activation: ACTIVE })
+    await pi.emit('session_start', { type: 'session_start' }, baseCtx(repo))
+    await pi.emit('tool_result', { toolName: 'herdr_plan', details: planDetails() }, baseCtx(repo))
+
+    const ctx: MockContext = {
+      ...baseCtx(repo),
+      executeTool: createExecuteTool({
+        results: {
+          memory_remember: { content: [{ type: 'text', text: 'unknown tool: memory_remember' }], isError: true }
+        }
+      })
+    }
+
+    for (let round = 0; round < MAX_SETTLE_APPENDS; round += 1) {
+      expect(await pi.emit('agent_before_settle', { type: 'agent_before_settle' }, baseCtx(repo))).toBeDefined()
+      expect((await runTool(pi, SAVE_TOOL_NAME, ctx, { flush: true })).isError).toBe(true)
+    }
+
+    // 第 MAX_SETTLE_APPENDS + 1 轮：锚点被丢弃，队列清空，不再追加模型回合。
+    expect(await pi.emit('agent_before_settle', { type: 'agent_before_settle' }, baseCtx(repo))).toBeUndefined()
+
+    const notice = pi.notifications.join('\n')
+    expect(notice).toContain(`dropped 1 pending orchestration entry after ${MAX_SETTLE_APPENDS} save attempts`)
+    expect(notice).toContain('last save error')
+    expect(notice).toContain('unknown tool: memory_remember')
+  })
+
+  it('board 动作持续失败时同样在超过上限后丢弃', async () => {
+    const repo = await makeRepo('demo')
+    const pi = createMockPi()
+    createBridge(pi, { activation: ACTIVE })
+    await pi.emit('session_start', { type: 'session_start' }, baseCtx(repo))
+    await pi.emit(
+      'tool_result',
+      { toolName: 'herdr_dispatch', details: { action: 'dispatch', name: 'worker-a', role: 'builder' } },
+      baseCtx(repo)
+    )
+
+    const ctx: MockContext = {
+      ...baseCtx(repo),
+      executeTool: createExecuteTool({
+        results: { task_board: { content: [{ type: 'text', text: 'board unavailable' }], isError: true } }
+      })
+    }
+
+    for (let round = 0; round < MAX_SETTLE_APPENDS; round += 1) {
+      expect(await pi.emit('agent_before_settle', { type: 'agent_before_settle' }, baseCtx(repo))).toBeDefined()
+      expect((await runTool(pi, SAVE_TOOL_NAME, ctx, { flush: true })).isError).toBe(true)
+    }
+
+    expect(await pi.emit('agent_before_settle', { type: 'agent_before_settle' }, baseCtx(repo))).toBeUndefined()
+    expect(pi.notifications.join('\n')).toContain('board add_task "slice: worker-a"')
+  })
 })
 
 describe('保存工具', () => {
@@ -301,17 +417,6 @@ describe('保存工具', () => {
     return { repo, pi }
   }
 
-  const runTool = async (
-    pi: ReturnType<typeof createMockPi>,
-    name: string,
-    ctx: MockContext,
-    params: Record<string, unknown>
-  ) => {
-    const tool = pi.tools.get(name)
-    if (!tool) throw new Error(`tool not registered: ${name}`)
-    return tool.execute('call-1', params as never, undefined, undefined, ctx as never)
-  }
-
   it('flush 把 pending 写进 pi-memory，键是全局形式（不以 project. 开头）', async () => {
     const { repo, pi } = await withPending()
     const calls: Array<{ name: string; args: Record<string, unknown> }> = []
@@ -319,7 +424,10 @@ describe('保存工具', () => {
       ...baseCtx(repo),
       executeTool: createExecuteTool({
         calls,
-        results: { memory_remember: { content: [{ type: 'text', text: 'Remembered' }] } }
+        results: {
+          memory_remember: { content: [{ type: 'text', text: 'Remembered' }] },
+          memory_pin: { content: [{ type: 'text', text: 'Unpinned' }] }
+        }
       })
     }
 
@@ -331,6 +439,9 @@ describe('保存工具', () => {
     expect(key).toMatch(/^orchestration\.demo-[0-9a-f]{6}\.decision\.[0-9a-f]{16}$/)
     // 关键：不能带 project. 前缀，否则会被 pi-memory 按 worktree slug 拦下。
     expect(key.startsWith('project.')).toBe(false)
+    // 写入不会清 pinned 列，flush 后必须主动撤销旧 pin。
+    const unpin = calls.filter(call => call.name === 'memory_pin')
+    expect(unpin).toEqual([{ name: 'memory_pin', args: { action: 'unpin', key } }])
   })
 
   it('重复 flush 不重复写同一个键（幂等）', async () => {
@@ -340,7 +451,10 @@ describe('保存工具', () => {
       ...baseCtx(repo),
       executeTool: createExecuteTool({
         calls,
-        results: { memory_remember: { content: [{ type: 'text', text: 'Remembered' }] } }
+        results: {
+          memory_remember: { content: [{ type: 'text', text: 'Remembered' }] },
+          memory_pin: { content: [{ type: 'text', text: 'Unpinned' }] }
+        }
       })
     }
 
@@ -369,23 +483,76 @@ describe('保存工具', () => {
     expect((await runTool(pi, SAVE_TOOL_NAME, baseCtx(repo), { flush: true })).isError).toBe(true)
   })
 
-  it('显式 key/value 写入并 pin', async () => {
+  it('显式决策默认不 pin', async () => {
     const { repo, pi } = await withPending()
     const calls: Array<{ name: string; args: Record<string, unknown> }> = []
     const ctx: MockContext = {
       ...baseCtx(repo),
       executeTool: createExecuteTool({
         calls,
-        results: { memory_remember: { content: [{ type: 'text', text: 'ok' }] } }
+        results: {
+          memory_remember: { content: [{ type: 'text', text: 'ok' }] },
+          // 从未 pin 过的键，pi-memory 就是这么回：那是目标态，不是失败。
+          memory_pin: { content: [{ type: 'text', text: 'Fact not found or not pinned' }], isError: true }
+        }
       })
     }
 
-    await runTool(pi, SAVE_TOOL_NAME, ctx, { key: 'manual-decision', value: 'use recall', pin: true })
+    const result = await runTool(pi, SAVE_TOOL_NAME, ctx, { key: 'manual-decision', value: 'use recall' })
 
-    const explicit = calls.find(call => String(call.args.value) === 'use recall')
+    expect(result.isError).toBe(false)
+    const explicit = calls.find(call => call.name === 'memory_remember' && String(call.args.value) === 'use recall')
     expect(explicit).toBeDefined()
-    expect(explicit?.args.pinned).toBe(true)
+    expect(explicit?.args.pinned).toBeUndefined()
     expect(String(explicit?.args.key).startsWith('project.')).toBe(false)
+    // 即使本次没 pin，也要撤销旧版本或手工留下的 pin。
+    const unpin = calls.find(call => call.name === 'memory_pin')
+    expect(unpin?.args).toEqual({ action: 'unpin', key: explicit?.args.key })
+  })
+
+  it('显式请求 pin 时写入后仍会撤销 pin', async () => {
+    const { repo, pi } = await withPending()
+    const calls: Array<{ name: string; args: Record<string, unknown> }> = []
+    const ctx: MockContext = {
+      ...baseCtx(repo),
+      executeTool: createExecuteTool({
+        calls,
+        results: {
+          memory_remember: { content: [{ type: 'text', text: 'ok' }] },
+          memory_pin: { content: [{ type: 'text', text: 'Unpinned' }] }
+        }
+      })
+    }
+
+    const result = await runTool(pi, SAVE_TOOL_NAME, ctx, { key: 'manual-decision', value: 'use recall', pin: true })
+
+    expect(result.isError).toBe(false)
+    const explicitIndex = calls.findIndex(
+      call => call.name === 'memory_remember' && String(call.args.value) === 'use recall'
+    )
+    expect(explicitIndex).toBeGreaterThanOrEqual(0)
+    expect(calls[explicitIndex]?.args.pinned).toBe(true)
+    // 编排键是全局键，pin 会注入到所有仓库，写入后必须立刻撤销。
+    const unpin = calls.find((call, index) => index > explicitIndex && call.name === 'memory_pin')
+    expect(unpin?.args).toEqual({ action: 'unpin', key: calls[explicitIndex]?.args.key })
+  })
+
+  it('unpin 真实失败时返回 isError，不静默留下 pinned 键', async () => {
+    const { repo, pi } = await withPending()
+    const ctx: MockContext = {
+      ...baseCtx(repo),
+      executeTool: createExecuteTool({
+        results: {
+          memory_remember: { content: [{ type: 'text', text: 'ok' }] },
+          memory_pin: { content: [{ type: 'text', text: 'store is locked' }], isError: true }
+        }
+      })
+    }
+
+    const result = await runTool(pi, SAVE_TOOL_NAME, ctx, { key: 'manual-decision', value: 'use recall', pin: true })
+
+    expect(result.isError).toBe(true)
+    expect(String(result.content?.[0]?.text)).toContain('store is locked')
   })
 })
 
@@ -702,16 +869,40 @@ describe('/shepherd 协调者模式', () => {
     expect(off.shepherd).toBeUndefined()
   })
 
-  it('dispose 时恢复工具集（reload 后 edit 不会永久消失）', async () => {
-    const repo = await makeRepo('demo')
-    const pi = createMockPi([...ALL])
-    const bridge = createBridge(pi, { activation: ACTIVE })
-    await pi.emit('session_start', { type: 'session_start' }, baseCtx(repo))
+  it('session_shutdown 时恢复工具集（reload 后 edit 不会永久消失）', async () => {
+    const { repo, pi } = await setup()
 
     await runCommand(pi, baseCtx(repo), 'on')
     expect(pi.activeTools).not.toContain('edit')
 
-    bridge.dispose()
+    // Pi 在 reload 时向旧 runner 发 session_shutdown，然后才用旧 runner 的激活工具集构建
+    // 新 runtime；所以恢复必须发生在这里，而不是工厂返回值上。
+    await pi.emit('session_shutdown', { type: 'session_shutdown', reason: 'reload' }, baseCtx(repo))
+
+    expect(pi.activeTools).toEqual(ALL)
+  })
+
+  it('session_shutdown 后再 session_start，edit/write 仍在激活集里', async () => {
+    const { repo, pi } = await setup()
+
+    await runCommand(pi, baseCtx(repo), 'on')
+    await pi.emit('session_shutdown', { type: 'session_shutdown', reason: 'reload' }, baseCtx(repo))
+    await pi.emit('session_start', { type: 'session_start' }, baseCtx(repo))
+
+    expect(pi.activeTools).toEqual(ALL)
+    expect(pi.activeTools).toEqual(expect.arrayContaining(['edit', 'write']))
+  })
+
+  it('session_shutdown 与 dispose 可重复调用而不抛错', async () => {
+    const repo = await makeRepo('demo')
+    const pi = createMockPi([...ALL])
+    const bridge = createBridge(pi, { activation: ACTIVE })
+    await pi.emit('session_start', { type: 'session_start' }, baseCtx(repo))
+    await runCommand(pi, baseCtx(repo), 'on')
+
+    await pi.emit('session_shutdown', { type: 'session_shutdown', reason: 'reload' }, baseCtx(repo))
+    await pi.emit('session_shutdown', { type: 'session_shutdown', reason: 'quit' }, baseCtx(repo))
+    expect(() => bridge.dispose()).not.toThrow()
 
     expect(pi.activeTools).toEqual(ALL)
   })

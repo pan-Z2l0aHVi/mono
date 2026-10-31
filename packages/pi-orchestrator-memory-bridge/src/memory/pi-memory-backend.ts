@@ -104,6 +104,20 @@ export function createPiMemoryBackend(options: PiMemoryBackendOptions): MemoryBa
     async pin({ key, action }): Promise<void> {
       const result = await callTool('memory_pin', { action, key })
       if (!result.ok) throw new Error(`memory_pin failed: ${result.text}`)
+    },
+
+    /**
+     * 撤销 pin，未 pin 的键视为已达成目标。
+     *
+     * `pi-memory` 对未 pin 的键回 `Fact not found or not pinned: <key>` 并置 `isError`；
+     * 那不是失败，是「本来就不在注入里」。其余失败必须抛出去——静默吞掉会让一个仍然
+     * pinned 的编排键继续出现在其他仓库的 system prompt 里。
+     */
+    async ensureUnpinned(key): Promise<void> {
+      const result = await callTool('memory_pin', { action: 'unpin', key })
+      if (result.ok) return
+      if (/fact not found/i.test(result.text)) return
+      throw new Error(`memory_pin failed: ${result.text}`)
     }
   }
 }

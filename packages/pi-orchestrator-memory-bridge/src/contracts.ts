@@ -6,7 +6,7 @@
  * 便于逐条核对「不写 transcript、不存 worker 输出、不跨仓库泄漏」这些硬约束。
  */
 
-/** 一次编排记忆条目。key 一定是 `project.<slug>.orchestration.*` 形式。 */
+/** 一次编排记忆条目。key 一定是 `orchestration.<repo-key>.<kind>.<slot>` 形式。 */
 export interface OrchestrationFact {
   readonly key: string
   readonly value: string
@@ -50,11 +50,18 @@ export interface HerdrAgentEntry {
   readonly name?: string | null
 }
 
-/** 记忆后端。锁定 `@pedro_klein/pi-memory`，接口收窄到桥接真正用到的三个动作。 */
+/** 记忆后端。锁定 `@pedro_klein/pi-memory`，接口收窄到桥接真正用到的动作。 */
 export interface MemoryBackend {
   search(query: string, options: { scope: 'current' | 'global' | 'all'; limit: number }): Promise<OrchestrationFact[]>
   remember(input: { key: string; value: string; pinned?: boolean }): Promise<void>
   pin(input: { key: string; action: 'pin' | 'unpin' }): Promise<void>
+  /**
+   * 撤销编排键的 pin；键本就未 pin 时按 no-op 成功处理。
+   *
+   * `pi-memory` 的 pinned 注入不按仓库分区，非 `project.*` 的编排键一旦 pin 就会进入同机
+   * 所有仓库的 system prompt，所以写入后必须主动撤销。
+   */
+  ensureUnpinned(key: string): Promise<void>
 }
 
 /**
@@ -70,18 +77,4 @@ export interface BoardSummary {
   readonly panel: string
   readonly counts: Record<string, number>
   readonly items: ReadonlyArray<{ readonly id: string; readonly title: string; readonly status: string }>
-}
-
-/**
- * 编排记忆镜像文件内容。只做缓存，权威仍是 pi-memory 与机器级存储。
- *
- * `version` 1 是旧的仓库级镜像（`<cwd>/.pi/orchestration-memory.json`），2 是机器级的
- * （`~/.pi/orchestration/<repo-key>/memory.json`）。两者字段相同，只差位置语义，读取时都接受。
- * `repoSlug` 存的是 `RepoIdentity.key`（如 `mono-7f3a2b`），用于拒绝跨仓库复制的文件。
- */
-export interface MirrorFile {
-  readonly version: 1 | 2
-  readonly repoSlug: string
-  readonly facts: readonly OrchestrationFact[]
-  readonly updatedAt: string
 }

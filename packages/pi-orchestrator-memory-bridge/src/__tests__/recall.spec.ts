@@ -62,6 +62,19 @@ describe('键的形状', () => {
     expect(() => orchestrationKey('r', 'decision', '   ')).toThrow()
     expect(() => orchestrationKey('r', 'decision', '!!!')).toThrow()
   })
+
+  it('repoKey 含空格或 CJK 时归一，键仍可被 memory_search 的文本行解析', () => {
+    const key = orchestrationKey('My Projects 代码', 'decision', 'abc')
+
+    expect(key).toBe('orchestration.my-projects.decision.abc')
+    // parseSearchText 的行首正则：解析不出 key 的话整条召回恒为空。
+    expect(/^[A-Za-z0-9._-]+:/.test(`${key}: value`)).toBe(true)
+  })
+
+  it('repoKey 归一后为空时退回 default', () => {
+    expect(orchestrationPrefix('代码')).toBe('orchestration.default.')
+    expect(orchestrationKey('+++', 'rejection', 'x')).toBe('orchestration.default.rejection.x')
+  })
 })
 
 describe('归属判定', () => {
@@ -117,6 +130,21 @@ describe('recallOrchestration', () => {
     const result = await recallOrchestration(backend, IDENTITY)
 
     expect(result.facts.map(item => item.key)).toEqual(['orchestration.mono-a1b2c3.rejection.a'])
+  })
+
+  it('别的仓库的编排键即使已 pin 也不进入结果', async () => {
+    // pi-memory 的 pinned 注入不按仓库分区，pin 过的外仓库编排键会出现在所有仓库的
+    // system prompt 里；召回侧仍必须按 repo-key 挡掉。
+    const backend = backendReturning([
+      { ...fact('orchestration.other-repo-123456.rejection.leak', 'foreign rejection'), pinned: true },
+      { ...fact('orchestration.mono-a1b2c3.rejection.keep', 'own rejection'), pinned: true },
+      { ...fact('pref.pinned-global', 'global preference'), pinned: true }
+    ])
+
+    const result = await recallOrchestration(backend, IDENTITY)
+
+    expect(result.facts.map(item => item.key)).toEqual(['orchestration.mono-a1b2c3.rejection.keep'])
+    expect(renderRecall(IDENTITY, result)).not.toContain('foreign rejection')
   })
 
   it('分别统计 rejection 与 decision', async () => {

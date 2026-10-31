@@ -1,7 +1,7 @@
 /**
  * 任务板摘要读取。
  *
- * 读 `pi-task-board` 落在 `<repo>/.pi/task-board.json` 的文件，而不是调它的 `task_board`
+ * 读 `pi-task-board` 落在 `<cwd>/.pi/task-board.json` 的文件，而不是调它的 `task_board`
  * 工具：注入发生在 `before_agent_start`，那里的 ctx 没有 `executeTool`，调不到别的扩展的
  * 工具。
  *
@@ -14,7 +14,6 @@ import { readFile } from 'node:fs/promises'
 import { join } from 'node:path'
 
 import type { BoardSummary } from '../contracts'
-import { resolveRepoIdentity } from '../repo-identity'
 
 /** 与 pi-task-board v2 对齐的本地形状；任何字段对不上就整份丢弃。 */
 const SUPPORTED_VERSION = 2
@@ -30,15 +29,16 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 /**
  * pi-task-board 的文件位置。
  *
- * 指向**主 checkout** 的 `.pi/task-board.json`，不是 cwd 的：`pi-task-board` 自己写
- * `<cwd>/.pi/task-board.json`，在 linked worktree 里那是另一份文件，于是同一仓库的每个
- * worktree 各有一块板。编排层需要「一个仓库一块板」，所以读写都走主 checkout 那份。
+ * 与 `pi-task-board` 自己保持一致，取 **cwd** 的 `.pi/task-board.json`，不取主 checkout 的：
+ * 写入经 `task_board` 工具落盘，而那个工具把存储固定在 `ctx.cwd`（`pi-task-board` 没有
+ * path 参数）。在 linked worktree 里两者是不同的路径，读侧若直接指向主 checkout，就会读不到
+ * 本会话刚写进去的任务——用户在 `/board` 里看到的进度与桥接注入的摘要会永远是两份。
  *
- * 代价：在 worktree 里 `/board` 打开的仍是该 worktree 自己的板（那是 `pi-task-board` 的
- * 行为，本扩展改不了它）；本扩展的同步与注入统一落主 checkout 的板。
+ * 跨 worktree 共享由文件系统层完成：`ensureSharedBoard`（`share.ts`）把 worktree 的 `.pi`
+ * 链接到主 checkout 的 `.pi`，所以这里仍然只认 cwd，路径一致性与共享互不冲突。
  */
 export function boardPath(cwd: string): string {
-  return join(resolveRepoIdentity(cwd).root, '.pi', 'task-board.json')
+  return join(cwd, '.pi', 'task-board.json')
 }
 
 /**

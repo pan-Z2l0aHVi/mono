@@ -36,5 +36,7 @@ export default async function piOrchestratorMemoryBridge(pi: ExtensionAPI): Prom
 
   if (!activation.active) return
 
+  // Pi 只调用这个工厂函数，不消费它的返回值；清理走 `createBridge` 内部注册的
+  // `session_shutdown`。返回值只服务于测试与直接装配方，所以这里刻意不接。
   createBridge(pi as unknown as BridgePi, { activation })
 }
