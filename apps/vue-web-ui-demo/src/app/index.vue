@@ -160,10 +160,10 @@ function observeToastTopOffset() {
   let frame: number | undefined
   const update = () => {
     const header = shellLayout.value?.querySelector<HTMLElement>('[slot="header"]')
-    document.documentElement.style.setProperty(
-      '--wui-toast-top-offset',
-      `${Math.max(0, Math.ceil(header?.getBoundingClientRect().bottom ?? 0))}px`
-    )
+    const next = `${Math.max(0, Math.ceil(header?.getBoundingClientRect().bottom ?? 0))}px`
+    if (document.documentElement.style.getPropertyValue('--wui-toast-top-offset') !== next) {
+      document.documentElement.style.setProperty('--wui-toast-top-offset', next)
+    }
   }
   const schedule = () => {
     if (frame !== undefined) return
@@ -173,7 +173,22 @@ function observeToastTopOffset() {
     })
   }
   const resizeObserver = typeof ResizeObserver === 'undefined' ? undefined : new ResizeObserver(schedule)
-  if (shellLayout.value) resizeObserver?.observe(shellLayout.value)
+  /*
+   * header 是 sticky，banner 变高只会把它整体下移，layout 宿主尺寸不变；只观察宿主会漏掉
+   * 切语种导致 banner 换行这类高度变化，offset 会停在旧值。banner 用 v-if 重建，refresh 时重挂观察目标。
+   */
+  const observeTargets = () => {
+    if (!resizeObserver) return
+    resizeObserver.disconnect()
+    for (const target of [
+      shellLayout.value,
+      shellLayout.value?.querySelector<HTMLElement>('[slot="banner"]'),
+      shellLayout.value?.querySelector<HTMLElement>('[slot="header"]')
+    ]) {
+      if (target) resizeObserver.observe(target)
+    }
+  }
+  observeTargets()
   window.addEventListener('resize', schedule, { passive: true })
   window.addEventListener('scroll', schedule, { passive: true, capture: true })
   update()
@@ -186,7 +201,10 @@ function observeToastTopOffset() {
       window.removeEventListener('resize', schedule)
       window.removeEventListener('scroll', schedule, { capture: true })
     },
-    refresh: schedule
+    refresh: () => {
+      observeTargets()
+      schedule()
+    }
   }
 }
 
