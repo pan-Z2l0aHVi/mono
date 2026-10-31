@@ -8,6 +8,7 @@ import { fileURLToPath } from 'node:url'
 import {
   assertActionAllowed,
   buildCone,
+  dependencySyncPlan,
   findUnknownTargets,
   isPathInCone,
   listDirtyOutsideCone,
@@ -167,12 +168,25 @@ assert.throws(
   /dry-run needs a full worktree/
 )
 
+// --- 依赖同步计划 ---
+
+assert.deepEqual(dependencySyncPlan({ hasWorkspaceFile: true, pnpmAvailable: true }), { mode: 'sync' })
+assert.deepEqual(dependencySyncPlan({ hasWorkspaceFile: false, pnpmAvailable: true }), {
+  mode: 'skip',
+  reason: 'no pnpm-workspace.yaml at the repository root'
+})
+assert.deepEqual(dependencySyncPlan({ hasWorkspaceFile: true, pnpmAvailable: false }), {
+  mode: 'skip',
+  reason: 'pnpm is not available on PATH'
+})
+
 // --- 集成：临时仓 + 假 turbo ---
 
 const tmpRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'turbo-sparse-scope-'))
 const repoRoot = path.join(tmpRoot, 'repo')
 const turboBinDir = path.join(tmpRoot, 'bin')
 const turboMarker = path.join(tmpRoot, 'turbo-ls-on-sparse.log')
+const pnpmMarker = path.join(tmpRoot, 'pnpm-install.log')
 const gitConfigFile = path.join(tmpRoot, 'gitconfig')
 const scopeScript = path.join(repoRoot, 'skills/turbo-sparse-scope/sparse-scope.mjs')
 const scopeSymlink = path.join(repoRoot, '.agents/skills/turbo-sparse-scope/sparse-scope.mjs')
@@ -183,6 +197,7 @@ const env = {
   GIT_CONFIG_SYSTEM: '/dev/null',
   GIT_CONFIG_NOSYSTEM: '1',
   FAKE_TURBO_MARKER: turboMarker,
+  FAKE_PNPM_MARKER: pnpmMarker,
   PATH: `${turboBinDir}${path.delimiter}${process.env.PATH ?? ''}`
 }
 // 外层 git hook 或测试运行器可能注入这些变量，把临时仓的 git 调用重定向到别处。
@@ -274,11 +289,38 @@ const fakeTurbo = [
   'process.stdout.write(JSON.stringify({ packages: { count: items.length, items } }) + "\\n")'
 ].join('\n')
 
+// 假 pnpm 只关心 `--version` 与 frozen install：前者用于可用性探测，后者记录安装发生在哪种检出状态，
+// 以锁住「先收缩、后同步」的顺序（先在满树上安装会让 node_modules 与缩小后的 workspace 集再次不一致）。
+const fakePnpm = [
+  '#!/usr/bin/env node',
+  "const fs = require('node:fs')",
+  "const { spawnSync } = require('node:child_process')",
+  'const args = process.argv.slice(2)',
+  "if (args[0] === '--version') {",
+  "  console.log('12.4.0-fake')",
+  '  process.exit(0)',
+  '}',
+  "if (args[0] === 'install') {",
+  "  if (process.env.FAKE_PNPM_FAIL_INSTALL === '1') {",
+  "    console.error('fake pnpm: frozen install failed')",
+  '    process.exit(1)',
+  '  }',
+  '  const marker = process.env.FAKE_PNPM_MARKER',
+  "  const state = spawnSync('git', ['sparse-checkout', 'list'], { encoding: 'utf8' }).status === 0 ? 'sparse' : 'full'",
+  "  if (marker) fs.appendFileSync(marker, args.join(' ') + ' ' + state + '\\n')",
+  '  process.exit(0)',
+  '}',
+  "console.error('unexpected pnpm args: ' + args.join(' '))",
+  'process.exit(1)'
+].join('\n')
+
 try {
   fs.mkdirSync(turboBinDir, { recursive: true })
   fs.writeFileSync(gitConfigFile, '')
   fs.writeFileSync(turboMarker, '')
+  fs.writeFileSync(pnpmMarker, '')
   fs.writeFileSync(path.join(turboBinDir, 'turbo'), fakeTurbo, { mode: 0o755 })
+  fs.writeFileSync(path.join(turboBinDir, 'pnpm'), fakePnpm, { mode: 0o755 })
 
   fs.mkdirSync(repoRoot, { recursive: true })
   gitChecked(['-c', 'init.defaultBranch=main', 'init'])
@@ -287,6 +329,7 @@ try {
     `${JSON.stringify({ sparseScope: { keepDirs: ['scripts', 'skills'], keepPackages: ['@scope/lib', '@scope/tool'] } }, null, 2)}\n`
   )
   writeRepoFile('scripts/check.sh', '#!/bin/sh\necho ok\n')
+  writeRepoFile('pnpm-workspace.yaml', 'packages:\n  - apps/*\n  - packages/*\n')
   writeRepoFile('apps/a/src/index.js', 'export const a = 1\n')
   writeRepoFile('apps/b/src/index.js', 'export const b = 1\n')
   writeRepoFile('packages/lib/src/index.js', 'export const lib = 1\n')
@@ -320,12 +363,16 @@ try {
   assert.equal(fs.existsSync(path.join(repoRoot, 'packages/tool-dep/src/index.js')), true)
   assert.equal(fs.existsSync(path.join(repoRoot, 'scripts/check.sh')), true)
   assert.equal(fs.existsSync(path.join(repoRoot, 'monorepo.json')), true)
+  assert.equal(firstReport.dependencies.status, 'synced')
+  assert.deepEqual(fs.readFileSync(pnpmMarker, 'utf8').trim().split('\n'), ['install --frozen-lockfile sparse'])
 
+  const installsBeforeRepeat = fs.readFileSync(pnpmMarker, 'utf8')
   const repeat = runScope(['@scope/b'])
   assert.equal(repeat.status, 2)
   assert.match(repeat.stderr, /already sparse/)
   assert.match(repeat.stderr, /current cone:\napps\/a/)
   assert.deepEqual(currentCone(), ['apps/a', 'packages/lib', 'packages/tool', 'packages/tool-dep', 'scripts', 'skills'])
+  assert.equal(fs.readFileSync(pnpmMarker, 'utf8'), installsBeforeRepeat, 'a rejected action must not install')
 
   const added = runScope(['@scope/b', '--add'])
   assert.equal(added.status, 0, added.stderr)
@@ -354,21 +401,35 @@ try {
     ['apps/b', 'packages/lib', 'packages/tool', 'packages/tool-dep', 'scripts', 'skills']
   )
 
-  // 未知目标在恢复全树之后才报错，错误里要说明工作区已经不再是稀疏树。
+  // 未知目标要在恢复全树之后才能出现在 turbo 图里；校验失败时必须把上一个 cone 装回去，而不是留下全树。
   const unknown = runScope(['@scope/nope', '--reset'])
   assert.equal(unknown.status, 2)
   assert.match(unknown.stderr, /unknown target\(s\): @scope\/nope/)
-  assert.match(unknown.stderr, /sparse checkout was disabled before recomputation/)
+  assert.match(unknown.stderr, /note: previous sparse cone restored/)
+  assert.doesNotMatch(unknown.stderr, /worktree is now full/)
+  assert.deepEqual(currentCone(), ['apps/b', 'packages/lib', 'packages/tool', 'packages/tool-dep', 'scripts', 'skills'])
+  assert.equal(fs.existsSync(path.join(repoRoot, 'apps/a/src/index.js')), false)
+
+  const restored = runScope(['--restore'])
+  assert.equal(restored.status, 0, restored.stderr)
   assert.equal(currentCone(), null)
   assert.equal(fs.existsSync(path.join(repoRoot, 'apps/a/src/index.js')), true)
 
+  // 收缩后要靠一次 frozen 安装把 node_modules 对齐到新 workspace 集；dry-run 只报告计划，不执行。
+  const installsBeforeDryRun = fs.readFileSync(pnpmMarker, 'utf8')
   const dryRun = runScope(['@scope/a', '--dry-run', '--json'])
   assert.equal(dryRun.status, 0, dryRun.stderr)
   const dryReport = JSON.parse(dryRun.stdout)
   assert.equal(dryReport.dryRun, true)
   assert.deepEqual(dryReport.cone, ['apps/a', 'packages/lib', 'packages/tool', 'packages/tool-dep', 'scripts', 'skills'])
+  assert.equal(dryReport.dependencies.status, 'would-sync')
+  assert.ok(
+    dryReport.commands.some(command => command.join(' ') === 'pnpm install --frozen-lockfile'),
+    'dry-run previews the dependency install it would run'
+  )
   assert.equal(currentCone(), null, 'dry-run does not touch the worktree')
   assert.equal(fs.existsSync(path.join(repoRoot, 'apps/b/src/index.js')), true)
+  assert.equal(fs.readFileSync(pnpmMarker, 'utf8'), installsBeforeDryRun, 'dry-run must not install')
 
   // cone 外的未提交文件只告警，不会被删除。
   fs.writeFileSync(path.join(repoRoot, 'apps/a/scratch.txt'), 'draft\n')
@@ -383,10 +444,60 @@ try {
   assert.match(blocked.stderr, /dry-run needs a full worktree/)
   assert.match(blocked.stderr, /current cone:\napps\/b/)
 
-  const restored = runScope(['--restore'])
-  assert.equal(restored.status, 0, restored.stderr)
+  const restoredAfterDirty = runScope(['--restore'])
+  assert.equal(restoredAfterDirty.status, 0, restoredAfterDirty.stderr)
   assert.equal(currentCone(), null)
   assert.equal(fs.existsSync(path.join(repoRoot, 'apps/a/src/index.js')), true)
+
+  // 同步依赖失败时也要回到失败前的状态：全树起步就保持全树，稀疏起步就装回旧 cone。
+  env.FAKE_PNPM_FAIL_INSTALL = '1'
+  const failedFull = runScope(['@scope/a'])
+  assert.equal(failedFull.status, 1)
+  assert.match(failedFull.stderr, /pnpm install --frozen-lockfile failed/)
+  assert.match(failedFull.stderr, /sparse checkout disabled; the worktree is full/)
+  assert.match(failedFull.stderr, /dependencies may be stale; run pnpm install --frozen-lockfile/)
+  assert.equal(currentCone(), null)
+  assert.equal(fs.existsSync(path.join(repoRoot, 'apps/b/src/index.js')), true)
+
+  delete env.FAKE_PNPM_FAIL_INSTALL
+  const reseeded = runScope(['@scope/a'])
+  assert.equal(reseeded.status, 0, reseeded.stderr)
+  assert.deepEqual(currentCone(), ['apps/a', 'packages/lib', 'packages/tool', 'packages/tool-dep', 'scripts', 'skills'])
+
+  env.FAKE_PNPM_FAIL_INSTALL = '1'
+  const failedReset = runScope(['@scope/b', '--reset'])
+  assert.equal(failedReset.status, 1)
+  assert.match(failedReset.stderr, /previous sparse cone restored/)
+  assert.match(failedReset.stderr, /dependencies may be stale; run pnpm install --frozen-lockfile/)
+  assert.doesNotMatch(failedReset.stderr, /worktree is full/)
+  assert.deepEqual(currentCone(), ['apps/a', 'packages/lib', 'packages/tool', 'packages/tool-dep', 'scripts', 'skills'])
+  assert.equal(fs.existsSync(path.join(repoRoot, 'apps/a/src/index.js')), true)
+  delete env.FAKE_PNPM_FAIL_INSTALL
+
+  const restoredAfterFailure = runScope(['--restore'])
+  assert.equal(restoredAfterFailure.status, 0, restoredAfterFailure.stderr)
+  assert.equal(currentCone(), null)
+
+  // 没有 workspace 文件时跳过同步，但必须在报告与 warning 里要求手动 frozen 安装。
+  const workspaceFile = path.join(repoRoot, 'pnpm-workspace.yaml')
+  fs.renameSync(workspaceFile, `${workspaceFile}.bak`)
+  const installsBeforeSkip = fs.readFileSync(pnpmMarker, 'utf8')
+  const skippedText = runScope(['@scope/b'])
+  assert.equal(skippedText.status, 0, skippedText.stderr)
+  assert.match(skippedText.stdout, /dependencies: skipped \(no pnpm-workspace\.yaml at the repository root\)/)
+  const skippedJson = runScope(['@scope/a', '--reset', '--json'])
+  assert.equal(skippedJson.status, 0, skippedJson.stderr)
+  const skippedReport = JSON.parse(skippedJson.stdout)
+  assert.deepEqual(skippedReport.dependencies, {
+    status: 'skipped',
+    reason: 'no pnpm-workspace.yaml at the repository root'
+  })
+  assert.match(skippedReport.warnings.join('\n'), /dependencies were not synced .*pnpm install --frozen-lockfile/)
+  assert.equal(fs.readFileSync(pnpmMarker, 'utf8'), installsBeforeSkip, 'a skipped plan must not install')
+  fs.renameSync(`${workspaceFile}.bak`, workspaceFile)
+  const restoredAfterSkip = runScope(['--restore'])
+  assert.equal(restoredAfterSkip.status, 0, restoredAfterSkip.stderr)
+  assert.equal(currentCone(), null)
 
   const noopRestore = runScope(['--restore', '--json'])
   assert.equal(noopRestore.status, 0, noopRestore.stderr)

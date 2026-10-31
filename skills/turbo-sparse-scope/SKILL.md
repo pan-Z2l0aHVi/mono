@@ -15,12 +15,12 @@ description: 按 Turborepo 依赖图把当前 worktree 的 git sparse checkout �
 
 ## 运行
 
-在 worktree 根目录运行（脚本只依赖 Node 内置模块）：
+在 worktree 根目录运行（脚本只依赖 Node 内置模块）。同步依赖需要 `pnpm` 在 PATH 上，未激活 mise 的 shell 用 `mise exec -- node ...` 调用：
 
 ```sh
-node .agents/skills/turbo-sparse-scope/sparse-scope.mjs <package-name|package-path>... [--dry-run] [--add|--reset] [--json]
-node .agents/skills/turbo-sparse-scope/sparse-scope.mjs --status [--json]
-node .agents/skills/turbo-sparse-scope/sparse-scope.mjs --restore [--json]
+mise exec -- node .agents/skills/turbo-sparse-scope/sparse-scope.mjs <package-name|package-path>... [--dry-run] [--add|--reset] [--json]
+mise exec -- node .agents/skills/turbo-sparse-scope/sparse-scope.mjs --status [--json]
+mise exec -- node .agents/skills/turbo-sparse-scope/sparse-scope.mjs --restore [--json]
 ```
 
 | 参数         | 作用                                                                     |
@@ -33,12 +33,15 @@ node .agents/skills/turbo-sparse-scope/sparse-scope.mjs --restore [--json]
 | `--status`   | 只读：当前 cone、配置状态、cone 外的未提交文件、提醒                     |
 | `--json`     | stdout 输出机器可读报告；被隐藏的包列在 `hiddenPackages`                 |
 
-退出码：`0` 成功，`1` 环境或运行失败（缺配置、turbo 失败、git 失败），`2` 用法或目标错误（未知参数、未知包、稀疏树上做了不允许的动作）。`--status` 对配置问题只诊断：缺配置或配置无效写进报告的 `config` 与 `warnings`，仍 exit 0；git 命令失败仍是 exit 1。
+退出码：`0` 成功，`1` 环境或运行失败（缺配置、turbo 失败、git 失败、依赖同步失败），`2` 用法或目标错误（未知参数、未知包、稀疏树上做了不允许的动作）。`--status` 对配置问题只诊断：缺配置或配置无效写进报告的 `config` 与 `warnings`，仍 exit 0；git 命令失败仍是 exit 1。
+
+成功收缩后，只要根目录有 `pnpm-workspace.yaml` 且 `pnpm` 在 PATH 上，脚本会接着跑一次 `pnpm install --frozen-lockfile`，结果写在报告的 `dependencies`（`synced`；`--dry-run` 为 `would-sync`）。跳过时（没有 workspace 文件或找不到 pnpm）报告 `skipped` 并给出原因，此时必须在跑任何 pnpm 脚本前手动同步。原因见下面规则 7。
 
 ## 范围怎么算
 
 - cone = 目标闭包目录 + `keepPackages` 闭包目录 + `keepDirs` + 目标目录本身，去重排序后一次性 `git sparse-checkout set --cone`。
 - 已经稀疏时，脚本先 `git sparse-checkout disable` 恢复全树再重算：turbo 图在稀疏树里会静默截断，没有全树就没有可信闭包。随后按 `--add`（旧 cone 与新 cone 取并集）或 `--reset`（替换）落盘。稀疏树上的默认动作和 `--dry-run` 直接拒绝，并把当前 cone 打在错误里。
+- 重算或落盘阶段的任何失败（未知包、turbo 失败、cone 自检失败、依赖同步失败）都会尽力回到失败前的状态：稀疏起步装回上一个 cone，stderr 写 `previous sparse cone restored`；全树起步保持全树，stderr 写 `sparse checkout disabled; the worktree is full`。只有恢复本身也失败时才提示工作区状态未复原。
 - 未暂存的修改与未跟踪文件留在工作区，但不再属于 cone；已暂存且工作区与索引一致的改动（新增、修改、重命名）会随 cone 移出工作区，未暂存的删除在收缩后不再显示。收缩不改暂存内容，只在索引里写 skip-worktree 位：`--restore` 后暂存内容恢复为暂存版本，纯未暂存删除按 HEAD 重建，已暂存的删除文件不会回到工作区；工作区与索引不一致的路径不会被移出。脚本把它们列在 `dirtyOutsideCone` 里。`hiddenPackages` 按路径判断，因此 `--add` 保留的包不会误报为隐藏。
 - 每次先 `init --cone` 再 `set --cone`；`--reset` 重复应用同一闭包结果不变，默认动作在已稀疏时按上面的规则拒绝。不需要，也不要手改 `.git/info/sparse-checkout`。
 
@@ -66,7 +69,7 @@ node .agents/skills/turbo-sparse-scope/sparse-scope.mjs --restore [--json]
 4. **任务扩展时用 `--add`。** 不扩大范围就用 `--reset` 或默认动作重建，不要手写路径。
 5. **不要在稀疏树里用 `turbo run` 期待全仓结果。** 需要全仓图时先 `--restore`。
 6. **提交照常进行。** cone 外的已跟踪文件只是没检出，不影响 commit；合并、rebase、切换分支前先 `--restore`，避免 cone 外路径的冲突要手工处理。
-7. **稀疏树里不要跑不带 `--frozen-lockfile` 的 `pnpm install`。** 它只看到 cone 内的 workspace，会把 `pnpm-lock.yaml` 重写成缩小的图（隐藏 workspace 与只被它们使用的 catalog 条目会被删掉）。要装依赖就先 `--restore`；只是校验环境时用 `--frozen-lockfile`。
+7. **收缩后不要再跑不带 `--frozen-lockfile` 的 `pnpm install`。** 它只看到 cone 内的 workspace，会把 `pnpm-lock.yaml` 重写成缩小的图（隐藏 workspace 与只被它们使用的 catalog 条目会被删掉）。更隐蔽的是 pnpm 在 `pnpm run` 前的隐式安装（`verifyDepsBeforeRun`）：收缩删掉了隐藏包的目录和 `node_modules` 后，它发现 install 状态与当前 workspace 集不一致，会在跑命令前自动做一次**非 frozen** 安装，hook 仍然 exit 0，锁文件却已被改写。脚本在收缩后自动做的 frozen 安装就是为了消除这个不一致，让后续脚本不再触发隐式安装；报告里 `dependencies: skipped` 时先手动跑 `pnpm install --frozen-lockfile` 再执行任何 pnpm 脚本。要真正重装依赖就先 `--restore`。
 8. **`--restore` 之后补装依赖并重建。** 被隐藏包的目录里没有未跟踪文件时，整个目录（含被忽略的 `node_modules`、`dist`）随 cone 一起删除；有未跟踪文件时只删已跟踪文件，目录与其中的忽略内容保留（git 打 warning）。`--restore` 只带回已跟踪文件，恢复后要重跑 `pnpm install --frozen-lockfile` 与 `pnpm build`，缓存命中时都很快。
 9. **`.changeset/` 不在 cone 内。** 改到发布包时仍要新建 changeset 文件（目录被删除就重新创建；新建的是未跟踪文件，不会被后续收缩删除）；changeset gate 只在 CI 跑，本地门禁不会提醒。
 

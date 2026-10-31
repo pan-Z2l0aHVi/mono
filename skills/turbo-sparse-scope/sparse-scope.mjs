@@ -204,6 +204,15 @@ export function listHiddenPackages(packages, cone) {
   return packages.filter(pkg => !isPathInCone(pkg.path, cone)).sort((a, b) => compareText(a.name, b.name))
 }
 
+const DEPENDENCY_SYNC = ['install', '--frozen-lockfile']
+const PNPM_BIN = process.platform === 'win32' ? 'pnpm.cmd' : 'pnpm'
+
+export function dependencySyncPlan({ hasWorkspaceFile, pnpmAvailable }) {
+  if (!hasWorkspaceFile) return { mode: 'skip', reason: 'no pnpm-workspace.yaml at the repository root' }
+  if (!pnpmAvailable) return { mode: 'skip', reason: 'pnpm is not available on PATH' }
+  return { mode: 'sync' }
+}
+
 export function assertActionAllowed({ sparseCone, action, dryRun }) {
   if (dryRun && sparseCone) {
     throw new ScopeError(
@@ -348,6 +357,53 @@ function applyCone(root, cone) {
     .filter(line => line.startsWith('warning:'))
 }
 
+function resolveDependencyPlan(root) {
+  const hasWorkspaceFile = fs.existsSync(path.join(root, 'pnpm-workspace.yaml'))
+  if (!hasWorkspaceFile) return dependencySyncPlan({ hasWorkspaceFile, pnpmAvailable: false })
+  return dependencySyncPlan({
+    hasWorkspaceFile,
+    pnpmAvailable: spawnSync(PNPM_BIN, ['--version'], { cwd: root, encoding: 'utf8' }).status === 0
+  })
+}
+
+// pnpm 在 `pnpm run` 前发现 node_modules 与缩小后的 workspace 集不一致时，会自行做非 frozen
+// 安装并重写 lockfile；收缩后先做一次 frozen 安装，后续 pnpm 脚本与 hook 就不会再触发它。
+function syncDependencies(root, plan) {
+  if (plan.mode === 'skip') return { status: 'skipped', reason: plan.reason }
+  const result = spawnSync(PNPM_BIN, DEPENDENCY_SYNC, { cwd: root, encoding: 'utf8' })
+  if (result.error)
+    throw new ScopeError(`cannot run pnpm install --frozen-lockfile: ${result.error.message}`, EXIT_FAILURE)
+  if (result.status !== 0)
+    throw new ScopeError(
+      'pnpm install --frozen-lockfile failed',
+      EXIT_FAILURE,
+      preview(result.stderr || result.stdout)
+    )
+  return { status: 'synced' }
+}
+
+function restorePreviousState(root, previousCone, { applied, synced }, error) {
+  // 稀疏起步时在重算前就 disable 了，即使还没 apply 也必须装回旧 cone。
+  if (!previousCone && !applied) return
+  try {
+    const notes = []
+    if (previousCone) {
+      const warnings = applyCone(root, previousCone)
+      notes.push('note: previous sparse cone restored', ...warnings)
+    } else {
+      disableSparse(root)
+      notes.push('note: sparse checkout disabled; the worktree is full')
+    }
+    if (applied && !synced) notes.push('note: dependencies may be stale; run pnpm install --frozen-lockfile')
+    if (error instanceof ScopeError) error.detail = `${error.detail}\n${notes.join('\n')}`.trim()
+    else process.stderr.write(`${notes.join('\n')}\n`)
+  } catch (restoreError) {
+    const note = `note: the previous worktree state could not be restored: ${restoreError.message}`
+    if (error instanceof ScopeError) error.detail = `${error.detail}\n${note}`.trim()
+    else process.stderr.write(`${note}\n`)
+  }
+}
+
 function formatEntry(entry) {
   if (typeof entry === 'string') return entry
   if (Array.isArray(entry)) return entry.join(' ')
@@ -371,6 +427,7 @@ function writeReport(report, json) {
     'cone',
     'hiddenPackages',
     'dirtyOutsideCone',
+    'dependencies',
     'commands',
     'config',
     'warnings',
@@ -386,6 +443,12 @@ function writeReport(report, json) {
           ? `config: ok (keepDirs: ${value.keepDirs.join(', ')}; keepPackages: ${value.keepPackages.join(', ') || 'none'})`
           : 'config: missing or invalid'
       )
+      continue
+    }
+    if (key === 'dependencies') {
+      if (value.status === 'synced') lines.push('dependencies: synced (pnpm install --frozen-lockfile)')
+      else if (value.status === 'would-sync') lines.push('dependencies: would sync (pnpm install --frozen-lockfile)')
+      else lines.push(`dependencies: skipped (${value.reason})`)
       continue
     }
     if (Array.isArray(value)) {
@@ -447,16 +510,15 @@ function applyScope(root, options) {
 
   const config = readConfig(root)
   const turbo = resolveTurbo(root)
+  const dependencyPlan = resolveDependencyPlan(root)
 
   // Hidden packages are absent from turbo's graph, so any recomputation needs the full tree first.
   if (previousCone) disableSparse(root)
 
-  let packages
-  let targets
-  let closure
-  let keepClosure
+  let applied = false
+  let synced = false
   try {
-    packages = listPackages(root, turbo)
+    const packages = listPackages(root, turbo)
     const unknownTargets = findUnknownTargets(options.targets, packages)
     if (unknownTargets.length > 0) {
       throw new ScopeError(
@@ -469,96 +531,107 @@ function applyScope(root, options) {
     if (unknownKeep.length > 0)
       throw new ScopeError(`${CONFIG_KEY}.keepPackages has unknown package(s): ${unknownKeep.join(', ')}`, EXIT_FAILURE)
 
-    targets = resolveTargets(options.targets, packages)
-    closure = resolveClosure(
+    const targets = resolveTargets(options.targets, packages)
+    const closure = resolveClosure(
       root,
       turbo,
       targets.map(pkg => pkg.name)
     )
-    keepClosure = config.keepPackages.length > 0 ? resolveClosure(root, turbo, config.keepPackages) : []
-  } catch (error) {
-    if (previousCone && error instanceof ScopeError)
-      error.detail = `${error.detail}\nnote: sparse checkout was disabled before recomputation; the worktree is now full`.trim()
-    throw error
-  }
+    const keepClosure = config.keepPackages.length > 0 ? resolveClosure(root, turbo, config.keepPackages) : []
 
-  const cone = buildCone([
-    ...closure.map(pkg => pkg.path),
-    ...keepClosure.map(pkg => pkg.path),
-    ...config.keepDirs,
-    ...targets.map(pkg => pkg.path)
-  ])
+    const cone = buildCone([
+      ...closure.map(pkg => pkg.path),
+      ...keepClosure.map(pkg => pkg.path),
+      ...config.keepDirs,
+      ...targets.map(pkg => pkg.path)
+    ])
 
-  const skillDir = path
-    .relative(root, path.dirname(fs.realpathSync(fileURLToPath(import.meta.url))))
-    .split(path.sep)
-    .join('/')
-  if (!isPathInCone(skillDir, cone))
-    throw new ScopeError(
-      `the computed cone would hide this skill (${skillDir}); add its parent directory to ${CONFIG_KEY}.keepDirs`,
-      EXIT_FAILURE,
-      previousCone ? 'note: sparse checkout was disabled before recomputation; the worktree is now full' : ''
-    )
+    const skillDir = path
+      .relative(root, path.dirname(fs.realpathSync(fileURLToPath(import.meta.url))))
+      .split(path.sep)
+      .join('/')
+    if (!isPathInCone(skillDir, cone))
+      throw new ScopeError(
+        `the computed cone would hide this skill (${skillDir}); add its parent directory to ${CONFIG_KEY}.keepDirs`,
+        EXIT_FAILURE
+      )
 
-  const targetCone = options.action === 'add' && previousCone ? buildCone([...previousCone, ...cone]) : cone
-  const hidden = listHiddenPackages(packages, targetCone)
-  const dirtyOutsideCone = listDirtyOutsideCone(readDirtyFiles(root), targetCone)
-  const warnings = []
-  if (dirtyOutsideCone.length > 0)
-    warnings.push(
-      `${dirtyOutsideCone.length} uncommitted file(s) outside the cone are no longer part of the cone; staged changes may leave the worktree until --restore`
-    )
-  if (hidden.length === 0) warnings.push('no package would be hidden; this scope does not shrink the worktree')
+    const targetCone = options.action === 'add' && previousCone ? buildCone([...previousCone, ...cone]) : cone
+    const hidden = listHiddenPackages(packages, targetCone)
+    const dirtyOutsideCone = listDirtyOutsideCone(readDirtyFiles(root), targetCone)
+    const warnings = []
+    if (dirtyOutsideCone.length > 0)
+      warnings.push(
+        `${dirtyOutsideCone.length} uncommitted file(s) outside the cone are no longer part of the cone; staged changes may leave the worktree until --restore`
+      )
+    if (hidden.length === 0) warnings.push('no package would be hidden; this scope does not shrink the worktree')
 
-  const commands = [
-    ['git', 'sparse-checkout', 'init', '--cone'],
-    ['git', 'sparse-checkout', 'set', '--cone', ...targetCone]
-  ]
+    const commands = [
+      ['git', 'sparse-checkout', 'init', '--cone'],
+      ['git', 'sparse-checkout', 'set', '--cone', ...targetCone]
+    ]
+    if (dependencyPlan.mode === 'sync') commands.push([PNPM_BIN, ...DEPENDENCY_SYNC])
 
-  if (options.dryRun) {
+    if (options.dryRun) {
+      writeReport(
+        {
+          action: options.action,
+          dryRun: true,
+          sparse: Boolean(previousCone),
+          targets,
+          closure,
+          keepDirs: config.keepDirs,
+          keepPackages: config.keepPackages,
+          cone: targetCone,
+          hiddenPackages: hidden,
+          dirtyOutsideCone,
+          dependencies:
+            dependencyPlan.mode === 'sync'
+              ? { status: 'would-sync' }
+              : { status: 'skipped', reason: dependencyPlan.reason },
+          commands,
+          warnings
+        },
+        options.json
+      )
+      return EXIT_OK
+    }
+
+    applied = true
+    warnings.push(...applyCone(root, targetCone))
+    const dependencies = syncDependencies(root, dependencyPlan)
+    synced = dependencies.status === 'synced'
+    if (dependencies.status === 'skipped')
+      warnings.push(
+        `dependencies were not synced (${dependencies.reason}); run pnpm install --frozen-lockfile before pnpm scripts or hooks`
+      )
+    const finalCone = readSparseCone(root) ?? targetCone
     writeReport(
       {
         action: options.action,
-        dryRun: true,
-        sparse: Boolean(previousCone),
+        sparse: true,
         targets,
         closure,
         keepDirs: config.keepDirs,
         keepPackages: config.keepPackages,
-        cone: targetCone,
+        cone: finalCone,
         hiddenPackages: hidden,
         dirtyOutsideCone,
-        commands,
-        warnings
+        dependencies,
+        warnings,
+        reminders: [
+          'use `git grep <pattern> HEAD` for cross-package search',
+          'local gates only cover the cone; restore before full-repo verification',
+          'use --add to widen the scope and --restore to materialize the full worktree'
+        ]
       },
       options.json
     )
     return EXIT_OK
+  } catch (error) {
+    restorePreviousState(root, previousCone, { applied, synced }, error)
+    throw error
   }
-
-  warnings.push(...applyCone(root, targetCone))
-  const finalCone = readSparseCone(root) ?? targetCone
-  writeReport(
-    {
-      action: options.action,
-      sparse: true,
-      targets,
-      closure,
-      keepDirs: config.keepDirs,
-      keepPackages: config.keepPackages,
-      cone: finalCone,
-      hiddenPackages: hidden,
-      dirtyOutsideCone,
-      warnings,
-      reminders: [
-        'use `git grep <pattern> HEAD` for cross-package search',
-        'local gates only cover the cone; restore before full-repo verification',
-        'use --add to widen the scope and --restore to materialize the full worktree'
-      ]
-    },
-    options.json
-  )
-  return EXIT_OK
 }
 
 export function main(argv) {
