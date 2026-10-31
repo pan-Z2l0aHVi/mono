@@ -18,7 +18,14 @@ import { join } from 'node:path'
 
 import { describe, expect, it } from 'vite-plus/test'
 
-import { MAX_SETTLE_APPENDS, RECALL_TOOL_NAME, SAVE_TOOL_NAME, callToolVia, createBridge } from '../bridge'
+import {
+  MAX_SETTLE_APPENDS,
+  RECALL_TOOL_NAME,
+  SAVE_TOOL_NAME,
+  blockedToolsRemovedByTranscript,
+  callToolVia,
+  createBridge
+} from '../bridge'
 import type { Activation } from '../contracts'
 
 import { createExecuteTool, createMockPi, type MockContext } from './pi-mock'
@@ -936,6 +943,115 @@ describe('/shepherd 协调者模式', () => {
     expect(() => bridge.dispose()).not.toThrow()
 
     expect(pi.activeTools).toEqual(ALL)
+  })
+})
+
+/**
+ * resume-from-transcript。
+ *
+ * `/shepherd on` 之后退出 Pi，再用 `pi -c` 恢复该会话：Pi 在构造 `AgentSession` 时就按
+ * transcript 重放了 loadout（`_restoreToolsFromTranscript`），edit / write 在 `session_start`
+ * 之前已经是未激活。`session_shutdown` 的还原只覆盖同进程的 reload / 退出，所以修复必须发生
+ * 在 `session_start`。判定只认同一条恢复路径的签名：transcript 记录显示两个工具都被摘掉，
+ * 且当前都不在激活集里。
+ */
+describe('resume-from-transcript 后补回 edit/write', () => {
+  const systemMessage = (declaration: Record<string, unknown>) => ({
+    type: 'message',
+    message: { role: 'system', ...declaration }
+  })
+  const removedBoth = [systemMessage({ toolsRemoved: [{ name: 'edit' }, { name: 'write' }] })]
+
+  const resumeCtx = (cwd: string, branch: unknown): MockContext => ({
+    ...baseCtx(cwd),
+    sessionManager: { getBranch: () => branch }
+  })
+
+  it('transcript 记录两个工具都被摘掉、且当前未激活时补回', async () => {
+    const repo = await makeRepo('demo')
+    const pi = createMockPi(['read', 'bash', 'grep'])
+    createBridge(pi, { activation: ACTIVE })
+
+    await pi.emit('session_start', { type: 'session_start', reason: 'startup' }, resumeCtx(repo, removedBoth))
+
+    expect(pi.activeTools).toEqual(['read', 'bash', 'grep', 'edit', 'write'])
+  })
+
+  it('transcript 后来又加回过时不重复补', async () => {
+    const repo = await makeRepo('demo')
+    const pi = createMockPi(['read', 'bash', 'grep'])
+    createBridge(pi, { activation: ACTIVE })
+    const branch = [...removedBoth, systemMessage({ toolsAdded: [{ name: 'edit' }, { name: 'write' }] })]
+
+    await pi.emit('session_start', { type: 'session_start', reason: 'startup' }, resumeCtx(repo, branch))
+
+    expect(pi.activeTools).toEqual(['read', 'bash', 'grep'])
+  })
+
+  it('transcript 只摘掉一个工具时不补（不是 /shepherd 的签名）', async () => {
+    const repo = await makeRepo('demo')
+    const pi = createMockPi(['read', 'bash', 'grep'])
+    createBridge(pi, { activation: ACTIVE })
+    const branch = [systemMessage({ toolsRemoved: [{ name: 'write' }] })]
+
+    await pi.emit('session_start', { type: 'session_start', reason: 'startup' }, resumeCtx(repo, branch))
+
+    expect(pi.activeTools).toEqual(['read', 'bash', 'grep'])
+  })
+
+  it('从未激活过的工具不动手（例如 settings 的 defaultTools 不含 edit/write）', async () => {
+    const repo = await makeRepo('demo')
+    const pi = createMockPi(['read', 'bash', 'grep'])
+    createBridge(pi, { activation: ACTIVE })
+
+    await pi.emit('session_start', { type: 'session_start', reason: 'startup' }, resumeCtx(repo, []))
+
+    expect(pi.activeTools).toEqual(['read', 'bash', 'grep'])
+  })
+
+  it('工具本来就在激活集里时不重复添加', async () => {
+    const repo = await makeRepo('demo')
+    const pi = createMockPi(['read', 'edit', 'bash', 'write'])
+    createBridge(pi, { activation: ACTIVE })
+
+    await pi.emit('session_start', { type: 'session_start', reason: 'startup' }, resumeCtx(repo, removedBoth))
+
+    expect(pi.activeTools).toEqual(['read', 'edit', 'bash', 'write'])
+  })
+
+  it('读不到或读错会话分支时维持现状且不抛错', async () => {
+    const repo = await makeRepo('demo')
+    const pi = createMockPi(['read', 'bash'])
+    createBridge(pi, { activation: ACTIVE })
+
+    await expect(
+      pi.emit(
+        'session_start',
+        { type: 'session_start', reason: 'startup' },
+        {
+          ...baseCtx(repo),
+          sessionManager: {
+            getBranch() {
+              throw new Error('session not persisted')
+            }
+          }
+        }
+      )
+    ).resolves.toBeUndefined()
+    expect(pi.activeTools).toEqual(['read', 'bash'])
+  })
+
+  it('形状不认识的条目按没有声明处理', () => {
+    expect(
+      blockedToolsRemovedByTranscript([
+        null,
+        { type: 'message' },
+        { type: 'message', message: { role: 'user', toolsRemoved: [{ name: 'edit' }] } },
+        { type: 'custom', customType: 'x' },
+        { type: 'message', message: { role: 'system', toolsRemoved: [null, { name: 42 }] } }
+      ])
+    ).toEqual([])
+    expect(blockedToolsRemovedByTranscript(undefined)).toEqual([])
   })
 })
 

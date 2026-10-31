@@ -176,6 +176,16 @@ Pi 的 `diffSystemPromptSections` 按段做差量，内容不变的段不重发�
 2. **指令约束**：注入 `<shepherd-mode>` 段，说清允许什么、流程是什么。工具被摘掉之后模型
    需要知道该改用什么手段，否则会卡住或乱试。
 
+进程重启后 resume（`pi -c`）还有一条独立路径：Pi 在构造会话时按 transcript 重放工具声明，
+`/shepherd on` 摘掉的 `edit` / `write` 会保持未激活。`session_start` 会检查 transcript 的
+重放结果，发现两个工具都被摘掉且当前都不在激活集时把它们加回。
+
+这条修复不会覆盖以下排除方式：allowlist（`--tools read,bash`）与 `--exclude-tools` 拦下的
+工具不进入 Pi 的 registry，`setActiveTools` 会忽略它们；settings 的 `defaultTools` 不含
+`edit` / `write` 时它们从未激活，transcript 里不会留下 `toolsRemoved` 签名。`--tools` 的
+`-edit` / `-write` 修饰符形式不属于这一类：它只改默认选择，工具仍在 registry 里，会被这条
+修复覆盖。触发条件与绕过见「已知限制」。
+
 协调者模式下允许：调研（`read` / `grep` / `find` / `ls` / 只读 `bash`）、`herdr_plan`、
 `herdr_dispatch`、`herdr_watch`、`herdr_review`、`orchestration_memory_recall` /
 `orchestration_memory_save`、`task_board`、`ask_user`。
@@ -195,6 +205,58 @@ Pi 的 `diffSystemPromptSections` 按段做差量，内容不变的段不重发�
 **已知漏洞**：`bash` 没有被摘掉（协调者需要 `git status`、读文件、跑只读检查），而 `bash`
 也能写文件。这一点靠指令约束，不是物理约束。要彻底封死可以自行用
 `pi --tools` 限定一个不含 `bash` 的工具集，但协调者会失去几乎所有探查能力。
+
+## 编排控制：并发上限与独立 tab
+
+两项能力都在桥接里实施，因为 orchestrator 的 `splitWorkerPane()` 固定把 pane 分到当前 tab，
+配置里也没有 layout 或并发选项，且不允许 fork。
+
+配置写在 orchestrator 同一份 `config.json` 的 `shepherd` 段：orchestrator 的 `mergeConfig`
+只取已知键，未知键被忽略，所以这一段只由本扩展读取。
+
+```json
+{
+  "shepherd": {
+    "maxConcurrentWorkers": 4,
+    "separateTabs": true
+  }
+}
+```
+
+### 并发上限
+
+`herdr_dispatch` 的 `tool_call` 钩子先查 `herdr agent list`；正在跑的 worker 达到
+`maxConcurrentWorkers`（缺省 4）时 block，并返回当前 worker 名、上限与出路（等一个完成，或
+调高上限）。
+
+- **只统计正在跑的 agent**：`agent_status` 为 `working` / `blocked` 的具名 agent 才占槽位。
+  `idle` / `done` 表示等待输入（Herdr 的生命周期定义），`unknown` 无法判定——都不计入。
+  历史 worker pane 退出后仍以 idle 具名存在，把它们算进去会让 dispatch 永久被拒。
+- **reviewer 不占 worker 槽位**：经 `herdr_review` 登记的 reviewer 单独列出，reason 里说明
+  它不计入上限。
+- **上限来源**：`shepherd.maxConcurrentWorkers`，缺省 4；值非法或读取失败时回退 4 并通知一次。
+- **fail open**：`herdr agent list` 查询失败时放行本次 dispatch 并通知原因；闸门不可用不能
+  变成永久禁止。
+
+### 独立 tab
+
+`herdr_dispatch` / `herdr_review` 返回后，桥接把 `details.pane` 移到新 tab：
+
+```text
+herdr pane move <pane> --new-tab --label "slice: <name>" --no-focus   # dispatch
+herdr pane move <pane> --new-tab --label "review: <slice>" --no-focus # review
+herdr pane zoom <pane> --off                                          # 被 zoomed 拒绝时
+```
+
+- review 的 label 优先用被审的 slice 名（`details.slice`），而不是 reviewer agent 名。
+- 源 tab 处于 zoom 时 herdr 拒绝移动（`zoomed_tab`）；这时桥接先取消 zoom（同一个 paneId），
+  再重试一次移动，只重试一次。取消 zoom 会改变用户当前视图：该 tab 从 zoomed 恢复成普通
+  布局。每次 dispatch 只触发一次移动，成功后 worker 已不在原 tab，所以不会反复打断用户。
+- 取消成功且移动成功时通知「为分离 tab 取消了一次 zoom」；取消成功但重试仍失败、取消 zoom
+  本身失败都只通知并带原始原因。
+- 其他失败同样只通知并带原始原因；移动失败不会把 `herdr_dispatch` / `herdr_review` 的结果
+  变成 `isError`。
+- 绝不移动 lead 自己的 pane；`shepherd.separateTabs: false` 时完全不动 layout。
 
 ## 前置条件
 
@@ -217,9 +279,12 @@ Pi 的 `diffSystemPromptSections` 按段做差量，内容不变的段不重发�
   "reviewer": { "kind": "codex", "model": "gpt-5", "args": [] },
   "ledgerDir": ".herdr-runs",
   "startDelayMs": 2000,
-  "promptTimeoutMs": 120000
+  "promptTimeoutMs": 120000,
+  "shepherd": { "maxConcurrentWorkers": 4, "separateTabs": true }
 }
 ```
+
+`shepherd` 段由本扩展读取（并发上限与独立 tab），orchestrator 忽略它，见[「编排控制」](#编排控制并发上限与独立-tab)。
 
 reviewer 若配成 `kind: "pi"`，它会在自己的 pane 里加载本扩展；激活门槛会识别它是具名 agent 并安静退出。
 
@@ -245,14 +310,28 @@ reviewer 若配成 `kind: "pi"`，它会在自己的 pane 里加载本扩展；�
   `in_review`（worker 说完了，等验收）。真正的验收结论由 `herdr_review` 写入：APPROVE 保持
   `in_review`，REJECT / RE_PLAN 退回 `todo`。只 dispatch + watch 不走 review 的 slice 会停在
   `in_review`，这是刻意的——它表示「无人验收」。
-- **回退由 review 的结论触发，dispatch 的建任务动作只推进**：状态顺序是
+- **回退由 review 的结论触发，其他动作只推进**：状态顺序是
   `backlog < todo < in_progress < in_review`。队列里的动作要等下一次 flush 才执行，期间
-  `herdr_watch` 的 `done` 可能已经把任务推到 `in_review`；此时仍留在队里的旧 `add_task(in_progress)`
-  只在目标状态更靠后时移动，不会把任务打回 `in_progress`，也不会覆盖板上更新的描述。判断依据是
-  动作来源意图而不是合并后的 kind：同轮 dispatch + review 在队列里会合并成一条 `add_task`，
-  只有 `intent === 'review'` 的动作允许回退，所以 REJECT / RE_PLAN 仍能把 `in_progress` /
-  `in_review` 退回 `todo` 并写入原因。`move_task` 保持显式意图语义，不做顺序限制；板上出现
-  不认识的状态时无法比较，维持原来的移动行为。
+  `herdr_watch` 的 `done` 可能已经把任务推到 `in_review`；此时仍留在队里的旧动作不会把任务
+  降级：dispatch 的 `add_task(in_progress)` 只在目标状态更靠后时移动；`watch` 的卡住终态
+  （blocked / timeout / lost）到达时若任务已 `in_review`，整条动作 no-op——既不移动，也不把
+  过期的 `watch: <status>` 原因追加到等验收的任务上。只有 `intent === 'review'` 的动作允许
+  回退，所以 REJECT / RE_PLAN 仍能把 `in_progress` / `in_review` 退回 `todo` 并写入原因。
+  判断依据是动作来源意图而不是合并后的 kind：同轮 dispatch + review 在队列里会合并成一条
+  `add_task`。板上出现不认识的状态时无法比较，维持原来的移动行为。
+- **resume 修复按 transcript 归因**：任何扩展经 `setActiveTools` 摘掉 `edit` / `write` 都会
+  在 transcript 留下同样的 `toolsRemoved` 记录，桥接无法区分是谁摘的。若那种扩展每次
+  `session_start` 都重新禁用工具，最终结果由扩展加载顺序决定；`--tools` allowlist 与
+  `--exclude-tools` 的限制不受影响（未注册的工具会被 `setActiveTools` 忽略），修饰符形式
+  另有问题，见下一条。
+- **`--tools -edit` / `-write` 修饰符形式会被 resume 修复覆盖**：用户显式用 `--tools -edit`
+  或 `--tools -write` 排除工具后，resume 时补回逻辑（`restoreBlockedTools`）仍会把它们加回
+  激活集，显式意图被覆盖。触发条件是两者同时成立：上一会话真的用过 `/shepherd` 且当时
+  `edit` / `write` 活跃，transcript 留下「两工具都被 `toolsRemoved`」的签名；本次命令行又用
+  `-edit` / `-write` 修饰符把它们移出激活集。修饰符形式只改默认选择，工具仍在 Pi 的
+  registry 里，`setActiveTools` 对它们有效；allowlist 与 `--exclude-tools` 不走这条路径，
+  见上一节。当前未修，属窄路径——需要上述两个条件同时满足。绕过：改用
+  `--exclude-tools edit`（或 `--tools read,bash,grep,find,ls` 这类 allowlist 形式）。
 
 ## 快速验证（15 行内）
 

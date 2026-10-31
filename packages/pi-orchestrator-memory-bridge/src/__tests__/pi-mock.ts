@@ -22,6 +22,10 @@ export interface MockContext {
     name: string,
     args: Record<string, unknown>
   ) => Promise<{ isError?: boolean; content?: ReadonlyArray<{ type: string; text?: string }> }>
+  /** Pi 的只读会话视图；`session_start` 用它重放 transcript 里的工具声明。 */
+  sessionManager?: {
+    getBranch(): unknown
+  }
 }
 
 export interface MockPi {

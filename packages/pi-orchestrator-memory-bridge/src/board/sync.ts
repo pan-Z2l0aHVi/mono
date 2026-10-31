@@ -194,16 +194,26 @@ export function boardActionForReview(
 }
 
 /**
+ * 桥接自己追加的 watch 原因行。
+ *
+ * 只认整行 `watch: <stuck>`：`boardActionForWatch` 写入的内容就是这个形状。reviewer 的
+ * reason、用户备注里以 `watch:` 开头的行（`watch: my own note`、`watch: blocked because X`）
+ * 都不是桥接写的，必须原样保留。
+ */
+const WATCH_REASON_LINE = new RegExp(`^\\s*watch:\\s*(?:${[...WATCH_STUCK].join('|')})\\s*$`, 'i')
+
+/**
  * 去掉描述里由 watch 追加的原因行。
  *
  * `watch: blocked` 一类原因描述的是 worker 当时的终态；状态一旦推进（done / review），
- * 这些行就过期了。dispatch 写的 role / pane / ledger 行不属于原因，保留。
+ * 这些行就过期了。dispatch 写的 role / pane / ledger 行不属于原因，保留。带后缀的
+ * `watch:` 行按非桥接内容处理，保留——见 `WATCH_REASON_LINE`。
  */
 export function withoutWatchReasons(description: string | undefined): string | undefined {
   if (!description) return undefined
   return description
     .split('\n')
-    .filter(line => !/^\s*watch:/i.test(line))
+    .filter(line => !WATCH_REASON_LINE.test(line))
     .join('\n')
     .trim()
 }

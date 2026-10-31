@@ -17,6 +17,7 @@ import {
   boardActionForWatch,
   enqueueBoardAction,
   taskTitle,
+  withoutWatchReasons,
   type BoardAction
 } from '../board/sync'
 
@@ -215,6 +216,32 @@ describe('parsePanelTasks', () => {
     expect(parsePanelTasks('No panels yet')).toEqual([])
     expect(parsePanelTasks(JSON.stringify({ tasks: 'nope' }))).toEqual([])
     expect(parsePanelTasks(JSON.stringify({ tasks: [{ id: 'T-1' }] }))).toEqual([])
+  })
+})
+
+describe('withoutWatchReasons', () => {
+  it('剥掉桥接自己写的 watch 卡住原因', () => {
+    expect(withoutWatchReasons('role: builder\nwatch: blocked')).toBe('role: builder')
+  })
+
+  it('大小写与首尾空白容错', () => {
+    expect(withoutWatchReasons('role: builder\n  WATCH: Timeout  ')).toBe('role: builder')
+  })
+
+  it('保留不以桥接状态结尾的 watch 行（用户备注）', () => {
+    expect(withoutWatchReasons('watch: my own note\nrole: builder')).toBe('watch: my own note\nrole: builder')
+  })
+
+  it('带后缀的 watch 行按非桥接内容保留', () => {
+    // 桥接只会写整行 `watch: <status>`；后缀说明这行来自 reviewer 或用户，不能当过期原因删掉。
+    expect(withoutWatchReasons('watch: blocked because X\nrole: builder')).toBe(
+      'watch: blocked because X\nrole: builder'
+    )
+  })
+
+  it('空描述返回 undefined', () => {
+    expect(withoutWatchReasons(undefined)).toBeUndefined()
+    expect(withoutWatchReasons('')).toBeUndefined()
   })
 })
 
@@ -421,7 +448,8 @@ describe('applyBoardAction', () => {
       kind: 'move_task',
       title: taskTitle('s1'),
       status: 'todo',
-      description: 'REJECT: no tests'
+      description: 'REJECT: no tests',
+      intent: 'review'
     })
 
     expect(outcome.ok).toBe(true)
@@ -512,6 +540,41 @@ describe('applyBoardAction', () => {
     await applyBoardAction(board.call, boardActionForWatch(watchDetails({ name: 's1' }))!)
 
     expect(board.state.tasks[0]?.status).toBe('in_review')
+  })
+
+  /**
+   * 陈旧的 watch(stuck) 不能把已进入 in_review 的任务降回 in_progress。
+   *
+   * watch 的卡住终态是 `move_task(in_progress, intent:'watch')`。它描述 worker **当时**的
+   * 状态；板上已经 in_review 时这条事件是陈旧的，整条 no-op：不移动，也不把过期的卡住原因
+   * 追加到等验收的任务上。dispatch 的 add_task 已有同样的保护，这里补的是 move_task 这一半。
+   */
+  it('板上已 in_review 时陈旧的 watch(blocked) 既不降级也不追加原因', async () => {
+    const board = fakeBoard({
+      panel: true,
+      tasks: [{ id: 'T-1', title: taskTitle('s1'), status: 'in_review', description: 'role: builder' }]
+    })
+
+    const action = boardActionForWatch(watchDetails({ name: 's1', status: 'blocked' }))!
+    const outcome = await applyBoardAction(board.call, action)
+
+    expect(outcome.ok).toBe(true)
+    expect(board.state.tasks[0]?.status).toBe('in_review')
+    expect(board.state.tasks[0]?.description).toBe('role: builder')
+    expect(board.calls.map(c => c.args.action)).not.toContain('move_task')
+    expect(board.calls.map(c => c.args.action)).not.toContain('update_task')
+  })
+
+  it('板上 in_progress 时 watch(blocked) 照常写原因', async () => {
+    const board = fakeBoard({
+      panel: true,
+      tasks: [{ id: 'T-1', title: taskTitle('s1'), status: 'in_progress', description: 'role: builder' }]
+    })
+
+    await applyBoardAction(board.call, boardActionForWatch(watchDetails({ name: 's1', status: 'blocked' }))!)
+
+    expect(board.state.tasks[0]?.status).toBe('in_progress')
+    expect(board.state.tasks[0]?.description).toBe('role: builder\nwatch: blocked')
   })
 
   it('板上已 in_review 时 review REJECT 的 move_task 仍能回退到 todo', async () => {

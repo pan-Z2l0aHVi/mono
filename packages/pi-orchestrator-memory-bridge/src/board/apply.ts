@@ -133,7 +133,7 @@ export function appendedDescription(existing: string | undefined, added: string,
 }
 
 /**
- * 推进方向上的状态顺序。`add_task` 只沿这个方向移动，回退只能由 review 的结论触发。
+ * 推进方向上的状态顺序。除 review 意图外，动作只沿这个方向移动，回退只能由 review 的结论触发。
  */
 const STATUS_ORDER: readonly BoardStatus[] = ['backlog', 'todo', 'in_progress', 'in_review']
 
@@ -150,15 +150,19 @@ function statusRank(status: string | undefined): number | undefined {
  * 队列里的动作要等下一次 flush 才执行，期间 watch 的 `done` 可能已经把任务推到
  * `in_review`。此时仍留在队里的 `add_task(in_progress)` 按「状态不等就移动」执行，会把任务
  * 打回 `in_progress`。`add_task` 表达的是「这个 slice 开始干活了」，不是「把它打回去」，所以
- * 它只推进。回退是 `herdr_review` 的显式结论（REJECT / RE_PLAN）。
+ * 它只推进。
+ *
+ * watch 的卡住终态（blocked / timeout / lost）同理：它是 `move_task(in_progress)`，描述的是
+ * worker **当时**的状态。板上已经 `in_review` 时这条事件是陈旧的——既不该把任务降级，也不该
+ * 把 `watch: blocked` 追加到一个等验收的任务上，误导用户以为它卡住了。所以整条动作 no-op。
  *
  * 判据是动作来源意图而不是 kind：dispatch + review 在队列里会合并成一条 `add_task(todo)`
  * （kind 必须保留 `add_task` 才能「不存在就创建」），按 kind 判断会把 review 的结论误当成
- * 陈旧 dispatch。`intent === 'review'` 的动作永远允许回退；板上状态不认识时无法比较，
- * 维持原来的移动行为。
+ * 陈旧 dispatch。`intent === 'review'` 的动作永远允许回退（REJECT / RE_PLAN 可以打回 todo）；
+ * 其余意图只沿状态序前进。板上状态不认识时无法比较，维持原来的移动行为。
  */
 function regresses(action: BoardAction, current: string | undefined): boolean {
-  if (action.kind !== 'add_task' || action.intent === 'review') return false
+  if (action.intent === 'review') return false
   const from = statusRank(current)
   const to = statusRank(action.status)
   return from !== undefined && to !== undefined && to < from
@@ -191,8 +195,8 @@ export async function applyBoardAction(
     return { ok: true, detail: created.text }
   }
 
-  // 过期的 `add_task` 保持板上现状：既不移动，也不拿 dispatch 的元信息覆盖当前描述
-  // （那会把 review 的结论顶掉）。带 review 意图的动作不在此列——它就是来改状态的。
+  // 过期动作保持板上现状：既不移动，也不拿动作里的旧描述覆盖板上当前描述（那会把 review
+  // 的结论或已经推进的状态顶掉）。带 review 意图的动作不在此列——它就是来改状态的。
   const regressed = regresses(action, existing.status)
   const target = regressed ? existing.status : action.status
 

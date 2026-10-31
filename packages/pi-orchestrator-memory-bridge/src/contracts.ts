@@ -48,6 +48,8 @@ export interface HerdrAgentEntry {
   readonly pane_id?: string
   readonly agent?: string
   readonly name?: string | null
+  /** Herdr 生命周期状态：`idle` / `working` / `blocked` / `done` / `unknown`。并发闸门按它判槽位。 */
+  readonly agent_status?: string
 }
 
 /** 记忆后端。锁定 `@pedro_klein/pi-memory`，接口收窄到桥接真正用到的动作。 */

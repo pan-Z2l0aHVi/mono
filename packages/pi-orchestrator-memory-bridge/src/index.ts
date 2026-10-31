@@ -7,36 +7,32 @@
  *
  * 探测用 `herdr agent list` 的 `name` 字段区分 lead 与 worker：Herdr 给每个 pane 注入同一组
  * `HERDR_*` 变量，没有角色字段，而这批变量在 worker pane 里同样成立。详见 `activation.ts`。
+ *
+ * 真实的 herdr 子进程只在这里注入：`createBridge` 自己不默认起进程，测试与直接装配方
+ * 必须显式提供控制依赖，否则会在 `tool_result` 里动到真实会话。
  */
 
-import { execFile } from 'node:child_process'
-import { promisify } from 'node:util'
-
-import { detectActivation, parseAgentList } from './activation'
+import { detectActivation } from './activation'
 import { createBridge, type BridgePi } from './bridge'
+import { clearPaneZoomViaHerdr, listAgentsViaHerdr, movePaneViaHerdr } from './dispatch/herdr-cli'
 import type { ExtensionAPI } from './pi-types'
-
-const execFileAsync = promisify(execFile)
-
-/** herdr 探测的超时。短到不会拖慢 Pi 启动，长到足够覆盖一次本地 socket 往返。 */
-const PROBE_TIMEOUT_MS = 4_000
-
-async function listAgents(): Promise<ReturnType<typeof parseAgentList>> {
-  const { stdout } = await execFileAsync(process.env.HERDR_BIN_PATH ?? 'herdr', ['agent', 'list'], {
-    timeout: PROBE_TIMEOUT_MS
-  })
-  return parseAgentList(stdout)
-}
 
 export default async function piOrchestratorMemoryBridge(pi: ExtensionAPI): Promise<void> {
   const activation = await detectActivation({
     env: process.env,
-    listAgentNames: listAgents
+    listAgentNames: listAgentsViaHerdr
   })
 
   if (!activation.active) return
 
   // Pi 只调用这个工厂函数，不消费它的返回值；清理走 `createBridge` 内部注册的
   // `session_shutdown`。返回值只服务于测试与直接装配方，所以这里刻意不接。
-  createBridge(pi as unknown as BridgePi, { activation })
+  createBridge(pi as unknown as BridgePi, {
+    activation,
+    control: {
+      listAgents: listAgentsViaHerdr,
+      movePane: movePaneViaHerdr,
+      clearPaneZoom: clearPaneZoomViaHerdr
+    }
+  })
 }

@@ -27,7 +27,15 @@ import {
   type BoardAction
 } from './board/sync'
 import { readBoardSummary } from './board/task-board'
-import type { Activation, MemoryBackend, OrchestrationFact, PendingAnchor } from './contracts'
+import type { Activation, HerdrAgentEntry, MemoryBackend, OrchestrationFact, PendingAnchor } from './contracts'
+import { evaluateDispatchLimit } from './dispatch/concurrency'
+import { readControlConfig, type ControlConfig } from './dispatch/config'
+import {
+  movePaneClearingZoom,
+  tabMoveRequestFor,
+  type PaneMoveOutcome,
+  type PaneZoomClearOutcome
+} from './dispatch/tabs'
 import { renderInjection } from './memory/inject'
 import { orchestrationKey } from './memory/keys'
 import { createPiMemoryBackend } from './memory/pi-memory-backend'
@@ -35,6 +43,7 @@ import { recallOrchestration, renderRecall } from './memory/recall'
 import type { ExtensionContext } from './pi-types'
 import { resolveRepoIdentity, type RepoIdentity } from './repo-identity'
 import {
+  BLOCKED_TOOLS,
   blockedReason,
   isBlockedInShepherd,
   renderShepherdInstructions,
@@ -70,6 +79,28 @@ export interface BridgeOptions {
   readonly activation: Activation
   /** 注入的 token 预算；默认见 `DEFAULT_TOKEN_BUDGET`。 */
   readonly tokenBudget?: number
+  /**
+   * 编排控制（并发上限、独立 tab）的依赖。
+   *
+   * 默认实现必须由装配方（`src/index.ts`）显式注入：`createBridge` 自己不起子进程，否则
+   * 测试或直接装配时会在 `tool_result` 里移动真实的 Herdr pane。缺省某一项时对应能力关闭。
+   */
+  readonly control?: DispatchControlDeps
+}
+
+/** 编排控制的注入点。 */
+export interface DispatchControlDeps {
+  /** 读 `herdr agent list`。缺省时不做并发限制。 */
+  readonly listAgents?: () => Promise<ReadonlyArray<HerdrAgentEntry>>
+  /** 把 pane 移到新 tab。缺省时不做 tab 分离。 */
+  readonly movePane?: (paneId: string, label: string) => Promise<PaneMoveOutcome>
+  /** 取消 pane 所在 tab 的 zoom（`herdr pane zoom <pane> --off`）。缺省时 zoomed 拒绝维持原样。 */
+  readonly clearPaneZoom?: (paneId: string) => Promise<PaneZoomClearOutcome>
+  /** 配置文件路径；缺省是 `~/.pi/agent/pi-herdr-orchestrator/config.json`。 */
+  readonly configPath?: string
+  /** 显式覆盖，优先于 config.json；用于测试与直接装配。 */
+  readonly maxConcurrentWorkers?: number
+  readonly separateTabs?: boolean
 }
 
 export const SAVE_TOOL_NAME = 'orchestration_memory_save'
@@ -194,6 +225,10 @@ function notify(ctx: BridgeContext, message: string, type: 'info' | 'warning' = 
   }
 }
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value)
+}
+
 /**
  * 把共享板的结果翻成一行通知。
  *
@@ -214,6 +249,64 @@ function describeSharedBoard(outcome: SharedBoardResult): string | undefined {
     default:
       return undefined
   }
+}
+
+/**
+ * 重放 transcript 里的工具声明，返回仍处于「被摘掉」状态的协调者工具。
+ *
+ * 读法与 Pi 的 `_restoreToolsFromTranscript`（1.4.0 的
+ * `dist/core/agent-session.js:1389-1413`）一致：只认 `type: "message"` 且
+ * `role: "system"` 的条目，按分支顺序应用 `toolsRemoved` / `toolsAdded`（同一条消息内先移除
+ * 后添加，与 pi-ai 的 `getCurrentTools` 相同），最后一次声明决定工具是否激活。条目形状不
+ * 认识就当作没有声明——那是 Pi 的内部格式，不能让异常进 `session_start`。
+ */
+export function blockedToolsRemovedByTranscript(transcript: unknown): string[] {
+  const state = new Map<string, boolean>()
+  if (!Array.isArray(transcript)) return []
+  for (const entry of transcript) {
+    if (!isRecord(entry) || entry.type !== 'message') continue
+    const message = entry.message
+    if (!isRecord(message) || message.role !== 'system') continue
+    applyToolDeclarations(state, message.toolsRemoved, false)
+    applyToolDeclarations(state, message.toolsAdded, true)
+  }
+  return BLOCKED_TOOLS.filter(name => state.get(name) === false)
+}
+
+function applyToolDeclarations(state: Map<string, boolean>, declarations: unknown, active: boolean): void {
+  if (!Array.isArray(declarations)) return
+  for (const declaration of declarations) {
+    if (!isRecord(declaration)) continue
+    const name = declaration.name
+    if (typeof name === 'string') state.set(name, active)
+  }
+}
+
+/**
+ * resume 修复：把被 `/shepherd` 摘掉、却没有被恢复的 edit / write 加回激活集。
+ *
+ * `/shepherd on` 改过激活集之后，下一次请求会把 `toolsRemoved: [edit, write]` 记进
+ * transcript。进程重启后 resume 该会话时，Pi 在 `AgentSession` 构造阶段就按 transcript
+ * 重放 loadout（agent-session.js:214），所以 `session_start` 触发时 edit / write 已经不在
+ * 激活集里；`session_shutdown` 的还原只覆盖同进程的 reload / 退出，够不到这条路径。
+ *
+ * 判定同时要求三件事，避免覆盖别处的意图：
+ * 1. transcript 的重放结果显示这两个工具都被 `toolsRemoved` 摘掉——这是 `/shepherd on`
+ *    留下的签名；从未激活过（例如 settings 的 `defaultTools` 不含它们）不会留下这条记录。
+ * 2. 它们当前都不在激活集里。只缺一个时不动手，那可能是别的扩展单独禁用了其中一个。
+ * 3. `--tools` / `--exclude-tools` 排除的工具不在 Pi 的 registry 里，`setActiveTools`
+ *    会忽略它们（`_applyToolLoadout`，agent-session.js:1175-1180），所以 CLI 的工具限制
+ *    不会被覆盖。
+ *
+ * 残留歧义：任何扩展经 `setActiveTools` 摘掉 edit / write 都会在 transcript 留下同样的
+ * 记录，桥接无法区分是谁摘的；那种扩展若在每次 `session_start` 重新禁用工具，最终结果由
+ * 扩展加载顺序决定。
+ */
+export function restoreBlockedTools(active: readonly string[], transcript: unknown): string[] | undefined {
+  const removed = blockedToolsRemovedByTranscript(transcript)
+  if (removed.length !== BLOCKED_TOOLS.length) return undefined
+  if (BLOCKED_TOOLS.some(name => active.includes(name))) return undefined
+  return [...active, ...BLOCKED_TOOLS]
 }
 
 /**
@@ -238,6 +331,33 @@ export function createBridge(pi: BridgePi, options: BridgeOptions): { dispose: (
   // 协调者模式：默认关闭，由 /shepherd 开启。
   const shepherd: ShepherdState = { active: false }
 
+  const control = options.control
+  // reviewer 名单来自 herdr_review 的终态；并发闸门只让它们不进 worker 槽位。
+  const reviewerNames = new Set<string>()
+  let controlConfigPromise: Promise<ControlConfig> | undefined
+  let controlConfigWarningShown = false
+
+  /**
+   * 读一次控制配置并缓存。
+   *
+   * 工具调用是热路径，每次 dispatch 都读盘没有必要；配置在会话内变化时 `/reload` 会重建
+   * 桥接。读取失败/非法值只通知一次，否则同一句告警会跟着每次 dispatch 刷屏。
+   */
+  const resolveControlConfig = async (
+    ctx: BridgeContext
+  ): Promise<{ maxConcurrentWorkers: number; separateTabs: boolean }> => {
+    if (!controlConfigPromise) controlConfigPromise = readControlConfig(control?.configPath)
+    const config = await controlConfigPromise
+    if (config.warning && !controlConfigWarningShown) {
+      controlConfigWarningShown = true
+      notify(ctx, `shepherd config: ${config.warning}；使用缺省值。`, 'warning')
+    }
+    return {
+      maxConcurrentWorkers: control?.maxConcurrentWorkers ?? config.maxConcurrentWorkers,
+      separateTabs: control?.separateTabs ?? config.separateTabs
+    }
+  }
+
   /**
    * 统一清理路径。
    *
@@ -258,6 +378,9 @@ export function createBridge(pi: BridgePi, options: BridgeOptions): { dispose: (
     }
     shepherd.active = false
     shepherd.previousTools = undefined
+    reviewerNames.clear()
+    controlConfigPromise = undefined
+    controlConfigWarningShown = false
     pending.clear()
     boardQueue.length = 0
     settleAttempts.clear()
@@ -275,9 +398,31 @@ export function createBridge(pi: BridgePi, options: BridgeOptions): { dispose: (
     boardQueue.length = 0
     settleAttempts.clear()
     lastSaveError = undefined
+    // 新会话可能有新的 reviewer 与配置；不要让上一会话的名单/缓存漏进来。
+    reviewerNames.clear()
+    controlConfigPromise = undefined
+    controlConfigWarningShown = false
     state = { identity: resolveRepoIdentity(ctx.cwd), cwd: ctx.cwd }
     // reload / 新会话后内存状态是 false；清掉可能残留的状态栏，避免显示与实际不符。
     refreshStatus(ctx, false, 0)
+    // resume-from-transcript：Pi 在构造会话时已按 transcript 重放了 loadout，`/shepherd on`
+    // 摘掉的 edit / write 会保持未激活。`session_start` 晚于构造触发，是补回它们的时机。
+    const sessionManager = (ctx as { sessionManager?: { getBranch?: () => unknown } }).sessionManager
+    let transcript: unknown
+    try {
+      transcript = sessionManager?.getBranch?.()
+    } catch {
+      // 读不到会话分支时维持现状：工具集是会话能否工作的前提，不能因此让 session_start 失败。
+      transcript = undefined
+    }
+    const repairedTools = restoreBlockedTools(pi.getActiveTools(), transcript)
+    if (repairedTools) {
+      try {
+        pi.setActiveTools(repairedTools)
+      } catch {
+        // 修复是尽力而为：写激活集失败时维持现状，不能让它中断 session_start 的其余工作。
+      }
+    }
     // 共享板只在这里做：写入路径固定跟着 cwd，能在文件系统层统一的只有这一处。
     const shared = ensureSharedBoard(ctx.cwd)
     const sharedMessage = describeSharedBoard(shared)
@@ -326,17 +471,100 @@ export function createBridge(pi: BridgePi, options: BridgeOptions): { dispose: (
   })
 
   /**
-   * 协调者模式的硬约束：拦住 edit / write。
+   * 工具调用的两道闸门。
    *
-   * 光把工具从激活集里摘掉还不够——模型可能在本轮的工具声明里还看得见它（声明在请求前
-   * 生成），或者从 codemode 脚本里调。这条钩子对每次调用都生效，且返回可读原因，避免模型
-   * 反复重试同一个被拒的工具。
+   * 1. 协调者模式的硬约束：拦住 edit / write。光把工具从激活集里摘掉还不够——模型可能在
+   *    本轮的工具声明里还看得见它（声明在请求前生成），或者从 codemode 脚本里调。
+   * 2. `herdr_dispatch` 的并发上限：查一次 `herdr agent list`，正在跑的 worker 达到
+   *    `shepherd.maxConcurrentWorkers` 就拒绝，并给出当前 worker 名、上限与出路。
+   *
+   * 查询失败 fail open：闸门本身不可用时不能把 dispatch 永久禁掉，只通知一次原因。
    */
-  pi.on('tool_call', async event => {
-    if (!shepherd.active) return undefined
+  pi.on('tool_call', async (event, ctx) => {
     const typed = event as { toolName?: string }
-    if (!typed.toolName || !isBlockedInShepherd(typed.toolName)) return undefined
-    return { block: true, reason: blockedReason(typed.toolName) }
+    if (!typed.toolName) return undefined
+
+    if (shepherd.active && isBlockedInShepherd(typed.toolName)) {
+      return { block: true, reason: blockedReason(typed.toolName) }
+    }
+
+    const listAgents = control?.listAgents
+    if (typed.toolName !== 'herdr_dispatch' || !listAgents) return undefined
+
+    const config = await resolveControlConfig(ctx)
+
+    let agents: ReadonlyArray<HerdrAgentEntry>
+    try {
+      agents = await listAgents()
+    } catch (error) {
+      const detail = error instanceof Error ? error.message : String(error)
+      notify(ctx, `dispatch 并发检查失败（herdr agent list: ${detail}）；本次放行（fail open）。`, 'warning')
+      return undefined
+    }
+
+    const verdict = evaluateDispatchLimit({
+      agents,
+      maxConcurrentWorkers: config.maxConcurrentWorkers,
+      reviewerNames
+    })
+    if (verdict.allowed) return undefined
+    return { block: true, reason: verdict.reason }
+  })
+
+  // worker / reviewer 各自独立 tab。与记忆、看板是独立关注点：移动失败只通知，绝不让
+  // `herdr_dispatch` / `herdr_review` 的结果变成 isError。
+  pi.on('tool_result', async (event, ctx) => {
+    const typed = event as { toolName?: string; details?: unknown }
+    if (!typed.toolName) return undefined
+
+    // reviewer 经 herdr_review 单独登记：并发闸门只让 worker 占槽位。
+    if (typed.toolName === 'herdr_review' && isRecord(typed.details)) {
+      const name = typeof typed.details.name === 'string' ? typed.details.name.trim() : ''
+      if (name) reviewerNames.add(name)
+    }
+
+    const movePane = control?.movePane
+    if (!movePane) return undefined
+    const clearPaneZoom = control?.clearPaneZoom
+    const request = tabMoveRequestFor(typed.toolName, typed.details)
+    if (!request) return undefined
+    // 绝不移动 lead 自己的 pane：那是用户正在看和输入的那个。
+    if (options.activation.active && request.paneId === options.activation.paneId) return undefined
+
+    const config = await resolveControlConfig(ctx)
+    if (!config.separateTabs) return undefined
+
+    try {
+      // 有取消 zoom 能力时，zoomed 拒绝会先取消再重试一次；没有时维持原样。
+      const outcome = clearPaneZoom
+        ? await movePaneClearingZoom({ movePane, clearPaneZoom }, request.paneId, request.label)
+        : await movePane(request.paneId, request.label)
+      if (outcome.moved && outcome.zoomCleared) {
+        notify(ctx, `${request.label} 移到了独立 tab（${request.paneId}）：为分离 tab 取消了一次 zoom，worker 不受影响`)
+      } else if (outcome.moved) {
+        notify(ctx, `moved ${request.label} to its own tab (${request.paneId})`)
+      } else if (outcome.zoomCleared) {
+        notify(
+          ctx,
+          `${request.label} 已取消 zoom，但仍未能移到独立 tab：${outcome.reason ?? 'unknown error'}`,
+          'warning'
+        )
+      } else if (outcome.zoomed && clearPaneZoom) {
+        notify(
+          ctx,
+          `${request.label} 未能移到独立 tab：取消 zoom 失败（${outcome.reason ?? 'unknown error'}）`,
+          'warning'
+        )
+      } else if (outcome.zoomed) {
+        notify(ctx, `${request.label} 所在 tab 处于 zoom，未能移到独立 tab；worker 不受影响。`, 'warning')
+      } else {
+        notify(ctx, `${request.label} 未能移到独立 tab：${outcome.reason ?? 'unknown error'}`, 'warning')
+      }
+    } catch (error) {
+      const detail = error instanceof Error ? error.message : String(error)
+      notify(ctx, `${request.label} 未能移到独立 tab：${detail}`, 'warning')
+    }
+    return undefined
   })
 
   pi.on('tool_result', async event => {
