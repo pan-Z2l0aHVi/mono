@@ -49,18 +49,22 @@ function bannerCloseButton() {
   return button
 }
 
-/** userEvent targets directly, so first confirm the button wins hit-testing at its center. */
+/** userEvent targets directly, so wait until the button wins hit-testing at its center. */
 async function clickBannerCloseButtonAtCenter() {
   const button = bannerCloseButton()
   const bounds = button.getBoundingClientRect()
   const x = bounds.left + bounds.width / 2
   const y = bounds.top + bounds.height / 2
-  const hitTarget = document.elementFromPoint(x, y)
 
-  expect(
-    hitTarget === button || (hitTarget !== null && button.contains(hitTarget)),
-    `banner close button center (${x}, ${y}) should hit the button or its contents`
-  ).toBe(true)
+  await vi.waitFor(() => {
+    const hitTarget = document.elementFromPoint(x, y)
+    expect(
+      hitTarget === button || (hitTarget !== null && button.contains(hitTarget)),
+      `banner close button center (${x}, ${y}) should hit the button or its contents`
+    ).toBe(true)
+  })
+
+  const hitTarget = document.elementFromPoint(x, y)
   if (!hitTarget) throw new Error('banner close button center had no hit target')
   await userEvent.click(hitTarget as HTMLElement)
 }
