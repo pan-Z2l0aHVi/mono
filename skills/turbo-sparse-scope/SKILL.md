@@ -63,8 +63,8 @@ mise exec -- node .agents/skills/turbo-sparse-scope/sparse-scope.mjs --restore [
 
 ## 稀疏树里的安全规则
 
-1. **全局引用搜索只用 `git grep <pattern> HEAD`。** `rg`、`grep -r`、Glob 只看已检出的文件，闭包外的调用者会静默消失，影响面结论因此偏乐观。`git grep` 也接受 `HEAD -- <path>` 限定范围。
-2. **manifest 级影响面可直接算，源引用搜索仍要全索引。** [`monorepo-change-impact`](../monorepo-change-impact/SKILL.md) 的 `repo-query` 会从 Git 索引补读被 skip-worktree 隐藏的 manifest，`contract`、`verify` 的 workspace 图与 `contract-diff` 不需要先 `--restore`；但被隐藏的源文件不在磁盘上，跨包调用者与字符串引用仍按规则 1 用 `git grep` 搜索完整索引。
+1. **全局引用搜索只用 `git grep <pattern> HEAD`。** `rg`、`grep -r`、Glob 只看已检出的文件，闭包外的调用者会静默消失，影响面结论因此偏乐观。`git grep` 也接受 `HEAD -- <path>` 限定范围；未提交的暂存内容不在 HEAD 里，另用 `git grep --cached`。
+2. **manifest 级影响面可直接算，源引用搜索仍要完整 Git 树。** [`monorepo-change-impact`](../monorepo-change-impact/SKILL.md) 的 `repo-query` 会从 Git 索引补读被 skip-worktree 隐藏的 manifest，`contract`、`verify` 的 workspace 图与 `contract-diff` 不需要先 `--restore`；但被隐藏的源文件不在磁盘上，跨包调用者与字符串引用仍按规则 1 搜索。被隐藏包的 README/AGENTS.md 与包内测试同样不在磁盘上：读取用 `git show HEAD:<path>`，要执行就先 `--add <package>`。
 3. **全仓 gate 先 `--restore`，或交给 CI。** 本地验证只覆盖 cone；`test-scripts`、`check-context`、`check-policy` 按 tracked 文件扫描，cone 外的文件不会参与。收缩期间的本地结论要标明覆盖范围。
 4. **任务扩展时用 `--add`。** 不扩大范围就用 `--reset` 或默认动作重建，不要手写路径。
 5. **不要在稀疏树里用 `turbo run` 期待全仓结果。** 需要全仓图时先 `--restore`。

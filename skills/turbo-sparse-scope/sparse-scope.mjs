@@ -485,7 +485,7 @@ function printStatus(root, json) {
     dirtyOutsideCone: dirty,
     reminders: [
       'use `git grep <pattern> HEAD` for cross-package search',
-      'run --restore before monorepo-change-impact or repo-wide gates'
+      'monorepo-change-impact manifest queries can run while sparse; restore before repo-wide gates'
     ],
     warnings
   }

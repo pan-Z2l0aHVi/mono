@@ -15,6 +15,7 @@ import fs from 'node:fs'
 import path from 'node:path'
 
 const root = path.resolve(import.meta.dirname, '../..')
+const GIT_MAX_BUFFER = 64 * 1024 * 1024
 const rawArgs = process.argv.slice(2)
 const command = rawArgs.shift() ?? 'verify'
 const options = parseOptions(rawArgs)
@@ -154,14 +155,27 @@ function matchWorkspaceDirectory(relativePath, ignored, matchers) {
   return matchers.some(regex => regex.test(directoryPath))
 }
 
+function isMissingGitRepository(error) {
+  const stderr = error && typeof error === 'object' && 'stderr' in error ? String(error.stderr) : ''
+  return /not a git repository/i.test(stderr)
+}
+
 // 稀疏检出把 cone 外的文件标成 skip-worktree 并从工作区移除，但索引里仍有内容。
 // 只从 Git 补这些隐藏条目：未暂存删除的普通条目不会因此被复活。
 function listTrackedManifests(root) {
   let output
   try {
-    output = execFileSync('git', ['ls-files', '-z', '-t'], { cwd: root, encoding: 'utf8' })
-  } catch {
-    return new Map()
+    output = execFileSync('git', ['ls-files', '-z', '-t', '--', ':(glob)**/package.json'], {
+      cwd: root,
+      encoding: 'utf8',
+      maxBuffer: GIT_MAX_BUFFER,
+      stdio: ['ignore', 'pipe', 'pipe']
+    })
+  } catch (error) {
+    // 非 git 目录仍可用磁盘枚举；其余失败（索引损坏、输出过大等）必须暴露，
+    // 否则会静默返回漏掉隐藏 workspace 的图。
+    if (isMissingGitRepository(error)) return new Map()
+    throw error
   }
 
   const manifests = new Map()
@@ -180,12 +194,22 @@ function readIndexedManifest(file) {
   for (const ref of [`:${file}`, `HEAD:${file}`]) {
     let text
     try {
-      text = execFileSync('git', ['show', ref], { cwd: root, encoding: 'utf8' })
+      text = execFileSync('git', ['show', ref], {
+        cwd: root,
+        encoding: 'utf8',
+        maxBuffer: GIT_MAX_BUFFER,
+        stdio: ['ignore', 'pipe', 'pipe']
+      })
     } catch {
       // 索引里读不到时回退 HEAD；两者都失败由调用方报错
       continue
     }
-    return JSON.parse(text)
+    try {
+      return JSON.parse(text)
+    } catch (error) {
+      const detail = error instanceof Error ? error.message : String(error)
+      throw new Error(`invalid manifest ${file}: ${detail}`)
+    }
   }
   throw new Error(`cannot read hidden manifest ${file} from the Git index or HEAD`)
 }

@@ -363,18 +363,28 @@ assert.ok(Array.isArray(worktreePlan.verification))
 // 消费者图与影响面都不能因为它从磁盘消失而漏报。
 const sparseFixture = fs.mkdtempSync(path.join(os.tmpdir(), 'greypan-repo-query-sparse-'))
 try {
+  // 隔离外部 Git 配置与 index/worktree 重定向变量，避免本机配置改变 fixture 行为。
+  const fixtureEnv = {
+    ...process.env,
+    GIT_CONFIG_GLOBAL: '/dev/null',
+    GIT_CONFIG_SYSTEM: '/dev/null',
+    GIT_CONFIG_NOSYSTEM: '1',
+    GIT_AUTHOR_NAME: 'repo-query fixture',
+    GIT_AUTHOR_EMAIL: 'repo-query@example.com',
+    GIT_COMMITTER_NAME: 'repo-query fixture',
+    GIT_COMMITTER_EMAIL: 'repo-query@example.com'
+  }
+  for (const key of [
+    'GIT_DIR',
+    'GIT_WORK_TREE',
+    'GIT_INDEX_FILE',
+    'GIT_COMMON_DIR',
+    'GIT_OBJECT_DIRECTORY',
+    'GIT_ALTERNATE_OBJECT_DIRECTORIES'
+  ])
+    delete fixtureEnv[key]
   const fixtureGit = (...args) =>
-    execFileSync('git', args, {
-      cwd: sparseFixture,
-      encoding: 'utf8',
-      env: {
-        ...process.env,
-        GIT_AUTHOR_NAME: 'repo-query fixture',
-        GIT_AUTHOR_EMAIL: 'repo-query@example.com',
-        GIT_COMMITTER_NAME: 'repo-query fixture',
-        GIT_COMMITTER_EMAIL: 'repo-query@example.com'
-      }
-    })
+    execFileSync('git', args, { cwd: sparseFixture, encoding: 'utf8', env: fixtureEnv })
   const writeJson = (relativePath, value) => {
     const file = path.join(sparseFixture, relativePath)
     fs.mkdirSync(path.dirname(file), { recursive: true })
@@ -394,6 +404,11 @@ try {
   })
   writeJson('apps/hidden/package.json', {
     name: '@fixture/hidden',
+    exports: { '.': './dist/index.js' },
+    dependencies: { '@fixture/lib': 'workspace:*' }
+  })
+  writeJson('apps/hidden space/package.json', {
+    name: '@fixture/hidden-space',
     dependencies: { '@fixture/lib': 'workspace:*' }
   })
   writeJson('apps/deleted/package.json', { name: '@fixture/deleted' })
@@ -426,11 +441,17 @@ try {
     /^S /,
     'fixture setup must mark the hidden manifest as skip-worktree'
   )
+  assert.match(
+    fixtureGit('ls-files', '-t', '--', 'apps/hidden space/package.json'),
+    /^S /,
+    'fixture setup must hide a workspace whose path contains a space'
+  )
 
   const runFixture = (...args) =>
     execFileSync(process.execPath, [path.join(sparseFixture, script), ...args], {
       cwd: sparseFixture,
-      encoding: 'utf8'
+      encoding: 'utf8',
+      env: fixtureEnv
     })
 
   const sparseContract = JSON.parse(runFixture('contract', '--json', '@fixture/lib'))
@@ -438,11 +459,32 @@ try {
     sparseContract.directConsumers.includes('@fixture/hidden'),
     'a skip-worktree hidden manifest must still contribute its dependency edges'
   )
+  assert.ok(
+    sparseContract.directConsumers.includes('@fixture/hidden-space'),
+    'hidden manifest paths containing spaces must still be parsed'
+  )
   assert.ok(sparseContract.directConsumers.includes('@fixture/visible'))
 
   const sparsePlan = JSON.parse(runFixture('verify', '--json', 'packages/lib/src/index.ts'))
   assert.ok(sparsePlan.affectedWorkspaces.includes('@fixture/hidden'))
   assert.ok(sparsePlan.affectedWorkspaces.includes('@fixture/visible'))
+
+  // 隐藏 manifest 的暂存修改同样进入 contract-diff 的当前契约（从索引读取）。
+  const stagedHidden = JSON.parse(fixtureGit('show', ':apps/hidden/package.json'))
+  stagedHidden.exports = { '.': './dist/index.js', './extra': './dist/extra.js' }
+  const stagedBlob = execFileSync('git', ['hash-object', '-w', '--stdin'], {
+    cwd: sparseFixture,
+    input: `${JSON.stringify(stagedHidden, null, 2)}\n`,
+    encoding: 'utf8',
+    env: fixtureEnv
+  }).trim()
+  fixtureGit('update-index', '--add', '--cacheinfo', `100644,${stagedBlob},apps/hidden/package.json`)
+  fixtureGit('update-index', '--skip-worktree', 'apps/hidden/package.json')
+  const sparseDiff = JSON.parse(runFixture('contract-diff', '--json', '--base', 'HEAD'))
+  assert.deepEqual(
+    sparseDiff.changes.find(change => change.name === '@fixture/hidden')?.addedExports,
+    ['./extra']
+  )
 
   // 可见 manifest 的未提交修改优先于索引；未跟踪的新 manifest 仍由磁盘枚举发现。
   writeJson('apps/visible/package.json', { name: '@fixture/visible', dependencies: {} })
@@ -451,7 +493,11 @@ try {
     dependencies: { '@fixture/lib': 'workspace:*' }
   })
   const overlayContract = JSON.parse(runFixture('contract', '--json', '@fixture/lib'))
-  assert.deepEqual(overlayContract.directConsumers, ['@fixture/hidden', '@fixture/new'])
+  assert.deepEqual(overlayContract.directConsumers, [
+    '@fixture/hidden',
+    '@fixture/hidden-space',
+    '@fixture/new'
+  ])
 
   // 工作区里未暂存删除的已跟踪 manifest 不能被索引补读复活。
   fs.rmSync(path.join(sparseFixture, 'apps/deleted/package.json'))
@@ -460,9 +506,27 @@ try {
       execFileSync(
         process.execPath,
         [path.join(sparseFixture, script), 'contract', '--json', '@fixture/deleted'],
-        { cwd: sparseFixture, encoding: 'utf8', stdio: 'pipe' }
+        { cwd: sparseFixture, encoding: 'utf8', stdio: 'pipe', env: fixtureEnv }
       ),
     error => /unknown workspace @fixture\/deleted/.test(String(error.stderr))
+  )
+
+  // Git 读取失败必须显式失败；不能当作「没有隐藏条目」返回漏报的图。
+  const brokenIndex = path.join(sparseFixture, 'broken-index')
+  fs.writeFileSync(brokenIndex, 'broken')
+  assert.throws(
+    () =>
+      execFileSync(
+        process.execPath,
+        [path.join(sparseFixture, script), 'contract', '--json', '@fixture/lib'],
+        {
+          cwd: sparseFixture,
+          encoding: 'utf8',
+          stdio: 'pipe',
+          env: { ...fixtureEnv, GIT_INDEX_FILE: brokenIndex }
+        }
+      ),
+    error => /cannot load pnpm workspace manifests/.test(String(error.stderr))
   )
 } finally {
   fs.rmSync(sparseFixture, { recursive: true, force: true })
