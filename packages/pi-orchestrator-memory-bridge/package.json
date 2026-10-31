@@ -1,0 +1,27 @@
+{
+  "name": "@greypan/pi-orchestrator-memory-bridge",
+  "version": "0.0.0",
+  "description": "Orchestration-layer memory bridge and task board context for Pi lead sessions running inside Herdr",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/pan-Z2l0aHVi/mono.git"
+  },
+  "private": true,
+  "type": "module",
+  "pi": {
+    "extensions": [
+      "./src/index.ts"
+    ]
+  },
+  "scripts": {
+    "test": "vp test run"
+  },
+  "devDependencies": {
+    "@greypan/tsconfig": "workspace:*",
+    "vite-plus": "catalog:"
+  },
+  "engines": {
+    "node": ">=22.19.0"
+  }
+}
