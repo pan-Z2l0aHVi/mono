@@ -7,7 +7,9 @@
         "$TURBO_DEFAULT$",
         "!**/*.md",
         "!**/*.spec.ts",
+        "!**/*.spec.mjs",
         "!**/*.test.ts",
+        "!**/*.test.mjs",
         "!**/__tests__/**",
         "$TURBO_ROOT$/packages/web-ui/CHANGELOG.md"
       ]
