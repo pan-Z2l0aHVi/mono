@@ -107,7 +107,12 @@ export default defineConfig({
     // 冷缓存（CI fresh clone）下 `react-dom/client` 会被 browser 运行时在中段才发现并预打包，
     // 触发整页 reload，把已挂载的示例全部清空（"示例「基础」没有渲染"连锁失败）。
     // 启动扫描只覆盖路由图，覆盖不到 spec 直接 import 的生成 demo 图，所以这里显式列出。
-    include: ['react-dom/client']
+    include: [
+      'react-dom/client',
+      // changelog 页在浏览器里通过 md-to-comp 的 markdown 子入口渲染 CHANGELOG.md；
+      // 漏列会在测试中段触发依赖重优化整页 reload。
+      '@greypan/md-to-comp/markdown'
+    ]
   },
   test: {
     // Vitest 5 把默认附件目录从 `.vitest-attachments` 改成 `.vitest/attachments`；

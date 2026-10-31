@@ -86,6 +86,14 @@
   color: var(--wui-color-text-secondary, #6a6a6a);
 }
 
+:host([trigger='icon']) .label {
+  overflow: visible;
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+}
+
 .arrow {
   flex-shrink: 0;
   color: var(--wui-color-text-secondary, #6a6a6a);

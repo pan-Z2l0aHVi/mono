@@ -1,6 +1,13 @@
 import '@/assets/global.css'
 
-import { toast, type WebUiLayout, type WebUiTheme, type WebUiToast } from '@greypan/web-ui'
+import { toast, type WebUiIcon, type WebUiLayout, type WebUiTheme, type WebUiToast } from '@greypan/web-ui'
+import {
+  antDesignSyncOutlined,
+  icOutlineMotionPhotosOn,
+  lucideContrast,
+  lucideLanguages,
+  lucideSun
+} from '@greypan/web-ui/icons'
 import { createHead } from '@unhead/vue/client'
 import { mount, type VueWrapper } from '@vue/test-utils'
 import { afterEach, beforeEach, describe, expect, it, onTestFailed, vi } from 'vite-plus/test'
@@ -414,10 +421,76 @@ describe('应用外壳（浏览器）：导航 collapsed state 不跨视口泄�
 
     expect(navRoot().getAttribute('aria-label')).toBe('App navigation')
     expect(document.querySelector('nav[aria-label="Main navigation"]')).not.toBeNull()
+    expect(
+      [...document.querySelectorAll('nav[aria-label="Main navigation"] h2')].map(heading => heading.textContent?.trim())
+    ).toEqual(['General', 'Layout', 'Forms', 'Display', 'Feedback'])
+    expect(
+      [...document.querySelectorAll('nav[aria-label="Main navigation"] [role="group"]')].map(group => [
+        group.querySelector('h2')?.textContent?.trim(),
+        [...group.querySelectorAll('a')].map(link => link.getAttribute('aria-label'))
+      ])
+    ).toEqual([
+      ['General', ['Button', 'Icon']],
+      ['Layout', ['Layout', 'BackTop', 'Theme']],
+      [
+        'Forms',
+        [
+          'Input',
+          'Textarea',
+          'InputNumber',
+          'Select',
+          'Autocomplete',
+          'Dropdown',
+          'Switch',
+          'Slider',
+          'Radio',
+          'Checkbox',
+          'Segmented'
+        ]
+      ],
+      ['Display', ['Collapse', 'EditableText', 'Empty', 'MiddleEllipsis', 'SVGDrawLines', 'Avatar', 'Badge']],
+      [
+        'Feedback',
+        ['Dialog', 'Drawer', 'Tooltip', 'Popover', 'ContextMenu', 'Toast', 'ImagePreview', 'Spinner', 'Progress']
+      ]
+    ])
     await loadDemoLocale('zh-CN', false)
     await nextTick()
     expect(document.querySelector('nav[aria-label="主导航"]')).not.toBeNull()
+    expect(
+      [...document.querySelectorAll('nav[aria-label="主导航"] h2')].map(heading => heading.textContent?.trim())
+    ).toEqual(['通用', '布局', '表单', '展示', '反馈'])
     expect(document.querySelector('web-ui-select[aria-label="全局动效"]')).not.toBeNull()
+  })
+
+  it('全局图标触发器与选中值同步', async () => {
+    await mountAppShell()
+
+    const selectOf = (label: string) => {
+      const select = document.querySelector<HTMLElement & { value: string }>(`web-ui-select[aria-label="${label}"]`)
+      if (!select) throw new Error(`${label} select not found`)
+      return select
+    }
+    const iconOf = (label: string) => selectOf(label).querySelector<WebUiIcon>('[slot="trigger"]')
+    const pick = async (label: string, value: string) => {
+      const select = selectOf(label)
+      select.value = value
+      select.dispatchEvent(new Event('change', { bubbles: true }))
+      await nextTick()
+    }
+
+    await pick('Global motion', 'full')
+    expect(iconOf('Global motion')?.icon).toBe(icOutlineMotionPhotosOn)
+
+    await pick('Global motion', 'system')
+    expect(iconOf('Global motion')?.icon).toBe(antDesignSyncOutlined)
+
+    await pick('Global theme', 'system')
+    expect(iconOf('Global theme')?.icon).toBe(lucideContrast)
+    expect(iconOf('Global language')?.icon).toBe(lucideLanguages)
+
+    await pick('Global theme', 'light')
+    expect(iconOf('Global theme')?.icon).toBe(lucideSun)
   })
 
   it('320px 下三个全局选择器全部留在视口内，page 不产生横向滚动', async () => {
@@ -470,7 +543,8 @@ describe('应用外壳（浏览器）：导航 collapsed state 不跨视口泄�
     await requestCollapse(false)
 
     expect(links.map(link => link.querySelector('span')?.textContent?.trim() ?? '')).toEqual(expandedLabels)
-    expect(links.every(link => !link.hasAttribute('title'))).toBe(true)
+    expect(links.slice(2).every(link => !link.hasAttribute('title'))).toBe(true)
+    expect(links.slice(0, 2).map(link => link.getAttribute('title'))).toEqual(['Components', 'Changelog'])
   })
 
   it('桌面端 collapse 后导航文字居中，expanded state 左对齐', async () => {

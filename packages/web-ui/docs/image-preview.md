@@ -9,13 +9,53 @@ The tables below list the `imagePreview()` options and the members of the return
 
 ## Samples
 
-### Basic
+### Single image
 
-Calling `imagePreview()` mounts the host into the overlay root of the root theme (or the one `container` names) and opens it immediately, returning a handle.
+With a single image there is no previous / next switching; arrow keys, wheel and `+` / `-` zoom, `0` reset, and double-click toggling between 1x and 2x all still work.
 
-With only `images`, the four display options stay off by default and only the image itself is on screen—arrow keys to switch images, wheel and `+` / `-` to zoom, `0` to reset, and double-click to toggle between 1x and 2x all still work.
+Clicking outside the image or pressing Escape closes: the close request plays the exit transition first, and the handle's `closed` resolves only after the host is removed.
 
-Clicking anywhere outside the image or pressing Escape closes: the close request plays the exit transition first, and the handle's `closed` resolves only after the host is removed.
+```tsx
+import { imagePreview } from '@greypan/web-ui'
+
+const gradientImage = (label: string, from: string, to: string) =>
+  `data:image/svg+xml,${encodeURIComponent(
+    `<svg xmlns="http://www.w3.org/2000/svg" width="960" height="640"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop stop-color="${from}"/><stop offset="1" stop-color="${to}"/></linearGradient></defs><rect width="960" height="640" fill="url(#g)"/><text x="480" y="336" fill="#fff" font-family="sans-serif" font-size="64" text-anchor="middle">${label}</text></svg>`
+  )}`
+
+const IMAGES = [{ src: gradientImage('First image', '#0a84ff', '#5e5ce6'), alt: 'Example image with a blue gradient' }]
+
+export default function Demo() {
+  return <web-ui-button onClick={() => imagePreview({ images: IMAGES })}>Open single image</web-ui-button>
+}
+```
+
+```vue
+<template>
+  <web-ui-button @click="open">Open single image</web-ui-button>
+</template>
+
+<script setup lang="ts">
+import { imagePreview } from '@greypan/web-ui'
+
+const gradientImage = (label: string, from: string, to: string) =>
+  `data:image/svg+xml,${encodeURIComponent(
+    `<svg xmlns="http://www.w3.org/2000/svg" width="960" height="640"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop stop-color="${from}"/><stop offset="1" stop-color="${to}"/></linearGradient></defs><rect width="960" height="640" fill="url(#g)"/><text x="480" y="336" fill="#fff" font-family="sans-serif" font-size="64" text-anchor="middle">${label}</text></svg>`
+  )}`
+
+const IMAGES = [{ src: gradientImage('First image', '#0a84ff', '#5e5ce6'), alt: 'Example image with a blue gradient' }]
+
+function open() {
+  imagePreview({ images: IMAGES })
+}
+</script>
+```
+
+### Multiple images
+
+Passing multiple images lets the arrow keys switch between them; `loop` defaults to `true` and wraps around.
+
+With only `images`, the four display options stay off by default and only the image itself is on screen; the previous / next buttons, zoom toolbar, close button, and indicator all need to be enabled explicitly.
 
 ```tsx
 import { imagePreview } from '@greypan/web-ui'
@@ -28,17 +68,18 @@ const gradientImage = (label: string, from: string, to: string) =>
 const IMAGES = [
   { src: gradientImage('First image', '#0a84ff', '#5e5ce6'), alt: 'Example image with a blue gradient' },
   { src: gradientImage('Second image', '#ff375f', '#ff9f0a'), alt: 'Example image with an orange-red gradient' },
-  { src: gradientImage('Third image', '#30d158', '#0a84ff'), alt: 'Example image with a teal gradient' }
+  { src: gradientImage('Third image', '#30d158', '#0a84ff'), alt: 'Example image with a teal gradient' },
+  { src: gradientImage('Fourth image', '#bf5af2', '#ff375f'), alt: 'Example image with a purple gradient' }
 ]
 
 export default function Demo() {
-  return <web-ui-button onClick={() => imagePreview({ images: IMAGES })}>Open preview</web-ui-button>
+  return <web-ui-button onClick={() => imagePreview({ images: IMAGES })}>Open multiple images</web-ui-button>
 }
 ```
 
 ```vue
 <template>
-  <web-ui-button @click="open">Open preview</web-ui-button>
+  <web-ui-button @click="open">Open multiple images</web-ui-button>
 </template>
 
 <script setup lang="ts">
@@ -52,7 +93,8 @@ const gradientImage = (label: string, from: string, to: string) =>
 const IMAGES = [
   { src: gradientImage('First image', '#0a84ff', '#5e5ce6'), alt: 'Example image with a blue gradient' },
   { src: gradientImage('Second image', '#ff375f', '#ff9f0a'), alt: 'Example image with an orange-red gradient' },
-  { src: gradientImage('Third image', '#30d158', '#0a84ff'), alt: 'Example image with a teal gradient' }
+  { src: gradientImage('Third image', '#30d158', '#0a84ff'), alt: 'Example image with a teal gradient' },
+  { src: gradientImage('Fourth image', '#bf5af2', '#ff375f'), alt: 'Example image with a purple gradient' }
 ]
 
 function open() {
@@ -65,7 +107,7 @@ function open() {
 
 `nav`, `toolbar`, `closable`, and `indicator` are independent and all off by default; only passing `true` for all four brings out the previous / next buttons, the zoom toolbar, the close button, and the "current / total" indicator together.
 
-`nav` is rendered only when there is more than one image; `loop` defaults to `true` and wraps around, so the three images here can be paged in the same direction forever.
+`nav` is rendered only when there is more than one image; `loop` defaults to `true` and wraps around, so the images here can be paged in the same direction forever.
 
 ```tsx
 import { imagePreview } from '@greypan/web-ui'
@@ -78,7 +120,8 @@ const gradientImage = (label: string, from: string, to: string) =>
 const IMAGES = [
   { src: gradientImage('First image', '#0a84ff', '#5e5ce6'), alt: 'Example image with a blue gradient' },
   { src: gradientImage('Second image', '#ff375f', '#ff9f0a'), alt: 'Example image with an orange-red gradient' },
-  { src: gradientImage('Third image', '#30d158', '#0a84ff'), alt: 'Example image with a teal gradient' }
+  { src: gradientImage('Third image', '#30d158', '#0a84ff'), alt: 'Example image with a teal gradient' },
+  { src: gradientImage('Fourth image', '#bf5af2', '#ff375f'), alt: 'Example image with a purple gradient' }
 ]
 
 export default function Demo() {
@@ -108,7 +151,8 @@ const gradientImage = (label: string, from: string, to: string) =>
 const IMAGES = [
   { src: gradientImage('First image', '#0a84ff', '#5e5ce6'), alt: 'Example image with a blue gradient' },
   { src: gradientImage('Second image', '#ff375f', '#ff9f0a'), alt: 'Example image with an orange-red gradient' },
-  { src: gradientImage('Third image', '#30d158', '#0a84ff'), alt: 'Example image with a teal gradient' }
+  { src: gradientImage('Third image', '#30d158', '#0a84ff'), alt: 'Example image with a teal gradient' },
+  { src: gradientImage('Fourth image', '#bf5af2', '#ff375f'), alt: 'Example image with a purple gradient' }
 ]
 
 function open() {
@@ -117,7 +161,119 @@ function open() {
 </script>
 ```
 
+### Swipe
+
+With `swipe: true` and more than one image, a left/right drag at 1x switches images; vertical displacement is ignored, and dragging after zooming pans instead.
+
+`nav` and `indicator` are enabled here so the result of a swipe is easy to compare.
+
+```tsx
+import { imagePreview } from '@greypan/web-ui'
+
+const gradientImage = (label: string, from: string, to: string) =>
+  `data:image/svg+xml,${encodeURIComponent(
+    `<svg xmlns="http://www.w3.org/2000/svg" width="960" height="640"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop stop-color="${from}"/><stop offset="1" stop-color="${to}"/></linearGradient></defs><rect width="960" height="640" fill="url(#g)"/><text x="480" y="336" fill="#fff" font-family="sans-serif" font-size="64" text-anchor="middle">${label}</text></svg>`
+  )}`
+
+const IMAGES = [
+  { src: gradientImage('First image', '#0a84ff', '#5e5ce6'), alt: 'Example image with a blue gradient' },
+  { src: gradientImage('Second image', '#ff375f', '#ff9f0a'), alt: 'Example image with an orange-red gradient' },
+  { src: gradientImage('Third image', '#30d158', '#0a84ff'), alt: 'Example image with a teal gradient' },
+  { src: gradientImage('Fourth image', '#bf5af2', '#ff375f'), alt: 'Example image with a purple gradient' }
+]
+
+export default function Demo() {
+  return (
+    <web-ui-button onClick={() => imagePreview({ images: IMAGES, swipe: true, nav: true, indicator: true })}>
+      Open and swipe
+    </web-ui-button>
+  )
+}
+```
+
+```vue
+<template>
+  <web-ui-button @click="open">Open and swipe</web-ui-button>
+</template>
+
+<script setup lang="ts">
+import { imagePreview } from '@greypan/web-ui'
+
+const gradientImage = (label: string, from: string, to: string) =>
+  `data:image/svg+xml,${encodeURIComponent(
+    `<svg xmlns="http://www.w3.org/2000/svg" width="960" height="640"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop stop-color="${from}"/><stop offset="1" stop-color="${to}"/></linearGradient></defs><rect width="960" height="640" fill="url(#g)"/><text x="480" y="336" fill="#fff" font-family="sans-serif" font-size="64" text-anchor="middle">${label}</text></svg>`
+  )}`
+
+const IMAGES = [
+  { src: gradientImage('First image', '#0a84ff', '#5e5ce6'), alt: 'Example image with a blue gradient' },
+  { src: gradientImage('Second image', '#ff375f', '#ff9f0a'), alt: 'Example image with an orange-red gradient' },
+  { src: gradientImage('Third image', '#30d158', '#0a84ff'), alt: 'Example image with a teal gradient' },
+  { src: gradientImage('Fourth image', '#bf5af2', '#ff375f'), alt: 'Example image with a purple gradient' }
+]
+
+function open() {
+  imagePreview({ images: IMAGES, swipe: true, nav: true, indicator: true })
+}
+</script>
+```
+
+### No backdrop close
+
+With `noBackdropClose: true`, clicking outside the image no longer closes; press Escape or use the close button in the top-right corner (`closable: true`) instead.
+
+```tsx
+import { imagePreview } from '@greypan/web-ui'
+
+const gradientImage = (label: string, from: string, to: string) =>
+  `data:image/svg+xml,${encodeURIComponent(
+    `<svg xmlns="http://www.w3.org/2000/svg" width="960" height="640"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop stop-color="${from}"/><stop offset="1" stop-color="${to}"/></linearGradient></defs><rect width="960" height="640" fill="url(#g)"/><text x="480" y="336" fill="#fff" font-family="sans-serif" font-size="64" text-anchor="middle">${label}</text></svg>`
+  )}`
+
+const IMAGES = [
+  { src: gradientImage('First image', '#0a84ff', '#5e5ce6'), alt: 'Example image with a blue gradient' },
+  { src: gradientImage('Second image', '#ff375f', '#ff9f0a'), alt: 'Example image with an orange-red gradient' },
+  { src: gradientImage('Third image', '#30d158', '#0a84ff'), alt: 'Example image with a teal gradient' },
+  { src: gradientImage('Fourth image', '#bf5af2', '#ff375f'), alt: 'Example image with a purple gradient' }
+]
+
+export default function Demo() {
+  return (
+    <web-ui-button onClick={() => imagePreview({ images: IMAGES, noBackdropClose: true, closable: true })}>
+      Open (backdrop does not close)
+    </web-ui-button>
+  )
+}
+```
+
+```vue
+<template>
+  <web-ui-button @click="open">Open (backdrop does not close)</web-ui-button>
+</template>
+
+<script setup lang="ts">
+import { imagePreview } from '@greypan/web-ui'
+
+const gradientImage = (label: string, from: string, to: string) =>
+  `data:image/svg+xml,${encodeURIComponent(
+    `<svg xmlns="http://www.w3.org/2000/svg" width="960" height="640"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop stop-color="${from}"/><stop offset="1" stop-color="${to}"/></linearGradient></defs><rect width="960" height="640" fill="url(#g)"/><text x="480" y="336" fill="#fff" font-family="sans-serif" font-size="64" text-anchor="middle">${label}</text></svg>`
+  )}`
+
+const IMAGES = [
+  { src: gradientImage('First image', '#0a84ff', '#5e5ce6'), alt: 'Example image with a blue gradient' },
+  { src: gradientImage('Second image', '#ff375f', '#ff9f0a'), alt: 'Example image with an orange-red gradient' },
+  { src: gradientImage('Third image', '#30d158', '#0a84ff'), alt: 'Example image with a teal gradient' },
+  { src: gradientImage('Fourth image', '#bf5af2', '#ff375f'), alt: 'Example image with a purple gradient' }
+]
+
+function open() {
+  imagePreview({ images: IMAGES, noBackdropClose: true, closable: true })
+}
+</script>
+```
+
 ### Handle
+
+The handle is the controller for this preview instance: `imagePreview()` returns it when the preview opens, and paging, zooming, and closing all go through it.
 
 The handle's `index`, `scale`, `images`, and `closed` are read-only members; after a method call the new values are readable synchronously. Gestures and keyboard operations inside the preview do not call back to the outside; read them yourself when needed.
 
@@ -137,7 +293,8 @@ const gradientImage = (label: string, from: string, to: string) =>
 const IMAGES = [
   { src: gradientImage('First image', '#0a84ff', '#5e5ce6'), alt: 'Example image with a blue gradient' },
   { src: gradientImage('Second image', '#ff375f', '#ff9f0a'), alt: 'Example image with an orange-red gradient' },
-  { src: gradientImage('Third image', '#30d158', '#0a84ff'), alt: 'Example image with a teal gradient' }
+  { src: gradientImage('Third image', '#30d158', '#0a84ff'), alt: 'Example image with a teal gradient' },
+  { src: gradientImage('Fourth image', '#bf5af2', '#ff375f'), alt: 'Example image with a purple gradient' }
 ]
 
 export default function Demo() {
@@ -181,7 +338,8 @@ const gradientImage = (label: string, from: string, to: string) =>
 const IMAGES = [
   { src: gradientImage('First image', '#0a84ff', '#5e5ce6'), alt: 'Example image with a blue gradient' },
   { src: gradientImage('Second image', '#ff375f', '#ff9f0a'), alt: 'Example image with an orange-red gradient' },
-  { src: gradientImage('Third image', '#30d158', '#0a84ff'), alt: 'Example image with a teal gradient' }
+  { src: gradientImage('Third image', '#30d158', '#0a84ff'), alt: 'Example image with a teal gradient' },
+  { src: gradientImage('Fourth image', '#bf5af2', '#ff375f'), alt: 'Example image with a purple gradient' }
 ]
 
 const status = ref('Not opened yet')
@@ -289,7 +447,7 @@ While this gesture is active it takes over the whole drag: at 1x a horizontal dr
 
 Because 1x can pan as well, `resetZoom()` is available both when "zoomed" and when "panned"—the reset button in the toolbar is clickable for a panned 1x image too.
 
-A close request does not destroy the native dialog immediately: it stays in the top layer until the exit transition ends, and only then is `dialog.close()` called, after which the host is removed from the DOM and `closed` resolves. While open, page scrolling is locked unless `noScrollLock` is `true`.
+A close request does not destroy the native dialog immediately: it stays in the top layer until the exit transition ends, and only then is `dialog.close()` called, after which the host is removed from the DOM and `closed` resolves. While open, page scrolling is locked by default. The preview is a full-viewport modal surface, and wheel and touch gestures are consumed by zooming and panning; `noScrollLock` therefore mainly affects page-level scrolling that the preview does not consume (for example PageDown, programmatic scrolling, or an outer container). It does not let wheel events pass through to scroll the page.
 
 ### CSS Custom Properties
 

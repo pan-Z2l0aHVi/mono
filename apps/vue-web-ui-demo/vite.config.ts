@@ -120,7 +120,13 @@ export default defineConfig({
     // 机制（下面是解释，不是本文件验证过的判据）：重打包让页面同时存在两份 Vue runtime，dev 模式下
     // 冻结的 `EMPTY_OBJ` 两边不是同一个对象，`i.refs === EMPTY_OBJ` 认不出对面那份，转而往对面那份
     // 冻结对象上 `defineProperty`，带模板 ref 的示例整块挂不上。
-    include: ['pinia', ...webUiOptimizeDeps]
+    include: [
+      'pinia',
+      ...webUiOptimizeDeps,
+      // changelog 页在浏览器里通过 md-to-comp 的 markdown 子入口渲染 CHANGELOG.md；
+      // 漏列会在测试中段触发依赖重优化整页 reload。
+      '@greypan/md-to-comp/markdown'
+    ]
   },
   test: {
     // Vitest 5 把默认附件目录从 `.vitest-attachments` 改成 `.vitest/attachments`；

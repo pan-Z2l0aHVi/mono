@@ -11,6 +11,7 @@ import type { WebUiOption } from '@/components/option'
 import { lucideChevronDown } from '@/icons'
 import { installPointerFocusSuppression } from '@/shared/focus/pointer-focus'
 import { FormAssociated, defineFormAssociation, FormAssociationController } from '@/shared/form-association'
+import { normalizeLiteral } from '@/shared/normalize'
 import { dispatchOpenChangeEvent } from '@/shared/open-state'
 import {
   createComboboxOpenController,
@@ -39,6 +40,21 @@ export class WebUiSelect extends FormAssociated(LitElement) {
 
   @property({ type: String, reflect: true }) placeholder = ''
   @property({ type: Boolean, reflect: true }) disabled = false
+
+  /**
+   * 触发器外观：`label` 为默认的带选中文本与箭头；`icon` 收成方形图标触发器，
+   * 隐藏箭头并居中 `trigger` slot 内容。图标模式需要消费方提供 `trigger` slot 与 `aria-label`。
+   */
+  @property({ type: String, reflect: true })
+  get trigger(): 'label' | 'icon' {
+    return this._trigger
+  }
+  set trigger(v: string) {
+    const old = this._trigger
+    this._trigger = normalizeLiteral(v, ['label', 'icon'] as const, 'label')
+    this.requestUpdate('trigger', old)
+  }
+  private _trigger: 'label' | 'icon' = 'label'
   @property({ type: Boolean, reflect: true }) required = false
   @property({ type: Boolean, reflect: true }) portal = false
   @property({ type: Boolean, reflect: true, attribute: 'no-scroll-lock' }) noScrollLock = false

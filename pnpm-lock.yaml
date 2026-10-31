@@ -185,6 +185,9 @@ catalogs:
     '@iconify-json/andrsrxn':
       specifier: ^1.2.2
       version: 1.2.2
+    '@iconify-json/ant-design':
+      specifier: ^1.2.9
+      version: 1.2.9
     '@iconify-json/bi':
       specifier: ^1.2.7
       version: 1.2.7
@@ -194,6 +197,9 @@ catalogs:
     '@iconify-json/heroicons':
       specifier: ^1.2.3
       version: 1.2.3
+    '@iconify-json/ic':
+      specifier: ^1.2.4
+      version: 1.2.4
     '@iconify-json/jam':
       specifier: ^1.2.3
       version: 1.2.3
@@ -1027,6 +1033,9 @@ importers:
       '@iconify-json/andrsrxn':
         specifier: 'catalog:'
         version: 1.2.2
+      '@iconify-json/ant-design':
+        specifier: 'catalog:'
+        version: 1.2.9
       '@iconify-json/bi':
         specifier: 'catalog:'
         version: 1.2.7
@@ -1036,6 +1045,9 @@ importers:
       '@iconify-json/heroicons':
         specifier: 'catalog:'
         version: 1.2.3
+      '@iconify-json/ic':
+        specifier: 'catalog:'
+        version: 1.2.4
       '@iconify-json/jam':
         specifier: 'catalog:'
         version: 1.2.3
@@ -2125,6 +2137,9 @@ packages:
   '@iconify-json/andrsrxn@1.2.2':
     resolution: {integrity: sha512-ykv0OHh694O4EhIk1ARsB7Z/VQWzUHTUpdTVECwCYys/GLhEcUFVuADpDj6WH3w5DZM5yjyTjnZ/4IXKdCOZ/Q==}
 
+  '@iconify-json/ant-design@1.2.9':
+    resolution: {integrity: sha512-cAP5tQXUj05Hb0o3nyjEzYofuU5luRm6IV4FNZ3KQkG2cfzvmM34WYJuNLA3/sWqfE0cHSaaaEGvIdAUq+bN2Q==}
+
   '@iconify-json/bi@1.2.7':
     resolution: {integrity: sha512-IPz8WNxmLkH1I9msl+0Q4OnmjjvP4uU0Z61a4i4sqonB6vKSbMGUWuGn8/YuuszlReVj8rf+3gNv5JU8Xoljyg==}
 
@@ -2133,6 +2148,9 @@ packages:
 
   '@iconify-json/heroicons@1.2.3':
     resolution: {integrity: sha512-n+vmCEgTesRsOpp5AB5ILB6srsgsYK+bieoQBNlafvoEhjVXLq8nIGN4B0v/s4DUfa0dOrjwE/cKJgIKdJXOEg==}
+
+  '@iconify-json/ic@1.2.4':
+    resolution: {integrity: sha512-pzPMmrZrBQuwT7nmtrYdkttun8KalRGgZPIL1Ny9KpF2zjRGIUPN+npTfuD3lrgO/OnSwAoJWuekQwBpt/Cqrw==}
 
   '@iconify-json/jam@1.2.3':
     resolution: {integrity: sha512-Kp+OxTzB8xvbaMyIoqEqB96Ik4zv7uo5y1yavjAee0N1K/6u+PCOBwEi+Djn3WJ2trCrNZk+qYw1BJUsZC41Eg==}
@@ -7685,6 +7703,10 @@ snapshots:
     dependencies:
       '@iconify/types': 2.0.0
 
+  '@iconify-json/ant-design@1.2.9':
+    dependencies:
+      '@iconify/types': 2.0.0
+
   '@iconify-json/bi@1.2.7':
     dependencies:
       '@iconify/types': 2.0.0
@@ -7694,6 +7716,10 @@ snapshots:
       '@iconify/types': 2.0.0
 
   '@iconify-json/heroicons@1.2.3':
+    dependencies:
+      '@iconify/types': 2.0.0
+
+  '@iconify-json/ic@1.2.4':
     dependencies:
       '@iconify/types': 2.0.0
 

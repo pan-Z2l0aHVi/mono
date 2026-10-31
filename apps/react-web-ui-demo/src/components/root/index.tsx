@@ -1,6 +1,15 @@
 import appScrollbarsOptions from '@greypan/app-scrollbars'
 import { toast, type WebUiLayout, type WebUiSelect } from '@greypan/web-ui'
-import { lucideX } from '@greypan/web-ui/icons'
+import {
+  antDesignSyncOutlined,
+  icOutlineMotionPhotosOff,
+  icOutlineMotionPhotosOn,
+  lucideContrast,
+  lucideLanguages,
+  lucideMoon,
+  lucideSun,
+  lucideX
+} from '@greypan/web-ui/icons'
 import { Link, Outlet, useRouter, useRouterState } from '@tanstack/react-router'
 import {
   OverlayScrollbarsComponent,
@@ -88,41 +97,89 @@ interface NavItem {
   label: string
 }
 
-const navItems: NavItem[] = [
-  { path: '/home', label: 'Home' },
-  { path: '/components/avatar', label: 'Avatar' },
-  { path: '/components/badge', label: 'Badge' },
-  { path: '/components/button', label: 'Button' },
-  { path: '/components/icon', label: 'Icon' },
-  { path: '/components/input', label: 'Input' },
-  { path: '/components/textarea', label: 'Textarea' },
-  { path: '/components/editable-text', label: 'EditableText' },
-  { path: '/components/theme', label: 'Theme' },
-  { path: '/components/input-number', label: 'InputNumber' },
-  { path: '/components/select', label: 'Select' },
-  { path: '/components/autocomplete', label: 'Autocomplete' },
-  { path: '/components/dropdown', label: 'Dropdown' },
-  { path: '/components/collapse', label: 'Collapse' },
-  { path: '/components/dialog', label: 'Dialog' },
-  { path: '/components/drawer', label: 'Drawer' },
-  { path: '/components/image-preview', label: 'ImagePreview' },
-  { path: '/components/empty', label: 'Empty' },
-  { path: '/components/middle-ellipsis', label: 'MiddleEllipsis' },
-  { path: '/components/tooltip', label: 'Tooltip' },
-  { path: '/components/switch', label: 'Switch' },
-  { path: '/components/slider', label: 'Slider' },
-  { path: '/components/radio', label: 'Radio' },
-  { path: '/components/checkbox', label: 'Checkbox' },
-  { path: '/components/segmented', label: 'Segmented' },
-  { path: '/components/spinner', label: 'Spinner' },
-  { path: '/components/progress', label: 'Progress' },
-  { path: '/components/popover', label: 'Popover' },
-  { path: '/components/context-menu', label: 'ContextMenu' },
-  { path: '/components/toast', label: 'Toast' },
-  { path: '/components/svg-draw-lines', label: 'SVGDrawLines' },
-  { path: '/components/back-top', label: 'BackTop' },
-  { path: '/components/layout', label: 'Layout' }
+type NavSectionId = 'general' | 'layout' | 'form' | 'display' | 'feedback'
+
+interface NavSection {
+  id: NavSectionId
+  items: NavItem[]
+}
+
+const navSections: NavSection[] = [
+  {
+    id: 'general',
+    items: [
+      { path: '/components/button', label: 'Button' },
+      { path: '/components/icon', label: 'Icon' }
+    ]
+  },
+  {
+    id: 'layout',
+    items: [
+      { path: '/components/layout', label: 'Layout' },
+      { path: '/components/back-top', label: 'BackTop' },
+      { path: '/components/theme', label: 'Theme' }
+    ]
+  },
+  {
+    id: 'form',
+    items: [
+      { path: '/components/input', label: 'Input' },
+      { path: '/components/textarea', label: 'Textarea' },
+      { path: '/components/input-number', label: 'InputNumber' },
+      { path: '/components/select', label: 'Select' },
+      { path: '/components/autocomplete', label: 'Autocomplete' },
+      { path: '/components/dropdown', label: 'Dropdown' },
+      { path: '/components/switch', label: 'Switch' },
+      { path: '/components/slider', label: 'Slider' },
+      { path: '/components/radio', label: 'Radio' },
+      { path: '/components/checkbox', label: 'Checkbox' },
+      { path: '/components/segmented', label: 'Segmented' }
+    ]
+  },
+  {
+    id: 'display',
+    items: [
+      { path: '/components/collapse', label: 'Collapse' },
+      { path: '/components/editable-text', label: 'EditableText' },
+      { path: '/components/empty', label: 'Empty' },
+      { path: '/components/middle-ellipsis', label: 'MiddleEllipsis' },
+      { path: '/components/svg-draw-lines', label: 'SVGDrawLines' },
+      { path: '/components/avatar', label: 'Avatar' },
+      { path: '/components/badge', label: 'Badge' }
+    ]
+  },
+  {
+    id: 'feedback',
+    items: [
+      { path: '/components/dialog', label: 'Dialog' },
+      { path: '/components/drawer', label: 'Drawer' },
+      { path: '/components/tooltip', label: 'Tooltip' },
+      { path: '/components/popover', label: 'Popover' },
+      { path: '/components/context-menu', label: 'ContextMenu' },
+      { path: '/components/toast', label: 'Toast' },
+      { path: '/components/image-preview', label: 'ImagePreview' },
+      { path: '/components/spinner', label: 'Spinner' },
+      { path: '/components/progress', label: 'Progress' }
+    ]
+  }
 ]
+
+const navSectionTitleClass = 'px-2.5 pt-3 pb-1 text-[12px] font-medium tracking-wide text-(--wui-color-text-secondary)'
+
+function NavSectionTitle({ id }: { id: NavSectionId }) {
+  switch (id) {
+    case 'general':
+      return <>通用</>
+    case 'layout':
+      return <>布局</>
+    case 'form':
+      return <>表单</>
+    case 'display':
+      return <>展示</>
+    case 'feedback':
+      return <>反馈</>
+  }
+}
 
 // active 底色浅色取设计给定的 #d5d7d7；深色不跟——sidebar 在深色是 #2c2c2e，亮灰会读成一条高亮带，仍走 control 档。
 const navItemClass =
@@ -280,6 +337,7 @@ export function Root() {
           {routeTitle ? <title>{routeTitle}</title> : null}
           <web-ui-layout
             ref={layoutRef}
+            sidebarCollapsible
             header-glow
             sidebarCollapsed={sidebarCollapsed}
             sidebarOpen={sidebarOpen}
@@ -315,11 +373,23 @@ export function Root() {
               className="flex h-full w-full items-center justify-end gap-4 px-4 py-2 mobile:grid mobile:w-[calc(100vw-52px)] mobile:grid-cols-3 mobile:gap-1.5 mobile:px-2 mobile:py-1"
             >
               <web-ui-select
+                trigger="icon"
                 value={themeMotion}
-                className="[--wui-input-width:160px] mobile:w-full mobile:[--wui-input-width:100%]"
+                className="justify-self-center"
                 aria-label="全局动效"
                 onChange={updateThemeMotion}
               >
+                <web-ui-icon
+                  slot="trigger"
+                  icon={
+                    themeMotion === 'full'
+                      ? icOutlineMotionPhotosOn
+                      : themeMotion === 'reduced'
+                        ? icOutlineMotionPhotosOff
+                        : antDesignSyncOutlined
+                  }
+                  size={18}
+                ></web-ui-icon>
                 <web-ui-option value="full" label="完整动效">
                   完整动效
                 </web-ui-option>
@@ -331,11 +401,19 @@ export function Root() {
                 </web-ui-option>
               </web-ui-select>
               <web-ui-select
+                trigger="icon"
                 value={themeAppearance}
-                className="[--wui-input-width:160px] mobile:w-full mobile:[--wui-input-width:100%]"
+                className="justify-self-center"
                 aria-label="全局主题"
                 onChange={updateThemeAppearance}
               >
+                <web-ui-icon
+                  slot="trigger"
+                  icon={
+                    themeAppearance === 'light' ? lucideSun : themeAppearance === 'dark' ? lucideMoon : lucideContrast
+                  }
+                  size={18}
+                ></web-ui-icon>
                 {/* 外观名称由 Wuchale 壳文案统一翻译成 Light / Dark。 */}
                 <web-ui-option value="light" label="浅色模式">
                   浅色模式
@@ -348,13 +426,15 @@ export function Root() {
                 </web-ui-option>
               </web-ui-select>
               <web-ui-select
+                trigger="icon"
                 value={locale}
                 disabled={localePending}
                 aria-busy={localePending ? 'true' : 'false'}
-                className="[--wui-input-width:120px] mobile:w-full mobile:[--wui-input-width:100%]"
+                className="justify-self-center"
                 aria-label="全局语言"
                 onChange={updateLocale}
               >
+                <web-ui-icon slot="trigger" icon={lucideLanguages} size={18}></web-ui-icon>
                 <web-ui-option value="zh-CN" label={ZH_CN_LABEL}>
                   {ZH_CN_LABEL}
                 </web-ui-option>
@@ -374,33 +454,89 @@ export function Root() {
               aria-label="应用导航"
             >
               <nav className="grid gap-1" aria-label="主导航">
-                {navItems.map(item => {
-                  const active = isNavActive(pathname, item.path)
-                  return (
-                    <Link
-                      key={item.path}
-                      to={item.path}
-                      className={
-                        navItemClass +
-                        (active ? '' : ' hover:bg-black/4 dark:hover:bg-white/6') +
-                        (navCollapsed ? ' justify-center' : '')
-                      }
-                      data-active={active}
-                      aria-current={active ? 'page' : undefined}
-                      aria-label={item.label}
-                      title={navCollapsed ? item.label : undefined}
-                      onClick={() => setSidebarOpen(false)}
+                <Link
+                  to="/home"
+                  className={
+                    navItemClass +
+                    (isNavActive(pathname, '/home') ? '' : ' hover:bg-black/4 dark:hover:bg-white/6') +
+                    (navCollapsed ? ' justify-center' : '')
+                  }
+                  data-active={isNavActive(pathname, '/home')}
+                  aria-current={isNavActive(pathname, '/home') ? 'page' : undefined}
+                  aria-label="组件总览"
+                  title="组件总览"
+                  onClick={() => setSidebarOpen(false)}
+                >
+                  <span
+                    className={navCollapsed ? 'w-full truncate text-center text-sm' : 'min-w-0 flex-1 truncate text-sm'}
+                  >
+                    组件总览
+                  </span>
+                </Link>
+                <Link
+                  to="/changelog"
+                  className={
+                    navItemClass +
+                    (isNavActive(pathname, '/changelog') ? '' : ' hover:bg-black/4 dark:hover:bg-white/6') +
+                    (navCollapsed ? ' justify-center' : '')
+                  }
+                  data-active={isNavActive(pathname, '/changelog')}
+                  aria-current={isNavActive(pathname, '/changelog') ? 'page' : undefined}
+                  aria-label="更新日志"
+                  title="更新日志"
+                  onClick={() => setSidebarOpen(false)}
+                >
+                  <span
+                    className={navCollapsed ? 'w-full truncate text-center text-sm' : 'min-w-0 flex-1 truncate text-sm'}
+                  >
+                    更新日志
+                  </span>
+                </Link>
+                {navSections.map((section, index) => (
+                  <div
+                    key={section.id}
+                    role="group"
+                    aria-labelledby={`nav-section-${section.id}`}
+                    className="grid gap-1"
+                  >
+                    {navCollapsed && index > 0 ? (
+                      <div className="mx-2 my-1 h-px bg-(--wui-color-border)" aria-hidden="true" />
+                    ) : null}
+                    <h2
+                      id={`nav-section-${section.id}`}
+                      className={navSectionTitleClass + (navCollapsed ? ' sr-only' : '')}
                     >
-                      <span
-                        className={
-                          navCollapsed ? 'w-full truncate text-center text-sm' : 'min-w-0 flex-1 truncate text-sm'
-                        }
-                      >
-                        {item.label}
-                      </span>
-                    </Link>
-                  )
-                })}
+                      <NavSectionTitle id={section.id} />
+                    </h2>
+                    {section.items.map(item => {
+                      const active = isNavActive(pathname, item.path)
+                      return (
+                        <Link
+                          key={item.path}
+                          to={item.path}
+                          className={
+                            navItemClass +
+                            (active ? '' : ' hover:bg-black/4 dark:hover:bg-white/6') +
+                            (navCollapsed ? ' justify-center' : '')
+                          }
+                          data-active={active}
+                          aria-current={active ? 'page' : undefined}
+                          aria-label={item.label}
+                          title={navCollapsed ? item.label : undefined}
+                          onClick={() => setSidebarOpen(false)}
+                        >
+                          <span
+                            className={
+                              navCollapsed ? 'w-full truncate text-center text-sm' : 'min-w-0 flex-1 truncate text-sm'
+                            }
+                          >
+                            {item.label}
+                          </span>
+                        </Link>
+                      )
+                    })}
+                  </div>
+                ))}
               </nav>
             </OverlayScrollbarsComponent>
             {/* 正文 gutter 归 shell 所有：`web-ui-layout` 的 main 不带 padding，逐页加会漏页。 */}

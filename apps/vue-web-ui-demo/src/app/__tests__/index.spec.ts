@@ -74,7 +74,7 @@ function navRoot() {
  * 可见文字与 `title` 一起比较，确认桌面 collapsed state 不会泄漏到移动 drawer。
  */
 function navItemState() {
-  const link = navRoot().querySelector('a')
+  const link = navRoot().querySelector('a[aria-label="Button"]')
   if (!link) throw new Error('nav link not found')
   return { text: link.textContent?.trim() ?? '', title: link.getAttribute('title') }
 }

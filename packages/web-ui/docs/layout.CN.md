@@ -135,7 +135,7 @@ export default function Demo() {
 
 `sidebar-collapsed` 是桌面端的受控 collapse 状态：它只把桌面端 aside 收窄到 `collapsed-width`，不影响移动端 Drawer。
 
-桌面端 Toggle 由 layout 自己渲染，Consumer 只负责把 `sidebar-collapsed-change` 的请求值回写。
+只有声明 `sidebar-collapsible` 后 layout 才渲染桌面 Toggle，Consumer 再把 `sidebar-collapsed-change` 的请求值回写。
 
 两条分支渲染的是同一份 `sidebar` 插槽内容，所以内容密度要跟着 collapse 变的 Consumer 必须按 `mobile` 收窄那个条件（例如 `collapsed && !layout.mobile`，或 CSS 的 `web-ui-layout[mobile]`），否则 collapsed state 会一路渲染进 Drawer（issue #195）。
 
@@ -152,6 +152,7 @@ export default function Demo() {
     <div className="flex flex-col gap-3">
       <div className="h-[420px] overflow-auto rounded-lg border border-(--wui-color-border) [--wui-layout-viewport-height:420px]">
         <web-ui-layout
+          sidebarCollapsible
           sidebarCollapsed={collapsed}
           onsidebar-collapsed-change={event => setCollapsed(event.detail.collapsed)}
           sidebarOpen={open}
@@ -181,6 +182,7 @@ export default function Demo() {
       class="h-[420px] overflow-auto rounded-lg border border-(--wui-color-border) [--wui-layout-viewport-height:420px]"
     >
       <web-ui-layout
+        sidebar-collapsible
         :sidebarCollapsed="collapsed"
         @sidebar-collapsed-change="collapsed = $event.detail.collapsed"
         :sidebarOpen="open"
@@ -394,19 +396,20 @@ const mobile = ref(false)
 
 ### Props
 
-| 名称                | 说明                                                                                                                                         | 类型               | 默认值    |
-| ------------------- | -------------------------------------------------------------------------------------------------------------------------------------------- | ------------------ | --------- |
-| `no-sidebar`        | 不渲染任何侧边栏结构：桌面端 aside、collapse Toggle 与 resize handle，移动端 header Toggle 与 Drawer；`sidebar` slot 内容随之不渲染。        | `boolean`          | `false`   |
-| `sidebar-collapsed` | 桌面端侧边栏受控 collapse 状态；只收窄桌面端，不影响移动端 Drawer。                                                                          | `boolean`          | `false`   |
-| `sidebar-open`      | 移动端侧边栏 Drawer 受控打开状态。                                                                                                           | `boolean`          | `false`   |
-| `header-glow`       | 在 header 插槽内容背后显示装饰性晕染。                                                                                                       | `boolean`          | `false`   |
-| `ariaLabels`        | 内置无障碍名（侧栏折叠/展开、调宽、打开导航菜单、主导航）的成组覆盖；未提供的 key 回退内置英文文案，`no-sidebar` 下侧栏相关 key 不参与渲染。 | `LayoutAriaLabels` | —         |
-| `mobile`            | 只读派生值：当前视口是否处于移动端断点及以下；写 attribute 会被恢复，property 赋值不生效。                                                   | `boolean`          | `false`   |
-| `sidebar-width`     | 桌面端和移动端展开时的侧边栏宽度。                                                                                                           | `string`           | `'240px'` |
-| `collapsed-width`   | 桌面端 collapse 时的侧边栏宽度。                                                                                                             | `string`           | `'68px'`  |
-| `sidebar-resizable` | 启用桌面端侧边栏右边缘拖拽调整宽度。                                                                                                         | `boolean`          | `false`   |
-| `sidebar-min-width` | 拖拽调整的下限（px）；默认回退到 `collapsed-width`。                                                                                         | `string`           | —         |
-| `sidebar-max-width` | 拖拽调整的上限（px）；钳制在视口一半以内，内置上限优先。                                                                                     | `string`           | —         |
+| 名称                  | 说明                                                                                                                                         | 类型               | 默认值    |
+| --------------------- | -------------------------------------------------------------------------------------------------------------------------------------------- | ------------------ | --------- |
+| `no-sidebar`          | 不渲染任何侧边栏结构：桌面端 aside、collapse Toggle 与 resize handle，移动端 header Toggle 与 Drawer；`sidebar` slot 内容随之不渲染。        | `boolean`          | `false`   |
+| `sidebar-collapsible` | 渲染桌面端收起 / 展开 Toggle。未声明时侧边栏保持展开宽度，也不产生 `sidebar-collapsed-change` 请求；移动端 Drawer 的 Toggle 不受影响。       | `boolean`          | `false`   |
+| `sidebar-collapsed`   | 桌面端侧边栏受控 collapse 状态；只收窄桌面端，不影响移动端 Drawer。                                                                          | `boolean`          | `false`   |
+| `sidebar-open`        | 移动端侧边栏 Drawer 受控打开状态。                                                                                                           | `boolean`          | `false`   |
+| `header-glow`         | 在 header 插槽内容背后显示装饰性晕染。                                                                                                       | `boolean`          | `false`   |
+| `ariaLabels`          | 内置无障碍名（侧栏折叠/展开、调宽、打开导航菜单、主导航）的成组覆盖；未提供的 key 回退内置英文文案，`no-sidebar` 下侧栏相关 key 不参与渲染。 | `LayoutAriaLabels` | —         |
+| `mobile`              | 只读派生值：当前视口是否处于移动端断点及以下；写 attribute 会被恢复，property 赋值不生效。                                                   | `boolean`          | `false`   |
+| `sidebar-width`       | 桌面端和移动端展开时的侧边栏宽度。                                                                                                           | `string`           | `'240px'` |
+| `collapsed-width`     | 桌面端 collapse 时的侧边栏宽度。                                                                                                             | `string`           | `'68px'`  |
+| `sidebar-resizable`   | 启用桌面端侧边栏右边缘拖拽调整宽度。                                                                                                         | `boolean`          | `false`   |
+| `sidebar-min-width`   | 拖拽调整的下限（px）；默认回退到 `collapsed-width`。                                                                                         | `string`           | —         |
+| `sidebar-max-width`   | 拖拽调整的上限（px）；钳制在视口一半以内，内置上限优先。                                                                                     | `string`           | —         |
 
 ### Events
 

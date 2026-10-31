@@ -16,6 +16,8 @@ catalog:
   '@iconify-json/fluent': ^1.2.58
   '@iconify-json/heroicons': ^1.2.3
   '@iconify-json/jam': ^1.2.3
+  '@iconify-json/ant-design': ^1.2.9
+  '@iconify-json/ic': ^1.2.4
   '@iconify-json/lucide': ^1.2.126
   '@iconify-json/mdi': ^1.2.3
   '@iconify-json/ooui': ^1.2.20

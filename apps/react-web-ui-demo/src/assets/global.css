@@ -87,3 +87,31 @@ body {
     var(--wui-color-focus-ring, color-mix(in srgb, var(--wui-color-accent, #0071e3) 40%, transparent));
   outline-offset: -3px;
 }
+
+/*
+ * 复制成功反馈：`web-ui-svg-draw-lines` 负责描边，这里补一个「放大再回原样」的 scale。
+ * 时长与 example-doc 的 `COPY_FEEDBACK_DURATION`（500ms）对齐，改一处要同步另一处。
+ */
+@keyframes demo-copy-pop {
+  0% {
+    transform: scale(1);
+  }
+
+  40% {
+    transform: scale(1.5);
+  }
+
+  100% {
+    transform: scale(1);
+  }
+}
+
+.demo-copy-pop {
+  animation: demo-copy-pop 500ms ease-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .demo-copy-pop {
+    animation: none;
+  }
+}

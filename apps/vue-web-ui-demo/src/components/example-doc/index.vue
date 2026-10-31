@@ -33,6 +33,9 @@ const FLAVOR_ICONS: Record<Flavor, typeof vueIcon | typeof reactIcon> = { vue: v
 // 写在 body 的字面量里，缺省即可。类名放这里而不是 flavor-icons.ts，是让 Tailwind 在组件源文件里扫到。
 const FLAVOR_ICON_CLASS: Partial<Record<Flavor, string>> = { react: 'text-[#087eae] dark:text-[#61dafb]' }
 
+// 复制成功的描边与 scale 反馈共用同一时长；CSS 里的 `demo-copy-pop` 要同步。
+const COPY_FEEDBACK_DURATION = 500
+
 const props = defineProps<{
   component: string
   /** 预览与默认代码 tab 使用的框架；默认 Vue 站。 */
@@ -63,6 +66,8 @@ const sampleHeadingLevel = computed(() => (props.level === 'secondary' ? 4 : 3))
 const activeFlavors = reactive<Record<string, Flavor>>({})
 const expanded = reactive<Record<string, boolean>>({})
 const copied = ref<{ key: string; ok: boolean } | null>(null)
+// 每次复制都换 key，让成功态的描边与 scale 动画重新挂载、各播一次。
+const copyRun = ref(0)
 let copyTimer: ReturnType<typeof setTimeout> | undefined
 
 onBeforeUnmount(() => clearTimeout(copyTimer))
@@ -201,6 +206,7 @@ async function copyCode(event: Event, key: string) {
   frame?.querySelectorAll('.line-number').forEach(node => node.remove())
   const text = frame?.textContent ?? ''
   copied.value = { key, ok: text !== '' && (await writeClipboard(text)) }
+  copyRun.value += 1
   clearTimeout(copyTimer)
   copyTimer = setTimeout(() => {
     copied.value = null
@@ -313,9 +319,14 @@ function copyAnnouncement(key: string) {
                       :aria-label="copyLabel(sample.id)"
                       @click="copyCode($event, sample.id)"
                     >
-                      <!-- 成功态才包进描边宿主：`web-ui-svg-draw-lines` 在 slot 内容稳定时自动播一次，
-                         所以每次复制都会重新画出勾与圆，而不是淡入一张现成的图。 -->
-                      <web-ui-svg-draw-lines v-if="copyState(sample.id) === 'copied'" :duration="300">
+                      <!-- 成功态才包进描边宿主：`web-ui-svg-draw-lines` 在 slot 内容稳定时自动播一次；
+                         key 跟着每次复制递增，重复复制也会重新挂载并重播描边与 scale。 -->
+                      <web-ui-svg-draw-lines
+                        v-if="copyState(sample.id) === 'copied'"
+                        :key="copyRun"
+                        class="demo-copy-pop"
+                        :duration="COPY_FEEDBACK_DURATION"
+                      >
                         <web-ui-icon
                           :icon="akarIconsCircleCheck"
                           :size="15"

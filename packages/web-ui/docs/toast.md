@@ -99,7 +99,7 @@ export default function Demo() {
               heading: 'Saved',
               message: 'Changes written to the cloud',
               type: 'info',
-              position: 'bottom-right',
+              position: 'top-center',
               duration: 4000,
               closable: true
             })
@@ -109,7 +109,7 @@ export default function Demo() {
         Create a toast with full options
       </web-ui-button>
       <output className="text-sm text-(--wui-color-text-secondary)">
-        id: {id} · position: bottom-right · closes automatically after 4 seconds
+        id: {id} · position: top-center · closes automatically after 4 seconds
       </output>
     </div>
   )
@@ -121,7 +121,7 @@ export default function Demo() {
   <div class="flex flex-col items-start gap-3">
     <web-ui-button @click="notify">Create a toast with full options</web-ui-button>
     <output class="text-sm text-(--wui-color-text-secondary)">
-      id: {{ id }} · position: bottom-right · closes automatically after 4 seconds
+      id: {{ id }} · position: top-center · closes automatically after 4 seconds
     </output>
   </div>
 </template>
@@ -137,7 +137,7 @@ function notify() {
     heading: 'Saved',
     message: 'Changes written to the cloud',
     type: 'info',
-    position: 'bottom-right',
+    position: 'top-center',
     duration: 4000,
     closable: true
   })

@@ -239,62 +239,89 @@ function inspect() {
 
 ### Nested scopes
 
-主题可以层层嵌套，每一层解析自己的 token：内层覆盖外层，离开内层又回到外层的值，两层的 `resolved-appearance` 各自输出。
+主题可以层层嵌套，每一层解析自己的 token：内层覆盖外层，离开内层又回到外层的值，各层的 `resolved-appearance` 各自输出。
 
-`motion` 同样是每层自己的档位、不沿祖先继承，内层不写就是默认的 `system`。它裁的是这一层的过渡时长（`--wui-duration-*`），所以档位差要用动效看得见的控件来摆：两层各放一枚 segmented 与 switch——指示器与滑块的过渡都读本层的 `--wui-duration-trigger`，点一下，外层（`reduced`）瞬移、内层（取 `system`）滑过去。
+`appearance` 也是每层自己的输入。下面的示例每层都有一枚分段控件：改中间层只重绘中间与内层区域，改内层不会碰外侧两层。`motion` 同样是每层自己的档位、不沿祖先继承：外层用 `reduced` 瞬移，中间层用 `full`，内层不写、回退到 `system`。
 
-宿主不生成盒，所以布局（这里的高度间距）要写在作用域内的子元素上，写在 `<web-ui-theme>` 宿主上是空的。
+宿主不生成盒，所以布局（这里的边框、内衬与间距）要写在作用域内的子元素上，写在 `<web-ui-theme>` 宿主上是空的。
 
 ```tsx
+import type { ThemeAppearance } from '@greypan/web-ui'
 import { useState } from 'react'
 
-const sides: { label: string; value: string }[] = [
-  { label: 'A', value: 'a' },
-  { label: 'B', value: 'b' }
+const appearances: { label: string; value: ThemeAppearance }[] = [
+  { label: '浅色模式', value: 'light' },
+  { label: '深色模式', value: 'dark' },
+  { label: '跟随系统', value: 'system' }
 ]
 
 export default function Demo() {
-  const [outerValue, setOuterValue] = useState('a')
-  const [innerValue, setInnerValue] = useState('a')
+  const [outer, setOuter] = useState<ThemeAppearance>('light')
+  const [middle, setMiddle] = useState<ThemeAppearance>('dark')
+  const [inner, setInner] = useState<ThemeAppearance>('system')
 
   return (
-    <web-ui-theme appearance="light" motion="reduced">
-      <div className="rounded-2xl bg-(--wui-color-page) p-4 text-(--wui-color-text)">
-        <p className="m-0 mb-2 text-xs text-(--wui-color-text-secondary)">外层 light / reduced：瞬移</p>
-        <div className="flex flex-wrap items-center gap-3">
+    <web-ui-theme appearance={outer} motion="reduced">
+      <div className="rounded-2xl border border-(--wui-color-border) bg-(--wui-color-page) p-4 text-(--wui-color-text)">
+        <div className="flex flex-col items-start gap-2">
+          <span className="text-xs text-(--wui-color-text-secondary)">第 1 层 · reduced 动效</span>
           <web-ui-segmented
-            value={outerValue}
-            aria-label="外层动效对照"
-            onInput={event => setOuterValue(event.currentTarget.value)}
+            value={outer}
+            aria-label="第 1 层外观"
+            onInput={event => {
+              const next = appearances.find(item => item.value === event.currentTarget.value)
+              if (next) setOuter(next.value)
+            }}
           >
-            {sides.map(item => (
+            {appearances.map(item => (
               <web-ui-segmented-trigger key={item.value} value={item.value}>
                 {item.label}
               </web-ui-segmented-trigger>
             ))}
           </web-ui-segmented>
-          <web-ui-switch></web-ui-switch>
         </div>
 
-        <web-ui-theme appearance="dark">
+        <web-ui-theme appearance={middle} motion="full">
           <div className="mt-3 rounded-2xl border border-(--wui-color-border) bg-(--wui-color-page) p-4 text-(--wui-color-text)">
-            <p className="m-0 mb-2 text-xs text-(--wui-color-text-secondary)">
-              内层 dark / motion 未写，取 system：滑动
-            </p>
-            <div className="flex flex-wrap items-center gap-3">
+            <div className="flex flex-col items-start gap-2">
+              <span className="text-xs text-(--wui-color-text-secondary)">第 2 层 · full 动效</span>
               <web-ui-segmented
-                value={innerValue}
-                aria-label="内层动效对照"
-                onInput={event => setInnerValue(event.currentTarget.value)}
+                value={middle}
+                aria-label="第 2 层外观"
+                onInput={event => {
+                  const next = appearances.find(item => item.value === event.currentTarget.value)
+                  if (next) setMiddle(next.value)
+                }}
               >
-                {sides.map(item => (
+                {appearances.map(item => (
                   <web-ui-segmented-trigger key={item.value} value={item.value}>
                     {item.label}
                   </web-ui-segmented-trigger>
                 ))}
               </web-ui-segmented>
-              <web-ui-switch checked></web-ui-switch>
             </div>
+
+            <web-ui-theme appearance={inner}>
+              <div className="mt-3 rounded-2xl border border-(--wui-color-border) bg-(--wui-color-page) p-4 text-(--wui-color-text)">
+                <div className="flex flex-col items-start gap-2">
+                  <span className="text-xs text-(--wui-color-text-secondary)">第 3 层 · system 动效</span>
+                  <web-ui-segmented
+                    value={inner}
+                    aria-label="第 3 层外观"
+                    onInput={event => {
+                      const next = appearances.find(item => item.value === event.currentTarget.value)
+                      if (next) setInner(next.value)
+                    }}
+                  >
+                    {appearances.map(item => (
+                      <web-ui-segmented-trigger key={item.value} value={item.value}>
+                        {item.label}
+                      </web-ui-segmented-trigger>
+                    ))}
+                  </web-ui-segmented>
+                </div>
+              </div>
+            </web-ui-theme>
           </div>
         </web-ui-theme>
       </div>
@@ -305,39 +332,52 @@ export default function Demo() {
 
 ```vue
 <template>
-  <web-ui-theme appearance="light" motion="reduced">
-    <div class="rounded-2xl bg-(--wui-color-page) p-4 text-(--wui-color-text)">
-      <p class="m-0 mb-2 text-xs text-(--wui-color-text-secondary)">外层 light / reduced：瞬移</p>
-      <div class="flex flex-wrap items-center gap-3">
-        <web-ui-segmented
-          :value="outerValue"
-          aria-label="外层动效对照"
-          @input="outerValue = $event.currentTarget.value"
-        >
-          <web-ui-segmented-trigger v-for="item in sides" :key="item.value" :value="item.value">
+  <web-ui-theme :appearance="outer" motion="reduced">
+    <div class="rounded-2xl border border-(--wui-color-border) bg-(--wui-color-page) p-4 text-(--wui-color-text)">
+      <div class="flex flex-col items-start gap-2">
+        <span class="text-xs text-(--wui-color-text-secondary)">第 1 层 · reduced 动效</span>
+        <web-ui-segmented :value="outer" aria-label="第 1 层外观" @input="outer = pick($event.currentTarget.value)">
+          <web-ui-segmented-trigger v-for="item in appearances" :key="item.value" :value="item.value">
             {{ item.label }}
           </web-ui-segmented-trigger>
         </web-ui-segmented>
-        <web-ui-switch></web-ui-switch>
       </div>
 
-      <web-ui-theme appearance="dark">
+      <web-ui-theme :appearance="middle" motion="full">
         <div
           class="mt-3 rounded-2xl border border-(--wui-color-border) bg-(--wui-color-page) p-4 text-(--wui-color-text)"
         >
-          <p class="m-0 mb-2 text-xs text-(--wui-color-text-secondary)">内层 dark / motion 未写，取 system：滑动</p>
-          <div class="flex flex-wrap items-center gap-3">
+          <div class="flex flex-col items-start gap-2">
+            <span class="text-xs text-(--wui-color-text-secondary)">第 2 层 · full 动效</span>
             <web-ui-segmented
-              :value="innerValue"
-              aria-label="内层动效对照"
-              @input="innerValue = $event.currentTarget.value"
+              :value="middle"
+              aria-label="第 2 层外观"
+              @input="middle = pick($event.currentTarget.value)"
             >
-              <web-ui-segmented-trigger v-for="item in sides" :key="item.value" :value="item.value">
+              <web-ui-segmented-trigger v-for="item in appearances" :key="item.value" :value="item.value">
                 {{ item.label }}
               </web-ui-segmented-trigger>
             </web-ui-segmented>
-            <web-ui-switch checked></web-ui-switch>
           </div>
+
+          <web-ui-theme :appearance="inner">
+            <div
+              class="mt-3 rounded-2xl border border-(--wui-color-border) bg-(--wui-color-page) p-4 text-(--wui-color-text)"
+            >
+              <div class="flex flex-col items-start gap-2">
+                <span class="text-xs text-(--wui-color-text-secondary)">第 3 层 · system 动效</span>
+                <web-ui-segmented
+                  :value="inner"
+                  aria-label="第 3 层外观"
+                  @input="inner = pick($event.currentTarget.value)"
+                >
+                  <web-ui-segmented-trigger v-for="item in appearances" :key="item.value" :value="item.value">
+                    {{ item.label }}
+                  </web-ui-segmented-trigger>
+                </web-ui-segmented>
+              </div>
+            </div>
+          </web-ui-theme>
         </div>
       </web-ui-theme>
     </div>
@@ -345,15 +385,22 @@ export default function Demo() {
 </template>
 
 <script setup lang="ts">
+import type { ThemeAppearance } from '@greypan/web-ui'
 import { ref } from 'vue'
 
-const sides = [
-  { label: 'A', value: 'a' },
-  { label: 'B', value: 'b' }
-] as const
+const appearances: { label: string; value: ThemeAppearance }[] = [
+  { label: '浅色模式', value: 'light' },
+  { label: '深色模式', value: 'dark' },
+  { label: '跟随系统', value: 'system' }
+]
 
-const outerValue = ref('a')
-const innerValue = ref('a')
+const outer = ref<ThemeAppearance>('light')
+const middle = ref<ThemeAppearance>('dark')
+const inner = ref<ThemeAppearance>('system')
+
+function pick(value: string): ThemeAppearance {
+  return appearances.find(item => item.value === value)?.value ?? 'light'
+}
 </script>
 ```
 
@@ -835,7 +882,7 @@ System 配色模式跟随 `prefers-color-scheme`。
 | `--wui-layer-menu`           | menu/浮动 panel  | `100`  |
 | `--wui-layer-menu-nested`    | 嵌套 menu        | `110`  |
 | `--wui-layer-toast`          | Toast            | `200`  |
-| `--wui-layer-loading`        | 阻塞式 Loading   | `300`  |
+| `--wui-layer-loading`        | 加载提示         | `300`  |
 
 ### 动效 token
 

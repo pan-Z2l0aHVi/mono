@@ -38,6 +38,13 @@ declare module 'vue-router/auto-routes' {
       { all: ParamValue<false> },
       | never
     >,
+    '/changelog': RouteRecordInfo<
+      '/changelog',
+      '/changelog',
+      Record<never, never>,
+      Record<never, never>,
+      | never
+    >,
     '/components/autocomplete': RouteRecordInfo<
       '/components/autocomplete',
       '/components/autocomplete',
@@ -285,6 +292,14 @@ declare module 'vue-router/auto-routes' {
     'src/pages/[...all]/index.vue': {
       routes:
         | '/[...all]/'
+      views:
+        | never
+      pathParamNames:
+        | never
+    }
+    'src/pages/changelog.vue': {
+      routes:
+        | '/changelog'
       views:
         | never
       pathParamNames:

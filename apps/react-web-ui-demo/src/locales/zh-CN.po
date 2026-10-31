@@ -38,14 +38,6 @@ msgstr "展开代码"
 msgid "示例"
 msgstr "示例"
 
-#: src/routes/home/-component.tsx
-msgid "查看演示 →"
-msgstr "查看演示 →"
-
-#: src/routes/home/-component.tsx
-msgid "基于 Web Components 的跨框架现代 UI 组件库。一套轻量、精致的核心设计系统，原生支持 Vue、React 以及任意前端技术栈。"
-msgstr "基于 Web Components 的跨框架现代 UI 组件库。一套轻量、精致的核心设计系统，原生支持 Vue、React 以及任意前端技术栈。"
-
 #: src/components/not-found/index.tsx
 msgid "你要找的页面不存在"
 msgstr "你要找的页面不存在"
@@ -92,36 +84,8 @@ msgid "应用导航"
 msgstr "应用导航"
 
 #: src/routes/home/-component.tsx
-msgid "变体、尺寸、图标与加载状态"
-msgstr "变体、尺寸、图标与加载状态"
-
-#: src/routes/home/-component.tsx
-msgid "遵循无障碍规范的模态对话框行为"
-msgstr "遵循无障碍规范的模态对话框行为"
-
-#: src/routes/home/-component.tsx
-msgid "手势拖拽关闭与浮动卡片形态"
-msgstr "手势拖拽关闭与浮动卡片形态"
-
-#: src/routes/home/-component.tsx
-msgid "深浅外观切换与减弱动效"
-msgstr "深浅外观切换与减弱动效"
-
-#: src/routes/home/-component.tsx
-msgid "基于 Floating UI 的下拉浮层与选项"
-msgstr "基于 Floating UI 的下拉浮层与选项"
-
-#: src/routes/home/-component.tsx
 msgid "轻量、响应式的全局通知"
 msgstr "轻量、响应式的全局通知"
-
-#: src/routes/home/-component.tsx
-msgid "确定进度与不可确定状态"
-msgstr "确定进度与不可确定状态"
-
-#: src/routes/home/-component.tsx
-msgid "受控输入、清除与前缀后缀"
-msgstr "受控输入、清除与前缀后缀"
 
 #: src/components/root/root-error-fallback/index.tsx
 msgid "出了点问题"
@@ -134,26 +98,6 @@ msgstr "重试"
 #: src/components/example-doc/index.tsx
 msgid "示例文档"
 msgstr "示例文档"
-
-#: src/routes/home/-component.tsx
-msgid "Web Components 原生"
-msgstr "Web Components 原生"
-
-#: src/routes/home/-component.tsx
-msgid "跨框架无缝适配"
-msgstr "跨框架无缝适配"
-
-#: src/routes/home/-component.tsx
-msgid "语义化设计 Token"
-msgstr "语义化设计 Token"
-
-#: src/routes/home/-component.tsx
-msgid "深浅色 & 动效偏好"
-msgstr "深浅色 & 动效偏好"
-
-#: src/routes/home/-component.tsx
-msgid "常用组件快速预览"
-msgstr "常用组件快速预览"
 
 #: src/components/root/index.tsx
 msgid "关闭横幅"
@@ -176,3 +120,164 @@ msgstr "浅色模式"
 #: src/components/root/index.tsx
 msgid "深色模式"
 msgstr "深色模式"
+
+#: src/routes/home/-component.tsx
+msgid "基础控件"
+msgstr "基础控件"
+
+#: src/routes/home/-component.tsx
+msgid "查看演示 →"
+msgstr "查看演示 →"
+
+#: src/routes/home/-component.tsx
+msgid "交互与浮层"
+msgstr "交互与浮层"
+
+#: src/routes/home/-component.tsx
+msgid "丝滑动效"
+msgstr "丝滑动效"
+
+#: src/routes/home/-component.tsx
+msgid "命令式组件"
+msgstr "命令式组件"
+
+#: src/routes/home/-component.tsx
+msgid "加载中的等待提示"
+msgstr "加载中的等待提示"
+
+#: src/routes/home/-component.tsx
+msgid "响应式布局"
+msgstr "响应式布局"
+
+#: src/routes/home/-component.tsx
+msgid "Web Components"
+msgstr "Web Components"
+
+#: src/routes/home/-component.tsx
+msgid "无障碍"
+msgstr "无障碍"
+
+#: src/routes/home/-component.tsx
+msgid "快速预览"
+msgstr "快速预览"
+
+#: src/routes/home/-component.tsx
+msgid "以 Web Components 为内核的跨框架 UI 组件库。轻量、精致，适配 React、Vue。"
+msgstr "以 Web Components 为内核的跨框架 UI 组件库。轻量、精致，适配 React、Vue。"
+
+#: src/routes/home/-component.tsx
+msgid "跨框架一致"
+msgstr "跨框架一致"
+
+#: src/routes/home/-component.tsx
+msgid "键盘友好"
+msgstr "键盘友好"
+
+#: src/routes/home/-component.tsx
+msgid "点击、输入、选择、切换"
+msgstr "点击、输入、选择、切换"
+
+#: src/routes/home/-component.tsx
+msgid "变体、尺寸、图标、加载状态"
+msgstr "变体、尺寸、图标、加载状态"
+
+#: src/routes/home/-component.tsx
+msgid "输入、清除、前后缀"
+msgstr "输入、清除、前后缀"
+
+#: src/routes/home/-component.tsx
+msgid "开关状态、拖拽切换"
+msgstr "开关状态、拖拽切换"
+
+#: src/routes/home/-component.tsx
+msgid "分段选择、拖拽切换"
+msgstr "分段选择、拖拽切换"
+
+#: src/routes/home/-component.tsx
+msgid "对话框、抽屉、浮层"
+msgstr "对话框、抽屉、浮层"
+
+#: src/routes/home/-component.tsx
+msgid "弹窗、确认、信息展示"
+msgstr "弹窗、确认、信息展示"
+
+#: src/routes/home/-component.tsx
+msgid "侧滑面板、拖拽关闭"
+msgstr "侧滑面板、拖拽关闭"
+
+#: src/routes/home/-component.tsx
+msgid "下拉选择、键盘导航"
+msgstr "下拉选择、键盘导航"
+
+#: src/routes/home/-component.tsx
+msgid "悬停提示、焦点说明"
+msgstr "悬停提示、焦点说明"
+
+#: src/routes/home/-component.tsx
+msgid "函数调用触发的全局反馈"
+msgstr "函数调用触发的全局反馈"
+
+#: src/routes/home/-component.tsx
+msgid "多图预览、滑动切换、手势缩放"
+msgstr "多图预览、滑动切换、手势缩放"
+
+#: src/routes/home/-component.tsx
+msgid "应用基础"
+msgstr "应用基础"
+
+#: src/routes/home/-component.tsx
+msgid "页面骨架、外观偏好"
+msgstr "页面骨架、外观偏好"
+
+#: src/routes/home/-component.tsx
+msgid "深浅外观、动效偏好"
+msgstr "深浅外观、动效偏好"
+
+#: src/routes/home/-component.tsx
+msgid "TypeScript 类型安全"
+msgstr "TypeScript 类型安全"
+
+#: src/routes/home/-component.tsx
+msgid "原子化组件"
+msgstr "原子化组件"
+
+#: src/routes/home/-component.tsx
+msgid "响应式设计"
+msgstr "响应式设计"
+
+#: src/components/root/index.tsx
+msgid "通用"
+msgstr "通用"
+
+#: src/components/root/index.tsx
+msgid "布局"
+msgstr "布局"
+
+#: src/components/root/index.tsx
+msgid "表单"
+msgstr "表单"
+
+#: src/components/root/index.tsx
+msgid "展示"
+msgstr "展示"
+
+#: src/components/root/index.tsx
+msgid "反馈"
+msgstr "反馈"
+
+#: src/components/root/index.tsx
+#: src/components/root/index.tsx
+#: src/components/root/index.tsx
+msgid "组件总览"
+msgstr "组件总览"
+
+#: src/components/changelog/index.tsx
+#: src/components/root/index.tsx
+#: src/components/root/index.tsx
+#: src/components/root/index.tsx
+msgid "更新日志"
+msgstr "更新日志"
+
+#: src/components/changelog/index.tsx
+msgid "组件库各版本的变更记录。"
+msgstr "组件库各版本的变更记录。"

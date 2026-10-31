@@ -1,6 +1,7 @@
 import '@/assets/global.css'
 
-import { toast, type WebUiLayout, type WebUiToast } from '@greypan/web-ui'
+import { toast, type WebUiIcon, type WebUiLayout, type WebUiToast } from '@greypan/web-ui'
+import { antDesignSyncOutlined, icOutlineMotionPhotosOn, lucideContrast, lucideSun } from '@greypan/web-ui/icons'
 import { createMemoryHistory, createRootRoute, createRoute, createRouter, RouterProvider } from '@tanstack/react-router'
 import { cleanup, render, waitFor } from '@testing-library/react'
 import { act } from 'react'
@@ -175,6 +176,47 @@ describe('应用外壳（浏览器）：导航 collapsed state 不跨视口泄�
     await changeViewport(DESKTOP_VIEWPORT)
   })
 
+  it('导航按类别分组并显示中文小标题', async () => {
+    await mountAppShell()
+    expect([...navRoot().querySelectorAll('h2')].map(heading => heading.textContent?.trim())).toEqual([
+      '通用',
+      '布局',
+      '表单',
+      '展示',
+      '反馈'
+    ])
+    expect(
+      [...navRoot().querySelectorAll('[role="group"]')].map(group => [
+        group.querySelector('h2')?.textContent?.trim(),
+        [...group.querySelectorAll('a')].map(link => link.getAttribute('aria-label'))
+      ])
+    ).toEqual([
+      ['通用', ['Button', 'Icon']],
+      ['布局', ['Layout', 'BackTop', 'Theme']],
+      [
+        '表单',
+        [
+          'Input',
+          'Textarea',
+          'InputNumber',
+          'Select',
+          'Autocomplete',
+          'Dropdown',
+          'Switch',
+          'Slider',
+          'Radio',
+          'Checkbox',
+          'Segmented'
+        ]
+      ],
+      ['展示', ['Collapse', 'EditableText', 'Empty', 'MiddleEllipsis', 'SVGDrawLines', 'Avatar', 'Badge']],
+      [
+        '反馈',
+        ['Dialog', 'Drawer', 'Tooltip', 'Popover', 'ContextMenu', 'Toast', 'ImagePreview', 'Spinner', 'Progress']
+      ]
+    ])
+  })
+
   it('中文主题选择器使用中文外观名称', async () => {
     await mountAppShell('zh-CN')
     const labels = Array.from(document.querySelectorAll('web-ui-select[aria-label="全局主题"] web-ui-option')).map(
@@ -206,9 +248,10 @@ describe('应用外壳（浏览器）：导航 collapsed state 不跨视口泄�
 
     const links = [...navRoot().querySelectorAll<HTMLAnchorElement>('a')]
     const fullLabels = links.map(link => link.getAttribute('aria-label'))
-    expect(links).toHaveLength(33)
+    expect(links).toHaveLength(34)
     expect(links.map(link => link.querySelector('span')?.textContent?.trim())).toEqual(fullLabels)
-    expect(links.every(link => link.title === '')).toBe(true)
+    expect(links.slice(2).every(link => link.title === '')).toBe(true)
+    expect(links.slice(0, 2).map(link => link.title)).toEqual(['组件总览', '更新日志'])
 
     await requestCollapse(true)
 
@@ -260,19 +303,45 @@ describe('应用外壳（浏览器）：导航 collapsed state 不跨视口泄�
     expect(document.documentElement.scrollWidth).toBe(document.documentElement.clientWidth)
   })
 
-  it('英文界面下全局主题与动效选择器完整显示 Follow system', async () => {
-    localStorage.setItem('theme-appearance', JSON.stringify('system'))
+  it('英文界面下全局图标触发器保留箭头，并随选中值更新图标', async () => {
     await mountAppShell('en')
 
-    for (const label of ['Global motion', 'Global theme']) {
-      const select = document.querySelector<HTMLElement>(`web-ui-select[aria-label="${label}"]`)
+    const selectOf = (label: string) => {
+      const select = document.querySelector<HTMLElement & { value: string }>(`web-ui-select[aria-label="${label}"]`)
       if (!select) throw new Error(`missing global control: ${label}`)
-      const optionLabel = select.shadowRoot?.querySelector<HTMLElement>('.label')
-      if (!optionLabel) throw new Error(`missing option label: ${label}`)
-
-      expect(optionLabel.textContent?.trim()).toBe('Follow system')
-      expect(optionLabel.scrollWidth).toBeLessThanOrEqual(optionLabel.clientWidth)
+      return select
     }
+    const iconOf = (label: string) => selectOf(label).querySelector<WebUiIcon>('[slot="trigger"]')
+    const pick = async (label: string, value: string) => {
+      const select = selectOf(label)
+      await act(async () => {
+        select.value = value
+        select.dispatchEvent(new Event('change', { bubbles: true }))
+      })
+    }
+
+    for (const label of ['Global motion', 'Global theme']) {
+      const select = selectOf(label)
+      const trigger = select.shadowRoot?.querySelector<HTMLElement>('[role="combobox"]')
+      const arrow = select.shadowRoot?.querySelector<HTMLElement>('.arrow')
+      if (!trigger || !arrow) throw new Error(`missing combobox or arrow: ${label}`)
+
+      expect(trigger.getBoundingClientRect().width).toBeGreaterThan(36)
+      expect(getComputedStyle(arrow).display).not.toBe('none')
+      expect(trigger.getAttribute('aria-label')).toBe(label)
+    }
+
+    await pick('Global motion', 'full')
+    expect(iconOf('Global motion')?.icon).toBe(icOutlineMotionPhotosOn)
+
+    await pick('Global motion', 'system')
+    expect(iconOf('Global motion')?.icon).toBe(antDesignSyncOutlined)
+
+    await pick('Global theme', 'system')
+    expect(iconOf('Global theme')?.icon).toBe(lucideContrast)
+
+    await pick('Global theme', 'light')
+    expect(iconOf('Global theme')?.icon).toBe(lucideSun)
   })
 
   it('挂载时已有 toast，banner 和 header 保持原高度且 toast 从 header 下方开始', async () => {

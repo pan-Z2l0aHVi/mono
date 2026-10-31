@@ -312,6 +312,7 @@ Boolean 属性必须用 **camelCase 属性名**绑定，而不是 kebab-case att
 ```vue
 <web-ui-layout
   header-glow
+  sidebar-collapsible
   :sidebarCollapsed="sidebarCollapsed"
   :sidebarOpen="sidebarOpen"
   @sidebar-collapsed-change="sidebarCollapsed = $event.detail.collapsed"

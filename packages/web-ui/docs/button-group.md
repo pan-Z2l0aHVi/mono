@@ -151,7 +151,7 @@ import { lucideChevronLeft, lucideChevronRight } from '@greypan/web-ui/icons'
 
 This attribute is only handed down to members as a presentation context (`{ direction, isLast }`); the group does not rewrite any member attribute.
 
-Vertically, the glass box has a fixed width of `--wui-control-size` (the page value, 36px by default) and its height is driven by the members, so this direction is meant for icon-only members: text members are wider than 36px and the label does not wrap, so they would stick out of the pill.
+Vertically, the glass box is at least `--wui-control-size` wide (the page value, 36px by default) and its height is driven by the members. Icon-only members therefore get a square 36px track; a text member can still widen the track because its label does not wrap.
 
 The divider is then drawn below the member, and the same `--wui-button-group-divider-length` now controls the width.
 

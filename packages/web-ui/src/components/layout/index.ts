@@ -62,6 +62,15 @@ export class WebUiLayout extends LitElement {
   noSidebar = false
 
   /**
+   * 启用桌面端 Sidebar 的 collapse 入口。
+   *
+   * 只有声明了本属性，layout 才渲染收起 / 展开 Toggle；否则侧边栏保持固定宽度，
+   * 也不派发 `sidebar-collapsed-change`。移动端 Drawer 的 header Toggle 不受影响。
+   */
+  @property({ type: Boolean, attribute: 'sidebar-collapsible', reflect: true })
+  sidebarCollapsible = false
+
+  /**
    * 桌面端 Sidebar 的持久布局偏好。
    *
    * `true` 只会将桌面 Sidebar 收窄到 `collapsedWidth`，不会影响移动端 Drawer。
@@ -414,17 +423,19 @@ export class WebUiLayout extends LitElement {
 
     const toggleLabel = resolveBuiltinLabelSet(this.ariaLabels, isSidebarOpen ? 'collapseSidebar' : 'expandSidebar')
 
-    const desktopToggle = html`
-      <web-ui-button
-        class="sidebar-toggle"
-        icon
-        variant="secondary"
-        @click="${this._toggleSidebar}"
-        aria-label=${toggleLabel}
-      >
-        <web-ui-icon .icon=${radixIconsPanelLeftMinimized}></web-ui-icon>
-      </web-ui-button>
-    `
+    const desktopToggle = this.sidebarCollapsible
+      ? html`
+          <web-ui-button
+            class="sidebar-toggle"
+            icon
+            variant="secondary"
+            @click="${this._toggleSidebar}"
+            aria-label=${toggleLabel}
+          >
+            <web-ui-icon .icon=${radixIconsPanelLeftMinimized}></web-ui-icon>
+          </web-ui-button>
+        `
+      : nothing
 
     const sidebarViewport = html`
       <div class="sidebar-viewport">
@@ -472,7 +483,7 @@ export class WebUiLayout extends LitElement {
           >
             <div class="aside-panel wui-glass">
               ${sidebarViewport}
-              <div class="sidebar-toggle-area">${desktopToggle}</div>
+              ${this.sidebarCollapsible ? html`<div class="sidebar-toggle-area">${desktopToggle}</div>` : nothing}
             </div>
             ${
               this.sidebarResizable && !this.sidebarCollapsed

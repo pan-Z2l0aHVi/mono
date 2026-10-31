@@ -1,5 +1,5 @@
 <template>
-  <web-ui-button @click="open">Open preview</web-ui-button>
+  <web-ui-button @click="open">Open and swipe</web-ui-button>
 </template>
 
 <script setup lang="ts">
@@ -13,10 +13,11 @@ const gradientImage = (label: string, from: string, to: string) =>
 const IMAGES = [
   { src: gradientImage('First image', '#0a84ff', '#5e5ce6'), alt: 'Example image with a blue gradient' },
   { src: gradientImage('Second image', '#ff375f', '#ff9f0a'), alt: 'Example image with an orange-red gradient' },
-  { src: gradientImage('Third image', '#30d158', '#0a84ff'), alt: 'Example image with a teal gradient' }
+  { src: gradientImage('Third image', '#30d158', '#0a84ff'), alt: 'Example image with a teal gradient' },
+  { src: gradientImage('Fourth image', '#bf5af2', '#ff375f'), alt: 'Example image with a purple gradient' }
 ]
 
 function open() {
-  imagePreview({ images: IMAGES })
+  imagePreview({ images: IMAGES, swipe: true, nav: true, indicator: true })
 }
 </script>

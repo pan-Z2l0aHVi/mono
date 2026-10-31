@@ -66,9 +66,20 @@ describe('WebUiLayout 组件（浏览器）', () => {
   })
 
   describe('桌面端 sidebar collapse', () => {
+    it('未声明 sidebar-collapsible 时不渲染桌面 Toggle', async () => {
+      const layout = createLayout()
+      await layout.updateComplete
+      expect(queryA11y(layout, '.sidebar-toggle')).toBeFalsy()
+
+      layout.sidebarCollapsible = true
+      await layout.updateComplete
+      expect(queryA11y(layout, '.sidebar-toggle')).toBeTruthy()
+    })
+
     it('Toggle 请求受控 collapse，回写后 aria-label 反映新状态', async () => {
       await setViewport(DESKTOP_VIEWPORT.width, DESKTOP_VIEWPORT.height)
       const layout = createLayout()
+      layout.sidebarCollapsible = true
       await layout.updateComplete
 
       const requested: boolean[] = []
@@ -99,6 +110,7 @@ describe('WebUiLayout 组件（浏览器）', () => {
     it('外部受控属性更新会渲染，但不派发请求事件', async () => {
       await setViewport(DESKTOP_VIEWPORT.width, DESKTOP_VIEWPORT.height)
       const layout = createLayout()
+      layout.sidebarCollapsible = true
       await layout.updateComplete
 
       let eventCount = 0
@@ -124,6 +136,7 @@ describe('WebUiLayout 组件（浏览器）', () => {
     it('kebab-case attribute 遵循存在语义，camelCase property 绑定才能表达 false', async () => {
       await setViewport(DESKTOP_VIEWPORT.width, DESKTOP_VIEWPORT.height)
       const layout = createLayout()
+      layout.sidebarCollapsible = true
       await layout.updateComplete
 
       layout.setAttribute('sidebar-collapsed', 'false')
@@ -140,6 +153,7 @@ describe('WebUiLayout 组件（浏览器）', () => {
   describe('ariaLabels 覆盖', () => {
     it('未覆盖时回退内置英文；覆盖后桌面 toggle 与 resize handle 用覆盖值', async () => {
       const layout = createLayout()
+      layout.sidebarCollapsible = true
       layout.sidebarResizable = true
       await layout.updateComplete
 
@@ -1050,6 +1064,7 @@ describe('WebUiLayout 组件（浏览器）', () => {
     it('键盘 Tab 可聚焦桌面 toggle 并显示 focus ring', async () => {
       await setViewport(DESKTOP_VIEWPORT.width, DESKTOP_VIEWPORT.height)
       const layout = createLayout()
+      layout.sidebarCollapsible = true
       await layout.updateComplete
       await waitForFrame()
 
