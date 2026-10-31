@@ -63,8 +63,8 @@ mise exec -- node .agents/skills/turbo-sparse-scope/sparse-scope.mjs --restore [
 
 ## 稀疏树里的安全规则
 
-1. **全局引用搜索只用 `git grep <pattern> HEAD`。** `rg`、`grep -r`、Glob 只看已检出的文件，闭包外的调用者会静默消失，影响面结论因此偏乐观。`git grep` 也接受 `HEAD -- <path>` 限定范围。
-2. **影响面分析先 `--restore`。** [`monorepo-change-impact`](../monorepo-change-impact/SKILL.md) 从磁盘读 manifest，稀疏树里少掉的包不会出现在消费者列表里。
+1. **全局引用搜索只用 `git grep <pattern> HEAD`。** `rg`、`grep -r`、Glob 只看已检出的文件，闭包外的调用者会静默消失，影响面结论因此偏乐观。`git grep` 也接受 `HEAD -- <path>` 限定范围；未提交的暂存内容不在 HEAD 里，另用 `git grep --cached`。
+2. **manifest 级影响面可直接算，源引用搜索仍要完整 Git 树。** [`monorepo-change-impact`](../monorepo-change-impact/SKILL.md) 的 `repo-query` 会从 Git 索引补读被 skip-worktree 隐藏的 manifest，`contract`、`verify` 的 workspace 图与 `contract-diff` 不需要先 `--restore`；但被隐藏的源文件不在磁盘上，跨包调用者与字符串引用仍按规则 1 搜索。被隐藏包的 README/AGENTS.md 与包内测试同样不在磁盘上：读取用 `git show HEAD:<path>`，要执行就先 `--add <package>`。
 3. **全仓 gate 先 `--restore`，或交给 CI。** 本地验证只覆盖 cone；`test-scripts`、`check-context`、`check-policy` 按 tracked 文件扫描，cone 外的文件不会参与。收缩期间的本地结论要标明覆盖范围。
 4. **任务扩展时用 `--add`。** 不扩大范围就用 `--reset` 或默认动作重建，不要手写路径。
 5. **不要在稀疏树里用 `turbo run` 期待全仓结果。** 需要全仓图时先 `--restore`。
@@ -76,6 +76,7 @@ mise exec -- node .agents/skills/turbo-sparse-scope/sparse-scope.mjs --restore [
 ## 已知边界
 
 - 只计算 `target...`（目标及其依赖）。被依赖闭包（谁用了目标）不扩大 sparse 范围，靠 `git grep HEAD` 解决。
+- **包外文件读取不在 turbo 依赖图里。** 测试、脚本或生成器按相对路径读取其他包或 app 的文件时，依赖图看不到这条边；收缩后这些文件可能被隐藏，相关命令因此失败，但目标包代码未必有问题。把文件所属的包用 `--add` 纳入，或先 `--restore`/交给 CI 验证，不要把这类失败归因于目标改动。
 - 依赖 turbo 的 `ls` 输出：优先 `--output=json`，失败降级解析文本，两者都失败就报错并附原始输出，不猜。
 - `turbo ls` 与 `ls --filter` 各调用一次；闭包解析不随包数平方增长，但百级包仍需评估耗时。
 - 平台自带的静态 sparse 配置（如 Claude Code 的 `worktree.sparsePaths`）能覆盖固定范围时，本 skill 的价值是「按依赖图动态计算」。
