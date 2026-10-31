@@ -67,6 +67,7 @@ describe('WebUiLayout 组件（浏览器）', () => {
 
   describe('桌面端 sidebar collapse', () => {
     it('未声明 sidebar-collapsible 时不渲染桌面 Toggle', async () => {
+      await setViewport(DESKTOP_VIEWPORT.width, DESKTOP_VIEWPORT.height)
       const layout = createLayout()
       await layout.updateComplete
       expect(queryA11y(layout, '.sidebar-toggle')).toBeFalsy()
