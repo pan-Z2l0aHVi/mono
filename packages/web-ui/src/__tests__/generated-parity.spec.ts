@@ -23,9 +23,20 @@ describe('两端生成物同源', () => {
   const reactModule = readFileSync(path.join(reactZh, 'examples.ts'), 'utf8')
   const reactEnModule = readFileSync(path.join(reactEn, 'examples.ts'), 'utf8')
   const vueModule = readFileSync(path.join(vueGenerated, 'examples.ts'), 'utf8')
+  const reactDemoManifest = readFileSync(path.join(reactZh, 'demo-manifest.ts'), 'utf8')
+  const reactEnDemoManifest = readFileSync(path.join(reactEn, 'demo-manifest.ts'), 'utf8')
+  const vueDemoManifest = readFileSync(path.join(vueGenerated, 'demo-manifest.ts'), 'utf8')
+  const vueEnDemoManifest = readFileSync(path.join(vueGenerated, 'en', 'demo-manifest.ts'), 'utf8')
 
   it('中文语种的 examples.ts 逐字节一致', () => {
     expect(reactModule, 'react 的中文数据与 vue demo 的生成数据必须逐字节一致').toBe(vueModule)
+  })
+
+  it('demo 清单在同语种两端逐字节一致，且包含新增示例', () => {
+    expect(reactDemoManifest, '中文 demo 清单必须与 Vue 站一致').toBe(vueDemoManifest)
+    expect(reactEnDemoManifest, '英文 demo 清单必须与 Vue 站一致').toBe(vueEnDemoManifest)
+    expect(reactDemoManifest).toContain("'progress--basic'")
+    expect(reactEnDemoManifest).toContain("'progress--basic'")
   })
 
   it('examples.css 逐字节一致', () => {

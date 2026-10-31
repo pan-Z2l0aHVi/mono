@@ -3,13 +3,13 @@ export default function Demo() {
     <div className="flex flex-wrap items-end gap-8">
       <web-ui-slider
         aria-label="Wide track"
-        className="[--wui-slider-width:300px] [--wui-slider-track-size:10px] [--wui-slider-thumb-thickness:26px] [--wui-slider-thumb-length:38px]"
+        className="max-w-full [--wui-slider-width:300px] [--wui-slider-track-size:10px] [--wui-slider-thumb-thickness:26px] [--wui-slider-thumb-length:38px]"
         value={35}
       ></web-ui-slider>
 
       <web-ui-slider
         aria-label="Narrow track"
-        className="[--wui-slider-width:160px] [--wui-slider-track-size:2px] [--wui-slider-thumb-thickness:12px]"
+        className="max-w-full [--wui-slider-width:160px] [--wui-slider-track-size:2px] [--wui-slider-thumb-thickness:12px]"
         value={72}
       ></web-ui-slider>
 

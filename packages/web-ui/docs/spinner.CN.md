@@ -85,7 +85,7 @@ export default function Demo() {
 
 `show()` 在当前主题的 overlay root（没有主题作用域时回退到 body 的 fallback overlay root）挂一个全屏实例，`size` / `description` / `color` 覆盖外观，`duration` 大于 0 时到期自动 `hide()`。
 
-实例期间用原生 `<dialog>` 的 `showModal()` 拦截页面其余交互并锁定滚动；`hide()` 或卸载会同时释放滚动锁、清掉 `duration` 计时器。
+实例用非模态 `<dialog>` 展示，覆盖层不接收指针事件：它只报告加载状态，不接管点击、焦点或页面滚动。`hide()` 或卸载会关闭 dialog 并清掉 `duration` 计时器。
 
 连点不会叠层——新实例挂上时移除上一个命令式实例。
 
@@ -98,9 +98,7 @@ export default function Demo() {
       <web-ui-button onClick={() => WebUiSpinner.show()}>show()</web-ui-button>
       <web-ui-button onClick={() => WebUiSpinner.hide()}>hide()</web-ui-button>
       <web-ui-button onClick={() => WebUiSpinner.show({ size: 16 })}>小（16px）</web-ui-button>
-      <web-ui-button onClick={() => WebUiSpinner.show({ size: 64, duration: 2000 })}>
-        大（64px），2 秒后自己收
-      </web-ui-button>
+      <web-ui-button onClick={() => WebUiSpinner.show({ size: 64, duration: 2000 })}>大（64px）</web-ui-button>
       <web-ui-button onClick={() => WebUiSpinner.show({ description: '正在同步云端文件，约 10 秒', duration: 10000 })}>
         带说明，10 秒
       </web-ui-button>
@@ -115,7 +113,7 @@ export default function Demo() {
     <web-ui-button @click="show">show()</web-ui-button>
     <web-ui-button @click="hide">hide()</web-ui-button>
     <web-ui-button @click="showSmall">小（16px）</web-ui-button>
-    <web-ui-button @click="showLarge">大（64px），2 秒后自己收</web-ui-button>
+    <web-ui-button @click="showLarge">大（64px）</web-ui-button>
     <web-ui-button @click="showWithDescription">带说明，10 秒</web-ui-button>
   </div>
 </template>
@@ -216,10 +214,10 @@ export default function Demo() {
 
 ### Methods
 
-| 名称                          | 说明                                                                                                                                                                                                        |
-| ----------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `WebUiSpinner.show(options?)` | 在主题 overlay root（无主题时为 body 的 fallback overlay root）挂载一个全屏实例并返回它；期间用 `showModal()` 拦截页面交互并锁定滚动。新实例 connect 时移除上一个命令式实例，`duration` 到期调用 `hide()`。 |
-| `WebUiSpinner.hide()`         | 释放滚动锁、清掉 `duration` 计时器并移除 `show()` 挂载的实例；没有实例时为 no-op。                                                                                                                          |
+| 名称                          | 说明                                                                                                                                                                                             |
+| ----------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `WebUiSpinner.show(options?)` | 在主题 overlay root（无主题时为 body 的 fallback overlay root）挂载一个全屏实例并返回它；实例非模态，不拦截页面交互与滚动。新实例 connect 时移除上一个命令式实例，`duration` 到期调用 `hide()`。 |
+| `WebUiSpinner.hide()`         | 释放滚动锁、清掉 `duration` 计时器并移除 `show()` 挂载的实例；没有实例时为 no-op。                                                                                                               |
 
 ### 行为说明
 

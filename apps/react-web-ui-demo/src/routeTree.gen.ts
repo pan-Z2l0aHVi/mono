@@ -10,6 +10,7 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as ChangelogRouteImport } from './routes/changelog'
 import { Route as ComponentsAutocompleteRouteImport } from './routes/components/autocomplete'
 import { Route as ComponentsAvatarRouteImport } from './routes/components/avatar'
 import { Route as ComponentsBackTopRouteImport } from './routes/components/back-top'
@@ -30,6 +31,7 @@ import { Route as ComponentsInputNumberRouteImport } from './routes/components/i
 import { Route as ComponentsLayoutRouteImport } from './routes/components/layout'
 import { Route as ComponentsMiddleEllipsisRouteImport } from './routes/components/middle-ellipsis'
 import { Route as ComponentsPopoverRouteImport } from './routes/components/popover'
+import { Route as ComponentsProgressRouteImport } from './routes/components/progress'
 import { Route as ComponentsRadioRouteImport } from './routes/components/radio'
 import { Route as ComponentsSegmentedRouteImport } from './routes/components/segmented'
 import { Route as ComponentsSelectRouteImport } from './routes/components/select'
@@ -46,6 +48,11 @@ import { Route as HomeIndexRouteImport } from './routes/home/index'
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ChangelogRoute = ChangelogRouteImport.update({
+  id: '/changelog',
+  path: '/changelog',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ComponentsAutocompleteRoute = ComponentsAutocompleteRouteImport.update({
@@ -149,6 +156,11 @@ const ComponentsPopoverRoute = ComponentsPopoverRouteImport.update({
   path: '/components/popover',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ComponentsProgressRoute = ComponentsProgressRouteImport.update({
+  id: '/components/progress',
+  path: '/components/progress',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ComponentsRadioRoute = ComponentsRadioRouteImport.update({
   id: '/components/radio',
   path: '/components/radio',
@@ -212,6 +224,7 @@ const HomeIndexRoute = HomeIndexRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/changelog': typeof ChangelogRoute
   '/components/autocomplete': typeof ComponentsAutocompleteRoute
   '/components/avatar': typeof ComponentsAvatarRoute
   '/components/back-top': typeof ComponentsBackTopRoute
@@ -232,6 +245,7 @@ export interface FileRoutesByFullPath {
   '/components/layout': typeof ComponentsLayoutRoute
   '/components/middle-ellipsis': typeof ComponentsMiddleEllipsisRoute
   '/components/popover': typeof ComponentsPopoverRoute
+  '/components/progress': typeof ComponentsProgressRoute
   '/components/radio': typeof ComponentsRadioRoute
   '/components/segmented': typeof ComponentsSegmentedRoute
   '/components/select': typeof ComponentsSelectRoute
@@ -247,6 +261,7 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/changelog': typeof ChangelogRoute
   '/components/autocomplete': typeof ComponentsAutocompleteRoute
   '/components/avatar': typeof ComponentsAvatarRoute
   '/components/back-top': typeof ComponentsBackTopRoute
@@ -267,6 +282,7 @@ export interface FileRoutesByTo {
   '/components/layout': typeof ComponentsLayoutRoute
   '/components/middle-ellipsis': typeof ComponentsMiddleEllipsisRoute
   '/components/popover': typeof ComponentsPopoverRoute
+  '/components/progress': typeof ComponentsProgressRoute
   '/components/radio': typeof ComponentsRadioRoute
   '/components/segmented': typeof ComponentsSegmentedRoute
   '/components/select': typeof ComponentsSelectRoute
@@ -283,6 +299,7 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/changelog': typeof ChangelogRoute
   '/components/autocomplete': typeof ComponentsAutocompleteRoute
   '/components/avatar': typeof ComponentsAvatarRoute
   '/components/back-top': typeof ComponentsBackTopRoute
@@ -303,6 +320,7 @@ export interface FileRoutesById {
   '/components/layout': typeof ComponentsLayoutRoute
   '/components/middle-ellipsis': typeof ComponentsMiddleEllipsisRoute
   '/components/popover': typeof ComponentsPopoverRoute
+  '/components/progress': typeof ComponentsProgressRoute
   '/components/radio': typeof ComponentsRadioRoute
   '/components/segmented': typeof ComponentsSegmentedRoute
   '/components/select': typeof ComponentsSelectRoute
@@ -320,6 +338,7 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/changelog'
     | '/components/autocomplete'
     | '/components/avatar'
     | '/components/back-top'
@@ -340,6 +359,7 @@ export interface FileRouteTypes {
     | '/components/layout'
     | '/components/middle-ellipsis'
     | '/components/popover'
+    | '/components/progress'
     | '/components/radio'
     | '/components/segmented'
     | '/components/select'
@@ -355,6 +375,7 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/changelog'
     | '/components/autocomplete'
     | '/components/avatar'
     | '/components/back-top'
@@ -375,6 +396,7 @@ export interface FileRouteTypes {
     | '/components/layout'
     | '/components/middle-ellipsis'
     | '/components/popover'
+    | '/components/progress'
     | '/components/radio'
     | '/components/segmented'
     | '/components/select'
@@ -390,6 +412,7 @@ export interface FileRouteTypes {
   id:
     | '__root__'
     | '/'
+    | '/changelog'
     | '/components/autocomplete'
     | '/components/avatar'
     | '/components/back-top'
@@ -410,6 +433,7 @@ export interface FileRouteTypes {
     | '/components/layout'
     | '/components/middle-ellipsis'
     | '/components/popover'
+    | '/components/progress'
     | '/components/radio'
     | '/components/segmented'
     | '/components/select'
@@ -426,6 +450,7 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  ChangelogRoute: typeof ChangelogRoute
   ComponentsAutocompleteRoute: typeof ComponentsAutocompleteRoute
   ComponentsAvatarRoute: typeof ComponentsAvatarRoute
   ComponentsBackTopRoute: typeof ComponentsBackTopRoute
@@ -446,6 +471,7 @@ export interface RootRouteChildren {
   ComponentsLayoutRoute: typeof ComponentsLayoutRoute
   ComponentsMiddleEllipsisRoute: typeof ComponentsMiddleEllipsisRoute
   ComponentsPopoverRoute: typeof ComponentsPopoverRoute
+  ComponentsProgressRoute: typeof ComponentsProgressRoute
   ComponentsRadioRoute: typeof ComponentsRadioRoute
   ComponentsSegmentedRoute: typeof ComponentsSegmentedRoute
   ComponentsSelectRoute: typeof ComponentsSelectRoute
@@ -467,6 +493,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/changelog': {
+      id: '/changelog'
+      path: '/changelog'
+      fullPath: '/changelog'
+      preLoaderRoute: typeof ChangelogRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/components/autocomplete': {
@@ -609,6 +642,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ComponentsPopoverRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/components/progress': {
+      id: '/components/progress'
+      path: '/components/progress'
+      fullPath: '/components/progress'
+      preLoaderRoute: typeof ComponentsProgressRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/components/radio': {
       id: '/components/radio'
       path: '/components/radio'
@@ -698,6 +738,7 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  ChangelogRoute: ChangelogRoute,
   ComponentsAutocompleteRoute: ComponentsAutocompleteRoute,
   ComponentsAvatarRoute: ComponentsAvatarRoute,
   ComponentsBackTopRoute: ComponentsBackTopRoute,
@@ -718,6 +759,7 @@ const rootRouteChildren: RootRouteChildren = {
   ComponentsLayoutRoute: ComponentsLayoutRoute,
   ComponentsMiddleEllipsisRoute: ComponentsMiddleEllipsisRoute,
   ComponentsPopoverRoute: ComponentsPopoverRoute,
+  ComponentsProgressRoute: ComponentsProgressRoute,
   ComponentsRadioRoute: ComponentsRadioRoute,
   ComponentsSegmentedRoute: ComponentsSegmentedRoute,
   ComponentsSelectRoute: ComponentsSelectRoute,

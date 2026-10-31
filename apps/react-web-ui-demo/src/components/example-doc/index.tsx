@@ -33,6 +33,9 @@ const FLAVOR_ICONS = { vue: vueIcon, react: reactIcon } as const
 // 写在 body 的字面量里，缺省即可。类名放这里而不是 flavor-icons.ts，是让 Tailwind 在组件源文件里扫到。
 const FLAVOR_ICON_CLASS: Partial<Record<Flavor, string>> = { react: 'text-[#087eae] dark:text-[#61dafb]' }
 
+// 复制成功的描边与 scale 反馈共用同一时长；CSS 里的 `demo-copy-pop` 要同步。
+const COPY_FEEDBACK_DURATION = 500
+
 const ABBREVIATIONS: Record<string, string> = { api: 'API', svg: 'SVG', ui: 'UI' }
 
 // API 是接口术语，中英两版都保留英文。
@@ -68,6 +71,35 @@ const codeScrollbarsEvents = {
   initialized: (instance: OverlayScrollbars) => {
     instance.elements().viewport.tabIndex = 0
   }
+}
+
+interface TableScrollbarEvents {
+  initialized: (instance: OverlayScrollbars) => void
+  updated: (instance: OverlayScrollbars) => void
+}
+
+const tableScrollbarsEventCache = new Map<string, TableScrollbarEvents>()
+
+function decorateTableScrollViewport(instance: OverlayScrollbars, headingId: string) {
+  const viewport = instance.elements().viewport
+  viewport.tabIndex = 0
+  viewport.setAttribute('role', 'region')
+  viewport.setAttribute('aria-labelledby', headingId)
+}
+
+function tableScrollbarsEvents(headingId: string): TableScrollbarEvents {
+  const cached = tableScrollbarsEventCache.get(headingId)
+  if (cached) return cached
+  const events = {
+    initialized: (instance: OverlayScrollbars) => decorateTableScrollViewport(instance, headingId),
+    updated: (instance: OverlayScrollbars) => decorateTableScrollViewport(instance, headingId)
+  }
+  tableScrollbarsEventCache.set(headingId, events)
+  return events
+}
+
+function apiHeadingId(component: string, key: string) {
+  return `${component}-api-${key}`
 }
 
 interface ExampleDocProps {
@@ -108,6 +140,8 @@ function ExampleDoc({ component, nativeFlavor = 'react', previewAnchorsOnly = fa
   const [activeFlavors, setActiveFlavors] = useState<Record<string, Flavor>>({})
   const [expanded, setExpanded] = useState<Record<string, boolean>>({})
   const [copied, setCopied] = useState<{ key: string; ok: boolean } | null>(null)
+  // 每次复制都换 key，让成功态的描边与 scale 动画重新挂载、各播一次。
+  const [copyRun, setCopyRun] = useState(0)
   const copyTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
 
   useEffect(() => () => clearTimeout(copyTimer.current), [])
@@ -212,6 +246,7 @@ function ExampleDoc({ component, nativeFlavor = 'react', previewAnchorsOnly = fa
     frame?.querySelectorAll('.line-number').forEach(node => node.remove())
     const text = frame?.textContent ?? ''
     setCopied({ key, ok: text !== '' && (await writeClipboard(text)) })
+    setCopyRun(run => run + 1)
     clearTimeout(copyTimer.current)
     copyTimer.current = setTimeout(() => setCopied(null), 1600)
   }
@@ -331,10 +366,14 @@ function ExampleDoc({ component, nativeFlavor = 'react', previewAnchorsOnly = fa
                             aria-label={copyLabel(key)}
                             onClick={event => void copyCode(event, key)}
                           >
-                            {/* 成功态才包进描边宿主：`web-ui-svg-draw-lines` 在 slot 内容稳定时自动播一次，
-                              所以每次复制都会重新画出勾与圆，而不是淡入一张现成的图。 */}
+                            {/* 成功态才包进描边宿主：`web-ui-svg-draw-lines` 在 slot 内容稳定时自动播一次；
+                              key 跟着每次复制递增，重复复制也会重新挂载并重播描边与 scale。 */}
                             {copyState(key) === 'copied' ? (
-                              <web-ui-svg-draw-lines duration={300}>
+                              <web-ui-svg-draw-lines
+                                key={copyRun}
+                                className="demo-copy-pop"
+                                duration={COPY_FEEDBACK_DURATION}
+                              >
                                 <web-ui-icon
                                   icon={akarIconsCircleCheck}
                                   size={15}
@@ -424,38 +463,47 @@ function ExampleDoc({ component, nativeFlavor = 'react', previewAnchorsOnly = fa
               `.mdc-markdown` 也挂在这一层：散文与表格共用同一套 Notion 标签样式。 */}
           {doc.api.map(section => (
             <div className="mdc-markdown flex flex-col gap-3" data-example-api={section.key} key={section.key}>
-              <SampleHeading className="mdc-heading">{section.title}</SampleHeading>
+              <SampleHeading id={apiHeadingId(component, section.key)} className="mdc-heading">
+                {section.title}
+              </SampleHeading>
               {section.kind === 'prose' ? (
                 // 散文正文是生成器渲染好的 HTML 片段，不是运行时拼的用户输入。
                 <div dangerouslySetInnerHTML={{ __html: section.html }} />
               ) : (
-                <table>
-                  <thead>
-                    <tr>
-                      {section.columns.map(column => (
-                        <th key={column.title}>{column.title}</th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {section.rows.map(row => (
-                      <tr key={row[0]}>
-                        {section.columns.map((column, index) =>
-                          column.kind === 'html' ? (
-                            <td key={column.title} dangerouslySetInnerHTML={{ __html: row[index] ?? '' }} />
-                          ) : column.kind === 'code' && row[index] !== NO_DEFAULT_VALUE ? (
-                            // 值列（类型 / 默认值）由生成器标成 'code'：它们是字面量，不是散文。
-                            <td key={column.title}>
-                              <code>{row[index]}</code>
-                            </td>
-                          ) : (
-                            <td key={column.title}>{row[index]}</td>
-                          )
-                        )}
+                <OverlayScrollbarsComponent
+                  options={appScrollbarsOptions}
+                  events={tableScrollbarsEvents(apiHeadingId(component, section.key))}
+                  className="overflow-x-auto"
+                  data-api-table-scroll
+                >
+                  <table className="min-w-[36rem]">
+                    <thead>
+                      <tr>
+                        {section.columns.map(column => (
+                          <th key={column.title}>{column.title}</th>
+                        ))}
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
+                    </thead>
+                    <tbody>
+                      {section.rows.map(row => (
+                        <tr key={row[0]}>
+                          {section.columns.map((column, index) =>
+                            column.kind === 'html' ? (
+                              <td key={column.title} dangerouslySetInnerHTML={{ __html: row[index] ?? '' }} />
+                            ) : column.kind === 'code' && row[index] !== NO_DEFAULT_VALUE ? (
+                              // 值列（类型 / 默认值）由生成器标成 'code'：它们是字面量，不是散文。
+                              <td key={column.title}>
+                                <code>{row[index]}</code>
+                              </td>
+                            ) : (
+                              <td key={column.title}>{row[index]}</td>
+                            )
+                          )}
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </OverlayScrollbarsComponent>
               )}
             </div>
           ))}

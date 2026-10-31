@@ -58,6 +58,7 @@ function closeSidebar() {
   -->
   <web-ui-layout
     header-glow
+    sidebar-collapsible
     sidebarResizable
     sidebarMinWidth="160px"
     sidebarMaxWidth="320px"

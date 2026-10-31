@@ -151,7 +151,7 @@ import { lucideChevronLeft, lucideChevronRight } from '@greypan/web-ui/icons'
 
 这个属性只作为展示上下文（`{ direction, isLast }`）下发给成员，组不改写成员的任何属性。
 
-竖排时玻璃盒子的宽度固定成 `--wui-control-size`（页面值，默认 36px）、高度改由成员撑开，所以这一方向是给 icon-only 成员准备的：文字成员比 36px 宽，label 又不折行，会从胶囊里凸出去。
+竖排时玻璃盒子至少宽 `--wui-control-size`（页面值，默认 36px）、高度改由成员撑开。纯图标成员因此得到 36px 的方形轨道；文字成员的 label 不折行，仍可撑宽轨道。
 
 分割线这时画在成员下方，同一条 `--wui-button-group-divider-length` 那次动的是宽度。
 

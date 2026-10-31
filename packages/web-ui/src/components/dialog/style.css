@@ -379,32 +379,23 @@ dialog[open].is-visible .wui-dialog-body {
   }
 }
 
+/* footer 是纯布局容器：只负责方向、间距、对齐和内边距。不要在这里用 ::slotted()
+   覆盖 slotted 控件的尺寸或外观；满宽等视觉状态由子组件自己的属性（例如 button 的
+   `full`）表达，避免 Dialog 越过组件边界替消费者做样式决定。 */
 .wui-dialog-footer {
   display: flex;
   flex-direction: column;
   gap: var(--wui-dialog-footer-gap, 10px);
+  align-items: stretch;
   justify-content: var(--wui-dialog-footer-justify, flex-end);
 
   /* 卡片 inline padding 归零后由本区自带水平 padding，与 .header / .desc 同源。 */
   padding-inline: var(--wui-dialog-inline-padding, var(--wui-space-6, 24px));
-
-  & ::slotted(web-ui-button) {
-    display: flex;
-    width: 100%;
-  }
 }
 
-:host([horizontal]) .wui-dialog-footer {
+:host([footer-orientation='horizontal']) .wui-dialog-footer {
   flex-direction: row;
   gap: var(--wui-space-3, 12px);
+  align-items: center;
   justify-content: var(--wui-dialog-footer-justify, center);
-
-  & ::slotted(web-ui-button:not([full])) {
-    width: auto;
-  }
-
-  & ::slotted(web-ui-button[full]) {
-    flex: 1;
-    min-width: 0;
-  }
 }

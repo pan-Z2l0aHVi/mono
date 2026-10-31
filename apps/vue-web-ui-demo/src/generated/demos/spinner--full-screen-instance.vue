@@ -3,7 +3,7 @@
     <web-ui-button @click="show">show()</web-ui-button>
     <web-ui-button @click="hide">hide()</web-ui-button>
     <web-ui-button @click="showSmall">小（16px）</web-ui-button>
-    <web-ui-button @click="showLarge">大（64px），2 秒后自己收</web-ui-button>
+    <web-ui-button @click="showLarge">大（64px）</web-ui-button>
     <web-ui-button @click="showWithDescription">带说明，10 秒</web-ui-button>
   </div>
 </template>

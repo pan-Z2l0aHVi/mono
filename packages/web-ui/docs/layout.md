@@ -13,7 +13,7 @@ Five slots each take one region: `banner` spans the full width above the body, `
 
 `header-glow` adds a decorative glow behind the header slot content; it belongs to the background layer, so the slot content always sits above it.
 
-layout is an app-shell-level full-screen layout; the sample puts it inside a height-constrained scroll container, where the banner scrolls out with the content and the header and tabbar stick to the top and bottom edges of the container.
+layout is an app-shell-level full-screen layout. The sample places it in a height-constrained scroll container and sets `--wui-layout-viewport-height` to the same height (`420px`), keeping the banner, header, tabbar, and desktop sidebar inside the sample container.
 
 The mobile Toggle only requests opening through `sidebar-open-change`; the sample writes that back to `sidebar-open`, so clicking it opens the Drawer.
 
@@ -24,7 +24,7 @@ export default function Demo() {
   const [open, setOpen] = useState(false)
 
   return (
-    <div className="h-[420px] overflow-auto rounded-lg border border-(--wui-color-border)">
+    <div className="h-[420px] overflow-auto rounded-lg border border-(--wui-color-border) [--wui-layout-viewport-height:420px]">
       <web-ui-layout header-glow sidebarOpen={open} onsidebar-open-change={event => setOpen(event.detail.open)}>
         <div
           slot="banner"
@@ -58,7 +58,9 @@ export default function Demo() {
 
 ```vue
 <template>
-  <div class="h-[420px] overflow-auto rounded-lg border border-(--wui-color-border)">
+  <div
+    class="h-[420px] overflow-auto rounded-lg border border-(--wui-color-border) [--wui-layout-viewport-height:420px]"
+  >
     <web-ui-layout header-glow :sidebarOpen="open" @sidebar-open-change="open = $event.detail.open">
       <div
         slot="banner"
@@ -100,7 +102,7 @@ The `sidebar` slot is no longer rendered, but consumer nodes stay in the light D
 ```tsx
 export default function Demo() {
   return (
-    <div className="h-[420px] overflow-auto rounded-lg border border-(--wui-color-border)">
+    <div className="h-[420px] overflow-auto rounded-lg border border-(--wui-color-border) [--wui-layout-viewport-height:420px]">
       <web-ui-layout no-sidebar header-glow>
         <div slot="header" className="flex items-center px-4 py-2 text-sm font-medium">
           Header
@@ -122,7 +124,9 @@ export default function Demo() {
 
 ```vue
 <template>
-  <div class="h-[420px] overflow-auto rounded-lg border border-(--wui-color-border)">
+  <div
+    class="h-[420px] overflow-auto rounded-lg border border-(--wui-color-border) [--wui-layout-viewport-height:420px]"
+  >
     <web-ui-layout no-sidebar header-glow>
       <div slot="header" class="flex items-center px-4 py-2 text-sm font-medium">Header</div>
       <div class="p-4">
@@ -141,7 +145,7 @@ export default function Demo() {
 
 `sidebar-collapsed` is the controlled collapse state on desktop: it only narrows the desktop aside to `collapsed-width` and does not affect the mobile Drawer.
 
-The desktop Toggle is rendered by layout itself; the consumer only has to write the requested value from `sidebar-collapsed-change` back.
+The desktop Toggle is rendered only when `sidebar-collapsible` is set; the consumer then writes the requested value from `sidebar-collapsed-change` back.
 
 Both branches render the same `sidebar` slot content, so a consumer whose content density follows collapse must narrow that condition by `mobile` (for example `collapsed && !layout.mobile`, or CSS `web-ui-layout[mobile]`), otherwise the collapsed state renders all the way into the Drawer (issue #195).
 
@@ -156,8 +160,9 @@ export default function Demo() {
 
   return (
     <div className="flex flex-col gap-3">
-      <div className="h-[420px] overflow-auto rounded-lg border border-(--wui-color-border)">
+      <div className="h-[420px] overflow-auto rounded-lg border border-(--wui-color-border) [--wui-layout-viewport-height:420px]">
         <web-ui-layout
+          sidebarCollapsible
           sidebarCollapsed={collapsed}
           onsidebar-collapsed-change={event => setCollapsed(event.detail.collapsed)}
           sidebarOpen={open}
@@ -172,7 +177,7 @@ export default function Demo() {
           <div className="p-4">
             <p className="m-0 text-sm">
               Click the Toggle at the bottom of the sidebar to collapse / expand; layout only narrows the desktop aside
-              to 68px.
+              to 60px.
             </p>
           </div>
         </web-ui-layout>
@@ -186,8 +191,11 @@ export default function Demo() {
 ```vue
 <template>
   <div class="flex flex-col gap-3">
-    <div class="h-[420px] overflow-auto rounded-lg border border-(--wui-color-border)">
+    <div
+      class="h-[420px] overflow-auto rounded-lg border border-(--wui-color-border) [--wui-layout-viewport-height:420px]"
+    >
       <web-ui-layout
+        sidebar-collapsible
         :sidebarCollapsed="collapsed"
         @sidebar-collapsed-change="collapsed = $event.detail.collapsed"
         :sidebarOpen="open"
@@ -202,7 +210,7 @@ export default function Demo() {
         <div class="p-4">
           <p class="m-0 text-sm">
             Click the Toggle at the bottom of the sidebar to collapse / expand; layout only narrows the desktop aside to
-            68px.
+            60px.
           </p>
         </div>
       </web-ui-layout>
@@ -236,7 +244,7 @@ export default function Demo() {
 
   return (
     <div className="flex flex-col gap-3">
-      <div className="h-[420px] overflow-auto rounded-lg border border-(--wui-color-border)">
+      <div className="h-[420px] overflow-auto rounded-lg border border-(--wui-color-border) [--wui-layout-viewport-height:420px]">
         <web-ui-layout
           sidebar-resizable
           sidebarWidth={width}
@@ -268,7 +276,9 @@ export default function Demo() {
 ```vue
 <template>
   <div class="flex flex-col gap-3">
-    <div class="h-[420px] overflow-auto rounded-lg border border-(--wui-color-border)">
+    <div
+      class="h-[420px] overflow-auto rounded-lg border border-(--wui-color-border) [--wui-layout-viewport-height:420px]"
+    >
       <web-ui-layout
         sidebar-resizable
         :sidebarWidth="width"
@@ -339,7 +349,7 @@ export default function Demo() {
 
   return (
     <div className="flex flex-col gap-3">
-      <div className="h-[420px] overflow-auto rounded-lg border border-(--wui-color-border)">
+      <div className="h-[420px] overflow-auto rounded-lg border border-(--wui-color-border) [--wui-layout-viewport-height:420px]">
         <web-ui-layout ref={layoutRef} sidebarOpen={open} onsidebar-open-change={event => setOpen(event.detail.open)}>
           <div slot="header" className="flex items-center px-4 py-2 text-sm font-medium">
             Header
@@ -367,7 +377,9 @@ export default function Demo() {
 ```vue
 <template>
   <div class="flex flex-col gap-3">
-    <div class="h-[420px] overflow-auto rounded-lg border border-(--wui-color-border)">
+    <div
+      class="h-[420px] overflow-auto rounded-lg border border-(--wui-color-border) [--wui-layout-viewport-height:420px]"
+    >
       <web-ui-layout
         :sidebarOpen="open"
         @sidebar-open-change="open = $event.detail.open"
@@ -404,19 +416,20 @@ const mobile = ref(false)
 
 ### Props
 
-| Name                | Description                                                                                                                                                                                                                                              | Type               | Default   |
-| ------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------ | --------- |
-| `no-sidebar`        | Renders no sidebar structure: desktop aside, collapse Toggle and resize handle, mobile header Toggle and Drawer; the `sidebar` slot is no longer rendered.                                                                                               | `boolean`          | `false`   |
-| `sidebar-collapsed` | Controlled collapse state of the desktop sidebar; it only narrows the desktop side and does not affect the mobile Drawer.                                                                                                                                | `boolean`          | `false`   |
-| `sidebar-open`      | Controlled open state of the mobile sidebar Drawer.                                                                                                                                                                                                      | `boolean`          | `false`   |
-| `header-glow`       | Shows a decorative glow behind the header slot content.                                                                                                                                                                                                  | `boolean`          | `false`   |
-| `ariaLabels`        | Grouped overrides for the built-in accessible names (sidebar collapse/expand, resize, open navigation menu, main navigation); keys without a value fall back to the built-in English copy, and sidebar-related keys are not rendered under `no-sidebar`. | `LayoutAriaLabels` | —         |
-| `mobile`            | Read-only derived value: whether the current viewport is at or below the mobile breakpoint; writing the attribute is reverted, and assigning the property has no effect.                                                                                 | `boolean`          | `false`   |
-| `sidebar-width`     | Sidebar width when expanded on desktop and mobile.                                                                                                                                                                                                       | `string`           | `'240px'` |
-| `collapsed-width`   | Sidebar width when collapsed on desktop.                                                                                                                                                                                                                 | `string`           | `'68px'`  |
-| `sidebar-resizable` | Enables drag resizing on the right edge of the desktop sidebar.                                                                                                                                                                                          | `boolean`          | `false`   |
-| `sidebar-min-width` | Lower bound (px) for drag resizing; falls back to `collapsed-width` by default.                                                                                                                                                                          | `string`           | —         |
-| `sidebar-max-width` | Upper bound (px) for drag resizing; clamped to half the viewport, with the built-in limit taking precedence.                                                                                                                                             | `string`           | —         |
+| Name                  | Description                                                                                                                                                                                                                                              | Type               | Default   |
+| --------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------ | --------- |
+| `no-sidebar`          | Renders no sidebar structure: desktop aside, collapse Toggle and resize handle, mobile header Toggle and Drawer; the `sidebar` slot is no longer rendered.                                                                                               | `boolean`          | `false`   |
+| `sidebar-collapsible` | Renders the desktop collapse / expand Toggle. Without it the sidebar keeps its expanded width and no `sidebar-collapsed-change` request is produced; the mobile drawer Toggle is unaffected.                                                             | `boolean`          | `false`   |
+| `sidebar-collapsed`   | Controlled collapse state of the desktop sidebar; it only narrows the desktop side and does not affect the mobile Drawer.                                                                                                                                | `boolean`          | `false`   |
+| `sidebar-open`        | Controlled open state of the mobile sidebar Drawer.                                                                                                                                                                                                      | `boolean`          | `false`   |
+| `header-glow`         | Shows a decorative glow behind the header slot content.                                                                                                                                                                                                  | `boolean`          | `false`   |
+| `ariaLabels`          | Grouped overrides for the built-in accessible names (sidebar collapse/expand, resize, open navigation menu, main navigation); keys without a value fall back to the built-in English copy, and sidebar-related keys are not rendered under `no-sidebar`. | `LayoutAriaLabels` | —         |
+| `mobile`              | Read-only derived value: whether the current viewport is at or below the mobile breakpoint; writing the attribute is reverted, and assigning the property has no effect.                                                                                 | `boolean`          | `false`   |
+| `sidebar-width`       | Sidebar width when expanded on desktop and mobile.                                                                                                                                                                                                       | `string`           | `'240px'` |
+| `collapsed-width`     | Sidebar width when collapsed on desktop.                                                                                                                                                                                                                 | `string`           | `'60px'`  |
+| `sidebar-resizable`   | Enables drag resizing on the right edge of the desktop sidebar.                                                                                                                                                                                          | `boolean`          | `false`   |
+| `sidebar-min-width`   | Lower bound (px) for drag resizing; falls back to `collapsed-width` by default.                                                                                                                                                                          | `string`           | —         |
+| `sidebar-max-width`   | Upper bound (px) for drag resizing; clamped to half the viewport, with the built-in limit taking precedence.                                                                                                                                             | `string`           | —         |
 
 ### Events
 
@@ -546,8 +559,9 @@ It is a separate token because dialog, drawer, and toast share `--wui-color-surf
 
 ### CSS Custom Properties
 
-| Name                                | Description                                                                                  | Default |
-| ----------------------------------- | -------------------------------------------------------------------------------------------- | ------- |
-| `--wui-layout-sidebar-radius`       | Sidebar card radius (shared by desktop and mobile)                                           | `24px`  |
-| `--wui-layout-mobile-toggle-inset`  | Left inset of the mobile header Toggle                                                       | `8px`   |
-| `--wui-layout-sidebar-toggle-width` | Width of the desktop sidebar collapse Toggle; the lower bound is `--wui-control-size` (36px) | `44px`  |
+| Name                                | Description                                                                                                  | Default            |
+| ----------------------------------- | ------------------------------------------------------------------------------------------------------------ | ------------------ |
+| `--wui-layout-viewport-height`      | Available layout viewport height; set it to the container height when embedding layout in a fixed-height box | `100vh` / `100dvh` |
+| `--wui-layout-sidebar-radius`       | Sidebar card radius (shared by desktop and mobile)                                                           | `24px`             |
+| `--wui-layout-mobile-toggle-inset`  | Left inset of the mobile header Toggle                                                                       | `8px`              |
+| `--wui-layout-sidebar-toggle-width` | Width of the desktop sidebar collapse Toggle; the lower bound is `--wui-control-size` (36px)                 | `36px`             |

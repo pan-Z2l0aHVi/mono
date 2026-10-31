@@ -85,7 +85,7 @@ export default function Demo() {
 
 `show()` mounts a full-screen instance in the overlay root of the current theme (falling back to the body's fallback overlay root when there is no theme scope); `size` / `description` / `color` override the appearance, and when `duration` is greater than 0 the instance calls `hide()` automatically on expiry.
 
-While the instance is up, the native `<dialog>`'s `showModal()` blocks the rest of the page from interacting and locks scrolling; `hide()` or unmounting releases the scroll lock and clears the `duration` timer together.
+The instance is shown with a non-modal `<dialog>` and its overlay is pointer-transparent: it reports loading without taking over clicks, focus, or page scrolling. `hide()` or unmounting closes the dialog and clears the `duration` timer.
 
 Repeated clicks do not stack—mounting a new instance removes the previous imperative one.
 
@@ -98,9 +98,7 @@ export default function Demo() {
       <web-ui-button onClick={() => WebUiSpinner.show()}>show()</web-ui-button>
       <web-ui-button onClick={() => WebUiSpinner.hide()}>hide()</web-ui-button>
       <web-ui-button onClick={() => WebUiSpinner.show({ size: 16 })}>Small (16px)</web-ui-button>
-      <web-ui-button onClick={() => WebUiSpinner.show({ size: 64, duration: 2000 })}>
-        Large (64px), closes itself after 2 seconds
-      </web-ui-button>
+      <web-ui-button onClick={() => WebUiSpinner.show({ size: 64, duration: 2000 })}>Large (64px)</web-ui-button>
       <web-ui-button
         onClick={() => WebUiSpinner.show({ description: 'Syncing cloud files, about 10 seconds', duration: 10000 })}
       >
@@ -117,7 +115,7 @@ export default function Demo() {
     <web-ui-button @click="show">show()</web-ui-button>
     <web-ui-button @click="hide">hide()</web-ui-button>
     <web-ui-button @click="showSmall">Small (16px)</web-ui-button>
-    <web-ui-button @click="showLarge">Large (64px), closes itself after 2 seconds</web-ui-button>
+    <web-ui-button @click="showLarge">Large (64px)</web-ui-button>
     <web-ui-button @click="showWithDescription">With description, 10 seconds</web-ui-button>
   </div>
 </template>
@@ -218,10 +216,10 @@ export default function Demo() {
 
 ### Methods
 
-| Name                          | Description                                                                                                                                                                                                                                                                                                                             |
-| ----------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `WebUiSpinner.show(options?)` | Mounts a full-screen instance in the theme overlay root (the body's fallback overlay root when there is no theme) and returns it; while the instance is up, `showModal()` blocks page interaction and locks scrolling. A new instance removes the previous imperative instance on connect, and on `duration` expiry `hide()` is called. |
-| `WebUiSpinner.hide()`         | Releases the scroll lock, clears the `duration` timer, and removes the instance mounted by `show()`; a no-op when there is none.                                                                                                                                                                                                        |
+| Name                          | Description                                                                                                                                                                                                                                                                                                                    |
+| ----------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `WebUiSpinner.show(options?)` | Mounts a full-screen instance in the theme overlay root (the body's fallback overlay root when there is no theme) and returns it; the instance is non-modal and does not block page interaction or scrolling. A new instance removes the previous imperative instance on connect, and on `duration` expiry `hide()` is called. |
+| `WebUiSpinner.hide()`         | Releases the scroll lock, clears the `duration` timer, and removes the instance mounted by `show()`; a no-op when there is none.                                                                                                                                                                                               |
 
 ### Behavior
 

@@ -16,6 +16,10 @@
     "./vue": {
       "types": "./dist/vue.d.mts",
       "import": "./dist/vue.mjs"
+    },
+    "./markdown": {
+      "types": "./dist/markdown-entry.d.mts",
+      "import": "./dist/markdown-entry.mjs"
     }
   },
   "sideEffects": false,

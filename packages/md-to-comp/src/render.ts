@@ -346,11 +346,12 @@ ${darkSelector} .mdc-markdown th {
 
   text-align: left;
   overflow-wrap: anywhere;
-  vertical-align: top;
+  vertical-align: middle;
 }
 
 .mdc-markdown th {
   font-weight: 500;
+  white-space: nowrap;
   background-color: rgb(242 241 238 / 0.5);
 }
 

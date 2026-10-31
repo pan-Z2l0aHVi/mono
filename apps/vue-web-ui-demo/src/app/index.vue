@@ -1,22 +1,29 @@
 <script setup lang="ts">
 import appScrollbarsOptions from '@greypan/app-scrollbars'
 import { local } from '@greypan/browser-kit'
-import type { WebUiEvent, WebUiLayout, WebUiSelect, WebUiTheme, WebUiToast } from '@greypan/web-ui'
+import type { WebUiEvent, WebUiLayout, WebUiSelect } from '@greypan/web-ui'
 import { toast } from '@greypan/web-ui'
-import { lucideX } from '@greypan/web-ui/icons'
+import {
+  antDesignSyncOutlined,
+  icOutlineMotionPhotosOff,
+  icOutlineMotionPhotosOn,
+  lucideContrast,
+  lucideLanguages,
+  lucideMoon,
+  lucideSun,
+  lucideX
+} from '@greypan/web-ui/icons'
 import { useHead } from '@unhead/vue'
 import {
   OverlayScrollbarsComponent,
   useOverlayScrollbars,
   type OverlayScrollbarsComponentRef
 } from 'overlayscrollbars-vue'
-import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { RouterLink, useRoute, useRouter } from 'vue-router'
 
 import { bootDegraded, currentLocale, loadDemoLocale, localePending } from '@/i18n/locale'
 
-const LIGHT_LABEL = 'Light'
-const DARK_LABEL = 'Dark'
 const ZH_LABEL = '简体中文'
 const EN_LABEL = 'English'
 
@@ -69,10 +76,9 @@ function getInitialSidebarWidth(): string {
 const themeAppearance = ref(getInitialThemeAppearance())
 const themeMotion = ref(getInitialThemeMotion())
 const bannerVisible = ref(true)
-const topToastBottom = ref(0)
-// 桌面端关闭按钮在 banner 右端，与默认 top-right toast 的位置重叠：按 toast 实际左缘给它让位。
-const topRightToastInset = ref(0)
-let stopObservingToastBounds: (() => void) | undefined
+let stopObservingToastTopOffset: (() => void) | undefined
+let refreshToastTopOffset: (() => void) | undefined
+const shellLayout = ref<WebUiLayout | null>(null)
 const sidebarCollapsed = ref(false)
 const sidebarOpen = ref(false)
 const mobileSidebarWidth = 'min(320px, 80vw)'
@@ -150,128 +156,51 @@ const navSidebar = ref<OverlayScrollbarsComponentRef>()
 // 只能直接初始化 body。
 const [initPageScrollbars] = useOverlayScrollbars({ options: appScrollbarsOptions })
 
-function observeToastBounds() {
-  const topToasts = new Set<WebUiToast>()
-  const containers = new Set<HTMLElement>()
-  const shadowRootObservers = new Map<ShadowRoot, MutationObserver>()
-  let measureFrame: number | undefined
-  const updateToastBottom = () => {
-    let bottom = 0
-    let rightInset = 0
-    for (const toast of topToasts) {
-      const bounds = toast.getBoundingClientRect()
-      const clip = toast.parentElement?.getBoundingClientRect()
-      if (!clip) continue
-      // 堆栈可滚动，不能给被容器或视口裁掉的 toast 预留空间。
-      const visibleBottom = Math.min(bounds.bottom, clip.bottom, window.innerHeight)
-      const visibleTop = Math.max(bounds.top, clip.top, 0)
-      if (visibleBottom <= visibleTop) continue
-      bottom = Math.max(bottom, visibleBottom)
-      if (toast.position === 'top-right') {
-        rightInset = Math.max(rightInset, window.innerWidth - Math.max(bounds.left, 0) + 8)
-      }
-    }
-    topToastBottom.value = bottom
-    topRightToastInset.value = rightInset
+function observeToastTopOffset() {
+  let frame: number | undefined
+  const update = () => {
+    const header = shellLayout.value?.querySelector<HTMLElement>('[slot="header"]')
+    document.documentElement.style.setProperty(
+      '--wui-toast-top-offset',
+      `${Math.max(0, Math.ceil(header?.getBoundingClientRect().bottom ?? 0))}px`
+    )
   }
-  // 留到下一帧更新 banner，避免在 ResizeObserver 派发中再次触发布局尺寸通知。
-  const scheduleMeasurement = () => {
-    if (measureFrame !== undefined) return
-    measureFrame = requestAnimationFrame(() => {
-      measureFrame = undefined
-      updateToastBottom()
+  const schedule = () => {
+    if (frame !== undefined) return
+    frame = requestAnimationFrame(() => {
+      frame = undefined
+      update()
     })
   }
-  const resizeObserver = new ResizeObserver(scheduleMeasurement)
+  const resizeObserver = typeof ResizeObserver === 'undefined' ? undefined : new ResizeObserver(schedule)
+  if (shellLayout.value) resizeObserver?.observe(shellLayout.value)
+  window.addEventListener('resize', schedule, { passive: true })
+  window.addEventListener('scroll', schedule, { passive: true, capture: true })
+  update()
 
-  const collectThemeScopes = (root: ParentNode, themes: Set<WebUiTheme>, shadowRoots: Set<ShadowRoot>) => {
-    for (const element of root.querySelectorAll<HTMLElement>('*')) {
-      if (element.matches('web-ui-theme')) themes.add(element as WebUiTheme)
-      if (!element.shadowRoot) continue
-
-      shadowRoots.add(element.shadowRoot)
-      collectThemeScopes(element.shadowRoot, themes, shadowRoots)
-    }
-  }
-
-  const updateToasts = () => {
-    const themes = new Set<WebUiTheme>()
-    const shadowRoots = new Set<ShadowRoot>()
-    collectThemeScopes(document.body, themes, shadowRoots)
-
-    for (const [shadowRoot, observer] of shadowRootObservers) {
-      if (shadowRoots.has(shadowRoot)) continue
-      observer.disconnect()
-      shadowRootObservers.delete(shadowRoot)
-    }
-
-    for (const shadowRoot of shadowRoots) {
-      if (shadowRootObservers.has(shadowRoot)) continue
-      const observer = new MutationObserver(updateToasts)
-      observer.observe(shadowRoot, { childList: true, subtree: true, attributes: true, attributeFilter: ['position'] })
-      shadowRootObservers.set(shadowRoot, observer)
-    }
-
-    const nextTopToasts = new Set(
-      Array.from(themes).flatMap(theme =>
-        Array.from(theme.getOverlayRoot()?.querySelectorAll<WebUiToast>('web-ui-toast') ?? []).filter(toast =>
-          toast.position.startsWith('top')
-        )
-      )
-    )
-    for (const toast of topToasts) {
-      if (nextTopToasts.has(toast)) continue
-      resizeObserver.unobserve(toast)
-      topToasts.delete(toast)
-    }
-    for (const toast of nextTopToasts) {
-      if (topToasts.has(toast)) continue
-      topToasts.add(toast)
-      resizeObserver.observe(toast)
-    }
-    const nextContainers = new Set(
-      Array.from(nextTopToasts, toast => toast.parentElement).filter((element): element is HTMLElement => !!element)
-    )
-    for (const container of containers) {
-      if (nextContainers.has(container)) continue
-      container.removeEventListener('scroll', scheduleMeasurement)
-      resizeObserver.unobserve(container)
-      containers.delete(container)
-    }
-    for (const container of nextContainers) {
-      if (containers.has(container)) continue
-      containers.add(container)
-      container.addEventListener('scroll', scheduleMeasurement, { passive: true })
-      resizeObserver.observe(container)
-    }
-    updateToastBottom()
-  }
-
-  updateToasts()
-  const themeObserver = new MutationObserver(updateToasts)
-  themeObserver.observe(document.body, {
-    childList: true,
-    subtree: true,
-    attributes: true,
-    attributeFilter: ['position']
-  })
-  window.addEventListener('resize', scheduleMeasurement, { passive: true })
-
-  return () => {
-    themeObserver.disconnect()
-    resizeObserver.disconnect()
-    if (measureFrame !== undefined) cancelAnimationFrame(measureFrame)
-    for (const observer of shadowRootObservers.values()) observer.disconnect()
-    for (const container of containers) container.removeEventListener('scroll', scheduleMeasurement)
-    window.removeEventListener('resize', scheduleMeasurement)
+  return {
+    stop: () => {
+      resizeObserver?.disconnect()
+      if (frame !== undefined) cancelAnimationFrame(frame)
+      document.documentElement.style.removeProperty('--wui-toast-top-offset')
+      window.removeEventListener('resize', schedule)
+      window.removeEventListener('scroll', schedule, { capture: true })
+    },
+    refresh: schedule
   }
 }
 
-onBeforeUnmount(() => stopObservingToastBounds?.())
+onBeforeUnmount(() => stopObservingToastTopOffset?.())
+watch(bannerVisible, async () => {
+  await nextTick()
+  refreshToastTopOffset?.()
+})
 
 onMounted(async () => {
   initPageScrollbars(document.body)
-  stopObservingToastBounds = observeToastBounds()
+  const toastOffset = observeToastTopOffset()
+  stopObservingToastTopOffset = toastOffset.stop
+  refreshToastTopOffset = toastOffset.refresh
   if (bootDegraded.value) {
     toast.warning('目标语种加载失败，暂时使用简体中文')
     bootDegraded.value = false
@@ -288,40 +217,74 @@ interface NavItem {
   label: string
 }
 
-const navItems: NavItem[] = [
-  { path: '/home', label: 'Home' },
-  { path: '/components/avatar', label: 'Avatar' },
-  { path: '/components/badge', label: 'Badge' },
-  { path: '/components/button', label: 'Button' },
-  { path: '/components/icon', label: 'Icon' },
-  { path: '/components/input', label: 'Input' },
-  { path: '/components/textarea', label: 'Textarea' },
-  { path: '/components/editable-text', label: 'EditableText' },
-  { path: '/components/theme', label: 'Theme' },
-  { path: '/components/input-number', label: 'InputNumber' },
-  { path: '/components/select', label: 'Select' },
-  { path: '/components/autocomplete', label: 'Autocomplete' },
-  { path: '/components/dropdown', label: 'Dropdown' },
-  { path: '/components/collapse', label: 'Collapse' },
-  { path: '/components/dialog', label: 'Dialog' },
-  { path: '/components/drawer', label: 'Drawer' },
-  { path: '/components/image-preview', label: 'ImagePreview' },
-  { path: '/components/empty', label: 'Empty' },
-  { path: '/components/middle-ellipsis', label: 'MiddleEllipsis' },
-  { path: '/components/tooltip', label: 'Tooltip' },
-  { path: '/components/switch', label: 'Switch' },
-  { path: '/components/slider', label: 'Slider' },
-  { path: '/components/radio', label: 'Radio' },
-  { path: '/components/checkbox', label: 'Checkbox' },
-  { path: '/components/segmented', label: 'Segmented' },
-  { path: '/components/spinner', label: 'Spinner' },
-  { path: '/components/popover', label: 'Popover' },
-  { path: '/components/context-menu', label: 'ContextMenu' },
-  { path: '/components/toast', label: 'Toast' },
-  { path: '/components/svg-draw-lines', label: 'SVGDrawLines' },
-  { path: '/components/back-top', label: 'BackTop' },
-  { path: '/components/layout', label: 'Layout' }
+type NavSectionId = 'general' | 'layout' | 'form' | 'display' | 'feedback'
+
+interface NavSection {
+  id: NavSectionId
+  items: NavItem[]
+}
+
+const navSections: NavSection[] = [
+  {
+    id: 'general',
+    items: [
+      { path: '/components/button', label: 'Button' },
+      { path: '/components/icon', label: 'Icon' }
+    ]
+  },
+  {
+    id: 'layout',
+    items: [
+      { path: '/components/layout', label: 'Layout' },
+      { path: '/components/back-top', label: 'BackTop' },
+      { path: '/components/theme', label: 'Theme' }
+    ]
+  },
+  {
+    id: 'form',
+    items: [
+      { path: '/components/input', label: 'Input' },
+      { path: '/components/textarea', label: 'Textarea' },
+      { path: '/components/input-number', label: 'InputNumber' },
+      { path: '/components/select', label: 'Select' },
+      { path: '/components/autocomplete', label: 'Autocomplete' },
+      { path: '/components/dropdown', label: 'Dropdown' },
+      { path: '/components/switch', label: 'Switch' },
+      { path: '/components/slider', label: 'Slider' },
+      { path: '/components/radio', label: 'Radio' },
+      { path: '/components/checkbox', label: 'Checkbox' },
+      { path: '/components/segmented', label: 'Segmented' }
+    ]
+  },
+  {
+    id: 'display',
+    items: [
+      { path: '/components/collapse', label: 'Collapse' },
+      { path: '/components/editable-text', label: 'EditableText' },
+      { path: '/components/empty', label: 'Empty' },
+      { path: '/components/middle-ellipsis', label: 'MiddleEllipsis' },
+      { path: '/components/svg-draw-lines', label: 'SVGDrawLines' },
+      { path: '/components/avatar', label: 'Avatar' },
+      { path: '/components/badge', label: 'Badge' }
+    ]
+  },
+  {
+    id: 'feedback',
+    items: [
+      { path: '/components/dialog', label: 'Dialog' },
+      { path: '/components/drawer', label: 'Drawer' },
+      { path: '/components/tooltip', label: 'Tooltip' },
+      { path: '/components/popover', label: 'Popover' },
+      { path: '/components/context-menu', label: 'ContextMenu' },
+      { path: '/components/toast', label: 'Toast' },
+      { path: '/components/image-preview', label: 'ImagePreview' },
+      { path: '/components/spinner', label: 'Spinner' },
+      { path: '/components/progress', label: 'Progress' }
+    ]
+  }
 ]
+
+const navSectionTitleClass = 'px-2.5 pt-3 pb-1 text-[12px] font-medium tracking-wide text-(--wui-color-text-secondary)'
 
 // active 底色浅色取设计给定的 #d5d7d7；深色不跟——sidebar 在深色是 #2c2c2e，亮灰会读成一条高亮带，仍走 control 档。
 const navItemClass =
@@ -340,7 +303,9 @@ function isNavActive(path: string) {
         kebab-case（:sidebar-collapsed）会写字符串 attribute，布尔属性存在即 true，无法表达 false。
       -->
       <web-ui-layout
+        ref="shellLayout"
         header-glow
+        sidebar-collapsible
         :sidebarCollapsed="sidebarCollapsed"
         :sidebarOpen="sidebarOpen"
         :sidebarWidth="sidebarWidth"
@@ -353,16 +318,12 @@ function isNavActive(path: string) {
         @mobile-change="updateMobileSidebarViewport"
       >
         <div
-          v-if="bannerVisible || topToastBottom > 0"
+          v-if="bannerVisible"
           slot="banner"
           class="relative grid grid-cols-[24px_minmax(0,1fr)_24px] items-center gap-2 bg-(--wui-color-accent) px-4 py-2 text-sm text-(--wui-color-on-accent)"
-          :class="{ 'invisible pointer-events-none': !bannerVisible }"
-          :aria-hidden="!bannerVisible"
-          :style="{ minHeight: `${topToastBottom}px` }"
         >
           <web-ui-button
-            class="absolute top-1/2 -translate-y-1/2 mobile:left-0"
-            :style="{ right: isMobileSidebarViewport ? 'auto' : `${16 + topRightToastInset}px` }"
+            class="absolute top-1/2 right-4 -translate-y-1/2 mobile:left-0 mobile:right-auto"
             size="24"
             icon
             variant="ghost"
@@ -373,35 +334,59 @@ function isNavActive(path: string) {
           </web-ui-button>
           <span class="col-start-2 text-center">🎉 欢迎使用 web-ui 组件库！</span>
         </div>
-        <div slot="header" class="flex h-full w-full items-center justify-end gap-2 px-4 py-2 mobile:w-screen">
+        <div
+          slot="header"
+          class="flex h-full w-full items-center justify-end gap-2 px-4 py-2 mobile:grid mobile:w-[calc(100vw-60px)] mobile:grid-cols-3 mobile:gap-1.5 mobile:px-2 mobile:py-1"
+        >
           <web-ui-select
+            trigger="icon"
             :value="themeMotion"
-            class="[--wui-input-width:120px] mobile:[--wui-input-width:90px]"
+            class="justify-self-center"
             aria-label="全局动效"
             @change="updateThemeMotion"
           >
+            <web-ui-icon
+              slot="trigger"
+              :icon="
+                themeMotion === 'full'
+                  ? icOutlineMotionPhotosOn
+                  : themeMotion === 'reduced'
+                    ? icOutlineMotionPhotosOff
+                    : antDesignSyncOutlined
+              "
+              :size="18"
+            ></web-ui-icon>
             <web-ui-option value="full" label="完整动效">完整动效</web-ui-option>
             <web-ui-option value="reduced" label="减弱动效">减弱动效</web-ui-option>
             <web-ui-option value="system" label="跟随系统">跟随系统</web-ui-option>
           </web-ui-select>
           <web-ui-select
+            trigger="icon"
             :value="themeAppearance"
-            class="[--wui-input-width:120px] mobile:[--wui-input-width:90px]"
+            class="justify-self-center"
             aria-label="全局主题"
             @change="updateThemeAppearance"
           >
-            <web-ui-option value="light" :label="LIGHT_LABEL">{{ LIGHT_LABEL }}</web-ui-option>
-            <web-ui-option value="dark" :label="DARK_LABEL">{{ DARK_LABEL }}</web-ui-option>
+            <web-ui-icon
+              slot="trigger"
+              :icon="themeAppearance === 'light' ? lucideSun : themeAppearance === 'dark' ? lucideMoon : lucideContrast"
+              :size="18"
+            ></web-ui-icon>
+            <!-- 外观名称由 Wuchale 壳文案统一翻译成 Light / Dark。 -->
+            <web-ui-option value="light" label="浅色模式">浅色模式</web-ui-option>
+            <web-ui-option value="dark" label="深色模式">深色模式</web-ui-option>
             <web-ui-option value="system" label="跟随系统">跟随系统</web-ui-option>
           </web-ui-select>
           <web-ui-select
+            trigger="icon"
             :value="currentLocale"
             :disabled="localePending"
             :aria-busy="localePending"
-            class="[--wui-input-width:120px] mobile:[--wui-input-width:90px]"
+            class="justify-self-center"
             aria-label="全局语言"
             @change="updateLocale"
           >
+            <web-ui-icon slot="trigger" :icon="lucideLanguages" :size="18"></web-ui-icon>
             <web-ui-option value="zh-CN" :label="ZH_LABEL">{{ ZH_LABEL }}</web-ui-option>
             <web-ui-option value="en" :label="EN_LABEL">{{ EN_LABEL }}</web-ui-option>
           </web-ui-select>
@@ -416,24 +401,78 @@ function isNavActive(path: string) {
         >
           <nav class="grid gap-1" aria-label="主导航">
             <RouterLink
-              v-for="item in navItems"
-              :key="item.path"
-              :to="item.path"
+              to="/home"
               :class="[
                 navItemClass,
-                isNavActive(item.path) ? '' : 'hover:bg-black/4 dark:hover:bg-white/6',
+                isNavActive('/home') ? '' : 'hover:bg-black/4 dark:hover:bg-white/6',
                 navCollapsed ? 'justify-center' : ''
               ]"
-              :data-active="isNavActive(item.path)"
-              :aria-current="isNavActive(item.path) ? 'page' : undefined"
-              :aria-label="item.label"
-              :title="navCollapsed ? item.label : undefined"
+              :data-active="isNavActive('/home')"
+              :aria-current="isNavActive('/home') ? 'page' : undefined"
+              aria-label="组件总览"
+              title="组件总览"
               @click="sidebarOpen = false"
             >
               <span :class="navCollapsed ? 'w-full truncate text-center text-sm' : 'min-w-0 flex-1 truncate text-sm'">
-                {{ item.label }}
+                组件总览
               </span>
             </RouterLink>
+            <RouterLink
+              to="/changelog"
+              :class="[
+                navItemClass,
+                isNavActive('/changelog') ? '' : 'hover:bg-black/4 dark:hover:bg-white/6',
+                navCollapsed ? 'justify-center' : ''
+              ]"
+              :data-active="isNavActive('/changelog')"
+              :aria-current="isNavActive('/changelog') ? 'page' : undefined"
+              aria-label="更新日志"
+              title="更新日志"
+              @click="sidebarOpen = false"
+            >
+              <span :class="navCollapsed ? 'w-full truncate text-center text-sm' : 'min-w-0 flex-1 truncate text-sm'">
+                更新日志
+              </span>
+            </RouterLink>
+            <div
+              v-for="(section, index) in navSections"
+              :key="section.id"
+              role="group"
+              :aria-labelledby="`nav-section-${section.id}`"
+              class="grid gap-1"
+            >
+              <div
+                v-if="navCollapsed && index > 0"
+                class="mx-2 my-1 h-px bg-(--wui-color-border)"
+                aria-hidden="true"
+              ></div>
+              <h2 :id="`nav-section-${section.id}`" :class="[navSectionTitleClass, navCollapsed ? 'sr-only' : '']">
+                <template v-if="section.id === 'general'">通用</template>
+                <template v-else-if="section.id === 'layout'">布局</template>
+                <template v-else-if="section.id === 'form'">表单</template>
+                <template v-else-if="section.id === 'display'">展示</template>
+                <template v-else>反馈</template>
+              </h2>
+              <RouterLink
+                v-for="item in section.items"
+                :key="item.path"
+                :to="item.path"
+                :class="[
+                  navItemClass,
+                  isNavActive(item.path) ? '' : 'hover:bg-black/4 dark:hover:bg-white/6',
+                  navCollapsed ? 'justify-center' : ''
+                ]"
+                :data-active="isNavActive(item.path)"
+                :aria-current="isNavActive(item.path) ? 'page' : undefined"
+                :aria-label="item.label"
+                :title="navCollapsed ? item.label : undefined"
+                @click="sidebarOpen = false"
+              >
+                <span :class="navCollapsed ? 'w-full truncate text-center text-sm' : 'min-w-0 flex-1 truncate text-sm'">
+                  {{ item.label }}
+                </span>
+              </RouterLink>
+            </div>
           </nav>
         </OverlayScrollbarsComponent>
         <div class="p-3 sm:px-6 md:px-8 lg:px-10">

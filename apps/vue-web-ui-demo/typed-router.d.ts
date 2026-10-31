@@ -38,6 +38,13 @@ declare module 'vue-router/auto-routes' {
       { all: ParamValue<false> },
       | never
     >,
+    '/changelog': RouteRecordInfo<
+      '/changelog',
+      '/changelog',
+      Record<never, never>,
+      Record<never, never>,
+      | never
+    >,
     '/components/autocomplete': RouteRecordInfo<
       '/components/autocomplete',
       '/components/autocomplete',
@@ -178,6 +185,13 @@ declare module 'vue-router/auto-routes' {
       Record<never, never>,
       | never
     >,
+    '/components/progress': RouteRecordInfo<
+      '/components/progress',
+      '/components/progress',
+      Record<never, never>,
+      Record<never, never>,
+      | never
+    >,
     '/components/radio': RouteRecordInfo<
       '/components/radio',
       '/components/radio',
@@ -278,6 +292,14 @@ declare module 'vue-router/auto-routes' {
     'src/pages/[...all]/index.vue': {
       routes:
         | '/[...all]/'
+      views:
+        | never
+      pathParamNames:
+        | never
+    }
+    'src/pages/changelog.vue': {
+      routes:
+        | '/changelog'
       views:
         | never
       pathParamNames:
@@ -438,6 +460,14 @@ declare module 'vue-router/auto-routes' {
     'src/pages/components/popover.vue': {
       routes:
         | '/components/popover'
+      views:
+        | never
+      pathParamNames:
+        | never
+    }
+    'src/pages/components/progress.vue': {
+      routes:
+        | '/components/progress'
       views:
         | never
       pathParamNames:

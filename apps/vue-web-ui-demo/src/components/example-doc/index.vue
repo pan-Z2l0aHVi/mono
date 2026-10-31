@@ -33,6 +33,9 @@ const FLAVOR_ICONS: Record<Flavor, typeof vueIcon | typeof reactIcon> = { vue: v
 // 写在 body 的字面量里，缺省即可。类名放这里而不是 flavor-icons.ts，是让 Tailwind 在组件源文件里扫到。
 const FLAVOR_ICON_CLASS: Partial<Record<Flavor, string>> = { react: 'text-[#087eae] dark:text-[#61dafb]' }
 
+// 复制成功的描边与 scale 反馈共用同一时长；CSS 里的 `demo-copy-pop` 要同步。
+const COPY_FEEDBACK_DURATION = 500
+
 const props = defineProps<{
   component: string
   /** 预览与默认代码 tab 使用的框架；默认 Vue 站。 */
@@ -63,6 +66,8 @@ const sampleHeadingLevel = computed(() => (props.level === 'secondary' ? 4 : 3))
 const activeFlavors = reactive<Record<string, Flavor>>({})
 const expanded = reactive<Record<string, boolean>>({})
 const copied = ref<{ key: string; ok: boolean } | null>(null)
+// 每次复制都换 key，让成功态的描边与 scale 动画重新挂载、各播一次。
+const copyRun = ref(0)
 let copyTimer: ReturnType<typeof setTimeout> | undefined
 
 onBeforeUnmount(() => clearTimeout(copyTimer))
@@ -103,6 +108,35 @@ const codeScrollbarsEvents = {
   initialized: (instance: OverlayScrollbars) => {
     instance.elements().viewport.tabIndex = 0
   }
+}
+
+interface TableScrollbarEvents {
+  initialized: (instance: OverlayScrollbars) => void
+  updated: (instance: OverlayScrollbars) => void
+}
+
+const tableScrollbarsEventCache = new Map<string, TableScrollbarEvents>()
+
+function decorateTableScrollViewport(instance: OverlayScrollbars, headingId: string) {
+  const viewport = instance.elements().viewport
+  viewport.tabIndex = 0
+  viewport.setAttribute('role', 'region')
+  viewport.setAttribute('aria-labelledby', headingId)
+}
+
+function tableScrollbarsEvents(headingId: string): TableScrollbarEvents {
+  const cached = tableScrollbarsEventCache.get(headingId)
+  if (cached) return cached
+  const events = {
+    initialized: (instance: OverlayScrollbars) => decorateTableScrollViewport(instance, headingId),
+    updated: (instance: OverlayScrollbars) => decorateTableScrollViewport(instance, headingId)
+  }
+  tableScrollbarsEventCache.set(headingId, events)
+  return events
+}
+
+function apiHeadingId(key: string) {
+  return `${props.component}-api-${key}`
 }
 
 function onFlavorInput(event: Event, key: string) {
@@ -172,6 +206,7 @@ async function copyCode(event: Event, key: string) {
   frame?.querySelectorAll('.line-number').forEach(node => node.remove())
   const text = frame?.textContent ?? ''
   copied.value = { key, ok: text !== '' && (await writeClipboard(text)) }
+  copyRun.value += 1
   clearTimeout(copyTimer)
   copyTimer = setTimeout(() => {
     copied.value = null
@@ -284,9 +319,14 @@ function copyAnnouncement(key: string) {
                       :aria-label="copyLabel(sample.id)"
                       @click="copyCode($event, sample.id)"
                     >
-                      <!-- 成功态才包进描边宿主：`web-ui-svg-draw-lines` 在 slot 内容稳定时自动播一次，
-                         所以每次复制都会重新画出勾与圆，而不是淡入一张现成的图。 -->
-                      <web-ui-svg-draw-lines v-if="copyState(sample.id) === 'copied'" :duration="300">
+                      <!-- 成功态才包进描边宿主：`web-ui-svg-draw-lines` 在 slot 内容稳定时自动播一次；
+                         key 跟着每次复制递增，重复复制也会重新挂载并重播描边与 scale。 -->
+                      <web-ui-svg-draw-lines
+                        v-if="copyState(sample.id) === 'copied'"
+                        :key="copyRun"
+                        class="demo-copy-pop"
+                        :duration="COPY_FEEDBACK_DURATION"
+                      >
                         <web-ui-icon
                           :icon="akarIconsCircleCheck"
                           :size="15"
@@ -373,30 +413,40 @@ function copyAnnouncement(key: string) {
         class="mdc-markdown flex flex-col gap-3"
         :data-example-api="section.key"
       >
-        <component :is="`h${sampleHeadingLevel}`" class="mdc-heading">{{ section.title }}</component>
+        <component :is="`h${sampleHeadingLevel}`" :id="apiHeadingId(section.key)" class="mdc-heading">
+          {{ section.title }}
+        </component>
         <!-- 散文正文是生成器渲染好的 HTML 片段，不是运行时拼的用户输入。 -->
         <div v-if="section.kind === 'prose'" v-html="section.html"></div>
-        <table v-else>
-          <thead>
-            <tr>
-              <th v-for="column in section.columns" :key="column.title">
-                {{ column.title }}
-              </th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr v-for="row in section.rows" :key="row[0]">
-              <template v-for="(column, index) in section.columns" :key="column.title">
-                <!-- 值列（类型 / 默认值）由生成器标成 'code'：它们是字面量，不是散文。 -->
-                <td v-if="column.kind === 'html'" v-html="row[index]"></td>
-                <td v-else-if="column.kind === 'code' && row[index] !== NO_DEFAULT_VALUE">
-                  <code>{{ row[index] }}</code>
-                </td>
-                <td v-else>{{ row[index] }}</td>
-              </template>
-            </tr>
-          </tbody>
-        </table>
+        <OverlayScrollbarsComponent
+          v-else
+          :options="appScrollbarsOptions"
+          :events="tableScrollbarsEvents(apiHeadingId(section.key))"
+          class="overflow-x-auto"
+          data-api-table-scroll
+        >
+          <table class="min-w-[36rem]">
+            <thead>
+              <tr>
+                <th v-for="column in section.columns" :key="column.title">
+                  {{ column.title }}
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="row in section.rows" :key="row[0]">
+                <template v-for="(column, index) in section.columns" :key="column.title">
+                  <!-- 值列（类型 / 默认值）由生成器标成 'code'：它们是字面量，不是散文。 -->
+                  <td v-if="column.kind === 'html'" v-html="row[index]"></td>
+                  <td v-else-if="column.kind === 'code' && row[index] !== NO_DEFAULT_VALUE">
+                    <code>{{ row[index] }}</code>
+                  </td>
+                  <td v-else>{{ row[index] }}</td>
+                </template>
+              </tr>
+            </tbody>
+          </table>
+        </OverlayScrollbarsComponent>
       </div>
     </section>
   </section>

@@ -17,7 +17,7 @@ afterEach(() => {
 })
 
 describe('WebUiSpinner 命令式 overlay（浏览器）', () => {
-  it('hide() 在移除 host 前关闭 modal 并将焦点还给原控件', async () => {
+  it('show() 用非模态 dialog 展示且不抢焦点，hide() 移除 host', async () => {
     const trigger = document.createElement('button')
     trigger.textContent = 'Open loading overlay'
     document.body.append(trigger)
@@ -26,9 +26,10 @@ describe('WebUiSpinner 命令式 overlay（浏览器）', () => {
     const spinner = WebUiSpinner.show()
     await spinner.updateComplete
 
-    const overlayRoot = spinner.getRootNode() as ShadowRoot
-    await pollUntil(() => document.activeElement === overlayRoot.host, 'spinner 没有接管焦点')
-    expect(document.activeElement).toBe(overlayRoot.host)
+    const dialog = spinner.shadowRoot?.querySelector('dialog')
+    await pollUntil(() => dialog?.open === true, 'spinner dialog 没有打开')
+    expect(dialog?.matches(':modal')).toBe(false)
+    expect(document.activeElement).toBe(trigger)
 
     WebUiSpinner.hide()
 
@@ -36,7 +37,7 @@ describe('WebUiSpinner 命令式 overlay（浏览器）', () => {
     expect(document.activeElement).toBe(trigger)
   })
 
-  it('host 的 aria-label 更新后同步 modal accessible name', async () => {
+  it('host 的 aria-label 更新后同步 dialog accessible name', async () => {
     const spinner = WebUiSpinner.show()
     await spinner.updateComplete
 
@@ -52,7 +53,8 @@ describe('WebUiSpinner 命令式 overlay（浏览器）', () => {
     expect(status?.getAttribute('aria-label')).toBe('Synchronizing data')
   })
 
-  it('拦截底层控件的指针命中并锁定页面滚动', async () => {
+  it('不拦截底层控件的指针命中，也不锁定页面滚动', async () => {
+    window.scrollTo(0, 0)
     const spacer = document.createElement('div')
     spacer.style.height = '2000px'
     const button = document.createElement('button')
@@ -68,23 +70,18 @@ describe('WebUiSpinner 命令式 overlay（浏览器）', () => {
     const rect = button.getBoundingClientRect()
     const x = rect.x + rect.width / 2
     const y = rect.y + rect.height / 2
-    const overlayRoot = spinner.getRootNode() as ShadowRoot
-    expect(document.elementFromPoint(x, y)).toBe(overlayRoot.host)
-    expect(overlayRoot.elementFromPoint(x, y)).toBe(spinner)
-    await page.elementLocator(button).click({ force: true })
-    expect(underlyingClicks).toBe(0)
+    expect(document.elementFromPoint(x, y)).toBe(button)
+    await page.elementLocator(button).click()
+    expect(underlyingClicks).toBe(1)
 
-    const overlay = spinner.shadowRoot?.querySelector('.wui-spinner-overlay')
-    expect(overlay).not.toBeNull()
-    await userEvent.wheel(overlay as HTMLElement, { delta: { y: 300 } })
-    // 滚轮的效果要到后续渲染步进才可见；spinner 自身是无限动画，不能用等动画结束，
-    // 连过两个渲染步进仍为 0 才算「锁住了」。
+    await userEvent.wheel(document.body, { delta: { y: 300 } })
+    // 滚轮的效果要到后续渲染步进才可见。
     await afterRenderStep()
     await afterRenderStep()
-    expect(window.scrollY).toBe(0)
+    expect(window.scrollY).toBeGreaterThan(0)
   })
 
-  it('在已有原生模态层上方显示，Escape 不会关闭底层 dialog', async () => {
+  it('在已有原生模态层上方显示，但仍是不可交互的非模态状态', async () => {
     const underlyingDialog = document.createElement('dialog')
     const button = document.createElement('button')
     button.textContent = 'Underlying dialog action'
@@ -96,15 +93,13 @@ describe('WebUiSpinner 命令式 overlay（浏览器）', () => {
     await spinner.updateComplete
 
     const spinnerDialog = spinner.shadowRoot?.querySelector('dialog')
-    await pollUntil(() => spinnerDialog?.matches(':modal') === true, 'spinner dialog 没有进入 top layer')
-    expect(spinnerDialog?.matches(':modal')).toBe(true)
+    await pollUntil(() => spinnerDialog?.open === true, 'spinner dialog 没有进入 top layer')
+    expect(spinnerDialog?.matches(':modal')).toBe(false)
     expect(spinnerDialog?.getAttribute('aria-label')).toBe('Loading')
-    expect(spinnerDialog?.getAttribute('aria-modal')).toBe('true')
+    expect(spinnerDialog?.hasAttribute('aria-modal')).toBe(false)
     expect(spinnerDialog?.querySelector('[role="status"]')?.getAttribute('aria-label')).toBe('Loading')
     const rect = button.getBoundingClientRect()
-    const overlayRoot = spinner.getRootNode() as ShadowRoot
-    expect(document.elementFromPoint(rect.x + rect.width / 2, rect.y + rect.height / 2)).toBe(overlayRoot.host)
-    expect(overlayRoot.elementFromPoint(rect.x + rect.width / 2, rect.y + rect.height / 2)).toBe(spinner)
+    expect(document.elementFromPoint(rect.x + rect.width / 2, rect.y + rect.height / 2)).toBe(button)
 
     await userEvent.keyboard('{Escape}')
 

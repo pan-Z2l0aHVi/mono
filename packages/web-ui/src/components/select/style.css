@@ -86,14 +86,12 @@
   color: var(--wui-color-text-secondary, #6a6a6a);
 }
 
-::slotted([slot='trigger']) {
-  overflow: hidden;
-  flex: 1;
-
-  font-size: var(--wui-font-size, 14px);
-  color: var(--wui-color-text, #1b1b1b);
-  text-overflow: ellipsis;
-  white-space: nowrap;
+:host([trigger='icon']) .label {
+  overflow: visible;
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
 }
 
 .arrow {

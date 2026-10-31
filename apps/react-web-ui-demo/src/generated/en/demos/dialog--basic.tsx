@@ -14,7 +14,6 @@ export default function Demo() {
       <web-ui-dialog
         open={open}
         heading="Confirm action"
-        closable
         onopen-change={event => {
           setChanges(value => value + 1)
           setLast(event.detail.open ? 'true' : 'false')
@@ -22,10 +21,10 @@ export default function Demo() {
         }}
       >
         <p className="m-0">This cannot be undone. Continue anyway?</p>
-        <web-ui-button slot="footer" variant="secondary" onClick={() => setOpen(false)}>
+        <web-ui-button slot="footer" full variant="secondary" onClick={() => setOpen(false)}>
           Cancel
         </web-ui-button>
-        <web-ui-button slot="footer" variant="danger" onClick={() => setOpen(false)}>
+        <web-ui-button slot="footer" full variant="danger" onClick={() => setOpen(false)}>
           Delete
         </web-ui-button>
       </web-ui-dialog>

@@ -85,11 +85,12 @@ const view = ref('list')
 
 ### Props
 
-| Name       | Description                                                                                               | Type      | Default |
-| ---------- | --------------------------------------------------------------------------------------------------------- | --------- | ------- |
-| `value`    | Segment value.                                                                                            | `string`  | `''`    |
-| `checked`  | Currently selected; written back by the parent segmented, setting it alone does not notify the container. | `boolean` | `false` |
-| `disabled` | Disables this trigger individually.                                                                       | `boolean` | `false` |
+| Name         | Description                                                                                               | Type      | Default |
+| ------------ | --------------------------------------------------------------------------------------------------------- | --------- | ------- |
+| `value`      | Segment value.                                                                                            | `string`  | `''`    |
+| `checked`    | Currently selected; written back by the parent segmented, setting it alone does not notify the container. | `boolean` | `false` |
+| `disabled`   | Disables this trigger individually.                                                                       | `boolean` | `false` |
+| `aria-label` | Accessible name forwarded to the inner `role="option"`; required when the slot contains only an icon.     | `string`  | `null`  |
 
 ### Events
 

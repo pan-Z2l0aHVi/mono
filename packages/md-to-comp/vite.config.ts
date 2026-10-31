@@ -11,6 +11,10 @@ export default {
       dts: true
     },
     {
+      entry: 'src/markdown-entry.ts',
+      dts: true
+    },
+    {
       entry: 'src/vue.ts',
       dts: true
     }

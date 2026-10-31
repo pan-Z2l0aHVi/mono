@@ -1,5 +1,5 @@
 <template>
-  <web-ui-button @click="open">打开预览</web-ui-button>
+  <web-ui-button @click="open">打开（点击空白不关闭）</web-ui-button>
 </template>
 
 <script setup lang="ts">
@@ -13,10 +13,11 @@ const gradientImage = (label: string, from: string, to: string) =>
 const IMAGES = [
   { src: gradientImage('第一张', '#0a84ff', '#5e5ce6'), alt: '蓝色渐变的示例图' },
   { src: gradientImage('第二张', '#ff375f', '#ff9f0a'), alt: '橙红渐变的示例图' },
-  { src: gradientImage('第三张', '#30d158', '#0a84ff'), alt: '青绿渐变的示例图' }
+  { src: gradientImage('第三张', '#30d158', '#0a84ff'), alt: '青绿渐变的示例图' },
+  { src: gradientImage('第四张', '#bf5af2', '#ff375f'), alt: '紫色渐变的示例图' }
 ]
 
 function open() {
-  imagePreview({ images: IMAGES })
+  imagePreview({ images: IMAGES, noBackdropClose: true, closable: true })
 }
 </script>

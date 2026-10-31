@@ -1,10 +1,10 @@
 <template>
   <div class="flex flex-col items-start gap-3">
     <web-ui-button @click="open = true">Open dialog</web-ui-button>
-    <web-ui-dialog :open="open" controlled closable heading="Unsaved changes" @open-change="onOpenChange">
+    <web-ui-dialog :open="open" controlled heading="Unsaved changes" @open-change="onOpenChange">
       <p class="m-0">Escape and the backdrop only request closing; without write-back it stays open.</p>
       <output class="block text-sm text-(--wui-color-text-secondary)">Close requests blocked · {{ requests }}</output>
-      <web-ui-button slot="footer" variant="secondary" @click="open = false">Discard changes</web-ui-button>
+      <web-ui-button slot="footer" full variant="secondary" @click="open = false">Discard changes</web-ui-button>
     </web-ui-dialog>
   </div>
 </template>

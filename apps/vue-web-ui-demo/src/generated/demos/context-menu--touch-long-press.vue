@@ -2,7 +2,7 @@
   <div class="flex w-full flex-col items-start gap-3">
     <web-ui-context-menu class="w-full" long-press :long-press-delay="600" @open-change="onOpenChange">
       <div
-        class="flex h-32 w-full items-center justify-center rounded-xl border border-dashed border-(--wui-color-border) bg-(--wui-color-surface-control) text-sm text-(--wui-color-text)"
+        class="flex h-32 w-full items-center justify-center rounded-xl border border-dashed border-(--wui-color-border) bg-(--wui-color-state-layer-hover) text-sm text-(--wui-color-text)"
       >
         在此区域按住 600 ms（触屏）
       </div>

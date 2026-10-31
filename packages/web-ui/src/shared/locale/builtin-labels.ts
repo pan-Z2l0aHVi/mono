@@ -25,6 +25,7 @@ export type BuiltinLabelKey =
   | 'zoomIn'
   | 'zoomOut'
   | 'resetZoom'
+  | 'progress'
 
 const LABELS: Record<BuiltinLabelKey, string> = {
   clear: 'Clear',
@@ -44,7 +45,8 @@ const LABELS: Record<BuiltinLabelKey, string> = {
   nextImage: 'Next image',
   zoomIn: 'Zoom in',
   zoomOut: 'Zoom out',
-  resetZoom: 'Reset zoom'
+  resetZoom: 'Reset zoom',
+  progress: 'Progress'
 }
 
 /** 显式覆盖优先（trim 后非空才生效）；否则回退内置英文文案。 */
