@@ -38,20 +38,17 @@ describe('devHttpsConfig', () => {
   })
 
   it('dev 缺证书时报错并给出 mkcert 命令', () => {
-    const dir = join(tmpdir(), 'greypan-dev-https-missing')
-    expect(() => devHttpsConfig(env({}), { certDir: dir })).toThrow(
+    expect(() => devHttpsConfig(env({}), { certDir: certDir({}) })).toThrow(
       /mkcert -cert-file .*localhost\.pem -key-file .*localhost-key\.pem localhost 127\.0\.0\.1 ::1/
     )
   })
 
   it('test 缺证书时回退 HTTP', () => {
-    const dir = join(tmpdir(), 'greypan-dev-https-missing')
-    expect(devHttpsConfig(env({ mode: 'test' }), { certDir: dir })).toBeUndefined()
+    expect(devHttpsConfig(env({ mode: 'test' }), { certDir: certDir({}) })).toBeUndefined()
   })
 
   it('optionalInTest 为 false 时 test 缺证书也报错', () => {
-    const dir = join(tmpdir(), 'greypan-dev-https-missing')
-    expect(() => devHttpsConfig(env({ mode: 'test' }), { certDir: dir, optionalInTest: false })).toThrow(
+    expect(() => devHttpsConfig(env({ mode: 'test' }), { certDir: certDir({}), optionalInTest: false })).toThrow(
       /找不到本地 HTTPS 证书/
     )
   })

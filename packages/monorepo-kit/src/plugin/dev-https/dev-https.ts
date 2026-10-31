@@ -43,8 +43,7 @@ function setupHint(certDir: string): string {
     `找不到本地 HTTPS 证书：${certDir}`,
     '首次使用或换机器时运行：',
     '  mkcert -install',
-    `  mkcert -cert-file ${cert} -key-file ${key} localhost 127.0.0.1 ::1`,
-    '或用 GREYPAN_DEV_CERT_DIR 指向已有证书目录。'
+    `  mkcert -cert-file ${cert} -key-file ${key} localhost 127.0.0.1 ::1`
   ].join('\n')
 }
 
