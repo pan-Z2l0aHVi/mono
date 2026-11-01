@@ -529,10 +529,10 @@ export default function Demo() {
         Wider padding and slot gap
       </web-ui-button>
       <web-ui-button variant="primary" style={successOnly}>
-        Only the background changes; hover and pressed deepen with it
+        Background only
       </web-ui-button>
       <web-ui-button variant="secondary" style={fourStates}>
-        Each of the four states points to a token
+        Four state colors
       </web-ui-button>
     </div>
   )
@@ -546,10 +546,8 @@ export default function Demo() {
       <web-ui-icon slot="prefix" :icon="lucideUpload" :size="16"></web-ui-icon>
       Wider padding and slot gap
     </web-ui-button>
-    <web-ui-button :style="successOnly" variant="primary">
-      Only the background changes; hover and pressed deepen with it
-    </web-ui-button>
-    <web-ui-button :style="fourStates" variant="secondary"> Each of the four states points to a token </web-ui-button>
+    <web-ui-button :style="successOnly" variant="primary">Background only</web-ui-button>
+    <web-ui-button :style="fourStates" variant="secondary">Four state colors</web-ui-button>
   </div>
 </template>
 

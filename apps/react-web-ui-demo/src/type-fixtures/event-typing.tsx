@@ -50,6 +50,7 @@ export function EventTypingFixture() {
       {/* 2. kebab-case 自定义事件精确 detail，target/currentTarget 收窄到 host */}
       <web-ui-dialog
         noEscapeClose
+        footerOrientation="horizontal"
         onopen-change={e => {
           const open: boolean = e.detail.open
           const host: WebUiDialog = e.currentTarget

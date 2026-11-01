@@ -9,7 +9,7 @@ import { styleMap } from 'lit/directives/style-map.js'
 
 import glass from '@/classes/glass.css?inline'
 import glow from '@/classes/glow.css?inline'
-import { radixIconsPanelLeftMinimized } from '@/icons'
+import { icRoundMenuOpen, radixIconsPanelLeftMinimized } from '@/icons'
 import { attachDragGesture, clamp, type DragGestureHandle } from '@/shared/gesture'
 import { resolveBuiltinLabelSet } from '@/shared/locale/builtin-labels'
 import { defineVisibleAreaTracker, VisibleAreaController } from '@/shared/visible-area'
@@ -62,6 +62,16 @@ export class WebUiLayout extends LitElement {
   noSidebar = false
 
   /**
+   * 启用桌面端 Sidebar 的 collapse 入口。
+   *
+   * 只有声明了本属性，layout 才渲染收起 / 展开 Toggle，也才会因为点击而派发
+   * `sidebar-collapsed-change`。桌面宽度仍由受控属性 `sidebar-collapsed` 决定，
+   * 未声明本属性不会阻止它收窄；移动端 Drawer 的 header Toggle 不受影响。
+   */
+  @property({ type: Boolean, attribute: 'sidebar-collapsible', reflect: true })
+  sidebarCollapsible = false
+
+  /**
    * 桌面端 Sidebar 的持久布局偏好。
    *
    * `true` 只会将桌面 Sidebar 收窄到 `collapsedWidth`，不会影响移动端 Drawer。
@@ -79,7 +89,7 @@ export class WebUiLayout extends LitElement {
   sidebarWidth = '240px'
 
   @property({ type: String, attribute: 'collapsed-width', reflect: true })
-  collapsedWidth = '68px'
+  collapsedWidth = '60px'
 
   /** 启用桌面端 Sidebar 拖拽调宽（collapsed state 隐藏 handle）。 */
   @property({ type: Boolean, attribute: 'sidebar-resizable', reflect: true })
@@ -414,17 +424,22 @@ export class WebUiLayout extends LitElement {
 
     const toggleLabel = resolveBuiltinLabelSet(this.ariaLabels, isSidebarOpen ? 'collapseSidebar' : 'expandSidebar')
 
-    const desktopToggle = html`
-      <web-ui-button
-        class="sidebar-toggle"
-        icon
-        variant="secondary"
-        @click="${this._toggleSidebar}"
-        aria-label=${toggleLabel}
-      >
-        <web-ui-icon .icon=${radixIconsPanelLeftMinimized}></web-ui-icon>
-      </web-ui-button>
-    `
+    const desktopToggle = this.sidebarCollapsible
+      ? html`
+          <web-ui-button
+            class="sidebar-toggle"
+            icon
+            variant="ghost"
+            @click="${this._toggleSidebar}"
+            aria-label=${toggleLabel}
+          >
+            <web-ui-icon
+              .icon=${icRoundMenuOpen}
+              style=${styleMap({ transform: isSidebarOpen ? 'none' : 'scaleX(-1)' })}
+            ></web-ui-icon>
+          </web-ui-button>
+        `
+      : nothing
 
     const sidebarViewport = html`
       <div class="sidebar-viewport">
@@ -472,7 +487,7 @@ export class WebUiLayout extends LitElement {
           >
             <div class="aside-panel wui-glass">
               ${sidebarViewport}
-              <div class="sidebar-toggle-area">${desktopToggle}</div>
+              ${this.sidebarCollapsible ? html`<div class="sidebar-toggle-area">${desktopToggle}</div>` : nothing}
             </div>
             ${
               this.sidebarResizable && !this.sidebarCollapsed

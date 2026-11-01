@@ -69,6 +69,13 @@ function readDocs(
   return docs
 }
 
+/** 只列 demo 键的小型清单：宿主把它作为静态依赖，新增示例时能可靠触发 glob 重新展开。 */
+function renderDemoManifest(docs: ResolvedDoc[]): string {
+  const keys = docs.flatMap(doc => doc.samples.map(sample => `${doc.component}--${sample.id}`))
+  const entries = keys.map(key => `  '${key.replaceAll("'", "\\'")}'`).join(',\n')
+  return `// 本文件由 @greypan/md-to-comp 生成，请勿手动编辑。\nexport const demoManifest = [\n${entries}\n] as const\n`
+}
+
 async function buildPayloads(docs: ResolvedDoc[], flavors: readonly FenceFlavor[]): Promise<ExampleDocPayload[]> {
   return Promise.all(
     docs.map(async doc => ({
@@ -145,6 +152,7 @@ export async function generate(options: GenerateOptions): Promise<GenerateResult
   const files: GeneratedFile[] = []
   if (options.styles) files.push({ path: options.styles, content: css })
   const modulesByLocale = new Map<string, GeneratedFile[]>()
+  const manifestsByLocale = new Map<string, GeneratedFile[]>()
 
   for (const output of options.outputs) {
     const module = modules.get(output.locale)
@@ -155,7 +163,13 @@ export async function generate(options: GenerateOptions): Promise<GenerateResult
     group.push(file)
     modulesByLocale.set(output.locale, group)
     if (!options.styles) files.push({ path: path.join(output.output, 'examples.css'), content: css })
-    for (const doc of docsByLocale.get(output.locale) ?? []) {
+    const localeDocs = docsByLocale.get(output.locale) ?? []
+    const manifest = { path: path.join(output.output, 'demo-manifest.ts'), content: renderDemoManifest(localeDocs) }
+    files.push(manifest)
+    const manifestGroup = manifestsByLocale.get(output.locale) ?? []
+    manifestGroup.push(manifest)
+    manifestsByLocale.set(output.locale, manifestGroup)
+    for (const doc of localeDocs) {
       for (const sample of doc.samples) {
         const code = sample.fences[output.flavor] ?? ''
         assertSelfContained(code, output.flavor, sample.title, doc.sourceFile)
@@ -172,6 +186,12 @@ export async function generate(options: GenerateOptions): Promise<GenerateResult
     for (const file of group)
       if (file.content !== group[0]?.content)
         fail(`语种 ${locale} 的两个 output 的 examples.ts 不一致：同一份 markdown 应产出同一份字节`)
+
+  // demo 清单只含键，不含框架代码；同语种两端必须一致，页面与框架的交集才有同一份事实来源。
+  for (const [locale, group] of manifestsByLocale)
+    for (const file of group)
+      if (file.content !== group[0]?.content)
+        fail(`语种 ${locale} 的两个 output 的 demo-manifest.ts 不一致：同一份 markdown 应产出同一份字节`)
 
   // 样式不分语种：落点只写一份时这条是自证，回退成多份时必须仍然逐字节相同。
   const cssFiles = files.filter(file => path.basename(file.path) === 'examples.css')

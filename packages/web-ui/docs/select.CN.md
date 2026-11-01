@@ -133,7 +133,7 @@ import { lucideFileText, lucideFilm, lucideImage } from '@greypan/web-ui/icons'
 
 ### Custom trigger
 
-`trigger` 插槽替换默认的 label 文本，外壳、箭头与开合行为仍由组件提供。插槽内容是页面侧渲染的普通节点，用页面状态写它的文本，它就会跟着选择变。
+`trigger` 插槽替换默认的 label 文本，外壳、箭头与开合行为仍由组件提供。组件只提供承载 trigger 的 label 容器，不直接覆盖 slotted 节点的字体、颜色或尺寸；插槽内容用页面状态写文本，它就会跟着选择变。
 
 ```tsx
 import { lucideGlobe } from '@greypan/web-ui/icons'
@@ -234,6 +234,64 @@ const last = ref('—')
 function onOpenChange(event: WebUiEvent<WebUiSelect, 'open-change'>) {
   count.value += 1
   last.value = event.detail.open ? 'true' : 'false'
+}
+</script>
+```
+
+### Icon trigger
+
+`trigger="icon"` 保留右侧箭头，只把左侧内容换成图标；图标可以跟随选中值变化。触发器本身没有文本，需要给 select 写 `aria-label`。
+
+```tsx
+import { lucideLayoutGrid, lucideList, lucideSettings } from '@greypan/web-ui/icons'
+import { useState } from 'react'
+
+const ICONS = { grid: lucideLayoutGrid, list: lucideList, settings: lucideSettings } as const
+type ViewMode = keyof typeof ICONS
+
+export default function Demo() {
+  const [view, setView] = useState<ViewMode>('grid')
+
+  return (
+    <web-ui-select
+      trigger="icon"
+      aria-label="View mode"
+      value={view}
+      onChange={event => {
+        const next = event.currentTarget.value
+        if (next in ICONS) setView(next as ViewMode)
+      }}
+    >
+      <web-ui-icon slot="trigger" icon={ICONS[view]} size={18}></web-ui-icon>
+      <web-ui-option value="grid" label="Grid"></web-ui-option>
+      <web-ui-option value="list" label="List"></web-ui-option>
+      <web-ui-option value="settings" label="Settings"></web-ui-option>
+    </web-ui-select>
+  )
+}
+```
+
+```vue
+<template>
+  <web-ui-select trigger="icon" aria-label="View mode" :value="view" @change="pick($event.currentTarget.value)">
+    <web-ui-icon slot="trigger" :icon="ICONS[view]" :size="18"></web-ui-icon>
+    <web-ui-option value="grid" label="Grid"></web-ui-option>
+    <web-ui-option value="list" label="List"></web-ui-option>
+    <web-ui-option value="settings" label="Settings"></web-ui-option>
+  </web-ui-select>
+</template>
+
+<script setup lang="ts">
+import { lucideLayoutGrid, lucideList, lucideSettings } from '@greypan/web-ui/icons'
+import { ref } from 'vue'
+
+const ICONS = { grid: lucideLayoutGrid, list: lucideList, settings: lucideSettings }
+type ViewMode = keyof typeof ICONS
+
+const view = ref<ViewMode>('grid')
+
+function pick(value: string) {
+  if (value in ICONS) view.value = value as ViewMode
 }
 </script>
 ```
@@ -372,17 +430,18 @@ export default function Demo() {
 
 ### Props
 
-| 名称               | 说明                                           | 类型               | 默认值  |
-| ------------------ | ---------------------------------------------- | ------------------ | ------- |
-| `placeholder`      | 未选中时显示的占位文本。                       | `string`           | `''`    |
-| `disabled`         | 禁用状态。                                     | `boolean`          | `false` |
-| `required`         | 必填校验。                                     | `boolean`          | `false` |
-| `portal`           | 在 theme-owned overlay root 中渲染下拉 panel。 | `boolean`          | `false` |
-| `no-scroll-lock`   | 打开时不锁定页面滚动。                         | `boolean`          | `false` |
-| `overlayContainer` | 显式 Portal 容器（property）。                 | `OverlayContainer` | —       |
-| `name`             | 表单字段名。                                   | `string`           | `''`    |
-| `aria-label`       | combobox 的 accessible name。                  | `string \| null`   | `null`  |
-| `value`            | 选中值。                                       | `string`           | `''`    |
+| 名称               | 说明                                                                                      | 类型                | 默认值    |
+| ------------------ | ----------------------------------------------------------------------------------------- | ------------------- | --------- |
+| `placeholder`      | 未选中时显示的占位文本。                                                                  | `string`            | `''`      |
+| `trigger`          | 触发器外观：`label` 保留选中文本与箭头，`icon` 保留箭头并把 `trigger` slot 作为左侧图标。 | `'label' \| 'icon'` | `'label'` |
+| `disabled`         | 禁用状态。                                                                                | `boolean`           | `false`   |
+| `required`         | 必填校验。                                                                                | `boolean`           | `false`   |
+| `portal`           | 在 theme-owned overlay root 中渲染下拉 panel。                                            | `boolean`           | `false`   |
+| `no-scroll-lock`   | 打开时不锁定页面滚动。                                                                    | `boolean`           | `false`   |
+| `overlayContainer` | 显式 Portal 容器（property）。                                                            | `OverlayContainer`  | —         |
+| `name`             | 表单字段名。                                                                              | `string`            | `''`      |
+| `aria-label`       | combobox 的 accessible name。                                                             | `string \| null`    | `null`    |
+| `value`            | 选中值。                                                                                  | `string`            | `''`      |
 
 ### Events
 
@@ -394,10 +453,10 @@ export default function Demo() {
 
 ### Slots
 
-| 名称      | 说明                                                   |
-| --------- | ------------------------------------------------------ |
-| `trigger` | 自定义触发区域内容，替换默认 label；箭头仍由组件渲染。 |
-| `default` | 投影 `<web-ui-option>` 候选。                          |
+| 名称      | 说明                                                                                  |
+| --------- | ------------------------------------------------------------------------------------- |
+| `trigger` | 自定义触发区域内容，替换默认 label；`trigger="icon"` 下它是左侧图标区，箭头仍在右侧。 |
+| `default` | 投影 `<web-ui-option>` 候选。                                                         |
 
 ### 行为说明
 

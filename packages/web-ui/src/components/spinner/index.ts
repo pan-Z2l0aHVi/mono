@@ -4,10 +4,8 @@ import { repeat } from 'lit/directives/repeat.js'
 import { styleMap } from 'lit/directives/style-map.js'
 
 import type { WebUiTheme } from '@/components/theme'
-import { defineOpenOverlay, type OpenOverlayHandle } from '@/shared/overlay/open-overlay'
 import { getFallbackOverlayRoot } from '@/shared/overlay/overlay-root'
 import { findRootTheme } from '@/shared/overlay/theme-overlay-scope'
-import { defineScrollLockLease } from '@/shared/scroll-lock/scroll-lock'
 
 import style from './style.css?inline'
 
@@ -38,13 +36,6 @@ export class WebUiSpinner extends LitElement {
   /** 叶片颜色；空字符串时跟随主题次要文本色。 */
   @property({ type: String }) color = ''
   @property({ type: String, attribute: 'aria-label' }) private _ariaLabel?: string
-
-  private readonly _overlay = defineOpenOverlay().make({
-    requestClose: () => undefined,
-    isConnected: () => this.isConnected
-  })
-  private _overlayHandle?: OpenOverlayHandle
-  private readonly _scrollLock = defineScrollLockLease().make()
 
   /**
    * 显示一个全屏加载实例并挂载到主题 overlay root（无主题时挂载到 fallback overlay root）；新实例会替换之前由此方法创建的实例。
@@ -113,7 +104,6 @@ export class WebUiSpinner extends LitElement {
       if (WebUiSpinner._current && WebUiSpinner._current !== this) WebUiSpinner._current.remove()
       WebUiSpinner._current = this
       this.classList.add('wui-spinner-overlay')
-      this._scrollLock.sync(true)
       this.requestUpdate()
     }
   }
@@ -121,9 +111,6 @@ export class WebUiSpinner extends LitElement {
   override disconnectedCallback() {
     super.disconnectedCallback()
     this._closeDialog()
-    this._overlayHandle?.release()
-    this._overlayHandle = undefined
-    this._scrollLock.release()
     if (this._timer) {
       const timer = this._timer
       queueMicrotask(() => {
@@ -147,9 +134,11 @@ export class WebUiSpinner extends LitElement {
     const dialog = this.shadowRoot?.querySelector('dialog')
     if (!dialog || dialog.open) return
 
-    if (typeof dialog.showModal === 'function') {
-      dialog.showModal()
-      this._overlayHandle = this._overlay.claim(dialog, { ancestryFrom: this })
+    // 加载提示不是模态框：只占位显示状态，页面其余控件与滚动保持可用。
+    const previouslyFocused = document.activeElement instanceof HTMLElement ? document.activeElement : null
+    if (typeof dialog.show === 'function') {
+      dialog.show()
+      if (previouslyFocused && previouslyFocused !== document.body) previouslyFocused.focus({ preventScroll: true })
     } else {
       dialog.setAttribute('open', '')
     }
@@ -181,12 +170,7 @@ export class WebUiSpinner extends LitElement {
       <slot name="description"></slot>
     `
     return this._imperative
-      ? html`<dialog
-          class="wui-spinner-overlay"
-          aria-label=${this._ariaLabel}
-          aria-modal="true"
-          @cancel=${this._handleDialogCancel}
-        >
+      ? html`<dialog class="wui-spinner-overlay" aria-label=${this._ariaLabel} @cancel=${this._handleDialogCancel}>
           <div class="wui-spinner-overlay-content" role="status" aria-label=${this._ariaLabel}>${spinner}</div>
         </dialog>`
       : spinner

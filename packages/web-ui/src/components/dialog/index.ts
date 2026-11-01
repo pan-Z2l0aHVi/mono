@@ -11,6 +11,7 @@ import { oouiClose } from '@/icons'
 import { UserChangeController } from '@/shared/events/user-change'
 import { trapTabKey } from '@/shared/focus/tabbable'
 import { resolveBuiltinLabel } from '@/shared/locale/builtin-labels'
+import { normalizeLiteral } from '@/shared/normalize'
 import { dispatchOpenChangeEvent } from '@/shared/open-state'
 import { defineNativeDialogPresence } from '@/shared/overlay/native-dialog-presence'
 import { defineOpenOverlay, type OpenOverlayHandle } from '@/shared/overlay/open-overlay'
@@ -18,13 +19,29 @@ import { defineScrollLockLease } from '@/shared/scroll-lock/scroll-lock'
 
 import style from './style.css?inline'
 
+export type DialogFooterOrientation = 'vertical' | 'horizontal'
+
+const ALLOWED_FOOTER_ORIENTATIONS = ['vertical', 'horizontal'] as const
+
 @customElement('web-ui-dialog')
 export class WebUiDialog extends LitElement {
   static override styles = [unsafeCSS(glass), unsafeCSS(modalSurface), unsafeCSS(scrollbarStyle), unsafeCSS(style)]
 
   @property({ type: Boolean, reflect: true }) open = false
   @property({ type: Boolean, reflect: true }) closable = false
-  @property({ type: Boolean, reflect: true }) horizontal = false
+
+  /** footer 操作区的排列方向。默认纵向；横向时由子控件自己的布局能力决定宽度。 */
+  @property({ type: String, reflect: true, attribute: 'footer-orientation' })
+  get footerOrientation(): DialogFooterOrientation {
+    return this._footerOrientation
+  }
+  set footerOrientation(value: string) {
+    const previous = this._footerOrientation
+    this._footerOrientation = normalizeLiteral(value, ALLOWED_FOOTER_ORIENTATIONS, 'vertical')
+    this.requestUpdate('footerOrientation', previous)
+  }
+  private _footerOrientation: DialogFooterOrientation = 'vertical'
+
   @property({ type: Boolean, reflect: true, attribute: 'no-scroll-lock' }) noScrollLock = false
   @property({ type: Boolean, reflect: true, attribute: 'no-backdrop-close' }) noBackdropClose = false
   @property({ type: Boolean, reflect: true, attribute: 'no-escape-close' }) noEscapeClose = false

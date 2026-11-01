@@ -47,7 +47,8 @@
 }
 
 .wui-spinner-overlay {
-  pointer-events: auto;
+  /* 状态提示不占据命中层：全屏实例出现时，页面控件与滚动仍然可用。 */
+  pointer-events: none;
 
   position: fixed;
   z-index: var(--wui-layer-loading, 300);

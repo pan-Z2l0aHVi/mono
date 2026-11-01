@@ -34,7 +34,7 @@ export default function Demo() {
           setLast(event.detail.open ? 'true' : 'false')
         }}
       >
-        <div className="flex h-32 w-full items-center justify-center rounded-xl border border-dashed border-(--wui-color-border) bg-(--wui-color-surface-control) text-sm text-(--wui-color-text)">
+        <div className="flex h-32 w-full items-center justify-center rounded-xl border border-dashed border-(--wui-color-border) bg-(--wui-color-state-layer-hover) text-sm text-(--wui-color-text)">
           Right-click in this area
         </div>
         <web-ui-dropdown-item>
@@ -70,7 +70,7 @@ export default function Demo() {
   <div class="flex w-full flex-col items-start gap-3">
     <web-ui-context-menu class="w-full" @open-change="onOpenChange">
       <div
-        class="flex h-32 w-full items-center justify-center rounded-xl border border-dashed border-(--wui-color-border) bg-(--wui-color-surface-control) text-sm text-(--wui-color-text)"
+        class="flex h-32 w-full items-center justify-center rounded-xl border border-dashed border-(--wui-color-border) bg-(--wui-color-state-layer-hover) text-sm text-(--wui-color-text)"
       >
         Right-click in this area
       </div>
@@ -135,7 +135,7 @@ export default function Demo() {
           setLast(event.detail.open ? 'true' : 'false')
         }}
       >
-        <div className="flex h-32 w-full items-center justify-center rounded-xl border border-dashed border-(--wui-color-border) bg-(--wui-color-surface-control) text-sm text-(--wui-color-text)">
+        <div className="flex h-32 w-full items-center justify-center rounded-xl border border-dashed border-(--wui-color-border) bg-(--wui-color-state-layer-hover) text-sm text-(--wui-color-text)">
           Press and hold for 600 ms in this area (touch)
         </div>
         <web-ui-dropdown-item>Rename</web-ui-dropdown-item>
@@ -154,7 +154,7 @@ export default function Demo() {
   <div class="flex w-full flex-col items-start gap-3">
     <web-ui-context-menu class="w-full" long-press :long-press-delay="600" @open-change="onOpenChange">
       <div
-        class="flex h-32 w-full items-center justify-center rounded-xl border border-dashed border-(--wui-color-border) bg-(--wui-color-surface-control) text-sm text-(--wui-color-text)"
+        class="flex h-32 w-full items-center justify-center rounded-xl border border-dashed border-(--wui-color-border) bg-(--wui-color-state-layer-hover) text-sm text-(--wui-color-text)"
       >
         Press and hold for 600 ms in this area (touch)
       </div>
@@ -205,7 +205,7 @@ export default function Demo() {
           setLast(event.detail.open ? 'true' : 'false')
         }}
       >
-        <div className="flex h-32 w-full items-center justify-center rounded-xl border border-dashed border-(--wui-color-border) bg-(--wui-color-surface-control) text-sm text-(--wui-color-text)">
+        <div className="flex h-32 w-full items-center justify-center rounded-xl border border-dashed border-(--wui-color-border) bg-(--wui-color-state-layer-hover) text-sm text-(--wui-color-text)">
           {disabled ? 'The menu is disabled: right-click does not open it' : 'Right-click in this area'}
         </div>
         <web-ui-dropdown-item>Edit</web-ui-dropdown-item>
@@ -229,7 +229,7 @@ export default function Demo() {
   <div class="flex w-full flex-col items-start gap-3">
     <web-ui-context-menu class="w-full" :disabled="disabled" @open-change="onOpenChange">
       <div
-        class="flex h-32 w-full items-center justify-center rounded-xl border border-dashed border-(--wui-color-border) bg-(--wui-color-surface-control) text-sm text-(--wui-color-text)"
+        class="flex h-32 w-full items-center justify-center rounded-xl border border-dashed border-(--wui-color-border) bg-(--wui-color-state-layer-hover) text-sm text-(--wui-color-text)"
       >
         {{ disabled ? 'The menu is disabled: right-click does not open it' : 'Right-click in this area' }}
       </div>

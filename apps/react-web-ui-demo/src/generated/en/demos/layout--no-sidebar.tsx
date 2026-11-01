@@ -1,6 +1,6 @@
 export default function Demo() {
   return (
-    <div className="h-[420px] overflow-auto rounded-lg border border-(--wui-color-border)">
+    <div className="h-[420px] overflow-auto rounded-lg border border-(--wui-color-border) [--wui-layout-viewport-height:420px]">
       <web-ui-layout no-sidebar header-glow>
         <div slot="header" className="flex items-center px-4 py-2 text-sm font-medium">
           Header

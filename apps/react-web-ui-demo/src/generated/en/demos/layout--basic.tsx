@@ -4,7 +4,7 @@ export default function Demo() {
   const [open, setOpen] = useState(false)
 
   return (
-    <div className="h-[420px] overflow-auto rounded-lg border border-(--wui-color-border)">
+    <div className="h-[420px] overflow-auto rounded-lg border border-(--wui-color-border) [--wui-layout-viewport-height:420px]">
       <web-ui-layout header-glow sidebarOpen={open} onsidebar-open-change={event => setOpen(event.detail.open)}>
         <div
           slot="banner"

@@ -16,7 +16,7 @@ export default function Demo() {
         画入
       </web-ui-button>
       <web-ui-button variant="secondary" onClick={() => lines.current?.replay({ reverse: true })}>
-        reverse 收回
+        反向收回
       </web-ui-button>
     </div>
   )

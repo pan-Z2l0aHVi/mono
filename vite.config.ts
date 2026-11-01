@@ -316,6 +316,7 @@ export default {
       // 那些文件是会被真正编译执行的示例源码，格式与 lint 必须和人手写的代码同一口径。
       'apps/*/src/generated/examples.*',
       'apps/*/src/generated/*/examples.ts',
+      'apps/*/src/generated/**/demo-manifest.ts',
       '**/.agents/skills/**', // skill 软链面（第三方与仓库自编写）不参与格式检查
       'skills/**', // 自撰写 skill 与依赖镜像的实体目录（GitHub 发现面），同上
       '.agents/skills-vendored/**', // 非依赖第三方 skill 的实体目录，同上

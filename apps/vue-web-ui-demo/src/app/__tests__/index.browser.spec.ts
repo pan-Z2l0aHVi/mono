@@ -1,6 +1,13 @@
 import '@/assets/global.css'
 
-import { toast, type WebUiLayout, type WebUiTheme, type WebUiToast } from '@greypan/web-ui'
+import { toast, type WebUiIcon, type WebUiLayout, type WebUiTheme, type WebUiToast } from '@greypan/web-ui'
+import {
+  antDesignSyncOutlined,
+  icOutlineMotionPhotosOn,
+  lucideContrast,
+  lucideLanguages,
+  lucideSun
+} from '@greypan/web-ui/icons'
 import { createHead } from '@unhead/vue/client'
 import { mount, type VueWrapper } from '@vue/test-utils'
 import { afterEach, beforeEach, describe, expect, it, onTestFailed, vi } from 'vite-plus/test'
@@ -36,26 +43,80 @@ function layoutRoot() {
   return element
 }
 
+function bannerIsOpen() {
+  return document.querySelector('[slot="banner"]') !== null
+}
+
 function bannerCloseButton() {
   const button = document.querySelector('[slot="banner"] web-ui-button')
   if (!button) throw new Error('banner close button not found')
   return button
 }
 
-/** userEvent targets directly, so first confirm the button wins hit-testing at its center. */
-async function clickBannerCloseButtonAtCenter() {
-  const button = bannerCloseButton()
-  const bounds = button.getBoundingClientRect()
-  const x = bounds.left + bounds.width / 2
-  const y = bounds.top + bounds.height / 2
-  const hitTarget = document.elementFromPoint(x, y)
+/** 单次 Playwright click 的动作预算；超时由 Playwright 自己 reject，不占满整个测试预算。 */
+const CLICK_ATTEMPT_TIMEOUT_MS = 2_000
+/** 点击的有界重试轮数；每轮重新解析节点、重新量中心、重新做命中测试。 */
+const CLICK_MAX_ATTEMPTS = 3
 
-  expect(
-    hitTarget === button || (hitTarget !== null && button.contains(hitTarget)),
-    `banner close button center (${x}, ${y}) should hit the button or its contents`
-  ).toBe(true)
-  if (!hitTarget) throw new Error('banner close button center had no hit target')
-  await userEvent.click(hitTarget as HTMLElement)
+/**
+ * 点 banner 关闭按钮中心，成功判据是 banner 已从 DOM 消失，而不是 click 没有抛错：banner 是
+ * v-if 节点，关闭按钮是唯一把它摘掉的动作；Playwright 可能在 click 已经生效、节点被摘掉之后
+ * 仍然报错，此时按「click 没抛错」判负，下一次重试只会去解析一个已经不存在的按钮，把已达成的
+ * 目标状态变成 `banner close button not found`。所以调用前 banner 已不存在、或任一轮之后 banner
+ * 消失，都按成功返回；banner 还在时才继续解析、命中测试与重试。
+ *
+ * banner 还在时，toast 挂载后 header bottom 会经 rAF 改 `--wui-toast-top-offset`，布局在点击前后
+ * 都可能再位移；所以每一轮都重新取按钮、重新量中心、重新做命中测试，跨轮不缓存任何节点或坐标。
+ *
+ * 点击本身也按轮给 Playwright 一个有界预算：它默认的重试预算等于整个 Vitest 测试预算，一次 stall
+ * 就吃掉 15s，失败只剩 “timed out while waiting for click”。每轮超时后把 Playwright 的原始报错
+ * 收进聚合错误，全部失败且 banner 仍在时一次抛出；命中测试本身仍由 `vi.waitFor` 在自己的窗口里重试。
+ */
+async function clickBannerCloseButtonAtCenter() {
+  const failures: string[] = []
+  for (let attempt = 1; attempt <= CLICK_MAX_ATTEMPTS; attempt += 1) {
+    if (!bannerIsOpen()) return
+
+    let button: Element
+    try {
+      button = await vi.waitFor(
+        () => {
+          const button = bannerCloseButton()
+          const bounds = button.getBoundingClientRect()
+          const x = bounds.left + bounds.width / 2
+          const y = bounds.top + bounds.height / 2
+
+          const hitTarget = document.elementFromPoint(x, y)
+          expect(
+            hitTarget === button || (hitTarget !== null && button.contains(hitTarget)),
+            `banner close button center (${x}, ${y}) should hit the button or its contents`
+          ).toBe(true)
+
+          return button
+        },
+        { timeout: 5_000 }
+      )
+    } catch (error) {
+      // 解析窗口内 banner 被顶掉同样是关闭已完成；banner 还在才是真的找不到按钮。
+      if (!bannerIsOpen()) return
+      throw error
+    }
+
+    try {
+      await userEvent.click(button, { timeout: CLICK_ATTEMPT_TIMEOUT_MS })
+      return
+    } catch (error) {
+      failures.push(`attempt ${attempt}: ${error instanceof Error ? error.message : String(error)}`)
+    }
+  }
+
+  // 最后一轮 click 可能已经关掉了 banner，只是 Playwright 在节点被摘掉后才报错。
+  if (!bannerIsOpen()) return
+
+  throw new Error(
+    `banner close button click failed after ${CLICK_MAX_ATTEMPTS} attempts of ` +
+      `${CLICK_ATTEMPT_TIMEOUT_MS}ms each:\n\n${failures.join('\n\n')}`
+  )
 }
 
 function globalSelectTrigger(label: string) {
@@ -241,7 +302,7 @@ describe('应用外壳（浏览器）：导航 collapsed state 不跨视口泄�
     }
   )
 
-  it('已显示的 top toast 文案和字号变化时预留空间跟随，缩短后复原', async () => {
+  it('top toast 文案和字号变化不改变 header 位置', async () => {
     await mountAppShell()
     const toastElement = await persistentTopToast(SHORT_TOAST_MESSAGE)
     await clickBannerCloseButtonAtCenter()
@@ -253,13 +314,13 @@ describe('应用外壳（浏览器）：导航 collapsed state 不跨视口泄�
     await vi.waitFor(() => expect(toastElement.getBoundingClientRect().height).toBeGreaterThan(shortHeight))
     await clickGlobalSelectsAtTopEdge()
     const longTop = globalSelectTrigger('Global theme').getBoundingClientRect().top
-    expect(longTop).toBeGreaterThan(shortTop)
+    expect(longTop).toBeCloseTo(shortTop)
     const longHeight = toastElement.getBoundingClientRect().height
 
     toastElement.style.setProperty('--wui-font-size', '24px')
     await vi.waitFor(() => expect(toastElement.getBoundingClientRect().height).toBeGreaterThan(longHeight))
     await clickGlobalSelectsAtTopEdge()
-    expect(globalSelectTrigger('Global theme').getBoundingClientRect().top).toBeGreaterThan(longTop)
+    expect(globalSelectTrigger('Global theme').getBoundingClientRect().top).toBeCloseTo(shortTop)
 
     toastElement.style.removeProperty('--wui-font-size')
     toast.info(SHORT_TOAST_MESSAGE, { id: toastElement.toastId })
@@ -267,28 +328,28 @@ describe('应用外壳（浏览器）：导航 collapsed state 不跨视口泄�
     await clickGlobalSelectsAtTopEdge()
   })
 
-  it('top toast 堆栈溢出时只预留可见区域，滚动后重新测量', async () => {
-    await setViewport(DESKTOP_VIEWPORT.width, 400)
+  it('top toast 堆栈增长时不改变 banner 和 header 高度，并从 header 下方开始', async () => {
     await mountAppShell()
-    const firstToast = await persistentTopToast(LONG_TOAST_MESSAGE)
-    await userEvent.hover(firstToast)
-    for (let index = 0; index < 8; index++) toast.info(LONG_TOAST_MESSAGE, { duration: 0 })
-    const container = firstToast.parentElement!
-    await vi.waitFor(() => expect(container.querySelectorAll('web-ui-toast[visible]').length).toBe(9))
-    expect(container.scrollHeight).toBeGreaterThan(container.clientHeight)
     const banner = document.querySelector<HTMLElement>('[slot="banner"]')!
-    await vi.waitFor(() => expect(banner.getBoundingClientRect().bottom).toBeCloseTo(innerHeight, 0))
-    const beforeScroll = banner.getBoundingClientRect().bottom
+    const bannerHeight = banner.getBoundingClientRect().height
+    const header = layoutRoot().querySelector<HTMLElement>('[slot="header"]')!
+    const headerHeight = header.getBoundingClientRect().height
+    const firstToast = await persistentTopToast(LONG_TOAST_MESSAGE)
+    toast.info(LONG_TOAST_MESSAGE, { duration: 0 })
+    const container = firstToast.parentElement!
+    await vi.waitFor(() => expect(container.querySelectorAll('web-ui-toast[visible]').length).toBe(2))
 
-    container.scrollTop = container.scrollHeight
-    await vi.waitFor(() => expect(banner.getBoundingClientRect().bottom).toBeLessThan(beforeScroll))
-    const bottom = Math.max(
-      ...Array.from(container.querySelectorAll('web-ui-toast'), element => element.getBoundingClientRect().bottom)
-    )
-    expect(banner.getBoundingClientRect().bottom).toBeCloseTo(bottom)
+    expect(banner.getBoundingClientRect().height).toBeCloseTo(bannerHeight)
+    expect(header.getBoundingClientRect().height).toBeCloseTo(headerHeight)
+    await vi.waitFor(() => {
+      const toastTop = Math.min(
+        ...Array.from(container.querySelectorAll('web-ui-toast'), element => element.getBoundingClientRect().top)
+      )
+      expect(toastTop).toBeGreaterThanOrEqual(header.getBoundingClientRect().bottom)
+    })
   })
 
-  it('右上角 toast 显示与隐藏时 banner 关闭按钮都可用', async () => {
+  it('banner 关闭后 toast 显示与隐藏都不会重新占位', async () => {
     await mountAppShell()
     await clickBannerCloseButtonAtCenter()
     await vi.waitFor(() => {
@@ -312,22 +373,11 @@ describe('应用外壳（浏览器）：导航 collapsed state 不跨视口泄�
 
     await clickBannerCloseButtonAtCenter()
     await vi.waitFor(() => {
-      const banner = document.querySelector<HTMLElement>('[slot="banner"]')
-      if (!banner || getComputedStyle(banner).visibility !== 'hidden') {
-        throw new Error('banner stayed visible with a toast')
-      }
+      if (document.querySelector('[slot="banner"]')) throw new Error('banner stayed visible with a toast')
     })
 
-    expect(document.querySelector('[slot="banner"]')).not.toBeNull()
     expect(themeOverlayRoot()?.querySelector('web-ui-toast')).not.toBeNull()
-
-    for (const label of ['Global motion', 'Global theme']) {
-      const trigger = globalSelectTrigger(label)
-      await userEvent.click(trigger)
-      expect(trigger.getAttribute('aria-expanded')).toBe('true')
-      await userEvent.keyboard('{Escape}')
-      expect(trigger.getAttribute('aria-expanded')).toBe('false')
-    }
+    await clickGlobalSelectsAtTopEdge()
 
     toast.clear()
     await vi.waitFor(() => {
@@ -372,10 +422,7 @@ describe('应用外壳（浏览器）：导航 collapsed state 不跨视口泄�
         if (!nestedTheme.getOverlayRoot()?.querySelector('web-ui-toast')) {
           throw new Error('scoped toast did not mount in the nested theme')
         }
-        const banner = document.querySelector<HTMLElement>('[slot="banner"]')
-        if (!banner || getComputedStyle(banner).visibility !== 'hidden') {
-          throw new Error('nested scoped toast did not reserve banner space')
-        }
+        if (document.querySelector('[slot="banner"]')) throw new Error('nested scoped toast reserved banner space')
       })
 
       toast.clear()
@@ -428,10 +475,91 @@ describe('应用外壳（浏览器）：导航 collapsed state 不跨视口泄�
 
     expect(navRoot().getAttribute('aria-label')).toBe('App navigation')
     expect(document.querySelector('nav[aria-label="Main navigation"]')).not.toBeNull()
+    expect(
+      [...document.querySelectorAll('nav[aria-label="Main navigation"] h2')].map(heading => heading.textContent?.trim())
+    ).toEqual(['General', 'Layout', 'Forms', 'Display', 'Feedback'])
+    expect(
+      [...document.querySelectorAll('nav[aria-label="Main navigation"] [role="group"]')].map(group => [
+        group.querySelector('h2')?.textContent?.trim(),
+        [...group.querySelectorAll('a')].map(link => link.getAttribute('aria-label'))
+      ])
+    ).toEqual([
+      ['General', ['Button', 'Icon']],
+      ['Layout', ['Layout', 'BackTop', 'Theme']],
+      [
+        'Forms',
+        [
+          'Input',
+          'Textarea',
+          'InputNumber',
+          'Select',
+          'Autocomplete',
+          'Dropdown',
+          'Switch',
+          'Slider',
+          'Radio',
+          'Checkbox',
+          'Segmented'
+        ]
+      ],
+      ['Display', ['Collapse', 'EditableText', 'Empty', 'MiddleEllipsis', 'SVGDrawLines', 'Avatar', 'Badge']],
+      [
+        'Feedback',
+        ['Dialog', 'Drawer', 'Tooltip', 'Popover', 'ContextMenu', 'Toast', 'ImagePreview', 'Spinner', 'Progress']
+      ]
+    ])
     await loadDemoLocale('zh-CN', false)
     await nextTick()
     expect(document.querySelector('nav[aria-label="主导航"]')).not.toBeNull()
+    expect(
+      [...document.querySelectorAll('nav[aria-label="主导航"] h2')].map(heading => heading.textContent?.trim())
+    ).toEqual(['通用', '布局', '表单', '展示', '反馈'])
     expect(document.querySelector('web-ui-select[aria-label="全局动效"]')).not.toBeNull()
+  })
+
+  it('全局图标触发器与选中值同步', async () => {
+    await mountAppShell()
+
+    const selectOf = (label: string) => {
+      const select = document.querySelector<HTMLElement & { value: string }>(`web-ui-select[aria-label="${label}"]`)
+      if (!select) throw new Error(`${label} select not found`)
+      return select
+    }
+    const iconOf = (label: string) => selectOf(label).querySelector<WebUiIcon>('[slot="trigger"]')
+    const pick = async (label: string, value: string) => {
+      const select = selectOf(label)
+      select.value = value
+      select.dispatchEvent(new Event('change', { bubbles: true }))
+      await nextTick()
+    }
+
+    await pick('Global motion', 'full')
+    expect(iconOf('Global motion')?.icon).toBe(icOutlineMotionPhotosOn)
+
+    await pick('Global motion', 'system')
+    expect(iconOf('Global motion')?.icon).toBe(antDesignSyncOutlined)
+
+    await pick('Global theme', 'system')
+    expect(iconOf('Global theme')?.icon).toBe(lucideContrast)
+    expect(iconOf('Global language')?.icon).toBe(lucideLanguages)
+
+    await pick('Global theme', 'light')
+    expect(iconOf('Global theme')?.icon).toBe(lucideSun)
+  })
+
+  it('320px 下三个全局选择器全部留在视口内，page 不产生横向滚动', async () => {
+    await setViewport(320, 700)
+    await mountAppShell()
+
+    const selects = [...document.querySelectorAll<HTMLElement>('web-ui-select')]
+    expect(selects).toHaveLength(3)
+    for (const select of selects) {
+      const bounds = select.getBoundingClientRect()
+      expect(bounds.width).toBeGreaterThan(0)
+      expect(bounds.left).toBeGreaterThanOrEqual(0)
+      expect(bounds.right).toBeLessThanOrEqual(document.documentElement.clientWidth + 0.5)
+    }
+    expect(document.documentElement.scrollWidth).toBe(document.documentElement.clientWidth)
   })
 
   it('桌面端 collapsed state 沿用完整导航名、超出部分省略，并通过 title 提供完整 label', async () => {
@@ -469,7 +597,8 @@ describe('应用外壳（浏览器）：导航 collapsed state 不跨视口泄�
     await requestCollapse(false)
 
     expect(links.map(link => link.querySelector('span')?.textContent?.trim() ?? '')).toEqual(expandedLabels)
-    expect(links.every(link => !link.hasAttribute('title'))).toBe(true)
+    expect(links.slice(2).every(link => !link.hasAttribute('title'))).toBe(true)
+    expect(links.slice(0, 2).map(link => link.getAttribute('title'))).toEqual(['Components', 'Changelog'])
   })
 
   it('桌面端 collapse 后导航文字居中，expanded state 左对齐', async () => {

@@ -148,7 +148,6 @@ describe('WebUiDialog', () => {
   describe('布尔属性语义', () => {
     // `="false"` 仍为真——Boolean 反射契约，不是「字符串解析成假值」。
     const cases = [
-      ['horizontal', 'horizontal'],
       ['noEscapeClose', 'no-escape-close'],
       ['noBackdropClose', 'no-backdrop-close'],
       ['controlled', 'controlled']
@@ -172,6 +171,34 @@ describe('WebUiDialog', () => {
         cleanupElement(el)
       })
     }
+  })
+
+  describe('footerOrientation', () => {
+    it('默认纵向，合法方向双向同步到 footer-orientation', async () => {
+      const el = createDialog()
+
+      expect(el.footerOrientation).toBe('vertical')
+
+      el.footerOrientation = 'horizontal'
+      await waitForUpdate(el)
+      expect(el.getAttribute('footer-orientation')).toBe('horizontal')
+
+      el.setAttribute('footer-orientation', 'vertical')
+      await waitForUpdate(el)
+      expect(el.footerOrientation).toBe('vertical')
+      cleanupElement(el)
+    })
+
+    it('非法方向回退为纵向', async () => {
+      const el = createDialog()
+
+      el.setAttribute('footer-orientation', 'diagonal')
+      await waitForUpdate(el)
+
+      expect(el.footerOrientation).toBe('vertical')
+      expect(el.getAttribute('footer-orientation')).toBe('vertical')
+      cleanupElement(el)
+    })
   })
 
   describe('backdrop 点击关闭', () => {

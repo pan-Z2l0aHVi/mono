@@ -52,4 +52,22 @@ describe('WebUiButtonGroup 控件尺寸（浏览器）', () => {
     expect(scaled.verticalTrack).toBeGreaterThanOrEqual(scaled.verticalButtonWidth)
     expect(scaled.standaloneButton).toBe(scaled.horizontalTrack)
   })
+
+  it('垂直图标轨道至少宽为一个控件尺寸', async () => {
+    const parent = document.createElement('div')
+    document.body.append(parent)
+
+    const vertical = document.createElement('web-ui-button-group')
+    vertical.direction = 'vertical'
+    vertical.innerHTML =
+      '<web-ui-button icon aria-label="A">A</web-ui-button><web-ui-button icon aria-label="B">B</web-ui-button>'
+    parent.append(vertical)
+    await waitForUpdate(vertical)
+
+    expect(vertical.getBoundingClientRect().width).toBeCloseTo(36, 0)
+
+    parent.style.setProperty('--wui-control-size', '48px')
+    await waitForFrame()
+    expect(vertical.getBoundingClientRect().width).toBeCloseTo(48, 0)
+  })
 })

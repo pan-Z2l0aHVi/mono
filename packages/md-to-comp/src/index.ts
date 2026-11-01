@@ -8,7 +8,7 @@ export { demosDirOf, generate } from './generate'
 export type { GenerateResult } from './generate'
 export { FLAVOR_LANG, highlight, visibleText } from './highlight'
 export type { FenceFlavor } from './highlight'
-export { parseMarkdown } from './markdown'
+export { markdownToHtml, parseMarkdown } from './markdown'
 export type { ParsedDoc, SampleBlock } from './markdown'
 export { renderCss, renderModule } from './render'
 export type {

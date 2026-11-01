@@ -29,6 +29,8 @@
 }
 
 :host([direction='vertical']) .wui-button-group-inner {
+  /* 垂直轨道以控件尺寸为最小宽度，图标组不会窄成成员内容的宽度；文本成员仍可撑宽轨道。 */
+  min-width: var(--wui-control-size, 36px);
   height: auto;
   padding: var(--wui-space-1, 4px) 0;
 }

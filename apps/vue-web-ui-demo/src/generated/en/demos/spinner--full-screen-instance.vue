@@ -3,7 +3,7 @@
     <web-ui-button @click="show">show()</web-ui-button>
     <web-ui-button @click="hide">hide()</web-ui-button>
     <web-ui-button @click="showSmall">Small (16px)</web-ui-button>
-    <web-ui-button @click="showLarge">Large (64px), closes itself after 2 seconds</web-ui-button>
+    <web-ui-button @click="showLarge">Large (64px)</web-ui-button>
     <web-ui-button @click="showWithDescription">With description, 10 seconds</web-ui-button>
   </div>
 </template>

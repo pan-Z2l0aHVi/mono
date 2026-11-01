@@ -133,7 +133,7 @@ import { lucideFileText, lucideFilm, lucideImage } from '@greypan/web-ui/icons'
 
 ### Custom trigger
 
-The `trigger` slot replaces the default label text; the shell, arrow, and open/close behavior still come from the component. The slot content is ordinary nodes rendered by the page, so writing its text from page state makes it follow the selection.
+The `trigger` slot replaces the default label text; the shell, arrow, and open/close behavior still come from the component. The component provides the label container around the trigger but does not directly override the font, color, or size of slotted nodes. Writing the slot content from page state makes it follow the selection.
 
 ```tsx
 import { lucideGlobe } from '@greypan/web-ui/icons'
@@ -234,6 +234,64 @@ const last = ref('—')
 function onOpenChange(event: WebUiEvent<WebUiSelect, 'open-change'>) {
   count.value += 1
   last.value = event.detail.open ? 'true' : 'false'
+}
+</script>
+```
+
+### Icon trigger
+
+`trigger="icon"` keeps the arrow on the right and turns the left slot into an icon area; the icon can follow the selected value. Give the select an `aria-label`, because the trigger itself has no text.
+
+```tsx
+import { lucideLayoutGrid, lucideList, lucideSettings } from '@greypan/web-ui/icons'
+import { useState } from 'react'
+
+const ICONS = { grid: lucideLayoutGrid, list: lucideList, settings: lucideSettings } as const
+type ViewMode = keyof typeof ICONS
+
+export default function Demo() {
+  const [view, setView] = useState<ViewMode>('grid')
+
+  return (
+    <web-ui-select
+      trigger="icon"
+      aria-label="View mode"
+      value={view}
+      onChange={event => {
+        const next = event.currentTarget.value
+        if (next in ICONS) setView(next as ViewMode)
+      }}
+    >
+      <web-ui-icon slot="trigger" icon={ICONS[view]} size={18}></web-ui-icon>
+      <web-ui-option value="grid" label="Grid"></web-ui-option>
+      <web-ui-option value="list" label="List"></web-ui-option>
+      <web-ui-option value="settings" label="Settings"></web-ui-option>
+    </web-ui-select>
+  )
+}
+```
+
+```vue
+<template>
+  <web-ui-select trigger="icon" aria-label="View mode" :value="view" @change="pick($event.currentTarget.value)">
+    <web-ui-icon slot="trigger" :icon="ICONS[view]" :size="18"></web-ui-icon>
+    <web-ui-option value="grid" label="Grid"></web-ui-option>
+    <web-ui-option value="list" label="List"></web-ui-option>
+    <web-ui-option value="settings" label="Settings"></web-ui-option>
+  </web-ui-select>
+</template>
+
+<script setup lang="ts">
+import { lucideLayoutGrid, lucideList, lucideSettings } from '@greypan/web-ui/icons'
+import { ref } from 'vue'
+
+const ICONS = { grid: lucideLayoutGrid, list: lucideList, settings: lucideSettings }
+type ViewMode = keyof typeof ICONS
+
+const view = ref<ViewMode>('grid')
+
+function pick(value: string) {
+  if (value in ICONS) view.value = value as ViewMode
 }
 </script>
 ```
@@ -374,17 +432,18 @@ export default function Demo() {
 
 ### Props
 
-| Name               | Description                                                 | Type               | Default |
-| ------------------ | ----------------------------------------------------------- | ------------------ | ------- |
-| `placeholder`      | Placeholder text shown when nothing is selected.            | `string`           | `''`    |
-| `disabled`         | Disabled state.                                             | `boolean`          | `false` |
-| `required`         | Required validation.                                        | `boolean`          | `false` |
-| `portal`           | Renders the dropdown panel in the theme-owned overlay root. | `boolean`          | `false` |
-| `no-scroll-lock`   | Does not lock page scrolling while open.                    | `boolean`          | `false` |
-| `overlayContainer` | Explicit Portal container (property).                       | `OverlayContainer` | —       |
-| `name`             | Form field name.                                            | `string`           | `''`    |
-| `aria-label`       | Accessible name of the combobox.                            | `string \| null`   | `null`  |
-| `value`            | Selected value.                                             | `string`           | `''`    |
+| Name               | Description                                                                                                                          | Type                | Default   |
+| ------------------ | ------------------------------------------------------------------------------------------------------------------------------------ | ------------------- | --------- |
+| `placeholder`      | Placeholder text shown when nothing is selected.                                                                                     | `string`            | `''`      |
+| `trigger`          | Trigger appearance: `label` shows the selected text and arrow, `icon` keeps the arrow and treats the `trigger` slot as icon content. | `'label' \| 'icon'` | `'label'` |
+| `disabled`         | Disabled state.                                                                                                                      | `boolean`           | `false`   |
+| `required`         | Required validation.                                                                                                                 | `boolean`           | `false`   |
+| `portal`           | Renders the dropdown panel in the theme-owned overlay root.                                                                          | `boolean`           | `false`   |
+| `no-scroll-lock`   | Does not lock page scrolling while open.                                                                                             | `boolean`           | `false`   |
+| `overlayContainer` | Explicit Portal container (property).                                                                                                | `OverlayContainer`  | —         |
+| `name`             | Form field name.                                                                                                                     | `string`            | `''`      |
+| `aria-label`       | Accessible name of the combobox.                                                                                                     | `string \| null`    | `null`    |
+| `value`            | Selected value.                                                                                                                      | `string`            | `''`      |
 
 ### Events
 
@@ -396,10 +455,10 @@ export default function Demo() {
 
 ### Slots
 
-| Name      | Description                                                                                             |
-| --------- | ------------------------------------------------------------------------------------------------------- |
-| `trigger` | Custom trigger area content, replacing the default label; the arrow is still rendered by the component. |
-| `default` | Projects `<web-ui-option>` candidates.                                                                  |
+| Name      | Description                                                                                                                                |
+| --------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
+| `trigger` | Custom trigger area content, replacing the default label; with `trigger="icon"` it is the left icon area and the arrow stays on the right. |
+| `default` | Projects `<web-ui-option>` candidates.                                                                                                     |
 
 ### Behavior
 

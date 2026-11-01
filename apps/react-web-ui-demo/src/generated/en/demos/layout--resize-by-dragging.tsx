@@ -6,7 +6,7 @@ export default function Demo() {
 
   return (
     <div className="flex flex-col gap-3">
-      <div className="h-[420px] overflow-auto rounded-lg border border-(--wui-color-border)">
+      <div className="h-[420px] overflow-auto rounded-lg border border-(--wui-color-border) [--wui-layout-viewport-height:420px]">
         <web-ui-layout
           sidebar-resizable
           sidebarWidth={width}
