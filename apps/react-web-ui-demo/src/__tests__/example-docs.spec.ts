@@ -88,13 +88,13 @@ describe('页面显示的代码与 markdown 围栏同源', () => {
     it(`${locale.label}：每条围栏都落成 codeblock，可见文本逐字等于围栏原文`, async () => {
       let checked = 0
       // 一次并发装载全部 meta：逐个 await 会让单测在 CI 上串起几十次冷 import，撞默认的 5s 上限。
-      const metas = await Promise.all(
+      const loadedDocs = await Promise.all(
         locale.files.map(name => loadMeta(locale.label, name.slice(0, -locale.suffix.length)))
       )
       for (const [fileIndex, name] of locale.files.entries()) {
         const markdown = readFileSync(path.join(docsDir, name), 'utf8')
         const fences = fencesOf(markdown)
-        const blocks = codeblocksOf(metas[fileIndex]!)
+        const blocks = codeblocksOf(loadedDocs[fileIndex]!)
         expect(blocks, `${name}：围栏数 ${fences.length} 与 meta 里的 codeblock 数不一致`).toHaveLength(fences.length)
         blocks.forEach((block, index) => {
           const fence = fences[index]!
@@ -120,13 +120,13 @@ describe('每条围栏落成可编译代码文件', () => {
     it(`${locale.label}：落盘文件与围栏逐字相同（只差行尾换行），load 只给 exec 语言`, async () => {
       let fileCount = 0
       // 与上一条同因：并发装载，避免单测内串行等待几十次冷 import。
-      const metas = await Promise.all(
+      const loadedDocs = await Promise.all(
         locale.files.map(name => loadMeta(locale.label, name.slice(0, -locale.suffix.length)))
       )
       for (const [fileIndex, name] of locale.files.entries()) {
         const markdown = readFileSync(path.join(docsDir, name), 'utf8')
         const fences = fencesOf(markdown)
-        const blocks = codeblocksOf(metas[fileIndex]!)
+        const blocks = codeblocksOf(loadedDocs[fileIndex]!)
         blocks.forEach((block, index) => {
           const fence = fences[index]!
           const exec = EXEC_LANGUAGES.includes(fence.lang)
