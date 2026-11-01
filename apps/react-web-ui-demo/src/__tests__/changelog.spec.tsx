@@ -1,20 +1,22 @@
-import { cleanup, render } from '@testing-library/react'
-import { afterEach, describe, expect, it } from 'vite-plus/test'
+import { renderToStaticMarkup } from 'react-dom/server'
+import { describe, expect, it } from 'vite-plus/test'
 
 import { Changelog } from '../components/changelog'
 
-afterEach(cleanup)
-
+/*
+ * 整份 CHANGELOG.md 有 3k+ 节点，jsdom 挂载在 CI 的负载下会撞默认的 5s。这里只验产出内容，
+ * 用静态渲染把 DOM 构建换成字符串拼接，断言与挂载后取 DOM 等价。
+ */
 describe('更新日志页', () => {
   it('从 CHANGELOG.md 原样渲染整份文档', () => {
-    const { container } = render(<Changelog />)
+    const markup = renderToStaticMarkup(<Changelog />)
 
-    expect(container.querySelector('h1')?.textContent).toBe('@greypan/web-ui')
+    expect(markup).toMatch(/<h1[^>]*>@greypan\/web-ui<\/h1>/)
     // 版本号来自 CHANGELOG.md，会随发版变化：这里只校验形状，不写死具体版本。
-    expect(container.querySelector('h2')?.textContent).toMatch(/^\d+\.\d+\.\d+$/)
-    expect(container.querySelectorAll('.mdm-heading').length).toBeGreaterThan(0)
+    expect(markup).toMatch(/<h2[^>]*>\d+\.\d+\.\d+<\/h2>/)
+    expect(markup).toContain('mdm-heading')
     // 围栏代码块来自 CHANGELOG.md，渲染成 codeblock 卡片。
-    expect(container.querySelectorAll('[data-codeblock]').length).toBeGreaterThan(0)
-    expect(container.innerHTML).not.toContain('# @greypan/web-ui')
+    expect(markup).toContain('data-codeblock')
+    expect(markup).not.toContain('# @greypan/web-ui')
   })
 })
