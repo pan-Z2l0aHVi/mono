@@ -1,5 +1,5 @@
 ---
-'@greypan/web-ui': major
+'@greypan/web-ui': minor
 ---
 
 Add `sidebar-collapsible` to `<web-ui-layout>` and render the desktop collapse toggle only when opted in; make the imperative spinner non-modal and pointer-transparent so loading feedback no longer blocks the page; widen vertical button groups to at least one control size.
