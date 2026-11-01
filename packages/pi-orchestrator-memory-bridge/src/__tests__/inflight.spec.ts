@@ -11,11 +11,11 @@
  */
 
 import { execFileSync } from 'node:child_process'
-import { mkdir, mkdtemp } from 'node:fs/promises'
+import { mkdir, mkdtemp, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
-import { describe, expect, it } from 'vite-plus/test'
+import { afterAll, beforeAll, describe, expect, it } from 'vite-plus/test'
 
 import { createBridge, SAVE_TOOL_NAME, type BridgeOptions, type DispatchControlDeps } from '../bridge'
 import type { Activation, HerdrAgentEntry } from '../contracts'
@@ -24,6 +24,23 @@ import { createInFlightRegistry, inFlightBoardAction, matchInFlight } from '../d
 import { createExecuteTool, createMockPi, type MockContext } from './pi-mock'
 
 const ACTIVE: Activation = { active: true, paneId: 'w1:p1' }
+
+// 测试隔离：session_start 里的 ensureSharedBoard 默认按进程环境算共享目录，不覆盖就会
+// 写进本机真实的 ~/.pi/task-boards；configPath 不给临时文件就会读本机 orchestrator 配置
+// （separateTabs / maxConcurrentWorkers）。两个都在 beforeAll 里指到临时目录。
+let boardRoot: string
+let envBoardRoot: string | undefined
+
+beforeAll(async () => {
+  boardRoot = await mkdtemp(join(tmpdir(), 'inflight-board-root-'))
+  envBoardRoot = process.env.PI_TASK_BOARD_DIR
+  process.env.PI_TASK_BOARD_DIR = boardRoot
+})
+
+afterAll(async () => {
+  if (envBoardRoot === undefined) delete process.env.PI_TASK_BOARD_DIR
+  else process.env.PI_TASK_BOARD_DIR = envBoardRoot
+})
 
 const entryOf = (name: string, status: string, paneId: string): HerdrAgentEntry => ({
   name,
@@ -97,10 +114,15 @@ describe('D1 兜底（桥接装配）', () => {
     return root
   }
 
-  const setup = async (control: DispatchControlDeps) => {
+  const setup = async (
+    control: Omit<DispatchControlDeps, 'configPath'>
+  ): Promise<{ pi: ReturnType<typeof createMockPi>; repo: string }> => {
     const repo = await makeRepo()
+    const configDir = await mkdtemp(join(tmpdir(), 'inflight-config-'))
+    const configPath = join(configDir, 'config.json')
+    await writeFile(configPath, JSON.stringify({ shepherd: { maxConcurrentWorkers: 4, separateTabs: true } }), 'utf8')
     const pi = createMockPi()
-    const options: BridgeOptions = { activation: ACTIVE, control }
+    const options: BridgeOptions = { activation: ACTIVE, control: { ...control, configPath } }
     createBridge(pi, options)
     await pi.emit('session_start', { type: 'session_start' }, { cwd: repo, hasUI: true })
     return { pi, repo }
