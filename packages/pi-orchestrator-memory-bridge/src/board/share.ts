@@ -339,6 +339,69 @@ function migrateDirectory(cwdPi: string, sharedDir: string): SharedBoardResult {
 }
 
 /**
+ * 把一份 v2 board 的计数器重算到既有 id 之后。
+ *
+ * D4 的成因在上游（`pi-task-board` 的 `nextTaskId` 从文件原样读，从不按既有任务重算）：
+ * 迁移/合并产生的共享 board 带着陈旧计数器，新建任务就会撞号。这里不能改上游，所以在
+ * 本侧把共享文件里的计数器归一化：`nextPanelId` / `nextTaskId` 各自推到 `max(existing)+1`。
+ * 不认识的 schema / 缺 panels 返回，调用方不动文件。
+ */
+export function normalizeBoardCounters(board: Record<string, unknown>): Record<string, unknown> | undefined {
+  if (board.version !== BOARD_VERSION || !Array.isArray(board.panels)) return undefined
+  const panelIds = collectIds(board, ['id'])
+  const taskIds = collectIds(board, ['tasks'])
+  const normalized = {
+    ...board,
+    nextPanelId: nextCounter(Number(board.nextPanelId) || 1, panelIds),
+    nextTaskId: nextCounter(Number(board.nextTaskId) || 1, taskIds)
+  }
+  return normalized
+}
+
+/**
+ * 把共享 board 文件的计数器归一化（D4）。
+ *
+ * 迁移的两条路径都可能把陈旧计数器带进共享文件：原样拷贝的路径完全不重算，合并路径的
+ * 合并输入本身就可能是陈旧的。这里在 `ensureSharedBoard` 的成功路径末尾统一兜底一次；
+ * 读不了 / 不是 v2 就不动文件，任何失败都不改变外层结果的状态。返回 normalized 是否真
+ * 的改写了文件（诊断用）。
+ */
+export function syncSharedBoardCounters(sharedDir: string, log: (message: string) => void): boolean {
+  const path = join(sharedDir, 'task-board.json')
+  let parsed: unknown
+  try {
+    if (!existsSync(path)) return false
+    parsed = JSON.parse(readFileSync(path, 'utf8'))
+  } catch (error) {
+    log(`shared board counters not normalized (unreadable): ${String(error)}`)
+    return false
+  }
+  if (!isRecord(parsed)) return false
+  const normalized = normalizeBoardCounters(parsed)
+  if (!normalized) {
+    log('shared board counters not normalized (unexpected schema)')
+    return false
+  }
+  if (
+    normalized.nextPanelId === (parsed as { nextPanelId?: unknown }).nextPanelId &&
+    normalized.nextTaskId === (parsed as { nextTaskId?: unknown }).nextTaskId
+  ) {
+    return false
+  }
+  try {
+    writeBoardAtomic(path, `${JSON.stringify(normalized, null, 2)}\n`)
+    log(
+      `shared board counters normalized: nextTaskId ${(parsed as { nextTaskId?: unknown }).nextTaskId} -> ${normalized.nextTaskId}` +
+        `, nextPanelId ${(parsed as { nextPanelId?: unknown }).nextPanelId} -> ${normalized.nextPanelId}`
+    )
+    return true
+  } catch (error) {
+    log(`shared board counter normalization failed: ${String(error)}`)
+    return false
+  }
+}
+
+/**
  * 保证当前 checkout 与同仓库的其他 checkout 共用一块任务板，且数据在仓库目录之外。
  *
  * 决策矩阵：
@@ -354,7 +417,24 @@ function migrateDirectory(cwdPi: string, sharedDir: string): SharedBoardResult {
  * | 普通文件 / 其他      | `refused`，无动作 |
  * | 任何文件系统异常    | `failed`，返回原因，不抛错 |
  */
-export function ensureSharedBoard(cwd: string, env?: Record<string, string | undefined>): SharedBoardResult {
+export function ensureSharedBoard(
+  cwd: string,
+  env?: Record<string, string | undefined>,
+  log: (message: string) => void = () => {}
+): SharedBoardResult {
+  const result = ensureSharedBoardInner(cwd, env, log)
+  // 成功路径末尾兜底一次计数器（D4）；refused / failed 时不动共享文件。
+  if (result.status !== 'refused' && result.status !== 'failed' && result.target) {
+    syncSharedBoardCounters(result.target, log)
+  }
+  return result
+}
+
+function ensureSharedBoardInner(
+  cwd: string,
+  env: Record<string, string | undefined> | undefined,
+  _log: (message: string) => void
+): SharedBoardResult {
   try {
     const sharedDir = sharedBoardDir(cwd, env)
     const cwdPi = join(cwd, '.pi')

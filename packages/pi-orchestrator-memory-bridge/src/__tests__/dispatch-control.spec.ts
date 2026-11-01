@@ -34,6 +34,13 @@ import {
 
 import { createMockPi, type MockContext } from './pi-mock'
 
+/** D5 断言：tool_result 处理器返回的 content 里带 `[bridge]` 注释行。 */
+function expectBridgeAnnotation(result: unknown): void {
+  const content = (result as { content?: ReadonlyArray<{ text?: string }> } | undefined | null)?.content
+  expect(content).toBeDefined()
+  expect(content!.some(part => typeof part?.text === 'string' && part.text.startsWith('[bridge] '))).toBe(true)
+}
+
 const ACTIVE: Activation = { active: true, paneId: 'w1:p1' }
 
 const entry = (name: string, status: string): HerdrAgentEntry => ({
@@ -435,7 +442,8 @@ describe('桥接：worker / reviewer 独立 tab', () => {
 
     const result = await pi.emit('tool_result', { toolName: 'herdr_dispatch', details: dispatchDetails() }, ctx())
 
-    expect(result).toBeUndefined()
+    // D5：搬迁结论随 tool_result 注释返回，模型能读到（不含原始 content 时只注入注释一行）。
+    expectBridgeAnnotation(result)
     expect(pi.notifications.some(message => message.includes('zoom') && message.includes('不受影响'))).toBe(true)
   })
 
@@ -457,7 +465,8 @@ describe('桥接：worker / reviewer 独立 tab', () => {
 
     const result = await pi.emit('tool_result', { toolName: 'herdr_dispatch', details: dispatchDetails() }, ctx())
 
-    expect(result).toBeUndefined()
+    // D5：搬迁结论随 tool_result 注释返回，模型能读到（不含原始 content 时只注入注释一行）。
+    expectBridgeAnnotation(result)
     expect(moves).toEqual(['w1:p7', 'w1:p7'])
     expect(zooms).toEqual(['w1:p7'])
     const message = pi.notifications.find(item => item.includes('slice: bridge-worker'))
@@ -479,7 +488,8 @@ describe('桥接：worker / reviewer 独立 tab', () => {
 
     const result = await pi.emit('tool_result', { toolName: 'herdr_dispatch', details: dispatchDetails() }, ctx())
 
-    expect(result).toBeUndefined()
+    // D5：搬迁结论随 tool_result 注释返回，模型能读到（不含原始 content 时只注入注释一行）。
+    expectBridgeAnnotation(result)
     expect(moves).toHaveLength(2)
     expect(pi.notifications.some(message => message.includes('已取消 zoom') && message.includes('zoomed_tab'))).toBe(
       true
@@ -502,10 +512,13 @@ describe('桥接：worker / reviewer 独立 tab', () => {
 
     const result = await pi.emit('tool_result', { toolName: 'herdr_dispatch', details: dispatchDetails() }, ctx())
 
-    expect(result).toBeUndefined()
+    // D5：搬迁结论随 tool_result 注释返回，模型能读到（不含原始 content 时只注入注释一行）。
+    expectBridgeAnnotation(result)
     expect(moves).toHaveLength(1)
     expect(
-      pi.notifications.some(message => message.includes('取消 zoom 失败') && message.includes('pane_not_found'))
+      pi.notifications.some(
+        message => message.includes('处于 zoom') && message.includes('不受影响') && message.includes('pane_not_found')
+      )
     ).toBe(true)
   })
 
@@ -551,8 +564,71 @@ describe('桥接：worker / reviewer 独立 tab', () => {
 
     const result = await pi.emit('tool_result', { toolName: 'herdr_dispatch', details: dispatchDetails() }, ctx())
 
-    expect(result).toBeUndefined()
+    // D5：搬迁结论随 tool_result 注释返回，模型能读到（不含原始 content 时只注入注释一行）。
+    expectBridgeAnnotation(result)
     expect(pi.notifications.some(message => message.includes('spawn failed'))).toBe(true)
+  })
+
+  it('D5：搬迁注释保留 tool_result 原有 content，附加 [bridge] 行', async () => {
+    const { moves, movePane } = recordMoves()
+    const { pi } = await setupBridge({ listAgents: async () => [], movePane })
+
+    const result = (await pi.emit(
+      'tool_result',
+      {
+        toolName: 'herdr_dispatch',
+        details: dispatchDetails(),
+        content: [{ type: 'text', text: 'Dispatched bridge-worker: original text' }]
+      },
+      ctx()
+    )) as { content?: Array<{ type: string; text?: string }> }
+
+    expect(moves).toHaveLength(1)
+    const texts = (result.content ?? []).map(part => part.text ?? '')
+    expect(texts[0]).toBe('Dispatched bridge-worker: original text')
+    expect(texts.at(-1)).toMatch(/^\[bridge\] moved slice: bridge-worker to its own tab \(w1:p7\)$/)
+  })
+
+  it('D5：搬迁注释不把 isError 升级，失败也不反转为成功', async () => {
+    const { pi } = await setupBridge({
+      listAgents: async () => [],
+      movePane: async () => ({ moved: false, reason: 'pane_not_found' })
+    })
+
+    const result = (await pi.emit(
+      'tool_result',
+      { toolName: 'herdr_dispatch', details: dispatchDetails(), isError: false },
+      ctx()
+    )) as { content?: Array<{ text?: string }> }
+
+    expect((result.content ?? []).every(part => !part.text?.includes('isError'))).toBe(true)
+    expect(pi.notifications.some(message => message.includes('未能移到独立 tab'))).toBe(true)
+  })
+
+  it('D1：tool_call 放行后按 input.name 登记，settle 兜底能对上这个名字', async () => {
+    const moved: string[] = []
+    const { pi } = await setupBridge({
+      listAgents: async () => [entry('registered-worker', 'working')],
+      movePane: async paneId => {
+        moved.push(paneId)
+        return { moved: true }
+      }
+    })
+
+    const allowed = await pi.emit(
+      'tool_call',
+      { toolName: 'herdr_dispatch', input: { name: 'registered-worker', role: 'builder' } },
+      ctx()
+    )
+    expect(allowed).toBeUndefined()
+
+    // 同名 agent 在列表里：settle 注入的说明应指向这个 pane（搬迁由独立断言覆盖，这里看说明）。
+    // settle 会经 tool_call 的登记把在场的 pane 搬走——这里通过 agent_before_settle 触发。
+    const settle = (await pi.emit('agent_before_settle', { type: 'agent_before_settle' }, ctx())) as
+      | { entries?: Array<{ content: string }> }
+      | undefined
+    expect(moved).toEqual(['w1:registered-worker'])
+    expect(settle?.entries?.[0]?.content).toContain('registered-worker')
   })
 
   it('shepherd.separateTabs: false 时不动 layout', async () => {

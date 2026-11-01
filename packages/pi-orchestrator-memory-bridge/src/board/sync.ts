@@ -47,7 +47,40 @@ interface DispatchDetails {
   role?: string
   pane?: string
   ledgerFile?: string
+  /** prompt 等待结束时 worker 的 agent 终态；`done` / `idle` 表示它自己已跑完，不需要 watch。 */
   status?: string
+}
+
+/** worker 在 dispatch 等待里就已自结算的那两种终态（与 herdr 的 agent_status 同义）。 */
+function isSelfSettled(status: string | undefined): boolean {
+  const value = status?.trim().toLowerCase()
+  return value === 'done' || value === 'idle'
+}
+
+/** dispatch → 建任务；watch 由状态机决定是否需要。 */
+export function boardActionForDispatch(details: unknown): BoardAction | undefined {
+  if (!isRecord(details)) return undefined
+  const value = details as DispatchDetails
+  if (value.action !== 'dispatch') return undefined
+  const name = value.name?.trim()
+  if (!name) return undefined
+
+  // D3：很多 slice 在 dispatch 的 prompt 等待里就跑完了，之后不跑 herdr_watch，按老逻辑
+  // 任务会永久停在 in_progress。worker 已自结算（done / idle）时视同一次 watch-done 直接
+  // 推到 in_review；watch 的结论（review）仍会按原路径验收。
+  const status = isSelfSettled(value.status) ? 'in_review' : 'in_progress'
+
+  const aspects = [`role: ${value.role ?? 'unknown'}`]
+  if (value.pane) aspects.push(`pane: ${value.pane}`)
+  if (value.ledgerFile) aspects.push(`ledger: ${value.ledgerFile}`)
+
+  return {
+    kind: 'add_task',
+    title: taskTitle(name),
+    status,
+    description: aspects.join(' | '),
+    intent: 'dispatch'
+  }
 }
 
 /** review 的 details 形状（只取用到的字段）。 */
@@ -90,27 +123,6 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 /** 规范化任务标题。同一 slice 的多次事件必须得到同一个标题，否则会重复建任务。 */
 export function taskTitle(slice: string): string {
   return `${TITLE_PREFIX} ${slice.trim()}`
-}
-
-/** dispatch → 建任务并进入 `in_progress`。 */
-export function boardActionForDispatch(details: unknown): BoardAction | undefined {
-  if (!isRecord(details)) return undefined
-  const value = details as DispatchDetails
-  if (value.action !== 'dispatch') return undefined
-  const name = value.name?.trim()
-  if (!name) return undefined
-
-  const aspects = [`role: ${value.role ?? 'unknown'}`]
-  if (value.pane) aspects.push(`pane: ${value.pane}`)
-  if (value.ledgerFile) aspects.push(`ledger: ${value.ledgerFile}`)
-
-  return {
-    kind: 'add_task',
-    title: taskTitle(name),
-    status: 'in_progress',
-    description: aspects.join(' | '),
-    intent: 'dispatch'
-  }
 }
 
 /**
