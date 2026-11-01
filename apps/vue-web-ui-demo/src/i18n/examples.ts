@@ -1,5 +1,7 @@
 import { defineAsyncComponent, defineComponent, h, type Component } from 'vue'
 
+import { demoManifest } from '@/generated/demo-manifest'
+import { demoManifest as enDemoManifest } from '@/generated/en/demo-manifest'
 import type { ExampleDoc } from '@/generated/examples'
 
 import type { DemoLocale } from './locale'
@@ -31,6 +33,15 @@ const modules = import.meta.glob<{ default: Component }>(['../generated/demos/*.
 const demos = new Map(
   Object.entries(modules).map(([file, load]) => [file.slice('../generated/'.length, -'.vue'.length), createDemo(load)])
 )
+for (const [prefix, keys] of [
+  ['', demoManifest],
+  ['en/', enDemoManifest]
+] as const) {
+  for (const key of keys) {
+    if (!demos.has(`${prefix}demos/${key}`))
+      throw new Error(`Generated demo module is missing from glob: ${prefix}demos/${key}.vue`)
+  }
+}
 const demoKey = (locale: DemoLocale, component: string, key: string) =>
   `${locale === 'en' ? 'en/' : ''}demos/${component}--${key}`
 

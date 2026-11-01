@@ -203,6 +203,56 @@ const lockedView = ref('list')
 </script>
 ```
 
+### Icon-only
+
+An icon-only trigger still needs its own accessible name: the inner `role="option"` has no text, so write `aria-label` on each `<web-ui-segmented-trigger>`. The group keeps the same single-select, drag, and keyboard behavior.
+
+```tsx
+import { lucideLayoutGrid, lucideList, lucideSettings } from '@greypan/web-ui/icons'
+import { useState } from 'react'
+
+export default function Demo() {
+  const [view, setView] = useState('grid')
+
+  return (
+    <web-ui-segmented aria-label="View mode" value={view} onInput={event => setView(event.currentTarget.value)}>
+      <web-ui-segmented-trigger value="grid" aria-label="Grid view">
+        <web-ui-icon icon={lucideLayoutGrid} size={16}></web-ui-icon>
+      </web-ui-segmented-trigger>
+      <web-ui-segmented-trigger value="list" aria-label="List view">
+        <web-ui-icon icon={lucideList} size={16}></web-ui-icon>
+      </web-ui-segmented-trigger>
+      <web-ui-segmented-trigger value="settings" aria-label="Settings view">
+        <web-ui-icon icon={lucideSettings} size={16}></web-ui-icon>
+      </web-ui-segmented-trigger>
+    </web-ui-segmented>
+  )
+}
+```
+
+```vue
+<template>
+  <web-ui-segmented aria-label="View mode" :value="view" @input="view = $event.currentTarget.value">
+    <web-ui-segmented-trigger value="grid" aria-label="Grid view">
+      <web-ui-icon :icon="lucideLayoutGrid" :size="16"></web-ui-icon>
+    </web-ui-segmented-trigger>
+    <web-ui-segmented-trigger value="list" aria-label="List view">
+      <web-ui-icon :icon="lucideList" :size="16"></web-ui-icon>
+    </web-ui-segmented-trigger>
+    <web-ui-segmented-trigger value="settings" aria-label="Settings view">
+      <web-ui-icon :icon="lucideSettings" :size="16"></web-ui-icon>
+    </web-ui-segmented-trigger>
+  </web-ui-segmented>
+</template>
+
+<script setup lang="ts">
+import { lucideLayoutGrid, lucideList, lucideSettings } from '@greypan/web-ui/icons'
+import { ref } from 'vue'
+
+const view = ref('grid')
+</script>
+```
+
 ### Form field
 
 `name` makes the currently selected value enter `FormData` under that field name, and when nothing is selected the field is not submitted. The component joins the `<form>` through ElementInternals, and `form.reset()` returns `value` to the initial value at mount time.

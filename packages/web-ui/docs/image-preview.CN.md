@@ -9,13 +9,53 @@ tag: web-ui-image-preview
 
 ## Samples
 
-### Basic
+### Single image
 
-`imagePreview()` 一调用就把宿主挂到根主题（或 `container` 指定）的 overlay root 上并立即打开，同时返回 handle。
-
-只传 `images` 时四个展示类 option 保持默认关闭，画面上只有图片本身——方向键切图、滚轮与 `+` / `-` 缩放、`0` 重置、双击在 1x 与 2x 之间切换都照常可用。
+只传一张图时，预览里没有上一张 / 下一张的切换；方向键、滚轮与 `+` / `-` 缩放、`0` 重置、双击在 1x 与 2x 之间切换都照常可用。
 
 点击图片以外的空白处或按 Escape 关闭：关闭请求先播退场过渡，宿主移除后 handle 的 `closed` 才兑现。
+
+```tsx
+import { imagePreview } from '@greypan/web-ui'
+
+const gradientImage = (label: string, from: string, to: string) =>
+  `data:image/svg+xml,${encodeURIComponent(
+    `<svg xmlns="http://www.w3.org/2000/svg" width="960" height="640"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop stop-color="${from}"/><stop offset="1" stop-color="${to}"/></linearGradient></defs><rect width="960" height="640" fill="url(#g)"/><text x="480" y="336" fill="#fff" font-family="sans-serif" font-size="64" text-anchor="middle">${label}</text></svg>`
+  )}`
+
+const IMAGES = [{ src: gradientImage('第一张', '#0a84ff', '#5e5ce6'), alt: '蓝色渐变的示例图' }]
+
+export default function Demo() {
+  return <web-ui-button onClick={() => imagePreview({ images: IMAGES })}>打开单张预览</web-ui-button>
+}
+```
+
+```vue
+<template>
+  <web-ui-button @click="open">打开单张预览</web-ui-button>
+</template>
+
+<script setup lang="ts">
+import { imagePreview } from '@greypan/web-ui'
+
+const gradientImage = (label: string, from: string, to: string) =>
+  `data:image/svg+xml,${encodeURIComponent(
+    `<svg xmlns="http://www.w3.org/2000/svg" width="960" height="640"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop stop-color="${from}"/><stop offset="1" stop-color="${to}"/></linearGradient></defs><rect width="960" height="640" fill="url(#g)"/><text x="480" y="336" fill="#fff" font-family="sans-serif" font-size="64" text-anchor="middle">${label}</text></svg>`
+  )}`
+
+const IMAGES = [{ src: gradientImage('第一张', '#0a84ff', '#5e5ce6'), alt: '蓝色渐变的示例图' }]
+
+function open() {
+  imagePreview({ images: IMAGES })
+}
+</script>
+```
+
+### Multiple images
+
+`images` 传入多张图时，方向键可以直接切换；`loop` 默认 `true`，首尾环绕。
+
+只传 `images` 时四个展示类 option 保持默认关闭，画面上只有图片本身；上一张 / 下一张 button、缩放工具条、关闭 button 与 indicator 都需要显式开启。
 
 ```tsx
 import { imagePreview } from '@greypan/web-ui'
@@ -28,17 +68,18 @@ const gradientImage = (label: string, from: string, to: string) =>
 const IMAGES = [
   { src: gradientImage('第一张', '#0a84ff', '#5e5ce6'), alt: '蓝色渐变的示例图' },
   { src: gradientImage('第二张', '#ff375f', '#ff9f0a'), alt: '橙红渐变的示例图' },
-  { src: gradientImage('第三张', '#30d158', '#0a84ff'), alt: '青绿渐变的示例图' }
+  { src: gradientImage('第三张', '#30d158', '#0a84ff'), alt: '青绿渐变的示例图' },
+  { src: gradientImage('第四张', '#bf5af2', '#ff375f'), alt: '紫色渐变的示例图' }
 ]
 
 export default function Demo() {
-  return <web-ui-button onClick={() => imagePreview({ images: IMAGES })}>打开预览</web-ui-button>
+  return <web-ui-button onClick={() => imagePreview({ images: IMAGES })}>打开多张预览</web-ui-button>
 }
 ```
 
 ```vue
 <template>
-  <web-ui-button @click="open">打开预览</web-ui-button>
+  <web-ui-button @click="open">打开多张预览</web-ui-button>
 </template>
 
 <script setup lang="ts">
@@ -52,7 +93,8 @@ const gradientImage = (label: string, from: string, to: string) =>
 const IMAGES = [
   { src: gradientImage('第一张', '#0a84ff', '#5e5ce6'), alt: '蓝色渐变的示例图' },
   { src: gradientImage('第二张', '#ff375f', '#ff9f0a'), alt: '橙红渐变的示例图' },
-  { src: gradientImage('第三张', '#30d158', '#0a84ff'), alt: '青绿渐变的示例图' }
+  { src: gradientImage('第三张', '#30d158', '#0a84ff'), alt: '青绿渐变的示例图' },
+  { src: gradientImage('第四张', '#bf5af2', '#ff375f'), alt: '紫色渐变的示例图' }
 ]
 
 function open() {
@@ -65,7 +107,7 @@ function open() {
 
 `nav`、`toolbar`、`closable`、`indicator` 彼此独立、默认全关，四个都传 `true` 才会把上一张 / 下一张 button、缩放工具条、关闭 button 与「当前 / 总数」indicator 一起带出来。
 
-`nav` 只在图片多于一张时渲染；`loop` 默认 `true`，首尾环绕，所以这里的三张图可以一直朝同一个方向翻。
+`nav` 只在图片多于一张时渲染；`loop` 默认 `true`，首尾环绕，所以这里可以一直朝同一个方向翻。
 
 ```tsx
 import { imagePreview } from '@greypan/web-ui'
@@ -78,7 +120,8 @@ const gradientImage = (label: string, from: string, to: string) =>
 const IMAGES = [
   { src: gradientImage('第一张', '#0a84ff', '#5e5ce6'), alt: '蓝色渐变的示例图' },
   { src: gradientImage('第二张', '#ff375f', '#ff9f0a'), alt: '橙红渐变的示例图' },
-  { src: gradientImage('第三张', '#30d158', '#0a84ff'), alt: '青绿渐变的示例图' }
+  { src: gradientImage('第三张', '#30d158', '#0a84ff'), alt: '青绿渐变的示例图' },
+  { src: gradientImage('第四张', '#bf5af2', '#ff375f'), alt: '紫色渐变的示例图' }
 ]
 
 export default function Demo() {
@@ -108,7 +151,8 @@ const gradientImage = (label: string, from: string, to: string) =>
 const IMAGES = [
   { src: gradientImage('第一张', '#0a84ff', '#5e5ce6'), alt: '蓝色渐变的示例图' },
   { src: gradientImage('第二张', '#ff375f', '#ff9f0a'), alt: '橙红渐变的示例图' },
-  { src: gradientImage('第三张', '#30d158', '#0a84ff'), alt: '青绿渐变的示例图' }
+  { src: gradientImage('第三张', '#30d158', '#0a84ff'), alt: '青绿渐变的示例图' },
+  { src: gradientImage('第四张', '#bf5af2', '#ff375f'), alt: '紫色渐变的示例图' }
 ]
 
 function open() {
@@ -117,7 +161,119 @@ function open() {
 </script>
 ```
 
+### Swipe
+
+`swipe: true` 且图片多于一张时，1x 下可以左右拖动切图；纵向位移被忽略，放大后拖动改为平移。
+
+这里同时打开 `nav` 与 `indicator`，方便比对滑动后的结果。
+
+```tsx
+import { imagePreview } from '@greypan/web-ui'
+
+const gradientImage = (label: string, from: string, to: string) =>
+  `data:image/svg+xml,${encodeURIComponent(
+    `<svg xmlns="http://www.w3.org/2000/svg" width="960" height="640"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop stop-color="${from}"/><stop offset="1" stop-color="${to}"/></linearGradient></defs><rect width="960" height="640" fill="url(#g)"/><text x="480" y="336" fill="#fff" font-family="sans-serif" font-size="64" text-anchor="middle">${label}</text></svg>`
+  )}`
+
+const IMAGES = [
+  { src: gradientImage('第一张', '#0a84ff', '#5e5ce6'), alt: '蓝色渐变的示例图' },
+  { src: gradientImage('第二张', '#ff375f', '#ff9f0a'), alt: '橙红渐变的示例图' },
+  { src: gradientImage('第三张', '#30d158', '#0a84ff'), alt: '青绿渐变的示例图' },
+  { src: gradientImage('第四张', '#bf5af2', '#ff375f'), alt: '紫色渐变的示例图' }
+]
+
+export default function Demo() {
+  return (
+    <web-ui-button onClick={() => imagePreview({ images: IMAGES, swipe: true, nav: true, indicator: true })}>
+      打开并左右滑动
+    </web-ui-button>
+  )
+}
+```
+
+```vue
+<template>
+  <web-ui-button @click="open">打开并左右滑动</web-ui-button>
+</template>
+
+<script setup lang="ts">
+import { imagePreview } from '@greypan/web-ui'
+
+const gradientImage = (label: string, from: string, to: string) =>
+  `data:image/svg+xml,${encodeURIComponent(
+    `<svg xmlns="http://www.w3.org/2000/svg" width="960" height="640"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop stop-color="${from}"/><stop offset="1" stop-color="${to}"/></linearGradient></defs><rect width="960" height="640" fill="url(#g)"/><text x="480" y="336" fill="#fff" font-family="sans-serif" font-size="64" text-anchor="middle">${label}</text></svg>`
+  )}`
+
+const IMAGES = [
+  { src: gradientImage('第一张', '#0a84ff', '#5e5ce6'), alt: '蓝色渐变的示例图' },
+  { src: gradientImage('第二张', '#ff375f', '#ff9f0a'), alt: '橙红渐变的示例图' },
+  { src: gradientImage('第三张', '#30d158', '#0a84ff'), alt: '青绿渐变的示例图' },
+  { src: gradientImage('第四张', '#bf5af2', '#ff375f'), alt: '紫色渐变的示例图' }
+]
+
+function open() {
+  imagePreview({ images: IMAGES, swipe: true, nav: true, indicator: true })
+}
+</script>
+```
+
+### No backdrop close
+
+`noBackdropClose: true` 时点击图片以外的空白区域不再关闭；仍可按 Escape 或点右上角关闭 button（`closable: true`）退出。
+
+```tsx
+import { imagePreview } from '@greypan/web-ui'
+
+const gradientImage = (label: string, from: string, to: string) =>
+  `data:image/svg+xml,${encodeURIComponent(
+    `<svg xmlns="http://www.w3.org/2000/svg" width="960" height="640"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop stop-color="${from}"/><stop offset="1" stop-color="${to}"/></linearGradient></defs><rect width="960" height="640" fill="url(#g)"/><text x="480" y="336" fill="#fff" font-family="sans-serif" font-size="64" text-anchor="middle">${label}</text></svg>`
+  )}`
+
+const IMAGES = [
+  { src: gradientImage('第一张', '#0a84ff', '#5e5ce6'), alt: '蓝色渐变的示例图' },
+  { src: gradientImage('第二张', '#ff375f', '#ff9f0a'), alt: '橙红渐变的示例图' },
+  { src: gradientImage('第三张', '#30d158', '#0a84ff'), alt: '青绿渐变的示例图' },
+  { src: gradientImage('第四张', '#bf5af2', '#ff375f'), alt: '紫色渐变的示例图' }
+]
+
+export default function Demo() {
+  return (
+    <web-ui-button onClick={() => imagePreview({ images: IMAGES, noBackdropClose: true, closable: true })}>
+      打开（点击空白不关闭）
+    </web-ui-button>
+  )
+}
+```
+
+```vue
+<template>
+  <web-ui-button @click="open">打开（点击空白不关闭）</web-ui-button>
+</template>
+
+<script setup lang="ts">
+import { imagePreview } from '@greypan/web-ui'
+
+const gradientImage = (label: string, from: string, to: string) =>
+  `data:image/svg+xml,${encodeURIComponent(
+    `<svg xmlns="http://www.w3.org/2000/svg" width="960" height="640"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop stop-color="${from}"/><stop offset="1" stop-color="${to}"/></linearGradient></defs><rect width="960" height="640" fill="url(#g)"/><text x="480" y="336" fill="#fff" font-family="sans-serif" font-size="64" text-anchor="middle">${label}</text></svg>`
+  )}`
+
+const IMAGES = [
+  { src: gradientImage('第一张', '#0a84ff', '#5e5ce6'), alt: '蓝色渐变的示例图' },
+  { src: gradientImage('第二张', '#ff375f', '#ff9f0a'), alt: '橙红渐变的示例图' },
+  { src: gradientImage('第三张', '#30d158', '#0a84ff'), alt: '青绿渐变的示例图' },
+  { src: gradientImage('第四张', '#bf5af2', '#ff375f'), alt: '紫色渐变的示例图' }
+]
+
+function open() {
+  imagePreview({ images: IMAGES, noBackdropClose: true, closable: true })
+}
+</script>
+```
+
 ### Handle
+
+这里的 handle 是这次预览实例的控制器：`imagePreview()` 打开后返回它，翻页、缩放与关闭都通过它发起。
 
 handle 的 `index`、`scale`、`images`、`closed` 是只读成员，方法调用后同步读得到新值；预览内部的手势与键盘操作不会回调外部，需要时自己读。
 
@@ -137,7 +293,8 @@ const gradientImage = (label: string, from: string, to: string) =>
 const IMAGES = [
   { src: gradientImage('第一张', '#0a84ff', '#5e5ce6'), alt: '蓝色渐变的示例图' },
   { src: gradientImage('第二张', '#ff375f', '#ff9f0a'), alt: '橙红渐变的示例图' },
-  { src: gradientImage('第三张', '#30d158', '#0a84ff'), alt: '青绿渐变的示例图' }
+  { src: gradientImage('第三张', '#30d158', '#0a84ff'), alt: '青绿渐变的示例图' },
+  { src: gradientImage('第四张', '#bf5af2', '#ff375f'), alt: '紫色渐变的示例图' }
 ]
 
 export default function Demo() {
@@ -181,7 +338,8 @@ const gradientImage = (label: string, from: string, to: string) =>
 const IMAGES = [
   { src: gradientImage('第一张', '#0a84ff', '#5e5ce6'), alt: '蓝色渐变的示例图' },
   { src: gradientImage('第二张', '#ff375f', '#ff9f0a'), alt: '橙红渐变的示例图' },
-  { src: gradientImage('第三张', '#30d158', '#0a84ff'), alt: '青绿渐变的示例图' }
+  { src: gradientImage('第三张', '#30d158', '#0a84ff'), alt: '青绿渐变的示例图' },
+  { src: gradientImage('第四张', '#bf5af2', '#ff375f'), alt: '紫色渐变的示例图' }
 ]
 
 const status = ref('尚未打开')
@@ -289,7 +447,7 @@ function openPreview() {
 
 由于 1x 也能平移，`resetZoom()` 在「已放大」和「已位移」两种情况下都可用——工具条里的重置 button 对已平移的 1x 图片同样可点。
 
-关闭请求不会立刻销毁原生 dialog：它保持在 top layer，等退场过渡结束后才调用 `dialog.close()`，随后宿主从 DOM 移除并兑现 `closed`。打开期间锁定页面滚动，除非 `noScrollLock` 为 `true`。
+关闭请求不会立刻销毁原生 dialog：它保持在 top layer，等退场过渡结束后才调用 `dialog.close()`，随后宿主从 DOM 移除并兑现 `closed`。打开期间默认锁定页面滚动。预览是全视口模态层，滚轮与触摸手势都被它用于缩放 / 平移，所以 `noScrollLock` 主要影响未被预览消费的页面级滚动（例如 PageDown、程序化滚动或外部容器），而不是让滚轮穿透去滚页面。
 
 ### CSS Custom Properties
 

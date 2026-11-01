@@ -13,7 +13,7 @@ tag: web-ui-layout
 
 `header-glow` 在 header 插槽内容背后加一层装饰性晕染，它属于背景层，插槽内容始终在它上方。
 
-layout 是应用外壳级的整屏布局，示例把它装进一个限高的滚动容器里，Banner 随内容滚出，header 与 tabbar 各贴在容器上下缘。
+layout 是应用外壳级的整屏布局，示例把它装进一个限高的滚动容器里，并把 `--wui-layout-viewport-height` 设为同一高度（`420px`），因此页面最小高度与桌面端侧边栏都被限制在示例容器内。
 
 移动端 Toggle 只派发 `sidebar-open-change` 请求，示例把 `sidebar-open` 回写，点它才会打开 Drawer。
 
@@ -24,7 +24,7 @@ export default function Demo() {
   const [open, setOpen] = useState(false)
 
   return (
-    <div className="h-[420px] overflow-auto rounded-lg border border-(--wui-color-border)">
+    <div className="h-[420px] overflow-auto rounded-lg border border-(--wui-color-border) [--wui-layout-viewport-height:420px]">
       <web-ui-layout header-glow sidebarOpen={open} onsidebar-open-change={event => setOpen(event.detail.open)}>
         <div
           slot="banner"
@@ -55,7 +55,9 @@ export default function Demo() {
 
 ```vue
 <template>
-  <div class="h-[420px] overflow-auto rounded-lg border border-(--wui-color-border)">
+  <div
+    class="h-[420px] overflow-auto rounded-lg border border-(--wui-color-border) [--wui-layout-viewport-height:420px]"
+  >
     <web-ui-layout header-glow :sidebarOpen="open" @sidebar-open-change="open = $event.detail.open">
       <div
         slot="banner"
@@ -94,7 +96,7 @@ const open = ref(false)
 ```tsx
 export default function Demo() {
   return (
-    <div className="h-[420px] overflow-auto rounded-lg border border-(--wui-color-border)">
+    <div className="h-[420px] overflow-auto rounded-lg border border-(--wui-color-border) [--wui-layout-viewport-height:420px]">
       <web-ui-layout no-sidebar header-glow>
         <div slot="header" className="flex items-center px-4 py-2 text-sm font-medium">
           Header
@@ -114,7 +116,9 @@ export default function Demo() {
 
 ```vue
 <template>
-  <div class="h-[420px] overflow-auto rounded-lg border border-(--wui-color-border)">
+  <div
+    class="h-[420px] overflow-auto rounded-lg border border-(--wui-color-border) [--wui-layout-viewport-height:420px]"
+  >
     <web-ui-layout no-sidebar header-glow>
       <div slot="header" class="flex items-center px-4 py-2 text-sm font-medium">Header</div>
       <div class="p-4">
@@ -131,7 +135,7 @@ export default function Demo() {
 
 `sidebar-collapsed` 是桌面端的受控 collapse 状态：它只把桌面端 aside 收窄到 `collapsed-width`，不影响移动端 Drawer。
 
-桌面端 Toggle 由 layout 自己渲染，Consumer 只负责把 `sidebar-collapsed-change` 的请求值回写。
+只有声明 `sidebar-collapsible` 后 layout 才渲染桌面 Toggle，Consumer 再把 `sidebar-collapsed-change` 的请求值回写。
 
 两条分支渲染的是同一份 `sidebar` 插槽内容，所以内容密度要跟着 collapse 变的 Consumer 必须按 `mobile` 收窄那个条件（例如 `collapsed && !layout.mobile`，或 CSS 的 `web-ui-layout[mobile]`），否则 collapsed state 会一路渲染进 Drawer（issue #195）。
 
@@ -146,8 +150,9 @@ export default function Demo() {
 
   return (
     <div className="flex flex-col gap-3">
-      <div className="h-[420px] overflow-auto rounded-lg border border-(--wui-color-border)">
+      <div className="h-[420px] overflow-auto rounded-lg border border-(--wui-color-border) [--wui-layout-viewport-height:420px]">
         <web-ui-layout
+          sidebarCollapsible
           sidebarCollapsed={collapsed}
           onsidebar-collapsed-change={event => setCollapsed(event.detail.collapsed)}
           sidebarOpen={open}
@@ -160,7 +165,7 @@ export default function Demo() {
             <span className="rounded-md p-2 text-sm">Settings</span>
           </nav>
           <div className="p-4">
-            <p className="m-0 text-sm">点侧边栏底部的 Toggle 收起 / 展开，layout 只把桌面端 aside 收窄到 68px。</p>
+            <p className="m-0 text-sm">点侧边栏底部的 Toggle 收起 / 展开，layout 只把桌面端 aside 收窄到 60px。</p>
           </div>
         </web-ui-layout>
       </div>
@@ -173,8 +178,11 @@ export default function Demo() {
 ```vue
 <template>
   <div class="flex flex-col gap-3">
-    <div class="h-[420px] overflow-auto rounded-lg border border-(--wui-color-border)">
+    <div
+      class="h-[420px] overflow-auto rounded-lg border border-(--wui-color-border) [--wui-layout-viewport-height:420px]"
+    >
       <web-ui-layout
+        sidebar-collapsible
         :sidebarCollapsed="collapsed"
         @sidebar-collapsed-change="collapsed = $event.detail.collapsed"
         :sidebarOpen="open"
@@ -187,7 +195,7 @@ export default function Demo() {
           <span class="rounded-md p-2 text-sm">Settings</span>
         </nav>
         <div class="p-4">
-          <p class="m-0 text-sm">点侧边栏底部的 Toggle 收起 / 展开，layout 只把桌面端 aside 收窄到 68px。</p>
+          <p class="m-0 text-sm">点侧边栏底部的 Toggle 收起 / 展开，layout 只把桌面端 aside 收窄到 60px。</p>
         </div>
       </web-ui-layout>
     </div>
@@ -220,7 +228,7 @@ export default function Demo() {
 
   return (
     <div className="flex flex-col gap-3">
-      <div className="h-[420px] overflow-auto rounded-lg border border-(--wui-color-border)">
+      <div className="h-[420px] overflow-auto rounded-lg border border-(--wui-color-border) [--wui-layout-viewport-height:420px]">
         <web-ui-layout
           sidebar-resizable
           sidebarWidth={width}
@@ -251,7 +259,9 @@ export default function Demo() {
 ```vue
 <template>
   <div class="flex flex-col gap-3">
-    <div class="h-[420px] overflow-auto rounded-lg border border-(--wui-color-border)">
+    <div
+      class="h-[420px] overflow-auto rounded-lg border border-(--wui-color-border) [--wui-layout-viewport-height:420px]"
+    >
       <web-ui-layout
         sidebar-resizable
         :sidebarWidth="width"
@@ -321,7 +331,7 @@ export default function Demo() {
 
   return (
     <div className="flex flex-col gap-3">
-      <div className="h-[420px] overflow-auto rounded-lg border border-(--wui-color-border)">
+      <div className="h-[420px] overflow-auto rounded-lg border border-(--wui-color-border) [--wui-layout-viewport-height:420px]">
         <web-ui-layout ref={layoutRef} sidebarOpen={open} onsidebar-open-change={event => setOpen(event.detail.open)}>
           <div slot="header" className="flex items-center px-4 py-2 text-sm font-medium">
             Header
@@ -348,7 +358,9 @@ export default function Demo() {
 ```vue
 <template>
   <div class="flex flex-col gap-3">
-    <div class="h-[420px] overflow-auto rounded-lg border border-(--wui-color-border)">
+    <div
+      class="h-[420px] overflow-auto rounded-lg border border-(--wui-color-border) [--wui-layout-viewport-height:420px]"
+    >
       <web-ui-layout
         :sidebarOpen="open"
         @sidebar-open-change="open = $event.detail.open"
@@ -384,19 +396,20 @@ const mobile = ref(false)
 
 ### Props
 
-| 名称                | 说明                                                                                                                                         | 类型               | 默认值    |
-| ------------------- | -------------------------------------------------------------------------------------------------------------------------------------------- | ------------------ | --------- |
-| `no-sidebar`        | 不渲染任何侧边栏结构：桌面端 aside、collapse Toggle 与 resize handle，移动端 header Toggle 与 Drawer；`sidebar` slot 内容随之不渲染。        | `boolean`          | `false`   |
-| `sidebar-collapsed` | 桌面端侧边栏受控 collapse 状态；只收窄桌面端，不影响移动端 Drawer。                                                                          | `boolean`          | `false`   |
-| `sidebar-open`      | 移动端侧边栏 Drawer 受控打开状态。                                                                                                           | `boolean`          | `false`   |
-| `header-glow`       | 在 header 插槽内容背后显示装饰性晕染。                                                                                                       | `boolean`          | `false`   |
-| `ariaLabels`        | 内置无障碍名（侧栏折叠/展开、调宽、打开导航菜单、主导航）的成组覆盖；未提供的 key 回退内置英文文案，`no-sidebar` 下侧栏相关 key 不参与渲染。 | `LayoutAriaLabels` | —         |
-| `mobile`            | 只读派生值：当前视口是否处于移动端断点及以下；写 attribute 会被恢复，property 赋值不生效。                                                   | `boolean`          | `false`   |
-| `sidebar-width`     | 桌面端和移动端展开时的侧边栏宽度。                                                                                                           | `string`           | `'240px'` |
-| `collapsed-width`   | 桌面端 collapse 时的侧边栏宽度。                                                                                                             | `string`           | `'68px'`  |
-| `sidebar-resizable` | 启用桌面端侧边栏右边缘拖拽调整宽度。                                                                                                         | `boolean`          | `false`   |
-| `sidebar-min-width` | 拖拽调整的下限（px）；默认回退到 `collapsed-width`。                                                                                         | `string`           | —         |
-| `sidebar-max-width` | 拖拽调整的上限（px）；钳制在视口一半以内，内置上限优先。                                                                                     | `string`           | —         |
+| 名称                  | 说明                                                                                                                                                                             | 类型               | 默认值    |
+| --------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------ | --------- |
+| `no-sidebar`          | 不渲染任何侧边栏结构：桌面端 aside、collapse Toggle 与 resize handle，移动端 header Toggle 与 Drawer；`sidebar` slot 内容随之不渲染。                                            | `boolean`          | `false`   |
+| `sidebar-collapsible` | 渲染桌面端收起 / 展开 Toggle。未声明时不渲染 Toggle，也不会因点击产生 `sidebar-collapsed-change` 请求；桌面宽度仍由 `sidebar-collapsed` 控制，移动端 Drawer 的 Toggle 不受影响。 | `boolean`          | `false`   |
+| `sidebar-collapsed`   | 桌面端侧边栏受控 collapse 状态；只收窄桌面端，不影响移动端 Drawer。                                                                                                              | `boolean`          | `false`   |
+| `sidebar-open`        | 移动端侧边栏 Drawer 受控打开状态。                                                                                                                                               | `boolean`          | `false`   |
+| `header-glow`         | 在 header 插槽内容背后显示装饰性晕染。                                                                                                                                           | `boolean`          | `false`   |
+| `ariaLabels`          | 内置无障碍名（侧栏折叠/展开、调宽、打开导航菜单、主导航）的成组覆盖；未提供的 key 回退内置英文文案，`no-sidebar` 下侧栏相关 key 不参与渲染。                                     | `LayoutAriaLabels` | —         |
+| `mobile`              | 只读派生值：当前视口是否处于移动端断点及以下；写 attribute 会被恢复，property 赋值不生效。                                                                                       | `boolean`          | `false`   |
+| `sidebar-width`       | 桌面端和移动端展开时的侧边栏宽度。                                                                                                                                               | `string`           | `'240px'` |
+| `collapsed-width`     | 桌面端 collapse 时的侧边栏宽度。                                                                                                                                                 | `string`           | `'60px'`  |
+| `sidebar-resizable`   | 启用桌面端侧边栏右边缘拖拽调整宽度。                                                                                                                                             | `boolean`          | `false`   |
+| `sidebar-min-width`   | 拖拽调整的下限（px）；默认回退到 `collapsed-width`。                                                                                                                             | `string`           | —         |
+| `sidebar-max-width`   | 拖拽调整的上限（px）；钳制在视口一半以内，内置上限优先。                                                                                                                         | `string`           | —         |
 
 ### Events
 
@@ -526,8 +539,9 @@ Layout 会将 `sidebar-width` 映射为 `--wui-drawer-width`，将 `--wui-layout
 
 ### CSS Custom Properties
 
-| 名称                                | 说明                                                                     | 默认值 |
-| ----------------------------------- | ------------------------------------------------------------------------ | ------ |
-| `--wui-layout-sidebar-radius`       | 侧边栏卡片圆角（桌面端和移动端共用）                                     | `24px` |
-| `--wui-layout-mobile-toggle-inset`  | 移动端 header Toggle 的左缩进                                            | `8px`  |
-| `--wui-layout-sidebar-toggle-width` | 桌面端侧边栏 collapse Toggle 的宽度，下限为 `--wui-control-size`（36px） | `44px` |
+| 名称                                | 说明                                                                     | 默认值             |
+| ----------------------------------- | ------------------------------------------------------------------------ | ------------------ |
+| `--wui-layout-viewport-height`      | layout 使用的可用视口高度；嵌入限高容器时设为容器高度                    | `100vh` / `100dvh` |
+| `--wui-layout-sidebar-radius`       | 侧边栏卡片圆角（桌面端和移动端共用）                                     | `24px`             |
+| `--wui-layout-mobile-toggle-inset`  | 移动端 header Toggle 的左缩进                                            | `8px`              |
+| `--wui-layout-sidebar-toggle-width` | 桌面端侧边栏 collapse Toggle 的宽度，下限为 `--wui-control-size`（36px） | `36px`             |

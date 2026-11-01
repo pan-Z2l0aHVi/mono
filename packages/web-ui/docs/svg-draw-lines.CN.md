@@ -9,13 +9,18 @@ SVG 线条绘制动画：基于 `stroke-dashoffset` 在原元素上动画，不�
 
 ### Basic
 
-默认插槽放需要动画的 SVG 内容，内容第一次稳定时自动播放一次画入。`duration` 是这一笔的毫秒数，默认 `1000`。
+默认插槽放需要动画的 SVG 内容；内容第一次稳定时自动播放一次画入。`duration` 是这一笔的毫秒数，默认 `1000`。
 
 ```tsx
+import type { WebUiSvgDrawLines } from '@greypan/web-ui'
+import { useRef } from 'react'
+
 export default function Demo() {
+  const lines = useRef<WebUiSvgDrawLines>(null)
+
   return (
-    <div className="flex flex-wrap items-center gap-8">
-      <web-ui-svg-draw-lines duration={1200}>
+    <div className="flex flex-col items-center gap-3">
+      <web-ui-svg-draw-lines ref={lines} duration={1200}>
         <svg
           viewBox="0 0 24 24"
           width="48"
@@ -29,6 +34,9 @@ export default function Demo() {
           <path d="M4 12 L10 18 L20 6"></path>
         </svg>
       </web-ui-svg-draw-lines>
+      <web-ui-button variant="secondary" onClick={() => lines.current?.replay()}>
+        重播
+      </web-ui-button>
       <span className="text-xs text-(--wui-color-text-secondary)">挂载后自动画入一次</span>
     </div>
   )
@@ -37,8 +45,8 @@ export default function Demo() {
 
 ```vue
 <template>
-  <div class="flex flex-wrap items-center gap-8">
-    <web-ui-svg-draw-lines :duration="1200">
+  <div class="flex flex-col items-center gap-3">
+    <web-ui-svg-draw-lines ref="lines" :duration="1200">
       <svg
         viewBox="0 0 24 24"
         width="48"
@@ -52,59 +60,87 @@ export default function Demo() {
         <path d="M4 12 L10 18 L20 6"></path>
       </svg>
     </web-ui-svg-draw-lines>
+    <web-ui-button variant="secondary" @click="lines?.replay()">重播</web-ui-button>
     <span class="text-xs text-(--wui-color-text-secondary)">挂载后自动画入一次</span>
   </div>
 </template>
+
+<script setup lang="ts">
+import type { WebUiSvgDrawLines } from '@greypan/web-ui'
+import { useTemplateRef } from 'vue'
+
+const lines = useTemplateRef<WebUiSvgDrawLines>('lines')
+</script>
 ```
 
 ### Stroked geometry
 
-收集的是选择器 `path, rect, circle, line, polyline, polygon, ellipse` 命中的几何元素，一次播放里它们同时起播、并行推进 —— 组件没有延迟或错峰的入口，逐条排队的效果要靠拆成多个实例。
+收集选择器 `path, rect, circle, line, polyline, polygon, ellipse` 命中的几何元素；一次播放里它们同时起播、并行推进。组件没有延迟或错峰的入口，逐条排队的效果要靠拆成多个实例。
 
-以 `Z` 收尾的闭合 `path` 会在播放期间被临时补一小段，让收尾那笔真的画出来，收尾后恢复原 `d`。
+以 `Z` 收尾的闭合 `path` 会在播放期间临时补一小段，让收尾那笔真的画出来；播放结束后恢复原来的 `d`。
 
 ```tsx
+import type { WebUiSvgDrawLines } from '@greypan/web-ui'
+import { useRef } from 'react'
+
 export default function Demo() {
+  const pathLine = useRef<WebUiSvgDrawLines>(null)
+  const rectCircle = useRef<WebUiSvgDrawLines>(null)
+  const poly = useRef<WebUiSvgDrawLines>(null)
+  const closedPath = useRef<WebUiSvgDrawLines>(null)
+
   return (
-    <div className="flex flex-wrap items-end gap-8">
+    <div className="flex flex-wrap items-end gap-x-8 gap-y-6 pb-4">
       <div className="flex flex-col items-center gap-2">
-        <web-ui-svg-draw-lines>
+        <web-ui-svg-draw-lines ref={pathLine}>
           <svg viewBox="0 0 100 60" width="100" height="60" fill="none" stroke="currentColor" strokeWidth="2">
             <path d="M5 45 L35 10 L65 45"></path>
             <line x1="65" y1="45" x2="95" y2="10"></line>
           </svg>
         </web-ui-svg-draw-lines>
-        <span className="text-xs text-(--wui-color-text-secondary)">path + line</span>
+        <web-ui-button variant="secondary" onClick={() => pathLine.current?.replay()}>
+          重播
+        </web-ui-button>
+        <span className="text-xs text-(--wui-color-text-secondary)">路径 + 直线</span>
       </div>
 
       <div className="flex flex-col items-center gap-2">
-        <web-ui-svg-draw-lines>
+        <web-ui-svg-draw-lines ref={rectCircle}>
           <svg viewBox="0 0 100 60" width="100" height="60" fill="none" stroke="currentColor" strokeWidth="2">
             <rect x="6" y="12" width="38" height="38"></rect>
             <circle cx="75" cy="31" r="18"></circle>
           </svg>
         </web-ui-svg-draw-lines>
-        <span className="text-xs text-(--wui-color-text-secondary)">rect + circle</span>
+        <web-ui-button variant="secondary" onClick={() => rectCircle.current?.replay()}>
+          重播
+        </web-ui-button>
+        <span className="text-xs text-(--wui-color-text-secondary)">矩形 + 圆</span>
       </div>
 
       <div className="flex flex-col items-center gap-2">
-        <web-ui-svg-draw-lines>
+        <web-ui-svg-draw-lines ref={poly}>
           <svg viewBox="0 0 100 60" width="100" height="60" fill="none" stroke="currentColor" strokeWidth="2">
             <polyline points="6,52 22,12 38,52"></polyline>
             <polygon points="60,52 78,12 96,52"></polygon>
           </svg>
         </web-ui-svg-draw-lines>
-        <span className="text-xs text-(--wui-color-text-secondary)">polyline + polygon</span>
+        <web-ui-button variant="secondary" onClick={() => poly.current?.replay()}>
+          重播
+        </web-ui-button>
+        <span className="text-xs text-(--wui-color-text-secondary)">折线 + 多边形</span>
       </div>
 
       <div className="flex flex-col items-center gap-2">
-        <web-ui-svg-draw-lines>
+        <web-ui-svg-draw-lines ref={closedPath}>
           <svg viewBox="0 0 100 60" width="100" height="60" fill="none" stroke="currentColor" strokeWidth="2">
             <path d="M6 10 L44 10 L44 44 L6 44 Z"></path>
             <ellipse cx="76" cy="28" rx="18" ry="11"></ellipse>
           </svg>
         </web-ui-svg-draw-lines>
-        <span className="text-xs text-(--wui-color-text-secondary)">闭合 path（Z 收尾）+ ellipse</span>
+        <web-ui-button variant="secondary" onClick={() => closedPath.current?.replay()}>
+          重播
+        </web-ui-button>
+        <span className="text-xs text-(--wui-color-text-secondary)">闭合 path（以 Z 收尾）+ ellipse</span>
       </div>
     </div>
   )
@@ -113,57 +149,71 @@ export default function Demo() {
 
 ```vue
 <template>
-  <div class="flex flex-wrap items-end gap-8">
+  <div class="flex flex-wrap items-end gap-x-8 gap-y-6 pb-4">
     <div class="flex flex-col items-center gap-2">
-      <web-ui-svg-draw-lines>
+      <web-ui-svg-draw-lines ref="pathLine">
         <svg viewBox="0 0 100 60" width="100" height="60" fill="none" stroke="currentColor" stroke-width="2">
           <path d="M5 45 L35 10 L65 45"></path>
           <line x1="65" y1="45" x2="95" y2="10"></line>
         </svg>
       </web-ui-svg-draw-lines>
-      <span class="text-xs text-(--wui-color-text-secondary)">path + line</span>
+      <web-ui-button variant="secondary" @click="pathLine?.replay()">重播</web-ui-button>
+      <span class="text-xs text-(--wui-color-text-secondary)">路径 + 直线</span>
     </div>
 
     <div class="flex flex-col items-center gap-2">
-      <web-ui-svg-draw-lines>
+      <web-ui-svg-draw-lines ref="rectCircle">
         <svg viewBox="0 0 100 60" width="100" height="60" fill="none" stroke="currentColor" stroke-width="2">
           <rect x="6" y="12" width="38" height="38"></rect>
           <circle cx="75" cy="31" r="18"></circle>
         </svg>
       </web-ui-svg-draw-lines>
-      <span class="text-xs text-(--wui-color-text-secondary)">rect + circle</span>
+      <web-ui-button variant="secondary" @click="rectCircle?.replay()">重播</web-ui-button>
+      <span class="text-xs text-(--wui-color-text-secondary)">矩形 + 圆</span>
     </div>
 
     <div class="flex flex-col items-center gap-2">
-      <web-ui-svg-draw-lines>
+      <web-ui-svg-draw-lines ref="poly">
         <svg viewBox="0 0 100 60" width="100" height="60" fill="none" stroke="currentColor" stroke-width="2">
           <polyline points="6,52 22,12 38,52"></polyline>
           <polygon points="60,52 78,12 96,52"></polygon>
         </svg>
       </web-ui-svg-draw-lines>
-      <span class="text-xs text-(--wui-color-text-secondary)">polyline + polygon</span>
+      <web-ui-button variant="secondary" @click="poly?.replay()">重播</web-ui-button>
+      <span class="text-xs text-(--wui-color-text-secondary)">折线 + 多边形</span>
     </div>
 
     <div class="flex flex-col items-center gap-2">
-      <web-ui-svg-draw-lines>
+      <web-ui-svg-draw-lines ref="closedPath">
         <svg viewBox="0 0 100 60" width="100" height="60" fill="none" stroke="currentColor" stroke-width="2">
           <path d="M6 10 L44 10 L44 44 L6 44 Z"></path>
           <ellipse cx="76" cy="28" rx="18" ry="11"></ellipse>
         </svg>
       </web-ui-svg-draw-lines>
-      <span class="text-xs text-(--wui-color-text-secondary)">闭合 path（Z 收尾）+ ellipse</span>
+      <web-ui-button variant="secondary" @click="closedPath?.replay()">重播</web-ui-button>
+      <span class="text-xs text-(--wui-color-text-secondary)">闭合 path（以 Z 收尾）+ ellipse</span>
     </div>
   </div>
 </template>
+
+<script setup lang="ts">
+import type { WebUiSvgDrawLines } from '@greypan/web-ui'
+import { useTemplateRef } from 'vue'
+
+const pathLine = useTemplateRef<WebUiSvgDrawLines>('pathLine')
+const rectCircle = useTemplateRef<WebUiSvgDrawLines>('rectCircle')
+const poly = useTemplateRef<WebUiSvgDrawLines>('poly')
+const closedPath = useTemplateRef<WebUiSvgDrawLines>('closedPath')
+</script>
 ```
 
 ### Duration and easing
 
-`duration` 会被收进 0–30000 毫秒，非数值回落 `1000`；`easing` 原样交给 `element.animate()`，默认 `linear`。
+`duration` 限制在 0–30000 毫秒，非数字回退到 `1000`；`easing` 原样传给 `element.animate()`，默认 `linear`。
 
-两个值都在每次起播那一刻读取，所以动画跑起来之后再改属性不影响正在跑的那一段，下一次 `replay()` 才生效。
+两个值都在每次播放开始时读取，所以动画进行中改属性不会影响当前这一笔；下一次 `replay()` 才生效。
 
-三条画的是同一段曲线，只有时长与缓动不同。
+三个示例画的是同一条曲线，只差时长和缓动。
 
 ```tsx
 import type { WebUiSvgDrawLines } from '@greypan/web-ui'
@@ -174,46 +224,67 @@ export default function Demo() {
   const slow = useRef<WebUiSvgDrawLines>(null)
   const bounce = useRef<WebUiSvgDrawLines>(null)
 
-  function replayAll() {
-    void fast.current?.replay()
-    void slow.current?.replay()
-    void bounce.current?.replay()
-  }
-
   return (
-    <div className="flex flex-col items-start gap-4">
-      <div className="flex flex-wrap items-end gap-8">
-        <div className="flex flex-col items-center gap-2">
-          <web-ui-svg-draw-lines ref={fast} duration={400}>
-            <svg viewBox="0 0 100 40" width="100" height="40" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="M5 30 Q25 0 50 30 T95 30"></path>
-            </svg>
-          </web-ui-svg-draw-lines>
-          <span className="text-xs text-(--wui-color-text-secondary)">400ms · linear（默认）</span>
-        </div>
-
-        <div className="flex flex-col items-center gap-2">
-          <web-ui-svg-draw-lines ref={slow} duration={1600} easing="ease-out">
-            <svg viewBox="0 0 100 40" width="100" height="40" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="M5 30 Q25 0 50 30 T95 30"></path>
-            </svg>
-          </web-ui-svg-draw-lines>
-          <span className="text-xs text-(--wui-color-text-secondary)">1600ms · ease-out</span>
-        </div>
-
-        <div className="flex flex-col items-center gap-2">
-          <web-ui-svg-draw-lines ref={bounce} duration={1600} easing="cubic-bezier(0.68, -0.55, 0.27, 1.55)">
-            <svg viewBox="0 0 100 40" width="100" height="40" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="M5 30 Q25 0 50 30 T95 30"></path>
-            </svg>
-          </web-ui-svg-draw-lines>
-          <span className="text-xs text-(--wui-color-text-secondary)">1600ms · 越过端点的曲线</span>
-        </div>
+    <div className="flex flex-wrap items-end gap-x-8 gap-y-6 pb-4">
+      <div className="flex flex-col items-center gap-2">
+        <web-ui-svg-draw-lines ref={fast} duration={400}>
+          <svg
+            viewBox="0 0 100 40"
+            width="100"
+            height="40"
+            overflow="visible"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+          >
+            <path d="M5 30 Q25 0 50 30 T95 30"></path>
+          </svg>
+        </web-ui-svg-draw-lines>
+        <web-ui-button variant="secondary" onClick={() => fast.current?.replay()}>
+          重播
+        </web-ui-button>
+        <span className="text-xs text-(--wui-color-text-secondary)">400ms · 线性（默认）</span>
       </div>
 
-      <web-ui-button variant="secondary" onClick={replayAll}>
-        重播三条
-      </web-ui-button>
+      <div className="flex flex-col items-center gap-2">
+        <web-ui-svg-draw-lines ref={slow} duration={1600} easing="ease-out">
+          <svg
+            viewBox="0 0 100 40"
+            width="100"
+            height="40"
+            overflow="visible"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+          >
+            <path d="M5 30 Q25 0 50 30 T95 30"></path>
+          </svg>
+        </web-ui-svg-draw-lines>
+        <web-ui-button variant="secondary" onClick={() => slow.current?.replay()}>
+          重播
+        </web-ui-button>
+        <span className="text-xs text-(--wui-color-text-secondary)">1600ms · 缓出</span>
+      </div>
+
+      <div className="flex flex-col items-center gap-2">
+        <web-ui-svg-draw-lines ref={bounce} duration={1600} easing="cubic-bezier(0.68, -0.55, 0.27, 1.55)">
+          <svg
+            viewBox="0 0 100 40"
+            width="100"
+            height="40"
+            overflow="visible"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+          >
+            <path d="M5 30 Q25 0 50 30 T95 30"></path>
+          </svg>
+        </web-ui-svg-draw-lines>
+        <web-ui-button variant="secondary" onClick={() => bounce.current?.replay()}>
+          重播
+        </web-ui-button>
+        <span className="text-xs text-(--wui-color-text-secondary)">1600ms · 越过端点的曲线</span>
+      </div>
     </div>
   )
 }
@@ -221,37 +292,60 @@ export default function Demo() {
 
 ```vue
 <template>
-  <div class="flex flex-col items-start gap-4">
-    <div class="flex flex-wrap items-end gap-8">
-      <div class="flex flex-col items-center gap-2">
-        <web-ui-svg-draw-lines ref="fast" :duration="400">
-          <svg viewBox="0 0 100 40" width="100" height="40" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M5 30 Q25 0 50 30 T95 30"></path>
-          </svg>
-        </web-ui-svg-draw-lines>
-        <span class="text-xs text-(--wui-color-text-secondary)">400ms · linear（默认）</span>
-      </div>
-
-      <div class="flex flex-col items-center gap-2">
-        <web-ui-svg-draw-lines ref="slow" :duration="1600" easing="ease-out">
-          <svg viewBox="0 0 100 40" width="100" height="40" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M5 30 Q25 0 50 30 T95 30"></path>
-          </svg>
-        </web-ui-svg-draw-lines>
-        <span class="text-xs text-(--wui-color-text-secondary)">1600ms · ease-out</span>
-      </div>
-
-      <div class="flex flex-col items-center gap-2">
-        <web-ui-svg-draw-lines ref="bounce" :duration="1600" easing="cubic-bezier(0.68, -0.55, 0.27, 1.55)">
-          <svg viewBox="0 0 100 40" width="100" height="40" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M5 30 Q25 0 50 30 T95 30"></path>
-          </svg>
-        </web-ui-svg-draw-lines>
-        <span class="text-xs text-(--wui-color-text-secondary)">1600ms · 越过端点的曲线</span>
-      </div>
+  <div class="flex flex-wrap items-end gap-x-8 gap-y-6 pb-4">
+    <div class="flex flex-col items-center gap-2">
+      <web-ui-svg-draw-lines ref="fast" :duration="400">
+        <svg
+          viewBox="0 0 100 40"
+          width="100"
+          height="40"
+          overflow="visible"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+        >
+          <path d="M5 30 Q25 0 50 30 T95 30"></path>
+        </svg>
+      </web-ui-svg-draw-lines>
+      <web-ui-button variant="secondary" @click="fast?.replay()">重播</web-ui-button>
+      <span class="text-xs text-(--wui-color-text-secondary)">400ms · 线性（默认）</span>
     </div>
 
-    <web-ui-button variant="secondary" @click="replayAll">重播三条</web-ui-button>
+    <div class="flex flex-col items-center gap-2">
+      <web-ui-svg-draw-lines ref="slow" :duration="1600" easing="ease-out">
+        <svg
+          viewBox="0 0 100 40"
+          width="100"
+          height="40"
+          overflow="visible"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+        >
+          <path d="M5 30 Q25 0 50 30 T95 30"></path>
+        </svg>
+      </web-ui-svg-draw-lines>
+      <web-ui-button variant="secondary" @click="slow?.replay()">重播</web-ui-button>
+      <span class="text-xs text-(--wui-color-text-secondary)">1600ms · 缓出</span>
+    </div>
+
+    <div class="flex flex-col items-center gap-2">
+      <web-ui-svg-draw-lines ref="bounce" :duration="1600" easing="cubic-bezier(0.68, -0.55, 0.27, 1.55)">
+        <svg
+          viewBox="0 0 100 40"
+          width="100"
+          height="40"
+          overflow="visible"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+        >
+          <path d="M5 30 Q25 0 50 30 T95 30"></path>
+        </svg>
+      </web-ui-svg-draw-lines>
+      <web-ui-button variant="secondary" @click="bounce?.replay()">重播</web-ui-button>
+      <span class="text-xs text-(--wui-color-text-secondary)">1600ms · 越过端点的曲线</span>
+    </div>
   </div>
 </template>
 
@@ -262,12 +356,6 @@ import { useTemplateRef } from 'vue'
 const fast = useTemplateRef<WebUiSvgDrawLines>('fast')
 const slow = useTemplateRef<WebUiSvgDrawLines>('slow')
 const bounce = useTemplateRef<WebUiSvgDrawLines>('bounce')
-
-function replayAll() {
-  void fast.value?.replay()
-  void slow.value?.replay()
-  void bounce.value?.replay()
-}
 </script>
 ```
 
@@ -480,7 +568,7 @@ export default function Demo() {
         画入
       </web-ui-button>
       <web-ui-button variant="secondary" onClick={() => lines.current?.replay({ reverse: true })}>
-        reverse 收回
+        反向收回
       </web-ui-button>
     </div>
   )
@@ -497,7 +585,7 @@ export default function Demo() {
       </svg>
     </web-ui-svg-draw-lines>
     <web-ui-button variant="secondary" @click="lines?.replay()">画入</web-ui-button>
-    <web-ui-button variant="secondary" @click="lines?.replay({ reverse: true })">reverse 收回</web-ui-button>
+    <web-ui-button variant="secondary" @click="lines?.replay({ reverse: true })">反向收回</web-ui-button>
   </div>
 </template>
 

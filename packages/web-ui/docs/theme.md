@@ -249,62 +249,89 @@ function inspect() {
 
 ### Nested scopes
 
-Themes can be nested layer by layer, and each layer resolves its own tokens: the inner layer overrides the outer one, leaving the inner layer returns to the outer values, and the two layers output their own `resolved-appearance`.
+Themes can be nested layer by layer, and each layer resolves its own tokens: the inner layer overrides the outer one, leaving the inner layer returns to the outer values, and the layers output their own `resolved-appearance`.
 
-`motion` is likewise a per-layer preset and does not inherit from ancestors; when the inner layer omits it, the default `system` applies. It cuts the transition durations of this layer (`--wui-duration-*`), so the difference between presets needs controls whose motion is visible: each layer holds a segmented and a switch—the indicator and the thumb both read this layer's `--wui-duration-trigger`, so one click makes the outer layer (`reduced`) jump and the inner layer (`system`) slide.
+`appearance` is per layer as well. Each layer in the sample below has its own segmented control, so changing the middle layer repaints only the middle and inner regions, while changing the inner layer leaves the two outer regions untouched. `motion` is likewise a per-layer preset and does not inherit: the outer layer uses `reduced` and switches instantly, the middle uses `full`, and the inner omits it and falls back to `system`.
 
-The host generates no box, so layout (the height and spacing here) must be written on an element inside the scope; writing it on the `<web-ui-theme>` host does nothing.
+The host generates no box, so layout (the border, padding, and spacing here) must be written on an element inside the scope; writing it on the `<web-ui-theme>` host does nothing.
 
 ```tsx
+import type { ThemeAppearance } from '@greypan/web-ui'
 import { useState } from 'react'
 
-const sides: { label: string; value: string }[] = [
-  { label: 'A', value: 'a' },
-  { label: 'B', value: 'b' }
+const appearances: { label: string; value: ThemeAppearance }[] = [
+  { label: 'Light', value: 'light' },
+  { label: 'Dark', value: 'dark' },
+  { label: 'System', value: 'system' }
 ]
 
 export default function Demo() {
-  const [outerValue, setOuterValue] = useState('a')
-  const [innerValue, setInnerValue] = useState('a')
+  const [outer, setOuter] = useState<ThemeAppearance>('light')
+  const [middle, setMiddle] = useState<ThemeAppearance>('dark')
+  const [inner, setInner] = useState<ThemeAppearance>('system')
 
   return (
-    <web-ui-theme appearance="light" motion="reduced">
-      <div className="rounded-2xl bg-(--wui-color-page) p-4 text-(--wui-color-text)">
-        <p className="m-0 mb-2 text-xs text-(--wui-color-text-secondary)">Outer light / reduced: instant</p>
-        <div className="flex flex-wrap items-center gap-3">
+    <web-ui-theme appearance={outer} motion="reduced">
+      <div className="rounded-2xl border border-(--wui-color-border) bg-(--wui-color-page) p-4 text-(--wui-color-text)">
+        <div className="flex flex-col items-start gap-2">
+          <span className="text-xs text-(--wui-color-text-secondary)">Layer 1 · motion reduced</span>
           <web-ui-segmented
-            value={outerValue}
-            aria-label="Outer motion comparison"
-            onInput={event => setOuterValue(event.currentTarget.value)}
+            value={outer}
+            aria-label="Layer 1 appearance"
+            onInput={event => {
+              const next = appearances.find(item => item.value === event.currentTarget.value)
+              if (next) setOuter(next.value)
+            }}
           >
-            {sides.map(item => (
+            {appearances.map(item => (
               <web-ui-segmented-trigger key={item.value} value={item.value}>
                 {item.label}
               </web-ui-segmented-trigger>
             ))}
           </web-ui-segmented>
-          <web-ui-switch></web-ui-switch>
         </div>
 
-        <web-ui-theme appearance="dark">
+        <web-ui-theme appearance={middle} motion="full">
           <div className="mt-3 rounded-2xl border border-(--wui-color-border) bg-(--wui-color-page) p-4 text-(--wui-color-text)">
-            <p className="m-0 mb-2 text-xs text-(--wui-color-text-secondary)">
-              Inner dark / motion unset, falls back to system: slides
-            </p>
-            <div className="flex flex-wrap items-center gap-3">
+            <div className="flex flex-col items-start gap-2">
+              <span className="text-xs text-(--wui-color-text-secondary)">Layer 2 · motion full</span>
               <web-ui-segmented
-                value={innerValue}
-                aria-label="Inner motion comparison"
-                onInput={event => setInnerValue(event.currentTarget.value)}
+                value={middle}
+                aria-label="Layer 2 appearance"
+                onInput={event => {
+                  const next = appearances.find(item => item.value === event.currentTarget.value)
+                  if (next) setMiddle(next.value)
+                }}
               >
-                {sides.map(item => (
+                {appearances.map(item => (
                   <web-ui-segmented-trigger key={item.value} value={item.value}>
                     {item.label}
                   </web-ui-segmented-trigger>
                 ))}
               </web-ui-segmented>
-              <web-ui-switch checked></web-ui-switch>
             </div>
+
+            <web-ui-theme appearance={inner}>
+              <div className="mt-3 rounded-2xl border border-(--wui-color-border) bg-(--wui-color-page) p-4 text-(--wui-color-text)">
+                <div className="flex flex-col items-start gap-2">
+                  <span className="text-xs text-(--wui-color-text-secondary)">Layer 3 · motion system</span>
+                  <web-ui-segmented
+                    value={inner}
+                    aria-label="Layer 3 appearance"
+                    onInput={event => {
+                      const next = appearances.find(item => item.value === event.currentTarget.value)
+                      if (next) setInner(next.value)
+                    }}
+                  >
+                    {appearances.map(item => (
+                      <web-ui-segmented-trigger key={item.value} value={item.value}>
+                        {item.label}
+                      </web-ui-segmented-trigger>
+                    ))}
+                  </web-ui-segmented>
+                </div>
+              </div>
+            </web-ui-theme>
           </div>
         </web-ui-theme>
       </div>
@@ -315,41 +342,56 @@ export default function Demo() {
 
 ```vue
 <template>
-  <web-ui-theme appearance="light" motion="reduced">
-    <div class="rounded-2xl bg-(--wui-color-page) p-4 text-(--wui-color-text)">
-      <p class="m-0 mb-2 text-xs text-(--wui-color-text-secondary)">Outer light / reduced: instant</p>
-      <div class="flex flex-wrap items-center gap-3">
+  <web-ui-theme :appearance="outer" motion="reduced">
+    <div class="rounded-2xl border border-(--wui-color-border) bg-(--wui-color-page) p-4 text-(--wui-color-text)">
+      <div class="flex flex-col items-start gap-2">
+        <span class="text-xs text-(--wui-color-text-secondary)">Layer 1 · motion reduced</span>
         <web-ui-segmented
-          :value="outerValue"
-          aria-label="Outer motion comparison"
-          @input="outerValue = $event.currentTarget.value"
+          :value="outer"
+          aria-label="Layer 1 appearance"
+          @input="outer = pick($event.currentTarget.value)"
         >
-          <web-ui-segmented-trigger v-for="item in sides" :key="item.value" :value="item.value">
+          <web-ui-segmented-trigger v-for="item in appearances" :key="item.value" :value="item.value">
             {{ item.label }}
           </web-ui-segmented-trigger>
         </web-ui-segmented>
-        <web-ui-switch></web-ui-switch>
       </div>
 
-      <web-ui-theme appearance="dark">
+      <web-ui-theme :appearance="middle" motion="full">
         <div
           class="mt-3 rounded-2xl border border-(--wui-color-border) bg-(--wui-color-page) p-4 text-(--wui-color-text)"
         >
-          <p class="m-0 mb-2 text-xs text-(--wui-color-text-secondary)">
-            Inner dark / motion unset, falls back to system: slides
-          </p>
-          <div class="flex flex-wrap items-center gap-3">
+          <div class="flex flex-col items-start gap-2">
+            <span class="text-xs text-(--wui-color-text-secondary)">Layer 2 · motion full</span>
             <web-ui-segmented
-              :value="innerValue"
-              aria-label="Inner motion comparison"
-              @input="innerValue = $event.currentTarget.value"
+              :value="middle"
+              aria-label="Layer 2 appearance"
+              @input="middle = pick($event.currentTarget.value)"
             >
-              <web-ui-segmented-trigger v-for="item in sides" :key="item.value" :value="item.value">
+              <web-ui-segmented-trigger v-for="item in appearances" :key="item.value" :value="item.value">
                 {{ item.label }}
               </web-ui-segmented-trigger>
             </web-ui-segmented>
-            <web-ui-switch checked></web-ui-switch>
           </div>
+
+          <web-ui-theme :appearance="inner">
+            <div
+              class="mt-3 rounded-2xl border border-(--wui-color-border) bg-(--wui-color-page) p-4 text-(--wui-color-text)"
+            >
+              <div class="flex flex-col items-start gap-2">
+                <span class="text-xs text-(--wui-color-text-secondary)">Layer 3 · motion system</span>
+                <web-ui-segmented
+                  :value="inner"
+                  aria-label="Layer 3 appearance"
+                  @input="inner = pick($event.currentTarget.value)"
+                >
+                  <web-ui-segmented-trigger v-for="item in appearances" :key="item.value" :value="item.value">
+                    {{ item.label }}
+                  </web-ui-segmented-trigger>
+                </web-ui-segmented>
+              </div>
+            </div>
+          </web-ui-theme>
         </div>
       </web-ui-theme>
     </div>
@@ -357,15 +399,22 @@ export default function Demo() {
 </template>
 
 <script setup lang="ts">
+import type { ThemeAppearance } from '@greypan/web-ui'
 import { ref } from 'vue'
 
-const sides = [
-  { label: 'A', value: 'a' },
-  { label: 'B', value: 'b' }
-] as const
+const appearances: { label: string; value: ThemeAppearance }[] = [
+  { label: 'Light', value: 'light' },
+  { label: 'Dark', value: 'dark' },
+  { label: 'System', value: 'system' }
+]
 
-const outerValue = ref('a')
-const innerValue = ref('a')
+const outer = ref<ThemeAppearance>('light')
+const middle = ref<ThemeAppearance>('dark')
+const inner = ref<ThemeAppearance>('system')
+
+function pick(value: string): ThemeAppearance {
+  return appearances.find(item => item.value === value)?.value ?? 'light'
+}
 </script>
 ```
 
@@ -859,7 +908,7 @@ Known limitation: the overlay styles in `assets/*.css` have two injection paths�
 | `--wui-layer-menu`           | menu/floating panel        | `100`   |
 | `--wui-layer-menu-nested`    | Nested menu                | `110`   |
 | `--wui-layer-toast`          | Toast                      | `200`   |
-| `--wui-layer-loading`        | Blocking loading           | `300`   |
+| `--wui-layer-loading`        | Loading overlay            | `300`   |
 
 ### Motion notes
 

@@ -7,7 +7,7 @@
       </svg>
     </web-ui-svg-draw-lines>
     <web-ui-button variant="secondary" @click="lines?.replay()">画入</web-ui-button>
-    <web-ui-button variant="secondary" @click="lines?.replay({ reverse: true })">reverse 收回</web-ui-button>
+    <web-ui-button variant="secondary" @click="lines?.replay({ reverse: true })">反向收回</web-ui-button>
   </div>
 </template>
 

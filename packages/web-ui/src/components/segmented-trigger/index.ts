@@ -1,6 +1,7 @@
 import { html, LitElement, unsafeCSS } from 'lit'
 import { customElement, property } from 'lit/decorators.js'
 import { classMap } from 'lit/directives/class-map.js'
+import { ifDefined } from 'lit/directives/if-defined.js'
 
 import { installPointerFocusSuppression } from '@/shared/focus/pointer-focus'
 import { defineGroupManaged, selectionGroupContextKey, type SelectionGroupContext } from '@/shared/group-management'
@@ -16,6 +17,8 @@ export class WebUiSegmentedTrigger extends LitElement {
   @property({ type: String }) value = ''
   @property({ type: Boolean, reflect: true }) checked = false
   @property({ type: Boolean, reflect: true }) disabled = false
+  /** 纯图标 trigger 的可访问名；会转发到内部 `role="option"`。 */
+  @property({ type: String, attribute: 'aria-label' }) override ariaLabel: string | null = null
 
   private readonly _groupManagement = defineGroupManaged<SelectionGroupContext>(this, {
     context: selectionGroupContextKey,
@@ -60,6 +63,7 @@ export class WebUiSegmentedTrigger extends LitElement {
         class=${classMap(cls)}
         tabindex=${this._isDisabled || this._groupManagement.getContext()?.tabStop === false ? '-1' : '0'}
         role="option"
+        aria-label=${ifDefined(this.ariaLabel ?? undefined)}
         aria-selected=${String(this.checked)}
         aria-disabled=${String(this._isDisabled)}
         @click=${this.handleClick}

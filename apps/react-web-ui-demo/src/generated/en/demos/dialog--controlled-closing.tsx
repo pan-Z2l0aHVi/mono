@@ -10,7 +10,6 @@ export default function Demo() {
       <web-ui-dialog
         open={open}
         controlled
-        closable
         heading="Unsaved changes"
         onopen-change={event => {
           if (!event.detail.open) setRequests(count => count + 1)
@@ -18,7 +17,7 @@ export default function Demo() {
       >
         <p className="m-0">Escape and the backdrop only request closing; without write-back it stays open.</p>
         <output className="block text-sm text-(--wui-color-text-secondary)">Close requests blocked: {requests}</output>
-        <web-ui-button slot="footer" variant="secondary" onClick={() => setOpen(false)}>
+        <web-ui-button slot="footer" full variant="secondary" onClick={() => setOpen(false)}>
           Discard changes
         </web-ui-button>
       </web-ui-dialog>

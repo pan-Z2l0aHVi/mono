@@ -4,10 +4,10 @@
     <output class="text-sm text-(--wui-color-text-secondary)">
       open-change：{{ changes }} 次 · 最后一次 detail.open = {{ last }}
     </output>
-    <web-ui-dialog :open="open" heading="确认操作" closable @open-change="onOpenChange">
+    <web-ui-dialog :open="open" heading="确认操作" @open-change="onOpenChange">
       <p class="m-0">删除后无法恢复，确定继续吗？</p>
-      <web-ui-button slot="footer" variant="secondary" @click="open = false">取消</web-ui-button>
-      <web-ui-button slot="footer" variant="danger" @click="open = false">删除</web-ui-button>
+      <web-ui-button slot="footer" full variant="secondary" @click="open = false">取消</web-ui-button>
+      <web-ui-button slot="footer" full variant="danger" @click="open = false">删除</web-ui-button>
     </web-ui-dialog>
   </div>
 </template>

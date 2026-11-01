@@ -1,13 +1,14 @@
+import { homedir } from 'node:os'
+import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 import depsReload from '@greypan/deps-reload/vite'
 import type { MdToCompViteOptions } from '@greypan/md-to-comp'
 import mdToCompVue from '@greypan/md-to-comp/vue'
-import { testApiPort } from '@greypan/monorepo-kit'
+import { devHttpsPlugin, testApiPort } from '@greypan/monorepo-kit'
 import unpluginWebComponents from '@greypan/unplugin-web-components/vite'
 import { webUiOptimizeDeps } from '@greypan/web-ui/vite'
 import tailwindcss from '@tailwindcss/vite'
-import basicSsl from '@vitejs/plugin-basic-ssl'
 import legacy from '@vitejs/plugin-legacy'
 import vue from '@vitejs/plugin-vue'
 import autoImport from 'unplugin-auto-import/vite'
@@ -16,6 +17,9 @@ import { playwright } from 'vite-plus/test/browser-playwright'
 import { VueRouterAutoImports } from 'vue-router/unplugin'
 import vueRouter from 'vue-router/vite'
 import { wuchale } from 'wuchale/vite'
+
+// 证书按机器共享：同一台机器的所有 worktree 读同一份，不随 checkout 复制，也不入库。
+const devCertDir = process.env.GREYPAN_DEV_CERT_DIR ?? join(homedir(), '.config', 'greypan', 'dev-certs')
 
 // 具名导出供 scripts/checks/check-md-to-comp-artifacts.mjs 复用：CI 在 Build 步之前以这份配置
 // 只判不改地校验生成物。配置只有这一份，不另抄。
@@ -116,7 +120,13 @@ export default defineConfig({
     // 机制（下面是解释，不是本文件验证过的判据）：重打包让页面同时存在两份 Vue runtime，dev 模式下
     // 冻结的 `EMPTY_OBJ` 两边不是同一个对象，`i.refs === EMPTY_OBJ` 认不出对面那份，转而往对面那份
     // 冻结对象上 `defineProperty`，带模板 ref 的示例整块挂不上。
-    include: ['pinia', ...webUiOptimizeDeps]
+    include: [
+      'pinia',
+      ...webUiOptimizeDeps,
+      // changelog 页在浏览器里通过 md-to-comp 的 markdown 子入口渲染 CHANGELOG.md；
+      // 漏列会在测试中段触发依赖重优化整页 reload。
+      '@greypan/md-to-comp/markdown'
+    ]
   },
   test: {
     // Vitest 5 把默认附件目录从 `.vitest-attachments` 改成 `.vitest/attachments`；
@@ -205,11 +215,9 @@ export default defineConfig({
       }
     ]),
     tailwindcss(),
-    // `basicSsl()` 只把 `server.https` 打开，而 vitest 的 browser mode 自己起服务、
-    // 不跟着走 https：浏览器于是按 https 去连一个明文服务，得到 ERR_SSL_PROTOCOL_ERROR
-    // （`ignoreHTTPSErrors` 治的是证书错误，救不了协议层）。它只服务 dev server，
-    // 测试模式下去掉。
-    ...(process.env.VITEST ? [] : [basicSsl()]),
+    // dev/preview 用本机 mkcert 证书提供 HTTPS；测试档在证书存在时沿用同一份配置，
+    // CI 没有本机证书时才回退 HTTP。准备步骤见 docs/agents/worktree.md。
+    devHttpsPlugin({ certDir: devCertDir }),
     legacy({
       modernTargets: ['Chrome >=111', 'Edge >=111', 'Safari >=16.4', 'iOS >=16.4', 'Firefox >=128'],
       renderLegacyChunks: false,

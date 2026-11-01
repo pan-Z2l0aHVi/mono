@@ -6,8 +6,9 @@ export default function Demo() {
 
   return (
     <div className="flex flex-col gap-3">
-      <div className="h-[420px] overflow-auto rounded-lg border border-(--wui-color-border)">
+      <div className="h-[420px] overflow-auto rounded-lg border border-(--wui-color-border) [--wui-layout-viewport-height:420px]">
         <web-ui-layout
+          sidebarCollapsible
           sidebarCollapsed={collapsed}
           onsidebar-collapsed-change={event => setCollapsed(event.detail.collapsed)}
           sidebarOpen={open}
@@ -22,7 +23,7 @@ export default function Demo() {
           <div className="p-4">
             <p className="m-0 text-sm">
               Click the Toggle at the bottom of the sidebar to collapse / expand; layout only narrows the desktop aside
-              to 68px.
+              to 60px.
             </p>
           </div>
         </web-ui-layout>

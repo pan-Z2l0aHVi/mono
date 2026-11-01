@@ -9,7 +9,7 @@ Modal dialog based on the native `<dialog>`'s `showModal()`; supports a built-in
 
 ### Basic
 
-`open` is held by the page: a button sets it to true; Escape, backdrop click, and the built-in close button (`closable`) close it from the component side, which then hands the result back through `open-change`, and the page writes it back from `detail.open`.
+`open` is held by the page: a button sets it to true; Escape and backdrop click close it from the component side, which then hands the result back through `open-change`, and the page writes it back from `detail.open`.
 
 The buttons in the footer change state directly from the page, which is a programmatic update and does not dispatch another event—so the readout only grows when the user closes from the component side.
 
@@ -32,7 +32,6 @@ export default function Demo() {
       <web-ui-dialog
         open={open}
         heading="Confirm action"
-        closable
         onopen-change={event => {
           setChanges(value => value + 1)
           setLast(event.detail.open ? 'true' : 'false')
@@ -40,10 +39,10 @@ export default function Demo() {
         }}
       >
         <p className="m-0">This cannot be undone. Continue anyway?</p>
-        <web-ui-button slot="footer" variant="secondary" onClick={() => setOpen(false)}>
+        <web-ui-button slot="footer" full variant="secondary" onClick={() => setOpen(false)}>
           Cancel
         </web-ui-button>
-        <web-ui-button slot="footer" variant="danger" onClick={() => setOpen(false)}>
+        <web-ui-button slot="footer" full variant="danger" onClick={() => setOpen(false)}>
           Delete
         </web-ui-button>
       </web-ui-dialog>
@@ -59,10 +58,10 @@ export default function Demo() {
     <output class="text-sm text-(--wui-color-text-secondary)">
       open-change: {{ changes }} times · last detail.open = {{ last }}
     </output>
-    <web-ui-dialog :open="open" heading="Confirm action" closable @open-change="onOpenChange">
+    <web-ui-dialog :open="open" heading="Confirm action" @open-change="onOpenChange">
       <p class="m-0">This cannot be undone. Continue anyway?</p>
-      <web-ui-button slot="footer" variant="secondary" @click="open = false">Cancel</web-ui-button>
-      <web-ui-button slot="footer" variant="danger" @click="open = false">Delete</web-ui-button>
+      <web-ui-button slot="footer" full variant="secondary" @click="open = false">Cancel</web-ui-button>
+      <web-ui-button slot="footer" full variant="danger" @click="open = false">Delete</web-ui-button>
     </web-ui-dialog>
   </div>
 </template>
@@ -83,9 +82,164 @@ function onOpenChange(event: WebUiEvent<WebUiDialog, 'open-change'>) {
 </script>
 ```
 
+### Horizontal footer
+
+`footer-orientation="horizontal"` lays the footer actions out in one row. When both buttons set `full`, they split the action area's available width evenly.
+
+```tsx
+import { useState } from 'react'
+
+export default function Demo() {
+  const [open, setOpen] = useState(false)
+
+  return (
+    <div className="flex flex-col items-start gap-3">
+      <web-ui-button onClick={() => setOpen(true)}>Open dialog</web-ui-button>
+      <web-ui-dialog
+        open={open}
+        footerOrientation="horizontal"
+        heading="Save this message?"
+        onopen-change={event => setOpen(event.detail.open)}
+      >
+        <p className="m-0">
+          This message has not been sent and contains unsaved changes. Save it as a draft to work on later.
+        </p>
+        <web-ui-button slot="footer" full variant="secondary" onClick={() => setOpen(false)}>
+          Discard
+        </web-ui-button>
+        <web-ui-button slot="footer" full variant="primary" onClick={() => setOpen(false)}>
+          Save draft
+        </web-ui-button>
+      </web-ui-dialog>
+    </div>
+  )
+}
+```
+
+```vue
+<template>
+  <div class="flex flex-col items-start gap-3">
+    <web-ui-button @click="open = true">Open dialog</web-ui-button>
+    <web-ui-dialog
+      :open="open"
+      footer-orientation="horizontal"
+      heading="Save this message?"
+      @open-change="open = $event.detail.open"
+    >
+      <p class="m-0">
+        This message has not been sent and contains unsaved changes. Save it as a draft to work on later.
+      </p>
+      <web-ui-button slot="footer" full variant="secondary" @click="open = false">Discard</web-ui-button>
+      <web-ui-button slot="footer" full variant="primary" @click="open = false">Save draft</web-ui-button>
+    </web-ui-dialog>
+  </div>
+</template>
+
+<script setup lang="ts">
+import { ref } from 'vue'
+
+const open = ref(false)
+</script>
+```
+
+### No backdrop close
+
+`no-backdrop-close` prevents the backdrop from closing the dialog. This sample can still be closed with the footer button or Escape.
+
+```tsx
+import { useState } from 'react'
+
+export default function Demo() {
+  const [open, setOpen] = useState(false)
+
+  return (
+    <div className="flex flex-col items-start gap-3">
+      <web-ui-button onClick={() => setOpen(true)}>Open dialog</web-ui-button>
+      <web-ui-dialog
+        open={open}
+        noBackdropClose
+        heading="The backdrop will not close this"
+        onopen-change={event => setOpen(event.detail.open)}
+      >
+        <p className="m-0">Clicking outside the card does nothing. Use the button below or Escape to close it.</p>
+        <web-ui-button slot="footer" full variant="secondary" onClick={() => setOpen(false)}>
+          Close
+        </web-ui-button>
+      </web-ui-dialog>
+    </div>
+  )
+}
+```
+
+```vue
+<template>
+  <div class="flex flex-col items-start gap-3">
+    <web-ui-button @click="open = true">Open dialog</web-ui-button>
+    <web-ui-dialog
+      :open="open"
+      no-backdrop-close
+      heading="The backdrop will not close this"
+      @open-change="open = $event.detail.open"
+    >
+      <p class="m-0">Clicking outside the card does nothing. Use the button below or Escape to close it.</p>
+      <web-ui-button slot="footer" full variant="secondary" @click="open = false">Close</web-ui-button>
+    </web-ui-dialog>
+  </div>
+</template>
+
+<script setup lang="ts">
+import { ref } from 'vue'
+
+const open = ref(false)
+</script>
+```
+
+### Closable without footer
+
+`closable` renders the built-in close button in the card's top-right corner. This sample omits `footer`, making that button the only action supplied by the component.
+
+```tsx
+import { useState } from 'react'
+
+export default function Demo() {
+  const [open, setOpen] = useState(false)
+
+  return (
+    <div className="flex flex-col items-start gap-3">
+      <web-ui-button onClick={() => setOpen(true)}>Open dialog</web-ui-button>
+      <web-ui-dialog
+        open={open}
+        closable
+        heading="Close button only"
+        onopen-change={event => setOpen(event.detail.open)}
+      >
+        <p className="m-0">This dialog has no footer. Close it with the top-right button, Escape, or the backdrop.</p>
+      </web-ui-dialog>
+    </div>
+  )
+}
+```
+
+```vue
+<template>
+  <div class="flex flex-col items-start gap-3">
+    <web-ui-button @click="open = true">Open dialog</web-ui-button>
+    <web-ui-dialog :open="open" closable heading="Close button only" @open-change="open = $event.detail.open">
+      <p class="m-0">This dialog has no footer. Close it with the top-right button, Escape, or the backdrop.</p>
+    </web-ui-dialog>
+  </div>
+</template>
+
+<script setup lang="ts">
+import { ref } from 'vue'
+
+const open = ref(false)
+</script>
+```
+
 ### Controlled closing
 
-`controlled` hands the closing decision to the page: Escape, backdrop click, and the closable button do not change `open`; they only dispatch `open-change` to request closing.
+`controlled` hands the closing decision to the page: Escape and backdrop click do not change `open`; they only dispatch `open-change` to request closing.
 
 If the page does not write back, the dialog stays open, and the `<output>` accumulates the number of blocked requests; "Discard changes" in the footer writes `false` directly, which is a programmatic close that `controlled` does not intercept.
 
@@ -102,7 +256,6 @@ export default function Demo() {
       <web-ui-dialog
         open={open}
         controlled
-        closable
         heading="Unsaved changes"
         onopen-change={event => {
           if (!event.detail.open) setRequests(count => count + 1)
@@ -110,7 +263,7 @@ export default function Demo() {
       >
         <p className="m-0">Escape and the backdrop only request closing; without write-back it stays open.</p>
         <output className="block text-sm text-(--wui-color-text-secondary)">Close requests blocked: {requests}</output>
-        <web-ui-button slot="footer" variant="secondary" onClick={() => setOpen(false)}>
+        <web-ui-button slot="footer" full variant="secondary" onClick={() => setOpen(false)}>
           Discard changes
         </web-ui-button>
       </web-ui-dialog>
@@ -123,10 +276,10 @@ export default function Demo() {
 <template>
   <div class="flex flex-col items-start gap-3">
     <web-ui-button @click="open = true">Open dialog</web-ui-button>
-    <web-ui-dialog :open="open" controlled closable heading="Unsaved changes" @open-change="onOpenChange">
+    <web-ui-dialog :open="open" controlled heading="Unsaved changes" @open-change="onOpenChange">
       <p class="m-0">Escape and the backdrop only request closing; without write-back it stays open.</p>
       <output class="block text-sm text-(--wui-color-text-secondary)">Close requests blocked · {{ requests }}</output>
-      <web-ui-button slot="footer" variant="secondary" @click="open = false">Discard changes</web-ui-button>
+      <web-ui-button slot="footer" full variant="secondary" @click="open = false">Discard changes</web-ui-button>
     </web-ui-dialog>
   </div>
 </template>
@@ -225,19 +378,19 @@ const open = ref(false)
 
 ### Props
 
-| Name                | Description                                                                                                                                                                                | Type      | Default |
-| ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | --------- | ------- |
-| `open`              | Dialog visibility.                                                                                                                                                                         | `boolean` | `false` |
-| `closable`          | Shows the built-in close button.                                                                                                                                                           | `boolean` | `false` |
-| `horizontal`        | Lays the footer action buttons out horizontally.                                                                                                                                           | `boolean` | `false` |
-| `no-scroll-lock`    | Does not lock page scrolling while open.                                                                                                                                                   | `boolean` | `false` |
-| `no-backdrop-close` | Prevents closing by clicking the backdrop.                                                                                                                                                 | `boolean` | `false` |
-| `no-escape-close`   | Prevents closing with the Escape key.                                                                                                                                                      | `boolean` | `false` |
-| `controlled`        | Escape and the backdrop only request `open=false`, which the consumer writes back.                                                                                                         | `boolean` | `false` |
-| `heading`           | Title text, the fallback when the `header` slot is empty (ignored under `headless`).                                                                                                       | `string`  | `''`    |
-| `headless`          | Keeps only the overlay behavior; the built-in header bar, content area, and footer are not rendered.                                                                                       | `boolean` | `false` |
-| `aria-dialog-label` | Accessible name of the inner native dialog; required under `headless`. The legacy name `dialog-label` is deprecated and kept only for compatibility; it will be removed in the next major. | `string`  | `''`    |
-| `aria-close-label`  | Accessible name of the built-in close button; falls back to the built-in English copy (`Close`).                                                                                           | `string`  | `''`    |
+| Name                 | Description                                                                                                                                                                                | Type                         | Default      |
+| -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ---------------------------- | ------------ |
+| `open`               | Dialog visibility.                                                                                                                                                                         | `boolean`                    | `false`      |
+| `closable`           | Shows the built-in close button.                                                                                                                                                           | `boolean`                    | `false`      |
+| `footer-orientation` | Footer action orientation.                                                                                                                                                                 | `'vertical' \| 'horizontal'` | `'vertical'` |
+| `no-scroll-lock`     | Does not lock page scrolling while open.                                                                                                                                                   | `boolean`                    | `false`      |
+| `no-backdrop-close`  | Prevents closing by clicking the backdrop.                                                                                                                                                 | `boolean`                    | `false`      |
+| `no-escape-close`    | Prevents closing with the Escape key.                                                                                                                                                      | `boolean`                    | `false`      |
+| `controlled`         | Escape and the backdrop only request `open=false`, which the consumer writes back.                                                                                                         | `boolean`                    | `false`      |
+| `heading`            | Title text, the fallback when the `header` slot is empty (ignored under `headless`).                                                                                                       | `string`                     | `''`         |
+| `headless`           | Keeps only the overlay behavior; the built-in header bar, content area, and footer are not rendered.                                                                                       | `boolean`                    | `false`      |
+| `aria-dialog-label`  | Accessible name of the inner native dialog; required under `headless`. The legacy name `dialog-label` is deprecated and kept only for compatibility; it will be removed in the next major. | `string`                     | `''`         |
+| `aria-close-label`   | Accessible name of the built-in close button; falls back to the built-in English copy (`Close`).                                                                                           | `string`                     | `''`         |
 
 ### Events
 
@@ -267,6 +420,8 @@ The `header` slot is the card's chrome bar: it does not scroll, carries its own 
 The `heading` property is its fallback—once the slot has assigned elements it takes over entirely, otherwise a non-empty `heading` renders `.wui-dialog-heading`; when both are empty the whole bar is hidden.
 
 The `default` slot carries the body in both modes. In default mode it renders into `.desc` (the card's content area), alongside the `header` bar and `footer`.
+
+The `footer` only owns direction, gap, alignment, and padding; it does not override child styles. It stacks vertically by default, each button still sized by its own content and centered within the row. A button that should fill the action area opts in with `full`. With `footer-orientation="horizontal"`, actions share one row, the gap is fixed to the global `--wui-space-3`, and the row defaults to `justify-content: center`; each child's width remains under that component's own control.
 
 Under `headless` the whole card becomes one scrolling layer: the `default` slot renders into `.wui-dialog-content`, the `header` bar, `.desc`, and `footer` are not rendered at all, and `heading` stops applying.
 
@@ -311,6 +466,6 @@ When `aria-dialog-label` is set, the inner native `<dialog>` takes its `aria-lab
 | `--wui-dialog-title-gap`          | Space below the title                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    | `16px`                                       |
 | `--wui-dialog-desc-gap`           | Space below the body content                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             | `24px`                                       |
 | `--wui-dialog-desc-focus-padding` | Focus-ring allowance reserved on the content area's **block axis**. `.desc` is both a scroll container and, because one axis must not be `visible`, a clipping box, so the ring of a control flush with its top or bottom edge is clipped by the padding box; this allowance covers the `5px` ring (`offset: 2` + `width: 3`). Horizontal ring allowance comes from `--wui-dialog-inline-padding` (24px ≫ 5px), so this token only applies to the block axis. A paired negative margin keeps the chrome height unchanged | `6px`                                        |
-| `--wui-dialog-footer-gap`         | Footer button gap                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        | `10px` / horizontal `12px`                   |
-| `--wui-dialog-footer-justify`     | Footer `justify-content`; overridden to `flex-end` in horizontal mode for right alignment                                                                                                                                                                                                                                                                                                                                                                                                                                | `flex-end` (default) / `center` (horizontal) |
+| `--wui-dialog-footer-gap`         | Gap between footer buttons **stacked vertically**; the token is not read when `footer-orientation="horizontal"`, where the gap is fixed to the global `--wui-space-3`.                                                                                                                                                                                                                                                                                                                                                   | `10px`                                       |
+| `--wui-dialog-footer-justify`     | Footer `justify-content`; the horizontal mode supplies a different default, and this token can adjust alignment                                                                                                                                                                                                                                                                                                                                                                                                          | `flex-end` (default) / `center` (horizontal) |
 | `--wui-dialog-scale-enter`        | Enter scale start point: shrinks from `1.1` to `1`, reversed on exit                                                                                                                                                                                                                                                                                                                                                                                                                                                     | `1.1`                                        |

@@ -1,6 +1,6 @@
 <template>
-  <div class="flex flex-wrap items-center gap-8">
-    <web-ui-svg-draw-lines :duration="1200">
+  <div class="flex flex-col items-center gap-3">
+    <web-ui-svg-draw-lines ref="lines" :duration="1200">
       <svg
         viewBox="0 0 24 24"
         width="48"
@@ -14,6 +14,14 @@
         <path d="M4 12 L10 18 L20 6"></path>
       </svg>
     </web-ui-svg-draw-lines>
+    <web-ui-button variant="secondary" @click="lines?.replay()">重播</web-ui-button>
     <span class="text-xs text-(--wui-color-text-secondary)">挂载后自动画入一次</span>
   </div>
 </template>
+
+<script setup lang="ts">
+import type { WebUiSvgDrawLines } from '@greypan/web-ui'
+import { useTemplateRef } from 'vue'
+
+const lines = useTemplateRef<WebUiSvgDrawLines>('lines')
+</script>

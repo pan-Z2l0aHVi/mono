@@ -83,7 +83,7 @@ function submit() {
     :open="open"
     controlled
     no-backdrop-close
-    horizontal
+    footer-orientation="horizontal"
     :style="{ '--wui-dialog-footer-justify': mobile ? undefined : 'flex-end' }"
     class="[--wui-dialog-width:min(90vw,880px)] [--wui-dialog-max-height:calc(min(90vh,640px)_-_142px)]"
     @open-change="handleOpenChange"

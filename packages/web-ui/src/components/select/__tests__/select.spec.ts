@@ -49,6 +49,22 @@ describe('WebUiSelect 组件', () => {
       cleanupElement(el)
     })
 
+    it('trigger 默认为 label，icon 生效，非法值回退', async () => {
+      const el = createSelect(OPTIONS_HTML)
+      await waitForUpdate(el)
+      expect(el.trigger).toBe('label')
+
+      el.trigger = 'icon'
+      await waitForUpdate(el)
+      expect(el.getAttribute('trigger')).toBe('icon')
+
+      ;(el as any).trigger = 'popover'
+      await waitForUpdate(el)
+      expect(el.trigger).toBe('label')
+
+      cleanupElement(el)
+    })
+
     it('设置 value 后通过 combobox 文本反映选中 label', async () => {
       const el = createSelect(OPTIONS_HTML)
       el.value = 'banana'

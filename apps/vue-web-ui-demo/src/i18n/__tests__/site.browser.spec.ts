@@ -3,7 +3,7 @@ import '@/assets/global.css'
 import { local } from '@greypan/browser-kit'
 import type { WebUiSelect, WebUiTheme } from '@greypan/web-ui'
 import { createHead } from '@unhead/vue/client'
-import { flushPromises, mount } from '@vue/test-utils'
+import { flushPromises, mount, type DOMWrapper } from '@vue/test-utils'
 import { beforeEach, expect, it, vi } from 'vite-plus/test'
 import { userEvent } from 'vite-plus/test/browser'
 import { nextTick } from 'vue'
@@ -87,6 +87,80 @@ async function select(label: string, value: string) {
   return host
 }
 
+/**
+ * 点击示例工具栏里的 segmented-trigger 前，先把「可点击」等到位，再交给 `userEvent.click`。
+ *
+ * Playwright 的 click 自带同强度检查（attached、可见、连续两帧 stable、动作点命中），但它的重试
+ * 预算比 Vitest 的测试预算长，失败只留下 “timed out while waiting for click”，看不出卡在哪一项。
+ * 这里把同一组判据写成期待值：
+ *
+ * - 位置由测试决定：每一轮 ready 不满足时都重新 `scrollIntoView({ block: 'center', inline: 'center',
+ *   behavior: 'instant' })`。贴视口上缘时动作点会落到 sticky banner/header 上（实测中心命中的是
+ *   header 里的 `web-ui-select`）；交给 Playwright 自己挑滚动位置，就多出一段「先被盖住、再靠重试
+ *   滚动脱困」的窗口。滚动后布局再移，下一轮仍能重新纠正。
+ * - 每一轮重新按文案取节点：locale 切换按 `${locale}:${demoKey}` 重挂预览，旧 wrapper 可能指向
+ *   被替换的节点。
+ * - ready 要求已连接、已布局、动作点（矩形中心）在视口内且命中 trigger 或其子节点，且连续两帧
+ *   boundingBox 相同（与 Playwright 的 stable 判据同强度）。只看动作点而不要求整个矩形都在视口内，
+ *   与 Playwright 的动作点判据一致，超出视口的超大 trigger 不会被误判。
+ * - 每次等待在 rAF 与定时器之间竞争：rAF 停摆时定时器仍会醒来检查 deadline，超时始终能带读数抛出，
+ *   不会静默拖到测试框架的超时。
+ * - 超时错误带读数，失败能直接指认 attached / visible / stable / hit target 哪一项。
+ */
+async function clickSegmentedTrigger(sample: DOMWrapper<Element>, label: string) {
+  const resolve = () => {
+    const trigger = sample.findAll('web-ui-segmented-trigger').find(item => item.text() === label)
+    if (!trigger) throw new Error(`Segmented trigger "${label}" not found`)
+    return trigger.element
+  }
+
+  const pollIntervalMs = 50
+  const deadline = performance.now() + 5000
+  let previous: string | undefined
+  for (;;) {
+    const trigger = resolve()
+    const rect = trigger.getBoundingClientRect()
+    const box = `${rect.left},${rect.top},${rect.width},${rect.height}`
+    const point = { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 }
+    const hit = document.elementFromPoint(point.x, point.y)
+    const pointInViewport =
+      point.x >= 0 && point.x <= window.innerWidth && point.y >= 0 && point.y <= window.innerHeight
+    const ready =
+      trigger.isConnected &&
+      rect.width > 0 &&
+      rect.height > 0 &&
+      pointInViewport &&
+      hit !== null &&
+      (hit === trigger || trigger.contains(hit))
+    if (ready && previous === box) {
+      await userEvent.click(trigger)
+      return
+    }
+    if (performance.now() > deadline) {
+      throw new Error(
+        `Segmented trigger "${label}" is not clickable: connected=${trigger.isConnected} box=${box} ` +
+          `point=${point.x},${point.y} viewport=${window.innerWidth}x${window.innerHeight} ` +
+          `hit=${hit?.tagName ?? 'none'} previous=${previous ?? 'none'}`
+      )
+    }
+    previous = ready ? box : undefined
+    // 滚动后布局可能继续位移（sticky chrome、toast 偏移），每轮不满足都重新纠正位置。
+    if (!ready) trigger.scrollIntoView({ block: 'center', inline: 'center', behavior: 'instant' })
+    // rAF 停摆时定时器兜底，保证 deadline 仍会被检查。
+    let timer: ReturnType<typeof setTimeout> | undefined
+    await new Promise<void>(resolveWait => {
+      const frame = requestAnimationFrame(() => {
+        if (timer !== undefined) clearTimeout(timer)
+        resolveWait()
+      })
+      timer = setTimeout(() => {
+        cancelAnimationFrame(frame)
+        resolveWait()
+      }, pollIntervalMs)
+    })
+  }
+}
+
 function textOf(html: string) {
   const el = document.createElement('div')
   el.innerHTML = html
@@ -101,11 +175,20 @@ it('首页通过全局选择器切换壳文案，更新偏好并保留路由和�
   await loadDemoLocale('zh-CN', false)
   const { router, wrapper } = await mountShell('/home')
   try {
+    const chineseThemeOptions = Array.from(
+      document.querySelectorAll('web-ui-select[aria-label="全局主题"] web-ui-option')
+    ).map(option => option.textContent?.trim())
+    expect(chineseThemeOptions).toEqual(expect.arrayContaining(['浅色模式', '深色模式', '跟随系统']))
+
     await select('全局主题', 'dark')
     const language = await select('全局语言', 'en')
     await localeSettled()
     await nextTick()
-    expect(wrapper.text()).toContain('Variants, sizes, icons and loading states')
+    const englishThemeOptions = Array.from(
+      document.querySelectorAll('web-ui-select[aria-label="Global theme"] web-ui-option')
+    ).map(option => option.textContent?.trim())
+    expect(englishThemeOptions).toEqual(expect.arrayContaining(['Light', 'Dark', 'Follow system']))
+    expect(wrapper.text()).toContain('Variants, sizes, icons, loading states')
     // 语料已就位，这次渲染也必然把受控的 `:value` 写回提交值；在这里读，不与异步加载赛跑。
     expect(language.value, '受控回写收敛到已提交语言').toBe('en')
     expect(document.documentElement.lang).toBe('en')
@@ -143,9 +226,7 @@ it('组件页切换文档、API、运行示例与双框架源码，保留当前�
     expect(sizes.find('[data-sample-preview]').text()).toContain('Default 36')
     expect(source()).toContain('Default 36')
     expect(source()).toContain('<template>')
-    await userEvent.click(
-      sizes.findAll('web-ui-segmented-trigger').find(trigger => trigger.text() === 'React')!.element
-    )
+    await clickSegmentedTrigger(sizes, 'React')
     await vi.waitFor(() => expect(source()).toContain('export default function Demo()'))
     const language = await select('Global language', 'zh-CN')
     await localeSettled()
@@ -161,7 +242,7 @@ it('组件页切换文档、API、运行示例与双框架源码，保留当前�
     expect(sizes.find('[data-sample-preview]').text()).toContain('默认 36')
     expect(source()).toContain('默认 36')
     expect(source()).toContain('export default function Demo()')
-    await userEvent.click(sizes.findAll('web-ui-segmented-trigger').find(trigger => trigger.text() === 'Vue')!.element)
+    await clickSegmentedTrigger(sizes, 'Vue')
     await vi.waitFor(() => expect(source()).toContain('<template>'))
     expect(source()).toContain('默认 36')
     expect(buttonDoc.text()).toContain('名称')

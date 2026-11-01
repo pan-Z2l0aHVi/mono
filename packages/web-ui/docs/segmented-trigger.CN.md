@@ -85,11 +85,12 @@ const view = ref('list')
 
 ### Props
 
-| 名称       | 说明                                                | 类型      | 默认值  |
-| ---------- | --------------------------------------------------- | --------- | ------- |
-| `value`    | 分段值。                                            | `string`  | `''`    |
-| `checked`  | 当前选中；由父级 segmented 回写，单独写不通知容器。 | `boolean` | `false` |
-| `disabled` | 单独禁用该 trigger。                                | `boolean` | `false` |
+| 名称         | 说明                                                             | 类型             | 默认值  |
+| ------------ | ---------------------------------------------------------------- | ---------------- | ------- |
+| `value`      | 分段值。                                                         | `string`         | `''`    |
+| `checked`    | 当前选中；由父级 segmented 回写，单独写不通知容器。              | `boolean`        | `false` |
+| `disabled`   | 单独禁用该 trigger。                                             | `boolean`        | `false` |
+| `aria-label` | 转发到内部 `role="option"` 的可访问名；slot 只有图标时必须提供。 | `string \| null` | `null`  |
 
 ### Events
 

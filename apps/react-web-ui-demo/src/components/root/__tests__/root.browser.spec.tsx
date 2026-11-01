@@ -1,6 +1,7 @@
 import '@/assets/global.css'
 
-import { toast, type WebUiLayout, type WebUiToast } from '@greypan/web-ui'
+import { toast, type WebUiIcon, type WebUiLayout, type WebUiToast } from '@greypan/web-ui'
+import { antDesignSyncOutlined, icOutlineMotionPhotosOn, lucideContrast, lucideSun } from '@greypan/web-ui/icons'
 import { createMemoryHistory, createRootRoute, createRoute, createRouter, RouterProvider } from '@tanstack/react-router'
 import { cleanup, render, waitFor } from '@testing-library/react'
 import { act } from 'react'
@@ -60,7 +61,7 @@ function isDrawerMode() {
  * 导航项的对齐方式。collapsed state 在 demo 里只体现为排布，所以判据是渲染出来的对齐方式本身：
  * collapsed state 那一行把内容居中、label 自身也居中；expanded state 两者都靠左。
  *
- * 不量像素：collapsed 导轨只有 44px，label 放不下会被截断，截断后的文字落点既不是设计契约，也会随字体
+ * 不量像素：collapsed 导轨只有 60px，label 放不下会被截断，截断后的文字落点既不是设计契约，也会随字体
  * 与文案变化——用例守的是「collapsed state 换成居中排布、expanded state 保持左对齐」这个结构，不是某个具体像素值。
  */
 function navItemAlignment() {
@@ -175,6 +176,55 @@ describe('应用外壳（浏览器）：导航 collapsed state 不跨视口泄�
     await changeViewport(DESKTOP_VIEWPORT)
   })
 
+  it('导航按类别分组并显示中文小标题', async () => {
+    await mountAppShell()
+    expect([...navRoot().querySelectorAll('h2')].map(heading => heading.textContent?.trim())).toEqual([
+      '通用',
+      '布局',
+      '表单',
+      '展示',
+      '反馈'
+    ])
+    expect(
+      [...navRoot().querySelectorAll('[role="group"]')].map(group => [
+        group.querySelector('h2')?.textContent?.trim(),
+        [...group.querySelectorAll('a')].map(link => link.getAttribute('aria-label'))
+      ])
+    ).toEqual([
+      ['通用', ['Button', 'Icon']],
+      ['布局', ['Layout', 'BackTop', 'Theme']],
+      [
+        '表单',
+        [
+          'Input',
+          'Textarea',
+          'InputNumber',
+          'Select',
+          'Autocomplete',
+          'Dropdown',
+          'Switch',
+          'Slider',
+          'Radio',
+          'Checkbox',
+          'Segmented'
+        ]
+      ],
+      ['展示', ['Collapse', 'EditableText', 'Empty', 'MiddleEllipsis', 'SVGDrawLines', 'Avatar', 'Badge']],
+      [
+        '反馈',
+        ['Dialog', 'Drawer', 'Tooltip', 'Popover', 'ContextMenu', 'Toast', 'ImagePreview', 'Spinner', 'Progress']
+      ]
+    ])
+  })
+
+  it('中文主题选择器使用中文外观名称', async () => {
+    await mountAppShell('zh-CN')
+    const labels = Array.from(document.querySelectorAll('web-ui-select[aria-label="全局主题"] web-ui-option')).map(
+      option => option.textContent?.trim()
+    )
+    expect(labels).toEqual(expect.arrayContaining(['浅色模式', '深色模式', '跟随系统']))
+  })
+
   it('桌面端 collapse 后导航文字居中，expanded state 左对齐', async () => {
     await mountAppShell()
     const expanded = navItemAlignment()
@@ -198,9 +248,10 @@ describe('应用外壳（浏览器）：导航 collapsed state 不跨视口泄�
 
     const links = [...navRoot().querySelectorAll<HTMLAnchorElement>('a')]
     const fullLabels = links.map(link => link.getAttribute('aria-label'))
-    expect(links).toHaveLength(32)
+    expect(links).toHaveLength(34)
     expect(links.map(link => link.querySelector('span')?.textContent?.trim())).toEqual(fullLabels)
-    expect(links.every(link => link.title === '')).toBe(true)
+    expect(links.slice(2).every(link => link.title === '')).toBe(true)
+    expect(links.slice(0, 2).map(link => link.title)).toEqual(['组件总览', '更新日志'])
 
     await requestCollapse(true)
 
@@ -235,25 +286,77 @@ describe('应用外壳（浏览器）：导航 collapsed state 不跨视口泄�
     )
   })
 
-  it('英文界面下全局主题与动效选择器完整显示 Follow system', async () => {
-    localStorage.setItem('theme-appearance', JSON.stringify('system'))
-    await mountAppShell('en')
+  it('320px 移动视口内三个全局选择器全部留在视口内，page 不产生横向滚动', async () => {
+    await mountAppShell()
+    await changeViewport({ width: 320, height: 700 })
+    await settleViewport(true)
 
-    for (const label of ['Global motion', 'Global theme']) {
-      const select = document.querySelector<HTMLElement>(`web-ui-select[aria-label="${label}"]`)
-      if (!select) throw new Error(`missing global control: ${label}`)
-      const optionLabel = select.shadowRoot?.querySelector<HTMLElement>('.label')
-      if (!optionLabel) throw new Error(`missing option label: ${label}`)
+    const controls = ['全局动效', '全局主题', '全局语言'].map(label => {
+      const control = document.querySelector<HTMLElement>(`[aria-label="${label}"]`)
+      if (!control) throw new Error(`missing global control: ${label}`)
+      return control.getBoundingClientRect()
+    })
 
-      expect(optionLabel.textContent?.trim()).toBe('Follow system')
-      expect(optionLabel.scrollWidth).toBeLessThanOrEqual(optionLabel.clientWidth)
-    }
+    expect(controls.every(bounds => bounds.width > 0 && bounds.left >= 0 && bounds.right <= window.innerWidth)).toBe(
+      true
+    )
+    expect(document.documentElement.scrollWidth).toBe(document.documentElement.clientWidth)
   })
 
-  it('挂载时已有 toast，banner 扩高后 header 保持默认纵向间距', async () => {
+  it('英文界面下全局图标触发器保留箭头，并随选中值更新图标', async () => {
+    await mountAppShell('en')
+
+    const selectOf = (label: string) => {
+      const select = document.querySelector<HTMLElement & { value: string }>(`web-ui-select[aria-label="${label}"]`)
+      if (!select) throw new Error(`missing global control: ${label}`)
+      return select
+    }
+    const iconOf = (label: string) => selectOf(label).querySelector<WebUiIcon>('[slot="trigger"]')
+    const pick = async (label: string, value: string) => {
+      const select = selectOf(label)
+      await act(async () => {
+        select.value = value
+        select.dispatchEvent(new Event('change', { bubbles: true }))
+      })
+    }
+
+    for (const label of ['Global motion', 'Global theme']) {
+      const select = selectOf(label)
+      const trigger = select.shadowRoot?.querySelector<HTMLElement>('[role="combobox"]')
+      const arrow = select.shadowRoot?.querySelector<HTMLElement>('.arrow')
+      if (!trigger || !arrow) throw new Error(`missing combobox or arrow: ${label}`)
+
+      expect(trigger.getBoundingClientRect().width).toBeGreaterThan(36)
+      expect(getComputedStyle(arrow).display).not.toBe('none')
+      expect(trigger.getAttribute('aria-label')).toBe(label)
+    }
+
+    await pick('Global motion', 'full')
+    expect(iconOf('Global motion')?.icon).toBe(icOutlineMotionPhotosOn)
+
+    await pick('Global motion', 'system')
+    expect(iconOf('Global motion')?.icon).toBe(antDesignSyncOutlined)
+
+    await pick('Global theme', 'system')
+    expect(iconOf('Global theme')?.icon).toBe(lucideContrast)
+
+    await pick('Global theme', 'light')
+    expect(iconOf('Global theme')?.icon).toBe(lucideSun)
+  })
+
+  it('挂载时已有 toast，banner 和 header 保持原高度且 toast 从 header 下方开始', async () => {
     const toastId = 'root-mount-toast'
 
     try {
+      await mountAppShell()
+      const naturalBanner = layoutRoot().querySelector<HTMLElement>('[slot="banner"]')
+      const naturalHeader = layoutRoot().querySelector<HTMLElement>('[slot="header"]')
+      if (!naturalBanner) throw new Error('banner not found')
+      if (!naturalHeader) throw new Error('header not found')
+      const naturalBannerHeight = naturalBanner.getBoundingClientRect().height
+      const naturalHeaderHeight = naturalHeader.getBoundingClientRect().height
+      cleanup()
+
       await act(async () => {
         toast.info('持续显示', { id: toastId, position: 'top-right', duration: 0 })
         await Promise.resolve()
@@ -269,11 +372,9 @@ describe('应用外壳（浏览器）：导航 collapsed state 不跨视口泄�
       await waitFor(() => {
         const toastElement = findToast(toastId)
         if (!toastElement?.visible) throw new Error('top-right toast not visible')
-        expect(banner.getBoundingClientRect().bottom).toBeGreaterThanOrEqual(
-          toastElement.getBoundingClientRect().bottom
-        )
-        const computedStyle = getComputedStyle(header)
-        expect(computedStyle.paddingTop).toBe(computedStyle.paddingBottom)
+        expect(banner.getBoundingClientRect().height).toBeCloseTo(naturalBannerHeight)
+        expect(header.getBoundingClientRect().height).toBeCloseTo(naturalHeaderHeight)
+        expect(toastElement.getBoundingClientRect().top).toBeGreaterThanOrEqual(header.getBoundingClientRect().bottom)
       })
     } finally {
       await act(async () => {
@@ -287,7 +388,7 @@ describe('应用外壳（浏览器）：导航 collapsed state 不跨视口泄�
     }
   })
 
-  it('右上角 toast 显示时滚过 banner，sticky header 控件仍避开 toast', async () => {
+  it('右上角 toast 显示时滚过 banner，仍从 sticky header 下方开始', async () => {
     await mountAppShell()
     const toastId = 'root-sticky-header-toast'
 
@@ -309,15 +410,12 @@ describe('应用外壳（浏览器）：导航 collapsed state 不跨视口泄�
       })
       const header = layoutRoot().querySelector<HTMLElement>('[slot="header"]')
       if (!header) throw new Error('header not found')
-      await waitFor(() => {
-        const computedStyle = getComputedStyle(header)
-        expect(computedStyle.paddingTop).toBe(computedStyle.paddingBottom)
-      })
+      const headerHeight = header.getBoundingClientRect().height
       const bannerCloseButton = layoutRoot().querySelector<HTMLElement>('[slot="banner"] web-ui-button')
       if (!bannerCloseButton) throw new Error('banner close button not found')
       await act(async () => page.elementLocator(bannerCloseButton).click())
       await waitFor(() => {
-        expect(layoutRoot().querySelector('[slot="banner"]')?.getAttribute('aria-hidden')).toBe('true')
+        if (layoutRoot().querySelector('[slot="banner"]')) throw new Error('banner stayed mounted after close')
       })
       await act(async () => {
         window.scrollTo(0, 500)
@@ -329,13 +427,8 @@ describe('应用外壳（浏览器）：导航 collapsed state 不跨视口泄�
         const header = layoutRoot().querySelector<HTMLElement>('[slot="header"]')
         if (!toastElement || !header) throw new Error('toast or sticky header not found')
 
-        const toastRect = toastElement.getBoundingClientRect()
-        const overlappingSelects = Array.from(header.querySelectorAll('web-ui-select')).filter(select => {
-          const rect = select.getBoundingClientRect()
-          return rect.left < toastRect.right && rect.right > toastRect.left
-        })
-        expect(overlappingSelects.length).toBeGreaterThan(0)
-        expect(overlappingSelects.every(select => select.getBoundingClientRect().top >= toastRect.bottom)).toBe(true)
+        expect(header.getBoundingClientRect().height).toBeCloseTo(headerHeight)
+        expect(toastElement.getBoundingClientRect().top).toBeGreaterThanOrEqual(header.getBoundingClientRect().bottom)
       })
     } finally {
       await act(async () => {

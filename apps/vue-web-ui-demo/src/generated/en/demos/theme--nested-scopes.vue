@@ -1,39 +1,54 @@
 <template>
-  <web-ui-theme appearance="light" motion="reduced">
-    <div class="rounded-2xl bg-(--wui-color-page) p-4 text-(--wui-color-text)">
-      <p class="m-0 mb-2 text-xs text-(--wui-color-text-secondary)">Outer light / reduced: instant</p>
-      <div class="flex flex-wrap items-center gap-3">
+  <web-ui-theme :appearance="outer" motion="reduced">
+    <div class="rounded-2xl border border-(--wui-color-border) bg-(--wui-color-page) p-4 text-(--wui-color-text)">
+      <div class="flex flex-col items-start gap-2">
+        <span class="text-xs text-(--wui-color-text-secondary)">Layer 1 · motion reduced</span>
         <web-ui-segmented
-          :value="outerValue"
-          aria-label="Outer motion comparison"
-          @input="outerValue = $event.currentTarget.value"
+          :value="outer"
+          aria-label="Layer 1 appearance"
+          @input="outer = pick($event.currentTarget.value)"
         >
-          <web-ui-segmented-trigger v-for="item in sides" :key="item.value" :value="item.value">
+          <web-ui-segmented-trigger v-for="item in appearances" :key="item.value" :value="item.value">
             {{ item.label }}
           </web-ui-segmented-trigger>
         </web-ui-segmented>
-        <web-ui-switch></web-ui-switch>
       </div>
 
-      <web-ui-theme appearance="dark">
+      <web-ui-theme :appearance="middle" motion="full">
         <div
           class="mt-3 rounded-2xl border border-(--wui-color-border) bg-(--wui-color-page) p-4 text-(--wui-color-text)"
         >
-          <p class="m-0 mb-2 text-xs text-(--wui-color-text-secondary)">
-            Inner dark / motion unset, falls back to system: slides
-          </p>
-          <div class="flex flex-wrap items-center gap-3">
+          <div class="flex flex-col items-start gap-2">
+            <span class="text-xs text-(--wui-color-text-secondary)">Layer 2 · motion full</span>
             <web-ui-segmented
-              :value="innerValue"
-              aria-label="Inner motion comparison"
-              @input="innerValue = $event.currentTarget.value"
+              :value="middle"
+              aria-label="Layer 2 appearance"
+              @input="middle = pick($event.currentTarget.value)"
             >
-              <web-ui-segmented-trigger v-for="item in sides" :key="item.value" :value="item.value">
+              <web-ui-segmented-trigger v-for="item in appearances" :key="item.value" :value="item.value">
                 {{ item.label }}
               </web-ui-segmented-trigger>
             </web-ui-segmented>
-            <web-ui-switch checked></web-ui-switch>
           </div>
+
+          <web-ui-theme :appearance="inner">
+            <div
+              class="mt-3 rounded-2xl border border-(--wui-color-border) bg-(--wui-color-page) p-4 text-(--wui-color-text)"
+            >
+              <div class="flex flex-col items-start gap-2">
+                <span class="text-xs text-(--wui-color-text-secondary)">Layer 3 · motion system</span>
+                <web-ui-segmented
+                  :value="inner"
+                  aria-label="Layer 3 appearance"
+                  @input="inner = pick($event.currentTarget.value)"
+                >
+                  <web-ui-segmented-trigger v-for="item in appearances" :key="item.value" :value="item.value">
+                    {{ item.label }}
+                  </web-ui-segmented-trigger>
+                </web-ui-segmented>
+              </div>
+            </div>
+          </web-ui-theme>
         </div>
       </web-ui-theme>
     </div>
@@ -41,13 +56,20 @@
 </template>
 
 <script setup lang="ts">
+import type { ThemeAppearance } from '@greypan/web-ui'
 import { ref } from 'vue'
 
-const sides = [
-  { label: 'A', value: 'a' },
-  { label: 'B', value: 'b' }
-] as const
+const appearances: { label: string; value: ThemeAppearance }[] = [
+  { label: 'Light', value: 'light' },
+  { label: 'Dark', value: 'dark' },
+  { label: 'System', value: 'system' }
+]
 
-const outerValue = ref('a')
-const innerValue = ref('a')
+const outer = ref<ThemeAppearance>('light')
+const middle = ref<ThemeAppearance>('dark')
+const inner = ref<ThemeAppearance>('system')
+
+function pick(value: string): ThemeAppearance {
+  return appearances.find(item => item.value === value)?.value ?? 'light'
+}
 </script>

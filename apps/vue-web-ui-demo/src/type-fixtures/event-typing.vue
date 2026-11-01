@@ -75,7 +75,12 @@ const clickCount = ref(0)
   <web-ui-checkbox-group @change="onGroupChange" />
 
   <!-- 2. kebab 自定义事件：$event.detail 精确类型 -->
-  <web-ui-dialog :open="dialogOpen" no-escape-close @open-change="dialogOpen = $event.detail.open" />
+  <web-ui-dialog
+    :open="dialogOpen"
+    no-escape-close
+    footer-orientation="horizontal"
+    @open-change="dialogOpen = $event.detail.open"
+  />
   <web-ui-dialog @open-change="onDialogOpenChange" />
   <web-ui-collapse :open="collapseOpen" keep-mounted @open-change="collapseOpen = $event.detail.open">
     <button>Trigger</button>

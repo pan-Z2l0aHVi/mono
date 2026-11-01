@@ -99,7 +99,7 @@ export default function Demo() {
               heading: 'Saved',
               message: 'Changes written to the cloud',
               type: 'info',
-              position: 'bottom-right',
+              position: 'top-center',
               duration: 4000,
               closable: true
             })
@@ -109,7 +109,7 @@ export default function Demo() {
         Create a toast with full options
       </web-ui-button>
       <output className="text-sm text-(--wui-color-text-secondary)">
-        id: {id} · position: bottom-right · closes automatically after 4 seconds
+        id: {id} · position: top-center · closes automatically after 4 seconds
       </output>
     </div>
   )
@@ -121,7 +121,7 @@ export default function Demo() {
   <div class="flex flex-col items-start gap-3">
     <web-ui-button @click="notify">Create a toast with full options</web-ui-button>
     <output class="text-sm text-(--wui-color-text-secondary)">
-      id: {{ id }} · position: bottom-right · closes automatically after 4 seconds
+      id: {{ id }} · position: top-center · closes automatically after 4 seconds
     </output>
   </div>
 </template>
@@ -137,7 +137,7 @@ function notify() {
     heading: 'Saved',
     message: 'Changes written to the cloud',
     type: 'info',
-    position: 'bottom-right',
+    position: 'top-center',
     duration: 4000,
     closable: true
   })
@@ -445,7 +445,8 @@ The element also exposes a set of instance methods: `show()` plays the entrance 
 
 ### CSS Custom Properties
 
-| Name                            | Description                                                    | Default |
-| ------------------------------- | -------------------------------------------------------------- | ------- |
-| `--wui-toast-viewport-gap`      | Visible distance from the toast to the viewport edge           | `16px`  |
-| `--wui-toast-container-padding` | Room reserved in the container for the diffuse shadow to paint | `40px`  |
+| Name                            | Description                                                                                                          | Default |
+| ------------------------------- | -------------------------------------------------------------------------------------------------------------------- | ------- |
+| `--wui-toast-viewport-gap`      | Visible distance from the toast to the viewport edge                                                                 | `16px`  |
+| `--wui-toast-container-padding` | Room reserved in the container for the diffuse shadow to paint                                                       | `40px`  |
+| `--wui-toast-top-offset`        | Extra top offset for top-positioned toast containers, used to clear fixed app chrome; only affects `top-*` positions | `0px`   |

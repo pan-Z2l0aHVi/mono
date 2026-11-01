@@ -64,6 +64,13 @@ function renderInline(nodes: MdNode[]): string {
   return toHtml(hast as never, { characterReferences: { useNamedReferences: true } })
 }
 
+/** 把一段独立 Markdown 渲染成 HTML；用于 changelog 这类不参与示例解析的文档。 */
+export function markdownToHtml(markdown: string): string {
+  const tree = prose.parse(markdown)
+  const hast = prose.runSync(tree)
+  return toHtml(hast as never, { characterReferences: { useNamedReferences: true } })
+}
+
 /** 说明与单元格是手写的一小段 markdown，走同一条 prose 管线，避免文档里出现两套渲染规则。 */
 function renderMarkdownInline(text: string): string {
   const tree = prose.parse(text)

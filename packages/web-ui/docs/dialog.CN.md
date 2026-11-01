@@ -9,7 +9,7 @@ tag: web-ui-dialog
 
 ### Basic
 
-`open` 由页面持有：button 把它置真；Escape、backdrop 点击与内置关闭 button（`closable`）由组件自己关到位，再用 `open-change` 把结果交回来，页面按 `detail.open` 回写。
+`open` 由页面持有：button 把它置真；Escape 与 backdrop 点击由组件关到位，再用 `open-change` 把结果交回来，页面按 `detail.open` 回写。
 
 footer 里的 button 是页面直接改状态，属于程序式更新，不会再派发一次事件——读数因此只在用户从组件侧关闭时增长。
 
@@ -32,7 +32,6 @@ export default function Demo() {
       <web-ui-dialog
         open={open}
         heading="确认操作"
-        closable
         onopen-change={event => {
           setChanges(value => value + 1)
           setLast(event.detail.open ? 'true' : 'false')
@@ -40,10 +39,10 @@ export default function Demo() {
         }}
       >
         <p className="m-0">删除后无法恢复，确定继续吗？</p>
-        <web-ui-button slot="footer" variant="secondary" onClick={() => setOpen(false)}>
+        <web-ui-button slot="footer" full variant="secondary" onClick={() => setOpen(false)}>
           取消
         </web-ui-button>
-        <web-ui-button slot="footer" variant="danger" onClick={() => setOpen(false)}>
+        <web-ui-button slot="footer" full variant="danger" onClick={() => setOpen(false)}>
           删除
         </web-ui-button>
       </web-ui-dialog>
@@ -59,10 +58,10 @@ export default function Demo() {
     <output class="text-sm text-(--wui-color-text-secondary)">
       open-change：{{ changes }} 次 · 最后一次 detail.open = {{ last }}
     </output>
-    <web-ui-dialog :open="open" heading="确认操作" closable @open-change="onOpenChange">
+    <web-ui-dialog :open="open" heading="确认操作" @open-change="onOpenChange">
       <p class="m-0">删除后无法恢复，确定继续吗？</p>
-      <web-ui-button slot="footer" variant="secondary" @click="open = false">取消</web-ui-button>
-      <web-ui-button slot="footer" variant="danger" @click="open = false">删除</web-ui-button>
+      <web-ui-button slot="footer" full variant="secondary" @click="open = false">取消</web-ui-button>
+      <web-ui-button slot="footer" full variant="danger" @click="open = false">删除</web-ui-button>
     </web-ui-dialog>
   </div>
 </template>
@@ -83,9 +82,150 @@ function onOpenChange(event: WebUiEvent<WebUiDialog, 'open-change'>) {
 </script>
 ```
 
+### Horizontal footer
+
+`footer-orientation="horizontal"` 让 footer 的操作按钮在同一行排列。两个按钮都设置 `full` 时，会等分操作区的可用宽度。
+
+```tsx
+import { useState } from 'react'
+
+export default function Demo() {
+  const [open, setOpen] = useState(false)
+
+  return (
+    <div className="flex flex-col items-start gap-3">
+      <web-ui-button onClick={() => setOpen(true)}>打开 dialog</web-ui-button>
+      <web-ui-dialog
+        open={open}
+        footerOrientation="horizontal"
+        heading="保存这条消息？"
+        onopen-change={event => setOpen(event.detail.open)}
+      >
+        <p className="m-0">这条消息尚未发送，并且包含未保存的更改。你可以先将它保存为草稿，稍后继续编辑。</p>
+        <web-ui-button slot="footer" full variant="secondary" onClick={() => setOpen(false)}>
+          放弃
+        </web-ui-button>
+        <web-ui-button slot="footer" full variant="primary" onClick={() => setOpen(false)}>
+          保存草稿
+        </web-ui-button>
+      </web-ui-dialog>
+    </div>
+  )
+}
+```
+
+```vue
+<template>
+  <div class="flex flex-col items-start gap-3">
+    <web-ui-button @click="open = true">打开 dialog</web-ui-button>
+    <web-ui-dialog
+      :open="open"
+      footer-orientation="horizontal"
+      heading="保存这条消息？"
+      @open-change="open = $event.detail.open"
+    >
+      <p class="m-0">这条消息尚未发送，并且包含未保存的更改。你可以先将它保存为草稿，稍后继续编辑。</p>
+      <web-ui-button slot="footer" full variant="secondary" @click="open = false">放弃</web-ui-button>
+      <web-ui-button slot="footer" full variant="primary" @click="open = false">保存草稿</web-ui-button>
+    </web-ui-dialog>
+  </div>
+</template>
+
+<script setup lang="ts">
+import { ref } from 'vue'
+
+const open = ref(false)
+</script>
+```
+
+### No backdrop close
+
+`no-backdrop-close` 禁止点击 backdrop 关闭 dialog；这个示例仍可用 footer button 或 Escape 关闭。
+
+```tsx
+import { useState } from 'react'
+
+export default function Demo() {
+  const [open, setOpen] = useState(false)
+
+  return (
+    <div className="flex flex-col items-start gap-3">
+      <web-ui-button onClick={() => setOpen(true)}>打开 dialog</web-ui-button>
+      <web-ui-dialog
+        open={open}
+        noBackdropClose
+        heading="点击背景不会关闭"
+        onopen-change={event => setOpen(event.detail.open)}
+      >
+        <p className="m-0">点击卡片外的区域不会关闭。请使用下方 button 或 Escape 关闭。</p>
+        <web-ui-button slot="footer" full variant="secondary" onClick={() => setOpen(false)}>
+          关闭
+        </web-ui-button>
+      </web-ui-dialog>
+    </div>
+  )
+}
+```
+
+```vue
+<template>
+  <div class="flex flex-col items-start gap-3">
+    <web-ui-button @click="open = true">打开 dialog</web-ui-button>
+    <web-ui-dialog :open="open" no-backdrop-close heading="点击背景不会关闭" @open-change="open = $event.detail.open">
+      <p class="m-0">点击卡片外的区域不会关闭。请使用下方 button 或 Escape 关闭。</p>
+      <web-ui-button slot="footer" full variant="secondary" @click="open = false">关闭</web-ui-button>
+    </web-ui-dialog>
+  </div>
+</template>
+
+<script setup lang="ts">
+import { ref } from 'vue'
+
+const open = ref(false)
+</script>
+```
+
+### Closable without footer
+
+`closable` 在卡片右上角显示内置关闭 button。这个示例不提供 `footer`，关闭 button 是唯一由组件提供的操作入口。
+
+```tsx
+import { useState } from 'react'
+
+export default function Demo() {
+  const [open, setOpen] = useState(false)
+
+  return (
+    <div className="flex flex-col items-start gap-3">
+      <web-ui-button onClick={() => setOpen(true)}>打开 dialog</web-ui-button>
+      <web-ui-dialog open={open} closable heading="只有关闭按钮" onopen-change={event => setOpen(event.detail.open)}>
+        <p className="m-0">没有 footer，可以用右上角的关闭 button、Escape 或 backdrop 关闭。</p>
+      </web-ui-dialog>
+    </div>
+  )
+}
+```
+
+```vue
+<template>
+  <div class="flex flex-col items-start gap-3">
+    <web-ui-button @click="open = true">打开 dialog</web-ui-button>
+    <web-ui-dialog :open="open" closable heading="只有关闭按钮" @open-change="open = $event.detail.open">
+      <p class="m-0">没有 footer，可以用右上角的关闭 button、Escape 或 backdrop 关闭。</p>
+    </web-ui-dialog>
+  </div>
+</template>
+
+<script setup lang="ts">
+import { ref } from 'vue'
+
+const open = ref(false)
+</script>
+```
+
 ### Controlled closing
 
-`controlled` 把关闭的决定权交给页面：Escape、backdrop 点击与 closable button 都不改 `open`，只派发 `open-change` 请求关闭。
+`controlled` 把关闭的决定权交给页面：Escape 与 backdrop 点击都不改 `open`，只派发 `open-change` 请求关闭。
 
 页面不回写就保持打开，`<output>` 累加被拦截的请求数；footer 的「放弃更改」直接写 `false`，那是程序式关闭，`controlled` 不拦。
 
@@ -102,7 +242,6 @@ export default function Demo() {
       <web-ui-dialog
         open={open}
         controlled
-        closable
         heading="未保存的更改"
         onopen-change={event => {
           if (!event.detail.open) setRequests(count => count + 1)
@@ -110,7 +249,7 @@ export default function Demo() {
       >
         <p className="m-0">Escape 与 backdrop 只请求关闭；页面不写回，dialog 保持打开。</p>
         <output className="block text-sm text-(--wui-color-text-secondary)">已拦截关闭请求 · {requests} 次</output>
-        <web-ui-button slot="footer" variant="secondary" onClick={() => setOpen(false)}>
+        <web-ui-button slot="footer" full variant="secondary" onClick={() => setOpen(false)}>
           放弃更改
         </web-ui-button>
       </web-ui-dialog>
@@ -123,10 +262,10 @@ export default function Demo() {
 <template>
   <div class="flex flex-col items-start gap-3">
     <web-ui-button @click="open = true">打开 dialog</web-ui-button>
-    <web-ui-dialog :open="open" controlled closable heading="未保存的更改" @open-change="onOpenChange">
+    <web-ui-dialog :open="open" controlled heading="未保存的更改" @open-change="onOpenChange">
       <p class="m-0">Escape 与 backdrop 只请求关闭；页面不写回，dialog 保持打开。</p>
       <output class="block text-sm text-(--wui-color-text-secondary)">已拦截关闭请求 · {{ requests }} 次</output>
-      <web-ui-button slot="footer" variant="secondary" @click="open = false">放弃更改</web-ui-button>
+      <web-ui-button slot="footer" full variant="secondary" @click="open = false">放弃更改</web-ui-button>
     </web-ui-dialog>
   </div>
 </template>
@@ -229,19 +368,19 @@ const open = ref(false)
 
 ### Props
 
-| 名称                | 说明                                                                                                                   | 类型      | 默认值  |
-| ------------------- | ---------------------------------------------------------------------------------------------------------------------- | --------- | ------- |
-| `open`              | dialog 可见性。                                                                                                        | `boolean` | `false` |
-| `closable`          | 显示内置关闭 button。                                                                                                  | `boolean` | `false` |
-| `horizontal`        | Footer 操作按钮横向排列。                                                                                              | `boolean` | `false` |
-| `no-scroll-lock`    | 打开时不锁定页面滚动。                                                                                                 | `boolean` | `false` |
-| `no-backdrop-close` | 禁止点击 backdrop 关闭。                                                                                               | `boolean` | `false` |
-| `no-escape-close`   | 禁止按 Escape 关闭。                                                                                                   | `boolean` | `false` |
-| `controlled`        | Escape 与 backdrop 仅请求 `open=false`，由消费方回写。                                                                 | `boolean` | `false` |
-| `heading`           | 标题文字，`header` 插槽为空时的回落（`headless` 下忽略）。                                                             | `string`  | `''`    |
-| `headless`          | 只保留 overlay 行为，不渲染内置 header 带、内容区与 footer。                                                           | `boolean` | `false` |
-| `aria-dialog-label` | 内部原生 dialog 的 accessible name；`headless` 下必填。旧名 `dialog-label` 已废弃，仅为兼容保留，将在下个 major 移除。 | `string`  | `''`    |
-| `aria-close-label`  | 内置关闭 button 的无障碍名称；未设置时回退内置英文文案（`Close`）。                                                    | `string`  | `''`    |
+| 名称                 | 说明                                                                                                                   | 类型                         | 默认值       |
+| -------------------- | ---------------------------------------------------------------------------------------------------------------------- | ---------------------------- | ------------ |
+| `open`               | dialog 可见性。                                                                                                        | `boolean`                    | `false`      |
+| `closable`           | 显示内置关闭 button。                                                                                                  | `boolean`                    | `false`      |
+| `footer-orientation` | Footer 操作区排列方向。                                                                                                | `'vertical' \| 'horizontal'` | `'vertical'` |
+| `no-scroll-lock`     | 打开时不锁定页面滚动。                                                                                                 | `boolean`                    | `false`      |
+| `no-backdrop-close`  | 禁止点击 backdrop 关闭。                                                                                               | `boolean`                    | `false`      |
+| `no-escape-close`    | 禁止按 Escape 关闭。                                                                                                   | `boolean`                    | `false`      |
+| `controlled`         | Escape 与 backdrop 仅请求 `open=false`，由消费方回写。                                                                 | `boolean`                    | `false`      |
+| `heading`            | 标题文字，`header` 插槽为空时的回落（`headless` 下忽略）。                                                             | `string`                     | `''`         |
+| `headless`           | 只保留 overlay 行为，不渲染内置 header 带、内容区与 footer。                                                           | `boolean`                    | `false`      |
+| `aria-dialog-label`  | 内部原生 dialog 的 accessible name；`headless` 下必填。旧名 `dialog-label` 已废弃，仅为兼容保留，将在下个 major 移除。 | `string`                     | `''`         |
+| `aria-close-label`   | 内置关闭 button 的无障碍名称；未设置时回退内置英文文案（`Close`）。                                                    | `string`                     | `''`         |
 
 ### Events
 
@@ -271,6 +410,8 @@ const open = ref(false)
 `heading` 属性是它的 fallback——槽一旦有分配元素就整条接管，否则非空的 `heading` 渲染出 `.wui-dialog-heading`；两者都为空时整条带隐藏。
 
 `default` 槽在两种模式下都承载正文。默认模式下它渲染进 `.desc`（卡片的内容区），与 `header` 带、`footer` 并列。
+
+`footer` 只负责方向、间距、对齐与内边距，不覆盖子元素的样式。默认纵向排列，按钮仍按自身内容宽度渲染、在行内居中；需要占满操作区的 button 由消费方显式设置 `full`。设置 `footer-orientation="horizontal"` 后改为同一行，间距固定取全局 `--wui-space-3`、整行默认居中（`justify-content` 横向默认 `center`），按钮宽度继续由各自组件或其自身样式决定。
 
 `headless` 下整张卡片变成一个滚动层：`default` 槽渲染进 `.wui-dialog-content`，`header` 带、`.desc` 与 `footer` 一概不渲染，`heading` 一并失效。
 
@@ -302,19 +443,19 @@ icon 与 drawer 关闭 button 同为 `ooui:close`。
 
 ### CSS Custom Properties
 
-| 名称                              | 说明                                                                                                                                                                                                                                                                                                                                                               | 默认值                                     |
-| --------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------ |
-| `--wui-dialog-width`              | dialog 宽度                                                                                                                                                                                                                                                                                                                                                        | `360px`                                    |
-| `--wui-dialog-max-height`         | 内容区（`.desc`）的最大高度，不是整卡高度。两套 fallback：基础规则 `90vh`，`@supports (height: 100dvh)` 内 `min(90vh, 90dvh)`——不支持 dvh 的引擎只拿到 `90vh`。整卡换算见下方说明                                                                                                                                                                                  | `90vh` / `min(90vh, 90dvh)`（dvh 引擎）    |
-| `--wui-dialog-close-top`          | `closable` button 距卡片顶部的偏移                                                                                                                                                                                                                                                                                                                                 | `20px`                                     |
-| `--wui-dialog-close-right`        | `closable` button 距卡片右沿的偏移                                                                                                                                                                                                                                                                                                                                 | `20px`                                     |
-| `--wui-dialog-overlay-bg`         | backdrop 背景色                                                                                                                                                                                                                                                                                                                                                    | `var(--wui-color-backdrop)`                |
-| `--wui-dialog-bg`                 | 玻璃卡片背景色，回退到 `rgb(248 248 248 / 0.92)`                                                                                                                                                                                                                                                                                                                   | `var(--wui-color-surface-overlay)`         |
-| `--wui-dialog-padding`            | 卡片的 block 内边距。卡片没有 inline 分量：水平内边距由各分区提供（`.header` / `.desc` / `.wui-dialog-footer`），见 `--wui-dialog-inline-padding`                                                                                                                                                                                                                  | `20px 24px 24px`                           |
-| `--wui-dialog-inline-padding`     | `header` 带、内容区（`.desc`）与 footer 的水平内边距。卡片自身没有 inline padding，内容区的滚动口（其 border box）因此与卡片内沿重合——scrollbar 贴边——而内容仍保留这个内缩。默认取自 `--wui-space-6`                                                                                                                                                               | `24px`                                     |
-| `--wui-dialog-title-gap`          | 标题下方间距                                                                                                                                                                                                                                                                                                                                                       | `16px`                                     |
-| `--wui-dialog-desc-gap`           | 正文内容下方间距                                                                                                                                                                                                                                                                                                                                                   | `24px`                                     |
-| `--wui-dialog-desc-focus-padding` | 内容区**block 轴**预留的 focus-ring 余量。`.desc` 既是滚动容器，又因为有一条轴必须非 `visible` 而成了裁剪盒，所以紧贴其上下沿的控件，ring 会被 padding box 裁掉；这个余量覆盖 `5px` 的 ring（`offset: 2` + `width: 3`）。横向的 ring 余量由 `--wui-dialog-inline-padding` 提供（24px ≫ 5px），所以本 token 只作用于 block 轴。成对负 margin 使 chrome 高度保持不变 | `6px`                                      |
-| `--wui-dialog-footer-gap`         | Footer button 间距                                                                                                                                                                                                                                                                                                                                                 | `10px` / horizontal `12px`                 |
-| `--wui-dialog-footer-justify`     | Footer `justify-content`；horizontal 模式下覆盖为 `flex-end` 可右对齐                                                                                                                                                                                                                                                                                              | `flex-end`（默认）/ `center`（horizontal） |
-| `--wui-dialog-scale-enter`        | 进场缩放起点：由 `1.1` 收缩到 `1`，退场反向                                                                                                                                                                                                                                                                                                                        | `1.1`                                      |
+| 名称                              | 说明                                                                                                                                                                                                                                                                                                                                                               | 默认值                                  |
+| --------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | --------------------------------------- |
+| `--wui-dialog-width`              | dialog 宽度                                                                                                                                                                                                                                                                                                                                                        | `360px`                                 |
+| `--wui-dialog-max-height`         | 内容区（`.desc`）的最大高度，不是整卡高度。两套 fallback：基础规则 `90vh`，`@supports (height: 100dvh)` 内 `min(90vh, 90dvh)`——不支持 dvh 的引擎只拿到 `90vh`。整卡换算见下方说明                                                                                                                                                                                  | `90vh` / `min(90vh, 90dvh)`（dvh 引擎） |
+| `--wui-dialog-close-top`          | `closable` button 距卡片顶部的偏移                                                                                                                                                                                                                                                                                                                                 | `20px`                                  |
+| `--wui-dialog-close-right`        | `closable` button 距卡片右沿的偏移                                                                                                                                                                                                                                                                                                                                 | `20px`                                  |
+| `--wui-dialog-overlay-bg`         | backdrop 背景色                                                                                                                                                                                                                                                                                                                                                    | `var(--wui-color-backdrop)`             |
+| `--wui-dialog-bg`                 | 玻璃卡片背景色，回退到 `rgb(248 248 248 / 0.92)`                                                                                                                                                                                                                                                                                                                   | `var(--wui-color-surface-overlay)`      |
+| `--wui-dialog-padding`            | 卡片的 block 内边距。卡片没有 inline 分量：水平内边距由各分区提供（`.header` / `.desc` / `.wui-dialog-footer`），见 `--wui-dialog-inline-padding`                                                                                                                                                                                                                  | `20px 24px 24px`                        |
+| `--wui-dialog-inline-padding`     | `header` 带、内容区（`.desc`）与 footer 的水平内边距。卡片自身没有 inline padding，内容区的滚动口（其 border box）因此与卡片内沿重合——scrollbar 贴边——而内容仍保留这个内缩。默认取自 `--wui-space-6`                                                                                                                                                               | `24px`                                  |
+| `--wui-dialog-title-gap`          | 标题下方间距                                                                                                                                                                                                                                                                                                                                                       | `16px`                                  |
+| `--wui-dialog-desc-gap`           | 正文内容下方间距                                                                                                                                                                                                                                                                                                                                                   | `24px`                                  |
+| `--wui-dialog-desc-focus-padding` | 内容区**block 轴**预留的 focus-ring 余量。`.desc` 既是滚动容器，又因为有一条轴必须非 `visible` 而成了裁剪盒，所以紧贴其上下沿的控件，ring 会被 padding box 裁掉；这个余量覆盖 `5px` 的 ring（`offset: 2` + `width: 3`）。横向的 ring 余量由 `--wui-dialog-inline-padding` 提供（24px ≫ 5px），所以本 token 只作用于 block 轴。成对负 margin 使 chrome 高度保持不变 | `6px`                                   |
+| `--wui-dialog-footer-gap`         | Footer 按钮**纵向堆叠**时的间距；`footer-orientation="horizontal"` 时本 token 不参与，横排间距固定取全局 `--wui-space-3`。                                                                                                                                                                                                                                         | `10px`                                  |
+| `--wui-dialog-footer-justify`     | Footer `justify-content`；横向模式下覆盖默认值，可由该 token 调整对齐                                                                                                                                                                                                                                                                                              | `flex-end`（默认）/ `center`（横向）    |
+| `--wui-dialog-scale-enter`        | 进场缩放起点：由 `1.1` 收缩到 `1`，退场反向                                                                                                                                                                                                                                                                                                                        | `1.1`                                   |

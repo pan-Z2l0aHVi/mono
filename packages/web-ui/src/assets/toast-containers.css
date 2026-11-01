@@ -3,6 +3,9 @@
 .wui-toast-container {
   --wui-toast-viewport-gap: 16px;
   --wui-toast-container-padding: 40px;
+  --wui-internal-toast-top: calc(
+    var(--wui-toast-viewport-gap) - var(--wui-toast-container-padding) + var(--wui-toast-top-offset, 0px)
+  );
   pointer-events: none;
 
   position: fixed;
@@ -26,20 +29,20 @@
 }
 
 .wui-toast-top-left {
-  top: calc(var(--wui-toast-viewport-gap) - var(--wui-toast-container-padding));
+  top: var(--wui-internal-toast-top);
   left: calc(var(--wui-toast-viewport-gap) - var(--wui-toast-container-padding));
   align-items: flex-start;
 }
 
 .wui-toast-top-center {
-  top: calc(var(--wui-toast-viewport-gap) - var(--wui-toast-container-padding));
+  top: var(--wui-internal-toast-top);
   left: 50%;
   transform: translateX(-50%);
   align-items: center;
 }
 
 .wui-toast-top-right {
-  top: calc(var(--wui-toast-viewport-gap) - var(--wui-toast-container-padding));
+  top: var(--wui-internal-toast-top);
   right: calc(var(--wui-toast-viewport-gap) - var(--wui-toast-container-padding));
   align-items: flex-end;
 }

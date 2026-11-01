@@ -18,7 +18,7 @@ function notify() {
     heading: '已保存',
     message: '更改已写入云端',
     type: 'info',
-    position: 'bottom-right',
+    position: 'top-center',
     duration: 4000,
     closable: true
   })

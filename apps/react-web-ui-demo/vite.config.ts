@@ -1,15 +1,20 @@
+import { homedir } from 'node:os'
+import { join } from 'node:path'
+
 import depsReload from '@greypan/deps-reload/vite'
 import type { MdToCompViteOptions } from '@greypan/md-to-comp'
 import mdToCompReact from '@greypan/md-to-comp/react'
-import { testApiPort } from '@greypan/monorepo-kit'
+import { devHttpsPlugin, testApiPort } from '@greypan/monorepo-kit'
 import unpluginWebComponents from '@greypan/unplugin-web-components/vite'
 import tailwindcss from '@tailwindcss/vite'
 import { tanstackRouter } from '@tanstack/router-plugin/vite'
-import basicSsl from '@vitejs/plugin-basic-ssl'
 import react from '@vitejs/plugin-react'
 import { defineConfig, searchForWorkspaceRoot } from 'vite-plus'
 import { playwright } from 'vite-plus/test/browser-playwright'
 import { wuchale } from 'wuchale/vite'
+
+// 证书按机器共享：同一台机器的所有 worktree 读同一份，不随 checkout 复制，也不入库。
+const devCertDir = process.env.GREYPAN_DEV_CERT_DIR ?? join(homedir(), '.config', 'greypan', 'dev-certs')
 
 // 具名导出供 scripts/checks/check-md-to-comp-artifacts.mjs 复用：CI 在 Build 步之前以这份配置
 // 只判不改地校验生成物。配置只有这一份，不另抄。
@@ -102,7 +107,12 @@ export default defineConfig({
     // 冷缓存（CI fresh clone）下 `react-dom/client` 会被 browser 运行时在中段才发现并预打包，
     // 触发整页 reload，把已挂载的示例全部清空（"示例「基础」没有渲染"连锁失败）。
     // 启动扫描只覆盖路由图，覆盖不到 spec 直接 import 的生成 demo 图，所以这里显式列出。
-    include: ['react-dom/client']
+    include: [
+      'react-dom/client',
+      // changelog 页在浏览器里通过 md-to-comp 的 markdown 子入口渲染 CHANGELOG.md；
+      // 漏列会在测试中段触发依赖重优化整页 reload。
+      '@greypan/md-to-comp/markdown'
+    ]
   },
   test: {
     // Vitest 5 把默认附件目录从 `.vitest-attachments` 改成 `.vitest/attachments`；
@@ -204,11 +214,9 @@ export default defineConfig({
       }
     ]),
     tailwindcss(),
-    // `basicSsl()` 只把 `server.https` 打开，而 vitest 的 browser mode 自己起服务、
-    // 不跟着走 https：浏览器于是按 https 去连一个明文服务，得到 ERR_SSL_PROTOCOL_ERROR
-    // （`ignoreHTTPSErrors` 治的是证书错误，救不了协议层）。它只服务 dev server，
-    // 测试模式下去掉。
-    ...(process.env.VITEST ? [] : [basicSsl()])
+    // dev/preview 用本机 mkcert 证书提供 HTTPS；测试档在证书存在时沿用同一份配置，
+    // CI 没有本机证书时才回退 HTTP。准备步骤见 docs/agents/worktree.md。
+    devHttpsPlugin({ certDir: devCertDir })
     // 这里没有 `@vitejs/plugin-legacy`：它在本 app 只做 modern polyfill 注入（`renderLegacyChunks`
     // 从来是关的），而注入的那批 core-js 模块是 babel usage 检测在打包后的第三方代码与文档字符串上
     // 的误报——产物里调用点为 0，`browserslist` 基线原生覆盖全部实际用到的 API。不装它顺带把 Babel
