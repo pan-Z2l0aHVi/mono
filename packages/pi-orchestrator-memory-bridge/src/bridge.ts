@@ -588,7 +588,7 @@ export function createBridge(pi: BridgePi, options: BridgeOptions): { dispose: (
   pi.on('tool_result', async event => {
     const typed = event as { toolName?: string; details?: unknown }
     if (!typed.toolName) return undefined
-    // D1：正常路径的结算。isError（超时 throw）没有 details，这里不会结算，另行兑底。
+    // D1：正常路径的结算。isError（超时 throw）没有 details，这里不会结算，另行兜底。
     if (typed.toolName === 'herdr_dispatch' || typed.toolName === 'herdr_review') {
       inFlight.settleFromResultName(typed.details, typed.toolName)
     }
@@ -764,7 +764,7 @@ export function createBridge(pi: BridgePi, options: BridgeOptions): { dispose: (
   }
 
   pi.on('agent_before_settle', async (_event, ctx) => {
-    // D1 兑底先跑：没有 tool_result 的 dispatch / review 在这里被扫描出来，说明行与
+    // D1 兜底先跑：没有 tool_result 的 dispatch / review 在这里被扫描出来，说明行与
     // 未保存条目合并在同一条 custom_message 里注入给模型。
     const reconciliation = await reconcileInFlight(ctx)
     const dropped: string[] = []
@@ -806,7 +806,7 @@ export function createBridge(pi: BridgePi, options: BridgeOptions): { dispose: (
     }
 
     if (pending.size() === 0 && boardQueue.length === 0) {
-      // 只有兑底说明：仍然注入给模型，但不请求续轮——那不是待办，只是恢复后的状态说明。
+      // 只有兜底说明：仍然注入给模型，但不请求续轮——那不是待办，只是恢复后的状态说明。
       if (reconciliation.length === 0) return undefined
       return {
         entries: [

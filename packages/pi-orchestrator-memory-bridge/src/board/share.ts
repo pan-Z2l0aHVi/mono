@@ -362,7 +362,7 @@ export function normalizeBoardCounters(board: Record<string, unknown>): Record<s
  * 把共享 board 文件的计数器归一化（D4）。
  *
  * 迁移的两条路径都可能把陈旧计数器带进共享文件：原样拷贝的路径完全不重算，合并路径的
- * 合并输入本身就可能是陈旧的。这里在 `ensureSharedBoard` 的成功路径末尾统一兑底一次；
+ * 合并输入本身就可能是陈旧的。这里在 `ensureSharedBoard` 的成功路径末尾统一兜底一次；
  * 读不了 / 不是 v2 就不动文件，任何失败都不改变外层结果的状态。返回 normalized 是否真
  * 的改写了文件（诊断用）。
  */
@@ -423,7 +423,7 @@ export function ensureSharedBoard(
   log: (message: string) => void = () => {}
 ): SharedBoardResult {
   const result = ensureSharedBoardInner(cwd, env, log)
-  // 成功路径末尾兑底一次计数器（D4）；refused / failed 时不动共享文件。
+  // 成功路径末尾兜底一次计数器（D4）；refused / failed 时不动共享文件。
   if (result.status !== 'refused' && result.status !== 'failed' && result.target) {
     syncSharedBoardCounters(result.target, log)
   }

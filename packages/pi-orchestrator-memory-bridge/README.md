@@ -83,7 +83,7 @@ orchestration.<repo-key>.rejection.<content-hash>
 上游 `pi-task-board` 的缺口：`nextTaskId` / `nextPanelId` 计数器从文件原样读取、从不按既有
 任务 id 重算（`ensureSharedBoard` 缺），迁移/合并后会撞号。本扩展在 `ensureSharedBoard` 成功后
 把共享文件的计数器重算到 `max(existing id) + 1`（D4 兜底，见 [`src/board/share.ts`](./src/board/share.ts)
-的 `syncSharedBoardCounters`）；这仍是本侧兑底，上游修复之后应删除。
+的 `syncSharedBoardCounters`）；这仍是本侧兜底，上游修复之后应删除。
 
 两个约束合起来意味着「跨 worktree 共享」只能在文件系统层做。`session_start` 时
 [`src/board/share.ts`](./src/board/share.ts) 让**所有** checkout 的 `.pi` 指向仓库外的共享目录
@@ -329,7 +329,7 @@ reviewer 若配成 `kind: "pi"`，它会在自己的 pane 里加载本扩展；�
   `in_review`，这是刻意的——它表示「无人验收」。同理（D3）：dispatch 的 prompt 等待里 worker
   已自结算（`details.status` 是 `done` / `idle`）时，建任务直接到 `in_review`——很多 slice
   不再跑 `herdr_watch`，否则任务会永久停在 `in_progress`。
-- **D1 兑底路径的看板动作**：dispatch 超时后 agent 列表里发现 worker 已自结算，兜底建任务
+- **D1 兜底路径的看板动作**：dispatch 超时后 agent 列表里发现 worker 已自结算，兜底建任务
   直接到 `in_review`；仍在跑则建 `in_progress`（描述带 role 与 pane，标注 recovered）。
 - **回退由 review 的结论触发，其他动作只推进**：状态顺序是
   `backlog < todo < in_progress < in_review`。队列里的动作要等下一次 flush 才执行，期间
