@@ -83,12 +83,15 @@ const localeSurfaces: LocaleSurface[] = [
   { label: 'en', suffix: '.md', files: corpusOf('.md') }
 ]
 
+/** 语种内的文件名与组件名。逐文档成用例：整份语料的冷 import 与 HTML 取文本压进一个用例会撞默认的 5s。 */
+const entriesOf = (locale: LocaleSurface) =>
+  locale.files.map(name => [name, name.slice(0, -locale.suffix.length)] as const)
+
 describe('页面显示的代码与 markdown 围栏同源', () => {
   for (const locale of localeSurfaces) {
-    it(`${locale.label}：每条围栏都落成 codeblock，可见文本逐字等于围栏原文`, async () => {
-      let checked = 0
-      for (const name of locale.files) {
-        const component = name.slice(0, -locale.suffix.length)
+    for (const [name, component] of entriesOf(locale)) {
+      it(`${locale.label}：${name} 的每条围栏都落成 codeblock，可见文本逐字等于围栏原文`, async () => {
+        let checked = 0
         const markdown = readFileSync(path.join(docsDir, name), 'utf8')
         const fences = fencesOf(markdown)
         const blocks = codeblocksOf(await loadMeta(locale.label, component))
@@ -106,18 +109,17 @@ describe('页面显示的代码与 markdown 围栏同源', () => {
           ).toBe(fence.code)
           checked += 1
         })
-      }
-      expect(checked).toBeGreaterThan(0)
-    })
+        expect(checked).toBeGreaterThan(0)
+      })
+    }
   }
 })
 
 describe('每条围栏落成可编译代码文件', () => {
   for (const locale of localeSurfaces) {
-    it(`${locale.label}：落盘文件与围栏逐字相同（只差行尾换行），load 只给 exec 语言`, async () => {
-      let fileCount = 0
-      for (const name of locale.files) {
-        const component = name.slice(0, -locale.suffix.length)
+    for (const [name, component] of entriesOf(locale)) {
+      it(`${locale.label}：${name} 的落盘文件与围栏逐字相同（只差行尾换行），load 只给 exec 语言`, async () => {
+        let fileCount = 0
         const markdown = readFileSync(path.join(docsDir, name), 'utf8')
         const fences = fencesOf(markdown)
         const blocks = codeblocksOf(await loadMeta(locale.label, component))
@@ -138,15 +140,15 @@ describe('每条围栏落成可编译代码文件', () => {
           ).toBe(`${fence.code.trimEnd()}\n`)
           fileCount += 1
         })
-      }
-      expect(fileCount, '一条围栏都没有：这条通道等于没被任何断言覆盖').toBeGreaterThan(0)
-    })
+        expect(fileCount, '一条围栏都没有：这条通道等于没被任何断言覆盖').toBeGreaterThan(0)
+      })
+    }
   }
 })
 
 describe('中英语料骨架一致', () => {
-  it('节点 label 序列与标题逐字相同', async () => {
-    for (const name of docNames) {
+  for (const name of docNames) {
+    it(`${name}：节点 label 序列与标题逐字相同`, async () => {
       const zh = await loadMeta('zh-CN', name)
       const en = await loadMeta('en', name)
       expect(
@@ -157,8 +159,8 @@ describe('中英语料骨架一致', () => {
         headingsBeforeApi(zh).map(node => node.content),
         `${name}：\`## API\` 之前的标题（示例标题与 API 标题）是两侧同文的专业术语`
       ).toEqual(headingsBeforeApi(en).map(node => node.content))
-    }
-  })
+    })
+  }
 })
 
 /* 页面从 `@/components/` 引了什么，除 `<ExampleDoc>` 自身的壳以外。 */
