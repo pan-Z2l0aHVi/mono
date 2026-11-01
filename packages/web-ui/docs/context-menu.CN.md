@@ -1,7 +1,4 @@
----
-component: context-menu
-tag: web-ui-context-menu
----
+# Context Menu
 
 右键上下文 menu：第一个子元素是触发区域，其余子元素是 menu item（`<web-ui-dropdown-item>` 等）。打开期间 menu 是模态的，点空白只会关掉 menu。
 

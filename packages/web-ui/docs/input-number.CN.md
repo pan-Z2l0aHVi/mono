@@ -1,7 +1,4 @@
----
-component: input-number
-tag: web-ui-input-number
----
+# Input Number
 
 数字 input，左右各一个步进 button，支持 `min` / `max` / `step` / `precision`；越界与非法输入都在提交点收敛回有效值。
 

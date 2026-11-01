@@ -1,7 +1,4 @@
----
-component: back-top
-tag: web-ui-back-top
----
+# Back Top
 
 A back-to-top button (`web-ui-back-top`): it appears in the corner once the scroll position reaches `threshold`, and clicking it or pressing Enter / Space returns to the top.
 

@@ -2,8 +2,7 @@ import { homedir } from 'node:os'
 import { join } from 'node:path'
 
 import depsReload from '@greypan/deps-reload/vite'
-import type { MdToCompViteOptions } from '@greypan/md-to-comp'
-import mdToCompReact from '@greypan/md-to-comp/react'
+import { mdToMeta, type MdToMetaOptions } from '@greypan/md-to-meta'
 import { devHttpsPlugin, testApiPort } from '@greypan/monorepo-kit'
 import unpluginWebComponents from '@greypan/unplugin-web-components/vite'
 import tailwindcss from '@tailwindcss/vite'
@@ -16,77 +15,15 @@ import { wuchale } from 'wuchale/vite'
 // 证书按机器共享：同一台机器的所有 worktree 读同一份，不随 checkout 复制，也不入库。
 const devCertDir = process.env.GREYPAN_DEV_CERT_DIR ?? join(homedir(), '.config', 'greypan', 'dev-certs')
 
-// 具名导出供 scripts/checks/check-md-to-comp-artifacts.mjs 复用：CI 在 Build 步之前以这份配置
+// 具名导出供 scripts/checks/check-md-to-meta-artifacts.mjs 复用：CI 在 Build 步之前以这份配置
 // 只判不改地校验生成物。配置只有这一份，不另抄。
-export const mdToCompOptions: MdToCompViteOptions = {
-  input: '../../packages/web-ui/docs',
-  // 中文是源语种，英文是按需译出的第二份；两份数据各占一个目录，宿主只 import 当前语种那一份。
-  outputs: [
-    { locale: 'zh-CN', output: 'src/generated/zh-CN' },
-    { locale: 'en', output: 'src/generated/en' }
-  ],
-  // 样式与语种无关（高亮双主题 + Markdown 正文版式），只写一份。
-  styles: 'src/generated/examples.css',
-  dir: 'demos',
-  flavors: ['react', 'vue'],
-  // 语料文件名分语种：中文源是 `button.CN.md`，英文译文是 `button.md`。长后缀优先，所以
-  // `.md` 不会把 `.CN.md` 抢走。
-  locales: [
-    {
-      locale: 'zh-CN',
-      suffix: '.CN.md',
-      apiTables: {
-        // 列序是引擎约定：首列是名称（行的身份）、次列是说明（富文本），第 3 列起都是普通值列。
-        // 只登记表格小节；标题不在这里的 `###` 按散文渲染（正文整段 markdown）。
-        // Props 记元素属性，Options 记命令式 API 的 option（`imagePreview()` / `toast()` 这类没有声明式契约的入口）。
-        // Methods 记组件对外的公开方法：元素实例方法、静态方法，以及命令式 API 返回 handle 上的方法。
-        // 返回 handle 记命令式 API 返回对象上的只读成员，那些成员的方法归 Methods。
-        // CSS Custom Properties 记组件对外暴露的变量；theme 的 token 表按族分节，颜色与阴影两族另有浅色/深色两列。
-        columns: {
-          Props: ['名称', '说明', '类型', '默认值'],
-          Options: ['名称', '说明', '类型', '默认值'],
-          Events: ['名称', '说明'],
-          Slots: ['名称', '说明'],
-          Methods: ['名称', '说明'],
-          '返回 handle': ['名称', '说明', '类型'],
-          'CSS Custom Properties': ['名称', '说明', '默认值'],
-          'Foundation tokens': ['名称', '说明', '默认值'],
-          'Typography tokens': ['名称', '说明', '默认值'],
-          'Spacing tokens': ['名称', '说明', '默认值'],
-          'Selection control tokens': ['名称', '说明', '默认值'],
-          'Radius tokens': ['名称', '说明', '默认值'],
-          'Layer tokens': ['名称', '说明', '默认值'],
-          'Color tokens': ['名称', '说明', '浅色默认值', '深色默认值'],
-          'Shadow tokens': ['名称', '说明', '浅色默认值', '深色默认值']
-        }
-      }
-    },
-    {
-      locale: 'en',
-      suffix: '.md',
-      // 小节标题沿用术语（Props / Events / CSS Custom Properties……），只有列名与散文跟着翻译；
-      // `返回 handle` 在英文语料里写成 `Return handle`，所以键名也跟着变。
-      apiTables: {
-        columns: {
-          Props: ['Name', 'Description', 'Type', 'Default'],
-          Options: ['Name', 'Description', 'Type', 'Default'],
-          Events: ['Name', 'Description'],
-          Slots: ['Name', 'Description'],
-          Methods: ['Name', 'Description'],
-          'Return handle': ['Name', 'Description', 'Type'],
-          'CSS Custom Properties': ['Name', 'Description', 'Default'],
-          'Foundation tokens': ['Name', 'Description', 'Default'],
-          'Typography tokens': ['Name', 'Description', 'Default'],
-          'Spacing tokens': ['Name', 'Description', 'Default'],
-          'Selection control tokens': ['Name', 'Description', 'Default'],
-          'Radius tokens': ['Name', 'Description', 'Default'],
-          'Layer tokens': ['Name', 'Description', 'Default'],
-          'Color tokens': ['Name', 'Description', 'Light default', 'Dark default'],
-          'Shadow tokens': ['Name', 'Description', 'Light default', 'Dark default']
-        }
-      }
-    }
-  ],
+export const mdToMetaOptions: MdToMetaOptions = {
+  // 文档与 changelog 是全部输入；引擎按文件名产出 meta 模块，`.CN.md` 与 `.md` 各自独立（不做语种解释）。
+  input: ['../../packages/web-ui/docs/*.md', '../../packages/web-ui/CHANGELOG.md'],
+  // 单出口：中英文两份语料都落在同一目录，由宿主按文件名里的 `.CN` 判定语种。
+  output: 'src/generated',
+  // 只有 tsx 围栏带 load thunk：React 站把示例挂成真组件；Vue 源码只用于显示。
+  exec: ['tsx'],
   // 深浅外观源是 web-ui-theme 的派生属性；切外观不需要重新生成高亮 HTML。
   darkSelector: "web-ui-theme[resolved-appearance='dark']"
 }
@@ -106,13 +43,8 @@ export default defineConfig({
     // 模块加载（file-based routing、`import.meta.glob`）时扫描器跟不进去，那时才需要这份清单。
     // 冷缓存（CI fresh clone）下 `react-dom/client` 会被 browser 运行时在中段才发现并预打包，
     // 触发整页 reload，把已挂载的示例全部清空（"示例「基础」没有渲染"连锁失败）。
-    // 启动扫描只覆盖路由图，覆盖不到 spec 直接 import 的生成 demo 图，所以这里显式列出。
-    include: [
-      'react-dom/client',
-      // changelog 页在浏览器里通过 md-to-comp 的 markdown 子入口渲染 CHANGELOG.md；
-      // 漏列会在测试中段触发依赖重优化整页 reload。
-      '@greypan/md-to-comp/markdown'
-    ]
+    // 启动扫描只覆盖路由图，覆盖不到 spec 直接 import 的生成代码块，所以这里显式列出。
+    include: ['react-dom/client']
   },
   test: {
     // Vitest 5 把默认附件目录从 `.vitest-attachments` 改成 `.vitest/attachments`；
@@ -167,11 +99,11 @@ export default defineConfig({
     // 注册在哪，transform 都排在 React 插件（`enforce: 'pre'`）之前；它按 AST 改写源码并把文案
     // 换成运行时调用，JSX 一旦被 React 降级就再也认不出来了。
     wuchale(),
-    // 示例文档：markdown 是唯一来源，dev 与 build 都由这个插件生成 `src/generated/**`。
+    // 文档：markdown 是唯一来源，dev 与 build 都由这个插件生成 `src/generated/**`。
     // 生成物同样受版本控制，测试档只判不改（不一致就让这次的测试红）；CI 在 Build 步之前还经
-    // `check-generated` 任务以 mdToCompOptions 只判不改地复验一次（Build 的写盘会把失步产物
+    // `check-generated` 任务以 mdToMetaOptions 只判不改地复验一次（Build 的写盘会把失步产物
     // 治愈，测试档的判据到那时永远空转）。
-    mdToCompReact(mdToCompOptions),
+    mdToMeta(mdToMetaOptions),
     tanstackRouter({
       target: 'react',
       autoCodeSplitting: true

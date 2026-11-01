@@ -8,9 +8,9 @@ export default {
     ],
     rules: {
       'vite-plus/prefer-vite-plus-imports': 'error',
-      // `.mdc-*` 是 md-to-comp 生成进 examples.css 的正文版式类，不归 Tailwind 管；不登记的话
+      // `.mdm-*` 是 md-to-meta 生成进 theme.css 的正文版式类，不归 Tailwind 管；不登记的话
       // `no-unknown-classes` 会把宿主里挂的这些 class 判成拼写错误。
-      'shadcn/no-unknown-classes': ['error', { allow: ['mdc-*'] }],
+      'shadcn/no-unknown-classes': ['error', { allow: ['mdm-*'] }],
       'shadcn/no-inline-styles': 'error',
       'shadcn/require-static-classes': 'error'
     },
@@ -19,7 +19,8 @@ export default {
       '**/routeTree.gen.ts',
       '**/auto-imports.d.ts',
       '**/typed-router.d.ts',
-      'apps/interweave/frontend/bindings/**'
+      'apps/interweave/frontend/bindings/**',
+      '**/generated/**'
     ],
     overrides: [
       {
@@ -312,11 +313,7 @@ export default {
       '**/auto-imports.d.ts',
       '**/typed-router.d.ts',
       'apps/interweave/frontend/bindings/**',
-      // demo 示例数据与样式由生成器产出，格式由生成器决定；`src/generated/**/demos/**` 不在这里，
-      // 那些文件是会被真正编译执行的示例源码，格式与 lint 必须和人手写的代码同一口径。
-      'apps/*/src/generated/examples.*',
-      'apps/*/src/generated/*/examples.ts',
-      'apps/*/src/generated/**/demo-manifest.ts',
+      '**/generated/**',
       '**/.agents/skills/**', // skill 软链面（第三方与仓库自编写）不参与格式检查
       'skills/**', // 自撰写 skill 与依赖镜像的实体目录（GitHub 发现面），同上
       '.agents/skills-vendored/**', // 非依赖第三方 skill 的实体目录，同上

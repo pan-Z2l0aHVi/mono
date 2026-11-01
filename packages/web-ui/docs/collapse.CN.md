@@ -1,7 +1,4 @@
----
-component: collapse
-tag: web-ui-collapse
----
+# Collapse
 
 collapse panel 把 trigger 与内容装在同一个元素里：trigger 走 default slot，要收起的内容走 `content` slot。
 

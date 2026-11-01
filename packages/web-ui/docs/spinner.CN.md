@@ -1,7 +1,4 @@
----
-component: spinner
-tag: web-ui-spinner
----
+# Spinner
 
 加载旋转器：声明式放在页面里，或用静态 `WebUiSpinner.show()` / `hide()` 挂一个全屏实例。8 根叶片各差 1/8 个周期，形成一圈追光。
 

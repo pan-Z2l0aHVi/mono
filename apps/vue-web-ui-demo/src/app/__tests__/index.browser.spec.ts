@@ -444,7 +444,6 @@ describe('应用外壳（浏览器）：导航 collapsed state 不跨视口泄�
           'InputNumber',
           'Select',
           'Autocomplete',
-          'Dropdown',
           'Switch',
           'Slider',
           'Radio',
@@ -455,7 +454,18 @@ describe('应用外壳（浏览器）：导航 collapsed state 不跨视口泄�
       ['Display', ['Collapse', 'EditableText', 'Empty', 'MiddleEllipsis', 'SVGDrawLines', 'Avatar', 'Badge']],
       [
         'Feedback',
-        ['Dialog', 'Drawer', 'Tooltip', 'Popover', 'ContextMenu', 'Toast', 'ImagePreview', 'Spinner', 'Progress']
+        [
+          'Dialog',
+          'Drawer',
+          'Tooltip',
+          'Popover',
+          'Dropdown',
+          'ContextMenu',
+          'Toast',
+          'ImagePreview',
+          'Spinner',
+          'Progress'
+        ]
       ]
     ])
     await loadDemoLocale('zh-CN', false)
@@ -510,6 +520,10 @@ describe('应用外壳（浏览器）：导航 collapsed state 不跨视口泄�
       expect(bounds.right).toBeLessThanOrEqual(document.documentElement.clientWidth + 0.5)
     }
     expect(document.documentElement.scrollWidth).toBe(document.documentElement.clientWidth)
+    const header = layoutRoot().querySelector<HTMLElement>('[slot="header"]')!
+    const headerPaddingRight = Number.parseFloat(getComputedStyle(header).paddingRight)
+    const lastRight = Math.max(...selects.map(select => select.getBoundingClientRect().right))
+    expect(lastRight).toBeCloseTo(header.getBoundingClientRect().right - headerPaddingRight)
   })
 
   it('桌面端 collapsed state 沿用完整导航名、超出部分省略，并通过 title 提供完整 label', async () => {

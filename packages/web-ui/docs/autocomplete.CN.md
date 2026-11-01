@@ -1,7 +1,4 @@
----
-component: autocomplete
-tag: web-ui-autocomplete
----
+# Autocomplete
 
 可输入并过滤候选的单值选择器：输入文本按 `option` 的 label 过滤候选，选中后把 label 回填到 input，并把该项的 value 暴露为只读的 `selected-value`。
 
@@ -402,22 +399,23 @@ const frameworks = ['Vue', 'React', 'Svelte', 'Angular']
 
 ### Props
 
-| 名称                 | 说明                                                           | 类型                  | 默认值       |
-| -------------------- | -------------------------------------------------------------- | --------------------- | ------------ |
-| `placeholder`        | input 占位文本。                                               | `string`              | `''`         |
-| `borderless`         | ghost 形态：移除边框、背景与阴影，保留 padding 与 focus ring。 | `boolean`             | `false`      |
-| `disabled`           | 禁用态，不可输入、不可展开下拉。                               | `boolean`             | `false`      |
-| `readonly`           | 只读态：不可输入、不可展开下拉。                               | `boolean`             | `false`      |
-| `required`           | 必填校验。                                                     | `boolean`             | `false`      |
-| `portal`             | 在 theme-owned overlay root 中渲染下拉 panel。                 | `boolean`             | `false`      |
-| `no-scroll-lock`     | 打开时不锁定页面滚动。                                         | `boolean`             | `false`      |
-| `allow-custom-value` | 允许 Enter 提交不在候选中的输入原文。                          | `boolean`             | `false`      |
-| `overlayContainer`   | 显式 Portal 容器（property，不是 attribute）。                 | `OverlayContainer`    | —            |
-| `name`               | 表单字段名。                                                   | `string`              | `''`         |
-| `aria-label`         | 无障碍名称。                                                   | `string \| null`      | `null`       |
-| `aria-labelledby`    | 无障碍名称引用。                                               | `string \| undefined` | —            |
-| `filter`             | 候选过滤模式：`contains`（默认）、`prefix` 或 `none`。         | `FilterMode`          | `'contains'` |
-| `value`              | 当前输入文本，也是表单提交值。                                 | `string`              | `''`         |
+| 名称                 | 说明                                                           | 类型                  | 默认值           |
+| -------------------- | -------------------------------------------------------------- | --------------------- | ---------------- |
+| `placeholder`        | input 占位文本。                                               | `string`              | `''`             |
+| `borderless`         | ghost 形态：移除边框、背景与阴影，保留 padding 与 focus ring。 | `boolean`             | `false`          |
+| `disabled`           | 禁用态，不可输入、不可展开下拉。                               | `boolean`             | `false`          |
+| `readonly`           | 只读态：不可输入、不可展开下拉。                               | `boolean`             | `false`          |
+| `required`           | 必填校验。                                                     | `boolean`             | `false`          |
+| `portal`             | 在 theme-owned overlay root 中渲染下拉 panel。                 | `boolean`             | `false`          |
+| `placement`          | 下拉 panel 位置，默认从触发器左下角向下展开。                  | `Placement`           | `'bottom-start'` |
+| `no-scroll-lock`     | 打开时不锁定页面滚动。                                         | `boolean`             | `false`          |
+| `allow-custom-value` | 允许 Enter 提交不在候选中的输入原文。                          | `boolean`             | `false`          |
+| `overlayContainer`   | 显式 Portal 容器（property，不是 attribute）。                 | `OverlayContainer`    | —                |
+| `name`               | 表单字段名。                                                   | `string`              | `''`             |
+| `aria-label`         | 无障碍名称。                                                   | `string \| null`      | `null`           |
+| `aria-labelledby`    | 无障碍名称引用。                                               | `string \| undefined` | —                |
+| `filter`             | 候选过滤模式：`contains`（默认）、`prefix` 或 `none`。         | `FilterMode`          | `'contains'`     |
+| `value`              | 当前输入文本，也是表单提交值。                                 | `string`              | `''`             |
 
 ### Events
 

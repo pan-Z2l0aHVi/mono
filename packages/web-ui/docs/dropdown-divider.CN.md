@@ -1,7 +1,4 @@
----
-component: dropdown-divider
-tag: web-ui-dropdown-divider
----
+# Dropdown Divider
 
 menu 里的 divider，用来切开成组的 menu item。
 

@@ -1,7 +1,4 @@
----
-component: spinner
-tag: web-ui-spinner
----
+# Spinner
 
 A loading spinner: place it declaratively in the page, or mount a full-screen instance with the static `WebUiSpinner.show()` / `hide()`. The eight blades are offset by 1/8 of a cycle each, forming one lap of chasing light.
 

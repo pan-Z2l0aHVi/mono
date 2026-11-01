@@ -5,8 +5,8 @@ import ExampleDoc from '@/components/example-doc'
 function Component() {
   return (
     <>
-      <ExampleDoc component="button" level="primary" />
-      <ExampleDoc component="button-group" level="secondary" />
+      <ExampleDoc component="button" />
+      <ExampleDoc component="button-group" />
     </>
   )
 }

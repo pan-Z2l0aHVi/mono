@@ -966,6 +966,37 @@ describe('WebUiAutocomplete 组件（浏览器）', () => {
     expect(panelRect.top).toBeGreaterThanOrEqual(wrapperRect.bottom - 1)
   })
 
+  it('placement="bottom" 把 panel 水平居中到 trigger', async () => {
+    const el = document.createElement('web-ui-autocomplete')
+    el.placement = 'bottom'
+    // 挂到视口中部：窄 trigger 上的居中 panel 会向两侧各溢出，贴边会触发 shift 夹取。
+    el.style.position = 'fixed'
+    el.style.left = '50vw'
+    el.style.top = '120px'
+    el.innerHTML = `
+      <span slot="trigger">T</span>
+      <web-ui-option value="wide" label="Wide">A much wider option label</web-ui-option>
+    `
+    document.body.append(el)
+    await el.updateComplete
+
+    const anchor = customTrigger(el)
+    anchor.click()
+    await el.updateComplete
+
+    const panel = el.shadowRoot!.querySelector<HTMLElement>('.autocomplete-overlay')!
+    await pollUntil(() => {
+      const anchorRect = anchor.getBoundingClientRect()
+      const panelRect = panel.getBoundingClientRect()
+      return Math.abs((panelRect.left + panelRect.right) / 2 - (anchorRect.left + anchorRect.right) / 2) < 1
+    }, 'placement=bottom 后 panel 没有水平居中到 trigger')
+
+    const anchorRect = anchor.getBoundingClientRect()
+    const panelRect = panel.getBoundingClientRect()
+    expect(panelRect.width, 'panel 需要比 trigger 宽，否则居中与 left-start 没有区别').toBeGreaterThan(anchorRect.width)
+    expect(panelRect.top).toBeGreaterThan(anchorRect.bottom)
+  })
+
   // D5：原用例主题是 focus ring 的视觉呈现（box-shadow / ::before 描边 / padding 度量），
   // 按 §5 不在契约 spec 断言（同口径先例：input/__tests__/focus.browser.spec.ts 文件头注释）。
   // 保留其中真正的公开面：焦点归宿 + 宿主 `focused` 反射（borderless 组合下同样成立）。

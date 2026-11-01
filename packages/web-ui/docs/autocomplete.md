@@ -1,7 +1,4 @@
----
-component: autocomplete
-tag: web-ui-autocomplete
----
+# Autocomplete
 
 A single-value selector that accepts input and filters candidates: typed text filters candidates by `option` label, and a selection fills the label back into the input and exposes that option's value as the readonly `selected-value`.
 
@@ -406,22 +403,23 @@ const frameworks = ['Vue', 'React', 'Svelte', 'Angular']
 
 ### Props
 
-| Name                 | Description                                                                                      | Type                  | Default      |
-| -------------------- | ------------------------------------------------------------------------------------------------ | --------------------- | ------------ |
-| `placeholder`        | Input placeholder text.                                                                          | `string`              | `''`         |
-| `borderless`         | Ghost form: removes the border, background, and shadow while keeping padding and the focus ring. | `boolean`             | `false`      |
-| `disabled`           | Disabled state: no input, no dropdown.                                                           | `boolean`             | `false`      |
-| `readonly`           | Readonly state: no input, no dropdown.                                                           | `boolean`             | `false`      |
-| `required`           | Required validation.                                                                             | `boolean`             | `false`      |
-| `portal`             | Renders the dropdown panel in the theme-owned overlay root.                                      | `boolean`             | `false`      |
-| `no-scroll-lock`     | Does not lock page scrolling while open.                                                         | `boolean`             | `false`      |
-| `allow-custom-value` | Allows Enter to submit input text that is not among the candidates.                              | `boolean`             | `false`      |
-| `overlayContainer`   | Explicit portal container (property, not attribute).                                             | `OverlayContainer`    | —            |
-| `name`               | Form field name.                                                                                 | `string`              | `''`         |
-| `aria-label`         | Accessible name.                                                                                 | `string \| null`      | `null`       |
-| `aria-labelledby`    | Accessible name reference.                                                                       | `string \| undefined` | —            |
-| `filter`             | Candidate filtering mode: `contains` (default), `prefix`, or `none`.                             | `FilterMode`          | `'contains'` |
-| `value`              | Current input text, also the form-submitted value.                                               | `string`              | `''`         |
+| Name                 | Description                                                                                            | Type                  | Default          |
+| -------------------- | ------------------------------------------------------------------------------------------------------ | --------------------- | ---------------- |
+| `placeholder`        | Input placeholder text.                                                                                | `string`              | `''`             |
+| `borderless`         | Ghost form: removes the border, background, and shadow while keeping padding and the focus ring.       | `boolean`             | `false`          |
+| `disabled`           | Disabled state: no input, no dropdown.                                                                 | `boolean`             | `false`          |
+| `readonly`           | Readonly state: no input, no dropdown.                                                                 | `boolean`             | `false`          |
+| `required`           | Required validation.                                                                                   | `boolean`             | `false`          |
+| `portal`             | Renders the dropdown panel in the theme-owned overlay root.                                            | `boolean`             | `false`          |
+| `placement`          | Placement of the dropdown panel; defaults to expanding downward from the trigger's bottom-left corner. | `Placement`           | `'bottom-start'` |
+| `no-scroll-lock`     | Does not lock page scrolling while open.                                                               | `boolean`             | `false`          |
+| `allow-custom-value` | Allows Enter to submit input text that is not among the candidates.                                    | `boolean`             | `false`          |
+| `overlayContainer`   | Explicit portal container (property, not attribute).                                                   | `OverlayContainer`    | —                |
+| `name`               | Form field name.                                                                                       | `string`              | `''`             |
+| `aria-label`         | Accessible name.                                                                                       | `string \| null`      | `null`           |
+| `aria-labelledby`    | Accessible name reference.                                                                             | `string \| undefined` | —                |
+| `filter`             | Candidate filtering mode: `contains` (default), `prefix`, or `none`.                                   | `FilterMode`          | `'contains'`     |
+| `value`              | Current input text, also the form-submitted value.                                                     | `string`              | `''`             |
 
 ### Events
 

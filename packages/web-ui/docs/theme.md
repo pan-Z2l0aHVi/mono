@@ -1,7 +1,4 @@
----
-component: theme
-tag: web-ui-theme
----
+# Theme
 
 Theme provider: defines foundation, color, layer, shadow, and motion tokens within its own subtree and acts as that subtree's theme-owned overlay root.
 

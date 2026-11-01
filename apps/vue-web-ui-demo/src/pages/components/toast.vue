@@ -11,5 +11,5 @@ import ExampleDoc from '@/components/example-doc/index.vue'
 </script>
 
 <template>
-  <ExampleDoc component="toast" level="primary" />
+  <ExampleDoc component="toast" />
 </template>

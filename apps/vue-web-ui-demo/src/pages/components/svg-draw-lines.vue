@@ -11,5 +11,5 @@ import ExampleDoc from '@/components/example-doc/index.vue'
 </script>
 
 <template>
-  <ExampleDoc component="svg-draw-lines" level="primary" />
+  <ExampleDoc component="svg-draw-lines" />
 </template>

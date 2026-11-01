@@ -1,7 +1,4 @@
----
-component: tooltip
-tag: web-ui-tooltip
----
+# Tooltip
 
 tooltip，支持指针与焦点触发；`content` 属性提供纯文本，`content` 插槽可放更丰富的内容。
 
@@ -201,7 +198,7 @@ const last = ref('—')
 
 | 名称               | 说明                                      | 类型               | 默认值  |
 | ------------------ | ----------------------------------------- | ------------------ | ------- |
-| `placement`        | Floating UI 位置，默认 `top`。            | `Placement`        | `'top'` |
+| `placement`        | tooltip 位置，默认 `top`。                | `Placement`        | `'top'` |
 | `show-delay`       | 显示延迟（毫秒）。                        | `number`           | `200`   |
 | `hide-delay`       | 隐藏延迟（毫秒）。                        | `number`           | `100`   |
 | `disabled`         | 禁用状态。                                | `boolean`          | `false` |

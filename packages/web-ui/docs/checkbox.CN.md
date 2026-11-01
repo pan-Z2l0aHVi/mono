@@ -1,7 +1,4 @@
----
-component: checkbox
-tag: web-ui-checkbox
----
+# Checkbox
 
 单个 checkbox，支持 Enter / Space 切换；与原生 `<form>` 集成，选中时把 `value` 提交进 `FormData`。
 

@@ -214,15 +214,18 @@ watch(bannerVisible, async () => {
   refreshToastTopOffset?.()
 })
 
+// 目标语种与文档在挂载后补载，降级可能晚于 onMounted：用 watch 才不会漏掉提示。
+watch(bootDegraded, degraded => {
+  if (!degraded) return
+  toast.warning('目标语种加载失败，暂时使用简体中文')
+  bootDegraded.value = false
+})
+
 onMounted(async () => {
   initPageScrollbars(document.body)
   const toastOffset = observeToastTopOffset()
   stopObservingToastTopOffset = toastOffset.stop
   refreshToastTopOffset = toastOffset.refresh
-  if (bootDegraded.value) {
-    toast.warning('目标语种加载失败，暂时使用简体中文')
-    bootDegraded.value = false
-  }
   await router.isReady()
   requestAnimationFrame(() => {
     const link = navSidebar.value?.getElement()?.querySelector('[data-active="true"]')
@@ -266,7 +269,6 @@ const navSections: NavSection[] = [
       { path: '/components/input-number', label: 'InputNumber' },
       { path: '/components/select', label: 'Select' },
       { path: '/components/autocomplete', label: 'Autocomplete' },
-      { path: '/components/dropdown', label: 'Dropdown' },
       { path: '/components/switch', label: 'Switch' },
       { path: '/components/slider', label: 'Slider' },
       { path: '/components/radio', label: 'Radio' },
@@ -293,6 +295,7 @@ const navSections: NavSection[] = [
       { path: '/components/drawer', label: 'Drawer' },
       { path: '/components/tooltip', label: 'Tooltip' },
       { path: '/components/popover', label: 'Popover' },
+      { path: '/components/dropdown', label: 'Dropdown' },
       { path: '/components/context-menu', label: 'ContextMenu' },
       { path: '/components/toast', label: 'Toast' },
       { path: '/components/image-preview', label: 'ImagePreview' },
@@ -322,6 +325,7 @@ function isNavActive(path: string) {
       -->
       <web-ui-layout
         ref="shellLayout"
+        class="mobile:[--wui-layout-sidebar-radius:38px]"
         header-glow
         sidebar-collapsible
         :sidebarCollapsed="sidebarCollapsed"
@@ -352,17 +356,15 @@ function isNavActive(path: string) {
           </web-ui-button>
           <span class="col-start-2 text-center">🎉 欢迎使用 web-ui 组件库！</span>
         </div>
+        <!--
+          移动端为前置导航区预留 60px，与 collapsed sidebar 使用同一基准。
+          移动端纵向内边距与 layout 的 `.mobile-toggle` 上间距（8px）一致，右侧控件才与左上角切换按钮同高对齐。
+        -->
         <div
           slot="header"
-          class="flex h-full w-full items-center justify-end gap-2 px-4 py-2 mobile:grid mobile:w-[calc(100vw-60px)] mobile:grid-cols-3 mobile:gap-1.5 mobile:px-2 mobile:py-1"
+          class="flex h-full w-full items-center justify-end gap-2 px-4 py-2 mobile:w-[calc(100vw-60px)] mobile:gap-1.5 mobile:px-2 mobile:py-2"
         >
-          <web-ui-select
-            trigger="icon"
-            :value="themeMotion"
-            class="justify-self-center"
-            aria-label="全局动效"
-            @change="updateThemeMotion"
-          >
+          <web-ui-select trigger="icon" :value="themeMotion" aria-label="全局动效" @change="updateThemeMotion">
             <web-ui-icon
               slot="trigger"
               :icon="
@@ -381,7 +383,7 @@ function isNavActive(path: string) {
           <web-ui-select
             trigger="icon"
             :value="themeAppearance"
-            class="justify-self-center"
+            placement="bottom"
             aria-label="全局主题"
             @change="updateThemeAppearance"
           >
@@ -400,7 +402,6 @@ function isNavActive(path: string) {
             :value="currentLocale"
             :disabled="localePending"
             :aria-busy="localePending"
-            class="justify-self-center"
             aria-label="全局语言"
             @change="updateLocale"
           >
@@ -414,7 +415,7 @@ function isNavActive(path: string) {
           slot="sidebar"
           ref="navSidebar"
           :options="appScrollbarsOptions"
-          class="relative z-20 h-full min-h-0 overflow-y-auto p-2 mobile:px-0"
+          class="relative z-20 h-full min-h-0 overflow-y-auto p-2 mobile:p-0"
           aria-label="应用导航"
         >
           <nav class="grid gap-1" aria-label="主导航">

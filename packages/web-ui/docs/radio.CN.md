@@ -1,7 +1,4 @@
----
-component: radio
-tag: web-ui-radio
----
+# Radio
 
 单个单选 button，与 `<web-ui-checkbox>` 共用选择控件的盒契约；`<web-ui-radio-group>` 负责在一组 option 之间保持单选。
 

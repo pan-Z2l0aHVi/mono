@@ -8,35 +8,27 @@ msgstr ""
 "Plural-Forms: nplurals=2\n"
 "X-Plurals-Order: one, other\n"
 
-#: src/components/example-doc/index.tsx
+#: src/components/codeblock/index.tsx
 msgid "已复制"
 msgstr "Copied"
 
-#: src/components/example-doc/index.tsx
+#: src/components/codeblock/index.tsx
 msgid "复制失败"
 msgstr "Copy failed"
 
-#: src/components/example-doc/index.tsx
+#: src/components/codeblock/index.tsx
 msgid "复制代码"
 msgstr "Copy code"
 
-#: src/components/example-doc/index.tsx
-msgid "示例代码框架"
-msgstr "Sample code framework"
-
-#: src/components/example-doc/index.tsx
-#: src/components/example-doc/index.tsx
+#: src/components/codeblock/index.tsx
+#: src/components/codeblock/index.tsx
 msgid "收起代码"
 msgstr "Collapse code"
 
-#: src/components/example-doc/index.tsx
-#: src/components/example-doc/index.tsx
+#: src/components/codeblock/index.tsx
+#: src/components/codeblock/index.tsx
 msgid "展开代码"
 msgstr "Expand code"
-
-#: src/components/example-doc/index.tsx
-msgid "示例"
-msgstr "Samples"
 
 #: src/components/not-found/index.tsx
 msgid "你要找的页面不存在"
@@ -271,13 +263,12 @@ msgstr "Feedback"
 msgid "组件总览"
 msgstr "Components"
 
-#: src/components/changelog/index.tsx
 #: src/components/root/index.tsx
 #: src/components/root/index.tsx
 #: src/components/root/index.tsx
 msgid "更新日志"
 msgstr "Changelog"
 
-#: src/components/changelog/index.tsx
-msgid "组件库各版本的变更记录。"
-msgstr "Release notes for each version of the component library."
+#: src/components/codeblock/index.tsx
+msgid "示例代码框架"
+msgstr "Example code framework"

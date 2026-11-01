@@ -1,7 +1,4 @@
----
-component: switch
-tag: web-ui-switch
----
+# Switch
 
 Switch, declaring `role="switch"` and `aria-checked`; a click toggles it immediately, and holding the track to drag horizontally or flicking it also sets the value, with both Space and Enter toggling from the keyboard.
 

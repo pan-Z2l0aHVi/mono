@@ -1,7 +1,4 @@
----
-component: input-number
-tag: web-ui-input-number
----
+# Input Number
 
 Numeric input with a step button on each side, supporting `min` / `max` / `step` / `precision`; out-of-range and invalid input converge back to a valid value at the commit point.
 

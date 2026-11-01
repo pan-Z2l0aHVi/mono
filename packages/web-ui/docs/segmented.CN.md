@@ -1,7 +1,4 @@
----
-component: segmented
-tag: web-ui-segmented
----
+# Segmented
 
 segmented（单选 button group），子项是 `<web-ui-segmented-trigger>`；`value` 同步选中项，并与原生 `<form>` 集成。
 

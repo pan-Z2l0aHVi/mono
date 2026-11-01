@@ -1,7 +1,4 @@
----
-component: badge
-tag: web-ui-badge
----
+# Badge
 
 badge / notification count: stacks a `count` corner badge on one corner of the default slot content; `dot` mode shows only a dot.
 

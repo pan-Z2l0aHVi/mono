@@ -1,7 +1,4 @@
----
-component: back-top
-tag: web-ui-back-top
----
+# Back Top
 
 回到顶部 button（`web-ui-back-top`）：滚动位置达到 `threshold` 后出现在角落，点击或按 Enter / Space 回到顶部。
 

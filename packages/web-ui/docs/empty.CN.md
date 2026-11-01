@@ -1,7 +1,4 @@
----
-component: empty
-tag: web-ui-empty
----
+# Empty
 
 empty state 占位：`title` 与 `description` 提供文案，`icon` / `action` 插槽补上图形与操作入口。组件不设 JS 旋钮——图形、文案、留白的尺寸与颜色全部走 `--wui-empty-*` 变量。
 

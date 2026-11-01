@@ -201,7 +201,6 @@ describe('应用外壳（浏览器）：导航 collapsed state 不跨视口泄�
           'InputNumber',
           'Select',
           'Autocomplete',
-          'Dropdown',
           'Switch',
           'Slider',
           'Radio',
@@ -212,7 +211,18 @@ describe('应用外壳（浏览器）：导航 collapsed state 不跨视口泄�
       ['展示', ['Collapse', 'EditableText', 'Empty', 'MiddleEllipsis', 'SVGDrawLines', 'Avatar', 'Badge']],
       [
         '反馈',
-        ['Dialog', 'Drawer', 'Tooltip', 'Popover', 'ContextMenu', 'Toast', 'ImagePreview', 'Spinner', 'Progress']
+        [
+          'Dialog',
+          'Drawer',
+          'Tooltip',
+          'Popover',
+          'Dropdown',
+          'ContextMenu',
+          'Toast',
+          'ImagePreview',
+          'Spinner',
+          'Progress'
+        ]
       ]
     ])
   })
@@ -300,6 +310,9 @@ describe('应用外壳（浏览器）：导航 collapsed state 不跨视口泄�
     expect(controls.every(bounds => bounds.width > 0 && bounds.left >= 0 && bounds.right <= window.innerWidth)).toBe(
       true
     )
+    const header = layoutRoot().querySelector<HTMLElement>('[slot="header"]')!
+    const headerPaddingRight = Number.parseFloat(getComputedStyle(header).paddingRight)
+    expect(controls.at(-1)!.right).toBeCloseTo(header.getBoundingClientRect().right - headerPaddingRight)
     expect(document.documentElement.scrollWidth).toBe(document.documentElement.clientWidth)
   })
 

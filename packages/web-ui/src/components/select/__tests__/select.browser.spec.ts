@@ -49,6 +49,38 @@ describe('WebUiSelect 组件（浏览器）', () => {
     expect(select.querySelector('[slot="trigger"]')?.textContent).toContain('T')
   })
 
+  it('placement="bottom" 把 panel 水平居中到 trigger', async () => {
+    const select = document.createElement('web-ui-select')
+    select.placement = 'bottom'
+    select.trigger = 'icon'
+    // 挂到视口中部：窄 trigger 上的居中 panel 会向两侧各溢出约 72px，贴边会触发 shift 夹取。
+    select.style.position = 'fixed'
+    select.style.left = '50vw'
+    select.style.top = '120px'
+    select.innerHTML =
+      '<span slot="trigger">T</span><web-ui-option value="wide" label="Wide">A much wider option label</web-ui-option>'
+    document.body.append(select)
+    await select.updateComplete
+
+    const trigger = select.shadowRoot!.querySelector<HTMLElement>('[role="combobox"]')!
+    trigger.click()
+    await select.updateComplete
+    const panel = select.shadowRoot!.querySelector<HTMLElement>('[role="listbox"]')!
+
+    await pollUntil(() => {
+      const triggerRect = trigger.getBoundingClientRect()
+      const panelRect = panel.getBoundingClientRect()
+      return Math.abs((panelRect.left + panelRect.right) / 2 - (triggerRect.left + triggerRect.right) / 2) < 1
+    }, 'placement=bottom 后 panel 没有水平居中到 trigger')
+
+    const triggerRect = trigger.getBoundingClientRect()
+    const panelRect = panel.getBoundingClientRect()
+    expect(panelRect.width, 'panel 需要比 trigger 宽，否则居中与 left-start 没有区别').toBeGreaterThan(
+      triggerRect.width
+    )
+    expect(panelRect.top).toBeGreaterThan(triggerRect.bottom)
+  })
+
   it('真实键盘输入可打开、导航、typeahead 并提交选择', async () => {
     const mountPoint = mountKeyboardIsolated()
     const select = document.createElement('web-ui-select')

@@ -1,5 +1,5 @@
 import '@/assets/global.css'
-import '@/generated/examples.css'
+import '@/generated/theme.css'
 import '@/locales/main.loader.js'
 
 import { createHead } from '@unhead/vue/client'
@@ -10,7 +10,7 @@ import { handleHotUpdate, routes } from 'vue-router/auto-routes'
 
 import BootError from '@/app/boot-error.vue'
 import App from '@/app/index.vue'
-import { bootstrapLocale, bootDegraded } from '@/i18n/locale'
+import { bootstrapLocale, bootDegraded, loadShellLocale } from '@/i18n/locale'
 
 // GitHub Pages 子路径 SPA
 // 通过其根 404 页面在 `redirect` 中保留了未匹配的 history 路由。
@@ -48,13 +48,28 @@ if (import.meta.hot) {
   handleHotUpdate(router)
 }
 
-const initial = await bootstrapLocale().catch(error => {
-  console.error('Language initialization failed', error)
-  createApp(BootError).mount('#app')
-})
+// 首帧只等源语种 catalog：文档与目标语种在挂载后补载（见下方 bootstrapLocale），避免整页
+// 空白等英文包。只有源语种也加载失败、壳无法渲染时才落到启动错误页。
+const shellReady = await loadShellLocale().then(
+  () => true,
+  error => {
+    console.error('Language initialization failed', error)
+    createApp(BootError).mount('#app')
+    return false
+  }
+)
 
-if (initial) {
-  bootDegraded.value = initial.degraded
-  if (initial.degraded) console.warn('Preferred language unavailable', initial.error)
+if (shellReady) {
   createApp(App).use(createPinia()).use(router).use(createHead()).mount('#app')
+  void bootstrapLocale().then(
+    initial => {
+      bootDegraded.value = initial.degraded
+      if (initial.degraded) console.warn('Preferred language unavailable', initial.error)
+    },
+    error => {
+      // 壳已按默认语种渲染：目标语种失败也只降级提示，不再撤下页面。
+      console.error('Language initialization failed', error)
+      bootDegraded.value = true
+    }
+  )
 }

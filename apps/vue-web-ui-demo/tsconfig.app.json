@@ -1,6 +1,12 @@
 {
   "extends": "@greypan/tsconfig/vue.json",
-  "exclude": ["src/**/__tests__/*"],
+  "exclude": [
+    "src/**/__tests__/*",
+    // 生成器把所有围栏原样落盘；本端只执行 `.vue`（`exec: ['vue']`），`.ts` / `.tsx` 是别的集成
+    // 表面的示例源码，按 Vue 的 JSX 类型检查只会得到无关报错。
+    "src/generated/codeblock/**/*.ts",
+    "src/generated/codeblock/**/*.tsx"
+  ],
   "include": ["src/**/*", "src/**/*.vue", "env.d.ts", "auto-imports.d.ts", "./typed-router.d.ts"],
   "compilerOptions": {
     "paths": {

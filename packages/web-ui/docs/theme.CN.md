@@ -1,7 +1,4 @@
----
-component: theme
-tag: web-ui-theme
----
+# Theme
 
 主题提供者：在自己的子树内定义基础、颜色、层级、阴影与动效 token，并作为该子树的 theme-owned overlay root。
 

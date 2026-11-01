@@ -1,7 +1,4 @@
----
-component: textarea
-tag: web-ui-textarea
----
+# Textarea
 
 A multiline text input with a clear button, autosize, and prefix/suffix slots; focus is delegated to the native textarea inside the shadow root.
 

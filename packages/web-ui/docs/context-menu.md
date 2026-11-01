@@ -1,7 +1,4 @@
----
-component: context-menu
-tag: web-ui-context-menu
----
+# Context Menu
 
 Right-click context menu: the first child element is the trigger area and the remaining child elements are menu items (`<web-ui-dropdown-item>` and the like). While open the menu is modal, and clicking blank space only closes the menu.
 

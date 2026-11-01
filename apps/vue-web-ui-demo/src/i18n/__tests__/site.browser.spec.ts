@@ -3,42 +3,18 @@ import '@/assets/global.css'
 import { local } from '@greypan/browser-kit'
 import type { WebUiSelect, WebUiTheme } from '@greypan/web-ui'
 import { createHead } from '@unhead/vue/client'
-import { flushPromises, mount } from '@vue/test-utils'
+import { mount } from '@vue/test-utils'
 import { beforeEach, expect, it, vi } from 'vite-plus/test'
 import { userEvent } from 'vite-plus/test/browser'
 import { nextTick } from 'vue'
 import { createMemoryHistory, createRouter } from 'vue-router'
 
 import AppShell from '@/app/index.vue'
-import { exampleDocs as englishDocs } from '@/generated/en/examples'
-import { exampleDocs as chineseDocs } from '@/generated/examples'
 import ButtonPage from '@/pages/components/button.vue'
 import Home from '@/pages/home/index.vue'
 
-import { prepareExamples } from '../examples'
+import { loadMeta } from '../examples'
 import { loadDemoLocale, localeSettled } from '../locale'
-
-// 保留真实双语数据与示例模块，只缩小此交互回归的语料；覆盖同文档多例和跨文档准备。
-vi.mock('@/generated/examples', async importOriginal => {
-  const module = await importOriginal<typeof import('@/generated/examples')>()
-  return {
-    ...module,
-    exampleDocs: module.exampleDocs.map(doc => ({
-      ...doc,
-      samples: doc.samples.slice(0, doc.component === 'button' ? 2 : 1)
-    }))
-  }
-})
-vi.mock('@/generated/en/examples', async importOriginal => {
-  const module = await importOriginal<typeof import('@/generated/en/examples')>()
-  return {
-    ...module,
-    exampleDocs: module.exampleDocs.map(doc => ({
-      ...doc,
-      samples: doc.samples.slice(0, doc.component === 'button' ? 2 : 1)
-    }))
-  }
-})
 
 async function mountShell(path: string) {
   const router = createRouter({
@@ -87,10 +63,9 @@ async function select(label: string, value: string) {
   return host
 }
 
-function textOf(html: string) {
-  const el = document.createElement('div')
-  el.innerHTML = html
-  return el.textContent
+/** 文档里命中 `exec` 的代码块数量：预览区一个对一条。 */
+function previewCountOf(nodes: Awaited<ReturnType<typeof loadMeta>>) {
+  return nodes.flatMap(node => (node.label === 'codeblock' && node.load ? [node] : [])).length
 }
 
 beforeEach(async () => {
@@ -114,7 +89,6 @@ it('首页通过全局选择器切换壳文案，更新偏好并保留路由和�
       document.querySelectorAll('web-ui-select[aria-label="Global theme"] web-ui-option')
     ).map(option => option.textContent?.trim())
     expect(englishThemeOptions).toEqual(expect.arrayContaining(['Light', 'Dark', 'Follow system']))
-    expect(wrapper.text()).toContain('Variants, sizes, icons, loading states')
     // 语料已就位，这次渲染也必然把受控的 `:value` 写回提交值；在这里读，不与异步加载赛跑。
     expect(language.value, '受控回写收敛到已提交语言').toBe('en')
     expect(document.documentElement.lang).toBe('en')
@@ -128,52 +102,30 @@ it('首页通过全局选择器切换壳文案，更新偏好并保留路由和�
   }
 })
 
-it('组件页切换文档、API、运行示例与双框架源码，保留当前路由和主题', async () => {
+it('组件页切换文档与运行示例，保留当前路由和主题', async () => {
   local.set('theme-appearance', 'dark')
   const { router, wrapper } = await mountShell('/home')
   try {
     expect(wrapper.find('web-ui-theme').element as WebUiTheme).toHaveProperty('appearance', 'dark')
     await router.push('/components/button')
-    const en = englishDocs.find(doc => doc.component === 'button')!
-    await vi.waitFor(() => expect(wrapper.find('[data-example-intro]').element.textContent).toBe(textOf(en.introHtml)))
-    expect(wrapper.text()).toContain('Samples')
+
+    const buttonDoc = () => wrapper.find('[data-example-doc="button"]')
+    await vi.waitFor(() => expect(buttonDoc().exists()).toBe(true))
+    expect(buttonDoc().text()).toContain('Samples')
     expect(wrapper.find('web-ui-button[aria-label="Copy code"]').exists()).toBe(true)
-    const buttonDoc = wrapper.find('[data-example-doc="button"]')
-    const first = buttonDoc.find('[data-sample-preview]')
-    await prepareExamples('en', englishDocs, ['button', 'button-group'])
-    await flushPromises()
-    expect(first.find('web-ui-button').exists()).toBe(true)
-    const oldPreview = first.element.firstElementChild
-    expect(buttonDoc.text()).toContain('Name')
-    expect(first.text()).toContain('No variant (also glass)')
-    expect(wrapper.find('[data-example-doc="button-group"] [data-sample-preview]').text()).toContain('Left')
-    const sizes = buttonDoc.findAll('[data-sample]')[1]!
-    const source = () => sizes.find('[data-code] pre').element.textContent
-    expect(sizes.find('[data-sample-preview]').text()).toContain('Default 36')
-    expect(source()).toContain('Default 36')
-    expect(source()).toContain('<template>')
-    await userEvent.click(
-      sizes.findAll('web-ui-segmented-trigger').find(trigger => trigger.text() === 'React')!.element
-    )
-    await vi.waitFor(() => expect(source()).toContain('export default function Demo()'))
+    expect(buttonDoc().text()).toContain('No variant (also glass)')
+
+    // 预览只挂在 `exec` 命中的围栏上：数量与 meta 里带 load 的代码块一致。
+    const previews = previewCountOf(await loadMeta('en', 'button'))
+    await vi.waitFor(() => expect(buttonDoc().findAll('[data-codeblock-preview]')).toHaveLength(previews))
+
     const language = await select('Global language', 'zh-CN')
     await localeSettled()
     await nextTick()
-    const zh = chineseDocs.find(doc => doc.component === 'button')!
-    expect(wrapper.find('[data-example-intro]').element.textContent).toBe(textOf(zh.introHtml))
     // 语料已就位，这次渲染也必然把受控的 `:value` 写回提交值；在这里读，不与异步加载赛跑。
     expect(language.value, '受控回写收敛到已提交语言').toBe('zh-CN')
-    await vi.waitFor(() => expect(first.find('web-ui-button').exists()).toBe(true))
-    await vi.waitFor(() => expect(first.element.firstElementChild).not.toBe(oldPreview))
-    expect(first.text()).toContain('没写 variant（同样是 glass）')
-    expect(wrapper.find('[data-example-doc="button-group"] [data-sample-preview]').text()).toContain('左')
-    expect(sizes.find('[data-sample-preview]').text()).toContain('默认 36')
-    expect(source()).toContain('默认 36')
-    expect(source()).toContain('export default function Demo()')
-    await userEvent.click(sizes.findAll('web-ui-segmented-trigger').find(trigger => trigger.text() === 'Vue')!.element)
-    await vi.waitFor(() => expect(source()).toContain('<template>'))
-    expect(source()).toContain('默认 36')
-    expect(buttonDoc.text()).toContain('名称')
+    await vi.waitFor(() => expect(buttonDoc().text()).toContain('没写 variant（同样是 glass）'))
+    expect(wrapper.find('web-ui-button[aria-label="复制代码"]').exists()).toBe(true)
     expect(document.documentElement.lang).toBe('zh-CN')
     expect(localStorage.getItem('locale')).toBe('zh-CN')
     expect(router.currentRoute.value.path).toBe('/components/button')

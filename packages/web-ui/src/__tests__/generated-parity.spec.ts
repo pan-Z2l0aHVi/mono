@@ -1,86 +1,127 @@
-import { readFileSync, readdirSync } from 'node:fs'
+import { readdirSync, readFileSync } from 'node:fs'
 import path from 'node:path'
 
 import { describe, expect, it } from 'vite-plus/test'
 
-// 语料 join 的跨 app 一半，由语料所有者（本包）持有：两个 demo 拿到的必须是逐字节相同的数据与
-// 样式，「视觉一致」由此变成结构保证，而不是靠人肉同步两份文件；两端页面结构也要对齐（路由名
-// 集合 == 页面名集合，#362 起不要求 1:1，只要求两侧集合相等）。各侧自己的判据（显示 == 围栏、
-// 落盘文件 == 围栏、页面 ↔ 语料不互为孤儿）分别住在两个 demo 的 example-docs.spec.ts 里；
-// 生成器那侧的判据在 `@greypan/md-to-comp` 的单测里。
+// 语料 join 的跨 app 一半，由语料所有者（本包）持有：两个 demo 拿到的必须是逐字节相同的 source
+// markdown 产物与样式，「视觉一致」由此变成结构保证，而不是靠人肉同步两份文件；两端页面结构也要
+// 对齐（路由名集合 == 页面名集合，#362 起不要求 1:1，只要求两侧集合相等）。各侧自己的判据
+// （显示 == 围栏、落盘文件 == 围栏、页面 ↔ 语料不互为孤儿）分别住在两个 demo 的 example-docs.spec.ts
+// 里；生成器那侧的判据在 `@greypan/md-to-meta` 的单测里。
 const root = path.resolve(import.meta.dirname, '../../../..')
 const reactGenerated = path.join(root, 'apps', 'react-web-ui-demo', 'src', 'generated')
-const reactZh = path.join(reactGenerated, 'zh-CN')
-const reactEn = path.join(reactGenerated, 'en')
 const vueGenerated = path.join(root, 'apps', 'vue-web-ui-demo', 'src', 'generated')
 const reactRoutes = path.join(root, 'apps', 'react-web-ui-demo', 'src', 'routes', 'components')
 const vuePages = path.join(root, 'apps', 'vue-web-ui-demo', 'src', 'pages', 'components')
 
 const only = (a: string[], b: string[]) => a.filter(value => !b.includes(value))
 const sameSet = (a: string[], b: string[]) => a.length === b.length && a.every(value => b.includes(value))
+const filesIn = (dir: string) => readdirSync(dir).sort()
+const metaFilesIn = (dir: string) => filesIn(dir).filter(name => name.endsWith('.meta.js'))
+
+/**
+ * meta 里唯一跟宿主有关的一处：`exec` 命中的围栏多一行字面 thunk。两侧 `exec` 语言不同
+ * （React 走 `tsx`、Vue 走 `vue`），所以比对前只摘掉这一段，其余必须逐字节相同。
+ */
+const withoutLoad = (module: string) => module.replace(/, load: \(\) => import\('[^']+'\)/g, '')
 
 describe('两端生成物同源', () => {
-  const reactModule = readFileSync(path.join(reactZh, 'examples.ts'), 'utf8')
-  const reactEnModule = readFileSync(path.join(reactEn, 'examples.ts'), 'utf8')
-  const vueModule = readFileSync(path.join(vueGenerated, 'examples.ts'), 'utf8')
-  const reactDemoManifest = readFileSync(path.join(reactZh, 'demo-manifest.ts'), 'utf8')
-  const reactEnDemoManifest = readFileSync(path.join(reactEn, 'demo-manifest.ts'), 'utf8')
-  const vueDemoManifest = readFileSync(path.join(vueGenerated, 'demo-manifest.ts'), 'utf8')
-  const vueEnDemoManifest = readFileSync(path.join(vueGenerated, 'en', 'demo-manifest.ts'), 'utf8')
-
-  it('中文语种的 examples.ts 逐字节一致', () => {
-    expect(reactModule, 'react 的中文数据与 vue demo 的生成数据必须逐字节一致').toBe(vueModule)
+  it('生成文件集合一致', () => {
+    const reactFiles = filesIn(reactGenerated)
+    const vueFiles = filesIn(vueGenerated)
+    expect(reactFiles.length, '两侧生成目录都为空：对齐判据空转').toBeGreaterThan(0)
+    expect(vueFiles, '两端生成目录必须产出同一批文件').toEqual(reactFiles)
   })
 
-  it('demo 清单在同语种两端逐字节一致，且包含新增示例', () => {
-    expect(reactDemoManifest, '中文 demo 清单必须与 Vue 站一致').toBe(vueDemoManifest)
-    expect(reactEnDemoManifest, '英文 demo 清单必须与 Vue 站一致').toBe(vueEnDemoManifest)
-    expect(reactDemoManifest).toContain("'progress--basic'")
-    expect(reactEnDemoManifest).toContain("'progress--basic'")
+  it('codeblock 目录逐字节一致', () => {
+    const reactBlocks = path.join(reactGenerated, 'codeblock')
+    const vueBlocks = path.join(vueGenerated, 'codeblock')
+    const names = filesIn(reactBlocks)
+    expect(names.length, 'codeblock 目录为空：对齐判据空转').toBeGreaterThan(0)
+    expect(filesIn(vueBlocks), '两端 codeblock 文件集合必须一致').toEqual(names)
+    for (const name of names) {
+      expect(readFileSync(path.join(vueBlocks, name), 'utf8'), `codeblock/${name} 在两端必须逐字节一致`).toBe(
+        readFileSync(path.join(reactBlocks, name), 'utf8')
+      )
+    }
   })
 
-  it('examples.css 逐字节一致', () => {
+  it('theme.css 逐字节一致', () => {
+    expect(readFileSync(path.join(vueGenerated, 'theme.css'), 'utf8')).toBe(
+      readFileSync(path.join(reactGenerated, 'theme.css'), 'utf8')
+    )
+  })
+
+  it.each(metaFilesIn(reactGenerated).map(name => [name]))('meta 模块 %s 除 load 外逐字节一致', name => {
     expect(
-      readFileSync(path.join(reactGenerated, 'examples.css'), 'utf8'),
-      'react 与 vue demo 的生成样式必须逐字节一致'
-    ).toBe(readFileSync(path.join(vueGenerated, 'examples.css'), 'utf8'))
+      withoutLoad(readFileSync(path.join(vueGenerated, name), 'utf8')),
+      `${name} 的文档结构必须与 React 端一致`
+    ).toBe(withoutLoad(readFileSync(path.join(reactGenerated, name), 'utf8')))
+  })
+
+  it('并排的类型声明逐字节一致，且每份 meta 都有', () => {
+    const names = metaFilesIn(reactGenerated)
+    for (const name of names) {
+      const declaration = name.replace(/\.js$/, '.d.ts')
+      expect(filesIn(reactGenerated), `缺少 ${declaration}`).toContain(declaration)
+      expect(
+        withoutLoad(readFileSync(path.join(vueGenerated, declaration), 'utf8')),
+        `${declaration} 在两端必须一致`
+      ).toBe(withoutLoad(readFileSync(path.join(reactGenerated, declaration), 'utf8')))
+    }
+  })
+
+  // `load` 是宿主 `exec` 语言的判据：React 只把 `.tsx` 围栏当可执行示例，Vue 只认 `.vue`。
+  // 所有围栏照常落盘，所以两端的 codeblock 目录相同，差的是哪几条围栏带 `load`。
+  it.each([
+    ['react-web-ui-demo', reactGenerated, '.tsx'],
+    ['vue-web-ui-demo', vueGenerated, '.vue']
+  ] as const)('%s 的 load 只挂在 %s 围栏上，且指向真实文件', (app, dir, extension) => {
+    const blocks = filesIn(path.join(dir, 'codeblock'))
+    const loadLines = metaFilesIn(dir)
+      .map(name => readFileSync(path.join(dir, name), 'utf8'))
+      .join('\n')
+      .split('\n')
+      .filter(line => line.includes('load: () => import('))
+    expect(loadLines.length, `${app} 没有任何可执行围栏`).toBeGreaterThan(0)
+
+    for (const line of loadLines) {
+      const specifier = line.match(/load: \(\) => import\('([^']+)'\)/)?.[1]
+      if (!specifier) throw new Error(`load 没有字面 specifier：${line.slice(0, 120)}`)
+      const relativePath = specifier.replace('./codeblock/', '')
+      expect(relativePath.endsWith(extension), `${app} 的 load 指向了非 ${extension} 围栏：${relativePath}`).toBe(true)
+      expect(blocks, `${app} 的 load 指向了不存在的文件：${relativePath}`).toContain(relativePath)
+    }
   })
 
   // 英文译文逐篇手写到 `<name>.md`，机器不判译文质量，但「哪篇有译文」是集合关系：中文有而英文没有
   // 会让英文站整页空白，英文有而中文没有会让英文产物多出没有源语料的孤儿。
-  it('英文语种与中文语种收同一批文档，且单独成一份', () => {
-    const componentsOf = (module: string) => [...module.matchAll(/"component": "([^"]+)"/g)].map(m => m[1])
-    expect(reactEnModule, '英文语种应有自己的生成数据').not.toBe(reactModule)
-    expect(
-      componentsOf(reactEnModule),
-      `英文缺译文：${only(componentsOf(reactModule), componentsOf(reactEnModule)).join(', ')}`
-    ).toEqual(componentsOf(reactModule))
+  // CHANGELOG 是唯一例外：上游只提供英文版，它是英文站独有的输入。
+  it('中英文档集合对齐（CHANGELOG 只存在于英文）', () => {
+    const names = metaFilesIn(reactGenerated)
+    const zhNames = names.filter(name => name.endsWith('.CN.meta.js')).map(name => name.replace('.CN.meta.js', ''))
+    const enNames = names.filter(name => !name.endsWith('.CN.meta.js')).map(name => name.replace('.meta.js', ''))
+    expect(zhNames.length, '没有中文语料：对齐判据空转').toBeGreaterThan(0)
+    expect(only(enNames, zhNames), '英文独有的文档只能是 CHANGELOG').toEqual(['CHANGELOG'])
+    expect(only(zhNames, enNames), `英文缺译文：${only(zhNames, enNames).join(', ')}`).toEqual([])
+  })
+})
+
+describe('手写表格从 markdown 一路走到产物', () => {
+  it('单元格里的 \\| 转义在产物里还原成 |', () => {
+    const button = readFileSync(path.join(reactGenerated, 'button.meta.js'), 'utf8')
+    // md 里写的是 `` `'primary' \| 'secondary' \| …` ``，meta 里必须是解掉转义后的整格文本。
+    expect(button).toContain(`content: "<code>'primary' | 'secondary' | 'ghost' | 'danger' | 'glass'</code>"`)
+    expect(button).toContain(`content: "<code>'glass'</code>"`)
   })
 
-  // 断言的是「手写的值列从 markdown 的表格一路走到产物」这件事本身：md 里写的是
-  // `` `'primary' \| 'secondary' \| …` ``，产物里必须是解掉转义后的 `'primary' | 'secondary' | …`，
-  // 所以这一条同时是 `\|` 往返的判据。行是 `string[][]`，列序按 markdown 原样保留。
-  it('手写值列从 markdown 一路走到产物（\\| 往返）', () => {
-    expect(reactModule).toMatch(
-      /"variant",\n\s*"<p>视觉变体[^"]*<\/p>",\n\s*"'primary' \| 'secondary' \| 'ghost' \| 'danger' \| 'glass'",\n\s*"'glass'"/
-    )
-    expect(reactModule).toMatch(/'button' \| 'submit' \| 'reset'/)
-  })
-
-  // button.md 没写 ### Events 小节，所以它不该凭空长出一张 Events 表。按「下一个 component 条目」
-  // 切片，不写死紧随其后的组件名——文档集增长后，button 后面未必还是 collapse。
-  it('没写的 API 小节不会凭空长出表', () => {
-    const start = reactModule.indexOf('"component": "button"')
-    expect(start).toBeGreaterThan(-1)
-    const next = reactModule.indexOf('"component": "', start + 1)
-    expect(reactModule.slice(start, next)).not.toContain('"key": "events"')
-  })
-
-  // 把名字与那句中文描述一起钉住：表格是这份数据的唯一来源，量的是「手写进 collapse.md 的一行
-  // 完整走到产物」。只钉名字不够——dropdown.md 也有一行 `open-change`，那会替它过关。
-  it('手写的名称与描述逐字落到产物', () => {
-    expect(reactModule).toMatch(/"open-change",\n\s*"<p>用户手势开合后的通知：/)
-    expect(reactModule).toMatch(/"content",\n\s*"<p>collapse content。/)
+  it('表格按结构落成 table > tr > th/td，而不是拼成一段字符串', () => {
+    const collapse = readFileSync(path.join(reactGenerated, 'collapse.meta.js'), 'utf8')
+    expect(collapse).toContain(`label: 'table',`)
+    expect(collapse).toContain(`{ label: 'th', content: "Name" }`)
+    expect(collapse).toContain(`{ label: 'td', content: "<code>open</code>" }`)
+    // 名字与描述一起钉住：只钉名字不够，dropdown.md 也有同名的一行。
+    expect(collapse).toMatch(/label: 'td', content: "Notification after a user-gesture toggle:/)
   })
 })
 

@@ -1,7 +1,4 @@
----
-component: input
-tag: web-ui-input
----
+# Input
 
 文本 input，支持清除 button 与前后缀插槽，并与原生 `<form>` 集成；宿主自身不可聚焦，焦点委托到 shadow 内的原生 input。
 

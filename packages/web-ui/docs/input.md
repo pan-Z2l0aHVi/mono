@@ -1,7 +1,4 @@
----
-component: input
-tag: web-ui-input
----
+# Input
 
 A text input with a clear button and prefix/suffix slots that integrates with the native `<form>`; the host itself is not focusable, and focus is delegated to the native input inside the shadow root.
 

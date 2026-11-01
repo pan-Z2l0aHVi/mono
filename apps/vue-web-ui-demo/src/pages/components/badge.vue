@@ -11,5 +11,5 @@ import ExampleDoc from '@/components/example-doc/index.vue'
 </script>
 
 <template>
-  <ExampleDoc component="badge" level="primary" />
+  <ExampleDoc component="badge" />
 </template>

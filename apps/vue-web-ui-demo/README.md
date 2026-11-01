@@ -30,7 +30,7 @@ mise exec -- pnpm exec wuchale --clean
 
 PO 是入库的译文源；loader/catalog 由 wuchale 管理。两端应用的 `catalog.spec.ts` 随 `pnpm run test` 检查空译文、消息集合和提取一致性，复用同一检查实现。
 
-正文、API、双框架源码和 Vue 运行示例来自已有 `.CN.md` / `.md`，由 md-to-comp 分别写入 `src/generated/` 与 `src/generated/en/`，共享顶层样式，不由 wuchale 二次处理。语言切换会重建运行示例，其内部交互状态可以重置；站点主题、侧栏和路由状态保留。
+正文、API、双框架源码和 Vue 运行示例来自已有 `.CN.md` / `.md`，由 md-to-meta 平铺写入 `src/generated/`（中文 `<name>.CN.meta.js`、英文 `<name>.meta.js`，共享 `theme.css`），不由 wuchale 二次处理。语言切换会重建运行示例，其内部交互状态可以重置；站点主题、侧栏和路由状态保留。
 
 `src/i18n/locale.ts` 串行准备 catalog 和文档，仅在两者成功后提交当前语言、document.lang 与偏好。启动先准备检测语种再挂载；失败尝试中文，保留原偏好并提示降级，双重失败显示可重试错误。站内切换期间禁用语言选择器，失败保留当前界面并显示可访问 toast，提示刷新后重试。失败的动态 import 会被浏览器缓存，启动错误页的重试按钮也通过刷新页面重新加载模块。
 

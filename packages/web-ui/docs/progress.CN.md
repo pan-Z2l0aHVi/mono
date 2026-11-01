@@ -1,7 +1,4 @@
----
-component: progress
-tag: web-ui-progress
----
+# Progress
 
 progress / 进度指示：用一条线性轨道表达已完成比例，也支持不暴露具体数值的 indeterminate 状态。
 

@@ -1,7 +1,4 @@
----
-component: button-group
-tag: web-ui-button-group
----
+# Button Group
 
 把若干个 `<web-ui-button>` 并成一组：组只负责成员之间的视觉连体（共享一块 glass 底、相邻 button 之间画分割线）与排列方向，不管选中态，也不改变成员各自的事件与表单行为。成员自己的 `size` 在组内被忽略，一律按 30px 高渲染。
 

@@ -1,7 +1,4 @@
----
-component: popover
-tag: web-ui-popover
----
+# Popover
 
 A popover anchored to a trigger element. It supports three trigger modes, click / hover / manual; the `trigger` slot holds the trigger and the default slot holds the panel content.
 
@@ -226,7 +223,7 @@ function close() {
 | ------------------ | --------------------------------------------------- | -------------------------------- | ---------- |
 | `open`             | Popover visibility.                                 | `boolean`                        | `false`    |
 | `disabled`         | Disabled state.                                     | `boolean`                        | `false`    |
-| `placement`        | Floating UI placement.                              | `Placement`                      | `'bottom'` |
+| `placement`        | Panel placement; defaults to `bottom`.              | `Placement`                      | `'bottom'` |
 | `offset`           | Distance from the anchor (px).                      | `number`                         | `8`        |
 | `trigger`          | Trigger mode: `click` (default), `hover`, `manual`. | `'click' \| 'hover' \| 'manual'` | `'click'`  |
 | `portal`           | Renders in the theme-owned overlay root.            | `boolean`                        | `false`    |

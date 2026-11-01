@@ -1,7 +1,4 @@
----
-component: button
-tag: web-ui-button
----
+# Button
 
 button triggers an immediate action: submitting a form, opening a dialog, or toggling state.
 
