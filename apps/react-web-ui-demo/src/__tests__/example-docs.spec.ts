@@ -87,11 +87,14 @@ describe('页面显示的代码与 markdown 围栏同源', () => {
   for (const locale of localeSurfaces) {
     it(`${locale.label}：每条围栏都落成 codeblock，可见文本逐字等于围栏原文`, async () => {
       let checked = 0
-      for (const name of locale.files) {
-        const component = name.slice(0, -locale.suffix.length)
+      // 一次并发装载全部 meta：逐个 await 会让单测在 CI 上串起几十次冷 import，撞默认的 5s 上限。
+      const metas = await Promise.all(
+        locale.files.map(name => loadMeta(locale.label, name.slice(0, -locale.suffix.length)))
+      )
+      for (const [fileIndex, name] of locale.files.entries()) {
         const markdown = readFileSync(path.join(docsDir, name), 'utf8')
         const fences = fencesOf(markdown)
-        const blocks = codeblocksOf(await loadMeta(locale.label, component))
+        const blocks = codeblocksOf(metas[fileIndex]!)
         expect(blocks, `${name}：围栏数 ${fences.length} 与 meta 里的 codeblock 数不一致`).toHaveLength(fences.length)
         blocks.forEach((block, index) => {
           const fence = fences[index]!
@@ -116,11 +119,14 @@ describe('每条围栏落成可编译代码文件', () => {
   for (const locale of localeSurfaces) {
     it(`${locale.label}：落盘文件与围栏逐字相同（只差行尾换行），load 只给 exec 语言`, async () => {
       let fileCount = 0
-      for (const name of locale.files) {
-        const component = name.slice(0, -locale.suffix.length)
+      // 与上一条同因：并发装载，避免单测内串行等待几十次冷 import。
+      const metas = await Promise.all(
+        locale.files.map(name => loadMeta(locale.label, name.slice(0, -locale.suffix.length)))
+      )
+      for (const [fileIndex, name] of locale.files.entries()) {
         const markdown = readFileSync(path.join(docsDir, name), 'utf8')
         const fences = fencesOf(markdown)
-        const blocks = codeblocksOf(await loadMeta(locale.label, component))
+        const blocks = codeblocksOf(metas[fileIndex]!)
         blocks.forEach((block, index) => {
           const fence = fences[index]!
           const exec = EXEC_LANGUAGES.includes(fence.lang)
@@ -146,9 +152,10 @@ describe('每条围栏落成可编译代码文件', () => {
 
 describe('中英语料骨架一致', () => {
   it('节点 label 序列与标题逐字相同', async () => {
-    for (const name of docNames) {
-      const zh = await loadMeta('zh-CN', name)
-      const en = await loadMeta('en', name)
+    const pairs = await Promise.all(
+      docNames.map(async name => [name, await loadMeta('zh-CN', name), await loadMeta('en', name)] as const)
+    )
+    for (const [name, zh, en] of pairs) {
       expect(
         zh.map(node => node.label),
         `${name}：中英 meta 的节点序列不同，译文改变了文档结构`
