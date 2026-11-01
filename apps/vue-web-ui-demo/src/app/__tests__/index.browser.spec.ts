@@ -43,35 +43,79 @@ function layoutRoot() {
   return element
 }
 
+function bannerIsOpen() {
+  return document.querySelector('[slot="banner"]') !== null
+}
+
 function bannerCloseButton() {
   const button = document.querySelector('[slot="banner"] web-ui-button')
   if (!button) throw new Error('banner close button not found')
   return button
 }
 
+/** 单次 Playwright click 的动作预算；超时由 Playwright 自己 reject，不占满整个测试预算。 */
+const CLICK_ATTEMPT_TIMEOUT_MS = 2_000
+/** 点击的有界重试轮数；每轮重新解析节点、重新量中心、重新做命中测试。 */
+const CLICK_MAX_ATTEMPTS = 3
+
 /**
- * 点 banner 关闭按钮中心。banner 是 v-if 节点，toast 挂载后 header bottom 会经 rAF 改
- * `--wui-toast-top-offset`，布局在点击前后都可能再位移；所以每一轮重试都重新取按钮、重新
- * 量中心、重新做命中测试，点击也交给 userEvent 在派发时重新解析目标，跨轮不缓存任何节点
- * 或坐标。
+ * 点 banner 关闭按钮中心，成功判据是 banner 已从 DOM 消失，而不是 click 没有抛错：banner 是
+ * v-if 节点，关闭按钮是唯一把它摘掉的动作；Playwright 可能在 click 已经生效、节点被摘掉之后
+ * 仍然报错，此时按「click 没抛错」判负，下一次重试只会去解析一个已经不存在的按钮，把已达成的
+ * 目标状态变成 `banner close button not found`。所以调用前 banner 已不存在、或任一轮之后 banner
+ * 消失，都按成功返回；banner 还在时才继续解析、命中测试与重试。
+ *
+ * banner 还在时，toast 挂载后 header bottom 会经 rAF 改 `--wui-toast-top-offset`，布局在点击前后
+ * 都可能再位移；所以每一轮都重新取按钮、重新量中心、重新做命中测试，跨轮不缓存任何节点或坐标。
+ *
+ * 点击本身也按轮给 Playwright 一个有界预算：它默认的重试预算等于整个 Vitest 测试预算，一次 stall
+ * 就吃掉 15s，失败只剩 “timed out while waiting for click”。每轮超时后把 Playwright 的原始报错
+ * 收进聚合错误，全部失败且 banner 仍在时一次抛出；命中测试本身仍由 `vi.waitFor` 在自己的窗口里重试。
  */
 async function clickBannerCloseButtonAtCenter() {
-  await vi.waitFor(
-    async () => {
-      const button = bannerCloseButton()
-      const bounds = button.getBoundingClientRect()
-      const x = bounds.left + bounds.width / 2
-      const y = bounds.top + bounds.height / 2
+  const failures: string[] = []
+  for (let attempt = 1; attempt <= CLICK_MAX_ATTEMPTS; attempt += 1) {
+    if (!bannerIsOpen()) return
 
-      const hitTarget = document.elementFromPoint(x, y)
-      expect(
-        hitTarget === button || (hitTarget !== null && button.contains(hitTarget)),
-        `banner close button center (${x}, ${y}) should hit the button or its contents`
-      ).toBe(true)
+    let button: Element
+    try {
+      button = await vi.waitFor(
+        () => {
+          const button = bannerCloseButton()
+          const bounds = button.getBoundingClientRect()
+          const x = bounds.left + bounds.width / 2
+          const y = bounds.top + bounds.height / 2
 
-      await userEvent.click(button)
-    },
-    { timeout: 5_000 }
+          const hitTarget = document.elementFromPoint(x, y)
+          expect(
+            hitTarget === button || (hitTarget !== null && button.contains(hitTarget)),
+            `banner close button center (${x}, ${y}) should hit the button or its contents`
+          ).toBe(true)
+
+          return button
+        },
+        { timeout: 5_000 }
+      )
+    } catch (error) {
+      // 解析窗口内 banner 被顶掉同样是关闭已完成；banner 还在才是真的找不到按钮。
+      if (!bannerIsOpen()) return
+      throw error
+    }
+
+    try {
+      await userEvent.click(button, { timeout: CLICK_ATTEMPT_TIMEOUT_MS })
+      return
+    } catch (error) {
+      failures.push(`attempt ${attempt}: ${error instanceof Error ? error.message : String(error)}`)
+    }
+  }
+
+  // 最后一轮 click 可能已经关掉了 banner，只是 Playwright 在节点被摘掉后才报错。
+  if (!bannerIsOpen()) return
+
+  throw new Error(
+    `banner close button click failed after ${CLICK_MAX_ATTEMPTS} attempts of ` +
+      `${CLICK_ATTEMPT_TIMEOUT_MS}ms each:\n\n${failures.join('\n\n')}`
   )
 }
 

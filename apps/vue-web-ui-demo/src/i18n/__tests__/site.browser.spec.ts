@@ -87,25 +87,35 @@ async function select(label: string, value: string) {
   return host
 }
 
+/** 单次 Playwright click 的动作预算；超时由 Playwright 自己 reject，不占满整个测试预算。 */
+const CLICK_ATTEMPT_TIMEOUT_MS = 2_000
+/** 点击的有界重试轮数；每轮重新解析节点、重新定位。 */
+const CLICK_MAX_ATTEMPTS = 3
+/** 单轮「可点击」门槛的等待上限。 */
+const CLICK_READY_TIMEOUT_MS = 5_000
+
 /**
- * 点击示例工具栏里的 segmented-trigger 前，先把「可点击」等到位，再交给 `userEvent.click`。
+ * 点击示例工具栏里的 segmented-trigger：每轮先等「可点击」到位，再用有界预算交给 `userEvent.click`。
  *
- * Playwright 的 click 自带同强度检查（attached、可见、连续两帧 stable、动作点命中），但它的重试
- * 预算比 Vitest 的测试预算长，失败只留下 “timed out while waiting for click”，看不出卡在哪一项。
- * 这里把同一组判据写成期待值：
+ * Playwright 的 click 自带同强度检查（attached、可见、连续两帧 stable、动作点命中），但它默认的
+ * 重试预算等于整个 Vitest 测试预算：一次 stall 就吃掉 15s，既没有第二次机会，报错也只剩
+ * “timed out while waiting for click”。所以这里把它拆成两层预算：
  *
- * - 位置由测试决定：每一轮 ready 不满足时都重新 `scrollIntoView({ block: 'center', inline: 'center',
+ * - 外层最多 `CLICK_MAX_ATTEMPTS` 轮。每轮重新按文案取节点（locale 切换按 `${locale}:${demoKey}`
+ *   重挂预览，旧节点可能已被替换），并重新 `scrollIntoView({ block: 'center', inline: 'center',
  *   behavior: 'instant' })`。贴视口上缘时动作点会落到 sticky banner/header 上（实测中心命中的是
  *   header 里的 `web-ui-select`）；交给 Playwright 自己挑滚动位置，就多出一段「先被盖住、再靠重试
- *   滚动脱困」的窗口。滚动后布局再移，下一轮仍能重新纠正。
- * - 每一轮重新按文案取节点：locale 切换按 `${locale}:${demoKey}` 重挂预览，旧 wrapper 可能指向
- *   被替换的节点。
- * - ready 要求已连接、已布局、动作点（矩形中心）在视口内且命中 trigger 或其子节点，且连续两帧
- *   boundingBox 相同（与 Playwright 的 stable 判据同强度）。只看动作点而不要求整个矩形都在视口内，
- *   与 Playwright 的动作点判据一致，超出视口的超大 trigger 不会被误判。
- * - 每次等待在 rAF 与定时器之间竞争：rAF 停摆时定时器仍会醒来检查 deadline，超时始终能带读数抛出，
- *   不会静默拖到测试框架的超时。
- * - 超时错误带读数，失败能直接指认 attached / visible / stable / hit target 哪一项。
+ *   滚动脱困」的窗口。
+ * - 每轮的 click 只给 `CLICK_ATTEMPT_TIMEOUT_MS`。Playwright 超时后 reject，控制权回到这里；
+ *   失败文本逐轮收集，全部失败时作为聚合错误抛出，保留 Playwright 的原始 call log。
+ *
+ * 每轮点击前的门槛要求已连接、已布局、动作点（矩形中心）在视口内且命中 trigger 或其子节点，且连续
+ * 两帧 boundingBox 相同（与 Playwright 的 stable 判据同强度）。只看动作点而不要求整个矩形都在视口
+ * 内，与 Playwright 的动作点判据一致，超出视口的超大 trigger 不会被误判。
+ *
+ * 门槛内的每次等待在 rAF 与定时器之间竞争：rAF 停摆时定时器仍会醒来检查 deadline，超时始终能带
+ * 读数抛出，不会静默拖到测试框架的超时。门槛超时错误带读数，失败能直接指认 attached / visible /
+ * stable / hit target 哪一项。
  */
 async function clickSegmentedTrigger(sample: DOMWrapper<Element>, label: string) {
   const resolve = () => {
@@ -114,8 +124,30 @@ async function clickSegmentedTrigger(sample: DOMWrapper<Element>, label: string)
     return trigger.element
   }
 
+  const failures: string[] = []
+  for (let attempt = 1; attempt <= CLICK_MAX_ATTEMPTS; attempt += 1) {
+    const trigger = await waitForSegmentedTriggerClickable(resolve, label)
+    try {
+      await userEvent.click(trigger, { timeout: CLICK_ATTEMPT_TIMEOUT_MS })
+      return
+    } catch (error) {
+      failures.push(`attempt ${attempt}: ${error instanceof Error ? error.message : String(error)}`)
+    }
+  }
+
+  throw new Error(
+    `Segmented trigger "${label}" click failed after ${CLICK_MAX_ATTEMPTS} attempts of ` +
+      `${CLICK_ATTEMPT_TIMEOUT_MS}ms each:\n\n${failures.join('\n\n')}`
+  )
+}
+
+/** 每轮重新解析并重新定位 trigger，等它真正可点后返回当轮要点的节点。 */
+async function waitForSegmentedTriggerClickable(resolve: () => HTMLElement, label: string): Promise<HTMLElement> {
+  // 位置由测试决定：sticky chrome 与 toast 偏移会让布局持续位移，每轮都重新纠正一次。
+  resolve().scrollIntoView({ block: 'center', inline: 'center', behavior: 'instant' })
+
   const pollIntervalMs = 50
-  const deadline = performance.now() + 5000
+  const deadline = performance.now() + CLICK_READY_TIMEOUT_MS
   let previous: string | undefined
   for (;;) {
     const trigger = resolve()
@@ -132,10 +164,7 @@ async function clickSegmentedTrigger(sample: DOMWrapper<Element>, label: string)
       pointInViewport &&
       hit !== null &&
       (hit === trigger || trigger.contains(hit))
-    if (ready && previous === box) {
-      await userEvent.click(trigger)
-      return
-    }
+    if (ready && previous === box) return trigger
     if (performance.now() > deadline) {
       throw new Error(
         `Segmented trigger "${label}" is not clickable: connected=${trigger.isConnected} box=${box} ` +
