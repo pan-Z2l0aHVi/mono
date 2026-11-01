@@ -80,6 +80,11 @@ orchestration.<repo-key>.rejection.<content-hash>
 的注入因此也读 `<cwd>/.pi/task-board.json`：读写必须指向同一个文件，否则 `/board` 上看到的
 进度与注入的摘要会是两份数据。
 
+上游 `pi-task-board` 的缺口：`nextTaskId` / `nextPanelId` 计数器从文件原样读取、从不按既有
+任务 id 重算（`ensureSharedBoard` 缺），迁移/合并后会撞号。本扩展在 `ensureSharedBoard` 成功后
+把共享文件的计数器重算到 `max(existing id) + 1`（D4 兜底，见 [`src/board/share.ts`](./src/board/share.ts)
+的 `syncSharedBoardCounters`）；这仍是本侧兜底，上游修复之后应删除。
+
 两个约束合起来意味着「跨 worktree 共享」只能在文件系统层做。`session_start` 时
 [`src/board/share.ts`](./src/board/share.ts) 让**所有** checkout 的 `.pi` 指向仓库外的共享目录
 `~/.pi/task-boards/<repo-key>/`：
@@ -258,6 +263,14 @@ herdr pane zoom <pane> --off                                          # 被 zoom
   本身失败都只通知并带原始原因。
 - 其他失败同样只通知并带原始原因；移动失败不会把 `herdr_dispatch` / `herdr_review` 的结果
   变成 `isError`。
+- **D5：搬迁结论也随 tool_result 返回给模型**。消息正文附加一条 `[bridge] <搬迁结论>`，
+  与 UI notify 同源同文案；模型不再只能靠 `ctx.ui` 猜 tab 布局。
+- **D1 兜底：tool_result 丢失时由 settle 扫描补齐**。`tool_call` 放行后按 `input.name` 登记；
+  tool_result 到达即结算；dispatch 超时 throw（`isError` 且无 details）时，
+  `agent_before_settle` 用 `herdr agent list` 按 name 扫描：在场的 pane 被搬到独立 tab，
+  worker 已自结算（`done` / `idle`）时按 watch-done 同构地把任务推到 `in_review`（否则建
+  `in_progress` 并提示跑 `herdr_watch`），reviewer 真在场时补进并发名单。说明行一并注入
+  给模型。查不到名字（调用在校验阶段就失败）时如实说明，不搬 pane 不建任务。
 - 绝不移动 lead 自己的 pane；`shepherd.separateTabs: false` 时完全不动 layout。
 
 ## 前置条件
@@ -313,7 +326,11 @@ reviewer 若配成 `kind: "pi"`，它会在自己的 pane 里加载本扩展；�
 - **`herdr_watch` 到 `herdr_review` 之间的状态**：`herdr_watch` 返回 `done` 只把任务移到
   `in_review`（worker 说完了，等验收）。真正的验收结论由 `herdr_review` 写入：APPROVE 保持
   `in_review`，REJECT / RE_PLAN 退回 `todo`。只 dispatch + watch 不走 review 的 slice 会停在
-  `in_review`，这是刻意的——它表示「无人验收」。
+  `in_review`，这是刻意的——它表示「无人验收」。同理（D3）：dispatch 的 prompt 等待里 worker
+  已自结算（`details.status` 是 `done` / `idle`）时，建任务直接到 `in_review`——很多 slice
+  不再跑 `herdr_watch`，否则任务会永久停在 `in_progress`。
+- **D1 兜底路径的看板动作**：dispatch 超时后 agent 列表里发现 worker 已自结算，兜底建任务
+  直接到 `in_review`；仍在跑则建 `in_progress`（描述带 role 与 pane，标注 recovered）。
 - **回退由 review 的结论触发，其他动作只推进**：状态顺序是
   `backlog < todo < in_progress < in_review`。队列里的动作要等下一次 flush 才执行，期间
   `herdr_watch` 的 `done` 可能已经把任务推到 `in_review`；此时仍留在队里的旧动作不会把任务

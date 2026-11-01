@@ -28,7 +28,7 @@ import { join } from 'node:path'
 
 import { afterEach, beforeEach, describe, expect, it } from 'vite-plus/test'
 
-import { ensureSharedBoard, mergeBoards, sharedBoardDir, taskBoardRoot } from '../board/share'
+import { ensureSharedBoard, mergeBoards, normalizeBoardCounters, sharedBoardDir, taskBoardRoot } from '../board/share'
 import { boardPath, readBoardSummary } from '../board/task-board'
 import { resolveRepoIdentity } from '../repo-identity'
 
@@ -349,5 +349,42 @@ describe('mergeBoards', () => {
 
     expect(merged.panels).toEqual([])
     expect(merged.nextTaskId).toBe(1)
+  })
+})
+
+describe('D4 计数器归一化', () => {
+  it('normalizeBoardCounters 把计数器推过既有 id 的最大值', () => {
+    const board = boardFile([
+      { id: 'T-32', title: 'a' },
+      { id: 'T-7', title: 'b' }
+    ]) as never as Record<string, unknown>
+    // 人为把计数器写低，模拟迁移/合并留下的陈旧值。
+    board.nextTaskId = 3
+    board.nextPanelId = 1
+
+    const normalized = normalizeBoardCounters(board)
+    expect(normalized?.nextTaskId).toBe(33)
+    expect(normalized?.nextPanelId).toBeGreaterThanOrEqual(1)
+  })
+
+  it('schema 不认识时返回 undefined，调用方不动文件', () => {
+    expect(normalizeBoardCounters({ version: 1, panels: [] })).toBeUndefined()
+    expect(normalizeBoardCounters({ version: 2 })).toBeUndefined()
+  })
+
+  it('already-shared 的共享文件带陈旧计数器时，ensureSharedBoard 修写共享文件（D4 回归）', async () => {
+    const { worktree } = await makeRepoWithWorktree()
+    const sharedDir = await sharedDirFor(worktree)
+    await mkdir(sharedDir, { recursive: true })
+    // 模拟撞号现场：板上已有 T-32，但计数器停在 3。共享文件直接写在共享目录，
+    // 本地没有 .pi，ensureSharedBoard 走 linked 路径并顺带归一化计数器。
+    const stale = JSON.stringify(
+      boardFile(Array.from({ length: 32 }, (_, index) => ({ id: `T-${index + 1}`, title: `t${index + 1}` })))
+    )
+    await writeFile(join(sharedDir, 'task-board.json'), stale, 'utf8')
+
+    expect(ensureSharedBoard(worktree, { PI_TASK_BOARD_DIR: boardRoot }).status).toBe('linked')
+    const board = JSON.parse(await readFile(join(sharedDir, 'task-board.json'), 'utf8')) as { nextTaskId: number }
+    expect(board.nextTaskId).toBe(33)
   })
 })
