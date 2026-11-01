@@ -27,7 +27,7 @@ const dispatchDetails = (overrides: Record<string, unknown> = {}) => ({
   role: 'builder',
   pane: 'w1:p7',
   ledgerFile: '/repo/.herdr-runs/bridge-worker.md',
-  status: 'idle',
+  status: 'working',
   ...overrides
 })
 
@@ -521,6 +521,26 @@ describe('applyBoardAction', () => {
 
     expect(board.state.tasks[0]?.status).toBe('in_review')
     expect(board.state.tasks[0]?.description).toBe('role: builder')
+  })
+
+  it('D3：dispatch 的 status 是 done/idle 时视同一次 watch-done，任务直接到 in_review', () => {
+    const done = boardActionForDispatch(dispatchDetails({ status: 'done' }))
+    const idle = boardActionForDispatch(dispatchDetails({ status: 'idle' }))
+
+    expect(done).toEqual({
+      kind: 'add_task',
+      title: taskTitle('bridge-worker'),
+      status: 'in_review',
+      description: 'role: builder | pane: w1:p7 | ledger: /repo/.herdr-runs/bridge-worker.md',
+      intent: 'dispatch'
+    })
+    expect(idle).toEqual(done)
+  })
+
+  it('D3：dispatch 的 status 是 working/blocked/缺省时仍建 in_progress', () => {
+    expect(boardActionForDispatch(dispatchDetails({ status: 'working' }))?.status).toBe('in_progress')
+    expect(boardActionForDispatch(dispatchDetails({ status: 'blocked' }))?.status).toBe('in_progress')
+    expect(boardActionForDispatch(dispatchDetails({ status: undefined }))?.status).toBe('in_progress')
   })
 
   it('板上已 todo 时 add_task(in_progress) 照常推进', async () => {

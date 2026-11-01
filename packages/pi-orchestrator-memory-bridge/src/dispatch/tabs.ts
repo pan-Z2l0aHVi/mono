@@ -87,6 +87,40 @@ export function tabMoveRequestFor(toolName: string, details: unknown): TabMoveRe
   return undefined
 }
 
+/** describePaneMoveOutcome 返回的一句话与严重级。 */
+export interface PaneMoveNote {
+  readonly message: string
+  /** 失败一律 warning；成功 info。 */
+  readonly severity: 'info' | 'warning'
+}
+
+/**
+ * 把搬迁结果压成一句话：D5 要让模型也看见（随 tool_result 返回），而不只是 UI notify。
+ * 成功也是一句话：模型需要知道 worker 已被搬走，后续 herdr_agent 操作不受影响。
+ */
+export function describePaneMoveOutcome(
+  label: string,
+  request: TabMoveRequest,
+  outcome: PaneMoveOutcome
+): PaneMoveNote {
+  const fail = (message: string): PaneMoveNote => ({ message, severity: 'warning' })
+  if (outcome.moved && outcome.zoomCleared) {
+    return {
+      message: `${label} 移到了独立 tab（${request.paneId}）：为分离 tab 取消了一次 zoom，worker 不受影响`,
+      severity: 'info'
+    }
+  }
+  if (outcome.moved) return { message: `moved ${label} to its own tab (${request.paneId})`, severity: 'info' }
+  if (outcome.zoomCleared) {
+    return fail(`${label} 已取消 zoom，但仍未能移到独立 tab：${outcome.reason ?? 'unknown error'}`)
+  }
+  if (outcome.zoomed) {
+    const suffix = outcome.reason ? `（${outcome.reason}）` : ''
+    return fail(`${label} 所在 tab 处于 zoom，未能移到独立 tab；worker 不受影响。${suffix}`)
+  }
+  return fail(`${label} 未能移到独立 tab：${outcome.reason ?? 'unknown error'}`)
+}
+
 /**
  * 解析 `herdr pane move` 的 JSON 输出。
  *

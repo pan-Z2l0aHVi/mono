@@ -30,9 +30,12 @@ import { readBoardSummary } from './board/task-board'
 import type { Activation, HerdrAgentEntry, MemoryBackend, OrchestrationFact, PendingAnchor } from './contracts'
 import { evaluateDispatchLimit } from './dispatch/concurrency'
 import { readControlConfig, type ControlConfig } from './dispatch/config'
+import { createInFlightRegistry, inFlightBoardAction, matchInFlight, type InFlightRegistry } from './dispatch/inflight'
 import {
+  describePaneMoveOutcome,
   movePaneClearingZoom,
   tabMoveRequestFor,
+  type PaneMoveNote,
   type PaneMoveOutcome,
   type PaneZoomClearOutcome
 } from './dispatch/tabs'
@@ -332,6 +335,8 @@ export function createBridge(pi: BridgePi, options: BridgeOptions): { dispose: (
   const shepherd: ShepherdState = { active: false }
 
   const control = options.control
+  // D1 兕底：tool_call 时登记、tool_result 结算；没等到 tool_result 就在 settle 时扫描。
+  const inFlight: InFlightRegistry = createInFlightRegistry()
   // reviewer 名单来自 herdr_review 的终态；并发闸门只让它们不进 worker 槽位。
   const reviewerNames = new Set<string>()
   let controlConfigPromise: Promise<ControlConfig> | undefined
@@ -384,6 +389,7 @@ export function createBridge(pi: BridgePi, options: BridgeOptions): { dispose: (
     pending.clear()
     boardQueue.length = 0
     settleAttempts.clear()
+    inFlight.clear()
     lastSaveError = undefined
     state = undefined
   }
@@ -397,6 +403,7 @@ export function createBridge(pi: BridgePi, options: BridgeOptions): { dispose: (
     pending.clear()
     boardQueue.length = 0
     settleAttempts.clear()
+    inFlight.clear()
     lastSaveError = undefined
     // 新会话可能有新的 reviewer 与配置；不要让上一会话的名单/缓存漏进来。
     reviewerNames.clear()
@@ -481,15 +488,24 @@ export function createBridge(pi: BridgePi, options: BridgeOptions): { dispose: (
    * 查询失败 fail open：闸门本身不可用时不能把 dispatch 永久禁掉，只通知一次原因。
    */
   pi.on('tool_call', async (event, ctx) => {
-    const typed = event as { toolName?: string }
+    const typed = event as { toolName?: string; input?: Record<string, unknown> }
     if (!typed.toolName) return undefined
 
     if (shepherd.active && isBlockedInShepherd(typed.toolName)) {
       return { block: true, reason: blockedReason(typed.toolName) }
     }
 
+    // D1：调用一放行就登记，结算靠 tool_result；具体 pane / ledger 兜底靠 agent 列表扫描。
+    const input = isRecord(typed.input) ? typed.input : undefined
+    const inputName = typeof input?.name === 'string' ? input.name.trim() : ''
+    if (typed.toolName === 'herdr_review') {
+      if (inputName) inFlight.add({ toolName: typed.toolName, name: inputName })
+      return undefined
+    }
+    if (typed.toolName !== 'herdr_dispatch') return undefined
+
     const listAgents = control?.listAgents
-    if (typed.toolName !== 'herdr_dispatch' || !listAgents) return undefined
+    if (!listAgents) return undefined
 
     const config = await resolveControlConfig(ctx)
 
@@ -507,14 +523,24 @@ export function createBridge(pi: BridgePi, options: BridgeOptions): { dispose: (
       maxConcurrentWorkers: config.maxConcurrentWorkers,
       reviewerNames
     })
-    if (verdict.allowed) return undefined
-    return { block: true, reason: verdict.reason }
+    if (!verdict.allowed) return { block: true, reason: verdict.reason }
+    // 并发闸门放行后才登记闸门计数所指向的 worker；被拒的调用不该占住名額。
+    if (inputName) {
+      inFlight.add({
+        toolName: 'herdr_dispatch',
+        name: inputName,
+        ...(typeof input?.role === 'string' ? { role: input.role } : {}),
+        ...(typeof input?.timeout === 'number' ? { timeout: input.timeout } : {})
+      })
+    }
+    return undefined
   })
 
   // worker / reviewer 各自独立 tab。与记忆、看板是独立关注点：移动失败只通知，绝不让
   // `herdr_dispatch` / `herdr_review` 的结果变成 isError。
+  // D5：搬迁结论除 notify 外还随 tool_result 返回给模型——否则模型只能硬猜 tab 布局。
   pi.on('tool_result', async (event, ctx) => {
-    const typed = event as { toolName?: string; details?: unknown }
+    const typed = event as { toolName?: string; details?: unknown; content?: unknown; isError?: boolean }
     if (!typed.toolName) return undefined
 
     // reviewer 经 herdr_review 单独登记：并发闸门只让 worker 占槽位。
@@ -534,42 +560,38 @@ export function createBridge(pi: BridgePi, options: BridgeOptions): { dispose: (
     const config = await resolveControlConfig(ctx)
     if (!config.separateTabs) return undefined
 
+    let note: PaneMoveNote
     try {
       // 有取消 zoom 能力时，zoomed 拒绝会先取消再重试一次；没有时维持原样。
       const outcome = clearPaneZoom
         ? await movePaneClearingZoom({ movePane, clearPaneZoom }, request.paneId, request.label)
         : await movePane(request.paneId, request.label)
-      if (outcome.moved && outcome.zoomCleared) {
-        notify(ctx, `${request.label} 移到了独立 tab（${request.paneId}）：为分离 tab 取消了一次 zoom，worker 不受影响`)
-      } else if (outcome.moved) {
-        notify(ctx, `moved ${request.label} to its own tab (${request.paneId})`)
-      } else if (outcome.zoomCleared) {
-        notify(
-          ctx,
-          `${request.label} 已取消 zoom，但仍未能移到独立 tab：${outcome.reason ?? 'unknown error'}`,
-          'warning'
-        )
-      } else if (outcome.zoomed && clearPaneZoom) {
-        notify(
-          ctx,
-          `${request.label} 未能移到独立 tab：取消 zoom 失败（${outcome.reason ?? 'unknown error'}）`,
-          'warning'
-        )
-      } else if (outcome.zoomed) {
-        notify(ctx, `${request.label} 所在 tab 处于 zoom，未能移到独立 tab；worker 不受影响。`, 'warning')
-      } else {
-        notify(ctx, `${request.label} 未能移到独立 tab：${outcome.reason ?? 'unknown error'}`, 'warning')
-      }
+      note = describePaneMoveOutcome(request.label, request, outcome)
     } catch (error) {
       const detail = error instanceof Error ? error.message : String(error)
-      notify(ctx, `${request.label} 未能移到独立 tab：${detail}`, 'warning')
+      note = { message: `${request.label} 未能移到独立 tab：${detail}`, severity: 'warning' }
     }
-    return undefined
+    notify(ctx, note.message, note.severity)
+
+    // 只有带 pane 的 dispatch / review 结果才有搬迁动作；注释不等待搬迁细节动作本身。
+    const base = Array.isArray(typed.content)
+      ? typed.content.filter(
+          (part): part is { type: string; text: string } =>
+            typeof part === 'object' && part !== null && (part as { type?: unknown }).type === 'text'
+        )
+      : []
+    return {
+      content: [...base, { type: 'text', text: `[bridge] ${note.message}` }]
+    }
   })
 
   pi.on('tool_result', async event => {
     const typed = event as { toolName?: string; details?: unknown }
     if (!typed.toolName) return undefined
+    // D1：正常路径的结算。isError（超时 throw）没有 details，这里不会结算，另行兑底。
+    if (typed.toolName === 'herdr_dispatch' || typed.toolName === 'herdr_review') {
+      inFlight.settleFromResultName(typed.details, typed.toolName)
+    }
     const anchor = await anchorFromToolResult(typed.toolName, typed.details)
     if (!anchor || !state) return undefined
 
@@ -621,6 +643,114 @@ export function createBridge(pi: BridgePi, options: BridgeOptions): { dispose: (
   })
 
   /**
+   * D1 兜底：没有等到 tool_result 的 dispatch / review（超时 throw、校验失败）在这里用
+   * `herdr agent list` 按 name 扫描补副作用：把在场的 pane 搬到独立 tab、给已自结算的
+   * worker 合成 watch-done 同构的看板动作、把 reviewer 补进并发名单；每个登记条目结算后
+   * 移除。所有动作都通过既有副作用通道（movePane / boardQueue），不新增写盘路径。
+   *
+   * 返回给模型的说明行由 agent_before_settle 注入（D5：不能只走 UI notify）。
+   */
+  async function reconcileInFlight(ctx: BridgeContext): Promise<string[]> {
+    const open = inFlight.open()
+    if (open.length === 0) return []
+    const listAgents = control?.listAgents
+    if (!listAgents) {
+      // 没有注入扫描能力时兜底不可能做；登记留着只会每次 settle 重复得出同一结论。
+      inFlight.clear()
+      return [
+        'in-flight orchestration calls could not be reconciled (herdr agent list unavailable).',
+        'The following calls may have started without visible effects:',
+        ...open.map(entry => `- ${entry.toolName} ${entry.name}`)
+      ]
+    }
+
+    let agents: ReadonlyArray<HerdrAgentEntry>
+    try {
+      agents = await listAgents()
+    } catch (error) {
+      // 扫描失败保留登记，下次 settle 再试；不把扫描失败误当成「没有留下任何东西」。
+      const detail = error instanceof Error ? error.message : String(error)
+      return [`in-flight reconciliation skipped (herdr agent list: ${detail}); will retry after the next settle.`]
+    }
+
+    const config = await resolveControlConfig(ctx)
+    const { matched, missing } = matchInFlight(open, agents)
+    const notes: string[] = []
+
+    for (const { entry, agent } of matched) {
+      if (!agent) continue
+      inFlight.settle(entry.name, entry.toolName)
+      const paneId = agent.pane_id ?? ''
+      const label = entry.toolName === 'herdr_review' ? `review: ${entry.name}` : `slice: ${entry.name}`
+      const status = agent.agent_status ?? 'unknown'
+      // tab 搬迁与 tool_result 路径同一套规则：绝不移动 lead 自己的 pane。
+      if (
+        paneId &&
+        config.separateTabs &&
+        control?.movePane &&
+        !(options.activation.active && paneId === options.activation.paneId)
+      ) {
+        try {
+          const outcome = control.clearPaneZoom
+            ? await movePaneClearingZoom(
+                { movePane: control.movePane, clearPaneZoom: control.clearPaneZoom },
+                paneId,
+                label
+              )
+            : await control.movePane(paneId, label)
+          const note = describePaneMoveOutcome(label, { paneId, label }, outcome)
+          notify(ctx, note.message, note.severity)
+          notes.push(`[bridge] ${note.message}`)
+        } catch (error) {
+          const detail = error instanceof Error ? error.message : String(error)
+          notify(ctx, `${label} 未能移到独立 tab：${detail}`, 'warning')
+          notes.push(`[bridge] pane ${paneId} (${entry.name}) could not be moved to its own tab: ${detail}`)
+        }
+      }
+
+      if (entry.toolName === 'herdr_review') {
+        // reviewer 确实在场：补进名单，避免并发闸门把它的名字算进 worker 槽位。
+        reviewerNames.add(entry.name)
+        notes.push(
+          `herdr_review ${entry.name} timed out without a result, but its pane ${paneId} is live (status: ${status}).`,
+          'Re-run herdr_review for the same slice, or inspect its review file manually before treating the slice as reviewed.'
+        )
+        continue
+      }
+
+      if (state) {
+        const action = inFlightBoardAction(entry, agent.agent_status, paneId || undefined)
+        if (action) {
+          enqueueBoardAction(boardQueue, action)
+          settleAttempts.delete(settleKeyForBoard(action))
+        }
+      }
+      if (paneId) {
+        const selfSettled = status === 'done' || status === 'idle'
+        notes.push(
+          `herdr_dispatch ${entry.name} timed out without a result, but its pane ${paneId} is live (status: ${status}).`,
+          selfSettled
+            ? 'The worker already settled on its own; treat the slice as done (its board task is in_review).'
+            : 'A board task was created as in_progress; run herdr_watch to supervise it.'
+        )
+      } else {
+        notes.push(
+          `herdr_dispatch ${entry.name} recovered without a pane id (status: ${status}); its board task was enqueued anyway.`
+        )
+      }
+    }
+
+    for (const entry of missing) {
+      inFlight.settle(entry.name, entry.toolName)
+      notes.push(
+        `${entry.toolName} ${entry.name} left no live herdr agent; the call most likely failed before the agent started.`,
+        'No pane was relocated and no board task was created. Re-dispatch if the slice still needs it.'
+      )
+    }
+    return notes
+  }
+
+  /**
    * 记一次 settle 追加；返回 true 表示这一项已经超过上限，必须丢弃。
    *
    * 计数在「这一轮要追加」时递增，所以同一项最多被追加 MAX_SETTLE_APPENDS 轮，第
@@ -634,6 +764,9 @@ export function createBridge(pi: BridgePi, options: BridgeOptions): { dispose: (
   }
 
   pi.on('agent_before_settle', async (_event, ctx) => {
+    // D1 兑底先跑：没有 tool_result 的 dispatch / review 在这里被扫描出来，说明行与
+    // 未保存条目合并在同一条 custom_message 里注入给模型。
+    const reconciliation = await reconcileInFlight(ctx)
     const dropped: string[] = []
 
     for (const anchor of pending.peek()) {
@@ -672,8 +805,23 @@ export function createBridge(pi: BridgePi, options: BridgeOptions): { dispose: (
       )
     }
 
-    if (pending.size() === 0 && boardQueue.length === 0) return undefined
+    if (pending.size() === 0 && boardQueue.length === 0) {
+      // 只有兑底说明：仍然注入给模型，但不请求续轮——那不是待办，只是恢复后的状态说明。
+      if (reconciliation.length === 0) return undefined
+      return {
+        entries: [
+          {
+            type: 'custom_message',
+            customType: 'orchestration-memory-pending',
+            display: false,
+            content: ['Orchestration recovery status:', ...reconciliation].join('\n')
+          }
+        ]
+      }
+    }
+    const recoveryLines = reconciliation.length > 0 ? [...reconciliation, ''] : []
     const lines = [
+      ...recoveryLines,
       ...pending.peek().map(anchor => `- memory ${anchor.kind}: ${anchor.value}`),
       ...boardQueue.map(action => `- board ${action.kind} "${action.title}" -> ${action.status}`)
     ]
