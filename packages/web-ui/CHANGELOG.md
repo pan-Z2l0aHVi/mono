@@ -1,5 +1,23 @@
 # @greypan/web-ui
 
+## 12.1.0
+
+### Minor Changes
+
+- 0e77c22: Add `sidebar-collapsible` to `<web-ui-layout>` and render the desktop collapse toggle only when opted in; make the imperative spinner non-modal and pointer-transparent so loading feedback no longer blocks the page; widen vertical button groups to at least one control size.
+  
+  Add `trigger="icon"` to `<web-ui-select>` for a left icon slot that keeps the right arrow, forward `aria-label` from `<web-ui-segmented-trigger>` to its inner option, and export `antDesignSyncOutlined`, `icBaselinePhonelink`, `icOutlineMotionPhotosOn`, `icOutlineMotionPhotosOff`, `lucideContrast`, `lucideLanguages`, `lucideList`, `lucideMoon`, and `lucideSun`.
+- 0e77c22: Replace the `web-ui-dialog` boolean `horizontal` property with the scoped `footerOrientation: 'vertical' | 'horizontal'` property and `footer-orientation` attribute. Invalid values fall back to `vertical`.
+- 0e77c22: Add `lucideAccessibility`, `lucideBoxes`, `lucideKeyboard`, `lucideSparkles`, and `tablerBrandTypescript` icon exports for the demo feature matrix.
+- 0e77c22: Add `--wui-layout-viewport-height` so embedded layouts can constrain the page and desktop sidebar to their container height instead of the global viewport.
+- 0e77c22: Add `web-ui-progress` for determinate and indeterminate linear progress, including custom ranges, an optional visible percentage, ARIA value synchronization, theme-aware motion, and public CSS parts.
+- 0e77c22: Add `--wui-toast-top-offset` so top-positioned toast containers can clear fixed application chrome without changing page layout.
+- 0e77c22: Export `icRoundMenuOpen`, switch the desktop collapse Toggle to the `ghost` variant with the menu-open icon (mirrored while collapsed), and set the collapse defaults to a `60px` sidebar with a `36px` Toggle.
+
+### Patch Changes
+
+- 0e77c22: Keep `web-ui-dialog` footer and `web-ui-select` trigger slots as layout-only containers instead of applying child-specific sizing or appearance. Stacked dialog examples now opt into full-width actions with `web-ui-button[full]`.
+
 ## 12.0.1
 
 ### Patch Changes
