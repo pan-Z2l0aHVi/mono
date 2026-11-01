@@ -14,7 +14,7 @@
 | Wails Go bindings      | `apps/interweave/frontend/bindings/**`                                                                                                                                                     | Wails bindings generator（单一入口）                                                           | `pnpm exec turbo build --filter=@greypan/interweave-frontend`                                                                                                                   |
 | 壳文案 catalog         | `apps/{react,vue}-web-ui-demo/src/locales/.wuchale/**`、`src/locales/*.loader.js`、`src/locales/{data,plural}.js`                                                                          | `wuchale` 的 Vite 插件与 CLI                                                                   | 宿主 dev 与 build 按 PO 重编译；增删壳文案后在应用目录跑 `pnpm exec wuchale --clean` 把 msgid 写进 PO；产物全部 gitignore                                                       |
 
-`apps/*/src/generated/**` 里是 `theme.css`、逐文档的 `<basename>.meta.js` / `<basename>.meta.d.ts` 与 `codeblock/**`，同一次生成一起写盘，不要挑其中某一类单独改。文件名即文档身份（`button.CN`、`button`、`CHANGELOG`），不做 locale 解释；语种由宿主按 `.CN` 后缀判定，两个 demo 各自把中文与英文的 meta 放进自己的两套目录（React 站 `zh-CN/` 与 `en/`，Vue 站顶层与 `en/`）。`codeblock/**` 的每个文件都是某条围栏原文的落点，按内容 hash 寻址、跨文档去重；它们是会被真正编译执行的源码，格式与 lint 跟人手写代码同一口径。
+`apps/*/src/generated/**` 里是 `theme.css`、逐文档的 `<basename>.meta.js` / `<basename>.meta.d.ts` 与 `codeblock/**`，同一次生成一起写盘，不要挑其中某一类单独改。文件名即文档身份（`button.CN`、`button`、`CHANGELOG`），不做 locale 解释；语种由宿主按 `.CN` 后缀判定，两个 demo 都平铺在各自的 `src/generated/`。`codeblock/**` 的每个文件都是某条围栏原文的落点，按内容 hash 寻址、跨文档去重；它们是会被真正编译执行的源码（命中 `exec` 的语言带 `load`），但落盘字节是围栏原文的逐字节副本，因此不参与 lint 与 format——任何自动改写都会破坏「围栏字节 = 落盘文件 = 页面文本」的一致性。
 
 `apps/{react,vue}-web-ui-demo/src/locales/*.po` 反过来：它是**入库的译文源**，手写（英文由 agent 翻译后写回同一份 PO），不是生成物，也不由 generator 覆盖。PO 与代码抽取的一致性由两端应用的 `catalog.spec.ts` 随 `pnpm run test` 验证。
 
@@ -45,7 +45,7 @@
 3. **反向验证（最硬）**。把文件挪走，跑 generator，看它是否原样重建：
 
    ```sh
-   mv apps/react-web-ui-demo/src/generated/zh-CN/button.CN.meta.js /tmp/
+   mv apps/react-web-ui-demo/src/generated/button.CN.meta.js /tmp/
    pnpm exec turbo build --filter=@greypan/react-web-ui-demo   # 让 Vite 插件写盘；dev 也可以
    git status --short apps/react-web-ui-demo/src/generated
    ```

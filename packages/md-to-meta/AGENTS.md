@@ -15,7 +15,7 @@
 - output 归生成器独占的部分只有它写得出来的东西：目录根下的 `theme.css` 与 `*.meta.js` / `*.meta.d.ts`，以及 `codeblock/` 里的全部文件；每轮按产出集合清扫。宿主自己的其它文件不在清扫面里。
 - 落盘必须走 `writeIfChanged`：无条件覆写会改掉当前构建的输入哈希、从此拿不到缓存命中，dev 下还会让宿主 watcher 绕回生成形成死循环。
 - 测试期由插件按 `process.env.VITEST` 分叉成只判不改（`checkArtifacts`）。`buildStart` 与 watcher 触发的 `regenerate` 共用 `applyArtifacts` 这一处判据——判据只贴在其中一条上，另一条就会在测试期改写工作区。配置就地写在宿主的 `vite.config.ts` 里，不另立配置文件，也不让 spec 去 import 整个 vite config（整文件求值会把插件工厂一并跑一遍）。
-- 生成物必须 lint-clean：禁止匿名 default export，所以模块写成 `const meta = […]` + `export default meta`。
+- meta 模块必须 lint-clean：禁止匿名 default export，所以模块写成 `const meta = […]` + `export default meta`。code 文件逐字节来自围栏，不参与 lint 与 format——自动改写会破坏它与页面 `<pre>` 的一致性。
 - watch：`configureServer` 把 input 命中的 markdown 加入 watcher（它们可能不在 app root 的默认 watch 面里），add / change / unlink 都重新生成，50ms 去抖。
 - `output/**` 是宿主的产物落点，本包只回一份 `GeneratedFile[]`；写盘与孤儿清扫由 `emit.ts` 对宿主给定的目录执行。
 - `private` 包，不出包；宿主构建时经 turbo 的 `^build` 自动拿到新 `dist`，改引擎不必发版。

@@ -8,7 +8,6 @@ import { parseMarkdown } from './markdown'
 import { renderCss, renderMetaModule, renderMetaTypes } from './render'
 import type { CodeFile, GenerateResult, GeneratedFile, ResolvedOptions } from './types'
 
-const CODEBLOCK_DIR = 'codeblock'
 const THEME_FILE = 'theme.css'
 
 /** 插件配置里的 glob 允许带 `./`，tinyglobby 的 cwd 匹配不需要它。 */

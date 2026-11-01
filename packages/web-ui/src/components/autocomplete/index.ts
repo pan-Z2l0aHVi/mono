@@ -81,6 +81,7 @@ export class WebUiAutocomplete extends FormAssociated(LitElement) {
 
   private _placement: Placement = 'bottom-start'
 
+  /** 下拉 panel 相对触发器的方向；默认贴着触发器左下角向下展开。 */
   @property({ type: String, reflect: true })
   get placement(): Placement {
     return this._placement

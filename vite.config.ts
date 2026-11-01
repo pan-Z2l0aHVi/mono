@@ -20,7 +20,10 @@ export default {
       '**/auto-imports.d.ts',
       '**/typed-router.d.ts',
       'apps/interweave/frontend/bindings/**',
-      '**/generated/**'
+      // demo 生成物：meta 是给 Rollup 的静态投影，code 文件是 markdown 围栏的逐字节副本。
+      // 两者都不能被 lint / format 改写——改写就破坏「围栏字节 = 落盘文件 = 页面文本」的一致；
+      // 只收窄到这两个 demo 的 output，不顺手豁免其它包里的生成物（如 web-ui 的 icons/generated）。
+      'apps/*/src/generated/**'
     ],
     overrides: [
       {
@@ -313,7 +316,9 @@ export default {
       '**/auto-imports.d.ts',
       '**/typed-router.d.ts',
       'apps/interweave/frontend/bindings/**',
-      '**/generated/**',
+      // meta 模块按节点一行铺开、长正文不满足 printWidth；theme.css 由生成器排版；code 文件
+      // 是围栏原文的逐字节副本，格式化会破坏它与页面 `<pre>` 的一致性。都只收窄到两个 demo 的 output。
+      'apps/*/src/generated/**',
       '**/.agents/skills/**', // skill 软链面（第三方与仓库自编写）不参与格式检查
       'skills/**', // 自撰写 skill 与依赖镜像的实体目录（GitHub 发现面），同上
       '.agents/skills-vendored/**', // 非依赖第三方 skill 的实体目录，同上

@@ -81,6 +81,41 @@ describe('WebUiSelect 组件（浏览器）', () => {
     expect(panelRect.top).toBeGreaterThan(triggerRect.bottom)
   })
 
+  it('打开后修改 placement 会重新定位 panel', async () => {
+    const select = document.createElement('web-ui-select')
+    select.trigger = 'icon'
+    // 同 placement="bottom" 用例：挂到视口中部，避免居中 panel 被视口边缘夹取。
+    select.style.position = 'fixed'
+    select.style.left = '50vw'
+    select.style.top = '120px'
+    select.innerHTML =
+      '<span slot="trigger">T</span><web-ui-option value="wide" label="Wide">A much wider option label</web-ui-option>'
+    document.body.append(select)
+    await select.updateComplete
+
+    const trigger = select.shadowRoot!.querySelector<HTMLElement>('[role="combobox"]')!
+    trigger.click()
+    await select.updateComplete
+    expect(select.open).toBe(true)
+    const panel = select.shadowRoot!.querySelector<HTMLElement>('[role="listbox"]')!
+
+    // 默认 bottom-start：先确认左边缘对齐，再在打开态切换，居中只能是重定位的结果。
+    await pollUntil(() => {
+      const triggerRect = trigger.getBoundingClientRect()
+      const panelRect = panel.getBoundingClientRect()
+      return Math.abs(panelRect.left - triggerRect.left) < 1
+    }, 'bottom-start 下 panel 左边缘没有对齐 trigger')
+
+    select.placement = 'bottom'
+    await select.updateComplete
+
+    await pollUntil(() => {
+      const triggerRect = trigger.getBoundingClientRect()
+      const panelRect = panel.getBoundingClientRect()
+      return Math.abs((panelRect.left + panelRect.right) / 2 - (triggerRect.left + triggerRect.right) / 2) < 1
+    }, '打开后修改 placement 没有重新定位 panel')
+  })
+
   it('真实键盘输入可打开、导航、typeahead 并提交选择', async () => {
     const mountPoint = mountKeyboardIsolated()
     const select = document.createElement('web-ui-select')
