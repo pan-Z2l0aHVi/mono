@@ -49,24 +49,30 @@ function bannerCloseButton() {
   return button
 }
 
-/** userEvent targets directly, so wait until the button wins hit-testing at its center. */
+/**
+ * 点 banner 关闭按钮中心。banner 是 v-if 节点，toast 挂载后 header bottom 会经 rAF 改
+ * `--wui-toast-top-offset`，布局在点击前后都可能再位移；所以每一轮重试都重新取按钮、重新
+ * 量中心、重新做命中测试，点击也交给 userEvent 在派发时重新解析目标，跨轮不缓存任何节点
+ * 或坐标。
+ */
 async function clickBannerCloseButtonAtCenter() {
-  const button = bannerCloseButton()
-  const bounds = button.getBoundingClientRect()
-  const x = bounds.left + bounds.width / 2
-  const y = bounds.top + bounds.height / 2
+  await vi.waitFor(
+    async () => {
+      const button = bannerCloseButton()
+      const bounds = button.getBoundingClientRect()
+      const x = bounds.left + bounds.width / 2
+      const y = bounds.top + bounds.height / 2
 
-  await vi.waitFor(() => {
-    const hitTarget = document.elementFromPoint(x, y)
-    expect(
-      hitTarget === button || (hitTarget !== null && button.contains(hitTarget)),
-      `banner close button center (${x}, ${y}) should hit the button or its contents`
-    ).toBe(true)
-  })
+      const hitTarget = document.elementFromPoint(x, y)
+      expect(
+        hitTarget === button || (hitTarget !== null && button.contains(hitTarget)),
+        `banner close button center (${x}, ${y}) should hit the button or its contents`
+      ).toBe(true)
 
-  const hitTarget = document.elementFromPoint(x, y)
-  if (!hitTarget) throw new Error('banner close button center had no hit target')
-  await userEvent.click(hitTarget as HTMLElement)
+      await userEvent.click(button)
+    },
+    { timeout: 5_000 }
+  )
 }
 
 function globalSelectTrigger(label: string) {
