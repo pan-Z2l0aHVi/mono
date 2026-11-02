@@ -14,7 +14,7 @@ import ButtonPage from '@/pages/components/button.vue'
 import Home from '@/pages/home/index.vue'
 
 import { loadMeta } from '../examples'
-import { loadDemoLocale, localeSettled } from '../locale'
+import { ensureExampleDoc, loadDemoLocale, localeSettled } from '../locale'
 
 async function mountShell(path: string) {
   const router = createRouter({
@@ -110,14 +110,18 @@ it('组件页切换文档与运行示例，保留当前路由和主题', async (
     await router.push('/components/button')
 
     const buttonDoc = () => wrapper.find('[data-example-doc="button"]')
-    await vi.waitFor(() => expect(buttonDoc().exists()).toBe(true))
+    // `data-example-doc` 要等 `ensure` 把 meta 与 exec codeblock 的动态导入都拉完才出现；
+    // 直接等这个控制器的完成信号，不用墙钟预算和 CI 冷缓存赛跑。
+    await ensureExampleDoc('button')
+    await nextTick()
+    expect(buttonDoc().exists()).toBe(true)
     expect(buttonDoc().text()).toContain('Samples')
     expect(wrapper.find('web-ui-button[aria-label="Copy code"]').exists()).toBe(true)
     expect(buttonDoc().text()).toContain('No variant (also glass)')
 
     // 预览只挂在 `exec` 命中的围栏上：数量与 meta 里带 load 的代码块一致。
     const previews = previewCountOf(await loadMeta('en', 'button'))
-    await vi.waitFor(() => expect(buttonDoc().findAll('[data-codeblock-preview]')).toHaveLength(previews))
+    expect(buttonDoc().findAll('[data-codeblock-preview]')).toHaveLength(previews)
 
     const language = await select('Global language', 'zh-CN')
     await localeSettled()
