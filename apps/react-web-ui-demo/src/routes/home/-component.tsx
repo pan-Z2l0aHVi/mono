@@ -9,8 +9,9 @@ import {
   lucideSparkles,
   tablerBrandTypescript
 } from '@greypan/web-ui/icons'
-import { Link } from '@tanstack/react-router'
 import { Fragment } from 'react'
+
+import QuickLinkCard from '@/components/quick-link-card'
 
 // 产品名、图片替代文本与组件名都是专有名词，中英两版保持一致，因此不进 wuchale 语料。
 const PRODUCT_NAME = 'Web UI'
@@ -55,8 +56,8 @@ const quickLinkGroups: QuickLinkGroup[] = [
   },
   {
     id: 'imperative',
-    title: () => '命令式组件',
-    description: () => '函数调用触发的全局反馈',
+    title: () => '命令式',
+    description: () => '函数调用触发',
     links: [
       { path: '/components/toast', label: 'Toast', desc: () => '轻量、响应式的全局通知' },
       { path: '/components/image-preview', label: 'ImagePreview', desc: () => '多图预览、滑动切换、手势缩放' },
@@ -115,7 +116,7 @@ function Home() {
       </div>
 
       <div className="w-full text-left">
-        <div className="flex items-center gap-2 mb-5 text-[20px] font-semibold uppercase tracking-wider text-(--wui-color-text-secondary)">
+        <div className="flex items-center gap-2 mb-5 text-[16px] font-semibold uppercase tracking-wider text-(--wui-color-text-secondary)">
           <web-ui-icon icon={lucideLayoutGrid} size={16}></web-ui-icon>
           <span>快速预览</span>
         </div>
@@ -124,28 +125,12 @@ function Home() {
           {quickLinkGroups.map(group => (
             <Fragment key={group.id}>
               <div className="col-span-full flex flex-col items-start gap-y-1 pt-2 first:pt-0">
-                <h2 className="text-[24px] font-semibold text-(--wui-color-text)">{group.title()}</h2>
+                <h2 className="text-[20px] font-semibold text-(--wui-color-text)">{group.title()}</h2>
                 <span className="text-xs text-(--wui-color-text-tertiary)">{group.description()}</span>
               </div>
 
               {group.links.map(link => (
-                <Link
-                  key={link.path}
-                  to={link.path}
-                  className="wui-glass group flex min-h-32 flex-col justify-between rounded-3xl p-5 text-left transition-all duration-200 [--wui-glass-corner-radius:24px] hover:[--wui-color-glass-ring:var(--wui-color-accent)]"
-                >
-                  <div>
-                    <div className="font-semibold text-(--wui-color-text) group-hover:text-(--wui-color-accent) transition-colors">
-                      {link.label}
-                    </div>
-                    <p className="mt-2 text-xs leading-relaxed text-(--wui-color-text-secondary) line-clamp-2">
-                      {link.desc()}
-                    </p>
-                  </div>
-                  <div className="mt-4 flex items-center gap-1 text-xs font-medium text-(--wui-color-accent) opacity-70 transition-opacity duration-200 group-hover:opacity-100">
-                    查看演示 →
-                  </div>
-                </Link>
+                <QuickLinkCard key={link.path} path={link.path} label={link.label} desc={link.desc()} />
               ))}
             </Fragment>
           ))}

@@ -208,7 +208,7 @@ const meta = [
       children: [
       { label: 'td', content: "<code>--wui-layer-loading</code>" },
       { label: 'td', content: "<code>z-index</code> of the imperative overlay, a layer token of the theme." },
-      { label: 'td', content: "<code>300</code>" }
+      { label: 'td', content: "<code>3000</code>" }
       ]
     }
     ]

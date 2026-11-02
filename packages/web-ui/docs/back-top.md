@@ -212,11 +212,11 @@ Role: `button`, with the default content accessible name falling back to the bui
 
 ### CSS Custom Properties
 
-| Name                      | Description                   | Default                          |
-| ------------------------- | ----------------------------- | -------------------------------- |
-| `--wui-back-top-position` | CSS positioning               | `fixed`                          |
-| `--wui-back-top-z-index`  | Layer                         | `var(--wui-layer-auxiliary, 20)` |
-| `--wui-back-top-top`      | Top offset (window mode only) | `auto`                           |
-| `--wui-back-top-right`    | Right offset                  | `20px`                           |
-| `--wui-back-top-bottom`   | Bottom offset                 | `20px`                           |
-| `--wui-back-top-left`     | Left offset                   | `auto`                           |
+| Name                      | Description                   | Default                           |
+| ------------------------- | ----------------------------- | --------------------------------- |
+| `--wui-back-top-position` | CSS positioning               | `fixed`                           |
+| `--wui-back-top-z-index`  | Layer                         | `var(--wui-layer-auxiliary, 200)` |
+| `--wui-back-top-top`      | Top offset (window mode only) | `auto`                            |
+| `--wui-back-top-right`    | Right offset                  | `20px`                            |
+| `--wui-back-top-bottom`   | Bottom offset                 | `20px`                            |
+| `--wui-back-top-left`     | Left offset                   | `auto`                            |

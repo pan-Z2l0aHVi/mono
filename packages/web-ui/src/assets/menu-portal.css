@@ -22,7 +22,7 @@
   user-select: none;
 
   position: fixed;
-  z-index: var(--wui-layer-menu, 100);
+  z-index: var(--wui-layer-menu, 1000);
 
   overflow: hidden;
 
@@ -53,11 +53,11 @@
     }
 
     &[data-level]:not([data-level='0']) {
-      z-index: var(--wui-layer-menu-nested, 110);
+      z-index: var(--wui-layer-menu-nested, 1100);
     }
   }
 
   &.context-submenu {
-    z-index: var(--wui-layer-menu-nested, 110);
+    z-index: var(--wui-layer-menu-nested, 1100);
   }
 }

@@ -9,7 +9,7 @@
   pointer-events: none;
 
   position: fixed;
-  z-index: var(--wui-layer-toast, 200);
+  z-index: var(--wui-layer-toast, 2000);
 
   overflow-y: auto;
   overscroll-behavior: contain;

@@ -488,7 +488,7 @@ const meta = [
       children: [
       { label: 'td', content: "<code>--wui-layer-inline-overlay</code>" },
       { label: 'td', content: "组件内部 overlay" },
-      { label: 'td', content: "<code>1</code>" }
+      { label: 'td', content: "<code>10</code>" }
       ]
     },
     {
@@ -496,7 +496,7 @@ const meta = [
       children: [
       { label: 'td', content: "<code>--wui-layer-header</code>" },
       { label: 'td', content: "页面 Header" },
-      { label: 'td', content: "<code>10</code>" }
+      { label: 'td', content: "<code>100</code>" }
       ]
     },
     {
@@ -504,7 +504,7 @@ const meta = [
       children: [
       { label: 'td', content: "<code>--wui-layer-auxiliary</code>" },
       { label: 'td', content: "悬浮工具控件" },
-      { label: 'td', content: "<code>20</code>" }
+      { label: 'td', content: "<code>200</code>" }
       ]
     },
     {
@@ -512,7 +512,7 @@ const meta = [
       children: [
       { label: 'td', content: "<code>--wui-layer-banner</code>" },
       { label: 'td', content: "Banner" },
-      { label: 'td', content: "<code>30</code>" }
+      { label: 'td', content: "<code>300</code>" }
       ]
     },
     {
@@ -520,7 +520,7 @@ const meta = [
       children: [
       { label: 'td', content: "<code>--wui-layer-tabbar</code>" },
       { label: 'td', content: "Tab Bar" },
-      { label: 'td', content: "<code>40</code>" }
+      { label: 'td', content: "<code>400</code>" }
       ]
     },
     {
@@ -528,7 +528,7 @@ const meta = [
       children: [
       { label: 'td', content: "<code>--wui-layer-sidebar</code>" },
       { label: 'td', content: "侧边栏" },
-      { label: 'td', content: "<code>50</code>" }
+      { label: 'td', content: "<code>500</code>" }
       ]
     },
     {
@@ -536,7 +536,7 @@ const meta = [
       children: [
       { label: 'td', content: "<code>--wui-layer-menu</code>" },
       { label: 'td', content: "menu/浮动 panel" },
-      { label: 'td', content: "<code>100</code>" }
+      { label: 'td', content: "<code>1000</code>" }
       ]
     },
     {
@@ -544,7 +544,7 @@ const meta = [
       children: [
       { label: 'td', content: "<code>--wui-layer-menu-nested</code>" },
       { label: 'td', content: "嵌套 menu" },
-      { label: 'td', content: "<code>110</code>" }
+      { label: 'td', content: "<code>1100</code>" }
       ]
     },
     {
@@ -552,7 +552,7 @@ const meta = [
       children: [
       { label: 'td', content: "<code>--wui-layer-toast</code>" },
       { label: 'td', content: "Toast" },
-      { label: 'td', content: "<code>200</code>" }
+      { label: 'td', content: "<code>2000</code>" }
       ]
     },
     {
@@ -560,7 +560,7 @@ const meta = [
       children: [
       { label: 'td', content: "<code>--wui-layer-loading</code>" },
       { label: 'td', content: "加载提示" },
-      { label: 'td', content: "<code>300</code>" }
+      { label: 'td', content: "<code>3000</code>" }
       ]
     }
     ]

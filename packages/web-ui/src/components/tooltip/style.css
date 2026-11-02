@@ -27,7 +27,7 @@
   pointer-events: none;
 
   position: absolute;
-  z-index: var(--wui-layer-inline-overlay, 1);
+  z-index: var(--wui-layer-inline-overlay, 10);
   top: -9999px;
   left: -9999px;
 
@@ -46,7 +46,7 @@
 
 .tooltip-panel.portal {
   position: fixed;
-  z-index: var(--wui-layer-menu, 100);
+  z-index: var(--wui-layer-menu, 1000);
 }
 
 .tooltip-panel.hidden {

@@ -155,7 +155,7 @@ const meta = [
       children: [
       { label: 'td', content: "<code>--wui-back-top-z-index</code>" },
       { label: 'td', content: "层级" },
-      { label: 'td', content: "<code>var(--wui-layer-auxiliary, 20)</code>" }
+      { label: 'td', content: "<code>var(--wui-layer-auxiliary, 200)</code>" }
       ]
     },
     {

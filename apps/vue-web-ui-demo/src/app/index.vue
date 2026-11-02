@@ -20,9 +20,11 @@ import {
   type OverlayScrollbarsComponentRef
 } from 'overlayscrollbars-vue'
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
-import { RouterLink, useRoute, useRouter } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 
 import { bootDegraded, currentLocale, loadDemoLocale, localePending } from '@/i18n/locale'
+
+import SidebarNavLink from './sidebar-nav-link.vue'
 
 const ZH_LABEL = '简体中文'
 const EN_LABEL = 'English'
@@ -309,7 +311,7 @@ const navSectionTitleClass = 'px-2.5 pt-3 pb-1 text-[12px] font-medium tracking-
 
 // active 底色浅色取设计给定的 #d5d7d7；深色不跟——sidebar 在深色是 #2c2c2e，亮灰会读成一条高亮带，仍走 control 档。
 const navItemClass =
-  'flex items-center gap-2 w-full min-w-9 min-h-9 px-2.5 border-0 rounded-full cursor-pointer text-left transition-all duration-150 text-(--wui-color-text) active:bg-[rgb(34_33_42/0.12)] dark:active:bg-white/15 data-[active=true]:bg-[#d5d7d7] data-[active=true]:hover:bg-[#d5d7d7] data-[active=true]:active:bg-[color-mix(in_srgb,#d5d7d7_70%,var(--wui-color-text,#1b1b1b))] dark:data-[active=true]:bg-[color-mix(in_srgb,var(--wui-color-surface-control,#dfdfdf)_90%,var(--wui-color-text,#1b1b1b))] dark:data-[active=true]:hover:bg-[color-mix(in_srgb,var(--wui-color-surface-control,#dfdfdf)_90%,var(--wui-color-text,#1b1b1b))] dark:data-[active=true]:active:bg-[color-mix(in_srgb,var(--wui-color-surface-control,#dfdfdf)_70%,var(--wui-color-text,#1b1b1b))]'
+  'flex items-center gap-2 min-w-9 min-h-9 px-2.5 border-0 rounded-full cursor-pointer text-left transition-all duration-150 text-(--wui-color-text) active:bg-[rgb(34_33_42/0.12)] dark:active:bg-white/15 data-[active=true]:bg-[#d5d7d7] data-[active=true]:hover:bg-[#d5d7d7] data-[active=true]:active:bg-[color-mix(in_srgb,#d5d7d7_70%,var(--wui-color-text,#1b1b1b))] dark:data-[active=true]:bg-[color-mix(in_srgb,var(--wui-color-surface-control,#dfdfdf)_90%,var(--wui-color-text,#1b1b1b))] dark:data-[active=true]:hover:bg-[color-mix(in_srgb,var(--wui-color-surface-control,#dfdfdf)_90%,var(--wui-color-text,#1b1b1b))] dark:data-[active=true]:active:bg-[color-mix(in_srgb,var(--wui-color-surface-control,#dfdfdf)_70%,var(--wui-color-text,#1b1b1b))]'
 
 function isNavActive(path: string) {
   return route.path === path || route.path === `${path}/`
@@ -419,40 +421,24 @@ function isNavActive(path: string) {
           aria-label="应用导航"
         >
           <nav class="grid gap-1" aria-label="主导航">
-            <RouterLink
+            <SidebarNavLink
               to="/home"
-              :class="[
-                navItemClass,
-                isNavActive('/home') ? '' : 'hover:bg-black/4 dark:hover:bg-white/6',
-                navCollapsed ? 'justify-center' : ''
-              ]"
-              :data-active="isNavActive('/home')"
-              :aria-current="isNavActive('/home') ? 'page' : undefined"
-              aria-label="组件总览"
-              title="组件总览"
-              @click="sidebarOpen = false"
-            >
-              <span :class="navCollapsed ? 'w-full truncate text-center text-sm' : 'min-w-0 flex-1 truncate text-sm'">
-                组件总览
-              </span>
-            </RouterLink>
-            <RouterLink
+              label="组件总览"
+              :active="isNavActive('/home')"
+              :collapsed="navCollapsed"
+              :item-class="navItemClass"
+              :title="navCollapsed ? undefined : '组件总览'"
+              @navigate="sidebarOpen = false"
+            />
+            <SidebarNavLink
               to="/changelog"
-              :class="[
-                navItemClass,
-                isNavActive('/changelog') ? '' : 'hover:bg-black/4 dark:hover:bg-white/6',
-                navCollapsed ? 'justify-center' : ''
-              ]"
-              :data-active="isNavActive('/changelog')"
-              :aria-current="isNavActive('/changelog') ? 'page' : undefined"
-              aria-label="更新日志"
-              title="更新日志"
-              @click="sidebarOpen = false"
-            >
-              <span :class="navCollapsed ? 'w-full truncate text-center text-sm' : 'min-w-0 flex-1 truncate text-sm'">
-                更新日志
-              </span>
-            </RouterLink>
+              label="更新日志"
+              :active="isNavActive('/changelog')"
+              :collapsed="navCollapsed"
+              :item-class="navItemClass"
+              :title="navCollapsed ? undefined : '更新日志'"
+              @navigate="sidebarOpen = false"
+            />
             <div
               v-for="(section, index) in navSections"
               :key="section.id"
@@ -472,25 +458,16 @@ function isNavActive(path: string) {
                 <template v-else-if="section.id === 'display'">展示</template>
                 <template v-else>反馈</template>
               </h2>
-              <RouterLink
+              <SidebarNavLink
                 v-for="item in section.items"
                 :key="item.path"
                 :to="item.path"
-                :class="[
-                  navItemClass,
-                  isNavActive(item.path) ? '' : 'hover:bg-black/4 dark:hover:bg-white/6',
-                  navCollapsed ? 'justify-center' : ''
-                ]"
-                :data-active="isNavActive(item.path)"
-                :aria-current="isNavActive(item.path) ? 'page' : undefined"
-                :aria-label="item.label"
-                :title="navCollapsed ? item.label : undefined"
-                @click="sidebarOpen = false"
-              >
-                <span :class="navCollapsed ? 'w-full truncate text-center text-sm' : 'min-w-0 flex-1 truncate text-sm'">
-                  {{ item.label }}
-                </span>
-              </RouterLink>
+                :label="item.label"
+                :active="isNavActive(item.path)"
+                :collapsed="navCollapsed"
+                :item-class="navItemClass"
+                @navigate="sidebarOpen = false"
+              />
             </div>
           </nav>
         </OverlayScrollbarsComponent>

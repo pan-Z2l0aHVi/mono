@@ -79,7 +79,6 @@ export default {
     scopes: [
       'root',
       'interweave',
-      'interweave-frontend',
       'react-web-ui-demo',
       'vue-web-ui-demo',
       'app-scrollbars',

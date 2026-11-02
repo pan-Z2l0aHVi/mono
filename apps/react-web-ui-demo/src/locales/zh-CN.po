@@ -117,7 +117,7 @@ msgstr "深色模式"
 msgid "基础控件"
 msgstr "基础控件"
 
-#: src/routes/home/-component.tsx
+#: src/components/quick-link-card/index.tsx
 msgid "查看演示 →"
 msgstr "查看演示 →"
 
@@ -128,10 +128,6 @@ msgstr "交互与浮层"
 #: src/routes/home/-component.tsx
 msgid "丝滑动效"
 msgstr "丝滑动效"
-
-#: src/routes/home/-component.tsx
-msgid "命令式组件"
-msgstr "命令式组件"
 
 #: src/routes/home/-component.tsx
 msgid "加载中的等待提示"
@@ -206,10 +202,6 @@ msgid "悬停提示、焦点说明"
 msgstr "悬停提示、焦点说明"
 
 #: src/routes/home/-component.tsx
-msgid "函数调用触发的全局反馈"
-msgstr "函数调用触发的全局反馈"
-
-#: src/routes/home/-component.tsx
 msgid "多图预览、滑动切换、手势缩放"
 msgstr "多图预览、滑动切换、手势缩放"
 
@@ -259,11 +251,9 @@ msgstr "反馈"
 
 #: src/components/root/index.tsx
 #: src/components/root/index.tsx
-#: src/components/root/index.tsx
 msgid "组件总览"
 msgstr "组件总览"
 
-#: src/components/root/index.tsx
 #: src/components/root/index.tsx
 #: src/components/root/index.tsx
 msgid "更新日志"
@@ -272,3 +262,11 @@ msgstr "更新日志"
 #: src/components/codeblock/index.tsx
 msgid "示例代码框架"
 msgstr "示例代码框架"
+
+#: src/routes/home/-component.tsx
+msgid "命令式"
+msgstr "命令式"
+
+#: src/routes/home/-component.tsx
+msgid "函数调用触发"
+msgstr "函数调用触发"

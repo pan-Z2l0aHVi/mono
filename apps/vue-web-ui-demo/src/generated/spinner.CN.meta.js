@@ -208,7 +208,7 @@ const meta = [
       children: [
       { label: 'td', content: "<code>--wui-layer-loading</code>" },
       { label: 'td', content: "命令式 overlay 的 <code>z-index</code>，属主题的层级 token" },
-      { label: 'td', content: "<code>300</code>" }
+      { label: 'td', content: "<code>3000</code>" }
       ]
     }
     ]

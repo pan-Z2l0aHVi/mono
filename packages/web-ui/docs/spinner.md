@@ -244,4 +244,4 @@ The description text uses `--wui-color-text-secondary`.
 | ------------------------ | --------------------------------------------------------------------------------------------------------------------------------------- | ------- |
 | `--wui-spinner-size`     | Spinner width and height; written to the host inline style by `size`, so a variable of the same name set by the consumer is overridden. | `24px`  |
 | `--wui-duration-spinner` | Chase cycle of the blades; slowed to `1600ms` under reduce, never stopped.                                                              | `800ms` |
-| `--wui-layer-loading`    | `z-index` of the imperative overlay, a layer token of the theme.                                                                        | `300`   |
+| `--wui-layer-loading`    | `z-index` of the imperative overlay, a layer token of the theme.                                                                        | `3000`  |

@@ -183,10 +183,51 @@ function NavSectionTitle({ id }: { id: NavSectionId }) {
 
 // active 底色浅色取设计给定的 #d5d7d7；深色不跟——sidebar 在深色是 #2c2c2e，亮灰会读成一条高亮带，仍走 control 档。
 const navItemClass =
-  'flex items-center gap-2 w-full min-w-9 min-h-9 px-2.5 border-0 rounded-full cursor-pointer text-left transition-all duration-150 text-(--wui-color-text) active:bg-[rgb(34_33_42/0.12)] dark:active:bg-white/15 data-[active=true]:bg-[#d5d7d7] data-[active=true]:hover:bg-[#d5d7d7] data-[active=true]:active:bg-[color-mix(in_srgb,#d5d7d7_70%,var(--wui-color-text,#1b1b1b))] dark:data-[active=true]:bg-[color-mix(in_srgb,var(--wui-color-surface-control,#dfdfdf)_90%,var(--wui-color-text,#1b1b1b))] dark:data-[active=true]:hover:bg-[color-mix(in_srgb,var(--wui-color-surface-control,#dfdfdf)_90%,var(--wui-color-text,#1b1b1b))] dark:data-[active=true]:active:bg-[color-mix(in_srgb,var(--wui-color-surface-control,#dfdfdf)_70%,var(--wui-color-text,#1b1b1b))]'
+  'flex items-center gap-2 min-w-9 min-h-9 px-2.5 border-0 rounded-full cursor-pointer text-left transition-all duration-150 text-(--wui-color-text) active:bg-[rgb(34_33_42/0.12)] dark:active:bg-white/15 data-[active=true]:bg-[#d5d7d7] data-[active=true]:hover:bg-[#d5d7d7] data-[active=true]:active:bg-[color-mix(in_srgb,#d5d7d7_70%,var(--wui-color-text,#1b1b1b))] dark:data-[active=true]:bg-[color-mix(in_srgb,var(--wui-color-surface-control,#dfdfdf)_90%,var(--wui-color-text,#1b1b1b))] dark:data-[active=true]:hover:bg-[color-mix(in_srgb,var(--wui-color-surface-control,#dfdfdf)_90%,var(--wui-color-text,#1b1b1b))] dark:data-[active=true]:active:bg-[color-mix(in_srgb,var(--wui-color-surface-control,#dfdfdf)_70%,var(--wui-color-text,#1b1b1b))]'
 
 function isNavActive(pathname: string, path: string) {
   return pathname === path || pathname === `${path}/`
+}
+
+// 折叠后侧栏内容宽 36px（60px 侧栏去掉 8px 外边距与两侧 8px 内边距）。tooltip 的 trigger
+// 按内容收缩，链接不显式定宽会被文字撑开，active 底色与点击区域也会跟着缩水。
+interface SidebarNavLinkProps {
+  to: string
+  label: string
+  title?: string
+  active: boolean
+  collapsed: boolean
+  onNavigate: () => void
+}
+
+function SidebarNavLink({ to, label, title, active, collapsed, onNavigate }: SidebarNavLinkProps) {
+  const link = (
+    <Link
+      to={to}
+      className={
+        navItemClass +
+        (active ? '' : ' hover:bg-black/4 dark:hover:bg-white/6') +
+        (collapsed ? ' w-9 justify-center' : ' w-full')
+      }
+      data-active={active}
+      aria-current={active ? 'page' : undefined}
+      aria-label={label}
+      title={title}
+      onClick={onNavigate}
+    >
+      <span className={collapsed ? 'w-full truncate text-center text-sm' : 'min-w-0 flex-1 truncate text-sm'}>
+        {label}
+      </span>
+    </Link>
+  )
+
+  if (!collapsed) return link
+
+  return (
+    <web-ui-tooltip content={label} placement="right" portal>
+      {link}
+    </web-ui-tooltip>
+  )
 }
 
 export function Root() {
@@ -449,44 +490,22 @@ export function Root() {
               aria-label="应用导航"
             >
               <nav className="grid gap-1" aria-label="主导航">
-                <Link
+                <SidebarNavLink
                   to="/home"
-                  className={
-                    navItemClass +
-                    (isNavActive(pathname, '/home') ? '' : ' hover:bg-black/4 dark:hover:bg-white/6') +
-                    (navCollapsed ? ' justify-center' : '')
-                  }
-                  data-active={isNavActive(pathname, '/home')}
-                  aria-current={isNavActive(pathname, '/home') ? 'page' : undefined}
-                  aria-label="组件总览"
-                  title="组件总览"
-                  onClick={() => setSidebarOpen(false)}
-                >
-                  <span
-                    className={navCollapsed ? 'w-full truncate text-center text-sm' : 'min-w-0 flex-1 truncate text-sm'}
-                  >
-                    组件总览
-                  </span>
-                </Link>
-                <Link
+                  label="组件总览"
+                  active={isNavActive(pathname, '/home')}
+                  collapsed={navCollapsed}
+                  title={navCollapsed ? undefined : '组件总览'}
+                  onNavigate={() => setSidebarOpen(false)}
+                />
+                <SidebarNavLink
                   to="/changelog"
-                  className={
-                    navItemClass +
-                    (isNavActive(pathname, '/changelog') ? '' : ' hover:bg-black/4 dark:hover:bg-white/6') +
-                    (navCollapsed ? ' justify-center' : '')
-                  }
-                  data-active={isNavActive(pathname, '/changelog')}
-                  aria-current={isNavActive(pathname, '/changelog') ? 'page' : undefined}
-                  aria-label="更新日志"
-                  title="更新日志"
-                  onClick={() => setSidebarOpen(false)}
-                >
-                  <span
-                    className={navCollapsed ? 'w-full truncate text-center text-sm' : 'min-w-0 flex-1 truncate text-sm'}
-                  >
-                    更新日志
-                  </span>
-                </Link>
+                  label="更新日志"
+                  active={isNavActive(pathname, '/changelog')}
+                  collapsed={navCollapsed}
+                  title={navCollapsed ? undefined : '更新日志'}
+                  onNavigate={() => setSidebarOpen(false)}
+                />
                 {navSections.map((section, index) => (
                   <div
                     key={section.id}
@@ -503,33 +522,16 @@ export function Root() {
                     >
                       <NavSectionTitle id={section.id} />
                     </h2>
-                    {section.items.map(item => {
-                      const active = isNavActive(pathname, item.path)
-                      return (
-                        <Link
-                          key={item.path}
-                          to={item.path}
-                          className={
-                            navItemClass +
-                            (active ? '' : ' hover:bg-black/4 dark:hover:bg-white/6') +
-                            (navCollapsed ? ' justify-center' : '')
-                          }
-                          data-active={active}
-                          aria-current={active ? 'page' : undefined}
-                          aria-label={item.label}
-                          title={navCollapsed ? item.label : undefined}
-                          onClick={() => setSidebarOpen(false)}
-                        >
-                          <span
-                            className={
-                              navCollapsed ? 'w-full truncate text-center text-sm' : 'min-w-0 flex-1 truncate text-sm'
-                            }
-                          >
-                            {item.label}
-                          </span>
-                        </Link>
-                      )
-                    })}
+                    {section.items.map(item => (
+                      <SidebarNavLink
+                        key={item.path}
+                        to={item.path}
+                        label={item.label}
+                        active={isNavActive(pathname, item.path)}
+                        collapsed={navCollapsed}
+                        onNavigate={() => setSidebarOpen(false)}
+                      />
+                    ))}
                   </div>
                 ))}
               </nav>

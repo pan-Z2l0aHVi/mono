@@ -19,7 +19,7 @@
   pointer-events: none;
 
   position: var(--wui-back-top-position, fixed);
-  z-index: var(--wui-back-top-z-index, var(--wui-layer-auxiliary, 20));
+  z-index: var(--wui-back-top-z-index, var(--wui-layer-auxiliary, 200));
   top: var(--wui-back-top-top, auto);
   right: var(--wui-back-top-right, 20px);
   bottom: var(--wui-back-top-bottom, 20px);

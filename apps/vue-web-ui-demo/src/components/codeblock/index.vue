@@ -199,7 +199,7 @@ const copyAnnouncement = () => (copied.value === 'idle' ? '' : copyLabel())
   >
     <!--
       预览区只是层级占位（`relative z-20`）：select / dropdown / autocomplete 不开 `portal` 时
-      面板是宿主内的 `position: absolute`（`--wui-layer-inline-overlay` 只有 1），向下溢出预览区
+      面板是宿主内的 `position: absolute`（`--wui-layer-inline-overlay` 只有 10），向下溢出预览区
       就会被工具条盖掉；抬到 20 让整块预览（含溢出的面板）画在代码卡之上。
     -->
     <div v-if="demo()" class="relative z-20 flex flex-wrap items-center gap-3 px-4 py-8" data-codeblock-preview>
@@ -208,7 +208,7 @@ const copyAnnouncement = () => (copied.value === 'idle' ? '' : copyLabel())
 
     <!--
       `isolate` 让这张卡自己成一个 stacking context：工具条的 z-10 只在卡内比较，
-      既压得住下方代码区，也不会越过页面 header（`--wui-layer-header` 也是 10，
+      既压得住下方代码区，也不会越过页面 header（`--wui-layer-header` 也是 100，
       卡外比大小就会被后画的工具条盖住）。
 
       这一层**不铺底色**。`--wui-color-page` 的实色底和页面同色，肉眼看不出来，却是这一带

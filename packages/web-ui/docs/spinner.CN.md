@@ -242,4 +242,4 @@ export default function Demo() {
 | ------------------------ | ---------------------------------------------------------------- | ------- |
 | `--wui-spinner-size`     | 旋转器宽高；由 `size` 写成宿主内联样式，消费方设同名变量会被盖掉 | `24px`  |
 | `--wui-duration-spinner` | 叶片追光周期；reduce 下放慢到 `1600ms`，不停                     | `800ms` |
-| `--wui-layer-loading`    | 命令式 overlay 的 `z-index`，属主题的层级 token                  | `300`   |
+| `--wui-layer-loading`    | 命令式 overlay 的 `z-index`，属主题的层级 token                  | `3000`  |

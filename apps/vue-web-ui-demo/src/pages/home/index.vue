@@ -18,7 +18,8 @@ import {
   lucideSparkles,
   tablerBrandTypescript
 } from '@greypan/web-ui/icons'
-import { RouterLink } from 'vue-router'
+
+import QuickLinkCard from '@/components/quick-link-card/index.vue'
 
 interface QuickLink {
   path: string
@@ -59,8 +60,8 @@ const quickLinkGroups: QuickLinkGroup[] = [
   },
   {
     id: 'imperative',
-    title: () => '命令式组件',
-    description: () => '函数调用触发的全局反馈',
+    title: () => '命令式',
+    description: () => '函数调用触发',
     links: [
       { path: '/components/toast', label: 'Toast', desc: () => '轻量、响应式的全局通知' },
       { path: '/components/image-preview', label: 'ImagePreview', desc: () => '多图预览、滑动切换、手势缩放' },
@@ -125,7 +126,7 @@ const logoSrc = `${import.meta.env.BASE_URL}bo-transparent.png`
 
     <div class="w-full text-left">
       <div
-        class="flex items-center gap-2 mb-5 text-[20px] font-semibold uppercase tracking-wider text-(--wui-color-text-secondary)"
+        class="flex items-center gap-2 mb-5 text-[16px] font-semibold uppercase tracking-wider text-(--wui-color-text-secondary)"
       >
         <web-ui-icon :icon="lucideLayoutGrid" :size="16"></web-ui-icon>
         快速预览
@@ -134,32 +135,17 @@ const logoSrc = `${import.meta.env.BASE_URL}bo-transparent.png`
       <div data-testid="home-quick-links-grid" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
         <template v-for="group in quickLinkGroups" :key="group.id">
           <div class="col-span-full flex flex-col items-start gap-y-1 pt-2 first:pt-0">
-            <h2 class="text-[24px] font-semibold text-(--wui-color-text)">{{ group.title() }}</h2>
+            <h2 class="text-[20px] font-semibold text-(--wui-color-text)">{{ group.title() }}</h2>
             <span class="text-xs text-(--wui-color-text-tertiary)">{{ group.description() }}</span>
           </div>
 
-          <RouterLink
+          <QuickLinkCard
             v-for="link in group.links"
             :key="link.path"
-            :to="link.path"
-            class="wui-glass group flex min-h-32 flex-col justify-between rounded-3xl p-5 text-left transition-all duration-200 [--wui-glass-corner-radius:24px] hover:[--wui-color-glass-ring:var(--wui-color-accent)]"
-          >
-            <div>
-              <div
-                class="font-semibold text-(--wui-color-text) group-hover:text-(--wui-color-accent) transition-colors"
-              >
-                {{ link.label }}
-              </div>
-              <p class="mt-2 text-xs leading-relaxed text-(--wui-color-text-secondary) line-clamp-2">
-                {{ link.desc() }}
-              </p>
-            </div>
-            <div
-              class="mt-4 flex items-center gap-1 text-xs font-medium text-(--wui-color-accent) opacity-70 transition-opacity duration-200 group-hover:opacity-100"
-            >
-              查看演示 →
-            </div>
-          </RouterLink>
+            :path="link.path"
+            :label="link.label"
+            :desc="link.desc()"
+          />
         </template>
       </div>
     </div>

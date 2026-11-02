@@ -10,7 +10,7 @@ export default defineConfig({
         ignore: ['src/generated/**', '**/__tests__/**', 'src/type-fixtures/**', 'src/app/boot-error.vue']
       },
       heuristic: (text, file) => (/\p{Script=Han}/u.test(text.body) ? defaultHeuristic(text, file) : false),
-      componentAttributes: { 'web-ui-option': ['label'], 'web-ui-tooltip': ['content'] }
+      componentAttributes: { 'web-ui-option': ['label'], 'web-ui-tooltip': ['content'], SidebarNavLink: ['label'] }
     })
   },
   dev: 'read',

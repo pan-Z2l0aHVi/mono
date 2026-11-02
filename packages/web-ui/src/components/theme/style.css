@@ -61,17 +61,21 @@
   --wui-radio-group-gap: var(--wui-space-2);
   --wui-checkbox-group-gap: var(--wui-space-2);
 
-  --wui-layer-inline-overlay: 1;
-  --wui-layer-header: 10;
-  --wui-layer-auxiliary: 20;
-  --wui-layer-banner: 30;
-  --wui-layer-tabbar: 40;
-  --wui-layer-sidebar: 50;
+  /*
+   * 层级 token 按十位递进：布局层占 10–500，浮动层从 1000 起。应用内容里的局部
+   * z-index 保持两位数量级，就不会越过 layout 的 header / sidebar。
+   */
+  --wui-layer-inline-overlay: 10;
+  --wui-layer-header: 100;
+  --wui-layer-auxiliary: 200;
+  --wui-layer-banner: 300;
+  --wui-layer-tabbar: 400;
+  --wui-layer-sidebar: 500;
 
-  --wui-layer-menu: 100;
-  --wui-layer-menu-nested: 110;
-  --wui-layer-toast: 200;
-  --wui-layer-loading: 300;
+  --wui-layer-menu: 1000;
+  --wui-layer-menu-nested: 1100;
+  --wui-layer-toast: 2000;
+  --wui-layer-loading: 3000;
   --wui-duration-press: 80ms;
   --wui-duration-feedback: 100ms;
   --wui-duration-trigger: 160ms;

@@ -75,7 +75,7 @@
   --wui-internal-duration-float-enter: var(--wui-duration-float-enter, 240ms);
   --wui-internal-duration-float-exit: var(--wui-duration-float-exit, 160ms);
   position: absolute;
-  z-index: var(--wui-layer-inline-overlay, 1);
+  z-index: var(--wui-layer-inline-overlay, 10);
 
   overflow: hidden;
 
@@ -89,7 +89,7 @@
 
   &.portal {
     position: fixed;
-    z-index: var(--wui-layer-menu, 100);
+    z-index: var(--wui-layer-menu, 1000);
   }
 
   &.hidden {
