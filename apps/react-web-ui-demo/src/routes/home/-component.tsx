@@ -124,7 +124,7 @@ function Home() {
           {quickLinkGroups.map(group => (
             <Fragment key={group.id}>
               <div className="col-span-full flex flex-col items-start gap-y-1 pt-2 first:pt-0">
-                <h2 className="text-2xl md:text-4xl font-semibold text-(--wui-color-text)">{group.title()}</h2>
+                <h2 className="text-lg md:text-xl font-semibold text-(--wui-color-text)">{group.title()}</h2>
                 <span className="text-xs text-(--wui-color-text-tertiary)">{group.description()}</span>
               </div>
 

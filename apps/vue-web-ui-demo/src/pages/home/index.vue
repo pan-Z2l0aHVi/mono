@@ -134,7 +134,7 @@ const logoSrc = `${import.meta.env.BASE_URL}bo-transparent.png`
       <div data-testid="home-quick-links-grid" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
         <template v-for="group in quickLinkGroups" :key="group.id">
           <div class="col-span-full flex flex-col items-start gap-y-1 pt-2 first:pt-0">
-            <h2 class="text-2xl md:text-4xl font-semibold text-(--wui-color-text)">{{ group.title() }}</h2>
+            <h2 class="text-lg md:text-xl font-semibold text-(--wui-color-text)">{{ group.title() }}</h2>
             <span class="text-xs text-(--wui-color-text-tertiary)">{{ group.description() }}</span>
           </div>
 
