@@ -70,13 +70,14 @@ function navRoot() {
 
 /**
  * 这个 jsdom 层不模拟真实布局；折叠态的文字省略、tooltip 与文本布局由 browser spec 验证。
- * 折叠态的公开出口是 `title`：可见文字保持完整名称，折叠时补上同名 `title`。
- * 可见文字与 `title` 一起比较，确认桌面 collapsed state 不会泄漏到移动 drawer。
+ * 折叠态的公开出口是 `web-ui-tooltip` 的 `content`：可见文字与可访问名都保持完整名称，
+ * 折叠时由 tooltip 提供完整名称。两者一起比较，确认桌面 collapsed state 不会泄漏到移动 drawer。
  */
 function navItemState() {
   const link = navRoot().querySelector('a[aria-label="Button"]')
   if (!link) throw new Error('nav link not found')
-  return { text: link.textContent?.trim() ?? '', title: link.getAttribute('title') }
+  const tooltip = link.closest('web-ui-tooltip') as (HTMLElement & { content?: string }) | null
+  return { text: link.textContent?.trim() ?? '', tooltip: tooltip?.content ?? null }
 }
 
 /**
@@ -96,7 +97,6 @@ async function settleViewport(drawerMode: boolean) {
     if (isDrawerMode() !== drawerMode) throw new Error(`drawer 形态没有变成 ${drawerMode}`)
   })
   await nextTick()
-  await layoutRoot().updateComplete
 }
 
 function buildRouter(): Router {
@@ -129,14 +129,12 @@ async function mountAppShell() {
   // memory history 的首次导航由 mount 触发，`isReady()` 只能在挂载之后等。
   await router.isReady()
   await nextTick()
-  await layoutRoot().updateComplete
 }
 
 /** 复刻 layout 侧边栏 Toggle 的请求链路：layout 只派发请求，宿主回写受控属性。 */
 async function requestCollapse(collapsed: boolean) {
   layoutRoot().dispatchEvent(new CustomEvent('sidebar-collapsed-change', { detail: { collapsed } }))
   await nextTick()
-  await layoutRoot().updateComplete
 }
 
 let setMediaMatches: (query: string, matches: boolean) => void

@@ -1,16 +1,14 @@
-import { readonly, ref, shallowRef } from 'vue'
+import { readonly, ref, shallowRef, type ShallowRef } from 'vue'
 import { commitLocale, loadLocale } from 'wuchale/load-utils'
 
-import type { ExampleDoc } from '@/generated/examples'
-
-import { prepareExamples } from './examples'
+import { loadMetaDocs, prepareExamples, type MetaDocs } from './examples'
 
 export type DemoLocale = 'zh-CN' | 'en'
 interface Dependencies {
   loadCatalog: (locale: DemoLocale) => Promise<void>
   commitCatalog: (locale: DemoLocale) => void
-  loadDocs: (locale: DemoLocale) => Promise<ExampleDoc[]>
-  prepareExamples: (locale: DemoLocale, docs: ExampleDoc[], components: string[]) => Promise<void>
+  loadDocs: (locale: DemoLocale, components: string[]) => Promise<MetaDocs>
+  prepareExamples: (docs: MetaDocs) => Promise<void>
   readPreference: () => string | null
   writePreference: (locale: DemoLocale) => void
   languages: () => readonly string[]
@@ -18,16 +16,16 @@ interface Dependencies {
 }
 const isLocale = (value: unknown): value is DemoLocale => value === 'zh-CN' || value === 'en'
 
-/** 串行准备 catalog 与文档，只提交最新的完整结果；原始加载错误向调用方传播。 */
+/** 准备当前页面所需资源，再同步发布语种和文档；失败保留已提交的视图。 */
 export function createLocaleController(deps: Dependencies) {
   const locale = ref<DemoLocale>('zh-CN')
-  const docs = shallowRef<ExampleDoc[]>([])
+  const docs = shallowRef<MetaDocs>(new Map())
   const pending = ref(false)
+  const components = new Map<string, number>()
+  let revision = 0
   let latest = 0
   let queue = Promise.resolve()
   let latestRequest = Promise.resolve()
-  const components = new Map<string, number>()
-  let revision = 0
   function register(component: string) {
     components.set(component, (components.get(component) ?? 0) + 1)
     revision++
@@ -38,14 +36,34 @@ export function createLocaleController(deps: Dependencies) {
       revision++
     }
   }
-  async function prepare(value: DemoLocale, docs?: ExampleDoc[]) {
-    docs ??= await deps.loadDocs(value)
+  /*
+   * 页面切换会带来已注册组件之外的新组件：语种提交只覆盖当时注册的那批，后来者由这里单独补齐。
+   * 不在同一个语种里重复拉（缓存已经在 `loadMeta` 一层做过，这里只是避免无谓的发布）。
+   */
+  async function ensure(component: string) {
+    if (docs.value.has(component)) return
+    const target = locale.value
+    const loaded = await deps.loadDocs(target, [component])
+    if (locale.value !== target) return
+    const doc = loaded.get(component)
+    if (!doc) return
+    await deps.prepareExamples(new Map([[component, doc]]))
+    if (locale.value !== target) return
+    docs.value = new Map(docs.value).set(component, doc)
+  }
+  /*
+   * 反复读 revision：注册发生在子组件的挂载期，可能晚于本次装载，收敛到「注册表不再变」为止。
+   * `loadDocs` 与 `prepareExamples` 都按组件缓存，重复一轮只是几份已完成的 promise。
+   */
+  async function prepare(value: DemoLocale) {
     let version: number
+    let loaded: MetaDocs = new Map()
     do {
       version = revision
-      await deps.prepareExamples(value, docs, [...components.keys()])
+      loaded = await deps.loadDocs(value, [...components.keys()])
+      await deps.prepareExamples(loaded)
     } while (version !== revision)
-    return { docs, version }
+    return { docs: loaded, version }
   }
   function detect(): DemoLocale {
     try {
@@ -65,16 +83,17 @@ export function createLocaleController(deps: Dependencies) {
     pending.value = true
     const request = queue.then(async () => {
       if (id !== latest) return
-      // loadLocale(false) 仍改写上游共享 catalog；必须等两个分支都结束，失败也不能提前推进队列。
-      const [catalog, document] = await Promise.allSettled([deps.loadCatalog(value), prepare(value)])
+      // 核心的 loadLocale(false) 仍改写共享 catalog，失败时也要等所有分支结束再推进队列。
+      const [catalog, prepared] = await Promise.allSettled([deps.loadCatalog(value), prepare(value)])
       if (id !== latest) return
       if (catalog.status === 'rejected') throw catalog.reason
-      if (document.status === 'rejected') throw document.reason
-      let prepared = document.value
-      while (prepared.version !== revision) prepared = await prepare(value, prepared.docs)
+      if (prepared.status === 'rejected') throw prepared.reason
+      // 等 catalog 的这段时间里可能又注册了新组件，提交前再收敛一轮。
+      let result = prepared.value
+      while (result.version !== revision) result = await prepare(value)
       if (id !== latest) return
       deps.commitCatalog(value)
-      docs.value = prepared.docs
+      docs.value = result.docs
       locale.value = value
       deps.setDocumentLanguage(value)
       if (persist) {
@@ -94,6 +113,15 @@ export function createLocaleController(deps: Dependencies) {
       if (id === latest) pending.value = false
     }
   }
+  /*
+   * 首帧只依赖源语种 catalog：挂载前组件注册表为空，文档装载必然空转；目标语种要等挂载后
+   * 由 `bootstrap` 补载。失败原样抛出，由调用方保留原因。
+   */
+  async function loadShellLocale() {
+    await deps.loadCatalog('zh-CN')
+    deps.commitCatalog('zh-CN')
+    deps.setDocumentLanguage('zh-CN')
+  }
   async function bootstrap() {
     const target = detect()
     try {
@@ -111,22 +139,25 @@ export function createLocaleController(deps: Dependencies) {
   }
   return {
     locale: readonly(locale),
-    docs: readonly(docs),
+    // `readonly()` 会把 `.value` 里的节点数组也深层只读化，渲染器只按 `MetaNode` 的形状取值；
+    // 这里只保留 ref 层面的只读（外部不能改写 `.value`），节点本身仍由生成物与控制器封装保证。
+    docs: readonly(docs) as Readonly<ShallowRef<MetaDocs>>,
     pending: readonly(pending),
     detect,
     change,
     settled: () => latestRequest,
+    loadShellLocale,
     bootstrap,
-    register
+    register,
+    ensure
   }
 }
 
 const controller = createLocaleController({
   loadCatalog: locale => loadLocale(locale, false),
   commitCatalog: commitLocale,
+  loadDocs: loadMetaDocs,
   prepareExamples,
-  loadDocs: async locale =>
-    (locale === 'en' ? await import('@/generated/en/examples') : await import('@/generated/examples')).exampleDocs,
   readPreference: () => localStorage.getItem('locale'),
   writePreference: locale => localStorage.setItem('locale', locale),
   languages: () => (navigator.languages?.length ? navigator.languages : [navigator.language]),
@@ -139,6 +170,8 @@ export const currentDocs = controller.docs
 export const localePending = controller.pending
 export const loadDemoLocale = controller.change
 export const localeSettled = controller.settled
+export const loadShellLocale = controller.loadShellLocale
 export const bootstrapLocale = controller.bootstrap
 export const bootDegraded = ref(false)
 export const registerExampleDoc = controller.register
+export const ensureExampleDoc = controller.ensure

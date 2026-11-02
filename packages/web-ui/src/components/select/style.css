@@ -112,7 +112,7 @@
   /* 环底色转 transparent，宽 panel 的长边中段不留铺底，见 menu-portal.css 同处注释。 */
   --wui-color-glass-ring: transparent;
   position: absolute;
-  z-index: var(--wui-layer-inline-overlay, 1);
+  z-index: var(--wui-layer-inline-overlay, 10);
 
   overflow: hidden;
 
@@ -126,7 +126,7 @@
 
   &.portal {
     position: fixed;
-    z-index: var(--wui-layer-menu, 100);
+    z-index: var(--wui-layer-menu, 1000);
   }
 
   &.hidden {

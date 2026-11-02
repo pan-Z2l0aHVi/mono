@@ -1,7 +1,4 @@
----
-component: drawer
-tag: web-ui-drawer
----
+# Drawer
 
 侧边 drawer，基于原生 `<dialog>`，自带滑入 / 滑出动画，并可从四周内缘拖拽关闭。适合承载与当前页面相关、但不需要离开上下文的次级任务。
 

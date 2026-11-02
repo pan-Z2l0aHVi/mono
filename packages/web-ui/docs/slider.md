@@ -1,7 +1,4 @@
----
-component: slider
-tag: web-ui-slider
----
+# Slider
 
 Range slider with tick marks and a vertical orientation; dragging uses pointer capture, and the keyboard supports the arrow keys, Home / End, and PageUp / PageDown. Every instance should provide a distinguishing name through `aria-label` or `aria-labelledby`.
 

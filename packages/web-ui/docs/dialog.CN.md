@@ -1,7 +1,4 @@
----
-component: dialog
-tag: web-ui-dialog
----
+# Dialog
 
 模态 dialog，基于原生 `<dialog>` 的 `showModal()`；支持内置标题带、footer 与完全自绘的 `headless` 模式。
 

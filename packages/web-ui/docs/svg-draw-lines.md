@@ -1,7 +1,4 @@
----
-component: svg-draw-lines
-tag: web-ui-svg-draw-lines
----
+# SVG Draw Lines
 
 An SVG line-drawing animation: it animates the original elements via `stroke-dashoffset` without cloning or touching the DOM; by default it draws in, and `replay({ reverse: true })` retracts along the same path.
 

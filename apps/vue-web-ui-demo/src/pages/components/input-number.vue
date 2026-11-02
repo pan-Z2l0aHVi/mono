@@ -11,5 +11,5 @@ import ExampleDoc from '@/components/example-doc/index.vue'
 </script>
 
 <template>
-  <ExampleDoc component="input-number" level="primary" />
+  <ExampleDoc component="input-number" />
 </template>

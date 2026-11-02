@@ -3,7 +3,7 @@
 // 随每次 vue-tsc --build 被检查。
 // 局限：vue-tsc 对组件上未声明 emit/prop 的属性和事件会回退到 $attrs 放行（$event 为 any），
 // 因此本文件无法对「非 web-ui 组件被全局污染」做负向断言；该契约由 types/vue.ts
-// 不再全局扩展 ComponentCustomProps 结构保证，并由 docs/agents/web-ui.md 约束。
+// 的局部声明（不扩展 ComponentCustomProps）保证，并由 docs/agents/web-ui.md 约束。
 import type {
   WebUiCheckboxGroup,
   WebUiCollapse,

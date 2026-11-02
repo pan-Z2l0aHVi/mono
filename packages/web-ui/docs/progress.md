@@ -1,7 +1,4 @@
----
-component: progress
-tag: web-ui-progress
----
+# Progress
 
 progress / progress indicator: a linear track for completed work, with an indeterminate mode for operations whose percentage is not known yet.
 

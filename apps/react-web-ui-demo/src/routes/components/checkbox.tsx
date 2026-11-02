@@ -5,8 +5,8 @@ import ExampleDoc from '@/components/example-doc'
 function Component() {
   return (
     <>
-      <ExampleDoc component="checkbox" level="primary" />
-      <ExampleDoc component="checkbox-group" level="secondary" />
+      <ExampleDoc component="checkbox" />
+      <ExampleDoc component="checkbox-group" />
     </>
   )
 }

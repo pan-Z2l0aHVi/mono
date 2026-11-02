@@ -5,6 +5,7 @@
     "stylelint-config-standard-vue",
     "stylelint-config-html"
   ],
+  "ignoreFiles": ["**/generated/**"],
   "rules": {
     "alpha-value-notation": "number",
     "at-rule-no-unknown": [

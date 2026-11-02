@@ -1,7 +1,4 @@
----
-component: icon
-tag: web-ui-icon
----
+# Icon
 
 icon 渲染组件，输入是 Iconify 数据对象（`@greypan/web-ui/icons` 按图标集命名导出的就是这种对象）；渲染出来是一个 `aria-hidden="true"` 的 `<svg>`，图标自身不承载可访问名称。
 

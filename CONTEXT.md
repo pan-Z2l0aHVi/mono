@@ -41,6 +41,7 @@ ADR 只记录技术选型、架构设计与工程化决策；具体实现细节�
 | [0016](docs/adr/0016-accessible-names.md)                       | web-ui 内置无障碍文案固定英文回退，覆盖 prop 统一挂 aria 前缀 | 修改 web-ui 内置 aria 文案、label 覆盖 prop 或 builtin-labels 样表       |
 | [0017](docs/adr/0017-monorepo-tooling-package.md)               | 门禁与仓库工具收敛到 workspace 包                             | 修改 monorepo-kit 的包边界、产物形态或 `scripts/` 与包的分工             |
 | [0018](docs/adr/0018-monorepo-kit-generic-plugins.md)           | monorepo-kit 收敛为参数化能力包                               | 修改 monorepo-kit 的分区、插件面、检查参数或构建形态                     |
+| [0019](docs/adr/0019-md-to-meta.md)                             | md-to-comp 收敛为通用 markdown 结构化引擎 md-to-meta          | 修改 meta 节点形状、围栏落盘策略、`load` thunk 或主题契约                |
 
 ## 已知边界
 

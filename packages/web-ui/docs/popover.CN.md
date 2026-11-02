@@ -1,7 +1,4 @@
----
-component: popover
-tag: web-ui-popover
----
+# Popover
 
 锚定触发元素的弹出层，支持 click / hover / manual 三种触发方式，`trigger` 插槽放 trigger、默认插槽放 panel 内容。
 
@@ -220,7 +217,7 @@ function close() {
 | ------------------ | ---------------------------------------------- | -------------------------------- | ---------- |
 | `open`             | 弹出层可见性。                                 | `boolean`                        | `false`    |
 | `disabled`         | 禁用状态。                                     | `boolean`                        | `false`    |
-| `placement`        | Floating UI 位置。                             | `Placement`                      | `'bottom'` |
+| `placement`        | panel 位置，默认 `bottom`。                    | `Placement`                      | `'bottom'` |
 | `offset`           | 与锚点的距离（px）。                           | `number`                         | `8`        |
 | `trigger`          | 触发方式：`click`（默认）、`hover`、`manual`。 | `'click' \| 'hover' \| 'manual'` | `'click'`  |
 | `portal`           | 在 theme-owned overlay root 中渲染。           | `boolean`                        | `false`    |

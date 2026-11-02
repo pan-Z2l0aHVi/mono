@@ -11,5 +11,5 @@ import ExampleDoc from '@/components/example-doc/index.vue'
 </script>
 
 <template>
-  <ExampleDoc component="slider" level="primary" />
+  <ExampleDoc component="slider" />
 </template>

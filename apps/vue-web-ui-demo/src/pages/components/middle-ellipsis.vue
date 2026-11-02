@@ -11,5 +11,5 @@ import ExampleDoc from '@/components/example-doc/index.vue'
 </script>
 
 <template>
-  <ExampleDoc component="middle-ellipsis" level="primary" />
+  <ExampleDoc component="middle-ellipsis" />
 </template>

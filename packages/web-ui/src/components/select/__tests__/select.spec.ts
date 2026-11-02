@@ -65,6 +65,22 @@ describe('WebUiSelect 组件', () => {
       cleanupElement(el)
     })
 
+    it('placement 默认 bottom-start，切换后反射为 attribute，非法值回退', async () => {
+      const el = createSelect(OPTIONS_HTML)
+      await waitForUpdate(el)
+      expect(el.placement).toBe('bottom-start')
+
+      el.placement = 'bottom'
+      await waitForUpdate(el)
+      expect(el.getAttribute('placement')).toBe('bottom')
+
+      ;(el as any).placement = 'sideways'
+      await waitForUpdate(el)
+      expect(el.placement).toBe('bottom-start')
+
+      cleanupElement(el)
+    })
+
     it('设置 value 后通过 combobox 文本反映选中 label', async () => {
       const el = createSelect(OPTIONS_HTML)
       el.value = 'banana'

@@ -1,7 +1,4 @@
----
-component: empty
-tag: web-ui-empty
----
+# Empty
 
 empty state placeholder: `title` and `description` provide the copy, and the `icon` / `action` slots add graphics and an action entry point. The component exposes no JS knob—the sizes and colors of the graphic, the copy, and the whitespace all come from `--wui-empty-*` variables.
 

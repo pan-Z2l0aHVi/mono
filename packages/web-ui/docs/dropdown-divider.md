@@ -1,7 +1,4 @@
----
-component: dropdown-divider
-tag: web-ui-dropdown-divider
----
+# Dropdown Divider
 
 A divider inside a menu, used to separate groups of menu items.
 

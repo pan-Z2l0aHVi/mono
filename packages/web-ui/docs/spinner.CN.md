@@ -1,7 +1,4 @@
----
-component: spinner
-tag: web-ui-spinner
----
+# Spinner
 
 加载旋转器：声明式放在页面里，或用静态 `WebUiSpinner.show()` / `hide()` 挂一个全屏实例。8 根叶片各差 1/8 个周期，形成一圈追光。
 
@@ -245,4 +242,4 @@ export default function Demo() {
 | ------------------------ | ---------------------------------------------------------------- | ------- |
 | `--wui-spinner-size`     | 旋转器宽高；由 `size` 写成宿主内联样式，消费方设同名变量会被盖掉 | `24px`  |
 | `--wui-duration-spinner` | 叶片追光周期；reduce 下放慢到 `1600ms`，不停                     | `800ms` |
-| `--wui-layer-loading`    | 命令式 overlay 的 `z-index`，属主题的层级 token                  | `300`   |
+| `--wui-layer-loading`    | 命令式 overlay 的 `z-index`，属主题的层级 token                  | `3000`  |

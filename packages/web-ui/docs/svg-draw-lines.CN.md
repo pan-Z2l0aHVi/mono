@@ -1,7 +1,4 @@
----
-component: svg-draw-lines
-tag: web-ui-svg-draw-lines
----
+# SVG Draw Lines
 
 SVG 线条绘制动画：基于 `stroke-dashoffset` 在原元素上动画，不克隆、不操作 DOM；默认画入，`replay({ reverse: true })` 沿原路收回。
 

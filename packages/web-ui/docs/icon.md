@@ -1,7 +1,4 @@
----
-component: icon
-tag: web-ui-icon
----
+# Icon
 
 icon rendering component; the input is an Iconify data object (`@greypan/web-ui/icons` exports objects of this shape named by icon set). It renders an `<svg>` with `aria-hidden="true"`, and the icon itself carries no accessible name.
 

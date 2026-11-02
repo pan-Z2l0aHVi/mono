@@ -23,7 +23,7 @@
 | [`@greypan/app-scrollbars`](./packages/app-scrollbars/README.CN.md)                   | 内部私有 workspace 包：app 级 OverlayScrollbars 配置与 macOS 主题    |
 | [`@greypan/unplugin-web-components`](./packages/unplugin-web-components/README.CN.md) | 在 Vue、React 与 Vite HTML 入口中自动导入 Web Components 的 unplugin |
 | [`@greypan/deps-reload`](./packages/deps-reload/README.CN.md)                         | 依赖构建产物变化时刷新页面的 Vite/Webpack 插件                       |
-| [`@greypan/md-to-comp`](./packages/md-to-comp/README.CN.md)                           | 内部私有 workspace 包：Markdown 示例文档引擎，带 React/Vue Vite 插件 |
+| [`@greypan/md-to-meta`](./packages/md-to-meta/README.CN.md)                           | 内部私有 workspace 包：通用 Markdown 结构化引擎，带 Vite 插件        |
 | [`@greypan/tsconfig`](./packages/tsconfig/README.CN.md)                               | 内部私有 workspace 包：共享 TypeScript 配置                          |
 
 ## 应用

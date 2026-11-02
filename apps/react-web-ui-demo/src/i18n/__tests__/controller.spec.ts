@@ -1,8 +1,8 @@
+import type { MetaNode } from '@greypan/md-to-meta'
 import { describe, expect, it, vi } from 'vite-plus/test'
 
-import type { ExampleDoc } from '@/generated/zh-CN/examples'
-
 import { createLocaleController } from '../controller'
+import type { MetaDocs } from '../examples'
 import type { Locale } from '../locale'
 
 function deferred<T>() {
@@ -14,25 +14,24 @@ function deferred<T>() {
   })
   return { promise, resolve, reject }
 }
-const docs = [{ component: 'button', samples: [] }] as unknown as ExampleDoc[]
+const docs: MetaDocs = new Map([['button', [{ label: 'p', content: 'button' } as MetaNode]]])
 function setup() {
   const catalog = deferred<void>()
   const previews = deferred<void>()
   const commit = vi.fn<(locale: Locale) => void>()
   const persist = vi.fn<(locale: Locale) => void>()
-  const prepare = vi.fn<(locale: Locale, docs: ExampleDoc[], components: string[]) => Promise<void>>(
-    () => previews.promise
-  )
+  const loadDocs = vi.fn<(locale: Locale, components: string[]) => Promise<MetaDocs>>(async () => docs)
+  const prepare = vi.fn<(docs: MetaDocs) => Promise<void>>(() => previews.promise)
   const controller = createLocaleController({
     loadCatalog: () => catalog.promise,
-    loadDocs: async () => docs,
+    loadDocs,
     prepareExamples: prepare,
     commitCatalog: commit,
     persist,
     setDocumentLanguage: vi.fn<(locale: Locale) => void>()
   })
   controller.register('button')
-  return { controller, catalog, previews, prepare, commit, persist }
+  return { controller, catalog, previews, loadDocs, prepare, commit, persist }
 }
 
 describe('语言切换保留当前文档和示例', () => {
@@ -40,7 +39,7 @@ describe('语言切换保留当前文档和示例', () => {
     const { controller, catalog, previews, prepare, commit, persist } = setup()
     const before = controller.getSnapshot()
     const request = controller.change('en')
-    await vi.waitFor(() => expect(prepare).toHaveBeenCalledWith('en', docs, ['button']))
+    await vi.waitFor(() => expect(prepare).toHaveBeenCalledWith(docs))
     catalog.resolve()
     await Promise.resolve()
     expect(controller.getSnapshot()).toMatchObject({ locale: before.locale, docs: before.docs, pending: true })
@@ -58,10 +57,11 @@ describe('语言切换保留当前文档和示例', () => {
     const persist = vi.fn<(locale: Locale) => void>()
     const controller = createLocaleController({
       loadCatalog: async () => {},
-      loadDocs: async () => docs,
-      prepareExamples: async locale => {
+      loadDocs: async locale => {
         if (locale === 'en') throw error
+        return docs
       },
+      prepareExamples: async () => {},
       commitCatalog: vi.fn<(locale: Locale) => void>(),
       persist,
       setDocumentLanguage: vi.fn<(locale: Locale) => void>()
@@ -86,15 +86,35 @@ describe('语言切换保留当前文档和示例', () => {
 })
 
 it('catalog 尚未就绪时换页，提交前准备新页面的示例', async () => {
-  const { controller, catalog, previews, prepare, commit } = setup()
+  const { controller, catalog, previews, loadDocs, commit } = setup()
   const remove = controller.register('old-page')
   const request = controller.change('en')
   previews.resolve()
-  await vi.waitFor(() => expect(prepare).toHaveBeenCalled())
+  await vi.waitFor(() => expect(loadDocs).toHaveBeenCalled())
   remove()
   controller.register('new-page')
   catalog.resolve()
   await request
-  expect(prepare).toHaveBeenLastCalledWith('en', docs, ['button', 'new-page'])
+  expect(loadDocs.mock.calls.at(-1)).toEqual(['en', ['button', 'new-page']])
   expect(commit).toHaveBeenCalledWith('en')
+})
+
+it('页面切换后只为当前语种补载新组件', async () => {
+  const loaded = deferred<MetaDocs>()
+  const controller = createLocaleController({
+    loadCatalog: async () => {},
+    loadDocs: async (_locale, components) => (components.length ? loaded.promise : new Map()),
+    prepareExamples: async () => {},
+    commitCatalog: vi.fn<(locale: Locale) => void>(),
+    persist: vi.fn<(locale: Locale) => void>(),
+    setDocumentLanguage: vi.fn<(locale: Locale) => void>()
+  })
+  await controller.change('en', false)
+  expect(controller.getSnapshot().docs.size).toBe(0)
+
+  const componentDocs: MetaDocs = new Map([['radio', [{ label: 'p', content: 'radio' } as MetaNode]]])
+  void controller.ensure('radio')
+  loaded.resolve(componentDocs)
+  await vi.waitFor(() => expect(controller.getSnapshot().docs.get('radio')).toEqual(componentDocs.get('radio')))
+  expect(controller.getSnapshot().locale).toBe('en')
 })

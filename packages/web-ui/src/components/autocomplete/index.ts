@@ -1,5 +1,6 @@
 import '@/components/input'
 
+import type { Placement } from '@floating-ui/dom'
 import { html, LitElement, nothing, type PropertyValues, unsafeCSS } from 'lit'
 import { customElement, property, state } from 'lit/decorators.js'
 import { ifDefined } from 'lit/directives/if-defined.js'
@@ -21,6 +22,7 @@ import {
 } from '@/shared/option-portal'
 import { defineAnchoredPanel } from '@/shared/overlay/anchored-panel'
 import { defineOpenOverlay } from '@/shared/overlay/open-overlay'
+import { FLOATING_PLACEMENTS } from '@/shared/overlay/placement-props'
 import {
   applyOverlayVariables,
   defineOverlayPortal,
@@ -76,6 +78,19 @@ export class WebUiAutocomplete extends FormAssociated(LitElement) {
   @property({ type: String, reflect: true }) name = ''
   @property({ type: String, attribute: 'aria-label' }) override ariaLabel: string | null = null
   @property({ type: String, attribute: 'aria-labelledby' }) ariaLabelledby: string | undefined
+
+  private _placement: Placement = 'bottom-start'
+
+  /** 下拉 panel 相对触发器的方向；默认贴着触发器左下角向下展开。 */
+  @property({ type: String, reflect: true })
+  get placement(): Placement {
+    return this._placement
+  }
+  set placement(v: string) {
+    const old = this._placement
+    this._placement = normalizeLiteral(v, FLOATING_PLACEMENTS, 'bottom-start')
+    this.requestUpdate('placement', old)
+  }
 
   private _filter: FilterMode = 'contains'
 
@@ -206,7 +221,7 @@ export class WebUiAutocomplete extends FormAssociated(LitElement) {
       this._trigger.getTrigger() ?? this.shadowRoot?.querySelector<HTMLElement>('.autocomplete-trigger') ?? null,
     getLocalPanel: () => this.shadowRoot?.querySelector<HTMLElement>('.autocomplete-overlay') ?? null,
     getPositioning: () => ({
-      placement: 'bottom-start',
+      placement: this.placement,
       offset: 4,
       minAnchorWidth: true,
       strategy: this.portal ? 'fixed' : 'absolute'
@@ -337,6 +352,7 @@ export class WebUiAutocomplete extends FormAssociated(LitElement) {
     if (changed.has('portal') || changed.has('overlayContainer'))
       requestAnimationFrame(() => this._reconfigureOverlay())
     if (changed.has('noScrollLock')) this._syncScrollLock()
+    if (changed.has('placement')) this._panel.updatePosition()
     this.toggleAttribute('focused', this._focused)
     this._syncOpenAttribute()
     this._syncOverlayInert()

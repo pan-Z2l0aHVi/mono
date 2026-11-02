@@ -34,13 +34,13 @@ _Avoid_: 用 context 承载成员追踪或上行写回、在子项上用公开�
 
 ## 示例文档
 
-示例文档（[`docs/*.md`](./docs/)）的 source of truth 只有那一份 markdown：有哪些示例、每个示例的代码、`## API` 下的每张表（字段的名称 / 类型 / 默认值 / 说明）与每段散文（行为说明这类）都手写在里面，组件源码不参与生成。中文是源语种，文件名是 `<name>.CN.md`；英文译文是默认后缀的 `<name>.md`，与 README 的命名方向一致。换来的是组件内部怎么重构都不会让文档隐形变更；代价是组件改了 API 时那张表要人手动跟着改，机器不提醒——`frontmatter` 与源码的对应关系、表里的属性名与源码声明的一致性都没有机器核对，只剩人工 review。
+示例文档（[`docs/*.md`](./docs/)）的 source of truth 只有那一份 markdown：有哪些示例、每个示例的代码、`## API` 下的每张表（字段的名称 / 类型 / 默认值 / 说明）与每段散文（行为说明这类）都手写在里面，组件源码不参与生成。中文是源语种，文件名是 `<name>.CN.md`；英文译文是默认后缀的 `<name>.md`，与 README 的命名方向一致。文件名就是文档身份，不再有 frontmatter。换来的是组件内部怎么重构都不会让文档隐形变更；代价是组件改了 API 时那张表要人手动跟着改，机器不提醒——表里的属性名与源码声明的一致性没有机器核对，只剩人工 review。
 
-- 生成与判据由 [`@greypan/md-to-comp`](../md-to-comp/AGENTS.md) 提供，产物落在消费它们的 demo 应用 `src/generated/`，受版本控制、进 git。demo 的 Vite 配置里挂着该包对应 flavor 的插件，dev 与 build 都会按 markdown 重新生成，改完 markdown 不用手跑生成器；测试期插件只判不改。
+- 生成与判据由 [`@greypan/md-to-meta`](../md-to-meta/AGENTS.md) 提供：引擎只把 markdown 解析成 meta 节点数组与逐围栏代码文件，产物落在消费它们的 demo 应用 `src/generated/`，受版本控制、进 git。demo 的 Vite 配置里挂着 `mdToMeta`，dev 与 build 都会按 markdown 重新生成，改完 markdown 不用手跑生成器；测试期插件只判不改。示例小节、API 表、语种这些业务契约在 demo 应用侧实现，不在引擎里。
 - 语料住在被发布的包里，所以本包自带 [`turbo.json`](./turbo.json) 覆写 `build` 与 `test` 的 `inputs`：根 `turbo.json` 的 `!**/*.md` 把它们排除在哈希外，而排除项是绝对的，只能在这里反过来「语料进、散文 md 按名字排」。动 `docs/` 的布局或往包根加 md 要同步那份名单——新放的 md 会默认变成 build 输入，名单由仓库守卫 `@greypan/monorepo-kit` 导出的 `webUiDocsInputs`（[源码](../monorepo-kit/src/plugin/turbo/docs-inputs.ts)，本仓配置在 [scripts/policies/web-ui-docs-inputs.mjs](../../scripts/policies/web-ui-docs-inputs.mjs)）守。
-- 同一份源码在三处必须一致：markdown 围栏、消费方 demo 的 `src/generated/**/demos/` 落盘文件、页面 `<pre>` 的可见文本。落盘文件比围栏多一个行尾换行（落盘前 `trimEnd()` 再补一个，见 `demoFileContent`），除此之外三处逐字相同。改任何一段转义、高亮或落盘路径，都要让这三处一起继续成立。
-- 围栏语言写 `tsx` / `vue`，不写 `react`：写 `react` 的块不被格式化器认，落盘的 `.tsx` 却归它管，三处一致与「产物已格式化」会从此互相打架，只能靠人手对齐。
-- 示例标题（`## Samples` 下的 `###`）是专业术语，两侧同文、写成英文（`### Basic`）；它就是身份——派生成 kebab-case 后是 demo 文件名与 `demoKey`。跟着语种翻译的是正文说明与 `## API` 的列名，不是标题。
+- 同一份源码在三处必须一致：markdown 围栏、消费方 demo 的 `src/generated/**/codeblock/` 落盘文件、页面 `<pre>` 的可见文本。落盘文件比围栏多一个行尾换行（落盘前 `trimEnd()` 再补一个，见 `codeFileOf`），除此之外三处逐字相同。改任何一段转义、高亮或落盘路径，都要让这三处一起继续成立。
+- 围栏语言就是落盘扩展名：React 写 `tsx`、Vue 写 `vue`。引擎不维护语言白名单，所有围栏都落盘，只有命中宿主 `exec` 的语言才在 meta 里带 `load`。
+- 示例标题（`## Samples` 下的 `###`）是专业术语，两侧同文、写成英文（`### Basic`）。它现在是普通 `h3` 节点（`section-<n>` 锚点），不再派生产物文件名；跟着语种翻译的是正文说明与 `## API` 的列名。
 - 消费方 demo 的 `src/generated/**` 不手改：那几份产物是生成函数的输出，要改就改 `docs/*.md`。
 - `docs/*.md` 的散文只陈述当前行为、契约与设计意图，不写迁移说明或旧 API 对照：属性改名或移除时改写对应段落，不留「以前叫什么」的历史；兼容性承诺按当前契约写。
 

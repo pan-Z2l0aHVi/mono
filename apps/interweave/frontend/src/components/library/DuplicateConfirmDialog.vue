@@ -59,7 +59,7 @@ function handleOpenChange(event: WebUiEvent<WebUiDialog, 'open-change'>) {
         <li
           v-for="match in prompt.matches"
           :key="match.resource_id"
-          class="grid min-w-0 gap-[2px] px-3 py-2 not-last:border-b not-last:border-black/6 not-last:dark:border-white/8"
+          class="grid min-w-0 gap-0.5 px-3 py-2 not-last:border-b not-last:border-black/6 not-last:dark:border-white/8"
         >
           <span class="min-w-0 truncate text-[14px] leading-5 font-medium text-[#22212a] dark:text-(--wui-color-text)">
             {{ match.title }}

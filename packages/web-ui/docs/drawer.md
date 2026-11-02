@@ -1,7 +1,4 @@
----
-component: drawer
-tag: web-ui-drawer
----
+# Drawer
 
 A side drawer built on the native `<dialog>`, with built-in slide-in / slide-out animations and drag-to-close from the inner edge on any side. It suits secondary tasks that relate to the current page but do not require leaving context.
 

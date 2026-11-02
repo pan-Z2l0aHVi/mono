@@ -1,7 +1,4 @@
----
-component: badge
-tag: web-ui-badge
----
+# Badge
 
 badge / 通知计数：把 `count` 角标叠加在默认插槽内容的一角，`dot` 模式只显示一个圆点。
 

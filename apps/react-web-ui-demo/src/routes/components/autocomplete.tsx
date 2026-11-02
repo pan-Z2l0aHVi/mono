@@ -5,8 +5,8 @@ import ExampleDoc from '@/components/example-doc'
 function Component() {
   return (
     <>
-      <ExampleDoc component="autocomplete" level="primary" />
-      <ExampleDoc component="option" level="secondary" />
+      <ExampleDoc component="autocomplete" />
+      <ExampleDoc component="option" />
     </>
   )
 }

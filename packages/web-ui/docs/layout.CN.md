@@ -1,7 +1,4 @@
----
-component: layout
-tag: web-ui-layout
----
+# Layout
 
 响应式页面布局：可选全宽 Banner、桌面端 collapsible sidebar，移动端默认 drawer；设置 `no-sidebar` 可关闭整块侧边栏，只保留内容布局。页面本身滚动；Banner 滚出后，桌面端 sidebar 和 header 固定在视口内。
 

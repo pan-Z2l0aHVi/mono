@@ -1,7 +1,4 @@
----
-component: dropdown-header
-tag: web-ui-dropdown-header
----
+# Dropdown Header
 
 menu 里的分组标题：一段不参与交互的小字，给紧随其后的几个 menu item 起名。它没有属性与事件，也不参与键盘导航——menu 只会把焦点停在 `<web-ui-dropdown-item>` 上。分组标题常与 `<web-ui-dropdown-divider>` 一起用。
 

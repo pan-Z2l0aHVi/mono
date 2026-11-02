@@ -11,6 +11,6 @@ import ExampleDoc from '@/components/example-doc/index.vue'
 </script>
 
 <template>
-  <ExampleDoc component="autocomplete" level="primary" />
-  <ExampleDoc component="option" level="secondary" />
+  <ExampleDoc component="autocomplete" />
+  <ExampleDoc component="option" />
 </template>

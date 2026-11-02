@@ -11,6 +11,6 @@ import ExampleDoc from '@/components/example-doc/index.vue'
 </script>
 
 <template>
-  <ExampleDoc component="segmented" level="primary" />
-  <ExampleDoc component="segmented-trigger" level="secondary" />
+  <ExampleDoc component="segmented" />
+  <ExampleDoc component="segmented-trigger" />
 </template>

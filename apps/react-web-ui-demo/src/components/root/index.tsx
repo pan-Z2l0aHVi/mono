@@ -128,7 +128,6 @@ const navSections: NavSection[] = [
       { path: '/components/input-number', label: 'InputNumber' },
       { path: '/components/select', label: 'Select' },
       { path: '/components/autocomplete', label: 'Autocomplete' },
-      { path: '/components/dropdown', label: 'Dropdown' },
       { path: '/components/switch', label: 'Switch' },
       { path: '/components/slider', label: 'Slider' },
       { path: '/components/radio', label: 'Radio' },
@@ -155,6 +154,7 @@ const navSections: NavSection[] = [
       { path: '/components/drawer', label: 'Drawer' },
       { path: '/components/tooltip', label: 'Tooltip' },
       { path: '/components/popover', label: 'Popover' },
+      { path: '/components/dropdown', label: 'Dropdown' },
       { path: '/components/context-menu', label: 'ContextMenu' },
       { path: '/components/toast', label: 'Toast' },
       { path: '/components/image-preview', label: 'ImagePreview' },
@@ -183,10 +183,51 @@ function NavSectionTitle({ id }: { id: NavSectionId }) {
 
 // active 底色浅色取设计给定的 #d5d7d7；深色不跟——sidebar 在深色是 #2c2c2e，亮灰会读成一条高亮带，仍走 control 档。
 const navItemClass =
-  'flex items-center gap-2 w-full min-w-9 min-h-9 px-2.5 border-0 rounded-full cursor-pointer text-left transition-all duration-150 text-(--wui-color-text) active:bg-[rgb(34_33_42/0.12)] dark:active:bg-white/15 data-[active=true]:bg-[#d5d7d7] data-[active=true]:hover:bg-[#d5d7d7] data-[active=true]:active:bg-[color-mix(in_srgb,#d5d7d7_70%,var(--wui-color-text,#1b1b1b))] dark:data-[active=true]:bg-[color-mix(in_srgb,var(--wui-color-surface-control,#dfdfdf)_90%,var(--wui-color-text,#1b1b1b))] dark:data-[active=true]:hover:bg-[color-mix(in_srgb,var(--wui-color-surface-control,#dfdfdf)_90%,var(--wui-color-text,#1b1b1b))] dark:data-[active=true]:active:bg-[color-mix(in_srgb,var(--wui-color-surface-control,#dfdfdf)_70%,var(--wui-color-text,#1b1b1b))]'
+  'flex items-center gap-2 min-w-9 min-h-9 px-2.5 border-0 rounded-full cursor-pointer text-left transition-all duration-150 text-(--wui-color-text) active:bg-[rgb(34_33_42/0.12)] dark:active:bg-white/15 data-[active=true]:bg-[#d5d7d7] data-[active=true]:hover:bg-[#d5d7d7] data-[active=true]:active:bg-[color-mix(in_srgb,#d5d7d7_70%,var(--wui-color-text,#1b1b1b))] dark:data-[active=true]:bg-[color-mix(in_srgb,var(--wui-color-surface-control,#dfdfdf)_90%,var(--wui-color-text,#1b1b1b))] dark:data-[active=true]:hover:bg-[color-mix(in_srgb,var(--wui-color-surface-control,#dfdfdf)_90%,var(--wui-color-text,#1b1b1b))] dark:data-[active=true]:active:bg-[color-mix(in_srgb,var(--wui-color-surface-control,#dfdfdf)_70%,var(--wui-color-text,#1b1b1b))]'
 
 function isNavActive(pathname: string, path: string) {
   return pathname === path || pathname === `${path}/`
+}
+
+// 折叠后侧栏内容宽 36px（60px 侧栏去掉 8px 外边距与两侧 8px 内边距）。tooltip 的 trigger
+// 按内容收缩，链接不显式定宽会被文字撑开，active 底色与点击区域也会跟着缩水。
+interface SidebarNavLinkProps {
+  to: string
+  label: string
+  title?: string
+  active: boolean
+  collapsed: boolean
+  onNavigate: () => void
+}
+
+function SidebarNavLink({ to, label, title, active, collapsed, onNavigate }: SidebarNavLinkProps) {
+  const link = (
+    <Link
+      to={to}
+      className={
+        navItemClass +
+        (active ? '' : ' hover:bg-black/4 dark:hover:bg-white/6') +
+        (collapsed ? ' w-9 justify-center' : ' w-full')
+      }
+      data-active={active}
+      aria-current={active ? 'page' : undefined}
+      aria-label={label}
+      title={title}
+      onClick={onNavigate}
+    >
+      <span className={collapsed ? 'w-full truncate text-center text-sm' : 'min-w-0 flex-1 truncate text-sm'}>
+        {label}
+      </span>
+    </Link>
+  )
+
+  if (!collapsed) return link
+
+  return (
+    <web-ui-tooltip content={label} placement="right" portal>
+      {link}
+    </web-ui-tooltip>
+  )
 }
 
 export function Root() {
@@ -337,6 +378,7 @@ export function Root() {
           {routeTitle ? <title>{routeTitle}</title> : null}
           <web-ui-layout
             ref={layoutRef}
+            className="mobile:[--wui-layout-sidebar-radius:38px]"
             sidebarCollapsible
             header-glow
             sidebarCollapsed={sidebarCollapsed}
@@ -352,11 +394,10 @@ export function Root() {
             {bannerVisible ? (
               <div
                 slot="banner"
-                className="relative flex items-center justify-center gap-2 bg-(--wui-color-accent) px-4 py-2 text-sm text-(--wui-color-on-accent)"
+                className="relative grid grid-cols-[24px_minmax(0,1fr)_24px] items-center gap-2 bg-(--wui-color-accent) px-4 py-2 text-sm text-(--wui-color-on-accent)"
               >
-                <span>🎉 欢迎使用 web-ui 组件库！</span>
                 <web-ui-button
-                  className="ml-auto mobile:absolute mobile:left-0 mobile:top-2 mobile:ml-0"
+                  className="absolute top-1/2 right-4 -translate-y-1/2"
                   size="24"
                   icon
                   variant="ghost"
@@ -365,20 +406,16 @@ export function Root() {
                 >
                   <web-ui-icon className="text-(--wui-color-on-accent)" icon={lucideX} size={16}></web-ui-icon>
                 </web-ui-button>
+                <span className="col-start-2 text-center">🎉 欢迎使用 web-ui 组件库！</span>
               </div>
             ) : null}
-            {/* 移动端为前置导航区预留 60px，与 collapsed sidebar 使用同一基准。 */}
+            {/* 移动端为前置导航区预留 60px，与 collapsed sidebar 使用同一基准。
+                移动端纵向内边距与 layout 的 `.mobile-toggle` 上间距（8px）一致，右侧控件才与左上角切换按钮同高对齐。 */}
             <div
               slot="header"
-              className="flex h-full w-full items-center justify-end gap-4 px-4 py-2 mobile:grid mobile:w-[calc(100vw-60px)] mobile:grid-cols-3 mobile:gap-1.5 mobile:px-2 mobile:py-1"
+              className="flex h-full w-full items-center justify-end gap-4 px-4 py-2 mobile:w-[calc(100vw-60px)] mobile:gap-1.5 mobile:px-2 mobile:py-2"
             >
-              <web-ui-select
-                trigger="icon"
-                value={themeMotion}
-                className="justify-self-center"
-                aria-label="全局动效"
-                onChange={updateThemeMotion}
-              >
+              <web-ui-select trigger="icon" value={themeMotion} aria-label="全局动效" onChange={updateThemeMotion}>
                 <web-ui-icon
                   slot="trigger"
                   icon={
@@ -403,7 +440,7 @@ export function Root() {
               <web-ui-select
                 trigger="icon"
                 value={themeAppearance}
-                className="justify-self-center"
+                placement="bottom"
                 aria-label="全局主题"
                 onChange={updateThemeAppearance}
               >
@@ -430,7 +467,6 @@ export function Root() {
                 value={locale}
                 disabled={localePending}
                 aria-busy={localePending ? 'true' : 'false'}
-                className="justify-self-center"
                 aria-label="全局语言"
                 onChange={updateLocale}
               >
@@ -450,48 +486,26 @@ export function Root() {
               slot="sidebar"
               ref={navSidebarRef}
               options={appScrollbarsOptions}
-              className="relative z-20 h-full min-h-0 overflow-y-auto p-2 mobile:px-0"
+              className="relative z-20 h-full min-h-0 overflow-y-auto p-2 mobile:p-0"
               aria-label="应用导航"
             >
               <nav className="grid gap-1" aria-label="主导航">
-                <Link
+                <SidebarNavLink
                   to="/home"
-                  className={
-                    navItemClass +
-                    (isNavActive(pathname, '/home') ? '' : ' hover:bg-black/4 dark:hover:bg-white/6') +
-                    (navCollapsed ? ' justify-center' : '')
-                  }
-                  data-active={isNavActive(pathname, '/home')}
-                  aria-current={isNavActive(pathname, '/home') ? 'page' : undefined}
-                  aria-label="组件总览"
-                  title="组件总览"
-                  onClick={() => setSidebarOpen(false)}
-                >
-                  <span
-                    className={navCollapsed ? 'w-full truncate text-center text-sm' : 'min-w-0 flex-1 truncate text-sm'}
-                  >
-                    组件总览
-                  </span>
-                </Link>
-                <Link
+                  label="组件总览"
+                  active={isNavActive(pathname, '/home')}
+                  collapsed={navCollapsed}
+                  title={navCollapsed ? undefined : '组件总览'}
+                  onNavigate={() => setSidebarOpen(false)}
+                />
+                <SidebarNavLink
                   to="/changelog"
-                  className={
-                    navItemClass +
-                    (isNavActive(pathname, '/changelog') ? '' : ' hover:bg-black/4 dark:hover:bg-white/6') +
-                    (navCollapsed ? ' justify-center' : '')
-                  }
-                  data-active={isNavActive(pathname, '/changelog')}
-                  aria-current={isNavActive(pathname, '/changelog') ? 'page' : undefined}
-                  aria-label="更新日志"
-                  title="更新日志"
-                  onClick={() => setSidebarOpen(false)}
-                >
-                  <span
-                    className={navCollapsed ? 'w-full truncate text-center text-sm' : 'min-w-0 flex-1 truncate text-sm'}
-                  >
-                    更新日志
-                  </span>
-                </Link>
+                  label="更新日志"
+                  active={isNavActive(pathname, '/changelog')}
+                  collapsed={navCollapsed}
+                  title={navCollapsed ? undefined : '更新日志'}
+                  onNavigate={() => setSidebarOpen(false)}
+                />
                 {navSections.map((section, index) => (
                   <div
                     key={section.id}
@@ -508,33 +522,16 @@ export function Root() {
                     >
                       <NavSectionTitle id={section.id} />
                     </h2>
-                    {section.items.map(item => {
-                      const active = isNavActive(pathname, item.path)
-                      return (
-                        <Link
-                          key={item.path}
-                          to={item.path}
-                          className={
-                            navItemClass +
-                            (active ? '' : ' hover:bg-black/4 dark:hover:bg-white/6') +
-                            (navCollapsed ? ' justify-center' : '')
-                          }
-                          data-active={active}
-                          aria-current={active ? 'page' : undefined}
-                          aria-label={item.label}
-                          title={navCollapsed ? item.label : undefined}
-                          onClick={() => setSidebarOpen(false)}
-                        >
-                          <span
-                            className={
-                              navCollapsed ? 'w-full truncate text-center text-sm' : 'min-w-0 flex-1 truncate text-sm'
-                            }
-                          >
-                            {item.label}
-                          </span>
-                        </Link>
-                      )
-                    })}
+                    {section.items.map(item => (
+                      <SidebarNavLink
+                        key={item.path}
+                        to={item.path}
+                        label={item.label}
+                        active={isNavActive(pathname, item.path)}
+                        collapsed={navCollapsed}
+                        onNavigate={() => setSidebarOpen(false)}
+                      />
+                    ))}
                   </div>
                 ))}
               </nav>

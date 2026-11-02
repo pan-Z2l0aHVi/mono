@@ -20,9 +20,11 @@ import {
   type OverlayScrollbarsComponentRef
 } from 'overlayscrollbars-vue'
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
-import { RouterLink, useRoute, useRouter } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 
 import { bootDegraded, currentLocale, loadDemoLocale, localePending } from '@/i18n/locale'
+
+import SidebarNavLink from './sidebar-nav-link.vue'
 
 const ZH_LABEL = '简体中文'
 const EN_LABEL = 'English'
@@ -214,15 +216,18 @@ watch(bannerVisible, async () => {
   refreshToastTopOffset?.()
 })
 
+// 目标语种与文档在挂载后补载，降级可能晚于 onMounted：用 watch 才不会漏掉提示。
+watch(bootDegraded, degraded => {
+  if (!degraded) return
+  toast.warning('目标语种加载失败，暂时使用简体中文')
+  bootDegraded.value = false
+})
+
 onMounted(async () => {
   initPageScrollbars(document.body)
   const toastOffset = observeToastTopOffset()
   stopObservingToastTopOffset = toastOffset.stop
   refreshToastTopOffset = toastOffset.refresh
-  if (bootDegraded.value) {
-    toast.warning('目标语种加载失败，暂时使用简体中文')
-    bootDegraded.value = false
-  }
   await router.isReady()
   requestAnimationFrame(() => {
     const link = navSidebar.value?.getElement()?.querySelector('[data-active="true"]')
@@ -266,7 +271,6 @@ const navSections: NavSection[] = [
       { path: '/components/input-number', label: 'InputNumber' },
       { path: '/components/select', label: 'Select' },
       { path: '/components/autocomplete', label: 'Autocomplete' },
-      { path: '/components/dropdown', label: 'Dropdown' },
       { path: '/components/switch', label: 'Switch' },
       { path: '/components/slider', label: 'Slider' },
       { path: '/components/radio', label: 'Radio' },
@@ -293,6 +297,7 @@ const navSections: NavSection[] = [
       { path: '/components/drawer', label: 'Drawer' },
       { path: '/components/tooltip', label: 'Tooltip' },
       { path: '/components/popover', label: 'Popover' },
+      { path: '/components/dropdown', label: 'Dropdown' },
       { path: '/components/context-menu', label: 'ContextMenu' },
       { path: '/components/toast', label: 'Toast' },
       { path: '/components/image-preview', label: 'ImagePreview' },
@@ -306,7 +311,7 @@ const navSectionTitleClass = 'px-2.5 pt-3 pb-1 text-[12px] font-medium tracking-
 
 // active 底色浅色取设计给定的 #d5d7d7；深色不跟——sidebar 在深色是 #2c2c2e，亮灰会读成一条高亮带，仍走 control 档。
 const navItemClass =
-  'flex items-center gap-2 w-full min-w-9 min-h-9 px-2.5 border-0 rounded-full cursor-pointer text-left transition-all duration-150 text-(--wui-color-text) active:bg-[rgb(34_33_42/0.12)] dark:active:bg-white/15 data-[active=true]:bg-[#d5d7d7] data-[active=true]:hover:bg-[#d5d7d7] data-[active=true]:active:bg-[color-mix(in_srgb,#d5d7d7_70%,var(--wui-color-text,#1b1b1b))] dark:data-[active=true]:bg-[color-mix(in_srgb,var(--wui-color-surface-control,#dfdfdf)_90%,var(--wui-color-text,#1b1b1b))] dark:data-[active=true]:hover:bg-[color-mix(in_srgb,var(--wui-color-surface-control,#dfdfdf)_90%,var(--wui-color-text,#1b1b1b))] dark:data-[active=true]:active:bg-[color-mix(in_srgb,var(--wui-color-surface-control,#dfdfdf)_70%,var(--wui-color-text,#1b1b1b))]'
+  'flex items-center gap-2 min-w-9 min-h-9 px-2.5 border-0 rounded-full cursor-pointer text-left transition-all duration-150 text-(--wui-color-text) active:bg-[rgb(34_33_42/0.12)] dark:active:bg-white/15 data-[active=true]:bg-[#d5d7d7] data-[active=true]:hover:bg-[#d5d7d7] data-[active=true]:active:bg-[color-mix(in_srgb,#d5d7d7_70%,var(--wui-color-text,#1b1b1b))] dark:data-[active=true]:bg-[color-mix(in_srgb,var(--wui-color-surface-control,#dfdfdf)_90%,var(--wui-color-text,#1b1b1b))] dark:data-[active=true]:hover:bg-[color-mix(in_srgb,var(--wui-color-surface-control,#dfdfdf)_90%,var(--wui-color-text,#1b1b1b))] dark:data-[active=true]:active:bg-[color-mix(in_srgb,var(--wui-color-surface-control,#dfdfdf)_70%,var(--wui-color-text,#1b1b1b))]'
 
 function isNavActive(path: string) {
   return route.path === path || route.path === `${path}/`
@@ -322,6 +327,7 @@ function isNavActive(path: string) {
       -->
       <web-ui-layout
         ref="shellLayout"
+        class="mobile:[--wui-layout-sidebar-radius:38px]"
         header-glow
         sidebar-collapsible
         :sidebarCollapsed="sidebarCollapsed"
@@ -341,7 +347,7 @@ function isNavActive(path: string) {
           class="relative grid grid-cols-[24px_minmax(0,1fr)_24px] items-center gap-2 bg-(--wui-color-accent) px-4 py-2 text-sm text-(--wui-color-on-accent)"
         >
           <web-ui-button
-            class="absolute top-1/2 right-4 -translate-y-1/2 mobile:left-0 mobile:right-auto"
+            class="absolute top-1/2 right-4 -translate-y-1/2"
             size="24"
             icon
             variant="ghost"
@@ -352,17 +358,15 @@ function isNavActive(path: string) {
           </web-ui-button>
           <span class="col-start-2 text-center">🎉 欢迎使用 web-ui 组件库！</span>
         </div>
+        <!--
+          移动端为前置导航区预留 60px，与 collapsed sidebar 使用同一基准。
+          移动端纵向内边距与 layout 的 `.mobile-toggle` 上间距（8px）一致，右侧控件才与左上角切换按钮同高对齐。
+        -->
         <div
           slot="header"
-          class="flex h-full w-full items-center justify-end gap-2 px-4 py-2 mobile:grid mobile:w-[calc(100vw-60px)] mobile:grid-cols-3 mobile:gap-1.5 mobile:px-2 mobile:py-1"
+          class="flex h-full w-full items-center justify-end gap-2 px-4 py-2 mobile:w-[calc(100vw-60px)] mobile:gap-1.5 mobile:px-2 mobile:py-2"
         >
-          <web-ui-select
-            trigger="icon"
-            :value="themeMotion"
-            class="justify-self-center"
-            aria-label="全局动效"
-            @change="updateThemeMotion"
-          >
+          <web-ui-select trigger="icon" :value="themeMotion" aria-label="全局动效" @change="updateThemeMotion">
             <web-ui-icon
               slot="trigger"
               :icon="
@@ -381,7 +385,7 @@ function isNavActive(path: string) {
           <web-ui-select
             trigger="icon"
             :value="themeAppearance"
-            class="justify-self-center"
+            placement="bottom"
             aria-label="全局主题"
             @change="updateThemeAppearance"
           >
@@ -400,7 +404,6 @@ function isNavActive(path: string) {
             :value="currentLocale"
             :disabled="localePending"
             :aria-busy="localePending"
-            class="justify-self-center"
             aria-label="全局语言"
             @change="updateLocale"
           >
@@ -414,44 +417,28 @@ function isNavActive(path: string) {
           slot="sidebar"
           ref="navSidebar"
           :options="appScrollbarsOptions"
-          class="relative z-20 h-full min-h-0 overflow-y-auto p-2 mobile:px-0"
+          class="relative z-20 h-full min-h-0 overflow-y-auto p-2 mobile:p-0"
           aria-label="应用导航"
         >
           <nav class="grid gap-1" aria-label="主导航">
-            <RouterLink
+            <SidebarNavLink
               to="/home"
-              :class="[
-                navItemClass,
-                isNavActive('/home') ? '' : 'hover:bg-black/4 dark:hover:bg-white/6',
-                navCollapsed ? 'justify-center' : ''
-              ]"
-              :data-active="isNavActive('/home')"
-              :aria-current="isNavActive('/home') ? 'page' : undefined"
-              aria-label="组件总览"
-              title="组件总览"
-              @click="sidebarOpen = false"
-            >
-              <span :class="navCollapsed ? 'w-full truncate text-center text-sm' : 'min-w-0 flex-1 truncate text-sm'">
-                组件总览
-              </span>
-            </RouterLink>
-            <RouterLink
+              label="组件总览"
+              :active="isNavActive('/home')"
+              :collapsed="navCollapsed"
+              :item-class="navItemClass"
+              :title="navCollapsed ? undefined : '组件总览'"
+              @navigate="sidebarOpen = false"
+            />
+            <SidebarNavLink
               to="/changelog"
-              :class="[
-                navItemClass,
-                isNavActive('/changelog') ? '' : 'hover:bg-black/4 dark:hover:bg-white/6',
-                navCollapsed ? 'justify-center' : ''
-              ]"
-              :data-active="isNavActive('/changelog')"
-              :aria-current="isNavActive('/changelog') ? 'page' : undefined"
-              aria-label="更新日志"
-              title="更新日志"
-              @click="sidebarOpen = false"
-            >
-              <span :class="navCollapsed ? 'w-full truncate text-center text-sm' : 'min-w-0 flex-1 truncate text-sm'">
-                更新日志
-              </span>
-            </RouterLink>
+              label="更新日志"
+              :active="isNavActive('/changelog')"
+              :collapsed="navCollapsed"
+              :item-class="navItemClass"
+              :title="navCollapsed ? undefined : '更新日志'"
+              @navigate="sidebarOpen = false"
+            />
             <div
               v-for="(section, index) in navSections"
               :key="section.id"
@@ -471,25 +458,16 @@ function isNavActive(path: string) {
                 <template v-else-if="section.id === 'display'">展示</template>
                 <template v-else>反馈</template>
               </h2>
-              <RouterLink
+              <SidebarNavLink
                 v-for="item in section.items"
                 :key="item.path"
                 :to="item.path"
-                :class="[
-                  navItemClass,
-                  isNavActive(item.path) ? '' : 'hover:bg-black/4 dark:hover:bg-white/6',
-                  navCollapsed ? 'justify-center' : ''
-                ]"
-                :data-active="isNavActive(item.path)"
-                :aria-current="isNavActive(item.path) ? 'page' : undefined"
-                :aria-label="item.label"
-                :title="navCollapsed ? item.label : undefined"
-                @click="sidebarOpen = false"
-              >
-                <span :class="navCollapsed ? 'w-full truncate text-center text-sm' : 'min-w-0 flex-1 truncate text-sm'">
-                  {{ item.label }}
-                </span>
-              </RouterLink>
+                :label="item.label"
+                :active="isNavActive(item.path)"
+                :collapsed="navCollapsed"
+                :item-class="navItemClass"
+                @navigate="sidebarOpen = false"
+              />
             </div>
           </nav>
         </OverlayScrollbarsComponent>

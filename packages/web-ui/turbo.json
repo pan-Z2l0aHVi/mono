@@ -6,7 +6,9 @@
       "inputs": [
         "$TURBO_DEFAULT$",
         "!**/*.spec.ts",
+        "!**/*.spec.mjs",
         "!**/*.test.ts",
+        "!**/*.test.mjs",
         "!**/__tests__/**",
         "!README.md",
         "!README.CN.md",

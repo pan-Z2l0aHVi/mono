@@ -1,7 +1,4 @@
----
-component: dropdown
-tag: web-ui-dropdown
----
+# Dropdown
 
 dropdown menu: the `trigger` slot holds the trigger and the remaining children render as menu items inside the overlay panel, with support for dividers, group headers, and multi-level submenus.
 
@@ -237,7 +234,7 @@ function select(label: string) {
 
 ### Placement
 
-`placement` is delegated to Floating UI and defaults to `bottom-start`; when there is not enough space, `flip` / `shift` flip or shift the panel automatically.
+`placement` defaults to `bottom-start`; when there is not enough space, the panel flips or shifts automatically.
 
 ```tsx
 export default function Demo() {
@@ -393,14 +390,14 @@ const menu = useTemplateRef<WebUiDropdown>('menu')
 
 ### Props
 
-| Name             | Description                                        | Type        | Default          |
-| ---------------- | -------------------------------------------------- | ----------- | ---------------- |
-| `open`           | Menu visibility.                                   | `boolean`   | `false`          |
-| `disabled`       | Disabled state.                                    | `boolean`   | `false`          |
-| `match-width`    | Panel width matches the trigger width.             | `boolean`   | `false`          |
-| `no-scroll-lock` | Does not lock page scrolling while open.           | `boolean`   | `false`          |
-| `placement`      | Floating UI placement; defaults to `bottom-start`. | `Placement` | `'bottom-start'` |
-| `offset`         | Distance from the trigger (px).                    | `number`    | `4`              |
+| Name             | Description                                  | Type        | Default          |
+| ---------------- | -------------------------------------------- | ----------- | ---------------- |
+| `open`           | Menu visibility.                             | `boolean`   | `false`          |
+| `disabled`       | Disabled state.                              | `boolean`   | `false`          |
+| `match-width`    | Panel width matches the trigger width.       | `boolean`   | `false`          |
+| `no-scroll-lock` | Does not lock page scrolling while open.     | `boolean`   | `false`          |
+| `placement`      | Panel placement; defaults to `bottom-start`. | `Placement` | `'bottom-start'` |
+| `offset`         | Distance from the trigger (px).              | `number`    | `4`              |
 
 ### Events
 

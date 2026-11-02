@@ -118,16 +118,16 @@ function removeTag(tag: string) {
           <web-ui-input slot="trigger" class="w-full min-w-0" placeholder="请输入标签" aria-label="添加标签">
             <!-- stop：委托层在 trigger 包装 div 上监听 click 打开 panel，确认添加不该顺带开 panel -->
             <!--
-              28px + mr-[-8px] 是算出来的等距，不是随手取值：input 的 .wui-input-inner 高
+              28px + -mr-2 是算出来的等距，不是随手取值：input 的 .wui-input-inner 高
               36px、padding 0 12px。button 20px 时上下各留 8px、右侧 12px，本来就不等距。
-              放大到 28px 后上下收成 (36-28)/2 = 4px，再用 -8px 把右边距从 12px 拉到
+              放大到 28px 后上下收成 (36-28)/2 = 4px，再用 -mr-2 把右边距从 12px 拉到
               4px，于是上、下、右三边间隙一致。改 input 的高度或 padding 会打破这个等式。
               宽度走 --wui-button-width 而不是 size：size 同时管 height 与 min-width，
               40px 宽配 28px 高只能分开设，只调宽度才不会动到上下间隙。
             -->
             <web-ui-button
               slot="suffix"
-              class="mr-[-8px] shrink-0 [--wui-button-width:40px]"
+              class="-mr-2 shrink-0 [--wui-button-width:40px]"
               icon
               variant="primary"
               size="28"

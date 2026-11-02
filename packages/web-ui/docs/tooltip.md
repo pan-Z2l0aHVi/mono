@@ -1,7 +1,4 @@
----
-component: tooltip
-tag: web-ui-tooltip
----
+# Tooltip
 
 tooltip shows on pointer and focus; the `content` attribute supplies plain text and the `content` slot can hold richer content.
 
@@ -201,7 +198,7 @@ const last = ref('—')
 
 | Name               | Description                                                  | Type               | Default |
 | ------------------ | ------------------------------------------------------------ | ------------------ | ------- |
-| `placement`        | Floating UI placement, `top` by default.                     | `Placement`        | `'top'` |
+| `placement`        | Tooltip placement; defaults to `top`.                        | `Placement`        | `'top'` |
 | `show-delay`       | Show delay (milliseconds).                                   | `number`           | `200`   |
 | `hide-delay`       | Hide delay (milliseconds).                                   | `number`           | `100`   |
 | `disabled`         | Disabled state.                                              | `boolean`          | `false` |

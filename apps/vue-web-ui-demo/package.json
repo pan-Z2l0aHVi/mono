@@ -8,7 +8,7 @@
     "dev": "vp dev",
     "preview": "vp preview",
     "test": "vp test run",
-    "check-generated": "node ../../scripts/checks/check-md-to-comp-artifacts.mjs . vue"
+    "check-generated": "node ../../scripts/checks/check-md-to-meta-artifacts.mjs ."
   },
   "dependencies": {
     "@greypan/app-scrollbars": "workspace:*",
@@ -29,7 +29,7 @@
   "devDependencies": {
     "@greypan/monorepo-kit": "workspace:*",
     "@greypan/deps-reload": "workspace:*",
-    "@greypan/md-to-comp": "workspace:*",
+    "@greypan/md-to-meta": "workspace:*",
     "@greypan/unplugin-web-components": "workspace:*",
     "@greypan/tsconfig": "workspace:*",
     "@vue/test-utils": "catalog:",

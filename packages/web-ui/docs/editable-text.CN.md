@@ -1,7 +1,4 @@
----
-component: editable-text
-tag: web-ui-editable-text
----
+# Editable Text
 
 行内纯文本编辑器：点击文字就地编辑，Enter 与 blur 提交，只有 Escape 取消；文本层与编辑层共用一个盒，进入编辑态不会移动像素。
 

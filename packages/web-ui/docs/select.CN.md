@@ -1,7 +1,4 @@
----
-component: select
-tag: web-ui-select
----
+# Select
 
 选择器下拉框：默认插槽投影 `<web-ui-option>` 候选，`trigger` 插槽可替换默认触发区域；支持键盘导航与 Portal。
 
@@ -430,18 +427,19 @@ export default function Demo() {
 
 ### Props
 
-| 名称               | 说明                                                                                      | 类型                | 默认值    |
-| ------------------ | ----------------------------------------------------------------------------------------- | ------------------- | --------- |
-| `placeholder`      | 未选中时显示的占位文本。                                                                  | `string`            | `''`      |
-| `trigger`          | 触发器外观：`label` 保留选中文本与箭头，`icon` 保留箭头并把 `trigger` slot 作为左侧图标。 | `'label' \| 'icon'` | `'label'` |
-| `disabled`         | 禁用状态。                                                                                | `boolean`           | `false`   |
-| `required`         | 必填校验。                                                                                | `boolean`           | `false`   |
-| `portal`           | 在 theme-owned overlay root 中渲染下拉 panel。                                            | `boolean`           | `false`   |
-| `no-scroll-lock`   | 打开时不锁定页面滚动。                                                                    | `boolean`           | `false`   |
-| `overlayContainer` | 显式 Portal 容器（property）。                                                            | `OverlayContainer`  | —         |
-| `name`             | 表单字段名。                                                                              | `string`            | `''`      |
-| `aria-label`       | combobox 的 accessible name。                                                             | `string \| null`    | `null`    |
-| `value`            | 选中值。                                                                                  | `string`            | `''`      |
+| 名称               | 说明                                                                                      | 类型                | 默认值           |
+| ------------------ | ----------------------------------------------------------------------------------------- | ------------------- | ---------------- |
+| `placeholder`      | 未选中时显示的占位文本。                                                                  | `string`            | `''`             |
+| `trigger`          | 触发器外观：`label` 保留选中文本与箭头，`icon` 保留箭头并把 `trigger` slot 作为左侧图标。 | `'label' \| 'icon'` | `'label'`        |
+| `disabled`         | 禁用状态。                                                                                | `boolean`           | `false`          |
+| `required`         | 必填校验。                                                                                | `boolean`           | `false`          |
+| `portal`           | 在 theme-owned overlay root 中渲染下拉 panel。                                            | `boolean`           | `false`          |
+| `placement`        | 下拉 panel 位置，默认从触发器左下角向下展开。                                             | `Placement`         | `'bottom-start'` |
+| `no-scroll-lock`   | 打开时不锁定页面滚动。                                                                    | `boolean`           | `false`          |
+| `overlayContainer` | 显式 Portal 容器（property）。                                                            | `OverlayContainer`  | —                |
+| `name`             | 表单字段名。                                                                              | `string`            | `''`             |
+| `aria-label`       | combobox 的 accessible name。                                                             | `string \| null`    | `null`           |
+| `value`            | 选中值。                                                                                  | `string`            | `''`             |
 
 ### Events
 

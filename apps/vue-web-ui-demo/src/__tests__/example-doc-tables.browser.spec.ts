@@ -1,12 +1,11 @@
 import '@/assets/global.css'
-import '@/generated/examples.css'
+import '@/generated/theme.css'
 
 import { mount, type VueWrapper } from '@vue/test-utils'
-import { OverlayScrollbars } from 'overlayscrollbars'
-import { afterEach, describe, expect, it, vi } from 'vite-plus/test'
+import { afterEach, describe, expect, it } from 'vite-plus/test'
 
 import ExampleDoc from '@/components/example-doc/index.vue'
-import { loadDemoLocale } from '@/i18n/locale'
+import { ensureExampleDoc, loadDemoLocale } from '@/i18n/locale'
 
 import { setViewport } from './viewport'
 
@@ -18,33 +17,28 @@ afterEach(async () => {
   await setViewport(1280, 900)
 })
 
-describe('示例 API 表（浏览器）', () => {
-  it('窄视口在表格自身横向滚动，不把整页撑宽', async () => {
+describe('示例文档表格（浏览器）', () => {
+  it('窄视口下表格按结构渲染，在自身列宽内换行而不撑宽页面', async () => {
     await setViewport(320, 700)
     await loadDemoLocale('en', false)
+    // 示例文档按组件异步装载；先等到本次所需文档落定，避免用固定超时赌并行测试下的加载耗时。
+    await ensureExampleDoc('progress')
     wrapper = mount(ExampleDoc, { props: { component: 'progress' }, attachTo: document.body })
 
-    await vi.waitFor(() => {
-      if (!wrapper?.find('table').exists()) throw new Error('API table did not render')
-    })
+    const table = wrapper.find('table')
+    expect(table.exists()).toBe(true)
+    const tableElement = table.element as HTMLTableElement
+    const rows = tableElement.querySelectorAll('tbody > tr')
+    expect(rows.length).toBeGreaterThan(1)
 
-    const table = wrapper.find('table').element as HTMLTableElement
-    const scroller = wrapper.find('[data-api-table-scroll]').element as HTMLElement
-    const instance = OverlayScrollbars(scroller)
-    if (!instance) throw new Error('API table did not initialize OverlayScrollbars')
-    const viewport = instance.elements().viewport
-    const heading = document.getElementById(viewport.getAttribute('aria-labelledby') ?? '')
-    if (!heading) throw new Error('API table heading is missing')
+    const header = rows[0].querySelectorAll('th')
+    expect(header.length).toBe(4)
+    expect([...header].map(cell => cell.textContent?.trim())).toEqual(['Name', 'Description', 'Type', 'Default'])
+    expect(rows[1].querySelectorAll('td').length).toBe(4)
 
-    expect(instance.options().scrollbars.theme).toBe('os-theme-macos')
-    expect(scroller.getAttribute('data-overlayscrollbars')).toBe('host')
-    expect(viewport.hasAttribute('data-overlayscrollbars-viewport')).toBe(true)
-    expect(viewport.tabIndex).toBe(0)
-    expect(viewport.getAttribute('role')).toBe('region')
-    expect(heading.textContent?.trim()).toBe('Props')
-    expect(viewport.clientWidth).toBeGreaterThan(0)
-    expect(viewport.scrollWidth).toBeGreaterThan(viewport.clientWidth)
-    expect(table.scrollWidth).toBeGreaterThan(viewport.clientWidth)
+    // 主题让长标识符在单元格内换行（`overflow-wrap: anywhere`），所以表格自身不会越过正文容器。
+    const container = tableElement.parentElement as HTMLElement
+    expect(tableElement.getBoundingClientRect().width).toBeLessThanOrEqual(container.clientWidth + 0.5)
     expect(document.documentElement.scrollWidth).toBe(document.documentElement.clientWidth)
   })
 })

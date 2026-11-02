@@ -1,0 +1,11 @@
+<template>
+  <web-ui-dropdown>
+    <web-ui-button slot="trigger" variant="secondary">更多</web-ui-button>
+    <web-ui-dropdown-header>编辑</web-ui-dropdown-header>
+    <web-ui-dropdown-item>复制</web-ui-dropdown-item>
+    <web-ui-dropdown-item>粘贴</web-ui-dropdown-item>
+    <web-ui-dropdown-divider></web-ui-dropdown-divider>
+    <web-ui-dropdown-header>危险操作</web-ui-dropdown-header>
+    <web-ui-dropdown-item disabled>删除</web-ui-dropdown-item>
+  </web-ui-dropdown>
+</template>

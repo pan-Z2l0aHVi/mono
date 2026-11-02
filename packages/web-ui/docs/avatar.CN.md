@@ -1,7 +1,4 @@
----
-component: avatar
-tag: web-ui-avatar
----
+# Avatar
 
 avatar，按 `src` 画图片；没有图片或图片加载失败时回退到 `name` 的首字母，`name` 也留空时回退到默认图标。
 

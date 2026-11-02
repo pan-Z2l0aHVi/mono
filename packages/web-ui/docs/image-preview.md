@@ -1,7 +1,4 @@
----
-component: image-preview
-tag: web-ui-image-preview
----
+# Image Preview
 
 Imperative image preview: open it through `imagePreview()` and control it with the returned handle; it uses a native `<dialog>` internally and, when no `container` is passed, mounts into the overlay root of the root theme (`web-ui-theme`), falling back to the global fallback root when the page has no theme scope—passing `target` instead resolves its nearest theme scope.
 

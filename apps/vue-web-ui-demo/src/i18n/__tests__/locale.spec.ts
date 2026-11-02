@@ -1,10 +1,12 @@
 import { setImmediate } from 'node:timers'
 
+import type { MetaNode } from '@greypan/md-to-meta'
 import { expect, it, vi } from 'vite-plus/test'
 
-import type { ExampleDoc } from '@/generated/examples'
-
+import type { MetaDocs } from '../examples'
 import { createLocaleController } from '../locale'
+
+const docs: MetaDocs = new Map([['button', [{ label: 'p', content: 'button' } as MetaNode]]])
 
 function setup() {
   const commits: string[] = []
@@ -13,8 +15,8 @@ function setup() {
     commitCatalog: (locale: string) => {
       commits.push(locale)
     },
-    loadDocs: vi.fn<(locale: string) => Promise<never[]>>(async () => []),
-    prepareExamples: vi.fn<(locale: string, docs: ExampleDoc[], components: string[]) => Promise<void>>(async () => {}),
+    loadDocs: vi.fn<(locale: string, components: string[]) => Promise<MetaDocs>>(async () => docs),
+    prepareExamples: vi.fn<(docs: MetaDocs) => Promise<void>>(async () => {}),
     readPreference: () => 'en',
     writePreference: vi.fn<(locale: string) => void>(),
     languages: () => ['zh-TW'],
@@ -30,6 +32,13 @@ it('偏好优先于浏览器，成功准备后一次提交并持久化', async (
   expect(commits).toEqual(['en'])
   expect(state.locale.value).toBe('en')
   expect(deps.writePreference).toHaveBeenCalledWith('en')
+})
+
+it('壳语种加载失败时保留原始错误', async () => {
+  const { state, deps } = setup()
+  const failure = new Error('catalog unavailable')
+  deps.loadCatalog.mockRejectedValueOnce(failure)
+  await expect(state.loadShellLocale()).rejects.toBe(failure)
 })
 
 it('当前页示例就绪前保留原语言，示例失败不提交偏好', async () => {
@@ -53,7 +62,7 @@ it('当前页示例就绪前保留原语言，示例失败不提交偏好', asyn
   expect(state.pending.value).toBe(true)
   expect(state.locale.value).toBe('zh-CN')
   expect(commits).toEqual(['zh-CN'])
-  expect(deps.prepareExamples).toHaveBeenLastCalledWith('en', [], ['button'])
+  expect(deps.prepareExamples).toHaveBeenLastCalledWith(docs)
   fail(new Error('demo unavailable'))
   expect(await result).toEqual(new Error('demo unavailable'))
   expect(commits).toEqual(['zh-CN'])
@@ -133,4 +142,19 @@ it('文档已失败时仍等待旧catalog结束，才启动下一次准备', asy
   finish()
   await Promise.all([oldResult, latest])
   expect(commits).toEqual(['zh-CN'])
+})
+
+it('页面切换后只为当前语种补载新组件', async () => {
+  const { state, deps } = setup()
+  const componentDocs: MetaDocs = new Map([['radio', [{ label: 'p', content: 'radio' } as MetaNode]]])
+  let release!: (value: MetaDocs) => void
+  deps.loadDocs.mockImplementation((_locale, components) =>
+    components.length ? new Promise(resolve => (release = resolve)) : Promise.resolve(new Map())
+  )
+  await state.change('en', false)
+  const request = state.ensure('radio')
+  release(componentDocs)
+  await request
+  expect(state.docs.value.get('radio')).toEqual(componentDocs.get('radio'))
+  expect(state.locale.value).toBe('en')
 })

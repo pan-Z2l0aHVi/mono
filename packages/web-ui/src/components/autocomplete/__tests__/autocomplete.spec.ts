@@ -121,6 +121,22 @@ describe('WebUiAutocomplete 组件', () => {
       cleanupElement(el)
     })
 
+    it('placement 默认 bottom-start，切换后反射为 attribute，非法值回退', async () => {
+      const el = createAutocomplete(OPTIONS_HTML)
+      await waitForUpdate(el)
+      expect(el.placement).toBe('bottom-start')
+
+      el.placement = 'bottom'
+      await waitForUpdate(el)
+      expect(el.getAttribute('placement')).toBe('bottom')
+
+      ;(el as any).placement = 'sideways'
+      await waitForUpdate(el)
+      expect(el.placement).toBe('bottom-start')
+
+      cleanupElement(el)
+    })
+
     it('初始 value attribute 作为默认值，属性变更不回写 attribute', async () => {
       const el = createAutocomplete(OPTIONS_HTML, { value: 'Apple' })
       await waitForUpdate(el)

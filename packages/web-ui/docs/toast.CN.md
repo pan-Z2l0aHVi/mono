@@ -1,7 +1,4 @@
----
-component: toast
-tag: web-ui-toast
----
+# Toast
 
 命令式 toast：通过 `toast()` 创建一条并拿到它的 id，用 `toast.close(id)` 关闭；同一个 `id` 再次调用是更新那一条，而不是新建。下面的表分别列 `toast()` 的 option、命令式入口，以及 `<web-ui-toast>` 元素自身的属性、事件与方法。
 

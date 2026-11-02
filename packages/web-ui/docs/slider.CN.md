@@ -1,7 +1,4 @@
----
-component: slider
-tag: web-ui-slider
----
+# Slider
 
 范围 slider，支持刻度标记与垂直方向；拖拽走 pointer capture，键盘支持方向键、Home / End 与 PageUp / PageDown。每个实例都应通过 `aria-label` 或 `aria-labelledby` 提供可区分的名称。
 

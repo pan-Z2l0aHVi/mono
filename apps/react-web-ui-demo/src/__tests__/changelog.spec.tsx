@@ -1,49 +1,22 @@
-import { cleanup, render } from '@testing-library/react'
-import { act } from 'react'
-import { afterEach, describe, expect, it, vi } from 'vite-plus/test'
+import { renderToStaticMarkup } from 'react-dom/server'
+import { describe, expect, it } from 'vite-plus/test'
 
 import { Changelog } from '../components/changelog'
 
-let intersect: ((entries: IntersectionObserverEntry[]) => void) | undefined
-
-afterEach(() => {
-  cleanup()
-  vi.unstubAllGlobals()
-  intersect = undefined
-})
-
+/*
+ * 整份 CHANGELOG.md 有 3k+ 节点，jsdom 挂载在 CI 的负载下会撞默认的 5s。这里只验产出内容，
+ * 用静态渲染把 DOM 构建换成字符串拼接，断言与挂载后取 DOM 等价。
+ */
 describe('更新日志页', () => {
-  it('从 CHANGELOG.md 分页渲染版本，并在底部自动加载下一批', () => {
-    vi.stubGlobal(
-      'IntersectionObserver',
-      class {
-        root = null
-        rootMargin = ''
-        thresholds = []
-        constructor(callback: IntersectionObserverCallback) {
-          intersect = entries => callback(entries, this as unknown as IntersectionObserver)
-        }
-        observe() {}
-        unobserve() {}
-        disconnect() {}
-        takeRecords() {
-          return []
-        }
-      }
-    )
+  it('从 CHANGELOG.md 原样渲染整份文档', () => {
+    const markup = renderToStaticMarkup(<Changelog />)
 
-    const { container } = render(<Changelog />)
-    const html = container.innerHTML
-
-    expect(container.querySelector('h1')).toBeTruthy()
-    expect(container.querySelector('.wui-glass')).toBeNull()
-    expect(html).toContain('12.0.1')
-    expect(html).toContain('mdc-heading')
-    expect(html).not.toContain('# @greypan/web-ui')
-    expect(container.querySelectorAll('[data-changelog-version]')).toHaveLength(8)
-
-    act(() => intersect?.([{ isIntersecting: true } as IntersectionObserverEntry]))
-
-    expect(container.querySelectorAll('[data-changelog-version]')).toHaveLength(16)
+    expect(markup).toMatch(/<h1[^>]*>@greypan\/web-ui<\/h1>/)
+    // 版本号来自 CHANGELOG.md，会随发版变化：这里只校验形状，不写死具体版本。
+    expect(markup).toMatch(/<h2[^>]*>\d+\.\d+\.\d+<\/h2>/)
+    expect(markup).toContain('mdm-heading')
+    // 围栏代码块来自 CHANGELOG.md，渲染成 codeblock 卡片。
+    expect(markup).toContain('data-codeblock')
+    expect(markup).not.toContain('# @greypan/web-ui')
   })
 })

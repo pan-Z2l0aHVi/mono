@@ -1,7 +1,4 @@
----
-component: theme
-tag: web-ui-theme
----
+# Theme
 
 主题提供者：在自己的子树内定义基础、颜色、层级、阴影与动效 token，并作为该子树的 theme-owned overlay root。
 
@@ -873,16 +870,16 @@ System 配色模式跟随 `prefers-color-scheme`。
 
 | 名称                         | 说明             | 默认值 |
 | ---------------------------- | ---------------- | ------ |
-| `--wui-layer-inline-overlay` | 组件内部 overlay | `1`    |
-| `--wui-layer-header`         | 页面 Header      | `10`   |
-| `--wui-layer-auxiliary`      | 悬浮工具控件     | `20`   |
-| `--wui-layer-banner`         | Banner           | `30`   |
-| `--wui-layer-tabbar`         | Tab Bar          | `40`   |
-| `--wui-layer-sidebar`        | 侧边栏           | `50`   |
-| `--wui-layer-menu`           | menu/浮动 panel  | `100`  |
-| `--wui-layer-menu-nested`    | 嵌套 menu        | `110`  |
-| `--wui-layer-toast`          | Toast            | `200`  |
-| `--wui-layer-loading`        | 加载提示         | `300`  |
+| `--wui-layer-inline-overlay` | 组件内部 overlay | `10`   |
+| `--wui-layer-header`         | 页面 Header      | `100`  |
+| `--wui-layer-auxiliary`      | 悬浮工具控件     | `200`  |
+| `--wui-layer-banner`         | Banner           | `300`  |
+| `--wui-layer-tabbar`         | Tab Bar          | `400`  |
+| `--wui-layer-sidebar`        | 侧边栏           | `500`  |
+| `--wui-layer-menu`           | menu/浮动 panel  | `1000` |
+| `--wui-layer-menu-nested`    | 嵌套 menu        | `1100` |
+| `--wui-layer-toast`          | Toast            | `2000` |
+| `--wui-layer-loading`        | 加载提示         | `3000` |
 
 ### 动效 token
 

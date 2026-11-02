@@ -1,7 +1,4 @@
----
-component: middle-ellipsis
-tag: web-ui-middle-ellipsis
----
+# Middle Ellipsis
 
 Single-line middle ellipsis: keep both ends, drop the middle, `very-long-file-…-abcdefghij.txt`. Cuts always land on grapheme cluster boundaries and never split surrogate pairs, combining sequences, or ZWJ emoji.
 

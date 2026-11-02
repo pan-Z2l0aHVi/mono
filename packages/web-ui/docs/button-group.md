@@ -1,7 +1,4 @@
----
-component: button-group
-tag: web-ui-button-group
----
+# Button Group
 
 Groups several `<web-ui-button>` elements into one: the group is responsible only for the visual contiguity between members (a shared glass base, dividers drawn between adjacent buttons) and the layout direction; it does not manage selection state and does not change members' own events or form behavior. A member's own `size` is ignored inside the group, where every member renders 30px high.
 

@@ -3,7 +3,7 @@ import { createFileRoute } from '@tanstack/react-router'
 import ExampleDoc from '@/components/example-doc'
 
 function Component() {
-  return <ExampleDoc component="tooltip" level="primary" />
+  return <ExampleDoc component="tooltip" />
 }
 
 export const Route = createFileRoute('/components/tooltip')({

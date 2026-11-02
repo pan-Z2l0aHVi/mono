@@ -11,6 +11,6 @@ import ExampleDoc from '@/components/example-doc/index.vue'
 </script>
 
 <template>
-  <ExampleDoc component="checkbox" level="primary" />
-  <ExampleDoc component="checkbox-group" level="secondary" />
+  <ExampleDoc component="checkbox" />
+  <ExampleDoc component="checkbox-group" />
 </template>

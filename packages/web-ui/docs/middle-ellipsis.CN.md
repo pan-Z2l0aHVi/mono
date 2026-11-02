@@ -1,7 +1,4 @@
----
-component: middle-ellipsis
-tag: web-ui-middle-ellipsis
----
+# Middle Ellipsis
 
 单行中间省略：保留首尾、丢掉中间，`very-long-file-…-abcdefghij.txt`。切点一律落在字素簇边界上，不会劈开代理对、组合符序列或 ZWJ emoji。
 

@@ -1,63 +1,46 @@
-import { act, useState, type ComponentType } from 'react'
-import { Suspense } from 'react'
-import { createRoot } from 'react-dom/client'
-import { expect, it, vi } from 'vite-plus/test'
+import type { MetaNode } from '@greypan/md-to-meta'
+import { describe, expect, it, vi } from 'vite-plus/test'
 
-import { createDemo } from '../examples'
+import { loadMeta, loadMetaDocs, metaFileOf, prepareExamples } from '../examples'
 
-it('运行示例下载失败后允许重新加载，并复用成功的结果', async () => {
-  const module = { default: () => <button>Ready</button> }
-  const load = vi
-    .fn<() => Promise<typeof module>>()
-    .mockRejectedValueOnce(new Error('Offline'))
-    .mockResolvedValue(module)
-  const entry = createDemo(load)
-  await expect(entry.load()).rejects.toThrow('Offline')
-  await expect(entry.load()).resolves.toBe(module)
-  await expect(entry.load()).resolves.toBe(module)
-  expect(load).toHaveBeenCalledTimes(2)
-})
-
-it('初次懒载后重渲染不改变运行示例身份或重置状态', async () => {
-  function Counter() {
-    const [count, setCount] = useState(0)
-    return <button onClick={() => setCount(n => n + 1)}>{count}</button>
-  }
-  let resolve!: (value: { default: ComponentType }) => void
-  const pending = new Promise<{ default: ComponentType }>(done => {
-    resolve = done
+describe('meta 装载', () => {
+  it('按语种选 `.CN` 与无后缀文件', () => {
+    expect(metaFileOf('zh-CN', 'badge')).toBe('../generated/badge.CN.meta.js')
+    expect(metaFileOf('en', 'badge')).toBe('../generated/badge.meta.js')
   })
-  const entry = createDemo(() => pending)
-  function Parent({ Demo }: { Demo: ComponentType }) {
-    return (
-      <Suspense fallback={<span>Loading</span>}>
-        <Demo />
-      </Suspense>
-    )
-  }
-  const host = document.createElement('div')
-  const root = createRoot(host)
-  try {
-    await act(async () => {
-      root.render(<Parent Demo={entry.get()} />)
-    })
-    await act(async () => {
-      resolve({ default: Counter })
-      await entry.load()
-    })
-    const button = host.querySelector('button')!
-    await act(async () => {
-      button.click()
-    })
-    expect(button.textContent).toBe('1')
-    await act(async () => {
-      root.render(<Parent Demo={entry.get()} />)
-    })
-    expect(host.querySelector('button')).toBe(button)
-    expect(button.textContent).toBe('1')
-  } finally {
-    await act(async () => {
-      root.unmount()
-    })
-  }
+
+  it('同一份模块只拉一次，返回同一个数组', async () => {
+    const [first, second] = await Promise.all([loadMeta('zh-CN', 'badge'), loadMeta('zh-CN', 'badge')])
+    expect(first).toBe(second)
+  })
+
+  it('中文与英文各拿自己那一份语料', async () => {
+    const [zh, en] = await Promise.all([loadMeta('zh-CN', 'badge'), loadMeta('en', 'badge')])
+    const firstParagraph = (nodes: MetaNode[]) => nodes.find(node => node.label === 'p')
+    expect(firstParagraph(zh)?.content).toContain('角标')
+    expect(firstParagraph(en)?.content).toContain('corner badge')
+  })
+
+  it('loadMetaDocs 按组件名聚合成 Map', async () => {
+    const docs = await loadMetaDocs('zh-CN', ['badge', 'back-top'])
+    expect([...docs.keys()]).toEqual(['badge', 'back-top'])
+    expect(docs.get('back-top')).toHaveLength((await loadMeta('zh-CN', 'back-top')).length)
+  })
+
+  it('prepareExamples 预载所有带 load 的代码块', async () => {
+    const load = vi.fn<() => Promise<unknown>>(async () => undefined)
+    const docs = new Map<string, MetaNode[]>([
+      [
+        'demo',
+        [
+          { label: 'codeblock', lang: 'tsx', load },
+          { label: 'codeblock', lang: 'vue' },
+          { label: 'p', content: 'text' }
+        ]
+      ],
+      ['plain', [{ label: 'codeblock', lang: 'vue' }]]
+    ])
+    await prepareExamples(docs)
+    expect(load).toHaveBeenCalledTimes(1)
+  })
 })

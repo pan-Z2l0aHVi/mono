@@ -11,5 +11,5 @@ import ExampleDoc from '@/components/example-doc/index.vue'
 </script>
 
 <template>
-  <ExampleDoc component="image-preview" level="primary" />
+  <ExampleDoc component="image-preview" />
 </template>

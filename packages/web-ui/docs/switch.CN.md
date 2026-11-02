@@ -1,7 +1,4 @@
----
-component: switch
-tag: web-ui-switch
----
+# Switch
 
 开关，声明 `role="switch"` 与 `aria-checked`；点击即时开合，也支持按住 track 横拖与甩动定值，空格与 Enter 都能键盘切换。
 

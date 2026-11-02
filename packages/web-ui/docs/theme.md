@@ -1,7 +1,4 @@
----
-component: theme
-tag: web-ui-theme
----
+# Theme
 
 Theme provider: defines foundation, color, layer, shadow, and motion tokens within its own subtree and acts as that subtree's theme-owned overlay root.
 
@@ -899,16 +896,16 @@ Known limitation: the overlay styles in `assets/*.css` have two injection pathsâ
 
 | Name                         | Description                | Default |
 | ---------------------------- | -------------------------- | ------- |
-| `--wui-layer-inline-overlay` | Overlay inside a component | `1`     |
-| `--wui-layer-header`         | Page header                | `10`    |
-| `--wui-layer-auxiliary`      | Floating toolbar controls  | `20`    |
-| `--wui-layer-banner`         | Banner                     | `30`    |
-| `--wui-layer-tabbar`         | Tab bar                    | `40`    |
-| `--wui-layer-sidebar`        | Sidebar                    | `50`    |
-| `--wui-layer-menu`           | menu/floating panel        | `100`   |
-| `--wui-layer-menu-nested`    | Nested menu                | `110`   |
-| `--wui-layer-toast`          | Toast                      | `200`   |
-| `--wui-layer-loading`        | Loading overlay            | `300`   |
+| `--wui-layer-inline-overlay` | Overlay inside a component | `10`    |
+| `--wui-layer-header`         | Page header                | `100`   |
+| `--wui-layer-auxiliary`      | Floating toolbar controls  | `200`   |
+| `--wui-layer-banner`         | Banner                     | `300`   |
+| `--wui-layer-tabbar`         | Tab bar                    | `400`   |
+| `--wui-layer-sidebar`        | Sidebar                    | `500`   |
+| `--wui-layer-menu`           | menu/floating panel        | `1000`  |
+| `--wui-layer-menu-nested`    | Nested menu                | `1100`  |
+| `--wui-layer-toast`          | Toast                      | `2000`  |
+| `--wui-layer-loading`        | Loading overlay            | `3000`  |
 
 ### Motion notes
 

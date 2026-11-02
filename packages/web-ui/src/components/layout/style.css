@@ -20,7 +20,7 @@
 
 .layout-banner {
   position: relative;
-  z-index: var(--wui-layer-banner, 30);
+  z-index: var(--wui-layer-banner, 300);
 }
 
 /* 参考 book-fe：正文区域负责撑高 sidebar 的 relative wrapper。 */
@@ -46,7 +46,7 @@
  */
 aside {
   position: sticky;
-  z-index: var(--wui-layer-sidebar, 50);
+  z-index: var(--wui-layer-sidebar, 500);
   top: 0;
 
   display: flex;
@@ -197,7 +197,7 @@ header {
    */
   isolation: isolate;
   position: sticky;
-  z-index: var(--wui-layer-header, 10);
+  z-index: var(--wui-layer-header, 100);
   top: 0;
 
   display: flex;
@@ -217,7 +217,7 @@ main {
 
 footer {
   position: sticky;
-  z-index: var(--wui-layer-tabbar, 40);
+  z-index: var(--wui-layer-tabbar, 400);
   bottom: 0;
 }
 

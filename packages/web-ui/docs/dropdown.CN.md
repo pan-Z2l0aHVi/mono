@@ -1,7 +1,4 @@
----
-component: dropdown
-tag: web-ui-dropdown
----
+# Dropdown
 
 dropdown menu：`trigger` 插槽放 trigger，其余子元素作为 menu item 渲染进 overlay panel，支持 divider、分组标题与多级 submenu。
 
@@ -237,7 +234,7 @@ function select(label: string) {
 
 ### Placement
 
-`placement` 交给 Floating UI，默认 `bottom-start`；空间不够时 `flip` / `shift` 会自动翻转或平移 panel。
+`placement` 默认 `bottom-start`；空间不够时 panel 会自动翻转或平移。
 
 ```tsx
 export default function Demo() {
@@ -393,14 +390,14 @@ const menu = useTemplateRef<WebUiDropdown>('menu')
 
 ### Props
 
-| 名称             | 说明                                    | 类型        | 默认值           |
-| ---------------- | --------------------------------------- | ----------- | ---------------- |
-| `open`           | menu 可见性。                           | `boolean`   | `false`          |
-| `disabled`       | 禁用状态。                              | `boolean`   | `false`          |
-| `match-width`    | panel 宽度匹配 trigger 宽度。           | `boolean`   | `false`          |
-| `no-scroll-lock` | 打开时不锁定页面滚动。                  | `boolean`   | `false`          |
-| `placement`      | Floating UI 位置，默认 `bottom-start`。 | `Placement` | `'bottom-start'` |
-| `offset`         | 与 trigger 的距离（px）。               | `number`    | `4`              |
+| 名称             | 说明                              | 类型        | 默认值           |
+| ---------------- | --------------------------------- | ----------- | ---------------- |
+| `open`           | menu 可见性。                     | `boolean`   | `false`          |
+| `disabled`       | 禁用状态。                        | `boolean`   | `false`          |
+| `match-width`    | panel 宽度匹配 trigger 宽度。     | `boolean`   | `false`          |
+| `no-scroll-lock` | 打开时不锁定页面滚动。            | `boolean`   | `false`          |
+| `placement`      | panel 位置，默认 `bottom-start`。 | `Placement` | `'bottom-start'` |
+| `offset`         | 与 trigger 的距离（px）。         | `number`    | `4`              |
 
 ### Events
 

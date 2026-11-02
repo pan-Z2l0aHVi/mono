@@ -1,5 +1,5 @@
 import '@/assets/global.css'
-import '@/generated/examples.css'
+import '@/generated/theme.css'
 
 import { createRoot } from 'react-dom/client'
 

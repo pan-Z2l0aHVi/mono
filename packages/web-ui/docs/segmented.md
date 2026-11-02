@@ -1,7 +1,4 @@
----
-component: segmented
-tag: web-ui-segmented
----
+# Segmented
 
 segmented (a single-select button group) has `<web-ui-segmented-trigger>` children; `value` synchronizes the selected item and integrates with the native `<form>`.
 

@@ -8,35 +8,27 @@ msgstr ""
 "Plural-Forms: nplurals=2\n"
 "X-Plurals-Order: one, other\n"
 
-#: src/components/example-doc/index.vue
+#: src/components/codeblock/index.vue
 msgid "已复制"
 msgstr "Copied"
 
-#: src/components/example-doc/index.vue
+#: src/components/codeblock/index.vue
 msgid "复制失败"
 msgstr "Copy failed"
 
-#: src/components/example-doc/index.vue
+#: src/components/codeblock/index.vue
 msgid "复制代码"
 msgstr "Copy code"
 
-#: src/components/example-doc/index.vue
-msgid "示例代码框架"
-msgstr "Sample code framework"
-
-#: src/components/example-doc/index.vue
-#: src/components/example-doc/index.vue
+#: src/components/codeblock/index.vue
+#: src/components/codeblock/index.vue
 msgid "收起代码"
 msgstr "Collapse code"
 
-#: src/components/example-doc/index.vue
-#: src/components/example-doc/index.vue
+#: src/components/codeblock/index.vue
+#: src/components/codeblock/index.vue
 msgid "展开代码"
 msgstr "Expand code"
-
-#: src/components/example-doc/index.vue
-msgid "示例"
-msgstr "Samples"
 
 #: src/pages/[...all]/index.vue
 msgid "你要找的页面不存在"
@@ -117,7 +109,7 @@ msgstr "Dark"
 msgid "基础控件"
 msgstr "Core controls"
 
-#: src/pages/home/index.vue
+#: src/components/quick-link-card/index.vue
 msgid "查看演示 →"
 msgstr "View demo →"
 
@@ -128,10 +120,6 @@ msgstr "Interaction & overlays"
 #: src/pages/home/index.vue
 msgid "丝滑动效"
 msgstr "Silky motion"
-
-#: src/pages/home/index.vue
-msgid "命令式组件"
-msgstr "Imperative components"
 
 #: src/pages/home/index.vue
 msgid "加载中的等待提示"
@@ -202,10 +190,6 @@ msgid "悬停提示、焦点说明"
 msgstr "Hover hints, focus labels"
 
 #: src/pages/home/index.vue
-msgid "函数调用触发的全局反馈"
-msgstr "Global feedback triggered by function calls"
-
-#: src/pages/home/index.vue
 msgid "多图预览、滑动切换、手势缩放"
 msgstr "Multi-image preview, swipe switching, gesture zoom"
 
@@ -226,7 +210,7 @@ msgid "TypeScript 类型安全"
 msgstr "TypeScript type safety"
 
 #: src/pages/home/index.vue
-msgid "原子化组件"
+msgid "原子组件"
 msgstr "Atomic components"
 
 #: src/pages/home/index.vue
@@ -255,17 +239,26 @@ msgstr "Feedback"
 
 #: src/app/index.vue
 #: src/app/index.vue
-#: src/app/index.vue
 msgid "组件总览"
 msgstr "Components"
 
 #: src/app/index.vue
 #: src/app/index.vue
-#: src/app/index.vue
-#: src/pages/changelog.vue
 msgid "更新日志"
 msgstr "Changelog"
 
-#: src/pages/changelog.vue
-msgid "组件库各版本的变更记录。"
-msgstr "Release notes for each version of the component library."
+#: src/components/example-doc/index.vue
+msgid "示例文档"
+msgstr "Example documentation"
+
+#: src/components/codeblock/index.vue
+msgid "示例代码框架"
+msgstr "Example code framework"
+
+#: src/pages/home/index.vue
+msgid "命令式"
+msgstr "Imperative"
+
+#: src/pages/home/index.vue
+msgid "函数调用触发"
+msgstr "Triggered by function calls"

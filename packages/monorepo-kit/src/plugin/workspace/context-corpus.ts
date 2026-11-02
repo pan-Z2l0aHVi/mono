@@ -282,10 +282,11 @@ export function defineContextCorpus(options: ContextCorpusOptions): CheckUnit {
           addError(`${relativeRoot}: app workspace is missing README.md`)
       }
 
-      // 交互式提交的 scope 清单必须与 workspace manifests 的包名一致：少一个名字，该 workspace 的改动
+      // 交互式提交的 scope 清单必须覆盖每个 workspace manifest：少一个名字，该 workspace 的改动
       // 在提交入口里选不到；多一个已删除的包名，会留下选了也无所指的假 option。
-      // 清单是硬编码的，所以只能靠这道检查防漂移。判据是集合相等且无重复，
-      // 顺序不参与比较：prompt 里的顺序只是展示顺序，调整它不该让检查变红。
+      // 嵌套 workspace 并入最近的祖先 workspace（如 apps/interweave/frontend 归 interweave），
+      // 因为 scope 表达的是受影响的应用，不是目录层级。清单是硬编码的，所以只能靠这道检查防漂移。
+      // 判据是集合相等且无重复，顺序不参与比较：prompt 里的顺序只是展示顺序，调整它不该让检查变红。
       if (options.commitScopes) {
         const { file, rootScope, pick } = options.commitScopes
         if (exists(file)) {
@@ -297,11 +298,23 @@ export function defineContextCorpus(options: ContextCorpusOptions): CheckUnit {
             addError(`${file} cannot be imported: ${error instanceof Error ? error.message : String(error)}`)
           }
 
-          const expectedScopes = new Set([rootScope])
+          const scopeByWorkspaceRoot = new Map<string, string>()
           for (const manifestFile of workspaceManifests) {
             const { name } = JSON.parse(fs.readFileSync(manifestFile, 'utf8'))
-            expectedScopes.add(name.replace(/^@[^/]+\//, ''))
+            scopeByWorkspaceRoot.set(path.dirname(manifestFile), name.replace(/^@[^/]+\//, ''))
           }
+          const nearestScope = (workspaceRoot: string, ownScope: string): string => {
+            let parent = path.dirname(workspaceRoot)
+            while (parent !== root && parent.startsWith(root)) {
+              const scope = scopeByWorkspaceRoot.get(parent)
+              if (scope != null) return scope
+              parent = path.dirname(parent)
+            }
+            return ownScope
+          }
+          const expectedScopes = new Set([rootScope])
+          for (const [workspaceRoot, ownScope] of scopeByWorkspaceRoot)
+            expectedScopes.add(nearestScope(workspaceRoot, ownScope))
           const declared = new Set<string>(declaredScopes)
           if (declared.size !== declaredScopes.length) addError(`${file} prompt.scopes has duplicate entries`)
           for (const scope of [...expectedScopes].filter(item => !declared.has(item)).sort(byCodeUnit))

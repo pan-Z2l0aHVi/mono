@@ -19,7 +19,7 @@ export type VueAdapterOptions = DeepPartial<
   heuristic?: HeuristicFunc
   /** 接收保留原文的原因；省略时使用 console.warn。 */
   onWarn?: (diagnostic: VueDiagnostic) => void
-  /** 按组件 tag 明确允许额外的文案属性，例如 label/content。 */
+  /** 按组件 tag 覆盖内置 denylist，允许同名属性参与抽取，例如 value。 */
   componentAttributes?: Record<string, string[]>
 }
 

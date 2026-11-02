@@ -137,7 +137,7 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-${{ runner.arch }}-turbo-${{ hashFiles('.mise.toml') }}-
 
-      # 生成物新鲜度在 Build 之前只判不改地校验：Build 里 md-to-comp 插件的 writeArtifacts 会把
+      # 生成物新鲜度在 Build 之前只判不改地校验：Build 里 md-to-meta 插件的 writeArtifacts 会把
       # 失步的 src/generated/** 原地写新（healing），挂在测试档的 checkArtifacts 到那时永远空转。
       - name: Check generated artifacts
         run: pnpm exec turbo run check-generated --filter=@greypan/react-web-ui-demo --filter=@greypan/vue-web-ui-demo

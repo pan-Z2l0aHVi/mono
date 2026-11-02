@@ -1,7 +1,4 @@
----
-component: collapse
-tag: web-ui-collapse
----
+# Collapse
 
 A collapse panel packs the trigger and the content into one element: the trigger goes into the default slot, and the content to collapse goes into the `content` slot.
 

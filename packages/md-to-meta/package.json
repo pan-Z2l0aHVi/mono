@@ -1,0 +1,44 @@
+{
+  "name": "@greypan/md-to-meta",
+  "version": "0.0.1",
+  "private": true,
+  "description": "markdown 结构化引擎：把 markdown 解析成通用 meta 对象、把代码围栏落成独立代码文件，并提供驱动生成的 Vite 插件",
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.mts",
+      "import": "./dist/index.mjs"
+    }
+  },
+  "sideEffects": false,
+  "scripts": {
+    "build": "vp pack",
+    "test": "vp test run",
+    "dev": "vp pack --watch --clean=false"
+  },
+  "dependencies": {
+    "@shikijs/transformers": "catalog:",
+    "hast-util-to-html": "catalog:",
+    "remark-parse": "catalog:",
+    "remark-rehype": "catalog:",
+    "shiki": "catalog:",
+    "tinyglobby": "catalog:",
+    "unified": "catalog:"
+  },
+  "devDependencies": {
+    "@greypan/tsconfig": "workspace:*",
+    "vite": "catalog:",
+    "vite-plus": "catalog:"
+  },
+  "peerDependencies": {
+    "vite": "catalog:"
+  },
+  "peerDependenciesMeta": {
+    "vite": {
+      "optional": true
+    }
+  },
+  "engines": {
+    "node": ">=20.11.0"
+  }
+}

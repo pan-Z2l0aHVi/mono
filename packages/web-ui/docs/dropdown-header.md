@@ -1,7 +1,4 @@
----
-component: dropdown-header
-tag: web-ui-dropdown-header
----
+# Dropdown Header
 
 A group title inside a menu: a piece of small text that takes no part in interaction and names the menu items that follow it. It has no props or events and does not take part in keyboard navigation—the menu only stops focus on `<web-ui-dropdown-item>`. A group title is often used together with `<web-ui-dropdown-divider>`.
 
