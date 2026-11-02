@@ -353,11 +353,10 @@ export function Root() {
             {bannerVisible ? (
               <div
                 slot="banner"
-                className="relative flex items-center justify-center gap-2 bg-(--wui-color-accent) px-4 py-2 text-sm text-(--wui-color-on-accent)"
+                className="relative grid grid-cols-[24px_minmax(0,1fr)_24px] items-center gap-2 bg-(--wui-color-accent) px-4 py-2 text-sm text-(--wui-color-on-accent)"
               >
-                <span>🎉 欢迎使用 web-ui 组件库！</span>
                 <web-ui-button
-                  className="ml-auto mobile:absolute mobile:left-0 mobile:top-2 mobile:ml-0"
+                  className="absolute top-1/2 right-4 -translate-y-1/2"
                   size="24"
                   icon
                   variant="ghost"
@@ -366,6 +365,7 @@ export function Root() {
                 >
                   <web-ui-icon className="text-(--wui-color-on-accent)" icon={lucideX} size={16}></web-ui-icon>
                 </web-ui-button>
+                <span className="col-start-2 text-center">🎉 欢迎使用 web-ui 组件库！</span>
               </div>
             ) : null}
             {/* 移动端为前置导航区预留 60px，与 collapsed sidebar 使用同一基准。

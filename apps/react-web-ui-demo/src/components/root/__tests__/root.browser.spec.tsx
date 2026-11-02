@@ -456,6 +456,32 @@ describe('应用外壳（浏览器）：导航 collapsed state 不跨视口泄�
     }
   })
 
+  it('banner 关闭按钮桌面端与移动端都靠右', async () => {
+    await mountAppShell()
+    const banner = layoutRoot().querySelector<HTMLElement>('[slot="banner"]')
+    const button = banner?.querySelector<HTMLElement>('web-ui-button')
+    const label = banner?.querySelector<HTMLElement>('span')
+    if (!banner || !button || !label) throw new Error('banner close button not found')
+
+    // 距中线的有符号距离：靠右取按钮左边减中线，应为正；同时校验按钮与文案的垂直居中和文案居中。
+    const expectRightSide = () =>
+      waitFor(() => {
+        const bannerBounds = banner.getBoundingClientRect()
+        const buttonBounds = button.getBoundingClientRect()
+        const labelBounds = label.getBoundingClientRect()
+        const midpoint = bannerBounds.left + bannerBounds.width / 2
+        expect(buttonBounds.left - midpoint).toBeGreaterThan(0)
+        expect(labelBounds.left + labelBounds.width / 2).toBeCloseTo(midpoint, 0)
+        expect(buttonBounds.top + buttonBounds.height / 2).toBeCloseTo(bannerBounds.top + bannerBounds.height / 2, 0)
+      })
+
+    await expectRightSide()
+
+    await changeViewport(MOBILE_VIEWPORT)
+    await settleViewport(true)
+    await expectRightSide()
+  })
+
   it('移动端断点下 drawer 里的导航回到 expanded state，而不是桌面 collapsed state', async () => {
     await mountAppShell()
     const expanded = navItemAlignment()

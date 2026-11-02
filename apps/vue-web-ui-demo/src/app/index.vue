@@ -345,7 +345,7 @@ function isNavActive(path: string) {
           class="relative grid grid-cols-[24px_minmax(0,1fr)_24px] items-center gap-2 bg-(--wui-color-accent) px-4 py-2 text-sm text-(--wui-color-on-accent)"
         >
           <web-ui-button
-            class="absolute top-1/2 right-4 -translate-y-1/2 mobile:left-0 mobile:right-auto"
+            class="absolute top-1/2 right-4 -translate-y-1/2"
             size="24"
             icon
             variant="ghost"

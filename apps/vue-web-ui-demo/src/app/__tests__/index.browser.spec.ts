@@ -434,27 +434,31 @@ describe('应用外壳（浏览器）：导航 collapsed state 不跨视口泄�
     }
   })
 
-  it('banner 关闭按钮桌面端靠右、移动端靠左', async () => {
+  it('banner 关闭按钮桌面端与移动端都靠右', async () => {
     await mountAppShell()
     const banner = document.querySelector<HTMLElement>('[slot="banner"]')
     if (!banner) throw new Error('banner not found')
     const button = bannerCloseButton()
+    const label = banner.querySelector<HTMLElement>('span')
+    if (!label) throw new Error('banner label not found')
 
-    // 距中线的有符号距离：靠右取按钮左边减中线，靠左取中线减按钮右边，都应为正。
-    const expectSide = (side: 'left' | 'right') =>
+    // 距中线的有符号距离：靠右取按钮左边减中线，应为正；同时校验按钮与文案的垂直居中和文案居中。
+    const expectRightSide = () =>
       vi.waitFor(() => {
         const bannerBounds = banner.getBoundingClientRect()
         const buttonBounds = button.getBoundingClientRect()
+        const labelBounds = label.getBoundingClientRect()
         const midpoint = bannerBounds.left + bannerBounds.width / 2
-        const distance = side === 'right' ? buttonBounds.left - midpoint : midpoint - buttonBounds.right
-        expect(distance).toBeGreaterThan(0)
+        expect(buttonBounds.left - midpoint).toBeGreaterThan(0)
+        expect(labelBounds.left + labelBounds.width / 2).toBeCloseTo(midpoint, 0)
+        expect(buttonBounds.top + buttonBounds.height / 2).toBeCloseTo(bannerBounds.top + bannerBounds.height / 2, 0)
       })
 
-    await expectSide('right')
+    await expectRightSide()
 
     await setViewport(MOBILE_VIEWPORT.width, MOBILE_VIEWPORT.height)
     await settleViewport(true)
-    await expectSide('left')
+    await expectRightSide()
   })
 
   it('全局选择器与导航暴露本地化的可访问名称和选项', async () => {
