@@ -33,8 +33,9 @@ const checked = [...changed, 'git diff --quiet -- packages/web-ui/CHANGELOG.md']
 const synced = [...changed, 'pnpm --filter @greypan/interweave run sync:version', checked[2]]
 const regenerated = [
   ...checked,
-  'pnpm --filter @greypan/md-to-meta run build',
+  // 求值宿主 vite.config.ts 前要补齐 workspace 包的 dist；只建 demo 的依赖闭包，不建 demo 自身。
   // 换行续行在真实执行时会被 shell 合并，shim 记录的是展开后的完整参数。
+  'pnpm exec turbo run build --filter=@greypan/react-web-ui-demo^... --filter=@greypan/vue-web-ui-demo^...',
   'node scripts/generate/regenerate-md-to-meta-artifacts.mjs apps/react-web-ui-demo apps/vue-web-ui-demo'
 ]
 
