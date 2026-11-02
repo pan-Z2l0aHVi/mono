@@ -8,10 +8,7 @@ import { adapter } from '../index'
 
 async function run(source: string) {
   const onWarn = vi.fn<(diagnostic: VueDiagnostic) => void>()
-  const result = await adapter({
-    componentAttributes: { 'web-ui-option': ['label'], 'web-ui-tooltip': ['content'] },
-    onWarn
-  }).transform({
+  const result = await adapter({ onWarn }).transform({
     content: source,
     filename: 'src/Site.vue',
     index: new IndexTracker(true),
@@ -25,7 +22,7 @@ async function run(source: string) {
   return { bodies: result.txts.map(t => t.body), code, onWarn }
 }
 
-it('遍历组件和slot容器，保留图标前缀，受控处理组件文案属性', async () => {
+it('遍历组件和slot容器，保留图标前缀，默认处理组件文案属性', async () => {
   const { bodies, code } = await run(
     '<template><web-ui-theme><template v-if="true"><web-ui-option label="跟随系统" value="system"/><span><web-ui-icon/>跨框架支持</span><slot>后备说明</slot></template></web-ui-theme></template>'
   )
