@@ -8,14 +8,14 @@ import { describe, expect, it, vi } from 'vite-plus/test'
 import * as Vue from 'vue'
 import { IndexTracker, type TransformOutput } from 'wuchale'
 
-import { adapter, type VueDiagnostic } from '../index'
+import { adapter, type VueAdapterOptions, type VueDiagnostic } from '../index'
 
 const fixture = (name: string) => readFileSync(new URL(`./fixtures/${name}.vue`, import.meta.url), 'utf8')
 const header = 'import { getRuntime as _w_load_, getRuntimeRx as _w_load_rx_ } from "./main.loader.js"'
 
-async function transform(source: string) {
+async function transform(source: string, options: VueAdapterOptions = {}) {
   const onWarn = vi.fn<(diagnostic: VueDiagnostic) => void>()
-  const result = await adapter({ onWarn }).transform({
+  const result = await adapter({ ...options, onWarn }).transform({
     content: source,
     filename: 'src/Example.vue',
     index: new IndexTracker(true),
@@ -50,7 +50,7 @@ function renderTemplate(code: string): Vue.VNode {
 }
 
 describe('Vue SFC 静态文案', () => {
-  it('提取自然文本及白名单属性，保留 script、样式和业务属性', async () => {
+  it('提取自然文本与默认属性，保留 script、样式和业务属性', async () => {
     const source = fixture('static')
     const { result, code, onWarn } = await transform(source)
     expect(result.txts.map(text => text.body)).toEqual(
@@ -66,6 +66,92 @@ describe('Vue SFC 静态文案', () => {
     expect(compiled.errors).toEqual([])
     expect(compiled.template.errors).toEqual([])
     expect(onWarn).not.toHaveBeenCalled()
+  })
+
+  it('默认抽取未登记组件的文案属性，保留 denylist 属性', async () => {
+    const source = '<template><Widget label="确定" content="说明" value="中文值" data-label="数据" /></template>'
+    const { result, code, onWarn } = await transform(source)
+    expect(result.txts.map(text => text.body)).toEqual(['确定', '说明'])
+    expect(code).toContain(':label="_w_runtime_(')
+    expect(code).toContain(':content="_w_runtime_(')
+    expect(code).toContain('value="中文值"')
+    expect(code).toContain('data-label="数据"')
+    expect(onWarn).not.toHaveBeenCalled()
+    expect(compile(code).template.errors).toEqual([])
+  })
+
+  it('默认抽取原生元素的新增属性并生成可渲染绑定', async () => {
+    const source = '<template><div content="中文说明" /></template>'
+    const { result, code, onWarn } = await transform(source)
+    expect(result.txts.map(text => text.body)).toEqual(['中文说明'])
+    expect(onWarn).not.toHaveBeenCalled()
+    expect(compile(code).template.errors).toEqual([])
+    expect(renderTemplate(code).props).toMatchObject({ content: 'Translated' })
+  })
+
+  it.each([':label', 'v-bind:label'])('默认抽取未登记属性的受控绑定 %s', async binding => {
+    const source = `<script setup>const value = 1</script><template><Widget ${binding}="'确定'" :value="'中文值'" /></template>`
+    const { result } = await transform(source)
+    expect(result.txts.map(text => text.body)).toEqual(['确定'])
+  })
+
+  it.each([
+    ['class', 'class="中文类"'],
+    ['id', 'id="中文标识"'],
+    ['style', 'style="中文样式"'],
+    ['key', 'key="中文键"'],
+    ['ref', 'ref="中文引用"'],
+    ['slot', 'slot="中文插槽"'],
+    ['is', 'is="中文组件"'],
+    ['to', 'to="中文位置"'],
+    ['property', 'property="中文属性"'],
+    ['type', 'type="中文类型"'],
+    ['name', 'name="中文名称"'],
+    ['value', 'value="中文值"'],
+    ['for', 'for="中文目标"'],
+    ['download', 'download="中文文件.pdf"'],
+    ['action', 'action="中文提交"'],
+    ['method', 'method="中文方法"'],
+    ['enctype', 'enctype="中文编码"'],
+    ['href', 'href="中文路径"'],
+    ['src', 'src="中文图片.png"'],
+    ['srcset', 'srcset="中文图片.png 1x"'],
+    ['sizes', 'sizes="中文尺寸"'],
+    ['width', 'width="中文宽"'],
+    ['height', 'height="中文高"'],
+    ['autocomplete', 'autocomplete="中文自动"'],
+    ['loading', 'loading="中文加载"'],
+    ['role', 'role="中文角色"'],
+    ['tabindex', 'tabindex="中文索引"'],
+    ['aria-hidden', 'aria-hidden="中文"'],
+    ['aria-controls', 'aria-controls="中文"'],
+    ['aria-labelledby', 'aria-labelledby="中文"'],
+    ['aria-describedby', 'aria-describedby="中文"'],
+    ['data-*', 'data-label="中文数据"'],
+    ['v-*', ':v-foo="\'中文指令\'"']
+  ])('%s 默认不参与抽取', async (_name, attribute) => {
+    const { result } = await transform(`<template><div ${attribute}>正文</div></template>`)
+    expect(result.txts.map(text => text.body)).toEqual(['正文'])
+  })
+
+  it('denylist 同时作用于受控绑定', async () => {
+    const { result } = await transform(
+      `<template><Widget :label="'确定'" :value="'中文值'" :method="'中文方法'" :download="'中文文件'" :data-label="'中文数据'" /></template>`
+    )
+    expect(result.txts.map(text => text.body)).toEqual(['确定'])
+  })
+
+  it('componentAttributes 可以覆盖 denylist 的静态与受控属性', async () => {
+    const staticResult = await transform('<template><Widget value="中文值" /></template>', {
+      componentAttributes: { Widget: ['value'] }
+    })
+    expect(staticResult.result.txts.map(text => text.body)).toEqual(['中文值'])
+    expect(staticResult.code).toContain(':value="_w_runtime_(')
+
+    const bindingResult = await transform(`<template><Widget :value="'中文值'" /></template>`, {
+      componentAttributes: { Widget: ['value'] }
+    })
+    expect(bindingResult.result.txts.map(text => text.body)).toEqual(['中文值'])
   })
 
   it('无 script 时生成 setup 绑定，保留 entity 与 CRLF 的原始位置', async () => {

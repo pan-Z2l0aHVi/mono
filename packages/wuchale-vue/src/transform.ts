@@ -8,8 +8,125 @@ import { visitStrings } from './script'
 
 import type { VueDiagnostic } from './index'
 
-const attributes = new Set(['title', 'alt', 'placeholder', 'aria-label', 'aria-description'])
+const deniedAttributes = new Set([
+  // 结构与身份
+  'class',
+  'id',
+  'style',
+  'key',
+  'ref',
+  'slot',
+  'is',
+  'to',
+  'name',
+  'property',
+  // 表单与资源
+  'type',
+  'value',
+  'for',
+  'form',
+  'list',
+  'dirname',
+  'action',
+  'formaction',
+  'method',
+  'enctype',
+  'target',
+  'rel',
+  'download',
+  'href',
+  'src',
+  'srcset',
+  'sizes',
+  'poster',
+  'cite',
+  'hreflang',
+  'media',
+  'as',
+  'integrity',
+  'crossorigin',
+  'referrerpolicy',
+  'ping',
+  // 媒体与布局机器值
+  'width',
+  'height',
+  'loading',
+  'decoding',
+  'fetchpriority',
+  'preload',
+  'autoplay',
+  'controls',
+  'loop',
+  'muted',
+  'playsinline',
+  'frameborder',
+  'scrolling',
+  'sandbox',
+  'allow',
+  'allowfullscreen',
+  // 表单状态与校验
+  'autocomplete',
+  'autocapitalize',
+  'inputmode',
+  'enterkeyhint',
+  'pattern',
+  'min',
+  'max',
+  'step',
+  'minlength',
+  'maxlength',
+  'rows',
+  'cols',
+  'wrap',
+  'size',
+  'multiple',
+  'accept',
+  'capture',
+  'checked',
+  'selected',
+  'disabled',
+  'readonly',
+  'required',
+  'autofocus',
+  'novalidate',
+  'formnovalidate',
+  // 可访问性机器值
+  'role',
+  'tabindex',
+  'aria-hidden',
+  'aria-controls',
+  'aria-labelledby',
+  'aria-describedby',
+  'aria-details',
+  'aria-errormessage',
+  'aria-flowto',
+  'aria-owns',
+  'aria-activedescendant',
+  // 全局机器值
+  'open',
+  'hidden',
+  'draggable',
+  'contenteditable',
+  'spellcheck',
+  'translate',
+  'dir',
+  'lang',
+  'accesskey',
+  'nonce',
+  'part',
+  'exportparts',
+  'popover',
+  'popovertarget',
+  'popovertargetaction'
+])
 const ignoredElements = new Set(['script', 'style', 'code', 'pre', 'textarea'])
+
+// 显式登记优先于 denylist，让消费者能放开组件上同名的数据属性。
+function isTranslatableAttribute(name: string, tag: string, componentAttributes: Record<string, string[]>) {
+  const lower = name.toLowerCase()
+  if (componentAttributes[tag]?.some(attribute => attribute.toLowerCase() === lower)) return true
+  return !deniedAttributes.has(lower) && !lower.startsWith('data-') && !lower.startsWith('v-')
+}
 
 type Edit = { start: number; end: number; replacement: string }
 
@@ -232,7 +349,7 @@ export function transformVue(
         prop.name === 'bind' &&
         prop.arg?.type === NodeTypes.SIMPLE_EXPRESSION &&
         prop.arg.isStatic &&
-        (attributes.has(prop.arg.content) || componentAttributes[node.tag]?.includes(prop.arg.content)) &&
+        isTranslatableAttribute(prop.arg.content, node.tag, componentAttributes) &&
         prop.exp?.type === NodeTypes.SIMPLE_EXPRESSION
       ) {
         if (prop.exp.content === prop.exp.loc.source)
@@ -247,7 +364,7 @@ export function transformVue(
       }
       if (
         prop.type !== NodeTypes.ATTRIBUTE ||
-        !(attributes.has(prop.name) || componentAttributes[node.tag]?.includes(prop.name)) ||
+        !isTranslatableAttribute(prop.name, node.tag, componentAttributes) ||
         !prop.value
       )
         continue
