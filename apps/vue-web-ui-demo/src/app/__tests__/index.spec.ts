@@ -97,7 +97,6 @@ async function settleViewport(drawerMode: boolean) {
     if (isDrawerMode() !== drawerMode) throw new Error(`drawer 形态没有变成 ${drawerMode}`)
   })
   await nextTick()
-  await layoutRoot().updateComplete
 }
 
 function buildRouter(): Router {
@@ -130,14 +129,12 @@ async function mountAppShell() {
   // memory history 的首次导航由 mount 触发，`isReady()` 只能在挂载之后等。
   await router.isReady()
   await nextTick()
-  await layoutRoot().updateComplete
 }
 
 /** 复刻 layout 侧边栏 Toggle 的请求链路：layout 只派发请求，宿主回写受控属性。 */
 async function requestCollapse(collapsed: boolean) {
   layoutRoot().dispatchEvent(new CustomEvent('sidebar-collapsed-change', { detail: { collapsed } }))
   await nextTick()
-  await layoutRoot().updateComplete
 }
 
 let setMediaMatches: (query: string, matches: boolean) => void

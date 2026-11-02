@@ -99,16 +99,12 @@ async function settleViewport(drawerMode: boolean) {
   await waitFor(() => {
     if (isDrawerMode() !== drawerMode) throw new Error(`drawer 形态没有变成 ${drawerMode}`)
   })
-  await act(async () => {
-    await layoutRoot().updateComplete
-  })
 }
 
 async function changeViewport(width: number, mobile: boolean) {
   await act(async () => {
     setViewportWidth(width)
     setMediaMatches(MOBILE_QUERY, mobile)
-    await layoutRoot().updateComplete
   })
   await settleViewport(mobile)
 }
@@ -143,13 +139,10 @@ async function mountAppShell(mark: (stage: string) => void = () => {}) {
   mark('render shell')
   const router = buildRouter()
   render(<RouterProvider router={router} />)
-  mark('wait for layout')
+  mark('wait for layout and nav')
   await waitFor(() => {
     if (!document.querySelector('web-ui-layout')) throw new Error('layout not mounted')
-  })
-  mark('wait for layout update')
-  await act(async () => {
-    await layoutRoot().updateComplete
+    if (!navRoot().querySelector('a')) throw new Error('sidebar nav not rendered')
   })
   mark('layout ready')
 }
@@ -158,9 +151,6 @@ async function mountAppShell(mark: (stage: string) => void = () => {}) {
 async function requestCollapse(collapsed: boolean) {
   await act(async () => {
     layoutRoot().dispatchEvent(new CustomEvent('sidebar-collapsed-change', { detail: { collapsed } }))
-  })
-  await act(async () => {
-    await layoutRoot().updateComplete
   })
 }
 
