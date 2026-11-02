@@ -20,7 +20,11 @@ changelog=0
 git diff --quiet -- packages/web-ui/CHANGELOG.md || changelog=$?
 
 if [ "$changelog" -eq 1 ]; then
-  pnpm --filter @greypan/md-to-meta run build
+  # 重生成脚本要求值宿主 vite.config.ts，而版本 job 不跑宿主 build；只构建两端 demo 的依赖闭包
+  # （不含 demo 自身），workspace 包的 dist 才齐全。
+  pnpm exec turbo run build \
+    --filter='@greypan/react-web-ui-demo^...' \
+    --filter='@greypan/vue-web-ui-demo^...'
   node scripts/generate/regenerate-md-to-meta-artifacts.mjs \
     apps/react-web-ui-demo apps/vue-web-ui-demo
 elif [ "$changelog" -ne 0 ]; then
