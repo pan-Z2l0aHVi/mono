@@ -218,7 +218,7 @@ msgid "TypeScript 类型安全"
 msgstr "TypeScript type safety"
 
 #: src/pages/home/index.vue
-msgid "原子化组件"
+msgid "原子组件"
 msgstr "Atomic components"
 
 #: src/pages/home/index.vue

@@ -218,8 +218,8 @@ msgid "TypeScript 类型安全"
 msgstr "TypeScript 类型安全"
 
 #: src/pages/home/index.vue
-msgid "原子化组件"
-msgstr "原子化组件"
+msgid "原子组件"
+msgstr "原子组件"
 
 #: src/pages/home/index.vue
 msgid "响应式设计"

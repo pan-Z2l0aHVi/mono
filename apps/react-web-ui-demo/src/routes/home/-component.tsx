@@ -79,7 +79,7 @@ const features = [
   { id: 'web-components', icon: lucidePackage, label: () => 'Web Components' },
   { id: 'cross-framework', icon: lucideCode, label: () => '跨框架一致' },
   { id: 'typescript', icon: tablerBrandTypescript, label: () => 'TypeScript 类型安全' },
-  { id: 'atomic', icon: lucideBoxes, label: () => '原子化组件' },
+  { id: 'atomic', icon: lucideBoxes, label: () => '原子组件' },
   { id: 'motion', icon: lucideSparkles, label: () => '丝滑动效' },
   { id: 'accessibility', icon: lucideAccessibility, label: () => '无障碍' },
   { id: 'keyboard', icon: lucideKeyboard, label: () => '键盘友好' },
@@ -123,12 +123,9 @@ function Home() {
         <div data-testid="home-quick-links-grid" className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
           {quickLinkGroups.map(group => (
             <Fragment key={group.id}>
-              <div className="col-span-full flex flex-wrap items-baseline gap-x-3 gap-y-1 pt-2 first:pt-0">
-                <h2 className="text-sm font-semibold text-(--wui-color-text)">{group.title()}</h2>
+              <div className="col-span-full flex flex-col items-start gap-y-1 pt-2 first:pt-0">
+                <h2 className="text-2xl md:text-4xl font-semibold text-(--wui-color-text)">{group.title()}</h2>
                 <span className="text-xs text-(--wui-color-text-tertiary)">{group.description()}</span>
-                <span className="ms-auto inline-flex min-w-6 items-center justify-center rounded-full border border-(--wui-color-border) bg-(--wui-color-surface-raised) px-2 py-0.5 text-xs font-medium tabular-nums text-(--wui-color-text-secondary)">
-                  {group.links.length}
-                </span>
               </div>
 
               {group.links.map(link => (

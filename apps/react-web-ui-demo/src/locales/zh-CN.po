@@ -230,8 +230,8 @@ msgid "TypeScript 类型安全"
 msgstr "TypeScript 类型安全"
 
 #: src/routes/home/-component.tsx
-msgid "原子化组件"
-msgstr "原子化组件"
+msgid "原子组件"
+msgstr "原子组件"
 
 #: src/routes/home/-component.tsx
 msgid "响应式设计"
