@@ -1,10 +1,9 @@
+import type { MetaNode } from '@greypan/md-to-meta'
 import { createContext, useContext, useEffect, useMemo, useState, useSyncExternalStore, type ReactNode } from 'react'
 import { commitLocale, loadLocale } from 'wuchale/load-utils'
 
-import type { ExampleDoc } from '@/generated/zh-CN/examples'
-
 import { createLocaleController } from './controller'
-import { prepareExamples } from './examples'
+import { loadMetaDocs, prepareExamples, type MetaDocs } from './examples'
 
 /**
  * demo 站的语言以本机为准：localStorage 记着用户选过的那一档，没有就按 `navigator.languages`
@@ -15,11 +14,6 @@ export type Locale = 'zh-CN' | 'en'
 
 const STORAGE_KEY = 'locale'
 const LOCALES = new Set<Locale>(['zh-CN', 'en'])
-
-const docsLoaders: Record<Locale, () => Promise<{ exampleDocs: ExampleDoc[] }>> = {
-  'zh-CN': () => import('@/generated/zh-CN/examples'),
-  en: () => import('@/generated/en/examples')
-}
 
 function readStoredLocale(): Locale | null {
   try {
@@ -41,11 +35,6 @@ export function detectLocale(): Locale {
     if (tag.startsWith('en')) return 'en'
   }
   return 'en'
-}
-
-/** 当前语种的文档数据；模块按语种拆开，切语言只把新语种那一份拉进来。 */
-export function loadExampleDocs(locale: Locale): Promise<ExampleDoc[]> {
-  return docsLoaders[locale]().then(module => module.exampleDocs)
 }
 
 /** 创建串行提交 catalog 的 loader，确保最后请求的语种最终生效。 */
@@ -91,32 +80,37 @@ export { loadShellLocale }
 
 interface LocaleContextValue {
   locale: Locale
-  docs: ExampleDoc[]
+  docs: MetaDocs
   pending: boolean
   setLocale: (locale: Locale) => Promise<void>
   register: (component: string) => () => void
+  ensure: (component: string) => Promise<void>
 }
 
 const LocaleContext = createContext<LocaleContextValue | null>(null)
 
 export function LocaleProvider({ children }: { children: ReactNode }) {
   const [controller] = useState(() =>
-    createLocaleController({
-      loadCatalog: locale => loadLocale(locale, false),
-      loadDocs: loadExampleDocs,
-      prepareExamples,
-      commitCatalog: commitLocale,
-      setDocumentLanguage: locale => {
-        document.documentElement.lang = locale
-      },
-      persist: locale => {
-        try {
-          localStorage.setItem(STORAGE_KEY, locale)
-        } catch (error) {
-          console.warn('Unable to persist language preference', error)
+    createLocaleController(
+      {
+        loadCatalog: locale => loadLocale(locale, false),
+        loadDocs: loadMetaDocs,
+        prepareExamples,
+        commitCatalog: commitLocale,
+        setDocumentLanguage: locale => {
+          document.documentElement.lang = locale
+        },
+        persist: locale => {
+          try {
+            localStorage.setItem(STORAGE_KEY, locale)
+          } catch (error) {
+            console.warn('Unable to persist language preference', error)
+          }
         }
-      }
-    })
+      },
+      // 首帧语种就按本机判定：子组件挂载时补载文档会直接命中正确语种，不会先拉一份再被切走。
+      detectLocale()
+    )
   )
   const snapshot = useSyncExternalStore(controller.subscribe, controller.getSnapshot)
 
@@ -140,7 +134,8 @@ export function LocaleProvider({ children }: { children: ReactNode }) {
     () => ({
       ...snapshot,
       setLocale: controller.change,
-      register: controller.register
+      register: controller.register,
+      ensure: controller.ensure
     }),
     [controller, snapshot]
   )
@@ -153,9 +148,14 @@ export function useLocale(): LocaleContextValue {
   return value
 }
 
-/** 文档与语种来自同一次提交；注册当前页供切换时按需准备运行示例。 */
-export function useExampleDoc(component: string): ExampleDoc | null {
-  const { docs, register } = useLocale()
+/** 文档与语种来自同一次提交；注册当前页供切换时按需准备运行示例，页面切换后补载新组件。 */
+export function useExampleDoc(component: string): MetaNode[] | null {
+  const { docs, register, ensure } = useLocale()
   useEffect(() => register(component), [component, register])
-  return docs.find(doc => doc.component === component) ?? null
+  useEffect(() => {
+    void ensure(component).catch(error => {
+      console.error(`Unable to load example doc: ${component}`, error)
+    })
+  }, [component, ensure])
+  return docs.get(component) ?? null
 }

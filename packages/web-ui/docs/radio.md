@@ -1,7 +1,4 @@
----
-component: radio
-tag: web-ui-radio
----
+# Radio
 
 A single radio button that shares the selection-control box contract with `<web-ui-checkbox>`; `<web-ui-radio-group>` is responsible for keeping a single selection across a set of options.
 

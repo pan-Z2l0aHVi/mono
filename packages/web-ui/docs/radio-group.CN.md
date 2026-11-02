@@ -1,7 +1,4 @@
----
-component: radio-group
-tag: web-ui-radio-group
----
+# Radio Group
 
 一组 `<web-ui-radio>` 的容器：把成员的选中状态收敛成单个 `value`，选中变化时统一派发 `input` / `change`，并负责组级禁用与必填校验。容器提供 `radiogroup` 语义，`direction` 同步为 `aria-orientation`，组级禁用与必填状态分别暴露为 `aria-disabled` 和 `aria-required`。用 `aria-label` 或 `aria-labelledby` 设置组的无障碍名称。横排组用左右方向键，竖排组用上下方向键移动焦点并选中成员。成员自己声明的 `name` 在组内不参与提交，表单字段名取组上的 `name`。
 

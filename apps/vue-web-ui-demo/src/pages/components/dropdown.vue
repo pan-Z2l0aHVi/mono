@@ -11,8 +11,8 @@ import ExampleDoc from '@/components/example-doc/index.vue'
 </script>
 
 <template>
-  <ExampleDoc component="dropdown" level="primary" />
-  <ExampleDoc component="dropdown-item" level="secondary" />
-  <ExampleDoc component="dropdown-divider" level="secondary" />
-  <ExampleDoc component="dropdown-header" level="secondary" />
+  <ExampleDoc component="dropdown" />
+  <ExampleDoc component="dropdown-item" />
+  <ExampleDoc component="dropdown-divider" />
+  <ExampleDoc component="dropdown-header" />
 </template>

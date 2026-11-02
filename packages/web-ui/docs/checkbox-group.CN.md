@@ -1,7 +1,4 @@
----
-component: checkbox-group
-tag: web-ui-checkbox-group
----
+# Checkbox Group
 
 一组 `<web-ui-checkbox>` 的容器：把成员的选中状态收敛成 `string[]`，变化时统一派发 `input` / `change`，并负责组级禁用与必填校验。属性形式的值是逗号分隔的字符串（`value="apple,cherry"`），JS 侧读到的始终是数组。
 

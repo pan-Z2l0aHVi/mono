@@ -1,0 +1,1 @@
+@custom-variant mobile (&:where(web-ui-layout[mobile], web-ui-layout[mobile] *));

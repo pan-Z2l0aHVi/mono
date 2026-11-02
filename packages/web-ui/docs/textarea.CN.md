@@ -1,7 +1,4 @@
----
-component: textarea
-tag: web-ui-textarea
----
+# Textarea
 
 多行文本 input，支持清除 button、自动高度与前后缀插槽；焦点委托到 shadow 内的原生 textarea。
 

@@ -1,7 +1,4 @@
----
-component: image-preview
-tag: web-ui-image-preview
----
+# Image Preview
 
 命令式 image preview：通过 `imagePreview()` 打开，用返回的 handle 控制；内部使用原生 `<dialog>`，不传 `container` 时挂到根主题（`web-ui-theme`）的 overlay root，页面里没有主题作用域时回退到全局 fallback root——传 `target` 则改为解析它最近的 theme 作用域。
 

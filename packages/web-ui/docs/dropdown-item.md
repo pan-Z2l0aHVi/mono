@@ -1,7 +1,4 @@
----
-component: dropdown-item
-tag: web-ui-dropdown-item
----
+# Dropdown Item
 
 A menu item for `<web-ui-dropdown>` and `<web-ui-context-menu>`: `disabled` keeps it in the menu but unselectable, and both keyboard navigation and hover skip it; the `prefix` / `suffix` slots hold icons and shortcut hints at either end; `submenu` attaches a nested submenu at its next level.
 

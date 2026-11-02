@@ -1,7 +1,4 @@
----
-component: radio-group
-tag: web-ui-radio-group
----
+# Radio Group
 
 A container for a group of `<web-ui-radio>`: it collapses the members' selected state into a single `value`, dispatches `input` / `change` uniformly when the selection changes, and handles group-level disabling and required validation. The container provides `radiogroup` semantics, `direction` is mirrored as `aria-orientation`, and the group-level disabled and required states are exposed as `aria-disabled` and `aria-required` respectively. Set the group's accessible name with `aria-label` or `aria-labelledby`. In a horizontal group the left / right arrow keys move focus and selection between members; in a vertical group the up / down arrow keys do. A member's own `name` does not take part in submission inside the group; the form field name comes from the group's `name`.
 

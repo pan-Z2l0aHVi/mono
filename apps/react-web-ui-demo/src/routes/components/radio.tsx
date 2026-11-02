@@ -5,8 +5,8 @@ import ExampleDoc from '@/components/example-doc'
 function Component() {
   return (
     <>
-      <ExampleDoc component="radio" level="primary" />
-      <ExampleDoc component="radio-group" level="secondary" />
+      <ExampleDoc component="radio" />
+      <ExampleDoc component="radio-group" />
     </>
   )
 }

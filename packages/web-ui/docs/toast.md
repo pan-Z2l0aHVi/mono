@@ -1,7 +1,4 @@
----
-component: toast
-tag: web-ui-toast
----
+# Toast
 
 Imperative toast: call `toast()` to create one and get its id, then `toast.close(id)` to close it; calling again with the same `id` updates that toast instead of creating a new one. The tables below list the options of `toast()`, the imperative entry points, and the attributes, events, and methods of the `<web-ui-toast>` element itself.
 

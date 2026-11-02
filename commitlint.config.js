@@ -86,7 +86,7 @@ export default {
       'browser-kit',
       'deps-reload',
       'js-kit',
-      'md-to-comp',
+      'md-to-meta',
       'monorepo-kit',
       'pi-orchestrator-memory-bridge',
       'test-kit',

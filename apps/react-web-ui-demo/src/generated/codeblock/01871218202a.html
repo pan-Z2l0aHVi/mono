@@ -1,0 +1,14 @@
+<!-- before: reveal opt-in through transition, motion left at its default -->
+<web-ui-theme appearance="light" transition></web-ui-theme>
+<!-- after: same reveal, motion="system" is now the switch -->
+<web-ui-theme appearance="light"></web-ui-theme>
+
+<!-- before: no reveal, because transition was absent -->
+<web-ui-theme appearance="light"></web-ui-theme>
+<!-- after: still no reveal, but it has to be stated -->
+<web-ui-theme appearance="light" motion="reduced"></web-ui-theme>
+
+<!-- before: transition forced the reveal on, motion kept it out of the way -->
+<web-ui-theme appearance="light" transition motion="full"></web-ui-theme>
+<!-- after: motion="full" is the whole switch -->
+<web-ui-theme appearance="light" motion="full"></web-ui-theme>

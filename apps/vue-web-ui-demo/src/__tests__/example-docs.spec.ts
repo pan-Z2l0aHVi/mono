@@ -1,128 +1,183 @@
 import { existsSync, readdirSync, readFileSync } from 'node:fs'
 import path from 'node:path'
 
-import {
-  demoFileContent,
-  demoFileName,
-  fencesOf,
-  FLAVOR_LANG,
-  sampleTitlesOf,
-  surfaceOf,
-  visibleText
-} from '@greypan/md-to-comp'
-import type { Surface } from '@greypan/md-to-comp'
-import { mount } from '@vue/test-utils'
-import { beforeAll, describe, expect, it } from 'vite-plus/test'
+import type { MetaNode } from '@greypan/md-to-meta'
+import { visibleText } from '@greypan/md-to-meta'
+import { flushPromises, mount } from '@vue/test-utils'
+import { describe, expect, it } from 'vite-plus/test'
+import { defineComponent, h } from 'vue'
 
-import { loadDemoLocale } from '@/i18n/locale'
+import { MetaComp } from '../components/meta'
+import { loadMeta } from '../i18n/examples'
 
-import ExampleDoc from '../components/example-doc/index.vue'
-import { exampleDocs } from '../generated/examples'
-
-// 语料 join 的 Vue 侧：「示例显示 == markdown 围栏」「每条示例落成可编译文件」「页面 ↔ 语料
-// 不互为孤儿」三条由本包持有；生成器那侧的判据（篡改 / 孤儿 / 表格形状）在 `@greypan/md-to-comp`
-// 的单测里；跨 app 的另一半（两端生成数据逐字节一致、页面名集合 == React 路由名集合）由 web-ui 包的
-// generated-parity.spec.ts 持有。三条语料 / 页面探针（`sampleTitlesOf`、`fencesOf`、`surfaceOf`）
-// 也从 `@greypan/md-to-comp` 引：它们是「语料骨架说什么」的唯一解释，两端各抄一份时任一侧被改歪，
-// 两侧就再也比不出漂移。手边的判据（`rendersOwn` 那组）留在本侧，它们各有反例自证，抄歪了会被
-// 自己的负例抓住。「手写装饰件同源」那条却住在两侧各自的 spec 里，不放 web-ui：
-// `@greypan/web-ui#test` 的 turbo 输入只覆盖本包目录，只有 app 抄本漂移时它会命中缓存直接判绿，
-// 断言一次都不跑；放在 app 侧则任一份被改到自己那一份，那一端的套件必然重新执行。「产物是否新鲜」由 vite.config.ts 里的插件在测试期跑 checkArtifacts
-// （只判不改），不在这份 spec 里重复。
+// 语料 join 的 Vue 侧：「页面显示的代码 == markdown 围栏」「每条围栏落成可编译文件」「页面 ↔ 语料
+// 不互为孤儿」三条由本包持有；生成器那侧的判据（篡改 / 孤儿 / 表格形状）在 `@greypan/md-to-meta`
+// 的单测里；跨 app 的另一半（两端 theme.css 逐字节一致、meta 骨架一致）由 web-ui 包的
+// generated-parity.spec.ts 持有。
 const docsDir = path.resolve(import.meta.dirname, '../../../../packages/web-ui/docs')
-const demosDir = path.resolve(import.meta.dirname, '../generated/demos')
+const generatedDir = path.resolve(import.meta.dirname, '../generated')
 const pagesDir = path.resolve(import.meta.dirname, '../pages/components')
 
-const FLAVOR = 'vue' as const
-/** 语料里的围栏语言由生成器那张表给出，不在这里抄第二份：react 那侧写的就不是框架名。 */
-const FENCE_LANG = FLAVOR_LANG[FLAVOR]
-/** 本端壳组件的标签名，`surfaceOf` 用它反查每页引用了哪些 `component`。 */
-const SHELL_TAG = 'ExampleDoc'
+/** 本端只执行 vue 围栏：它们才是真组件；其余围栏只是源码。 */
+const EXEC_LANGUAGES = ['vue']
 
-const corpusFiles = readdirSync(docsDir)
-  .filter(file => file.endsWith('.CN.md'))
-  .sort()
-const docNames = corpusFiles.map(file => file.replace(/\.CN\.md$/, ''))
-const docByName = new Map(exampleDocs.map(doc => [doc.component, doc]))
-
-// 覆盖判据里归本侧的三条写成纯函数，末尾用合成输入过一遍正负例：判据自己写错（例如把
-// `includes` 写成恒真）会让三条同时变哑巴，而页面照样上线。`packages/monorepo-kit/src/plugin/turbo/docs-inputs.ts`
-// 的 `coversCorpus` 是同一口径。
-const rendersOwn = (surface: Surface, name: string) => surface.used.get(name)?.includes(name) ?? false
-const unresolvedRefs = (surface: Surface, docs: string[]) =>
-  [...new Set([...surface.used.values()].flat())].filter(name => !docs.includes(name))
-const orphanDocs = (docs: string[], surfaces: Surface[]) => {
-  const rendered = new Set(surfaces.flatMap(surface => [...surface.used.values()].flat()))
-  return docs.filter(name => !rendered.has(name))
+/** 中文是源语种（`.CN.md`），英文译文的文件名没有语种后缀。 */
+function corpusOf(suffix: string) {
+  return readdirSync(docsDir)
+    .filter(file => file.endsWith(suffix) && (suffix !== '.md' || !file.endsWith('.CN.md')))
+    .sort()
 }
-/** 页面从 `@/components/` 引了什么，除 `<ExampleDoc>` 自身的壳以外。 */
+
+const docNames = corpusOf('.CN.md').map(file => file.replace(/\.CN\.md$/, ''))
+
+interface Fence {
+  lang: string
+  code: string
+}
+
+/** markdown 里的围栏按出现顺序取出；行内围栏在语料里不存在，只需要顶层扫描。 */
+function fencesOf(markdown: string): Fence[] {
+  const fences: Fence[] = []
+  let open: { lang: string; lines: string[] } | null = null
+  for (const line of markdown.split('\n')) {
+    if (open) {
+      if (line.startsWith('```')) {
+        fences.push({ lang: open.lang, code: open.lines.join('\n') })
+        open = null
+      } else {
+        open.lines.push(line)
+      }
+      continue
+    }
+    const match = /^```(\S*)/.exec(line)
+    if (match) open = { lang: match[1] ?? '', lines: [] }
+  }
+  return fences
+}
+
+function codeblocksOf(nodes: MetaNode[]): MetaNode[] {
+  return nodes.flatMap(node => (node.label === 'codeblock' ? [node] : node.children ? codeblocksOf(node.children) : []))
+}
+
+function headingsOf(nodes: MetaNode[]): MetaNode[] {
+  return nodes.filter(node => /^h[1-6]$/.test(node.label))
+}
+
+/**
+ * `## API` 之前的标题两侧同文（示例标题是专业术语）；API 小节本身的列名与说明是译文。
+ * 没有 API 小节的文档整份都在比较范围内。
+ */
+function headingsBeforeApi(nodes: MetaNode[]): MetaNode[] {
+  const api = nodes.findIndex(node => node.label === 'h2' && node.content === 'API')
+  return headingsOf(api === -1 ? nodes : nodes.slice(0, api))
+}
+
+interface LocaleSurface {
+  label: 'zh-CN' | 'en'
+  suffix: string
+  files: string[]
+}
+
+const localeSurfaces: LocaleSurface[] = [
+  { label: 'zh-CN', suffix: '.CN.md', files: corpusOf('.CN.md') },
+  { label: 'en', suffix: '.md', files: corpusOf('.md') }
+]
+
+/** 语种内的文件名与组件名。逐文档成用例：整份语料的冷 import 与 HTML 取文本压进一个用例会撞默认的 5s。 */
+const entriesOf = (locale: LocaleSurface) =>
+  locale.files.map(name => [name, name.slice(0, -locale.suffix.length)] as const)
+
+describe('页面显示的代码与 markdown 围栏同源', () => {
+  for (const locale of localeSurfaces) {
+    for (const [name, component] of entriesOf(locale)) {
+      it(`${locale.label}：${name} 的每条围栏都落成 codeblock，可见文本逐字等于围栏原文`, async () => {
+        let checked = 0
+        const markdown = readFileSync(path.join(docsDir, name), 'utf8')
+        const fences = fencesOf(markdown)
+        const blocks = codeblocksOf(await loadMeta(locale.label, component))
+        expect(blocks, `${name}：围栏数 ${fences.length} 与 meta 里的 codeblock 数不一致`).toHaveLength(fences.length)
+        blocks.forEach((block, index) => {
+          const fence = fences[index]!
+          expect(block.lang, `${name}/${index}：围栏语言与 meta 不同`).toBe(fence.lang)
+          expect(
+            block.content,
+            `${name}/${index}/${fence.lang}：高亮外框形状变了，Tailwind 那层边框与这里的取色会对不上`
+          ).toMatch(/^<pre class="shiki shiki-themes github-light github-dark mdm-code"/)
+          expect(
+            visibleText(block.content ?? ''),
+            `${name}/${index}/${fence.lang}：页面显示的代码与 markdown 围栏不是同一份字节`
+          ).toBe(fence.code)
+          checked += 1
+        })
+        expect(checked).toBeGreaterThan(0)
+      })
+    }
+  }
+})
+
+describe('每条围栏落成可编译代码文件', () => {
+  for (const locale of localeSurfaces) {
+    for (const [name, component] of entriesOf(locale)) {
+      it(`${locale.label}：${name} 的落盘文件与围栏逐字相同（只差行尾换行），load 只给 exec 语言`, async () => {
+        let fileCount = 0
+        const markdown = readFileSync(path.join(docsDir, name), 'utf8')
+        const fences = fencesOf(markdown)
+        const blocks = codeblocksOf(await loadMeta(locale.label, component))
+        blocks.forEach((block, index) => {
+          const fence = fences[index]!
+          const exec = EXEC_LANGUAGES.includes(fence.lang)
+          expect(
+            Boolean(block.load),
+            `${name}/${index}/${fence.lang}：只有 ${EXEC_LANGUAGES.join('、')} 围栏带 load`
+          ).toBe(exec)
+          expect(block.path, `${name}/${index}：meta 没记住代码文件路径`).toBeTruthy()
+
+          const file = path.resolve(generatedDir, block.path!)
+          expect(existsSync(file), `${file} 不存在：每条围栏都必须落成代码文件`).toBe(true)
+          expect(
+            readFileSync(file, 'utf8'),
+            `${file} 与 markdown 围栏不是同一份源码：显示的那份和被执行的那份漂移了`
+          ).toBe(`${fence.code.trimEnd()}\n`)
+          fileCount += 1
+        })
+        expect(fileCount, '一条围栏都没有：这条通道等于没被任何断言覆盖').toBeGreaterThan(0)
+      })
+    }
+  }
+})
+
+describe('中英语料骨架一致', () => {
+  for (const name of docNames) {
+    it(`${name}：节点 label 序列与标题逐字相同`, async () => {
+      const zh = await loadMeta('zh-CN', name)
+      const en = await loadMeta('en', name)
+      expect(
+        zh.map(node => node.label),
+        `${name}：中英 meta 的节点序列不同，译文改变了文档结构`
+      ).toEqual(en.map(node => node.label))
+      expect(
+        headingsBeforeApi(zh).map(node => node.content),
+        `${name}：\`## API\` 之前的标题（示例标题与 API 标题）是两侧同文的专业术语`
+      ).toEqual(headingsBeforeApi(en).map(node => node.content))
+    })
+  }
+})
+
+/* 页面从 `@/components/` 引了什么，除 `<ExampleDoc>` 自身的壳以外。 */
 const demoImports = (source: string) =>
   [...source.matchAll(/from '@\/components\/([^']+)'/g)]
     .map(match => match[1].split('/')[0])
     .filter(name => name !== 'example-doc')
 
-describe('示例显示与 markdown 围栏同源', () => {
-  it('每个示例的高亮 HTML 可见文本逐字等于围栏原文', () => {
-    let checked = 0
-    for (const name of corpusFiles) {
-      const component = name.slice(0, -'.CN.md'.length)
-      const doc = docByName.get(component)
-      if (!doc) throw new Error(`${name}：生成数据里没有这个 component`)
-      const markdown = readFileSync(path.join(docsDir, name), 'utf8')
-      const fences = fencesOf(markdown, FENCE_LANG)
-      expect(
-        fences,
-        `${name}：${FENCE_LANG} 围栏数 ${fences.length} 与示例数 ${doc.samples.length} 不一致`
-      ).toHaveLength(doc.samples.length)
-      fences.forEach((fence, index) => {
-        const sample = doc.samples[index]
-        expect(
-          sample.html[FLAVOR],
-          `${name}/${sample.title}/${FLAVOR}：高亮外框形状变了，Tailwind 那层边框与这里的取色会对不上`
-        ).toMatch(/^<pre class="shiki shiki-themes github-light github-dark mdc-code"/)
-        expect(
-          visibleText(sample.html[FLAVOR]),
-          `${name}/${sample.title}/${FLAVOR}：显示出来的代码与 markdown 围栏不是同一份字节`
-        ).toBe(fence)
-        checked += 1
-      })
-    }
-    expect(checked).toBeGreaterThan(0)
-  })
-})
+/** 每条页面里 `<ExampleDoc component="…" />` 引用的组件名。 */
+const componentsOf = (source: string) =>
+  [...source.matchAll(/<ExampleDoc\s+component=["']([^"']+)["']/g)].map(match => match[1]!)
 
-describe('每条示例落成可编译文件', () => {
-  it('标题序列与生成数据同串，落盘文件与围栏逐字相同（只差行尾换行）', () => {
-    let demoCount = 0
-    for (const name of corpusFiles) {
-      const component = name.slice(0, -'.CN.md'.length)
-      const markdown = readFileSync(path.join(docsDir, name), 'utf8')
-      const doc = docByName.get(component)
-      if (!doc) throw new Error(`${name}：生成数据里没有这个 component`)
-      expect(sampleTitlesOf(markdown), `${name}：markdown 里 \`## Samples\` 的标题序列与生成数据不是同一串`).toEqual(
-        doc.samples.map(sample => sample.title)
-      )
-      const fences = fencesOf(markdown, FENCE_LANG)
-      doc.samples.forEach((sample, index) => {
-        demoCount += 1
-        const file = path.join(demosDir, demoFileName(component, sample.demoKey, FLAVOR))
-        expect(existsSync(file), `${file} 不存在：示例「${sample.title}」必须落成组件文件`).toBe(true)
-        expect(
-          readFileSync(file, 'utf8'),
-          `${file} 与 markdown 围栏不是同一份源码：显示的那份和被执行的那份漂移了`
-        ).toBe(demoFileContent(fences[index]))
-      })
-    }
-    expect(demoCount, '一篇示例都没有：「示例落成可编译文件」这条通道等于没被任何断言覆盖').toBeGreaterThan(0)
-  })
-})
+const pages = readdirSync(pagesDir)
+  .filter(file => file.endsWith('.vue'))
+  .sort()
 
-// `-demo` 目录按全量语料判不存在（任何一篇重新长出宿主外的
-// 手写 demo 都会被抓住），「页面只剩 <ExampleDoc>」按实际存在的页面文件判——子组件文档（
-// `button-group` 那 8 篇）挂在宿主页面里，本就没有自己的页面文件。
 describe('页面只剩 <ExampleDoc>', () => {
-  const surface = surfaceOf(pagesDir, '.vue', SHELL_TAG)
-
   it('全量语料都没有 `<组件>-demo` 手写目录', () => {
     for (const component of docNames) {
       const demoDir = path.resolve(import.meta.dirname, '../components', `${component}-demo`)
@@ -131,77 +186,139 @@ describe('页面只剩 <ExampleDoc>', () => {
   })
 
   it('每个页面只渲染 <ExampleDoc>，不引任何手写 demo', () => {
-    for (const name of surface.names) {
-      const page = path.join(pagesDir, `${name}.vue`)
+    for (const file of pages) {
+      const page = path.join(pagesDir, file)
       const extras = demoImports(readFileSync(page, 'utf8'))
       expect(extras, `${page}：页面只渲染 <ExampleDoc>，仍引入 ${extras.join('、')}`).toEqual([])
     }
   })
 })
 
-// 壳映射判在 jsdom（不挂真组件，只判壳真的把每条示例接上了生成的 demo）：预览区由壳自己的
-// `import.meta.glob` 映射渲染，产物加载失败不影响判据；demo 真挂得出宿主由人工验收兜底，这里不重复。
-describe('全量语料的壳映射（ExampleDoc）', () => {
-  // 先把全部 demo 模块收进模块缓存再挂壳：壳的懒加载只结算已命中的 promise，
-  // 不给 run 留下一批在途 import（收尾时会挂住 10s 才退出）。
-  // 逐篇挂全量语料的壳，本地亚秒级；CI runner 慢机实测越过默认 5s（与被删的全量遍历用例
-  // 同一类慢，那时给的是 120s），beforeAll 的批量预载同理。给足余量但只作用于这一条链路。
-  const allDemos = import.meta.glob('../generated/demos/*.vue')
-  beforeAll(async () => {
-    await Promise.all(Object.values(allDemos).map(load => load()))
-  }, 30_000)
-
-  it('每条示例由壳挂出预览区，顺序与生成数据的 demoKey 序一致', async () => {
-    await loadDemoLocale('zh-CN', false)
-    for (const component of docNames) {
-      const doc = docByName.get(component)
-      if (!doc) throw new Error(`${component}：生成数据里没有这个 component`)
-      const wrapper = mount(ExampleDoc, { props: { component } })
-      const keys = wrapper.findAll('[data-sample-preview]').map(node => node.attributes('data-sample-preview'))
-      wrapper.unmount()
-      expect(keys, `${component}：预览区与生成数据的 demoKey 不是同一串（壳的 glob 映射漂了）`).toEqual(
-        doc.samples.map(sample => sample.demoKey)
-      )
-    }
-  }, 30_000)
-})
-
 describe('覆盖守卫（Vue 页面侧）', () => {
-  const surface = surfaceOf(pagesDir, '.vue', SHELL_TAG)
-
   it('每个页面渲染自己那份 <ExampleDoc>', () => {
-    for (const name of surface.names)
-      expect(rendersOwn(surface, name), `Vue 页面 ${name} 没有渲染 <ExampleDoc component="${name}" />`).toBe(true)
+    for (const file of pages) {
+      const name = file.replace(/\.vue$/, '')
+      const components = componentsOf(readFileSync(path.join(pagesDir, file), 'utf8'))
+      expect(components, `Vue 页面 ${name} 没有渲染 <ExampleDoc component="${name}" />`).toContain(name)
+    }
   })
 
-  it('每份 markdown 至少被一个页面渲染，不留孤儿语料', () => {
-    const orphaned = orphanDocs(docNames, [surface])
-    expect(orphaned, `这些 markdown 没有任何 Vue 页面渲染：${orphaned.join('、')}`).toEqual([])
-  })
-
-  it('<ExampleDoc> 引用的 markdown 都存在', () => {
-    const broken = unresolvedRefs(surface, docNames)
-    expect(broken, `Vue 页面引用了不存在的 markdown：${broken.join('、')}`).toEqual([])
+  it('每份 markdown 至少被一个页面渲染，不留孤儿语料；页面引用的 markdown 都存在', () => {
+    const used = new Set(pages.flatMap(file => componentsOf(readFileSync(path.join(pagesDir, file), 'utf8'))))
+    expect(
+      docNames.filter(name => !used.has(name)),
+      '这些 markdown 没有任何 Vue 页面渲染'
+    ).toEqual([])
+    expect(
+      [...used].filter(name => !docNames.includes(name)),
+      'Vue 页面引用了不存在的 markdown'
+    ).toEqual([])
   })
 
   it('判据本身能识别反例', () => {
-    expect(rendersOwn({ used: new Map([['radio', ['radio-group']]]) }, 'radio')).toBe(false)
-    expect(orphanDocs(['radio', 'radio-group'], [{ used: new Map([['radio', ['radio']]]) }])).toEqual(['radio-group'])
-    expect(unresolvedRefs({ used: new Map([['radio', ['radio', 'nope']]]) }, ['radio'])).toEqual(['nope'])
+    expect(componentsOf(`<ExampleDoc component="radio" />`)).toEqual(['radio'])
+    expect(componentsOf(`<Doc component="radio" />`)).toEqual([])
     expect(demoImports(`import Demo from '@/components/slider-demo/index.vue'`)).toEqual(['slider-demo'])
     expect(demoImports(`import Doc from '@/components/example-doc/index.vue'`)).toEqual([])
   })
 })
 
-describe('手写装饰件跨 app 同源', () => {
-  it('flavor-icons.ts 与另一端逐字节一致', () => {
-    const own = path.resolve(import.meta.dirname, '../components/example-doc/flavor-icons.ts')
-    const sibling = path.resolve(
-      import.meta.dirname,
-      '../../../react-web-ui-demo/src/components/example-doc/flavor-icons.ts'
+describe('通用 meta 渲染', () => {
+  const sampleNodes = (content: string) =>
+    [
+      { label: 'h2', id: 'section-1', content: 'Samples' },
+      { label: 'p', content: 'A <strong>paragraph</strong>' },
+      { label: 'ul', children: [{ label: 'li', content: 'item' }] },
+      {
+        label: 'table',
+        children: [
+          {
+            label: 'tr',
+            children: [
+              { label: 'th', content: 'Name' },
+              { label: 'td', content: 'Value' }
+            ]
+          }
+        ]
+      },
+      {
+        label: 'codeblock',
+        lang: 'vue',
+        path: './codeblock/abc.vue',
+        content: `<pre class="shiki mdm-code"><code><span class="line"><span class="line-number">1</span>${content}</span></code></pre>`,
+        load: async () => ({ default: defineComponent({ render: () => h('span', { 'data-demo': true }, 'demo') }) })
+      }
+    ] as MetaNode[]
+
+  it('按 label 渲染标题、列表、表格与代码块预览', async () => {
+    const wrapper = mount(
+      defineComponent({
+        render: () => h('div', { class: 'mdm-markdown' }, [h(MetaComp, { nodes: sampleNodes('const answer = 42') })])
+      })
     )
-    expect(readFileSync(own, 'utf8'), `本端与 react 端的 flavor-icons.ts 抄本已经漂移`).toBe(
-      readFileSync(sibling, 'utf8')
-    )
+    expect(wrapper.find('h2').classes()).toEqual(['mdm-heading'])
+    expect(wrapper.find('h2').attributes('id')).toBe('section-1')
+    expect(wrapper.find('ul li').text()).toBe('item')
+    expect(wrapper.find('table th').text()).toBe('Name')
+    expect(wrapper.find('[data-codeblock="vue"]').exists()).toBe(true)
+    expect(visibleText(wrapper.find('[data-code] pre').element.innerHTML)).toBe('const answer = 42')
+    await flushPromises()
+    expect(wrapper.find('[data-demo]').exists()).toBe(true)
+  })
+
+  it('preview 关闭时只渲染源码，不挂运行示例', () => {
+    const wrapper = mount(MetaComp, {
+      props: {
+        preview: false,
+        nodes: [{ label: 'codeblock', lang: 'vue', content: '<pre class="shiki mdm-code"><code>demo</code></pre>' }]
+      }
+    })
+    expect(wrapper.find('[data-codeblock-preview]').exists()).toBe(false)
+    expect(wrapper.find('[data-code] pre').exists()).toBe(true)
+  })
+
+  it('相邻的 tsx 与 vue 围栏合成一张卡，工具条切换两份源码', async () => {
+    const fence = (lang: string, content: string) => ({
+      label: 'codeblock',
+      lang,
+      content: `<pre class="shiki mdm-code"><code><span class="line"><span class="line-number">1</span>${content}</span></code></pre>`
+    })
+    // 自定义元素只在进入文档后升级，而 `mount` 默认渲染到游离节点：不挂到 body 就永远没有
+    // shadowRoot，切换器里的可点击项也不存在。
+    const wrapper = mount(MetaComp, {
+      props: { nodes: [fence('tsx', 'react source'), fence('vue', 'vue source')] as MetaNode[] },
+      attachTo: document.body
+    })
+    expect(wrapper.findAll('[data-codeblock]')).toHaveLength(1)
+    expect(wrapper.find('[data-codeblock]').attributes('data-codeblock')).toBe('vue')
+
+    const reactTrigger = wrapper
+      .findAll('web-ui-segmented-trigger')
+      .find(item => (item.element as { value?: string }).value === 'react')
+    await flushPromises()
+    // 切换器自身处理点击的是 shadowRoot 里的 `[role="option"]`，宿主节点上没有该监听。
+    reactTrigger!.element.shadowRoot!.querySelector<HTMLElement>('[role="option"]')!.click()
+
+    await flushPromises()
+    expect(wrapper.find('[data-codeblock]').attributes('data-codeblock')).toBe('tsx')
+    expect(visibleText(wrapper.find('[data-code] pre').element.innerHTML)).toBe('react source')
+    wrapper.unmount()
+  })
+
+  it('代码不足一屏时不挂折叠，超过一屏才出现展开按钮', () => {
+    const fenceOf = (lines: number) => ({
+      label: 'codeblock',
+      lang: 'vue',
+      content: `<pre class="shiki mdm-code"><code>${Array.from(
+        { length: lines },
+        (_, index) => `<span class="line"><span class="line-number">${index + 1}</span>line ${index + 1}</span>`
+      ).join('\n')}</code></pre>`
+    })
+    const short = mount(MetaComp, { props: { nodes: [fenceOf(2)] as MetaNode[] } })
+    expect(short.find('web-ui-collapse').exists()).toBe(false)
+    expect(short.find('[data-toggle-code]').exists()).toBe(false)
+    const tall = mount(MetaComp, { props: { nodes: [fenceOf(6)] as MetaNode[] } })
+    expect(tall.find('web-ui-collapse').exists()).toBe(true)
+    expect(tall.find('[data-toggle-code]').exists()).toBe(true)
   })
 })

@@ -1,7 +1,4 @@
----
-component: layout
-tag: web-ui-layout
----
+# Layout
 
 Responsive page layout: an optional full-width banner, a collapsible sidebar on desktop, and a drawer by default on mobile; set `no-sidebar` to drop the entire sidebar and keep the content-only layout. The page itself scrolls; once the banner scrolls out, the desktop sidebar and header stay fixed within the viewport.
 

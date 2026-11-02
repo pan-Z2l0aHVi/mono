@@ -1,7 +1,4 @@
----
-component: editable-text
-tag: web-ui-editable-text
----
+# Editable Text
 
 An inline plain-text editor: click the text to edit it in place, Enter and blur commit, and only Escape cancels; the text layer and the edit layer share one box, so entering edit mode moves nothing by a pixel.
 

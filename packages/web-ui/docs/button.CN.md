@@ -1,7 +1,4 @@
----
-component: button
-tag: web-ui-button
----
+# Button
 
 button 触发一个即时操作：提交表单、打开 dialog、切换状态。
 

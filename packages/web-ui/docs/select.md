@@ -1,7 +1,4 @@
----
-component: select
-tag: web-ui-select
----
+# Select
 
 Select dropdown: the default slot projects `<web-ui-option>` candidates, and the `trigger` slot can replace the default trigger area. Supports keyboard navigation and Portal.
 
@@ -432,18 +429,19 @@ export default function Demo() {
 
 ### Props
 
-| Name               | Description                                                                                                                          | Type                | Default   |
-| ------------------ | ------------------------------------------------------------------------------------------------------------------------------------ | ------------------- | --------- |
-| `placeholder`      | Placeholder text shown when nothing is selected.                                                                                     | `string`            | `''`      |
-| `trigger`          | Trigger appearance: `label` shows the selected text and arrow, `icon` keeps the arrow and treats the `trigger` slot as icon content. | `'label' \| 'icon'` | `'label'` |
-| `disabled`         | Disabled state.                                                                                                                      | `boolean`           | `false`   |
-| `required`         | Required validation.                                                                                                                 | `boolean`           | `false`   |
-| `portal`           | Renders the dropdown panel in the theme-owned overlay root.                                                                          | `boolean`           | `false`   |
-| `no-scroll-lock`   | Does not lock page scrolling while open.                                                                                             | `boolean`           | `false`   |
-| `overlayContainer` | Explicit Portal container (property).                                                                                                | `OverlayContainer`  | —         |
-| `name`             | Form field name.                                                                                                                     | `string`            | `''`      |
-| `aria-label`       | Accessible name of the combobox.                                                                                                     | `string \| null`    | `null`    |
-| `value`            | Selected value.                                                                                                                      | `string`            | `''`      |
+| Name               | Description                                                                                                                          | Type                | Default          |
+| ------------------ | ------------------------------------------------------------------------------------------------------------------------------------ | ------------------- | ---------------- |
+| `placeholder`      | Placeholder text shown when nothing is selected.                                                                                     | `string`            | `''`             |
+| `trigger`          | Trigger appearance: `label` shows the selected text and arrow, `icon` keeps the arrow and treats the `trigger` slot as icon content. | `'label' \| 'icon'` | `'label'`        |
+| `disabled`         | Disabled state.                                                                                                                      | `boolean`           | `false`          |
+| `required`         | Required validation.                                                                                                                 | `boolean`           | `false`          |
+| `portal`           | Renders the dropdown panel in the theme-owned overlay root.                                                                          | `boolean`           | `false`          |
+| `placement`        | Placement of the dropdown panel; defaults to expanding downward from the trigger's bottom-left corner.                               | `Placement`         | `'bottom-start'` |
+| `no-scroll-lock`   | Does not lock page scrolling while open.                                                                                             | `boolean`           | `false`          |
+| `overlayContainer` | Explicit Portal container (property).                                                                                                | `OverlayContainer`  | —                |
+| `name`             | Form field name.                                                                                                                     | `string`            | `''`             |
+| `aria-label`       | Accessible name of the combobox.                                                                                                     | `string \| null`    | `null`           |
+| `value`            | Selected value.                                                                                                                      | `string`            | `''`             |
 
 ### Events
 

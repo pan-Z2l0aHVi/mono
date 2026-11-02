@@ -1,7 +1,4 @@
----
-component: segmented-trigger
-tag: web-ui-segmented-trigger
----
+# Segmented Trigger
 
 A segment button of `<web-ui-segmented>`: `value` is the segment value it represents, the selected state is written back by the parent segmented through `checked`, and form submission belongs to the parent.
 

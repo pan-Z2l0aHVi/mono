@@ -1,7 +1,4 @@
----
-component: option
-tag: web-ui-option
----
+# Option
 
 The option carrier for `<web-ui-select>` and `<web-ui-autocomplete>`: `value` is the value submitted when selected, `label` is the displayed text (defaulting to its own text content), and the `prefix` / `suffix` slots hold icons at either end.
 

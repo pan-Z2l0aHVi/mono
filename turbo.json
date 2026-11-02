@@ -5,7 +5,15 @@
   "tasks": {
     "build": {
       "dependsOn": ["^build"],
-      "inputs": ["$TURBO_DEFAULT$", "!**/*.md", "!**/*.spec.ts", "!**/*.test.ts", "!**/__tests__/**"],
+      "inputs": [
+        "$TURBO_DEFAULT$",
+        "!**/*.md",
+        "!**/*.spec.ts",
+        "!**/*.spec.mjs",
+        "!**/*.test.ts",
+        "!**/*.test.mjs",
+        "!**/__tests__/**"
+      ],
       "outputs": ["dist/**", "bin/**"],
       "outputLogs": "new-only"
     },

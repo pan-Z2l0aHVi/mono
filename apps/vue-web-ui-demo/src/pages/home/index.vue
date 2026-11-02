@@ -83,7 +83,7 @@ const features = [
   { id: 'web-components', icon: lucidePackage, label: () => 'Web Components' },
   { id: 'cross-framework', icon: lucideCode, label: () => '跨框架一致' },
   { id: 'typescript', icon: tablerBrandTypescript, label: () => 'TypeScript 类型安全' },
-  { id: 'atomic', icon: lucideBoxes, label: () => '原子化组件' },
+  { id: 'atomic', icon: lucideBoxes, label: () => '原子组件' },
   { id: 'motion', icon: lucideSparkles, label: () => '丝滑动效' },
   { id: 'accessibility', icon: lucideAccessibility, label: () => '无障碍' },
   { id: 'keyboard', icon: lucideKeyboard, label: () => '键盘友好' },
@@ -107,7 +107,7 @@ const logoSrc = `${import.meta.env.BASE_URL}bo-transparent.png`
       />
     </div>
 
-    <h1 class="text-3xl md:text-5xl font-bold tracking-tight text-(--wui-color-text) mb-4">Web UI</h1>
+    <h1 class="text-[32px] font-bold tracking-tight text-(--wui-color-text) mb-4">Web UI</h1>
     <p class="text-base md:text-lg text-(--wui-color-text-secondary) max-w-2xl leading-relaxed mb-8">
       以 Web Components 为内核的跨框架 UI 组件库。轻量、精致，适配 React、Vue。
     </p>
@@ -125,7 +125,7 @@ const logoSrc = `${import.meta.env.BASE_URL}bo-transparent.png`
 
     <div class="w-full text-left">
       <div
-        class="flex items-center gap-2 mb-5 text-sm font-semibold uppercase tracking-wider text-(--wui-color-text-secondary)"
+        class="flex items-center gap-2 mb-5 text-[20px] font-semibold uppercase tracking-wider text-(--wui-color-text-secondary)"
       >
         <web-ui-icon :icon="lucideLayoutGrid" :size="16"></web-ui-icon>
         快速预览
@@ -133,14 +133,9 @@ const logoSrc = `${import.meta.env.BASE_URL}bo-transparent.png`
 
       <div data-testid="home-quick-links-grid" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
         <template v-for="group in quickLinkGroups" :key="group.id">
-          <div class="col-span-full flex flex-wrap items-baseline gap-x-3 gap-y-1 pt-2 first:pt-0">
-            <h2 class="text-sm font-semibold text-(--wui-color-text)">{{ group.title() }}</h2>
+          <div class="col-span-full flex flex-col items-start gap-y-1 pt-2 first:pt-0">
+            <h2 class="text-[24px] font-semibold text-(--wui-color-text)">{{ group.title() }}</h2>
             <span class="text-xs text-(--wui-color-text-tertiary)">{{ group.description() }}</span>
-            <span
-              class="ms-auto inline-flex min-w-6 items-center justify-center rounded-full border border-(--wui-color-border) bg-(--wui-color-surface-raised) px-2 py-0.5 text-xs font-medium tabular-nums text-(--wui-color-text-secondary)"
-            >
-              {{ group.links.length }}
-            </span>
           </div>
 
           <RouterLink

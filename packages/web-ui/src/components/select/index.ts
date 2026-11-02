@@ -1,5 +1,6 @@
 import '@/components/icon'
 
+import type { Placement } from '@floating-ui/dom'
 import { html, LitElement, nothing, type PropertyValues, unsafeCSS } from 'lit'
 import { customElement, property, state } from 'lit/decorators.js'
 import { ifDefined } from 'lit/directives/if-defined.js'
@@ -22,6 +23,7 @@ import {
 } from '@/shared/option-portal'
 import { defineAnchoredPanel } from '@/shared/overlay/anchored-panel'
 import { defineOpenOverlay } from '@/shared/overlay/open-overlay'
+import { FLOATING_PLACEMENTS } from '@/shared/overlay/placement-props'
 import {
   applyOverlayVariables,
   defineOverlayPortal,
@@ -58,6 +60,17 @@ export class WebUiSelect extends FormAssociated(LitElement) {
   private _trigger: 'label' | 'icon' = 'label'
   @property({ type: Boolean, reflect: true }) required = false
   @property({ type: Boolean, reflect: true }) portal = false
+  /** 下拉 panel 相对触发器的方向；默认贴着触发器左下角向下展开。 */
+  @property({ type: String, reflect: true })
+  get placement(): Placement {
+    return this._placement
+  }
+  set placement(v: string) {
+    const old = this._placement
+    this._placement = normalizeLiteral(v, FLOATING_PLACEMENTS, 'bottom-start')
+    this.requestUpdate('placement', old)
+  }
+  private _placement: Placement = 'bottom-start'
   @property({ type: Boolean, reflect: true, attribute: 'no-scroll-lock' }) noScrollLock = false
   @property({ attribute: false }) overlayContainer?: OverlayContainer
   @property({ type: String, reflect: true }) name = ''
@@ -158,7 +171,7 @@ export class WebUiSelect extends FormAssociated(LitElement) {
     getAnchor: () => this.shadowRoot?.querySelector<HTMLElement>('.select-trigger') ?? null,
     getLocalPanel: () => this.shadowRoot?.querySelector<HTMLElement>('.select-overlay') ?? null,
     getPositioning: () => ({
-      placement: 'bottom-start',
+      placement: this.placement,
       offset: 4,
       // panel 宽度统一为 max(内容, trigger, --wui-overlay-min-width)，内容自适应展开
       minAnchorWidth: true,
@@ -233,6 +246,7 @@ export class WebUiSelect extends FormAssociated(LitElement) {
     if (changed.has('portal') || changed.has('overlayContainer'))
       requestAnimationFrame(() => this._reconfigureOverlay())
     if (changed.has('noScrollLock')) this._syncScrollLock()
+    if (changed.has('placement')) this._panel.updatePosition()
     this._syncOpenAttribute()
     this._syncOverlayInert()
     this._syncValidity()

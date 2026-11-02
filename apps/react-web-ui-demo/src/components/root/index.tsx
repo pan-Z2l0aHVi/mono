@@ -128,7 +128,6 @@ const navSections: NavSection[] = [
       { path: '/components/input-number', label: 'InputNumber' },
       { path: '/components/select', label: 'Select' },
       { path: '/components/autocomplete', label: 'Autocomplete' },
-      { path: '/components/dropdown', label: 'Dropdown' },
       { path: '/components/switch', label: 'Switch' },
       { path: '/components/slider', label: 'Slider' },
       { path: '/components/radio', label: 'Radio' },
@@ -155,6 +154,7 @@ const navSections: NavSection[] = [
       { path: '/components/drawer', label: 'Drawer' },
       { path: '/components/tooltip', label: 'Tooltip' },
       { path: '/components/popover', label: 'Popover' },
+      { path: '/components/dropdown', label: 'Dropdown' },
       { path: '/components/context-menu', label: 'ContextMenu' },
       { path: '/components/toast', label: 'Toast' },
       { path: '/components/image-preview', label: 'ImagePreview' },
@@ -337,6 +337,7 @@ export function Root() {
           {routeTitle ? <title>{routeTitle}</title> : null}
           <web-ui-layout
             ref={layoutRef}
+            className="mobile:[--wui-layout-sidebar-radius:38px]"
             sidebarCollapsible
             header-glow
             sidebarCollapsed={sidebarCollapsed}
@@ -352,11 +353,10 @@ export function Root() {
             {bannerVisible ? (
               <div
                 slot="banner"
-                className="relative flex items-center justify-center gap-2 bg-(--wui-color-accent) px-4 py-2 text-sm text-(--wui-color-on-accent)"
+                className="relative grid grid-cols-[24px_minmax(0,1fr)_24px] items-center gap-2 bg-(--wui-color-accent) px-4 py-2 text-sm text-(--wui-color-on-accent)"
               >
-                <span>🎉 欢迎使用 web-ui 组件库！</span>
                 <web-ui-button
-                  className="ml-auto mobile:absolute mobile:left-0 mobile:top-2 mobile:ml-0"
+                  className="absolute top-1/2 right-4 -translate-y-1/2"
                   size="24"
                   icon
                   variant="ghost"
@@ -365,20 +365,16 @@ export function Root() {
                 >
                   <web-ui-icon className="text-(--wui-color-on-accent)" icon={lucideX} size={16}></web-ui-icon>
                 </web-ui-button>
+                <span className="col-start-2 text-center">🎉 欢迎使用 web-ui 组件库！</span>
               </div>
             ) : null}
-            {/* 移动端为前置导航区预留 60px，与 collapsed sidebar 使用同一基准。 */}
+            {/* 移动端为前置导航区预留 60px，与 collapsed sidebar 使用同一基准。
+                移动端纵向内边距与 layout 的 `.mobile-toggle` 上间距（8px）一致，右侧控件才与左上角切换按钮同高对齐。 */}
             <div
               slot="header"
-              className="flex h-full w-full items-center justify-end gap-4 px-4 py-2 mobile:grid mobile:w-[calc(100vw-60px)] mobile:grid-cols-3 mobile:gap-1.5 mobile:px-2 mobile:py-1"
+              className="flex h-full w-full items-center justify-end gap-4 px-4 py-2 mobile:w-[calc(100vw-60px)] mobile:gap-1.5 mobile:px-2 mobile:py-2"
             >
-              <web-ui-select
-                trigger="icon"
-                value={themeMotion}
-                className="justify-self-center"
-                aria-label="全局动效"
-                onChange={updateThemeMotion}
-              >
+              <web-ui-select trigger="icon" value={themeMotion} aria-label="全局动效" onChange={updateThemeMotion}>
                 <web-ui-icon
                   slot="trigger"
                   icon={
@@ -403,7 +399,7 @@ export function Root() {
               <web-ui-select
                 trigger="icon"
                 value={themeAppearance}
-                className="justify-self-center"
+                placement="bottom"
                 aria-label="全局主题"
                 onChange={updateThemeAppearance}
               >
@@ -430,7 +426,6 @@ export function Root() {
                 value={locale}
                 disabled={localePending}
                 aria-busy={localePending ? 'true' : 'false'}
-                className="justify-self-center"
                 aria-label="全局语言"
                 onChange={updateLocale}
               >
@@ -450,7 +445,7 @@ export function Root() {
               slot="sidebar"
               ref={navSidebarRef}
               options={appScrollbarsOptions}
-              className="relative z-20 h-full min-h-0 overflow-y-auto p-2 mobile:px-0"
+              className="relative z-20 h-full min-h-0 overflow-y-auto p-2 mobile:p-0"
               aria-label="应用导航"
             >
               <nav className="grid gap-1" aria-label="主导航">

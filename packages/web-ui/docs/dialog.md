@@ -1,7 +1,4 @@
----
-component: dialog
-tag: web-ui-dialog
----
+# Dialog
 
 Modal dialog based on the native `<dialog>`'s `showModal()`; supports a built-in heading bar, a footer, and a fully self-drawn `headless` mode.
 
