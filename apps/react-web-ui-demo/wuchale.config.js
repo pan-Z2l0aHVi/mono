@@ -14,5 +14,6 @@ export default defineConfig({
       }
     })
   },
+  dev: 'read',
   ai: null
 })
