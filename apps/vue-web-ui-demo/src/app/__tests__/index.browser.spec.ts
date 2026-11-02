@@ -580,15 +580,16 @@ describe('应用外壳（浏览器）：导航 collapsed state 不跨视口泄�
     expect(lastRight).toBeCloseTo(header.getBoundingClientRect().right - headerPaddingRight)
   })
 
-  it('桌面端 collapsed state 沿用完整导航名、超出部分省略，并通过 title 提供完整 label', async () => {
+  it('桌面端 collapsed state 沿用完整导航名、超出部分省略，并通过 tooltip 提供完整 label', async () => {
     await mountAppShell()
-    const links = [...navRoot().querySelectorAll<HTMLAnchorElement>('a')]
-    const expandedLabels = links.map(link => link.querySelector('span')?.textContent?.trim() ?? '')
-    expect(links.length).toBeGreaterThan(0)
+    const expandedLinks = [...navRoot().querySelectorAll<HTMLAnchorElement>('a')]
+    const expandedLabels = expandedLinks.map(link => link.querySelector('span')?.textContent?.trim() ?? '')
+    expect(expandedLinks.length).toBeGreaterThan(0)
 
     await requestCollapse(true)
 
-    const collapsedEntries = links.map(link => {
+    const collapsedLinks = [...navRoot().querySelectorAll<HTMLAnchorElement>('a')]
+    const collapsedEntries = collapsedLinks.map(link => {
       const label = link.querySelector('span')
 
       return {
@@ -597,11 +598,12 @@ describe('应用外壳（浏览器）：导航 collapsed state 不跨视口泄�
         labelClientWidth: label?.clientWidth ?? 0,
         labelRight: label?.getBoundingClientRect().right ?? 0,
         linkRight: link.getBoundingClientRect().right,
-        tooltip: link.getAttribute('title')
+        tooltip: (link.closest('web-ui-tooltip') as (HTMLElement & { content?: string }) | null)?.content ?? null
       }
     })
 
-    // 折叠导轨不再另设两套短名：可见文字仍是完整导航名，放不下交给 CSS 省略，文字不越出导轨。
+    // 折叠导轨不再另设两套短名：可见文字仍是完整导航名，放不下交给 CSS 省略，文字不越出导轨；
+    // 完整名称由 web-ui-tooltip 的 content 提供，不再写同义的 title。
     expect(collapsedEntries.map(entry => entry.visibleLabel)).toEqual(expandedLabels)
     expect(collapsedEntries.every(entry => entry.labelClientWidth > 0)).toBe(true)
     expect(collapsedEntries.every(entry => entry.labelRight <= entry.linkRight + 0.5)).toBe(true)
@@ -614,9 +616,11 @@ describe('应用外壳（浏览器）：导航 collapsed state 不跨视口泄�
 
     await requestCollapse(false)
 
-    expect(links.map(link => link.querySelector('span')?.textContent?.trim() ?? '')).toEqual(expandedLabels)
-    expect(links.slice(2).every(link => !link.hasAttribute('title'))).toBe(true)
-    expect(links.slice(0, 2).map(link => link.getAttribute('title'))).toEqual(['Components', 'Changelog'])
+    const restoredLinks = [...navRoot().querySelectorAll<HTMLAnchorElement>('a')]
+    expect(restoredLinks.map(link => link.querySelector('span')?.textContent?.trim() ?? '')).toEqual(expandedLabels)
+    expect(restoredLinks.every(link => link.closest('web-ui-tooltip') === null)).toBe(true)
+    expect(restoredLinks.slice(2).every(link => !link.hasAttribute('title'))).toBe(true)
+    expect(restoredLinks.slice(0, 2).map(link => link.getAttribute('title'))).toEqual(['Components', 'Changelog'])
   })
 
   it('桌面端 collapse 后导航文字居中，expanded state 左对齐', async () => {

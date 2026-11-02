@@ -252,7 +252,7 @@ describe('应用外壳（浏览器）：导航 collapsed state 不跨视口泄�
     expect(collapsed.labelAlign).toBe('center')
   })
 
-  it('1440px 桌面折叠态沿用完整导航名、超出部分省略，展开态显示完整名称', async () => {
+  it('1440px 桌面折叠态沿用完整导航名、超出部分省略，tooltip 提供完整名称，展开态显示完整名称', async () => {
     await changeViewport({ width: 1440, height: 900 })
     await mountAppShell()
 
@@ -265,10 +265,18 @@ describe('应用外壳（浏览器）：导航 collapsed state 不跨视口泄�
 
     await requestCollapse(true)
 
-    // 折叠导轨的可见文字仍是完整导航名，放不下交给 CSS 省略；可访问名与 title 保持同一个全名。
+    // 折叠导轨的可见文字仍是完整导航名，放不下交给 CSS 省略；可访问名保持全名，
+    // 悬停提示由 web-ui-tooltip 提供，不再写同义的 title。
     const collapsedLinks = [...navRoot().querySelectorAll<HTMLAnchorElement>('a')]
     expect(collapsedLinks.map(link => link.querySelector('span')?.textContent?.trim())).toEqual(fullLabels)
-    expect(collapsedLinks.map(link => link.title)).toEqual(fullLabels)
+    expect(collapsedLinks.map(link => link.getAttribute('aria-label'))).toEqual(fullLabels)
+    expect(collapsedLinks.every(link => link.title === '')).toBe(true)
+    expect(
+      collapsedLinks.every(link => {
+        const tooltip = link.closest('web-ui-tooltip') as (HTMLElement & { content?: string }) | null
+        return tooltip?.content === link.getAttribute('aria-label')
+      })
+    ).toBe(true)
     expect(
       collapsedLinks.every(link => {
         const label = link.querySelector('span')
@@ -277,7 +285,12 @@ describe('应用外壳（浏览器）：导航 collapsed state 不跨视口泄�
     ).toBe(true)
 
     await requestCollapse(false)
-    expect([...navRoot().querySelectorAll('a span')].map(label => label.textContent?.trim())).toEqual(fullLabels)
+
+    const expandedLinks = [...navRoot().querySelectorAll<HTMLAnchorElement>('a')]
+    expect(expandedLinks.map(link => link.querySelector('span')?.textContent?.trim())).toEqual(fullLabels)
+    expect(expandedLinks.every(link => link.closest('web-ui-tooltip') === null)).toBe(true)
+    expect(expandedLinks.slice(2).every(link => link.title === '')).toBe(true)
+    expect(expandedLinks.slice(0, 2).map(link => link.title)).toEqual(['组件总览', '更新日志'])
   })
 
   it('375px 移动视口内全局语言选择器可见', async () => {
