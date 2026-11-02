@@ -107,7 +107,7 @@ const logoSrc = `${import.meta.env.BASE_URL}bo-transparent.png`
       />
     </div>
 
-    <h1 class="text-3xl md:text-5xl font-bold tracking-tight text-(--wui-color-text) mb-4">Web UI</h1>
+    <h1 class="text-[32px] font-bold tracking-tight text-(--wui-color-text) mb-4">Web UI</h1>
     <p class="text-base md:text-lg text-(--wui-color-text-secondary) max-w-2xl leading-relaxed mb-8">
       以 Web Components 为内核的跨框架 UI 组件库。轻量、精致，适配 React、Vue。
     </p>
@@ -125,7 +125,7 @@ const logoSrc = `${import.meta.env.BASE_URL}bo-transparent.png`
 
     <div class="w-full text-left">
       <div
-        class="flex items-center gap-2 mb-5 text-sm font-semibold uppercase tracking-wider text-(--wui-color-text-secondary)"
+        class="flex items-center gap-2 mb-5 text-[20px] font-semibold uppercase tracking-wider text-(--wui-color-text-secondary)"
       >
         <web-ui-icon :icon="lucideLayoutGrid" :size="16"></web-ui-icon>
         快速预览
@@ -134,7 +134,7 @@ const logoSrc = `${import.meta.env.BASE_URL}bo-transparent.png`
       <div data-testid="home-quick-links-grid" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
         <template v-for="group in quickLinkGroups" :key="group.id">
           <div class="col-span-full flex flex-col items-start gap-y-1 pt-2 first:pt-0">
-            <h2 class="text-lg md:text-xl font-semibold text-(--wui-color-text)">{{ group.title() }}</h2>
+            <h2 class="text-[24px] font-semibold text-(--wui-color-text)">{{ group.title() }}</h2>
             <span class="text-xs text-(--wui-color-text-tertiary)">{{ group.description() }}</span>
           </div>
 
