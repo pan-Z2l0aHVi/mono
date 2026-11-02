@@ -105,6 +105,35 @@ it('context-corpus', async () => {
   await detail(contextCorpus.run({ root: owned }))
 })
 
+it('commit scopes collapse nested workspaces', async () => {
+  const scoped = (file: string) =>
+    defineContextCorpus({
+      ...options,
+      commitScopes: {
+        file,
+        rootScope: 'root',
+        pick: config => (config as { prompt?: { scopes?: readonly string[] } }).prompt?.scopes ?? []
+      }
+    })
+  const makeNestedFixture = (): string => {
+    const root = makeFixture()
+    write(root, 'pnpm-workspace.yaml', 'packages:\n  - packages/**\n')
+    write(root, 'packages/app/package.json', `${JSON.stringify({ name: '@acme/app', private: true })}\n`)
+    write(root, 'packages/app/web/package.json', `${JSON.stringify({ name: '@acme/app-web', private: true })}\n`)
+    return root
+  }
+
+  // 嵌套 workspace 归入最近的祖先 workspace，不要求在 scope 清单里单独出现。
+  const passing = makeNestedFixture()
+  write(passing, 'commitlint.config.js', "export default { prompt: { scopes: ['root', 'app'] } }\n")
+  await detail(scoped('commitlint.config.js').run({ root: passing }))
+
+  // 反过来，把嵌套 workspace 当独立 scope 登记就是指向不存在的 option。
+  const failing = makeNestedFixture()
+  write(failing, 'commitlint-extra.config.js', "export default { prompt: { scopes: ['root', 'app', 'app-web'] } }\n")
+  await assert.rejects(scoped('commitlint-extra.config.js').run({ root: failing }), /lists an unknown scope: app-web/)
+})
+
 afterAll(() => {
   fs.rmSync(tempRoot, { recursive: true, force: true })
 })

@@ -8,7 +8,7 @@
 
 ## Message 与署名
 
-scope 标识受影响的 workspace，不表示领域；跨 workspace 协作用逗号分隔多个 scope。仓库根非包改动（`scripts/`、根配置、CI workflow、指令系统文档）统一使用 `root` scope；`ci` 和 `docs` 是 commit type，不是 scope。
+scope 标识受影响的 workspace，不表示领域；跨 workspace 协作用逗号分隔多个 scope。嵌套 workspace 归其最近的祖先 workspace（如 `apps/interweave/frontend` 用 `interweave`），不单独设 scope。仓库根非包改动（`scripts/`、根配置、CI workflow、指令系统文档）统一使用 `root` scope；`ci` 和 `docs` 是 commit type，不是 scope。
 
 授权提交时先暂存预期文件并预览，再运行：
 

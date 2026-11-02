@@ -74,8 +74,9 @@ export default {
     ]
   },
   prompt: {
-    // 与 workspace 的包名去 `@greypan/` 前缀后一致；新增或删除包时同步这份清单，
-    // check-context 会用 workspace manifests 比对，漂移会让门禁失败。
+    // 与 workspace 的包名去 `@greypan/` 前缀后一致；嵌套 workspace 并入最近的祖先 workspace
+    // （如 apps/interweave/frontend 归 interweave），不单独登记。新增或删除 workspace 时同步
+    // 这份清单，check-context 会用 workspace manifests 比对，漂移会让门禁失败。
     scopes: [
       'root',
       'interweave',
