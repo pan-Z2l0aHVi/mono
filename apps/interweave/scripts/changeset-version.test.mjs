@@ -18,6 +18,8 @@ function writeShim(name, body) {
 
 writeShim('pnpm', '#!/bin/sh\nprintf \'pnpm %s\\n\' "$*" >> "$CALLS"\nexit 0\n')
 writeShim('node', '#!/bin/sh\nprintf \'node %s\\n\' "$*" >> "$CALLS"\nexit 0\n')
+// shim 内嵌的是 shell 片段，`esac` 是 `case` 的结束关键字，不是拼写错误。
+// cspell:ignore esac
 writeShim(
   'git',
   '#!/bin/sh\nprintf \'git %s\\n\' "$*" >> "$CALLS"\ncase "$*" in\n' +
