@@ -14,6 +14,8 @@ const TASK_ID = /^[A-Za-z0-9][A-Za-z0-9._-]{0,100}$/
 const OWNER_ID = /^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/
 const REF_KIND = /^[a-z][a-z0-9-]{0,31}$/
 const MAX_REF_VALUE = 2000
+const BOOLEAN_OPTIONS = new Set(['json', 'remove', 'set', 'add', 'clear'])
+const compareText = (a, b) => (a < b ? -1 : a > b ? 1 : 0)
 
 function fail(message) {
   throw new Error(message)
@@ -35,15 +37,26 @@ function parseArgs(argv) {
     const equals = token.indexOf('=')
     const key = token.slice(2, equals < 0 ? undefined : equals)
     if (!key) fail('empty option')
-    if (equals >= 0) {
-      options[key] = token.slice(equals + 1)
+    if (BOOLEAN_OPTIONS.has(key)) {
+      options[key] = true
       continue
     }
-    const next = rest[index + 1]
-    if (next !== undefined && !next.startsWith('--')) {
-      options[key] = next
+    const value = equals >= 0 ? token.slice(equals + 1) : rest[index + 1]
+    if (equals < 0) {
+      if (value === undefined || value.startsWith('--')) {
+        if (key === 'scope') fail('missing value for --scope')
+        options[key] = true
+        continue
+      }
       index += 1
-    } else options[key] = true
+    }
+    if (key === 'scope') {
+      if (value.trim().length === 0) fail('missing value for --scope')
+      if (!Array.isArray(options.scope)) options.scope = []
+      options.scope.push(value)
+      continue
+    }
+    options[key] = value
   }
   return options
 }
@@ -94,6 +107,22 @@ function validateRefValue(value) {
   if (value.length > MAX_REF_VALUE) fail('ref value is too long (max ' + MAX_REF_VALUE + ' characters)')
   if (/[\r\n]/.test(value)) fail('ref value must not contain line breaks')
   return value
+}
+
+function normalizeScopePath(value) {
+  if (typeof value !== 'string') fail('scope paths must be strings')
+  const raw = value.trim()
+  const normalized = raw.replace(/^\.\/+/, '').replace(/\/+$/, '')
+  const segments = normalized.split('/')
+  if (!normalized || normalized === '.' || path.posix.isAbsolute(normalized))
+    fail('scope path must be repo-relative: ' + JSON.stringify(raw))
+  if (segments.includes('..') || segments.includes('.'))
+    fail('scope path must stay inside the repository: ' + raw)
+  return normalized
+}
+
+function normalizeScopePaths(values) {
+  return [...new Set(values.map(normalizeScopePath))].sort(compareText)
 }
 
 function tryGit(cwd, args) {
@@ -169,6 +198,16 @@ function assertState(raw, file) {
   for (const [kind, value] of Object.entries(raw.refs)) {
     if (!REF_KIND.test(kind) || typeof value !== 'string' || value.length > MAX_REF_VALUE || /[\r\n]/.test(value))
       fail('task ledger record is invalid: ' + file)
+  }
+  if (raw.scope !== undefined) {
+    if (!Array.isArray(raw.scope)) fail('task ledger record is invalid: ' + file)
+    for (const entry of raw.scope) {
+      try {
+        normalizeScopePath(entry)
+      } catch {
+        fail('task ledger record is invalid: ' + file)
+      }
+    }
   }
   if (!Array.isArray(raw.events) || !raw.events.every(event => event && typeof event.event === 'string'))
     fail('task ledger record is invalid: ' + file)
@@ -247,6 +286,7 @@ function newTask(options) {
   const level = normalizeLevel(requireOption(options, 'level'))
   const owner = normalizeOwner(requireOption(options, 'owner'))
   if (options.base !== undefined && typeof options.base !== 'string') fail('--base requires a value')
+  const scope = options.scope === undefined ? [] : normalizeScopePaths(options.scope)
   const repo = resolveRepo(options)
   const base = resolveBase(repo.root, options.base ?? 'HEAD')
   const branch = tryGit(repo.root, ['branch', '--show-current']) || null
@@ -264,6 +304,7 @@ function newTask(options) {
     repoRoot: repo.root,
     gitCommonDir: repo.gitCommonDir,
     refs: {},
+    scope,
     createdAt: timestamp,
     updatedAt: timestamp,
     events: []
@@ -307,6 +348,30 @@ function ref(options) {
   } else state.refs[kind] = value
   state.updatedAt = now()
   appendEvent(state, 'ref', remove ? { kind, removed: true } : { kind, value })
+  saveState(file, state)
+  print(state)
+}
+
+function setScope(options) {
+  const useAlias = options.task !== undefined
+  const id = useAlias ? validateTaskId(options.task) : resolveTaskId(options)
+  const rawPaths = useAlias ? options.positional : options.positional.slice(1)
+  const actions = ['set', 'add', 'remove', 'clear'].filter(action => options[action] === true)
+  if (actions.length > 1) fail('use only one of --set, --add, --remove or --clear')
+  const action = actions[0] ?? 'set'
+  if (action === 'clear') {
+    if (rawPaths.length > 0) fail('--clear does not accept paths')
+  } else if (rawPaths.length === 0) fail((action === 'set' ? 'set' : '--' + action) + ' requires at least one path')
+  const paths = action === 'clear' ? [] : normalizeScopePaths(rawPaths)
+  const { file, state } = loadTask(options, id)
+  if (state.status === 'closed' || state.status === 'dropped')
+    fail('task ' + id + ' is ' + state.status + '; cannot change scope')
+  const current = Array.isArray(state.scope) ? normalizeScopePaths(state.scope) : []
+  if (action === 'clear' || action === 'set') state.scope = paths
+  else if (action === 'add') state.scope = normalizeScopePaths([...current, ...paths])
+  else state.scope = current.filter(entry => !paths.includes(entry))
+  state.updatedAt = now()
+  appendEvent(state, 'scope', { action, scope: state.scope })
   saveState(file, state)
   print(state)
 }
@@ -399,9 +464,10 @@ function help() {
       'Usage: node ledger.mjs <command> [options]',
       '',
       'Commands:',
-      '  new <id> --level <T0|T1|T2> --owner <owner> [--base <git-ref>]',
+      '  new <id> --level <T0|T1|T2> --owner <owner> [--base <git-ref>] [--scope <path>]...',
       '  start <id>',
       '  status [<id>] [--json]',
+      '  scope <id> [<path>...] [--set|--add|--remove|--clear]',
       '  ref <id> <kind> <value>',
       '  ref <id> <kind> --remove',
       '  close <id>',
@@ -411,6 +477,7 @@ function help() {
       'Options:',
       '  --root <path>  repository root (default: AGENT_TASK_ROOT or cwd)',
       '  --task <id>    alias for the positional task id',
+      '  --scope <path> repo-relative change scope for new; repeatable',
       '  --json         JSON output for status listings',
       '',
       'Storage: <tmp>/agent-task-ledger/<repo-id>/ (AGENT_TASK_STATE_DIR overrides it)',
@@ -428,6 +495,8 @@ function main() {
       return start(options)
     case 'status':
       return status(options)
+    case 'scope':
+      return setScope(options)
     case 'ref':
       return ref(options)
     case 'close':

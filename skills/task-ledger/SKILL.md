@@ -22,7 +22,7 @@ description: 按风险给任务定级（T0/T1/T2），并在系统临时目录�
 ## 建账流程
 
 1. 确定唯一的 task id、级别、owner 和 base。`new` 记录当前 Git 上下文；不要求工作区干净，也不接管 worktree 分配。
-2. 在实施前运行 `new`，并把目标、非目标、验收条件、验证与恢复方式补进同目录的 Task Packet。
+2. 在实施前运行 `new`，用 `--scope` 记录本任务的仓库相对改动范围，并把目标、非目标、验收条件、验证与恢复方式补进同目录的 Task Packet。实施中发现范围变化时，先更新 scope 再继续。
 3. 开始实施时运行 `start`；发现 issue、PR 或其他外部引用时用 `ref` 记录。
 4. 完成或放弃时运行 `close` 或 `drop`。`closed` / `dropped` 只是本地记录终态，不代表 review、测试、CI、merge 或发布成功。
 
@@ -31,9 +31,10 @@ description: 按风险给任务定级（T0/T1/T2），并在系统临时目录�
 直接调用 skill 内的 `ledger.mjs`，不在宿主仓库的根 `package.json` 另设转发命令。`<skill-dir>` 是加载本 skill 时得到的目录；本仓通过 `.agents/skills/task-ledger/` 访问。
 
 ```sh
-node <skill-dir>/ledger.mjs new <id> --level <T0|T1|T2> --owner <owner> [--base <git-ref>]
+node <skill-dir>/ledger.mjs new <id> --level <T0|T1|T2> --owner <owner> [--base <git-ref>] [--scope <path>]...
 node <skill-dir>/ledger.mjs start <id>
 node <skill-dir>/ledger.mjs status [<id>] [--json]
+node <skill-dir>/ledger.mjs scope <id> [<path>...] [--set|--add|--remove|--clear]
 node <skill-dir>/ledger.mjs ref <id> <kind> <value>
 node <skill-dir>/ledger.mjs ref <id> <kind> --remove
 node <skill-dir>/ledger.mjs close <id>
@@ -42,6 +43,14 @@ node <skill-dir>/ledger.mjs help
 ```
 
 `new` 在状态目录写 `<id>.json`，并在同名 `.md` 不存在时写一个 Task Packet 骨架。`ref` 不校验引用类型或 URL；`issue`、`pr` 只是普通 kind。`status` 不带 id 时列出当前仓库的记录。
+
+## 改动范围（scope）
+
+- `scope` 是仓库相对路径的字符串数组，由 agent 判定，不是包名；路径不要求已经存在。
+- 路径不能是绝对路径，不能含 `..` 段；前导 `./` 会被去掉，其他 `.` 段非法。写入前统一规范化、去重、排序。
+- 实施中发现范围变化时先更新 scope：放宽用 `--add`，重算或收窄用默认 `--set` 或 `--remove`，清空用 `--clear`。终态记录（`closed` / `dropped`）不能再改。
+- 台账只存路径，不解释路径含义，不触发检查、构建或工作区动作。
+- 读取用 `status <id>` 或 `status --json`；Task Packet 不写 scope。老记录可以没有该字段。用 `--task <id>` 指定记录时，位置参数全部按路径处理。
 
 ## 存储与边界
 
