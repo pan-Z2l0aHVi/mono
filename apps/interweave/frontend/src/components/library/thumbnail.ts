@@ -1,3 +1,8 @@
+// 缩略图的最长边与 JPEG 质量。与 Go 侧 media 包的 thumbnailMaxEdge / thumbnailJPEGQuality
+// 保持同一档：前端回填的捕获图和后端生成的缩略图在视觉上应当一致。
+export const THUMBNAIL_MAX_EDGE = 320
+export const THUMBNAIL_JPEG_QUALITY = 0.82
+
 export const videoFrameRatio = 0.25
 
 export function videoFrameCandidates(duration: number) {

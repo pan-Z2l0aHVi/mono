@@ -80,6 +80,8 @@ function createRuntime(overrides: Partial<LibraryRuntime> = {}): LibraryRuntime 
     defaultOpenWith: async () => '',
     openExternal: async () => {},
     resourceMediaURL: () => null,
+    resourceThumbnailURL: () => null,
+    saveSourceThumbnail: async () => {},
     pendingFilePreviewURL: () => null,
     subscribeToDroppedFiles: () => () => {},
     subscribeToPasteFileRequest: () => () => {},
@@ -144,6 +146,45 @@ describe('useLibraryRuntime', () => {
     expect(resourceMediaURL).not.toHaveBeenCalled()
     expect(subscribeToDroppedFiles).not.toHaveBeenCalled()
     expect(subscribeToPasteFileRequest).not.toHaveBeenCalled()
+  })
+
+  const CAPTURE_URL =
+    'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg=='
+
+  it('缩略图回填：同一 Source 的并发捕获只在第一个在途请求里上传，dataURL 转 Blob 交给 runtime', async () => {
+    let release!: () => void
+    const gate = new Promise<void>(resolve => {
+      release = resolve
+    })
+    const saveSourceThumbnail = vi.fn<LibraryRuntime['saveSourceThumbnail']>(async () => {
+      await gate
+    })
+    const controller = useLibraryRuntime(createRuntime({ saveSourceThumbnail }))
+
+    const first = controller.saveSourceThumbnail('source-inline', CAPTURE_URL)
+    const second = controller.saveSourceThumbnail('source-inline', CAPTURE_URL)
+    expect(second).toBe(first)
+
+    release()
+    await Promise.all([first, second])
+    expect(saveSourceThumbnail).toHaveBeenCalledExactlyOnceWith('source-inline', expect.any(Blob))
+
+    // 在途槽已释放：新的捕获可以再次上传。
+    await controller.saveSourceThumbnail('source-inline', CAPTURE_URL)
+    expect(saveSourceThumbnail).toHaveBeenCalledTimes(2)
+  })
+
+  it('缩略图回填失败被吞掉并释放去重槽，不污染 controller.error', async () => {
+    const saveSourceThumbnail = vi.fn<LibraryRuntime['saveSourceThumbnail']>(async () => {
+      throw new Error('network down')
+    })
+    const controller = useLibraryRuntime(createRuntime({ saveSourceThumbnail }))
+
+    await expect(controller.saveSourceThumbnail('source-inline', CAPTURE_URL)).resolves.toBeUndefined()
+    expect(controller.error.value).toBe('')
+
+    await controller.saveSourceThumbnail('source-inline', CAPTURE_URL)
+    expect(saveSourceThumbnail).toHaveBeenCalledTimes(2)
   })
 
   it('添加与删除使用 runtime 返回的内联 DTO 更新 store', async () => {

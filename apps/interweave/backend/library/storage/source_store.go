@@ -77,6 +77,19 @@ func (SourceStore) ListFileSourceLocations(ctx context.Context, q Queryer) ([]st
 	return collectRows(rows, scanString)
 }
 
+// 返回库内全部文件 Source 的完整模型；派生数据（缩略图缓存）的归属清理以此为名单。
+func (SourceStore) ListFileSources(ctx context.Context, q Queryer) ([]SourceModel, error) {
+	rows, err := q.QueryContext(ctx, `
+		SELECT id, resource_id, type, location, available, is_preferred, order_index, metadata_json, created_at, updated_at
+		FROM sources WHERE type = 'file'
+	`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	return collectRows(rows, scanSource)
+}
+
 // 按位置与类型反查 Source。重复 Source 不做去重（CONTEXT.md「重复 Source」）：
 // 同一位置天然返回全部对应记录，调用方按各自需要决定是否折叠。
 func (SourceStore) ListSourcesByLocations(ctx context.Context, q Queryer, srcType SourceType, locations []string) ([]SourceModel, error) {

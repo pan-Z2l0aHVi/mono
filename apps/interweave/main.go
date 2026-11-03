@@ -37,6 +37,26 @@ func getDatabasePath() (string, error) {
 	return filepath.Join(appDir, "library.db"), nil
 }
 
+// pruneThumbnails 按库内现行文件 Source 名单清一次过期缩略图。
+// 原文件暂不可 stat 的 Source（离线归档盘）全部保留，等可用后再清。
+func pruneThumbnails(sources storage.SourceStore, query storage.Queryer, thumbs *libraryMedia.ThumbnailStore) {
+	ctx := context.Background()
+	models, err := sources.ListFileSources(ctx, query)
+	if err != nil {
+		log.Printf("interweave: thumbnail prune skipped: %v", err)
+		return
+	}
+	entries := make([]libraryMedia.ThumbnailPruneEntry, 0, len(models))
+	for _, source := range models {
+		entry := libraryMedia.ThumbnailPruneEntry{SourceID: source.ID}
+		if info, err := os.Stat(source.Location); err == nil && info.Mode().IsRegular() {
+			entry.Version = libraryMedia.ThumbnailVersion(info)
+		}
+		entries = append(entries, entry)
+	}
+	thumbs.PruneStale(entries)
+}
+
 func addPasteFilesMenuItem(menu *application.Menu, onPaste func()) bool {
 	editMenu := menu.FindByRole(application.EditMenu)
 	if editMenu == nil {
@@ -94,8 +114,22 @@ func main() {
 	if watcher != nil {
 		mediaReporter = watcher
 	}
-	mediaHandler := libraryMedia.NewHandler(storage.SourceStore{}, db.SqlDB(), pendingPreviews, mediaReporter)
+	// 缩略图缓存与库文件同级；目录建不出来只降级缩略图能力（读取一律 404，
+	// 前端回退原图），不影响媒体读取与库本身。
+	var thumbs *libraryMedia.ThumbnailStore
+	if store, err := libraryMedia.NewThumbnailStore(filepath.Join(filepath.Dir(dbPath), "thumbnails")); err != nil {
+		log.Printf("interweave: thumbnail cache unavailable: %v", err)
+	} else {
+		thumbs = store
+	}
+	mediaHandler := libraryMedia.NewHandler(storage.SourceStore{}, db.SqlDB(), pendingPreviews, thumbs, mediaReporter)
 	defer mediaHandler.Close()
+
+	// 启动清理一次过期版本：文件被外部改写或 Source 被删除后，旧文件名不会再生效。
+	// 失败只留垃圾不留错误，不阻塞启动。
+	if thumbs != nil {
+		go pruneThumbnails(storage.SourceStore{}, db.SqlDB(), thumbs)
+	}
 
 	// 仅暴露产品与受控原生能力，避免基础设施绕过后端边界。
 	app := application.New(application.Options{

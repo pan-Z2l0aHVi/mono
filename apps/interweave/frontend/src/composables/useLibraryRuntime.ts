@@ -276,6 +276,32 @@ export function useLibraryRuntime(injectedRuntime?: LibraryRuntime) {
     return runtime.resourceMediaURL(sourceId)
   }
 
+  function resourceThumbnailURL(sourceId: string) {
+    if (!runtime.isAvailable) return null
+    return runtime.resourceThumbnailURL(sourceId)
+  }
+
+  /*
+   * 缩略图回填是尽力而为的缓存预热：同一 Source 的并发捕获只在第一个在途请求里真正上传，
+   * 失败静默吞掉——列表下一次挂载还有机会补上，不值得为此打断用户或弹错误。
+   */
+  const thumbnailSaves = new Map<string, Promise<void>>()
+
+  function saveSourceThumbnail(sourceId: string, dataUrl: string) {
+    const inFlight = thumbnailSaves.get(sourceId)
+    if (inFlight) return inFlight
+    const save = (async () => {
+      const blob = await (await fetch(dataUrl)).blob()
+      await runtime.saveSourceThumbnail(sourceId, blob)
+    })()
+      .catch(() => {})
+      .finally(() => {
+        thumbnailSaves.delete(sourceId)
+      })
+    thumbnailSaves.set(sourceId, save)
+    return save
+  }
+
   function subscribeToDroppedFiles(listener: (paths: string[]) => void) {
     if (!runtime.isAvailable) return () => {}
     return runtime.subscribeToDroppedFiles(listener)
@@ -314,6 +340,8 @@ export function useLibraryRuntime(injectedRuntime?: LibraryRuntime) {
     defaultOpenWith,
     openExternal,
     resourceMediaURL,
+    resourceThumbnailURL,
+    saveSourceThumbnail,
     subscribeToDroppedFiles,
     subscribeToPasteFileRequest,
     subscribeToSourceAvailability,

@@ -28,6 +28,10 @@ const props = defineProps<{
   /** 列表总条数。aria-setsize 要报它，否则读屏会把长度念成窗口内的行数。 */
   total: number
   mediaUrl: string | null
+  /** 服务端缩略图地址；缺省时回退原图/视频捕获（测试与浏览器预览）。 */
+  thumbnailUrl?: string | null
+  /** 捕获成功后的回填回调；缺省表示本表面不回填。 */
+  saveThumbnail?: ((dataUrl: string) => void) | null
   active: boolean
   checked: boolean
   checkedAbove: boolean
@@ -118,18 +122,14 @@ function handleNameChange(event: WebUiEvent<WebUiEditableText, 'change'>) {
     @contextmenu="emit('contextmenu', resource, $event)"
   >
     <!--
-      focus 环由 assets/global.css 的页面级规则画：那条规则命中
-      [tabindex]:not([tabindex='-1'])。roving 之后只有活动行满足后者，环因此只出现在当前
-      活动行上，键盘用户看得出自己在哪一行。
+      行不画 focus ring（用户裁决：选中态只保留暗底）。页面级规则原本命中
+      [tabindex]:not([tabindex='-1'])，由 assets/global.css 的行豁免规则压掉；键盘焦点指示由
+      活动行的暗底（active/checked 背景）承担，不在这里补 focus-visible 覆盖——页面规则在
+      @layer 外，Tailwind 工具类压不过它（实测过），豁免只能写在同一层的 global.css 里。
 
       过渡只列 background-color（与 AppNav 的 navItemClass 同一个理由）：Tailwind 的
-      transition-colors 包含 outline-color，而它的初始计算值是 currentcolor——从祖先继承来的
-      近黑文字色。留着它，Tab 过去时浏览器会把 focus 环从近黑补间 100ms 到目标浅蓝，
-      表现为边缘先黑一下再变蓝。行上真正会变的只有背景色。
-
-      别在这里加本地的 focus-visible:outline-* 覆盖：那条页面规则写在 `@import 'tailwindcss'`
-      之后、不属于任何 @layer，而 Tailwind 工具类在 @layer utilities 里——层外样式优先级更高，
-      本地覆盖会被静默压掉（实测过：outline-offset 写了 -2px，读出来仍是页面的 2px）。
+      transition-colors 包含 outline-color，行上不再有 ring，但 hover 与选中底色之间的
+      补间仍然只需要背景色一项。
     -->
     <web-ui-checkbox
       v-if="selectionMode"
@@ -140,7 +140,13 @@ function handleNameChange(event: WebUiEvent<WebUiEditableText, 'change'>) {
       @change="handleChange"
     />
 
-    <ResourceThumbnail :kind="resource.kind" :source="source" :media-url="mediaUrl" />
+    <ResourceThumbnail
+      :kind="resource.kind"
+      :source="source"
+      :media-url="mediaUrl"
+      :thumbnail-url="thumbnailUrl"
+      :save-thumbnail="saveThumbnail"
+    />
 
     <div class="flex min-w-0 flex-1 flex-col gap-1">
       <div class="flex min-w-0 items-center gap-1.5">
