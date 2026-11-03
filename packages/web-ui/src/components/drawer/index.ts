@@ -21,6 +21,7 @@ import { defineOpenOverlay, type OpenOverlayHandle } from '@/shared/overlay/open
 import { defineScrollLockLease } from '@/shared/scroll-lock/scroll-lock'
 import { prefersReducedMotion } from '@/shared/theme/reduced-motion'
 
+import { definePageShift } from './page-shift'
 import style from './style.css?inline'
 
 const ALLOWED_PLACEMENTS = ['right', 'left', 'top', 'bottom'] as const
@@ -269,6 +270,16 @@ export class WebUiDrawer extends LitElement {
    */
   @property({ type: Boolean, reflect: true }) override draggable = false
 
+  /**
+   * 打开时整页朝 drawer 进场方向让开一段距离：横向 1 个轴单位 a 是 `1vw`、纵向是 `1vh`，
+   * 第 1 层让开 16a，之后每层减半，等比和收敛到 32a、不会超过。
+   * 位移写在 `documentElement` 上：页面里的 fixed 内容会一起走，top layer 中的
+   * `<dialog>`（含本 drawer 自己）不受影响。位移以 `vw` / `vh` 写在根元素上，视口宽高
+   * 变化时跟着重算，不需要重新打开。
+   * 嵌套与同级 drawer 都按打开先后排层。reduce 档位下整套不生效。
+   */
+  @property({ type: Boolean, reflect: true, attribute: 'page-shift' }) pageShift = false
+
   private get dialog() {
     return this.shadowRoot?.querySelector('dialog') ?? null
   }
@@ -318,6 +329,17 @@ export class WebUiDrawer extends LitElement {
   private readonly _nestedLayers = defineNestedDrawerLayers().make({
     getDialog: () => this.dialog,
     getPlacement: () => this._placement
+  })
+  /*
+   * 整页让开（page-shift）。轴向与符号都取自拖拽那套：页面朝 drawer 的**进场方向**移动，
+   * 即闭合方向的反向，所以符号是 `-_dragCloseSign`。两者共用同一张 placement 表，
+   * 新增 placement 时只需要改一处。
+   */
+  private readonly _pageShift = definePageShift().make({
+    getHost: () => this,
+    isEnabled: () => this.pageShift,
+    getAxis: () => this._dragAxis,
+    getSign: () => -this._dragCloseSign
   })
   /*
    * 开启态 overlay（issue #120 Block 1）。drawer 把自己的原生 <dialog> 登记为 panel，使挂在
@@ -780,6 +802,9 @@ export class WebUiDrawer extends LitElement {
       // presence.reconcile 已让打开态的 dialog 同步回到 top layer（此刻 dialog.open
       // 为真），层序 depth 可正确计数，与 updated() 的 register 时机一致。
       this._nestedLayers.register()
+      // 重挂载前已让开过的页面停在位移位：push 的动画起点取当前计算值，与终点相同
+      // 时不起动画，页面不会被再推一次、也不会先弹回原位再推出去。
+      this._pageShift.push()
     }
     this._syncScrollLock()
     this._reclaimIfOpen()
@@ -792,6 +817,7 @@ export class WebUiDrawer extends LitElement {
   override disconnectedCallback() {
     super.disconnectedCallback()
     this._nestedLayers.dispose()
+    this._pageShift.dispose()
     this._dragGesture?.destroy()
     this._dragGesture = null
     this._presence.dispose()
@@ -932,6 +958,9 @@ export class WebUiDrawer extends LitElement {
       }
     }
     if (props.has('open') || props.has('noScrollLock')) this._syncScrollLock()
+    // pageShift 与 open 同一条同步：打开期间关掉该属性要立刻把已经让开的页面收回来，
+    // 只盯 open 会留下一层没人负责的位移。
+    if (props.has('open') || props.has('pageShift')) this._syncPageShift()
   }
 
   private handleTransitionEnd(e: TransitionEvent) {
@@ -1096,6 +1125,20 @@ export class WebUiDrawer extends LitElement {
 
   private _syncScrollLock(isOpen = this.open) {
     this._scrollLock.sync(isOpen && !this.noScrollLock)
+  }
+
+  /*
+   * 整页让开只跟 open 与该属性的开关走，不跟拖拽走：拖动 panel 时页面停在原地。
+   * 手势要的是「panel 跟手」，页面若按同一增量跟着滑，drawer 相对视口的位置反而没变，
+   * 跟手感被抵消掉一半；退场后回到哪个深度由栈决定，与拖了多少无关。
+   *
+   * 分支条件带 pageShift：只看 open 的话，打开期间关掉该属性走的是 push()（内部按开关
+   * 直接返回），已经让开的页面没人收回。pop() 对没进过栈的宿主是无操作，所以这里
+   * 可以无条件调用。
+   */
+  private _syncPageShift() {
+    if (this.open && this.pageShift) this._pageShift.push()
+    else this._pageShift.pop()
   }
 
   override render() {

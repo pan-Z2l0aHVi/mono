@@ -10,8 +10,7 @@
       <span class="text-xs text-(--wui-color-text-secondary)">Saved</span>
     </div>
     <p>
-      The content of the header slot is entirely up to the consumer; the close button is still provided by the
-      component.
+      The content of the header slot is entirely up to your app; the close button is still provided by the component.
     </p>
   </web-ui-drawer>
 

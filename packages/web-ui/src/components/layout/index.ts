@@ -516,6 +516,7 @@ export class WebUiLayout extends LitElement {
         ?open="${this.sidebarOpen}"
         controlled
         draggable
+        page-shift
         aria-dialog-label=${resolveBuiltinLabelSet(this.ariaLabels, 'mainNavigation')}
         @open-change="${this._onDrawerChange}"
         style="${styleMap({

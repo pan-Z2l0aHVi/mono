@@ -94,6 +94,36 @@ async function sampleTransitions(el: WebUiDrawer, frames = 12): Promise<string[]
   return [...seen]
 }
 
+function pageMarker(): HTMLElement {
+  const el = document.createElement('div')
+  el.style.cssText = 'width:10px;height:10px;margin-left:120px;margin-top:80px'
+  document.body.append(el)
+  return el
+}
+
+/** 默认 placement（right）第 1 层的让开量：16 个轴单位，横向 1 个单位是 1vw。 */
+function firstLayerShift(): number {
+  return 16 * (window.innerWidth / 100)
+}
+
+/**
+ * 在若干帧内采样 documentElement 上出现过的动画。
+ * 页面让开是一条 WAAPI，单帧读会撞上「动画还没诞生」的空窗；控制组用同一个 helper
+ * 采到非空，负向那条「0 条」才有区分力。
+ */
+async function samplePageAnimations(frames = 12): Promise<Animation[]> {
+  const seen = new Set<Animation>()
+  for (let index = 0; index < frames; index += 1) {
+    for (const animation of document.documentElement.getAnimations()) seen.add(animation)
+    await waitForFrame()
+  }
+  return [...seen]
+}
+
+async function waitPageSettled(): Promise<void> {
+  await pollUntil(() => document.documentElement.getAnimations().length === 0, 'page shift did not settle', 10_000)
+}
+
 afterEach(() => document.body.replaceChildren())
 
 /*
@@ -177,5 +207,45 @@ describe('减少动效下的 Drawer 拖拽关闭（浏览器）', () => {
     expect(full.open).toBe(true)
     await pollUntil(() => !full.open, 'drawer did not close after the settle sequence', 10_000)
     expect(getDialog(full).open).toBe(false)
+  })
+})
+
+/*
+ * 减少动效下的整页让开（page-shift）。
+ *
+ * reduce 下整套不生效，**静止位移也不写**：drawer 自己的 CSS 在 reduce 下把 panel 的
+ * transform/translate/scale 全部归零，页面单独滑出去会读成一个缺陷。
+ *
+ * 判据取页面 marker 的走位（几何结果），动画条数只作旁证：「一条动画都没有」在
+ * 「压根没让开」和「让开了但没有过渡」两种实现下都成立，光靠它回答不了问题。
+ * 控制组走 `mountDrawer('full')` —— 系统仍是 reduce，只有主题档位不同，
+ * 于是两组差值精确归因到 `prefersReducedMotion()` 那一次判断。
+ */
+describe('减少动效下的整页让开（浏览器）', () => {
+  it('系统 reduce：页面不让开也不产生动画（对照组 theme full 让开同样距离）', async () => {
+    const reduced = mountDrawer(null)
+    reduced.pageShift = true
+    const reducedMarker = pageMarker()
+    await reduced.updateComplete
+    await pollUntil(() => reducedMarker.getBoundingClientRect().width > 0, 'marker did not lay out')
+    const reducedRest = reducedMarker.getBoundingClientRect().left
+
+    await openDrawer(reduced)
+    expect(await samplePageAnimations()).toHaveLength(0)
+    expect(reducedMarker.getBoundingClientRect().left).toBeCloseTo(reducedRest, 1)
+    expect(reduced.open).toBe(true)
+
+    const full = mountDrawer('full')
+    full.pageShift = true
+    const fullMarker = pageMarker()
+    await full.updateComplete
+    await pollUntil(() => fullMarker.getBoundingClientRect().width > 0, 'marker did not lay out')
+    const fullRest = fullMarker.getBoundingClientRect().left
+
+    await openDrawer(full)
+    // 先采样再等收敛：让开动画跑完就从 getAnimations() 里消失，顺序反了控制组会假负。
+    expect(await samplePageAnimations()).not.toHaveLength(0)
+    await waitPageSettled()
+    expect(fullMarker.getBoundingClientRect().left).toBeCloseTo(fullRest - firstLayerShift(), 1)
   })
 })

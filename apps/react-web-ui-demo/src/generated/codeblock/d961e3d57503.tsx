@@ -18,7 +18,7 @@ export default function Demo() {
             setOpen(true)
             return
           }
-          // Not writing open back: the drawer springs back to the open position, so the consumer can reject this close.
+          // Not writing open back: the drawer springs back to the open position, so your app can reject this close.
           setRejected(true)
         }}
       >
