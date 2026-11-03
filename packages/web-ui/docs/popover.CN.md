@@ -1,6 +1,6 @@
 # Popover
 
-锚定在触发元素上的弹出层。它支持 click、hover、manual 三种触发方式；`trigger` 插槽放 trigger，默认插槽放 panel 内容。
+锚定在触发元素上的弹出层。`trigger` 用空格分隔的手势集合说明哪些操作能开合它，可写 `click`、`hover`、`focus`、`manual`；`trigger` 插槽放 trigger，默认插槽放 panel 内容。
 
 ## Samples
 
@@ -73,7 +73,7 @@ function onOpenChange(event: WebUiEvent<WebUiPopover, 'open-change'>) {
 
 ### Hover trigger
 
-`trigger="hover"` 由指针进出控制开合，带短暂延迟。指针从 trigger 移进 panel 不会收起。这个模式下 click 与 focus 都不触发。
+`trigger="hover"` 由指针进出控制开合，带短暂延迟。指针从 trigger 移进 panel 不会收起。这个取值下 click 与 focus 都不触发；要让指针和键盘都能开，把两个手势并排写：`trigger="hover focus"`。
 
 ```tsx
 import { useState } from 'react'
@@ -107,6 +107,62 @@ export default function Demo() {
       <div class="max-w-xs text-sm">悬停显示的 panel；移进 panel 内仍然开着，离开 100ms 后才收起。</div>
     </web-ui-popover>
     <output class="text-sm text-(--wui-color-text-secondary)">最后一次 detail.open = {{ last }}</output>
+  </div>
+</template>
+
+<script setup lang="ts">
+import { ref } from 'vue'
+
+const last = ref('—')
+</script>
+```
+
+### Focus trigger
+
+`trigger="focus"` 由键盘聚焦展开：判定跟浏览器的焦点环一致（`:focus-visible`），用鼠标点出来的聚焦不算。焦点离开 trigger 和 panel 之后收起。
+
+```tsx
+import { useState } from 'react'
+
+export default function Demo() {
+  const [last, setLast] = useState('—')
+
+  return (
+    <div className="flex w-full max-w-md flex-col items-start gap-3">
+      <div className="flex flex-wrap items-center gap-3">
+        <web-ui-popover trigger="focus" onopen-change={event => setLast(event.detail.open ? 'true' : 'false')}>
+          <web-ui-button slot="trigger" variant="secondary">
+            键盘聚焦
+          </web-ui-button>
+          <div className="max-w-xs text-sm">Tab 走到这个按钮时展开，焦点离开后收起；用鼠标点它不会开。</div>
+        </web-ui-popover>
+        <web-ui-popover trigger="click focus" placement="top">
+          <web-ui-button slot="trigger" variant="secondary">
+            点击或聚焦
+          </web-ui-button>
+          <div className="max-w-xs text-sm">点击切换开合，键盘聚焦直接展开。</div>
+        </web-ui-popover>
+      </div>
+      <output className="text-sm text-(--wui-color-text-secondary)">「键盘聚焦」最近一次 detail.open = {last}</output>
+    </div>
+  )
+}
+```
+
+```vue
+<template>
+  <div class="flex w-full max-w-md flex-col items-start gap-3">
+    <div class="flex flex-wrap items-center gap-3">
+      <web-ui-popover trigger="focus" @open-change="last = $event.detail.open ? 'true' : 'false'">
+        <web-ui-button slot="trigger" variant="secondary">键盘聚焦</web-ui-button>
+        <div class="max-w-xs text-sm">Tab 走到这个按钮时展开，焦点离开后收起；用鼠标点它不会开。</div>
+      </web-ui-popover>
+      <web-ui-popover trigger="click focus" placement="top">
+        <web-ui-button slot="trigger" variant="secondary">点击或聚焦</web-ui-button>
+        <div class="max-w-xs text-sm">点击切换开合，键盘聚焦直接展开。</div>
+      </web-ui-popover>
+    </div>
+    <output class="text-sm text-(--wui-color-text-secondary)">「键盘聚焦」最近一次 detail.open = {{ last }}</output>
   </div>
 </template>
 
@@ -209,15 +265,15 @@ function close() {
 
 ### Props
 
-| 名称               | 说明                                             | 类型                             | 默认值     |
-| ------------------ | ------------------------------------------------ | -------------------------------- | ---------- |
-| `open`             | 弹出层可见性。                                   | `boolean`                        | `false`    |
-| `disabled`         | 禁用状态。                                       | `boolean`                        | `false`    |
-| `placement`        | panel 位置，默认 `bottom`。                      | `Placement`                      | `'bottom'` |
-| `offset`           | 与锚点的距离（px）。                             | `number`                         | `8`        |
-| `trigger`          | 触发方式：`click`（默认）、`hover`、`manual`。   | `'click' \| 'hover' \| 'manual'` | `'click'`  |
-| `portal`           | 在主题的 overlay 容器中渲染。                    | `boolean`                        | `false`    |
-| `overlayContainer` | 显式指定 panel 挂载的 overlay 容器（property）。 | `OverlayContainer`               | —          |
+| 名称               | 说明                                                          | 类型               | 默认值     |
+| ------------------ | ------------------------------------------------------------- | ------------------ | ---------- |
+| `open`             | 弹出层可见性。                                                | `boolean`          | `false`    |
+| `disabled`         | 禁用状态。                                                    | `boolean`          | `false`    |
+| `placement`        | panel 位置，默认 `bottom`。                                   | `Placement`        | `'bottom'` |
+| `offset`           | 与锚点的距离（px）。                                          | `number`           | `8`        |
+| `trigger`          | 触发手势集合，空格分隔：`click`、`hover`、`focus`、`manual`。 | `string`           | `'click'`  |
+| `portal`           | 在主题的 overlay 容器中渲染。                                 | `boolean`          | `false`    |
+| `overlayContainer` | 显式指定 panel 挂载的 overlay 容器（property）。              | `OverlayContainer` | —          |
 
 ### Events
 
@@ -242,9 +298,16 @@ function close() {
 
 ### 行为说明
 
-Hover 模式由指针进出触发，带延迟。
+`trigger` 里的每个手势各接各的事件，可以任意组合：
 
-Click 模式点击切换。Manual 模式不响应悬停，点 panel 外与 Escape 也不关闭。trigger 点击与 `show()` / `close()` 都能改 `open`，其中程序式调用不派发 `open-change`。
+- `click`：点 trigger 切换；点 panel 外、或者焦点离开 trigger 和 panel 之后收起。
+- `hover`：指针进 trigger 延迟 100ms 展开，离开 trigger 与 panel 后延迟 100ms 收起；触屏指针不算。
+- `focus`：键盘聚焦（`:focus-visible`）立即展开；焦点离开 trigger 和 panel 之后收起。
+- `manual`：不接受任何自动收起，点 panel 外、失焦与 Escape 都不关。
+
+按 Escape 收起由覆盖层统一仲裁：`manual` 之外都能关，`manual` 会把这次按键接住，不外溢到外层 overlay。trigger 点击与 `show()` / `close()` 都能改 `open`，其中程序式调用不派发 `open-change`。
+
+`trigger` 里出现 `manual` 时整串只按 `manual` 处理；一个已知手势都没写时回退到默认的 `click`。
 
 ### trigger ARIA
 

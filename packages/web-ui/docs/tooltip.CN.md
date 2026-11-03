@@ -1,6 +1,6 @@
 # Tooltip
 
-tooltip 支持指针和焦点触发。`content` 属性提供纯文本，`content` 插槽可以放更丰富的内容。
+tooltip 的显示手势由 `trigger` 声明，默认是指针悬停加键盘聚焦。`content` 属性提供纯文本，`content` 插槽可以放更丰富的内容。
 
 ## Samples
 
@@ -132,7 +132,7 @@ const last = ref('—')
 
 ### Delay
 
-`show-delay` / `hide-delay` 控制指针进出时的显示与隐藏延迟，`0` 表示不等待。`disabled` 关闭触发：指针和焦点都不会让提示出现，已经显示的提示不会因为这条属性被收起，禁用状态下也不派发 `open-change`。
+`show-delay` / `hide-delay` 控制指针进出时的显示与隐藏延迟，`0` 表示不等待。`disabled` 关掉所有触发：指针、焦点和点击都不会让提示出现，已经显示的提示会立刻收起，等待中的延迟被取消；禁用期间不派发 `open-change`。
 
 ```tsx
 import { useState } from 'react'
@@ -192,21 +192,86 @@ const last = ref('—')
 </script>
 ```
 
+### Click trigger
+
+`trigger` 默认写的是 `hover focus`：指针悬停和键盘聚焦都能开。换成 `trigger="click"`，提示改由点 trigger 切换、点提示外面收起；换成 `trigger="manual"`，就只有 `open` 属性能控制它，指针、焦点和点击都不再触发。手势可以并排写：`trigger="hover focus click"`。
+
+```tsx
+import { useState } from 'react'
+
+export default function Demo() {
+  const [open, setOpen] = useState(false)
+  const [last, setLast] = useState('—')
+
+  return (
+    <div className="flex w-full max-w-md flex-col items-start gap-3">
+      <div className="flex flex-wrap items-center gap-3">
+        <web-ui-tooltip
+          content="点一下开，再点一下关"
+          trigger="click"
+          onopen-change={event => setLast(event.detail.open ? 'true' : 'false')}
+        >
+          <web-ui-button variant="secondary">点击提示</web-ui-button>
+        </web-ui-tooltip>
+        <web-ui-tooltip content="只跟着 open 走" trigger="manual" open={open}>
+          <web-ui-button variant="secondary" onClick={() => setOpen(value => !value)}>
+            切换 open
+          </web-ui-button>
+        </web-ui-tooltip>
+      </div>
+      <output className="text-sm text-(--wui-color-text-secondary)">
+        点击提示最近一次 detail.open = {last} · 写 open 不派发
+      </output>
+    </div>
+  )
+}
+```
+
+```vue
+<template>
+  <div class="flex w-full max-w-md flex-col items-start gap-3">
+    <div class="flex flex-wrap items-center gap-3">
+      <web-ui-tooltip
+        content="点一下开，再点一下关"
+        trigger="click"
+        @open-change="last = $event.detail.open ? 'true' : 'false'"
+      >
+        <web-ui-button variant="secondary">点击提示</web-ui-button>
+      </web-ui-tooltip>
+      <web-ui-tooltip content="只跟着 open 走" trigger="manual" :open="open">
+        <web-ui-button variant="secondary" @click="open = !open">切换 open</web-ui-button>
+      </web-ui-tooltip>
+    </div>
+    <output class="text-sm text-(--wui-color-text-secondary)">
+      点击提示最近一次 detail.open = {{ last }} · 写 open 不派发
+    </output>
+  </div>
+</template>
+
+<script setup lang="ts">
+import { ref } from 'vue'
+
+const open = ref(false)
+const last = ref('—')
+</script>
+```
+
 ## API
 
 ### Props
 
-| 名称               | 说明                                             | 类型               | 默认值  |
-| ------------------ | ------------------------------------------------ | ------------------ | ------- |
-| `placement`        | tooltip 位置，默认 `top`。                       | `Placement`        | `'top'` |
-| `show-delay`       | 显示延迟（毫秒）。                               | `number`           | `200`   |
-| `hide-delay`       | 隐藏延迟（毫秒）。                               | `number`           | `100`   |
-| `disabled`         | 禁用状态。                                       | `boolean`          | `false` |
-| `offset`           | 与 trigger 的距离（px）。                        | `number`           | `6`     |
-| `content`          | 提示文本，是 `content` 插槽的纯文本替代。        | `string`           | `''`    |
-| `open`             | 可见性。                                         | `boolean`          | `false` |
-| `portal`           | 在主题的 overlay 容器中渲染。                    | `boolean`          | `false` |
-| `overlayContainer` | 显式指定 panel 挂载的 overlay 容器（property）。 | `OverlayContainer` | —       |
+| 名称               | 说明                                                          | 类型               | 默认值          |
+| ------------------ | ------------------------------------------------------------- | ------------------ | --------------- |
+| `placement`        | tooltip 位置，默认 `top`。                                    | `Placement`        | `'top'`         |
+| `trigger`          | 触发手势集合，空格分隔：`click`、`hover`、`focus`、`manual`。 | `string`           | `'hover focus'` |
+| `show-delay`       | 显示延迟（毫秒）。                                            | `number`           | `200`           |
+| `hide-delay`       | 隐藏延迟（毫秒）。                                            | `number`           | `100`           |
+| `disabled`         | 禁用状态。                                                    | `boolean`          | `false`         |
+| `offset`           | 与 trigger 的距离（px）。                                     | `number`           | `6`             |
+| `content`          | 提示文本，是 `content` 插槽的纯文本替代。                     | `string`           | `''`            |
+| `open`             | 可见性。                                                      | `boolean`          | `false`         |
+| `portal`           | 在主题的 overlay 容器中渲染。                                 | `boolean`          | `false`         |
+| `overlayContainer` | 显式指定 panel 挂载的 overlay 容器（property）。              | `OverlayContainer` | —               |
 
 ### Events
 
@@ -222,6 +287,15 @@ const last = ref('—')
 | `content` | 提示 panel 内容，替代 `content` 属性。 |
 
 ### 行为说明
+
+`trigger` 里的每个手势各接各的事件，可以任意组合：
+
+- `hover`：指针进入按 `show-delay` 显示，离开按 `hide-delay` 收起；触屏指针不算。
+- `focus`：键盘聚焦（`:focus-visible`）直接显示，不播入场动画；焦点离开立即收起。
+- `click`：点 trigger 切换，点提示外面收起；键盘激活（Enter / Space）与聚焦同等对待，不播入场动画。
+- `manual`：不接受任何自动开合，只有 `open` 属性能改变它。
+
+`trigger` 里出现 `manual` 时整串只按 `manual` 处理；一个已知手势都没写时回退到默认的 `hover focus`。
 
 `open` 是组件自行管理的可见性属性。指针和焦点触发会更新它，直接给 property 赋值同样会显示或隐藏提示。`open-change` 只在用户触发的开合时派发。
 

@@ -1,6 +1,6 @@
 # Popover
 
-A popover anchored to a trigger element. It supports three trigger modes: click, hover, and manual. The `trigger` slot holds the trigger and the default slot holds the panel content.
+A popover anchored to a trigger element. `trigger` declares which gestures can open and close it, as a space-separated set of `click`, `hover`, `focus`, and `manual`. The `trigger` slot holds the trigger and the default slot holds the panel content.
 
 ## Samples
 
@@ -73,7 +73,7 @@ function onOpenChange(event: WebUiEvent<WebUiPopover, 'open-change'>) {
 
 ### Hover trigger
 
-`trigger="hover"` opens and closes as the pointer enters and leaves, with a short delay. Moving the pointer from the trigger into the panel does not collapse it. In this mode neither click nor focus triggers it.
+`trigger="hover"` opens and closes as the pointer enters and leaves, with a short delay. Moving the pointer from the trigger into the panel does not collapse it. In this value neither click nor focus triggers it; to accept both the pointer and the keyboard, write the gestures side by side: `trigger="hover focus"`.
 
 ```tsx
 import { useState } from 'react'
@@ -111,6 +111,66 @@ export default function Demo() {
       </div>
     </web-ui-popover>
     <output class="text-sm text-(--wui-color-text-secondary)">last detail.open = {{ last }}</output>
+  </div>
+</template>
+
+<script setup lang="ts">
+import { ref } from 'vue'
+
+const last = ref('—')
+</script>
+```
+
+### Focus trigger
+
+`trigger="focus"` opens on keyboard focus: the check matches the browser's own focus ring (`:focus-visible`), so focusing with a mouse click does not count. It closes once focus leaves the trigger and the panel.
+
+```tsx
+import { useState } from 'react'
+
+export default function Demo() {
+  const [last, setLast] = useState('—')
+
+  return (
+    <div className="flex w-full max-w-md flex-col items-start gap-3">
+      <div className="flex flex-wrap items-center gap-3">
+        <web-ui-popover trigger="focus" onopen-change={event => setLast(event.detail.open ? 'true' : 'false')}>
+          <web-ui-button slot="trigger" variant="secondary">
+            Keyboard focus
+          </web-ui-button>
+          <div className="max-w-xs text-sm">
+            Opens when Tab reaches this button and closes once focus leaves; clicking it does not open.
+          </div>
+        </web-ui-popover>
+        <web-ui-popover trigger="click focus" placement="top">
+          <web-ui-button slot="trigger" variant="secondary">
+            Click or focus
+          </web-ui-button>
+          <div className="max-w-xs text-sm">Click toggles it, keyboard focus opens it directly.</div>
+        </web-ui-popover>
+      </div>
+      <output className="text-sm text-(--wui-color-text-secondary)">Keyboard focus last detail.open = {last}</output>
+    </div>
+  )
+}
+```
+
+```vue
+<template>
+  <div class="flex w-full max-w-md flex-col items-start gap-3">
+    <div class="flex flex-wrap items-center gap-3">
+      <web-ui-popover trigger="focus" @open-change="last = $event.detail.open ? 'true' : 'false'">
+        <web-ui-button slot="trigger" variant="secondary">Keyboard focus</web-ui-button>
+        <div class="max-w-xs text-sm">
+          Opens when Tab reaches this button and closes once focus leaves; clicking it does not open.
+        </div>
+      </web-ui-popover>
+      <web-ui-popover trigger="click focus" placement="top">
+        <web-ui-button slot="trigger" variant="secondary">Click or focus</web-ui-button>
+        <div class="max-w-xs text-sm">Click toggles it, keyboard focus opens it directly.</div>
+      </web-ui-popover>
+    </div>
+    <output class="text-sm text-(--wui-color-text-secondary)">Keyboard focus last detail.open = {{ last }}</output>
   </div>
 </template>
 
@@ -215,15 +275,15 @@ function close() {
 
 ### Props
 
-| Name               | Description                                         | Type                             | Default    |
-| ------------------ | --------------------------------------------------- | -------------------------------- | ---------- |
-| `open`             | Popover visibility.                                 | `boolean`                        | `false`    |
-| `disabled`         | Disabled state.                                     | `boolean`                        | `false`    |
-| `placement`        | Panel placement; defaults to `bottom`.              | `Placement`                      | `'bottom'` |
-| `offset`           | Distance from the anchor (px).                      | `number`                         | `8`        |
-| `trigger`          | Trigger mode: `click` (default), `hover`, `manual`. | `'click' \| 'hover' \| 'manual'` | `'click'`  |
-| `portal`           | Renders in the theme overlay container.             | `boolean`                        | `false`    |
-| `overlayContainer` | Explicit Portal container (property).               | `OverlayContainer`               | —          |
+| Name               | Description                                                                | Type               | Default    |
+| ------------------ | -------------------------------------------------------------------------- | ------------------ | ---------- |
+| `open`             | Popover visibility.                                                        | `boolean`          | `false`    |
+| `disabled`         | Disabled state.                                                            | `boolean`          | `false`    |
+| `placement`        | Panel placement; defaults to `bottom`.                                     | `Placement`        | `'bottom'` |
+| `offset`           | Distance from the anchor (px).                                             | `number`           | `8`        |
+| `trigger`          | Trigger gesture set, space separated: `click`, `hover`, `focus`, `manual`. | `string`           | `'click'`  |
+| `portal`           | Renders in the theme overlay container.                                    | `boolean`          | `false`    |
+| `overlayContainer` | Explicit Portal container (property).                                      | `OverlayContainer` | —          |
 
 ### Events
 
@@ -248,9 +308,16 @@ function close() {
 
 ### Behavior
 
-Hover mode is driven by the pointer entering and leaving, with a delay.
+Each gesture in `trigger` wires up its own events, and the gestures combine freely:
 
-Click mode toggles on click. Manual mode does not respond to hover, and neither clicking outside the panel nor Escape closes it. Trigger clicks and `show()` / `close()` all change `open`; programmatic calls do not dispatch `open-change`.
+- `click`: clicking the trigger toggles the panel; it closes when you click outside the panel, or once focus leaves the trigger and the panel.
+- `hover`: the pointer entering the trigger opens it after a 100ms delay; leaving the trigger and the panel closes it after 100ms. Touch pointers do not count.
+- `focus`: keyboard focus (`:focus-visible`) opens it immediately; it closes once focus leaves the trigger and the panel.
+- `manual`: nothing closes it automatically — clicking outside, losing focus, and Escape all leave it open.
+
+Escape is arbitrated by the overlay stack: every value except `manual` closes on it, and `manual` swallows the key so it does not reach an outer overlay. Both the trigger click and `show()` / `close()` change `open`; programmatic calls do not dispatch `open-change`.
+
+When `manual` appears in `trigger` the whole value acts as `manual` alone; when it names no known gesture it falls back to the default `click`.
 
 ### trigger ARIA
 

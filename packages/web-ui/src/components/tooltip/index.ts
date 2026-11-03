@@ -12,8 +12,12 @@ import { defineAnchoredPanel } from '@/shared/overlay/anchored-panel'
 import { defineOpenOverlay } from '@/shared/overlay/open-overlay'
 import { FLOATING_PLACEMENTS } from '@/shared/overlay/placement-props'
 import { defineOverlayPortal, type OverlayContainer, type OverlayPortal } from '@/shared/overlay/portal'
+import { hasTriggerMode, normalizeTriggerSet, type OverlayTriggerMode } from '@/shared/overlay/trigger-props'
 
 import style from './style.css?inline'
+
+/** 指针悬停与键盘聚焦是 tooltip 的常驻手势；`manual` 表示只由 `open` 控制。 */
+const DEFAULT_TRIGGERS = ['hover', 'focus'] as const
 
 let visibleTooltipCount = 0
 let tooltipIdCounter = 0
@@ -32,6 +36,17 @@ export class WebUiTooltip extends LitElement {
     this.requestUpdate('placement', old)
   }
   private _placement: Placement = 'top'
+
+  @property({ type: String, reflect: true })
+  get trigger(): string {
+    return this._trigger
+  }
+  set trigger(v: string | readonly OverlayTriggerMode[]) {
+    const old = this._trigger
+    this._trigger = normalizeTriggerSet(v, DEFAULT_TRIGGERS)
+    this.requestUpdate('trigger', old)
+  }
+  private _trigger: string = DEFAULT_TRIGGERS.join(' ')
 
   @property({ type: Number, attribute: 'show-delay' })
   get showDelay(): number {
@@ -120,18 +135,12 @@ export class WebUiTooltip extends LitElement {
   override connectedCallback() {
     super.connectedCallback()
     this._overlay.resume()
-    this.addEventListener('pointerenter', this._onPointerEnter)
-    this.addEventListener('pointerleave', this._onPointerLeave)
-    this.addEventListener('focusin', this._onFocusIn)
-    this.addEventListener('focusout', this._onFocusOut)
+    this._syncTriggerListeners()
   }
 
   override disconnectedCallback() {
     super.disconnectedCallback()
-    this.removeEventListener('pointerenter', this._onPointerEnter)
-    this.removeEventListener('pointerleave', this._onPointerLeave)
-    this.removeEventListener('focusin', this._onFocusIn)
-    this.removeEventListener('focusout', this._onFocusOut)
+    this._clearTriggerListeners()
     clearTimeout(this._showTimer)
     clearTimeout(this._hideTimer)
     // 停止帧调度；撤销登记由 _panel.dispose() 完成（handle 归它持有）。
@@ -158,6 +167,12 @@ export class WebUiTooltip extends LitElement {
   }
 
   protected override updated(changed: Map<string, unknown>) {
+    if (changed.has('trigger')) {
+      this._clearTriggerListeners()
+      clearTimeout(this._showTimer)
+      clearTimeout(this._hideTimer)
+      this._syncTriggerListeners()
+    }
     if (changed.has('portal') || changed.has('overlayContainer')) {
       // 同帧 open + reconfigure 可能重复建事务；invalidate 保证 reconfigure 是当前唯一帧回调。
       this._overlay.invalidate()
@@ -183,6 +198,46 @@ export class WebUiTooltip extends LitElement {
       this._syncPortalContent()
       if (this.open) this._syncDescription()
     }
+  }
+
+  private _syncTriggerListeners() {
+    if (hasTriggerMode(this.trigger, 'hover')) {
+      this.addEventListener('pointerenter', this._onPointerEnter)
+      this.addEventListener('pointerleave', this._onPointerLeave)
+    }
+    if (hasTriggerMode(this.trigger, 'focus')) {
+      this.addEventListener('focusin', this._onFocusIn)
+      this.addEventListener('focusout', this._onFocusOut)
+    }
+    if (hasTriggerMode(this.trigger, 'click')) document.addEventListener('click', this._onClickOutside)
+  }
+
+  private _clearTriggerListeners() {
+    this.removeEventListener('pointerenter', this._onPointerEnter)
+    this.removeEventListener('pointerleave', this._onPointerLeave)
+    this.removeEventListener('focusin', this._onFocusIn)
+    this.removeEventListener('focusout', this._onFocusOut)
+    document.removeEventListener('click', this._onClickOutside)
+  }
+
+  private _onTriggerClick = (event: MouseEvent) => {
+    if (this.disabled || !hasTriggerMode(this.trigger, 'click')) return
+    clearTimeout(this._showTimer)
+    clearTimeout(this._hideTimer)
+    // 键盘激活（detail 0）与聚焦同等对待：不播入场动画。
+    if (this.open) this._hide()
+    else this._show(event.detail === 0)
+  }
+
+  private _onClickOutside = (event: MouseEvent) => {
+    if (!this.open) return
+    /*
+     * 在监听器内部判定：composedPath() 在派发结束后会被清空。trigger 及其 light DOM
+     * 内容都在宿主路径里；portal 后的 panel 挂在主题的 overlay 容器里，走 handle 判定。
+     */
+    if (event.composedPath().includes(this)) return
+    if (this._panel.getHandle()?.containsEvent(event)) return
+    this._hide()
   }
 
   private _onPointerEnter = (e: PointerEvent) => {
@@ -362,7 +417,10 @@ export class WebUiTooltip extends LitElement {
   override render() {
     return html`
       <div class="tooltip-anchor">
-        <div class="tooltip-trigger"><slot @slotchange=${this._onTriggerSlotChange}></slot></div>
+        <!-- 点击只挂在 trigger 包装层：panel 里的内容被点击不该把提示切走。 -->
+        <div class="tooltip-trigger" @click=${this._onTriggerClick}>
+          <slot @slotchange=${this._onTriggerSlotChange}></slot>
+        </div>
         <div
           class="tooltip-panel wui-floating-panel wui-glass"
           hidden
