@@ -59,7 +59,7 @@ function leftSpans(total: number, sizes: readonly number[]): ClusterSpan[] {
   let from = 0
   let index = 0
   while (from < total) {
-    const size = sizes[Math.min(index, sizes.length - 1)] ?? 1
+    const size = sizes[Math.min(index, sizes.length - 1)]
     const to = Math.min(from + size, total)
     spans.push({ from, to })
     from = to
@@ -116,7 +116,7 @@ function amountSpans(value: string, ends: number[]): ClusterSpan[] {
  */
 function runOf(value: string, ends: number[], span: ClusterSpan, hasGap: boolean): GroupedRun {
   const start = span.from === 0 ? 0 : ends[span.from - 1]
-  const end = ends[span.to - 1] ?? value.length
+  const end = ends[span.to - 1]
 
   if (!hasGap) return { body: value.slice(start, end), gap: '' }
 

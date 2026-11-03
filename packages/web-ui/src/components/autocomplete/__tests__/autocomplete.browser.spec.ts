@@ -319,7 +319,7 @@ describe('WebUiAutocomplete 组件（浏览器）', () => {
 
     expect(el.open).toBe(false)
     expect(panel.hidden).toBe(true)
-    // 空盒不再绘制：修复前这里是塌成 padding 的 8px 盒，带玻璃底与 panel 投影淡出。
+    // panel 没有可见内容时不落退场：淡出一个塌成 padding 的空盒，会在输入框下方留下玻璃底与投影。
     expect(panel.getBoundingClientRect().height).toBe(0)
   })
 

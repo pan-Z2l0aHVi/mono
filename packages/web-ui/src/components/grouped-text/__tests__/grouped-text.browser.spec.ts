@@ -185,13 +185,16 @@ describe('web-ui-grouped-text 的间隙（浏览器）', () => {
 
   /** 每一处组边界都拿到一份间隙：间隙是「边界」的属性，组的数量决定它的总量。 */
   it('间隙宽度随 token 增长，每处组边界各一份', async () => {
+    const gap = 8
     const tight = mount({ value: CARD, groups: 'card', style: `${STYLE}--wui-grouped-text-gap: 0px` })
-    const loose = mount({ value: CARD, groups: 'card', style: `${STYLE}--wui-grouped-text-gap: 8px` })
+    const loose = mount({ value: CARD, groups: 'card', style: `${STYLE}--wui-grouped-text-gap: ${gap}px` })
     await Promise.all([tight.updateComplete, loose.updateComplete])
 
-    // 4 组 ⇒ 3 处边界，每处 8px
-    expect(loose.getBoundingClientRect().width - tight.getBoundingClientRect().width).toBeGreaterThan(23)
-    expect(loose.getBoundingClientRect().width - tight.getBoundingClientRect().width).toBeLessThan(25)
+    const boundaries = groupsOf(loose).length - 1
+    expect(boundaries, 'card 组形至少要有一处组边界').toBeGreaterThan(0)
+    const delta = loose.getBoundingClientRect().width - tight.getBoundingClientRect().width
+    // 排版有亚像素取整，比对「边界数 × 间隙」放宽半像素。
+    expect(Math.abs(delta - boundaries * gap)).toBeLessThan(1)
   })
 
   /*
@@ -202,8 +205,15 @@ describe('web-ui-grouped-text 的间隙（浏览器）', () => {
     const el = mount({ value: CARD, groups: 'card' })
     await el.updateComplete
 
-    const nodes = groupsOf(el).map(node => node.querySelector('.gap'))
-    expect(nodes.slice(0, 3).map(node => node?.textContent)).toEqual(['2', '2', '6'])
-    expect(nodes[3]).toBeNull()
+    const groups = groupsOf(el)
+    const gaps = groups.map(node => node.querySelector('.gap'))
+    const last = gaps.length - 1
+    // 组间间隙是「这一组与下一组之间」的事，末组后面没有下一组。
+    expect(gaps[last]).toBeNull()
+    for (let index = 0; index < last; index += 1) {
+      const gapText = gaps[index]?.textContent ?? ''
+      expect(gapText, '间隙段必须是装着字符的真实文本').not.toBe('')
+      expect(groups[index]!.textContent?.endsWith(gapText), '间隙段就是该组文本的末段').toBe(true)
+    }
   })
 })

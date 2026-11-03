@@ -174,8 +174,9 @@ export function shake(input?: HTMLElement | ShakeOptions): void {
     samples.push(-Math.sin(2 * Math.PI * SHAKE_CYCLES * t) * Math.exp(-SHAKE_DECAY * t))
   }
   const peak = Math.max(...samples.map(Math.abs))
-  const xUnit = peak > 0 ? xDistance / peak : xDistance
-  const yUnit = peak > 0 ? yDistance / peak : yDistance
+  // 采样点里必有非零波峰（由 SHAKE_CYCLES 与 SHAKE_SAMPLE_COUNT 决定），按它把幅度归一到峰值。
+  const xUnit = xDistance / peak
+  const yUnit = yDistance / peak
 
   const animation = target.animate(
     samples.map((sample, index) => ({
