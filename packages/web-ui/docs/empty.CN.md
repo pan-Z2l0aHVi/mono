@@ -1,12 +1,12 @@
 # Empty
 
-empty state 占位：`title` 与 `description` 提供文案，`icon` / `action` 插槽补上图形与操作入口。组件不设 JS 旋钮——图形、文案、留白的尺寸与颜色全部走 `--wui-empty-*` 变量。
+empty state 占位：`title` 和 `description` 提供文案，`icon` / `action` 插槽补上图形和操作入口。组件没有 JavaScript 属性，图形、文案、留白的尺寸和颜色都用 `--wui-empty-*` 变量设置。
 
 ## Samples
 
 ### Basic
 
-`title` 与 `description` 是两个主要文案位，两个都写就是这套空态最常见的形状。默认图形（`andrsrxn:inbox`）由组件自带，边长与颜色各有一枚变量。
+`title` 和 `description` 是两个主要文案位，两个都写是这套空态最常见的用法。默认图形（`andrsrxn:inbox`）随组件提供，边长和颜色各有一枚变量。
 
 ```tsx
 export default function Demo() {
@@ -22,7 +22,7 @@ export default function Demo() {
 
 ### Collapsing copy slots
 
-标题、描述、操作区三段各自按「有没有内容」决定占不占位：只给 `title` 就没有描述行，只给 `description` 就没有标题行，三段都空着时只剩图形区。
+标题、描述、操作区三段各自按「有没有内容」决定是否占位。只给 `title` 就没有描述行，只给 `description` 就没有标题行，三段都空着时只剩图形区。
 
 ```tsx
 export default function Demo() {
@@ -48,7 +48,7 @@ export default function Demo() {
 
 ### Action area
 
-`action` 插槽放恢复入口，它没有对应的属性可写，只认插槽内容。一段空态通常只要一个主操作，按钮再多就该换成下面的组合写法。
+`action` 插槽用于放恢复入口。它没有对应的属性可写，只接受插槽内容。一段空态通常只需要一个主操作。
 
 ```tsx
 export default function Demo() {
@@ -72,7 +72,7 @@ export default function Demo() {
 
 ### Slot content
 
-四个插槽换掉整组内容：`icon` 换图形，默认插槽换标题，`description` 换描述，`action` 换操作区。插槽内容覆盖同名属性，所以写了插槽就不必再写 `title` / `description`。多个操作套一层自己的容器，操作区只负责它上方的那段间距。
+四个插槽可以替换整组内容：`icon` 替换图形，默认插槽替换标题，`description` 替换描述，`action` 替换操作区。插槽内容会覆盖同名属性，所以写了插槽就不必再写 `title` / `description`。多个操作请自己套一层容器，操作区只负责它上方的那段间距。
 
 ```tsx
 import { lucideSearch } from '@greypan/web-ui/icons'
@@ -112,7 +112,7 @@ import { lucideSearch } from '@greypan/web-ui/icons'
 
 ### Size and color
 
-没有 `size` 属性：图形边长、两行字号、颜色与留白是四组独立变量，要一起放大就一起写——只放大图形会留下与字号不匹配的空白。
+没有 `size` 属性：图形边长、两行字号、颜色和留白是四组独立变量。要整体放大就一起写，只放大图形会留下与字号不匹配的空白。
 
 ```tsx
 export default function Demo() {
@@ -152,7 +152,7 @@ export default function Demo() {
 
 ### Long copy
 
-标题与描述都按内容宽度换行，长词用 `overflow-wrap: anywhere` 断开，因此一段复制链接或长标识符不会把盒子顶宽，也不会溢出到兄弟段落之外。
+标题和描述都按内容宽度换行，长词用 `overflow-wrap: anywhere` 断开。因此粘贴的链接或长标识符不会把盒子撑宽，也不会溢出到相邻段落之外。
 
 ```tsx
 export default function Demo() {
@@ -176,7 +176,7 @@ export default function Demo() {
 
 ### Overriding one variable at a time
 
-上面的例子按组合给了几套写法，单枚变量也能单独改：`--wui-empty-icon-size` 是盒与图形共用的边长（图形填满盒，两者永远同步），`--wui-empty-content-width` 与两个段间距不参与任何组合，只能靠变量调。
+单枚变量也能单独修改：`--wui-empty-icon-size` 是盒与图形共用的边长，`--wui-empty-content-width` 和两个段间距只能通过变量调整。
 
 ```tsx
 export default function Demo() {
@@ -266,31 +266,31 @@ export default function Demo() {
 
 ### 行为说明
 
-图形盒与图形同尺寸：不留隐形内边距，图形与标题之间的距离就是 `--wui-empty-title-margin-top`（默认 12px）。
+图形盒与图形同尺寸，图形与标题之间的距离就是 `--wui-empty-title-margin-top`（默认 12px）。
 
-版面各通道互不联动——图形边长、两行字号、颜色、留白各是一组变量。要把空态整体放大，就得同时写几枚；只写 `--wui-empty-icon-size` 会得到一个图形很大、标题很小的空态。
+图形边长、两行字号、颜色和留白各是一组变量，互不联动。要把空态整体放大，就得同时写几枚变量；只写 `--wui-empty-icon-size` 会得到一个图形很大、标题很小的空态。
 
-默认图形是 `andrsrxn:inbox`，24×24 画布，描边与填充都用 `currentColor`，所以颜色只由 `color` 决定，`--wui-empty-icon-color` 不会被图形资产里的固定色盖掉。
+默认图形是 `andrsrxn:inbox`，颜色只由 `--wui-empty-icon-color` 决定，不会被图形资产里的固定颜色覆盖。
 
-深浅与色相落在两枚变量上：`--wui-empty-icon-color` 给的是**实色**，淡一档由 `--wui-empty-icon-opacity`（默认 `0.75`）负责。两者不能合并成「带 alpha 的颜色」—— 线框图形的笔画在转角、端点与填底处本来就互相压着，带 alpha 的颜色会在这些重叠处二次合成、局部变深，看着像角上的笔画发黑。group opacity 是整颗图形合成之后一次性施加的，重叠处不起变化。要让图形回到整颗原色，写 `--wui-empty-icon-opacity: 1`。
+颜色和深浅是两枚变量：`--wui-empty-icon-color` 设置的是实色，更淡的效果由 `--wui-empty-icon-opacity`（默认 `0.75`）负责。要让图形回到完整颜色，写 `--wui-empty-icon-opacity: 1`。
 
-`--wui-empty-icon-opacity` 只作用于默认图形，`icon` 插槽里的内容不跟着变淡。
+`--wui-empty-icon-opacity` 只作用于默认图形，`icon` 插槽里的内容不会跟着变淡。
 
-三段文案位各自判定：标题段看默认插槽有没有内容、再看 `title`，描述段看 `description` 插槽、再看 `description` 属性，操作区段只认 `action` 插槽。
+三段文案位各自判定：标题段先看默认插槽有没有内容，再看 `title`；描述段先看 `description` 插槽，再看 `description` 属性；操作区段只接受 `action` 插槽。
 
-判的是「有没有内容」而不是「内容画不画得出来」，所以只放一个 `.sr-only` 的 span 也会让那一段照常占位；反过来，图形区不参与这套判定，永远占位——三段文案都空着的空态就只剩图形。
+判断的是「有没有内容」，而不是「内容画不画得出来」，所以只放一个 `.sr-only` 的 span 也会让那一段照常占位。图形区不参与这套判定，永远占位；三段文案都空着时就只剩图形。
 
 `action` 插槽里的多个元素不会自己排成一排，操作区只负责它上方那段间距。
 
-`icon` 插槽的图形要自己带尺寸：组件只把插槽内容摆进 `--wui-empty-icon-size` 那个盒里居中，不去量它、也不缩放它。默认边长 `40px`，换 `web-ui-icon` 时按同一数值写它的 `size`，或者连 `--wui-empty-icon-size` 一起调。
+`icon` 插槽的图形要自己带尺寸：组件只把插槽内容摆进 `--wui-empty-icon-size` 那个盒里居中，不去测量它，也不缩放它。默认边长 `40px`，换 `web-ui-icon` 时按同一数值写它的 `size`，或者把 `--wui-empty-icon-size` 一起调整。
 
-`title` 复用的是全局 `title` 属性并且会反射回宿主，因此浏览器同时把这段文字当原生 tooltip 在悬停时画出来。不想要这层提示就用默认插槽放标题；这一位的效果是等价的，只是不会被当成 tooltip 文本。
+`title` 会同时作为原生 tooltip 在悬停时显示。不想要这层提示就用默认插槽放标题，效果等价，只是不会被当成 tooltip 文本。
 
-### 尺寸档位
+### 尺寸预设
 
-`size` 不是受支持的属性。图形、`min-height`、内边距与两行字号各由一枚变量控制；下面的档位把成组的值一起写出来。
+`size` 不是受支持的属性。图形、`min-height`、内边距和两行字号各由一枚变量控制。下面的预设把成组的值一起写出来。
 
-列依次为 档位 / 图形 / `min-height` / 内边距 / 标题 / 描述：
+每行依次是尺寸、图形、`min-height`、内边距、标题字号、描述字号。
 
 - `40` / `29px` / `171px` / `23px 17px` / `14px` / `13px`
 - `56`（默认）/ `40px` / `240px` / `32px 24px` / `16px` / `14px`
@@ -298,17 +298,17 @@ export default function Demo() {
 
 ### CSS Custom Properties
 
-| 名称                                | 说明                         | 默认值                       |
-| ----------------------------------- | ---------------------------- | ---------------------------- |
-| `--wui-empty-min-height`            | 最小高度                     | `240px`                      |
-| `--wui-empty-padding`               | 内边距                       | `32px 24px`                  |
-| `--wui-empty-icon-size`             | 图形边长，盒与图形同尺寸     | `40px`                       |
-| `--wui-empty-icon-color`            | 图形颜色（实色，不掺 alpha） | `--wui-color-text-secondary` |
-| `--wui-empty-icon-opacity`          | 图形整体深浅                 | `0.75`                       |
-| `--wui-empty-content-width`         | 标题/描述/操作区最大宽度     | `480px`                      |
-| `--wui-empty-title-margin-top`      | icon 与标题之间的间距        | `12px`                       |
-| `--wui-empty-title-font-size`       | 标题字号                     | `16px`                       |
-| `--wui-empty-title-color`           | 标题颜色                     | `--wui-color-text`           |
-| `--wui-empty-description-font-size` | 描述字号                     | `14px`                       |
-| `--wui-empty-description-color`     | 描述颜色                     | `--wui-color-text-secondary` |
-| `--wui-empty-action-margin-top`     | 操作区上方的间距             | `20px`                       |
+| 名称                                | 说明                       | 默认值                       |
+| ----------------------------------- | -------------------------- | ---------------------------- |
+| `--wui-empty-min-height`            | 最小高度                   | `240px`                      |
+| `--wui-empty-padding`               | 内边距                     | `32px 24px`                  |
+| `--wui-empty-icon-size`             | 图形边长，盒与图形同尺寸   | `40px`                       |
+| `--wui-empty-icon-color`            | 图形颜色（实色，不含透明） | `--wui-color-text-secondary` |
+| `--wui-empty-icon-opacity`          | 图形整体深浅               | `0.75`                       |
+| `--wui-empty-content-width`         | 标题/描述/操作区最大宽度   | `480px`                      |
+| `--wui-empty-title-margin-top`      | icon 与标题之间的间距      | `12px`                       |
+| `--wui-empty-title-font-size`       | 标题字号                   | `16px`                       |
+| `--wui-empty-title-color`           | 标题颜色                   | `--wui-color-text`           |
+| `--wui-empty-description-font-size` | 描述字号                   | `14px`                       |
+| `--wui-empty-description-color`     | 描述颜色                   | `--wui-color-text-secondary` |
+| `--wui-empty-action-margin-top`     | 操作区上方的间距           | `20px`                       |

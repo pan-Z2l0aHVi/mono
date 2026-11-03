@@ -1,12 +1,12 @@
 # Dropdown
 
-dropdown menu: the `trigger` slot holds the trigger and the remaining children render as menu items inside the overlay panel, with support for dividers, group headers, and multi-level submenus.
+A dropdown menu. The `trigger` slot holds the trigger, and the remaining children render as menu items inside the overlay panel. Dividers, group headers, and multi-level submenus are supported.
 
 ## Samples
 
 ### Basic
 
-`trigger` holds an interactive element, and the remaining children move into the overlay panel as menu items when opened; `divider` separates groups, and `disabled` items stay in the list but cannot be selected.
+Put an interactive element in `trigger`; the remaining children render as menu items inside the overlay panel. `divider` separates groups; `disabled` items stay in the list but cannot be selected.
 
 ```tsx
 export default function Demo() {
@@ -42,7 +42,7 @@ export default function Demo() {
 
 ### Icons and shortcuts
 
-The `prefix` / `suffix` slots decorate both sides of a menu item, and `dropdown-header` adds a title to a group of items; shortcuts are just text and the component does not parse keys.
+The `prefix` / `suffix` slots decorate both sides of a menu item, and `dropdown-header` adds a title to a group of items. Shortcuts are just text; the component does not parse keys.
 
 ```tsx
 import { lucideCopy, lucideTrash2 } from '@greypan/web-ui/icons'
@@ -94,7 +94,7 @@ import { lucideCopy, lucideTrash2 } from '@greypan/web-ui/icons'
 
 ### Multi-level submenu
 
-Writing `submenu` on a menu item makes the items nested inside it the next level; hover or the arrow keys enter it, and every level is its own panel.
+Writing `submenu` on a menu item makes the items nested inside it the next level. Hovering or the arrow keys enter that level.
 
 ```tsx
 export default function Demo() {
@@ -146,7 +146,7 @@ export default function Demo() {
 
 ### Controlled open state
 
-`open` is held by the page: an external button changes it directly, while the trigger, Escape, and outside clicks write back through `open-change`; clicking a menu item does not close automatically, so the code writes back in the item's native click.
+`open` is held by the page. An external button changes it directly; the trigger, Escape, and outside clicks write back through `open-change`. Clicking a menu item does not close the menu automatically, so write back in the item's native click.
 
 ```tsx
 import type { WebUiDropdownItem } from '@greypan/web-ui'
@@ -308,7 +308,7 @@ export default function Demo() {
 
 ### Imperative
 
-`openMenu()` opens and `closeAll()` closes all levels; both are imperative entry points and do not dispatch `open-change`. `disabled` blocks both trigger clicks and `openMenu()`.
+`openMenu()` opens the menu and `closeAll()` closes all levels. Both are imperative entry points and do not dispatch `open-change`. `disabled` blocks both trigger clicks and `openMenu()`.
 
 ```tsx
 import type { WebUiDropdown } from '@greypan/web-ui'
@@ -424,4 +424,4 @@ Menu items: `web-ui-dropdown-item`, `web-ui-dropdown-divider`, `web-ui-dropdown-
 
 ### Trigger ARIA
 
-`aria-haspopup="menu"`, `aria-expanded`, and `aria-controls` (pointing at the root menu panel) are written back to the first assigned element of the `trigger` slot. Put an interactive element in the trigger slot.
+`aria-haspopup="menu"`, `aria-expanded`, and `aria-controls` (pointing at the root menu panel) are written back to the first element in the `trigger` slot. Put an interactive element in the trigger slot.

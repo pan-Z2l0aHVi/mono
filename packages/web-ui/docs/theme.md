@@ -1,14 +1,14 @@
 # Theme
 
-Theme provider: defines foundation, color, layer, shadow, and motion tokens within its own subtree and acts as that subtree's theme-owned overlay root.
+The theme provider defines foundation, color, layer, shadow, and motion tokens inside its own subtree, and it is that subtree's theme overlay container.
 
 ## Samples
 
 ### Light and dark
 
-`appearance` decides which set of color and shadow tokens this scope resolves, and `light` and `dark` can coexist on the same page.
+`appearance` decides which set of color and shadow tokens this scope resolves. `light` and `dark` can coexist on the same page.
 
-The theme host generates no box and draws nothing, so the scope must be carried by a child element that applies `--wui-color-page` and `--wui-color-text` itself; colors inside components do not rely on these two classes—they read the same inherited tokens.
+The theme host generates no box and draws nothing. A child element must apply `--wui-color-page` and `--wui-color-text` itself to show the scope's colors.
 
 ```tsx
 const appearances = ['light', 'dark'] as const
@@ -72,9 +72,9 @@ const labels: Record<(typeof appearances)[number], string> = {
 
 ### Switching appearance
 
-Binding `appearance` to page state is theme switching; `system` is resolved from `prefers-color-scheme`.
+Binding `appearance` to page state is theme switching. `system` is resolved from `prefers-color-scheme`.
 
-The switcher lives inside the same scope and changes only that layer. The sample wraps it in another theme fixed to `dark` to make the nesting explicit: a color change in the inner layer reveals only its own capture box, and neither the outer appearance nor the page color written on `documentElement` is affected; whether this layer plays a reveal is decided by its own `motion`.
+The switcher sits inside the same scope and changes only that layer. A color change in the inner layer affects its own scope only, and the outer appearance and the page color stay unchanged. Whether this layer plays a reveal is decided by its own `motion`.
 
 ```tsx
 import type { ThemeAppearance } from '@greypan/web-ui'
@@ -180,11 +180,11 @@ function pick(value: string) {
 
 ### Derived output
 
-`resolved-appearance` (also exposed as the `resolvedAppearance` property) is always `light` or `dark`: an explicit `appearance` is passed through as-is, `system` is resolved from `prefers-color-scheme` and updates live when the OS flips, and when `appearance` is not set the output defaults to `light`.
+`resolved-appearance` (also exposed as the `resolvedAppearance` property) is always `light` or `dark`. An explicit `appearance` is passed through as-is. `system` is resolved from `prefers-color-scheme` and updates live when the OS switches between light and dark. When `appearance` is not set, the output defaults to `light`.
 
-theme dispatches no events, so consumers observe it by binding to this attribute—a CSS selector or a MutationObserver both work.
+theme dispatches no events. To observe it, bind to this attribute: a CSS selector or a MutationObserver both work.
 
-It is written exclusively by the component: an external `setAttribute` is reverted within the same attribute reaction, and the button below shows the resolved result together with the read-back after the revert.
+Only the component writes this attribute. External changes are reverted.
 
 ```tsx
 import type { WebUiTheme } from '@greypan/web-ui'
@@ -246,11 +246,11 @@ function inspect() {
 
 ### Nested scopes
 
-Themes can be nested layer by layer, and each layer resolves its own tokens: the inner layer overrides the outer one, leaving the inner layer returns to the outer values, and the layers output their own `resolved-appearance`.
+Themes can be nested layer by layer, and each layer resolves its own tokens. Inner values override the outer ones, and leaving an inner layer returns to the outer values. Each layer outputs its own `resolved-appearance`.
 
-`appearance` is per layer as well. Each layer in the sample below has its own segmented control, so changing the middle layer repaints only the middle and inner regions, while changing the inner layer leaves the two outer regions untouched. `motion` is likewise a per-layer preset and does not inherit: the outer layer uses `reduced` and switches instantly, the middle uses `full`, and the inner omits it and falls back to `system`.
+`appearance` is per layer as well. Changing the middle layer repaints only the middle and inner regions, and changing the inner layer leaves the two outer regions untouched. `motion` is per layer too and does not inherit from ancestors; when omitted it defaults to `system`.
 
-The host generates no box, so layout (the border, padding, and spacing here) must be written on an element inside the scope; writing it on the `<web-ui-theme>` host does nothing.
+The host generates no box, so write layout (the border, padding, and spacing here) on an element inside the scope. Writing it on the `<web-ui-theme>` host has no effect.
 
 ```tsx
 import type { ThemeAppearance } from '@greypan/web-ui'
@@ -417,11 +417,11 @@ function pick(value: string): ThemeAppearance {
 
 ### Motion presets
 
-`motion` controls the motion preset of this layer: `reduced` zeroes transition durations (the two infinite loading loops do not stop, they only slow to `1600ms`), `full` always plays, and `system` follows `prefers-reduced-motion`.
+`motion` sets the motion preset for this layer. `reduced` sets all transition durations to zero, but the two infinite loading loops do not stop; they only slow down to `1600ms`. `full` always plays motion. `system` follows `prefers-reduced-motion`.
 
-It does not take part in resolving `appearance`; `isReducedMotion()` gives this layer's verdict.
+`motion` does not take part in resolving `appearance`. `isReducedMotion()` returns this layer's result.
 
-Opening the panel of the portal select lets you compare the enter and exit durations directly—the panel is mounted into this layer's overlay root and uses this layer's duration tokens.
+Opening the panel of the portal select lets you compare the enter and exit durations directly. The panel mounts into this layer's overlay container and uses this layer's duration tokens.
 
 ```tsx
 import type { ThemeMotion, WebUiTheme } from '@greypan/web-ui'
@@ -544,11 +544,11 @@ function inspect() {
 
 ### Overlay root and portal
 
-Every active theme is also its own theme-owned overlay root: `getOverlayRoot()` returns it, and a theme without `appearance` set creates none and returns `undefined`.
+Every enabled theme is also its own overlay container, and `getOverlayRoot()` returns it. A theme with no `appearance` set creates no root and returns `undefined`.
 
-Portal-style components with no explicit container mount into the overlay root of the nearest active theme, so the panel uses this layer's tokens; `toast()` without a `target` prefers the root theme, which is why the sample passes the trigger button as the explicit `target`.
+Portal-style components with no explicit container mount into the overlay container of the nearest enabled theme, so the panel uses this layer's tokens. `toast()` without a `target` prefers the root theme.
 
-`<web-ui-dialog>` sits in the native top layer and takes this layer's values for color and motion tokens through DOM inheritance.
+`<web-ui-dialog>` renders in the native top layer and still gets this layer's color and motion tokens.
 
 ```tsx
 import { toast, type WebUiButton, type WebUiTheme } from '@greypan/web-ui'
@@ -564,7 +564,11 @@ export default function Demo() {
     <web-ui-theme ref={theme} appearance="dark">
       <div className="w-full max-w-md rounded-2xl bg-(--wui-color-page) p-4 text-(--wui-color-text)">
         <div className="flex flex-wrap items-center gap-2">
-          <web-ui-select portal placeholder="Portal select" aria-label="Select mounted into the scope overlay root">
+          <web-ui-select
+            portal
+            placeholder="Portal select"
+            aria-label="Select mounted into the scope overlay container"
+          >
             <web-ui-option value="portal" label="Portal overlay">
               Portal overlay
             </web-ui-option>
@@ -576,7 +580,7 @@ export default function Demo() {
             ref={toastTarget}
             variant="secondary"
             onClick={() =>
-              toast.info("This toast mounts into the sample's own overlay root.", {
+              toast.info("This toast mounts into the sample's own overlay container.", {
                 heading: 'Scoped toast',
                 duration: 3000,
                 target: toastTarget.current ?? undefined
@@ -598,7 +602,7 @@ export default function Demo() {
               )
             }
           >
-            Read overlay root
+            Read overlay container
           </web-ui-button>
         </div>
         <output className="mt-2 block text-sm text-(--wui-color-text-secondary)">{report}</output>
@@ -624,13 +628,13 @@ export default function Demo() {
   <web-ui-theme ref="theme" appearance="dark">
     <div class="w-full max-w-md rounded-2xl bg-(--wui-color-page) p-4 text-(--wui-color-text)">
       <div class="flex flex-wrap items-center gap-2">
-        <web-ui-select portal placeholder="Portal select" aria-label="Select mounted into the scope overlay root">
+        <web-ui-select portal placeholder="Portal select" aria-label="Select mounted into the scope overlay container">
           <web-ui-option value="portal" label="Portal overlay">Portal overlay</web-ui-option>
           <web-ui-option value="token" label="Theme token">Theme token</web-ui-option>
         </web-ui-select>
         <web-ui-button ref="toast-target" variant="secondary" @click="showToast">Show toast</web-ui-button>
         <web-ui-button variant="secondary" @click="dialogOpen = true">Open dialog</web-ui-button>
-        <web-ui-button variant="ghost" @click="inspect">Read overlay root</web-ui-button>
+        <web-ui-button variant="ghost" @click="inspect">Read overlay container</web-ui-button>
       </div>
       <output class="mt-2 block text-sm text-(--wui-color-text-secondary)">{{ report }}</output>
 
@@ -652,7 +656,7 @@ const dialogOpen = ref(false)
 const report = ref('Not read yet')
 
 function showToast() {
-  toast.info("This toast mounts into the sample's own overlay root.", {
+  toast.info("This toast mounts into the sample's own overlay container.", {
     heading: 'Scoped toast',
     duration: 3000,
     target: toastTarget.value ?? undefined
@@ -669,11 +673,11 @@ function inspect() {
 
 ### Overriding tokens within a scope
 
-`<web-ui-theme>` declares the token defaults for its own subtree, so overrides must land on elements inside the scope: raising `--wui-control-size` and `--wui-input-width` changes the height and width of controls.
+`<web-ui-theme>` declares the token defaults for its own subtree, so overrides must be written on elements inside the scope. Raising `--wui-control-size` and `--wui-input-width` changes the height and width of controls.
 
-Raising `--wui-space-4` changes the rhythm—component-specific override tokens (such as `--wui-button-px` and `--wui-dialog-padding`) only use these steps as fallback defaults.
+Raising `--wui-space-4` changes the overall spacing. Component-specific override tokens (such as `--wui-button-px` and `--wui-dialog-padding`) use these steps only as fallback defaults.
 
-Derived tokens are computed on the host: `--wui-color-focus-ring` is derived from `--wui-color-accent`, so an accent override written on a child element does not carry it along.
+`--wui-color-focus-ring` is derived from `--wui-color-accent`. An accent override written on a child element does not change it.
 
 ```tsx
 export default function Demo() {
@@ -726,7 +730,7 @@ export default function Demo() {
 | Name                  | Description                                                                          | Type                           | Default    |
 | --------------------- | ------------------------------------------------------------------------------------ | ------------------------------ | ---------- |
 | `appearance`          | Color scheme: `light`, `dark`, or `system`.                                          | `ThemeAppearance \| undefined` | —          |
-| `resolved-appearance` | Resolved color scheme, a read-only reflected output.                                 | `ResolvedThemeAppearance`      | `'light'`  |
+| `resolved-appearance` | Resolved color scheme, a read-only output written back to an attribute.              | `ResolvedThemeAppearance`      | `'light'`  |
 | `motion`              | Motion preference of the current nested theme scope: `full`, `reduced`, or `system`. | `ThemeMotion`                  | `'system'` |
 
 ### Slots
@@ -739,62 +743,50 @@ export default function Demo() {
 
 | Name                | Description                                                                                                                                                         |
 | ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `getOverlayRoot()`  | Returns the theme-owned overlay root that this theme owns; returns `undefined` when `appearance` is not set.                                                        |
+| `getOverlayRoot()`  | Returns the theme overlay container that this theme owns; returns `undefined` when `appearance` is not set.                                                         |
 | `isReducedMotion()` | Whether the current theme scope should reduce motion: `motion` of `reduced` / `full` gives `true` / `false` directly, while `system` follows the system preference. |
 
-### Portal mount contract
+### Portal mount rules
 
-Every active `<web-ui-theme>` is also the default scoped theme-owned overlay root.
+Every enabled `<web-ui-theme>` is also the default scoped overlay container.
 
-Portal-style components with no explicit `overlayContainer` resolve to the `getOverlayRoot()` of the nearest active theme; calls without a target prefer the root theme's theme-owned overlay root.
+Portal-style components with no explicit `overlayContainer` resolve to the `getOverlayRoot()` of the nearest enabled theme. Calls without a target prefer the root theme's overlay container.
 
-When no active theme provides a root, they fall back to the global fallback overlay root.
+When no enabled theme provides an overlay container, they fall back to the global default overlay container.
 
 ### Behavior
 
-Defines foundation, color, layer, shadow, and motion tokens in its subtree. `motion="system"` follows `prefers-reduced-motion`; use `motion="reduced"` to reduce motion in the current scope, or `motion="full"` in a nested theme to restore the default tokens.
+Defines foundation, color, layer, shadow, and motion tokens in its subtree. `motion="system"` follows `prefers-reduced-motion`. Use `motion="reduced"` to reduce motion in the current scope, or `motion="full"` in a nested theme to restore the default tokens.
 
-The system color scheme mode follows `prefers-color-scheme`.
+`system` color scheme follows `prefers-color-scheme`.
 
-`resolved-appearance` is a read-only derived host attribute (also exposed as the `resolvedAppearance` property): its value is always `light` or `dark`; an explicit `appearance` is passed through as-is, `appearance="system"` is resolved from `prefers-color-scheme`, and it updates live when the OS switches between light and dark.
+`resolved-appearance` is a read-only host attribute computed by the component (also exposed as the `resolvedAppearance` property). Its value is always `light` or `dark`. An explicit `appearance` is passed through as-is, `appearance="system"` is resolved from `prefers-color-scheme`, and it updates live when the OS switches between light and dark.
 
-A theme without `appearance` set stays inactive, but its resolved output uses the default `light`.
+A theme with no `appearance` set stays inactive, but its resolved output uses the default `light`.
 
-The attribute is written exclusively by the component and external changes are reverted, so consumers can bind a selector or a Tailwind custom variant directly to `resolved-appearance` without keeping a second copy of the theme state.
+Only the component writes this attribute, and external changes are reverted. Callers can therefore bind a selector or a Tailwind custom variant directly to `resolved-appearance` without keeping a second copy of the theme state.
 
-Whether a color scheme change is animated with the View Transitions API is decided by the `motion` preset of the current theme scope: `full` always plays the reveal, `reduced` applies the new appearance immediately without a reveal, and `system` follows `prefers-reduced-motion`.
+Whether a color scheme change plays a reveal is decided by the `motion` preset of the current theme scope: `full` always plays it, `reduced` switches immediately, and `system` follows `prefers-reduced-motion`.
 
-The root theme reveals the whole page; a nested theme reveals only its own capture box. The circle center comes from the most recent pointerdown coordinates, falling back to the center of the theme box or the viewport; the reveal direction follows the resolved appearance, including the result that `appearance="system"` resolves from `prefers-color-scheme`, and the light and dark directions play in reverse.
+The root theme reveals the whole page. A nested theme reveals only its own area. The reveal direction follows the resolved appearance, and the light and dark directions play in reverse.
 
-Unsupported browsers, reduced-motion scopes, a zero duration, and an already pending request in the same flight all apply the new appearance immediately; the current version does not animate OS light/dark switches for `appearance="system"`.
+These cases apply the new appearance immediately, with no reveal: an unsupported browser, a reduced-motion scope, a zero duration, or a reveal that is already running. OS light/dark switches under `appearance="system"` do not animate.
 
-While a reveal is running, the View Transitions rendering-suppression rules force all pointer hit-tests to target the document element, so a CSS `pointer-events` override cannot keep the underlying page interactive.
+While a reveal is running, the underlying page cannot receive pointer interaction.
 
-The theme calls `skipTransition()` only on `pointerdown` or wheel; `pointermove` and `pointerup` never end the reveal, so neither the trailing movement that ends an interaction with the triggering control nor ordinary movement during the transition interrupts the animation.
-
-By specification the event that triggers the skip still targets the document element, but the dead window ends there and does not last for the whole reveal duration.
-
-The theme host uses `display: contents` and draws no background: the component library does not paint a background on the host page, and the embedder keeps full control over the surface behind the theme subtree. Custom properties still inherit reliably into slotted content.
+The theme host draws no background. The component library does not paint a background on the host page, and the embedder keeps full control over the surface behind the theme subtree.
 
 ### The `motion` attribute
 
-Express the intent with `motion`. The default `motion="system"` plays the reveal unless the system prefers reduced motion; `motion="full"` always plays it; `motion="reduced"` switches without any animation.
+Express the intent with `motion`. The default `motion="system"` plays the reveal unless the system prefers reduced motion. `motion="full"` always plays it. `motion="reduced"` switches without any animation.
 
 ### Root page color sync
 
-The outermost active theme mirrors its computed `--wui-color-page` onto `document.documentElement` as an inline custom property.
+The outermost enabled theme syncs the current `--wui-color-page` onto `document.documentElement`, so the page canvas follows the theme, including the area revealed by overscroll rubber-banding. Nested themes keep their own scope and do not rewrite the root value.
 
-It fills exactly the place this token cannot reach on its own: the inheritance chain of a custom property stops at documentElement, so `body { background: var(--wui-color-page) }` only colors the scrolling area, and the canvas revealed by overscroll rubber-banding (macOS rubber-band) keeps the UA background color; with this mirrored property, the overscroll area follows the theme too.
+Not live: the component does not observe style changes on the host itself, so changing `--wui-color-page` on the host at runtime (inline styles, a class, or media queries) is not synced immediately. It waits for the theme to reconnect or for `appearance` to change.
 
-It is written when the theme connects and when the appearance changes (including `appearance="system"` following the OS light/dark switch); the value written is the theme's computed value, so a consumer override of `--wui-color-page` on the host is mirrored as-is.
-
-**Not live:** the component does not observe style changes on the host itself, so changing the property at runtime (editing inline styles, switching a class, host-level media queries) is not mirrored to the root live; it waits for the next write trigger—connection, `appearance` changing to another value, or an OS light/dark switch. Setting `appearance` back to its current value is not a trigger, because an update whose value did not change is skipped.
-
-When the page color must vary independently of the theme appearance, consumers own the variable themselves: define `--wui-color-page` on `:root` or `body` with `!important`, since an important declaration outranks the inline value this module writes on documentElement; or let the page color follow `appearance`.
-
-Only the outermost theme writes: nested themes keep their own scope and do not rewrite the root value. Ownership of the sync follows connect order, passing to the next connected theme when the outermost disconnects; when the last theme disconnects, the final value is deliberately kept rather than removed, avoiding a flash back to the UA background in the gap between theme switches.
-
-The component library writes only this one custom property on documentElement and nothing else.
+When the page color must vary independently of the theme appearance, define your own `--wui-color-page` on `:root` or `body` with `!important`. Or let the page color follow `appearance`.
 
 ### Foundation tokens
 
@@ -807,11 +799,11 @@ The component library writes only this one custom property on documentElement an
 
 ### Typography notes
 
-Font sizes are named after the role the text plays rather than its position on the scale: `caption` is a small label on dense chrome, `readout` is a numeric readout, the base size without a suffix is body text, and `title` is a bounded card title. Weights are named after their weight, and line heights after the vertical air the text needs.
+Font sizes are named after the role the text plays, not its position on the scale. `caption` is a small label on dense chrome, `readout` is for numbers, the base size without a suffix is body text, and `title` is a bounded card title. Weights are named after their weight, and line heights after the vertical space the text needs.
 
 This family is appearance-independent: the values are the same in light and dark.
 
-`line-height: 1` and `line-height: 0` inside components are deliberately not tokens: the former is a vertical-centering device for a single-line label in a control, the latter collapses a wrapper's height to its content—neither is a typographic line height, and turning them into tokens would tempt callers to treat them as line heights and adjust them globally.
+`line-height: 1` and `line-height: 0` inside components are not typographic line heights and have no corresponding tokens.
 
 ### Typography tokens
 
@@ -830,19 +822,11 @@ This family is appearance-independent: the values are the same in light and dark
 
 ### Spacing notes
 
-A six-step scale on a 4px base, ending at 24px—the largest spacing value the component layer writes as an effective static rhythm literal. (The only wider one is `<web-ui-empty>`'s `32px 24px`, derived from `--wui-empty-size` on the JS side; it belongs to the size axis rather than the rhythm axis, for the reasons given in the exclusions below.)
+A six-step scale on a 4px base, ending at 24px. It does not replace each component's own override tokens (`--wui-button-px`, `--wui-dialog-padding`, and the like); it is their fallback default. Overriding one step adjusts density at every call site that uses that step.
 
-It does not replace each component's own override tokens (`--wui-button-px`, `--wui-dialog-padding`, and the like) but serves as their fallback default—components still decide their own padding, and the scale only states where that value sits in the overall rhythm.
+The scale deliberately excludes `1px`, `2px`, `6px`, `7.5px`, `10px`, and negative values. These are hairlines and stroke rings, optical corrections, a half-step coupling value, and negative margins, and they do not share spacing semantics.
 
-Overriding one step therefore gives the embedding application a density lever that acts on every call site attached to the scale—it tunes rhythm, not structure; see the exclusions below.
-
-The scale deliberately excludes `1px`, `2px`, `6px`, `7.5px`, `10px`, and negative values.
-
-`1px` is the structural width of hairlines and stroke rings; `2px`, `6px`, and `7.5px` are optical corrections; `10px` is a half-step coupling value outside the 4px scale; negative margins offset a flex gap or a button's padding.
-
-Why each of these has the value it has is independent, with no shared spacing semantics; folding them into the same ruler only means overriding one of them hits the others.
-
-The second class of exclusions is by semantics rather than by value: offsets that align to a viewport edge or to the host's own content edge are not attached to the scale even when they land exactly on a 4px step.
+Offsets that align to a viewport or host content edge are not part of the scale, even when they land on a 4px step:
 
 - `--wui-image-preview-edge-gap`
 - `--wui-toast-viewport-gap`
@@ -851,19 +835,13 @@ The second class of exclusions is by semantics rather than by value: offsets tha
 - `--wui-drawer-inset`
 - `--wui-drawer-close-right`
 
-Their frame of reference is the screen or the host's content edge, not the rhythm between adjacent elements; merging them into the spacing scale would make tightening `--wui-space-2` unexpectedly push components away from the screen edge.
+Their frame of reference is the screen or the host's content edge, not the spacing between adjacent elements. `--wui-drawer-close-top` is the exception: it follows the drawer's header padding.
 
-`--wui-drawer-close-top` is the counterexample: it resolves through `--wui-space-4`, because it must follow the drawer's header padding, and the two must move together.
+Spacing derived from a component's `size` prop is not part of the scale either (for example, `<web-ui-empty>` padding and graphic size follow `--wui-empty-size`). These values follow `size`; write px directly.
 
-The third class of exclusions is spacing derived from a component's **size** prop rather than written as a rhythm value: `<web-ui-empty>` scales `padding`, `min-block-size`, and the graphic size with `--wui-empty-size`, and the measured padding of the `40` / `56` / `72` steps is `23px 17px` / `32px 24px` / `41px 31px` respectively.
+Overrides must be written inside a `<web-ui-theme>` scope.
 
-Four of these six values are odd and cannot be represented on the 4px scale at all; the `32px 24px` of the `56` step landing on the base is pure coincidence of the chosen size values—`56` is the only one of the three divisible by 7, the quotient is exactly 8, and 8 is itself a multiple of 4, so no rounding happens at this step.
-
-A density lever that silently fails for two of three sizes and only happens to work for the third is worse than no lever; and the whole group already follows `size`, so it is not attached to the scale. Write px directly here.
-
-Overrides must be placed inside a `<web-ui-theme>` scope, because the theme host declares these steps only for its own subtree.
-
-Known limitation: the overlay styles in `assets/*.css` have two injection paths—when injected through a theme's own overlay root the spacing scale applies; when they fall back to the document-level fallback overlay root (a plain `div` that cannot see theme tokens), overlay spacing always uses the literal fallbacks.
+An overlay without a theme scope cannot read the spacing scale and falls back to literal defaults.
 
 ### Spacing tokens
 
@@ -941,11 +919,11 @@ Easing tokens:
 - `--wui-ease-swipe` (`cubic-bezier(0.32, 0.72, 0, 1)`, the decelerating finish of the carousel snap-back)
 - `--wui-theme-transition-easing: ease-in`
 
-The enter scale is `--wui-scale-enter: 0.9` (floating panels and the image stage layer of image-preview expand from small to large), and the dialog uses `--wui-dialog-scale-enter: 1.1` (it enters shrinking from large to small, and exits in reverse).
+The enter scale is `--wui-scale-enter: 0.9`, and floating panels and the image stage layer of image-preview expand from small to large. The dialog uses `--wui-dialog-scale-enter: 1.1`, entering shrinking from large to small, and exits in reverse.
 
-Under `motion="reduced"` all transition durations go to zero (the carousel snap-back included), while the two infinite loading loops only slow down and never stop (`--wui-duration-spin` / `--wui-duration-spinner`: `600ms` / `800ms` → `1600ms`). A frozen loading indicator reads as a hung interface.
+Under `motion="reduced"` all transition durations go to zero, and the carousel snap-back goes with them. The two infinite loading loops only slow down and never stop (`--wui-duration-spin` / `--wui-duration-spinner`: `600ms` / `800ms` → `1600ms`). A frozen loading indicator looks like a hung interface.
 
-Hover/active background feedback switches immediately with no transition animation; the selected state, press, and focus use timed transitions, which also go to zero under reduced motion.
+Hover and active background feedback switches immediately with no transition animation. The selected state, press, and focus use timed transitions, which also go to zero under reduced motion.
 
 ### Color tokens
 
@@ -974,7 +952,7 @@ Hover/active background feedback switches immediately with no transition animati
 | `--wui-color-border`                  | Regular borders and dividers                                       | `rgb(0 0 0 / 0.1)`                                                      | `rgb(255 255 255 / 0.14)`                                                             |
 | `--wui-color-glass-highlight`         | Surface inset highlight                                            | `rgb(255 255 255 / 0.9)`                                                | `rgb(255 255 255 / 0.1)`                                                              |
 | `--wui-color-glass-ring`              | 1px stroke ring base color                                         | `rgb(0 0 0 / 0.05)`                                                     | `rgb(255 255 255 / 0.05)`                                                             |
-| `--wui-color-glass-ring-sheen`        | Lit sheen at the stroke ring corners                               | `rgb(255 255 255 / 0.5)`                                                | `rgb(255 255 255 / 0.2)`                                                              |
+| `--wui-color-glass-ring-sheen`        | Light sheen at the stroke ring corners                             | `rgb(255 255 255 / 0.5)`                                                | `rgb(255 255 255 / 0.2)`                                                              |
 | `--wui-color-glass-ring-shade`        | Shaded falloff at the stroke ring corners                          | `rgb(0 0 0 / 0.03)`                                                     | `rgb(0 0 0 / 0.5)`                                                                    |
 | `--wui-color-accent`                  | Accent and input focus border                                      | `#0071e3`                                                               | `#0a84ff`                                                                             |
 | `--wui-color-on-accent`               | Foreground color on accent                                         | `#fff`                                                                  | `#000`                                                                                |
@@ -1000,10 +978,10 @@ Hover/active background feedback switches immediately with no transition animati
 
 `--wui-glass-brightness` is `1.06` in light mode and `1.02` in dark mode.
 
-`--wui-glass-corner-radius` defaults to `32px`; non-pill glass surfaces override it with their own semantic radius (`--wui-radius-menu` / `--wui-radius-overlay`, and `--wui-drawer-radius` for the drawer), so the diagonal stroke light and shade follow the token override.
+`--wui-glass-corner-radius` defaults to `32px`. Non-pill glass surfaces override it with their own semantic radius (`--wui-radius-menu` / `--wui-radius-overlay`, and `--wui-drawer-radius` for the drawer), so the diagonal stroke light and shade follow the token override.
 
-Pill controls are the exception: the light and shade gradient needs physical dimensions, so they keep using a finite radius derived from the control's actual size or an internal size token.
+Pill controls are the exception: the light and shade gradient needs physical dimensions, so they keep using a finite radius derived from the control's actual size.
 
 ### Internal tokens
 
-Variables prefixed with `--wui-internal-*` are Shadow DOM internal wiring variables; they are not part of the public token API and consumers should not override them.
+Variables prefixed with `--wui-internal-*` are not part of the public token API, and callers should not override them.

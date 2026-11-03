@@ -1,12 +1,12 @@
 # Dropdown Header
 
-A group title inside a menu: a piece of small text that takes no part in interaction and names the menu items that follow it. It has no props or events and does not take part in keyboard navigation—the menu only stops focus on `<web-ui-dropdown-item>`. A group title is often used together with `<web-ui-dropdown-divider>`.
+A group title inside a menu. It is a piece of small text that plays no part in interaction and names the menu items that follow it. It has no props or events, and keyboard navigation does not stop on it. The menu only moves focus to `<web-ui-dropdown-item>`. Group titles are often used together with `<web-ui-dropdown-divider>`.
 
 ## Samples
 
 ### Group title
 
-The title gives a set of menu items a name; it is not focusable and not clickable, and the up / down arrow keys skip it.
+The title names a group of menu items. It is not focusable and not clickable, and the up / down arrow keys skip it.
 
 ```tsx
 export default function Demo() {

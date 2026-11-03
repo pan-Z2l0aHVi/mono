@@ -1,14 +1,14 @@
 # Popover
 
-锚定触发元素的弹出层，支持 click / hover / manual 三种触发方式，`trigger` 插槽放 trigger、默认插槽放 panel 内容。
+锚定在触发元素上的弹出层。它支持 click、hover、manual 三种触发方式；`trigger` 插槽放 trigger，默认插槽放 panel 内容。
 
 ## Samples
 
 ### Basic
 
-click 模式点 trigger 切换，点 panel 外或按 Escape 关闭；trigger 请放入可交互元素（`web-ui-button` 或原生 `button`），开合状态会回写到它的 `aria-expanded` / `aria-controls`。
+click 模式下点 trigger 切换开合，点 panel 外或按 Escape 关闭。trigger 里请放可交互元素（`web-ui-button` 或原生 `button`），开合状态会回写到它的 `aria-expanded` / `aria-controls`。
 
-`open-change` 只在用户来源的开合后派发，程序式写 `open` 不派发；下面那行读数就是最近一次通知的值。
+`open-change` 只在用户操作引起的开合后派发，程序式写 `open` 不派发。
 
 ```tsx
 import { useState } from 'react'
@@ -73,7 +73,7 @@ function onOpenChange(event: WebUiEvent<WebUiPopover, 'open-change'>) {
 
 ### Hover trigger
 
-`trigger="hover"` 用 `pointerenter` / `pointerleave` 加 100ms 延迟控制开合；指针从 trigger 移进 panel 不会收起。click 与 focus 在这个模式下都不触发，读数同样只跟随用户来源的 `open-change`。
+`trigger="hover"` 由指针进出控制开合，带短暂延迟。指针从 trigger 移进 panel 不会收起。这个模式下 click 与 focus 都不触发。
 
 ```tsx
 import { useState } from 'react'
@@ -119,11 +119,7 @@ const last = ref('—')
 
 ### Controlled open state
 
-`trigger="manual"` 不响应悬停，点 panel 外与 Escape 也不会关闭；开合由外部 button 调用 `show()` / `close()` 或点 trigger 自己切换。
-
-`open` 由页面状态持有：程序式调用不派发 `open-change`，所以 button 在调用后自己同步状态；用户点 trigger 时组件切换并派发 `open-change`，handler 把 `detail.open` 回写进同一份状态。
-
-下面读数就是页面持有的 `open`。
+`trigger="manual"` 不响应悬停，点 panel 外或按 Escape 也不会关闭。开合由 `show()` / `close()` 或点 trigger 切换。程序式调用不派发 `open-change`，因此调用方需要自己同步 `open`；用户操作引起的开合再通过 `open-change` 回写。
 
 ```tsx
 import type { WebUiPopover } from '@greypan/web-ui'
@@ -213,15 +209,15 @@ function close() {
 
 ### Props
 
-| 名称               | 说明                                           | 类型                             | 默认值     |
-| ------------------ | ---------------------------------------------- | -------------------------------- | ---------- |
-| `open`             | 弹出层可见性。                                 | `boolean`                        | `false`    |
-| `disabled`         | 禁用状态。                                     | `boolean`                        | `false`    |
-| `placement`        | panel 位置，默认 `bottom`。                    | `Placement`                      | `'bottom'` |
-| `offset`           | 与锚点的距离（px）。                           | `number`                         | `8`        |
-| `trigger`          | 触发方式：`click`（默认）、`hover`、`manual`。 | `'click' \| 'hover' \| 'manual'` | `'click'`  |
-| `portal`           | 在 theme-owned overlay root 中渲染。           | `boolean`                        | `false`    |
-| `overlayContainer` | 显式 Portal 容器（property）。                 | `OverlayContainer`               | —          |
+| 名称               | 说明                                             | 类型                             | 默认值     |
+| ------------------ | ------------------------------------------------ | -------------------------------- | ---------- |
+| `open`             | 弹出层可见性。                                   | `boolean`                        | `false`    |
+| `disabled`         | 禁用状态。                                       | `boolean`                        | `false`    |
+| `placement`        | panel 位置，默认 `bottom`。                      | `Placement`                      | `'bottom'` |
+| `offset`           | 与锚点的距离（px）。                             | `number`                         | `8`        |
+| `trigger`          | 触发方式：`click`（默认）、`hover`、`manual`。   | `'click' \| 'hover' \| 'manual'` | `'click'`  |
+| `portal`           | 在主题的 overlay 容器中渲染。                    | `boolean`                        | `false`    |
+| `overlayContainer` | 显式指定 panel 挂载的 overlay 容器（property）。 | `OverlayContainer`               | —          |
 
 ### Events
 
@@ -231,10 +227,10 @@ function close() {
 
 ### Slots
 
-| 名称      | 说明                        |
-| --------- | --------------------------- |
-| `trigger` | trigger，请放入可交互元素。 |
-| `default` | 弹出层内容。                |
+| 名称      | 说明                      |
+| --------- | ------------------------- |
+| `trigger` | trigger；请放可交互元素。 |
+| `default` | 弹出层内容。              |
 
 ### Methods
 
@@ -246,12 +242,12 @@ function close() {
 
 ### 行为说明
 
-Hover 模式使用 `pointerenter`/`pointerleave` 加延迟控制。
+Hover 模式由指针进出触发，带延迟。
 
-Click 模式点击切换。Manual 模式不响应悬停，点击面板外与 Escape 也不关闭；trigger 点击与 `show()` / `close()` 都能改 `open`，其中程序式调用不派发 `open-change`。
+Click 模式点击切换。Manual 模式不响应悬停，点 panel 外与 Escape 也不关闭。trigger 点击与 `show()` / `close()` 都能改 `open`，其中程序式调用不派发 `open-change`。
 
 ### trigger ARIA
 
-开合状态回写到 trigger 元素：`aria-expanded` 与 `aria-controls`（指向 panel）设在 `trigger` slot 的首个 assigned element 上（包装结构上的同名属性保留兼容）。
+开合状态回写到 trigger 元素：`aria-expanded` 与 `aria-controls`（指向 panel）设在 `trigger` 插槽的第一个元素上。
 
-trigger slot 请放入可交互元素（原生 button、`web-ui-button`）。
+trigger 插槽请放可交互元素（原生 button、`web-ui-button`）。

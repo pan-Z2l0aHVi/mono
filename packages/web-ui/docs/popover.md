@@ -1,14 +1,14 @@
 # Popover
 
-A popover anchored to a trigger element. It supports three trigger modes, click / hover / manual; the `trigger` slot holds the trigger and the default slot holds the panel content.
+A popover anchored to a trigger element. It supports three trigger modes: click, hover, and manual. The `trigger` slot holds the trigger and the default slot holds the panel content.
 
 ## Samples
 
 ### Basic
 
-In click mode a click on the trigger toggles the panel, and clicking outside the panel or pressing Escape closes it. Put an interactive element in the trigger (`web-ui-button` or a native `button`); the open state is written back to its `aria-expanded` / `aria-controls`.
+In click mode, clicking the trigger toggles the panel, and clicking outside the panel or pressing Escape closes it. Put an interactive element in the trigger (`web-ui-button` or a native `button`); the open state is written back to its `aria-expanded` / `aria-controls`.
 
-`open-change` is dispatched only after user-originated open and close actions, and writing `open` programmatically does not dispatch it; the readout below is the value of the latest notification.
+`open-change` is dispatched only after user-originated open and close actions. Writing `open` programmatically does not dispatch it.
 
 ```tsx
 import { useState } from 'react'
@@ -73,7 +73,7 @@ function onOpenChange(event: WebUiEvent<WebUiPopover, 'open-change'>) {
 
 ### Hover trigger
 
-`trigger="hover"` opens and closes on `pointerenter` / `pointerleave` with a 100ms delay; moving the pointer from the trigger into the panel does not collapse it. Neither click nor focus triggers in this mode, and the readout likewise follows only user-originated `open-change`.
+`trigger="hover"` opens and closes as the pointer enters and leaves, with a short delay. Moving the pointer from the trigger into the panel does not collapse it. In this mode neither click nor focus triggers it.
 
 ```tsx
 import { useState } from 'react'
@@ -123,11 +123,7 @@ const last = ref('—')
 
 ### Controlled open state
 
-`trigger="manual"` does not respond to hover, and neither clicking outside the panel nor Escape closes it; the open state is changed by external buttons calling `show()` / `close()`, or by clicking the trigger itself.
-
-`open` is owned by the page state: programmatic calls do not dispatch `open-change`, so the buttons sync the state themselves after calling; when the user clicks the trigger the component toggles and dispatches `open-change`, and the handler writes `detail.open` back into the same state.
-
-The readout below is the `open` held by the page.
+`trigger="manual"` does not respond to hover, and neither clicking outside the panel nor Escape closes it. The open state changes through `show()` / `close()` or by clicking the trigger. Programmatic calls do not dispatch `open-change`, so the caller syncs `open` itself; user-originated changes are written back through `open-change`.
 
 ```tsx
 import type { WebUiPopover } from '@greypan/web-ui'
@@ -226,7 +222,7 @@ function close() {
 | `placement`        | Panel placement; defaults to `bottom`.              | `Placement`                      | `'bottom'` |
 | `offset`           | Distance from the anchor (px).                      | `number`                         | `8`        |
 | `trigger`          | Trigger mode: `click` (default), `hover`, `manual`. | `'click' \| 'hover' \| 'manual'` | `'click'`  |
-| `portal`           | Renders in the theme-owned overlay root.            | `boolean`                        | `false`    |
+| `portal`           | Renders in the theme overlay container.             | `boolean`                        | `false`    |
 | `overlayContainer` | Explicit Portal container (property).               | `OverlayContainer`               | —          |
 
 ### Events
@@ -252,12 +248,12 @@ function close() {
 
 ### Behavior
 
-Hover mode uses `pointerenter`/`pointerleave` with a delay.
+Hover mode is driven by the pointer entering and leaving, with a delay.
 
-Click mode toggles on click. Manual mode does not respond to hover, and neither clicking outside the panel nor Escape closes it; trigger clicks and `show()` / `close()` all change `open`, and programmatic calls do not dispatch `open-change`.
+Click mode toggles on click. Manual mode does not respond to hover, and neither clicking outside the panel nor Escape closes it. Trigger clicks and `show()` / `close()` all change `open`; programmatic calls do not dispatch `open-change`.
 
 ### trigger ARIA
 
-The open state is written back to the trigger element: `aria-expanded` and `aria-controls` (pointing at the panel) are set on the first assigned element of the `trigger` slot (attributes of the same name on the wrapper are kept for compatibility).
+The open state is written back to the trigger element: `aria-expanded` and `aria-controls` (pointing at the panel) are set on the first element in the `trigger` slot.
 
 Put an interactive element in the trigger slot (a native button, `web-ui-button`).

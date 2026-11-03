@@ -1,12 +1,12 @@
 # SVG Draw Lines
 
-An SVG line-drawing animation: it animates the original elements via `stroke-dashoffset` without cloning or touching the DOM; by default it draws in, and `replay({ reverse: true })` retracts along the same path.
+An SVG line-drawing animation. The component animates the original elements in the slot directly and does not clone the DOM. By default it draws in; `replay({ reverse: true })` retracts along the same path.
 
 ## Samples
 
 ### Basic
 
-The default slot holds the SVG content to animate, and it plays a single draw-in automatically the first time the content is stable. `duration` is the number of milliseconds for that stroke and defaults to `1000`.
+Put the SVG content you want to animate in the default slot. The first time that content is stable, the component plays one draw-in. `duration` is the number of milliseconds for that playback and defaults to `1000`.
 
 ```tsx
 import type { WebUiSvgDrawLines } from '@greypan/web-ui'
@@ -72,9 +72,7 @@ const lines = useTemplateRef<WebUiSvgDrawLines>('lines')
 
 ### Stroked geometry
 
-It collects the geometry elements matched by the selector `path, rect, circle, line, polyline, polygon, ellipse`; within one playback they all start and advance in parallel—the component offers no entry point for delays or staggering, so a one-by-one effect requires splitting into multiple instances.
-
-A closed `path` ending with `Z` is temporarily given a short extra segment during playback so that the closing stroke is really drawn, and its original `d` is restored afterwards.
+The elements that take part in the animation are `path`, `rect`, `circle`, `line`, `polyline`, `polygon`, and `ellipse`. Within one playback they start together and advance together. The component has no delay or stagger option, so a one-by-one effect needs multiple instances.
 
 ```tsx
 import type { WebUiSvgDrawLines } from '@greypan/web-ui'
@@ -206,11 +204,9 @@ const closedPath = useTemplateRef<WebUiSvgDrawLines>('closedPath')
 
 ### Duration and easing
 
-`duration` is clamped to 0–30000 milliseconds, and a non-numeric value falls back to `1000`; `easing` is passed to `element.animate()` as-is and defaults to `linear`.
+`duration` is clamped between 0 and 30000 milliseconds, and a non-numeric value falls back to `1000`. `easing` is a CSS easing function and defaults to `linear`.
 
-Both values are read at the moment each playback starts, so changing the properties while an animation is running does not affect the segment in flight; the next `replay()` picks it up.
-
-The three samples draw the same curve and differ only in duration and easing.
+Both values are read when each playback starts. Changing the properties during an animation does not affect the current playback; the next `replay()` uses the new values.
 
 ```tsx
 import type { WebUiSvgDrawLines } from '@greypan/web-ui'
@@ -358,7 +354,7 @@ const bounce = useTemplateRef<WebUiSvgDrawLines>('bounce')
 
 ### Multiple paths and nesting
 
-Each `replay()` collects the subtree again, covering all light DOM descendants of the host: multiple `<path>`s inside one `<svg>`, several `<svg>`s side by side, and `<g>` nesting at any depth all count as one batch and start and finish together. The number of paths never queues animations, and the instance has no concurrency limit and no "play one by one" switch.
+Each `replay()` collects all light DOM descendants of the host again. Multiple `<path>` elements inside one `<svg>`, several `<svg>` elements side by side, and `<g>` nesting at any depth all join the same batch and start and finish together. The number of elements never queues animations.
 
 ```tsx
 import type { WebUiSvgDrawLines } from '@greypan/web-ui'
@@ -422,9 +418,7 @@ const lines = useTemplateRef<WebUiSvgDrawLines>('lines')
 
 ### Nested shadow roots
 
-The traversal recurses into **open** shadow roots, so a `<path>` inside `<web-ui-icon>` and an `<svg>` in the host's light DOM land in the same batch and animate together; closed shadow roots are skipped.
-
-Precisely because it walks into nested shadow roots, two instances must not cover the same geometry elements (see End state after a rewind).
+Geometry elements inside nested open shadow roots take part in the animation too, such as the `<path>` inside `<web-ui-icon>`; closed shadow roots are skipped. Two instances therefore must not cover the same geometry elements; see End state after a rewind.
 
 ```tsx
 import type { WebUiSvgDrawLines } from '@greypan/web-ui'
@@ -498,9 +492,7 @@ const lines = useTemplateRef<WebUiSvgDrawLines>('lines')
 
 ### Disabling autoplay
 
-`no-autoplay` turns off "play once when the content first becomes stable", and the content stays as the asset is—fully stroked, visible, and with no inline dash written; `replay()` still works, and the caller decides when to play. `<web-ui-checkbox>` relies on it to avoid drawing an already-checked check on the page's first frame.
-
-The sample below is static on mount and draws in only when `replay()` is clicked.
+`no-autoplay` turns off autoplay on first appearance, and the content stays as the fully stroked asset. `replay()` still works, and the caller decides when to play.
 
 ```tsx
 import type { WebUiSvgDrawLines } from '@greypan/web-ui'
@@ -546,9 +538,9 @@ const lines = useTemplateRef<WebUiSvgDrawLines>('lines')
 
 ### Manual replay
 
-`replay()` cancels the current animation and collects the geometry elements again, drawing from empty to full; `replay({ reverse: true })` retracts along the same path, and the trailing blank is left in the inline styles as DOM state—showing it again requires calling `replay()` once more.
+`replay()` cancels the current animation, collects the geometry elements again, and draws from empty to full. `replay({ reverse: true })` retracts along the same path and leaves the resulting blank in the inline styles on the DOM; showing it again requires calling `replay()` once more.
 
-The returned promise settles after all animations of that playback finish, and settles immediately when there are no targets or when reduced motion is enabled in the current theme scope.
+The returned promise settles after all animations of that playback finish. It settles immediately when there are no targets, or when reduced motion is enabled in the current theme scope.
 
 ```tsx
 import type { WebUiSvgDrawLines } from '@greypan/web-ui'
@@ -602,11 +594,11 @@ const lines = useTemplateRef<WebUiSvgDrawLines>('lines')
 
 ### Props
 
-| Name          | Description                                                                                                                                     | Type      | Default    |
-| ------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- | --------- | ---------- |
-| `duration`    | Animation duration (milliseconds), clamped to 0–30000.                                                                                          | `number`  | `1000`     |
-| `easing`      | Passed to `element.animate()` when the browser supports interpolation of registered length-typed custom properties; otherwise `linear` is used. | `string`  | `'linear'` |
-| `no-autoplay` | Turns off automatic playback when the content first appears.                                                                                    | `boolean` | `false`    |
+| Name          | Description                                                    | Type      | Default    |
+| ------------- | -------------------------------------------------------------- | --------- | ---------- |
+| `duration`    | Animation duration (milliseconds), clamped to 0 to 30000.      | `number`  | `1000`     |
+| `easing`      | CSS easing function; falls back to `linear` where unsupported. | `string`  | `'linear'` |
+| `no-autoplay` | Turns off automatic playback when the content first appears.   | `boolean` | `false`    |
 
 ### Slots
 
@@ -616,26 +608,24 @@ const lines = useTemplateRef<WebUiSvgDrawLines>('lines')
 
 ### Methods
 
-| Name               | Description                                                                                                                                                                                                                                                                                                                                                |
-| ------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `replay(options?)` | Stops the current playback and starts over, collecting the geometry elements in the subtree on every call; when `options.reverse` is `true` it retracts along the original path. The returned promise settles after all animations finish, and settles immediately when there are no targets or when reduced motion is enabled in the current theme scope. |
+| Name               | Description                                                                                                                                                                                                                                                                                                                                                 |
+| ------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `replay(options?)` | Stops the current playback and starts over; every call collects the geometry elements in the subtree again. When `options.reverse` is `true` it retracts along the original path. The returned promise settles after all animations finish, and settles immediately when there are no targets or when reduced motion is enabled in the current theme scope. |
 
 ### Behavior
 
-All three properties are reflected.
+All three properties are written back to attributes.
 
-It traverses the light DOM and all open shadow roots recursively, looking for `path`, `rect`, `circle`, `line`, `polyline`, `polygon`, and `ellipse` elements.
-
-A `<path>` ending with `Z`/`z` temporarily gets gap-fix logic applied so that the closing segment renders correctly. All inline styles are restored once the draw-in segment completes or is cancelled.
+The animation targets `path`, `rect`, `circle`, `line`, `polyline`, `polygon`, and `ellipse` elements in the light DOM and in all open shadow roots.
 
 ### Autoplay
 
-It plays a draw-in once the first time the slot content is stable. With `no-autoplay` set, the asset stays as-is and the caller decides when to play—`<web-ui-checkbox>` relies on it to avoid drawing an already-checked check on the page's first frame.
+The component plays one draw-in the first time the slot content is stable. With `no-autoplay` set, the content keeps its original asset and the caller decides when to play.
 
 ### End state after a rewind
 
-The blank left by a rewind lives in inline styles on the animated geometry elements, including nodes inside nested open shadow roots (such as `<web-ui-icon>`).
+The blank left by a rewind is an inline style on the animated geometry elements. Nodes inside nested open shadow roots, such as the nodes in `<web-ui-icon>`, carry it the same way.
 
-Cloning these nodes (`cloneNode`, an `innerHTML` round trip) carries the blank along with them; detaching and reattaching the node also leaves the stroke hidden—the end of a rewind is a DOM state rather than a still-running animation, and nothing is left to restore it. Call `replay()` to show it again.
+Cloning these nodes (`cloneNode`, an `innerHTML` round trip) copies the blank with them, and reattaching does not restore the stroke. Call `replay()` to show it again.
 
-Because the component recurses into nested open shadow roots, two `<web-ui-svg-draw-lines>` layers must not cover the same geometry elements: each instance records an element's inline dash value only the first time it animates it, so a blank left by the inner layer is treated by the outer layer as "a value the consumer wrote".
+Two `<web-ui-svg-draw-lines>` layers must not cover the same geometry elements. Otherwise the outer layer treats a blank left by the inner rewind as its own value.

@@ -1,18 +1,14 @@
 # Context Menu
 
-Right-click context menu: the first child element is the trigger area and the remaining child elements are menu items (`<web-ui-dropdown-item>` and the like). While open the menu is modal, and clicking blank space only closes the menu.
+A context menu opened by right-click. The first child element in the default slot is the trigger area and the remaining child elements are menu items (`<web-ui-dropdown-item>` and the like). While open the menu is modal, and clicking blank space only closes the menu.
 
 ## Samples
 
 ### Basic
 
-The first element in the default slot is the trigger area and the remaining children are menu items: right-click inside the trigger area and the menu opens from the cursor position.
+The first element in the default slot is the trigger area and the remaining children are menu items. Right-click inside the trigger area and the menu opens from the cursor position. The `prefix` / `suffix` slots hold icons and shortcut hints; a `disabled` item stays in the menu but cannot be selected.
 
-The `prefix` / `suffix` slots hold icons and shortcut hints, and a `disabled` item stays in the menu but cannot be selected.
-
-`open-change` reports opening and closing, with `detail.open` the state at the time; clicking blank space, pressing Escape, or activating an item all close the menu and report once more.
-
-The readout line below counts the events and shows the last `detail.open`.
+`open-change` reports opening and closing, with `detail.open` holding the state at the time. Clicking blank space, pressing Escape, or activating an item closes the menu and dispatches once more.
 
 ```tsx
 import { lucideClipboardPaste, lucideCopy, lucideTrash2 } from '@greypan/web-ui/icons'
@@ -108,11 +104,7 @@ function onOpenChange(event: WebUiEvent<WebUiContextMenu, 'open-change'>) {
 
 ### Touch long press
 
-`long-press` is a touch opt-in: holding for `long-press-delay` (600 ms here) opens the menu, expanding downward from the press point; moving more than 10px during the hold is treated as scrolling and cancels it.
-
-It only responds to `pointerType === 'touch'`; a mouse right-click still goes through the native `contextmenu` and is unaffected by `long-press`.
-
-After a long-press open, the `contextmenu` and `click` that the browser re-dispatches for the same touch are absorbed, so it neither opens twice nor closes the menu that just opened.
+`long-press` is a touch opt-in: holding for `long-press-delay` (600 ms here) opens the menu, which expands downward from the press point. Scrolling during the hold cancels it. It only responds to touch, so a mouse right-click still uses the native `contextmenu`. After a long press opens the menu, the `contextmenu` and `click` that the browser re-dispatches for the same touch are ignored, so the menu neither opens twice nor closes right after opening.
 
 ```tsx
 import { useState } from 'react'
@@ -180,9 +172,7 @@ function onOpenChange(event: WebUiEvent<WebUiContextMenu, 'open-change'>) {
 
 ### Disabled
 
-`disabled` only suppresses the menu: a right-click does not open it, and the trigger area itself is neither greyed out nor recolored—the component renders no menu surface at all, so there is nothing to grey out, and disabling a context menu is not the same as disabling the trigger area.
-
-The button below toggles `disabled`, and the area text follows the state; the readout records `open-change`, so right-clicks do not count while disabled, and opening works as usual once it is re-enabled.
+`disabled` only suppresses the menu: a right-click does not open it, and the trigger area itself is neither greyed out nor recolored. Disabling a context menu is not the same as disabling the trigger area, so express a visual disabled state on your own content.
 
 ```tsx
 import { useState } from 'react'
@@ -263,12 +253,12 @@ function onOpenChange(event: WebUiEvent<WebUiContextMenu, 'open-change'>) {
 
 ### Props
 
-| Name               | Description                                                                                 | Type      | Default |
-| ------------------ | ------------------------------------------------------------------------------------------- | --------- | ------- |
-| `disabled`         | Neither right-click nor `openAt()` opens the menu; no visual greying out.                   | `boolean` | `false` |
-| `no-scroll-lock`   | Allows the background to scroll while open.                                                 | `boolean` | `false` |
-| `long-press`       | Opens the menu on a touch long press (opt-in; the mouse always goes through `contextmenu`). | `boolean` | `false` |
-| `long-press-delay` | How long the press must be held before the long press triggers (ms).                        | `number`  | `500`   |
+| Name               | Description                                                                         | Type      | Default |
+| ------------------ | ----------------------------------------------------------------------------------- | --------- | ------- |
+| `disabled`         | Neither right-click nor `openAt()` opens the menu; no visual greying out.           | `boolean` | `false` |
+| `no-scroll-lock`   | Allows the background to scroll while open.                                         | `boolean` | `false` |
+| `long-press`       | Opens the menu on a touch long press (opt-in; the mouse always uses `contextmenu`). | `boolean` | `false` |
+| `long-press-delay` | How long the press must be held before the long press triggers (ms).                | `number`  | `500`   |
 
 ### Events
 
@@ -297,36 +287,18 @@ function onOpenChange(event: WebUiEvent<WebUiContextMenu, 'open-change'>) {
 
 ### Behavior
 
-Opens through the `contextmenu` event. Menu items: `web-ui-dropdown-item`, `web-ui-dropdown-divider`, `web-ui-dropdown-header`. Supports keyboard navigation and submenu hover.
+Menu items: `web-ui-dropdown-item`, `web-ui-dropdown-divider`, `web-ui-dropdown-header`. Supports keyboard navigation and submenu hover.
 
-While open the menu is modal: it renders into a transparent `<dialog>` in the browser's top layer, and the page underneath receives no hit testing. So "clicking outside" only closes the menu, and does not also activate the row, checkbox, or link below it.
+While open the menu is modal: the page underneath receives no pointer events, so clicking outside only closes the menu and does not also activate the row, checkbox, or link below it. After a menu item is activated there is a roughly 160ms exit transition, during which the page underneath becomes clickable again.
 
-The scrim is deliberately kept fully transparent—its job is to eat this hit, not to add a scrim layer to the page.
+`long-press` is opt-in and touch-only: after holding for `long-press-delay` (`500` ms by default) the menu opens, the same way as a right-click. Scrolling during the hold cancels it, so the menu does not open by mistake. The `contextmenu` and `click` that the browser re-dispatches for the same touch are ignored, so the menu neither opens twice nor closes right after opening.
 
-There is another cost worth knowing: during the roughly 160ms exit transition after a menu item is activated, the scrim has already left the top layer, so the page underneath becomes clickable again during that window, and the menu's stacking also falls back to normal flow.
+A menu opened by `long-press` expands downward from the press point and is centered horizontally on it. When there is not enough space below, it flips above the press point, is clamped back into the viewport, and stays clear of `--wui-context-menu-safe-area-bottom` so the last item does not land in the home indicator.
 
-`long-press` is opt-in and touch-only: after the pointer holds for `long-press-delay` (`500` ms by default, matching the platform's native long press) the menu opens, taking exactly the same path as a right-click.
+The split follows the input method, not the viewport width: a mouse right-click in a narrow window still expands from the cursor's top-left corner.
 
-It only responds to `pointerType === 'touch'`; moving more than 10px during the hold cancels it, so scrolling does not open the menu by mistake.
+`disabled` only suppresses menu behavior: neither right-click nor `openAt()` opens the menu. It also does not grey out or recolor the content in the default slot. Disabling a context menu is not the same as disabling the trigger area, so express a visual disabled state on your own content.
 
-Because the browser also recognizes the same hold as a native gesture, after a long-press open the `contextmenu` and `click` that the engine re-dispatches are absorbed, so it neither opens twice nor immediately light-dismisses the menu that just opened.
+While the menu is open you can safely use conditional rendering (such as Vue `v-if`) to switch, move, or remove menu items without re-inserting them into the host element.
 
-A menu opened by `long-press` expands **downward** from the press point: its top edge aligns with the press point's `y` and it is horizontally centered on the press point's `x`, matching the native long-press menus of iOS / Android.
-
-When there is not enough space below, the panel flips above the press point instead of running off screen; both axes are clamped back into the viewport, and `--wui-context-menu-safe-area-bottom` is kept free so the last item does not land in the home indicator.
-
-The split is based on **input method** rather than viewport width: a mouse right-click in a narrow window still expands from the cursor's top-left corner. The two differ only in the amount of horizontal alignment—positioning goes through the same `computePosition` call, so they cannot drift apart.
-
-`disabled` only suppresses menu behavior: neither right-click nor `openAt()` opens the menu.
-
-It does not grey out or recolor the content in the default slot—the component itself renders no menu surface at all, so there is nothing to grey out; disabling a context menu is not the same as disabling the trigger area.
-
-When the disabled state needs to be visually readable, express it on your own content.
-
-While the menu is open, the consumer can safely use conditional rendering (such as Vue `v-if`) to switch, move, or remove menu items without re-inserting them into the host element; changes inside the portal are reconciled automatically, and on close the framework anchor migrates back to the host with the element, so subsequent framework updates keep working.
-
-On close, focus returns to the element that held focus before the menu opened. This is behavior built into the browser's modal dialog rather than implemented by the component—which is also why it only applies while the menu is still in the top layer.
-
-Menu item activation is the only path that returns focus early: it returns at the moment of the click and does not interfere after the exit transition, so if a menu item callback moves focus elsewhere (for example, entering inline edit mode), focus stays there.
-
-The closing process does not pull focus away from the new focus target, so components that commit on blur will not submit an edit that was never changed.
+On close, focus returns to the element that had focus before the menu opened. Menu item activation is the only path that returns focus early: it returns focus at the moment of the click and does not interfere afterwards. So if a callback moves focus elsewhere (for example, entering inline edit mode), focus stays there. Closing also does not move focus away from the new target, so components that commit on blur will not submit an edit that was never changed.

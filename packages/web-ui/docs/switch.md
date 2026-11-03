@@ -1,6 +1,6 @@
 # Switch
 
-Switch, declaring `role="switch"` and `aria-checked`; a click toggles it immediately, and holding the track to drag horizontally or flicking it also sets the value, with both Space and Enter toggling from the keyboard.
+Switch, declaring `role="switch"` and `aria-checked`. A click toggles it immediately. Holding the track to drag horizontally or flicking it also sets the value, and both Space and Enter toggle from the keyboard.
 
 Text children of the default slot become the visible label and the default accessible name; `aria-label` or `aria-labelledby` can also be set on the host.
 
@@ -49,7 +49,7 @@ function onChange(event: WebUiEvent<WebUiSwitch, 'change'>) {
 
 `disabled` and `loading` both block interaction and both use the same disabled appearance.
 
-The difference is in semantics and visuals, and also in validation: `loading` draws a spinning icon in the thumb to say the result is undecided while `checked` stays put, suiting a "submitting" wait; the `required` check honors only `disabled` (including form-level disabling), so while `loading` an unchecked switch still reports `valueMissing` and blocks submission.
+The difference is in semantics and validation: `loading` draws a spinning icon in the thumb while `checked` stays put; the `required` check honors only `disabled` (including form-level disabling), so while `loading` an unchecked switch still reports `valueMissing` and blocks submission.
 
 ```tsx
 export default function Demo() {
@@ -87,7 +87,7 @@ export default function Demo() {
 
 ### Event timing
 
-Events are dispatched only after user action: a click, Enter, and Space all make the component dispatch both `input` and `change`. Writing `checked` programmatically dispatches neither—that is exactly the path the button below takes.
+Events are dispatched only after user action: a click, Enter, and Space all make the component dispatch both `input` and `change`. Writing `checked` programmatically dispatches neither. The button below takes exactly that path.
 
 ```tsx
 import type { WebUiSwitch } from '@greypan/web-ui'
@@ -149,11 +149,11 @@ function writeChecked() {
 
 ### Drag and flick
 
-After pressing, the switch enters dragging only once horizontal movement exceeds 6px, and the thumb follows the pointer; on release, moving past half the distance sets the value, and a horizontal velocity beyond ±300 px/s sets it in the flick direction regardless of where the pointer landed.
+Hold the track and drag horizontally: on release, moving past half the distance sets the value, and a fast flick sets it in the flick direction.
 
-One drag counts as one value change, with `input` and `change` dispatched once each; the click that immediately follows is swallowed by the drag flag and does not flip the switch a second time.
+One drag counts as one value change, with `input` and `change` dispatched once each; it does not flip twice.
 
-The host has `touch-action: none`, so vertical page scrolling does not steal this gesture.
+Vertical page scrolling does not steal this gesture.
 
 ```tsx
 import { useState } from 'react'
@@ -293,49 +293,49 @@ function reset() {
 
 ### Props
 
-| Name       | Description                                                                                                                                   | Type      | Default |
-| ---------- | --------------------------------------------------------------------------------------------------------------------------------------------- | --------- | ------- |
-| `checked`  | On/off state; it is not an observed attribute, so a programmatic write takes effect without reflecting to an attribute or dispatching events. | `boolean` | `false` |
-| `name`     | Form field name.                                                                                                                              | `string`  | `''`    |
-| `value`    | Form submission value, `'on'` when left empty; the field is not submitted while unchecked.                                                    | `string`  | `''`    |
-| `disabled` | Disabled state; blocks interaction and makes validation yield.                                                                                | `boolean` | `false` |
-| `required` | Required validation: blocks submission while unchecked.                                                                                       | `boolean` | `false` |
-| `loading`  | Loading state: blocks interaction, shows a spinning icon in the thumb, and keeps the current value.                                           | `boolean` | `false` |
+| Name       | Description                                                                                                                  | Type      | Default |
+| ---------- | ---------------------------------------------------------------------------------------------------------------------------- | --------- | ------- |
+| `checked`  | On/off state; setting it through the property takes effect immediately, without updating an attribute or dispatching events. | `boolean` | `false` |
+| `name`     | Form field name.                                                                                                             | `string`  | `''`    |
+| `value`    | Form submission value, `'on'` when left empty; the field is not submitted while unchecked.                                   | `string`  | `''`    |
+| `disabled` | Disabled state; blocks interaction and turns validation off.                                                                 | `boolean` | `false` |
+| `required` | Required validation: blocks submission while unchecked.                                                                      | `boolean` | `false` |
+| `loading`  | Loading state: blocks interaction, shows a spinning icon in the thumb, and keeps the current value.                          | `boolean` | `false` |
 
 ### Slots
 
-| Name      | Description                                                                                                  |
-| --------- | ------------------------------------------------------------------------------------------------------------ |
-| `default` | Visible label text, which also serves as the switch's accessible name; no extra spacing is added when empty. |
+| Name      | Description                                                                                           |
+| --------- | ----------------------------------------------------------------------------------------------------- |
+| `default` | Visible label text, which is also the switch's accessible name; no extra spacing is added when empty. |
 
 ### Events
 
-| Name     | Description                                                                                                            |
-| -------- | ---------------------------------------------------------------------------------------------------------------------- |
-| `input`  | Dispatched when the user toggles: click, Enter, Space, and drag-to-set—all four paths are dispatched by the component. |
-| `change` | Dispatched at the same commit points as `input`; a programmatic write to `checked` dispatches nothing.                 |
+| Name     | Description                                                                                                      |
+| -------- | ---------------------------------------------------------------------------------------------------------------- |
+| `input`  | Dispatched when the user toggles: click, Enter, Space, and drag-to-set; the component dispatches all four paths. |
+| `change` | Dispatched at the same commit points as `input`; a programmatic write to `checked` dispatches nothing.           |
 
 ### Behavior
 
-`checked` is not an observed attribute but a getter / setter pair over internal state: a `checked` written on the native tag is read only once at mount, after which the attribute is not observed; a framework's dynamic binding updates it only when it lands on the property.
+`checked` is not written back as an attribute: a `checked` written on the tag is read only once at mount; a framework's dynamic binding updates it only when it writes the property.
 
-Writing `el.checked = true` directly takes effect, but does not reflect to an attribute and dispatches no events.
+Setting `el.checked = true` directly takes effect, but does not update the attribute and dispatches no events.
 
-To follow the page, catch `change` and write it back, as in the basic sample above.
+To follow the page, catch `change` and write it back.
 
-The three activation paths end at the same place: click, Space / Enter, and drag-to-set all write the new value through the component and dispatch both `input` and `change` as `composed` events on the host.
+Click, Space / Enter, and drag-to-set all dispatch `input` and `change` as `composed` events on the host.
 
-The host handles click and keydown itself (calling `preventDefault()` on Space / Enter before toggling, without relying on an inner native control), so the three paths do not differ in bubbling or forwarding, and a programmatic write to `checked` still dispatches nothing.
+The host handles click and keydown itself, so the three paths behave the same, and a programmatic write to `checked` dispatches nothing.
 
-`disabled` and `loading` share one disabled path: when `_isDisabled` (including form-level disabling) or `loading` is true, all three entry points—click, keyboard, and drag—return at the top of their handlers, and the thumb stays at the current value.
+`disabled` (including form-level disabling) and `loading` block click, keyboard, and drag, and the thumb stays at the current value.
 
-Validation only goes halfway: the `valueMissing` check for `required` reads `_isDisabled`, so `disabled` reports a clean state while `loading` does not report.
+Validation: `disabled` reports a clean state while `loading` does not report.
 
-Keyboard focus lands on the host (`tabindex=0` when enabled), and the focus ring is drawn on the track via `:host(:focus-visible)`; focus triggered by the mouse draws no ring and is left to the shared pointer focus suppression mechanism.
+Keyboard focus lands on the host (`tabindex=0` when enabled), and the focus ring is drawn on the track; focus triggered by the mouse draws no ring.
 
-When `disabled` or `loading`, the host's `tabindex` is pressed to `-1` (the original value is recorded and restored on recovery), so the whole control leaves the tab sequence and the focus ring has no way to appear.
+When `disabled` or `loading`, the host leaves the tab sequence.
 
-accessible name: the default slot content is the visible label and also the switch's accessible name; to reference an external label, set `aria-labelledby` on the `web-ui-switch` host, or set `aria-label` directly.
+The accessible name: the default slot content is the visible label and also the switch's accessible name. To reference an external label, set `aria-labelledby` on the `web-ui-switch` host, or set `aria-label` directly.
 
 `role="switch"`, `aria-checked`, and `aria-disabled` on the host are maintained by the component.
 
@@ -345,12 +345,10 @@ The default spacing between the label and the track is `8px`; when the default s
 
 The track is a 40×20 pill box, taking its radius from `--wui-radius-control` and its background from `--wui-color-surface-track`, switching to `--wui-color-accent` when on.
 
-The thumb is a 16×16 dot; at rest it is solid `--wui-color-on-control` with a shadow, and when pressed or dragged it switches to the glass surface and widens to 20px with `scale(1.5)`, with a transition bridging the two forms.
+The thumb is a 16×16 dot; at rest it is solid `--wui-color-on-control` and slightly raised, and when pressed or dragged it switches to the glass surface and enlarges slightly.
 
-The on state is offset by 20px (16px in the pressed state, matching the enlarged visual position).
+`--wui-switch-drag-offset` is driven by the component itself; do not use it as a style hook.
 
-Position during a drag goes through an inline `--wui-switch-drag-offset`, with transitions turned off so it follows the hand—this variable is driven by the component itself; do not use it as a style hook.
+Disabled and loading drop the whole control to forty percent opacity and switch to a `not-allowed` cursor.
 
-Both the host and the track are `touch-action: none`, and `user-select: none` is written on the track only; disabled and loading land on `.is-disabled`, dropping the whole control to forty percent opacity and switching to a `not-allowed` cursor.
-
-The component has no size or color tokens of its own; everything goes through shared theme tokens, so there is no CSS Custom Properties table here: to change the width or colors, change the theme variables themselves, such as `--wui-color-surface-track` and `--wui-color-accent`, and the effect covers every control.
+The component has no size or color tokens of its own: to change the width or colors, change the theme variables themselves (such as `--wui-color-surface-track` and `--wui-color-accent`), and the effect covers every control.

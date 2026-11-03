@@ -1,16 +1,16 @@
 # Dialog
 
-模态 dialog，基于原生 `<dialog>` 的 `showModal()`；支持内置标题带、footer 与完全自绘的 `headless` 模式。
+模态 dialog，带内置标题栏和 footer，也可以用 `headless` 完全自绘。
 
 ## Samples
 
 ### Basic
 
-`open` 由页面持有：button 把它置真；Escape 与 backdrop 点击由组件关到位，再用 `open-change` 把结果交回来，页面按 `detail.open` 回写。
+`open` 由页面持有。点击 button 把它设为 `true`；Escape 和 backdrop 点击由组件发起关闭，组件再通过 `open-change` 把结果交回页面，页面按 `detail.open` 回写。
 
-footer 里的 button 是页面直接改状态，属于程序式更新，不会再派发一次事件——读数因此只在用户从组件侧关闭时增长。
+footer 里的 button 直接修改 `open`。这属于程序式更新，不会再派发一次事件。
 
-`heading` 是 `header` 槽为空时的标题回落。
+`header` 槽为空时，标题由 `heading` 提供。
 
 ```tsx
 import { useState } from 'react'
@@ -81,7 +81,7 @@ function onOpenChange(event: WebUiEvent<WebUiDialog, 'open-change'>) {
 
 ### Horizontal footer
 
-`footer-orientation="horizontal"` 让 footer 的操作按钮在同一行排列。两个按钮都设置 `full` 时，会等分操作区的可用宽度。
+`footer-orientation="horizontal"` 让 footer 的操作按钮排在一行。两个按钮都设置 `full` 时，它们等分操作区的可用宽度。
 
 ```tsx
 import { useState } from 'react'
@@ -137,7 +137,7 @@ const open = ref(false)
 
 ### No backdrop close
 
-`no-backdrop-close` 禁止点击 backdrop 关闭 dialog；这个示例仍可用 footer button 或 Escape 关闭。
+`no-backdrop-close` 只拦截 backdrop 点击。footer button 和 Escape 仍能关闭 dialog。
 
 ```tsx
 import { useState } from 'react'
@@ -184,7 +184,7 @@ const open = ref(false)
 
 ### Closable without footer
 
-`closable` 在卡片右上角显示内置关闭 button。这个示例不提供 `footer`，关闭 button 是唯一由组件提供的操作入口。
+`closable` 在卡片右上角显示内置关闭 button。没有 `footer` 时，它是组件提供的唯一操作入口。
 
 ```tsx
 import { useState } from 'react'
@@ -222,9 +222,9 @@ const open = ref(false)
 
 ### Controlled closing
 
-`controlled` 把关闭的决定权交给页面：Escape 与 backdrop 点击都不改 `open`，只派发 `open-change` 请求关闭。
+`controlled` 把关闭的决定权交给页面。Escape 和 backdrop 点击都不修改 `open`，只派发 `open-change` 请求关闭。
 
-页面不回写就保持打开，`<output>` 累加被拦截的请求数；footer 的「放弃更改」直接写 `false`，那是程序式关闭，`controlled` 不拦。
+页面不回写时 dialog 保持打开。footer 的「放弃更改」直接写入 `false`，这属于程序式关闭，`controlled` 不拦截。
 
 ```tsx
 import { useState } from 'react'
@@ -282,9 +282,9 @@ function onOpenChange(event: WebUiEvent<WebUiDialog, 'open-change'>) {
 
 ### Headless
 
-`headless` 只保留 overlay 基础设施——backdrop、进出场动画、滚动锁与原生 `<dialog>` 语义；内置 chrome 带、正文区与 footer 一概不渲染，默认插槽直接落进卡片内的滚动层。
+`headless` 只保留 backdrop、进出场动画、滚动锁这些 overlay 行为。内置标题栏、内容区和 footer 都不渲染，默认插槽直接成为卡片内的滚动层。
 
-此时没有可自动关联的内置标题，`aria-dialog-label` 必须由页面提供，卡片外观与关闭 button 也全部自绘。
+此时没有可自动关联的内置标题，页面必须提供 `aria-dialog-label`，卡片外观和关闭 button 也由页面自绘。
 
 ```tsx
 import { useState } from 'react'
@@ -365,94 +365,90 @@ const open = ref(false)
 
 ### Props
 
-| 名称                 | 说明                                                                                                                   | 类型                         | 默认值       |
-| -------------------- | ---------------------------------------------------------------------------------------------------------------------- | ---------------------------- | ------------ |
-| `open`               | dialog 可见性。                                                                                                        | `boolean`                    | `false`      |
-| `closable`           | 显示内置关闭 button。                                                                                                  | `boolean`                    | `false`      |
-| `footer-orientation` | Footer 操作区排列方向。                                                                                                | `'vertical' \| 'horizontal'` | `'vertical'` |
-| `no-scroll-lock`     | 打开时不锁定页面滚动。                                                                                                 | `boolean`                    | `false`      |
-| `no-backdrop-close`  | 禁止点击 backdrop 关闭。                                                                                               | `boolean`                    | `false`      |
-| `no-escape-close`    | 禁止按 Escape 关闭。                                                                                                   | `boolean`                    | `false`      |
-| `controlled`         | Escape 与 backdrop 仅请求 `open=false`，由消费方回写。                                                                 | `boolean`                    | `false`      |
-| `heading`            | 标题文字，`header` 插槽为空时的回落（`headless` 下忽略）。                                                             | `string`                     | `''`         |
-| `headless`           | 只保留 overlay 行为，不渲染内置 header 带、内容区与 footer。                                                           | `boolean`                    | `false`      |
-| `aria-dialog-label`  | 内部原生 dialog 的 accessible name；`headless` 下必填。旧名 `dialog-label` 已废弃，仅为兼容保留，将在下个 major 移除。 | `string`                     | `''`         |
-| `aria-close-label`   | 内置关闭 button 的无障碍名称；未设置时回退内置英文文案（`Close`）。                                                    | `string`                     | `''`         |
+| 名称                 | 说明                                                                | 类型                         | 默认值       |
+| -------------------- | ------------------------------------------------------------------- | ---------------------------- | ------------ |
+| `open`               | dialog 是否可见。                                                   | `boolean`                    | `false`      |
+| `closable`           | 显示内置关闭 button。                                               | `boolean`                    | `false`      |
+| `footer-orientation` | footer 操作区的排列方向。                                           | `'vertical' \| 'horizontal'` | `'vertical'` |
+| `no-scroll-lock`     | 打开时不锁定页面滚动。                                              | `boolean`                    | `false`      |
+| `no-backdrop-close`  | 禁止点击 backdrop 关闭。                                            | `boolean`                    | `false`      |
+| `no-escape-close`    | 禁止按 Escape 关闭。                                                | `boolean`                    | `false`      |
+| `controlled`         | Escape 与 backdrop 只请求 `open=false`，由调用方回写。              | `boolean`                    | `false`      |
+| `heading`            | 标题文字，`header` 插槽为空时的回退（`headless` 下忽略）。          | `string`                     | `''`         |
+| `headless`           | 只保留 overlay 行为，不渲染内置标题栏、内容区与 footer。            | `boolean`                    | `false`      |
+| `aria-dialog-label`  | dialog 的可访问名称；`headless` 下必填。`dialog-label` 也可用。     | `string`                     | `''`         |
+| `aria-close-label`   | 内置关闭 button 的无障碍名称；未设置时回退内置英文文案（`Close`）。 | `string`                     | `''`         |
 
 ### Events
 
-| 名称          | 说明                                            |
-| ------------- | ----------------------------------------------- |
-| `open-change` | open 状态变化，`detail.open` 为请求的目标状态。 |
+| 名称          | 说明                                              |
+| ------------- | ------------------------------------------------- |
+| `open-change` | `open` 状态变化，`detail.open` 是请求的目标状态。 |
 
 ### Slots
 
 | 名称      | 说明                                           |
 | --------- | ---------------------------------------------- |
 | `default` | 正文内容。                                     |
-| `header`  | 卡片顶部的 chrome 带，有内容时接管 `heading`。 |
+| `header`  | 卡片顶部的标题栏区域，有内容时接管 `heading`。 |
 | `footer`  | 底部操作区。                                   |
 
 ### Methods
 
 | 名称          | 说明                                        |
 | ------------- | ------------------------------------------- |
-| `showModal()` | 打开 dialog，等价于把 `open` 置为 `true`。  |
-| `close()`     | 关闭 dialog，等价于把 `open` 置为 `false`。 |
+| `showModal()` | 打开 dialog，等同于把 `open` 设为 `true`。  |
+| `close()`     | 关闭 dialog，等同于把 `open` 设为 `false`。 |
 
 ### 行为说明
 
-`header` 槽是卡片的 chrome 带：不参与滚动，自带水平 padding（`--wui-dialog-inline-padding`），内容不会贴到卡片内沿。
+`header` 槽渲染卡片顶部的标题栏。它不参与滚动，自带水平内边距（`--wui-dialog-inline-padding`），内容不会贴到卡片内沿。
 
-`heading` 属性是它的 fallback——槽一旦有分配元素就整条接管，否则非空的 `heading` 渲染出 `.wui-dialog-heading`；两者都为空时整条带隐藏。
+`heading` 属性是它的回退：槽里一旦有内容，标题栏就完全由槽接管；两者都为空时，整个标题栏隐藏。
 
-`default` 槽在两种模式下都承载正文。默认模式下它渲染进 `.desc`（卡片的内容区），与 `header` 带、`footer` 并列。
+`default` 槽在两种模式下都承载正文。默认模式下，它位于标题栏和 footer 之间的内容区。
 
-`footer` 只负责方向、间距、对齐与内边距，不覆盖子元素的样式。默认纵向排列，按钮仍按自身内容宽度渲染、在行内居中；需要占满操作区的 button 由消费方显式设置 `full`。设置 `footer-orientation="horizontal"` 后改为同一行，间距固定取全局 `--wui-space-3`、整行默认居中（`justify-content` 横向默认 `center`），按钮宽度继续由各自组件或其自身样式决定。
+`footer` 只负责方向、间距、对齐和内边距，不改动子元素的样式。默认纵向排列，按钮仍按自身内容宽度渲染，并在行内居中。需要占满操作区的 button，由调用方显式设置 `full`。设置 `footer-orientation="horizontal"` 后，按钮排成一行，间距固定取全局 `--wui-space-3`，整行默认居中。
 
-`headless` 下整张卡片变成一个滚动层：`default` 槽渲染进 `.wui-dialog-content`，`header` 带、`.desc` 与 `footer` 一概不渲染，`heading` 一并失效。
+`headless` 下整张卡片就是一个滚动层。`header`、内容区和 `footer` 都不渲染，`heading` 一并失效。
 
-`headless` 与 `<web-ui-drawer>` 是同一套机制——显式布尔属性，不是「往某个插槽里塞东西」的 toggle。
+未设置 `no-escape-close` 时，Escape 会关闭 dialog；未设置 `no-backdrop-close` 时，点击 backdrop 会关闭。启用 `controlled` 后，两者都只派发关闭请求，不会自行关闭。
 
-使用原生 `<dialog>`，`@cancel` 阻止默认关闭行为。除非存在 `no-escape-close`，否则 Escape 调用 `close()`；除非存在 `no-backdrop-close`，否则点击 backdrop 关闭。启用 `controlled` 后，两者都只派发关闭请求而不自关闭。
+启用 `closable` 后，默认模式和 `headless` 模式都会渲染内置关闭 button。它和 Escape、backdrop 点击使用同一条关闭路径（`controlled` 对它同样生效）。
 
-启用 `closable` 后，默认模式与 `headless` 模式都会渲染内置关闭 button，且与 Escape、backdrop 点击走同一条关闭路径（`controlled` 对它同样生效）。
+关闭 button 位于卡片右上角，距上沿和右沿的偏移由 `--wui-dialog-close-top` / `--wui-dialog-close-right` 控制（默认都是 `20px`）。
 
-两种模式的位置已统一：button 都绝对定位到卡片右上角，距卡片两沿的偏移由 `--wui-dialog-close-top` / `--wui-dialog-close-right` 控制（默认都是 `20px`；drawer 关闭 button 仍为 `16px`）。
+默认模式下，标题栏会为 button 留出空间，长内容不会延伸到 button 下方。
 
-只有 `headless` 会把整卡换掉；默认模式下 `header` 带会为 button 留出避让，长内容不会钻到 button 下面。
+不启用 `closable` 时不会渲染关闭 button。
 
-icon 与 drawer 关闭 button 同为 `ooui:close`。
+> Escape 归属：一次按键只关闭最内层的已打开 overlay（popover、select、autocomplete、dropdown、context-menu、drawer、dialog、image-preview 都参与）。例如在一个 drawer 里打开 select，第一次 Escape 只关 select，第二次才关 drawer。互不嵌套的并列 overlay 按打开顺序关闭最上层。正在播退场动画的 panel 仍会处理 Escape，但只要还有别的 overlay 开着，这次按键仍归那一层。
 
-不启用 `closable` 时什么都不渲染——既没有 button，也没有多余的包裹层。
-
-> **Escape 归属**：Escape 由共享仲裁者统一判定，一次按键只关闭**最内层**的已打开 overlay（popover、select、autocomplete、dropdown、context-menu、drawer、dialog 都参与）。例如在 drawer 内打开 select，第一次 Escape 只关 select，第二次才关 drawer。互不嵌套的并列 overlay 按打开顺序关闭最上层。正在播退场过渡的 panel 仍在场上，也仍由它接住 Escape——但只要还有别的 overlay 开着，那一次按键仍然归该层，「一次按键关一层」不因此改变。`image-preview` 同样参与：它的原生 `<dialog>` 会登记进同一个仲裁者，Escape 按层级判定；组件的 `cancel` handler 只是拦掉原生的瞬时关闭，把 top layer 保留到退场过渡结束。
-
-> **高度语义**：本 token 限制的是内容区，不是整卡。`header` 带与 footer 仍由内容撑开，超出上限的部分在 `.desc` 内部滚动；整卡本身只由字面量 `100vh` / `100dvh` 兜底，接住「视口太矮、chrome 加内容区上限也放不下」的情况。要给**整卡**定上限的宿主仍需自行量出 chrome（卡片 block 内边距 + header 带 + 间距 + footer）并从 token 里减掉——Interweave 前端三个 dialog 分别减 142、142、158。不需要这个数的是「让内容区滚起来」：`.desc` 自带上限与 `overflow`，滚动发生在它内部，宿主不必自己算这个高度。
+> 高度语义：`--wui-dialog-max-height` 限制的是内容区，不是整张卡片。标题栏和 footer 仍由内容撑开，超出部分在内容区内滚动，宿主不必自己算这个高度。要给整张卡片定上限的宿主，需要自行量出标题栏、footer 和内边距的高度，再从该值里减掉。
 >
-> **`headless` 模式没有 `.desc`**，所以该 token 在这一档不生效。`headless` 下的 `default` 插槽被包进 `.wui-dialog-content`，滚动发生在这一层；卡片在内容装得下时仍贴合内容，装不下时由同一条字面量 `100vh` / `100dvh` 兜底。内置关闭 button 在内容滚动时保持 `--wui-dialog-close-top` / `--wui-dialog-close-right` 给出的位置不变。
+> `headless` 模式不适用这个 token：卡片在内容装得下时贴合内容，装不下时回退到视口高度，滚动发生在内容区。内置关闭 button 在内容滚动时保持 `--wui-dialog-close-top` / `--wui-dialog-close-right` 给出的位置。
 
-### accessible name
+### 可访问名称
 
-设置了 `aria-dialog-label` 时，内部原生 `<dialog>` 直接取它的 `aria-label`；否则在默认模式且 `header` 带可见时，取指向该带的 `aria-labelledby="wui-dialog-heading"`。
+设置了 `aria-dialog-label` 时，它就是 dialog 的可访问名称。未设置时，如果处于默认模式且标题栏可见，名称来自标题栏。
 
-`headless` 没有可指向的内置标题，所以**名字必须由 Consumer 提供**——`aria-dialog-label`，或自绘的可关联标题元素。
+`headless` 没有可指向的内置标题，所以名字必须由调用方提供：`aria-dialog-label`，或一个自绘且可关联的标题元素。
 
 ### CSS Custom Properties
 
-| 名称                              | 说明                                                                                                                                                                                                                                                                                                                                                               | 默认值                                  |
-| --------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | --------------------------------------- |
-| `--wui-dialog-width`              | dialog 宽度                                                                                                                                                                                                                                                                                                                                                        | `360px`                                 |
-| `--wui-dialog-max-height`         | 内容区（`.desc`）的最大高度，不是整卡高度。两套 fallback：基础规则 `90vh`，`@supports (height: 100dvh)` 内 `min(90vh, 90dvh)`——不支持 dvh 的引擎只拿到 `90vh`。整卡换算见下方说明                                                                                                                                                                                  | `90vh` / `min(90vh, 90dvh)`（dvh 引擎） |
-| `--wui-dialog-close-top`          | `closable` button 距卡片顶部的偏移                                                                                                                                                                                                                                                                                                                                 | `20px`                                  |
-| `--wui-dialog-close-right`        | `closable` button 距卡片右沿的偏移                                                                                                                                                                                                                                                                                                                                 | `20px`                                  |
-| `--wui-dialog-overlay-bg`         | backdrop 背景色                                                                                                                                                                                                                                                                                                                                                    | `var(--wui-color-backdrop)`             |
-| `--wui-dialog-bg`                 | 玻璃卡片背景色，回退到 `rgb(248 248 248 / 0.92)`                                                                                                                                                                                                                                                                                                                   | `var(--wui-color-surface-overlay)`      |
-| `--wui-dialog-padding`            | 卡片的 block 内边距。卡片没有 inline 分量：水平内边距由各分区提供（`.header` / `.desc` / `.wui-dialog-footer`），见 `--wui-dialog-inline-padding`                                                                                                                                                                                                                  | `20px 24px 24px`                        |
-| `--wui-dialog-inline-padding`     | `header` 带、内容区（`.desc`）与 footer 的水平内边距。卡片自身没有 inline padding，内容区的滚动口（其 border box）因此与卡片内沿重合——scrollbar 贴边——而内容仍保留这个内缩。默认取自 `--wui-space-6`                                                                                                                                                               | `24px`                                  |
-| `--wui-dialog-title-gap`          | 标题下方间距                                                                                                                                                                                                                                                                                                                                                       | `16px`                                  |
-| `--wui-dialog-desc-gap`           | 正文内容下方间距                                                                                                                                                                                                                                                                                                                                                   | `24px`                                  |
-| `--wui-dialog-desc-focus-padding` | 内容区**block 轴**预留的 focus-ring 余量。`.desc` 既是滚动容器，又因为有一条轴必须非 `visible` 而成了裁剪盒，所以紧贴其上下沿的控件，ring 会被 padding box 裁掉；这个余量覆盖 `5px` 的 ring（`offset: 2` + `width: 3`）。横向的 ring 余量由 `--wui-dialog-inline-padding` 提供（24px ≫ 5px），所以本 token 只作用于 block 轴。成对负 margin 使 chrome 高度保持不变 | `6px`                                   |
-| `--wui-dialog-footer-gap`         | Footer 按钮**纵向堆叠**时的间距；`footer-orientation="horizontal"` 时本 token 不参与，横排间距固定取全局 `--wui-space-3`。                                                                                                                                                                                                                                         | `10px`                                  |
-| `--wui-dialog-footer-justify`     | Footer `justify-content`；横向模式下覆盖默认值，可由该 token 调整对齐                                                                                                                                                                                                                                                                                              | `flex-end`（默认）/ `center`（横向）    |
-| `--wui-dialog-scale-enter`        | 进场缩放起点：由 `1.1` 收缩到 `1`，退场反向                                                                                                                                                                                                                                                                                                                        | `1.1`                                   |
+| 名称                              | 说明                                                                                                                                                                                                                                                                                                                                                                    | 默认值                                  |
+| --------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------- |
+| `--wui-dialog-width`              | dialog 宽度                                                                                                                                                                                                                                                                                                                                                             | `360px`                                 |
+| `--wui-dialog-max-height`         | 内容区的最大高度，不是整张卡片的高度。整卡换算见高度语义说明                                                                                                                                                                                                                                                                                                            | `90vh` / `min(90vh, 90dvh)`（dvh 引擎） |
+| `--wui-dialog-close-top`          | `closable` button 距卡片顶部的偏移                                                                                                                                                                                                                                                                                                                                      | `20px`                                  |
+| `--wui-dialog-close-right`        | `closable` button 距卡片右沿的偏移                                                                                                                                                                                                                                                                                                                                      | `20px`                                  |
+| `--wui-dialog-overlay-bg`         | backdrop 背景色                                                                                                                                                                                                                                                                                                                                                         | `var(--wui-color-backdrop)`             |
+| `--wui-dialog-bg`                 | 玻璃卡片背景色，回退到 `rgb(248 248 248 / 0.92)`                                                                                                                                                                                                                                                                                                                        | `var(--wui-color-surface-overlay)`      |
+| `--wui-dialog-padding`            | 卡片的块轴内边距。卡片本身没有行内内边距，水平内边距由标题栏、内容区和 footer 各自提供，见 `--wui-dialog-inline-padding`                                                                                                                                                                                                                                                | `20px 24px 24px`                        |
+| `--wui-dialog-inline-padding`     | 标题栏、内容区与 footer 的水平内边距。卡片自身没有行内内边距，所以内容区的滚动区域（它的 border box）与卡片内沿重合，scrollbar 贴边，而内容仍保留这段内缩。默认取自 `--wui-space-6`                                                                                                                                                                                     | `24px`                                  |
+| `--wui-dialog-title-gap`          | 标题下方间距                                                                                                                                                                                                                                                                                                                                                            | `16px`                                  |
+| `--wui-dialog-desc-gap`           | 正文内容下方间距                                                                                                                                                                                                                                                                                                                                                        | `24px`                                  |
+| `--wui-dialog-desc-focus-padding` | 内容区在块轴方向预留的 focus ring 余量。内容区既是滚动容器，又因为有一条轴必须不是 `visible` 而成为裁剪盒，所以紧贴其上下沿的控件，ring 会被 padding box 裁掉；这段余量覆盖 `5px` 的 ring（`offset: 2` + `width: 3`）。横向的 ring 余量由 `--wui-dialog-inline-padding` 提供（24px ≫ 5px），所以本 token 只作用于块轴。成对的负 margin 让标题栏和 footer 的高度保持不变 | `6px`                                   |
+| `--wui-dialog-footer-gap`         | footer 按钮纵向堆叠时的间距；`footer-orientation="horizontal"` 时本 token 不生效，横排间距固定取全局 `--wui-space-3`。                                                                                                                                                                                                                                                  | `10px`                                  |
+| `--wui-dialog-footer-justify`     | footer 的 `justify-content`。横向模式下会覆盖默认值，可用这个 token 调整对齐                                                                                                                                                                                                                                                                                            | `flex-end`（默认）/ `center`（横向）    |
+| `--wui-dialog-scale-enter`        | 进场缩放的起点：从 `1.1` 收缩到 `1`，退场时反向                                                                                                                                                                                                                                                                                                                         | `1.1`                                   |

@@ -1,12 +1,12 @@
 # Radio
 
-单个单选 button，与 `<web-ui-checkbox>` 共用选择控件的盒契约；`<web-ui-radio-group>` 负责在一组 option 之间保持单选。
+单个单选 button，与 `<web-ui-checkbox>` 共用选择控件的盒模型规则；`<web-ui-radio-group>` 负责在一组 option 之间保持单选。
 
 ## Samples
 
 ### Basic
 
-默认插槽是 label 文字。单选控件自己只会「选中且保持」，点击已选中的一项不会取消它，所以独立使用时由页面持有这个值，`checked` 写成比较结果。
+默认插槽是 label 文字。单选控件只会选中并保持选中，点击已选中的一项不会取消它。所以独立使用时由页面持有这个值，`checked` 写成比较结果。
 
 ```tsx
 import { useState } from 'react'
@@ -46,7 +46,7 @@ const plan = ref('basic')
 
 ### Disabled
 
-`disabled` 关掉交互：已选中的一项停在选中态，按下不动、校验也让路；组级禁用写在 `<web-ui-radio-group>` 上，见下面的单选组。
+`disabled` 关掉交互：已选中的一项停在选中态，按下没有反应，校验也不生效。组级禁用写在 `<web-ui-radio-group>` 上，见下面的单选组。
 
 ```tsx
 export default function Demo() {
@@ -72,7 +72,7 @@ export default function Demo() {
 
 ### Form value
 
-选中的那一项以 `name` 为字段名、`value` 为值进入 `FormData`，未选中的不进；`value` 留空时提交 `'on'`。同名的两项独立存在时谁被点谁就提交，保持单选是页面的事——要交给组件做就用 `<web-ui-radio-group>`。
+选中的那一项以 `name` 为字段名、`value` 为值进入 `FormData`，未选中的不进；`value` 留空时提交 `'on'`。同名的两项独立存在时，谁被点谁就提交，保持单选是页面的事。要交给组件做，就用 `<web-ui-radio-group>`。
 
 ```tsx
 import { useRef, useState } from 'react'
@@ -189,14 +189,14 @@ function reset() {
 
 ### 行为说明
 
-Shadow DOM 内的交互 `<span>` 声明 `role="radio"`，并同步 `aria-checked`、`aria-disabled` 和 `tabindex`。Enter/Space 键盘切换。
+宿主暴露 `radio` 语义，`aria-checked`、`aria-disabled` 与 `tabindex` 随状态同步；Enter/Space 键盘切换。
 
 点击只把该项置为选中，不会取消自己，也不会取消兄弟项；同页面的单选由宿主状态或 `<web-ui-radio-group>` 维持。
 
 `required` 在未选中时拦截原生提交（`valueMissing`），组内成员把这个判定交给组。
 
-组内成员自己派发的 `input` / `change` 不冒泡、不跨 shadow 边界，事件由组在宿主上统一派发一次。
+组内成员不向外派发事件，由组在宿主上统一派发一次 `input` / `change`。
 
 ### 布局
 
-与 `<web-ui-checkbox>` 共用同一套选择控件盒契约，包括「label 没有画出东西时收起间距」这一条——宿主高度由内容撑开、不继承页面行高，indicator 宽高走 `--wui-selection-control-size`，与相邻文字按 `vertical-align: middle` 对齐。
+与 `<web-ui-checkbox>` 共用同一套选择控件盒模型规则：宿主高度由内容撑开，不继承页面行高，label 为空时 indicator 与 label 之间的间距收起；indicator 宽高取 `--wui-selection-control-size`。

@@ -1,16 +1,16 @@
 # Dropdown Divider
 
-A divider inside a menu, used to separate groups of menu items.
+A divider inside a menu that separates groups of menu items.
 
-It has no props, events, or slots and does not take part in keyboard navigation—the menu only stops focus on `<web-ui-dropdown-item>`, and the divider itself only declares `role="separator"`.
+It has no props, events, or slots, and keyboard navigation does not stop on it. The menu only moves focus to `<web-ui-dropdown-item>`; the divider itself declares `role="separator"`.
 
-It appears among the children of `<web-ui-dropdown>` / `<web-ui-context-menu>`.
+Place it among the children of `<web-ui-dropdown>` / `<web-ui-context-menu>`.
 
 ## Samples
 
 ### Group divider
 
-A divider sits between two groups of menu items, spans the full width of the menu panel, and leaves a little horizontal margin on both sides.
+The divider sits between two groups of menu items and spans the full width of the menu panel.
 
 ```tsx
 export default function Demo() {

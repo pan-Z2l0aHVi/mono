@@ -2,13 +2,13 @@
 
 button 触发一个即时操作：提交表单、打开 dialog、切换状态。
 
-它不向 `FormData` 贡献值，`type="submit"` / `type="reset"` 把这两个原生动作转发给宿主的 `<form>`；对外只有从 shadow 内原生 button 冒出来的 `click`，组件自己不派发任何自定义事件。
+它不向 `FormData` 贡献值。`type="submit"` 与 `type="reset"` 把这两个原生动作转发给外层 `<form>`。对外只有原生 button 的 `click`，组件不派发自定义事件。
 
 ## Samples
 
 ### Variants
 
-`variant` 决定视觉层级，合法值只有 `primary` / `secondary` / `ghost` / `danger` / `glass`，集合外的值一律回退到 `glass`。`glass` 与页面背景融合，适合工具栏；`primary` 一页只应有一个。
+`variant` 决定视觉层级。合法值只有 `primary` / `secondary` / `ghost` / `danger` / `glass`，集合外的值回退到 `glass`。`glass` 与页面背景融合，适合工具栏；`primary` 一页只应有一个。
 
 ```tsx
 export default function Demo() {
@@ -40,11 +40,11 @@ export default function Demo() {
 
 ### Sizes
 
-`size` 接受裸数字或 CSS 长度：裸数字按 px 解释（`size="28"` 即 `--wui-control-size: 28px`），带单位的写法（`32px`、`1.5rem`）原样使用；只决定高度；留空时高度由 theme 的 `--wui-control-size`（36px）给出。
+`size` 接受裸数字或 CSS 长度。裸数字按 px 解释，`size="28"` 即 28px；带单位的写法（`32px`、`1.5rem`）原样使用。它只决定高度，留空时高度取 theme 的 `--wui-control-size`（36px）。
 
-`icon` 模式下 `min-width` 与高度同值，所以那枚正方形跟着一起变。
+`icon` 模式下宿主是正方形，尺寸随 `size` 一起变。
 
-组内成员的高度由 `<web-ui-button-group>` 统一成 30px，自己写的 `size` 在组里不起作用。
+组内成员的高度由 `<web-ui-button-group>` 统一成 30px，成员自己写的 `size` 在组里不生效。
 
 ```tsx
 import { lucideSearch } from '@greypan/web-ui/icons'
@@ -86,11 +86,11 @@ import { lucideSearch } from '@greypan/web-ui/icons'
 
 ### Width
 
-宽度只有两条路：`full` 让宿主变成 block 并把内部 button 铺满父容器，`--wui-button-width` 给内部 button 一个确定宽度（默认 `max-content`）。
+宽度有两种设置：`full` 让控件铺满父容器，`--wui-button-width` 给 button 一个固定宽度（默认 `max-content`）。
 
-两条同时写时 `full` 赢——`:host([full]) button` 那条把宽度直接写成 `100%`，不看这个变量。
+两者同时设置时 `full` 优先，`--wui-button-width` 被忽略。
 
-label 一律 `white-space: nowrap`，容器不够宽时是溢出而不是折行。
+label 不折行，容器不够宽时会溢出。
 
 ```tsx
 export default function Demo() {
@@ -140,9 +140,9 @@ export default function Demo() {
 
 ### Prefix and suffix
 
-默认插槽是 label 文字（内部包一层 span），`prefix` / `suffix` 命名插槽排在它两侧，三段之间的间距走 `--wui-button-gap`。
+默认插槽是 label 文字，`prefix` / `suffix` 命名插槽排在它两侧，三段之间的间距取 `--wui-button-gap`。
 
-没有指派节点的 slot 不生成盒子，所以空着的一侧不会留下半个 `gap`；前后缀不限类型，`<web-ui-icon>` 和 `<span>` 都能投影。
+空着的一侧不占 `gap`。前后缀不限类型，`<web-ui-icon>` 和 `<span>` 都能投影。
 
 ```tsx
 import { lucideChevronLeft, lucideChevronRight, lucideSearch } from '@greypan/web-ui/icons'
@@ -206,11 +206,11 @@ import { lucideChevronLeft, lucideChevronRight, lucideSearch } from '@greypan/we
 
 ### Icon mode
 
-`icon` 把内边距归零、`min-width` 与高度同值，宿主于是是一个正方形；默认插槽整体当作 icon 内容，不包那层 label span，`prefix` / `suffix` 这时不渲染。
+`icon` 让宿主成为正方形，默认插槽整体当作 icon 内容，`prefix` / `suffix` 这时不渲染。
 
 没有可见文字的 icon button 必须写 `aria-label`，否则读屏只念出一个空 button。
 
-`loading` 优先于 icon 内容：spinner 取代默认插槽，slot 里的 icon 不投影，所以同一枚按钮加载前后不会出现两个图形。
+`loading` 优先于 icon 内容：spinner 取代默认插槽，插槽里的 icon 不渲染。
 
 ```tsx
 import { lucideSearch } from '@greypan/web-ui/icons'
@@ -282,11 +282,11 @@ import { lucideSearch } from '@greypan/web-ui/icons'
 
 ### Disabled and loading
 
-`disabled` 与 `loading` 都会把内部原生 button 真的置为 disabled：既不派发 `click`，也退出 tab 序，两个标记同时写还是同一个结果。禁用态整块降到四成不透明度并让出 hover / 按下态。
+`disabled` 与 `loading` 都会真正禁用控件：不派发 `click`，也退出 tab 序。禁用态整体降到四成不透明度，没有 hover 与按下态。
 
-非 icon 模式下 `loading` 在 label 之前加一个 spinner，文字与前后缀照常投影——宽度因此会变，需要稳定宽度就走 icon 模式。
+非 icon 模式下 `loading` 在 label 之前加一个 spinner，文字与前后缀照常显示，因此宽度会变。需要固定宽度时用 icon 模式。
 
-下面这枚由页面自己举着 `loading`：点「保存」进入加载态，点「结束等待」退回。
+`loading` 由页面持有：点「保存」进入加载态，点「结束等待」退出。
 
 ```tsx
 import { useState } from 'react'
@@ -352,13 +352,13 @@ const pending = ref(false)
 
 ### Click and pressed state
 
-button 没有自定义事件，宿主要接的就是原生 `click`：它在 shadow 内的原生 button 上产生，组合并冒泡出来，`event.target` 重定向到宿主，所以 React 与 Vue 都能在 `<web-ui-button>` 上直接写 handler。
+button 没有自定义事件，监听原生 `click` 即可。这个事件组合并冒泡到宿主，`event.target` 会重定向到宿主，所以 React 与 Vue 都能直接在 `<web-ui-button>` 上写处理函数。
 
-键盘 Enter / 空格走同一次原生 activation，指针与键盘共用这一个 handler。
+Enter 与空格也产生同一个 `click`。
 
-按住期间画的是 `:active` 按下态；hover 只在 `(hover: hover) and (pointer: fine)` 的设备上画，按下态不挑设备。
+hover 只在 `(hover: hover) and (pointer: fine)` 的设备上出现，按下态在所有设备上都有。
 
-禁用与加载那两枚不产生 click，所以计数不动。
+禁用与加载的按钮不产生 click。
 
 ```tsx
 import { useState } from 'react'
@@ -404,13 +404,13 @@ const clicks = ref(0)
 
 `type` 只有 `button` / `submit` / `reset` 三个合法值，非法值规范化成 `button`。
 
-后两者在这次 composed `click` 的同步监听派发完之后，读宿主 ElementInternals 的 form owner 再转发 `requestSubmit()` / `reset()`，所以对这次 click 调 `preventDefault()` 就能取消这次动作——下面那枚「提交但被拦下」就是这么做的。
+`submit` / `reset` 在这次 `click` 的同步监听全部派发完之后转发给外层 `<form>`。对这次 click 调用 `preventDefault()` 即可取消。
 
-内部 button 自己没有 form owner，于是 `SubmitEvent.submitter` 是 `null`（读数里能看到）。
+`SubmitEvent.submitter` 是 `null`。
 
-「重置」转发的是 `form.reset()`，所以 `<web-ui-input>` 回到挂载时的初值，读数由这次 click 自己的 handler 清掉。
+「重置」转发 `form.reset()`，`<web-ui-input>` 回到挂载时的初值。
 
-这个 form 提交出来的只有 `nickname`：button 不贡献值，外层 `<fieldset disabled>` 会连这几枚一起禁用。
+这个 form 只提交 `nickname`：button 不贡献值，外层 `<fieldset disabled>` 会把这几个 button 一起禁用。
 
 ```tsx
 import { useState } from 'react'
@@ -489,17 +489,11 @@ function onCancelledClick(event: MouseEvent) {
 
 ### CSS variables
 
-表里这七个变量都写在 `<web-ui-button>` 宿主自己身上。`--wui-button-width` / `--wui-button-px` / `--wui-button-gap` 三条别处没人声明，挂在宿主上的一个 class 就够（下面第一枚）。
+表里七个变量都写在 `<web-ui-button>` 宿主上。`--wui-button-width` / `--wui-button-px` / `--wui-button-gap` 挂在宿主的 class 上即可。
 
-`--wui-button-color` / `--wui-button-bg` / `--wui-button-bg-hover` / `--wui-button-bg-active` 这四条由 `:host([variant='...'])` 声明在宿主自己身上。
+`--wui-button-color` / `--wui-button-bg` / `--wui-button-bg-hover` / `--wui-button-bg-active` 由 variant 声明在宿主上，继承值覆盖不了它。要么写在这枚宿主上，要么写进行内 `style`。
 
-继承来的值盖不住元素自身的声明，所以要么写在这枚宿主上、要么直接写进行内 `style`——这里走行内 `style`，四档一次给全。
-
-另有一层派生关系值得知道：`primary` 与 `secondary` 两档的 hover / active 都是从 `--wui-button-bg` 经 `color-mix(... , black)` 派生的（primary 取 88% / 76%，secondary 取 92% / 82%），只换 `--wui-button-bg` 那两档跟着一起变深（第二枚就是这样，按住它能看到）。
-
-`danger` 与 `glass` 不走这条派生，换了底色得自己补上那两档。
-
-第三枚把四档各指到一枚现成 token 上，是为了让悬停与按下各跳成一种看得出来颜色，真实页面不会这么配。
+`primary` 与 `secondary` 的 hover / active 由 `--wui-button-bg` 派生，只换底色时这两个状态会跟着变深。`danger` 与 `glass` 不派生，换底色时这两个状态要自己补上。
 
 ```tsx
 import { lucideUpload } from '@greypan/web-ui/icons'
@@ -566,69 +560,69 @@ const fourStates = {
 | 名称            | 说明                                                                                                                  | 类型                                                         | 默认值     |
 | --------------- | --------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------ | ---------- |
 | `variant`       | 视觉变体；集合外的值回退到 `glass`。                                                                                  | `'primary' \| 'secondary' \| 'ghost' \| 'danger' \| 'glass'` | `'glass'`  |
-| `disabled`      | 禁用状态，内部原生 button 一起禁用。                                                                                  | `boolean`                                                    | `false`    |
+| `disabled`      | 禁用状态。                                                                                                            | `boolean`                                                    | `false`    |
 | `loading`       | 加载态。同样阻断交互，并优先渲染 spinner。                                                                            | `boolean`                                                    | `false`    |
 | `full`          | 占满父容器宽度。                                                                                                      | `boolean`                                                    | `false`    |
 | `icon`          | icon 模式：宿主成正方形，默认插槽整体作为 icon 内容。                                                                 | `boolean`                                                    | `false`    |
 | `size`          | button 高度；裸数字按 px 解释，也接受 CSS 长度（如 `32px`、`1.5rem`）。在 `<web-ui-button-group>` 内被组统一成 30px。 | `string`                                                     | `''`       |
 | `type`          | 原生 button 的 `type`；非法值规范化成 `button`。                                                                      | `'button' \| 'submit' \| 'reset'`                            | `'button'` |
-| `aria-label`    | 无障碍名称，透传给内部原生 button。                                                                                   | `string \| null`                                             | `null`     |
-| `aria-expanded` | 展开状态；透传给内部原生 button，供辅助技术读取。                                                                     | `string \| null`                                             | `null`     |
+| `aria-label`    | 无障碍名称。                                                                                                          | `string \| null`                                             | `null`     |
+| `aria-expanded` | 展开状态，供辅助技术读取。                                                                                            | `string \| null`                                             | `null`     |
 
 ### Slots
 
 | 名称      | 说明                                                             |
 | --------- | ---------------------------------------------------------------- |
-| `default` | label 文字（内部包一层 span）；`icon` 模式下整体作为 icon 内容。 |
+| `default` | label 文字；`icon` 模式下整体作为 icon 内容。                    |
 | `prefix`  | label 左侧的 icon 或标识；`icon` 模式下不渲染。                  |
 | `suffix`  | label 右侧的 icon 或标识；空着的一侧不生成盒子，因此不占 `gap`。 |
 
 ### 行为说明
 
-`click` 由 shadow 内的原生 button 派发，组合并冒泡到宿主，`event.target` 重定向到宿主；Enter 与 空格 走同一次原生 activation，所以指针与键盘共用这一个事件。
+`click` 由原生 button 组合并冒泡到宿主，`event.target` 会重定向到宿主。Enter 与空格触发同一次原生 activation，所以指针与键盘共用这一个事件。
 
-`disabled`、`loading` 与表单级禁用（祖先 `<fieldset disabled>`）都会把内部 button 真的置为 disabled，click 不产生、tab 也进不来。
+`disabled`、`loading` 与表单级禁用（祖先 `<fieldset disabled>`）都会真正禁用控件：不产生 click，Tab 序也进不去。
 
-`aria-label` 与 `aria-expanded` 显式委派到内部原生 button；`aria-controls` 及其他属性留在宿主上，不会自动复制，因为 IDREF 不能跨 shadow root 解析。
+`aria-label` 与 `aria-expanded` 委派到内部原生 button；`aria-controls` 及其他属性留在宿主上，不会自动复制。
 
-用 `<web-ui-button>` 作 collapse trigger 时，辅助技术可在暴露为 button 的内部节点读取 `aria-expanded`。
+用 `<web-ui-button>` 作 collapse trigger 时，辅助技术能读到 `aria-expanded`。
 
-`submit` 与 `reset` 在 composed `click` 的同步监听全部派发完之后，经宿主的 form owner 转发到原生 `<form>`；对这次 click 调 `preventDefault()` 会取消该动作。
+`submit` 与 `reset` 在 composed `click` 的同步监听全部派发完之后转发到原生 `<form>`；对这次 click 调 `preventDefault()` 会取消该动作。
 
-内部 button 自身没有 form owner，因此 `SubmitEvent.submitter` 为 `null`。
+`SubmitEvent.submitter` 为 `null`。
 
 button 不向 `FormData` 贡献值（form state 恒为 `null`）。
 
-禁用只有 `disabled` 一条路径：它会把内部原生 button 真的置为 disabled，click 与表单动作都不发生。`aria-disabled` 不读取也不转发——「看起来禁用但仍可聚焦」的语义不提供，写上去的 `aria-disabled` 只留在宿主，对行为没有影响。
+禁用只有 `disabled` 一条路径：click 与表单动作都不发生。`aria-disabled` 不读取也不转发，写上去只留在宿主，对行为没有影响。
 
 `icon` 与 `loading` 同时开启时只渲染 spinner，默认插槽不投影；非 icon 模式下 spinner 排在 label 之前，与前后缀并存。
 
 `variant` 与 `type` 的非法值分别回退到 `glass` 与 `button`。
 
-默认形状保持正方形由 `icon` 决定，`full` 或显式 `--wui-button-width` 除外。
+默认形状是正方形，由 `icon` 决定；`full` 或显式设置 `--wui-button-width` 时除外。
 
 ### 布局
 
-宿主是 inline-flex 盒，把内部 button 双向居中，高度由内部 button 决定、不继承页面行高；`full` 时改成 block 并把宽度铺到 100%。
+宿主是 inline-flex 盒，高度由内部 button 决定、不继承页面行高；`full` 时宽度铺到 100%。
 
-内部 button 高度取 `--wui-control-size`（`36px`，`size` 覆盖它），圆角取 `--wui-radius-control`（胶囊），水平内边距取 `--wui-button-px`，`icon` 模式下内边距归零、`min-width` 与高度同值。
+高度取 `--wui-control-size`（`36px`，`size` 覆盖它），圆角是胶囊，水平内边距取 `--wui-button-px`。
 
-label `white-space: nowrap` 且容器 `overflow: clip`，宽度不足时溢出而不是折行。字号靠 `font: inherit` 从宿主继承再取 `--wui-font-size`，避免 UA 给原生 button 换上 Arial。
+label 不折行，宽度不足时溢出。字号取 `--wui-font-size`。
 
-cursor 由组件固定成 `default`（不跟成 `pointer`），禁用时宿主另加一层 `not-allowed`；禁用态的不透明度是 0.4。
+cursor 固定为 `default`，禁用时是 `not-allowed`；禁用态不透明度 0.4。
 
-焦点环画在内部 button 的 `:focus-visible` 上（`--wui-focus-ring-width` / `--wui-color-focus-ring`），指针点击期间由 `data-wui-pointer-focus` 压成透明，键盘 Tab 回来时恢复。
+焦点环使用 `--wui-focus-ring-width` / `--wui-color-focus-ring`；指针点击时不显示，键盘 Tab 回来时恢复。
 
 内部 button 暴露为 `::part(button)`。
 
 ### CSS Custom Properties
 
-| 名称                     | 说明                                                                                                              | 默认值               |
-| ------------------------ | ----------------------------------------------------------------------------------------------------------------- | -------------------- |
-| `--wui-button-width`     | button 宽度；`full` 时被 `100%` 接管。                                                                            | `max-content`        |
-| `--wui-button-px`        | 水平内边距。                                                                                                      | `var(--wui-space-3)` |
-| `--wui-button-gap`       | 前缀 / label / 后缀三段之间的间距。                                                                               | `var(--wui-space-2)` |
-| `--wui-button-color`     | button 文字颜色，由 `:host([variant='...'])` 声明。                                                               | 随 variant           |
-| `--wui-button-bg`        | button 背景颜色，由 `:host([variant='...'])` 声明。                                                               | 随 variant           |
-| `--wui-button-bg-hover`  | 悬停背景颜色，只在 `(hover: hover) and (pointer: fine)` 生效；primary / secondary 两档由 `--wui-button-bg` 派生。 | 随 variant           |
-| `--wui-button-bg-active` | 按下背景颜色，`:active` 且非禁用时生效，不挑指针设备；同样由 `--wui-button-bg` 派生（danger / glass 除外）。      | 随 variant           |
+| 名称                     | 说明                                                                                                          | 默认值               |
+| ------------------------ | ------------------------------------------------------------------------------------------------------------- | -------------------- |
+| `--wui-button-width`     | button 宽度；`full` 时被 `100%` 接管。                                                                        | `max-content`        |
+| `--wui-button-px`        | 水平内边距。                                                                                                  | `var(--wui-space-3)` |
+| `--wui-button-gap`       | 前缀 / label / 后缀三段之间的间距。                                                                           | `var(--wui-space-2)` |
+| `--wui-button-color`     | button 文字颜色，随 variant 变化。                                                                            | 随 variant           |
+| `--wui-button-bg`        | button 背景颜色，随 variant 变化。                                                                            | 随 variant           |
+| `--wui-button-bg-hover`  | 悬停背景颜色，只在 `(hover: hover) and (pointer: fine)` 生效；primary / secondary 由 `--wui-button-bg` 派生。 | 随 variant           |
+| `--wui-button-bg-active` | 按下背景颜色，`:active` 且非禁用时生效，不挑指针设备；primary / secondary 由 `--wui-button-bg` 派生。         | 随 variant           |

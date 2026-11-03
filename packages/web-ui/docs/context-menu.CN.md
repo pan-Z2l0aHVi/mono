@@ -1,18 +1,14 @@
 # Context Menu
 
-右键上下文 menu：第一个子元素是触发区域，其余子元素是 menu item（`<web-ui-dropdown-item>` 等）。打开期间 menu 是模态的，点空白只会关掉 menu。
+右键打开的上下文 menu。默认插槽的第一个子元素是触发区域，其余子元素是 menu item（`<web-ui-dropdown-item>` 等）。打开期间 menu 是模态的，点空白只会关掉 menu。
 
 ## Samples
 
 ### Basic
 
-default slot 的第一个元素是触发区域，其余子元素是 menu item：在触发区内右键，menu 从光标位置展开。
+默认插槽的第一个元素是触发区域，其余子元素是 menu item。在触发区内右键，menu 从光标位置展开。`prefix` / `suffix` 插槽放 icon 与快捷键提示；`disabled` 的项留在 menu 里但无法选中。
 
-`prefix` / `suffix` 插槽放 icon 与快捷键提示，`disabled` 的项留在 menu 里但选不中。
-
-`open-change` 报告开合，`detail.open` 是当时状态；点空白、按 Escape 或激活某一项都会关掉 menu 并再报一次。
-
-下面那行读数是事件计数与最后一次 `detail.open`。
+`open-change` 报告开合，`detail.open` 是当时状态。点空白、按 Escape 或激活某一项都会关掉 menu，并再派发一次。
 
 ```tsx
 import { lucideClipboardPaste, lucideCopy, lucideTrash2 } from '@greypan/web-ui/icons'
@@ -108,11 +104,7 @@ function onOpenChange(event: WebUiEvent<WebUiContextMenu, 'open-change'>) {
 
 ### Touch long press
 
-`long-press` 是触屏 opt-in：按住 `long-press-delay`（这里 600 ms）后打开 menu，从按点向下展开；按住期间位移超过 10px 视为滚动并取消。
-
-它只响应 `pointerType === 'touch'`，鼠标右键仍走原生 `contextmenu`、不受 `long-press` 影响。
-
-长按打开后浏览器为同一次触摸补发的 `contextmenu` 与 `click` 会被吸收，既不会重复打开，也不会把刚打开的 menu 立刻关掉。
+`long-press` 是触屏的可选行为：按住 `long-press-delay`（这里 600 ms）后打开 menu，menu 从按点向下展开；按住期间滚动会取消。它只响应触屏，鼠标右键仍然使用原生 `contextmenu`。长按打开后，浏览器为同一次触摸补发的 `contextmenu` 与 `click` 会被忽略，因此 menu 不会重复打开，也不会立刻关掉刚打开的 menu。
 
 ```tsx
 import { useState } from 'react'
@@ -180,9 +172,7 @@ function onOpenChange(event: WebUiEvent<WebUiContextMenu, 'open-change'>) {
 
 ### Disabled
 
-`disabled` 只抑制 menu：右键不打开，触发区本身不置灰、颜色也不变——组件不渲染 menu 面，没有可置灰的对象，禁用 context menu 也不等于禁用触发区。
-
-下面那个 button 切换 `disabled`，区域文案跟着状态走；读数记录 `open-change`，禁用期间右键不计数，重新启用后照常打开。
+`disabled` 只抑制 menu：右键不打开，触发区本身不置灰，颜色也不变。禁用 context menu 不等于禁用触发区，视觉上的禁用态请在你自己的内容里表达。
 
 ```tsx
 import { useState } from 'react'
@@ -263,12 +253,12 @@ function onOpenChange(event: WebUiEvent<WebUiContextMenu, 'open-change'>) {
 
 ### Props
 
-| 名称               | 说明                                                    | 类型      | 默认值  |
-| ------------------ | ------------------------------------------------------- | --------- | ------- |
-| `disabled`         | 右键与 `openAt()` 都不打开 menu，不做视觉置灰。         | `boolean` | `false` |
-| `no-scroll-lock`   | 打开时允许背景滚动。                                    | `boolean` | `false` |
-| `long-press`       | 触屏长按打开 menu（opt-in；鼠标始终走 `contextmenu`）。 | `boolean` | `false` |
-| `long-press-delay` | 长按触发前需按住的时长（ms）。                          | `number`  | `500`   |
+| 名称               | 说明                                                      | 类型      | 默认值  |
+| ------------------ | --------------------------------------------------------- | --------- | ------- |
+| `disabled`         | 右键与 `openAt()` 都不打开 menu，不做视觉置灰。           | `boolean` | `false` |
+| `no-scroll-lock`   | 打开时允许背景滚动。                                      | `boolean` | `false` |
+| `long-press`       | 触屏长按打开 menu（opt-in；鼠标始终使用 `contextmenu`）。 | `boolean` | `false` |
+| `long-press-delay` | 长按触发前需按住的时长（ms）。                            | `number`  | `500`   |
 
 ### Events
 
@@ -293,40 +283,22 @@ function onOpenChange(event: WebUiEvent<WebUiContextMenu, 'open-change'>) {
 
 | 名称                                  | 说明                           | 默认值                             |
 | ------------------------------------- | ------------------------------ | ---------------------------------- |
-| `--wui-context-menu-safe-area-bottom` | 触屏 menu 需要让开的底部 inset | `env(safe-area-inset-bottom, 0px)` |
+| `--wui-context-menu-safe-area-bottom` | 触屏 menu 需要避开的底部 inset | `env(safe-area-inset-bottom, 0px)` |
 
 ### 行为说明
 
-通过 `contextmenu` 事件打开。menu item：`web-ui-dropdown-item`、`web-ui-dropdown-divider`、`web-ui-dropdown-header`。支持键盘导航和 submenu hover。
+menu item：`web-ui-dropdown-item`、`web-ui-dropdown-divider`、`web-ui-dropdown-header`。支持键盘导航和 submenu hover。
 
-menu 打开期间是模态的：它渲染进浏览器 top layer 里一个透明的 `<dialog>`，下层页面拿不到任何命中测试。因此「点外面」只会关掉 menu，不会顺带把下面那一行、那个 checkbox、那个链接一起激活。
+menu 打开期间是模态的：下层页面收不到任何指针事件，所以点外面只会关掉 menu，不会顺带激活下面的那一行、checkbox 或链接。menu item 激活后有一段约 160ms 的退场过渡，这期间下层页面重新可点。
 
-scrim 刻意保持完全透明——它的职责是吃掉这次命中，不是给页面加一层 scrim。
+`long-press` 是可选行为，且只针对触屏：按住 `long-press-delay`（默认 `500` ms）后打开 menu，打开方式与右键相同。按住期间滚动会取消，不会误开。浏览器为同一次按住补发的 `contextmenu` 与 `click` 会被忽略，因此 menu 不会重复打开，也不会立刻关掉刚打开的 menu。
 
-另有一处需要知道的代价：menu item 激活后约 160ms 的退场过渡里，scrim 已经提前出了 top layer，下层页面在这段时间重新可点，menu 的层级也退回普通流。
+`long-press` 打开的 menu 从按点向下展开，并在水平方向居中于按点。下方空间不够时，menu 翻到按点上方，同时被夹回视口内，并避开 `--wui-context-menu-safe-area-bottom` 预留的底部区域，避免最下面一项落进 home indicator。
 
-`long-press` 是 opt-in 且只针对触屏：指针按住 `long-press-delay`（默认 `500` ms，与平台原生长按一致）后打开 menu，走与右键完全相同的路径。
+区分依据是输入方式，不是视口宽度：窄窗口里的鼠标右键仍然贴着光标左上角展开。
 
-它只响应 `pointerType === 'touch'`；按住期间位移超过 10px 即取消，因此滚动不会误开 menu。
+`disabled` 只抑制 menu 行为：右键与 `openAt()` 都不打开 menu。它也不会给默认插槽里的内容置灰或改色。禁用 context menu 不等于禁用触发区，需要视觉上的禁用态请在你自己的内容里表达。
 
-由于浏览器会把同一次按住也识别为原生手势，长按打开后引擎补发的 `contextmenu` 与 `click` 会被吸收，既不会重复打开，也不会把刚打开的 menu 立刻 light-dismiss 掉。
+menu 打开期间，可以安全地用条件渲染（如 Vue `v-if`）切换、移动或删除 menu item，不必把它们重新插回宿主元素。
 
-`long-press` 打开的 menu 从按点**向下**展开：上缘对齐按点 `y`、水平居中于按点 `x`，与 iOS / Android 原生长按 menu 的形态一致。
-
-下方空间不够时 panel 翻转到按点上方而不是跑出屏幕，两轴都会被夹回视口内，并让开 `--wui-context-menu-safe-area-bottom`，避免最下面一项落进 home indicator。
-
-分流依据是**输入方式**而非视口宽度：窄窗口里的鼠标右键仍然贴着光标左上角展开。两者只有水平对齐量不同 —— 定位走的是同一趟 `computePosition`，因此不会各自漂移。
-
-`disabled` 只抑制 menu 行为：右键与 `openAt()` 都不打开 menu。
-
-它不会给 default slot 里的内容置灰或改色——组件自身根本不渲染 menu 面，没有可置灰的对象；禁用 context menu 也不等于禁用触发区。
-
-需要让禁用态在视觉上可读时，请在自己的内容上表达。
-
-menu 打开期间，Consumer可以安全地使用条件渲染（如 Vue `v-if`）切换、移动或删除 menu item，无需重新插入到宿主元素；portal 内的变更会自动 reconcile，关闭时框架锚点随元素迁回宿主，保证后续框架更新正常。
-
-关闭时，焦点会归还给 menu 打开前持焦的元素。这条是浏览器模态 dialog 自带的行为，而不是组件自己实现的——也正因如此，它只在 menu 还在 top layer 时才生效。
-
-menu item 激活是唯一会提前交还焦点的路径：在点击那一刻就还，退场过渡之后不再过问，于是 menu item 回调若把焦点移到别处（例如就地进入编辑态），焦点就留在那里了。
-
-关闭过程不会把焦点从新的焦点目标上拽走，因此按 blur 提交的那类组件也不会因此提交一次没改过的编辑。
+关闭时，焦点回到 menu 打开前持有焦点的元素。menu item 激活是唯一会提前交还焦点的路径：点击那一刻就交还，之后不再干预。因此如果回调把焦点移到别处（例如就地进入编辑态），焦点会留在那里。关闭过程也不会把焦点从新的焦点目标上移开，所以按 blur 提交的组件不会因此提交一次没有改过的编辑。

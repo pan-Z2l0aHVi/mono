@@ -6,7 +6,7 @@ badge / notification count: stacks a `count` corner badge on one corner of the d
 
 ### Basic
 
-The default slot is the content to decorate, and `count` is the number on the corner badge; when `count` is 0 the badge is not drawn and the decorated content shows as usual—use `show-zero` to keep a placeholder for 0 as well. Both graphics (icons) and controls (buttons) can be wrapped as content.
+The default slot is the content to decorate, and `count` is the number on the corner badge. When `count` is 0 the badge is not drawn and the decorated content shows as usual; use `show-zero` to keep a placeholder for 0 as well. Both graphics (icons) and controls (buttons) can be wrapped as content.
 
 ```tsx
 import { lucideBell } from '@greypan/web-ui/icons'
@@ -62,7 +62,7 @@ import { lucideBell } from '@greypan/web-ui/icons'
 
 ### Number limit
 
-When `count` exceeds `max`, `max+` is drawn instead of spilling the extra digits; `max` defaults to 99, and three digits already take the shape of the limit.
+When `count` exceeds `max`, `max+` is drawn; `max` defaults to 99.
 
 ```tsx
 export default function Demo() {
@@ -146,7 +146,7 @@ export default function Demo() {
 
 ### Placement
 
-`placement` pins the badge to one of the four corners of the content box, `top-right` by default. Invalid values take no part in rendering: the component normalizes them back to `top-right`, and the host attribute is corrected along with it.
+`placement` fixes the badge to one of the four corners of the content box, `top-right` by default. Invalid values take no part in rendering: the component normalizes them back to `top-right`, and the host attribute is corrected along with it.
 
 ```tsx
 export default function Demo() {
@@ -196,7 +196,7 @@ export default function Demo() {
 
 ### Offset
 
-`offset-x` / `offset-y` fine-tune in pixels at the corner chosen by `placement`; negative values pull the badge toward the content and positive values push it outward. Rounded or outlined content often needs the badge pulled back a little so it does not hang outside the outline.
+`offset-x` / `offset-y` fine-tune in pixels at the corner chosen by `placement`: negative values pull the badge toward the content, positive values push it outward. Rounded or outlined content often needs the badge pulled back a little so it does not hang outside the outline.
 
 ```tsx
 export default function Demo() {
@@ -238,7 +238,7 @@ export default function Demo() {
 
 ### Standalone use
 
-When the default slot is empty there is no "corner of content" to pin to, so the badge returns to inline flow and is itself a readable number or dot, suitable for sitting next to text in places such as list items and tab titles.
+When the default slot is empty there is no "corner of content" to attach to, so the badge returns to inline flow and is itself a readable number or dot, suitable for sitting next to text in places such as list items and tab titles.
 
 ```tsx
 export default function Demo() {
@@ -266,7 +266,7 @@ export default function Demo() {
 
 ### Hidden
 
-`badge-hidden` stops the badge from being drawn at all while the content shows as usual. It overrides `dot` and `count`: the number or unread state is still there, it is just not shown this time.
+`badge-hidden` stops the badge from being drawn at all while the content shows as usual. It outranks `dot` and `count`: the number or unread state is still kept, it is just not shown this time.
 
 ```tsx
 export default function Demo() {
@@ -308,7 +308,7 @@ export default function Demo() {
 
 ### Controlled count
 
-`count` is a plain property whose value the page owns: when the number grows past `max` the badge shows `max+`, and when it returns to 0 the badge disappears on its own, with no extra conditional rendering in the page.
+`count` is a plain property whose value the page owns. When the number grows past `max` the badge shows `max+`, and when it returns to 0 the badge disappears on its own, with no extra conditional rendering in the page.
 
 ```tsx
 import { useState } from 'react'
@@ -354,17 +354,17 @@ const count = ref(3)
 
 ### Props
 
-| Name           | Description                                                                                                                                                                                | Type                                                           | Default       |
-| -------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | -------------------------------------------------------------- | ------------- |
-| `count`        | Number to display.                                                                                                                                                                         | `number`                                                       | `0`           |
-| `max`          | Numeric limit; above it `max+` is shown.                                                                                                                                                   | `number`                                                       | `99`          |
-| `dot`          | Dot mode; shows only a dot and no number.                                                                                                                                                  | `boolean`                                                      | `false`       |
-| `show-zero`    | Also shows when `count` is 0.                                                                                                                                                              | `boolean`                                                      | `false`       |
-| `badge-hidden` | Hides the badge entirely.                                                                                                                                                                  | `boolean`                                                      | `false`       |
-| `offset-x`     | Horizontal offset (px).                                                                                                                                                                    | `number`                                                       | `0`           |
-| `offset-y`     | Vertical offset (px).                                                                                                                                                                      | `number`                                                       | `0`           |
-| `aria-label`   | Accessible name of the badge status; once set it applies to all three states (dot / count / zero, supports the `{count}` placeholder). Falls back to the built-in English copy when unset. | `string \| null`                                               | `null`        |
-| `placement`    | Badge position: `top-right` (default), `top-left`, `bottom-right`, `bottom-left`.                                                                                                          | `'top-right' \| 'top-left' \| 'bottom-right' \| 'bottom-left'` | `'top-right'` |
+| Name           | Description                                                                                                                                                                                                | Type                                                           | Default       |
+| -------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------- | ------------- |
+| `count`        | Number to display.                                                                                                                                                                                         | `number`                                                       | `0`           |
+| `max`          | Numeric limit; above it `max+` is shown.                                                                                                                                                                   | `number`                                                       | `99`          |
+| `dot`          | Dot mode; shows only a dot and no number.                                                                                                                                                                  | `boolean`                                                      | `false`       |
+| `show-zero`    | Also shows when `count` is 0.                                                                                                                                                                              | `boolean`                                                      | `false`       |
+| `badge-hidden` | Hides the badge entirely.                                                                                                                                                                                  | `boolean`                                                      | `false`       |
+| `offset-x`     | Horizontal offset (px).                                                                                                                                                                                    | `number`                                                       | `0`           |
+| `offset-y`     | Vertical offset (px).                                                                                                                                                                                      | `number`                                                       | `0`           |
+| `aria-label`   | Accessible name of the badge (`role="status"`); once set it applies to all three states (dot / count / show-zero, supports the `{count}` placeholder). Falls back to the built-in English copy when unset. | `string \| null`                                               | `null`        |
+| `placement`    | Badge position: `top-right` (default), `top-left`, `bottom-right`, `bottom-left`.                                                                                                                          | `'top-right' \| 'top-left' \| 'bottom-right' \| 'bottom-left'` | `'top-right'` |
 
 ### Slots
 
@@ -374,28 +374,18 @@ const count = ref(3)
 
 ### Behavior
 
-Display is decided by a single priority chain: `badge-hidden` first—if set, nothing is drawn; then `dot`—if set, always drawn; only then `count > 0 || show-zero`. The number follows the same rule: empty under `dot`, otherwise `count > max ? 'max+' : count`.
+Display is decided by a single priority chain: `badge-hidden` first, and if set nothing is drawn; then `dot`, and if set the badge is always drawn; only then `count > 0 || show-zero`. Under `dot` no number is drawn; otherwise it shows `count > max ? 'max+' : count`.
 
-`count` and `max` go through the same numeric normalization: non-finite numbers (`NaN`, ±Infinity) and non-numeric values fall back to their defaults `0` / `99`, while negative values and values beyond `Number.MAX_SAFE_INTEGER` are clamped to the range, so `count={-5}` falls back to 0 (and the badge disappears with it).
+`count` and `max` use the same numeric normalization: non-finite numbers (`NaN`, ±Infinity) and non-numeric values fall back to their defaults `0` / `99`, while negative values and values beyond `Number.MAX_SAFE_INTEGER` are clamped to the range, so `count={-5}` falls back to 0 and the badge disappears with it.
 
-`placement` goes through a literal whitelist; values outside the four corners (including the empty string) fall back to `top-right`, and the host attribute is immediately corrected to the normalized value.
+`placement` accepts only the literal whitelist. Values outside the four corners (including the empty string) fall back to `top-right`, and the host attribute is immediately corrected to the normalized value.
 
-The badge is a `role="status"` live region, and the component supplies a fixed `aria-label` per state: `dot` announces `Unread`, a `count` greater than 0 announces `<count> unread messages`, and `show-zero` announces `No unread messages`; with `badge-hidden` the node is not rendered at all, so nothing is announced in the accessibility tree.
-
-The text is built-in English and no configurable accessible name property is provided; to customize the semantics, use no hiding mechanism other than `badge-hidden`.
+The badge is a `role="status"` live region. When `aria-label` is unset it falls back to built-in English copy per state: `dot` announces `Unread`, a `count` greater than 0 announces `<count> unread messages`, and `show-zero` announces `No unread messages`; once `aria-label` is set it is used for all three states and supports the `{count}` placeholder. With `badge-hidden` the node is not rendered at all, so nothing is announced in the accessibility tree.
 
 ### Layout
 
-The host is inline-block and the wrapper is inline-flex.
+The host is inline-block; when there is content the badge is positioned absolutely at the corner chosen by `placement`, and `offset-x` / `offset-y` fine-tune it at that corner.
 
-When there is content, the wrapper becomes `position: relative` and the badge is positioned absolutely at the chosen corner; the `translate` baseline comes from `placement` (±50% for the number and ±40% for the dot, so the badge presses past the outline instead of sitting on the edge line), and `offset-x` / `offset-y` stack on top of that translate as internal variables.
+Content is judged by the number of element child nodes: plain text alone does not count as content, so the badge stays in inline flow. When you wrap a piece of text, wrap that text in an element.
 
-Content is judged by the number of element child nodes: plain text alone does not count as content, so the badge stays in inline flow—when wrapping a piece of text, wrap that text in an element.
-
-The badge exposes no size or color knobs: the background uses `--wui-color-danger`, the text uses `--wui-color-on-accent`, and the outline uses `--wui-color-page` (1px, to cut the badge out of dark content).
-
-The radius comes from `--wui-radius-control` (pill by default); the height is 18px, the minimum width is 18px, the horizontal padding is `--wui-space-1`, and the font size is `--wui-font-size-caption`.
-
-`dot` only shrinks the width and height to 8px and removes the padding.
-
-To change the colors, change the scope of these semantic tokens rather than looking for a property on the badge.
+The badge has no size or color settings of its own: the background uses `--wui-color-danger`, the text uses `--wui-color-on-accent`, and the outline uses `--wui-color-page`. To change the colors, change the scope of these semantic tokens instead of looking for a property on the badge.

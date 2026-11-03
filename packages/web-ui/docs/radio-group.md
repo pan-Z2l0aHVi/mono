@@ -99,7 +99,7 @@ export default function Demo() {
 
 ### Member gap
 
-The gap between members comes from `--wui-radio-group-gap`, which by default resolves through `--wui-space-2` to 8px; overriding it changes only the gap, not the layout direction. The two groups below share the same members and differ only in this variable.
+The gap between members comes from `--wui-radio-group-gap`, which by default resolves through `--wui-space-2` to 8px; overriding it changes only the gap, not the layout direction.
 
 ```tsx
 export default function Demo() {
@@ -194,11 +194,7 @@ export default function Demo() {
 
 `disabled` provides an inherited effective disabled state without rewriting each child's own `disabled` attribute. An invalid `direction` value falls back to `vertical`.
 
-Set it on the group element itself, or on an ancestor within the same `<web-ui-theme>` scope.
-
-The theme host declares that spacing step for its own subtree, so an override written outside the `<web-ui-theme>` element does not reach the group.
-
-Its default now resolves through `--wui-space-2`, so overriding that step on the theme host also changes the member gap; an explicit assignment of this token still takes precedence over both.
+Set `--wui-radio-group-gap` on the group element itself, or on an ancestor within the same `<web-ui-theme>` scope; an override written outside the theme host does not reach the group. Its default resolves through `--wui-space-2`, so an explicit assignment of this token overrides `--wui-space-2`.
 
 ```css
 web-ui-radio-group {

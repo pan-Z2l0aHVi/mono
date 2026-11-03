@@ -1,6 +1,6 @@
 # Image Preview
 
-Imperative image preview: open it through `imagePreview()` and control it with the returned handle; it uses a native `<dialog>` internally and, when no `container` is passed, mounts into the overlay root of the root theme (`web-ui-theme`), falling back to the global fallback root when the page has no theme scope—passing `target` instead resolves its nearest theme scope.
+Imperative image preview. Open it through `imagePreview()` and control it with the returned handle. Without `container`, the preview mounts into the overlay container of the root theme (`web-ui-theme`); when the page has no theme scope, it falls back to the global default container. Passing `target` resolves the nearest theme scope from that element instead.
 
 The tables below list the `imagePreview()` options and the members of the returned handle.
 
@@ -8,9 +8,9 @@ The tables below list the `imagePreview()` options and the members of the return
 
 ### Single image
 
-With a single image there is no previous / next switching; arrow keys, wheel and `+` / `-` zoom, `0` reset, and double-click toggling between 1x and 2x all still work.
+With a single image there is no previous / next switching. The rest still works: arrow keys, wheel and `+` / `-` zoom, `0` reset, and double-click toggling between 1x and 2x.
 
-Clicking outside the image or pressing Escape closes: the close request plays the exit transition first, and the handle's `closed` resolves only after the host is removed.
+Clicking outside the image or pressing Escape closes. The close request plays the exit transition first, and the handle's `closed` resolves only after the preview leaves the page.
 
 ```tsx
 import { imagePreview } from '@greypan/web-ui'
@@ -52,7 +52,7 @@ function open() {
 
 Passing multiple images lets the arrow keys switch between them; `loop` defaults to `true` and wraps around.
 
-With only `images`, the four display options stay off by default and only the image itself is on screen; the previous / next buttons, zoom toolbar, close button, and indicator all need to be enabled explicitly.
+With only `images`, the four display options stay off by default and only the image itself is on screen. The previous / next buttons, zoom toolbar, close button, and indicator all need to be enabled explicitly.
 
 ```tsx
 import { imagePreview } from '@greypan/web-ui'
@@ -102,9 +102,9 @@ function open() {
 
 ### Display options
 
-`nav`, `toolbar`, `closable`, and `indicator` are independent and all off by default; only passing `true` for all four brings out the previous / next buttons, the zoom toolbar, the close button, and the "current / total" indicator together.
+`nav`, `toolbar`, `closable`, and `indicator` are independent and all off by default. Only when all four are `true` do the previous / next buttons, the zoom toolbar, the close button, and the "current / total" indicator appear together.
 
-`nav` is rendered only when there is more than one image; `loop` defaults to `true` and wraps around, so the images here can be paged in the same direction forever.
+`nav` is rendered only when there is more than one image. `loop` defaults to `true` and wraps around, so the images here can be paged in the same direction forever.
 
 ```tsx
 import { imagePreview } from '@greypan/web-ui'
@@ -162,8 +162,6 @@ function open() {
 
 With `swipe: true` and more than one image, a left/right drag at 1x switches images; vertical displacement is ignored, and dragging after zooming pans instead.
 
-`nav` and `indicator` are enabled here so the result of a swipe is easy to compare.
-
 ```tsx
 import { imagePreview } from '@greypan/web-ui'
 
@@ -216,7 +214,7 @@ function open() {
 
 ### No backdrop close
 
-With `noBackdropClose: true`, clicking outside the image no longer closes; press Escape or use the close button in the top-right corner (`closable: true`) instead.
+With `noBackdropClose: true`, clicking outside the image does not close it; press Escape, or use the close button in the top-right corner (`closable: true`).
 
 ```tsx
 import { imagePreview } from '@greypan/web-ui'
@@ -274,9 +272,7 @@ The handle is the controller for this preview instance: `imagePreview()` returns
 
 The handle's `index`, `scale`, `images`, and `closed` are read-only members; after a method call the new values are readable synchronously. Gestures and keyboard operations inside the preview do not call back to the outside; read them yourself when needed.
 
-Order matters: call `goTo(1)` before `zoomIn()`; switching images resets the zoom to 1x, so the other order loses the zoom.
-
-The example writes the readout into `<output>` and switches it to "Preview closed" once `closed` resolves.
+The order matters: call `goTo(1)` before `zoomIn()`. Switching images resets the zoom to 1x, so zooming first and then switching loses the zoom.
 
 ```tsx
 import { imagePreview } from '@greypan/web-ui'
@@ -363,7 +359,7 @@ function open() {
 | `images`          | Image list, at least one item; each item is `{ src, alt? }`.                                                                                               | `ImagePreviewItem[]`     | —       |
 | `index`           | Initial image index; clamped to the valid range when out of bounds.                                                                                        | `number`                 | `0`     |
 | `loop`            | Wrap-around switching between the first and last images.                                                                                                   | `boolean`                | `true`  |
-| `target`          | Trigger element used to resolve the nearest theme-owned overlay root.                                                                                      | `Element`                | —       |
+| `target`          | Trigger element used to resolve the nearest theme overlay container.                                                                                       | `Element`                | —       |
 | `container`       | Explicit mount container; takes precedence over the theme scope.                                                                                           | `HTMLElement`            | —       |
 | `nav`             | Shows the previous / next buttons.                                                                                                                         | `boolean`                | `false` |
 | `toolbar`         | Shows the zoom toolbar.                                                                                                                                    | `boolean`                | `false` |
@@ -388,9 +384,7 @@ function open() {
 
 ### Behavior
 
-It does not reuse the `<web-ui-dialog>` component: the preview needs a dialog that fills the viewport itself (the full-viewport backdrop is rendered by a separate backdrop layer inside the dialog, the dialog element itself does not transition opacity, and the glass controls' backdrop blur stays continuous throughout) and has its own pointer interactions, which does not share a source with the dialog component's glass card / slot contract.
-
-Both share the `native-dialog-presence` and `scroll-lock` plugins, and `noScrollLock` / `noBackdropClose` are named and behave consistently with the attributes of the same names.
+The preview is a full-viewport modal layer that does not reuse `<web-ui-dialog>` and brings its own pointer gestures. `noScrollLock` / `noBackdropClose` behave as described in the options table above.
 
 ```ts
 import { imagePreview } from '@greypan/web-ui'
@@ -411,7 +405,7 @@ function openPreview() {
 
 `ImagePreviewItem` is `{ src: string; alt?: string }`; `alt` defaults to an empty string.
 
-Display options are all off by default: with no option passed only the image itself is rendered, and navigation, toolbar, close button, and indicator all need to be enabled explicitly.
+Display options are all off by default: with no option passed only the image itself is rendered. Navigation, toolbar, close button, and indicator all need to be enabled explicitly.
 
 ### Return handle
 
@@ -424,27 +418,19 @@ Display options are all off by default: with no option passed only the image its
 
 ### Interaction
 
-Arrow keys always switch images, regardless of `nav`; the `+` / `-` keys and the wheel zoom, and `0` resets.
+Arrow keys always switch images, regardless of `nav`. The `+` / `-` keys and the wheel zoom the image, and `0` resets it.
 
-Zoom is anchored: the wheel fixes the point under the cursor, a two-finger pinch fixes the midpoint of the two fingers, while toolbar buttons, keyboard shortcuts, and double-click zoom around the viewport center.
+Zoom is anchored: the wheel fixes the point under the cursor, a two-finger pinch fixes the midpoint of the two fingers, while toolbar buttons, keyboard shortcuts, and double-click zoom around the viewport center. Double-clicking toggles between 1x and 2x.
 
-Holding the mouse and dragging, or holding one finger and dragging, both pan the image in any direction and independently of the zoom factor: when zoomed in it inspects the clipped edges, and at 1x it moves the image within the viewport. Both cases share the same boundary—half the size difference between the image and the stage—so the image can never be dragged out of the viewport; continuing to drag at the boundary clamps rather than bouncing back.
+Holding the mouse and dragging, or holding one finger and dragging, both pan the image in any direction and independently of the zoom factor; the image can never be dragged out of the viewport, and continuing to drag at the boundary clamps rather than bouncing back. `resetZoom()` is available for a panned 1x image too.
 
-Double-clicking the image toggles between 1x and 2x.
+Pinch zoom is always on and has no option: the first finger pans / swipes as usual, and only when a second finger lands does it enter pinch, aborting any in-progress gesture. Pinching does not close the overlay.
 
-Pinch zoom is always on and has no option: the stage itself owns the pointer interaction, so there is no conflicting gesture. The first finger pans / swipes as usual, and only when a second finger lands does it enter pinch, aborting any in-progress pan or swipe. Pinching does not close the overlay; a compatibility `click` that mixed input may dispatch afterwards is swallowed instead of being treated as a backdrop click.
+Clicking anywhere outside the image or pressing Escape closes. The preview always exposes the accessible name `image preview`.
 
-Clicking anywhere outside the image or pressing Escape closes; the native dialog always exposes the accessible name `image preview`.
+With `swipe` on and more than one image, a horizontal drag at 1x switches images and vertical displacement is ignored; when zoomed in, dragging always pans and does not switch images.
 
-With `swipe` on and more than one image, the images are laid out on a single carousel track: the current image and its neighbors each occupy a slide of equal width and height, the stage clips the overflow, and the whole track translates with the finger.
-
-On release, a slide past the distance threshold (15% of the stage width, rounded) moves into the neighboring image; a quick flick that does not reach the threshold but whose sampled velocity reaches 320px/s or more, or whose displacement is at least 16px with a velocity (window-sampled or averaged over the whole gesture) of 160px/s or more, also commits; otherwise it springs back. With `loop` on, the neighbors that wrap around are always on both sides of the current image; with `loop` off, the boundary direction springs back without crossing.
-
-While this gesture is active it takes over the whole drag: at 1x a horizontal drag switches images and vertical displacement is ignored entirely (it neither drives panning nor follows the finger). When zoomed in, dragging always pans (following both axes) and does not switch images.
-
-Because 1x can pan as well, `resetZoom()` is available both when "zoomed" and when "panned"—the reset button in the toolbar is clickable for a panned 1x image too.
-
-A close request does not destroy the native dialog immediately: it stays in the top layer until the exit transition ends, and only then is `dialog.close()` called, after which the host is removed from the DOM and `closed` resolves. While open, page scrolling is locked by default. The preview is a full-viewport modal surface, and wheel and touch gestures are consumed by zooming and panning; `noScrollLock` therefore mainly affects page-level scrolling that the preview does not consume (for example PageDown, programmatic scrolling, or an outer container). It does not let wheel events pass through to scroll the page.
+A close request does not destroy the preview immediately: `closed` resolves after the exit transition ends. While open, page scrolling is locked by default. The preview is a full-viewport modal surface, and wheel and touch gestures are used for zooming and panning, so `noScrollLock` mainly affects other ways of scrolling the page (for example PageDown, programmatic scrolling, or an outer container). It does not let wheel events pass through to scroll the page.
 
 ### CSS Custom Properties
 

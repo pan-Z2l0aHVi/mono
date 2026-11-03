@@ -1,14 +1,12 @@
 # Select
 
-Select dropdown: the default slot projects `<web-ui-option>` candidates, and the `trigger` slot can replace the default trigger area. Supports keyboard navigation and Portal.
+Select dropdown. The default slot holds `<web-ui-option>` candidates, and the `trigger` slot can replace the default trigger area. The component supports keyboard navigation and Portal.
 
 ## Samples
 
 ### Basic
 
-`value` is owned by the page: after a selection, `change` hands `event.currentTarget.value` back, and once it is written to `value` the trigger text follows; when `value` is not set, the trigger shows `placeholder`.
-
-Writing `value` programmatically dispatches no event, so "Clear" only changes page state.
+`value` is owned by the page. After the user selects an item, `change` hands `event.currentTarget.value` back; write it to `value` and the trigger text updates. When `value` is not set, the trigger shows `placeholder`. Writing `value` programmatically dispatches no event, so "Clear" only changes page state.
 
 `disabled` takes the whole control out of interaction.
 
@@ -74,7 +72,7 @@ const framework = ref('vue')
 
 ### Option decoration
 
-The `prefix` / `suffix` slots put icons and notes on either side of the label; within one option the order is check → prefix → label → suffix. A `disabled` item stays in the list but cannot be selected, and keyboard navigation skips it.
+The `prefix` / `suffix` slots put icons and notes on either side of the label. A `disabled` item stays in the list but cannot be selected, and keyboard navigation skips it.
 
 ```tsx
 import { lucideFileText, lucideFilm, lucideImage } from '@greypan/web-ui/icons'
@@ -130,7 +128,7 @@ import { lucideFileText, lucideFilm, lucideImage } from '@greypan/web-ui/icons'
 
 ### Custom trigger
 
-The `trigger` slot replaces the default label text; the shell, arrow, and open/close behavior still come from the component. The component provides the label container around the trigger but does not directly override the font, color, or size of slotted nodes. Writing the slot content from page state makes it follow the selection.
+The `trigger` slot replaces the default label text; the arrow and the open/close behavior still come from the component. The component does not rewrite the font, color, or size of slot content. Driving the slot content from page state makes it follow the selection.
 
 ```tsx
 import { lucideGlobe } from '@greypan/web-ui/icons'
@@ -179,7 +177,7 @@ const lang = ref('en')
 
 ### Open-change notification
 
-`open-change` only notifies: the component applies the open state first, then reports the result through `detail.open`. select's `open` is a read-only getter with no writable controlled property, so the page just follows the event readout.
+`open-change` is notification only, with `detail.open` as the current state. select's `open` is a read-only property with no writable controlled property, so the page just follows the event.
 
 ```tsx
 import { useState } from 'react'
@@ -237,7 +235,7 @@ function onOpenChange(event: WebUiEvent<WebUiSelect, 'open-change'>) {
 
 ### Icon trigger
 
-`trigger="icon"` keeps the arrow on the right and turns the left slot into an icon area; the icon can follow the selected value. Give the select an `aria-label`, because the trigger itself has no text.
+`trigger="icon"` keeps the arrow on the right and turns the left side into an icon area; the icon can follow the selected value. The trigger itself has no text, so give the select an `aria-label`.
 
 ```tsx
 import { lucideLayoutGrid, lucideList, lucideSettings } from '@greypan/web-ui/icons'
@@ -295,7 +293,7 @@ function pick(value: string) {
 
 ### Form value
 
-`name` makes the selected value enter `FormData` under that field name; when the value is empty, `required` reports `valueMissing` and native submission is blocked. `form.reset()` returns the value to the initial value at mount, and the trigger goes back to `placeholder` with it.
+`name` makes the selected value enter `FormData` under that field name. When the value is empty, `required` reports `valueMissing` and native submission is blocked. `form.reset()` returns the value to the initial value at mount, and the trigger goes back to `placeholder` with it.
 
 ```tsx
 import { useRef, useState } from 'react'
@@ -377,7 +375,7 @@ function reset() {
 
 ### Portal rendering
 
-By default the panel renders in select's own shadow tree and is positioned absolutely, so an ancestor's `overflow` clips it; `portal` hands the panel to the theme-owned overlay root and positions it fixed, where no container can clip it.
+By default an ancestor's `overflow` clips the panel. `portal` renders the panel into the theme overlay container, where no container can clip it.
 
 ```tsx
 export default function Demo() {
@@ -435,7 +433,7 @@ export default function Demo() {
 | `trigger`          | Trigger appearance: `label` shows the selected text and arrow, `icon` keeps the arrow and treats the `trigger` slot as icon content. | `'label' \| 'icon'` | `'label'`        |
 | `disabled`         | Disabled state.                                                                                                                      | `boolean`           | `false`          |
 | `required`         | Required validation.                                                                                                                 | `boolean`           | `false`          |
-| `portal`           | Renders the dropdown panel in the theme-owned overlay root.                                                                          | `boolean`           | `false`          |
+| `portal`           | Renders the dropdown panel in the theme overlay container.                                                                           | `boolean`           | `false`          |
 | `placement`        | Placement of the dropdown panel; defaults to expanding downward from the trigger's bottom-left corner.                               | `Placement`         | `'bottom-start'` |
 | `no-scroll-lock`   | Does not lock page scrolling while open.                                                                                             | `boolean`           | `false`          |
 | `overlayContainer` | Explicit Portal container (property).                                                                                                | `OverlayContainer`  | —                |
@@ -460,15 +458,13 @@ export default function Demo() {
 
 ### Behavior
 
-Child `<web-ui-option>` elements register through `option-register` / `option-unregister`.
+While open, the panel uses `role="listbox"` and the candidates use `role="option"`. The option matching the current non-empty `value` is set to `aria-selected="true"`, and `aria-disabled` mirrors the disabled state.
 
-While open, the panel uses `role="listbox"` and the candidates use `role="option"`; the option matching the current non-empty `value` is set to `aria-selected="true"`, and `aria-disabled` reflects the disabled state.
-
-Outside Portal mode, `aria-activedescendant` points at the current option during keyboard navigation; in Portal mode the option and the combobox live in different Shadow DOM trees, so this attribute is not set.
+Outside Portal mode, `aria-activedescendant` points at the current option during keyboard navigation; in Portal mode this attribute is not set.
 
 When closed, Space / Enter / ArrowDown / ArrowUp open the panel; when expanded, ArrowDown / ArrowUp, Home / End, and typeahead move the active item, Enter / Space select and close, and Escape closes.
 
-When a Portal panel is created it mirrors these variables as resolved on the host; after updating the host, the Portal panel must be reopened for the change to take effect.
+A Portal panel reads these variables as resolved on the host when it is created; after updating the host, the Portal panel must be reopened for the change to take effect.
 
 ### CSS Custom Properties
 

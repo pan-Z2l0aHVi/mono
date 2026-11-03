@@ -1,14 +1,14 @@
 # Option
 
-The option carrier for `<web-ui-select>` and `<web-ui-autocomplete>`: `value` is the value submitted when selected, `label` is the displayed text (defaulting to its own text content), and the `prefix` / `suffix` slots hold icons at either end.
+An option inside `<web-ui-select>` or `<web-ui-autocomplete>`. `value` is the value submitted when the item is selected, `label` is the displayed text (defaults to the element's own text content), and the `prefix` / `suffix` slots hold icons at either end.
 
-It dispatches no events aimed at consumers—the registration handshake emitted on mount, update, and unmount is consumed only by the parent container; the selected state is written back by the container through `selected`.
+It dispatches no events. The container writes the selected state back through `selected`.
 
 ## Samples
 
 ### Basic option
 
-`label` decides what is displayed inside the container, and `value` is the value the container dispatches.
+`label` is the displayed text, and `value` is what the container hands back when the item is selected.
 
 ```tsx
 export default function Demo() {
@@ -34,7 +34,7 @@ export default function Demo() {
 
 ### Prefix and suffix icons
 
-When `label` is omitted, `label` takes the text of the default slot; `prefix` and `suffix` do not take part in that text.
+When `label` is omitted, the displayed text comes from the default slot; content in `prefix` and `suffix` is not part of that text.
 
 ```tsx
 import { lucideImage, lucideStar } from '@greypan/web-ui/icons'

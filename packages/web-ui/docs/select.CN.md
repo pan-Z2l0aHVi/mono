@@ -1,16 +1,14 @@
 # Select
 
-选择器下拉框：默认插槽投影 `<web-ui-option>` 候选，`trigger` 插槽可替换默认触发区域；支持键盘导航与 Portal。
+选择器下拉框。默认插槽放 `<web-ui-option>` 候选，`trigger` 插槽可以替换默认的触发区域。组件支持键盘导航与 Portal。
 
 ## Samples
 
 ### Basic
 
-`value` 由页面持有：选中后 `change` 把 `event.currentTarget.value` 交回来，写回 `value` 后 trigger 的文本跟着走；不写 `value` 时 trigger 显示 `placeholder`。
+`value` 由页面持有。用户选中某项后，`change` 会把 `event.currentTarget.value` 交回来；把它写回 `value`，trigger 的文本就会更新。不写 `value` 时，trigger 显示 `placeholder`。程序写入 `value` 不派发事件，因此「清除」只是改变页面状态。
 
-程序写入 `value` 不派发事件，所以「清除」只是换页面状态。
-
-`disabled` 让整个控件退出交互。
+`disabled` 让整个控件不再响应交互。
 
 ```tsx
 import { useState } from 'react'
@@ -74,7 +72,7 @@ const framework = ref('vue')
 
 ### Option decoration
 
-`prefix` / `suffix` 插槽在 label 两侧放 icon 与说明，一条 option 里的顺序是 check → prefix → label → suffix；`disabled` 的项留在列表里但选不中，键盘导航也会跳过它。
+`prefix` / `suffix` 插槽在 label 两侧放 icon 与说明。`disabled` 的项留在列表里，但无法选中，键盘导航也会跳过它。
 
 ```tsx
 import { lucideFileText, lucideFilm, lucideImage } from '@greypan/web-ui/icons'
@@ -130,7 +128,7 @@ import { lucideFileText, lucideFilm, lucideImage } from '@greypan/web-ui/icons'
 
 ### Custom trigger
 
-`trigger` 插槽替换默认的 label 文本，外壳、箭头与开合行为仍由组件提供。组件只提供承载 trigger 的 label 容器，不直接覆盖 slotted 节点的字体、颜色或尺寸；插槽内容用页面状态写文本，它就会跟着选择变。
+`trigger` 插槽替换默认的 label 文本；箭头与开合行为仍由组件提供。组件不会改写插槽内容的字体、颜色或尺寸。插槽内容由页面状态驱动，所以会跟着选择变化。
 
 ```tsx
 import { lucideGlobe } from '@greypan/web-ui/icons'
@@ -179,7 +177,7 @@ const lang = ref('en')
 
 ### Open-change notification
 
-`open-change` 只通知：组件自己先把开合改到位，再用 `detail.open` 报告结果。select 的 `open` 是只读 getter，没有可回写的受控属性，页面跟着事件读数即可。
+`open-change` 只做通知，`detail.open` 是当前状态。select 的 `open` 是只读属性，没有可以回写的受控属性，页面跟着事件更新即可。
 
 ```tsx
 import { useState } from 'react'
@@ -237,7 +235,7 @@ function onOpenChange(event: WebUiEvent<WebUiSelect, 'open-change'>) {
 
 ### Icon trigger
 
-`trigger="icon"` 保留右侧箭头，只把左侧内容换成图标；图标可以跟随选中值变化。触发器本身没有文本，需要给 select 写 `aria-label`。
+`trigger="icon"` 保留右侧箭头，只把左侧内容换成图标，图标可以跟随选中值变化。触发器本身没有文本，所以需要给 select 写 `aria-label`。
 
 ```tsx
 import { lucideLayoutGrid, lucideList, lucideSettings } from '@greypan/web-ui/icons'
@@ -295,7 +293,7 @@ function pick(value: string) {
 
 ### Form value
 
-`name` 让选中值以该字段名进入 `FormData`；值为空时 `required` 上报 `valueMissing`，原生提交被拦下。`form.reset()` 把值退回挂载时的初值，trigger 随之回到 `placeholder`。
+`name` 让选中值以该字段名进入 `FormData`。值为空时，`required` 上报 `valueMissing`，原生提交会被拦下。`form.reset()` 把值退回挂载时的初值，trigger 也随之回到 `placeholder`。
 
 ```tsx
 import { useRef, useState } from 'react'
@@ -377,7 +375,7 @@ function reset() {
 
 ### Portal rendering
 
-默认 panel 渲染在 select 自己的 shadow 树里、按 absolute 定位，祖先的 `overflow` 会把它裁掉；`portal` 把 panel 交给 theme-owned overlay root 并按 fixed 定位，容器裁不到它。
+默认情况下，祖先元素的 `overflow` 会裁掉 panel。`portal` 把 panel 渲染到主题的 overlay 容器，容器就裁不到它。
 
 ```tsx
 export default function Demo() {
@@ -427,19 +425,19 @@ export default function Demo() {
 
 ### Props
 
-| 名称               | 说明                                                                                      | 类型                | 默认值           |
-| ------------------ | ----------------------------------------------------------------------------------------- | ------------------- | ---------------- |
-| `placeholder`      | 未选中时显示的占位文本。                                                                  | `string`            | `''`             |
-| `trigger`          | 触发器外观：`label` 保留选中文本与箭头，`icon` 保留箭头并把 `trigger` slot 作为左侧图标。 | `'label' \| 'icon'` | `'label'`        |
-| `disabled`         | 禁用状态。                                                                                | `boolean`           | `false`          |
-| `required`         | 必填校验。                                                                                | `boolean`           | `false`          |
-| `portal`           | 在 theme-owned overlay root 中渲染下拉 panel。                                            | `boolean`           | `false`          |
-| `placement`        | 下拉 panel 位置，默认从触发器左下角向下展开。                                             | `Placement`         | `'bottom-start'` |
-| `no-scroll-lock`   | 打开时不锁定页面滚动。                                                                    | `boolean`           | `false`          |
-| `overlayContainer` | 显式 Portal 容器（property）。                                                            | `OverlayContainer`  | —                |
-| `name`             | 表单字段名。                                                                              | `string`            | `''`             |
-| `aria-label`       | combobox 的 accessible name。                                                             | `string \| null`    | `null`           |
-| `value`            | 选中值。                                                                                  | `string`            | `''`             |
+| 名称               | 说明                                                                                     | 类型                | 默认值           |
+| ------------------ | ---------------------------------------------------------------------------------------- | ------------------- | ---------------- |
+| `placeholder`      | 未选中时显示的占位文本。                                                                 | `string`            | `''`             |
+| `trigger`          | 触发器外观：`label` 保留选中文本与箭头，`icon` 保留箭头并把 `trigger` 插槽作为左侧图标。 | `'label' \| 'icon'` | `'label'`        |
+| `disabled`         | 禁用状态。                                                                               | `boolean`           | `false`          |
+| `required`         | 必填校验。                                                                               | `boolean`           | `false`          |
+| `portal`           | 在主题的 overlay 容器中渲染下拉 panel。                                                  | `boolean`           | `false`          |
+| `placement`        | 下拉 panel 位置，默认从触发器左下角向下展开。                                            | `Placement`         | `'bottom-start'` |
+| `no-scroll-lock`   | 打开时不锁定页面滚动。                                                                   | `boolean`           | `false`          |
+| `overlayContainer` | 显式指定 panel 挂载的 overlay 容器（property）。                                         | `OverlayContainer`  | —                |
+| `name`             | 表单字段名。                                                                             | `string`            | `''`             |
+| `aria-label`       | combobox 的可访问名称。                                                                  | `string \| null`    | `null`           |
+| `value`            | 选中值。                                                                                 | `string`            | `''`             |
 
 ### Events
 
@@ -458,15 +456,13 @@ export default function Demo() {
 
 ### 行为说明
 
-子 `<web-ui-option>` 通过 `option-register` / `option-unregister` 注册。
+打开时，panel 使用 `role="listbox"`，候选项使用 `role="option"`。当前非空 `value` 对应的 option 设为 `aria-selected="true"`，`aria-disabled` 反映禁用状态。
 
-打开时，面板使用 `role="listbox"`，候选项使用 `role="option"`，当前非空 `value` 对应的 option 设为 `aria-selected="true"`，`aria-disabled` 反映禁用状态。
-
-非 Portal 模式下，键盘导航时 `aria-activedescendant` 指向当前 option；Portal 模式因 option 与 combobox 位于不同的 Shadow DOM 树中，不设置此属性。
+非 Portal 模式下，键盘导航时 `aria-activedescendant` 指向当前 option；Portal 模式下不设置此属性。
 
 关闭态的 Space / Enter / ArrowDown / ArrowUp 打开 panel；展开态的 ArrowDown / ArrowUp、Home / End 与 typeahead 移动激活项，Enter / Space 选择并关闭，Escape 关闭。
 
-Portal panel 创建时会镜像 host 上解析后的这些变量；更新 host 后需重新打开 Portal panel 才会生效。
+启用 `portal` 的 panel 在创建时读取宿主上的这些变量值；更新宿主后需重新打开 panel 才会生效。
 
 ### CSS Custom Properties
 

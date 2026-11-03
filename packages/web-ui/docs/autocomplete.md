@@ -1,12 +1,12 @@
 # Autocomplete
 
-A single-value selector that accepts input and filters candidates: typed text filters candidates by `option` label, and a selection fills the label back into the input and exposes that option's value as the readonly `selected-value`.
+A single-value selector that accepts input and filters candidates. Typed text filters candidates by `option` label. A selection fills the label back into the input and exposes that option's value as the readonly `selected-value`.
 
 ## Samples
 
 ### Basic
 
-`value` is the current input text and is owned by the page: typing filters candidates by label (default `contains`), and the panel stays closed when nothing matches; after a selection the text is filled back with that option's label and `selected-value` gives that option's value.
+`value` is the current input text and is owned by the page. Typing filters candidates by label (default `contains`); the panel stays closed when nothing matches. After a selection, the text is filled back with that option's label and `selected-value` gives that option's value.
 
 ```tsx
 import { useState } from 'react'
@@ -73,7 +73,7 @@ function onChange(event: WebUiEvent<WebUiAutocomplete, 'change'>) {
 
 ### Filter modes
 
-`filter` takes `contains` (default), `prefix`, or `none`: the first two match labels by substring or prefix, while `none` turns filtering off and always lists all candidates.
+`filter` takes `contains` (default), `prefix`, or `none`. The first two match labels by substring or prefix; `none` turns filtering off and always lists all candidates.
 
 ```tsx
 import { useState } from 'react'
@@ -143,7 +143,7 @@ function onModeChange(event: WebUiEvent<WebUiSelect, 'change'>) {
 
 ### change and selected-value
 
-After a candidate is selected, `selected-value` is that option's value; it clears when the input no longer exactly matches any label—it is derived by the component during its update cycle, so reading it in `input` takes one tick (`requestAnimationFrame`), while `change` sees the value committed by that interaction.
+After a candidate is selected, `selected-value` is that option's value; it clears when the input does not exactly match any label. Reading it in `input` takes one more frame (`requestAnimationFrame`); in `change` you see the value committed by that interaction.
 
 ```tsx
 import { useState } from 'react'
@@ -237,9 +237,7 @@ function onChange(event: WebUiEvent<WebUiAutocomplete, 'change'>) {
 
 ### Custom trigger
 
-Put an editable component into the `trigger` slot to replace the default input: a multiline trigger keeps Enter as a newline and closes the panel with Escape or blur; this example also uses `filter="none"` so that all candidates are always listed.
-
-`focus()` delegates to the current trigger and lands on the native control inside `web-ui-textarea`.
+Put an editable component into the `trigger` slot to replace the default input. A multiline trigger keeps Enter as a newline and closes the panel with Escape or blur. `filter="none"` lists all candidates regardless of input. `focus()` lands on the native control inside `web-ui-textarea`.
 
 ```tsx
 import type { WebUiAutocomplete } from '@greypan/web-ui'
@@ -293,7 +291,7 @@ const field = useTemplateRef<WebUiAutocomplete>('field')
 
 ### Allow custom values
 
-With `allow-custom-value` on, text that is not among the candidates can still be submitted: pressing Enter takes the raw input as a custom value, the panel closes, `change` fires, and `selected-value` stays empty; when filtering leaves no candidates the panel does not open, and Enter still submits.
+With `allow-custom-value` on, text that is not among the candidates can still be submitted. Pressing Enter submits the raw input as a custom value, the panel closes, `change` fires, and `selected-value` stays empty. When filtering leaves no candidates, the panel does not open, and Enter still submits.
 
 ```tsx
 import { useState } from 'react'
@@ -359,7 +357,7 @@ function onChange(event: WebUiEvent<WebUiAutocomplete, 'change'>) {
 
 ### Disabled and readonly
 
-Neither `disabled` nor `readonly` accepts input or opens the panel, while a prefilled `value` is still displayed as usual; both count as passing required validation.
+`disabled` and `readonly` both reject input and do not open the panel; a prefilled `value` is still displayed as usual. Both count as passing required validation.
 
 ```tsx
 const frameworks = ['Vue', 'React', 'Svelte', 'Angular']
@@ -403,23 +401,23 @@ const frameworks = ['Vue', 'React', 'Svelte', 'Angular']
 
 ### Props
 
-| Name                 | Description                                                                                            | Type                  | Default          |
-| -------------------- | ------------------------------------------------------------------------------------------------------ | --------------------- | ---------------- |
-| `placeholder`        | Input placeholder text.                                                                                | `string`              | `''`             |
-| `borderless`         | Ghost form: removes the border, background, and shadow while keeping padding and the focus ring.       | `boolean`             | `false`          |
-| `disabled`           | Disabled state: no input, no dropdown.                                                                 | `boolean`             | `false`          |
-| `readonly`           | Readonly state: no input, no dropdown.                                                                 | `boolean`             | `false`          |
-| `required`           | Required validation.                                                                                   | `boolean`             | `false`          |
-| `portal`             | Renders the dropdown panel in the theme-owned overlay root.                                            | `boolean`             | `false`          |
-| `placement`          | Placement of the dropdown panel; defaults to expanding downward from the trigger's bottom-left corner. | `Placement`           | `'bottom-start'` |
-| `no-scroll-lock`     | Does not lock page scrolling while open.                                                               | `boolean`             | `false`          |
-| `allow-custom-value` | Allows Enter to submit input text that is not among the candidates.                                    | `boolean`             | `false`          |
-| `overlayContainer`   | Explicit portal container (property, not attribute).                                                   | `OverlayContainer`    | —                |
-| `name`               | Form field name.                                                                                       | `string`              | `''`             |
-| `aria-label`         | Accessible name.                                                                                       | `string \| null`      | `null`           |
-| `aria-labelledby`    | Accessible name reference.                                                                             | `string \| undefined` | —                |
-| `filter`             | Candidate filtering mode: `contains` (default), `prefix`, or `none`.                                   | `FilterMode`          | `'contains'`     |
-| `value`              | Current input text, also the form-submitted value.                                                     | `string`              | `''`             |
+| Name                 | Description                                                                                                     | Type                  | Default          |
+| -------------------- | --------------------------------------------------------------------------------------------------------------- | --------------------- | ---------------- |
+| `placeholder`        | Input placeholder text.                                                                                         | `string`              | `''`             |
+| `borderless`         | Ghost form: removes the border, background, backdrop blur, and shadow while keeping padding and the focus ring. | `boolean`             | `false`          |
+| `disabled`           | Disabled state: no input, no dropdown.                                                                          | `boolean`             | `false`          |
+| `readonly`           | Readonly state: no input, no dropdown.                                                                          | `boolean`             | `false`          |
+| `required`           | Required validation.                                                                                            | `boolean`             | `false`          |
+| `portal`             | Renders the dropdown panel in the theme overlay container.                                                      | `boolean`             | `false`          |
+| `placement`          | Placement of the dropdown panel; defaults to expanding downward from the trigger's bottom-left corner.          | `Placement`           | `'bottom-start'` |
+| `no-scroll-lock`     | Does not lock page scrolling while open.                                                                        | `boolean`             | `false`          |
+| `allow-custom-value` | Allows Enter to submit input text that is not among the candidates.                                             | `boolean`             | `false`          |
+| `overlayContainer`   | Explicit portal container (property, not attribute).                                                            | `OverlayContainer`    | —                |
+| `name`               | Form field name.                                                                                                | `string`              | `''`             |
+| `aria-label`         | Accessible name.                                                                                                | `string \| null`      | `null`           |
+| `aria-labelledby`    | Accessible name reference.                                                                                      | `string \| undefined` | —                |
+| `filter`             | Candidate filtering mode: `contains` (default), `prefix`, or `none`.                                            | `FilterMode`          | `'contains'`     |
+| `value`              | Current input text, also the form-submitted value.                                                              | `string`              | `''`             |
 
 ### Events
 
@@ -451,17 +449,17 @@ Typing filters candidates by label (`contains` or `prefix`; `none` turns filteri
 
 When nothing matches, the dropdown panel stays closed; when deleting characters brings matches back, the panel opens again.
 
-Selecting an option fills the text back with that option's label and exposes that option's value as `selected-value`; `change` fires when the selection is committed.
+Selecting an option fills the text back with that option's label and exposes that option's value as `selected-value`. `change` fires when the selection is committed.
 
 ArrowDown/ArrowUp/Enter/Escape keyboard navigation is supported.
 
-When a portal panel is created, it mirrors these variables as resolved on the host; after updating the host, the portal panel must be reopened for the change to take effect.
+A portal panel reads these variables as resolved on the host when it is created; after updating the host, the portal panel must be reopened for the change to take effect.
 
 ### Trigger
 
-The default trigger is the `web-ui-input` inside the shadow root.
+The default trigger is a `web-ui-input`.
 
-Put any editable component into the `trigger` slot to replace it—the wrapper div keeps carrying the combobox ARIA, marks the custom trigger with `data-custom-trigger`, and the overlay always anchors to the trigger element.
+Put any editable component into the `trigger` slot to replace it. While a custom trigger is in use, the host carries `data-custom-trigger` and the overlay always anchors to the trigger element.
 
 The component's `focus()` / `blur()` delegate to the trigger currently in effect: `web-ui-input` and `web-ui-textarea` land focus on their inner native control; a custom trigger without its own focus redirection gets focus on the trigger element itself.
 
@@ -473,21 +471,21 @@ The component's `focus()` / `blur()` delegate to the trigger currently in effect
 </web-ui-autocomplete>
 ```
 
-Custom triggers share the same contract as the default trigger: a string `value` carries the text, the trigger is focusable, and it dispatches the events the component listens to by delegation (`input`, `click`, `focus`, `blur`).
+Custom triggers follow the same rules as the default trigger: a string `value` carries the text, the trigger is focusable, and it dispatches the events the component listens to by delegation (`input`, `click`, `focus`, `blur`).
 
 `web-ui-input` and `web-ui-textarea` work out of the box; a custom element only has to expose a string `value` property to plug in.
 
-The wrapper div takes no tab stop (`tabindex="-1"`): sequential focus belongs to the trigger itself, and a custom trigger must be focusable so that keyboard users can reach the combobox.
+Sequential focus belongs to the trigger itself, so a custom trigger must be focusable for keyboard users to reach the combobox.
 
-A multiline trigger (an editable `<textarea>`) keeps Enter as a newline: Enter neither selects the highlighted option nor submits a custom value, and the panel is closed with Escape or blur. Selecting an option still writes that option's label back into the trigger.
+A multiline trigger (an editable `<textarea>`) keeps Enter as a newline: Enter neither selects the highlighted option nor submits a custom value; the panel is closed with Escape or blur. Selecting an option still writes that option's label back into the trigger.
 
 A single-line custom trigger keeps the default Enter semantics.
 
-While the panel is open, ArrowUp/ArrowDown follow the same exception: the arrow keys move the text caret instead of navigating candidates, and in that state the keyboard cannot navigate options—select with a pointer instead. While the panel is closed, ArrowDown/ArrowUp can still open it.
+While the panel is open, ArrowUp/ArrowDown follow the same exception: the arrow keys move the text caret instead of navigating candidates, and in that state the keyboard cannot navigate options, so select with a pointer instead. While the panel is closed, ArrowDown/ArrowUp can still open it.
 
 With `allow-custom-value` enabled, when there is no match and no active option, Enter submits the current raw input as a custom value and closes the panel; `change` fires and `selected-value` stays empty.
 
-When filtering leaves no candidates at all, the panel does not open (and collapses if it is open), and Enter still takes the same submission path.
+When filtering leaves no candidates at all, the panel does not open (and collapses if it is open); Enter still uses the same submission path.
 
 The component never creates options on its own and never trims the raw text. Text that hits a disabled option does not bypass the disabled semantics and is not derived into a selected option.
 

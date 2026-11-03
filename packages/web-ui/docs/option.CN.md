@@ -1,14 +1,14 @@
 # Option
 
-`<web-ui-select>` 与 `<web-ui-autocomplete>` 的 option 载体：`value` 是选中时提交的值，`label` 是显示文本（缺省时取自身的文本内容），`prefix` / `suffix` 插槽放两端的 icon。
+`<web-ui-select>` 与 `<web-ui-autocomplete>` 里的 option 元素。`value` 是选中时提交的值，`label` 是显示文本（缺省时取自身的文本内容），`prefix` / `suffix` 插槽放两端的 icon。
 
-它不派发面向使用方的事件——挂载、更新与卸载时发出的注册握手只由父级容器消费；选中态由容器回写 `selected`。
+它不派发任何事件。选中态由容器写回 `selected`。
 
 ## Samples
 
 ### Basic option
 
-`label` 决定容器里显示什么，`value` 是容器派发出去的值。
+`label` 是显示文本，`value` 是选中后容器交回的值。
 
 ```tsx
 export default function Demo() {
@@ -34,7 +34,7 @@ export default function Demo() {
 
 ### Prefix and suffix icons
 
-不写 `label` 时，`label` 取默认插槽的文本；`prefix` 与 `suffix` 不参与这段文本。
+不写 `label` 时，显示文本取默认插槽的文本；`prefix` 与 `suffix` 的内容不计入这段文本。
 
 ```tsx
 import { lucideImage, lucideStar } from '@greypan/web-ui/icons'
@@ -76,7 +76,7 @@ import { lucideImage, lucideStar } from '@greypan/web-ui/icons'
 
 ### Disabled items
 
-`disabled` 的项留在列表里，但不可选中，键盘导航也会跳过它。
+`disabled` 的项留在列表里，但不能选中，键盘导航也会跳过它。
 
 ```tsx
 export default function Demo() {

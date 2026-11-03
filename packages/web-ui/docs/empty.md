@@ -1,12 +1,12 @@
 # Empty
 
-empty state placeholder: `title` and `description` provide the copy, and the `icon` / `action` slots add graphics and an action entry point. The component exposes no JS knob—the sizes and colors of the graphic, the copy, and the whitespace all come from `--wui-empty-*` variables.
+An empty-state placeholder: `title` and `description` provide the copy, and the `icon` / `action` slots add a graphic and an action entry point. The component has no JavaScript properties; the sizes and colors of the graphic, the copy, and the whitespace all come from `--wui-empty-*` variables.
 
 ## Samples
 
 ### Basic
 
-`title` and `description` are the two main copy slots; writing both is the most common shape of this empty state. The default graphic (`andrsrxn:inbox`) ships with the component, and its edge length and color each have a variable of their own.
+`title` and `description` are the two main copy slots, and writing both is the most common use of this empty state. The default graphic (`andrsrxn:inbox`) ships with the component, and its edge length and color each have a variable of their own.
 
 ```tsx
 export default function Demo() {
@@ -22,7 +22,7 @@ export default function Demo() {
 
 ### Collapsing copy slots
 
-Title, description, and action each decide whether to take space based on whether they have content: with only `title` there is no description line, with only `description` there is no title line, and with all three empty only the graphic area remains.
+Title, description, and action each decide whether to take space based on whether they have content. With only `title` there is no description line, with only `description` there is no title line, and with all three empty only the graphic area remains.
 
 ```tsx
 export default function Demo() {
@@ -48,7 +48,7 @@ export default function Demo() {
 
 ### Action area
 
-The `action` slot holds the recovery entry point; it has no corresponding property and only accepts slot content. An empty state usually needs just one primary action; with more buttons, switch to the composition below.
+The `action` slot holds the recovery entry point. It has no corresponding property and only accepts slot content. An empty state usually needs just one primary action.
 
 ```tsx
 export default function Demo() {
@@ -72,7 +72,7 @@ export default function Demo() {
 
 ### Slot content
 
-The four slots replace the whole set of content: `icon` replaces the graphic, the default slot replaces the title, `description` replaces the description, and `action` replaces the action area. Slot content overrides the property of the same name, so once a slot is written there is no need for `title` / `description`. Multiple actions go in a container of their own; the action area only provides the gap above it.
+The four slots replace the whole set of content: `icon` replaces the graphic, the default slot replaces the title, `description` replaces the description, and `action` replaces the action area. Slot content overrides the property of the same name, so once a slot is written there is no need for `title` / `description`. Put multiple actions in a container of your own; the action area only provides the gap above it.
 
 ```tsx
 import { lucideSearch } from '@greypan/web-ui/icons'
@@ -112,7 +112,7 @@ import { lucideSearch } from '@greypan/web-ui/icons'
 
 ### Size and color
 
-There is no `size` property: the graphic's edge length, the two font sizes, the colors, and the whitespace are four independent groups of variables. To scale the whole empty state, write them together—enlarging only the graphic leaves whitespace that does not match the type.
+There is no `size` property: the graphic's edge length, the two font sizes, the colors, and the whitespace are four independent groups of variables. To scale the whole empty state, write them together; enlarging only the graphic leaves whitespace that does not match the type.
 
 ```tsx
 export default function Demo() {
@@ -152,7 +152,7 @@ export default function Demo() {
 
 ### Long copy
 
-Title and description both wrap to the content width, and long words break with `overflow-wrap: anywhere`, so a pasted URL or a long identifier neither widens the box nor overflows into sibling sections.
+Title and description both wrap to the content width, and long words break with `overflow-wrap: anywhere`. A pasted URL or a long identifier therefore neither widens the box nor overflows into neighboring sections.
 
 ```tsx
 export default function Demo() {
@@ -176,7 +176,7 @@ export default function Demo() {
 
 ### Overriding one variable at a time
 
-The examples above spell out a few combinations; a single variable can also be changed on its own. `--wui-empty-icon-size` is the edge length shared by the box and the graphic (the graphic fills the box, so the two always move together), while `--wui-empty-content-width` and the two section gaps belong to no combination and are reachable only through variables.
+A single variable can also be changed on its own: `--wui-empty-icon-size` is the edge length shared by the box and the graphic, while `--wui-empty-content-width` and the two section gaps can only be adjusted through variables.
 
 ```tsx
 export default function Demo() {
@@ -266,31 +266,31 @@ export default function Demo() {
 
 ### Behavior
 
-The graphic box and the graphic are the same size: no invisible padding is left, so the distance between the graphic and the title is exactly `--wui-empty-title-margin-top` (`12px` by default).
+The graphic box and the graphic are the same size, so the distance between the graphic and the title is exactly `--wui-empty-title-margin-top` (`12px` by default).
 
-The layout channels do not move together—edge length, the two font sizes, colors, and whitespace are each a group of variables. Scaling the whole empty state means writing several of them; writing only `--wui-empty-icon-size` gives an empty state with a very large graphic and a very small title.
+Edge length, the two font sizes, colors, and whitespace are each a group of variables and do not move together. Scaling the whole empty state means writing several of them; writing only `--wui-empty-icon-size` gives an empty state with a very large graphic and a very small title.
 
-The default graphic is `andrsrxn:inbox` on a 24×24 canvas, and both its strokes and its fills use `currentColor`, so the color is decided by `color` alone and `--wui-empty-icon-color` is never overridden by a fixed color inside the asset.
+The default graphic is `andrsrxn:inbox`, and its color is decided by `--wui-empty-icon-color` alone, never overridden by a fixed color inside the asset.
 
-Depth and hue live on two variables: `--wui-empty-icon-color` is a **solid** color, and the lighter step is handled by `--wui-empty-icon-opacity` (`0.75` by default). The two cannot be merged into "a color with alpha": the strokes of a line-art graphic already overlap at corners, endpoints, and fills, and a color carrying alpha composites a second time wherever they overlap, darkening those spots—it shows up as blackened strokes at the corners. Group opacity is applied once, after the whole graphic has been composited, so overlaps do not change. To bring the graphic back to full color, write `--wui-empty-icon-opacity: 1`.
+Color and depth are two variables: `--wui-empty-icon-color` sets a solid color, and the lighter result is handled by `--wui-empty-icon-opacity` (`0.75` by default). To bring the graphic back to full color, write `--wui-empty-icon-opacity: 1`.
 
 `--wui-empty-icon-opacity` only affects the default graphic; content in the `icon` slot does not fade with it.
 
-The three copy segments are decided separately: the title segment checks whether the default slot has content and then `title`; the description segment checks the `description` slot and then the `description` property; the action segment only recognizes the `action` slot.
+The three copy segments are decided separately: the title segment checks whether the default slot has content and then `title`; the description segment checks the `description` slot and then the `description` property; the action segment only accepts the `action` slot.
 
-What is checked is "is there content", not "does the content render", so even a single `.sr-only` span makes that segment take space; conversely, the graphic area does not participate in this check and always takes space—an empty state with all three copy segments empty keeps only the graphic.
+What is checked is "is there content", not "does the content render", so even a single `.sr-only` span makes that segment take space. The graphic area does not participate in this check and always takes space; an empty state with all three copy segments empty keeps only the graphic.
 
 Multiple elements in the `action` slot do not lay themselves out in a row; the action area only provides the gap above it.
 
-Graphics in the `icon` slot must carry their own size: the component only centres the slot content inside the `--wui-empty-icon-size` box—it neither measures nor scales it. The default edge length is `40px`; when swapping in a `web-ui-icon`, write its `size` to the same value, or change `--wui-empty-icon-size` along with it.
+Graphics in the `icon` slot must carry their own size: the component only centers the slot content inside the `--wui-empty-icon-size` box, and neither measures nor scales it. The default edge length is `40px`; when swapping in a `web-ui-icon`, write its `size` to the same value, or adjust `--wui-empty-icon-size` along with it.
 
-`title` reuses the global `title` attribute and reflects it to the host, so the browser also draws that text as a native tooltip on hover. To avoid that hint, put the title in the default slot; that position is equivalent, it just is not treated as tooltip text.
+`title` is also shown as a native tooltip on hover. To avoid that hint, put the title in the default slot; the result is the same, it is just not treated as tooltip text.
 
 ### Size presets
 
-`size` is not a supported property. The graphic, `min-height`, padding, and both font sizes are each controlled by their own variable; the presets below write the values that belong together.
+`size` is not a supported property. The graphic, `min-height`, padding, and both font sizes are each controlled by their own variable. The presets below write the values that belong together.
 
-The columns are step / graphic / `min-height` / padding / title / description:
+Each item lists size step / graphic / `min-height` / padding / title / description:
 
 - `40` / `29px` / `171px` / `23px 17px` / `14px` / `13px`
 - `56` (default) / `40px` / `240px` / `32px 24px` / `16px` / `14px`
@@ -303,7 +303,7 @@ The columns are step / graphic / `min-height` / padding / title / description:
 | `--wui-empty-min-height`            | Minimum height                                         | `240px`                      |
 | `--wui-empty-padding`               | Padding                                                | `32px 24px`                  |
 | `--wui-empty-icon-size`             | Graphic edge length, shared by the box and the glyph   | `40px`                       |
-| `--wui-empty-icon-color`            | Graphic color (solid, no alpha)                        | `--wui-color-text-secondary` |
+| `--wui-empty-icon-color`            | Graphic color (solid, opaque)                          | `--wui-color-text-secondary` |
 | `--wui-empty-icon-opacity`          | Overall depth of the graphic                           | `0.75`                       |
 | `--wui-empty-content-width`         | Maximum width of the title / description / action area | `480px`                      |
 | `--wui-empty-title-margin-top`      | Gap between the icon and the title                     | `12px`                       |

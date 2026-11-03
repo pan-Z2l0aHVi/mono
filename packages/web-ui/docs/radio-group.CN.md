@@ -1,6 +1,6 @@
 # Radio Group
 
-一组 `<web-ui-radio>` 的容器：把成员的选中状态收敛成单个 `value`，选中变化时统一派发 `input` / `change`，并负责组级禁用与必填校验。容器提供 `radiogroup` 语义，`direction` 同步为 `aria-orientation`，组级禁用与必填状态分别暴露为 `aria-disabled` 和 `aria-required`。用 `aria-label` 或 `aria-labelledby` 设置组的无障碍名称。横排组用左右方向键，竖排组用上下方向键移动焦点并选中成员。成员自己声明的 `name` 在组内不参与提交，表单字段名取组上的 `name`。
+一组 `<web-ui-radio>` 的容器。它把成员的选中状态收敛成单个 `value`，选中变化时统一派发 `input` / `change`，并负责组级禁用与必填校验。容器提供 `radiogroup` 语义，`direction` 同步为 `aria-orientation`，组级禁用与必填状态分别暴露为 `aria-disabled` 和 `aria-required`。用 `aria-label` 或 `aria-labelledby` 设置组的无障碍名称。横排组用左右方向键移动焦点并选中成员，竖排组用上下方向键。成员自己声明的 `name` 在组内不参与提交，表单字段名取组上的 `name`。
 
 ## Samples
 
@@ -99,7 +99,7 @@ export default function Demo() {
 
 ### Member gap
 
-成员之间的间距走 `--wui-radio-group-gap`，默认经 `--wui-space-2` 解析成 8px；覆盖它只换间距，不动排列方向。下面两条是同一份成员，只有这个变量不同。
+成员之间的间距取 `--wui-radio-group-gap`，默认经 `--wui-space-2` 解析成 8px。覆盖它只换间距，不改排列方向。
 
 ```tsx
 export default function Demo() {
@@ -192,13 +192,9 @@ export default function Demo() {
 
 ### 行为说明
 
-`disabled` 提供继承的有效禁用状态，不改写子项自身的 `disabled` 属性。`direction` 传入非法值时回退为 `vertical`。
+`disabled` 提供可继承的有效禁用状态，不改写子项自身的 `disabled` 属性。`direction` 传入非法值时回退为 `vertical`。
 
-在 group 元素本身，或同一个 `<web-ui-theme>` 作用域内的祖先元素上设置。
-
-theme 宿主会为自己的子树声明该间距阶，写在 `<web-ui-theme>` 元素之外的覆盖到不了 group。
-
-它的默认值现在经 `--wui-space-2` 解析，所以在 theme 宿主上覆盖该级会连带改变成员间距；显式设置这个 token 仍然优先于两者。
+`--wui-radio-group-gap` 写在 group 元素本身，或同一个 `<web-ui-theme>` 作用域内的祖先元素上；写在 theme 宿主之外的覆盖到不了 group。它的默认值经 `--wui-space-2` 解析，因此显式设置这个 token 会覆盖 `--wui-space-2` 的值。
 
 ```css
 web-ui-radio-group {

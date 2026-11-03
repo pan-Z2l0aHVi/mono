@@ -6,7 +6,7 @@ Numeric input with a step button on each side, supporting `min` / `max` / `step`
 
 ### Basic
 
-Without a `value`, the component holds the number itself, defaulting to `0`. `value` is always a number and has no empty state, so `placeholder` only appears when the content is cleared during editing: the inner control is bound to an editing draft, and only an empty draft lets the placeholder text show.
+Without a `value`, the component holds the number itself, defaulting to `0`. `value` is always a number and has no empty state, so `placeholder` only appears when the content is cleared during editing.
 
 ```tsx
 export default function Demo() {
@@ -58,7 +58,7 @@ export default function Demo() {
 
 ### Decimal precision
 
-`precision` decides how many decimal places are kept when reading and committing; assignment does not erase the original decimals—the order of `value={1.5}` and `precision={1}` does not affect the result.
+`precision` decides how many decimal places are kept when reading and committing; assignment does not erase the original decimals. The order of `value={1.5}` and `precision={1}` does not affect the result.
 
 When not set explicitly, it is derived from the decimal places of `step`: with the default settings `step={0.3}` normalizes to 1 decimal place on each step; with an explicit `precision` the value is normalized to that, for example `precision={0}` rounds fractional step results to integers.
 
@@ -90,9 +90,9 @@ export default function Demo() {
 
 `value` is a controlled value; catch `input` for it to follow typing and stepping.
 
-`input` fires on every keystroke and every step button click; `change` is dispatched only at commit points—the text blur commit and ArrowUp / ArrowDown—and not by clicking a step button.
+`input` fires on every keystroke and every step button click. `change` is dispatched only at commit points: the text blur commit and ArrowUp / ArrowDown. Clicking a step button does not dispatch it.
 
-Catch both, and the readout below will show the two rhythms separately.
+Catch both to tell the two rhythms apart.
 
 ```tsx
 import { useState } from 'react'
@@ -146,7 +146,7 @@ const committed = ref(1)
 
 ### Disabled and readonly
 
-`disabled` turns off input and stepping, makes validation yield as well, and drops the whole host to forty percent opacity. `readonly` keeps reading and copying possible, but both step buttons are drawn in their disabled state, ArrowUp / ArrowDown do nothing, and a blur commit does not forward `change`.
+`disabled` turns off input and stepping, turns validation off as well, and drops the whole host to 40% opacity. `readonly` keeps reading and copying possible, but both step buttons are drawn in their disabled state, ArrowUp / ArrowDown do nothing, and a blur commit does not forward `change`.
 
 ```tsx
 export default function Demo() {
@@ -277,7 +277,7 @@ export default function Demo() {
 | `placeholder`         | Placeholder text; shown only when the content is cleared during editing.                                                 | `string`         | `''`       |
 | `name`                | Form field name.                                                                                                         | `string`         | `''`       |
 | `disabled`            | Disabled state.                                                                                                          | `boolean`        | `false`    |
-| `readonly`            | Read-only state; the step buttons and the keyboard increment/decrement yield as well.                                    | `boolean`        | `false`    |
+| `readonly`            | Read-only state; the step buttons and the keyboard increment/decrement do not take effect.                               | `boolean`        | `false`    |
 | `required`            | Required validation.                                                                                                     | `boolean`        | `false`    |
 | `value`               | Current value, also the form submission value; an out-of-range write converges to a range endpoint.                      | `number`         | `0`        |
 | `min`                 | Minimum value.                                                                                                           | `number`         | `0`        |
@@ -285,7 +285,7 @@ export default function Demo() {
 | `step`                | Step size; when `precision` is not set explicitly, its decimal places decide the default normalization precision.        | `number`         | `1`        |
 | `precision`           | Normalizes to this value when set explicitly; when set to `null` or the attribute is removed, it is derived from `step`. | `number \| null` | `0`        |
 | `aria-label`          | Accessible name of the input.                                                                                            | `string`         | —          |
-| `aria-labelledby`     | Accessible name reference, used to name the inner input.                                                                 | `string`         | —          |
+| `aria-labelledby`     | Accessible name reference, used to name the native input.                                                                | `string`         | —          |
 | `aria-decrease-label` | Accessible name of the decrease button; falls back to the built-in English copy (`Decrease`).                            | `string`         | `''`       |
 | `aria-increase-label` | Accessible name of the increase button; falls back to the built-in English copy (`Increase`).                            | `string`         | `''`       |
 
@@ -300,39 +300,39 @@ export default function Demo() {
 
 `value` has no empty state: it defaults to `0`, and both assignment and submission first converge through `min` / `max`, so writing `999` into `max=100` yields `100`.
 
-Editing is another layer—the inner control is bound to a draft, and `1.`, an empty string, or non-numeric text only change the display, not `value`; on blur a valid draft is written back and committed, while an invalid or empty draft restores the last committed value and dispatches no `change`.
+While editing you can type `1.`, an empty string, or non-numeric text, all of which only change the display, not `value`; on blur a valid draft is written back and committed, while an invalid or empty draft restores the last committed value and dispatches no `change`.
 
-`precision` takes no part in assignment; it only happens at two points, reading (`get value`) and the step commit, so declaration order does not matter; `0.01` is not rounded to `0` ahead of time by the default settings.
+`precision` only applies at read and at the step commit, not at assignment, so declaration order does not matter; `0.01` is not rounded to `0` ahead of time.
 
-When `precision` is not set explicitly, the normalization precision is derived from the decimal places of `step`, so fractional cases do not have to write `step={0.01}` together with `precision`; once set explicitly the value is normalized to it, and `step` itself does not degrade.
+When `precision` is not set explicitly, the normalization precision is derived from the decimal places of `step`; once set explicitly the value is normalized to it, and `step` itself does not degrade.
 
-The inconsistent event dispatch rhythm is the component's current state: `input` from text entry comes from the inner native control bubbling up, while `change` is dispatched once by the component on the host because the native `change` is not composed and cannot cross the shadow boundary; the step buttons dispatch only `input`, and ArrowUp / ArrowDown dispatch both `input` and `change`.
+Event rhythm: text entry and stepping both dispatch `input`; `change` is dispatched on the text blur commit and on ArrowUp / ArrowDown, but not by clicking a step button.
 
 A controlled setup that listens only to `change` misses step button clicks.
 
-Validation passes only `required` / `disabled` / `readonly` through to the inner control; `min` / `max` / `step` are not passed through.
+Validation covers only `required` / `disabled` / `readonly`; `min` / `max` / `step` do not take part in native validation.
 
-As a result `valueMissing` works normally (required blocks submission after clearing), while `rangeUnderflow` / `rangeOverflow` basically never trigger—out-of-range values are clamped at commit time; and `stepMismatch` is judged against the native `number` control's default `step=1` with base `0`, so non-integer values risk being judged invalid and blocking submission.
+`valueMissing` works normally; `rangeUnderflow` / `rangeOverflow` basically never trigger because out-of-range values are converged at commit time; `stepMismatch` is judged against the native `number` default `step=1`, so non-integer values risk being judged invalid and blocking submission.
 
 For `input-number` inside a form, prefer an integer `step`; when decimals are needed, validate them yourself in the outer layer.
 
 The component has no slot: `prefix` / `suffix` are capabilities of `<web-ui-input>` and `<web-ui-textarea>`, and child nodes written inside `input-number` are not rendered.
 
-Nor is there any `focus()` / `blur()` / `select()` delegation: the host itself has no tab stop, so Tab enters the native control inside the shadow root, and calling these three methods on the host will not reach it.
+Nor is there any `focus()` / `blur()` / `select()` delegation: calling these three methods on the host does not reach the inner control.
 
-The disabled state is driven by the `disabled` attribute on the host, and the focus state reflects to a `focused` attribute, which the focus ring follows.
+The focus state is written to a `focused` attribute on the host, which the focus ring follows.
 
 ### Layout
 
 The host is inline-block.
 
-The input area takes its width from `--wui-input-width` (`200px`), its minimum width and height from `--wui-control-size` (`36px`), and its radius from `--wui-radius-control` (pill), on the shared glass surface.
+The width comes from `--wui-input-width` (`200px`), the minimum width and height from `--wui-control-size` (`36px`), and the radius is a pill.
 
-The two step buttons are native `<button class="num-btn">` elements inside the shadow root (not `<web-ui-button>`), 30×30, borderless with a transparent background, in the secondary text color, with hover and active going through the state layer tokens, and they enter their disabled state when `min` / `max` is reached or `readonly` is set.
+The two step buttons are native `<button>` elements (not `<web-ui-button>`), and enter their disabled state when `min` / `max` is reached or `readonly` is set.
 
-The number is centered (`text-align: center`), and the native spinner is hidden, with the two buttons taking over increment and decrement.
+The number is centered, and the native spinner is hidden, with the two buttons taking over increment and decrement.
 
-The text takes `--wui-font-size`, clamped to no less than `16px` on coarse pointer devices to prevent iOS Safari from zooming the page on focus; the placeholder text takes the secondary text color.
+The text takes `--wui-font-size`, at least 16px on coarse pointer devices to prevent iOS Safari from zooming the page on focus; the placeholder text takes the secondary text color.
 
 ### CSS Custom Properties
 

@@ -1,12 +1,12 @@
 # Input
 
-A text input with a clear button and prefix/suffix slots that integrates with the native `<form>`; the host itself is not focusable, and focus is delegated to the native input inside the shadow root.
+A text input with a clear button and prefix/suffix slots that integrates with the native `<form>`. The host itself is not focusable, so focus lands on the native input; `focus()` / `blur()` / `select()` act on it.
 
 ## Samples
 
 ### Basic
 
-`placeholder` is shown only when the value is empty, and `value` is both the displayed value and the value submitted with the form. When `input` is not handled, the component holds the typed content itself; to sync the value from the page, write `value` and handle `input`, as in Controlled value and events below.
+`placeholder` is shown only when the value is empty, and `value` is both the displayed value and the value submitted with the form. When `input` is not handled, the component holds the typed content itself. To sync the value from the page, write `value` and handle `input`, as in Controlled value and events below.
 
 ```tsx
 export default function Demo() {
@@ -30,7 +30,7 @@ export default function Demo() {
 
 ### Input types
 
-`type` is forwarded as-is to the native input inside, and masking and format validation both come from the native type: `password` masks the content, and `email` validates the format on form submit.
+`type` is forwarded as-is to the native input, and masking and format validation both come from the native type: `password` masks the content, and `email` validates the format on form submit.
 
 ```tsx
 export default function Demo() {
@@ -96,7 +96,7 @@ import { lucideSearch } from '@greypan/web-ui/icons'
 
 ### Clear button
 
-`clearable` draws the clear button only when there is a value and neither `disabled` nor `readonly` is set; an empty value, disabled, or readonly draws nothing. Clicking the clear button clears the value and **dispatches both `input` and `change`**—clearing is a committed discrete change rather than continuous typing, so consumers that listen only to `change` must receive it too. `full` makes the control fill the parent's width.
+`clearable` draws the clear button only when there is a value and neither `disabled` nor `readonly` is set; an empty value, disabled, or readonly draws nothing. Clicking the clear button clears the value and dispatches both `input` and `change`. Clearing is a committed discrete change rather than continuous typing, so code that listens only to `change` receives it too. `full` makes the control fill the parent's width.
 
 ```tsx
 export default function Demo() {
@@ -120,7 +120,7 @@ export default function Demo() {
 
 ### Disabled and readonly
 
-`disabled` turns off typing, validation, and clearing, and drops the whole host to forty percent opacity; `readonly` keeps the content readable, selectable, and copyable but rejects input and hides the clear button—clearing would change the value, which conflicts with readonly semantics.
+`disabled` turns off typing, validation, and clearing, and drops the whole host to 40% opacity. `readonly` keeps the content readable, selectable, and copyable but rejects input and hides the clear button. Clearing would change the value, which conflicts with readonly semantics.
 
 ```tsx
 import { lucideSearch } from '@greypan/web-ui/icons'
@@ -156,7 +156,7 @@ import { lucideSearch } from '@greypan/web-ui/icons'
 
 ### Borderless
 
-`borderless` removes the border, background, blur, and glass ring, leaving only padding and the focus ring, for an outer container to draw its own; the input area width still comes from `--wui-input-width`.
+`borderless` removes the border, background, backdrop blur, shadow, and glass ring, leaving only padding and the focus ring, for an outer container to draw its own; the input area width still comes from `--wui-input-width`.
 
 ```tsx
 import { lucideSearch } from '@greypan/web-ui/icons'
@@ -250,7 +250,7 @@ const committed = ref('')
 
 ### Form value
 
-`name` is the field name and the submitted value is the current content; `required` blocks native submission when the field is empty (`valueMissing`), and a malformed `type="email"` value blocks it as well (`typeMismatch`). Validation is forwarded to the host `<form>` through ElementInternals, so the native validation bubble points at this control.
+`name` is the field name and the submitted value is the current content; `required` blocks native submission when the field is empty (`valueMissing`), and a malformed `type="email"` value blocks it as well (`typeMismatch`). Validation is handled by the native `<form>`, and the bubble points at this control.
 
 ```tsx
 import { useRef, useState } from 'react'
@@ -340,9 +340,9 @@ function reset() {
 
 ### Focus and select all
 
-`focus()` / `blur()` delegate to the native input inside the shadow root, and `select()` selects the current value; `focus()` and `select()` have no effect when `disabled`, while `blur()` has no such guard—the inner control in the disabled state simply cannot take focus anyway.
+`focus()` / `blur()` / `select()` act on the native input; `focus()` and `select()` have no effect when `disabled`, while `blur()` has no such guard.
 
-The host itself has no tab stop, so pressing Tab also lands on the inner control, and the focus ring is drawn by the component's own focus state.
+The host itself has no tab stop, so pressing Tab lands on the native input.
 
 ```tsx
 import type { WebUiInput } from '@greypan/web-ui'
@@ -428,20 +428,20 @@ export default function Demo() {
 
 ### Props
 
-| Name               | Description                                                                                      | Type             | Default  |
-| ------------------ | ------------------------------------------------------------------------------------------------ | ---------------- | -------- |
-| `type`             | HTML input type, forwarded to the native input inside.                                           | `string`         | `'text'` |
-| `placeholder`      | Placeholder text.                                                                                | `string`         | `''`     |
-| `name`             | Form field name.                                                                                 | `string`         | `''`     |
-| `disabled`         | Disabled state.                                                                                  | `boolean`        | `false`  |
-| `readonly`         | Readonly state.                                                                                  | `boolean`        | `false`  |
-| `required`         | Required validation.                                                                             | `boolean`        | `false`  |
-| `clearable`        | Shows the clear button when there is a value and neither `disabled` nor `readonly` is set.       | `boolean`        | `false`  |
-| `aria-clear-label` | Accessible name of the clear button; falls back to the built-in English copy (`Clear`).          | `string`         | `''`     |
-| `full`             | Fills the parent's width.                                                                        | `boolean`        | `false`  |
-| `borderless`       | Ghost form: removes the border, background, and shadow while keeping padding and the focus ring. | `boolean`        | `false`  |
-| `aria-label`       | Accessible label.                                                                                | `string \| null` | `null`   |
-| `value`            | Input value, also the form-submitted value.                                                      | `string`         | `''`     |
+| Name               | Description                                                                                                     | Type             | Default  |
+| ------------------ | --------------------------------------------------------------------------------------------------------------- | ---------------- | -------- |
+| `type`             | HTML input type, forwarded to the native input inside.                                                          | `string`         | `'text'` |
+| `placeholder`      | Placeholder text.                                                                                               | `string`         | `''`     |
+| `name`             | Form field name.                                                                                                | `string`         | `''`     |
+| `disabled`         | Disabled state.                                                                                                 | `boolean`        | `false`  |
+| `readonly`         | Readonly state.                                                                                                 | `boolean`        | `false`  |
+| `required`         | Required validation.                                                                                            | `boolean`        | `false`  |
+| `clearable`        | Shows the clear button when there is a value and neither `disabled` nor `readonly` is set.                      | `boolean`        | `false`  |
+| `aria-clear-label` | Accessible name of the clear button; falls back to the built-in English copy (`Clear`).                         | `string`         | `''`     |
+| `full`             | Fills the parent's width.                                                                                       | `boolean`        | `false`  |
+| `borderless`       | Ghost form: removes the border, background, backdrop blur, and shadow while keeping padding and the focus ring. | `boolean`        | `false`  |
+| `aria-label`       | Accessible label.                                                                                               | `string \| null` | `null`   |
+| `value`            | Input value, also the form-submitted value.                                                                     | `string`         | `''`     |
 
 ### Events
 
@@ -463,35 +463,35 @@ export default function Demo() {
 
 | Name              | Description                                                                            |
 | ----------------- | -------------------------------------------------------------------------------------- |
-| `focus(options?)` | Focuses the native input inside the shadow root; no effect when `disabled`.            |
-| `blur()`          | Blurs the native input inside the shadow root.                                         |
+| `focus(options?)` | Focuses the inner native input; no effect when `disabled`.                             |
+| `blur()`          | Blurs the inner native input.                                                          |
 | `select()`        | Selects the current value; no effect when `disabled`, still available when `readonly`. |
 
 ### Behavior
 
-The host is not focusable and has no tab stop: both Tab and clicks hand focus to the native input inside the shadow root, and the component reflects the focus state as a `focused` attribute on the host, which drives the focus ring. The programmatic `focus()` / `blur()` / `select()` delegate to that inner control as well.
+The host is not focusable and has no tab stop: both Tab and clicks hand focus to the inner native input, and the `focused` attribute tracks the focus state and drives the focus ring. `focus()` / `blur()` / `select()` act on it.
 
-The inner control's native `input` already bubbles and is composed, so the host receives it directly; the native `change` is not composed and cannot cross the shadow boundary, so the component re-dispatches a `composed` `change` on the host.
+`input` bubbles and is composed, so the host receives it directly; `change` is re-dispatched by the component as a `composed` event on the host.
 
-The clear button goes through the same discrete change, dispatching `input` and `change` together, so consumers that only listen to `change`, such as `v-model.lazy`, do not miss the clearing.
+The clear button triggers the same discrete change, dispatching `input` and `change` together, so code that only listens to `change`, such as `v-model.lazy`, do not miss the clearing.
 
-`disabled` and form-level disabling (an ancestor `<fieldset disabled>`) both withdraw typing and validation: the `required` and `type="email"` checks (`valueMissing` / `typeMismatch`) are forwarded to the host `<form>` through ElementInternals, and do not block submission while disabled.
+`disabled` and form-level disabling (an ancestor `<fieldset disabled>`) both withdraw typing and validation: the `required` and `type="email"` checks (`valueMissing` / `typeMismatch`) are handled by the host `<form>`, and do not block submission while disabled.
 
-`readonly` withdraws validation as well, not just typing: per the HTML specification, a readonly native control is barred from constraint validation, so `validity.valid` is always true and the forwarded state is therefore always clean—an empty `required readonly` value does not block submission.
+`readonly` withdraws validation as well: an empty `required readonly` value does not block submission.
 
 `form.reset()` restores the value from mount time.
 
 ### Layout
 
-The host is inline-block; with `full` it becomes a block and stretches the input area across the parent. The input area takes its height from `--wui-control-size` (`36px`), its radius from `--wui-radius-control` (pill), and its surface from the shared glass surface; `borderless` removes the ring along with it.
+The host is inline-block; with `full` it fills the parent. The input area takes its height from `--wui-control-size` (`36px`) and its radius from `--wui-radius-control` (pill); `borderless` removes the border, background, backdrop blur, shadow, and ring.
 
-Text takes `--wui-font-size`, clamped to no less than `16px` on coarse-pointer devices so that iOS Safari does not zoom the page on focus.
+Text takes `--wui-font-size`, at least `16px` on coarse-pointer devices so that iOS Safari does not zoom the page on focus.
 
-Placeholder text and slot content take the secondary text color, and the placeholder typography is only `font: inherit`, decided uniformly by the control's font size.
+Placeholder text and slot content take the secondary text color.
 
-The `gap` between prefix and suffix belongs to the container: when a side's slot has no assigned nodes, that slot box collapses entirely and leaves no half `gap`—the check reads `slot.assignedElements().length`, which only asks whether elements are assigned and does not measure whether they actually draw anything; assigning a node that is itself `display: none` still counts as "has content", and the `gap` stays.
+A side whose slot has no assigned nodes leaves no `gap`; assigning a node that is itself `display: none` still counts as "has content", and the `gap` stays.
 
-The clear button reuses the icon ghost form of `<web-ui-button>`, is mounted only when there is a value and neither `disabled` nor `readonly` is set, and uses negative margins to offset the container's `gap` and its own padding so that it sits against the input text.
+The clear button appears only when there is a value and neither `disabled` nor `readonly` is set, and sits against the input text.
 
 ### CSS Custom Properties
 

@@ -1,16 +1,16 @@
 # Tooltip
 
-tooltip shows on pointer and focus; the `content` attribute supplies plain text and the `content` slot can hold richer content.
+The tooltip shows on pointer and focus. The `content` attribute supplies plain text, and the `content` slot can hold richer content.
 
 ## Samples
 
 ### Basic
 
-The default slot is the trigger, and the `content` attribute gives the plain-text hint.
+The default slot is the trigger. The `content` attribute gives the plain-text hint.
 
-Pointer entry shows it after the `show-delay`; keyboard focus (`:focus-visible`) shows it immediately. Pointer exit hides it after the `hide-delay`, while losing focus hides it immediately.
+Pointer entry shows it after the `show-delay`; keyboard focus (`:focus-visible`) shows it immediately. Pointer exit hides it after the `hide-delay`, and losing focus hides it immediately.
 
-`open-change` is dispatched only after user-originated open and close actions, and `detail.open` is the state the component has already settled into; the readout below is the value of the latest notification.
+`open-change` is dispatched only after user-originated open and close actions, and `detail.open` is the state the component has already moved to.
 
 ```tsx
 import { useState } from 'react'
@@ -66,7 +66,7 @@ function onOpenChange(event: WebUiEvent<WebUiTooltip, 'open-change'>) {
 
 ### Rich content
 
-The `content` slot replaces the plain text and can hold multiple lines, bold text, or inline code. The slot element must be a direct child of the tooltip with `slot="content"`; the trigger in the default slot should not carry a slot attribute.
+The `content` slot replaces the plain text and can hold multiple lines, bold text, or inline code. The slot element must be a direct child of the tooltip with `slot="content"`. The trigger in the default slot should not carry a slot attribute.
 
 Use an icon button with an `aria-label` as the trigger so it stays focusable and keyboard users see the hint too.
 
@@ -132,7 +132,7 @@ const last = ref('—')
 
 ### Delay
 
-`show-delay` / `hide-delay` control the show and hide delays as the pointer enters and leaves, and `0` means no wait. `disabled` turns triggering off: neither pointer nor focus makes the hint appear, while a hint already shown is not taken down by this attribute. The second tooltip never shows, so the readout follows only the first one; the disabled state dispatches no `open-change`.
+`show-delay` / `hide-delay` control the show and hide delays as the pointer enters and leaves, and `0` means no wait. `disabled` turns triggering off: neither pointer nor focus makes the hint appear, a hint already shown is not hidden by this attribute, and the disabled state dispatches no `open-change`.
 
 ```tsx
 import { useState } from 'react'
@@ -205,7 +205,7 @@ const last = ref('—')
 | `offset`           | Distance from the trigger (px).                              | `number`           | `6`     |
 | `content`          | Hint text, the plain-text alternative to the `content` slot. | `string`           | `''`    |
 | `open`             | Visibility.                                                  | `boolean`          | `false` |
-| `portal`           | Renders in the theme-owned overlay root.                     | `boolean`          | `false` |
+| `portal`           | Renders in the theme overlay container.                      | `boolean`          | `false` |
 | `overlayContainer` | Explicit Portal container (property).                        | `OverlayContainer` | —       |
 
 ### Events
@@ -223,11 +223,11 @@ const last = ref('—')
 
 ### Behavior
 
-`open` is a self-managed visibility property. Pointer and focus triggers update it, and assigning the property directly also syncs the local or Portal panel; `open-change` is dispatched only for user-originated toggles.
+`open` is a self-managed visibility property. Pointer and focus triggers update it, and assigning the property directly also shows or hides the tooltip. `open-change` is dispatched only for user-originated toggles.
 
-Once the first tooltip is shown, an adjacent tooltip switches immediately; other pointer/focus triggers use the delay timers.
+Once a tooltip is shown, moving the pointer to an adjacent tooltip switches immediately. Other triggers still use the delays.
 
-While open, the tooltip text is written to `aria-description` on the trigger's focusable element (including native controls inside its shadow DOM) and restored on close; the panel also carries a unique `id`. The panel and trigger usually live in different shadow roots, where `aria-describedby` IDREFs cannot resolve, so it does not carry the screen-reader description.
+While open, the tooltip text is written to `aria-description` on the trigger's focusable element, including native controls inside it, and restored on close. The screen-reader description does not use `aria-describedby`: the panel and trigger usually sit in different DOM trees, where IDREFs cannot resolve.
 
 ### CSS Custom Properties
 

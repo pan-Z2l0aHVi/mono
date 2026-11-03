@@ -1,16 +1,16 @@
 # Tooltip
 
-tooltip，支持指针与焦点触发；`content` 属性提供纯文本，`content` 插槽可放更丰富的内容。
+tooltip 支持指针和焦点触发。`content` 属性提供纯文本，`content` 插槽可以放更丰富的内容。
 
 ## Samples
 
 ### Basic
 
-默认插槽是 trigger，`content` 属性给出纯文本提示。
+默认插槽是 trigger。`content` 属性给出纯文本提示。
 
-指针进入按 `show-delay` 延迟显示，键盘聚焦（`:focus-visible`）立即显示；指针离开按 `hide-delay` 收起，失焦则立即收起。
+指针进入后按 `show-delay` 延迟显示，键盘聚焦（`:focus-visible`）立即显示。指针离开后按 `hide-delay` 收起，失焦立即收起。
 
-`open-change` 只在用户来源的开合后派发，`detail.open` 是组件已经落到的状态；下面那行读数就是最近一次通知的值。
+`open-change` 只在用户触发的开合后派发，`detail.open` 是组件已经切换到的状态。
 
 ```tsx
 import { useState } from 'react'
@@ -66,9 +66,9 @@ function onOpenChange(event: WebUiEvent<WebUiTooltip, 'open-change'>) {
 
 ### Rich content
 
-`content` 插槽替代纯文本，可以放多行、加粗或行内代码。插槽元素必须是 tooltip 的直接子节点并带 `slot="content"`；默认插槽里的 trigger 不要写 slot 属性。
+`content` 插槽替代纯文本，可以放多行文本、粗体或行内代码。插槽元素必须是 tooltip 的直接子节点，并带 `slot="content"`。默认插槽里的 trigger 不要写 slot 属性。
 
-trigger 用带 `aria-label` 的 icon button，保持可聚焦，键盘用户也能看到提示。
+trigger 请用带 `aria-label` 的 icon button，让它保持可聚焦，键盘用户也能看到提示。
 
 ```tsx
 import { lucideInfo } from '@greypan/web-ui/icons'
@@ -132,7 +132,7 @@ const last = ref('—')
 
 ### Delay
 
-`show-delay` / `hide-delay` 控制指针进出时的显示与隐藏延迟，`0` 表示不等待。`disabled` 关闭触发：指针与焦点都不会让提示出现，已经显示的提示不会被这条属性收掉。第二条始终不显示，读数只跟随第一条；禁用状态不派发 `open-change`。
+`show-delay` / `hide-delay` 控制指针进出时的显示与隐藏延迟，`0` 表示不等待。`disabled` 关闭触发：指针和焦点都不会让提示出现，已经显示的提示不会因为这条属性被收起，禁用状态下也不派发 `open-change`。
 
 ```tsx
 import { useState } from 'react'
@@ -196,23 +196,23 @@ const last = ref('—')
 
 ### Props
 
-| 名称               | 说明                                      | 类型               | 默认值  |
-| ------------------ | ----------------------------------------- | ------------------ | ------- |
-| `placement`        | tooltip 位置，默认 `top`。                | `Placement`        | `'top'` |
-| `show-delay`       | 显示延迟（毫秒）。                        | `number`           | `200`   |
-| `hide-delay`       | 隐藏延迟（毫秒）。                        | `number`           | `100`   |
-| `disabled`         | 禁用状态。                                | `boolean`          | `false` |
-| `offset`           | 与 trigger 的距离（px）。                 | `number`           | `6`     |
-| `content`          | 提示文本，是 `content` 插槽的纯文本替代。 | `string`           | `''`    |
-| `open`             | 可见性。                                  | `boolean`          | `false` |
-| `portal`           | 在 theme-owned overlay root 中渲染。      | `boolean`          | `false` |
-| `overlayContainer` | 显式 Portal 容器（property）。            | `OverlayContainer` | —       |
+| 名称               | 说明                                             | 类型               | 默认值  |
+| ------------------ | ------------------------------------------------ | ------------------ | ------- |
+| `placement`        | tooltip 位置，默认 `top`。                       | `Placement`        | `'top'` |
+| `show-delay`       | 显示延迟（毫秒）。                               | `number`           | `200`   |
+| `hide-delay`       | 隐藏延迟（毫秒）。                               | `number`           | `100`   |
+| `disabled`         | 禁用状态。                                       | `boolean`          | `false` |
+| `offset`           | 与 trigger 的距离（px）。                        | `number`           | `6`     |
+| `content`          | 提示文本，是 `content` 插槽的纯文本替代。        | `string`           | `''`    |
+| `open`             | 可见性。                                         | `boolean`          | `false` |
+| `portal`           | 在主题的 overlay 容器中渲染。                    | `boolean`          | `false` |
+| `overlayContainer` | 显式指定 panel 挂载的 overlay 容器（property）。 | `OverlayContainer` | —       |
 
 ### Events
 
-| 名称          | 说明                                 |
-| ------------- | ------------------------------------ |
-| `open-change` | 提示开合，`detail.open` 为当前状态。 |
+| 名称          | 说明                                       |
+| ------------- | ------------------------------------------ |
+| `open-change` | 提示打开或关闭，`detail.open` 是当前状态。 |
 
 ### Slots
 
@@ -223,11 +223,11 @@ const last = ref('—')
 
 ### 行为说明
 
-`open` 是自管理的可见性属性。指针/焦点触发会更新它，直接赋值 property 也会同步本地或 Portal panel；`open-change` 仅用户来源的 toggle 时派发。
+`open` 是组件自行管理的可见性属性。指针和焦点触发会更新它，直接给 property 赋值同样会显示或隐藏提示。`open-change` 只在用户触发的开合时派发。
 
-第一个 Tooltip 显示后，相邻 Tooltip 会立即切换；其余 pointer/focus 触发使用延迟计时器。
+一个 tooltip 显示后，把指针移到相邻 tooltip 会立即切换。其他触发仍按延迟处理。
 
-打开时把提示文本写到 trigger 可聚焦元素（含 shadow DOM 内部的原生控件）的 `aria-description`，关闭时还原原值；面板同时带唯一 `id`。面板与 trigger 通常分处不同 shadow root，`aria-describedby` 的 IDREF 无法跨边界解析，因此不用它承担读屏描述。
+打开时把提示文本写到 trigger 可聚焦元素的 `aria-description`，包括该元素内部的原生控件；关闭时还原原值。读屏描述不使用 `aria-describedby`：panel 和 trigger 通常位于不同的 DOM 树中，IDREF 无法跨树解析。
 
 ### CSS Custom Properties
 

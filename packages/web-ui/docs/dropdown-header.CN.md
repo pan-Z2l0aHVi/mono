@@ -1,12 +1,12 @@
 # Dropdown Header
 
-menu 里的分组标题：一段不参与交互的小字，给紧随其后的几个 menu item 起名。它没有属性与事件，也不参与键盘导航——menu 只会把焦点停在 `<web-ui-dropdown-item>` 上。分组标题常与 `<web-ui-dropdown-divider>` 一起用。
+menu 里的分组标题。它是一段不参与交互的小字，给紧随其后的几个 menu item 起名。它没有属性与事件，也不参与键盘导航。menu 只把焦点停在 `<web-ui-dropdown-item>` 上。分组标题常与 `<web-ui-dropdown-divider>` 一起用。
 
 ## Samples
 
 ### Group title
 
-标题让一组 menu item 有名字；它不可聚焦、不可点击，键盘上下键会直接跳过。
+标题给一组 menu item 起名。它不可聚焦，也不可点击，键盘上下键会直接跳过。
 
 ```tsx
 export default function Demo() {

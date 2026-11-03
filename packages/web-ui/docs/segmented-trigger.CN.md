@@ -1,14 +1,14 @@
 # Segmented Trigger
 
-`<web-ui-segmented>` 的分段 button：`value` 是它代表的分段值，选中由父级 segmented 回写 `checked`，表单提交归父级。
+`<web-ui-segmented>` 的分段 button。`value` 是它代表的分段值；是否选中由父级 segmented 回写 `checked`；表单提交由父级负责。
 
-点击或 Enter / Space 派发 `change`——在组内该事件不冒泡，由父级统一派发一次组级事件；脱离组时才冒泡并穿透 shadow。
+点击或按 Enter / Space 派发 `change`。在组内该事件不冒泡，由父级统一派发一次组级事件；脱离组后它才冒泡，并传出组件边界。
 
 ## Samples
 
 ### Basic
 
-`value` 决定哪个 trigger 是当前项，容器按它回写 `checked`；默认插槽里的文本就是 button 内容。
+`value` 决定哪个 trigger 是当前项，父级 segmented 按它回写 `checked`。默认插槽里的文本就是 button 内容。
 
 ```tsx
 import { useState } from 'react'
@@ -44,7 +44,7 @@ const view = ref('day')
 
 ### Individual disabling
 
-`disabled` 加在 trigger 上只禁这一项：它留在 track 里，但不可选中，键盘导航也跳过它。加在 `<web-ui-segmented>` 上则是禁用全部 trigger。
+`disabled` 加在 trigger 上只禁用这一项：它仍留在 track 里，但不可选中，键盘导航也会跳过它。加在 `<web-ui-segmented>` 上则禁用全部 trigger。
 
 ```tsx
 import { useState } from 'react'
@@ -82,18 +82,18 @@ const view = ref('list')
 
 ### Props
 
-| 名称         | 说明                                                             | 类型             | 默认值  |
-| ------------ | ---------------------------------------------------------------- | ---------------- | ------- |
-| `value`      | 分段值。                                                         | `string`         | `''`    |
-| `checked`    | 当前选中；由父级 segmented 回写，单独写不通知容器。              | `boolean`        | `false` |
-| `disabled`   | 单独禁用该 trigger。                                             | `boolean`        | `false` |
-| `aria-label` | 转发到内部 `role="option"` 的可访问名；slot 只有图标时必须提供。 | `string \| null` | `null`  |
+| 名称         | 说明                                                        | 类型             | 默认值  |
+| ------------ | ----------------------------------------------------------- | ---------------- | ------- |
+| `value`      | 分段值。                                                    | `string`         | `''`    |
+| `checked`    | 当前是否选中；由父级 segmented 回写，单独设置不会通知父级。 | `boolean`        | `false` |
+| `disabled`   | 单独禁用该 trigger。                                        | `boolean`        | `false` |
+| `aria-label` | 可访问名称；插槽中只有图标时必须提供。                      | `string \| null` | `null`  |
 
 ### Events
 
-| 名称     | 说明                                                                                    |
-| -------- | --------------------------------------------------------------------------------------- |
-| `change` | 点击或 Enter / Space 激活未选中的 trigger 时派发；已是当前项时不派发，且不带 `detail`。 |
+| 名称     | 说明                                                                                      |
+| -------- | ----------------------------------------------------------------------------------------- |
+| `change` | 点击或 Enter / Space 激活未选中的 trigger 时派发；已是当前项时不派发。事件不带 `detail`。 |
 
 ### Slots
 
@@ -103,7 +103,7 @@ const view = ref('list')
 
 ### 行为说明
 
-非表单关联组件（父级 segmented 统一提交）。
+不是表单关联组件；表单提交由父级 segmented 统一负责。
 
 ### CSS Custom Properties
 

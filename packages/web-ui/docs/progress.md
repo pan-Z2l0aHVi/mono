@@ -6,7 +6,7 @@ progress / progress indicator: a linear track for completed work, with an indete
 
 ### Basic
 
-`value` defaults to the `0..100` range, and values above the limit converge to `max`. The host always exposes `role="progressbar"`; the examples provide an accessible name through `aria-label`.
+`value` falls in the `0..max` range, and values above the limit are clamped to `max`. The host always exposes `role="progressbar"`; give it an accessible name with `aria-label`.
 
 ```tsx
 export default function Demo() {
@@ -32,7 +32,7 @@ export default function Demo() {
 
 ### Custom range
 
-`max` does not have to be 100, so the component also fits business counts such as “12 of 40 selected”. `show-value` displays the rounded percentage beside the track. Assistive technology reads `aria-valuenow` / `aria-valuemax` and does not repeat the visible percentage.
+`max` does not have to be 100, so the component also fits business counts such as "12 of 40 selected". `show-value` displays the rounded percentage beside the track. Assistive technology reads `aria-valuenow` / `aria-valuemax` and does not repeat the visible percentage.
 
 ```tsx
 export default function Demo() {
@@ -56,7 +56,7 @@ export default function Demo() {
 
 ### Indeterminate
 
-Use `indeterminate` when work has started but its percentage cannot be calculated yet. The component removes `aria-valuenow` while keeping the progress name and upper bound. The theme's reduced-motion mode slows the loop instead of stopping the only ongoing signal.
+Use `indeterminate` when work has started but its percentage cannot be calculated yet. The component removes `aria-valuenow` while keeping the progress name and upper bound. The theme's reduced-motion setting slows the loop and does not stop it completely.
 
 ```tsx
 export default function Demo() {
@@ -80,7 +80,7 @@ export default function Demo() {
 
 ### Styling
 
-Track height, radius, track color and fill color all use CSS Custom Properties, which can be overridden on the host or any ancestor. The host is `display: block; width: 100%` by default, leaving width constraints to the surrounding layout.
+Track height, radius, track color, and fill color all use CSS Custom Properties, which you can override on the host or any ancestor. The host is `display: block; width: 100%` by default, so the surrounding container limits the width.
 
 ```tsx
 export default function Demo() {
@@ -147,4 +147,4 @@ The public style parts are `base`, `track`, `indicator` and `value`. Use `::part
 
 ### Accessibility
 
-The host carries the `progressbar` role and maintains `aria-valuemin`, `aria-valuemax` and, in determinate mode, `aria-valuenow`. When neither `aria-label` nor `aria-labelledby` is supplied, the built-in English name is `Progress`; consumers should provide a name that matches the actual task.
+The host carries the `progressbar` role and maintains `aria-valuemin`, `aria-valuemax` and, in determinate mode, `aria-valuenow`. When neither `aria-label` nor `aria-labelledby` is supplied, the name is the built-in English `Progress`. Provide a name that matches the actual task.

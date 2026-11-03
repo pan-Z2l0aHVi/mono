@@ -42,7 +42,7 @@ const photo =
 
 ### Initials fallback
 
-没有 `src` 时不画图片，改从 `name` 取首字母：按空白切词、最多取前两词，各取第一个字符再转大写，所以 `Grey Pan` 是 GP、`Ada` 只有 A、`John Michael Doe` 截到 JM。`name` 同时充当无障碍名称。
+没有 `src` 时不画图片，改为从 `name` 取首字母：按空白切词，最多取前两个词，各取第一个字符并转成大写，所以 `Grey Pan` 是 GP、`Ada` 只有 A、`John Michael Doe` 截到 JM。`name` 同时充当无障碍名称。
 
 ```tsx
 export default function Demo() {
@@ -68,7 +68,7 @@ export default function Demo() {
 
 ### Icon fallback
 
-`src` 与 `name` 都留空、`default` 插槽也空着时，回退到内置的 `<web-ui-icon>` 人形图标。它没有名字可播报，于是整个头像按装饰性内容处理（见下面的行为说明）。
+`src` 与 `name` 都留空、`default` 插槽也空着时，回退到内置的 `<web-ui-icon>` 人形图标。这个图标没有名字可播报，整个头像因此按装饰性内容处理，详见下面的行为说明。
 
 ```tsx
 export default function Demo() {
@@ -94,11 +94,9 @@ export default function Demo() {
 
 ### Sizes
 
-`size` 是唯一尺寸旋钮：它写成方盒的内联宽高，并同步成 `--wui-avatar-size` 供影子内部取值，圆形档的高光圆角按它的一半算（方形档固定 12px）。
+`size` 是唯一的尺寸设置，决定头像边长（px）；回退内容跟着它缩放。
 
-回退内容跟着它走：首字母字号取 `size` 的 40%，默认图标按同一比例取整。
-
-图片按 `object-fit: cover` 裁进这个方盒，长宽比不一致时居中裁切而不是拉伸。
+图片按 `object-fit: cover` 裁进这个方盒；长宽比不一致时居中裁切，不会被拉伸。
 
 ```tsx
 export default function Demo() {
@@ -130,7 +128,7 @@ export default function Demo() {
 
 ### Square
 
-`shape="square"` 把圆角收到 12px 的方块，图片、首字母与默认图标三种内容共用这一档形状。非法值不参与渲染，会被规范回 `circle`。
+`shape="square"` 把圆角收到 12px 的方块，图片、首字母与默认图标三种内容共用这个形状。非法值不参与渲染，会被规范回 `circle`。
 
 ```tsx
 // 示例图是一段内联 SVG：语料不带二进制素材，也不依赖网络。
@@ -166,7 +164,7 @@ const photo =
 
 ### Load failure
 
-图片 `error` 之后组件按回退处理：有 `name` 就出首字母，没有就出默认图标，不会留下破图。回退判定按 `src` 生效——换掉 `src` 时上一次的失败记录会被清掉。
+图片触发 `error` 后，组件按回退处理：有 `name` 就显示首字母，没有就显示默认图标，不会留下破图。回退判定按 `src` 生效：换掉 `src` 时，上一次的失败记录会被清掉。
 
 ```tsx
 export default function Demo() {
@@ -238,28 +236,24 @@ export default function Demo() {
 
 | 名称      | 说明                                       |
 | --------- | ------------------------------------------ |
-| `default` | 图片加载失败时的降级内容，替代默认首字母。 |
+| `default` | 图片加载失败时的回退内容，替代默认首字母。 |
 
 ### 行为说明
 
-三种内容互斥，按 `src` → `default` 插槽 → `name` 首字母 → 默认图标的顺序取第一个能画的：`src` 有值且没报过错就画图片；`src` 留空或报 `error` 时进入回退态，回退态里只要 `default` 插槽有元素子节点就不再画首字母与图标，否则按 `name` 出首字母、`name` 也为空时出内置的 `lucideUser`。
+三种内容互斥，按 `src` → `default` 插槽 → `name` 首字母 → 默认图标的顺序取第一个能画的。`src` 有值且没有报过错时画图片；否则进入回退态：`default` 插槽有元素子节点就用它，其次是 `name` 首字母，最后是内置的人形图标。
 
-`shape` 走字面量白名单：只认 `circle` / `square`，其他值（含空串）回落到 `circle` 并修正宿主 attribute。
+`shape` 只接受字面量白名单里的值：`circle` / `square`。其他值（含空串）回落到 `circle`，宿主 attribute 也会被修正。
 
-`size` 没有这层规范化，它是原样反射的数值属性，`size="abc"` 这类解析不出数值的输入会当 `NaN` 用下去，因此它的取值范围由页面自己保证。
+`size` 没有这层规范化。它是原样反射的数值属性，`size="abc"` 这类解析不出数值的输入会按 `NaN` 继续使用，因此取值范围由页面自己保证。
 
-无障碍名按 `alt` → `name` 的顺序取，取到了才声明 `role="img"` 并写 `aria-label`；两个都留空时这块头像按装饰处理，影子节点是 `role="presentation"` 且 `aria-hidden="true"`，屏幕阅读器不会播报它。
+无障碍名按 `alt` → `name` 的顺序取，取到了才声明 `role="img"` 并写 `aria-label`；两个都留空时头像按装饰处理（`role="presentation"`、`aria-hidden="true"`），屏幕阅读器不会播报。
 
-所以「只有头像、名字在头像外面」的写法里，这个头像本来就不该被播报。
-
-首字母取自 `name` 的前两个词的第一个字符并转大写。中文这类按空格分不开的名字因此只会取到第一个字（`潘某某` 出「潘」），要两个字就自己把词分开，或者改用 `default` 插槽。字号是 `size` 的 40%，默认图标按同一比例取整，所以小头像不会塞不下字。
+首字母取自 `name` 前两个词的第一个字符，并转成大写。中文这类按空格分不开的名字因此只会取到第一个字（`潘某某` 出「潘」）；要两个字就自己把词分开，或者改用 `default` 插槽。
 
 ### 布局
 
-宿主是 inline-block、`line-height: 0`，方盒由 `size` 定边长，`--wui-avatar-size` 同步写成内联值供影子内部使用。
+宿主是 inline-block，边长由 `size` 决定；圆形用 pill 圆角，方形用 12px。
 
-圆形档的圆角走 `--wui-radius-control`（默认是 pill），方形档是 12px，`--wui-glass-corner-radius` 也跟着这两档走，所以回退态的高光渐变与盒形不会错位。
+回退态是玻璃材质（模糊、内描边环与投影）：底色 `--wui-color-surface-raised`，首字母与默认图标使用 `--wui-color-text`，随主题切换。图片态只有图片本身。
 
-回退态会挂上 glass 材质，从那里拿到模糊、内描边环与投影；底色使用 `--wui-color-surface-raised`，首字母与默认图标使用 `--wui-color-text`，会随主题切换。图片态只有图片本身。
-
-`default` 插槽的盒是绝对定位铺满整个头像并居中，它不参与「该画什么」的判定，因此给了 `src` 且图片成功加载时插槽内容会叠在图片之上，而不是被藏起来——降级内容和图片是二选一的关系，别同时给。组件没有对外的 CSS 变量旋钮，尺寸与形状都归 `size` / `shape`。
+`default` 插槽的盒子铺满整个头像并居中。它不参与「该画什么」的判定，所以给了 `src` 且图片成功加载时，插槽内容会叠在图片之上。回退内容和图片二选一，不要同时提供。组件没有其他样式变量，尺寸与形状都用 `size` / `shape` 设置。
