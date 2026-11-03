@@ -51,7 +51,12 @@ function resource(overrides: Partial<ResourceView> = {}): ResourceView {
   }
 }
 
-async function mountList(resources: ResourceView[], activeResourceId: string | null = null) {
+async function mountList(
+  resources: ResourceView[],
+  activeResourceId: string | null = null,
+  selectionMode = false,
+  checkedIds: string[] = []
+) {
   const restoreLayout = stubLayout()
   const host = document.createElement('div')
   host.id = 'app'
@@ -63,8 +68,8 @@ async function mountList(resources: ResourceView[], activeResourceId: string | n
       h(ResourceList, {
         resources,
         activeResourceId: activeId.value,
-        checkedIds: [],
-        selectionMode: false,
+        checkedIds,
+        selectionMode,
         editingNameKey: null,
         editorRef: () => () => {},
         loading: false,
@@ -149,6 +154,27 @@ describe('ResourceList：行不画 focus ring（真实读数，浏览器）', ()
       await waitFor(() => document.activeElement === rows[2], '焦点移到第 3 行')
       expect(getComputedStyle(rows[2]).outlineStyle, '第 3 行不应有 focus ring').toBe('none')
       expect(getComputedStyle(rows[1]).outlineStyle, '第 2 行不应有 focus ring').toBe('none')
+    } finally {
+      mounted.unmount()
+    }
+  })
+
+  it('选择模式下保留 focus ring，键盘焦点仍有可见指示', async () => {
+    const resources = ['r1', 'r2'].map(id => resource({ id }))
+    const mounted = await mountList(resources, null, true, ['r1'])
+    hosts.push(mounted.host)
+
+    try {
+      const container = mounted.container!
+      container.focus()
+      await nextTick()
+
+      await userEvent.keyboard('{Enter}')
+      await waitFor(() => document.activeElement === mounted.rows()[0], '焦点落到第 1 行')
+
+      const row = mounted.rows()[0]
+      expect(row.hasAttribute('data-selection-mode'), '选择模式标记应落在行上').toBe(true)
+      expect(getComputedStyle(row).outlineStyle, '选择模式下应有 focus ring').not.toBe('none')
     } finally {
       mounted.unmount()
     }

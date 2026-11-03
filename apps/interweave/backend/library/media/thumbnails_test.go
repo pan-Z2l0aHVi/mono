@@ -236,6 +236,9 @@ func TestThumbnailRouteUnsupportedFormatReturns404(t *testing.T) {
 	if response.Code != http.StatusNotFound {
 		t.Fatalf("expected 404 for unsupported format, got %d", response.Code)
 	}
+	if cacheControl := response.Header().Get("Cache-Control"); cacheControl != "no-store" {
+		t.Fatalf("expected no-store on thumbnail miss, got %q", cacheControl)
+	}
 }
 
 func TestThumbnailRouteSaveAndRejects(t *testing.T) {

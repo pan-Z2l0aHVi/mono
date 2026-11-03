@@ -114,6 +114,7 @@ function handleNameChange(event: WebUiEvent<WebUiEditableText, 'change'>) {
     data-resource-row
     :data-resource-id="resource.id"
     :data-resource-index="index"
+    :data-selection-mode="selectionMode ? '' : undefined"
     role="listitem"
     :aria-setsize="total"
     :aria-posinset="index + 1"
@@ -122,10 +123,13 @@ function handleNameChange(event: WebUiEvent<WebUiEditableText, 'change'>) {
     @contextmenu="emit('contextmenu', resource, $event)"
   >
     <!--
-      行不画 focus ring（用户裁决：选中态只保留暗底）。页面级规则原本命中
+      行默认不画 focus ring（用户裁决：选中态只保留暗底）。页面级规则原本命中
       [tabindex]:not([tabindex='-1'])，由 assets/global.css 的行豁免规则压掉；键盘焦点指示由
       活动行的暗底（active/checked 背景）承担，不在这里补 focus-visible 覆盖——页面规则在
       @layer 外，Tailwind 工具类压不过它（实测过），豁免只能写在同一层的 global.css 里。
+
+      选择模式例外：此时 active 暗底被关掉，行仍可能是唯一 tab stop，所以
+      data-selection-mode 让页面规则保留 focus ring，避免键盘焦点凭空消失。
 
       过渡只列 background-color（与 AppNav 的 navItemClass 同一个理由）：Tailwind 的
       transition-colors 包含 outline-color，行上不再有 ring，但 hover 与选中底色之间的

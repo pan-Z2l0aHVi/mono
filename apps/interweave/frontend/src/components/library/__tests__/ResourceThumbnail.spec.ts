@@ -110,6 +110,42 @@ describe('ResourceThumbnail', () => {
     }
   })
 
+  it('source location 变化时重建媒体元素，避免继续展示替换前的文件', async () => {
+    const host = document.createElement('div')
+    document.body.append(host)
+    const source = ref(fileSource('/tmp/first.mp4'))
+    const mediaUrl = '/resource-media/source-1'
+    const app = createApp({
+      setup() {
+        return () =>
+          h(ResourceThumbnail, {
+            kind: ResourceKind.ResourceKindVideo,
+            source: source.value,
+            mediaUrl
+          })
+      }
+    })
+
+    try {
+      app.mount(host)
+      await nextTick()
+
+      const video = host.querySelector('video')
+      expect(video?.getAttribute('src')).toBe(mediaUrl)
+
+      source.value = { ...source.value, location: '/tmp/second.mp4' }
+      await nextTick()
+      await nextTick()
+
+      const replaced = host.querySelector('video')
+      expect(replaced, 'location 变化应重建 video').not.toBe(video)
+      expect(replaced?.getAttribute('src')).toBe(mediaUrl)
+    } finally {
+      app.unmount()
+      host.remove()
+    }
+  })
+
   it('thumbnailUrl 有值时优先展示缩略图，原图与视频本体都不加载', async () => {
     const host = document.createElement('div')
     document.body.append(host)

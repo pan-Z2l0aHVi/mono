@@ -1,6 +1,7 @@
 package media
 
 import (
+	"bufio"
 	"bytes"
 	"encoding/binary"
 	"errors"
@@ -10,6 +11,7 @@ import (
 	_ "image/gif" // 注册 gif 解码器，image.Decode 按 magic 分派
 	"image/jpeg"
 	_ "image/png" // 注册 png 解码器
+	"io"
 	"math"
 	"net/http"
 	"os"
@@ -192,23 +194,42 @@ func writeAtomically(target string, data []byte) error {
 
 // buildThumbnail 解码原文件并产出缩略图字节。格式不受支持时返回 ErrUnsupportedThumbnail。
 func buildThumbnail(originalPath string) ([]byte, error) {
-	raw, err := os.ReadFile(originalPath)
+	file, err := os.Open(originalPath)
 	if err != nil {
 		return nil, err
 	}
-	decoded, format, err := image.Decode(bytes.NewReader(raw))
+	defer file.Close()
+
+	// 先只读头部判断格式：HEIC/RAW/视频等 Go 解不了的输入在常数内存内返回 404，
+	// 不再把整个文件读进内存后才失败。
+	config, format, err := image.DecodeConfig(file)
 	if err != nil {
 		if errors.Is(err, image.ErrFormat) {
 			return nil, ErrUnsupportedThumbnail
 		}
 		return nil, err
 	}
+	if config.Width <= 0 || config.Height <= 0 {
+		return nil, errors.New("thumbnail: empty image")
+	}
 
 	// EXIF 方向只从 JPEG 读：它是磁盘照片里唯一携带该标记的主流格式；解码器不应用
 	// 方向，旋转/翻转会在此处补齐，保证缩略图与用户在访达里看到的朝向一致。
 	orientation := uint16(1)
 	if format == "jpeg" {
-		orientation = jpegOrientation(raw)
+		if _, err := file.Seek(0, io.SeekStart); err == nil {
+			orientation = jpegOrientationFromReader(file)
+		}
+	}
+	if _, err := file.Seek(0, io.SeekStart); err != nil {
+		return nil, err
+	}
+	decoded, _, err := image.Decode(file)
+	if err != nil {
+		if errors.Is(err, image.ErrFormat) {
+			return nil, ErrUnsupportedThumbnail
+		}
+		return nil, err
 	}
 
 	scaled := fitThumbnail(decoded)
@@ -275,40 +296,69 @@ func applyOrientation(src *image.RGBA, orientation uint16) image.Image {
 	return dst
 }
 
-// jpegOrientation 从 JPEG 字节里解析 EXIF 方向标签（0x0112）；缺失、越界或解析失败
-// 一律返回 1。只做有边界的最小段扫描，不引入 EXIF 依赖。
-func jpegOrientation(data []byte) uint16 {
-	if len(data) < 4 || data[0] != 0xFF || data[1] != 0xD8 {
+// jpegOrientationFromReader 从 JPEG 头部流里解析 EXIF 方向标签（0x0112）；缺失、越界或
+// 解析失败一律返回 1。只读到 SOS 之前，不读取熵编码数据，也不把整张图留在内存里。
+func jpegOrientationFromReader(r io.Reader) uint16 {
+	reader := bufio.NewReader(r)
+	var soi [2]byte
+	if _, err := io.ReadFull(reader, soi[:]); err != nil || soi[0] != 0xFF || soi[1] != 0xD8 {
 		return 1
 	}
-	pos := 2
-	for pos+4 <= len(data) {
-		if data[pos] != 0xFF {
+	for {
+		marker, err := nextJPEGMarker(reader)
+		if err != nil {
 			return 1
 		}
-		marker := data[pos+1]
-		// 无长度载荷的标记：SOI 已消费，RSTn/TEM 跳过即可。
+		// 无长度载荷的标记：RSTn/TEM 跳过即可。
 		if marker == 0x01 || (marker >= 0xD0 && marker <= 0xD7) {
-			pos += 2
 			continue
 		}
-		if marker == 0xFF { // 填充字节
-			pos++
+		if marker == 0xD9 || marker == 0xDA { // EOI / SOS：EXIF 不可能再出现
+			return 1
+		}
+		var lengthBytes [2]byte
+		if _, err := io.ReadFull(reader, lengthBytes[:]); err != nil {
+			return 1
+		}
+		segmentLength := int(binary.BigEndian.Uint16(lengthBytes[:]))
+		if segmentLength < 2 {
+			return 1
+		}
+		payloadLength := segmentLength - 2
+		if marker == 0xE1 && payloadLength >= 8 {
+			payload := make([]byte, payloadLength)
+			if _, err := io.ReadFull(reader, payload); err != nil {
+				return 1
+			}
+			if string(payload[:6]) == "Exif\x00\x00" {
+				return exifOrientation(payload[6:])
+			}
 			continue
 		}
-		segmentLength := int(binary.BigEndian.Uint16(data[pos+2 : pos+4]))
-		if segmentLength < 2 || pos+2+segmentLength > len(data) {
+		if _, err := io.CopyN(io.Discard, reader, int64(payloadLength)); err != nil {
 			return 1
 		}
-		if marker == 0xE1 && segmentLength >= 10 && string(data[pos+4:pos+10]) == "Exif\x00\x00" {
-			return exifOrientation(data[pos+10 : pos+2+segmentLength])
-		}
-		if marker == 0xDA { // SOS：之后是熵编码数据，EXIF 不可能再出现
-			return 1
-		}
-		pos += 2 + segmentLength
 	}
-	return 1
+}
+
+// nextJPEGMarker 读到下一个标记码，跳过 0xFF 填充字节。
+func nextJPEGMarker(reader *bufio.Reader) (byte, error) {
+	b, err := reader.ReadByte()
+	if err != nil {
+		return 0, err
+	}
+	if b != 0xFF {
+		return 0, errors.New("thumbnail: expected JPEG marker")
+	}
+	for {
+		marker, err := reader.ReadByte()
+		if err != nil {
+			return 0, err
+		}
+		if marker != 0xFF {
+			return marker, nil
+		}
+	}
 }
 
 // exifOrientation 在 TIFF 载荷的 IFD0 里读方向标签。任何异常形状都按无方向处理。

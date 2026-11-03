@@ -28,6 +28,7 @@ const imageReady = ref(false)
 const mediaFailed = ref(false)
 const serverThumbFailed = ref(false)
 const serverThumbReady = ref(false)
+const mediaKey = ref(0)
 let frameTimes: number[] = []
 let frameIndex = 0
 let mediaVersion = 0
@@ -61,16 +62,30 @@ const showFallback = computed(() => {
 })
 
 watch(
-  () => [props.kind, props.source?.id, props.mediaUrl] as const,
+  () => [props.kind, props.source?.id, props.source?.location, props.mediaUrl] as const,
   (next, previous) => {
     /*
      * 调用方可能在每次父组件渲染时新建 source 对象（AddDialog 的 queueSource），props.source
-     * 的身份变化会触发本 watch，但三个字段都没变。这种「仅身份变化」不能走重置：重置会清掉
-     * 已捕获的视频帧，并卸掉 video 的 src——mediaUrl 没变时 Vue 不会把属性写回，随后的
-     * load() 只会对空 src 报错，缩略图从此停在 fallback 上（表现即「编辑名称后图片消失」）。
+     * 的身份变化会触发本 watch，但四个字段都没变。这种「仅身份变化」不能走重置：重置会清掉
+     * 已捕获的视频帧并重建媒体元素，缩略图会闪回 fallback。
+     *
+     * location 也参与判定：ReplaceFileSource 会保留 source id，只换 location；mediaUrl 不变，
+     * 但旧元素不会自行重新拉取，必须靠 mediaKey 重建才能显示替换后的文件。
      */
-    if (previous && next[0] === previous[0] && next[1] === previous[1] && next[2] === previous[2]) return
+    if (
+      previous &&
+      next[0] === previous[0] &&
+      next[1] === previous[1] &&
+      next[2] === previous[2] &&
+      next[3] === previous[3]
+    ) {
+      return
+    }
     mediaVersion++
+    // 只有 location 变化会让「URL 不变、内容变了」：ReplaceFileSource 保留 source id，
+    // mediaUrl 不变，旧元素不会重新拉取。其余字段变化由 src 属性更新或 v-if 重建覆盖，
+    // 不必再换 key——换 key 会丢掉已加载的 image 状态。
+    if (!previous || next[2] !== previous[2]) mediaKey.value++
     thumbnailURL.value = ''
     imageReady.value = false
     mediaFailed.value = false
@@ -79,11 +94,7 @@ watch(
     thumbnailSavedFor = ''
     frameTimes = []
     frameIndex = 0
-    const video = videoRef.value
-    if (video) {
-      video.pause()
-      video.removeAttribute('src')
-    }
+    videoRef.value?.pause()
     void nextTick(() => {
       if (props.kind === 'video' && canRenderMedia.value) {
         videoRef.value?.load()
@@ -143,7 +154,7 @@ function captureAndSave(element: HTMLImageElement | null) {
 
 function maybeSaveThumbnail(dataUrl: string) {
   if (!props.saveThumbnail) return
-  const identity = `${props.kind}:${props.source?.id ?? ''}:${props.mediaUrl ?? ''}`
+  const identity = `${props.kind}:${props.source?.id ?? ''}:${props.source?.location ?? ''}:${props.mediaUrl ?? ''}`
   if (thumbnailSavedFor === identity) return
   thumbnailSavedFor = identity
   props.saveThumbnail(dataUrl)
@@ -218,6 +229,7 @@ function captureCurrentFrame(video: HTMLVideoElement, version: number) {
   >
     <video
       v-if="kind === 'video' && !serverThumbActive && canRenderMedia"
+      :key="`video-${mediaKey}`"
       ref="videoRef"
       :src="mediaUrl ?? undefined"
       class="pointer-events-none absolute size-px opacity-0"
@@ -232,6 +244,7 @@ function captureCurrentFrame(video: HTMLVideoElement, version: number) {
     <canvas ref="canvasRef" class="pointer-events-none absolute size-px opacity-0" aria-hidden="true"></canvas>
     <img
       v-if="serverThumbActive"
+      :key="`server-thumb-${mediaKey}`"
       :src="thumbnailUrl ?? undefined"
       class="size-full object-cover"
       alt=""
@@ -240,6 +253,7 @@ function captureCurrentFrame(video: HTMLVideoElement, version: number) {
     />
     <img
       v-if="kind === 'image' && !serverThumbActive && canRenderMedia && !mediaFailed"
+      :key="`image-${mediaKey}`"
       ref="imageRef"
       :src="mediaUrl ?? undefined"
       class="size-full object-cover"

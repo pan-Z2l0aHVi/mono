@@ -103,6 +103,11 @@ func (h *Handler) Middleware(next http.Handler) http.Handler {
 func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	// POST 只属于缩略图回填；媒体与 pending 是纯读路由，其余方法保持 405。
 	thumbnailRoute := strings.HasPrefix(r.URL.Path, ThumbnailPathPrefix)
+	if thumbnailRoute {
+		// 缩略图错误响应（404/415/500）不能被缓存：前端回填成功后，下一次 GET 必须
+		// 立即看到新缩略图，而不是命中被缓存的旧 404。成功响应由 serveFile 改回 no-cache。
+		w.Header().Set("Cache-Control", "no-store")
+	}
 	methodAllowed := r.Method == http.MethodGet || r.Method == http.MethodHead ||
 		(thumbnailRoute && r.Method == http.MethodPost)
 	if !methodAllowed {
