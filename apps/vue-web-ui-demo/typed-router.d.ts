@@ -136,6 +136,13 @@ declare module 'vue-router/auto-routes' {
       Record<never, never>,
       | never
     >,
+    '/components/grouped-text': RouteRecordInfo<
+      '/components/grouped-text',
+      '/components/grouped-text',
+      Record<never, never>,
+      Record<never, never>,
+      | never
+    >,
     '/components/icon': RouteRecordInfo<
       '/components/icon',
       '/components/icon',
@@ -411,6 +418,14 @@ declare module 'vue-router/auto-routes' {
     'src/pages/components/empty.vue': {
       routes:
         | '/components/empty'
+      views:
+        | never
+      pathParamNames:
+        | never
+    }
+    'src/pages/components/grouped-text.vue': {
+      routes:
+        | '/components/grouped-text'
       views:
         | never
       pathParamNames:

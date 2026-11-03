@@ -24,6 +24,7 @@ import { Route as ComponentsDrawerRouteImport } from './routes/components/drawer
 import { Route as ComponentsDropdownRouteImport } from './routes/components/dropdown'
 import { Route as ComponentsEditableTextRouteImport } from './routes/components/editable-text'
 import { Route as ComponentsEmptyRouteImport } from './routes/components/empty'
+import { Route as ComponentsGroupedTextRouteImport } from './routes/components/grouped-text'
 import { Route as ComponentsIconRouteImport } from './routes/components/icon'
 import { Route as ComponentsImagePreviewRouteImport } from './routes/components/image-preview'
 import { Route as ComponentsInputRouteImport } from './routes/components/input'
@@ -119,6 +120,11 @@ const ComponentsEditableTextRoute = ComponentsEditableTextRouteImport.update({
 const ComponentsEmptyRoute = ComponentsEmptyRouteImport.update({
   id: '/components/empty',
   path: '/components/empty',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ComponentsGroupedTextRoute = ComponentsGroupedTextRouteImport.update({
+  id: '/components/grouped-text',
+  path: '/components/grouped-text',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ComponentsIconRoute = ComponentsIconRouteImport.update({
@@ -244,6 +250,7 @@ export interface FileRoutesByFullPath {
   '/components/dropdown': typeof ComponentsDropdownRoute
   '/components/editable-text': typeof ComponentsEditableTextRoute
   '/components/empty': typeof ComponentsEmptyRoute
+  '/components/grouped-text': typeof ComponentsGroupedTextRoute
   '/components/icon': typeof ComponentsIconRoute
   '/components/image-preview': typeof ComponentsImagePreviewRoute
   '/components/input': typeof ComponentsInputRoute
@@ -282,6 +289,7 @@ export interface FileRoutesByTo {
   '/components/dropdown': typeof ComponentsDropdownRoute
   '/components/editable-text': typeof ComponentsEditableTextRoute
   '/components/empty': typeof ComponentsEmptyRoute
+  '/components/grouped-text': typeof ComponentsGroupedTextRoute
   '/components/icon': typeof ComponentsIconRoute
   '/components/image-preview': typeof ComponentsImagePreviewRoute
   '/components/input': typeof ComponentsInputRoute
@@ -321,6 +329,7 @@ export interface FileRoutesById {
   '/components/dropdown': typeof ComponentsDropdownRoute
   '/components/editable-text': typeof ComponentsEditableTextRoute
   '/components/empty': typeof ComponentsEmptyRoute
+  '/components/grouped-text': typeof ComponentsGroupedTextRoute
   '/components/icon': typeof ComponentsIconRoute
   '/components/image-preview': typeof ComponentsImagePreviewRoute
   '/components/input': typeof ComponentsInputRoute
@@ -361,6 +370,7 @@ export interface FileRouteTypes {
     | '/components/dropdown'
     | '/components/editable-text'
     | '/components/empty'
+    | '/components/grouped-text'
     | '/components/icon'
     | '/components/image-preview'
     | '/components/input'
@@ -399,6 +409,7 @@ export interface FileRouteTypes {
     | '/components/dropdown'
     | '/components/editable-text'
     | '/components/empty'
+    | '/components/grouped-text'
     | '/components/icon'
     | '/components/image-preview'
     | '/components/input'
@@ -437,6 +448,7 @@ export interface FileRouteTypes {
     | '/components/dropdown'
     | '/components/editable-text'
     | '/components/empty'
+    | '/components/grouped-text'
     | '/components/icon'
     | '/components/image-preview'
     | '/components/input'
@@ -476,6 +488,7 @@ export interface RootRouteChildren {
   ComponentsDropdownRoute: typeof ComponentsDropdownRoute
   ComponentsEditableTextRoute: typeof ComponentsEditableTextRoute
   ComponentsEmptyRoute: typeof ComponentsEmptyRoute
+  ComponentsGroupedTextRoute: typeof ComponentsGroupedTextRoute
   ComponentsIconRoute: typeof ComponentsIconRoute
   ComponentsImagePreviewRoute: typeof ComponentsImagePreviewRoute
   ComponentsInputRoute: typeof ComponentsInputRoute
@@ -604,6 +617,13 @@ declare module '@tanstack/react-router' {
       path: '/components/empty'
       fullPath: '/components/empty'
       preLoaderRoute: typeof ComponentsEmptyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/components/grouped-text': {
+      id: '/components/grouped-text'
+      path: '/components/grouped-text'
+      fullPath: '/components/grouped-text'
+      preLoaderRoute: typeof ComponentsGroupedTextRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/components/icon': {
@@ -772,6 +792,7 @@ const rootRouteChildren: RootRouteChildren = {
   ComponentsDropdownRoute: ComponentsDropdownRoute,
   ComponentsEditableTextRoute: ComponentsEditableTextRoute,
   ComponentsEmptyRoute: ComponentsEmptyRoute,
+  ComponentsGroupedTextRoute: ComponentsGroupedTextRoute,
   ComponentsIconRoute: ComponentsIconRoute,
   ComponentsImagePreviewRoute: ComponentsImagePreviewRoute,
   ComponentsInputRoute: ComponentsInputRoute,

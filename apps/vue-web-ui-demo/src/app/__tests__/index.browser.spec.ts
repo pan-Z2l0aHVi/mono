@@ -505,7 +505,10 @@ describe('应用外壳（浏览器）：导航 collapsed state 不跨视口泄�
           'Segmented'
         ]
       ],
-      ['Display', ['Collapse', 'EditableText', 'Empty', 'MiddleEllipsis', 'SVGDrawLines', 'Avatar', 'Badge']],
+      [
+        'Display',
+        ['Collapse', 'EditableText', 'Empty', 'GroupedText', 'MiddleEllipsis', 'SVGDrawLines', 'Avatar', 'Badge']
+      ],
       [
         'Feedback',
         [

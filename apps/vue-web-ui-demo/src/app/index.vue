@@ -284,6 +284,7 @@ const navSections: NavSection[] = [
       { path: '/components/collapse', label: 'Collapse' },
       { path: '/components/editable-text', label: 'EditableText' },
       { path: '/components/empty', label: 'Empty' },
+      { path: '/components/grouped-text', label: 'GroupedText' },
       { path: '/components/middle-ellipsis', label: 'MiddleEllipsis' },
       { path: '/components/svg-draw-lines', label: 'SVGDrawLines' },
       { path: '/components/avatar', label: 'Avatar' },
