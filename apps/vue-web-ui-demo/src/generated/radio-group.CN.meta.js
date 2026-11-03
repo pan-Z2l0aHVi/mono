@@ -4,7 +4,7 @@
 
 const meta = [
   { label: 'h1', id: 'section-1', content: "Radio Group" },
-  { label: 'p', content: "一组 <code>&lt;web-ui-radio></code> 的容器。它把成员的选中状态收敛成单个 <code>value</code>，选中变化时统一派发 <code>input</code> / <code>change</code>，并负责组级禁用与必填校验。容器提供 <code>radiogroup</code> 语义，<code>direction</code> 同步为 <code>aria-orientation</code>，组级禁用与必填状态分别暴露为 <code>aria-disabled</code> 和 <code>aria-required</code>。用 <code>aria-label</code> 或 <code>aria-labelledby</code> 设置组的无障碍名称。横排组用左右方向键移动焦点并选中成员，竖排组用上下方向键。成员自己声明的 <code>name</code> 在组内不参与提交，表单字段名取组上的 <code>name</code>。" },
+  { label: 'p', content: "一组 <code>&lt;web-ui-radio></code> 的容器。它把成员的选中状态收敛成单个 <code>value</code>，选中变化时统一派发 <code>input</code> / <code>change</code>，并负责组级禁用与必填校验。容器提供 <code>radiogroup</code> 语义，<code>direction</code> 同步为 <code>aria-orientation</code>，组级禁用与必填状态分别暴露为 <code>aria-disabled</code> 和 <code>aria-required</code>。用 <code>aria-label</code> 或 <code>aria-labelledby</code> 设置组的无障碍名称。四个方向键都能在启用成员间循环移动焦点并选中，<code>direction</code> 只决定阅读顺序（RTL 下左右翻转）。成员自己声明的 <code>name</code> 在组内不参与提交，表单字段名取组上的 <code>name</code>。" },
   { label: 'h2', id: 'section-2', content: "Samples" },
   { label: 'h3', id: 'section-3', content: "Single radio group" },
   { label: 'p', content: "组持有唯一的值：<code>value</code> 决定谁被选中，成员的选中态由组下发，页面只读组的值。" },

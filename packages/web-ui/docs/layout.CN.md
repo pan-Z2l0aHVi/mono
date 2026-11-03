@@ -300,7 +300,7 @@ React 要在 `useLayoutEffect` 里先读 `layout.mobile` 再订阅（挂载那�
 
 Vue 的模板监听在元素插入前挂好，直接绑即可。
 
-把视口收窄到 640px 及以下，layout 会切到移动端分支：header 里出现 Toggle，点它经 `sidebar-open-change` 请求打开 Drawer。移动端 Drawer 同时启用 `draggable` 与 `page-shift`：打开时整页向左移动 `16vw`（视口宽度变化时自动重算），关闭后归位。
+把视口收窄到 640px 及以下，layout 会切到移动端分支：header 里出现 Toggle，点它经 `sidebar-open-change` 请求打开 Drawer。移动端 Drawer 同时启用 `draggable` 与 `page-shift`：打开时整页朝 Drawer 的进场方向（向右）移动 `16vw`（视口宽度变化时自动重算），关闭后归位。
 
 ```tsx
 import type { WebUiLayout } from '@greypan/web-ui'
@@ -398,7 +398,7 @@ const mobile = ref(false)
 | `sidebar-collapsed`   | 桌面端侧边栏的受控收起状态；只收窄桌面端，不影响移动端 Drawer。                                                                                                                  | `boolean`          | `false`   |
 | `sidebar-open`        | 移动端侧边栏 Drawer 受控打开状态。                                                                                                                                               | `boolean`          | `false`   |
 | `header-glow`         | 在 header 插槽内容背后显示装饰性晕染。                                                                                                                                           | `boolean`          | `false`   |
-| `ariaLabels`          | 内置无障碍名（侧栏折叠/展开、调宽、打开导航菜单、主导航）的成组覆盖；未提供的 key 使用内置英文文案，`no-sidebar` 下侧栏相关 key 不参与渲染。                                     | `LayoutAriaLabels` | —         |
+| `ariaLabels`          | 内置无障碍名（侧栏折叠/展开、调宽、打开导航菜单、主导航）的成组覆盖（property）；未提供的 key 使用内置英文文案，`no-sidebar` 下侧栏相关 key 不参与渲染。                         | `LayoutAriaLabels` | —         |
 | `mobile`              | 只读计算值：当前视口是否处于移动端断点及以下；写 attribute 会被恢复，property 赋值不生效。                                                                                       | `boolean`          | `false`   |
 | `sidebar-width`       | 桌面端和移动端展开时的侧边栏宽度。                                                                                                                                               | `string`           | `'240px'` |
 | `collapsed-width`     | 桌面端收起时的侧边栏宽度。                                                                                                                                                       | `string`           | `'60px'`  |
@@ -464,7 +464,7 @@ const mobile = ref(false)
 - 拖拽时实时更新宽度（禁止过渡动画，限制在 `[min, max]` 和视口范围内）。
 - 释放时触发 `sidebar-width-change` 事件并携带最终像素宽度，调用方回写后宽度重新由 `sidebar-width` 属性接管。`pointercancel` 会恢复属性控制的宽度，且不触发事件。
 - 键盘操作（WAI-ARIA splitter 模式）：聚焦后用 ←/→ 以 16px 步进调整（Shift 加速到 64px），Home/End 跳到 min/max，Enter 以同一 `sidebar-width-change` 请求提交，Escape 撤回未提交的调整。
-- 移动端 Drawer 始终通过其内置 `draggable` drawer 支持拖拽关闭，并启用 `page-shift`。打开时整页向左移动 `16vw`，拖拽期间页面不跟手，关闭后归位。
+- 移动端 Drawer 始终通过其内置 `draggable` drawer 支持拖拽关闭，并启用 `page-shift`。打开时整页朝 Drawer 的进场方向（向右）移动 `16vw`，拖拽期间页面不跟手，关闭后归位。
 
 ### 行为说明
 

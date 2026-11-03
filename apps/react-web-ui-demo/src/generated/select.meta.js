@@ -212,7 +212,7 @@ const meta = [
     ]
   },
   { label: 'h3', id: 'section-14', content: "Behavior" },
-  { label: 'p', content: "While open, the panel uses <code>role=\"listbox\"</code> and the candidates use <code>role=\"option\"</code>. The option matching the current non-empty <code>value</code> is set to <code>aria-selected=\"true\"</code>, and <code>aria-disabled</code> mirrors the disabled state." },
+  { label: 'p', content: "The panel uses <code>role=\"listbox\"</code> and the candidates use <code>role=\"option\"</code>. The option matching the current non-empty <code>value</code> is set to <code>aria-selected=\"true\"</code>, and <code>aria-disabled</code> mirrors the disabled state." },
   { label: 'p', content: "Outside Portal mode, <code>aria-activedescendant</code> points at the current option during keyboard navigation; in Portal mode this attribute is not set." },
   { label: 'p', content: "When closed, Space / Enter / ArrowDown / ArrowUp open the panel; when expanded, ArrowDown / ArrowUp, Home / End, and typeahead move the active item, Enter / Space select and close, and Escape closes." },
   { label: 'p', content: "A Portal panel reads these variables as resolved on the host when it is created; after updating the host, the Portal panel must be reopened for the change to take effect." },

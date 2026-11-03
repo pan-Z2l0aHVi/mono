@@ -458,7 +458,7 @@ export default function Demo() {
 
 ### Behavior
 
-While open, the panel uses `role="listbox"` and the candidates use `role="option"`. The option matching the current non-empty `value` is set to `aria-selected="true"`, and `aria-disabled` mirrors the disabled state.
+The panel uses `role="listbox"` and the candidates use `role="option"`. The option matching the current non-empty `value` is set to `aria-selected="true"`, and `aria-disabled` mirrors the disabled state.
 
 Outside Portal mode, `aria-activedescendant` points at the current option during keyboard navigation; in Portal mode this attribute is not set.
 

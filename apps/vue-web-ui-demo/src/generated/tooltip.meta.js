@@ -52,7 +52,7 @@ const meta = [
       label: 'tr',
       children: [
       { label: 'td', content: "<code>trigger</code>" },
-      { label: 'td', content: "Trigger gesture set, space separated: <code>click</code>, <code>hover</code>, <code>focus</code>, <code>manual</code>." },
+      { label: 'td', content: "Trigger gesture set, space separated: <code>click</code>, <code>hover</code>, <code>focus</code>, <code>manual</code>; the property channel also accepts an array, and it always reads back as a string." },
       { label: 'td', content: "<code>string</code>" },
       { label: 'td', content: "<code>'hover focus'</code>" }
       ]
@@ -109,6 +109,15 @@ const meta = [
       { label: 'td', content: "Visibility." },
       { label: 'td', content: "<code>boolean</code>" },
       { label: 'td', content: "<code>false</code>" }
+      ]
+    },
+    {
+      label: 'tr',
+      children: [
+      { label: 'td', content: "<code>isOpen</code>" },
+      { label: 'td', content: "Whether the hint is currently visible (read-only)." },
+      { label: 'td', content: "<code>boolean</code>" },
+      { label: 'td', content: "—" }
       ]
     },
     {
@@ -191,7 +200,7 @@ const meta = [
   },
   { label: 'p', content: "When <code>manual</code> appears in <code>trigger</code> the whole value acts as <code>manual</code> alone; when it names no known gesture it falls back to the default <code>hover focus</code>." },
   { label: 'p', content: "<code>open</code> is a self-managed visibility property. Pointer and focus triggers update it, and assigning the property directly also shows or hides the tooltip. <code>open-change</code> is dispatched only for user-originated toggles." },
-  { label: 'p', content: "Once a tooltip is shown, moving the pointer to an adjacent tooltip switches immediately. Other triggers still use the delays." },
+  { label: 'p', content: "Once a tooltip is shown, moving the pointer to an adjacent tooltip switches immediately. Only pointer enter and leave go through <code>show-delay</code> / <code>hide-delay</code>; click and focus triggers act instantly." },
   { label: 'p', content: "While open, the tooltip text is written to <code>aria-description</code> on the trigger's focusable element, including native controls inside it, and restored on close. The screen-reader description does not use <code>aria-describedby</code>: the panel and trigger usually sit in different DOM trees, where IDREFs cannot resolve." },
   { label: 'h3', id: 'section-12', content: "CSS Custom Properties" },
   {

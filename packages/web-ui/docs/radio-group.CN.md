@@ -1,6 +1,6 @@
 # Radio Group
 
-一组 `<web-ui-radio>` 的容器。它把成员的选中状态收敛成单个 `value`，选中变化时统一派发 `input` / `change`，并负责组级禁用与必填校验。容器提供 `radiogroup` 语义，`direction` 同步为 `aria-orientation`，组级禁用与必填状态分别暴露为 `aria-disabled` 和 `aria-required`。用 `aria-label` 或 `aria-labelledby` 设置组的无障碍名称。横排组用左右方向键移动焦点并选中成员，竖排组用上下方向键。成员自己声明的 `name` 在组内不参与提交，表单字段名取组上的 `name`。
+一组 `<web-ui-radio>` 的容器。它把成员的选中状态收敛成单个 `value`，选中变化时统一派发 `input` / `change`，并负责组级禁用与必填校验。容器提供 `radiogroup` 语义，`direction` 同步为 `aria-orientation`，组级禁用与必填状态分别暴露为 `aria-disabled` 和 `aria-required`。用 `aria-label` 或 `aria-labelledby` 设置组的无障碍名称。四个方向键都能在启用成员间循环移动焦点并选中，`direction` 只决定阅读顺序（RTL 下左右翻转）。成员自己声明的 `name` 在组内不参与提交，表单字段名取组上的 `name`。
 
 ## Samples
 

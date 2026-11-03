@@ -773,6 +773,8 @@ Portal 类组件在未显式传入 `overlayContainer` 时，会解析到最近�
 
 这一族与外观无关，light 和 dark 下取值相同。
 
+组件里的 `line-height: 1` 和 `line-height: 0` 不是排版意义上的行高，也没有对应的 token。
+
 ### Typography tokens
 
 | 名称                         | 说明                                                    | 默认值 |

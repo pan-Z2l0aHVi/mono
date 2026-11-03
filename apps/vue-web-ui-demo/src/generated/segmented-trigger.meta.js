@@ -60,7 +60,7 @@ const meta = [
       label: 'tr',
       children: [
       { label: 'td', content: "<code>aria-label</code>" },
-      { label: 'td', content: "Accessible name; required when the slot contains only an icon." },
+      { label: 'td', content: "Accessible name; required when the slot contains only an icon. It is forwarded to the <code>role=\"option\"</code> element inside the shadow DOM." },
       { label: 'td', content: "<code>string | null</code>" },
       { label: 'td', content: "<code>null</code>" }
       ]

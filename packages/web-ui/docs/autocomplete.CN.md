@@ -455,7 +455,7 @@ const frameworks = ['Vue', 'React', 'Svelte', 'Angular']
 
 默认 trigger 是一个 `web-ui-input`。
 
-把任意可编辑组件放进 `trigger` 插槽即可替换它。使用自定义 trigger 时，宿主带 `data-custom-trigger`，overlay 始终以 trigger 元素为锚点。
+把任意可编辑组件放进 `trigger` 插槽即可替换它。使用自定义 trigger 时，shadow DOM 内的 trigger 包装 `<div>` 带上 `data-custom-trigger`，overlay 始终以 trigger 元素为锚点；宿主自身不带这个属性，外部样式选不到它。
 
 组件的 `focus()` / `blur()` 委托到当前生效的 trigger：`web-ui-input` 与 `web-ui-textarea` 会把焦点落到内部原生控件；自定义 trigger 没有自己的 focus 重定向时，聚焦 trigger 元素自身。
 

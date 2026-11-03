@@ -82,12 +82,12 @@ const view = ref('list')
 
 ### Props
 
-| Name         | Description                                                                                                | Type             | Default |
-| ------------ | ---------------------------------------------------------------------------------------------------------- | ---------------- | ------- |
-| `value`      | Segment value.                                                                                             | `string`         | `''`    |
-| `checked`    | Currently selected; written back by the parent segmented, and setting it alone does not notify the parent. | `boolean`        | `false` |
-| `disabled`   | Disables this trigger individually.                                                                        | `boolean`        | `false` |
-| `aria-label` | Accessible name; required when the slot contains only an icon.                                             | `string \| null` | `null`  |
+| Name         | Description                                                                                                                          | Type             | Default |
+| ------------ | ------------------------------------------------------------------------------------------------------------------------------------ | ---------------- | ------- |
+| `value`      | Segment value.                                                                                                                       | `string`         | `''`    |
+| `checked`    | Currently selected; written back by the parent segmented, and setting it alone does not notify the parent.                           | `boolean`        | `false` |
+| `disabled`   | Disables this trigger individually.                                                                                                  | `boolean`        | `false` |
+| `aria-label` | Accessible name; required when the slot contains only an icon. It is forwarded to the `role="option"` element inside the shadow DOM. | `string \| null` | `null`  |
 
 ### Events
 

@@ -128,7 +128,7 @@ export default function Demo() {
 
 ### Square
 
-`shape="square"` 把圆角收到 12px 的方块，图片、首字母与默认图标三种内容共用这个形状。非法值不参与渲染，会被规范回 `circle`。
+`shape="square"` 把圆角压在 12px 上限内（实际取 `min(12px, size × 0.25)`，默认 40px 边长时是 10px）的方块，图片、首字母与默认图标三种内容共用这个形状。非法值不参与渲染，会被规范回 `circle`。
 
 ```tsx
 // 示例图是一段内联 SVG：语料不带二进制素材，也不依赖网络。
@@ -252,7 +252,7 @@ export default function Demo() {
 
 ### 布局
 
-宿主是 inline-block，边长由 `size` 决定；圆形用 pill 圆角，方形用 12px。
+宿主是 inline-block，边长由 `size` 决定；圆形用 pill 圆角，方形用 `min(12px, size × 0.25)`。
 
 回退态是玻璃材质（模糊、内描边环与投影）：底色 `--wui-color-surface-raised`，首字母与默认图标使用 `--wui-color-text`，随主题切换。图片态只有图片本身。
 

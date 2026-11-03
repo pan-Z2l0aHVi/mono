@@ -329,7 +329,7 @@ The host handles click and keydown itself, so the three paths behave the same, a
 
 `disabled` (including form-level disabling) and `loading` block click, keyboard, and drag, and the thumb stays at the current value.
 
-Validation: `disabled` reports a clean state while `loading` does not report.
+Validation: `disabled` (including a disabled form) reports a clean state; `loading` does not take part in the validity check, so an unchecked `required` switch still reports `valueMissing`.
 
 Keyboard focus lands on the host (`tabindex=0` when enabled), and the focus ring is drawn on the track; focus triggered by the mouse draws no ring.
 

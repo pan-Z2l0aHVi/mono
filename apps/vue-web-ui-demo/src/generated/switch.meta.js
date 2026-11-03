@@ -156,7 +156,7 @@ const meta = [
   { label: 'p', content: "Click, Space / Enter, and drag-to-set all dispatch <code>input</code> and <code>change</code> as <code>composed</code> events on the host." },
   { label: 'p', content: "The host handles click and keydown itself, so the three paths behave the same, and a programmatic write to <code>checked</code> dispatches nothing." },
   { label: 'p', content: "<code>disabled</code> (including form-level disabling) and <code>loading</code> block click, keyboard, and drag, and the thumb stays at the current value." },
-  { label: 'p', content: "Validation: <code>disabled</code> reports a clean state while <code>loading</code> does not report." },
+  { label: 'p', content: "Validation: <code>disabled</code> (including a disabled form) reports a clean state; <code>loading</code> does not take part in the validity check, so an unchecked <code>required</code> switch still reports <code>valueMissing</code>." },
   { label: 'p', content: "Keyboard focus lands on the host (<code>tabindex=0</code> when enabled), and the focus ring is drawn on the track; focus triggered by the mouse draws no ring." },
   { label: 'p', content: "When <code>disabled</code> or <code>loading</code>, the host leaves the tab sequence." },
   { label: 'p', content: "The accessible name: the default slot content is the visible label and also the switch's accessible name. To reference an external label, set <code>aria-labelledby</code> on the <code>web-ui-switch</code> host, or set <code>aria-label</code> directly." },

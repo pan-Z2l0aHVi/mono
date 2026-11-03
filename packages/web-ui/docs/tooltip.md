@@ -260,18 +260,19 @@ const last = ref('—')
 
 ### Props
 
-| Name               | Description                                                                | Type               | Default         |
-| ------------------ | -------------------------------------------------------------------------- | ------------------ | --------------- |
-| `placement`        | Tooltip placement; defaults to `top`.                                      | `Placement`        | `'top'`         |
-| `trigger`          | Trigger gesture set, space separated: `click`, `hover`, `focus`, `manual`. | `string`           | `'hover focus'` |
-| `show-delay`       | Show delay (milliseconds).                                                 | `number`           | `200`           |
-| `hide-delay`       | Hide delay (milliseconds).                                                 | `number`           | `100`           |
-| `disabled`         | Disabled state.                                                            | `boolean`          | `false`         |
-| `offset`           | Distance from the trigger (px).                                            | `number`           | `6`             |
-| `content`          | Hint text, the plain-text alternative to the `content` slot.               | `string`           | `''`            |
-| `open`             | Visibility.                                                                | `boolean`          | `false`         |
-| `portal`           | Renders in the theme overlay container.                                    | `boolean`          | `false`         |
-| `overlayContainer` | Explicit Portal container (property).                                      | `OverlayContainer` | —               |
+| Name               | Description                                                                                                                                                  | Type               | Default         |
+| ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------ | --------------- |
+| `placement`        | Tooltip placement; defaults to `top`.                                                                                                                        | `Placement`        | `'top'`         |
+| `trigger`          | Trigger gesture set, space separated: `click`, `hover`, `focus`, `manual`; the property channel also accepts an array, and it always reads back as a string. | `string`           | `'hover focus'` |
+| `show-delay`       | Show delay (milliseconds).                                                                                                                                   | `number`           | `200`           |
+| `hide-delay`       | Hide delay (milliseconds).                                                                                                                                   | `number`           | `100`           |
+| `disabled`         | Disabled state.                                                                                                                                              | `boolean`          | `false`         |
+| `offset`           | Distance from the trigger (px).                                                                                                                              | `number`           | `6`             |
+| `content`          | Hint text, the plain-text alternative to the `content` slot.                                                                                                 | `string`           | `''`            |
+| `open`             | Visibility.                                                                                                                                                  | `boolean`          | `false`         |
+| `isOpen`           | Whether the hint is currently visible (read-only).                                                                                                           | `boolean`          | —               |
+| `portal`           | Renders in the theme overlay container.                                                                                                                      | `boolean`          | `false`         |
+| `overlayContainer` | Explicit Portal container (property).                                                                                                                        | `OverlayContainer` | —               |
 
 ### Events
 
@@ -299,7 +300,7 @@ When `manual` appears in `trigger` the whole value acts as `manual` alone; when 
 
 `open` is a self-managed visibility property. Pointer and focus triggers update it, and assigning the property directly also shows or hides the tooltip. `open-change` is dispatched only for user-originated toggles.
 
-Once a tooltip is shown, moving the pointer to an adjacent tooltip switches immediately. Other triggers still use the delays.
+Once a tooltip is shown, moving the pointer to an adjacent tooltip switches immediately. Only pointer enter and leave go through `show-delay` / `hide-delay`; click and focus triggers act instantly.
 
 While open, the tooltip text is written to `aria-description` on the trigger's focusable element, including native controls inside it, and restored on close. The screen-reader description does not use `aria-describedby`: the panel and trigger usually sit in different DOM trees, where IDREFs cannot resolve.
 

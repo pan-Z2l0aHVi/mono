@@ -53,8 +53,8 @@ const meta = [
       label: 'tr',
       children: [
       { label: 'td', content: "<code>groups</code>" },
-      { label: 'td', content: "Group shape: a preset name — <code>'card'</code> (every 4), <code>'phone'</code> (3-4-4), <code>'amount'</code> (3 from the right) — or the cluster count per group, <code>[4, 4, 4, 4]</code>. The string form of a size list, <code>\"4,4,4,4\"</code>, is accepted too." },
-      { label: 'td', content: "<code>string | number[]</code>" },
+      { label: 'td', content: "Group shape: a preset name — <code>'card'</code> (every 4), <code>'phone'</code> (3-4-4), <code>'amount'</code> (3 from the right) — or the cluster count per group, <code>[4, 4, 4, 4]</code>. The string form of a size list, <code>\"4,4,4,4\"</code>, is accepted too. The array channel silently drops non-positive sizes, while an invalid string form drops the whole list." },
+      { label: 'td', content: "<code>string | readonly number[]</code>" },
       { label: 'td', content: "<code>undefined</code>, i.e. no grouping" }
       ]
     }

@@ -456,7 +456,7 @@ export default function Demo() {
 
 ### 行为说明
 
-打开时，panel 使用 `role="listbox"`，候选项使用 `role="option"`。当前非空 `value` 对应的 option 设为 `aria-selected="true"`，`aria-disabled` 反映禁用状态。
+panel 使用 `role="listbox"`，候选项使用 `role="option"`。当前非空 `value` 对应的 option 设为 `aria-selected="true"`，`aria-disabled` 反映禁用状态。
 
 非 Portal 模式下，键盘导航时 `aria-activedescendant` 指向当前 option；Portal 模式下不设置此属性。
 

@@ -459,7 +459,7 @@ A portal panel reads these variables as resolved on the host when it is created;
 
 The default trigger is a `web-ui-input`.
 
-Put any editable component into the `trigger` slot to replace it. While a custom trigger is in use, the host carries `data-custom-trigger` and the overlay always anchors to the trigger element.
+Put any editable component into the `trigger` slot to replace it. While a custom trigger is in use, the trigger wrapper `<div>` inside the shadow DOM carries `data-custom-trigger`, and the overlay always anchors to the trigger element; the host itself does not carry the attribute, so outside styles cannot select it.
 
 The component's `focus()` / `blur()` delegate to the trigger currently in effect: `web-ui-input` and `web-ui-textarea` land focus on their inner native control; a custom trigger without its own focus redirection gets focus on the trigger element itself.
 

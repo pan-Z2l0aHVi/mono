@@ -317,7 +317,7 @@ function reset() {
 
 `disabled`（含表单级禁用）与 `loading` 都阻断点击、键盘与拖拽，thumb 停在当前值。
 
-校验：`disabled` 上报干净状态，`loading` 不上报。
+校验：`disabled`（含表单级禁用）上报干净状态；`loading` 不参与校验判定，未选中加 `required` 照常上报 `valueMissing`。
 
 键盘焦点落在宿主上（可用态 `tabindex=0`），焦点环画在 track 上；鼠标触发的焦点不画环。
 

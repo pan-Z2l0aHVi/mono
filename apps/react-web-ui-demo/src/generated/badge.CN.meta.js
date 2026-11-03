@@ -163,7 +163,7 @@ const meta = [
   { label: 'h3', id: 'section-15', content: "布局" },
   { label: 'p', content: "宿主是 inline-block；有内容时角标绝对定位到 <code>placement</code> 选中的角，<code>offset-x</code> / <code>offset-y</code> 在该角上做像素微调。" },
   { label: 'p', content: "内容按元素子节点的个数判定：只放纯文本时不算有内容，角标会留在行内流里，所以要「包住一段文字」时，请给文字套一个元素。" },
-  { label: 'p', content: "角标没有对外的尺寸与颜色设置：底色取 <code>--wui-color-danger</code>，文字取 <code>--wui-color-on-accent</code>，描边取 <code>--wui-color-page</code>。要换颜色，请改这几枚语义 token 的作用域，不要在角标上找属性。" }
+  { label: 'p', content: "角标没有对外的尺寸与颜色设置：底色取 <code>--wui-color-danger</code>，文字取 <code>--wui-color-on-danger</code>，描边取 <code>--wui-color-page</code>。要换颜色，请改这几枚语义 token 的作用域，不要在角标上找属性。" }
 ]
 
 export default meta

@@ -82,12 +82,12 @@ const view = ref('list')
 
 ### Props
 
-| 名称         | 说明                                                        | 类型             | 默认值  |
-| ------------ | ----------------------------------------------------------- | ---------------- | ------- |
-| `value`      | 分段值。                                                    | `string`         | `''`    |
-| `checked`    | 当前是否选中；由父级 segmented 回写，单独设置不会通知父级。 | `boolean`        | `false` |
-| `disabled`   | 单独禁用该 trigger。                                        | `boolean`        | `false` |
-| `aria-label` | 可访问名称；插槽中只有图标时必须提供。                      | `string \| null` | `null`  |
+| 名称         | 说明                                                                              | 类型             | 默认值  |
+| ------------ | --------------------------------------------------------------------------------- | ---------------- | ------- |
+| `value`      | 分段值。                                                                          | `string`         | `''`    |
+| `checked`    | 当前是否选中；由父级 segmented 回写，单独设置不会通知父级。                       | `boolean`        | `false` |
+| `disabled`   | 单独禁用该 trigger。                                                              | `boolean`        | `false` |
+| `aria-label` | 可访问名称；插槽中只有图标时必须提供，并转发到 shadow 内的 `role="option"` 元素。 | `string \| null` | `null`  |
 
 ### Events
 

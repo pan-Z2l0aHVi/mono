@@ -127,7 +127,7 @@ const meta = [
     ]
   },
   { label: 'h3', id: 'section-10', content: "行为说明" },
-  { label: 'p', content: "宿主暴露 <code>radio</code> 语义，<code>aria-checked</code>、<code>aria-disabled</code> 与 <code>tabindex</code> 随状态同步；Enter/Space 键盘切换。" },
+  { label: 'p', content: "shadow DOM 内的交互 <code>&lt;span></code> 声明 <code>role=\"radio\"</code>，<code>aria-checked</code>、<code>aria-disabled</code> 与 <code>tabindex</code> 挂在同一元素上并随状态同步；宿主自身不带 <code>role</code>。Enter/Space 键盘切换。" },
   { label: 'p', content: "点击只把该项置为选中，不会取消自己，也不会取消兄弟项；同页面的单选由宿主状态或 <code>&lt;web-ui-radio-group></code> 维持。" },
   { label: 'p', content: "<code>required</code> 在未选中时拦截原生提交（<code>valueMissing</code>），组内成员把这个判定交给组。" },
   { label: 'p', content: "组内成员不向外派发事件，由组在宿主上统一派发一次 <code>input</code> / <code>change</code>。" },

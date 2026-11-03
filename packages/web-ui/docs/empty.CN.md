@@ -1,6 +1,6 @@
 # Empty
 
-empty state 占位：`title` 和 `description` 提供文案，`icon` / `action` 插槽补上图形和操作入口。组件没有 JavaScript 属性，图形、文案、留白的尺寸和颜色都用 `--wui-empty-*` 变量设置。
+empty state 占位：`title` 和 `description` 提供文案，`icon` / `action` 插槽补上图形和操作入口。除 `title` 与 `description` 之外没有其它属性，图形、文案、留白的尺寸和颜色都用 `--wui-empty-*` 变量设置。
 
 ## Samples
 

@@ -86,7 +86,7 @@ const meta = [
       label: 'tr',
       children: [
       { label: 'td', content: "<code>aria-label</code>" },
-      { label: 'td', content: "Accessible name of the group; <code>aria-labelledby</code> cannot resolve across the component boundary." },
+      { label: 'td', content: "Accessible name of the group; <code>aria-labelledby</code> cannot resolve across the component boundary, and the name is forwarded to the <code>role=\"listbox\"</code> element inside the shadow DOM." },
       { label: 'td', content: "<code>string</code>" },
       { label: 'td', content: "—" }
       ]

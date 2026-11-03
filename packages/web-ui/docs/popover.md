@@ -275,15 +275,15 @@ function close() {
 
 ### Props
 
-| Name               | Description                                                                | Type               | Default    |
-| ------------------ | -------------------------------------------------------------------------- | ------------------ | ---------- |
-| `open`             | Popover visibility.                                                        | `boolean`          | `false`    |
-| `disabled`         | Disabled state.                                                            | `boolean`          | `false`    |
-| `placement`        | Panel placement; defaults to `bottom`.                                     | `Placement`        | `'bottom'` |
-| `offset`           | Distance from the anchor (px).                                             | `number`           | `8`        |
-| `trigger`          | Trigger gesture set, space separated: `click`, `hover`, `focus`, `manual`. | `string`           | `'click'`  |
-| `portal`           | Renders in the theme overlay container.                                    | `boolean`          | `false`    |
-| `overlayContainer` | Explicit Portal container (property).                                      | `OverlayContainer` | —          |
+| Name               | Description                                                                                                                                                  | Type               | Default    |
+| ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------ | ---------- |
+| `open`             | Popover visibility.                                                                                                                                          | `boolean`          | `false`    |
+| `disabled`         | Disabled state.                                                                                                                                              | `boolean`          | `false`    |
+| `placement`        | Panel placement; defaults to `bottom`.                                                                                                                       | `Placement`        | `'bottom'` |
+| `offset`           | Distance from the anchor (px).                                                                                                                               | `number`           | `8`        |
+| `trigger`          | Trigger gesture set, space separated: `click`, `hover`, `focus`, `manual`; the property channel also accepts an array, and it always reads back as a string. | `string`           | `'click'`  |
+| `portal`           | Renders in the theme overlay container.                                                                                                                      | `boolean`          | `false`    |
+| `overlayContainer` | Explicit Portal container (property).                                                                                                                        | `OverlayContainer` | —          |
 
 ### Events
 

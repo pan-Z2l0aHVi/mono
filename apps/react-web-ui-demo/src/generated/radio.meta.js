@@ -127,7 +127,7 @@ const meta = [
     ]
   },
   { label: 'h3', id: 'section-10', content: "Behavior" },
-  { label: 'p', content: "The host exposes <code>radio</code> semantics, keeping <code>aria-checked</code>, <code>aria-disabled</code>, and <code>tabindex</code> in sync; Enter/Space toggles it from the keyboard." },
+  { label: 'p', content: "The interactive <code>&lt;span></code> inside the shadow DOM carries <code>role=\"radio\"</code>, and <code>aria-checked</code>, <code>aria-disabled</code>, and <code>tabindex</code> stay in sync on that same element; the host itself carries no <code>role</code>. Enter/Space toggles it from the keyboard." },
   { label: 'p', content: "A click only marks this item as selected; it does not deselect itself, nor its siblings. Single selection on a page is maintained by host state or by <code>&lt;web-ui-radio-group></code>." },
   { label: 'p', content: "<code>required</code> blocks native submission while unselected (<code>valueMissing</code>); members inside a group hand that decision to the group." },
   { label: 'p', content: "Members inside a group do not dispatch events outward; the group dispatches <code>input</code> / <code>change</code> once on its host." },

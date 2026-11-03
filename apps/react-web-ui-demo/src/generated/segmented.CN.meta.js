@@ -86,7 +86,7 @@ const meta = [
       label: 'tr',
       children: [
       { label: 'td', content: "<code>aria-label</code>" },
-      { label: 'td', content: "组的可访问名称；<code>aria-labelledby</code> 无法跨组件边界解析。" },
+      { label: 'td', content: "组的可访问名称；<code>aria-labelledby</code> 无法跨组件边界解析，名称转发到 shadow 内的 <code>role=\"listbox\"</code> 元素。" },
       { label: 'td', content: "<code>string</code>" },
       { label: 'td', content: "—" }
       ]

@@ -60,7 +60,7 @@ const meta = [
       label: 'tr',
       children: [
       { label: 'td', content: "<code>aria-label</code>" },
-      { label: 'td', content: "可访问名称；插槽中只有图标时必须提供。" },
+      { label: 'td', content: "可访问名称；插槽中只有图标时必须提供，并转发到 shadow 内的 <code>role=\"option\"</code> 元素。" },
       { label: 'td', content: "<code>string | null</code>" },
       { label: 'td', content: "<code>null</code>" }
       ]

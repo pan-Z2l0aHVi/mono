@@ -163,7 +163,7 @@ const meta = [
   { label: 'h3', id: 'section-15', content: "Layout" },
   { label: 'p', content: "The host is inline-block; when there is content the badge is positioned absolutely at the corner chosen by <code>placement</code>, and <code>offset-x</code> / <code>offset-y</code> fine-tune it at that corner." },
   { label: 'p', content: "Content is judged by the number of element child nodes: plain text alone does not count as content, so the badge stays in inline flow. When you wrap a piece of text, wrap that text in an element." },
-  { label: 'p', content: "The badge has no size or color settings of its own: the background uses <code>--wui-color-danger</code>, the text uses <code>--wui-color-on-accent</code>, and the outline uses <code>--wui-color-page</code>. To change the colors, change the scope of these semantic tokens instead of looking for a property on the badge." }
+  { label: 'p', content: "The badge has no size or color settings of its own: the background uses <code>--wui-color-danger</code>, the text uses <code>--wui-color-on-danger</code>, and the outline uses <code>--wui-color-page</code>. To change the colors, change the scope of these semantic tokens instead of looking for a property on the badge." }
 ]
 
 export default meta

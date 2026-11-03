@@ -191,7 +191,7 @@ function reset() {
 
 ### Behavior
 
-The host exposes `radio` semantics, keeping `aria-checked`, `aria-disabled`, and `tabindex` in sync; Enter/Space toggles it from the keyboard.
+The interactive `<span>` inside the shadow DOM carries `role="radio"`, and `aria-checked`, `aria-disabled`, and `tabindex` stay in sync on that same element; the host itself carries no `role`. Enter/Space toggles it from the keyboard.
 
 A click only marks this item as selected; it does not deselect itself, nor its siblings. Single selection on a page is maintained by host state or by `<web-ui-radio-group>`.
 

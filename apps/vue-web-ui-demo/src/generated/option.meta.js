@@ -5,7 +5,7 @@
 const meta = [
   { label: 'h1', id: 'section-1', content: "Option" },
   { label: 'p', content: "An option inside <code>&lt;web-ui-select></code> or <code>&lt;web-ui-autocomplete></code>. <code>value</code> is the value submitted when the item is selected, <code>label</code> is the displayed text (defaults to the element's own text content), and the <code>prefix</code> / <code>suffix</code> slots hold icons at either end." },
-  { label: 'p', content: "It dispatches no events. The container writes the selected state back through <code>selected</code>." },
+  { label: 'p', content: "It dispatches no events aimed at consumers—the registration handshake emitted on mount, update, and unmount is consumed only by the parent container; the selected state is written back by the container through <code>selected</code>." },
   { label: 'h2', id: 'section-2', content: "Samples" },
   { label: 'h3', id: 'section-3', content: "Basic option" },
   { label: 'p', content: "<code>label</code> is the displayed text, and <code>value</code> is what the container hands back when the item is selected." },

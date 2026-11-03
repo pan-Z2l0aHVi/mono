@@ -423,14 +423,14 @@ function onChange(event: WebUiEvent<WebUiSegmented, 'change'>) {
 
 ### Props
 
-| Name         | Description                                                                                   | Type                  | Default   |
-| ------------ | --------------------------------------------------------------------------------------------- | --------------------- | --------- |
-| `name`       | Form field name.                                                                              | `string`              | `''`      |
-| `variant`    | Material variant: `inset` (default) or `raised`.                                              | `'inset' \| 'raised'` | `'inset'` |
-| `disabled`   | Disables every trigger.                                                                       | `boolean`             | `false`   |
-| `required`   | Reflects the attribute only; not part of validation.                                          | `boolean`             | `false`   |
-| `aria-label` | Accessible name of the group; `aria-labelledby` cannot resolve across the component boundary. | `string`              | —         |
-| `value`      | Currently selected value.                                                                     | `string`              | `''`      |
+| Name         | Description                                                                                                                                                                    | Type                  | Default   |
+| ------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | --------------------- | --------- |
+| `name`       | Form field name.                                                                                                                                                               | `string`              | `''`      |
+| `variant`    | Material variant: `inset` (default) or `raised`.                                                                                                                               | `'inset' \| 'raised'` | `'inset'` |
+| `disabled`   | Disables every trigger.                                                                                                                                                        | `boolean`             | `false`   |
+| `required`   | Reflects the attribute only; not part of validation.                                                                                                                           | `boolean`             | `false`   |
+| `aria-label` | Accessible name of the group; `aria-labelledby` cannot resolve across the component boundary, and the name is forwarded to the `role="listbox"` element inside the shadow DOM. | `string`              | —         |
+| `value`      | Currently selected value.                                                                                                                                                      | `string`              | `''`      |
 
 ### Events
 

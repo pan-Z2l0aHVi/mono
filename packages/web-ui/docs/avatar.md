@@ -128,7 +128,7 @@ export default function Demo() {
 
 ### Square
 
-`shape="square"` pulls the radius in to a 12px square, and image, initials, and the default icon all share this shape. Invalid values take no part in rendering and are normalized to `circle`.
+`shape="square"` caps the square radius at 12px (it resolves to `min(12px, size × 0.25)`, i.e. 10px at the default 40px edge), and image, initials, and the default icon all share this shape. Invalid values take no part in rendering and are normalized to `circle`.
 
 ```tsx
 // The sample image is an inline SVG: the corpus ships no binary assets and does not depend on the network.
@@ -252,7 +252,7 @@ Initials are the first character of the first two words of `name`, uppercased. N
 
 ### Layout
 
-The host is inline-block and `size` sets the edge length; the circle shape uses a pill radius and the square shape 12px.
+The host is inline-block and `size` sets the edge length; the circle shape uses a pill radius and the square shape `min(12px, size × 0.25)`.
 
 The fallback state uses the glass material (blur, inner stroke ring, and shadow): the background is `--wui-color-surface-raised`, while initials and the default icon use `--wui-color-text` and therefore follow theme switches. The image state has only the image itself.
 

@@ -77,7 +77,7 @@ const meta = [
       label: 'tr',
       children: [
       { label: 'td', content: "<code>trigger</code>" },
-      { label: 'td', content: "Trigger gesture set, space separated: <code>click</code>, <code>hover</code>, <code>focus</code>, <code>manual</code>." },
+      { label: 'td', content: "Trigger gesture set, space separated: <code>click</code>, <code>hover</code>, <code>focus</code>, <code>manual</code>; the property channel also accepts an array, and it always reads back as a string." },
       { label: 'td', content: "<code>string</code>" },
       { label: 'td', content: "<code>'click'</code>" }
       ]

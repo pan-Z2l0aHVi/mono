@@ -360,8 +360,8 @@ const meta = [
       label: 'tr',
       children: [
       { label: 'td', content: "<code>--wui-drawer-overlay-bg</code>" },
-      { label: 'td', content: "Backdrop background color" },
-      { label: 'td', content: "<code>rgb(0 0 0 / 0.12)</code>" }
+      { label: 'td', content: "Backdrop background color, taken from <code>--wui-color-backdrop</code>" },
+      { label: 'td', content: "<code>rgb(0 0 0 / 0.12)</code> light, <code>rgb(0 0 0 / 0.48)</code> dark" }
       ]
     },
     {

@@ -170,7 +170,7 @@ export default function Demo() {
 
 ### Form value
 
-`name` 是字段名，提交值是 `String(value)`。`required` 在编辑中清空时拦下提交（`valueMissing`），`form.reset()` 回填挂载时的初值。表单里的 `input-number` 请保持整数 `step`，理由写在下面的行为说明。
+`name` 是字段名，提交值是 `String(value)`。`required` 在编辑中清空时拦下提交（`valueMissing`），`form.reset()` 回填挂载时的初值。`step` 只表示步进幅度，不参与原生校验，小数 `step` 照常可用。
 
 ```tsx
 import { useRef, useState } from 'react'
@@ -308,9 +308,9 @@ export default function Demo() {
 
 校验只覆盖 `required` / `disabled` / `readonly`，`min` / `max` / `step` 不参与原生校验。
 
-`valueMissing` 正常生效；`rangeUnderflow` / `rangeOverflow` 基本不会触发，越界早在提交时被收敛；`stepMismatch` 按原生 `number` 的默认 `step=1` 判定，非整数取值有被拦下提交的风险。
+`valueMissing` 正常生效；`rangeUnderflow` / `rangeOverflow` 基本不会触发，越界早在提交时被收敛；原生输入恒带 `step="any"`，`stepMismatch` 不会触发。
 
-表单里的 `input-number` 建议保持整数 `step`，需要小数就在外层自己校验。
+`step` 的小数位数还决定默认精度：未显式设置 `precision` 时，精度跟随 `step`。
 
 组件没有插槽：`prefix` / `suffix` 是 `<web-ui-input>` 与 `<web-ui-textarea>` 的能力，写在 `input-number` 里的子节点不会渲染。
 

@@ -77,7 +77,7 @@ const meta = [
       label: 'tr',
       children: [
       { label: 'td', content: "<code>trigger</code>" },
-      { label: 'td', content: "触发手势集合，空格分隔：<code>click</code>、<code>hover</code>、<code>focus</code>、<code>manual</code>。" },
+      { label: 'td', content: "触发手势集合，空格分隔：<code>click</code>、<code>hover</code>、<code>focus</code>、<code>manual</code>；property 通道也可直接给数组，读回始终是字符串。" },
       { label: 'td', content: "<code>string</code>" },
       { label: 'td', content: "<code>'click'</code>" }
       ]

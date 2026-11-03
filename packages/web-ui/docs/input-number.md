@@ -170,7 +170,7 @@ export default function Demo() {
 
 ### Form value
 
-`name` is the field name and the submitted value is `String(value)`. `required` blocks submission when the content is cleared during editing (`valueMissing`), and `form.reset()` restores the initial value at mount. Keep an integer `step` for `input-number` inside forms, for the reason given in the behavior notes below.
+`name` is the field name and the submitted value is `String(value)`. `required` blocks submission when the content is cleared during editing (`valueMissing`), and `form.reset()` restores the initial value at mount. `step` is only the step amplitude and takes no part in native validation, so a decimal `step` works the same.
 
 ```tsx
 import { useRef, useState } from 'react'
@@ -312,9 +312,9 @@ A controlled setup that listens only to `change` misses step button clicks.
 
 Validation covers only `required` / `disabled` / `readonly`; `min` / `max` / `step` do not take part in native validation.
 
-`valueMissing` works normally; `rangeUnderflow` / `rangeOverflow` basically never trigger because out-of-range values are converged at commit time; `stepMismatch` is judged against the native `number` default `step=1`, so non-integer values risk being judged invalid and blocking submission.
+`valueMissing` works normally; `rangeUnderflow` / `rangeOverflow` basically never trigger because out-of-range values are converged at commit time; the native input always carries `step="any"`, so `stepMismatch` never triggers.
 
-For `input-number` inside a form, prefer an integer `step`; when decimals are needed, validate them yourself in the outer layer.
+The decimal places of `step` also set the default precision: when `precision` is not given explicitly, it follows `step`.
 
 The component has no slot: `prefix` / `suffix` are capabilities of `<web-ui-input>` and `<web-ui-textarea>`, and child nodes written inside `input-number` are not rendered.
 

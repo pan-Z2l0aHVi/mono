@@ -206,6 +206,7 @@ const meta = [
   { label: 'h3', id: 'section-19', content: "排版 token" },
   { label: 'p', content: "字号按文字承担的角色命名，而不是按它在尺度中的位置。<code>caption</code> 是密集 chrome 上的小标签，<code>readout</code> 用于展示数字，无后缀的基准字号是正文，<code>title</code> 是有界卡片标题。字重按粗细命名，行高按这段文字需要的垂直留白命名。" },
   { label: 'p', content: "这一族与外观无关，light 和 dark 下取值相同。" },
+  { label: 'p', content: "组件里的 <code>line-height: 1</code> 和 <code>line-height: 0</code> 不是排版意义上的行高，也没有对应的 token。" },
   { label: 'h3', id: 'section-20', content: "Typography tokens" },
   {
     label: 'table',

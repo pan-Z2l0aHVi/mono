@@ -241,10 +241,10 @@ const GAPS = ['0px', '2px', '6px', '12px']
 
 ### Props
 
-| Name     | Description                                                                                                                                                                                                       | Type                 | Default                       |
-| -------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------- | ----------------------------- |
-| `value`  | The original continuous string to display. The component only reads it and never writes back; pass `Number` values as a string.                                                                                   | `string`             | `''`                          |
-| `groups` | Group shape: a preset name — `'card'` (every 4), `'phone'` (3-4-4), `'amount'` (3 from the right) — or the cluster count per group, `[4, 4, 4, 4]`. The string form of a size list, `"4,4,4,4"`, is accepted too. | `string \| number[]` | `undefined`, i.e. no grouping |
+| Name     | Description                                                                                                                                                                                                                                                                                                               | Type                          | Default                       |
+| -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------- | ----------------------------- |
+| `value`  | The original continuous string to display. The component only reads it and never writes back; pass `Number` values as a string.                                                                                                                                                                                           | `string`                      | `''`                          |
+| `groups` | Group shape: a preset name — `'card'` (every 4), `'phone'` (3-4-4), `'amount'` (3 from the right) — or the cluster count per group, `[4, 4, 4, 4]`. The string form of a size list, `"4,4,4,4"`, is accepted too. The array channel silently drops non-positive sizes, while an invalid string form drops the whole list. | `string \| readonly number[]` | `undefined`, i.e. no grouping |
 
 ### Behavior
 

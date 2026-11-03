@@ -52,7 +52,7 @@ const meta = [
       label: 'tr',
       children: [
       { label: 'td', content: "<code>trigger</code>" },
-      { label: 'td', content: "触发手势集合，空格分隔：<code>click</code>、<code>hover</code>、<code>focus</code>、<code>manual</code>。" },
+      { label: 'td', content: "触发手势集合，空格分隔：<code>click</code>、<code>hover</code>、<code>focus</code>、<code>manual</code>；property 通道也可直接给数组，读回始终是字符串。" },
       { label: 'td', content: "<code>string</code>" },
       { label: 'td', content: "<code>'hover focus'</code>" }
       ]
@@ -109,6 +109,15 @@ const meta = [
       { label: 'td', content: "可见性。" },
       { label: 'td', content: "<code>boolean</code>" },
       { label: 'td', content: "<code>false</code>" }
+      ]
+    },
+    {
+      label: 'tr',
+      children: [
+      { label: 'td', content: "<code>isOpen</code>" },
+      { label: 'td', content: "当前是否可见（只读）。" },
+      { label: 'td', content: "<code>boolean</code>" },
+      { label: 'td', content: "—" }
       ]
     },
     {
@@ -191,7 +200,7 @@ const meta = [
   },
   { label: 'p', content: "<code>trigger</code> 里出现 <code>manual</code> 时整串只按 <code>manual</code> 处理；一个已知手势都没写时回退到默认的 <code>hover focus</code>。" },
   { label: 'p', content: "<code>open</code> 是组件自行管理的可见性属性。指针和焦点触发会更新它，直接给 property 赋值同样会显示或隐藏提示。<code>open-change</code> 只在用户触发的开合时派发。" },
-  { label: 'p', content: "一个 tooltip 显示后，把指针移到相邻 tooltip 会立即切换。其他触发仍按延迟处理。" },
+  { label: 'p', content: "一个 tooltip 显示后，把指针移到相邻 tooltip 会立即切换。只有指针的进出走 <code>show-delay</code> / <code>hide-delay</code>，点击与焦点触发都立即生效。" },
   { label: 'p', content: "打开时把提示文本写到 trigger 可聚焦元素的 <code>aria-description</code>，包括该元素内部的原生控件；关闭时还原原值。读屏描述不使用 <code>aria-describedby</code>：panel 和 trigger 通常位于不同的 DOM 树中，IDREF 无法跨树解析。" },
   { label: 'h3', id: 'section-12', content: "CSS Custom Properties" },
   {

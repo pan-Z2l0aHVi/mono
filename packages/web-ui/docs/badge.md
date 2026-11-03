@@ -388,4 +388,4 @@ The host is inline-block; when there is content the badge is positioned absolute
 
 Content is judged by the number of element child nodes: plain text alone does not count as content, so the badge stays in inline flow. When you wrap a piece of text, wrap that text in an element.
 
-The badge has no size or color settings of its own: the background uses `--wui-color-danger`, the text uses `--wui-color-on-accent`, and the outline uses `--wui-color-page`. To change the colors, change the scope of these semantic tokens instead of looking for a property on the badge.
+The badge has no size or color settings of its own: the background uses `--wui-color-danger`, the text uses `--wui-color-on-danger`, and the outline uses `--wui-color-page`. To change the colors, change the scope of these semantic tokens instead of looking for a property on the badge.

@@ -156,7 +156,7 @@ const meta = [
   { label: 'p', content: "点击、Space / Enter 与拖拽定值都在宿主上派发 <code>input</code> 与 <code>change</code> 两条 <code>composed</code> 事件。" },
   { label: 'p', content: "宿主自己承接 click 与 keydown，三条路径行为一致；程序写入 <code>checked</code> 不派发事件。" },
   { label: 'p', content: "<code>disabled</code>（含表单级禁用）与 <code>loading</code> 都阻断点击、键盘与拖拽，thumb 停在当前值。" },
-  { label: 'p', content: "校验：<code>disabled</code> 上报干净状态，<code>loading</code> 不上报。" },
+  { label: 'p', content: "校验：<code>disabled</code>（含表单级禁用）上报干净状态；<code>loading</code> 不参与校验判定，未选中加 <code>required</code> 照常上报 <code>valueMissing</code>。" },
   { label: 'p', content: "键盘焦点落在宿主上（可用态 <code>tabindex=0</code>），焦点环画在 track 上；鼠标触发的焦点不画环。" },
   { label: 'p', content: "<code>disabled</code> 或 <code>loading</code> 时宿主离开 tab 序列。" },
   { label: 'p', content: "默认插槽内容就是可见标签，同时也是 switch 的可访问名称；需要引用外部 label 时，在 <code>web-ui-switch</code> 宿主上设置 <code>aria-labelledby</code>，或直接设置 <code>aria-label</code>。" },

@@ -212,7 +212,7 @@ const meta = [
     ]
   },
   { label: 'h3', id: 'section-14', content: "行为说明" },
-  { label: 'p', content: "打开时，panel 使用 <code>role=\"listbox\"</code>，候选项使用 <code>role=\"option\"</code>。当前非空 <code>value</code> 对应的 option 设为 <code>aria-selected=\"true\"</code>，<code>aria-disabled</code> 反映禁用状态。" },
+  { label: 'p', content: "panel 使用 <code>role=\"listbox\"</code>，候选项使用 <code>role=\"option\"</code>。当前非空 <code>value</code> 对应的 option 设为 <code>aria-selected=\"true\"</code>，<code>aria-disabled</code> 反映禁用状态。" },
   { label: 'p', content: "非 Portal 模式下，键盘导航时 <code>aria-activedescendant</code> 指向当前 option；Portal 模式下不设置此属性。" },
   { label: 'p', content: "关闭态的 Space / Enter / ArrowDown / ArrowUp 打开 panel；展开态的 ArrowDown / ArrowUp、Home / End 与 typeahead 移动激活项，Enter / Space 选择并关闭，Escape 关闭。" },
   { label: 'p', content: "启用 <code>portal</code> 的 panel 在创建时读取宿主上的这些变量值；更新宿主后需重新打开 panel 才会生效。" },

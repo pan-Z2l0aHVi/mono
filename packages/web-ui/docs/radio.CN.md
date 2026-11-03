@@ -189,7 +189,7 @@ function reset() {
 
 ### 行为说明
 
-宿主暴露 `radio` 语义，`aria-checked`、`aria-disabled` 与 `tabindex` 随状态同步；Enter/Space 键盘切换。
+shadow DOM 内的交互 `<span>` 声明 `role="radio"`，`aria-checked`、`aria-disabled` 与 `tabindex` 挂在同一元素上并随状态同步；宿主自身不带 `role`。Enter/Space 键盘切换。
 
 点击只把该项置为选中，不会取消自己，也不会取消兄弟项；同页面的单选由宿主状态或 `<web-ui-radio-group>` 维持。
 

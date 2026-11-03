@@ -4,7 +4,7 @@
 
 const meta = [
   { label: 'h1', id: 'section-1', content: "Empty" },
-  { label: 'p', content: "An empty-state placeholder: <code>title</code> and <code>description</code> provide the copy, and the <code>icon</code> / <code>action</code> slots add a graphic and an action entry point. The component has no JavaScript properties; the sizes and colors of the graphic, the copy, and the whitespace all come from <code>--wui-empty-*</code> variables." },
+  { label: 'p', content: "An empty-state placeholder: <code>title</code> and <code>description</code> provide the copy, and the <code>icon</code> / <code>action</code> slots add a graphic and an action entry point. Apart from <code>title</code> and <code>description</code> the component has no other properties; the sizes and colors of the graphic, the copy, and the whitespace all come from <code>--wui-empty-*</code> variables." },
   { label: 'h2', id: 'section-2', content: "Samples" },
   { label: 'h3', id: 'section-3', content: "Basic" },
   { label: 'p', content: "<code>title</code> and <code>description</code> are the two main copy slots, and writing both is the most common use of this empty state. The default graphic (<code>andrsrxn:inbox</code>) ships with the component, and its edge length and color each have a variable of their own." },

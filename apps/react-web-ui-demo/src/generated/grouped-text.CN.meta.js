@@ -53,8 +53,8 @@ const meta = [
       label: 'tr',
       children: [
       { label: 'td', content: "<code>groups</code>" },
-      { label: 'td', content: "组形：<code>'card'</code>（每 4 位）、<code>'phone'</code>（3-4-4）、<code>'amount'</code>（从右每 3 位）这几个预设名，或逐组字素簇数 <code>[4, 4, 4, 4]</code>；字符串形式的位数表 <code>\"4,4,4,4\"</code> 同样认。" },
-      { label: 'td', content: "<code>string | number[]</code>" },
+      { label: 'td', content: "组形：<code>'card'</code>（每 4 位）、<code>'phone'</code>（3-4-4）、<code>'amount'</code>（从右每 3 位）这几个预设名，或逐组字素簇数 <code>[4, 4, 4, 4]</code>；字符串形式的位数表 <code>\"4,4,4,4\"</code> 同样认。数组通道静默丢弃非正的位数，字符串通道整串作废。" },
+      { label: 'td', content: "<code>string | readonly number[]</code>" },
       { label: 'td', content: "<code>undefined</code>，即不分组" }
       ]
     }

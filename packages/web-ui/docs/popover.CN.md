@@ -265,15 +265,15 @@ function close() {
 
 ### Props
 
-| 名称               | 说明                                                          | 类型               | 默认值     |
-| ------------------ | ------------------------------------------------------------- | ------------------ | ---------- |
-| `open`             | 弹出层可见性。                                                | `boolean`          | `false`    |
-| `disabled`         | 禁用状态。                                                    | `boolean`          | `false`    |
-| `placement`        | panel 位置，默认 `bottom`。                                   | `Placement`        | `'bottom'` |
-| `offset`           | 与锚点的距离（px）。                                          | `number`           | `8`        |
-| `trigger`          | 触发手势集合，空格分隔：`click`、`hover`、`focus`、`manual`。 | `string`           | `'click'`  |
-| `portal`           | 在主题的 overlay 容器中渲染。                                 | `boolean`          | `false`    |
-| `overlayContainer` | 显式指定 panel 挂载的 overlay 容器（property）。              | `OverlayContainer` | —          |
+| 名称               | 说明                                                                                                         | 类型               | 默认值     |
+| ------------------ | ------------------------------------------------------------------------------------------------------------ | ------------------ | ---------- |
+| `open`             | 弹出层可见性。                                                                                               | `boolean`          | `false`    |
+| `disabled`         | 禁用状态。                                                                                                   | `boolean`          | `false`    |
+| `placement`        | panel 位置，默认 `bottom`。                                                                                  | `Placement`        | `'bottom'` |
+| `offset`           | 与锚点的距离（px）。                                                                                         | `number`           | `8`        |
+| `trigger`          | 触发手势集合，空格分隔：`click`、`hover`、`focus`、`manual`；property 通道也可直接给数组，读回始终是字符串。 | `string`           | `'click'`  |
+| `portal`           | 在主题的 overlay 容器中渲染。                                                                                | `boolean`          | `false`    |
+| `overlayContainer` | 显式指定 panel 挂载的 overlay 容器（property）。                                                             | `OverlayContainer` | —          |
 
 ### Events
 
