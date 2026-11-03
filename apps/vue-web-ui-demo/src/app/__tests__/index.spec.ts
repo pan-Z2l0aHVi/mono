@@ -139,8 +139,9 @@ async function requestCollapse(collapsed: boolean) {
 
 let setMediaMatches: (query: string, matches: boolean) => void
 
-// 每次挂载都要渲染完整导航与 layout 交互；CI 并发下实测 5.3–8.6s，默认 5s 会误伤这组用例。
-const SHELL_TIMEOUT = 15_000
+// 每次挂载都要渲染完整导航与 layout 交互；本地实测 0.2–0.4s，CI 并发下实测 5.3–8.6s。
+// 只在 CI 放宽，本地保留 Vitest 默认 5s。
+const SHELL_TIMEOUT = process.env.CI ? 15_000 : undefined
 
 describe('应用外壳：导航 collapsed state 不跨视口泄漏', () => {
   beforeEach(async () => {

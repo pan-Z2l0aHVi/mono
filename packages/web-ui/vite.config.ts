@@ -78,6 +78,9 @@ export default defineConfig({
           name: 'browser',
           include: ['src/**/*.browser.spec.ts'],
           exclude: ['src/**/reduced-motion.browser.spec.ts'],
+          // browser runtime 没有 process.env；test.env 在这里映射到 import.meta.env，
+          // 供需要在 CI 放宽等待预算的 spec 判断环境。
+          env: { CI: process.env.CI ?? '' },
           // 两个 browser project 显式占两个相邻段：同一进程内 vitest 会给它们各自递增默认端口
           // （63315 / 63316），但它们挡不住同一轮 turbo test 里其他包的测试进程、以及同机并行
           // 的其他 worktree——那些都从 63315 起。分配表、偏移与 host 的约定见
