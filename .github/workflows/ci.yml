@@ -195,4 +195,6 @@ jobs:
         run: pnpm exec playwright install chromium
 
       - name: Test
-        run: pnpm run test
+        # runner 核数少于本地时，turbo 默认的任务并发会让多个包的浏览器与 Go 测试互相抢占 CPU，
+        # 表现为随机的等待预算耗尽。只在 CI 收敛任务并发，本地 `pnpm run test` 保持默认。
+        run: pnpm exec turbo test --concurrency=2
