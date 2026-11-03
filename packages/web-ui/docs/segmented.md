@@ -1,16 +1,16 @@
 # Segmented
 
-segmented (a single-select button group) has `<web-ui-segmented-trigger>` children; `value` synchronizes the selected item and integrates with the native `<form>`.
+segmented is a single-select button group whose children are `<web-ui-segmented-trigger>` elements. `value` synchronizes the selected item, and the group integrates with a native `<form>`.
 
 ## Samples
 
 ### Basic controlled
 
-The default slot projects segmented-trigger, and `value` decides which item is selected; after a click (or Enter / Space), `input` carries the new value back and the page writes it into `value` to stay controlled.
+The default slot projects segmented-trigger, and `value` decides which item is selected. After a click (or Enter / Space), `input` carries the new value back, and the page writes it into `value` to stay controlled.
 
-Holding and dragging horizontally on the current item also switches continuously; on release the indicator snaps to the trigger closest to its center, and a fast fling switches by velocity.
+Holding the current item and dragging horizontally also switches continuously. On release the indicator snaps to the nearest trigger; a fast flick switches by velocity.
 
-The inner `role="listbox"` lives in the shadow DOM and does not inherit the host's `aria-label`, so the component forwards it to the listbox; the sample uses `aria-label` to name the group "Weekday". `aria-labelledby` IDREFs cannot resolve across the shadow boundary, so express a visible label through `aria-label`.
+`aria-label` is forwarded to the group's listbox and names the set of options. `aria-labelledby` IDREFs cannot resolve across the component boundary, so when you need a visible text label, use `aria-label`.
 
 ```tsx
 import { useState } from 'react'
@@ -56,7 +56,7 @@ const day = ref('wed')
 
 ### Variant comparison
 
-`variant` picks the material of the track and the indicator: `inset` (default) embeds the indicator in a track with a persistent ring and shadow, while `raised` is the classic floating form. Both variants share the same interaction, pressed state, and text color; only the resting surface differs.
+`variant` decides the material of the track and the indicator. `inset` (default) embeds the indicator in a track with a permanent stroke ring and a shadow; in `raised` the indicator floats above the track. Both variants share the same interaction, pressed state, and text color; only the idle look differs.
 
 ```tsx
 import { useState } from 'react'
@@ -130,7 +130,7 @@ const raisedView = ref('week')
 
 ### Item and group disabled
 
-`disabled` on a trigger disables only that item while the rest keep switching; `disabled` on `<web-ui-segmented>` disables the whole group—the members' own `disabled` attributes stay unchanged, but they all leave the tab order and stop responding to clicks.
+`disabled` on a trigger disables only that item, and the rest keep switching. `disabled` on `<web-ui-segmented>` disables the whole group: the triggers' own `disabled` attributes stay unchanged, but they all leave the tab order and stop responding to clicks.
 
 ```tsx
 import { useState } from 'react'
@@ -202,7 +202,7 @@ const lockedView = ref('list')
 
 ### Icon-only
 
-An icon-only trigger still needs its own accessible name: the inner `role="option"` has no text, so write `aria-label` on each `<web-ui-segmented-trigger>`. The group keeps the same single-select, drag, and keyboard behavior.
+An icon-only trigger still needs its own accessible name, so write `aria-label` on each `<web-ui-segmented-trigger>`. The group keeps the same single-select, drag, and keyboard behavior.
 
 ```tsx
 import { lucideLayoutGrid, lucideList, lucideSettings } from '@greypan/web-ui/icons'
@@ -252,7 +252,7 @@ const view = ref('grid')
 
 ### Form field
 
-`name` makes the currently selected value enter `FormData` under that field name, and when nothing is selected the field is not submitted. The component joins the `<form>` through ElementInternals, and `form.reset()` returns `value` to the initial value at mount time.
+`name` makes the selected value enter `FormData` under that field name; when nothing is selected, the field is not submitted. `form.reset()` returns `value` to the value it had at mount.
 
 ```tsx
 import { useRef, useState } from 'react'
@@ -348,7 +348,7 @@ function reset() {
 
 ### input and change
 
-Every user switch (click, Enter / Space, or drag) dispatches `input` and then `change`, one each; clicking a trigger that is already current dispatches neither. The button below changes `value` directly along the programmatic path: the indicator moves and neither counter changes.
+Every user switch (click, Enter / Space, or drag) dispatches `input` and then `change`, once each; clicking a trigger that is already current dispatches neither. Setting `value` directly is a programmatic update: the indicator moves, and neither counter changes.
 
 ```tsx
 import { useState } from 'react'
@@ -378,7 +378,7 @@ export default function Demo() {
       <output className="text-sm text-(--wui-color-text-secondary)">
         input: {inputCount} / change: {changeCount} · current: {view}
       </output>
-      <web-ui-button onClick={() => setView('month')}>Set to “Month” externally</web-ui-button>
+      <web-ui-button onClick={() => setView('month')}>Set to "Month" externally</web-ui-button>
     </div>
   )
 }
@@ -395,7 +395,7 @@ export default function Demo() {
     <output class="text-sm text-(--wui-color-text-secondary)">
       input: {{ inputCount }} / change: {{ changeCount }} · current: {{ view }}
     </output>
-    <web-ui-button @click="view = 'month'">Set to “Month” externally</web-ui-button>
+    <web-ui-button @click="view = 'month'">Set to "Month" externally</web-ui-button>
   </div>
 </template>
 
@@ -423,14 +423,14 @@ function onChange(event: WebUiEvent<WebUiSegmented, 'change'>) {
 
 ### Props
 
-| Name         | Description                                                                                        | Type                  | Default   |
-| ------------ | -------------------------------------------------------------------------------------------------- | --------------------- | --------- |
-| `name`       | Form field name.                                                                                   | `string`              | `''`      |
-| `variant`    | Material variant: `inset` (default) or `raised`.                                                   | `'inset' \| 'raised'` | `'inset'` |
-| `disabled`   | Disables every trigger.                                                                            | `boolean`             | `false`   |
-| `required`   | Reflects the attribute only; not part of validation.                                               | `boolean`             | `false`   |
-| `aria-label` | Accessible name of the inner listbox; `aria-labelledby` cannot resolve across the shadow boundary. | `string`              | —         |
-| `value`      | Currently selected value.                                                                          | `string`              | `''`      |
+| Name         | Description                                                                                                                                                                    | Type                  | Default   |
+| ------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | --------------------- | --------- |
+| `name`       | Form field name.                                                                                                                                                               | `string`              | `''`      |
+| `variant`    | Material variant: `inset` (default) or `raised`.                                                                                                                               | `'inset' \| 'raised'` | `'inset'` |
+| `disabled`   | Disables every trigger.                                                                                                                                                        | `boolean`             | `false`   |
+| `required`   | Reflects the attribute only; not part of validation.                                                                                                                           | `boolean`             | `false`   |
+| `aria-label` | Accessible name of the group; `aria-labelledby` cannot resolve across the component boundary, and the name is forwarded to the `role="listbox"` element inside the shadow DOM. | `string`              | —         |
+| `value`      | Currently selected value.                                                                                                                                                      | `string`              | `''`      |
 
 ### Events
 
@@ -447,58 +447,30 @@ function onChange(event: WebUiEvent<WebUiSegmented, 'change'>) {
 
 ### Variants
 
-`inset` (default, "concave") is an opaque solid track (`--wui-color-surface`)—the 1px stroke ring and shadow stay on at all times, and the resting indicator is a flat gray `--wui-color-surface-segmented` fill, so it looks embedded in the track.
-
-In light mode the track has the same value as `--wui-color-page` and sits flush with the page, so the concave feel comes only from the persistent ring and shadow; in dark mode the track is one elevation step above the page and still floats off it.
-
-The indicator step takes the default of `--wui-color-surface-control` in both light and dark—that is, the `secondary` button surface (light `#dfdfdf`, dark `#3a3a3c`): the selected chip shares the surface of a neutral interactive control in the same theme instead of introducing another gray. This is the same value, not an alias—the two tokens are defined independently in the theme and do not reference each other, so overriding control alone does not move this indicator.
-
-`raised` ("convex") is the classic form: a flat gray track (`--wui-color-surface-segmented-track`, no ring or shadow) with the resting indicator as a `--wui-color-surface-selected` solid fill plus a soft shadow, floating above the track.
-
-In light mode this pair is `#e5e5ea → #fff`: the indicator is as white as `--wui-color-page`, and the raised feel reads from "a solid surface in the page color floating above a recessed track + a soft shadow".
-
-Dark follows the same invariant: the indicator still matches `--wui-color-page` (`#242628`), and the track is what moves—`--wui-color-surface-segmented-track` sinks below the page to `#17191a`, 13 to 14/255 darker than the page, on the same order as this theme's upward steps (page→surface is +6 to +8, surface→control is +14, control→track is +10).
-
-The page is already the darkest step of the dark ladder, so "the same color as the page" can only hold by opening the track downward rather than lifting the indicator up. The raised direction still reads from "the indicator is brighter than the track": the WCAG luminance ratios of the two steps are 1.26:1 (light) and 1.16:1 (dark), the same order of magnitude, so neither overpowers the soft shadow.
-
-So in dark mode the two variants use different gray pairs: inset is a `#2c2c2e` track + `#3a3a3c` indicator (the selected surface is brighter than the track, reading as a pressed gray), while raised is a `#17191a` track + `#242628` indicator (the selected surface matches the page, reading as a slice of page floating up).
-
-The invariant says "the same color as the page", not "the same color as the containing element". In light mode the page and surface are both `#fff`, so the two statements are equivalent; in dark mode the surface is `#2c2c2e`, so putting the raised variant inside a surface card makes the chip one step darker than the card itself.
-
-In both containers the raised feel comes from the track and the soft shadow; only "whether the chip is flush with the surface behind it" changes: flush on the page, not flush on a surface.
-
-Both variants share the same pressed / drag state—the indicator turns into transparent glass (backdrop blur, a stroke ring fading in over 80ms, 1.5x scale), and fades back to its own resting surface on release.
+`inset` (default) embeds the indicator in an opaque track with a permanent 1px stroke ring and shadow; `raised` has a track with no ring or shadow, and the indicator floats above it with a soft shadow. Both variants share the same interaction and text color.
 
 Invalid values fall back to `inset`.
 
-Integration with the native `<form>` (through `ElementInternals`).
+Integration with the native `<form>`: `name` submits the current value and `form.reset()` restores the initial value.
 
-Syncs the child triggers' `checked` state from `value`. `disabled` provides an inherited effective disabled state without rewriting the triggers' own `disabled` attribute. Setting `value` directly dispatches no events.
+The component syncs the child triggers' `checked` state from `value`. `disabled` gives the whole group an inherited effective disabled state without rewriting the triggers' own `disabled` attribute. Setting `value` directly dispatches no events.
 
 Keyboard users press Tab into the currently selected item; with no selection, the first enabled item receives focus. Only that one item in the group participates in the tab order.
 
-In a horizontal group, ArrowLeft / ArrowRight move focus cyclically among enabled items and update the selection, and Home / End move to the first / last enabled item; disabled items are skipped.
+In a horizontal group, ArrowLeft / ArrowRight move focus cyclically among enabled items and update the selection; Home / End move to the first / last enabled item; disabled items are skipped.
 
 ArrowUp / ArrowDown do not move focus.
 
-Holding the current item and dragging horizontally slides the indicator, and releasing snaps to the nearest option (a fast fling switches by velocity).
+Holding the current item and dragging horizontally slides the indicator, and releasing snaps to the nearest option; a fast flick switches by velocity.
 
-When trigger widths differ, the dragging indicator takes the width of the item closest to its own center—that is, the item the release would land on, rather than keeping the width of the pressed item.
+When trigger widths differ, the dragging indicator takes the width of the item closest to its own center, which is the item the release would land on. It does not keep the width of the pressed item.
 
 The touch surface declares `touch-action: none` and blocks the default `touchmove` scroll while a drag is active, so iOS Safari does not interrupt the gesture.
 
 ### Pressed state
 
-In every state the track is an opaque solid surface (`--wui-color-surface`, i.e. the page color in light mode, with no backdrop filter), and its 1px stroke ring and shadow never change; the layer that turns into glass is the indicator.
-
-The resting indicator is a solid `--wui-color-surface-segmented` fill with all glass output turned off.
-
-The pressed / drag state gains a backdrop blur, a glass stroke ring fading in over an 80ms transition, and 1.5x scale, with a fully transparent fill: the indicator's blur sample area lies entirely inside the track. A fully transparent indicator over a glass track differs from the adjacent track by only +0.5 steps on a uniformly dark base, and on a striped background the indicator interior measures a gray std of 1.89 (background bleed).
-
-Once the track is solid, the same sample std drops to zero, and the pressed body's perceptibility comes from the solid track together with the scale / ring / shadow, so no tint base or suppression of the track's edge decoration is needed.
-
-The fill does not fade in—it settles on the first frame of the press; on release the indicator fades back to the solid gray fill over `--wui-duration-press`.
+Both variants share the same pressed / drag state: the indicator turns into a transparent glass surface (blur, stroke ring, and 1.5x scale) that settles on the first frame of the press and fades back to its own idle surface on release.
 
 ### Label color
 
-All labels use the primary `--wui-color-text`; under the built-in light/dark themes, 14px text on the resting `inset`/`raised` indicator meets 4.5:1. Selected and unselected items keep the same color, the selection is still carried by the indicator, and no label uses `--wui-color-accent`.
+All labels use `--wui-color-text`; selected and unselected items keep the same color, the selection is still carried by the indicator, and no label uses `--wui-color-accent`. Under the built-in light/dark themes, 14px text meets 4.5:1.

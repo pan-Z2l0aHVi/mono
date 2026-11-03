@@ -1,6 +1,6 @@
 # Radio
 
-A single radio button that shares the selection-control box contract with `<web-ui-checkbox>`; `<web-ui-radio-group>` is responsible for keeping a single selection across a set of options.
+A single radio button that shares the selection-control box model rules with `<web-ui-checkbox>`; `<web-ui-radio-group>` is responsible for keeping a single selection across a set of options.
 
 ## Samples
 
@@ -46,7 +46,7 @@ const plan = ref('basic')
 
 ### Disabled
 
-`disabled` turns off interaction: an already selected item stays selected, pressing it changes nothing, and validation steps aside; group-level disabling is written on `<web-ui-radio-group>`, see the radio group docs.
+`disabled` turns off interaction: an already selected item stays selected, pressing it changes nothing, and validation is skipped; group-level disabling is written on `<web-ui-radio-group>`, see the radio group docs.
 
 ```tsx
 export default function Demo() {
@@ -72,7 +72,7 @@ export default function Demo() {
 
 ### Form value
 
-The selected item enters `FormData` with `name` as the field name and `value` as the value, while unselected ones do not. When `value` is left empty, `'on'` is submitted. When two items with the same name exist independently, whichever is clicked is the one submitted, so keeping a single selection is the page's job—use `<web-ui-radio-group>` to let the component do it.
+The selected item enters `FormData` with `name` as the field name and `value` as the value, while unselected ones do not. When `value` is left empty, `'on'` is submitted. When two items with the same name exist independently, whichever is clicked is the one submitted, so keeping a single selection is the page's job. Use `<web-ui-radio-group>` to let the component do it.
 
 ```tsx
 import { useRef, useState } from 'react'
@@ -191,14 +191,14 @@ function reset() {
 
 ### Behavior
 
-An interactive `<span>` inside the Shadow DOM declares `role="radio"` and mirrors `aria-checked`, `aria-disabled`, and `tabindex`. Enter/Space toggles it from the keyboard.
+The interactive `<span>` inside the shadow DOM carries `role="radio"`, and `aria-checked`, `aria-disabled`, and `tabindex` stay in sync on that same element; the host itself carries no `role`. Enter/Space toggles it from the keyboard.
 
 A click only marks this item as selected; it does not deselect itself, nor its siblings. Single selection on a page is maintained by host state or by `<web-ui-radio-group>`.
 
 `required` blocks native submission while unselected (`valueMissing`); members inside a group hand that decision to the group.
 
-The `input` / `change` dispatched by a member inside a group do not bubble and do not cross the shadow boundary; the group dispatches the event once on the host.
+Members inside a group do not dispatch events outward; the group dispatches `input` / `change` once on its host.
 
 ### Layout
 
-Shares the same selection-control box contract with `<web-ui-checkbox>`, including collapsing the gap when the label draws nothing—the host height is opened by its content and does not inherit the page line height, the indicator takes its width and height from `--wui-selection-control-size`, and it aligns with adjacent text via `vertical-align: middle`.
+Shares the same selection-control box model rules with `<web-ui-checkbox>`: the host height is opened by its content and does not inherit the page line height; when the label is empty the gap between the indicator and the label collapses; the indicator takes its width and height from `--wui-selection-control-size`.

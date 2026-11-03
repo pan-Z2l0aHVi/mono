@@ -1,12 +1,12 @@
 # Textarea
 
-A multiline text input with a clear button, autosize, and prefix/suffix slots; focus is delegated to the native textarea inside the shadow root.
+A multiline text input with a clear button, autosize, and prefix/suffix slots. Focus lands on the native textarea; `focus()` / `blur()` / `select()` act on it.
 
 ## Samples
 
 ### Basic
 
-`rows` sets the initial number of visible rows (3 by default), and `placeholder` is shown when the value is empty; when `input` is not handled, the component holds the content itself—to sync it from the page, write `value` and handle `input`, as in Controlled value and character count below.
+`rows` sets the initial number of visible rows (3 by default), and `placeholder` is shown when the value is empty. When `input` is not handled, the component holds the content itself. To sync it from the page, write `value` and handle `input`, as in Controlled value and character count below.
 
 ```tsx
 export default function Demo() {
@@ -32,9 +32,9 @@ export default function Demo() {
 
 ### Autosize
 
-`autosize` makes the height follow the content: the component writes the height as an inline value and turns off the native resize handle at the same time, so the two sources of height never coexist.
+`autosize` makes the height follow the content and turns off the native resize handle.
 
-`max-height` (px, `0` meaning no limit) is written separately into the inner control's inline style and takes effect whenever it is greater than 0, regardless of whether `autosize` is on: with autosize on it caps the automatic height and the box scrolls once the cap is reached; with autosize off it clamps the height produced by dragging the resize handle.
+`max-height` (px, `0` meaning no limit) works independently of `autosize`: with autosize on it caps the automatic height and the box scrolls once the cap is reached; with autosize off it clamps the height produced by dragging.
 
 ```tsx
 export default function Demo() {
@@ -213,7 +213,7 @@ export default function Demo() {
 
 ### Disabled and readonly
 
-`disabled` turns off typing, validation, and clearing, and drops the whole host to forty percent opacity; `readonly` keeps the content readable, selectable, and copyable and still lets the user drag the bottom-right corner to change the height, but rejects input and hides the clear button.
+`disabled` turns off typing, validation, and clearing, and drops the whole host to 40% opacity. `readonly` keeps the content readable, selectable, and copyable and still lets the user drag the bottom-right corner to change the height, but rejects input and hides the clear button.
 
 ```tsx
 export default function Demo() {
@@ -259,7 +259,7 @@ export default function Demo() {
 
 ### Borderless
 
-`borderless` removes the border, background, blur, and glass ring, leaving only padding and the focus ring; the radius still comes from `--wui-radius-menu`. Use this form when an outer layer draws its own container.
+`borderless` removes the border, background, backdrop blur, shadow, and glass ring, leaving only padding and the focus ring; the radius still comes from `--wui-radius-menu`. Use this form when an outer layer draws its own container.
 
 ```tsx
 export default function Demo() {
@@ -295,7 +295,7 @@ export default function Demo() {
 
 ### Form value
 
-`name` is the field name and the submitted value is the current content. `required` blocks submission when the field is empty (`valueMissing`), and `minlength` blocks it when the text is too short (`tooShort`); both checks are forwarded to the host `<form>` through ElementInternals.
+`name` is the field name and the submitted value is the current content. `required` blocks submission when the field is empty (`valueMissing`), and `minlength` blocks it when the text is too short (`tooShort`); both checks are handled by the host `<form>`.
 
 ```tsx
 import { useRef, useState } from 'react'
@@ -387,7 +387,7 @@ function reset() {
 
 ### Focus and select all
 
-`focus()` / `blur()` delegate to the native textarea inside the shadow root, and `select()` selects the current content; none of the three has any effect when `disabled`. The host itself has no tab stop, so pressing Tab always lands on the focus of the inner control.
+`focus()` / `blur()` / `select()` act on the inner native textarea; none of the three has any effect when `disabled`. The host itself has no tab stop, so pressing Tab always lands on the inner control.
 
 ```tsx
 import type { WebUiTextarea } from '@greypan/web-ui'
@@ -487,25 +487,25 @@ export default function Demo() {
 
 ### Props
 
-| Name               | Description                                                                                      | Type                  | Default |
-| ------------------ | ------------------------------------------------------------------------------------------------ | --------------------- | ------- |
-| `placeholder`      | Placeholder text.                                                                                | `string`              | `''`    |
-| `name`             | Form field name.                                                                                 | `string`              | `''`    |
-| `disabled`         | Disabled state.                                                                                  | `boolean`             | `false` |
-| `readonly`         | Readonly state.                                                                                  | `boolean`             | `false` |
-| `required`         | Required validation.                                                                             | `boolean`             | `false` |
-| `full`             | Fills the parent's width.                                                                        | `boolean`             | `false` |
-| `clearable`        | Shows the clear button when there is a value and neither `disabled` nor `readonly` is set.       | `boolean`             | `false` |
-| `aria-clear-label` | Accessible name of the clear button; falls back to the built-in English copy (`Clear`).          | `string`              | `''`    |
-| `borderless`       | Ghost form: removes the border, background, and shadow while keeping padding and the focus ring. | `boolean`             | `false` |
-| `rows`             | Number of visible rows; also the starting point for autosize.                                    | `number`              | `3`     |
-| `minlength`        | Minimum length validation.                                                                       | `number \| undefined` | —       |
-| `maxlength`        | Maximum length validation.                                                                       | `number \| undefined` | —       |
-| `autosize`         | Adjusts the height automatically and forces `resize: none`.                                      | `boolean`             | `false` |
-| `max-height`       | Upper bound for the automatic height (px); 0 means no limit.                                     | `number`              | `0`     |
-| `aria-label`       | Accessible label.                                                                                | `string \| null`      | `null`  |
-| `aria-labelledby`  | Accessible label reference.                                                                      | `string \| undefined` | —       |
-| `value`            | Input value, also the form-submitted value.                                                      | `string`              | `''`    |
+| Name               | Description                                                                                                     | Type                  | Default |
+| ------------------ | --------------------------------------------------------------------------------------------------------------- | --------------------- | ------- |
+| `placeholder`      | Placeholder text.                                                                                               | `string`              | `''`    |
+| `name`             | Form field name.                                                                                                | `string`              | `''`    |
+| `disabled`         | Disabled state.                                                                                                 | `boolean`             | `false` |
+| `readonly`         | Readonly state.                                                                                                 | `boolean`             | `false` |
+| `required`         | Required validation.                                                                                            | `boolean`             | `false` |
+| `full`             | Fills the parent's width.                                                                                       | `boolean`             | `false` |
+| `clearable`        | Shows the clear button when there is a value and neither `disabled` nor `readonly` is set.                      | `boolean`             | `false` |
+| `aria-clear-label` | Accessible name of the clear button; falls back to the built-in English copy (`Clear`).                         | `string`              | `''`    |
+| `borderless`       | Ghost form: removes the border, background, backdrop blur, and shadow while keeping padding and the focus ring. | `boolean`             | `false` |
+| `rows`             | Number of visible rows; also the starting point for autosize.                                                   | `number`              | `3`     |
+| `minlength`        | Minimum length validation.                                                                                      | `number \| undefined` | —       |
+| `maxlength`        | Maximum length validation.                                                                                      | `number \| undefined` | —       |
+| `autosize`         | Adjusts the height automatically and forces `resize: none`.                                                     | `boolean`             | `false` |
+| `max-height`       | Upper bound for the automatic height (px); 0 means no limit.                                                    | `number`              | `0`     |
+| `aria-label`       | Accessible label.                                                                                               | `string \| null`      | `null`  |
+| `aria-labelledby`  | Accessible label reference.                                                                                     | `string \| undefined` | —       |
+| `value`            | Input value, also the form-submitted value.                                                                     | `string`              | `''`    |
 
 ### Events
 
@@ -527,45 +527,43 @@ export default function Demo() {
 
 | Name              | Description                                                                            |
 | ----------------- | -------------------------------------------------------------------------------------- |
-| `focus(options?)` | Focuses the native textarea inside the shadow root; no effect when `disabled`.         |
-| `blur()`          | Blurs the native textarea inside the shadow root.                                      |
+| `focus(options?)` | Focuses the inner native textarea; no effect when `disabled`.                          |
+| `blur()`          | Blurs the inner native textarea.                                                       |
 | `select()`        | Selects the current value; no effect when `disabled`, still available when `readonly`. |
 
 ### Behavior
 
-The host is not focusable and has no tab stop: both Tab and clicks hand focus to the native textarea inside the shadow root, and the component reflects the focus state as a `focused` attribute on the host, which drives the focus ring.
+The host is not focusable and has no tab stop: both Tab and clicks hand focus to the inner native textarea, and the `focused` attribute tracks the focus state and drives the focus ring.
 
-The inner control's `input` already bubbles and is composed; `change` is not composed, so the component re-dispatches a `composed` `change` on the host.
+`input` bubbles and is composed; `change` is re-dispatched by the component as a `composed` event on the host.
 
-The clear button dispatches only `input`, not `change`—this differs from `<web-ui-input>`, so consumers that only listen to `change` do not receive this clearing.
+The clear button dispatches only `input`, not `change`. This differs from `<web-ui-input>`, so code that only listens to `change` do not receive this clearing.
 
-`autosize` owns the height exclusively: it writes the height as an inline value and therefore turns off the native resize handle, so that the next content change after a drag does not pull the box back.
+`autosize` owns the height exclusively and turns off the native resize handle.
 
-The height is recomputed whenever the value changes and whenever `rows` changes, without relying on a `ResizeObserver` callback, so the same control switching between long and short copy in its outer layout never keeps a stale height.
+`max-height` clamps the height independently of `autosize`: with autosize on it caps the automatic height and the box scrolls once the cap is reached; with autosize off it clamps the height produced by dragging. `0` means no limit.
 
-`max-height` is written as an inline style and clamps the inner control independently of `autosize`: with autosize on it caps the automatic height and the box scrolls once the cap is reached; with autosize off it clamps the height produced by dragging. `0` means no limit.
+The `required` / `minlength` / `maxlength` checks (`valueMissing` / `tooShort` / `tooLong`) are handled by the host `<form>`; `disabled` and form-level disabling also turn validation off.
 
-The `required` / `minlength` / `maxlength` checks (`valueMissing` / `tooShort` / `tooLong`) are forwarded to the host `<form>` through ElementInternals; `disabled` and form-level disabling make validation back off along with everything else.
-
-`readonly` also makes validation back off: per the HTML specification, a readonly native control is barred from constraint validation, so the forwarded state is always clean and an empty `required readonly` value does not block submission.
+`readonly` also turns validation off: an empty `required readonly` value does not block submission.
 
 `form.reset()` restores the value from mount time.
 
-The only accessible name that works is `aria-label`: it is forwarded to the native `<textarea>` inside the shadow root together with `aria-labelledby`, but `aria-labelledby` is an IDREF that only resolves inside the same shadow tree and cannot reach the light DOM, so a reference to an element outside the host yields no name.
+`aria-labelledby` is an IDREF that only resolves inside the component, so a reference to an element outside the host yields no name; use `aria-label` to name the control.
 
-The component does not expose the inner control's id either, so an outer `<label for>` cannot connect to it (the host is not a labelable element).
+An outer `<label for>` cannot connect either, since the host is not a labelable element.
 
-To give the control a name, write `aria-label`: the visible text in the `prefix` slot lands on the container, not inside the native `<textarea>` box, and does not become its name.
+The visible text in the `prefix` slot does not become the control's accessible name.
 
 ### Layout
 
-The host is a block box; the input area width comes from `--wui-textarea-width` (`200px`), and `full` changes it to `100%`. The container wraps its content, its minimum height comes from `--wui-control-size` (`36px`), its radius from `--wui-radius-menu` (`18px`), and its surface from the shared glass surface; `borderless` removes the ring along with it.
+The host is a block box; the width comes from `--wui-textarea-width` (`200px`), and `full` fills the parent. The minimum height comes from `--wui-control-size` (`36px`) and the radius from `--wui-radius-menu` (`18px`); `borderless` removes the border, background, backdrop blur, shadow, and ring.
 
-When `autosize` is off, the native resize handle is available (`resize: vertical`).
+When `autosize` is off, the native resize handle is available.
 
-Text takes `--wui-font-size` and line height `--wui-line-height-normal`, with the font size clamped to no less than `16px` on coarse-pointer devices so that iOS Safari does not zoom the page on focus. Placeholder text and slot content take the secondary text color.
+Text takes `--wui-font-size` and line height `--wui-line-height-normal`, at least 16px on coarse-pointer devices so that iOS Safari does not zoom on focus. Placeholder text and slot content take the secondary text color.
 
-The clear button reuses the icon ghost form of `<web-ui-button>`, offsets the container's `gap` and its own padding with negative margins, and aligns to the center of the first line—the container is top-aligned, which keeps it against the first line even in a multiline box.
+The clear button aligns with the first line, staying against it even in a multiline box.
 
 ### CSS Custom Properties
 

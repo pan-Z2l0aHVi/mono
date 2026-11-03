@@ -1,12 +1,12 @@
 # Drawer
 
-A side drawer built on the native `<dialog>`, with built-in slide-in / slide-out animations and drag-to-close from the inner edge on any side. It suits secondary tasks that relate to the current page but do not require leaving context.
+A side drawer built on the native `<dialog>`, with slide-in and slide-out animations and drag-to-close from the inner edge on any side. Use it for secondary content that relates to the current page but does not require leaving the page.
 
 ## Samples
 
 ### Basic
 
-`placement` decides the slide-in direction, and `heading` serves as the title fallback when there is no `header` slot. Click the backdrop or press Escape to close.
+`placement` decides the slide-in direction, and `heading` is the title fallback when there is no `header` slot. Click the backdrop or press Escape to close.
 
 ```tsx
 import { useState } from 'react'
@@ -272,7 +272,7 @@ export default function Demo() {
           <span className="text-xs text-(--wui-color-text-secondary)">Saved</span>
         </div>
         <p>
-          The content of the header slot is entirely up to the consumer; the close button is still provided by the
+          The content of the header slot is entirely up to your app; the close button is still provided by the
           component.
         </p>
       </web-ui-drawer>
@@ -298,8 +298,7 @@ export default function Demo() {
       <span class="text-xs text-(--wui-color-text-secondary)">Saved</span>
     </div>
     <p>
-      The content of the header slot is entirely up to the consumer; the close button is still provided by the
-      component.
+      The content of the header slot is entirely up to your app; the close button is still provided by the component.
     </p>
   </web-ui-drawer>
 
@@ -479,6 +478,249 @@ const open = ref(false)
 </script>
 ```
 
+### Page shift
+
+`page-shift` moves the background page toward the drawer's entering direction while the drawer is open. A right drawer enters from the right, so the page moves left and the right side of the viewport makes room for it. A left drawer moves the page right, and top or bottom drawers make room at the top or bottom edge. The offset follows the viewport size, and there is no CSS variable to adjust it.
+
+When several layers are open, the opening order decides the offset: the first layer moves the most, and each later layer moves less. Nested and sibling layers follow the same rule. Closing any layer recalculates the rest, and the page returns to the new total. The page moves only when `open` changes. Dragging the panel leaves the page in place. When the viewport changes size, the offset updates without reopening the drawer.
+
+The whole feature is disabled under `prefers-reduced-motion` (or `motion="reduced"` on the enclosing `web-ui-theme`).
+
+```tsx
+import { useState } from 'react'
+
+export default function Demo() {
+  const [open, setOpen] = useState(false)
+
+  return (
+    <>
+      <web-ui-button onClick={() => setOpen(true)}>Open (page shifts)</web-ui-button>
+
+      <web-ui-drawer
+        open={open}
+        pageShift
+        heading="The page shifts for the drawer"
+        onopen-change={event => setOpen(event.detail.open)}
+      >
+        <p>
+          Opening shifts the background page by a distance and it returns when the drawer closes; dragging this panel
+          leaves the page in place.
+        </p>
+      </web-ui-drawer>
+    </>
+  )
+}
+```
+
+```vue
+<template>
+  <web-ui-button @click="open = true">Open (page shifts)</web-ui-button>
+
+  <web-ui-drawer
+    :open="open"
+    page-shift
+    heading="The page shifts for the drawer"
+    @open-change="open = $event.detail.open"
+  >
+    <p>
+      Opening shifts the background page by a distance and it returns when the drawer closes; dragging this panel leaves
+      the page in place.
+    </p>
+  </web-ui-drawer>
+</template>
+
+<script setup lang="ts">
+import { ref } from 'vue'
+
+const open = ref(false)
+</script>
+```
+
+### Nested page shift
+
+With four nested layers enabling `page-shift`, each layer moves the page further from its current offset; closing a middle layer recalculates the layers behind it, and the page returns to the new total.
+
+```tsx
+import { useState } from 'react'
+
+export default function Demo() {
+  const [openLayers, setOpenLayers] = useState([false, false, false, false])
+  const setLayer = (index: number, open: boolean) =>
+    setOpenLayers(previous => previous.map((value, i) => (i === index ? open : value)))
+
+  return (
+    <>
+      <web-ui-button onClick={() => setLayer(0, true)}>Open layer 1</web-ui-button>
+
+      <web-ui-drawer
+        open={openLayers[0]}
+        pageShift
+        heading="Layer 1"
+        onopen-change={event => {
+          if (event.target === event.currentTarget) setLayer(0, event.detail.open)
+        }}
+      >
+        <p>Layer 1 shifts the most, and each layer after it shifts less.</p>
+        <web-ui-button slot="footer" variant="secondary" full onClick={() => setLayer(1, true)}>
+          Open layer 2
+        </web-ui-button>
+
+        <web-ui-drawer
+          open={openLayers[1]}
+          pageShift
+          heading="Layer 2"
+          onopen-change={event => {
+            if (event.target === event.currentTarget) setLayer(1, event.detail.open)
+          }}
+        >
+          <p>Each layer adds its own offset; closing a middle layer recalculates the layers behind it.</p>
+          <web-ui-button slot="footer" variant="secondary" full onClick={() => setLayer(2, true)}>
+            Open layer 3
+          </web-ui-button>
+
+          <web-ui-drawer
+            open={openLayers[2]}
+            pageShift
+            heading="Layer 3"
+            onopen-change={event => {
+              if (event.target === event.currentTarget) setLayer(2, event.detail.open)
+            }}
+          >
+            <p>Layer 3 shifts less; with more layers the total quickly levels off.</p>
+            <web-ui-button slot="footer" variant="secondary" full onClick={() => setLayer(3, true)}>
+              Open layer 4
+            </web-ui-button>
+
+            <web-ui-drawer
+              open={openLayers[3]}
+              pageShift
+              heading="Layer 4"
+              onopen-change={event => {
+                if (event.target === event.currentTarget) setLayer(3, event.detail.open)
+              }}
+            >
+              <p>Layer 4 shifts the least.</p>
+            </web-ui-drawer>
+          </web-ui-drawer>
+        </web-ui-drawer>
+      </web-ui-drawer>
+    </>
+  )
+}
+```
+
+```vue
+<template>
+  <web-ui-button @click="setLayer(0, true)">Open layer 1</web-ui-button>
+
+  <web-ui-drawer
+    :open="openLayers[0]"
+    page-shift
+    heading="Layer 1"
+    @open-change="event => event.target === event.currentTarget && setLayer(0, event.detail.open)"
+  >
+    <p>Layer 1 shifts the most, and each layer after it shifts less.</p>
+    <web-ui-button slot="footer" variant="secondary" full @click="setLayer(1, true)">Open layer 2</web-ui-button>
+
+    <web-ui-drawer
+      :open="openLayers[1]"
+      page-shift
+      heading="Layer 2"
+      @open-change="event => event.target === event.currentTarget && setLayer(1, event.detail.open)"
+    >
+      <p>Each layer adds its own offset; closing a middle layer recalculates the layers behind it.</p>
+      <web-ui-button slot="footer" variant="secondary" full @click="setLayer(2, true)">Open layer 3</web-ui-button>
+
+      <web-ui-drawer
+        :open="openLayers[2]"
+        page-shift
+        heading="Layer 3"
+        @open-change="event => event.target === event.currentTarget && setLayer(2, event.detail.open)"
+      >
+        <p>Layer 3 shifts less; with more layers the total quickly levels off.</p>
+        <web-ui-button slot="footer" variant="secondary" full @click="setLayer(3, true)">Open layer 4</web-ui-button>
+
+        <web-ui-drawer
+          :open="openLayers[3]"
+          page-shift
+          heading="Layer 4"
+          @open-change="event => event.target === event.currentTarget && setLayer(3, event.detail.open)"
+        >
+          <p>Layer 4 shifts the least.</p>
+        </web-ui-drawer>
+      </web-ui-drawer>
+    </web-ui-drawer>
+  </web-ui-drawer>
+</template>
+
+<script setup lang="ts">
+import { ref } from 'vue'
+
+const openLayers = ref([false, false, false, false])
+const setLayer = (index: number, open: boolean) => {
+  openLayers.value[index] = open
+}
+</script>
+```
+
+### Sibling page shift
+
+Two drawers that are DOM siblings have no parent-child relation, but the component still manages layer order by opening time: the drawer opened later stacks on top of the earlier one, which shrinks and moves back, so it still looks like one layer inside another. `page-shift` uses the same opening order: the first layer moves the most and a later sibling moves less; closing returns the page to the previous layer's offset.
+
+```tsx
+import { useState } from 'react'
+
+export default function Demo() {
+  const [first, setFirst] = useState(false)
+  const [second, setSecond] = useState(false)
+
+  return (
+    <>
+      <web-ui-button onClick={() => setFirst(true)}>Open layer 1</web-ui-button>
+
+      <web-ui-drawer open={first} pageShift heading="Layer 1" onopen-change={event => setFirst(event.detail.open)}>
+        <p>Sibling drawers auto-nest by opening order: the first shifts the most and the next one shifts less.</p>
+        <web-ui-button slot="footer" variant="secondary" full onClick={() => setSecond(true)}>
+          Open sibling layer 2
+        </web-ui-button>
+      </web-ui-drawer>
+
+      <web-ui-drawer open={second} pageShift heading="Layer 2" onopen-change={event => setSecond(event.detail.open)}>
+        <p>
+          This layer is a sibling of the previous one, yet it nests behind it visually and adds another offset; closing
+          it falls back to the previous layer's position.
+        </p>
+      </web-ui-drawer>
+    </>
+  )
+}
+```
+
+```vue
+<template>
+  <web-ui-button @click="first = true">Open layer 1</web-ui-button>
+
+  <web-ui-drawer :open="first" page-shift heading="Layer 1" @open-change="first = $event.detail.open">
+    <p>Sibling drawers auto-nest by opening order: the first shifts the most and the next one shifts less.</p>
+    <web-ui-button slot="footer" variant="secondary" full @click="second = true">Open sibling layer 2</web-ui-button>
+  </web-ui-drawer>
+
+  <web-ui-drawer :open="second" page-shift heading="Layer 2" @open-change="second = $event.detail.open">
+    <p>
+      This layer is a sibling of the previous one, yet it nests behind it visually and adds another offset; closing it
+      falls back to the previous layer's position.
+    </p>
+  </web-ui-drawer>
+</template>
+
+<script setup lang="ts">
+import { ref } from 'vue'
+
+const first = ref(false)
+const second = ref(false)
+</script>
+```
+
 ### Backdrop click
 
 A backdrop click closes the drawer by default; with `no-backdrop-close`, exit only through the close button, footer actions, or Escape.
@@ -533,7 +775,7 @@ const open = ref(false)
 
 ### Controlled closing
 
-With `controlled`, Escape, the backdrop, and the close button only dispatch `open-change(false)`; the drawer really closes only after the consumer writes `open` back. The sample rejects the first close request, so the confirm button in the footer must be clicked.
+With `controlled`, Escape, the backdrop, and the close button only dispatch `open-change(false)`; the drawer really closes only after your app writes `open` back.
 
 ```tsx
 import { useState } from 'react'
@@ -556,7 +798,7 @@ export default function Demo() {
             setOpen(true)
             return
           }
-          // Not writing open back: the drawer springs back to the open position, so the consumer can reject this close.
+          // Not writing open back: the drawer springs back to the open position, so your app can reject this close.
           setRejected(true)
         }}
       >
@@ -602,7 +844,7 @@ function onOpenChange(event: CustomEvent<{ open: boolean }>) {
     open.value = true
     return
   }
-  // Not writing open back: the drawer springs back to the open position, so the consumer can reject this close.
+  // Not writing open back: the drawer springs back to the open position, so your app can reject this close.
   rejected.value = true
 }
 
@@ -615,7 +857,7 @@ function close() {
 
 ### Headless
 
-`headless` keeps only the native dialog, backdrop, animations, scroll lock, and Escape / backdrop closing, rendering no built-in header, close button, or footer. The consumer is responsible for the full styling of the default slot content and must provide `aria-dialog-label`. The sample also enables `draggable`, and headless supports drag-to-close too.
+`headless` keeps only the native dialog, backdrop, animations, scroll lock, and Escape / backdrop closing, rendering no built-in header, close button, or footer. Your app is responsible for the full styling of the default slot content and must provide `aria-dialog-label`. `headless` supports `draggable` drag-to-close as well.
 
 ```tsx
 import { useState } from 'react'
@@ -679,7 +921,7 @@ const open = ref(false)
 
 ### Drag to close
 
-With `draggable` enabled, a gray pill-shaped drag bar appears on the inner edge of the drawer. Drag past half of its own size toward the closing direction, or fling it quickly and release, to close; below the threshold it springs back. The direction adapts to `placement`.
+With `draggable` enabled, a gray pill-shaped drag bar appears on the inner edge of the drawer. Drag past half of its own size toward the closing direction, or drag quickly and release, to close; below the threshold the drawer returns to its open position. The direction follows `placement`.
 
 ```tsx
 import { useState } from 'react'
@@ -755,7 +997,7 @@ const bottomOpen = ref(false)
 
 ### Nested stacking
 
-Declaratively nesting the same component stacks it automatically: the later-opened one sits on top at full size, lower layers scale by `0.95^n` and shift inward, and the exposed edge width is allocated by `A·ln(n)`. When layer widths differ or are out of order, the component compensates by the widest layer above so that the left edge of every layer stays visible; Escape and backdrop clicks act only on the topmost layer.
+Declaratively nesting the same component stacks it automatically: the later-opened drawer sits on top at full size, lower layers shrink and shift inward, and every layer shows a visible left edge. When layer widths differ or the opening order changes, the component adjusts automatically. Escape and backdrop clicks act only on the topmost layer.
 
 ```tsx
 import type { CSSProperties } from 'react'
@@ -908,7 +1150,7 @@ function closeLevel(index: number) {
 
 ### Sibling stacking
 
-Three drawers are mounted as sibling nodes. Open drawer 1 with the page button, then open the next layer from the current drawer's footer. The component manages order automatically: earlier drawers scale and shift while later ones sit on top; close them in any order and the remaining layers rearrange.
+Three drawers are mounted as sibling nodes. Open drawer 1 with the page button, then open the next layer from its footer. The component manages layer order automatically: earlier drawers shrink and shift, later ones sit on top; close them in any order and the remaining layers rearrange.
 
 ```tsx
 import { useState } from 'react'
@@ -991,7 +1233,7 @@ const open = ref([false, false, false])
 
 ### CSS variables
 
-The background, radius, and viewport inset are controlled by `--wui-drawer-bg`, `--wui-drawer-radius`, and `--wui-drawer-inset` respectively; setting `--wui-drawer-inset: 0` gives edge-to-edge geometry. The white-background example also sets `--wui-color-text` to a dark color and `--wui-color-surface-control` to a light color so the heading and close button stay readable in both themes.
+The background, radius, and viewport inset are controlled by `--wui-drawer-bg`, `--wui-drawer-radius`, and `--wui-drawer-inset` respectively; setting `--wui-drawer-inset: 0` gives edge-to-edge geometry. When switching the background to white, also override `--wui-color-text` and `--wui-color-surface-control` so the heading and close button stay readable in both themes.
 
 ```tsx
 import { useState } from 'react'
@@ -1045,25 +1287,26 @@ const open = ref(false)
 
 ### Props
 
-| Name                | Description                                                                                                                                                                                | Type              | Default   |
-| ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ----------------- | --------- |
-| `open`              | Drawer visibility.                                                                                                                                                                         | `boolean`         | `false`   |
-| `no-scroll-lock`    | Does not lock page scrolling while open.                                                                                                                                                   | `boolean`         | `false`   |
-| `no-backdrop-close` | Prevents closing on a backdrop click.                                                                                                                                                      | `boolean`         | `false`   |
-| `controlled`        | User-initiated closing only requests `open=false`, written back by the consumer.                                                                                                           | `boolean`         | `false`   |
-| `placement`         | Slide-in direction: `right` (default), `left`, `top`, `bottom`.                                                                                                                            | `DrawerPlacement` | `'right'` |
-| `heading`           | Heading text, the fallback when the `header` slot is empty.                                                                                                                                | `string`          | `''`      |
-| `closable`          | Shows the built-in close button.                                                                                                                                                           | `boolean`         | `false`   |
-| `headless`          | Keeps only overlay behavior; the default slot renders no built-in drawer UI.                                                                                                               | `boolean`         | `false`   |
-| `aria-dialog-label` | Accessible name of the inner native dialog; required under `headless`. The legacy name `dialog-label` is deprecated and kept only for compatibility; it will be removed in the next major. | `string`          | `''`      |
-| `aria-close-label`  | Accessible name of the built-in close button; falls back to the built-in English copy (`Close`).                                                                                           | `string`          | `''`      |
-| `draggable`         | Shows a drag bar on the inner edge of the drawer and enables the drag-to-close gesture.                                                                                                    | `boolean`         | `false`   |
+| Name                | Description                                                                                                                                                                                                                                         | Type              | Default   |
+| ------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------- | --------- |
+| `open`              | Drawer visibility.                                                                                                                                                                                                                                  | `boolean`         | `false`   |
+| `no-scroll-lock`    | Does not lock page scrolling while open.                                                                                                                                                                                                            | `boolean`         | `false`   |
+| `no-backdrop-close` | Prevents closing on a backdrop click.                                                                                                                                                                                                               | `boolean`         | `false`   |
+| `controlled`        | User-initiated closing only requests `open=false`, written back by your app.                                                                                                                                                                        | `boolean`         | `false`   |
+| `placement`         | Slide-in direction: `right` (default), `left`, `top`, `bottom`.                                                                                                                                                                                     | `DrawerPlacement` | `'right'` |
+| `heading`           | Heading text, the fallback when the `header` slot is empty.                                                                                                                                                                                         | `string`          | `''`      |
+| `closable`          | Shows the built-in close button.                                                                                                                                                                                                                    | `boolean`         | `false`   |
+| `headless`          | Keeps only overlay behavior; the default slot renders no built-in drawer UI.                                                                                                                                                                        | `boolean`         | `false`   |
+| `aria-dialog-label` | Accessible name of the native dialog; required under `headless`. `dialog-label` also works.                                                                                                                                                         | `string`          | `''`      |
+| `aria-close-label`  | Accessible name of the built-in close button; falls back to the built-in English copy (`Close`).                                                                                                                                                    | `string`          | `''`      |
+| `draggable`         | Shows a drag bar on the inner edge of the drawer and enables the drag-to-close gesture.                                                                                                                                                             | `boolean`         | `false`   |
+| `page-shift`        | While open, the background page moves toward the drawer's entering direction. The opening order sets layer order and offset, with the same rule for nested and sibling layers; closing any layer recalculates the rest. Inert under reduced motion. | `boolean`         | `false`   |
 
 ### Events
 
-| Name          | Description                                                                                                              |
-| ------------- | ------------------------------------------------------------------------------------------------------------------------ |
-| `open-change` | User requests opening or closing; `detail.open` is the target state. In controlled mode the consumer writes `open` back. |
+| Name          | Description                                                                                                          |
+| ------------- | -------------------------------------------------------------------------------------------------------------------- |
+| `open-change` | User requests opening or closing; `detail.open` is the target state. In controlled mode your app writes `open` back. |
 
 ### Slots
 
@@ -1082,89 +1325,52 @@ const open = ref(false)
 
 ### Behavior
 
-`headless` keeps the native dialog, backdrop, placement animation, Escape / backdrop closing behavior, and scroll lock, but renders no built-in glass surface, header, close button, or footer; the consumer is responsible for fully defining the styles of the default slot content and must provide `aria-dialog-label` so that the native dialog has an accessible name.
+`headless` keeps the native dialog, backdrop, placement animation, Escape / backdrop closing behavior, and scroll lock, but renders no built-in glass surface, header, close button, or footer. Your app is responsible for fully defining the styles of the default slot content and must provide `aria-dialog-label` so that the native dialog has an accessible name.
 
-When closing, the native dialog stays in the top layer, and `dialog.close()` is called after the exit transition finishes. Escape always takes this closing path; `no-backdrop-close` only controls backdrop clicks.
+Closing waits for the exit transition to finish. Escape always closes; `no-backdrop-close` only controls backdrop clicks.
 
-With `closable` enabled, the built-in close button is fixed in the top-right corner of the header (`16px` from the top and `16px` from the right by default) and never stretches into the middle of the drawer.
+With `closable` enabled, the built-in close button sits in the top-right corner of the header, `16px` from the top and `16px` from the right by default, and does not stretch with the content.
 
-The top `16px` resolves through `--wui-space-4`, so it shares its source with the drawer's header padding; the right `16px` is the offset from the button itself to the right edge of the panel, which does not equal the header's horizontal padding (`20px`), so it stays a literal value.
+The top offset uses `--wui-space-4` and defaults to `16px`, matching the header padding. The right offset is fixed at `16px` and measures the distance from the button to the panel's right edge, which differs from the header's horizontal padding (`20px`).
 
-`--wui-drawer-nested-peek-base` does not need to be declared by the consumer: its default `43.2px` is the `initialValue` used when the component registers the property with `CSS.registerProperty` (`components/drawer/index.ts`).
+`--wui-drawer-nested-peek-base` is the base distance each layer exposes when stacked: `43.2px` on desktop and `28.8px` on narrow viewports by default. Setting it on the host or any ancestor changes both at once and applies at any viewport width.
 
-The `28.8px` base for narrow viewports comes from the `@media (width <= 640px)` rule in `components/drawer/style.css`—these two places are where the built-in bases live.
+`page-shift` moves the whole page and needs no extra configuration. `position: fixed` content in the page moves with it. Other open dialogs or drawers are not affected.
 
-Setting this token on the host or any ancestor overrides both at once and applies at any viewport width.
+With several layers open, the offsets stack by opening order, and nested and sibling layers follow the same rule; closing any layer recalculates the rest.
 
-With the built-in bases, the per-layer exposed edges of a four-layer `320px` equal-width stack are `29.94px` / `17.52px` / `12.43px` on desktop and `19.96px` / `11.68px` / `8.29px` on narrow viewports, for total stack widths of `59.89px` and `39.93px`.
-
-A single layer never moves, because `ln(1)` is `0`.
+The page offset does not overwrite a `transform` your app sets on the page, and it can run at the same time as `shake()`.
 
 ### Drag to close
 
-With `draggable` enabled, an open drawer shows a gray pill-shaped drag bar on its inner edge (4×56px by default, with the visual center line 10px from the inner edge; `right` puts it on the left edge, `left` on the right edge, `top` on the bottom edge, and `bottom` on the top edge):
+With `draggable` enabled, an open drawer shows a gray pill-shaped drag bar on its inner edge. Hold the drag bar or drag the panel directly, then release. Past the distance threshold or after a quick drag the drawer closes; otherwise it returns to the open position. Dragging does not move the page, and with `page-shift` the page stays in place.
 
-The center line follows half of `--wui-drawer-content-padding`, with a floor of “half the pill thickness + a 4px gap”: when that padding is zeroed and the content fills edge to edge, the pill still keeps a visible inset, so it neither crosses the inner edge of the panel nor sticks to the panel edge.
+Left and right placements have only the drag zone; top and bottom placements can also start from an end drag edge or the whole header / footer. If a press lands on an interactive control, that control receives the press and no drag starts; custom controls need `role` or `tabindex` to be recognized. The upper part of a control that overlaps the drag bar area is covered by the drag area; adjust `--wui-drawer-drag-bar-length` and `--wui-drawer-drag-edge-size` to change it.
 
-The pill is purely visual: `pointer-events: none`, so it never receives a press itself. What is actually pressed is the hit layer.
+A backdrop click closes only on a tap: a gesture that starts on the panel or the backdrop and releases elsewhere does not close.
 
-Left / right placements have only the drag zone; top / bottom placements have three layers—the drag zone, an end drag edge along the grabbable edge (as wide as the pill, no thinner than `--wui-drawer-drag-edge-size`), and the whole header (`placement=bottom`) or footer (`placement=top`).
+With `controlled` enabled, releasing past the threshold only dispatches `open-change(false)`; the drawer waits 120ms at the closed position and returns to the open position if your app rejects it or does not write back in time.
 
-The drag edge height takes the larger of the pill's outer edge and that token, and by construction covers the band where the pill sits, so in all four placements pressing the pill starts a drag and hovering the pill highlights it.
-
-It is the drag zone itself that makes way for the header (`placement=bottom`) or footer (`placement=top`), so that section does not push the pill away from the panel edge; that section handles dragging **itself** and is not inert: a drag can start anywhere inside it, including on the title text.
-
-Making way for controls is done **per control, at the event layer**, not by geometrically cutting the hit surface.
-
-If any clickable element appears on the press path, that press is handed to the control and no drag starts. Clickable elements include:
-
-- Native `button` / `input` / `select` / `textarea` / `label` / `a[href]` / `summary`
-- Any `contenteditable`
-- An interactive semantic `role` (`button`, `checkbox`, `switch`, `tab`, `menuitem`, `option`, `slider`, and so on)
-- Any explicit `tabindex` other than `-1`
-
-If a custom-drawn control is not itself a native interactive element, it needs one of these to be recognized; adding `role` or `tabindex` is the entry point, and it is also what accessibility requires anyway.
-
-Geometric cutting was intentionally rejected: it would have to measure the position of every control, breaks as soon as a control moves, and merely relocates the A6 defect.
-
-The cost is stated plainly: the built-in close button sits against the right edge of the panel, outside the pill's span, and remains clickable; controls that fall within the pill's horizontal span are still covered by the drag surface between their top and the drag edge height.
-
-“Drag bar occupancy” comes with a corollary: controls that fall within this span and whose top edge lies within the drag edge height (`--wui-drawer-drag-edge-size`, 20px by default; the pill wins when its outer edge is thicker) are covered by the drag surface on their upper part—the drag bar is drawn right there, and a gesture must start from where the drag bar is.
-
-Raising `z-index` does not help (in Chromium the drag edge always sits above slotted content); the levers that do measure are `--wui-drawer-drag-bar-length` (which decides both the pill length and the drag edge width) and `--wui-drawer-drag-edge-size` (the drag edge thickness).
-
-- Dragging tracks the pointer in real time, and the backdrop fades proportionally.
-- A backdrop click only closes on the **tap path**: only a click whose press started on the backdrop and whose press-release displacement stays within tap magnitude closes. For a “press → drag → release” sequence, the browser puts the click on the common ancestor of the press and release points (the dialog)—when a drag starts on the panel content or the backdrop and is released over the backdrop, the click target is likewise the dialog; the component records the press point and coordinates on `pointerdown` and validates them retroactively, so releasing such a drag always springs back. Clicks with `detail` of 0 (keyboard or programmatic sources) do not consume the pointer record.
-- On release, the drawer closes if the **net displacement** since the moment it was grabbed exceeds half of its size (minimum 10px) or if it was flung quickly; otherwise it springs back to the open position. The direction adapts to placement. Every step of the decision matches Base UI's `useSwipeDismiss`:
-  - The displacement origin and the decision clock are both reset at the **first `pointermove`**, which absorbs the gap between “press → first move”; the whole displacement of that move is discarded, so a gesture needs at least two moves before any displacement can accumulate.
-  - A fling is judged by the **whole-gesture** average velocity (net displacement ÷ gesture duration, with a 50ms floor on the denominator) **reaching** 500px/s, not by the instantaneous velocity at release. A sliding window only describes the last short stretch of the trajectory; with whole-gesture average velocity, “drag out toward the edge, then sweep quickly back” does not add up to a fling. When the duration is 0 the velocity is taken as 0 rather than defaulting to 50ms, so a gesture whose duration cannot be measured is never read as a fling.
-  - A release whose net displacement does not point toward the closing direction always springs back to the open position.
-  - The distance criterion also uses net displacement: grabbing during the spring-back and releasing without further dragging is not treated as “already dragged past half”.
-  - Retracting 10px or more in the opposite direction from the “direction confirmation point” cancels the fling, so sweeping back after dragging out does not close. Displacement crossing the distance threshold again clears that flag, so “already dragged past half” is unaffected by a small retraction. Upstream has the same guard (`cancelledSwipe`), but it is never reached on the drawer path—`DrawerViewport.onRelease` always returns a decision.
-  - Dragging toward the open direction is compressed by a square root (`sign(d) · |d| ** 0.5`), matching `applyDirectionalDamping`. Damping applies to the **increment** of the current gesture and is added on top of the displacement at the moment of grabbing, so it self-limits and needs no fixed displacement cap.
-- The release velocity only decides the duration of the settling transition (180–420ms); the settling itself is a `transform` transition handed back to CSS and creates no WAAPI animation.
-- With `controlled` enabled, releasing past the threshold only dispatches `open-change(false)`; the drawer waits briefly at the closed position (a 120ms write-back window) and springs back to the open position if the consumer rejects or does not write back in time.
-- Drag-to-open is not supported—a closed drawer renders nothing outside the native dialog.
-- Under `prefers-reduced-motion`, release snaps into place immediately without playing the settling transition.
+Drag-to-open is not supported; a closed drawer has no draggable content. Under `prefers-reduced-motion`, release snaps into place immediately without the closing animation.
 
 ### CSS Custom Properties
 
-| Name                              | Description                                                                                                                                                                                                                                                                                              | Default                            |
-| --------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------- |
-| `--wui-drawer-width`              | Drawer width                                                                                                                                                                                                                                                                                             | `320px`                            |
-| `--wui-drawer-height`             | Drawer height (top / bottom)                                                                                                                                                                                                                                                                             | `300px`                            |
-| `--wui-drawer-bg`                 | Drawer background color                                                                                                                                                                                                                                                                                  | `var(--wui-color-surface-overlay)` |
-| `--wui-drawer-radius`             | Floating card radius (non-headless)                                                                                                                                                                                                                                                                      | `var(--wui-radius-overlay, 28px)`  |
-| `--wui-drawer-inset`              | Floating card viewport inset (non-headless); set to `0` for edge-to-edge geometry                                                                                                                                                                                                                        | `8px`                              |
-| `--wui-drawer-nested-peek-base`   | Exposed-edge base `A` for nested stacking (`28.8px` when `width <= 640px`); the total stack width grows as `A · ln(n)`, so a single layer never moves and each additional layer adds a smaller exposed edge. Set to `0` to disable the exposed edge. See the notes above                                 | `43.2px`                           |
-| `--wui-drawer-overlay-bg`         | Backdrop background color                                                                                                                                                                                                                                                                                | `rgb(0 0 0 / 0.12)`                |
-| `--wui-drawer-drag-zone-size`     | Thickness of the drag zone that hit-tests drag-to-close (draggable)                                                                                                                                                                                                                                      | `20px`                             |
-| `--wui-drawer-drag-zone-inset`    | Gap between the drag zone and the section it makes way for (the header when `placement=bottom` / the footer when `placement=top`); 0 when that section does not exist                                                                                                                                    | `var(--wui-space-1, 4px)`          |
-| `--wui-drawer-drag-bar-thickness` | Drag bar pill thickness (short axis)                                                                                                                                                                                                                                                                     | `4px`                              |
-| `--wui-drawer-drag-bar-length`    | Drag bar pill length (along the drawer edge)                                                                                                                                                                                                                                                             | `56px`                             |
-| `--wui-drawer-drag-edge-size`     | Thickness of the pill's hit band along the grabbable edge (top / bottom placements only). It falls back to the pill's outer edge, so the band where the pill sits is always covered; the default matches `--wui-drawer-drag-zone-size`, so the drag bar is never harder to press than the band beside it | `20px`                             |
-| `--wui-drawer-header-padding`     | Header area padding                                                                                                                                                                                                                                                                                      | `16px 20px`                        |
-| `--wui-drawer-close-top`          | Offset of the built-in close button from the top of the header                                                                                                                                                                                                                                           | `16px`                             |
-| `--wui-drawer-close-right`        | Offset of the built-in close button from the right edge of the drawer                                                                                                                                                                                                                                    | `16px`                             |
-| `--wui-drawer-content-padding`    | Content area padding; also drives the drag bar's visual center line (half the value, no less than half the pill thickness + 4px)                                                                                                                                                                         | `20px`                             |
-| `--wui-drawer-footer-padding`     | Footer area padding                                                                                                                                                                                                                                                                                      | `16px 20px`                        |
+| Name                              | Description                                                                                                                                                                                                                                                                      | Default                                             |
+| --------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------- |
+| `--wui-drawer-width`              | Drawer width                                                                                                                                                                                                                                                                     | `320px`                                             |
+| `--wui-drawer-height`             | Drawer height (top / bottom)                                                                                                                                                                                                                                                     | `300px`                                             |
+| `--wui-drawer-bg`                 | Drawer background color                                                                                                                                                                                                                                                          | `var(--wui-color-surface-overlay)`                  |
+| `--wui-drawer-radius`             | Floating card radius (non-headless)                                                                                                                                                                                                                                              | `var(--wui-radius-overlay, 28px)`                   |
+| `--wui-drawer-inset`              | Floating card viewport inset (non-headless); set to `0` for edge-to-edge geometry                                                                                                                                                                                                | `8px`                                               |
+| `--wui-drawer-nested-peek-base`   | Exposed-edge base `A` for nested stacking (`28.8px` when `width <= 640px`); the total stack width grows as `A · ln(n)`, so a single layer never moves and each additional layer adds a smaller exposed edge. Set to `0` to disable the exposed edge. See the notes above         | `43.2px`                                            |
+| `--wui-drawer-overlay-bg`         | Backdrop background color, taken from `--wui-color-backdrop`                                                                                                                                                                                                                     | `rgb(0 0 0 / 0.12)` light, `rgb(0 0 0 / 0.48)` dark |
+| `--wui-drawer-drag-zone-size`     | Thickness of the drag zone that hit-tests drag-to-close (draggable)                                                                                                                                                                                                              | `20px`                                              |
+| `--wui-drawer-drag-zone-inset`    | Gap between the drag zone and the section it makes way for (the header when `placement=bottom` / the footer when `placement=top`); 0 when that section does not exist                                                                                                            | `var(--wui-space-1, 4px)`                           |
+| `--wui-drawer-drag-bar-thickness` | Drag bar pill thickness (short axis)                                                                                                                                                                                                                                             | `4px`                                               |
+| `--wui-drawer-drag-bar-length`    | Drag bar pill length (along the drawer edge)                                                                                                                                                                                                                                     | `56px`                                              |
+| `--wui-drawer-drag-edge-size`     | Thickness of the grabbable edge (top and bottom placements only). The hit area includes the pill's outer edge, so the drag area always covers the pill; the default matches `--wui-drawer-drag-zone-size`, so the drag bar is never harder to press than the drag area beside it | `20px`                                              |
+| `--wui-drawer-header-padding`     | Header area padding                                                                                                                                                                                                                                                              | `16px 20px`                                         |
+| `--wui-drawer-close-top`          | Offset of the built-in close button from the top of the header                                                                                                                                                                                                                   | `16px`                                              |
+| `--wui-drawer-close-right`        | Offset of the built-in close button from the right edge of the drawer                                                                                                                                                                                                            | `16px`                                              |
+| `--wui-drawer-content-padding`    | Content area padding; also drives the drag bar's visual center line (half the value, no less than half the pill thickness + 4px)                                                                                                                                                 | `20px`                                              |
+| `--wui-drawer-footer-padding`     | Footer area padding                                                                                                                                                                                                                                                              | `16px 20px`                                         |

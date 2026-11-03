@@ -1,6 +1,8 @@
 import '..'
+import '@/components/button'
 
 import { afterEach, describe, expect, it } from 'vite-plus/test'
+import { userEvent } from 'vite-plus/test/browser'
 
 import { getPortalPanel, getPortalPanels, pollUntil, waitForFrame } from '@/shared/test-utils'
 
@@ -253,5 +255,49 @@ describe('WebUiPopover 组件（浏览器）', () => {
     await parent.updateComplete
 
     expect(parent.open).toBe(true)
+  })
+
+  // focus 集合的开启判据是 `:focus-visible`，只有真实焦点链能给出，因此这组留在浏览器侧。
+  describe('触发方式：focus', () => {
+    function createFocusPopover(contentHtml = '<div>Content</div>'): WebUiPopover {
+      const popover = createPopover(`<web-ui-button slot="trigger">Trigger</web-ui-button>${contentHtml}`)
+      popover.trigger = 'focus'
+      return popover
+    }
+
+    it('Tab 聚焦 trigger 打开，焦点离开后关闭', async () => {
+      const popover = createFocusPopover()
+      await popover.updateComplete
+
+      await userEvent.keyboard('{Tab}')
+      await pollUntil(() => popover.open, 'Tab 聚焦 trigger 后未打开')
+
+      await userEvent.keyboard('{Tab}')
+      await popover.updateComplete
+      await waitForFrame()
+      await popover.updateComplete
+
+      expect(popover.open).toBe(false)
+    })
+
+    it('焦点在 panel 内按 Escape 关闭后保持关闭', async () => {
+      const popover = createFocusPopover('<button>Inside</button>')
+      await popover.updateComplete
+
+      await userEvent.keyboard('{Tab}')
+      await pollUntil(() => popover.open, 'Tab 聚焦 trigger 后未打开')
+      await userEvent.keyboard('{Tab}')
+      await popover.updateComplete
+      expect(popover.open, '焦点移到 panel 内不应收起').toBe(true)
+
+      await userEvent.keyboard('{Escape}')
+      await pollUntil(() => !popover.open, 'Escape 未关闭 focus 集合的 popover')
+      await waitForFrame()
+      await popover.updateComplete
+      await waitForFrame()
+      await popover.updateComplete
+
+      expect(popover.open).toBe(false)
+    })
   })
 })

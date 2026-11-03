@@ -1,12 +1,12 @@
 # Progress
 
-progress / 进度指示：用一条线性轨道表达已完成比例，也支持不暴露具体数值的 indeterminate 状态。
+progress / 进度指示：用一条线性轨道表示已完成比例，也支持不暴露具体数值的 indeterminate 状态。
 
 ## Samples
 
 ### Basic
 
-`value` 默认落在 `0..100`，写入超过上限的数值会收敛到 `max`。宿主始终带 `role="progressbar"`；示例用 `aria-label` 给每条进度一个可访问名称。
+`value` 的取值范围是 `0..max`，超过上限的值会收敛到 `max`。宿主始终带 `role="progressbar"`，用 `aria-label` 给它可访问名称。
 
 ```tsx
 export default function Demo() {
@@ -32,7 +32,7 @@ export default function Demo() {
 
 ### Custom range
 
-`max` 可以不是 100，适合「已选 12 / 共 40」这类业务计数；`show-value` 把当前百分比显示在轨道右侧。屏幕阅读器读的是 `aria-valuenow` / `aria-valuemax`，不会重复读可见百分比。
+`max` 可以不是 100，适合「已选 12 / 共 40」这类业务计数。`show-value` 把四舍五入后的百分比显示在轨道右侧。屏幕阅读器读取的是 `aria-valuenow` / `aria-valuemax`，不会重复读可见的百分比。
 
 ```tsx
 export default function Demo() {
@@ -56,7 +56,7 @@ export default function Demo() {
 
 ### Indeterminate
 
-`indeterminate` 用于操作已经开始、但还无法计算百分比的状态。此时组件移除 `aria-valuenow`，仍保留进度条的名称与上限；主题的 reduced-motion 档位会放慢循环动画，而不是把它完全停掉。
+`indeterminate` 用于操作已经开始、但还无法计算百分比的状态。此时组件移除 `aria-valuenow`，仍保留进度条的名称和上限。主题的减少动效设置会放慢循环动画，不会完全停掉。
 
 ```tsx
 export default function Demo() {
@@ -80,7 +80,7 @@ export default function Demo() {
 
 ### Styling
 
-轨道高度、圆角、轨道色与完成色都走 CSS Custom Properties；把变量写在宿主或任意祖先上即可覆盖。宿主默认 `display: block; width: 100%`，外层容器负责限制最大宽度。
+轨道高度、圆角、轨道色和完成色都由 CSS Custom Properties 控制。把变量写在宿主或任意祖先上即可覆盖。宿主默认 `display: block; width: 100%`，由外层容器限制最大宽度。
 
 ```tsx
 export default function Demo() {
@@ -147,4 +147,4 @@ export default function Demo() {
 
 ### Accessibility
 
-宿主承担 `progressbar` 语义，并维护 `aria-valuemin`、`aria-valuemax` 与确定态的 `aria-valuenow`。未提供 `aria-label` 或 `aria-labelledby` 时，名称为内置英文 `Progress`；消费方应优先传入与业务含义一致的可访问名称。
+宿主承担 `progressbar` 语义，并维护 `aria-valuemin`、`aria-valuemax` 与确定态的 `aria-valuenow`。未提供 `aria-label` 或 `aria-labelledby` 时，名称为内置英文 `Progress`。调用方应优先传入与业务含义一致的可访问名称。

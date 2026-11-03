@@ -24,6 +24,7 @@ import { Route as ComponentsDrawerRouteImport } from './routes/components/drawer
 import { Route as ComponentsDropdownRouteImport } from './routes/components/dropdown'
 import { Route as ComponentsEditableTextRouteImport } from './routes/components/editable-text'
 import { Route as ComponentsEmptyRouteImport } from './routes/components/empty'
+import { Route as ComponentsGroupedTextRouteImport } from './routes/components/grouped-text'
 import { Route as ComponentsIconRouteImport } from './routes/components/icon'
 import { Route as ComponentsImagePreviewRouteImport } from './routes/components/image-preview'
 import { Route as ComponentsInputRouteImport } from './routes/components/input'
@@ -35,6 +36,7 @@ import { Route as ComponentsProgressRouteImport } from './routes/components/prog
 import { Route as ComponentsRadioRouteImport } from './routes/components/radio'
 import { Route as ComponentsSegmentedRouteImport } from './routes/components/segmented'
 import { Route as ComponentsSelectRouteImport } from './routes/components/select'
+import { Route as ComponentsShakeRouteImport } from './routes/components/shake'
 import { Route as ComponentsSliderRouteImport } from './routes/components/slider'
 import { Route as ComponentsSpinnerRouteImport } from './routes/components/spinner'
 import { Route as ComponentsSvgDrawLinesRouteImport } from './routes/components/svg-draw-lines'
@@ -120,6 +122,11 @@ const ComponentsEmptyRoute = ComponentsEmptyRouteImport.update({
   path: '/components/empty',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ComponentsGroupedTextRoute = ComponentsGroupedTextRouteImport.update({
+  id: '/components/grouped-text',
+  path: '/components/grouped-text',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ComponentsIconRoute = ComponentsIconRouteImport.update({
   id: '/components/icon',
   path: '/components/icon',
@@ -174,6 +181,11 @@ const ComponentsSegmentedRoute = ComponentsSegmentedRouteImport.update({
 const ComponentsSelectRoute = ComponentsSelectRouteImport.update({
   id: '/components/select',
   path: '/components/select',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ComponentsShakeRoute = ComponentsShakeRouteImport.update({
+  id: '/components/shake',
+  path: '/components/shake',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ComponentsSliderRoute = ComponentsSliderRouteImport.update({
@@ -238,6 +250,7 @@ export interface FileRoutesByFullPath {
   '/components/dropdown': typeof ComponentsDropdownRoute
   '/components/editable-text': typeof ComponentsEditableTextRoute
   '/components/empty': typeof ComponentsEmptyRoute
+  '/components/grouped-text': typeof ComponentsGroupedTextRoute
   '/components/icon': typeof ComponentsIconRoute
   '/components/image-preview': typeof ComponentsImagePreviewRoute
   '/components/input': typeof ComponentsInputRoute
@@ -249,6 +262,7 @@ export interface FileRoutesByFullPath {
   '/components/radio': typeof ComponentsRadioRoute
   '/components/segmented': typeof ComponentsSegmentedRoute
   '/components/select': typeof ComponentsSelectRoute
+  '/components/shake': typeof ComponentsShakeRoute
   '/components/slider': typeof ComponentsSliderRoute
   '/components/spinner': typeof ComponentsSpinnerRoute
   '/components/svg-draw-lines': typeof ComponentsSvgDrawLinesRoute
@@ -275,6 +289,7 @@ export interface FileRoutesByTo {
   '/components/dropdown': typeof ComponentsDropdownRoute
   '/components/editable-text': typeof ComponentsEditableTextRoute
   '/components/empty': typeof ComponentsEmptyRoute
+  '/components/grouped-text': typeof ComponentsGroupedTextRoute
   '/components/icon': typeof ComponentsIconRoute
   '/components/image-preview': typeof ComponentsImagePreviewRoute
   '/components/input': typeof ComponentsInputRoute
@@ -286,6 +301,7 @@ export interface FileRoutesByTo {
   '/components/radio': typeof ComponentsRadioRoute
   '/components/segmented': typeof ComponentsSegmentedRoute
   '/components/select': typeof ComponentsSelectRoute
+  '/components/shake': typeof ComponentsShakeRoute
   '/components/slider': typeof ComponentsSliderRoute
   '/components/spinner': typeof ComponentsSpinnerRoute
   '/components/svg-draw-lines': typeof ComponentsSvgDrawLinesRoute
@@ -313,6 +329,7 @@ export interface FileRoutesById {
   '/components/dropdown': typeof ComponentsDropdownRoute
   '/components/editable-text': typeof ComponentsEditableTextRoute
   '/components/empty': typeof ComponentsEmptyRoute
+  '/components/grouped-text': typeof ComponentsGroupedTextRoute
   '/components/icon': typeof ComponentsIconRoute
   '/components/image-preview': typeof ComponentsImagePreviewRoute
   '/components/input': typeof ComponentsInputRoute
@@ -324,6 +341,7 @@ export interface FileRoutesById {
   '/components/radio': typeof ComponentsRadioRoute
   '/components/segmented': typeof ComponentsSegmentedRoute
   '/components/select': typeof ComponentsSelectRoute
+  '/components/shake': typeof ComponentsShakeRoute
   '/components/slider': typeof ComponentsSliderRoute
   '/components/spinner': typeof ComponentsSpinnerRoute
   '/components/svg-draw-lines': typeof ComponentsSvgDrawLinesRoute
@@ -352,6 +370,7 @@ export interface FileRouteTypes {
     | '/components/dropdown'
     | '/components/editable-text'
     | '/components/empty'
+    | '/components/grouped-text'
     | '/components/icon'
     | '/components/image-preview'
     | '/components/input'
@@ -363,6 +382,7 @@ export interface FileRouteTypes {
     | '/components/radio'
     | '/components/segmented'
     | '/components/select'
+    | '/components/shake'
     | '/components/slider'
     | '/components/spinner'
     | '/components/svg-draw-lines'
@@ -389,6 +409,7 @@ export interface FileRouteTypes {
     | '/components/dropdown'
     | '/components/editable-text'
     | '/components/empty'
+    | '/components/grouped-text'
     | '/components/icon'
     | '/components/image-preview'
     | '/components/input'
@@ -400,6 +421,7 @@ export interface FileRouteTypes {
     | '/components/radio'
     | '/components/segmented'
     | '/components/select'
+    | '/components/shake'
     | '/components/slider'
     | '/components/spinner'
     | '/components/svg-draw-lines'
@@ -426,6 +448,7 @@ export interface FileRouteTypes {
     | '/components/dropdown'
     | '/components/editable-text'
     | '/components/empty'
+    | '/components/grouped-text'
     | '/components/icon'
     | '/components/image-preview'
     | '/components/input'
@@ -437,6 +460,7 @@ export interface FileRouteTypes {
     | '/components/radio'
     | '/components/segmented'
     | '/components/select'
+    | '/components/shake'
     | '/components/slider'
     | '/components/spinner'
     | '/components/svg-draw-lines'
@@ -464,6 +488,7 @@ export interface RootRouteChildren {
   ComponentsDropdownRoute: typeof ComponentsDropdownRoute
   ComponentsEditableTextRoute: typeof ComponentsEditableTextRoute
   ComponentsEmptyRoute: typeof ComponentsEmptyRoute
+  ComponentsGroupedTextRoute: typeof ComponentsGroupedTextRoute
   ComponentsIconRoute: typeof ComponentsIconRoute
   ComponentsImagePreviewRoute: typeof ComponentsImagePreviewRoute
   ComponentsInputRoute: typeof ComponentsInputRoute
@@ -475,6 +500,7 @@ export interface RootRouteChildren {
   ComponentsRadioRoute: typeof ComponentsRadioRoute
   ComponentsSegmentedRoute: typeof ComponentsSegmentedRoute
   ComponentsSelectRoute: typeof ComponentsSelectRoute
+  ComponentsShakeRoute: typeof ComponentsShakeRoute
   ComponentsSliderRoute: typeof ComponentsSliderRoute
   ComponentsSpinnerRoute: typeof ComponentsSpinnerRoute
   ComponentsSvgDrawLinesRoute: typeof ComponentsSvgDrawLinesRoute
@@ -593,6 +619,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ComponentsEmptyRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/components/grouped-text': {
+      id: '/components/grouped-text'
+      path: '/components/grouped-text'
+      fullPath: '/components/grouped-text'
+      preLoaderRoute: typeof ComponentsGroupedTextRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/components/icon': {
       id: '/components/icon'
       path: '/components/icon'
@@ -668,6 +701,13 @@ declare module '@tanstack/react-router' {
       path: '/components/select'
       fullPath: '/components/select'
       preLoaderRoute: typeof ComponentsSelectRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/components/shake': {
+      id: '/components/shake'
+      path: '/components/shake'
+      fullPath: '/components/shake'
+      preLoaderRoute: typeof ComponentsShakeRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/components/slider': {
@@ -752,6 +792,7 @@ const rootRouteChildren: RootRouteChildren = {
   ComponentsDropdownRoute: ComponentsDropdownRoute,
   ComponentsEditableTextRoute: ComponentsEditableTextRoute,
   ComponentsEmptyRoute: ComponentsEmptyRoute,
+  ComponentsGroupedTextRoute: ComponentsGroupedTextRoute,
   ComponentsIconRoute: ComponentsIconRoute,
   ComponentsImagePreviewRoute: ComponentsImagePreviewRoute,
   ComponentsInputRoute: ComponentsInputRoute,
@@ -763,6 +804,7 @@ const rootRouteChildren: RootRouteChildren = {
   ComponentsRadioRoute: ComponentsRadioRoute,
   ComponentsSegmentedRoute: ComponentsSegmentedRoute,
   ComponentsSelectRoute: ComponentsSelectRoute,
+  ComponentsShakeRoute: ComponentsShakeRoute,
   ComponentsSliderRoute: ComponentsSliderRoute,
   ComponentsSpinnerRoute: ComponentsSpinnerRoute,
   ComponentsSvgDrawLinesRoute: ComponentsSvgDrawLinesRoute,

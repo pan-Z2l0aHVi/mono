@@ -1,12 +1,12 @@
 # Slider
 
-范围 slider，支持刻度标记与垂直方向；拖拽走 pointer capture，键盘支持方向键、Home / End 与 PageUp / PageDown。每个实例都应通过 `aria-label` 或 `aria-labelledby` 提供可区分的名称。
+范围 slider，支持刻度标记和垂直方向。键盘支持方向键、Home / End 与 PageUp / PageDown。每个实例都应通过 `aria-label` 或 `aria-labelledby` 提供可区分的名称。
 
 ## Samples
 
 ### Basic
 
-不写属性时范围是 `0`–`100`、步进 `1`；`min` / `max` / `step` 约束取值范围与步进幅度，`disabled` 让 track 与 thumb 退出交互。
+不写属性时，范围是 `0` 到 `100`，步进为 `1`。`min` / `max` / `step` 约束取值范围和步进幅度。`disabled` 让 track 与 thumb 不再响应交互。
 
 ```tsx
 export default function Demo() {
@@ -32,7 +32,7 @@ export default function Demo() {
 
 ### Tick marks
 
-`marks` 沿 track 画出刻度点，刻度间距取 `step`，所以刻度密度由步进决定；刻度最多画 100 段，`step` 相对 `min`–`max` 太密时只画前 100 段，不铺满 track。
+`marks` 沿 track 画出刻度点，间距取自 `step`。最多画 100 段；`step` 相对 `min` 到 `max` 太密时，只画前 100 段。
 
 ```tsx
 export default function Demo() {
@@ -56,7 +56,7 @@ export default function Demo() {
 
 ### Vertical orientation
 
-`vertical` 让 track 竖起来，数值由下往上增长；`aria-orientation` 随之变成 `vertical`，方向键仍用上下键调节。
+`vertical` 让 track 竖直，数值由下往上增长。`aria-orientation` 随之变为 `vertical`，调节改用上下方向键。
 
 ```tsx
 import { useState } from 'react'
@@ -130,7 +130,7 @@ const volume = ref(30)
 
 ### input and change
 
-拖拽过程中 `input` 连续触发，松手时只在数值真的变过之后派发一次 `change`；键盘每按一次调节键，值变了就先 `input` 再 `change`。点击 track 的空白处也算一次取值变更。
+拖拽过程中 `input` 连续触发。松手时，如果数值确实变过，组件派发一次 `change`。用键盘时，每按一次调节键且值发生变化，都会先派发 `input`，再派发 `change`。点击 track 的空白处也算一次取值变更。
 
 ```tsx
 import { useState } from 'react'
@@ -188,7 +188,7 @@ const changeValue = ref(40)
 
 ### Form value
 
-`name` 让当前值以该字段名进入 `FormData`；组件通过 ElementInternals 接入宿主 `<form>`，所以 `form.reset()` 会把值退回初始值。
+`name` 让当前值以该字段名进入 `FormData`。`form.reset()` 会把值退回初始值。
 
 ```tsx
 import { useRef, useState } from 'react'
@@ -258,7 +258,7 @@ function reset() {
 
 ### CSS variables
 
-`--wui-slider-width` / `--wui-slider-vertical-height` 决定 host 的轴长，`--wui-slider-track-size` 是 track 厚度，thumb 的厚度与按压态长边各走一个变量。
+`--wui-slider-width` / `--wui-slider-vertical-height` 决定宿主的轴长，`--wui-slider-track-size` 是 track 厚度。thumb 的厚度和按压态的长边各由一个变量控制。
 
 ```tsx
 export default function Demo() {
@@ -352,13 +352,9 @@ export default function Demo() {
 
 支持 ArrowLeft/Right/Up/Down、Home/End、PageUp/PageDown 键盘导航。
 
-使用 pointer capture 处理鼠标、触控笔和触摸交互；组件 host 与触控 track 均声明 `touch-action: none`，拖拽激活期间同时阻止 `touchmove` 默认滚动，避免 iOS Safari 在横/纵拖拽过程中接管手势。
+组件用 pointer capture 处理鼠标、触控笔和触摸交互。宿主和接收触摸的 track 都声明 `touch-action: none`；拖拽激活期间还会阻止 `touchmove` 的默认滚动，避免 iOS Safari 在横向或纵向拖拽中接管手势。
 
-thumb 静止态是正圆，直径取厚度 `--wui-slider-thumb-thickness`；按压或拖拽时沿 track 方向展开成胶囊，厚度不变、长边取 `--wui-slider-thumb-length`。
-
-横向 slider 的 thumb 展开为宽度方向，纵向 slider 的 thumb 展开为高度方向，与 switch thumb 同一套配方。
-
-形状切换带 `--wui-duration-press` 过渡。
+thumb 静止时是正圆，直径取自 `--wui-slider-thumb-thickness`。按压或拖拽时，它沿 track 方向展开成胶囊，厚度不变，长边取自 `--wui-slider-thumb-length`。横向 slider 沿宽度方向展开，纵向 slider 沿高度方向展开。
 
 ### CSS Custom Properties
 

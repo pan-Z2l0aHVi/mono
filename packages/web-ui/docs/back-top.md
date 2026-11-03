@@ -1,10 +1,10 @@
 # Back Top
 
-A back-to-top button (`web-ui-back-top`): it appears in the corner once the scroll position reaches `threshold`, and clicking it or pressing Enter / Space returns to the top.
+A back-to-top button (`web-ui-back-top`) appears in the corner once the scroll position reaches `threshold`. Click it, or press Enter / Space, to return to the top.
 
-By default it scrolls smoothly to the top; when the theme is set to `motion="reduced"`, or to `motion="system"` with a system preference for reduced motion, clicking or pressing Enter jumps to the top immediately.
+By default it scrolls smoothly to the top. When the theme is set to `motion="reduced"`, or to `motion="system"` with a system preference for reduced motion, clicking or pressing Enter jumps to the top immediately.
 
-By default it follows page scrolling; after pointing `scrollTarget` at a scroll container, it appears only with that container's scrolling and rests in the container's bottom corner.
+By default it follows page scrolling. After pointing `scrollTarget` at a scroll container, it appears only with that container's scrolling and rests in the container's bottom corner.
 
 ## Samples
 
@@ -12,9 +12,9 @@ By default it follows page scrolling; after pointing `scrollTarget` at a scroll 
 
 `scrollTarget` is an element property rather than an attribute, so it can only be assigned after mount: take a `ref` to the container and to `<web-ui-back-top>`, then hand the container over inside `useEffect` / `onMounted`.
 
-After the assignment the component rebinds its `scroll` listener to that container and switches to container mode—the host becomes `position: sticky` and rests at the container's bottom; the button appears only once the container scrolls past `threshold`, and a click returns the container to its top.
+After the assignment the button floats at the container's bottom via `position: sticky`, appears only once the container scrolls past `threshold`, and a click returns the container to its top.
 
-The element must therefore live inside the scroll container, and the container itself needs overflowing content to scroll; all three samples use the native `overflow-auto`.
+The element must therefore live inside the scroll container, and the container itself needs overflowing content to scroll.
 
 ```tsx
 import type { WebUiBackTop } from '@greypan/web-ui'
@@ -66,9 +66,9 @@ onMounted(() => {
 
 ### Custom content
 
-The default slot replaces the whole visual content of the button, while the component still provides the interaction semantics: the inner wrapper is `role="button"` with `tabindex="0"`, and pointer clicks, Enter, and Space all call `toTop()`.
+The default slot replaces the whole visual content of the button; clicks, Enter, and Space all call `toTop()`, and the role stays `button`.
 
-The default content is an up-arrow icon wrapped in `web-ui-button`; swapping in a primary button leaves the appearance timing, the threshold, and the scroll behavior unchanged.
+The default content is an up-arrow icon inside a `web-ui-button`.
 
 The button's accessible name comes from the slot content by default; the default icon content falls back to the built-in English copy (`Back to top`), independent of the document `lang`. Set `aria-label` on the host to specify a name; when set, it should include the visible label text. When the custom content itself has no accessible name, the host `aria-label` should be set as well.
 
@@ -129,8 +129,6 @@ onMounted(() => {
 `scroll-behavior="auto"` does not request smooth scrolling, so a click jumps straight to the top.
 
 When the theme requires reduced motion, a click or Enter arrives instantly even if the attribute is the default `smooth` or the scroll container's CSS specifies `scroll-behavior: smooth`.
-
-The two differ only in how they scroll: the visibility check, the threshold, and the slot are all unaffected.
 
 ```tsx
 import type { WebUiBackTop } from '@greypan/web-ui'
@@ -206,9 +204,9 @@ onMounted(() => {
 
 ### Positioning
 
-When `scrollTarget` is `window` the button is fixed in a viewport corner, with the offsets in the four directions controlled by `--wui-back-top-top/right/bottom/left`; when it is an `HTMLElement` the element must be placed inside the container, the button floats in the container's bottom corner via `position: sticky`, the horizontal offsets use `--wui-back-top-left/right`, the vertical offset uses `--wui-back-top-bottom`, and `--wui-back-top-top` takes no part in container positioning.
+When `scrollTarget` is `window` the button is fixed in a viewport corner, with the offsets in the four directions controlled by `--wui-back-top-top/right/bottom/left`. When it is an `HTMLElement` the element must be placed inside the container, and the button floats in the container's bottom corner via `position: sticky`. The horizontal offsets use `--wui-back-top-left/right`, the vertical offset uses `--wui-back-top-bottom`, and `--wui-back-top-top` takes no part in container positioning.
 
-Role: `button`, with the default content accessible name falling back to the built-in English `Back to top`; with custom content the name comes from the slot, and the host `aria-label` can specify it explicitly. Both keyboard Enter and Space trigger back top.
+The role is `button`. The accessible name of the default content falls back to the built-in English `Back to top`. With custom content the name comes from the slot, and the host `aria-label` can specify it explicitly. Both keyboard Enter and Space trigger back top.
 
 ### CSS Custom Properties
 

@@ -46,9 +46,8 @@ afterEach(() => {
 
 describe('WebUiPopover 组件', () => {
   describe('属性：trigger', () => {
-    // trigger 决定「哪些用户手势能 toggle panel」，取值回退在下面的三条触发方式分组里
-    // 由行为本身覆盖（hover 分组全部用 trigger=hover 驱动）。这里只钉「字面量
-    // 被原样接受」——非法值回退与 placement 走同一条 normalizeLiteral 路径。
+    // trigger 是空格分隔的手势集合：取值规范化走共享的 normalizeTriggerSet，
+    // 各手势的实际接线由下面的触发方式分组按行为覆盖。
     it('设置为 hover', async () => {
       const el = createPopover('Btn', 'Content', { trigger: 'hover' })
       await waitForUpdate(el)
@@ -72,6 +71,33 @@ describe('WebUiPopover 组件', () => {
       await waitForUpdate(el)
 
       expect(el.trigger).toBe('click')
+
+      cleanupElement(el)
+    })
+
+    // 空格分隔的集合：每种手势独立接线，组合不是「只认第一种」。
+    it('空格分隔的集合成立', async () => {
+      const el = createPopover('Btn', 'Content', { trigger: 'hover focus' })
+      await waitForUpdate(el)
+
+      expect(el.trigger).toBe('hover focus')
+
+      cleanupElement(el)
+    })
+
+    it('数组从 property 通道读回规范串', () => {
+      const el = createPopover('Btn', 'Content')
+      el.trigger = ['hover', 'click']
+
+      expect(el.trigger).toBe('click hover')
+
+      cleanupElement(el)
+    })
+
+    it('manual 覆盖其余手势', () => {
+      const el = createPopover('Btn', 'Content', { trigger: 'hover manual' })
+
+      expect(el.trigger).toBe('manual')
 
       cleanupElement(el)
     })
@@ -365,6 +391,36 @@ describe('WebUiPopover 组件', () => {
       cleanupElement(el)
     })
 
+    // Escape 的归属由 overlay 仲裁决定，不看 trigger：只有 manual 会把它接住。
+    it('hover 集合下 Escape 关闭', async () => {
+      const el = createPopover('Btn', 'Content', { trigger: 'hover' })
+      await waitForUpdate(el)
+
+      el.dispatchEvent(new PointerEvent('pointerenter'))
+      vi.advanceTimersByTime(100)
+      await el.updateComplete
+      vi.advanceTimersToNextFrame()
+      await waitForUpdate(el)
+      expect(el.isOpen).toBe(true)
+
+      document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }))
+      await waitForUpdate(el)
+      expect(el.isOpen).toBe(false)
+
+      cleanupElement(el)
+    })
+
+    it('hover 集合下点击 trigger 不切换', async () => {
+      const el = createPopover('Btn', 'Content', { trigger: 'hover' })
+      await waitForUpdate(el)
+
+      clickTrigger(el)
+      await waitForUpdate(el)
+      expect(el.isOpen).toBe(false)
+
+      cleanupElement(el)
+    })
+
     it('disabled 时不响应 hover', async () => {
       const el = createPopover('Btn', 'Content', { trigger: 'hover', disabled: '' })
       await waitForUpdate(el)
@@ -373,6 +429,105 @@ describe('WebUiPopover 组件', () => {
       vi.advanceTimersByTime(100)
       await waitForUpdate(el)
       expect(el.isOpen).toBe(false)
+
+      cleanupElement(el)
+    })
+  })
+
+  describe('触发方式：click hover 组合', () => {
+    it('悬停与点击各自都能打开', async () => {
+      const el = createPopover('Btn', 'Content', { trigger: 'click hover' })
+      await waitForUpdate(el)
+
+      el.dispatchEvent(new PointerEvent('pointerenter'))
+      vi.advanceTimersByTime(100)
+      await waitForUpdate(el)
+      expect(el.isOpen).toBe(true)
+
+      clickTrigger(el)
+      await waitForUpdate(el)
+      expect(el.isOpen).toBe(false)
+
+      clickTrigger(el)
+      await el.updateComplete
+      vi.advanceTimersToNextFrame()
+      await waitForUpdate(el)
+      expect(el.isOpen).toBe(true)
+
+      cleanupElement(el)
+    })
+
+    it('悬停打开后点击 panel 外关闭', async () => {
+      const el = createPopover('Btn', 'Content', { trigger: 'click hover' })
+      await waitForUpdate(el)
+
+      el.dispatchEvent(new PointerEvent('pointerenter'))
+      vi.advanceTimersByTime(100)
+      await waitForUpdate(el)
+      expect(el.isOpen).toBe(true)
+
+      document.body.click()
+      await waitForUpdate(el)
+      expect(el.isOpen).toBe(false)
+
+      cleanupElement(el)
+    })
+  })
+
+  describe('触发方式：focus', () => {
+    // focusin 打开由 `:focus-visible` 决定，需要真实引擎，见同目录 popover.browser.spec.ts。
+    // 这里钉 focus 集合独有的两条：不接管点击、随失焦收起。
+    it('focus 集合下点击 trigger 不切换', async () => {
+      const el = createPopover('Btn', 'Content', { trigger: 'focus' })
+      await waitForUpdate(el)
+
+      clickTrigger(el)
+      await waitForUpdate(el)
+      expect(el.isOpen).toBe(false)
+
+      el.open = true
+      await el.updateComplete
+      vi.advanceTimersToNextFrame()
+      await waitForUpdate(el)
+      document.body.click()
+      await waitForUpdate(el)
+      expect(el.isOpen).toBe(true)
+
+      cleanupElement(el)
+    })
+
+    it('focus 集合下失焦关闭', async () => {
+      const el = createPopover('Btn', 'Content', { trigger: 'focus' })
+      await waitForUpdate(el)
+
+      el.open = true
+      await el.updateComplete
+      vi.advanceTimersToNextFrame()
+      await waitForUpdate(el)
+
+      el.dispatchEvent(new FocusEvent('focusout', { bubbles: true }))
+      vi.advanceTimersToNextFrame()
+      await waitForUpdate(el)
+
+      expect(el.isOpen).toBe(false)
+
+      cleanupElement(el)
+    })
+
+    it('hover 集合下失焦不关闭', async () => {
+      const el = createPopover('Btn', 'Content', { trigger: 'hover' })
+      await waitForUpdate(el)
+
+      el.open = true
+      await el.updateComplete
+      vi.advanceTimersToNextFrame()
+      await waitForUpdate(el)
+
+      el.dispatchEvent(new FocusEvent('focusout', { bubbles: true }))
+      vi.advanceTimersToNextFrame()
+      await waitForUpdate(el)
+
+      expect(el.isOpen).toBe(true)
 
       cleanupElement(el)
     })

@@ -1,14 +1,14 @@
 # Segmented Trigger
 
-A segment button of `<web-ui-segmented>`: `value` is the segment value it represents, the selected state is written back by the parent segmented through `checked`, and form submission belongs to the parent.
+A segment button inside `<web-ui-segmented>`. `value` is the segment value it represents; the parent segmented writes the selected state back through `checked`; form submission is the parent's job.
 
-A click or Enter / Space dispatches `change`—inside a group the event does not bubble, and the parent dispatches one group-level event instead; only outside a group does it bubble and cross the shadow boundary.
+A click or Enter / Space dispatches `change`. Inside a group the event does not bubble; the parent dispatches one group-level event instead. Outside a group it bubbles and crosses the component boundary.
 
 ## Samples
 
 ### Basic
 
-`value` decides which trigger is the current one, and the container writes `checked` back according to it; the text in the default slot is the button content.
+`value` decides which trigger is the current one, and the parent segmented writes `checked` back to match. The text in the default slot is the button content.
 
 ```tsx
 import { useState } from 'react'
@@ -82,18 +82,18 @@ const view = ref('list')
 
 ### Props
 
-| Name         | Description                                                                                               | Type             | Default |
-| ------------ | --------------------------------------------------------------------------------------------------------- | ---------------- | ------- |
-| `value`      | Segment value.                                                                                            | `string`         | `''`    |
-| `checked`    | Currently selected; written back by the parent segmented, setting it alone does not notify the container. | `boolean`        | `false` |
-| `disabled`   | Disables this trigger individually.                                                                       | `boolean`        | `false` |
-| `aria-label` | Accessible name forwarded to the inner `role="option"`; required when the slot contains only an icon.     | `string \| null` | `null`  |
+| Name         | Description                                                                                                                          | Type             | Default |
+| ------------ | ------------------------------------------------------------------------------------------------------------------------------------ | ---------------- | ------- |
+| `value`      | Segment value.                                                                                                                       | `string`         | `''`    |
+| `checked`    | Currently selected; written back by the parent segmented, and setting it alone does not notify the parent.                           | `boolean`        | `false` |
+| `disabled`   | Disables this trigger individually.                                                                                                  | `boolean`        | `false` |
+| `aria-label` | Accessible name; required when the slot contains only an icon. It is forwarded to the `role="option"` element inside the shadow DOM. | `string \| null` | `null`  |
 
 ### Events
 
-| Name     | Description                                                                                                                                            |
-| -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `change` | Dispatched when a click or Enter / Space activates a trigger that is not selected; not dispatched when it is already current, and carries no `detail`. |
+| Name     | Description                                                                                                                                                  |
+| -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `change` | Dispatched when a click or Enter / Space activates a trigger that is not selected; not dispatched when it is already current. The event carries no `detail`. |
 
 ### Slots
 
@@ -103,7 +103,7 @@ const view = ref('list')
 
 ### Behavior
 
-Not a form-associated component (the parent segmented submits uniformly).
+It is not a form-associated component; the parent segmented handles form submission.
 
 ### CSS Custom Properties
 

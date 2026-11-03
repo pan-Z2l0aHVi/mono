@@ -1,16 +1,16 @@
 # Segmented
 
-segmented（单选 button group），子项是 `<web-ui-segmented-trigger>`；`value` 同步选中项，并与原生 `<form>` 集成。
+segmented 是单选 button group，子项是 `<web-ui-segmented-trigger>`。`value` 同步选中项，组件与原生 `<form>` 集成。
 
 ## Samples
 
 ### Basic controlled
 
-默认插槽投影 segmented-trigger，`value` 决定哪一项选中；点击（或 Enter / Space）后由 `input` 带回新值，页面把它写回 `value` 维持受控。
+默认插槽投影 segmented-trigger，`value` 决定哪一项选中。用户点击（或按 Enter / Space）后，`input` 带回新值，页面把它写回 `value` 以维持受控。
 
-按住当前选中项横向拖拽也能连续切换，松手吸附到离 indicator 中心最近的 trigger，快速抛掷按速度切换。
+按住当前选中项横向拖拽也能连续切换。松手后 indicator 吸附到最近的 trigger；快速划过时按速度切换。
 
-内部 `role="listbox"` 在 shadow DOM 里，不会继承宿主上的 `aria-label`，所以组件把它转发到 listbox；示例用 `aria-label` 说明这组选项是「星期」。`aria-labelledby` 的 IDREF 无法跨 shadow 边界解析，可见文本标签请直接用 `aria-label` 表达。
+`aria-label` 会转发给组内的 listbox，作为这组选项的名称。`aria-labelledby` 的 IDREF 无法跨组件边界解析，需要可见文本标签时请直接用 `aria-label`。
 
 ```tsx
 import { useState } from 'react'
@@ -56,7 +56,7 @@ const day = ref('wed')
 
 ### Variant comparison
 
-`variant` 选择 track 与 indicator 的材质：`inset`（默认）把 indicator 嵌进带常驻环与投影的 track，`raised` 是经典浮起形态。两个变体的交互、按压态与文字色一致，只有静止面不同。
+`variant` 决定 track 与 indicator 的材质。`inset`（默认）把 indicator 嵌进带常驻描边环与投影的 track；`raised` 的 indicator 浮在 track 上方。两个变体的交互、按压态与文字色一致，只有静止外观不同。
 
 ```tsx
 import { useState } from 'react'
@@ -130,7 +130,7 @@ const raisedView = ref('week')
 
 ### Item and group disabled
 
-`disabled` 加在 trigger 上只禁这一项，其余项照常切换；加在 `<web-ui-segmented>` 上禁用整组，子项自身的 `disabled` 属性不变，但全部退出 Tab 序列并停止响应点击。
+`disabled` 加在 trigger 上只禁用这一项，其余项照常切换。加在 `<web-ui-segmented>` 上禁用整组：子项自身的 `disabled` 属性不变，但全部退出 Tab 序列，也不再响应点击。
 
 ```tsx
 import { useState } from 'react'
@@ -202,7 +202,7 @@ const lockedView = ref('list')
 
 ### Icon-only
 
-纯图标 trigger 仍需要自己的可访问名：内部 `role="option"` 没有文本，所以给每个 `<web-ui-segmented-trigger>` 写 `aria-label`。分组仍保持同一套单选、拖拽与键盘行为。
+纯图标 trigger 仍需要自己的可访问名，请给每个 `<web-ui-segmented-trigger>` 写 `aria-label`。组的单选、拖拽与键盘行为保持不变。
 
 ```tsx
 import { lucideLayoutGrid, lucideList, lucideSettings } from '@greypan/web-ui/icons'
@@ -252,7 +252,7 @@ const view = ref('grid')
 
 ### Form field
 
-`name` 让当前选中值以该字段名进入 `FormData`，未选中任何项时不提交该字段。组件通过 ElementInternals 接入 `<form>`，`form.reset()` 会把 `value` 退回挂载时的初始值。
+`name` 让当前选中值以该字段名进入 `FormData`；没有选中任何项时不提交该字段。`form.reset()` 把 `value` 退回挂载时的初始值。
 
 ```tsx
 import { useRef, useState } from 'react'
@@ -348,7 +348,7 @@ function reset() {
 
 ### input and change
 
-每次用户切换（点击、Enter / Space 或拖拽）都会先 `input` 再 `change` 各派发一次，点击已是当前项的 trigger 不派发。下面的按钮直接改 `value` 走程序化路径：indicator 会移动，两个计数都不变。
+每次用户切换（点击、Enter / Space 或拖拽）都会先派发 `input`，再派发 `change`，各一次；点击已是当前项的 trigger 不派发。直接改 `value` 属于程序化更新：indicator 会移动，两个计数都不变。
 
 ```tsx
 import { useState } from 'react'
@@ -423,21 +423,21 @@ function onChange(event: WebUiEvent<WebUiSegmented, 'change'>) {
 
 ### Props
 
-| 名称         | 说明                                                                  | 类型                  | 默认值    |
-| ------------ | --------------------------------------------------------------------- | --------------------- | --------- |
-| `name`       | 表单字段名。                                                          | `string`              | `''`      |
-| `variant`    | 材质变体：`inset`（默认）或 `raised`。                                | `'inset' \| 'raised'` | `'inset'` |
-| `disabled`   | 禁用全部 trigger。                                                    | `boolean`             | `false`   |
-| `required`   | 只反射属性，不参与校验。                                              | `boolean`             | `false`   |
-| `aria-label` | 内部 listbox 的可访问名称；`aria-labelledby` 无法跨 shadow 边界解析。 | `string`              | —         |
-| `value`      | 当前选中值。                                                          | `string`              | `''`      |
+| 名称         | 说明                                                                                                 | 类型                  | 默认值    |
+| ------------ | ---------------------------------------------------------------------------------------------------- | --------------------- | --------- |
+| `name`       | 表单字段名。                                                                                         | `string`              | `''`      |
+| `variant`    | 材质变体：`inset`（默认）或 `raised`。                                                               | `'inset' \| 'raised'` | `'inset'` |
+| `disabled`   | 禁用全部 trigger。                                                                                   | `boolean`             | `false`   |
+| `required`   | 只反射属性，不参与校验。                                                                             | `boolean`             | `false`   |
+| `aria-label` | 组的可访问名称；`aria-labelledby` 无法跨组件边界解析，名称转发到 shadow 内的 `role="listbox"` 元素。 | `string`              | —         |
+| `value`      | 当前选中值。                                                                                         | `string`              | `''`      |
 
 ### Events
 
-| 名称     | 说明                                       |
-| -------- | ------------------------------------------ |
-| `input`  | 用户点击、键盘或拖拽结束改变选中项时触发。 |
-| `change` | 与 `input` 成对派发，一次切换各一次。      |
+| 名称     | 说明                                           |
+| -------- | ---------------------------------------------- |
+| `input`  | 用户点击、使用键盘或结束拖拽改变选中项时触发。 |
+| `change` | 与 `input` 成对派发，一次切换各一次。          |
 
 ### Slots
 
@@ -447,58 +447,30 @@ function onChange(event: WebUiEvent<WebUiSegmented, 'change'>) {
 
 ### 变体
 
-`inset`（默认，「凹」）是不透明实体 track（`--wui-color-surface`）——1px 描边环与投影全程常驻，静止 indicator 是 `--wui-color-surface-segmented` 纯灰底，视觉上嵌入 track。
+`inset`（默认）的 indicator 嵌在带常驻 1px 描边环与投影的不透明 track 里；`raised` 的 track 没有描边环与投影，indicator 带柔和投影浮在其上。两个变体的交互与文字色一致。
 
-浅色下 track 与 `--wui-color-page` 同值，与页面齐平，凹感只由常驻环与投影承担；深色下 track 是「比页面高一档」的 elevation，依旧浮离页面。
+非法值回退到 `inset`。
 
-indicator 那一档在浅色与深色下都取 `--wui-color-surface-control` 的默认值，也就是 `secondary` button 的面（浅 `#dfdfdf`、深 `#3a3a3c`）：选中那颗与同主题的中性可交互控件同面，不另起一档灰。这是同值而不是别名——两枚 token 在主题里各自定义、互不引用，所以单独覆盖 control 不会带着这颗 indicator 一起动。
+与原生 `<form>` 集成：`name` 提交当前值，`form.reset()` 退回初始值。
 
-`raised`（「凸」）是经典形态：flat 灰 track（`--wui-color-surface-segmented-track`，无环无投影），静止 indicator 是 `--wui-color-surface-selected` 实体底加柔投影，浮起于 track 之上。
-
-浅色这对是 `#e5e5ea → #fff`：indicator 与 `--wui-color-page` 同为最白，凸起由「与页面同色的实色面浮在沉下去的轨道上 + 柔投影」读出。
-
-深色走同一条不变量：indicator 仍与 `--wui-color-page` 同色（`#242628`），动的是轨道——`--wui-color-surface-segmented-track` 沉到 page 之下取 `#17191a`，比 page 再暗 13 到 14/255，与该主题往上走的档差同量级（page→surface 是 +6 到 +8、surface→control 是 +14、control→track 是 +10）。
-
-page 已经是深色阶梯最暗的一档，所以「与 page 同色」只能靠把轨道往下开来成立，而不是把 indicator 往上抬。凸起方向仍由「indicator 比 track 亮」读出：两档的 WCAG 亮度比分别是 1.26:1（浅）与 1.16:1（深），同一量级，不会盖过柔投影。
-
-于是深色下两个变体用两对不同的灰阶：inset 是 `#2c2c2e` track + `#3a3a3c` indicator（选中面比轨道亮，读成按下去的灰面），raised 是 `#17191a` track + `#242628` indicator（选中面与页面同色，读成浮起来的一截页面）。
-
-这条不变量说的是「与 page 同色」，不是「与所在容器同色」。浅色下 page 与 surface 都是 `#fff`，两句话等价；深色下 surface 是 `#2c2c2e`，所以凸变种放进 surface 卡片里时，chip 会比卡片本身暗一档。
-
-凸起在这两种容器下都由 track 与柔投影读出，变的只是「chip 是否与背后那片面齐平」：贴在页面上齐平，贴在 surface 上不齐平。
-
-两个变体的按压/拖拽态一致——indicator 转透明玻璃（backdrop blur、80ms 淡入的描边环、1.5x 放大），松开淡回各自静止面。
-
-非法值回退 `inset`。
-
-与原生 `<form>` 集成（通过 `ElementInternals`）。
-
-根据 `value` 同步子 trigger 的 `checked` 状态。`disabled` 提供继承的有效禁用状态，不改写 trigger 自身的 `disabled` 属性。直接设 `value` 不派发事件。
+组件按 `value` 同步子 trigger 的 `checked` 状态。`disabled` 为整组提供可继承的有效禁用状态，不改写 trigger 自身的 `disabled` 属性。直接设置 `value` 不派发事件。
 
 键盘用户按 Tab 进入当前选中项；没有选中项时进入首个启用项。组内只有这一项参与 Tab 顺序。
 
-水平组中，ArrowLeft / ArrowRight 在启用项间循环移动焦点并更新选中值，Home / End 移到首个 / 末个启用项；禁用项会跳过。
+水平组中，ArrowLeft / ArrowRight 在启用项之间循环移动焦点并更新选中值；Home / End 移到首个 / 末个启用项；禁用项会跳过。
 
 ArrowUp / ArrowDown 不移动焦点。
 
-按住当前选中项横向拖拽可滑动 indicator，松手吸附到最近 option（快速抛掷按速度切换）。
+按住当前选中项横向拖拽可以滑动 indicator，松手后吸附到最近的 option；快速划过时按速度切换。
 
-trigger 宽度不等时，拖拽中的 indicator 取「离自身中心最近的那一项」的宽度——即预览松手会落到的那一项，而不是保持按下那一项的宽度。
+trigger 宽度不等时，拖拽中的 indicator 使用离自身中心最近的那一项的宽度，也就是松手后会落到的那一项。它不会保持按下那一项的宽度。
 
-触摸面声明 `touch-action: none`，拖拽激活期间阻止 `touchmove` 默认滚动，避免 iOS Safari 中断手势。
+触摸面声明 `touch-action: none`，拖拽激活期间阻止 `touchmove` 的默认滚动，避免 iOS Safari 中断手势。
 
 ### 按压态
 
-track 在所有状态下都是不透明实体面（`--wui-color-surface`，浅色即 page 同色、无 backdrop filter），1px 描边环与投影全程不变；转为玻璃的是 indicator 这一层。
-
-静止态 indicator 是 `--wui-color-surface-segmented` 实色底、玻璃输出全部关闭。
-
-按压/拖拽态获得 backdrop blur、随 80ms 过渡淡入的玻璃描边环与 1.5x 放大，底色全透明：indicator 的 blur 采样面整个落在 track 之内；玻璃 track 上的全透明 indicator 在均匀深底与相邻 track 仅差 +0.5 阶，条纹底实测 indicator 内部灰度 std 1.89（背景渗透）。
-
-track 实体化后同一采样 std 归零，按压态本体的可感知性由实色 track 与放大/环/投影共同承担，不需要 tint 打底或压制 track 边缘装饰。
-
-底色不淡入——按下第一帧即落定；松开时 indicator 经 `--wui-duration-press` 淡回实色灰底。
+两个变体的按压 / 拖拽态一致：indicator 转成透明玻璃面（模糊、描边环与 1.5x 放大），按下第一帧就到位，松开后淡回各自的静止外观。
 
 ### 文字色
 
-所有 label 一律使用 `--wui-color-text` 主文本色；内建 light/dark 主题下，14px 文字压在 `inset`/`raised` 静止 indicator 上均满足 4.5:1。选中与未选中项保持同色，选择状态仍由 indicator 承担，任何 label 都不着 `--wui-color-accent`。
+所有 label 一律使用 `--wui-color-text`，选中与未选中项同色。选中状态由 indicator 表现，任何 label 都不使用 `--wui-color-accent`。在内建 light/dark 主题下，14px 文字满足 4.5:1。

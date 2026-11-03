@@ -11,10 +11,12 @@ import { defineAnchoredPanel } from '@/shared/overlay/anchored-panel'
 import { defineOpenOverlay } from '@/shared/overlay/open-overlay'
 import { FLOATING_PLACEMENTS } from '@/shared/overlay/placement-props'
 import { defineOverlayPortal, type OverlayContainer, type OverlayPortal } from '@/shared/overlay/portal'
+import { hasTriggerMode, normalizeTriggerSet, type OverlayTriggerMode } from '@/shared/overlay/trigger-props'
 
 import style from './style.css?inline'
 
-const ALLOWED_TRIGGERS = ['click', 'hover', 'manual'] as const
+/** 点击 trigger 开合，点 panel 外、失焦与 Escape 都能收。 */
+const DEFAULT_TRIGGERS = ['click'] as const
 
 let popoverIdCounter = 0
 
@@ -48,15 +50,15 @@ export class WebUiPopover extends LitElement {
   private _offset = 8
 
   @property({ type: String, reflect: true })
-  get trigger(): 'click' | 'hover' | 'manual' {
+  get trigger(): string {
     return this._trigger
   }
-  set trigger(v: string) {
+  set trigger(v: string | readonly OverlayTriggerMode[]) {
     const old = this._trigger
-    this._trigger = normalizeLiteral(v, ALLOWED_TRIGGERS, 'click')
+    this._trigger = normalizeTriggerSet(v, DEFAULT_TRIGGERS)
     this.requestUpdate('trigger', old)
   }
-  private _trigger: 'click' | 'hover' | 'manual' = 'click'
+  private _trigger: string = DEFAULT_TRIGGERS.join(' ')
 
   @property({ type: Boolean, reflect: true }) portal = false
   @property({ attribute: false }) overlayContainer?: OverlayContainer
@@ -127,8 +129,7 @@ export class WebUiPopover extends LitElement {
     super.disconnectedCallback()
     document.removeEventListener('click', this._onClickOutside)
     this.removeEventListener('focusout', this._onFocusOut)
-    this.removeEventListener('pointerenter', this._onPointerEnter)
-    this.removeEventListener('pointerleave', this._onPointerLeave)
+    this._clearGestureListeners()
     // 停止帧调度；撤销登记由 _panel.dispose() 完成（handle 归它持有）。
     this._overlay.suspend()
     clearTimeout(this._showTimer)
@@ -165,8 +166,7 @@ export class WebUiPopover extends LitElement {
     }
 
     if (changed.has('trigger')) {
-      this.removeEventListener('pointerenter', this._onPointerEnter)
-      this.removeEventListener('pointerleave', this._onPointerLeave)
+      this._clearGestureListeners()
       clearTimeout(this._showTimer)
       clearTimeout(this._hideTimer)
       this._syncTriggerListeners()
@@ -197,10 +197,17 @@ export class WebUiPopover extends LitElement {
   }
 
   private _syncTriggerListeners() {
-    if (this.trigger === 'hover') {
+    if (hasTriggerMode(this.trigger, 'hover')) {
       this.addEventListener('pointerenter', this._onPointerEnter)
       this.addEventListener('pointerleave', this._onPointerLeave)
     }
+    if (hasTriggerMode(this.trigger, 'focus')) this.addEventListener('focusin', this._onFocusIn)
+  }
+
+  private _clearGestureListeners() {
+    this.removeEventListener('pointerenter', this._onPointerEnter)
+    this.removeEventListener('pointerleave', this._onPointerLeave)
+    this.removeEventListener('focusin', this._onFocusIn)
   }
 
   /*
@@ -209,7 +216,7 @@ export class WebUiPopover extends LitElement {
    * trigger 可在开启期间改写，所以走动态通道同步。
    */
   private _syncOverlayInert() {
-    this._panel.getHandle()?.setInert(this.trigger === 'manual')
+    this._panel.getHandle()?.setInert(hasTriggerMode(this.trigger, 'manual'))
   }
 
   private _openOverlay(isInstant = false) {
@@ -292,8 +299,7 @@ export class WebUiPopover extends LitElement {
   private _returnFocus() {
     const panel = this._panel.getPanel()
     if (!panel?.matches(':focus-within')) return
-    const trigger = this._queryTrigger()
-    trigger?.focus()
+    this._queryTrigger()?.focus()
   }
 
   private _queryTrigger(): HTMLElement | null {
@@ -306,7 +312,8 @@ export class WebUiPopover extends LitElement {
     if (this.disabled) return
     clearTimeout(this._showTimer)
     clearTimeout(this._hideTimer)
-    if (this.trigger === 'hover') return
+    // manual 保留点击切换：它的语义是「不接受任何自动收起」，不是「不接受用户打开」。
+    if (!hasTriggerMode(this.trigger, 'click') && !hasTriggerMode(this.trigger, 'manual')) return
     if (!this.open) this._shouldOpenInstantly = event.detail === 0
     this._userOpenChange.mark()
     this.toggle()
@@ -314,7 +321,7 @@ export class WebUiPopover extends LitElement {
 
   private _onClickOutside = (e: MouseEvent) => {
     if (!this.open) return
-    if (this.trigger === 'manual' || this.trigger === 'hover') return
+    if (!hasTriggerMode(this.trigger, 'click')) return
     // 在监听器内部判定：composedPath() 在派发结束后会被清空。
     if (this._panel.getHandle()?.containsEvent(e)) return
     if (this._isInsideShadowRoot(e)) return
@@ -322,8 +329,21 @@ export class WebUiPopover extends LitElement {
     this.open = false
   }
 
+  private _onFocusIn = (event: FocusEvent) => {
+    if (this.disabled) return
+    if (this.open) return
+
+    const focusedElement = event.composedPath()[0] ?? event.target
+    if (!(focusedElement instanceof Element) || !focusedElement.matches(':focus-visible')) return
+
+    this._shouldOpenInstantly = true
+    this._userOpenChange.mark()
+    this.show()
+  }
+
   private _onFocusOut = () => {
-    if (this.trigger === 'manual' || this.trigger === 'hover') return
+    // click 与 focus 都随焦点离开收起；hover 与 manual 不收起（后者不接受自动开合）。
+    if (!hasTriggerMode(this.trigger, 'click') && !hasTriggerMode(this.trigger, 'focus')) return
 
     this._overlay.scheduleFrame(() => {
       if (!this.matches(':focus-within') && !this._panel.getHandle()?.hasFocusWithin()) {
@@ -335,7 +355,7 @@ export class WebUiPopover extends LitElement {
 
   private _onPointerEnter = (e: PointerEvent) => {
     if (e.pointerType === 'touch') return
-    if (this.disabled || this.trigger !== 'hover') return
+    if (this.disabled || !hasTriggerMode(this.trigger, 'hover')) return
     clearTimeout(this._hideTimer)
     this._showTimer = setTimeout(() => {
       this._shouldOpenInstantly = false
@@ -347,7 +367,7 @@ export class WebUiPopover extends LitElement {
 
   private _onPointerLeave = (e: PointerEvent) => {
     if (e.pointerType === 'touch') return
-    if (this.disabled || this.trigger !== 'hover') return
+    if (this.disabled || !hasTriggerMode(this.trigger, 'hover')) return
     clearTimeout(this._showTimer)
     this._hideTimer = setTimeout(() => {
       if (!this.open) return
@@ -358,13 +378,13 @@ export class WebUiPopover extends LitElement {
 
   private _onPanelPointerEnter = (e: PointerEvent) => {
     if (e.pointerType === 'touch') return
-    if (this.trigger !== 'hover') return
+    if (!hasTriggerMode(this.trigger, 'hover')) return
     clearTimeout(this._hideTimer)
   }
 
   private _onPanelPointerLeave = (e: PointerEvent) => {
     if (e.pointerType === 'touch') return
-    if (this.trigger !== 'hover') return
+    if (!hasTriggerMode(this.trigger, 'hover')) return
     this._hideTimer = setTimeout(() => {
       if (!this.open) return
       this._userOpenChange.mark()

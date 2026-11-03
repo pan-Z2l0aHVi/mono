@@ -42,7 +42,7 @@ const photo =
 
 ### Initials fallback
 
-Without `src`, no image is drawn and initials are taken from `name`: the name is split on whitespace, at most the first two words are used, and the first character of each is uppercased, so `Grey Pan` gives GP, `Ada` gives only A, and `John Michael Doe` is truncated to JM. `name` also serves as the accessible name.
+Without `src`, no image is drawn and initials are taken from `name`: the name is split on whitespace, at most the first two words are used, and the first character of each is uppercased, so `Grey Pan` gives GP, `Ada` gives only A, and `John Michael Doe` is truncated to JM. `name` also provides the accessible name.
 
 ```tsx
 export default function Demo() {
@@ -68,7 +68,7 @@ export default function Demo() {
 
 ### Icon fallback
 
-When `src` and `name` are both empty and the `default` slot is empty too, it falls back to the built-in `<web-ui-icon>` person icon. That icon has no name to announce, so the whole avatar is treated as decorative content (see Behavior below).
+When `src` and `name` are both empty and the `default` slot is empty too, it falls back to the built-in `<web-ui-icon>` person icon. That icon has no name to announce, so the whole avatar is treated as decorative content; see Behavior below.
 
 ```tsx
 export default function Demo() {
@@ -94,11 +94,9 @@ export default function Demo() {
 
 ### Sizes
 
-`size` is the only size knob: it is written as the inline width and height of the square box and mirrored into `--wui-avatar-size` for use inside the shadow root, and the highlight radius of the circle shape is derived from half of it (the square shape is fixed at 12px).
+`size` is the only size setting and sets the avatar's edge length (px); the fallback content scales with it.
 
-Fallback content follows it: the initials font size is 40% of `size`, and the default icon is rounded at the same ratio.
-
-The image is cropped into this square box with `object-fit: cover`, so a mismatched aspect ratio is center-cropped rather than stretched.
+The image is cropped into this square box with `object-fit: cover`: a mismatched aspect ratio is center-cropped, not stretched.
 
 ```tsx
 export default function Demo() {
@@ -130,7 +128,7 @@ export default function Demo() {
 
 ### Square
 
-`shape="square"` pulls the radius in to a 12px square, and image, initials, and the default icon all share this shape. Invalid values take no part in rendering and are normalized to `circle`.
+`shape="square"` caps the square radius at 12px (it resolves to `min(12px, size × 0.25)`, i.e. 10px at the default 40px edge), and image, initials, and the default icon all share this shape. Invalid values take no part in rendering and are normalized to `circle`.
 
 ```tsx
 // The sample image is an inline SVG: the corpus ships no binary assets and does not depend on the network.
@@ -166,7 +164,7 @@ const photo =
 
 ### Load failure
 
-After the image reports `error`, the component treats it as a fallback: initials if there is a `name`, otherwise the default icon, never a broken image. The fallback decision applies per `src`—replacing `src` clears the previous failure record.
+After the image reports `error`, the component treats it as a fallback: initials if there is a `name`, otherwise the default icon, never a broken image. The fallback decision applies per `src`: replacing `src` clears the previous failure record.
 
 ```tsx
 export default function Demo() {
@@ -242,24 +240,20 @@ export default function Demo() {
 
 ### Behavior
 
-The three kinds of content are mutually exclusive, and the first one that can be drawn wins in the order `src` → `default` slot → initials from `name` → default icon: an image is drawn when `src` has a value and has not errored; when `src` is empty or reports `error` the component enters the fallback state, where any element child in the `default` slot suppresses both initials and icon, otherwise initials come from `name`, and when `name` is empty too the built-in `lucideUser` is drawn.
+The three kinds of content are mutually exclusive, and the first one that can be drawn wins in the order `src` → `default` slot → initials from `name` → default icon. An image is drawn when `src` has a value and has not errored; otherwise the component enters the fallback state: it uses the `default` slot when it has element children, then the initials from `name`, and finally the built-in person icon.
 
-`shape` goes through a literal allowlist: only `circle` / `square` are accepted, and any other value (including an empty string) falls back to `circle` and the host attribute is corrected.
+`shape` accepts only the literal allowlist: `circle` / `square`. Any other value (including an empty string) falls back to `circle`, and the host attribute is corrected.
 
-`size` has no such normalization. It is a numeric property reflected as-is, so input that does not parse to a number, such as `size="abc"`, is used as `NaN`; keeping its value in range is therefore up to the page.
+`size` has no such normalization. It is a numeric property copied as-is, so input that does not parse to a number, such as `size="abc"`, is used as `NaN`; keeping its value in range is therefore up to the page.
 
-The accessible name is taken in the order `alt` → `name`; only when one is found does it declare `role="img"` and write `aria-label`. When both are empty the avatar is treated as decorative: the shadow node is `role="presentation"` with `aria-hidden="true"`, so screen readers do not announce it.
+The accessible name is taken in the order `alt` → `name`; only when one is found does it declare `role="img"` and write `aria-label`. When both are empty the avatar is treated as decorative (`role="presentation"`, `aria-hidden="true"`), so screen readers do not announce it.
 
-So in the pattern where the avatar is the only visual and the name sits outside it, this avatar should not be announced in the first place.
-
-Initials are the first character of the first two words of `name`, uppercased. Names that cannot be split on spaces, such as Chinese ones, therefore yield only the first character (`潘某某` yields `潘`); to get two characters, split the words yourself or switch to the `default` slot. The font size is 40% of `size` and the default icon is rounded at the same ratio, so small avatars still fit the text.
+Initials are the first character of the first two words of `name`, uppercased. Names that cannot be split on spaces, such as Chinese ones, therefore yield only the first character (`潘某某` yields `潘`); to get two characters, split the words yourself or switch to the `default` slot.
 
 ### Layout
 
-The host is inline-block with `line-height: 0`; `size` sets the edge length of the square box, and the same value is written inline to `--wui-avatar-size` for use inside the shadow root.
+The host is inline-block and `size` sets the edge length; the circle shape uses a pill radius and the square shape `min(12px, size × 0.25)`.
 
-The circle shape takes its radius from `--wui-radius-control` (pill by default) and the square shape uses 12px; `--wui-glass-corner-radius` follows these two cases as well, so the highlight gradient of the fallback state does not misalign with the box shape.
+The fallback state uses the glass material (blur, inner stroke ring, and shadow): the background is `--wui-color-surface-raised`, while initials and the default icon use `--wui-color-text` and therefore follow theme switches. The image state has only the image itself.
 
-The fallback state carries the glass material, which supplies the blur, inner stroke ring, and shadow; the background uses `--wui-color-surface-raised`, while initials and the default icon use `--wui-color-text` and therefore follow theme switches. The image state has only the image itself.
-
-The `default` slot box is absolutely positioned, filling the whole avatar and centered. It takes no part in deciding what to draw, so when `src` is set and the image loads successfully the slot content is layered on top of the image rather than hidden—fallback content and the image are alternatives, so do not supply both. The component exposes no CSS variable knobs; size and shape both belong to `size` / `shape`.
+The `default` slot box fills the whole avatar and is centered. It takes no part in deciding what to draw, so when `src` is set and the image loads successfully the slot content is layered on top of the image. Fallback content and the image are alternatives, so do not supply both. The component has no other style variables; size and shape are set with `size` / `shape`.

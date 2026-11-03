@@ -1,14 +1,14 @@
 # Dropdown Item
 
-A menu item for `<web-ui-dropdown>` and `<web-ui-context-menu>`: `disabled` keeps it in the menu but unselectable, and both keyboard navigation and hover skip it; the `prefix` / `suffix` slots hold icons and shortcut hints at either end; `submenu` attaches a nested submenu at its next level.
+A menu item for `<web-ui-dropdown>` and `<web-ui-context-menu>`. `disabled` keeps it in the menu but unselectable, and both keyboard navigation and hover skip it. The `prefix` / `suffix` slots hold icons and shortcut hints at either end. `submenu` attaches a nested submenu at the next level.
 
-It dispatches no events of its own, and `value` is not consumed by the menu—it is an identifier left for the consumer to read in the native `click`.
+It dispatches no events of its own. The menu does not read `value`; it is an identifier for your app to read in the native `click`.
 
 ## Samples
 
 ### Basic menu
 
-A menu item is a child of the host and is moved into the overlay panel when opened; a `disabled` item stays in the list but cannot be selected.
+A menu item is a child of the host and renders into the overlay panel. A `disabled` item stays in the list but cannot be selected.
 
 ```tsx
 export default function Demo() {
@@ -40,7 +40,7 @@ export default function Demo() {
 
 ### Icons and shortcuts
 
-`prefix` / `suffix` are the two decoration slots; `pl` writes the left padding onto the item itself, so that a plain text item lines up with an item carrying a 14px icon (8px padding + 14px icon + 8px gap).
+`prefix` / `suffix` are the two decoration slots. `pl` sets the item's left padding, which lines a plain text item up with an item that carries an icon.
 
 ```tsx
 import { lucideCopy, lucideTrash2 } from '@greypan/web-ui/icons'
@@ -88,7 +88,7 @@ import { lucideCopy, lucideTrash2 } from '@greypan/web-ui/icons'
 
 ### Items with a submenu
 
-`submenu` turns the item into an entry to the menu level below it: menu items nested inside it become the next level, an expand arrow grows on the right, and both hovering and the arrow keys enter it.
+`submenu` turns the item into an entry to the next menu level. Menu items nested inside it become that level, an expand arrow appears on the right, and both hovering and the arrow keys enter it.
 
 ```tsx
 export default function Demo() {
@@ -130,7 +130,7 @@ export default function Demo() {
 | ---------- | ----------------------------------------------------------------------------------------------------------- | --------- | ------- |
 | `disabled` | Disabled item: stays in the menu but cannot be selected; keyboard navigation and hover skip it.             | `boolean` | `false` |
 | `pl`       | Left padding of the item, written as a CSS length; used to align items with and without a `prefix` icon.    | `string`  | `''`    |
-| `value`    | The item's identifier, read by the consumer in the native `click`; the menu itself does not consume it.     | `string`  | `''`    |
+| `value`    | The item's identifier, read by your app in the native `click`; the menu itself does not read it.            | `string`  | `''`    |
 | `submenu`  | Acts as a submenu entry: nested menu items become the next level and an expand arrow is shown on the right. | `boolean` | `false` |
 
 ### Slots
@@ -143,9 +143,9 @@ export default function Demo() {
 
 ### Methods
 
-| Name          | Description                                                                                         |
-| ------------- | --------------------------------------------------------------------------------------------------- |
-| `focusItem()` | Focuses the menu item through a visible element, so focus is not lost across a Shadow DOM boundary. |
+| Name          | Description                                                            |
+| ------------- | ---------------------------------------------------------------------- |
+| `focusItem()` | Focuses the menu item; focus is preserved across component boundaries. |
 
 ### Behavior
 

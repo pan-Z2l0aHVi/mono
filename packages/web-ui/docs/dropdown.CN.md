@@ -1,12 +1,12 @@
 # Dropdown
 
-dropdown menu：`trigger` 插槽放 trigger，其余子元素作为 menu item 渲染进 overlay panel，支持 divider、分组标题与多级 submenu。
+dropdown menu。`trigger` 插槽放 trigger，其余子元素作为 menu item 渲染进 overlay panel；支持 divider、分组标题与多级 submenu。
 
 ## Samples
 
 ### Basic
 
-`trigger` 放可交互元素，其余子元素作为 menu item 在打开时迁入 overlay panel；`divider` 分组，`disabled` 的项留在列表里但选不中。
+`trigger` 里放可交互元素，其余子元素作为 menu item 渲染进 overlay panel。`divider` 用来分组；`disabled` 的项留在列表里，但无法选中。
 
 ```tsx
 export default function Demo() {
@@ -42,7 +42,7 @@ export default function Demo() {
 
 ### Icons and shortcuts
 
-`prefix` / `suffix` 插槽装饰 menu item 两侧，`dropdown-header` 给一组项加标题；快捷键只是文本，组件不解析按键。
+`prefix` / `suffix` 插槽装饰 menu item 两侧，`dropdown-header` 给一组项加标题。快捷键只是文本，组件不会解析按键。
 
 ```tsx
 import { lucideCopy, lucideTrash2 } from '@greypan/web-ui/icons'
@@ -94,7 +94,7 @@ import { lucideCopy, lucideTrash2 } from '@greypan/web-ui/icons'
 
 ### Multi-level submenu
 
-在 menu item 上写 `submenu`，嵌套在它里面的 item 成为下一级；悬停或方向键进入，每一级都是独立的 panel。
+在 menu item 上写 `submenu`，嵌套在它里面的 item 就成为下一级。悬停或方向键可以进入下一级。
 
 ```tsx
 export default function Demo() {
@@ -146,7 +146,7 @@ export default function Demo() {
 
 ### Controlled open state
 
-`open` 由页面持有：外部按钮直接改它，trigger、Escape 与点外面通过 `open-change` 回写；menu item 点击不会自动关闭，代码在 item 的原生 click 里回写。
+`open` 由页面持有。外部按钮直接改它；trigger、Escape 与点外面通过 `open-change` 回写。点 menu item 不会自动关闭，需要在 item 的原生 click 里回写。
 
 ```tsx
 import type { WebUiDropdownItem } from '@greypan/web-ui'
@@ -308,7 +308,7 @@ export default function Demo() {
 
 ### Imperative
 
-`openMenu()` 打开、`closeAll()` 关闭全部层级；两者都是命令式入口，不派发 `open-change`。`disabled` 会同时挡掉 trigger 点击与 `openMenu()`。
+`openMenu()` 打开 menu，`closeAll()` 关闭全部层级。两者都是命令式入口，不派发 `open-change`。`disabled` 会同时阻止 trigger 点击与 `openMenu()`。
 
 ```tsx
 import type { WebUiDropdown } from '@greypan/web-ui'
@@ -407,9 +407,9 @@ const menu = useTemplateRef<WebUiDropdown>('menu')
 
 ### Slots
 
-| 名称      | 说明                        |
-| --------- | --------------------------- |
-| `trigger` | trigger，请放入可交互元素。 |
+| 名称      | 说明                      |
+| --------- | ------------------------- |
+| `trigger` | trigger；请放可交互元素。 |
 
 ### Methods
 
@@ -424,4 +424,4 @@ menu item：`web-ui-dropdown-item`、`web-ui-dropdown-divider`、`web-ui-dropdow
 
 ### trigger ARIA
 
-`aria-haspopup="menu"`、`aria-expanded` 与 `aria-controls`（指向根 menu panel）回写到 `trigger` slot 的首个 assigned element。trigger slot 请放入可交互元素。
+`aria-haspopup="menu"`、`aria-expanded` 与 `aria-controls`（指向根 menu panel）回写到 `trigger` 插槽的第一个元素。trigger 插槽请放可交互元素。

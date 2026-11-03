@@ -1,12 +1,12 @@
 # Spinner
 
-A loading spinner: place it declaratively in the page, or mount a full-screen instance with the static `WebUiSpinner.show()` / `hide()`. The eight blades are offset by 1/8 of a cycle each, forming one lap of chasing light.
+A loading spinner. Use it declaratively in the page, or mount a full-screen instance with the static `WebUiSpinner.show()` / `hide()`.
 
 ## Samples
 
 ### Basic
 
-`size` is a pixel dimension and only changes the width and height of the spinner itself. On connect the host adds `role="status"` and `aria-label`; values that already exist are not overwritten, so to rename it for a context, write it on the element directly.
+`size` is a pixel dimension and only changes the width and height of the spinner itself. The host carries `role="status"` and `aria-label`; values you set are not overwritten, so write a context-specific name on the element directly.
 
 ```tsx
 export default function Demo() {
@@ -50,7 +50,7 @@ export default function Demo() {
 
 ### Description text
 
-The description has two channels: the `description` attribute renders a styled line of text, while the `description` slot leaves the layout to you. Supplying both renders two lines—the component does not treat them as mutually exclusive. A declarative instance is an inline-flex box and places the description to the **right** of the spinner; a full-screen instance places it **below**.
+The description has two channels: the `description` attribute renders a styled line of text, while the `description` slot leaves the layout to you. Supplying both renders two lines; the component does not treat them as mutually exclusive. A declarative instance places the description to the right of the spinner; a full-screen instance places it below.
 
 ```tsx
 export default function Demo() {
@@ -80,11 +80,11 @@ export default function Demo() {
 
 ### Full-screen instance
 
-`show()` mounts a full-screen instance in the overlay root of the current theme (falling back to the body's fallback overlay root when there is no theme scope); `size` / `description` / `color` override the appearance, and when `duration` is greater than 0 the instance calls `hide()` automatically on expiry.
+`show()` mounts a full-screen instance in the overlay container of the current theme (falling back to the body's default overlay container when there is no theme scope); `size` / `description` / `color` override the appearance, and when `duration` is greater than 0 the instance calls `hide()` automatically on expiry.
 
-The instance is shown with a non-modal `<dialog>` and its overlay is pointer-transparent: it reports loading without taking over clicks, focus, or page scrolling. `hide()` or unmounting closes the dialog and clears the `duration` timer.
+The overlay of a full-screen instance is pointer-transparent. It reports loading without taking over clicks, focus, or page scrolling. `hide()` closes it and clears the `duration` timer.
 
-Repeated clicks do not stack—mounting a new instance removes the previous imperative one.
+Repeated clicks do not stack: mounting a new instance removes the previous imperative one.
 
 ```tsx
 import { WebUiSpinner } from '@greypan/web-ui'
@@ -144,7 +144,7 @@ function showWithDescription() {
 
 ### Speed
 
-The chase cycle of the blades is `--wui-duration-spinner` (`800ms`); overriding it on the host changes the speed. Under the theme's `motion="reduced"` or a system reduce preference this token slows to `1600ms` instead of stopping: a stopped loading indicator reads as a frozen interface.
+The rotation cycle is controlled by `--wui-duration-spinner` (`800ms`); overriding it on the host changes the speed. Under the theme's `motion="reduced"` or a system reduced-motion preference, the token slows to `1600ms` and does not stop.
 
 ```tsx
 export default function Demo() {
@@ -190,11 +190,11 @@ export default function Demo() {
 
 ### Props
 
-| Name          | Description                                                                                           | Type     | Default |
-| ------------- | ----------------------------------------------------------------------------------------------------- | -------- | ------- |
-| `size`        | Spinner size in pixels; the component writes it to the host inline style as a width and height token. | `number` | `24`    |
-| `description` | Description text, laid out by the component (secondary color, centered, at most 240px).               | `string` | `''`    |
-| `color`       | Blade color, a CSS color value; when empty it follows the theme's secondary text color.               | `string` | `''`    |
+| Name          | Description                                                                                 | Type     | Default |
+| ------------- | ------------------------------------------------------------------------------------------- | -------- | ------- |
+| `size`        | Spinner size in pixels.                                                                     | `number` | `24`    |
+| `description` | Description text, laid out by the component (secondary color, centered, at most 240px).     | `string` | `''`    |
+| `color`       | Indicator color, a CSS color value; when empty it follows the theme's secondary text color. | `string` | `''`    |
 
 ### Slots
 
@@ -208,40 +208,36 @@ export default function Demo() {
 | ------------- | ----------------------------------------------------------------------------------------------------------------- | -------- | ------- |
 | `size`        | Instance size; written to the instance's `size` only when truthy, so `0` is ignored and the default `24` remains. | `number` | `24`    |
 | `description` | Instance description text, using the attribute channel; an empty string means unset.                              | `string` | `''`    |
-| `color`       | Instance blade color, a CSS color value; an empty string means unset.                                             | `string` | `''`    |
+| `color`       | Instance indicator color, a CSS color value; an empty string means unset.                                         | `string` | `''`    |
 | `duration`    | When greater than `0`, calls `hide()` automatically on expiry; when omitted or `0` the instance stays up.         | `number` | —       |
 
 ### Methods
 
-| Name                          | Description                                                                                                                                                                                                                                                                                                                    |
-| ----------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `WebUiSpinner.show(options?)` | Mounts a full-screen instance in the theme overlay root (the body's fallback overlay root when there is no theme) and returns it; the instance is non-modal and does not block page interaction or scrolling. A new instance removes the previous imperative instance on connect, and on `duration` expiry `hide()` is called. |
-| `WebUiSpinner.hide()`         | Closes the instance's dialog, clears the `duration` timer, and removes the instance mounted by `show()` from the overlay root; a no-op when there is none.                                                                                                                                                                     |
+| Name                          | Description                                                                                                                                                                                                                                                                                                                           |
+| ----------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `WebUiSpinner.show(options?)` | Mounts a full-screen instance in the theme overlay container (the body's default overlay container when there is no theme) and returns it; the instance is non-modal and does not block page interaction or scrolling. A new instance removes the previous imperative instance on mount, and on `duration` expiry `hide()` is called. |
+| `WebUiSpinner.hide()`         | Closes the instance's dialog, clears the `duration` timer, and removes the instance mounted by `show()` from the overlay container; does nothing when there is none.                                                                                                                                                                  |
 
 ### Behavior
 
-The accessible name is added in `connectedCallback`: a missing `role` becomes `status` and a missing `aria-label` becomes `Loading`; when both already exist they are not overwritten.
+The accessible name is added by the component: a missing `role` becomes `status` and a missing `aria-label` becomes `Loading`; when both already exist they are not overwritten.
 
-The blades are eight `<span>` elements, each rotated by `i * 45deg` and given a negative `animation-delay` of `-(i / 8)` cycle, which visually reads as a trail of light chasing around the ring.
+The dimension has a single entry point, `size`; overriding `--wui-spinner-size` on the host has no effect.
 
-`size` does not merely write a CSS variable: in `updated()` the component writes `--wui-spinner-size` as an **inline style** on the host, so setting a variable of the same name on the host is overridden and `size` is the only entry point for the dimension.
+An imperative instance is mounted in the theme's overlay container (the body's default overlay container when there is no theme scope), so the description, the speed (`--wui-duration-spinner`), and the layer (`--wui-layer-loading`) all follow the theme.
 
-An imperative instance is mounted in the theme's overlay root (the body's fallback overlay root when there is no theme scope), so theme tokens are inherited along the overlay root: the description, the speed (`--wui-duration-spinner`), and the layer (`--wui-layer-loading`) all follow the theme.
-
-Only without a theme scope do they fall back to the literal values `#6a6a6a` / `800ms` / `300` in the component styles.
-
-The component does not clean up for you: when `duration` is omitted or `0` the instance stays up, and only `hide()`, replacement by a new instance, or explicit removal takes it down; when it is taken down the dialog closes and the instance leaves the overlay root with no placeholder behind. The imperative instance is non-modal and does not lock page scrolling.
+The component does not clean up for you. When `duration` is omitted or `0` the instance stays up, and only `hide()` or replacement by a new instance takes it down. The imperative instance does not lock page scrolling.
 
 ### Color
 
-The blades are drawn with `currentcolor`: by default they inherit the host's `--wui-color-text-secondary` (falling back to `#6a6a6a`), and the `color` attribute overrides it with any CSS color value (both the declarative attribute and the `color` option of `show()` go through it).
+The indicator color defaults to the host's `--wui-color-text-secondary`, and the `color` attribute overrides it with any CSS color value (both the declarative attribute and the `color` option of `show()` use it).
 
 The description text uses `--wui-color-text-secondary`.
 
 ### CSS Custom Properties
 
-| Name                     | Description                                                                                                                             | Default |
-| ------------------------ | --------------------------------------------------------------------------------------------------------------------------------------- | ------- |
-| `--wui-spinner-size`     | Spinner width and height; written to the host inline style by `size`, so a variable of the same name set by the consumer is overridden. | `24px`  |
-| `--wui-duration-spinner` | Chase cycle of the blades; slowed to `1600ms` under reduce, never stopped.                                                              | `800ms` |
-| `--wui-layer-loading`    | `z-index` of the imperative overlay, a layer token of the theme.                                                                        | `3000`  |
+| Name                     | Description                                                             | Default |
+| ------------------------ | ----------------------------------------------------------------------- | ------- |
+| `--wui-spinner-size`     | Spinner width and height; overriding it has no effect, use `size`.      | `24px`  |
+| `--wui-duration-spinner` | Rotation cycle; slowed to `1600ms` under reduced motion, never stopped. | `800ms` |
+| `--wui-layer-loading`    | `z-index` of the imperative overlay, a layer token of the theme.        | `3000`  |

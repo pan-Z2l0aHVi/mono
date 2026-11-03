@@ -1,18 +1,16 @@
 # Collapse
 
-A collapse panel packs the trigger and the content into one element: the trigger goes into the default slot, and the content to collapse goes into the `content` slot.
+A collapse panel packs the trigger and the content into one element. Put the trigger in the default slot and the content in the `content` slot.
 
-When the user clicks the trigger, the component writes `open` to the new value itself and then dispatches an `open-change` notification; the consumer writes `detail.open` back into page state so that the readout on the page matches the panel.
+When the user clicks the trigger, the component updates `open` and then dispatches `open-change`. The handler writes `detail.open` back into page state, so the page state matches the panel.
 
 ## Samples
 
 ### Basic
 
-`open` is the single source of truth; the `content` slot holds the content to collapse, and the default slot holds the trigger.
+`open` is the single source of truth. The `content` slot holds the content to collapse, and the default slot holds the trigger.
 
-On a trigger click the component first writes `open` to the new value and then dispatches `open-change`, so the handler only has to write `detail.open` back into page state.
-
-The readout below shows the written-back value; the component keeps no second copy of the state.
+A trigger click updates `open` and then dispatches `open-change`. The handler only has to write `detail.open` back into page state.
 
 ```tsx
 import { useState } from 'react'
@@ -70,7 +68,7 @@ const open = ref(false)
 
 ### Without binding open
 
-The component toggles `open` on its own, so it works with no binding at all: just provide the default slot and the `content` slot. The second one writes `open` statically, meaning it starts expanded—when it is already `open` at mount it lands directly in the expanded resting state and plays no enter animation. A static value only applies once at mount; afterwards the component keeps toggling the property itself and the page plays no part in it.
+The component toggles `open` on its own, so it works with no binding at all. Just provide the default slot and the `content` slot. A static `open` means the panel starts expanded. When it is already `open` at mount, it shows the expanded state directly and plays no enter animation. A static value applies only once at mount. After that the component keeps toggling the property itself, and the page plays no part in it.
 
 ```tsx
 export default function Demo() {
@@ -100,8 +98,8 @@ export default function Demo() {
         <div slot="content">
           <div className="p-3 text-sm">
             <p className="m-0">
-              It carries open at mount and lands directly in the expanded resting state; only the next click plays the
-              exit animation.
+              It carries open at mount and lands directly in the expanded state; only the next click plays the exit
+              animation.
             </p>
           </div>
         </div>
@@ -138,8 +136,8 @@ export default function Demo() {
       <div slot="content">
         <div class="p-3 text-sm">
           <p class="m-0">
-            It carries open at mount and lands directly in the expanded resting state; only the next click plays the
-            exit animation.
+            It carries open at mount and lands directly in the expanded state; only the next click plays the exit
+            animation.
           </p>
         </div>
       </div>
@@ -150,13 +148,13 @@ export default function Demo() {
 
 ### Trigger types
 
-Interaction semantics come from the element in the default slot itself: a native `<button>` and a `<web-ui-button>` already provide Enter / Space activation and focus, and the component writes `aria-expanded` back to the first assigned element in the default slot and adds `disabled` to it while it is disabled.
+Interaction semantics come from the element in the default slot. A native `<button>` and a `<web-ui-button>` already provide Enter / Space activation and focus. The component writes `aria-expanded` back to the first element in the default slot and adds `disabled` to it while it is disabled.
 
-`aria-controls` is not written back: the content track lives inside the component's shadow root, and an IDREF cannot resolve across a shadow root, so writing it out would be a dangling reference in the accessibility tree. The expanded relationship is expressed by `aria-expanded`, which `<web-ui-button>` syncs to its inner native button; the disabled state travels through the `disabled` attribute instead, which crosses shadow boundaries by nature.
+`aria-controls` is not written back: `aria-expanded` expresses the expanded relationship, and `<web-ui-button>` syncs it to its inner `button`.
 
-The whole default slot falls inside the click proxy, so a click anywhere in it counts as a toggle; do not put explanatory text in it.
+The whole default slot is clickable, so a click anywhere in it counts as a toggle. Do not put explanatory text in it.
 
-The last one uses a plain-text trigger: it can be clicked, but it cannot take focus and has no keyboard activation; it only demonstrates the wrong way.
+A plain-text trigger can be clicked, but it cannot take focus and has no keyboard activation.
 
 ```tsx
 import { lucideChevronDown } from '@greypan/web-ui/icons'
@@ -267,9 +265,7 @@ import { lucideChevronDown } from '@greypan/web-ui/icons'
 
 ### Disabled
 
-`disabled` makes clicks be ignored and adds `disabled` to the trigger element; removing the disabled state removes that attribute and returns the trigger to its own disabled state. It does not change a panel that is already expanded: the second one sets both `open` and `disabled` and its content stays visible—disabling governs triggering, not the current state.
-
-The checkbox below toggles the first one's `disabled` at runtime, so you can compare how `disabled` is written to and removed from the trigger.
+`disabled` makes clicks be ignored and adds `disabled` to the trigger element. Removing the disabled state removes that attribute and lets the trigger report its own disabled state again. It does not change a panel that is already expanded. With both `open` and `disabled` set, the content stays visible. `disabled` only blocks triggering, not the current state.
 
 ```tsx
 import { useState } from 'react'
@@ -363,9 +359,9 @@ const disabled = ref(true)
 
 ### Events and methods
 
-The readout shows the `open-change` count and the last `detail.open`, both taken on this collapse host. A trigger click increments the count: `open-change` is dispatched only after a user gesture, and `detail.open` is the state the component has already landed on.
+`open-change` is dispatched only after a user gesture. `detail.open` is the state the component has already set.
 
-The three buttons on the right call the element instance's `show()` / `close()` / `toggle()`; they change the same `open` and the animation still plays, but they dispatch no event—programmatic entry points must be silent, otherwise the consumer's write-back and the notification would form a loop.
+The three buttons on the right call the element instance's `show()` / `close()` / `toggle()`. They change the same `open` and the animation still plays, but they dispatch no event. Programmatic calls must stay silent, otherwise the handler's write-back and the notification would form a loop.
 
 ```tsx
 import type { WebUiCollapse } from '@greypan/web-ui'
@@ -460,13 +456,13 @@ function onOpenChange(event: WebUiEvent<WebUiCollapse, 'open-change'>) {
 </script>
 ```
 
-### Closed resting state and scroll position
+### Closed state and scroll position
 
-Both stay in the closed resting state and both have a visible height of 0; the difference is how the content exits.
+Both panels close to a visible height of 0. The difference is what happens to the content while closed.
 
-The left one is the default: the content container inside the shadow root is `hidden` (`display: none`), so its inner scroll position is lost along with it. The right one uses `keep-mounted`: the content stays in the `0fr` track and the whole subtree is `inert`, so the scroll position survives and the size stays measurable, at the cost of the closed state remaining in the render tree.
+By default, closed content is not rendered, so its scroll position is lost. With `keep-mounted` the content stays mounted but non-interactive, preserving its scroll position and size. The cost is that closed content remains in the page.
 
-`keep-mounted` does not mean the closed state occupies a layer of height. Try it: scroll the right one to the middle, collapse and expand it again, and the position is still there; do the same on the left and it returns to the top.
+`keep-mounted` does not give the closed panel any height. Scroll the right panel to the middle, collapse and expand it, and the position is still there. Do the same on the left and it returns to the top.
 
 ```tsx
 export default function Demo() {
@@ -479,7 +475,7 @@ export default function Demo() {
           type="button"
           className="w-full cursor-pointer rounded-md bg-(--wui-color-surface-control) px-3 py-2 text-left"
         >
-          Default closed resting state
+          Default closed state
         </button>
         <div slot="content">
           <div className="max-h-32 overflow-y-auto p-3 text-sm">
@@ -497,7 +493,7 @@ export default function Demo() {
           type="button"
           className="w-full cursor-pointer rounded-md bg-(--wui-color-surface-control) px-3 py-2 text-left"
         >
-          keep-mounted closed resting state
+          keep-mounted closed state
         </button>
         <div slot="content">
           <div className="max-h-32 overflow-y-auto p-3 text-sm">
@@ -522,7 +518,7 @@ export default function Demo() {
         type="button"
         class="w-full cursor-pointer rounded-md bg-(--wui-color-surface-control) px-3 py-2 text-left"
       >
-        Default closed resting state
+        Default closed state
       </button>
       <div slot="content">
         <div class="max-h-32 overflow-y-auto p-3 text-sm">
@@ -536,7 +532,7 @@ export default function Demo() {
         type="button"
         class="w-full cursor-pointer rounded-md bg-(--wui-color-surface-control) px-3 py-2 text-left"
       >
-        keep-mounted closed resting state
+        keep-mounted closed state
       </button>
       <div slot="content">
         <div class="max-h-32 overflow-y-auto p-3 text-sm">
@@ -552,13 +548,13 @@ const rows = Array.from({ length: 20 }, (_, index) => `List item ${index + 1}`)
 </script>
 ```
 
-### Peek preview band
+### Peek preview
 
-`peek` makes the closed resting state collapse to a fixed length instead of 0, and the exposed strip hints that more content follows. Its closed-state semantics equal `keep-mounted`: the whole inner subtree sits inside an `inert` subtree, so the exposed part is likewise not clickable and cannot be reached with Tab; expand first to interact.
+`peek` makes the closed panel keep a fixed length instead of 0, and the exposed strip hints that more content follows. Its closed-state behavior equals `keep-mounted`. The content stays mounted but is entirely non-interactive, so the exposed part is not clickable and cannot be reached with Tab. Expand first to interact.
 
-The second one's content is shorter than `peek`, so the collapsed height equals the content height and leaves no blank space.
+When the content is shorter than `peek`, the closed height equals the content height and leaves no blank space.
 
-`peek` accepts any CSS length; written in `rem` it scales with the root font size.
+`peek` accepts any CSS length. Written in `rem`, it scales with the root font size.
 
 ```tsx
 export default function Demo() {
@@ -645,11 +641,9 @@ const longRows = Array.from(
 
 ### Edge fade
 
-The clipping edge of the exposed region carries an alpha fade, and the same band layers a background blur on top; its length is derived from `peek`: a default ratio of 0.4, clamped within `--wui-collapse-peek-edge-max` (`112px`).
+The clipping edge of the exposed region carries an transparency fade, and the same area also gets a background blur. The length is calculated from `peek`: the default ratio is 0.4, capped at `--wui-collapse-peek-edge-max` (`112px`).
 
-The first one with `peek="200px"` gets an 80px band; the second raises `--wui-collapse-peek-edge-ratio` to 0.7, and the computed 140px is clamped by the cap to 112px.
-
-This one is about the band length and where it is derived from; it uses its own `peek` and ratio, separate from the collapse in the code area below the sample card: the preview is not inside the code-area collapse, so the two do not overlap.
+`--wui-collapse-peek-edge-ratio` adjusts the fade area as a ratio of `peek`, and the result never exceeds `--wui-collapse-peek-edge-max`.
 
 ```tsx
 export default function Demo() {
@@ -666,7 +660,7 @@ export default function Demo() {
           <div className="p-3 text-sm">
             {Array.from({ length: 6 }, (_, index) => (
               <p key={index} className="m-0">
-                Paragraph {index + 1}: the last 80px (200px × 0.4) is the fade-plus-blur band.
+                Paragraph {index + 1}: the last 80px (200px × 0.4) is the fade and blur area.
               </p>
             ))}
           </div>
@@ -731,7 +725,7 @@ export default function Demo() {
 <script setup lang="ts">
 const derivedRows = Array.from(
   { length: 6 },
-  (_, index) => `Paragraph ${index + 1}: the last 80px (200px × 0.4) is the fade-plus-blur band.`
+  (_, index) => `Paragraph ${index + 1}: the last 80px (200px × 0.4) is the fade and blur area.`
 )
 const cappedRows = Array.from(
   { length: 6 },
@@ -742,11 +736,9 @@ const cappedRows = Array.from(
 
 ### CSS variables
 
-`--wui-collapse-peek-edge` sets the gradient length explicitly and takes precedence over the derived value; `--wui-collapse-peek-edge-blur` is the radius of the background blur on the same band; `--wui-collapse-peek-edge-color` is the gradient's starting color at the clipping edge (the page background by default), fading to fully transparent towards the content.
+`--wui-collapse-peek-edge` sets the gradient length explicitly, overriding the default. `--wui-collapse-peek-edge-blur` is the radius of the background blur on the same area. `--wui-collapse-peek-edge-color` is the gradient's starting color at the clipping edge (the page background by default), fading to fully transparent towards the content.
 
-When `peek` is a percentage the derived result is not a length and cannot be interpolated by the registered `<length>` property, so it silently falls back to no fade—with that form the only way to get a band is `--wui-collapse-peek-edge`.
-
-Both stay in the closed resting state; the first raises the blur radius to 10px, and the second points the edge color at the shared `--wui-color-border`, so the band stands out from the default page color.
+When `peek` is a percentage no fade is produced; in that form set the length explicitly with `--wui-collapse-peek-edge`.
 
 ```tsx
 import type { CSSProperties } from 'react'
@@ -773,8 +765,7 @@ export default function Demo() {
           <div className="p-3 text-sm">
             {Array.from({ length: 5 }, (_, index) => (
               <p key={index} className="m-0">
-                Paragraph {index + 1}: the band length ignores the 0.4 derivation of peek, and the blur radius rises
-                from 4px to 10px.
+                Paragraph {index + 1}: the token sets the fade length to 28px and the blur radius to 10px.
               </p>
             ))}
           </div>
@@ -849,22 +840,21 @@ export default function Demo() {
 <script setup lang="ts">
 const blurRows = Array.from(
   { length: 5 },
-  (_, index) =>
-    `Paragraph ${index + 1}: the band length ignores the 0.4 derivation of peek, and the blur radius rises from 4px to 10px.`
+  (_, index) => `Paragraph ${index + 1}: the token sets the fade length to 28px and the blur radius to 10px.`
 )
 const edgeColorRows = Array.from(
   { length: 5 },
   (_, index) =>
-    `Paragraph ${index + 1}: the clipping edge uses the border color as its base, and the band fades from the edge inwards.`
+    `Paragraph ${index + 1}: the clipping edge uses the border color as its base, and the area fades from the edge inwards.`
 )
 </script>
 ```
 
 ### Horizontal
 
-`horizontal` switches the animation axis from height to width, so the content expands along the width and the trigger and content sit on one row—the host itself is only a block box, so add flex on the host to get a row (both of these set `flex items-center gap-2`).
+`horizontal` switches the animation axis from height to width, so the content expands along the width and the trigger and content sit on one row. The host is a block box, so add flex on the host to get a row, for example `flex items-center gap-2`.
 
-After the axis change `peek` also becomes a width; the second one pairs `horizontal` with `peek="120px"`, and its fade band falls on the right edge.
+After the axis change `peek` also becomes a width, and the fade area falls on the right edge.
 
 The cost is that the content reflows as the width changes during the animation.
 
@@ -898,7 +888,7 @@ export default function Demo() {
         </button>
         <div slot="content">
           <div className="w-64 whitespace-nowrap p-3 text-sm">
-            When closed it exposes 120px of width, with the fade band on the right edge.
+            When closed it exposes 120px of width, with the fade on the right edge.
           </div>
         </div>
       </web-ui-collapse>
@@ -928,7 +918,7 @@ export default function Demo() {
       </button>
       <div slot="content">
         <div class="w-64 whitespace-nowrap p-3 text-sm">
-          When closed it exposes 120px of width, with the fade band on the right edge.
+          When closed it exposes 120px of width, with the fade on the right edge.
         </div>
       </div>
     </web-ui-collapse>
@@ -942,13 +932,11 @@ import { radixIconsPanelLeftMinimized } from '@greypan/web-ui/icons'
 
 ### Nested
 
-The inner collapse sits in the outer one's `content` slot. Expanding the inner one makes the outer one grow: the expanded resting track stays at `1fr` and the height is decided by the content, so the component does not need to measure the inner one.
+The inner collapse sits in the outer one's `content` slot. Expanding the inner one makes the outer one grow, with its height decided by the content.
 
-The two collapses do not interfere—the click proxy only recognizes the bubbling path of its own trigger wrapper, so clicking the inner trigger does not toggle the outer one as well.
+The two collapses do not interfere. Clicking the inner trigger does not toggle the outer one as well.
 
-However, `open-change` is `bubbles` and `composed`, so the inner notification passes through the outer host; when binding a handler on the outer one, filter by `event.target === event.currentTarget`, otherwise an inner toggle is read as an outer toggle.
-
-This one has only two levels and short content, so it will not stack two long collapses with the code area of the sample card.
+However, `open-change` has `bubbles` and `composed`, so the inner notification passes through the outer host. When binding a handler on the outer one, filter by `event.target === event.currentTarget`, otherwise an inner toggle is read as an outer toggle.
 
 ```tsx
 import { useState } from 'react'
@@ -1050,9 +1038,9 @@ function onOuterChange(event: WebUiEvent<WebUiCollapse, 'open-change'>) {
 
 ### Multiple instances
 
-The three panels each hold their own `open`, and the page uses an array as the source of truth: each `open` is written as whether it is in the array, and write-back goes through `open-change`'s `detail.open`. With "Only one at a time" checked, the page guarantees exclusivity—collapse has no group contract; exclusivity is the consumer's state management, not a component property.
+The three panels each hold their own `open`, and the page uses an array as the source of truth. Each `open` is written as whether the panel is in the array, and write-back goes through `open-change`'s `detail.open`. With "Only one at a time" checked, the page guarantees exclusivity. Collapse does not manage groups; exclusivity is the page's state management, not a component property.
 
-Multiple instances on the same page each own their `open` and their own ARIA write-back, so they do not interfere with each other; the expanded relationship is expressed by `aria-expanded` alone, and there is no IDREF that would need aligning across instances.
+Multiple instances on the same page each own their `open` and their own ARIA write-back, so they do not interfere with each other.
 
 ```tsx
 import { useState } from 'react'
@@ -1156,7 +1144,7 @@ function setAt(title: string, value: boolean) {
 
 ### Content height changes
 
-The expanded resting track stays at `1fr` and the height is decided by the content: the component does not need to re-measure when the content grows or shrinks inside the panel; add or remove a row and the panel grows or shrinks with it. Only the transition between `peek` and expanded—fixed length to content height—needs a pixel read (see Peek preview band).
+In the expanded state the height is decided by the content. When the content grows or shrinks inside the panel, the panel grows or shrinks with it. Add or remove a row and it takes effect immediately.
 
 ```tsx
 import { useState } from 'react'
@@ -1256,21 +1244,21 @@ function removeRow() {
 | `open`         | Expanded state, the single source of truth. On a trigger click the component writes it to the new value itself, then dispatches `open-change`; a static value in the template only sets the initial state. | `boolean`        | `false` |
 | `disabled`     | Disables triggering: clicks are ignored and `disabled` is added to the trigger element; already-expanded content stays as it is.                                                                           | `boolean`        | `false` |
 | `horizontal`   | Horizontal direction: expands along the width instead of the default height.                                                                                                                               | `boolean`        | `false` |
-| `keep-mounted` | Keeps the content `inert` rather than `hidden` in the closed resting state, preserving scroll position and measurability.                                                                                  | `boolean`        | `false` |
-| `peek`         | Size exposed in the closed resting state (a CSS length such as `120px` or `6rem`). When set, semantics equal `keep-mounted`.                                                                               | `string \| null` | `null`  |
+| `keep-mounted` | Keeps the content mounted but non-interactive when closed, preserving scroll position and size.                                                                                                            | `boolean`        | `false` |
+| `peek`         | Size exposed when closed (a CSS length such as `120px` or `6rem`). When set, behaves like `keep-mounted`.                                                                                                  | `string \| null` | `null`  |
 
 ### Events
 
-| Name          | Description                                                                                                                                                                                                                                                                                                                                                                                      |
-| ------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `open-change` | Notification after a user-gesture toggle: `detail.open` is the state the component has already landed on, and the consumer writes it back to `open` so page state matches reality. `show()` / `close()` / `toggle()` and writing `open` directly dispatch nothing. The event is `bubbles` and `composed` and passes through ancestor hosts; when bound on an ancestor, filter by `event.target`. |
+| Name          | Description                                                                                                                                                                                                                                                                                                                                                                               |
+| ------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `open-change` | Notification after a user-gesture toggle: `detail.open` is the state the component has already set, and the handler writes it back to `open` so page state matches reality. `show()` / `close()` / `toggle()` and writing `open` directly dispatch nothing. The event is `bubbles` and `composed` and passes through ancestor hosts; when bound on an ancestor, filter by `event.target`. |
 
 ### Slots
 
-| Name      | Description                                                                                                                                                                                                                                                                                               |
-| --------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `default` | The trigger. The whole slot is inside the click proxy, so a click anywhere in it counts as a toggle; `aria-expanded` is written to the first assigned element, and `disabled` is added to it while disabled. `<web-ui-button>` lands both on its inner native button, so put an interactive element here. |
-| `content` | Collapse content. In the closed state `keep-mounted` / `peek` decide whether it is `hidden` or `inert`.                                                                                                                                                                                                   |
+| Name      | Description                                                                                                                                                                                                                                                                                |
+| --------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `default` | The trigger. The whole slot is clickable, so a click anywhere in it counts as a toggle. `aria-expanded` is written to the first element in the slot, and `disabled` is added to it while disabled. `<web-ui-button>` syncs both to its inner `button`, so put an interactive element here. |
+| `content` | Collapse content. When closed the content is non-interactive; `keep-mounted` keeps it mounted, `peek` exposes its head.                                                                                                                                                                    |
 
 ### Methods
 
@@ -1282,88 +1270,76 @@ function removeRow() {
 
 ### Behavior
 
-With the `open` attribute present initially it lands directly in the expanded resting state and plays no enter animation; only later changes go through the transition. The animation runs along the block axis (height by default, width with `horizontal`) and is driven by a `0fr ↔ 1fr` grid track inside the shadow root; the expanded resting height is always decided by the content, and content that grows or shrinks while expanded needs no re-measurement.
+A panel mounted with the `open` attribute shows the expanded state directly and plays no enter animation. Only later changes go through the transition. The expanded height is always decided by the content; when the content grows or shrinks, the panel grows or shrinks with it.
 
-Durations come from `--wui-duration-collapse-enter` / `--wui-duration-collapse-exit` (200ms / 160ms, defined by `<web-ui-theme>`); with theme `motion="reduced"` or the system `prefers-reduced-motion`, both are zero and the component skips measurement to land on the resting state directly.
+Durations come from `--wui-duration-collapse-enter` / `--wui-duration-collapse-exit` (200ms / 160ms, defined by `<web-ui-theme>`). With theme `motion="reduced"` or the system `prefers-reduced-motion`, no animation plays and the panel goes straight to the final state.
 
-`open-change` is a notification, not a request: on a trigger click the component first writes `open` to the new value, then dispatches the event (`bubbles` and `composed`); `show()` / `close()` / `toggle()` and writing `open` directly are all silent, otherwise the consumer's write-back and the notification would form a loop.
+`open-change` is dispatched only after a user gesture (`bubbles` and `composed`). `show()` / `close()` / `toggle()` and writing `open` directly are all silent.
 
-Not writing it back will not snap the value back, but the page state then disagrees with the panel.
+Not writing it back will not revert the value, but the page state then disagrees with the panel.
 
-When nested, clicks do not interfere: the click proxy only recognizes the bubbling path of its own trigger wrapper, so a click on the inner trigger does not toggle the outer one as well; the inner `open-change` does pass through the outer host, so a listener bound on the outer one must filter by `event.target === event.currentTarget`.
+When nested, clicks do not interfere: a click on the inner trigger does not toggle the outer one as well. The inner `open-change` does pass through the outer host, so a listener bound on the outer one must filter by `event.target === event.currentTarget`.
 
 ### Trigger semantics
 
-Interaction semantics come entirely from the element placed in the default slot—a native `<button>`, a `<web-ui-button>`, or another interactive element natively provides Enter / Space activation and focus.
+Interaction semantics come from the element placed in the default slot. A native `<button>`, a `<web-ui-button>`, or another interactive element provides Enter / Space activation and focus.
 
-collapse writes `aria-expanded` back to the first assigned element of the trigger slot and adds `disabled` to it while it is disabled; `<web-ui-button>` lands both on its inner native button (`disabled` travels as an attribute, so it crosses shadow boundaries by nature).
+collapse writes `aria-expanded` back to the first element in the trigger slot and adds `disabled` to it while it is disabled. `<web-ui-button>` passes both to its inner `button`.
 
-`aria-controls` is not written back: the content track sits inside the collapse shadow root, so an IDREF across shadow roots cannot resolve and would be a dangling reference in the accessibility tree. The expanded relationship is expressed by `aria-expanded`.
+`aria-controls` is not written back; `aria-expanded` expresses the expanded relationship.
 
-Use an interactive element as the trigger: a plain `<span>` is clickable but has no keyboard / focus semantics.
+Use an interactive element as the trigger. A plain `<span>` is clickable but has no keyboard or focus semantics.
 
-All content of the default slot is wrapped in the trigger wrapper and therefore inside the click proxy: explanatory text placed in the default slot also counts as a toggle when clicked. The component only writes back to the first assigned element, so put the interactive element first.
+All content of the default slot is clickable, so explanatory text placed in the default slot also counts as a toggle when clicked. The component only writes back to the first element in the slot, so put the interactive element first.
 
-### Closed resting state semantics
+### Closed state semantics
 
-The consumer's light DOM is never moved or unmounted; the closed resting state is implemented inside the shadow root in one of three ways: by default `hidden` is set on the content container (`display: none`, removed from the render and accessibility trees); with `keep-mounted` the inner subtree is marked `inert` and stays in the `0fr` track, measurable and with its scroll position intact; with `peek` it is likewise `inert` and the track stops at the clipping window.
+By default the content is not rendered when closed, invisible and non-interactive, and its own scroll position is lost with it.
 
-The visible height of all three states is whatever the track gives—`keep-mounted` does not make the closed state occupy a layer of height; the price of staying in the render tree is staying mounted and measurable.
+`keep-mounted` keeps the content mounted but non-interactive, preserving both its scroll position and its size. The closed content remains in the page but takes no visible height.
 
-During a toggle animation the content is `inert` as well; the attributes take over only once the resting state is reached.
+`peek` has the same behavior as `keep-mounted`. During a toggle animation the content is non-interactive as well.
 
-### Peek preview band
+### Peek preview
 
-With `peek` set, the closed resting state exposes the head of the content along the animation axis for `peek` length (width with `horizontal`) instead of collapsing to 0: the track stays at the content height and the clipping length applies to the inner container.
+With `peek` set, the closed panel exposes the head of the content along the animation axis for `peek` length (width with `horizontal`) instead of collapsing to 0.
 
-Its semantics equal `keep-mounted`—the content stays mounted, but the whole inner subtree is blocked by `inert`, so the exposed strip is equally unfocusable and unclickable, and the clipped part even more so.
+Its behavior equals `keep-mounted`. The content stays mounted but all of it is unfocusable and unclickable, including the exposed strip.
 
 When the content itself is shorter than `peek`, it collapses to the content's actual size and leaves no blank space.
-
-Because a fixed length and an intrinsic height cannot be interpolated by CSS, the two directions between `peek` and expanded read pixels and drive an explicit length instead (one measurement per toggle); all other animation paths remain zero-measurement grid `fr` transitions.
 
 ```html
 <web-ui-collapse peek="120px">
   <button type="button">Toggle</button>
-  <div slot="content">Very long content—when closed only the first 120px shows</div>
+  <div slot="content">Very long content: when closed only the first 120px shows</div>
 </web-ui-collapse>
 ```
 
 ### Edge fade
 
-The clipping edge of the exposed region carries an alpha gradient (on the right with `horizontal`), so the clipped part fades into the background instead of cutting off hard. The gradient length is derived from `peek`; no second attribute is needed or available—fine-tune it with CSS variables when needed:
+The clipping edge of the exposed region carries an transparency fade (on the right with `horizontal`), and the same area also gets a background blur, so the clipped part fades into the background instead of cutting off hard. The gradient length is calculated from `peek`. There is no extra attribute to adjust it; use CSS variables when needed.
 
-The band consists of two layers and reuses the shared `.wui-glow` (the same style as the layout header's glow; see `@greypan/web-ui/classes.css`): on top of the alpha fade, the same band adds a real `backdrop-filter` blur, so the clipped content is actually **blurred**, not merely made semi-transparent.
+Setting the ratio to `0` turns the fade off. When `peek` is in rem the gradient length follows the root font size.
 
-Inside the component both layers are raised above the content (`.wui-glow` sits below content by default). The blur strength is modulated by the box's own `mask-image`—rising from 0 at the band start to full strength in the second half, then back to 0 before the clipping edge: a non-zero start would leave a seam where the blur suddenly begins, and a non-zero end would blur all the way to the clipping boundary.
-
-In the expanded state the active length is 0, all color stops collapse to 100% and the last stop is fully transparent, so this layer draws nothing.
-
-Setting the ratio to `0` turns the fade off. The derivation is pure CSS `calc(peek * ratio)`: when `peek` is in rem the gradient length follows the root font size automatically, and the JS side needs no unit parsing.
-
-Known limitation: when `peek` is a percentage the derived result is not a length and cannot be interpolated by the registered property, so it silently falls back to no fade; in that case set the length explicitly with `--wui-collapse-peek-edge`.
-
-The alpha fade over the content uses four stops that drop steeply first and then gently, rather than a linear ramp: the fully opaque body extends to the band start, then the first 30% of the distance drops to 60% alpha, 26% at 65%, and the end is fully transparent. With a linear gradient the alpha stays close to 1.0 over the first 40% of the band, so the perceived fade is far shorter than the declared length—front-loading the drop makes the band visibly fade from its start and nearly doubles the perceived length at the same measured length.
-
-The band position is declared in percentages relative to the container's **current rendered height** (the same height the `max-height` animation drives), so during the exit animation the band follows the clipping edge frame by frame and the `mask-image` string itself needs no interpolation. The band length is driven by a registered `<length>` custom property, so it fades in and out smoothly with the toggle animation instead of popping in only once the exit animation lands.
+Known limitation: when `peek` is a percentage no fade appears. In that case set the length explicitly with `--wui-collapse-peek-edge`.
 
 ```html
 <!-- Stronger fade: ratio 0.5 → a 120px peek gets a 60px fade -->
 <web-ui-collapse peek="120px" style="--wui-collapse-peek-edge-ratio: 0.5">
   <button type="button">Toggle</button>
-  <div slot="content">Very long content—the fade at the bottom of the 120px exposed area is stronger</div>
+  <div slot="content">Very long content: the fade at the bottom of the 120px exposed area is stronger</div>
 </web-ui-collapse>
 ```
 
 ### CSS Custom Properties
 
-| Name                             | Description                                                             | Default                       |
-| -------------------------------- | ----------------------------------------------------------------------- | ----------------------------- |
-| `--wui-collapse-peek-edge-ratio` | Gradient length as a share of `peek`                                    | `0.4`                         |
-| `--wui-collapse-peek-edge-max`   | Length cap, so a large `peek` does not compute an overly long blur band | `112px`                       |
-| `--wui-collapse-peek-edge`       | Explicit length, taking precedence over the derived value               | —                             |
-| `--wui-collapse-peek-edge-color` | Gradient start color at the clipping edge                               | `var(--wui-color-page, #fff)` |
-| `--wui-collapse-peek-edge-blur`  | Radius of the background blur on the same gradient band                 | `4px`                         |
+| Name                             | Description                                                               | Default                       |
+| -------------------------------- | ------------------------------------------------------------------------- | ----------------------------- |
+| `--wui-collapse-peek-edge-ratio` | Gradient length as a share of `peek`                                      | `0.4`                         |
+| `--wui-collapse-peek-edge-max`   | Length cap, so a large `peek` does not calculate an overly long blur area | `112px`                       |
+| `--wui-collapse-peek-edge`       | Explicit length, overriding the calculated default                        | —                             |
+| `--wui-collapse-peek-edge-color` | Gradient start color at the clipping edge                                 | `var(--wui-color-page, #fff)` |
+| `--wui-collapse-peek-edge-blur`  | Radius of the background blur on the same gradient area                   | `4px`                         |
 
 ### Known limitations
 

@@ -208,7 +208,10 @@ describe('应用外壳（浏览器）：导航 collapsed state 不跨视口泄�
           'Segmented'
         ]
       ],
-      ['展示', ['Collapse', 'EditableText', 'Empty', 'MiddleEllipsis', 'SVGDrawLines', 'Avatar', 'Badge']],
+      [
+        '展示',
+        ['Collapse', 'EditableText', 'Empty', 'GroupedText', 'MiddleEllipsis', 'SVGDrawLines', 'Avatar', 'Badge']
+      ],
       [
         '反馈',
         [
@@ -220,6 +223,7 @@ describe('应用外壳（浏览器）：导航 collapsed state 不跨视口泄�
           'ContextMenu',
           'Toast',
           'ImagePreview',
+          'Shake',
           'Spinner',
           'Progress'
         ]
@@ -258,7 +262,7 @@ describe('应用外壳（浏览器）：导航 collapsed state 不跨视口泄�
 
     const links = [...navRoot().querySelectorAll<HTMLAnchorElement>('a')]
     const fullLabels = links.map(link => link.getAttribute('aria-label'))
-    expect(links).toHaveLength(34)
+    expect(links).toHaveLength(36)
     expect(links.map(link => link.querySelector('span')?.textContent?.trim())).toEqual(fullLabels)
     expect(links.slice(2).every(link => link.title === '')).toBe(true)
     expect(links.slice(0, 2).map(link => link.title)).toEqual(['组件总览', '更新日志'])

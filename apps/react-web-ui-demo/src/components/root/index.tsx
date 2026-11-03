@@ -141,6 +141,7 @@ const navSections: NavSection[] = [
       { path: '/components/collapse', label: 'Collapse' },
       { path: '/components/editable-text', label: 'EditableText' },
       { path: '/components/empty', label: 'Empty' },
+      { path: '/components/grouped-text', label: 'GroupedText' },
       { path: '/components/middle-ellipsis', label: 'MiddleEllipsis' },
       { path: '/components/svg-draw-lines', label: 'SVGDrawLines' },
       { path: '/components/avatar', label: 'Avatar' },
@@ -158,6 +159,7 @@ const navSections: NavSection[] = [
       { path: '/components/context-menu', label: 'ContextMenu' },
       { path: '/components/toast', label: 'Toast' },
       { path: '/components/image-preview', label: 'ImagePreview' },
+      { path: '/components/shake', label: 'Shake' },
       { path: '/components/spinner', label: 'Spinner' },
       { path: '/components/progress', label: 'Progress' }
     ]

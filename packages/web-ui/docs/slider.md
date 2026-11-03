@@ -1,12 +1,12 @@
 # Slider
 
-Range slider with tick marks and a vertical orientation; dragging uses pointer capture, and the keyboard supports the arrow keys, Home / End, and PageUp / PageDown. Every instance should provide a distinguishing name through `aria-label` or `aria-labelledby`.
+Range slider with tick marks and a vertical orientation. The keyboard supports the arrow keys, Home / End, and PageUp / PageDown. Every instance should provide a distinguishing name through `aria-label` or `aria-labelledby`.
 
 ## Samples
 
 ### Basic
 
-With no attributes the range is `0`–`100` with a step of `1`; `min` / `max` / `step` constrain the value range and the step size, and `disabled` takes the track and thumb out of interaction.
+With no attributes the range is `0` to `100` and the step is `1`. `min` / `max` / `step` constrain the value range and the step size. `disabled` takes the track and thumb out of interaction.
 
 ```tsx
 export default function Demo() {
@@ -32,7 +32,7 @@ export default function Demo() {
 
 ### Tick marks
 
-`marks` draws tick points along the track, spaced by `step`, so tick density is decided by the step; at most 100 segments are drawn, and when `step` is too dense relative to `min`–`max` only the first 100 segments are drawn instead of filling the track.
+`marks` draws tick points along the track, spaced by `step`. At most 100 segments are drawn; when `step` is too dense relative to `min` to `max`, only the first 100 appear.
 
 ```tsx
 export default function Demo() {
@@ -56,7 +56,7 @@ export default function Demo() {
 
 ### Vertical orientation
 
-`vertical` stands the track up and values grow from bottom to top; `aria-orientation` becomes `vertical` accordingly, and the arrow keys still adjust with the up and down keys.
+`vertical` stands the track upright, and values grow from bottom to top. `aria-orientation` becomes `vertical`, and you still adjust with the up and down arrow keys.
 
 ```tsx
 import { useState } from 'react'
@@ -130,7 +130,7 @@ const volume = ref(30)
 
 ### input and change
 
-During a drag `input` fires continuously, and on release a single `change` is dispatched only after the value has really changed; with the keyboard, each press of an adjustment key that changes the value produces `input` and then `change`. Clicking an empty spot on the track also counts as one value change.
+During a drag `input` fires continuously. On release the component dispatches one `change`, and only if the value really changed. With the keyboard, each press of an adjustment key that changes the value fires `input` and then `change`. Clicking an empty spot on the track also counts as one value change.
 
 ```tsx
 import { useState } from 'react'
@@ -188,7 +188,7 @@ const changeValue = ref(40)
 
 ### Form value
 
-`name` makes the current value enter `FormData` under that field name; the component joins the host `<form>` through ElementInternals, so `form.reset()` returns the value to its initial value.
+`name` puts the current value into `FormData` under that field name. `form.reset()` returns the value to its initial value.
 
 ```tsx
 import { useRef, useState } from 'react'
@@ -258,7 +258,7 @@ function reset() {
 
 ### CSS variables
 
-`--wui-slider-width` / `--wui-slider-vertical-height` decide the host's axis length, `--wui-slider-track-size` is the track thickness, and the thumb thickness and the long edge of its pressed state each use their own variable.
+`--wui-slider-width` / `--wui-slider-vertical-height` set the host's axis length, and `--wui-slider-track-size` is the track thickness. The thumb thickness and the long edge of its pressed state each have their own variable.
 
 ```tsx
 export default function Demo() {
@@ -352,13 +352,9 @@ export default function Demo() {
 
 Supports ArrowLeft/Right/Up/Down, Home/End, and PageUp/PageDown keyboard navigation.
 
-Uses pointer capture for mouse, stylus, and touch interaction; both the component host and the touch track declare `touch-action: none`, and while a drag is active the component also prevents the default scrolling of `touchmove`, so iOS Safari does not take over the gesture during a horizontal or vertical drag.
+The component uses pointer capture for mouse, stylus, and touch interaction. Both the host and the touch track declare `touch-action: none`; while a drag is active the component also prevents the default `touchmove` scrolling, so iOS Safari does not take over the gesture during a horizontal or vertical drag.
 
-At rest the thumb is a full circle whose diameter is the thickness `--wui-slider-thumb-thickness`; while pressed or dragged it expands into a pill along the track direction, keeping its thickness and taking `--wui-slider-thumb-length` as the long edge.
-
-A horizontal slider expands the thumb along the width and a vertical slider along the height, the same recipe as the switch thumb.
-
-The shape switch is transitioned with `--wui-duration-press`.
+At rest the thumb is a full circle with a diameter of `--wui-slider-thumb-thickness`. While pressed or dragged it expands into a pill along the track direction; its thickness stays the same and the long edge comes from `--wui-slider-thumb-length`. A horizontal slider expands along the width and a vertical slider along the height.
 
 ### CSS Custom Properties
 
@@ -368,5 +364,5 @@ The shape switch is transitioned with `--wui-duration-press`.
 | `--wui-slider-vertical-height` | Vertical slider height                                          | `200px` |
 | `--wui-slider-track-size`      | Track thickness                                                 | `6px`   |
 | `--wui-slider-thumb-length`    | Long edge of the thumb in pressed/dragged state along the track | `24px`  |
-| `--wui-slider-thumb-thickness` | Thumb thickness (diameter of the resting circle)                | `20px`  |
+| `--wui-slider-thumb-thickness` | Thumb thickness (diameter of the circle when idle)              | `20px`  |
 | `--wui-slider-marks-inset`     | Marks inset                                                     | `0`     |

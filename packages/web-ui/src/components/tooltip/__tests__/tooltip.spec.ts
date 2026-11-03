@@ -53,6 +53,48 @@ describe('WebUiTooltip 组件', () => {
     })
   })
 
+  describe('属性：trigger', () => {
+    // 默认集合就是「悬停 + 键盘聚焦」，即指针与焦点两组的取值来源；这里只钉集合语义本身。
+    it('默认是 hover focus', async () => {
+      const el = createTooltip()
+      await waitForUpdate(el)
+
+      expect(el.trigger).toBe('hover focus')
+
+      cleanupElement(el)
+    })
+
+    it('数组从 property 通道读回规范串，顺序按词表', () => {
+      const el = createTooltip()
+      el.trigger = ['focus', 'hover']
+
+      expect(el.trigger).toBe('hover focus')
+
+      cleanupElement(el)
+    })
+
+    // 取值经规范化，回写下来的 attribute 保留原样输入（Lit 不回写来自 attribute 通道的变更），
+    // 因此这里只钉 property。
+    it('未知 token 丢弃；全部未知时回退到默认', () => {
+      const partial = createTooltip({ trigger: 'click tap' })
+      const unknown = createTooltip({ trigger: 'tap' })
+
+      expect(partial.trigger).toBe('click')
+      expect(unknown.trigger).toBe('hover focus')
+
+      cleanupElement(partial)
+      cleanupElement(unknown)
+    })
+
+    it('manual 覆盖其余手势', () => {
+      const el = createTooltip({ trigger: 'hover manual' })
+
+      expect(el.trigger).toBe('manual')
+
+      cleanupElement(el)
+    })
+  })
+
   describe('属性：content', () => {
     it('通过 content 属性设置文本', async () => {
       const el = createTooltip({ content: '提示文字' })
@@ -324,6 +366,103 @@ describe('WebUiTooltip 组件', () => {
       await waitForUpdate(el)
 
       expect(el.isOpen).toBe(false)
+
+      cleanupElement(el)
+    })
+  })
+
+  describe('触发方式：click', () => {
+    it('点击 trigger 打开，再次点击关闭', async () => {
+      const el = createTooltip({ trigger: 'click', content: '提示' })
+      await waitForUpdate(el)
+      const trigger = el.querySelector<HTMLElement>('button')!
+
+      trigger.click()
+      await waitForUpdate(el)
+      expect(el.isOpen).toBe(true)
+
+      trigger.click()
+      await waitForUpdate(el)
+      expect(el.isOpen).toBe(false)
+
+      cleanupElement(el)
+    })
+
+    it('点击 trigger 之外的位置关闭', async () => {
+      const el = createTooltip({ trigger: 'click', content: '提示' })
+      await waitForUpdate(el)
+
+      el.open = true
+      await waitForUpdate(el)
+      expect(el.isOpen).toBe(true)
+
+      document.body.click()
+      await waitForUpdate(el)
+      expect(el.isOpen).toBe(false)
+
+      cleanupElement(el)
+    })
+
+    it('点击 panel 内容不关闭', async () => {
+      const el = createTooltip({ trigger: 'click', content: '提示' })
+      await waitForUpdate(el)
+
+      el.open = true
+      await el.updateComplete
+      vi.advanceTimersToNextFrame()
+      await waitForUpdate(el)
+      queryA11y(el, '[role="tooltip"]')?.dispatchEvent(new MouseEvent('click', { bubbles: true, composed: true }))
+      await waitForUpdate(el)
+
+      expect(el.isOpen).toBe(true)
+
+      cleanupElement(el)
+    })
+
+    it('click 集合下悬停与失焦都不参与开合', async () => {
+      const el = createTooltip({ trigger: 'click', content: '提示' })
+      await waitForUpdate(el)
+
+      el.dispatchEvent(new PointerEvent('pointerenter'))
+      vi.advanceTimersByTime(200)
+      await waitForUpdate(el)
+      expect(el.isOpen).toBe(false)
+
+      el.open = true
+      await waitForUpdate(el)
+      el.dispatchEvent(new FocusEvent('focusout', { bubbles: true }))
+      vi.advanceTimersByTime(100)
+      await waitForUpdate(el)
+      expect(el.isOpen).toBe(true)
+
+      cleanupElement(el)
+    })
+
+    it('disabled 时点击不打开', async () => {
+      const el = createTooltip({ trigger: 'click', content: '提示', disabled: '' })
+      await waitForUpdate(el)
+
+      el.querySelector<HTMLElement>('button')?.click()
+      await waitForUpdate(el)
+
+      expect(el.isOpen).toBe(false)
+
+      cleanupElement(el)
+    })
+
+    it('manual 集合下点击与悬停都不打开，open 仍可用', async () => {
+      const el = createTooltip({ trigger: 'manual', content: '提示' })
+      await waitForUpdate(el)
+
+      el.querySelector<HTMLElement>('button')?.click()
+      el.dispatchEvent(new PointerEvent('pointerenter'))
+      vi.advanceTimersByTime(200)
+      await waitForUpdate(el)
+      expect(el.isOpen).toBe(false)
+
+      el.open = true
+      await waitForUpdate(el)
+      expect(el.isOpen).toBe(true)
 
       cleanupElement(el)
     })

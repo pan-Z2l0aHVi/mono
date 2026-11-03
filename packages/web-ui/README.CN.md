@@ -412,6 +412,7 @@ dropdown、tooltip）不需要它。
 | **数据展示**          | [`<web-ui-avatar>`](https://github.com/pan-Z2l0aHVi/mono/blob/main/packages/web-ui/docs/avatar.CN.md)                       |
 |                       | [`<web-ui-badge>`](https://github.com/pan-Z2l0aHVi/mono/blob/main/packages/web-ui/docs/badge.CN.md)                         |
 |                       | [`<web-ui-empty>`](https://github.com/pan-Z2l0aHVi/mono/blob/main/packages/web-ui/docs/empty.CN.md)                         |
+|                       | [`<web-ui-grouped-text>`](https://github.com/pan-Z2l0aHVi/mono/blob/main/packages/web-ui/docs/grouped-text.CN.md)           |
 |                       | [`<web-ui-middle-ellipsis>`](https://github.com/pan-Z2l0aHVi/mono/blob/main/packages/web-ui/docs/middle-ellipsis.CN.md)     |
 |                       | [`<web-ui-icon>`](https://github.com/pan-Z2l0aHVi/mono/blob/main/packages/web-ui/docs/icon.CN.md)                           |
 |                       | [`<web-ui-progress>`](https://github.com/pan-Z2l0aHVi/mono/blob/main/packages/web-ui/docs/progress.CN.md)                   |
@@ -421,5 +422,6 @@ dropdown、tooltip）不需要它。
 |                       | [`<web-ui-svg-draw-lines>`](https://github.com/pan-Z2l0aHVi/mono/blob/main/packages/web-ui/docs/svg-draw-lines.CN.md)       |
 |                       | [`<web-ui-theme>`](https://github.com/pan-Z2l0aHVi/mono/blob/main/packages/web-ui/docs/theme.CN.md)                         |
 | **通知**              | [`<web-ui-toast>`](https://github.com/pan-Z2l0aHVi/mono/blob/main/packages/web-ui/docs/toast.CN.md)                         |
+|                       | [`shake()`](https://github.com/pan-Z2l0aHVi/mono/blob/main/packages/web-ui/docs/shake.CN.md)                                |
 | **子项**              | [`<web-ui-option>`](https://github.com/pan-Z2l0aHVi/mono/blob/main/packages/web-ui/docs/option.CN.md)                       |
 |                       | [`<web-ui-segmented-trigger>`](https://github.com/pan-Z2l0aHVi/mono/blob/main/packages/web-ui/docs/segmented-trigger.CN.md) |

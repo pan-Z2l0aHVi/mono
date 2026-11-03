@@ -2,7 +2,7 @@
 
 button triggers an immediate action: submitting a form, opening a dialog, or toggling state.
 
-It does not contribute a value to `FormData`; `type="submit"` / `type="reset"` forward those two native actions to the host `<form>`. The only outward event is the `click` emitted by the native button inside the shadow root, and the component dispatches no custom events of its own.
+It does not contribute a value to `FormData`. `type="submit"` and `type="reset"` forward those two native actions to the surrounding `<form>`. The only outward event is the native button's `click`; the component dispatches no custom events.
 
 ## Samples
 
@@ -40,11 +40,11 @@ export default function Demo() {
 
 ### Sizes
 
-`size` accepts a bare number or a CSS length: a bare number is interpreted as px (`size="28"` means `--wui-control-size: 28px`), while values with units (`32px`, `1.5rem`) are used as-is. It only controls the height; when omitted, the height comes from the theme's `--wui-control-size` (36px).
+`size` accepts a bare number or a CSS length. A bare number is interpreted as px, so `size="28"` means 28px; values with units (`32px`, `1.5rem`) are used as-is. It only controls the height; when omitted, the height comes from the theme's `--wui-control-size` (36px).
 
-In `icon` mode `min-width` equals the height, so that square grows together with it.
+In `icon` mode the host is a square that grows with `size`.
 
-Inside a group, `<web-ui-button-group>` unifies member heights to 30px, so a `size` written on a member has no effect there.
+Inside a group, `<web-ui-button-group>` sets every member height to 30px, so a `size` written on a member does not take effect.
 
 ```tsx
 import { lucideSearch } from '@greypan/web-ui/icons'
@@ -86,11 +86,11 @@ import { lucideSearch } from '@greypan/web-ui/icons'
 
 ### Width
 
-There are only two ways to set the width: `full` makes the host a block and stretches the inner button across the parent, while `--wui-button-width` gives the inner button a fixed width (default `max-content`).
+Two settings control the width: `full` makes the control fill the parent, and `--wui-button-width` gives the button a fixed width (default `max-content`).
 
-When both are set, `full` wins: the `:host([full]) button` rule writes the width as `100%` and ignores the variable.
+When both are set, `full` takes precedence and `--wui-button-width` is ignored.
 
-The label is always `white-space: nowrap`, so an overly narrow container produces overflow rather than wrapping.
+The label does not wrap, so an overly narrow container overflows.
 
 ```tsx
 export default function Demo() {
@@ -140,9 +140,9 @@ export default function Demo() {
 
 ### Prefix and suffix
 
-The default slot is the label text (wrapped in an inner span), and the named `prefix` / `suffix` slots sit on either side of it. The gap between the three parts comes from `--wui-button-gap`.
+The default slot is the label text, and the named `prefix` / `suffix` slots sit on either side of it. The gap between the three parts comes from `--wui-button-gap`.
 
-A slot with no assigned nodes generates no box, so an empty side leaves no half `gap` behind. Prefix and suffix accept anything; both `<web-ui-icon>` and `<span>` can be projected.
+An empty side takes no `gap`. Prefix and suffix accept anything; both `<web-ui-icon>` and `<span>` can be projected.
 
 ```tsx
 import { lucideChevronLeft, lucideChevronRight, lucideSearch } from '@greypan/web-ui/icons'
@@ -206,11 +206,11 @@ import { lucideChevronLeft, lucideChevronRight, lucideSearch } from '@greypan/we
 
 ### Icon mode
 
-`icon` zeroes the padding and makes `min-width` equal the height, so the host becomes a square. The default slot is treated wholesale as icon content, without the label span wrapper; `prefix` / `suffix` are not rendered in this mode.
+`icon` makes the host a square. The whole default slot becomes icon content, and `prefix` / `suffix` are not rendered in this mode.
 
 An icon button with no visible text must have an `aria-label`, otherwise a screen reader announces an empty button.
 
-`loading` takes precedence over icon content: the spinner replaces the default slot and the icon inside it is not projected, so the same button never shows two graphics before and after loading.
+`loading` takes precedence over icon content: the spinner replaces the default slot and the icon inside it is not rendered.
 
 ```tsx
 import { lucideSearch } from '@greypan/web-ui/icons'
@@ -282,11 +282,11 @@ import { lucideSearch } from '@greypan/web-ui/icons'
 
 ### Disabled and loading
 
-Both `disabled` and `loading` really disable the native button inside: it dispatches no `click` and leaves the tab order, and writing both attributes produces the same result. The disabled state drops the whole control to forty percent opacity and gives up hover / pressed states.
+Both `disabled` and `loading` disable the control: it dispatches no `click` and leaves the tab order. The disabled state drops the whole control to 40% opacity and has no hover or pressed state.
 
-Outside icon mode, `loading` puts a spinner before the label, and the text and prefix/suffix are still projected—so the width changes. Use icon mode when a stable width is required.
+Outside icon mode, `loading` puts a spinner before the label. The text and prefix/suffix still show, so the width changes; use icon mode when the width must stay stable.
 
-The button below is held in `loading` by the page itself: click "Save" to enter the loading state and "Stop waiting" to leave it.
+The page holds `loading` itself: click "Save" to enter the loading state and "Stop waiting" to leave it.
 
 ```tsx
 import { useState } from 'react'
@@ -352,13 +352,13 @@ const pending = ref(false)
 
 ### Click and pressed state
 
-button has no custom events; the host listens to the native `click`. It originates on the native button inside the shadow root, bubbles out composed, and `event.target` is retargeted to the host, so both React and Vue can put a handler directly on `<web-ui-button>`.
+button has no custom events, so listen to the native `click`. It bubbles out composed and `event.target` is retargeted to the host, so both React and Vue can put a handler directly on `<web-ui-button>`.
 
-The keyboard Enter / Space keys go through the same native activation, so pointer and keyboard share this one handler.
+Enter and Space produce the same `click`.
 
-While held down, the `:active` pressed state is drawn; hover is only drawn on devices matching `(hover: hover) and (pointer: fine)`, while the pressed state applies to every device.
+Hover is only drawn on devices matching `(hover: hover) and (pointer: fine)`, while the pressed state applies to every device.
 
-The disabled and loading buttons produce no click, so the counter does not move.
+The disabled and loading buttons produce no click.
 
 ```tsx
 import { useState } from 'react'
@@ -404,11 +404,11 @@ const clicks = ref(0)
 
 `type` has only three valid values, `button` / `submit` / `reset`; invalid values normalize to `button`.
 
-After the synchronous listeners of this composed `click` have finished, the latter two read the host's ElementInternals form owner and forward `requestSubmit()` / `reset()`, so calling `preventDefault()` on this click cancels the action—that is what "Submit but blocked" below does.
+`submit` / `reset` are forwarded to the host `<form>` after the synchronous listeners of this `click` have run, so calling `preventDefault()` on this click cancels the action.
 
-The inner button has no form owner of its own, so `SubmitEvent.submitter` is `null` (visible in the readout).
+`SubmitEvent.submitter` is `null`.
 
-"Reset" forwards `form.reset()`, so `<web-ui-input>` returns to its value at mount time and the readout is cleared by this click's own handler.
+"Reset" forwards `form.reset()`, so `<web-ui-input>` returns to its value at mount time.
 
 Only `nickname` is submitted by this form: button contributes no value, and the outer `<fieldset disabled>` disables these buttons too.
 
@@ -493,17 +493,11 @@ function onCancelledClick(event: MouseEvent) {
 
 ### CSS variables
 
-All seven variables in the table are declared on the `<web-ui-button>` host itself. `--wui-button-width` / `--wui-button-px` / `--wui-button-gap` are declared nowhere else, so a class on the host is enough (the first button below).
+All seven variables in the table are declared on the `<web-ui-button>` host. `--wui-button-width` / `--wui-button-px` / `--wui-button-gap` work from a class on the host.
 
-`--wui-button-color` / `--wui-button-bg` / `--wui-button-bg-hover` / `--wui-button-bg-active` are declared on the host itself by `:host([variant='...'])`.
+`--wui-button-color` / `--wui-button-bg` / `--wui-button-bg-hover` / `--wui-button-bg-active` are declared on the host by the variant, so an inherited value cannot override them. Write them on this host or in an inline `style`.
 
-An inherited value cannot override a declaration on the element itself, so either write it on this host or put it directly in an inline `style`—this example uses inline `style` and supplies all four states at once.
-
-One more derivation is worth knowing: the hover / active colors of the `primary` and `secondary` variants are derived from `--wui-button-bg` through `color-mix(... , black)` (primary uses 88% / 76%, secondary uses 92% / 82%), so changing only `--wui-button-bg` makes those two states deepen along with it (that is the second button; hold it to see).
-
-`danger` and `glass` do not follow this derivation, so changing their background means supplying those two states yourself.
-
-The third button points each of the four states at an existing token, just to make hover and press jump to visibly different colors; a real page would not be configured this way.
+The hover / active colors of `primary` and `secondary` are derived from `--wui-button-bg`, so changing only the background deepens those two states along with it. `danger` and `glass` do not follow this, so changing their background means supplying those two states yourself.
 
 ```tsx
 import { lucideUpload } from '@greypan/web-ui/icons'
@@ -570,69 +564,69 @@ const fourStates = {
 | Name            | Description                                                                                                                                                                     | Type                                                         | Default    |
 | --------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------ | ---------- |
 | `variant`       | Visual variant; values outside the set fall back to `glass`.                                                                                                                    | `'primary' \| 'secondary' \| 'ghost' \| 'danger' \| 'glass'` | `'glass'`  |
-| `disabled`      | Disabled state; the native button inside is disabled too.                                                                                                                       | `boolean`                                                    | `false`    |
+| `disabled`      | Disabled state.                                                                                                                                                                 | `boolean`                                                    | `false`    |
 | `loading`       | Loading state. Blocks interaction as well, and renders the spinner first.                                                                                                       | `boolean`                                                    | `false`    |
 | `full`          | Fills the parent's width.                                                                                                                                                       | `boolean`                                                    | `false`    |
 | `icon`          | Icon mode: the host becomes a square and the default slot is used wholesale as icon content.                                                                                    | `boolean`                                                    | `false`    |
 | `size`          | Button height; bare numbers are interpreted as px, and CSS lengths such as `32px` and `1.5rem` are accepted. Inside `<web-ui-button-group>` it is unified to 30px by the group. | `string`                                                     | `''`       |
 | `type`          | The native button's `type`; invalid values normalize to `button`.                                                                                                               | `'button' \| 'submit' \| 'reset'`                            | `'button'` |
-| `aria-label`    | Accessible name, forwarded to the native button inside.                                                                                                                         | `string \| null`                                             | `null`     |
-| `aria-expanded` | Expanded state; forwarded to the native button inside for assistive technology to read.                                                                                         | `string \| null`                                             | `null`     |
+| `aria-label`    | Accessible name.                                                                                                                                                                | `string \| null`                                             | `null`     |
+| `aria-expanded` | Expanded state for assistive technology to read.                                                                                                                                | `string \| null`                                             | `null`     |
 
 ### Slots
 
 | Name      | Description                                                                                    |
 | --------- | ---------------------------------------------------------------------------------------------- |
-| `default` | Label text (wrapped in an inner span); in `icon` mode the whole slot is icon content.          |
+| `default` | Label text; in `icon` mode the whole slot is icon content.                                     |
 | `prefix`  | Icon or marker to the left of the label; not rendered in `icon` mode.                          |
 | `suffix`  | Icon or marker to the right of the label; an empty side produces no box, so it takes no `gap`. |
 
 ### Behavior
 
-`click` is dispatched by the native button inside the shadow root, bubbles out composed to the host, and `event.target` is retargeted to the host. Enter and Space go through the same native activation, so pointer and keyboard share this one event.
+`click` is dispatched by the native button, bubbles out composed to the host, and `event.target` is retargeted to the host. Enter and Space go through the same native activation, so pointer and keyboard share this one event.
 
-`disabled`, `loading`, and form-level disabling (an ancestor `<fieldset disabled>`) all really disable the inner button: no click is produced and the tab order does not reach it.
+`disabled`, `loading`, and form-level disabling (an ancestor `<fieldset disabled>`) all disable the control: no click is produced and the tab order does not reach it.
 
-`aria-label` and `aria-expanded` are explicitly delegated to the native button inside; `aria-controls` and other attributes stay on the host and are not copied automatically, because IDREFs cannot resolve across a shadow root.
+`aria-label` and `aria-expanded` are delegated to the native button inside; `aria-controls` and other attributes stay on the host and are not copied automatically.
 
-When `<web-ui-button>` is used as a collapse trigger, assistive technology can read `aria-expanded` on the inner node exposed as a button.
+When `<web-ui-button>` is used as a collapse trigger, assistive technology can read `aria-expanded`.
 
-`submit` and `reset` are forwarded through the host's form owner to the native `<form>` after all synchronous listeners of the composed `click` have run; calling `preventDefault()` on this click cancels the action.
+`submit` and `reset` are forwarded to the native `<form>` after all synchronous listeners of the composed `click` have run; calling `preventDefault()` on this click cancels the action.
 
-The inner button has no form owner of its own, so `SubmitEvent.submitter` is `null`.
+`SubmitEvent.submitter` is `null`.
 
 button does not contribute a value to `FormData` (form state is always `null`).
 
-`disabled` is the only path to a disabled state: it really disables the native button inside, so neither `click` nor form actions happen. `aria-disabled` is neither read nor forwarded—the "looks disabled but stays focusable" semantics are not offered, and a hand-written `aria-disabled` stays on the host with no effect on behavior.
+`disabled` is the only path to a disabled state: neither `click` nor form actions happen. `aria-disabled` is neither read nor forwarded, and a hand-written `aria-disabled` stays on the host with no effect on behavior.
 
 When `icon` and `loading` are both on, only the spinner is rendered and the default slot is not projected; outside icon mode the spinner comes before the label and coexists with prefix/suffix.
 
 Invalid values of `variant` and `type` fall back to `glass` and `button` respectively.
 
-The default square shape is decided by `icon`, except when `full` or an explicit `--wui-button-width` is set.
+The default shape is a square, decided by `icon`, except when `full` or an explicit `--wui-button-width` is set.
 
 ### Layout
 
-The host is an inline-flex box that centers the inner button in both axes; the height is decided by the inner button and does not inherit the page line height. With `full` it becomes a block and stretches the width to 100%.
+The host is an inline-flex box; the height is decided by the inner button and does not inherit the page line height. With `full` it stretches the width to 100%.
 
-The inner button takes its height from `--wui-control-size` (`36px`, overridden by `size`), its radius from `--wui-radius-control` (pill), and its horizontal padding from `--wui-button-px`; in `icon` mode the padding is zero and `min-width` equals the height.
+The height comes from `--wui-control-size` (`36px`, overridden by `size`), the radius is a pill, and the horizontal padding comes from `--wui-button-px`.
 
-The label is `white-space: nowrap` and the container is `overflow: clip`, so an insufficient width overflows rather than wraps. The font size comes from `font: inherit` on the host and then `--wui-font-size`, avoiding the UA's Arial on native buttons.
+The label does not wrap, so an insufficient width overflows. The font size comes from `--wui-font-size`.
 
-The cursor is fixed to `default` by the component (it does not follow `pointer`), and the host adds a `not-allowed` layer when disabled; the disabled opacity is 0.4.
+The cursor is fixed to `default`, and `not-allowed` when disabled; the disabled opacity is 0.4.
 
-The focus ring is drawn on the inner button's `:focus-visible` (`--wui-focus-ring-width` / `--wui-color-focus-ring`); during a pointer click it is suppressed to transparent by `data-wui-pointer-focus` and restored when keyboard Tab returns.
+The focus ring uses `--wui-focus-ring-width` / `--wui-color-focus-ring`; it is hidden during a pointer click and restored when keyboard Tab returns.
 
 The inner button is exposed as `::part(button)`.
 
 ### CSS Custom Properties
 
-| Name                     | Description                                                                                                                                                           | Default              |
-| ------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------- |
-| `--wui-button-width`     | Button width; taken over by `100%` when `full` is set.                                                                                                                | `max-content`        |
-| `--wui-button-px`        | Horizontal padding.                                                                                                                                                   | `var(--wui-space-3)` |
-| `--wui-button-gap`       | Gap between the prefix / label / suffix parts.                                                                                                                        | `var(--wui-space-2)` |
-| `--wui-button-color`     | Button text color, declared by `:host([variant='...'])`.                                                                                                              | Depends on variant   |
-| `--wui-button-bg`        | Button background color, declared by `:host([variant='...'])`.                                                                                                        | Depends on variant   |
-| `--wui-button-bg-hover`  | Hover background color, effective only under `(hover: hover) and (pointer: fine)`; for primary / secondary it is derived from `--wui-button-bg`.                      | Depends on variant   |
-| `--wui-button-bg-active` | Pressed background color, effective on `:active` when not disabled and regardless of pointer device; also derived from `--wui-button-bg` (except for danger / glass). | Depends on variant   |
+| Name                     | Description                                                                                                                                                        | Default              |
+| ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ | -------------------- |
+| `--wui-button-width`     | Button width; taken over by `100%` when `full` is set.                                                                                                             | `max-content`        |
+| `--wui-button-px`        | Horizontal padding.                                                                                                                                                | `var(--wui-space-3)` |
+| `--wui-button-gap`       | Gap between the prefix / label / suffix parts.                                                                                                                     | `var(--wui-space-2)` |
+| `--wui-button-color`     | Button text color, following the variant.                                                                                                                          | Depends on variant   |
+| `--wui-button-bg`        | Button background color, following the variant.                                                                                                                    | Depends on variant   |
+| `--wui-button-bg-hover`  | Hover background color, effective only under `(hover: hover) and (pointer: fine)`; for primary / secondary it is derived from `--wui-button-bg`.                   | Depends on variant   |
+| `--wui-button-bg-active` | Pressed background color, effective on `:active` when not disabled and regardless of pointer device; for primary / secondary it is derived from `--wui-button-bg`. | Depends on variant   |

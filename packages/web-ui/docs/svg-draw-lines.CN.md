@@ -1,12 +1,12 @@
 # SVG Draw Lines
 
-SVG 线条绘制动画：基于 `stroke-dashoffset` 在原元素上动画，不克隆、不操作 DOM；默认画入，`replay({ reverse: true })` 沿原路收回。
+SVG 线条绘制动画。组件直接对插槽里的原元素做动画，不克隆 DOM。默认播放画入，`replay({ reverse: true })` 沿原路径收回。
 
 ## Samples
 
 ### Basic
 
-默认插槽放需要动画的 SVG 内容；内容第一次稳定时自动播放一次画入。`duration` 是这一笔的毫秒数，默认 `1000`。
+把需要动画的 SVG 内容放进默认插槽。内容第一次稳定渲染时，组件自动播放一次画入。`duration` 是这次动画的毫秒数，默认 `1000`。
 
 ```tsx
 import type { WebUiSvgDrawLines } from '@greypan/web-ui'
@@ -72,9 +72,7 @@ const lines = useTemplateRef<WebUiSvgDrawLines>('lines')
 
 ### Stroked geometry
 
-收集选择器 `path, rect, circle, line, polyline, polygon, ellipse` 命中的几何元素；一次播放里它们同时起播、并行推进。组件没有延迟或错峰的入口，逐条排队的效果要靠拆成多个实例。
-
-以 `Z` 收尾的闭合 `path` 会在播放期间临时补一小段，让收尾那笔真的画出来；播放结束后恢复原来的 `d`。
+参与动画的元素有 `path`、`rect`、`circle`、`line`、`polyline`、`polygon`、`ellipse`。一次播放中它们同时开始、同时推进。组件不提供延迟或错峰，需要逐条播放时请使用多个实例。
 
 ```tsx
 import type { WebUiSvgDrawLines } from '@greypan/web-ui'
@@ -206,11 +204,9 @@ const closedPath = useTemplateRef<WebUiSvgDrawLines>('closedPath')
 
 ### Duration and easing
 
-`duration` 限制在 0–30000 毫秒，非数字回退到 `1000`；`easing` 原样传给 `element.animate()`，默认 `linear`。
+`duration` 限制在 0 到 30000 毫秒之间，非数字会回退到 `1000`。`easing` 是 CSS 缓动函数，默认 `linear`。
 
-两个值都在每次播放开始时读取，所以动画进行中改属性不会影响当前这一笔；下一次 `replay()` 才生效。
-
-三个示例画的是同一条曲线，只差时长和缓动。
+两个值都在每次播放开始时读取。动画进行中修改属性不会影响当前这次播放，下一次 `replay()` 才会生效。
 
 ```tsx
 import type { WebUiSvgDrawLines } from '@greypan/web-ui'
@@ -358,7 +354,7 @@ const bounce = useTemplateRef<WebUiSvgDrawLines>('bounce')
 
 ### Multiple paths and nesting
 
-每次 `replay()` 重新收集子树，范围是宿主的全部 light DOM 后代：同一个 `<svg>` 里的多条 `<path>`、并排的多个 `<svg>`、任意层 `<g>` 嵌套都算进同一批，一起起播、一起收尾。条数不会让动画排队，实例也没有并发上限或「逐条播放」的开关。
+每次 `replay()` 都会重新收集宿主的全部 light DOM 后代。同一个 `<svg>` 里的多条 `<path>`、并排的多个 `<svg>`，以及任意层 `<g>` 嵌套，都进入同一批，一起开始、一起结束。元素数量不会让动画排队。
 
 ```tsx
 import type { WebUiSvgDrawLines } from '@greypan/web-ui'
@@ -422,9 +418,7 @@ const lines = useTemplateRef<WebUiSvgDrawLines>('lines')
 
 ### Nested shadow roots
 
-遍历会递归进入**开放**的 shadow root，所以 `<web-ui-icon>` 里的 `<path>` 和宿主 light DOM 的 `<svg>` 落在同一批目标里一起动画；闭合的 shadow root 被跳过。
-
-也正因为会走进嵌套的 shadow root，两层实例不得覆盖同一批几何元素（见「收回末态」）。
+嵌套的开放 shadow root 里的几何元素同样参与动画，例如 `<web-ui-icon>` 里的 `<path>`；闭合的 shadow root 会被跳过。因此两层实例不能覆盖同一批几何元素，详见「收回末态」。
 
 ```tsx
 import type { WebUiSvgDrawLines } from '@greypan/web-ui'
@@ -494,9 +488,7 @@ const lines = useTemplateRef<WebUiSvgDrawLines>('lines')
 
 ### Disabling autoplay
 
-`no-autoplay` 关掉「首次内容稳定时自动播放一次」，内容停在资产原样 —— 完整描边、看得见，且不写任何内联 dash；`replay()` 照旧可用，什么时候播由调用方决定。`<web-ui-checkbox>` 正是靠它避免挂载时就已勾选的勾在页面首帧画出来。
-
-下面这条挂载时静止，点 `replay()` 才画入。
+`no-autoplay` 关闭首次自动播放，内容保持资产的完整描边。`replay()` 照常可用，由调用方决定何时播放。
 
 ```tsx
 import type { WebUiSvgDrawLines } from '@greypan/web-ui'
@@ -542,9 +534,9 @@ const lines = useTemplateRef<WebUiSvgDrawLines>('lines')
 
 ### Manual replay
 
-`replay()` 取消当前动画并重新收集几何元素，从空白画满；`replay({ reverse: true })` 沿原路收回，收尾的空白作为 DOM 状态留在内联样式上，要重新显示只能再调用一次 `replay()`。
+`replay()` 取消当前动画，重新收集几何元素，从空白画到完整。`replay({ reverse: true })` 沿原路径收回，收回后的空白以内联样式保留在 DOM 上，要重新显示只能再调用一次 `replay()`。
 
-返回的 Promise 在这一次的全部动画结束后兑现，无目标或当前主题范围启用 reduced motion 时立即兑现。
+返回的 Promise 在这一次全部动画结束后兑现。没有目标元素，或当前主题范围启用减少动态效果时，Promise 立即兑现。
 
 ```tsx
 import type { WebUiSvgDrawLines } from '@greypan/web-ui'
@@ -598,11 +590,11 @@ const lines = useTemplateRef<WebUiSvgDrawLines>('lines')
 
 ### Props
 
-| 名称          | 说明                                                                              | 类型      | 默认值     |
-| ------------- | --------------------------------------------------------------------------------- | --------- | ---------- |
-| `duration`    | 动画时长（毫秒），限制在 0–30000。                                                | `number`  | `1000`     |
-| `easing`      | 浏览器支持注册长度型自定义属性插值时传给 `element.animate()`；否则使用 `linear`。 | `string`  | `'linear'` |
-| `no-autoplay` | 关闭内容首次出现时的自动播放。                                                    | `boolean` | `false`    |
+| 名称          | 说明                                        | 类型      | 默认值     |
+| ------------- | ------------------------------------------- | --------- | ---------- |
+| `duration`    | 动画时长（毫秒），限制在 0 到 30000。       | `number`  | `1000`     |
+| `easing`      | CSS 缓动函数；浏览器不支持时回退 `linear`。 | `string`  | `'linear'` |
+| `no-autoplay` | 关闭内容首次出现时的自动播放。              | `boolean` | `false`    |
 
 ### Slots
 
@@ -612,26 +604,24 @@ const lines = useTemplateRef<WebUiSvgDrawLines>('lines')
 
 ### Methods
 
-| 名称               | 说明                                                                                                                                                                                            |
-| ------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `replay(options?)` | 停止当前播放并重新开始，每次调用重新收集子树里的几何元素；`options.reverse` 为 `true` 时沿原路径收回。返回的 Promise 在动画全部结束后兑现，无目标或当前主题范围启用 reduced motion 时立即兑现。 |
+| 名称               | 说明                                                                                                                                                                                                  |
+| ------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `replay(options?)` | 停止当前播放并重新开始；每次调用都会重新收集子树里的几何元素。`options.reverse` 为 `true` 时沿原路径收回。返回的 Promise 在动画全部结束后兑现，没有目标元素或当前主题范围启用减少动态效果时立即兑现。 |
 
 ### 行为说明
 
-三个属性均会反射（reflected）。
+三个属性都会同步为 attribute。
 
-递归遍历 light DOM 和所有开放 Shadow Root，查找 `path`、`rect`、`circle`、`line`、`polyline`、`polygon`、`ellipse` 元素。
-
-以 `Z`/`z` 结尾的 `<path>` 会临时应用缺口修复逻辑确保闭合段正确渲染。画入段完成或取消后恢复所有内联样式。
+动画目标是 light DOM 和所有开放 shadow root 里的 `path`、`rect`、`circle`、`line`、`polyline`、`polygon`、`ellipse` 元素。
 
 ### 自动播放
 
-slot 内容第一次稳定时自动播放一次画入。设置 `no-autoplay` 后保持资产原样、由调用方决定何时播放 —— `<web-ui-checkbox>` 正是靠它避免挂载时就已勾选的勾在页面首帧画出来。
+插槽内容第一次稳定时，组件自动播放一次画入。设置 `no-autoplay` 后内容保持资产原样，由调用方决定何时播放。
 
 ### 收回末态
 
-收回留下的空白是写在被动画的几何元素上的内联样式，包括嵌套开放 Shadow Root（如 `<web-ui-icon>`）里的节点。
+收回后留下的空白，是被动画几何元素上的内联样式；嵌套的开放 shadow root 里的节点（例如 `<web-ui-icon>` 里的节点）也一样。
 
-克隆这些节点（`cloneNode`、`innerHTML` 往返）会把空白一起带走；把节点摘下来再挂回去，描边也仍然是隐去的 —— 收回结束是一个 DOM 状态而不是一条还活着的动画，没有留下任何东西去复原它。要重新显示就调用 `replay()`。
+克隆这些节点（`cloneNode`、`innerHTML` 往返）会连空白一起复制，重新挂载也不会恢复描边。要重新显示就调用 `replay()`。
 
-由于组件会递归进入嵌套的开放 Shadow Root，两层 `<web-ui-svg-draw-lines>` 不得覆盖同一批几何元素：每个实例只在第一次动画某个元素时记录它的内联 dash 值，内层留下的空白会被外层当成「消费者自己写的值」。
+两层 `<web-ui-svg-draw-lines>` 不能覆盖同一批几何元素。否则内层收回留下的空白会被外层当作自己的值。

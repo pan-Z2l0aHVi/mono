@@ -209,37 +209,33 @@ To collapse several independent checkboxes into one `string[]`, with the group d
 
 ### Behavior
 
-The interactive `<span>` inside the shadow root declares `role="checkbox"` and keeps `aria-checked`, `aria-disabled`, and `tabindex` in sync. Enter/Space toggles it from the keyboard.
+The host exposes `checkbox` semantics, keeping `aria-checked`, `aria-disabled`, and `tabindex` in sync; Enter/Space toggles it.
 
-Unchecked items are not written into `FormData`; `getFormValue` falls back to `'on'` when `value` is empty, matching a native checkbox.
+Unchecked items are not written into `FormData`; `value` falls back to `'on'` when empty, matching a native checkbox.
 
-The `input` / `change` dispatched by group members (direct children of `<web-ui-checkbox-group>`) do not bubble and do not cross the shadow boundary; the group dispatches the events once on its host, so outside the host there is one set of events rather than one per member.
+The `input` / `change` dispatched by group members are not forwarded; the group dispatches the events once on its host, so outside the host there is one set of events.
 
 ### Layout
 
-The host is an inline-flex box whose height is set by its content and does not inherit the page line height, so no extra gap appears above or below the indicator; `--wui-selection-control-size` (`18px`) sets the indicator width and height, and alignment with adjacent text is fixed at `vertical-align: middle`.
+The host height is set by its content and does not inherit the page line height; `--wui-selection-control-size` (`18px`) sets the indicator width and height, and alignment with adjacent text is fixed at `vertical-align: middle`.
 
-`<web-ui-radio>` shares this same contract.
+`<web-ui-radio>` follows the same rules.
 
-The 10px between the indicator and the label belongs to the label: when the default slot draws nothing (it is empty, or holds only a visually hidden accessible name such as an `.sr-only` span), that gap is removed too and the host becomes as wide as the indicator.
+When the default slot draws nothing (it is empty, or holds only a visually hidden accessible name such as an `.sr-only` span), the gap between the indicator and the label is removed and the host becomes as wide as the indicator.
 
-Emptiness is judged by the rendered width of the label box rather than by whether nodes are assigned to the slot—an accessible name is exactly the "assigned, but draws no box" case; nor can the label be removed with `display: none`, since that would take the name out of the accessibility tree.
+Emptiness is judged by the rendered width, so an assigned-but-invisible accessible name counts as empty; do not remove the label with `display: none`, since that would take the name out of the accessibility tree.
 
 ### Check animation
 
-The check mark is a stroke asset from `@/icons`, rendered by a nested `<web-ui-icon>` inside `<web-ui-svg-draw-lines>` with `no-autoplay`, so a control that is already checked at mount shows a static check.
+On check the mark is drawn from the left end, and on uncheck it retracts along the same path; with `motion="reduced"` the two states switch directly, and a control already checked at mount shows a static check.
 
-On check, the line is drawn from the left tip at a constant stroke speed, with a duration taken from `--wui-duration-trigger` (160ms by default) resolved from the effective theme at the moment of the toggle, landing on the same beat as the indicator background transition; on uncheck it retracts along the same path back to empty rather than merely fading out; under a theme scope with `motion="reduced"` both are skipped and the two states switch directly.
-
-The stroke color is `--wui-color-on-control`, passed down through `<web-ui-icon>`'s `--wui-icon-color`, because once checked the background behind it is `--wui-color-accent`.
-
-This structure brings two constraints: the asset must stay stroked (`fill: none` + `stroke: currentColor`), because a filled icon still runs the dash animation but draws nothing, so the check appears directly; and it renders at the `<web-ui-icon>` default of 18px, since the host cannot reach the `<svg>` inside the icon's shadow root, so it does not grow with `--wui-selection-control-size`.
+The mark uses `--wui-color-on-control` and renders at the `<web-ui-icon>` default of 18px, so it does not grow with `--wui-selection-control-size`.
 
 ### Inactive state
 
 The unchecked indicator takes its background from `--wui-color-surface-control` (the same control surface as the neutral button), which stays distinguishable from `--wui-color-page` in dark mode too.
 
-When any part of the trigger area (the indicator, the gap, or the slot label on the right) is hovered, a 6% state layer is overlaid on that background.
+When any part of the trigger area (the indicator, the gap, or the slot label on the right) is hovered, a state layer is overlaid on that background.
 
 Hover applies only on devices matching `(hover: hover) and (pointer: fine)`; there is no pressed state, and the checked and disabled states keep their own backgrounds.
 

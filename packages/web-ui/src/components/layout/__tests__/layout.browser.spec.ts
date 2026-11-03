@@ -4,7 +4,7 @@ import '../../theme'
 import { afterEach, describe, expect, it, vi } from 'vite-plus/test'
 import { userEvent } from 'vite-plus/test/browser'
 
-import { pollUntil, queryA11y, waitForFrame } from '@/shared/test-utils'
+import { pollUntil, queryA11y, waitForAnimationsToFinish, waitForFrame } from '@/shared/test-utils'
 import { scrollWindowTo, setViewport } from '@/shared/test-utils/viewport'
 
 import type { WebUiLayout } from '..'
@@ -290,6 +290,32 @@ describe('WebUiLayout 组件（浏览器）', () => {
       expect(requested).toEqual([true, false])
       expect(layout.sidebarOpen).toBe(false)
       await pollUntil(() => !drawer.hasAttribute('open'), 'Expected drawer to close')
+    })
+
+    // 移动端侧栏打开时整页朝右让开 16vw（placement="left" 的进场方向）；关闭后归位。
+    it('打开移动端 drawer 时整页让开，关闭后回到原位', { timeout: 20_000 }, async () => {
+      await setViewport(MOBILE_VIEWPORT.width, MOBILE_VIEWPORT.height)
+      const layout = createLayout()
+      syncControlledSidebarState(layout)
+      const marker = document.createElement('div')
+      marker.style.cssText = 'width:10px;height:10px;margin-left:120px'
+      document.body.append(marker)
+      await layout.updateComplete
+      const rest = marker.getBoundingClientRect().left
+
+      byLabel(layout, 'Open navigation menu').click()
+      const drawer = queryA11y(layout, 'web-ui-drawer') as HTMLElement
+      await pollUntil(() => drawer.hasAttribute('open'), 'Expected drawer to open')
+      await waitForAnimationsToFinish([document.documentElement, drawer], 8_000)
+
+      const expectedShift = 16 * (window.innerWidth / 100)
+      expect(marker.getBoundingClientRect().left - rest).toBeCloseTo(expectedShift, 1)
+
+      const dialog = drawer.shadowRoot?.querySelector('dialog') as HTMLDialogElement
+      dialog.dispatchEvent(new KeyboardEvent('keydown', { bubbles: true, key: 'Escape' }))
+      await pollUntil(() => !drawer.hasAttribute('open'), 'Expected drawer to close')
+      await waitForAnimationsToFinish([document.documentElement, drawer], 8_000)
+      expect(marker.getBoundingClientRect().left - rest).toBeCloseTo(0, 1)
     })
   })
 

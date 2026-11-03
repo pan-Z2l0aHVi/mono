@@ -1,18 +1,18 @@
 # Button Group
 
-Groups several `<web-ui-button>` elements into one: the group is responsible only for the visual contiguity between members (a shared glass base, dividers drawn between adjacent buttons) and the layout direction; it does not manage selection state and does not change members' own events or form behavior. A member's own `size` is ignored inside the group, where every member renders 30px high.
+Groups several `<web-ui-button>` elements into one. The group does two things: it makes adjacent buttons read as one control (a shared glass base, dividers between adjacent buttons) and it sets the layout direction. It does not manage selection state and does not change members' own events or form behavior. A member's own `size` is ignored inside the group, where every member renders 30px high.
 
 ## Samples
 
 ### Horizontal group
 
-The group puts a glass base under the whole row (`.wui-glass` drawn on the group's inner box) and adds a divider between adjacent members, but not after the last one.
+The whole row shares a glass base, with a divider between adjacent members and none after the last one.
 
-A member's `variant` carries only text color here: the `button.is-grouped` layer inside the member writes `--wui-button-bg` as `transparent` and replaces hover / active with a shared state layer.
+A member's `variant` carries only text color here: the background is transparent and hover / active use a shared state layer.
 
-A declaration on the element itself always beats a value inherited from the variant, so `secondary` / `ghost` / `glass` look identical inside the group (`glass` does not even draw its own glass base once grouped, since `wui-glass` is only added without a group context), and only the red text of `danger` survives.
+As a result `secondary` / `ghost` / `glass` look identical inside the group, and only the red text of `danger` remains.
 
-`primary` keeps only its `var(--wui-color-on-accent)` white text, which is almost unreadable on the light glass—use `secondary` or `ghost` inside a group.
+`primary` keeps only its white text, which is almost unreadable on the light glass. Use `secondary` or `ghost` inside a group.
 
 ```tsx
 export default function Demo() {
@@ -38,11 +38,11 @@ export default function Demo() {
 
 ### Member content
 
-A member can be icon-only, text-only, or have an icon wrapped in `prefix` / `suffix`; the group only lays the host boxes in one row and centers them: `align-items: center` is hard-coded and member heights are unified to 30px, so mixed content aligns naturally and no member is stretched or squeezed.
+A member can be icon-only, text-only, or have an icon wrapped in `prefix` / `suffix`; member heights are set to 30px and centered, so mixed content is neither stretched nor squeezed.
 
 An icon-only member still needs an `aria-label`, otherwise a screen reader announces an empty button.
 
-Nodes that are not `<web-ui-button>` are still projected into the glass but do not participate in last-position and divider calculation—the group only recognizes `web-ui-button` as members.
+Nodes that are not `<web-ui-button>` are still projected but do not participate in last-position and divider calculation.
 
 ```tsx
 import { lucideChevronLeft, lucideChevronRight } from '@greypan/web-ui/icons'
@@ -146,11 +146,11 @@ import { lucideChevronLeft, lucideChevronRight } from '@greypan/web-ui/icons'
 
 `direction` decides horizontal or vertical layout and defaults to `horizontal`; the only valid values are those two, and any value outside the set falls back to `horizontal`.
 
-This attribute is only handed down to members as a presentation context (`{ direction, isLast }`); the group does not rewrite any member attribute.
+This attribute only decides the layout direction; the group does not rewrite any member attribute.
 
-Vertically, the glass box is at least `--wui-control-size` wide (the page value, 36px by default) and its height is driven by the members. Members still render at the group-wide 30px, so an icon-only member stays a 30px square with 3px of slack on each side rather than being stretched to 36px; a text member can still widen the track because its label does not wrap.
+Vertically, the minimum width is `--wui-control-size` (36px) and the height is driven by the members. Members still render at 30px, so an icon-only member stays a 30px square with 3px of slack on each side; a text member can widen the track because its label does not wrap.
 
-The divider is then drawn below the member, and the same `--wui-button-group-divider-length` now controls the width.
+The divider is then drawn below the member, and `--wui-button-group-divider-length` controls the width.
 
 ```tsx
 import { lucideMinus, lucidePlus, lucideSearch } from '@greypan/web-ui/icons'
@@ -194,11 +194,11 @@ import { lucideMinus, lucidePlus, lucideSearch } from '@greypan/web-ui/icons'
 
 ### Member gap
 
-button-group has no gap token of its own: the gap between members and the inner padding of the glass box both read the theme spacing step `--wui-space-1` (4px by default), so changing that one moves both.
+button-group has no gap token of its own: the gap between members and the inner padding of the glass box both take the theme's `--wui-space-1` (4px), so changing that one moves both.
 
-It is declared by the `<web-ui-theme>` host on its own subtree—written on an ancestor outside the theme element it does not reach the group, while writing it on the group host itself always wins (a declaration on the element beats an inherited value).
+An override on an ancestor outside `<web-ui-theme>` does not reach the group; writing it on the group host itself takes precedence.
 
-One more thing to know: the divider is pinned at `right: -2px` on the member host (`bottom: -2px` when vertical), which lands exactly in the middle of two members at a 4px gap; after increasing `--wui-space-1` it does not follow and drifts toward the left member.
+The divider does not follow `--wui-space-1`: after increasing the gap it drifts toward the left member.
 
 ```tsx
 export default function Demo() {
@@ -254,11 +254,11 @@ export default function Demo() {
 
 ### Divider
 
-The divider is rendered by the "non-last" member itself, carries `aria-hidden`, and the last member has none.
+The divider is rendered by non-last members, carries `aria-hidden`, and the last member has none.
 
-The short side is always 1px and the long side comes from `--wui-button-group-divider-length` (20px by default): horizontally that value is the height, vertically it is the width; the color comes from the global `--wui-color-border` and is not part of this component's variable table.
+The short side is always 1px and the long side comes from `--wui-button-group-divider-length` (20px by default): horizontally it controls the height, vertically the width; the color comes from the global `--wui-color-border`.
 
-The theme does not declare this variable and the divider is its only consumer, so a class on the group host is enough; written on a single member, it only affects the divider on that member's right (or bottom) side.
+A class on the group host is enough; written on a single member, it only affects the divider on that member's right (or bottom) side.
 
 ```tsx
 import { lucideMinus, lucidePlus } from '@greypan/web-ui/icons'
@@ -324,13 +324,13 @@ import { lucideMinus, lucidePlus } from '@greypan/web-ui/icons'
 
 ### Member events
 
-The group does not intercept member `click`s: `GroupController` only listens to `change` on the host in the capture phase, and button-group uses a purely presentational context that does not even implement `handleChange`, so member clicks bubble through the group host unchanged.
+The group does not intercept member `click`s; they bubble through the group host unchanged.
 
-`event.target` is that member host—one handler catches the whole group and uses `data-id` to tell which member it was (button delegates only `aria-label` to the inner button and leaves other attributes on the host without copying them into the shadow, so `data-*` is safe as an identity marker).
+`event.target` is that member host, so one handler catches the whole group and uses `data-id` to tell which member it was; `data-*` stays on the host and is safe as an identity marker.
 
-Members with `disabled` and `loading` still produce no click, so the readout does not move.
+Members with `disabled` and `loading` still produce no click.
 
-Grouping does not change form behavior either: a member with `type="submit"` still submits the outer `<form>`, so clicking "Save" first reads `Clicked save` and is then overwritten by the submit event.
+Grouping does not change form behavior either: a member with `type="submit"` still submits the outer `<form>`.
 
 button-group has no `disabled` of its own: to disable the whole group, put it inside `<fieldset disabled>` (members are disabled through form-level disabling and turn gray together), or write it on each member.
 
@@ -421,27 +421,23 @@ function onSubmit(event: Event) {
 
 ### Behavior
 
-The group hands members a read-only presentation context `{ direction, isLast }` through `@lit/context`; it is the only downstream channel: the group holds no selection, value, or disabled state, rewrites no member attribute, and makes no exclusive choice for members. When `direction` receives a value outside the set, it falls back to `horizontal`.
+The group holds no selection, value, or disabled state, rewrites no member attribute, and makes no exclusive choice for members. When `direction` receives a value outside the set, it falls back to `horizontal`.
 
-A member's `size` is ignored inside the group and its height is unified to 30px; when a member leaves the group the context is cleared and it regains standalone control semantics (it draws its own background by variant and takes its height from its own `size`). Moving between groups disconnects and clears first, then subscribes to the new group, so dividers and last-position detection are recomputed against the new member list.
+A member's `size` is ignored inside the group and its height is unified to 30px; when a member leaves the group it regains standalone control semantics (it draws its own background by variant and takes its height from its own `size`).
 
-`GroupController` listens to `change` on the host in the capture phase, but button-group uses the presentational lifecycle (only `sync` / `disconnect`) without `handleChange`, so member `click`s always bubble out of the group host unchanged and `event.target` is that member host.
+Member `click`s bubble out of the group host unchanged, and `event.target` is that member host.
 
 The component dispatches no custom events of its own and has no group-level state such as `disabled` / `required`: disabling the whole group relies on an ancestor `<fieldset disabled>` (members' form-level disabling takes effect together) or is written per member.
 
-The divider is rendered by non-last members with `aria-hidden`; the last member has none. Member count or order changes trigger a recomputation through a light DOM `MutationObserver` and `slotchange`, so comment nodes left by React conditional rendering and Vue `v-if` are tracked too.
+The divider is rendered by non-last members with `aria-hidden`; adding, removing, or reordering members recomputes the divider and last-position detection automatically.
 
 ### Layout
 
-The host is inline-block and the glass box `.wui-button-group-inner` is flex: horizontal uses `row` + `width: max-content` + `height: var(--wui-control-size)` (36px).
+The host is inline-block and the glass box is flex: horizontal uses `row`, width `max-content`, height `var(--wui-control-size)` (36px); vertical switches to `column` with `min-width: var(--wui-control-size)`, height driven by the content, and the inner padding rotated to top and bottom.
 
-Vertical switches to `column` through `:host([direction='vertical'])`, replaces the fixed width with `min-width: var(--wui-control-size)`, hands the height to `auto`, and rotates the inner padding to top and bottom.
+Both directions center their members, the gap between members and the inner padding of the box both take `--wui-space-1` (4px), and the radius takes `--wui-radius-control` (a pill).
 
-Both directions hard-code `align-items: center`, so members are neither stretched nor squeezed; the gap between members and the inner padding of the box both take `--wui-space-1` (4px).
-
-The all-around `border-radius` takes `--wui-radius-control` (the theme supplies `calc(infinity * 1px)`, i.e. a pill), while the highlight radius of the glass stroke ring is written separately by the box as `calc(var(--wui-control-size) / 2)`, coming from the same source as that radius.
-
-`--wui-control-size` is the source of this group's width, height, and that highlight radius, but it does not override member height: the 30px of a member is written as an inline style on its inner button, leaving 3px above and below inside the 36px box.
+`--wui-control-size` sets this group's width and height but does not override member height: members are fixed at 30px, leaving 3px above and below inside the 36px box.
 
 ### CSS Custom Properties
 

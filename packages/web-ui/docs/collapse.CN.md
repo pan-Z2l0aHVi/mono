@@ -1,18 +1,16 @@
 # Collapse
 
-collapse panel 把 trigger 与内容装在同一个元素里：trigger 走 default slot，要收起的内容走 `content` slot。
+collapse panel 把 trigger 与内容放在同一个元素里：trigger 放在默认插槽，要收起的内容放在 `content` 插槽。
 
-用户点 trigger 时组件自己把 `open` 改到位，再派发一次 `open-change` 通知；消费方把 `detail.open` 回写进页面状态，页面上的读数才和面板一致。
+用户点击 trigger 时，组件先更新 `open`，再派发一次 `open-change`。调用方把 `detail.open` 写回页面状态后，页面状态才与面板一致。
 
 ## Samples
 
 ### Basic
 
-`open` 是唯一状态源，`content` slot 放要收起的内容，default slot 放 trigger。
+`open` 是唯一状态源，`content` 插槽放要收起的内容，默认插槽放 trigger。
 
-点 trigger 时组件先把 `open` 落到新值再派发 `open-change`，所以 handler 只要把 `detail.open` 回写进页面状态。
-
-下面那行读数是回写后的值，组件内部没有第二份状态。
+点击 trigger 时，组件先更新 `open` 再派发 `open-change`，所以 handler 只需要把 `detail.open` 写回页面状态。
 
 ```tsx
 import { useState } from 'react'
@@ -31,7 +29,7 @@ export default function Demo() {
         </button>
         <div slot="content">
           <div className="p-3 text-sm">
-            <p className="m-0">content slot 支持任意节点：文字、表单、图片，甚至另一条 collapse。</p>
+            <p className="m-0">content 插槽支持任意节点：文字、表单、图片，甚至另一条 collapse。</p>
           </div>
         </div>
       </web-ui-collapse>
@@ -53,7 +51,7 @@ export default function Demo() {
       </button>
       <div slot="content">
         <div class="p-3 text-sm">
-          <p class="m-0">content slot 支持任意节点：文字、表单、图片，甚至另一条 collapse。</p>
+          <p class="m-0">content 插槽支持任意节点：文字、表单、图片，甚至另一条 collapse。</p>
         </div>
       </div>
     </web-ui-collapse>
@@ -70,7 +68,7 @@ const open = ref(false)
 
 ### Without binding open
 
-组件自己会切 `open`，所以完全不绑定也能用：只给 default slot 与 `content` slot 就行。第二条静态写 `open`，表示初始就展开——初始即为 `open` 时直接落展开稳态，不播进入动画。静态写法只在挂载时生效一次，之后组件继续自己切这个属性，页面不参与。
+组件自己会切换 `open`，所以完全不绑定也能用，只要提供默认插槽与 `content` 插槽。静态写 `open` 表示初始就展开。挂载时已经是 `open` 的面板直接显示展开状态，不播放进入动画。静态值只在挂载时生效一次，之后组件继续自己切换这个属性，页面不参与。
 
 ```tsx
 export default function Demo() {
@@ -99,7 +97,7 @@ export default function Demo() {
         </button>
         <div slot="content">
           <div className="p-3 text-sm">
-            <p className="m-0">挂载时就带 open，直接落展开稳态；再点一次才走收起动画。</p>
+            <p className="m-0">挂载时已带 open，直接显示展开状态；再点一次才播放收起动画。</p>
           </div>
         </div>
       </web-ui-collapse>
@@ -134,7 +132,7 @@ export default function Demo() {
       </button>
       <div slot="content">
         <div class="p-3 text-sm">
-          <p class="m-0">挂载时就带 open，直接落展开稳态；再点一次才走收起动画。</p>
+          <p class="m-0">挂载时已带 open，直接显示展开状态；再点一次才播放收起动画。</p>
         </div>
       </div>
     </web-ui-collapse>
@@ -144,13 +142,13 @@ export default function Demo() {
 
 ### Trigger types
 
-交互语义来自 default slot 里那个元素本身：原生 `<button>` 与 `<web-ui-button>` 自带 Enter / Space 激活和焦点，组件把 `aria-expanded` 回写到 default slot 里第一个被指派的元素，并在 `disabled` 时给该元素加上 `disabled`。
+交互语义来自默认插槽中的元素：原生 `<button>` 与 `<web-ui-button>` 自带 Enter / Space 激活和焦点。组件把 `aria-expanded` 写回默认插槽中的第一个元素，并在 `disabled` 时给该元素加上 `disabled`。
 
-不回写 `aria-controls`：内容 track 在组件 shadow root 内，IDREF 不能跨 shadow root 解析，写出去在可访问性树里等同悬空引用。展开关系由 `aria-expanded` 表达，`<web-ui-button>` 会把它同步到内部原生 button；禁用态则靠 `disabled` 属性穿透 shadow 边界。
+不回写 `aria-controls`：展开关系由 `aria-expanded` 表达，`<web-ui-button>` 会把它同步到实际的 button 元素。
 
-整个 default slot 都落在点击代理范围内，点其中任何一处都算一次开合，所以说明文字别塞进来。
+整个默认插槽都是可点击区域，点击任意位置都算一次开合，所以不要把说明文字放进来。
 
-最后一条放的是纯文本 trigger：点得动，但不可聚焦、没有键盘激活，只用来演示反面写法。
+纯文本 trigger 可点击，但不能聚焦、没有键盘激活。
 
 ```tsx
 import { lucideChevronDown } from '@greypan/web-ui/icons'
@@ -249,9 +247,7 @@ import { lucideChevronDown } from '@greypan/web-ui/icons'
 
 ### Disabled
 
-`disabled` 让点击被忽略，并给 trigger 元素加上 `disabled`；取消禁用时移除该 attribute，回到 trigger 原本的禁用状态。它不改变已经展开的面板：第二条同时写 `open` 与 `disabled`，内容保持可见——禁用管的是触发，不是当前状态。
-
-下面那个 checkbox 在运行时切换第一条的 `disabled`，可以对照 trigger 上 `disabled` 的写入与移除。
+`disabled` 让点击被忽略，并给 trigger 元素加上 `disabled`；取消禁用时移除该 attribute，回到 trigger 原本的禁用状态。它不改变已经展开的面板。`open` 与 `disabled` 同时存在时内容仍然可见，因为 `disabled` 只影响触发，不影响当前状态。
 
 ```tsx
 import { useState } from 'react'
@@ -335,9 +331,9 @@ const disabled = ref(true)
 
 ### Events and methods
 
-读数是挂在这条 collapse 宿主上的 `open-change` 计数与最后一次 `detail.open`。点 trigger 会让计数加一：`open-change` 只在用户手势后派发，`detail.open` 是组件已经落到的状态。
+`open-change` 只在用户手势后派发，`detail.open` 是组件已经进入的状态。
 
-右边三个按钮走元素实例的 `show()` / `close()` / `toggle()`，它们改同一个 `open`、动画照播，却不派发事件——程序式入口必须静默，否则消费方的回写会和通知形成回环。
+右边的三个按钮调用元素实例的 `show()` / `close()` / `toggle()`，它们修改同一个 `open`，动画仍然播放，但不派发事件。
 
 ```tsx
 import type { WebUiCollapse } from '@greypan/web-ui'
@@ -430,13 +426,13 @@ function onOpenChange(event: WebUiEvent<WebUiCollapse, 'open-change'>) {
 </script>
 ```
 
-### Closed resting state and scroll position
+### Closed state and scroll position
 
-两条都停在关闭稳态，可见高度都是 0，差别在内容怎么退出。
+两个示例都停在关闭状态，可见高度都是 0，区别在于内容如何退出。
 
-左边是默认：shadow 内的内容容器 `hidden`（`display: none`），内部滚动位置随之丢掉。右边 `keep-mounted`：内容留在 `0fr` track 里并整段 `inert`，滚动位置保住、尺寸仍可测量，代价是关闭态仍留在渲染树里。
+默认行为下，关闭后内容不渲染，滚动位置随之丢失。`keep-mounted` 时内容保持挂载但不可交互，滚动位置和尺寸都保留；代价是关闭状态的内容仍留在页面中。
 
-`keep-mounted` 不是「关闭态占一层高度」。做法：把右边滚到中段，收起再展开，位置还在；左边同样操作则回到顶部。
+`keep-mounted` 不会让关闭状态占用高度。滚动位置在收起后保留；默认行为下再次展开则回到顶部。
 
 ```tsx
 export default function Demo() {
@@ -449,7 +445,7 @@ export default function Demo() {
           type="button"
           className="w-full cursor-pointer rounded-md bg-(--wui-color-surface-control) px-3 py-2 text-left"
         >
-          默认关闭稳态
+          默认关闭状态
         </button>
         <div slot="content">
           <div className="max-h-32 overflow-y-auto p-3 text-sm">
@@ -467,7 +463,7 @@ export default function Demo() {
           type="button"
           className="w-full cursor-pointer rounded-md bg-(--wui-color-surface-control) px-3 py-2 text-left"
         >
-          keep-mounted 关闭稳态
+          keep-mounted 关闭状态
         </button>
         <div slot="content">
           <div className="max-h-32 overflow-y-auto p-3 text-sm">
@@ -492,7 +488,7 @@ export default function Demo() {
         type="button"
         class="w-full cursor-pointer rounded-md bg-(--wui-color-surface-control) px-3 py-2 text-left"
       >
-        默认关闭稳态
+        默认关闭状态
       </button>
       <div slot="content">
         <div class="max-h-32 overflow-y-auto p-3 text-sm">
@@ -506,7 +502,7 @@ export default function Demo() {
         type="button"
         class="w-full cursor-pointer rounded-md bg-(--wui-color-surface-control) px-3 py-2 text-left"
       >
-        keep-mounted 关闭稳态
+        keep-mounted 关闭状态
       </button>
       <div slot="content">
         <div class="max-h-32 overflow-y-auto p-3 text-sm">
@@ -522,11 +518,11 @@ const rows = Array.from({ length: 20 }, (_, index) => `列表项 ${index + 1}`)
 </script>
 ```
 
-### Peek preview band
+### Peek preview
 
-`peek` 让关闭稳态收到固定长度而不是 0，露出的那一段用来提示下面还有内容。它的关闭稳态语义等同 `keep-mounted`：整段 inner 都在 `inert` 子树里，所以露出的部分同样点不动、Tab 也进不去，要交互得先展开。
+`peek` 让关闭状态保留固定长度而不是 0，露出的部分用来提示下面还有内容。它的关闭状态行为与 `keep-mounted` 相同：露出的部分同样不可点击，Tab 也进不去，要交互必须先展开。
 
-第二条的内容比 `peek` 短，收起高度就等于内容高度，不留空白。
+内容比 `peek` 短时，收起高度就等于内容高度，不留空白。
 
 `peek` 取任何 CSS 长度，写 `rem` 时跟随根字号缩放。
 
@@ -609,11 +605,9 @@ const longRows = Array.from(
 
 ### Edge fade
 
-露出区域的裁剪边缘自带一段 alpha 渐隐，同一条带上还叠一层背景模糊，长度由 `peek` 推导：默认比例 0.4，并夹在 `--wui-collapse-peek-edge-max`（`112px`）以内。
+露出区域的裁剪边缘有一段透明度渐隐，同一区域还叠加背景模糊，长度根据 `peek` 计算：默认比例为 0.4，上限为 `--wui-collapse-peek-edge-max`（`112px`）。
 
-第一条 `peek="200px"` 得到 80px 的带子；第二条把 `--wui-collapse-peek-edge-ratio` 提到 0.7，算出的 140px 被上限夹成 112px。
-
-这条量的是带子长度与它的推导来源，和示例卡片下方代码区那条折叠各用各的 `peek` 与比例：预览不在代码区的折叠里，两段不会互相遮挡。
+`--wui-collapse-peek-edge-ratio` 调整渐隐区相对 `peek` 的比例，结果不会超过 `--wui-collapse-peek-edge-max`。
 
 ```tsx
 export default function Demo() {
@@ -630,7 +624,7 @@ export default function Demo() {
           <div className="p-3 text-sm">
             {Array.from({ length: 6 }, (_, index) => (
               <p key={index} className="m-0">
-                段落 {index + 1}：末端那 80px（200px × 0.4）是渐隐加模糊的带子。
+                段落 {index + 1}：末端那 80px（200px × 0.4）是渐隐加模糊的区域。
               </p>
             ))}
           </div>
@@ -695,7 +689,7 @@ export default function Demo() {
 <script setup lang="ts">
 const derivedRows = Array.from(
   { length: 6 },
-  (_, index) => `段落 ${index + 1}：末端那 80px（200px × 0.4）是渐隐加模糊的带子。`
+  (_, index) => `段落 ${index + 1}：末端那 80px（200px × 0.4）是渐隐加模糊的区域。`
 )
 const cappedRows = Array.from(
   { length: 6 },
@@ -706,11 +700,9 @@ const cappedRows = Array.from(
 
 ### CSS variables
 
-`--wui-collapse-peek-edge` 显式指定渐变长度，优先于推导值；`--wui-collapse-peek-edge-blur` 是同一条带上背景模糊的半径；`--wui-collapse-peek-edge-color` 是裁剪边缘处的渐变起点色（默认页面底色），向内容方向淡到全透明。
+`--wui-collapse-peek-edge` 显式指定渐变长度，覆盖默认值；`--wui-collapse-peek-edge-blur` 是同一区域背景模糊的半径；`--wui-collapse-peek-edge-color` 是裁剪边缘处的渐变起点色（默认页面底色），向内容方向淡到全透明。
 
-`peek` 写成百分比时推导结果不是长度、无法被注册的 `<length>` 属性插值，会静默回落成无渐隐——那种写法想要带子就只能走 `--wui-collapse-peek-edge`。
-
-两条都停在关闭稳态，第一条的模糊半径被拉到 10px，第二条把边缘色指向共享的 `--wui-color-border`，带子因此与默认的页面色区分得开。
+`peek` 写成百分比时不产生渐隐；这种写法需要显式设置 `--wui-collapse-peek-edge` 才会出现渐隐区。
 
 ```tsx
 import type { CSSProperties } from 'react'
@@ -737,7 +729,7 @@ export default function Demo() {
           <div className="p-3 text-sm">
             {Array.from({ length: 5 }, (_, index) => (
               <p key={index} className="m-0">
-                段落 {index + 1}：带子长度不听 peek 的 0.4 推导，模糊半径也从 4px 提到 10px。
+                段落 {index + 1}：渐隐区长度由 token 设为 28px，模糊半径为 10px。
               </p>
             ))}
           </div>
@@ -758,7 +750,7 @@ export default function Demo() {
           <div className="p-3 text-sm">
             {Array.from({ length: 5 }, (_, index) => (
               <p key={index} className="m-0">
-                段落 {index + 1}：裁剪边缘的底色换成 border 色，带子从边缘向内淡出。
+                段落 {index + 1}：裁剪边缘的底色换成 border 色，区域从边缘向内淡出。
               </p>
             ))}
           </div>
@@ -811,20 +803,20 @@ export default function Demo() {
 <script setup lang="ts">
 const blurRows = Array.from(
   { length: 5 },
-  (_, index) => `段落 ${index + 1}：带子长度不听 peek 的 0.4 推导，模糊半径也从 4px 提到 10px。`
+  (_, index) => `段落 ${index + 1}：渐隐区长度由 token 设为 28px，模糊半径为 10px。`
 )
 const edgeColorRows = Array.from(
   { length: 5 },
-  (_, index) => `段落 ${index + 1}：裁剪边缘的底色换成 border 色，带子从边缘向内淡出。`
+  (_, index) => `段落 ${index + 1}：裁剪边缘的底色换成 border 色，区域从边缘向内淡出。`
 )
 </script>
 ```
 
 ### Horizontal
 
-`horizontal` 把动画轴从高度换成宽度，内容沿宽度展开，trigger 与内容排在同一行——宿主自己只是 block 盒，要成行就在宿主上加 flex（这两条都写了 `flex items-center gap-2`）。
+`horizontal` 把动画轴从高度换成宽度，内容沿宽度展开，trigger 与内容排在同一行。宿主是 block 盒子，需要一行排列时在宿主上添加 flex，例如 `flex items-center gap-2`。
 
-换了动画轴之后 `peek` 也变成宽度，第二条就是 `horizontal` 配 `peek="120px"`，渐隐带落在右边缘。
+换了动画轴之后 `peek` 也变成宽度，换成 `horizontal` 后渐隐区域落在右边缘。
 
 代价是动画期间内容随宽度变化 reflow。
 
@@ -894,13 +886,11 @@ import { radixIconsPanelLeftMinimized } from '@greypan/web-ui/icons'
 
 ### Nested
 
-内层 collapse 放在外层的 `content` slot 里。展开内层时外层跟着长：展开稳态的 track 停在 `1fr`，高度由内容决定，组件不需要测量内层。
+内层 collapse 放在外层的 `content` 插槽里。展开内层时，外层高度随内容增加。
 
-两条折叠互不干扰——点击代理只认自己 trigger wrapper 的冒泡路径，点内层 trigger 不会顺带开合外层。
+两条折叠互不干扰，点击内层 trigger 不会同时开合外层。
 
-但 `open-change` 是 `bubbles` 且 `composed` 的，内层那次通知会经过外层宿主，所以外层绑 handler 时按 `event.target === event.currentTarget` 过滤，否则内层开合会被读成外层开合。
-
-这条只有两层、内容都短，不会和示例卡片的代码区叠出两段长折叠。
+但 `open-change` 带有 `bubbles` 和 `composed`，内层的通知会经过外层宿主，所以外层绑定 handler 时要按 `event.target === event.currentTarget` 过滤，否则内层开合会被当成外层开合。
 
 ```tsx
 import { useState } from 'react'
@@ -998,9 +988,9 @@ function onOuterChange(event: WebUiEvent<WebUiCollapse, 'open-change'>) {
 
 ### Multiple instances
 
-三条面板各自持有 `open`，页面用一个数组当状态源：每条的 `open` 写成「它在不在数组里」，回写走 `open-change` 的 `detail.open`。勾选「同时只留一条」后由页面保证互斥——collapse 没有组契约，互斥是消费方的状态管理，不是组件属性。
+三条面板各自持有 `open`，页面用一个数组作为状态源：每条的 `open` 写成「它是否在数组里」，写回使用 `open-change` 的 `detail.open`。勾选「同时只留一条」后，由页面保证互斥。collapse 不负责分组，互斥由调用方管理状态，不是组件属性。
 
-同页多实例各自持有 `open` 与各自的 ARIA 回写，互不干扰；展开关系只靠 `aria-expanded` 表达，不存在需要跨实例对齐的 IDREF。
+同页多实例各自持有 `open` 与各自的 ARIA 回写，互不干扰。
 
 ```tsx
 import { useState } from 'react'
@@ -1102,7 +1092,7 @@ function setAt(title: string, value: boolean) {
 
 ### Content height changes
 
-展开稳态的 track 停在 `1fr`，高度由内容决定：内容自己在面板里变高变矮都不需要组件重新测量，加一行、删一行，面板跟着长缩。只有 `peek` 与展开之间那段「固定长度 ↔ 内容高度」的过渡才要读像素（见 peek 预览带）。
+展开高度由内容决定：内容变高或变矮时，面板随之伸缩，加一行、删一行都立即生效。
 
 ```tsx
 import { useState } from 'react'
@@ -1202,21 +1192,21 @@ function removeRow() {
 | `open`         | 展开状态，唯一状态源。用户点 trigger 时组件自己把它改到位，再派发 `open-change`；静态写在模板里只决定初始值。 | `boolean`        | `false` |
 | `disabled`     | 禁用触发：点击忽略，给 trigger 元素加上 `disabled`；已展开内容保持现状。                                      | `boolean`        | `false` |
 | `horizontal`   | 水平方向：沿宽度展开，默认沿高度。                                                                            | `boolean`        | `false` |
-| `keep-mounted` | 关闭稳态保持内容 `inert` 而非 `hidden`，保留滚动位置与可测量性。                                              | `boolean`        | `false` |
-| `peek`         | 关闭稳态露出的尺寸（CSS 长度，如 `120px`、`6rem`）。设置后语义等同 `keep-mounted`。                           | `string \| null` | `null`  |
+| `keep-mounted` | 关闭后内容保持挂载但不可交互，保留滚动位置与尺寸。                                                            | `boolean`        | `false` |
+| `peek`         | 关闭时露出的尺寸（CSS 长度，如 `120px`、`6rem`）。设置后行为与 `keep-mounted` 相同。                          | `string \| null` | `null`  |
 
 ### Events
 
 | 名称          | 说明                                                                                                                                                                                                                                             |
 | ------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `open-change` | 用户手势开合后的通知：`detail.open` 是组件已经落到的状态，消费方回写 `open` 让页面状态与实际一致。`show()` / `close()` / `toggle()` 与直接写 `open` 都不派发。事件 `bubbles` 且 `composed`，会经过祖先宿主，绑在祖先上要按 `event.target` 过滤。 |
+| `open-change` | 用户手势开合后的通知：`detail.open` 是组件已经设置的状态，调用方回写 `open` 让页面状态与实际一致。`show()` / `close()` / `toggle()` 与直接写 `open` 都不派发。事件 `bubbles` 且 `composed`，会经过祖先宿主，绑在祖先上要按 `event.target` 过滤。 |
 
 ### Slots
 
-| 名称      | 说明                                                                                                                                                                                                             |
-| --------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `default` | trigger。整个 slot 都在点击代理里，点任何一处都算一次开合；`aria-expanded` 回写到其中第一个被指派的元素，`disabled` 时给该元素加上 `disabled`。`<web-ui-button>` 会把两者落到内部原生 button，所以放可交互元素。 |
-| `content` | collapse content。关闭态按 `keep-mounted` / `peek` 决定是 `hidden` 还是 `inert`。                                                                                                                                |
+| 名称      | 说明                                                                                                                                                                                                         |
+| --------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `default` | trigger。整个 slot 都是可点击区域，点任何一处都算一次开合；`aria-expanded` 回写到插槽中的第一个元素，`disabled` 时给该元素加上 `disabled`。`<web-ui-button>` 会把两者同步到内部 `button`，所以放可交互元素。 |
+| `content` | collapse content。关闭态内容不可交互；`keep-mounted` 时保持挂载，`peek` 时露出头部一段。                                                                                                                     |
 
 ### Methods
 
@@ -1228,88 +1218,76 @@ function removeRow() {
 
 ### 行为说明
 
-初始即带 `open` attribute 时直接落展开稳态，不播进入动画；之后的变化才走过渡。动画沿块轴（默认高度，`horizontal` 时宽度）由 shadow 内 `0fr ↔ 1fr` 的 grid track 驱动，展开稳态的高度始终由内容决定，内容自己在展开态里变高变矮不需要组件重新测量。
+挂载时已经带 `open` attribute 的面板直接显示展开状态，不播放进入动画；之后的变化才有过渡。展开高度始终由内容决定，内容变高或变矮时，面板随之伸缩。
 
-时长取 `--wui-duration-collapse-enter` / `--wui-duration-collapse-exit`（200ms / 160ms，由 `<web-ui-theme>` 定义）；主题 `motion="reduced"` 或系统 `prefers-reduced-motion` 下两者归零，此时组件跳过测量直接落稳态。
+时长取 `--wui-duration-collapse-enter` / `--wui-duration-collapse-exit`（200ms / 160ms，由 `<web-ui-theme>` 定义）；主题 `motion="reduced"` 或系统 `prefers-reduced-motion` 下不播放动画，直接进入最终状态。
 
-`open-change` 是通知而不是请求：用户点 trigger 时组件先把 `open` 写到新值，再派发事件（`bubbles` 且 `composed`）；`show()` / `close()` / `toggle()` 与直接写 `open` 都静默，否则消费方的回写会和通知形成回环。
+`open-change` 只在用户手势后派发（带有 `bubbles` 和 `composed`）；`show()` / `close()` / `toggle()` 与直接写 `open` 都不派发事件。
 
-不回写不会被弹回，但页面的状态就和面板不一致了。
+不回写不会被回退，但页面状态会与面板不一致。
 
-嵌套时点击互不干扰：点击代理只认自己 trigger wrapper 的冒泡路径，内层 trigger 的点击不会顺带开合外层；内层的 `open-change` 却会经过外层宿主，所以外层绑监听要按 `event.target === event.currentTarget` 过滤。
+嵌套时点击互不干扰：内层 trigger 的点击不会同时开合外层。内层的 `open-change` 会经过外层宿主，所以外层绑定监听时要按 `event.target === event.currentTarget` 过滤。
 
 ### trigger 语义
 
-交互语义完全来自 default slot 放入的元素——原生 `<button>`、`<web-ui-button>` 或其他可交互元素原生提供 Enter / Space 激活与焦点。
+交互语义来自默认插槽中的元素：原生 `<button>`、`<web-ui-button>` 或其他可交互元素自带 Enter / Space 激活与焦点。
 
-collapse 把 `aria-expanded` 回写到 trigger slot 的首个 assigned element，`disabled` 时给该元素加上 `disabled`；`<web-ui-button>` 会把两者落到内部原生 button（`disabled` 走属性，天然穿透 shadow 边界）。
+collapse 把 `aria-expanded` 写回默认插槽中的第一个元素，`disabled` 时给该元素加上 `disabled`；`<web-ui-button>` 会把两者同步到实际的 button 元素。
 
-不回写 `aria-controls`：内容 track 位于 collapse shadow root 内，跨 shadow root 的 IDREF 无法解析，写出去在可访问性树里等同悬空引用。展开关系由 `aria-expanded` 表达。
+不回写 `aria-controls`：展开关系由 `aria-expanded` 表达。
 
 trigger 请使用可交互元素：纯 `<span>` 可点击但没有键盘 / 焦点语义。
 
-default slot 的全部内容都被包进 trigger wrapper，因而都在点击代理里：往 default slot 放说明文字，那段文字点下去同样算一次开合。组件只回写第一个被指派的元素，所以可交互元素要放在最前面。
+默认插槽的全部内容都是点击区域：放进默认插槽的说明文字被点击时同样算一次开合。组件只写回插槽中的第一个元素，所以可交互元素要放在最前面。
 
-### 关闭稳态语义
+### 关闭状态语义
 
-消费方的 light DOM 永不移动或卸载，关闭稳态由 shadow 内部三选一落地：默认在内容容器上设 `hidden`（`display: none`，脱离渲染与可访问性树）；`keep-mounted` 时 inner 标 `inert`，留在 `0fr` track 内可测量、滚动位置不丢；`peek` 时同样 `inert`，track 停在裁剪窗口。
+关闭后内容默认不渲染，不可见也不可交互，内容自身的滚动位置随之丢失。
 
-三态的可见高度都是轨道给的量——`keep-mounted` 不会让关闭态占一层高度，它留在渲染树里的代价是保持挂载与可测量。
+`keep-mounted` 让内容保持挂载但不可交互，滚动位置与尺寸都保留；关闭状态的内容仍留在页面中，但不占可见高度。
 
-开合动画进行中也走 `inert`，落稳态时才按属性决定。
+`peek` 的行为与 `keep-mounted` 相同。开合动画进行中，内容同样不可交互。
 
-### peek 预览带
+### peek 预览
 
-设置 `peek` 后关闭稳态沿动画轴露出内容的头部 `peek` 长度（`horizontal` 时为宽度），而不是收拢到 0：track 保持在内容高度，裁剪长度落在内部容器上。
+设置 `peek` 后，关闭状态下沿动画轴露出内容的头部 `peek` 长度（`horizontal` 时为宽度），而不是收拢到 0。
 
-其语义等同 `keep-mounted`——内容保留挂载，但整个 inner 被 `inert` 阻断，露出的那一段也一样不可聚焦、不可点击，被裁掉的部分更不用提。
+它的行为与 `keep-mounted` 相同：内容保持挂载，但全部不可聚焦、不可点击，露出的部分也一样。
 
 内容本身不足 `peek` 时按内容实际尺寸收起，不留空白。
-
-由于固定长度与自适应高度无法由 CSS 插值，`peek` ↔ 展开这两个方向读出像素后以显式长度驱动（每次开合测量一次）；其余动画路径仍是零测量的 grid `fr` 过渡。
 
 ```html
 <web-ui-collapse peek="120px">
   <button type="button">点击切换</button>
-  <div slot="content">很长的内容——关闭时只露出前 120px</div>
+  <div slot="content">很长的内容：关闭时只露出前 120px</div>
 </web-ui-collapse>
 ```
 
 ### 边缘渐隐
 
-露出区域的裁剪边缘自带一段 alpha 渐变（`horizontal` 时改为右边），让被裁掉的部分柔和过渡到背景而不是硬切。渐变长度由 `peek` 推导，不需要也没有第二个属性可调——需要时用 CSS 变量微调：
+露出区域的裁剪边缘有一段透明度渐隐（`horizontal` 时改为右边），同一区域还叠加背景模糊，让被裁掉的部分柔和过渡到背景，而不是直接切断。渐变长度根据 `peek` 计算，没有额外属性可以调整；需要修改时使用 CSS 变量。
 
-渐变带由两层组成，直接复用公共 `.wui-glow`（与 layout header 的晕染同一份样式，见 `@greypan/web-ui/classes.css`）：上面那条 alpha 渐隐之外，同一条带上再叠一层真实的 `backdrop-filter` 模糊，被裁掉的内容因此是被**糊掉**的，而不只是被调成半透明。
+比例设为 `0` 即关闭渐隐。`peek` 用 `rem` 时渐变长度跟随根字号缩放。
 
-组件内把两层提升到内容之上（默认 `.wui-glow` 位于内容之下）。模糊强度由本盒自己的 `mask-image` 调制——从带子起点为 0 升到后半段满强度、再在裁剪边缘前回到 0：起点不为 0 会在「突然开始模糊」处留一条接缝，末端不为 0 则会一路糊到裁剪边界。
-
-展开态活动长度为 0，各色标塌缩到 100% 而末位色标是全透明，于是这一层什么都不画。
-
-比例设为 `0` 即关闭渐隐。推导是纯 CSS 的 `calc(peek * ratio)`：`peek` 用 rem 时渐变长度自动跟随根字号缩放，JS 侧不需要做任何单位解析。
-
-已知限制：`peek` 取百分比时推导结果不是长度、无法被注册属性插值，会静默回落为「无渐隐」，此时请用 `--wui-collapse-peek-edge` 显式指定长度。
-
-内容那条 alpha 渐隐是四段「先陡后缓」而非线性：主体全黑延伸到渐变带起点后，前 30% 距离就降到 60% alpha，65% 处 26%，末端全透明。线性渐变的 alpha 在带子前 40% 几乎贴着 1.0，人眼感知到的虚化远短于声明长度——把下降前置后，带子从起点就明显发虚，同样长度的感知长度接近翻倍。
-
-渐变带位置用百分比声明、相对容器的**当前渲染高度**（即 `max-height` 动画的那个高度），因此收起动画期间渐变带逐帧跟随裁剪边缘移动，`mask-image` 字符串本身无需插值。渐变带长度由注册的 `<length>` 自定义属性驱动，随开合动画平滑淡入淡出，而不是等收起动画落稳态才突然出现。
+已知限制：`peek` 取百分比时不会出现渐隐，此时请用 `--wui-collapse-peek-edge` 显式指定长度。
 
 ```html
 <!-- 调强渐隐：比例 0.5 → 120px peek 配 60px 渐隐 -->
 <web-ui-collapse peek="120px" style="--wui-collapse-peek-edge-ratio: 0.5">
   <button type="button">点击切换</button>
-  <div slot="content">很长的内容——120px 露出区域的底部渐隐更强</div>
+  <div slot="content">很长的内容：120px 露出区域的底部渐隐更强</div>
 </web-ui-collapse>
 ```
 
 ### CSS Custom Properties
 
-| 名称                             | 说明                                     | 默认值                        |
-| -------------------------------- | ---------------------------------------- | ----------------------------- |
-| `--wui-collapse-peek-edge-ratio` | 渐变长度占 `peek` 的比例                 | `0.4`                         |
-| `--wui-collapse-peek-edge-max`   | 长度上限，避免大 `peek` 算出过长的虚化带 | `112px`                       |
-| `--wui-collapse-peek-edge`       | 显式指定长度，优先于推导值               | —                             |
-| `--wui-collapse-peek-edge-color` | 裁剪边缘处的渐变起点色                   | `var(--wui-color-page, #fff)` |
-| `--wui-collapse-peek-edge-blur`  | 同一条渐变带上背景模糊的半径             | `4px`                         |
+| 名称                             | 说明                                       | 默认值                        |
+| -------------------------------- | ------------------------------------------ | ----------------------------- |
+| `--wui-collapse-peek-edge-ratio` | 渐变长度占 `peek` 的比例                   | `0.4`                         |
+| `--wui-collapse-peek-edge-max`   | 长度上限，避免大 `peek` 算出过长的模糊区域 | `112px`                       |
+| `--wui-collapse-peek-edge`       | 显式指定长度，覆盖默认计算值               | —                             |
+| `--wui-collapse-peek-edge-color` | 裁剪边缘处的渐变起点色                     | `var(--wui-color-page, #fff)` |
+| `--wui-collapse-peek-edge-blur`  | 同一渐变区域的背景模糊半径                 | `4px`                         |
 
 ### 已知限制
 
