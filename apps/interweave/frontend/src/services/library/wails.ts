@@ -128,6 +128,19 @@ class WailsLibraryRuntime implements LibraryRuntime {
     return `/resource-media/${encodeURIComponent(sourceId)}`
   }
 
+  resourceThumbnailURL(sourceId: string) {
+    return `/resource-thumbnail/${encodeURIComponent(sourceId)}`
+  }
+
+  async saveSourceThumbnail(sourceId: string, jpeg: Blob) {
+    const response = await fetch(`/resource-thumbnail/${encodeURIComponent(sourceId)}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'image/jpeg' },
+      body: jpeg
+    })
+    if (!response.ok) throw new Error(`保存缩略图失败：${response.status}`)
+  }
+
   pendingFilePreviewURL(token: string) {
     return `/pending-resource-media/${encodeURIComponent(token)}`
   }

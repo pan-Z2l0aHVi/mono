@@ -59,8 +59,8 @@ describe('键的形状', () => {
   })
 
   it('空 slot 抛错，而不是生成一个以点结尾的键', () => {
-    expect(() => orchestrationKey('r', 'decision', '   ')).toThrow()
-    expect(() => orchestrationKey('r', 'decision', '!!!')).toThrow()
+    expect(() => orchestrationKey('r', 'decision', '   ')).toThrow('orchestrationKey: empty slot')
+    expect(() => orchestrationKey('r', 'decision', '!!!')).toThrow('orchestrationKey: empty slot')
   })
 
   it('repoKey 含空格或 CJK 时归一，键仍可被 memory_search 的文本行解析', () => {
@@ -118,7 +118,7 @@ describe('slotKindOf', () => {
 
 describe('recallOrchestration', () => {
   const backendReturning = (facts: OrchestrationFact[]) =>
-    ({ search: vi.fn(async () => facts) }) as unknown as MemoryBackend
+    ({ search: vi.fn<MemoryBackend['search']>(async () => facts) }) as unknown as MemoryBackend
 
   it('只保留本仓库的编排键', async () => {
     const backend = backendReturning([
@@ -174,7 +174,7 @@ describe('recallOrchestration', () => {
 
   it('后端失败时向上抛，由调用方转成 isError', async () => {
     const backend = {
-      search: vi.fn(async () => {
+      search: vi.fn<MemoryBackend['search']>(async () => {
         throw new Error('store down')
       })
     } as unknown as MemoryBackend

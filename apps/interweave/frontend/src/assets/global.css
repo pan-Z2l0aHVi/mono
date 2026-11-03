@@ -84,6 +84,23 @@ body {
 }
 
 /*
+ * 资源库列表行默认不画 focus ring（用户裁决）：选中态只保留暗底。
+ *
+ * 行是 roving tabindex 的唯一活动 tab stop，活动行的暗底（ResourceRow 的 active/checked 背景）
+ * 就是键盘焦点的可见指示；浅蓝 ring 叠在暗底上反而抢眼。行内的勾选框与改名编辑器不带
+ * [data-resource-row]，各自照常吃上一条规则。
+ *
+ * 选择模式里 active 暗底被关掉，行仍可能是唯一 tab stop；[data-selection-mode] 因此不参与
+ * 豁免，保留上一条的 ring，否则键盘焦点没有可见指示。
+ *
+ * 这条必须与上一条同层（@layer 外）且排在其后才能压过它——两者的 :focus-visible 权重相同
+ * (0,1,0)，后出现者胜。
+ */
+:where(#app) :where([data-resource-row]:not([data-selection-mode])):focus-visible {
+  outline: none;
+}
+
+/*
  * 触摸设备的最小可点尺寸：控件从 36px 抬到 40px。
  *
  * 写在 `web-ui-theme` 而不是 `:root`：36px 这个默认值由 theme 的 shadow 内 `:host` 提供，

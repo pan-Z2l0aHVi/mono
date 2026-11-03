@@ -46,7 +46,7 @@ func insertSource(t *testing.T, db *storage.DB, source storage.SourceModel) {
 // newTestHandler 建 handler 并在用例结束前排空回写 worker，避免测试遗留 goroutine。
 func newTestHandler(t *testing.T, sources sourceStore, query storage.Queryer, previews *PendingPreviewRegistry, reporter AvailabilityReporter) *Handler {
 	t.Helper()
-	handler := NewHandler(sources, query, previews, reporter)
+	handler := NewHandler(sources, query, previews, nil, reporter)
 	t.Cleanup(handler.Close)
 	return handler
 }

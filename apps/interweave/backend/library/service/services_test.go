@@ -165,7 +165,7 @@ func TestPrepareFilePreviewRegistersMediaAndShutdownClearsTokens(t *testing.T) {
 		coreLibrary.NewResourceService(db, remote.NewFetcher()),
 		previews,
 	)
-	handler := libraryMedia.NewHandler(storage.SourceStore{}, db.SqlDB(), previews, nil)
+	handler := libraryMedia.NewHandler(storage.SourceStore{}, db.SqlDB(), previews, nil, nil)
 	defer handler.Close()
 	directory := t.TempDir()
 	imagePath := filepath.Join(directory, "preview.PNG")

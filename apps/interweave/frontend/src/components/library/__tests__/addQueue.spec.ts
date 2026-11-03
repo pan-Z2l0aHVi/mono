@@ -60,6 +60,8 @@ function createRuntime(overrides: Partial<LibraryRuntime> = {}): LibraryRuntime 
       throw new Error('未使用')
     },
     resourceMediaURL: () => null,
+    resourceThumbnailURL: () => null,
+    saveSourceThumbnail: async () => {},
     pendingFilePreviewURL: token => `/pending-resource-media/${token}`,
     subscribeToDroppedFiles: () => () => {},
     subscribeToPasteFileRequest: () => () => {},

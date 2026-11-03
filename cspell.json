@@ -148,6 +148,7 @@
     "misalign",
     "unfocusable",
     "unclickable",
-    "grabbable"
+    "grabbable",
+    "exif"
   ]
 }

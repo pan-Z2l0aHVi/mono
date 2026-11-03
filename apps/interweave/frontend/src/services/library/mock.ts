@@ -380,6 +380,9 @@ export function createMockLibraryRuntime(): LibraryRuntime {
     },
 
     resourceMediaURL: sourceId => mediaBySourceId.get(sourceId) ?? null,
+    // 浏览器预览的 fixture 本身就是小图 data URL，没有派生缩略图可谈。
+    resourceThumbnailURL: () => null,
+    saveSourceThumbnail: () => Promise.resolve(),
     pendingFilePreviewURL: () => null,
 
     // 浏览器没有「系统默认应用」这个概念：返回空名，UI 回落到通用文案。
