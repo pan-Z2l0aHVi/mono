@@ -29,7 +29,7 @@ mise exec -- node .agents/skills/task-ledger/ledger.mjs status <task-id> --json
 mise exec -- node .agents/skills/turbo-sparse-scope/sparse-scope.mjs <scope-path>... [--dry-run]
 ```
 
-范围变化时先更新台账 scope 再继续：放宽用 `--add`，重算或收窄用 `--reset`；`scope --clear` 后用 `--restore` 恢复全树；`close` 不恢复。
+范围变化时先更新台账 scope 再继续：放宽用 `scope <id> --add`，重算或收窄用 `scope <id> --set`，清空用 `--clear`；稀疏树随后按新范围用 `--add`/`--reset` 落盘，清空后用 `--restore` 恢复全树；`close` 不恢复。
 
 调用方式、范围算法与稀疏树里的搜索、gate、install 规则见 [`.agents/skills/turbo-sparse-scope/SKILL.md`](../../.agents/skills/turbo-sparse-scope/SKILL.md)。对这里的环境准备有两条后果。第一，收缩成功后脚本会立即跑一次 `pnpm install --frozen-lockfile`，把 `node_modules` 对齐到缩小后的 workspace 集，否则后续 `pnpm run` / `pnpm exec` 会自行做非 frozen 安装并重写 `pnpm-lock.yaml`；根目录没有 `pnpm-workspace.yaml` 或 `pnpm` 不在 PATH 时这一步跳过并告警，需要在跑 pnpm 脚本前手动补上。第二，被隐藏包的目录里没有未跟踪文件时，整个目录（含被忽略的 `node_modules`、`dist`）随 cone 删除，`--restore` 只带回已跟踪文件，恢复后要重跑 `pnpm install --frozen-lockfile` 与 `pnpm run build`。
 
