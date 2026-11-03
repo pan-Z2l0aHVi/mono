@@ -421,5 +421,6 @@ dropdown、tooltip）不需要它。
 |                       | [`<web-ui-svg-draw-lines>`](https://github.com/pan-Z2l0aHVi/mono/blob/main/packages/web-ui/docs/svg-draw-lines.CN.md)       |
 |                       | [`<web-ui-theme>`](https://github.com/pan-Z2l0aHVi/mono/blob/main/packages/web-ui/docs/theme.CN.md)                         |
 | **通知**              | [`<web-ui-toast>`](https://github.com/pan-Z2l0aHVi/mono/blob/main/packages/web-ui/docs/toast.CN.md)                         |
+|                       | [`shake()`](https://github.com/pan-Z2l0aHVi/mono/blob/main/packages/web-ui/docs/shake.CN.md)                                |
 | **子项**              | [`<web-ui-option>`](https://github.com/pan-Z2l0aHVi/mono/blob/main/packages/web-ui/docs/option.CN.md)                       |
 |                       | [`<web-ui-segmented-trigger>`](https://github.com/pan-Z2l0aHVi/mono/blob/main/packages/web-ui/docs/segmented-trigger.CN.md) |

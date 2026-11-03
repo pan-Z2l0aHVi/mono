@@ -301,6 +301,7 @@ const navSections: NavSection[] = [
       { path: '/components/context-menu', label: 'ContextMenu' },
       { path: '/components/toast', label: 'Toast' },
       { path: '/components/image-preview', label: 'ImagePreview' },
+      { path: '/components/shake', label: 'Shake' },
       { path: '/components/spinner', label: 'Spinner' },
       { path: '/components/progress', label: 'Progress' }
     ]

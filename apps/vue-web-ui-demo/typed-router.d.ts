@@ -213,6 +213,13 @@ declare module 'vue-router/auto-routes' {
       Record<never, never>,
       | never
     >,
+    '/components/shake': RouteRecordInfo<
+      '/components/shake',
+      '/components/shake',
+      Record<never, never>,
+      Record<never, never>,
+      | never
+    >,
     '/components/slider': RouteRecordInfo<
       '/components/slider',
       '/components/slider',
@@ -492,6 +499,14 @@ declare module 'vue-router/auto-routes' {
     'src/pages/components/select.vue': {
       routes:
         | '/components/select'
+      views:
+        | never
+      pathParamNames:
+        | never
+    }
+    'src/pages/components/shake.vue': {
+      routes:
+        | '/components/shake'
       views:
         | never
       pathParamNames:

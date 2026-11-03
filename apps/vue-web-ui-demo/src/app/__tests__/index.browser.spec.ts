@@ -517,6 +517,7 @@ describe('应用外壳（浏览器）：导航 collapsed state 不跨视口泄�
           'ContextMenu',
           'Toast',
           'ImagePreview',
+          'Shake',
           'Spinner',
           'Progress'
         ]

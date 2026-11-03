@@ -460,5 +460,6 @@ Every component has its own doc page: API reference, behavior notes and interact
 |                        | [`<web-ui-svg-draw-lines>`](https://github.com/pan-Z2l0aHVi/mono/blob/main/packages/web-ui/docs/svg-draw-lines.md)       |
 |                        | [`<web-ui-theme>`](https://github.com/pan-Z2l0aHVi/mono/blob/main/packages/web-ui/docs/theme.md)                         |
 | **Notification**       | [`<web-ui-toast>`](https://github.com/pan-Z2l0aHVi/mono/blob/main/packages/web-ui/docs/toast.md)                         |
+|                        | [`shake()`](https://github.com/pan-Z2l0aHVi/mono/blob/main/packages/web-ui/docs/shake.md)                                |
 | **Sub-items**          | [`<web-ui-option>`](https://github.com/pan-Z2l0aHVi/mono/blob/main/packages/web-ui/docs/option.md)                       |
 |                        | [`<web-ui-segmented-trigger>`](https://github.com/pan-Z2l0aHVi/mono/blob/main/packages/web-ui/docs/segmented-trigger.md) |
