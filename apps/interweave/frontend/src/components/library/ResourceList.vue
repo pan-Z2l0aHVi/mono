@@ -926,7 +926,7 @@ function editorRefFor(id: string) {
   return props.editorRef(id)
 }
 
-function thumbnailUrlFor(sourceId: string) {
+function resolveThumbnailUrl(sourceId: string) {
   return props.thumbnailUrlFor?.(sourceId) ?? null
 }
 
@@ -1060,7 +1060,7 @@ function handleRenameChange(resource: ResourceView, event: WebUiEvent<WebUiEdita
               <ResourceRow
                 :resource="resource"
                 :media-url="resource.preferred ? mediaUrlFor(resource.preferred.id) : null"
-                :thumbnail-url="resource.preferred ? thumbnailUrlFor(resource.preferred.id) : null"
+                :thumbnail-url="resource.preferred ? resolveThumbnailUrl(resource.preferred.id) : null"
                 :save-thumbnail="thumbnailSaver(resource)"
                 :index="index"
                 :total="resources.length"
