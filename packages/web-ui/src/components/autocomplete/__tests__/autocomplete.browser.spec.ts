@@ -294,6 +294,59 @@ describe('WebUiAutocomplete 组件（浏览器）', () => {
     expect(page.getByRole('listbox').length).toBe(1)
   })
 
+  /*
+   * 退场过渡只属于「还看得见的内容」：候选被全部过滤掉时 panel 已塌成空盒，淡出的会是
+   * 空盒的玻璃底与投影（trigger 下方闪一下再残留）。jsdom 不计算 CSS transition，两条路径
+   * 在 jsdom 里同形，因此这组判据只能跑浏览器。
+   */
+  it('键入到零匹配时 panel 立即隐藏，不播空盒退场过渡', async () => {
+    const el = document.createElement('web-ui-autocomplete')
+    el.innerHTML =
+      '<web-ui-option value="apple" label="Apple"></web-ui-option><web-ui-option value="banana" label="Banana"></web-ui-option>'
+    document.body.append(el)
+    await el.updateComplete
+
+    const input = triggerInput(el)
+    input.focus()
+    input.click()
+    await el.updateComplete
+
+    const panel = el.shadowRoot!.querySelector<HTMLElement>('.autocomplete-overlay')!
+    expect(panel.hidden).toBe(false)
+
+    // typeText 的 input 事件同步走到 _close()：断言取的就是那次关闭之后的同一帧。
+    typeText(el, 'zzz')
+
+    expect(el.open).toBe(false)
+    expect(panel.hidden).toBe(true)
+    // 空盒不再绘制：修复前这里是塌成 padding 的 8px 盒，带玻璃底与 panel 投影淡出。
+    expect(panel.getBoundingClientRect().height).toBe(0)
+  })
+
+  it('选中候选时 panel 仍播退场过渡', async () => {
+    const el = document.createElement('web-ui-autocomplete')
+    el.innerHTML =
+      '<web-ui-option value="apple" label="Apple"></web-ui-option><web-ui-option value="banana" label="Banana"></web-ui-option>'
+    document.body.append(el)
+    await el.updateComplete
+
+    const input = triggerInput(el)
+    input.focus()
+    input.click()
+    await el.updateComplete
+
+    const panel = el.shadowRoot!.querySelector<HTMLElement>('.autocomplete-overlay')!
+    // 非 portal 模式下 option 留在 light DOM，经 panel 内的 slot 投影，不是 panel 的子节点
+    el.querySelector<HTMLElement>('web-ui-option')!.click()
+
+    // 关闭由这一次 click 同步触发：此刻退场刚开始，panel 还在场。
+    expect(el.open).toBe(false)
+    expect(panel.dataset.wuiPresence).toBe('closing')
+    expect(panel.hidden).toBe(false)
+
+    await pollUntil(() => panel.hidden === true, '退场过渡播完后 panel 应隐藏')
+  })
+
   it('allow-custom-value 时 Enter 提交未匹配 custom value', async () => {
     const el = document.createElement('web-ui-autocomplete')
     el.allowCustomValue = true
@@ -774,6 +827,33 @@ describe('WebUiAutocomplete 组件（浏览器）', () => {
     await el.updateComplete
     expect(el.open).toBe(true)
     expect(getPortalPanel(theme)).not.toBeNull()
+  })
+
+  it('Portal 键入到零匹配时 panel 立即隐藏，随后释放 overlay 容器', async () => {
+    const theme = document.createElement('web-ui-theme')
+    theme.setAttribute('appearance', 'light')
+    const el = document.createElement('web-ui-autocomplete')
+    el.portal = true
+    el.innerHTML =
+      '<web-ui-option value="apple" label="Apple"></web-ui-option><web-ui-option value="banana" label="Banana"></web-ui-option>'
+    theme.append(el)
+    appendIsolated(theme)
+    await theme.updateComplete
+    await el.updateComplete
+
+    const combobox = page.getByRole('combobox')
+    combobox.element().focus()
+    ;(combobox.element() as HTMLElement).click()
+    await waitForFrame()
+    await el.updateComplete
+
+    const panel = await waitForPortalPanel(theme)
+    expect(panel.hidden).toBe(false)
+
+    await page.getByRole('textbox').fill('zzz')
+    expect(el.open).toBe(false)
+    expect(panel.hidden).toBe(true)
+    await pollUntil(() => !getPortalPanel(theme), 'Expected the zero-match portal panel to be removed')
   })
 
   it('Portal 不迁移既有 empty slot 节点', async () => {

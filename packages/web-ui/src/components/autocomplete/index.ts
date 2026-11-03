@@ -742,7 +742,13 @@ export class WebUiAutocomplete extends FormAssociated(LitElement) {
   }
 
   private async _closeOverlay() {
-    const closed = await this._panel.close(() => this._isOpen)
+    /*
+     * 退场过渡是给「还看得见的内容」的。候选被全部过滤掉时，`data-filtered` 已在 close
+     * 之前把列表清空，盒高从整列表塌成 padding 的 8px：淡出的正是这个空盒的玻璃底与
+     * `--wui-shadow-panel`，读起来像 trigger 下方闪一下又残留的黑影。空 panel 直接落隐藏态。
+     * 其余关闭路径（失焦、Escape、点击外部、选中提交）内容仍在，过渡照常播。
+     */
+    const closed = await this._panel.close(() => this._isOpen, !this._hasMatchingOptions())
     if (closed) {
       this._syncScrollInteractionListeners()
       this._portal = undefined

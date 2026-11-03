@@ -41,12 +41,13 @@ export function showOverlayPresence(panel: HTMLElement, options: OverlayPresence
 }
 
 // 播放退出过渡；若在结束前重新显示则返回 false。
-export function hideOverlayPresence(panel: HTMLElement): Promise<boolean> {
+// `isInstant` 由调用方声明「这次没有可退场的内容」：直接落隐藏态，不播过渡。
+export function hideOverlayPresence(panel: HTMLElement, options: OverlayPresenceOptions = {}): Promise<boolean> {
   pendingExits.get(panel)?.()
   panel.dataset.wuiPresence = 'closing'
 
-  // jsdom 等没有计算 CSS transition 的环境无需伪造退场等待。
-  if (getTransitionDuration(panel, 0) === 0) {
+  // 两条不播过渡的路：调用方要求立即隐藏，以及 jsdom 这类不计算 CSS transition 的环境。
+  if (options.isInstant || getTransitionDuration(panel, 0) === 0) {
     panel.hidden = true
     return Promise.resolve(true)
   }

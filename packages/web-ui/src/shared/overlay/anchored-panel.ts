@@ -37,7 +37,11 @@ export interface AnchoredPanelApi {
    */
   getHandle(): OpenOverlayHandle | null
   open(isInstant?: boolean): void
-  close(isStillOpen: () => boolean): Promise<boolean>
+  /**
+   * 播放退场并收尾。`isInstant` 表示这次没有可退场的内容（例如候选被全部过滤掉），
+   * panel 直接落隐藏态；不传则照常播退场过渡。
+   */
+  close(isStillOpen: () => boolean, isInstant?: boolean): Promise<boolean>
   updatePosition(): void
   reconfigure(isOpen: boolean): void
   dispose(): void
@@ -112,7 +116,7 @@ export const defineAnchoredPanel = () =>
 
       open,
 
-      async close(isStillOpen) {
+      async close(isStillOpen, isInstant = false) {
         /*
          * 第三态「可见但暂缓仲裁」：退场等待期间 panel 仍在场，登记不撤，但不再走关闭
          * 入口——它已经在关的路上了。撤销推迟到动画结束，或被 `open()` 以新会话取代。
@@ -138,7 +142,7 @@ export const defineAnchoredPanel = () =>
         handle?.deferArbitration()
         overlay?.close()
         const panel = getPanel()
-        if (panel && !(await hideOverlayPresence(panel))) return false
+        if (panel && !(await hideOverlayPresence(panel, { isInstant }))) return false
         if (isStillOpen()) {
           handle?.deferArbitration(false)
           return false
