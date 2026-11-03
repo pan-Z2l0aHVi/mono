@@ -1,5 +1,31 @@
 # @greypan/web-ui
 
+## 12.2.0
+
+### Minor Changes
+
+- 009b99a: Add `web-ui-grouped-text`, which spreads a long digit or text string into visible groups — bank card numbers, phone numbers, large amounts — while "select and copy" still yields the **original continuous string**. Grouping is only a rendering parameter: `value` stays the original text, the groups join head to tail back into it, and no separator character is written into any text node, so in-page find, double-click word selection and the clipboard all keep working on the original string.
+  
+  `value` is a `string` (a 16-digit-plus card number loses precision through `Number`). `groups` takes a preset — `'card'` for one group every 4, `'phone'` for 3-4-4, `'amount'` for 3 from the right, where the decimal point stays with the fraction as its own group — or the cluster count per group (`[4, 4, 4, 4]`). The string spelling `"4,4,4,4"` is accepted on the attribute and the property channel alike, because frameworks such as Vue assign the property directly and the attribute converter never runs. An omitted or unreadable shape means no grouping rather than a guessed one. Cuts always land on grapheme cluster boundaries.
+  
+  The gap hangs on the `letter-spacing` of each group's last cluster, so it sits inside that character's own text fragment and the selection highlight stays continuous across groups. `--wui-grouped-text-gap` defaults to `0.25em` and scales with the font size; `n` groups means `n - 1` shares. The component sets `font-variant-numeric: tabular-nums` and `white-space: nowrap` on itself, provides no `aria-label`, and installs no `copy` listener.
+- 009b99a: Make `trigger` a space-separated **set of gestures** on `<web-ui-popover>` and give `<web-ui-tooltip>` the same property. `trigger="hover focus"` accepts the pointer and the keyboard at once, so a component no longer has to pick one gesture. The modes are `click`, `hover`, `focus` and `manual`; unknown tokens are dropped, duplicated tokens count once, and a value that names no known gesture falls back to the component default — `click` for popover, `hover focus` for tooltip. `manual` anywhere in the value makes the whole value `manual`, because its contract is "no gesture moves this overlay".
+  
+  Each gesture attaches its own listeners, so dropping it from the value removes the behavior: `hover` is the only mode that reads `show-delay` / `hide-delay`, `focus` opens on `:focus-visible` and closes once focus leaves the trigger and the panel, `click` toggles on the trigger and closes on a click outside, and `manual` accepts no automatic close — it still swallows Escape so the key does not reach an outer overlay. Escape is arbitrated by the overlay stack and is not mode-gated otherwise. A value naming a single gesture keeps its existing contract, including the popover defaults of closing on outside click and on losing focus.
+  
+  `trigger` reads as `string` rather than a fixed union, and the property channel also takes an array of modes (`:trigger="['hover', 'focus']"`), which is how frameworks bind a set without writing the joined string.
+- 009b99a: Add the imperative `shake()`, which swings a target and settles it back where it started, making a "blocked / handle this first" signal visible. It shakes the whole page by default and takes an optional `target`. The two axes have their own amplitudes, both defaulting to `12px`: `xDistance` (`--wui-shake-x-distance`) and `yDistance` (`--wui-shake-y-distance`), plus a shared `--wui-shake-duration` (default `420ms`); all three can be overridden per call. Both axes stay in phase, so the composite path is a straight line rather than an orbit. Zeroing one axis only removes that axis and the other keeps swinging; the effect is inert only when both amplitudes or the duration are `0`. Repeat calls restart the swing instead of stacking into a larger displacement, and reduced-motion tiers produce no movement.
+  
+  Add `page-shift` to `<web-ui-drawer>`: while the drawer is open, the background page slides aside in the drawer's entering direction, vacating the viewport edge for it. The distance follows viewport size changes live, and there is no tunable token. Layers are ordered by opening time, whether nested or sibling: the first steps aside the most and each layer after it steps aside less. Closing any layer re-ranks the survivors and the page falls back to the new total. Neither drag gestures nor reduced motion move the page.
+  
+  The mobile sidebar Drawer inside `<web-ui-layout>` enables `page-shift` as well, so opening the navigation on a narrow viewport pushes the page aside.
+  
+  The shake amplitude tokens accept viewport units and `calc()`; percentages are not accepted and fall back to the default amplitude.
+
+### Patch Changes
+
+- 009b99a: Stop `<web-ui-autocomplete>` from fading out an empty dropdown panel. Typing text that matches no option used to collapse the panel to the height of its own padding first and then fade that strip away, which read as a flicker followed by a leftover shadow under the input. A close with nothing left to show now hides the panel on the spot. Closes that still have visible options — Escape, losing focus, clicking outside, picking an option — keep the exit transition.
+
 ## 12.1.0
 
 ### Minor Changes
