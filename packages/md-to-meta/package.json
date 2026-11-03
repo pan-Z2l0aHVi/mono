@@ -1,6 +1,6 @@
 {
   "name": "@greypan/md-to-meta",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "private": true,
   "description": "markdown 结构化引擎：把 markdown 解析成通用 meta 对象、把代码围栏落成独立代码文件，并提供驱动生成的 Vite 插件",
   "type": "module",

@@ -2,6 +2,12 @@
 
 > 0.2.1 及更早的记录属于本包的前身 `@greypan/md-to-comp`，编号与内容按当时的接口解释。
 
+## 0.0.2
+
+### Patch Changes
+
+- 0e77c22: Vertically center generated API table cells and keep header labels on one line so the name column and adjacent cells share a consistent baseline.
+
 ## 0.2.1
 
 ### Patch Changes
