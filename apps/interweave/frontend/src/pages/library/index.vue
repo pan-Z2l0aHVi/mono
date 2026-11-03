@@ -60,6 +60,8 @@ const {
   defaultOpenWith,
   openExternal,
   resourceMediaURL,
+  resourceThumbnailURL,
+  saveSourceThumbnail,
   subscribeToDroppedFiles,
   subscribeToPasteFileRequest,
   subscribeToSourceAvailability,
@@ -629,6 +631,8 @@ onMounted(() => {
         :runtime-available="runtime.isAvailable"
         :empty-description="emptyDescription"
         :media-url-for="resourceMediaURL"
+        :thumbnail-url-for="resourceThumbnailURL"
+        :save-thumbnail-for="saveSourceThumbnail"
         :resolve-default-open-with="resolveDefaultOpenWith"
         @open-default="openResource"
         @select="selectResource"

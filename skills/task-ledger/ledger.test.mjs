@@ -69,11 +69,13 @@ try {
   assert.equal(created.repoRoot, fs.realpathSync(repoA))
   assert.equal(created.gitCommonDir, fs.realpathSync(path.join(repoA, '.git')))
   assert.deepEqual(created.refs, {})
+  assert.deepEqual(created.scope, [])
   assert.equal(created.events.at(-1).event, 'new')
   const packet = fs.readFileSync(path.join(stateRoot, 'task-a.md'), 'utf8')
   assert.match(packet, /^# task-a/m)
   assert.match(packet, /- Level: T2/)
   assert.match(packet, /- Owner: owner-a/)
+  assert.doesNotMatch(packet, /scope/)
   assert.match(failMessage(repoA, envA, 'new', 'task-a', '--level', 't2', '--owner', 'owner-a'), /already exists/)
 
   // start 幂等；终态不能再开始。
@@ -100,6 +102,11 @@ try {
   const listA = JSON.parse(run(repoA, envA, 'status', '--json'))
   assert.equal(listA.length, 1)
   assert.equal(listA[0].id, 'task-a')
+  assert.deepEqual(listA[0].scope, [])
+  assert.deepEqual(JSON.parse(run(repoA, envA, 'status', 'task-a')).scope, [])
+  const table = run(repoA, envA, 'status').trim().split('\n')
+  assert.equal(table.length, 1)
+  assert.equal(table[0].split('\t').length, 6)
   assert.match(run(repoA, envA, 'status'), /task-a\tT2\tactive\towner-a\tmain\t/)
   assert.match(failMessage(repoA, envA, 'status', 'task-a', '--task', 'task-a'), /not both/)
   assert.match(failMessage(repoA, envA, 'status', 'task-a', 'extra'), /unexpected argument/)
@@ -117,6 +124,133 @@ try {
     ['task-b-repo']
   )
 
+  // scope 只存仓库相对路径：new 可重复写入，子命令默认 set，每次都追加 scope 事件。
+  const scoped = JSON.parse(
+    run(
+      repoA,
+      envA,
+      'new',
+      'task-paths',
+      '--level',
+      't2',
+      '--owner',
+      'owner-a',
+      '--scope',
+      'packages/web-ui',
+      '--scope',
+      './apps/react-demo/',
+      '--scope=packages/web-ui'
+    )
+  )
+  assert.deepEqual(scoped.scope, ['apps/react-demo', 'packages/web-ui'])
+  assert.deepEqual(JSON.parse(run(repoA, envA, 'status', 'task-paths')).scope, [
+    'apps/react-demo',
+    'packages/web-ui'
+  ])
+  assert.deepEqual(
+    JSON.parse(run(repoA, envA, 'status', '--json')).find(task => task.id === 'task-paths').scope,
+    ['apps/react-demo', 'packages/web-ui']
+  )
+  assert.doesNotMatch(fs.readFileSync(path.join(stateRoot, 'task-paths.md'), 'utf8'), /scope/)
+
+  const defaultSet = JSON.parse(run(repoA, envA, 'scope', 'task-paths', 'docs', 'packages/js-kit'))
+  assert.deepEqual(defaultSet.scope, ['docs', 'packages/js-kit'])
+  assert.equal(defaultSet.events.at(-1).event, 'scope')
+  assert.equal(defaultSet.events.at(-1).action, 'set')
+  assert.deepEqual(defaultSet.events.at(-1).scope, ['docs', 'packages/js-kit'])
+
+  const scopeAdded = JSON.parse(run(repoA, envA, 'scope', 'task-paths', 'scripts', '--add'))
+  assert.deepEqual(scopeAdded.scope, ['docs', 'packages/js-kit', 'scripts'])
+  assert.equal(scopeAdded.events.at(-1).action, 'add')
+
+  const scopeRemoved = JSON.parse(run(repoA, envA, 'scope', 'task-paths', 'docs', '--remove'))
+  assert.deepEqual(scopeRemoved.scope, ['packages/js-kit', 'scripts'])
+  assert.equal(scopeRemoved.events.at(-1).action, 'remove')
+
+  const scopeExplicitSet = JSON.parse(run(repoA, envA, 'scope', 'task-paths', 'AGENTS.md', '--set'))
+  assert.deepEqual(scopeExplicitSet.scope, ['AGENTS.md'])
+  assert.equal(scopeExplicitSet.events.at(-1).action, 'set')
+
+  const scopeCleared = JSON.parse(run(repoA, envA, 'scope', 'task-paths', '--clear'))
+  assert.deepEqual(scopeCleared.scope, [])
+  assert.equal(scopeCleared.events.at(-1).action, 'clear')
+
+  // 用 --task 指定记录时，位置参数都是路径，不再需要占位 id。
+  const scopeViaAlias = JSON.parse(run(repoA, envA, 'scope', '--task', 'task-paths', 'apps/react-demo'))
+  assert.deepEqual(scopeViaAlias.scope, ['apps/react-demo'])
+  assert.equal(scopeViaAlias.events.at(-1).action, 'set')
+
+  assert.match(
+    failMessage(repoA, envA, 'scope', 'task-paths', 'docs', '--set', '--add'),
+    /only one of --set, --add, --remove or --clear/
+  )
+  assert.match(failMessage(repoA, envA, 'scope', 'task-paths', 'docs', '--clear'), /--clear does not accept paths/)
+  assert.match(failMessage(repoA, envA, 'scope', 'task-paths', '--set'), /set requires at least one path/)
+  assert.match(failMessage(repoA, envA, 'scope', 'task-paths', '--add'), /--add requires at least one path/)
+  assert.match(failMessage(repoA, envA, 'scope', 'task-paths', '--remove'), /--remove requires at least one path/)
+  assert.match(failMessage(repoA, envA, 'scope', 'task-paths'), /set requires at least one path/)
+  assert.match(failMessage(repoA, envA, 'scope', 'task-paths', '../outside'), /stay inside/)
+  assert.match(failMessage(repoA, envA, 'scope', 'task-paths', '/abs'), /repo-relative/)
+
+  assert.match(
+    failMessage(repoA, envA, 'new', 'bad-scope', '--level', 't0', '--owner', 'owner-a', '--scope', '/abs'),
+    /repo-relative/
+  )
+  assert.match(
+    failMessage(repoA, envA, 'new', 'bad-scope', '--level', 't0', '--owner', 'owner-a', '--scope', '.'),
+    /repo-relative/
+  )
+  assert.match(
+    failMessage(repoA, envA, 'new', 'bad-scope', '--level', 't0', '--owner', 'owner-a', '--scope', 'a/../b'),
+    /stay inside/
+  )
+  assert.match(
+    failMessage(repoA, envA, 'new', 'bad-scope', '--level', 't0', '--owner', 'owner-a', '--scope', ''),
+    /missing value for --scope/
+  )
+  assert.match(
+    failMessage(repoA, envA, 'new', 'bad-scope', '--level', 't0', '--owner', 'owner-a', '--scope'),
+    /missing value for --scope/
+  )
+  assert.equal(fs.existsSync(path.join(stateRoot, 'bad-scope.json')), false)
+
+  // 老记录可以没有 scope；读取不迁移，第一次写 scope 时才补上字段。
+  const legacy = {
+    schema: 1,
+    id: 'task-legacy',
+    level: 'T2',
+    status: 'open',
+    owner: 'owner-a',
+    base: baseA,
+    branch: 'main',
+    repoRoot: fs.realpathSync(repoA),
+    gitCommonDir: fs.realpathSync(path.join(repoA, '.git')),
+    refs: {},
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+    events: [{ at: new Date().toISOString(), event: 'new' }]
+  }
+  fs.writeFileSync(path.join(stateRoot, 'task-legacy.json'), JSON.stringify(legacy, null, 2) + '\n')
+  assert.equal(JSON.parse(run(repoA, envA, 'status', 'task-legacy')).scope, undefined)
+  assert.equal(
+    JSON.parse(run(repoA, envA, 'status', '--json')).find(task => task.id === 'task-legacy').scope,
+    undefined
+  )
+  const migrated = JSON.parse(run(repoA, envA, 'scope', 'task-legacy', 'docs'))
+  assert.deepEqual(migrated.scope, ['docs'])
+
+  fs.writeFileSync(
+    path.join(stateRoot, 'bad-scope-record.json'),
+    JSON.stringify({ ...legacy, id: 'bad-scope-record', scope: ['../outside'] }) + '\n'
+  )
+  assert.match(failMessage(repoA, envA, 'status', 'bad-scope-record'), /task ledger record is invalid/)
+  fs.writeFileSync(
+    path.join(stateRoot, 'bad-scope-record.json'),
+    JSON.stringify({ ...legacy, id: 'bad-scope-record', scope: 'docs' }) + '\n'
+  )
+  assert.match(failMessage(repoA, envA, 'status', 'bad-scope-record'), /task ledger record is invalid/)
+  fs.rmSync(path.join(stateRoot, 'bad-scope-record.json'))
+
   // close/drop 是本地终态，输出不会冒充 review、CI、merge 或发布结论。
   const closed = JSON.parse(run(repoA, envA, 'close', 'task-a'))
   assert.equal(closed.status, 'closed')
@@ -124,6 +258,7 @@ try {
   assert.match(JSON.parse(run(repoA, envA, 'close', 'task-a')).note, /already closed/)
   assert.match(failMessage(repoA, envA, 'start', 'task-a'), /cannot start/)
   assert.match(failMessage(repoA, envA, 'drop', 'task-a'), /cannot drop/)
+  assert.match(failMessage(repoA, envA, 'scope', 'task-a', 'docs'), /task-a is closed; cannot change scope/)
 
   const dropped = JSON.parse(run(repoA, envA, 'new', 'task-b', '--level', 't1', '--owner', 'owner-b'))
   assert.equal(dropped.status, 'open')
@@ -133,6 +268,7 @@ try {
   assert.match(JSON.parse(run(repoA, envA, 'drop', 'task-b')).note, /already dropped/)
   assert.match(failMessage(repoA, envA, 'start', 'task-b'), /cannot start/)
   assert.match(failMessage(repoA, envA, 'close', 'task-b'), /cannot close/)
+  assert.match(failMessage(repoA, envA, 'scope', 'task-b', 'docs'), /task-b is dropped; cannot change scope/)
 
   // 参数与基线校验保持明确；未知旧命令直接失败。
   run(repoA, envA, 'new', 'task-c', '--level', 't0', '--owner', 'owner-c', '--base', 'main')

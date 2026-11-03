@@ -11,6 +11,9 @@ import ResourceList from '../ResourceList.vue'
 
 import { currentScrollY, stubLayout, ROW_ESTIMATE, ROW_HEIGHT, VIEWPORT_HEIGHT } from './virtualLayout'
 
+// 扫选用例要连续推进多帧 rAF；CI runner 核数少时排队更久，本地实测 0.1–0.7s 保留默认 5s。
+const SWEEP_TIMEOUT = process.env.CI ? 15_000 : undefined
+
 // context menu 的渲染由 web-ui 自己接管，单测只需要它有这两个接口。detail 那一项的用例
 // 要真的走一遍「右键唤起 → 点详情」。
 if (!customElements.get('web-ui-context-menu')) {
@@ -231,7 +234,7 @@ describe('ResourceList：按住拖动批量勾选', () => {
    * 这条用例钉的是「指针停在视口底边时页面自己会滚」，跨窗口的勾选由浏览器取证补。
    * window 模式下边缘带按 window.innerHeight 算，不读列表容器的 rect。
    */
-  it('指针停在视口底边时页面自动滚动，扫选得以越过窗口边界', async () => {
+  it('指针停在视口底边时页面自动滚动，扫选得以越过窗口边界', { timeout: SWEEP_TIMEOUT }, async () => {
     const setChecked = vi.fn<SetChecked>()
     const resources = Array.from({ length: 200 }, (_, i) => resource({ id: `r${i}` }))
     const mounted = await mountList(resources, [], { selectionMode: true }, { onSetChecked: setChecked })
@@ -252,7 +255,7 @@ describe('ResourceList：按住拖动批量勾选', () => {
       hit.restore()
       mounted.unmount()
     }
-  }, 15_000)
+  })
 
   /*
    * 速度上限：指针被拖到视口外很远时，单帧位移不得超过设计上限。
@@ -264,7 +267,7 @@ describe('ResourceList：按住拖动批量勾选', () => {
    *
    * 断言用「相对上限的单帧位移」而不是绝对值：上限是实现常量，写死 24 会让调参变成改测试。
    */
-  it('指针拖到视口外很远时，单帧位移不超过速度上限', async () => {
+  it('指针拖到视口外很远时，单帧位移不超过速度上限', { timeout: SWEEP_TIMEOUT }, async () => {
     const setChecked = vi.fn<SetChecked>()
     const resources = Array.from({ length: 400 }, (_, i) => resource({ id: `r${i}` }))
     const mounted = await mountList(resources, [], { selectionMode: true }, { onSetChecked: setChecked })
@@ -290,7 +293,7 @@ describe('ResourceList：按住拖动批量勾选', () => {
       hit.restore()
       mounted.unmount()
     }
-  }, 15_000)
+  })
 
   /*
    * 边缘带内速度贴边最快、离边越远越慢——底部与顶部两侧都要验。
@@ -301,7 +304,7 @@ describe('ResourceList：按住拖动批量勾选', () => {
    *
    * 顶部带不能直接比：scrollY=0 时向上滚不动（已经在顶）。所以先滚到中段再测。
    */
-  it('边缘带内速度贴边最快、离边越远越慢', async () => {
+  it('边缘带内速度贴边最快、离边越远越慢', { timeout: SWEEP_TIMEOUT }, async () => {
     const resources = Array.from({ length: 400 }, (_, i) => resource({ id: `r${i}` }))
     // 同样的两帧，贴边应该比带内靠里滚得更多
     const measure = async (clientY: number, fromTop = false) => {
@@ -348,7 +351,7 @@ describe('ResourceList：按住拖动批量勾选', () => {
     const topInner = await measure(16, true)
     expect(topEdge.before - topEdge.after).toBeGreaterThan(topInner.before - topInner.after)
     expect(topInner.before - topInner.after).toBeGreaterThan(0)
-  }, 15_000)
+  })
 
   /*
    * 触摸端扫选（Block 级回归的护栏）。
@@ -362,7 +365,7 @@ describe('ResourceList：按住拖动批量勾选', () => {
    * 四条用例分别钉住：边缘带能触发自动滚、长按确认仍能 arm、边缘带内放行带外仍拦、
    * 以及带外手势不被滑动打断（放行过头会让长按判定失效）。
    */
-  it('触摸：指针停在视口底边内侧时同样触发边缘自动滚', async () => {
+  it('触摸：指针停在视口底边内侧时同样触发边缘自动滚', { timeout: SWEEP_TIMEOUT }, async () => {
     // 触摸必须先过 320ms 长按才进入扫选，所以先用假定时器推进长按计时；
     // 边缘自动滚由 rAF 驱动，假定时器会把 rAF 一起停掉，所以放行之前换回真定时器。
     vi.useFakeTimers()
@@ -387,7 +390,7 @@ describe('ResourceList：按住拖动批量勾选', () => {
       hit.restore()
       mounted.unmount()
     }
-  }, 15_000)
+  })
 
   it('触摸：边缘带内的 touchmove 放行滚动，带外仍拦住', async () => {
     vi.useFakeTimers()

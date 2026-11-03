@@ -139,6 +139,10 @@ async function requestCollapse(collapsed: boolean) {
 
 let setMediaMatches: (query: string, matches: boolean) => void
 
+// 每次挂载都要渲染完整导航与 layout 交互；本地实测 0.2–0.4s，CI 并发下实测 5.3–8.6s。
+// 只在 CI 放宽，本地保留 Vitest 默认 5s。
+const SHELL_TIMEOUT = process.env.CI ? 15_000 : undefined
+
 describe('应用外壳：导航 collapsed state 不跨视口泄漏', () => {
   beforeEach(async () => {
     await loadDemoLocale('en', false)
@@ -162,7 +166,7 @@ describe('应用外壳：导航 collapsed state 不跨视口泄漏', () => {
     innerWidthSpy = null
   })
 
-  it('桌面端 collapsible sidebar 后导航进入 collapsed state', async () => {
+  it('桌面端 collapsible sidebar 后导航进入 collapsed state', { timeout: SHELL_TIMEOUT }, async () => {
     setViewportWidth(DESKTOP_WIDTH)
     await mountAppShell()
     const expanded = navItemState()
@@ -174,27 +178,31 @@ describe('应用外壳：导航 collapsed state 不跨视口泄漏', () => {
     expect(navItemState()).not.toEqual(expanded)
   })
 
-  it('移动端断点下同一个 collapse preference 不把 drawer 导航压成 collapsed state', async () => {
-    setViewportWidth(DESKTOP_WIDTH)
-    await mountAppShell()
-    const expanded = navItemState()
+  it(
+    '移动端断点下同一个 collapse preference 不把 drawer 导航压成 collapsed state',
+    { timeout: SHELL_TIMEOUT },
+    async () => {
+      setViewportWidth(DESKTOP_WIDTH)
+      await mountAppShell()
+      const expanded = navItemState()
 
-    await requestCollapse(true)
-    // 对照：collapse preference 确实改变了导航项的渲染，否则下面那条「与展开态一致」可能只是因为
-    // collapse 从未生效。
-    expect(navItemState()).not.toEqual(expanded)
+      await requestCollapse(true)
+      // 对照：collapse preference 确实改变了导航项的渲染，否则下面那条「与展开态一致」可能只是因为
+      // collapse 从未生效。
+      expect(navItemState()).not.toEqual(expanded)
 
-    setViewportWidth(MOBILE_WIDTH)
-    setMediaMatches(MOBILE_QUERY, true)
-    await settleViewport(true)
+      setViewportWidth(MOBILE_WIDTH)
+      setMediaMatches(MOBILE_QUERY, true)
+      await settleViewport(true)
 
-    // 前提：collapse preference 仍写在 layout 上。不成立的话下面那条「与展开态一致」只是没 collapse 过的假绿
-    // （drawer 形态由 settleViewport 保证，不另设断言）。
-    expect(layoutRoot().sidebarCollapsed).toBe(true)
-    expect(navItemState()).toEqual(expanded)
-  })
+      // 前提：collapse preference 仍写在 layout 上。不成立的话下面那条「与展开态一致」只是没 collapse 过的假绿
+      // （drawer 形态由 settleViewport 保证，不另设断言）。
+      expect(layoutRoot().sidebarCollapsed).toBe(true)
+      expect(navItemState()).toEqual(expanded)
+    }
+  )
 
-  it('跨断点往返后 collapsed state 在桌面端恢复生效', async () => {
+  it('跨断点往返后 collapsed state 在桌面端恢复生效', { timeout: SHELL_TIMEOUT }, async () => {
     setViewportWidth(DESKTOP_WIDTH)
     await mountAppShell()
     const expanded = navItemState()

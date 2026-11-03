@@ -36,6 +36,13 @@ export interface LibraryRuntime {
   defaultOpenWith(target: string): Promise<string>
   openExternal(target: string): Promise<void>
   resourceMediaURL(sourceId: string): string | null
+  /**
+   * 派生缩略图的读取地址；null 表示该表面不提供缩略图（浏览器预览），调用方回退原图。
+   * 地址恒为派生形态，是否存在缓存由请求时的 404 表达。
+   */
+  resourceThumbnailURL(sourceId: string): string | null
+  /** 回填前端捕获的缩略图（JPEG）。尽力而为的缓存预热，失败由调用方吞掉。 */
+  saveSourceThumbnail(sourceId: string, jpeg: Blob): Promise<void>
   pendingFilePreviewURL(token: string): string | null
   subscribeToDroppedFiles(listener: (paths: string[]) => void): () => void
   subscribeToPasteFileRequest(listener: () => void): () => void

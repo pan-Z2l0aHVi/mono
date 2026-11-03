@@ -84,7 +84,7 @@ describe('激活门槛', () => {
   it('探测失败时 fail closed', async () => {
     const activation = await detectActivation({
       env: { HERDR_ENV: '1', HERDR_PANE_ID: 'w1:p1' },
-      listAgentNames: vi.fn(async () => {
+      listAgentNames: vi.fn<() => Promise<readonly HerdrAgentEntry[]>>(async () => {
         throw new Error('herdr: command not found')
       })
     })

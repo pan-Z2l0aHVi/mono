@@ -1,6 +1,6 @@
 {
   "name": "@greypan/pi-orchestrator-memory-bridge",
-  "version": "0.0.0",
+  "version": "0.0.1",
   "description": "Orchestration-layer memory bridge and task board context for Pi lead sessions running inside Herdr",
   "license": "MIT",
   "repository": {

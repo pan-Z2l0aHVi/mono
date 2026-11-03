@@ -4,6 +4,11 @@ import { afterEach, describe, expect, it } from 'vite-plus/test'
 
 import type { WebUiDrawer } from '..'
 
+// CI runner 核数少，同一动作排队更久；本地实测 0.6s，保留 Vitest 默认 5s。
+const TEST_TIMEOUT = import.meta.env.CI ? 30_000 : undefined
+const CLOSE_WAIT_TIMEOUT = import.meta.env.CI ? 10_000 : undefined
+const REOPEN_WAIT_TIMEOUT = import.meta.env.CI ? 15_000 : undefined
+
 function getDialog(el: WebUiDrawer): HTMLDialogElement {
   return el.shadowRoot?.querySelector('dialog') as HTMLDialogElement
 }
@@ -59,7 +64,7 @@ afterEach(() => document.body.replaceChildren())
  * 过渡」这一行为，而非「内联样式被清除」这一机制。
  */
 describe('WebUiDrawer 连续 tap 后过渡动画（浏览器）', () => {
-  it('快速 6 次 tap 拖拽区后，后续 toggle 仍触发 transform 过渡（回归锁）', { timeout: 30_000 }, async () => {
+  it('快速 6 次 tap 拖拽区后，后续 toggle 仍触发 transform 过渡（回归锁）', { timeout: TEST_TIMEOUT }, async () => {
     const el = createDrawer()
     el.draggable = true
     await el.updateComplete
@@ -88,13 +93,13 @@ describe('WebUiDrawer 连续 tap 后过渡动画（浏览器）', () => {
     await el.updateComplete
     await waitFor(closing.started, 'drawer close transform transition did not start')
     expect(closing.started()).toBe(true)
-    await waitFor(() => !dialog.open, 'drawer did not close', 10_000)
+    await waitFor(() => !dialog.open, 'drawer did not close', CLOSE_WAIT_TIMEOUT)
 
     const reopening = observeTransformTransition(dialog)
     el.open = true
     await el.updateComplete
     await waitFor(reopening.started, 'drawer reopen transform transition did not start')
     expect(reopening.started()).toBe(true)
-    await waitFor(() => dialog.open, 'drawer did not reopen', 15_000)
+    await waitFor(() => dialog.open, 'drawer did not reopen', REOPEN_WAIT_TIMEOUT)
   })
 })

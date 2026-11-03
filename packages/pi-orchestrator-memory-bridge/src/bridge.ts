@@ -180,7 +180,8 @@ export async function callToolVia(
 function stringifyPayload(value: unknown): string | undefined {
   if (value === undefined || value === null) return undefined
   if (typeof value === 'string') return value.trim() || undefined
-  if (typeof value !== 'object') return String(value)
+  if (typeof value === 'number' || typeof value === 'boolean' || typeof value === 'bigint') return String(value)
+  if (typeof value !== 'object') return undefined
   try {
     return JSON.stringify(value)
   } catch {

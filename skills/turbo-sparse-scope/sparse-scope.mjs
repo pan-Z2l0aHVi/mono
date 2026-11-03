@@ -9,10 +9,9 @@ import { fileURLToPath, pathToFileURL } from 'node:url'
 const EXIT_OK = 0
 const EXIT_FAILURE = 1
 const EXIT_USAGE = 2
-const CONFIG_FILE = 'monorepo.json'
-const CONFIG_KEY = 'sparseScope'
+const WILDCARD = /[*?[\]{}]/
 const USAGE = `Usage:
-  node sparse-scope.mjs <package|path>... [--dry-run] [--add|--reset] [--json]
+  node sparse-scope.mjs <path|package>... [--dry-run] [--add|--reset] [--json]
   node sparse-scope.mjs --status [--json]
   node sparse-scope.mjs --restore [--json]
 
@@ -21,19 +20,12 @@ Actions:
   --add       union the new closure with the current cone (requires a full-tree recompute)
   --reset     replace the current cone with the new closure
   --restore   disable sparse checkout and materialize the full worktree
-  --status    read-only: current cone, config and reminders
+  --status    read-only: current cone, workspace layout and reminders
   --dry-run   print the computed cone and commands without touching the worktree
   --json      machine-readable output on stdout
 
 Exit codes: 0 success, 1 environment/runtime failure, 2 usage or target error.
 `
-
-const CONFIG_TEMPLATE = `{
-  "${CONFIG_KEY}": {
-    "keepDirs": ["docs", ".agents", ".claude", "skills", "scripts", ".vite-hooks", ".github"],
-    "keepPackages": ["@scope/tooling-package"]
-  }
-}`
 
 export class ScopeError extends Error {
   constructor(message, exitCode = EXIT_FAILURE, detail = '') {
@@ -79,7 +71,7 @@ export function parseArgs(argv) {
 
 export function normalizeConePath(value) {
   const raw = String(value).trim()
-  if (!raw) throw new ScopeError('empty path in config or turbo output', EXIT_FAILURE)
+  if (!raw) throw new ScopeError('empty path in a target or turbo output', EXIT_FAILURE)
   const normalized = raw.replace(/^\.\/+/, '').replace(/\/+$/, '')
   const segments = normalized.split('/')
   if (!normalized || normalized === '.' || path.posix.isAbsolute(normalized))
@@ -89,34 +81,125 @@ export function normalizeConePath(value) {
   return normalized
 }
 
-function normalizeTarget(value) {
-  return String(value)
-    .trim()
-    .replace(/^\.\/+/, '')
-    .replace(/\/+$/, '')
-}
-
-function normalizeStringList(value, label) {
-  if (!Array.isArray(value)) throw new ScopeError(`${CONFIG_KEY}.${label} must be an array of strings`, EXIT_FAILURE)
-  const normalized = []
-  for (const entry of value) {
-    if (typeof entry !== 'string' || entry.trim().length === 0)
-      throw new ScopeError(`${CONFIG_KEY}.${label} entries must be non-empty strings`, EXIT_FAILURE)
-    normalized.push(entry.trim())
+export function parseWorkspaceContainers(text) {
+  const containers = new Set()
+  let inPackages = false
+  for (const rawLine of String(text).split(/\r?\n/)) {
+    const trimmed = rawLine.trim()
+    if (!trimmed || trimmed.startsWith('#')) continue
+    if (/^packages\s*:\s*(?:#.*)?$/.test(trimmed)) {
+      inPackages = true
+      continue
+    }
+    if (!inPackages) continue
+    if (!trimmed.startsWith('-')) {
+      inPackages = false
+      continue
+    }
+    let entry = trimmed.slice(1).trim()
+    if (entry.startsWith('"') || entry.startsWith("'")) {
+      const quote = entry[0]
+      const end = entry.indexOf(quote, 1)
+      entry = end > 0 ? entry.slice(1, end) : entry.slice(1)
+    } else entry = entry.replace(/\s+#.*$/, '').trim()
+    if (!entry || entry.startsWith('!')) continue
+    const segments = entry.split('/').filter(Boolean)
+    const wildcard = segments.findIndex(segment => WILDCARD.test(segment))
+    if (wildcard === 0) continue
+    const container = wildcard > 0 ? segments.slice(0, wildcard).join('/') : segments.slice(0, -1).join('/')
+    if (container) containers.add(container)
   }
-  return [...new Set(normalized)].sort(compareText)
+  return [...containers].sort(compareText)
 }
 
-export function validateConfig(raw) {
-  if (raw === null || typeof raw !== 'object' || Array.isArray(raw))
-    throw new ScopeError(`${CONFIG_FILE} must contain a JSON object`, EXIT_FAILURE)
-  const scope = raw[CONFIG_KEY]
-  if (scope === null || typeof scope !== 'object' || Array.isArray(scope))
-    throw new ScopeError(`${CONFIG_FILE} is missing "${CONFIG_KEY}"`, EXIT_FAILURE, CONFIG_TEMPLATE)
-  const keepDirs = [...new Set(normalizeStringList(scope.keepDirs, 'keepDirs').map(normalizeConePath))].sort(compareText)
-  if (keepDirs.length === 0) throw new ScopeError(`${CONFIG_KEY}.keepDirs must not be empty`, EXIT_FAILURE)
-  const keepPackages = normalizeStringList(scope.keepPackages ?? [], 'keepPackages')
-  return { keepDirs, keepPackages }
+export function isInsideContainer(target, containers) {
+  return containers.some(container => target === container || target.startsWith(container + '/'))
+}
+
+export function isContainerAncestor(target, containers) {
+  return containers.some(container => container.startsWith(target + '/'))
+}
+
+export function filterKeptRootDirs(dirs, containers) {
+  return dirs.filter(dir => !isInsideContainer(dir, containers) && !isContainerAncestor(dir, containers))
+}
+
+export function selectRootDependencyPackages(rawPackage, packages) {
+  const names = new Set([
+    ...Object.keys(rawPackage?.dependencies ?? {}),
+    ...Object.keys(rawPackage?.devDependencies ?? {})
+  ])
+  const byName = new Map(packages.map(pkg => [pkg.name, pkg]))
+  return [...names]
+    .filter(name => byName.has(name))
+    .map(name => byName.get(name))
+    .sort((a, b) => compareText(a.name, b.name))
+}
+
+export function resolveScopeTargets(rawTargets, packages, { containers, rootEntries }) {
+  const byName = new Map(packages.map(pkg => [pkg.name, pkg]))
+  const rootEntrySet = new Set(rootEntries)
+  const ignorableRootEntries = new Set(
+    [...rootEntrySet].filter(entry => !isContainerAncestor(entry, containers))
+  )
+  const targets = []
+  const ignoredTargets = new Set()
+  const addTarget = pkg => {
+    if (!targets.some(existing => existing.name === pkg.name)) targets.push(pkg)
+  }
+  for (const rawTarget of rawTargets) {
+    const name = String(rawTarget).trim()
+    if (byName.has(name)) {
+      addTarget(byName.get(name))
+      continue
+    }
+    let normalized
+    try {
+      normalized = normalizeConePath(rawTarget)
+    } catch (error) {
+      if (error instanceof ScopeError) throw new ScopeError(error.message, EXIT_USAGE, USAGE)
+      throw error
+    }
+    const exact = packages.find(pkg => pkg.path === normalized)
+    if (exact) {
+      addTarget(exact)
+      continue
+    }
+    const containing = packages
+      .filter(pkg => normalized.startsWith(pkg.path + '/'))
+      .sort((a, b) => b.path.length - a.path.length || compareText(a.path, b.path))[0]
+    if (containing) {
+      addTarget(containing)
+      continue
+    }
+    const top = normalized.split('/')[0]
+    if (isInsideContainer(normalized, containers) || isContainerAncestor(normalized, containers))
+      throw new ScopeError(
+        `path is not inside a workspace package: ${normalized}`,
+        EXIT_USAGE,
+        'pass a path inside a package or a package name'
+      )
+    if (ignorableRootEntries.has(top)) {
+      ignoredTargets.add(normalized)
+      continue
+    }
+    throw new ScopeError(
+      `unknown path: ${normalized}`,
+      EXIT_USAGE,
+      [
+        'known root entries:',
+        ...[...ignorableRootEntries].sort(compareText).map(entry => '  ' + entry),
+        'workspace containers:',
+        ...(containers.length > 0 ? containers.map(entry => '  ' + entry) : ['  (none)']),
+        'known packages:',
+        ...packages
+          .map(pkg => pkg.name)
+          .sort(compareText)
+          .map(entry => '  ' + entry)
+      ].join('\n')
+    )
+  }
+  return { targets, ignoredTargets: [...ignoredTargets].sort(compareText) }
 }
 
 export function parseTurboLsJson(text) {
@@ -157,21 +240,13 @@ export function buildCone(paths) {
   return [...new Set(paths.map(normalizeConePath))].sort(compareText)
 }
 
-export function findUnknownTargets(rawTargets, packages) {
-  const byName = new Set(packages.map(pkg => pkg.name))
-  const byPath = new Set(packages.map(pkg => pkg.path))
-  return rawTargets.filter(target => !byName.has(target) && !byPath.has(normalizeTarget(target)))
-}
-
-export function resolveTargets(rawTargets, packages) {
-  const byName = new Map(packages.map(pkg => [pkg.name, pkg]))
-  const byPath = new Map(packages.map(pkg => [pkg.path, pkg]))
-  const resolved = []
-  for (const target of rawTargets) {
-    const pkg = byName.get(target) ?? byPath.get(normalizeTarget(target))
-    if (pkg && !resolved.some(existing => existing.name === pkg.name)) resolved.push(pkg)
-  }
-  return resolved
+function dedupePackages(packages) {
+  const seen = new Set()
+  return packages.filter(pkg => {
+    if (seen.has(pkg.name)) return false
+    seen.add(pkg.name)
+    return true
+  })
 }
 
 export function isPathInCone(file, cone) {
@@ -255,23 +330,49 @@ function resolveRoot() {
   return fs.realpathSync(result.stdout.trim())
 }
 
-function readConfig(root) {
-  const file = path.join(root, CONFIG_FILE)
+function readWorkspaceContainers(root) {
+  const file = path.join(root, 'pnpm-workspace.yaml')
   if (!fs.existsSync(file))
-    throw new ScopeError(`${CONFIG_FILE} not found at the repository root`, EXIT_FAILURE, CONFIG_TEMPLATE)
+    return {
+      containers: [],
+      warning:
+        'pnpm-workspace.yaml not found at the repository root; cannot identify workspace containers, so all root directories are kept and the cone does not shrink'
+    }
+  const containers = parseWorkspaceContainers(fs.readFileSync(file, 'utf8'))
+  if (containers.length === 0)
+    return {
+      containers,
+      warning:
+        'pnpm-workspace.yaml has no recognized package patterns; cannot identify workspace containers, so all root directories are kept and the cone does not shrink'
+    }
+  return { containers, warning: null }
+}
+
+function listRootEntries(root) {
+  const result = runGit(root, ['ls-tree', '--name-only', 'HEAD'])
+  if (result.status !== 0) throw new ScopeError('cannot list root entries', EXIT_FAILURE, preview(result.stderr))
+  return result.stdout.split(/\r?\n/).filter(Boolean)
+}
+
+function listRootDirs(root) {
+  const result = runGit(root, ['ls-tree', '-d', '--name-only', 'HEAD'])
+  if (result.status !== 0) throw new ScopeError('cannot list root entries', EXIT_FAILURE, preview(result.stderr))
+  return result.stdout.split(/\r?\n/).filter(Boolean)
+}
+
+function listRootDependencyPackages(root, packages) {
+  const file = path.join(root, 'package.json')
+  if (!fs.existsSync(file)) return []
   let raw
   try {
     raw = JSON.parse(fs.readFileSync(file, 'utf8'))
   } catch (error) {
-    throw new ScopeError(`${CONFIG_FILE} is not valid JSON: ${error.message}`, EXIT_FAILURE)
+    throw new ScopeError(
+      'cannot read root package.json: ' + (error instanceof Error ? error.message : String(error)),
+      EXIT_FAILURE
+    )
   }
-  const config = validateConfig(raw)
-  for (const dir of config.keepDirs) {
-    const absolute = path.join(root, dir)
-    if (!fs.existsSync(absolute) || !fs.statSync(absolute).isDirectory())
-      throw new ScopeError(`${CONFIG_KEY}.keepDirs entry is not a directory: ${dir}`, EXIT_FAILURE)
-  }
-  return config
+  return selectRootDependencyPackages(raw, packages)
 }
 
 function resolveTurbo(root) {
@@ -305,7 +406,8 @@ function listPackages(root, turbo) {
   return packages
 }
 
-function resolveClosure(root, turbo, names) {
+export function resolveClosure(root, turbo, names) {
+  if (names.length === 0) return []
   const filters = names.map(name => ['--filter', `${name}...`]).flat()
   const json = runTurbo(root, turbo, ['ls', ...filters, '--output=json'])
   if (json.status === 0 && json.stdout.trim().startsWith('{')) return parseTurboLsJson(json.stdout)
@@ -421,15 +523,16 @@ function writeReport(report, json) {
     'dryRun',
     'sparse',
     'targets',
+    'ignoredTargets',
     'closure',
-    'keepDirs',
-    'keepPackages',
+    'rootDependencyPackages',
+    'rootEntries',
+    'workspaceContainers',
     'cone',
     'hiddenPackages',
     'dirtyOutsideCone',
     'dependencies',
     'commands',
-    'config',
     'warnings',
     'reminders'
   ]
@@ -437,14 +540,6 @@ function writeReport(report, json) {
   for (const key of order) {
     const value = report[key]
     if (value === undefined) continue
-    if (key === 'config') {
-      lines.push(
-        value.present
-          ? `config: ok (keepDirs: ${value.keepDirs.join(', ')}; keepPackages: ${value.keepPackages.join(', ') || 'none'})`
-          : 'config: missing or invalid'
-      )
-      continue
-    }
     if (key === 'dependencies') {
       if (value.status === 'synced') lines.push('dependencies: synced (pnpm install --frozen-lockfile)')
       else if (value.status === 'would-sync') lines.push('dependencies: would sync (pnpm install --frozen-lockfile)')
@@ -465,12 +560,25 @@ function writeReport(report, json) {
 function printStatus(root, json) {
   const sparseCone = readSparseCone(root)
   const warnings = []
-  let config = { present: false }
-  try {
-    config = { present: true, ...readConfig(root) }
-  } catch (error) {
-    if (error instanceof ScopeError) warnings.push(error.message)
-    else throw error
+  const { containers, warning } = readWorkspaceContainers(root)
+  if (warning) warnings.push(warning)
+  const rootEntries = filterKeptRootDirs(listRootDirs(root), containers)
+  let rootDependencyPackages = []
+  if (!sparseCone) {
+    try {
+      const turbo = resolveTurbo(root)
+      const packages = listPackages(root, turbo)
+      rootDependencyPackages = resolveClosure(
+        root,
+        turbo,
+        listRootDependencyPackages(root, packages).map(pkg => pkg.name)
+      )
+    } catch (error) {
+      if (error instanceof ScopeError) warnings.push(error.message)
+      else throw error
+    }
+  } else {
+    warnings.push('root dependency packages are not computed on a sparse tree; run --restore first')
   }
   const dirty = sparseCone ? listDirtyOutsideCone(readDirtyFiles(root), sparseCone) : []
   if (dirty.length > 0)
@@ -481,7 +589,9 @@ function printStatus(root, json) {
     action: 'status',
     sparse: Boolean(sparseCone),
     cone: sparseCone ?? [],
-    config,
+    workspaceContainers: containers,
+    rootEntries,
+    rootDependencyPackages,
     dirtyOutsideCone: dirty,
     reminders: [
       'use `git grep <pattern> HEAD` for cross-package search',
@@ -508,7 +618,9 @@ function applyScope(root, options) {
   const previousCone = readSparseCone(root)
   assertActionAllowed({ sparseCone: previousCone, action: options.action, dryRun: Boolean(options.dryRun) })
 
-  const config = readConfig(root)
+  const { containers, warning: workspaceWarning } = readWorkspaceContainers(root)
+  const rootEntries = listRootEntries(root)
+  const keepRootDirs = filterKeptRootDirs(listRootDirs(root), containers)
   const turbo = resolveTurbo(root)
   const dependencyPlan = resolveDependencyPlan(root)
 
@@ -519,47 +631,41 @@ function applyScope(root, options) {
   let synced = false
   try {
     const packages = listPackages(root, turbo)
-    const unknownTargets = findUnknownTargets(options.targets, packages)
-    if (unknownTargets.length > 0) {
-      throw new ScopeError(
-        `unknown target(s): ${unknownTargets.join(', ')}`,
-        EXIT_USAGE,
-        `known packages:\n${packages.map(pkg => pkg.name).sort(compareText).join('\n')}`
-      )
-    }
-    const unknownKeep = config.keepPackages.filter(name => !packages.some(pkg => pkg.name === name))
-    if (unknownKeep.length > 0)
-      throw new ScopeError(`${CONFIG_KEY}.keepPackages has unknown package(s): ${unknownKeep.join(', ')}`, EXIT_FAILURE)
-
-    const targets = resolveTargets(options.targets, packages)
+    const { targets, ignoredTargets } = resolveScopeTargets(options.targets, packages, {
+      containers,
+      rootEntries
+    })
     const closure = resolveClosure(
       root,
       turbo,
       targets.map(pkg => pkg.name)
     )
-    const keepClosure = config.keepPackages.length > 0 ? resolveClosure(root, turbo, config.keepPackages) : []
+    const rootDependencyPackages = resolveClosure(
+      root,
+      turbo,
+      listRootDependencyPackages(root, packages).map(pkg => pkg.name)
+    )
+    const combinedClosure = dedupePackages([...closure, ...rootDependencyPackages])
 
     const cone = buildCone([
-      ...closure.map(pkg => pkg.path),
-      ...keepClosure.map(pkg => pkg.path),
-      ...config.keepDirs,
-      ...targets.map(pkg => pkg.path)
+      ...combinedClosure.map(pkg => pkg.path),
+      ...targets.map(pkg => pkg.path),
+      ...keepRootDirs
     ])
 
     const skillDir = path
       .relative(root, path.dirname(fs.realpathSync(fileURLToPath(import.meta.url))))
       .split(path.sep)
       .join('/')
-    if (!isPathInCone(skillDir, cone))
-      throw new ScopeError(
-        `the computed cone would hide this skill (${skillDir}); add its parent directory to ${CONFIG_KEY}.keepDirs`,
-        EXIT_FAILURE
-      )
-
+    const skillInsideRepo =
+      skillDir !== '' && skillDir !== '..' && !skillDir.startsWith('../') && !path.isAbsolute(skillDir)
     const targetCone = options.action === 'add' && previousCone ? buildCone([...previousCone, ...cone]) : cone
+    if (skillInsideRepo && !isPathInCone(skillDir, targetCone))
+      throw new ScopeError(`the computed cone would hide this skill (${skillDir})`, EXIT_FAILURE)
+
     const hidden = listHiddenPackages(packages, targetCone)
     const dirtyOutsideCone = listDirtyOutsideCone(readDirtyFiles(root), targetCone)
-    const warnings = []
+    const warnings = workspaceWarning ? [workspaceWarning] : []
     if (dirtyOutsideCone.length > 0)
       warnings.push(
         `${dirtyOutsideCone.length} uncommitted file(s) outside the cone are no longer part of the cone; staged changes may leave the worktree until --restore`
@@ -571,29 +677,27 @@ function applyScope(root, options) {
       ['git', 'sparse-checkout', 'set', '--cone', ...targetCone]
     ]
     if (dependencyPlan.mode === 'sync') commands.push([PNPM_BIN, ...DEPENDENCY_SYNC])
+    const report = {
+      action: options.action,
+      targets,
+      ignoredTargets,
+      closure: combinedClosure,
+      rootDependencyPackages,
+      rootEntries: keepRootDirs,
+      workspaceContainers: containers,
+      cone: targetCone,
+      hiddenPackages: hidden,
+      dirtyOutsideCone,
+      dependencies:
+        dependencyPlan.mode === 'sync'
+          ? { status: 'would-sync' }
+          : { status: 'skipped', reason: dependencyPlan.reason },
+      commands,
+      warnings
+    }
 
     if (options.dryRun) {
-      writeReport(
-        {
-          action: options.action,
-          dryRun: true,
-          sparse: Boolean(previousCone),
-          targets,
-          closure,
-          keepDirs: config.keepDirs,
-          keepPackages: config.keepPackages,
-          cone: targetCone,
-          hiddenPackages: hidden,
-          dirtyOutsideCone,
-          dependencies:
-            dependencyPlan.mode === 'sync'
-              ? { status: 'would-sync' }
-              : { status: 'skipped', reason: dependencyPlan.reason },
-          commands,
-          warnings
-        },
-        options.json
-      )
+      writeReport({ ...report, dryRun: true, sparse: Boolean(previousCone) }, options.json)
       return EXIT_OK
     }
 
@@ -608,17 +712,10 @@ function applyScope(root, options) {
     const finalCone = readSparseCone(root) ?? targetCone
     writeReport(
       {
-        action: options.action,
+        ...report,
         sparse: true,
-        targets,
-        closure,
-        keepDirs: config.keepDirs,
-        keepPackages: config.keepPackages,
         cone: finalCone,
-        hiddenPackages: hidden,
-        dirtyOutsideCone,
         dependencies,
-        warnings,
         reminders: [
           'use `git grep <pattern> HEAD` for cross-package search',
           'local gates only cover the cone; restore before full-repo verification',

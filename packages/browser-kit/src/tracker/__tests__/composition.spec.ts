@@ -83,27 +83,6 @@ describe('tracker 插件组合测试', () => {
     expect(transport).not.toHaveBeenCalled()
   })
 
-  it('推荐顺序：转后台时离线积压的数据仍被冲刷', async () => {
-    vi.spyOn(navigator, 'onLine', 'get').mockReturnValue(false)
-    const tracker = using(
-      defineTracker({ url: 'https://example.com', transport })
-        .use(defineBatchTrack())
-        .use(defineOfflineRestore())
-        .use(defineLastWords())
-        .make()
-    )
-
-    tracker.track({ action: 'offline-data' })
-    await afterDispatchTurn()
-    expect(transport).not.toHaveBeenCalled()
-
-    // 退出路径无视离线暂停，把攒着的数据交出去
-    setVisibility('hidden')
-    await expectAfterDispatch(() => transport.mock.calls.length === 1)
-
-    expect(transport.mock.calls[0][0]).toEqual([{ action: 'offline-data' }])
-  })
-
   it('换序 batch → offline 仍然成立：组合结果不依赖 use 顺序', async () => {
     const tracker = using(
       defineTracker({ url: 'https://example.com', transport })

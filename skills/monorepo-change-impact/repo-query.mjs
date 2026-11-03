@@ -17,6 +17,7 @@ import path from 'node:path'
 const root = path.resolve(import.meta.dirname, '../..')
 const GIT_MAX_BUFFER = 64 * 1024 * 1024
 const rawArgs = process.argv.slice(2)
+const compareText = (a, b) => (a < b ? -1 : a > b ? 1 : 0)
 const command = rawArgs.shift() ?? 'verify'
 const options = parseOptions(rawArgs)
 const contractTarget = command === 'contract' ? (options.paths.shift() ?? '') : ''
@@ -300,7 +301,7 @@ if (command === 'contract') {
   }
 
   const manifest = manifests.find(({ manifest }) => manifest.name === contractTarget).manifest
-  const directConsumers = [...new Set(dependentsByDependency.get(contractTarget) ?? [])].sort()
+  const directConsumers = [...new Set(dependentsByDependency.get(contractTarget) ?? [])].sort(compareText)
   const rootScripts = readJson(path.join(root, 'package.json')).scripts ?? {}
   const result = {
     command,
@@ -432,7 +433,7 @@ if (command === 'contract-diff') {
   const previous = getPublishedPackagesAt(options.base)
   const current = getCurrentPublishedPackages()
   const changes = [...new Set([...previous.keys(), ...current.keys()])]
-    .sort()
+    .sort(compareText)
     .map(name => classifyContractChange(name, previous.get(name), current.get(name)))
     .filter(
       change =>
@@ -559,7 +560,7 @@ function findFocusedTestDirectories(workspace, files) {
     }
   }
 
-  return [...directories].sort()
+  return [...directories].sort(compareText)
 }
 
 const directlyChanged = directWorkspaces.map(name => workspaceByName.get(name))
@@ -788,9 +789,9 @@ const result = {
   command,
   changedPaths: normalizedPaths,
   directWorkspaces,
-  affectedWorkspaces: [...affected].sort(),
+  affectedWorkspaces: [...affected].sort(compareText),
   dependencyEdges,
-  context: [...context].sort(),
+  context: [...context].sort(compareText),
   requiredEvidence,
   focusedTests,
   risk: {

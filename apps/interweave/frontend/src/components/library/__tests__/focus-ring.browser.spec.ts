@@ -51,20 +51,12 @@ function resource(overrides: Partial<ResourceView> = {}): ResourceView {
   }
 }
 
-/**
- * 页面级 focus ring 的颜色来自 --wui-color-focus-ring（global.css）。在行元素的父作用域里
- * 用探针把它归一成计算形态，断言只依赖 token，而不是某个主题档的 rgb 字面量。
- */
-function focusRingColor(scope: Element): string {
-  const probe = document.createElement('span')
-  probe.style.color = 'var(--wui-color-focus-ring, rgb(0 136 255 / 0.4))'
-  scope.append(probe)
-  const color = getComputedStyle(probe).color
-  probe.remove()
-  return color
-}
-
-async function mountList(resources: ResourceView[], activeResourceId: string | null = null) {
+async function mountList(
+  resources: ResourceView[],
+  activeResourceId: string | null = null,
+  selectionMode = false,
+  checkedIds: string[] = []
+) {
   const restoreLayout = stubLayout()
   const host = document.createElement('div')
   host.id = 'app'
@@ -76,8 +68,8 @@ async function mountList(resources: ResourceView[], activeResourceId: string | n
       h(ResourceList, {
         resources,
         activeResourceId: activeId.value,
-        checkedIds: [],
-        selectionMode: false,
+        checkedIds,
+        selectionMode,
         editingNameKey: null,
         editorRef: () => () => {},
         loading: false,
@@ -120,8 +112,13 @@ afterEach(() => {
   for (const host of hosts.splice(0)) host.remove()
 })
 
-describe('ResourceList：页面级 focus ring 真实读数（浏览器）', () => {
-  it('方向键移动后，焦点行有非 none 的 outlineStyle，非焦点行是 none', async () => {
+describe('ResourceList：行不画 focus ring（真实读数，浏览器）', () => {
+  /*
+   * 用户裁决：列表行的选中态只保留暗底，不画浅蓝 ring（global.css 的行豁免规则）。
+   * 键盘焦点指示由活动行的暗底承担，这里的断言钉住「行永不出现 outline」；
+   * 页面级 ring 规则本身没有被废掉，用列表容器（tabindex=0 的 tab stop）验证它仍然生效。
+   */
+  it('方向键移动焦点，行始终无 outline，容器获焦时页面级 ring 仍在', async () => {
     const resources = ['r1', 'r2', 'r3'].map(id => resource({ id }))
     const mounted = await mountList(resources)
     hosts.push(mounted.host)
@@ -136,71 +133,54 @@ describe('ResourceList：页面级 focus ring 真实读数（浏览器）', () =
       container.focus()
       await nextTick()
 
+      // 容器是普通 tab stop，获焦时页面级 focus ring 照常画在它身上
+      expect(getComputedStyle(container).outlineStyle, '容器应有页面级 focus ring').not.toBe('none')
+
       // 用真实输入模拟 Enter 键：enterList 会把焦点交给当前活动行（r1）
       await userEvent.keyboard('{Enter}')
       await waitFor(() => document.activeElement === rows[0], '焦点落到第 1 行')
 
-      // 此时第 1 行应有 outlineStyle（页面级 focus ring：solid 浅蓝）
-      const outlineStyle1 = getComputedStyle(rows[0]).outlineStyle
-      const outlineWidth1 = getComputedStyle(rows[0]).outlineWidth
-      const outlineColor1 = getComputedStyle(rows[0]).outlineColor
-      const outlineOffset1 = getComputedStyle(rows[0]).outlineOffset
-      expect(outlineStyle1, '第 1 行应有 focus ring').not.toBe('none')
-      expect(outlineWidth1, '第 1 行 outline-width 应非 0px').not.toBe('0px')
-      expect(outlineColor1, '第 1 行 outline-color 应等于页面级 focus ring token').toBe(
-        focusRingColor(rows[0].parentElement ?? document.body)
-      )
-
-      // 第 2、3 行不应有 outlineStyle
-      const outlineStyle2 = getComputedStyle(rows[1]).outlineStyle
-      const outlineStyle3 = getComputedStyle(rows[2]).outlineStyle
-      expect(outlineStyle2, '第 2 行不应有 focus ring').toBe('none')
-      expect(outlineStyle3, '第 3 行不应有 focus ring').toBe('none')
+      // 裁决：行不画 focus ring，选中指示是活动行的暗底
+      expect(getComputedStyle(rows[0]).outlineStyle, '第 1 行不应有 focus ring').toBe('none')
 
       // 用真实输入按 ArrowDown 移到第 2 行
       await userEvent.keyboard('{ArrowDown}')
       await waitFor(() => document.activeElement === rows[1], '焦点移到第 2 行')
-
-      // 现在第 2 行应有 outlineStyle
-      const outlineStyle2After = getComputedStyle(rows[1]).outlineStyle
-      const outlineWidth2 = getComputedStyle(rows[1]).outlineWidth
-      const outlineColor2 = getComputedStyle(rows[1]).outlineColor
-      expect(outlineStyle2After, '第 2 行应有 focus ring').not.toBe('none')
-      expect(outlineWidth2, '第 2 行 outline-width 应非 0px').not.toBe('0px')
-      expect(outlineColor2, '第 2 行 outline-color 应等于页面级 focus ring token').toBe(
-        focusRingColor(rows[1].parentElement ?? document.body)
-      )
-
-      // 第 1 行 outlineStyle 应消失
-      const outlineStyle1After = getComputedStyle(rows[0]).outlineStyle
-      expect(outlineStyle1After, '第 1 行 outlineStyle 应消失').toBe('none')
-
-      // 第 3 行仍无 outlineStyle
-      const outlineStyle3After = getComputedStyle(rows[2]).outlineStyle
-      expect(outlineStyle3After, '第 3 行仍无 focus ring').toBe('none')
+      expect(getComputedStyle(rows[1]).outlineStyle, '第 2 行不应有 focus ring').toBe('none')
+      expect(getComputedStyle(rows[0]).outlineStyle, '第 1 行不应有 focus ring').toBe('none')
 
       // 再按 ArrowDown 移到第 3 行
       await userEvent.keyboard('{ArrowDown}')
       await waitFor(() => document.activeElement === rows[2], '焦点移到第 3 行')
-
-      const outlineStyle3Final = getComputedStyle(rows[2]).outlineStyle
-      const outlineWidth3 = getComputedStyle(rows[2]).outlineWidth
-      const outlineColor3 = getComputedStyle(rows[2]).outlineColor
-      expect(outlineStyle3Final, '第 3 行应有 focus ring').not.toBe('none')
-      expect(outlineWidth3, '第 3 行 outline-width 应非 0px').not.toBe('0px')
-      expect(outlineColor3, '第 3 行 outline-color 应等于页面级 focus ring token').toBe(
-        focusRingColor(rows[2].parentElement ?? document.body)
-      )
-
-      // 第 2 行 outlineStyle 应消失
-      const outlineStyle2Final = getComputedStyle(rows[1]).outlineStyle
-      expect(outlineStyle2Final, '第 2 行 outlineStyle 应消失').toBe('none')
+      expect(getComputedStyle(rows[2]).outlineStyle, '第 3 行不应有 focus ring').toBe('none')
+      expect(getComputedStyle(rows[1]).outlineStyle, '第 2 行不应有 focus ring').toBe('none')
     } finally {
       mounted.unmount()
     }
   })
 
-  it('End 键跳到最后一行，该行有 focus ring', async () => {
+  it('选择模式下保留 focus ring，键盘焦点仍有可见指示', async () => {
+    const resources = ['r1', 'r2'].map(id => resource({ id }))
+    const mounted = await mountList(resources, null, true, ['r1'])
+    hosts.push(mounted.host)
+
+    try {
+      const container = mounted.container!
+      container.focus()
+      await nextTick()
+
+      await userEvent.keyboard('{Enter}')
+      await waitFor(() => document.activeElement === mounted.rows()[0], '焦点落到第 1 行')
+
+      const row = mounted.rows()[0]
+      expect(row.hasAttribute('data-selection-mode'), '选择模式标记应落在行上').toBe(true)
+      expect(getComputedStyle(row).outlineStyle, '选择模式下应有 focus ring').not.toBe('none')
+    } finally {
+      mounted.unmount()
+    }
+  })
+
+  it('End 键跳到最后一行，焦点行同样无 outline', async () => {
     const resources = ['r1', 'r2', 'r3', 'r4', 'r5'].map(id => resource({ id }))
     const mounted = await mountList(resources)
     hosts.push(mounted.host)
@@ -219,16 +199,7 @@ describe('ResourceList：页面级 focus ring 真实读数（浏览器）', () =
       await waitFor(() => document.activeElement === mounted.rows()[4], '焦点跳到第 5 行')
 
       const rows = mounted.rows()
-      const outlineStyleLast = getComputedStyle(rows[4]).outlineStyle
-      const outlineWidthLast = getComputedStyle(rows[4]).outlineWidth
-      const outlineColorLast = getComputedStyle(rows[4]).outlineColor
-      expect(outlineStyleLast, '第 5 行应有 focus ring').not.toBe('none')
-      expect(outlineWidthLast, '第 5 行 outline-width 应非 0px').not.toBe('0px')
-      expect(outlineColorLast, '第 5 行 outline-color 应等于页面级 focus ring token').toBe(
-        focusRingColor(rows[4].parentElement ?? document.body)
-      )
-
-      // 其他行无 outlineStyle
+      expect(getComputedStyle(rows[4]).outlineStyle, '第 5 行不应有 focus ring').toBe('none')
       for (let i = 0; i < 4; i++) {
         expect(getComputedStyle(rows[i]).outlineStyle, `第 ${i + 1} 行不应有 focus ring`).toBe('none')
       }

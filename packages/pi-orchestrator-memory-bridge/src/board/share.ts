@@ -358,6 +358,13 @@ export function normalizeBoardCounters(board: Record<string, unknown>): Record<s
   return normalized
 }
 
+/** 诊断日志里的计数器：基础类型按原值展示，其余序列化，`undefined` 显式写出。 */
+function formatCounter(value: unknown): string {
+  if (typeof value === 'string') return value
+  if (typeof value === 'number' || typeof value === 'boolean' || typeof value === 'bigint') return String(value)
+  return JSON.stringify(value) ?? 'undefined'
+}
+
 /**
  * 把共享 board 文件的计数器归一化（D4）。
  *
@@ -382,17 +389,15 @@ export function syncSharedBoardCounters(sharedDir: string, log: (message: string
     log('shared board counters not normalized (unexpected schema)')
     return false
   }
-  if (
-    normalized.nextPanelId === (parsed as { nextPanelId?: unknown }).nextPanelId &&
-    normalized.nextTaskId === (parsed as { nextTaskId?: unknown }).nextTaskId
-  ) {
+  const previous = parsed as { nextPanelId?: unknown; nextTaskId?: unknown }
+  if (normalized.nextPanelId === previous.nextPanelId && normalized.nextTaskId === previous.nextTaskId) {
     return false
   }
   try {
     writeBoardAtomic(path, `${JSON.stringify(normalized, null, 2)}\n`)
     log(
-      `shared board counters normalized: nextTaskId ${(parsed as { nextTaskId?: unknown }).nextTaskId} -> ${normalized.nextTaskId}` +
-        `, nextPanelId ${(parsed as { nextPanelId?: unknown }).nextPanelId} -> ${normalized.nextPanelId}`
+      `shared board counters normalized: nextTaskId ${formatCounter(previous.nextTaskId)} -> ${formatCounter(normalized.nextTaskId)}` +
+        `, nextPanelId ${formatCounter(previous.nextPanelId)} -> ${formatCounter(normalized.nextPanelId)}`
     )
     return true
   } catch (error) {
