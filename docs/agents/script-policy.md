@@ -36,7 +36,7 @@
 
 ### 执行面
 
-根 `scripts/` 按执行面分为 `checks/`（门禁与脚本测试入口）、`policies/`（本仓的门禁事实与配置好的检查实例）、`workflow/`（提交与发布辅助）、`maintenance/`（清理、环境诊断与依赖维护）与 `lib/`（Node 启动前求值的 bootstrap helper）。门禁入口通过 `check-*` 根命令调用；`checks/` 只放薄入口，同一端点的检查由一个入口聚合，检查逻辑与能力在 `@greypan/monorepo-kit`，本仓的包名、路径与语料数据只在 `policies/` 里出现。app 级的 turbo 门禁入口（`check-generated`）同样放 `checks/`，判据由所属包提供。包只有一个入口（`exports["."]`），入口引用一律写包名，没有子路径。分类与入口契约见 ADR-0014，分区判据见 ADR-0018。
+根 `scripts/` 按执行面分为 `checks/`（门禁与脚本测试入口）、`policies/`（本仓的门禁事实与配置好的检查实例）、`workflow/`（提交与发布辅助）、`maintenance/`（清理、环境诊断与依赖维护）与 `lib/`（Node 启动前求值的 bootstrap helper）。门禁入口通过 `check-*` 根命令调用；`checks/` 只放薄入口，同一端点的检查由一个入口聚合，检查逻辑与能力在 `@greypan/monorepo-kit`，本仓的包名、路径与语料数据只在 `policies/` 里出现。app 级的 turbo 门禁入口（`check-generated`）同样放 `checks/`，判据由所属包提供。全仓门禁入口（`check-policy`、`check-context`、`test-scripts`）先跑 `full-checkout`：工作区处于稀疏检出时非零退出，因为按 tracked 清单或目录遍历扫描的检查在 cone 上只覆盖子集，而「只扫到子集」会被报成全仓通过；`check-pre-commit` 不带这道准入，稀疏树上的提交照常进行。收缩、恢复与 cone 判定见 [`.agents/skills/turbo-sparse-scope/SKILL.md`](../../.agents/skills/turbo-sparse-scope/SKILL.md)。包只有一个入口（`exports["."]`），入口引用一律写包名，没有子路径。分类与入口契约见 ADR-0014，分区判据见 ADR-0018。
 
 ### 授权
 
@@ -50,7 +50,7 @@
 
 测试有两个发现面，各自覆盖一半，不要在两处都登记同一个文件：
 
-- `test-scripts` 运行全仓 tracked 的 `*.test.mjs`——那份清单覆盖 `.github/scripts`、workspace 脚本与 skills 的测试，不能收窄；包内没有这类文件。
+- `test-scripts` 运行全仓 tracked 的 `*.test.mjs`——那份清单覆盖 `.github/scripts`、workspace 脚本与 skills 的测试，不能收窄；包内没有这类文件。这类脚本的失败只由抛错表达，退出码不证明断言跑过，所以每个脚本成功时必须往 stdout 打一行 `<仓库相对路径>: all assertions passed`，`test-scripts` 逐文件校验这一行：没有它，或它写的是别的文件名，都算失败。
 - `@greypan/monorepo-kit` 的测试由它自己的 `test` 脚本跑（`vp test run`），文件是 `src/**/__tests__/*.spec.ts`，随包的类型检查；走 turbo 图，有依赖排序与缓存。
 
 两边都不证明每个入口都有测试；覆盖完整性由 review 检查。共享实现的测试同样可选，存在时必须同名。

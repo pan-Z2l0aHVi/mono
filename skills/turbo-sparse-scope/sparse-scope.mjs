@@ -12,6 +12,7 @@ const EXIT_USAGE = 2
 const WILDCARD = /[*?[\]{}]/
 const USAGE = `Usage:
   node sparse-scope.mjs <path|package>... [--dry-run] [--add|--reset] [--json]
+  node sparse-scope.mjs --check <path|package>... [--json]
   node sparse-scope.mjs --status [--json]
   node sparse-scope.mjs --restore [--json]
 
@@ -19,12 +20,13 @@ Actions:
   (default)   compute the closure and replace the sparse cone
   --add       union the new closure with the current cone (requires a full-tree recompute)
   --reset     replace the current cone with the new closure
+  --check     compare the current cone with the cone these targets require; leaves the worktree as it was
   --restore   disable sparse checkout and materialize the full worktree
   --status    read-only: current cone, workspace layout and reminders
   --dry-run   print the computed cone and commands without touching the worktree
   --json      machine-readable output on stdout
 
-Exit codes: 0 success, 1 environment/runtime failure, 2 usage or target error.
+Exit codes: 0 success, 1 environment/runtime failure or a --check mismatch, 2 usage or target error.
 `
 
 export class ScopeError extends Error {
@@ -46,6 +48,7 @@ export function parseArgs(argv) {
     else if (token === '--reset') flags.add('reset')
     else if (token === '--restore') flags.add('restore')
     else if (token === '--status') flags.add('status')
+    else if (token === '--check') flags.add('check')
     else if (token === '--json') flags.add('json')
     else if (token.startsWith('-')) throw new ScopeError(`unknown argument: ${token}`, EXIT_USAGE, USAGE)
     else targets.push(token)
@@ -54,7 +57,7 @@ export function parseArgs(argv) {
   const json = flags.has('json')
   if (flags.has('help')) return { action: 'help', json }
 
-  const actions = ['add', 'reset', 'restore', 'status'].filter(action => flags.has(action))
+  const actions = ['add', 'reset', 'restore', 'status', 'check'].filter(action => flags.has(action))
   if (actions.length > 1) throw new ScopeError(`conflicting actions: ${actions.join(', ')}`, EXIT_USAGE, USAGE)
 
   const action = actions[0] ?? 'set'
@@ -63,6 +66,9 @@ export function parseArgs(argv) {
     if (flags.has('dry-run')) throw new ScopeError(`--dry-run cannot be combined with --${action}`, EXIT_USAGE, USAGE)
     return { action, json }
   }
+
+  if (flags.has('dry-run') && action === 'check')
+    throw new ScopeError('--dry-run cannot be combined with --check', EXIT_USAGE, USAGE)
 
   if (targets.length === 0)
     throw new ScopeError(`${action === 'set' ? 'set' : `--${action}`} requires at least one target`, EXIT_USAGE, USAGE)
@@ -238,6 +244,24 @@ const compareText = (a, b) => (a < b ? -1 : a > b ? 1 : 0)
 
 export function buildCone(paths) {
   return [...new Set(paths.map(normalizeConePath))].sort(compareText)
+}
+
+/**
+ * cone 一致性判据：两个集合都按 buildCone 归一（去重、排序、路径规范化）再比差集。
+ * `--check` 用它把「当前 cone」和「这组目标要求的 cone」压成一个布尔值。
+ */
+export function compareCone(current, expected) {
+  const currentCone = buildCone(current)
+  const expectedCone = buildCone(expected)
+  const missing = expectedCone.filter(dir => !currentCone.includes(dir))
+  const extra = currentCone.filter(dir => !expectedCone.includes(dir))
+  return {
+    matches: missing.length === 0 && extra.length === 0,
+    current: currentCone,
+    expected: expectedCone,
+    missing,
+    extra
+  }
 }
 
 function dedupePackages(packages) {
@@ -522,6 +546,7 @@ function writeReport(report, json) {
     'action',
     'dryRun',
     'sparse',
+    'matches',
     'targets',
     'ignoredTargets',
     'closure',
@@ -529,6 +554,10 @@ function writeReport(report, json) {
     'rootEntries',
     'workspaceContainers',
     'cone',
+    'currentCone',
+    'expectedCone',
+    'missing',
+    'extra',
     'hiddenPackages',
     'dirtyOutsideCone',
     'dependencies',
@@ -595,7 +624,7 @@ function printStatus(root, json) {
     dirtyOutsideCone: dirty,
     reminders: [
       'use `git grep <pattern> HEAD` for cross-package search',
-      'monorepo-change-impact manifest queries can run while sparse; restore before repo-wide gates'
+      'monorepo-change-impact manifest queries can run while sparse; test-scripts, check-context and check-policy refuse it'
     ],
     warnings
   }
@@ -696,6 +725,34 @@ function applyScope(root, options) {
       warnings
     }
 
+    if (options.action === 'check') {
+      const verdict = compareCone(previousCone ?? [], targetCone)
+      // 只判定不收缩：闭包是临时恢复全树之后算的，判定完要把原 cone 装回去。
+      const notes = previousCone ? applyCone(root, previousCone) : []
+      const advice = verdict.matches
+        ? 'the cone matches these targets'
+        : previousCone
+          ? 'the cone drifted from these targets; re-apply the scope (default action) or --reset'
+          : 'the worktree is full; apply the scope with the default action, or use --status when the whole tree is intended'
+      writeReport(
+        {
+          ...report,
+          cone: undefined,
+          dependencies: undefined,
+          commands: undefined,
+          warnings: [workspaceWarning, ...notes, advice].filter(Boolean),
+          sparse: Boolean(previousCone),
+          matches: verdict.matches,
+          expectedCone: verdict.expected,
+          currentCone: verdict.current,
+          missing: verdict.missing,
+          extra: verdict.extra
+        },
+        options.json
+      )
+      return verdict.matches ? EXIT_OK : EXIT_FAILURE
+    }
+
     if (options.dryRun) {
       writeReport({ ...report, dryRun: true, sparse: Boolean(previousCone) }, options.json)
       return EXIT_OK
@@ -718,8 +775,8 @@ function applyScope(root, options) {
         dependencies,
         reminders: [
           'use `git grep <pattern> HEAD` for cross-package search',
-          'local gates only cover the cone; restore before full-repo verification',
-          'use --add to widen the scope and --restore to materialize the full worktree'
+          'test-scripts, check-context and check-policy refuse a sparse worktree: restore them or leave them to CI',
+          'use --add to widen the scope, --check to verify the cone, --restore to materialize the full worktree'
         ]
       },
       options.json
