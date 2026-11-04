@@ -237,18 +237,61 @@ const GAPS = ['0px', '2px', '6px', '12px']
 </script>
 ```
 
+### Separator
+
+`separator` draws a visible delimiter between groups. It never enters the text nodes: select the whole string and the clipboard still holds `6222021234567890`, and in-page find still matches that exact string.
+
+```tsx
+const CARD = '6222021234567890'
+
+export default function Demo() {
+  return (
+    <div className="flex w-full max-w-md flex-col gap-3">
+      <div>
+        <div className="mb-1 text-xs text-(--wui-color-text-secondary)">separator="-"</div>
+        <web-ui-grouped-text value={CARD} groups="card" separator="-"></web-ui-grouped-text>
+      </div>
+      <div>
+        <div className="mb-1 text-xs text-(--wui-color-text-secondary)">separator="·"</div>
+        <web-ui-grouped-text value={CARD} groups="card" separator="·"></web-ui-grouped-text>
+      </div>
+    </div>
+  )
+}
+```
+
+```vue
+<template>
+  <div class="flex w-full max-w-md flex-col gap-3">
+    <div>
+      <div class="mb-1 text-xs text-(--wui-color-text-secondary)">separator="-"</div>
+      <web-ui-grouped-text :value="CARD" groups="card" separator="-"></web-ui-grouped-text>
+    </div>
+    <div>
+      <div class="mb-1 text-xs text-(--wui-color-text-secondary)">separator="·"</div>
+      <web-ui-grouped-text :value="CARD" groups="card" separator="·"></web-ui-grouped-text>
+    </div>
+  </div>
+</template>
+
+<script setup lang="ts">
+const CARD = '6222021234567890'
+</script>
+```
+
 ## API
 
 ### Props
 
-| Name     | Description                                                                                                                                                                                                                                                                                                               | Type                          | Default                       |
-| -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------- | ----------------------------- |
-| `value`  | The original continuous string to display. The component only reads it and never writes back; pass `Number` values as a string.                                                                                                                                                                                           | `string`                      | `''`                          |
-| `groups` | Group shape: a preset name — `'card'` (every 4), `'phone'` (3-4-4), `'amount'` (3 from the right) — or the cluster count per group, `[4, 4, 4, 4]`. The string form of a size list, `"4,4,4,4"`, is accepted too. The array channel silently drops non-positive sizes, while an invalid string form drops the whole list. | `string \| readonly number[]` | `undefined`, i.e. no grouping |
+| Name        | Description                                                                                                                                                                                                                                                                                                               | Type                          | Default                       |
+| ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------- | ----------------------------- |
+| `value`     | The original continuous string to display. The component only reads it and never writes back; pass `Number` values as a string.                                                                                                                                                                                           | `string`                      | `''`                          |
+| `groups`    | Group shape: a preset name — `'card'` (every 4), `'phone'` (3-4-4), `'amount'` (3 from the right) — or the cluster count per group, `[4, 4, 4, 4]`. The string form of a size list, `"4,4,4,4"`, is accepted too. The array channel silently drops non-positive sizes, while an invalid string form drops the whole list. | `string \| readonly number[]` | `undefined`, i.e. no grouping |
+| `separator` | The delimiter shown between groups (e.g. `'-'`, `'·'`). Display only: rendered as generated content, never entering the text nodes, so copy, find and selection still yield the original continuous string. See "Separator".                                                                                              | `string`                      | `''`, i.e. not rendered       |
 
 ### Behavior
 
-`value` is the original text and grouping is only a rendering parameter: the groups join head to tail, rejoin to exactly `value`, and contain no filler characters between groups. The shadow tree therefore holds only the characters themselves, no separators.
+`value` is the original text and grouping is only a rendering parameter: the groups join head to tail, rejoin to exactly `value`, and contain no filler characters between groups. The shadow tree therefore holds only the characters themselves; the separator shown when `separator` is set is rendered as generated content and likewise never enters the text nodes (see "Separator").
 
 An explicit size list advances from the left group by group; when the sizes run out and characters remain, the last size keeps repeating and the final group holds what is left, so no character is dropped and no group is empty. When `groups` is omitted, empty, or unreadable (`cards`, `4,0`, `card,4`), the whole string becomes one group, i.e. no grouping. That case deliberately does not guess a shape: cutting an ID number every 4 characters, or a large amount every 4, is a visibly wrong cut, and a wrong cut costs more than no grouping.
 
@@ -261,6 +304,20 @@ The string spelling of `groups` is accepted on both the attribute and the proper
 The gap hangs on the `letter-spacing` of each group's last grapheme cluster. Only the last cluster carries it, so the rest of the group is not widened, and the final group's last cluster carries none, so no spare gap is left at the line end. The spacing belongs to that character's own text fragment, so selecting the fragment paints the spacing too — which is how "groups are visible" and "highlight is continuous" are both obtained.
 
 `--wui-grouped-text-gap` defaults to `0.25em` (3.5px at `14px`, 4px at `16px`, 5px at `20px`). Gaps are counted per boundary: `n` groups means `n - 1` shares. A 16-digit card number is about 192px in a 20px monospace font; with `groups="card"` and 3 shares of 5px it is about 207px.
+
+### CSS Custom Properties
+
+| Name                     | Description                                                                                                                                              | Default  |
+| ------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------- | -------- |
+| `--wui-grouped-text-gap` | Width of the gap between groups, applied as the `letter-spacing` of each group's last grapheme cluster; see "Gap". Set on the component or any ancestor. | `0.25em` |
+
+### Separator
+
+`separator` renders a display delimiter between each group and the next. It hangs on the group element's own `::after`, taking its value through `content: attr(data-separator)`, and never enters the text nodes: the text nodes of the shadow tree still rejoin to exactly `value`, and the separator is only a visible mark layered on top of the layout.
+
+The behavioral boundary follows: copy, in-page find, double-click word selection and per-character selection all work as before — copying and find read the data of the text nodes, and generated content can be neither read nor selected. The selection highlight is never painted on the separator: across a group boundary the highlight lands on the characters on either side, while the separator itself belongs to no text fragment. If that concession is unacceptable, do not use `separator` — it is visible content, not a hideable layout parameter.
+
+Where separators land is decided by the group boundaries: with a single group (`groups` omitted, unreadable, or the whole string as one group) there is no boundary and no separator is rendered; the final group has no next group, so no separator is left at the line end. When omitted or empty, no separator is rendered and the output is node for node identical to not having the attribute at all. Generated content counts toward the accessible name per the accname spec — the separator is visible content, and a screen reader reading it is the expected behavior.
 
 ### Copy, find and selection
 

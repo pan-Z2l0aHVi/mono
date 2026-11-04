@@ -318,3 +318,69 @@ describe('web-ui-grouped-text 的文本面（jsdom）', () => {
     expect(el.shadowRoot?.textContent).toBe('')
   })
 })
+
+/*
+ * separator 的文本面。
+ *
+ * 分隔符只许落在生成内容里（CSS 生成内容在 jsdom 观测不到，真实渲染由 browser spec 量），文本节点
+ * 是它的禁区：复制、页内查找与双击选词读的都是文本节点的 data，多一个字组件唯一的硬需求当场失效。
+ * 渲染通道（`data-separator` attribute 挂在哪几组上）是这里唯一可观测的落点，断言它挂对位置——
+ * 挂到末组上，行尾就会多出一个看得见的分隔符。
+ */
+describe('web-ui-grouped-text 的 separator（jsdom）', () => {
+  afterEach(() => document.body.replaceChildren())
+
+  const mount = (attrs: Record<string, string>): WebUiGroupedText =>
+    mountElement<WebUiGroupedText>('web-ui-grouped-text', { attrs })
+
+  const markedGroups = (el: WebUiGroupedText): HTMLElement[] => [
+    ...((el.shadowRoot?.querySelectorAll('.group[data-separator]') ?? []) as NodeListOf<HTMLElement>)
+  ]
+
+  it('默认不开分隔符：任何组上都没有渲染通道，文本层逐字等于 value', async () => {
+    const el = mount({ value: CARD, groups: 'card' })
+    await waitForUpdate(el)
+
+    expect(markedGroups(el)).toEqual([])
+    expect(el.shadowRoot?.textContent).toBe(CARD)
+  })
+
+  it('开了分隔符后文本层仍逐字等于 value，分隔符不进文本节点', async () => {
+    const el = mount({ value: CARD, groups: 'card', separator: '-' })
+    await waitForUpdate(el)
+
+    expect(el.shadowRoot?.textContent).toBe(CARD)
+    expect(markedGroups(el)).not.toEqual([])
+  })
+
+  it('分隔符挂在末组之外的每组上，取值就是 separator', async () => {
+    const el = mount({ value: CARD, groups: 'card', separator: '-' })
+    await waitForUpdate(el)
+
+    const groups = [...(el.shadowRoot?.querySelectorAll('.group') ?? [])]
+    const marked = markedGroups(el)
+    // card 是 4 组：前 3 组各带一个「与下一组之间」的分隔符，末组后面没有下一组
+    expect(marked).toEqual(groups.slice(0, -1))
+    expect(marked.every(node => node.getAttribute('data-separator') === '-')).toBe(true)
+    expect(groups[groups.length - 1]?.hasAttribute('data-separator')).toBe(false)
+  })
+
+  it('整串自成一组时没有组边界，分隔符不渲染', async () => {
+    const el = mount({ value: CARD, separator: '-' })
+    await waitForUpdate(el)
+
+    expect(markedGroups(el)).toEqual([])
+    expect(el.shadowRoot?.textContent).toBe(CARD)
+  })
+
+  it('空串与默认等价，运行时清空后渲染通道整个摘掉', async () => {
+    const el = mount({ value: CARD, groups: 'card', separator: '-' })
+    await waitForUpdate(el)
+
+    el.separator = ''
+    await waitForUpdate(el)
+
+    expect(markedGroups(el)).toEqual([])
+    expect(el.shadowRoot?.textContent).toBe(CARD)
+  })
+})
