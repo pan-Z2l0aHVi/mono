@@ -2,6 +2,10 @@
 @import 'tailwindcss';
 @import '@greypan/web-ui/classes.css';
 
+/* Tailwind 的自动源检测止步于当前 workspace；共享类串在 doc-demo-kit 里，要显式登记源目录。 */
+/* stylelint-disable-next-line at-rule-no-unknown -- Tailwind v4 的源目录指令 */
+@source '../../../../packages/doc-demo-kit/src';
+
 @custom-variant dark (&:where(web-ui-theme[resolved-appearance='dark'] *));
 
 /*

@@ -1,4 +1,21 @@
 import appScrollbarsOptions from '@greypan/app-scrollbars'
+import {
+  DEFAULT_SIDEBAR_WIDTH_PX,
+  isNavActive,
+  isSidebarWidth,
+  isThemeAppearance,
+  isThemeMotion,
+  NAV_ITEM_CLASS,
+  NAV_SECTIONS,
+  NAV_SECTION_TITLE_CLASS,
+  observeToastTopOffset,
+  SIDEBAR_WIDTH_STORAGE_KEY,
+  THEME_APPEARANCE_STORAGE_KEY,
+  THEME_MOTION_STORAGE_KEY,
+  type NavSectionId,
+  type ThemeAppearance,
+  type ThemeMotion
+} from '@greypan/doc-demo-kit'
 import { toast, type WebUiLayout, type WebUiSelect } from '@greypan/web-ui'
 import {
   antDesignSyncOutlined,
@@ -24,27 +41,10 @@ import { useLocale } from '@/i18n/locale'
 
 import { RootErrorFallback } from './root-error-fallback'
 
-type ThemeAppearance = 'light' | 'dark' | 'system'
-type ThemeMotion = 'full' | 'reduced' | 'system'
-
-const STORAGE_KEY = 'theme-appearance'
-const MOTION_STORAGE_KEY = 'theme-motion'
-const SIDEBAR_WIDTH_STORAGE_KEY = 'sidebar-width'
-const DEFAULT_SIDEBAR_WIDTH = '240px'
-const THEME_APPEARANCES = new Set<ThemeAppearance>(['light', 'dark', 'system'])
-const THEME_MOTIONS = new Set<ThemeMotion>(['full', 'reduced', 'system'])
 // 语种名按该语言自己的写法给出，两版都不译：误切到读不懂的界面语言时，靠「简体中文」四个字
 // 就能找回母语，不必先读懂当前界面上的 "Simplified Chinese"。
 const ZH_CN_LABEL = '简体中文'
 const EN_LABEL = 'English'
-
-function isThemeAppearance(appearance: unknown): appearance is ThemeAppearance {
-  return typeof appearance === 'string' && THEME_APPEARANCES.has(appearance as ThemeAppearance)
-}
-
-function isThemeMotion(motion: unknown): motion is ThemeMotion {
-  return typeof motion === 'string' && THEME_MOTIONS.has(motion as ThemeMotion)
-}
 
 // localStorage 在存储被禁的上下文（沙箱 iframe、隐私模式）访问会抛 SecurityError，
 // 损坏的旧数据会让 JSON.parse 抛错；这两处都在 useState 初始化器里执行，错误发生在
@@ -67,18 +67,18 @@ function writeStoredTheme(key: string, value: string): void {
 }
 
 function getInitialThemeAppearance(): ThemeAppearance {
-  const appearance = readStoredTheme(STORAGE_KEY)
+  const appearance = readStoredTheme(THEME_APPEARANCE_STORAGE_KEY)
   return isThemeAppearance(appearance) ? appearance : 'light'
 }
 
 function getInitialThemeMotion(): ThemeMotion {
-  const motion = readStoredTheme(MOTION_STORAGE_KEY)
+  const motion = readStoredTheme(THEME_MOTION_STORAGE_KEY)
   return isThemeMotion(motion) ? motion : 'system'
 }
 
 function getInitialSidebarWidth(): string {
   const width = readStoredTheme(SIDEBAR_WIDTH_STORAGE_KEY)
-  return typeof width === 'string' && /^\d+(\.\d+)?px$/.test(width) ? width : DEFAULT_SIDEBAR_WIDTH
+  return isSidebarWidth(width) ? width : DEFAULT_SIDEBAR_WIDTH_PX
 }
 
 /*
@@ -92,82 +92,7 @@ function isOwnLayoutEvent(event: Event): boolean {
   return event.target === event.currentTarget
 }
 
-interface NavItem {
-  path: string
-  label: string
-}
-
-type NavSectionId = 'general' | 'layout' | 'form' | 'display' | 'feedback'
-
-interface NavSection {
-  id: NavSectionId
-  items: NavItem[]
-}
-
-const navSections: NavSection[] = [
-  {
-    id: 'general',
-    items: [
-      { path: '/components/button', label: 'Button' },
-      { path: '/components/icon', label: 'Icon' }
-    ]
-  },
-  {
-    id: 'layout',
-    items: [
-      { path: '/components/layout', label: 'Layout' },
-      { path: '/components/back-top', label: 'BackTop' },
-      { path: '/components/theme', label: 'Theme' }
-    ]
-  },
-  {
-    id: 'form',
-    items: [
-      { path: '/components/input', label: 'Input' },
-      { path: '/components/textarea', label: 'Textarea' },
-      { path: '/components/input-number', label: 'InputNumber' },
-      { path: '/components/select', label: 'Select' },
-      { path: '/components/autocomplete', label: 'Autocomplete' },
-      { path: '/components/switch', label: 'Switch' },
-      { path: '/components/slider', label: 'Slider' },
-      { path: '/components/radio', label: 'Radio' },
-      { path: '/components/checkbox', label: 'Checkbox' },
-      { path: '/components/segmented', label: 'Segmented' }
-    ]
-  },
-  {
-    id: 'display',
-    items: [
-      { path: '/components/collapse', label: 'Collapse' },
-      { path: '/components/editable-text', label: 'EditableText' },
-      { path: '/components/empty', label: 'Empty' },
-      { path: '/components/grouped-text', label: 'GroupedText' },
-      { path: '/components/middle-ellipsis', label: 'MiddleEllipsis' },
-      { path: '/components/svg-draw-lines', label: 'SVGDrawLines' },
-      { path: '/components/avatar', label: 'Avatar' },
-      { path: '/components/badge', label: 'Badge' }
-    ]
-  },
-  {
-    id: 'feedback',
-    items: [
-      { path: '/components/dialog', label: 'Dialog' },
-      { path: '/components/drawer', label: 'Drawer' },
-      { path: '/components/tooltip', label: 'Tooltip' },
-      { path: '/components/popover', label: 'Popover' },
-      { path: '/components/dropdown', label: 'Dropdown' },
-      { path: '/components/context-menu', label: 'ContextMenu' },
-      { path: '/components/toast', label: 'Toast' },
-      { path: '/components/image-preview', label: 'ImagePreview' },
-      { path: '/components/shake', label: 'Shake' },
-      { path: '/components/spinner', label: 'Spinner' },
-      { path: '/components/progress', label: 'Progress' }
-    ]
-  }
-]
-
-const navSectionTitleClass = 'px-2.5 pt-3 pb-1 text-[12px] font-medium tracking-wide text-(--wui-color-text-secondary)'
-
+// 章节标题的中文文案留在本端：wuchale 只扫宿主 src，kit 只给结构。
 function NavSectionTitle({ id }: { id: NavSectionId }) {
   switch (id) {
     case 'general':
@@ -181,14 +106,6 @@ function NavSectionTitle({ id }: { id: NavSectionId }) {
     case 'feedback':
       return <>反馈</>
   }
-}
-
-// active 底色浅色取设计给定的 #d5d7d7；深色不跟——sidebar 在深色是 #2c2c2e，亮灰会读成一条高亮带，仍走 control 档。
-const navItemClass =
-  'flex items-center gap-2 min-w-9 min-h-9 px-2.5 border-0 rounded-full cursor-pointer text-left transition-all duration-150 text-(--wui-color-text) active:bg-[rgb(34_33_42/0.12)] dark:active:bg-white/15 data-[active=true]:bg-[#d5d7d7] data-[active=true]:hover:bg-[#d5d7d7] data-[active=true]:active:bg-[color-mix(in_srgb,#d5d7d7_70%,var(--wui-color-text,#1b1b1b))] dark:data-[active=true]:bg-[color-mix(in_srgb,var(--wui-color-surface-control,#dfdfdf)_90%,var(--wui-color-text,#1b1b1b))] dark:data-[active=true]:hover:bg-[color-mix(in_srgb,var(--wui-color-surface-control,#dfdfdf)_90%,var(--wui-color-text,#1b1b1b))] dark:data-[active=true]:active:bg-[color-mix(in_srgb,var(--wui-color-surface-control,#dfdfdf)_70%,var(--wui-color-text,#1b1b1b))]'
-
-function isNavActive(pathname: string, path: string) {
-  return pathname === path || pathname === `${path}/`
 }
 
 // 折叠后侧栏内容宽 36px（60px 侧栏去掉 8px 外边距与两侧 8px 内边距）。tooltip 的 trigger
@@ -207,7 +124,7 @@ function SidebarNavLink({ to, label, title, active, collapsed, onNavigate }: Sid
     <Link
       to={to}
       className={
-        navItemClass +
+        NAV_ITEM_CLASS +
         (active ? '' : ' hover:bg-black/4 dark:hover:bg-white/6') +
         (collapsed ? ' w-9 justify-center' : ' w-full')
       }
@@ -263,38 +180,14 @@ export function Root() {
     layout.addEventListener('mobile-change', syncMobileSidebarViewport)
     return () => layout.removeEventListener('mobile-change', syncMobileSidebarViewport)
   }, [])
+  /*
+   * banner 与断点都会改变 header 底边：banner 用条件渲染重建、跨断点换另一套壳，依赖变化时
+   * 重新挂 observer，让它重新解析 layout 内的 header / banner。
+   */
   useLayoutEffect(() => {
-    const layout = layoutRef.current
-    if (!layout) return
-
-    let frame: number | undefined
-    const update = () => {
-      const header = layout.querySelector<HTMLElement>('[slot="header"]')
-      document.documentElement.style.setProperty(
-        '--wui-toast-top-offset',
-        `${Math.max(0, Math.ceil(header?.getBoundingClientRect().bottom ?? 0))}px`
-      )
-    }
-    const schedule = () => {
-      if (frame !== undefined) return
-      frame = requestAnimationFrame(() => {
-        frame = undefined
-        update()
-      })
-    }
-    const resizeObserver = typeof ResizeObserver === 'undefined' ? undefined : new ResizeObserver(schedule)
-    resizeObserver?.observe(layout)
-    window.addEventListener('resize', schedule, { passive: true })
-    window.addEventListener('scroll', schedule, { passive: true, capture: true })
-    update()
-
-    return () => {
-      resizeObserver?.disconnect()
-      if (frame !== undefined) cancelAnimationFrame(frame)
-      document.documentElement.style.removeProperty('--wui-toast-top-offset')
-      window.removeEventListener('resize', schedule)
-      window.removeEventListener('scroll', schedule, { capture: true })
-    }
+    if (!layoutRef.current) return
+    const toastTopOffset = observeToastTopOffset(() => layoutRef.current)
+    return toastTopOffset.stop
   }, [bannerVisible, isMobileSidebar])
   const sidebarWidth = isMobileSidebar ? 'min(320px, 80vw)' : desktopSidebarWidth
   /*
@@ -329,7 +222,7 @@ export function Root() {
 
   const commitThemeAppearance = (appearance: ThemeAppearance) => {
     setThemeAppearance(appearance)
-    writeStoredTheme(STORAGE_KEY, JSON.stringify(appearance))
+    writeStoredTheme(THEME_APPEARANCE_STORAGE_KEY, JSON.stringify(appearance))
   }
 
   const updateThemeAppearance = (event: React.ChangeEvent<WebUiSelect>) => {
@@ -353,7 +246,7 @@ export function Root() {
     const motion = event.currentTarget.value
     if (!isThemeMotion(motion)) return
     setThemeMotion(motion)
-    writeStoredTheme(MOTION_STORAGE_KEY, JSON.stringify(motion))
+    writeStoredTheme(THEME_MOTION_STORAGE_KEY, JSON.stringify(motion))
   }
 
   const updateSidebarCollapsed = (event: CustomEvent<{ collapsed: boolean }>) => {
@@ -508,7 +401,7 @@ export function Root() {
                   title={navCollapsed ? undefined : '更新日志'}
                   onNavigate={() => setSidebarOpen(false)}
                 />
-                {navSections.map((section, index) => (
+                {NAV_SECTIONS.map((section, index) => (
                   <div
                     key={section.id}
                     role="group"
@@ -520,7 +413,7 @@ export function Root() {
                     ) : null}
                     <h2
                       id={`nav-section-${section.id}`}
-                      className={navSectionTitleClass + (navCollapsed ? ' sr-only' : '')}
+                      className={NAV_SECTION_TITLE_CLASS + (navCollapsed ? ' sr-only' : '')}
                     >
                       <NavSectionTitle id={section.id} />
                     </h2>
