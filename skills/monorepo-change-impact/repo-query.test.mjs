@@ -532,4 +532,4 @@ try {
   fs.rmSync(sparseFixture, { recursive: true, force: true })
 }
 
-console.log('repo-query tests passed')
+console.log('skills/monorepo-change-impact/repo-query.test.mjs: all assertions passed')

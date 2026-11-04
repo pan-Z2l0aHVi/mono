@@ -8,6 +8,7 @@ import { fileURLToPath } from 'node:url'
 import {
   assertActionAllowed,
   buildCone,
+  compareCone,
   dependencySyncPlan,
   filterKeptRootDirs,
   isContainerAncestor,
@@ -36,16 +37,21 @@ assert.deepEqual(parseArgs(['web']), { action: 'set', json: false, dryRun: false
 assert.deepEqual(parseArgs(['web', '--dry-run']), { action: 'set', json: false, dryRun: true, targets: ['web'] })
 assert.deepEqual(parseArgs(['a', 'b', '--add', '--json']), { action: 'add', json: true, dryRun: false, targets: ['a', 'b'] })
 assert.equal(parseArgs(['a', '--reset']).action, 'reset')
+assert.deepEqual(parseArgs(['web', '--check']), { action: 'check', json: false, dryRun: false, targets: ['web'] })
+assert.deepEqual(parseArgs(['--check', 'a', '--json']), { action: 'check', json: true, dryRun: false, targets: ['a'] })
 assert.deepEqual(parseArgs(['--status']), { action: 'status', json: false })
 assert.deepEqual(parseArgs(['--restore', '--json']), { action: 'restore', json: true })
 assert.equal(parseArgs(['--help']).action, 'help')
 
 assert.throws(() => parseArgs([]), /requires at least one target/)
 assert.throws(() => parseArgs(['--add']), /--add requires at least one target/)
+assert.throws(() => parseArgs(['--check']), /--check requires at least one target/)
 assert.throws(() => parseArgs(['--add', '--reset', 'a']), /conflicting actions/)
+assert.throws(() => parseArgs(['--check', '--add', 'a']), /conflicting actions/)
 assert.throws(() => parseArgs(['--status', 'web']), /does not accept targets/)
 assert.throws(() => parseArgs(['--restore', '--dry-run']), /cannot be combined/)
 assert.throws(() => parseArgs(['--status', '--dry-run']), /cannot be combined/)
+assert.throws(() => parseArgs(['a', '--check', '--dry-run']), /--dry-run cannot be combined with --check/)
 assert.throws(() => parseArgs(['--nope', 'web']), /unknown argument/)
 
 // --- normalizeConePath ---
@@ -189,6 +195,24 @@ assert.equal(isPathInCone('apps/react-demo', cone), true)
 assert.equal(isPathInCone('packages/js-kit/src/index.ts', cone), false)
 assert.equal(isPathInCone('apps/react-demo-extra/x.ts', cone), false)
 
+// --- compareCone ---
+
+// 两侧都先过 buildCone：`./apps/a/` 与 `apps/a` 是同一个 cone 条目，重复只算一次。
+assert.deepEqual(compareCone(['apps/a', 'docs'], ['docs', 'apps/a', 'apps/a']), {
+  matches: true,
+  current: ['apps/a', 'docs'],
+  expected: ['apps/a', 'docs'],
+  missing: [],
+  extra: []
+})
+assert.deepEqual(compareCone(['./apps/a/'], ['apps/a']).matches, true)
+assert.deepEqual(compareCone(['apps/a'], ['apps/a', 'packages/lib']).missing, ['packages/lib'])
+assert.deepEqual(compareCone(['apps/a', 'apps/b'], ['apps/a']).extra, ['apps/b'])
+assert.equal(compareCone(['apps/a'], ['apps/b']).matches, false)
+assert.equal(compareCone([], ['apps/a']).matches, false)
+assert.equal(compareCone(['apps/a'], []).matches, false)
+assert.equal(compareCone([], []).matches, true)
+
 // --- git status --porcelain -z ---
 
 assert.deepEqual(parsePorcelainZ(' M apps/a/file.ts\0?? docs/new.md\0R  apps/b/renamed.ts\0apps/b/old.ts\0'), [
@@ -215,6 +239,8 @@ assert.throws(
 )
 assert.doesNotThrow(() => assertActionAllowed({ sparseCone: ['apps/a'], action: 'add', dryRun: false }))
 assert.doesNotThrow(() => assertActionAllowed({ sparseCone: ['apps/a'], action: 'reset', dryRun: false }))
+// --check 是只判定：稀疏树上允许，它自己负责恢复全树算闭包再装回原 cone。
+assert.doesNotThrow(() => assertActionAllowed({ sparseCone: ['apps/a'], action: 'check', dryRun: false }))
 assert.throws(
   () => assertActionAllowed({ sparseCone: ['apps/a'], action: 'set', dryRun: true }),
   /dry-run needs a full worktree/
@@ -538,6 +564,33 @@ try {
   assert.equal(reseeded.status, 0, reseeded.stderr)
   assert.deepEqual(currentCone(), expectedA)
 
+  // --check 判「当前 cone 是否等于这组目标要求的闭包」：一致 exit 0，漂移 exit 1 并报 missing/extra。
+  // 闭包要在全树上算，所以它会临时 disable 稀疏再装回原 cone；判定本身不装依赖、不写锁文件。
+  const installsBeforeCheck = fs.readFileSync(pnpmMarker, 'utf8')
+  const checkMatch = runScope(['@scope/a', '--check', '--json'])
+  assert.equal(checkMatch.status, 0, checkMatch.stderr)
+  const checkMatchReport = JSON.parse(checkMatch.stdout)
+  assert.equal(checkMatchReport.matches, true)
+  assert.equal(checkMatchReport.sparse, true)
+  assert.deepEqual(checkMatchReport.currentCone, expectedA)
+  assert.deepEqual(checkMatchReport.expectedCone, expectedA)
+  assert.deepEqual(checkMatchReport.missing, [])
+  assert.deepEqual(checkMatchReport.extra, [])
+  assert.equal(checkMatchReport.dependencies, undefined, 'check reports no dependency plan')
+  assert.equal(checkMatchReport.commands, undefined, 'check reports no commands to run')
+  assert.deepEqual(currentCone(), expectedA, 'check leaves the cone as it was')
+  assert.equal(fs.existsSync(path.join(repoRoot, 'apps/b/src/index.js')), false, 'check re-applies the cone')
+  assert.equal(fs.readFileSync(pnpmMarker, 'utf8'), installsBeforeCheck, 'check must not install')
+
+  const checkDrift = runScope(['@scope/b', '--check', '--json'])
+  assert.equal(checkDrift.status, 1, checkDrift.stderr)
+  const checkDriftReport = JSON.parse(checkDrift.stdout)
+  assert.equal(checkDriftReport.matches, false)
+  assert.deepEqual(checkDriftReport.missing, ['apps/b'])
+  assert.deepEqual(checkDriftReport.extra, ['apps/a'])
+  assert.match(checkDriftReport.warnings.join('\n'), /the cone drifted from these targets/)
+  assert.deepEqual(currentCone(), expectedA, 'a failing check still leaves the cone as it was')
+
   env.FAKE_PNPM_FAIL_INSTALL = '1'
   const failedReset = runScope(['@scope/b', '--reset'])
   assert.equal(failedReset.status, 1)
@@ -626,7 +679,28 @@ try {
   assert.equal(restoredAfterRootOnly.status, 0, restoredAfterRootOnly.stderr)
   assert.equal(currentCone(), null)
 
+  // 全树也算不匹配：--check 的判据是「cone 等于这组目标要求的闭包」，从没收缩过就没有 cone。
+  // 这正是「台账 scope 非空但收缩从未执行」的机器判据。
+  const checkFull = runScope(['@scope/a', '--check', '--json'])
+  assert.equal(checkFull.status, 1, checkFull.stderr)
+  const checkFullReport = JSON.parse(checkFull.stdout)
+  assert.equal(checkFullReport.matches, false)
+  assert.equal(checkFullReport.sparse, false)
+  assert.deepEqual(checkFullReport.currentCone, [])
+  assert.deepEqual(checkFullReport.missing, expectedA)
+  assert.match(checkFullReport.warnings.join('\n'), /the worktree is full/)
+  assert.equal(currentCone(), null, 'a failing check on a full tree does not create a cone')
+
+  // 非 JSON 输出把判定写在同一份可读报告里，人读与机读看到的是同一个结论。
+  const checkText = runScope(['@scope/a', '--check'])
+  assert.equal(checkText.status, 1, checkText.stderr)
+  assert.match(checkText.stdout, /^action: check$/m)
+  assert.match(checkText.stdout, /^matches: false$/m)
+  assert.match(checkText.stdout, /expectedCone:\n\s+apps\/a\b/)
+
   assert.equal(fs.readFileSync(turboMarker, 'utf8').trim(), '', 'turbo ls must never compute on a sparse tree')
 } finally {
   fs.rmSync(tmpRoot, { recursive: true, force: true })
 }
+
+console.log('skills/turbo-sparse-scope/sparse-scope.test.mjs: all assertions passed')

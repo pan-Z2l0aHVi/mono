@@ -8,6 +8,11 @@ import { defineExec } from './exec'
 //
 // `git ls-files '*.test.mjs'` 的 pathspec 里 `*` 跨越目录分隔符，所以这条命令覆盖全仓——
 // `.github/scripts`、workspace 脚本与 skills 的测试都靠它跑，不能收窄成 `scripts/` 前缀。
+//
+// 完成行是脚本测试的成功输出约定（`<仓库相对路径>: all assertions passed`，见 docs/agents/script-policy.md）：
+// 只看退出码会把「断言一次都没跑」当成通过，而这类脚本的断言全靠抛错表达失败。
+const completionLine = (file: string): string => `${file}: all assertions passed`
+
 export function defineScriptTests(): CheckUnit {
   const plugins = defineGit().use(defineExec())
 
@@ -34,6 +39,9 @@ export function defineScriptTests(): CheckUnit {
           const status = result.status === undefined ? 'no exit code' : `exit ${result.status}`
           throw new Error(`script test failed: ${file} (${status})`)
         }
+        const expected = completionLine(file)
+        if (!result.stdout.split(/\r?\n/).some(line => line.trim() === expected))
+          throw new Error(`script test printed no completion line: ${file} (expected "${expected}" on stdout)`)
       }
 
       return `${tests.length} script test file(s) passed`
