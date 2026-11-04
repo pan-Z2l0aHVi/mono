@@ -39,6 +39,8 @@ function resource(overrides: Partial<ResourceView> = {}): ResourceView {
         available: true,
         isPreferred: true,
         orderIndex: 0,
+        mediaUrl: null,
+        thumbnailUrl: null,
         metadata: null
       }
     ],
@@ -96,7 +98,6 @@ describe('ResourceList 右键重命名的焦点落点（真实输入）', () => 
           loading: false,
           runtimeAvailable: true,
           emptyDescription: '',
-          mediaUrlFor: () => null,
           resolveDefaultOpenWith: () => Promise.resolve(''),
           // 与 startResourceRename 同构：置编辑态，nextTick 里 select()。
           onStartRename: (target: ResourceView) => {
@@ -181,7 +182,6 @@ function mountRenameList(
         loading: false,
         runtimeAvailable: true,
         emptyDescription: '',
-        mediaUrlFor: () => null,
         resolveDefaultOpenWith: () => Promise.resolve(''),
         onRenameChange
       })

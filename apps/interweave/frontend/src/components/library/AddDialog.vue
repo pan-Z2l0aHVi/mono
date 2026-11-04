@@ -170,6 +170,8 @@ function queueSource(item: LibraryQueueItem): ResourceSourceView {
     available: true,
     isPreferred: true,
     orderIndex: 0,
+    mediaUrl: item.mediaUrl,
+    thumbnailUrl: null,
     metadata: null
   }
 }

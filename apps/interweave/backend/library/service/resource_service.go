@@ -34,6 +34,7 @@ func (s *ResourceService) PrepareFilePreview(_ context.Context, inputPath string
 		return nil, err
 	}
 	preview.Token = token
+	preview.MediaURL = media.PendingMediaURL(token)
 	return preview, nil
 }
 

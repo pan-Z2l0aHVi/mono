@@ -3,6 +3,7 @@ import type {
   FilePreviewDTO,
   ResourceDTO,
   ResourceLocationMatchDTO,
+  SourceAvailabilityEventDTO,
   SourceDTO,
   SourceProbeResultDTO,
   TagDTO
@@ -12,58 +13,73 @@ import type {
   SourceType
 } from '../../../bindings/github.com/pan-Z2l0aHVi/mono/apps/interweave/backend/library/storage'
 
-export interface LibraryRuntime {
-  readonly isAvailable: boolean
-  listResources(): Promise<ResourceDTO[]>
-  getResource(resourceId: string): Promise<ResourceDTO>
-  /** 纳入新 Resource 的唯一入口；归一化、可用性探测与初始标签由后端单事务建齐。 */
-  createResource(input: CreateResourceInputDTO): Promise<ResourceDTO>
-  updateResourceTitle(resourceId: string, newTitle: string): Promise<ResourceDTO>
-  updateResourceNote(resourceId: string, note: string): Promise<ResourceDTO>
-  deleteResource(resourceId: string): Promise<void>
-  /** 替换式集合语义：提交的名称集合成为该 Resource 的完整标签集合，规则在后端。 */
-  setResourceTags(resourceId: string, tagNames: string[]): Promise<TagDTO[]>
-  refreshURLSource(sourceId: string): Promise<SourceDTO>
-  refreshFileSource(sourceId: string): Promise<SourceDTO>
-  replaceFileSource(sourceId: string, inputPath: string): Promise<SourceDTO>
-  replaceURLSource(sourceId: string, inputURL: string): Promise<SourceDTO>
-  chooseFilePaths(): Promise<string[]>
-  chooseFilePath(): Promise<string | null>
-  getClipboardFilePaths(): Promise<string[]>
-  prepareFilePreview(inputPath: string): Promise<FilePreviewDTO>
-  releaseFilePreview(token: string): Promise<void>
-  findResourceLocationMatches(input: string, sourceType: SourceType): Promise<ResourceLocationMatchDTO[]>
-  probeURLSourceOnOpen(sourceId: string): Promise<SourceProbeResultDTO>
-  defaultOpenWith(target: string): Promise<string>
-  openExternal(target: string): Promise<void>
-  resourceMediaURL(sourceId: string): string | null
-  /**
-   * 派生缩略图的读取地址；null 表示该表面不提供缩略图（浏览器预览），调用方回退原图。
-   * 地址恒为派生形态，是否存在缓存由请求时的 404 表达。
-   */
-  resourceThumbnailURL(sourceId: string): string | null
-  /** 回填前端捕获的缩略图（JPEG）。尽力而为的缓存预热，失败由调用方吞掉。 */
-  saveSourceThumbnail(sourceId: string, jpeg: Blob): Promise<void>
-  pendingFilePreviewURL(token: string): string | null
-  subscribeToDroppedFiles(listener: (paths: string[]) => void): () => void
-  subscribeToPasteFileRequest(listener: () => void): () => void
-  subscribeToSourceAvailability(listener: (event: SourceAvailabilityEventDTO) => void): () => void
-}
-
 /**
- * 可用性翻转的推送载荷，与 Go 侧 service.SourceAvailabilityEventDTO 一一对应。
+ * 可用性翻转的推送载荷。类型直接取生成绑定，事件名与字段名因此只有 Go 一份源。
  *
  * 只推 file source：URL 没有目录监听，其可用性由打开时探测走返回值回流。
  * size_bytes 只在翻转的正是该 Resource 的首选 file source 时有值——size 由首选
  * source 派生，带上它可以让前端不必为刷新一个数字再往返一次。
  */
-export interface SourceAvailabilityEventDTO {
-  source_id: string
-  resource_id: string
-  type: string
-  available: boolean
-  size_bytes?: number
-  changed_at: number
+export type { SourceAvailabilityEventDTO }
+
+/** Resource 本体的读写与标签集合；纳入新 Resource 的唯一入口也在这里。 */
+export interface LibraryResourceCapabilities {
+  list(): Promise<ResourceDTO[]>
+  get(resourceId: string): Promise<ResourceDTO>
+  /** 归一化、可用性探测与初始标签由后端单事务建齐。 */
+  create(input: CreateResourceInputDTO): Promise<ResourceDTO>
+  updateTitle(resourceId: string, newTitle: string): Promise<ResourceDTO>
+  updateNote(resourceId: string, note: string): Promise<ResourceDTO>
+  remove(resourceId: string): Promise<void>
+  /** 替换式集合语义：提交的名称集合成为该 Resource 的完整标签集合，规则在后端。 */
+  setTags(resourceId: string, tagNames: string[]): Promise<TagDTO[]>
+  findLocationMatches(input: string, sourceType: SourceType): Promise<ResourceLocationMatchDTO[]>
+  /** 本地文件预览；DTO.media_url 是可直接渲染的临时地址。 */
+  prepareFilePreview(inputPath: string): Promise<FilePreviewDTO>
+  releaseFilePreview(token: string): Promise<void>
+}
+
+/** 单个入口的刷新与替换；地址、可用性与缩略图地址随后端 DTO 回流。 */
+export interface LibrarySourceCapabilities {
+  refreshURL(sourceId: string): Promise<SourceDTO>
+  refreshFile(sourceId: string): Promise<SourceDTO>
+  replaceFile(sourceId: string, inputPath: string): Promise<SourceDTO>
+  replaceURL(sourceId: string, inputURL: string): Promise<SourceDTO>
+  probeOnOpen(sourceId: string): Promise<SourceProbeResultDTO>
+}
+
+export interface LibraryMediaCapabilities {
+  /** 回填前端捕获的缩略图（JPEG）；地址来自 SourceDTO.thumbnail_url。 */
+  saveThumbnail(thumbnailUrl: string, jpeg: Blob): Promise<void>
+}
+
+/** 订阅返回 unsubscribe；不可用的运行时返回空 disposer，调用方无需自行判空。 */
+export interface LibraryEventCapabilities {
+  onFilesDropped(listener: (paths: string[]) => void): () => void
+  onPasteFilesRequested(listener: () => void): () => void
+  onSourceAvailability(listener: (event: SourceAvailabilityEventDTO) => void): () => void
+}
+
+/** 与操作系统交互：文件选择、剪贴板、默认应用与外链。 */
+export interface LibrarySystemCapabilities {
+  chooseFilePaths(): Promise<string[]>
+  chooseFilePath(): Promise<string | null>
+  getClipboardFilePaths(): Promise<string[]>
+  defaultOpenWith(target: string): Promise<string>
+  openExternal(target: string): Promise<void>
+}
+
+/**
+ * 桌面能力按领域分簇：新增一类能力只扩一个子对象，调用点按簇名即可读出语义。
+ * 媒体地址不在这里——它们是后端 DTO 上的完整 URL，不再由前端拼接。
+ */
+export interface LibraryRuntime {
+  readonly isAvailable: boolean
+  readonly resources: LibraryResourceCapabilities
+  readonly sources: LibrarySourceCapabilities
+  readonly media: LibraryMediaCapabilities
+  readonly events: LibraryEventCapabilities
+  readonly system: LibrarySystemCapabilities
 }
 
 /**

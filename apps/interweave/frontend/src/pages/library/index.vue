@@ -54,17 +54,9 @@ const {
   saveTags,
   replaceFileSource,
   replaceURLSource,
-  chooseFilePaths,
-  chooseFilePath,
-  getClipboardFilePaths,
   defaultOpenWith,
   openExternal,
-  resourceMediaURL,
-  resourceThumbnailURL,
   saveSourceThumbnail,
-  subscribeToDroppedFiles,
-  subscribeToPasteFileRequest,
-  subscribeToSourceAvailability,
   probeURLSourceOnOpen
 } = useLibraryRuntime()
 
@@ -94,14 +86,14 @@ const confirmOpen = ref(false)
 const confirmRequest = ref<ConfirmRequest | null>(null)
 const confirmError = ref('')
 const addError = ref('')
-const stopDroppedFiles = subscribeToDroppedFiles(paths => {
+const stopDroppedFiles = runtime.events.onFilesDropped(paths => {
   if (addOpen.value) void addQueue.enqueueFileLocations(paths)
 })
-const stopPasteFileRequest = subscribeToPasteFileRequest(() => {
+const stopPasteFileRequest = runtime.events.onPasteFilesRequested(() => {
   addOpen.value = true
   void pasteFilePaths()
 })
-const stopSourceAvailability = subscribeToSourceAvailability(event => {
+const stopSourceAvailability = runtime.events.onSourceAvailability(event => {
   store.applySourceAvailability(event.source_id, event.available, event.size_bytes)
 })
 onScopeDispose(() => {
@@ -383,7 +375,7 @@ function setAddOpen(open: boolean) {
 async function pasteFilePaths(clipboardText = '') {
   try {
     addError.value = ''
-    const paths = await getClipboardFilePaths()
+    const paths = await runtime.system.getClipboardFilePaths()
     if (!addOpen.value) return
     if (paths.length) {
       await addQueue.enqueueFileLocations(paths)
@@ -403,7 +395,7 @@ async function pasteFilePaths(clipboardText = '') {
 async function pickFiles() {
   try {
     addError.value = ''
-    const paths = await chooseFilePaths()
+    const paths = await runtime.system.chooseFilePaths()
     if (addOpen.value) await addQueue.enqueueFileLocations(paths)
   } catch (cause) {
     addError.value = takeOperationError(cause, '选择文件失败')
@@ -524,7 +516,7 @@ async function submitRestoreQueue(items: LibraryRestoreQueueItem[]) {
   activeRestoreItemId.value = null
   try {
     const result = await restoreLibraryQueue(items, {
-      chooseFilePath,
+      chooseFilePath: () => runtime.system.chooseFilePath(),
       replaceFileSource,
       replaceURLSource,
       onItemStart: itemId => {
@@ -630,8 +622,6 @@ onMounted(() => {
         :loading="isLoading"
         :runtime-available="runtime.isAvailable"
         :empty-description="emptyDescription"
-        :media-url-for="resourceMediaURL"
-        :thumbnail-url-for="resourceThumbnailURL"
         :save-thumbnail-for="saveSourceThumbnail"
         :resolve-default-open-with="resolveDefaultOpenWith"
         @open-default="openResource"
@@ -669,12 +659,7 @@ onMounted(() => {
       @preview="previewResource"
       @recover="handleRecoverSource"
     />
-    <PreviewDrawer
-      v-model:open="previewOpen"
-      :resource="selectedResource"
-      :mobile="mobile"
-      :media-url-for="resourceMediaURL"
-    />
+    <PreviewDrawer v-model:open="previewOpen" :resource="selectedResource" :mobile="mobile" />
   </div>
 
   <AddDialog

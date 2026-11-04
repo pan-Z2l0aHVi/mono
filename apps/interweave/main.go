@@ -166,11 +166,11 @@ func main() {
 		URL:              "/",
 	})
 	window.OnWindowEvent(events.Common.WindowFilesDropped, func(event *application.WindowEvent) {
-		window.EmitEvent("library:files-dropped", event.Context().DroppedFiles())
+		window.EmitEvent(libraryService.FileDropEventName, event.Context().DroppedFiles())
 	})
 	menu := application.DefaultApplicationMenu()
 	if addPasteFilesMenuItem(menu, func() {
-		window.EmitEvent("library:paste-files-requested")
+		window.EmitEvent(libraryService.PasteFilesRequestEventName)
 	}) {
 		app.Menu.Set(menu)
 	}

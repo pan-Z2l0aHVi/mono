@@ -15,6 +15,8 @@ function fileSource(location = '/tmp/image.jpg'): ResourceSourceView {
     available: true,
     isPreferred: true,
     orderIndex: 0,
+    mediaUrl: null,
+    thumbnailUrl: null,
     metadata: null
   }
 }

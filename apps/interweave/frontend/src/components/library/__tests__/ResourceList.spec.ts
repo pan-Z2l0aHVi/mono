@@ -41,6 +41,8 @@ function resource(overrides: Partial<ResourceView> = {}): ResourceView {
         available: true,
         isPreferred: true,
         orderIndex: 0,
+        mediaUrl: null,
+        thumbnailUrl: null,
         metadata: null
       }
     ],
@@ -78,7 +80,6 @@ async function mountList(
         loading: false,
         runtimeAvailable: true,
         emptyDescription: '没有符合条件的资源',
-        mediaUrlFor: () => null,
         resolveDefaultOpenWith: () => Promise.resolve(''),
         onActivate: (resource: ResourceView) => {
           activeResourceId.value = resource.id
@@ -179,7 +180,6 @@ describe('ResourceList', () => {
           loading: false,
           runtimeAvailable: false,
           emptyDescription: '资源库还是空的',
-          mediaUrlFor: () => null,
           resolveDefaultOpenWith: () => Promise.resolve('')
         })
     })
@@ -732,6 +732,8 @@ describe('ResourceList：触屏长按 menu', () => {
       available: false,
       isPreferred: true,
       orderIndex: 0,
+      mediaUrl: null,
+      thumbnailUrl: null,
       metadata: null
     }
   }
@@ -1106,6 +1108,8 @@ describe('ResourceList：context menu 的详情入口', () => {
       available: false,
       isPreferred: true,
       orderIndex: 0,
+      mediaUrl: null,
+      thumbnailUrl: null,
       metadata: null
     }
     const mounted = await mountList([resource({ available: false, sources: [missing] })])
@@ -1184,6 +1188,8 @@ describe('ResourceList：键盘呼出 context menu', () => {
       available: false,
       isPreferred: true,
       orderIndex: 0,
+      mediaUrl: null,
+      thumbnailUrl: null,
       metadata: null
     }
   }
@@ -2055,7 +2061,6 @@ describe('ResourceList：编辑态与虚拟窗口的关系', () => {
           loading: false,
           runtimeAvailable: true,
           emptyDescription: '',
-          mediaUrlFor: () => null,
           resolveDefaultOpenWith: () => Promise.resolve('')
         })
     })
@@ -2110,7 +2115,6 @@ describe('ResourceList：顺序变化后的行位', () => {
           loading: false,
           runtimeAvailable: true,
           emptyDescription: '',
-          mediaUrlFor: () => null,
           resolveDefaultOpenWith: () => Promise.resolve('')
         })
     })

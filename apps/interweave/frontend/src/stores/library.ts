@@ -45,6 +45,10 @@ export interface ResourceSourceView {
   available: boolean
   isPreferred: boolean
   orderIndex: number
+  /** file 入口的原始字节地址；url 入口与浏览器预览没有本地媒体，为 null。 */
+  mediaUrl: string | null
+  /** 派生缩略图地址（读 GET / 回填 POST 同址）；不提供时为 null，调用方回退原图。 */
+  thumbnailUrl: string | null
   /** 抓取到的展示元数据；本地文件或抓取失败时为 null（service 层已解析，前端不再碰 JSON）。 */
   metadata: {
     title: string
@@ -96,6 +100,8 @@ function toSourceView(source: ResourceDTO['sources'][number]): ResourceSourceVie
     available: source.available,
     isPreferred: source.is_preferred,
     orderIndex: source.order_index,
+    mediaUrl: source.media_url ?? null,
+    thumbnailUrl: source.thumbnail_url ?? null,
     metadata: metadata
       ? {
           title: metadata.title,

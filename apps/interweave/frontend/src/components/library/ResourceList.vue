@@ -29,11 +29,8 @@ const props = defineProps<{
   loading: boolean
   runtimeAvailable: boolean
   emptyDescription: string
-  mediaUrlFor: (sourceId: string) => string | null
-  /** 服务端缩略图地址解析；未提供时行内回退原图/视频捕获（测试与浏览器预览）。 */
-  thumbnailUrlFor?: (sourceId: string) => string | null
-  /** 缩略图回填；未提供时行内捕获后不回填。 */
-  saveThumbnailFor?: (sourceId: string, dataUrl: string) => void
+  /** 缩略图回填；未提供时行内捕获后不回填。地址取自 Source 上的 thumbnailUrl。 */
+  saveThumbnailFor?: (sourceId: string, thumbnailUrl: string, dataUrl: string) => void
   resolveDefaultOpenWith: (resource: ResourceView) => Promise<string>
 }>()
 
@@ -672,16 +669,13 @@ function editorRefFor(id: string) {
   return props.editorRef(id)
 }
 
-function resolveThumbnailUrl(sourceId: string) {
-  return props.thumbnailUrlFor?.(sourceId) ?? null
-}
-
-/** 行级回填回调：把捕获的 dataURL 绑定到该行首选 Source 的身份上。 */
+/** 行级回填回调：把捕获的 dataURL 绑定到该行首选 Source 的缩略图地址上。 */
 function thumbnailSaver(resource: ResourceView) {
   const save = props.saveThumbnailFor
-  const sourceId = resource.preferred?.id
-  if (!save || !sourceId) return null
-  return (dataUrl: string) => save(sourceId, dataUrl)
+  const source = resource.preferred
+  if (!save || !source?.thumbnailUrl) return null
+  const { id, thumbnailUrl } = source
+  return (dataUrl: string) => save(id, thumbnailUrl, dataUrl)
 }
 
 function handleRenameChange(resource: ResourceView, event: WebUiEvent<WebUiEditableText, 'change'>) {
@@ -805,8 +799,8 @@ function handleRenameChange(resource: ResourceView, event: WebUiEvent<WebUiEdita
             <div :key="resource.id" class="pointer-events-auto">
               <ResourceRow
                 :resource="resource"
-                :media-url="resource.preferred ? mediaUrlFor(resource.preferred.id) : null"
-                :thumbnail-url="resource.preferred ? resolveThumbnailUrl(resource.preferred.id) : null"
+                :media-url="resource.preferred?.mediaUrl ?? null"
+                :thumbnail-url="resource.preferred?.thumbnailUrl ?? null"
                 :save-thumbnail="thumbnailSaver(resource)"
                 :index="index"
                 :total="resources.length"

@@ -8,10 +8,7 @@ import {
   SourceType
 } from '../../../bindings/github.com/pan-Z2l0aHVi/mono/apps/interweave/backend/library/storage'
 
-type PreviewRuntime = Pick<
-  LibraryRuntime,
-  'isAvailable' | 'prepareFilePreview' | 'releaseFilePreview' | 'pendingFilePreviewURL' | 'findResourceLocationMatches'
->
+type PreviewRuntime = Pick<LibraryRuntime, 'isAvailable' | 'resources'>
 
 type QueueKind = LibraryQueueItem['kind']
 
@@ -84,7 +81,7 @@ export function createLibraryAddQueue(runtime: PreviewRuntime): LibraryAddQueueC
 
   function releaseToken(token: string | null) {
     if (!token || !runtime.isAvailable) return Promise.resolve()
-    return runtime.releaseFilePreview(token)
+    return runtime.resources.releaseFilePreview(token)
   }
 
   function replaceItem(itemId: string, update: (item: LibraryQueueItem) => LibraryQueueItem) {
@@ -102,18 +99,17 @@ export function createLibraryAddQueue(runtime: PreviewRuntime): LibraryAddQueueC
     const preparation = (async () => {
       if (!runtime.isAvailable) return
       try {
-        const preview = await runtime.prepareFilePreview(item.location)
+        const preview = await runtime.resources.prepareFilePreview(item.location)
         const current = queue.value.find(candidate => candidate.id === item.id)
         if (!current || current.location !== item.location) {
           await releaseToken(preview.token ?? null)
           return
         }
-        const mediaUrl = preview.token ? runtime.pendingFilePreviewURL(preview.token) : null
         replaceItem(item.id, candidate => ({
           ...candidate,
           resourceKind: preview.kind,
           previewToken: preview.token ?? null,
-          mediaUrl
+          mediaUrl: preview.media_url ?? null
         }))
       } catch {
         // 预览失败时保留 generic fallback；真正的纳入仍由 CreateResource 校验路径。
@@ -141,7 +137,7 @@ export function createLibraryAddQueue(runtime: PreviewRuntime): LibraryAddQueueC
     if (!runtime.isAvailable || queried.has(location)) return true
     queried.add(location)
     try {
-      const matches = await runtime.findResourceLocationMatches(location, KIND_BY_SOURCE[kind].sourceType)
+      const matches = await runtime.resources.findLocationMatches(location, KIND_BY_SOURCE[kind].sourceType)
       if (!matches.length) return true
       // 查询在途时用户可能已经关掉添加 dialog：此时弹窗会成为没有归属的悬空确认，
       // 按取消放行。调用方的代次检查在 await 之后才发生，那时弹窗已经弹出，来不及。

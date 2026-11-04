@@ -2,8 +2,13 @@ package service
 
 import "github.com/pan-Z2l0aHVi/mono/apps/interweave/backend/library/storage"
 
-// SourceAvailabilityEventName 是可用性翻转的推送事件名，与既有 library: 事件同前缀同风格。
-const SourceAvailabilityEventName = "library:source-availability-changed"
+// 自定义事件名由后端独占定义；main 包用 application.RegisterEvent 登记后，
+// 绑定生成器会把同名常量写进前端 bindings/events，两端不再各自硬编码字面量。
+const (
+	FileDropEventName           = "library:files-dropped"
+	PasteFilesRequestEventName  = "library:paste-files-requested"
+	SourceAvailabilityEventName = "library:source-availability-changed"
+)
 
 // ResourceKind 是 Resource 展示分类的闭集；文件分类由 Go 侧维护，URL 固定为 web。
 type ResourceKind = storage.ResourceKind
@@ -28,9 +33,11 @@ type SourceMetadataDTO struct {
 }
 
 // FilePreviewDTO 为待添加文件提供权威 kind 与可选的本地媒体读取授权。
+// MediaURL 由后端按 token 生成，前端不再自行拼接 pending 预览路由。
 type FilePreviewDTO struct {
-	Kind  ResourceKind `json:"kind"`
-	Token string       `json:"token,omitempty"`
+	Kind     ResourceKind `json:"kind"`
+	Token    string       `json:"token,omitempty"`
+	MediaURL string       `json:"media_url,omitempty"`
 }
 
 // ResourceLocationMatchDTO 是「库内已有同一入口」的命中项，供添加前的重复确认框列出。
@@ -44,13 +51,17 @@ type ResourceLocationMatchDTO struct {
 
 // 为前端呈现 Resource 的外部入口。
 type SourceDTO struct {
-	ID          string             `json:"id"`
-	ResourceID  string             `json:"resource_id"`
-	Type        storage.SourceType `json:"type"`
-	Location    string             `json:"location"`
-	Available   bool               `json:"available"`
-	IsPreferred bool               `json:"is_preferred"`
-	OrderIndex  int                `json:"order_index"`
+	ID         string             `json:"id"`
+	ResourceID string             `json:"resource_id"`
+	Type       storage.SourceType `json:"type"`
+	Location   string             `json:"location"`
+	Available  bool               `json:"available"`
+	// MediaURL 是 file Source 原始字节的 AssetServer 地址；url Source 没有本地媒体，字段省略。
+	MediaURL string `json:"media_url,omitempty"`
+	// ThumbnailURL 是派生缩略图地址；GET/HEAD 读取，POST 同址回填。
+	ThumbnailURL string `json:"thumbnail_url,omitempty"`
+	IsPreferred  bool   `json:"is_preferred"`
+	OrderIndex   int    `json:"order_index"`
 	// Metadata 为抓取到的展示元数据；无元数据（本地文件或抓取失败）时为 nil。
 	Metadata  *SourceMetadataDTO `json:"metadata,omitempty"`
 	CreatedAt int64              `json:"created_at"`

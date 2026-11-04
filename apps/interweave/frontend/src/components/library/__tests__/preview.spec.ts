@@ -5,16 +5,21 @@ import type { ResourceSourceView, ResourceView } from '../../../stores/library'
 import { readTextPreview, resolvePreviewTarget, type TextPreviewBody } from '../preview'
 
 function source(overrides: Partial<ResourceSourceView> = {}): ResourceSourceView {
-  return {
+  const base: ResourceSourceView = {
     id: 'source-1',
     type: 'file',
     location: '/tmp/photo.jpg',
     available: true,
     isPreferred: true,
     orderIndex: 0,
+    mediaUrl: '/resource-media/source-1',
+    thumbnailUrl: null,
     metadata: null,
     ...overrides
   }
+  // url 入口没有本地媒体；让 helper 的默认值与来源类型保持一致。
+  if (base.type === 'url') base.mediaUrl = null
+  return base
 }
 
 function resource(overrides: Partial<ResourceView> = {}): ResourceView {
@@ -36,10 +41,6 @@ function resource(overrides: Partial<ResourceView> = {}): ResourceView {
   }
 }
 
-function mediaUrlFor(sourceId: string) {
-  return `/resource-media/${sourceId}`
-}
-
 function streamResponse(chunks: Uint8Array[]): TextPreviewBody & { cancelled: () => boolean } {
   let index = 0
   let cancelled = false
@@ -58,18 +59,16 @@ function streamResponse(chunks: Uint8Array[]): TextPreviewBody & { cancelled: ()
 }
 
 describe('resolvePreviewTarget', () => {
-  it('图片与视频按 kind 直连媒体端点并保留系统外跳目标', () => {
+  it('图片与视频按 kind 直连后端给的媒体地址并保留系统外跳目标', () => {
     expect(
       resolvePreviewTarget(
-        resource({ kind: ResourceKind.ResourceKindImage, preferred: source({ location: '/tmp/a.png' }) }),
-        mediaUrlFor
+        resource({ kind: ResourceKind.ResourceKindImage, preferred: source({ location: '/tmp/a.png' }) })
       )
     ).toMatchObject({ mode: 'image', mediaUrl: '/resource-media/source-1', externalTarget: '/tmp/a.png' })
 
     expect(
       resolvePreviewTarget(
-        resource({ kind: ResourceKind.ResourceKindVideo, preferred: source({ location: '/tmp/a.mp4' }) }),
-        mediaUrlFor
+        resource({ kind: ResourceKind.ResourceKindVideo, preferred: source({ location: '/tmp/a.mp4' }) })
       )
     ).toMatchObject({ mode: 'video', mediaUrl: '/resource-media/source-1', externalTarget: '/tmp/a.mp4' })
   })
@@ -83,8 +82,7 @@ describe('resolvePreviewTarget', () => {
           resource({
             kind: ResourceKind.ResourceKindDocument,
             preferred: source({ location: `/tmp/a.${extension}` })
-          }),
-          mediaUrlFor
+          })
         ).mode
       ])
     )
@@ -92,8 +90,7 @@ describe('resolvePreviewTarget', () => {
 
     expect(
       resolvePreviewTarget(
-        resource({ kind: ResourceKind.ResourceKindDocument, preferred: source({ location: '/tmp/a.pdf' }) }),
-        mediaUrlFor
+        resource({ kind: ResourceKind.ResourceKindDocument, preferred: source({ location: '/tmp/a.pdf' }) })
       )
     ).toMatchObject({ mode: 'empty', emptyReason: 'unsupported-kind', externalTarget: '/tmp/a.pdf' })
   })
@@ -101,51 +98,48 @@ describe('resolvePreviewTarget', () => {
   it('未知扩展名的 file 资源不会因为 mime 猜测而进入文本预览', () => {
     expect(
       resolvePreviewTarget(
-        resource({ kind: ResourceKind.ResourceKindFile, preferred: source({ location: '/tmp/a.bin' }) }),
-        mediaUrlFor
+        resource({ kind: ResourceKind.ResourceKindFile, preferred: source({ location: '/tmp/a.bin' }) })
       )
     ).toMatchObject({ mode: 'empty', emptyReason: 'unsupported-kind' })
   })
 
-  it('URL 来源交给 iframe 直连原始地址，不读媒体端点', () => {
+  it('URL 来源交给 iframe 直连原始地址，不读媒体地址', () => {
     const urlSource = source({ id: 'source-url', type: 'url', location: 'https://example.com/a' })
     const urlResource = resource({
       kind: ResourceKind.ResourceKindWeb,
       preferred: urlSource,
       sources: [urlSource]
     })
-    const mediaUrlSpy = vi.fn<(sourceId: string) => string | null>(mediaUrlFor)
 
-    expect(resolvePreviewTarget(urlResource, mediaUrlSpy)).toMatchObject({
+    expect(resolvePreviewTarget(urlResource)).toMatchObject({
       mode: 'url',
       mediaUrl: null,
       externalTarget: 'https://example.com/a'
     })
-    expect(mediaUrlSpy).not.toHaveBeenCalled()
   })
 
-  it('失效来源、缺来源与缺 runtime 各自给出可区分的空态', () => {
+  it('失效来源、缺来源与缺媒体地址各自给出可区分的空态', () => {
     const broken = source({ available: false })
     const brokenResource = resource({ preferred: broken, sources: [broken], available: false })
-    expect(resolvePreviewTarget(brokenResource, mediaUrlFor)).toMatchObject({
+    expect(resolvePreviewTarget(brokenResource)).toMatchObject({
       mode: 'empty',
       emptyReason: 'source-unavailable',
       externalTarget: null
     })
 
-    expect(resolvePreviewTarget(null, mediaUrlFor)).toMatchObject({
+    expect(resolvePreviewTarget(null)).toMatchObject({
       mode: 'empty',
       emptyReason: 'no-source',
       source: null
     })
 
     const orphanResource = resource({ preferred: null, sources: [] })
-    expect(resolvePreviewTarget(orphanResource, mediaUrlFor)).toMatchObject({
+    expect(resolvePreviewTarget(orphanResource)).toMatchObject({
       mode: 'empty',
       emptyReason: 'no-source'
     })
 
-    expect(resolvePreviewTarget(resource(), () => null)).toMatchObject({
+    expect(resolvePreviewTarget(resource({ preferred: source({ mediaUrl: null }) }))).toMatchObject({
       mode: 'empty',
       emptyReason: 'media-unavailable',
       externalTarget: '/tmp/photo.jpg'
@@ -155,7 +149,7 @@ describe('resolvePreviewTarget', () => {
   it('URL 来源地址为空时不做外跳', () => {
     const urlSource = source({ type: 'url', location: '' })
     const urlResource = resource({ preferred: urlSource, sources: [urlSource] })
-    expect(resolvePreviewTarget(urlResource, mediaUrlFor)).toMatchObject({
+    expect(resolvePreviewTarget(urlResource)).toMatchObject({
       mode: 'empty',
       emptyReason: 'empty-location',
       externalTarget: null

@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 
 	"github.com/pan-Z2l0aHVi/mono/apps/interweave/backend/library/core"
+	"github.com/pan-Z2l0aHVi/mono/apps/interweave/backend/library/media"
 	"github.com/pan-Z2l0aHVi/mono/apps/interweave/backend/library/storage"
 )
 
@@ -30,7 +31,7 @@ func mapped[From any, To any](items []From, mapFn func(From) To) []To {
 }
 
 func sourceToDTO(src core.Source) SourceDTO {
-	return SourceDTO{
+	dto := SourceDTO{
 		ID:          src.ID,
 		ResourceID:  src.ResourceID,
 		Type:        src.Type,
@@ -42,6 +43,11 @@ func sourceToDTO(src core.Source) SourceDTO {
 		CreatedAt:   src.CreatedAt,
 		UpdatedAt:   src.UpdatedAt,
 	}
+	if src.Type == storage.SourceTypeFile {
+		dto.MediaURL = media.SourceMediaURL(src.ID)
+		dto.ThumbnailURL = media.SourceThumbnailURL(src.ID)
+	}
+	return dto
 }
 
 // NewSourceAvailabilityEventDTO 把领域层的翻转事实映射为推送载荷；

@@ -19,6 +19,7 @@ export {
     LocalMapDTO,
     ResourceDTO,
     ResourceLocationMatchDTO,
+    SourceAvailabilityEventDTO,
     SourceDTO,
     SourceMetadataDTO,
     SourceProbeOutcome,

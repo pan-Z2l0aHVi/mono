@@ -36,6 +36,8 @@ function resource(overrides: Partial<ResourceView> = {}): ResourceView {
         available: true,
         isPreferred: true,
         orderIndex: 0,
+        mediaUrl: null,
+        thumbnailUrl: null,
         metadata: null
       }
     ],
@@ -76,7 +78,6 @@ async function mountList(
         loading: false,
         runtimeAvailable: true,
         emptyDescription: '没有符合条件的资源',
-        mediaUrlFor: () => null,
         resolveDefaultOpenWith: () => Promise.resolve(''),
         onActivate: (r: ResourceView) => {
           activeId.value = r.id

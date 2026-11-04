@@ -6,4 +6,19 @@
 // @ts-ignore: Unused imports
 import { Create as $Create } from "@wailsio/runtime";
 
-Object.freeze($Create.Events);
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+// @ts-ignore: Unused imports
+import * as service$0 from "../../../../pan-Z2l0aHVi/mono/apps/interweave/backend/library/service/models.js";
+
+function configure() {
+    Object.freeze(Object.assign($Create.Events, {
+        "library:files-dropped": $$createType0,
+        "library:source-availability-changed": $$createType1,
+    }));
+}
+
+// Private type creation functions
+const $$createType0 = $Create.Array($Create.Any);
+const $$createType1 = service$0.SourceAvailabilityEventDTO.createFrom;
+
+configure();

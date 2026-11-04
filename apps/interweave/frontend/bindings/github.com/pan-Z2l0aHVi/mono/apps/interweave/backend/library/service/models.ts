@@ -60,10 +60,12 @@ export class CreateResourceInputDTO {
 
 /**
  * FilePreviewDTO 为待添加文件提供权威 kind 与可选的本地媒体读取授权。
+ * MediaURL 由后端按 token 生成，前端不再自行拼接 pending 预览路由。
  */
 export class FilePreviewDTO {
     "kind": ResourceKind;
     "token"?: string;
+    "media_url"?: string;
 
     /** Creates a new FilePreviewDTO instance. */
     constructor($$source: Partial<FilePreviewDTO> = {}) {
@@ -284,6 +286,52 @@ export class ResourceLocationMatchDTO {
 }
 
 /**
+ * SourceAvailabilityEventDTO 是可用性翻转的推送载荷。只推文件 Source：
+ * URL 没有监听，其可用性由打开时探测走返回值回流，不需要事件。
+ */
+export class SourceAvailabilityEventDTO {
+    "source_id": string;
+    "resource_id": string;
+    "type": storage$0.SourceType;
+    "available": boolean;
+
+    /**
+     * SizeBytes 只在翻转的是该 Resource 的首选文件 Source 时有值。
+     */
+    "size_bytes"?: number | null;
+    "changed_at": number;
+
+    /** Creates a new SourceAvailabilityEventDTO instance. */
+    constructor($$source: Partial<SourceAvailabilityEventDTO> = {}) {
+        if (!("source_id" in $$source)) {
+            this["source_id"] = "";
+        }
+        if (!("resource_id" in $$source)) {
+            this["resource_id"] = "";
+        }
+        if (!("type" in $$source)) {
+            this["type"] = storage$0.SourceType.$zero;
+        }
+        if (!("available" in $$source)) {
+            this["available"] = false;
+        }
+        if (!("changed_at" in $$source)) {
+            this["changed_at"] = 0;
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new SourceAvailabilityEventDTO instance from a string or object.
+     */
+    static createFrom($$source: any = {}): SourceAvailabilityEventDTO {
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        return new SourceAvailabilityEventDTO($$parsedSource as Partial<SourceAvailabilityEventDTO>);
+    }
+}
+
+/**
  * 为前端呈现 Resource 的外部入口。
  */
 export class SourceDTO {
@@ -292,6 +340,16 @@ export class SourceDTO {
     "type": storage$0.SourceType;
     "location": string;
     "available": boolean;
+
+    /**
+     * MediaURL 是 file Source 原始字节的 AssetServer 地址；url Source 没有本地媒体，字段省略。
+     */
+    "media_url"?: string;
+
+    /**
+     * ThumbnailURL 是派生缩略图地址；GET/HEAD 读取，POST 同址回填。
+     */
+    "thumbnail_url"?: string;
     "is_preferred": boolean;
     "order_index": number;
 
@@ -339,10 +397,10 @@ export class SourceDTO {
      * Creates a new SourceDTO instance from a string or object.
      */
     static createFrom($$source: any = {}): SourceDTO {
-        const $$createField7_0 = $$createType12;
+        const $$createField9_0 = $$createType12;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("metadata" in $$parsedSource) {
-            $$parsedSource["metadata"] = $$createField7_0($$parsedSource["metadata"]);
+            $$parsedSource["metadata"] = $$createField9_0($$parsedSource["metadata"]);
         }
         return new SourceDTO($$parsedSource as Partial<SourceDTO>);
     }
