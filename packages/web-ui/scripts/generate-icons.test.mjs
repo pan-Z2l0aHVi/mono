@@ -67,8 +67,21 @@ try {
   const index = fs.readFileSync(path.join(fixture, 'src/icons/index.ts'), 'utf8')
   assert.match(index, /export \{ default as testHouse \}/)
   assert.match(index, /export \{ default as bareDot \}/)
+  assert.match(index, /export \{ iconGallery \} from '\.\/generated\/gallery'/)
 
-  // 输入里移除的 icon 必须从生成目录消失；非生成文件不归这个脚本清理。
+  // gallery 模块聚合全部 icon，key 与 barrel 的 camelCase 命名导出一致。
+  const gallery = fs.readFileSync(path.join(generatedDir, 'gallery.ts'), 'utf8')
+  assert.match(gallery, /import type \{ IconifyIcon \} from '@iconify\/types'/)
+  assert.match(gallery, /import testHouse from '\.\/test-house'/)
+  assert.match(gallery, /import testPlain from '\.\/test-plain'/)
+  assert.match(gallery, /import bareDot from '\.\/bare-dot'/)
+  assert.match(
+    gallery,
+    /export const iconGallery: Record<string, IconifyIcon> = \{\n  testHouse,\n  testPlain,\n  bareDot\n\}/
+  )
+
+  // 输入里移除的 icon 必须从生成目录消失；gallery.ts 同属生成产物，必须保留；
+  // 非生成文件不归这个脚本清理。
   const stale = path.join(generatedDir, 'stale-icon.ts')
   const foreign = path.join(generatedDir, 'keep.txt')
   fs.writeFileSync(stale, 'stale\n')
@@ -76,6 +89,7 @@ try {
   assert.match(run(), /Generated 3 icons/)
   assert.equal(fs.existsSync(stale), false)
   assert.equal(fs.existsSync(foreign), true)
+  assert.equal(fs.existsSync(path.join(generatedDir, 'gallery.ts')), true)
   fs.rmSync(foreign)
 
   writeUsed(['test:missing'])
