@@ -22,3 +22,24 @@ func (TaggingStore) Delete(ctx context.Context, q Queryer, resourceID string, ta
 		DELETE FROM taggings WHERE resource_id = ? AND tag_id = ?
 	`, resourceID, tagID)
 }
+
+// DeleteExcept 解除单个 Resource 上不在 keepIDs 里的全部归属；keepIDs 为空时清空。
+// 单条 SQL 在服务层事务内完成差集删除，不逐条往返。
+func (TaggingStore) DeleteExcept(ctx context.Context, q Queryer, resourceID string, keepIDs []string) error {
+	if len(keepIDs) == 0 {
+		_, err := q.ExecContext(ctx, `
+			DELETE FROM taggings WHERE resource_id = ?
+		`, resourceID)
+		return err
+	}
+	args := make([]any, 0, len(keepIDs)+1)
+	args = append(args, resourceID)
+	for _, id := range keepIDs {
+		args = append(args, id)
+	}
+	_, err := q.ExecContext(ctx, `
+		DELETE FROM taggings
+		WHERE resource_id = ? AND tag_id NOT IN (`+placeholders(len(keepIDs))+`)
+	`, args...)
+	return err
+}

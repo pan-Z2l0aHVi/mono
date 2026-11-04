@@ -16,6 +16,8 @@ function source(id: string, type: ResourceSourceView['type']): ResourceSourceVie
     available: false,
     isPreferred: true,
     orderIndex: 0,
+    mediaUrl: null,
+    thumbnailUrl: null,
     metadata: null
   }
 }

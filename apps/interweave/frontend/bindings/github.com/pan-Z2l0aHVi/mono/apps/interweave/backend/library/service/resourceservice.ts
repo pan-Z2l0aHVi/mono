@@ -19,19 +19,11 @@ import * as storage$0 from "../storage/models.js";
 import * as $models from "./models.js";
 
 /**
- * 纳入文件时只确认入口可达性，不读取或接管内容。
+ * CreateResource 是纳入新 Resource 的唯一入口：归一化、探测、Resource + 首选 Source
+ * 与初始标签由 core 在单事务内一次建齐。
  */
-export function AddFileResource(inputPath: string): $CancellablePromise<$models.ResourceDTO | null> {
-    return $Call.ByID(965578649, inputPath).then(($result: any) => {
-        return $$createType1($result);
-    });
-}
-
-/**
- * URL 纳入以一次限时抓取建立初始展示上下文，失败也保留用户入口。
- */
-export function AddURLResource(inputURL: string): $CancellablePromise<$models.ResourceDTO | null> {
-    return $Call.ByID(2230031972, inputURL).then(($result: any) => {
+export function CreateResource(input: $models.CreateResourceInputDTO): $CancellablePromise<$models.ResourceDTO | null> {
+    return $Call.ByID(3687025820, input).then(($result: any) => {
         return $$createType1($result);
     });
 }

@@ -8,65 +8,70 @@ import {
 import type { LibraryRuntime } from '../../../services/library'
 import { createLibraryAddQueue, queueItemTitle } from '../addQueue'
 
-function createRuntime(overrides: Partial<LibraryRuntime> = {}): LibraryRuntime {
+// 队列只需要 isAvailable 与 resources 簇；其余能力给最小实现即可。
+function createRuntime(
+  overrides: Partial<LibraryRuntime['resources']> & { isAvailable?: boolean } = {}
+): LibraryRuntime {
+  const { isAvailable = true, ...resourceOverrides } = overrides
   return {
-    isAvailable: true,
-    listResources: async () => [],
-    getResource: async () => {
-      throw new Error('未使用')
+    isAvailable,
+    resources: {
+      list: async () => [],
+      get: async () => {
+        throw new Error('未使用')
+      },
+      create: async () => {
+        throw new Error('未使用')
+      },
+      updateTitle: async () => {
+        throw new Error('未使用')
+      },
+      updateNote: async () => {
+        throw new Error('未使用')
+      },
+      remove: async () => {},
+      setTags: async () => {
+        throw new Error('未使用')
+      },
+      findLocationMatches: async () => [],
+      prepareFilePreview: async () => ({ kind: ResourceKind.ResourceKindFile }),
+      releaseFilePreview: async () => {},
+      ...resourceOverrides
     },
-    addFileResource: async () => {
-      throw new Error('未使用')
+    sources: {
+      refreshURL: async () => {
+        throw new Error('未使用')
+      },
+      refreshFile: async () => {
+        throw new Error('未使用')
+      },
+      replaceFile: async () => {
+        throw new Error('未使用')
+      },
+      replaceURL: async () => {
+        throw new Error('未使用')
+      },
+      probeOnOpen: async () => {
+        throw new Error('未使用')
+      }
     },
-    addURLResource: async () => {
-      throw new Error('未使用')
+    media: { saveThumbnail: async () => {} },
+    events: {
+      onFilesDropped: () => () => {},
+      onPasteFilesRequested: () => () => {},
+      onSourceAvailability: () => () => {}
     },
-    updateResourceTitle: async () => {
-      throw new Error('未使用')
-    },
-    updateResourceNote: async () => {
-      throw new Error('未使用')
-    },
-    deleteResource: async () => {},
-    addTag: async () => {
-      throw new Error('未使用')
-    },
-    removeTag: async () => {},
-    refreshURLSource: async () => {
-      throw new Error('未使用')
-    },
-    refreshFileSource: async () => {
-      throw new Error('未使用')
-    },
-    replaceFileSource: async () => {
-      throw new Error('未使用')
-    },
-    replaceURLSource: async () => {
-      throw new Error('未使用')
-    },
-    chooseFilePaths: async () => [],
-    chooseFilePath: async () => null,
-    getClipboardFilePaths: async () => [],
-    prepareFilePreview: async () => ({ kind: ResourceKind.ResourceKindFile }),
-    releaseFilePreview: async () => {},
-    findResourceLocationMatches: async () => [],
-    probeURLSourceOnOpen: async () => {
-      throw new Error('未使用')
-    },
-    defaultOpenWith: async () => {
-      throw new Error('未使用')
-    },
-    openExternal: async () => {
-      throw new Error('未使用')
-    },
-    resourceMediaURL: () => null,
-    resourceThumbnailURL: () => null,
-    saveSourceThumbnail: async () => {},
-    pendingFilePreviewURL: token => `/pending-resource-media/${token}`,
-    subscribeToDroppedFiles: () => () => {},
-    subscribeToPasteFileRequest: () => () => {},
-    subscribeToSourceAvailability: () => () => {},
-    ...overrides
+    system: {
+      chooseFilePaths: async () => [],
+      chooseFilePath: async () => null,
+      getClipboardFilePaths: async () => [],
+      defaultOpenWith: async () => {
+        throw new Error('未使用')
+      },
+      openExternal: async () => {
+        throw new Error('未使用')
+      }
+    }
   }
 }
 
@@ -79,10 +84,11 @@ function deferred<T>() {
 }
 
 describe('library add queue pending previews', () => {
-  it('入队后使用后端 kind 和 opaque token 更新真实缩略图地址', async () => {
-    const prepareFilePreview = vi.fn<LibraryRuntime['prepareFilePreview']>(async () => ({
+  it('入队后使用后端 kind 与完整媒体地址更新预览', async () => {
+    const prepareFilePreview = vi.fn<LibraryRuntime['resources']['prepareFilePreview']>(async () => ({
       kind: ResourceKind.ResourceKindImage,
-      token: 'opaque-token'
+      token: 'opaque-token',
+      media_url: '/pending-resource-media/opaque-token'
     }))
     const queue = createLibraryAddQueue(createRuntime({ prepareFilePreview }))
 
@@ -98,7 +104,7 @@ describe('library add queue pending previews', () => {
   })
 
   it('关闭 dialog 释放所有已注册 token', async () => {
-    const releaseFilePreview = vi.fn<LibraryRuntime['releaseFilePreview']>(async () => {})
+    const releaseFilePreview = vi.fn<LibraryRuntime['resources']['releaseFilePreview']>(async () => {})
     const queue = createLibraryAddQueue(
       createRuntime({
         prepareFilePreview: async location => ({
@@ -120,7 +126,7 @@ describe('library add queue pending previews', () => {
   })
 
   it('移除单项与 releasePreview 释放各自 token', async () => {
-    const releaseFilePreview = vi.fn<LibraryRuntime['releaseFilePreview']>(async () => {})
+    const releaseFilePreview = vi.fn<LibraryRuntime['resources']['releaseFilePreview']>(async () => {})
     const queue = createLibraryAddQueue(
       createRuntime({
         prepareFilePreview: async location => ({
@@ -144,7 +150,7 @@ describe('library add queue pending previews', () => {
 
   it('预览准备完成前移除单项时释放晚到 token', async () => {
     const prepared = deferred<{ kind: ResourceKind.ResourceKindImage; token: string }>()
-    const releaseFilePreview = vi.fn<LibraryRuntime['releaseFilePreview']>(async () => {})
+    const releaseFilePreview = vi.fn<LibraryRuntime['resources']['releaseFilePreview']>(async () => {})
     const queue = createLibraryAddQueue(
       createRuntime({
         prepareFilePreview: async () => prepared.promise,
@@ -165,7 +171,7 @@ describe('library add queue pending previews', () => {
 
   it('关闭发生在异步准备期间时，晚到 token 立即释放', async () => {
     const prepared = deferred<{ kind: ResourceKind.ResourceKindImage; token: string }>()
-    const releaseFilePreview = vi.fn<LibraryRuntime['releaseFilePreview']>(async () => {})
+    const releaseFilePreview = vi.fn<LibraryRuntime['resources']['releaseFilePreview']>(async () => {})
     const queue = createLibraryAddQueue(
       createRuntime({
         prepareFilePreview: async () => prepared.promise,
@@ -183,17 +189,15 @@ describe('library add queue pending previews', () => {
   })
 
   it('无 Wails bridge 时保持通用 fallback 且不调用 preview API', async () => {
-    const prepareFilePreview = vi.fn<LibraryRuntime['prepareFilePreview']>()
-    const findResourceLocationMatches = vi.fn<LibraryRuntime['findResourceLocationMatches']>()
-    const queue = createLibraryAddQueue(
-      createRuntime({ isAvailable: false, prepareFilePreview, findResourceLocationMatches })
-    )
+    const prepareFilePreview = vi.fn<LibraryRuntime['resources']['prepareFilePreview']>()
+    const findLocationMatches = vi.fn<LibraryRuntime['resources']['findLocationMatches']>()
+    const queue = createLibraryAddQueue(createRuntime({ isAvailable: false, prepareFilePreview, findLocationMatches }))
 
     await queue.enqueueFileLocations(['/tmp/offline.png'])
 
     expect(queue.queue.value[0]).toMatchObject({ resourceKind: ResourceKind.ResourceKindFile, mediaUrl: null })
     expect(prepareFilePreview).not.toHaveBeenCalled()
-    expect(findResourceLocationMatches).not.toHaveBeenCalled()
+    expect(findLocationMatches).not.toHaveBeenCalled()
   })
 })
 
@@ -208,19 +212,19 @@ function match(overrides: Partial<ResourceLocationMatchDTO> = {}) {
 
 describe('library add queue duplicate confirmation', () => {
   it('未命中时零打扰直接入队，不挂起提示', async () => {
-    const findResourceLocationMatches = vi.fn<LibraryRuntime['findResourceLocationMatches']>(async () => [])
-    const queue = createLibraryAddQueue(createRuntime({ findResourceLocationMatches }))
+    const findLocationMatches = vi.fn<LibraryRuntime['resources']['findLocationMatches']>(async () => [])
+    const queue = createLibraryAddQueue(createRuntime({ findLocationMatches }))
 
     await queue.enqueueFileLocations(['/tmp/fresh.png'])
 
-    expect(findResourceLocationMatches).toHaveBeenCalledWith('/tmp/fresh.png', SourceType.SourceTypeFile)
+    expect(findLocationMatches).toHaveBeenCalledWith('/tmp/fresh.png', SourceType.SourceTypeFile)
     expect(queue.duplicatePrompt.value).toBeNull()
     expect(queue.queue.value.map(item => item.location)).toEqual(['/tmp/fresh.png'])
   })
 
   it('命中时挂起提示并列出已有资源，取消后该项不入队', async () => {
     const matches = [match(), match({ resource_id: 'resource-2', title: '另一条', location: '/library/photo.png' })]
-    const queue = createLibraryAddQueue(createRuntime({ findResourceLocationMatches: async () => matches }))
+    const queue = createLibraryAddQueue(createRuntime({ findLocationMatches: async () => matches }))
 
     const enqueued = queue.enqueueFileLocations(['/tmp/photo.png'])
     await vi.waitFor(() => {
@@ -238,7 +242,7 @@ describe('library add queue duplicate confirmation', () => {
   })
 
   it('选「仍要添加」时该项照常入队', async () => {
-    const queue = createLibraryAddQueue(createRuntime({ findResourceLocationMatches: async () => [match()] }))
+    const queue = createLibraryAddQueue(createRuntime({ findLocationMatches: async () => [match()] }))
 
     const enqueued = queue.enqueueFileLocations(['/tmp/photo.png'])
     await vi.waitFor(() => {
@@ -254,7 +258,7 @@ describe('library add queue duplicate confirmation', () => {
     const prompts: string[] = []
     const queue = createLibraryAddQueue(
       createRuntime({
-        findResourceLocationMatches: async location => (location === '/tmp/plain.png' ? [] : [match({ location })])
+        findLocationMatches: async location => (location === '/tmp/plain.png' ? [] : [match({ location })])
       })
     )
     // 入队链推进时立刻记录弹出的位置，用来断言串行顺序。
@@ -275,8 +279,8 @@ describe('library add queue duplicate confirmation', () => {
   })
 
   it('同一批次内重复出现的位置只弹一次', async () => {
-    const findResourceLocationMatches = vi.fn<LibraryRuntime['findResourceLocationMatches']>(async () => [match()])
-    const queue = createLibraryAddQueue(createRuntime({ findResourceLocationMatches }))
+    const findLocationMatches = vi.fn<LibraryRuntime['resources']['findLocationMatches']>(async () => [match()])
+    const queue = createLibraryAddQueue(createRuntime({ findLocationMatches }))
 
     const enqueued = queue.enqueueFileLocations(['/tmp/photo.png', '/tmp/photo.png'])
     await vi.waitFor(() => {
@@ -285,14 +289,14 @@ describe('library add queue duplicate confirmation', () => {
     queue.resolveDuplicate(true)
     await enqueued
 
-    expect(findResourceLocationMatches).toHaveBeenCalledTimes(1)
+    expect(findLocationMatches).toHaveBeenCalledTimes(1)
     expect(queue.queue.value.map(item => item.location)).toEqual(['/tmp/photo.png'])
   })
 
   it('查询失败按未命中处理，项照常入队', async () => {
     const queue = createLibraryAddQueue(
       createRuntime({
-        findResourceLocationMatches: async () => {
+        findLocationMatches: async () => {
           throw new Error('查询失败')
         }
       })
@@ -308,7 +312,7 @@ describe('library add queue duplicate confirmation', () => {
     const queried: string[] = []
     const queue = createLibraryAddQueue(
       createRuntime({
-        findResourceLocationMatches: async location => {
+        findLocationMatches: async location => {
           queried.push(location)
           return [match({ location })]
         }
@@ -330,14 +334,14 @@ describe('library add queue duplicate confirmation', () => {
   })
 
   it('查询在途时关闭添加 dialog，命中结果不再弹出悬空确认', async () => {
-    // 竞态窗口：findResourceLocationMatches 已发出但还没返回，此刻用户关掉了添加 dialog。
+    // 竞态窗口：findLocationMatches 已发出但还没返回，此刻用户关掉了添加 dialog。
     // 代次在 close() 里递增，查询返回时必须按取消放行——否则会弹出一个没人认领的确认框，
     // 且入队链会一直挂在 askDuplicate 上等一个永远不会来的裁决。
     let releaseQuery: ((matches: ResourceLocationMatchDTO[]) => void) | null = null
     const queried: string[] = []
     const queue = createLibraryAddQueue(
       createRuntime({
-        findResourceLocationMatches: async location => {
+        findLocationMatches: async location => {
           queried.push(location)
           return new Promise<ResourceLocationMatchDTO[]>(resolve => {
             releaseQuery = resolve
@@ -372,13 +376,13 @@ describe('library add queue duplicate confirmation', () => {
  */
 describe('library add queue url entries', () => {
   it('链接入队为 url 类型，重复检查走 URL 来源且不准备文件预览', async () => {
-    const prepareFilePreview = vi.fn<LibraryRuntime['prepareFilePreview']>()
-    const findResourceLocationMatches = vi.fn<LibraryRuntime['findResourceLocationMatches']>(async () => [])
-    const queue = createLibraryAddQueue(createRuntime({ prepareFilePreview, findResourceLocationMatches }))
+    const prepareFilePreview = vi.fn<LibraryRuntime['resources']['prepareFilePreview']>()
+    const findLocationMatches = vi.fn<LibraryRuntime['resources']['findLocationMatches']>(async () => [])
+    const queue = createLibraryAddQueue(createRuntime({ prepareFilePreview, findLocationMatches }))
 
     await queue.enqueueURL('https://example.com/article')
 
-    expect(findResourceLocationMatches).toHaveBeenCalledWith('https://example.com/article', SourceType.SourceTypeURL)
+    expect(findLocationMatches).toHaveBeenCalledWith('https://example.com/article', SourceType.SourceTypeURL)
     expect(prepareFilePreview).not.toHaveBeenCalled()
     expect(queue.queue.value).toHaveLength(1)
     expect(queue.queue.value[0]).toMatchObject({
@@ -392,8 +396,8 @@ describe('library add queue url entries', () => {
   })
 
   it('链接与文件混排时各自按类型处理，重复位置仍然去重', async () => {
-    const findResourceLocationMatches = vi.fn<LibraryRuntime['findResourceLocationMatches']>(async () => [])
-    const queue = createLibraryAddQueue(createRuntime({ findResourceLocationMatches }))
+    const findLocationMatches = vi.fn<LibraryRuntime['resources']['findLocationMatches']>(async () => [])
+    const queue = createLibraryAddQueue(createRuntime({ findLocationMatches }))
 
     await queue.enqueueFileLocations(['/tmp/photo.png'])
     await queue.enqueueURL('https://example.com/')

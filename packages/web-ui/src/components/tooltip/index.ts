@@ -12,6 +12,7 @@ import { defineAnchoredPanel } from '@/shared/overlay/anchored-panel'
 import { defineOpenOverlay } from '@/shared/overlay/open-overlay'
 import { FLOATING_PLACEMENTS } from '@/shared/overlay/placement-props'
 import { defineOverlayPortal, type OverlayContainer, type OverlayPortal } from '@/shared/overlay/portal'
+import { defineTriggerGestures } from '@/shared/overlay/trigger-gestures'
 import { hasTriggerMode, normalizeTriggerSet, type OverlayTriggerMode } from '@/shared/overlay/trigger-props'
 
 import style from './style.css?inline'
@@ -89,13 +90,25 @@ export class WebUiTooltip extends LitElement {
   @property({ type: Boolean, reflect: true }) portal = false
   @property({ attribute: false }) overlayContainer?: OverlayContainer
 
-  private _showTimer?: ReturnType<typeof setTimeout>
-  private _hideTimer?: ReturnType<typeof setTimeout>
   private _isCountedVisible = false
   private readonly _userOpenChange = new UserChangeController()
   private _shouldOpenInstantly = true
   private _portal?: OverlayPortal
   private readonly _panelId = `wui-tooltip-panel-${++tooltipIdCounter}`
+  // 手势事件路由、show/hide 计时与 outside-click 判定在共享接线里；open 状态仍由本组件持有。
+  private readonly _gestures = defineTriggerGestures({
+    host: this,
+    hasMode: mode => hasTriggerMode(this.trigger, mode),
+    isDisabled: () => this.disabled,
+    isOpen: () => this.open,
+    hoverShowDelay: () => this.showDelay,
+    hoverOpensInstantly: () => visibleTooltipCount > 0,
+    hoverHideDelay: () => this.hideDelay,
+    cancelPendingHideOnFocusEnter: () => true,
+    isInsidePanel: event => !!this._panel.getHandle()?.containsEvent(event),
+    requestOpen: (_source, { instant }) => this._show(instant),
+    requestClose: () => this._hide()
+  })
   /*
    * 面板在 shadow DOM 里，而 trigger 的可聚焦元素可能在更内层的 shadow root：
    * `aria-describedby` 的 IDREF 无法跨 shadow 边界解析，面板 id 因此只能供消费者自行引用，
@@ -135,14 +148,12 @@ export class WebUiTooltip extends LitElement {
   override connectedCallback() {
     super.connectedCallback()
     this._overlay.resume()
-    this._syncTriggerListeners()
+    this._gestures.connect()
   }
 
   override disconnectedCallback() {
     super.disconnectedCallback()
-    this._clearTriggerListeners()
-    clearTimeout(this._showTimer)
-    clearTimeout(this._hideTimer)
+    this._gestures.disconnect()
     // 停止帧调度；撤销登记由 _panel.dispose() 完成（handle 归它持有）。
     this._overlay.suspend()
     this._syncVisibleTooltipCount(false)
@@ -160,19 +171,13 @@ export class WebUiTooltip extends LitElement {
 
   protected override willUpdate(changed: Map<string, unknown>) {
     if (this.disabled && (changed.has('disabled') || changed.has('open'))) {
-      clearTimeout(this._showTimer)
-      clearTimeout(this._hideTimer)
+      this._gestures.cancelPending()
       this.open = false
     }
   }
 
   protected override updated(changed: Map<string, unknown>) {
-    if (changed.has('trigger')) {
-      this._clearTriggerListeners()
-      clearTimeout(this._showTimer)
-      clearTimeout(this._hideTimer)
-      this._syncTriggerListeners()
-    }
+    if (changed.has('trigger')) this._gestures.syncTriggerChange()
     if (changed.has('portal') || changed.has('overlayContainer')) {
       // 同帧 open + reconfigure 可能重复建事务；invalidate 保证 reconfigure 是当前唯一帧回调。
       this._overlay.invalidate()
@@ -183,7 +188,7 @@ export class WebUiTooltip extends LitElement {
     if (changed.has('open')) {
       this._syncVisibleTooltipCount(this.open)
       if (this.open) {
-        clearTimeout(this._hideTimer)
+        this._gestures.cancelPending()
         this._openOverlay(this._shouldOpenInstantly)
         this._shouldOpenInstantly = true
         this._syncDescription()
@@ -200,74 +205,12 @@ export class WebUiTooltip extends LitElement {
     }
   }
 
-  private _syncTriggerListeners() {
-    if (hasTriggerMode(this.trigger, 'hover')) {
-      this.addEventListener('pointerenter', this._onPointerEnter)
-      this.addEventListener('pointerleave', this._onPointerLeave)
-    }
-    if (hasTriggerMode(this.trigger, 'focus')) {
-      this.addEventListener('focusin', this._onFocusIn)
-      this.addEventListener('focusout', this._onFocusOut)
-    }
-    if (hasTriggerMode(this.trigger, 'click')) document.addEventListener('click', this._onClickOutside)
-  }
-
-  private _clearTriggerListeners() {
-    this.removeEventListener('pointerenter', this._onPointerEnter)
-    this.removeEventListener('pointerleave', this._onPointerLeave)
-    this.removeEventListener('focusin', this._onFocusIn)
-    this.removeEventListener('focusout', this._onFocusOut)
-    document.removeEventListener('click', this._onClickOutside)
-  }
-
   private _onTriggerClick = (event: MouseEvent) => {
     if (this.disabled || !hasTriggerMode(this.trigger, 'click')) return
-    clearTimeout(this._showTimer)
-    clearTimeout(this._hideTimer)
+    this._gestures.cancelPending()
     // 键盘激活（detail 0）与聚焦同等对待：不播入场动画。
     if (this.open) this._hide()
     else this._show(event.detail === 0)
-  }
-
-  private _onClickOutside = (event: MouseEvent) => {
-    if (!this.open) return
-    /*
-     * 在监听器内部判定：composedPath() 在派发结束后会被清空。trigger 及其 light DOM
-     * 内容都在宿主路径里；portal 后的 panel 挂在主题的 overlay 容器里，走 handle 判定。
-     */
-    if (event.composedPath().includes(this)) return
-    if (this._panel.getHandle()?.containsEvent(event)) return
-    this._hide()
-  }
-
-  private _onPointerEnter = (e: PointerEvent) => {
-    if (e.pointerType === 'touch') return
-    if (this.disabled) return
-    clearTimeout(this._hideTimer)
-    // 已有 tooltip 在场时（指针滑到相邻目标）：既不等延迟，也不播入场动画。
-    const isRepeat = visibleTooltipCount > 0
-    this._showTimer = setTimeout(() => this._show(isRepeat), isRepeat ? 0 : this.showDelay)
-  }
-
-  private _onPointerLeave = (e: PointerEvent) => {
-    if (e.pointerType === 'touch') return
-    clearTimeout(this._showTimer)
-    this._hideTimer = setTimeout(() => this._hide(), this.hideDelay)
-  }
-
-  private _onFocusIn = (event: FocusEvent) => {
-    if (this.disabled) return
-
-    const focusedElement = event.composedPath()[0] ?? event.target
-    if (!(focusedElement instanceof Element) || !focusedElement.matches(':focus-visible')) return
-
-    clearTimeout(this._hideTimer)
-    this._show(true)
-  }
-
-  private _onFocusOut = () => {
-    clearTimeout(this._showTimer)
-    this._hide()
   }
 
   private _show(isInstant = false) {

@@ -124,46 +124,42 @@ func (s *ResourceService) FindResourceLocationMatches(
 	return matches, nil
 }
 
-// 纳入文件时只确认入口可达性，不读取或接管内容。
-func (s *ResourceService) AddFileResource(ctx context.Context, inputPath string) (*ResourceView, error) {
-	location, err := s.ingest.normalizeInput(inputPath, storage.SourceTypeFile)
-	if err != nil {
-		return nil, err
-	}
-
-	outcome := s.ingest.probe(ctx, location, storage.SourceTypeFile)
-	result, err := s.ingest.write(ctx, ingestWrite{
-		mode:         ingestNewResource,
-		defaultTitle: outcome.defaultTitle,
-		srcType:      storage.SourceTypeFile,
-		location:     location,
-		probe:        outcome,
-	})
-	if err != nil {
-		return nil, fmt.Errorf("failed to create file resource: %w", err)
-	}
-
-	s.resyncIndex(ctx)
-	return s.GetResource(ctx, result.resourceID)
+// CreateResourceInput 携带一次纳入的用户输入；Location 是原始输入，归一化由 core 完成。
+type CreateResourceInput struct {
+	// Kind 是入口类型，只接受 SourceTypeFile / SourceTypeURL。
+	Kind storage.SourceType
+	// Location 是用户的原始输入。
+	Location string
+	// InitialTitle 是可选的初始标题；trim 后非空才生效，否则用 probe 的默认标题
+	//（AGENTS.md「Resource 标题」：只有首次纳入可从首个 Source 取得默认值）。
+	InitialTitle string
+	// Tags 是可选的初始标签名集合（原始输入），语义同 TagService.SetResourceTags。
+	Tags []string
 }
 
-// URL 纳入以一次限时抓取建立初始展示上下文，失败也保留用户入口。
-func (s *ResourceService) AddURLResource(ctx context.Context, inputURL string) (*ResourceView, error) {
-	location, err := s.ingest.normalizeInput(inputURL, storage.SourceTypeURL)
+// CreateResource 是纳入新 Resource 的唯一入口：归一化、可用性探测、Resource + 首选 Source
+// 与初始标签在单事务内一次建齐，失败不留半成品。
+func (s *ResourceService) CreateResource(ctx context.Context, input CreateResourceInput) (*ResourceView, error) {
+	location, err := s.ingest.normalizeInput(input.Location, input.Kind)
 	if err != nil {
 		return nil, err
 	}
 
-	outcome := s.ingest.probe(ctx, location, storage.SourceTypeURL)
+	outcome := s.ingest.probe(ctx, location, input.Kind)
+	defaultTitle := outcome.defaultTitle
+	if trimmed := strings.TrimSpace(input.InitialTitle); trimmed != "" {
+		defaultTitle = trimmed
+	}
 	result, err := s.ingest.write(ctx, ingestWrite{
 		mode:         ingestNewResource,
-		defaultTitle: outcome.defaultTitle,
-		srcType:      storage.SourceTypeURL,
+		defaultTitle: defaultTitle,
+		srcType:      input.Kind,
 		location:     location,
 		probe:        outcome,
+		tagNames:     input.Tags,
 	})
 	if err != nil {
-		return nil, fmt.Errorf("failed to create URL resource: %w", err)
+		return nil, fmt.Errorf("failed to create resource: %w", err)
 	}
 
 	s.resyncIndex(ctx)

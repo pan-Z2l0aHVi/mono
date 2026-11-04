@@ -13,6 +13,7 @@
   "dependencies": {
     "@greypan/app-scrollbars": "workspace:*",
     "@greypan/browser-kit": "workspace:*",
+    "@greypan/doc-demo-kit": "workspace:*",
     "@greypan/js-kit": "workspace:*",
     "@greypan/web-ui": "workspace:*",
     "@unhead/vue": "catalog:",

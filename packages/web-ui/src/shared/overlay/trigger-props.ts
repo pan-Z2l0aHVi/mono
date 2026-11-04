@@ -2,8 +2,8 @@
  * tooltip / popover 共享的触发方式词表。
  *
  * `trigger` 是空格分隔的集合，不是单值枚举：「悬停和键盘聚焦都能开」是真实需求，
- * 用单值表达同样的空间要拆成十几种字面量。这里只负责把取值规范化，
- * 每种手势接哪些事件由组件自己决定。
+ * 用单值表达同样的空间要拆成十几种字面量。这里只负责把取值规范化；
+ * 各手势的事件路由、计时与 outside-click 判定见 `trigger-gestures.ts`。
  */
 
 export const OVERLAY_TRIGGER_MODES = ['click', 'hover', 'focus', 'manual'] as const

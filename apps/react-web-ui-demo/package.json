@@ -12,6 +12,7 @@
   },
   "dependencies": {
     "@greypan/app-scrollbars": "workspace:*",
+    "@greypan/doc-demo-kit": "workspace:*",
     "@greypan/js-kit": "workspace:*",
     "@greypan/web-ui": "workspace:*",
     "@tanstack/react-router": "catalog:",

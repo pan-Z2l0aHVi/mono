@@ -31,6 +31,8 @@ type ingestion struct {
 	fetcher   *remote.Fetcher
 	resources storage.ResourceStore
 	sources   storage.SourceStore
+	tags      storage.TagStore
+	taggings  storage.TaggingStore
 }
 
 // 保持纳入规则与持久化实现解耦。
@@ -134,6 +136,8 @@ type ingestWrite struct {
 	srcType      storage.SourceType
 	location     string
 	probe        probeOutcome
+	// tagNames 仅 ingestNewResource 使用：随 Resource 一次建齐的初始标签名（原始输入，事务内归一化）。
+	tagNames []string
 }
 
 // ingestResult 返回事务写入确定的稳定身份，供调用方回读视图。
@@ -175,6 +179,26 @@ func (ing *ingestion) write(ctx context.Context, w ingestWrite) (ingestResult, e
 			}
 			if err := ing.sources.Insert(ctx, tx, src); err != nil {
 				return err
+			}
+			// 初始标签与 Resource 同事务建齐：任一名称非法则整体回滚，不留无标签的半成品。
+			// 复用与单标签增删相同的归一化与 resolve-or-create 规则，保证同名标签全库收敛。
+			stdNames, err := normalizeTagNames(w.tagNames)
+			if err != nil {
+				return err
+			}
+			for index, stdName := range stdNames {
+				tag, err := resolveOrCreateTag(ctx, tx, ing.tags, stdName, now)
+				if err != nil {
+					return err
+				}
+				// 标签按归属时间排序展示，同一批建齐时时间戳必须严格递增，否则顺序不确定。
+				if err := ing.taggings.Insert(ctx, tx, storage.TaggingModel{
+					ResourceID: res.ID,
+					TagID:      tag.ID,
+					CreatedAt:  now + int64(index),
+				}); err != nil {
+					return err
+				}
 			}
 			result.resourceID = res.ID
 			result.sourceID = src.ID

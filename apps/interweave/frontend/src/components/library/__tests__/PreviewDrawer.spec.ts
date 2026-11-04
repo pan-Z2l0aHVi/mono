@@ -10,7 +10,6 @@ import PreviewDrawer from '../PreviewDrawer.vue'
 
 interface MountOptions {
   open?: boolean
-  mediaUrlFor?: (sourceId: string) => string | null
 }
 
 interface Mounted {
@@ -30,6 +29,8 @@ function fileSource(overrides: Partial<ResourceSourceView> = {}): ResourceSource
     available: true,
     isPreferred: true,
     orderIndex: 0,
+    mediaUrl: '/resource-media/source-1',
+    thumbnailUrl: null,
     metadata: null,
     ...overrides
   }
@@ -63,8 +64,7 @@ async function mountDrawer(initial: ResourceView | null, options: MountOptions =
         h(PreviewDrawer, {
           open: open.value,
           resource: current.value,
-          mobile: false,
-          mediaUrlFor: options.mediaUrlFor ?? ((sourceId: string) => `/resource-media/${sourceId}`)
+          mobile: false
         })
     }
   })
@@ -214,9 +214,7 @@ describe('PreviewDrawer', () => {
   })
 
   it('缺 runtime 时说明预览依赖桌面服务', async () => {
-    const { host } = await mountDrawer(resourceOf(fileSource(), ResourceKind.ResourceKindImage), {
-      mediaUrlFor: () => null
-    })
+    const { host } = await mountDrawer(resourceOf(fileSource({ mediaUrl: null }), ResourceKind.ResourceKindImage))
     expect(host.querySelector('web-ui-empty')?.getAttribute('title')).toBe('桌面服务未连接')
   })
 

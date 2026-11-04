@@ -14,7 +14,7 @@ export type PreviewEmptyReason =
 export interface PreviewTarget {
   mode: PreviewMode
   source: ResourceSourceView | null
-  /** 本地 file 来源经 `/resource-media/<sourceId>` 读取；url 来源由 iframe 直接使用 source.location。 */
+  /** 本地 file 来源经后端返回的 media_url 读取；url 来源由 iframe 直接使用 source.location。 */
   mediaUrl: string | null
   /** 可交还系统默认应用打开的目标；两者都没有可用入口时为 null。 */
   externalTarget: string | null
@@ -66,13 +66,10 @@ function emptyTarget(
 }
 
 /**
- * 把 Resource 解析成一种预览形态。file 来源只能经媒体端点读取，url 来源的 iframe
- * 直接指向原始地址；空态按原因分类，让 drawer 能给出可行动的文案而不是一句通用失败。
+ * 把 Resource 解析成一种预览形态。file 来源只能经后端给的媒体地址读取，url 来源的
+ * iframe 直接指向原始地址；空态按原因分类，让 drawer 能给出可行动的文案而不是一句通用失败。
  */
-export function resolvePreviewTarget(
-  resource: ResourceView | null,
-  mediaUrlFor: (sourceId: string) => string | null
-): PreviewTarget {
+export function resolvePreviewTarget(resource: ResourceView | null): PreviewTarget {
   const source = resource ? primarySource(resource) : null
   if (!resource || !source) return emptyTarget(null, 'no-source')
 
@@ -90,7 +87,7 @@ export function resolvePreviewTarget(
   const mode = filePreviewMode(resource.kind, fileExtension(source.location))
   if (mode === 'empty') return emptyTarget(source, 'unsupported-kind', source.location)
 
-  const mediaUrl = mediaUrlFor(source.id)
+  const mediaUrl = source.mediaUrl
   if (!mediaUrl) return emptyTarget(source, 'media-unavailable', source.location)
 
   return { mode, source, mediaUrl, externalTarget: source.location, emptyReason: null }

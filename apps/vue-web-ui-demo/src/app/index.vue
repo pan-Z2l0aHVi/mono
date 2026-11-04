@@ -1,6 +1,23 @@
 <script setup lang="ts">
 import appScrollbarsOptions from '@greypan/app-scrollbars'
 import { local } from '@greypan/browser-kit'
+import {
+  DEFAULT_SIDEBAR_WIDTH_PX,
+  isNavActive,
+  isSidebarWidth,
+  isThemeAppearance,
+  isThemeMotion,
+  NAV_ITEM_CLASS,
+  NAV_SECTIONS,
+  NAV_SECTION_TITLE_CLASS,
+  observeToastTopOffset,
+  SIDEBAR_WIDTH_STORAGE_KEY,
+  THEME_APPEARANCE_STORAGE_KEY,
+  THEME_MOTION_STORAGE_KEY,
+  type ThemeAppearance,
+  type ThemeMotion,
+  type ToastTopOffsetHandle
+} from '@greypan/doc-demo-kit'
 import type { WebUiEvent, WebUiLayout, WebUiSelect } from '@greypan/web-ui'
 import { toast } from '@greypan/web-ui'
 import {
@@ -42,44 +59,25 @@ async function updateLocale(event: WebUiEvent<WebUiSelect, 'change'>) {
   }
 }
 
-type ThemeAppearance = 'light' | 'dark' | 'system'
-type ThemeMotion = 'full' | 'reduced' | 'system'
-
-const STORAGE_KEY = 'theme-appearance'
-const MOTION_STORAGE_KEY = 'theme-motion'
-const SIDEBAR_WIDTH_STORAGE_KEY = 'sidebar-width'
-const DEFAULT_SIDEBAR_WIDTH = '240px'
-const THEME_APPEARANCES = new Set<ThemeAppearance>(['light', 'dark', 'system'])
-const THEME_MOTIONS = new Set<ThemeMotion>(['full', 'reduced', 'system'])
-
-function isThemeAppearance(appearance: unknown): appearance is ThemeAppearance {
-  return typeof appearance === 'string' && THEME_APPEARANCES.has(appearance as ThemeAppearance)
-}
-
-function isThemeMotion(motion: unknown): motion is ThemeMotion {
-  return typeof motion === 'string' && THEME_MOTIONS.has(motion as ThemeMotion)
-}
-
 function getInitialThemeAppearance(): ThemeAppearance {
-  const appearance = local.get<unknown>(STORAGE_KEY)
+  const appearance = local.get<unknown>(THEME_APPEARANCE_STORAGE_KEY)
   return isThemeAppearance(appearance) ? appearance : 'light'
 }
 
 function getInitialThemeMotion(): ThemeMotion {
-  const motion = local.get<unknown>(MOTION_STORAGE_KEY)
+  const motion = local.get<unknown>(THEME_MOTION_STORAGE_KEY)
   return isThemeMotion(motion) ? motion : 'system'
 }
 
 function getInitialSidebarWidth(): string {
   const width = local.get<unknown>(SIDEBAR_WIDTH_STORAGE_KEY)
-  return typeof width === 'string' && /^\d+(\.\d+)?px$/.test(width) ? width : DEFAULT_SIDEBAR_WIDTH
+  return isSidebarWidth(width) ? width : DEFAULT_SIDEBAR_WIDTH_PX
 }
 
 const themeAppearance = ref(getInitialThemeAppearance())
 const themeMotion = ref(getInitialThemeMotion())
 const bannerVisible = ref(true)
-let stopObservingToastTopOffset: (() => void) | undefined
-let refreshToastTopOffset: (() => void) | undefined
+let toastTopOffset: ToastTopOffsetHandle | undefined
 const shellLayout = ref<WebUiLayout | null>(null)
 const sidebarCollapsed = ref(false)
 const sidebarOpen = ref(false)
@@ -114,7 +112,7 @@ function updateMobileSidebarViewport(event: WebUiEvent<WebUiLayout, 'mobile-chan
 
 function commitThemeAppearance(appearance: ThemeAppearance) {
   themeAppearance.value = appearance
-  local.set(STORAGE_KEY, appearance)
+  local.set(THEME_APPEARANCE_STORAGE_KEY, appearance)
 }
 
 function updateThemeAppearance(event: WebUiEvent<WebUiSelect, 'change'>) {
@@ -128,7 +126,7 @@ function updateThemeMotion(event: WebUiEvent<WebUiSelect, 'change'>) {
   if (!isThemeMotion(motion)) return
 
   themeMotion.value = motion
-  local.set(MOTION_STORAGE_KEY, motion)
+  local.set(THEME_MOTION_STORAGE_KEY, motion)
 }
 
 function updateSidebarCollapsed(event: WebUiEvent<WebUiLayout, 'sidebar-collapsed-change'>) {
@@ -158,62 +156,11 @@ const navSidebar = ref<OverlayScrollbarsComponentRef>()
 // 只能直接初始化 body。
 const [initPageScrollbars] = useOverlayScrollbars({ options: appScrollbarsOptions })
 
-function observeToastTopOffset() {
-  let frame: number | undefined
-  const update = () => {
-    const header = shellLayout.value?.querySelector<HTMLElement>('[slot="header"]')
-    const next = `${Math.max(0, Math.ceil(header?.getBoundingClientRect().bottom ?? 0))}px`
-    if (document.documentElement.style.getPropertyValue('--wui-toast-top-offset') !== next) {
-      document.documentElement.style.setProperty('--wui-toast-top-offset', next)
-    }
-  }
-  const schedule = () => {
-    if (frame !== undefined) return
-    frame = requestAnimationFrame(() => {
-      frame = undefined
-      update()
-    })
-  }
-  const resizeObserver = typeof ResizeObserver === 'undefined' ? undefined : new ResizeObserver(schedule)
-  /*
-   * header 是 sticky，banner 变高只会把它整体下移，layout 宿主尺寸不变；只观察宿主会漏掉
-   * 切语种导致 banner 换行这类高度变化，offset 会停在旧值。banner 用 v-if 重建，refresh 时重挂观察目标。
-   */
-  const observeTargets = () => {
-    if (!resizeObserver) return
-    resizeObserver.disconnect()
-    for (const target of [
-      shellLayout.value,
-      shellLayout.value?.querySelector<HTMLElement>('[slot="banner"]'),
-      shellLayout.value?.querySelector<HTMLElement>('[slot="header"]')
-    ]) {
-      if (target) resizeObserver.observe(target)
-    }
-  }
-  observeTargets()
-  window.addEventListener('resize', schedule, { passive: true })
-  window.addEventListener('scroll', schedule, { passive: true, capture: true })
-  update()
-
-  return {
-    stop: () => {
-      resizeObserver?.disconnect()
-      if (frame !== undefined) cancelAnimationFrame(frame)
-      document.documentElement.style.removeProperty('--wui-toast-top-offset')
-      window.removeEventListener('resize', schedule)
-      window.removeEventListener('scroll', schedule, { capture: true })
-    },
-    refresh: () => {
-      observeTargets()
-      schedule()
-    }
-  }
-}
-
-onBeforeUnmount(() => stopObservingToastTopOffset?.())
+onBeforeUnmount(() => toastTopOffset?.stop())
 watch(bannerVisible, async () => {
   await nextTick()
-  refreshToastTopOffset?.()
+  // banner 用 v-if 重建，refresh 让 observer 重新解析并观察新的 [slot="banner"]。
+  toastTopOffset?.refresh()
 })
 
 // 目标语种与文档在挂载后补载，降级可能晚于 onMounted：用 watch 才不会漏掉提示。
@@ -225,99 +172,13 @@ watch(bootDegraded, degraded => {
 
 onMounted(async () => {
   initPageScrollbars(document.body)
-  const toastOffset = observeToastTopOffset()
-  stopObservingToastTopOffset = toastOffset.stop
-  refreshToastTopOffset = toastOffset.refresh
+  toastTopOffset = observeToastTopOffset(() => shellLayout.value)
   await router.isReady()
   requestAnimationFrame(() => {
     const link = navSidebar.value?.getElement()?.querySelector('[data-active="true"]')
     link?.scrollIntoView({ block: 'center' })
   })
 })
-
-interface NavItem {
-  path: string
-  label: string
-}
-
-type NavSectionId = 'general' | 'layout' | 'form' | 'display' | 'feedback'
-
-interface NavSection {
-  id: NavSectionId
-  items: NavItem[]
-}
-
-const navSections: NavSection[] = [
-  {
-    id: 'general',
-    items: [
-      { path: '/components/button', label: 'Button' },
-      { path: '/components/icon', label: 'Icon' }
-    ]
-  },
-  {
-    id: 'layout',
-    items: [
-      { path: '/components/layout', label: 'Layout' },
-      { path: '/components/back-top', label: 'BackTop' },
-      { path: '/components/theme', label: 'Theme' }
-    ]
-  },
-  {
-    id: 'form',
-    items: [
-      { path: '/components/input', label: 'Input' },
-      { path: '/components/textarea', label: 'Textarea' },
-      { path: '/components/input-number', label: 'InputNumber' },
-      { path: '/components/select', label: 'Select' },
-      { path: '/components/autocomplete', label: 'Autocomplete' },
-      { path: '/components/switch', label: 'Switch' },
-      { path: '/components/slider', label: 'Slider' },
-      { path: '/components/radio', label: 'Radio' },
-      { path: '/components/checkbox', label: 'Checkbox' },
-      { path: '/components/segmented', label: 'Segmented' }
-    ]
-  },
-  {
-    id: 'display',
-    items: [
-      { path: '/components/collapse', label: 'Collapse' },
-      { path: '/components/editable-text', label: 'EditableText' },
-      { path: '/components/empty', label: 'Empty' },
-      { path: '/components/grouped-text', label: 'GroupedText' },
-      { path: '/components/middle-ellipsis', label: 'MiddleEllipsis' },
-      { path: '/components/svg-draw-lines', label: 'SVGDrawLines' },
-      { path: '/components/avatar', label: 'Avatar' },
-      { path: '/components/badge', label: 'Badge' }
-    ]
-  },
-  {
-    id: 'feedback',
-    items: [
-      { path: '/components/dialog', label: 'Dialog' },
-      { path: '/components/drawer', label: 'Drawer' },
-      { path: '/components/tooltip', label: 'Tooltip' },
-      { path: '/components/popover', label: 'Popover' },
-      { path: '/components/dropdown', label: 'Dropdown' },
-      { path: '/components/context-menu', label: 'ContextMenu' },
-      { path: '/components/toast', label: 'Toast' },
-      { path: '/components/image-preview', label: 'ImagePreview' },
-      { path: '/components/shake', label: 'Shake' },
-      { path: '/components/spinner', label: 'Spinner' },
-      { path: '/components/progress', label: 'Progress' }
-    ]
-  }
-]
-
-const navSectionTitleClass = 'px-2.5 pt-3 pb-1 text-[12px] font-medium tracking-wide text-(--wui-color-text-secondary)'
-
-// active 底色浅色取设计给定的 #d5d7d7；深色不跟——sidebar 在深色是 #2c2c2e，亮灰会读成一条高亮带，仍走 control 档。
-const navItemClass =
-  'flex items-center gap-2 min-w-9 min-h-9 px-2.5 border-0 rounded-full cursor-pointer text-left transition-all duration-150 text-(--wui-color-text) active:bg-[rgb(34_33_42/0.12)] dark:active:bg-white/15 data-[active=true]:bg-[#d5d7d7] data-[active=true]:hover:bg-[#d5d7d7] data-[active=true]:active:bg-[color-mix(in_srgb,#d5d7d7_70%,var(--wui-color-text,#1b1b1b))] dark:data-[active=true]:bg-[color-mix(in_srgb,var(--wui-color-surface-control,#dfdfdf)_90%,var(--wui-color-text,#1b1b1b))] dark:data-[active=true]:hover:bg-[color-mix(in_srgb,var(--wui-color-surface-control,#dfdfdf)_90%,var(--wui-color-text,#1b1b1b))] dark:data-[active=true]:active:bg-[color-mix(in_srgb,var(--wui-color-surface-control,#dfdfdf)_70%,var(--wui-color-text,#1b1b1b))]'
-
-function isNavActive(path: string) {
-  return route.path === path || route.path === `${path}/`
-}
 </script>
 
 <template>
@@ -426,23 +287,23 @@ function isNavActive(path: string) {
             <SidebarNavLink
               to="/home"
               label="组件总览"
-              :active="isNavActive('/home')"
+              :active="isNavActive(route.path, '/home')"
               :collapsed="navCollapsed"
-              :item-class="navItemClass"
+              :item-class="NAV_ITEM_CLASS"
               :title="navCollapsed ? undefined : '组件总览'"
               @navigate="sidebarOpen = false"
             />
             <SidebarNavLink
               to="/changelog"
               label="更新日志"
-              :active="isNavActive('/changelog')"
+              :active="isNavActive(route.path, '/changelog')"
               :collapsed="navCollapsed"
-              :item-class="navItemClass"
+              :item-class="NAV_ITEM_CLASS"
               :title="navCollapsed ? undefined : '更新日志'"
               @navigate="sidebarOpen = false"
             />
             <div
-              v-for="(section, index) in navSections"
+              v-for="(section, index) in NAV_SECTIONS"
               :key="section.id"
               role="group"
               :aria-labelledby="`nav-section-${section.id}`"
@@ -453,7 +314,7 @@ function isNavActive(path: string) {
                 class="mx-2 my-1 h-px bg-(--wui-color-border)"
                 aria-hidden="true"
               ></div>
-              <h2 :id="`nav-section-${section.id}`" :class="[navSectionTitleClass, navCollapsed ? 'sr-only' : '']">
+              <h2 :id="`nav-section-${section.id}`" :class="[NAV_SECTION_TITLE_CLASS, navCollapsed ? 'sr-only' : '']">
                 <template v-if="section.id === 'general'">通用</template>
                 <template v-else-if="section.id === 'layout'">布局</template>
                 <template v-else-if="section.id === 'form'">表单</template>
@@ -465,9 +326,9 @@ function isNavActive(path: string) {
                 :key="item.path"
                 :to="item.path"
                 :label="item.label"
-                :active="isNavActive(item.path)"
+                :active="isNavActive(route.path, item.path)"
                 :collapsed="navCollapsed"
-                :item-class="navItemClass"
+                :item-class="NAV_ITEM_CLASS"
                 @navigate="sidebarOpen = false"
               />
             </div>

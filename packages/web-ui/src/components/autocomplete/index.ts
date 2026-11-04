@@ -29,6 +29,7 @@ import {
   type OverlayContainer,
   type OverlayPortal
 } from '@/shared/overlay/portal'
+import { isEventInsideHost } from '@/shared/overlay/trigger-gestures'
 import { defineScrollLockLease } from '@/shared/scroll-lock/scroll-lock'
 
 import style from './style.css?inline'
@@ -256,7 +257,7 @@ export class WebUiAutocomplete extends FormAssociated(LitElement) {
     if (!this._isOpen) return
 
     // 在监听器内部判定：composedPath() 在派发结束后会被清空。
-    const isInside = e.composedPath().includes(this) || !!this._panel.getHandle()?.containsEvent(e)
+    const isInside = isEventInsideHost(this, e) || !!this._panel.getHandle()?.containsEvent(e)
     if (!isInside) this._close()
   }
 

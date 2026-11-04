@@ -19,13 +19,13 @@ func TestTagColorIsStableForSameName(t *testing.T) {
 	resService := core.NewResourceService(db, remote.NewFetcher())
 	tagService := core.NewTagService(db)
 
-	first, err := resService.AddFileResource(ctx, tempFile(t, "tag-color-a-*.txt"))
+	first, err := addFileResource(ctx, resService, tempFile(t, "tag-color-a-*.txt"))
 	if err != nil {
-		t.Fatalf("AddFileResource error: %v", err)
+		t.Fatalf("addFileResource error: %v", err)
 	}
-	second, err := resService.AddFileResource(ctx, tempFile(t, "tag-color-b-*.txt"))
+	second, err := addFileResource(ctx, resService, tempFile(t, "tag-color-b-*.txt"))
 	if err != nil {
-		t.Fatalf("AddFileResource error: %v", err)
+		t.Fatalf("addFileResource error: %v", err)
 	}
 
 	created, err := tagService.AddTagToResource(ctx, first.Resource.ID, "Tokyo")
@@ -75,9 +75,9 @@ func TestTagColorsVaryAcrossNewTags(t *testing.T) {
 	ctx := context.Background()
 	resService := core.NewResourceService(db, remote.NewFetcher())
 	tagService := core.NewTagService(db)
-	view, err := resService.AddFileResource(ctx, tempFile(t, "tag-color-spread-*.txt"))
+	view, err := addFileResource(ctx, resService, tempFile(t, "tag-color-spread-*.txt"))
 	if err != nil {
-		t.Fatalf("AddFileResource error: %v", err)
+		t.Fatalf("addFileResource error: %v", err)
 	}
 
 	seen := make(map[storage.TagColor]bool, 40)

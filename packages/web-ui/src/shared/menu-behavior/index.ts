@@ -12,6 +12,7 @@
  */
 import { findFocusedMenuItem, focusMenuItem, getEnabledMenuItems } from '@/shared/menu-portal/menu-tree'
 import { hideOverlayPresence as hidePanelPresence } from '@/shared/overlay/presence'
+import { isEventInsideHost } from '@/shared/overlay/trigger-gestures'
 
 /** menu hierarchy panel 的最小视图：行为层只需要 panel（presence/contains）与内容容器（项查询）。 */
 export interface MenuLevelSurface {
@@ -36,9 +37,8 @@ export function createMenuOutsideClickGuard(
   let disarmTimer: ReturnType<typeof setTimeout> | undefined
 
   const isInside = (event: MouseEvent): boolean => {
+    if (isEventInsideHost(host, event)) return true
     for (const node of event.composedPath()) {
-      if (node === host || node === host.shadowRoot) return true
-      if (node instanceof Node && node.getRootNode() === host.shadowRoot) return true
       if (node instanceof Node && isInsideOverlayPanel(node)) return true
     }
     return false

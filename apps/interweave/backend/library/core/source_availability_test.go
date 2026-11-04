@@ -309,9 +309,9 @@ func TestSourceMutationsResyncIndex(t *testing.T) {
 	if _, err := sourceSvc.ReplaceURLSource(ctx, urlSrc.ID, "https://example.com/b"); err != nil {
 		t.Fatalf("ReplaceURLSource error: %v", err)
 	}
-	view, err := resourceSvc.AddFileResource(ctx, primary)
+	view, err := resourceSvc.CreateResource(ctx, CreateResourceInput{Kind: storage.SourceTypeFile, Location: primary})
 	if err != nil {
-		t.Fatalf("AddFileResource error: %v", err)
+		t.Fatalf("CreateResource error: %v", err)
 	}
 	if err := sourceSvc.RemoveSource(ctx, fileSrc.ID); err != nil {
 		t.Fatalf("RemoveSource error: %v", err)

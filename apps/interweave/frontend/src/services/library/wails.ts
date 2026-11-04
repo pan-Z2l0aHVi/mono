@@ -1,9 +1,15 @@
 import { Dialogs, Events } from '@wailsio/runtime'
 
 import {
+  LibraryFilesDropped,
+  LibraryPasteFilesRequested,
+  LibrarySourceAvailabilityChanged
+} from '../../../bindings/events'
+import {
   ResourceService,
   SourceService,
-  TagService
+  TagService,
+  type CreateResourceInputDTO
 } from '../../../bindings/github.com/pan-Z2l0aHVi/mono/apps/interweave/backend/library/service'
 import type { SourceType } from '../../../bindings/github.com/pan-Z2l0aHVi/mono/apps/interweave/backend/library/storage'
 import { OSService } from '../../../bindings/github.com/pan-Z2l0aHVi/mono/apps/interweave/backend/native/service'
@@ -14,7 +20,6 @@ import {
   requireResourceDTO,
   requireSourceDTO,
   requireSourceProbeResultDTO,
-  requireTagDTO,
   type LibraryRuntime,
   type SourceAvailabilityEventDTO
 } from './types'
@@ -22,145 +27,101 @@ import {
 class WailsLibraryRuntime implements LibraryRuntime {
   readonly isAvailable = hasWailsRuntime()
 
-  async listResources() {
-    return ResourceService.ListResources()
+  readonly resources = {
+    list: () => ResourceService.ListResources(),
+    get: async (resourceId: string) =>
+      requireResourceDTO(await ResourceService.GetResource(resourceId), '读取 Resource'),
+    create: async (input: CreateResourceInputDTO) =>
+      requireResourceDTO(await ResourceService.CreateResource(input), '创建 Resource'),
+    updateTitle: async (resourceId: string, newTitle: string) =>
+      requireResourceDTO(await ResourceService.UpdateResourceTitle(resourceId, newTitle), '更新 Resource 标题'),
+    updateNote: async (resourceId: string, note: string) =>
+      requireResourceDTO(await ResourceService.UpdateResourceNote(resourceId, note), '更新 Resource 备注'),
+    remove: async (resourceId: string) => {
+      await ResourceService.DeleteResource(resourceId)
+    },
+    setTags: (resourceId: string, tagNames: string[]) => TagService.SetResourceTags(resourceId, tagNames),
+    findLocationMatches: (input: string, sourceType: SourceType) =>
+      ResourceService.FindResourceLocationMatches(input, sourceType),
+    prepareFilePreview: async (inputPath: string) =>
+      requireFilePreviewDTO(await ResourceService.PrepareFilePreview(inputPath), '准备文件预览'),
+    releaseFilePreview: async (token: string) => {
+      await ResourceService.ReleaseFilePreview(token)
+    }
   }
 
-  async getResource(resourceId: string) {
-    return requireResourceDTO(await ResourceService.GetResource(resourceId), '读取 Resource')
+  readonly sources = {
+    refreshURL: async (sourceId: string) =>
+      requireSourceDTO(await SourceService.RefreshURLSource(sourceId), '刷新 URL Source'),
+    refreshFile: async (sourceId: string) =>
+      requireSourceDTO(await SourceService.RefreshFileSource(sourceId), '刷新文件 Source'),
+    replaceFile: async (sourceId: string, inputPath: string) =>
+      requireSourceDTO(await SourceService.ReplaceFileSource(sourceId, inputPath), '替换文件 Source'),
+    replaceURL: async (sourceId: string, inputURL: string) =>
+      requireSourceDTO(await SourceService.ReplaceURLSource(sourceId, inputURL), '替换 URL Source'),
+    probeOnOpen: async (sourceId: string) =>
+      requireSourceProbeResultDTO(await SourceService.ProbeURLSourceOnOpen(sourceId), '探测 URL Source')
   }
 
-  async addFileResource(inputPath: string) {
-    return requireResourceDTO(await ResourceService.AddFileResource(inputPath), '添加文件 Resource')
+  readonly media = {
+    saveThumbnail: async (thumbnailUrl: string, jpeg: Blob) => {
+      const response = await fetch(thumbnailUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'image/jpeg' },
+        body: jpeg
+      })
+      if (!response.ok) throw new Error(`保存缩略图失败：${response.status}`)
+    }
   }
 
-  async addURLResource(inputURL: string) {
-    return requireResourceDTO(await ResourceService.AddURLResource(inputURL), '添加 URL Resource')
+  readonly events = {
+    // 没有桥接时 Events.On 无处注册；返回空 disposer 让调用方不必重复判空。
+    onFilesDropped: (listener: (paths: string[]) => void) => {
+      if (!this.isAvailable) return () => {}
+      return Events.On(LibraryFilesDropped, event => {
+        if (Array.isArray(event.data) && event.data.every(path => typeof path === 'string')) {
+          listener(event.data)
+        }
+      })
+    },
+    onPasteFilesRequested: (listener: () => void) => {
+      if (!this.isAvailable) return () => {}
+      return Events.On(LibraryPasteFilesRequested, listener)
+    },
+    onSourceAvailability: (listener: (event: SourceAvailabilityEventDTO) => void) => {
+      if (!this.isAvailable) return () => {}
+      return Events.On(LibrarySourceAvailabilityChanged, event => {
+        if (isSourceAvailabilityEvent(event.data)) listener(event.data)
+      })
+    }
   }
 
-  async updateResourceTitle(resourceId: string, newTitle: string) {
-    return requireResourceDTO(await ResourceService.UpdateResourceTitle(resourceId, newTitle), '更新 Resource 标题')
-  }
-
-  async updateResourceNote(resourceId: string, note: string) {
-    return requireResourceDTO(await ResourceService.UpdateResourceNote(resourceId, note), '更新 Resource 备注')
-  }
-
-  async deleteResource(resourceId: string) {
-    await ResourceService.DeleteResource(resourceId)
-  }
-
-  async addTag(resourceId: string, tagName: string) {
-    return requireTagDTO(await TagService.AddTagToResource(resourceId, tagName), '添加标签')
-  }
-
-  async removeTag(resourceId: string, tagId: string) {
-    await TagService.RemoveTagFromResource(resourceId, tagId)
-  }
-
-  async refreshURLSource(sourceId: string) {
-    return requireSourceDTO(await SourceService.RefreshURLSource(sourceId), '刷新 URL Source')
-  }
-
-  async refreshFileSource(sourceId: string) {
-    return requireSourceDTO(await SourceService.RefreshFileSource(sourceId), '刷新文件 Source')
-  }
-
-  async replaceFileSource(sourceId: string, inputPath: string) {
-    return requireSourceDTO(await SourceService.ReplaceFileSource(sourceId, inputPath), '替换文件 Source')
-  }
-
-  async replaceURLSource(sourceId: string, inputURL: string) {
-    return requireSourceDTO(await SourceService.ReplaceURLSource(sourceId, inputURL), '替换 URL Source')
-  }
-
-  async chooseFilePaths() {
-    const selected = await Dialogs.OpenFile({
-      Title: '选择要添加的文件',
-      CanChooseFiles: true,
-      CanChooseDirectories: false,
-      AllowsMultipleSelection: true
-    })
-    if (Array.isArray(selected)) return selected
-    return selected ? [selected] : []
-  }
-
-  async chooseFilePath() {
-    const selected = await Dialogs.OpenFile({
-      Title: '选择替换后的文件',
-      CanChooseFiles: true,
-      CanChooseDirectories: false,
-      AllowsMultipleSelection: false
-    })
-    if (Array.isArray(selected)) return selected[0] ?? null
-    return selected ?? null
-  }
-
-  async getClipboardFilePaths() {
-    return OSService.GetClipboardFilePaths()
-  }
-
-  async prepareFilePreview(inputPath: string) {
-    return requireFilePreviewDTO(await ResourceService.PrepareFilePreview(inputPath), '准备文件预览')
-  }
-
-  async releaseFilePreview(token: string) {
-    await ResourceService.ReleaseFilePreview(token)
-  }
-
-  async findResourceLocationMatches(input: string, sourceType: SourceType) {
-    return ResourceService.FindResourceLocationMatches(input, sourceType)
-  }
-
-  async probeURLSourceOnOpen(sourceId: string) {
-    return requireSourceProbeResultDTO(await SourceService.ProbeURLSourceOnOpen(sourceId), '探测 URL Source')
-  }
-
-  async defaultOpenWith(target: string) {
-    return OSService.DefaultOpenWith(target)
-  }
-
-  async openExternal(target: string) {
-    await OSService.OpenExternal(target)
-  }
-
-  resourceMediaURL(sourceId: string) {
-    return `/resource-media/${encodeURIComponent(sourceId)}`
-  }
-
-  resourceThumbnailURL(sourceId: string) {
-    return `/resource-thumbnail/${encodeURIComponent(sourceId)}`
-  }
-
-  async saveSourceThumbnail(sourceId: string, jpeg: Blob) {
-    const response = await fetch(`/resource-thumbnail/${encodeURIComponent(sourceId)}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'image/jpeg' },
-      body: jpeg
-    })
-    if (!response.ok) throw new Error(`保存缩略图失败：${response.status}`)
-  }
-
-  pendingFilePreviewURL(token: string) {
-    return `/pending-resource-media/${encodeURIComponent(token)}`
-  }
-
-  subscribeToDroppedFiles(listener: (paths: string[]) => void) {
-    return Events.On('library:files-dropped', event => {
-      if (Array.isArray(event.data) && event.data.every(path => typeof path === 'string')) {
-        listener(event.data)
-      }
-    })
-  }
-
-  subscribeToPasteFileRequest(listener: () => void) {
-    return Events.On('library:paste-files-requested', listener)
-  }
-
-  subscribeToSourceAvailability(listener: (event: SourceAvailabilityEventDTO) => void) {
-    return Events.On('library:source-availability-changed', event => {
-      if (isSourceAvailabilityEvent(event.data)) listener(event.data)
-    })
+  readonly system = {
+    chooseFilePaths: async () => {
+      const selected = await Dialogs.OpenFile({
+        Title: '选择要添加的文件',
+        CanChooseFiles: true,
+        CanChooseDirectories: false,
+        AllowsMultipleSelection: true
+      })
+      if (Array.isArray(selected)) return selected
+      return selected ? [selected] : []
+    },
+    chooseFilePath: async () => {
+      const selected = await Dialogs.OpenFile({
+        Title: '选择替换后的文件',
+        CanChooseFiles: true,
+        CanChooseDirectories: false,
+        AllowsMultipleSelection: false
+      })
+      if (Array.isArray(selected)) return selected[0] ?? null
+      return selected ?? null
+    },
+    getClipboardFilePaths: () => OSService.GetClipboardFilePaths(),
+    defaultOpenWith: (target: string) => OSService.DefaultOpenWith(target),
+    openExternal: async (target: string) => {
+      await OSService.OpenExternal(target)
+    }
   }
 }
 

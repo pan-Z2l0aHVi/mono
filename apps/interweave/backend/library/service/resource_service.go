@@ -34,6 +34,7 @@ func (s *ResourceService) PrepareFilePreview(_ context.Context, inputPath string
 		return nil, err
 	}
 	preview.Token = token
+	preview.MediaURL = media.PendingMediaURL(token)
 	return preview, nil
 }
 
@@ -69,18 +70,15 @@ func (s *ResourceService) ServiceShutdown() error {
 	return nil
 }
 
-// 纳入文件时只确认入口可达性，不读取或接管内容。
-func (s *ResourceService) AddFileResource(ctx context.Context, inputPath string) (*ResourceDTO, error) {
-	view, err := s.core.AddFileResource(ctx, inputPath)
-	if err != nil {
-		return nil, err
-	}
-	return resourceViewToDTO(view), nil
-}
-
-// URL 纳入以一次限时抓取建立初始展示上下文，失败也保留用户入口。
-func (s *ResourceService) AddURLResource(ctx context.Context, inputURL string) (*ResourceDTO, error) {
-	view, err := s.core.AddURLResource(ctx, inputURL)
+// CreateResource 是纳入新 Resource 的唯一入口：归一化、探测、Resource + 首选 Source
+// 与初始标签由 core 在单事务内一次建齐。
+func (s *ResourceService) CreateResource(ctx context.Context, input CreateResourceInputDTO) (*ResourceDTO, error) {
+	view, err := s.core.CreateResource(ctx, core.CreateResourceInput{
+		Kind:         input.Kind,
+		Location:     input.Location,
+		InitialTitle: input.Title,
+		Tags:         input.Tags,
+	})
 	if err != nil {
 		return nil, err
 	}

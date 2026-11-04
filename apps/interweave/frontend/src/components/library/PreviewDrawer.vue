@@ -13,7 +13,6 @@ const props = defineProps<{
   open: boolean
   resource: ResourceView | null
   mobile: boolean
-  mediaUrlFor: (sourceId: string) => string | null
 }>()
 
 const emit = defineEmits<{ 'update:open': [value: boolean] }>()
@@ -21,7 +20,7 @@ const emit = defineEmits<{ 'update:open': [value: boolean] }>()
 type TextState = 'idle' | 'loading' | 'ready' | 'failed'
 
 const placement = computed(() => (props.mobile ? 'bottom' : 'right'))
-const target = computed(() => resolvePreviewTarget(props.resource, props.mediaUrlFor))
+const target = computed(() => resolvePreviewTarget(props.resource))
 const imageFailed = ref(false)
 const videoFailed = ref(false)
 const textState = ref<TextState>('idle')
