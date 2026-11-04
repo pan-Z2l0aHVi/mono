@@ -19,7 +19,8 @@ const EXTRA_GUARDED = [
   { label: 'CI 与 workflow 定义', matcher: /(^|\/)\.github\//u },
   {
     label: '依赖清单与供应链配置',
-    matcher: /(^|\/)(package\.json|pnpm-lock\.yaml|pnpm-workspace\.yaml|skills-lock\.json|\.npmrc|\.mise\.toml)$/u
+    matcher:
+      /(^|\/)(package\.json|pnpm-lock\.yaml|pnpm-workspace\.yaml|skills-lock\.json|\.npmrc|\.mise\.toml|go\.mod|go\.sum)$/u
   },
   {
     label: 'agent 指令体系与 ADR',

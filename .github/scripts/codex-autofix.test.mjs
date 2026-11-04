@@ -86,6 +86,8 @@ for (const file of [
   'skills-lock.json',
   '.npmrc',
   '.mise.toml',
+  'apps/interweave/go.mod',
+  'apps/interweave/go.sum',
   'AGENTS.md',
   'docs/agents/review.md',
   'docs/adr/0021-codex-review-gate.md',

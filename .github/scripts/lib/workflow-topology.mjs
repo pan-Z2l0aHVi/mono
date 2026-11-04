@@ -181,7 +181,8 @@ export function jobEnvContextViolations(text) {
     if (/^ {6}- /.test(line)) inJobEnv = false
     if (!inJobEnv) continue
 
-    const entry = line.match(/^ {6}([A-Z0-9_]+):\s*(.*)$/)
+    // 变量名不是只能大写：小写键在 job 级 env 同样会让整个文件被判 invalid，判据不能只认大写。
+    const entry = line.match(/^ {6}([A-Za-z_][A-Za-z0-9_]*):\s*(.*)$/)
     if (!entry) continue
     for (const match of entry[2].matchAll(/\b(runner|steps)\./g))
       violations.push({ job, key: entry[1], context: match[1] })

@@ -20,7 +20,7 @@
 patch 只能**修改已入库文件的内容**。以下任一情况都会让整个 patch 被丢弃，不是部分应用：
 
 - 新增文件、删除文件、重命名或移动文件、二进制改动。
-- 触碰 `.github/**`（CI 与 workflow 定义）、`package.json`、`pnpm-lock.yaml`、`pnpm-workspace.yaml`、`skills-lock.json`、`.npmrc`、`.mise.toml`（依赖与供应链）。
+- 触碰 `.github/**`（CI 与 workflow 定义）、`package.json`、`pnpm-lock.yaml`、`pnpm-workspace.yaml`、`skills-lock.json`、`.npmrc`、`.mise.toml`、`go.mod`、`go.sum`（依赖与供应链）。
 - 触碰生成物：`docs/agents/generated-artifacts.md` 的清单，以及 `.claude/settings.json` 里 `permissions.deny` 登记的 `Edit(...)` 路径。生成物只能由 generator 重写，而你在沙箱里跑不了 generator——失败根因在生成物失步时，**不要改产物**，交回给人。
 - 触碰 `AGENTS.md`、`CLAUDE.md`、`CONTEXT.md`、`ARCHITECTURE.md`、`docs/agents/**`、`docs/adr/**`、`.agents/**`（agent 指令体系与架构决策）。
 - 触碰 `.codex/**`、`.claude/**`、任何 `.env*`、`**/__screenshots__/**`、`**/.vitest-attachments/**`（Codex 与客户端配置、凭证、测试证据）。

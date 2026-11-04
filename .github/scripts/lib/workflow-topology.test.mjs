@@ -336,6 +336,34 @@ function assertPullRequestValidationIsReadOnly(workflow) {
       assert.fail(`${file}:${job} job-level env ${key} uses the unavailable ${context} context`)
     }
   }
+  const jobEnvWorkflow = ({ key, value }) =>
+    [
+      'on:',
+      '  pull_request:',
+      '    branches: [main]',
+      'jobs:',
+      '  check:',
+      '    env:',
+      `      ${key}: ${value}`,
+      '    steps:',
+      '      - run: exit 0',
+      ''
+    ].join('\n')
+  assert.deepEqual(
+    jobEnvContextViolations(jobEnvWorkflow({ key: 'CODEX_DIFF_PATH', value: '${{ runner.temp }}/pr.diff' })),
+    [{ job: 'check', key: 'CODEX_DIFF_PATH', context: 'runner' }],
+    'an uppercase job env key naming the runner context must be reported'
+  )
+  assert.deepEqual(
+    jobEnvContextViolations(jobEnvWorkflow({ key: 'codex_steps', value: '${{ steps.a.outputs.b }}' })),
+    [{ job: 'check', key: 'codex_steps', context: 'steps' }],
+    'a lowercase job env key is just as invalid and must be reported'
+  )
+  assert.deepEqual(
+    jobEnvContextViolations(jobEnvWorkflow({ key: 'CODEX_ROOT', value: '${{ github.workspace }}' })),
+    [],
+    'the github context is available in job-level env'
+  )
 
   // 本地 action 由 job 自己的工作区解析：工作区检出到 base 时，本 PR 新建的 action 在 base 里还不存在，
   // 这道门整个跑不起来；而 stage-codex-inputs 不传 base-sha 就从 head 读脚本，读到的正是被审查的那份改动。
