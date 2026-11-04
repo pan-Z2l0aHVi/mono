@@ -14,8 +14,10 @@ import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 
 import type { ResourceSourceView, ResourceView } from '@/stores/library'
 
+import { FocusNavigator, rowFocusTarget } from './focusNavigator'
 import type { NameEditorRef } from './rename'
 import ResourceRow from './ResourceRow.vue'
+import { SweepScrollController } from './sweepScroll'
 
 const props = defineProps<{
   resources: ResourceView[]
@@ -380,7 +382,7 @@ function enterList(event: KeyboardEvent) {
   if (!props.resources.length) return
   const active = props.resources.findIndex(resource => resource.id === props.activeResourceId)
   event.preventDefault()
-  void focusIndex(active >= 0 ? active : 0)
+  void navigator.focusIndex(active >= 0 ? active : 0)
 }
 
 function handleRowKeydown(event: KeyboardEvent, row: HTMLElement) {
@@ -399,7 +401,7 @@ function handleRowKeydown(event: KeyboardEvent, row: HTMLElement) {
     event.preventDefault()
     // 空格：把焦点所在这一行写成当前行（activeResourceId），保留 select 语义
     const index = indexOfRow(row)
-    if (index >= 0) void navigateToIndex(index)
+    if (index >= 0) void navigator.navigateToIndex(index)
     emit('select', resource)
     return
   }
@@ -408,84 +410,30 @@ function handleRowKeydown(event: KeyboardEvent, row: HTMLElement) {
 }
 
 /*
- * 方向键在行间移动焦点，Home / End 到首尾。
- *
- * 全程按数据下标算，边界是 resources 的长度而不是「已渲染了几行」——虚拟化之后这两者
- * 差着一整屏，按已渲染行取末位会让 End 停在最后一屏而不是最后一条资源。
+ * 方向键在行间移动焦点，Home / End 到首尾；下一个下标的算法在 focusNavigator 的
+ * rowFocusTarget（按数据下标算，边界是 resources 的长度而不是已渲染行数）。
  * 到达首尾时 return 且不 preventDefault，列表不是环，按键交回浏览器。
  */
 function moveRowFocus(event: KeyboardEvent, row: HTMLElement) {
   const index = indexOfRow(row)
   if (index < 0) return
-  const last = props.resources.length - 1
-  const next =
-    event.key === 'Home'
-      ? 0
-      : event.key === 'End'
-        ? last
-        : event.key === 'ArrowDown'
-          ? Math.min(index + 1, last)
-          : Math.max(index - 1, 0)
+  const next = rowFocusTarget(event.key, index, props.resources.length - 1)
   if (next === index) return
   event.preventDefault()
-  void navigateToIndex(next)
+  void navigator.navigateToIndex(next)
 }
 
 /*
- * 键盘导航到某一行：发出 activate 事件请求父级更新 activeResourceId，再滚动并落焦。
- *
- * 只 emit activate，不直接写 activeIndex（activeIndex 是派生值）：父级把
- * activeResourceId 置为目标资源 id。派生后的 activeIndex 会自动变为目标下标，roving tabindex
- * 与 data-active-index 随之更新。随后 scrollIndexIntoView 滚动到位、focusRowWhenMounted 等行挂载后落焦。
- *
- * 右键改名那条路上焦点在名字编辑器里，不走这里——父级已把 activeResourceId 置好，不再二次 emit。
+ * 键盘导航的落焦状态机收在 FocusNavigator（见 focusNavigator.ts）：activate 请求、落焦轮询
+ * 与请求号作废都在那里，这里只注入资源解析、渲染等待、滚动与行查询。
  */
-const FOCUS_WAIT_TIMEOUT_MS = 1000
-const FOCUS_POLL_INTERVAL_MS = 16
-
-async function navigateToIndex(index: number) {
-  const resource = props.resources[index]
-  if (!resource) return
-  emit('activate', resource)
-  await nextTick() // 等待 roving tabindex 更新（activeResourceId -> activeIndex -> 模板 tabindex）
-  scrollIndexIntoView(index)
-  await focusRowWhenMounted(index)
-}
-
-/*
- * 仅落焦不 emit activate：用于 enterList 等「已有 activeResourceId、只需把焦点交给对应行」的场景。
- * 此时 activeIndex 已由派生得到正确值，只需滚动并落焦。
- */
-async function focusIndex(index: number) {
-  scrollIndexIntoView(index)
-  await focusRowWhenMounted(index)
-}
-
-/*
- * 每一轮 focusIndex/navigateToIndex 领一个递增的号，轮询每醒来一次先核对号是不是自己的。不是自己的就
- * 直接收工——方向键连按时，先发的那一轮可能在后一轮落焦之后才等到目标行，不作废就会把
- * 焦点从用户已经移开的那行拽回去，表现为焦点闪回上一目标行。
- *
- * navigateToIndex 在 emit activate 后已 await nextTick() 等待 roving tabindex 更新，
- * 所以此处只需等行挂载即可；jsdom 与真实浏览器均适用。
- */
-let focusRequestId = 0
-
-async function focusRowWhenMounted(index: number) {
-  const requestId = ++focusRequestId
-  for (let waited = 0; waited <= FOCUS_WAIT_TIMEOUT_MS; waited += FOCUS_POLL_INTERVAL_MS) {
-    if (requestId !== focusRequestId) return
-    const row = rowElementAt(index)
-    if (row) {
-      row.focus()
-      return
-    }
-    await new Promise(resolve => setTimeout(resolve, FOCUS_POLL_INTERVAL_MS))
-  }
-  // 组件可能已经卸载：rowsRef 是 null，rowElementAt 恒为 null，这个循环会空转到上限。
-  // 拿到新请求或卸载都作废它，别让定时器在没人等的行上继续转。
-  if (requestId !== focusRequestId) return
-}
+const navigator = new FocusNavigator({
+  resourceAt: index => props.resources[index] ?? null,
+  activate: resource => emit('activate', resource),
+  afterRender: () => nextTick(),
+  scrollIndexIntoView,
+  rowElementAt
+})
 
 function rowElementAt(index: number) {
   const container = rowsRef.value
@@ -552,31 +500,33 @@ function checkedBelow(index: number) {
 }
 
 /*
- * 按住拖动批量勾选。
- *
- * 方向由按下那一行的当前状态定死，整个手势不再变：首个是勾选的，划过的全部取消；首个
- * 是未勾选的，划过的全部勾上。这里改状态而不是翻状态——翻的话同一行被划过两次就会自己
- * 弹回去。落点用 elementFromPoint 现查，指针跨过行与行的间隙也不打断手势。
- *
- * 首个行在 pointerdown 就落定，所以「点一下」和「按住划过一串」走的是同一条路径，
- * 没有只在拖动时才生效的分支。
+ * 按住拖动批量勾选（扫选）的状态机与边缘自动滚物理收在 SweepScrollController（见
+ * sweepScroll.ts）：方向锁定、触摸长按确认、rAF 边缘滚动与 touchmove 拦截都在那里。
+ * 组件只注入行命中、勾选状态与动作、滚动面、时间源与两个事件目标；手势边界上组件侧只做
+ * 两件事——每一手开始前同步长按 menu 需要的 contextResource 与长按回声抑制标志
+ * （见 handleSweepStart），以及扫选后吃掉补发 click 与系统 contextmenu（见 onRowSelect
+ * 与 openContextMenu）。
  */
-const SWEEP_TOUCH_HOLD_MS = 320
-const SWEEP_TOUCH_SLOP = 10
-
-let sweepAnchor: string | null = null
-let sweepActive = false
-let sweepChecked = false
-let sweepLastId: string | null = null
-let holdTimer: ReturnType<typeof setTimeout> | undefined
-let touchOrigin: { x: number; y: number } | null = null
-// 手势收尾时浏览器还会补一个 click。扫选已经改过状态，那个 click 必须吃掉，否则会在
-// 落点那一行上再翻一次。下一个 pointerdown 清掉它——新手势不该继承上一手的抑制。
-let suppressRowClick = false
-// 长按在移动之前就武装，此刻浏览器还没开始滚动，preventDefault 拦得住；武装之后靠
-// touchmove 阻止滚动（pointermove 的 preventDefault 管不了这件事），但边缘带内放行，
-// 详见 blockSweepScroll。
-let suppressContextMenu = false
+const sweep = new SweepScrollController({
+  isEnabled: () => props.selectionMode,
+  hitTest: rowIdAt,
+  isRowChecked: id => props.checkedIds.includes(id),
+  setChecked: (resourceId, checked) => emit('setChecked', resourceId, checked),
+  viewport: {
+    innerHeight: () => window.innerHeight,
+    scrollY: () => window.scrollY,
+    maxScrollY: () => Math.max(document.documentElement.scrollHeight - window.innerHeight, 0),
+    scrollTo: top => window.scrollTo({ top })
+  },
+  scheduler: {
+    requestFrame: callback => requestAnimationFrame(callback),
+    cancelFrame: handle => cancelAnimationFrame(handle),
+    setTimeout: (callback, delay) => window.setTimeout(callback, delay),
+    clearTimeout: handle => window.clearTimeout(handle as number)
+  },
+  gestureTarget: window,
+  blockerTarget: document
+})
 
 function rowIdAt(clientX: number, clientY: number) {
   const element = document.elementFromPoint(clientX, clientY)
@@ -585,136 +535,6 @@ function rowIdAt(clientX: number, clientY: number) {
   // 命中行元素本身就说明它属于这个列表——行只由本组件渲染，页面上别处不会有同标记的元素。
   const row = element.closest<HTMLElement>('[data-resource-row]')
   return row?.dataset.resourceId ?? null
-}
-
-/*
- * 指针停在列表上下边缘时把容器滚一点，让窗口外的行进窗口、elementFromPoint 才够得着。
- *
- * elementFromPoint 只认窗口内那十几行（窗口外的行没被渲染，命中不到），不主动滚就永远勾不过
- * 窗口边界——这不是手感问题，是能力限制。滚到位之后新行进入窗口，下一次 pointermove 的现查
- * 自然就命中了。
- *
- * 速度按指针离边缘的距离给：贴着边缘慢、越往里越快，滚到窗口跟着跑，手感接近原生拖拽。
- * 用 rAF 而不是 setInterval：滚完一帧就该停，pointerup 之后不留下还在跑的滚动。
- */
-const SWEEP_EDGE_ZONE = 32
-const SWEEP_MAX_SPEED = 24
-
-let sweepScrollFrame: number | null = null
-let sweepScrollSpeed = 0
-let sweepPointerX = 0
-let sweepPointerY = 0
-
-function sweepEdgeSpeed(clientY: number) {
-  // window 模式：边缘带按视口顶底算，不按列表容器的 rect——容器此刻不是滚动容器，
-  // 它在视口里的位置只反映当前滚动位置，拿它当边界会让手势提前或延后触发。
-  //
-  // 边缘带取「视口内靠边 N px」而不是「视口外 N px」。触摸的 clientY 按 Pointer Events
-  // 恒落在 [0, innerHeight]——手指的接触点不可能在视口之外，所以按「越界」判定的两个分支
-  // 在触摸端是死代码，speed 恒 0，扫选到窗口边缘就停住。带子必须落在手指够得着的范围里。
-  //
-  // 两支都要把 distance 钳在 ZONE 内再算系数。鼠标可以把 clientY 拖到任意负数或远超视口
-  // 底的值，(1 - d/ZONE) 会随之线性无界增长：不钳的话 clientY=-1000 得到 774px/帧、
-  // 是 SWEEP_MAX_SPEED 的 32 倍，列表直接「飞」过去、大量行被跳过，用户想停在某行上勾它
-  // 根本停不住——那正好破坏扫选的核心价值。stepSweepScroll 只钳了滚动上限、没钳速度。
-  // 顶部那支的 distance 是「离顶边多远」= clientY 本身，不是 ZONE - clientY。写成后者会
-  // 把梯度反过来：贴着屏幕顶（clientY=0）速度 0、离顶边 32px 处反而满速，触摸在列表顶部
-  // 会「越靠边越慢」。
-  const bottom = window.innerHeight
-  if (clientY <= SWEEP_EDGE_ZONE) {
-    return -edgeRatio(clientY) * SWEEP_MAX_SPEED
-  }
-  if (clientY >= bottom - SWEEP_EDGE_ZONE) {
-    return edgeRatio(bottom - clientY) * SWEEP_MAX_SPEED
-  }
-  return 0
-}
-
-// 离边缘越近速度越快，贴到边上正好是 SWEEP_MAX_SPEED，越过边缘不再增长。
-function edgeRatio(distance: number) {
-  return 1 - Math.min(Math.max(distance, 0), SWEEP_EDGE_ZONE) / SWEEP_EDGE_ZONE
-}
-
-function stepSweepScroll() {
-  sweepScrollFrame = null
-  if (!sweepActive) return
-  // 可滚上限取文档高度减视口，与库自己的 getMaxScrollOffset 同一套算法
-  const maxScrollY = Math.max(document.documentElement.scrollHeight - window.innerHeight, 0)
-  const next = Math.min(Math.max(window.scrollY + sweepScrollSpeed, 0), maxScrollY)
-  if (next === window.scrollY) return
-  window.scrollTo({ top: next })
-  // 滚完之后指针没动也要继续勾：现查命中的是指针下方那一行，不是新滚进来的行。
-  applySweepAtPointer()
-  scheduleSweepScroll()
-}
-
-function scheduleSweepScroll() {
-  if (sweepScrollFrame !== null || !sweepActive) return
-  if (!sweepScrollSpeed) return
-  sweepScrollFrame = requestAnimationFrame(stepSweepScroll)
-}
-
-function applySweepAtPointer() {
-  const id = rowIdAt(sweepPointerX, sweepPointerY)
-  if (!id || id === sweepLastId) return
-  applySweep(id)
-}
-
-function updateSweepScroll(clientX: number, clientY: number) {
-  sweepPointerX = clientX
-  sweepPointerY = clientY
-  sweepScrollSpeed = sweepEdgeSpeed(clientY)
-  if (sweepScrollSpeed) scheduleSweepScroll()
-  else if (sweepScrollFrame !== null) {
-    cancelAnimationFrame(sweepScrollFrame)
-    sweepScrollFrame = null
-  }
-}
-
-function applySweep(resourceId: string) {
-  sweepLastId = resourceId
-  emit('setChecked', resourceId, sweepChecked)
-}
-
-/*
- * 扫选期间要不要拦下浏览器的触摸滚动。
- *
- * 拦的理由是扫选手势靠「按住不动」确认，一旦浏览器开始滚动，这个手势就散了：列表在动、
- * pointermove 命中的行不断变化，用户想勾的那一串就断了。所以扫选激活后要 preventDefault。
- *
- * 但不能一律拦。手指在视口边缘带内时，用户要的正是「滑到这里继续勾下面那些」——那就是
- * 滚动本身。此处再拦住，等于既不给自动滚、也不给手指滚，扫选在触摸端彻底卡在窗口边界
- * （列表是虚拟化的，滚不过窗口边界就勾不到下面的行）。
- *
- * 两条共存靠边缘带划界：
- *   - 带内（离视口上下沿 SWEEP_EDGE_ZONE 以内）：放行。手指驱动原生滚动，
- *     sweepEdgeSpeed 同时按指针位置给边缘自动滚，两者同向，不会互相拉扯。
- *   - 带外：拦住。长按确认与「手指滑动 = 放弃扫选」的判定都依赖这一条——带外放行的话，
- *     用户在列表中段随手一滑就会滚动页面，而此时扫选还开着，勾选会随页面漂移。
- *
- * 判据取 touch 的 clientY（与 sweepEdgeSpeed 同一套几何），所以「带内带外」在自动滚与
- * 手指滚之间是同一条线，不会出现「自动滚已启动但滚动仍被拦」这种自相矛盾的状态。
- */
-function blockSweepScroll(event: TouchEvent) {
-  if (!sweepActive) return
-  const touch = event.touches[0]
-  // 没有触点信息（罕见的合成事件）时直接拦住，保守优先。
-  if (!touch) {
-    event.preventDefault()
-    return
-  }
-  if (sweepEdgeSpeed(touch.clientY) !== 0) return
-  event.preventDefault()
-}
-
-function armTouchSweep() {
-  holdTimer = undefined
-  const anchor = sweepAnchor
-  if (anchor === null) return
-  sweepActive = true
-  document.addEventListener('touchmove', blockSweepScroll, { passive: false })
-  suppressContextMenu = true
-  applySweep(anchor)
 }
 
 function handleSweepStart(event: PointerEvent) {
@@ -734,86 +554,11 @@ function handleSweepStart(event: PointerEvent) {
   // 早于 web-ui-context-menu 自己那个（它在宿主上，我们在容器的后代里）。放在早的那一侧，
   // 长按计时器到期时 contextResource 已经是对的，menu 开出来就有完整项。
   syncTouchContext(event)
-  // 右键（button 2）也走 pointerdown，让给 context menu；只认主键
-  if (!props.selectionMode || event.button !== 0 || !event.isPrimary) return
-  const target = event.target
-  if (!(target instanceof Element)) return
-  // 勾选框和行内改名各自有交互，不参与扫选
-  if (target.closest('web-ui-checkbox, web-ui-editable-text')) return
-  const id = target.closest<HTMLElement>('[data-resource-row]')?.dataset.resourceId
-  if (!id) return
-
-  suppressRowClick = false
-  suppressContextMenu = false
-  sweepAnchor = id
-  sweepChecked = !props.checkedIds.includes(id)
-  sweepLastId = null
-  sweepActive = false
-  if (event.pointerType === 'touch') {
-    // 触摸没有 hover，落指就武装会把「本来想滚动」误判成扫选。先按住不动等长按确认。
-    touchOrigin = { x: event.clientX, y: event.clientY }
-    holdTimer = setTimeout(armTouchSweep, SWEEP_TOUCH_HOLD_MS)
-  } else {
-    sweepActive = true
-    applySweep(id)
-  }
-  window.addEventListener('pointermove', handleSweepMove)
-  window.addEventListener('pointerup', endSweep)
-  window.addEventListener('pointercancel', endSweep)
-}
-
-function handleSweepMove(event: PointerEvent) {
-  if (event.pointerType === 'touch' && !sweepActive) {
-    // 长按还没确认就先移动 → 这是一次滚动，放弃扫选
-    const origin = touchOrigin
-    if (origin && Math.hypot(event.clientX - origin.x, event.clientY - origin.y) > SWEEP_TOUCH_SLOP) {
-      endSweep()
-    }
-    return
-  }
-  if (!sweepActive) return
-  updateSweepScroll(event.clientX, event.clientY)
-  const id = rowIdAt(event.clientX, event.clientY)
-  if (!id || id === sweepLastId) return
-  applySweep(id)
-}
-
-function endSweep() {
-  if (holdTimer !== undefined) {
-    clearTimeout(holdTimer)
-    holdTimer = undefined
-  }
-  sweepScrollSpeed = 0
-  if (sweepScrollFrame !== null) {
-    cancelAnimationFrame(sweepScrollFrame)
-    sweepScrollFrame = null
-  }
-  document.removeEventListener('touchmove', blockSweepScroll)
-  if (sweepActive) suppressRowClick = true
-  // suppressContextMenu 必须在这里清，不能只等下一次 pointerdown 的 handleSweepStart。
-  //
-  // 它由 armTouchSweep 置位，而 armTouchSweep 只在选择模式下发生——非选择模式根本不注册
-  // endSweep。于是「进过一次选择模式并长按扫选」之后，这个标志会一直留着，把之后每一次
-  // 右键都吞掉（openContextMenu 见到它就 preventDefault 直接 return），直到用户碰巧再按
-  // 一次左键进选择模式才恢复。表现为：扫选过一次之后，context menu 整个失灵。
-  //
-  // 时序上是安全的：同一次手势的 pointerup 一定早于后续右键的 pointerdown，而右键的
-  // contextmenu 又在 pointerdown 之后，所以这里清完标志，右键那一次读到的已经是 false。
-  suppressContextMenu = false
-  sweepAnchor = null
-  sweepActive = false
-  sweepLastId = null
-  touchOrigin = null
-  window.removeEventListener('pointermove', handleSweepMove)
-  window.removeEventListener('pointerup', endSweep)
-  window.removeEventListener('pointercancel', endSweep)
+  sweep.handlePointerDown(event)
 }
 
 function onRowSelect(resource: ResourceView) {
-  if (suppressRowClick) {
-    suppressRowClick = false
-    return
-  }
+  if (sweep.consumeRowClick()) return
   /*
    * 长按抬手后浏览器补发的 click 会走到这里。若刚才那手确实开出了 menu，这次 click 就是
    * 长按的回声而不是一次有意的选择——吃掉，否则 menu 与预览 drawer 会同时弹出来。
@@ -833,9 +578,10 @@ function onRowSelect(resource: ResourceView) {
 }
 
 function onBeforeUnmountHooks() {
-  endSweep()
-  // 作废还没跑完的落焦轮询，否则它会在 rowsRef 变 null 之后一路空转到超时上限。
-  focusRequestId++
+  // 两个 controller 各自收尾：摘掉手势监听与 touchmove 拦截、作废还没跑完的落焦轮询
+  // （否则它会在 rowsRef 变 null 之后一路空转到超时上限）。
+  sweep.dispose()
+  navigator.cancel()
 }
 
 onBeforeUnmount(onBeforeUnmountHooks)
@@ -868,7 +614,7 @@ function handleOpenDefault(resource: ResourceView | null) {
 
 async function openContextMenu(resource: ResourceView, event: MouseEvent) {
   // 长按扫选手势会顺带触发系统级 contextmenu，那不是「用户想看 menu」，挡掉
-  if (suppressContextMenu) {
+  if (sweep.isContextMenuSuppressed()) {
     event.preventDefault()
     return
   }
@@ -955,7 +701,7 @@ function handleRenameChange(resource: ResourceView, event: WebUiEvent<WebUiEdita
     为 touch 的指针生效，鼠标仍走原生 contextmenu）。
 
     选择模式里同一个「按住不动」已经被扫选占了
-    （armTouchSweep，320ms），而组件的长按阈值是 500ms——两个计时器都会跑，menu 会在扫选
+    （SweepScrollController 的触摸长按确认，320ms），而组件的长按阈值是 500ms——两个计时器都会跑，menu 会在扫选
     已经开始勾选之后弹出来抢画面。语义上也该如此：选择模式的长按是「扫选」，不是「看 menu」。
     关掉之后组件在 _onPointerDown 里直接 return，连计时器都不起。
 
