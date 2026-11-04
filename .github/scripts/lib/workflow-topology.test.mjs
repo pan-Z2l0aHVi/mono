@@ -10,6 +10,7 @@ import {
   RELEASE_BRANCH,
   REQUIRED_CONTEXT,
   jobEnvContextViolations,
+  localActionBootstrapViolations,
   parseWorkflow,
   requiredPolicyStep
 } from './workflow-topology.mjs'
@@ -332,6 +333,52 @@ function assertPullRequestValidationIsReadOnly(workflow) {
   for (const [file, text] of Object.entries(workflowText)) {
     for (const { job, key, context } of jobEnvContextViolations(text)) {
       assert.fail(`${file}:${job} job-level env ${key} uses the unavailable ${context} context`)
+    }
+  }
+
+  // 本地 action 由 job 自己的工作区解析：工作区检出到 base 时，本 PR 新建的 action 在 base 里还不存在，
+  // 这道门整个跑不起来；而 stage-codex-inputs 不传 base-sha 就从 head 读脚本，读到的正是被审查的那份改动。
+  // 两种写法都在这条腿上真实红过，所以判据要能双向自证。
+  const prLegIf = "${{ github.event.pull_request.base.ref == 'main' }}"
+  const runLegIf = "${{ github.event.workflow_run.event == 'pull_request' }}"
+  const headRef = '${{ github.event.pull_request.head.sha }}'
+  const baseRef = '${{ github.event.pull_request.base.sha }}'
+  const stagingPin = '${{ github.event.pull_request.base.sha }}'
+  const stagingWorkflow = ({ ref, pin, legIf }) =>
+    [
+      'on:',
+      '  pull_request:',
+      '    branches: [main]',
+      'jobs:',
+      '  gate:',
+      `    if: ${legIf}`,
+      '    steps:',
+      '      - uses: actions/checkout@v7',
+      '        with:',
+      `          ref: ${ref}`,
+      '      - uses: ./.github/actions/stage-codex-inputs',
+      ...(pin ? ['        with:', `          base-sha: ${stagingPin}`] : []),
+      ''
+    ].join('\n')
+  assert.deepEqual(localActionBootstrapViolations(stagingWorkflow({ ref: headRef, pin: true, legIf: prLegIf })), [])
+  assert.deepEqual(
+    localActionBootstrapViolations(stagingWorkflow({ ref: baseRef, pin: true, legIf: prLegIf })),
+    [{ job: 'gate', rule: 'base-checkout', detail: 'stage-codex-inputs' }],
+    'a job using a local action must not check out the pull request base'
+  )
+  assert.deepEqual(
+    localActionBootstrapViolations(stagingWorkflow({ ref: headRef, pin: false, legIf: prLegIf })),
+    [{ job: 'gate', rule: 'unpinned-staging', detail: '1 step(s)' }],
+    'a pull request leg must pin the staged gate scripts to the base commit'
+  )
+  assert.deepEqual(
+    localActionBootstrapViolations(stagingWorkflow({ ref: headRef, pin: false, legIf: runLegIf })),
+    [],
+    'a workflow_run leg reads its gate scripts from the default branch it checked out'
+  )
+  for (const [file, text] of Object.entries(workflowText)) {
+    for (const { job, rule, detail } of localActionBootstrapViolations(text)) {
+      assert.fail(`${file}:${job} breaks the gate staging bootstrap (${rule}: ${detail})`)
     }
   }
 

@@ -312,8 +312,10 @@ jobs:
     steps:
       - uses: actions/checkout@v7
         with:
-          # 门禁脚本来自 base：被审查的改动不能改写审查它那道门。
-          ref: ${{ github.event.pull_request.base.sha }}
+          # 本地 action 从 job 的工作区解析，检出 base 会让它找不到自己；
+          # 门禁脚本仍由下一步从 base 的对象里读出，被审查的改动改不了审查它那道门。
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
           persist-credentials: false
 
       - uses: ./.github/actions/setup-deps
@@ -322,6 +324,8 @@ jobs:
           skip-install: 'true'
 
       - uses: ./.github/actions/stage-codex-inputs
+        with:
+          base-sha: ${{ github.event.pull_request.base.sha }}
 
       - name: Download review findings
         # review job 被跳过时没有 artifact，那是 unreviewed，不是门禁故障。
