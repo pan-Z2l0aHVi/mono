@@ -1,4 +1,5 @@
 import type {
+  CreateResourceInputDTO,
   FilePreviewDTO,
   ResourceDTO,
   ResourceLocationMatchDTO,
@@ -15,13 +16,13 @@ export interface LibraryRuntime {
   readonly isAvailable: boolean
   listResources(): Promise<ResourceDTO[]>
   getResource(resourceId: string): Promise<ResourceDTO>
-  addFileResource(inputPath: string): Promise<ResourceDTO>
-  addURLResource(inputURL: string): Promise<ResourceDTO>
+  /** 纳入新 Resource 的唯一入口；归一化、可用性探测与初始标签由后端单事务建齐。 */
+  createResource(input: CreateResourceInputDTO): Promise<ResourceDTO>
   updateResourceTitle(resourceId: string, newTitle: string): Promise<ResourceDTO>
   updateResourceNote(resourceId: string, note: string): Promise<ResourceDTO>
   deleteResource(resourceId: string): Promise<void>
-  addTag(resourceId: string, tagName: string): Promise<TagDTO>
-  removeTag(resourceId: string, tagId: string): Promise<void>
+  /** 替换式集合语义：提交的名称集合成为该 Resource 的完整标签集合，规则在后端。 */
+  setResourceTags(resourceId: string, tagNames: string[]): Promise<TagDTO[]>
   refreshURLSource(sourceId: string): Promise<SourceDTO>
   refreshFileSource(sourceId: string): Promise<SourceDTO>
   replaceFileSource(sourceId: string, inputPath: string): Promise<SourceDTO>
@@ -111,9 +112,4 @@ export function requireSourceDTO(value: SourceDTO | null, action: string): Sourc
 export function requireSourceProbeResultDTO(value: SourceProbeResultDTO | null, action: string): SourceProbeResultDTO {
   if (value) return value
   throw new Error(`${action}未返回结果`)
-}
-
-export function requireTagDTO(value: TagDTO | null, action: string): TagDTO {
-  if (value) return value
-  throw new Error(`${action}未返回 Tag`)
 }

@@ -55,9 +55,9 @@ func TestCoreSeamRules(t *testing.T) {
 	tagService := core.NewTagService(db)
 	ctx := context.Background()
 
-	view, err := resService.AddFileResource(ctx, tempFile(t, "core-*.txt"))
+	view, err := addFileResource(ctx, resService, tempFile(t, "core-*.txt"))
 	if err != nil {
-		t.Fatalf("AddFileResource error: %v", err)
+		t.Fatalf("addFileResource error: %v", err)
 	}
 	if len(view.Sources) != 1 || !view.Sources[0].IsPreferred {
 		t.Fatalf("expected single preferred source in view, got %+v", view.Sources)
@@ -110,9 +110,9 @@ func TestCoreErrorIdentityAndEmptySlices(t *testing.T) {
 		t.Errorf("expected core.ErrResourceNotFound for missing resource, got %v", err)
 	}
 
-	view, err := resService.AddFileResource(ctx, tempFile(t, "err-*.txt"))
+	view, err := addFileResource(ctx, resService, tempFile(t, "err-*.txt"))
 	if err != nil {
-		t.Fatalf("AddFileResource error: %v", err)
+		t.Fatalf("addFileResource error: %v", err)
 	}
 
 	if err := srcService.RemoveSource(ctx, view.Sources[0].ID); !errors.Is(err, core.ErrCannotRemoveOnlySource) {
@@ -150,9 +150,9 @@ func TestFindResourceLocationMatchesNormalizesBeforeComparing(t *testing.T) {
 	ctx := context.Background()
 
 	path := tempFile(t, "dupe-*.txt")
-	view, err := resService.AddFileResource(ctx, path)
+	view, err := addFileResource(ctx, resService, path)
 	if err != nil {
-		t.Fatalf("AddFileResource error: %v", err)
+		t.Fatalf("addFileResource error: %v", err)
 	}
 
 	// 归一化等价写法：插入 . 与 .. 段后仍指向同一绝对路径。
@@ -216,9 +216,9 @@ func TestFindResourceLocationMatchesCoversURLSources(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	view, err := resService.AddURLResource(ctx, srv.URL+"/page")
+	view, err := addURLResource(ctx, resService, srv.URL+"/page")
 	if err != nil {
-		t.Fatalf("AddURLResource error: %v", err)
+		t.Fatalf("addURLResource error: %v", err)
 	}
 
 	upper := strings.Replace(srv.URL, "http://", "HTTP://", 1) + "/page"
@@ -252,13 +252,13 @@ func TestFindResourceLocationMatchesOrdersNewestFirst(t *testing.T) {
 	ctx := context.Background()
 
 	path := tempFile(t, "shared-*.txt")
-	older, err := resService.AddFileResource(ctx, path)
+	older, err := addFileResource(ctx, resService, path)
 	if err != nil {
-		t.Fatalf("AddFileResource error: %v", err)
+		t.Fatalf("addFileResource error: %v", err)
 	}
-	newer, err := resService.AddFileResource(ctx, path)
+	newer, err := addFileResource(ctx, resService, path)
 	if err != nil {
-		t.Fatalf("AddFileResource error: %v", err)
+		t.Fatalf("addFileResource error: %v", err)
 	}
 
 	for id, createdAt := range map[string]int64{older.Resource.ID: 1, newer.Resource.ID: 2} {
@@ -314,9 +314,9 @@ func TestSourceAddChecksExistenceBeforeFetch(t *testing.T) {
 	}
 
 	// 正常归属不受存在性检查影响。
-	view, err := resService.AddFileResource(ctx, tempFile(t, "exists-*.txt"))
+	view, err := addFileResource(ctx, resService, tempFile(t, "exists-*.txt"))
 	if err != nil {
-		t.Fatalf("AddFileResource error: %v", err)
+		t.Fatalf("addFileResource error: %v", err)
 	}
 	if _, err := srcService.AddFileSource(ctx, view.Resource.ID, tempFile(t, "second-*.txt")); err != nil {
 		t.Errorf("AddFileSource on existing resource error: %v", err)
@@ -332,12 +332,12 @@ func TestSearchEscapesLikeWildcards(t *testing.T) {
 	tagService := core.NewTagService(db)
 	ctx := context.Background()
 
-	pct, err := resService.AddFileResource(ctx, tempFile(t, "a%b-*.txt"))
+	pct, err := addFileResource(ctx, resService, tempFile(t, "a%b-*.txt"))
 	if err != nil {
-		t.Fatalf("AddFileResource error: %v", err)
+		t.Fatalf("addFileResource error: %v", err)
 	}
-	if _, err := resService.AddFileResource(ctx, tempFile(t, "ab-*.txt")); err != nil {
-		t.Fatalf("AddFileResource error: %v", err)
+	if _, err := addFileResource(ctx, resService, tempFile(t, "ab-*.txt")); err != nil {
+		t.Fatalf("addFileResource error: %v", err)
 	}
 
 	found, err := resService.SearchResources(ctx, "%")
@@ -348,9 +348,9 @@ func TestSearchEscapesLikeWildcards(t *testing.T) {
 		t.Errorf("expected search %% to match only the resource with a literal %% in its title, got %d results", len(found))
 	}
 
-	plain, err := resService.AddFileResource(ctx, tempFile(t, "plain-*.txt"))
+	plain, err := addFileResource(ctx, resService, tempFile(t, "plain-*.txt"))
 	if err != nil {
-		t.Fatalf("AddFileResource error: %v", err)
+		t.Fatalf("addFileResource error: %v", err)
 	}
 	for _, name := range []string{"go_lang", "golang", "100%"} {
 		if _, err := tagService.AddTagToResource(ctx, plain.Resource.ID, name); err != nil {
@@ -372,5 +372,215 @@ func TestSearchEscapesLikeWildcards(t *testing.T) {
 	}
 	if len(percentTags) != 1 || percentTags[0].Name != "100%" {
 		t.Errorf("expected search %% to match only the literal percent tag, got %+v", percentTags)
+	}
+}
+
+// addFileResource / addURLResource 是测试最常用的纳入封装，只按入口类型补 Kind，
+// 创建规则本身统一走 CreateResource。
+func addFileResource(ctx context.Context, svc *core.ResourceService, inputPath string) (*core.ResourceView, error) {
+	return svc.CreateResource(ctx, core.CreateResourceInput{Kind: storage.SourceTypeFile, Location: inputPath})
+}
+
+func addURLResource(ctx context.Context, svc *core.ResourceService, inputURL string) (*core.ResourceView, error) {
+	return svc.CreateResource(ctx, core.CreateResourceInput{Kind: storage.SourceTypeURL, Location: inputURL})
+}
+
+// SetResourceTags 以一次替换式集合写入收敛标签：归一化去重、同名复用、集合外归属整体解除。
+func TestSetResourceTagsReplacesWholeSet(t *testing.T) {
+	db, cleanup := setupTestDB(t)
+	defer cleanup()
+
+	resService := core.NewResourceService(db, remote.NewFetcher())
+	tagService := core.NewTagService(db)
+	ctx := context.Background()
+
+	view, err := addFileResource(ctx, resService, tempFile(t, "set-*.txt"))
+	if err != nil {
+		t.Fatalf("addFileResource error: %v", err)
+	}
+	resourceID := view.Resource.ID
+
+	tokyo, err := tagService.AddTagToResource(ctx, resourceID, "Tokyo")
+	if err != nil {
+		t.Fatalf("AddTagToResource error: %v", err)
+	}
+	if _, err := tagService.AddTagToResource(ctx, resourceID, "Travel"); err != nil {
+		t.Fatalf("AddTagToResource error: %v", err)
+	}
+	// 给既有行设置独立于当前时钟的时间，复用若重新生成 CreatedAt 必定可区分。
+	if _, err := db.SqlDB().ExecContext(ctx, "UPDATE tags SET created_at = ? WHERE id = ?", 1, tokyo.ID); err != nil {
+		t.Fatalf("seed tag timestamp: %v", err)
+	}
+
+	tags, err := tagService.SetResourceTags(ctx, resourceID, []string{"  Tokyo  ", "Photography", "Photography"})
+	if err != nil {
+		t.Fatalf("SetResourceTags error: %v", err)
+	}
+	if len(tags) != 2 || tags[0].Name != "Tokyo" || tags[1].Name != "Photography" {
+		t.Fatalf("expected normalized deduped target set [Tokyo Photography], got %+v", tags)
+	}
+	if tags[0].ID != tokyo.ID || tags[0].CreatedAt != 1 {
+		t.Errorf("expected same-name tag to be reused without recreation, got %+v", tags[0])
+	}
+
+	reloaded, err := resService.GetResource(ctx, resourceID)
+	if err != nil {
+		t.Fatalf("GetResource error: %v", err)
+	}
+	if len(reloaded.Tags) != 2 || reloaded.Tags[0].Name != "Tokyo" || reloaded.Tags[1].Name != "Photography" {
+		t.Errorf("expected Travel's tagging to be replaced by Photography, got %+v", reloaded.Tags)
+	}
+
+	// 空集合清空全部归属，返回非 nil 空切片。
+	cleared, err := tagService.SetResourceTags(ctx, resourceID, nil)
+	if err != nil {
+		t.Fatalf("SetResourceTags (clear) error: %v", err)
+	}
+	if cleared == nil || len(cleared) != 0 {
+		t.Errorf("expected non-nil empty tag set, got %+v", cleared)
+	}
+	empty, err := resService.GetResource(ctx, resourceID)
+	if err != nil {
+		t.Fatalf("GetResource after clear error: %v", err)
+	}
+	if len(empty.Tags) != 0 {
+		t.Errorf("expected no tags after clearing, got %+v", empty.Tags)
+	}
+}
+
+// SetResourceTags 的名称校验在写库之前整体完成：任一非法名整体失败，不留半应用的集合。
+func TestSetResourceTagsRejectsInvalidNamesAtomically(t *testing.T) {
+	db, cleanup := setupTestDB(t)
+	defer cleanup()
+
+	resService := core.NewResourceService(db, remote.NewFetcher())
+	tagService := core.NewTagService(db)
+	ctx := context.Background()
+
+	view, err := addFileResource(ctx, resService, tempFile(t, "atomic-*.txt"))
+	if err != nil {
+		t.Fatalf("addFileResource error: %v", err)
+	}
+	resourceID := view.Resource.ID
+	if _, err := tagService.AddTagToResource(ctx, resourceID, "Existing"); err != nil {
+		t.Fatalf("AddTagToResource error: %v", err)
+	}
+
+	if _, err := tagService.SetResourceTags(ctx, resourceID, []string{"Valid", "   "}); err == nil {
+		t.Fatal("expected a blank tag name to fail the whole set, got nil")
+	}
+	if _, err := tagService.SetResourceTags(ctx, "missing", []string{"Valid"}); !errors.Is(err, core.ErrResourceNotFound) {
+		t.Errorf("expected core.ErrResourceNotFound for missing resource, got %v", err)
+	}
+
+	reloaded, err := resService.GetResource(ctx, resourceID)
+	if err != nil {
+		t.Fatalf("GetResource error: %v", err)
+	}
+	if len(reloaded.Tags) != 1 || reloaded.Tags[0].Name != "Existing" {
+		t.Errorf("expected failed set write to leave Existing untouched, got %+v", reloaded.Tags)
+	}
+}
+
+// CreateResource 是唯一创建入口：标题与初始标签随 Resource + 首选 Source 在一次调用里建齐。
+func TestCreateResourceBuildsResourceWithSourceAndTags(t *testing.T) {
+	db, cleanup := setupTestDB(t)
+	defer cleanup()
+
+	resService := core.NewResourceService(db, remote.NewFetcher())
+	ctx := context.Background()
+
+	view, err := resService.CreateResource(ctx, core.CreateResourceInput{
+		Kind:         storage.SourceTypeFile,
+		Location:     tempFile(t, "built-*.txt"),
+		InitialTitle: "  自定义标题  ",
+		Tags:         []string{"Travel", " Travel "},
+	})
+	if err != nil {
+		t.Fatalf("CreateResource error: %v", err)
+	}
+	if view.Resource.Title != "自定义标题" {
+		t.Errorf("expected trimmed explicit title, got %q", view.Resource.Title)
+	}
+	if len(view.Sources) != 1 || !view.Sources[0].IsPreferred || view.Sources[0].OrderIndex != 0 {
+		t.Errorf("expected single preferred first source, got %+v", view.Sources)
+	}
+	if len(view.Tags) != 1 || view.Tags[0].Name != "Travel" {
+		t.Errorf("expected normalized single initial tag, got %+v", view.Tags)
+	}
+
+	// 不带标题时回退 probe 的默认标题：文件取文件名。
+	fallback, err := resService.CreateResource(ctx, core.CreateResourceInput{
+		Kind:     storage.SourceTypeFile,
+		Location: tempFile(t, "fallback-*.txt"),
+	})
+	if err != nil {
+		t.Fatalf("CreateResource (no title) error: %v", err)
+	}
+	if fallback.Resource.Title != filepath.Base(fallback.Sources[0].Location) {
+		t.Errorf("expected file name as default title, got %q", fallback.Resource.Title)
+	}
+}
+
+// 初始标签名非法时 CreateResource 整体失败：Resource 与 Source 同事务回滚，不留半成品。
+func TestCreateResourceRejectsInvalidTagsAtomically(t *testing.T) {
+	db, cleanup := setupTestDB(t)
+	defer cleanup()
+
+	resService := core.NewResourceService(db, remote.NewFetcher())
+	ctx := context.Background()
+
+	if _, err := resService.CreateResource(ctx, core.CreateResourceInput{
+		Kind:     storage.SourceTypeFile,
+		Location: tempFile(t, "atomic-create-*.txt"),
+		Tags:     []string{"Valid", "   "},
+	}); err == nil {
+		t.Fatal("expected an invalid initial tag name to fail the whole creation, got nil")
+	}
+
+	listed, err := resService.ListResources(ctx)
+	if err != nil {
+		t.Fatalf("ListResources error: %v", err)
+	}
+	if len(listed) != 0 {
+		t.Errorf("expected failed creation to leave no resource behind, got %d", len(listed))
+	}
+}
+
+// URL 纳入保持既有定名规则：无显式标题时取页面标题，显式标题只在首次纳入时生效。
+func TestCreateResourceURLTitleRules(t *testing.T) {
+	db, cleanup := setupTestDB(t)
+	defer cleanup()
+
+	resService := core.NewResourceService(db, remote.NewFetcher())
+	ctx := context.Background()
+
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/html")
+		_, _ = w.Write([]byte(`<title>Remote Title</title>`))
+	}))
+	defer srv.Close()
+
+	fromPage, err := resService.CreateResource(ctx, core.CreateResourceInput{
+		Kind:     storage.SourceTypeURL,
+		Location: srv.URL + "/page",
+	})
+	if err != nil {
+		t.Fatalf("CreateResource (URL) error: %v", err)
+	}
+	if fromPage.Resource.Title != "Remote Title" {
+		t.Errorf("expected page title, got %q", fromPage.Resource.Title)
+	}
+
+	explicit, err := resService.CreateResource(ctx, core.CreateResourceInput{
+		Kind:         storage.SourceTypeURL,
+		Location:     srv.URL + "/other",
+		InitialTitle: "用户起的名字",
+	})
+	if err != nil {
+		t.Fatalf("CreateResource (URL with title) error: %v", err)
+	}
+	if explicit.Resource.Title != "用户起的名字" {
+		t.Errorf("expected explicit initial title to win on first ingest, got %q", explicit.Resource.Title)
 	}
 }

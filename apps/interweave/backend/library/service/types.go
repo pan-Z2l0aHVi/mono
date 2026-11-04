@@ -66,6 +66,18 @@ type TagDTO struct {
 	Color storage.TagColor `json:"color"`
 }
 
+// CreateResourceInputDTO 是纳入新 Resource 的唯一入口参数；归一化与事务建齐由后端完成。
+type CreateResourceInputDTO struct {
+	// Kind 是入口类型："file" 或 "url"。
+	Kind storage.SourceType `json:"kind"`
+	// Location 是用户的原始输入，前端不预归一化。
+	Location string `json:"location"`
+	// Title 是可选的初始标题；trim 后非空才作为初始标题，空串或缺省由后端按探测结果定名。
+	Title string `json:"title,omitempty"`
+	// Tags 是可选的初始标签名集合（原始输入），语义同 SetResourceTags 的替换式集合。
+	Tags []string `json:"tags,omitempty"`
+}
+
 // 为前端提供完整但不承载外部内容的资源视图。
 type ResourceDTO struct {
 	ID    string `json:"id"`

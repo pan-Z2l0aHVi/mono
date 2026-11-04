@@ -60,9 +60,9 @@ func seedAssemblerFixtures(t *testing.T, ctx context.Context, db *storage.DB) []
 		if err := os.WriteFile(path, []byte("x"), 0o644); err != nil {
 			t.Fatalf("failed to write fixture file: %v", err)
 		}
-		view, err := resService.AddFileResource(ctx, path)
+		view, err := resService.CreateResource(ctx, CreateResourceInput{Kind: storage.SourceTypeFile, Location: path})
 		if err != nil {
-			t.Fatalf("AddFileResource error: %v", err)
+			t.Fatalf("CreateResource error: %v", err)
 		}
 		if i < 3 {
 			// Tokyo 跨资源复用，TopicN 仅归属当前资源。

@@ -134,13 +134,11 @@ function createRuntime(overrides: Partial<LibraryRuntime> = {}): LibraryRuntime 
     isAvailable: true,
     listResources: async () => [resource()],
     getResource: async resourceId => resource({ id: resourceId }),
-    addFileResource: async () => resource(),
-    addURLResource: async () => resource(),
+    createResource: async () => resource(),
     updateResourceTitle: async (resourceId, title) => resource({ id: resourceId, title }),
     updateResourceNote: async (resourceId, note) => resource({ id: resourceId, note }),
     deleteResource: async () => {},
-    addTag: async () => ({ id: 'tag-1', name: 'tag', created_at: 1, color: TagColor.TagColorTeal }),
-    removeTag: async () => {},
+    setResourceTags: async () => [],
     refreshURLSource: async () => source(),
     refreshFileSource: async () => source({ type: SourceType.SourceTypeFile, location: '/tmp/a.png' }),
     replaceFileSource: async () => source({ type: SourceType.SourceTypeFile, location: '/tmp/b.png' }),
@@ -677,12 +675,11 @@ describe('LibraryPage：粘贴链接', () => {
     }
   })
 
-  it('提交时 URL 项走 addURLResource，资源出现在列表', async () => {
-    const addURLResource = vi.fn<LibraryRuntime['addURLResource']>(async inputURL =>
-      resource({ title: '示例文章', sources: [source({ location: inputURL, available: true })] })
+  it('提交时 URL 项走 createResource，资源出现在列表', async () => {
+    const createResource = vi.fn<LibraryRuntime['createResource']>(async input =>
+      resource({ title: '示例文章', sources: [source({ location: input.location, available: true })] })
     )
-    const addFileResource = vi.fn<LibraryRuntime['addFileResource']>(async () => resource())
-    runtimeStub.current = createRuntime({ addFileResource, addURLResource })
+    runtimeStub.current = createRuntime({ createResource })
     const mounted = await mountPage()
 
     try {
@@ -692,8 +689,12 @@ describe('LibraryPage：粘贴链接', () => {
       button(mounted.host, '确认添加').click()
       await flush()
 
-      expect(addURLResource).toHaveBeenCalledExactlyOnceWith('https://example.com/article')
-      expect(addFileResource).not.toHaveBeenCalled()
+      expect(createResource).toHaveBeenCalledExactlyOnceWith({
+        kind: SourceType.SourceTypeURL,
+        location: 'https://example.com/article',
+        title: '',
+        tags: []
+      })
       expect(useLibraryStore().resources[0]?.title).toBe('示例文章')
     } finally {
       await mounted.close()

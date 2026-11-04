@@ -13,6 +13,7 @@ export {
 };
 
 export {
+    CreateResourceInputDTO,
     FilePreviewDTO,
     GlobalMapDTO,
     LocalMapDTO,

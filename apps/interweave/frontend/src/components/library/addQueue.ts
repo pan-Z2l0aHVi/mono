@@ -116,7 +116,7 @@ export function createLibraryAddQueue(runtime: PreviewRuntime): LibraryAddQueueC
           mediaUrl
         }))
       } catch {
-        // 预览失败时保留 generic fallback；真正的纳入仍由 AddFileResource 校验路径。
+        // 预览失败时保留 generic fallback；真正的纳入仍由 CreateResource 校验路径。
       }
     })()
     trackPreparation(item.id, preparation)
@@ -148,7 +148,7 @@ export function createLibraryAddQueue(runtime: PreviewRuntime): LibraryAddQueueC
       if (startedAt !== generation) return false
       return await askDuplicate({ location, matches })
     } catch {
-      // 查询失败按未命中处理：这条提示是轻提示，真正的纳入仍由 AddFileResource 校验路径把关，
+      // 查询失败按未命中处理：这条提示是轻提示，真正的纳入仍由 CreateResource 校验路径把关，
       // 与 prepareItem 的失败降级同理，不因此让用户无法添加。
       return true
     }

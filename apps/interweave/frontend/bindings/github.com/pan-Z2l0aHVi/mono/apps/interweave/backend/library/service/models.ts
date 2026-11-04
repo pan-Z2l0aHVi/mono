@@ -10,6 +10,55 @@ import { Create as $Create } from "@wailsio/runtime";
 import * as storage$0 from "../storage/models.js";
 
 /**
+ * CreateResourceInputDTO 是纳入新 Resource 的唯一入口参数；归一化与事务建齐由后端完成。
+ */
+export class CreateResourceInputDTO {
+    /**
+     * Kind 是入口类型："file" 或 "url"。
+     */
+    "kind": storage$0.SourceType;
+
+    /**
+     * Location 是用户的原始输入，前端不预归一化。
+     */
+    "location": string;
+
+    /**
+     * Title 是可选的初始标题；trim 后非空才作为初始标题，空串或缺省由后端按探测结果定名。
+     */
+    "title"?: string;
+
+    /**
+     * Tags 是可选的初始标签名集合（原始输入），语义同 SetResourceTags 的替换式集合。
+     */
+    "tags"?: string[];
+
+    /** Creates a new CreateResourceInputDTO instance. */
+    constructor($$source: Partial<CreateResourceInputDTO> = {}) {
+        if (!("kind" in $$source)) {
+            this["kind"] = storage$0.SourceType.$zero;
+        }
+        if (!("location" in $$source)) {
+            this["location"] = "";
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new CreateResourceInputDTO instance from a string or object.
+     */
+    static createFrom($$source: any = {}): CreateResourceInputDTO {
+        const $$createField3_0 = $$createType0;
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        if ("tags" in $$parsedSource) {
+            $$parsedSource["tags"] = $$createField3_0($$parsedSource["tags"]);
+        }
+        return new CreateResourceInputDTO($$parsedSource as Partial<CreateResourceInputDTO>);
+    }
+}
+
+/**
  * FilePreviewDTO 为待添加文件提供权威 kind 与可选的本地媒体读取授权。
  */
 export class FilePreviewDTO {
@@ -65,8 +114,8 @@ export class GlobalMapDTO {
      * Creates a new GlobalMapDTO instance from a string or object.
      */
     static createFrom($$source: any = {}): GlobalMapDTO {
-        const $$createField0_0 = $$createType1;
-        const $$createField1_0 = $$createType3;
+        const $$createField0_0 = $$createType2;
+        const $$createField1_0 = $$createType4;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("tag_nodes" in $$parsedSource) {
             $$parsedSource["tag_nodes"] = $$createField0_0($$parsedSource["tag_nodes"]);
@@ -105,9 +154,9 @@ export class LocalMapDTO {
      * Creates a new LocalMapDTO instance from a string or object.
      */
     static createFrom($$source: any = {}): LocalMapDTO {
-        const $$createField0_0 = $$createType4;
-        const $$createField1_0 = $$createType6;
-        const $$createField2_0 = $$createType1;
+        const $$createField0_0 = $$createType5;
+        const $$createField1_0 = $$createType7;
+        const $$createField2_0 = $$createType2;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("focused_tag" in $$parsedSource) {
             $$parsedSource["focused_tag"] = $$createField0_0($$parsedSource["focused_tag"]);
@@ -179,8 +228,8 @@ export class ResourceDTO {
      * Creates a new ResourceDTO instance from a string or object.
      */
     static createFrom($$source: any = {}): ResourceDTO {
-        const $$createField7_0 = $$createType8;
-        const $$createField8_0 = $$createType9;
+        const $$createField7_0 = $$createType9;
+        const $$createField8_0 = $$createType10;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("sources" in $$parsedSource) {
             $$parsedSource["sources"] = $$createField7_0($$parsedSource["sources"]);
@@ -290,7 +339,7 @@ export class SourceDTO {
      * Creates a new SourceDTO instance from a string or object.
      */
     static createFrom($$source: any = {}): SourceDTO {
-        const $$createField7_0 = $$createType11;
+        const $$createField7_0 = $$createType12;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("metadata" in $$parsedSource) {
             $$parsedSource["metadata"] = $$createField7_0($$parsedSource["metadata"]);
@@ -381,7 +430,7 @@ export class SourceProbeResultDTO {
      * Creates a new SourceProbeResultDTO instance from a string or object.
      */
     static createFrom($$source: any = {}): SourceProbeResultDTO {
-        const $$createField0_0 = $$createType12;
+        const $$createField0_0 = $$createType13;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("source" in $$parsedSource) {
             $$parsedSource["source"] = $$createField0_0($$parsedSource["source"]);
@@ -499,16 +548,17 @@ export class TagNodeDTO {
 }
 
 // Private type creation functions
-const $$createType0 = TagNodeDTO.createFrom;
-const $$createType1 = $Create.Array($$createType0);
-const $$createType2 = TagEdgeDTO.createFrom;
-const $$createType3 = $Create.Array($$createType2);
-const $$createType4 = TagDTO.createFrom;
-const $$createType5 = ResourceDTO.createFrom;
-const $$createType6 = $Create.Array($$createType5);
-const $$createType7 = SourceDTO.createFrom;
-const $$createType8 = $Create.Array($$createType7);
-const $$createType9 = $Create.Array($$createType4);
-const $$createType10 = SourceMetadataDTO.createFrom;
-const $$createType11 = $Create.Nullable($$createType10);
-const $$createType12 = $Create.Nullable($$createType7);
+const $$createType0 = $Create.Array($Create.Any);
+const $$createType1 = TagNodeDTO.createFrom;
+const $$createType2 = $Create.Array($$createType1);
+const $$createType3 = TagEdgeDTO.createFrom;
+const $$createType4 = $Create.Array($$createType3);
+const $$createType5 = TagDTO.createFrom;
+const $$createType6 = ResourceDTO.createFrom;
+const $$createType7 = $Create.Array($$createType6);
+const $$createType8 = SourceDTO.createFrom;
+const $$createType9 = $Create.Array($$createType8);
+const $$createType10 = $Create.Array($$createType5);
+const $$createType11 = SourceMetadataDTO.createFrom;
+const $$createType12 = $Create.Nullable($$createType11);
+const $$createType13 = $Create.Nullable($$createType8);

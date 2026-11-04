@@ -31,6 +31,15 @@ func (s *TagService) RemoveTagFromResource(ctx context.Context, resourceID strin
 	return s.core.RemoveTagFromResource(ctx, resourceID, tagID)
 }
 
+// SetResourceTags 以替换式集合语义重设单个 Resource 的标签集合；规则由 core 承载。
+func (s *TagService) SetResourceTags(ctx context.Context, resourceID string, tagNames []string) ([]TagDTO, error) {
+	tags, err := s.core.SetResourceTags(ctx, resourceID, tagNames)
+	if err != nil {
+		return nil, err
+	}
+	return mapped(tags, tagToDTO), nil
+}
+
 // 通过已有标签建议降低新建近义标签的概率。
 func (s *TagService) SuggestTags(ctx context.Context, query string, limit int) ([]TagDTO, error) {
 	tags, err := s.core.SuggestTags(ctx, query, limit)

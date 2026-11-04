@@ -31,6 +31,15 @@ export function RemoveTagFromResource(resourceID: string, tagID: string): $Cance
 }
 
 /**
+ * SetResourceTags 以替换式集合语义重设单个 Resource 的标签集合；规则由 core 承载。
+ */
+export function SetResourceTags(resourceID: string, tagNames: string[]): $CancellablePromise<$models.TagDTO[]> {
+    return $Call.ByID(230069075, resourceID, tagNames).then(($result: any) => {
+        return $$createType2($result);
+    });
+}
+
+/**
  * 通过已有标签建议降低新建近义标签的概率。
  */
 export function SuggestTags(query: string, limit: number): $CancellablePromise<$models.TagDTO[]> {

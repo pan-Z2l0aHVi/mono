@@ -55,14 +55,11 @@ function createRuntime(overrides: Partial<LibraryRuntime> = {}): LibraryRuntime 
     isAvailable: true,
     listResources: async () => [],
     getResource: async resourceId => createResource({ id: resourceId }),
-    addFileResource: async () => createResource(),
-    addURLResource: async () => createResource(),
+    createResource: async () => createResource({ id: 'created-inline' }),
+    setResourceTags: async () => [],
     updateResourceTitle: async (resourceId, title) => createResource({ id: resourceId, title }),
     updateResourceNote: async (resourceId, note) => createResource({ id: resourceId, note }),
     deleteResource: async () => {},
-    addTag: async () =>
-      ({ id: 'tag-inline', name: 'inline', created_at: 300, color: TagColor.TagColorTeal }) satisfies TagDTO,
-    removeTag: async () => {},
     refreshURLSource: async () => createResource().sources[0]!,
     refreshFileSource: async () => createResource().sources[0]!,
     replaceFileSource: async () => createResource().sources[0]!,
@@ -189,9 +186,9 @@ describe('useLibraryRuntime', () => {
 
   it('添加与删除使用 runtime 返回的内联 DTO 更新 store', async () => {
     const created = createResource({ id: 'created', title: 'Created from inline data' })
-    const addFileResource = vi.fn<LibraryRuntime['addFileResource']>(async () => created)
+    const createResourceMock = vi.fn<LibraryRuntime['createResource']>(async () => created)
     const deleteResource = vi.fn<LibraryRuntime['deleteResource']>(async () => {})
-    const controller = useLibraryRuntime(createRuntime({ addFileResource, deleteResource }))
+    const controller = useLibraryRuntime(createRuntime({ createResource: createResourceMock, deleteResource }))
 
     await controller.addResource({
       id: 'queue-item',
@@ -204,15 +201,19 @@ describe('useLibraryRuntime', () => {
       mediaUrl: null
     })
     expect(useLibraryStore().resources.map(resource => resource.id)).toEqual(['created'])
-    expect(addFileResource).toHaveBeenCalledWith('/tmp/inline.md')
+    expect(createResourceMock).toHaveBeenCalledExactlyOnceWith({
+      kind: SourceType.SourceTypeFile,
+      location: '/tmp/inline.md',
+      title: 'Created from inline data',
+      tags: []
+    })
 
     await controller.deleteResources(['created'])
     expect(useLibraryStore().resources).toEqual([])
     expect(deleteResource).toHaveBeenCalledWith('created')
   })
 
-  it('添加资源后按队列标签逐项持久化并回读最新 DTO', async () => {
-    const created = createResource({ id: 'tagged', title: 'Tagged' })
+  it('添加资源时把标题与队列标签一次交给后端建齐', async () => {
     const tagged = createResource({
       id: 'tagged',
       title: 'Tagged',
@@ -221,36 +222,45 @@ describe('useLibraryRuntime', () => {
         { id: 'tag-travel', name: 'Travel', created_at: 300, color: TagColor.TagColorAmber }
       ]
     })
-    const addTag = vi.fn<LibraryRuntime['addTag']>(async (resourceId, tagName) => ({
-      id: `tag-${tagName}`,
-      name: tagName,
-      created_at: 300,
-      color: TagColor.TagColorTeal
-    }))
-    const getResource = vi.fn<LibraryRuntime['getResource']>(async () => tagged)
-    const controller = useLibraryRuntime(
-      createRuntime({
-        addFileResource: async () => created,
-        addTag,
-        getResource
-      })
-    )
+    const createResourceMock = vi.fn<LibraryRuntime['createResource']>(async () => tagged)
+    const controller = useLibraryRuntime(createRuntime({ createResource: createResourceMock }))
 
     await controller.addResource({
       id: 'queue-tagged',
-      kind: 'file',
-      resourceKind: ResourceKind.ResourceKindDocument,
-      title: 'Tagged',
-      location: '/tmp/tagged.md',
+      kind: 'url',
+      resourceKind: ResourceKind.ResourceKindWeb,
+      title: '',
+      location: 'https://example.com/tagged',
       tags: ['Design', 'Travel'],
       previewToken: null,
       mediaUrl: null
     })
 
-    expect(addTag).toHaveBeenNthCalledWith(1, 'tagged', 'Design')
-    expect(addTag).toHaveBeenNthCalledWith(2, 'tagged', 'Travel')
-    expect(getResource).toHaveBeenCalledWith('tagged')
+    expect(createResourceMock).toHaveBeenCalledExactlyOnceWith({
+      kind: SourceType.SourceTypeURL,
+      location: 'https://example.com/tagged',
+      title: '',
+      tags: ['Design', 'Travel']
+    })
     expect(useLibraryStore().resources[0]?.tagNames).toEqual(['Design', 'Travel'])
+  })
+
+  it('saveTags 把名称集合原样交给替换式接口并回读最新 DTO', async () => {
+    const tagged = createResource({
+      id: 'resource-inline',
+      tags: [{ id: 'tag-travel', name: 'Travel', created_at: 300, color: TagColor.TagColorAmber }]
+    })
+    const setResourceTags = vi.fn<LibraryRuntime['setResourceTags']>(async () => tagged.tags)
+    const getResource = vi.fn<LibraryRuntime['getResource']>(async () => tagged)
+    const controller = useLibraryRuntime(createRuntime({ setResourceTags, getResource }))
+    useLibraryStore().setResources([createResource()])
+
+    const saved = await controller.saveTags('resource-inline', ['  Design ', 'Travel'])
+
+    expect(setResourceTags).toHaveBeenCalledExactlyOnceWith('resource-inline', ['  Design ', 'Travel'])
+    expect(getResource).toHaveBeenCalledWith('resource-inline')
+    expect(saved.tags.map(tag => tag.name)).toEqual(['Travel'])
+    expect(useLibraryStore().resources[0]?.tagNames).toEqual(['Travel'])
   })
 
   it('subscribeToSourceAvailability：Wails 不可用时不订阅且 disposer 可调用', () => {

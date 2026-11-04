@@ -15,10 +15,7 @@ function createRuntime(overrides: Partial<LibraryRuntime> = {}): LibraryRuntime 
     getResource: async () => {
       throw new Error('未使用')
     },
-    addFileResource: async () => {
-      throw new Error('未使用')
-    },
-    addURLResource: async () => {
+    createResource: async () => {
       throw new Error('未使用')
     },
     updateResourceTitle: async () => {
@@ -28,10 +25,9 @@ function createRuntime(overrides: Partial<LibraryRuntime> = {}): LibraryRuntime 
       throw new Error('未使用')
     },
     deleteResource: async () => {},
-    addTag: async () => {
+    setResourceTags: async () => {
       throw new Error('未使用')
     },
-    removeTag: async () => {},
     refreshURLSource: async () => {
       throw new Error('未使用')
     },

@@ -601,11 +601,12 @@ func TestWatcherDetectsRemovalAndSelfHeal(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(libraryDir, "clip.mp4"), []byte("0123456789"), 0o600); err != nil {
 		t.Fatalf("write fixture: %v", err)
 	}
-	view, err := core.NewResourceService(db, remote.NewFetcher()).AddFileResource(
-		context.Background(), filepath.Join(libraryDir, "clip.mp4"),
+	view, err := core.NewResourceService(db, remote.NewFetcher()).CreateResource(
+		context.Background(),
+		core.CreateResourceInput{Kind: storage.SourceTypeFile, Location: filepath.Join(libraryDir, "clip.mp4")},
 	)
 	if err != nil {
-		t.Fatalf("AddFileResource error: %v", err)
+		t.Fatalf("CreateResource error: %v", err)
 	}
 	mediaPath := view.Sources[0].Location
 	sourceID := view.Sources[0].ID
@@ -685,11 +686,12 @@ func TestWatcherHandlesAtomicReplace(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(libraryDir, "notes.md"), []byte("first"), 0o600); err != nil {
 		t.Fatalf("write fixture: %v", err)
 	}
-	view, err := core.NewResourceService(db, remote.NewFetcher()).AddFileResource(
-		context.Background(), filepath.Join(libraryDir, "notes.md"),
+	view, err := core.NewResourceService(db, remote.NewFetcher()).CreateResource(
+		context.Background(),
+		core.CreateResourceInput{Kind: storage.SourceTypeFile, Location: filepath.Join(libraryDir, "notes.md")},
 	)
 	if err != nil {
-		t.Fatalf("AddFileResource error: %v", err)
+		t.Fatalf("CreateResource error: %v", err)
 	}
 	mediaPath := view.Sources[0].Location
 

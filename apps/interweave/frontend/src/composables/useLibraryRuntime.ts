@@ -9,14 +9,11 @@ import {
 import { useLibraryStore, type ResourceSourceView } from '@/stores/library'
 
 import { SourceProbeOutcome } from '../../bindings/github.com/pan-Z2l0aHVi/mono/apps/interweave/backend/library/service'
+import { SourceType } from '../../bindings/github.com/pan-Z2l0aHVi/mono/apps/interweave/backend/library/storage'
 
 function errorMessage(error: unknown) {
   if (error instanceof Error && error.message.trim()) return error.message
   return '操作失败，请稍后重试'
-}
-
-function normalizeTag(tagName: string) {
-  return tagName.trim().replace(/\s+/g, ' ')
 }
 
 export function useLibraryRuntime(injectedRuntime?: LibraryRuntime) {
@@ -65,17 +62,13 @@ export function useLibraryRuntime(injectedRuntime?: LibraryRuntime) {
     setPending(item.id, true)
     error.value = ''
     try {
-      const created =
-        item.kind === 'file'
-          ? await runtime.addFileResource(item.location)
-          : await runtime.addURLResource(item.location)
-      const title = item.title.trim()
-      const updated = title && title !== created.title ? await runtime.updateResourceTitle(created.id, title) : created
-      store.upsertResource(updated)
-      for (const tagName of item.tags) {
-        await runtime.addTag(created.id, tagName)
-      }
-      const saved = item.tags.length ? await runtime.getResource(created.id) : updated
+      // 标题、入口与初始标签一次交给后端：归一化、探测与事务建齐都在 core 内完成。
+      const saved = await runtime.createResource({
+        kind: item.kind === 'file' ? SourceType.SourceTypeFile : SourceType.SourceTypeURL,
+        location: item.location,
+        title: item.title,
+        tags: item.tags
+      })
       store.upsertResource(saved)
       return saved
     } catch (cause) {
@@ -140,19 +133,8 @@ export function useLibraryRuntime(injectedRuntime?: LibraryRuntime) {
     setPending(resourceId, true)
     error.value = ''
     try {
-      const current = await runtime.getResource(resourceId)
-      const normalized = [...new Set(nextTagNames.map(normalizeTag).filter(Boolean))]
-      const currentByName = new Map(current.tags.map(tag => [tag.name.toLowerCase(), tag]))
-      const nextNames = new Set(normalized.map(tag => tag.toLowerCase()))
-
-      // 单次 Tag mutation 失败时，服务端可能已应用此前的 remove/add；这里不做自动回滚。
-      for (const tag of current.tags) {
-        if (!nextNames.has(tag.name.toLowerCase())) await runtime.removeTag(resourceId, tag.id)
-      }
-      for (const tagName of normalized) {
-        if (!currentByName.has(tagName.toLowerCase())) await runtime.addTag(resourceId, tagName)
-      }
-
+      // 替换式集合语义：名称原样提交，归一化与差集增删由后端在单事务内完成。
+      await runtime.setResourceTags(resourceId, nextTagNames)
       const updated = await runtime.getResource(resourceId)
       store.upsertResource(updated)
       return updated

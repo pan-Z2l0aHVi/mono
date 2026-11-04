@@ -254,6 +254,39 @@ function toTagDTO(name: string, resourceId: string): TagDTO {
   return { id: `mock-tag-${resourceId}-${name}`, name, created_at: BASE - 365 * DAY, color: mockTagColor(name) }
 }
 
+/*
+ * 标签身份按标准名跨资源复用：与后端「同名即复用」一致，同一名称在多次创建与
+ * 集合替换之间保持同一 id 与颜色，浏览器预览里才看得出真实收敛效果。
+ * 预览数据没有库，这里用内存 Map 承担这个角色。
+ */
+let tagsByName = new Map<string, TagDTO>()
+
+// 预览没有真实归一化，但与后端同步做 trim 与内部空白收敛，避免预览里的集合语义走样。
+function normalizeTagName(name: string) {
+  return name.trim().replace(/\s+/g, ' ')
+}
+
+function resolveTag(rawName: string, resourceId: string): TagDTO {
+  const name = normalizeTagName(rawName)
+  if (!name) return null!
+  const existing = tagsByName.get(name)
+  if (existing) return existing
+  const tag = toTagDTO(name, resourceId)
+  tagsByName.set(name, tag)
+  return tag
+}
+
+function mockDefaultTitle(location: string, kind: SourceType) {
+  if (kind === SourceType.SourceTypeURL) {
+    try {
+      return new URL(location).host
+    } catch {
+      return location
+    }
+  }
+  return location.split(/[\\/]/).at(-1) || location
+}
+
 function toSourceDTO(spec: MockSourceSpec, resource: MockResourceSpec, createdAt: number): SourceDTO {
   return {
     id: spec.id,
@@ -294,6 +327,9 @@ function unsupported(operation: string): never {
 
 export function createMockLibraryRuntime(): LibraryRuntime {
   let resources = SPECS.map(toResourceDTO)
+  let createCounter = 0
+  // 标签身份随 runtime 实例重置，避免跨用例串味。
+  tagsByName = new Map()
   const mediaBySourceId = new Map<string, string>()
   for (const resource of SPECS) {
     if (!resource.media) continue
@@ -353,30 +389,51 @@ export function createMockLibraryRuntime(): LibraryRuntime {
       return Promise.resolve()
     },
 
-    addTag: (resourceId, tagName) => {
+    // 浏览器预览照搬后端的替换式集合语义：归一化去重后整体重设，同名标签复用既有身份。
+    setResourceTags: (resourceId, tagNames) => {
       try {
         const found = require(resourceId)
-        if (found.tags.some(tag => tag.name === tagName)) {
-          return Promise.reject(new Error(`标签「${tagName}」已经存在`))
-        }
-        const tag = toTagDTO(tagName, resourceId)
-        found.tags.push(tag)
+        const names = [...new Set(tagNames.map(normalizeTagName).filter(Boolean))]
+        found.tags = names.map(name => resolveTag(name, resourceId))
         found.updated_at = Date.now()
-        return Promise.resolve(tag)
+        return Promise.resolve([...found.tags])
       } catch (error) {
         return Promise.reject(error)
       }
     },
 
-    removeTag: (resourceId, tagId) => {
-      try {
-        const found = require(resourceId)
-        found.tags = found.tags.filter(tag => tag.id !== tagId)
-        found.updated_at = Date.now()
-        return Promise.resolve()
-      } catch (error) {
-        return Promise.reject(error)
+    // 纳入用 fixture 伪造：入口永远可用、首选顺位从 0 开始，标题与初始标签按后端规则就地生成。
+    createResource: input => {
+      const id = `mock-created-${(createCounter += 1)}`
+      const now = Date.now()
+      const isURL = input.kind === SourceType.SourceTypeURL
+      const source: SourceDTO = {
+        id: `${id}-source`,
+        resource_id: id,
+        type: input.kind,
+        location: input.location,
+        available: true,
+        is_preferred: true,
+        order_index: 0,
+        metadata: null,
+        created_at: now,
+        updated_at: now
       }
+      const created: ResourceDTO = {
+        id,
+        title: input.title?.trim() || mockDefaultTitle(input.location, input.kind),
+        kind: isURL ? ResourceKind.ResourceKindWeb : ResourceKind.ResourceKindFile,
+        size_bytes: null,
+        note: '',
+        created_at: now,
+        updated_at: now,
+        sources: [source],
+        tags: (input.tags ?? []).map(name => resolveTag(name, id)).filter(Boolean),
+        preferred_source_id: source.id
+      }
+      // 后端列表按纳入时间倒序，预览同样把新资源插到最前。
+      resources = [created, ...resources]
+      return Promise.resolve(created)
     },
 
     resourceMediaURL: sourceId => mediaBySourceId.get(sourceId) ?? null,
@@ -395,8 +452,6 @@ export function createMockLibraryRuntime(): LibraryRuntime {
     },
 
     // 下面这些都依赖桌面服务或真实文件系统，浏览器预览里给出明确失败而不是假装成功。
-    addFileResource: () => unsupported('添加本地文件'),
-    addURLResource: () => unsupported('添加网页链接'),
     refreshURLSource: () => unsupported('刷新网页入口'),
     refreshFileSource: () => unsupported('刷新文件入口'),
     replaceFileSource: () => unsupported('替换文件入口'),

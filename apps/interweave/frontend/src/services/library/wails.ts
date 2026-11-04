@@ -3,7 +3,8 @@ import { Dialogs, Events } from '@wailsio/runtime'
 import {
   ResourceService,
   SourceService,
-  TagService
+  TagService,
+  type CreateResourceInputDTO
 } from '../../../bindings/github.com/pan-Z2l0aHVi/mono/apps/interweave/backend/library/service'
 import type { SourceType } from '../../../bindings/github.com/pan-Z2l0aHVi/mono/apps/interweave/backend/library/storage'
 import { OSService } from '../../../bindings/github.com/pan-Z2l0aHVi/mono/apps/interweave/backend/native/service'
@@ -14,7 +15,6 @@ import {
   requireResourceDTO,
   requireSourceDTO,
   requireSourceProbeResultDTO,
-  requireTagDTO,
   type LibraryRuntime,
   type SourceAvailabilityEventDTO
 } from './types'
@@ -30,12 +30,8 @@ class WailsLibraryRuntime implements LibraryRuntime {
     return requireResourceDTO(await ResourceService.GetResource(resourceId), '读取 Resource')
   }
 
-  async addFileResource(inputPath: string) {
-    return requireResourceDTO(await ResourceService.AddFileResource(inputPath), '添加文件 Resource')
-  }
-
-  async addURLResource(inputURL: string) {
-    return requireResourceDTO(await ResourceService.AddURLResource(inputURL), '添加 URL Resource')
+  async createResource(input: CreateResourceInputDTO) {
+    return requireResourceDTO(await ResourceService.CreateResource(input), '创建 Resource')
   }
 
   async updateResourceTitle(resourceId: string, newTitle: string) {
@@ -50,12 +46,8 @@ class WailsLibraryRuntime implements LibraryRuntime {
     await ResourceService.DeleteResource(resourceId)
   }
 
-  async addTag(resourceId: string, tagName: string) {
-    return requireTagDTO(await TagService.AddTagToResource(resourceId, tagName), '添加标签')
-  }
-
-  async removeTag(resourceId: string, tagId: string) {
-    await TagService.RemoveTagFromResource(resourceId, tagId)
+  async setResourceTags(resourceId: string, tagNames: string[]) {
+    return TagService.SetResourceTags(resourceId, tagNames)
   }
 
   async refreshURLSource(sourceId: string) {
