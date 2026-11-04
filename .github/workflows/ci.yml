@@ -198,3 +198,206 @@ jobs:
         # runner 核数少于本地时，turbo 默认的任务并发会让多个包的浏览器与 Go 测试互相抢占 CPU，
         # 表现为随机的等待预算耗尽。只在 CI 收敛任务并发，本地 `pnpm run test` 保持默认。
         run: pnpm exec turbo test --concurrency=2
+
+  # Codex 审查腿全部只读：模型在这里跑，写回（评论、推 patch）只在 codex-review-publish.yml 发生。
+  # 两条腿分开是因为 ci.yml 的 permissions 不变量要求 PR 验证不持有任何写权限。
+  codex-review:
+    name: Codex review
+    needs: check
+    # 资格判据与 codex-gate 必须逐字一致；fork PR 拿不到仓库 secret，版本分支由发布流程自审。
+    if: ${{ !cancelled() && needs.check.result == 'success' && github.event_name == 'pull_request' && github.event.pull_request.base.ref == 'main' && github.event.pull_request.head.repo.full_name == github.repository && github.head_ref != 'changeset-release/main' }}
+    continue-on-error: true
+    runs-on: ubuntu-latest
+    # 60 分钟是首批实测的临时余量，测出真实分布后回收；判定口径见 docs/adr/0020-codex-review-gate.md。
+    timeout-minutes: 60
+    permissions:
+      contents: read
+      pull-requests: read
+      actions: read
+    env:
+      CODEX_REVIEW_BASE_SHA: ${{ github.event.pull_request.base.sha }}
+      CODEX_REVIEW_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+      CODEX_REVIEW_DIFF_PATH: ${{ runner.temp }}/pr.diff
+      CODEX_REVIEW_MODEL: claude-haiku-5-5
+      CODEX_REVIEW_EFFORT: high
+
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          # 模型读的是 head 快照；fetch-depth 0 让 merge-base 无需再向远端补对象。
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+
+      - uses: ./.github/actions/setup-deps
+        with:
+          mise-install: 'node'
+          skip-install: 'true'
+
+      - uses: ./.github/actions/stage-codex-inputs
+        with:
+          base-sha: ${{ github.event.pull_request.base.sha }}
+
+      - name: Prepare review range
+        id: prepare
+        run: node "$RUNNER_TEMP/trusted/scripts/codex-review.mjs" prepare
+
+      - name: Find reusable conclusion
+        id: prior
+        # 复用只为省一次模型调用；查询失败就该照常跑模型，不能拖垮审查本身。
+        continue-on-error: true
+        run: node "$RUNNER_TEMP/trusted/scripts/codex-review.mjs" prior-run
+
+      - name: Download prior conclusion
+        if: steps.prior.outputs.prior_run_id != ''
+        continue-on-error: true
+        uses: actions/download-artifact@v7
+        with:
+          name: codex-review-findings
+          run-id: ${{ steps.prior.outputs.prior_run_id }}
+          repository: ${{ github.repository }}
+          path: ${{ runner.temp }}/codex-review
+
+      - name: Reuse prior conclusion
+        id: reuse
+        env:
+          CODEX_REVIEW_PRIOR_RUN_ID: ${{ steps.prior.outputs.prior_run_id }}
+        run: node "$RUNNER_TEMP/trusted/scripts/codex-review.mjs" reuse
+
+      - name: Review pull request with Codex
+        if: steps.reuse.outputs.reused != 'true'
+        # 网关超时、额度耗尽或输出不合 schema 都只是「本次未审查」，由 gate 如实呈现，不让 PR 变红。
+        continue-on-error: true
+        uses: openai/codex-action@bdf19a4a223ec2549a3e2274a0cf61556bc07675 # v1.13.0
+        env:
+          CODEX_REVIEW_MERGE_BASE_SHA: ${{ steps.prepare.outputs.merge_base_sha }}
+        with:
+          openai-api-key: ${{ secrets.CODEX_REVIEW_API_KEY }}
+          responses-api-endpoint: ${{ vars.CODEX_RESPONSES_ENDPOINT }}
+          codex-version: '0.165.0'
+          # 用 legacy sandbox 而不是 permission-profile：本仓 .codex/config.toml 在 project 层写死
+          # sandbox_mode = "danger-full-access"，--sandbox 覆盖的是同一个键，default_permissions 不是。
+          sandbox: 'read-only'
+          safety-strategy: 'drop-sudo'
+          model: ${{ env.CODEX_REVIEW_MODEL }}
+          effort: ${{ env.CODEX_REVIEW_EFFORT }}
+          prompt-file: ${{ runner.temp }}/trusted/codex/prompts/review.md
+          output-schema-file: ${{ runner.temp }}/trusted/codex/schemas/review-findings.schema.json
+          output-file: ${{ runner.temp }}/codex-final-message.json
+
+      - name: Record review conclusion
+        if: always()
+        run: node "$RUNNER_TEMP/trusted/scripts/codex-review.mjs" validate
+
+      - name: Upload review findings
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: codex-review-findings
+          path: ${{ runner.temp }}/codex-review
+
+  codex-gate:
+    name: Codex review gate
+    needs: [check, codex-review]
+    # 门禁只判已有结论，不跑模型；check 或 review 谁失败都不该让它缺席。
+    if: ${{ always() && github.event_name == 'pull_request' && github.event.pull_request.base.ref == 'main' && github.event.pull_request.head.repo.full_name == github.repository && github.head_ref != 'changeset-release/main' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      pull-requests: read
+      actions: read
+
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          # 门禁脚本来自 base：被审查的改动不能改写审查它那道门。
+          ref: ${{ github.event.pull_request.base.sha }}
+          persist-credentials: false
+
+      - uses: ./.github/actions/setup-deps
+        with:
+          mise-install: 'node'
+          skip-install: 'true'
+
+      - uses: ./.github/actions/stage-codex-inputs
+
+      - name: Download review findings
+        # review job 被跳过时没有 artifact，那是 unreviewed，不是门禁故障。
+        continue-on-error: true
+        uses: actions/download-artifact@v7
+        with:
+          name: codex-review-findings
+          path: ${{ runner.temp }}/codex-review
+
+      - name: Apply review gate
+        run: node "$RUNNER_TEMP/trusted/scripts/codex-review.mjs" gate
+
+  codex-autofix-plan:
+    name: Codex autofix plan
+    needs: check
+    if: ${{ needs.check.result == 'failure' && github.event_name == 'pull_request' && github.event.pull_request.base.ref == 'main' && github.event.pull_request.head.repo.full_name == github.repository && github.head_ref != 'changeset-release/main' }}
+    continue-on-error: true
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    permissions:
+      contents: read
+      pull-requests: read
+      actions: read
+    env:
+      CODEX_REVIEW_BASE_SHA: ${{ github.event.pull_request.base.sha }}
+      CODEX_REVIEW_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+      CODEX_AUTOFIX_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+      CODEX_REVIEW_DIFF_PATH: ${{ runner.temp }}/pr.diff
+      CODEX_AUTOFIX_LOG_PATH: ${{ runner.temp }}/ci-failure.log
+      CODEX_TRUSTED_SETTINGS: ${{ runner.temp }}/trusted/.claude/settings.json
+
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+
+      - uses: ./.github/actions/setup-deps
+        with:
+          mise-install: 'node'
+          skip-install: 'true'
+
+      - uses: ./.github/actions/stage-codex-inputs
+        with:
+          base-sha: ${{ github.event.pull_request.base.sha }}
+
+      - name: Prepare review range
+        run: node "$RUNNER_TEMP/trusted/scripts/codex-review.mjs" prepare
+
+      - name: Capture failing CI log
+        id: failure
+        run: node "$RUNNER_TEMP/trusted/scripts/codex-autofix.mjs" prepare
+
+      - name: Propose autofix patch with Codex
+        if: steps.failure.outputs.has_log == 'true'
+        continue-on-error: true
+        uses: openai/codex-action@bdf19a4a223ec2549a3e2274a0cf61556bc07675 # v1.13.0
+        with:
+          openai-api-key: ${{ secrets.CODEX_REVIEW_API_KEY }}
+          responses-api-endpoint: ${{ vars.CODEX_RESPONSES_ENDPOINT }}
+          codex-version: '0.165.0'
+          sandbox: 'workspace-write'
+          safety-strategy: 'drop-sudo'
+          model: 'claude-haiku-5-5'
+          effort: 'high'
+          prompt-file: ${{ runner.temp }}/trusted/codex/prompts/autofix.md
+          output-file: ${{ runner.temp }}/codex-autofix-message.txt
+
+      - name: Capture autofix patch
+        if: always()
+        id: patch
+        run: node "$RUNNER_TEMP/trusted/scripts/codex-autofix.mjs" capture
+
+      - name: Upload autofix patch
+        if: steps.patch.outputs.has_patch == 'true'
+        uses: actions/upload-artifact@v6
+        with:
+          name: codex-autofix-patch
+          path: ${{ runner.temp }}/autofix.patch

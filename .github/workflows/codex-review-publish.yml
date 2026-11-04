@@ -1,0 +1,127 @@
+name: Codex Review Publish
+
+# 写回腿：ci.yml 的只读不变量不允许任何写操作，所以评论与 autofix 推送住在这里。
+# 模型一次都不跑在本文件里；它只在 ci.yml 的 contents: read job 里执行。
+# workflow_run 只在默认分支上存在的这个文件里生效，因此本段的版本由 main 决定。
+on:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.workflow_run.id }}
+  cancel-in-progress: false
+
+jobs:
+  publish-review:
+    name: Publish review conclusion
+    # workflow_run 的 payload 里没有 base 分支与版本分支信息，资格判定交给 trusted 脚本里的
+    # reviewTarget：它会拒绝 fork、非 main base、已关闭的 PR 与 changeset 版本分支。
+    if: ${{ github.event.workflow_run.event == 'pull_request' && github.event.workflow_run.head_repository.full_name == github.repository }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      issues: write
+      pull-requests: read
+      actions: read
+
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - uses: ./.github/actions/setup-deps
+        with:
+          mise-install: 'node'
+          skip-install: 'true'
+
+      - uses: ./.github/actions/stage-codex-inputs
+
+      - name: Resolve pull request
+        id: pull
+        env:
+          CODEX_REVIEW_HEAD_SHA: ${{ github.event.workflow_run.head_sha }}
+        run: node "$RUNNER_TEMP/trusted/scripts/codex-review.mjs" resolve-pull
+
+      - name: Download review findings
+        # review job 被跳过时没有 artifact；那正是「本次未审查」，要把这句话写进评论而不是让 job 变红。
+        continue-on-error: true
+        uses: actions/download-artifact@v7
+        with:
+          name: codex-review-findings
+          run-id: ${{ github.event.workflow_run.id }}
+          repository: ${{ github.repository }}
+          path: ${{ runner.temp }}/codex-review
+
+      - name: Publish conclusion comment
+        if: steps.pull.outputs.pull_number != ''
+        env:
+          CODEX_REVIEW_PULL_NUMBER: ${{ steps.pull.outputs.pull_number }}
+          CODEX_REVIEW_RUN_CONCLUSION: ${{ github.event.workflow_run.conclusion }}
+        run: node "$RUNNER_TEMP/trusted/scripts/codex-review.mjs" publish
+
+  codex-autofix-apply:
+    name: Apply Codex autofix
+    if: ${{ github.event.workflow_run.event == 'pull_request' && github.event.workflow_run.head_repository.full_name == github.repository }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    # 只有这一步能写 Git：patch 由只读腿生成，这里只做校验、提交与推送。
+    permissions:
+      contents: write
+      pull-requests: read
+      actions: read
+    concurrency:
+      # 同一分支上的 patch 只能有一个在推：第二个 job 会在 assertPushAllowed 处被 head 漂移拒绝，
+      # 排队比让它红掉更好读。
+      group: codex-autofix-${{ github.event.workflow_run.head_branch }}
+      cancel-in-progress: false
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: ./.github/actions/setup-deps
+        with:
+          mise-install: 'node'
+          skip-install: 'true'
+
+      - uses: ./.github/actions/stage-codex-inputs
+
+      - name: Resolve pull request
+        id: pull
+        env:
+          CODEX_REVIEW_HEAD_SHA: ${{ github.event.workflow_run.head_sha }}
+        run: node "$RUNNER_TEMP/trusted/scripts/codex-review.mjs" resolve-pull
+
+      - name: Check out the pull request head
+        if: steps.pull.outputs.pull_number != ''
+        env:
+          HEAD_BRANCH: ${{ github.event.workflow_run.head_branch }}
+        # patch 是相对 run head 生成的，所以工作树必须停在同一份代码上；
+        # assertPushAllowed 再把 checkout、live head 与 patch base 三个 SHA 对齐。
+        run: |
+          set -euo pipefail
+          git fetch --no-tags origin "$HEAD_BRANCH"
+          git checkout --detach FETCH_HEAD
+
+      - name: Download autofix patch
+        # 大多数 run 没有 patch：下载失败就是「无事可做」，由 apply 自己按文件缺失跳过。
+        continue-on-error: true
+        uses: actions/download-artifact@v7
+        with:
+          name: codex-autofix-patch
+          run-id: ${{ github.event.workflow_run.id }}
+          repository: ${{ github.repository }}
+          path: ${{ runner.temp }}
+
+      - name: Apply and push autofix
+        if: steps.pull.outputs.pull_number != ''
+        env:
+          CODEX_AUTOFIX_PULL_NUMBER: ${{ steps.pull.outputs.pull_number }}
+          CODEX_AUTOFIX_HEAD_SHA: ${{ github.event.workflow_run.head_sha }}
+          CODEX_AUTOFIX_HEAD_REF: ${{ github.event.workflow_run.head_branch }}
+          CODEX_TRUSTED_SETTINGS: ${{ runner.temp }}/trusted/.claude/settings.json
+        run: node "$RUNNER_TEMP/trusted/scripts/codex-autofix.mjs" apply

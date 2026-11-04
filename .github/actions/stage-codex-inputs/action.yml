@@ -1,0 +1,50 @@
+# 复合 action：把 Codex 的 prompt、schema、判定脚本与生成物禁令清单固定到可信来源。
+# 用法：
+#   - uses: ./.github/actions/stage-codex-inputs
+#       with:
+#         base-sha: ${{ github.event.pull_request.base.sha }}   # PR 腿传 base；默认分支腿留空用 HEAD
+# 落点在 $RUNNER_TEMP/trusted，后续步骤只执行这里的副本。
+name: 'Stage trusted Codex inputs'
+description: 'Pin the Codex prompts, schema and gate scripts to the PR base commit so a reviewed change cannot rewrite the gate that reviews it.'
+
+inputs:
+  base-sha:
+    description: 'Commit that owns the trusted Codex inputs. Empty uses the checked out HEAD.'
+    required: false
+    default: ''
+
+runs:
+  using: composite
+  steps:
+    - name: Stage Codex inputs
+      shell: bash
+      env:
+        BASE_SHA: ${{ inputs.base-sha }}
+      run: |
+        set -euo pipefail
+        source_ref="${BASE_SHA:-$(git rev-parse HEAD)}"
+        if [[ ! "$source_ref" =~ ^[[:xdigit:]]{40,64}$ ]]; then
+          echo "Codex input source is not a commit SHA: $source_ref" >&2
+          exit 1
+        fi
+        git cat-file -e "$source_ref^{commit}"
+        for tracked in \
+          .github/codex/prompts/review.md \
+          .github/codex/prompts/autofix.md \
+          .github/codex/schemas/review-findings.schema.json \
+          .github/scripts/codex-review.mjs \
+          .github/scripts/codex-autofix.mjs \
+          .github/scripts/lib/github.mjs \
+          .github/scripts/lib/workflow-topology.mjs \
+          .claude/settings.json; do
+          target="$RUNNER_TEMP/trusted/${tracked#.github/}"
+          mkdir -p "$(dirname "$target")"
+          if git cat-file -e "$source_ref:$tracked" 2>/dev/null; then
+            git show "$source_ref:$tracked" > "$target"
+          else
+            # 首次落地时 base 里还没有这些文件：退回工作区副本，从下一个 PR 起就固定到 base。
+            cp "$tracked" "$target"
+            echo "::warning::$tracked is absent from $source_ref; the workspace copy is staged for this rollout only"
+          fi
+        done
+        echo "Codex inputs staged from $source_ref"

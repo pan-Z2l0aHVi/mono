@@ -1,8 +1,18 @@
 # PR review 纪律
 
-本文件规定 T0/T1 的 PR 独立审查、结果回写、复审和合并前核对。T2 按影响安排。独立性来自 reviewer 的单独执行体、固定提交和直接检查证据；实施者自查不能替代。GitHub 登录身份相同不抹去本地执行独立性，但作者不能在 GitHub 批准自己的 PR。会话选用的模型与推理强度由编排决定，不写入仓库政策。本文涉及的远端写操作都需用户逐次明确授权；机制见 [`workflow.md`](./workflow.md#怎么取得这个授权)。
+本文件规定 T0/T1 的 PR 独立审查、结果回写、复审和合并前核对，也是 PR 上自动审查所依据的同一份判据。T2 按影响安排。独立性来自 reviewer 的单独执行体、固定提交和直接检查证据；实施者自查不能替代。GitHub 登录身份相同不抹去本地执行独立性，但作者不能在 GitHub 批准自己的 PR。会话选用的模型与推理强度由编排决定，不写入仓库政策。本文涉及的远端写操作都需用户逐次明确授权；机制见 [`workflow.md`](./workflow.md#怎么取得这个授权)。
 
 新 reviewer 优先使用独立或新鲜上下文，只接收任务验收条件、PR URL/base/head、相关规则和原始证据；实施者摘要可作待核线索，不能把其自评结论当审查依据。GitHub MCP 可以替代 `gh` 读取 PR、评论与 reviews，也可以发表绑定 `commit_id` 的 `COMMENT` review；工具选择不改变 SHA、授权和响应核对要求。Task 台账（见 [`.agents/skills/task-ledger/SKILL.md`](../../.agents/skills/task-ledger/SKILL.md)）不记录 review、approval、verify 或 CI 通过。required context `check` 只证明 CI 中的检查结果，不是 review 结论。远端规则集的 required checks 与是否要求 approving review 属于平台状态，以仓库当前规则为准；平台是否强制 review 不改变本文的审查要求。reviewer 完成审查后是否向 GitHub 回写由用户逐次授权，机制见 [`workflow.md`](./workflow.md#怎么取得这个授权)。
+
+## 自动审查结论的效力
+
+CI 的 `check` 之后还有一道 Codex 审查门：它读同一份 diff，按本文的三档给发现，并把结论写进 PR 上同一条持久评论。决策与代价见 [ADR-0020](../adr/0020-codex-review-gate.md)。
+
+- 结论绑定被审查的 head。`reviewed` 只覆盖那一份代码；head 变了结论就过期，`stale` 与 `unreviewed` 一样不代表已审。
+- 只有 `Block` 让这道门变红。门是约定式的：不改动 GitHub 的分支规则，红叉由人处置，绿色也不替人签字。
+- 三条同时成立时，人工可以只做核对式抽查，不必逐行重看：结论的 reviewed SHA 等于当前 head、`Block` 为 0、required context `check` 在当前 head 上成功。
+- 以下任一情形仍要人按本文流程做完整独立审查：T0 改动；`unreviewed` 或 `stale`；来自 fork 的 PR——那条腿默认不跑；自动修推送出的新 head。
+- 自动修只在 `check` 失败时产出一份候选 patch，校验通过才提交并推回 PR 分支。机器人提交不会触发 checks，所以新 head 上要等一次人重跑的 CI 才有 CI 证据；已经含自动修提交的 head 不再自动规划第二次。
 
 ## 固定输入与范围
 
