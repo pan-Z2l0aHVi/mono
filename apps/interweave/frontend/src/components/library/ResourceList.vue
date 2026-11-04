@@ -30,7 +30,7 @@ const props = defineProps<{
   runtimeAvailable: boolean
   emptyDescription: string
   /** 缩略图回填；未提供时行内捕获后不回填。地址取自 Source 上的 thumbnailUrl。 */
-  saveThumbnailFor?: (sourceId: string, thumbnailUrl: string, dataUrl: string) => void
+  saveThumbnailFor?: (thumbnailUrl: string, dataUrl: string) => void
   resolveDefaultOpenWith: (resource: ResourceView) => Promise<string>
 }>()
 
@@ -672,10 +672,9 @@ function editorRefFor(id: string) {
 /** 行级回填回调：把捕获的 dataURL 绑定到该行首选 Source 的缩略图地址上。 */
 function thumbnailSaver(resource: ResourceView) {
   const save = props.saveThumbnailFor
-  const source = resource.preferred
-  if (!save || !source?.thumbnailUrl) return null
-  const { id, thumbnailUrl } = source
-  return (dataUrl: string) => save(id, thumbnailUrl, dataUrl)
+  const thumbnailUrl = resource.preferred?.thumbnailUrl
+  if (!save || !thumbnailUrl) return null
+  return (dataUrl: string) => save(thumbnailUrl, dataUrl)
 }
 
 function handleRenameChange(resource: ResourceView, event: WebUiEvent<WebUiEditableText, 'change'>) {

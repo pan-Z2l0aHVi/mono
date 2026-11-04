@@ -23,25 +23,6 @@ func (TaggingStore) Delete(ctx context.Context, q Queryer, resourceID string, ta
 	`, resourceID, tagID)
 }
 
-// ListByResource 读取单个 Resource 的全部归属，供替换式集合写路径做差集。
-func (TaggingStore) ListByResource(ctx context.Context, q Queryer, resourceID string) ([]TaggingModel, error) {
-	rows, err := q.QueryContext(ctx, `
-		SELECT resource_id, tag_id, created_at
-		FROM taggings
-		WHERE resource_id = ?
-		ORDER BY created_at ASC, tag_id ASC
-	`, resourceID)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	return collectRows(rows, func(sc rowScanner) (TaggingModel, error) {
-		var tagging TaggingModel
-		err := sc.Scan(&tagging.ResourceID, &tagging.TagID, &tagging.CreatedAt)
-		return tagging, err
-	})
-}
-
 // DeleteExcept 解除单个 Resource 上不在 keepIDs 里的全部归属；keepIDs 为空时清空。
 // 单条 SQL 在服务层事务内完成差集删除，不逐条往返。
 func (TaggingStore) DeleteExcept(ctx context.Context, q Queryer, resourceID string, keepIDs []string) error {

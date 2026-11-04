@@ -181,20 +181,21 @@ func (ing *ingestion) write(ctx context.Context, w ingestWrite) (ingestResult, e
 				return err
 			}
 			// 初始标签与 Resource 同事务建齐：任一名称非法则整体回滚，不留无标签的半成品。
-			// 复用与单标签增删相同的 resolve-or-create 规则，保证同名标签全库收敛。
-			for _, name := range w.tagNames {
-				stdName, err := normalize.TagName(name)
-				if err != nil {
-					return fmt.Errorf("invalid tag name: %w", err)
-				}
+			// 复用与单标签增删相同的归一化与 resolve-or-create 规则，保证同名标签全库收敛。
+			stdNames, err := normalizeTagNames(w.tagNames)
+			if err != nil {
+				return err
+			}
+			for index, stdName := range stdNames {
 				tag, err := resolveOrCreateTag(ctx, tx, ing.tags, stdName, now)
 				if err != nil {
 					return err
 				}
+				// 标签按归属时间排序展示，同一批建齐时时间戳必须严格递增，否则顺序不确定。
 				if err := ing.taggings.Insert(ctx, tx, storage.TaggingModel{
 					ResourceID: res.ID,
 					TagID:      tag.ID,
-					CreatedAt:  now,
+					CreatedAt:  now + int64(index),
 				}); err != nil {
 					return err
 				}

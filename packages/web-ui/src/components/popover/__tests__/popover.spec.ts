@@ -362,6 +362,33 @@ describe('WebUiPopover 组件', () => {
       cleanupElement(el)
     })
 
+    /*
+     * keep-alive 登记在断连时被撤销，重连必须重新绑上：只绑 `firstUpdated` 的话，元素被
+     * 临时移出文档再挂回之后，移入 panel 不再取消「离开宿主」排下的关闭计时，hover 会
+     * 在鼠标还停在 panel 上时自己关掉。
+     */
+    it('断开重连后移入 panel 仍取消关闭计时', async () => {
+      const el = createPopover('Btn', 'Content', { trigger: 'hover' })
+      await waitForUpdate(el)
+
+      el.remove()
+      document.body.append(el)
+      await waitForUpdate(el)
+
+      el.dispatchEvent(new PointerEvent('pointerenter'))
+      vi.advanceTimersByTime(100)
+      await waitForUpdate(el)
+      expect(el.isOpen).toBe(true)
+
+      el.dispatchEvent(new PointerEvent('pointerleave'))
+      queryA11y(el, '[role="dialog"]')?.dispatchEvent(new PointerEvent('pointerenter'))
+      vi.advanceTimersByTime(1000)
+      await waitForUpdate(el)
+      expect(el.isOpen).toBe(true)
+
+      cleanupElement(el)
+    })
+
     it('touch pointerenter 不打开', async () => {
       const el = createPopover('Btn', 'Content', { trigger: 'hover' })
       await waitForUpdate(el)

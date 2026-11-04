@@ -170,4 +170,26 @@ describe('toast top offset 观测', () => {
     // 初始重挂 + refresh 重挂 + stop 断开。
     expect(shell.disconnects()).toBe(3)
   })
+
+  it('stop 之后再 refresh 不排帧、不重挂、也不把属性写回去', () => {
+    const shell = stubShell()
+    const { layout } = fakeLayout(10)
+
+    const handle = observeToastTopOffset(() => layout)
+    handle.stop()
+    const { setCalls } = shell
+    const written = setCalls()
+    const observed = shell.observed.length
+    const disconnects = shell.disconnects()
+
+    handle.refresh()
+
+    expect(shell.frames.size).toBe(0)
+    expect(shell.observed.length).toBe(observed)
+    expect(shell.disconnects()).toBe(disconnects)
+    expect(setCalls()).toBe(written)
+    expect(shell.styleValues.has(TOAST_TOP_OFFSET_PROPERTY)).toBe(false)
+    // 监听已经摘下，refresh 不该重新安装。
+    expect(shell.added).toEqual(['resize', 'scroll:capture'])
+  })
 })

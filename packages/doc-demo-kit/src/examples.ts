@@ -36,15 +36,14 @@ export function createMetaLoader({ modules, resolve }: MetaLoaderOptions): MetaL
   const cache = new Map<string, Promise<MetaNode[]>>()
   function loadMeta(locale: DemoLocale, component: string): Promise<MetaNode[]> {
     const key = `${locale}/${component}`
-    let pending = cache.get(key)
-    if (!pending) {
-      const file = resolve(locale, component)
-      const importModule = modules[file]
-      if (!importModule) throw new Error(`Generated meta module is missing from glob: ${file}`)
-      pending = importModule().then(module => module.default)
-      void pending.catch(() => cache.delete(key))
-      cache.set(key, pending)
-    }
+    const cached = cache.get(key)
+    if (cached) return cached
+    const file = resolve(locale, component)
+    const importModule = modules[file]
+    if (!importModule) return Promise.reject(new Error(`Generated meta module is missing from glob: ${file}`))
+    const pending = importModule().then(module => module.default)
+    void pending.catch(() => cache.delete(key))
+    cache.set(key, pending)
     return pending
   }
   async function loadMetaDocs(locale: DemoLocale, components: string[]): Promise<MetaDocs> {

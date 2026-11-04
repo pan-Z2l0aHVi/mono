@@ -198,6 +198,16 @@ func TestPrepareFilePreviewRegistersMediaAndShutdownClearsTokens(t *testing.T) {
 	if document.Kind != service.ResourceKindDocument || document.Token != "" {
 		t.Fatalf("expected document kind without token, got %+v", document)
 	}
+	// MediaURL 是前端 <img>/<video> 的取流地址，必须与注册的 token 对齐；文档不带授权。
+	if image.MediaURL != libraryMedia.PendingMediaURL(image.Token) {
+		t.Errorf("expected image media URL to point at its pending token, got %q", image.MediaURL)
+	}
+	if video.MediaURL != libraryMedia.PendingMediaURL(video.Token) {
+		t.Errorf("expected video media URL to point at its pending token, got %q", video.MediaURL)
+	}
+	if document.MediaURL != "" {
+		t.Errorf("expected document preview without media URL, got %q", document.MediaURL)
+	}
 
 	pendingRequest := func(token string) int {
 		response := httptest.NewRecorder()

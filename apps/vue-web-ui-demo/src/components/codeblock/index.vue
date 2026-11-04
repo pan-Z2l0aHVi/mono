@@ -2,6 +2,7 @@
 import appScrollbarsOptions from '@greypan/app-scrollbars'
 import {
   COPY_FEEDBACK_DURATION,
+  FLAVORS,
   FLAVOR_ICON_CLASS,
   FLAVOR_LABELS,
   FLAVOR_ICONS,
@@ -27,9 +28,9 @@ import {
 import { OverlayScrollbarsComponent } from 'overlayscrollbars-vue'
 import { computed, defineAsyncComponent, onBeforeUnmount, shallowRef, useId, ref, type Component } from 'vue'
 
-// 本站框架既是切换器的第一项，也是打开页面时显示的源码。
+// 本站框架既是切换器的第一项，也是打开页面时显示的源码；其余顺序由 kit 的 FLAVORS 决定。
 const NATIVE_FLAVOR: Flavor = 'vue'
-const FLAVOR_ORDER: readonly Flavor[] = ['vue', 'react']
+const FLAVOR_ORDER: readonly Flavor[] = [NATIVE_FLAVOR, ...FLAVORS.filter(flavor => flavor !== NATIVE_FLAVOR)]
 
 /*
  * `load` 按函数身份缓存异步组件（kit 的 thunk 缓存）：重渲染与再进入页面都不会换掉组件身份、

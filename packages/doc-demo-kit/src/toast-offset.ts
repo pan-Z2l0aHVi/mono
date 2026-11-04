@@ -28,6 +28,8 @@ export interface ToastTopOffsetHandle {
  */
 export function observeToastTopOffset(readLayout: () => Element | null | undefined): ToastTopOffsetHandle {
   let frame: number | undefined
+  // stop 是终态：卸载后残留的 observer 回调或晚到的 refresh 不能再把属性写回全局样式。
+  let stopped = false
   const update = () => {
     const header = readLayout()?.querySelector<HTMLElement>(HEADER_SELECTOR)
     const next = toastTopOffsetValue(header?.getBoundingClientRect().bottom)
@@ -38,7 +40,7 @@ export function observeToastTopOffset(readLayout: () => Element | null | undefin
     }
   }
   const schedule = () => {
-    if (frame !== undefined) return
+    if (stopped || frame !== undefined) return
     frame = requestAnimationFrame(() => {
       frame = undefined
       update()
@@ -46,7 +48,7 @@ export function observeToastTopOffset(readLayout: () => Element | null | undefin
   }
   const resizeObserver = typeof ResizeObserver === 'undefined' ? undefined : new ResizeObserver(schedule)
   const observeTargets = () => {
-    if (!resizeObserver) return
+    if (stopped || !resizeObserver) return
     resizeObserver.disconnect()
     const layout = readLayout()
     for (const target of [layout, layout?.querySelector(BANNER_SELECTOR), layout?.querySelector(HEADER_SELECTOR)]) {
@@ -64,8 +66,13 @@ export function observeToastTopOffset(readLayout: () => Element | null | undefin
       schedule()
     },
     stop: () => {
+      if (stopped) return
+      stopped = true
       resizeObserver?.disconnect()
-      if (frame !== undefined) cancelAnimationFrame(frame)
+      if (frame !== undefined) {
+        cancelAnimationFrame(frame)
+        frame = undefined
+      }
       // 属性归这个 observer 所有：卸载后不能把它留在全局样式上。
       document.documentElement.style.removeProperty(TOAST_TOP_OFFSET_PROPERTY)
       window.removeEventListener('resize', schedule)

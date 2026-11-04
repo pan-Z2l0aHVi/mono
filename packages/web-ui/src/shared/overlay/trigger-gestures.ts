@@ -12,7 +12,7 @@
  * open 状态仍由宿主持有：`requestOpen` / `requestClose` 必须是幂等入口
  * （未开启时 `requestClose` no-op），user-change 标记归宿主。
  */
-import { hasTriggerMode, type OverlayTriggerMode } from '@/shared/overlay/trigger-props'
+import type { OverlayTriggerMode } from '@/shared/overlay/trigger-props'
 
 /** 打开/收起请求的来源；宿主可用于区分语义（manual 手势忽略自动收起等）。 */
 export type TriggerGestureSource = 'hover' | 'focus' | 'outside-click' | 'focus-out' | 'panel-leave'

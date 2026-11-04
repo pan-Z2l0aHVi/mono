@@ -7,6 +7,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"sync/atomic"
 	"testing"
@@ -507,6 +508,23 @@ func TestCreateResourceBuildsResourceWithSourceAndTags(t *testing.T) {
 	}
 	if len(view.Tags) != 1 || view.Tags[0].Name != "Travel" {
 		t.Errorf("expected normalized single initial tag, got %+v", view.Tags)
+	}
+
+	// 同批建齐的多个初始标签按请求顺序展示：归属时间相同时 SQLite 的返回顺序不确定。
+	multi, err := resService.CreateResource(ctx, core.CreateResourceInput{
+		Kind:     storage.SourceTypeFile,
+		Location: tempFile(t, "multi-*.txt"),
+		Tags:     []string{"Work", "Travel", "Archive"},
+	})
+	if err != nil {
+		t.Fatalf("CreateResource (multiple tags) error: %v", err)
+	}
+	names := make([]string, 0, len(multi.Tags))
+	for _, tag := range multi.Tags {
+		names = append(names, tag.Name)
+	}
+	if want := []string{"Work", "Travel", "Archive"}; !slices.Equal(names, want) {
+		t.Errorf("expected initial tags in request order %v, got %v", want, names)
 	}
 
 	// 不带标题时回退 probe 的默认标题：文件取文件名。

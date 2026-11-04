@@ -41,9 +41,9 @@ describe('meta 装载', () => {
     expect(en).toBe(badgeEn)
   })
 
-  it('模块缺失时报错并带上键名', () => {
+  it('模块缺失时报错并带上键名', async () => {
     const { loader } = setup()
-    expect(() => loader.loadMeta('zh-CN', 'missing')).toThrow('Generated meta module is missing from glob')
+    await expect(loader.loadMeta('zh-CN', 'missing')).rejects.toThrow('Generated meta module is missing from glob')
   })
 
   it('装载失败不缓存，下次调用会重试', async () => {

@@ -142,6 +142,8 @@ export class WebUiPopover extends LitElement {
     super.connectedCallback()
     this._overlay.resume()
     this._gestures.connect()
+    // 重连时 shadow DOM 与 panel 元素还在，但断连已撤销 keep-alive 登记，需要重新绑。
+    this._bindLocalPanelKeepAlive()
   }
 
   override firstUpdated() {
@@ -151,8 +153,7 @@ export class WebUiPopover extends LitElement {
       ?.querySelector<HTMLSlotElement>('slot[name="trigger"]')
       ?.addEventListener('slotchange', () => this.requestUpdate())
 
-    const localPanel = this.shadowRoot?.querySelector<HTMLElement>('.popover-panel')
-    if (localPanel) this._panelKeepAliveDisposers.push(this._gestures.bindPanelKeepAlive(localPanel))
+    this._bindLocalPanelKeepAlive()
 
     if (this.open) {
       // 建立会话的那一帧没有 handle 可作 liveness 凭据：关闭路径会 invalidate()（见 updated），
@@ -162,6 +163,11 @@ export class WebUiPopover extends LitElement {
       })
       this._shouldOpenInstantly = true
     }
+  }
+
+  private _bindLocalPanelKeepAlive() {
+    const localPanel = this.shadowRoot?.querySelector<HTMLElement>('.popover-panel')
+    if (localPanel) this._panelKeepAliveDisposers.push(this._gestures.bindPanelKeepAlive(localPanel))
   }
 
   override disconnectedCallback() {
