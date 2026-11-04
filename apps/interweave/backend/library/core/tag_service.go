@@ -104,7 +104,7 @@ func (s *TagService) SetResourceTags(ctx context.Context, resourceID string, nam
 
 			// 同一 Resource 对同一标签只能保留一份归属；Insert 的 OR IGNORE 让补插幂等，
 			// 既有归属的 created_at 原样保留。新归属的 created_at 按批内序号递增，
-			// 保证按归属时间排序时顺序与请求顺序一致。
+			// 使同一批新建的归属在按时间排序时保持请求顺序。
 			if err := s.taggings.Insert(ctx, tx, storage.TaggingModel{
 				ResourceID: resourceID,
 				TagID:      tag.ID,

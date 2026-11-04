@@ -9,10 +9,10 @@ import { checkArtifacts, generate, writeArtifacts } from './index'
 /*
  * headless 入口的实现：CI 的新鲜度校验与版本 PR 的产物追平都从这里跑同一份生成逻辑，
  * 不用各自再写一遍「读包 manifest → 动态 import ESM 入口」的技巧——本模块经打包静态
- * 并入 ./index。唯一保留的动态 import 是宿主的 vite.config.ts：options 的单一来源在
+ * 并入 cli.mjs。唯一保留的动态 import 是宿主的 vite.config.ts：options 的单一来源在
  * 宿主配置里（具名导出 mdToMetaOptions），整文件求值会把插件工厂跑一遍，一次性进程里可接受。
  *
- * 与入口文件分开是为了能被测试直接调用：入口在模块求值时就跑 main，import 它会顺带执行命令行。
+ * 与入口文件分开是为了能被测试直接调用：入口在模块求值时就执行命令行，import 它会顺带跑一遍。
  */
 
 export const CLI_USAGE = '用法：md-to-meta <check|write> <app-dir>...'

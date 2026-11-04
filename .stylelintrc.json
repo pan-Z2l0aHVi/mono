@@ -11,7 +11,7 @@
     "at-rule-no-unknown": [
       true,
       {
-        "ignoreAtRules": ["theme", "utility", "custom-variant", "source"]
+        "ignoreAtRules": ["theme", "utility", "custom-variant"]
       }
     ],
     "declaration-block-no-redundant-longhand-properties": null,
@@ -19,5 +19,18 @@
     "declaration-empty-line-before": null,
     "custom-property-empty-line-before": null,
     "import-notation": "string"
-  }
+  },
+  "overrides": [
+    {
+      "files": ["apps/vue-web-ui-demo/src/assets/global.css", "apps/react-web-ui-demo/src/assets/global.css"],
+      "rules": {
+        "at-rule-no-unknown": [
+          true,
+          {
+            "ignoreAtRules": ["theme", "utility", "custom-variant", "source"]
+          }
+        ]
+      }
+    }
+  ]
 }

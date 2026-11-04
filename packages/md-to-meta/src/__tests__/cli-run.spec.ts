@@ -85,4 +85,18 @@ describe('runCli 生成与落盘', () => {
     )
     expect(deps.generate).not.toHaveBeenCalled()
   })
+
+  it('首个 app-dir 失败后不再处理后续目录', async () => {
+    const failure = new Error('config import failed')
+    const deps = fakeDeps()
+    deps.loadOptions.mockImplementation(async root => {
+      if (root === path.resolve('apps/a')) throw failure
+      return { mdToMetaOptions: OPTIONS }
+    })
+
+    await expect(runCli(['check', 'apps/a', 'apps/b'], deps)).rejects.toBe(failure)
+
+    expect(deps.loadOptions.mock.calls).toEqual([[path.resolve('apps/a')]])
+    expect(deps.generate).not.toHaveBeenCalled()
+  })
 })

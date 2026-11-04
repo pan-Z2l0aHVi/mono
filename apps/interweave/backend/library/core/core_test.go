@@ -449,6 +449,66 @@ func TestSetResourceTagsReplacesWholeSet(t *testing.T) {
 	}
 }
 
+// SetResourceTags 同一批新建的归属按请求顺序递增时间戳，读取顺序不依赖 SQLite 的行序。
+func TestSetResourceTagsKeepsRequestOrderForNewTaggings(t *testing.T) {
+	db, cleanup := setupTestDB(t)
+	defer cleanup()
+
+	resService := core.NewResourceService(db, remote.NewFetcher())
+	tagService := core.NewTagService(db)
+	ctx := context.Background()
+
+	view, err := addFileResource(ctx, resService, tempFile(t, "order-*.txt"))
+	if err != nil {
+		t.Fatalf("addFileResource error: %v", err)
+	}
+	requested := []string{"Work", "Travel", "Archive"}
+	if _, err := tagService.SetResourceTags(ctx, view.Resource.ID, requested); err != nil {
+		t.Fatalf("SetResourceTags error: %v", err)
+	}
+
+	rows, err := db.SqlDB().QueryContext(
+		ctx,
+		"SELECT created_at FROM taggings WHERE resource_id = ? ORDER BY created_at",
+		view.Resource.ID,
+	)
+	if err != nil {
+		t.Fatalf("query taggings error: %v", err)
+	}
+	defer rows.Close()
+	var stamps []int64
+	for rows.Next() {
+		var stamp int64
+		if err := rows.Scan(&stamp); err != nil {
+			t.Fatalf("scan created_at error: %v", err)
+		}
+		stamps = append(stamps, stamp)
+	}
+	if err := rows.Err(); err != nil {
+		t.Fatalf("iterate taggings error: %v", err)
+	}
+	if len(stamps) != len(requested) {
+		t.Fatalf("expected %d taggings, got %v", len(requested), stamps)
+	}
+	for i := 1; i < len(stamps); i++ {
+		if stamps[i] <= stamps[i-1] {
+			t.Fatalf("expected strictly increasing created_at for a new batch, got %v", stamps)
+		}
+	}
+
+	reloaded, err := resService.GetResource(ctx, view.Resource.ID)
+	if err != nil {
+		t.Fatalf("GetResource error: %v", err)
+	}
+	names := make([]string, len(reloaded.Tags))
+	for i, tag := range reloaded.Tags {
+		names[i] = tag.Name
+	}
+	if !slices.Equal(names, requested) {
+		t.Errorf("expected tag order %v, got %v", requested, names)
+	}
+}
+
 // SetResourceTags 的名称校验在写库之前整体完成：任一非法名整体失败，不留半应用的集合。
 func TestSetResourceTagsRejectsInvalidNamesAtomically(t *testing.T) {
 	db, cleanup := setupTestDB(t)
