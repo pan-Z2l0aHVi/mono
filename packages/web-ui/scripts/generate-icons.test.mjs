@@ -75,6 +75,12 @@ try {
   assert.match(gallery, /import testHouse from '\.\/test-house'/)
   assert.match(gallery, /import testPlain from '\.\/test-plain'/)
   assert.match(gallery, /import bareDot from '\.\/bare-dot'/)
+  // import 行按格式化器规则以模块路径字典序排列（与登记顺序无关），这是产物幂等性的承重墙。
+  const importLines = gallery
+    .split('\n')
+    .filter(line => /^import \w+ from '\.\//.test(line))
+    .map(line => line.slice(line.indexOf("'") + 1, -1))
+  assert.deepEqual(importLines, [...importLines].sort())
   assert.match(
     gallery,
     /export const iconGallery: Record<string, IconifyIcon> = \{\n  testHouse,\n  testPlain,\n  bareDot\n\}/
