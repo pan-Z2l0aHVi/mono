@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vite-plus/test'
 
-import { highlight, visibleText } from '../highlight'
+import { highlight, lineCountOf, visibleText } from '../highlight'
 
 /*
  * `highlight()` 里那条 HTML 往返自证是「页面显示的那份 == 围栏那份」在引擎侧的落点：它一旦解错
@@ -38,5 +38,25 @@ describe('highlight 的原文往返', () => {
     const html = await highlight('plain\nline', '', 'plain.md')
     expect(html).toContain('mdm-code')
     expect(visibleText(html)).toBe('plain\nline')
+  })
+})
+
+/*
+ * `lineCountOf` 是宿主折叠判据的引擎侧实现：数的是 shiki 按行包的行 span，不是行号槽。
+ * 行号槽的文本里也有数字，若错数了它，空行或位数不同的行数就会漂。
+ */
+describe('lineCountOf', () => {
+  it('高亮 HTML 按行 span 数行，空行也占一行', async () => {
+    const html = await highlight('const a = 1\n\nconst b = 2', 'ts', 'a.md')
+    expect(lineCountOf(html)).toBe(3)
+  })
+
+  it('退回纯文本的输出没有行 span，行数为 0', async () => {
+    const html = await highlight('plain', 'unknown-lang', 'bad.md')
+    expect(lineCountOf(html)).toBe(0)
+  })
+
+  it('不把行号槽里的数字当成行', () => {
+    expect(lineCountOf('<span class="line-number">12</span>')).toBe(0)
   })
 })

@@ -1,3 +1,10 @@
+import {
+  LINE_NUMBER_CLASS,
+  MDM_CODE_CLASS,
+  MDM_HEADING_CLASS,
+  MDM_MARKDOWN_CLASS,
+  MDM_MARKDOWN_SECONDARY_CLASS
+} from './contract'
 import type { MetaNode } from './types'
 
 const MODULE_HEADER = `// 本文件由 @greypan/md-to-meta 生成，请勿手动编辑。
@@ -63,8 +70,8 @@ export function renderMetaTypes(): string {
 export function renderCss(darkSelector?: string): string {
   const dark = darkSelector
     ? `
-${darkSelector} .mdm-code,
-${darkSelector} .mdm-code span {
+${darkSelector} .${MDM_CODE_CLASS},
+${darkSelector} .${MDM_CODE_CLASS} span {
   color: var(--shiki-dark);
 }
 
@@ -73,41 +80,41 @@ ${darkSelector} .mdm-code span {
  * 与 .mdm-code + .line-number 同为两个类位却多带一个元素，比重更高，不补这一条，深色下行号会被
  * 刷成正文满色——档位差异就只剩浅色有了。
  */
-${darkSelector} .mdm-code .line-number {
+${darkSelector} .${MDM_CODE_CLASS} .${LINE_NUMBER_CLASS} {
   color: color-mix(in srgb, currentcolor 45%, transparent);
 }
 
-${darkSelector} .mdm-markdown,
-${darkSelector} .mdm-heading {
+${darkSelector} .${MDM_MARKDOWN_CLASS},
+${darkSelector} .${MDM_HEADING_CLASS} {
   color: rgb(255 255 255 / 0.81);
 }
 
-${darkSelector} .mdm-markdown-secondary {
+${darkSelector} .${MDM_MARKDOWN_SECONDARY_CLASS} {
   color: rgb(255 255 255 / 0.46);
 }
 
-${darkSelector} .mdm-markdown :not(pre) > code {
+${darkSelector} .${MDM_MARKDOWN_CLASS} :not(pre) > code {
   color: #ff7369;
 }
 
-${darkSelector} .mdm-markdown a {
+${darkSelector} .${MDM_MARKDOWN_CLASS} a {
   text-decoration-color: rgb(255 255 255 / 0.4);
 }
 
-${darkSelector} .mdm-markdown hr {
+${darkSelector} .${MDM_MARKDOWN_CLASS} hr {
   border-top-color: rgb(255 255 255 / 0.094);
 }
 
-${darkSelector} .mdm-markdown pre:not(.mdm-code) {
+${darkSelector} .${MDM_MARKDOWN_CLASS} pre:not(.${MDM_CODE_CLASS}) {
   background-color: rgb(255 255 255 / 0.055);
 }
 
-${darkSelector} .mdm-markdown th,
-${darkSelector} .mdm-markdown td {
+${darkSelector} .${MDM_MARKDOWN_CLASS} th,
+${darkSelector} .${MDM_MARKDOWN_CLASS} td {
   border-color: rgb(255 255 255 / 0.094);
 }
 
-${darkSelector} .mdm-markdown th {
+${darkSelector} .${MDM_MARKDOWN_CLASS} th {
   background-color: rgb(255 255 255 / 0.055);
 }
 `
@@ -119,7 +126,7 @@ ${darkSelector} .mdm-markdown th {
  * 而代码块的外框由宿主提供。这里把前者复位成继承，
  * 否则同一块代码会出现两层边框与两套字号。
  */
-.mdm-code {
+.${MDM_CODE_CLASS} {
   margin: 0;
   font: inherit;
   background: transparent;
@@ -129,8 +136,8 @@ ${darkSelector} .mdm-markdown th {
  * shiki 的 defaultColor: false 把颜色输出成 CSS 变量，浅色取 --shiki-light、深色取 --shiki-dark。
  * 深色判定跟着宿主的外观源走，所以切换外观不需要重新生成高亮 HTML。
  */
-.mdm-code,
-.mdm-code span {
+.${MDM_CODE_CLASS},
+.${MDM_CODE_CLASS} span {
   color: var(--shiki-light);
 }
 
@@ -143,7 +150,7 @@ ${darkSelector} .mdm-markdown th {
  * user-select: none 让鼠标划过选代码时不顺手把行号圈进选区。复制按钮不归这里管：它读的是 DOM 文本，
  * 要自己摘掉这一槽。
  */
-.mdm-code .line-number {
+.${MDM_CODE_CLASS} .${LINE_NUMBER_CLASS} {
   user-select: none;
 
   display: inline-block;
@@ -162,7 +169,7 @@ ${darkSelector} .mdm-markdown th {
  * 页面才不会正文比组件里的文字还大；脱离主题单独引用时回落到 14px。
  * 容器挂 .mdm-markdown、标题挂 .mdm-heading；说明这类次要正文再加 .mdm-markdown-secondary。
  */
-.mdm-markdown {
+.${MDM_MARKDOWN_CLASS} {
   font-family:
     ui-sans-serif, -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, 'Apple Color Emoji', Arial, sans-serif,
     'Segoe UI Emoji', 'Segoe UI Symbol';
@@ -172,50 +179,50 @@ ${darkSelector} .mdm-markdown th {
   overflow-wrap: break-word;
 }
 
-.mdm-markdown > :first-child {
+.${MDM_MARKDOWN_CLASS} > :first-child {
   margin-top: 0;
 }
 
-.mdm-markdown > :last-child {
+.${MDM_MARKDOWN_CLASS} > :last-child {
   margin-bottom: 0;
 }
 
-.mdm-markdown p {
+.${MDM_MARKDOWN_CLASS} p {
   margin: 8px 0;
 }
 
-.mdm-markdown ul,
-.mdm-markdown ol {
+.${MDM_MARKDOWN_CLASS} ul,
+.${MDM_MARKDOWN_CLASS} ol {
   margin: 8px 0;
   padding-left: 24px;
 }
 
-.mdm-markdown ul {
+.${MDM_MARKDOWN_CLASS} ul {
   list-style: disc;
 }
 
-.mdm-markdown ol {
+.${MDM_MARKDOWN_CLASS} ol {
   list-style: decimal;
 }
 
-.mdm-markdown li {
+.${MDM_MARKDOWN_CLASS} li {
   margin: 2px 0;
 }
 
-.mdm-markdown li > p {
+.${MDM_MARKDOWN_CLASS} li > p {
   margin: 0;
 }
 
-.mdm-markdown li > ul,
-.mdm-markdown li > ol {
+.${MDM_MARKDOWN_CLASS} li > ul,
+.${MDM_MARKDOWN_CLASS} li > ol {
   margin: 2px 0;
 }
 
-.mdm-markdown strong {
+.${MDM_MARKDOWN_CLASS} strong {
   font-weight: 600;
 }
 
-.mdm-markdown :not(pre) > code {
+.${MDM_MARKDOWN_CLASS} :not(pre) > code {
   padding: 0.2em 0.4em;
   border-radius: 3px;
 
@@ -226,26 +233,26 @@ ${darkSelector} .mdm-markdown th {
   background-color: rgb(135 131 120 / 0.15);
 }
 
-.mdm-markdown a {
+.${MDM_MARKDOWN_CLASS} a {
   color: inherit;
   text-decoration: underline;
   text-decoration-color: rgb(55 53 47 / 0.4);
   text-underline-offset: 2px;
 }
 
-.mdm-markdown blockquote {
+.${MDM_MARKDOWN_CLASS} blockquote {
   margin: 8px 0;
   padding-left: 14px;
   border-left: 3px solid currentcolor;
 }
 
-.mdm-markdown hr {
+.${MDM_MARKDOWN_CLASS} hr {
   margin: 16px 0;
   border: 0;
   border-top: 1px solid rgb(55 53 47 / 0.16);
 }
 
-.mdm-markdown img {
+.${MDM_MARKDOWN_CLASS} img {
   max-width: 100%;
   height: auto;
 }
@@ -255,7 +262,7 @@ ${darkSelector} .mdm-markdown th {
  * 宿主的代码卡。.mdm-markdown pre 比 .mdm-code 多一个元素位，不把它排除，正文的内边距、
  * 85% 字号与底色就会压过 .mdm-code 的复位，在代码卡里再叠一层灰底和小字。
  */
-.mdm-markdown pre:not(.mdm-code) {
+.${MDM_MARKDOWN_CLASS} pre:not(.${MDM_CODE_CLASS}) {
   overflow-x: auto;
 
   margin: 8px 0;
@@ -269,22 +276,22 @@ ${darkSelector} .mdm-markdown th {
   background-color: rgb(247 246 243);
 }
 
-.mdm-markdown pre code {
+.${MDM_MARKDOWN_CLASS} pre code {
   padding: 0;
   font: inherit;
   color: inherit;
   background-color: transparent;
 }
 
-.mdm-markdown table {
+.${MDM_MARKDOWN_CLASS} table {
   border-spacing: 0;
   border-collapse: collapse;
   width: 100%;
   margin: 8px 0;
 }
 
-.mdm-markdown th,
-.mdm-markdown td {
+.${MDM_MARKDOWN_CLASS} th,
+.${MDM_MARKDOWN_CLASS} td {
   padding: 7px 9px;
   border: 1px solid #e9e9e7;
 
@@ -293,40 +300,40 @@ ${darkSelector} .mdm-markdown th {
   vertical-align: middle;
 }
 
-.mdm-markdown th {
+.${MDM_MARKDOWN_CLASS} th {
   font-weight: 500;
   white-space: nowrap;
   background-color: rgb(242 241 238 / 0.5);
 }
 
-.mdm-markdown-secondary {
+.${MDM_MARKDOWN_SECONDARY_CLASS} {
   color: rgb(55 53 47 / 0.65);
 }
 
-.mdm-heading {
+.${MDM_HEADING_CLASS} {
   margin: 0;
   font-weight: 600;
   color: #37352f;
 }
 
-h1.mdm-heading {
+h1.${MDM_HEADING_CLASS} {
   font-size: 30px;
   font-weight: 700;
   line-height: 1.2;
   letter-spacing: -0.01em;
 }
 
-h2.mdm-heading {
+h2.${MDM_HEADING_CLASS} {
   font-size: 24px;
   line-height: 1.3;
 }
 
-h3.mdm-heading {
+h3.${MDM_HEADING_CLASS} {
   font-size: 20px;
   line-height: 1.4;
 }
 
-h4.mdm-heading {
+h4.${MDM_HEADING_CLASS} {
   font-size: 18px;
   line-height: 1.4;
 }
