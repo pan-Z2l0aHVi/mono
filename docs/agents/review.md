@@ -6,7 +6,7 @@
 
 ## 自动审查结论的效力
 
-CI 的 `check` 之后还有一道 Codex 审查门：它读同一份 diff，按本文的三档给发现，并把结论写进 PR 上同一条持久评论。决策与代价见 [ADR-0020](../adr/0020-codex-review-gate.md)。
+CI 的 `check` 之后还有一道 Codex 审查门：它读同一份 diff，按本文的三档给发现，并把结论写进 PR 上同一条持久评论。决策与代价见 [ADR-0021](../adr/0021-codex-review-gate.md)。
 
 - 结论绑定被审查的 head。`reviewed` 只覆盖那一份代码；head 变了结论就过期，`stale` 与 `unreviewed` 一样不代表已审。
 - 只有 `Block` 让这道门变红。门是约定式的：不改动 GitHub 的分支规则，红叉由人处置，绿色也不替人签字。

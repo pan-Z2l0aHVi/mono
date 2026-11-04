@@ -88,7 +88,7 @@ for (const file of [
   '.mise.toml',
   'AGENTS.md',
   'docs/agents/review.md',
-  'docs/adr/0020-codex-review-gate.md',
+  'docs/adr/0021-codex-review-gate.md',
   '.agents/skills/task-ledger/SKILL.md',
   '.codex/config.toml',
   '.claude/settings.json',

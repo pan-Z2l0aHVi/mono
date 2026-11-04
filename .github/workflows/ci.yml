@@ -208,7 +208,7 @@ jobs:
     if: ${{ !cancelled() && needs.check.result == 'success' && github.event_name == 'pull_request' && github.event.pull_request.base.ref == 'main' && github.event.pull_request.head.repo.full_name == github.repository && github.head_ref != 'changeset-release/main' }}
     continue-on-error: true
     runs-on: ubuntu-latest
-    # 60 分钟是首批实测的临时余量，测出真实分布后回收；判定口径见 docs/adr/0020-codex-review-gate.md。
+    # 60 分钟是首批实测的临时余量，测出真实分布后回收；判定口径见 docs/adr/0021-codex-review-gate.md。
     timeout-minutes: 60
     permissions:
       contents: read

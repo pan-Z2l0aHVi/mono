@@ -1,4 +1,4 @@
-# ADR-0020: Codex 自动 PR 审查门
+# ADR-0021: Codex 自动 PR 审查门
 
 - **Date**: 2026-11-04
 - **Status**: 已接受
