@@ -1,160 +1,38 @@
-import { setImmediate } from 'node:timers'
+import { beforeEach, expect, it, vi } from 'vite-plus/test'
 
-import type { MetaNode } from '@greypan/md-to-meta'
-import { expect, it, vi } from 'vite-plus/test'
+/*
+ * 引擎判据（串行提交、降级、快照语义、偏好优先）在 kit 的 locale 用例里，这里只钉 Vue 侧接线：
+ * 引擎 publish → shallowRef 换引用 → 三个 computed 视图跟着更新。wuchale 的壳文案 catalog
+ * 是外部依赖，mock 掉，让它不影响视图接线的判定。
+ */
+vi.mock('wuchale/load-utils', () => ({
+  loadLocale: vi.fn<(locale: string, syncDom?: boolean) => Promise<void>>(async () => {}),
+  commitLocale: vi.fn<(locale: string) => void>()
+}))
 
-import type { MetaDocs } from '../examples'
-import { createLocaleController } from '../locale'
+const { currentDocs, currentLocale, ensureExampleDoc, loadDemoLocale, localePending, registerExampleDoc } =
+  await import('../locale')
 
-const docs: MetaDocs = new Map([['button', [{ label: 'p', content: 'button' } as MetaNode]]])
-
-function setup() {
-  const commits: string[] = []
-  const deps = {
-    loadCatalog: vi.fn<(locale: string) => Promise<void>>(async () => {}),
-    commitCatalog: (locale: string) => {
-      commits.push(locale)
-    },
-    loadDocs: vi.fn<(locale: string, components: string[]) => Promise<MetaDocs>>(async () => docs),
-    prepareExamples: vi.fn<(docs: MetaDocs) => Promise<void>>(async () => {}),
-    readPreference: () => 'en',
-    writePreference: vi.fn<(locale: string) => void>(),
-    languages: () => ['zh-TW'],
-    setDocumentLanguage: vi.fn<(locale: string) => void>()
-  }
-  return { deps, commits, state: createLocaleController(deps) }
-}
-
-it('偏好优先于浏览器，成功准备后一次提交并持久化', async () => {
-  const { state, deps, commits } = setup()
-  expect(state.detect()).toBe('en')
-  await state.change('en')
-  expect(commits).toEqual(['en'])
-  expect(state.locale.value).toBe('en')
-  expect(deps.writePreference).toHaveBeenCalledWith('en')
+beforeEach(() => {
+  localStorage.clear()
 })
 
-it('壳语种加载失败时保留原始错误', async () => {
-  const { state, deps } = setup()
-  const failure = new Error('catalog unavailable')
-  deps.loadCatalog.mockRejectedValueOnce(failure)
-  await expect(state.loadShellLocale()).rejects.toBe(failure)
-})
-
-it('当前页示例就绪前保留原语言，示例失败不提交偏好', async () => {
-  const { state, deps, commits } = setup()
-  await state.change('zh-CN')
-  const unregister = state.register('button')
-  let fail!: (error: Error) => void
-  let started!: () => void
-  const start = new Promise<void>(resolve => {
-    started = resolve
-  })
-  deps.prepareExamples.mockImplementationOnce(() => {
-    started()
-    return new Promise<void>((_, reject) => {
-      fail = reject
-    })
-  })
-  const request = state.change('en')
-  const result = request.catch(error => error)
-  await start
-  expect(state.pending.value).toBe(true)
-  expect(state.locale.value).toBe('zh-CN')
-  expect(commits).toEqual(['zh-CN'])
-  expect(deps.prepareExamples).toHaveBeenLastCalledWith(docs)
-  fail(new Error('demo unavailable'))
-  expect(await result).toEqual(new Error('demo unavailable'))
-  expect(commits).toEqual(['zh-CN'])
-  expect(deps.writePreference).toHaveBeenCalledTimes(1)
-  expect(state.locale.value).toBe('zh-CN')
-  await state.change('en')
-  expect(state.locale.value).toBe('en')
-  unregister()
-})
-
-it('文档失败不提交catalog或偏好，后续请求可恢复', async () => {
-  const { state, deps, commits } = setup()
-  deps.loadDocs.mockRejectedValueOnce(new Error('docs unavailable'))
-  await expect(state.change('en')).rejects.toThrow('docs unavailable')
-  expect(commits).toEqual([])
-  expect(deps.writePreference).not.toHaveBeenCalled()
-  await state.change('zh-CN')
-  expect(commits).toEqual(['zh-CN'])
-})
-
-it('启动降级中文但不覆盖原偏好；双重失败保留原因', async () => {
-  const { state, deps, commits } = setup()
-  deps.loadDocs.mockRejectedValueOnce(new Error('English unavailable'))
-  expect(await state.bootstrap()).toEqual({ degraded: true, error: expect.any(Error) })
-  expect(commits).toEqual(['zh-CN'])
-  expect(deps.writePreference).not.toHaveBeenCalled()
-  deps.loadDocs.mockRejectedValue(new Error('offline'))
-  await expect(state.bootstrap()).rejects.toBeInstanceOf(AggregateError)
-})
-
-it('旧请求落地不覆盖最新语言', async () => {
-  const { state, deps, commits } = setup()
-  let finish!: () => void
-  let started!: () => void
-  const start = new Promise<void>(resolve => {
-    started = resolve
-  })
-  deps.loadCatalog.mockImplementationOnce(() => {
-    started()
-    return new Promise<void>(resolve => {
-      finish = resolve
-    })
-  })
-  const old = state.change('en')
-  await start
-  const latest = state.change('zh-CN')
-  finish()
-  await Promise.all([old, latest])
-  expect(commits).toEqual(['zh-CN'])
-  expect(state.pending.value).toBe(false)
-})
-
-it('文档已失败时仍等待旧catalog结束，才启动下一次准备', async () => {
-  const { state, deps, commits } = setup()
-  let finish!: () => void
-  let started!: () => void
-  const start = new Promise<void>(resolve => {
-    started = resolve
-  })
-  deps.loadCatalog.mockImplementationOnce(() => {
-    started()
-    return new Promise<void>(resolve => {
-      finish = resolve
-    })
-  })
-  deps.loadDocs.mockRejectedValueOnce(new Error('docs unavailable'))
-  const old = state.change('en')
-  // 立即绑定错误处理，避免单个分支的错误变成未处理 rejection。
-  const oldResult = old.catch(error => error)
-  await start
-  await Promise.resolve()
-  const latest = state.change('zh-CN')
-  // 跨一个事件循环阶段，排空 Promise rejection 与 queue 的微任务。
-  await new Promise<void>(resolve => setImmediate(resolve))
-  expect(deps.loadCatalog).toHaveBeenCalledTimes(1)
-  expect(commits).toEqual([])
-  finish()
-  await Promise.all([oldResult, latest])
-  expect(commits).toEqual(['zh-CN'])
-})
-
-it('页面切换后只为当前语种补载新组件', async () => {
-  const { state, deps } = setup()
-  const componentDocs: MetaDocs = new Map([['radio', [{ label: 'p', content: 'radio' } as MetaNode]]])
-  let release!: (value: MetaDocs) => void
-  deps.loadDocs.mockImplementation((_locale, components) =>
-    components.length ? new Promise(resolve => (release = resolve)) : Promise.resolve(new Map())
-  )
-  await state.change('en', false)
-  const request = state.ensure('radio')
-  release(componentDocs)
+it('切换提交后三个只读视图跟着快照更新，偏好落进 localStorage', async () => {
+  expect(currentLocale.value).toBe('zh-CN')
+  expect(localePending.value).toBe(false)
+  const request = loadDemoLocale('en')
+  expect(localePending.value).toBe(true)
   await request
-  expect(state.docs.value.get('radio')).toEqual(componentDocs.get('radio'))
-  expect(state.locale.value).toBe('en')
+  expect(currentLocale.value).toBe('en')
+  expect(localePending.value).toBe(false)
+  expect(localStorage.getItem('locale')).toBe('en')
+})
+
+it('注册的组件补载后出现在文档视图里', async () => {
+  await loadDemoLocale('zh-CN')
+  expect(currentDocs.value.has('radio')).toBe(false)
+  const unregister = registerExampleDoc('radio')
+  await ensureExampleDoc('radio')
+  expect(currentDocs.value.has('radio')).toBe(true)
+  unregister()
 })

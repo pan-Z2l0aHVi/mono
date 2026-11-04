@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vite-plus/test'
 
-import { highlight, lineCountOf, visibleText } from '../highlight'
+import { lineCountOf, visibleText } from '../contract'
+import { highlight } from '../highlight'
 
 /*
  * `highlight()` 里那条 HTML 往返自证是「页面显示的那份 == 围栏那份」在引擎侧的落点：它一旦解错

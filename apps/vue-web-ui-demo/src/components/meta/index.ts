@@ -1,36 +1,20 @@
+import { groupedMetaNodes, isHeadingLabel } from '@greypan/doc-demo-kit'
 import type { MetaNode } from '@greypan/md-to-meta'
 import { defineComponent, h, type PropType, type VNode } from 'vue'
 
-import { flavorOf } from '../codeblock/flavor'
 import Codeblock from '../codeblock/index.vue'
 
 /**
  * 通用 meta 渲染：按 `label` 顺序渲染节点数组，宿主只负责「用哪个元素、挂什么类」。
  * 行内内容在生成期已是 HTML，原样写进 `content`；`children` 只承载结构嵌套。
  *
- * 一条示例的两份源码在文档里是相邻的 `tsx` 与 `vue` 围栏，合成一张卡由工具条切换；
- * 其余围栏各自一张卡。
+ * 一条示例的两份源码在文档里是相邻的 `tsx` 与 `vue` 围栏，分组判据在 `@greypan/doc-demo-kit`；
+ * 命中配对的合成一张卡由工具条切换，其余围栏各自一张卡。
  */
 function renderNodes(nodes: readonly MetaNode[], preview: boolean): VNode[] {
-  const rendered: VNode[] = []
-  for (let index = 0; index < nodes.length; index += 1) {
-    const node = nodes[index]!
-    const next = nodes[index + 1]
-    if (isFlavorPair(node, next)) {
-      rendered.push(h(Codeblock, { nodes: [node, next], preview }))
-      index += 1
-      continue
-    }
-    rendered.push(renderNode(node, preview))
-  }
-  return rendered
-}
-
-function isFlavorPair(node: MetaNode, next: MetaNode | undefined): next is MetaNode {
-  if (!next || node.label !== 'codeblock' || next.label !== 'codeblock') return false
-  const left = flavorOf(node.lang)
-  const right = flavorOf(next.lang)
-  return left !== null && right !== null && left !== right
+  return groupedMetaNodes(nodes).map(group =>
+    group.length > 1 ? h(Codeblock, { nodes: group, preview }) : renderNode(group[0]!, preview)
+  )
 }
 
 function renderNode(node: MetaNode, preview: boolean): VNode {
@@ -39,7 +23,7 @@ function renderNode(node: MetaNode, preview: boolean): VNode {
 
   const properties: Record<string, unknown> = {}
   if (node.id) properties.id = node.id
-  if (/^h[1-6]$/.test(node.label)) properties.class = 'mdm-heading'
+  if (isHeadingLabel(node.label)) properties.class = 'mdm-heading'
   if (node.content) properties.innerHTML = node.content
 
   const children = node.children ? renderNodes(node.children, preview) : undefined

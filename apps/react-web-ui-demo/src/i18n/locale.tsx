@@ -1,82 +1,38 @@
+import {
+  createLocaleController,
+  createShellLocaleLoader,
+  detectLocale as detectDemoLocale,
+  type DemoLocale,
+  type LocaleController,
+  type LocaleDependencies
+} from '@greypan/doc-demo-kit'
 import type { MetaNode } from '@greypan/md-to-meta'
 import { createContext, useContext, useEffect, useMemo, useState, useSyncExternalStore, type ReactNode } from 'react'
 import { commitLocale, loadLocale } from 'wuchale/load-utils'
 
-import { createLocaleController } from './controller'
 import { loadMetaDocs, prepareExamples, type MetaDocs } from './examples'
 
-/**
- * demo 站的语言以本机为准：localStorage 记着用户选过的那一档，没有就按 `navigator.languages`
- * 推一次——`zh*` 落到 `zh-CN`，`en*` 落到 `en`，其余一律 `en`。URL 不带语言，分享出去的
- * 链接在对方机器上按对方的习惯显示。
- */
-export type Locale = 'zh-CN' | 'en'
+/** demo 站的语种：中文是源语种，英文没有文件名后缀（契约在 `@greypan/doc-demo-kit`）。 */
+export type Locale = DemoLocale
+export type { DemoLocale }
 
 const STORAGE_KEY = 'locale'
-const LOCALES = new Set<Locale>(['zh-CN', 'en'])
 
-function readStoredLocale(): Locale | null {
-  try {
-    const stored = localStorage.getItem(STORAGE_KEY)
-    return LOCALES.has(stored as Locale) ? (stored as Locale) : null
-  } catch {
-    return null
-  }
-}
-
+/** 本机语种判定：kit 的 `detectLocale` 接本 demo 的偏好存储与浏览器语言（判据见 kit 的 detect 用例）。 */
 export function detectLocale(): Locale {
-  const stored = readStoredLocale()
-  if (stored) return stored
-
-  const languages = navigator.languages?.length ? navigator.languages : [navigator.language]
-  for (const language of languages) {
-    const tag = language.toLowerCase()
-    if (tag.startsWith('zh')) return 'zh-CN'
-    if (tag.startsWith('en')) return 'en'
-  }
-  return 'en'
+  return detectDemoLocale({
+    readPreference: () => localStorage.getItem(STORAGE_KEY),
+    languages: () => (navigator.languages?.length ? navigator.languages : [navigator.language])
+  })
 }
 
-/** 创建串行提交 catalog 的 loader，确保最后请求的语种最终生效。 */
-export function createShellLocaleLoader(loadLocale: (locale: Locale) => Promise<void>) {
-  let shellLocale: Locale | null = null
-  let shellLoadQueue: Promise<void> = Promise.resolve()
-  let pendingLoads = 0
-  let latestRequest: { locale: Locale; promise: Promise<void> } | null = null
-
-  return function loadShellLocale(locale: Locale): Promise<void> {
-    if (latestRequest?.locale === locale) return latestRequest.promise
-    if (pendingLoads === 0 && shellLocale === locale) return Promise.resolve()
-
-    pendingLoads += 1
-    const pending = shellLoadQueue
-      .then(() => loadLocale(locale))
-      .then(() => {
-        shellLocale = locale
-      })
-    shellLoadQueue = pending.then(
-      () => {
-        pendingLoads -= 1
-      },
-      () => {
-        pendingLoads -= 1
-      }
-    )
-    latestRequest = { locale, promise: pending }
-    void pending.catch(() => {
-      if (latestRequest?.promise === pending) latestRequest = null
-    })
-    return pending
-  }
-}
-
-const loadShellLocale = createShellLocaleLoader(loadLocale)
+export { createShellLocaleLoader }
 
 /**
  * 串行提交壳文案 catalog。快速切换时把新请求排在旧请求之后，保证最后提交的是当前选择；
  * 同一语种的重复调用共用同一个 promise。
  */
-export { loadShellLocale }
+export const loadShellLocale = createShellLocaleLoader(loadLocale)
 
 interface LocaleContextValue {
   locale: Locale
@@ -89,45 +45,40 @@ interface LocaleContextValue {
 
 const LocaleContext = createContext<LocaleContextValue | null>(null)
 
+/**
+ * 壳文案 catalog 来自 wuchale，语料装载来自 `./examples` 的 kit meta loader；引擎的并发、
+ * 降级与提交顺序在 kit（`@greypan/doc-demo-kit`）里，这里只剩依赖接线与 React 快照绑定。
+ */
+function createDemoDependencies(): LocaleDependencies {
+  return {
+    loadCatalog: locale => loadLocale(locale, false),
+    commitCatalog: commitLocale,
+    loadDocs: loadMetaDocs,
+    prepareExamples,
+    readPreference: () => localStorage.getItem(STORAGE_KEY),
+    writePreference: locale => {
+      localStorage.setItem(STORAGE_KEY, locale)
+    },
+    languages: () => (navigator.languages?.length ? navigator.languages : [navigator.language]),
+    setDocumentLanguage: locale => {
+      document.documentElement.lang = locale
+    }
+  }
+}
+
 export function LocaleProvider({ children }: { children: ReactNode }) {
-  const [controller] = useState(() =>
-    createLocaleController(
-      {
-        loadCatalog: locale => loadLocale(locale, false),
-        loadDocs: loadMetaDocs,
-        prepareExamples,
-        commitCatalog: commitLocale,
-        setDocumentLanguage: locale => {
-          document.documentElement.lang = locale
-        },
-        persist: locale => {
-          try {
-            localStorage.setItem(STORAGE_KEY, locale)
-          } catch (error) {
-            console.warn('Unable to persist language preference', error)
-          }
-        }
-      },
-      // 首帧语种就按本机判定：子组件挂载时补载文档会直接命中正确语种，不会先拉一份再被切走。
-      detectLocale()
-    )
+  // 首帧语种就按本机判定：子组件挂载时补载文档会直接命中正确语种，不会先拉一份再被切走。
+  const [controller] = useState<LocaleController>(() =>
+    createLocaleController(createDemoDependencies(), detectLocale())
   )
+  // kit 约定：snapshot 整体引用只在 publish 时更换，`useSyncExternalStore` 按引用相等跳过无关渲染。
   const snapshot = useSyncExternalStore(controller.subscribe, controller.getSnapshot)
 
   useEffect(() => {
-    let active = true
-    const target = detectLocale()
-    void controller.change(target, false).catch(async error => {
+    // 挂载后按本机偏好换入目标语种；失败降级回源语种，原因留在控制台。
+    void controller.bootstrap().catch(error => {
       console.error('Unable to initialize preferred language', error)
-      if (active && target !== 'zh-CN') {
-        await controller.change('zh-CN', false).catch(fallbackError => {
-          console.error('Unable to load fallback language', fallbackError)
-        })
-      }
     })
-    return () => {
-      active = false
-    }
   }, [controller])
 
   const value = useMemo<LocaleContextValue>(

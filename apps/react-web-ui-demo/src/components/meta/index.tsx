@@ -1,8 +1,8 @@
+import { groupedMetaNodes } from '@greypan/doc-demo-kit'
 import type { MetaNode } from '@greypan/md-to-meta'
 import { createElement } from 'react'
 
 import Codeblock from '../codeblock'
-import { flavorOf } from '../codeblock/flavor'
 
 interface MetaCompProps {
   nodes: readonly MetaNode[]
@@ -17,37 +17,11 @@ interface MetaCompProps {
 export function MetaComp({ nodes, preview = true }: MetaCompProps) {
   return (
     <>
-      {groupedNodes(nodes).map((group, index) => (
+      {groupedMetaNodes(nodes).map((group, index) => (
         <MetaNodeView key={index} nodes={group} preview={preview} />
       ))}
     </>
   )
-}
-
-/**
- * 一条示例的两份源码在文档里是相邻的 `tsx` 与 `vue` 围栏，合成一张卡由工具条切换；
- * 其余围栏各自一张卡。
- */
-function groupedNodes(nodes: readonly MetaNode[]): readonly MetaNode[][] {
-  const groups: MetaNode[][] = []
-  for (let index = 0; index < nodes.length; index += 1) {
-    const node = nodes[index]!
-    const next = nodes[index + 1]
-    if (isFlavorPair(node, next)) {
-      groups.push([node, next])
-      index += 1
-      continue
-    }
-    groups.push([node])
-  }
-  return groups
-}
-
-function isFlavorPair(node: MetaNode, next: MetaNode | undefined): next is MetaNode {
-  if (!next || node.label !== 'codeblock' || next.label !== 'codeblock') return false
-  const left = flavorOf(node.lang)
-  const right = flavorOf(next.lang)
-  return left !== null && right !== null && left !== right
 }
 
 function MetaNodeView({ nodes, preview }: { nodes: readonly MetaNode[]; preview: boolean }) {
