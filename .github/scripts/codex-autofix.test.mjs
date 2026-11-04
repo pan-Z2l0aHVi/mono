@@ -88,6 +88,9 @@ for (const file of [
   '.mise.toml',
   'apps/interweave/go.mod',
   'apps/interweave/go.sum',
+  'go.work',
+  'apps/interweave/go.work.sum',
+  'apps/interweave/vendor/modules.txt',
   'AGENTS.md',
   'docs/agents/review.md',
   'docs/adr/0021-codex-review-gate.md',
@@ -104,6 +107,8 @@ for (const file of [
 for (const file of [
   'packages/web-ui/src/button.ts',
   'apps/interweave/main.go',
+  'ago.mod',
+  'packages/web-ui/go.mod.bak',
   'packages/md-to-meta/src/index.ts',
   'apps/interweave/frontend/wails.json',
   'docs/research/notes.md',

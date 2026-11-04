@@ -316,7 +316,7 @@ jobs:
       - uses: actions/checkout@v7
         with:
           # 本地 action 从 job 的工作区解析，检出 base 会让它找不到自己；
-          # 门禁脚本仍由下一步从 base 的对象里读出，被审查的改动改不了审查它那道门。
+          # 固定的是脚本内容的来源（下一步从 base 的对象里读出），工作区仍由 head 提供。
           ref: ${{ github.event.pull_request.head.sha }}
           fetch-depth: 0
           persist-credentials: false

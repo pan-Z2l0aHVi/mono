@@ -20,8 +20,9 @@ const EXTRA_GUARDED = [
   {
     label: '依赖清单与供应链配置',
     matcher:
-      /(^|\/)(package\.json|pnpm-lock\.yaml|pnpm-workspace\.yaml|skills-lock\.json|\.npmrc|\.mise\.toml|go\.mod|go\.sum)$/u
+      /(^|\/)(package\.json|pnpm-lock\.yaml|pnpm-workspace\.yaml|skills-lock\.json|\.npmrc|\.mise\.toml|go\.mod|go\.sum|go\.work|go\.work\.sum)$/u
   },
+  { label: '依赖清单与供应链配置', matcher: /(^|\/)vendor\//u },
   {
     label: 'agent 指令体系与 ADR',
     matcher: /(^|\/)(AGENTS\.md|CLAUDE\.md|CONTEXT\.md|ARCHITECTURE\.md|docs\/agents\/|docs\/adr\/|\.agents\/)/u
