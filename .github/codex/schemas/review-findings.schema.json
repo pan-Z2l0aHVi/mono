@@ -1,0 +1,44 @@
+{
+  "type": "object",
+  "description": "A read-only Codex review conclusion for one pull request head snapshot.",
+  "additionalProperties": false,
+  "required": ["summary", "findings"],
+  "properties": {
+    "summary": {
+      "type": "string",
+      "description": "One or two sentences that state what the change does and the overall conclusion."
+    },
+    "findings": {
+      "type": "array",
+      "description": "Every review finding, ordered by severity. An empty array means nothing has to change.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["severity", "file", "line", "problem", "suggestion"],
+        "properties": {
+          "severity": {
+            "type": "string",
+            "enum": ["Block", "Should fix", "Nit"],
+            "description": "Severity level defined by the repository review rubric."
+          },
+          "file": {
+            "type": "string",
+            "description": "Repository-relative path the finding points at, or an empty string when it concerns the whole change."
+          },
+          "line": {
+            "type": "integer",
+            "description": "Line number in the file as it exists in the reviewed head snapshot, or 0 when the finding is not tied to one line."
+          },
+          "problem": {
+            "type": "string",
+            "description": "The concrete defect or risk, stated as observable behaviour rather than preference."
+          },
+          "suggestion": {
+            "type": "string",
+            "description": "The smallest change that removes the problem."
+          }
+        }
+      }
+    }
+  }
+}

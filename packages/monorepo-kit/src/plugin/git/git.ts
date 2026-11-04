@@ -21,6 +21,8 @@ export interface GitApi {
   readonly stagedFiles: () => string[]
   /** tracked 且匹配 pathspec 的文件，`-z` 分隔以支持空格与非 ASCII 名字 */
   readonly files: (pattern: string) => string[]
+  /** 带 skip-worktree 位的 tracked 文件：稀疏检出 cone 外的已跟踪文件，index 里还在，磁盘上没有 */
+  readonly skipWorktreeFiles: () => string[]
   readonly changedFiles: (options: ChangedFilesOptions) => string[]
   /** 读某个提交上的 blob；不存在时抛出 */
   readonly show: (commit: string, file: string) => string
@@ -65,6 +67,11 @@ export const defineGit = () =>
           .split(/\r?\n/)
           .filter(Boolean),
       files: pattern => nulSeparated(raw(['ls-files', '-z', pattern])),
+      // `-v` 在路径前加一位状态码：`H` 是普通条目，`S` 是 skip-worktree（cone 外），小写是 assume-unchanged。
+      skipWorktreeFiles: () =>
+        nulSeparated(raw(['ls-files', '-v', '-z']))
+          .filter(entry => entry.startsWith('S '))
+          .map(entry => entry.slice(2)),
       changedFiles: ({ from, to, pathspec, filter }) =>
         nulSeparated(
           raw([

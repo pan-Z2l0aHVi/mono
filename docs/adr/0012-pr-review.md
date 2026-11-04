@@ -20,3 +20,4 @@ T0/T1 的首次 PR review 由独立 reviewer 检查完整 PR diff、验收条件
 - PR 结论必须覆盖当前 base/head；一次旧 head 的报告不能单独证明新 head 已通过 review。
 - 增量复审减少重复工作，同时保留检查关联行为和重新扩大范围的责任。
 - CI 只提供自动检查证据，不代表独立 review 或发布授权。
+- CI 里运行的模型自动审查沿用本 ADR 的 head 覆盖口径：结论只覆盖被审查的那一份 head，也不改变独立 review 的责任。

@@ -3,6 +3,7 @@ import path from 'node:path'
 import { runEntrypoint } from '@greypan/monorepo-kit'
 
 import { commandConventions } from '../policies/command-conventions.mjs'
+import { fullCheckout } from '../policies/full-checkout.mjs'
 import { interweaveTurboInputs } from '../policies/interweave-turbo-inputs.mjs'
 import { noMutualLinks } from '../policies/no-mutual-links.mjs'
 import { readmeLocales } from '../policies/readme-locales.mjs'
@@ -13,6 +14,7 @@ import { webUiDocsInputs } from '../policies/web-ui-docs-inputs.mjs'
 
 const checks = [
   commandConventions,
+  fullCheckout,
   interweaveTurboInputs,
   noMutualLinks,
   readmeLocales,

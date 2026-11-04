@@ -6,7 +6,15 @@ import path from 'node:path'
 
 import { readPnpmWorkspaceDirectories } from '@greypan/monorepo-kit'
 
-import { RELEASE_BRANCH, REQUIRED_CONTEXT, parseWorkflow, requiredPolicyStep } from './workflow-topology.mjs'
+import {
+  RELEASE_BRANCH,
+  REQUIRED_CONTEXT,
+  ghTokenStepViolations,
+  jobEnvContextViolations,
+  localActionBootstrapViolations,
+  parseWorkflow,
+  requiredPolicyStep
+} from './workflow-topology.mjs'
 
 const repoRoot = path.resolve(import.meta.dirname, '../../..')
 const workflowDir = path.join(repoRoot, '.github/workflows')
@@ -322,6 +330,124 @@ function assertPullRequestValidationIsReadOnly(workflow) {
     }
   }
 
+  // job 级 env 引用 runner 或 steps 不是某一步失败，而是整个文件被判 invalid：零 job，PR 上连这个 check 都不出现。
+  for (const [file, text] of Object.entries(workflowText)) {
+    for (const { job, key, context } of jobEnvContextViolations(text)) {
+      assert.fail(`${file}:${job} job-level env ${key} uses the unavailable ${context} context`)
+    }
+  }
+  const jobEnvWorkflow = ({ key, value }) =>
+    [
+      'on:',
+      '  pull_request:',
+      '    branches: [main]',
+      'jobs:',
+      '  check:',
+      '    env:',
+      `      ${key}: ${value}`,
+      '    steps:',
+      '      - run: exit 0',
+      ''
+    ].join('\n')
+  assert.deepEqual(
+    jobEnvContextViolations(jobEnvWorkflow({ key: 'CODEX_DIFF_PATH', value: '${{ runner.temp }}/pr.diff' })),
+    [{ job: 'check', key: 'CODEX_DIFF_PATH', context: 'runner' }],
+    'an uppercase job env key naming the runner context must be reported'
+  )
+  assert.deepEqual(
+    jobEnvContextViolations(jobEnvWorkflow({ key: 'codex_steps', value: '${{ steps.a.outputs.b }}' })),
+    [{ job: 'check', key: 'codex_steps', context: 'steps' }],
+    'a lowercase job env key is just as invalid and must be reported'
+  )
+  assert.deepEqual(
+    jobEnvContextViolations(jobEnvWorkflow({ key: 'CODEX_ROOT', value: '${{ github.workspace }}' })),
+    [],
+    'the github context is available in job-level env'
+  )
+
+  // 本地 action 由 job 自己的工作区解析：工作区检出到 base 时，本 PR 新建的 action 在 base 里还不存在，
+  // 这道门整个跑不起来；而 stage-codex-inputs 不传 base-sha 就从 head 读脚本，读到的正是被审查的那份改动。
+  // 两种写法都在这条腿上真实红过，所以判据要能双向自证。
+  const prLegIf = "${{ github.event.pull_request.base.ref == 'main' }}"
+  const runLegIf = "${{ github.event.workflow_run.event == 'pull_request' }}"
+  const headRef = '${{ github.event.pull_request.head.sha }}'
+  const baseRef = '${{ github.event.pull_request.base.sha }}'
+  const stagingPin = '${{ github.event.pull_request.base.sha }}'
+  const stagingWorkflow = ({ ref, pin, legIf }) =>
+    [
+      'on:',
+      '  pull_request:',
+      '    branches: [main]',
+      'jobs:',
+      '  gate:',
+      `    if: ${legIf}`,
+      '    steps:',
+      '      - uses: actions/checkout@v7',
+      '        with:',
+      `          ref: ${ref}`,
+      '      - uses: ./.github/actions/stage-codex-inputs',
+      ...(pin ? ['        with:', `          base-sha: ${stagingPin}`] : []),
+      ''
+    ].join('\n')
+  assert.deepEqual(localActionBootstrapViolations(stagingWorkflow({ ref: headRef, pin: true, legIf: prLegIf })), [])
+  assert.deepEqual(
+    localActionBootstrapViolations(stagingWorkflow({ ref: baseRef, pin: true, legIf: prLegIf })),
+    [{ job: 'gate', rule: 'base-checkout', detail: 'stage-codex-inputs' }],
+    'a job using a local action must not check out the pull request base'
+  )
+  assert.deepEqual(
+    localActionBootstrapViolations(stagingWorkflow({ ref: headRef, pin: false, legIf: prLegIf })),
+    [{ job: 'gate', rule: 'unpinned-staging', detail: '1 step(s)' }],
+    'a pull request leg must pin the staged gate scripts to the base commit'
+  )
+  assert.deepEqual(
+    localActionBootstrapViolations(stagingWorkflow({ ref: headRef, pin: false, legIf: runLegIf })),
+    [],
+    'a workflow_run leg reads its gate scripts from the default branch it checked out'
+  )
+  for (const [file, text] of Object.entries(workflowText)) {
+    for (const { job, rule, detail } of localActionBootstrapViolations(text)) {
+      assert.fail(`${file}:${job} breaks the gate staging bootstrap (${rule}: ${detail})`)
+    }
+  }
+
+  // gh 只认 GH_TOKEN：runner 不会替普通步骤注入 GITHUB_TOKEN，缺凭据的判定步骤不是跳过而是非零退出。
+  // 只有真正开口的命令需要凭据，所以 prepare / capture 这类只读本地文件的步骤不该被要求它。
+  const codexStep = ({ script = 'codex-review.mjs', command, token }) =>
+    [
+      'on:',
+      '  pull_request:',
+      '    branches: [main]',
+      'jobs:',
+      '  gate:',
+      '    steps:',
+      '      - name: Apply review gate',
+      ...(token ? ['        env:', '          GH_TOKEN: ${{ github.token }}'] : []),
+      `        run: node "$RUNNER_TEMP/trusted/scripts/${script}" ${command}`,
+      ''
+    ].join('\n')
+  assert.deepEqual(ghTokenStepViolations(codexStep({ command: 'gate', token: true })), [])
+  assert.deepEqual(
+    ghTokenStepViolations(codexStep({ command: 'gate', token: false })),
+    [{ job: 'gate', step: 'Apply review gate', commands: 'gate' }],
+    'a step that asks gh for the live pull request head must carry a token'
+  )
+  assert.deepEqual(
+    ghTokenStepViolations(codexStep({ command: 'prepare', token: false })),
+    [],
+    'a step that only reads the local worktree needs no credentials'
+  )
+  assert.deepEqual(
+    ghTokenStepViolations(codexStep({ script: 'codex-autofix.mjs', command: 'capture', token: false })),
+    [],
+    'reading the model output file needs no credentials'
+  )
+  for (const [file, text] of Object.entries(workflowText)) {
+    for (const { job, step, commands } of ghTokenStepViolations(text)) {
+      assert.fail(`${file}:${job} step ${step} calls gh (${commands}) without GH_TOKEN`)
+    }
+  }
+
   const pullRequestValidation = Object.entries(parsed).filter(([, workflow]) =>
     workflow.triggers.some(
       trigger =>
@@ -351,6 +477,131 @@ function assertPullRequestValidationIsReadOnly(workflow) {
         ),
       `${file}:${jobId} must reject job-level write access`
     )
+  }
+
+  // Codex 审查门：模型只在 ci.yml 的只读 job 里跑，评论与推送都在 codex-review-publish.yml。
+  {
+    const ci = workflowText['ci.yml']
+    const publishText = workflowText['codex-review-publish.yml']
+    const publish = parsed['codex-review-publish.yml']
+    const actionRef = 'openai/codex-action@bdf19a4a223ec2549a3e2274a0cf61556bc07675'
+
+    assert.equal(ci.split(actionRef).length - 1, 2, 'both model legs must run inside the read-only CI workflow')
+    assert.ok(!publishText.includes('openai/codex-action'), 'the privileged workflow must never run the model')
+
+    assert.deepEqual(publish.permissions, { contents: 'read' })
+    assert.deepEqual(publish.jobs['publish-review'].permissions, {
+      contents: 'read',
+      issues: 'write',
+      'pull-requests': 'read',
+      actions: 'read'
+    })
+    assert.deepEqual(publish.jobs['codex-autofix-apply'].permissions, {
+      contents: 'write',
+      'pull-requests': 'read',
+      actions: 'read'
+    })
+
+    const eligibilityGuard =
+      "github.event_name == 'pull_request' && github.event.pull_request.base.ref == 'main' && github.event.pull_request.head.repo.full_name == github.repository" +
+      ` && github.head_ref != '${RELEASE_BRANCH}'`
+    const eligibleJobs = ['codex-review', 'codex-gate', 'codex-autofix-plan']
+
+    function assertEligibilityGuards(text) {
+      const workflow = parseWorkflow(text)
+      for (const jobId of eligibleJobs) {
+        assert.ok(
+          workflow.jobs[jobId]?.if?.includes(eligibilityGuard),
+          `${jobId} must review only same-repo PRs into main`
+        )
+      }
+    }
+
+    function mutateJobIf(text, jobId, fragment) {
+      const block = workflowJob(text, jobId)
+      const start = text.indexOf(block)
+      assert.equal(block.split(fragment).length - 1, 1, `${jobId} mutation anchor must occur once`)
+      return text.slice(0, start) + block.replace(fragment, '') + text.slice(start + block.length)
+    }
+
+    assertEligibilityGuards(ci)
+    // fork PR 拿不到仓库 secret，版本分支由发布流程自审：判据少一条就必须变红，而不是静默放宽。
+    for (const fragment of [
+      "github.event_name == 'pull_request' && ",
+      "github.event.pull_request.base.ref == 'main' && ",
+      'github.event.pull_request.head.repo.full_name == github.repository && ',
+      `github.head_ref != '${RELEASE_BRANCH}' && `,
+      ` && github.head_ref != '${RELEASE_BRANCH}'`
+    ]) {
+      for (const jobId of eligibleJobs) {
+        assert.throws(
+          () => assertEligibilityGuards(mutateJobIf(ci, jobId, fragment)),
+          `dropping ${fragment.trim()} from ${jobId} must fail the eligibility check`
+        )
+      }
+    }
+
+    // 本仓 .codex/config.toml 在 project 层写死 sandbox_mode = "danger-full-access"。
+    // --sandbox 覆盖的是同一个键，权限档走的是另一个键：只准用 --sandbox，
+    // 所以下面这两条 sandbox 断言本身就是那道门的判据，少一条就换成了不受覆盖的档位。
+    const reviewStep = namedStep(ci, 'Review pull request with Codex')
+    const autofixStep = namedStep(ci, 'Propose autofix patch with Codex')
+    assert.match(reviewStep, /sandbox: 'read-only'/)
+    assert.match(autofixStep, /sandbox: 'workspace-write'/)
+    assert.match(reviewStep, /codex-version: '0\.165\.0'/)
+    assert.match(autofixStep, /codex-version: '0\.165\.0'/)
+    assert.match(reviewStep, /openai-api-key: \$\{\{ secrets\.CODEX_REVIEW_API_KEY \}\}/)
+    assert.match(reviewStep, /responses-api-endpoint: \$\{\{ vars\.CODEX_RESPONSES_ENDPOINT \}\}/)
+    assert.ok(!/openai-api-key: \$\{\{ vars\./.test(ci), 'the api key must never come from a public variable')
+
+    for (const [, reference] of `${ci}\n${publishText}`.matchAll(/\/trusted\/([^\s"']+)/g)) {
+      assert.ok(/^(?:codex|scripts|\.claude)\//.test(reference), `unexpected trusted path ${reference}`)
+    }
+    const staged = fs
+      .readFileSync(path.join(repoRoot, '.github/actions/stage-codex-inputs/action.yml'), 'utf8')
+      .match(/for tracked in[\s\S]*?; do/)[0]
+    const trustedPrefix = reference =>
+      reference.startsWith('codex/') || reference.startsWith('scripts/') ? `.github/${reference}` : reference
+    for (const [, reference] of `${ci}\n${publishText}`.matchAll(/\/trusted\/([^\s"']+)/g)) {
+      assert.ok(
+        staged.includes(trustedPrefix(reference)),
+        `workflows read ${reference} but stage-codex-inputs does not stage it`
+      )
+    }
+
+    for (const [file, workflow] of Object.entries(parsed)) {
+      for (const jobId of Object.keys(workflow.jobs)) {
+        const block = workflowJob(workflowText[file], jobId)
+        if (!/codex-autofix\.mjs (capture|apply)/.test(runTexts(block))) continue
+        assert.ok(
+          block.includes('CODEX_TRUSTED_SETTINGS: ${{ runner.temp }}/trusted/.claude/settings.json'),
+          `${file}:${jobId} must read the deny list from the staged copy, not the reviewed tree`
+        )
+      }
+    }
+
+    assert.equal(
+      parsed['ci.yml'].jobs['codex-review'].continueOnError,
+      'true',
+      'a model outage is unreviewed, not a failed PR'
+    )
+    assert.equal(parsed['ci.yml'].jobs['codex-autofix-plan'].continueOnError, 'true')
+    assert.equal(
+      parsed['ci.yml'].jobs['codex-gate'].continueOnError,
+      undefined,
+      'the gate must be able to redden the run'
+    )
+    assert.equal(parsed['ci.yml'].stepContinueOnError['Apply review gate'], undefined)
+    assert.equal(parsed['ci.yml'].steps['Apply review gate'], undefined, 'the gate step must run unconditionally')
+    assert.match(workflowJob(ci, 'codex-review'), /timeout-minutes: 60/)
+    assert.match(workflowJob(ci, 'codex-autofix-plan'), /timeout-minutes: 60/)
+    assert.match(workflowJob(ci, 'codex-gate'), /timeout-minutes: 10/, 'the gate does no model work and stays short')
+    assert.match(workflowJob(ci, 'codex-review'), /uses: \.\/\.github\/actions\/stage-codex-inputs/)
+    assert.ok(
+      !/persist-credentials: 'true'|git push/.test(workflowJob(ci, 'codex-review')),
+      'the review leg must stay write-free'
+    )
+    assert.match(workflowJob(publishText, 'codex-autofix-apply'), /timeout-minutes: 10/)
   }
 
   const version = workflowText['changeset-version.yml']

@@ -49,6 +49,7 @@ packages/monorepo-kit/src/
 | `context-corpus` / `-invariants`                                 | 语料根、commit scope 来源、符号链接对应表                           |
 | `git-hooks-status`                                               | `required` hook 名单                                                |
 | `script-tests`                                                   | 无（发现集合由 `git ls-files '*.test.mjs'` 现读，包内测试不在里面） |
+| `full-checkout`                                                  | 恢复全树的提示文案                                                  |
 | `test-ports`                                                     | 端口表文件名（默认 `monorepo.json`）                                |
 | `test-port-call-sites`                                           | 扫描 glob、调用名                                                   |
 | `package-contract`、`turbo-cache-invariant`、`turbo-input-paths` | 无（仓库事实从 `turbo.json` 与 `pnpm-workspace.yaml` 读出来）       |
