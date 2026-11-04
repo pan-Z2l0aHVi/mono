@@ -155,3 +155,36 @@ export function parseWorkflow(text) {
   }
   return parsed
 }
+
+// GitHub 在 jobs.<job_id>.env 只接受 github、needs、strategy、matrix、vars、secrets、inputs 这些上下文。
+// 引用 runner 或 steps 不是「这一步失败」，而是整个 workflow 文件被判 invalid：一个 job 都不会创建，
+// PR 上连这个 check 都不会出现。YAML 结构本身合法，所以严格的 YAML 解析器也发现不了，只能按位置判。
+export function jobEnvContextViolations(text) {
+  const violations = []
+  let job = null
+  let inJobEnv = false
+
+  for (const line of text.split(/\r?\n/)) {
+    if (/^[A-Za-z-]+:/.test(line)) {
+      job = null
+      inJobEnv = false
+      continue
+    }
+    const jobStart = line.match(/^ {2}([a-z0-9-]+):$/)
+    if (jobStart) {
+      job = jobStart[1]
+      inJobEnv = false
+      continue
+    }
+    if (job === null) continue
+    if (/^ {4}\S/.test(line)) inJobEnv = line === '    env:'
+    if (/^ {6}- /.test(line)) inJobEnv = false
+    if (!inJobEnv) continue
+
+    const entry = line.match(/^ {6}([A-Z0-9_]+):\s*(.*)$/)
+    if (!entry) continue
+    for (const match of entry[2].matchAll(/\b(runner|steps)\./g))
+      violations.push({ job, key: entry[1], context: match[1] })
+  }
+  return violations
+}

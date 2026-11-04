@@ -217,7 +217,6 @@ jobs:
     env:
       CODEX_REVIEW_BASE_SHA: ${{ github.event.pull_request.base.sha }}
       CODEX_REVIEW_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
-      CODEX_REVIEW_DIFF_PATH: ${{ runner.temp }}/pr.diff
       CODEX_REVIEW_MODEL: claude-haiku-5-5
       CODEX_REVIEW_EFFORT: high
 
@@ -268,9 +267,11 @@ jobs:
         if: steps.reuse.outputs.reused != 'true'
         # 网关超时、额度耗尽或输出不合 schema 都只是「本次未审查」，由 gate 如实呈现，不让 PR 变红。
         continue-on-error: true
-        uses: openai/codex-action@bdf19a4a223ec2549a3e2274a0cf61556bc07675 # v1.13.0
+        uses: openai/codex-action@bdf19a4a223ec2549a3e2274a0cf61556bc07675 # v1.13
         env:
           CODEX_REVIEW_MERGE_BASE_SHA: ${{ steps.prepare.outputs.merge_base_sha }}
+          # prompt 把 diff 路径交给模型；runner 上下文只能在 step 级 env 出现，job 级会让整个文件 invalid。
+          CODEX_REVIEW_DIFF_PATH: ${{ runner.temp }}/pr.diff
         with:
           openai-api-key: ${{ secrets.CODEX_REVIEW_API_KEY }}
           responses-api-endpoint: ${{ vars.CODEX_RESPONSES_ENDPOINT }}
@@ -348,9 +349,6 @@ jobs:
       CODEX_REVIEW_BASE_SHA: ${{ github.event.pull_request.base.sha }}
       CODEX_REVIEW_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
       CODEX_AUTOFIX_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
-      CODEX_REVIEW_DIFF_PATH: ${{ runner.temp }}/pr.diff
-      CODEX_AUTOFIX_LOG_PATH: ${{ runner.temp }}/ci-failure.log
-      CODEX_TRUSTED_SETTINGS: ${{ runner.temp }}/trusted/.claude/settings.json
 
     steps:
       - uses: actions/checkout@v7
@@ -378,7 +376,11 @@ jobs:
       - name: Propose autofix patch with Codex
         if: steps.failure.outputs.has_log == 'true'
         continue-on-error: true
-        uses: openai/codex-action@bdf19a4a223ec2549a3e2274a0cf61556bc07675 # v1.13.0
+        uses: openai/codex-action@bdf19a4a223ec2549a3e2274a0cf61556bc07675 # v1.13
+        env:
+          # autofix prompt 的两个输入路径，同样只能在 step 级引用 runner 上下文。
+          CODEX_AUTOFIX_LOG_PATH: ${{ runner.temp }}/ci-failure.log
+          CODEX_REVIEW_DIFF_PATH: ${{ runner.temp }}/pr.diff
         with:
           openai-api-key: ${{ secrets.CODEX_REVIEW_API_KEY }}
           responses-api-endpoint: ${{ vars.CODEX_RESPONSES_ENDPOINT }}
@@ -393,6 +395,9 @@ jobs:
       - name: Capture autofix patch
         if: always()
         id: patch
+        # deny list 从 base 落地的副本读；runner 上下文只能在 step 级 env 用，job 级会让整个文件 invalid。
+        env:
+          CODEX_TRUSTED_SETTINGS: ${{ runner.temp }}/trusted/.claude/settings.json
         run: node "$RUNNER_TEMP/trusted/scripts/codex-autofix.mjs" capture
 
       - name: Upload autofix patch

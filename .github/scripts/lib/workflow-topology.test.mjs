@@ -6,7 +6,13 @@ import path from 'node:path'
 
 import { readPnpmWorkspaceDirectories } from '@greypan/monorepo-kit'
 
-import { RELEASE_BRANCH, REQUIRED_CONTEXT, parseWorkflow, requiredPolicyStep } from './workflow-topology.mjs'
+import {
+  RELEASE_BRANCH,
+  REQUIRED_CONTEXT,
+  jobEnvContextViolations,
+  parseWorkflow,
+  requiredPolicyStep
+} from './workflow-topology.mjs'
 
 const repoRoot = path.resolve(import.meta.dirname, '../../..')
 const workflowDir = path.join(repoRoot, '.github/workflows')
@@ -319,6 +325,13 @@ function assertPullRequestValidationIsReadOnly(workflow) {
       if (trigger.on === 'push' || trigger.on === 'pull_request') {
         assert.deepEqual(trigger.branches, ['main'], `${file} must stay restricted to main`)
       }
+    }
+  }
+
+  // job 级 env 引用 runner 或 steps 不是某一步失败，而是整个文件被判 invalid：零 job，PR 上连这个 check 都不出现。
+  for (const [file, text] of Object.entries(workflowText)) {
+    for (const { job, key, context } of jobEnvContextViolations(text)) {
+      assert.fail(`${file}:${job} job-level env ${key} uses the unavailable ${context} context`)
     }
   }
 
