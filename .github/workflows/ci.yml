@@ -245,6 +245,9 @@ jobs:
         id: prior
         # 复用只为省一次模型调用；查询失败就该照常跑模型，不能拖垮审查本身。
         continue-on-error: true
+        env:
+          # gh 只读 GH_TOKEN/GH_HOST，runner 不会替步骤注入 GITHUB_TOKEN；github 上下文在 step 级 env 可用。
+          GH_TOKEN: ${{ github.token }}
         run: node "$RUNNER_TEMP/trusted/scripts/codex-review.mjs" prior-run
 
       - name: Download prior conclusion
@@ -336,6 +339,9 @@ jobs:
           path: ${{ runner.temp }}/codex-review
 
       - name: Apply review gate
+        env:
+          # 判定要读 live PR head，所以这一步必须有凭据：runner 不会替步骤注入 GITHUB_TOKEN，gh 只认 GH_TOKEN。
+          GH_TOKEN: ${{ github.token }}
         run: node "$RUNNER_TEMP/trusted/scripts/codex-review.mjs" gate
 
   codex-autofix-plan:
@@ -375,6 +381,8 @@ jobs:
 
       - name: Capture failing CI log
         id: failure
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: node "$RUNNER_TEMP/trusted/scripts/codex-autofix.mjs" prepare
 
       - name: Propose autofix patch with Codex

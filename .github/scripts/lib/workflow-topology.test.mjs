@@ -9,6 +9,7 @@ import { readPnpmWorkspaceDirectories } from '@greypan/monorepo-kit'
 import {
   RELEASE_BRANCH,
   REQUIRED_CONTEXT,
+  ghTokenStepViolations,
   jobEnvContextViolations,
   localActionBootstrapViolations,
   parseWorkflow,
@@ -379,6 +380,43 @@ function assertPullRequestValidationIsReadOnly(workflow) {
   for (const [file, text] of Object.entries(workflowText)) {
     for (const { job, rule, detail } of localActionBootstrapViolations(text)) {
       assert.fail(`${file}:${job} breaks the gate staging bootstrap (${rule}: ${detail})`)
+    }
+  }
+
+  // gh 只认 GH_TOKEN：runner 不会替普通步骤注入 GITHUB_TOKEN，缺凭据的判定步骤不是跳过而是非零退出。
+  // 只有真正开口的命令需要凭据，所以 prepare / capture 这类只读本地文件的步骤不该被要求它。
+  const codexStep = ({ script = 'codex-review.mjs', command, token }) =>
+    [
+      'on:',
+      '  pull_request:',
+      '    branches: [main]',
+      'jobs:',
+      '  gate:',
+      '    steps:',
+      '      - name: Apply review gate',
+      ...(token ? ['        env:', '          GH_TOKEN: ${{ github.token }}'] : []),
+      `        run: node "$RUNNER_TEMP/trusted/scripts/${script}" ${command}`,
+      ''
+    ].join('\n')
+  assert.deepEqual(ghTokenStepViolations(codexStep({ command: 'gate', token: true })), [])
+  assert.deepEqual(
+    ghTokenStepViolations(codexStep({ command: 'gate', token: false })),
+    [{ job: 'gate', step: 'Apply review gate', commands: 'gate' }],
+    'a step that asks gh for the live pull request head must carry a token'
+  )
+  assert.deepEqual(
+    ghTokenStepViolations(codexStep({ command: 'prepare', token: false })),
+    [],
+    'a step that only reads the local worktree needs no credentials'
+  )
+  assert.deepEqual(
+    ghTokenStepViolations(codexStep({ script: 'codex-autofix.mjs', command: 'capture', token: false })),
+    [],
+    'reading the model output file needs no credentials'
+  )
+  for (const [file, text] of Object.entries(workflowText)) {
+    for (const { job, step, commands } of ghTokenStepViolations(text)) {
+      assert.fail(`${file}:${job} step ${step} calls gh (${commands}) without GH_TOKEN`)
     }
   }
 

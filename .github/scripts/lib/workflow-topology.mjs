@@ -267,3 +267,61 @@ export function localActionBootstrapViolations(text) {
   }
   return violations
 }
+
+// 需要向 GitHub 开口才要凭据，所以表里记的是命令而不是脚本：prepare 与 capture 只读本地文件。
+const ghCommands = {
+  'codex-review.mjs': ['prior-run', 'gate', 'resolve-pull', 'publish'],
+  'codex-autofix.mjs': ['prepare', 'apply']
+}
+
+// gh 只认 GH_TOKEN，runner 不会替普通步骤注入 GITHUB_TOKEN：缺凭据不是「跳过这一步」，
+// 而是它非零退出、整个 job 变红。判定按步骤块做，因为 env 只在步骤级生效。
+export function ghTokenStepViolations(text) {
+  const violations = []
+  let job = null
+  let block = null
+
+  const labelOf = stepBlock => {
+    const named = stepBlock.match(/^ {6}- name:\s*(.*)$/m) ?? stepBlock.match(/^ {8}name:\s*(.*)$/m)
+    if (named) return unquote(named[1])
+    const used = stepBlock.match(/^ {6}- uses:\s*(.*)$/m)
+    return used ? unquote(used[1]) : 'unnamed step'
+  }
+  const close = () => {
+    if (block === null) return
+    const commands = [...block.matchAll(/scripts\/(codex-[a-z-]+\.mjs)" ([a-z-]+)/g)].filter(match =>
+      ghCommands[match[1]]?.includes(match[2])
+    )
+    if (commands.length > 0 && !/^ {10}GH_TOKEN:/m.test(block))
+      violations.push({ job, step: labelOf(block), commands: commands.map(match => match[2]).join(', ') })
+    block = null
+  }
+
+  for (const line of text.split(/\r?\n/)) {
+    if (/^[A-Za-z-]+:/.test(line)) {
+      close()
+      job = null
+      continue
+    }
+    const jobStart = line.match(/^ {2}([a-z0-9-]+):$/)
+    if (jobStart) {
+      close()
+      job = jobStart[1]
+      continue
+    }
+    if (job === null) continue
+    if (/^ {6}- /.test(line)) {
+      close()
+      block = `${line}\n`
+      continue
+    }
+    if (block === null) continue
+    if (/^ {4}\S/.test(line)) {
+      close()
+      continue
+    }
+    block += `${line}\n`
+  }
+  close()
+  return violations
+}

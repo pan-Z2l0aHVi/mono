@@ -45,6 +45,8 @@ jobs:
         id: pull
         env:
           CODEX_REVIEW_HEAD_SHA: ${{ github.event.workflow_run.head_sha }}
+          # runner 不会替步骤注入 GITHUB_TOKEN，gh 只认 GH_TOKEN。
+          GH_TOKEN: ${{ github.token }}
         run: node "$RUNNER_TEMP/trusted/scripts/codex-review.mjs" resolve-pull
 
       - name: Download review findings
@@ -62,6 +64,7 @@ jobs:
         env:
           CODEX_REVIEW_PULL_NUMBER: ${{ steps.pull.outputs.pull_number }}
           CODEX_REVIEW_RUN_CONCLUSION: ${{ github.event.workflow_run.conclusion }}
+          GH_TOKEN: ${{ github.token }}
         run: node "$RUNNER_TEMP/trusted/scripts/codex-review.mjs" publish
 
   codex-autofix-apply:
@@ -94,6 +97,8 @@ jobs:
         id: pull
         env:
           CODEX_REVIEW_HEAD_SHA: ${{ github.event.workflow_run.head_sha }}
+          # runner 不会替步骤注入 GITHUB_TOKEN，gh 只认 GH_TOKEN。
+          GH_TOKEN: ${{ github.token }}
         run: node "$RUNNER_TEMP/trusted/scripts/codex-review.mjs" resolve-pull
 
       - name: Check out the pull request head
@@ -124,4 +129,5 @@ jobs:
           CODEX_AUTOFIX_HEAD_SHA: ${{ github.event.workflow_run.head_sha }}
           CODEX_AUTOFIX_HEAD_REF: ${{ github.event.workflow_run.head_branch }}
           CODEX_TRUSTED_SETTINGS: ${{ runner.temp }}/trusted/.claude/settings.json
+          GH_TOKEN: ${{ github.token }}
         run: node "$RUNNER_TEMP/trusted/scripts/codex-autofix.mjs" apply
