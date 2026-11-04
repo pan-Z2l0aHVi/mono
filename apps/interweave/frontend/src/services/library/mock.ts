@@ -247,6 +247,14 @@ const SPECS: MockResourceSpec[] = [
   }
 ]
 
+// fixture 的媒体地址与资源表一一对应，且不随 runtime 实例变化；组件只认 DTO 上的完整 URL。
+const MEDIA_BY_SOURCE_ID = new Map<string, string>()
+for (const resource of SPECS) {
+  if (!resource.media) continue
+  const { label, from, to } = resource.media
+  for (const source of resource.sources) MEDIA_BY_SOURCE_ID.set(source.id, svgPlaceholder(label, from, to))
+}
+
 let tagCounter = 0
 
 function toTagDTO(name: string, resourceId: string): TagDTO {
@@ -254,8 +262,41 @@ function toTagDTO(name: string, resourceId: string): TagDTO {
   return { id: `mock-tag-${resourceId}-${name}`, name, created_at: BASE - 365 * DAY, color: mockTagColor(name) }
 }
 
+/*
+ * 标签身份按标准名跨资源复用：与后端「同名即复用」一致，同一名称在多次创建与
+ * 集合替换之间保持同一 id 与颜色，浏览器预览里才看得出真实收敛效果。
+ * 预览数据没有库，这里用内存 Map 承担这个角色。
+ */
+let tagsByName = new Map<string, TagDTO>()
+
+// 预览没有真实归一化，但与后端同步做 trim 与内部空白收敛，避免预览里的集合语义走样。
+function normalizeTagName(name: string) {
+  return name.trim().replace(/\s+/g, ' ')
+}
+
+function resolveTag(rawName: string, resourceId: string): TagDTO {
+  const name = normalizeTagName(rawName)
+  if (!name) return null!
+  const existing = tagsByName.get(name)
+  if (existing) return existing
+  const tag = toTagDTO(name, resourceId)
+  tagsByName.set(name, tag)
+  return tag
+}
+
+function mockDefaultTitle(location: string, kind: SourceType) {
+  if (kind === SourceType.SourceTypeURL) {
+    try {
+      return new URL(location).host
+    } catch {
+      return location
+    }
+  }
+  return location.split(/[\\/]/).at(-1) || location
+}
+
 function toSourceDTO(spec: MockSourceSpec, resource: MockResourceSpec, createdAt: number): SourceDTO {
-  return {
+  const dto: SourceDTO = {
     id: spec.id,
     resource_id: resource.id,
     type: spec.type,
@@ -267,6 +308,9 @@ function toSourceDTO(spec: MockSourceSpec, resource: MockResourceSpec, createdAt
     created_at: createdAt,
     updated_at: createdAt
   }
+  const mediaUrl = MEDIA_BY_SOURCE_ID.get(spec.id)
+  if (mediaUrl) dto.media_url = mediaUrl
+  return dto
 }
 
 function toResourceDTO(resource: MockResourceSpec): ResourceDTO {
@@ -294,14 +338,9 @@ function unsupported(operation: string): never {
 
 export function createMockLibraryRuntime(): LibraryRuntime {
   let resources = SPECS.map(toResourceDTO)
-  const mediaBySourceId = new Map<string, string>()
-  for (const resource of SPECS) {
-    if (!resource.media) continue
-    for (const source of resource.sources) {
-      const { label, from, to } = resource.media
-      mediaBySourceId.set(source.id, svgPlaceholder(label, from, to))
-    }
-  }
+  let createCounter = 0
+  // 标签身份随 runtime 实例重置，避免跨用例串味。
+  tagsByName = new Map()
 
   /*
    * fixture 是这里自己造出来的普通对象，不是 DTO class 实例，所以直接原地改字段：
@@ -316,101 +355,129 @@ export function createMockLibraryRuntime(): LibraryRuntime {
   return {
     isAvailable: true,
 
-    listResources: () => Promise.resolve(resources),
+    resources: {
+      list: () => Promise.resolve(resources),
 
-    getResource: resourceId => {
-      try {
-        return Promise.resolve(require(resourceId))
-      } catch (error) {
-        return Promise.reject(error)
-      }
-    },
-
-    updateResourceTitle: (resourceId, newTitle) => {
-      try {
-        const found = require(resourceId)
-        found.title = newTitle
-        found.updated_at = Date.now()
-        return Promise.resolve(found)
-      } catch (error) {
-        return Promise.reject(error)
-      }
-    },
-
-    updateResourceNote: (resourceId, note) => {
-      try {
-        const found = require(resourceId)
-        found.note = note
-        found.updated_at = Date.now()
-        return Promise.resolve(found)
-      } catch (error) {
-        return Promise.reject(error)
-      }
-    },
-
-    deleteResource: resourceId => {
-      resources = resources.filter(resource => resource.id !== resourceId)
-      return Promise.resolve()
-    },
-
-    addTag: (resourceId, tagName) => {
-      try {
-        const found = require(resourceId)
-        if (found.tags.some(tag => tag.name === tagName)) {
-          return Promise.reject(new Error(`标签「${tagName}」已经存在`))
+      get: resourceId => {
+        try {
+          return Promise.resolve(require(resourceId))
+        } catch (error) {
+          return Promise.reject(error)
         }
-        const tag = toTagDTO(tagName, resourceId)
-        found.tags.push(tag)
-        found.updated_at = Date.now()
-        return Promise.resolve(tag)
-      } catch (error) {
-        return Promise.reject(error)
-      }
-    },
+      },
 
-    removeTag: (resourceId, tagId) => {
-      try {
-        const found = require(resourceId)
-        found.tags = found.tags.filter(tag => tag.id !== tagId)
-        found.updated_at = Date.now()
+      updateTitle: (resourceId, newTitle) => {
+        try {
+          const found = require(resourceId)
+          found.title = newTitle
+          found.updated_at = Date.now()
+          return Promise.resolve(found)
+        } catch (error) {
+          return Promise.reject(error)
+        }
+      },
+
+      updateNote: (resourceId, note) => {
+        try {
+          const found = require(resourceId)
+          found.note = note
+          found.updated_at = Date.now()
+          return Promise.resolve(found)
+        } catch (error) {
+          return Promise.reject(error)
+        }
+      },
+
+      remove: resourceId => {
+        resources = resources.filter(resource => resource.id !== resourceId)
         return Promise.resolve()
-      } catch (error) {
-        return Promise.reject(error)
-      }
-    },
+      },
 
-    resourceMediaURL: sourceId => mediaBySourceId.get(sourceId) ?? null,
-    // 浏览器预览的 fixture 本身就是小图 data URL，没有派生缩略图可谈。
-    resourceThumbnailURL: () => null,
-    saveSourceThumbnail: () => Promise.resolve(),
-    pendingFilePreviewURL: () => null,
+      // 浏览器预览照搬后端的替换式集合语义：归一化去重后整体重设，同名标签复用既有身份。
+      setTags: (resourceId, tagNames) => {
+        try {
+          const found = require(resourceId)
+          const names = [...new Set(tagNames.map(normalizeTagName).filter(Boolean))]
+          found.tags = names.map(name => resolveTag(name, resourceId))
+          found.updated_at = Date.now()
+          return Promise.resolve([...found.tags])
+        } catch (error) {
+          return Promise.reject(error)
+        }
+      },
 
-    // 浏览器没有「系统默认应用」这个概念：返回空名，UI 回落到通用文案。
-    defaultOpenWith: () => Promise.resolve(''),
+      findLocationMatches: (): Promise<ResourceLocationMatchDTO[]> => Promise.resolve([]),
 
-    // 浏览器里唯一能真实生效的动作就是开新标签；file 入口没有对应的系统打开方式。
-    openExternal: target => {
-      if (/^https?:\/\//.test(target)) window.open(target, '_blank', 'noopener,noreferrer')
-      return Promise.resolve()
+      // 纳入用 fixture 伪造：入口永远可用、首选顺位从 0 开始，标题与初始标签按后端规则就地生成。
+      create: input => {
+        const id = `mock-created-${(createCounter += 1)}`
+        const now = Date.now()
+        const isURL = input.kind === SourceType.SourceTypeURL
+        const source: SourceDTO = {
+          id: `${id}-source`,
+          resource_id: id,
+          type: input.kind,
+          location: input.location,
+          available: true,
+          is_preferred: true,
+          order_index: 0,
+          metadata: null,
+          created_at: now,
+          updated_at: now
+        }
+        const created: ResourceDTO = {
+          id,
+          title: input.title?.trim() || mockDefaultTitle(input.location, input.kind),
+          kind: isURL ? ResourceKind.ResourceKindWeb : ResourceKind.ResourceKindFile,
+          size_bytes: null,
+          note: '',
+          created_at: now,
+          updated_at: now,
+          sources: [source],
+          tags: (input.tags ?? []).map(name => resolveTag(name, id)).filter(Boolean),
+          preferred_source_id: source.id
+        }
+        // 后端列表按纳入时间倒序，预览同样把新资源插到最前。
+        resources = [created, ...resources]
+        return Promise.resolve(created)
+      },
+
+      prepareFilePreview: () => unsupported('预览文件'),
+      releaseFilePreview: () => Promise.resolve()
     },
 
     // 下面这些都依赖桌面服务或真实文件系统，浏览器预览里给出明确失败而不是假装成功。
-    addFileResource: () => unsupported('添加本地文件'),
-    addURLResource: () => unsupported('添加网页链接'),
-    refreshURLSource: () => unsupported('刷新网页入口'),
-    refreshFileSource: () => unsupported('刷新文件入口'),
-    replaceFileSource: () => unsupported('替换文件入口'),
-    replaceURLSource: () => unsupported('替换网页入口'),
-    prepareFilePreview: () => unsupported('预览文件'),
-    releaseFilePreview: () => Promise.resolve(),
-    probeURLSourceOnOpen: () => unsupported('探测网页入口'),
-    findResourceLocationMatches: (): Promise<ResourceLocationMatchDTO[]> => Promise.resolve([]),
-    chooseFilePaths: () => Promise.resolve([]),
-    chooseFilePath: () => Promise.resolve(null),
-    getClipboardFilePaths: () => Promise.resolve([]),
+    sources: {
+      refreshURL: () => unsupported('刷新网页入口'),
+      refreshFile: () => unsupported('刷新文件入口'),
+      replaceFile: () => unsupported('替换文件入口'),
+      replaceURL: () => unsupported('替换网页入口'),
+      probeOnOpen: () => unsupported('探测网页入口')
+    },
 
-    subscribeToDroppedFiles: () => () => {},
-    subscribeToPasteFileRequest: () => () => {},
-    subscribeToSourceAvailability: () => () => {}
+    media: {
+      saveThumbnail: () => Promise.resolve()
+    },
+
+    events: {
+      onFilesDropped: () => () => {},
+      onPasteFilesRequested: () => () => {},
+      onSourceAvailability: () => () => {}
+    },
+
+    system: {
+      chooseFilePaths: () => Promise.resolve([]),
+      chooseFilePath: () => Promise.resolve(null),
+      getClipboardFilePaths: () => Promise.resolve([]),
+
+      // 浏览器没有「系统默认应用」这个概念：返回空名，UI 回落到通用文案。
+      defaultOpenWith: () => Promise.resolve(''),
+
+      // 浏览器里唯一能真实生效的动作就是开新标签；file 入口没有对应的系统打开方式。
+      openExternal: target => {
+        if (/^https?:\/\//.test(target)) window.open(target, '_blank', 'noopener,noreferrer')
+        return Promise.resolve()
+      }
+    }
   }
 }

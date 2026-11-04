@@ -1,20 +1,12 @@
 import { transformerRenderLineNumber } from '@shikijs/transformers'
 import { createHighlighter, type Highlighter } from 'shiki'
 
+import { LINE_NUMBER_CLASS, MDM_CODE_CLASS, visibleText } from './contract'
 import { fail } from './errors'
 
 const THEMES = { light: 'github-light', dark: 'github-dark' } as const
 
-/**
- * 行号槽的类名：transformer 写它，`visibleText` 豁免它，两处读同一个常量。
- * 行号由 shiki 官方 transformer 按真实行号注入（空行也占一号）。
- */
-const LINE_NUMBER_CLASS = 'line-number'
-
 const TRANSFORMERS = [transformerRenderLineNumber({ classLineNumber: LINE_NUMBER_CLASS })]
-
-/** 行号槽整段（含数字）；`visibleText` 在剥标记之前先摘掉它。 */
-const LINE_NUMBER_SPAN = new RegExp(`<span class="${LINE_NUMBER_CLASS}">[^<]*</span>`, 'g')
 
 let ready: Promise<Highlighter> | undefined
 
@@ -24,7 +16,7 @@ function highlighter(): Promise<Highlighter> {
 
 /** 未注册的语言退回纯文本：引擎不维护语言白名单，也不因为未知语言中断整次生成。 */
 function plain(code: string): string {
-  return `<pre class="shiki mdm-code"><code>${escapeHtml(code)}</code></pre>`
+  return `<pre class="shiki ${MDM_CODE_CLASS}"><code>${escapeHtml(code)}</code></pre>`
 }
 
 function escapeHtml(text: string): string {
@@ -53,7 +45,7 @@ export async function highlight(code: string, lang: string, file: string): Promi
     transformers: TRANSFORMERS
   })
   // 外框（圆角、底色、滚动）归宿主自己的样式管，这里只把类名并到 shiki 的 <pre> 上。
-  const framed = html.replace(/^<pre class="([^"]*)"/, '<pre class="$1 mdm-code"')
+  const framed = html.replace(/^<pre class="([^"]*)"/, `<pre class="$1 ${MDM_CODE_CLASS}"`)
   if (framed === html) fail(`${file}：shiki 输出的 <pre> 形状变了，类名并不上：${html.slice(0, 80)}`)
   assertHtmlPreservesSource(code, framed, file)
   return framed
@@ -67,24 +59,4 @@ export async function highlight(code: string, lang: string, file: string): Promi
 function assertHtmlPreservesSource(code: string, html: string, file: string): void {
   const restored = visibleText(html)
   if (restored !== code) fail(`${file}：shiki 改变了代码块原文。\n--- 输入 ---\n${code}\n--- 还原后 ---\n${restored}`)
-}
-
-const NAMED_ENTITIES: Record<string, string> = { amp: '&', apos: "'", gt: '>', lt: '<', quot: '"' }
-
-/**
- * 高亮 HTML 的可见文本：摘掉行号槽、剥掉标记、解掉实体。
- * 导出给宿主复用：宿主断言「页面显示的代码 == markdown 围栏」时量的是同一份可见文本。
- */
-export function visibleText(html: string): string {
-  return html
-    .replace(LINE_NUMBER_SPAN, '')
-    .replace(/<[^>]*>/g, '')
-    .replace(
-      /&#x([\da-f]+);|&#(\d+);|&([a-z]+);/gi,
-      (whole, hex: string | undefined, dec: string | undefined, name: string | undefined) => {
-        if (hex) return String.fromCodePoint(Number.parseInt(hex, 16))
-        if (dec) return String.fromCodePoint(Number.parseInt(dec, 10))
-        return (name && NAMED_ENTITIES[name.toLowerCase()]) || whole
-      }
-    )
 }

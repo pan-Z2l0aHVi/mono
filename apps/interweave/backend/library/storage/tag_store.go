@@ -140,7 +140,7 @@ func (TagStore) TagsByResources(ctx context.Context, q Queryer, resourceIDs []st
 		INNER JOIN taggings tg ON tg.tag_id = t.id
 		LEFT JOIN tag_colors c ON c.name = t.name
 		WHERE tg.resource_id IN (`+placeholders(len(resourceIDs))+`)
-		ORDER BY tg.resource_id ASC, tg.created_at ASC
+		ORDER BY tg.resource_id ASC, tg.created_at ASC, t.id ASC
 	`, args...)
 	if err != nil {
 		return nil, err

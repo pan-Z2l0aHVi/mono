@@ -59,9 +59,9 @@ func TestResourceAndSourceLifecycle(t *testing.T) {
 	defer os.Remove(tmpFile.Name())
 	tmpFile.Close()
 
-	resDTO, err := resService.AddFileResource(ctx, tmpFile.Name())
+	resDTO, err := addFileResource(ctx, resService, tmpFile.Name())
 	if err != nil {
-		t.Fatalf("AddFileResource error: %v", err)
+		t.Fatalf("addFileResource error: %v", err)
 	}
 	if len(resDTO.Sources) != 1 {
 		t.Fatalf("expected 1 source, got %d", len(resDTO.Sources))
@@ -198,6 +198,16 @@ func TestPrepareFilePreviewRegistersMediaAndShutdownClearsTokens(t *testing.T) {
 	if document.Kind != service.ResourceKindDocument || document.Token != "" {
 		t.Fatalf("expected document kind without token, got %+v", document)
 	}
+	// MediaURL 是前端 <img>/<video> 的取流地址，必须与注册的 token 对齐；文档不带授权。
+	if image.MediaURL != libraryMedia.PendingMediaURL(image.Token) {
+		t.Errorf("expected image media URL to point at its pending token, got %q", image.MediaURL)
+	}
+	if video.MediaURL != libraryMedia.PendingMediaURL(video.Token) {
+		t.Errorf("expected video media URL to point at its pending token, got %q", video.MediaURL)
+	}
+	if document.MediaURL != "" {
+		t.Errorf("expected document preview without media URL, got %q", document.MediaURL)
+	}
 
 	pendingRequest := func(token string) int {
 		response := httptest.NewRecorder()
@@ -248,9 +258,9 @@ func TestMapServiceDerivedExploration(t *testing.T) {
 	defer os.Remove(f3.Name())
 	f3.Close()
 
-	r1, _ := resService.AddFileResource(ctx, f1.Name())
-	r2, _ := resService.AddFileResource(ctx, f2.Name())
-	_, _ = resService.AddFileResource(ctx, f3.Name())
+	r1, _ := addFileResource(ctx, resService, f1.Name())
+	r2, _ := addFileResource(ctx, resService, f2.Name())
+	_, _ = addFileResource(ctx, resService, f3.Name())
 
 	tTokyo, _ := tagService.AddTagToResource(ctx, r1.ID, "Tokyo")
 	_, _ = tagService.AddTagToResource(ctx, r1.ID, "Photography")
@@ -284,4 +294,14 @@ func TestMapServiceDerivedExploration(t *testing.T) {
 	if len(localMap.CooccurringTags) != 2 {
 		t.Errorf("expected 2 cooccurring tags (Photography, Travel), got %d", len(localMap.CooccurringTags))
 	}
+}
+
+// addFileResource / addURLResource 是测试最常用的纳入封装，只按入口类型补 Kind，
+// 创建规则本身统一走 CreateResource。
+func addFileResource(ctx context.Context, svc *service.ResourceService, inputPath string) (*service.ResourceDTO, error) {
+	return svc.CreateResource(ctx, service.CreateResourceInputDTO{Kind: storage.SourceTypeFile, Location: inputPath})
+}
+
+func addURLResource(ctx context.Context, svc *service.ResourceService, inputURL string) (*service.ResourceDTO, error) {
+	return svc.CreateResource(ctx, service.CreateResourceInputDTO{Kind: storage.SourceTypeURL, Location: inputURL})
 }

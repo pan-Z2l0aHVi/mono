@@ -1,22 +1,14 @@
 import { computed, ref } from 'vue'
 
-import {
-  createLibraryRuntime,
-  type LibraryQueueItem,
-  type LibraryRuntime,
-  type SourceAvailabilityEventDTO
-} from '@/services/library'
+import { createLibraryRuntime, type LibraryQueueItem, type LibraryRuntime } from '@/services/library'
 import { useLibraryStore, type ResourceSourceView } from '@/stores/library'
 
 import { SourceProbeOutcome } from '../../bindings/github.com/pan-Z2l0aHVi/mono/apps/interweave/backend/library/service'
+import { SourceType } from '../../bindings/github.com/pan-Z2l0aHVi/mono/apps/interweave/backend/library/storage'
 
 function errorMessage(error: unknown) {
   if (error instanceof Error && error.message.trim()) return error.message
   return '操作失败，请稍后重试'
-}
-
-function normalizeTag(tagName: string) {
-  return tagName.trim().replace(/\s+/g, ' ')
 }
 
 export function useLibraryRuntime(injectedRuntime?: LibraryRuntime) {
@@ -52,7 +44,7 @@ export function useLibraryRuntime(injectedRuntime?: LibraryRuntime) {
     isLoading.value = true
     error.value = ''
     try {
-      store.setResources(await runtime.listResources())
+      store.setResources(await runtime.resources.list())
     } catch (cause) {
       error.value = errorMessage(cause)
       throw cause
@@ -65,17 +57,13 @@ export function useLibraryRuntime(injectedRuntime?: LibraryRuntime) {
     setPending(item.id, true)
     error.value = ''
     try {
-      const created =
-        item.kind === 'file'
-          ? await runtime.addFileResource(item.location)
-          : await runtime.addURLResource(item.location)
-      const title = item.title.trim()
-      const updated = title && title !== created.title ? await runtime.updateResourceTitle(created.id, title) : created
-      store.upsertResource(updated)
-      for (const tagName of item.tags) {
-        await runtime.addTag(created.id, tagName)
-      }
-      const saved = item.tags.length ? await runtime.getResource(created.id) : updated
+      // 标题、入口与初始标签一次交给后端：归一化、探测与事务建齐都在 core 内完成。
+      const saved = await runtime.resources.create({
+        kind: item.kind === 'file' ? SourceType.SourceTypeFile : SourceType.SourceTypeURL,
+        location: item.location,
+        title: item.title,
+        tags: item.tags
+      })
       store.upsertResource(saved)
       return saved
     } catch (cause) {
@@ -90,7 +78,7 @@ export function useLibraryRuntime(injectedRuntime?: LibraryRuntime) {
     setPending(resourceId, true)
     error.value = ''
     try {
-      const updated = await runtime.updateResourceTitle(resourceId, newTitle)
+      const updated = await runtime.resources.updateTitle(resourceId, newTitle)
       store.upsertResource(updated)
       return updated
     } catch (cause) {
@@ -105,7 +93,7 @@ export function useLibraryRuntime(injectedRuntime?: LibraryRuntime) {
     setPending(resourceId, true)
     error.value = ''
     try {
-      const updated = await runtime.updateResourceNote(resourceId, note)
+      const updated = await runtime.resources.updateNote(resourceId, note)
       store.upsertResource(updated)
       return updated
     } catch (cause) {
@@ -122,7 +110,7 @@ export function useLibraryRuntime(injectedRuntime?: LibraryRuntime) {
     resourceIds.forEach(id => setPending(id, true))
     try {
       for (const resourceId of resourceIds) {
-        await runtime.deleteResource(resourceId)
+        await runtime.resources.remove(resourceId)
         deletedIds.push(resourceId)
       }
       store.removeResources(deletedIds)
@@ -140,20 +128,9 @@ export function useLibraryRuntime(injectedRuntime?: LibraryRuntime) {
     setPending(resourceId, true)
     error.value = ''
     try {
-      const current = await runtime.getResource(resourceId)
-      const normalized = [...new Set(nextTagNames.map(normalizeTag).filter(Boolean))]
-      const currentByName = new Map(current.tags.map(tag => [tag.name.toLowerCase(), tag]))
-      const nextNames = new Set(normalized.map(tag => tag.toLowerCase()))
-
-      // 单次 Tag mutation 失败时，服务端可能已应用此前的 remove/add；这里不做自动回滚。
-      for (const tag of current.tags) {
-        if (!nextNames.has(tag.name.toLowerCase())) await runtime.removeTag(resourceId, tag.id)
-      }
-      for (const tagName of normalized) {
-        if (!currentByName.has(tagName.toLowerCase())) await runtime.addTag(resourceId, tagName)
-      }
-
-      const updated = await runtime.getResource(resourceId)
+      // 替换式集合语义：名称原样提交，归一化与差集增删由后端在单事务内完成。
+      await runtime.resources.setTags(resourceId, nextTagNames)
+      const updated = await runtime.resources.get(resourceId)
       store.upsertResource(updated)
       return updated
     } catch (cause) {
@@ -170,8 +147,10 @@ export function useLibraryRuntime(injectedRuntime?: LibraryRuntime) {
     error.value = ''
     try {
       const refreshed =
-        source.type === 'file' ? await runtime.refreshFileSource(sourceId) : await runtime.refreshURLSource(sourceId)
-      const updated = await runtime.getResource(refreshed.resource_id)
+        source.type === 'file'
+          ? await runtime.sources.refreshFile(sourceId)
+          : await runtime.sources.refreshURL(sourceId)
+      const updated = await runtime.resources.get(refreshed.resource_id)
       store.upsertResource(updated)
       return updated
     } catch (cause) {
@@ -186,8 +165,8 @@ export function useLibraryRuntime(injectedRuntime?: LibraryRuntime) {
     replacingSourceIds.value = [...new Set([...replacingSourceIds.value, sourceId])]
     error.value = ''
     try {
-      const replaced = await runtime.replaceFileSource(sourceId, inputPath)
-      const updated = await runtime.getResource(replaced.resource_id)
+      const replaced = await runtime.sources.replaceFile(sourceId, inputPath)
+      const updated = await runtime.resources.get(replaced.resource_id)
       store.upsertResource(updated)
       return updated
     } catch (cause) {
@@ -202,8 +181,8 @@ export function useLibraryRuntime(injectedRuntime?: LibraryRuntime) {
     replacingSourceIds.value = [...new Set([...replacingSourceIds.value, sourceId])]
     error.value = ''
     try {
-      const replaced = await runtime.replaceURLSource(sourceId, inputURL)
-      const updated = await runtime.getResource(replaced.resource_id)
+      const replaced = await runtime.sources.replaceURL(sourceId, inputURL)
+      const updated = await runtime.resources.get(replaced.resource_id)
       store.upsertResource(updated)
       return updated
     } catch (cause) {
@@ -214,22 +193,10 @@ export function useLibraryRuntime(injectedRuntime?: LibraryRuntime) {
     }
   }
 
-  function chooseFilePaths() {
-    return runtime.chooseFilePaths()
-  }
-
-  function chooseFilePath() {
-    return runtime.chooseFilePath()
-  }
-
-  function getClipboardFilePaths() {
-    return runtime.getClipboardFilePaths()
-  }
-
   async function defaultOpenWith(target: string) {
     if (!runtime.isAvailable) return ''
     try {
-      return await runtime.defaultOpenWith(target)
+      return await runtime.system.defaultOpenWith(target)
     } catch {
       // 查询不到默认应用不是错误：UI 回落到通用「系统默认应用」文案，打开动作照旧可用。
       return ''
@@ -239,7 +206,7 @@ export function useLibraryRuntime(injectedRuntime?: LibraryRuntime) {
   async function openExternal(target: string) {
     error.value = ''
     try {
-      await runtime.openExternal(target)
+      await runtime.system.openExternal(target)
     } catch (cause) {
       error.value = errorMessage(cause)
       throw cause
@@ -260,61 +227,36 @@ export function useLibraryRuntime(injectedRuntime?: LibraryRuntime) {
     if (!runtime.isAvailable) return
     if (!preferred || preferred.type !== 'url' || preferred.available) return
     try {
-      const result = await runtime.probeURLSourceOnOpen(preferred.id)
+      const result = await runtime.sources.probeOnOpen(preferred.id)
       if (result.outcome === SourceProbeOutcome.SourceProbeOutcomeInconclusive) {
         error.value = result.message || '暂时无法检测该链接'
         return
       }
-      if (result.source) store.upsertResource(await runtime.getResource(result.source.resource_id))
+      if (result.source) store.upsertResource(await runtime.resources.get(result.source.resource_id))
     } catch (cause) {
       error.value = errorMessage(cause)
     }
   }
 
-  function resourceMediaURL(sourceId: string) {
-    if (!runtime.isAvailable) return null
-    return runtime.resourceMediaURL(sourceId)
-  }
-
-  function resourceThumbnailURL(sourceId: string) {
-    if (!runtime.isAvailable) return null
-    return runtime.resourceThumbnailURL(sourceId)
-  }
-
   /*
-   * 缩略图回填是尽力而为的缓存预热：同一 Source 的并发捕获只在第一个在途请求里真正上传，
+   * 缩略图回填是尽力而为的缓存预热：同一地址的并发捕获只在第一个在途请求里真正上传，
    * 失败静默吞掉——列表下一次挂载还有机会补上，不值得为此打断用户或弹错误。
    */
   const thumbnailSaves = new Map<string, Promise<void>>()
 
-  function saveSourceThumbnail(sourceId: string, dataUrl: string) {
-    const inFlight = thumbnailSaves.get(sourceId)
+  function saveSourceThumbnail(thumbnailUrl: string, dataUrl: string) {
+    const inFlight = thumbnailSaves.get(thumbnailUrl)
     if (inFlight) return inFlight
     const save = (async () => {
       const blob = await (await fetch(dataUrl)).blob()
-      await runtime.saveSourceThumbnail(sourceId, blob)
+      await runtime.media.saveThumbnail(thumbnailUrl, blob)
     })()
       .catch(() => {})
       .finally(() => {
-        thumbnailSaves.delete(sourceId)
+        thumbnailSaves.delete(thumbnailUrl)
       })
-    thumbnailSaves.set(sourceId, save)
+    thumbnailSaves.set(thumbnailUrl, save)
     return save
-  }
-
-  function subscribeToDroppedFiles(listener: (paths: string[]) => void) {
-    if (!runtime.isAvailable) return () => {}
-    return runtime.subscribeToDroppedFiles(listener)
-  }
-
-  function subscribeToPasteFileRequest(listener: () => void) {
-    if (!runtime.isAvailable) return () => {}
-    return runtime.subscribeToPasteFileRequest(listener)
-  }
-
-  function subscribeToSourceAvailability(listener: (event: SourceAvailabilityEventDTO) => void) {
-    if (!runtime.isAvailable) return () => {}
-    return runtime.subscribeToSourceAvailability(listener)
   }
 
   return {
@@ -334,17 +276,9 @@ export function useLibraryRuntime(injectedRuntime?: LibraryRuntime) {
     refreshSource,
     replaceFileSource,
     replaceURLSource,
-    chooseFilePaths,
-    chooseFilePath,
-    getClipboardFilePaths,
     defaultOpenWith,
     openExternal,
-    resourceMediaURL,
-    resourceThumbnailURL,
     saveSourceThumbnail,
-    subscribeToDroppedFiles,
-    subscribeToPasteFileRequest,
-    subscribeToSourceAvailability,
     probeURLSourceOnOpen
   }
 }

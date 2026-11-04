@@ -1,14 +1,9 @@
 import type { MetaNode } from '@greypan/md-to-meta'
 import { describe, expect, it, vi } from 'vite-plus/test'
 
-import { loadMeta, loadMetaDocs, metaFileOf, prepareExamples } from '../examples'
+import { loadMeta, loadMetaDocs, prepareExamples } from '../examples'
 
-describe('meta 装载', () => {
-  it('按语种选 `.CN` 与无后缀文件', () => {
-    expect(metaFileOf('zh-CN', 'badge')).toBe('../generated/badge.CN.meta.js')
-    expect(metaFileOf('en', 'badge')).toBe('../generated/badge.meta.js')
-  })
-
+describe('meta 装载（本端 glob 接线；引擎判据在 kit 的 examples 用例）', () => {
   it('同一份模块只拉一次，返回同一个数组', async () => {
     const [first, second] = await Promise.all([loadMeta('zh-CN', 'badge'), loadMeta('zh-CN', 'badge')])
     expect(first).toBe(second)

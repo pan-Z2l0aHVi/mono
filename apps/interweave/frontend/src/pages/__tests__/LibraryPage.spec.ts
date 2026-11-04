@@ -129,53 +129,71 @@ function resource(overrides: Partial<ResourceDTO> = {}): ResourceDTO {
   } as ResourceDTO
 }
 
-function createRuntime(overrides: Partial<LibraryRuntime> = {}): LibraryRuntime {
+type RuntimeOverrides = {
+  isAvailable?: boolean
+  resources?: Partial<LibraryRuntime['resources']>
+  sources?: Partial<LibraryRuntime['sources']>
+  media?: Partial<LibraryRuntime['media']>
+  events?: Partial<LibraryRuntime['events']>
+  system?: Partial<LibraryRuntime['system']>
+}
+
+function createRuntime(overrides: RuntimeOverrides = {}): LibraryRuntime {
   return {
-    isAvailable: true,
-    listResources: async () => [resource()],
-    getResource: async resourceId => resource({ id: resourceId }),
-    addFileResource: async () => resource(),
-    addURLResource: async () => resource(),
-    updateResourceTitle: async (resourceId, title) => resource({ id: resourceId, title }),
-    updateResourceNote: async (resourceId, note) => resource({ id: resourceId, note }),
-    deleteResource: async () => {},
-    addTag: async () => ({ id: 'tag-1', name: 'tag', created_at: 1, color: TagColor.TagColorTeal }),
-    removeTag: async () => {},
-    refreshURLSource: async () => source(),
-    refreshFileSource: async () => source({ type: SourceType.SourceTypeFile, location: '/tmp/a.png' }),
-    replaceFileSource: async () => source({ type: SourceType.SourceTypeFile, location: '/tmp/b.png' }),
-    replaceURLSource: async () => source(),
-    chooseFilePaths: async () => [],
-    chooseFilePath: async () => null,
-    getClipboardFilePaths: async () => [],
-    prepareFilePreview: async () => ({ kind: ResourceKind.ResourceKindFile }),
-    releaseFilePreview: async () => {},
-    findResourceLocationMatches: async () => [],
-    probeURLSourceOnOpen: async () => ({
-      source: source(),
-      outcome: SourceProbeOutcome.SourceProbeOutcomeAvailable
-    }),
-    defaultOpenWith: async () => '',
-    openExternal: async () => {},
-    resourceMediaURL: () => null,
-    resourceThumbnailURL: () => null,
-    saveSourceThumbnail: async () => {},
-    pendingFilePreviewURL: () => null,
-    subscribeToDroppedFiles: listener => {
-      runtimeStub.droppedFilesListener = listener
-      return () => {
-        runtimeStub.droppedFilesListener = null
-      }
+    isAvailable: overrides.isAvailable ?? true,
+    resources: {
+      list: async () => [resource()],
+      get: async resourceId => resource({ id: resourceId }),
+      create: async () => resource(),
+      updateTitle: async (resourceId, title) => resource({ id: resourceId, title }),
+      updateNote: async (resourceId, note) => resource({ id: resourceId, note }),
+      remove: async () => {},
+      setTags: async () => [],
+      findLocationMatches: async () => [],
+      prepareFilePreview: async () => ({ kind: ResourceKind.ResourceKindFile }),
+      releaseFilePreview: async () => {},
+      ...overrides.resources
     },
-    subscribeToPasteFileRequest: () => () => {},
-    subscribeToSourceAvailability: listener => {
-      runtimeStub.availabilityListener = listener
-      runtimeStub.availabilityDisposer = () => {
-        runtimeStub.availabilityListener = null
-      }
-      return runtimeStub.availabilityDisposer
+    sources: {
+      refreshURL: async () => source(),
+      refreshFile: async () => source({ type: SourceType.SourceTypeFile, location: '/tmp/a.png' }),
+      replaceFile: async () => source({ type: SourceType.SourceTypeFile, location: '/tmp/b.png' }),
+      replaceURL: async () => source(),
+      probeOnOpen: async () => ({
+        source: source(),
+        outcome: SourceProbeOutcome.SourceProbeOutcomeAvailable
+      }),
+      ...overrides.sources
     },
-    ...overrides
+    media: {
+      saveThumbnail: async () => {},
+      ...overrides.media
+    },
+    events: {
+      onFilesDropped: listener => {
+        runtimeStub.droppedFilesListener = listener
+        return () => {
+          runtimeStub.droppedFilesListener = null
+        }
+      },
+      onPasteFilesRequested: () => () => {},
+      onSourceAvailability: listener => {
+        runtimeStub.availabilityListener = listener
+        runtimeStub.availabilityDisposer = () => {
+          runtimeStub.availabilityListener = null
+        }
+        return runtimeStub.availabilityDisposer
+      },
+      ...overrides.events
+    },
+    system: {
+      chooseFilePaths: async () => [],
+      chooseFilePath: async () => null,
+      getClipboardFilePaths: async () => [],
+      defaultOpenWith: async () => '',
+      openExternal: async () => {},
+      ...overrides.system
+    }
   }
 }
 
@@ -363,12 +381,14 @@ describe('LibraryPage：可用性感知接线', () => {
     const stages: { stage: string; elapsed: number }[] = []
     const mark = (stage: string) => stages.push({ stage, elapsed: Math.round(performance.now() - started) })
     onTestFailed(() => console.error('LibraryPage first-case phases', JSON.stringify(stages)))
-    const probeURLSourceOnOpen = vi.fn<LibraryRuntime['probeURLSourceOnOpen']>()
+    const probeOnOpen = vi.fn<LibraryRuntime['sources']['probeOnOpen']>()
     runtimeStub.current = createRuntime({
-      probeURLSourceOnOpen,
-      listResources: async () => {
-        mark('listResources:return')
-        return [resource()]
+      sources: { probeOnOpen },
+      resources: {
+        list: async () => {
+          mark('listResources:return')
+          return [resource()]
+        }
       }
     })
     const mounted = await mountPage(mark)
@@ -387,7 +407,7 @@ describe('LibraryPage：可用性感知接线', () => {
       expect(mounted.host.querySelector('web-ui-drawer[aria-dialog-label="资源预览"] h2')?.textContent?.trim()).toBe(
         '失效链接'
       )
-      expect(probeURLSourceOnOpen).not.toHaveBeenCalled()
+      expect(probeOnOpen).not.toHaveBeenCalled()
       mark('assertions:end')
     } finally {
       await mounted.close()
@@ -425,13 +445,15 @@ describe('LibraryPage：可用性感知接线', () => {
 
   it('收到可用性事件后就地翻转行状态，无需手动刷新', async () => {
     runtimeStub.current = createRuntime({
-      listResources: async () => [
-        resource({
-          kind: ResourceKind.ResourceKindImage,
-          size_bytes: 128,
-          sources: [source({ type: SourceType.SourceTypeFile, location: '/tmp/a.png', available: true })]
-        })
-      ]
+      resources: {
+        list: async () => [
+          resource({
+            kind: ResourceKind.ResourceKindImage,
+            size_bytes: 128,
+            sources: [source({ type: SourceType.SourceTypeFile, location: '/tmp/a.png', available: true })]
+          })
+        ]
+      }
     })
     const mounted = await mountPage()
 
@@ -440,7 +462,7 @@ describe('LibraryPage：可用性感知接线', () => {
       runtimeStub.availabilityListener?.({
         source_id: 'source-1',
         resource_id: 'resource-1',
-        type: 'file',
+        type: SourceType.SourceTypeFile,
         available: false,
         changed_at: 300
       })
@@ -548,11 +570,11 @@ describe('LibraryPage：确认弹窗退场', () => {
   })
 
   it('确认失败时弹窗保持打开、错误可见且可再次点击确认', async () => {
-    const deleteResource = vi
-      .fn<LibraryRuntime['deleteResource']>()
+    const remove = vi
+      .fn<LibraryRuntime['resources']['remove']>()
       .mockRejectedValueOnce(new Error('资源正在被使用'))
       .mockResolvedValueOnce(undefined)
-    runtimeStub.current = createRuntime({ deleteResource })
+    runtimeStub.current = createRuntime({ resources: { remove } })
     const mounted = await mountPage()
 
     try {
@@ -570,7 +592,7 @@ describe('LibraryPage：确认弹窗退场', () => {
       button(dialog, '删除').click()
       await flush()
 
-      expect(deleteResource).toHaveBeenCalledTimes(2)
+      expect(remove).toHaveBeenCalledTimes(2)
       expect(dialog.open).toBe(false)
       expect(useLibraryStore().resources).toHaveLength(0)
     } finally {
@@ -600,8 +622,8 @@ describe('LibraryPage：粘贴链接', () => {
   })
 
   it('粘贴 http/https 链接入队为 URL 项，重复检查按 URL 来源走', async () => {
-    const findResourceLocationMatches = vi.fn<LibraryRuntime['findResourceLocationMatches']>(async () => [])
-    runtimeStub.current = createRuntime({ findResourceLocationMatches })
+    const findLocationMatches = vi.fn<LibraryRuntime['resources']['findLocationMatches']>(async () => [])
+    runtimeStub.current = createRuntime({ resources: { findLocationMatches } })
     const mounted = await mountPage()
 
     try {
@@ -609,7 +631,7 @@ describe('LibraryPage：粘贴链接', () => {
       paste(' https://example.com/article ')
       await flush()
 
-      expect(findResourceLocationMatches).toHaveBeenCalledWith('https://example.com/article', SourceType.SourceTypeURL)
+      expect(findLocationMatches).toHaveBeenCalledWith('https://example.com/article', SourceType.SourceTypeURL)
       const items = queueItems(mounted.host)
       expect(items).toHaveLength(1)
       // 标题留空给后端定名，队列列表用主机名兜底，完整链接落在位置栏。
@@ -653,13 +675,13 @@ describe('LibraryPage：粘贴链接', () => {
   })
 
   it('剪贴板有文件时仍走文件路径，链接文本不参与入队', async () => {
-    const prepareFilePreview = vi.fn<LibraryRuntime['prepareFilePreview']>(async () => ({
+    const prepareFilePreview = vi.fn<LibraryRuntime['resources']['prepareFilePreview']>(async () => ({
       kind: ResourceKind.ResourceKindImage,
       token: 'opaque-token'
     }))
     runtimeStub.current = createRuntime({
-      getClipboardFilePaths: async () => ['/tmp/photo.png'],
-      prepareFilePreview
+      system: { getClipboardFilePaths: async () => ['/tmp/photo.png'] },
+      resources: { prepareFilePreview }
     })
     const mounted = await mountPage()
 
@@ -677,12 +699,11 @@ describe('LibraryPage：粘贴链接', () => {
     }
   })
 
-  it('提交时 URL 项走 addURLResource，资源出现在列表', async () => {
-    const addURLResource = vi.fn<LibraryRuntime['addURLResource']>(async inputURL =>
-      resource({ title: '示例文章', sources: [source({ location: inputURL, available: true })] })
+  it('提交时 URL 项走 createResource，资源出现在列表', async () => {
+    const createResource = vi.fn<LibraryRuntime['resources']['create']>(async input =>
+      resource({ title: '示例文章', sources: [source({ location: input.location, available: true })] })
     )
-    const addFileResource = vi.fn<LibraryRuntime['addFileResource']>(async () => resource())
-    runtimeStub.current = createRuntime({ addFileResource, addURLResource })
+    runtimeStub.current = createRuntime({ resources: { create: createResource } })
     const mounted = await mountPage()
 
     try {
@@ -692,8 +713,12 @@ describe('LibraryPage：粘贴链接', () => {
       button(mounted.host, '确认添加').click()
       await flush()
 
-      expect(addURLResource).toHaveBeenCalledExactlyOnceWith('https://example.com/article')
-      expect(addFileResource).not.toHaveBeenCalled()
+      expect(createResource).toHaveBeenCalledExactlyOnceWith({
+        kind: SourceType.SourceTypeURL,
+        location: 'https://example.com/article',
+        title: '',
+        tags: []
+      })
       expect(useLibraryStore().resources[0]?.title).toBe('示例文章')
     } finally {
       await mounted.close()
@@ -728,9 +753,11 @@ describe('LibraryPage：备注失败回写', () => {
     const second = deferred<ResourceDTO>()
     const calls: string[] = []
     runtimeStub.current = createRuntime({
-      updateResourceNote: (resourceId, note) => {
-        calls.push(note)
-        return calls.length === 1 ? first.promise : second.promise
+      resources: {
+        updateNote: (resourceId, note) => {
+          calls.push(note)
+          return calls.length === 1 ? first.promise : second.promise
+        }
       }
     })
     const mounted = await mountPage()

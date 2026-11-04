@@ -1,5 +1,22 @@
 <script setup lang="ts">
 import appScrollbarsOptions from '@greypan/app-scrollbars'
+import {
+  COPY_FEEDBACK_DURATION,
+  FLAVORS,
+  FLAVOR_ICON_CLASS,
+  FLAVOR_LABELS,
+  FLAVOR_ICONS,
+  PEEK_HEIGHT,
+  codeFrameText,
+  codeScrollbarsEvents,
+  createCopyFeedback,
+  createThunkCache,
+  flavorOf,
+  isCodeCollapsible,
+  resetCodeScroll,
+  type DemoThunk,
+  type Flavor
+} from '@greypan/doc-demo-kit'
 import type { MetaNode } from '@greypan/md-to-meta'
 import {
   akarIconsCircleCheck,
@@ -8,70 +25,20 @@ import {
   lucideCircleAlert,
   lucideCopy
 } from '@greypan/web-ui/icons'
-import { OverlayScrollbars } from 'overlayscrollbars'
 import { OverlayScrollbarsComponent } from 'overlayscrollbars-vue'
-import { computed, defineAsyncComponent, onBeforeUnmount, ref, useId, type Component } from 'vue'
+import { computed, defineAsyncComponent, onBeforeUnmount, shallowRef, useId, ref, type Component } from 'vue'
 
-import { FLAVOR_ICON_CLASS, FLAVOR_LABELS, FLAVOR_ICONS, flavorOf, type Flavor } from './flavor'
-
-// 复制成功的描边与 scale 反馈共用同一时长；CSS 里的 `demo-copy-pop` 要同步。
-const COPY_FEEDBACK_DURATION = 500
-
-// 本站框架既是切换器的第一项，也是打开页面时显示的源码。
+// 本站框架既是切换器的第一项，也是打开页面时显示的源码；其余顺序由 kit 的 FLAVORS 决定。
 const NATIVE_FLAVOR: Flavor = 'vue'
-const FLAVOR_ORDER: readonly Flavor[] = ['vue', 'react']
+const FLAVOR_ORDER: readonly Flavor[] = [NATIVE_FLAVOR, ...FLAVORS.filter(flavor => flavor !== NATIVE_FLAVOR)]
 
 /*
- * 关闭态露出 128px，内容不超过这个高度时整段代码本来就看全了：再挂折叠只会让末端的
- * 渐隐带盖住正文，所以这种卡直接铺开，也收起工具条里的展开按钮。
- * 每行 24px 来自代码区的 `leading-6`，四侧内边距各 12px 来自 `pt-3 pb-3 px-3`。
+ * `load` 按函数身份缓存异步组件（kit 的 thunk 缓存）：重渲染与再进入页面都不会换掉组件身份、
+ * 重置示例自己的状态。
  */
-const PEEK_HEIGHT = 128
-const CODE_LINE_HEIGHT = 24
-const CODE_PADDING_HEIGHT = 24
-const PEEK_LINES = Math.floor((PEEK_HEIGHT - CODE_PADDING_HEIGHT) / CODE_LINE_HEIGHT)
-
-/** 生成期高亮 HTML 每行一个 `<span class="line">`，数行不必解析整棵树。 */
-function lineCountOf(content: string): number {
-  return content.match(/<span class="line"/g)?.length ?? 0
-}
-
-/*
- * `load` 是生成器写进 meta 的字面 thunk，同一份 meta 模块里引用同一个函数，所以按函数身份缓存
- * 就能让异步组件只建一次：重渲染与再进入页面都不会换掉组件身份、重置示例自己的状态。
- */
-const demoCache = new WeakMap<NonNullable<MetaNode['load']>, Component>()
-
-function demoOf(load: NonNullable<MetaNode['load']>) {
-  let demo = demoCache.get(load)
-  if (!demo) {
-    demo = defineAsyncComponent(() => load().then(module => (module as { default: Component }).default))
-    demoCache.set(load, demo)
-  }
-  return demo
-}
-
-/*
- * 代码区由 OverlayScrollbars 接管后，`[data-code]` 这一层成了 `overflow: hidden` 的 host，
- * 真正滚动的是实例的 viewport 元素，所以滚动复位必须打在它上面。
- * 实例还没建好（首帧、jsdom）时退回 host 本身，此时 host 上的 `overflow-auto` 就是它自身的原生滚动。
- */
-function resetCodeScroll(panel: HTMLElement) {
-  const scroller = OverlayScrollbars(panel)?.elements().viewport ?? panel
-  scroller.scrollTop = 0
-  scroller.scrollLeft = 0
-}
-
-/*
- * 同一个理由也管焦点：库把 target 变成 `overflow: hidden` 的 host 之后，target 上的 tabindex 不再
- * 带来键盘滚动。textarea 场景库自己会把 tabindex 从 target 搬到 viewport，div 场景不会，所以在这里
- * 补上同一步——焦点和方向键都落在真正的滚动元素上。
- */
-const codeScrollbarsEvents = {
-  initialized: (instance: OverlayScrollbars) => {
-    instance.elements().viewport.tabIndex = 0
-  }
-}
+const demoOf = createThunkCache((load: DemoThunk) =>
+  defineAsyncComponent(() => load().then(module => (module as { default: Component }).default))
+)
 
 /**
  * 一条围栏：命中 `exec` 的围栏带 `load`，先渲染真实组件预览，再挂源码卡；其余只显示源码。
@@ -91,17 +58,11 @@ const props = defineProps<{
 const panelId = `codeblock-${useId()}`
 const flavor = ref<Flavor>(NATIVE_FLAVOR)
 const expanded = ref(false)
-const copied = ref<'idle' | 'copied' | 'failed'>('idle')
-// 每次复制都换 key，让成功态的描边与 scale 动画重新挂载、各播一次。
-const copyRun = ref(0)
-let copyTimer: ReturnType<typeof setTimeout> | undefined
-
-onBeforeUnmount(() => clearTimeout(copyTimer))
 
 const active = computed(() => props.nodes.find(node => flavorOf(node.lang) === flavor.value) ?? props.nodes[0])
 const loadable = computed(() => props.nodes.find(node => node.load))
 const demo = () => (props.preview && loadable.value?.load ? demoOf(loadable.value.load) : null)
-const collapsible = computed(() => lineCountOf(active.value?.content ?? '') > PEEK_LINES)
+const collapsible = computed(() => isCodeCollapsible(active.value?.content ?? ''))
 
 function resetPanelScroll() {
   const panel = document.getElementById(panelId)
@@ -135,56 +96,27 @@ function expandFromPeek() {
 }
 
 /*
- * 剪贴板是双通道的：安全上下文且有焦点时走 Async Clipboard API；非安全上下文、
- * 文档失焦或权限被拒时它会直接抛，落到 textarea + execCommand 的同步通道。
+ * 复制反馈状态机在 kit：双通道剪贴板、成功/失败发布与回 idle 的定时都在那边。
+ * snapshot 只在发布时整体换引用，shallowRef 按引用比较接进 Vue；行号槽按 kit 封装的
+ * `@greypan/md-to-meta` 行号类名摘掉，剪贴板拿的是围栏原文。
  */
-async function writeClipboard(text: string): Promise<boolean> {
-  try {
-    if (navigator.clipboard?.writeText) {
-      await navigator.clipboard.writeText(text)
-      return true
-    }
-  } catch {
-    // 继续走兜底通道。
+const copyFeedback = createCopyFeedback({
+  readText: () => {
+    const panel = document.getElementById(panelId)
+    return panel ? codeFrameText(panel) : ''
   }
+})
+const copyState = shallowRef(copyFeedback.getSnapshot())
+copyFeedback.subscribe(() => {
+  copyState.value = copyFeedback.getSnapshot()
+})
+onBeforeUnmount(() => copyFeedback.dispose())
+const copied = computed(() => copyState.value.status)
+// 每次复制都换 key，让成功态的描边与 scale 动画重新挂载、各播一次。
+const copyRun = computed(() => copyState.value.run)
 
-  const focused = document.activeElement
-  const textarea = document.createElement('textarea')
-  textarea.value = text
-  textarea.setAttribute('readonly', '')
-  textarea.style.position = 'fixed'
-  textarea.style.top = '0'
-  textarea.style.left = '-9999px'
-  textarea.style.opacity = '0'
-  document.body.append(textarea)
-  textarea.select()
-
-  let ok = false
-  try {
-    ok = document.execCommand('copy')
-  } catch {
-    ok = false
-  }
-
-  textarea.remove()
-  if (focused instanceof HTMLElement) focused.focus()
-  return ok
-}
-
-async function copyCode() {
-  const frame = document.getElementById(panelId)?.querySelector<HTMLElement>('pre')?.cloneNode(true) as
-    | HTMLElement
-    | undefined
-  // 行号槽是生成期塞在每行前面的文本，剪贴板要的是围栏原文，所以克隆一份摘掉它再取文本。
-  frame?.querySelectorAll('.line-number').forEach(node => node.remove())
-  const text = frame?.textContent ?? ''
-  const ok = text !== '' && (await writeClipboard(text))
-  copied.value = ok ? 'copied' : 'failed'
-  copyRun.value += 1
-  clearTimeout(copyTimer)
-  copyTimer = setTimeout(() => {
-    copied.value = 'idle'
-  }, 1600)
+function copyCode() {
+  void copyFeedback.copy()
 }
 
 const copyLabel = () => (copied.value === 'copied' ? '已复制' : copied.value === 'failed' ? '复制失败' : '复制代码')

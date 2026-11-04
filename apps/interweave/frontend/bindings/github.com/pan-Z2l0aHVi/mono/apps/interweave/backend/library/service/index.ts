@@ -13,11 +13,13 @@ export {
 };
 
 export {
+    CreateResourceInputDTO,
     FilePreviewDTO,
     GlobalMapDTO,
     LocalMapDTO,
     ResourceDTO,
     ResourceLocationMatchDTO,
+    SourceAvailabilityEventDTO,
     SourceDTO,
     SourceMetadataDTO,
     SourceProbeOutcome,

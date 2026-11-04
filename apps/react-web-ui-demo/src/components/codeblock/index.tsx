@@ -1,4 +1,21 @@
 import appScrollbarsOptions from '@greypan/app-scrollbars'
+import {
+  COPY_FEEDBACK_DURATION,
+  createCopyFeedback,
+  createThunkCache,
+  codeFrameText,
+  codeScrollbarsEvents,
+  FLAVORS,
+  FLAVOR_ICON_CLASS,
+  FLAVOR_LABELS,
+  FLAVOR_ICONS,
+  flavorOf,
+  isCodeCollapsible,
+  PEEK_HEIGHT,
+  resetCodeScroll,
+  type DemoThunk,
+  type Flavor
+} from '@greypan/doc-demo-kit'
 import type { MetaNode } from '@greypan/md-to-meta'
 import {
   akarIconsCircleCheck,
@@ -7,73 +24,20 @@ import {
   lucideCircleAlert,
   lucideCopy
 } from '@greypan/web-ui/icons'
-import { OverlayScrollbars } from 'overlayscrollbars'
 import { OverlayScrollbarsComponent } from 'overlayscrollbars-react'
-import { Suspense, lazy, useEffect, useId, useRef, useState, type ComponentType } from 'react'
-
-import { FLAVOR_ICON_CLASS, FLAVOR_LABELS, FLAVOR_ICONS, flavorOf, type Flavor } from './flavor'
-
-// 复制成功的描边与 scale 反馈共用同一时长；CSS 里的 `demo-copy-pop` 要同步。
-const COPY_FEEDBACK_DURATION = 500
+import { Suspense, lazy, useEffect, useId, useState, useSyncExternalStore, type ComponentType } from 'react'
 
 // 本站框架既是切换器的第一项，也是打开页面时显示的源码。
 const NATIVE_FLAVOR: Flavor = 'react'
-const FLAVOR_ORDER: readonly Flavor[] = ['react', 'vue']
-
-/*
- * 关闭态露出 128px，内容不超过这个高度时整段代码本来就看全了：再挂折叠只会让末端的
- * 渐隐带盖住正文，所以这种卡直接铺开，也收起工具条里的展开按钮。
- * 每行 24px 来自代码区的 `leading-6`，四侧内边距各 12px 来自 `pt-3 pb-3 px-3`。
- */
-const PEEK_HEIGHT = 128
-const CODE_LINE_HEIGHT = 24
-const CODE_PADDING_HEIGHT = 24
-const PEEK_LINES = Math.floor((PEEK_HEIGHT - CODE_PADDING_HEIGHT) / CODE_LINE_HEIGHT)
-
-/** 生成期高亮 HTML 每行一个 `<span class="line">`，数行不必解析整棵树。 */
-function lineCountOf(content: string): number {
-  return content.match(/<span class="line"/g)?.length ?? 0
-}
 
 /*
  * `load` 是生成器写进 meta 的字面 thunk，同一份 meta 模块里引用同一个函数，所以按函数身份缓存
  * 就能让 React.lazy 只建一次：重渲染与再进入页面都不会换掉组件身份、重置示例自己的状态。
  */
-const demoCache = new WeakMap<NonNullable<MetaNode['load']>, ComponentType>()
-
-function demoOf(load: NonNullable<MetaNode['load']>) {
-  let Demo = demoCache.get(load)
-  if (!Demo) {
-    Demo = lazy(load as () => Promise<{ default: ComponentType }>)
-    demoCache.set(load, Demo)
-  }
-  return Demo
-}
+const demoOf = createThunkCache((load: DemoThunk) => lazy(load as () => Promise<{ default: ComponentType }>))
 
 /*
- * 代码区由 OverlayScrollbars 接管后，`[data-code]` 这一层成了 `overflow: hidden` 的 host，
- * 真正滚动的是实例的 viewport 元素，所以滚动复位必须打在它上面。
- * 实例还没建好（首帧、jsdom）时退回 host 本身，此时 host 上的 `overflow-auto` 就是它自身的原生滚动。
- */
-function resetCodeScroll(panel: HTMLElement) {
-  const scroller = OverlayScrollbars(panel)?.elements().viewport ?? panel
-  scroller.scrollTop = 0
-  scroller.scrollLeft = 0
-}
-
-/*
- * 同一个理由也管焦点：库把 target 变成 `overflow: hidden` 的 host 之后，target 上的 tabindex 不再
- * 带来键盘滚动。textarea 场景库自己会把 tabindex 从 target 搬到 viewport，div 场景不会，所以在这里
- * 补上同一步——焦点和方向键都落在真正的滚动元素上。
- */
-const codeScrollbarsEvents = {
-  initialized: (instance: OverlayScrollbars) => {
-    instance.elements().viewport.tabIndex = 0
-  }
-}
-
-/*
- * 预览宿主：`Demo` 以 prop 进来，它的组件身份由 `demoCache` 按 `load` 身份固定，
+ * 预览宿主：`Demo` 以 prop 进来，它的组件身份由 kit 的 `createThunkCache` 按 `load` 身份固定，
  * 重渲染与再进页面都复用同一个组件，示例自己的状态不会被重置。
  */
 function CodePreview({ Demo }: { Demo: ComponentType }) {
@@ -103,12 +67,23 @@ function Codeblock({ nodes, preview }: CodeblockProps) {
   const panelId = useId()
   const [flavor, setFlavor] = useState<Flavor>(NATIVE_FLAVOR)
   const [expanded, setExpanded] = useState(false)
-  const [copied, setCopied] = useState<'idle' | 'copied' | 'failed'>('idle')
-  // 每次复制都换 key，让成功态的描边与 scale 动画重新挂载、各播一次。
-  const [copyRun, setCopyRun] = useState(0)
-  const copyTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
-
-  useEffect(() => () => clearTimeout(copyTimer.current), [])
+  /*
+   * 复制反馈状态机在 kit（`createCopyFeedback`）：双通道剪贴板、成功/失败、定时回 idle 都在
+   * 引擎里，这里只把它的 snapshot 接进 `useSyncExternalStore`。`readText` 在每次复制时按面板
+   * 现取围栏原文（`useId` 的 id 对组件实例稳定，闭包捕获它不会过期）。
+   */
+  const [copy] = useState(() =>
+    createCopyFeedback({
+      readText: () => {
+        const panel = document.getElementById(panelId)
+        return panel ? codeFrameText(panel) : ''
+      }
+    })
+  )
+  useEffect(() => () => copy.dispose(), [copy])
+  // getServerSnapshot 传同一份：初始 snapshot 是纯对象，静态渲染（更新日志页）不碰 DOM。
+  const copySnapshot = useSyncExternalStore(copy.subscribe, copy.getSnapshot, copy.getSnapshot)
+  const { status: copied, run: copyRun } = copySnapshot
 
   const active = nodes.find(node => flavorOf(node.lang) === flavor) ?? nodes[0]
   const loadable = nodes.find(node => node.load)
@@ -117,7 +92,7 @@ function Codeblock({ nodes, preview }: CodeblockProps) {
 
   if (!active) return null
 
-  const collapsible = lineCountOf(active.content ?? '') > PEEK_LINES
+  const collapsible = isCodeCollapsible(active.content ?? '')
 
   function resetPanelScroll() {
     const panel = document.getElementById(panelId)
@@ -126,7 +101,7 @@ function Codeblock({ nodes, preview }: CodeblockProps) {
 
   // 换一份源码就回到顶部：两稿的行数不同，停在上次读到的位置会落到另一份的中段。
   function selectFlavor(value: string) {
-    const next = FLAVOR_ORDER.find(item => item === value)
+    const next = FLAVORS.find(item => item === value)
     if (!next || next === flavor) return
     setFlavor(next)
     resetPanelScroll()
@@ -137,56 +112,6 @@ function Codeblock({ nodes, preview }: CodeblockProps) {
     setExpanded(next)
     // 收起后代码区回到顶部，与从未展开时一致；否则再次展开会停在上次读到的位置。
     if (!next) resetPanelScroll()
-  }
-
-  /*
-   * 剪贴板是双通道的：安全上下文且有焦点时走 Async Clipboard API；非安全上下文、
-   * 文档失焦或权限被拒时它会直接抛，落到 textarea + execCommand 的同步通道。
-   */
-  async function writeClipboard(text: string): Promise<boolean> {
-    try {
-      if (navigator.clipboard?.writeText) {
-        await navigator.clipboard.writeText(text)
-        return true
-      }
-    } catch {
-      // 继续走兜底通道。
-    }
-
-    const active = document.activeElement
-    const textarea = document.createElement('textarea')
-    textarea.value = text
-    textarea.setAttribute('readonly', '')
-    textarea.style.position = 'fixed'
-    textarea.style.top = '0'
-    textarea.style.left = '-9999px'
-    textarea.style.opacity = '0'
-    document.body.append(textarea)
-    textarea.select()
-
-    let ok = false
-    try {
-      ok = document.execCommand('copy')
-    } catch {
-      ok = false
-    }
-
-    textarea.remove()
-    if (active instanceof HTMLElement) active.focus()
-    return ok
-  }
-
-  async function copyCode() {
-    const pre = document.getElementById(panelId)?.querySelector<HTMLElement>('pre')
-    // 行号槽是生成期塞在每行前面的文本，剪贴板要的是围栏原文，所以克隆一份摘掉它再取文本。
-    const frame = pre?.cloneNode(true) as HTMLElement | undefined
-    frame?.querySelectorAll('.line-number').forEach(node => node.remove())
-    const text = frame?.textContent ?? ''
-    const ok = text !== '' && (await writeClipboard(text))
-    setCopied(ok ? 'copied' : 'failed')
-    setCopyRun(run => run + 1)
-    clearTimeout(copyTimer.current)
-    copyTimer.current = setTimeout(() => setCopied('idle'), 1600)
   }
 
   const copyLabel = copied === 'copied' ? '已复制' : copied === 'failed' ? '复制失败' : '复制代码'
@@ -255,7 +180,7 @@ function Codeblock({ nodes, preview }: CodeblockProps) {
                 className="[--wui-font-size:12px] [--wui-segmented-trigger-px:10px]"
                 onInput={event => selectFlavor(event.currentTarget.value)}
               >
-                {FLAVOR_ORDER.map(item => (
+                {FLAVORS.map(item => (
                   <web-ui-segmented-trigger key={item} value={item}>
                     <span className="flex items-center gap-1.5">
                       <web-ui-icon
@@ -280,7 +205,7 @@ function Codeblock({ nodes, preview }: CodeblockProps) {
               </span>
               <web-ui-button-group>
                 <web-ui-tooltip content={copyLabel}>
-                  <web-ui-button icon variant="ghost" data-copy aria-label={copyLabel} onClick={() => void copyCode()}>
+                  <web-ui-button icon variant="ghost" data-copy aria-label={copyLabel} onClick={() => void copy.copy()}>
                     {/* 成功态才包进描边宿主：`web-ui-svg-draw-lines` 在 slot 内容稳定时自动播一次；
                       key 跟着每次复制递增，重复复制也会重新挂载并重播描边与 scale。 */}
                     {copied === 'copied' ? (

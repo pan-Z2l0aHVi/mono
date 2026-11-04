@@ -49,9 +49,9 @@ func TestFindResourceLocationMatchesReturnsPromptFields(t *testing.T) {
 	ctx := context.Background()
 
 	path := tempFile(t, "prompt-*.txt")
-	added, err := resService.AddFileResource(ctx, path)
+	added, err := addFileResource(ctx, resService, path)
 	if err != nil {
-		t.Fatalf("AddFileResource error: %v", err)
+		t.Fatalf("addFileResource error: %v", err)
 	}
 
 	matches, err := resService.FindResourceLocationMatches(ctx, path, storage.SourceTypeFile)
@@ -91,9 +91,9 @@ func TestResourceMaintenanceOperations(t *testing.T) {
 	ctx := context.Background()
 
 	path := tempFile(t, "maint-*.txt")
-	res, err := resService.AddFileResource(ctx, path)
+	res, err := addFileResource(ctx, resService, path)
 	if err != nil {
-		t.Fatalf("AddFileResource error: %v", err)
+		t.Fatalf("addFileResource error: %v", err)
 	}
 
 	updated, err := resService.UpdateResourceTitle(ctx, res.ID, "  整理后的标题  ")
@@ -159,9 +159,9 @@ func TestURLSourceOperations(t *testing.T) {
 	defer ts.Close()
 
 	// URL 纳入成功时标题取自页面，且首个 Source 自动成为首选。
-	res, err := resService.AddURLResource(ctx, ts.URL)
+	res, err := addURLResource(ctx, resService, ts.URL)
 	if err != nil {
-		t.Fatalf("AddURLResource error: %v", err)
+		t.Fatalf("addURLResource error: %v", err)
 	}
 	if res.Title != "Remote Title" {
 		t.Errorf("expected title from page, got %q", res.Title)
@@ -207,9 +207,9 @@ func TestURLSourceOperations(t *testing.T) {
 		w.WriteHeader(http.StatusInternalServerError)
 	}))
 	defer bad.Close()
-	unavail, err := resService.AddURLResource(ctx, bad.URL)
+	unavail, err := addURLResource(ctx, resService, bad.URL)
 	if err != nil {
-		t.Fatalf("AddURLResource unavailable error: %v", err)
+		t.Fatalf("addURLResource unavailable error: %v", err)
 	}
 	if unavail.Sources[0].Available {
 		t.Errorf("expected unavailable source, got available")
@@ -226,9 +226,9 @@ func TestFileResourceDisplayMetadataAndRefresh(t *testing.T) {
 	if err := os.WriteFile(path, []byte("123456789"), 0o644); err != nil {
 		t.Fatalf("failed to write fixture: %v", err)
 	}
-	res, err := resService.AddFileResource(ctx, path)
+	res, err := addFileResource(ctx, resService, path)
 	if err != nil {
-		t.Fatalf("AddFileResource error: %v", err)
+		t.Fatalf("addFileResource error: %v", err)
 	}
 	if res.Kind != service.ResourceKindJSON {
 		t.Errorf("expected JSON kind, got %q", res.Kind)
@@ -282,9 +282,9 @@ func TestFileSourceRefreshTypeAndErrorPaths(t *testing.T) {
 	}))
 	defer ts.Close()
 
-	res, err := resService.AddURLResource(ctx, ts.URL)
+	res, err := addURLResource(ctx, resService, ts.URL)
 	if err != nil {
-		t.Fatalf("AddURLResource error: %v", err)
+		t.Fatalf("addURLResource error: %v", err)
 	}
 	if _, err := srcService.RefreshFileSource(ctx, res.Sources[0].ID); err == nil || err.Error() != "only file sources can be refreshed" {
 		t.Errorf("expected file refresh type error, got %v", err)
@@ -300,9 +300,9 @@ func TestPreferredSourceSwitching(t *testing.T) {
 	defer cleanup()
 	ctx := context.Background()
 
-	res, err := resService.AddFileResource(ctx, tempFile(t, "pref-*.txt"))
+	res, err := addFileResource(ctx, resService, tempFile(t, "pref-*.txt"))
 	if err != nil {
-		t.Fatalf("AddFileResource error: %v", err)
+		t.Fatalf("addFileResource error: %v", err)
 	}
 	firstID := res.Sources[0].ID
 
@@ -338,9 +338,9 @@ func TestTagRemovalSuggestionAndErrors(t *testing.T) {
 	defer cleanup()
 	ctx := context.Background()
 
-	res, err := resService.AddFileResource(ctx, tempFile(t, "tag-*.txt"))
+	res, err := addFileResource(ctx, resService, tempFile(t, "tag-*.txt"))
 	if err != nil {
-		t.Fatalf("AddFileResource error: %v", err)
+		t.Fatalf("addFileResource error: %v", err)
 	}
 
 	tokyo, _ := tagService.AddTagToResource(ctx, res.ID, "Tokyo")
@@ -387,9 +387,9 @@ func TestEdgeErrorPathsAndRemoval(t *testing.T) {
 		t.Errorf("expected tag not found for local map, got %v", err)
 	}
 
-	res, err := resService.AddFileResource(ctx, tempFile(t, "edge-*.txt"))
+	res, err := addFileResource(ctx, resService, tempFile(t, "edge-*.txt"))
 	if err != nil {
-		t.Fatalf("AddFileResource error: %v", err)
+		t.Fatalf("addFileResource error: %v", err)
 	}
 	firstID := res.Sources[0].ID
 

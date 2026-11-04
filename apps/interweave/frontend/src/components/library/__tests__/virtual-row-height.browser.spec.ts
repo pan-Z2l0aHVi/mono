@@ -39,6 +39,8 @@ function resource(overrides: Partial<ResourceView> = {}): ResourceView {
         available: true,
         isPreferred: true,
         orderIndex: 0,
+        mediaUrl: null,
+        thumbnailUrl: null,
         metadata: null
       }
     ],
@@ -109,7 +111,6 @@ function mountList(resources: ResourceView[], activeResourceId: string | null) {
         loading: false,
         runtimeAvailable: true,
         emptyDescription: '',
-        mediaUrlFor: () => null,
         resolveDefaultOpenWith: () => Promise.resolve('')
       })
   })
@@ -151,7 +152,6 @@ function mountReactiveList(
         loading: false,
         runtimeAvailable: true,
         emptyDescription: '',
-        mediaUrlFor: () => null,
         resolveDefaultOpenWith: () => Promise.resolve(''),
         onRenameChange
       })

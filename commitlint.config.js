@@ -85,6 +85,7 @@ export default {
       'app-scrollbars',
       'browser-kit',
       'deps-reload',
+      'doc-demo-kit',
       'js-kit',
       'md-to-meta',
       'monorepo-kit',

@@ -1,3 +1,5 @@
+import { afterAll } from 'vite-plus/test'
+
 /*
  * 测试全局补丁（vite.config.ts 的 test.setupFiles 挂载）。
  *
@@ -13,4 +15,33 @@ Object.defineProperty(globalThis, 'localStorage', {
     const win = (globalThis as { jsdom?: { window?: { localStorage?: Storage } } }).jsdom?.window
     return win?.localStorage
   }
+})
+
+/*
+ * @wailsio/runtime 的 drag 模块在导入时就挂一个 50ms 的 window.setInterval 轮询；生成的
+ * bindings 会让每个碰到它的 spec 都触发这一段。轮询不随用例结束停止，jsdom 拆掉之后回调
+ * 再读 window 就成了未处理异常——Vitest 记在文件上，整包因此判红，且与用例本身无关。
+ *
+ * 文件里各自装 fake timers 只能救自己（而且会把 rAF 一起停掉），挡不住别的文件。这里在
+ * 全局补丁层统一记账，每个 spec 文件跑完后把本轮留下的 interval 全部清掉。
+ */
+type IntervalId = number
+
+const nativeSetInterval = window.setInterval.bind(window) as (
+  handler: TimerHandler,
+  timeout?: number,
+  ...args: unknown[]
+) => IntervalId
+const nativeClearInterval = window.clearInterval.bind(window) as (id: IntervalId) => void
+const pendingIntervals = new Set<IntervalId>()
+
+window.setInterval = ((...args: Parameters<typeof nativeSetInterval>) => {
+  const id = nativeSetInterval(...args)
+  pendingIntervals.add(id)
+  return id
+}) as typeof window.setInterval
+
+afterAll(() => {
+  for (const id of pendingIntervals) nativeClearInterval(id)
+  pendingIntervals.clear()
 })

@@ -8,6 +8,7 @@ import type { ResourceSourceView, ResourceView } from '@/stores/library'
 
 import { ResourceKind } from '../../../../bindings/github.com/pan-Z2l0aHVi/mono/apps/interweave/backend/library/storage'
 import ResourceList from '../ResourceList.vue'
+import ResourceThumbnail from '../ResourceThumbnail.vue'
 
 import { currentScrollY, stubLayout, ROW_ESTIMATE, ROW_HEIGHT, VIEWPORT_HEIGHT } from './virtualLayout'
 
@@ -41,6 +42,8 @@ function resource(overrides: Partial<ResourceView> = {}): ResourceView {
         available: true,
         isPreferred: true,
         orderIndex: 0,
+        mediaUrl: null,
+        thumbnailUrl: null,
         metadata: null
       }
     ],
@@ -78,7 +81,6 @@ async function mountList(
         loading: false,
         runtimeAvailable: true,
         emptyDescription: '没有符合条件的资源',
-        mediaUrlFor: () => null,
         resolveDefaultOpenWith: () => Promise.resolve(''),
         onActivate: (resource: ResourceView) => {
           activeResourceId.value = resource.id
@@ -179,7 +181,6 @@ describe('ResourceList', () => {
           loading: false,
           runtimeAvailable: false,
           emptyDescription: '资源库还是空的',
-          mediaUrlFor: () => null,
           resolveDefaultOpenWith: () => Promise.resolve('')
         })
     })
@@ -732,6 +733,8 @@ describe('ResourceList：触屏长按 menu', () => {
       available: false,
       isPreferred: true,
       orderIndex: 0,
+      mediaUrl: null,
+      thumbnailUrl: null,
       metadata: null
     }
   }
@@ -1106,6 +1109,8 @@ describe('ResourceList：context menu 的详情入口', () => {
       available: false,
       isPreferred: true,
       orderIndex: 0,
+      mediaUrl: null,
+      thumbnailUrl: null,
       metadata: null
     }
     const mounted = await mountList([resource({ available: false, sources: [missing] })])
@@ -1184,6 +1189,8 @@ describe('ResourceList：键盘呼出 context menu', () => {
       available: false,
       isPreferred: true,
       orderIndex: 0,
+      mediaUrl: null,
+      thumbnailUrl: null,
       metadata: null
     }
   }
@@ -2055,7 +2062,6 @@ describe('ResourceList：编辑态与虚拟窗口的关系', () => {
           loading: false,
           runtimeAvailable: true,
           emptyDescription: '',
-          mediaUrlFor: () => null,
           resolveDefaultOpenWith: () => Promise.resolve('')
         })
     })
@@ -2110,7 +2116,6 @@ describe('ResourceList：顺序变化后的行位', () => {
           loading: false,
           runtimeAvailable: true,
           emptyDescription: '',
-          mediaUrlFor: () => null,
           resolveDefaultOpenWith: () => Promise.resolve('')
         })
     })
@@ -2241,6 +2246,47 @@ describe('ResourceList：连按方向键与卸载后的落焦', () => {
     }
   })
 })
+
+/*
+ * 回填回调的签名是 (thumbnailUrl, dataUrl)：页面侧接的 saveSourceThumbnail 只收这两个参数，
+ * 多传一个 Source id 会把参数整体右移、真正的 dataURL 被截掉。
+ */
+describe('ResourceList：缩略图回填参数', () => {
+  afterEach(() => {
+    document.body.innerHTML = ''
+  })
+
+  it('行内捕获结果按 (thumbnailUrl, dataUrl) 回填，不夹带 Source id', async () => {
+    const saveThumbnailFor = vi.fn<(thumbnailUrl: string, dataUrl: string) => void>()
+    const thumbnailUrl = '/resource-thumbnail/s1'
+    const source = { ...resource().sources[0]!, thumbnailUrl }
+    const mounted = await mountList([resource({ preferred: source, sources: [source] })], [], { saveThumbnailFor })
+    try {
+      const save = thumbnailSaverOf(mounted.rows[0]!)
+      expect(save, '首选 Source 有缩略图地址时行应当带回填回调').toBeTypeOf('function')
+      save!('data:image/jpeg;base64,AAAA')
+      expect(saveThumbnailFor).toHaveBeenCalledExactlyOnceWith(thumbnailUrl, 'data:image/jpeg;base64,AAAA')
+    } finally {
+      mounted.unmount()
+    }
+  })
+})
+
+/*
+ * 回填回调挂在 ResourceThumbnail 的 prop 上，从行的 DOM 树反查它所属的组件实例拿到
+ * 生产代码传下去的那个函数——这样测的是 ResourceList 实际交给子组件的签名，而不是另抄一份。
+ */
+function thumbnailSaverOf(row: Element) {
+  for (const node of [row, ...row.querySelectorAll('*')]) {
+    const instance = (
+      node as unknown as {
+        __vueParentComponent?: { type: unknown; props: { saveThumbnail?: ((dataUrl: string) => void) | null } }
+      }
+    ).__vueParentComponent
+    if (instance?.type === ResourceThumbnail) return instance.props.saveThumbnail ?? null
+  }
+  return null
+}
 
 // jsdom 未实现原生 dialog 的 modal 语义，这里局部补足 showModal/close 对 open 的影响。
 // 刻意不做成全局 shim —— 本文件用的真实 web-ui-context-menu 直接调 `scrim.showModal()`，

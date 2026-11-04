@@ -19,6 +19,8 @@ function fileSource(): ResourceSourceView {
     available: true,
     isPreferred: true,
     orderIndex: 0,
+    mediaUrl: null,
+    thumbnailUrl: null,
     metadata: null
   }
 }
