@@ -1,6 +1,6 @@
 # Option
 
-`<web-ui-select>` 与 `<web-ui-autocomplete>` 里的 option 元素。`value` 是选中时提交的值，`label` 是显示文本（缺省时取自身的文本内容），`prefix` / `suffix` 插槽放两端的 icon。
+`<web-ui-select>` 与 `<web-ui-autocomplete>` 里的选项元素。`value` 是选中时提交的值，`label` 是显示文本（缺省时取自身的文本内容），`prefix` / `suffix` 插槽放两端的图标。
 
 它不派发面向使用方的事件——挂载、更新与卸载时发出的注册握手只由父级容器消费；选中态由容器回写 `selected`。
 
@@ -111,13 +111,15 @@ export default function Demo() {
 
 ### Slots
 
-| 名称      | 说明                                            |
-| --------- | ----------------------------------------------- |
-| `prefix`  | 文本左侧的 icon 或标识。                        |
-| `default` | option 文本；`label` 为空时这段文本就是 label。 |
-| `suffix`  | 文本右侧的 icon 或标识。                        |
+| 名称      | 说明                                       |
+| --------- | ------------------------------------------ |
+| `prefix`  | 文本左侧的图标或标识。                     |
+| `default` | 选项文本；`label` 为空时这段文本就是标签。 |
+| `suffix`  | 文本右侧的图标或标识。                     |
 
 ### 行为说明
+
+键盘导航的活动项与悬停使用同一档背景加深，文字颜色保持不变。
 
 非表单关联组件（父级 select 统一提交）。
 
@@ -125,4 +127,4 @@ export default function Demo() {
 
 | 名称                         | 说明                        | 默认值  |
 | ---------------------------- | --------------------------- | ------- |
-| `--wui-option-check-display` | 选中勾选 icon 的 display 值 | `block` |
+| `--wui-option-check-display` | 选中勾选图标的 `display` 值 | `block` |

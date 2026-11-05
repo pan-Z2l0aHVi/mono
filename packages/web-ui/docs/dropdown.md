@@ -413,10 +413,10 @@ const menu = useTemplateRef<WebUiDropdown>('menu')
 
 ### Methods
 
-| Name         | Description                                                                                                               |
-| ------------ | ------------------------------------------------------------------------------------------------------------------------- |
-| `openMenu()` | Opens the menu; an imperative open does not dispatch `open-change` and suppresses the accent highlight of the first item. |
-| `closeAll()` | Closes all levels; an imperative close does not dispatch `open-change`.                                                   |
+| Name         | Description                                                                                                   |
+| ------------ | ------------------------------------------------------------------------------------------------------------- |
+| `openMenu()` | Opens the menu; an imperative open does not dispatch `open-change` and suppresses the first item's highlight. |
+| `closeAll()` | Closes all levels; an imperative close does not dispatch `open-change`.                                       |
 
 ### Behavior
 

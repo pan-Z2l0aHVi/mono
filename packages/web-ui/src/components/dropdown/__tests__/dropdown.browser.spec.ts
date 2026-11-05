@@ -144,12 +144,12 @@ describe('WebUiDropdown 组件（浏览器）', () => {
   /*
    * menu 打开后焦点落在首项上，但指针点击不该让 focus ring 亮起来——那会让「点开 menu」
    * 看起来像键盘导航。判定用 `:focus-visible` 匹配与「和未被聚焦的那一项同不同底」这一
-   * 关系，不读抑制标记，也不把某档 accent 的 rgb 字面量钉进用例。
+   * 关系，不读抑制标记，也不把某档高亮的 rgb 字面量钉进用例。
    *
    * 合成的 click 不更新 Chromium 的模态启发式，程序化 focus 仍匹配 :focus-visible ——
    * 与 WKWebView 实际出问题的渲染条件同构，所以高亮的有无只可能由抑制逻辑决定。
    */
-  it('指针点击打开时首项抑制 focus-visible accent，方向键后恢复', async () => {
+  it('指针点击打开时首项抑制 focus-visible 高亮，方向键后恢复', async () => {
     await parkPointer()
     const menu = createDropdown(TWO_ITEMS)
     await menu.updateComplete
@@ -180,7 +180,7 @@ describe('WebUiDropdown 组件（浏览器）', () => {
     expect(bgOf(items[0]!), '键盘走回首项后仍是同一档高亮').toBe(highlighted)
   })
 
-  it('键盘激活打开时首项保留 focus-visible accent', async () => {
+  it('键盘激活打开时首项保留 focus-visible 高亮', async () => {
     await parkPointer()
     const menu = createDropdown(TWO_ITEMS)
     await menu.updateComplete

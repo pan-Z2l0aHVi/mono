@@ -119,6 +119,8 @@ export default function Demo() {
 
 ### Behavior
 
+The active item under keyboard navigation uses the same background shade as hover; the text color stays unchanged.
+
 Not a form-associated component (the parent select submits uniformly).
 
 ### CSS Custom Properties

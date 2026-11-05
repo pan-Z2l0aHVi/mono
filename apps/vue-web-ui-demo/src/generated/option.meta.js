@@ -106,6 +106,7 @@ const meta = [
     ]
   },
   { label: 'h3', id: 'section-9', content: "Behavior" },
+  { label: 'p', content: "The active item under keyboard navigation uses the same background shade as hover; the text color stays unchanged." },
   { label: 'p', content: "Not a form-associated component (the parent select submits uniformly)." },
   { label: 'h3', id: 'section-10', content: "CSS Custom Properties" },
   {

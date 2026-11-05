@@ -4,7 +4,7 @@
 
 const meta = [
   { label: 'h1', id: 'section-1', content: "Option" },
-  { label: 'p', content: "<code>&lt;web-ui-select></code> 与 <code>&lt;web-ui-autocomplete></code> 里的 option 元素。<code>value</code> 是选中时提交的值，<code>label</code> 是显示文本（缺省时取自身的文本内容），<code>prefix</code> / <code>suffix</code> 插槽放两端的 icon。" },
+  { label: 'p', content: "<code>&lt;web-ui-select></code> 与 <code>&lt;web-ui-autocomplete></code> 里的选项元素。<code>value</code> 是选中时提交的值，<code>label</code> 是显示文本（缺省时取自身的文本内容），<code>prefix</code> / <code>suffix</code> 插槽放两端的图标。" },
   { label: 'p', content: "它不派发面向使用方的事件——挂载、更新与卸载时发出的注册握手只由父级容器消费；选中态由容器回写 <code>selected</code>。" },
   { label: 'h2', id: 'section-2', content: "Samples" },
   { label: 'h3', id: 'section-3', content: "Basic option" },
@@ -86,26 +86,27 @@ const meta = [
       label: 'tr',
       children: [
       { label: 'td', content: "<code>prefix</code>" },
-      { label: 'td', content: "文本左侧的 icon 或标识。" }
+      { label: 'td', content: "文本左侧的图标或标识。" }
       ]
     },
     {
       label: 'tr',
       children: [
       { label: 'td', content: "<code>default</code>" },
-      { label: 'td', content: "option 文本；<code>label</code> 为空时这段文本就是 label。" }
+      { label: 'td', content: "选项文本；<code>label</code> 为空时这段文本就是标签。" }
       ]
     },
     {
       label: 'tr',
       children: [
       { label: 'td', content: "<code>suffix</code>" },
-      { label: 'td', content: "文本右侧的 icon 或标识。" }
+      { label: 'td', content: "文本右侧的图标或标识。" }
       ]
     }
     ]
   },
   { label: 'h3', id: 'section-9', content: "行为说明" },
+  { label: 'p', content: "键盘导航的活动项与悬停使用同一档背景加深，文字颜色保持不变。" },
   { label: 'p', content: "非表单关联组件（父级 select 统一提交）。" },
   { label: 'h3', id: 'section-10', content: "CSS Custom Properties" },
   {
@@ -123,7 +124,7 @@ const meta = [
       label: 'tr',
       children: [
       { label: 'td', content: "<code>--wui-option-check-display</code>" },
-      { label: 'td', content: "选中勾选 icon 的 display 值" },
+      { label: 'td', content: "选中勾选图标的 <code>display</code> 值" },
       { label: 'td', content: "<code>block</code>" }
       ]
     }

@@ -155,7 +155,7 @@ const meta = [
       label: 'tr',
       children: [
       { label: 'td', content: "<code>openMenu()</code>" },
-      { label: 'td', content: "Opens the menu; an imperative open does not dispatch <code>open-change</code> and suppresses the accent highlight of the first item." }
+      { label: 'td', content: "Opens the menu; an imperative open does not dispatch <code>open-change</code> and suppresses the first item's highlight." }
       ]
     },
     {

@@ -21,6 +21,16 @@ const mountKeyboardIsolated = () => {
   return mountPoint
 }
 
+/** 把 option 高亮用的背景 token 解析成计算后的颜色，避免在断言里抄 rgb 字面量。 */
+const highlightColor = (scope: Element): string => {
+  const probe = document.createElement('span')
+  probe.style.backgroundColor = 'var(--wui-color-border, rgb(0 0 0 / 0.1))'
+  scope.append(probe)
+  const color = getComputedStyle(probe).backgroundColor
+  probe.remove()
+  return color
+}
+
 describe('WebUiSelect 组件（浏览器）', () => {
   it('host aria-label gives the combobox an accessible name', async () => {
     const select = document.createElement('web-ui-select')
@@ -167,6 +177,37 @@ describe('WebUiSelect 组件（浏览器）', () => {
     await select.updateComplete
     expect(select.value).toBe('react')
     expect(select.open).toBe(false)
+  })
+
+  /*
+   * 键盘导航的活动项与悬停同底：只加深背景，文字颜色沿用未选中项。蓝底白字会把「当前项」
+   * 读成「已选中」，也会吃掉图标与次要文字的对比度。
+   */
+  it('键盘导航的活动项与悬停同底，不改文字颜色', async () => {
+    const mountPoint = mountKeyboardIsolated()
+    const select = document.createElement('web-ui-select')
+    select.innerHTML = `
+      <web-ui-option value="vue" label="Vue"></web-ui-option>
+      <web-ui-option value="react" label="React"></web-ui-option>
+    `
+    mountPoint.append(select)
+    await select.updateComplete
+
+    const trigger = select.shadowRoot!.querySelector<HTMLElement>('[role="combobox"]')!
+    trigger.focus()
+    await userEvent.keyboard('{Enter}')
+    await select.updateComplete
+    await userEvent.keyboard('{Home}')
+    await select.updateComplete
+
+    const options = [...select.querySelectorAll<HTMLElement>('web-ui-option')]
+    const active = options.find(option => option.hasAttribute('active'))
+    const idle = options.find(option => !option.hasAttribute('active'))
+    if (!active || !idle) throw new Error('缺少活动项或未选中项')
+    const labelOf = (option: HTMLElement) => option.shadowRoot!.querySelector<HTMLElement>('.option-label')!
+
+    expect(getComputedStyle(labelOf(active)).backgroundColor).toBe(highlightColor(select))
+    expect(getComputedStyle(labelOf(active)).color).toBe(getComputedStyle(labelOf(idle)).color)
   })
 
   it.each([
