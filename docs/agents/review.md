@@ -9,7 +9,7 @@
 CI 的 `check` 之后还有一道 Codex 审查门：它按本文的三档给发现，并把结论写进 PR 上同一条持久评论。它与人工审查读的不是同一份 diff，范围差见下文「审查范围与生成物」；决策与代价见 [ADR-0021](../adr/0021-codex-review-gate.md)。
 
 - 结论绑定被审查的 head。`reviewed` 只覆盖那一份代码；head 变了结论就过期，`stale`、`unreviewed` 与 `not_applicable` 都不代表已审。
-- `reviewed` 且 `Block > 0`、以及 `error` 让这道门变红。`error` 表示配置或调用故障（`config_missing`、`model_failed`、`artifact_missing`），不是审查意见：按 PR 评论里的缺失配置名补齐 GitHub 后台的 secrets/variables 后重跑 CI。模型腿正常结束却没产出结论是 `unreviewed`，保持绿色。门是约定式的：不改动 GitHub 的分支规则，红叉由人处置，绿色也不替人签字。
+- `reviewed` 且 `Block > 0`、以及 `error` 让这道门变红。`error` 表示配置或调用故障，不是审查意见，按故障码处置：`config_missing` 按 PR 评论列出的变量名补齐 GitHub 后台的 secrets/variables；`model_failed` 先看 `Run codex exec` 日志，网关 5xx 或瞬时错误重跑整条 run，只有配置或模型侧拒绝才改后台；`artifact_missing` 查审查腿的上传与写回腿的下载。模型腿正常结束却没产出结论是 `unreviewed`，保持绿色。门是约定式的：不改动 GitHub 的分支规则，红叉由人处置，绿色也不替人签字。
 - 端点、模型名、思考强度、密钥与 codex 版本由 GitHub 后台提供，仓库不写默认值；配置未填齐时门是红的，这是设计意图。完整契约见 [ADR-0021](../adr/0021-codex-review-gate.md)。
 - 三条同时成立、本次有可审的源码改动、且生成物已按下文核对时，人工可以只做核对式抽查，不必逐行重看：结论的 reviewed SHA 等于当前 head、`Block` 为 0、required context `check` 在当前 head 上成功。自动审查没看过被剔除的生成物，抽查结论不覆盖它们。
 - 以下任一情形仍要人按本文流程做完整独立审查：T0 改动；`error`、`unreviewed`、`stale` 或 `not_applicable`；来自 fork 的 PR——那条腿默认不跑；自动修推送出的新 head。
