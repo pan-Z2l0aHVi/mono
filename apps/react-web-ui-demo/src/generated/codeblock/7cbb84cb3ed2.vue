@@ -1,7 +1,8 @@
 <template>
   <div class="flex flex-wrap gap-2">
-    <web-ui-button @click="showAllPositions">Show every position</web-ui-button>
-    <web-ui-button variant="secondary" @click="toast.clear()">Clear</web-ui-button>
+    <web-ui-button v-for="position in POSITIONS" :key="position" variant="secondary" @click="notify(position)">
+      {{ position }}
+    </web-ui-button>
   </div>
 </template>
 
@@ -18,10 +19,8 @@ const POSITIONS: ToastPosition[] = [
   'bottom-right'
 ]
 
-function showAllPositions() {
-  for (const position of POSITIONS) {
-    toast.info(position, { id: `demo-position-${position}`, position, duration: 0 })
-  }
+function notify(position: ToastPosition) {
+  toast.info(position, { position })
 }
 
 onBeforeUnmount(() => toast.clear())

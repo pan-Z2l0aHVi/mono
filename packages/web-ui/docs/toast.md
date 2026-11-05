@@ -74,7 +74,7 @@ onBeforeUnmount(() => toast.clear())
 
 ### Positions
 
-`position` accepts six values: `top-left`, `top-center`, `top-right`, `bottom-left`, `bottom-center`, and `bottom-right`. Each maps to a container pinned to a viewport edge, so its place does not change when the page scrolls. The sample creates all six with `duration: 0` so every position stays visible at once; "Clear" removes them.
+`position` accepts six values: `top-left`, `top-center`, `top-right`, `bottom-left`, `bottom-center`, and `bottom-right`. Each maps to a container pinned to a viewport edge, so its place does not change when the page scrolls. Each button below shows a toast at its own position with the default duration.
 
 ```tsx
 import { toast, type ToastPosition } from '@greypan/web-ui'
@@ -94,18 +94,11 @@ export default function Demo() {
 
   return (
     <div className="flex flex-wrap gap-2">
-      <web-ui-button
-        onClick={() => {
-          for (const position of POSITIONS) {
-            toast.info(position, { id: `demo-position-${position}`, position, duration: 0 })
-          }
-        }}
-      >
-        Show every position
-      </web-ui-button>
-      <web-ui-button variant="secondary" onClick={() => toast.clear()}>
-        Clear
-      </web-ui-button>
+      {POSITIONS.map(position => (
+        <web-ui-button key={position} variant="secondary" onClick={() => toast.info(position, { position })}>
+          {position}
+        </web-ui-button>
+      ))}
     </div>
   )
 }
@@ -114,8 +107,9 @@ export default function Demo() {
 ```vue
 <template>
   <div class="flex flex-wrap gap-2">
-    <web-ui-button @click="showAllPositions">Show every position</web-ui-button>
-    <web-ui-button variant="secondary" @click="toast.clear()">Clear</web-ui-button>
+    <web-ui-button v-for="position in POSITIONS" :key="position" variant="secondary" @click="notify(position)">
+      {{ position }}
+    </web-ui-button>
   </div>
 </template>
 
@@ -132,10 +126,8 @@ const POSITIONS: ToastPosition[] = [
   'bottom-right'
 ]
 
-function showAllPositions() {
-  for (const position of POSITIONS) {
-    toast.info(position, { id: `demo-position-${position}`, position, duration: 0 })
-  }
+function notify(position: ToastPosition) {
+  toast.info(position, { position })
 }
 
 onBeforeUnmount(() => toast.clear())

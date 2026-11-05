@@ -15,18 +15,11 @@ export default function Demo() {
 
   return (
     <div className="flex flex-wrap gap-2">
-      <web-ui-button
-        onClick={() => {
-          for (const position of POSITIONS) {
-            toast.info(position, { id: `demo-position-${position}`, position, duration: 0 })
-          }
-        }}
-      >
-        Show every position
-      </web-ui-button>
-      <web-ui-button variant="secondary" onClick={() => toast.clear()}>
-        Clear
-      </web-ui-button>
+      {POSITIONS.map(position => (
+        <web-ui-button key={position} variant="secondary" onClick={() => toast.info(position, { position })}>
+          {position}
+        </web-ui-button>
+      ))}
     </div>
   )
 }

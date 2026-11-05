@@ -74,7 +74,7 @@ onBeforeUnmount(() => toast.clear())
 
 ### Positions
 
-`position` 接受 `top-left`、`top-center`、`top-right`、`bottom-left`、`bottom-center`、`bottom-right` 六个值。每个值对应一个固定在视口边缘的容器，位置不随页面滚动改变。下面一次创建六条并把 `duration` 设为 `0`，六个位置可以同时看到，点「清空」收走。
+`position` 接受 `top-left`、`top-center`、`top-right`、`bottom-left`、`bottom-center`、`bottom-right` 六个值。每个值对应一个固定在视口边缘的容器，位置不随页面滚动改变。下面每个按钮在对应位置弹出一条默认时长的 toast。
 
 ```tsx
 import { toast, type ToastPosition } from '@greypan/web-ui'
@@ -94,18 +94,11 @@ export default function Demo() {
 
   return (
     <div className="flex flex-wrap gap-2">
-      <web-ui-button
-        onClick={() => {
-          for (const position of POSITIONS) {
-            toast.info(position, { id: `demo-position-${position}`, position, duration: 0 })
-          }
-        }}
-      >
-        显示全部位置
-      </web-ui-button>
-      <web-ui-button variant="secondary" onClick={() => toast.clear()}>
-        清空
-      </web-ui-button>
+      {POSITIONS.map(position => (
+        <web-ui-button key={position} variant="secondary" onClick={() => toast.info(position, { position })}>
+          {position}
+        </web-ui-button>
+      ))}
     </div>
   )
 }
@@ -114,8 +107,9 @@ export default function Demo() {
 ```vue
 <template>
   <div class="flex flex-wrap gap-2">
-    <web-ui-button @click="showAllPositions">显示全部位置</web-ui-button>
-    <web-ui-button variant="secondary" @click="toast.clear()">清空</web-ui-button>
+    <web-ui-button v-for="position in POSITIONS" :key="position" variant="secondary" @click="notify(position)">
+      {{ position }}
+    </web-ui-button>
   </div>
 </template>
 
@@ -132,10 +126,8 @@ const POSITIONS: ToastPosition[] = [
   'bottom-right'
 ]
 
-function showAllPositions() {
-  for (const position of POSITIONS) {
-    toast.info(position, { id: `demo-position-${position}`, position, duration: 0 })
-  }
+function notify(position: ToastPosition) {
+  toast.info(position, { position })
 }
 
 onBeforeUnmount(() => toast.clear())
