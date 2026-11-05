@@ -60,6 +60,10 @@ Codex 审查是对 [ADR-0012](./0012-pr-review.md) 的补强，不是替代：�
 
 **时间与成本**：两条模型腿各给 60 分钟上限，这是首批实测用的临时余量，测出真实分布后回收；自动修只在失败时触发，它自己也是消耗模型调用的一条腿。
 
+**审查范围**：`resolveReviewRange` 的 `git diff` 用 `:(exclude,glob)**/generated/**` 在入口剔掉生成产物，`review-scope.json` 记下 `excluded_pathspecs` 与 `empty_diff` 便于审计。这是路径层面的批量 churn 过滤：md-to-meta 的 meta/codeblock 随 markdown 重建整批换哈希名，`icons/generated` 等入库产物同样只随 generator 变，都只会淹没真实改动；`routeTree.gen.ts` 之类单文件生成物仍留在审查 diff。`prepare` 由审查腿与自动修腿共用，两条腿同时受益。对 PR #515 的 base/head 对象做本地 `git diff` 实测：13.9 MB → 1.29 MB（不是 CI run 观测值；可信脚本取自 base，本修复 PR 的 CI 仍跑旧脚本）。
+
+**同步子进程上限**：`lib/github.mjs` 的 `run()` 与 codex 链路的 `gh` 调用统一给 `spawnSync` 设 64 MiB `maxBuffer`。默认 1 MiB 缓冲在大 PR 上抛 `ENOBUFS`，`prepare` 会在 preflight 之前失败并被下游误判成 `config_missing`；排除生成物后 diff 仍可能超过 1 MiB，两处修复缺一不可。
+
 ## 2026-11-05 修订：首次实测复盘
 
 首批 run 暴露的事实，取自 `pan-Z2l0aHVi/mono` 的 Actions 运行记录：
@@ -72,6 +76,8 @@ Codex 审查是对 [ADR-0012](./0012-pr-review.md) 的补强，不是替代：�
 
 净结果：零次模型调用、零条结论评论、CI 全绿。根因不是模型质量，而是「配置缺失 → 调用崩溃 → 崩溃被吞 → 门保持绿」这条静默链，加上写回腿权限不足。以上决策条款逐段封住这条链。
 
+**同日第二次实测（PR #515，配置填齐后的首个真实集成 PR）**：`check` 7m34s 通过，Wails 各腿通过；`Codex review` 14 秒即失败，日志只有 `could not start git: spawnSync git ENOBUFS`，`codex-gate` 按「故障即红」正确变红，但把原因归为 `config_missing`。根因是 `resolveReviewRange` 把 13.9 MB 的 `git diff` 整份读进默认 1 MiB 缓冲，preflight 根本没执行、零模型调用；写回腿 success 且因无产物按设计跳过发评论。结论：门的颜色机制有效，但失败归因不够准（preflight 未运行不等于配置缺失），且大 diff 必须在范围与缓冲两侧同时收敛。
+
 **验收清单**（后台配置填齐后按 run 日志逐项核对）：
 
 1. `Run codex exec` 出现，`codex-final-message.json` 非空且通过 schema。
@@ -80,6 +86,9 @@ Codex 审查是对 [ADR-0012](./0012-pr-review.md) 的补强，不是替代：�
 4. 改 `CODEX_REVIEW_MODEL` 后同 head 重跑：旧结论不复用，模型重新调用。
 5. 写回腿成功发出或更新结论评论；workflow_run 列表里没有无产物的失败 run。
 6. 拓扑断言与脚本单测全绿。
+7. `review-scope.json` 记有 `excluded_pathspecs` 与 `empty_diff`，审查 diff 里没有 `**/generated/**` 路径；大 PR 不因 `ENOBUFS` 让 `prepare` 失败。（**合入 main 后的下一个 PR** 上核对：可信脚本取自 PR base，修复自己的 CI 仍跑旧脚本。）
+
+**待办**：`prepare` 的任何失败都会跳过 preflight，被 `validate` 记成 `config_missing`；后续把 preflight 前置到 prepare 之前，或引入 `job_failed` / `preflight_missing` 错误码，并同步「状态口径」、`docs/agents/review.md` 的故障码清单、`renderConclusion()` 与相关单测。本次修复后该误归因对 PR #515 的事故不再可达，门「故障即红」不受影响。
 
 ## 后果
 

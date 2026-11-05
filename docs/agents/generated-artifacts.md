@@ -71,3 +71,5 @@
 ## 新增生成物时
 
 同时更新四处，缺一处就会漂：本文的表格、turbo inputs 与产出集合守卫、[`.claude/settings.json`](../../.claude/settings.json) 的 `deny`，以及受影响包的测试。根 [`AGENTS.md`](../../AGENTS.md) 只指向本文，不复制清单。
+
+Codex 审查 diff 里的 `REVIEW_EXCLUDE_PATHSPECS` 是**第五处**，但性质不同：它是路径层面的批量 churn 过滤（覆盖 `**/generated/**`），不是生成物权威名单，覆盖不到 `routeTree.gen.ts`、`auto-imports.d.ts` 这类单文件生成物，它们仍留在审查 diff 里由 `check-generated` 与本文清单兜。两份名单用途是「编辑拦截」与「批量 churn 过滤」，新增生成物时要分别判断，不要互相抄。

@@ -9,6 +9,7 @@ import {
   CONFIG_FILE,
   CONCLUSION_MARKER,
   FINDINGS_ARTIFACT,
+  REVIEW_EXCLUDE_PATHSPECS,
   createGhReviewAdapter,
   deriveConclusion,
   findPullForHead,
@@ -21,6 +22,7 @@ import {
   reviewTarget,
   withPermissionDiagnosis
 } from './codex-review.mjs'
+import { SPAWN_MAX_BUFFER, run } from './lib/github.mjs'
 import { RELEASE_BRANCH } from './lib/workflow-topology.mjs'
 
 const headSha = 'a'.repeat(40)
@@ -128,8 +130,9 @@ for (const [label, value] of [
     ['git', 'cat-file', '-e', `${otherSha}^{commit}`],
     ['git', 'cat-file', '-e', `${headSha}^{commit}`],
     ['git', 'merge-base', otherSha, headSha],
-    ['git', 'diff', '--no-color', otherSha, headSha]
+    ['git', 'diff', '--no-color', otherSha, headSha, '--', ':(exclude,glob)**/generated/**']
   ])
+  assert.deepEqual([...REVIEW_EXCLUDE_PATHSPECS], [':(exclude,glob)**/generated/**'])
   assert.throws(() => resolveReviewRange({ baseSha: 'main', headSha, command }), /PR base SHA/)
   const missing = []
   const fetchOnDemand = (name, args) => {
@@ -774,6 +777,50 @@ esac
   assert.match(serverError.result.stderr, /HTTP 500/, 'the original failure must still be visible')
   assert.doesNotMatch(serverError.result.stderr, /cannot access PR #54/, 'a 500 is not a permission diagnosis')
   fs.rmSync(directory, { recursive: true, force: true })
+}
+
+{
+  // 生成产物必须在 diff 入口就剔掉，而不是指望模型自己忽略；嵌套与根级 generated/ 都要覆盖。
+  const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'codex-review-scope-'))
+  const git = args => run('git', ['-C', directory, ...args])
+  const commit = message =>
+    git(['-c', 'commit.gpgsign=false', '-c', 'core.hooksPath=/dev/null', 'commit', '-q', '-m', message])
+  git(['-c', 'init.defaultBranch=main', 'init', '-q'])
+  git(['config', 'user.email', 'scope@example.test'])
+  git(['config', 'user.name', 'Scope Test'])
+  fs.mkdirSync(path.join(directory, 'src/generated'), { recursive: true })
+  fs.mkdirSync(path.join(directory, 'generated'), { recursive: true })
+  fs.writeFileSync(path.join(directory, 'src/generated/hash-a.js'), 'export const a = 1\n')
+  fs.writeFileSync(path.join(directory, 'generated/root.js'), 'export const root = 1\n')
+  fs.writeFileSync(path.join(directory, 'src/real.ts'), 'export const real = 1\n')
+  git(['add', '.'])
+  commit('base')
+  const baseSha = git(['rev-parse', 'HEAD']).trim()
+  fs.rmSync(path.join(directory, 'src/generated/hash-a.js'))
+  fs.writeFileSync(path.join(directory, 'src/generated/hash-b.js'), 'export const a = 2\n')
+  fs.writeFileSync(path.join(directory, 'generated/root.js'), 'export const root = 2\n')
+  fs.writeFileSync(path.join(directory, 'src/real.ts'), 'export const real = 2\n')
+  git(['add', '-A'])
+  commit('head')
+  const headSha = git(['rev-parse', 'HEAD']).trim()
+  const range = resolveReviewRange({ baseSha, headSha, command: (_name, args) => git(args) })
+  assert.match(range.diff, /src\/real\.ts/, 'real source must stay in the review diff')
+  assert.doesNotMatch(range.diff, /src\/generated\//, 'nested generated artifacts must be excluded')
+  assert.doesNotMatch(range.diff, /generated\/root\.js/, 'root-level generated artifacts must be excluded')
+  fs.rmSync(directory, { recursive: true, force: true })
+}
+
+{
+  // 回归：大 PR 的 git diff 曾撑爆 spawnSync 默认 1 MiB 缓冲，让 prepare 在 preflight 之前就失败。
+  const bytes = 2 * 1024 * 1024
+  const output = run(process.execPath, ['-e', `process.stdout.write('x'.repeat(${bytes}))`])
+  assert.equal(output.length, bytes, 'large stdout must not hit ENOBUFS')
+  assert.equal(SPAWN_MAX_BUFFER, 64 * 1024 * 1024, 'the documented buffer ceiling must stay explicit')
+  assert.throws(
+    () => run(process.execPath, ['-e', "process.stdout.write('x'.repeat(4096))"], { maxBuffer: 1024 }),
+    /exceeded the configured 1024 bytes buffer/,
+    'an overridden maxBuffer must be reported with the actual limit'
+  )
 }
 
 console.log('.github/scripts/codex-review.test.mjs: all assertions passed')
