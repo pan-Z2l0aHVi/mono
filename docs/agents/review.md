@@ -6,14 +6,34 @@
 
 ## 自动审查结论的效力
 
-CI 的 `check` 之后还有一道 Codex 审查门：它按本文的三档给发现，并把结论写进 PR 上同一条持久评论。它读的是在入口剔除 `**/generated/**` 后的一份 diff（理由与审计字段见 [ADR-0021](../adr/0021-codex-review-gate.md)「审查范围」），**人工独立审查仍以完整 diff 为准**；生成物由 CI 的 `check-generated` 与 [`generated-artifacts.md`](./generated-artifacts.md) 兜。决策与代价见 ADR-0021。
+CI 的 `check` 之后还有一道 Codex 审查门：它按本文的三档给发现，并把结论写进 PR 上同一条持久评论。它与人工审查读的不是同一份 diff，范围差见下文「审查范围与生成物」；决策与代价见 [ADR-0021](../adr/0021-codex-review-gate.md)。
 
 - 结论绑定被审查的 head。`reviewed` 只覆盖那一份代码；head 变了结论就过期，`stale`、`unreviewed` 与 `not_applicable` 都不代表已审。
 - `reviewed` 且 `Block > 0`、以及 `error` 让这道门变红。`error` 表示配置或调用故障（`config_missing`、`model_failed`、`artifact_missing`），不是审查意见：按 PR 评论里的缺失配置名补齐 GitHub 后台的 secrets/variables 后重跑 CI。模型腿正常结束却没产出结论是 `unreviewed`，保持绿色。门是约定式的：不改动 GitHub 的分支规则，红叉由人处置，绿色也不替人签字。
 - 端点、模型名、思考强度、密钥与 codex 版本由 GitHub 后台提供，仓库不写默认值；配置未填齐时门是红的，这是设计意图。完整契约见 [ADR-0021](../adr/0021-codex-review-gate.md)。
-- 三条同时成立、且本次改动不含生成物（或生成物已按 [`generated-artifacts.md`](./generated-artifacts.md) 核对）时，人工可以只做核对式抽查，不必逐行重看：结论的 reviewed SHA 等于当前 head、`Block` 为 0、required context `check` 在当前 head 上成功。自动审查没看过生成物，抽查结论不覆盖它们。
+- 三条同时成立、本次有可审的源码改动、且生成物已按下文核对时，人工可以只做核对式抽查，不必逐行重看：结论的 reviewed SHA 等于当前 head、`Block` 为 0、required context `check` 在当前 head 上成功。自动审查没看过被剔除的生成物，抽查结论不覆盖它们。
 - 以下任一情形仍要人按本文流程做完整独立审查：T0 改动；`error`、`unreviewed`、`stale` 或 `not_applicable`；来自 fork 的 PR——那条腿默认不跑；自动修推送出的新 head。
 - 自动修在 `check` 失败且后台开关开启时产出一份候选 patch，校验通过才提交并推回 PR 分支。机器人提交不会触发 checks，所以新 head 上要等一次人重跑的 CI 才有 CI 证据；已经含自动修提交的 head 不再自动规划第二次。
+
+## 审查范围与生成物
+
+同一个 PR 有两份 diff，读哪一份由执行体决定，结论只覆盖自己读过的那一份：
+
+| 执行体       | diff 面                                                                                                                | 生成物                                               |
+| ------------ | ---------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------- |
+| Codex 审查门 | 入口用 `:(exclude,glob)**/generated/**` 剔除后的源码 diff；`review-scope.json` 记 `excluded_pathspecs` 与 `empty_diff` | 被剔除路径下的不在 diff 里；其余仍在，只按生成规则看 |
+| 人工独立审查 | merge-base..head 的完整 diff                                                                                           | 在 diff 里，按清单核对，不逐行评注                   |
+| 复审         | 前次已审 head..当前 head 的完整增量                                                                                    | 同上                                                 |
+
+排除是**路径层面的批量 churn 过滤**，不是生成物权威名单：它只覆盖 `**/generated/**`，`routeTree.gen.ts`、`typed-router.d.ts`、`auto-imports.d.ts`、`icons/index.ts` 与 Wails bindings 这些单文件生成物仍留在两份 diff 里。清单、generator 入口与逐类核对办法见 [`generated-artifacts.md`](./generated-artifacts.md)，排除理由与实测见 [ADR-0021](../adr/0021-codex-review-gate.md)「审查范围」。
+
+生成物的判据是「能否由 generator 完整重建」，不适用逐行评注；审查结论也不评判它们的逐行正确性：
+
+- 人工审查核对生成输入是否与产物同批改动，以及适用的只判校验（`check-generated`）与消费者类型检查是否通过；不一致按 `Should fix` 以上报，不手改产物。
+- Codex 结论不覆盖生成物：`reviewed` 且 `Block 0` 不代表生成物已核对，不能据此跳过 `check-generated` 或人工核对。
+- Codex 也不得因 diff 里没有被剔除的生成物就判定它们缺失或未更新；需要核对时读工作树当前内容。
+
+只改被剔除路径的 PR 会得到空 diff（`empty_diff: true`），自动审查只能得出「没有源码改动可审」。这不是对生成物的审查，不构成可合并结论，也不能套用核对式抽查：这类 PR 按完整 diff 走人工审查，或至少按清单逐类核对并留下 generator 证据。
 
 ## 固定输入与范围
 
