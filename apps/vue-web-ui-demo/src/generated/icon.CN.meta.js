@@ -5,7 +5,7 @@
 const meta = [
   { label: 'h1', id: 'section-1', content: "Icon" },
   { label: 'p', content: "icon 用来渲染图标，渲染结果是一个 <code>aria-hidden=\"true\"</code> 的 <code>&lt;svg></code>，图标本身不提供可访问名称。输入是 Iconify 数据对象，不是图标名字：组件接受任意合法的 <code>IconifyIcon</code>，<code>body</code> 必填，是一段 SVG 内部标记；<code>width</code> / <code>height</code> / <code>left</code> / <code>top</code> 描述画布。手写的对象与包内资产渲染方式相同，不必先登记进 <code>@greypan/web-ui/icons</code>。" },
-  { label: 'p', content: "<code>@greypan/web-ui/icons</code> 按图标集命名导出这些对象，当前采用白名单按需生成：本 monorepo 实际用到的图标逐条登记在包根的 <code>icons.used.json</code>（<code>set:name</code> 格式），生成器只从这些条目提取资产，生成逐图标数据模块，并聚合出 <code>iconGallery</code> 全量清单。要追加新图标，往 <code>icons.used.json</code> 加一条 <code>set:name</code> 再跑 <code>pnpm --filter @greypan/web-ui generate-icons</code>；白名单之外的图标直接把 <code>IconifyIcon</code> 传给 <code>icon</code> 即可，不必等清单扩量。" },
+  { label: 'p', content: "<code>@greypan/web-ui/icons</code> 按图标集命名导出这些对象，常用图标可以直接按名导入；<code>iconGallery</code> 聚合了这批导出，便于浏览和挑选。清单之外的图标不必等待扩充：把任意合法的 <code>IconifyIcon</code> 数据传给 <code>icon</code> 即可，数据可以自己手写，也可以安装对应图标集的数据包（如 <code>@iconify-json/lucide</code>）后从其中取出图标对象。" },
   { label: 'h2', id: 'section-2', content: "Samples" },
   { label: 'h3', id: 'section-3', content: "Basic" },
   { label: 'p', content: "<code>icon</code> 只能通过 property 传入，不接受 attribute，值是 Iconify 数据对象，不是图标名字。不传 <code>icon</code> 时组件不绘制任何内容，连 <code>&lt;svg></code> 也不生成。" },

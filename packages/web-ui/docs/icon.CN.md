@@ -2,7 +2,7 @@
 
 icon 用来渲染图标，渲染结果是一个 `aria-hidden="true"` 的 `<svg>`，图标本身不提供可访问名称。输入是 Iconify 数据对象，不是图标名字：组件接受任意合法的 `IconifyIcon`，`body` 必填，是一段 SVG 内部标记；`width` / `height` / `left` / `top` 描述画布。手写的对象与包内资产渲染方式相同，不必先登记进 `@greypan/web-ui/icons`。
 
-`@greypan/web-ui/icons` 按图标集命名导出这些对象，当前采用白名单按需生成：本 monorepo 实际用到的图标逐条登记在包根的 `icons.used.json`（`set:name` 格式），生成器只从这些条目提取资产，生成逐图标数据模块，并聚合出 `iconGallery` 全量清单。要追加新图标，往 `icons.used.json` 加一条 `set:name` 再跑 `pnpm --filter @greypan/web-ui generate-icons`；白名单之外的图标直接把 `IconifyIcon` 传给 `icon` 即可，不必等清单扩量。
+`@greypan/web-ui/icons` 按图标集命名导出这些对象，常用图标可以直接按名导入；`iconGallery` 聚合了这批导出，便于浏览和挑选。清单之外的图标不必等待扩充：把任意合法的 `IconifyIcon` 数据传给 `icon` 即可，数据可以自己手写，也可以安装对应图标集的数据包（如 `@iconify-json/lucide`）后从其中取出图标对象。
 
 ## Samples
 

@@ -2,7 +2,7 @@
 
 icon renders an icon; the result is an `<svg>` with `aria-hidden="true"`, and the icon itself provides no accessible name. The input is an Iconify data object, not an icon name: the component accepts any valid `IconifyIcon`, where `body` is required and holds a fragment of inner SVG markup, and `width` / `height` / `left` / `top` describe the canvas. A hand-built object renders the same way and does not have to be registered in `@greypan/web-ui/icons` first.
 
-`@greypan/web-ui/icons` exports these objects named by icon set, currently through whitelist-based on-demand generation: the icons this monorepo actually uses are registered one entry per line in the package-root `icons.used.json` (`set:name` format), and the generator extracts assets only from those entries, producing one data module per icon plus an aggregated `iconGallery` listing. To add a new icon, append a `set:name` entry to `icons.used.json` and run `pnpm --filter @greypan/web-ui generate-icons`; an icon outside the whitelist can be passed to `icon` directly as `IconifyIcon` data without waiting for the whitelist to grow.
+`@greypan/web-ui/icons` exports these objects named by icon set, so common icons can be imported by name; `iconGallery` aggregates that set for browsing and picking. An icon outside the set needs no waiting for an expansion: pass any valid `IconifyIcon` data to `icon` — either hand-written, or taken from the data package of the icon set (for example `@iconify-json/lucide`).
 
 ## Samples
 
