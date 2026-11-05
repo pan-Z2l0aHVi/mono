@@ -1,9 +1,10 @@
 import { spawnSync } from 'node:child_process'
+import { createHash } from 'node:crypto'
 import fs from 'node:fs'
 import path from 'node:path'
 
 import { commandError, run } from './lib/github.mjs'
-import { RELEASE_BRANCH } from './lib/workflow-topology.mjs'
+import { CODEX_CONFIG_ENV, RELEASE_BRANCH } from './lib/workflow-topology.mjs'
 
 const BASE_BRANCH = 'main'
 
@@ -11,7 +12,11 @@ export const FINDINGS_ARTIFACT = 'codex-review-findings'
 export const CONCLUSION_MARKER = 'codex-review-conclusion'
 export const FINDINGS_FILE = 'review-findings.json'
 export const META_FILE = 'review-meta.json'
+export const CONFIG_FILE = 'codex-config.json'
 export const SEVERITIES = Object.freeze(['Block', 'Should fix', 'Nit'])
+
+// 顺序即诊断输出顺序，与 CI 拓扑断言共用同一份名单。密钥只判「有没有」，值从不写进快照、日志或 PR 评论。
+export const CONFIG_ENV = CODEX_CONFIG_ENV
 
 const FINDING_FIELDS = Object.freeze(['severity', 'file', 'line', 'problem', 'suggestion'])
 const SHA_PATTERN = /^[0-9a-f]{40,64}$/iu
@@ -100,14 +105,67 @@ export function readConclusion(directory) {
   return { meta: { ...meta, findings: findings.findings, summary: findings.summary }, findings }
 }
 
-/**
- * `stale` 是 ADR-0012「结论只覆盖它审查过的那份代码」在 CI 里的形状：head 一旦移动，
- * 旧结论里的 Block 不再描述当前代码，不能继续拿来拦合并。
- */
-export function deriveConclusion({ meta, findings, liveHeadSha, error }) {
+/** 配置快照只保留非密钥字段，指纹把端点/模型/强度/版本/密钥有无绑成复用键的一部分。 */
+export function inspectConfig(env = process.env) {
+  const text = name => (env[name] ?? '').trim()
+  const missing = CONFIG_ENV.filter(name => text(name) === '')
+  const values = {
+    endpoint: text('CODEX_RESPONSES_ENDPOINT'),
+    model: text('CODEX_REVIEW_MODEL'),
+    effort: text('CODEX_REVIEW_EFFORT'),
+    version: text('CODEX_VERSION'),
+    key_present: text('CODEX_REVIEW_API_KEY') !== ''
+  }
+  const fingerprint = createHash('sha256').update(JSON.stringify(values)).digest('hex').slice(0, 16)
+  return { present: missing.length === 0, missing, config: { ...values, fingerprint } }
+}
+
+export function readConfig(env = process.env) {
+  const file = path.join(env.RUNNER_TEMP ?? '.', CONFIG_FILE)
+  if (!fs.existsSync(file)) return null
+  try {
+    return JSON.parse(fs.readFileSync(file, 'utf8'))
+  } catch {
+    return null
+  }
+}
+
+/** `error` 是配置或调用故障，必须让门变红；`unreviewed` 只留给模型跑完却没给结论。 */
+export function deriveConclusion({ meta, findings, liveHeadSha, error, notApplicable = false }) {
   const counts = findings?.counts ?? emptyCounts()
+  if (meta?.status === 'error') {
+    return {
+      status: 'error',
+      reason: meta.error ?? 'the Codex review failed',
+      code: meta.error_code ?? 'unknown',
+      counts,
+      blocking: true
+    }
+  }
+  if (meta?.status === 'unreviewed' && !findings) {
+    return {
+      status: 'unreviewed',
+      reason: meta.error ?? error ?? 'the review job produced no conclusion',
+      counts,
+      blocking: false
+    }
+  }
   if (error || !findings || !meta) {
-    return { status: 'unreviewed', reason: error ?? 'the review job produced no conclusion', counts, blocking: false }
+    if (notApplicable) {
+      return {
+        status: 'not_applicable',
+        reason: error ?? 'the review job did not run for this pull request',
+        counts,
+        blocking: false
+      }
+    }
+    return {
+      status: 'error',
+      reason: error ?? 'the review job produced no conclusion',
+      code: 'artifact_missing',
+      counts,
+      blocking: true
+    }
   }
   if (meta.head_sha !== liveHeadSha) {
     return {
@@ -131,7 +189,13 @@ function location(finding) {
 }
 
 export function renderConclusion({ conclusion, meta, pullNumber }) {
-  const labels = { reviewed: '已审查', unreviewed: '未审查', stale: '已过时' }
+  const labels = {
+    reviewed: '已审查',
+    unreviewed: '未审查',
+    stale: '已过时',
+    error: '审查失败',
+    not_applicable: '不适用'
+  }
   const verdict = conclusion.status === 'reviewed' && conclusion.blocking ? 'blocked' : conclusion.status
   const lines = [
     `<!-- ${CONCLUSION_MARKER} sha=${meta?.head_sha ?? 'none'} status=${verdict} blocks=${conclusion.counts.Block} -->`,
@@ -141,9 +205,15 @@ export function renderConclusion({ conclusion, meta, pullNumber }) {
     `- 结论：**${labels[conclusion.status]}**${conclusion.reason ? `（原因：${inline(conclusion.reason)}）` : ''}`,
     `- 审查快照：\`${meta?.head_sha ?? '无'}\``,
     `- 档位统计：Block ${conclusion.counts.Block} · Should fix ${conclusion.counts['Should fix']} · Nit ${conclusion.counts.Nit}`,
-    '- 合并判据：只有 Block 让 `codex-gate` 变红；未审查与已过时不拦合并，但结论不覆盖当前 head。',
+    '- 合并判据：`Block` 与 `error` 让 `codex-gate` 变红；未审查、已过时与不适用不拦合并，但结论不覆盖当前 head。',
     '- 这是约定式门禁，GitHub 没有把它设为必需检查；合并前按 `docs/agents/review.md` 核对。'
   ]
+  if (conclusion.status === 'error') {
+    lines.push(`- 故障码：\`${inline(conclusion.code ?? 'unknown')}\``)
+    if (Array.isArray(meta?.missing) && meta.missing.length > 0) {
+      lines.push(`- 缺失配置：\`${meta.missing.map(name => inline(name)).join('`、`')}\``)
+    }
+  }
   if (meta?.model) lines.push(`- 模型：\`${meta.model}\`（effort \`${meta.effort || 'default'}\`）`)
   if (meta?.reused_from) lines.push(`- 复用：同一 head 已有结论，来自 run \`${meta.reused_from}\`，未再调用模型`)
   lines.push('')
@@ -153,9 +223,10 @@ export function renderConclusion({ conclusion, meta, pullNumber }) {
   )
   if (conclusion.status === 'reviewed' && meta?.summary) lines.push(inline(meta.summary), '')
   if (findings.length === 0) {
-    lines.push(
-      conclusion.status === 'reviewed' ? '没有需要改动的发现。' : '没有可用发现：本次没有拿到模型结论，按未审查处理。'
-    )
+    if (conclusion.status === 'reviewed') lines.push('没有需要改动的发现。')
+    else if (conclusion.status === 'error')
+      lines.push('本次审查没有跑成：检查 GitHub 后台的 secrets/variables 与 CI 日志，配置齐全后重跑。')
+    else lines.push('没有可用发现：本次没有拿到模型结论，按未审查处理。')
   }
   for (const finding of findings) {
     lines.push(`- **${finding.severity}** \`${location(finding)}\` — ${inline(finding.problem)}`)
@@ -272,6 +343,50 @@ function writeConclusion(directory, { findings, meta }) {
   fs.writeFileSync(path.join(directory, META_FILE), `${JSON.stringify(meta, null, 2)}\n`)
 }
 
+function identityFromEnv() {
+  const scopePath = path.join(conclusionDirectory(), 'review-scope.json')
+  const scope = fs.existsSync(scopePath) ? JSON.parse(fs.readFileSync(scopePath, 'utf8')) : {}
+  const config = readConfig()
+  return {
+    head_sha: process.env.CODEX_REVIEW_HEAD_SHA ?? '',
+    base_sha: process.env.CODEX_REVIEW_BASE_SHA ?? '',
+    merge_base_sha: scope.merge_base_sha ?? '',
+    model: config?.model ?? '',
+    effort: config?.effort ?? '',
+    config_fingerprint: config?.fingerprint ?? ''
+  }
+}
+
+function writeErrorMeta(directory, identity, errorCode, reason, missing = []) {
+  fs.rmSync(path.join(directory, FINDINGS_FILE), { force: true })
+  fs.writeFileSync(
+    path.join(directory, META_FILE),
+    `${JSON.stringify({ ...identity, status: 'error', error_code: errorCode, error: reason, missing }, null, 2)}\n`
+  )
+}
+
+/** 缺配置是仓库状态故障，不是模型概率性输出：写 error 结论让门变红，且只记变量名不记值。 */
+function commandPreflight() {
+  const env = requireEnv(['RUNNER_TEMP'])
+  const { present, missing, config } = inspectConfig()
+  const configPath = path.join(env.RUNNER_TEMP, CONFIG_FILE)
+  const directory = conclusionDirectory()
+  fs.mkdirSync(directory, { recursive: true })
+  if (!present) {
+    fs.rmSync(configPath, { force: true })
+    const reason = `missing repository configuration: ${missing.join(', ')}`
+    writeErrorMeta(directory, identityFromEnv(), 'config_missing', reason, missing)
+    writeOutputs({ configured: 'false', missing: missing.join(','), fingerprint: '' })
+    appendSummary(['## Codex review configuration', '', `- Status: **incomplete** — ${reason}`])
+    console.error(`codex configuration is incomplete: ${missing.join(', ')} (values are never logged)`)
+    return
+  }
+  fs.writeFileSync(configPath, `${JSON.stringify(config, null, 2)}\n`)
+  writeOutputs({ configured: 'true', missing: '', fingerprint: config.fingerprint })
+  appendSummary(['## Codex review configuration', '', `- Status: **complete** (fingerprint \`${config.fingerprint}\`)`])
+  console.log(`codex configuration complete (fingerprint ${config.fingerprint}); values are never logged`)
+}
+
 function commandPrepare() {
   const env = requireEnv(['CODEX_REVIEW_BASE_SHA', 'CODEX_REVIEW_HEAD_SHA', 'RUNNER_TEMP'])
   const range = resolveReviewRange({ baseSha: env.CODEX_REVIEW_BASE_SHA, headSha: env.CODEX_REVIEW_HEAD_SHA })
@@ -324,15 +439,22 @@ function commandPriorRun() {
   console.log(reuse ? `earlier conclusion available in run ${reuse.runId}` : 'no earlier conclusion for this head')
 }
 
-/** 复用只在 head 自洽时成立；否则删掉半成品，回到调用模型的正常路径。 */
+/** 复用要求 head、状态与配置指纹三者都自洽；配置换了就不能沿用旧模型的结论。 */
 function commandReuse() {
   const env = requireEnv(['CODEX_REVIEW_HEAD_SHA'])
   const directory = conclusionDirectory()
+  const config = readConfig()
   let reusable = null
   let failure = ''
   try {
     const conclusion = readConclusion(directory)
-    if (conclusion?.findings && conclusion.meta.head_sha === env.CODEX_REVIEW_HEAD_SHA) reusable = conclusion
+    if (!conclusion?.findings) failure = 'no usable conclusion'
+    else if (conclusion.meta.head_sha !== env.CODEX_REVIEW_HEAD_SHA) failure = ''
+    else if (!config) failure = 'the configuration snapshot is missing'
+    else if (conclusion.meta.status === 'error' || conclusion.meta.status === 'unreviewed')
+      failure = 'the prior run has no reviewable conclusion'
+    else if (conclusion.meta.config_fingerprint !== config.fingerprint) failure = 'the repository configuration changed'
+    else reusable = conclusion
   } catch (error) {
     failure = error.message
   }
@@ -354,22 +476,33 @@ function commandValidate() {
   const env = requireEnv(['CODEX_REVIEW_HEAD_SHA', 'CODEX_REVIEW_BASE_SHA', 'RUNNER_TEMP'])
   const directory = conclusionDirectory()
   fs.mkdirSync(directory, { recursive: true })
-  const scopePath = path.join(directory, 'review-scope.json')
-  const scope = fs.existsSync(scopePath) ? JSON.parse(fs.readFileSync(scopePath, 'utf8')) : {}
-  const identity = {
-    head_sha: env.CODEX_REVIEW_HEAD_SHA,
-    base_sha: env.CODEX_REVIEW_BASE_SHA,
-    merge_base_sha: scope.merge_base_sha ?? '',
-    model: process.env.CODEX_REVIEW_MODEL ?? '',
-    effort: process.env.CODEX_REVIEW_EFFORT ?? ''
-  }
+  const identity = identityFromEnv()
+  const config = readConfig()
   const reusedPath = path.join(directory, FINDINGS_FILE)
+
+  if (!config) {
+    const metaPath = path.join(directory, META_FILE)
+    const existing = fs.existsSync(metaPath) ? JSON.parse(fs.readFileSync(metaPath, 'utf8')) : null
+    if (existing?.status === 'error' && existing?.error_code === 'config_missing') {
+      writeOutputs({ blocks: '0', reason: existing.error })
+      console.error(`review is error: ${existing.error}`)
+      return
+    }
+    writeErrorMeta(directory, identity, 'config_missing', 'the Codex configuration preflight did not run')
+    writeOutputs({ blocks: '0', reason: 'configuration missing' })
+    console.error('review is error: configuration preflight did not run')
+    return
+  }
 
   if (fs.existsSync(reusedPath)) {
     const parsed = parseReviewFindings(fs.readFileSync(reusedPath, 'utf8'))
     writeConclusion(directory, {
       findings: parsed,
-      meta: { ...identity, reused_from: process.env.CODEX_REVIEW_PRIOR_RUN_ID ?? '' }
+      meta: {
+        ...identity,
+        status: 'reviewed',
+        reused_from: process.env.CODEX_REVIEW_PRIOR_RUN_ID ?? ''
+      }
     })
     writeOutputs({ blocks: String(parsed.counts.Block), reason: 'reused conclusion' })
     console.log(`reused conclusion: Block ${parsed.counts.Block}`)
@@ -391,13 +524,23 @@ function commandValidate() {
 
   if (!parsed) {
     fs.rmSync(reusedPath, { force: true })
-    fs.writeFileSync(path.join(directory, META_FILE), `${JSON.stringify({ ...identity, error }, null, 2)}\n`)
+    // continue-on-error 掩住的是 conclusion，不是 outcome：模型腿崩了就是故障，不能伪装成「未审查」。
+    if (process.env.CODEX_REVIEW_STEP_OUTCOME === 'failure') {
+      writeErrorMeta(directory, identity, 'model_failed', error)
+      writeOutputs({ blocks: '0', reason: error })
+      console.error(`review is error: ${error}`)
+      return
+    }
+    fs.writeFileSync(
+      path.join(directory, META_FILE),
+      `${JSON.stringify({ ...identity, status: 'unreviewed', error }, null, 2)}\n`
+    )
     writeOutputs({ blocks: '0', reason: error })
     console.error(`review is unreviewed: ${error}`)
     return
   }
 
-  writeConclusion(directory, { findings: parsed, meta: { ...identity, reused_from: '' } })
+  writeConclusion(directory, { findings: parsed, meta: { ...identity, status: 'reviewed', reused_from: '' } })
   writeOutputs({ blocks: String(parsed.counts.Block), reason: '' })
   console.log(
     `review conclusion: Block ${parsed.counts.Block}, Should fix ${parsed.counts['Should fix']}, Nit ${parsed.counts.Nit}`
@@ -427,7 +570,9 @@ function evaluateGate(adapter, pull = null) {
           ? `the review artifact is missing (CI run ${runConclusion})`
           : 'the review artifact is missing'
       }
-    } else if (!conclusion.findings) readError = conclusion.meta.error ?? 'the review conclusion carries no findings'
+    } else if (!conclusion.findings && !['error', 'unreviewed'].includes(conclusion.meta?.status)) {
+      readError = conclusion.meta.error ?? 'the review conclusion carries no findings'
+    }
   }
   let liveHeadSha = process.env.CODEX_REVIEW_LIVE_HEAD_SHA ?? ''
   if (!liveHeadSha && number) liveHeadSha = requireSha((pull ?? adapter.pull(number)).head.sha, 'live PR head SHA')
@@ -439,7 +584,8 @@ function evaluateGate(adapter, pull = null) {
       meta: conclusion?.meta ?? null,
       findings: conclusion?.findings ?? null,
       liveHeadSha: liveHeadSha || conclusion?.meta?.head_sha || 'unknown',
-      error: readError
+      error: readError,
+      notApplicable: process.env.CODEX_REVIEW_NOT_APPLICABLE === 'true'
     })
   }
 }
@@ -459,8 +605,34 @@ function commandGate() {
   ])
   console.log(`codex gate: ${status.status} (Block ${status.counts.Block})${status.reason ? `: ${status.reason}` : ''}`)
   if (status.blocking) {
-    console.error(`Block findings must be fixed before merge: ${status.counts.Block} at ${liveHeadSha}`)
+    if (status.status === 'error') {
+      console.error(`Codex review failed (${status.code}): ${status.reason}`)
+      console.error('Fix the repository configuration or the model invocation, then rerun CI.')
+    } else {
+      console.error(`Block findings must be fixed before merge: ${status.counts.Block} at ${liveHeadSha}`)
+    }
     process.exitCode = 1
+  }
+}
+
+// workflow_run 的 token 权限有三处会被降级：job permissions、仓库 Workflow permissions、组织策略。
+// 读写 PR 的 403 都必须带着排查清单失败，不能只留一句 "Resource not accessible by integration"。
+export function withPermissionDiagnosis(number) {
+  return action => {
+    try {
+      return action()
+    } catch (error) {
+      // gh 把 POST 的评论正文也拼进 error.message（`-f body=...`），只认诊断性短语，
+      // 避免正文里出现 "403" 这类字样就把一次普通失败误报成权限故障。
+      if (!/Resource not accessible by integration|\bHTTP\s*403\b|\b403\s+Forbidden\b/iu.test(error.message)) {
+        throw error
+      }
+      throw new Error(
+        `the publish token cannot access PR #${number} or its comments. Check (1) publish-review grants ` +
+          `pull-requests: write, (2) Settings > Actions > General > Workflow permissions allows write, ` +
+          `(3) no organization policy downgrades the workflow_run token. Original: ${error.message}`
+      )
+    }
   }
 }
 
@@ -469,29 +641,33 @@ function commandPublish() {
   const adapter = createGhReviewAdapter({ repository: env.GITHUB_REPOSITORY })
   const number = pullNumber()
   if (!number) throw new Error('CODEX_REVIEW_PULL_NUMBER is missing')
-  const pull = adapter.pull(number)
+  const call = withPermissionDiagnosis(number)
+  const pull = call(() => adapter.pull(number))
   const target = reviewTarget({ pull, repository: env.GITHUB_REPOSITORY, releaseBranch: RELEASE_BRANCH })
   if (!target.ok) {
     console.log(`conclusion publish skipped for #${number}: ${target.reason}`)
     return
   }
-  const { conclusion, status } = evaluateGate(adapter, pull)
+  const { conclusion, status } = call(() => evaluateGate(adapter, pull))
   const body = renderConclusion({ conclusion: status, meta: conclusion?.meta ?? null, pullNumber: number })
-  const existing = adapter.listComments(number).find(comment => (comment.body ?? '').includes(CONCLUSION_MARKER))
+  const existing = call(() => adapter.listComments(number)).find(comment =>
+    (comment.body ?? '').includes(CONCLUSION_MARKER)
+  )
   if (existing?.body === body) {
     console.log(`conclusion comment ${existing.id} already current`)
     return
   }
   if (existing) {
-    adapter.updateComment(existing.id, body)
+    call(() => adapter.updateComment(existing.id, body))
     console.log(`updated conclusion comment ${existing.id} (${status.status})`)
     return
   }
-  const created = adapter.createComment(number, body)
+  const created = call(() => adapter.createComment(number, body))
   console.log(`created conclusion comment ${created.id} (${status.status})`)
 }
 
 const commands = {
+  preflight: commandPreflight,
   prepare: commandPrepare,
   'prior-run': commandPriorRun,
   'resolve-pull': commandResolvePull,

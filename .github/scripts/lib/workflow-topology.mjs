@@ -1,6 +1,23 @@
 export const RELEASE_BRANCH = 'changeset-release/main'
 export const REQUIRED_CONTEXT = 'check'
 
+// 模型参数只能来自 GitHub 后台。CI 定义里的字面量或 `||` 兜底会让后台配置永远不生效。
+export const CODEX_CONFIG_INPUTS = Object.freeze({
+  'openai-api-key': 'secrets.CODEX_REVIEW_API_KEY',
+  'responses-api-endpoint': 'vars.CODEX_RESPONSES_ENDPOINT',
+  'codex-version': 'vars.CODEX_VERSION',
+  model: 'vars.CODEX_REVIEW_MODEL',
+  effort: 'vars.CODEX_REVIEW_EFFORT'
+})
+
+export const CODEX_CONFIG_ENV = Object.freeze([
+  'CODEX_REVIEW_API_KEY',
+  'CODEX_RESPONSES_ENDPOINT',
+  'CODEX_REVIEW_MODEL',
+  'CODEX_REVIEW_EFFORT',
+  'CODEX_VERSION'
+])
+
 // `staged-clean` 由 `check-code` 的 `vp check` 覆盖，不在 required job 里重复执行。
 export const requiredPolicyStep = {
   name: 'Check repository policies',
@@ -154,6 +171,25 @@ export function parseWorkflow(text) {
     if (stepContinueOnError && step) parsed.stepContinueOnError[step] = unquote(stepContinueOnError[1])
   }
   return parsed
+}
+
+/** 逐行核对 Codex 模型输入的唯一来源；缺一行、写成字面量或加兜底都算违约。 */
+export function codexConfigInputViolations(text) {
+  const violations = []
+  const seen = new Set()
+  for (const line of text.split(/\r?\n/)) {
+    for (const [input, source] of Object.entries(CODEX_CONFIG_INPUTS)) {
+      const match = line.match(new RegExp(`^\\s+${input}:\\s*(.*)$`))
+      if (!match) continue
+      seen.add(input)
+      const expected = '${{ ' + source + ' }}'
+      if (match[1].trim() !== expected) violations.push({ input, found: match[1].trim(), expected })
+    }
+  }
+  for (const input of Object.keys(CODEX_CONFIG_INPUTS)) {
+    if (!seen.has(input)) violations.push({ input, found: 'missing', expected: 'declared in both model legs' })
+  }
+  return violations
 }
 
 // GitHub 在 jobs.<job_id>.env 只接受 github、needs、strategy、matrix、vars、secrets、inputs 这些上下文。

@@ -206,7 +206,8 @@ jobs:
     needs: check
     # 资格判据与 codex-gate 必须逐字一致；fork PR 拿不到仓库 secret，版本分支由发布流程自审。
     if: ${{ !cancelled() && needs.check.result == 'success' && github.event_name == 'pull_request' && github.event.pull_request.base.ref == 'main' && github.event.pull_request.head.repo.full_name == github.repository && github.head_ref != 'changeset-release/main' }}
-    continue-on-error: true
+    # 模型步骤自己带 continue-on-error；job 级不再吞掉预检、落结论与上传的失败。
+    # 首次落地时 base 的可信脚本还没有 preflight 子命令，这一步的红叉是唯一能暴露 bootstrap 的信号。
     runs-on: ubuntu-latest
     # 60 分钟是首批实测的临时余量，测出真实分布后回收；判定口径见 docs/adr/0021-codex-review-gate.md。
     timeout-minutes: 60
@@ -217,8 +218,6 @@ jobs:
     env:
       CODEX_REVIEW_BASE_SHA: ${{ github.event.pull_request.base.sha }}
       CODEX_REVIEW_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
-      CODEX_REVIEW_MODEL: claude-haiku-5-5
-      CODEX_REVIEW_EFFORT: high
 
     steps:
       - uses: actions/checkout@v7
@@ -241,8 +240,21 @@ jobs:
         id: prepare
         run: node "$RUNNER_TEMP/trusted/scripts/codex-review.mjs" prepare
 
+      # 密钥只在 preflight 这一步落到 env：job 级 env 会把密钥带进模型进程，ADR 的代理隔离就不成立。
+      # 四项配置与 codex 版本全部由 GitHub 后台提供，CI 定义里不留任何默认值或兜底表达式。
+      - name: Validate Codex configuration
+        id: config
+        env:
+          CODEX_REVIEW_API_KEY: ${{ secrets.CODEX_REVIEW_API_KEY }}
+          CODEX_RESPONSES_ENDPOINT: ${{ vars.CODEX_RESPONSES_ENDPOINT }}
+          CODEX_REVIEW_MODEL: ${{ vars.CODEX_REVIEW_MODEL }}
+          CODEX_REVIEW_EFFORT: ${{ vars.CODEX_REVIEW_EFFORT }}
+          CODEX_VERSION: ${{ vars.CODEX_VERSION }}
+        run: node "$RUNNER_TEMP/trusted/scripts/codex-review.mjs" preflight
+
       - name: Find reusable conclusion
         id: prior
+        if: steps.config.outputs.configured == 'true'
         # 复用只为省一次模型调用；查询失败就该照常跑模型，不能拖垮审查本身。
         continue-on-error: true
         env:
@@ -262,13 +274,15 @@ jobs:
 
       - name: Reuse prior conclusion
         id: reuse
+        if: steps.config.outputs.configured == 'true'
         env:
           CODEX_REVIEW_PRIOR_RUN_ID: ${{ steps.prior.outputs.prior_run_id }}
         run: node "$RUNNER_TEMP/trusted/scripts/codex-review.mjs" reuse
 
       - name: Review pull request with Codex
-        if: steps.reuse.outputs.reused != 'true'
-        # 网关超时、额度耗尽或输出不合 schema 都只是「本次未审查」，由 gate 如实呈现，不让 PR 变红。
+        id: review
+        if: steps.config.outputs.configured == 'true' && steps.reuse.outputs.reused != 'true'
+        # continue-on-error 只让 validate 有机会落结论；outcome 仍是 failure，由 validate 判成 error 并让 gate 变红。
         continue-on-error: true
         uses: openai/codex-action@bdf19a4a223ec2549a3e2274a0cf61556bc07675 # v1.13
         env:
@@ -278,19 +292,21 @@ jobs:
         with:
           openai-api-key: ${{ secrets.CODEX_REVIEW_API_KEY }}
           responses-api-endpoint: ${{ vars.CODEX_RESPONSES_ENDPOINT }}
-          codex-version: '0.165.0'
+          codex-version: ${{ vars.CODEX_VERSION }}
           # 用 legacy sandbox 而不是 permission-profile：本仓 .codex/config.toml 在 project 层写死
           # sandbox_mode = "danger-full-access"，--sandbox 覆盖的是同一个键，default_permissions 不是。
           sandbox: 'read-only'
           safety-strategy: 'drop-sudo'
-          model: ${{ env.CODEX_REVIEW_MODEL }}
-          effort: ${{ env.CODEX_REVIEW_EFFORT }}
+          model: ${{ vars.CODEX_REVIEW_MODEL }}
+          effort: ${{ vars.CODEX_REVIEW_EFFORT }}
           prompt-file: ${{ runner.temp }}/trusted/codex/prompts/review.md
           output-schema-file: ${{ runner.temp }}/trusted/codex/schemas/review-findings.schema.json
           output-file: ${{ runner.temp }}/codex-final-message.json
 
       - name: Record review conclusion
         if: always()
+        env:
+          CODEX_REVIEW_STEP_OUTCOME: ${{ steps.review.outcome }}
         run: node "$RUNNER_TEMP/trusted/scripts/codex-review.mjs" validate
 
       - name: Upload review findings
@@ -342,12 +358,14 @@ jobs:
         env:
           # 判定要读 live PR head，所以这一步必须有凭据：runner 不会替步骤注入 GITHUB_TOKEN，gh 只认 GH_TOKEN。
           GH_TOKEN: ${{ github.token }}
+          # review job 被整体跳过（例如 check 失败）属于不适用，不是审查故障；其余缺产物一律 error 变红。
+          CODEX_REVIEW_NOT_APPLICABLE: ${{ needs.codex-review.result == 'skipped' }}
         run: node "$RUNNER_TEMP/trusted/scripts/codex-review.mjs" gate
 
   codex-autofix-plan:
     name: Codex autofix plan
     needs: check
-    if: ${{ needs.check.result == 'failure' && github.event_name == 'pull_request' && github.event.pull_request.base.ref == 'main' && github.event.pull_request.head.repo.full_name == github.repository && github.head_ref != 'changeset-release/main' }}
+    if: ${{ needs.check.result == 'failure' && github.event_name == 'pull_request' && github.event.pull_request.base.ref == 'main' && github.event.pull_request.head.repo.full_name == github.repository && github.head_ref != 'changeset-release/main' && vars.CODEX_AUTOFIX_ENABLED == 'true' }}
     continue-on-error: true
     runs-on: ubuntu-latest
     timeout-minutes: 60
@@ -379,6 +397,16 @@ jobs:
       - name: Prepare review range
         run: node "$RUNNER_TEMP/trusted/scripts/codex-review.mjs" prepare
 
+      - name: Validate Codex configuration
+        id: config
+        env:
+          CODEX_REVIEW_API_KEY: ${{ secrets.CODEX_REVIEW_API_KEY }}
+          CODEX_RESPONSES_ENDPOINT: ${{ vars.CODEX_RESPONSES_ENDPOINT }}
+          CODEX_REVIEW_MODEL: ${{ vars.CODEX_REVIEW_MODEL }}
+          CODEX_REVIEW_EFFORT: ${{ vars.CODEX_REVIEW_EFFORT }}
+          CODEX_VERSION: ${{ vars.CODEX_VERSION }}
+        run: node "$RUNNER_TEMP/trusted/scripts/codex-review.mjs" preflight
+
       - name: Capture failing CI log
         id: failure
         env:
@@ -386,7 +414,7 @@ jobs:
         run: node "$RUNNER_TEMP/trusted/scripts/codex-autofix.mjs" prepare
 
       - name: Propose autofix patch with Codex
-        if: steps.failure.outputs.has_log == 'true'
+        if: steps.config.outputs.configured == 'true' && steps.failure.outputs.has_log == 'true'
         continue-on-error: true
         uses: openai/codex-action@bdf19a4a223ec2549a3e2274a0cf61556bc07675 # v1.13
         env:
@@ -396,11 +424,11 @@ jobs:
         with:
           openai-api-key: ${{ secrets.CODEX_REVIEW_API_KEY }}
           responses-api-endpoint: ${{ vars.CODEX_RESPONSES_ENDPOINT }}
-          codex-version: '0.165.0'
+          codex-version: ${{ vars.CODEX_VERSION }}
           sandbox: 'workspace-write'
           safety-strategy: 'drop-sudo'
-          model: 'claude-haiku-5-5'
-          effort: 'high'
+          model: ${{ vars.CODEX_REVIEW_MODEL }}
+          effort: ${{ vars.CODEX_REVIEW_EFFORT }}
           prompt-file: ${{ runner.temp }}/trusted/codex/prompts/autofix.md
           output-file: ${{ runner.temp }}/codex-autofix-message.txt
 
