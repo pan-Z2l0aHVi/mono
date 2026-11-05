@@ -5,7 +5,7 @@
 const meta = [
   { label: 'h1', id: 'section-1', content: "Option" },
   { label: 'p', content: "<code>&lt;web-ui-select></code> 与 <code>&lt;web-ui-autocomplete></code> 里的选项元素。<code>value</code> 是选中时提交的值，<code>label</code> 是显示文本（缺省时取自身的文本内容），<code>prefix</code> / <code>suffix</code> 插槽放两端的图标。" },
-  { label: 'p', content: "它不派发面向使用方的事件——挂载、更新与卸载时发出的注册握手只由父级容器消费；选中态由容器回写 <code>selected</code>。" },
+  { label: 'p', content: "它不派发面向使用方的事件。挂载、更新与卸载时发出的注册握手只由父级容器消费。选中态由容器通过 <code>selected</code> 回写。" },
   { label: 'h2', id: 'section-2', content: "Samples" },
   { label: 'h3', id: 'section-3', content: "Basic option" },
   { label: 'p', content: "<code>label</code> 是显示文本，<code>value</code> 是选中后容器交回的值。" },

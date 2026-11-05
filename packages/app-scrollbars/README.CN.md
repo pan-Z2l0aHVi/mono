@@ -1,53 +1,48 @@
 # @greypan/app-scrollbars
 
-> workspace 内 app 共用的 OverlayScrollbars 配置与 macOS 主题
+> workspace 应用共用的覆盖式滚动条配置。
 
-[English](https://github.com/pan-Z2l0aHVi/mono/blob/main/packages/app-scrollbars/README.md) | 简体中文
+[English](./README.md) | 简体中文
 
-## 定位
+## 提供什么
 
-这是私有的应用基础设施，不是公共包。它承载 app 级的覆盖式 scrollbar 行为与 macOS 主题，让这份配置只有一份，
-而不是每个 app 各维护一份。
+这是 workspace 应用共用的覆盖式滚动条配置。
 
-`@greypan/web-ui` 不依赖本包。组件内部的滚动容器使用原生 CSS 与 `web-ui-theme` 提供的
-`--wui-scrollbar-handle`。
+`@greypan/web-ui` 不依赖它。Web UI 组件使用原生 CSS 滚动条和 `--wui-scrollbar-handle` token。
 
-`overlayscrollbars` 走 workspace catalog，因此这里打包的结构样式与各 app 使用的运行时实例保持同一版本。
+`overlayscrollbars` 来自 workspace catalog，因此随包提供的 CSS 与各应用使用的运行时版本一致。
 
 ## 用法
 
 ```ts
 import appScrollbarsOptions from '@greypan/app-scrollbars'
-import { OverlayScrollbarsComponent } from 'overlayscrollbars-vue' // 或 overlayscrollbars-react
+import { OverlayScrollbarsComponent } from 'overlayscrollbars-react' // 或 overlayscrollbars-vue
 ```
 
-导入本包会同时加载它的样式表，不需要再记第二行 import。把默认导出的 options 传给初始化 OverlayScrollbars 的地方：
+导入本包时会同时加载样式表。把默认导出传给初始化 OverlayScrollbars 的位置。
 
-```vue
-<OverlayScrollbarsComponent :options="appScrollbarsOptions">{children}</OverlayScrollbarsComponent>
+```tsx
+<OverlayScrollbarsComponent options={appScrollbarsOptions}>{children}</OverlayScrollbarsComponent>
 ```
 
-要接管文档 scrollbar、而不是某个容器时，初始化 `document.body`。导入本包时会同时注册 click-scroll 插件，
-track 点击会立即滚动到点击处。
+要接管文档滚动条，初始化 `document.body`。本包还会注册 click-scroll 插件，点击轨道会滚动到点击位置。
 
 ## Token
 
-| Token                           | 归属              | 含义                                                  |
-| ------------------------------- | ----------------- | ----------------------------------------------------- |
-| `--wui-scrollbar-handle`        | `@greypan/web-ui` | 静止档 thumb 色；由最外层主题镜像到 `documentElement` |
-| `--app-scrollbar-handle-hover`  | 本包              | hover 时的 thumb 色                                   |
-| `--app-scrollbar-handle-active` | 本包              | 按下时的 thumb 色                                     |
+| Token                           | 归属              | 含义                                                       |
+| ------------------------------- | ----------------- | ---------------------------------------------------------- |
+| `--wui-scrollbar-handle`        | `@greypan/web-ui` | 静止状态的滑块颜色，由最外层主题镜像到 `documentElement`。 |
+| `--app-scrollbar-handle-hover`  | 本包              | 悬停时的滑块颜色。                                         |
+| `--app-scrollbar-handle-active` | 本包              | 按下时的滑块颜色。                                         |
 
-原生 scrollbar 没有 hover / active 状态，所以 `web-ui` 刻意不定义这两档；只有覆盖式 scrollbar 需要它们。
-三档都跟随 `web-ui-theme[resolved-appearance]` 切换，`<body>` 下的文档级 scrollbar 由 `html:has()` 覆盖。
+原生滚动条没有悬停和按下状态，因此 `web-ui` 只定义静止 token。主题通过 `web-ui-theme[resolved-appearance]` 切换三档颜色。`<body>` 下的文档滚动条通过 `html:has()` 跟随。
 
 ## API
 
 ### 默认导出
 
-OverlayScrollbars 的 `PartialOptions`（`satisfies PartialOptions`）：macOS 主题、滚动时出现并在 2s 后自动
-隐去、点击 track 直接落到点击位置且不播动画。
+OverlayScrollbars 的 `PartialOptions`。它应用随包的滚动条样式，滚动停止 2 秒后隐藏滚动条，并让点击轨道时直接落到点击位置，不播放动画。
 
 ### `APP_SCROLLBARS_THEME`
 
-主题类名（`os-theme-macos`），即默认导出里 `scrollbars.theme` 的值，也定义在随包加载的样式表中。
+样式类名 `os-theme-macos`。它也是默认导出中的 `scrollbars.theme` 值，并定义在随包加载的样式表中。

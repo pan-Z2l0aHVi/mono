@@ -1,30 +1,30 @@
 # URL
 
-解析和构建 URL，支持查询参数和 hash
+> 解析和构建带查询参数与 hash 的 URL。
 
 [English](./README.md) | 简体中文
 
 ## 概述
 
-URL 处理工具函数。`parseUrl` 将 URL 字符串解析为结构化对象，`stringifyUrl` 从结构化组件构建 URL。两者都支持相对路径。
+`parseUrl` 把 URL 字符串拆成 `base`、`query` 和 `hash`。`stringifyUrl` 用这三部分构建 URL。两者都支持相对 URL。
 
 ## API
 
 ### `parseUrl(url?)`
 
-将 URL 字符串解析为结构化对象。支持绝对路径和相对路径。
+解析 URL 字符串。支持绝对 URL、相对 URL 与协议相对 URL。
 
 | 参数  | 类型     | 默认值 | 说明         |
 | ----- | -------- | ------ | ------------ |
 | `url` | `string` | `''`   | 待解析的 URL |
 
-**返回：** `URLObject`
+返回 `URLObject`。
 
-| 属性    | 类型                     | 说明                                                   |
-| ------- | ------------------------ | ------------------------------------------------------ |
-| `base`  | `string`                 | origin + pathname（绝对路径）或仅 pathname（相对路径） |
-| `query` | `Record<string, string>` | 查询参数键值对                                         |
-| `hash`  | `string`                 | hash 片段，包含 `#`                                    |
+| 属性    | 类型                     | 说明                                                     |
+| ------- | ------------------------ | -------------------------------------------------------- |
+| `base`  | `string`                 | 绝对 URL 的 origin 与 pathname，或相对 URL 的 pathname。 |
+| `query` | `Record<string, string>` | 查询参数键值对。                                         |
+| `hash`  | `string`                 | 包含 `#` 的 hash 片段。                                  |
 
 ```ts
 import { parseUrl } from '@greypan/js-kit'
@@ -42,18 +42,18 @@ parseUrl('//cdn.example.com/a.js')
 // { base: '//cdn.example.com/a.js', query: {}, hash: '' }
 ```
 
-协议相对 URL（`//host/path`）保留 `//host/path` 形式，不会被补成 `http:` 前缀。
+协议相对 URL 保留 `//host/path` 形式。
 
 ### `stringifyUrl(opts, omitNil?)`
 
-从结构化组件构建 URL 字符串。
+用 `base`、`query` 和 `hash` 构建 URL 字符串。
 
-| 参数      | 类型                 | 默认值 | 说明                                       |
-| --------- | -------------------- | ------ | ------------------------------------------ |
-| `opts`    | `Partial<URLObject>` | -      | URL 组件：`base`、`query`、`hash`          |
-| `omitNil` | `boolean`            | `true` | 是否移除查询参数中的 `undefined`/`null` 值 |
+| 参数      | 类型                 | 默认值 | 说明                                     |
+| --------- | -------------------- | ------ | ---------------------------------------- |
+| `opts`    | `Partial<URLObject>` | -      | URL 组件：`base`、`query`、`hash`。      |
+| `omitNil` | `boolean`            | `true` | 移除查询参数中的 `undefined` 与 `null`。 |
 
-**返回：** `string`
+返回 `string`。
 
 ```ts
 import { stringifyUrl } from '@greypan/js-kit'
@@ -63,7 +63,7 @@ stringifyUrl({
   query: { key: 'val', empty: null },
   hash: '#section'
 })
-// 'https://example.com/path?key=val#section'（null 值被忽略）
+// 'https://example.com/path?key=val#section'
 
 stringifyUrl({
   base: '/search',
@@ -75,11 +75,9 @@ stringifyUrl({ base: '/page' })
 // '/page'
 ```
 
-## 注意事项
+## 说明
 
-- 相对路径解析时临时使用 `http://n.n` 作为 base
-- 协议相对 URL（`//host/path`）保留 `//host/path` 形式
-- `parseUrl` 对格式错误的 URL 抛出 `Error('Invalid URL.')`
-- `stringifyUrl` 会自动为 hash 补全 `#`
-- 查询参数值会先字符串化，因此数字与布尔值可以和字符串混用
-- `base` 以 `?` 结尾时直接拼接参数；`base` 其他位置已包含 `?` 时用 `&` 连接
+- URL 格式错误时，`parseUrl` 抛出 `Error('Invalid URL.')`。
+- `stringifyUrl` 会给缺少 `#` 的 hash 补上 `#`。
+- 查询参数值会转成字符串，因此数字和布尔值也可以使用。
+- `base` 以 `?` 结尾时直接拼接参数。`base` 其他位置已包含 `?` 时使用 `&`。

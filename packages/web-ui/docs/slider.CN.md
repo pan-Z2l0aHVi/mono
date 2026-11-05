@@ -327,8 +327,8 @@ export default function Demo() {
 | `vertical`        | 垂直方向。                                      | `boolean` | `false` |
 | `name`            | 表单字段名。                                    | `string`  | `''`    |
 | `required`        | 只反射属性，不参与校验。                        | `boolean` | `false` |
-| `aria-label`      | slider 的无障碍名称。                           | `string`  | —       |
-| `aria-labelledby` | 指向提供 slider 无障碍名称的一个或多个元素 ID。 | `string`  | —       |
+| `aria-label`      | slider 的无障碍名称。                           | `string`  | -       |
+| `aria-labelledby` | 指向提供 slider 无障碍名称的一个或多个元素 ID。 | `string`  | -       |
 | `value`           | 当前值。                                        | `number`  | `0`     |
 | `min`             | 最小值。                                        | `number`  | `0`     |
 | `max`             | 最大值。                                        | `number`  | `100`   |

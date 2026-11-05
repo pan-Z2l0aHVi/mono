@@ -284,8 +284,8 @@ export default function Demo() {
 | `max`                 | Maximum value.                                                                                                           | `number`         | `Infinity` |
 | `step`                | Step size; when `precision` is not set explicitly, its decimal places decide the default normalization precision.        | `number`         | `1`        |
 | `precision`           | Normalizes to this value when set explicitly; when set to `null` or the attribute is removed, it is derived from `step`. | `number \| null` | `0`        |
-| `aria-label`          | Accessible name of the input.                                                                                            | `string`         | —          |
-| `aria-labelledby`     | Accessible name reference, used to name the native input.                                                                | `string`         | —          |
+| `aria-label`          | Accessible name of the input.                                                                                            | `string`         | -          |
+| `aria-labelledby`     | Accessible name reference, used to name the native input.                                                                | `string`         | -          |
 | `aria-decrease-label` | Accessible name of the decrease button; falls back to the built-in English copy (`Decrease`).                            | `string`         | `''`       |
 | `aria-increase-label` | Accessible name of the increase button; falls back to the built-in English copy (`Increase`).                            | `string`         | `''`       |
 

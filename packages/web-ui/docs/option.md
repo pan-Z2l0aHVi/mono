@@ -2,7 +2,7 @@
 
 An option inside `<web-ui-select>` or `<web-ui-autocomplete>`. `value` is the value submitted when the item is selected, `label` is the displayed text (defaults to the element's own text content), and the `prefix` / `suffix` slots hold icons at either end.
 
-It dispatches no events aimed at consumers—the registration handshake emitted on mount, update, and unmount is consumed only by the parent container; the selected state is written back by the container through `selected`.
+It dispatches no events aimed at consumers. The registration handshake emitted on mount, update, and unmount is consumed only by the parent container. The parent writes the selected state back through `selected`.
 
 ## Samples
 

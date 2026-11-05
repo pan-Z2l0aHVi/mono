@@ -1,16 +1,12 @@
 # 逐像素比对 fixture 字体
 
-`inconsolata-parity-subset.ttf` 是 [Inconsolata](https://github.com/google/fonts/tree/main/ofl/inconsolata)（SIL OFL 1.1，见 `Inconsolata-OFL.txt`）的静态 Regular 子集，只保留 ASCII 可打印区（U+0020-007E），并改写内部字体名（OFL 保留字体名条款）。仅用于 `editable-text.browser.spec.ts` 的文字态/编辑态 overlay 逐像素比对。
+`inconsolata-parity-subset.ttf` 是 [Inconsolata](https://github.com/google/fonts/tree/main/ofl/inconsolata)（SIL OFL 1.1，见 `Inconsolata-OFL.txt`）的静态 Regular 子集，只保留 ASCII 可打印区（U+0020-007E），并改写内部字体名。仅用于 `editable-text.browser.spec.ts` 的文字态和编辑态 overlay 逐像素比对。
 
-## 为什么需要它
+## 用途
 
-逐像素比对要求两层的字形渲染完全一致。系统字体栈随平台变化：CI 容器里的 monospace 与开发机不是同一个文件，分数 advance 会把逐字形 x 原点放到亚像素上，Linux 的取整/提示路径据此抖动，两层随之错位（错位量可达数千像素，最大通道差上百）。改用打包字体后：
+逐像素比对要求两层字形渲染完全一致。系统字体随平台变化，可能导致字形错位。使用这个打包字体后，16px 下的 advance 为 8px，ascent/descent 为 14px/4px，几何都落在整数像素上，因此 0px 断言可以跨平台成立。
 
-- advance 在 16px 下恰为 8px（0.5em，整像素），逐字形 x 原点全部落在整数网格；
-- ascent/descent 用 FontFace 的 ascentOverride/descentOverride 覆盖为 14px/4px（整像素），半行距与基线随之取整后仍是整数；
-- 任何平台上的取整/提示都成为 no-op，0px 断言才跨平台成立。
-
-spec 里的几何锁用例会断言上述整像素性质，换字体或改行高破坏整数性时先失败。
+spec 中的几何锁用例会断言这些整像素性质。换字体或改行高破坏整数性时，这些用例会先失败。
 
 ## 再生成
 

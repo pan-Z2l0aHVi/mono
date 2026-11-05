@@ -10,21 +10,14 @@ import { defineComponent, h } from 'vue'
 import { MetaComp } from '../components/meta'
 import { loadMeta } from '../i18n/examples'
 
-// 语料接线的 contract 断言（围栏同源 / 落盘文件 / 页面 ↔ 语料不互为孤儿）收拢在
-// `@greypan/doc-demo-kit/testing`；这里只注入 Vue 侧的宿主事实。生成器那侧的判据在
-// `@greypan/md-to-meta` 的单测里；跨 app 的另一半由 web-ui 包的 generated-parity.spec.ts 持有。
+// 语料接线的轻量 contract 断言（围栏同源 / 落盘文件）收拢在 `@greypan/doc-demo-kit/testing`；
+// 这里只注入 Vue 侧的宿主事实。生成器判据在 `@greypan/md-to-meta` 单测里。
 runExampleDocsContractTests({
   loadMeta,
   docsDir: path.resolve(import.meta.dirname, '../../../../packages/web-ui/docs'),
   generatedDir: path.resolve(import.meta.dirname, '../generated'),
   /** 本端只执行 vue 围栏：它们才是真组件；其余围栏只是源码。 */
-  execLanguage: 'vue',
-  componentsDir: path.resolve(import.meta.dirname, '../components'),
-  pagesDir: path.resolve(import.meta.dirname, '../pages/components'),
-  pageExt: '.vue',
-  framework: 'Vue',
-  demoImportSample: `import Demo from '@/components/slider-demo/index.vue'`,
-  exampleDocImportSample: `import Doc from '@/components/example-doc/index.vue'`
+  execLanguage: 'vue'
 })
 
 describe('通用 meta 渲染', () => {

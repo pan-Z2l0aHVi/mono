@@ -276,7 +276,7 @@ const meta = [
       children: [
       { label: 'td', content: "<code>--wui-collapse-peek-edge</code>" },
       { label: 'td', content: "显式指定长度，覆盖默认计算值" },
-      { label: 'td', content: "—" }
+      { label: 'td', content: "" }
       ]
     },
     {

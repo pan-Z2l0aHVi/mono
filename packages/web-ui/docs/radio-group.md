@@ -175,7 +175,7 @@ export default function Demo() {
 | `direction`       | Layout direction of the members, also the group container's `aria-orientation`.                                          | `'horizontal' \| 'vertical'` | `'vertical'` |
 | `value`           | The currently selected value, and the single source of the members' selected state.                                      | `string`                     | `''`         |
 | `aria-label`      | The group's accessible name.                                                                                             | `string \| null`             | `null`       |
-| `aria-labelledby` | ID of the element that provides the group's accessible name.                                                             | `string \| undefined`        | —            |
+| `aria-labelledby` | ID of the element that provides the group's accessible name.                                                             | `string \| undefined`        | -            |
 
 ### Events
 

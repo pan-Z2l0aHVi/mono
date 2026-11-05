@@ -318,10 +318,10 @@ import { iconGallery } from '@greypan/web-ui/icons'
 
 | 名称    | 说明                                                       | 类型          | 默认值  |
 | ------- | ---------------------------------------------------------- | ------------- | ------- |
-| `icon`  | Iconify 数据对象；只能通过 property 传入，不接受图标名字。 | `IconifyIcon` | —       |
+| `icon`  | Iconify 数据对象；只能通过 property 传入，不接受图标名字。 | `IconifyIcon` | -       |
 | `spin`  | 旋转动画。                                                 | `boolean`     | `false` |
 | `size`  | 像素尺寸，同时写进 `<svg>` 的 `width` 与 `height`。        | `number`      | `18`    |
-| `color` | 图标颜色；留空时先读 `--wui-icon-color`，再读文字颜色。    | `string`      | —       |
+| `color` | 图标颜色；留空时先读 `--wui-icon-color`，再读文字颜色。    | `string`      | -       |
 
 ### 行为说明
 

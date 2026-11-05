@@ -327,8 +327,8 @@ export default function Demo() {
 | `vertical`        | Vertical orientation.                                                  | `boolean` | `false` |
 | `name`            | Form field name.                                                       | `string`  | `''`    |
 | `required`        | Reflects the attribute only; does not take part in validation.         | `boolean` | `false` |
-| `aria-label`      | Accessible name of the slider.                                         | `string`  | —       |
-| `aria-labelledby` | IDs of one or more elements that provide the slider's accessible name. | `string`  | —       |
+| `aria-label`      | Accessible name of the slider.                                         | `string`  | -       |
+| `aria-labelledby` | IDs of one or more elements that provide the slider's accessible name. | `string`  | -       |
 | `value`           | Current value.                                                         | `number`  | `0`     |
 | `min`             | Minimum value.                                                         | `number`  | `0`     |
 | `max`             | Maximum value.                                                         | `number`  | `100`   |

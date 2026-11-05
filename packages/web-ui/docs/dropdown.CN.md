@@ -218,7 +218,7 @@ import { useCallback, useState } from 'react'
 
 export default function Demo() {
   const [open, setOpen] = useState(false)
-  const [last, setLast] = useState('—')
+  const [last, setLast] = useState('-')
 
   // menu item 打开时被迁进 portal panel，React 的 onClick 委托在根容器收不到；这里直接挂原生 click。
   const handleItemRef = useCallback((item: WebUiDropdownItem | null) => {
@@ -287,7 +287,7 @@ export default function Demo() {
 import { ref } from 'vue'
 
 const open = ref(false)
-const last = ref('—')
+const last = ref('-')
 
 function select(label: string) {
   last.value = label

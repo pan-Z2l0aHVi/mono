@@ -1283,7 +1283,7 @@ collapse 把 `aria-expanded` 写回默认插槽中的第一个元素，`disabled
 | -------------------------------- | ------------------------------------------ | ----------------------------- |
 | `--wui-collapse-peek-edge-ratio` | 渐变长度占 `peek` 的比例                   | `0.4`                         |
 | `--wui-collapse-peek-edge-max`   | 长度上限，避免大 `peek` 算出过长的模糊区域 | `112px`                       |
-| `--wui-collapse-peek-edge`       | 显式指定长度，覆盖默认计算值               | —                             |
+| `--wui-collapse-peek-edge`       | 显式指定长度，覆盖默认计算值               | -                             |
 | `--wui-collapse-peek-edge-color` | 裁剪边缘处的渐变起点色                     | `var(--wui-color-page, #fff)` |
 | `--wui-collapse-peek-edge-blur`  | 同一渐变区域的背景模糊半径                 | `4px`                         |
 

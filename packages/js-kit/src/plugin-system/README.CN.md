@@ -1,18 +1,18 @@
 # 插件系统
 
-基于可组合插件的 JavaScript 工具架构
+> 用 `definePlugin`、`.use()` 和 `.make()` 组合小型 JavaScript 模块。
 
 [English](./README.md) | 简体中文
 
 ## 概述
 
-插件系统提供了函数式的可组合、可复用模块构建方式。不使用继承或类，而是通过插件组合功能，支持 `.use()` 链式组合和 `.make()` 实例化。
+插件是一个返回 API 对象的函数。你可以组合多个插件，在需要时创建最终实例。共享状态保持显式，不需要类继承。
 
 ## 核心
 
 ### `definePlugin<C, D>(setup)`
 
-创建可组合插件。`setup` 函数接收上下文对象并返回插件 API。
+创建插件。`setup` 接收共享上下文并返回插件 API。
 
 ```ts
 import { definePlugin } from '@greypan/js-kit'
@@ -23,42 +23,37 @@ const defineConfig = () =>
     timeout: 5000
   }))
 
-// 通过 .make() 实例化
 const config = defineConfig().make()
-console.log(config.apiUrl) // 'https://api.example.com'
+console.log(config.apiUrl)
 ```
 
 ### `plugin.use(otherPlugin)`
 
-链式组合插件。结果插件合并两者的 API。
+组合两个插件。结果插件同时提供两者的 API。
 
 ```ts
-const defineLogger = () => definePlugin(() => ({ log: (msg: string) => console.log(msg) }))
-
+const defineLogger = () => definePlugin(() => ({ log: (message: string) => console.log(message) }))
 const defineAuth = () => definePlugin(() => ({ token: 'xxx' }))
 
-// 组合：结果插件同时拥有 log 和 token
 const app = defineLogger().use(defineAuth()).make()
 app.log('hello')
 console.log(app.token)
 ```
 
-**多级嵌套：** `.use()` 接受任意插件 — 包括已经是 `.use()` 链式组合的插件。所有 API 最终合并到实例中。
+`.use()` 可以接收另一条插件链，因此可以组合多层。
 
 ```ts
 const defineA = () => definePlugin(() => ({ a: 1 }))
 const defineB = () => definePlugin(() => ({ b: 2 }))
 const defineC = () => definePlugin(() => ({ c: 3 }))
-const defineD = () => definePlugin(() => ({ d: 4 }))
 
-// .use() 的参数可以是链式组合的插件表达式
-const app = defineA().use(defineB().use(defineC())).use(defineD()).make()
-console.log(app.a, app.b, app.c, app.d) // 1, 2, 3, 4
+const app = defineA().use(defineB().use(defineC())).make()
+console.log(app.a, app.b, app.c)
 ```
 
 ### `plugin.make(ctx?)`
 
-实例化插件链。可选传入初始上下文，会与插件 API 合并。
+创建实例。可以传入初始上下文。
 
 ```ts
 const defineDb = () =>
@@ -70,15 +65,15 @@ const db = defineDb().make({ connectionString: 'postgres://...' })
 db.query('SELECT 1')
 ```
 
-## 插件
+## 批量事件
 
 ### `defineBatchEmitter<S>(options?)`
 
-批量事件发射器。收集事件并在延迟后批量触发。
+收集事件，并在延迟后以一批发送。
 
 | 参数                | 类型                                    | 默认值 | 说明             |
 | ------------------- | --------------------------------------- | ------ | ---------------- |
-| `options.onFlushed` | `(items: S[]) => void \| Promise<void>` | -      | 批量刷新时的回调 |
+| `options.onFlushed` | `(items: S[]) => void \| Promise<void>` | -      | 每批发送时调用。 |
 
 ```ts
 import { defineBatchEmitter } from '@greypan/js-kit'
@@ -89,31 +84,33 @@ const batch = defineBatchEmitter<{ id: number }>({
 
 const ctx = batch.make()
 await Promise.all([ctx.batchEmit({ id: 1 }, 100), ctx.batchEmit({ id: 2 }, 100)])
-// 延迟结束后，onFlushed 只收到一次 [{ id: 1 }, { id: 2 }]
+// onFlushed 收到 [{ id: 1 }, { id: 2 }]
 ```
+
+## 队列
 
 ### `defineQueue<T>(options)`
 
-「交付即消费」的通用队列。调用 `onConsume` 后立即移除条目，不等待消费者返回的 Promise；适合 fire-and-forget 任务。消费者同步抛错或异步 rejection 会交给可选的 `onConsumeError` 观察，但不会把条目重新放回队列。
+条目传给 `onConsume` 后立即移除，不等待返回的 Promise。适合不需要确认的任务。错误交给 `onConsumeError`，条目不会放回队列。
 
 ### `defineAckQueue<T>(options)`
 
-「消费者确认后消费」的通用队列。只有 `onConsume` 返回的 Promise fulfilled 后才移除条目；rejection 只标记当前条目失败，后续条目仍会继续处理。`resume()` 或 `flush()` 可以再次尝试失败条目。
+`onConsume` 返回的 Promise resolve 后才移除条目。reject 只把当前条目标记为失败，后续条目继续处理。`resume()` 或 `flush()` 可以重试失败条目。
 
-两种队列都通过 `.make()` 实例化，并共享以下 option：
+两种队列共享以下参数。
 
-| option           | 类型                                     | 默认值 | 说明                                                      |
-| ---------------- | ---------------------------------------- | ------ | --------------------------------------------------------- |
-| `onConsume`      | `(item: T) => void \| PromiseLike<void>` | -      | 必填；每个队列项的消费者                                  |
-| `initialItems`   | `readonly T[]`                           | `[]`   | 创建时恢复的初始项；实例创建后的下一个 microtask 开始消费 |
-| `onPersist`      | `(items: readonly T[]) => void`          | -      | 可选的同步持久化接缝；成员关系变更前先提交新的浅层快照    |
-| `onConsumeError` | `(error: unknown, item: T) => unknown`   | -      | 可选的错误观察器；其自身的异常会被忽略                    |
+| 参数             | 类型                                     | 默认值 | 说明                                            |
+| ---------------- | ---------------------------------------- | ------ | ----------------------------------------------- |
+| `onConsume`      | `(item: T) => void \| PromiseLike<void>` | -      | 必填，每个条目的消费者。                        |
+| `initialItems`   | `readonly T[]`                           | `[]`   | 创建时加入的条目，在下一个 microtask 开始消费。 |
+| `onPersist`      | `(items: readonly T[]) => void`          | -      | 接收待处理条目的快照，必须同步执行。            |
+| `onConsumeError` | `(error: unknown, item: T) => unknown`   | -      | 可选错误观察器，它自身抛出的错误会被忽略。      |
 
-队列实例提供 `enqueue(item)`、`pause()`、`resume()` 和 `flush(): Promise<void>`。普通 drain 严格串行；`flush()` 会并发启动调用时仍处于 pending/failed 的项，并等待本次调用涉及的操作完成。`flush()` 忽略暂停状态但不会解除暂停，新入队项不属于本次 flush 的边界。
+队列实例提供 `enqueue(item)`、`pause()`、`resume()` 和 `flush(): Promise<void>`。正常消费按顺序串行执行。`flush()` 会启动调用时已存在且待处理或失败的条目，等待本次工作完成，并且不会清除暂停状态。调用之后加入的条目不参与这次 flush。
 
-如果提供 `onPersist`，队列采用 persist-before-commit：持久化失败时保留原成员关系并停止新的消费，`enqueue()` 同步抛出错误，`flush()` reject。`resume()` 会先重新探测当前快照，持久化恢复后才解除这个全局阻塞。`onPersist` 必须同步完成；虽然 TypeScript 的 `void` 回调类型可能接受 async 函数，运行时会拒绝 thenable 并进入 persistence-blocked 状态。
+`onPersist` 失败时，队列保留原来的条目并停止消费。`enqueue()` 抛错，`flush()` reject。`resume()` 会先检查当前快照再重试。异步 `onPersist` 会在运行时被拒绝。
 
-消费者可以异步返回 Promise，但不要在同一个队列消费者的异步 continuation 中调用该队列自己的 `flush()`；`flush()` 会等待在途消费者，而该消费者又在等待 `flush()`，会形成循环等待。请从消费者外部触发 `flush()`；同步执行期间的自身 `flush()` 会被立即拒绝。
+不要在异步消费者内部调用同一个队列的 `flush()`。`flush()` 会等待在途消费者，消费者又在等待 `flush()`，两者会互相等待。请在消费者外部调用 `flush()`。
 
 ```ts
 import { defineAckQueue } from '@greypan/js-kit'
@@ -135,15 +132,15 @@ queue.enqueue('task-1')
 await queue.flush()
 ```
 
-如果不需要等待消费者 Promise fulfilled，使用 `defineQueue`；如果需要把消费者的成功结果作为移除边界，使用 `defineAckQueue`。这里的「确认」只表示消费者回调成功，不代表远端服务已经提供 exactly-once 或服务端确认。
+不需要等待消费者结果时用 `defineQueue`。成功结果决定条目是否移除时用 `defineAckQueue`。这里的「确认」只表示消费者完成，不承诺 exactly-once 处理或服务端响应。
 
 ## 类型工具
 
 ### `PluginMade<T>`
 
-从插件工厂或插件实例中提取实例化后的类型。
+从插件工厂或插件中提取实例类型。
 
 ```ts
 type MyPlugin = typeof withConfig
-type Instance = PluginMade<MyPlugin> // { apiUrl: string; timeout: number }
+type Instance = PluginMade<MyPlugin>
 ```

@@ -207,7 +207,7 @@ export default function Demo() {
 | `size`        | 实例尺寸；只在为真值时写入实例的 `size`，`0` 被忽略而留默认 `24`。 | `number` | `24`   |
 | `description` | 实例说明文字，使用属性这条通道；空串等于不设置。                   | `string` | `''`   |
 | `color`       | 实例指示器颜色，CSS 颜色值；空串等于不设置。                       | `string` | `''`   |
-| `duration`    | 大于 `0` 时到期自动 `hide()`；不传或 `0` 时实例一直存在。          | `number` | —      |
+| `duration`    | 大于 `0` 时到期自动 `hide()`；不传或 `0` 时实例一直存在。          | `number` | -      |
 
 ### Methods
 

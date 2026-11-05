@@ -429,7 +429,7 @@ function onChange(event: WebUiEvent<WebUiSegmented, 'change'>) {
 | `variant`    | 材质变体：`inset`（默认）或 `raised`。                                                               | `'inset' \| 'raised'` | `'inset'` |
 | `disabled`   | 禁用全部触发器。                                                                                     | `boolean`             | `false`   |
 | `required`   | 只反射属性，不参与校验。                                                                             | `boolean`             | `false`   |
-| `aria-label` | 组的可访问名称；`aria-labelledby` 无法跨组件边界解析，名称转发到 shadow 内的 `role="listbox"` 元素。 | `string`              | —         |
+| `aria-label` | 组的可访问名称；`aria-labelledby` 无法跨组件边界解析，名称转发到 shadow 内的 `role="listbox"` 元素。 | `string`              | -         |
 | `value`      | 当前选中值。                                                                                         | `string`              | `''`      |
 
 ### Events
