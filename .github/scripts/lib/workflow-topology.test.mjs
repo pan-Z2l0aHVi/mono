@@ -555,6 +555,36 @@ function assertPullRequestValidationIsReadOnly(workflow) {
     assert.match(autofixStep, /sandbox: 'workspace-write'/)
     assert.ok(!/openai-api-key: \$\{\{ vars\./.test(ci), 'the api key must never come from a public variable')
 
+    // openai/codex-action#188：ubuntu-26.04 的 sudo-rs 忽略 -E、uutils `test -w` 只看 mode bits，
+    // drop-sudo 的 socket ACL 校验因此误判并在 Run codex exec 前退出。v1.13 及 main 上都没有修复，
+    // 两条模型腿固定 24.04 并保留 drop-sudo；恢复条件见 ADR-0021「Runner 镜像」。
+    const CODEX_RUNNER = 'ubuntu-24.04'
+    const modelLegs = ['codex-review', 'codex-autofix-plan']
+    function assertCodexRunnerPin(text) {
+      for (const jobId of modelLegs) {
+        const block = workflowJob(text, jobId)
+        assert.equal(
+          /^ {4}runs-on: (.+)$/m.exec(block)?.[1],
+          CODEX_RUNNER,
+          `${jobId} must pin ${CODEX_RUNNER} while openai/codex-action#188 is unfixed`
+        )
+        assert.match(block, /safety-strategy: 'drop-sudo'/, `${jobId} must keep the drop-sudo safety strategy`)
+      }
+    }
+    assertCodexRunnerPin(ci)
+    for (const jobId of modelLegs) {
+      const block = workflowJob(ci, jobId)
+      const start = ci.indexOf(block)
+      const unpinned =
+        ci.slice(0, start) +
+        block.replace(`runs-on: ${CODEX_RUNNER}`, 'runs-on: ubuntu-latest') +
+        ci.slice(start + block.length)
+      assert.throws(
+        () => assertCodexRunnerPin(unpinned),
+        `moving ${jobId} back to ubuntu-latest must fail the runner pin`
+      )
+    }
+
     // 端点、模型、强度、密钥与 codex 版本只准从 GitHub 后台来；字面量与 || 兜底会让后台配置永远不生效。
     assert.deepEqual([...CONFIG_ENV], [...CODEX_CONFIG_ENV], 'preflight and topology checks must share one config list')
     assert.deepEqual(codexConfigInputViolations(ci), [])

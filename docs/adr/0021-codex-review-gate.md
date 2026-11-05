@@ -46,6 +46,8 @@ Codex 审查是对 [ADR-0012](./0012-pr-review.md) 的补强，不是替代：�
 
 **沙箱档位**：使用 action 的 legacy `sandbox` 输入（`--sandbox`），不使用权限档输入。本仓 `.codex/config.toml` 在 project 层写死全访问；`--sandbox` 覆盖的是同一个配置键，权限档落在另一个键上，无法证明它能压过 project 层。CI 定义由机器断言钉住这个选择。
 
+**Runner 镜像**：两条模型腿固定 `runs-on: ubuntu-24.04`，且保留 `safety-strategy: 'drop-sudo'`；本 workflow 其余 Linux job 仍用 `ubuntu-latest`。原因是 `ubuntu-latest` 已滚动到 `ubuntu-26.04`：该镜像的 `sudo` 是 sudo-rs（忽略 `-E`）、`/usr/bin/test` 是 uutils coreutils（`-w` 只读 mode bits），`openai/codex-action@v1.13` 的 `drop-sudo` 在 `restrictRootServiceSocket()` 里给 `/run/dbus/system_bus_socket` 设好 deny ACL 后仍被误判为「runner 仍可写」，在 `Run codex exec` 启动 Codex 之前就抛错退出。上游 issue [#188](https://github.com/openai/codex-action/issues/188) 同款报错，修复 PR [#191](https://github.com/openai/codex-action/pull/191) 尚未合并，v1.13 之后的 main 提交也未包含该修复。固定 24.04 而非改用 `safety-strategy: read-only`：后者会被上游 `determinePermissionSelection()` 强制成 read-only sandbox，直接废掉 autofix 腿的 `workspace-write`，且放弃 sudo 剥离；也不选 `unprivileged-user`，它要额外处理 checkout、`CODEX_HOME`、prompt 与输出文件权限，落地成本远高于收益。代价是依赖一个终会退役的旧镜像。**恢复条件**：上游发布含 #191 修复的 `codex-action` 版本后，把两条腿恢复为 `ubuntu-latest`、同步删掉拓扑断言里的固定值，并在真实 run 上按验收清单第 8 项复核。若 24.04 先退役而上游仍未修，不能直接回 `ubuntu-latest`（会重现同一故障），必须走备选：升级到已修复的 action、改用 `unprivileged-user` 并补齐权限准备，或停用 `drop-sudo` 并同时重构 autofix 腿的沙箱。`check` 与 Wails 腿不受此约束。CI 拓扑断言同时钉住镜像标签与 `drop-sudo`，任一被改都会让脚本单测变红。
+
 **输入可信来源**：prompt、schema、判定脚本（含预检）与生成物禁令清单从 PR base（写腿从默认分支）取版本落到 runner 临时目录，执行只用那份副本。工作区本身仍检出 PR head：`uses: ./...` 的复合 action 由 job 工作区解析，检出 base 会让本 PR 新建的 action 解析不到，这道门整个跑不起来——固定的是脚本内容的来源，不是工作区的来源。残留的篡改面是 workflow YAML 与 PR 腿由工作区解析的复合 action（`setup-deps` 与 `stage-codex-inputs`，前者还先于后者运行）：它们必须由 head 提供，所以改它们仍在被审查的 diff 里明写，与「模型能读到 worktree 里的 review 判据文档」归在同一类已接受风险里，由人工 review 和「只审同源仓库、base 为 `main`」的范围一起兜住。CI 定义由机器断言同时钉住工作区来源与 `base-sha` 这两侧。
 
 **适用范围**：只审同源仓库、base 为 `main`、未关闭且不是版本分支的 PR。fork PR 默认不跑——它拿不到仓库 secret，要审就得逐次为它放行。
@@ -78,6 +80,19 @@ Codex 审查是对 [ADR-0012](./0012-pr-review.md) 的补强，不是替代：�
 
 **同日第二次实测（PR #515，配置填齐后的首个真实集成 PR）**：`check` 7m34s 通过，Wails 各腿通过；`Codex review` 14 秒即失败，日志只有 `could not start git: spawnSync git ENOBUFS`，`codex-gate` 按「故障即红」正确变红，但把原因归为 `config_missing`。根因是 `resolveReviewRange` 把 13.9 MB 的 `git diff` 整份读进默认 1 MiB 缓冲，preflight 根本没执行、零模型调用；写回腿 success 且因无产物按设计跳过发评论。结论：门的颜色机制有效，但失败归因不够准（preflight 未运行不等于配置缺失），且大 diff 必须在范围与缓冲两侧同时收敛。
 
+**同日第三次实测（PR #516，范围/缓冲修复分支，首次真正启动 `Run codex exec`）**：`check` 6m0s 通过，`Codex review` job 表面 31s pass（模型步骤自带 `continue-on-error`），`Codex review gate` 13s fail，报 `model_failed: the review step produced no output file`；PR 上无 `codex-review-conclusion` 评论，写回腿 success 但按设计跳过。完整 job 日志显示 `CODEX_SAFETY_STRATEGY: drop-sudo`，`Run codex exec` 内部 `dropSudoWithPrivileges()` 在 447ms 内退出 1：
+
+```text
+Image: ubuntu-26.04
+sudo: preserving the entire environment is not supported, '-E' is ignored
+runner is not a member of the sudo group.
+Error: Could not restrict access to /run/dbus/system_bus_socket.
+Error: /usr/bin/sudo exited with code 1
+##[end-action id=review.run_codex;outcome=failure;conclusion=failure]
+```
+
+即 `codex-final-message.json` 从未生成，模型一次都没被调用。这不是配置或脚本问题，而是 runner 镜像与上游 action 的兼容性缺陷（见「Runner 镜像」条款）。注意 job 显示 pass 而 gate 红，正是「故障即红」设计在起作用：模型步骤的 `continue-on-error` 只让 `validate` 有机会落结论，`outcome=failure` 仍传给了判定脚本。
+
 **验收清单**（后台配置填齐后按 run 日志逐项核对）：
 
 1. `Run codex exec` 出现，`codex-final-message.json` 非空且通过 schema。
@@ -87,6 +102,7 @@ Codex 审查是对 [ADR-0012](./0012-pr-review.md) 的补强，不是替代：�
 5. 写回腿成功发出或更新结论评论；workflow_run 列表里没有无产物的失败 run。
 6. 拓扑断言与脚本单测全绿。
 7. `review-scope.json` 记有 `excluded_pathspecs` 与 `empty_diff`，审查 diff 里没有 `**/generated/**` 路径；大 PR 不因 `ENOBUFS` 让 `prepare` 失败。（**合入 main 后的下一个 PR** 上核对：可信脚本取自 PR base，修复自己的 CI 仍跑旧脚本。）
+8. 两条模型腿的 `Set up job` 日志出现 `Image: ubuntu-24.04`，且 `Run codex exec` 不再出现 `Could not restrict access to /run/dbus/system_bus_socket`。以审查腿为准，满足第 1 项（有真实模型结论）后再核对此项；autofix 腿只在 `CODEX_AUTOFIX_ENABLED=true` 且 `check` 失败时运行，默认关闭，不必为验收专门打开。
 
 **待办**：`prepare` 的任何失败都会跳过 preflight，被 `validate` 记成 `config_missing`；后续把 preflight 前置到 prepare 之前，或引入 `job_failed` / `preflight_missing` 错误码，并同步「状态口径」、`docs/agents/review.md` 的故障码清单、`renderConclusion()` 与相关单测。本次修复后该误归因对 PR #515 的事故不再可达，门「故障即红」不受影响。
 
@@ -98,4 +114,5 @@ Codex 审查是对 [ADR-0012](./0012-pr-review.md) 的补强，不是替代：�
 - 引入新可信子命令的那个 PR 自身无法完成审查：它的 base 还是旧脚本，模型腿会红。首次落地要先合入脚本、再在后续 PR 上验证全链路。
 - 只读腿与写腿分居两个 workflow，读代码时看到的 YAML 不能解释全部行为；判据在 ADR 与机器断言里，不只在 CI 定义里。
 - 模型结论的可信度受沙箱档位、输入版本与后台配置影响，这三处都由 CI 拓扑测试钉住，改动会被断言挡下来，而不是靠 review 时想起来。
+- 两条模型腿绑定 `ubuntu-24.04`，与本 workflow 其它 Linux job 的 `ubuntu-latest` 不同步；24.04 退役前必须按「Runner 镜像」条款的恢复条件完成迁移，否则审查链路会再次在模型启动前静默失败（表现为 job 绿、gate 红、零模型调用）。这是一笔有到期日的技术债。
 - 仍未实测的项：Linux 上 `--sandbox` 是否如文档生效；60 分钟余量对应多大的真实耗时；`codex-action` 在输出不合 schema 时是否仍以 0 退出（这决定 `unreviewed` 会不会被 `model_failed` 取代）；`workflow_run.head_branch` 在各事件下的实际取值；写回腿 403 在补 `pull-requests: write` 后是否彻底消失。403 若仍复现则按「故障可见」条款升级到专用写令牌。
