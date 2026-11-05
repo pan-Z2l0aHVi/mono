@@ -1,41 +1,46 @@
 # Mono
 
-> Everything, one repo.
-
-- [Architecture map](./ARCHITECTURE.md) · [Contributing](./CONTRIBUTING.md)
+> An open, cross-platform, cross-stack, cross-agent monorepo engineering project for code, design resources, and docs.
 
 English | [简体中文](./README.CN.md)
 
-## Tech Stack
+This repository contains code, design resources, and docs across platforms and stacks, plus npm packages, workspace tooling, and integration apps. It is set up to work with agent tools such as Claude, Codex, and OpenCode.
 
-- pnpm workspaces + Turborepo
-- Vite Plus
-- TypeScript
+## Published packages
 
-## Packages
+| Package                                                                            | What it gives you                                                                        |
+| ---------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------- |
+| [`@greypan/js-kit`](./packages/js-kit/README.md)                                   | JavaScript utilities and composable plugins. No DOM dependency.                          |
+| [`@greypan/browser-kit`](./packages/browser-kit/README.md)                         | Browser storage, tracking, environment detection, files, clipboard, and history helpers. |
+| [`@greypan/web-ui`](./packages/web-ui/README.md)                                   | Lit web components, theme tokens, icons, and React/Vue types.                            |
+| [`@greypan/unplugin-web-components`](./packages/unplugin-web-components/README.md) | Vite and Webpack plugin that imports web components when their tags appear.              |
+| [`@greypan/deps-reload`](./packages/deps-reload/README.md)                         | Vite and Webpack plugin that reloads the page when a dependency build changes.           |
 
-| Package                                                                            | Description                                                                                       |
-| ---------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------- |
-| [`@greypan/js-kit`](./packages/js-kit/README.md)                                   | Platform-agnostic utilities, types, and a composable plugin system                                |
-| [`@greypan/browser-kit`](./packages/browser-kit/README.md)                         | Browser utilities for storage, tracking, environment detection, files, clipboard, and history nav |
-| [`@greypan/test-kit`](./packages/test-kit/README.md)                               | Internal private workspace package: Vitest browser mode + MSW test infrastructure                 |
-| [`@greypan/web-ui`](./packages/web-ui/README.md)                                   | Lit-based web components, theme tokens, icons, and React/Vue type adapters                        |
-| [`@greypan/app-scrollbars`](./packages/app-scrollbars/README.md)                   | Internal private workspace package: app-level OverlayScrollbars options and macOS theme           |
-| [`@greypan/unplugin-web-components`](./packages/unplugin-web-components/README.md) | Unplugin that auto-imports web components in Vue, React, and Vite HTML entries                    |
-| [`@greypan/deps-reload`](./packages/deps-reload/README.md)                         | Vite/Webpack plugin that reloads the page when a dependency's build output changes                |
-| [`@greypan/md-to-meta`](./packages/md-to-meta/README.md)                           | Internal private workspace package: generic Markdown-to-meta engine with a Vite plugin            |
-| [`@greypan/tsconfig`](./packages/tsconfig/README.md)                               | Internal private workspace package: shared TypeScript configuration profiles                      |
+## Workspace packages
+
+These packages stay inside the repository. Add them to a workspace app with the `workspace:*` protocol.
+
+| Package                                                                                        | What it gives you                                                                             |
+| ---------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------- |
+| [`@greypan/test-kit`](./packages/test-kit/README.md)                                           | Test helpers for Vitest browser mode with MSW.                                                |
+| [`@greypan/app-scrollbars`](./packages/app-scrollbars/README.md)                               | Shared overlay scrollbar options for the workspace apps.                                      |
+| [`@greypan/md-to-meta`](./packages/md-to-meta/README.md)                                       | Markdown to structured meta module, plus one file per fenced code block.                      |
+| [`@greypan/tsconfig`](./packages/tsconfig/README.md)                                           | Shared TypeScript configuration profiles.                                                     |
+| [`@greypan/wuchale-vue`](./packages/wuchale-vue/README.md)                                     | Vue single-file component adapter for wuchale.                                                |
+| [`@greypan/monorepo-kit`](./packages/monorepo-kit/README.md)                                   | Repository checks, policy helpers, and build coordination.                                    |
+| [`@greypan/pi-orchestrator-memory-bridge`](./packages/pi-orchestrator-memory-bridge/README.md) | Pi extension that connects Herdr orchestration memory and the task board to the lead session. |
+| [`@greypan/doc-demo-kit`](./packages/doc-demo-kit)                                             | Shared documentation demo layer for the React and Vue demos.                                  |
 
 ## Apps
 
-Private apps (not published to npm); the two web demos deploy to GitHub Pages, and `interweave` ships installers via GitHub Releases:
+These apps are not published to npm. They are integration surfaces and shippable end-user software: the two web demos deploy to GitHub Pages, and Interweave ships installers through GitHub Releases.
 
 | App                                              | Stack                                                   |
 | ------------------------------------------------ | ------------------------------------------------------- |
-| [`react-web-ui-demo`](./apps/react-web-ui-demo/) | React 19 + TanStack Router + Zustand + Tailwind CSS     |
-| [`vue-web-ui-demo`](./apps/vue-web-ui-demo/)     | Vue 3 + Vue Router + Pinia + Tailwind CSS               |
-| [`interweave`](./apps/interweave/)               | Wails 3 desktop application (Go + Vue WebView + SQLite) |
+| [`react-web-ui-demo`](./apps/react-web-ui-demo/) | React 19, TanStack Router, Zustand, Tailwind CSS        |
+| [`vue-web-ui-demo`](./apps/vue-web-ui-demo/)     | Vue 3, Vue Router, Pinia, Tailwind CSS                  |
+| [`interweave`](./apps/interweave/)               | Wails 3 desktop app with a Go backend and a Vue WebView |
 
 ## Development
 
-See [CONTRIBUTING.md](./CONTRIBUTING.md) for environment setup, build, and test commands.
+The repository uses Node.js 24.18 or newer and pnpm 12.4 or newer. See [CONTRIBUTING.md](./CONTRIBUTING.md) for setup, build, and test commands, and [ARCHITECTURE.md](./ARCHITECTURE.md) for the repository layout.

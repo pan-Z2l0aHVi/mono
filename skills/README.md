@@ -1,30 +1,36 @@
 # 仓库自编写 agent skills
 
-本目录是仓库专属 agent skills 的 GitHub 发现面，遵循 agent skills 工具链共享的 `skills/<name>/SKILL.md` 打包约定。GitHub 是唯一的分发通道。
+本目录提供本仓库自写的 agent skills，通过 GitHub 分发。每个 skill 按 `skills/<name>/SKILL.md` 组织。
 
-## 安装与接入
+## 安装与更新
 
 ```sh
 npx skills add pan-Z2l0aHVi/mono
 ```
 
-跟踪 main，之后可用 `npx skills update` 更新。skill 以 `SKILL.md` 为入口，可以附带只依赖 Node 内置模块的脚本；没有构建步骤。接入后，agent 按 SKILL.md frontmatter 的 `name`/`description` 发现 skill 并按需加载。
+安装后跟踪 `main`。之后可用下面的命令更新：
 
-`npx skills add` 只从 Git 源安装，不接受 npm 包名（`@scope/pkg` 会被解析成 GitHub `owner/repo` 简写）。
+```sh
+npx skills update
+```
 
-## 各表面暴露什么
+`npx skills add` 只从 Git 源安装，不接受 npm 包名。`@scope/pkg` 会被当作 GitHub 的 `owner/repo` 简写。
 
-- **GitHub 源**（`npx skills add pan-Z2l0aHVi/mono`）：自撰 skill + 它们依赖的第三方镜像。仅此而已。
-- 仓库专属的第三方 skill 仍 vendor 在 `.agents/skills-vendored/`（skills CLI 不扫描），永不分发；它们靠 `skills-lock.json` 跟踪与刷新。
-- 其余第三方 skill 不在本仓：通用流程类 skill 由 CC Switch 在 user 级全局管理（主副本在 `~/.cc-switch/skills/<name>`，各客户端侧是 symlink），任何会话任何仓库都可用，仓库再自带一份只是重复。
+skill 以 `SKILL.md` 为入口，可附带只依赖 Node 内置模块的脚本，没有构建步骤。agent 通过 frontmatter 中的 `name` 和 `description` 发现并按需加载 skill。
 
-## skill 依赖
+## 分发范围
 
-skills 生态本身没有依赖机制，所以依赖是「文档声明 + 机器校验」的约定：自撰 SKILL.md 链接到第三方同级（`../<name>/SKILL.md`）时，该 skill 必须镜像在仓库根 `skills/`（`npx skills add` 才会把它连同依赖者一起暴露），并登记在仓库根 `skills-lock.json`。布局校验器（`checkRepoLayout`，住在 [`scripts/maintenance/update-skills.mjs`](../scripts/maintenance/update-skills.mjs)）在依赖未镜像或镜像无人引用时直接失败。依赖者的 SKILL.md 还应写明独立安装路径——通常是 `npx skills add <owner/repo>` 装上游，缺位时优雅退化到已安装的 CLI。
+GitHub 源包含本仓库自写的 skill，以及它们引用的第三方 skill 副本。其他第三方 skill 不在本仓库分发，由各客户端自行管理。
 
-## 校验方式
+## 依赖约定
 
-三层布局不变量由布局校验器（`checkRepoLayout`，住在 [`scripts/maintenance/update-skills.mjs`](../scripts/maintenance/update-skills.mjs)，`agent:update-skills` 收尾时执行，单测 [`scripts/maintenance/update-skills.test.mjs`](../scripts/maintenance/update-skills.test.mjs) 持有同套判据）校验：每个 skill 目录都有 frontmatter `name` 与目录同名、`description` 非空的 SKILL.md；GitHub 暴露面恰好是自撰 skill + 被引用的依赖镜像（外加本 README）；`.agents/skills-vendored/` 覆盖其余 lock 条目；`.agents/skills/` 是全软链指令面（出现实体目录说明有人在本仓直接跑了 `skills update`，重跑 `pnpm agent:update-skills` 修复）。
+skills 生态没有依赖机制，因此依赖通过文档声明和机器校验约定：
+
+- 自写的 `SKILL.md` 引用第三方同级 skill 时，该 skill 必须同时放在本仓库的 `skills/` 下，并登记在 `skills-lock.json`。
+- 校验器会检查依赖是否镜像齐全，以及镜像是否确实被引用。校验逻辑在 [`scripts/maintenance/update-skills.mjs`](../scripts/maintenance/update-skills.mjs)。
+- 引用方应在 `SKILL.md` 中写明独立安装方式，通常是 `npx skills add <owner/repo>`。
+
+运行 `pnpm agent:update-skills` 可刷新 skill 布局。
 
 ## 许可
 
