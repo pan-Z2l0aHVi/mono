@@ -408,10 +408,10 @@ const frameworks = ['Vue', 'React', 'Svelte', 'Angular']
 | `placement`          | 下拉 panel 位置，默认从触发器左下角向下展开。                            | `Placement`           | `'bottom-start'` |
 | `no-scroll-lock`     | 打开时不锁定页面滚动。                                                   | `boolean`             | `false`          |
 | `allow-custom-value` | 允许 Enter 提交不在候选中的输入原文。                                    | `boolean`             | `false`          |
-| `overlayContainer`   | 显式指定 panel 挂载的 overlay 容器（property，不是 attribute）。         | `OverlayContainer`    | —                |
+| `overlayContainer`   | 显式指定 panel 挂载的 overlay 容器（property，不是 attribute）。         | `OverlayContainer`    | -                |
 | `name`               | 表单字段名。                                                             | `string`              | `''`             |
 | `aria-label`         | 无障碍名称。                                                             | `string \| null`      | `null`           |
-| `aria-labelledby`    | 无障碍名称引用。                                                         | `string \| undefined` | —                |
+| `aria-labelledby`    | 无障碍名称引用。                                                         | `string \| undefined` | -                |
 | `filter`             | 候选过滤模式：`contains`（默认）、`prefix` 或 `none`。                   | `FilterMode`          | `'contains'`     |
 | `value`              | 当前输入文本，也是表单提交值。                                           | `string`              | `''`             |
 

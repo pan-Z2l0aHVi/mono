@@ -1,6 +1,6 @@
 # Grouped Text
 
-Grouped display: spread a long digit or text string into visible groups while "select and copy" still yields the **original continuous string**. It fits continuous identifiers that have to stay usable after copying — bank card numbers, phone numbers, large amounts.
+Grouped display: spread a long digit or text string into visible groups while "select and copy" still yields the **original continuous string**. It fits continuous identifiers that must stay usable after copying, such as bank card numbers, phone numbers, and large amounts.
 
 ## Samples
 
@@ -92,7 +92,7 @@ const PHONE = '13800138000'
 
 ### Amount
 
-`groups="amount"` groups by 3 from the right, and the decimal point stays with the fraction as its own group: `1234567.89` becomes `1 | 234 | 567 | .89`. The point is content, not typography decoration, so find works against the original string — searching with the point hits, searching without it misses.
+`groups="amount"` groups by 3 from the right, and the decimal point stays with the fraction as its own group: `1234567.89` becomes `1 | 234 | 567 | .89`. The point is content, not typography decoration, so find works against the original string. Searching with the point hits. Searching without it misses.
 
 ```tsx
 export default function Demo() {
@@ -191,7 +191,7 @@ const EMOJI = '\u{1F469}\u200D\u{1F4BB}'
 
 ### Gap width
 
-The gap is `--wui-grouped-text-gap`, defaulting to `0.25em`, one share per group boundary: 4 groups means 3 shares. It scales with font size — 4px at `16px`, 5px at `20px`.
+The gap is `--wui-grouped-text-gap`, defaulting to `0.25em`, one share per group boundary. Four groups mean three shares. It scales with font size: 4px at `16px`, 5px at `20px`.
 
 ```tsx
 const CARD = '6222021234567890'
@@ -283,11 +283,11 @@ const CARD = '6222021234567890'
 
 ### Props
 
-| Name        | Description                                                                                                                                                                                                                                                                                                               | Type                          | Default                       |
-| ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------- | ----------------------------- |
-| `value`     | The original continuous string to display. The component only reads it and never writes back; pass `Number` values as a string.                                                                                                                                                                                           | `string`                      | `''`                          |
-| `groups`    | Group shape: a preset name — `'card'` (every 4), `'phone'` (3-4-4), `'amount'` (3 from the right) — or the cluster count per group, `[4, 4, 4, 4]`. The string form of a size list, `"4,4,4,4"`, is accepted too. The array channel silently drops non-positive sizes, while an invalid string form drops the whole list. | `string \| readonly number[]` | `undefined`, i.e. no grouping |
-| `separator` | The delimiter shown between groups (e.g. `'-'`, `'·'`). Display only: rendered as generated content, never entering the text nodes, so copy, find and selection still yield the original continuous string. See "Separator".                                                                                              | `string`                      | `''`, i.e. not rendered       |
+| Name        | Description                                                                                                                                                                                                                                                                                                                    | Type                          | Default                   |
+| ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ----------------------------- | ------------------------- |
+| `value`     | The original continuous string to display. The component only reads it and never writes back; pass `Number` values as a string.                                                                                                                                                                                                | `string`                      | `''`                      |
+| `groups`    | Group shape: a preset name (`'card'` for every 4, `'phone'` for 3-4-4, `'amount'` for 3 from the right), or the cluster count per group, `[4, 4, 4, 4]`. The string form of a size list, `"4,4,4,4"`, is accepted too. The array channel silently drops non-positive sizes, while an invalid string form drops the whole list. | `string \| readonly number[]` | `undefined` (no grouping) |
+| `separator` | The delimiter shown between groups (e.g. `'-'`, `'·'`). Display only: rendered as generated content, never entering the text nodes, so copy, find and selection still yield the original continuous string. See "Separator".                                                                                                   | `string`                      | `''`, i.e. not rendered   |
 
 ### Behavior
 
@@ -301,7 +301,7 @@ The string spelling of `groups` is accepted on both the attribute and the proper
 
 ### Gap
 
-The gap hangs on the `letter-spacing` of each group's last grapheme cluster. Only the last cluster carries it, so the rest of the group is not widened, and the final group's last cluster carries none, so no spare gap is left at the line end. The spacing belongs to that character's own text fragment, so selecting the fragment paints the spacing too — which is how "groups are visible" and "highlight is continuous" are both obtained.
+The gap hangs on the `letter-spacing` of each group's last grapheme cluster. Only the last cluster carries it, so the rest of the group is not widened, and the final group's last cluster carries none, so no spare gap is left at the line end. The spacing belongs to that character's own text fragment, so selecting the fragment paints the spacing too. This is how "groups are visible" and "highlight is continuous" both hold.
 
 `--wui-grouped-text-gap` defaults to `0.25em` (3.5px at `14px`, 4px at `16px`, 5px at `20px`). Gaps are counted per boundary: `n` groups means `n - 1` shares. A 16-digit card number is about 192px in a 20px monospace font; with `groups="card"` and 3 shares of 5px it is about 207px.
 
@@ -315,13 +315,13 @@ The gap hangs on the `letter-spacing` of each group's last grapheme cluster. Onl
 
 `separator` renders a display delimiter between each group and the next. It hangs on the group element's own `::after`, taking its value through `content: attr(data-separator)`, and never enters the text nodes: the text nodes of the shadow tree still rejoin to exactly `value`, and the separator is only a visible mark layered on top of the layout.
 
-The behavioral boundary follows: copy, in-page find, double-click word selection and per-character selection all work as before — copying and find read the data of the text nodes, and generated content can be neither read nor selected. The selection highlight is never painted on the separator: across a group boundary the highlight lands on the characters on either side, while the separator itself belongs to no text fragment. If that concession is unacceptable, do not use `separator` — it is visible content, not a hideable layout parameter.
+The behavioral boundary follows. Copy, in-page find, double-click word selection, and per-character selection all work as before because copying and find read the data of the text nodes, and generated content cannot be read or selected. The selection highlight is never painted on the separator. Across a group boundary the highlight lands on the characters on either side, while the separator itself belongs to no text fragment. If that tradeoff is unacceptable, do not use `separator`. It is visible content, not a layout parameter you can hide.
 
-Where separators land is decided by the group boundaries: with a single group (`groups` omitted, unreadable, or the whole string as one group) there is no boundary and no separator is rendered; the final group has no next group, so no separator is left at the line end. When omitted or empty, no separator is rendered and the output is node for node identical to not having the attribute at all. Generated content counts toward the accessible name per the accname spec — the separator is visible content, and a screen reader reading it is the expected behavior.
+Group boundaries decide where separators appear. With a single group (`groups` omitted, unreadable, or the whole string as one group) there is no boundary, so no separator is rendered. The final group has no next group, so no separator appears at the line end. When `separator` is omitted or empty, no separator is rendered and the output is identical to not having the attribute at all. Generated content counts toward the accessible name per the accname spec. The separator is visible content, and a screen reader reading it is expected.
 
 ### Copy, find and selection
 
-Copying yields the original: select all and you get the whole string, select only the last group and you get those 4 digits. The component installs no `copy` listener — measured, one replaces even a "last group only" partial copy with the whole string, which is overreaching rewrite.
+Copying yields the original. Select all and you get the whole string. Select only the last group and you get those four digits. The component installs no `copy` listener. In testing, a listener replaced even a "last group only" partial copy with the whole string, which rewrote more than it should.
 
 In-page find works against the original string. `window.find('6222021234567890')` hits (measured in Chromium: the browser search backend pierces open shadow roots) and continuous substrings crossing group boundaries hit as well. Searching an amount with its decimal point hits; dropping the point necessarily misses, because the original string contains it. Double-clicking any digit in a numeric run selects the whole run.
 
@@ -329,26 +329,26 @@ Selection highlight does not break between groups: measured pixel by pixel in Ch
 
 ### Assistive technology
 
-The component provides no `aria-label` and rewrites no text — a screen reader reads the characters themselves. Measured in Chromium: the 4 groups of a card number appear as 7 text nodes in the accessibility tree (the first 3 groups split into a head fragment and a last-character fragment, the final group stays one), identical to the same structure written in light DOM; wrap the component in a `<button>` and the button's computed accessible name is exactly `6222021234567890`. An `aria-label` fallback is therefore unnecessary and would flatten the whole block into a single label, throwing away per-character selection.
+The component provides no `aria-label` and rewrites no text. A screen reader reads the characters themselves. In Chromium, the four groups of a card number appear as seven text nodes in the accessibility tree. The first three groups split into a head fragment and a last-character fragment, and the final group stays as one node. This matches the same structure written in light DOM. Wrap the component in a `<button>` and the button's computed accessible name is exactly `6222021234567890`. An `aria-label` fallback is unnecessary and would flatten the whole block into a single label, removing per-character selection.
 
 Whether VoiceOver and TalkBack pause between groups, or read digit by digit or as a number, was not measured.
 
 ### Typography
 
-The component sets `font-variant-numeric: tabular-nums` on its own `:host`: Chromium is tabular by default, WebKit is not — in the same `0123456789` at 24px system font, `1` is about 4px narrower than `6`. Without this line, the alignment between groups differs across the two engines on the same page.
+The component sets `font-variant-numeric: tabular-nums` on its own `:host`. Chromium uses tabular numerals by default, but WebKit does not. In the same `0123456789` string at 24px system font, `1` is about 4px narrower than `6`. Without this line, group alignment differs across the two engines on the same page.
 
-`white-space: nowrap` is set on `:host` as well: a narrow container makes the string overflow instead of wrapping. Letter-spacing gaps never introduce break opportunities, but placeholder elements, `::after` and `display: inline-block` do — see the next two sections.
+`white-space: nowrap` is set on `:host` as well. A narrow container makes the string overflow instead of wrapping. Letter-spacing gaps never introduce break opportunities, but placeholder elements, `::after`, and `display: inline-block` do. See the next two sections.
 
 Inside `text-align: justify` text flow the spacing gap is not treated as a justification opportunity: measured in Chromium, the line does stretch under `text-align-last: justify` while the component's own width and every group's width stay byte for byte unchanged.
 
 ### Known behavior: gaps made of `margin`
 
-If you would rather not split the characters, the gap can fall back to `margin-inline-start` on each group's first element. The price is that selection highlight breaks at every group boundary with a hole exactly as wide as the gap — measured in Chromium, an 8px gap leaves exactly 3 holes of 8px for 4 groups. This follows from the shape and is not a bug: the blank that `margin` spreads sits outside both text fragments and belongs to neither, and `::selection` can only use properties that do not affect layout, so it cannot be patched. The component itself does not take this route.
+If you would rather not split the characters, the gap can fall back to `margin-inline-start` on each group's first element. The tradeoff is that selection highlight breaks at every group boundary with a hole exactly as wide as the gap. In Chromium, an 8px gap leaves exactly three 8px holes for four groups. This follows from the layout, not from a bug. The blank that `margin` creates sits outside both text fragments and belongs to neither. `::selection` can only use properties that do not affect layout, so it cannot fill that space. The component does not take this route.
 
 ### Shapes that must not be used
 
 - Writing a separator into the text node (`U+0020`, `U+2009`, `U+202F`, `U+200B`): all four codepoints were measured going into the clipboard verbatim, and they break double-click word selection and in-page find.
-- `display: inline-block` groups: in Chromium it makes `window.find` miss a continuous digit string outright — the only grouping shape that breaks in-page find.
+- `display: inline-block` groups: in Chromium it makes `window.find` miss a continuous digit string outright. This is the only grouping shape that breaks in-page find.
 - Empty placeholder `span` or `::after` gaps: the blank cannot carry highlight, and it creates extra break opportunities.
 - A `copy` listener rewriting the selection, `user-select: none`, SVG `textLength`: the first overreaches, the second makes copying unusable, the third breaks highlight per glyph and stays out of normal text layout.
 

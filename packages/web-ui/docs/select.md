@@ -184,7 +184,7 @@ import { useState } from 'react'
 
 export default function Demo() {
   const [count, setCount] = useState(0)
-  const [last, setLast] = useState('—')
+  const [last, setLast] = useState('-')
 
   return (
     <div className="flex flex-col items-start gap-3">
@@ -224,7 +224,7 @@ import type { WebUiEvent, WebUiSelect } from '@greypan/web-ui'
 import { ref } from 'vue'
 
 const count = ref(0)
-const last = ref('—')
+const last = ref('-')
 
 function onOpenChange(event: WebUiEvent<WebUiSelect, 'open-change'>) {
   count.value += 1
@@ -436,7 +436,7 @@ export default function Demo() {
 | `portal`           | Renders the dropdown panel in the theme overlay container.                                                                           | `boolean`           | `false`          |
 | `placement`        | Placement of the dropdown panel; defaults to expanding downward from the trigger's bottom-left corner.                               | `Placement`         | `'bottom-start'` |
 | `no-scroll-lock`   | Does not lock page scrolling while open.                                                                                             | `boolean`           | `false`          |
-| `overlayContainer` | Explicit Portal container (property).                                                                                                | `OverlayContainer`  | —                |
+| `overlayContainer` | Explicit Portal container (property).                                                                                                | `OverlayContainer`  | -                |
 | `name`             | Form field name.                                                                                                                     | `string`            | `''`             |
 | `aria-label`       | Accessible name of the combobox.                                                                                                     | `string \| null`    | `null`           |
 | `value`            | Selected value.                                                                                                                      | `string`            | `''`             |

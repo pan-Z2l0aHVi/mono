@@ -184,7 +184,7 @@ import { useState } from 'react'
 
 export default function Demo() {
   const [count, setCount] = useState(0)
-  const [last, setLast] = useState('—')
+  const [last, setLast] = useState('-')
 
   return (
     <div className="flex flex-col items-start gap-3">
@@ -224,7 +224,7 @@ import type { WebUiEvent, WebUiSelect } from '@greypan/web-ui'
 import { ref } from 'vue'
 
 const count = ref(0)
-const last = ref('—')
+const last = ref('-')
 
 function onOpenChange(event: WebUiEvent<WebUiSelect, 'open-change'>) {
   count.value += 1
@@ -434,7 +434,7 @@ export default function Demo() {
 | `portal`           | 在主题的 overlay 容器中渲染下拉 panel。                                                  | `boolean`           | `false`          |
 | `placement`        | 下拉 panel 位置，默认从触发器左下角向下展开。                                            | `Placement`         | `'bottom-start'` |
 | `no-scroll-lock`   | 打开时不锁定页面滚动。                                                                   | `boolean`           | `false`          |
-| `overlayContainer` | 显式指定 panel 挂载的 overlay 容器（property）。                                         | `OverlayContainer`  | —                |
+| `overlayContainer` | 显式指定 panel 挂载的 overlay 容器（property）。                                         | `OverlayContainer`  | -                |
 | `name`             | 表单字段名。                                                                             | `string`            | `''`             |
 | `aria-label`       | combobox 的可访问名称。                                                                  | `string \| null`    | `null`           |
 | `value`            | 选中值。                                                                                 | `string`            | `''`             |

@@ -398,13 +398,13 @@ const mobile = ref(false)
 | `sidebar-collapsed`   | 桌面端侧边栏的受控收起状态；只收窄桌面端，不影响移动端 Drawer。                                                                                                                  | `boolean`          | `false`   |
 | `sidebar-open`        | 移动端侧边栏 Drawer 受控打开状态。                                                                                                                                               | `boolean`          | `false`   |
 | `header-glow`         | 在 header 插槽内容背后显示装饰性晕染。                                                                                                                                           | `boolean`          | `false`   |
-| `ariaLabels`          | 内置无障碍名（侧栏折叠/展开、调宽、打开导航菜单、主导航）的成组覆盖（property）；未提供的 key 使用内置英文文案，`no-sidebar` 下侧栏相关 key 不参与渲染。                         | `LayoutAriaLabels` | —         |
+| `ariaLabels`          | 内置无障碍名（侧栏折叠/展开、调宽、打开导航菜单、主导航）的成组覆盖（property）；未提供的 key 使用内置英文文案，`no-sidebar` 下侧栏相关 key 不参与渲染。                         | `LayoutAriaLabels` | -         |
 | `mobile`              | 只读计算值：当前视口是否处于移动端断点及以下；写 attribute 会被恢复，property 赋值不生效。                                                                                       | `boolean`          | `false`   |
 | `sidebar-width`       | 桌面端和移动端展开时的侧边栏宽度。                                                                                                                                               | `string`           | `'240px'` |
 | `collapsed-width`     | 桌面端收起时的侧边栏宽度。                                                                                                                                                       | `string`           | `'60px'`  |
 | `sidebar-resizable`   | 启用桌面端侧边栏右边缘拖拽调整宽度。                                                                                                                                             | `boolean`          | `false`   |
-| `sidebar-min-width`   | 拖拽调整的下限（px）；默认为 `collapsed-width`。                                                                                                                                 | `string`           | —         |
-| `sidebar-max-width`   | 拖拽调整的上限（px）；限制在视口一半以内，内置上限优先。                                                                                                                         | `string`           | —         |
+| `sidebar-min-width`   | 拖拽调整的下限（px）；默认为 `collapsed-width`。                                                                                                                                 | `string`           | -         |
+| `sidebar-max-width`   | 拖拽调整的上限（px）；限制在视口一半以内，内置上限优先。                                                                                                                         | `string`           | -         |
 
 ### Events
 

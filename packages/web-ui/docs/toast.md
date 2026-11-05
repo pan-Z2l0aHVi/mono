@@ -15,7 +15,7 @@ import { toast } from '@greypan/web-ui'
 import { useEffect, useState } from 'react'
 
 export default function Demo() {
-  const [last, setLast] = useState('—')
+  const [last, setLast] = useState('-')
 
   useEffect(() => () => toast.clear(), [])
 
@@ -50,7 +50,7 @@ export default function Demo() {
 import { toast } from '@greypan/web-ui'
 import { onBeforeUnmount, ref } from 'vue'
 
-const last = ref('—')
+const last = ref('-')
 
 function showSuccess() {
   last.value = toast.success('Operation succeeded')
@@ -81,7 +81,7 @@ import { toast } from '@greypan/web-ui'
 import { useEffect, useState } from 'react'
 
 export default function Demo() {
-  const [id, setId] = useState('—')
+  const [id, setId] = useState('-')
 
   useEffect(() => () => toast.clear(), [])
 
@@ -125,7 +125,7 @@ export default function Demo() {
 import { toast } from '@greypan/web-ui'
 import { onBeforeUnmount, ref } from 'vue'
 
-const id = ref('—')
+const id = ref('-')
 
 function notify() {
   id.value = toast({
@@ -236,7 +236,7 @@ import { useEffect, useState } from 'react'
 const DEMO_ID = 'demo-close'
 
 export default function Demo() {
-  const [last, setLast] = useState('—')
+  const [last, setLast] = useState('-')
 
   useEffect(() => () => toast.clear(), [])
 
@@ -288,7 +288,7 @@ import { toast } from '@greypan/web-ui'
 import { onBeforeUnmount, ref } from 'vue'
 
 const DEMO_ID = 'demo-close'
-const last = ref('—')
+const last = ref('-')
 
 function create() {
   last.value = `Created ${toast.info('This toast does not close automatically', { id: DEMO_ID, duration: 0 })}`
@@ -314,15 +314,15 @@ onBeforeUnmount(() => toast.clear())
 
 | Name        | Description                                                              | Type            | Default        |
 | ----------- | ------------------------------------------------------------------------ | --------------- | -------------- |
-| `message`   | Notification text.                                                       | `string`        | —              |
+| `message`   | Notification text.                                                       | `string`        | -              |
 | `type`      | Type: `success`, `info`, `warning`, `error`.                             | `ToastType`     | `'info'`       |
 | `duration`  | Auto-close time (ms); 0 means no auto-close; `error` defaults to `5000`. | `number`        | `3000`         |
 | `closable`  | Shows the close button.                                                  | `boolean`       | `true`         |
 | `id`        | Merge key: another call with the same `id` updates that toast.           | `string`        | Auto-generated |
 | `heading`   | Bold title.                                                              | `string`        | `''`           |
 | `position`  | Screen position.                                                         | `ToastPosition` | `'top-right'`  |
-| `target`    | Used to find the nearest theme overlay container.                        | `Element`       | —              |
-| `container` | Explicit mount container (highest precedence).                           | `HTMLElement`   | —              |
+| `target`    | Used to find the nearest theme overlay container.                        | `Element`       | -              |
+| `container` | Explicit mount container (highest precedence).                           | `HTMLElement`   | -              |
 
 ### Methods
 

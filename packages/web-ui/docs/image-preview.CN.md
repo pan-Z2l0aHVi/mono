@@ -356,11 +356,11 @@ function open() {
 
 | 名称              | 说明                                                                                       | 类型                     | 默认值  |
 | ----------------- | ------------------------------------------------------------------------------------------ | ------------------------ | ------- |
-| `images`          | 图片列表，至少一项；每项为 `{ src, alt? }`。                                               | `ImagePreviewItem[]`     | —       |
+| `images`          | 图片列表，至少一项；每项为 `{ src, alt? }`。                                               | `ImagePreviewItem[]`     | -       |
 | `index`           | 初始图片索引，越界时钳制到有效区间。                                                       | `number`                 | `0`     |
 | `loop`            | 首尾循环切换。                                                                             | `boolean`                | `true`  |
-| `target`          | 用于解析最近主题的 overlay 容器的触发元素。                                                | `Element`                | —       |
-| `container`       | 显式挂载容器，优先级高于主题作用域。                                                       | `HTMLElement`            | —       |
+| `target`          | 用于解析最近主题的 overlay 容器的触发元素。                                                | `Element`                | -       |
+| `container`       | 显式挂载容器，优先级高于主题作用域。                                                       | `HTMLElement`            | -       |
 | `nav`             | 展示上一张 / 下一张 button。                                                               | `boolean`                | `false` |
 | `toolbar`         | 展示缩放工具条。                                                                           | `boolean`                | `false` |
 | `closable`        | 展示关闭 button。                                                                          | `boolean`                | `false` |
@@ -368,7 +368,7 @@ function open() {
 | `swipe`           | 1x 下允许左右滑动切图。                                                                    | `boolean`                | `false` |
 | `noScrollLock`    | 打开期间不锁定页面滚动。                                                                   | `boolean`                | `false` |
 | `noBackdropClose` | 点击图片以外的空白区域不关闭。                                                             | `boolean`                | `false` |
-| `ariaLabels`      | 按组覆盖内置无障碍名称（关闭 / 前后切换 / 缩放 / 重置）；未提供的 key 回退到内置英文文案。 | `ImagePreviewAriaLabels` | —       |
+| `ariaLabels`      | 按组覆盖内置无障碍名称（关闭 / 前后切换 / 缩放 / 重置）；未提供的 key 回退到内置英文文案。 | `ImagePreviewAriaLabels` | -       |
 
 ### Methods
 

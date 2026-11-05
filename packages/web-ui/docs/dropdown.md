@@ -154,7 +154,7 @@ import { useCallback, useState } from 'react'
 
 export default function Demo() {
   const [open, setOpen] = useState(false)
-  const [last, setLast] = useState('—')
+  const [last, setLast] = useState('-')
 
   // Menu items move into the portal panel when opened, so React's onClick delegation at the root container never sees them; attach a native click here instead.
   const handleItemRef = useCallback((item: WebUiDropdownItem | null) => {
@@ -223,7 +223,7 @@ export default function Demo() {
 import { ref } from 'vue'
 
 const open = ref(false)
-const last = ref('—')
+const last = ref('-')
 
 function select(label: string) {
   last.value = label

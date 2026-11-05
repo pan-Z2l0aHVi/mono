@@ -15,7 +15,7 @@ import { useState } from 'react'
 
 export default function Demo() {
   const [count, setCount] = useState(0)
-  const [last, setLast] = useState('—')
+  const [last, setLast] = useState('-')
 
   return (
     <div className="flex w-full max-w-md flex-col items-start gap-3">
@@ -62,7 +62,7 @@ import type { WebUiEvent, WebUiPopover } from '@greypan/web-ui'
 import { ref } from 'vue'
 
 const count = ref(0)
-const last = ref('—')
+const last = ref('-')
 
 function onOpenChange(event: WebUiEvent<WebUiPopover, 'open-change'>) {
   count.value += 1
@@ -79,7 +79,7 @@ function onOpenChange(event: WebUiEvent<WebUiPopover, 'open-change'>) {
 import { useState } from 'react'
 
 export default function Demo() {
-  const [last, setLast] = useState('—')
+  const [last, setLast] = useState('-')
 
   return (
     <div className="flex w-full max-w-md flex-col items-start gap-3">
@@ -113,7 +113,7 @@ export default function Demo() {
 <script setup lang="ts">
 import { ref } from 'vue'
 
-const last = ref('—')
+const last = ref('-')
 </script>
 ```
 
@@ -125,7 +125,7 @@ const last = ref('—')
 import { useState } from 'react'
 
 export default function Demo() {
-  const [last, setLast] = useState('—')
+  const [last, setLast] = useState('-')
 
   return (
     <div className="flex w-full max-w-md flex-col items-start gap-3">
@@ -169,7 +169,7 @@ export default function Demo() {
 <script setup lang="ts">
 import { ref } from 'vue'
 
-const last = ref('—')
+const last = ref('-')
 </script>
 ```
 
@@ -273,7 +273,7 @@ function close() {
 | `offset`           | 与锚点的距离（px）。                                                                                         | `number`           | `8`        |
 | `trigger`          | 触发手势集合，空格分隔：`click`、`hover`、`focus`、`manual`；property 通道也可直接给数组，读回始终是字符串。 | `string`           | `'click'`  |
 | `portal`           | 在主题的 overlay 容器中渲染。                                                                                | `boolean`          | `false`    |
-| `overlayContainer` | 显式指定 panel 挂载的 overlay 容器（property）。                                                             | `OverlayContainer` | —          |
+| `overlayContainer` | 显式指定 panel 挂载的 overlay 容器（property）。                                                             | `OverlayContainer` | -          |
 
 ### Events
 

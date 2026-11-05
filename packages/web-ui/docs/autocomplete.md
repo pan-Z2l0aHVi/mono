@@ -412,10 +412,10 @@ const frameworks = ['Vue', 'React', 'Svelte', 'Angular']
 | `placement`          | Placement of the dropdown panel; defaults to expanding downward from the trigger's bottom-left corner.          | `Placement`           | `'bottom-start'` |
 | `no-scroll-lock`     | Does not lock page scrolling while open.                                                                        | `boolean`             | `false`          |
 | `allow-custom-value` | Allows Enter to submit input text that is not among the candidates.                                             | `boolean`             | `false`          |
-| `overlayContainer`   | Explicit portal container (property, not attribute).                                                            | `OverlayContainer`    | —                |
+| `overlayContainer`   | Explicit portal container (property, not attribute).                                                            | `OverlayContainer`    | -                |
 | `name`               | Form field name.                                                                                                | `string`              | `''`             |
 | `aria-label`         | Accessible name.                                                                                                | `string \| null`      | `null`           |
-| `aria-labelledby`    | Accessible name reference.                                                                                      | `string \| undefined` | —                |
+| `aria-labelledby`    | Accessible name reference.                                                                                      | `string \| undefined` | -                |
 | `filter`             | Candidate filtering mode: `contains` (default), `prefix`, or `none`.                                            | `FilterMode`          | `'contains'`     |
 | `value`              | Current input text, also the form-submitted value.                                                              | `string`              | `''`             |
 

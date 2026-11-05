@@ -175,7 +175,7 @@ export default function Demo() {
 | `direction`       | 成员排列方向，也是组容器的 `aria-orientation`。                | `'horizontal' \| 'vertical'` | `'vertical'` |
 | `value`           | 当前选中的值，也是成员选中态的唯一来源。                       | `string`                     | `''`         |
 | `aria-label`      | 组的无障碍名称。                                               | `string \| null`             | `null`       |
-| `aria-labelledby` | 引用提供组无障碍名称的元素 ID。                                | `string \| undefined`        | —            |
+| `aria-labelledby` | 引用提供组无障碍名称的元素 ID。                                | `string \| undefined`        | -            |
 
 ### Events
 

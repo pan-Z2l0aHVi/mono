@@ -15,7 +15,7 @@ import { useState } from 'react'
 
 export default function Demo() {
   const [count, setCount] = useState(0)
-  const [last, setLast] = useState('—')
+  const [last, setLast] = useState('-')
 
   return (
     <div className="flex w-full max-w-md flex-col items-start gap-3">
@@ -62,7 +62,7 @@ import type { WebUiEvent, WebUiPopover } from '@greypan/web-ui'
 import { ref } from 'vue'
 
 const count = ref(0)
-const last = ref('—')
+const last = ref('-')
 
 function onOpenChange(event: WebUiEvent<WebUiPopover, 'open-change'>) {
   count.value += 1
@@ -79,7 +79,7 @@ function onOpenChange(event: WebUiEvent<WebUiPopover, 'open-change'>) {
 import { useState } from 'react'
 
 export default function Demo() {
-  const [last, setLast] = useState('—')
+  const [last, setLast] = useState('-')
 
   return (
     <div className="flex w-full max-w-md flex-col items-start gap-3">
@@ -117,7 +117,7 @@ export default function Demo() {
 <script setup lang="ts">
 import { ref } from 'vue'
 
-const last = ref('—')
+const last = ref('-')
 </script>
 ```
 
@@ -129,7 +129,7 @@ const last = ref('—')
 import { useState } from 'react'
 
 export default function Demo() {
-  const [last, setLast] = useState('—')
+  const [last, setLast] = useState('-')
 
   return (
     <div className="flex w-full max-w-md flex-col items-start gap-3">
@@ -177,7 +177,7 @@ export default function Demo() {
 <script setup lang="ts">
 import { ref } from 'vue'
 
-const last = ref('—')
+const last = ref('-')
 </script>
 ```
 
@@ -283,7 +283,7 @@ function close() {
 | `offset`           | Distance from the anchor (px).                                                                                                                               | `number`           | `8`        |
 | `trigger`          | Trigger gesture set, space separated: `click`, `hover`, `focus`, `manual`; the property channel also accepts an array, and it always reads back as a string. | `string`           | `'click'`  |
 | `portal`           | Renders in the theme overlay container.                                                                                                                      | `boolean`          | `false`    |
-| `overlayContainer` | Explicit Portal container (property).                                                                                                                        | `OverlayContainer` | —          |
+| `overlayContainer` | Explicit Portal container (property).                                                                                                                        | `OverlayContainer` | -          |
 
 ### Events
 
@@ -313,7 +313,7 @@ Each gesture in `trigger` wires up its own events, and the gestures combine free
 - `click`: clicking the trigger toggles the panel; it closes when you click outside the panel, or once focus leaves the trigger and the panel.
 - `hover`: the pointer entering the trigger opens it after a 100ms delay; leaving the trigger and the panel closes it after 100ms. Touch pointers do not count.
 - `focus`: keyboard focus (`:focus-visible`) opens it immediately; it closes once focus leaves the trigger and the panel.
-- `manual`: nothing closes it automatically — clicking outside, losing focus, and Escape all leave it open.
+- `manual`: nothing closes it automatically. Clicking outside, losing focus, and Escape all leave it open.
 
 Escape is arbitrated by the overlay stack: every value except `manual` closes on it, and `manual` swallows the key so it does not reach an outer overlay. Both the trigger click and `show()` / `close()` change `open`; programmatic calls do not dispatch `open-change`.
 

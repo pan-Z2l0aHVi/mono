@@ -17,7 +17,7 @@ import { useState } from 'react'
 
 export default function Demo() {
   const [count, setCount] = useState(0)
-  const [last, setLast] = useState('—')
+  const [last, setLast] = useState('-')
 
   return (
     <div className="flex w-full max-w-md flex-col items-start gap-3">
@@ -55,7 +55,7 @@ import type { WebUiEvent, WebUiTooltip } from '@greypan/web-ui'
 import { ref } from 'vue'
 
 const count = ref(0)
-const last = ref('—')
+const last = ref('-')
 
 function onOpenChange(event: WebUiEvent<WebUiTooltip, 'open-change'>) {
   count.value += 1
@@ -75,7 +75,7 @@ import { lucideInfo } from '@greypan/web-ui/icons'
 import { useState } from 'react'
 
 export default function Demo() {
-  const [last, setLast] = useState('—')
+  const [last, setLast] = useState('-')
 
   return (
     <div className="flex w-full max-w-md flex-col items-start gap-3">
@@ -126,7 +126,7 @@ export default function Demo() {
 import { lucideInfo } from '@greypan/web-ui/icons'
 import { ref } from 'vue'
 
-const last = ref('—')
+const last = ref('-')
 </script>
 ```
 
@@ -138,7 +138,7 @@ const last = ref('—')
 import { useState } from 'react'
 
 export default function Demo() {
-  const [last, setLast] = useState('—')
+  const [last, setLast] = useState('-')
 
   return (
     <div className="flex w-full max-w-md flex-col items-start gap-3">
@@ -188,7 +188,7 @@ export default function Demo() {
 <script setup lang="ts">
 import { ref } from 'vue'
 
-const last = ref('—')
+const last = ref('-')
 </script>
 ```
 
@@ -201,7 +201,7 @@ import { useState } from 'react'
 
 export default function Demo() {
   const [open, setOpen] = useState(false)
-  const [last, setLast] = useState('—')
+  const [last, setLast] = useState('-')
 
   return (
     <div className="flex w-full max-w-md flex-col items-start gap-3">
@@ -252,7 +252,7 @@ export default function Demo() {
 import { ref } from 'vue'
 
 const open = ref(false)
-const last = ref('—')
+const last = ref('-')
 </script>
 ```
 
@@ -270,9 +270,9 @@ const last = ref('—')
 | `offset`           | 与 trigger 的距离（px）。                                                                                    | `number`           | `6`             |
 | `content`          | 提示文本，是 `content` 插槽的纯文本替代。                                                                    | `string`           | `''`            |
 | `open`             | 可见性。                                                                                                     | `boolean`          | `false`         |
-| `isOpen`           | 当前是否可见（只读）。                                                                                       | `boolean`          | —               |
+| `isOpen`           | 当前是否可见（只读）。                                                                                       | `boolean`          | -               |
 | `portal`           | 在主题的 overlay 容器中渲染。                                                                                | `boolean`          | `false`         |
-| `overlayContainer` | 显式指定 panel 挂载的 overlay 容器（property）。                                                             | `OverlayContainer` | —               |
+| `overlayContainer` | 显式指定 panel 挂载的 overlay 容器（property）。                                                             | `OverlayContainer` | -               |
 
 ### Events
 

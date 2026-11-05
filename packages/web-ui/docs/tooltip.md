@@ -17,7 +17,7 @@ import { useState } from 'react'
 
 export default function Demo() {
   const [count, setCount] = useState(0)
-  const [last, setLast] = useState('—')
+  const [last, setLast] = useState('-')
 
   return (
     <div className="flex w-full max-w-md flex-col items-start gap-3">
@@ -55,7 +55,7 @@ import type { WebUiEvent, WebUiTooltip } from '@greypan/web-ui'
 import { ref } from 'vue'
 
 const count = ref(0)
-const last = ref('—')
+const last = ref('-')
 
 function onOpenChange(event: WebUiEvent<WebUiTooltip, 'open-change'>) {
   count.value += 1
@@ -75,7 +75,7 @@ import { lucideInfo } from '@greypan/web-ui/icons'
 import { useState } from 'react'
 
 export default function Demo() {
-  const [last, setLast] = useState('—')
+  const [last, setLast] = useState('-')
 
   return (
     <div className="flex w-full max-w-md flex-col items-start gap-3">
@@ -126,7 +126,7 @@ export default function Demo() {
 import { lucideInfo } from '@greypan/web-ui/icons'
 import { ref } from 'vue'
 
-const last = ref('—')
+const last = ref('-')
 </script>
 ```
 
@@ -138,7 +138,7 @@ const last = ref('—')
 import { useState } from 'react'
 
 export default function Demo() {
-  const [last, setLast] = useState('—')
+  const [last, setLast] = useState('-')
 
   return (
     <div className="flex w-full max-w-md flex-col items-start gap-3">
@@ -188,20 +188,20 @@ export default function Demo() {
 <script setup lang="ts">
 import { ref } from 'vue'
 
-const last = ref('—')
+const last = ref('-')
 </script>
 ```
 
 ### Click trigger
 
-`trigger` defaults to `hover focus`: pointer hover and keyboard focus both show the hint. Set `trigger="click"` and it toggles on a trigger click and closes when you click outside it; set `trigger="manual"` and only the `open` property moves it — pointer, focus, and click all stop triggering. Gestures can be written side by side: `trigger="hover focus click"`.
+`trigger` defaults to `hover focus`. Pointer hover and keyboard focus both show the hint. Set `trigger="click"` and it toggles on a trigger click and closes when you click outside it. Set `trigger="manual"` and only the `open` property moves it. Pointer, focus, and click do not trigger it. You can list gestures together: `trigger="hover focus click"`.
 
 ```tsx
 import { useState } from 'react'
 
 export default function Demo() {
   const [open, setOpen] = useState(false)
-  const [last, setLast] = useState('—')
+  const [last, setLast] = useState('-')
 
   return (
     <div className="flex w-full max-w-md flex-col items-start gap-3">
@@ -252,7 +252,7 @@ export default function Demo() {
 import { ref } from 'vue'
 
 const open = ref(false)
-const last = ref('—')
+const last = ref('-')
 </script>
 ```
 
@@ -270,9 +270,9 @@ const last = ref('—')
 | `offset`           | Distance from the trigger (px).                                                                                                                              | `number`           | `6`             |
 | `content`          | Hint text, the plain-text alternative to the `content` slot.                                                                                                 | `string`           | `''`            |
 | `open`             | Visibility.                                                                                                                                                  | `boolean`          | `false`         |
-| `isOpen`           | Whether the hint is currently visible (read-only).                                                                                                           | `boolean`          | —               |
+| `isOpen`           | Whether the hint is currently visible (read-only).                                                                                                           | `boolean`          | -               |
 | `portal`           | Renders in the theme overlay container.                                                                                                                      | `boolean`          | `false`         |
-| `overlayContainer` | Explicit Portal container (property).                                                                                                                        | `OverlayContainer` | —               |
+| `overlayContainer` | Explicit Portal container (property).                                                                                                                        | `OverlayContainer` | -               |
 
 ### Events
 
@@ -294,7 +294,7 @@ Each gesture in `trigger` wires up its own events, and the gestures combine free
 - `hover`: the pointer entering shows the hint after `show-delay`, leaving hides it after `hide-delay`. Touch pointers do not count.
 - `focus`: keyboard focus (`:focus-visible`) shows it right away without an entrance animation; losing focus hides it immediately.
 - `click`: clicking the trigger toggles the hint and clicking outside closes it; keyboard activation (Enter / Space) is treated like focus, with no entrance animation.
-- `manual`: no gesture moves it — only the `open` property does.
+- `manual`: no gesture moves it. Only the `open` property does.
 
 When `manual` appears in `trigger` the whole value acts as `manual` alone; when it names no known gesture it falls back to the default `hover focus`.
 

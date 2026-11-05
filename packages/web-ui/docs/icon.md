@@ -314,10 +314,10 @@ import { iconGallery } from '@greypan/web-ui/icons'
 
 | Name    | Description                                                                       | Type          | Default |
 | ------- | --------------------------------------------------------------------------------- | ------------- | ------- |
-| `icon`  | Iconify data object; passed only as a property, and an icon name is not accepted. | `IconifyIcon` | —       |
+| `icon`  | Iconify data object; passed only as a property, and an icon name is not accepted. | `IconifyIcon` | -       |
 | `spin`  | Rotation animation.                                                               | `boolean`     | `false` |
 | `size`  | Pixel size, written into both the `<svg>`'s `width` and `height`.                 | `number`      | `18`    |
-| `color` | Icon color; when empty, `--wui-icon-color` is read first, then the text color.    | `string`      | —       |
+| `color` | Icon color; when empty, `--wui-icon-color` is read first, then the text color.    | `string`      | -       |
 
 ### Behavior
 

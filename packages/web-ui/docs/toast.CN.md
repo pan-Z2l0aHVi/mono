@@ -15,7 +15,7 @@ import { toast } from '@greypan/web-ui'
 import { useEffect, useState } from 'react'
 
 export default function Demo() {
-  const [last, setLast] = useState('—')
+  const [last, setLast] = useState('-')
 
   useEffect(() => () => toast.clear(), [])
 
@@ -50,7 +50,7 @@ export default function Demo() {
 import { toast } from '@greypan/web-ui'
 import { onBeforeUnmount, ref } from 'vue'
 
-const last = ref('—')
+const last = ref('-')
 
 function showSuccess() {
   last.value = toast.success('操作成功')
@@ -81,7 +81,7 @@ import { toast } from '@greypan/web-ui'
 import { useEffect, useState } from 'react'
 
 export default function Demo() {
-  const [id, setId] = useState('—')
+  const [id, setId] = useState('-')
 
   useEffect(() => () => toast.clear(), [])
 
@@ -125,7 +125,7 @@ export default function Demo() {
 import { toast } from '@greypan/web-ui'
 import { onBeforeUnmount, ref } from 'vue'
 
-const id = ref('—')
+const id = ref('-')
 
 function notify() {
   id.value = toast({
@@ -236,7 +236,7 @@ import { useEffect, useState } from 'react'
 const DEMO_ID = 'demo-close'
 
 export default function Demo() {
-  const [last, setLast] = useState('—')
+  const [last, setLast] = useState('-')
 
   useEffect(() => () => toast.clear(), [])
 
@@ -288,7 +288,7 @@ import { toast } from '@greypan/web-ui'
 import { onBeforeUnmount, ref } from 'vue'
 
 const DEMO_ID = 'demo-close'
-const last = ref('—')
+const last = ref('-')
 
 function create() {
   last.value = `创建 ${toast.info('这条 toast 不会自动关闭', { id: DEMO_ID, duration: 0 })}`
@@ -314,15 +314,15 @@ onBeforeUnmount(() => toast.clear())
 
 | 名称        | 说明                                                        | 类型            | 默认值        |
 | ----------- | ----------------------------------------------------------- | --------------- | ------------- |
-| `message`   | 通知文本。                                                  | `string`        | —             |
+| `message`   | 通知文本。                                                  | `string`        | -             |
 | `type`      | 类型：`success`、`info`、`warning`、`error`。               | `ToastType`     | `'info'`      |
 | `duration`  | 自动关闭时间（ms），0 表示不自动关闭；`error` 默认 `5000`。 | `number`        | `3000`        |
 | `closable`  | 展示关闭 button。                                           | `boolean`       | `true`        |
 | `id`        | 合并键：同一个 `id` 再次调用是更新那一条。                  | `string`        | 自动生成      |
 | `heading`   | 粗体标题。                                                  | `string`        | `''`          |
 | `position`  | 屏幕位置。                                                  | `ToastPosition` | `'top-right'` |
-| `target`    | 用于查找最近主题的 overlay 容器。                           | `Element`       | —             |
-| `container` | 显式挂载容器（最高优先级）。                                | `HTMLElement`   | —             |
+| `target`    | 用于查找最近主题的 overlay 容器。                           | `Element`       | -             |
+| `container` | 显式挂载容器（最高优先级）。                                | `HTMLElement`   | -             |
 
 ### Methods
 

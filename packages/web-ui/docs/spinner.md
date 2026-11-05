@@ -209,7 +209,7 @@ export default function Demo() {
 | `size`        | Instance size; written to the instance's `size` only when truthy, so `0` is ignored and the default `24` remains. | `number` | `24`    |
 | `description` | Instance description text, using the attribute channel; an empty string means unset.                              | `string` | `''`    |
 | `color`       | Instance indicator color, a CSS color value; an empty string means unset.                                         | `string` | `''`    |
-| `duration`    | When greater than `0`, calls `hide()` automatically on expiry; when omitted or `0` the instance stays up.         | `number` | —       |
+| `duration`    | When greater than `0`, calls `hide()` automatically on expiry; when omitted or `0` the instance stays up.         | `number` | -       |
 
 ### Methods
 

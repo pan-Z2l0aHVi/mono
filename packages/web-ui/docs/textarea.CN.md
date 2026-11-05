@@ -456,12 +456,12 @@ export default function Demo() {
 | `aria-clear-label` | 清除 button 的无障碍名称；未设置时回退内置英文文案（`Clear`）。          | `string`              | `''`    |
 | `borderless`       | ghost 形态：移除边框、背景、背景模糊与阴影，保留 padding 与 focus ring。 | `boolean`             | `false` |
 | `rows`             | 显示行数，也是自动高度的起点。                                           | `number`              | `3`     |
-| `minlength`        | 最小长度校验。                                                           | `number \| undefined` | —       |
-| `maxlength`        | 最大长度校验。                                                           | `number \| undefined` | —       |
+| `minlength`        | 最小长度校验。                                                           | `number \| undefined` | -       |
+| `maxlength`        | 最大长度校验。                                                           | `number \| undefined` | -       |
 | `autosize`         | 自动调整高度，同时强制 `resize: none`。                                  | `boolean`             | `false` |
 | `max-height`       | 自动高度上限（px），0 表示不限制。                                       | `number`              | `0`     |
 | `aria-label`       | 无障碍 label。                                                           | `string \| null`      | `null`  |
-| `aria-labelledby`  | 无障碍 label 引用。                                                      | `string \| undefined` | —       |
+| `aria-labelledby`  | 无障碍 label 引用。                                                      | `string \| undefined` | -       |
 | `value`            | 输入值，也是表单提交值。                                                 | `string`              | `''`    |
 
 ### Events

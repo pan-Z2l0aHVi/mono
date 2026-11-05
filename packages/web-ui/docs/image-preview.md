@@ -356,11 +356,11 @@ function open() {
 
 | Name              | Description                                                                                                                                                | Type                     | Default |
 | ----------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------ | ------- |
-| `images`          | Image list, at least one item; each item is `{ src, alt? }`.                                                                                               | `ImagePreviewItem[]`     | —       |
+| `images`          | Image list, at least one item; each item is `{ src, alt? }`.                                                                                               | `ImagePreviewItem[]`     | -       |
 | `index`           | Initial image index; clamped to the valid range when out of bounds.                                                                                        | `number`                 | `0`     |
 | `loop`            | Wrap-around switching between the first and last images.                                                                                                   | `boolean`                | `true`  |
-| `target`          | Trigger element used to resolve the nearest theme overlay container.                                                                                       | `Element`                | —       |
-| `container`       | Explicit mount container; takes precedence over the theme scope.                                                                                           | `HTMLElement`            | —       |
+| `target`          | Trigger element used to resolve the nearest theme overlay container.                                                                                       | `Element`                | -       |
+| `container`       | Explicit mount container; takes precedence over the theme scope.                                                                                           | `HTMLElement`            | -       |
 | `nav`             | Shows the previous / next buttons.                                                                                                                         | `boolean`                | `false` |
 | `toolbar`         | Shows the zoom toolbar.                                                                                                                                    | `boolean`                | `false` |
 | `closable`        | Shows the close button.                                                                                                                                    | `boolean`                | `false` |
@@ -368,7 +368,7 @@ function open() {
 | `swipe`           | Allows left/right swipe to switch images at 1x.                                                                                                            | `boolean`                | `false` |
 | `noScrollLock`    | Does not lock page scrolling while open.                                                                                                                   | `boolean`                | `false` |
 | `noBackdropClose` | Clicking outside the image does not close.                                                                                                                 | `boolean`                | `false` |
-| `ariaLabels`      | Grouped overrides for the built-in accessible names (close / previous / next / zoom / reset); keys without a value fall back to the built-in English copy. | `ImagePreviewAriaLabels` | —       |
+| `ariaLabels`      | Grouped overrides for the built-in accessible names (close / previous / next / zoom / reset); keys without a value fall back to the built-in English copy. | `ImagePreviewAriaLabels` | -       |
 
 ### Methods
 
