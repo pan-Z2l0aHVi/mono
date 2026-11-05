@@ -49,6 +49,15 @@ const meta = [
     {
       label: 'tr',
       children: [
+      { label: 'td', content: "<code>isOpen</code>" },
+      { label: 'td', content: "Whether the panel is currently open (read-only)." },
+      { label: 'td', content: "<code>boolean</code>" },
+      { label: 'td', content: "—" }
+      ]
+    },
+    {
+      label: 'tr',
+      children: [
       { label: 'td', content: "<code>disabled</code>" },
       { label: 'td', content: "Disabled state." },
       { label: 'td', content: "<code>boolean</code>" },

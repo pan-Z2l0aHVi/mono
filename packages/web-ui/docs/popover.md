@@ -256,6 +256,7 @@ const open = ref(false)
 | Name               | Description                                                                                                                              | Type               | Default    |
 | ------------------ | ---------------------------------------------------------------------------------------------------------------------------------------- | ------------------ | ---------- |
 | `open`             | Popover visibility.                                                                                                                      | `boolean`          | `false`    |
+| `isOpen`           | Whether the panel is currently open (read-only).                                                                                         | `boolean`          | —          |
 | `disabled`         | Disabled state.                                                                                                                          | `boolean`          | `false`    |
 | `placement`        | Panel placement; defaults to `bottom`.                                                                                                   | `Placement`        | `'bottom'` |
 | `offset`           | Distance from the anchor (px).                                                                                                           | `number`           | `8`        |

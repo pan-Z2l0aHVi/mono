@@ -55,7 +55,7 @@ const meta = [
       { label: 'td', content: "<code>trigger</code>" },
       { label: 'td', content: "触发手势集合，空格或逗号分隔：<code>click</code>、<code>hover</code>、<code>focus</code>、<code>none</code>；读回为逗号分隔的规范串。" },
       { label: 'td', content: "<code>string</code>" },
-      { label: 'td', content: "<code>'hover focus'</code>" }
+      { label: 'td', content: "<code>'hover,focus'</code>" }
       ]
     },
     {

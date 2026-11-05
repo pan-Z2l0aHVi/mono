@@ -55,7 +55,7 @@ const meta = [
       { label: 'td', content: "<code>trigger</code>" },
       { label: 'td', content: "Trigger gesture set, separated by spaces or commas: <code>click</code>, <code>hover</code>, <code>focus</code>, <code>none</code>; reads back as a comma-separated canonical string." },
       { label: 'td', content: "<code>string</code>" },
-      { label: 'td', content: "<code>'hover focus'</code>" }
+      { label: 'td', content: "<code>'hover,focus'</code>" }
       ]
     },
     {

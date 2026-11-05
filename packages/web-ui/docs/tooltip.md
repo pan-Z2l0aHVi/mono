@@ -277,7 +277,7 @@ const last = ref('—')
 | Name               | Description                                                                                                                              | Type               | Default         |
 | ------------------ | ---------------------------------------------------------------------------------------------------------------------------------------- | ------------------ | --------------- |
 | `placement`        | Tooltip placement; defaults to `top`.                                                                                                    | `Placement`        | `'top'`         |
-| `trigger`          | Trigger gesture set, separated by spaces or commas: `click`, `hover`, `focus`, `none`; reads back as a comma-separated canonical string. | `string`           | `'hover focus'` |
+| `trigger`          | Trigger gesture set, separated by spaces or commas: `click`, `hover`, `focus`, `none`; reads back as a comma-separated canonical string. | `string`           | `'hover,focus'` |
 | `show-delay`       | Hover-open delay (milliseconds); only hover-originated opens use it.                                                                     | `number`           | `200`           |
 | `hide-delay`       | Hover-close delay (milliseconds); only hover-originated closes use it.                                                                   | `number`           | `100`           |
 | `disabled`         | Disabled state.                                                                                                                          | `boolean`          | `false`         |

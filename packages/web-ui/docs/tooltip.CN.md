@@ -277,7 +277,7 @@ const last = ref('—')
 | 名称               | 说明                                                                                      | 类型               | 默认值          |
 | ------------------ | ----------------------------------------------------------------------------------------- | ------------------ | --------------- |
 | `placement`        | tooltip 位置，默认 `top`。                                                                | `Placement`        | `'top'`         |
-| `trigger`          | 触发手势集合，空格或逗号分隔：`click`、`hover`、`focus`、`none`；读回为逗号分隔的规范串。 | `string`           | `'hover focus'` |
+| `trigger`          | 触发手势集合，空格或逗号分隔：`click`、`hover`、`focus`、`none`；读回为逗号分隔的规范串。 | `string`           | `'hover,focus'` |
 | `show-delay`       | 悬停打开的延迟（毫秒）；只影响 hover 来源。                                               | `number`           | `200`           |
 | `hide-delay`       | 悬停收起的延迟（毫秒）；只影响 hover 来源。                                               | `number`           | `100`           |
 | `disabled`         | 禁用状态。                                                                                | `boolean`          | `false`         |

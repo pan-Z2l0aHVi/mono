@@ -49,6 +49,15 @@ const meta = [
     {
       label: 'tr',
       children: [
+      { label: 'td', content: "<code>isOpen</code>" },
+      { label: 'td', content: "当前是否打开（只读）。" },
+      { label: 'td', content: "<code>boolean</code>" },
+      { label: 'td', content: "—" }
+      ]
+    },
+    {
+      label: 'tr',
+      children: [
       { label: 'td', content: "<code>disabled</code>" },
       { label: 'td', content: "禁用状态。" },
       { label: 'td', content: "<code>boolean</code>" },
