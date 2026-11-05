@@ -16,7 +16,7 @@ import { setViewport } from '@/shared/test-utils/viewport'
  * 表面 token 的归属与 elevation 关系守卫。
  *
  * 断言的全是**关系**，不含颜色字面量：某个 panel 消费哪一枚表面 token、合成后比 page 亮多少档、
- * 激活行落在 accent 上。主题改调色板（连同 media 块与双语文档一起改）这些都应成立。
+ * 激活行落在中性状态层上。主题改调色板（连同 media 块与双语文档一起改）这些都应成立。
  *
  * 为什么必须是关系而不是值：`theme-token-parity.spec.ts` 只在 fallback 字面量与 theme 定义
  * 不一致时才拦。把 layout 的 sidebar 改去消费 `--wui-color-surface-overlay`、同时把 fallback 写成
@@ -192,7 +192,7 @@ describe('表面 token 归属与 elevation（浏览器）', () => {
     }
   })
 
-  it('激活行落在 accent 上，前景取 on-accent', async () => {
+  it('激活行取中性状态层，前景保持正文色', async () => {
     const theme = await createTheme('dark')
     const select = await createOpenSelectIn(theme)
 
@@ -204,7 +204,7 @@ describe('表面 token 归属与 elevation（浏览器）', () => {
 
     const label = panelOf(activeRow, '.option-label')
     const style = getComputedStyle(label)
-    expect(style.backgroundColor, '激活行底色应取 accent').toBe(resolveToken(theme, '--wui-color-accent'))
-    expect(style.color, '激活行前景应取 on-accent').toBe(resolveToken(theme, '--wui-color-on-accent'))
+    expect(style.backgroundColor, '激活行底色应取 border 状态层').toBe(resolveToken(theme, '--wui-color-border'))
+    expect(style.color, '激活行前景应保持正文色').toBe(resolveToken(theme, '--wui-color-text'))
   })
 })
