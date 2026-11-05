@@ -58,8 +58,8 @@ export default defineConfig({
     ]
   },
   test: {
-    // Vitest 5 把默认附件目录从 `.vitest-attachments` 改成 `.vitest/attachments`；
-    // 仓库在 `.gitignore` 与 docs/agents 里把测试证据路径固定为前者，这里跟着钉住。
+    // 仓库把测试证据路径固定为 `.vitest-attachments`（`.gitignore` 与 docs/agents
+    // 登记的就是它）；Vitest 5 的默认目录是 `.vitest/attachments`，这里显式钉住。
     attachmentsDir: '.vitest-attachments',
     projects: [
       {
