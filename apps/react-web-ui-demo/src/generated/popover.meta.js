@@ -213,6 +213,7 @@ const meta = [
     ]
   },
   { label: 'p', content: "<code>show-delay</code> / <code>hide-delay</code> only apply to hover-originated opens and closes; clicks, focus and programmatic calls act immediately." },
+  { label: 'p', content: "Opening requires content in the <code>default</code> slot; the <code>trigger</code> slot does not count. With nothing to show, gestures do nothing, while <code>show()</code> and writing <code>open</code> still open an empty panel. Content added while closed does not open it; clearing the content while open collapses the panel immediately without an exit transition." },
   { label: 'p', content: "Outside clicks and focus loss close every layer except those in <code>none</code>, regardless of whether <code>trigger</code> contains <code>click</code> or <code>focus</code>. Escape is arbitrated by the overlay stack: every value except <code>none</code> closes on it, and <code>none</code> neither responds to nor intercepts the key, so it continues to an outer overlay." },
   { label: 'p', content: "<code>open</code> is a self-managed state. Gestures and <code>show()</code> / <code>hide()</code> update it, and assigning the property directly also opens or closes the panel, but that write is silent and does not dispatch <code>open-change</code>." },
   { label: 'h3', id: 'section-13', content: "trigger ARIA" },

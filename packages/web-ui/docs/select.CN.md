@@ -529,7 +529,7 @@ export default function Demo() {
 | 名称      | 说明                                                                                |
 | --------- | ----------------------------------------------------------------------------------- |
 | `trigger` | 自定义触发区域内容，替换默认标签；`variant="icon"` 下它是左侧图标区，箭头仍在右侧。 |
-| `default` | 投影 `<web-ui-option>` 候选。                                                       |
+| `default` | 投影 `<web-ui-option>` 候选；其他节点同样算面板内容。                               |
 
 ### Methods
 
@@ -544,6 +544,8 @@ export default function Demo() {
 面板使用 `role="listbox"`，候选项使用 `role="option"`。当前非空 `value` 对应的选项设为 `aria-selected="true"`，`aria-disabled` 反映禁用状态。
 
 非 Portal 模式下，键盘导航时 `aria-activedescendant` 指向当前选项；Portal 模式下不设置此属性。
+
+面板能否打开看的是 `default` 插槽里还有没有内容可展示：没有内容时，点击、键盘手势与悬停都不展开。`show()` 与写 `open` 仍可空开；关闭态新增内容不会打开面板。面板打开期间最后一段内容消失时，立即收起，不播退场过渡。
 
 关闭态的 Space / Enter / ArrowDown / ArrowUp 打开面板；`none` 下这些按键不再自动展开。展开态的 ArrowDown / ArrowUp、Home / End 与 typeahead 移动激活项，Enter / Space 选择并关闭，Escape 关闭。
 

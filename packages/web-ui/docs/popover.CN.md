@@ -285,6 +285,8 @@ const open = ref(false)
 
 `show-delay` / `hide-delay` 只作用于 hover 来源的开合；点击、焦点与程序式调用都立即生效。
 
+弹出层能否打开看的是 `default` 插槽里还有没有内容可展示；`trigger` 插槽不算内容。没有内容时手势不展开，`show()` 与写 `open` 仍可空开。关闭态新增内容不会打开面板；打开期间内容清空时立即收起，不播退场过渡。
+
 点触发器外面与失焦会收起所有非 `none` 的层，不取决于 `trigger` 是否包含 `click` 或 `focus`。按 Escape 收起由覆盖层统一仲裁：非 `none` 的层都能关，`none` 既不响应也不拦截这次按键，它会继续传给外层 overlay。
 
 `open` 是组件自行管理的状态。手势和 `show()` / `hide()` 都会更新它，直接给 property 赋值也会开合面板，但该写入是静默的，不派发 `open-change`。

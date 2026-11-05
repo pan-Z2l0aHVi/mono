@@ -257,7 +257,7 @@ const meta = [
       label: 'tr',
       children: [
       { label: 'td', content: "<code>default</code>" },
-      { label: 'td', content: "投影 <code>&lt;web-ui-option></code> 候选。" }
+      { label: 'td', content: "投影 <code>&lt;web-ui-option></code> 候选；其他节点同样算面板内容。" }
       ]
     }
     ]
@@ -299,6 +299,7 @@ const meta = [
   { label: 'h3', id: 'section-16', content: "行为说明" },
   { label: 'p', content: "面板使用 <code>role=\"listbox\"</code>，候选项使用 <code>role=\"option\"</code>。当前非空 <code>value</code> 对应的选项设为 <code>aria-selected=\"true\"</code>，<code>aria-disabled</code> 反映禁用状态。" },
   { label: 'p', content: "非 Portal 模式下，键盘导航时 <code>aria-activedescendant</code> 指向当前选项；Portal 模式下不设置此属性。" },
+  { label: 'p', content: "面板能否打开看的是 <code>default</code> 插槽里还有没有内容可展示：没有内容时，点击、键盘手势与悬停都不展开。<code>show()</code> 与写 <code>open</code> 仍可空开；关闭态新增内容不会打开面板。面板打开期间最后一段内容消失时，立即收起，不播退场过渡。" },
   { label: 'p', content: "关闭态的 Space / Enter / ArrowDown / ArrowUp 打开面板；<code>none</code> 下这些按键不再自动展开。展开态的 ArrowDown / ArrowUp、Home / End 与 typeahead 移动激活项，Enter / Space 选择并关闭，Escape 关闭。" },
   { label: 'p', content: "<code>hover</code> 由指针进出开合；指针离开触发器与面板、且焦点不在其中时按 <code>hide-delay</code> 收起。<code>show-delay</code> / <code>hide-delay</code> 只作用于 hover 来源；点击、焦点与程序式调用都立即生效。Escape、点面板外与失焦会收起所有非 <code>none</code> 的层，不取决于 <code>trigger</code> 是否包含 <code>click</code> 或 <code>focus</code>。" },
   { label: 'p', content: "启用 <code>portal</code> 的面板在创建时读取宿主上的这些变量值；更新宿主后需重新打开面板才会生效。" },

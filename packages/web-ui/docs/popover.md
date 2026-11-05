@@ -297,6 +297,8 @@ Each gesture in `trigger` wires up its own events, and the gestures combine free
 
 `show-delay` / `hide-delay` only apply to hover-originated opens and closes; clicks, focus and programmatic calls act immediately.
 
+Opening requires content in the `default` slot; the `trigger` slot does not count. With nothing to show, gestures do nothing, while `show()` and writing `open` still open an empty panel. Content added while closed does not open it; clearing the content while open collapses the panel immediately without an exit transition.
+
 Outside clicks and focus loss close every layer except those in `none`, regardless of whether `trigger` contains `click` or `focus`. Escape is arbitrated by the overlay stack: every value except `none` closes on it, and `none` neither responds to nor intercepts the key, so it continues to an outer overlay.
 
 `open` is a self-managed state. Gestures and `show()` / `hide()` update it, and assigning the property directly also opens or closes the panel, but that write is silent and does not dispatch `open-change`.

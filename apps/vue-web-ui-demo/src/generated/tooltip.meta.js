@@ -234,6 +234,7 @@ const meta = [
     ]
   },
   { label: 'p', content: "<code>show-delay</code> / <code>hide-delay</code> only apply to hover-originated opens and closes; clicks, focus and programmatic calls act immediately." },
+  { label: 'p', content: "Showing requires <code>content</code> text or at least one <code>slot=\"content\"</code> node. With no content, gestures do nothing, while <code>show()</code> and writing <code>open</code> still show an empty panel. Content added while hidden does not show it; clearing the content while visible hides the tooltip immediately without an exit transition." },
   { label: 'p', content: "Outside clicks and Escape hide every tooltip except those in <code>none</code>; focus leaving both the trigger and the panel also hides it. Neither depends on <code>trigger</code> containing <code>click</code> or <code>focus</code>." },
   { label: 'p', content: "<code>open</code> is a self-managed visibility property. Gestures and <code>show()</code> / <code>hide()</code> update it, and assigning the property directly also shows or hides the tooltip, but that write is silent and does not dispatch <code>open-change</code>." },
   { label: 'p', content: "Once a tooltip is shown, moving the pointer to an adjacent tooltip switches immediately." },

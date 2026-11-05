@@ -234,6 +234,7 @@ const meta = [
     ]
   },
   { label: 'p', content: "<code>show-delay</code> / <code>hide-delay</code> 只作用于 hover 来源的开合；点击、焦点与程序式调用都立即生效。" },
+  { label: 'p', content: "提示能否显示看的是有没有内容：<code>content</code> 文本或至少一个 <code>slot=\"content\"</code> 节点。没有内容时手势不显示，<code>show()</code> 与写 <code>open</code> 仍可空开。关闭态新增内容不会显示提示；显示期间内容清空时立即收起，不播退场过渡。" },
   { label: 'p', content: "点触发器外面与按 Escape 会收起所有非 <code>none</code> 的提示；焦点离开触发器与面板后也会收起，这两条都不取决于 <code>trigger</code> 是否包含 <code>click</code> 或 <code>focus</code>。" },
   { label: 'p', content: "<code>open</code> 是组件自行管理的可见性属性。手势和 <code>show()</code> / <code>hide()</code> 都会更新它，直接给 property 赋值也会显示或隐藏提示，但该写入是静默的，不派发 <code>open-change</code>。" },
   { label: 'p', content: "一个 tooltip 显示后，把指针移到相邻 tooltip 会立即切换。" },

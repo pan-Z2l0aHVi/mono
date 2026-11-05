@@ -6,7 +6,7 @@ A single-value selector that accepts input and filters candidates. Typed text fi
 
 ### Basic
 
-`value` is the current input text and is owned by the page. Typing filters candidates by label (default `contains`); the panel stays closed when nothing matches. After a selection, the text is filled back with that option's label and `selected-value` gives that option's value.
+`value` is the current input text and is owned by the page. Typing filters candidates by label (default `contains`); the panel stays closed when nothing is left to show. After a selection, the text is filled back with that option's label and `selected-value` gives that option's value.
 
 ```tsx
 import { useState } from 'react'
@@ -363,7 +363,7 @@ const field = useTemplateRef<WebUiAutocomplete>('field')
 
 ### Allow custom values
 
-With `allow-custom-value` on, text that is not among the candidates can still be submitted. Pressing Enter submits the raw input as a custom value, the panel closes, `change` fires, and `selected-value` stays empty. When filtering leaves no candidates, the panel does not open, and Enter still submits.
+With `allow-custom-value` on, text that is not among the candidates can still be submitted. Pressing Enter submits the raw input as a custom value, the panel closes, `change` fires, and `selected-value` stays empty. When filtering leaves nothing to show, the panel does not open, and Enter still submits.
 
 ```tsx
 import { useState } from 'react'
@@ -508,10 +508,10 @@ const frameworks = ['Vue', 'React', 'Svelte', 'Angular']
 
 ### Slots
 
-| Name      | Description                                                       |
-| --------- | ----------------------------------------------------------------- |
-| `trigger` | Custom content for the trigger area, replacing the default input. |
-| `default` | Projects `<web-ui-option>` candidates.                            |
+| Name      | Description                                                                                                        |
+| --------- | ------------------------------------------------------------------------------------------------------------------ |
+| `trigger` | Custom content for the trigger area, replacing the default input.                                                  |
+| `default` | Projects `<web-ui-option>` candidates; other nodes also count as panel content and can carry a custom empty state. |
 
 ### Methods
 
@@ -527,7 +527,7 @@ const frameworks = ['Vue', 'React', 'Svelte', 'Angular']
 
 Typing filters candidates by label (`contains` or `prefix`; `none` turns filtering off).
 
-When nothing matches, the dropdown panel stays closed; when deleting characters brings matches back, the panel opens again.
+Whether the panel can open depends on whether anything is left to show: a matching candidate, or any other node in the `default` slot. Filtered or `hidden` candidates, comments, whitespace-only text, `script` / `style` / `template`, and nodes kept for the removed `slot="empty"` do not count; an empty wrapper does. With nothing to show, automatic gestures (click, typing, arrow keys, focus, hover) do nothing. `show()` and writing `open` still open the empty panel, and content added while closed does not open it. If the last content disappears while the panel is open, it collapses immediately without an exit transition.
 
 Selecting an option fills the text back with that option's label and exposes that option's value as `selected-value`. `change` fires when the selection is committed.
 
@@ -567,7 +567,7 @@ While the panel is open, ArrowUp/ArrowDown follow the same exception: the arrow 
 
 With `allow-custom-value` enabled, when there is no match and no active option, Enter submits the current raw input as a custom value and closes the panel; `change` fires and `selected-value` stays empty.
 
-When filtering leaves no candidates at all, the panel does not open (and collapses if it is open); Enter still uses the same submission path.
+When filtering leaves nothing to show, the panel does not open (and collapses if it is open); Enter still uses the same submission path.
 
 The component never creates options on its own and never trims the raw text. Text that hits a disabled option does not bypass the disabled semantics and is not derived into a selected option.
 

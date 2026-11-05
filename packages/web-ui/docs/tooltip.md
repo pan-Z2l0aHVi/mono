@@ -320,6 +320,8 @@ Each gesture in `trigger` wires up its own events, and the gestures combine free
 
 `show-delay` / `hide-delay` only apply to hover-originated opens and closes; clicks, focus and programmatic calls act immediately.
 
+Showing requires `content` text or at least one `slot="content"` node. With no content, gestures do nothing, while `show()` and writing `open` still show an empty panel. Content added while hidden does not show it; clearing the content while visible hides the tooltip immediately without an exit transition.
+
 Outside clicks and Escape hide every tooltip except those in `none`; focus leaving both the trigger and the panel also hides it. Neither depends on `trigger` containing `click` or `focus`.
 
 `open` is a self-managed visibility property. Gestures and `show()` / `hide()` update it, and assigning the property directly also shows or hides the tooltip, but that write is silent and does not dispatch `open-change`.

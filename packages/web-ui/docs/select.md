@@ -531,7 +531,7 @@ export default function Demo() {
 | Name      | Description                                                                                                                                |
 | --------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
 | `trigger` | Custom trigger area content, replacing the default label; with `variant="icon"` it is the left icon area and the arrow stays on the right. |
-| `default` | Projects `<web-ui-option>` candidates.                                                                                                     |
+| `default` | Projects `<web-ui-option>` candidates; other nodes also count as panel content.                                                            |
 
 ### Methods
 
@@ -546,6 +546,8 @@ export default function Demo() {
 The panel uses `role="listbox"` and the candidates use `role="option"`. The option matching the current non-empty `value` is set to `aria-selected="true"`, and `aria-disabled` mirrors the disabled state.
 
 Outside Portal mode, `aria-activedescendant` points at the current option during keyboard navigation; in Portal mode this attribute is not set.
+
+Opening requires content: with nothing in the `default` slot to show, click, keyboard gestures and hover do nothing. `show()` and writing `open` still open an empty panel, and content added while closed does not open it. If the last content disappears while the panel is open, it collapses immediately without an exit transition.
 
 When closed, Space / Enter / ArrowDown / ArrowUp open the panel; under `none` these keys no longer auto-open it. When expanded, ArrowDown / ArrowUp, Home / End, and typeahead move the active item, Enter / Space select and close, and Escape closes.
 

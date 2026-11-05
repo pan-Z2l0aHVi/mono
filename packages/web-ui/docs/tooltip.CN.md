@@ -320,6 +320,8 @@ const last = ref('—')
 
 `show-delay` / `hide-delay` 只作用于 hover 来源的开合；点击、焦点与程序式调用都立即生效。
 
+提示能否显示看的是有没有内容：`content` 文本或至少一个 `slot="content"` 节点。没有内容时手势不显示，`show()` 与写 `open` 仍可空开。关闭态新增内容不会显示提示；显示期间内容清空时立即收起，不播退场过渡。
+
 点触发器外面与按 Escape 会收起所有非 `none` 的提示；焦点离开触发器与面板后也会收起，这两条都不取决于 `trigger` 是否包含 `click` 或 `focus`。
 
 `open` 是组件自行管理的可见性属性。手势和 `show()` / `hide()` 都会更新它，直接给 property 赋值也会显示或隐藏提示，但该写入是静默的，不派发 `open-change`。

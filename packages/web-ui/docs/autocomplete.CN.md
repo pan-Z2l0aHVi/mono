@@ -6,7 +6,7 @@
 
 ### Basic
 
-`value` 是当前输入文本，由页面持有。键入时按标签过滤候选（默认 `contains`）；没有匹配项时面板保持关闭。选中后，文本回填为该项标签，`selected-value` 给出该项的值。
+`value` 是当前输入文本，由页面持有。键入时按标签过滤候选（默认 `contains`）；没有可展示的内容时面板保持关闭。选中后，文本回填为该项标签，`selected-value` 给出该项的值。
 
 ```tsx
 import { useState } from 'react'
@@ -363,7 +363,7 @@ const field = useTemplateRef<WebUiAutocomplete>('field')
 
 ### Allow custom values
 
-开启 `allow-custom-value` 后，输入不在候选中的文本也能提交。按 Enter 时，输入原文作为自定义值提交，面板随之关闭，`change` 触发，`selected-value` 保持为空。过滤后没有候选时，面板不展开，Enter 仍可提交。
+开启 `allow-custom-value` 后，输入不在候选中的文本也能提交。按 Enter 时，输入原文作为自定义值提交，面板随之关闭，`change` 触发，`selected-value` 保持为空。过滤后没有可展示的内容时，面板不展开，Enter 仍可提交。
 
 ```tsx
 import { useState } from 'react'
@@ -504,10 +504,10 @@ const frameworks = ['Vue', 'React', 'Svelte', 'Angular']
 
 ### Slots
 
-| 名称      | 说明                                 |
-| --------- | ------------------------------------ |
-| `trigger` | 自定义触发区域内容，替换默认输入框。 |
-| `default` | 投影 `<web-ui-option>` 候选。        |
+| 名称      | 说明                                                                      |
+| --------- | ------------------------------------------------------------------------- |
+| `trigger` | 自定义触发区域内容，替换默认输入框。                                      |
+| `default` | 投影 `<web-ui-option>` 候选；其他节点同样算面板内容，可用来放自定义空态。 |
 
 ### Methods
 
@@ -523,7 +523,7 @@ const frameworks = ['Vue', 'React', 'Svelte', 'Angular']
 
 键入时按标签过滤候选（`contains` 或 `prefix`，`none` 关闭过滤）。
 
-没有匹配项时下拉面板保持关闭；删除字符后重新出现匹配项时，面板会再次打开。
+面板能否打开看的是「还有没有内容可展示」：匹配的候选，或 `default` 插槽里的任意其他节点。被过滤或被 `hidden` 的候选、注释、纯空白文本、`script` / `style` / `template`，以及为已移除的 `slot="empty"` 保留的节点都不算内容；空 wrapper 算内容。没有内容时，自动来源的手势（点击、键入、方向键、聚焦、悬停）都不展开。`show()` 与写 `open` 仍可空开；关闭态新增内容不会打开面板。面板打开期间最后一段内容消失时，立即收起，不播退场过渡。
 
 选择选项时，文本回填为该项的标签，`selected-value` 暴露该项的值。`change` 在选择提交时触发。
 
@@ -563,7 +563,7 @@ const frameworks = ['Vue', 'React', 'Svelte', 'Angular']
 
 启用 `allow-custom-value` 后，无匹配且无活动选项时，Enter 会把当前输入原文作为自定义值提交并关闭面板；`change` 会触发，`selected-value` 保持为空。
 
-过滤后没有任何候选时，面板不展开（已展开则收起）；此时 Enter 仍使用同一条提交路径。
+过滤后没有任何可展示的内容时，面板不展开（已展开则收起）；此时 Enter 仍使用同一条提交路径。
 
 组件不会自动创建选项，也不会去掉原文的首尾空白。命中禁用选项的文本不会绕过禁用语义，也不会派生为已选选项。
 
