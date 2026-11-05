@@ -14,6 +14,7 @@ import {
   RELEASE_BRANCH,
   REQUIRED_CONTEXT,
   codexConfigInputViolations,
+  crossRunArtifactViolations,
   ghTokenStepViolations,
   jobEnvContextViolations,
   localActionBootstrapViolations,
@@ -450,6 +451,56 @@ function assertPullRequestValidationIsReadOnly(workflow) {
   for (const [file, text] of Object.entries(workflowText)) {
     for (const { job, step, commands } of ghTokenStepViolations(text)) {
       assert.fail(`${file}:${job} step ${step} calls gh (${commands}) without GH_TOKEN`)
+    }
+  }
+
+  // download-artifact@v7 跨 run 下载必须显式给 github-token；PR #516 首次真实模型调用后
+  // 才发现写回腿一直只查当前 run，导致结论评论永远发不出来。
+  const crossRunStep = ({ token, runId }) =>
+    [
+      'name: CI',
+      'on: pull_request',
+      'jobs:',
+      '  reuse:',
+      '    steps:',
+      '      - name: Download prior conclusion',
+      '        uses: actions/download-artifact@v7',
+      '        with:',
+      '          name: codex-review-findings',
+      ...(token ? ['          github-token: ${{ github.token }}'] : []),
+      ...(runId ? ['          run-id: ${{ steps.prior.outputs.prior_run_id }}'] : []),
+      '          path: /tmp/out',
+      ''
+    ].join('\n')
+  assert.deepEqual(crossRunArtifactViolations(crossRunStep({ token: true, runId: true })), [])
+  assert.deepEqual(
+    crossRunArtifactViolations(crossRunStep({ token: false, runId: true })),
+    [{ job: 'reuse', step: 'Download prior conclusion' }],
+    'a cross-run download without github-token silently searches only the current run'
+  )
+  assert.deepEqual(
+    crossRunArtifactViolations(crossRunStep({ token: false, runId: false })),
+    [],
+    'a same-run download needs no token'
+  )
+  for (const [file, text] of Object.entries(workflowText)) {
+    for (const { job, step } of crossRunArtifactViolations(text)) {
+      assert.fail(`${file}:${job} step ${step} downloads a cross-run artifact without github-token`)
+    }
+  }
+  const tokenLine = '          github-token: ${{ github.token }}'
+  for (const file of ['ci.yml', 'codex-review-publish.yml']) {
+    const text = workflowText[file]
+    const hits = text.split(tokenLine).length - 1
+    assert.ok(hits > 0, `${file} must carry at least one cross-run download token`)
+    // 逐个删除，确保写回腿的两处下载（结论与 autofix patch）都被断言覆盖，而不是只测到第一处。
+    for (let index = 0; index < hits; index++) {
+      let seen = 0
+      const mutated = text.replaceAll(tokenLine, () => (seen++ === index ? '' : tokenLine))
+      assert.ok(
+        crossRunArtifactViolations(mutated).length > 0,
+        `${file} must fail the assertion when cross-run token #${index + 1} is removed`
+      )
     }
   }
 

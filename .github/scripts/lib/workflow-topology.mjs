@@ -362,3 +362,53 @@ export function ghTokenStepViolations(text) {
   close()
   return violations
 }
+
+// download-artifact@v7 只有在显式给出 github-token 时才会用 repository/run-id 跨 run 查找：
+// 源码里 `if (inputs.token) { options.findBy = { workflowRunId: inputs.runID } }`。
+// 缺 token 会静默退化成「只查当前 workflow run」，写回腿与结论复用都拿不到产物。
+export function crossRunArtifactViolations(text) {
+  const violations = []
+  let job = null
+  let block = null
+
+  const close = () => {
+    if (block === null) return
+    const named = block.match(/^ {6}- name:\s*(.*)$/m)
+    if (
+      /^ {6,8}(?:- )?uses: actions\/download-artifact@/m.test(block) &&
+      /^ {8,}run-id:/m.test(block) &&
+      !/^ {8,}github-token:\s*\$\{\{\s*(?:github\.token|secrets\.GITHUB_TOKEN)\s*\}\}\s*$/m.test(block)
+    ) {
+      violations.push({ job, step: named ? unquote(named[1]) : 'unnamed step' })
+    }
+    block = null
+  }
+
+  for (const line of text.split(/\r?\n/)) {
+    if (/^[A-Za-z-]+:/.test(line)) {
+      close()
+      job = null
+      continue
+    }
+    const jobStart = line.match(/^ {2}([a-z0-9-]+):$/)
+    if (jobStart) {
+      close()
+      job = jobStart[1]
+      continue
+    }
+    if (job === null) continue
+    if (/^ {6}- /.test(line)) {
+      close()
+      block = `${line}\n`
+      continue
+    }
+    if (block === null) continue
+    if (/^ {4}\S/.test(line)) {
+      close()
+      continue
+    }
+    block += `${line}\n`
+  }
+  close()
+  return violations
+}

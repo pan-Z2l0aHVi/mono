@@ -271,6 +271,8 @@ jobs:
         uses: actions/download-artifact@v7
         with:
           name: codex-review-findings
+          # 复用的是另一个 run 的 artifact，v7 必须显式给 token 才会用 run-id。
+          github-token: ${{ github.token }}
           run-id: ${{ steps.prior.outputs.prior_run_id }}
           repository: ${{ github.repository }}
           path: ${{ runner.temp }}/codex-review

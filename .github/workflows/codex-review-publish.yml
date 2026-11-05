@@ -56,6 +56,9 @@ jobs:
         uses: actions/download-artifact@v7
         with:
           name: codex-review-findings
+          # v7 只在显式给 token 时才用 repository/run-id 跨 run 查找；缺它会静默只查当前 run。
+          # 修复前写回腿因此拿不到 CI 上传的结论产物（PR #516 首次真实模型调用后才暴露）。
+          github-token: ${{ github.token }}
           run-id: ${{ github.event.workflow_run.id }}
           repository: ${{ github.repository }}
           path: ${{ runner.temp }}/codex-review
@@ -132,6 +135,7 @@ jobs:
         uses: actions/download-artifact@v7
         with:
           name: codex-autofix-patch
+          github-token: ${{ github.token }}
           run-id: ${{ github.event.workflow_run.id }}
           repository: ${{ github.repository }}
           path: ${{ runner.temp }}

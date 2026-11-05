@@ -58,6 +58,10 @@ Codex 审查是对 [ADR-0012](./0012-pr-review.md) 的补强，不是替代：�
 
 **触发收敛**：写回腿只处理同源仓库的 PR run，排除已取消的 run 与版本分支；没有审查 artifact 时跳过发评论，不制造无意义失败。只读探测是尽力而为，失败不阻止结论发布，写权限不足由发布步骤的 403 清单报告。门仍不设为分支必需检查。
 
+**结论产物跨 run 传递**：审查腿上传的 `codex-review-findings` artifact 由写回腿下载，结论复用也会下载历史 run 的同名 artifact。`actions/download-artifact@v7` 只有在**显式给出 `github-token: ${{ github.token }}`** 时才会启用 `repository` / `run-id` 跨 run 查找（上游 `src/download-artifact.ts` 节选：`if (inputs.token) { options.findBy = { workflowRunId: inputs.runID } }`）；缺 token 会静默退化成「只查当前 workflow run」，写回腿因此报 `Artifact not found for name: codex-review-findings` 并跳过发评论。三处跨 run 下载（写回腿两条、`ci.yml` 的复用一条）都必须带 token，由拓扑断言钉住；同 run 的下载不需要。上传用 `upload-artifact@v6`、下载用 `download-artifact@v7` 是各自独立的主版本，二者都基于 v4+ artifact 后端，互相兼容，此次故障与版本差无关。另：写回腿是 `workflow_run`，GitHub 只取**默认分支**上的 workflow 文件，所以本文件的修改必须合入 main 后才生效，PR 自己那轮 CI 无法验证写回修复。
+
+**残留风险**：下载步骤带 `continue-on-error`，发布步骤又以 `steps.findings.outcome == 'success'` 为条件，因此「本来就没有 artifact」与「artifact 存在但下载失败」在日志里都表现为 job 绿且无评论，无法区分。本轮只修了 token 这个已定位的成因，没有把这条静默链改成可区分的失败信号；排查时要直接读 `Download review findings` 步骤日志，不能只看 job 结论。
+
 **引导落地**：可信脚本取自 PR base，因此引入新子命令的那个 PR 自己拿到的仍是 base 里的旧脚本。模型腿的 job 级不设 `continue-on-error`，旧脚本缺少 `preflight` 时该 job 直接变红，而不是又回到全绿静默。合并后的下一个 PR 起，base 带新脚本，链路完整生效。
 
 **时间与成本**：两条模型腿各给 60 分钟上限，这是首批实测用的临时余量，测出真实分布后回收；自动修只在失败时触发，它自己也是消耗模型调用的一条腿。
@@ -93,6 +97,8 @@ Error: /usr/bin/sudo exited with code 1
 
 即 `codex-final-message.json` 从未生成，模型一次都没被调用。这不是配置或脚本问题，而是 runner 镜像与上游 action 的兼容性缺陷（见「Runner 镜像」条款）。注意 job 显示 pass 而 gate 红，正是「故障即红」设计在起作用：模型步骤的 `continue-on-error` 只让 `validate` 有机会落结论，`outcome=failure` 仍传给了判定脚本。
 
+**同日第四次实测（CI run `42052145360`，PR #516 固定 24.04 后重跑，首次完整模型调用；写回腿 run `42053983201`）**：`check` 2m27s、`Codex review` 7m29s、`Codex review gate` 18s 全 pass。`Set up job` 为 `Image: ubuntu-24.04`；`drop-sudo` 成功（`Restricted access to /run/dbus/system_bus_socket for runner UID 1001`），`Run codex exec` 以 `deepseek-v4.1-flash` / `high` 真跑 7 分多钟并产出 `codex-final-message.json`，`validate` 记 `CODEX_REVIEW_STEP_OUTCOME: success`、结论 `Block 0, Should fix 1, Nit 0`，artifact `codex-review-findings` 1478 bytes 上传成功。**但 PR 上仍没有结论评论**：写回腿 `Download review findings` 报 `Artifact not found for name: codex-review-findings`，`Probe comment permission` 与 `Publish conclusion comment` 均被跳过。根因是 `download-artifact@v7` 跨 run 下载缺 `github-token`（见「结论产物跨 run 传递」）；此前从未有有效 artifact，这个 #514 遗留缺陷一直不可观测。模型自身提的那条 `Should fix` 也成立：`.github/codex/prompts/review.md` 仍称 diff 是「完整 unified diff」，与排除生成物后的实际范围矛盾，已同步改写为「源码改动 diff」并写明排除清单。该 prompt 同属 `stage-codex-inputs` 从 **PR base** 落地的可信输入，所以 PR #516 自己这一轮读到的仍是旧 prompt；改写只在修复合入 main 后的下一个 PR 生效，与写回腿的引导限制同源。
+
 **验收清单**（后台配置填齐后按 run 日志逐项核对）：
 
 1. `Run codex exec` 出现，`codex-final-message.json` 非空且通过 schema。
@@ -103,6 +109,7 @@ Error: /usr/bin/sudo exited with code 1
 6. 拓扑断言与脚本单测全绿。
 7. `review-scope.json` 记有 `excluded_pathspecs` 与 `empty_diff`，审查 diff 里没有 `**/generated/**` 路径；大 PR 不因 `ENOBUFS` 让 `prepare` 失败。（**合入 main 后的下一个 PR** 上核对：可信脚本取自 PR base，修复自己的 CI 仍跑旧脚本。）
 8. 两条模型腿的 `Set up job` 日志出现 `Image: ubuntu-24.04`，且 `Run codex exec` 不再出现 `Could not restrict access to /run/dbus/system_bus_socket`。以审查腿为准，满足第 1 项（有真实模型结论）后再核对此项；autofix 腿只在 `CODEX_AUTOFIX_ENABLED=true` 且 `check` 失败时运行，默认关闭，不必为验收专门打开。
+9. 写回腿 `Download review findings` 不再报 `Artifact not found`，且 `Publish conclusion comment` 未被跳过（这两步是可观测的修复点；评论内容本身按第 2 / 5 项核对）。写回腿取默认分支版本，**必须在修复合入 main 后的下一个 PR** 上核对，PR #516 自身无法验证。autofix patch 那处下载同理，但 `CODEX_AUTOFIX_ENABLED=false` 时整条腿被跳过，只能在显式打开开关且 `check` 失败的 run 上验证。
 
 **待办**：`prepare` 的任何失败都会跳过 preflight，被 `validate` 记成 `config_missing`；后续把 preflight 前置到 prepare 之前，或引入 `job_failed` / `preflight_missing` 错误码，并同步「状态口径」、`docs/agents/review.md` 的故障码清单、`renderConclusion()` 与相关单测。本次修复后该误归因对 PR #515 的事故不再可达，门「故障即红」不受影响。
 
