@@ -72,9 +72,79 @@ onBeforeUnmount(() => toast.clear())
 </script>
 ```
 
+### Positions
+
+`position` 接受 `top-left`、`top-center`、`top-right`、`bottom-left`、`bottom-center`、`bottom-right` 六个值。每个值对应一个固定在视口边缘的容器，位置不随页面滚动改变。下面一次创建六条并把 `duration` 设为 `0`，六个位置可以同时看到，点「清空」收走。
+
+```tsx
+import { toast, type ToastPosition } from '@greypan/web-ui'
+import { useEffect } from 'react'
+
+const POSITIONS: ToastPosition[] = [
+  'top-left',
+  'top-center',
+  'top-right',
+  'bottom-left',
+  'bottom-center',
+  'bottom-right'
+]
+
+export default function Demo() {
+  useEffect(() => () => toast.clear(), [])
+
+  return (
+    <div className="flex flex-wrap gap-2">
+      <web-ui-button
+        onClick={() => {
+          for (const position of POSITIONS) {
+            toast.info(position, { id: `demo-position-${position}`, position, duration: 0 })
+          }
+        }}
+      >
+        显示全部位置
+      </web-ui-button>
+      <web-ui-button variant="secondary" onClick={() => toast.clear()}>
+        清空
+      </web-ui-button>
+    </div>
+  )
+}
+```
+
+```vue
+<template>
+  <div class="flex flex-wrap gap-2">
+    <web-ui-button @click="showAllPositions">显示全部位置</web-ui-button>
+    <web-ui-button variant="secondary" @click="toast.clear()">清空</web-ui-button>
+  </div>
+</template>
+
+<script setup lang="ts">
+import { toast, type ToastPosition } from '@greypan/web-ui'
+import { onBeforeUnmount } from 'vue'
+
+const POSITIONS: ToastPosition[] = [
+  'top-left',
+  'top-center',
+  'top-right',
+  'bottom-left',
+  'bottom-center',
+  'bottom-right'
+]
+
+function showAllPositions() {
+  for (const position of POSITIONS) {
+    toast.info(position, { id: `demo-position-${position}`, position, duration: 0 })
+  }
+}
+
+onBeforeUnmount(() => toast.clear())
+</script>
+```
+
 ### Full options
 
-`toast()` 接受完整选项：`heading` 是粗体标题，`message` 是正文，`position` 决定出现在屏幕的哪个位置（这里是 `top-center`），`duration` 是自动关闭的毫秒数，`closable` 控制是否渲染关闭按钮。
+`toast()` 接受完整选项：`heading` 是粗体标题，`message` 是正文，`position` 决定出现在屏幕的哪个位置（这里是 `top-center`），`duration` 是自动关闭的毫秒数，`closable` 控制是否渲染关闭按钮。第二个按钮把 `closable` 设为 `false`，没有关闭按钮，只能等 `duration` 到期。
 
 ```tsx
 import { toast } from '@greypan/web-ui'
@@ -87,24 +157,43 @@ export default function Demo() {
 
   return (
     <div className="flex flex-col items-start gap-3">
-      <web-ui-button
-        onClick={() => {
-          setId(
-            toast({
-              heading: '已保存',
-              message: '更改已写入云端',
-              type: 'info',
-              position: 'top-center',
-              duration: 4000,
-              closable: true
-            })
-          )
-        }}
-      >
-        创建完整 option 的 toast
-      </web-ui-button>
+      <div className="flex flex-wrap gap-2">
+        <web-ui-button
+          onClick={() => {
+            setId(
+              toast({
+                heading: '已保存',
+                message: '更改已写入云端',
+                type: 'info',
+                position: 'top-center',
+                duration: 4000,
+                closable: true
+              })
+            )
+          }}
+        >
+          创建完整 option 的 toast
+        </web-ui-button>
+        <web-ui-button
+          variant="secondary"
+          onClick={() => {
+            setId(
+              toast({
+                heading: '不可关闭',
+                message: '这条没有关闭按钮',
+                type: 'warning',
+                position: 'bottom-right',
+                duration: 6000,
+                closable: false
+              })
+            )
+          }}
+        >
+          创建不可关闭的 toast
+        </web-ui-button>
+      </div>
       <output className="text-sm text-(--wui-color-text-secondary)">
-        id：{id} · 位置：bottom-right · 4 秒后自动关闭
+        id：{id} · 第一条 4 秒后自动关闭，第二条 6 秒后自动关闭
       </output>
     </div>
   )
@@ -114,9 +203,12 @@ export default function Demo() {
 ```vue
 <template>
   <div class="flex flex-col items-start gap-3">
-    <web-ui-button @click="notify">创建完整 option 的 toast</web-ui-button>
+    <div class="flex flex-wrap gap-2">
+      <web-ui-button @click="notify">创建完整 option 的 toast</web-ui-button>
+      <web-ui-button variant="secondary" @click="notifyWithoutClose">创建不可关闭的 toast</web-ui-button>
+    </div>
     <output class="text-sm text-(--wui-color-text-secondary)">
-      id：{{ id }} · 位置：bottom-right · 4 秒后自动关闭
+      id：{{ id }} · 第一条 4 秒后自动关闭，第二条 6 秒后自动关闭
     </output>
   </div>
 </template>
@@ -135,6 +227,17 @@ function notify() {
     position: 'top-center',
     duration: 4000,
     closable: true
+  })
+}
+
+function notifyWithoutClose() {
+  id.value = toast({
+    heading: '不可关闭',
+    message: '这条没有关闭按钮',
+    type: 'warning',
+    position: 'bottom-right',
+    duration: 6000,
+    closable: false
   })
 }
 

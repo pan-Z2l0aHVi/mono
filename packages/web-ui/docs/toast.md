@@ -72,9 +72,79 @@ onBeforeUnmount(() => toast.clear())
 </script>
 ```
 
+### Positions
+
+`position` accepts six values: `top-left`, `top-center`, `top-right`, `bottom-left`, `bottom-center`, and `bottom-right`. Each maps to a container pinned to a viewport edge, so its place does not change when the page scrolls. The sample creates all six with `duration: 0` so every position stays visible at once; "Clear" removes them.
+
+```tsx
+import { toast, type ToastPosition } from '@greypan/web-ui'
+import { useEffect } from 'react'
+
+const POSITIONS: ToastPosition[] = [
+  'top-left',
+  'top-center',
+  'top-right',
+  'bottom-left',
+  'bottom-center',
+  'bottom-right'
+]
+
+export default function Demo() {
+  useEffect(() => () => toast.clear(), [])
+
+  return (
+    <div className="flex flex-wrap gap-2">
+      <web-ui-button
+        onClick={() => {
+          for (const position of POSITIONS) {
+            toast.info(position, { id: `demo-position-${position}`, position, duration: 0 })
+          }
+        }}
+      >
+        Show every position
+      </web-ui-button>
+      <web-ui-button variant="secondary" onClick={() => toast.clear()}>
+        Clear
+      </web-ui-button>
+    </div>
+  )
+}
+```
+
+```vue
+<template>
+  <div class="flex flex-wrap gap-2">
+    <web-ui-button @click="showAllPositions">Show every position</web-ui-button>
+    <web-ui-button variant="secondary" @click="toast.clear()">Clear</web-ui-button>
+  </div>
+</template>
+
+<script setup lang="ts">
+import { toast, type ToastPosition } from '@greypan/web-ui'
+import { onBeforeUnmount } from 'vue'
+
+const POSITIONS: ToastPosition[] = [
+  'top-left',
+  'top-center',
+  'top-right',
+  'bottom-left',
+  'bottom-center',
+  'bottom-right'
+]
+
+function showAllPositions() {
+  for (const position of POSITIONS) {
+    toast.info(position, { id: `demo-position-${position}`, position, duration: 0 })
+  }
+}
+
+onBeforeUnmount(() => toast.clear())
+</script>
+```
+
 ### Full options
 
-`toast()` accepts the full set of options: `heading` is the bold title, `message` is the body, `position` decides where on screen it appears (here `top-center`), `duration` is the auto-close time in milliseconds, and `closable` controls whether a close button is rendered.
+`toast()` accepts the full set of options: `heading` is the bold title, `message` is the body, `position` decides where on screen it appears (here `top-center`), `duration` is the auto-close time in milliseconds, and `closable` controls whether a close button is rendered. The second button sets `closable` to `false`: it has no close button and only goes away when `duration` expires.
 
 ```tsx
 import { toast } from '@greypan/web-ui'
@@ -87,24 +157,43 @@ export default function Demo() {
 
   return (
     <div className="flex flex-col items-start gap-3">
-      <web-ui-button
-        onClick={() => {
-          setId(
-            toast({
-              heading: 'Saved',
-              message: 'Changes written to the cloud',
-              type: 'info',
-              position: 'top-center',
-              duration: 4000,
-              closable: true
-            })
-          )
-        }}
-      >
-        Create a toast with full options
-      </web-ui-button>
+      <div className="flex flex-wrap gap-2">
+        <web-ui-button
+          onClick={() => {
+            setId(
+              toast({
+                heading: 'Saved',
+                message: 'Changes written to the cloud',
+                type: 'info',
+                position: 'top-center',
+                duration: 4000,
+                closable: true
+              })
+            )
+          }}
+        >
+          Create a toast with full options
+        </web-ui-button>
+        <web-ui-button
+          variant="secondary"
+          onClick={() => {
+            setId(
+              toast({
+                heading: 'Cannot close',
+                message: 'This toast has no close button',
+                type: 'warning',
+                position: 'bottom-right',
+                duration: 6000,
+                closable: false
+              })
+            )
+          }}
+        >
+          Create a toast without a close button
+        </web-ui-button>
+      </div>
       <output className="text-sm text-(--wui-color-text-secondary)">
-        id: {id} · position: top-center · closes automatically after 4 seconds
+        id: {id} · the first closes after 4 seconds, the second after 6
       </output>
     </div>
   )
@@ -114,9 +203,14 @@ export default function Demo() {
 ```vue
 <template>
   <div class="flex flex-col items-start gap-3">
-    <web-ui-button @click="notify">Create a toast with full options</web-ui-button>
+    <div class="flex flex-wrap gap-2">
+      <web-ui-button @click="notify">Create a toast with full options</web-ui-button>
+      <web-ui-button variant="secondary" @click="notifyWithoutClose">
+        Create a toast without a close button
+      </web-ui-button>
+    </div>
     <output class="text-sm text-(--wui-color-text-secondary)">
-      id: {{ id }} · position: top-center · closes automatically after 4 seconds
+      id: {{ id }} · the first closes after 4 seconds, the second after 6
     </output>
   </div>
 </template>
@@ -135,6 +229,17 @@ function notify() {
     position: 'top-center',
     duration: 4000,
     closable: true
+  })
+}
+
+function notifyWithoutClose() {
+  id.value = toast({
+    heading: 'Cannot close',
+    message: 'This toast has no close button',
+    type: 'warning',
+    position: 'bottom-right',
+    duration: 6000,
+    closable: false
   })
 }
 
