@@ -3,16 +3,28 @@
 // they must treat API failures, 404s and annotated tag chains identically.
 import { spawnSync } from 'node:child_process'
 
-export function commandError(command, args, result) {
-  if (result.error) return new Error(`could not start ${command}: ${result.error.message}`)
+// git diff / gh api / job logs 的输出随 PR 规模增长，spawnSync 默认的 1 MiB 缓冲会在大 PR 上抛 ENOBUFS。
+// 同步子进程统一放宽到 64 MiB，避免「脚本根本没跑起来」被下游误判成配置缺失。
+export const SPAWN_MAX_BUFFER = 64 * 1024 * 1024
+
+export function commandError(command, args, result, maxBuffer = SPAWN_MAX_BUFFER) {
+  if (result.error) {
+    const limit = maxBuffer % (1024 * 1024) === 0 ? `${maxBuffer / (1024 * 1024)} MiB` : `${maxBuffer} bytes`
+    const hint = result.error.code === 'ENOBUFS' ? ` (stdout exceeded the configured ${limit} buffer)` : ''
+    return new Error(`could not start ${command}: ${result.error.message}${hint}`)
+  }
   const reason = result.signal ? `signal ${result.signal}` : `exit ${result.status}`
   const output = `${result.stderr ?? ''}\n${result.stdout ?? ''}`.trim()
   return new Error(`${command} ${args.join(' ')} failed (${reason}): ${output || 'no diagnostic output'}`)
 }
 
-export function run(command, args, { spawn = spawnSync, cwd = process.cwd(), env = process.env } = {}) {
-  const result = spawn(command, args, { encoding: 'utf8', cwd, env })
-  if (result.status !== 0) throw commandError(command, args, result)
+export function run(
+  command,
+  args,
+  { spawn = spawnSync, cwd = process.cwd(), env = process.env, maxBuffer = SPAWN_MAX_BUFFER } = {}
+) {
+  const result = spawn(command, args, { encoding: 'utf8', cwd, env, maxBuffer })
+  if (result.status !== 0) throw commandError(command, args, result, maxBuffer)
   return result.stdout ?? ''
 }
 
@@ -23,7 +35,7 @@ export function isHttp404(error) {
 export function createGitHubApi({ repository, spawn = spawnSync, cwd = process.cwd(), env = process.env }) {
   const api = endpoint => {
     const args = ['api', `repos/${repository}/${endpoint}`]
-    const result = spawn('gh', args, { encoding: 'utf8', cwd, env })
+    const result = spawn('gh', args, { encoding: 'utf8', cwd, env, maxBuffer: SPAWN_MAX_BUFFER })
     if (result.status !== 0) {
       const error = commandError('gh', args, result)
       if (isHttp404(error)) return null

@@ -3,7 +3,7 @@ import fs from 'node:fs'
 import path from 'node:path'
 
 import { readConfig, reviewTarget } from './codex-review.mjs'
-import { commandError, run } from './lib/github.mjs'
+import { SPAWN_MAX_BUFFER, commandError, run } from './lib/github.mjs'
 import { RELEASE_BRANCH } from './lib/workflow-topology.mjs'
 
 export const AUTOFIX_TRAILER = 'Autofix-by: codex-autofix'
@@ -122,7 +122,7 @@ export function validatePatchFile({ patchPath, guarded }) {
 
 export function createGhAutofixAdapter({ repository, spawn = spawnSync, cwd = process.cwd(), env = process.env }) {
   const gh = args => {
-    const result = spawn('gh', args, { encoding: 'utf8', cwd, env })
+    const result = spawn('gh', args, { encoding: 'utf8', cwd, env, maxBuffer: SPAWN_MAX_BUFFER })
     if (result.status !== 0) throw commandError('gh', args, result)
     return result.stdout ?? ''
   }
