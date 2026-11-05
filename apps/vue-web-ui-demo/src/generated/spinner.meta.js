@@ -133,7 +133,7 @@ const meta = [
       { label: 'td', content: "<code>duration</code>" },
       { label: 'td', content: "When greater than <code>0</code>, calls <code>hide()</code> automatically on expiry; when omitted or <code>0</code> the instance stays up." },
       { label: 'td', content: "<code>number</code>" },
-      { label: 'td', content: "—" }
+      { label: 'td', content: "" }
       ]
     }
     ]

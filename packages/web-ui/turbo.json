@@ -17,7 +17,17 @@
       ]
     },
     "test": {
-      "inputs": ["$TURBO_DEFAULT$", "!README.md", "!README.CN.md", "!AGENTS.md", "!CHANGELOG.md"]
+      "inputs": [
+        "$TURBO_DEFAULT$",
+        "!README.md",
+        "!README.CN.md",
+        "!AGENTS.md",
+        "!CHANGELOG.md",
+        "$TURBO_ROOT$/apps/react-web-ui-demo/src/generated/**",
+        "$TURBO_ROOT$/apps/react-web-ui-demo/src/routes/components/**",
+        "$TURBO_ROOT$/apps/vue-web-ui-demo/src/generated/**",
+        "$TURBO_ROOT$/apps/vue-web-ui-demo/src/pages/components/**"
+      ]
     }
   }
 }

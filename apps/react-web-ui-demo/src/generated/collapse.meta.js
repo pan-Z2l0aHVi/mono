@@ -276,7 +276,7 @@ const meta = [
       children: [
       { label: 'td', content: "<code>--wui-collapse-peek-edge</code>" },
       { label: 'td', content: "Explicit length, overriding the calculated default" },
-      { label: 'td', content: "—" }
+      { label: 'td', content: "" }
       ]
     },
     {

@@ -429,7 +429,7 @@ function onChange(event: WebUiEvent<WebUiSegmented, 'change'>) {
 | `variant`    | Material variant: `inset` (default) or `raised`.                                                                                                                               | `'inset' \| 'raised'` | `'inset'` |
 | `disabled`   | Disables every trigger.                                                                                                                                                        | `boolean`             | `false`   |
 | `required`   | Reflects the attribute only; not part of validation.                                                                                                                           | `boolean`             | `false`   |
-| `aria-label` | Accessible name of the group; `aria-labelledby` cannot resolve across the component boundary, and the name is forwarded to the `role="listbox"` element inside the shadow DOM. | `string`              | —         |
+| `aria-label` | Accessible name of the group; `aria-labelledby` cannot resolve across the component boundary, and the name is forwarded to the `role="listbox"` element inside the shadow DOM. | `string`              | -         |
 | `value`      | Currently selected value.                                                                                                                                                      | `string`              | `''`      |
 
 ### Events

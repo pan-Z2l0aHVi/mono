@@ -1,21 +1,14 @@
 # @greypan/test-kit
 
-> Vitest 浏览器模式下的测试基础设施插件，基于 MSW
+> Vitest 浏览器模式与 MSW 的测试辅助。
 
-[English](https://github.com/pan-Z2l0aHVi/mono/blob/main/packages/test-kit/README.md) | 简体中文
-
-## 功能
-
-- **MSW 测试环境**：一次 `createMswTestEnv()` 接线 worker 生命周期、自动请求捕获和完成信号等待
-- **MSW 生命周期**：通过插件组合管理 Mock Service Worker 的启动/停止/重置
-- **请求捕获**：记录并断言拦截到的 HTTP 请求
-- **插件组合**：基于 js-kit 插件系统的可组合测试基础设施
+[English](./README.md) | 简体中文
 
 ## 内部使用
 
-这是 `mono` workspace 的私有测试基础设施，本仓库不会发布它。在仓库内的 package manifest 中使用 `workspace:*` 协议依赖它。
+这是本 workspace 的私有测试基础设施，不发布。在 workspace 包中通过 `workspace:*` 协议添加依赖。
 
-> 需要 `msw` 作为 peer dependency。
+`msw` 是 peer dependency。
 
 ## 快速开始
 
@@ -41,11 +34,11 @@ it('上报一次请求', async () => {
 })
 ```
 
-传入代表整个操作完成的 Promise，例如 `fetch()` 的返回值或队列的 flush。`settle` 无法发现调用方没有提供的工作；使用 fake timers 时，超时跟随 fake clock 推进。
+传入代表整个操作完成的 Promise，例如 `fetch()` 的返回值或队列的 flush。`settle` 看不到你没有传给它的工作。使用 fake timers 时，超时跟随 fake clock 推进。
 
-捕获是自动的：env 会安装自己的 catch-all 记录 handler（以 `{ ok: true }` 应答），无需手写。业务 handler 的应答优先于记录 handler；通过 `createMswTestEnv({ handlers })` 传入。
+请求会自动被捕获。环境会安装一个兜底 handler，以 `{ ok: true }` 应答，因此不需要手写。通过 `createMswTestEnv({ handlers })` 传入的 handler 优先级更高。
 
-### 直接组合插件
+## 直接组合插件
 
 ```ts
 import { defineMsw, defineCapturedRequests } from '@greypan/test-kit'
@@ -62,9 +55,7 @@ const ctx = defineMsw(handlers).use(capture).make()
 
 await ctx.startMsw()
 
-// ... 运行测试 ...
-
-console.log(ctx.capturedRequests) // [{ url: '/api/user', body: ..., method: 'GET', timestamp: ... }]
+console.log(ctx.capturedRequests)
 
 ctx.clearCapturedRequests()
 await ctx.stopMsw()
@@ -74,55 +65,41 @@ await ctx.stopMsw()
 
 ### `createMswTestEnv(options?)`
 
-创建带有自动请求捕获的完整 MSW 测试环境。
+创建带自动请求捕获的完整 MSW 测试环境。
 
-| 参数       | 类型               | 默认值 | 说明                                                   |
-| ---------- | ------------------ | ------ | ------------------------------------------------------ |
-| `handlers` | `RequestHandler[]` | `[]`   | 业务 handlers，注册在内置记录 handler 之前，其应答优先 |
+| 参数       | 类型               | 默认值 | 说明                                    |
+| ---------- | ------------------ | ------ | --------------------------------------- |
+| `handlers` | `RequestHandler[]` | `[]`   | 业务 handler，注册在记录 handler 之前。 |
 
-**返回：** `MswTestEnv`，包含：
+返回 `MswTestEnv`。
 
-| 属性                    | 类型                                                                    | 说明                                                      |
-| ----------------------- | ----------------------------------------------------------------------- | --------------------------------------------------------- |
-| `worker`                | `SetupWorker`                                                           | MSW service worker 实例                                   |
-| `start`                 | `() => Promise<unknown>`                                                | 启动 service worker（`beforeAll(env.start)`）             |
-| `stop`                  | `() => void`                                                            | 停止 service worker（`afterAll(env.stop)`）               |
-| `reset`                 | `() => void`                                                            | 重置所有处理器为默认值（`afterEach`）                     |
-| `capturedRequests`      | `CapturedRequest[]`                                                     | 内置记录 handler 捕获的请求；`url` 为请求 URL 的 pathname |
-| `clearCapturedRequests` | `() => void`                                                            | 清空所有捕获的请求                                        |
-| `settle`                | `(completion: PromiseLike<unknown>, timeout?: number) => Promise<void>` | 等待提供的完成信号；失败或超时则 reject（默认 300ms）     |
+| 属性                    | 类型                                                                    | 说明                                                   |
+| ----------------------- | ----------------------------------------------------------------------- | ------------------------------------------------------ |
+| `worker`                | `SetupWorker`                                                           | MSW service worker 实例。                              |
+| `start`                 | `() => Promise<unknown>`                                                | 启动 worker，配合 `beforeAll` 使用。                   |
+| `stop`                  | `() => void`                                                            | 停止 worker，配合 `afterAll` 使用。                    |
+| `reset`                 | `() => void`                                                            | 重置 handler，配合 `afterEach` 使用。                  |
+| `capturedRequests`      | `CapturedRequest[]`                                                     | 内置记录器捕获的请求，`url` 为请求 URL 的 pathname。   |
+| `clearCapturedRequests` | `() => void`                                                            | 清空已捕获的请求。                                     |
+| `settle`                | `(completion: PromiseLike<unknown>, timeout?: number) => Promise<void>` | 等待完成信号，失败或超时则 reject。默认超时 300 毫秒。 |
 
 ### `defineMsw(handlers)`
 
-创建 MSW 生命周期插件。返回包含 worker 管理方法的插件。
+创建 MSW 生命周期插件。
 
-| 参数       | 类型               | 默认值 | 说明           |
-| ---------- | ------------------ | ------ | -------------- |
-| `handlers` | `RequestHandler[]` | -      | MSW 请求处理器 |
+| 参数       | 类型               | 说明           |
+| ---------- | ------------------ | -------------- |
+| `handlers` | `RequestHandler[]` | MSW 请求处理器 |
 
-**返回：** `MswContext`，包含：
-
-| 属性       | 类型                     | 说明                    |
-| ---------- | ------------------------ | ----------------------- |
-| `worker`   | `SetupWorker`            | MSW service worker 实例 |
-| `startMsw` | `() => Promise<unknown>` | 启动 service worker     |
-| `stopMsw`  | `() => void`             | 停止 service worker     |
-| `resetMsw` | `() => void`             | 重置所有处理器为默认值  |
+返回 `MswContext`，包含 `worker`、`startMsw`、`stopMsw` 和 `resetMsw`。
 
 ### `defineCapturedRequests()`
 
-创建请求捕获插件。记录拦截到的 HTTP 请求。
+创建请求捕获插件。
 
-**返回：** `CapturedRequestsContext`，包含：
-
-| 属性                    | 类型                | 说明               |
-| ----------------------- | ------------------- | ------------------ |
-| `capturedRequests`      | `CapturedRequest[]` | 捕获的请求数组     |
-| `clearCapturedRequests` | `() => void`        | 清空所有捕获的请求 |
+返回 `CapturedRequestsContext`，包含 `capturedRequests` 和 `clearCapturedRequests`。
 
 ### `CapturedRequest`
-
-捕获请求的类型。
 
 | 属性        | 类型      | 说明              |
 | ----------- | --------- | ----------------- |

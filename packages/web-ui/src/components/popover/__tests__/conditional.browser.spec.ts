@@ -125,7 +125,7 @@ describe('WebUiPopover portal 条件渲染边界（浏览器）', () => {
     const app = createApp({
       setup: () => ({ open, editing }),
       template: `
-        <web-ui-popover trigger="manual" :portal="true" :open="open">
+        <web-ui-popover trigger="none" :portal="true" :open="open">
           <button slot="trigger">t</button>
           <div v-if="open && editing" class="probe-flag">flag</div>
         </web-ui-popover>

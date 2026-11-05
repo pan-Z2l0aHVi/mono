@@ -1,15 +1,8 @@
 # @greypan/deps-reload
 
-> A build plugin that watches dist output for changes and reloads the page, with Vite and Webpack entries
+> Reload the page when a dependency's build output changes.
 
-English | [简体中文](https://github.com/pan-Z2l0aHVi/mono/blob/main/packages/deps-reload/README.CN.md)
-
-## Features
-
-- **Full reload**: Trigger full page refresh when dependency files change during dev
-- **Configurable watching**: Custom file extensions and output directories
-- **Debounced reload**: Prevents rapid successive refreshes
-- **Monorepo-friendly**: Watch local package build outputs
+English | [简体中文](./README.CN.md)
 
 ## Install
 
@@ -27,7 +20,7 @@ yarn add @greypan/deps-reload
 bun add @greypan/deps-reload
 ```
 
-## Quick Start
+## Vite
 
 ```ts
 // vite.config.ts
@@ -46,11 +39,11 @@ export default defineConfig({
 })
 ```
 
-When files in `packages/web-ui/dist` change, the browser will automatically reload.
+When files in `packages/web-ui/dist` change, the browser reloads the page.
+
+This plugin watches build output. It does not alias the dependency to source files, so the app keeps consuming the package build.
 
 ## Webpack
-
-The Webpack plugin adds each configured output directory to Webpack's watch dependencies. To use the same full-reload behavior with Webpack Dev Server, enable native live reload and disable HMR:
 
 ```ts
 // webpack.config.ts
@@ -72,23 +65,23 @@ export default {
 }
 ```
 
-This plugin does not alias dependencies to source files. The app continues to consume the package build output.
+The Webpack plugin adds each output directory to the watch dependencies. To get a full reload with Webpack Dev Server, enable live reload and disable HMR.
 
 ## API
 
 ### `depsReload(deps)`
 
-Create an unplugin instance that watches dependency files and triggers full reload.
+Create the plugin.
 
-| Parameter | Type    | Default | Description           |
-| --------- | ------- | ------- | --------------------- |
-| `deps`    | `Dep[]` | -       | Dependencies to watch |
+| Parameter | Type    | Description           |
+| --------- | ------- | --------------------- |
+| `deps`    | `Dep[]` | Dependencies to watch |
 
 ### `Dep`
 
-| Property     | Type       | Default           | Description                                     |
-| ------------ | ---------- | ----------------- | ----------------------------------------------- |
-| `name`       | `string`   | -                 | Package name (used for node_modules path)       |
-| `path`       | `string`   | -                 | Local package root (for monorepos or npm links) |
-| `outputDir`  | `string`   | `'dist'`          | Build output directory relative to `path`       |
-| `extensions` | `string[]` | `['.js', '.css']` | File extensions to watch                        |
+| Property     | Type       | Default           | Description                                    |
+| ------------ | ---------- | ----------------- | ---------------------------------------------- |
+| `name`       | `string`   | -                 | Package name, used for the node_modules path.  |
+| `path`       | `string`   | -                 | Local package root for a monorepo or npm link. |
+| `outputDir`  | `string`   | `'dist'`          | Build output directory relative to `path`.     |
+| `extensions` | `string[]` | `['.js', '.css']` | File extensions to watch.                      |

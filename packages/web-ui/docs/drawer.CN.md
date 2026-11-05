@@ -1,6 +1,6 @@
 # Drawer
 
-侧边 drawer，基于原生 `<dialog>`，打开和关闭都有滑动动画，也可以从四周内缘拖拽关闭。用于展示与当前页面相关、又不需要离开当前页面的次级内容。
+侧边抽屉，基于原生 `<dialog>`，打开和关闭都有滑动动画，也可以从四周内缘拖拽关闭。用于展示与当前页面相关、又不需要离开当前页面的次级内容。
 
 ## Samples
 
@@ -250,7 +250,7 @@ function openWith(item: (typeof sizes)[number]) {
 
 ### Header
 
-`header` 插槽完全替换内置标题区；既没有 `heading` 也没有 `header` 时，标题区整体不渲染。`closable` 的关闭按钮独立于 header 内容，固定在右上角。
+`header` 插槽完全替换内置标题区；既没有 `heading` 也没有 `header` 时，标题区整体不渲染。`closable` 的关闭按钮独立于头部内容，固定在右上角。
 
 ```tsx
 import { useState } from 'react'
@@ -275,7 +275,7 @@ export default function Demo() {
       </web-ui-drawer>
 
       <web-ui-drawer open={noHeader} onopen-change={event => setNoHeader(event.detail.open)}>
-        <p>没有 heading，也没有 header 插槽，标题区不会占位。</p>
+        <p>没有 heading，也没有标题栏插槽，标题区不会占位。</p>
       </web-ui-drawer>
     </>
   )
@@ -298,7 +298,7 @@ export default function Demo() {
   </web-ui-drawer>
 
   <web-ui-drawer :open="noHeader" @open-change="noHeader = $event.detail.open">
-    <p>没有 heading，也没有 header 插槽，标题区不会占位。</p>
+    <p>没有 heading，也没有标题栏插槽，标题区不会占位。</p>
   </web-ui-drawer>
 </template>
 
@@ -312,7 +312,7 @@ const noHeader = ref(false)
 
 ### Close button
 
-`closable` 显示内置关闭按钮。按钮固定在 header 右上角，不随正文滚动。
+`closable` 显示内置关闭按钮。按钮固定在头部右上角，不随正文滚动。
 
 ```tsx
 import { useState } from 'react'
@@ -365,7 +365,7 @@ const closable = ref(true)
 
 ### Footer actions
 
-`footer` 插槽固定在 drawer 底部，正文滚动时保持可见。
+`footer` 插槽固定在抽屉底部，正文滚动时保持可见。
 
 ```tsx
 import { useState } from 'react'
@@ -425,7 +425,7 @@ const open = ref(false)
 
 ### Scroll lock
 
-drawer 默认在打开期间锁定页面滚动；`no-scroll-lock` 保留背景滚动。
+抽屉默认在打开期间锁定页面滚动；`no-scroll-lock` 保留背景滚动。
 
 ```tsx
 import { useState } from 'react'
@@ -468,9 +468,9 @@ const open = ref(false)
 
 ### Page shift
 
-`page-shift` 在 drawer 打开时把背景页面朝 drawer 的进场方向移动一段距离。右侧 drawer 从右侧滑入，页面整体左移，右侧空出 drawer 的位置；左侧 drawer 让页面右移；上下方向分别让出顶部或底部。偏移距离按视口尺寸计算，没有 CSS 变量可以调整。
+`page-shift` 在抽屉打开时把背景页面朝抽屉的进场方向移动一段距离。右侧抽屉从右侧滑入，页面整体左移，右侧空出抽屉的位置；左侧抽屉让页面右移；上下方向分别让出顶部或底部。偏移距离按视口尺寸计算，没有 CSS 变量可以调整。
 
-多层同时打开时，偏移量按打开顺序决定。先打开的最多，之后每层递减，嵌套层和同级层规则相同。关闭任意一层后，其余层重新计算，页面回到新的总距离。页面只在 `open` 变化时移动，拖拽 panel 时保持不动。视口尺寸变化时偏移距离自动更新，不需要重新打开 drawer。
+多层同时打开时，偏移量按打开顺序决定。先打开的最多，之后每层递减，嵌套层和同级层规则相同。关闭任意一层后，其余层重新计算，页面回到新的总距离。页面只在 `open` 变化时移动，拖拽面板时保持不动。视口尺寸变化时偏移距离自动更新，不需要重新打开抽屉。
 
 `prefers-reduced-motion`（或所在 `web-ui-theme` 的 `motion="reduced"`）下整套不生效。
 
@@ -490,7 +490,7 @@ export default function Demo() {
         heading="页面随 drawer 偏移"
         onopen-change={event => setOpen(event.detail.open)}
       >
-        <p>打开时背景整页偏移一段距离，关闭后回到原位；拖拽这块 panel 时页面停在原地。</p>
+        <p>打开时背景整页偏移一段距离，关闭后回到原位；拖拽这块面板时页面停在原地。</p>
       </web-ui-drawer>
     </>
   )
@@ -502,7 +502,7 @@ export default function Demo() {
   <web-ui-button @click="open = true">打开（页面偏移）</web-ui-button>
 
   <web-ui-drawer :open="open" page-shift heading="页面随 drawer 偏移" @open-change="open = $event.detail.open">
-    <p>打开时背景整页偏移一段距离，关闭后回到原位；拖拽这块 panel 时页面停在原地。</p>
+    <p>打开时背景整页偏移一段距离，关闭后回到原位；拖拽这块面板时页面停在原地。</p>
   </web-ui-drawer>
 </template>
 
@@ -642,7 +642,7 @@ const setLayer = (index: number, open: boolean) => {
 
 ### Sibling page shift
 
-两个 drawer 在 DOM 中是兄弟节点，没有嵌套关系，但组件仍按打开顺序管理层级：后打开的叠在前一个之上，前一个缩小并后退，看起来仍是一层套一层。`page-shift` 使用同一份打开顺序：先打开的最多，后打开的较少；关闭后页面回到前一层的偏移。
+两个抽屉在 DOM 中是兄弟节点，没有嵌套关系，但组件仍按打开顺序管理层级：后打开的叠在前一个之上，前一个缩小并后退，看起来仍是一层套一层。`page-shift` 使用同一份打开顺序：先打开的最多，后打开的较少；关闭后页面回到前一层的偏移。
 
 ```tsx
 import { useState } from 'react'
@@ -694,7 +694,7 @@ const second = ref(false)
 
 ### Backdrop click
 
-默认点击遮罩关闭；`no-backdrop-close` 后只能通过关闭按钮、footer 操作或 Escape 退出。
+默认点击遮罩关闭；`no-backdrop-close` 后只能通过关闭按钮、页脚操作或 Escape 退出。
 
 ```tsx
 import { useState } from 'react'
@@ -823,7 +823,7 @@ function close() {
 
 ### Headless
 
-`headless` 只保留原生 dialog、遮罩、动画、滚动锁定与 Escape / 遮罩关闭，不渲染内置 header、关闭按钮或 footer。调用方负责默认插槽内容的完整样式，并必须提供 `aria-dialog-label`；`headless` 同样支持 `draggable` 拖拽关闭。
+`headless` 只保留原生 dialog、遮罩、动画、滚动锁定与 Escape / 遮罩关闭，不渲染内置头部、关闭按钮或页脚。调用方负责默认插槽内容的完整样式，并必须提供 `aria-dialog-label`；`headless` 同样支持 `draggable` 拖拽关闭。
 
 ```tsx
 import { useState } from 'react'
@@ -885,7 +885,7 @@ const open = ref(false)
 
 ### Drag to close
 
-开启 `draggable` 后，drawer 内缘显示灰色胶囊 drag bar。朝关闭方向拖动超过自身尺寸的一半，或快速拖动后松开，drawer 就会关闭；没到阈值则回到打开位置。拖动方向随 `placement` 改变。
+开启 `draggable` 后，抽屉内缘显示灰色胶囊拖拽条。朝关闭方向拖动超过自身尺寸的一半，或快速拖动后松开，抽屉就会关闭；没到阈值则回到打开位置。拖动方向随 `placement` 改变。
 
 ```tsx
 import { useState } from 'react'
@@ -956,7 +956,7 @@ const bottomOpen = ref(false)
 
 ### Nested stacking
 
-声明式嵌套的 drawer 会自动堆叠：后打开的位于顶层并保持全尺寸，下层缩小并向内偏移，每层左侧露出可见的边缘。层宽不同或打开顺序变化时也会自动调整。Escape 和遮罩点击只作用于最顶层。
+声明式嵌套的抽屉会自动堆叠：后打开的位于顶层并保持全尺寸，下层缩小并向内偏移，每层左侧露出可见的边缘。层宽不同或打开顺序变化时也会自动调整。Escape 和遮罩点击只作用于最顶层。
 
 ```tsx
 import type { CSSProperties } from 'react'
@@ -1109,7 +1109,7 @@ function closeLevel(index: number) {
 
 ### Sibling stacking
 
-三个 drawer 作为同级节点挂载。先从页面按钮打开 drawer 1，再从它的 footer 打开下一层。组件自动管理层级：先打开的缩小并偏移，后打开的位于顶层；按任意顺序关闭后，其余层重新排列。
+三个抽屉作为同级节点挂载。先从页面按钮打开抽屉 1，再从它的页脚打开下一层。组件自动管理层级：先打开的缩小并偏移，后打开的位于顶层；按任意顺序关闭后，其余层重新排列。
 
 ```tsx
 import { useState } from 'react'
@@ -1135,7 +1135,7 @@ export default function Demo() {
         >
           <p>
             第 {index + 1} 个同级 drawer。
-            {index < open.length - 1 ? '从 footer 打开下一层。' : '关闭后观察剩余层级重新排列。'}
+            {index < open.length - 1 ? '从页脚打开下一层。' : '关闭后观察剩余层级重新排列。'}
           </p>
           {index < open.length - 1 && (
             <web-ui-button slot="footer" variant="secondary" full onClick={() => setAt(index + 1, true)}>
@@ -1163,7 +1163,7 @@ export default function Demo() {
   >
     <p>
       第 {{ index + 1 }} 个同级 drawer。{{
-        index < open.length - 1 ? '从 footer 打开下一层。' : '关闭后观察剩余层级重新排列。'
+        index < open.length - 1 ? '从页脚打开下一层。' : '关闭后观察剩余层级重新排列。'
       }}
     </p>
     <web-ui-button
@@ -1187,7 +1187,7 @@ const open = ref([false, false, false])
 
 ### CSS variables
 
-背景、圆角与视口留边分别由 `--wui-drawer-bg`、`--wui-drawer-radius`、`--wui-drawer-inset` 控制；把 `--wui-drawer-inset` 设为 `0` 可以让 drawer 贴住视口边缘。把背景改成白色时，一并覆盖 `--wui-color-text` 与 `--wui-color-surface-control`，标题和关闭按钮在深浅主题下才清晰可读。
+背景、圆角与视口留边分别由 `--wui-drawer-bg`、`--wui-drawer-radius`、`--wui-drawer-inset` 控制；把 `--wui-drawer-inset` 设为 `0` 可以让抽屉贴住视口边缘。把背景改成白色时，一并覆盖 `--wui-color-text` 与 `--wui-color-surface-control`，标题和关闭按钮在深浅主题下才清晰可读。
 
 ```tsx
 import { useState } from 'react'
@@ -1239,20 +1239,20 @@ const open = ref(false)
 
 ### Props
 
-| 名称                | 说明                                                                                                                                         | 类型              | 默认值    |
-| ------------------- | -------------------------------------------------------------------------------------------------------------------------------------------- | ----------------- | --------- |
-| `open`              | drawer 可见性。                                                                                                                              | `boolean`         | `false`   |
-| `no-scroll-lock`    | 打开时不锁定页面滚动。                                                                                                                       | `boolean`         | `false`   |
-| `no-backdrop-close` | 禁止点击 backdrop 关闭。                                                                                                                     | `boolean`         | `false`   |
-| `controlled`        | 用户关闭仅请求 `open=false`，由调用方回写。                                                                                                  | `boolean`         | `false`   |
-| `placement`         | 滑入方向：`right`（默认）、`left`、`top`、`bottom`。                                                                                         | `DrawerPlacement` | `'right'` |
-| `heading`           | 标题文字，`header` 插槽为空时作为标题显示。                                                                                                  | `string`          | `''`      |
-| `closable`          | 显示内置关闭按钮。                                                                                                                           | `boolean`         | `false`   |
-| `headless`          | 仅保留 overlay 行为，默认插槽不渲染内置 drawer UI。                                                                                          | `boolean`         | `false`   |
-| `aria-dialog-label` | 原生 dialog 的可访问名称；`headless` 下必须提供。`dialog-label` 也可用。                                                                     | `string`          | `''`      |
-| `aria-close-label`  | 内置关闭 button 的无障碍名称；未设置时回退内置英文文案（`Close`）。                                                                          | `string`          | `''`      |
-| `draggable`         | 在 drawer 内缘显示 drag bar，支持拖拽关闭手势。                                                                                              | `boolean`         | `false`   |
-| `page-shift`        | 打开时背景页面朝 drawer 的进场方向移动。按打开顺序决定层级和偏移，嵌套层与同级层规则相同；关闭任意层后其余层重新计算。减少动效模式下不生效。 | `boolean`         | `false`   |
+| 名称                | 说明                                                                                                                                     | 类型              | 默认值    |
+| ------------------- | ---------------------------------------------------------------------------------------------------------------------------------------- | ----------------- | --------- |
+| `open`              | 抽屉可见性。                                                                                                                             | `boolean`         | `false`   |
+| `no-scroll-lock`    | 打开时不锁定页面滚动。                                                                                                                   | `boolean`         | `false`   |
+| `no-backdrop-close` | 禁止点击遮罩关闭。                                                                                                                       | `boolean`         | `false`   |
+| `controlled`        | 用户关闭仅请求 `open=false`，由调用方回写。                                                                                              | `boolean`         | `false`   |
+| `placement`         | 滑入方向：`right`（默认）、`left`、`top`、`bottom`。                                                                                     | `DrawerPlacement` | `'right'` |
+| `heading`           | 标题文字，`header` 插槽为空时作为标题显示。                                                                                              | `string`          | `''`      |
+| `closable`          | 显示内置关闭按钮。                                                                                                                       | `boolean`         | `false`   |
+| `headless`          | 仅保留 overlay 行为，默认插槽不渲染内置抽屉界面。                                                                                        | `boolean`         | `false`   |
+| `aria-dialog-label` | 原生 dialog 的可访问名称；`headless` 下必须提供。`dialog-label` 也可用。                                                                 | `string`          | `''`      |
+| `aria-close-label`  | 内置关闭按钮的无障碍名称；未设置时回退内置英文文案（`Close`）。                                                                          | `string`          | `''`      |
+| `draggable`         | 在抽屉内缘显示拖拽条，支持拖拽关闭手势。                                                                                                 | `boolean`         | `false`   |
+| `page-shift`        | 打开时背景页面朝抽屉的进场方向移动。按打开顺序决定层级和偏移，嵌套层与同级层规则相同；关闭任意层后其余层重新计算。减少动效模式下不生效。 | `boolean`         | `false`   |
 
 ### Events
 
@@ -1270,24 +1270,24 @@ const open = ref(false)
 
 ### Methods
 
-| 名称      | 说明                            |
-| --------- | ------------------------------- |
-| `show()`  | 打开 drawer；已打开时为 no-op。 |
-| `close()` | 关闭 drawer；已关闭时为 no-op。 |
+| 名称      | 说明                           |
+| --------- | ------------------------------ |
+| `show()`  | 打开抽屉；已打开时不产生效果。 |
+| `close()` | 关闭抽屉；已关闭时不产生效果。 |
 
 ### 行为说明
 
-`headless` 保留原生 dialog、backdrop、placement 动画、Escape/backdrop 关闭行为和滚动锁定，但不渲染内置 glass 主体、header、关闭按钮或 footer。调用方负责完整定义默认插槽内容的样式，并且必须提供 `aria-dialog-label`，确保原生 dialog 有可访问名称。
+`headless` 保留原生 dialog、遮罩、placement 动画、Escape/遮罩关闭行为和滚动锁定，但不渲染内置 glass 主体、头部、关闭按钮或页脚。调用方负责完整定义默认插槽内容的样式，并且必须提供 `aria-dialog-label`，确保原生 dialog 有可访问名称。
 
-关闭时等待退场过渡播放完。Escape 始终可以关闭；`no-backdrop-close` 仅控制 backdrop 点击。
+关闭时等待退场过渡播放完。Escape 始终可以关闭；`no-backdrop-close` 仅控制遮罩点击。
 
-启用 `closable` 时，内置关闭按钮固定在 header 右上角，默认距顶部和右侧各 `16px`，不会随内容拉伸。
+启用 `closable` 时，内置关闭按钮固定在头部右上角，默认距顶部和右侧各 `16px`，不会随内容拉伸。
 
-顶部偏移使用 `--wui-space-4`，默认 `16px`，与 header 的内边距一致；右侧偏移固定 `16px`，表示按钮到 panel 右边缘的距离，和 header 的水平内边距（`20px`）不同。
+顶部偏移使用 `--wui-space-4`，默认 `16px`，与头部的内边距一致；右侧偏移固定 `16px`，表示按钮到面板右边缘的距离，和头部的水平内边距（`20px`）不同。
 
 `--wui-drawer-nested-peek-base` 是嵌套堆叠时每层露出的基准距离：桌面端默认 `43.2px`，窄视口默认 `28.8px`。在宿主或任意祖先上覆盖它即可同时改变两者，在任何视口宽度下都生效。
 
-`page-shift` 会移动整个页面，不需要额外配置。页面里 `position: fixed` 的内容一起移动；已经打开的其他 dialog 或 drawer 不受影响。
+`page-shift` 会移动整个页面，不需要额外配置。页面里 `position: fixed` 的内容一起移动；已经打开的其他 dialog 或抽屉不受影响。
 
 多层同时打开时按打开顺序叠加，嵌套层和同级层规则相同；关闭任意一层后，其余层重新计算。
 
@@ -1295,34 +1295,34 @@ const open = ref(false)
 
 ### 拖拽关闭
 
-启用 `draggable` 后，打开的 drawer 在内缘显示灰色胶囊 drag bar；按住 drag bar 或直接拖动 panel 都可以，松开时位移超过阈值或快速拖动就会关闭，否则回到打开位置。拖拽不会移动页面，`page-shift` 开启时页面保持不动。
+启用 `draggable` 后，打开的抽屉在内缘显示灰色胶囊拖拽条；按住拖拽条或直接拖动面板都可以，松开时位移超过阈值或快速拖动就会关闭，否则回到打开位置。拖拽不会移动页面，`page-shift` 开启时页面保持不动。
 
-左右 placement 只有 drag zone；上下 placement 还可以从端头 drag edge 或整个 header / footer 开始拖动。按下位置只要遇到可交互控件，这次按下就交给控件，不启动拖拽；自绘控件需要带 `role` 或 `tabindex` 才会被识别。与 drag bar 区域重叠的控件，上半部分会被拖拽区域覆盖，可以调整 `--wui-drawer-drag-bar-length` 和 `--wui-drawer-drag-edge-size`。
+左右 placement 只有拖拽区；上下 placement 还可以从端头拖拽边缘或整个头部 / 页脚开始拖动。按下位置只要遇到可交互控件，这次按下就交给控件，不启动拖拽；自绘控件需要带 `role` 或 `tabindex` 才会被识别。与拖拽条区域重叠的控件，上半部分会被拖拽区域覆盖，可以调整 `--wui-drawer-drag-bar-length` 和 `--wui-drawer-drag-edge-size`。
 
-点击 backdrop 关闭只响应轻点：从 panel 或 backdrop 按下、在别处松开的手势不会关闭。
+点击遮罩关闭只响应轻点：从面板或遮罩按下、在别处松开的手势不会关闭。
 
-`controlled` 模式下，超过阈值后松开只派发 `open-change(false)`；drawer 会在闭合位置等待 120ms，调用方拒绝回写或超时后回到打开位置。
+`controlled` 模式下，超过阈值后松开只派发 `open-change(false)`；抽屉会在闭合位置等待 120ms，调用方拒绝回写或超时后回到打开位置。
 
-不支持拖拽打开，关闭状态的 drawer 没有可拖拽的内容。`prefers-reduced-motion` 下松开后立即到位，不播放收尾动画。
+不支持拖拽打开，关闭状态的抽屉没有可拖拽的内容。`prefers-reduced-motion` 下松开后立即到位，不播放收尾动画。
 
 ### CSS Custom Properties
 
-| 名称                              | 说明                                                                                                                                                                    | 默认值                                         |
-| --------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------- |
-| `--wui-drawer-width`              | drawer 宽度                                                                                                                                                             | `320px`                                        |
-| `--wui-drawer-height`             | drawer 高度（上/下）                                                                                                                                                    | `300px`                                        |
-| `--wui-drawer-bg`                 | drawer 背景色                                                                                                                                                           | `var(--wui-color-surface-overlay)`             |
-| `--wui-drawer-radius`             | 浮动卡片圆角（非 headless）                                                                                                                                             | `var(--wui-radius-overlay, 28px)`              |
-| `--wui-drawer-inset`              | 浮动卡片视口留边（非 headless）；置 `0` 为贴边几何                                                                                                                      | `8px`                                          |
-| `--wui-drawer-nested-peek-base`   | 嵌套堆叠露边基准 `A`（`width <= 640px` 时为 `28.8px`）；堆叠总宽按 `A · ln(n)` 增长，单层因此完全不动，每多一层新增的露边递减。置 `0` 关闭露边。详见下方说明            | `43.2px`                                       |
-| `--wui-drawer-overlay-bg`         | backdrop 背景色，取 `--wui-color-backdrop`                                                                                                                              | 浅 `rgb(0 0 0 / 0.12)`，深 `rgb(0 0 0 / 0.48)` |
-| `--wui-drawer-drag-zone-size`     | Drag-to-close 命中 drag zone 厚度（draggable）                                                                                                                          | `20px`                                         |
-| `--wui-drawer-drag-zone-inset`    | 拖拽 drag zone 与它避让的那一节（`placement=bottom` 的 header / `placement=top` 的 footer）之间的呼吸间距；该节不存在时为 0                                             | `var(--wui-space-1, 4px)`                      |
-| `--wui-drawer-drag-bar-thickness` | Drag bar 胶囊厚度（短轴）                                                                                                                                               | `4px`                                          |
-| `--wui-drawer-drag-bar-length`    | Drag bar 胶囊长度（沿 drawer 边缘）                                                                                                                                     | `56px`                                         |
-| `--wui-drawer-drag-edge-size`     | 可抓取边缘的厚度（仅上下 placement）。命中范围包含胶囊外沿，拖拽区域始终覆盖胶囊；默认值与 `--wui-drawer-drag-zone-size` 相同，因此 drag bar 不会比旁边的拖拽区域更难按 | `20px`                                         |
-| `--wui-drawer-header-padding`     | Header 区域 padding                                                                                                                                                     | `16px 20px`                                    |
-| `--wui-drawer-close-top`          | 内置关闭按钮相对 header 顶部的偏移                                                                                                                                      | `16px`                                         |
-| `--wui-drawer-close-right`        | 内置关闭按钮相对 drawer 右缘的偏移                                                                                                                                      | `16px`                                         |
-| `--wui-drawer-content-padding`    | 内容区 padding；同时驱动 drag bar 视觉中线（取半值，不低于半个胶囊厚度 + 4px）                                                                                          | `20px`                                         |
-| `--wui-drawer-footer-padding`     | Footer 区域 padding                                                                                                                                                     | `16px 20px`                                    |
+| 名称                              | 说明                                                                                                                                                                | 默认值                                         |
+| --------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------- |
+| `--wui-drawer-width`              | 抽屉宽度                                                                                                                                                            | `320px`                                        |
+| `--wui-drawer-height`             | 抽屉高度（上/下）                                                                                                                                                   | `300px`                                        |
+| `--wui-drawer-bg`                 | 抽屉背景色                                                                                                                                                          | `var(--wui-color-surface-overlay)`             |
+| `--wui-drawer-radius`             | 浮动卡片圆角（非 headless）                                                                                                                                         | `var(--wui-radius-overlay, 28px)`              |
+| `--wui-drawer-inset`              | 浮动卡片视口留边（非 headless）；置 `0` 为贴边几何                                                                                                                  | `8px`                                          |
+| `--wui-drawer-nested-peek-base`   | 嵌套堆叠露边基准 `A`（`width <= 640px` 时为 `28.8px`）；堆叠总宽按 `A · ln(n)` 增长，单层因此完全不动，每多一层新增的露边递减。置 `0` 关闭露边。详见下方说明        | `43.2px`                                       |
+| `--wui-drawer-overlay-bg`         | 遮罩背景色，取 `--wui-color-backdrop`                                                                                                                               | 浅 `rgb(0 0 0 / 0.12)`，深 `rgb(0 0 0 / 0.48)` |
+| `--wui-drawer-drag-zone-size`     | 拖拽关闭（`draggable`）时命中区的厚度                                                                                                                               | `20px`                                         |
+| `--wui-drawer-drag-zone-inset`    | 拖拽区与它避让的那一节（`placement=bottom` 的头部 / `placement=top` 的页脚）之间的呼吸间距；该节不存在时为 0                                                        | `var(--wui-space-1, 4px)`                      |
+| `--wui-drawer-drag-bar-thickness` | 拖拽条胶囊厚度（短轴）                                                                                                                                              | `4px`                                          |
+| `--wui-drawer-drag-bar-length`    | 拖拽条胶囊长度（沿抽屉边缘）                                                                                                                                        | `56px`                                         |
+| `--wui-drawer-drag-edge-size`     | 可抓取边缘的厚度（仅上下 placement）。命中范围包含胶囊外沿，拖拽区域始终覆盖胶囊；默认值与 `--wui-drawer-drag-zone-size` 相同，因此拖拽条不会比旁边的拖拽区域更难按 | `20px`                                         |
+| `--wui-drawer-header-padding`     | 头部区域内边距                                                                                                                                                      | `16px 20px`                                    |
+| `--wui-drawer-close-top`          | 内置关闭按钮相对头部顶部的偏移                                                                                                                                      | `16px`                                         |
+| `--wui-drawer-close-right`        | 内置关闭按钮相对抽屉右缘的偏移                                                                                                                                      | `16px`                                         |
+| `--wui-drawer-content-padding`    | 内容区内边距；同时驱动拖拽条视觉中线（取半值，不低于半个胶囊厚度 + 4px）                                                                                            | `20px`                                         |
+| `--wui-drawer-footer-padding`     | 页脚区域内边距                                                                                                                                                      | `16px 20px`                                    |

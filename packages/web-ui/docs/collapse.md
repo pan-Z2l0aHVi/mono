@@ -1337,7 +1337,7 @@ Known limitation: when `peek` is a percentage no fade appears. In that case set 
 | -------------------------------- | ------------------------------------------------------------------------- | ----------------------------- |
 | `--wui-collapse-peek-edge-ratio` | Gradient length as a share of `peek`                                      | `0.4`                         |
 | `--wui-collapse-peek-edge-max`   | Length cap, so a large `peek` does not calculate an overly long blur area | `112px`                       |
-| `--wui-collapse-peek-edge`       | Explicit length, overriding the calculated default                        | —                             |
+| `--wui-collapse-peek-edge`       | Explicit length, overriding the calculated default                        | -                             |
 | `--wui-collapse-peek-edge-color` | Gradient start color at the clipping edge                                 | `var(--wui-color-page, #fff)` |
 | `--wui-collapse-peek-edge-blur`  | Radius of the background blur on the same gradient area                   | `4px`                         |
 

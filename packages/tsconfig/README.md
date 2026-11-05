@@ -1,47 +1,28 @@
 # @greypan/tsconfig
 
-> Shared TypeScript configuration profiles for the monorepo
+> Shared TypeScript configuration profiles for this workspace.
 
-English | [简体中文](https://github.com/pan-Z2l0aHVi/mono/blob/main/packages/tsconfig/README.CN.md)
+English | [简体中文](./README.CN.md)
 
 ## Profiles
 
-| Profile      | Layer | Used by                                                                                                  | Extends                            |
-| ------------ | ----- | -------------------------------------------------------------------------------------------------------- | ---------------------------------- |
-| `base.json`  | 0     | All profiles internally                                                                                  | —                                  |
-| `core.json`  | 1     | Pure JS libraries (js-kit)                                                                               | `./base.json`                      |
-| `node.json`  | 2     | Node.js packages (deps-reload, md-to-meta, unplugin-web-components, test-kit) + all `tsconfig.node.json` | `@tsconfig/node24` + `./base.json` |
-| `dom.json`   | 3     | Browser/DOM packages (browser-kit, web-ui)                                                               | `./base.json`                      |
-| `react.json` | 4     | React app (react-web-ui-demo)                                                                            | `./dom.json`                       |
-| `vue.json`   | 4     | Vue apps (vue-web-ui-demo, interweave frontend)                                                          | `@vue/tsconfig` + `./dom.json`     |
+| Profile      | Use for                                                    | Extends                            |
+| ------------ | ---------------------------------------------------------- | ---------------------------------- |
+| `base.json`  | Shared settings used by the other profiles.                | -                                  |
+| `core.json`  | Libraries with no DOM and no Node.js APIs, such as js-kit. | `./base.json`                      |
+| `node.json`  | Node.js packages and `tsconfig.node.json` files.           | `@tsconfig/node24` + `./base.json` |
+| `dom.json`   | Browser packages, such as browser-kit and web-ui.          | `./base.json`                      |
+| `react.json` | React apps.                                                | `./dom.json`                       |
+| `vue.json`   | Vue apps, including the Interweave frontend.               | `@vue/tsconfig` + `./dom.json`     |
 
-## Why separate profiles?
-
-TypeScript's built-in `lib` options map to runtime environments, not to project types:
-
-- `ESNext`: pure ECMAScript (no `setTimeout`, `EventTarget`, `URL`)
-- `webworker`: zero DOM, pure runtime APIs (`setTimeout`, `EventTarget`, `URL`, but also `postMessage`, `Cache`)
-- `DOM`: full browser environment (includes `window`, `document`, `Storage`)
-- `@types/node`: Node.js runtime (includes `process`, `Buffer`, `fs`)
-
-### Why `webworker` for `core.json`?
-
-Pure JavaScript libraries (like `js-kit`) need runtime APIs such as `setTimeout`, `EventTarget`, and `URL`. These are cross-platform, available in both browsers and Node.js, but TypeScript only ships them inside the `DOM` lib, alongside `window`, `document`, etc.
-
-`webworker` is the closest fit: it provides these runtime APIs without exposing `window`/`document`, while the Worker-specific extras (`postMessage`, `Cache`) are niche enough that accidental misuse is unlikely. Neither `DOM` nor `@types/node` nor `ESNext` alone provides the right set without bringing in unwanted APIs.
-
-This package organizes the libs into a progressive 4-layer hierarchy, matching packages to the runtime APIs they actually use.
-
-### Indexed access in `core.json`
-
-`core.json` enables `noUncheckedIndexedAccess`. An unchecked array or dictionary lookup is typed as possibly `undefined`, so consumers must handle absent values before using them.
+`core.json` enables `noUncheckedIndexedAccess`. An array or dictionary lookup is typed as possibly `undefined`, so handle the missing case before using the value.
 
 ## Internal use
 
-This is a private configuration package for the `mono` workspace and is not published by this repository. In repository manifests, add it as a development dependency with the `workspace:*` protocol.
+This is a private configuration package for this workspace. Add it as a development dependency with the `workspace:*` protocol.
 
 ```json
-// In any package's tsconfig.app.json:
+// In a package's tsconfig.app.json:
 {
   "extends": "@greypan/tsconfig/<profile>.json",
   "include": ["src/**/*"]
@@ -50,11 +31,11 @@ This is a private configuration package for the `mono` workspace and is not publ
 
 ## Inheritance
 
-```
-base.json (strict / module / bundler settings)
-├── core.json (ESNext + webworker, types: [])
-├── node.json (@tsconfig/node24 + base, types: [node])
-└── dom.json (ESNext + DOM + DOM.Iterable, types: [])
-    ├── react.json (+ JSX / React settings)
-    └── vue.json (@vue/tsconfig + dom)
+```text
+base.json
+├── core.json
+├── node.json
+└── dom.json
+    ├── react.json
+    └── vue.json
 ```

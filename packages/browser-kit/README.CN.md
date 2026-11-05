@@ -1,19 +1,8 @@
 # @greypan/browser-kit
 
-> 浏览器工具函数库，提供存储、埋点、环境检测等功能
+> 浏览器存储、埋点、环境检测、文件、剪贴板与历史记录工具。
 
-[English](https://github.com/pan-Z2l0aHVi/mono/blob/main/packages/browser-kit/README.md) | 简体中文
-
-## 功能
-
-- **Storage**：`defineLocal`/`defineSession` 支持命名空间、TTL 过期、跨 tab 同步
-- **Tracker**：数据埋点上报，支持批量聚合、页面错误收集、离线恢复、临终遗言
-- **History Nav**：Navigation API 只读子集，跟踪前进/后退可用性（`defineHistoryNav`）
-- **Env**：17 个环境检测标志（微信、钉钉、PWA、移动端等）
-- **DOM**：视口尺寸和滚动位置工具
-- **File**：文件下载、base64 转换、图片信息、文件类型校验
-- **Copy**：跨浏览器剪贴板 API，支持 Blob
-- **Shortcut**：类型化的 `on`/`off`，用于 `window` 与 `document` 事件
+[English](./README.md) | 简体中文
 
 ## 安装
 
@@ -38,24 +27,27 @@ import { defineLocal } from '@greypan/browser-kit'
 
 const storage = defineLocal('my-app')
 
-// 基本用法
 storage.set('user', { name: 'Alice' })
 storage.get('user') // { name: 'Alice' }
 
-// TTL（1 小时）
+// 一小时后过期
 storage.set('token', 'abc123', 3600_000)
 
-// 监听跨 tab 变更
-const unwatch = storage.watch('user', (newVal, oldVal) => {
-  console.log('user changed', newVal, oldVal)
+// 监听其他 tab 的变更
+const unwatch = storage.watch('user', (newValue, oldValue) => {
+  console.log('user changed', newValue, oldValue)
 })
 ```
 
-## 插件
+## 存储
 
-埋点插件组合在一个核心 Tracker 上：`defineTracker(options)`（核心传输，优先 `sendBeacon()` 并降级 `fetch(keepalive)`，带持久化待传输 outbox）、`defineBatchTrack(options?)`（延迟批量聚合并按 `maxBatchKB` 递归分片）、`defineOfflineRestore()`（离线暂停，`online` 后恢复）、`definePageErrors(options?)`（收集 uncaught error 与 unhandled promise rejection 作为埋点事件）、`defineLastWords()`（页面离开或隐藏时 best-effort `flush()`）。
+`defineLocal(namespace?)` 与 `defineSession(namespace?)` 创建带命名空间的 localStorage 和 sessionStorage 实例，支持 TTL 与跨 tab 变更事件。`local` 和 `session` 是不带命名空间的默认实例。
 
-**推荐组合顺序：**
+完整 API 见 [`src/storage/README.CN.md`](./src/storage/README.CN.md)。
+
+## 埋点
+
+埋点由可组合插件提供。先用 `defineTracker`，再按需添加行为。
 
 ```ts
 import {
@@ -76,145 +68,104 @@ const tracker = defineTracker({ url: '/api/track' })
 tracker.track({ event: 'page_view', path: '/' })
 ```
 
-完整 option 表（含 `transport` 与 `transform`）、flush/outbox 语义与 page-error 事件契约见 [`src/tracker/README.md`](https://github.com/pan-Z2l0aHVi/mono/blob/main/packages/browser-kit/src/tracker/README.md)。
+- `defineBatchTrack` 收集事件并批量发送。
+- `defineOfflineRestore` 浏览器离线时暂停，恢复联网后继续。
+- `definePageErrors` 上报未捕获异常与未处理的 Promise rejection。
+- `defineLastWords` 在页面隐藏或即将关闭时发送待处理事件。
 
-## API
+`defineTracker` 默认把待发送事件保存在 localStorage 中，之后重试。它优先使用 `navigator.sendBeacon()`，失败时降级到带 `keepalive: true` 的 `fetch()`。
 
-### `defineLocal(namespace?)` / `defineSession(namespace?)`
+参数、重试行为与页面错误数据结构见 [`src/tracker/README.CN.md`](./src/tracker/README.CN.md)。
 
-创建带命名空间的 localStorage/sessionStorage 实例。每个 namespace 返回单例。
+## 环境检测
 
-| 参数        | 类型     | 默认值 | 说明             |
-| ----------- | -------- | ------ | ---------------- |
-| `namespace` | `string` | `''`   | 存储命名空间前缀 |
+`env` 用布尔属性描述当前浏览器与设备。
 
-TTL 语义、`watch` 跨 tab 行为与存储降级细节见 [`src/storage/README.md`](https://github.com/pan-Z2l0aHVi/mono/blob/main/packages/browser-kit/src/storage/README.md)。
+```ts
+import { env } from '@greypan/browser-kit'
 
-### `local` / `session`
+if (env.isMobile && env.isWeChat) {
+  // 微信移动端流程
+}
+```
 
-默认无命名空间的单例实例。
+覆盖微信、支付宝、钉钉、iframe、PWA、WebView、SSR、移动端、桌面端、触摸输入、Chrome、Safari、Firefox、Android、iOS 与 iPadOS。
 
-### `env`
+完整列表与 SSR 注意事项见 [`src/env/README.CN.md`](./src/env/README.CN.md)。
 
-环境检测对象，使用 getter 属性。
-
-| 属性                   | 说明              |
-| ---------------------- | ----------------- |
-| `env.isWeChat`         | 微信内置浏览器    |
-| `env.isAlipay`         | 支付宝内置浏览器  |
-| `env.isDingTalk`       | 钉钉内置浏览器    |
-| `env.isIframe`         | 在 iframe 中运行  |
-| `env.isPWA`            | 作为 PWA 运行     |
-| `env.isWebview`        | 在 WebView 中运行 |
-| `env.isSsr`            | 服务端渲染        |
-| `env.isBrowser`        | 浏览器环境        |
-| `env.isMobile`         | 移动设备          |
-| `env.isDesktop`        | 桌面设备          |
-| `env.isTouchSupported` | 支持触摸输入      |
-| `env.isChrome`         | Chrome 浏览器     |
-| `env.isSafari`         | Safari 浏览器     |
-| `env.isFirefox`        | Firefox 浏览器    |
-| `env.isAndroid`        | Android 系统      |
-| `env.isIos`            | iOS 系统          |
-| `env.isIpadOs`         | iPadOS 系统       |
-
-完整判断条件与预渲染注意事项见 [`src/env/README.md`](https://github.com/pan-Z2l0aHVi/mono/blob/main/packages/browser-kit/src/env/README.md)。
+## DOM 工具
 
 ### `getViewportSize()`
 
-获取当前视口尺寸。
-
-**返回：** `{ width: number; height: number }`。`window` 不可用时返回 0。
+返回当前视口尺寸 `{ width, height }`。`window` 不可用时返回 0。
 
 ### `getRootScrollTop()` / `getRootScrollLeft()`
 
-获取文档滚动位置。在浏览器外返回 `0`。
+返回文档滚动位置。在浏览器外返回 `0`。
+
+## 文件
 
 ### `downloadFile(arg, filename?, onProgress?)`
 
-下载文件。支持 File、Blob 或 URL 字符串。远程 URL 下载时，`onProgress` 收到下载百分比。
+下载 `File`、`Blob` 或远程 URL。远程 URL 下载时，`onProgress` 收到下载百分比。
 
-| 参数         | 类型                        | 默认值 | 说明                  |
-| ------------ | --------------------------- | ------ | --------------------- |
-| `arg`        | `File \| Blob \| string`    | -      | 文件对象、Blob 或 URL |
-| `filename`   | `string`                    | -      | 自定义文件名          |
-| `onProgress` | `(percent: number) => void` | -      | 进度回调              |
+| 参数         | 类型                        | 说明                  |
+| ------------ | --------------------------- | --------------------- |
+| `arg`        | `File \| Blob \| string`    | 文件、Blob 或绝对 URL |
+| `filename`   | `string`                    | 可选输出文件名        |
+| `onProgress` | `(percent: number) => void` | 可选进度回调          |
 
 ### `getImageInfo(source)`
 
-获取图片宽高信息。支持 File、Blob 或 URL 字符串。
-
-| 参数     | 类型                     | 默认值 | 说明     |
-| -------- | ------------------------ | ------ | -------- |
-| `source` | `File \| Blob \| string` | -      | 图片来源 |
-
-**返回：** `Promise<{ width: number; height: number }>`。
+返回 `File`、`Blob` 或 URL 对应图片的宽高。
 
 ### `isValidBase64(str)`
 
-检查字符串是否为有效的 base64 编码。原始 base64 与 `data:` URL 都接受。
-
-| 参数  | 类型     | 默认值 | 说明           |
-| ----- | -------- | ------ | -------------- |
-| `str` | `string` | -      | 待校验的字符串 |
+检查字符串是否为有效 base64。原始 base64 与 `data:` URL 都接受。
 
 ### `base64ToFile(base64, filename?)`
 
-将 base64 字符串或 `data:` URL 转换为 File 对象。`filename` 没有扩展名时，从 MIME 类型推导一个。
-
-| 参数       | 类型     | 默认值   | 说明          |
-| ---------- | -------- | -------- | ------------- |
-| `base64`   | `string` | -        | base64 字符串 |
-| `filename` | `string` | `'file'` | 输出文件名    |
+把 base64 或 `data:` URL 转成 `File`。
 
 ### `fileToBase64(file)`
 
-将 File 或 Blob 转换为 base64 `data:` URL。
-
-| 参数   | 类型           | 默认值 | 说明         |
-| ------ | -------------- | ------ | ------------ |
-| `file` | `File \| Blob` | -      | 待转换的文件 |
-
-**返回：** `Promise<string>`。
+把 `File` 或 `Blob` 转成 base64 `data:` URL。
 
 ### `isSameFileType(...files)`
 
-基于 Magic Number 判断文件是否属于同一真实类型。只传一个文件或不传时返回 `true`。
+按文件开头字节比较，判断它们是否属于同一种真实类型。
 
-| 参数       | 类型     | 默认值 | 说明         |
-| ---------- | -------- | ------ | ------------ |
-| `...files` | `File[]` | -      | 待比较的文件 |
+错误行为与边界情况见 [`src/file/README.CN.md`](./src/file/README.CN.md)。
 
-**返回：** `Promise<boolean>`。
-
-Magic Number 比较方式与错误行为见 [`src/file/README.md`](https://github.com/pan-Z2l0aHVi/mono/blob/main/packages/browser-kit/src/file/README.md)。
+## 剪贴板
 
 ### `copyToClipboard(content, options?)`
 
-将文本或 Blob 写入系统剪贴板。支持 `text/plain` 和 `text/html`。复制失败由底层降级链处理，不会重新抛出。
+把文本或 `Blob` 写入系统剪贴板，支持 `text/plain` 与 `text/html`。复制失败在内部处理，不会重新抛出。
 
-| 参数      | 类型                                   | 默认值 | 说明          |
-| --------- | -------------------------------------- | ------ | ------------- |
-| `content` | `string \| Blob`                       | -      | 待复制的内容  |
-| `options` | `{ format?: string; debug?: boolean }` | -      | 剪贴板 option |
+| 参数      | 类型                                   | 说明       |
+| --------- | -------------------------------------- | ---------- |
+| `content` | `string \| Blob`                       | 待复制内容 |
+| `options` | `{ format?: string; debug?: boolean }` | 剪贴板参数 |
+
+## 事件
 
 ### `on(element, event, handler, options?)`
 
-给 `window` 或 `document` 添加事件监听器。
-
-| 参数      | 类型                      | 默认值 | 说明          |
-| --------- | ------------------------- | ------ | ------------- |
-| `element` | `Window \| Document`      | -      | 事件目标      |
-| `event`   | `string`                  | -      | 事件名称      |
-| `handler` | `Function`                | -      | 事件处理函数  |
-| `options` | `AddEventListenerOptions` | -      | 监听器 option |
+给 `window` 或 `document` 添加带类型提示的监听器。
 
 ### `off(element, event, handler, options?)`
 
 移除由 `on` 添加的监听器。
 
+## 历史记录
+
 ### `defineHistoryNav(options?)`
 
-通过 Navigation API 只读子集（`canGoBack` / `canGoForward` / `currentEntry` / `entries()` / `currententrychange`）跟踪用户在真实浏览器历史中能否前进/后退。它只把 `pushState` / `replaceState` 当作旁路记录，同时处理 `popstate` 和 `hashchange`；首次调用返回幂等单例。完整 API 与已知限制见 [`src/history-nav/README.md`](https://github.com/pan-Z2l0aHVi/mono/blob/main/packages/browser-kit/src/history-nav/README.md)。
+跟踪当前文档会话内能否后退或前进。实例提供 `canGoBack`、`canGoForward`、`currentEntry`、`entries()`、`onCurrentEntryChange()` 和 `dispose()`。
 
-> `getFileExtension` 与 `formatFileSize` 这类字符串与数字辅助函数位于 [`@greypan/js-kit`](https://github.com/pan-Z2l0aHVi/mono/blob/main/packages/js-kit/README.CN.md)，不在本包内。
+它是幂等的，后续调用返回同一实例。`window` 不可用时返回空实现。
+
+条目结构与已知限制见 [`src/history-nav/README.CN.md`](./src/history-nav/README.CN.md)。
+
+> `getFileExtension` 与 `formatFileSize` 这类字符串与数字工具位于 [`@greypan/js-kit`](./../js-kit/README.CN.md)。

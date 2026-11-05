@@ -2,13 +2,13 @@
 
 命令式 shake：`shake()` 让目标摆动几次后回到原位，用于提示「不行」或「请先处理」，例如表单还有未保存内容却要离开，或需要把注意力拉回某个字段。它直接从 `@greypan/web-ui` 导入，调用方式是一个函数。
 
-不传 `target` 时震整页，传 `target` 时只震那一块。横向摆幅由 `--wui-shake-x-distance`（默认 `12px`）控制，纵向摆幅由 `--wui-shake-y-distance`（默认与横向同值，也是 `12px`）控制，整段时长由 `--wui-shake-duration`（默认 `420ms`）控制。三者都可以通过 option 逐次覆盖。
+不传 `target` 时震整页，传 `target` 时只震那一块。横向摆幅由 `--wui-shake-x-distance`（默认 `12px`）控制，纵向摆幅由 `--wui-shake-y-distance`（默认与横向同值，也是 `12px`）控制，整段时长由 `--wui-shake-duration`（默认 `420ms`）控制。三者都可以通过选项逐次覆盖。
 
 ## Samples
 
 ### Whole page
 
-`shake()` 不带参数就震整页：页面中的普通流内容和 `position: fixed` 内容一起移动；已打开的 dialog / drawer 不受影响。两轴同相位，合成后的位移沿一条直线，默认幅度下第一次摆动朝左上，回到原位时不会突然跳动。
+`shake()` 不带参数就震整页：页面中的普通流内容和 `position: fixed` 内容一起移动；已打开的对话框 / 抽屉不受影响。两轴同相位，合成后的位移沿一条直线，默认幅度下第一次摆动朝左上，回到原位时不会突然跳动。
 
 ```tsx
 import { shake } from '@greypan/web-ui'
@@ -121,7 +121,7 @@ import { shake } from '@greypan/web-ui'
 
 ### Options
 
-`shake(input?)` 的 `input` 可以是一个 `HTMLElement`（等价于只传 `target`）、一个 option 对象，或省略。
+`shake(input?)` 的 `input` 可以是一个 `HTMLElement`（等价于只传 `target`）、一个选项对象，或省略。
 
 | 名称        | 说明                                                                                | 类型          | 默认值                     |
 | ----------- | ----------------------------------------------------------------------------------- | ------------- | -------------------------- |

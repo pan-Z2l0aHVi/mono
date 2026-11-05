@@ -1,25 +1,22 @@
-# History Nav
+# History navigation
 
-Track whether the user can go back / forward in the real browser history, exposing a read-only subset of the Navigation API
+> Track whether the user can go back or forward in the current document session.
 
 English | [简体中文](./README.CN.md)
 
 ## Overview
 
-`vue-router` only maintains `history.state.back/forward` when `router.push()` is called; entries created by address-bar input or browser back/forward clone the previous state, so `back/forward` are always `null` and cannot tell whether navigation is possible. This module tracks the browser history position itself with an **entry stack + current index**:
+Browsers do not expose a reliable way to ask whether back or forward navigation is available. This module tracks same-document navigation and exposes the read-only part of the Navigation API.
 
-- Patches `history.pushState` / `history.replaceState` globally, but only records in a side table. It never injects metadata into `history.state`
-- Handles browser back/forward and address-bar navigation via `popstate`, locating the target URL inside the stack; `hashchange` covers fragment navigation (`location.hash` assignment, same-page anchors)
-- Persists through `sessionStorage` (reusing the `storage` module) so the stack survives reloads
-- Degrades silently to an in-memory stack when storage is blocked (private mode, restricted webview)
+It records push, replace, back, forward, and address-bar navigation. The history stack survives a reload through `sessionStorage`. When storage is unavailable, it falls back to an in-memory stack.
 
-The public API only promises the **read-only subset** of the Navigation API: `canGoBack` / `canGoForward` / `currentEntry` / `entries()` / `currententrychange`. `navigate` / `intercept` / `transition` are out of scope; the `'reload'` navigation type is not emitted (it cannot be detected reliably).
+The public API is `canGoBack`, `canGoForward`, `currentEntry`, `entries()`, and `currententrychange`. It does not provide `navigate`, `intercept`, or `transition`, and it does not emit a `reload` navigation type. It does not write metadata into `history.state`.
 
 ## API
 
 ### `defineHistoryNav(options?)`
 
-Create the history-nav singleton. **Idempotent**: the first call installs the patch and initial stack; later calls return the same instance. Returns a no-op instance when `window` is unavailable (SSR / Node).
+Create the singleton. The first call installs the listeners and later calls return the same instance. Returns a no-op instance when `window` is unavailable.
 
 | Parameter   | Type     | Default         | Description                               |
 | ----------- | -------- | --------------- | ----------------------------------------- |
@@ -36,26 +33,28 @@ if (nav.canGoForward) history.forward()
 
 ### `nav.canGoBack` / `nav.canGoForward`
 
-Whether the user can navigate backwards / forwards within this document session.
+Whether the user can go back or forward within the current document session.
 
 ### `nav.currentEntry`
 
-The current `HistoryNavEntry` (`null` before any entry exists):
+The current entry, or `null` before any entry exists.
 
 ```ts
 interface HistoryNavEntry {
-  readonly id: string // unique per entry
-  readonly key: string // stable across replace
-  readonly index: number // position in the stack
+  readonly id: string
+  readonly key: string
+  readonly index: number
   readonly url: string | null
-  readonly sameDocument: boolean // currently always true: only same-document navigation is tracked
-  getState(): unknown // deep clone of the captured history.state
+  readonly sameDocument: boolean
+  getState(): unknown
 }
 ```
 
+`id` is unique per entry. `key` stays the same across a replace. `sameDocument` is currently always `true`.
+
 ### `nav.entries()`
 
-All history entries in the current session as an array.
+Return all entries in the current session as an array.
 
 ### `nav.onCurrentEntryChange(handler)`
 
@@ -70,10 +69,10 @@ const off = nav.onCurrentEntryChange(event => {
 
 ### `nav.dispose()`
 
-Restore the patched `history` methods and remove listeners. Mainly used to reset between tests.
+Remove listeners and restore the original history methods. Use it to reset between tests.
 
-## Known Limitations
+## Limits
 
-- **Same-URL consecutive entries**: because we do not inject metadata into `history.state`, a back/forward traversal between two entries with identical URLs cannot be distinguished by URL alone (the index does not move). This is a deliberate trade-off of the no-injection design; identical-URL pushes still create distinct entries with distinct `id`/`key`.
-- **Reload detection**: the `'reload'` navigation type is never emitted.
-- **Same-document only**: only same-document navigation is tracked (see the glossary: 同文档导航). Entries created before this module loads are not reconstructed.
+- Two consecutive entries with the same URL cannot be told apart during back or forward. The stack does not move. Pushing the same URL still creates separate entries with different `id` and `key` values.
+- The `reload` navigation type is never emitted.
+- Only same-document navigation is tracked. Entries created before this module loads are not reconstructed.

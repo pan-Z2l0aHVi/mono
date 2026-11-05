@@ -56,7 +56,7 @@ const meta = [
       { label: 'td', content: "<code>images</code>" },
       { label: 'td', content: "Image list, at least one item; each item is <code>{ src, alt? }</code>." },
       { label: 'td', content: "<code>ImagePreviewItem[]</code>" },
-      { label: 'td', content: "—" }
+      { label: 'td', content: "" }
       ]
     },
     {
@@ -83,7 +83,7 @@ const meta = [
       { label: 'td', content: "<code>target</code>" },
       { label: 'td', content: "Trigger element used to resolve the nearest theme overlay container." },
       { label: 'td', content: "<code>Element</code>" },
-      { label: 'td', content: "—" }
+      { label: 'td', content: "" }
       ]
     },
     {
@@ -92,7 +92,7 @@ const meta = [
       { label: 'td', content: "<code>container</code>" },
       { label: 'td', content: "Explicit mount container; takes precedence over the theme scope." },
       { label: 'td', content: "<code>HTMLElement</code>" },
-      { label: 'td', content: "—" }
+      { label: 'td', content: "" }
       ]
     },
     {
@@ -164,7 +164,7 @@ const meta = [
       { label: 'td', content: "<code>ariaLabels</code>" },
       { label: 'td', content: "Grouped overrides for the built-in accessible names (close / previous / next / zoom / reset); keys without a value fall back to the built-in English copy." },
       { label: 'td', content: "<code>ImagePreviewAriaLabels</code>" },
-      { label: 'td', content: "—" }
+      { label: 'td', content: "" }
       ]
     }
     ]

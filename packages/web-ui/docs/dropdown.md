@@ -144,9 +144,73 @@ export default function Demo() {
 </template>
 ```
 
+### Trigger modes
+
+`trigger` is a gesture set separated by spaces or commas: `click`, `hover`, `focus`, `none`. It defaults to `click`. `hover` opens and closes with pointer entry and exit, and moving the pointer from the trigger into the panel does not collapse it; `focus` opens on keyboard focus (`:focus-visible`); gestures can be written side by side.
+
+`none` accepts no gesture and takes no part in outside-click closing, focus loss or Escape; only the `open` property or `show()` / `hide()` moves it. `none` and gestures are mutually exclusive: when both appear, `none` wins and a development warning is printed.
+
+`show-delay` / `hide-delay` only apply to hover-originated opens and closes; clicks, focus and programmatic calls act immediately.
+
+```tsx
+import { useState } from 'react'
+
+export default function Demo() {
+  const [last, setLast] = useState('—')
+
+  return (
+    <div className="flex flex-col items-start gap-3">
+      <div className="flex flex-wrap items-center gap-3">
+        <web-ui-dropdown onopen-change={event => setLast(event.detail.open ? 'true' : 'false')}>
+          <web-ui-button slot="trigger" variant="secondary">
+            Click menu
+          </web-ui-button>
+          <web-ui-dropdown-item>Edit</web-ui-dropdown-item>
+          <web-ui-dropdown-item>Copy</web-ui-dropdown-item>
+        </web-ui-dropdown>
+        <web-ui-dropdown trigger="hover focus" onopen-change={event => setLast(event.detail.open ? 'true' : 'false')}>
+          <web-ui-button slot="trigger" variant="secondary">
+            Hover or focus
+          </web-ui-button>
+          <web-ui-dropdown-item>Edit</web-ui-dropdown-item>
+          <web-ui-dropdown-item>Copy</web-ui-dropdown-item>
+        </web-ui-dropdown>
+      </div>
+      <output className="text-sm text-(--wui-color-text-secondary)">Last detail.open = {last}</output>
+    </div>
+  )
+}
+```
+
+```vue
+<template>
+  <div class="flex flex-col items-start gap-3">
+    <div class="flex flex-wrap items-center gap-3">
+      <web-ui-dropdown @open-change="last = $event.detail.open ? 'true' : 'false'">
+        <web-ui-button slot="trigger" variant="secondary">Click menu</web-ui-button>
+        <web-ui-dropdown-item>Edit</web-ui-dropdown-item>
+        <web-ui-dropdown-item>Copy</web-ui-dropdown-item>
+      </web-ui-dropdown>
+      <web-ui-dropdown trigger="hover focus" @open-change="last = $event.detail.open ? 'true' : 'false'">
+        <web-ui-button slot="trigger" variant="secondary">Hover or focus</web-ui-button>
+        <web-ui-dropdown-item>Edit</web-ui-dropdown-item>
+        <web-ui-dropdown-item>Copy</web-ui-dropdown-item>
+      </web-ui-dropdown>
+    </div>
+    <output class="text-sm text-(--wui-color-text-secondary)">Last detail.open = {{ last }}</output>
+  </div>
+</template>
+
+<script setup lang="ts">
+import { ref } from 'vue'
+
+const last = ref('—')
+</script>
+```
+
 ### Controlled open state
 
-`open` is held by the page. An external button changes it directly; the trigger, Escape, and outside clicks write back through `open-change`. Clicking a menu item does not close the menu automatically, so write back in the item's native click.
+`open` is held by the page. An external button changes it directly (writing `open` is silent); the trigger, Escape, and outside clicks write back through `open-change`. Clicking a menu item does not close the menu automatically, so write back in the item's native click.
 
 ```tsx
 import type { WebUiDropdownItem } from '@greypan/web-ui'
@@ -154,7 +218,7 @@ import { useCallback, useState } from 'react'
 
 export default function Demo() {
   const [open, setOpen] = useState(false)
-  const [last, setLast] = useState('—')
+  const [last, setLast] = useState('-')
 
   // Menu items move into the portal panel when opened, so React's onClick delegation at the root container never sees them; attach a native click here instead.
   const handleItemRef = useCallback((item: WebUiDropdownItem | null) => {
@@ -223,7 +287,7 @@ export default function Demo() {
 import { ref } from 'vue'
 
 const open = ref(false)
-const last = ref('—')
+const last = ref('-')
 
 function select(label: string) {
   last.value = label
@@ -308,7 +372,7 @@ export default function Demo() {
 
 ### Imperative
 
-`openMenu()` opens the menu and `closeAll()` closes all levels. Both are imperative entry points and do not dispatch `open-change`. `disabled` blocks both trigger clicks and `openMenu()`.
+`show()` opens the menu and `hide()` closes all levels. Both dispatch `open-change`. `disabled` blocks both trigger clicks and `show()`.
 
 ```tsx
 import type { WebUiDropdown } from '@greypan/web-ui'
@@ -320,11 +384,11 @@ export default function Demo() {
   return (
     <div className="flex flex-col items-start gap-3">
       <div className="flex flex-wrap items-center gap-3">
-        <web-ui-button variant="secondary" onClick={() => menu.current?.openMenu()}>
-          Call openMenu()
+        <web-ui-button variant="secondary" onClick={() => menu.current?.show()}>
+          Call show()
         </web-ui-button>
-        <web-ui-button variant="secondary" onClick={() => menu.current?.closeAll()}>
-          Call closeAll()
+        <web-ui-button variant="secondary" onClick={() => menu.current?.hide()}>
+          Call hide()
         </web-ui-button>
       </div>
 
@@ -356,8 +420,8 @@ export default function Demo() {
 <template>
   <div class="flex flex-col items-start gap-3">
     <div class="flex flex-wrap items-center gap-3">
-      <web-ui-button variant="secondary" @click="menu?.openMenu()">Call openMenu()</web-ui-button>
-      <web-ui-button variant="secondary" @click="menu?.closeAll()">Call closeAll()</web-ui-button>
+      <web-ui-button variant="secondary" @click="menu?.show()">Call show()</web-ui-button>
+      <web-ui-button variant="secondary" @click="menu?.hide()">Call hide()</web-ui-button>
     </div>
 
     <div class="flex flex-wrap items-start gap-3">
@@ -390,20 +454,24 @@ const menu = useTemplateRef<WebUiDropdown>('menu')
 
 ### Props
 
-| Name             | Description                                  | Type        | Default          |
-| ---------------- | -------------------------------------------- | ----------- | ---------------- |
-| `open`           | Menu visibility.                             | `boolean`   | `false`          |
-| `disabled`       | Disabled state.                              | `boolean`   | `false`          |
-| `match-width`    | Panel width matches the trigger width.       | `boolean`   | `false`          |
-| `no-scroll-lock` | Does not lock page scrolling while open.     | `boolean`   | `false`          |
-| `placement`      | Panel placement; defaults to `bottom-start`. | `Placement` | `'bottom-start'` |
-| `offset`         | Distance from the trigger (px).              | `number`    | `4`              |
+| Name             | Description                                                                                                                              | Type        | Default          |
+| ---------------- | ---------------------------------------------------------------------------------------------------------------------------------------- | ----------- | ---------------- |
+| `open`           | Menu visibility.                                                                                                                         | `boolean`   | `false`          |
+| `disabled`       | Disabled state.                                                                                                                          | `boolean`   | `false`          |
+| `match-width`    | Panel width matches the trigger width.                                                                                                   | `boolean`   | `false`          |
+| `no-scroll-lock` | Does not lock page scrolling while open.                                                                                                 | `boolean`   | `false`          |
+| `placement`      | Panel placement; defaults to `bottom-start`.                                                                                             | `Placement` | `'bottom-start'` |
+| `offset`         | Distance from the trigger (px).                                                                                                          | `number`    | `4`              |
+| `trigger`        | Trigger gesture set, separated by spaces or commas: `click`, `hover`, `focus`, `none`; reads back as a comma-separated canonical string. | `string`    | `'click'`        |
+| `show-delay`     | Hover-open delay (milliseconds); only hover-originated opens use it.                                                                     | `number`    | `200`            |
+| `hide-delay`     | Hover-close delay (milliseconds); only hover-originated closes use it.                                                                   | `number`    | `100`            |
+| `isOpen`         | Whether the menu is currently open (read-only).                                                                                          | `boolean`   | —                |
 
 ### Events
 
-| Name          | Description                                                  |
-| ------------- | ------------------------------------------------------------ |
-| `open-change` | Menu open state changes; `detail.open` is the current state. |
+| Name          | Description                                                                                                                                  |
+| ------------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
+| `open-change` | Dispatched when gestures or `show()` / `hide()` change the open state; `detail.open` is the current state. Writing `open` does not dispatch. |
 
 ### Slots
 
@@ -413,14 +481,21 @@ const menu = useTemplateRef<WebUiDropdown>('menu')
 
 ### Methods
 
-| Name         | Description                                                                                                               |
-| ------------ | ------------------------------------------------------------------------------------------------------------------------- |
-| `openMenu()` | Opens the menu; an imperative open does not dispatch `open-change` and suppresses the accent highlight of the first item. |
-| `closeAll()` | Closes all levels; an imperative close does not dispatch `open-change`.                                                   |
+| Name       | Description                                                                  |
+| ---------- | ---------------------------------------------------------------------------- |
+| `show()`   | Opens the menu and dispatches `open-change`; available under `none` as well. |
+| `hide()`   | Closes all levels and dispatches `open-change`.                              |
+| `toggle()` | Toggles according to the current `open` and dispatches `open-change`.        |
 
 ### Behavior
 
 Menu items: `web-ui-dropdown-item`, `web-ui-dropdown-divider`, `web-ui-dropdown-header`. A submenu is enabled on `web-ui-dropdown-item` through the `submenu` attribute. Full keyboard navigation is supported.
+
+Opening requires content: with no root-level menu item, divider or header (including ones inside framework wrappers), click, keyboard gestures and hover do nothing; `hidden` subtrees do not count. `show()` and writing `open` still open an empty menu, and content added while closed does not open it. If the last content disappears while the menu is open, it collapses immediately without an exit transition.
+
+`hover` opens and closes with pointer entry and exit; moving the pointer from the trigger into the panel does not collapse it, and once the pointer leaves both the trigger and the panel and focus is outside them, it closes after `hide-delay`. `show-delay` / `hide-delay` only apply to hover-originated opens and closes; clicks, focus and programmatic calls act immediately. Escape, outside clicks and focus loss close every menu except those in `none`, regardless of whether `trigger` contains `click` or `focus`; `none` neither responds to nor intercepts them.
+
+`open` can be assigned directly; that write is silent and does not dispatch `open-change`.
 
 ### Trigger ARIA
 

@@ -1,6 +1,6 @@
 # Switch
 
-开关，声明 `role="switch"` 与 `aria-checked`。点击即时开合，也支持按住 track 横向拖动与快速甩动定值；空格与 Enter 都能切换。
+开关，声明 `role="switch"` 与 `aria-checked`。点击即时开合，也支持按住轨道横向拖动与快速甩动定值；空格与 Enter 都能切换。
 
 默认插槽的文字会成为可见标签和默认的可访问名称。也可以在宿主上设置 `aria-label` 或 `aria-labelledby`。
 
@@ -8,7 +8,7 @@
 
 ### Basic
 
-`checked` 是开合状态。写在 `<web-ui-switch>` 里的文字渲染成开关旁的可见标签（见 Slots）；不要可见标签时，把 label 放在宿主外面。由页面持有这个值时，接住 `change` 再写回 `checked`。
+`checked` 是开合状态。写在 `<web-ui-switch>` 里的文字渲染成开关旁的可见标签（见插槽）；不要可见标签时，把标签放在宿主外面。由页面持有这个值时，接住 `change` 再写回 `checked`。
 
 ```tsx
 import { useState } from 'react'
@@ -49,7 +49,7 @@ function onChange(event: WebUiEvent<WebUiSwitch, 'change'>) {
 
 `disabled` 与 `loading` 都阻断交互，外观也相同。
 
-区别在语义与校验：`loading` 在 thumb 里画一个旋转 icon，`checked` 保持不动；`required` 只认 `disabled`（含表单级禁用），`loading` 时未选中照旧上报 `valueMissing` 并拦下提交。
+区别在语义与校验：`loading` 在滑块里画一个旋转图标，`checked` 保持不动；`required` 只认 `disabled`（含表单级禁用），`loading` 时未选中照旧上报 `valueMissing` 并拦下提交。
 
 ```tsx
 export default function Demo() {
@@ -145,7 +145,7 @@ function writeChecked() {
 
 ### Drag and flick
 
-按住 track 横向拖动：松手时位移过半就定值，快速甩动则按方向定值。
+按住轨道横向拖动：松手时位移过半就定值，快速甩动则按方向定值。
 
 一次拖拽只算一次取值变更，`input` 与 `change` 各派发一次，不会二次翻转。
 
@@ -288,7 +288,7 @@ function reset() {
 | `value`    | 表单提交值，留空时提交 `'on'`；未选中时字段不提交。                          | `string`  | `''`    |
 | `disabled` | 禁用状态，阻断交互并让校验失效。                                             | `boolean` | `false` |
 | `required` | 必填校验：未选中时拦下提交。                                                 | `boolean` | `false` |
-| `loading`  | 加载状态：阻断交互，thumb 内显示旋转 icon，当前值保持不动。                  | `boolean` | `false` |
+| `loading`  | 加载状态：阻断交互，滑块内显示旋转图标，当前值保持不动。                     | `boolean` | `false` |
 
 ### Slots
 
@@ -313,27 +313,27 @@ function reset() {
 
 点击、Space / Enter 与拖拽定值都在宿主上派发 `input` 与 `change` 两条 `composed` 事件。
 
-宿主自己承接 click 与 keydown，三条路径行为一致；程序写入 `checked` 不派发事件。
+宿主自己承接点击与 keydown，三条路径行为一致；程序写入 `checked` 不派发事件。
 
-`disabled`（含表单级禁用）与 `loading` 都阻断点击、键盘与拖拽，thumb 停在当前值。
+`disabled`（含表单级禁用）与 `loading` 都阻断点击、键盘与拖拽，滑块停在当前值。
 
 校验：`disabled`（含表单级禁用）上报干净状态；`loading` 不参与校验判定，未选中加 `required` 照常上报 `valueMissing`。
 
-键盘焦点落在宿主上（可用态 `tabindex=0`），焦点环画在 track 上；鼠标触发的焦点不画环。
+键盘焦点落在宿主上（可用态 `tabindex=0`），焦点环画在轨道上；鼠标触发的焦点不画环。
 
-`disabled` 或 `loading` 时宿主离开 tab 序列。
+`disabled` 或 `loading` 时宿主离开 Tab 序列。
 
-默认插槽内容就是可见标签，同时也是 switch 的可访问名称；需要引用外部 label 时，在 `web-ui-switch` 宿主上设置 `aria-labelledby`，或直接设置 `aria-label`。
+默认插槽内容就是可见标签，同时也是 switch 的可访问名称；需要引用外部标签时，在 `web-ui-switch` 宿主上设置 `aria-labelledby`，或直接设置 `aria-label`。
 
 宿主上的 `role="switch"`、`aria-checked` 与 `aria-disabled` 由组件同步维护。
 
 ### 布局
 
-标签与 track 之间默认间距为 `8px`；默认插槽没有可渲染宽度时（空槽位或只放了视觉隐藏的无障碍名），间距收起，宿主宽度不会超过 track。
+标签与轨道之间默认间距为 `8px`；默认插槽没有可渲染宽度时（空槽位或只放了视觉隐藏的无障碍名），间距收起，宿主宽度不会超过轨道。
 
-track 是 40×20 的胶囊盒，圆角取 `--wui-radius-control`，底色取 `--wui-color-surface-track`，打开时换成 `--wui-color-accent`。
+轨道是 40×20 的胶囊盒，圆角取 `--wui-radius-control`，底色取 `--wui-color-surface-track`，打开时换成 `--wui-color-accent`。
 
-thumb 是 16×16 圆点，静止态用 `--wui-color-on-control` 实心加阴影，按压与拖拽时换成 glass 表面并略微放大。
+滑块是 16×16 圆点，静止态用 `--wui-color-on-control` 实心加阴影，按压与拖拽时换成 glass 表面并略微放大。
 
 `--wui-switch-drag-offset` 由组件自己驱动，不要当样式钩子写。
 

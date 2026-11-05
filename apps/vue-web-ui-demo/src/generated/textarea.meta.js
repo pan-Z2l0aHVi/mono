@@ -157,7 +157,7 @@ const meta = [
       { label: 'td', content: "<code>minlength</code>" },
       { label: 'td', content: "Minimum length validation." },
       { label: 'td', content: "<code>number | undefined</code>" },
-      { label: 'td', content: "—" }
+      { label: 'td', content: "" }
       ]
     },
     {
@@ -166,7 +166,7 @@ const meta = [
       { label: 'td', content: "<code>maxlength</code>" },
       { label: 'td', content: "Maximum length validation." },
       { label: 'td', content: "<code>number | undefined</code>" },
-      { label: 'td', content: "—" }
+      { label: 'td', content: "" }
       ]
     },
     {
@@ -202,7 +202,7 @@ const meta = [
       { label: 'td', content: "<code>aria-labelledby</code>" },
       { label: 'td', content: "Accessible label reference." },
       { label: 'td', content: "<code>string | undefined</code>" },
-      { label: 'td', content: "—" }
+      { label: 'td', content: "" }
       ]
     },
     {

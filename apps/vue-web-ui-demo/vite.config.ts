@@ -133,6 +133,11 @@ export default defineConfig({
         extensions: ['.mjs', '.css']
       },
       {
+        name: '@greypan/doc-demo-kit',
+        path: '../../packages/doc-demo-kit',
+        extensions: ['.mjs']
+      },
+      {
         name: '@greypan/web-ui',
         path: '../../packages/web-ui'
       },

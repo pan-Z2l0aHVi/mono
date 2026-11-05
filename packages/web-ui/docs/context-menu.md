@@ -16,7 +16,7 @@ import { useState } from 'react'
 
 export default function Demo() {
   const [count, setCount] = useState(0)
-  const [last, setLast] = useState('—')
+  const [last, setLast] = useState('-')
 
   return (
     <div className="flex w-full flex-col items-start gap-3">
@@ -93,7 +93,7 @@ import { lucideClipboardPaste, lucideCopy, lucideTrash2 } from '@greypan/web-ui/
 import { ref } from 'vue'
 
 const count = ref(0)
-const last = ref('—')
+const last = ref('-')
 
 function onOpenChange(event: WebUiEvent<WebUiContextMenu, 'open-change'>) {
   count.value += 1
@@ -111,7 +111,7 @@ import { useState } from 'react'
 
 export default function Demo() {
   const [count, setCount] = useState(0)
-  const [last, setLast] = useState('—')
+  const [last, setLast] = useState('-')
 
   return (
     <div className="flex w-full flex-col items-start gap-3">
@@ -161,7 +161,7 @@ import type { WebUiContextMenu, WebUiEvent } from '@greypan/web-ui'
 import { ref } from 'vue'
 
 const count = ref(0)
-const last = ref('—')
+const last = ref('-')
 
 function onOpenChange(event: WebUiEvent<WebUiContextMenu, 'open-change'>) {
   count.value += 1
@@ -180,7 +180,7 @@ import { useState } from 'react'
 export default function Demo() {
   const [disabled, setDisabled] = useState(false)
   const [count, setCount] = useState(0)
-  const [last, setLast] = useState('—')
+  const [last, setLast] = useState('-')
 
   return (
     <div className="flex w-full flex-col items-start gap-3">
@@ -240,7 +240,7 @@ import { ref } from 'vue'
 
 const disabled = ref(false)
 const count = ref(0)
-const last = ref('—')
+const last = ref('-')
 
 function onOpenChange(event: WebUiEvent<WebUiContextMenu, 'open-change'>) {
   count.value += 1

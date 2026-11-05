@@ -1,12 +1,12 @@
 # Radio
 
-单个单选 button，与 `<web-ui-checkbox>` 共用选择控件的盒模型规则；`<web-ui-radio-group>` 负责在一组 option 之间保持单选。
+单个单选按钮，与 `<web-ui-checkbox>` 共用选择控件的盒模型规则；`<web-ui-radio-group>` 负责在一组选项之间保持单选。
 
 ## Samples
 
 ### Basic
 
-默认插槽是 label 文字。单选控件只会选中并保持选中，点击已选中的一项不会取消它。所以独立使用时由页面持有这个值，`checked` 写成比较结果。
+默认插槽是标签文字。单选控件只会选中并保持选中，点击已选中的一项不会取消它。所以独立使用时由页面持有这个值，`checked` 写成比较结果。
 
 ```tsx
 import { useState } from 'react'
@@ -183,9 +183,9 @@ function reset() {
 
 ### Slots
 
-| 名称      | 说明                                                   |
-| --------- | ------------------------------------------------------ |
-| `default` | label 文本；为空时收掉 indicator 与 label 之间的间距。 |
+| 名称      | 说明                                         |
+| --------- | -------------------------------------------- |
+| `default` | 标签文本；为空时收掉指示器与标签之间的间距。 |
 
 ### 行为说明
 
@@ -199,4 +199,4 @@ shadow DOM 内的交互 `<span>` 声明 `role="radio"`，`aria-checked`、`aria-
 
 ### 布局
 
-与 `<web-ui-checkbox>` 共用同一套选择控件盒模型规则：宿主高度由内容撑开，不继承页面行高，label 为空时 indicator 与 label 之间的间距收起；indicator 宽高取 `--wui-selection-control-size`。
+与 `<web-ui-checkbox>` 共用同一套选择控件盒模型规则：宿主高度由内容撑开，不继承页面行高，标签为空时指示器与标签之间的间距收起；指示器宽高取 `--wui-selection-control-size`。

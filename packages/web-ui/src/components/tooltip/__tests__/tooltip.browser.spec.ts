@@ -77,4 +77,25 @@ describe('WebUiTooltip 组件（浏览器）', () => {
     // 宿主卸载后不得留下孤儿 panel。
     expect(getPortalPanel('tooltip')).toBeNull()
   })
+
+  it('内容清空时立即隐藏 panel，不播空盒退场过渡', async () => {
+    const tooltip = document.createElement('web-ui-tooltip')
+    tooltip.innerHTML = '<button>Trigger</button><span slot="content">Tip</span>'
+    document.body.append(tooltip)
+    await tooltip.updateComplete
+
+    tooltip.show({ instant: true })
+    await tooltip.updateComplete
+    await waitForFrame()
+
+    const panel = tooltip.shadowRoot!.querySelector<HTMLElement>('[role="tooltip"]')!
+    expect(panel.hidden).toBe(false)
+
+    tooltip.querySelector('[slot="content"]')!.remove()
+    // 一帧远短于退场过渡：此刻仍可见就说明走了动画，而不是内容已空就落隐藏态。
+    await waitForFrame()
+
+    expect(tooltip.open).toBe(false)
+    expect(panel.hidden).toBe(true)
+  })
 })

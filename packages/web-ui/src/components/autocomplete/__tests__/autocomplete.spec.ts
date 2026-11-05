@@ -137,6 +137,50 @@ describe('WebUiAutocomplete 组件', () => {
       cleanupElement(el)
     })
 
+    it('trigger 默认为 click，集合规范化，未知 token 丢弃', async () => {
+      const el = createAutocomplete(OPTIONS_HTML)
+      await waitForUpdate(el)
+      expect(el.trigger).toBe('click')
+
+      el.trigger = 'hover focus'
+      expect(el.trigger).toBe('hover,focus')
+
+      el.trigger = 'manual hover'
+      expect(el.trigger).toBe('hover')
+
+      el.trigger = 'none hover'
+      expect(el.trigger).toBe('none')
+
+      el.trigger = ['hover'] as unknown as string
+      await waitForUpdate(el)
+      expect(el.trigger).toBe('click')
+
+      cleanupElement(el)
+    })
+
+    it('none 下点击、键入与方向键都不自动打开，show() 仍可用', async () => {
+      const el = createAutocomplete(OPTIONS_HTML, { trigger: 'none' })
+      await waitForUpdate(el)
+
+      clickTrigger(el)
+      await waitForUpdate(el)
+      expect(el.open).toBe(false)
+
+      typeText(el, 'ap')
+      await waitForUpdate(el)
+      expect(el.open).toBe(false)
+
+      el.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true }))
+      await waitForUpdate(el)
+      expect(el.open).toBe(false)
+
+      el.show()
+      await waitForUpdate(el)
+      expect(el.open).toBe(true)
+
+      cleanupElement(el)
+    })
+
     it('初始 value attribute 作为默认值，属性变更不回写 attribute', async () => {
       const el = createAutocomplete(OPTIONS_HTML, { value: 'Apple' })
       await waitForUpdate(el)
@@ -492,6 +536,101 @@ describe('WebUiAutocomplete 组件', () => {
       const controls = comboboxTrigger(el).getAttribute('aria-controls')
       const listbox = queryA11y(el, '[role="listbox"]')
       expect(listbox?.id).toBe(controls)
+
+      cleanupElement(el)
+    })
+  })
+
+  describe('内容门控', () => {
+    // 判据是「还有没有内容」，不是「有没有匹配候选」：非 option 节点同样让人有东西可看。
+    it('零匹配但默认 slot 仍有非 option 内容时保持打开', async () => {
+      const el = createAutocomplete(`${OPTIONS_HTML}<div>没有匹配项</div>`)
+      await waitForUpdate(el)
+
+      typeText(el, 'zzz')
+      await waitForUpdate(el)
+
+      expect(el.open).toBe(true)
+      expect(comboboxTrigger(el).getAttribute('aria-expanded')).toBe('true')
+
+      cleanupElement(el)
+    })
+
+    it('只有注释、空白、hidden、empty slot 与非渲染标签时不展示', async () => {
+      const el = createAutocomplete(`
+        <!-- anchor -->
+        <web-ui-option value="apple" label="Apple"></web-ui-option>
+        <span hidden>hidden</span>
+        <script type="text/plain">ignored</script>
+        <style>.content-gate-probe {}</style>
+        <template><b>tpl</b></template>
+        <div slot="empty">旧 empty slot</div>
+      `)
+      await waitForUpdate(el)
+
+      typeText(el, 'zzz')
+      await waitForUpdate(el)
+      expect(el.open).toBe(false)
+
+      clickTrigger(el)
+      await waitForUpdate(el)
+      expect(el.open).toBe(false)
+
+      cleanupElement(el)
+    })
+
+    it('打开期移除最后一段非 option 内容即收起', async () => {
+      const el = createAutocomplete(`${OPTIONS_HTML}<div>没有匹配项</div>`)
+      await waitForUpdate(el)
+
+      typeText(el, 'zzz')
+      await waitForUpdate(el)
+      expect(el.open).toBe(true)
+
+      el.querySelector('div:not([slot])')!.remove()
+      await flushSlotChange(el)
+
+      expect(el.open).toBe(false)
+
+      cleanupElement(el)
+    })
+
+    it('关闭态新增内容不自动打开', async () => {
+      const el = createAutocomplete(OPTIONS_HTML)
+      await waitForUpdate(el)
+
+      typeText(el, 'zzz')
+      await waitForUpdate(el)
+      expect(el.open).toBe(false)
+
+      el.append(document.createElement('div'))
+      await flushSlotChange(el)
+
+      expect(el.open).toBe(false)
+
+      cleanupElement(el)
+    })
+
+    it('show() 可以空开，内容从有到无才收起', async () => {
+      const el = createAutocomplete('')
+      await waitForUpdate(el)
+
+      el.show()
+      await waitForUpdate(el)
+      expect(el.open).toBe(true)
+
+      const notice = document.createElement('div')
+      el.append(notice)
+      await flushSlotChange(el)
+      expect(el.open).toBe(true)
+
+      notice.remove()
+      await flushSlotChange(el)
+      expect(el.open).toBe(false)
+
+      el.open = true
+      await waitForUpdate(el)
+      expect(el.open).toBe(true)
 
       cleanupElement(el)
     })

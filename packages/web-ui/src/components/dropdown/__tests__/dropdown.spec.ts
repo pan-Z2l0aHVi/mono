@@ -69,6 +69,43 @@ describe('WebUiDropdown 组件', () => {
     })
   })
 
+  describe('属性：trigger', () => {
+    // 集合读取走共享 normalizeTriggerSet：空格与逗号等价，读回统一逗号规范串。
+    it('默认为 click，集合规范化，未知 token 丢弃', async () => {
+      const el = createDropdown({}, SIMPLE)
+      await waitForUpdate(el)
+      expect(el.trigger).toBe('click')
+
+      el.trigger = 'hover focus'
+      expect(el.trigger).toBe('hover,focus')
+
+      el.trigger = 'manual hover'
+      await waitForUpdate(el)
+      expect(el.trigger).toBe('hover')
+
+      el.trigger = 'none hover'
+      await waitForUpdate(el)
+      expect(el.trigger).toBe('none')
+
+      el.trigger = ['hover'] as unknown as string
+      await waitForUpdate(el)
+      expect(el.trigger).toBe('click')
+    })
+
+    it('none 下点击不打开，show() 仍可用', async () => {
+      const el = createDropdown({ trigger: 'none' }, SIMPLE)
+      await waitForUpdate(el)
+
+      clickTrigger(el)
+      await waitForUpdate(el)
+      expect(el.isOpen).toBe(false)
+
+      el.show({ instant: true })
+      await waitForUpdate(el)
+      expect(el.isOpen).toBe(true)
+    })
+  })
+
   describe('disabled', () => {
     it('disabled 时两条打开入口都被挡住', async () => {
       const el = createDropdown({ disabled: '' }, SIMPLE)
@@ -78,23 +115,23 @@ describe('WebUiDropdown 组件', () => {
       await waitForUpdate(el)
       expect(el.isOpen).toBe(false)
 
-      el.openMenu()
+      el.show({ instant: true })
       await waitForUpdate(el)
       expect(el.isOpen).toBe(false)
     })
   })
 
   describe('打开与关闭', () => {
-    it('openMenu() / closeAll() 切换公开的 open 与 isOpen', async () => {
+    it('show() / hide() 切换公开的 open 与 isOpen', async () => {
       const el = createDropdown({}, SIMPLE)
       await waitForUpdate(el)
 
-      el.openMenu()
+      el.show({ instant: true })
       await waitForUpdate(el)
       expect(el.isOpen).toBe(true)
       expect(el.open).toBe(true)
 
-      el.closeAll()
+      el.hide()
       await waitForUpdate(el)
       expect(el.isOpen).toBe(false)
       expect(el.open).toBe(false)
@@ -118,7 +155,7 @@ describe('WebUiDropdown 组件', () => {
       const el = createDropdown({}, SIMPLE)
       await waitForUpdate(el)
 
-      el.openMenu()
+      el.show({ instant: true })
       await waitForUpdate(el)
       expect(document.documentElement.style.overflow).toBe('hidden')
 
@@ -130,7 +167,7 @@ describe('WebUiDropdown 组件', () => {
       const el = createDropdown({ 'no-scroll-lock': '' }, SIMPLE)
       await waitForUpdate(el)
 
-      el.openMenu()
+      el.show({ instant: true })
       await waitForUpdate(el)
 
       expect(document.documentElement.style.overflow).toBe('')
@@ -138,7 +175,7 @@ describe('WebUiDropdown 组件', () => {
 
     it('打开后修改定位属性保持 menu 可用', async () => {
       const el = createDropdown({}, SIMPLE)
-      el.openMenu()
+      el.show({ instant: true })
       await waitForUpdate(el)
 
       el.placement = 'top'
@@ -156,7 +193,7 @@ describe('WebUiDropdown 组件', () => {
     it('点击 panel 外部关闭', async () => {
       const el = createDropdown({}, SIMPLE)
       await waitForUpdate(el)
-      el.openMenu()
+      el.show({ instant: true })
       await waitForUpdate(el)
 
       await flush()
@@ -169,7 +206,7 @@ describe('WebUiDropdown 组件', () => {
     it('点击 menu item 不关闭', async () => {
       const el = createDropdown({}, SIMPLE)
       await waitForUpdate(el)
-      el.openMenu()
+      el.show({ instant: true })
       await waitForUpdate(el)
 
       el.querySelector('web-ui-dropdown-item')!.click()
@@ -183,7 +220,7 @@ describe('WebUiDropdown 组件', () => {
       const el = createDropdown({}, SIMPLE)
       await waitForUpdate(el)
 
-      el.openMenu()
+      el.show({ instant: true })
       document.body.click()
       await waitForUpdate(el)
 
@@ -194,8 +231,8 @@ describe('WebUiDropdown 组件', () => {
       const el = createDropdown({}, SIMPLE)
       await waitForUpdate(el)
 
-      el.addEventListener('open-change', () => document.body.click(), { once: true })
       el.open = true
+      document.body.click()
       await waitForUpdate(el)
 
       expect(el.isOpen).toBe(true)
@@ -206,7 +243,7 @@ describe('WebUiDropdown 组件', () => {
     it('Escape 关闭 menu', async () => {
       const el = createDropdown({}, SIMPLE)
       await waitForUpdate(el)
-      el.openMenu()
+      el.show({ instant: true })
       await waitForUpdate(el)
 
       el.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }))
@@ -219,7 +256,7 @@ describe('WebUiDropdown 组件', () => {
     it('panel 未建好就卸载时不留下占位层：重挂载后 Escape 不被吞掉', async () => {
       const el = createDropdown({}, SIMPLE)
       await waitForUpdate(el)
-      el.openMenu()
+      el.show({ instant: true })
       expect(el.isOpen).toBe(true)
 
       // 同一任务内卸载：open 帧没机会跑，内部仍是空的。
@@ -245,7 +282,7 @@ describe('WebUiDropdown 组件', () => {
     it('打开状态下重挂载会重建根 panel 与 menu item', async () => {
       const el = createDropdown({}, SIMPLE)
       await waitForUpdate(el)
-      el.openMenu()
+      el.show({ instant: true })
       await waitForFrame()
       await waitForFrame()
       expect(getMenuPanels()).toHaveLength(1)
@@ -265,7 +302,7 @@ describe('WebUiDropdown 组件', () => {
     it('重挂载后 Escape 仍关得掉这一层', async () => {
       const el = createDropdown({}, SIMPLE)
       await waitForUpdate(el)
-      el.openMenu()
+      el.show({ instant: true })
       await waitForFrame()
       await waitForFrame()
 
@@ -288,7 +325,7 @@ describe('WebUiDropdown 组件', () => {
       document.body.append(other)
       const el = createDropdown({}, SIMPLE)
       await waitForUpdate(el)
-      el.openMenu()
+      el.show({ instant: true })
       await waitForFrame()
       await waitForFrame()
 
@@ -327,7 +364,7 @@ describe('WebUiDropdown 组件', () => {
         '<button slot="trigger">M</button><web-ui-dropdown-item submenu>导出<web-ui-dropdown-item>PDF</web-ui-dropdown-item></web-ui-dropdown-item>'
       )
       await waitForUpdate(el)
-      el.openMenu()
+      el.show({ instant: true })
       await waitForFrame()
       await waitForFrame()
 
@@ -364,7 +401,7 @@ describe('WebUiDropdown 组件', () => {
       el.replaceChild(wrapper, comment)
       await waitForUpdate(el)
 
-      el.openMenu()
+      el.show({ instant: true })
       await waitForUpdate(el)
       await waitForFrame()
 
@@ -378,7 +415,7 @@ describe('WebUiDropdown 组件', () => {
       )
       await waitForUpdate(el)
       const wrapper = el.querySelector('div')!
-      el.openMenu()
+      el.show({ instant: true })
       await waitForUpdate(el)
       await waitForFrame()
 
@@ -402,7 +439,7 @@ describe('WebUiDropdown 组件', () => {
       )
       await waitForUpdate(el)
       const wrapper = el.querySelector('web-ui-dropdown-item div')!
-      el.openMenu()
+      el.show({ instant: true })
       await waitForUpdate(el)
       await waitForFrame()
 
@@ -420,18 +457,60 @@ describe('WebUiDropdown 组件', () => {
     })
   })
 
-  describe('程序式变更不派发 open-change', () => {
-    it('open 属性与公开方法都是静默通道', async () => {
+  describe('内容门控', () => {
+    it('没有 menu 内容时点击不打开', async () => {
+      const el = createDropdown({}, '<button slot="trigger">M</button>')
+      await waitForUpdate(el)
+
+      clickTrigger(el)
+      await waitForUpdate(el)
+
+      expect(el.isOpen).toBe(false)
+    })
+
+    it('show() 可以空开；内容从有到无才收起', async () => {
+      const el = createDropdown({}, '<button slot="trigger">M</button>')
+      await waitForUpdate(el)
+
+      el.show({ instant: true })
+      await waitForUpdate(el)
+      expect(el.isOpen).toBe(true)
+
+      const item = document.createElement('web-ui-dropdown-item')
+      item.textContent = 'a'
+      el.append(item)
+      await waitForFrame()
+      expect(el.isOpen).toBe(true)
+
+      item.remove()
+      await waitForFrame()
+      expect(el.isOpen).toBe(false)
+    })
+  })
+
+  describe('open-change 派发规则', () => {
+    it('声明式 open 静默，show() / hide() 派发', async () => {
       const el = createDropdown({}, SIMPLE)
       await waitForUpdate(el)
       const [events] = spyEvents<CustomEvent<{ open: boolean }>>(el, 'open-change')
 
-      el.openMenu()
+      el.open = true
       await waitForUpdate(el)
-      el.closeAll()
-      await waitForUpdate(el)
-
       expect(events).toHaveLength(0)
+
+      el.open = false
+      await waitForUpdate(el)
+      expect(events).toHaveLength(0)
+
+      el.show({ instant: true })
+      await waitForUpdate(el)
+      expect(events).toHaveLength(1)
+      expect(events[0].detail).toEqual({ open: true })
+
+      el.hide()
+      await waitForUpdate(el)
+      expect(events).toHaveLength(2)
+      expect(events[1].detail).toEqual({ open: false })
     })
   })
 })

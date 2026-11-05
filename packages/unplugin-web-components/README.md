@@ -1,16 +1,8 @@
 # @greypan/unplugin-web-components
 
-> Unplugin for web components auto-import in React, Vue, and Vite HTML entries
+> Vite and Webpack plugin that imports web components when their tags appear.
 
-English | [简体中文](https://github.com/pan-Z2l0aHVi/mono/blob/main/packages/unplugin-web-components/README.CN.md)
-
-## Features
-
-- **Auto-import**: Automatically import web components when detected in templates
-- **Dual tag detection**: Supports both kebab-case (`<web-ui-button>`) and PascalCase (`<WebUiButton>`) in module source
-- **Style injection**: Optional CSS import for component styles
-- **Vite HTML entries**: Inject component imports into `index.html` and other Vite HTML build inputs
-- **Entry points**: `/vite` and `/webpack` sub-path exports only
+English | [简体中文](./README.CN.md)
 
 ## Install
 
@@ -28,7 +20,7 @@ yarn add @greypan/unplugin-web-components
 bun add @greypan/unplugin-web-components
 ```
 
-## Quick Start
+## Quick start
 
 ```ts
 // vite.config.ts
@@ -45,17 +37,17 @@ export default defineConfig({
 })
 ```
 
-Now when you use `<web-ui-button>` in a Vue template, React JSX/TSX, or a Vite HTML entry, the import is automatically added:
+When you use `<web-ui-button>` in a Vue template, React JSX or TSX, or a Vite HTML entry, the matching import is added automatically.
 
 ```vue
-<!-- Vue: auto-imported -->
+<!-- Vue -->
 <template>
   <web-ui-button>Click me</web-ui-button>
 </template>
 ```
 
 ```tsx
-// React: auto-imported
+// React
 function App() {
   return <web-ui-button>Click me</web-ui-button>
 }
@@ -63,10 +55,9 @@ function App() {
 
 ### Vite HTML entry
 
-For an HTML entry processed by Vite, the plugin scans the markup and injects a `<script type="module">` at the top of `<head>` with a static import per component:
+For an HTML entry processed by Vite, the plugin injects a module script with one import per component.
 
 ```html
-<!-- index.html -->
 <!doctype html>
 <html lang="en">
   <head>
@@ -80,7 +71,7 @@ For an HTML entry processed by Vite, the plugin scans the markup and injects a `
 </html>
 ```
 
-With `sideEffects: true` the injected script is roughly:
+With `sideEffects: true`, the injected script is roughly:
 
 ```html
 <script type="module">
@@ -88,31 +79,28 @@ With `sideEffects: true` the injected script is roughly:
 </script>
 ```
 
-Notes on HTML injection:
+HTML injection rules:
 
-- Only kebab-case custom elements (`<web-ui-*>` → `web-ui-button`) are detected. Matching is case-insensitive because HTML tag names are normalized to lowercase by the parser: `<WEB-UI-BUTTON>` and `<web-ui-Button>` are both treated as `web-ui-button`. CamelCase names like `<WebUiButton>` are not. The parser normalizes them to a different tag (`webuibutton`).
-- HTML comments and raw-text/RCDATA regions (`script`, `style`, `title`, `textarea`, `iframe`, `xmp`, `noembed`, `noframes`, `noscript`) are ignored, so pseudo-tags in them never produce imports. Unclosed regions are normally treated as running to the end of the file; because a regex scanner cannot model comment and RAWTEXT tokenizer states simultaneously, an unclosed `<script>`/`style` pseudo-tag inside a comment (for example, `<!-- <script> --><web-ui-button>`) may swallow a real tag that follows it. Quoted attribute values are also skipped, including values with whitespace around `=`; `<div data-template = "<web-ui-button>">` does not trigger an import.
-- The HTML must pass through a Vite build (`vite build`). Files in `public/` are served as-is, and HTML opened directly from disk is not transformed.
+- Only kebab-case custom elements are detected. HTML tag names are case-insensitive, so `<WEB-UI-BUTTON>` and `<web-ui-Button>` match `web-ui-button`. CamelCase names such as `<WebUiButton>` do not.
+- Tags inside comments, `script`, `style`, `title`, `textarea`, `iframe`, and similar raw-text regions are ignored.
+- The HTML must go through a Vite build. Files in `public/` and HTML opened directly from disk are not transformed.
 
 ## API
 
 ### `unpluginWebComponents(options)`
 
-Create an unplugin instance for web component auto-import.
-
-| Parameter             | Type      | Default | Description                                 |
-| --------------------- | --------- | ------- | ------------------------------------------- |
-| `options.tagPrefix`   | `string`  | —       | Component tag prefix (e.g. `'web-ui'`)      |
-| `options.packageName` | `string`  | —       | NPM package name (e.g. `'@greypan/web-ui'`) |
-| `options.sideEffects` | `boolean` | `false` | Use side-effect imports (`import 'pkg'`)    |
-| `options.withStyle`   | `string`  | —       | CSS file to import with each component      |
+| Parameter             | Type      | Default | Description                                        |
+| --------------------- | --------- | ------- | -------------------------------------------------- |
+| `options.tagPrefix`   | `string`  | -       | Component tag prefix, for example `'web-ui'`.      |
+| `options.packageName` | `string`  | -       | NPM package name, for example `'@greypan/web-ui'`. |
+| `options.sideEffects` | `boolean` | `false` | Use side-effect imports such as `import 'pkg'`.    |
+| `options.withStyle`   | `string`  | -       | CSS file to import with each component.            |
 
 ### Supported bundlers
 
 | Entry      | Module transforms                   | HTML injection                 |
 | ---------- | ----------------------------------- | ------------------------------ |
 | `/vite`    | Vue (`.vue`), React (`.tsx`/`.jsx`) | Vite HTML entry (`index.html`) |
-| `/webpack` | Vue (`.vue`), React (`.tsx`/`.jsx`) | —                              |
+| `/webpack` | Vue (`.vue`), React (`.tsx`/`.jsx`) | -                              |
 
-- Only `/vite` and `/webpack` sub-path exports are published; Rollup and esbuild entries are not provided.
-- HTML injection is a Vite-only capability. The Webpack adapter performs module-source transforms only and does not inject into HTML. Webpack HTML injection would require a separate `HtmlWebpackPlugin` integration.
+Only `/vite` and `/webpack` subpath exports are published. HTML injection is Vite-only. The Webpack adapter transforms module sources and does not inject into HTML.

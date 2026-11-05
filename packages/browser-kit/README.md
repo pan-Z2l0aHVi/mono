@@ -1,19 +1,8 @@
 # @greypan/browser-kit
 
-> Browser utility functions for storage, tracking, environment detection, and more
+> Browser APIs for storage, tracking, environment detection, files, clipboard, and history.
 
-English | [简体中文](https://github.com/pan-Z2l0aHVi/mono/blob/main/packages/browser-kit/README.CN.md)
-
-## Features
-
-- **Storage**: `defineLocal`/`defineSession` with namespace, TTL expiry, cross-tab sync
-- **Tracker**: Data tracking with batch aggregation, page-error collection, offline restore, and last-words flush
-- **History Nav**: Read-only Navigation API subset tracking back/forward availability (`defineHistoryNav`)
-- **Env**: 17 environment detection flags (WeChat, DingTalk, PWA, mobile, etc.)
-- **DOM**: Viewport size and scroll position helpers
-- **File**: Download, base64 conversion, image info, file type validation
-- **Copy**: Cross-browser clipboard API with Blob support
-- **Shortcut**: Typed `on`/`off` helpers for `window` and `document` events
+English | [简体中文](./README.CN.md)
 
 ## Install
 
@@ -31,31 +20,34 @@ yarn add @greypan/browser-kit
 bun add @greypan/browser-kit
 ```
 
-## Quick Start
+## Quick start
 
 ```ts
 import { defineLocal } from '@greypan/browser-kit'
 
 const storage = defineLocal('my-app')
 
-// Basic usage
 storage.set('user', { name: 'Alice' })
 storage.get('user') // { name: 'Alice' }
 
-// TTL (1 hour)
+// Expire after one hour
 storage.set('token', 'abc123', 3600_000)
 
-// Watch for cross-tab changes
-const unwatch = storage.watch('user', (newVal, oldVal) => {
-  console.log('user changed', newVal, oldVal)
+// Listen for changes from other tabs
+const unwatch = storage.watch('user', (newValue, oldValue) => {
+  console.log('user changed', newValue, oldValue)
 })
 ```
 
-## Plugins
+## Storage
 
-Tracking plugins compose on a core Tracker: `defineTracker(options)` (core transport with a `sendBeacon()` → `fetch(keepalive)` fallback and a persisted pending-transport outbox), `defineBatchTrack(options?)` (delayed batch aggregation with recursive splitting at `maxBatchKB`), `defineOfflineRestore()` (pause while offline, resume on `online`), `definePageErrors(options?)` (collect uncaught errors and unhandled promise rejections as tracker events), and `defineLastWords()` (best-effort `flush()` when the page leaves or hides).
+`defineLocal(namespace?)` and `defineSession(namespace?)` create namespaced localStorage and sessionStorage instances with TTL support and cross-tab change events. `local` and `session` are the default instances without a namespace.
 
-**Recommended composition:**
+See [`src/storage/README.md`](./src/storage/README.md) for the full API.
+
+## Tracking
+
+Tracking uses composable plugins. Start with `defineTracker`, then add only the behavior you need.
 
 ```ts
 import {
@@ -76,145 +68,104 @@ const tracker = defineTracker({ url: '/api/track' })
 tracker.track({ event: 'page_view', path: '/' })
 ```
 
-See [`src/tracker/README.md`](https://github.com/pan-Z2l0aHVi/mono/blob/main/packages/browser-kit/src/tracker/README.md) for the full option tables (including `transport` and `transform`), flush/outbox semantics, and the page-error payload contract.
+- `defineBatchTrack` collects events and sends them in batches.
+- `defineOfflineRestore` pauses while the browser is offline and resumes when it comes back.
+- `definePageErrors` reports uncaught errors and unhandled promise rejections.
+- `defineLastWords` flushes pending events when the page is hidden or about to close.
 
-## API
+`defineTracker` stores pending events in localStorage by default and retries them later. It uses `navigator.sendBeacon()` first and falls back to `fetch()` with `keepalive: true`.
 
-### `defineLocal(namespace?)` / `defineSession(namespace?)`
+See [`src/tracker/README.md`](./src/tracker/README.md) for options, retry behavior, and the page error payload.
 
-Create namespaced localStorage/sessionStorage instances. Returns singleton per namespace.
+## Environment detection
 
-| Parameter   | Type     | Default | Description              |
-| ----------- | -------- | ------- | ------------------------ |
-| `namespace` | `string` | `''`    | Storage namespace prefix |
+`env` exposes boolean properties for the current browser and device.
 
-Full TTL semantics, `watch` cross-tab behavior, and storage-degradation details: see [`src/storage/README.md`](https://github.com/pan-Z2l0aHVi/mono/blob/main/packages/browser-kit/src/storage/README.md).
+```ts
+import { env } from '@greypan/browser-kit'
 
-### `local` / `session`
+if (env.isMobile && env.isWeChat) {
+  // WeChat mobile flow
+}
+```
 
-Default no-namespace singleton instances.
+It covers WeChat, Alipay, DingTalk, iframe, PWA, WebView, SSR, mobile, desktop, touch input, Chrome, Safari, Firefox, Android, iOS, and iPadOS.
 
-### `env`
+See [`src/env/README.md`](./src/env/README.md) for the full list and SSR notes.
 
-Environment detection object with getter properties.
-
-| Property               | Description             |
-| ---------------------- | ----------------------- |
-| `env.isWeChat`         | WeChat in-app browser   |
-| `env.isAlipay`         | Alipay in-app browser   |
-| `env.isDingTalk`       | DingTalk in-app browser |
-| `env.isIframe`         | Running in iframe       |
-| `env.isPWA`            | Running as PWA          |
-| `env.isWebview`        | Running in WebView      |
-| `env.isSsr`            | Server-side rendering   |
-| `env.isBrowser`        | Browser environment     |
-| `env.isMobile`         | Mobile device           |
-| `env.isDesktop`        | Desktop device          |
-| `env.isTouchSupported` | Touch input supported   |
-| `env.isChrome`         | Chrome browser          |
-| `env.isSafari`         | Safari browser          |
-| `env.isFirefox`        | Firefox browser         |
-| `env.isAndroid`        | Android OS              |
-| `env.isIos`            | iOS OS                  |
-| `env.isIpadOs`         | iPadOS                  |
-
-Full flag conditions and pre-render caveats: see [`src/env/README.md`](https://github.com/pan-Z2l0aHVi/mono/blob/main/packages/browser-kit/src/env/README.md).
+## DOM helpers
 
 ### `getViewportSize()`
 
-Get current viewport dimensions.
-
-**Returns:** `{ width: number; height: number }`. Returns zeros when `window` is unavailable.
+Return the current viewport size as `{ width, height }`. Returns zeros when `window` is unavailable.
 
 ### `getRootScrollTop()` / `getRootScrollLeft()`
 
-Get the document scroll position. Returns `0` outside the browser.
+Return the document scroll position. Returns `0` outside the browser.
+
+## Files
 
 ### `downloadFile(arg, filename?, onProgress?)`
 
-Download a file. Supports File, Blob, or URL string. For a remote URL, `onProgress` receives the download percentage.
+Download a `File`, `Blob`, or remote URL. For a remote URL, `onProgress` receives the download percentage.
 
-| Parameter    | Type                        | Default | Description               |
-| ------------ | --------------------------- | ------- | ------------------------- |
-| `arg`        | `File \| Blob \| string`    | -       | File object, Blob, or URL |
-| `filename`   | `string`                    | -       | Custom filename           |
-| `onProgress` | `(percent: number) => void` | -       | Progress callback         |
+| Parameter    | Type                        | Description                 |
+| ------------ | --------------------------- | --------------------------- |
+| `arg`        | `File \| Blob \| string`    | File, Blob, or absolute URL |
+| `filename`   | `string`                    | Optional output filename    |
+| `onProgress` | `(percent: number) => void` | Optional progress callback  |
 
 ### `getImageInfo(source)`
 
-Resolve image width and height. Supports File, Blob, or URL string.
-
-| Parameter | Type                     | Default | Description  |
-| --------- | ------------------------ | ------- | ------------ |
-| `source`  | `File \| Blob \| string` | -       | Image source |
-
-**Returns:** `Promise<{ width: number; height: number }>`.
+Return the image width and height for a `File`, `Blob`, or URL.
 
 ### `isValidBase64(str)`
 
-Check if a string is valid base64. Both raw base64 and `data:` URLs are accepted.
-
-| Parameter | Type     | Default | Description        |
-| --------- | -------- | ------- | ------------------ |
-| `str`     | `string` | -       | String to validate |
+Check whether a string is valid base64. Raw base64 and `data:` URLs are accepted.
 
 ### `base64ToFile(base64, filename?)`
 
-Convert a base64 string or `data:` URL to a File object. When `filename` has no extension, one is derived from the MIME type.
-
-| Parameter  | Type     | Default  | Description     |
-| ---------- | -------- | -------- | --------------- |
-| `base64`   | `string` | -        | Base64 string   |
-| `filename` | `string` | `'file'` | Output filename |
+Convert base64 or a `data:` URL to a `File`.
 
 ### `fileToBase64(file)`
 
-Convert File or Blob to a base64 `data:` URL.
-
-| Parameter | Type           | Default | Description             |
-| --------- | -------------- | ------- | ----------------------- |
-| `file`    | `File \| Blob` | -       | File or Blob to convert |
-
-**Returns:** `Promise<string>`.
+Convert a `File` or `Blob` to a base64 `data:` URL.
 
 ### `isSameFileType(...files)`
 
-Check whether files share the same real type based on their Magic Number. A single file, or no files, returns `true`.
+Compare files by their leading bytes and return whether they share the same real type.
 
-| Parameter  | Type     | Default | Description      |
-| ---------- | -------- | ------- | ---------------- |
-| `...files` | `File[]` | -       | Files to compare |
+See [`src/file/README.md`](./src/file/README.md) for error behavior and edge cases.
 
-**Returns:** `Promise<boolean>`.
-
-Magic Number comparison and error behavior: see [`src/file/README.md`](https://github.com/pan-Z2l0aHVi/mono/blob/main/packages/browser-kit/src/file/README.md).
+## Clipboard
 
 ### `copyToClipboard(content, options?)`
 
-Copy text or Blob to the system clipboard. Supports `text/plain` and `text/html`. Failures are handled by the underlying fallback chain and are not rethrown.
+Copy text or a `Blob` to the system clipboard. `text/plain` and `text/html` are supported. Copy failures are handled internally and are not rethrown.
 
-| Parameter | Type                                   | Default | Description       |
-| --------- | -------------------------------------- | ------- | ----------------- |
-| `content` | `string \| Blob`                       | -       | Content to copy   |
-| `options` | `{ format?: string; debug?: boolean }` | -       | Clipboard options |
+| Parameter | Type                                   | Description       |
+| --------- | -------------------------------------- | ----------------- |
+| `content` | `string \| Blob`                       | Content to copy   |
+| `options` | `{ format?: string; debug?: boolean }` | Clipboard options |
+
+## Events
 
 ### `on(element, event, handler, options?)`
 
-Add an event listener to `window` or `document`.
-
-| Parameter | Type                      | Default | Description      |
-| --------- | ------------------------- | ------- | ---------------- |
-| `element` | `Window \| Document`      | -       | Event target     |
-| `event`   | `string`                  | -       | Event name       |
-| `handler` | `Function`                | -       | Event handler    |
-| `options` | `AddEventListenerOptions` | -       | Listener options |
+Add a listener to `window` or `document` with typed helpers.
 
 ### `off(element, event, handler, options?)`
 
 Remove a listener added with `on`.
 
+## History
+
 ### `defineHistoryNav(options?)`
 
-Track whether the user can go back / forward in the real browser history via a read-only subset of the Navigation API (`canGoBack` / `canGoForward` / `currentEntry` / `entries()` / `currententrychange`). It patches `pushState` / `replaceState` only as a side record and also handles `popstate` and `hashchange`; the first call returns an idempotent singleton. See [`src/history-nav/README.md`](https://github.com/pan-Z2l0aHVi/mono/blob/main/packages/browser-kit/src/history-nav/README.md) for the full API and known limitations.
+Track whether the user can go back or forward within the current document session. The instance exposes `canGoBack`, `canGoForward`, `currentEntry`, `entries()`, `onCurrentEntryChange()`, and `dispose()`.
 
-> String and number helpers such as `getFileExtension` and `formatFileSize` live in [`@greypan/js-kit`](https://github.com/pan-Z2l0aHVi/mono/blob/main/packages/js-kit/README.md), not in this package.
+It is idempotent, so later calls return the same instance. When `window` is unavailable, it returns a no-op instance.
+
+See [`src/history-nav/README.md`](./src/history-nav/README.md) for the entry shape and known limits.
+
+> String and number helpers such as `getFileExtension` and `formatFileSize` live in [`@greypan/js-kit`](./../js-kit/README.md).

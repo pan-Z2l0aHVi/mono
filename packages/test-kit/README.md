@@ -1,23 +1,16 @@
 # @greypan/test-kit
 
-> Test infrastructure plugins for Vitest browser mode with MSW
+> Test helpers for Vitest browser mode with MSW.
 
-English | [简体中文](https://github.com/pan-Z2l0aHVi/mono/blob/main/packages/test-kit/README.CN.md)
-
-## Features
-
-- **MSW test env**: One `createMswTestEnv()` call wires the worker lifecycle, automatic request capture, and completion tracking
-- **MSW lifecycle**: Start/stop/reset Mock Service Worker with plugin composition
-- **Request capture**: Record and assert intercepted HTTP requests
-- **Plugin composition**: Built on js-kit's plugin system for composable test infrastructure
+English | [简体中文](./README.CN.md)
 
 ## Internal use
 
-This is private test infrastructure for the `mono` workspace and is not published by this repository. Add it to an in-repository package with the `workspace:*` protocol.
+This is private test infrastructure for this workspace. It is not published. Add it to a workspace package with the `workspace:*` protocol.
 
-> Requires `msw` as a peer dependency.
+`msw` is a peer dependency.
 
-## Quick Start
+## Quick start
 
 ```ts
 import { createMswTestEnv } from '@greypan/test-kit'
@@ -41,11 +34,11 @@ it('tracks a request', async () => {
 })
 ```
 
-Pass the promise that represents the entire operation, such as the return value of `fetch()` or a queue flush. `settle` cannot detect work that the caller does not provide. With fake timers, its timeout advances with the fake clock.
+Pass the promise that represents the whole operation, such as the return value of `fetch()` or a queue flush. `settle` cannot see work you do not pass to it. With fake timers, its timeout follows the fake clock.
 
-Captured requests fill automatically: the env installs its own catch-all recording handler (it responds `{ ok: true }`), so there is no need to hand-write one. Requests handled by custom handlers take precedence over the recorder; pass them via `createMswTestEnv({ handlers })`.
+Requests are captured automatically. The environment installs a catch-all handler that responds with `{ ok: true }`, so you do not need to write one. Handlers passed through `createMswTestEnv({ handlers })` take priority.
 
-### Composing plugins directly
+## Compose plugins directly
 
 ```ts
 import { defineMsw, defineCapturedRequests } from '@greypan/test-kit'
@@ -62,9 +55,7 @@ const ctx = defineMsw(handlers).use(capture).make()
 
 await ctx.startMsw()
 
-// ... run your test ...
-
-console.log(ctx.capturedRequests) // [{ url: '/api/user', body: ..., method: 'GET', timestamp: ... }]
+console.log(ctx.capturedRequests)
 
 ctx.clearCapturedRequests()
 await ctx.stopMsw()
@@ -76,53 +67,39 @@ await ctx.stopMsw()
 
 Create a complete MSW test environment with automatic request capture.
 
-| Parameter  | Type               | Default | Description                                                                                          |
-| ---------- | ------------------ | ------- | ---------------------------------------------------------------------------------------------------- |
-| `handlers` | `RequestHandler[]` | `[]`    | Business handlers, registered before the built-in recording handler so their responses take priority |
+| Parameter  | Type               | Default | Description                                                          |
+| ---------- | ------------------ | ------- | -------------------------------------------------------------------- |
+| `handlers` | `RequestHandler[]` | `[]`    | Business handlers. They are registered before the recording handler. |
 
-**Returns:** `MswTestEnv` with:
+Returns an `MswTestEnv`.
 
-| Property                | Type                                                                    | Description                                                                                       |
-| ----------------------- | ----------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------- |
-| `worker`                | `SetupWorker`                                                           | MSW service worker instance                                                                       |
-| `start`                 | `() => Promise<unknown>`                                                | Start the service worker (`beforeAll(env.start)`)                                                 |
-| `stop`                  | `() => void`                                                            | Stop the service worker (`afterAll(env.stop)`)                                                    |
-| `reset`                 | `() => void`                                                            | Reset handlers to defaults (`afterEach`)                                                          |
-| `capturedRequests`      | `CapturedRequest[]`                                                     | Requests captured by the built-in recorder; `url` is the request URL pathname                     |
-| `clearCapturedRequests` | `() => void`                                                            | Clear all captured requests                                                                       |
-| `settle`                | `(completion: PromiseLike<unknown>, timeout?: number) => Promise<void>` | Await the supplied completion signal; reject if it fails or exceeds the timeout (default 300 ms). |
+| Property                | Type                                                                    | Description                                                                               |
+| ----------------------- | ----------------------------------------------------------------------- | ----------------------------------------------------------------------------------------- |
+| `worker`                | `SetupWorker`                                                           | MSW service worker instance.                                                              |
+| `start`                 | `() => Promise<unknown>`                                                | Start the worker. Use with `beforeAll`.                                                   |
+| `stop`                  | `() => void`                                                            | Stop the worker. Use with `afterAll`.                                                     |
+| `reset`                 | `() => void`                                                            | Reset handlers to defaults. Use with `afterEach`.                                         |
+| `capturedRequests`      | `CapturedRequest[]`                                                     | Requests captured by the built-in recorder. `url` is the URL pathname.                    |
+| `clearCapturedRequests` | `() => void`                                                            | Clear captured requests.                                                                  |
+| `settle`                | `(completion: PromiseLike<unknown>, timeout?: number) => Promise<void>` | Wait for the completion signal. Rejects on failure or timeout. Default timeout is 300 ms. |
 
 ### `defineMsw(handlers)`
 
-Create an MSW lifecycle plugin. Returns a plugin with worker management methods.
+Create an MSW lifecycle plugin.
 
-| Parameter  | Type               | Default | Description          |
-| ---------- | ------------------ | ------- | -------------------- |
-| `handlers` | `RequestHandler[]` | -       | MSW request handlers |
+| Parameter  | Type               | Description          |
+| ---------- | ------------------ | -------------------- |
+| `handlers` | `RequestHandler[]` | MSW request handlers |
 
-**Returns:** `MswContext` with:
-
-| Property   | Type                     | Description                    |
-| ---------- | ------------------------ | ------------------------------ |
-| `worker`   | `SetupWorker`            | MSW service worker instance    |
-| `startMsw` | `() => Promise<unknown>` | Start the service worker       |
-| `stopMsw`  | `() => void`             | Stop the service worker        |
-| `resetMsw` | `() => void`             | Reset all handlers to defaults |
+Returns an `MswContext` with `worker`, `startMsw`, `stopMsw`, and `resetMsw`.
 
 ### `defineCapturedRequests()`
 
-Create a request capture plugin. Records intercepted HTTP requests.
+Create a request capture plugin.
 
-**Returns:** `CapturedRequestsContext` with:
-
-| Property                | Type                | Description                 |
-| ----------------------- | ------------------- | --------------------------- |
-| `capturedRequests`      | `CapturedRequest[]` | Array of captured requests  |
-| `clearCapturedRequests` | `() => void`        | Clear all captured requests |
+Returns a `CapturedRequestsContext` with `capturedRequests` and `clearCapturedRequests`.
 
 ### `CapturedRequest`
-
-Type for a captured request.
 
 | Property    | Type      | Description          |
 | ----------- | --------- | -------------------- |

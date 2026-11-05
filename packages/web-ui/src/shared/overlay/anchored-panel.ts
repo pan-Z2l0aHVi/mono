@@ -19,8 +19,8 @@ export interface AnchoredPanelOptions {
    * 事务入口，两个实例会让「我开着吗」重新分裂。
    */
   openOverlay: OpenOverlay
-  /** 本 panel 与 Escape 仲裁的关系。tooltip 传 `none`；缺省 `escape`。 */
-  arbitration?: OverlayArbitration
+  /** 本 panel 与 Escape 仲裁的关系。tooltip / 程序式 overlay 传 `none`；缺省 `escape`。 */
+  arbitration?: OverlayArbitration | (() => OverlayArbitration)
 }
 
 /**
@@ -37,6 +37,8 @@ export interface AnchoredPanelApi {
    */
   getHandle(): OpenOverlayHandle | null
   open(isInstant?: boolean): void
+  /** trigger 在开启期间改写时，把当前会话的仲裁身份同步到最新。 */
+  syncArbitration(): void
   /**
    * 播放退场并收尾。`isInstant` 表示这次没有可退场的内容（例如候选被全部过滤掉），
    * panel 直接落隐藏态；不传则照常播退场过渡。
@@ -54,6 +56,9 @@ export const defineAnchoredPanel = () =>
     let handle: OpenOverlayHandle | null = null
 
     const getPanel = () => portal?.panel ?? ctx.getLocalPanel()
+
+    const resolveArbitration = (): OverlayArbitration =>
+      typeof ctx.arbitration === 'function' ? ctx.arbitration() : (ctx.arbitration ?? 'escape')
 
     const releaseHandle = () => {
       handle?.release()
@@ -92,7 +97,7 @@ export const defineAnchoredPanel = () =>
       // 以 anchor 祖先链寻找最近的已开启 overlay，建立统一逻辑父子关系。
       // claim ⟺ open：重复 open 视为新的一次开启，旧会话整体作废。
       releaseHandle()
-      handle = ctx.openOverlay.claim(panel, { arbitration: ctx.arbitration, ancestryFrom: anchor })
+      handle = ctx.openOverlay.claim(panel, { arbitration: resolveArbitration(), ancestryFrom: anchor })
       ensureOverlay(anchor, panel)
       overlay?.open()
       showOverlayPresence(panel, { isInstant })
@@ -115,6 +120,10 @@ export const defineAnchoredPanel = () =>
       },
 
       open,
+
+      syncArbitration() {
+        handle?.setArbitration(resolveArbitration())
+      },
 
       async close(isStillOpen, isInstant = false) {
         /*
