@@ -4,7 +4,7 @@ import '@/components/option'
 import { describe, expect, it } from 'vite-plus/test'
 
 import type { WebUiOption } from '@/components/option'
-import { cleanupElement, queryA11y, spyEvents, waitForFrame, waitForUpdate } from '@/shared/test-utils'
+import { cleanupElement, flushSlotChange, queryA11y, spyEvents, waitForFrame, waitForUpdate } from '@/shared/test-utils'
 
 import type { WebUiSelect } from '..'
 
@@ -355,6 +355,59 @@ describe('WebUiSelect 组件', () => {
 
       cleanupElement(el)
       external.remove()
+    })
+  })
+
+  describe('内容门控', () => {
+    it('没有 option 时点击不打开', async () => {
+      const el = createSelect('')
+      await waitForUpdate(el)
+
+      const trigger = queryA11y(el, '[role="combobox"]') as HTMLElement
+      trigger.click()
+      await waitForUpdate(el)
+
+      expect(el.isOpen).toBe(false)
+
+      cleanupElement(el)
+    })
+
+    it('show() 可以空开；内容从有到无才收起', async () => {
+      const el = createSelect('')
+      await waitForUpdate(el)
+
+      el.show()
+      await waitForUpdate(el)
+      expect(el.isOpen).toBe(true)
+
+      const option = document.createElement('web-ui-option')
+      option.value = 'apple'
+      option.label = 'Apple'
+      el.append(option)
+      await flushSlotChange(el)
+      expect(el.isOpen).toBe(true)
+
+      option.remove()
+      await flushSlotChange(el)
+      expect(el.isOpen).toBe(false)
+
+      cleanupElement(el)
+    })
+
+    it('关闭态新增 option 不自动打开', async () => {
+      const el = createSelect('')
+      await waitForUpdate(el)
+      expect(el.isOpen).toBe(false)
+
+      const option = document.createElement('web-ui-option')
+      option.value = 'apple'
+      option.label = 'Apple'
+      el.append(option)
+      await flushSlotChange(el)
+
+      expect(el.isOpen).toBe(false)
+
+      cleanupElement(el)
     })
   })
 

@@ -21,6 +21,7 @@ import {
   nextWrappingIndex
 } from '@/shared/option-portal'
 import { defineAnchoredPanel } from '@/shared/overlay/anchored-panel'
+import { hasOverlayContent } from '@/shared/overlay/content-presence'
 import { defineOpenOverlay } from '@/shared/overlay/open-overlay'
 import { FLOATING_PLACEMENTS } from '@/shared/overlay/placement-props'
 import {
@@ -232,13 +233,20 @@ export class WebUiSelect extends FormAssociated(LitElement) {
     hoverOpensInstantly: () => false,
     isInsidePanel: event => !!this._panel.getHandle()?.containsEvent(event),
     hasFocusWithin: () => this.matches(':focus-within') || !!this._panel.getHandle()?.hasFocusWithin(),
-    requestOpen: meta => this._open({ isKeyboardNavigation: meta.source === 'focus', notify: meta.notify }),
+    requestOpen: meta =>
+      this._open({
+        isKeyboardNavigation: meta.source === 'focus',
+        notify: meta.notify,
+        automatic: meta.automatic
+      }),
     requestClose: meta => this._close({ notify: meta.notify })
   })
   private _panelKeepAliveDisposers: (() => void)[] = []
   private _portalKeepAliveDisposer?: () => void
 
   private _openValue = false
+  /** 本次打开会话是否见过内容；程序式空开不得被后续渲染立即关掉。 */
+  private _openedWithContent = false
 
   get isOpen(): boolean {
     return this._isOpen
@@ -324,6 +332,7 @@ export class WebUiSelect extends FormAssociated(LitElement) {
     this._syncOpenAttribute()
     this._syncOverlayInert()
     this._syncValidity()
+    this._syncOpenWithContent()
   }
 
   private _syncValidity() {
@@ -597,14 +606,41 @@ export class WebUiSelect extends FormAssociated(LitElement) {
       else this._syncActiveOption()
     },
     onAfterClose: () => {
+      this._openedWithContent = false
       this._activeIndex = -1
       this._options.forEach(o => o.removeAttribute('active'))
     }
   })
 
-  private _open(options: { isKeyboardNavigation?: boolean; notify?: boolean } = {}) {
+  private _hasOverlayContent() {
+    return hasOverlayContent(this._portalContent ?? this)
+  }
+
+  private _syncOpenWithContent() {
+    if (!this._isOpen) {
+      this._openedWithContent = false
+      return
+    }
+    if (this._hasOverlayContent()) {
+      this._openedWithContent = true
+      return
+    }
+    // 打开时就没有内容（程序式空开）保持原状；只有内容从有到无才收起。
+    if (this._openedWithContent) this._close()
+  }
+
+  private _open(options: { isKeyboardNavigation?: boolean; notify?: boolean; automatic?: boolean } = {}) {
     this._resetTypeahead()
-    this._openController.open(options)
+    const hasContent = this._hasOverlayContent()
+    if ((options.automatic ?? true) && !hasContent) {
+      if (this._isOpen) this._close()
+      return
+    }
+    this._openedWithContent = hasContent
+    this._openController.open({
+      isKeyboardNavigation: options.isKeyboardNavigation,
+      notify: options.notify
+    })
   }
 
   private _close(options: { notify?: boolean } = {}) {
@@ -699,7 +735,7 @@ export class WebUiSelect extends FormAssociated(LitElement) {
   }
 
   private async _closeOverlay() {
-    const closed = await this._panel.close(() => this._isOpen)
+    const closed = await this._panel.close(() => this._isOpen, !this._hasOverlayContent())
     // portal 已随关闭 dispose，与 autocomplete 对齐同步失效引用
     if (closed) {
       this._portal = undefined

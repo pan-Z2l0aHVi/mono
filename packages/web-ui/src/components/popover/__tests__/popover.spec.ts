@@ -175,6 +175,69 @@ describe('WebUiPopover 组件', () => {
     ])
   })
 
+  describe('内容门控', () => {
+    const createEmptyPopover = () => {
+      const el = document.createElement('web-ui-popover')
+      el.innerHTML = '<button slot="trigger">B</button>'
+      document.body.appendChild(el)
+      return el
+    }
+
+    it('没有 panel 内容时点击不打开', async () => {
+      const el = createEmptyPopover()
+      await waitForUpdate(el)
+
+      clickTrigger(el)
+      await waitForUpdate(el)
+      vi.advanceTimersToNextFrame()
+      await waitForUpdate(el)
+
+      expect(el.isOpen).toBe(false)
+
+      cleanupElement(el)
+    })
+
+    it('关闭态新增内容不自动打开', async () => {
+      const el = createEmptyPopover()
+      await waitForUpdate(el)
+
+      el.append(document.createElement('div'))
+      await Promise.resolve()
+      await waitForUpdate(el)
+      vi.advanceTimersToNextFrame()
+      await waitForUpdate(el)
+
+      expect(el.isOpen).toBe(false)
+
+      cleanupElement(el)
+    })
+
+    it('show() 可以空开；内容从有到无才收起', async () => {
+      const el = createEmptyPopover()
+      await waitForUpdate(el)
+
+      el.show()
+      await el.updateComplete
+      vi.advanceTimersToNextFrame()
+      await waitForUpdate(el)
+      expect(el.isOpen).toBe(true)
+
+      const content = document.createElement('div')
+      content.textContent = 'Content'
+      el.append(content)
+      await Promise.resolve()
+      await waitForUpdate(el)
+      expect(el.isOpen).toBe(true)
+
+      content.remove()
+      await Promise.resolve()
+      await waitForUpdate(el)
+      expect(el.isOpen).toBe(false)
+
+      cleanupElement(el)
+    })
+  })
+
   describe('属性：placement', () => {
     contractReflection('placement 反射到 host attribute', () => createPopover('Btn', 'Content'), [
       ['placement', 'left', 'placement', 'left']

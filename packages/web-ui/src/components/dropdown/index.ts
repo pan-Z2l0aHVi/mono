@@ -18,6 +18,7 @@ import {
   focusMenuItem,
   getMenuChildren,
   getMenuItemFromEvent,
+  getMovableMenuSubtrees,
   hideNestedMenuChildren,
   moveMenuChildren,
   orderManagedMenuItems,
@@ -97,6 +98,8 @@ export class WebUiDropdown extends LitElement {
     this._triggerController.applyDeclarativeOpen(Boolean(v))
   }
   private _openValue = false
+  /** 本次打开会话是否见过内容；程序式空开不得被后续渲染立即关掉。 */
+  private _openedWithContent = false
   @property({ type: Boolean, reflect: true }) disabled = false
   @property({ type: Boolean, reflect: true, attribute: 'match-width' }) matchWidth = false
   @property({ type: Boolean, reflect: true, attribute: 'no-scroll-lock' }) noScrollLock = false
@@ -183,7 +186,8 @@ export class WebUiDropdown extends LitElement {
         isInstant: meta.instant,
         notify: meta.notify,
         suppressFocusVisible: meta.source === 'imperative' ? true : !meta.instant,
-        takeFocus: meta.source !== 'hover'
+        takeFocus: meta.source !== 'hover',
+        automatic: meta.automatic
       }),
     requestClose: meta => this._closeAll(meta.notify)
   })
@@ -388,6 +392,7 @@ export class WebUiDropdown extends LitElement {
       })
     }
     this._hoverBinder.bind()
+    this._syncOpenWithContent()
   }
 
   /**
@@ -455,8 +460,12 @@ export class WebUiDropdown extends LitElement {
     notify: boolean
     suppressFocusVisible: boolean
     takeFocus: boolean
+    automatic: boolean
   }) {
     if (this.disabled || this._openValue) return
+    const hasContent = this._hasOverlayContent()
+    if (options.automatic && !hasContent) return
+    this._openedWithContent = hasContent
     this._outsideClickGuard.arm()
     this._shouldOpenInstantly = options.isInstant
     this._suppressInitialFocusVisible = options.suppressFocusVisible
@@ -509,7 +518,7 @@ export class WebUiDropdown extends LitElement {
 
   private async _closeRootAfterPresence() {
     const overlay = this._overlays.get(0)?.overlay
-    if (overlay && !(await hideOverlayPresence(overlay))) return
+    if (overlay && !(await hideOverlayPresence(overlay, { isInstant: !this._hasOverlayContent() }))) return
     if (this.open || !this.isConnected) return
 
     // submenu panels 与 root panel 是兄弟节点；整张 menu 收尾会移除所有仍持有焦点的层级。
@@ -632,6 +641,26 @@ export class WebUiDropdown extends LitElement {
       hideNestedMenuChildren(overlay.content, `${SLOT_PREFIX}-hidden`)
     }
     this._hoverBinder.bind()
+    this._syncOpenWithContent()
+  }
+
+  /** 一级菜单内容决定根层是否还有可展示的东西；子层内容挂在根项内部，不单独计数。 */
+  private _hasOverlayContent(): boolean {
+    const root = this._overlays.get(0)?.content ?? this
+    return getMovableMenuSubtrees(root).some(subtree => !subtree.hasAttribute('hidden'))
+  }
+
+  private _syncOpenWithContent() {
+    if (!this._openValue) {
+      this._openedWithContent = false
+      return
+    }
+    if (this._hasOverlayContent()) {
+      this._openedWithContent = true
+      return
+    }
+    // 打开时就没有内容（程序式空开）保持原状；只有内容从有到无才收起。
+    if (this._openedWithContent) this._closeAll(true)
   }
 
   private _returnLevel0Items() {

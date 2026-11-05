@@ -457,6 +457,37 @@ describe('WebUiDropdown 组件', () => {
     })
   })
 
+  describe('内容门控', () => {
+    it('没有 menu 内容时点击不打开', async () => {
+      const el = createDropdown({}, '<button slot="trigger">M</button>')
+      await waitForUpdate(el)
+
+      clickTrigger(el)
+      await waitForUpdate(el)
+
+      expect(el.isOpen).toBe(false)
+    })
+
+    it('show() 可以空开；内容从有到无才收起', async () => {
+      const el = createDropdown({}, '<button slot="trigger">M</button>')
+      await waitForUpdate(el)
+
+      el.show({ instant: true })
+      await waitForUpdate(el)
+      expect(el.isOpen).toBe(true)
+
+      const item = document.createElement('web-ui-dropdown-item')
+      item.textContent = 'a'
+      el.append(item)
+      await waitForFrame()
+      expect(el.isOpen).toBe(true)
+
+      item.remove()
+      await waitForFrame()
+      expect(el.isOpen).toBe(false)
+    })
+  })
+
   describe('open-change 派发规则', () => {
     it('声明式 open 静默，show() / hide() 派发', async () => {
       const el = createDropdown({}, SIMPLE)

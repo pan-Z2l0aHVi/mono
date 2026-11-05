@@ -5,7 +5,7 @@ import '@/components/option'
 import { afterEach, describe, expect, it } from 'vite-plus/test'
 import { page, userEvent } from 'vite-plus/test/browser'
 
-import { getPortalPanel, pollUntil } from '@/shared/test-utils'
+import { getPortalPanel, pollUntil, waitForFrame } from '@/shared/test-utils'
 
 import type { WebUiSelect } from '..'
 
@@ -335,5 +335,26 @@ describe('WebUiSelect 组件（浏览器）', () => {
     await select.updateComplete
 
     expect(form.checkValidity()).toBe(true)
+  })
+
+  it('内容清空时立即隐藏 panel，不播空盒退场过渡', async () => {
+    const select = document.createElement('web-ui-select')
+    select.innerHTML = '<web-ui-option value="a" label="A"></web-ui-option>'
+    document.body.append(select)
+    await select.updateComplete
+
+    select.show({ instant: true })
+    await select.updateComplete
+    await waitForFrame()
+
+    const panel = select.shadowRoot!.querySelector<HTMLElement>('[role="listbox"]')!
+    expect(panel.hidden).toBe(false)
+
+    select.querySelector('web-ui-option')!.remove()
+    // 一帧远短于退场过渡：此刻仍可见就说明走了动画，而不是内容已空就落隐藏态。
+    await waitForFrame()
+
+    expect(select.isOpen).toBe(false)
+    expect(panel.hidden).toBe(true)
   })
 })

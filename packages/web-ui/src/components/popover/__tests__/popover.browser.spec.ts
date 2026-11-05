@@ -300,4 +300,24 @@ describe('WebUiPopover 组件（浏览器）', () => {
       expect(popover.open).toBe(false)
     })
   })
+
+  it('内容清空时立即隐藏 panel，不播空盒退场过渡', async () => {
+    const popover = createPopover('<button slot="trigger">Trigger</button><div>Content</div>')
+    await popover.updateComplete
+
+    popover.show({ instant: true })
+    await popover.updateComplete
+    await waitForFrame()
+
+    const panel = popover.shadowRoot!.querySelector<HTMLElement>('[role="dialog"]')!
+    expect(panel.hidden).toBe(false)
+
+    popover.querySelector('div')!.remove()
+    // 一帧远短于退场过渡：此刻仍可见就说明走了动画，而不是内容已空就落隐藏态。
+    await waitForFrame()
+
+    expect(popover.open).toBe(false)
+    expect(panel.hidden).toBe(true)
+    expect(panel.getBoundingClientRect().height).toBe(0)
+  })
 })

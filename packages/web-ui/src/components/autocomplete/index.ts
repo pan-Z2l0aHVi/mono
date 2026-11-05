@@ -20,6 +20,7 @@ import {
   nextWrappingIndex
 } from '@/shared/option-portal'
 import { defineAnchoredPanel } from '@/shared/overlay/anchored-panel'
+import { hasOverlayContent } from '@/shared/overlay/content-presence'
 import { defineOpenOverlay } from '@/shared/overlay/open-overlay'
 import { FLOATING_PLACEMENTS } from '@/shared/overlay/placement-props'
 import {
@@ -283,10 +284,17 @@ export class WebUiAutocomplete extends FormAssociated(LitElement) {
     hasFocusWithin: () => this.matches(':focus-within') || !!this._panel.getHandle()?.hasFocusWithin(),
     // 输入框点击只开不关；键入手势与方向键打开保持组件固有行为。
     clickOpensOnly: true,
-    requestOpen: meta => this._open({ isKeyboardNavigation: meta.source === 'focus', notify: meta.notify }),
+    requestOpen: meta =>
+      this._open({
+        isKeyboardNavigation: meta.source === 'focus',
+        notify: meta.notify,
+        automatic: meta.automatic
+      }),
     requestClose: meta => this._close({ notify: meta.notify })
   })
   private _openValue = false
+  /** 本次打开会话是否见过内容；程序式空开不得被后续渲染立即关掉。 */
+  private _openedWithContent = false
   private _panelKeepAliveDisposers: (() => void)[] = []
   private _portalKeepAliveDisposer?: () => void
 
@@ -432,7 +440,7 @@ export class WebUiAutocomplete extends FormAssociated(LitElement) {
     this._syncOpenAttribute()
     this._syncOverlayInert()
     this._syncValidity()
-    this._syncOpenWithMatches()
+    this._syncOpenWithContent()
   }
 
   override formDisabledCallback(disabled: boolean) {
@@ -507,8 +515,31 @@ export class WebUiAutocomplete extends FormAssociated(LitElement) {
     return this._options.some(option => !option.hasAttribute('data-filtered'))
   }
 
-  private _syncOpenWithMatches() {
-    if (this._isOpen && !this._hasMatchingOptions()) this._close()
+  /*
+   * 内容可以是 option，也可以是默认 slot 里的任意节点：只要还有东西可看，面板就保持展示。
+   * 旧版 empty slot 已不在模板里，留在消费者 light DOM 的节点不参与判定。
+   */
+  private _hasOverlayContent() {
+    return hasOverlayContent(this._portalContent ?? this, node => {
+      if (node instanceof Element && node.localName === 'web-ui-option') {
+        return !node.hasAttribute('hidden') && !node.hasAttribute('data-filtered')
+      }
+      if (isEmptySlotNode(node)) return false
+      return undefined
+    })
+  }
+
+  private _syncOpenWithContent() {
+    if (!this._isOpen) {
+      this._openedWithContent = false
+      return
+    }
+    if (this._hasOverlayContent()) {
+      this._openedWithContent = true
+      return
+    }
+    // 打开时就没有内容（程序式空开）保持原状；只有内容从有到无才收起。
+    if (this._openedWithContent) this._close()
   }
 
   private readonly _optionListeners = createOptionListenerBinding({
@@ -593,7 +624,7 @@ export class WebUiAutocomplete extends FormAssociated(LitElement) {
   private _onKeydown = (e: KeyboardEvent) => {
     if (this._isDisabled || this.readonly) return
     this._applyFilter()
-    this._syncOpenWithMatches()
+    this._syncOpenWithContent()
 
     // Escape 不在本组件处理：由共享仲裁者在 document 捕获阶段归属（issue #120 Block 1）。
     switch (e.key) {
@@ -788,19 +819,25 @@ export class WebUiAutocomplete extends FormAssociated(LitElement) {
     },
     onAfterClose: () => {
       this._keyboardNavigationActive = false
+      this._openedWithContent = false
       this._activeIndex = -1
       this._options.forEach(o => o.removeAttribute('active'))
       this._syncScrollInteractionListeners()
     }
   })
 
-  private _open(options: { isKeyboardNavigation?: boolean; notify?: boolean } = {}) {
+  private _open(options: { isKeyboardNavigation?: boolean; notify?: boolean; automatic?: boolean } = {}) {
     this._applyFilter()
-    if (!this._hasMatchingOptions()) {
+    const hasContent = this._hasOverlayContent()
+    if ((options.automatic ?? true) && !hasContent) {
       if (this._isOpen) this._close()
       return
     }
-    this._openController.open(options)
+    this._openedWithContent = hasContent
+    this._openController.open({
+      isKeyboardNavigation: options.isKeyboardNavigation,
+      notify: options.notify
+    })
   }
 
   private _close(options: { notify?: boolean } = {}) {
@@ -827,7 +864,7 @@ export class WebUiAutocomplete extends FormAssociated(LitElement) {
      * `--wui-shadow-panel`，读起来像 trigger 下方闪一下又残留的黑影。空 panel 直接落隐藏态。
      * 其余关闭路径（失焦、Escape、点击外部、选中提交）内容仍在，过渡照常播。
      */
-    const closed = await this._panel.close(() => this._isOpen, !this._hasMatchingOptions())
+    const closed = await this._panel.close(() => this._isOpen, !this._hasOverlayContent())
     if (closed) {
       this._syncScrollInteractionListeners()
       this._portal = undefined

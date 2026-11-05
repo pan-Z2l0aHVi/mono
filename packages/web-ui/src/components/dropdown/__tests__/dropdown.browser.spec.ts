@@ -1454,6 +1454,32 @@ describe('WebUiDropdown 组件（浏览器）', () => {
   })
 })
 
+describe('WebUiDropdown 内容门控', () => {
+  it('内容清空时立即隐藏根 panel，不播空盒退场过渡', async () => {
+    const menu = document.createElement('web-ui-dropdown')
+    menu.innerHTML = '<button slot="trigger">Menu</button><web-ui-dropdown-item>Open</web-ui-dropdown-item>'
+    document.body.append(menu)
+    await menu.updateComplete
+
+    // 打开后 menu item 会迁入 panel content，不再是宿主的后代：先留引用。
+    const item = menu.querySelector('web-ui-dropdown-item')!
+    menu.show({ instant: true })
+    await menu.updateComplete
+    await waitForFrame()
+
+    const panel = getMenuPanels()[0]!
+    expect(panel.hidden).toBe(false)
+
+    item.remove()
+    // 观察者在下一帧同步内容并收起；再等一帧确认落隐藏态。
+    await waitForFrame()
+    await waitForFrame()
+
+    expect(menu.isOpen).toBe(false)
+    expect(panel.hidden || !panel.isConnected).toBe(true)
+  })
+})
+
 describe('WebUiDropdown 在已打开原生 dialog 内（top layer）', () => {
   // 已经模态化的 drawer 里的 menu 必须挂进那个 dialog（top layer），否则它会被 dialog
   // 自己的裁剪挡住，点击直接穿透到 backdrop。

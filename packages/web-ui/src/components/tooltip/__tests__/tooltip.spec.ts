@@ -246,6 +246,65 @@ describe('WebUiTooltip 组件', () => {
     })
   })
 
+  describe('内容门控', () => {
+    it('没有内容时悬停不显示', async () => {
+      const el = createTooltip()
+      await waitForUpdate(el)
+
+      el.dispatchEvent(new PointerEvent('pointerenter'))
+      vi.advanceTimersByTime(el.showDelay)
+      await waitForUpdate(el)
+
+      expect(el.isOpen).toBe(false)
+
+      cleanupElement(el)
+    })
+
+    it('关闭态新增内容不自动显示', async () => {
+      const el = createTooltip()
+      await waitForUpdate(el)
+
+      const content = document.createElement('span')
+      content.slot = 'content'
+      content.textContent = '提示'
+      el.append(content)
+      await Promise.resolve()
+      await waitForUpdate(el)
+      vi.advanceTimersToNextFrame()
+      await waitForUpdate(el)
+
+      expect(el.isOpen).toBe(false)
+
+      cleanupElement(el)
+    })
+
+    it('show() 可以空开；内容从有到无才收起', async () => {
+      const el = createTooltip()
+      await waitForUpdate(el)
+
+      el.show()
+      await el.updateComplete
+      vi.advanceTimersToNextFrame()
+      await waitForUpdate(el)
+      expect(el.isOpen).toBe(true)
+
+      const content = document.createElement('span')
+      content.slot = 'content'
+      content.textContent = '提示'
+      el.append(content)
+      await Promise.resolve()
+      await waitForUpdate(el)
+      expect(el.isOpen).toBe(true)
+
+      content.remove()
+      await Promise.resolve()
+      await waitForUpdate(el)
+      expect(el.isOpen).toBe(false)
+
+      cleanupElement(el)
+    })
+  })
+
   describe('属性：portal', () => {
     it('默认关闭', async () => {
       const el = createTooltip()

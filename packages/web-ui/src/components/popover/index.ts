@@ -7,6 +7,7 @@ import glass from '@/classes/glass.css?inline'
 import { normalizeLiteral, normalizeNumber } from '@/shared/normalize'
 import { dispatchOpenChangeEvent } from '@/shared/open-state'
 import { defineAnchoredPanel } from '@/shared/overlay/anchored-panel'
+import { hasOverlayContent } from '@/shared/overlay/content-presence'
 import { defineOpenOverlay } from '@/shared/overlay/open-overlay'
 import { FLOATING_PLACEMENTS } from '@/shared/overlay/placement-props'
 import { defineOverlayPortal, type OverlayContainer, type OverlayPortal } from '@/shared/overlay/portal'
@@ -94,6 +95,8 @@ export class WebUiPopover extends LitElement {
 
   private _shouldOpenInstantly = true
   private _pendingNotify: boolean | undefined
+  /** 本次打开会话是否见过内容；程序式空开不得被后续渲染立即关掉。 */
+  private _openedWithContent = false
   // 手势路由、开合状态机与程序式入口在共享接线里；open 的 reactive 存储仍由本组件持有。
   private readonly _triggerController = defineTriggerController({
     host: this,
@@ -106,7 +109,7 @@ export class WebUiPopover extends LitElement {
     hoverOpensInstantly: () => false,
     isInsidePanel: event => !!this._panel.getHandle()?.containsEvent(event),
     hasFocusWithin: () => this.matches(':focus-within') || !!this._panel.getHandle()?.hasFocusWithin(),
-    requestOpen: meta => this._applyOpen(meta.instant, meta.notify),
+    requestOpen: meta => this._applyOpen(meta.instant, meta.notify, meta.automatic),
     requestClose: meta => this._applyClose(meta.notify)
   })
 
@@ -156,12 +159,32 @@ export class WebUiPopover extends LitElement {
     this._triggerController.toggle(options)
   }
 
-  private _applyOpen(instant: boolean, notify: boolean) {
+  private _applyOpen(instant: boolean, notify: boolean, automatic: boolean) {
     if (this._openValue) return
+    const hasContent = this._hasOverlayContent()
+    if (automatic && !hasContent) return
+    this._openedWithContent = hasContent
     this._shouldOpenInstantly = instant
     this._openValue = true
     this._pendingNotify = notify
     this.requestUpdate('open', false)
+  }
+
+  private _hasOverlayContent() {
+    return hasOverlayContent(this._portal?.panel ?? this)
+  }
+
+  private _syncOpenWithContent() {
+    if (!this._openValue) {
+      this._openedWithContent = false
+      return
+    }
+    if (this._hasOverlayContent()) {
+      this._openedWithContent = true
+      return
+    }
+    // 打开时就没有内容（程序式空开）保持原状；只有内容从有到无才收起。
+    if (this._openedWithContent) this._triggerController.hide()
   }
 
   private _applyClose(notify: boolean) {
@@ -248,6 +271,12 @@ export class WebUiPopover extends LitElement {
       this._triggerController.syncTriggerChange()
       this._panel.syncArbitration()
     }
+
+    this._syncOpenWithContent()
+  }
+
+  private _onContentSlotChange = () => {
+    this.requestUpdate()
   }
 
   private _openOverlay(isInstant = false) {
@@ -272,7 +301,9 @@ export class WebUiPopover extends LitElement {
       target: this,
       style: `${glass}\n${overlayMotion}\n${style}`,
       className: 'popover-panel portal wui-glass wui-floating-panel',
-      // 已迁移节点被框架删除后的解除追踪是 portal 内建默认行为，这里无需 onContentChange
+      // 已迁移节点被框架删除后的解除追踪是 portal 内建默认行为；这里只借变化事件
+      // 重新评估「还有没有内容」。
+      onContentChange: () => this.requestUpdate(),
       migrateAddedNodes: addedNodes => this._migratableContentNodes(addedNodes)
     })
     this._portal = portal
@@ -286,7 +317,7 @@ export class WebUiPopover extends LitElement {
   }
 
   private async _closeOverlay() {
-    await this._panel.close(() => this.open)
+    await this._panel.close(() => this.open, !this._hasOverlayContent())
   }
 
   private _reconfigureOverlay() {
@@ -345,7 +376,7 @@ export class WebUiPopover extends LitElement {
           <slot name="trigger"></slot>
         </div>
         <div id=${this._panelId} class="popover-panel wui-floating-panel wui-glass" hidden role="dialog" tabindex="-1">
-          <slot></slot>
+          <slot @slotchange=${this._onContentSlotChange}></slot>
         </div>
       </div>
     `

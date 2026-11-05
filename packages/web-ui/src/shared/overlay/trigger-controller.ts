@@ -11,6 +11,8 @@
  * - 点 trigger 一律切换；autocomplete 的输入框点击只开不关（`clickOpensOnly`）。
  * - 外点与 Escape 对所有非 `none` 层生效；`none` 既不响应也不拦截 Escape
  *   （仲裁策略由 `arbitration()` 给出）。
+ * - `requestOpen` 带 `automatic` 标记：手势与键盘来源为 true，程序式与声明式为 false。
+ *   宿主据此只拦截自动来源，`show()` 与直接写 `open` 始终能开。
  *
  * 组件仍持有 reactive 的 open 状态：这里只决定「何时请求打开/收起」，并通过
  * `requestOpen` / `requestClose` 把来源、是否 instant 与是否派发 `open-change` 交给宿主。
@@ -30,10 +32,23 @@ export type TriggerOpenSource =
 
 export interface TriggerOpenMeta {
   source: TriggerOpenSource
+  /** 手势或键盘来源；程序式与声明式入口为 false，不受内容门控。 */
+  automatic: boolean
   /** 打开时是否免入场动画。 */
   instant: boolean
   /** 是否派发 `open-change`。声明式写入为 false。 */
   notify: boolean
+}
+
+export interface TriggerCloseMeta {
+  source: TriggerOpenSource
+  /** 是否派发 `open-change`。 */
+  notify: boolean
+}
+
+/** 自动来源指用户手势与键盘；`show()`、`toggle()` 与声明式写入不受内容门控。 */
+export function isAutomaticOpenSource(source: TriggerOpenSource): boolean {
+  return source !== 'imperative' && source !== 'declarative'
 }
 
 export interface TriggerControllerPolicy {
@@ -56,7 +71,7 @@ export interface TriggerControllerPolicy {
   /** 打开请求；宿主负责 idempotence 与渲染副作用。 */
   requestOpen(meta: TriggerOpenMeta): void
   /** 收起请求；宿主负责 idempotence。 */
-  requestClose(meta: TriggerOpenMeta): void
+  requestClose(meta: TriggerCloseMeta): void
   /** 缺省 true。menu 自己维护 outside-click 守卫时关掉。 */
   outsideClick?: boolean
   /** 缺省 true。menu 自己维护 focusout 关闭时关掉。 */
@@ -139,12 +154,12 @@ export function defineTriggerController(policy: TriggerControllerPolicy): Trigge
 
   const requestOpen = (source: TriggerOpenSource, instant: boolean, notify: boolean) => {
     if (policy.getOpen() || !canApply()) return
-    policy.requestOpen({ source, instant, notify })
+    policy.requestOpen({ source, automatic: isAutomaticOpenSource(source), instant, notify })
   }
 
   const requestClose = (source: TriggerOpenSource, notify = true) => {
     if (!policy.getOpen()) return
-    policy.requestClose({ source, instant: false, notify })
+    policy.requestClose({ source, notify })
   }
 
   const armHide = (source: 'hover' | 'panel-leave') => {

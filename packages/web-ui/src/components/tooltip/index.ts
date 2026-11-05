@@ -8,6 +8,7 @@ import { findFocusTarget } from '@/shared/focus/tabbable'
 import { normalizeLiteral, normalizeNumber } from '@/shared/normalize'
 import { dispatchOpenChangeEvent } from '@/shared/open-state'
 import { defineAnchoredPanel } from '@/shared/overlay/anchored-panel'
+import { hasOverlayContent } from '@/shared/overlay/content-presence'
 import { defineOpenOverlay } from '@/shared/overlay/open-overlay'
 import { FLOATING_PLACEMENTS } from '@/shared/overlay/placement-props'
 import { defineOverlayPortal, type OverlayContainer, type OverlayPortal } from '@/shared/overlay/portal'
@@ -99,6 +100,8 @@ export class WebUiTooltip extends LitElement {
   private _isCountedVisible = false
   private _shouldOpenInstantly = true
   private _pendingNotify: boolean | undefined
+  /** 本次打开会话是否见过内容；程序式空开不得被后续渲染立即关掉。 */
+  private _openedWithContent = false
   private _portal?: OverlayPortal
   private readonly _panelId = `wui-tooltip-panel-${++tooltipIdCounter}`
   // 手势路由、开合状态机与程序式入口在共享接线里；open 的 reactive 存储仍由本组件持有。
@@ -113,7 +116,7 @@ export class WebUiTooltip extends LitElement {
     hoverOpensInstantly: () => visibleTooltipCount > 0,
     isInsidePanel: event => !!this._panel.getHandle()?.containsEvent(event),
     hasFocusWithin: () => this.matches(':focus-within') || !!this._panel.getHandle()?.hasFocusWithin(),
-    requestOpen: meta => this._applyOpen(meta.instant, meta.notify),
+    requestOpen: meta => this._applyOpen(meta.instant, meta.notify, meta.automatic),
     requestClose: meta => this._applyClose(meta.notify)
   })
   /*
@@ -227,14 +230,44 @@ export class WebUiTooltip extends LitElement {
       this._syncPortalContent()
       if (this.open) this._syncDescription()
     }
+
+    this._syncOpenWithContent()
   }
 
-  private _applyOpen(instant: boolean, notify: boolean) {
+  private _applyOpen(instant: boolean, notify: boolean, automatic: boolean) {
     if (this._openValue) return
+    const hasContent = this._hasOverlayContent()
+    if (automatic && !hasContent) return
+    this._openedWithContent = hasContent
     this._shouldOpenInstantly = instant
     this._openValue = true
     this._pendingNotify = notify
     this.requestUpdate('open', false)
+  }
+
+  /*
+   * tooltip 的内容只有两个来源：`content` 文本或 `slot="content"` 节点。
+   * 默认 trigger 在默认 slot 里，不能算内容；portal 里的 `.tooltip-text` 是
+   * `content` 的渲染产物，没有 slot 属性，因此也不会被误判。
+   */
+  private _hasOverlayContent() {
+    if (this.content.trim()) return true
+    return hasOverlayContent(this._portal?.panel ?? this, node =>
+      node instanceof Element && node.slot === 'content' ? undefined : false
+    )
+  }
+
+  private _syncOpenWithContent() {
+    if (!this._openValue) {
+      this._openedWithContent = false
+      return
+    }
+    if (this._hasOverlayContent()) {
+      this._openedWithContent = true
+      return
+    }
+    // 打开时就没有内容（程序式空开）保持原状；只有内容从有到无才收起。
+    if (this._openedWithContent) this._triggerController.hide()
   }
 
   private _applyClose(notify: boolean) {
@@ -254,7 +287,9 @@ export class WebUiTooltip extends LitElement {
       target: this,
       style: `${glass}\n${overlayMotion}\n${style}`,
       className: 'tooltip-panel portal wui-glass wui-floating-panel',
-      // 已迁移节点被框架删除后的解除追踪是 portal 内建默认行为，这里无需 onContentChange
+      // 已迁移节点被框架删除后的解除追踪是 portal 内建默认行为；这里只借变化事件
+      // 重新评估「还有没有内容」。
+      onContentChange: () => this.requestUpdate(),
       // 打开期实时渲染：新增的 slot=content 元素实时迁入 panel（注释锚点无法携带
       // slot 属性，天然留在宿主作为框架 patch 的插入基准）。
       migrateAddedNodes: addedNodes =>
@@ -273,7 +308,7 @@ export class WebUiTooltip extends LitElement {
   }
 
   private async _closeOverlay() {
-    await this._panel.close(() => this.open)
+    await this._panel.close(() => this.open, !this._hasOverlayContent())
   }
 
   private _reconfigureOverlay() {
@@ -362,6 +397,7 @@ export class WebUiTooltip extends LitElement {
   }
 
   private _onContentSlotChange = () => {
+    this.requestUpdate()
     if (this.open) this._syncDescription()
   }
 
