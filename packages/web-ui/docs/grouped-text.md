@@ -303,7 +303,7 @@ The string spelling of `groups` is accepted on both the attribute and the proper
 
 The gap hangs on the `letter-spacing` of each group's last grapheme cluster. Only the last cluster carries it, so the rest of the group is not widened, and the final group's last cluster carries none, so no spare gap is left at the line end. The spacing belongs to that character's own text fragment, so selecting the fragment paints the spacing too — which is how "groups are visible" and "highlight is continuous" are both obtained.
 
-`--wui-grouped-text-gap` defaults to `0.25em` (3.5px at `14px`, 4px at `16px`, 5px at `20px`). Gaps are counted per boundary: `n` groups means `n - 1` shares. A 16-digit card number is about 192px in a 20px monospace font; with `groups="card"` and 3 shares of 5px it is about 207px.
+`--wui-grouped-text-gap` defaults to `0.25em` (3.5px at `14px`, 4px at `16px`, 5px at `20px`). Gaps are counted per boundary: `n` groups means `n - 1` shares. With `separator` enabled, that one share is split evenly on either side of the separator, so the total width is unchanged. A 16-digit card number is about 192px in a 20px monospace font; with `groups="card"` and 3 shares of 5px it is about 207px.
 
 ### CSS Custom Properties
 
@@ -314,6 +314,8 @@ The gap hangs on the `letter-spacing` of each group's last grapheme cluster. Onl
 ### Separator
 
 `separator` renders a display delimiter between each group and the next. It hangs on the group element's own `::after`, taking its value through `content: attr(data-separator)`, and never enters the text nodes: the text nodes of the shadow tree still rejoin to exactly `value`, and the separator is only a visible mark layered on top of the layout.
+
+The separator sits in the middle of the boundary gap: the group's last cluster and the separator's `::after` each carry half the `letter-spacing`, so it is equidistant from the groups on either side.
 
 The behavioral boundary follows: copy, in-page find, double-click word selection and per-character selection all work as before — copying and find read the data of the text nodes, and generated content can be neither read nor selected. The selection highlight is never painted on the separator: across a group boundary the highlight lands on the characters on either side, while the separator itself belongs to no text fragment. If that concession is unacceptable, do not use `separator` — it is visible content, not a hideable layout parameter.
 

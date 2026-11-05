@@ -80,7 +80,7 @@ const meta = [
   { label: 'p', content: "<code>groups</code> 的字符串写法在 attribute 与 property 两条通道都认。Vue 这类框架发现 <code>'groups' in el</code> 成立就直接赋 property，Lit 的 <code>fromAttribute</code> 转换器一次都不会跑，所以模板里写 <code>groups=\"4,4,4,4\"</code> 传进来的是原样字符串；两条通道共用同一份解析，<code>groups=\"4,4,4,4\"</code> 与 <code>:groups=\"[4, 4, 4, 4]\"</code> 切出同一批组。" },
   { label: 'h3', id: 'section-12', content: "间隙" },
   { label: 'p', content: "间隙挂在每组末位字素簇自己的 <code>letter-spacing</code> 上，只有末位带字距，组内其余字符不加宽；最后一组的末位不带，行尾因此不留多余间隙。字距属于这个字符自己的文本片段，选中片段时字距跟着一起被刷色，于是「看得见分组」与「高亮连续」两者兼得。" },
-  { label: 'p', content: "<code>--wui-grouped-text-gap</code> 默认 <code>0.25em</code>（<code>14px</code> 字号下 3.5px，<code>16px</code> 下 4px，<code>20px</code> 下 5px）。间隙按组边界计：<code>n</code> 组就有 <code>n - 1</code> 份。16 位卡号在 20px 等宽字体下约 192px，<code>groups=\"card\"</code> 加 3 处 5px 后约 207px。" },
+  { label: 'p', content: "<code>--wui-grouped-text-gap</code> 默认 <code>0.25em</code>（<code>14px</code> 字号下 3.5px，<code>16px</code> 下 4px，<code>20px</code> 下 5px）。间隙按组边界计：<code>n</code> 组就有 <code>n - 1</code> 份。开启 <code>separator</code> 时，同一处边界的这份间隙由分隔符左右各占一半，总宽不变。16 位卡号在 20px 等宽字体下约 192px，<code>groups=\"card\"</code> 加 3 处 5px 后约 207px。" },
   { label: 'h3', id: 'section-13', content: "CSS Custom Properties" },
   {
     label: 'table',
@@ -105,6 +105,7 @@ const meta = [
   },
   { label: 'h3', id: 'section-14', content: "分隔符" },
   { label: 'p', content: "<code>separator</code> 在每组与下一组之间渲染一个展示分隔符。它挂在组元素自己的 <code>::after</code> 上，经 <code>content: attr(data-separator)</code> 取值，自始至终不进文本节点：shadow 树的文本节点拼起来仍逐字等于 <code>value</code>，分隔符只是叠在排版上的可见标记。" },
+  { label: 'p', content: "分隔符落在组间间隙的中间：本组末位簇与分隔符的 <code>::after</code> 各自带一半字距，所以它与前后两组的距离相等。" },
   { label: 'p', content: "行为边界因此清楚：选中复制、页内查找、双击选词与逐位选择全部照旧——复制与查找读的是文本节点的 data，生成内容读不到，也选不中。选区高亮不会刷在分隔符上：跨组分隔符处，高亮落在分隔符两侧的字上，分隔符自己不属于任何文本片段。如果这处让位不可接受，就不要用 <code>separator</code>——它是可见内容，不是可隐藏的排版参数。" },
   { label: 'p', content: "分隔符的落点由组边界决定：只有一组（<code>groups</code> 省略、读不出或整串自成一组）时没有边界，分隔符不渲染；末组后面没有下一组，行尾不会多出分隔符。省略或空串时不渲染分隔符，渲染结果与没有这个属性时逐节点相同。生成内容按 accname 规范计入可访问名称——分隔符是看得见的内容，读屏读到它是预期行为。" },
   { label: 'h3', id: 'section-15', content: "复制、查找与选区" },
@@ -119,7 +120,7 @@ const meta = [
   { label: 'p', content: "<code>white-space: nowrap</code> 同样写在 <code>:host</code> 上：窄容器里整串溢出而不是折行。间隙走字距本来就不引入断行机会，但占位元素、<code>::after</code> 与 <code>display: inline-block</code> 会——见下面两节。" },
   { label: 'p', content: "放进 <code>text-align: justify</code> 的文本流时，字距间隙不会被当作调整点：Chromium 实测同一行在 <code>text-align-last: justify</code> 下确实被拉宽，而组件自身宽度和每一组的宽度逐字节不变。" },
   { label: 'h3', id: 'section-18', content: "已知行为：用 <code>margin</code> 撑间隙" },
-  { label: 'p', content: "不想拆字符时，组间间隙可以退到每组首元素的 <code>margin-inline-start</code>。代价是选区高亮会在每处组边界断开一条与间隙等宽的洞——Chromium 实测 8px 间隙正好留下 3 条 8px 的洞（4 组）。这是形状决定的，不是 bug：<code>margin</code> 撑出的空白落在两个文本片段之外，谁都不属于，而 <code>::selection</code> 只能用不影响布局的属性，补不掉。组件本身不走这条路。" },
+  { label: 'p', content: "不想拆字符时，组间间隙可以退到每组首元素的 <code>margin-inline-start</code>。代价是选区高亮会在每处组边界断开一条与间隙等宽的洞——Chromium 实测 8px 间隙正好留下 3 条 8px 的洞（4 组）。这是形状决定的，不是缺陷：<code>margin</code> 撑出的空白落在两个文本片段之外，谁都不属于，而 <code>::selection</code> 只能用不影响布局的属性，补不掉。组件本身不走这条路。" },
   { label: 'h3', id: 'section-19', content: "不能改成这些形状" },
   {
     label: 'ul',

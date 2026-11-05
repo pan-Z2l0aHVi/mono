@@ -15,9 +15,16 @@
  * 间隙宽，而 `::selection` 只能用不影响布局的属性，补不掉。
  *
  * 只有末位簇带字距，组内其余字符不加宽；最后一组的末位不挂这个类，行尾因此不留多余字距。
+ *
+ * 有分隔符时，一处组边界的总间隙拆成分隔符左右各一半：左半在本组末位簇的字距上，右半在
+ * `::after` 自己的字距上。只留单侧会让分隔符贴着下一组，看起来不属于任何一组。
  */
 .gap {
   letter-spacing: var(--wui-grouped-text-gap, 0.25em);
+}
+
+.group[data-separator] .gap {
+  letter-spacing: calc(var(--wui-grouped-text-gap, 0.25em) / 2);
 }
 
 /*
@@ -27,4 +34,5 @@
  */
 .group[data-separator]::after {
   content: attr(data-separator);
+  letter-spacing: calc(var(--wui-grouped-text-gap, 0.25em) / 2);
 }
